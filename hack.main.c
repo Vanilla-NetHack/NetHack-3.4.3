@@ -1,24 +1,34 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.main.c version 1.0.1 - some cosmetic changes */
+/* hack.main.c - version 1.0.2 */
 
 #include <stdio.h>
 #include <signal.h>
 #include <errno.h>
 #include "hack.h"
 
-extern char *getlogin();
+#ifdef QUEST
+#define	gamename	"quest"
+#else
+#define	gamename	"hack"
+#endif QUEST
+
+extern char *getlogin(), *getenv();
 extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
-extern char *getenv();
 
 int (*afternmv)();
+int (*occupation)();
+char *occtxt;			/* defined when occupation != NULL */
 
 int done1();
 int hangup();
 
 char safelock[] = "safelock";
+int hackpid;				/* current pid */
 xchar locknum;				/* max num of players */
-char *catmore = "/bin/cat";		/* or e.g. /usr/ucb/more */
-char SAVEF[PL_NSIZ + 5] = "save/";
+#ifdef DEF_PAGER
+char *catmore;				/* default pager */
+#endif DEF_PAGER
+char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 char perm[] = "perm";
 char *hname;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
@@ -30,18 +40,23 @@ main(argc,argv)
 int argc;
 char *argv[];
 {
-	int fd;
-	char *dir;
+	register int fd;
+#ifdef CHDIR
+	register char *dir;
+#endif CHDIR
 
 	hname = argv[0];
+	hackpid = getpid();
 
+#ifdef CHDIR			/* otherwise no chdir() */
 	/*
 	 * See if we must change directory to the playground.
 	 * (Perhaps hack runs suid and playground is inaccessible
 	 *  for the player.)
 	 * The environment variable HACKDIR is overridden by a
-	 *  -d command line option.
+	 *  -d command line option (must be the first option given)
 	 */
+
 	dir = getenv("HACKDIR");
 	if(argc > 1 && !strncmp(argv[1], "-d", 2)) {
 		argc--;
@@ -56,46 +71,81 @@ char *argv[];
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
 	}
+#endif CHDIR
+
+	/*
+	 * Who am i? Algorithm: 1. Use name as specified in HACKOPTIONS
+	 *			2. Use $USER or $LOGNAME	(if 1. fails)
+	 *			3. Use getlogin()		(if 2. fails)
+	 * The resulting name is overridden by command line options.
+	 * If everything fails, or if the resulting name is some generic
+	 * account like "games", "play", "player", "hack" then eventually
+	 * we'll ask him.
+	 * Note that we trust him here; it is possible to play under
+	 * somebody else's name.
+	 */
+	{ register char *s;
+
+	  initoptions();
+	  if(!*plname && (s = getenv("USER")))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+	  if(!*plname && (s = getenv("LOGNAME")))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+	  if(!*plname && (s = getlogin()))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+	}
 
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
 	 */
 	if(argc > 1 && !strncmp(argv[1], "-s", 2)) {
-		if(dir) chdirx(dir);
+#ifdef CHDIR
+		chdirx(dir,0);
+#endif CHDIR
 		prscore(argc, argv);
 		exit(0);
 	}
 
 	/*
-	 * It seems he really wants to play. Find the creation date of
-	 * this game so as to avoid restoring outdated savefiles.
+	 * It seems he really wants to play.
+	 * Remember tty modes, to be restored on exit.
+	 */
+	gettty();
+	setbuf(stdout,obuf);
+	setrandom();
+	startup();
+	cls();
+	u.uhp = 1;	/* prevent RIP on early quits */
+	u.ux = FAR;	/* prevent nscr() */
+	(void) signal(SIGHUP, hangup);
+
+	/*
+	 * Find the creation date of this game,
+	 * so as to avoid restoring outdated savefiles.
 	 */
 	gethdate(hname);
 
 	/*
 	 * We cannot do chdir earlier, otherwise gethdate will fail.
 	 */
-	if(dir) chdirx(dir);
-
-	/*
-	 * Who am i? Perhaps we should use $USER instead?
-	 */
-	(void) strncpy(plname, getlogin(), sizeof(plname)-1);
+#ifdef CHDIR
+	chdirx(dir,1);
+#endif CHDIR
 
 	/*
 	 * Process options.
 	 */
-	initoptions();
 	while(argc > 1 && argv[1][0] == '-'){
 		argv++;
 		argc--;
 		switch(argv[0][1]){
 #ifdef WIZARD
-		case 'w':
+		case 'D':
 			if(!strcmp(getlogin(), WIZARD))
 				wizard = TRUE;
-			else printf("Sorry.\n");
+			else
+				printf("Sorry.\n");
 			break;
 #endif WIZARD
 #ifdef NEWS
@@ -114,34 +164,48 @@ char *argv[];
 				printf("Player name expected after -u\n");
 			break;
 		default:
-			printf("Unknown option: %s\n", *argv);
+			/* allow -T for Tourist, etc. */
+			(void) strncpy(pl_character, argv[0]+1,
+				sizeof(pl_character)-1);
+
+			/* printf("Unknown option: %s\n", *argv); */
 		}
 	}
 
 	if(argc > 1)
 		locknum = atoi(argv[1]);
-	if(argc > 2)
-		catmore = argv[2];
+#ifdef MAX_NR_OF_PLAYERS
+	if(!locknum || locknum > MAX_NR_OF_PLAYERS)
+		locknum = MAX_NR_OF_PLAYERS;
+#endif MAX_NR_OF_PLAYERS
+#ifdef DEF_PAGER
+	if(!(catmore = getenv("HACKPAGER")) && !(catmore = getenv("PAGER")))
+		catmore = DEF_PAGER;
+#endif DEF_PAGER
+#ifdef MAIL
+	getmailstatus();
+#endif MAIL
 #ifdef WIZARD
 	if(wizard) (void) strcpy(plname, "wizard"); else
 #endif WIZARD
-	if(!*plname || !strncmp(plname, "player", 4)) askname();
-	plnamesuffix();		/* strip suffix from name */
-
-	setbuf(stdout,obuf);
- 	(void) srand(getpid());
-	startup();
-	cls();
-	(void) signal(SIGHUP, hangup);
+	if(!*plname || !strncmp(plname, "player", 4)
+		    || !strncmp(plname, "games", 4))
+		askname();
+	plnamesuffix();		/* strip suffix from name; calls askname() */
+				/* again if suffix was whole name */
+				/* accepts any suffix */
 #ifdef WIZARD
 	if(!wizard) {
 #endif WIZARD
+		/*
+		 * check for multiple games under the same name
+		 * (if !locknum) or check max nr of players (otherwise)
+		 */
 		(void) signal(SIGQUIT,SIG_IGN);
 		(void) signal(SIGINT,SIG_IGN);
-		if(locknum)
-			lockcheck();
-		else
+		if(!locknum)
 			(void) strcpy(lock,plname);
+		lockcheck();	/* sets lock if locknum != 0 */
 #ifdef WIZARD
 	} else {
 		register char *sfoo;
@@ -165,34 +229,35 @@ char *argv[];
 						*gp++ = pm->mlet;
 					pm++;
 				}
-				*gp = 0;
+ *gp = 0;
 			} else
 				(void) strcpy(genocided, sfoo);
 			(void) strcpy(fut_geno, genocided);
 		}
 	}
 #endif WIZARD
-	u.uhp = 1;	/* prevent RIP on early quits */
-	u.ux = FAR;	/* prevent nscr() */
-	(void) strcat(SAVEF,plname);
+	setftty();
+	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
 	if((fd = open(SAVEF,0)) >= 0 &&
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
 		(void) signal(SIGINT,done1);
-		puts("Restoring old save file...");
+		pline("Restoring old save file...");
 		(void) fflush(stdout);
-		dorecover(fd);
+		if(!dorecover(fd))
+			goto not_recovered;
+		pline("Hello %s, welcome to %s!", plname, gamename);
 		flags.move = 0;
 	} else {
-#ifdef NEWS
-		if(!flags.nonews)
-			if((fd = open(NEWS,0)) >= 0)
-				outnews(fd);
-#endif NEWS
+not_recovered:
+		fobj = fcobj = invent = 0;
+		fmon = fallen_down = 0;
+		ftrap = 0;
+		fgold = 0;
 		flags.ident = 1;
 		init_objects();
 		u_init();
+
 		(void) signal(SIGINT,done1);
-		glo(1);
 		mklev();
 		u.ux = xupstair;
 		u.uy = yupstair;
@@ -200,23 +265,39 @@ char *argv[];
 		setsee();
 		flags.botlx = 1;
 		makedog();
+		{ register struct monst *mtmp;
+		  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
+		}
 		seemons();
-		docrt();
-		pickup();
-		read_engr_at(u.ux,u.uy);	/* superfluous ? */
+#ifdef NEWS
+		if(flags.nonews || !readnews())
+			/* after reading news we did docrt() already */
+#endif NEWS
+			docrt();
+
+		/* give welcome message before pickup messages */
+		pline("Hello %s, welcome to %s!", plname, gamename);
+
+		pickup(1);
+		read_engr_at(u.ux,u.uy);
 		flags.move = 1;
-		flags.cbreak = ON;
-		flags.echo = OFF;
 	}
-	setftty();
-#ifdef TRACK
+
+	flags.moonphase = phase_of_the_moon();
+	if(flags.moonphase == FULL_MOON) {
+		pline("You are lucky! Full moon tonight.");
+		u.uluck++;
+	} else if(flags.moonphase == NEW_MOON) {
+ pline("Be careful! New moon tonight.");
+	}
+
 	initrack();
-#endif TRACK
+
 	for(;;) {
-		if(flags.move) {
-#ifdef TRACK
+		if(flags.move) {	/* actual time passed */
+
 			settrack();
-#endif TRACK
+
 			if(moves%2 == 0 ||
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
 				extern struct monst *makemon();
@@ -257,6 +338,7 @@ char *argv[];
 			if(Searching && multi >= 0) (void) dosearch();
 			gethungry();
 			invault();
+			amulet();
 		}
 		if(multi < 0) {
 			if(!++multi){
@@ -267,7 +349,7 @@ char *argv[];
 				afternmv = 0;
 			}
 		}
-		flags.move = 1;
+
 		find_ac();
 #ifndef QUEST
 		if(!flags.mv || Blind)
@@ -278,6 +360,17 @@ char *argv[];
 			nscr();
 		}
 		if(flags.botl || flags.botlx) bot();
+
+		flags.move = 1;
+
+		if(multi >= 0 && occupation) {
+			if(monster_nearby())
+				stop_occupation();
+			else if ((*occupation)() == 0)
+				occupation = 0;
+			continue;
+		}
+
 		if(multi > 0) {
 #ifdef QUEST
 			if(flags.run >= 4) finddir();
@@ -288,15 +381,19 @@ char *argv[];
 				continue;
 			}
 			if(flags.mv) {
-				if(multi<COLNO && !--multi)
+				if(multi < COLNO && !--multi)
 					flags.mv = flags.run = 0;
 				domove();
 			} else {
 				--multi;
 				rhack(save_cm);
 			}
-		} else if(multi == 0)
+		} else if(multi == 0) {
+#ifdef MAIL
+			ckmailstatus();
+#endif MAIL
 			rhack((char *) 0);
+		}
 		if(multi && multi%7 == 0)
 			(void) fflush(stdout);
 	}
@@ -305,49 +402,48 @@ char *argv[];
 lockcheck()
 {
 	extern int errno;
-	register int i, fd;
+	register int i = 0, fd;
 
 	/* we ignore QUIT and INT at this point */
-	if (link(perm,safelock) == -1)
+	if (link(perm, safelock) == -1) {
+		perror("safelock");
 		error("Cannot link safelock. (Try again or rm safelock.)");
+	}
 
-	for(i = 0; i < locknum; i++) {
-		lock[0]= 'a' + i;
-		if((fd = open(lock,0)) == -1) {
+	if(locknum > 25) locknum = 25;
+
+	do {
+		if(locknum) lock[0] = 'a' + i++;
+
+		if((fd = open(lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
 			(void) unlink(safelock);
+			perror(lock);
 			error("Cannot open %s", lock);
 		}
+		if(veryold(fd))		/* this closes fd and unlinks lock */
+			goto gotlock;
 		(void) close(fd);
-	}
+	} while(i < locknum);
+
 	(void) unlink(safelock);
-	error("Too many hacks running now.");
+	error(locknum ? "Too many hacks running now."
+		      : "There is a game in progress under your name.");
 gotlock:
-	fd = creat(lock,FMASK);
-	if(unlink(safelock) == -1) {
+	fd = creat(lock, FMASK);
+	if(unlink(safelock) == -1)
 		error("Cannot unlink safelock.");
-	}
 	if(fd == -1) {
 		error("cannot creat lock file.");
 	} else {
-		int pid;
-
-		pid = getpid();
-		if(write(fd, (char *) &pid, sizeof(pid)) != sizeof(pid)){
+		if(write(fd, (char *) &hackpid, sizeof(hackpid))
+		    != sizeof(hackpid)){
 			error("cannot write lock");
 		}
 		if(close(fd) == -1) {
 			error("cannot close lock");
 		}
 	}
-}
-
-/*VARARGS1*/
-error(s,a1,a2,a3,a4) char *s,*a1,*a2,*a3,*a4; {
-	printf("Error: ");
-	printf(s,a1,a2,a3,a4);
-	(void) putchar('\n');
-	exit(1);
 }
 
 glo(foo)
@@ -358,7 +454,10 @@ register foo;
 
 	tf = lock;
 	while(*tf && *tf!='.') tf++;
-	(void) sprintf(tf, ".%d", foo);
+	if(foo)
+		(void) sprintf(tf, ".%d", foo);
+	else
+		*tf = 0;
 }
 
 /*
@@ -369,6 +468,7 @@ register foo;
 askname(){
 register int c,ct;
 	printf("\nWho are you? ");
+	(void) fflush(stdout);
 	ct = 0;
 	while((c = getchar()) != '\n'){
 		if(c == EOF) error("End of input\n");
@@ -383,44 +483,65 @@ register int c,ct;
 	}
 	plname[ct] = 0;
 	if(ct == 0) askname();
-#ifdef QUEST
-	else printf("Hello %s, welcome to quest!\n", plname);
-#else
-	else printf("Hello %s, welcome to hack!\n", plname);
-#endif QUEST
 }
 
-impossible(){
+/*VARARGS1*/
+impossible(s,x1,x2)
+register char *s;
+{
+	pline(s,x1,x2);
 	pline("Program in disorder - perhaps you'd better Quit");
 }
 
-#ifdef NEWS
-int stopnews;
+#ifdef CHDIR
+static
+chdirx(dir, wr)
+char *dir;
+boolean wr;
+{
 
-stopnws(){
-	(void) signal(SIGINT, SIG_IGN);
-	stopnews++;
-}
+#ifdef SECURE
+	if(dir					/* User specified directory? */
+#ifdef HACKDIR
+	       && strcmp(dir, HACKDIR)		/* and not the default? */
+#endif HACKDIR
+		) {
+		(void) setuid(getuid());		/* Ron Wessels */
+		(void) setgid(getgid());
+	}
+#endif SECURE
 
-outnews(fd) int fd; {
-int (*prevsig)();
-char ch;
-	prevsig = signal(SIGINT, stopnws);
-	while(!stopnews && read(fd,&ch,1) == 1)
-		(void) putchar(ch);
-	(void) putchar('\n');
-	(void) fflush(stdout);
-	(void) close(fd);
-	(void) signal(SIGINT, prevsig);
-	/* See whether we will ask TSKCFW: he might have told us already */
-	if(!stopnews && pl_character[0])
-		getret();
-}
-#endif NEWS
+#ifdef HACKDIR
+	if(dir == NULL)
+		dir = HACKDIR;
+#endif HACKDIR
 
-chdirx(dir) char *dir; {
-	if(chdir(dir) < 0) {
+	if(dir && chdir(dir) < 0) {
 		perror(dir);
 		error("Cannot chdir to %s.", dir);
+	}
+
+	/* warn the player if he cannot write the record file */
+	/* perhaps we should also test whether . is writable */
+	/* unfortunately the access systemcall is worthless */
+	if(wr) {
+	    register fd;
+
+	    if(dir == NULL)
+		dir = ".";
+	    if((fd = open(RECORD, 2)) < 0) {
+		printf("Warning: cannot write %s/%s", dir, RECORD);
+		getret();
+	    } else
+		(void) close(fd);
+	}
+}
+#endif CHDIR
+
+stop_occupation()
+{
+	if(occupation) {
+		pline("You stop %s.", occtxt);
+		occupation = 0;
 	}
 }

@@ -1,7 +1,10 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.o_init.c - version 1.0.2 */
 
 #include	"config.h"		/* for typedefs */
 #include	"def.objects.h"
+#include	"hack.onames.h"		/* for LAST_GEM */
+extern char *index();
 
 int
 letindex(let) register char let; {
@@ -17,7 +20,7 @@ register int i, j, first, last, sum, end;
 register char let, *tmp;
 	/* init base; if probs given check that they add up to 100, 
 	   otherwise compute probs; shuffle descriptions */
-	end = sizeof(objects)/sizeof(objects[0]);
+	end = SIZE(objects);
 	first = 0;
 	while( first < end ) {
 		let = objects[first].oc_olet;
@@ -27,22 +30,21 @@ register char let, *tmp;
 			last++;
 		i = letindex(let);
 		if((!i && let != ILLOBJ_SYM) || bases[i] != 0)
-			panic("initialization error");
+			error("initialization error");
 		bases[i] = first;
 	check:
-#ifdef MKLEV
-#include	"hack.onames.h"
 		if(let == GEM_SYM) {
 			extern xchar dlevel;
 			for(j=0; j < 9-dlevel/3; j++)
 				objects[first+j].oc_prob = 0;
 			first += j;
 			if(first >= last || first >= LAST_GEM)
-				printf("Not enough gems? - first=%d last=%d j=%d LAST_GEM=%d\n", first, last, j, LAST_GEM);
+	printf("Not enough gems? - first=%d last=%d j=%d LAST_GEM=%d\n",
+				first, last, j, LAST_GEM);
 			for(j = first; j < LAST_GEM; j++)
 			    objects[j].oc_prob = (20+j-first)/(LAST_GEM-first);
 		}
-#endif MKLEV
+
 		sum = 0;
 		for(j = first; j < last; j++) sum += objects[j].oc_prob;
 		if(sum == 0) {
@@ -51,14 +53,8 @@ register char let, *tmp;
 			goto check;
 		}
 		if(sum != 100)
-#ifdef MKLEV
-			panic
-#else
-			error
-#endif MKLEV
-				("init-prob error for %c", let);
-		/* shuffling is rather meaningless in mklev, 
-		   but we must update  last  anyway */
+			error("init-prob error for %c", let);
+
 		if(objects[first].oc_descr != NULL && let != TOOL_SYM){
 			/* shuffle, also some additional descriptions */
 			while(last < end && objects[last].oc_olet == let)
@@ -71,7 +67,7 @@ register char let, *tmp;
 				objects[i].oc_descr = tmp;
 			}
 		}
- first = last;
+		first = last;
 	}
 }
 
@@ -84,8 +80,6 @@ register int prob = rn2(100);
 	return(i);
 }
 
-#ifndef MKLEV
-#define SIZE(x) (sizeof x)/(sizeof x[0])
 extern long *alloc();
 
 savenames(fd) register fd; {
@@ -116,4 +110,36 @@ unsigned len;
 		mread(fd, objects[i].oc_uname, len);
 	}
 }
-#endif MKLEV
+
+dodiscovered()				/* free after Robert Viduya */
+{
+    extern char *typename();
+    register int i, end;
+    int	ct = 0;
+
+    cornline(0, "Discoveries");
+
+    end = SIZE(objects);
+    for (i = 0; i < end; i++) {
+	if (interesting_to_discover (i)) {
+	    ct++;
+	    cornline(1, typename(i));
+	}
+    }
+    if (ct == 0) {
+	pline ("You haven't discovered anything yet...");
+	cornline(3, (char *) 0);
+    } else
+	cornline(2, (char *) 0);
+
+    return(0);
+}
+
+interesting_to_discover(i)
+register int i;
+{
+    return(
+	objects[i].oc_uname != NULL ||
+	 (objects[i].oc_name_known && objects[i].oc_descr != NULL)
+    );
+}

@@ -1,3 +1,4 @@
+	Hack & Quest data file - version 1.0.2
 @	human (or you)
 -	a wall
 |	a wall
@@ -6,7 +7,7 @@
  	a dark part of a room
 #	a corridor
 }	water filled area
- <	the staircase to the previous level
+<	the staircase to the previous level
 >	the staircase to the next level
 ^	a trap
 $	a pile, pot or chest of gold
@@ -59,7 +60,19 @@ D	a dragon;
 	[From: Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
 E	a floating eye
 F	a freezing sphere
-G	a gnome
+G	a gnome;
+	... And then a gnome came by, carrying a bundle, an old fellow
+	three times as large as an imp and wearing clothes of a sort,
+	especially a hat. And he was clearly just as frightened as the
+	imps though he could not go so fast. Ramon Alonzo saw that there
+	must be some great trouble that was vexing magical things; and,
+	since gnomes speak the language of men, and will answer if spoken
+	to gently, he raised his hat, and asked of the gnome his name.
+	The gnome did not stop his hasty shuffle a moment as he answered
+	'Alaraba' and grabbed the rim of his hat but forgot to doff it.
+	'What is the trouble, Alaraba?' said Ramon Alonzo.
+	'White magic. Run!' said the gnome ...
+			[From: The Charwoman's Shadow, by Lord Dunsany.]
 H	a hobgoblin;
 	Hobgoblin. Used by the  Puritans  and  in  later  times  for
 	wicked  goblin  spirits,  as in Bunyan's 'Hobgoblin nor foul
@@ -151,6 +164,10 @@ f	a fog cloud
 g	a gelatinous cube
 h	a homunculus
 i	an imp;
+	 ... imps ... little creatures of two feet high  that  could
+	gambol and jump prodigiously; ...
+			[From: The Charwoman's Shadow, by Lord Dunsany.]
+
 	An 'imp' is an off-shoot or cutting. Thus an 'ymp tree'  was
 	a grafted tree, or one grown from a cutting, not from seed.
 	'Imp' properly means a small devil, an off-shoot  of  Satan,
@@ -201,7 +218,7 @@ u	a unicorn;
 	                    [From: Mythical Beasts by Deirdre Headon
 	                                 (The Leprechaun Library). ]
 v	a violet fungi
-w	a long worm;
+w	a long worm
 ~	the tail of a long worm
 	From its teeth the crysknife can be manufactured.
 x	a xan;
@@ -210,3 +227,5 @@ y	a yellow light
 z	a zruty;
 	The zruty are wild and gigantic beings, living in the wildernesses
 	of the Tatra mountains.
+1	The wizard of Yendor
+2	The mail daemon

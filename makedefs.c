@@ -1,3 +1,6 @@
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* makedefs.c - version 1.0.2 */
+
 /* construct definitions of object constants */
 #define	DEF_FILE	"def.objects.h"
 #define	LINSZ	1000
@@ -22,7 +25,7 @@ register char *sp;
 			continue;
 		}
 		for(sp = string; *sp; sp++)
-			if(*sp == ' ' || *sp == '\t')
+			if(*sp == ' ' || *sp == '\t' || *sp == '-')
 				*sp = '_';
 		if(!strncmp(string, "RIN_", 4)){
 			capitalize(string+4);
@@ -41,6 +44,7 @@ register char *sp;
 	printf("#define	LAST_GEM	(JADE+1)\n");
 	printf("#define	LAST_RING	%d\n", propct);
 	printf("#define	NROFOBJECTS	%d\n", index-1);
+	exit(0);
 }
 
 char line[LINSZ], *lp = line, *lp0 = line, *lpe = line;
@@ -160,7 +164,7 @@ char identif[NSZ], *ip;
 					pch = ch;
 					ch = nextchar();
 				} while(ch != '\n' || pch == '\\');
-				continue;
+ continue;
 			}
 			goto swi;
 		case ',':

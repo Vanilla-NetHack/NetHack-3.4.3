@@ -1,16 +1,14 @@
 #!/bin/sh
-HACK=/usr/games/HACK
-HACKDIR=/usr/games/lib/hack/tmp
-MAXNROFPLAYERS=6
-MORE=/usr/ucb/more
+HACKDIR=/usr/games/lib/hackdir
+HACK=$HACKDIR/hack
+MAXNROFPLAYERS=4
 
 cd $HACKDIR
 case $1 in
 	-s*)
-		$HACK $@
+		exec $HACK $@
 		;;
 	*)
-#		/bin/cat news
-		$HACK $HACKDIR $MAXNROFPLAYERS $MORE
+		exec $HACK $@ $MAXNROFPLAYERS
 		;;
 esac

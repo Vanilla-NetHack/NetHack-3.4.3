@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.worm.c - version 1.0.2 */
 
 #include "hack.h"
 #ifndef NOWORM
@@ -14,7 +15,7 @@ register tmp;
 		mtmp->wormno = tmp;
 		return(1);
 	}
- return(0);	/* level infested with worms */
+	return(0);	/* level infested with worms */
 }
 
 /* called to initialize a worm unless cut in half */
@@ -26,7 +27,7 @@ register tmp = mtmp->wormno;
 	wgrowtime[tmp] = 0;
 	wtmp->wx = mtmp->mx;
 	wtmp->wy = mtmp->my;
-/*	wtmp->wdispl = 0;*/
+/*	wtmp->wdispl = 0; */
 	wtmp->nseg = 0;
 }
 
@@ -37,7 +38,7 @@ register tmp = mtmp->wormno;
 	wtmp->wx = mtmp->mx;
 	wtmp->wy = mtmp->my;
 	wtmp->nseg = 0;
-/*	wtmp->wdispl = 0;*/
+/*	wtmp->wdispl = 0; */
 	(whd = wheads[tmp])->nseg = wtmp;
 	wheads[tmp] = wtmp;
 	if(cansee(whd->wx,whd->wy)){
@@ -48,8 +49,8 @@ register tmp = mtmp->wormno;
 	if(wgrowtime[tmp] <= moves) {
 		if(!wgrowtime[tmp]) wgrowtime[tmp] = moves + rnd(5);
 		else wgrowtime[tmp] += 2+rnd(15);
-		mtmp->orig_hp++;
-		mtmp->mhp++;
+		mtmp->mhpmax += 3;
+		mtmp->mhp += 3;
 		return;
 	}
 	whd = wsegs[tmp];
@@ -66,7 +67,7 @@ register struct wseg *wtmp;
 	if(wtmp == 0 || wtmp->nseg == 0) panic("worm_nomove?");
 	wsegs[tmp] = wtmp->nseg;
 	remseg(wtmp);
-	mtmp->mhp--;	/* orig_hp not changed ! */
+	mtmp->mhp -= 3;	/* mhpmax not changed ! */
 }
 
 wormdead(mtmp) register struct monst *mtmp; {
@@ -78,7 +79,7 @@ register struct wseg *wtmp, *wtmp2;
 		wtmp2 = wtmp->nseg;
 		remseg(wtmp);
 	}
- wsegs[tmp] = 0;
+	wsegs[tmp] = 0;
 }
 
 wormhit(mtmp) register struct monst *mtmp; {
@@ -153,7 +154,7 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 			wtmp->nseg = 0;
 			if(tmp2){
 				pline("You cut the worm in half.");
-				mtmp2->orig_hp = mtmp2->mhp =
+				mtmp2->mhpmax = mtmp2->mhp =
 					d(mtmp2->data->mlevel, 8);
 				mtmp2->mx = wtmp->wx;
 				mtmp2->my = wtmp->wy;
@@ -171,7 +172,7 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 		if(!tmp2) remseg(wtmp);
 		wtmp = wtmp2;
 	} while(wtmp->nseg);
- panic("Cannot find worm segment");
+	panic("Cannot find worm segment");
 }
 
 remseg(wtmp) register struct wseg *wtmp; {

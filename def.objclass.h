@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.objclass.h - version 1.0.2 */
 
 /* definition of a class of objects */
 
@@ -24,8 +25,8 @@ struct objclass {
 #define		RAY		4
 				/* rings */
 #define		SPEC		1	/* +n is meaningful */
-#define	wldam		oc_oc1	/* for weapons */
-#define	wsdam		oc_oc2	/* for weapons */
+#define	wldam		oc_oc1	/* for weapons and PICK_AXE */
+#define	wsdam		oc_oc2	/* for weapons and PICK_AXE */
 #define	g_val		oc_oi	/* for gems: value on exit */
 };
 

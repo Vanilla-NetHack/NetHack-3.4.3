@@ -1,6 +1,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mhitu.c version 1.0.1 - corrected bug for 'R' (Mike Newton)
-			      - also some separate code for swallowed (a3) */
+/* hack.mhitu.c - version 1.0.2 */
+
 #include	"hack.h"
 extern struct monst *makemon();
 
@@ -18,21 +18,22 @@ register struct monst *mtmp;
 
 	/* If swallowed, can only be affected by hissers and by u.ustuck */
 	if(u.uswallow) {
-		if(mtmp != u.ustuck && mdat->mlet != 'c')
-			return(0);
-		switch(mdat->mlet) {
-		case 'c':
-			if(!rn2(13)) {
+		if(mtmp != u.ustuck) {
+			if(mdat->mlet == 'c' && !rn2(13)) {
 				pline("Outside, you hear %s's hissing!",
 					monnam(mtmp));
 				pline("%s gets turned to stone!",
 					Monnam(u.ustuck));
 				pline("And the same fate befalls you.");
 				done_in_by(mtmp);
+				/* notreached: return(1); */
 			}
-			break;
+			return(0);
+		}
+		switch(mdat->mlet) {	/* now mtmp == u.ustuck */
 		case ',':
-			youswld(mtmp,4+u.uac,5,"The trapper");
+			youswld(mtmp, (u.uac > 0) ? u.uac+4 : 4,
+				5, "The trapper");
 			break;
 		case '\'':
 			youswld(mtmp,rnd(6),7,"The lurker above");
@@ -41,20 +42,32 @@ register struct monst *mtmp;
 			youswld(mtmp,d(2,4),12,"The purple worm");
 			break;
 		default:
-			pline("The mysterious monster digests you.");
+			/* This is not impossible! */
+			pline("The mysterious monster totally digests you.");
 			u.uhp = 0;
 		}
 		if(u.uhp < 1) done_in_by(mtmp);
 		return(0);
 	}
-	if(!index("&DuxynNF",mdat->mlet))
+
+	/* make eels visible the moment they hit/miss us */
+	if(mdat->mlet == ';' && mtmp->minvis && cansee(mtmp->mx,mtmp->my)){
+		mtmp->minvis = 0;
+		pmon(mtmp);
+	}
+	if(!index("1&DuxynNF",mdat->mlet))
 		tmp = hitu(mtmp,d(mdat->damn,mdat->damd));
 	else
 		tmp = 0;
+	if(index(UNDEAD, mdat->mlet) && midnight())
+		tmp += hitu(mtmp,d(mdat->damn,mdat->damd));
 
 	ctmp = tmp && !mtmp->mcan &&
 	  (!uarm || objects[uarm->otyp].a_can < rnd(3) || !rn2(50));
 	switch(mdat->mlet) {
+	case '1':
+		if(wiz_hit(mtmp)) return(1);	/* he disappeared */
+		break;
 	case '&':
 		if(!mtmp->cham && !mtmp->mcan && !rn2(13)) {
 			(void) makemon(PM_DEMON,u.ux,u.uy);
@@ -70,7 +83,20 @@ register struct monst *mtmp;
 		if(tmp) justswld(mtmp,"The trapper");
 		break;
 	case '\'':
-		if(tmp) justswld(mtmp,"The lurker above");
+		if(tmp) justswld(mtmp, "The lurker above");
+		break;
+	case ';':
+		if(ctmp) {
+			if(!u.ustuck && !rn2(10)) {
+				pline("%s swings itself around you!",
+					Monnam(mtmp));
+				u.ustuck = mtmp;
+			} else if(u.ustuck == mtmp &&
+			    levl[mtmp->mx][mtmp->my].typ == POOL) {
+				pline("%s drowns you ...", Monnam(mtmp));
+				done("drowned");
+			}
+		}
 		break;
 	case 'A':
 		if(ctmp && rn2(2)) {
@@ -84,7 +110,8 @@ register struct monst *mtmp;
 	case 'c':
 		if(!rn2(5)) {
 			pline("You hear %s's hissing!", monnam(mtmp));
-			if(ctmp || !rn2(5)) {
+			if(ctmp || !rn2(20) || (flags.moonphase == NEW_MOON
+			    && !carrying(DEAD_LIZARD))) {
 				pline("You get turned to stone!");
 				done_in_by(mtmp);
 			}
@@ -101,7 +128,7 @@ register struct monst *mtmp;
 		buzz(-1,mtmp->mx,mtmp->my,u.ux-mtmp->mx,u.uy-mtmp->my);
 		break;
 	case 'd':
-		(void) hitu(mtmp,d(2,4));
+		(void) hitu(mtmp,d(2, (flags.moonphase == FULL_MOON) ? 3 : 4));
 		break;
 	case 'e':
 		(void) hitu(mtmp,d(3,6));
@@ -119,7 +146,7 @@ register struct monst *mtmp;
 				pline("You duck the blast...");
 				dn = 3;
 			}
- losehp_m(d(dn,6), mtmp);
+			losehp_m(d(dn,6), mtmp);
 		}
 		mondead(mtmp);
 		return(1);
@@ -204,9 +231,9 @@ register struct monst *mtmp;
 			pline("Your helmet rusts!");
 			uarmh->spe--;
 		} else
-		if(ctmp && uarm && !uarm->rustfree &&
+		if(ctmp && uarm && !uarm->rustfree &&	/* Mike Newton */
 		 uarm->otyp < STUDDED_LEATHER_ARMOR &&
-		 (int)uarm->spe >= -1) {
+		 (int) uarm->spe >= -1) {
 			pline("Your armor rusts!");
 			uarm->spe--;
 		}
@@ -242,10 +269,10 @@ register struct monst *mtmp;
 		break;
 	case 'V':
 		if(tmp) u.uhp -= 4;
-		if(ctmp && !rn2(3)) losexp();
+		if(ctmp) losexp();
 		break;
 	case 'W':
-		if(ctmp && !rn2(5)) losexp();
+		if(ctmp) losexp();
 		break;
 #ifndef NOWORM
 	case 'w':
@@ -280,4 +307,48 @@ register struct monst *mtmp;
 	}
 	if(u.uhp < 1) done_in_by(mtmp);
 	return(0);
+}
+
+hitu(mtmp,dam)
+register struct monst *mtmp;
+register dam;
+{
+	register tmp, res;
+
+	if(u.uswallow) return(0);
+
+	if(mtmp->mhide && mtmp->mundetected) {
+		mtmp->mundetected = 0;
+		if(!Blind) {
+			register struct obj *obj;
+			extern char * Xmonnam();
+			if(obj = o_at(mtmp->mx,mtmp->my))
+				pline("%s was hidden under %s!",
+					Xmonnam(mtmp), doname(obj));
+		}
+	}
+
+	tmp = u.uac;
+	/* give people with Ac = -10 at least some vulnerability */
+	if(tmp < 0) {
+		dam += tmp;		/* decrease damage */
+		if(dam <= 0) dam = 1;
+		tmp = -rn2(-tmp);
+	}
+	tmp += mtmp->data->mlevel;
+	if(multi < 0) tmp += 4;
+	if(Invis || !mtmp->mcansee) tmp -= 2;
+	if(mtmp->mtrapped) tmp -= 2;
+	if(tmp <= rnd(20)) {
+		if(Blind) pline("It misses.");
+		else pline("%s misses.",Monnam(mtmp));
+		res = 0;
+	} else {
+		if(Blind) pline("It hits!");
+		else pline("%s hits!",Monnam(mtmp));
+		losehp_m(dam, mtmp);
+		res = 1;
+	}
+	stop_occupation();
+	return(res);
 }

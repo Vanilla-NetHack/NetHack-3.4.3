@@ -1,4 +1,4 @@
-.TH HACK 6 "12 December 1984"
+.TH HACK 6 "31 March 1985"
 .UC 4
 .SH NAME
 hack \- Exploring The Dungeons of Doom
@@ -66,6 +66,8 @@ the current directory. This same directory contains several auxiliary
 files such as lockfiles and the list of topscorers and a subdirectory
 .I save
 where games are saved.
+The game administrator may however choose to install hack with a fixed
+playing ground, usually /usr/games/lib/hackdir.
 .PP
 The
 .B \-n
@@ -97,20 +99,62 @@ Andries Brouwer continuously deformed their sources into the current
 version - in fact an entirely different game.
 .SH FILES
 .DT
-.ta \w'data, help, rumors\ \ \ 'u
-hack, mklev	The hack program and an auxiliary
+.ta \w'data, rumors\ \ \ 'u
+hack	The hack program.
 .br
-	program called by hack.
+data, rumors	Data files used by hack.
 .br
-data, help, rumors	Data files used by hack.
+help, hh	Help data files.
 .br
 record	The list of topscorers.
 .br
-save	A subdirectory containing the saved games.
+save	A subdirectory containing the saved
+.br
+	games.
 .br
 bones_dd	Descriptions of the ghost and
 .br
 	belongings of a deceased adventurer.
+.br
+xlock.dd	Description of a dungeon level.
+.br
+safelock	Lock file for xlock.
+.br
+record_lock	Lock file for record.
+.br
+xlock.dd	Description of a dungeon level.
+.br
+safelock	Lock file for xlock.
+.br
+record_lock	Lock file for record.
+.SH ENVIRONMENT
+.DT
+.ta \w'HACKPAGER, PAGER\ \ \ 'u
+USER or LOGNAME	Your login name.
+.br
+HOME		Your home directory.
+.br
+SHELL		Your shell.
+.br
+TERM		The type of your terminal.
+.br
+HACKPAGER, PAGER	Pager used instead of default pager.
+.br
+MAIL	Mailbox file.
+.br
+MAILREADER	Reader used instead of default
+.br
+	(probably /bin/mail or /usr/ucb/mail).
+.br
+HACKDIR	Playground.
+.br
+HACKOPTIONS	String predefining several hack options
+.br
+	(see help file).
+.br
+
+Several other environment variables are used in debugging (wizard) mode,
+like GENOCIDED, INVENT, MAGIC and SHOPTYPE.
 .SH BUGS
 .PP
 Probably infinite.

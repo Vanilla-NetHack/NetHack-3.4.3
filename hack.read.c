@@ -1,9 +1,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.read.c version 1.0.1 - tiny correction in SCR_MAGIC_MAPPING */
+/* hack.read.c - version 1.0.2 */
 
 #include "hack.h"
 
 extern struct monst *makemon();
+extern struct obj *mkobj_at();
 int identify();
 
 doread() {
@@ -25,12 +26,16 @@ doread() {
 	  pline("Being confused, you mispronounce the magic words ... ");
 
 	switch(scroll->otyp) {
-
+#ifdef MAIL
+	case SCR_MAIL:
+		readmail(/* scroll */);
+		break;
+#endif MAIL
 	case SCR_ENCHANT_ARMOR:
 	    {	extern struct obj *some_armor();
 		register struct obj *otmp = some_armor();
 		if(!otmp) {
-			strange_feeling(scroll);
+			strange_feeling(scroll,"Your skin glows then fades.");
 			return(1);
 		}
 		if(confused) {
@@ -39,8 +44,7 @@ doread() {
 			otmp->rustfree = 1;
 			break;
 		}
-		if(otmp->spe*2 + objects[otmp->otyp].a_ac > 23 &&
-			!rn2(3)) {
+		if(otmp->spe > 3 && rn2(otmp->spe)) {
 	pline("Your %s glows violently green for a while, then evaporates.",
 			objects[otmp->otyp].oc_name);
 			useup(otmp);
@@ -56,7 +60,7 @@ doread() {
 		if(confused) {
 			register struct obj *otmp = some_armor();
 			if(!otmp) {
-				strange_feeling(scroll);
+				strange_feeling(scroll,"Your bones itch.");
 				return(1);
 			}
 			pline("Your %s glows purple for a moment.",
@@ -75,7 +79,7 @@ doread() {
 			useup(uarmg);
 			selftouch("You");
 		} else {
-			strange_feeling(scroll);
+			strange_feeling(scroll,"Your skin itches.");
 			return(1);
 		}
 		break;
@@ -138,32 +142,30 @@ doread() {
 	case SCR_CREATE_MONSTER:
 	    {	register int cnt = 1;
 
-		if(!rn2(73)) cnt += rn2(4) + 1;
+		if(!rn2(73)) cnt += rnd(4);
 		if(confused) cnt += 12;
 		while(cnt--)
-		    (void) makemon(confused ? PM_ACIDBLOB :
+		    (void) makemon(confused ? PM_ACID_BLOB :
 			(struct permonst *) 0, u.ux, u.uy);
 		break;
 	    }
 	case SCR_ENCHANT_WEAPON:
-		if(!uwep) {
-			strange_feeling(scroll);
-			return(1);
-		}
-		if(confused) {
+		if(uwep && confused) {
 			pline("Your %s glows silver for a moment.",
 				objects[uwep->otyp].oc_name);
 			uwep->rustfree = 1;
 		} else
-			if(!chwepon(scroll, 1)) return(1);
+			if(!chwepon(scroll, 1))		/* tests for !uwep */
+				return(1);
 		break;
 	case SCR_DAMAGE_WEAPON:
-		if(confused) {
+		if(uwep && confused) {
 			pline("Your %s glows purple for a moment.",
 				objects[uwep->otyp].oc_name);
 			uwep->rustfree = 0;
 		} else
-			if(!chwepon(scroll, -1)) return(1);
+			if(!chwepon(scroll, -1))	/* tests for !uwep */
+				return(1);
 		break;
 	case SCR_TAMING:
 	    {	register int i,j;
@@ -228,37 +230,54 @@ doread() {
 		}
 		break;
 	case SCR_GOLD_DETECTION:
-	    {	register struct gen *head = confused ? ftrap : fgold;
-		register struct gen *gtmp;
+	    /* Unfortunately this code has become slightly less elegant,
+	       now that gold and traps no longer are of the same type. */
+	    if(confused) {
+		register struct trap *ttmp;
 
-		if(!head) {
-			strange_feeling(scroll);
+		if(!ftrap) {
+			strange_feeling(scroll, "Your toes stop itching.");
+			return(1);
+		} else {
+			for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+				if(ttmp->tx != u.ux || ttmp->ty != u.uy)
+					goto outtrapmap;
+			/* only under me - no separate display required */
+			pline("Your toes itch!");
+			break;
+		outtrapmap:
+			cls();
+			for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+				at(ttmp->tx, ttmp->ty, '$');
+			prme();
+			pline("You feel very greedy!");
+		}
+	    } else {
+		register struct gold *gtmp;
+
+		if(!fgold) {
+			strange_feeling(scroll, "You feel materially poor.");
 			return(1);
 		} else {
 			known = TRUE;
-			for(gtmp = head; gtmp; gtmp = gtmp->ngen)
+			for(gtmp = fgold; gtmp; gtmp = gtmp->ngold)
 				if(gtmp->gx != u.ux || gtmp->gy != u.uy)
 					goto outgoldmap;
 			/* only under me - no separate display required */
-			if(confused)
-			    pline("You feel very giddy!");
-			else
-			    pline("You notice some gold between your feet.");
+			pline("You notice some gold between your feet.");
 			break;
 		outgoldmap:
 			cls();
-			for(gtmp = head; gtmp; gtmp = gtmp->ngen)
+			for(gtmp = fgold; gtmp; gtmp = gtmp->ngold)
 				at(gtmp->gx, gtmp->gy, '$');
 			prme();
-			if(confused)
-			    pline("You feel very greedy!");
-			else
-			    pline("You feel very greedy, and sense gold!");
-			more();
-			docrt();
+			pline("You feel very greedy, and sense gold!");
 		}
-		break;
 	    }
+		/* common sequel */
+		more();
+		docrt();
+		break;
 	case SCR_FOOD_DETECTION:
 	    {	register ct = 0, ctu = 0;
 		register struct obj *obj;
@@ -270,7 +289,7 @@ doread() {
 				else ct++;
 			}
 		if(!ct && !ctu) {
-			strange_feeling(scroll);
+			strange_feeling(scroll,"Your nose twitches.");
 			return(1);
 		} else if(!ct) {
 			known = TRUE;
@@ -332,7 +351,7 @@ doread() {
 #endif QUEST
 				{
 				  lev->seen = lev->new = 1;
-				  if(lev->scrsym == ' ')
+				  if(lev->scrsym == ' ' || !lev->scrsym)
 				    newsym(zx,zy);
 				  else
 				    on_scr(zx,zy);
@@ -354,6 +373,7 @@ doread() {
 	    }
 	case SCR_FIRE:
 	    {	register int num;
+		register struct monst *mtmp;
 
 		known = TRUE;
 		if(confused) {
@@ -367,6 +387,18 @@ doread() {
 			num = rnd(6);
 			u.uhpmax -= num;
 			losehp(num, "scroll of fire");
+		    }
+		}
+		num = (2*num + 1)/3;
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if(dist(mtmp->mx,mtmp->my) < 3) {
+			mtmp->mhp -= num;
+			if(index("FY", mtmp->data->mlet))
+			    mtmp->mhp -= 3*num;	/* this might well kill 'F's */
+			if(mtmp->mhp < 1) {
+			    killed(mtmp);
+			    break;		/* primitive */
+			}
 		    }
 		}
 		break;
@@ -384,29 +416,26 @@ doread() {
 			break;
 		}
 		Punished = INTRINSIC;
-		mkobj_at(CHAIN_SYM, u.ux, u.uy);
-		setworn(fobj, W_CHAIN);
-		mkobj_at(BALL_SYM, u.ux, u.uy);
-		setworn(fobj, W_BALL);
+		setworn(mkobj_at(CHAIN_SYM, u.ux, u.uy), W_CHAIN);
+		setworn(mkobj_at(BALL_SYM, u.ux, u.uy), W_BALL);
 		uball->spe = 1;		/* special ball (see save) */
 		break;
 	default:
-		pline("What weird language is this written in? (%d)",
+		impossible("What weird language is this written in? (%u)",
 			scroll->otyp);
-		impossible();
 	}
 	if(!objects[scroll->otyp].oc_name_known) {
 		if(known && !confused) {
 			objects[scroll->otyp].oc_name_known = 1;
-			u.urexp += 10;
+			more_experienced(0,10);
 		} else if(!objects[scroll->otyp].oc_uname)
- docall(scroll);
+			docall(scroll);
 	}
 	useup(scroll);
 	return(1);
 }
 
-identify(otmp)
+identify(otmp)		/* also called by newmail() */
 register struct obj *otmp;
 {
 	objects[otmp->otyp].oc_name_known = 1;
@@ -428,7 +457,7 @@ register boolean on;
 			pline("It seems even darker in here than before.");
 			return;
 		} else
- pline("It suddenly becomes dark in here.");
+			pline("It suddenly becomes dark in here.");
 	} else {
 		if(u.uswallow){
 			pline("%s's stomach is lit.", Monnam(u.ustuck));
@@ -460,11 +489,11 @@ do_it:
 	if(levl[u.ux][u.uy].lit == on)
 		return;
 	if(levl[u.ux][u.uy].typ == DOOR) {
-		if(levl[u.ux][u.uy+1].typ >= ROOM) zy = u.uy+1;
-		else if(levl[u.ux][u.uy-1].typ >= ROOM) zy = u.uy-1;
+		if(IS_ROOM(levl[u.ux][u.uy+1].typ)) zy = u.uy+1;
+		else if(IS_ROOM(levl[u.ux][u.uy-1].typ)) zy = u.uy-1;
 		else zy = u.uy;
-		if(levl[u.ux+1][u.uy].typ >= ROOM) zx = u.ux+1;
-		else if(levl[u.ux-1][u.uy].typ >= ROOM) zx = u.ux-1;
+		if(IS_ROOM(levl[u.ux+1][u.uy].typ)) zx = u.ux+1;
+		else if(IS_ROOM(levl[u.ux-1][u.uy].typ)) zx = u.ux-1;
 		else zx = u.ux;
 	} else {
 		zx = u.ux;

@@ -1,11 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.dog.c version 1.0.1 - "You feel worried about %s." (Adri Verhoef) */
+/* hack.dog.c - version 1.0.2 */
 
 #include	"hack.h"
 #include	"hack.mfndpos.h"
-extern char POISONOUS[];
 extern struct monst *makemon();
 #include "def.edog.h"
+#include "def.mkroom.h"
 
 struct permonst li_dog =
 	{ "little dog", 'd',2,18,6,1,6,sizeof(struct edog) };
@@ -53,12 +53,8 @@ register struct monst *mtmp;
 
 keepdogs(){
 register struct monst *mtmp;
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) if(mtmp->mtame) {
-		if(dist(mtmp->mx,mtmp->my) > 2) {
-			mtmp->mtame = 0;	/* dog becomes wild */
-			mtmp->mpeaceful = 0;
-			continue;
-		}
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if(dist(mtmp->mx,mtmp->my) < 3 && follower(mtmp)) {
 		relmon(mtmp);
 		mtmp->nmon = mydogs;
 		mydogs = mtmp;
@@ -91,7 +87,7 @@ dogfood(obj) register struct obj *obj; {
 		(obj->otyp == TRIPE_RATION) ? DOGFOOD :
 		(obj->otyp < CARROT) ? ACCFOOD :
 		(obj->otyp < CORPSE) ? MANFOOD :
-		(index(POISONOUS, obj->spe) || obj->age + 50 <= moves ||
+		(poisonous(obj) || obj->age + 50 <= moves ||
 		    obj->otyp == DEAD_COCKATRICE)
 			? POISON : CADAVER
 	    );
@@ -113,7 +109,7 @@ register struct monst *mtmp2;
 register struct permonst *mdat = mtmp->data;
 register struct edog *edog = EDOG(mtmp);
 struct obj *obj;
-struct gen *trap;
+struct trap *trap;
 xchar cnt,chcnt,nix,niy;
 schar dogroom,uroom;
 xchar gx,gy,gtyp,otyp;	/* current goal */
@@ -128,9 +124,9 @@ int info[9];
 	whappr = (moves - EDOG(mtmp)->whistletime < 5);
 	if(moves > edog->hungrytime + 500 && !mtmp->mconf){
 		mtmp->mconf = 1;
-		mtmp->orig_hp /= 3;
-		if(mtmp->mhp > mtmp->orig_hp)
-			mtmp->mhp = mtmp->orig_hp;
+		mtmp->mhpmax /= 3;
+		if(mtmp->mhp > mtmp->mhpmax)
+			mtmp->mhp = mtmp->mhpmax;
 		if(cansee(omx,omy))
 			pline("%s is confused from hunger", Monnam(mtmp));
 		else	pline("You feel worried about %s.", monnam(mtmp));
@@ -152,7 +148,7 @@ int info[9];
 	if(mtmp->minvent){
 		if(!rn2(udist) || !rn2((int) edog->apport))
 		if(rn2(10) < edog->apport){
-			relobj(mtmp,0);
+			relobj(mtmp, (int) mtmp->minvis);
 			if(edog->apport > 1) edog->apport--;
 		}
 	} else {
@@ -177,7 +173,7 @@ int info[9];
 	/* first we look for food */
 	gtyp = UNDEF;	/* no goal as yet */
 #ifdef LINT
-	gx = gy = 0;
+	gx = gy = 0;	/* suppress 'used before set' message */
 #endif LINT
 	for(obj = fobj; obj; obj = obj->nobj) {
 		otyp = dogfood(obj);
@@ -217,20 +213,20 @@ int info[9];
 					gx = doors[tmp].x;
 					gy = doors[tmp].y;
 				}
- tmp++;
+				tmp++;
 			}
 			/* here gx == FAR e.g. when dog is in a vault */
 			if(gx == FAR || (gx == omx && gy == omy)){
 				gx = u.ux;
 				gy = u.uy;
 			}
- #endif QUEST
+#endif QUEST
 		}
 		appr = (udist >= 9) ? 1 : (mtmp->mflee) ? -1 : 0;
 		if(after && udist <= 4 && gx == u.ux && gy == u.uy)
 			return(0);
 		if(udist > 1){
-			if(levl[u.ux][u.uy].typ < ROOM || !rn2(4) ||
+			if(!IS_ROOM(levl[u.ux][u.uy].typ) || !rn2(4) ||
 			   whappr ||
 			   (mtmp->minvent && rn2((int) edog->apport)))
 				appr = 1;
@@ -243,12 +239,12 @@ int info[9];
 					appr = 1;
 					break;
 				}
- obj = obj->nobj;
+				obj = obj->nobj;
 			}
 		}
 	} else	appr = 1;	/* gtyp != UNDEF */
 	if(mtmp->mconf) appr = 0;
-#ifdef TRACK
+
 	if(gx == u.ux && gy == u.uy && (dogroom != uroom || dogroom < 0)){
 	extern coord *gettrack();
 	register coord *cp;
@@ -258,7 +254,7 @@ int info[9];
 			gy = cp->y;
 		}
 	}
-#endif TRACK
+
 	nix = omx;
 	niy = omy;
 	cnt = mfndpos(mtmp,poss,info,ALLOW_M | ALLOW_TRAPS);
@@ -282,8 +278,8 @@ int info[9];
 
 		/* dog avoids traps */
 		/* but perhaps we have to pass a trap in order to follow @ */
-		if((info[i] & ALLOW_TRAPS) && (trap = g_at(nx,ny,ftrap))){
-			if(!(trap->gflag & SEEN) && rn2(40)) continue;
+		if((info[i] & ALLOW_TRAPS) && (trap = t_at(nx,ny))){
+			if(!trap->tseen && rn2(40)) continue;
 			if(rn2(10)) continue;
 		}
 
@@ -338,7 +334,7 @@ int info[9];
 			if(nearer < 0) chcnt = 0;
 			chi = i;
 		}
- nxti:	;
+	nxti:	;
 	}
 newdogpos:
 	if(nix != omx || niy != omy){
@@ -376,7 +372,14 @@ tamedog(mtmp, obj)
 register struct monst *mtmp;
 register struct obj *obj;
 {
-register struct monst *mtmp2;
+	register struct monst *mtmp2;
+
+	if(flags.moonphase == FULL_MOON && night() && rn2(6))
+		return(0);
+
+	/* If we cannot tame him, at least he's no longer afraid. */
+	mtmp->mflee = 0;
+	mtmp->mfleetim = 0;
 	if(mtmp->mtame || mtmp->mfroz ||
 #ifndef NOWORM
 		mtmp->wormno ||
@@ -389,7 +392,7 @@ register struct monst *mtmp2;
 			pline("%s devours the %s.", Monnam(mtmp),
 				objects[obj->otyp].oc_name);
 		}
- obfree(obj, (struct obj *) 0);
+		obfree(obj, (struct obj *) 0);
 	}
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
 	*mtmp2 = *mtmp;

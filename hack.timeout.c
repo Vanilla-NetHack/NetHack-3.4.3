@@ -1,7 +1,7 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.timeout.c - version 1.0.2 */
 
 #include	"hack.h"
-#define	SIZE(x)	(sizeof(x) / sizeof(x[0]))
 
 timeout(){
 register struct prop *upp;

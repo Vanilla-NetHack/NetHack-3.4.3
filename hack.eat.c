@@ -1,10 +1,13 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.eat.c version 1.0.1 - added morehungry() and FAINTED */
+/* hack.eat.c - version 1.0.2 */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
 extern char *nomovemsg;
 extern int (*afternmv)();
+extern int (*occupation)();
+extern char *occtxt;
+extern struct obj *splitobj();
 
 /* hunger texts used on bottom line (each 8 chars long) */
 #define	SATIATED	0
@@ -30,6 +33,7 @@ init_uhunger(){
 	u.uhs = NOT_HUNGRY;
 }
 
+#define	TTSZ	SIZE(tintxts)
 struct { char *txt; int nut; } tintxts[] = {
 	"It contains first quality peaches - what a surprise!",	40,
 	"It contains salmon - not bad!",	60,
@@ -39,9 +43,26 @@ struct { char *txt; int nut; } tintxts[] = {
 	"It turns out to be empty.",	0
 };
 
-tinopen(){
-#define	TTSZ	(sizeof(tintxts)/sizeof(tintxts[0]))
-register int r = rn2(2*TTSZ);
+static struct {
+	struct obj *tin;
+	int usedtime, reqtime;
+} tin;
+
+opentin(){
+	register int r;
+
+	if(!carried(tin.tin))		/* perhaps it was stolen? */
+		return(0);		/* %% probably we should use tinoid */
+	if(tin.usedtime++ >= 50) {
+		pline("You give up your attempt to open the tin.");
+		return(0);
+	}
+	if(tin.usedtime < tin.reqtime)
+		return(1);		/* still busy */
+
+	pline("You succeed in opening the tin.");
+	useup(tin.tin);
+	r = rn2(2*TTSZ);
 	if(r < TTSZ){
 	    pline(tintxts[r].txt);
 	    lesshungry(tintxts[r].nut);
@@ -57,6 +78,7 @@ register int r = rn2(2*TTSZ);
 	    if(u.ustr > u.ustrmax) u.ustrmax = u.ustr;
 	    flags.botl = 1;
 	}
+ return(0);
 }
 
 Meatdone(){
@@ -69,15 +91,49 @@ doeat(){
 	register struct objclass *ftmp;
 	register tmp;
 
+	/* Is there some food (probably a heavy corpse) here on the ground? */
+	if(!Levitation)
+	for(otmp = fobj; otmp; otmp = otmp->nobj) {
+		if(otmp->ox == u.ux && otmp->oy == u.uy &&
+		   otmp->olet == FOOD_SYM) {
+			pline("There %s %s here; eat %s? [ny] ",
+				(otmp->quan == 1) ? "is" : "are",
+				doname(otmp),
+				(otmp->quan == 1) ? "it" : "one");
+			if(readchar() == 'y') {
+				if(otmp->quan != 1)
+					(void) splitobj(otmp, 1);
+				freeobj(otmp);
+				otmp->nobj = invent;
+				invent = otmp;
+				goto gotit;
+			}
+		}
+	}
 	otmp = getobj("%", "eat");
 	if(!otmp) return(0);
+gotit:
 	if(otmp->otyp == TIN){
-		if(uwep && (uwep->otyp == AXE || uwep->otyp == DAGGER ||
-			    uwep->otyp == CRYSKNIFE)){
+		if(uwep) {
+			switch(uwep->otyp) {
+			case CAN_OPENER:
+				tmp = 1;
+				break;
+			case DAGGER:
+			case CRYSKNIFE:
+				tmp = 3;
+				break;
+			case PICK_AXE:
+			case AXE:
+				tmp = 6;
+				break;
+			default:
+				goto no_opener;
+			}
 			pline("Using your %s you try to open the tin",
 				aobjnam(uwep, (char *) 0));
-			tmp = 3;
 		} else {
+		no_opener:
 			pline("It is not so easy to open this tin.");
 			if(Glib) {
 				pline("The tin slips out of your hands.");
@@ -91,20 +147,17 @@ doeat(){
 				dropx(otmp);
 				return(1);
 			}
-			tmp = 2 + rn2(1 + 500/((int)(u.ulevel + u.ustr)));
+ tmp = 10 + rn2(1 + 500/((int)(u.ulevel + u.ustr)));
 		}
-		if(tmp > 50){
-			nomul(-50);
-			nomovemsg="You give up your attempt to open the tin.";
-		} else {
-			nomul(-tmp);
-			nomovemsg = "You succeed in opening the tin.";
-			afternmv = tinopen;
-			useup(otmp);
-		}
+		tin.reqtime = tmp;
+		tin.usedtime = 0;
+		tin.tin = otmp;
+		occupation = opentin;
+		occtxt = "opening the tin";
 		return(1);
 	}
 	ftmp = &objects[otmp->otyp];
+	multi = -ftmp->oc_delay;
 	if(otmp->otyp >= CORPSE && eatcorpse(otmp)) goto eatx;
 	if(!rn2(7) && otmp->otyp != FORTUNE_COOKIE) {
 		pline("Blecch!  Rotten food!");
@@ -123,9 +176,8 @@ doeat(){
 			nomul(-rnd(10));
 			nomovemsg = "You are conscious again.";
 		}
-		lesshungry(ftmp->nutrition / 4);
+ lesshungry(ftmp->nutrition / 4);
 	} else {
-		multi = -ftmp->oc_delay;
 		if(u.uhunger >= 1500) {
 			pline("You choke over your food.");
 			pline("You die...");
@@ -147,8 +199,7 @@ doeat(){
 			break;
 		case TRIPE_RATION:
 			pline("Yak - dog food!");
-			u.uexp++;
-			u.urexp += 4;
+			more_experienced(1,0);
 			flags.botl = 1;
 			if(rn2(2)){
 				pline("You vomit.");
@@ -161,12 +212,15 @@ doeat(){
 			else
 			pline("That %s was delicious!",ftmp->oc_name);
 			lesshungry(ftmp->nutrition);
+			if(otmp->otyp == DEAD_LIZARD && (Confusion > 2))
+				Confusion = 2;
+			else
 #ifdef QUEST
 			if(otmp->otyp == CARROT && !Blind){
 				u.uhorizon++;
 				setsee();
 				pline("Your vision improves.");
-			}
+			} else
 #endif QUEST
 			if(otmp->otyp == FORTUNE_COOKIE) {
 			  if(Blind) {
@@ -174,8 +228,16 @@ doeat(){
 			    pline("What a pity, that you cannot read it!");
 			  } else
 			    outrumor();
+			} else
+			if(otmp->otyp == LUMP_OF_ROYAL_JELLY) {
+				/* This stuff seems to be VERY healthy! */
+				if(u.ustrmax < 118) u.ustrmax++;
+				if(u.ustr < u.ustrmax) u.ustr++;
+				u.uhp += rnd(20);
+				if(u.uhp > u.uhpmax) u.uhp = u.uhpmax;
+				Wounded_legs = 0;
 			}
-			break;
+ break;
 		}
 	}
 eatx:
@@ -193,6 +255,8 @@ eatx:
 gethungry(){
 	--u.uhunger;
 	if((Regeneration || Hunger) && moves%2) u.uhunger--;
+	if(uleft && moves%20) u.uhunger--;
+	if(uright && moves%20) u.uhunger--;
 	newuhs(TRUE);
 }
 
@@ -244,7 +308,7 @@ newuhs(incr) boolean incr; {
 
 	if(newhs != u.uhs) {
 		if(newhs >= WEAK && u.uhs < WEAK)
-			losestr(1);
+			losestr(1);	/* this may kill you -- see below */
 		else
 		if(newhs < WEAK && u.uhs >= WEAK && u.ustr < u.ustrmax)
 			losestr(-1);
@@ -262,12 +326,26 @@ newuhs(incr) boolean incr; {
 		}
 		u.uhs = newhs;
 		flags.botl = 1;
+		if(u.uhp < 1) {
+			pline("You die from hunger and exhaustion.");
+			killer = "exhaustion";
+			done("starved");
+		}
 	}
+}
+
+#define	CORPSE_I_TO_C(otyp)	(char) ((otyp >= DEAD_ACID_BLOB)\
+		     ?  'a' + (otyp - DEAD_ACID_BLOB)\
+		     :	'@' + (otyp - DEAD_HUMAN))
+poisonous(otmp)
+register struct obj *otmp;
+{
+	return(index(POISONOUS, CORPSE_I_TO_C(otmp->otyp)) != 0);
 }
 
 /* returns 1 if some text was printed */
 eatcorpse(otmp) register struct obj *otmp; {
-register schar let = otmp->spe;
+register char let = CORPSE_I_TO_C(otmp->otyp);
 register tp = 0;
 	if(moves > otmp->age + 50 + rn2(100)) {
 		tp++;
@@ -279,10 +357,10 @@ register tp = 0;
 		tp++;
 		pline("Ecch -- that must have been poisonous!");
 		if(!Poison_resistance){
-			losehp(rnd(15), "poisonous corpse");
 			losestr(rnd(4));
+			losehp(rnd(15), "poisonous corpse");
 		} else
-			pline("You don't seem affected by the poison.");
+ pline("You don't seem affected by the poison.");
 	} else if(index("ELNOPQRUuxz", let) && rn2(5)){
 		tp++;
 		pline("You feel sick.");
@@ -349,5 +427,5 @@ register tp = 0;
 	  prme();
 	  break;
 	}
-	return(tp);
+ return(tp);
 }

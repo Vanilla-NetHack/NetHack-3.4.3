@@ -1,17 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkobj.c version 1.0.1 - mksobj() also in MKLEV */
+/* hack.mkobj.c - version 1.0.2 */
 
-#ifdef MKLEV
-#include "mklev.h"
-#else
 #include "hack.h"
-#endif MKLEV
 
-#include "hack.onames.h"
-
-char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(";
+char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
 struct obj *mkobj(), *mksobj();
 
+struct obj *
 mkobj_at(let,x,y)
 register let,x,y;
 {
@@ -20,12 +15,13 @@ register let,x,y;
 	otmp->oy = y;
 	otmp->nobj = fobj;
 	fobj = otmp;
+	return(otmp);
 }
 
-mksobj_at(let,otyp,x,y)
-register let,otyp,x,y;
+mksobj_at(otyp,x,y)
+register otyp,x,y;
 {
-	register struct obj *otmp = mksobj(let, otyp);
+	register struct obj *otmp = mksobj(otyp);
 	otmp->ox = x;
 	otmp->oy = y;
 	otmp->nobj = fobj;
@@ -34,36 +30,32 @@ register let,otyp,x,y;
 
 struct obj *
 mkobj(let) {
-	if(!let) let = mkobjstr[rn2(sizeof(mkobjstr) - 1)];
-	return(mksobj(let, letter(let) ? CORPSE : probtype(let)));
+	if(!let)
+		let = mkobjstr[rn2(sizeof(mkobjstr) - 1)];
+	return(
+	    mksobj(
+		letter(let) ?
+		    CORPSE + ((let > 'Z') ? (let-'a'+'Z'-'@'+1) : (let-'@'))
+		:   probtype(let)
+	    )
+	);
 }
 	
 
 struct obj zeroobj;
 
 struct obj *
-mksobj(let, otyp) {
+mksobj(otyp)
+register otyp;
+{
 	register struct obj *otmp;
+	char let = objects[otyp].oc_olet;
 
 	otmp = newobj(0);
 	*otmp = zeroobj;
-#ifdef MKLEV
-	otmp->age = 0;
-	otmp->o_id = 0;
-#else
 	otmp->age = moves;
 	otmp->o_id = flags.ident++;
-#endif MKLEV
 	otmp->quan = 1;
-	if(letter(let)){
-		otmp->olet = FOOD_SYM;
-		otmp->otyp = CORPSE + ((let > 'Z') ? (let-'a'+'Z'-'@'+1) :
-				(let-'@'));
-		otmp->spe = let;
-		otmp->known = 1;
-		otmp->owt = weight(otmp);
-		return(otmp);
-	}
 	otmp->olet = let;
 	otmp->otyp = otyp;
 	otmp->dknown = index("/=!?*", let) ? 0 : 1;
@@ -77,6 +69,13 @@ mksobj(let, otyp) {
 		}
 		break;
 	case FOOD_SYM:
+		if(otmp->otyp >= CORPSE) break;
+#ifdef NOT_YET_IMPLEMENTED
+		/* if tins are to be identified, need to adapt doname() etc */
+		if(otmp->otyp == TIN)
+			otmp->spe = rnd(...);
+#endif NOT_YET_IMPLEMENTED
+		/* fall into next case */
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;
 	case TOOL_SYM:
@@ -94,7 +93,6 @@ mksobj(let, otyp) {
 			otmp->spe = -rnd(3);
 			otmp->cursed = 1;
 		}
-		otmp->spe += 10 - objects[otmp->otyp].a_ac;
 		break;
 	case WAND_SYM:
 		if(otmp->otyp == WAN_WISHING) otmp->spe = 3; else
@@ -131,22 +129,20 @@ register int wt = objects[obj->otyp].oc_weight;
 }
 
 mkgold(num,x,y)
-register num;
+register long num;
 {
-	register struct gen *gtmp;
-	register int amount = num ? num : 1 + (rnd(dlevel+2) * rnd(30));
+	register struct gold *gold;
+	register long amount = (num ? num : 1 + (rnd(dlevel+2) * rnd(30)));
 
-	if(gtmp = g_at(x,y,fgold))
-		gtmp->gflag += amount;
+	if(gold = g_at(x,y))
+		gold->amount += amount;
 	else {
-		gtmp = newgen();
-		gtmp->ngen = fgold;
-		gtmp->gx = x;
-		gtmp->gy = y;
-		gtmp->gflag = amount;
-		fgold = gtmp;
-#ifdef MKLEV
-		levl[x][y].scrsym = '$';
-#endif MKLEV
+		gold = newgold();
+		gold->ngold = fgold;
+		gold->gx = x;
+		gold->gy = y;
+		gold->amount = amount;
+		fgold = gold;
+		/* do sth with display? */
 	}
 }

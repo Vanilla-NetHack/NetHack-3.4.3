@@ -1,9 +1,9 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.rumors.c - version 1.0.2 */
 
 #include	<stdio.h>
 #include	"config.h"
 #define	CHARSZ	8	/* number of bits in a char */
-#define	RUMORFILE	"rumors"
 extern long *alloc();
 extern char *index();
 int n_rumors = 0;
@@ -41,7 +41,7 @@ outrumor(){
 register int rn,i;
 register FILE *rumf;
 	if(n_rumors <= n_used_rumors ||
-	  (rumf = fopen(RUMORFILE, "r")) == NULL) return;
+	  (rumf = fopen(RUMORFILE, "r")) == (FILE *) 0) return;
 	if(n_used_rumors < 0) init_rumors(rumf);
 	if(!n_rumors) goto none;
 	rn = rn2(n_rumors - n_used_rumors);

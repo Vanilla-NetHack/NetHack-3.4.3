@@ -1,7 +1,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wield.c version 1.0.1 - evaporate%s */
+/* hack.wield.c - version 1.0.2 */
 
 #include	"hack.h"
+extern struct obj zeroobj;
 
 setuwep(obj) register struct obj *obj; {
 	setworn(obj, W_WEP);
@@ -19,7 +20,7 @@ dowield()
 	else if(uwep && uwep->cursed)
 		pline("The %s welded to your hand!",
 			aobjnam(uwep, "are"));
-	else if((int) wep == -1) {
+	else if(wep == &zeroobj) {
 		if(uwep == 0){
 			pline("You are already empty handed.");
 		} else {
@@ -58,7 +59,9 @@ register amount;
 register char *color = (amount < 0) ? "black" : "green";
 register char *time;
 	if(!uwep || uwep->olet != WEAPON_SYM) {
-		strange_feeling(otmp);
+		strange_feeling(otmp,
+			(amount > 0) ? "Your hands twitch."
+				     : "Your hands itch.");
 		return(0);
 	}
 
@@ -78,7 +81,7 @@ register char *time;
 	/* there is a (soft) upper limit to uwep->spe */
 	if(amount > 0 && uwep->spe > 5 && rn2(3)) {
 	    pline("Your %s violently green for a while and then evaporate%s.",
-		aobjnam(uwep, "glow"), (uwep->quan == 1) ? "s" : "");
+		aobjnam(uwep, "glow"), plur(uwep->quan));
 	    useup(uwep);
 	    return(1);
 	}

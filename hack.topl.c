@@ -1,9 +1,11 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.topl.c - version 1.0.2 */
 
 #include "hack.h"
 #include <stdio.h>
 extern char *eos();
-#define	TOPLSZ	(COLNO-8)	/* leave room for --More-- */
+extern int CO;
+
 char toplines[BUFSZ];
 xchar tlx, tly;			/* set by pline; used by addtopl */
 
@@ -32,7 +34,7 @@ redotoplin() {
 	cl_end();
 	tlx = curx;
 	tly = cury;
-	flags.topl = 1;
+	flags.toplin = 1;
 	if(tly > 1)
 		more();
 }
@@ -63,46 +65,54 @@ register int cnt = OTLMAX;
 
 addtopl(s) char *s; {
 	curs(tlx,tly);
-	if(tlx + strlen(s) > COLNO) putsym('\n');
+	if(tlx + strlen(s) > CO) putsym('\n');
 	putstr(s);
 	tlx = curx;
 	tly = cury;
-	flags.topl = 1;
+	flags.toplin = 1;
 }
 
-xmore(spaceflag)
-boolean spaceflag;	/* TRUE if space required */
+xmore(s)
+char *s;	/* allowed chars besides space/return */
 {
-	if(flags.topl) {
+	if(flags.toplin) {
 		curs(tlx, tly);
-		if(tlx + 8 > COLNO) putsym('\n'), tly++;
+		if(tlx + 8 > CO) putsym('\n'), tly++;
 	}
+
+	if(flags.standout)
+		standoutbeg();
 	putstr("--More--");
-	xwaitforspace(spaceflag);
-	if(flags.topl && tly > 1) {
+	if(flags.standout)
+		standoutend();
+
+	xwaitforspace(s);
+	if(flags.toplin && tly > 1) {
 		home();
 		cl_end();
 		docorner(1, tly-1);
 	}
-	flags.topl = 0;
+	flags.toplin = 0;
 }
 
 more(){
-	xmore(TRUE);
+	xmore("");
 }
 
-cmore(){
-	xmore(FALSE);
+cmore(s)
+register char *s;
+{
+	xmore(s);
 }
 
 clrlin(){
-	if(flags.topl) {
+	if(flags.toplin) {
 		home();
 		cl_end();
 		if(tly > 1) docorner(1, tly-1);
 		remember_topl();
 	}
-	flags.topl = 0;
+	flags.toplin = 0;
 }
 
 /*VARARGS1*/
@@ -116,14 +126,14 @@ register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 	if(!line || !*line) return;
 	if(!index(line, '%')) (void) strcpy(pbuf,line); else
 	(void) sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6);
-	if(flags.topl == 1 && !strcmp(pbuf, toplines)) return;
+	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
 	nscr();		/* %% */
 
 	/* If there is room on the line, print message on same line */
 	/* But messages like "You die..." deserve their own line */
 	n0 = strlen(bp);
-	if(flags.topl == 1 && tly == 1 &&
-	    n0 + strlen(toplines) + 3 < TOPLSZ &&
+	if(flags.toplin == 1 && tly == 1 &&
+	    n0 + strlen(toplines) + 3 < CO-8 &&  /* leave room for --More-- */
 	    strncmp(bp, "You ", 4)) {
 		(void) strcat(toplines, "  ");
 		(void) strcat(toplines, bp);
@@ -131,18 +141,18 @@ register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 		addtopl(bp);
 		return;
 	}
-	if(flags.topl == 1) more();
+	if(flags.toplin == 1) more();
 	remember_topl();
 	toplines[0] = 0;
 	while(n0){
-		if(n0 >= COLNO){
+		if(n0 >= CO){
 			/* look for appropriate cut point */
 			n0 = 0;
-			for(n = 0; n < COLNO; n++) if(bp[n] == ' ')
+			for(n = 0; n < CO; n++) if(bp[n] == ' ')
 				n0 = n;
-			if(!n0) for(n = 0; n < COLNO-1; n++)
+			if(!n0) for(n = 0; n < CO-1; n++)
 				if(!letter(bp[n])) n0 = n;
-			if(!n0) n0 = COLNO-2;
+			if(!n0) n0 = CO-2;
 		}
 		(void) strncpy((tl = eos(toplines)), bp, n0);
 		tl[n0] = 0;
@@ -169,8 +179,10 @@ putsym(c) char c; {
 		if(cury > tly) tly = cury;
 		break;
 	default:
-		curx++;
-		if(curx == COLNO) putsym('\n');
+		if(curx == CO)
+			putsym('\n');	/* 1 <= curx <= CO; avoid CO */
+		else
+			curx++;
 	}
 	(void) putchar(c);
 }

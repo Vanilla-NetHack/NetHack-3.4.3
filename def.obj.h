@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.obj.h - version 1.0.2 */
 
 struct obj {
 	struct obj *nobj;
@@ -8,10 +9,12 @@ struct obj {
 	xchar odx,ody;
 	uchar otyp;
 	uchar owt;
-	unsigned quan;	/* small in general but large in case of gold */
-	schar spe;
+	uchar quan;		/* use oextra for tmp gold objects */
+	schar spe;		/* quality of weapon, armor or ring (+ or -)
+				   number of charges for wand ( >= -1 )
+				   special for uball and amulet %% BAH */
 	char olet;
-	Bitfield(oinvis,1);
+	Bitfield(oinvis,1);	/* not yet implemented */
 	Bitfield(odispl,1);
 	Bitfield(known,1);	/* exact nature known */
 	Bitfield(dknown,1);	/* color or text known */
@@ -19,7 +22,7 @@ struct obj {
 	Bitfield(unpaid,1);	/* on some bill */
 	Bitfield(rustfree,1);
 	Bitfield(onamelth,6);
-	long age;	/* creation date */
+	long age;		/* creation date */
 	long owornmask;
 #define	W_ARM	01L
 #define	W_ARM2	02L
@@ -33,10 +36,12 @@ struct obj {
 #define	W_WEP	01000L
 #define	W_BALL	02000L
 #define	W_CHAIN	04000L
-	long oextra[1];
+	long oextra[1];		/* used for name of ordinary objects - length
+				   is flexible; amount for tmp gold objects */
 };
 
 extern struct obj *fobj;
 
 #define newobj(xl)	(struct obj *) alloc((unsigned)(xl) + sizeof(struct obj))
 #define	ONAME(otmp)	((char *) otmp->oextra)
+#define	OGOLD(otmp)	(otmp->oextra[0])

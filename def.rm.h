@@ -1,49 +1,47 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.rm.h - version 1.0.2 */
 
-#include "config.h"
-
-#ifdef BSD
-#include <strings.h>		/* declarations for strcat etc. */
-#else
-#include <string.h>		/* idem on System V */
-#define	index	strchr
-#define	rindex	strrchr
-#endif BSD
-
-#include	"def.objclass.h"
-
-typedef struct {
-	xchar x,y;
-} coord;
-
-#include	"def.monst.h"	/* uses coord */
-#include	"def.gen.h"
-#include	"def.obj.h"
-
-extern char *sprintf();
-
-#define	BUFSZ	256	/* for getlin buffers */
-#define	PL_NSIZ	32	/* name of player, ghost, shopkeeper */
-
-#define	HWALL 1	/* Level location types */
+/* Level location types */
+#define	HWALL 1
 #define	VWALL 2
 #define	SDOOR 3
 #define	SCORR 4
 #define	LDOOR 5
-#define	DOOR 6	/* smallest accessible type */
-#define	CORR 7
-#define	ROOM 8
-#define	STAIRS 9
+#define	POOL	6	/* not yet fully implemented */
+			/* this should in fact be a bit like lit */
+#define	DOOR 7
+#define	CORR 8
+#define	ROOM 9
+#define	STAIRS 10
+
+/*
+ * Avoid using the level types in inequalities:
+ *  these types are subject to change.
+ * Instead, use one of the macros below.
+ */
+#define	IS_WALL(typ)	((typ) <= VWALL)
+#define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
+#define	ACCESSIBLE(typ)	((typ) >= DOOR)			/* good position */
+#define	IS_ROOM(typ)		((typ) >= ROOM)		/* ROOM or STAIRS */
+#define	ZAP_POS(typ)		((typ) > DOOR)
+
+/*
+ * A few of the associated symbols are not hardwired.
+ */
 #ifdef QUEST
 #define	CORR_SYM	':'
 #else
 #define	CORR_SYM	'#'
 #endif QUEST
+#define	POOL_SYM	'}'
 
 #define	ERRCHAR	'{'
 
-#define TRAPNUM 9
-
+/*
+ * The structure describing a coordinate position.
+ * Before adding fields, remember that this will significantly affect
+ * the size of temporary files and save files.
+ */
 struct rm {
 	char scrsym;
 	unsigned typ:5;
@@ -52,36 +50,3 @@ struct rm {
 	unsigned lit:1;
 };
 extern struct rm levl[COLNO][ROWNO];
-
-#ifndef QUEST
-struct mkroom {
-	xchar lx,hx,ly,hy;
-	schar rtype,rlit,doorct,fdoor;
-};
-#define	MAXNROFROOMS	15
-extern struct mkroom rooms[MAXNROFROOMS+1];
-#define	DOORMAX	100
-extern coord doors[DOORMAX];
-#endif QUEST
-
-
-#include	"def.permonst.h"
-extern struct permonst mons[];
-#define PM_ACIDBLOB	&mons[7]
-#define	PM_PIERC	&mons[17]
-#define	PM_MIMIC	&mons[37]
-#define	PM_CHAM		&mons[47]
-#define	PM_DEMON	&mons[54]
-#define	PM_MINOTAUR	&mons[55]	/* last in mons array */
-#define	PM_SHK		&mons[56]	/* very last */
-#define	CMNUM		55		/* number of common monsters */
-
-extern long *alloc();
-
-extern xchar xdnstair, ydnstair, xupstair, yupstair; /* stairs up and down. */
-
-extern xchar dlevel;
-#ifdef WIZARD
-extern boolean wizard;
-#endif WIZARD
-#define	newstring(x)	(char *) alloc((unsigned)(x))

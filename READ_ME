@@ -8,14 +8,13 @@ Hack was originally written by Jay Fenlason (at lincolnsudbury:
  Kenny Woodland, Mike Thome and Jon Payne.
 Basically it was an implementation of Rogue, however, with 52+ instead of 26
  monster types.
-The current version is more than twice as large (with such new features as
+The current version is more than thrice as large (with such new features as
  the dog, the long worms, the shops, etc.) and almost entirely rewritten
  (only the display routines are the original ones - I must rewrite these
  too one day; especially when you are blind strange things still happen).
 
 Files for hack:
 	hack		The actual game
-	mklev		The program that constructs the dungeon
 	record		Top 100 list (just start with an empty file)
 	news		Tells about recent changes in hack, or bugs found ...
 			(Just start with no news file.)
@@ -31,9 +30,10 @@ Files for hack:
 			are appreciated.)
 	hack.sh		A shell script.
 			(We have hack.sh in /usr/games/hack and
-			hack in /usr/games/HACK and all the other hack stuff
-			in /usr/games/lib/hack/tmp - perhaps this will make
-			the script clear. There is no need for you to use it.)
+			hack in /usr/games/lib/hackdir/hack and all the other
+			hack stuff in /usr/games/lib/hackdir - perhaps this
+			will make the script clear.
+			There is no need for you to use it.)
 	READ_ME		This file.
 	Original_READ_ME Jay Fenlason's READ_ME
 
@@ -46,15 +46,16 @@ System files used:
 
 How to install hack:
 0. Compile the sources. Perhaps you should first look at the file config.h
-   and define BSD if you are on a BSDtype system, VAX if your C-compiler
-   accepts struct initializations like PCC (and unlike the old V6 compiler
-   on the PDP11/45), STUPID if your C-compiler chokes on complicated
-   expressions; if your C compiler doesnt allow initialization of bit fields
+   and define BSD if you are on a BSDtype system,
+   define STUPID if your C-compiler chokes on complicated expressions.
+   Make sure schar and uchar represent signed and unsigned types.
+   If your C compiler doesnt allow initialization of bit fields
    change Bitfield. When config.h looks reasonable, say 'make'.
+   (Perhaps you have to change TERMLIB in the makefile.)
 1. If it didnt exist already, introduce a loginnname `play' .
 2. The program  hack  resides in a directory so that it is executable
    for everybody and is suid play:
-	---s--s--x  1 play	132096 Aug 10 13:43 HACK
+	---s--s--x  1 play	206848 Apr  3 00:17 hack
    Perhaps you wish to restrict playing to certain hours, or have games
    running under nice; in that case you might write a program play.c
    such that the program play is suid play and executable for everybody
@@ -63,12 +64,15 @@ How to install hack:
    checking that time-of-day and system load do not forbid playing,
    and then executing the game. Thus:
 	-r-sr-sr-x  1 play	 13312 May 24 12:52 play
-	---x------  1 play	132096 Aug 10 13:43 HACK
+	---x------  1 play	206848 Apr  3 00:17 hack
    If you are worried about security you might let play do
    chroot("/usr/games") so that no player can get access to the rest
    of the system via shell escapes and the likes.
+   If you #define SECURE in config.h then hack will not setuid(getuid())
+   before executing a chdir(). Hack will always do setuid(getuid()) with
+   a fork. If you do not define UNIX then hack will not fork.
 3. The rest of the stuff belonging to hack sits in a subdirectory hackdir
-   (on our system /usr/games/lib/hack/tmp) with modes
+   (on our system /usr/games/lib/hackdir) with modes
 	drwx------  3 play	1024 Aug  9 09:03 hackdir
    Here all the temporary files will be created (with names like xlock.17
    or user.5).
@@ -77,13 +81,12 @@ How to install hack:
    unfinished games.
 
 The program hack is called
-$ HACK [-d hackdir] [maxnrofplayers [pagingprogram]]
+$ hack [-d hackdir] [maxnrofplayers]
 (for playing) or
-$ HACK [-d hackdir] -s [listofusers | limit | all]
+$ hack [-d hackdir] -s [listofusers | limit | all]
 (for seeing part of the scorelist).
-You will never want to call mklev, it is called from hack.
 The shell file hack (in this kit called hack.sh) takes care of
-calling HACK (in this kit called hack) with the right arguments.
+calling hack with the right arguments.
 
 Send complaints, bug reports, suggestions for improvements to
 mcvax!aeb - in real life Andries Brouwer.

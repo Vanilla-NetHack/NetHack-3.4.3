@@ -1,8 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.options.c version 1.0.1 - added HACKOPTIONS */
+/* hack.options.c - version 1.0.2 */
 
 #include "config.h"
-#ifdef OPTIONS
 #include "hack.h"
 extern char *eos();
 
@@ -12,10 +11,11 @@ initoptions()
 	extern char *getenv();
 
 	flags.time = flags.nonews = flags.notombstone = flags.end_own =
-	flags.no_rest_on_space = FALSE;
+	flags.standout = flags.nonull = FALSE;
+	flags.no_rest_on_space = TRUE;
 	flags.end_top = 5;
 	flags.end_around = 4;
-	/* flags.oneline is set in hack.tty.c depending on the baudrate */
+	flags.female = FALSE;			/* players are usually male */
 
 	if(opts = getenv("HACKOPTIONS"))
 		parseoptions(opts,TRUE);
@@ -44,27 +44,60 @@ boolean from_env;
 		if(*opts == '!') opts++; else opts += 2;
 		negated = !negated;
 	}
+	
+	if(!strncmp(opts,"standout",8)) {
+		flags.standout = !negated;
+		return;
+	}
+
+	if(!strncmp(opts,"null",3)) {
+		flags.nonull = negated;
+		return;
+	}
+
 	if(!strncmp(opts,"tombstone",4)) {
 		flags.notombstone = negated;
 		return;
 	}
+
 	if(!strncmp(opts,"news",4)) {
 		flags.nonews = negated;
 		return;
 	}
+
 	if(!strncmp(opts,"time",4)) {
 		flags.time = !negated;
 		flags.botl = 1;
 		return;
 	}
-	if(!strncmp(opts,"oneline",1)) {
-		flags.oneline = !negated;
-		return;
-	}
+
 	if(!strncmp(opts,"restonspace",4)) {
 		flags.no_rest_on_space = negated;
 		return;
 	}
+
+	if(!strncmp(opts,"male",4)) {
+		flags.female = negated;
+		return;
+	}
+	if(!strncmp(opts,"female",6)) {
+		flags.female = !negated;
+		return;
+	}
+
+	/* name:string */
+	if(!strncmp(opts,"name",4)) {
+		extern char plname[PL_NSIZ];
+		if(!from_env) {
+		  pline("The playername can be set only from HACKOPTIONS.");
+		  return;
+		}
+		op = index(opts,':');
+		if(!op) goto bad;
+		(void) strncpy(plname, op+1, sizeof(plname)-1);
+		return;
+	}
+
 	/* endgame:5t[op] 5a[round] o[wn] */
 	if(!strncmp(opts,"endgame",3)) {
 		op = index(opts,':');
@@ -96,7 +129,7 @@ boolean from_env;
 			while(letter(*++op)) ;
 			if(*op == '/') op++;
 		}
-return;
+		return;
 	}
 bad:
 	if(!from_env) {
@@ -105,9 +138,12 @@ bad:
 "To set options use `HACKOPTIONS=\"<options>\"' in your environment, or ",
 "give the command 'o' followed by the line `<options>' while playing. ",
 "Here <options> is a list of <option>s separated by commas." );
-			pline("%s%s",
-"Simple (boolean) options are oneline,rest_on_space,news,time,tombstone. ",
+			pline("%s%s%s",
+"Simple (boolean) options are rest_on_space, news, time, ",
+"null, tombstone, (fe)male. ",
 "These can be negated by prefixing them with '!' or \"no\"." );
+			pline("%s",
+"A string option is name, as in HACKOPTIONS=\"name:Merlin-W\"." );
 			pline("%s%s%s",
 "A compound option is endgame; it is followed by a description of what ",
 "parts of the scorelist you want to see. You might for example say: ",
@@ -132,16 +168,18 @@ doset()
 
 	pline("What options do you want to set? ");
 	getlin(buf);
-	if(!buf[0]) {
+	if(!buf[0] || buf[0] == '\033') {
 	    (void) strcpy(buf,"HACKOPTIONS=");
-	    if(flags.oneline) (void) strcat(buf,"oneline,");
+	    (void) strcat(buf, flags.female ? "female," : "male,");
+	    if(flags.standout) (void) strcat(buf,"standout,");
+	    if(flags.nonull) (void) strcat(buf,"nonull,");
 	    if(flags.nonews) (void) strcat(buf,"nonews,");
 	    if(flags.time) (void) strcat(buf,"time,");
 	    if(flags.notombstone) (void) strcat(buf,"notombstone,");
 	    if(flags.no_rest_on_space)
 		(void) strcat(buf,"!rest_on_space,");
 	    if(flags.end_top != 5 || flags.end_around != 4 || flags.end_own){
-		(void) sprintf(eos(buf), "endgame: %d topscores/%d around me",
+		(void) sprintf(eos(buf), "endgame: %u topscores/%u around me",
 			flags.end_top, flags.end_around);
 		if(flags.end_own) (void) strcat(buf, "/own scores");
 	    } else {
@@ -152,6 +190,5 @@ doset()
 	} else
 	    parseoptions(buf, FALSE);
 
- return(0);
+	return(0);
 }
-#endif OPTIONS

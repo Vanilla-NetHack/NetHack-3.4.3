@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.monst.h - version 1.0.2 */
 
 struct monst {
 	struct monst *nmon;
@@ -8,8 +9,9 @@ struct monst {
 	xchar mdx,mdy;		/* if mdispl then pos where last displayed */
 #define	MTSZ	4
 	coord mtrack[MTSZ];	/* monster track */
-	schar mhp,orig_hp;
-	char mimic;		/* undetected mimic - this is its symbol */
+	schar mhp,mhpmax;
+	char mappearance;	/* nonzero for undetected 'M's and for '1's */
+	Bitfield(mimic,1);	/* undetected mimic */
 	Bitfield(mdispl,1);	/* mdx,mdy valid */
 	Bitfield(minvis,1);	/* invisible */
 	Bitfield(cham,1);	/* shape-changer */
@@ -19,7 +21,8 @@ struct monst {
 	Bitfield(msleep,1);
 	Bitfield(mfroz,1);
 	Bitfield(mconf,1);
-	Bitfield(mflee,1);
+	Bitfield(mflee,1);	/* fleeing */
+	Bitfield(mfleetim,7);	/* timeout for mflee */
 	Bitfield(mcan,1);	/* has been cancelled */
 	Bitfield(mtame,1);		/* implies peaceful */
 	Bitfield(mpeaceful,1);	/* does not attack unprovoked */
@@ -45,9 +48,7 @@ struct monst {
 #define newmonst(xl)	(struct monst *) alloc((unsigned)(xl) + sizeof(struct monst))
 
 extern struct monst *fmon;
-#ifndef MKLEV
 extern struct monst *fallen_down;
-#endif MKLEV
 struct monst *m_at();
 
 /* these are in mspeed */
@@ -55,3 +56,5 @@ struct monst *m_at();
 #define MFAST 2 /* speeded monster */
 
 #define	NAME(mtmp)	(((char *) mtmp->mextra) + mtmp->mxlth)
+#define	MREGEN		"TVi1"
+#define	UNDEAD		"ZVW "

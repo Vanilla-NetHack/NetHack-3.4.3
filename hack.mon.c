@@ -1,11 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mon.c version 1.0.1 - some unimportant changes */
+/* hack.mon.c - version 1.0.2 */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
-#define	SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
 #define	NULL	(char *) 0
 extern struct monst *makemon();
+extern struct obj *mkobj_at();
 
 int warnlevel;		/* used by movemon and dochugw */
 long lastwarntime;
@@ -33,8 +33,29 @@ movemon()
 
 	next_mon:
 		mtmp->mlstmv = moves;
+
+		/* most monsters drown in pools */
+		{ boolean inpool, iseel;
+
+		  inpool = (levl[mtmp->mx][mtmp->my].typ == POOL);
+		  iseel = (mtmp->data->mlet == ';');
+		  if(inpool && !iseel) {
+			if(cansee(mtmp->mx,mtmp->my))
+			    pline("%s drowns.", Monnam(mtmp));
+			mondead(mtmp);
+			continue;
+		  }
+		/* but eels have a difficult time outside */
+		  if(iseel && !inpool) {
+			if(mtmp->mhp > 1) mtmp->mhp--;
+			mtmp->mflee = 1;
+			mtmp->mfleetim += 2;
+		  }
+		}
 		if(mtmp->mblinded && !--mtmp->mblinded)
 			mtmp->mcansee = 1;
+		if(mtmp->mfleetim && !--mtmp->mfleetim)
+			mtmp->mflee = 0;
 		if(mtmp->mimic) continue;
 		if(mtmp->mspeed != MSLOW || !(moves%2)){
 			/* continue if the monster died fighting */
@@ -102,7 +123,7 @@ char *name;
 	if(mtmp != u.ustuck) return;
 	kludge("%s digests you!",name);
 	u.uhp -= dam;
-	if(u.uswldtim++ == die){
+	if(u.uswldtim++ >= die){	/* a3 */
 		pline("It totally digests you!");
 		u.uhp = -1;
 	}
@@ -117,10 +138,10 @@ register dd;
 	if(!d)		/* monster still alive */
 	if(Warning)
 	if(!mtmp->mpeaceful)
+	if(mtmp->data->mlevel > warnlevel)
 	if((dd = dist(mtmp->mx,mtmp->my)) < dist(x,y))
 	if(dd < 100)
-	if(!cansee(mtmp->mx, mtmp->my) || (mtmp->minvis && !See_invisible))
-	if(mtmp->data->mlevel > warnlevel)
+	if(!canseemon(mtmp))
 		warnlevel = mtmp->data->mlevel;
 	return(d);
 }
@@ -137,14 +158,23 @@ register struct monst *mtmp;
 	mdat = mtmp->data;
 	if(mdat->mlevel < 0)
 		panic("bad monster %c (%d)",mdat->mlet,mdat->mlevel);
-	if((!(moves%20) || index("ViT",mdat->mlet)) &&
-	    mtmp->mhp<mtmp->orig_hp)
-		mtmp->mhp++; /* regenerate monsters. */
-	if(mtmp->mfroz) return(0); /* frozen monsters don't do anything. */
-	if(mtmp->msleep) {/* wake up a monster, or get out of here. */
-		if(cansee(mtmp->mx,mtmp->my) && !Stealth &&
+
+	/* regenerate monsters */
+	if((!(moves%20) || index(MREGEN, mdat->mlet)) &&
+	    mtmp->mhp < mtmp->mhpmax)
+		mtmp->mhp++;
+
+	if(mtmp->mfroz) return(0); /* frozen monsters don't do anything */
+
+	if(mtmp->msleep) {
+		/* wake up, or get out of here. */
+		/* ettins are hard to surprise */
+		/* Nymphs and Leprechauns do not easily wake up */
+		if(cansee(mtmp->mx,mtmp->my) &&
+			(!Stealth || (mdat->mlet == 'e' && rn2(10))) &&
 			(!index("NL",mdat->mlet) || !rn2(50)) &&
-			(Aggravate_monster || (!rn2(7) && !mtmp->mimic)))
+			(Aggravate_monster || index("d1", mdat->mlet)
+				|| (!rn2(7) && !mtmp->mimic)))
 			mtmp->msleep = 0;
 		else return(0);
 	}
@@ -161,16 +191,18 @@ register struct monst *mtmp;
 		return(0);
 	}
 	if(mdat->mmove < rnd(6)) return(0);
-	if((mtmp->mflee ||
+	if(mtmp->mflee ||
 		mtmp->mconf ||
 		(index("BIuy", mdat->mlet) && !rn2(4)) ||
 		(mdat->mlet == 'L' && !u.ugold && (mtmp->mgold || rn2(2))) ||
 		dist(mtmp->mx,mtmp->my) > 2 ||
 		(!mtmp->mcansee && !rn2(4)) ||
 		mtmp->mpeaceful
-	   ) && (tmp = m_move(mtmp,0)) && mdat->mmove <= 12)
-		return(tmp == 2);
-	if(tmp == 2) return(1);	/* monster died moving */
+	   ) {
+		tmp = m_move(mtmp,0);	/* 2: monster died moving */
+		if(tmp == 2 || (tmp && mdat->mmove <= 12))
+			return(tmp == 2);
+	}
 
 	if(!index("Ea", mdat->mlet) && dist(mtmp->mx, mtmp->my) < 3 &&
 	 !mtmp->mpeaceful && u.uhp > 0 &&
@@ -184,23 +216,6 @@ register struct monst *mtmp;
 	return(tmp == 2);
 }
 
-inrange(mtmp)
-register struct monst *mtmp;
-{
-	register schar tx,ty;
-
-	/* spit fire only when both in a room or both in a corridor */
-	if(inroom(u.ux,u.uy) != inroom(mtmp->mx,mtmp->my)) return;
-	tx = u.ux - mtmp->mx;
-	ty = u.uy - mtmp->my;
-	if((!tx && abs(ty) < 8) || (!ty && abs(tx) < 8)
-	    || (abs(tx) == abs(ty) && abs(tx) < 8)){
-		/* spit fire in the direction of @ (not nec. hitting) */
-		buzz(-1,mtmp->mx,mtmp->my,sgn(tx),sgn(ty));
-		if(u.uhp < 1) done_in_by(mtmp);
-	}
-}
-
 m_move(mtmp,after)
 register struct monst *mtmp;
 {
@@ -209,6 +224,7 @@ register struct monst *mtmp;
 	xchar gx,gy,nix,niy,chcnt;
 	schar chi;
 	boolean likegold, likegems, likeobjs;
+	char msym = mtmp->data->mlet;
 	schar mmoved = 0;	/* not strictly nec.: chi >= 0 will do */
 	coord poss[9];
 	int info[9];
@@ -228,8 +244,10 @@ register struct monst *mtmp;
 
 	/* likewise for shopkeeper */
 	if(mtmp->isshk) {
-		mmoved = shk_move();
-		goto postmov;
+		mmoved = shk_move(mtmp);
+		if(mmoved >= 0)
+			goto postmov;
+		mmoved = 0;		/* follow player outside shop */
 	}
 
 	/* and for the guard */
@@ -238,39 +256,49 @@ register struct monst *mtmp;
 		goto postmov;
 	}
 
-	if(mtmp->data->mlet == 't' && !rn2(5)) {
-		if(rn2(2))
-			mnexto(mtmp);
-		else
+/* teleport if that lies in our nature ('t') or when badly wounded ('1') */
+	if((msym == 't' && !rn2(5))
+	|| (msym == '1' && (mtmp->mhp < 7 || (!xdnstair && !rn2(5))
+		|| levl[u.ux][u.uy].typ == STAIRS))) {
+		if(mtmp->mhp < 7 || (msym == 't' && rn2(2)))
 			rloc(mtmp);
+		else
+			mnexto(mtmp);
 		mmoved = 1;
 		goto postmov;
 	}
-	if(mtmp->data->mlet == 'D' && !mtmp->mcan)
+
+	/* spit fire ('D') or use a wand ('1') when appropriate */
+	if(index("D1", msym))
 		inrange(mtmp);
-	if(!Blind && !Confusion && mtmp->data->mlet == 'U' && !mtmp->mcan
-		&& cansee(mtmp->mx,mtmp->my) && rn2(5)) {
-		pline("%s's gaze has confused you!", Monnam(mtmp));
-		if(rn2(5)) mtmp->mcan = 1;
-		Confusion = d(3,4);		/* timeout */
+
+	if(msym == 'U' && !mtmp->mcan && canseemon(mtmp) &&
+	    mtmp->mcansee && rn2(5)) {
+		if(!Confusion)
+			pline("%s's gaze has confused you!", Monnam(mtmp));
+		else
+			pline("You are getting more and more confused.");
+		if(rn2(3)) mtmp->mcan = 1;
+		Confusion += d(3,4);		/* timeout */
 	}
 	if(!mtmp->mflee && u.uswallow && u.ustuck != mtmp) return(1);
 	appr = 1;
 	if(mtmp->mflee) appr = -1;
 	if(mtmp->mconf || Invis ||  !mtmp->mcansee ||
-		(index("BIy",mtmp->data->mlet) && !rn2(3)))
+		(index("BIy", msym) && !rn2(3)))
 		appr = 0;
 	omx = mtmp->mx;
 	omy = mtmp->my;
 	gx = u.ux;
 	gy = u.uy;
-	if(mtmp->data->mlet == 'L' && appr == 1 && mtmp->mgold > u.ugold)
+	if(msym == 'L' && appr == 1 && mtmp->mgold > u.ugold)
 		appr = -1;
-#ifdef TRACK
-	/* random criterion for 'smell'
-	   should use mtmp->msmell
+
+	/* random criterion for 'smell' or track finding ability
+	   should use mtmp->msmell or sth
 	 */
-	if('a' <= mtmp->data->mlet && mtmp->data->mlet <= 'z') {
+	if(msym == '@' ||
+	  ('a' <= msym && msym <= 'z')) {
 	extern coord *gettrack();
 	register coord *cp;
 	schar mroom;
@@ -283,17 +311,17 @@ register struct monst *mtmp;
 		    }
 		}
 	}
-#endif TRACK
+
 	/* look for gold or jewels nearby */
-	likegold = (index("LOD", mtmp->data->mlet) != NULL);
-	likegems = (index("ODu", mtmp->data->mlet) != NULL);
+	likegold = (index("LOD", msym) != NULL);
+	likegems = (index("ODu", msym) != NULL);
 	likeobjs = mtmp->mhide;
 #define	SRCHRADIUS	25
 	{ xchar mind = SRCHRADIUS;		/* not too far away */
 	  register int dd;
 	  if(likegold){
-		register struct gen *gold;
-		for(gold = fgold; gold; gold = gold->ngen)
+		register struct gold *gold;
+		for(gold = fgold; gold; gold = gold->ngold)
 		  if((dd = DIST(omx,omy,gold->gx,gold->gy)) < mind){
 		    mind = dd;
 		    gx = gold->gx;
@@ -304,7 +332,7 @@ register struct monst *mtmp;
 		register struct obj *otmp;
 		for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if(likeobjs || otmp->olet == GEM_SYM)
-		if(mtmp->data->mlet != 'u' ||
+		if(msym != 'u' ||
 			objects[otmp->otyp].g_val != 0)
 		if((dd = DIST(omx,omy,otmp->ox,otmp->oy)) < mind){
 		    mind = dd;
@@ -323,8 +351,9 @@ register struct monst *mtmp;
 	nix = omx;
 	niy = omy;
 	cnt = mfndpos(mtmp,poss,info,
-		mtmp->data->mlet == 'u' ? NOTONL :
-		index(" VWZ", mtmp->data->mlet) ? NOGARLIC : ALLOW_TRAPS);
+		msym == 'u' ? NOTONL :
+		(msym == '@' || msym == '1') ? (ALLOW_SSM | ALLOW_TRAPS) :
+		index(UNDEAD, msym) ? NOGARLIC : ALLOW_TRAPS);
 		/* ALLOW_ROCK for some monsters ? */
 	chcnt = 0;
 	chi = -1;
@@ -351,7 +380,7 @@ register struct monst *mtmp;
 			chi = i;
 			mmoved = 1;
 		}
- nxti:	;
+	nxti:	;
 	}
 	if(mmoved){
 		if(info[chi] & ALLOW_M){
@@ -373,7 +402,7 @@ register struct monst *mtmp;
 		if(mtmp->wormno) worm_move(mtmp);
 #endif NOWORM
 	} else {
-		if(mtmp->data->mlet == 'u' && rn2(2)){
+		if(msym == 'u' && rn2(2)){
 			rloc(mtmp);
 			return(0);
 		}
@@ -394,9 +423,9 @@ postmov:
 }
 
 mpickgold(mtmp) register struct monst *mtmp; {
-register struct gen *gold;
-	while(gold = g_at(mtmp->mx, mtmp->my, fgold)){
-		mtmp->mgold += gold->gflag;
+register struct gold *gold;
+	while(gold = g_at(mtmp->mx, mtmp->my)){
+		mtmp->mgold += gold->amount;
 		freegold(gold);
 		if(levl[mtmp->mx][mtmp->my].scrsym == '$')
 			newsym(mtmp->mx, mtmp->my);
@@ -419,20 +448,31 @@ register struct obj *otmp;
 
 /* return number of acceptable neighbour positions */
 mfndpos(mon,poss,info,flag)
-register struct monst *mon; coord poss[9]; int info[9], flag; {
-register int x,y,nx,ny,cnt = 0,tmp;
-register struct monst *mtmp;
+register struct monst *mon;
+coord poss[9];
+int info[9], flag;
+{
+	register int x,y,nx,ny,cnt = 0,ntyp;
+	register struct monst *mtmp;
+	int nowtyp;
+	boolean pool;
+
 	x = mon->mx;
 	y = mon->my;
+	nowtyp = levl[x][y].typ;
+
+	pool = (mon->data->mlet == ';');
+nexttry:	/* eels prefer the water, but if there is no water nearby,
+		   they will crawl over land */
 	if(mon->mconf) {
 		flag |= ALLOW_ALL;
 		flag &= ~NOTONL;
 	}
 	for(nx = x-1; nx <= x+1; nx++) for(ny = y-1; ny <= y+1; ny++)
 	if(nx != x || ny != y) if(isok(nx,ny))
-	if((tmp = levl[nx][ny].typ) >= DOOR)
-	if(!(nx != x && ny != y &&
-		(levl[x][y].typ == DOOR || tmp == DOOR))){
+	if(!IS_ROCK(ntyp = levl[nx][ny].typ))
+	if(!(nx != x && ny != y && (nowtyp == DOOR || ntyp == DOOR)))
+	if((ntyp == POOL) == pool) {
 		info[cnt] = 0;
 		if(nx == u.ux && ny == u.uy){
 			if(!(flag & ALLOW_U)) continue;
@@ -463,10 +503,10 @@ register struct monst *mtmp;
 			info[cnt] |= NOTONL;
 		}
 		/* we cannot avoid traps of an unknown kind */
-		{ register struct gen *gtmp = g_at(nx, ny, ftrap);
+		{ register struct trap *ttmp = t_at(nx, ny);
 		  register int tt;
-			if(gtmp) {
-				tt = 1 << (gtmp->gflag & TRAPTYPE);
+			if(ttmp) {
+				tt = 1 << ttmp->ttyp;
 				if(mon->mtrapseen & tt){
 					if(!(flag & tt)) continue;
 					info[cnt] |= tt;
@@ -476,6 +516,10 @@ register struct monst *mtmp;
 		poss[cnt].x = nx;
 		poss[cnt].y = ny;
 		cnt++;
+	}
+	if(!cnt && pool && nowtyp != POOL) {
+		pool = FALSE;
+		goto nexttry;
 	}
 	return(cnt);
 }
@@ -487,27 +531,27 @@ dist(x,y) int x,y; {
 poisoned(string, pname)
 register char *string, *pname;
 {
+	register int i;
+
 	if(Blind) pline("It was poisoned.");
 	else pline("The %s was poisoned!",string);
 	if(Poison_resistance) {
 		pline("The poison doesn't seem to affect you.");
 		return;
 	}
-	switch(rnd(6)) {
-	case 1:
+	i = rn2(10);
+	if(i == 0) {
 		u.uhp = -1;
-		break;
-	case 2:
-	case 3:
-	case 4:
+		pline("I am afraid the poison was deadly ...");
+	} else if(i <= 5) {
 		losestr(rn1(3,3));
-		break;
-	case 5:
-	case 6:
+	} else {
 		losehp(rn1(10,6), pname);
-		return;
 	}
-	if(u.uhp < 1) killer = pname;
+	if(u.uhp < 1) {
+		killer = pname;
+		done("died");
+	}
 }
 
 mondead(mtmp)
@@ -516,16 +560,8 @@ register struct monst *mtmp;
 	relobj(mtmp,1);
 	unpmon(mtmp);
 	relmon(mtmp);
-	if(u.ustuck == mtmp) {
-		u.ustuck = 0;
-		if(u.uswallow) {
-			u.uswallow = 0;
-			u.uswldtim = 0;
-			setsee();
-			docrt();
-		}
-	}
-	if(mtmp->isshk) shkdead();
+	unstuck(mtmp);
+	if(mtmp->isshk) shkdead(mtmp);
 	if(mtmp->isgd) gddead();
 #ifndef NOWORM
 	if(mtmp->wormno) wormdead(mtmp);
@@ -541,6 +577,8 @@ register struct monst *mtmp, *mtmp2;
 	monfree(mtmp);
 	mtmp2->nmon = fmon;
 	fmon = mtmp2;
+	if(mtmp2->isshk) replshk(mtmp,mtmp2);
+	if(mtmp2->isgd) replgd(mtmp,mtmp2);
 }
 
 relmon(mon)
@@ -572,13 +610,30 @@ register struct monst *mtmp;
 	}
 }
 
-killed(mtmp) struct monst *mtmp; {
+unstuck(mtmp)
+register struct monst *mtmp;
+{
+	if(u.ustuck == mtmp) {
+		if(u.uswallow){
+			u.ux = mtmp->mx;
+			u.uy = mtmp->my;
+			u.uswallow = 0;
+			setsee();
+			docrt();
+		}
+		u.ustuck = 0;
+	}
+}
+
+killed(mtmp)
+register struct monst *mtmp;
+{
 #ifdef lint
 #define	NEW_SCORING
 #endif lint
 register int tmp,tmp2,nk,x,y;
 register struct permonst *mdat = mtmp->data;
-	if(mtmp->cham) mdat = PM_CHAM;
+	if(mtmp->cham) mdat = PM_CHAMELEON;
 	if(Blind) pline("You destroy it!");
 	else {
 		pline("You destroy %s!",
@@ -613,6 +668,7 @@ register struct permonst *mdat = mtmp->data;
 		tmp += 2*mdat->mlevel;
 	if(index("DeV&P",mdat->mlet)) tmp += (7*mdat->mlevel);
 	if(mdat->mlevel > 6) tmp += 50;
+	if(mdat->mlet == ';') tmp += 1000;
 
 #ifdef NEW_SCORING
 	/* ------- recent addition: make nr of points decrease
@@ -634,11 +690,10 @@ register struct permonst *mdat = mtmp->data;
 	/* ------- end of recent valuation change ------- */
 #endif NEW_SCORING
 
-	u.uexp += tmp;
-	u.urexp += 4*tmp;
+	more_experienced(tmp,0);
 	flags.botl = 1;
 	while(u.ulevel < 14 && u.uexp >= 10*pow(u.ulevel-1)){
-		pline("Welcome to level %d.", ++u.ulevel);
+		pline("Welcome to experience level %u.", ++u.ulevel);
 		tmp = rnd(10);
 		if(tmp < 3) tmp = rnd(10);
 		u.uhpmax += tmp;
@@ -652,24 +707,24 @@ register struct permonst *mdat = mtmp->data;
 	tmp = mdat->mlet;
 	if(tmp == 'm') { /* he killed a minotaur, give him a wand of digging */
 			/* note: the dead minotaur will be on top of it! */
-		mksobj_at(WAND_SYM, WAN_DIGGING, x, y);
+		mksobj_at(WAN_DIGGING, x, y);
 		/* if(cansee(x,y)) atl(x,y,fobj->olet); */
 		stackobj(fobj);
 	} else
 #ifndef NOWORM
 	if(tmp == 'w') {
-		mksobj_at(WEAPON_SYM, WORM_TOOTH, x, y);
+		mksobj_at(WORM_TOOTH, x, y);
 		stackobj(fobj);
 	} else
 #endif	NOWORM
 	if(!letter(tmp) || !rn2(3)) tmp = 0;
 
-	if(levl[x][y].typ >= DOOR)	/* might be mimic in wall */
-	    if(x != u.ux || y != u.uy) /* might be here after swallowed */
+	if(ACCESSIBLE(levl[x][y].typ))	/* might be mimic in wall or dead eel*/
+	    if(x != u.ux || y != u.uy)	/* might be here after swallowed */
 		if(index("NTVm&",mdat->mlet) || rn2(5)) {
-		mkobj_at(tmp,x,y);
-		if(cansee(x,y)) atl(x,y,fobj->olet);
-		stackobj(fobj);
+		register struct obj *obj2 = mkobj_at(tmp,x,y);
+		if(cansee(x,y)) atl(x,y,obj2->olet);
+		stackobj(obj2);
 	}
 }
 
@@ -689,7 +744,7 @@ rescham()	/* force all chameleons to become normal */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		if(mtmp->cham) {
 			mtmp->cham = 0;
-			(void) newcham(mtmp,PM_CHAM);
+			(void) newcham(mtmp, PM_CHAMELEON);
 		}
 }
 
@@ -711,8 +766,8 @@ register struct permonst *mdat;
 	mhp = (mdat->mlevel)*8;
 	/* new hp: same fraction of max as before */
 	mtmp->mhp = 2 + (hpn*mhp)/hpd;
-	hpn = mtmp->orig_hp;
-	mtmp->orig_hp = 2 + (hpn*mhp)/hpd;
+	hpn = mtmp->mhpmax;
+	mtmp->mhpmax = 2 + (hpn*mhp)/hpd;
 	mtmp->minvis = (mdat->mlet == 'I') ? 1 : 0;
 #ifndef NOWORM
 	if(mdat->mlet == 'w' && getwn(mtmp)) initworm(mtmp);
@@ -734,31 +789,6 @@ struct monst *mtmp;
 	pmon(mtmp);
 }
 
-rloc(mtmp)
-struct monst *mtmp;
-{
-	register tx,ty;
-	register char ch = mtmp->data->mlet;
-
-#ifndef NOWORM
-	if(ch == 'w' && mtmp->mx) return;	/* do not relocate worms */
-#endif NOWORM
-	do {
-		tx = rn1(COLNO-3,2);
-		ty = rn2(ROWNO);
-	} while(!goodpos(tx,ty));
-	mtmp->mx = tx;
-	mtmp->my = ty;
-	if(u.ustuck == mtmp){
-		if(u.uswallow) {
-			u.ux = tx;
-			u.uy = ty;
-			docrt();
-		} else	u.ustuck = 0;
-	}
-	pmon(mtmp);
-}
-
 ishuman(mtmp) register struct monst *mtmp; {
 	return(mtmp->data->mlet == '@');
 }
@@ -768,4 +798,14 @@ setmangry(mtmp) register struct monst *mtmp; {
 	if(mtmp->mtame) return;
 	mtmp->mpeaceful = 0;
 	if(ishuman(mtmp)) pline("%s gets angry!", Monnam(mtmp));
+}
+
+/* not one hundred procent correct: now a snake may hide under an
+   invisible object */
+canseemon(mtmp)
+register struct monst *mtmp;
+{
+	return((!mtmp->minvis || See_invisible)
+		&& (!mtmp->mhide || !o_at(mtmp->mx,mtmp->my))
+		&& cansee(mtmp->mx, mtmp->my));
 }

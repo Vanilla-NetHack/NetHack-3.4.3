@@ -1,246 +1,37 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do.c version 1.0.1 - check Levitation with POT_PARALYSIS
-			   - added flags.no_rest_on_space */
+/* hack.do.c - version 1.0.2 */
 
-#include <stdio.h>
-#include <signal.h>
+/* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
+
 #include "hack.h"
-#include "def.func_tab.h"
 
-extern char *getenv(),*parse(),*getlogin(),*lowc(),*unctrl();
-extern int float_down();
-extern char *nomovemsg, *catmore;
 extern struct obj *splitobj(), *addinv();
 extern boolean hmon();
-
-/*	Routines to do various user commands */
-
-int done1();
-
-dodrink() {
-	register struct obj *otmp,*objs;
-	register struct monst *mtmp;
-	register int unkn = 0, nothing = 0;
-
-	otmp = getobj("!", "drink");
-	if(!otmp) return(0);
-	switch(otmp->otyp){
-	case POT_RESTORE_STRENGTH:
-		unkn++;
-		pline("Wow!  This makes you feel great!");
-		if(u.ustr < u.ustrmax) {
-			u.ustr = u.ustrmax;
-			flags.botl = 1;
-		}
-		break;
-	case POT_BOOZE:
-		unkn++;
-		pline("Ooph!  This tastes like liquid fire!");
-		Confusion += d(3,8);
-		/* the whiskey makes us feel better */
-		if(u.uhp < u.uhpmax) losehp(-1, "bottle of whiskey");
-		if(!rn2(4)) {
-			pline("You pass out.");
-			multi = -rnd(15);
-			nomovemsg = "You awake with a headache.";
-		}
-		break;
-	case POT_INVISIBILITY:
-		if(Invis)
-		  nothing++;
-		else {
-		  if(!Blind)
-		    pline("Gee!  All of a sudden, you can't see yourself.");
-		  else
-		    pline("You feel rather airy."), unkn++;
-		  newsym(u.ux,u.uy);
-		}
-		Invis += rn1(15,31);
-		break;
-	case POT_FRUIT_JUICE:
-		pline("This tastes like fruit juice.");
-		lesshungry(20);
-		break;
-	case POT_HEALING:
-		pline("You begin to feel better.");
-		flags.botl = 1;
-		u.uhp += rnd(10);
-		if(u.uhp > u.uhpmax)
-			u.uhp = ++u.uhpmax;
-		if(Blind) Blind = 1;	/* see on next move */
-		if(Sick) Sick = 0;
-		break;
-	case POT_PARALYSIS:
-		if(Levitation)
-			pline("You are motionlessly suspended.");
-		else
-			pline("Your feet are frozen to the floor!");
-		nomul(-(rn1(10,25)));
-		break;
-	case POT_MONSTER_DETECTION:
-		if(!fmon) {
-			strange_feeling(otmp);
-			return(1);
-		} else {
-			cls();
-			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-				if(mtmp->mx > 0)
-				at(mtmp->mx,mtmp->my,mtmp->data->mlet);
-			prme();
-			pline("You sense the presence of monsters.");
-			more();
-			docrt();
-		}
-		break;
-	case POT_OBJECT_DETECTION:
-		if(!fobj) {
-			strange_feeling(otmp);
-			return(1);
-		} else {
-		    for(objs = fobj; objs; objs = objs->nobj)
-			if(objs->ox != u.ux || objs->oy != u.uy)
-				goto outobjmap;
-		    pline("You sense the presence of objects close nearby.");
-		    break;
-		outobjmap:
-			cls();
-			for(objs = fobj; objs; objs = objs->nobj)
-				at(objs->ox,objs->oy,objs->olet);
-			prme();
-			pline("You sense the presence of objects.");
-			more();
-			docrt();
-		}
-		break;
-	case POT_SICKNESS:
-		pline("Yech! This stuff tastes like poison.");
-		if(Poison_resistance)
-    pline("(But in fact it was biologically contaminated orange juice.)");
-		losestr(rn1(4,3));
-		losehp(rnd(10), "poison potion");
-		break;
-	case POT_CONFUSION:
-		if(!Confusion)
-			pline("Huh, What?  Where am I?");
-		else
-			nothing++;
-		Confusion += rn1(7,16);
-		break;
-	case POT_GAIN_STRENGTH:
-		pline("Wow do you feel strong!");
-		if(u.ustr == 118) break;
-		if(u.ustr > 17) u.ustr += rnd(118-u.ustr);
-		else u.ustr++;
-		if(u.ustr > u.ustrmax) u.ustrmax = u.ustr;
-		flags.botl = 1;
-		break;
-	case POT_SPEED:
-		if(Wounded_legs) {
-			if((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
-				pline("Your legs feel somewhat better.");
-			else
-				pline("Your leg feels somewhat better.");
-			Wounded_legs = 0;
-			unkn++;
-			break;
-		}
-		if(!(Fast & ~INTRINSIC))
-			pline("You are suddenly moving much faster.");
-		else
-			pline("Your legs get new energy."), unkn++;
-		Fast += rn1(10,100);
-		break;
-	case POT_BLINDNESS:
-		if(!Blind)
-			pline("A cloud of darkness falls upon you.");
-		else
-			nothing++;
-		Blind += rn1(100,250);
-		seeoff(0);
-		break;
-	case POT_GAIN_LEVEL: 
-		pluslvl();
-		break;
-	case POT_EXTRA_HEALING:
-		pline("You feel much better.");
-		flags.botl = 1;
-		u.uhp += d(2,20)+1;
-		if(u.uhp > u.uhpmax)
-			u.uhp = (u.uhpmax += 2);
-		if(Blind) Blind = 1;
-		if(Sick) Sick = 0;
-		break;
-	case POT_LEVITATION:
-		if(!Levitation)
-			float_up();
-		else
-			nothing++;
-		Levitation += rnd(100);
-		u.uprops[PROP(RIN_LEVITATION)].p_tofn = float_down;
-		break;
-	default:
-		pline("What a funny potion! (%d)", otmp->otyp);
-		impossible();
-		return(0);
-	}
-	if(nothing) {
-	    unkn++;
-	    pline("You have a peculiar feeling for a moment, then it passes.");
-	}
-	if(otmp->dknown && !objects[otmp->otyp].oc_name_known) {
-		if(!unkn) {
-			objects[otmp->otyp].oc_name_known = 1;
-			u.urexp += 10;
-		} else if(!objects[otmp->otyp].oc_uname)
- docall(otmp);
-	}
-	useup(otmp);
-	return(1);
-}
-
-pluslvl()
-{
-	register num;
-
-	pline("You feel more experienced.");
-	num = rnd(10);
-	u.uhpmax += num;
-	u.uhp += num;
-	u.uexp = (10*pow(u.ulevel-1))+1;
-	pline("Welcome to level %d.", ++u.ulevel);
-	flags.botl = 1;
-}
-
-strange_feeling(obj)
-register struct obj *obj;
-{
-	pline("You have a strange feeling for a moment, then it passes.");
-	if(!objects[obj->otyp].oc_name_known && !objects[obj->otyp].oc_uname)
-		docall(obj);
-	useup(obj);
-}
+extern boolean level_exists[];
+extern struct monst youmonst;
+extern char *Doname();
 
 dodrop() {
-	register struct obj *obj;
+	return(drop(getobj("0$#", "drop")));
+}
 
-	obj = getobj("0$#", "drop");
+static
+drop(obj) register struct obj *obj; {
 	if(!obj) return(0);
-	if(obj->olet == '$') {
-		if(obj->quan == 0)
+	if(obj->olet == '$') {		/* pseudo object */
+		register long amount = OGOLD(obj);
+
+		if(amount == 0)
 			pline("You didn't drop any gold pieces.");
 		else {
-			mkgold((int) obj->quan, u.ux, u.uy);
-			pline("You dropped %u gold piece%s.",
-				obj->quan, plur(obj->quan));
+			mkgold(amount, u.ux, u.uy);
+			pline("You dropped %ld gold piece%s.",
+				amount, plur(amount));
 			if(Invis) newsym(u.ux, u.uy);
 		}
 		free((char *) obj);
 		return(1);
 	}
- return(drop(obj));
-}
-
-drop(obj) register struct obj *obj; {
 	if(obj->owornmask & (W_ARMOR | W_RING)){
 		pline("You cannot drop something you are wearing.");
 		return(0);
@@ -257,10 +48,19 @@ drop(obj) register struct obj *obj; {
 	return(1);
 }
 
-dropx(obj) register struct obj *obj; {
+/* Called in several places - should not produce texts */
+dropx(obj)
+register struct obj *obj;
+{
+	freeinv(obj);
+	dropy(obj);
+}
+
+dropy(obj)
+register struct obj *obj;
+{
 	if(obj->otyp == CRYSKNIFE)
 		obj->otyp = WORM_TOOTH;
-	freeinv(obj);
 	obj->ox = u.ux;
 	obj->oy = u.uy;
 	obj->nobj = fobj;
@@ -273,149 +73,6 @@ dropx(obj) register struct obj *obj; {
 /* drop several things */
 doddrop() {
 	return(ggetobj("drop", drop, 0));
-}
-
-rhack(cmd)
-register char *cmd;
-{
-	register struct func_tab *tlist = list;
-	boolean firsttime = FALSE;
-	register res;
-
-	if(!cmd) {
-		firsttime = TRUE;
-		flags.nopick = 0;
-		cmd = parse();
-	}
-	if(!*cmd || *cmd == 0377 || (flags.no_rest_on_space && *cmd == ' ')){
-		flags.move = 0;
-		return;		/* probably we just had an interrupt */
-	}
-	if(movecm(cmd)) {
-	walk:
-		if(multi) flags.mv = 1;
-		domove();
-		return;
-	}
-	if(movecm(lowc(cmd))) {
-		flags.run = 1;
-	rush:
-		if(firsttime){
-			if(!multi) multi = COLNO;
-			u.last_str_turn = 0;
-		}
-		flags.mv = 1;
-#ifdef QUEST
-		if(flags.run >= 4) finddir();
-		if(firsttime){
-			u.ux0 = u.ux + u.dx;
-			u.uy0 = u.uy + u.dy;
-		}
-#endif QUEST
-		domove();
-		return;
-	}
-	if((*cmd == 'f' && movecm(cmd+1)) ||
-		movecm(unctrl(cmd))) {
-		flags.run = 2;
-		goto rush;
-	}
-	if(*cmd == 'F' && movecm(lowc(cmd+1))) {
-		flags.run = 3;
-		goto rush;
-	}
-	if(*cmd == 'm' && movecm(cmd+1)) {
-		flags.run = 0;
-		flags.nopick = 1;
-		goto walk;
-	}
-	if(*cmd == 'M' && movecm(lowc(cmd+1))) {
-		flags.run = 1;
-		flags.nopick = 1;
-		goto rush;
-	}
-#ifdef QUEST
-	if(*cmd == cmd[1] && (*cmd == 'f' || *cmd == 'F')) {
-		flags.run = 4;
-		if(*cmd == 'F') flags.run += 2;
-		if(cmd[2] == '-') flags.run += 1;
-		goto rush;
-	}
-#endif QUEST
-	while(tlist->f_char) {
-		if(*cmd == tlist->f_char){
-			res = (*(tlist->f_funct))(0);
-			if(!res) {
-				flags.move = 0;
-				multi = 0;
-			}
- return;
-		}
- tlist++;
-	}
-	pline("Unknown command '%s'",cmd);
-	multi = flags.move = 0;
-}
-
-doredraw()
-{
-	docrt();
-	return(0);
-}
-
-dohelp()
-{
-	if(child(1)){
-		execl(catmore,"more",HELP,(char *)0);
-		exit(1);
-	}
- return(0);
-}
-
-#ifdef SHELL
-dosh(){
-register char *str;
-	if(child(0)) {
-		(void) chdir(getenv("HOME"));
-		if(str = getenv("SHELL")) execl(str,str,(char *) 0);
-		if(strcmp("player", getlogin()))
-			execl("/bin/sh","sh",(char *) 0);
-		pline("sh: cannot execute.");
-		exit(1);
-	}
- return(0);
-}
-#endif SHELL
-
-#ifdef BSD
-#include	<sys/wait.h>
-#else
-#include	<wait.h>
-#endif BSD
-
-child(wt) {
-register int f = fork();
-	if(f == 0){		/* child */
-		settty((char *) 0);
-		(void) setuid(getuid());
-		return(1);
-	}
-	if(f == -1) {	/* cannot fork */
-		pline("Fork failed. Try again.");
-		return(0);
-	}
-	/* fork succeeded; wait for child to exit */
-	(void) signal(SIGINT,SIG_IGN);
-	(void) signal(SIGQUIT,SIG_IGN);
-	(void) wait((union wait *) 0);
-	setctty();
-	(void) signal(SIGINT,done1);
-#ifdef WIZARD
-	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
-#endif WIZARD
-	if(wt) getret();
-	docrt();
-	return(0);
 }
 
 dodown()
@@ -464,39 +121,53 @@ register boolean at_stairs;
 	register boolean up = (newlevel < dlevel);
 
 	if(newlevel <= 0) done("escaped");    /* in fact < 0 is impossible */
-	if(newlevel == dlevel) return;	      /* this cannot happen either */
+	if(newlevel == dlevel) return;	      /* this can happen */
 
 	glo(dlevel);
-	fd = creat(lock,FMASK);
+	fd = creat(lock, FMASK);
 	if(fd < 0) {
 		/*
 		 * This is not quite impossible: e.g., we may have
 		 * exceeded our quota. If that is the case then we
 		 * cannot leave this level, and cannot save either.
+		 * Another possibility is that the directory was not
+		 * writable.
 		 */
-		pline("A mysterious force prevents you from going %d.",
+		pline("A mysterious force prevents you from going %s.",
 			up ? "up" : "down");
 		return;
 	}
 
 	if(Punished) unplacebc();
+	u.utrap = 0;				/* needed in level_tele */
+	u.ustuck = 0;				/* idem */
 	keepdogs();
 	seeoff(1);
+	if(u.uswallow)				/* idem */
+		u.uswldtim = u.uswallow = 0;
 	flags.nscrinh = 1;
 	u.ux = FAR;				/* hack */
 	(void) inshop();			/* probably was a trapdoor */
 
-	savelev(fd);
+	savelev(fd,dlevel);
 	(void) close(fd);
 
 	dlevel = newlevel;
 	if(maxdlevel < dlevel)
 		maxdlevel = dlevel;
 	glo(dlevel);
-	if((fd = open(lock,0)) < 0)
+
+	if(!level_exists[dlevel])
 		mklev();
 	else {
-		(void) getlev(fd);
+		extern int hackpid;
+
+		if((fd = open(lock,0)) < 0) {
+			pline("Cannot open %s", lock);
+			pline("Probably someone removed it.");
+			done("tricked");
+		}
+		getlev(fd, hackpid, dlevel);
 		(void) close(fd);
 	}
 
@@ -525,9 +196,13 @@ register boolean at_stairs;
 			    }
 			    placebc(1);
 			}
- selftouch("Falling, you");
+			selftouch("Falling, you");
 		}
-  }
+	    }
+	    { register struct monst *mtmp = m_at(u.ux, u.uy);
+	      if(mtmp)
+		mnexto(mtmp);
+	    }
 	} else {	/* trapdoor or level_tele */
 	    do {
 		u.ux = rnd(COLNO-1);
@@ -544,18 +219,17 @@ register boolean at_stairs;
 	    selftouch("Falling, you");
 	}
 	(void) inshop();
-#ifdef TRACK
 	initrack();
-#endif TRACK
 
 	losedogs();
-	flags.nscrinh = 0;
-	setsee();
-	docrt();
 	{ register struct monst *mtmp;
 	  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
 	}
-	pickup();
+	flags.nscrinh = 0;
+	setsee();
+	seeobjs();	/* make old cadavers disappear - riv05!a3 */
+	docrt();
+	pickup(1);
 	read_engr_at(u.ux,u.uy);
 }
 
@@ -572,7 +246,7 @@ dothrow()
 
 	obj = getobj("#)", "throw");   /* it is also possible to throw food */
 				       /* (or jewels, or iron balls ... ) */
-	if(!obj || !getdir())
+	if(!obj || !getdir(1))	       /* ask "in what direction?" */
 		return(0);
 	if(obj->owornmask & (W_ARMOR | W_RING)){
 		pline("You can't throw something you are wearing");
@@ -595,18 +269,49 @@ dothrow()
 		mon = u.ustuck;
 		bhitpos.x = mon->mx;
 		bhitpos.y = mon->my;
+	} else if(u.dz) {
+	  if(u.dz < 0) {
+	    pline("%s hits the ceiling, then falls back on top of your head.",
+		Doname(obj));		/* note: obj->quan == 1 */
+	    if(obj->olet == POTION_SYM)
+		potionhit(&youmonst, obj);
+	    else {
+		if(uarmh) pline("Fortunately, you are wearing a helmet!");
+		losehp(uarmh ? 1 : rnd((int)(obj->owt)), "falling object");
+		dropy(obj);
+	    }
+	  } else {
+	    pline("%s hits the floor.", Doname(obj));
+	    if(obj->otyp == EXPENSIVE_CAMERA) {
+		pline("It is shattered in a thousand pieces!");
+		obfree(obj, Null(obj));
+	    } else if(obj->otyp == EGG) {
+		pline("\"Splash!\"");
+		obfree(obj, Null(obj));
+	    } else if(obj->olet == POTION_SYM) {
+		pline("The flask breaks, and you smell a peculiar odor ...");
+		potionbreathe(obj);
+		obfree(obj, Null(obj));
+	    } else {
+		dropy(obj);
+	    }
+	  }
+	  return(1);
 	} else if(obj->otyp == BOOMERANG) {
-		mon = boomhit(u.dx,u.dy);
-		/* boomhit delivers -1 if the thing was caught */
-		if((int) mon == -1) {
+		mon = boomhit(u.dx, u.dy);
+		if(mon == &youmonst) {		/* the thing was caught */
 			(void) addinv(obj);
 			return(1);
 		}
-	} else
-		mon = bhit(u.dx,u.dy,
-			(!Punished || obj != uball) ? 8 :
-				!u.ustuck ? 5 : 1,
-			obj->olet);
+	} else {
+		if(obj->otyp == PICK_AXE && shkcatch(obj))
+		    return(1);
+
+		mon = bhit(u.dx, u.dy, (obj->otyp == ICE_BOX) ? 1 :
+			(!Punished || obj != uball) ? 8 : !u.ustuck ? 5 : 1,
+			obj->olet,
+			(int (*)()) 0, (int (*)()) 0, obj);
+	}
 	if(mon) {
 		/* awake monster if sleeping */
 		wakeup(mon);
@@ -645,13 +350,17 @@ dothrow()
 				if(hmon(mon,obj,1) == FALSE)
 					mon = 0;	/* he died */
 			} else miss("iron ball", mon);
+		} else if(obj->olet == POTION_SYM && u.ulevel > rn2(15)) {
+			potionhit(mon, obj);
+			return(1);
 		} else {
 			if(cansee(bhitpos.x,bhitpos.y))
 				pline("You miss %s.",monnam(mon));
 			else pline("You miss it.");
 			if(obj->olet == FOOD_SYM && mon->data->mlet == 'd')
 				if(tamedog(mon,obj)) return(1);
-			if(obj->olet == GEM_SYM && mon->data->mlet == 'u'){
+			if(obj->olet == GEM_SYM && mon->data->mlet == 'u' &&
+				!mon->mtame){
 			 if(obj->dknown && objects[obj->otyp].oc_name_known){
 			  if(objects[obj->otyp].g_val > 0){
 			    u.uluck += 5;
@@ -672,6 +381,9 @@ dothrow()
 			}
 		}
 	}
+		/* the code following might become part of dropy() */
+	if(obj->otyp == CRYSKNIFE)
+		obj->otyp = WORM_TOOTH;
 	obj->ox = bhitpos.x;
 	obj->oy = bhitpos.y;
 	obj->nobj = fobj;
@@ -727,26 +439,14 @@ register struct obj *otmp;
 	return(otmp);
 }
 
-char *
-lowc(str)
-register char *str;
+more_experienced(exp,rexp)
+register int exp, rexp;
 {
-	static char buf[2];
+	extern char pl_character[];
 
-	if(*str >= 'A' && *str <= 'Z') *buf = *str+'a'-'A';
-	else *buf = *str;
-	buf[1] = 0;
-	return(buf);
-}
-
-char *
-unctrl(str)
-register char *str;
-{
-	static char buf[2];
-	if(*str >= ('A' & 037) && *str <= ('Z' & 037))
-		*buf = *str + 0140;
-	else *buf = *str;
-	buf[1] = 0;
-	return(buf);
+	u.uexp += exp;
+	u.urexp += 4*exp + rexp;
+	if(exp) flags.botl = 1;
+	if(u.urexp >= ((pl_character[0] == 'W') ? 1000 : 2000))
+		flags.beginner = 0;
 }

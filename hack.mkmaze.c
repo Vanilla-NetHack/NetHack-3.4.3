@@ -1,28 +1,54 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.mkmaze.c - version 1.0.2 */
 
-#include "mklev.h"
+#include "hack.h"
+#include "def.mkroom.h"		/* not really used */
 extern struct monst *makemon();
+extern struct permonst pm_wizard;
+extern struct obj *mkobj_at();
 extern coord mazexy();
+struct permonst hell_hound =
+	{ "hell hound", 'd', 12, 14, 2, 3, 6, 0 };
 
 makemaz()
 {
 	int x,y;
 	register zx,zy;
 	coord mm;
+	boolean al = (dlevel >= 30 && !flags.made_amulet);
 
 	for(x = 2; x < COLNO-1; x++)
 		for(y = 2; y < ROWNO-1; y++)
 			levl[x][y].typ = (x%2 && y%2) ? 0 : HWALL;
-	mm = mazexy();
-	zx = mm.x;
-	zy = mm.y;
-	walkfrom(zx,zy);
-	mkobj_at(AMULET_SYM, zx, zy);
-	mkobj_at(ROCK_SYM, zx, zy);	/* put a rock on top of the amulet */
-	/* (probably this means that one needs a wand of digging to reach 
-	    the amulet - we must make sure that the player has a chance of
-	    getting one; let us say when he kills the minotaur; of course
-	    the minotaur itself may be blocked behind rocks, but well...) */
+	if(al) {
+	    register struct monst *mtmp;
+
+	    zx = 2*(COLNO/4) - 1;
+	    zy = 2*(ROWNO/4) - 1;
+	    for(x = zx-2; x < zx+4; x++) for(y = zy-2; y <= zy+2; y++) {
+		levl[x][y].typ =
+		    (y == zy-2 || y == zy+2 || x == zx-2 || x == zx+3) ? POOL :
+		    (y == zy-1 || y == zy+1 || x == zx-1 || x == zx+2) ? HWALL:
+		    ROOM;
+	    }
+	    (void) mkobj_at(AMULET_SYM, zx, zy);
+	    flags.made_amulet = 1;
+	    walkfrom(zx+4, zy);
+	    if(mtmp = makemon(&hell_hound, zx, zy))
+		mtmp->msleep = 1;
+	    if(mtmp = makemon(PM_WIZARD, zx+1, zy)) {
+		mtmp->msleep = 1;
+		flags.no_of_wizards = 1;
+	    }
+	} else {
+	    mm = mazexy();
+	    zx = mm.x;
+	    zy = mm.y;
+	    walkfrom(zx,zy);
+	    (void) mksobj_at(WAN_WISHING, zx, zy);
+	    (void) mkobj_at(ROCK_SYM, zx, zy);	/* put a rock on top of it */
+	}
+
 	for(x = 2; x < COLNO-1; x++)
 		for(y = 2; y < ROWNO-1; y++) {
 			switch(levl[x][y].typ) {
@@ -36,11 +62,11 @@ makemaz()
 		}
 	for(x = rn1(8,11); x; x--) {
 		mm = mazexy();
-		mkobj_at(0, mm.x, mm.y);
+		(void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
 	}
 	for(x = rn1(10,2); x; x--) {
 		mm = mazexy();
-		mkobj_at(ROCK_SYM, mm.x, mm.y);
+		(void) mkobj_at(ROCK_SYM, mm.x, mm.y);
 	}
 	mm = mazexy();
 	(void) makemon(PM_MINOTAUR, mm.x, mm.y);
@@ -50,10 +76,10 @@ makemaz()
 	}
 	for(x = rn1(6,7); x; x--) {
 		mm = mazexy();
-		mkgold(0,mm.x,mm.y);
+		mkgold(0L,mm.x,mm.y);
 	}
 	for(x = rn1(6,7); x; x--)
-		mktrap(0,1);
+		mktrap(0,1,(struct mkroom *) 0);
 	mm = mazexy();
 	levl[(xupstair = mm.x)][(yupstair = mm.y)].scrsym = '<';
 	levl[xupstair][yupstair].typ = STAIRS;

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.save.c - version 1.0.2 */
 
 #include "hack.h"
 extern char genocided[60];	/* defined in Decl.c */
@@ -39,32 +40,47 @@ dosave0(hu) int hu; {
 		if(!hu) pline("Cannot open save file. (Continue or Quit)");
 		return(0);
 	}
-	savelev(fd);
+	savelev(fd,dlevel);
 	saveobjchn(fd, invent);
 	saveobjchn(fd, fcobj);
 	savemonchn(fd, fallen_down);
+	tmp = getuid();
+	bwrite(fd, (char *) &tmp, sizeof tmp);
 	bwrite(fd, (char *) &flags, sizeof(struct flag));
 	bwrite(fd, (char *) &dlevel, sizeof dlevel);
 	bwrite(fd, (char *) &maxdlevel, sizeof maxdlevel);
 	bwrite(fd, (char *) &moves, sizeof moves);
 	bwrite(fd, (char *) &u, sizeof(struct you));
+	if(u.ustuck)
+		bwrite(fd, (char *) &(u.ustuck->m_id), sizeof u.ustuck->m_id);
 	bwrite(fd, (char *) pl_character, sizeof pl_character);
 	bwrite(fd, (char *) genocided, sizeof genocided);
 	bwrite(fd, (char *) fut_geno, sizeof fut_geno);
 	savenames(fd);
 	for(tmp = 1; tmp <= maxdlevel; tmp++) {
+		extern int hackpid;
+		extern boolean level_exists[];
+
+		if(tmp == dlevel || !level_exists[tmp]) continue;
 		glo(tmp);
-		if((ofd = open(lock, 0)) < 0)
-			continue;
-		(void) getlev(ofd);
+		if((ofd = open(lock, 0)) < 0) {
+		    if(!hu) pline("Error while saving: cannot read %s.", lock);
+		    (void) close(fd);
+		    (void) unlink(SAVEF);
+		    if(!hu) done("tricked");
+		    return(0);
+		}
+		getlev(ofd, hackpid, tmp);
 		(void) close(ofd);
 		bwrite(fd, (char *) &tmp, sizeof tmp);	/* level number */
-		savelev(fd);				/* actual level */
+		savelev(fd,tmp);			/* actual level */
 		(void) unlink(lock);
 	}
 	(void) close(fd);
-	(*index(lock, '.')) = 0;
-	(void) unlink(lock);
+	{ register char *lp = index(lock, '.');
+	  if(lp) *lp = 0;
+	  (void) unlink(lock);
+	}
 	return(1);
 }
 
@@ -73,20 +89,30 @@ register fd;
 {
 	register nfd;
 	int tmp;		/* not a register ! */
+	unsigned mid;		/* idem */
 	struct obj *otmp;
 
-	(void) getlev(fd);
+	getlev(fd, 0, 0);
 	invent = restobjchn(fd);
 	for(otmp = invent; otmp; otmp = otmp->nobj)
 		if(otmp->owornmask)
 			setworn(otmp, otmp->owornmask);
 	fcobj = restobjchn(fd);
 	fallen_down = restmonchn(fd);
+	mread(fd, (char *) &tmp, sizeof tmp);
+	if(tmp != getuid()) {		/* strange ... */
+		(void) close(fd);
+		(void) unlink(SAVEF);
+		puts("Saved game was not yours.");
+		return(0);
+	}
 	mread(fd, (char *) &flags, sizeof(struct flag));
 	mread(fd, (char *) &dlevel, sizeof dlevel);
 	mread(fd, (char *) &maxdlevel, sizeof maxdlevel);
 	mread(fd, (char *) &moves, sizeof moves);
 	mread(fd, (char *) &u, sizeof(struct you));
+	if(u.ustuck)
+		mread(fd, (char *) &mid, sizeof mid);
 	mread(fd, (char *) pl_character, sizeof pl_character);
 	mread(fd, (char *) genocided, sizeof genocided);
 	mread(fd, (char *) fut_geno, sizeof fut_geno);
@@ -94,16 +120,15 @@ register fd;
 	while(1) {
 		if(read(fd, (char *) &tmp, sizeof tmp) != sizeof tmp)
 			break;
-		if(getlev(fd))
-			break;		/* this is actually an error */
+		getlev(fd, 0, tmp);
 		glo(tmp);
 		if((nfd = creat(lock, FMASK)) < 0)
 			panic("Cannot open temp file %s!\n", lock);
-		savelev(nfd);
+		savelev(nfd,tmp);
 		(void) close(nfd);
 	}
 	(void) lseek(fd, 0L, 0);
-	(void) getlev(fd);
+	getlev(fd, 0, 0);
 	(void) close(fd);
 	(void) unlink(SAVEF);
 	if(Punished) {
@@ -121,10 +146,20 @@ register fd;
 			uball = otmp;
 		}
 	}
+	if(u.ustuck) {
+		register struct monst *mtmp;
+
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			if(mtmp->m_id == mid) goto monfnd;
+		panic("Cannot find the monster ustuck.");
+	monfnd:
+		u.ustuck = mtmp;
+	}
 #ifndef QUEST
 	setsee();  /* only to recompute seelx etc. - these weren't saved */
 #endif QUEST
 	docrt();
+	return(1);
 }
 
 struct obj *
@@ -145,16 +180,13 @@ register fd;
 		if(!first) first = otmp;
 		else otmp2->nobj = otmp;
 		mread(fd, (char *) otmp, (unsigned) xl + sizeof(struct obj));
-		if(!otmp->o_id)	/* from MKLEV */
-			otmp->o_id = flags.ident++;
 		otmp2 = otmp;
 	}
 	if(first && otmp2->nobj){
-		pline("Restobjchn: error reading objchn.");
-		impossible();
+		impossible("Restobjchn: error reading objchn.");
 		otmp2->nobj = 0;
 	}
- return(first);
+	return(first);
 }
 
 struct monst *
@@ -184,23 +216,13 @@ register fd;
 		mread(fd, (char *) mtmp, (unsigned) xl + sizeof(struct monst));
 		mtmp->data = (struct permonst *)
 			((char *) mtmp->data + differ);
-		if(!mtmp->m_id) {			/* from MKLEV */
-			mtmp->m_id = flags.ident++;
-#ifndef NOWORM
-			if(mtmp->data->mlet == 'w' && getwn(mtmp)){
-				initworm(mtmp);
-				mtmp->msleep = 0;
-			}
- #endif NOWORM
-		}
 		if(mtmp->minvent)
 			mtmp->minvent = restobjchn(fd);
 		mtmp2 = mtmp;
 	}
 	if(first && mtmp2->nmon){
-		pline("Restmonchn: error reading monchn.");
-		impossible();
+		impossible("Restmonchn: error reading monchn.");
 		mtmp2->nmon = 0;
 	}
- return(first);
+	return(first);
 }

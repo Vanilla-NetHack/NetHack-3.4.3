@@ -1,11 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.pri.c version 1.0.1 - tiny change in mnewsym() - added time */
+/* hack.pri.c - version 1.0.2 */
 
 #include "hack.h"
 #include <stdio.h>
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
 
 extern char *hu_stat[];	/* in eat.c */
+extern char *CD;
 
 swallowed()
 {
@@ -34,15 +35,19 @@ boolean panicking;
 panic(str,a1,a2,a3,a4,a5,a6)
 char *str;
 {
-	if(panicking++) exit(1);	/* avoid loops */
+	if(panicking++) exit(1);    /* avoid loops - this should never happen*/
 	home();
 	puts(" Suddenly, the dungeon collapses.");
-	fputs(" ERROR:  ",stdout);
+	fputs(" ERROR:  ", stdout);
 	printf(str,a1,a2,a3,a4,a5,a6);
-	if(fork())
-		done("panic");
-	else
+#ifdef DEBUG
+#ifdef UNIX
+	if(!fork())
 		abort();	/* generate core dump */
+#endif UNIX
+#endif DEBUG
+	more();			/* contains a fflush() */
+	done("panicked");
 }
 
 atl(x,y,ch)
@@ -50,8 +55,10 @@ register x,y;
 {
 	register struct rm *crm = &levl[x][y];
 
-	if(x<0 || x>COLNO-1 || y<0 || y>ROWNO-1)
-		panic("at(%d,%d,%c_%o_)",x,y,ch,ch);
+	if(x<0 || x>COLNO-1 || y<0 || y>ROWNO-1){
+		impossible("atl(%d,%d,%c)",x,y,ch);
+		return;
+	}
 	if(crm->seen && crm->scrsym == ch) return;
 	crm->scrsym = ch;
 	crm->new = 1;
@@ -61,10 +68,10 @@ register x,y;
 on_scr(x,y)
 register x,y;
 {
-	if(x<scrlx) scrlx = x;
-	if(x>scrhx) scrhx = x;
-	if(y<scrly) scrly = y;
-	if(y>scrhy) scrhy = y;
+	if(x < scrlx) scrlx = x;
+	if(x > scrhx) scrhx = x;
+	if(y < scrly) scrly = y;
+	if(y > scrhy) scrhy = y;
 }
 
 /* call: (x,y) - display
@@ -138,19 +145,24 @@ register xx,yy;
 	}
 }
 
+setclipped(){
+	error("Hack needs a screen of size at least %d by %d.\n",
+		ROWNO+2, COLNO);
+}
+
 at(x,y,ch)
 register xchar x,y;
 char ch;
 {
 #ifndef lint
 	/* if xchar is unsigned, lint will complain about  if(x < 0)  */
-	if(x < 0 || x > COLNO-1 || y < 0 || y > ROWNO-1)
-		panic("At gets 0%o at %d %d(%d %d)",ch,x,y,u.ux,u.uy);
+	if(x < 0 || x > COLNO-1 || y < 0 || y > ROWNO-1) {
+		impossible("At gets 0%o at %d %d.", ch, x, y);
+		return;
+	}
 #endif lint
 	if(!ch) {
-		home();
-		printf("At gets null at %2d %2d.",x,y);
-		curx = ROWNO+1;
+		impossible("At gets null at %d %d.", x, y);
 		return;
 	}
 	y += 2;
@@ -163,11 +175,16 @@ prme(){
 	if(!Invis) at(u.ux,u.uy,u.usym);
 }
 
+doredraw()
+{
+	docrt();
+	return(0);
+}
+
 docrt()
 {
 	register x,y;
 	register struct rm *room;
-	register struct monst *mtmp;
 
 	if(u.uswallow) {
 		swallowed();
@@ -180,18 +197,22 @@ docrt()
 		u.udispl = 1;
 	} else	u.udispl = 0;
 
-	/* %% - is this really necessary? */
+#ifdef RIDICULOUS_CODE
+	/* %% - is this really necessary? - it causes bugs when Blind */
+	/* declare mtmp */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		if(mtmp->mdispl && !(room = &levl[mtmp->mx][mtmp->my])->new &&
 		   !room->seen)
 			mtmp->mdispl = 0;
+#endif RIDICULOUS_CODE
 
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
 			if((room = &levl[x][y])->new) {
 				room->new = 0;
 				at(x,y,room->scrsym);
-			} else if(room->seen) at(x,y,room->scrsym);
+			} else if(room->seen)
+				at(x,y,room->scrsym);
 	scrlx = COLNO;
 	scrly = ROWNO;
 	scrhx = scrhy = 0;
@@ -207,15 +228,31 @@ docorner(xmin,ymax) register xmin,ymax; {
 		return;
 	}
 	for(y = 0; y < ymax; y++) {
+		if(y > ROWNO && CD) break;
 		curs(xmin,y+2);
 		cl_end();
-		for(x = xmin; x < COLNO; x++) {
+		if(y < ROWNO) {
+		    for(x = xmin; x < COLNO; x++) {
 			if((room = &levl[x][y])->new) {
 				room->new = 0;
 				at(x,y,room->scrsym);
-			} else if(room->seen) at(x,y,room->scrsym);
+			} else
+				if(room->seen)
+					at(x,y,room->scrsym);
+		    }
 		}
 	}
+	if(ymax > ROWNO) {
+		cornbot(xmin-1);
+		if(ymax > ROWNO+1 && CD) {
+			curs(1,ROWNO+3);
+			cl_eos();
+		}
+	}
+}
+
+curs_on_u(){
+	curs(u.ux, u.uy+2);
 }
 
 pru()
@@ -234,7 +271,7 @@ pru()
 		u.udisx = u.ux;
 		u.udisy = u.uy;
 	}
-	levl[u.ux][u.uy].seen = 1;
+ levl[u.ux][u.uy].seen = 1;
 }
 
 #ifndef NOWORM
@@ -253,8 +290,10 @@ prl(x,y)
 		pru();
 		return;
 	}
+	if(!isok(x,y)) return;
 	room = &levl[x][y];
-	if((!room->typ) || (room->typ<DOOR && levl[u.ux][u.uy].typ == CORR))
+	if((!room->typ) ||
+	   (IS_ROCK(room->typ) && levl[u.ux][u.uy].typ == CORR))
 		return;
 	if((mtmp = m_at(x,y)) && !mtmp->mhide &&
 		(!mtmp->minvis || See_invisible)) {
@@ -265,20 +304,21 @@ prl(x,y)
 #endif NOWORM
 		pmon(mtmp);
 	}
-	else if(otmp = o_at(x,y))
+	else if((otmp = o_at(x,y)) && room->typ != POOL)
 		atl(x,y,otmp->olet);
 	else if(mtmp && (!mtmp->minvis || See_invisible)) {
 		/* must be a hiding monster, but not hiding right now */
 		/* assume for the moment that long worms do not hide */
 		pmon(mtmp);
 	}
-	else if(g_at(x,y,fgold)) atl(x,y,'$');
+	else if(g_at(x,y) && room->typ != POOL)
+		atl(x,y,'$');
 	else if(!room->seen || room->scrsym == ' ') {
 		room->new = room->seen = 1;
 		newsym(x,y);
 		on_scr(x,y);
 	}
-	room->seen = 1;
+ room->seen = 1;
 }
 
 char
@@ -286,17 +326,18 @@ news0(x,y)
 register xchar x,y;
 {
 	register struct obj *otmp;
-	register struct gen *gtmp;
+	register struct trap *ttmp;
 	struct rm *room;
 	register char tmp;
 
 	room = &levl[x][y];
 	if(!room->seen) tmp = ' ';
+	else if(room->typ == POOL) tmp = POOL_SYM;
 	else if(!Blind && (otmp = o_at(x,y))) tmp = otmp->olet;
-	else if(!Blind && g_at(x,y,fgold)) tmp = '$';
+	else if(!Blind && g_at(x,y)) tmp = '$';
 	else if(x == xupstair && y == yupstair) tmp = '<';
 	else if(x == xdnstair && y == ydnstair) tmp = '>';
-	else if((gtmp = g_at(x,y,ftrap)) && (gtmp->gflag & SEEN)) tmp = '^';
+	else if((ttmp = t_at(x,y)) && ttmp->tseen) tmp = '^';
 	else switch(room->typ) {
 	case SCORR:
 	case SDOOR:
@@ -319,9 +360,15 @@ register xchar x,y;
 		if(room->lit || cansee(x,y) || Blind) tmp = '.';
 		else tmp = ' ';
 		break;
-	default: tmp = ERRCHAR;
+/*
+	case POOL:
+		tmp = POOL_SYM;
+		break;
+*/
+	default:
+		tmp = ERRCHAR;
 	}
-	return(tmp);
+ return(tmp);
 }
 
 newsym(x,y)
@@ -330,7 +377,8 @@ register x,y;
 	atl(x,y,news0(x,y));
 }
 
-/* used with wand of digging: fill scrsym and force display */
+/* used with wand of digging (or pick-axe): fill scrsym and force display */
+/* also when a POOL evaporates */
 mnewsym(x,y)
 register x,y;
 {
@@ -338,6 +386,8 @@ register x,y;
 	register struct rm *room;
 	char newscrsym;
 
+	if(x == u.ux && y == u.uy && !Invis)
+		return;
 	if(!mtmp || (mtmp->minvis && !See_invisible) ||
 		    (mtmp->mhide && o_at(x,y))){
 		room = &levl[x][y];
@@ -354,6 +404,7 @@ register x,y;
 {
 	register struct rm *room;
 
+	if(!isok(x,y)) return;
 	room = &levl[x][y];
 	if(room->scrsym == '.' && !room->lit && !Blind) {
 		room->scrsym = ' ';
@@ -467,6 +518,9 @@ register struct obj *obj, *obj2;
 seemons(){
 register struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
+		if(mtmp->data->mlet == ';')
+			mtmp->minvis = (u.ustuck != mtmp &&
+					levl[mtmp->mx][mtmp->my].typ == POOL);
 		pmon(mtmp);
 #ifndef NOWORM
 		if(mtmp->wormno) wormsee(mtmp->wormno);
@@ -475,18 +529,16 @@ register struct monst *mtmp;
 }
 
 pmon(mon) register struct monst *mon; {
-register int show =
-	((!mon->minvis || See_invisible) &&
-		(!mon->mhide || !o_at(mon->mx,mon->my)) &&
-		cansee(mon->mx,mon->my))
-	 || (Blind && Telepat);
+register int show = (Blind && Telepat) || canseemon(mon);
 	if(mon->mdispl){
 		if(mon->mdx != mon->mx || mon->mdy != mon->my || !show)
 			unpmon(mon);
 	}
 	if(show && !mon->mdispl){
 		atl(mon->mx,mon->my,
-		  mon->mimic ? mon->mimic : mon->data->mlet);
+		 (!mon->mappearance
+		  || u.uprops[PROP(RIN_PROTECTION_FROM_SHAPE_CHANGERS)].p_flgs
+		 ) ? mon->data->mlet : mon->mappearance);
 		mon->mdispl = 1;
 		mon->mdx = mon->mx;
 		mon->mdy = mon->my;
@@ -518,7 +570,17 @@ nscr()
 	scrly = ROWNO;
 }
 
-char oldbot[100], newbot[100];		/* 100 >= COLNO */
+/* 100 suffices for bot(); no relation with COLNO */
+char oldbot[100], newbot[100];
+cornbot(lth)
+register int lth;
+{
+	if(lth < sizeof(oldbot)) {
+		oldbot[lth] = 0;
+		flags.botl = 1;
+	}
+}
+
 bot()
 {
 register char *ob = oldbot, *nb = newbot;
@@ -526,9 +588,15 @@ register int i;
 extern char *eos();
 	if(flags.botlx) *ob = 0;
 	flags.botl = flags.botlx = 0;
+#ifdef GOLD_ON_BOTL
 	(void) sprintf(newbot,
 		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
 		dlevel, u.ugold, u.uhp, u.uhpmax, u.uac);
+#else
+	(void) sprintf(newbot,
+		"Level %-2d   Hp %3d(%d)   Ac %-2d   Str ",
+		dlevel,  u.uhp, u.uhpmax, u.uac);
+#endif GOLD_ON_BOTL
 	if(u.ustr>18) {
 	    if(u.ustr>117)
 		(void) strcat(newbot,"18/**");
@@ -536,7 +604,11 @@ extern char *eos();
 		(void) sprintf(eos(newbot), "18/%02d",u.ustr-18);
 	} else
 	    (void) sprintf(eos(newbot), "%-2d   ",u.ustr);
+#ifdef EXP_ON_BOTL
 	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
+#else
+	(void) sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
+#endif EXP_ON_BOTL
 	(void) strcat(newbot, hu_stat[u.uhs]);
 	if(flags.time)
 	    (void) sprintf(eos(newbot), "  %ld", moves);
@@ -557,22 +629,22 @@ extern char *eos();
 		if(*ob) ob++;
 		if(*nb) nb++;
 	}
-	(void) strcpy(oldbot, newbot);
+ (void) strcpy(oldbot, newbot);
 }
 
 #ifdef WAN_PROBING
 mstatusline(mtmp) register struct monst *mtmp; {
 	pline("Status of %s: ", monnam(mtmp));
 	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Dam %d",
-	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->orig_hp,
+	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->mhpmax,
 	    mtmp->data->ac, (mtmp->data->damn + 1) * (mtmp->data->damd + 1));
 }
 #endif WAN_PROBING
 
 cls(){
-	if(flags.topl == 1)
+	if(flags.toplin == 1)
 		more();
-	flags.topl = 0;
+	flags.toplin = 0;
 
 	clear_screen();
 

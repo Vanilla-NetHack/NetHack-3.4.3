@@ -1,15 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.engrave.c version 1.0.1 -
-	corrected bug in rest_engravings(),
-	added make_engr_at() */
-#ifdef MKLEV
-#include	"mklev.h"
-#else
+/* hack.engrave.c - version 1.0.2 */
+
 #include	"hack.h"
-#endif MKLEV
 
 extern char *nomovemsg;
 extern char nul[];
+extern struct obj zeroobj;
 struct engr {
 	struct engr *nxt_engr;
 	char *engr_txt;
@@ -30,10 +26,9 @@ register struct engr *ep = head_engr;
 			return(ep);
 		ep = ep->nxt_engr;
 	}
- return((struct engr *) 0);
+	return((struct engr *) 0);
 }
 
-#ifndef MKLEV
 sengr_at(s,x,y) register char *s; register xchar x,y; {
 register struct engr *ep = engr_at(x,y);
 register char *t;
@@ -49,7 +44,7 @@ register int n;
 			t++;
 		}
 	}
- return(0);
+	return(0);
 }
 
 wipe_engr_at(x,y,cnt) register xchar x,y,cnt; {
@@ -91,15 +86,12 @@ register struct engr *ep = engr_at(x,y);
 		pline("Some text has been burned here in the floor.");
 		break;
 	    default:
-		pline("Something is written in a very strange way.");
-		impossible();
+		impossible("Something is written in a very strange way.");
 	    }
 	    pline("You read: \"%s\".", ep->engr_txt);
 	}
 }
-#endif MKLEV
 
-#ifdef MKLEV
 make_engr_at(x,y,s)
 register int x,y;
 register char *s;
@@ -120,9 +112,7 @@ register char *s;
 	ep->engr_type = DUST;
 	ep->engr_lth = strlen(s) + 1;
 }
-#endif MKLEV
 
-#ifndef MKLEV
 doengrave(){
 register int len;
 register char *sp;
@@ -141,22 +131,33 @@ register struct obj *otmp;
 	/* one may write with finger, weapon or wand */
 	otmp = getobj("#-)/", "write with");
 	if(!otmp) return(0);
-	if(otmp == (struct obj *)(-1))
+	if(otmp == &zeroobj) {
+		if(uwep) {
+			pline("You are now empty-handed.");
+			setuwep((struct obj *) 0);
+		}
 		type = DUST;
-	else if(otmp->otyp == WAN_FIRE && otmp->spe) {
+	} else if(otmp->otyp == WAN_FIRE && otmp->spe) {
 		type = BURN;
 		otmp->spe--;
-	} else if(otmp->otyp == DAGGER || otmp->otyp == TWO_HANDED_SWORD ||
-		otmp->otyp == CRYSKNIFE ||
-		otmp->otyp == LONG_SWORD || otmp->otyp == AXE){
-		type = ENGRAVE;
-		if((int)otmp->spe <= -3) {
-			type = DUST;
-			pline("Your %s too dull for engraving.",
-				aobjnam(otmp, "are"));
-			if(oep && oep->engr_type != DUST) return(1);
+	} else {
+		if(otmp != uwep) {
+			pline("You now wield %s.", doname(otmp));
+			setuwep(otmp);
 		}
-	} else	type = DUST;
+
+		if(otmp->otyp == DAGGER || otmp->otyp == TWO_HANDED_SWORD ||
+		otmp->otyp == CRYSKNIFE ||
+		otmp->otyp == LONG_SWORD || otmp->otyp == AXE) {
+			type = ENGRAVE;
+			if((int)otmp->spe <= -3) {
+				type = DUST;
+				pline("Your %s too dull for engraving.",
+					aobjnam(otmp, "are"));
+				if(oep && oep->engr_type != DUST) return(1);
+			}
+		} else	type = DUST;
+	}
 	if(Levitation && type != BURN){		/* riv05!a3 */
 		pline("You can't reach the floor!");
 		return(1);
@@ -180,7 +181,7 @@ register struct obj *otmp;
 	sp = buf;
 	while(*sp == ' ') spct++, sp++;
 	len = strlen(sp);
-	if(!len) {
+	if(!len || *buf == '\033') {
 		if(type == BURN) otmp->spe++;
 		return(0);
 	}
@@ -195,16 +196,8 @@ register struct obj *otmp;
 		break;
 	case ENGRAVE:
 		{	int len2 = (otmp->spe + 3) * 2 + 1;
-			char *bufp = doname(otmp);
-			if(digit(*bufp))
-				pline("Your %s get dull.", bufp);
-			else {
-				if(!strncmp(bufp,"a ",2))
-					bufp += 2;
-				else if(!strncmp(bufp,"an ",3))
-					bufp += 3;
-				pline("Your %s gets dull.", bufp);
-			}
+
+			pline("Your %s dull.", aobjnam(otmp, "get"));
 			if(len2 < len) {
 				len = len2;
 				sp[len] = 0;
@@ -214,9 +207,9 @@ register struct obj *otmp;
 				otmp->spe -= len/2;
 				nomovemsg = "You finished engraving.";
 			}
- multi = -len;
+			multi = -len;
 		}
- break;
+		break;
 	}
 	if(oep) len += strlen(oep->engr_txt) + spct;
 	ep = (struct engr *) alloc((unsigned)(sizeof(struct engr) + len + 1));
@@ -241,7 +234,6 @@ register struct obj *otmp;
 
 	return(1);
 }
-#endif MKLEV
 
 save_engravings(fd) int fd; {
 register struct engr *ep = head_engr;
@@ -254,10 +246,10 @@ register struct engr *ep = head_engr;
 		bwrite(fd, (char *) ep, sizeof(struct engr) + ep->engr_lth);
 		ep = ep->nxt_engr;
 	}
- bwrite(fd, (char *) nul, sizeof(unsigned));
+	bwrite(fd, (char *) nul, sizeof(unsigned));
+	head_engr = 0;
 }
 
-#ifndef MKLEV
 rest_engravings(fd) int fd; {
 register struct engr *ep;
 unsigned lth;
@@ -272,22 +264,21 @@ unsigned lth;
 		head_engr = ep;
 	}
 }
-#endif MKLEV
 
 del_engr(ep) register struct engr *ep; {
 register struct engr *ept;
 	if(ep == head_engr)
 		head_engr = ep->nxt_engr;
 	else {
-		for(ept = head_engr; ept; ept = ept->nxt_engr)
+		for(ept = head_engr; ept; ept = ept->nxt_engr) {
 			if(ept->nxt_engr == ep) {
 				ept->nxt_engr = ep->nxt_engr;
 				goto fnd;
 			}
-#ifndef MKLEV
-		pline("Error in del_engr?"); impossible();
-#endif MKLEV
+		}
+		impossible("Error in del_engr?");
+		return;
 	fnd:	;
 	}
- free((char *) ep);
+	free((char *) ep);
 }

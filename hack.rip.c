@@ -1,13 +1,8 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.rip.c - version 1.0.2 */
 
-#include	<sys/types.h>		/* for time_t */
 #include <stdio.h>
 #include "hack.h"
-#ifdef BSD
-#include	<sys/time.h>
-#else
-#include	<time.h>
-#endif BSD
 
 extern char plname[];
 
@@ -32,15 +27,10 @@ static char *rip[] = {
 outrip(){
 	register char **dp = rip;
 	register char *dpx;
-	register struct tm *lt;
-	time_t date;
 	char buf[BUFSZ];
-	struct tm *localtime();
 	register x,y;
 
 	cls();
-	(void) time(&date);
-	lt = localtime(&date);
 	(void) strcpy(buf, plname);
 	buf[16] = 0;
 	center(6, buf);
@@ -63,7 +53,7 @@ outrip(){
 		buf[i0] = 0;
 	}
 	center(9, buf);
-	(void) sprintf(buf, "19%2d", lt->tm_year);
+	(void) sprintf(buf, "%4d", getyear());
 	center(11, buf);
 	for(y=8; *dp; y++,dp++){
 		x = 0;
@@ -80,7 +70,7 @@ outrip(){
 			}
 		}
 	}
- getret();
+	getret();
 }
 
 center(line, text) int line; char *text; {

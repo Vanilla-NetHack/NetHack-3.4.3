@@ -1,8 +1,7 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.trap.c version 1.0.1 - added dotele(); */
+/* hack.trap.c - version 1.0.2 */
 
 #include	"hack.h"
-#include	"def.trap.h"
 
 extern struct monst *makemon();
 
@@ -20,13 +19,32 @@ char *traps[] = {
 	" mimic"
 };
 
-dotrap(trap) register struct gen *trap; {
+struct trap *
+maketrap(x,y,typ)
+register x,y,typ;
+{
+	register struct trap *ttmp;
+
+	ttmp = newtrap();
+	ttmp->ttyp = typ;
+	ttmp->tseen = 0;
+	ttmp->once = 0;
+	ttmp->tx = x;
+	ttmp->ty = y;
+	ttmp->ntrap = ftrap;
+	ftrap = ttmp;
+	return(ttmp);
+}
+
+dotrap(trap) register struct trap *trap; {
+	register int ttype = trap->ttyp;
+
 	nomul(0);
-	if(trap->gflag&SEEN && !rn2(5))
-		pline("You escape a%s.",traps[trap->gflag & TRAPTYPE]);
+	if(trap->tseen && !rn2(5) && ttype != PIT)
+		pline("You escape a%s.", traps[ttype]);
 	else {
-		trap->gflag |= SEEN;
-		switch(trap->gflag & TRAPTYPE) {
+		trap->tseen = 1;
+		switch(ttype) {
 		case SLP_GAS_TRAP:
 			pline("A cloud of gas puts you to sleep!");
 			nomul(-rnd(25));
@@ -42,7 +60,7 @@ dotrap(trap) register struct gen *trap; {
 			break;
 		case PIERC:
 			deltrap(trap);
-			if(makemon(PM_PIERC,u.ux,u.uy)) {
+			if(makemon(PM_PIERCER,u.ux,u.uy)) {
 			  pline("A piercer suddenly drops from the ceiling!");
 			  if(uarmh)
 				pline("Its blow glances off your helmet.");
@@ -53,7 +71,7 @@ dotrap(trap) register struct gen *trap; {
 		case ARROW_TRAP:
 			pline("An arrow shoots out at you!");
 			if(!thitu(8,rnd(6),"arrow")){
-				mksobj_at(WEAPON_SYM, ARROW, u.ux, u.uy);
+				mksobj_at(ARROW, u.ux, u.uy);
 				fobj->quan = 1;
 			}
 			break;
@@ -81,12 +99,12 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			    if(!rn2(6))
 				poisoned("dart","poison dart");
 			} else {
-				mksobj_at(WEAPON_SYM, DART, u.ux, u.uy);
+				mksobj_at(DART, u.ux, u.uy);
 				fobj->quan = 1;
 			}
 			break;
 		case TELEP_TRAP:
-			if(trap->gflag & ONCE) {
+			if(trap->once) {
 				deltrap(trap);
 				newsym(u.ux,u.uy);
 				vtele();
@@ -108,24 +126,24 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			selftouch("Falling, you");
 			break;
 		default:
-			pline("You hit a trap of type %d",trap->gflag);
-			impossible();
+			impossible("You hit a trap of type %u", trap->ttyp);
 		}
 	}
 }
 
 mintrap(mtmp) register struct monst *mtmp; {
-	register struct gen *gen = g_at(mtmp->mx, mtmp->my, ftrap);
+	register struct trap *trap = t_at(mtmp->mx, mtmp->my);
 	register int wasintrap = mtmp->mtrapped;
 
-	if(!gen) {
+	if(!trap) {
 		mtmp->mtrapped = 0;	/* perhaps teleported? */
 	} else if(wasintrap) {
- if(!rn2(40)) mtmp->mtrapped = 0;
+		if(!rn2(40)) mtmp->mtrapped = 0;
 	} else {
-	    register int tt = (gen->gflag & TRAPTYPE);
+	    register int tt = trap->ttyp;
 	    int in_sight = cansee(mtmp->mx,mtmp->my);
 	    extern char mlarge[];
+
 	    if(mtmp->mtrapseen & (1 << tt)) {
 		/* he has been in such a trap - perhaps he escapes */
 		if(rn2(4)) return(0);
@@ -196,11 +214,10 @@ pline("A trap door in the ceiling opens and a rock hits %s!", monnam(mtmp));
 		case PIERC:
 			break;
 		default:
-			pline("Some monster encountered an impossible trap.");
-			impossible();
+			impossible("Some monster encountered a strange trap.");
 	    }
 	}
- return(mtmp->mtrapped);
+	return(mtmp->mtrapped);
 }
 
 selftouch(arg) char *arg; {
@@ -218,17 +235,17 @@ float_up(){
 			u.utrap = 0;
 			pline("You float up, out of the pit!");
 		} else {
- pline("You float up, only your leg is still stuck.");
+			pline("You float up, only your leg is still stuck.");
 		}
 	} else
- pline("You start to float in the air!");
+		pline("You start to float in the air!");
 }
 
 float_down(){
-	register struct gen *trap;
+	register struct trap *trap;
 	pline("You float gently to the ground.");
-	if(trap = g_at(u.ux,u.uy,ftrap))
-		switch(trap->gflag & TRAPTYPE) {
+	if(trap = t_at(u.ux,u.uy))
+		switch(trap->ttyp) {
 		case PIERC:
 			break;
 		case TRAPDOOR:
@@ -237,11 +254,11 @@ float_down(){
 		default:
 			dotrap(trap);
 	}
- pickup();
+	pickup(1);
 }
 
 vtele() {
-#define	VAULT	6
+#include "def.mkroom.h"
 	register struct mkroom *croom;
 	for(croom = &rooms[0]; croom->hx >= 0; croom++)
 	    if(croom->rtype == VAULT) {
@@ -271,7 +288,7 @@ tele() {
 			teleds(cc.x, cc.y);
 			return;
 		}
- pline("Sorry ...");
+		pline("Sorry ...");
 	}
 	do {
 		nux = rnd(COLNO-1);
@@ -297,13 +314,13 @@ register int nux,nuy;
 	}
 	nomul(0);
 	(void) inshop();
-	pickup();
+	pickup(1);
 	if(!Blind) read_engr_at(u.ux,u.uy);
 }
 
-teleok(x,y) register int x,y; {
-	return( isok(x,y) && levl[x][y].typ > DOOR && !m_at(x,y) &&
-		!sobj_at(ENORMOUS_ROCK,x,y) && !g_at(x,y,ftrap)
+teleok(x,y) register int x,y; {	/* might throw him into a POOL */
+	return( isok(x,y) && !IS_ROCK(levl[x][y].typ) && !m_at(x,y) &&
+		!sobj_at(ENORMOUS_ROCK,x,y) && !t_at(x,y)
 	);
 	/* Note: gold is permitted (because of vaults) */
 }
@@ -331,8 +348,7 @@ dotele() {
 
 placebc(attach) int attach; {
 	if(!uchain || !uball){
-		pline("Where are your chain and ball??");
-		impossible();
+		impossible("Where are your chain and ball??");
 		return;
 	}
 	uball->ox = uchain->ox = u.ux;
@@ -356,9 +372,50 @@ unplacebc(){
 	unpobj(uchain);
 }
 
+#define MAXLEVEL	40
+
 level_tele() {
-register int newlevel = 5 + rn2(20);	/* 5 - 24 */
-	if(dlevel == newlevel)
+register int newlevel;
+	if(Teleport_control) {
+	    char buf[BUFSZ];
+
+	    do {
+	      pline("To what level do you want to teleport? [type a number] ");
+	      getlin(buf);
+	    } while(!digit(buf[0]));
+	    newlevel = atoi(buf);
+	} else {
+	    newlevel  = 5 + rn2(20);	/* 5 - 24 */
+	    if(dlevel == newlevel)
 		if(!xdnstair) newlevel--; else newlevel++;
+	}
+	if(newlevel >= 30) {
+	    if(newlevel >= MAXLEVEL) newlevel = MAXLEVEL-1;
+	    pline("You arrive at the center of the earth ...");
+	    pline("Unfortunately it is here that hell is located.");
+	    if(Fire_resistance) {
+		pline("But the fire doesn't seem to harm you.");
+	    } else {
+		pline("You burn to a crisp.");
+		dlevel = maxdlevel = newlevel;
+		killer = "visit to the hell";
+		done("burned");
+	    }
+	}
+	if(newlevel < 0) {
+	    newlevel = 0;
+	    pline("You are now high above the clouds ...");
+	    if(Levitation) {
+		pline("You float gently down to earth.");
+		done("escaped");
+	    }
+	    pline("Unfortunately, you don't know how to fly.");
+	    pline("You fall down a few thousand feet and break your neck.");
+	    dlevel = 0;
+	    killer = "fall";
+	    done("died");
+	}
+	if(newlevel == 0)
+	    done("escaped");
 	goto_level(newlevel, FALSE);
 }

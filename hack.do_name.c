@@ -1,8 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do_name.c version 1.0.1 - correction in call of xname() */
+/* hack.do_name.c - version 1.0.2 */
 
 #include "hack.h"
 #include <stdio.h>
+extern char plname[];
 
 coord
 getpos(force,goal) int force; char *goal; {
@@ -55,11 +56,11 @@ extern char *lmonnam();
 	if(cx < 0) return(0);
 	mtmp = m_at(cx,cy);
 	if(!mtmp){
-	    if(cx == u.ux && cy == u.uy){
-		extern char plname[];
+	    if(cx == u.ux && cy == u.uy)
 		pline("This ugly monster is called %s and cannot be renamed.",
 		    plname);
-	    } else	pline("There is no monster there.");
+	    else
+		pline("There is no monster there.");
 	    return(1);
 	}
 	if(mtmp->mimic){
@@ -73,7 +74,8 @@ extern char *lmonnam();
 	pline("What do you want to call %s? ", lmonnam(mtmp));
 	getlin(buf);
 	clrlin();
-	if(!*buf) return(1);
+	if(!*buf || *buf == '\033')
+		return(1);
 	lth = strlen(buf)+1;
 	if(lth > 63){
 		buf[62] = 0;
@@ -86,8 +88,6 @@ extern char *lmonnam();
 	mtmp2->mnamelth = lth;
 	(void) strcpy(NAME(mtmp2), buf);
 	replmon(mtmp,mtmp2);
-	if(mtmp2->isshk) setshk();	/* redefine shopkeeper and bill */
-	if(mtmp2->isgd) setgd( /* mtmp2 */ );
 	return(1);
 }
 
@@ -103,7 +103,8 @@ char buf[BUFSZ];
 	pline("What do you want to name %s? ", doname(obj));
 	getlin(buf);
 	clrlin();
-	if(!*buf) return;
+	if(!*buf || *buf == '\033')
+		return;
 	lth = strlen(buf)+1;
 	if(lth > 63){
 		buf[62] = 0;
@@ -136,15 +137,19 @@ ddocall()
 {
 	register struct obj *obj;
 
-	pline("Do you want to name an individual object? [yn] ");
-	if(readchar() == 'y'){
+	pline("Do you want to name an individual object? [ny] ");
+	switch(readchar()) {
+	case '\033':
+		break;
+	case 'y':
 		obj = getobj("#", "name");
 		if(obj) do_oname(obj);
-	} else {
+		break;
+	default:
 		obj = getobj("?!=/", "call");
 		if(obj) docall(obj);
 	}
- return(0);
+	return(0);
 }
 
 docall(obj)
@@ -158,17 +163,25 @@ register struct obj *obj;
 
 	otemp = *obj;
 	otemp.quan = 1;
+	otemp.onamelth = 0;
 	str = xname(&otemp);
 	pline("Call %s %s: ", index(vowels,*str) ? "an" : "a", str);
 	getlin(buf);
 	clrlin();
-	if(!*buf) return;
+	if(!*buf || *buf == '\033')
+		return;
 	str = newstring(strlen(buf)+1);
 	(void) strcpy(str,buf);
 	str1 = &(objects[obj->otyp].oc_uname);
 	if(*str1) free(*str1);
 	*str1 = str;
 }
+
+char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
+	"adri", "andries", "david", "dirk", "emile", "fred", "hether", "jay",
+	"jon", "kenny", "maud", "michiel", "mike", "robert", "ron",
+	"tom", "wilmar"
+};
 
 char *
 xmonnam(mtmp, vb) register struct monst *mtmp; int vb; {
@@ -180,11 +193,18 @@ extern char *shkname();
 	}
 	switch(mtmp->data->mlet) {
 	case ' ':
-		(void) sprintf(buf, "%s's ghost", (char *) mtmp->mextra);
+		{ register char *gn = (char *) mtmp->mextra;
+		  if(!*gn) {		/* might also look in scorefile */
+		    gn = ghostnames[rn2(SIZE(ghostnames))];
+		    if(!rn2(2)) (void)
+		      strcpy((char *) mtmp->mextra, !rn2(5) ? plname : gn);
+		  }
+		  (void) sprintf(buf, "%s's ghost", gn);
+		}
 		break;
 	case '@':
 		if(mtmp->isshk) {
-			(void) strcpy(buf, shkname());
+			(void) strcpy(buf, shkname(mtmp));
 			break;
 		}
 		/* fall into next case */
@@ -197,7 +217,7 @@ extern char *shkname();
 		(void) strcat(buf, " called ");
 		(void) strcat(buf, NAME(mtmp));
 	}
- return(buf);
+	return(buf);
 }
 
 char *
@@ -248,7 +268,7 @@ register char *bp = Monnam(mtmp);
 		bp += 2;
 		*bp = 'A';
 	}
- return(bp);
+	return(bp);
 }
 
 char *
@@ -264,5 +284,5 @@ static char ccc[3];
 		ccc[0] = c;
 		ccc[1] = 0;
 	}
- return(ccc);
+	return(ccc);
 }

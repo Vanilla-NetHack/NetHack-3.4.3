@@ -1,6 +1,8 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.objects.h - version 1.0.2 */
 
 /* objects have letter " % ) ( 0 _ [ ! ? / = * */
+#include "config.h"
 #include "def.objclass.h"
 #define	NULL	(char *)0
 
@@ -18,7 +20,7 @@ struct objclass objects[] = {
 /* food 4 can be read */
 /* food 5 improves your vision */
 /* food 6 makes you stronger (like Popeye) */
-/* foods CORPSE=15 up to CORPSE+52 are cadavers */
+/* foods CORPSE up to CORPSE+52 are cadavers */
 
 	FOOD("food ration", 	50, 5, 4, 800),
 	FOOD("tripe ration",	20, 1, 2, 200),
@@ -35,6 +37,7 @@ struct objclass objects[] = {
 	FOOD("candy bar",	1, 0, 1, 100),
 	FOOD("egg",		1, 0, 1, 80),
 	FOOD("clove of garlic",	1, 0, 1, 40),
+	FOOD("lump of royal jelly", 0, 0, 1, 200),
 
 	FOOD("dead human",	0, 4, 40, 400),
 	FOOD("dead giant ant",	0, 1, 3, 30),
@@ -94,7 +97,7 @@ struct objclass objects[] = {
 /* weapons ... - ROCK come several at a time */
 /* weapons ... - (ROCK-1) are shot using idem+(BOW-ARROW) */
 /* weapons AXE, SWORD, THSWORD are good for worm-cutting */
-/* weapons AXE, DAGGER, CRYSKNIFE are good for tin-opening */
+/* weapons (PICK-)AXE, DAGGER, CRYSKNIFE are good for tin-opening */
 #define WEAPON(name,prob,wt,ldam,sdam)	{ name, NULL, NULL, 1, 0 /*%%*/,\
 		WEAPON_SYM, prob, 0, wt, ldam, sdam, 0 }
 
@@ -108,10 +111,10 @@ struct objclass objects[] = {
 	WEAPON("axe",		6, 3, 6, 4),
 	WEAPON("flail",		6, 3, 6, 5),
 	WEAPON("long sword",	8, 3, 8, 12),
-	WEAPON("two handed sword",	6, 4, 10, 6),
+	WEAPON("two handed sword",	6, 4, 12, 6),
 	WEAPON("dagger",	6, 3, 4, 3),
 	WEAPON("worm tooth",	0, 4, 2, 2),
-	WEAPON("crysknife",	0, 3, 12, 12),
+	WEAPON("crysknife",	0, 3, 10, 10),
 	WEAPON("spear",		6, 3, 6, 8),
 	WEAPON("bow",		6, 3, 4, 6),
 	WEAPON("sling",		5, 3, 6, 6),
@@ -125,6 +128,10 @@ struct objclass objects[] = {
 		TOOL_SYM, 0, 0, 3, 0, 0, 0 },
 	{ "ice box", "large box", NULL, 0, 0,
 		TOOL_SYM, 0, 0, 40, 0, 0, 0 },
+	{ "pick-axe", NULL, NULL, 1, 1,
+		TOOL_SYM, 0, 0, 5, 6, 3, 0 },
+	{ "can opener", NULL, NULL, 1, 1,
+		TOOL_SYM, 0, 0, 1, 0, 0, 0 },
 	{ "heavy iron ball", NULL, NULL, 1, 0,
 		BALL_SYM, 100, 0, 20, 0, 0, 0 },
 	{ "iron chain", NULL, NULL, 1, 0,
@@ -174,6 +181,9 @@ struct objclass objects[] = {
 
 #define SCROLL(name,text,prob) { name, text, NULL, 0, 1,\
 		SCROLL_SYM, prob, 0, 3, 0, 0, 0 }
+#ifdef MAIL
+	SCROLL("mail",	"KIRJE", 0),
+#endif MAIL
 	SCROLL("enchant armor", "ZELGO MER", 6),
 	SCROLL("destroy armor", "JUYED AWK YACC", 5),
 	SCROLL("confuse monster", "NR 9", 5),
@@ -212,9 +222,9 @@ struct objclass objects[] = {
 	WAND("undead turning",	"silver",	5,	IMMEDIATE),
 	WAND("polymorph",	"brass",	5,	IMMEDIATE),
 	WAND("cancellation",	"maple",	5,	IMMEDIATE),
-	WAND("teleport monster",	"pine",	5,	IMMEDIATE),
+	WAND("teleportation",	"pine",		5,	IMMEDIATE),
 	WAND("make invisible",	"marble",	9,	IMMEDIATE),
-	WAND("digging",	"iron",		5,	RAY),
+	WAND("digging",		"iron",		5,	RAY),
 	WAND("magic missile",	"aluminium",	10,	RAY),
 	WAND("fire",	"steel",	5,	RAY),
 	WAND("sleep",	"curved",	5,	RAY),

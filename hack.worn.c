@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.worn.c - version 1.0.2 */
 
 #include "hack.h"
 
@@ -28,17 +29,14 @@ long mask;
 
 	for(wp = worn; wp->w_mask; wp++) if(wp->w_mask & mask) {
 		oobj = *(wp->w_obj);
-		if(oobj && !(oobj->owornmask & wp->w_mask)){
-			pline("Setworn: mask = %d.", wp->w_mask);
-			impossible();
-		}
+		if(oobj && !(oobj->owornmask & wp->w_mask))
+			impossible("Setworn: mask = %ld.", wp->w_mask);
 		if(oobj) oobj->owornmask &= ~wp->w_mask;
 		if(obj && oobj && wp->w_mask == W_ARM){
 			if(uarm2) {
-				pline("Setworn: uarm2 set?");
-				impossible();
+				impossible("Setworn: uarm2 set?");
 			} else
- setworn(uarm, W_ARM2);
+				setworn(uarm, W_ARM2);
 		}
 		*(wp->w_obj) = obj;
 		if(obj) obj->owornmask |= wp->w_mask;

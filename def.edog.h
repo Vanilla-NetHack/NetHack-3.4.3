@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* def.edog.h - version 1.0.2 */
 
 struct edog {
 	long hungrytime;	/* at this time dog gets hungry */

@@ -1,27 +1,29 @@
+/* rnd.c - version 1.0.2 */
+
 #define RND(x)	((rand()>>3) % x)
 
 rn1(x,y)
-register int x,y;
+register x,y;
 {
 	return(RND(x)+y);
 }
 
 rn2(x)
-register int x;
+register x;
 {
 	return(RND(x));
 }
 
 rnd(x)
-register int x;
+register x;
 {
 	return(RND(x)+1);
 }
 
 d(n,x)
-register int n,x;
+register n,x;
 {
-	register int tmp = n;
+	register tmp = n;
 
 	while(n--) tmp += RND(x);
 	return(tmp);

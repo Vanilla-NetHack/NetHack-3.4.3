@@ -1,7 +1,8 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.track.c - version 1.0.2 */
 
 #include "hack.h"
-#ifdef TRACK
+
 #define	UTSZ	50
 
 coord utrack[UTSZ];
@@ -23,15 +24,15 @@ settrack(){
 
 coord *
 gettrack(x,y) register x,y; {
-register int i,cnt;
+register int i,cnt,dist;
 coord tc;
 	cnt = utcnt;
 	for(i = utpnt-1; cnt--; i--){
 		if(i == -1) i = UTSZ-1;
 		tc = utrack[i];
-		if((x-tc.x)*(x-tc.x) + (y-tc.y)*(y-tc.y) < 3)
-			return(&(utrack[i]));
+		dist = (x-tc.x)*(x-tc.x) + (y-tc.y)*(y-tc.y);
+		if(dist < 3)
+			return(dist ? &(utrack[i]) : 0);
 	}
- return(0);
+	return(0);
 }
-#endif TRACK

@@ -1,12 +1,19 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.steal.c - version 1.0.2 */
 
 #include "hack.h"
 
+long		/* actually returns something that fits in an int */
+somegold(){
+	return( (u.ugold < 100) ? u.ugold :
+		(u.ugold > 10000) ? rnd(10000) : rnd((int) u.ugold) );
+}
+
 stealgold(mtmp)  register struct monst *mtmp; {
-register struct gen *gold = g_at(u.ux, u.uy, fgold);
-register tmp;
-	if(gold && ( !u.ugold || gold->gflag > u.ugold || !rn2(5))) {
-		mtmp->mgold += gold->gflag;
+register struct gold *gold = g_at(u.ux, u.uy);
+register long tmp;
+	if(gold && ( !u.ugold || gold->amount > u.ugold || !rn2(5))) {
+		mtmp->mgold += gold->amount;
 		freegold(gold);
 		if(Invis) newsym(u.ux, u.uy);
 		pline("%s quickly snatches some gold from between your feet!",
@@ -23,11 +30,6 @@ register tmp;
 		mtmp->mflee = 1;
 		flags.botl = 1;
 	}
-}
-
-somegold(){
-	return( (u.ugold < 100) ? u.ugold :
-		(u.ugold > 10000) ? rnd(10000) : rnd((int) u.ugold) );
 }
 
 /* steal armor after he finishes taking it off */
@@ -52,7 +54,7 @@ stealarm(){
 	      }
 	    break;
 	  }
- stealoid = 0;
+	stealoid = 0;
 }
 
 /* returns 1 when something was stolen */
@@ -74,14 +76,18 @@ struct monst *mtmp;
 	    return(1);	/* let her flee */
 	}
 	tmp = 0;
-	for(otmp = invent; otmp; otmp = otmp->nobj)
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarm2)
 		tmp += ((otmp->owornmask & (W_ARMOR | W_RING)) ? 5 : 1);
 	tmp = rn2(tmp);
-	for(otmp = invent; otmp; otmp = otmp->nobj)
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarm2)
 		if((tmp -= ((otmp->owornmask & (W_ARMOR | W_RING)) ? 5 : 1))
 			< 0) break;
-	if(!otmp) panic("Steal fails!");
-	if(otmp->o_id == stealoid) return(0);
+	if(!otmp) {
+		impossible("Steal fails!");
+		return(0);
+	}
+	if(otmp->o_id == stealoid)
+		return(0);
 	if((otmp->owornmask & (W_ARMOR | W_RING))){
 		switch(otmp->olet) {
 		case RING_SYM:
@@ -94,6 +100,7 @@ struct monst *mtmp;
 			}
 		{ int curssv = otmp->cursed;
 			otmp->cursed = 0;
+			stop_occupation();
 			pline("%s seduces you and %s off your %s.",
 				Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
 				otmp->cursed ? "helps you to take"
@@ -116,17 +123,16 @@ struct monst *mtmp;
 				afternmv = stealarm;
 				return(0);
 			}
- break;
+			break;
 		}
 		default:
-			impossible();
+			impossible("Tried to steal a strange worn thing.");
 		}
 	}
 	else if(otmp == uwep)
 		setuwep((struct obj *) 0);
 	if(otmp->olet == CHAIN_SYM) {
-		pline("How come you are carrying that chain?");
-		impossible();
+		impossible("How come you are carrying that chain?");
 	}
 	if(Punished && otmp == uball){
 		Punished = 0;
@@ -150,6 +156,24 @@ register struct obj *otmp;
 	mtmp->minvent = otmp;
 }
 
+stealamulet(mtmp)
+register struct monst *mtmp;
+{
+	register struct obj *otmp;
+
+	for(otmp = invent; otmp; otmp = otmp->nobj) {
+	    if(otmp->olet == AMULET_SYM) {
+		/* might be an imitation one */
+		if(otmp == uwep) setuwep((struct obj *) 0);
+		freeinv(otmp);
+		mpickobj(mtmp,otmp);
+		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
+		return(1);
+	    }
+	}
+	return(0);
+}
+
 /* release the objects the killed animal has stolen */
 relobj(mtmp,show)
 register struct monst *mtmp;
@@ -169,10 +193,10 @@ register show;
 	}
 	mtmp->minvent = (struct obj *) 0;
 	if(mtmp->mgold || mtmp->data->mlet == 'L') {
-		register int tmp;
+		register long tmp;
 
 		tmp = (mtmp->mgold > 10000) ? 10000 : mtmp->mgold;
-		mkgold( tmp + d(dlevel,30), mtmp->mx, mtmp->my);
+		mkgold((long)(tmp + d(dlevel,30)), mtmp->mx, mtmp->my);
 		if(show & cansee(mtmp->mx,mtmp->my))
 			atl(mtmp->mx,mtmp->my,'$');
 	}

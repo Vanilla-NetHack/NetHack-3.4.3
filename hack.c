@@ -1,17 +1,14 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.c version 1.0.1 - many small and unimportant changes */
+/* hack.c - version 1.0.2 */
 
 #include "hack.h"
 #include <stdio.h>
-
 
 extern char news0();
 extern char *nomovemsg;
 extern char *exclam();
 extern struct obj *addinv();
 extern boolean hmon();
-
-
 
 /* called on movement:
 	1. when throwing ball+chain far away
@@ -35,6 +32,7 @@ unsee() {
 #endif QUEST
 	for(x = u.ux-1; x < u.ux+2; x++)
 	  for(y = u.uy-1; y < u.uy+2; y++) {
+		if(!isok(x, y)) continue;
 		lev = &levl[x][y];
 		if(!lev->lit && lev->scrsym == '.') {
 			lev->scrsym =' ';
@@ -69,6 +67,7 @@ seeoff(mode)	/* 1 to redo @, 0 to leave them */
 	if(!mode) {
 		for(x = u.ux-1; x < u.ux+2; x++)
 			for(y = u.uy-1; y < u.uy+2; y++) {
+				if(!isok(x, y)) continue;
 				lev = &levl[x][y];
 				if(!lev->lit && lev->scrsym == '.')
 					lev->seen = 0;
@@ -76,87 +75,12 @@ seeoff(mode)	/* 1 to redo @, 0 to leave them */
 	}
 }
 
-/* 'rogue'-like direction commands */
-char sdir[] = "hykulnjb";
-schar xdir[8] = { -1,-1,0,1,1,1,0,-1 };
-schar ydir[8] = { 0,-1,-1,-1,0,1,1,1 };
-
-movecm(cmd)
-register char *cmd;
-{
-register char *dp;
-		if(!(dp = index(sdir, *cmd))) return(0);
-		u.dx = xdir[dp-sdir];
-		u.dy = ydir[dp-sdir];
-		return(1);
-}
-
-getdir()
-{
-	char buf[2];
-	register x;
-
-	pline("What direction?");
-	buf[0] = readchar();
-	buf[1] = 0;
-	x = movecm(buf);
-	if(x && Confusion) confdir();
-	return(x);
-}
-
-confdir()
-{
-	register x = rn2(8);
-	u.dx = xdir[x];
-	u.dy = ydir[x];
-}
-
-#ifdef QUEST
-finddir(){
-register int i, ui = u.di;
-	for(i = 0; i <= 8; i++){
-		if(flags.run & 1) ui++; else ui += 7;
-		ui %= 8;
-		if(i == 8){
-			pline("Not near a wall.");
-			flags.move = multi = 0;
-			return(0);
-		}
-		if(!isroom(u.ux+xdir[ui], u.uy+ydir[ui]))
-			break;
-	}
-	for(i = 0; i <= 8; i++){
-		if(flags.run & 1) ui += 7; else ui++;
-		ui %= 8;
-		if(i == 8){
-			pline("Not near a room.");
-			flags.move = multi = 0;
-			return(0);
-		}
-		if(isroom(u.ux+xdir[ui], u.uy+ydir[ui]))
-			break;
-	}
-	u.di = ui;
-	u.dx = xdir[ui];
-	u.dy = ydir[ui];
-}
-
-isroom(x,y)  register x,y; {
-	return(isok(x,y) && (levl[x][y].typ == ROOM ||
-				(levl[x][y].typ >= LDOOR && flags.run >= 6)));
-}
-#endif QUEST
-
-isok(x,y) register x,y; {
-	return(x >= 0 && x <= COLNO-1 && y >= 0 && y <= ROWNO-1);
-}
-
 domove()
 {
 	xchar oldx,oldy;
 	register struct monst *mtmp;
 	register struct rm *tmpr,*ust;
-	struct gen *trap;
+	struct trap *trap;
 	register struct obj *otmp;
 
 	if(!u.uswallow)
@@ -175,7 +99,7 @@ domove()
 			do {
 				confdir();
 			} while(!isok(u.ux+u.dx, u.uy+u.dy) ||
-	levl[u.ux+u.dx][u.uy+u.dy].typ < DOOR);
+    IS_ROCK(levl[u.ux+u.dx][u.uy+u.dy].typ));
 		}
 		if(!isok(u.ux+u.dx, u.uy+u.dy)){
 			nomul(0);
@@ -186,10 +110,8 @@ domove()
 	ust = &levl[u.ux][u.uy];
 	oldx = u.ux;
 	oldy = u.uy;
-	if(!u.uswallow)
-	    if(trap = g_at(u.ux+u.dx,u.uy+u.dy,ftrap)) {
-		if(trap->gflag & SEEN) nomul(0);
-	}
+	if(!u.uswallow && (trap = t_at(u.ux+u.dx, u.uy+u.dy)) && trap->tseen)
+		nomul(0);
 	if(u.ustuck && !u.uswallow && (u.ux+u.dx != u.ustuck->mx ||
 		u.uy+u.dy != u.ustuck->my)) {
 		if(dist(u.ustuck->mx, u.ustuck->my) > 2){
@@ -197,7 +119,7 @@ domove()
 			u.ustuck = 0;
 		} else {
 			if(Blind) pline("You cannot escape from it!");
-			else pline("You cannot escape from %s!.",
+			else pline("You cannot escape from %s!",
 				monnam(u.ustuck));
 			nomul(0);
 			return;
@@ -205,104 +127,15 @@ domove()
 	}
 	if(u.uswallow || (mtmp = m_at(u.ux+u.dx,u.uy+u.dy))) {
 	/* attack monster */
-		schar tmp;
-		boolean malive = TRUE;
-		register struct permonst *mdat;
 
 		nomul(0);
 		gethungry();
 		if(multi < 0) return;	/* we just fainted */
-		if(u.uswallow) mtmp = u.ustuck;
-		mdat = mtmp->data;
-		if(mdat->mlet == 'L' && !mtmp->mfroz && !mtmp->msleep &&
-		   !mtmp->mconf && mtmp->mcansee && !rn2(7) &&
-		   (m_move(mtmp, 0) == 2 /* he died */ || /* he moved: */
-			mtmp->mx != u.ux+u.dx || mtmp->my != u.uy+u.dy))
-			goto nomon;
-		if(mtmp->mimic){
-			if(!u.ustuck && !mtmp->mflee) u.ustuck = mtmp;
-			switch(levl[u.ux+u.dx][u.uy+u.dy].scrsym){
-			case '+':
-				pline("The door actually was a Mimic.");
-				break;
-			case '$':
-				pline("The chest was a Mimic!");
-				break;
-			default:
-				pline("Wait! That's a Mimic!");
-			}
-			wakeup(mtmp);	/* clears mtmp->mimic */
-			return;
-		}
-		wakeup(mtmp);	/* clears mtmp->mimic */
-		if(mtmp->mhide && mtmp->mundetected){
-			register struct obj *obj;
-			mtmp->mundetected = 0;
-			if((obj = o_at(mtmp->mx,mtmp->my)) && !Blind)
-				pline("Wait! There's a %s hiding under %s!",
-					mdat->mname, doname(obj));
-			return;
-		}
-		tmp = u.uluck + u.ulevel + mdat->ac + abon();
-		if(uwep) {
-			if(uwep->olet == WEAPON_SYM)
-				tmp += uwep->spe;
-			if(uwep->otyp == TWO_HANDED_SWORD) tmp -= 1;
-			else if(uwep->otyp == DAGGER) tmp += 2;
-			else if(uwep->otyp == CRYSKNIFE) tmp += 3;
-			else if(uwep->otyp == SPEAR &&
-				index("XDne", mdat->mlet)) tmp += 2;
-		}
-		if(mtmp->msleep) {
-			mtmp->msleep = 0;
-			tmp += 2;
-		}
-		if(mtmp->mfroz) {
-			tmp += 4;
-			if(!rn2(10)) mtmp->mfroz = 0;
-		}
-		if(mtmp->mflee) tmp += 2;
-		if(u.utrap) tmp -= 3;
-		if(tmp <= rnd(20) && !u.uswallow){
-			if(Blind) pline("You miss it.");
-			else pline("You miss %s.",monnam(mtmp));
-		} else {
-			/* we hit the monster; be careful: it might die! */
 
-			if((malive = hmon(mtmp,uwep,0)) == TRUE) {
-				/* monster still alive */
-				if(!rn2(25) && mtmp->mhp < mtmp->orig_hp/2) {
-					mtmp->mflee = 1;
-					if(u.ustuck == mtmp && !u.uswallow)
-						u.ustuck = 0;
-				}
-#ifndef NOWORM
-				if(mtmp->wormno)
-					cutworm(mtmp, u.ux+u.dx, u.uy+u.dy,
-						uwep ? uwep->otyp : 0);
-#endif NOWORM
-			}
-			if(mdat->mlet == 'a') {
-				if(rn2(2)) {
-				pline("You are splashed by the blob's acid!");
-					losehp_m(rnd(6), mtmp);
-				}
-				if(!rn2(6)) corrode_weapon();
-				else if(!rn2(60)) corrode_armor();
-			}
-		}
-		if(malive && !Blind && mdat->mlet == 'E' && rn2(3)) {
-		    if(mtmp->mcansee) {
-		      pline("You are frozen by the floating eye's gaze!");
-		      nomul((u.ulevel > 6 || rn2(4)) ? rn1(20,-21) : -200);
-		    } else {
-		      pline("The blinded floating eye cannot defend itself.");
-		      if(!rn2(500)) u.uluck--;
-		    }
-		}
- return;
+		/* try to attack; note that it might evade */
+		if(attack(u.uswallow ? u.ustuck : mtmp))
+			return;
 	}
-nomon:
 	/* not attacking an animal, so we try to move */
 	if(u.utrap) {
 		if(u.utraptype == TT_PIT) {
@@ -315,7 +148,7 @@ nomon:
  return;
 	}
 	tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
-	if((tmpr->typ < DOOR) ||
+	if(IS_ROCK(tmpr->typ) ||
 	   (u.dx && u.dy && (tmpr->typ == DOOR || ust->typ == DOOR))){
 		flags.move = 0;
 		nomul(0);
@@ -323,22 +156,21 @@ nomon:
 	}
 	while(otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy)) {
 		register xchar rx = u.ux+2*u.dx, ry = u.uy+2*u.dy;
-		register struct gen *gtmp;
+		register struct trap *ttmp;
 		nomul(0);
-		if(isok(rx,ry) && (levl[rx][ry].typ > DOOR ||
-		    (levl[rx][ry].typ == DOOR && (!u.dx || !u.dy))) &&
+		if(isok(rx,ry) && !IS_ROCK(levl[rx][ry].typ) &&
+		    (levl[rx][ry].typ != DOOR || !(u.dx && u.dy)) &&
 		    !sobj_at(ENORMOUS_ROCK, rx, ry)) {
 			if(m_at(rx,ry)) {
 			    pline("You hear a monster behind the rock.");
 			    pline("Perhaps that's why you cannot move it.");
-			    return;
+			    goto cannot_push;
 			}
-			if(gtmp = g_at(rx,ry,ftrap))
-#include	"def.trap.h"
-			    switch(gtmp->gflag & TRAPTYPE) {
+			if(ttmp = t_at(rx,ry))
+			    switch(ttmp->ttyp) {
 			    case PIT:
 				pline("You push the rock into a pit!");
-				deltrap(gtmp);
+				deltrap(ttmp);
 				delobj(otmp);
 				pline("It completely fills the pit!");
 				continue;
@@ -347,6 +179,15 @@ nomon:
 				delobj(otmp);
 				continue;
 			    }
+			if(levl[rx][ry].typ == POOL) {
+				levl[rx][ry].typ = ROOM;
+				mnewsym(rx,ry);
+				prl(rx,ry);
+				pline("You push the rock into the water.");
+				pline("Now you can cross the water!");
+				delobj(otmp);
+				continue;
+			}
 			otmp->ox = rx;
 			otmp->oy = ry;
 			/* pobj(otmp); */
@@ -362,11 +203,18 @@ nomon:
 			}
 		} else {
 		    pline("You try to move the enormous rock, but in vain.");
-		    return;
+	    cannot_push:
+		    if((!invent || inv_weight()+90 <= 0) &&
+			(!u.dx || !u.dy || (IS_ROCK(levl[u.ux][u.uy+u.dy].typ)
+					&& IS_ROCK(levl[u.ux+u.dx][u.uy].typ)))){
+			pline("However, you can squeeze yourself into a small opening.");
+			break;
+		    } else
+			return;
 		}
 	    }
-	if(u.dx && u.dy && levl[u.ux][u.uy+u.dy].typ < DOOR &&
-		levl[u.ux+u.dx][u.uy].typ < DOOR &&
+	if(u.dx && u.dy && IS_ROCK(levl[u.ux][u.uy+u.dy].typ) &&
+		IS_ROCK(levl[u.ux+u.dx][u.uy].typ) &&
 		invent && inv_weight()+40 > 0) {
 		pline("You are carrying too much to get through.");
 		nomul(0);
@@ -408,6 +256,14 @@ nomon:
 		(xdnstair == u.ux && ydnstair == u.uy))
 			nomul(0);
 	}
+
+	if(tmpr->typ == POOL && !Levitation) {
+		pline("You fall into a pool!");
+		pline("You can't swim!");
+		pline("You drown ...");
+		killer = "pool of water";
+		done("drowned");
+	}
 /*
 	if(u.udispl) {
 		u.udispl = 0;
@@ -420,8 +276,10 @@ nomon:
 #else
 		if(ust->lit) {
 			if(tmpr->lit) {
-				if(tmpr->typ == DOOR) prl1(u.ux+u.dx,u.uy+u.dy);
-				else if(ust->typ == DOOR) nose1(oldx-u.dx,oldy-u.dy);
+				if(tmpr->typ == DOOR)
+					prl1(u.ux+u.dx,u.uy+u.dy);
+				else if(ust->typ == DOOR)
+					nose1(oldx-u.dx,oldy-u.dy);
 			} else {
 				unsee();
 				prl1(u.ux+u.dx,u.uy+u.dy);
@@ -446,7 +304,7 @@ nomon:
 	} else {
  pru();
 	}
-	if(!flags.nopick) pickup();
+	if(!flags.nopick) pickup(1);
 	if(trap) dotrap(trap);		/* fall into pit, arrow trap, etc. */
 	(void) inshop();
 	if(!Blind) read_engr_at(u.ux,u.uy);
@@ -466,7 +324,7 @@ register int ox, oy;
 }
 
 dopickup(){
-	if(!g_at(u.ux,u.uy,fgold) && !o_at(u.ux,u.uy)) {
+	if(!g_at(u.ux,u.uy) && !o_at(u.ux,u.uy)) {
 		pline("There is nothing here to pick up.");
 		return(0);
 	}
@@ -474,29 +332,54 @@ dopickup(){
 		pline("You cannot reach the floor.");
 		return(1);
 	}
-	pickup();
+	pickup(0);
 	return(1);
 }
 
-pickup(){
-register struct gen *gold;
-register struct obj *obj, *obj2;
-register int wt;
+pickup(all)
+{
+	register struct gold *gold;
+	register struct obj *obj, *obj2;
+	register int wt;
+
 	if(Levitation) return;
-	while(gold = g_at(u.ux,u.uy,fgold)) {
-		pline("%u gold piece%s.", gold->gflag, plur(gold->gflag));
-		u.ugold += gold->gflag;
+	while(gold = g_at(u.ux,u.uy)) {
+		pline("%ld gold piece%s.", gold->amount, plur(gold->amount));
+		u.ugold += gold->amount;
 		flags.botl = 1;
 		freegold(gold);
 		if(flags.run) nomul(0);
 		if(Invis) newsym(u.ux,u.uy);
 	}
+
+	/* check for more than one object */
+	if(!all) {
+		register int ct = 0;
+
+		for(obj = fobj; obj; obj = obj->nobj)
+			if(obj->ox == u.ux && obj->oy == u.uy) ct++;
+		if(ct < 2)
+			all++;
+		else
+			pline("There are several objects here.");
+	}
+
 	for(obj = fobj; obj; obj = obj2) {
 	    obj2 = obj->nobj;	/* perhaps obj will be picked up */
 	    if(obj->ox == u.ux && obj->oy == u.uy) {
 		if(flags.run) nomul(0);
 
-#define	DEAD_c	CORPSE+('c'-'a'+'Z'-'@'+1)
+		if(!all) {
+			char c;
+
+			pline("Pick up %s ? [ynaq]", doname(obj));
+			while(!index("ynaq ", (c = readchar())))
+				bell();
+			if(c == 'q') return;
+			if(c == 'n') continue;
+			if(c == 'a') all = 1;
+		}
+
 		if(obj->otyp == DEAD_COCKATRICE && !uarmg){
 		    pline("Touching the dead cockatrice is a fatal mistake.");
 		    pline("You turn to stone.");
@@ -592,7 +475,7 @@ register struct monst *mtmp;
 	x0 = y0 = 0;
 #endif lint
 	if(Blind || flags.run == 0) return;
-	if(flags.run == 1 && levl[u.ux][u.uy].typ >= ROOM) return;
+	if(flags.run == 1 && levl[u.ux][u.uy].typ == ROOM) return;
 #ifdef QUEST
 	if(u.ux0 == u.ux+u.dx && u.uy0 == u.uy+u.dy) goto stop;
 #endif QUEST
@@ -676,6 +559,22 @@ register struct monst *mtmp;
 	}
 }
 
+/* something like lookaround, but we are not running */
+/* react only to monsters that might hit us */
+monster_nearby() {
+register int x,y;
+register struct monst *mtmp;
+	if(!Blind)
+	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++){
+		if(x == u.ux && y == u.uy) continue;
+		if((mtmp = m_at(x,y)) && !mtmp->mimic && !mtmp->mtame &&
+			!mtmp->mpeaceful && !index("Ea", mtmp->data->mlet) &&
+			(!mtmp->minvis || See_invisible))
+			return(1);
+	}
+ return(0);
+}
+
 #ifdef QUEST
 cansee(x,y) xchar x,y; {
 register int dx,dy,adx,ady,sdx,sdy,dmax,d;
@@ -712,7 +611,7 @@ register int dx,dy,adx,ady,sdx,sdy,dmax,d;
 }
 
 rroom(x,y) register int x,y; {
-	return(levl[u.ux+x][u.uy+y].typ >= ROOM);
+	return(IS_ROOM(levl[u.ux+x][u.uy+y].typ));
 }
 
 #else
@@ -727,7 +626,7 @@ cansee(x,y) xchar x,y; {
 #endif QUEST
 
 sgn(a) register int a; {
-	return((a> 0) ? 1 : (a == 0) ? 0 : -1);
+	return((a > 0) ? 1 : (a == 0) ? 0 : -1);
 }
 
 pow(num) /* returns 2 to the num */
@@ -812,13 +711,13 @@ dbon()
 	else if(u.ustr < 16) return(0);
 	else if(u.ustr < 18) return(1);
 	else if(u.ustr == 18) return(2);	/* up to 18 */
-	else if(u.ustr < 94) return(3);	/* up to 18/75 */
+	else if(u.ustr < 94) return(3);		/* up to 18/75 */
 	else if(u.ustr < 109) return(4);	/* up to 18/90 */
 	else if(u.ustr < 118) return(5);	/* up to 18/99 */
 	else return(6);
 }
 
-losestr(num)
+losestr(num)	/* may kill you; cause may be poison or monster like 'A' */
 register num;
 {
 	u.ustr -= num;
@@ -827,7 +726,7 @@ register num;
 		u.uhp -= 6;
 		u.uhpmax -= 6;
 	}
- flags.botl = 1;
+	flags.botl = 1;
 }
 
 losehp(n,knam)
@@ -838,8 +737,10 @@ register char *knam;
 	if(u.uhp > u.uhpmax)
 		u.uhpmax = u.uhp;	/* perhaps n was negative */
 	flags.botl = 1;
-	if(u.uhp < 1)
+	if(u.uhp < 1) {
 		killer = knam;	/* the thing that killed you */
+		done("died");
+	}
 }
 
 losehp_m(n,mtmp)
@@ -848,15 +749,18 @@ register struct monst *mtmp;
 {
 	u.uhp -= n;
 	flags.botl = 1;
-	if(u.uhp < 1) done_in_by(mtmp);
+	if(u.uhp < 1)
+		done_in_by(mtmp);
 }
 
 losexp()	/* hit by V or W */
 {
 	register num;
 
-	if(u.ulevel > 1) pline("Goodbye level %d.",u.ulevel--);
-	else u.uhp = -1;
+	if(u.ulevel > 1)
+		pline("Goodbye level %u.", u.ulevel--);
+	else
+		u.uhp = -1;
 	num = rnd(10);
 	u.uhp -= num;
 	u.uhpmax -= num;
@@ -866,7 +770,7 @@ losexp()	/* hit by V or W */
 
 inv_weight(){
 register struct obj *otmp = invent;
-register int wt = 0;
+register int wt = (u.ugold + 500)/1000;
 register int carrcap = 5*(((u.ustr > 18) ? 20 : u.ustr) + u.ulevel);
 	if(carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
 	if(Wounded_legs & LEFT_SIDE) carrcap -= 10;
@@ -875,7 +779,7 @@ register int carrcap = 5*(((u.ustr > 18) ? 20 : u.ustr) + u.ulevel);
 		wt += otmp->owt;
 		otmp = otmp->nobj;
 	}
- return(wt - carrcap);
+	return(wt - carrcap);
 }
 
 inv_cnt(){
@@ -885,5 +789,5 @@ register int ct = 0;
 		ct++;
 		otmp = otmp->nobj;
 	}
- return(ct);
+	return(ct);
 }

@@ -1,15 +1,26 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.u_init.c - version 1.0.2 */
 
 #include "hack.h"
 #include <stdio.h>
 #include <signal.h>
+#define Strcpy	(void) strcpy
 #define	Strcat	(void) strcat
 #define	UNDEF_TYP	0
-#define	UNDEF_SPE	(-1)
+#define	UNDEF_SPE	'\177'
 extern struct obj *addinv();
+extern char *eos();
 extern char plname[];
 
+struct you zerou;
 char pl_character[PL_CSIZ];
+char *(roles[]) = {	/* must all have distinct first letter */
+			/* roles[4] may be changed to -man */
+	"Tourist", "Speleologist", "Fighter", "Knight",
+	"Cave-man", "Wizard"
+};
+#define	NR_OF_ROLES	SIZE(roles)
+char rolesyms[NR_OF_ROLES + 1];		/* filled by u_init() */
 
 struct trobj {
 	uchar trotyp;
@@ -30,32 +41,38 @@ struct trobj Cave_man[] = {
 	{ MACE, 1, WEAPON_SYM, 1, 1 },
 	{ BOW, 1, WEAPON_SYM, 1, 1 },
 	{ ARROW, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
-	{ LEATHER_ARMOR, 2, ARMOR_SYM, 1, 1 },
+	{ LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0}
 };
 
 struct trobj Fighter[] = {
 	{ TWO_HANDED_SWORD, 0, WEAPON_SYM, 1, 1 },
-	{ RING_MAIL, 3, ARMOR_SYM, 1, 1 },
+	{ RING_MAIL, 0, ARMOR_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0 }
 };
 
 struct trobj Knight[] = {
 	{ LONG_SWORD, 0, WEAPON_SYM, 1, 1 },
 	{ SPEAR, 2, WEAPON_SYM, 1, 1 },
-	{ RING_MAIL, 4, ARMOR_SYM, 1, 1 },
-	{ HELMET, 1, ARMOR_SYM, 1, 1 },
-	{ SHIELD, 1, ARMOR_SYM, 1, 1 },
-	{ PAIR_OF_GLOVES, 1, ARMOR_SYM, 1, 1 },
+	{ RING_MAIL, 1, ARMOR_SYM, 1, 1 },
+	{ HELMET, 0, ARMOR_SYM, 1, 1 },
+	{ SHIELD, 0, ARMOR_SYM, 1, 1 },
+	{ PAIR_OF_GLOVES, 0, ARMOR_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0 }
 };
 
 struct trobj Speleologist[] = {
-	{ STUDDED_LEATHER_ARMOR, 3, ARMOR_SYM, 1, 1 },
+	{ STUDDED_LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
 	{ UNDEF_TYP, 0, POTION_SYM, 2, 0 },
 	{ FOOD_RATION, 0, FOOD_SYM, 3, 1 },
+	{ PICK_AXE, UNDEF_SPE, TOOL_SYM, 1, 0 },
 	{ ICE_BOX, 0, TOOL_SYM, 1, 0 },
 	{ 0, 0, 0, 0, 0}
+};
+
+struct trobj Tinopener[] = {
+	{ CAN_OPENER, 0, TOOL_SYM, 1, 1 },
+	{ 0, 0, 0, 0, 0 }
 };
 
 struct trobj Tourist[] = {
@@ -67,7 +84,7 @@ struct trobj Tourist[] = {
 };
 
 struct trobj Wizard[] = {
-	{ ELVEN_CLOAK, 1, ARMOR_SYM, 1, 1 },
+	{ ELVEN_CLOAK, 0, ARMOR_SYM, 1, 1 },
 	{ UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 0 },
 	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0 },
 	{ UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 0 },
@@ -75,123 +92,161 @@ struct trobj Wizard[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 
-#ifdef NEWS
-int u_in_infl;
-
-u_in_intrup(){
-	u_in_infl++;
-	(void) signal(SIGINT, u_in_intrup);
-}
-#endif NEWS
-
 u_init(){
-register int c,pc,i;
-#ifdef NEWS
-	/* It is not unlikely that we get an interrupt here
-	   intended to kill the news; unfortunately this would
-	   also kill (part of) the following question */
-int (*prevsig)() = signal(SIGINT, u_in_intrup);
-#endif NEWS
-register char *cp;
-char buf[256];
-	if(pc = pl_character[0]) goto got_suffix;
-	buf[0] = 0;
-	Strcat(buf, "\nTell me what kind of character you are:\n");
-	Strcat(buf, "Are you a Tourist, a Speleologist, a Fighter,\n");
-	Strcat(buf, "\ta Knight, a Cave-man or a Wizard? [TSFKCW] ");
-intrup:
-	for(cp = buf; *cp; cp++){
-#ifdef NEWS
-		if(u_in_infl){
-			u_in_infl = 0;
-			goto intrup;
+register int i;
+char exper = 'y', pc;
+extern char readchar();
+	if(flags.female)	/* should have been set in HACKOPTIONS */
+		roles[4] = "Cave-woman";
+	for(i = 0; i < NR_OF_ROLES; i++)
+		rolesyms[i] = roles[i][0];
+	rolesyms[i] = 0;
+
+	if(pc = pl_character[0]) {
+		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
+		if((i = role_index(pc)) >= 0)
+			goto got_suffix;	/* implies experienced */
+		printf("\nUnknown role: %c\n", pc);
+		pl_character[0] = pc = 0;
+	}
+
+	printf("\nAre you an experienced player? [ny] ");
+
+	while(!index("ynYN \n\004", (exper = readchar())))
+		bell();
+	if(exper == '\004')		/* Give him an opportunity to get out */
+		end_of_input();
+	printf("%c\n", exper);		/* echo */
+	if(index("Nn \n", exper)) {
+		exper = 0;
+		goto beginner;
+	}
+
+	printf("\nTell me what kind of character you are:\n");
+	printf("Are you");
+	for(i = 0; i < NR_OF_ROLES; i++) {
+		printf(" a %s", roles[i]);
+		if(i == 2)			/* %% */
+			printf(",\n\t");
+		else if(i < NR_OF_ROLES - 2)
+			printf(",");
+		else if(i == NR_OF_ROLES - 2)
+			printf(" or");
+	}
+	printf("? [%s] ", rolesyms);
+
+	while(pc = readchar()) {
+		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
+		if((i = role_index(pc)) >= 0) {
+			printf("%c\n", pc);	/* echo */
+			(void) fflush(stdout);	/* should be seen */
+			break;
 		}
-#endif NEWS
-		(void) putchar(*cp);
+		if(pc == '\n')
+			break;
+		if(pc == '\004')    /* Give him the opportunity to get out */
+			end_of_input();
+		bell();
 	}
-loop:
-	(void) fflush(stdout);
-	pc = 0;
-	while((c = getchar()) != '\n') {
-		if(c == EOF) {
-#ifdef NEWS
-			if(u_in_infl) goto intrup;	/* %% */
-#endif NEWS
-			settty("\nEnd of input?\n");
-			exit(0);
-		}
- if(!pc) pc = c;
+	if(pc == '\n')
+		pc = 0;
+
+beginner:
+	if(!pc) {
+		printf("\nI'll choose a character for you.\n");
+		i = rn2(NR_OF_ROLES);
+		pc = rolesyms[i];
+		printf("This game you will be a%s %s.\n",
+			exper ? "n experienced" : "",
+			roles[i]);
+		getret();
+		/* give him some feedback in case mklev takes much time */
+		(void) putchar('\n');
+		(void) fflush(stdout);
 	}
-	if(!pc || !index("TSFKCWtsfkcw", pc)){
-		printf("Answer with T,S,F,K,C or W. What are you? ");
-		goto loop;
+	if(exper) {
+		roles[i][0] = pc;
 	}
+
 got_suffix:
-	if('a' <= pc && pc <= 'z') pc += 'A'-'a';
 
-#ifdef NEWS
-	(void) signal(SIGINT,prevsig);
-#endif NEWS
-
+	(void) strncpy(pl_character, roles[i], PL_CSIZ-1);
+	pl_character[PL_CSIZ-1] = 0;
+	flags.beginner = 1;
+	u = zerou;
 	u.usym = '@';
 	u.ulevel = 1;
 	init_uhunger();
-	u.uhpmax = u.uhp = 12;
-	u.ustrmax = u.ustr = !rn2(20) ? 14 + rn2(7) : 16;
 #ifdef QUEST
 	u.uhorizon = 6;
 #endif QUEST
+	uarm = uarm2 = uarmh = uarms = uarmg = uwep = uball = uchain =
+	uleft = uright = 0;
+
 	switch(pc) {
+	case 'c':
 	case 'C':
-		setpl_char("Cave-man");
 		Cave_man[2].trquan = 12 + rnd(9)*rnd(9);
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 18;
 		ini_inv(Cave_man);
 		break;
+	case 't':
 	case 'T':
-		setpl_char("Tourist");
 		Tourist[3].trquan = 20 + rnd(20);
 		u.ugold = u.ugold0 = rnd(1000);
 		u.uhp = u.uhpmax = 10;
 		u.ustr = u.ustrmax = 8;
 		ini_inv(Tourist);
+		if(!rn2(25)) ini_inv(Tinopener);
 		break;
+	case 'w':
 	case 'W':
-		setpl_char("Wizard");
 		for(i=1; i<=4; i++) if(!rn2(5))
 			Wizard[i].trquan += rn2(3) - 1;
 		u.uhp = u.uhpmax = 15;
 		u.ustr = u.ustrmax = 16;
 		ini_inv(Wizard);
 		break;
+	case 's':
 	case 'S':
-		setpl_char("Speleologist");
 		Fast = INTRINSIC;
 		Stealth = INTRINSIC;
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 10;
 		ini_inv(Speleologist);
+		if(!rn2(10)) ini_inv(Tinopener);
 		break;
+	case 'k':
 	case 'K':
-		setpl_char("Knight");
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 10;
 		ini_inv(Knight);
 		break;
+	case 'f':
 	case 'F':
-		setpl_char("Fighter");
 		u.uhp = u.uhpmax = 14;
 		u.ustr = u.ustrmax = 17;
 		ini_inv(Fighter);
+		break;
+	default:	/* impossible */
+		u.uhp = u.uhpmax = 12;
+		u.ustr = u.ustrmax = 16;
 	}
 	find_ac();
-	/* make sure he can carry all he has - especially for T's */
-	while(inv_weight() > 0 && u.ustr < 118)
-		u.ustr++, u.ustrmax++;
+	if(!rn2(20)) {
+		register int d = rn2(7) - 2;	/* biased variation */
+		u.ustr += d;
+		u.ustrmax += d;
+	}
+
 #ifdef WIZARD
 	if(wizard) wiz_inv();
 #endif WIZARD
+
+	/* make sure he can carry all he has - especially for T's */
+	while(inv_weight() > 0 && u.ustr < 118)
+		u.ustr++, u.ustrmax++;
 }
 
 ini_inv(trop) register struct trobj *trop; {
@@ -200,6 +255,7 @@ extern struct obj *mkobj();
 	while(trop->trolet) {
 		obj = mkobj(trop->trolet);
 		obj->known = trop->trknown;
+		/* not obj->dknown = 1; - let him look at it at least once */
 		obj->cursed = 0;
 		if(obj->olet == WEAPON_SYM){
 			obj->quan = trop->trquan;
@@ -209,6 +265,9 @@ extern struct obj *mkobj();
 			obj->spe = trop->trspe;
 		if(trop->trotyp != UNDEF_TYP)
 			obj->otyp = trop->trotyp;
+		else
+			if(obj->otyp == WAN_WISHING)	/* gitpyr!robert */
+				obj->otyp = WAN_DEATH;
 		obj->owt = weight(obj);	/* defined after setting otyp+quan */
 		obj = addinv(obj);
 		if(obj->olet == ARMOR_SYM){
@@ -265,22 +324,26 @@ register int type;
 }
 #endif WIZARD
 
-setpl_char(plc) char *plc; {
-	(void) strncpy(pl_character, plc, PL_CSIZ-1);
-	pl_character[PL_CSIZ-1] = 0;
-}
-
 plnamesuffix() {
 register char *p;
 	if(p = rindex(plname, '-')) {
 		*p = 0;
+		pl_character[0] = p[1];
+		pl_character[1] = 0;
 		if(!plname[0]) {
 			askname();
 			plnamesuffix();
 		}
-		if(index("TSFKCWtsfkcw", p[1])) {
-			pl_character[0] = p[1];
-			pl_character[1] = 0;
-		}
 	}
+}
+
+role_index(pc)
+char pc;
+{		/* must be called only from u_init() */
+		/* so that rolesyms[] is defined */
+	register char *cp;
+
+	if(cp = index(rolesyms, pc))
+		return(cp - rolesyms);
+	return(-1);
 }
