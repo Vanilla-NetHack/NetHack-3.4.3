@@ -126,7 +126,7 @@
           as well as tracking and stealthy movement.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -192,7 +192,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -258,7 +258,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -324,7 +324,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -390,7 +390,7 @@
                played.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -456,7 +456,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -522,7 +522,7 @@
           ed.  Typing a `*' lists your entire inventory, so you can see the
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -588,7 +588,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -654,7 +654,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -720,7 +720,7 @@
                ing the menu entry for the given option (ie, by  typing  its
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -745,7 +745,7 @@
                messages.  The behavior can be varied via the msg_window op-
                tion.
 
-          q    Quaff (drink) a potion.
+          q    Quaff (drink) something (potion, water, etc).
 
           Q    Select an object for your quiver.  You can then  throw  this
                using  the  `f' command.  (In versions prior to 3.3 this was
@@ -786,7 +786,7 @@
                these slots is empty, the exchange still takes place.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -852,7 +852,7 @@
           (R)UNIX is a registered trademark of AT&T.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -918,7 +918,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -984,7 +984,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1050,7 +1050,7 @@
           which may be open, closed, or locked.  To open a closed door, use
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1116,7 +1116,7 @@
           been  visited,  it  will be created (from scratch for most random
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1182,7 +1182,7 @@
           monster  has  moved  and you don't wish to fight, you can use the
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1248,7 +1248,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1314,7 +1314,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1380,7 +1380,7 @@
           factors.  Among them are:  type  of  weapon,  quality  of  weapon
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1446,7 +1446,7 @@
           when the inventory slot used for `Q' runs out.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1512,7 +1512,7 @@
           level,  the  bonus  is  higher.  A successful hit has a chance to
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1578,7 +1578,7 @@
           rust.  Such damage can be repaired.   Some  types  of  armor  may
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1644,7 +1644,7 @@
           ables are ignored.  You can disable the mail  daemon  by  turning
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1710,7 +1710,7 @@
           manent  magic,  unlike  the  usually fleeting effects of potions,
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1776,7 +1776,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1842,7 +1842,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1908,7 +1908,7 @@
           foodless  conducts.   This includes tripe rations, the corpses or
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -1974,7 +1974,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2040,7 +2040,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2106,7 +2106,7 @@
                stead.  If no weapon is found or the option  is  false,  the
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2172,7 +2172,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2238,7 +2238,7 @@
                down, ladder up, ladder down, altar, grave, throne,  kitchen
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2304,7 +2304,7 @@
                ``fruit:mango'')  (default  ``slime  mold'').   Basically  a
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2370,7 +2370,7 @@
                An obsolete synonym for ``gender:male''.  Cannot be set with
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2436,7 +2436,7 @@
                Menu  character  accelerator to goto the previous menu page.
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2502,7 +2502,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2529,8 +2529,9 @@
                Send padding nulls to the terminal (default off).
 
           number_pad
-               Use  the  number keys to move instead of [yuhjklbn] (default
-               off).
+               Use the number keys to move instead of [yuhjklbn] (default 0
+               or off).  (number_pad:2 invokes the old DOS behaviour  where
+               `5' means `g', meta-`5' means `G',  and meta-`0' means `I'.)
 
           objects
                Set the characters used to display object  classes  (default
@@ -2567,8 +2568,7 @@
 
 
 
-
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2634,7 +2634,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2700,7 +2700,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2766,7 +2766,7 @@
                Where  to  align  or  place the message window (top, bottom,
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2832,7 +2832,7 @@
 
 
 
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2842,11 +2842,15 @@
 
 
 
+          fullscreen
+               NetHack  should  try and display on the entire screen rather
+               than in a window.
+
           hilite_pet
-               Visually  distinguish  pets  from  similar  animals (default
-               off).  The behavior of this option depends on  the  type  of
-               windowing  you use.  In text windowing, text highlighting or
-               inverse video is often used; with tiles, generally  displays
+               Visually distinguish  pets  from  similar  animals  (default
+               off).   The  behavior  of this option depends on the type of
+               windowing you use.  In text windowing, text highlighting  or
+               inverse  video is often used; with tiles, generally displays
                a heart symbol near pets.
 
           large_font
@@ -2866,19 +2870,23 @@
                NetHack should pop up dialog boxes for input.
 
           preload_tiles
-               NetHack should preload tiles into memory.  For  example,  in
-               the  protected mode MSDOS version, control whether tiles get
-               pre-loaded into RAM at the start of the game.  Doing so  en-
+               NetHack  should  preload tiles into memory.  For example, in
+               the protected mode MSDOS version, control whether tiles  get
+               pre-loaded  into RAM at the start of the game.  Doing so en-
                hances performance of the tile graphics, but uses more memo-
                ry. (default on).  Cannot be set with the `O' command.
 
           scroll_amount
-               NetHack should scroll the display by this  number  of  cells
+               NetHack  should  scroll  the display by this number of cells
                when the hero reaches the scroll_margin.
 
           scroll_margin
                NetHack should scroll the display when the hero or cursor is
                this number of cells away from the edge of the window.
+
+          softkeyboard
+               Display  an onscreen keyboard.  Handhelds are most likely to
+               support this option.
 
           splash_screen
                NetHack should display an  opening  splash  screen  when  it
@@ -2887,18 +2895,10 @@
           tiled_map
                NetHack should display a tiled map if it can.
 
-          tile_file
-               Specify the name of an alternative tile file to override the
-               default.
-
-          tile_height
-               Specify the preferred height of each tile in a tile  capable
-               port.
 
 
 
-
-          NetHack 3.4                                     February 12, 2003
+          NetHack 3.4                                       August 14, 2003
 
 
 
@@ -2907,6 +2907,14 @@
           NetHack Guidebook                                              45
 
 
+
+          tile_file
+               Specify the name of an alternative tile file to override the
+               default.
+
+          tile_height
+               Specify the preferred height of each tile in a tile  capable
+               port.
 
           tile_width
                Specify  the  preferred width of each tile in a tile capable
@@ -2923,10 +2931,20 @@
                NetHack  should  display  windows  with  the specified fore-
                ground/background colors if it can.
 
+          wraptext
+               NetHack port should wrap long lines of text  if  they  don't
+               fit in the visible area of the window.
+
           9.6.  Platform-specific Customization options
 
-               Here are explanations of options that are used  by  specific
+               Here  are  explanations of options that are used by specific
           platforms or ports to customize and change the port behaviour.
+
+          altkeyhandler
+               Select an alternate keystroke handler dll to load (Win32 tty
+               NetHack only).  The name of the handler is specified without
+               the .dll extension and without any path information.  Cannot
+               be set with the `O' command.
 
           altmeta
                (default on, AMIGA NetHack only).
@@ -2943,6 +2961,19 @@
           MACgraphics
                (default on, Mac NetHack only).
 
+
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              46
+
+
+
           page_wait
                (default on, Mac NetHack only).
 
@@ -2957,22 +2988,20 @@
                (default on, PC NetHack only).  Cannot be set with  the  `O'
                command.
 
+          subkeyval
+               (Win32  tty NetHack only).  May be used to alter the value of
+               keystrokes that the operating system returns to  NetHack  to
+               help  compensate  for  international  keyboard  issues.  OP-
+               TIONS=subkeyvalue:171/92 will return 92 to NetHack,  if  171
+               was  originally  going to be returned.  You can use multiple
+               subkeyvalue statements in the config file if needed.  Cannot
+               be set with the `O' command.
+
           video
                Set  the video mode used (PC NetHack only).  Values are `au-
                todetect', `default', or `vga'.  Setting `vga' (or  `autode-
                tect' with vga hardware present) will cause the game to dis-
                play tiles.  Cannot be set with the `O' command.
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              46
-
-
 
           videocolors
                Set the color palette for PC systems using NO_TERMS (default
@@ -2998,6 +3027,18 @@
 
                The following config file entries are  relevant  to  mapping
           user sounds to messages:
+
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              47
+
+
 
           SOUNDDIR
                The directory that houses the sound files to be played.
@@ -3027,19 +3068,6 @@
                  *--- matches 0 or more characters.
                  ?--- matches any single character.
 
-
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              47
-
-
-
                Here's  an example of a sound mapping using NetHack's inter-
           nal pattern matching facility:
 
@@ -3066,6 +3094,18 @@
           ter since there are other humanoids represented by the same sign.
           Your  screen-reader  should  also have a function which gives you
           the row and column of your  review  cursor  and  the  PC  cursor.
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              48
+
+
+
           These  co-ordinates  are  often useful in giving players a better
           sense of the overall location of items on the screen.
 
@@ -3094,18 +3134,6 @@
           Character graphics
                Comment  out all character graphics sets found near the bot-
                tom  of  the  defaults.nh  file.   Most  of  these   replace
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              48
-
-
-
                NetHack's  default representation of the dungeon using stan-
                dard ASCII characters with fancier characters from  extended
                character  sets,  and  these  fancier  characters  can annoy
@@ -3131,6 +3159,18 @@
           hit  at  that  monster  and  possibly live, or quit and stop with
           whatever you have.  If you quit, you keep all your gold,  but  if
           you swing and live, you might find more.
+
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              49
+
+
 
                If  you  just want to see what the current top players/games
           list is, you can type nethack -s all on most versions.
@@ -3159,19 +3199,6 @@
           and  Kenneth  C.  R. C. Arnold.  Small portions were adapted from
           Further Exploration of the Dungeons of Doom, by Ken Arromdee.
 
-
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              49
-
-
-
                NetHack is the product of literally dozens of people's work.
           Main  events  in the course of the game development are described
           below:
@@ -3199,6 +3226,18 @@
 
                Later, Mike coordinated a major rewrite of the game, heading
           a team which included Ken Arromdee, Jean-Christophe Collet, Steve
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              50
+
+
+
           Creps, Eric Hendrickson, Izchak Miller, John Rupley, Mike Threep-
           oint, and Janet Walz, to produce NetHack 3.0c.
 
@@ -3226,18 +3265,6 @@
 
                Ken Lorber, Gregg Wonderly and Greg Olson,  with  help  from
           Richard  Addison,  Mike  Passaretti,  and Olaf Seibert, developed
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              50
-
-
-
           NetHack 3.1 for the Amiga.
 
                Norm Meluch and Kevin Smolkowski, with help from Carl  Sche-
@@ -3266,6 +3293,17 @@
           Smith,  Mike  Stephenson,  Janet  Walz, and Paul Winner, released
           version 3.2 in April of 1996.
 
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              51
+
+
+
                Version 3.2 marked the tenth anniversary of the formation of
           the  development team.  In a testament to their dedication to the
           game, all thirteen members of the original development  team  re-
@@ -3291,18 +3329,6 @@
           duce Slash'em, and with the help of Kevin Hugo, added  more  fea-
           tures.   Kevin later joined the DevTeam and incorporated the best
           of these ideas in NetHack 3.3.
-
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              51
-
-
 
                The final update to 3.2 was the bug fix release 3.2.3, which
           was  released  simultaneously with 3.3.0 in December 1999 just in
@@ -3331,8 +3357,20 @@
                The 3.4 development team initially consisted of Michael  Al-
           lison,  Ken Arromdee, David Cohrs, Jessie Collet, Kevin Hugo, Ken
           Lorber, Dean Luick, Pat Rankin, Mike Stephenson, Janet Walz,  and
-          Paul  Winner,  with   Warwick Allison joining just before the re-
-          lease of NetHack 3.4.0 in March 2002.
+          Paul  Winner,  with   Warwick  Allison  joining  just  before the
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              52
+
+
+
+          release of NetHack 3.4.0 in March 2002.
 
                As with version 3.3, various people contributed to the  game
           as a whole as well as supporting ports on the different platforms
@@ -3358,18 +3396,6 @@
           the  Amiga  port of 3.4 after Janne Salmijarvi resurrected it for
           3.3.1.
 
-
-
-          NetHack 3.4                                     February 12, 2003
-
-
-
-
-
-          NetHack Guidebook                                              52
-
-
-
                Christian ``Marvin'' Bressler maintained 3.4 for  the  Atari
           after he resurrected it for 3.3.1.
 
@@ -3385,48 +3411,88 @@
           Dungeoneers:
 
 
-                   Adam Aronow       Irina Rempt-Drijfhout       Mike Gallop
-                   Alex Kompel           Izchak Miller         Mike Passaretti
-                  Andreas Dorn           J. Ali Harlow         Mike Stephenson
-                   Andy Church             Janet Walz            Norm Meluch
-                  Andy Swanson          Janne Salmijarvi         Olaf Seibert
-                  Ari Huttunen       Jean-Christophe Collet     Pasi Kallinen
-                  Barton House           Jochen Erwied            Pat Rankin
-               Benson I. Margulies        John Kallen            Paul Winner
-                    Bill Dyer             John Rupley          Pierre Martineau
-                Boudewijn Waijers         John S. Bien            Ralf Brown
-                    Bruce Cox              Johnny Lee          Richard Addison
-                 Bruce Holloway            Jon W{tte            Richard Beigel
-                 Bruce Mewborne         Jonathan Handler      Richard P. Hughey
-                  Carl Schelin          Joshua Delahunty          Rob Menke
-                   Chris Russo           Keizo Yamamoto         Robin Johnson
-                   David Cohrs             Ken Arnold         Roderick Schertler
-                 David Damerell           Ken Arromdee          Roland McGrath
-                  David Gentzel            Ken Lorber          Ron Van Iwaarden
-                 David Hairston          Ken Washikita          Ronnen Miller
-                   Dean Luick             Kevin Darcy             Ross Brown
-                    Del Lamb               Kevin Hugo          Sascha Wostmann
-                  Deron Meranda           Kevin Sitze            Scott Bigham
-                  Dion Nicolaas         Kevin Smolkowski       Scott R. Turner
-                 Dylan O'Donnell          Kevin Sweet          Stephen Spackman
-                   Eric Backus            Lars Huttar           Stephen White
-                Eric Hendrickson          Malcolm Ryan           Steve Creps
-                  Eric R. Smith          Mark Gooderum          Steve Linhart
-                 Eric S. Raymond          Mark Modrall        Steve VanDevender
-                  Erik Andersen         Marvin Bressler          Teemu Suikki
-                Frederick Roeber          Matthew Day             Tim Lennan
-                   Gil Neiger             Merlyn LeRoy          Timo Hakulinen
-                   Greg Laskin          Michael Allison            Tom Almy
-                   Greg Olson             Michael Feir             Tom West
-                 Gregg Wonderly          Michael Hamel          Warren Cheung
-                  Hao-yang Wang         Michael Sokolov        Warwick Allison
-                  Helge Hafting           Mike Engber           Yitzhak Sapir
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          NetHack 3.4                                       August 14, 2003
+
+
+
+
+
+          NetHack Guidebook                                              53
+
+
+
+                    Adam Aronow            Izchak Miller         Mike Stephenson
+                    Alex Kompel            J. Ali Harlow           Norm Meluch
+                   Andreas Dorn              Janet Walz            Olaf Seibert
+                    Andy Church           Janne Salmijarvi        Pasi Kallinen
+                   Andy Swanson        Jean-Christophe Collet       Pat Rankin
+                   Ari Huttunen            Jochen Erwied           Paul Winner
+                   Barton House             John Kallen          Pierre Martineau
+                Benson I. Margulies         John Rupley             Ralf Brown
+                     Bill Dyer              John S. Bien            Ray Chason
+                 Boudewijn Waijers           Johnny Lee          Richard Addison
+                     Bruce Cox               Jon W{tte            Richard Beigel
+                  Bruce Holloway          Jonathan Handler      Richard P. Hughey
+                  Bruce Mewborne          Joshua Delahunty          Rob Menke
+                   Carl Schelin            Keizo Yamamoto         Robin Johnson
+                    Chris Russo              Ken Arnold         Roderick Schertler
+                    David Cohrs             Ken Arromdee          Roland McGrath
+                  David Damerell             Ken Lorber          Ron Van Iwaarden
+                   David Gentzel           Ken Washikita          Ronnen Miller
+                  David Hairston            Kevin Darcy             Ross Brown
+                    Dean Luick               Kevin Hugo          Sascha Wostmann
+                     Del Lamb               Kevin Sitze            Scott Bigham
+                   Deron Meranda          Kevin Smolkowski       Scott R. Turner
+                   Dion Nicolaas            Kevin Sweet          Stephen Spackman
+                  Dylan O'Donnell           Lars Huttar           Stephen White
+                    Eric Backus             Malcolm Ryan           Steve Creps
+                 Eric Hendrickson          Mark Gooderum          Steve Linhart
+                   Eric R. Smith            Mark Modrall        Steve VanDevender
+                  Eric S. Raymond         Marvin Bressler          Teemu Suikki
+                   Erik Andersen            Matthew Day             Tim Lennan
+                 Frederick Roeber           Merlyn LeRoy          Timo Hakulinen
+                    Gil Neiger            Michael Allison            Tom Almy
+                    Greg Laskin             Michael Feir             Tom West
+                    Greg Olson             Michael Hamel          Warren Cheung
+                  Gregg Wonderly          Michael Sokolov        Warwick Allison
+                   Hao-yang Wang            Mike Engber           Yitzhak Sapir
+                   Helge Hafting            Mike Gallop
+               Irina Rempt-Drijfhout      Mike Passaretti
 
           Brand and product names are trademarks or  registered  trademarks
           of their respective holders.
 
 
-          NetHack 3.4                                     February 12, 2003
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          NetHack 3.4                                       August 14, 2003
 
 
 

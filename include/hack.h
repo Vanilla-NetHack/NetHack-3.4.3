@@ -140,6 +140,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define MM_NONAME	  0x20  /* monster is not christened */
 #define MM_NOCOUNTBIRTH	  0x40  /* don't increment born counter (for revival) */
 #define MM_IGNOREWATER	  0x80	/* ignore water when positioning */
+#define MM_ADJACENTOK	  0x100 /* it is acceptable to use adjacent coordinates */
 
 /* flags for special ggetobj status returns */
 #define ALL_FINISHED	  0x01  /* called routine already finished the job */
@@ -150,6 +151,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define USE_INVLET	  0x4	/* use object's invlet */
 #define INVORDER_SORT	  0x8	/* sort objects by packorder */
 #define SIGNAL_NOMENU	  0x10	/* return -1 rather than 0 if none allowed */
+#define FEEL_COCKATRICE   0x20  /* engage cockatrice checks and react */
 
 /* Flags to control query_category() */
 /* BY_NEXTHERE used by query_category() too, so skip 0x01 */
@@ -178,6 +180,8 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 
 /* Flags to control dotrap() in trap.c */
 #define NOWEBMSG	0x01	/* suppress stumble into web message */
+#define FORCEBUNGLE	0x02	/* adjustments appropriate for bungling */
+#define RECURSIVETRAP	0x04	/* trap changed into another type this same turn */
 
 /* Flags to control test_move in hack.c */
 #define DO_MOVE		0	/* really doing the move */
@@ -203,6 +207,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 /* Macros for launching objects */
 #define ROLL		0x01	/* the object is rolling */
 #define FLING		0x02	/* the object is flying thru the air */
+#define LAUNCH_UNSEEN	0x40	/* hero neither caused nor saw it */
 #define LAUNCH_KNOWN	0x80	/* the hero caused this by explicit action */
 
 /* Macros for explosion types */

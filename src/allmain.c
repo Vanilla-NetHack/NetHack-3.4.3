@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.4	2002/01/04	*/
+/*	SCCS Id: @(#)allmain.c	3.4	2003/04/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -60,9 +60,6 @@ moveloop()
     youmonst.movement = NORMAL_SPEED;	/* give the hero some movement points */
 
     for(;;) {
-#ifdef CLIPPING
-	cliparound(u.ux, u.uy);
-#endif
 	get_nh_event();
 #ifdef POSITIONBAR
 	do_positionbar();
@@ -381,6 +378,11 @@ moveloop()
 	    sanity_check();
 #endif
 
+#ifdef CLIPPING
+	/* just before rhack */
+	cliparound(u.ux, u.uy);
+#endif
+
 	u.umoved = FALSE;
 
 	if (multi > 0) {
@@ -495,10 +497,11 @@ newgame()
 				 * and init_artifacts() */
 
 	init_dungeons();	/* must be before u_init() to avoid rndmonst()
-				 * creating odd monsters for initial tins and
-				 * eggs */
+				 * creating odd monsters for any tins and eggs
+				 * in hero's initial inventory */
+	init_artifacts();	/* before u_init() in case $WIZKIT specifies
+				 * any artifacts */
 	u_init();
-	init_artifacts();
 
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);

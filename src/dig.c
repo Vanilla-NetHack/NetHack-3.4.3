@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dig.c	3.4	2003/01/29	*/
+/*	SCCS Id: @(#)dig.c	3.4	2003/03/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -492,6 +492,8 @@ int ttyp;
 	boolean at_u = (x == u.ux) && (y == u.uy);
 	boolean wont_fall = Levitation || Flying;
 
+	if (u.utrap && u.utraptype == TT_INFLOOR) u.utrap = 0;
+
 	/* these furniture checks were in dighole(), but wand
 	   breaking bypasses that routine and calls us directly */
 	if (IS_FOUNTAIN(lev->typ)) {
@@ -546,11 +548,12 @@ int ttyp;
 
 	    if(at_u) {
 		if (!wont_fall) {
+		    if (!Passes_walls)
 			u.utrap = rn1(4,2);
-			u.utraptype = TT_PIT;
-			vision_full_recalc = 1;	/* vision limits change */
+		    u.utraptype = TT_PIT;
+		    vision_full_recalc = 1;	/* vision limits change */
 		} else
-			u.utrap = 0;
+		    u.utrap = 0;
 		if (oldobjs != newobjs)	/* something unearthed */
 			(void) pickup(1);	/* detects pit */
 	    } else if(mtmp) {
@@ -1182,7 +1185,7 @@ zap_dig()
 			(void)xname(otmp);	/* set dknown, maybe bknown */
 			stackobj(otmp);
 		    }
-		    if (Invisible) newsym(u.ux, u.uy);
+		    newsym(u.ux, u.uy);
 		} else {
 		    watch_dig((struct monst *)0, u.ux, u.uy, TRUE);
 		    (void) dighole(FALSE);

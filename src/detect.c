@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.4	1999/12/06	*/
+/*	SCCS Id: @(#)detect.c	3.4	2003/08/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -797,11 +797,11 @@ struct obj *obj;
 	    break;
 	case 5 : pline("%s!", Tobjnam(obj, "explode"));
 	    useup(obj);
+	    obj = 0;	/* it's gone */
 	    losehp(rnd(30), "exploding crystal ball", KILLED_BY_AN);
 	    break;
 	}
-	check_unpaid(obj);
-	obj->spe--;
+	if (obj) consume_obj_charge(obj, TRUE);
 	return;
     }
 
@@ -825,8 +825,7 @@ struct obj *obj;
 	    default: pline("Oh wow... like a kaleidoscope!");
 		break;
 	    }
-	    check_unpaid(obj);
-	    obj->spe--;
+	    consume_obj_charge(obj, TRUE);
 	}
 	return;
     }
@@ -848,8 +847,7 @@ struct obj *obj;
 	int ret = 0;
 
 	makeknown(CRYSTAL_BALL);
-	check_unpaid(obj);
-	obj->spe--;
+	consume_obj_charge(obj, TRUE);
 
 	if ((class = def_char_to_objclass(ch)) != MAXOCLASSES)
 		ret = object_detect((struct obj *)0, class);

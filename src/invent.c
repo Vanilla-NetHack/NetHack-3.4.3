@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.4	2003/01/24	*/
+/*	SCCS Id: @(#)invent.c	3.4	2003/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -462,6 +462,17 @@ register struct obj *obj;
 	} else {
 		useupall(obj);
 	}
+}
+
+/* use one charge from an item and possibly incur shop debt for it */
+void
+consume_obj_charge(obj, maybe_unpaid)
+struct obj *obj;
+boolean maybe_unpaid;	/* false if caller handles shop billing */
+{
+	if (maybe_unpaid) check_unpaid(obj);
+	obj->spe -= 1;
+	if (obj->known) update_inventory();
 }
 
 #endif /* OVLB */
@@ -968,7 +979,12 @@ register const char *let,*word;
 		}
 		if(ilet == def_oc_syms[COIN_CLASS]) {
 			if (!usegold) {
-			    You("cannot %s gold.", word);
+			    if (!strncmp(word, "rub on ", 7)) {
+				/* the dangers of building sentences... */
+				You("cannot rub gold%s.", word + 3);
+			    } else {
+				You("cannot %s gold.", word);
+			    }
 			    return(struct obj *)0;
 #ifndef GOLDOBJ
 			} else if (!allowgold) {
@@ -1082,32 +1098,35 @@ silly_thing(word, otmp)
 const char *word;
 struct obj *otmp;
 {
-	int otyp = otmp->otyp;
-	boolean domsg = FALSE;
-	const char *s1, *s2, *s3;
-	const char *what = (otmp->quan > 1L) ? "one of those" : "that";
-	if ((!strcmp(word, "wear") || !strcmp(word, "take off")) &&
-		(otmp->oclass == RING_CLASS ||
-		(otmp->oclass == FOOD_CLASS && otmp->otyp == MEAT_RING) ||
-		(otmp->oclass == TOOL_CLASS &&
-		 (otyp == BLINDFOLD || otyp == TOWEL || otyp == LENSES)))) {
-			if (!strcmp(word, "wear")) {
-	    			s1 = "P"; s2 = "put"; s3 = " on"; domsg = TRUE;
-			} else {
-				s1 = "R"; s2 = "remove"; s3 = ""; domsg = TRUE;
-			}
-	} else if ((!strcmp(word, "put on") || !strcmp(word, "remove")) &&
-		(otmp->oclass == ARMOR_CLASS)) {
-			if (!strcmp(word, "remove")) {
-	    			s1 = "T"; s2 = "take"; s3 = " off"; domsg = TRUE;
-			} else {
-	    			s1 = "W"; s2 = "wear"; s3 = ""; domsg = TRUE;
-			}
+	const char *s1, *s2, *s3, *what;
+	int ocls = otmp->oclass, otyp = otmp->otyp;
+
+	s1 = s2 = s3 = 0;
+	/* check for attempted use of accessory commands ('P','R') on armor
+	   and for corresponding armor commands ('W','T') on accessories */
+	if (ocls == ARMOR_CLASS) {
+	    if (!strcmp(word, "put on"))
+		s1 = "W", s2 = "wear", s3 = "";
+	    else if (!strcmp(word, "remove"))
+		s1 = "T", s2 = "take", s3 = " off";
+	} else if ((ocls == RING_CLASS || otyp == MEAT_RING) ||
+		ocls == AMULET_CLASS ||
+		(otyp == BLINDFOLD || otyp == TOWEL || otyp == LENSES)) {
+	    if (!strcmp(word, "wear"))
+		s1 = "P", s2 = "put", s3 = " on";
+	    else if (!strcmp(word, "take off"))
+		s1 = "R", s2 = "remove", s3 = "";
 	}
-	if (domsg)
-		pline("Use the '%s' command to %s %s%s.", s1, s2, what, s3);
-	else
-		pline(silly_thing_to, word);
+	if (s1) {
+	    what = "that";
+	    /* quantity for armor and accessory objects is always 1,
+	       but some things should be referred to as plural */
+	    if (otyp == LENSES || is_gloves(otmp) || is_boots(otmp))
+		what = "those";
+	    pline("Use the '%s' command to %s %s%s.", s1, s2, what, s3);
+	} else {
+	    pline(silly_thing_to, word);
+	}
 }
 
 #endif /* OVL1 */
@@ -2143,7 +2162,7 @@ boolean picked_some;
 	const char *dfeature = (char *)0;
 	char fbuf[BUFSZ], fbuf2[BUFSZ];
 	winid tmpwin;
-	boolean skip_objects = (obj_cnt >= 5);
+	boolean skip_objects = (obj_cnt >= 5), felt_cockatrice = FALSE;
 
 	if (u.uswallow && u.ustuck) {
 	    struct monst *mtmp = u.ustuck;
@@ -2227,13 +2246,22 @@ boolean picked_some;
 		putstr(tmpwin, 0, fbuf);
 		putstr(tmpwin, 0, "");
 	    }
-	    putstr(tmpwin, 0, "Things that are here:");
+	    putstr(tmpwin, 0, Blind ? "Things that you feel here:" :
+				      "Things that are here:");
 	    for ( ; otmp; otmp = otmp->nexthere) {
+		if (otmp->otyp == CORPSE && will_feel_cockatrice(otmp, FALSE)) {
+			char buf[BUFSZ];
+			felt_cockatrice = TRUE;
+			Strcpy(buf, doname(otmp));
+			Strcat(buf, "...");
+			putstr(tmpwin, 0, buf);
+			break;
+		}
 		putstr(tmpwin, 0, doname(otmp));
-		if (otmp->otyp == CORPSE) feel_cockatrice(otmp, FALSE);
 	    }
 	    display_nhwindow(tmpwin, TRUE);
 	    destroy_nhwindow(tmpwin);
+	    if (felt_cockatrice) feel_cockatrice(otmp, FALSE);
 	    read_engr_at(u.ux, u.uy); /* Eric Backus */
 	}
 	return(!!Blind);
@@ -2246,6 +2274,17 @@ dolook()
 	return look_here(0, FALSE);
 }
 
+boolean
+will_feel_cockatrice(otmp, force_touch)
+struct obj *otmp;
+boolean force_touch;
+{
+	if ((Blind || force_touch) && !uarmg && !Stone_resistance &&
+		(otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm])))
+			return TRUE;
+	return FALSE;
+}
+
 void
 feel_cockatrice(otmp, force_touch)
 struct obj *otmp;
@@ -2253,8 +2292,7 @@ boolean force_touch;
 {
 	char kbuf[BUFSZ];
 
-	if ((Blind || force_touch) && !uarmg && !Stone_resistance &&
-		(otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm]))) {
+	if (will_feel_cockatrice(otmp, force_touch)) {
 	    if(poly_when_stoned(youmonst.data))
 			You("touched the %s corpse with your bare %s.",
 				mons[otmp->corpsenm].mname, makeplural(body_part(HAND)));
@@ -2506,6 +2544,7 @@ register struct obj *obj;
 long numused;
 {
 	register struct obj *otmp;
+	boolean at_u = (obj->ox == u.ux && obj->oy == u.uy);
 
 	/* burn_floor_paper() keeps an object pointer that it tries to
 	 * useupf() multiple times, so obj must survive if plural */
@@ -2519,6 +2558,8 @@ long numused;
 	    else (void)stolen_value(otmp, otmp->ox, otmp->oy, FALSE, FALSE);
 	}
 	delobj(otmp);
+	if (at_u && u.uundetected && hides_under(youmonst.data))
+	    u.uundetected = OBJ_AT(u.ux, u.uy);
 }
 
 #endif /* OVLB */

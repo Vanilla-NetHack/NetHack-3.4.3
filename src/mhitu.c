@@ -783,6 +783,7 @@ struct attack *mattk;
 	    if (obj->greased && !rn2(2)) {
 		pline_The("grease wears off.");
 		obj->greased = 0;
+		update_inventory();
 	    }
 	    return TRUE;
 	}
@@ -1207,7 +1208,7 @@ dopois:
 			    killer_format = KILLED_BY_AN;
 			    Sprintf(buf, "%s by %s",
 				    moat ? "moat" : "pool of water",
-				    a_monnam(mtmp));
+				    an(mtmp->data->mname));
 			    killer = buf;
 			    done(DROWNING);
 			} else if(mattk->aatyp == AT_HUGS)
@@ -1683,8 +1684,14 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		    }
 		    break;
 		case AD_PHYS:
-		    You("are pummeled with debris!");
-		    exercise(A_STR, FALSE);
+		    if (mtmp->data == &mons[PM_FOG_CLOUD])
+			You("are laden with moisture and can barely %s!",
+				!breathless(youmonst.data) ? "breathe" :
+				"stay conscious");
+		    else {
+			You("are pummeled with debris!");
+			exercise(A_STR, FALSE);
+		    }
 		    break;
 		case AD_ACID:
 		    if (Acid_resistance) {
@@ -2142,7 +2149,8 @@ register struct monst *mon;
 	    if (fem) {
 		if (rn2(20) < ACURR(A_CHA)) {
 		    Sprintf(qbuf, "\"That %s looks pretty.  May I have it?\"",
-			xname(ring));
+			safe_qbuf("",sizeof("\"That  looks pretty.  May I have it?\""),
+			xname(ring), simple_typename(ring->otyp), "ring"));
 		    makeknown(RIN_ADORNMENT);
 		    if (yn(qbuf) == 'n') continue;
 		} else pline("%s decides she'd like your %s, and takes it.",
@@ -2163,7 +2171,9 @@ register struct monst *mon;
 		if (ring==uleft || ring==uright) continue;
 		if (rn2(20) < ACURR(A_CHA)) {
 		    Sprintf(qbuf,"\"That %s looks pretty.  Would you wear it for me?\"",
-			xname(ring));
+			safe_qbuf("",
+			    sizeof("\"That  looks pretty.  Would you wear it for me?\""),
+			    xname(ring), simple_typename(ring->otyp), "ring"));
 		    makeknown(RIN_ADORNMENT);
 		    if (yn(qbuf) == 'n') continue;
 		} else {

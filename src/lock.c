@@ -307,7 +307,9 @@ pick_lock(pick) /* pick a lock with a given object */
 		    else if (picktyp != LOCK_PICK) verb = "unlock", it = 1;
 		    else verb = "pick";
 		    Sprintf(qbuf, "There is %s here, %s %s?",
-			    doname(otmp), verb, it ? "it" : "its lock");
+		    	    safe_qbuf("", sizeof("There is  here, unlock its lock?"),
+			    	doname(otmp), an(simple_typename(otmp->otyp)), "a box"),
+			    verb, it ? "it" : "its lock");
 
 		    c = ynq(qbuf);
 		    if(c == 'q') return(0);
@@ -352,6 +354,11 @@ pick_lock(pick) /* pick a lock with a given object */
 	    }
 	} else {			/* pick the lock in a door */
 	    struct monst *mtmp;
+
+	    if (u.utrap && u.utraptype == TT_PIT) {
+		You_cant("reach over the edge of the pit.");
+		return(0);
+	    }
 
 	    door = &levl[cc.x][cc.y];
 	    if ((mtmp = m_at(cc.x, cc.y)) && canseemon(mtmp)
@@ -464,7 +471,10 @@ doforce()		/* try to force a chest with your weapon */
 			  doname(otmp), otmp->obroken ? "broken" : "unlocked");
 		    continue;
 		}
-		Sprintf(qbuf,"There is %s here, force its lock?", doname(otmp));
+		Sprintf(qbuf,"There is %s here, force its lock?",
+			safe_qbuf("", sizeof("There is  here, force its lock?"),
+				doname(otmp), an(simple_typename(otmp->otyp)),
+				"a box"));
 
 		c = ynq(qbuf);
 		if(c == 'q') return(0);

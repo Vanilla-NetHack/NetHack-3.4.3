@@ -552,7 +552,7 @@ wiz_genesis()
 STATIC_PTR int
 wiz_where()
 {
-	if (wizard) print_dungeon();
+	if (wizard) (void) print_dungeon(FALSE);
 	else	    pline("Unavailable command '^O'.");
 	return 0;
 }
@@ -1789,7 +1789,18 @@ register char *cmd;
 		flags.move = FALSE;
 		return;		/* probably we just had an interrupt */
 	}
-
+	if (iflags.num_pad && iflags.num_pad_mode == 1) {
+		/* This handles very old inconsistent DOS/Windows behaviour
+		 * in a new way: earlier, the keyboard handler mapped these,
+		 * which caused counts to be strange when entered from the
+		 * number pad. Now do not map them until here. 
+		 */
+		switch (*cmd) {
+		    case '5':       *cmd = 'g'; break;
+		    case M('5'):    *cmd = 'G'; break;
+		    case M('0'):    *cmd = 'I'; break;
+        	}
+        }
 	/* handle most movement commands */
 	do_walk = do_rush = prefix_seen = FALSE;
 	flags.travel = 0;
@@ -2091,20 +2102,34 @@ const char *msg;
 		putstr(win, 0, "");
 	    }
 	}
-	if (iflags.num_pad) {
-		putstr(win, 0, "Valid direction keys (with number_pad on) are:");
-		putstr(win, 0, "          7  8  9");
-		putstr(win, 0, "           \\ | / ");
-		putstr(win, 0, "          4- . -6");
-		putstr(win, 0, "           / | \\ ");
-		putstr(win, 0, "          1  2  3");
+	if (iflags.num_pad && u.umonnum == PM_GRID_BUG) {
+	    putstr(win, 0, "Valid direction keys in your current form (with number_pad on) are:");
+	    putstr(win, 0, "             8   ");
+	    putstr(win, 0, "             |   ");
+	    putstr(win, 0, "          4- . -6");
+	    putstr(win, 0, "             |   ");
+	    putstr(win, 0, "             2   ");
+	} else if (u.umonnum == PM_GRID_BUG) {
+	    putstr(win, 0, "Valid direction keys in your current form are:");
+	    putstr(win, 0, "             k   ");
+	    putstr(win, 0, "             |   ");
+	    putstr(win, 0, "          h- . -l");
+	    putstr(win, 0, "             |   ");
+	    putstr(win, 0, "             j   ");
+	} else if (iflags.num_pad) {
+	    putstr(win, 0, "Valid direction keys (with number_pad on) are:");
+	    putstr(win, 0, "          7  8  9");
+	    putstr(win, 0, "           \\ | / ");
+	    putstr(win, 0, "          4- . -6");
+	    putstr(win, 0, "           / | \\ ");
+	    putstr(win, 0, "          1  2  3");
 	} else {
-		putstr(win, 0, "Valid direction keys are:");
-		putstr(win, 0, "          y  k  u");
-		putstr(win, 0, "           \\ | / ");
-		putstr(win, 0, "          h- . -l");
-		putstr(win, 0, "           / | \\ ");
-		putstr(win, 0, "          b  j  n");
+	    putstr(win, 0, "Valid direction keys are:");
+	    putstr(win, 0, "          y  k  u");
+	    putstr(win, 0, "           \\ | / ");
+	    putstr(win, 0, "          h- . -l");
+	    putstr(win, 0, "           / | \\ ");
+	    putstr(win, 0, "          b  j  n");
 	};
 	putstr(win, 0, "");
 	putstr(win, 0, "          <  up");
@@ -2322,7 +2347,7 @@ end_of_input()
 {
 	exit_nhwindows("End of input?");
 #ifndef NOSAVEONHANGUP
-	if (!program_state.done_hup++)
+	if (!program_state.done_hup++ && program_state.something_worth_saving)
 	    (void) dosave0();
 #endif
 	clearlocks();
@@ -2384,15 +2409,20 @@ dotravel()
 
 	if (!iflags.travelcmd) return 0;
 	cmd[1]=0;
-	cc.x = u.ux;
-	cc.y = u.uy;
+	cc.x = iflags.travelcc.x;
+	cc.y = iflags.travelcc.y;
+	if (cc.x == -1 && cc.y == -1) {
+	    /* No cached destination, start attempt from current position */
+	    cc.x = u.ux;
+	    cc.y = u.uy;
+	}
 	pline("Where do you want to travel to?");
 	if (getpos(&cc, TRUE, "the desired destination") < 0) {
 		/* user pressed ESC */
 		return 0;
 	}
-	u.tx = cc.x;
-	u.ty = cc.y;
+	iflags.travelcc.x = u.tx = cc.x;
+	iflags.travelcc.y = u.ty = cc.y;
 	cmd[0] = CMD_TRAVEL;
 	readchar_queue = cmd;
 	return 0;
@@ -2401,6 +2431,7 @@ dotravel()
 #ifdef PORT_DEBUG
 # ifdef WIN32CON
 extern void NDECL(win32con_debug_keystrokes);
+extern void NDECL(win32con_handler_info);
 # endif
 
 int
@@ -2417,6 +2448,7 @@ wiz_port_debug()
 	} menu_selections[] = {
 #ifdef WIN32CON
 		{"test win32 keystrokes", win32con_debug_keystrokes},
+		{"show keystroke handler information", win32con_handler_info},
 #endif
 		{(char *)0, (void NDECL((*)))0}		/* array terminator */
 	};
@@ -2447,5 +2479,31 @@ wiz_port_debug()
 # endif /*PORT_DEBUG*/
 
 #endif /* OVL0 */
+#ifdef OVLB
+/*
+ *   Parameter validator for generic yes/no function to prevent
+ *   the core from sending too long a prompt string to the
+ *   window port causing a buffer overflow there.
+ */
+char
+yn_function(query,resp, def)
+const char *query,*resp;
+char def;
+{
+	char qbuf[QBUFSZ];
+	unsigned truncspot, reduction = sizeof(" [N]  ?") + 1;
+
+	if (resp) reduction += strlen(resp) + sizeof(" () ");
+	if (strlen(query) < (QBUFSZ - reduction))
+		return (*windowprocs.win_yn_function)(query, resp, def);
+	paniclog("Query truncated: ", query);
+	reduction += sizeof("...");
+	truncspot = QBUFSZ - reduction;
+	(void) strncpy(qbuf, query, (int)truncspot);
+	qbuf[truncspot] = '\0';
+	Strcat(qbuf,"...");
+	return (*windowprocs.win_yn_function)(qbuf, resp, def);
+}
+#endif
 
 /*cmd.c*/

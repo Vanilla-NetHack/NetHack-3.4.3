@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.4	2003/01/08	*/
+/*	SCCS Id: @(#)pickup.c	3.4	2003/07/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,6 +31,8 @@ STATIC_DCL boolean FDECL(mbag_explodes, (struct obj *,int));
 STATIC_PTR int FDECL(in_container,(struct obj *));
 STATIC_PTR int FDECL(ck_bag,(struct obj *));
 STATIC_PTR int FDECL(out_container,(struct obj *));
+STATIC_DCL long FDECL(mbag_item_gone, (int,struct obj *));
+STATIC_DCL void FDECL(observe_quantum_cat, (struct obj *));
 STATIC_DCL int FDECL(menu_loot, (int, struct obj *, BOOLEAN_P));
 STATIC_DCL int FDECL(in_or_out_menu, (const char *,struct obj *, BOOLEAN_P, BOOLEAN_P));
 STATIC_DCL int FDECL(container_at, (int, int, BOOLEAN_P));
@@ -463,8 +465,8 @@ int what;		/* should be a long */
 		    pick_list[i].count = count;
 	    } else {
 		n = query_objlist("Pick up what?", objchain,
-			    traverse_how|AUTOSELECT_SINGLE|INVORDER_SORT,
-			    &pick_list, PICK_ANY, all_but_uchain);
+			traverse_how|AUTOSELECT_SINGLE|INVORDER_SORT|FEEL_COCKATRICE,
+			&pick_list, PICK_ANY, all_but_uchain);
 	    }
 menu_pickup:
 	    n_tried = n;
@@ -536,7 +538,9 @@ menu_pickup:
 
 		if (!all_of_a_type) {
 		    char qbuf[BUFSZ];
-		    Sprintf(qbuf, "Pick up %s?", doname(obj));
+		    Sprintf(qbuf, "Pick up %s?",
+			safe_qbuf("", sizeof("Pick up ?"), doname(obj),
+					an(simple_typename(obj->otyp)), "something"));
 		    switch ((obj->quan < 2L) ? ynaq(qbuf) : ynNaq(qbuf)) {
 		    case 'q': goto end_query;	/* out 2 levels */
 		    case 'n': continue;
@@ -679,7 +683,13 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 	pack = flags.inv_order;
 	do {
 	    printed_type_name = FALSE;
-	    for (curr = olist; curr; curr = FOLLOW(curr, qflags))
+	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
+		if ((qflags & FEEL_COCKATRICE) && curr->otyp == CORPSE &&
+		     will_feel_cockatrice(curr, FALSE)) {
+			destroy_nhwindow(win);	/* stop the menu and revert */
+			(void) look_here(0, FALSE);
+			return 0;
+		}
 		if ((!(qflags & INVORDER_SORT) || curr->oclass == *pack)
 							&& (*allow)(curr)) {
 
@@ -697,6 +707,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 			    def_oc_syms[(int)objects[curr->otyp].oc_class],
 			    ATR_NONE, doname(curr), MENU_UNSELECTED);
 		}
+	    }
 	    pack++;
 	} while (qflags & INVORDER_SORT && *pack);
 
@@ -1122,10 +1133,13 @@ boolean telekinesis;
 		long savequan = obj->quan;
 
 		obj->quan = *cnt_p;
-		Sprintf(qbuf, "%s %s.  Continue?",
+		Strcpy(qbuf,
 			(next_encumbr > HVY_ENCUMBER) ? overloadmsg :
 			(next_encumbr > MOD_ENCUMBER) ? nearloadmsg :
-			moderateloadmsg, doname(obj));
+			moderateloadmsg);
+		Sprintf(eos(qbuf), " %s. Continue?",
+			safe_qbuf(qbuf, sizeof(" . Continue?"),
+				doname(obj), an(simple_typename(obj->otyp)), "something"));
 		obj->quan = savequan;
 		switch (ynq(qbuf)) {
 		case 'q':  result = -1; break;
@@ -1140,6 +1154,32 @@ boolean telekinesis;
     if (obj->otyp == SCR_SCARE_MONSTER && result <= 0 && !container)
 	obj->spe = 0;
     return result;
+}
+
+/* To prevent qbuf overflow in prompts use planA only
+ * if it fits, or planB if PlanA doesn't fit,
+ * finally using the fallback as a last resort.
+ * last_restort is expected to be very short.
+ */
+const char *
+safe_qbuf(qbuf, padlength, planA, planB, last_resort)
+const char *qbuf, *planA, *planB, *last_resort;
+unsigned padlength;
+{
+	/* convert size_t (or int for ancient systems) to ordinary unsigned */
+	unsigned len_qbuf = (unsigned)strlen(qbuf),
+	         len_planA = (unsigned)strlen(planA),
+	         len_planB = (unsigned)strlen(planB),
+	         len_lastR = (unsigned)strlen(last_resort);
+	unsigned textleft = QBUFSZ - (len_qbuf + padlength);
+
+	if (len_lastR >= textleft) {
+	    impossible("safe_qbuf: last_resort too large at %u characters.",
+		       len_lastR);
+	    return "";
+	}
+	return (len_planA < textleft) ? planA :
+		    (len_planB < textleft) ? planB : last_resort;
 }
 
 /*
@@ -1275,8 +1315,8 @@ boolean telekinesis;	/* not picking it up directly by hand */
 }
 
 /*
- * Do the actual work of picking otmp from the floor and putting
- * it in the hero's inventory.  Take care of billing.  Return a
+ * Do the actual work of picking otmp from the floor or monster's interior
+ * and putting it in the hero's inventory.  Take care of billing.  Return a
  * pointer to the object where otmp ends up.  This may be different
  * from otmp because of merging.
  *
@@ -1287,7 +1327,7 @@ pick_obj(otmp)
 struct obj *otmp;
 {
 	obj_extract_self(otmp);
-	if (otmp != uball && costly_spot(otmp->ox, otmp->oy)) {
+	if (!u.uswallow && otmp != uball && costly_spot(otmp->ox, otmp->oy)) {
 	    char saveushops[5], fakeshop[2];
 
 	    /* addtobill cares about your location rather than the object's;
@@ -1306,7 +1346,7 @@ struct obj *otmp;
 	}
 	if (otmp->no_charge)	/* only applies to objects outside invent */
 	    otmp->no_charge = 0;
-	if (Invisible) newsym(otmp->ox, otmp->oy);
+	newsym(otmp->ox, otmp->oy);
 	return addinv(otmp);	/* might merge it with other objects */
 }
 
@@ -1392,6 +1432,10 @@ int x, y;
 	} else if (nolimbs(youmonst.data)) {
 		pline("Without limbs, you cannot loot anything.");
 		return FALSE;
+	} else if (!freehand()) {
+		pline("Without a free %s, you cannot loot anything.",
+			body_part(HAND));
+		return FALSE;
 	}
 	return TRUE;
 }
@@ -1445,7 +1489,10 @@ lootcont:
 	    nobj = cobj->nexthere;
 
 	    if (Is_container(cobj)) {
-		Sprintf(qbuf, "There is %s here, loot it?", doname(cobj));
+		Sprintf(qbuf, "There is %s here, loot it?",
+			safe_qbuf("", sizeof("There is  here, loot it?"),
+			     doname(cobj), an(simple_typename(cobj->otyp)),
+			     "a container"));
 		c = ynq(qbuf);
 		if (c == 'q') return (timepassed);
 		if (c == 'n') continue;
@@ -1772,8 +1819,7 @@ register struct obj *obj;
 		sellobj_state(SELL_NORMAL);
 	    }
 	}
-	if (Icebox && obj->otyp != OIL_LAMP && obj->otyp != BRASS_LANTERN
-			&& !Is_candle(obj)) {
+	if (Icebox && !age_is_relative(obj)) {
 		obj->age = monstermoves - obj->age; /* actual age */
 		/* stop any corpse timeouts when frozen */
 		if (obj->otyp == CORPSE && obj->timed) {
@@ -1783,7 +1829,10 @@ register struct obj *obj;
 			if (rot_alarm) obj->norevive = 1;
 		}
 	} else if (Is_mbag(current_container) && mbag_explodes(obj, 0)) {
-		You("are blasted by a magical explosion!");
+		/* explicitly mention what item is triggering the explosion */
+		pline(
+	      "As you put %s inside, you are blasted by a magical explosion!",
+		      doname(obj));
 		/* did not actually insert obj yet */
 		if (was_unpaid) addtobill(obj, FALSE, FALSE, TRUE);
 		obfree(obj, (struct obj *)0);
@@ -1803,6 +1852,9 @@ register struct obj *obj;
 	    Strcpy(buf, the(xname(current_container)));
 	    You("put %s into %s.", doname(obj), buf);
 
+	    /* gold in container always needs to be added to credit */
+	    if (floor_container && obj->oclass == COIN_CLASS)
+		sellobj(obj, current_container->ox, current_container->oy);
 	    (void) add_to_container(current_container, obj);
 	    current_container->owt = weight(current_container);
 	}
@@ -1868,8 +1920,7 @@ register struct obj *obj;
 	obj_extract_self(obj);
 	current_container->owt = weight(current_container);
 
-	if (Icebox && obj->otyp != OIL_LAMP && obj->otyp != BRASS_LANTERN
-			&& !Is_candle(obj)) {
+	if (Icebox && !age_is_relative(obj)) {
 		obj->age = monstermoves - obj->age; /* actual age */
 		if (obj->otyp == CORPSE)
 			start_corpse_timeout(obj);
@@ -1902,6 +1953,70 @@ register struct obj *obj;
 	return 1;
 }
 
+/* an object inside a cursed bag of holding is being destroyed */
+STATIC_OVL long
+mbag_item_gone(held, item)
+int held;
+struct obj *item;
+{
+    struct monst *shkp;
+    long loss = 0L;
+
+    if (item->dknown)
+	pline("%s %s vanished!", Doname2(item), otense(item, "have"));
+    else
+	You("%s %s disappear!", Blind ? "notice" : "see", doname(item));
+
+    if (*u.ushops && (shkp = shop_keeper(*u.ushops)) != 0) {
+	if (held ? (boolean) item->unpaid : costly_spot(u.ux, u.uy))
+	    loss = stolen_value(item, u.ux, u.uy,
+				(boolean)shkp->mpeaceful, TRUE);
+    }
+    obfree(item, (struct obj *) 0);
+    return loss;
+}
+
+STATIC_OVL void
+observe_quantum_cat(box)
+struct obj *box;
+{
+    static NEARDATA const char sc[] = "Schroedinger's Cat";
+    struct obj *deadcat;
+    struct monst *livecat;
+    xchar ox, oy;
+
+    box->spe = 0;		/* box->owt will be updated below */
+    if (get_obj_location(box, &ox, &oy, 0))
+	box->ox = ox, box->oy = oy;	/* in case it's being carried */
+
+    /* this isn't really right, since any form of observation
+       (telepathic or monster/object/food detection) ought to
+       force the determination of alive vs dead state; but basing
+       it just on opening the box is much simpler to cope with */
+    livecat = rn2(2) ? makemon(&mons[PM_HOUSECAT],
+			       box->ox, box->oy, NO_MINVENT) : 0;
+    if (livecat) {
+	livecat->mpeaceful = 1;
+	set_malign(livecat);
+	if (!canspotmon(livecat))
+	    You("think %s brushed your %s.", something, body_part(FOOT));
+	else
+	    pline("%s inside the box is still alive!", Monnam(livecat));
+	(void) christen_monst(livecat, sc);
+    } else {
+	deadcat = mk_named_object(CORPSE, &mons[PM_HOUSECAT],
+				  box->ox, box->oy, sc);
+	if (deadcat) {
+	    obj_extract_self(deadcat);
+	    (void) add_to_container(box, deadcat);
+	}
+	pline_The("%s inside the box is dead!",
+	    Hallucination ? rndmonnam() : "housecat");
+    }
+    box->owt = weight(box);
+    return;
+}
+
 #undef Icebox
 
 int
@@ -1913,12 +2028,12 @@ register int held;
 #ifndef GOLDOBJ
 	struct obj *u_gold = (struct obj *)0;
 #endif
-	struct monst *shkp;
-	boolean one_by_one, allflag, loot_out = FALSE, loot_in = FALSE;
+	boolean one_by_one, allflag, quantum_cat = FALSE,
+		loot_out = FALSE, loot_in = FALSE;
 	char select[MAXOCLASSES+1];
 	char qbuf[BUFSZ], emptymsg[BUFSZ], pbuf[QBUFSZ];
 	long loss = 0L;
-	int cnt = 0, used = 0, lcnt = 0,
+	int cnt = 0, used = 0,
 	    menu_on_request;
 
 	emptymsg[0] = '\0';
@@ -1946,80 +2061,35 @@ register int held;
 	current_container = obj;	/* for use by in/out_container */
 
 	if (obj->spe == 1) {
-	    static NEARDATA const char sc[] = "Schroedinger's Cat";
-	    struct obj *ocat;
-	    struct monst *cat;
-
-	    obj->spe = 0;		/* obj->owt will be updated below */
-	    /* this isn't really right, since any form of observation
-	       (telepathic or monster/object/food detection) ought to
-	       force the determination of alive vs dead state; but basing
-	       it just on opening the box is much simpler to cope with */
-	    cat = rn2(2) ? makemon(&mons[PM_HOUSECAT],
-				   obj->ox, obj->oy, NO_MINVENT) : 0;
-	    if (cat) {
-		cat->mpeaceful = 1;
-		set_malign(cat);
-		if (Blind)
-		    You("think %s brushed your %s.", something,
-			body_part(FOOT));
-		else
-		    pline("%s inside the box is still alive!", Monnam(cat));
-		(void) christen_monst(cat, sc);
-	    } else {
-		ocat = mk_named_object(CORPSE, &mons[PM_HOUSECAT],
-				       obj->ox, obj->oy, sc);
-		if (ocat) {
-		    obj_extract_self(ocat);
-		    (void) add_to_container(obj, ocat);
-		    /* weight handled below */
-		}
-		pline_The("%s inside the box is dead!",
-		    Hallucination ? rndmonnam() : "housecat");
-	    }
+	    observe_quantum_cat(obj);
 	    used = 1;
+	    quantum_cat = TRUE;	/* for adjusting "it's empty" message */
 	}
 	/* Count the number of contained objects. Sometimes toss objects if */
 	/* a cursed magic bag.						    */
 	for (curr = obj->cobj; curr; curr = otmp) {
 	    otmp = curr->nobj;
 	    if (Is_mbag(obj) && obj->cursed && !rn2(13)) {
-		if (curr->dknown)
-		    pline("%s to have vanished!", The(aobjnam(curr,"seem")));
-		else
-		    You("%s %s disappear.", Blind ? "notice" : "see",
-							doname(curr));
 		obj_extract_self(curr);
-		if (*u.ushops && (shkp = shop_keeper(*u.ushops)) != 0) {
-		    if(held) {
-			if(curr->unpaid)
-			    loss += stolen_value(curr, u.ux, u.uy,
-					     (boolean)shkp->mpeaceful, TRUE);
-			lcnt++;
-		    } else if(costly_spot(u.ux, u.uy)) {
-			loss += stolen_value(curr, u.ux, u.uy,
-					     (boolean)shkp->mpeaceful, TRUE);
-			lcnt++;
-		    }
-		}
-		/* obfree() will free all contained objects */
-		obfree(curr, (struct obj *) 0);
+		loss += mbag_item_gone(held, curr);
 		used = 1;
 	    } else {
 		cnt++;
 	    }
 	}
 
-	if (lcnt && loss)
-	    You("owe %ld %s for lost item%s.",
-		loss, currency(loss), lcnt > 1 ? "s" : "");
+	if (loss)	/* magic bag lost some shop goods */
+	    You("owe %ld %s for lost merchandise.", loss, currency(loss));
+	obj->owt = weight(obj);	/* in case any items were lost */
 
-	obj->owt = weight(obj);
+	if (!cnt)
+	    Sprintf(emptymsg, "%s is %sempty.", Yname2(obj),
+		    quantum_cat ? "now " : "");
 
-	if (!cnt) Sprintf(emptymsg, "%s %s empty.", Yname2(obj), otense(obj, "are"));
 	if (cnt || flags.menu_style == MENU_FULL) {
-	    Sprintf(qbuf, "Do you want to take %s out of %s?",
-		    something, yname(obj));
+	    Strcpy(qbuf, "Do you want to take something out of ");
+	    Sprintf(eos(qbuf), "%s?",
+		    safe_qbuf(qbuf, 1, yname(obj), ysimple_name(obj), "it"));
 	    if (flags.menu_style != MENU_TRADITIONAL) {
 		if (flags.menu_style == MENU_FULL) {
 		    int t;

@@ -19,9 +19,6 @@
 #ifdef GETRES_SUPPORT
 
 # if defined(LINUX)
-#ifdef __GNUC__
-#define _GNU_SOURCE
-#endif
 
 /* requires dynamic linking with libc */
 #include <dlfcn.h>
@@ -63,6 +60,10 @@ uid_t *ruid, *euid, *suid;
 }
 
 #   else	/* SYS_getresuid */
+
+#ifdef SVR4
+#include <sys/stat.h>
+#endif /* SVR4 */
 
 static int
 real_getresuid(ruid, euid, suid)

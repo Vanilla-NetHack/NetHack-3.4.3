@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.4	2003/02/08	*/
+/*	SCCS Id: @(#)objnam.c	3.4	2003/05/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -367,7 +367,7 @@ register struct obj *obj;
 	    case ROCK_CLASS:
 		if (typ == STATUE)
 		    Sprintf(buf, "%s%s of %s%s",
-			(Role_if(PM_ARCHEOLOGIST) && obj->spe) ? "historic " : "" ,
+			(Role_if(PM_ARCHEOLOGIST) && (obj->spe & STATUE_HISTORIC)) ? "historic " : "" ,
 			actualn,
 			type_is_pname(&mons[obj->corpsenm]) ? "" :
 			  (mons[obj->corpsenm].geno & G_UNIQ) ? "the " :
@@ -854,6 +854,47 @@ struct obj *obj;
 	return xname(obj);
 }
 
+/* treat an object as fully ID'd when it might be used as reason for death */
+char *
+killer_xname(obj)
+struct obj *obj;
+{
+    struct obj save_obj;
+    unsigned save_ocknown;
+    char *buf, *save_ocuname;
+
+    /* remember original settings for core of the object;
+       oname and oattached extensions don't matter here--since they
+       aren't modified they don't need to be saved and restored */
+    save_obj = *obj;
+    /* killer name should be more specific than general xname; however, exact
+       info like blessed/cursed and rustproof makes things be too verbose */
+    obj->known = obj->dknown = 1;
+    obj->bknown = obj->rknown = obj->greased = 0;
+    /* if character is a priest[ess], bknown will get toggled back on */
+    obj->blessed = obj->cursed = 0;
+    /* "killed by poisoned <obj>" would be misleading when poison is
+       not the cause of death and "poisoned by poisoned <obj>" would
+       be redundant when it is, so suppress "poisoned" prefix */
+    obj->opoisoned = 0;
+    /* strip user-supplied name; artifacts keep theirs */
+    if (!obj->oartifact) obj->onamelth = 0;
+    /* temporarily identify the type of object */
+    save_ocknown = objects[obj->otyp].oc_name_known;
+    objects[obj->otyp].oc_name_known = 1;
+    save_ocuname = objects[obj->otyp].oc_uname;
+    objects[obj->otyp].oc_uname = 0;	/* avoid "foo called bar" */
+
+    buf = xname(obj);
+    if (obj->quan == 1L) buf = obj_is_pname(obj) ? the(buf) : an(buf);
+
+    objects[obj->otyp].oc_name_known = save_ocknown;
+    objects[obj->otyp].oc_uname = save_ocuname;
+    *obj = save_obj;	/* restore object's core settings */
+
+    return buf;
+}
+
 /*
  * Used if only one of a collection of objects is named (e.g. in eat.c).
  */
@@ -1049,7 +1090,7 @@ register const char *subj;
 register const char *verb;
 {
 	char *buf = nextobuf();
-	int len;
+	int len, ltmp;
 	const char *sp, *spot;
 	const char * const *spec;
 
@@ -1064,6 +1105,8 @@ register const char *verb;
 	 * present tense form so we don't duplicate this code elsewhere.
 	 */
 	if (subj) {
+	    if (!strncmpi(subj, "a ", 2) || !strncmpi(subj, "an ", 3))
+		goto sing;
 	    spot = (const char *)0;
 	    for (sp = subj; (sp = index(sp, ' ')) != 0; ++sp) {
 		if (!strncmp(sp, " of ", 4) ||
@@ -1090,15 +1133,23 @@ register const char *verb;
 		((spot - subj) >= 2 && !strncmp(spot-1, "ae", 2))) {
 		/* check for special cases to avoid false matches */
 		len = (int)(spot - subj) + 1;
-		for (spec = special_subjs; *spec; spec++)
-		    if (!strncmpi(*spec, subj, len)) goto sing;
+		for (spec = special_subjs; *spec; spec++) {
+		    ltmp = strlen(*spec);
+		    if (len == ltmp && !strncmpi(*spec, subj, len)) goto sing;
+		    /* also check for <prefix><space><special_subj>
+		       to catch things like "the invisible erinys" */
+		    if (len > ltmp && *(spot - ltmp) == ' ' &&
+			    strncmpi(*spec, spot - ltmp + 1, ltmp)) goto sing;
+		}
 
 		return strcpy(buf, verb);
 	    }
 	    /*
+	     * 3rd person plural doesn't end in telltale 's';
 	     * 2nd person singular behaves as if plural.
 	     */
-	    if (!strcmpi(subj, "you")) return strcpy(buf, verb);
+	    if (!strcmpi(subj, "they") || !strcmpi(subj, "you"))
+		return strcpy(buf, verb);
 	}
 
  sing:
@@ -1156,6 +1207,32 @@ Yname2(obj)
 struct obj *obj;
 {
 	char *s = yname(obj);
+
+	*s = highc(*s);
+	return s;
+}
+
+/* returns "your simple_typename(obj->otyp)"
+ * or "Foobar's simple_typename(obj->otyp)"
+ * or "the simple_typename(obj-otyp)"
+ */
+char *
+ysimple_name(obj)
+struct obj *obj;
+{
+	char *outbuf = nextobuf();
+	char *s = shk_your(outbuf, obj);	/* assert( s == outbuf ); */
+	int space_left = BUFSZ - strlen(s) - sizeof " ";
+
+	return strncat(strcat(s, " "), simple_typename(obj->otyp), space_left);
+}
+
+/* capitalized variant of ysimple_name() */
+char *
+Ysimple_name2(obj)
+struct obj *obj;
+{
+	char *s = ysimple_name(obj);
 
 	*s = highc(*s);
 	return s;
@@ -1936,6 +2013,7 @@ boolean from_user;
 	if (strncmpi(bp, "wizard lock", 11)) /* not the "wizard" monster! */
 	if (strncmpi(bp, "ninja-to", 8)) /* not the "ninja" rank */
 	if (strncmpi(bp, "master key", 10)) /* not the "master" rank */
+	if (strncmpi(bp, "magenta", 7)) /* not the "mage" rank */
 	if (mntmp < LOW_PM && strlen(bp) > 2 &&
 	    (mntmp = name_to_mon(bp)) >= LOW_PM) {
 		int mntmptoo, mntmplen;	/* double check for rank title */
@@ -2479,7 +2557,10 @@ typfnd:
 			    /* beware of random troll or lizard corpse,
 			       or of ordinary one being forced to such */
 			    if (otmp->timed) obj_stop_timers(otmp);
-			    otmp->corpsenm = mntmp;
+			    if (mons[mntmp].msound == MS_GUARDIAN)
+			    	otmp->corpsenm = genus(mntmp,1);
+			    else
+				otmp->corpsenm = mntmp;
 			    start_corpse_timeout(otmp);
 			}
 			break;
@@ -2505,7 +2586,7 @@ typfnd:
 		case STATUE: otmp->corpsenm = mntmp;
 			if (Has_contents(otmp) && verysmall(&mons[mntmp]))
 			    delete_contents(otmp);	/* no spellbook */
-			otmp->spe = ishistoric;
+			otmp->spe = ishistoric ? STATUE_HISTORIC : 0;
 			break;
 		case SCALE_MAIL:
 			/* Dragon mail - depends on the order of objects */

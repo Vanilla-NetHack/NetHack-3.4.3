@@ -91,6 +91,7 @@ char SAVEP[SAVESIZE];	/* holds path of directory for save file */
 
 #ifdef HOLD_LOCKFILE_OPEN
 struct level_ftrack {
+int init;
 int fd;					/* file descriptor for level file     */
 int oflag;				/* open flags                         */
 boolean nethack_thinks_it_is_open;	/* Does NetHack think it's open?       */
@@ -127,6 +128,10 @@ static int lockptr;
 #ifndef WIN_CE
 #define DeleteFile unlink
 #endif
+#endif
+
+#ifdef MAC
+# define unlink macunlink
 #endif
 
 #ifdef USER_SOUNDS
@@ -535,7 +540,11 @@ const char *name;
 int lev, oflag;
 {
 	int reslt, fd;
-	if (lftrack.fd) {
+	if (!lftrack.init) {
+		lftrack.init = 1;
+		lftrack.fd = -1;
+	}
+	if (lftrack.fd >= 0) {
 		/* check for compatible access */
 		if (lftrack.oflag == oflag) {
 			fd = lftrack.fd;
@@ -554,7 +563,7 @@ int lev, oflag;
 			fd = sopen(name, oflag,SH_DENYRW, FCMASK);
 			lftrack.fd = fd;
 			lftrack.oflag = oflag;
-			if (fd)
+			if (fd >= 0)
 			    lftrack.nethack_thinks_it_is_open = TRUE;
 	}
 	return fd;
@@ -565,12 +574,13 @@ really_close()
 {
 	int fd = lftrack.fd;
 	lftrack.nethack_thinks_it_is_open = FALSE;
-	lftrack.fd = 0;
+	lftrack.fd = -1;
 	lftrack.oflag = 0;
 	(void)_close(fd);
 	return;
 }
 
+int
 close(fd)
 int fd;
 {
@@ -924,6 +934,7 @@ restore_saved_game()
 	return fd;
 }
 
+#if defined(UNIX) && defined(QT_GRAPHICS)
 /*ARGSUSED*/
 static char*
 plname_from_file(filename)
@@ -956,13 +967,13 @@ const char* filename;
        (eg. "/", "_", and "." characters are lost. */
     int k;
     int uid;
-    char name[NAME_MAX];
+    char name[64]; /* more than PL_NSIZ */
 #ifdef COMPRESS_EXTENSION
 #define EXTSTR COMPRESS_EXTENSION
 #else
 #define EXTSTR ""
 #endif
-    if ( sscanf( filename, "%*[^/]/%d%[^.]" EXTSTR, &uid, name ) == 2 ) {
+    if ( sscanf( filename, "%*[^/]/%d%63[^.]" EXTSTR, &uid, name ) == 2 ) {
 #undef EXTSTR
     /* "_" most likely means " ", which certainly looks nicer */
 	for (k=0; name[k]; k++)
@@ -976,6 +987,7 @@ const char* filename;
     }
 #endif
 }
+#endif /* defined(UNIX) && defined(QT_GRAPHICS) */
 
 char**
 get_saved_games()
@@ -989,8 +1001,8 @@ get_saved_games()
 	char** result = (char**)alloc((n+1)*sizeof(char*)); /* at most */
 	for (i=0; i<n; i++) {
 	    int uid;
-	    char name[NAME_MAX];
-	    if ( sscanf( namelist[i]->d_name, "%d%s", &uid, name ) == 2 ) {
+	    char name[64]; /* more than PL_NSIZ */
+	    if ( sscanf( namelist[i]->d_name, "%d%63s", &uid, name ) == 2 ) {
 		if ( uid == myuid ) {
 		    char filename[BUFSZ];
 		    char* r;
@@ -1349,15 +1361,21 @@ int retryct;
 #endif  /* UNIX || VMS */
 
 #if defined(AMIGA) || defined(WIN32) || defined(MSDOS)
+# ifdef AMIGA
+#define OPENFAILURE(fd) (!fd)
     lockptr = 0;
-    while (retryct-- && !lockptr) {
+# else
+#define OPENFAILURE(fd) (fd < 0)
+    lockptr = -1;
+# endif
+    while (retryct-- && OPENFAILURE(lockptr)) {
 # ifdef AMIGA
 	(void)DeleteFile(lockname); /* in case dead process was here first */
 	lockptr = Open(lockname,MODE_NEWFILE);
 # else
 	lockptr = open(lockname, O_RDWR|O_CREAT|O_EXCL, S_IWRITE);
 # endif
-	if (!lockptr) {
+	if (OPENFAILURE(lockptr)) {
 	    raw_printf("Waiting for access to %s.  (%d retries left).",
 			filename, retryct);
 	    Delay(50);
@@ -1525,17 +1543,32 @@ const char *filename;
 # else	/* should be only UNIX left */
 	envp = nh_getenv("HOME");
 	if (!envp)
-		Strcpy(tmp_config, ".nethackrc");
+		Strcpy(tmp_config, configfile);
 	else
-		Sprintf(tmp_config, "%s/%s", envp, ".nethackrc");
+		Sprintf(tmp_config, "%s/%s", envp, configfile);
 	if ((fp = fopenp(tmp_config, "r")) != (FILE *)0)
 		return(fp);
-	else if (errno != ENOENT) {
-		/* e.g., problems when setuid NetHack can't search home
-		 * directory restricted to user */
-		raw_printf("Couldn't open default config file %s (%d).",
-					tmp_config, errno);
-		wait_synch();
+# if defined(__APPLE__)
+	/* try an alternative */
+	if (envp) {
+		Sprintf(tmp_config, "%s/%s", envp, "Library/Preferences/NetHack Defaults");
+		if ((fp = fopenp(tmp_config, "r")) != (FILE *)0)
+			return(fp);
+	}
+# endif
+	if (errno != ENOENT) {
+	    char *details;
+
+	    /* e.g., problems when setuid NetHack can't search home
+	     * directory restricted to user */
+
+#if defined (NHSTDC) && !defined(NOTSTDC)
+	    if ((details = strerror(errno)) == 0)
+#endif
+		details = "";
+	    raw_printf("Couldn't open default config file %s %s(%d).",
+		       tmp_config, details, errno);
+	    wait_synch();
 	}
 # endif
 #endif

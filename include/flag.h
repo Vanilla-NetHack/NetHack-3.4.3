@@ -167,10 +167,12 @@ struct instance_flags {
 	boolean  menu_tab_sep;	/* Use tabs to separate option menu fields */
 	boolean  menu_requested; /* Flag for overloaded use of 'm' prefix
 				  * on some non-move commands */
+	uchar num_pad_mode;
 	int      purge_monsters;	/* # of dead monsters still on fmon list */
 	int *opt_booldup;	/* for duplication of boolean opts in config file */
 	int *opt_compdup;	/* for duplication of compound opts in config file */
-	uchar bouldersym;		/* symbol for boulder display */
+	uchar	bouldersym;	/* symbol for boulder display */
+	coord	travelcc;	/* coordinates for travel_cache */
 #ifdef WIZARD
 	boolean  sanity_check;	/* run sanity checks */
 	boolean  mon_polycontrol;	/* debug: control monster polymorphs */
@@ -186,6 +188,8 @@ struct instance_flags {
 #endif
 #ifdef MICRO
 	boolean  BIOS;		/* use IBM or ST BIOS calls when appropriate */
+#endif
+#if defined(MICRO) || defined(WIN32)
 	boolean  rawio;		/* whether can use rawio (IOCTL call) */
 #endif
 #ifdef MAC_GRAPHICS_ENV
@@ -254,6 +258,9 @@ struct instance_flags {
 				   		in the message window */
 	boolean wc_eight_bit_input;	/* allow eight bit input               */
 	boolean wc_mouse_support;	/* allow mouse support */
+	boolean wc2_fullscreen;		/* run fullscreen */
+	boolean wc2_softkeyboard;	/* use software keyboard */
+	boolean wc2_wraptext;		/* wrap text */
 
 	boolean  cmdassist;	/* provide detailed assistance for some commands */
 	boolean	 obsolete;	/* obsolete options can point at this, it isn't used */
@@ -262,6 +269,10 @@ struct instance_flags {
 	boolean  showrace;	/* show hero glyph by race rather than by role */
 	boolean  travelcmd;	/* allow travel command */
 	int	 runmode;	/* update screen display during run moves */
+#ifdef WIN32CON
+#define MAX_ALTKEYHANDLER 25
+	char	 altkeyhandler[MAX_ALTKEYHANDLER];
+#endif
 };
 
 /*

@@ -23,6 +23,7 @@
 #include "mhrip.h"
 #include "mhmain.h"
 #include "mhfont.h"
+#include "resource.h"
 
 #define LLEN 128
 
@@ -70,6 +71,7 @@ struct window_procs mswin_procs = {
 	WC_FONTSIZ_MESSAGE|WC_FONTSIZ_STATUS|WC_FONTSIZ_MENU|WC_FONTSIZ_TEXT|
 	WC_TILE_WIDTH|WC_TILE_HEIGHT|WC_TILE_FILE|WC_VARY_MSGCOUNT|
 	WC_WINDOWCOLORS|WC_PLAYER_SELECTION|WC_SPLASH_SCREEN|WC_POPUP_DIALOG,
+    0L,
     mswin_init_nhwindows,
     mswin_player_selection,
     mswin_askname,
@@ -332,8 +334,8 @@ void prompt_for_player_selection(void)
 
 	    /* tty_putstr(BASE_WINDOW, 0, ""); */
 	    /* echoline = wins[BASE_WINDOW]->cury; */
-            box_result = MessageBox(NULL, prompt, TEXT("NetHack for Windows"),
-					MB_YESNOCANCEL | MB_DEFBUTTON1);
+            box_result = NHMessageBox(NULL, prompt, 
+					MB_ICONQUESTION | MB_YESNOCANCEL | MB_DEFBUTTON1);
             pick4u = (box_result == IDYES) ? 'y' : (box_result == IDNO) ? 'n' : '\033';
 	    /* tty_putstr(BASE_WINDOW, 0, prompt); */
 	    do {
@@ -996,7 +998,7 @@ void mswin_display_file(const char *filename,BOOLEAN_P must_exist)
 		if (must_exist) {
 			TCHAR message[90];
 			_stprintf(message, TEXT("Warning! Could not find file: %s\n"), NH_A2W(filename, wbuf, sizeof(wbuf)));
-			MessageBox(GetNHApp()->hMainWnd, message, TEXT("ERROR"), MB_OK | MB_ICONERROR );
+			NHMessageBox(GetNHApp()->hMainWnd, message, MB_OK | MB_ICONEXCLAMATION );
 		} 
 	} else {
 		winid text;
@@ -1263,7 +1265,8 @@ void mswin_raw_print(const char *str)
 	TCHAR wbuf[255];
     logDebug("mswin_raw_print(%s)\n", str);
 	if( str && *str )
-		MessageBox(GetNHApp()->hMainWnd, NH_A2W(str, wbuf, sizeof(wbuf)), TEXT("NetHack"), MB_OK );
+		NHMessageBox(GetNHApp()->hMainWnd, NH_A2W(str, wbuf, sizeof(wbuf)), 
+		    MB_ICONINFORMATION | MB_OK );
 }
 
 /*
@@ -1276,7 +1279,8 @@ void mswin_raw_print_bold(const char *str)
 	TCHAR wbuf[255];
     logDebug("mswin_raw_print_bold(%s)\n", str);
 	if( str && *str )
-		MessageBox(GetNHApp()->hMainWnd, NH_A2W(str, wbuf, sizeof(wbuf)), TEXT("NetHack"), MB_OK );
+		NHMessageBox(GetNHApp()->hMainWnd, NH_A2W(str, wbuf, sizeof(wbuf)), 
+		    MB_ICONINFORMATION | MB_OK );
 }
 
 /*
@@ -1379,12 +1383,12 @@ char yn_function(const char *ques, const char *choices, char default)
 char mswin_yn_function(const char *question, const char *choices,
 		CHAR_P def)
 {
-    int result=-1;
     char ch;
     char yn_esc_map='\033';
     char message[BUFSZ];
 	char res_ch[2];
     int createcaret;
+	boolean digit_ok, allow_num;
 
 	logDebug("mswin_yn_function(%s, %s, %d)\n", question, choices, def);
 
@@ -1393,10 +1397,9 @@ char mswin_yn_function(const char *question, const char *choices,
 			+ strlen(GetNHApp()->saved_text) + 1);
         DWORD box_result;
         strcat(text, question);
-        box_result = MessageBox(NULL,
+        box_result = NHMessageBox(NULL,
              NH_W2A(text, message, sizeof(message)),
-             TEXT("NetHack for Windows"),
-             MB_YESNOCANCEL |
+             MB_YESNOCANCEL | MB_ICONQUESTION | 
              ((def == 'y') ? MB_DEFBUTTON1 :
               (def == 'n') ? MB_DEFBUTTON2 : MB_DEFBUTTON3));
         free(text);
@@ -1405,20 +1408,23 @@ char mswin_yn_function(const char *question, const char *choices,
     }
 
     if (choices) {
-	char *cb, choicebuf[QBUFSZ];
-	Strcpy(choicebuf, choices);
-	if ((cb = index(choicebuf, '\033')) != 0) {
-	    /* anything beyond <esc> is hidden */
-	    *cb = '\0';
-	}
-	sprintf(message, "%s [%s] ", question, choicebuf);
-	if (def) sprintf(eos(message), "(%c) ", def);
-	/* escape maps to 'q' or 'n' or default, in that order */
-	yn_esc_map = (index(choices, 'q') ? 'q' :
-		 (index(choices, 'n') ? 'n' : def));
+		char *cb, choicebuf[QBUFSZ];
+
+		allow_num = (index(choices, '#') != 0);
+
+		Strcpy(choicebuf, choices);
+		if ((cb = index(choicebuf, '\033')) != 0) {
+			/* anything beyond <esc> is hidden */
+			*cb = '\0';
+		}
+		sprintf(message, "%s [%s] ", question, choicebuf);
+		if (def) sprintf(eos(message), "(%c) ", def);
+		/* escape maps to 'q' or 'n' or default, in that order */
+		yn_esc_map = (index(choices, 'q') ? 'q' :
+			(index(choices, 'n') ? 'n' : def));
     } else {
-	Strcpy(message, question);
-	Strcat(message, " ");
+		Strcpy(message, question);
+		Strcat(message, " ");
     }
 
     createcaret = 1;
@@ -1429,38 +1435,83 @@ char mswin_yn_function(const char *question, const char *choices,
     mswin_putstr(WIN_MESSAGE, ATR_BOLD, message);
 
     /* Only here if main window is not present */
-    while (result<0) {
-        ShowCaret(mswin_hwnd_from_winid(WIN_MESSAGE));
-	ch=mswin_nhgetch();
-	if (choices)
-		ch = lowc(ch);
-        HideCaret(mswin_hwnd_from_winid(WIN_MESSAGE));
-	if (ch=='\033') {
-	    result=yn_esc_map;
-	} else if (choices && !index(choices,ch)) {
-	    /* FYI: ch==-115 is for KP_ENTER */
-	    if (def && (ch==' ' || ch=='\r' || ch=='\n' || ch==-115)) {
-		result=def;
-	    } else {
-		mswin_nhbell();
-		/* and try again... */
-	    }
-	} else {
-	    result=ch;
-	}
-    }
+	ch = 0;
+    do {
+		ShowCaret(mswin_hwnd_from_winid(WIN_MESSAGE));
+		ch=mswin_nhgetch();
+		HideCaret(mswin_hwnd_from_winid(WIN_MESSAGE));
+		if (choices) ch = lowc(ch);
+		else break; /* If choices is NULL, all possible inputs are accepted and returned. */
+
+		digit_ok = allow_num && digit(ch);
+		if (ch=='\033') {
+			if (index(choices, 'q'))
+				ch = 'q';
+			else if (index(choices, 'n'))
+				ch = 'n';
+			else
+				ch = def;
+			break;
+	    } else if (index(quitchars, ch)) {
+			ch = def;
+			break;
+		} else if (!index(choices, ch) && !digit_ok) {
+			mswin_nhbell();
+			ch = (char)0;
+			/* and try again... */
+		} else if (ch == '#' || digit_ok) {
+			char z, digit_string[2];
+			int n_len = 0;
+			long value = 0;
+			mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, ("#"), 1); n_len++;
+			digit_string[1] = '\0';
+			if (ch != '#') {
+				digit_string[0] = ch;
+				mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, 1); n_len++;
+				value = ch - '0';
+				ch = '#';
+			}
+			do {	/* loop until we get a non-digit */
+				z = lowc(readchar());
+				if (digit(z)) {
+					value = (10 * value) + (z - '0');
+					if (value < 0) break;	/* overflow: try again */
+					digit_string[0] = z;
+					mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, 1);
+					n_len++;
+				} else if (z == 'y' || index(quitchars, z)) {
+					if (z == '\033')  value = -1;	/* abort */
+					z = '\n';	/* break */
+				} else if (z == '\b') {
+					if (n_len <= 1) { value = -1;  break; }
+					else { value /= 10;  mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -1);  n_len--; }
+				} else {
+					value = -1;	/* abort */
+					mswin_nhbell();
+					break;
+				}
+			} while (z != '\n');
+			if (value > 0) yn_number = value;
+			else if (value == 0) ch = 'n';		/* 0 => "no" */
+			else {	/* remove number from top line, then try again */
+				mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, digit_string, -n_len); n_len = 0;
+				ch = (char)0;
+			}
+		}
+	} while( !ch );
 
     createcaret = 0;
     SendMessage(mswin_hwnd_from_winid(WIN_MESSAGE), 
         WM_MSNH_COMMAND, (WPARAM)MSNH_MSG_CARET, (LPARAM)&createcaret );
+
 	/* display selection in the message window */
-	if( isprint(ch) ) {
+	if( isprint(ch) && ch!='#' ) {
 		res_ch[0] = ch;
 		res_ch[1] = '\x0';
 		mswin_putstr_ex(WIN_MESSAGE, ATR_BOLD, res_ch, 1);
 	}
 
-    return result;
+    return ch;
 }
 
 /*
@@ -2056,7 +2107,7 @@ logDebug(const char *fmt, ...)
 /* Reading and writing settings from the registry. */
 #define CATEGORYKEY         "Software"
 #define COMPANYKEY          "NetHack"
-#define PRODUCTKEY          "NetHack 3.4.1"
+#define PRODUCTKEY          "NetHack 3.4.2"
 #define SETTINGSKEY         "Settings"
 #define MAINSHOWSTATEKEY    "MainShowState"
 #define MAINMINXKEY         "MainMinX"
@@ -2290,4 +2341,13 @@ static void mswin_color_from_string(char *colorstring, HBRUSH* brushptr, COLORRE
 	if (max_brush > TOTAL_BRUSHES) panic("Too many colors!");
 	*brushptr = CreateSolidBrush(*colorptr);
 	brush_table[max_brush++] = *brushptr;
+}
+
+int NHMessageBox(HWND hWnd, LPCTSTR text, UINT type)
+{
+    TCHAR title[MAX_LOADSTRING];
+    
+    LoadString(GetNHApp()->hApp, IDS_APP_TITLE_SHORT, title, MAX_LOADSTRING);
+
+    return MessageBox(hWnd, text, title, type);
 }

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Makefile.GCC	      3.4     $Date: 2003/02/17 23:56:35 $
+#	SCCS Id: @(#)Makefile.GCC	      3.4     $Date: 2003/06/15 15:56:45 $
 #	Copyright (c) NetHack PC Development Team 1996-2003.
 #	PC NetHack 3.4 Makefile for djgpp V2
 #
@@ -67,6 +67,10 @@ LIBRARIES = $(LIBS) $(TERMLIB)
 # If you have yacc/lex or a work-alike set YACC_LEX to Y
 #
 YACC_LEX = Y
+ifeq ($(YACC_LEX),Y)
+DO_YACC = YACC_ACT
+DO_LEX  = LEX_ACT
+endif
 
 # If YACC_LEX is Y above, set the following to values appropriate for
 # your tools.
@@ -75,6 +79,10 @@ YACC   = bison -y
 LEX    = flex
 YTABC  = y_tab.c
 YTABH  = y_tab.h
+#If your tool produces y.tab.c and y.tab.h DOS might require
+#the following instead.
+#YTABC  = ytab~1.c
+#YTABH  = ytab~1.h
 LEXYYC = lexyy.c
 
 #
@@ -83,8 +91,9 @@ LEXYYC = lexyy.c
 
 USE_DLB = Y
 
-# djgpp ships with an ls.exe command so changing this should
-# not be necessary
+# djgpp includes ls.exe and touch.exe in fil41b.zip from the v2gnu 
+# folder so be sure to include that when downloading djgpp. Doing
+# so will make changing this unnecessary.
 
 LS = ls -1		# ls.exe from djgpp distribution
 #LS = dir /l/b		# DOS command
@@ -608,15 +617,15 @@ $(O)lev_main.o:  $(HACK_H) $(INCL)/sp_lev.h $(INCL)/date.h $(U)lev_main.c
 
 ifeq  "$(DO_YACC)" "YACC_ACT"
 
-$(INCL)/lev_comp.h: lev_yacc.c
+$(INCL)/lev_comp.h: $(U)lev_yacc.c
 
 $(U)lev_yacc.c $(INCL)/lev_comp.h : $(U)lev_comp.y
-	@$(subst /,\,chdir $(U)) & \
-	@$(subst /,\,$(YACC) -d lev_comp.y) & \
-	@$(subst /,\,copy $(YTABC) lev_yacc.c) & \
-	@$(subst /,\,copy $(YTABH) $(INCL)/lev_comp.h) & \
-	@$(subst /,\,@del $(YTABC)) & \
-	@$(subst /,\,@del $(YTABH)) & \
+	@$(subst /,\,chdir $(UTIL))
+	@$(subst /,\,$(YACC) -d lev_comp.y)
+	@$(subst /,\,copy $(YTABC) lev_yacc.c)
+	@$(subst /,\,copy $(YTABH) $(INCL)/lev_comp.h)
+	@$(subst /,\,@del $(YTABC))
+	@$(subst /,\,@del $(YTABH))
 	@$(subst /,\,chdir $(SRC))
 else
 
@@ -638,10 +647,11 @@ endif
 
 $(U)lev_$(LEX).c: $(U)lev_comp.l
 ifeq  "$(DO_LEX)" "LEX_ACT"
-	@$(subst /,\,chdir $(U)) & \
-	@$(subst /,\,$(LEX) $(FLEXSKEL) lev_comp.l) & \
-	@$(subst /,\,copy $(LEXYYC) $@) & \
-	@$(subst /,\,@del $(LEXYYC)) & \
+	@$(subst /,\,chdir $(UTIL))
+	@$(subst /,\,$(LEX) $(FLEXSKEL) lev_comp.l)
+	@$(subst /,\,if exist $@ del $@)
+	@$(subst /,\,copy $(LEXYYC) $@)
+	@$(subst /,\,del $(LEXYYC))
 	@$(subst /,\,chdir $(SRC))
 else
 	@echo ---
@@ -660,12 +670,12 @@ $(U)dgn_comp.exe:  $(DGNCOMPOBJS)
 
 ifeq  "$(DO_YACC)" "YACC_ACT"
 $(U)dgn_yacc.c $(INCL)/dgn_comp.h : $(U)dgn_comp.y
-	@$(subst /,\,chdir $(U)) & \
-	@$(subst /,\,$(YACC) -d dgn_comp.y) & \
-	@$(subst /,\,copy $(YTABC) dgn_yacc.c) & \
-	@$(subst /,\,copy $(YTABH) $(INCL)/dgn_comp.h) & \
-	@$(subst /,\,@del $(YTABC)) & \
-	@$(subst /,\,@del $(YTABH)) & \
+	@$(subst /,\,chdir $(UTIL))
+	@$(subst /,\,$(YACC) -d dgn_comp.y)
+	@$(subst /,\,copy $(YTABC) dgn_yacc.c)
+	@$(subst /,\,copy $(YTABH) $(INCL)/dgn_comp.h)
+	@$(subst /,\,@del $(YTABC))
+	@$(subst /,\,@del $(YTABH))
 	@$(subst /,\,chdir $(SRC))
 else
 $(U)dgn_yacc.c: $(SSHR)/dgn_yacc.c
@@ -687,10 +697,11 @@ endif
 ifeq  "$(DO_LEX)" "LEX_ACT"
 
 $(U)dgn_$(LEX).c: $(U)dgn_comp.l $(INCL)/dgn_comp.h
-	@$(subst /,\,chdir $(U)) & \
-	@$(subst /,\,$(LEX) $(FLEXSKEL)  dgn_comp.l) & \
-	@$(subst /,\,copy $(LEXYYC) $@) & \
-	@$(subst /,\,@del $(LEXYYC)) & \
+	@$(subst /,\,chdir $(UTIL))
+	@$(subst /,\,$(LEX) $(FLEXSKEL) dgn_comp.l)
+	@$(subst /,\,if exist $@ del $@)
+	@$(subst /,\,copy $(LEXYYC) $@)
+	@$(subst /,\,del $(LEXYYC))
 	@$(subst /,\,chdir $(SRC))
 else
 
@@ -938,7 +949,7 @@ $(DAT)/nhdat:	$(U)dlb_main.exe $(DAT)/data $(DAT)/rumors $(DAT)/dungeon \
 	@$(subst /,\,echo wizhelp >>dlb.lst)
 	@$(subst /,\,echo license >>dlb.lst)
 	@$(subst /,\,echo msdoshlp.txt >>dlb.lst)
-	@$(subst /,\,$(LS) *.lev >>dlb.lst)
+	$(LS) $(subst /,\,*.lev) >>dlb.lst
 	@$(subst /,\,$(U)dlb_main cvIf dlb.lst nhdat)
 	@$(subst /,\,cd $(SRC))
 

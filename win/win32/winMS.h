@@ -151,6 +151,8 @@ void mswin_read_reg(void);
 void mswin_destroy_reg(void);
 void mswin_write_reg(void);
 
+int NHMessageBox(HWND hWnd, LPCTSTR text, UINT type);
+
 extern HBRUSH menu_bg_brush;
 extern HBRUSH menu_fg_brush;
 extern HBRUSH text_bg_brush;

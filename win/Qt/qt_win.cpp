@@ -71,6 +71,9 @@ extern "C" {
 #undef lock
 
 }
+#ifdef yn
+#undef yn
+#endif
 
 #include "qt_win.h"
 #include <qregexp.h>
@@ -3584,7 +3587,7 @@ NetHackQtMainWindow::NetHackQtMainWindow(NetHackQtKeyBuffer& ks) :
 	{ game,		"Options\tShift+O",           "O", 3},
 	{ game,		"Explore mode\tShift+X",      "X", 3},
 	{ game,		0, 0, 3},
-	{ game,		"Save\tShift+S",              "Sy", 3},
+	{ game,		"Save\tSy",              "Sy", 3},
 	{ game,		"Quit\tAlt+Q",                "\361", 3},
 
 	{ apparel,	"Apparel off\tShift+A",       "A", 2},
@@ -3628,7 +3631,7 @@ NetHackQtMainWindow::NetHackQtMainWindow(NetHackQtKeyBuffer& ks) :
 	{ act2,	"Up\t<",                "<", 3},
 	{ act2,	"Wipe face\tAlt+W",       "\367", 3},
 
-	{ magic,	"Quaff potion\tq",      "q?", 3},
+	{ magic,	"Quaff potion\tq?",     "q?", 3},
 	{ magic,	"Read scroll/book\tr?", "r?", 3},
 	{ magic,	"Zap wand\tz?",         "z?", 3},
 	{ magic,	"Zap spell\tShift+Z",        "Z", 3},
@@ -3647,7 +3650,7 @@ NetHackQtMainWindow::NetHackQtMainWindow(NetHackQtKeyBuffer& ks) :
 	{ help,		0, 0, 3},
 	{ help,		"What is here\t:",      ":", 3},
 	{ help,		"What is there\t;",      ";", 3},
-	{ help,		"What is...\t/",        "/y", 2},
+	{ help,		"What is...\t/y",        "/y", 2},
 	{ help,		0, 0, 1},
 
 	{ info,		"Inventory\ti",         "i", 3},
@@ -5185,6 +5188,7 @@ struct window_procs Qt_procs = {
 	WC_ASCII_MAP|WC_TILED_MAP|
 	WC_FONT_MAP|WC_TILE_FILE|WC_TILE_WIDTH|WC_TILE_HEIGHT|
 	WC_PLAYER_SELECTION|WC_SPLASH_SCREEN,
+    0L,
     NetHackQtBind::qt_init_nhwindows,
     NetHackQtBind::qt_player_selection,
     NetHackQtBind::qt_askname,

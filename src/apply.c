@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	3.4	2003/02/13	*/
+/*	SCCS Id: @(#)apply.c	3.4	2003/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,13 +21,13 @@ STATIC_DCL void FDECL(use_whistle, (struct obj *));
 STATIC_DCL void FDECL(use_magic_whistle, (struct obj *));
 STATIC_DCL void FDECL(use_leash, (struct obj *));
 STATIC_DCL int FDECL(use_mirror, (struct obj *));
-STATIC_DCL void FDECL(use_bell, (struct obj *));
+STATIC_DCL void FDECL(use_bell, (struct obj **));
 STATIC_DCL void FDECL(use_candelabrum, (struct obj *));
-STATIC_DCL void FDECL(use_candle, (struct obj *));
+STATIC_DCL void FDECL(use_candle, (struct obj **));
 STATIC_DCL void FDECL(use_lamp, (struct obj *));
 STATIC_DCL void FDECL(light_cocktail, (struct obj *));
 STATIC_DCL void FDECL(use_tinning_kit, (struct obj *));
-STATIC_DCL void FDECL(use_figurine, (struct obj *));
+STATIC_DCL void FDECL(use_figurine, (struct obj **));
 STATIC_DCL void FDECL(use_grease, (struct obj *));
 STATIC_DCL void FDECL(use_trap, (struct obj *));
 STATIC_DCL void FDECL(use_stone, (struct obj *));
@@ -65,8 +65,8 @@ use_camera(obj)
 		pline(nothing_happens);
 		return (1);
 	}
-	check_unpaid(obj);
-	obj->spe--;
+	consume_obj_charge(obj, TRUE);
+
 	if (obj->cursed && !rn2(2)) {
 		(void) zapyourself(obj, TRUE);
 	} else if (u.uswallow) {
@@ -202,10 +202,13 @@ STATIC_OVL int
 use_stethoscope(obj)
 	register struct obj *obj;
 {
-	static long last_used = 0;
+	static long last_used_move = -1;
+	static short last_used_movement = 0;
 	struct monst *mtmp;
 	struct rm *lev;
 	int rx, ry, res;
+	boolean interference = (u.uswallow && is_whirly(u.ustuck->data) &&
+				!rn2(Role_if(PM_HEALER) ? 10 : 3));
 
 	if (nohands(youmonst.data)) {	/* should also check for no ears and/or deaf */
 		You("have no hands!");	/* not `body_part(HAND)' */
@@ -216,17 +219,28 @@ use_stethoscope(obj)
 	}
 	if (!getdir((char *)0)) return 0;
 
-	res = (moves + monstermoves == last_used);
-	last_used = moves + monstermoves;
+	res = (moves == last_used_move) &&
+	      (youmonst.movement == last_used_movement);
+	last_used_move = moves;
+	last_used_movement = youmonst.movement;
 
+#ifdef STEED
+	if (u.usteed && u.dz > 0) {
+		if (interference) {
+			pline("%s interferes.", Monnam(u.ustuck));
+			mstatusline(u.ustuck);
+		} else
+			mstatusline(u.usteed);
+		return res;
+	} else
+#endif
 	if (u.uswallow && (u.dx || u.dy || u.dz)) {
 		mstatusline(u.ustuck);
 		return res;
-#ifdef STEED
-	} else if (u.usteed && u.dz > 0) {
-		mstatusline(u.usteed);
+	} else if (u.uswallow && interference) {
+		pline("%s interferes.", Monnam(u.ustuck));
+		mstatusline(u.ustuck);
 		return res;
-#endif
 	} else if (u.dz) {
 		if (Underwater)
 		    You_hear("faint splashing.");
@@ -725,9 +739,10 @@ struct obj *obj;
 }
 
 STATIC_OVL void
-use_bell(obj)
-register struct obj *obj;
+use_bell(optr)
+struct obj **optr;
 {
+	register struct obj *obj = *optr;
 	struct monst *mtmp;
 	boolean wakem = FALSE, learno = FALSE,
 		ordinary = (obj->otyp != BELL_OF_OPENING || !obj->spe),
@@ -762,6 +777,7 @@ register struct obj *obj;
 		if (!obj_resists(obj, 93, 100)) {
 		    pline("%s shattered!", Tobjnam(obj, "have"));
 		    useup(obj);
+		    *optr = 0;
 		} else switch (rn2(3)) {
 			default:
 				break;
@@ -778,8 +794,7 @@ register struct obj *obj;
 
 	} else {
 	    /* charged Bell of Opening */
-	    check_unpaid(obj);
-	    obj->spe--;
+	    consume_obj_charge(obj, TRUE);
 
 	    if (u.uswallow) {
 		if (!obj->cursed)
@@ -893,9 +908,10 @@ register struct obj *obj;
 }
 
 STATIC_OVL void
-use_candle(obj)
-register struct obj *obj;
+use_candle(optr)
+struct obj **optr;
 {
+	register struct obj *obj = *optr;
 	register struct obj *otmp;
 	const char *s = (obj->quan != 1) ? "candles" : "candle";
 	char qbuf[QBUFSZ];
@@ -916,7 +932,9 @@ register struct obj *obj;
 	}
 
 	Sprintf(qbuf, "Attach %s", the(xname(obj)));
-	Sprintf(eos(qbuf), " to %s?", the(xname(otmp)));
+	Sprintf(eos(qbuf), " to %s?",
+		safe_qbuf(qbuf, sizeof(" to ?"), the(xname(otmp)),
+			the(simple_typename(otmp->otyp)), "it"));
 	if(yn(qbuf) == 'n') {
 		if (!obj->lamplit)
 		    You("try to light %s...", the(xname(obj)));
@@ -925,6 +943,7 @@ register struct obj *obj;
 	} else {
 		if ((long)otmp->spe + obj->quan > 7L)
 		    obj = splitobj(obj, 7L - (long)otmp->spe);
+		else *optr = 0;
 		You("attach %ld%s %s to %s.",
 		    obj->quan, !otmp->spe ? "" : " more",
 		    s, the(xname(otmp)));
@@ -1007,10 +1026,7 @@ struct obj *obj;
 {
 	xchar x, y;
 
-	if (!obj->lamplit && (obj->otyp == CANDELABRUM_OF_INVOCATION ||
-		obj->otyp == WAX_CANDLE || obj->otyp == TALLOW_CANDLE ||
-		obj->otyp == OIL_LAMP || obj->otyp == MAGIC_LAMP ||
-		obj->otyp == BRASS_LANTERN || obj->otyp == POT_OIL)) {
+	if (!obj->lamplit && (obj->otyp == MAGIC_LAMP || ignitable(obj))) {
 	    if ((obj->otyp == MAGIC_LAMP ||
 		 obj->otyp == CANDELABRUM_OF_INVOCATION) &&
 		obj->spe == 0)
@@ -1398,7 +1414,8 @@ register struct obj *obj;
 		pline("That's too insubstantial to tin.");
 		return;
 	}
-	obj->spe--;
+	consume_obj_charge(obj, TRUE);
+
 	if ((can = mksobj(TIN, FALSE, FALSE)) != 0) {
 	    static const char you_buy_it[] = "You tin it, you bought it!";
 
@@ -1696,9 +1713,10 @@ boolean quietly;
 }
 
 STATIC_OVL void
-use_figurine(obj)
-register struct obj *obj;
+use_figurine(optr)
+struct obj **optr;
 {
+	register struct obj *obj = *optr;
 	xchar x, y;
 	coord cc;
 
@@ -1726,6 +1744,7 @@ register struct obj *obj;
 	(void) make_familiar(obj, cc.x, cc.y, FALSE);
 	(void) stop_timer(FIG_TRANSFORM, (genericptr_t)obj);
 	useup(obj);
+	*optr = 0;
 }
 
 static NEARDATA const char lubricables[] = { ALL_CLASSES, ALLOW_NONE, 0 };
@@ -1748,8 +1767,8 @@ struct obj *obj;
 
 	if (obj->spe > 0) {
 		if ((obj->cursed || Fumbling) && !rn2(2)) {
-			check_unpaid(obj);
-			obj->spe--;
+			consume_obj_charge(obj, TRUE);
+
 			pline("%s from your %s.", Tobjnam(obj, "slip"),
 			      makeplural(body_part(FINGER)));
 			dropx(obj);
@@ -1771,8 +1790,8 @@ struct obj *obj;
 			return;
 		}
 #endif
-		check_unpaid(obj);
-		obj->spe--;
+		consume_obj_charge(obj, TRUE);
+
 		if (otmp != &zeroobj) {
 			You("cover %s with a thick layer of grease.",
 			    yname(otmp));
@@ -1800,12 +1819,14 @@ static struct trapinfo {
 	struct obj *tobj;
 	xchar tx, ty;
 	int time_needed;
+	boolean force_bungle;
 } trapinfo;
 
 void
 reset_trapset()
 {
 	trapinfo.tobj = 0;
+	trapinfo.force_bungle = 0;
 }
 
 /* touchstones - by Ken Arnold */
@@ -2004,7 +2025,37 @@ struct obj *otmp;
 	    trapinfo.time_needed += (tmp > 12) ? 1 : (tmp > 7) ? 2 : 4;
 	/*[fumbling and/or confusion and/or cursed object check(s)
 	   should be incorporated here instead of in set_trap]*/
+#ifdef STEED
+	if (u.usteed && P_SKILL(P_RIDING) < P_BASIC) {
+	    boolean chance;
 
+	    if (Fumbling || otmp->cursed) chance = (rnl(10) > 3);
+	    else  chance = (rnl(10) > 5);
+	    You("aren't very skilled at reaching from %s.",
+		mon_nam(u.usteed));
+	    Sprintf(buf, "Continue your attempt to set %s?",
+		the(defsyms[trap_to_defsym(what_trap(ttyp))].explanation));
+	    if(yn(buf) == 'y') {
+		if (chance) {
+			switch(ttyp) {
+			    case LANDMINE:	/* set it off */
+			    	trapinfo.time_needed = 0;
+			    	trapinfo.force_bungle = TRUE;
+				break;
+			    case BEAR_TRAP:	/* drop it without arming it */
+				reset_trapset();
+				You("drop %s!",
+			  the(defsyms[trap_to_defsym(what_trap(ttyp))].explanation));
+				dropx(otmp);
+				return;
+			}
+		}
+	    } else {
+	    	reset_trapset();
+		return;
+	    }
+	}
+#endif
 	You("begin setting %s %s.",
 	    shk_your(buf, otmp),
 	    defsyms[trap_to_defsym(what_trap(ttyp))].explanation);
@@ -2038,9 +2089,12 @@ set_trap()
 	    if (*in_rooms(u.ux,u.uy,SHOPBASE)) {
 		add_damage(u.ux, u.uy, 0L);		/* schedule removal */
 	    }
-	    You("finish arming %s.",
-		the(defsyms[trap_to_defsym(what_trap(ttyp))].explanation));
-	    if ((otmp->cursed || Fumbling) && (rnl(10) > 5)) dotrap(ttmp, 0);
+	    if (!trapinfo.force_bungle)
+		You("finish arming %s.",
+			the(defsyms[trap_to_defsym(what_trap(ttyp))].explanation));
+	    if (((otmp->cursed || Fumbling) && (rnl(10) > 5)) || trapinfo.force_bungle)
+		dotrap(ttmp,
+			(unsigned)(trapinfo.force_bungle ? FORCEBUNGLE : 0));
 	} else {
 	    /* this shouldn't happen */
 	    Your("trap setting attempt fails.");
@@ -2344,7 +2398,9 @@ use_pole (obj)
 	} else if (distu(cc.x, cc.y) < min_range) {
 	    pline("Too close!");
 	    return (res);
-	} else if (!cansee(cc.x, cc.y)) {
+	} else if (!cansee(cc.x, cc.y) &&
+		   ((mtmp = m_at(cc.x, cc.y)) == (struct monst *)0 ||
+		    !canseemon(mtmp))) {
 	    You(cant_see_spot);
 	    return (res);
 	}
@@ -2545,7 +2601,9 @@ do_break_wand(obj)
     char confirm[QBUFSZ], the_wand[BUFSZ], buf[BUFSZ];
 
     Strcpy(the_wand, yname(obj));
-    Sprintf(confirm, "Are you really sure you want to break %s?", the_wand);
+    Sprintf(confirm, "Are you really sure you want to break %s?",
+	safe_qbuf("", sizeof("Are you really sure you want to break ?"),
+				the_wand, ysimple_name(obj), "the wand"));
     if (yn(confirm) == 'n' ) return 0;
 
     if (nohands(youmonst.data)) {
@@ -2712,7 +2770,7 @@ char class;
 int
 doapply()
 {
-	register struct obj *obj;
+	struct obj *obj;
 	register int res = 1;
 	char class_list[MAXOCLASSES+2];
 
@@ -2765,18 +2823,7 @@ doapply()
 		res = use_container(obj, 1);
 		break;
 	case BAG_OF_TRICKS:
-		if(obj->spe > 0) {
-			register int cnt = 1;
-
-			check_unpaid(obj);
-			obj->spe--;
-			if(!rn2(23)) cnt += rn2(7) + 1;
-			while(cnt--)
-			   (void) makemon((struct permonst *) 0,
-						u.ux, u.uy, NO_MM_FLAGS);
-			makeknown(BAG_OF_TRICKS);
-		} else
-			pline(nothing_happens);
+		bagotricks(obj);
 		break;
 	case CAN_OF_GREASE:
 		use_grease(obj);
@@ -2838,14 +2885,14 @@ doapply()
 		break;
 	case BELL:
 	case BELL_OF_OPENING:
-		use_bell(obj);
+		use_bell(&obj);
 		break;
 	case CANDELABRUM_OF_INVOCATION:
 		use_candelabrum(obj);
 		break;
 	case WAX_CANDLE:
 	case TALLOW_CANDLE:
-		use_candle(obj);
+		use_candle(&obj);
 		break;
 	case OIL_LAMP:
 	case MAGIC_LAMP:
@@ -2882,7 +2929,7 @@ doapply()
 		goto xit;
 
 	case FIGURINE:
-		use_figurine(obj);
+		use_figurine(&obj);
 		break;
 	case UNICORN_HORN:
 		use_unicorn_horn(obj);
@@ -2904,8 +2951,7 @@ doapply()
 		    struct obj *otmp;
 		    const char *what;
 
-		    check_unpaid(obj);
-		    obj->spe--;
+		    consume_obj_charge(obj, TRUE);
 		    if (!rn2(13)) {
 			otmp = mkobj(POTION_CLASS, FALSE);
 			if (objects[otmp->otyp].oc_magic) do {
@@ -2960,7 +3006,7 @@ doapply()
 		nomul(0);
 		return 0;
 	}
-	if (res && obj->oartifact) arti_speak(obj);
+	if (res && obj && obj->oartifact) arti_speak(obj);
 	nomul(0);
 	return res;
 }

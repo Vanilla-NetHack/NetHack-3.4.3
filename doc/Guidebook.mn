@@ -1,11 +1,11 @@
-.\" $Revision: 1.61 $ $Date: 2003/02/13 04:55:27 $
+.\" $Revision: 1.61.2.7 $ $Date: 2003/08/28 11:22:27 $
 .ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
 .ds vr "NetHack 3.4
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "February 12, 2003
+.ds f2 "August 14, 2003
 .mt
 A Guide to the Mazes of Menace
 (Guidebook for NetHack)
@@ -573,7 +573,7 @@ Put on a ring or other accessory (amulet, blindfold).
 Repeat previous message.  Subsequent ^P's repeat earlier messages.
 The behavior can be varied via the msg_window option.
 .lp q
-Quaff (drink) a potion.
+Quaff (drink) something (potion, water, etc).
 .lp Q
 Select an object for your quiver.  You can then throw this using
 the `f' command.  (In versions prior to 3.3 this was the command to quit
@@ -1941,7 +1941,9 @@ in setting this with the `O' command.
 .lp "null    "
 Send padding nulls to the terminal (default off).
 .lp number_pad
-Use the number keys to move instead of [yuhjklbn] (default off).
+Use the number keys to move instead of [yuhjklbn] (default 0 or off).
+(number_pad:2 invokes the old DOS behaviour where `5' means `g', meta-`5'
+means `G',  and meta-`0' means `I'.)
 .lp objects
 Set the characters used to display object classes
 (default ``])[="(%!?+/$*`0_.'').
@@ -2132,6 +2134,8 @@ NetHack should use this size font for the message window.
 NetHack should use this size font for the status window.
 .lp font_size_text	
 NetHack should use this size font for text windows.
+.lp fullscreen
+NetHack should try and display on the entire screen rather than in a window.
 .lp hilite_pet
 Visually distinguish pets from similar animals (default off).
 The behavior of this option depends on the type of windowing you use.
@@ -2159,6 +2163,8 @@ when the hero reaches the scroll_margin.
 .lp scroll_margin
 NetHack should scroll the display when the hero or cursor
 is this number of cells away from the edge of the window.
+.lp softkeyboard
+Display an onscreen keyboard.  Handhelds are most likely to support this option.
 .lp splash_screen
 NetHack should display an opening splash screen when it starts up (default yes).
 .lp tiled_map	
@@ -2177,11 +2183,19 @@ the message window.
 .lp windowcolors
 NetHack should display windows with the specified foreground/background
 colors if it can.
+.lp wraptext
+NetHack port should wrap long lines of text if they don't fit in 
+the visible area of the window.
 .hn 2
 Platform-specific Customization options
 .pg
 Here are explanations of options that are used by specific platforms or ports 
 to customize and change the port behaviour.
+.lp altkeyhandler
+Select an alternate keystroke handler dll to load (Win32 tty NetHack only).
+The name of the handler is specified without the .dll extension and without any
+path information.
+Cannot be set with the `O' command.
 .lp altmeta
 (default on, AMIGA NetHack only).
 .lp "BIOS    "
@@ -2203,6 +2217,14 @@ Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `O' command.
 .lp soundcard
 (default on, PC NetHack only).
+Cannot be set with the `O' command.
+.lp subkeyval
+(Win32 tty NetHack only).
+May be used to alter the value of keystrokes that the operating system
+returns to NetHack to help compensate for international keyboard issues.
+OPTIONS=subkeyvalue:171/92
+will return 92 to NetHack, if 171 was originally going to be returned.
+You can use multiple subkeyvalue statements in the config file if needed.
 Cannot be set with the `O' command.
 .lp video
 Set the video mode used (PC NetHack only).
@@ -2545,42 +2567,43 @@ in this, the list of Dungeoneers:
 center;
 c c c.
 .\"TABLE_START
-Adam Aronow	Irina Rempt-Drijfhout	Mike Gallop
-Alex Kompel	Izchak Miller	Mike Passaretti
-Andreas Dorn	J. Ali Harlow	Mike Stephenson
-Andy Church	Janet Walz	Norm Meluch
-Andy Swanson	Janne Salmijarvi	Olaf Seibert
-Ari Huttunen	Jean-Christophe Collet	Pasi Kallinen
-Barton House	Jochen Erwied	Pat Rankin
-Benson I. Margulies	John Kallen	Paul Winner
-Bill Dyer	John Rupley	Pierre Martineau
-Boudewijn Waijers	John S. Bien	Ralf Brown
-Bruce Cox	Johnny Lee	Richard Addison
-Bruce Holloway	Jon W{tte	Richard Beigel
-Bruce Mewborne	Jonathan Handler	Richard P. Hughey
-Carl Schelin	Joshua Delahunty	Rob Menke
-Chris Russo	Keizo Yamamoto	Robin Johnson
-David Cohrs	Ken Arnold	Roderick Schertler
-David Damerell	Ken Arromdee	Roland McGrath
-David Gentzel	Ken Lorber	Ron Van Iwaarden
-David Hairston	Ken Washikita	Ronnen Miller
-Dean Luick	Kevin Darcy	Ross Brown
-Del Lamb	Kevin Hugo	Sascha Wostmann
-Deron Meranda	Kevin Sitze	Scott Bigham
-Dion Nicolaas	Kevin Smolkowski	Scott R. Turner
-Dylan O'Donnell	Kevin Sweet	Stephen Spackman
-Eric Backus	Lars Huttar	Stephen White
-Eric Hendrickson	Malcolm Ryan	Steve Creps
-Eric R. Smith	Mark Gooderum	Steve Linhart
-Eric S. Raymond	Mark Modrall	Steve VanDevender
-Erik Andersen	Marvin Bressler	Teemu Suikki
-Frederick Roeber	Matthew Day	Tim Lennan
-Gil Neiger	Merlyn LeRoy	Timo Hakulinen
-Greg Laskin	Michael Allison	Tom Almy
-Greg Olson	Michael Feir	Tom West
-Gregg Wonderly	Michael Hamel	Warren Cheung
-Hao-yang Wang	Michael Sokolov	Warwick Allison
-Helge Hafting	Mike Engber	Yitzhak Sapir
+Adam Aronow	Izchak Miller	Mike Stephenson
+Alex Kompel	J. Ali Harlow	Norm Meluch
+Andreas Dorn	Janet Walz	Olaf Seibert
+Andy Church	Janne Salmijarvi	Pasi Kallinen
+Andy Swanson	Jean-Christophe Collet	Pat Rankin
+Ari Huttunen	Jochen Erwied	Paul Winner
+Barton House	John Kallen	Pierre Martineau
+Benson I. Margulies	John Rupley	Ralf Brown
+Bill Dyer	John S. Bien	Ray Chason
+Boudewijn Waijers	Johnny Lee	Richard Addison
+Bruce Cox	Jon W{tte	Richard Beigel
+Bruce Holloway	Jonathan Handler	Richard P. Hughey
+Bruce Mewborne	Joshua Delahunty	Rob Menke
+Carl Schelin	Keizo Yamamoto	Robin Johnson
+Chris Russo	Ken Arnold	Roderick Schertler
+David Cohrs	Ken Arromdee	Roland McGrath
+David Damerell	Ken Lorber	Ron Van Iwaarden
+David Gentzel	Ken Washikita	Ronnen Miller
+David Hairston	Kevin Darcy	Ross Brown
+Dean Luick	Kevin Hugo	Sascha Wostmann
+Del Lamb	Kevin Sitze	Scott Bigham
+Deron Meranda	Kevin Smolkowski	Scott R. Turner
+Dion Nicolaas	Kevin Sweet	Stephen Spackman
+Dylan O'Donnell	Lars Huttar	Stephen White
+Eric Backus	Malcolm Ryan	Steve Creps
+Eric Hendrickson	Mark Gooderum	Steve Linhart
+Eric R. Smith	Mark Modrall	Steve VanDevender
+Eric S. Raymond	Marvin Bressler	Teemu Suikki
+Erik Andersen	Matthew Day	Tim Lennan
+Frederick Roeber	Merlyn LeRoy	Timo Hakulinen
+Gil Neiger	Michael Allison	Tom Almy
+Greg Laskin	Michael Feir	Tom West
+Greg Olson	Michael Hamel	Warren Cheung
+Gregg Wonderly	Michael Sokolov	Warwick Allison
+Hao-yang Wang	Mike Engber	Yitzhak Sapir
+Helge Hafting	Mike Gallop
+Irina Rempt-Drijfhout	Mike Passaretti
 .\"TABLE_END  Do not delete this line.
 .TE
 .ed

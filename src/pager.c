@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	3.4	2002/12/18	*/
+/*	SCCS Id: @(#)pager.c	3.4	2003/08/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -153,10 +153,9 @@ lookat(x, y, buf, monbuf)
 
 		/* newsym lets you know of the trap, so mention it here */
 		if (tt == BEAR_TRAP || tt == PIT ||
-		    tt == SPIKED_PIT ||tt == WEB) {
-		    Strcat(buf, ", trapped in ");
-		    Strcat(buf, defsyms[trap_to_defsym(tt)].explanation);
-		}
+			tt == SPIKED_PIT || tt == WEB)
+		    Sprintf(eos(buf), ", trapped in %s",
+			    an(defsyms[trap_to_defsym(tt)].explanation));
 	    }
 
 	    {
@@ -350,12 +349,13 @@ checkfile(inp, pm, user_typed_name, without_asking)
     if (*dbase_str) {
 	/* adjust the input to remove "named " and convert to lower case */
 	char *alt = 0;	/* alternate description */
+
 	if ((ep = strstri(dbase_str, " named ")) != 0)
 	    alt = ep + 7;
 	else
 	    ep = strstri(dbase_str, " called ");
-	if (ep) *ep = '\0';
-	else if ((ep = strstri(dbase_str, ", ")) != 0) *ep = '\0';
+	if (!ep) ep = strstri(dbase_str, ", ");
+	if (ep && ep > dbase_str) *ep = '\0';
 
 	/*
 	 * If the object is named, then the name is the alternate description;
@@ -674,7 +674,7 @@ do_look(quick)
 		}
 		/* Kludge: warning trumps boulders on the display.
 		   Reveal the boulder too or player can get confused */
-		if (sobj_at(BOULDER, cc.x, cc.y))
+		if (from_screen && sobj_at(BOULDER, cc.x, cc.y))
 			Strcat(out_str, " co-located with a boulder");
 		break;	/* out of for loop*/
 	    }

@@ -815,12 +815,16 @@ int thrown;
 					  mon->mcansee ? "" : " further");
 			    } else {
 				char *whom = mon_nam(mon);
+				char *what = The(xname(obj));
+				if (!thrown && obj->quan > 1)
+				    what = An(singular(obj, xname));
 				/* note: s_suffix returns a modifiable buffer */
 				if (haseyes(mdat)
 				    && mdat != &mons[PM_FLOATING_EYE])
-				    whom = strcat(s_suffix(whom), " face");
-				pline_The("%s splashes over %s!",
-					  xname(obj), whom);
+				    whom = strcat(strcat(s_suffix(whom), " "),
+						  mbodypart(mon, FACE));
+				pline("%s %s over %s!",
+				      what, vtense(what, "splash"), whom);
 			    }
 			    setmangry(mon);
 			    mon->mcansee = 0;
@@ -942,6 +946,7 @@ int thrown;
 	    /* avoid migrating a dead monster */
 	    if (mon->mhp > tmp) {
 		mhurtle(mon, u.dx, u.dy, 1);
+		mdat = mon->data; /* in case of a polymorph trap */
 		if (DEADMONSTER(mon)) already_killed = TRUE;
 	    }
 	    hittxt = TRUE;
@@ -958,6 +963,7 @@ int thrown;
 		/* avoid migrating a dead monster */
 		if (mon->mhp > tmp) {
 		    mhurtle(mon, u.dx, u.dy, 1);
+		    mdat = mon->data; /* in case of a polymorph trap */
 		    if (DEADMONSTER(mon)) already_killed = TRUE;
 		}
 		hittxt = TRUE;
@@ -2197,6 +2203,9 @@ uchar aatyp;
 		if (aatyp == AT_KICK) {
 		    obj = uarmf;
 		    if (!obj) break;
+		} else if (aatyp == AT_BITE || aatyp == AT_BUTT ||
+			   (aatyp >= AT_STNG && aatyp < AT_WEAP)) {
+		    break;		/* no object involved */
 		}
 		passive_obj(mon, obj, &(ptr->mattk[i]));
 	    }

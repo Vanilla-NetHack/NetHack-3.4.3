@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.c	3.4	2003/01/08	*/
+/*	SCCS Id: @(#)hack.c	3.4	2003/04/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -134,11 +134,13 @@ moverock()
 		switch(ttmp->ttyp) {
 		case LANDMINE:
 		    if (rn2(10)) {
-			pline("KAABLAMM!!!  %s %s land mine.",
-				Tobjnam(otmp, "trigger"),
-				ttmp->madeby_u ? "your" : "a");
 			obj_extract_self(otmp);
 			place_object(otmp, rx, ry);
+			unblock_point(sx, sy);
+			newsym(sx, sy);
+			pline("KAABLAMM!!!  %s %s land mine.",
+			      Tobjnam(otmp, "trigger"),
+			      ttmp->madeby_u ? "your" : "a");
 			blow_up_landmine(ttmp);
 			/* if the boulder remains, it should fill the pit */
 			fill_pit(u.ux, u.uy);
@@ -738,8 +740,10 @@ boolean guess;
 		int x = travelstepx[set][i];
 		int y = travelstepy[set][i];
 		static int ordered[] = { 0, 2, 4, 6, 1, 3, 5, 7 };
+		/* no diagonal movement for grid bugs */
+		int dirmax = u.umonnum == PM_GRID_BUG ? 4 : 8;
 
-		for (dir = 0; dir < 8; dir++) {
+		for (dir = 0; dir < dirmax; ++dir) {
 		    int nx = x+xdir[ordered[dir]];
 		    int ny = y+ydir[ordered[dir]];
 
@@ -766,6 +770,7 @@ boolean guess;
 				    nomul(0);
 				    /* reset run so domove run checks work */
 				    flags.run = 8;
+				    iflags.travelcc.x = iflags.travelcc.y = -1;
 				}
 				return TRUE;
 			    }
@@ -1897,7 +1902,10 @@ lookaround()
 	if (IS_ROCK(levl[x][y].typ) || (levl[x][y].typ == ROOM) ||
 	    IS_AIR(levl[x][y].typ))
 	    continue;
-	else if (closed_door(x,y)) {
+	else if (closed_door(x,y) ||
+		 (mtmp && mtmp->m_ap_type == M_AP_FURNITURE &&
+		  (mtmp->mappearance == S_hcdoor ||
+		   mtmp->mappearance == S_vcdoor))) {
 	    if(x != u.ux && y != u.uy) continue;
 	    if(flags.run != 1) goto stop;
 	    goto bcorr;
@@ -2102,7 +2110,7 @@ weight_cap()
 {
 	register long carrcap;
 
-	carrcap = (((ACURRSTR + ACURR(A_CON))/2)+1)*50;
+	carrcap = 25*(ACURRSTR + ACURR(A_CON)) + 50;
 	if (Upolyd) {
 		/* consistent with can_carry() in mon.c */
 		if (youmonst.data->mlet == S_NYMPH)

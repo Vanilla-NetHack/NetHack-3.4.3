@@ -8,6 +8,7 @@
 struct window_procs {
     const char *name;
     unsigned long wincap;	/* window port capability options supported */
+    unsigned long wincap2;	/* additional window port capability options supported */
     void FDECL((*win_init_nhwindows), (int *, char **));
     void NDECL((*win_player_selection));
     void NDECL((*win_askname));
@@ -108,7 +109,6 @@ extern NEARDATA struct window_procs windowprocs;
 #define nh_poskey (*windowprocs.win_nh_poskey)
 #define nhbell (*windowprocs.win_nhbell)
 #define nh_doprev_message (*windowprocs.win_doprev_message)
-#define yn_function (*windowprocs.win_yn_function)
 #define getlin (*windowprocs.win_getlin)
 #define get_ext_cmd (*windowprocs.win_get_ext_cmd)
 #define number_pad (*windowprocs.win_number_pad)
@@ -121,6 +121,12 @@ extern NEARDATA struct window_procs windowprocs;
 #endif
 #define get_color_string (*windowprocs.win_get_color_string)
 #endif
+
+/* 3.4.2: There is a real yn_function() in the core now, which does
+ *        some buffer length validation on the parameters prior to
+ *        invoking the window port routine. yn_function() is in cmd.c
+ */
+/* #define yn_function (*windowprocs.win_yn_function) */
 
 /* other defs that really should go away (they're tty specific) */
 #define start_screen (*windowprocs.win_start_screen)
@@ -167,6 +173,11 @@ extern NEARDATA struct window_procs windowprocs;
 #define WC_PLAYER_SELECTION  0x40000000L /* 31 background color for message window    */
 #define WC_MOUSE_SUPPORT 0x80000000L	/* 32 mouse support                          */
 					/* no free bits */
+
+#define WC2_FULLSCREEN		0x01L	/* 01 display full screen                    */
+#define WC2_SOFTKEYBOARD	0x02L	/* 02 software keyboard                      */
+#define WC2_WRAPTEXT		0x04L	/* 04 wrap long lines of text                */
+					/* 29 free bits */
 
 #define ALIGN_LEFT	1
 #define ALIGN_RIGHT	2

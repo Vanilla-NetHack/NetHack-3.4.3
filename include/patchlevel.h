@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)patchlevel.h	3.4	2003/02/19	*/
+/*	SCCS Id: @(#)patchlevel.h	3.4	2003/08/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.4.1 */
+/* NetHack 3.4.2 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	4
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	1
+#define PATCHLEVEL	2
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
@@ -34,11 +34,23 @@
  * PP = patch level, ee = edit level, L = literal suffix "L",
  * with all four numbers specified as two hexadecimal digits.
  */
-#define VERSION_COMPATIBILITY 0x03040000L
+#define VERSION_COMPATIBILITY 0x03040100L
 #endif
 
 /*****************************************************************************/
 /* Version 3.4.x */
+
+/*  Patch 2, August 30, 2003
+ *  Fix a fatal bug that caused a crash when applying figurine, candle, or
+ *      bell that gets used up
+ *  Fix a fatal bug that triggered a panic when your secondary weapon was
+ *      cursed during bones file creation
+ *  Several dozen general bug fixes
+ *  Fixed some Gnome compilation problems on Redhat 7.2 and 8.0
+ *  Fixed a problem in the util Makefile
+ *  Use random() by default under linux instead of lrand48()
+ *  win32 tty adjustments and support for loading alternative key handlers
+ */
 
 /*  Patch 1, February 22, 2003
  *  Fix a few fatal errors including one for reentering shops, one

@@ -4,7 +4,7 @@
                  Instructions for compiling and installing
              NetHack 3.4 on a Windows 9x, NT, 2000, or XP system
          ==============================================================
-                 Last revision: $Date: 2003/02/22 01:20:14 $
+                 Last revision: $Date: 2003/03/15 13:23:39 $
 
 Credit for the porting of NetHack to the Win32 Console Subsystem goes to 
 the NT Porting Team started by Michael Allison.
@@ -15,7 +15,7 @@ contributed the port.
 
 The PC Windows porting team consisting of Michael Allison, David Cohrs, 
 Alex Kompel, Dion Nicolaas, Yitzhak Sapir, and Janet Walz maintained the 
-tty and graphical win32 versions of NetHack 3.4.1.
+tty and graphical win32 versions of NetHack 3.4.2.
 
 You can build either the TTY version of NetHack or the Windows Graphical 
 version.  In either case you can use one of the following build
@@ -426,10 +426,10 @@ II. Executing the game
     If you will be running it by launching it from a shortcut, just use
     the following information when setting up the shortcut.
 
-        Description      :  NetHack 3.4.1 Console version
+        Description      :  NetHack 3.4.2 Console version
         Command Line     :  C:\NETHACK\BINARY\NETHACK.EXE
 
-        Description      :  NetHack 3.4.1 Graphical Interface
+        Description      :  NetHack 3.4.2 Graphical Interface
          Command Line     :  C:\NETHACK\BINARY\NETHACKW.EXE
 
    (changing the directory to the appropriate one of course)

@@ -329,16 +329,75 @@ register struct obj *gold;
 	return(0);
 }
 
+/* container is kicked, dropped, thrown or otherwise impacted by player.
+ * Assumes container is on floor.  Checks contents for possible damage. */
+void
+container_impact_dmg(obj)
+struct obj *obj;
+{
+	struct monst *shkp;
+	struct obj *otmp, *otmp2;
+	long loss = 0L;
+	boolean costly, insider;
+	xchar x = obj->ox, y = obj->oy;
+
+	/* only consider normal containers */
+	if (!Is_container(obj) || Is_mbag(obj)) return;
+
+	costly = ((shkp = shop_keeper(*in_rooms(x, y, SHOPBASE))) &&
+		  costly_spot(x, y));
+	insider = (*u.ushops && inside_shop(u.ux, u.uy) &&
+		   *in_rooms(x, y, SHOPBASE) == *u.ushops);
+
+	for (otmp = obj->cobj; otmp; otmp = otmp2) {
+	    const char *result = (char *)0;
+
+	    otmp2 = otmp->nobj;
+	    if (objects[otmp->otyp].oc_material == GLASS &&
+		otmp->oclass != GEM_CLASS && !obj_resists(otmp, 33, 100)) {
+		result = "shatter";
+	    } else if (otmp->otyp == EGG && !rn2(3)) {
+		result = "cracking";
+	    }
+	    if (result) {
+		if (otmp->otyp == MIRROR) change_luck(-2);
+
+		/* eggs laid by you.  penalty is -1 per egg, max 5,
+		 * but it's always exactly 1 that breaks */
+		if (otmp->otyp == EGG && otmp->spe && otmp->corpsenm >= LOW_PM)
+		    change_luck(-1);
+		You_hear("a muffled %s.", result);
+		if (costly)
+		    loss += stolen_value(otmp, x, y,
+					 (boolean)shkp->mpeaceful, TRUE);
+		if (otmp->quan > 1L)
+		    useup(otmp);
+		else {
+		    obj_extract_self(otmp);
+		    obfree(otmp, (struct obj *) 0);
+		}
+	    }
+	}
+	if (costly && loss) {
+	    if (!insider) {
+		You("caused %ld %s worth of damage!", loss, currency(loss));
+		make_angry_shk(shkp, x, y);
+	    } else {
+		You("owe %s %ld %s for objects destroyed.",
+		    mon_nam(shkp), loss, currency(loss));
+	    }
+	}
+}
+
 STATIC_OVL int
 kick_object(x, y)
 xchar x, y;
 {
 	int range;
 	register struct monst *mon, *shkp;
-	register struct obj *otmp;
 	struct trap *trap;
 	char bhitroom;
-	boolean costly, insider, isgold, slide = FALSE;
+	boolean costly, isgold, slide = FALSE;
 
 	/* if a pile, the "top" object gets kicked */
 	kickobj = level.objects[x][y];
@@ -404,8 +463,6 @@ xchar x, y;
 
 	costly = ((shkp = shop_keeper(*in_rooms(x, y, SHOPBASE))) &&
 				    costly_spot(x, y));
-	insider = (*u.ushops && inside_shop(u.ux, u.uy) &&
-				    *in_rooms(x, y, SHOPBASE) == *u.ushops);
 	isgold = (kickobj->oclass == COIN_CLASS);
 
 	if (IS_ROCK(levl[x][y].typ) || closed_door(x, y)) {
@@ -441,51 +498,10 @@ xchar x, y;
 	/* a box gets a chance of breaking open here */
 	if(Is_box(kickobj)) {
 		boolean otrp = kickobj->otrapped;
-		struct obj *otmp2;
-		long loss = 0L;
 
 		if(range < 2) pline("THUD!");
 
-		for(otmp = kickobj->cobj; otmp; otmp = otmp2) {
-			const char *result = (char *)0;
-
-			otmp2 = otmp->nobj;
-			if (objects[otmp->otyp].oc_material == GLASS
-			    && otmp->oclass != GEM_CLASS
-			    && !obj_resists(otmp, 33, 100)) {
-				result = "shatter";
-			} else if (otmp->otyp == EGG && !rn2(3)) {
-				result = "cracking";
-			}
-			if (result) {
-				if (otmp->otyp == MIRROR)
-				    change_luck(-2);
-				/* eggs laid by you */
-				/* penalty is -1 per egg, max 5, but it's always
-				   exactly 1 that breaks */
-				if (otmp->otyp == EGG && otmp->spe && otmp->corpsenm >= LOW_PM)
-				    change_luck(-1);
-				You_hear("a muffled %s.",result);
-				if(costly) loss += stolen_value(otmp, x, y,
-					    (boolean)shkp->mpeaceful, TRUE);
-				if (otmp->quan > 1L)
-					useup(otmp);
-				else {
-					obj_extract_self(otmp);
-					obfree(otmp, (struct obj *) 0);
-				}
-			}
-		}
-		if(costly && loss) {
-		    if(!insider) {
-			You("caused %ld %s worth of damage!",
-			    loss, currency(loss));
-			make_angry_shk(shkp, x, y);
-		    } else {
-			You("owe %s %ld %s for objects destroyed.",
-			    mon_nam(shkp), loss, currency(loss));
-		    }
-		}
+		container_impact_dmg(kickobj);
 
 		if (kickobj->olocked) {
 		    if (!rn2(5) || (martial() && !rn2(2))) {
@@ -862,7 +878,7 @@ dokick()
 		    exercise(A_DEX, TRUE);
 		    return(1);
 		}
-		if(IS_GRAVE(maploc->typ))
+		if(IS_GRAVE(maploc->typ) || maploc->typ == IRONBARS)
 		    goto ouch;
 		if(IS_TREE(maploc->typ)) {
 		    struct obj *treefruit;
@@ -875,16 +891,21 @@ dokick()
 		    if (rn2(15) && !(maploc->looted & TREE_LOOTED) &&
 			  (treefruit = rnd_treefruit_at(x, y))) {
 			long nfruit = 8L-rnl(7), nfall;
+			short frtype = treefruit->otyp;
 			treefruit->quan = nfruit;
 			if (is_plural(treefruit))
 			    pline("Some %s fall from the tree!", xname(treefruit));
 			else
 			    pline("%s falls from the tree!", An(xname(treefruit)));
 			nfall = scatter(x,y,2,MAY_HIT,treefruit);
-			if ( nfall != nfruit ) {
-			    /* scatter left some in the tree */
+			if (nfall != nfruit) {
+			    /* scatter left some in the tree, but treefruit
+			     * may not refer to the correct object */
+			    treefruit = mksobj(frtype, TRUE, FALSE);
+			    treefruit->quan = nfruit-nfall;
 			    pline("%ld %s got caught in the branches.",
 				nfruit-nfall, xname(treefruit));
+			    dealloc_obj(treefruit);
 			}
 			exercise(A_DEX, TRUE);
 			exercise(A_WIS, TRUE);	/* discovered a new food source! */

@@ -7,7 +7,7 @@
 		     NetHack 3.4 on a DOS system
          ======================================================
                    (or, How to make PC NetHack 3.4)
-                 Last revision: $Date: 2003/02/22 01:20:02 $
+                 Last revision: $Date: 2003/06/13 19:57:52 $
 
 Credit for a runnable full PC NetHack 3.4 goes to the PC Development team
 of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill Dyer, 
@@ -55,7 +55,10 @@ I.  Dispelling the Myths:
     or byacc).  While not strictly necessary to compile nethack, they are 
     required should you desire to make any changes to the level and dungeon 
     compilers.  Flex and Bison are included with the DJGPP distribution and 
-    are also available on many archive sites.
+    are also available on many archive sites. 
+
+    Also be sure to pick up djgpp v2gnu/fil41b.zip to get ls.exe and 
+    touch.exe, since the Makefile uses them by default.
 
 II. To compile your copy of NetHack on a DOS machine:
     (or "just follow these few 'simple' steps outlined below.")
@@ -217,6 +220,9 @@ Appendix B - DJGPP Compiler (gcc ported to msdos)
     At the time of this release in April 2002, the URL
 	http://www.delorie.com/djgpp/zip-picker.html/
     had information on how to obtain djgpp and what pieces to get.
+    Be sure to pick up djgpp v2gnu/fil41b.zip to get ls.exe and 
+    touch.exe, since the Makefile uses them by default (or change
+    the Makefile to use alternatives).
 
     Special note for Windows 2000 / Windows XP users: You must have a 
     recent djgpp distribution for the build process, and the generated

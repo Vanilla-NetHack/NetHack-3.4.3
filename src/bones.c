@@ -106,6 +106,7 @@ boolean restore;
 				otmp->quan = (long)otmp->spe;
 			    otmp->spe = 0;
 			    otmp->owt = weight(otmp);
+			    curse(otmp);
 			} else if (otmp->otyp == BELL_OF_OPENING) {
 			    otmp->otyp = BELL;
 			    curse(otmp);
@@ -124,6 +125,7 @@ struct obj *cont;
 {
 	struct obj *otmp;
 
+	uswapwep = 0; /* ensure curse() won't cause swapwep to drop twice */
 	while ((otmp = invent) != 0) {
 		obj_extract_self(otmp);
 		obj_no_longer_held(otmp);

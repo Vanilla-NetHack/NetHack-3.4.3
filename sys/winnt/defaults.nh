@@ -13,6 +13,15 @@
 # for tty window-port.
 OPTIONS=IBMGraphics
 
+# Keyboard handling
+# Different keyboard handlers can be loaded.
+# Default is nhdefkey.dll but you can override that.
+# Ray Chason's keyboard handler
+# OPTIONS=altkeyhandler:nhraykey.dll
+#
+# NetHack 3.4.0 keyboard handling
+# OPTIONS=altkeyhandler:nh340key.dll
+
 # *** Personal Preferences ***
 # Some options to set personal preferences.  Uncomment and change these to
 # suit your personal preference.  If several people are to use the same
@@ -31,7 +40,9 @@ OPTIONS=IBMGraphics
 # General options.  You might also set "silent" so as not to attract
 # the boss's attention.
 #
-OPTIONS=time,noshowexp,number_pad,lit_corridor
+# number_pad option can have an optional value of 0 (off), 1 (on), 
+# or 2(on,legacy-mode) which causes 5='g', alt-5='G', alt-0='I'
+OPTIONS=time,noshowexp,number_pad:2,lit_corridor
 #
 # If you want to get rid of "use #quit to quit..." use:
 OPTIONS=suppress_alert:3.3.1
@@ -106,6 +117,15 @@ OPTIONS=hilite_pet,!toptenwin
 # The location that a record of game aborts and self-diagnosed game problems
 # is kept (default=HACKDIR, writeable)
 #TROUBLEDIR=c:\nethack\trouble
+
+# Finnish keyboards might need these modifications uncommented. 
+# For  \, @, $, [, |
+#OPTIONS=subkeyvalue:171/92
+#OPTIONS=subkeyvalue:178/64
+#OPTIONS=subkeyvalue:180/36
+#OPTIONS=subkeyvalue:184/91
+#OPTIONS=subkeyvalue:188/124
+
 #
 # *** CHARACTER GRAPHICS ***
 #
@@ -164,5 +184,4 @@ OPTIONS=hilite_pet,!toptenwin
 #          048 035 064 042                         \
 #          047 045 092 058 058 092 045 047         \
 #          047 045 092 058 032 058 092 045 047
-
 

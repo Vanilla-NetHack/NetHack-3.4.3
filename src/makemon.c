@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.4	2002/02/07	*/
+/*	SCCS Id: @(#)makemon.c	3.4	2003/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -790,9 +790,18 @@ register int	mmflags;
 			return((struct monst *)0);
 	}
 
-	/* if a monster already exists at the position, return */
-	if(MON_AT(x, y))
-		return((struct monst *) 0);
+	/* Does monster already exist at the position? */
+	if(MON_AT(x, y)) {
+		if ((mmflags & MM_ADJACENTOK) != 0) {
+			coord bypos;
+			if(enexto_core(&bypos, x, y, ptr, gpflags)) {
+				x = bypos.x;
+				y = bypos.y;
+			} else
+				return((struct monst *) 0);
+		} else 
+			return((struct monst *) 0);
+	}
 
 	if(ptr){
 		mndx = monsndx(ptr);
@@ -1717,6 +1726,30 @@ assign_sym:
 	}
 	mtmp->m_ap_type = ap_type;
 	mtmp->mappearance = appear;
+}
+
+/* release a monster from a bag of tricks */
+void
+bagotricks(bag)
+struct obj *bag;
+{
+    if (!bag || bag->otyp != BAG_OF_TRICKS) {
+	impossible("bad bag o' tricks");
+    } else if (bag->spe < 1) {
+	pline(nothing_happens);
+    } else {
+	boolean gotone = FALSE;
+	int cnt = 1;
+
+	consume_obj_charge(bag, TRUE);
+
+	if (!rn2(23)) cnt += rn1(7, 1);
+	while (cnt-- > 0) {
+	    if (makemon((struct permonst *)0, u.ux, u.uy, NO_MM_FLAGS))
+		gotone = TRUE;
+	}
+	if (gotone) makeknown(BAG_OF_TRICKS);
+    }
 }
 
 #endif /* OVLB */

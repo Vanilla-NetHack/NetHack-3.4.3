@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)zap.c	3.4	2003/02/08	*/
+/*	SCCS Id: @(#)zap.c	3.4	2003/08/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -507,10 +507,16 @@ coord *cc;
 		mtmp2->mtrapped = 0;
 		mtmp2->msleeping = 0;
 		mtmp2->mfrozen = 0;
-		mtmp2->mcan = 0;
+		mtmp2->mcanmove = 1;
+		/* most cancelled monsters return to normal,
+		   but some need to stay cancelled */
+		if (!dmgtype(mtmp2->data, AD_SEDU)
+#ifdef SEDUCE
+				&& !dmgtype(mtmp2->data, AD_SSEX)
+#endif
+		    ) mtmp2->mcan = 0;
 		mtmp2->mcansee = 1;	/* set like in makemon */
 		mtmp2->mblinded = 0;
-		mtmp2->mcanmove = 1;	/* set like in makemon */
 		mtmp2->mstun = 0;
 		mtmp2->mconf = 0;
 		replmon(mtmp,mtmp2);
@@ -1674,6 +1680,8 @@ smell:
 			else
 			    Norep("You smell a delicious smell.");
 			break;
+		    case WEAPON_CLASS:	/* crysknife */
+		    	/* fall through */
 		    default:
 			res = 0;
 			break;
@@ -2556,7 +2564,8 @@ register const char *str;
 register struct monst *mtmp;
 register const char *force;		/* usually either "." or "!" */
 {
-	if((!cansee(bhitpos.x,bhitpos.y) && !canspotmon(mtmp))
+	if((!cansee(bhitpos.x,bhitpos.y) && !canspotmon(mtmp) &&
+	     !(u.uswallow && mtmp == u.ustuck))
 	   || !flags.verbose)
 	    pline("%s %s it.", The(str), vtense(str, "hit"));
 	else pline("%s %s %s%s", The(str), vtense(str, "hit"),
@@ -2779,6 +2788,32 @@ struct obj *obj;			/* object tossed/used */
 		    break;	/* physical objects fall onto sink */
 #endif
 	    }
+	    /* limit range of ball so hero won't make an invalid move */
+	    if (weapon == THROWN_WEAPON && range > 0 &&
+		obj->otyp == HEAVY_IRON_BALL) {
+		struct obj *bobj;
+		struct trap *t;
+		if ((bobj = sobj_at(BOULDER, x, y)) != 0) {
+		    if (cansee(x,y))
+			pline("%s hits %s.",
+			      The(distant_name(obj, xname)), an(xname(bobj)));
+		    range = 0;
+		} else if (obj == uball) {
+		    if (!test_move(x - ddx, y - ddy, ddx, ddy, TEST_MOVE)) {
+			/* nb: it didn't hit anything directly */
+			if (cansee(x,y))
+			    pline("%s jerks to an abrupt halt.",
+				  The(distant_name(obj, xname))); /* lame */
+			range = 0;
+		    } else if (In_sokoban(&u.uz) && (t = t_at(x, y)) != 0 &&
+			       (t->ttyp == PIT || t->ttyp == SPIKED_PIT ||
+				t->ttyp == HOLE || t->ttyp == TRAPDOOR)) {
+			/* hero falls into the trap, so ball stops */
+			range = 0;
+		    }
+		}
+	    }
+
 	    /* thrown/kicked missile has moved away from its starting spot */
 	    point_blank = FALSE;	/* affects passing through iron bars */
 	}
@@ -3601,6 +3636,7 @@ boolean *shopdamage;
 			if (u.uinwater) {   /* not just `if (Underwater)' */
 			    /* leave the no longer existent water */
 			    u.uinwater = 0;
+			    u.uundetected = 0;
 			    docrt();
 			    vision_full_recalc = 1;
 			} else if (u.utrap && u.utraptype == TT_LAVA) {
@@ -3755,7 +3791,7 @@ register struct obj *obj;
 	    obj_extract_self(item);
 	    place_object(item, obj->ox, obj->oy);
 	}
-	if (Role_if(PM_ARCHEOLOGIST) && !flags.mon_moving && obj->spe) {
+	if (Role_if(PM_ARCHEOLOGIST) && !flags.mon_moving && (obj->spe & STATUE_HISTORIC)) {
 	    You_feel("guilty about damaging such a historic statue.");
 	    adjalign(-1);
 	}

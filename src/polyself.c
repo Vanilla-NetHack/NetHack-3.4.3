@@ -34,7 +34,7 @@ const char *fmt, *arg;
 {
 	boolean sticky = sticks(youmonst.data) && u.ustuck && !u.uswallow,
 		was_mimicking = (youmonst.m_ap_type == M_AP_OBJECT);
-
+	boolean could_pass_walls = Passes_walls;
 	boolean was_blind = !!Blind;
 
 	if (Upolyd) {
@@ -54,17 +54,9 @@ const char *fmt, *arg;
 	find_ac();
 	if (was_mimicking) {
 	    if (multi < 0) unmul("");
-	} else {
-	    /*
-	     * Clear any in-progress imitations -- the case where not a
-	     * mimic is handled above.
-	     *
-	     * Except, this is not complete if the hero ever gets the
-	     * chance to imitate anything, then s/he may be mimicing
-	     * gold, but not the way its done for eating a mimic.
-	     */
 	    youmonst.m_ap_type = M_AP_NOTHING;
 	}
+
 	newsym(u.ux,u.uy);
 
 	You(fmt, arg);
@@ -87,6 +79,11 @@ const char *fmt, *arg;
 	if (u.twoweap && !could_twoweap(youmonst.data))
 	    untwoweapon();
 
+	if (u.utraptype == TT_PIT) {
+	    if (could_pass_walls) {	/* player forms cannot pass walls */
+		u.utrap = rn1(6,2);
+	    }
+	}
 	if (was_blind && !Blind) {	/* reverting from eyeless */
 	    Blinded = 1L;
 	    make_blinded(0L, TRUE);	/* remove blindness */
@@ -331,6 +328,7 @@ int	mntmp;
 {
 	boolean sticky = sticks(youmonst.data) && u.ustuck && !u.uswallow,
 		was_blind = !!Blind, dochange = FALSE;
+	boolean could_pass_walls = Passes_walls;
 	int mlvl;
 
 	if (mvitals[mntmp].mvflags & G_GENOD) {	/* allow G_EXTINCT */
@@ -462,6 +460,13 @@ int	mntmp;
 	else
 		u.uundetected = 0;
 
+	if (u.utraptype == TT_PIT) {
+	    if (could_pass_walls && !Passes_walls) {
+		u.utrap = rn1(6,2);
+	    } else if (!could_pass_walls && Passes_walls) {
+		u.utrap = 0;
+	    }
+	}
 	if (was_blind && !Blind) {	/* previous form was eyeless */
 	    Blinded = 1L;
 	    make_blinded(0L, TRUE);	/* remove blindness */
@@ -619,7 +624,7 @@ break_armor()
 
 		/* Future possiblities: This could damage/destroy helmet */
 		Sprintf(hornbuf, "horn%s", plur(num_horns(youmonst.data)));
-		Your("%s through %s %s.", vtense(hornbuf, "pierce"),
+		Your("%s %s through %s %s.", hornbuf, vtense(hornbuf, "pierce"),
 		     shk_your(yourbuf, otmp), xname(otmp));
 	    } else {
 		if (donning(otmp)) cancel_don();
@@ -835,11 +840,11 @@ dospinweb()
 		case SPIKED_PIT: You("spin a web, covering up the pit.");
 			deltrap(ttmp);
 			bury_objs(u.ux, u.uy);
-			if (Invisible) newsym(u.ux, u.uy);
+			newsym(u.ux, u.uy);
 			return(1);
 		case SQKY_BOARD: pline_The("squeaky board is muffled.");
 			deltrap(ttmp);
-			if (Invisible) newsym(u.ux, u.uy);
+			newsym(u.ux, u.uy);
 			return(1);
 		case TELEP_TRAP:
 		case LEVEL_TELEP:
@@ -853,12 +858,12 @@ dospinweb()
 			You("web over the %s.",
 			    (ttmp->ttyp == TRAPDOOR) ? "trap door" : "hole");
 			deltrap(ttmp);
-			if (Invisible) newsym(u.ux, u.uy);
+			newsym(u.ux, u.uy);
 			return 1;
 		case ROLLING_BOULDER_TRAP:
 			You("spin a web, jamming the trigger.");
 			deltrap(ttmp);
-			if (Invisible) newsym(u.ux, u.uy);
+			newsym(u.ux, u.uy);
 			return(1);
 		case ARROW_TRAP:
 		case DART_TRAP:
@@ -877,13 +882,20 @@ dospinweb()
 		default:
 			impossible("Webbing over trap type %d?", ttmp->ttyp);
 			return(0);
+		}
+	else if (On_stairs(u.ux, u.uy)) {
+	    /* cop out: don't let them hide the stairs */
+	    Your("web fails to impede access to the %s.",
+		 (levl[u.ux][u.uy].typ == STAIRS) ? "stairs" : "ladder");
+	    return(1);
+		 
 	}
 	ttmp = maketrap(u.ux, u.uy, WEB);
 	if (ttmp) {
 		ttmp->tseen = 1;
 		ttmp->madeby_u = 1;
 	}
-	if (Invisible) newsym(u.ux, u.uy);
+	newsym(u.ux, u.uy);
 	return(1);
 }
 
