@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "hack.h"
 #ifdef UNIX
-static	char	SCCS_Id[] = "@(#)hack.c	1.3\t87/07/14";
+static	char	SCCS_Id[] = "@(#)hack.c	1.4\t87/08/08";
 #endif
 extern char news0();
 extern char *nomovemsg;
@@ -36,12 +36,8 @@ unsee() {
 	  for(y = u.uy-1; y < u.uy+2; y++) {
 		if(!isok(x, y)) continue;
 		lev = &levl[x][y];
-#ifdef DGK
-		if(!lev->lit && lev->scrsym == symbol.room) {
-#else
-		if(!lev->lit && lev->scrsym == '.') {
-#endif
-			lev->scrsym =' ';
+		if(!lev->lit && lev->scrsym == ROOM_SYM) {
+			lev->scrsym = STONE_SYM;
 			lev->new = 1;
 			on_scr(x,y);
 		}
@@ -79,11 +75,7 @@ seeoff(mode)	/* 1 to redo @, 0 to leave them */
 			for(y = u.uy-1; y < u.uy+2; y++) {
 				if(!isok(x, y)) continue;
 				lev = &levl[x][y];
-#ifdef DGK
-				if(!lev->lit && lev->scrsym == symbol.room)
-#else
-				if(!lev->lit && lev->scrsym == '.')
-#endif
+				if(!lev->lit && lev->scrsym == ROOM_SYM)
 					lev->seen = 0;
 			}
 	}
@@ -94,6 +86,7 @@ moverock() {
 	register xchar rx, ry;
 	register struct obj *otmp;
 	register struct trap *ttmp;
+	register struct	monst *mtmp, *m_at();
 
 	while(otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy)) {
 		rx = u.ux+2*u.dx;
@@ -102,8 +95,11 @@ moverock() {
 		if(isok(rx,ry) && !IS_ROCK(levl[rx][ry].typ) &&
 		    (levl[rx][ry].typ != DOOR || !(u.dx && u.dy)) &&
 		    !sobj_at(ENORMOUS_ROCK, rx, ry)) {
-			if(m_at(rx,ry)) {
-			    pline("You hear a monster behind the rock.");
+			if((mtmp = m_at(rx,ry))) {
+			    if(canseemon(mtmp))
+				pline("There's %s on the other side.", monnam(mtmp));
+			    else
+				pline("You hear a monster behind the rock.");
 			    pline("Perhaps that's why you cannot move it.");
 			    goto cannot_push;
 			}
@@ -462,7 +458,7 @@ pickup(all)
 	if(!all)  {
 		register struct obj *otmp = fobj;
 
-		if(g_at(u.ux,u.uy)) ilets[iletct++] = '$';
+		if(g_at(u.ux,u.uy)) ilets[iletct++] = GOLD_SYM;
 		ilets[iletct] = 0;
 		while(otmp) {
 			if(!index(ilets, otmp->olet) &&
@@ -512,7 +508,7 @@ pickup(all)
 		}        
 	}
 
-	if(all || index(olets,'$'))
+	if(all || index(olets, GOLD_SYM))
 		while(gold = g_at(u.ux,u.uy)) {
 			pline("%ld gold piece%s.", gold->amount,
 			   plur(gold->amount));
@@ -662,18 +658,18 @@ register struct monst *mtmp;
 				goto stop;
 		} else mtmp = 0; /* invisible M cannot influence us */
 		if(x == u.ux-u.dx && y == u.uy-u.dy) continue;
-#ifdef DGK
 		{
 		register uchar sym = levl[x][y].scrsym;
 
-		if (sym == symbol.vwall || sym == symbol.hwall
-			|| sym == symbol.room || sym == ' ' || IS_CORNER(sym))
+		if (sym == VWALL_SYM || sym == HWALL_SYM
+		    || sym == ROOM_SYM || sym == STONE_SYM
+		    || IS_CORNER(sym))
 			continue;
-		else if (sym == symbol.door) {
+		else if (sym == DOOR_SYM) {
 			if(x != u.ux && y != u.uy) continue;
 			if(flags.run != 1) goto stop;
 			goto corr;
-		} else if (sym == symbol.corr) {
+		} else if (sym == CORR_SYM) {
 		corr:
 			if(flags.run == 1 || flags.run == 3) {
 				i = DIST(x,y,u.ux+u.dx,u.uy+u.dy);
@@ -689,7 +685,7 @@ register struct monst *mtmp;
 			}
 			corrct++;
 			continue;
-		} else if (sym == '^') {
+		} else if (sym == TRAP_SYM) {
 			if(flags.run == 1) goto corr;	/* if you must */
 			if(x == u.ux+u.dx && y == u.uy+u.dy) goto stop;
 			continue;
@@ -701,45 +697,6 @@ register struct monst *mtmp;
 			nomul(0);
 			return;
 		}
-#else
-		switch(levl[x][y].scrsym){
-		case '|':
-		case '-':
-		case '.':
-		case ' ':
-			break;
-		case '+':
-			if(x != u.ux && y != u.uy) break;
-			if(flags.run != 1) goto stop;
-			/* fall into next case */
-		case CORR_SYM:
-		corr:
-			if(flags.run == 1 || flags.run == 3) {
-				i = DIST(x,y,u.ux+u.dx,u.uy+u.dy);
-				if(i > 2) break;
-				if(corrct == 1 && DIST(x,y,x0,y0) != 1)
-					noturn = 1;
-				if(i < i0) {
-					i0 = i;
-					x0 = x;
-					y0 = y;
-					m0 = mtmp ? 1 : 0;
-				}
-			}
-			corrct++;
-			break;
-		case '^':
-			if(flags.run == 1) goto corr;	/* if you must */
-			if(x == u.ux+u.dx && y == u.uy+u.dy) goto stop;
-			break;
-		default:	/* e.g. objects or trap or stairs */
-			if(flags.run == 1) goto corr;
-			if(mtmp) break;		/* d */
-		stop:
-			nomul(0);
-			return;
-		}
-#endif
 	}
 #ifdef QUEST
 	if(corrct > 0 && (flags.run == 4 || flags.run == 5)) goto stop;
@@ -1031,7 +988,18 @@ register int carrcap;
 	if(Levitation)			/* pugh@cornell */
 		carrcap = MAX_CARR_CAP;
 	else {
+#ifdef HARD
 		carrcap = 5*(((u.ustr > 18) ? 20 : u.ustr) + u.ulevel);
+#else
+	        carrcap = 5*u.ulevel;      /* New strength stewr 870807 */
+		if (u.ustr < 19) carrcap += 5*u.ustr;
+		if (u.ustr > 18) carrcap += u.ustr - 18 + 90;
+		if (u.ustr > 68) carrcap += u.ustr - 68;
+		if (u.ustr > 93) carrcap += u.ustr - 93;
+		if (u.ustr > 108) carrcap += 2*(u.ustr - 108);
+		if (u.ustr > 113) carrcap += 5*(u.ustr - 113);
+		if (u.ustr == 118) carrcap += 100;
+#endif
 		if(carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
 		if(Wounded_legs & LEFT_SIDE) carrcap -= 10;
 		if(Wounded_legs & RIGHT_SIDE) carrcap -= 10;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	1.3	87/07/14
+/*	SCCS Id: @(#)do_name.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* do_name.c - version 1.0.3 */
 
@@ -7,13 +7,14 @@
 extern char plname[];
 extern char *rndmonnam();
 
-coord
-getpos(force,goal) int force; char *goal; {
+getpos(cc,force,goal)
+coord	*cc;
+int force; char *goal;
+{
 register cx,cy,i,c;
 extern char sdir[];		/* defined in hack.c */
 extern schar xdir[], ydir[];	/* idem */
 extern char *visctrl();		/* see below */
-coord cc;
 	pline("(For instructions type a ?)");
 	cx = u.ux;
 	cy = u.uy;
@@ -34,16 +35,16 @@ coord cc;
 				visctrl(c),
 				force ? "use hjkl or ." : "aborted");
 			if(force) goto nxtc;
-			cc.x = -1;
-			cc.y = 0;
-			return(cc);
+			cc->x = -1;
+			cc->y = 0;
+			return(0);
 		}
 	nxtc:	;
 		curs(cx,cy+2);
 	}
-	cc.x = cx;
-	cc.y = cy;
-	return(cc);
+	cc->x = cx;
+	cc->y = cy;
+	return(0);
 }
 
 do_mname(){
@@ -52,7 +53,7 @@ coord cc;
 register int cx,cy,lth,i;
 register struct monst *mtmp, *mtmp2;
 extern char *lmonnam();
-	cc = getpos(0, "the monster you want to name");
+	getpos(&cc, 0, "the monster you want to name");
 	cx = cc.x;
 	cy = cc.y;
 	if(cx < 0) return(0);
@@ -206,19 +207,13 @@ register struct obj *obj;
 }
 
 char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
-#ifdef DGKMOD
 	/* Capitalize the names for asthetics -dgk
 	 */
 	"Adri", "Andries", "Andreas", "Bert", "David", "Dirk", "Emile",
 	"Frans", "Fred", "Greg", "Hether", "Jay", "John", "Jon", "Karnov",
 	"Kay", "Kenny", "Maud", "Michiel", "Mike", "Peter", "Robert",
-	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Miracleman"
-#else
-	"adri", "andries", "andreas", "bert", "david", "dirk", "emile",
-	"frans", "fred", "greg", "hether", "jay", "john", "jon", "kay",
-	"kenny", "maud", "michiel", "mike", "peter", "robert", "ron",
-	"tom", "wilmar"
-#endif
+	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Miracleman",
+	"Stephan"
 };
 
 char *

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	1.3	87/07/14
+/*	SCCS Id: @(#)shk.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* shk.c - version 1.0.3 */
 
@@ -240,14 +240,15 @@ register roomno = inroom(u.ux,u.uy);
 		}
 		if(!ESHK(shopkeeper)->following) {
 		    boolean box, pick;
+		    struct obj *carrying();
 
 		    pline("Hello %s! Welcome%s to %s's %s shop!",
 			plname,
 			ESHK(shopkeeper)->visitct++ ? " again" : "",
 			shkname(shopkeeper),
 			shopnam[rooms[ESHK(shopkeeper)->shoproom].rtype - 8] );
-		    box = carrying(ICE_BOX);
-		    pick = carrying(PICK_AXE);
+		    box = carrying(ICE_BOX) != (struct obj *)0;
+		    pick = carrying(PICK_AXE) != (struct obj *)0;
 		    if(box || pick) {
 			if(dochug(shopkeeper)) {
 				u.uinshop = 0;	/* he died moving */

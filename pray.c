@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pray.c	1.3	87/07/14
+/*	SCCS Id: @(#)pray.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* pray.c - version 1.0 */
 
@@ -84,11 +84,17 @@ pleased() {
 	    case 0:	pline("but nothing seems to happen.");
 			break;
 	    case 1:
-#ifdef KAA
 			if(!uwep) {
-			    pline("but nothing seems to happen.");
+			    if(uleft->cursed) {
+				pline("your left hand glows amber.");
+				uleft->cursed = 0;
+			    } else if(uright->cursed) {
+				pline("your right hand glows amber.");
+				uleft->cursed = 0;
+			    } else    pline("but nothing seems to happen.");
 			    break;
 			}
+#ifdef KAA
 			if(uwep->olet == WEAPON_SYM) {
 			    if (uwep->cursed) {
 				uwep->cursed=0;
@@ -113,22 +119,23 @@ pleased() {
 			if (u.uhunger < 900)	init_uhunger();
 			if (u.uluck < 0)	u.uluck = 0;
 			if (Blind)		Blind = 1;
+			flags.botl = 1;
 			break;
 	    case 4:
 	    case 5:	pline("A voice booms out: We are pleased with your progress,");
 			pline("and grant you the gift of");
 			if (!(HTelepat & INTRINSIC))  {
-				HTelepat = HTelepat || INTRINSIC;
+				HTelepat |= INTRINSIC;
 				pline ("Telepathy,");
 			} else if (!(Fast & INTRINSIC))  {
-				Fast = Fast || INTRINSIC;
+				Fast |= INTRINSIC;
 				pline ("Speed,");
 			} else if (!(Stealth & INTRINSIC))  {
-				Stealth = Stealth || INTRINSIC;
+				Stealth |= INTRINSIC;
 				pline ("Stealth,");
 			} else {
 			    if (!(Protection & INTRINSIC))  {
-				Protection = Protection || INTRINSIC;
+				Protection |= INTRINSIC;
 				if (!u.ublessed)  u.ublessed = rnd(3) + 1;
 			    } else u.ublessed++;
 			    pline ("our protection,");
@@ -137,7 +144,7 @@ pleased() {
 			break;
 
 	    case 6:	pline ("An object appears at your feet!");
-			mkobj_at("+", u.ux, u.uy);
+			mkobj_at('+', u.ux, u.uy);
 			break;
 
 	    case 7:	pline("A voice booms out:  We crown thee...");
@@ -159,4 +166,52 @@ pleased() {
 	return(0);
 }
 #endif /* PRAYERS /**/
+#ifdef NEWCLASS
+doturn() {	/* Knights & Priest(esse)s only please */
+
+	register struct monst *mtmp;
+	register int	xlev = 6;
+	extern char	pl_character[];
+
+	if((pl_character[0] != 'P') &&
+	   (pl_character[0] != 'K')) {
+
+		pline("You don't know how to turn undead!");
+		return(0);
+	}
+	if (Inhell) {
+
+		pline("Being in hell, your gods won't help you.");
+		aggravate();
+		return(0);
+	}
+	pline("Calling upon your gods, you chant an arcane formula.");
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if(cansee(mtmp->mx,mtmp->my)) {
+		if(index(UNDEAD,mtmp->data->mlet) ||
+		   ((mtmp->data->mlet == '&') && (u.ulevel > 10))) {
+
+		    if(Confusion) {
+			pline("Unfortunately, your voice falters.");
+			mtmp->mflee = mtmp->mfroz = mtmp->msleep = 0;
+		    } else if (! resist(mtmp, '+', 0, TELL))
+			switch (mtmp->data->mlet) {
+			    case 'V':   xlev += 2;
+			    case 'W':   xlev += 4;
+			    case 'Z':   if(u.ulevel >= xlev)  {
+					    if(!resist(mtmp, '+', 0, NOTELL)) {
+						pline("You destroy the %s", monnam(mtmp));
+						mondied(mtmp);
+					    } else	mtmp->mflee = 1;
+					} else	mtmp->mflee = 1;
+					break;
+			    default:    mtmp->mflee = 1;
+					break;
+			}
+		   }
+	    }
+	    nomul(-5);
+	    return(1);
+}
+#endif /* NEWCLASS /**/
 

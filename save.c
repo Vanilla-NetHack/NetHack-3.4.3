@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	1.3	87/07/14
+/*	SCCS Id: @(#)save.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* save.c - version 1.0.3 */
 
@@ -46,7 +46,9 @@ dosave0(hu) int hu; {
 #ifdef UNIX
 	(void) signal(SIGHUP, SIG_IGN);
 #endif
+#ifndef __TURBOC__
 	(void) signal(SIGINT, SIG_IGN);
+#endif
 #ifdef DGK
 	if (!saveDiskPrompt(0))
 		return 0;
@@ -373,10 +375,10 @@ register fd;
 			mtmp->data = &hell_hound;
 # ifdef HARD
 		else if (monsindex == -5)
-			permonstp = &d_lord;
+			mtmp->data = &d_lord;
 
 		else if (monsindex == -6)
-			permonstp = &d_prince;
+			mtmp->data = &d_prince;
 # endif
 #endif
 		else

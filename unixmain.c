@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixmain.c	1.3	87/07/14
+/*	SCCS Id: @(#)unixmain.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* main.c - (Unix) version 1.0.3 */
 
@@ -69,7 +69,11 @@ char *argv[];
 		    error("Flag -d must be followed by a directory name.");
 	}
 #endif /* CHDIR /**/
-#ifdef DGKMOD
+#ifdef GRAPHICS
+	/* Set the default values of the presentation characters */
+	memcpy((char *) &showsyms, (char *) &defsyms, sizeof(struct symbols));
+#endif
+#ifdef HACKOPTIONS
 	initoptions();
 #endif
 	whoami();
@@ -234,7 +238,7 @@ not_recovered:
 		pline("Hello %s, welcome to %s!", plname, gamename);
 
 		pickup(1);
-		if(!Blind) read_engr_at(u.ux,u.uy);
+		read_engr_at(u.ux,u.uy);
 		flags.move = 1;
 	}
 
@@ -332,6 +336,7 @@ not_recovered:
 			invault();
 			amulet();
 #ifdef HARD
+			if (!rn2(4)) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
 				u.udg_cnt--;
@@ -566,3 +571,13 @@ newgame() {
 		docrt();
 	return(0);
 }
+
+#ifdef GENIX
+jhndist(x1,y1,x2,y2)
+{
+	int x,y;
+	x=x1-x2;
+	y=y1-y2;
+	return (x*x + y*y);
+}
+#endif

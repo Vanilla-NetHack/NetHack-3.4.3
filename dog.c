@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	1.3	87/07/14
+/*	SCCS Id: @(#)dog.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* dog.c - version 1.0.3 */
 
@@ -6,6 +6,10 @@
 extern struct monst *makemon();
 #include "edog.h"
 #include "mkroom.h"
+
+#ifdef	DOGNAME
+char dogname[63];
+#endif	/* DOGNAME */
 
 struct permonst li_dog =
 	{ "little dog", 'd',2,18,6,0,1,6,sizeof(struct edog) };
@@ -18,6 +22,17 @@ struct monst *
 makedog(){
 register struct monst *mtmp = makemon(&li_dog,u.ux,u.uy);
 	if(!mtmp) return((struct monst *) 0); /* dogs were genocided */
+#ifdef	DOGNAME
+	if (dogname[0]) {
+		register struct monst *mtmp2;
+		mtmp->mnamelth = strlen(dogname);
+		mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
+		*mtmp2 = *mtmp;
+		strcpy(NAME(mtmp2), dogname);
+		replmon(mtmp, mtmp2);
+		mtmp = mtmp2;
+	}
+#endif	/* DOGNAME */
 	initedog(mtmp);
 	return(mtmp);
 }

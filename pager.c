@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	1.3	87/07/14
+/*	SCCS Id: @(#)pager.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* pager.c - version 1.0.3 */
 
@@ -25,8 +25,43 @@ dowhatis()
 	if(!(fp = fopen(DATAFILE, "r")))
 		pline("Cannot open data file!");
 	else {
+#ifndef GRAPHICS
 		pline("Specify what? ");
 		q = readchar();
+#else
+		coord	cc; extern coord getpos();
+		char	r;	
+
+		pline("Please move the cursor to the unknown object.");
+		getpos(&cc, TRUE, "the unknown object");
+		r = levl[cc.x][cc.y].scrsym;
+
+		if (r == showsyms.stone) q = defsyms.stone;
+		else if (r == showsyms.vwall) q = defsyms.vwall;
+		else if (r == showsyms.hwall) q = defsyms.hwall;
+		else if (r == showsyms.tlcorn) q = defsyms.tlcorn;
+		else if (r == showsyms.trcorn) q = defsyms.trcorn;
+		else if (r == showsyms.blcorn) q = defsyms.blcorn;
+		else if (r == showsyms.brcorn) q = defsyms.brcorn;
+		else if (r == showsyms.door) q = defsyms.door;
+		else if (r == showsyms.room) q = defsyms.room;
+		else if (r == showsyms.corr) q = defsyms.corr;
+		else if (r == showsyms.upstair) q = defsyms.upstair;
+		else if (r == showsyms.dnstair) q = defsyms.dnstair;
+		else if (r == showsyms.trap) q = defsyms.trap;
+#ifdef FOUNTAINS
+		else if (r == showsyms.pool) q = defsyms.pool;
+		else if (r == showsyms.fountain) q = defsyms.fountain;
+#endif
+#ifdef NEWCLASS
+		else if (r == showsyms.throne) q = defsyms.throne;
+#endif
+#ifdef SPIDERS
+		else if (r == showsyms.web) q = defsyms.web;
+		else
+		    q = r;
+#endif
+#endif /* GRAPHICS */
 #ifdef DGKMOD
 		if (index(quitchars, q))
 			return(0);
@@ -40,7 +75,11 @@ dowhatis()
 			/* Expand tab 'by hand' */
 			if(buf[1] == '\t'){
 				buf = bufr;
+#ifdef GRAPHICS
+				buf[0] = r;
+#else
 				buf[0] = q;
+#endif
 				(void) strncpy(buf+1, "       ", 7);
 			}
 			pline(buf);
@@ -382,25 +421,6 @@ register char *str;
 }
 #endif /* SHELL /**/
 
-#ifdef NOWAITINCLUDE
-union wait {		/* used only for the cast  (union wait *) 0  */
-	int w_status;
-	struct {
-		unsigned short w_Termsig:7;
-		unsigned short w_Coredump:1;
-		unsigned short w_Retcode:8;
-	} w_T;
-};
-
-#else
-
-#ifdef BSD
-#include	<sys/wait.h>
-#else
-#include	<wait.h>
-#endif
-#endif /* NOWAITINCLUDE /**/
-
 child(wt) {
 register int f = fork();
 	if(f == 0){		/* child */
@@ -419,7 +439,7 @@ register int f = fork();
 	/* fork succeeded; wait for child to exit */
 	(void) signal(SIGINT,SIG_IGN);
 	(void) signal(SIGQUIT,SIG_IGN);
-	(void) wait((union wait *) 0);
+	(void) wait((int *) 0);
 	gettty();
 	setftty();
 	(void) signal(SIGINT,done1);

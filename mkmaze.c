@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmaze.c	1.3	87/07/14
+/*	SCCS Id: @(#)mkmaze.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* mkmaze.c - version 1.0.2 */
 
@@ -7,7 +7,6 @@
 extern struct monst *makemon();
 extern struct permonst pm_wizard;
 extern struct obj *mkobj_at();
-extern coord mazexy();
 struct permonst hell_hound =
 	{ "hell hound", 'd', 12, 14, 2, 20, 3, 6, 0 };
 
@@ -42,7 +41,7 @@ makemaz()
 		flags.no_of_wizards = 1;
 	    }
 	} else {
-	    mm = mazexy();
+	    mazexy(&mm);
 	    zx = mm.x;
 	    zy = mm.y;
 	    walkfrom(zx,zy);
@@ -53,45 +52,36 @@ makemaz()
 	for(x = 2; x < COLNO-1; x++)
 		for(y = 2; y < ROWNO-1; y++) {
 			switch(levl[x][y].typ) {
-#ifdef DGK
 			case HWALL:
-				levl[x][y].scrsym = symbol.hwall;
+				levl[x][y].scrsym = HWALL_SYM;
 				break;
 			case ROOM:
-				levl[x][y].scrsym = symbol.room;
+				levl[x][y].scrsym = ROOM_SYM;
 				break;
-#else
-			case HWALL:
-				levl[x][y].scrsym = '-';
-				break;
-			case ROOM:
-				levl[x][y].scrsym = '.';
-				break;
-#endif /* DGK /**/
 			}
 		}
 	for(x = rn1(8,11); x; x--) {
-		mm = mazexy();
+		mazexy(&mm);
 		(void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
 	}
 	for(x = rn1(10,2); x; x--) {
-		mm = mazexy();
+		mazexy(&mm);
 		(void) mkobj_at(ROCK_SYM, mm.x, mm.y);
 	}
-	mm = mazexy();
+	mazexy(&mm);
 	(void) makemon(PM_MINOTAUR, mm.x, mm.y);
 	for(x = rn1(5,7); x; x--) {
-		mm = mazexy();
+		mazexy(&mm);
 		(void) makemon((struct permonst *) 0, mm.x, mm.y);
 	}
 	for(x = rn1(6,7); x; x--) {
-		mm = mazexy();
+		mazexy(&mm);
 		mkgold(0L,mm.x,mm.y);
 	}
 	for(x = rn1(6,7); x; x--)
 		mktrap(0,1,(struct mkroom *) 0);
-	mm = mazexy();
-	levl[(xupstair = mm.x)][(yupstair = mm.y)].scrsym = '<';
+	mazexy(&mm);
+	levl[(xupstair = mm.x)][(yupstair = mm.y)].scrsym = UP_SYM;
 	levl[xupstair][yupstair].typ = STAIRS;
 	xdnstair = ydnstair = 0;
 }
@@ -179,10 +169,10 @@ register int dir;
 		return(1);
 }
 
-coord
-mazexy(){
-	coord mm;
-	mm.x = 3 + 2*rn2(COLNO/2 - 2);
-	mm.y = 3 + 2*rn2(ROWNO/2 - 2);
-	return mm;
+mazexy(cc)
+coord	*cc;
+{
+	cc->x = 3 + 2*rn2(COLNO/2 - 2);
+	cc->y = 3 + 2*rn2(ROWNO/2 - 2);
+	return(0);
 }

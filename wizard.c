@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	1.3	87/07/14
+/*	SCCS Id: @(#)wizard.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* wizard.c - version 1.0.3 */
 
@@ -68,7 +68,7 @@ register struct monst *mtmp;
 	}
 
 	/* if it is lying around someplace, we teleport to it */
-	if(!carrying(AMULET_OF_YENDOR)) {
+	if(!carrying(AMULET_SYM)) {
 	    register struct obj *otmp;
 
 	    for(otmp = fobj; otmp; otmp = otmp->nobj)
@@ -208,11 +208,11 @@ register struct obj *obj;
 			    && obj->otyp != CREAM_PIE
 # else
 			 if (!thitu(8, rnd(oclass->wldam), oclass->oc_name)
-# endif KOPS
+# endif /* KOPS /**/
 			    || obj->otyp == ENORMOUS_ROCK) {
 #else
 			 if (!thitu(8, rnd(oclass->wldam), oclass->oc_name)) {
-#endif
+#endif /* KAA /**/
 				mksobj_at(obj->otyp, u.ux, u.uy);
 				fobj->quan = 1;
 				stackobj(fobj);
@@ -414,13 +414,15 @@ nasty() {
 	struct monst	*mkmon_at();
 	register int	i, nastynum;
 
-	nastynum = sizeof(nasties);
+	nastynum = sizeof(nasties) - 1;
 
 	for(i = rnd(u.ulevel/3); i > 0; --i) {
 
-		mtmp = mkmon_at(nasties[rn2(nastynum)], u.ux, u.uy);
-		mtmp->msleep = 0;
-		mtmp->mpeaceful = 0;
+		if((mtmp = mkmon_at(nasties[rn2(nastynum)], u.ux, u.uy)))  {
+
+			mtmp->msleep = 0;
+			mtmp->mpeaceful = 0;
+		}
 	}
 #else
 	(void) makemon((struct permonst *)0, u.ux, u.uy);

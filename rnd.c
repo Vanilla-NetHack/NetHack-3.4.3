@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rnd.c	1.3	87/07/14
+/*	SCCS Id: @(#)rnd.c	1.4	87/08/08
 /* rnd.c - version 1.0.2 */
 
 #define RND(x)	((rand()>>3) % x)
@@ -28,4 +28,23 @@ register n,x;
 
 	while(n--) tmp += RND(x);
 	return(tmp);
+}
+
+rne(x)          /* by stewr 870807 */
+register x;
+{
+        register tmp = 1;
+	while(!rn2(x)) tmp++;
+	return(tmp);
+}
+
+rnz(x)
+register x;
+{
+        register tmp = 1000;
+	tmp += rn2(1000);
+	tmp *= rne(4);
+	if (rn2(2)) { x *= tmp; x /= 1000; }
+	else { x *= 1000; x /= tmp; }
+	return(x);
 }

@@ -80,15 +80,18 @@ Commands:
 	^P	repeat last message
 		(subsequent ^P's repeat earlier messages).
 	/	(followed by any symbol): tell what this symbol represents.
+		If you see fancy graphics on your screen it may ask you to
+		specify a location rather than taking a symbol argument.
 	\	tell what has been discovered.
 	e	eat food.
 	w	wield weapon. w- means: wield nothing, use bare hands.
 	q	drink (quaff) a potion.
 	r	read a scroll.
-	T	Takeoff armor.
+	P	Put on a ring.
 	R	Remove Ring.
 	W	Wear armor.
-	P	Put on a ring.
+	T	Takeoff armor.
+	A	Remove some or all armor.
 	X	transcribe (learn) a spell.
 	x	print a list of know spells.
 	z	zap a wand.
@@ -121,7 +124,14 @@ Commands:
 		when the game is finished.
 		Usually one will not want to use the 'O' command, but instead
 		put a HACKOPTIONS="...." line in one's environment.
-	v	print version number.
+	v	prints the version number.
+	V	prints a longer identification of the version, including the
+		history of the game.
+	#	introduces one of the "extended" commands.  To get a list of
+		the commands you can use with "#" type "#?".  The extended
+		commands you can use depends upon what options the game was
+		compiled with, along with your class and what type of monster
+		you most closely resemble at a given moment.
 
 	You can put a number before a command to repeat it that many times,
 	as in "20s" or "40.".

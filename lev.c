@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev.c	1.3	87/07/14
+/*	SCCS Id: @(#)lev.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* lev.c - version 1.0.3 */
 
@@ -72,8 +72,8 @@ xchar lev;
 	bwrite(fd,(char *) &hackpid,sizeof(hackpid));
 	bwrite(fd,(char *) &lev,sizeof(lev));
 	bwrite(fd,(char *) levl,sizeof(levl));
-#ifdef DGK
-	bwrite(fd, (char *) &symbol, sizeof(symbol));
+#ifdef GRAPHICS
+	bwrite(fd, (char *) &showsyms, sizeof(struct symbols));
 #endif
 	bwrite(fd,(char *) &moves,sizeof(long));
 	bwrite(fd,(char *) &xupstair,sizeof(xupstair));
@@ -91,10 +91,15 @@ xchar lev;
 	bwrite(fd,(char *) rooms,sizeof(rooms));
 	bwrite(fd,(char *) doors,sizeof(doors));
 #endif
-	fgold = 0;
-	ftrap = 0;
-	fmon = 0;
-	fobj = 0;
+#ifdef DGK
+	if (!count_only)
+#endif
+	{
+		fgold = 0;
+		ftrap = 0;
+		fmon = 0;
+		fobj = 0;
+	}
 #ifndef NOWORM
 	bwrite(fd,(char *) wsegs,sizeof(wsegs));
 	for(tmp=1; tmp<32; tmp++){
@@ -286,7 +291,7 @@ xchar lev;
 	long omoves;
 	int hpid;
 	xchar dlvl;
-#ifdef DGK
+#ifdef GRAPHICS
 	struct symbols osymbol;
 	int x, y, up, dn, lt, rt;
 	uchar osym, nsym;
@@ -308,7 +313,7 @@ xchar lev;
 	fgold = 0;
 	ftrap = 0;
 	mread(fd, (char *) levl, sizeof(levl));
-#ifdef DGK
+#ifdef GRAPHICS
 	/* Corners are poorly implemented.  They only exist in the
 	 * scrsym field of each dungeon element.  So we have to go
 	 * through the previous level, looking for scrsym with the
@@ -317,7 +322,7 @@ xchar lev;
 	 * of the new GRAPHICS character set.  Ugly.
 	 */
 	mread(fd, (char *) &osymbol, sizeof(osymbol));
-	if (memcmp((char *) &osymbol, (char *) &symbol, sizeof (symbol))) {
+	if (memcmp((char *) &osymbol, (char *) &showsyms, sizeof (struct symbols))) {
 		for (x = 0; x < COLNO; x++)
 			for (y = 0; y < ROWNO; y++) {
 				osym = levl[x][y].scrsym;
@@ -328,25 +333,25 @@ xchar lev;
 					break;
 				case ROOM:
 					if (osym == osymbol.room)
-						nsym = symbol.room;
+						nsym = showsyms.room;
 					break;
 				case DOOR:
 					if (osym == osymbol.door)
-						nsym = symbol.door;
+						nsym = showsyms.door;
 					break;
 				case CORR:
 					if (osym == osymbol.corr)
-						nsym = symbol.corr;
+						nsym = showsyms.corr;
 					break;
 				case VWALL:
 					if (osym == osymbol.vwall)
-						nsym = symbol.vwall;
+						nsym = showsyms.vwall;
 					break;
 				case SDOOR:
 					if (osym == osymbol.vwall)
-						nsym = symbol.vwall;
+						nsym = showsyms.vwall;
 					else if (osym == osymbol.hwall)
-						nsym = symbol.hwall;
+						nsym = showsyms.hwall;
 					break;
 				/* Now the ugly stuff */
 				case HWALL:
@@ -363,15 +368,15 @@ xchar lev;
 				  rt = rt && (rt == HWALL || rt == DOOR
 					|| rt == SDOOR);
 				  if (rt && dn && osym == osymbol.tlcorn)
-					nsym = symbol.tlcorn;
+					nsym = showsyms.tlcorn;
 				  else if (lt && dn && osym == osymbol.trcorn)
-					nsym = symbol.trcorn;
+					nsym = showsyms.trcorn;
 				  else if (rt && up && osym == osymbol.blcorn)
-					nsym = symbol.blcorn;
+					nsym = showsyms.blcorn;
 				  else if (lt && up && osym == osymbol.brcorn)
-					nsym = symbol.brcorn;
+					nsym = showsyms.brcorn;
 				  else if (osym == osymbol.hwall)
-					nsym = symbol.hwall;
+					nsym = showsyms.hwall;
 				  break;
 				default:
 					break;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)o_init.c	1.3	87/07/14
+/*	SCCS Id: @(#)o_init.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* o_init.c - version 1.0.3 */
 
@@ -19,6 +19,13 @@ register char ch;
 init_objects(){
 register int i, j, first, last, sum, end, tmp_i;
 register char let, *tmp;
+
+	/* bug fix to prevent "initialization error" abort on Intel Xenix.
+	 * reported by mikew@semike
+	 */
+        for(i = 0; i != sizeof(obj_symbols); i++)
+                bases[i] = 0;
+
 	/* init base; if probs given check that they add up to 100, 
 	   otherwise compute probs; shuffle descriptions */
 	end = SIZE(objects);

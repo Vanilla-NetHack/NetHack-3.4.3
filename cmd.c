@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	1.3	87/07/14
+/*	SCCS Id: @(#)cmd.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* cmd.c - version 1.0.3 */
 
@@ -13,7 +13,7 @@ doprwep(),doprarm(),doprring(),doprgold(),dodiscovered(),dotypeinv(),dolook(),
 doset(),doup(), dodown(), done1(), donull(), dothrow(), doextcmd(), dodip(),
 dopray(), doextlist();
 #ifdef NEWCLASS
-int dosit();
+int dosit(), doturn();
 #endif
 #ifdef SPELLS
 int docast(), dovspell(), doxcribe();
@@ -37,7 +37,7 @@ char *hcolor(), *rndmonnam(), *defmonnam();
 extern char *occtxt;
 extern int (*occupation)();
 
-# ifdef DGKMOD
+#ifdef DGKMOD
 int dotogglepickup(), doMSCversion();
 # ifdef DEBUG
 int dodebug();
@@ -81,7 +81,7 @@ char *txt;
 #define BSIZE 20
 static char pushq[BSIZE], saveq[BSIZE];
 static int phead, ptail, shead, stail;
-int in_doagain;
+extern int in_doagain;
 
 char
 popch() {
@@ -120,7 +120,7 @@ char ch;
 			saveq[shead++] = ch;
 	}
 }
-# endif /* REDO */
+#endif /* REDO */
 
 struct func_tab cmdlist[]={
 	{'\020', doredotopl},
@@ -193,7 +193,7 @@ struct func_tab cmdlist[]={
 	{WEAPON_SYM,  doprwep},
 	{ARMOR_SYM,  doprarm},
 	{RING_SYM,  doprring},
-	{'$', doprgold},
+	{GOLD_SYM, doprgold},
 	{'#', doextcmd},
 	{0,0,0}
 };
@@ -212,6 +212,7 @@ struct ext_func_tab extcmdlist[] = {
 #endif
 #ifdef NEWCLASS
 	"sit", "sit down", dosit,
+	"turn", "turn undead", doturn,
 #endif
 #if defined(KOPS) && defined(KAA)
 	"wipe", "wipe your face off", dowipe,
@@ -244,9 +245,9 @@ register char *cmd;
 	}
 
 	/* Special case of *cmd == ' ' handled better below */
-	if(!*cmd || *cmd == 0377) {
+	if(!*cmd || *cmd == (char)0377) {
 #else
-	if(!*cmd || *cmd == 0377 || (flags.no_rest_on_space && *cmd == ' ')){
+	if(!*cmd || *cmd == (char)0377 || (flags.no_rest_on_space && *cmd == ' ')){
 #endif
 		bell();
 		flags.move = 0;
@@ -345,7 +346,11 @@ doextcmd()	/* here after # - now read a full-word command */
 	register struct ext_func_tab *efp = extcmdlist;
 
 	pline("# ");
+#ifdef COM_COMPL
+	get_ext_cmd(buf);
+#else
 	getlin(buf);
+#endif
 	clrlin();
 	if(buf[0] == '\033')
 		return(0);

@@ -1,17 +1,24 @@
-/*	SCCS Id: @(#)termcap.c	1.3	87/07/14
+/*	SCCS Id: @(#)termcap.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* termcap.c - version 1.0.3 */
 
 #include <stdio.h>
+#include <ctype.h>	/* for isdigit() */
 #include "config.h"	/* for ROWNO and COLNO */
 #include "hack.h"	/* for  *HI, *HE */
+#ifdef GENIX
+#define	void	int	/* jhn - mod to prevent compiler from bombing */
+#endif
+
 extern char *tgetstr(), *tgoto(), *getenv();
 extern long *alloc();
 
-#ifndef lint
+#ifndef TERMINFO
+# ifndef lint
 extern			/* it is defined in libtermlib (libtermcap) */
-#endif
+# endif
 	short ospeed;		/* terminal baudrate; used by tputs */
+#endif
 static char tbuf[512];
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
 static char *VS, *VE;
@@ -55,6 +62,7 @@ startup()
 	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
+	register int i;
 
 	tptr = (char *) alloc(1024);
 
@@ -103,8 +111,19 @@ startup()
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
 	if(!SO || !SE || (SG > 0)) SO = SE = 0;
 #ifdef SORTING
-	HI = SO;	/* I know... Its a kluge. (MRS) */
-	HE = SE;
+	/* Get rid of padding numbers for HI and HE.  Hope they
+	 * aren't really needed!!!  HI and HE are ouputted to the
+	 * pager as a string - so how can you send it NULLS???
+	 *  -jsb
+	 */
+	    HI = (char *) alloc(strlen(SO));
+	    HE = (char *) alloc(strlen(SE));
+	    i = 0;
+	    while(isdigit(SO[i])) i++;
+	    strcpy(HI, &SO[i]);
+	    i = 0;
+	    while(isdigit(SE[i])) i++;
+	    strcpy(HE, &SE[i]);
 #endif
 	CD = tgetstr("cd", &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
@@ -298,8 +317,11 @@ delay_output() {
 	}
 #else
 	if(!flags.nonull)
-		tputs("50", 1, xputc);
-
+#ifdef TERMINFO
+		tputs("$<50>", 1, xputs);
+#else
+		tputs("50", 1, xputs);
+#endif
 		/* cbosgd!cbcephus!pds for SYS V R2 */
 		/* is this terminfo, or what? */
 		/* tputs("$<50>", 1, xputc); */

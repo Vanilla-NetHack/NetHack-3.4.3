@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	1.3	87/07/14
+/*	SCCS Id: @(#)sit.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* sit.c - version 1.0 */
 
@@ -51,6 +51,7 @@ dosit() {
 				u.uhp = u.uhpmax;
 				if (Blind) Blind = 1;
 				if (Sick)  Sick = 0;
+				heal_legs();
 				flags.botl = 1;
 				break;
 			    case 5:
@@ -134,7 +135,7 @@ dosit() {
 		if (!rn2(3) && IS_THRONE(levl[u.ux][u.uy].typ))	{
 
 			pline("The throne vanishes in a puff of logic.");
-/*			levl[u.ux][u.uy].scrsym = '.'; */
+/*			levl[u.ux][u.uy].scrsym = ROOM_SYM; */
 			levl[u.ux][u.uy].typ = ROOM;
 		}
 

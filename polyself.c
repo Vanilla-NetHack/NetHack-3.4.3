@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	1.3	87/07/14
+/*	SCCS Id: @(#)polyself.c	1.4	87/08/08
 /* Polymorph self routine.  Called in zap.c. Copyright 1987 by Ken Arromdee */
 
 #include "hack.h"
@@ -173,6 +173,8 @@ rehumanize()
      u.usym = '@';
      prme();
      pline("You return to %sn form!", (pl_character[0]=='E')?"elve":"huma");
+
+     if (u.uhp < 1)	done("died");
      if (!Fire_resistance && Inhell) {
 	  pline("You burn to a crisp.");
 	  killer = "dissipating polymorph spell";

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	1.3	87/07/14
+/*	SCCS Id: @(#)dogmove.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* dogmove.c - version 1.0 */
 
@@ -41,14 +41,17 @@ long info[9];
 		else	pline("You feel worried about %s.", monnam(mtmp));
 	} else
 	if(moves > edog->hungrytime + 750 || mtmp->mhp < 1){
-		if(cansee(omx,omy))
-			pline("%s dies from hunger.", Monnam(mtmp));
-		else
 #ifdef WALKIES
-		mtmp->mleashed = 0;
-		pline("Your leash goes slack...");
+		if(mtmp->mleashed) {
+			mtmp->mleashed = 0;
+			pline("Your leash goes slack...");
+		}
 #endif
-		pline("You have a sad feeling for a moment, then it passes.");
+		if(cansee(omx,omy))
+			pline("%s dies%s.", Monnam(mtmp),
+			      (mtmp->mhp >= 1) ? "" : " from hunger");
+		else
+			pline("You have a sad feeling for a moment, then it passes.");
 		mondied(mtmp);
 		return(2);
 	}
@@ -195,8 +198,9 @@ long info[9];
 #endif
 		if(info[i] & ALLOW_M) {
 			mtmp2 = m_at(nx,ny);
-			if(mtmp2->data->mlevel >= mdat->mlevel+2 ||
-			   mtmp2->data->mlet == 'c')
+			if(mtmp2)
+			    if(mtmp2->data->mlevel >= mdat->mlevel+2 ||
+			       mtmp2->data->mlet == 'c')
 				continue;
 			if(after) return(0); /* hit only once each move */
 

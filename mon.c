@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	1.3	87/07/14
+/*	SCCS Id: @(#)mon.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* mon.c - version 1.0.3 */
 
@@ -58,8 +58,10 @@ movemon()
 			mtmp->mcansee = 1;
 		if(mtmp->mfleetim && !--mtmp->mfleetim)
 			mtmp->mflee = 0;
+#ifdef HARD
 		/* unwatched mimics and piercers may hide again  [MRS] */
 		if(restrap(mtmp))	continue;
+#endif
 		if(mtmp->mimic) continue;
 		if(mtmp->mspeed != MSLOW || !(moves%2)){
 			/* continue if the monster died fighting */
@@ -168,7 +170,7 @@ register struct obj *otmp;
 	while(gold = g_at(mtmp->mx, mtmp->my)){
 		mtmp->mgold += gold->amount;
 		freegold(gold);
-		if(levl[mtmp->mx][mtmp->my].scrsym == '$')
+		if(levl[mtmp->mx][mtmp->my].scrsym == GOLD_SYM)
 			newsym(mtmp->mx, mtmp->my);
 	}
 }
@@ -257,9 +259,9 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		}
 		/* we cannot avoid traps of an unknown kind */
 		{ register struct trap *ttmp = t_at(nx, ny);
-		  register int tt;
+		  register long tt;
 			if(ttmp) {
-				tt = 1 << ttmp->ttyp;
+				tt = 1L <<" ttmp->ttyp;"
 				/* below if added by GAN 02/06/87 to avoid
 				 * traps out of range
 				 */
@@ -648,9 +650,8 @@ register struct permonst *mdat;
 mnexto(mtmp)	/* Make monster mtmp next to you (if possible) */
 struct monst *mtmp;
 {
-	extern coord enexto();
 	coord mm;
-	mm = enexto(u.ux, u.uy);
+	enexto(&mm, u.ux, u.uy);
 	mtmp->mx = mm.x;
 	mtmp->my = mm.y;
 	pmon(mtmp);
@@ -707,7 +708,7 @@ register struct monst *mtmp;
 	   && !mtmp->mcan && !cansee(mtmp->mx, mtmp->my)
 	   && !rn2(3)) {
 		mtmp->mimic = 1;
-		mtmp->mappearance = (levl[mtmp->mx][mtmp->my].typ == DOOR) ? DOOR_SYM : '$';
+		mtmp->mappearance = (levl[mtmp->mx][mtmp->my].typ == DOOR) ? DOOR_SYM : GOLD_SYM;
 		return(1);
 	   }
 

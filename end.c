@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	1.3	87/07/14
+/*	SCCS Id: @(#)end.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* end.c - version 1.0.3 */
 
@@ -55,6 +55,7 @@ done_hangup(){
 
 done_in_by(mtmp) register struct monst *mtmp; {
 static char buf[BUFSZ];
+extern char *shkname();
 	pline("You die ...");
 	if(mtmp->data->mlet == ' '){
 		Sprintf(buf, "the ghost of %s", (char *) mtmp->mextra);
@@ -65,6 +66,10 @@ static char buf[BUFSZ];
 		killer = buf;
 	} else if(mtmp->minvis) {
 		Sprintf(buf, "invisible %s", mtmp->data->mname);
+		killer = buf;
+      } else if(mtmp->isshk) {         /* stewr 870807 */
+	        Sprintf(buf, "shopkeeper, %s %s",
+			rn2(2) ? "Mr." : "Ms.", shkname(mtmp));
 		killer = buf;
 	} else killer = mtmp->data->mname;
 	done("died");

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)prisym.c	1.3	87/07/14
+/*	SCCS Id: @(#)prisym.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* prisym.c - version 1.0 */
 
@@ -169,8 +169,8 @@ prl(x,y)
 		pmon(mtmp);
 	}
 	else if(g_at(x,y) && room->typ != POOL)
-		atl(x,y,Hallucination ? rndobjsym() : '$');
-	else if(!room->seen || room->scrsym == ' ') {
+		atl(x,y,Hallucination ? rndobjsym() : GOLD_SYM);
+	else if(!room->seen || room->scrsym == STONE_SYM) {
 		room->new = room->seen = 1;
 		newsym(x,y);
 		on_scr(x,y);
@@ -188,64 +188,44 @@ register xchar x,y;
 	register char tmp;
 
 	room = &levl[x][y];
-	if(!room->seen) tmp = ' ';
+	if(!room->seen) tmp = STONE_SYM;
 	else if(room->typ == POOL) tmp = POOL_SYM;
 	else if(!Blind && (otmp = o_at(x,y)))
 		tmp = Hallucination ? rndobjsym() : otmp->olet;
 	else if(!Blind && g_at(x,y))
-		tmp = Hallucination ? rndobjsym() : '$';
-	else if(x == xupstair && y == yupstair) tmp = '<';
-	else if(x == xdnstair && y == ydnstair) tmp = '>';
+		tmp = Hallucination ? rndobjsym() : GOLD_SYM;
+	else if(x == xupstair && y == yupstair) tmp = UP_SYM;
+	else if(x == xdnstair && y == ydnstair) tmp = DN_SYM;
 #ifdef SPIDERS
 	else if((ttmp = t_at(x,y)) && ttmp->ttyp == WEB) tmp = WEB_SYM;
-	else if(ttmp && ttmp->tseen) tmp ='^';
+	else if(ttmp && ttmp->tseen) tmp = TRAP_SYM;
 #else
-	else if((ttmp = t_at(x,y)) && ttmp->tseen) tmp = '^';
+	else if((ttmp = t_at(x,y)) && ttmp->tseen) tmp = TRAP_SYM;
 #endif
 	else switch(room->typ) {
 	case SCORR:
 	case SDOOR:
 		tmp = room->scrsym;	/* %% wrong after killing mimic ! */
 		break;
-#ifdef DGK
 	case HWALL:
 		tmp = room->scrsym;	/* OK for corners only */
 		if (!IS_CORNER(tmp))
-			tmp = symbol.hwall;
+			tmp = HWALL_SYM;
 		break;
 	case VWALL:
-		tmp = symbol.vwall;
+		tmp = VWALL_SYM;
 		break;
 	case LDOOR:
 	case DOOR:
-		tmp = symbol.door;
-		break;
-	case CORR:
-		tmp = symbol.corr;
-		break;
-	case ROOM:
-		if(room->lit || cansee(x,y) || Blind) tmp = symbol.room;
-		else tmp = ' ';
-		break;
-#else
-	case HWALL:
-		tmp = '-';
-		break;
-	case VWALL:
-		tmp = '|';
-		break;
-	case LDOOR:
-	case DOOR:
-		tmp = '+';
+		tmp = DOOR_SYM;
 		break;
 	case CORR:
 		tmp = CORR_SYM;
 		break;
 	case ROOM:
-		if(room->lit || cansee(x,y) || Blind) tmp = '.';
-		else tmp = ' ';
+		if(room->lit || cansee(x,y) || Blind) tmp = ROOM_SYM;
+		else tmp = STONE_SYM;
 		break;
-#endif
 #ifdef FOUNTAINS
 	case FOUNTAIN:
 		tmp = FOUNTAIN_SYM;

@@ -1,6 +1,13 @@
-/*	SCCS Id: @(#)rm.h	1.3	87/07/14
+/*	SCCS Id: @(#)rm.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* rm.h - version 1.0.2 */
+
+/*
+ * The dungeon presentation graphics code and data structures were rewritten
+ * and generalized for NetHack's release 2 by Eric S. Raymond (eric@snark)
+ * building on Don G. Kneller's MS-DOS implementation. See options.c for
+ * the code that permits the user to set the contents of the symbol structure.
+ */
 
 /* Level location types */
 #define	HWALL 1
@@ -32,20 +39,74 @@
 #define IS_FOUNTAIN(typ)        ((typ) == FOUNTAIN)
 
 /*
- * A few of the associated symbols are not hardwired.
+ * The level-map symbols may be compiled in or defined at initialization time
  */
+#ifndef GRAPHICS
+
+#define STONE_SYM	' '
+#define VWALL_SYM	'|'
+#define HWALL_SYM	'-'
+#define TLCORN_SYM	'+'
+#define TRCORN_SYM	'+'
+#define BLCORN_SYM	'+'
+#define BRCORN_SYM	'+'
+#define DOOR_SYM	'+'
+#define ROOM_SYM	'.'
 #ifdef QUEST
-#define	CORR_SYM	':'
+# define	CORR_SYM	':'
 #else
-#define	CORR_SYM	'#'
+# define	CORR_SYM	'#'
 #endif
+#define UP_SYM		'<'
+#define DN_SYM		'>'
+#define TRAP_SYM	'^'
 #define	POOL_SYM	'}'
 #define FOUNTAIN_SYM    '{'
 #define THRONE_SYM      '\\'
 #define WEB_SYM         '"'
-#define DOOR_SYM	'+'
+#else /* GRAPHICS */
+
+/* screen symbols for using character graphics. */
+struct symbols {
+    unsigned char stone, vwall, hwall, tlcorn, trcorn, blcorn, brcorn;
+    unsigned char door, room, corr, upstair, dnstair, trap;
+#ifdef FOUNTAINS
+    unsigned char pool, fountain;
+#endif
+#ifdef NEWCLASS
+    unsigned char throne;
+#endif
+#ifdef SPIDERS
+    unsigned char web;
+#endif
+};
+extern struct symbols showsyms, defsyms;
+
+#define STONE_SYM	showsyms.stone
+#define VWALL_SYM	showsyms.vwall
+#define HWALL_SYM	showsyms.hwall
+#define TLCORN_SYM	showsyms.tlcorn
+#define TRCORN_SYM	showsyms.trcorn
+#define BLCORN_SYM	showsyms.blcorn
+#define BRCORN_SYM	showsyms.brcorn
+#define DOOR_SYM	showsyms.door
+#define ROOM_SYM	showsyms.room
+#define	CORR_SYM	showsyms.corr
+#define UP_SYM		showsyms.upstair
+#define DN_SYM		showsyms.dnstair
+#define TRAP_SYM	showsyms.trap
+#define	POOL_SYM	showsyms.pool
+#define FOUNTAIN_SYM    showsyms.fountain
+#define THRONE_SYM      showsyms.throne
+#define WEB_SYM         showsyms.web
+#endif
 
 #define	ERRCHAR	']'
+
+#define MAXPCHARS	17	/* maximum number of mapped characters */
+
+#define IS_CORNER(x)	((x) == TLCORN_SYM || (x) == TRCORN_SYM \
+			 || (x) == BLCORN_SYM || (x) == BRCORN_SYM)
 
 /*
  * The structure describing a coordinate position.
@@ -57,10 +118,10 @@
  */
 struct rm {
 	uchar scrsym;
-	uchar typ:5;
-	uchar new:1;
-	uchar seen:1;
-	uchar lit:1;
+	unsigned typ:5;
+	unsigned new:1;
+	unsigned seen:1;
+	unsigned lit:1;
 };
 #else
 struct rm {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	1.3	87/07/14
+/*	SCCS Id: @(#)trap.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* trap.c - version 1.0.3 */
 
@@ -170,7 +170,7 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 					pline("Your shield is not affected!");
 					break;
 				}
-				if (uwep->otyp == TWO_HANDED_SWORD) goto two_hand;
+				if (uwep && uwep->otyp == TWO_HANDED_SWORD) goto two_hand;
 				/* Two goto statements in a row--aaarrrgggh! */
 		glovecheck: if(uarmg) pline("Your gloves are not affected!");
 				break;
@@ -504,7 +504,6 @@ vtele() {
 }
 
 tele() {
-	extern coord getpos();
 	coord cc;
 	register int nux,nuy;
 
@@ -520,7 +519,7 @@ tele() {
 #endif
 	
 		    pline("To what position do you want to be teleported?");
-		    cc = getpos(1, "the desired position"); /* 1: force valid */
+		    getpos(&cc, 1, "the desired position"); /* 1: force valid */
 		    /* possible extensions: introduce a small error if
 		       magic power is low; allow transfer to solid rock */
 		    if(teleok(cc.x, cc.y)){
@@ -559,7 +558,7 @@ register int nux,nuy;
 		drown();
 	(void) inshop();
 	pickup(1);
-	if(!Blind) read_engr_at(u.ux,u.uy);
+	read_engr_at(u.ux,u.uy);
 }
 
 teleok(x,y) register int x,y; {	/* might throw him into a POOL
@@ -642,9 +641,9 @@ register int newlevel;
 	    newlevel = atoi(buf);
 	} else {
 #ifdef DGKMOD
-	    newlevel  = rn2(5) ? 5 + rn2(20) : 30;
+	    newlevel = rn2(5) ? rnz(dlevel + 3) : 30;
 #else
-	    newlevel  = 5 + rn2(20);	/* 5 - 24 */
+	    newlevel = rnz(dlevel + 3);	/* 5 - 24 */
 #endif
 	    if(dlevel == newlevel)
 		if(!xdnstair) newlevel--; else newlevel++;

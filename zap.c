@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)zap.c	1.3	87/07/14
+/*	SCCS Id: @(#)zap.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* zap.c - version 1.0.3 */
 
@@ -130,6 +130,11 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 		   with enchantments into another one, and doesn't allow 
 		   polymorphed rings to have plusses.  KAA*/
 		if (index("/)[", otmp2->olet)) otmp2->spe = obj->spe;
+	        /* Amulets gets cheap   stewr 870807 */
+		if (obj->otyp == AMULET_OF_YENDOR) otmp2->spe = obj->spe;
+		/* Wands of wishing max 3 stewr 870808 */
+		if ((otmp2->otyp == WAN_WISHING) 
+		    && (obj->spe > 3)) otmp2->spe = 3;
 		otmp2->cursed = otmp->cursed;
 		/* update the weight */
 		otmp2->owt = weight(otmp2);
@@ -281,33 +286,51 @@ zapyourself(obj)
 struct obj	*otmp;
 int	damage = 0;
 
-	  switch(obj->otyp) {
-	       case WAN_STRIKING:
+	switch(obj->otyp) {
+		case WAN_STRIKING:
+#ifdef SPELLS
+		case SPE_FORCE_BOLT:
+#endif
+		    pline("You magically bash yourself!");
 		    damage=d(8,6);
-		    pline("The wand hits you!");
 		    break;
-	       case WAN_FIRE:
-		    if (!Fire_resistance) damage=d(12,6);
-		    pline("The wand sprays you with flames!");
+		case WAN_FIRE:
 		    makeknown(WAN_FIRE);
+#ifdef SPELLS
+		case SPE_FIREBALL:
+#endif
+		    pline("You've set light to yourself!");
+		    if (!Fire_resistance) damage=d(12,6);
 		    burn_scrolls();
 		    boil_potions();
 		    break;
-	       case WAN_COLD:
-		    if (!Cold_resistance) damage=d(12,6);
-		    pline("You are blasted with liquid nitrogen!");
+		case WAN_COLD:
 		    makeknown(WAN_COLD);
+#ifdef SPELLS
+		case SPE_CONE_OF_COLD:
+#endif
+		    pline("You imitate a popsicle!");
+		    if (!Cold_resistance) damage=d(12,6);
 		    break;
-	       case WAN_MAGIC_MISSILE:
-		    damage = d(4,6);
-		    pline("You are shot at point blank range!");
+		case WAN_MAGIC_MISSILE:
 		    makeknown(WAN_MAGIC_MISSILE);
+#ifdef SPELLS
+		case SPE_MAGIC_MISSILE:
+#endif
+		    damage = d(4,6);
+		    pline("Idiot!  You've shot yourself!"); 
 		    break;
-	       case WAN_POLYMORPH:
+		case WAN_POLYMORPH:
 		    makeknown(WAN_POLYMORPH);
+#ifdef SPELLS
+		case SPE_POLYMORPH:
+#endif
 		    polyself();
 		    break;
-	       case WAN_CANCELLATION:
+		case WAN_CANCELLATION:
+#ifdef SPELLS
+		case SPE_CANCELLATION:
+#endif
 		    for(otmp = invent; otmp; otmp = otmp->nobj)
 		       if(otmp != uball && otmp->otyp != AMULET_OF_YENDOR)
 			      otmp->spe = 0;
@@ -325,27 +348,48 @@ int	damage = 0;
 		    break;
 	       case WAN_SLEEP:
 		    makeknown(WAN_SLEEP);
+#ifdef SPELLS
+		case SPE_SLEEP:
+#endif
 		    pline("The sleep ray hits you!");
 		    nomul(-rn2(50));
 		    break;
-	       case WAN_SLOW_MONSTER:
+		case WAN_SLOW_MONSTER:
+#ifdef SPELLS
+		case SPE_SLOW_MONSTER:
+#endif
 		    Fast = 0;
 		    break;
-	       case WAN_TELEPORTATION:
+		case WAN_TELEPORTATION:
+#ifdef SPELLS
+		case SPE_TELEPORT_AWAY:
+#endif
 		    tele();
 		    break;
-	       case WAN_DEATH:
+		case WAN_DEATH:
+#ifdef SPELLS
+		case SPE_FINGER_OF_DEATH:
+#endif
+		    killer = "death ray";
 		    pline("You irradiate yourself with pure energy!");
 		    pline("You die.");
-		    killer = "wand of death";
 		    done("died");
 		    break;
-	       case WAN_DIGGING:
-	       case WAN_UNDEAD_TURNING:
-	       case WAN_NOTHING:
+#ifdef SPELLS
+		case SPE_LIGHT:
+		    pline("You've blinded yourself!");
+		    Blind += rnd(100);
+		    break;		
+		case SPE_DIG:
+		case SPE_TURN_UNDEAD:
+		case SPE_DETECT_UNSEEN:
+#endif
+		case WAN_DIGGING:
+		case WAN_UNDEAD_TURNING:
+		case WAN_NOTHING:
 		    break;
-	       default: impossible("object %d zap?",obj->otyp);
-	  }
+		default: impossible("object %d used?",obj->otyp);
+	}
 	return(damage);
 }
 #endif /* KAA /**/
@@ -626,7 +670,7 @@ boomhit(dx,dy) {
 char
 dirlet(dx,dy) register dx,dy; {
 	return
-		(dx == dy) ? '\\' : (dx && dy) ? '/' : dx ? '-' : '|';
+		(dx == dy) ? '\\' : (dx && dy) ? '/' : dx ? HWALL_SYM : VWALL_SYM;
 }
 
 /* type == -1: monster spitting fire at you */

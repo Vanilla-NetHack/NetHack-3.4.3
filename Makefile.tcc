@@ -1,28 +1,22 @@
 #
-#	SCCS Id: @(#)Makefile.pc	1.4	87/08/08
+#	SCCS Id: @(#)Makefile.tcc	1.4	87/08/08
 # 	Makefile for NetHack (PC) version 1.0 written using
-#	Microsoft(tm) "C" v3.0 or better.
+#	Turbo C v1.0
 # 
-# Large memory model, register bug, remove stack probes:
+# Unfortunately, large model is limited to a total of 64K global data
+# Huge memory model, remove stack probes, optimize for space:
 WIZARD=
-V = 35
-CFLAGS = -A$(MODEL) -DREGBUG -DLINT_ARGS -DVER=$V $(WIZARD) -Ot -Gs -Gt100
-
-LIBS =
-LFLAGS =
-MODEL = L
-SETARGV = $(LIB)\$(MODEL)SETARGV
-.SUFFIXES: .exe .obj .c
-.c.obj:; cl $(CFLAGS) -c $*.c
-.c.exe:;
-    cl $(CFLAGS) -c $*.c
-    link $*.obj $(SETARGV), $@,, $(LIBS) $(LFLAGS);
+V = 14
+CFLAGS = -m$(MODEL) -DLINT_ARGS -DVER=$(V) $(WIZARD) -N- -Z -K- -O -w-pro -w-nod
 
 # The game name
 GAME = hack.exe
 
 # The game directory
-GAMEDIR = \h
+GAMEDIR = .
+
+# The directory containing the libraries
+LIBDIR = c:\c\lib
 
 # All object modules
 OBJS = decl.obj apply.obj bones.obj cmd.obj do.obj dothrow.obj\
@@ -42,7 +36,7 @@ OBJS = decl.obj apply.obj bones.obj cmd.obj do.obj dothrow.obj\
 # The main target
 #
 $(GAME) : $(OBJS)
-	link $(OBJS), $(GAME) /NOIG /STACK:4000 /CP:1;
+	link /x:400 $(LIBDIR)\c0$(MODEL).obj @objs.lnk,$(GAME),,$(LIBDIR)\c$(MODEL).lib
 
 #	variable auxilary files.
 #
@@ -158,6 +152,7 @@ pri.obj :  hack.h
 prisym.obj :  hack.h wseg.h
 read.obj :  hack.h
 rip.obj :  hack.h
+	tcc -c $(CFLAGS) -d- rip.c
 rumors.obj :  config.h
 save.obj :  hack.h
 search.obj :  hack.h

@@ -1,10 +1,10 @@
 y k u	Move commands:
  \|/		hykulnjb: single move in specified direction
 h-+-l		HYKULNJB: repeated move in specified direction
- /|\			(until stopped by e.g. a wall)
-b j n		g<dir>: fast movement in direction <dir>
-			(until something interesting is seen)
-		m<dir>: move without picking up objects
+ /|\			  (until stopped by e.g. a wall)
+b j n		g<dir>:   fast movement in direction <dir>
+			  (until something interesting is seen)
+		m<dir>:   move without picking up objects
 
 Meta commands:
 Q	quit	leave the game
@@ -15,7 +15,8 @@ O	set	set options
 ?	help	print information
 /	whatis	give name (and sometimes more info) of specified monster
 \	known	print list of what's been discovered
-v	version print version number
+v	version	print version number
+V	history	print game history.
 ^R	redraw	redraw the screen (^R denotes the symbol CTRL/R)
 ^P	print	repeat last message  (subsequent ^P's repeat earlier messages)
 #		introduces a long command (# ? for list of long commands)
@@ -45,8 +46,9 @@ D	Drop	drop several things
 E	Engrave write a message in the dust on the floor  (E-  use fingers)
 P	wear	put on a ring
 R	remove	remove a ring
-T	remove	take off some armor
 W	wear	put on some armor
+T	remove	take off some armor
+A	remove	take off some or all armor
 <	up	go up the stairs
 >	down	go down the stairs
 ^	trap_id identify a previously found trap

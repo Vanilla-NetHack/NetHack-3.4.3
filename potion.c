@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	1.3	87/07/14
+/*	SCCS Id: @(#)potion.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* potion.c - version 1.0.3 */
 
@@ -303,7 +303,7 @@ healup(nhp, nxtra, curesick, cureblind)
 #ifdef KAA
 	if (u.mtimedone & nhp) {
 		u.mh += rnd(nhp);
-		if (u.mh > u.mhmax) u.mh = ++u.mhmax;
+		if (u.mh > u.mhmax) u.mh = (u.mhmax + nxtra);
 	}
 #endif
 	if(nhp)	{
@@ -560,6 +560,9 @@ dodip(){
 				buf, xname(obj));
 		}
 	}
+#ifdef HARD
+	else	if (!rn2(4)) useup(potion);
+#endif
 #ifdef KAA
 	pline("Interesting...");
 #endif
@@ -583,15 +586,14 @@ ghost_from_bottle(){
 gainstr(inc)
 register int	inc;
 {
-	if(u.ustr >= 118) return;	/* > 118 is impossible */
+	if (inc) u.ustr++;
+	else {
+	         if (u.ustr < 18) u.ustr += (rn2(4) ? 1 : rnd(6) );
+		 else if (u.ustr < 103) u.ustr += rnd(10);
+		 else u.ustr++;
+	       }
 
-	if((u.ustr > 17) && !inc)	u.ustr += rnd(118 - u.ustr);
-#ifdef HARD
-	else				u.ustr++;
-#else 
-	else				u.ustr += (inc) ? 1 : rnd(3);
-#endif
-
-	if(u.ustr > u.ustrmax)		u.ustrmax = u.ustr;
+	if(u.ustr > 118)	u.ustr = 118;
+	if(u.ustr > u.ustrmax)	u.ustrmax = u.ustr;
 	flags.botl = 1;
 }

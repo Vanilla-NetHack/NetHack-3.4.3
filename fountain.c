@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fountain.c	1.3	87/07/14
+/*	SCCS Id: @(#)fountain.c	1.4	87/08/08
 /* fountain.c  v 1.4.1 */
 
 /*
@@ -44,21 +44,21 @@ dowatersnakes() /* Fountain of snakes! */ {
 dowaterdemon() /* Water demon */ {
 register struct monst *mtmp;
 
-	pline("You have unleashed a water demon!");
-	mtmp = mkmon_at('&',u.ux,u.uy);
-	if (rnd(100)>97) {
-	    pline("He is grateful for his release and grants you a wish!");
-	    makewish();
-	    mondied(mtmp);
+	if((mtmp = mkmon_at('&',u.ux,u.uy))) {
+	    pline("You have unleashed a water demon!");
+	    if (rnd(100)>97) {
+		pline("Grateful for his release, he grants you a wish!");
+		makewish();
+		mondied(mtmp);
+	    }
 	}
 }
 
 dowaternymph() /* Water Nymph */ {
 	register struct monst *mtmp;
-	if(!index(genocided, 'N')) {
+	if((mtmp = mkmon_at('N',u.ux,u.uy))) {
 
 		pline("You have attracted a water nymph!");
-		mtmp = mkmon_at('N',u.ux,u.uy);
 		mtmp->msleep = 0;
 	} else
 		pline("A large bubble rises to the surface and pops.");

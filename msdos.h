@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.h	1.3	87/07/14
+/*	SCCS Id: @(#)msdos.h	1.4	87/08/08
 /* msdos.h - function declarations for msdos.c */
 
 extern char *alllevels, *allbones;
@@ -28,7 +28,7 @@ char *	getenv();
 int	getuid();
 char *	let_to_name(char);
 void	msexit(int);
-void	msmsg(char *, );
+void	msmsg(char *, ...);
 void	name_file(char *, int);
 void	pushch(char);
 void	read_config_file();

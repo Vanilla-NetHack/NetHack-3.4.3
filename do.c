@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	1.3	87/07/14
+/*	SCCS Id: @(#)do.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* do.c - version 1.0.3 */
 
@@ -24,7 +24,7 @@ dodrop() {
 static
 drop(obj) register struct obj *obj; {
 	if(!obj) return(0);
-	if(obj->olet == '$') {		/* pseudo object */
+	if(obj->olet == GOLD_SYM) {		/* pseudo object */
 		register long amount = OGOLD(obj);
 
 		if(amount == 0)
@@ -298,7 +298,7 @@ register boolean at_stairs;
 	seeobjs();	/* make old cadavers disappear - riv05!a3 */
 	docrt();
 	pickup(1);
-	if (!Blind) read_engr_at(u.ux,u.uy);
+	read_engr_at(u.ux,u.uy);
 }
 
 donull() {

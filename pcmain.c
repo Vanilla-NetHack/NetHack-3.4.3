@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	1.3	87/07/14
+/*	SCCS Id: @(#)pcmain.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* main.c - (PC) version 1.0.3 */
 
@@ -51,6 +51,11 @@ char *argv[];
 			 * This will produce a compiler warning, but that's OK.
 			 */
 	signal(SIGINT, funcp);	/* restore original directory */
+#endif
+
+#ifdef GRAPHICS
+	/* Set the default values of the presentation characters */
+	memcpy((char *) &showsyms, (char *) &defsyms, sizeof(struct symbols));
 #endif
 #ifdef DGK
 	initoptions();
@@ -251,7 +256,7 @@ not_recovered:
 		pline("Hello %s, welcome to %s!", plname, hname);
 
 		pickup(1);
-		if(!Blind) read_engr_at(u.ux,u.uy);
+		read_engr_at(u.ux,u.uy);
 		flags.move = 1;
 	}
 	flags.moonphase = phase_of_the_moon();
@@ -361,6 +366,7 @@ moveloop()
 			invault();
 			amulet();
 #ifdef HARD
+			if (!rn2(4)) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
 				u.udg_cnt--;

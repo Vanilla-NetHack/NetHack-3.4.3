@@ -1,13 +1,19 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* makedefs.c - NetHack version 1.0 */
 
-static	char	SCCS_Id[] = "@(#)makedefs.c	1.3\t87/07/14";
+static	char	SCCS_Id[] = "@(#)makedefs.c	1.4\t87/08/08";
 
 #include	"config.h"
 #include	<stdio.h>
 
 #ifdef MSDOS
 #undef	exit
+#define	alloc	malloc
+#define RDMODE	"r"
+#define WRMODE	"w"
+#else
+#define RDMODE	"r+"
+#define WRMODE	"w+"
 #endif
 
 /* construct definitions of object constants */
@@ -60,12 +66,12 @@ char	tmpfile[30];
 FILE	*freopen();
 
 	sprintf(tmpfile, "makedefs.%d", getpid());
-	if(freopen(tmpfile, "w+", stdout) == NULL) {
+	if(freopen(tmpfile, WRMODE, stdout) == NULL) {
 
 		perror(tmpfile);
 		exit(1);
 	}
-	if(freopen(TRAP_FILE, "r+", stdin) == NULL) {
+	if(freopen(TRAP_FILE, RDMODE, stdin) == NULL) {
 
 		perror(TRAP_FILE);
 		exit(1);
@@ -99,6 +105,9 @@ FILE	*freopen();
 	printf("\n#define\tTRAPNUM\t%d\n", ntrap);
 	fclose(stdin);
 	fclose(stdout);
+#ifdef MSDOS
+	remove(TRAP_FILE);
+#endif
 	rename(tmpfile, TRAP_FILE);
 }
 
@@ -113,13 +122,17 @@ struct	hline	*c_line;
 char	infile[30];
 FILE	*freopen();
 
-	if(freopen(RUMOR_FILE, "w+", stdout) == NULL) {
+	if(freopen(RUMOR_FILE, WRMODE, stdout) == NULL) {
 
 		perror(RUMOR_FILE);
 		exit(1);
 	}
+#ifdef MSDOS
+	sprintf(infile, "%s.bas", RUMOR_FILE);
+#else
 	sprintf(infile, "%s.base", RUMOR_FILE);
-	if(freopen(infile, "r+", stdin) == NULL) {
+#endif
+	if(freopen(infile, RDMODE, stdin) == NULL) {
 
 		perror(infile);
 		exit(1);
@@ -129,14 +142,14 @@ FILE	*freopen();
 
 #ifdef KAA
 	sprintf(infile, "%s.kaa", RUMOR_FILE);
-	if(freopen(infile, "r+", stdin) == NULL)	perror(infile);
+	if(freopen(infile, RDMODE, stdin) == NULL)	perror(infile);
 
 	while(gets(inline) != NULL)	puts(inline);
 #endif
 
 #ifdef NEWCLASS
 	sprintf(infile, "%s.mrx", RUMOR_FILE);
-	if(freopen(infile, "r+", stdin) == NULL)	perror(infile);
+	if(freopen(infile, RDMODE, stdin) == NULL)	perror(infile);
 
 	while(gets(inline) != NULL)	puts(inline);
 #endif
@@ -151,12 +164,12 @@ char	tmpfile[30], cbuf[30], *c, *ctime();
 FILE	*freopen();
 
 	sprintf(tmpfile, "makedefs.%d", getpid());
-	if(freopen(tmpfile, "w+", stdout) == NULL) {
+	if(freopen(tmpfile, WRMODE, stdout) == NULL) {
 
 		perror(tmpfile);
 		exit(1);
 	}
-	if(freopen(DATE_FILE, "r+", stdin) == NULL) {
+	if(freopen(DATE_FILE, RDMODE, stdin) == NULL) {
 
 		perror(DATE_FILE);
 		exit(1);
@@ -174,6 +187,9 @@ FILE	*freopen();
 
 	fclose(stdin);
 	fclose(stdout);
+#ifdef MSDOS
+	remove(DATE_FILE);
+#endif
 	rename(tmpfile, DATE_FILE);
 }
 
@@ -183,12 +199,12 @@ char	tmpfile[30];
 FILE	*freopen();
 
 	sprintf(tmpfile, "%s.base", DATA_FILE);
-	if(freopen(tmpfile, "r+", stdin) == NULL) {
+	if(freopen(tmpfile, RDMODE, stdin) == NULL) {
 
 		perror(tmpfile);
 		exit(1);
 	}
-	if(freopen(DATA_FILE, "w+", stdout) == NULL) {
+	if(freopen(DATA_FILE, WRMODE, stdout) == NULL) {
 
 		perror(DATA_FILE);
 		exit(1);
@@ -207,20 +223,38 @@ FILE	*freopen();
 #endif
 #ifdef ROCKMOLE
 	    if(!strcmp(inline, "r	a giant rat"))
-		printf("K\ta rockmole\n");
+		printf("r\ta rockmole\n");
 	    else
 #endif
 #ifdef SPIDERS
 	    if(!strcmp(inline, "s	a scorpion"))
 		printf("s\ta giant spider\n");
+	    else if (!strcmp(inline, "\"	an amulet"))
+		printf("\"\tan amulet (or a web)\n");
 	    else
+#endif
+#ifdef	SPELLS
+	    if (!strcmp(inline, "+	a door"))
+		printf("+\ta door (or a spell book)\n");
+	    else
+#endif
+#ifdef	FOUNTAINS
+	    if(!strcmp(inline, "}	water filled area")) {
+		puts(inline);
+		printf("{\ta fountain\n");
+	    } else
+#endif
+#ifdef NEWCLASS
+	    if(!strcmp(inline, "^	a trap")) {
+		puts(inline);
+		printf("\\\tan opulant throne.\n");
+	    } else
 #endif
 		puts(inline);
 	}
 #ifdef KAA
 	printf("9\ta giant\n");
 #endif
-
 	fclose(stdin);
 	fclose(stdout);
 }
@@ -252,7 +286,7 @@ int skip;
 		exit(1);
 	}
 
-	if(freopen(ONAME_FILE, "w+", stdout) == NULL) {
+	if(freopen(ONAME_FILE, WRMODE, stdout) == NULL) {
 		perror(ONAME_FILE);
 		exit(1);
 	}
@@ -580,7 +614,7 @@ char *str;
 	exit(1);
 }
 
-#ifdef SYSV
+#if defined(SYSV) || defined(GENIX)
 rename(oldname, newname)
 	char	*oldname, *newname;
 {
@@ -590,5 +624,11 @@ rename(oldname, newname)
 		link(oldname, newname);
 		unlink(oldname);
 	}
+}
+#endif
+
+#ifdef __TURBOC__
+int getpid() {
+	return(1);
 }
 #endif

@@ -1,9 +1,12 @@
-/*	SCCS Id: @(#)pri.c	1.3	87/07/14
+/*	SCCS Id: @(#)pri.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* pri.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
+#ifdef GENIX
+#define	void	int	/* jhn - mod to prevent compiler from bombing */
+#endif
 
 #define DEBUG
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
@@ -305,11 +308,7 @@ register int show = (Blind && Telepat) || canseemon(mon);
 		atl(mon->mx,mon->my,
 			(!mon->mimic || Protection_from_shape_changers) ?
 				rndmonsym() :
-# ifdef DGK
-				(mon->mappearance==symbol.door) ? symbol.door
-# else
 				(mon->mappearance == DOOR_SYM) ? DOOR_SYM
-# endif
 				: rndobjsym());
 		else
 
@@ -392,7 +391,7 @@ extern char *eos();
 		"Level %-2d Hp %3d(%d) Energy %3d(%d) Ac %-2d ",
 		dlevel,
 #  ifdef KAA
-		u.mtimedone ? u.mhp : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
 		u.uen, u.uenmax, u.uac);
 #  else
 		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
@@ -401,7 +400,7 @@ extern char *eos();
 		"Level %-2d   Hp %3d(%d)   Ac %-2d   ",
 		dlevel,
 #  ifdef KAA
-		u.mtimedone ? u.mhp : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
 		u.uac);
 #  else
 		u.uhp, u.uhpmax, u.uac);

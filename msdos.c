@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	1.3	87/07/14
+/*	SCCS Id: @(#)msdos.c	1.4	87/08/08
 /* An assortment of MSDOS functions.
  */
 
@@ -223,7 +223,8 @@ findnext() {
 	return !regs.x.cflag;
 }
 
-/* Get disk transfer area */
+#ifndef __TURBOC__
+/* Get disk transfer area, Turbo C already has getdta */
 static char *
 getdta() {
 	union REGS regs;
@@ -236,6 +237,7 @@ getdta() {
 	FP_SEG(ret) = sregs.es;
 	return ret;
 }
+#endif
 
 long
 filesize(file)
@@ -254,7 +256,7 @@ void
 eraseall(path, files)
 char *path, *files;
 {
-	char *getdta(), *dta, buf[PATHLEN];
+	char	*dta, buf[PATHLEN];
 
 	dta = getdta();
 	Sprintf(buf, "%s%s", path, files);

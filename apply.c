@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	1.3	87/07/14
+/*	SCCS Id: @(#)apply.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* apply.c - version 1.0.3 */
 
@@ -180,11 +180,7 @@ register int rx, ry;
 	if(lev->typ == SDOOR) {
 		pline("You hear a hollow sound!  This must be a secret door!");
 		lev->typ = DOOR;
-#ifdef DGK
-		atl(rx, ry, symbol.door);
-#else
 		atl(rx, ry, DOOR_SYM);
-#endif
 		return(0);
 	}
 	if(lev->typ == SCORR) {

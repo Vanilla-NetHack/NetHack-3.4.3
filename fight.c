@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fight.c	1.3	87/07/14
+/*	SCCS Id: @(#)fight.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* fight.c - version 1.0.3 */
 
@@ -24,6 +24,7 @@ register struct permonst *pa = magr->data, *pd = mdef->data;
 int hit;
 schar tmp;
 boolean vis;
+	if(!magr || !mdef) return(0);		/* mike@genat */
 	if(index("Eauy", pa->mlet)) return(0);
 	if(magr->mfroz) return(0);		/* riv05!a3 */
 	tmp = pd->ac + pa->mlevel;
@@ -214,8 +215,8 @@ register thrown;
 	       if (u.usym == '&' && !rn2(5)) {
 		    struct monst *dtmp;
 		    pline("Some hell-p has arrived!");
-		    dtmp = mkmon_at('&',u.ux,u.uy);
-		    (void)tamedog(dtmp,(struct obj *)0);
+		    if((dtmp = mkmon_at('&',u.ux,u.uy)))
+			(void)tamedog(dtmp,(struct obj *)0);
 	       }
 	       tmp = d(mons[u.umonnum].damn, mons[u.umonnum].damd);
 	  } else
@@ -444,29 +445,17 @@ register struct monst *mtmp;
 
 	if(mtmp->mimic){
 		if(!u.ustuck && !mtmp->mflee) u.ustuck = mtmp;
-#ifdef DGK
-		if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == symbol.door)
+		if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == DOOR_SYM)
+		{
 		    if (okdoor(u.ux+u.dx, u.uy+u.dy))
 			pline("The door actually was %s.", defmonnam(mtmp));
-		    else  pline("That spellbook was %s.", defmonnam(mtmp));
-		else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == '$')
+		    else
+			pline("That spellbook was %s.", defmonnam(mtmp));
+		}
+		else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == GOLD_SYM)
 			pline("The chest was %s!", defmonnam(mtmp));
 		else
 			pline("Wait! That's %s!",defmonnam(mtmp));
-#else
-		switch(levl[u.ux+u.dx][u.uy+u.dy].scrsym){
-		case '+':
-			if (okdoor(u.ux+u.dx, u.uy+u.dy))
-				pline("The door actually was %s.", defmonnam(mtmp));
-			else	pline("That spellbook was %s.", defmonnam(mtmp));
-			break;
-		case '$':
-			pline("The chest was %s!", defmonnam(mtmp));
-			break;
-		default:
-			pline("Wait! That's %s!",defmonnam(mtmp));
-		}
-#endif
 		wakeup(mtmp);	/* clears mtmp->mimic */
 		return(TRUE);
 	}

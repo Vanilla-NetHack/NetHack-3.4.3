@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mklev.c	1.3	87/07/14
+/*	SCCS Id: @(#)mklev.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* mklev.c - version 1.0.3 */
 
@@ -16,16 +16,16 @@ extern struct trap *maketrap();
 #define	XLIM	4	/* define minimum required space around a room */
 #define	YLIM	3
 boolean secret;		/* TRUE while making a vault: increase [XY]LIM */
-struct mkroom rooms[MAXNROFROOMS+1];
+extern struct mkroom rooms[MAXNROFROOMS+1];
 int smeq[MAXNROFROOMS+1];
-coord doors[DOORMAX];
+extern coord doors[DOORMAX];
 int doorindex;
 struct rm zerorm;
 int comp();
 schar nxcor;
 boolean goldseen;
 int nroom;
-xchar xdnstair,xupstair,ydnstair,yupstair;
+extern xchar xdnstair,xupstair,ydnstair,yupstair;
 
 /* Definitions used by makerooms() and addrs() */
 #define	MAXRS	50	/* max lth of temp rectangle table - arbitrary */
@@ -67,7 +67,7 @@ makelevel()
 	croom = &rooms[rn2(nroom)];
 	xdnstair = somex();
 	ydnstair = somey();
-	levl[xdnstair][ydnstair].scrsym ='>';
+	levl[xdnstair][ydnstair].scrsym = DN_SYM;
 	levl[xdnstair][ydnstair].typ = STAIRS;
 	if(nroom > 1) {
 		troom = croom;
@@ -76,7 +76,7 @@ makelevel()
 	}
 	xupstair = somex();	/* %% < and > might be in the same place */
 	yupstair = somey();
-	levl[xupstair][yupstair].scrsym ='<';
+	levl[xupstair][yupstair].scrsym = UP_SYM;
 	levl[xupstair][yupstair].typ = STAIRS;
 
 	/* for each room: put things inside */
@@ -291,9 +291,10 @@ register struct mkroom *x,*y;
 	return(x->lx > y->lx);
 }
 
-coord
-finddpos(xl,yl,xh,yh) {
-	coord ff;
+finddpos(cc, xl,yl,xh,yh)
+coord	*cc;
+int	xl,yl,xh,yh;
+{
 	register x,y;
 
 	x = (xl == xh) ? xl : (xl + rn2(xh-xl+1));
@@ -312,9 +313,9 @@ finddpos(xl,yl,xh,yh) {
 	x = xl;
 	y = yh;
 gotit:
-	ff.x = x;
-	ff.y = y;
-	return(ff);
+	cc->x = x;
+	cc->y = y;
+	return(0);
 }
 
 /* see whether it is allowable to create a door at [x,y] */
@@ -352,15 +353,11 @@ register type;
 	register struct mkroom *broom;
 	register tmp;
 
-	if(!IS_WALL(levl[x][y].typ))	/* avoid SDOORs with '+' as scrsym */
+	if(!IS_WALL(levl[x][y].typ))	/* avoid SDOORs with DOOR_SYM as scrsym */
 		type = DOOR;
 	levl[x][y].typ = type;
 	if(type == DOOR)
-#ifdef DGK
-		levl[x][y].scrsym = symbol.door;
-#else
-		levl[x][y].scrsym = '+';
-#endif /* DGK /**/
+		levl[x][y].scrsym = DOOR_SYM;
 	aroom->doorct++;
 	broom = aroom+1;
 	if(broom->hx < 0) tmp = doorindex; else
@@ -427,43 +424,25 @@ chk:
 	croom->hy = hiy;
 	croom->rtype = croom->doorct = croom->fdoor = 0;
 
-#ifdef DGK
 	for(x = lowx-1; x <= hix+1; x++)
 	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
-		levl[x][y].scrsym = symbol.hwall;
+		levl[x][y].scrsym = HWALL_SYM;
 		levl[x][y].typ = HWALL;
 	}
 	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
 	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = symbol.vwall;
+		levl[x][y].scrsym = VWALL_SYM;
 		levl[x][y].typ = VWALL;
 	}
 	for(x = lowx; x <= hix; x++)
 	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = symbol.room;
+		levl[x][y].scrsym = ROOM_SYM;
 		levl[x][y].typ = ROOM;
 	}
-	levl[lowx-1][lowy-1].scrsym = symbol.tlcorn;
-	levl[hix+1][lowy-1].scrsym = symbol.trcorn;
-	levl[lowx-1][hiy+1].scrsym = symbol.blcorn;
-	levl[hix+1][hiy+1].scrsym = symbol.brcorn;
-#else
-	for(x = lowx-1; x <= hix+1; x++)
-	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
-		levl[x][y].scrsym = '-';
-		levl[x][y].typ = HWALL;
-	}
-	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
-	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = '|';
-		levl[x][y].typ = VWALL;
-	}
-	for(x = lowx; x <= hix; x++)
-	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = '.';
-		levl[x][y].typ = ROOM;
-	}
-#endif /* DGK /**/
+	levl[lowx-1][lowy-1].scrsym = TLCORN_SYM;
+	levl[hix+1][lowy-1].scrsym = TRCORN_SYM;
+	levl[lowx-1][hiy+1].scrsym = BLCORN_SYM;
+	levl[hix+1][hiy+1].scrsym = BRCORN_SYM;
 
 	smeq[nroom] = nroom;
 	croom++;
@@ -515,29 +494,29 @@ register a,b;
 		dy = 0;
 		xx = croom->hx+1;
 		tx = troom->lx-1;
-		cc = finddpos(xx,croom->ly,xx,croom->hy);
-		tt = finddpos(tx,troom->ly,tx,troom->hy);
+		finddpos(&cc, xx, croom->ly, xx, croom->hy);
+		finddpos(&tt, tx, troom->ly, tx, troom->hy);
 	} else if(troom->hy < croom->ly) {
 		dy = -1;
 		dx = 0;
 		yy = croom->ly-1;
-		cc = finddpos(croom->lx,yy,croom->hx,yy);
+		finddpos(&cc, croom->lx, yy, croom->hx, yy);
 		ty = troom->hy+1;
-		tt = finddpos(troom->lx,ty,troom->hx,ty);
+		finddpos(&tt, troom->lx, ty, troom->hx, ty);
 	} else if(troom->hx < croom->lx) {
 		dx = -1;
 		dy = 0;
 		xx = croom->lx-1;
 		tx = troom->hx+1;
-		cc = finddpos(xx,croom->ly,xx,croom->hy);
-		tt = finddpos(tx,troom->ly,tx,troom->hy);
+		finddpos(&cc, xx, croom->ly, xx, croom->hy);
+		finddpos(&tt, tx, troom->ly, tx, troom->hy);
 	} else {
 		dy = 1;
 		dx = 0;
 		yy = croom->hy+1;
 		ty = troom->ly-1;
-		cc = finddpos(croom->lx,yy,croom->hx,yy);
-		tt = finddpos(troom->lx,ty,troom->hx,ty);
+		finddpos(&cc, croom->lx, yy, croom->hx, yy);
+		finddpos(&tt, troom->lx, ty, troom->hx, ty);
 	}
 	xx = cc.x;
 	yy = cc.y;
@@ -563,16 +542,12 @@ register a,b;
 	    if(!(crm->typ)) {
 		if(rn2(100)) {
 			crm->typ = CORR;
-#ifdef DGK
-			crm->scrsym = symbol.corr;
-#else
 			crm->scrsym = CORR_SYM;
-#endif
 			if(nxcor && !rn2(50))
 				(void) mkobj_at(ROCK_SYM, xx, yy);
 		} else {
 			crm->typ = SCORR;
-			crm->scrsym = ' ';
+			crm->scrsym = STONE_SYM;
 		}
 	    } else
 	    if(crm->typ != CORR && crm->typ != SCORR) {
@@ -703,10 +678,10 @@ int trap_type;
 	    if(aroom->doorct == 1 && rn2(5)) continue;
 	    if(rn2(2)) {
 		dy = 1;
-		dd = finddpos(aroom->lx,aroom->hy+1,aroom->hx,aroom->hy+1);
+		finddpos(&dd, aroom->lx, aroom->hy+1, aroom->hx, aroom->hy+1);
 	    } else {
 		dy = -1;
-		dd = finddpos(aroom->lx,aroom->ly-1,aroom->hx,aroom->ly-1);
+		finddpos(&dd, aroom->lx, aroom->ly-1, aroom->hx, aroom->ly-1);
 	    }
 	    xx = dd.x;
 	    yy = dd.y;
@@ -714,7 +689,7 @@ int trap_type;
 	    if(trap_type || !rn2(4)) {
 
 		rm->typ = SCORR;
-		rm->scrsym = ' ';
+		rm->scrsym = STONE_SYM;
 		if(trap_type) {
 		    ttmp = maketrap(xx, yy+dy, trap_type);
 		    ttmp->once = 1;
@@ -724,11 +699,7 @@ int trap_type;
 		dosdoor(xx, yy, aroom, SDOOR);
 	    } else {
 		rm->typ = CORR;
-#ifdef DGK
-		rm->scrsym = symbol.corr;
-#else
 		rm->scrsym = CORR_SYM;
-#endif
 		if(rn2(7))
 		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
@@ -810,9 +781,8 @@ register
 				    mx = somex();
 				}
 			} else if(mazeflag) {
-				extern coord mazexy();
 				coord mm;
-				mm = mazexy();
+				mazexy(&mm);
 				mx = mm.x;
 				my = mm.y;
 			} else {
@@ -823,11 +793,7 @@ register
 		if(mtmp = makemon(PM_MIMIC,mx,my)) {
 		    mtmp->mimic = 1;
 		    mtmp->mappearance =
-#ifdef DGK
-			fakegold ? '$' : fakedoor ? symbol.door :
-#else
-			fakegold ? '$' : fakedoor ? '+' :
-#endif
+			fakegold ? '$' : fakedoor ? DOOR_SYM :
 			(mazeflag && rn2(2)) ? AMULET_SYM :
 #ifdef SPELLS
 			"=/)%?![<>+" [ rn2(10) ];
@@ -842,9 +808,8 @@ register
 		if(++tryct > 200)
 			return;
 		if(mazeflag){
-			extern coord mazexy();
 			coord mm;
-			mm = mazexy();
+			mazexy(&mm);
 			mx = mm.x;
 			my = mm.y;
 		} else {
@@ -869,9 +834,8 @@ register mazeflag;
 	      if(++tryct > 200)
 		      return;
 	      if(mazeflag){
-		      extern coord mazexy();
 		      coord mm;
-		      mm = mazexy();
+		      mazexy(&mm);
 		      mx = mm.x;
 		      my = mm.y;
 	      } else {

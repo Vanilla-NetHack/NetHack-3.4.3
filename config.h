@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	1.3	87/07/14
+/*	SCCS Id: @(#)config.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* config.h - version 1.0.3 */
 
@@ -11,7 +11,6 @@
  * Some include files are in a different place under SYSV
  * 	BSD		   SYSV
  * <strings.h>		<string.h>
- * <sys/wait.h>		<wait.h>
  * <sys/time.h>		<time.h>
  * <sgtty.h>		<termio.h>
  * Some routines are called differently
@@ -22,19 +21,22 @@
  */
 /* #define MSDOS 	/* define for MS-DOS (actually defined by compiler) */
 #define	UNIX		/* delete if no fork(), exec() available */
+/* #define	GENIX		/* Yet Another Unix Clone */
 #define BSD		/* defind for 4.n BSD  */
 /* #define SYSV		/* define for System V */
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION	"1.3d"	/* version number. */
+#define VERSION	"1.4f"	/* version number. */
 
 #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
 /* #define APOLLO		/* same for the Apollo */
 /* #define STUPID		/* avoid some complicated expressions if
 			   your C compiler chokes on them */
-/* #define NOWAITINCLUDE	/* neither <wait.h> nor <sys/wait.h> exists */
-#ifdef MSDOS
-#define	NOWAITINCLUDE
+/* #define TERMINFO		/* uses "curses" rather than termcap */
+
+#ifdef __TURBOC__
+#define	alloc	malloc
+#define	signal	ssignal
 #endif
 
 #define WIZARD  "mike"	/* the person allowed to use the -D option */
@@ -106,6 +108,8 @@
 
 #ifdef BSD
 #include <strings.h>		/* declarations for strcat etc. */
+#define memcpy(d, s, n)		bcopy(s, d, n)
+#define memcmp(s1, s2, n)	bcmp(s2, s1, n)
 #else
 #include <string.h>		/* idem on System V */
 #define	index	strchr
@@ -145,6 +149,8 @@ typedef	xchar	boolean;		/* 0 or 1 */
  * structs containing bitfields, then you might use
  *	#define Bitfield(x,n)	uchar x
  * since the bitfields used never have more than 7 bits. (Most have 1 bit.)
+ * otherwise:
+ *	#define	Bitfield(x,n)	unsigned x:n
  */
 #define	Bitfield(x,n)	uchar x
 
@@ -167,14 +173,6 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #  define FROMPERM	1	/* for ramdisk use */
 #  define TOPERM	2	/* for ramdisk use */
 #  define glo(x)	name_file(lock, x)	/* name_file used for bones */
-#  define IS_CORNER(x)	((x) == symbol.tlcorn || (x) == symbol.trcorn\
-				|| (x) == symbol.blcorn || (x)==symbol.brcorn)
-	/* screen symbols for using character graphics. */
-	struct symbols {
-		unsigned char vwall, hwall, tlcorn, trcorn, blcorn, brcorn;
-		unsigned char door, room, corr;
-	};
-	extern struct symbols symbol;
 	extern char *configfile;
 #endif /* DGK /**/
 #endif /* MSDOS /**/
@@ -184,7 +182,8 @@ typedef	xchar	boolean;		/* 0 or 1 */
  *	If you define the following flags, you will add not only to the
  *	complexity of the game but also to the size of the load module.
  */ 
- 
+
+#define	DOGNAME		/* Name of your first dog as an option */ 
 #define	SPELLS		/* Spell casting by M. Stephenson */
 #define	PRAYERS		/* Prayer code by M. Stephenson */
 #define KAA		/* Various changes made by Ken Arromdee */
@@ -204,6 +203,9 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #define FOUNTAINS	/* Fountain code by SRT (+ GAN + EB) */
 #define KOPS		/* Keystone Kops by Scott R. Turner */
 #define ROCKMOLE	/* Rockmoles by Scott R. Turner */
+#define COM_COMPL	/* Command line completion by John S. Bien */
+#define GRAPHICS	/* Funky screen character support (Eric S. Raymond) */
+#define HACKOPTIONS	/* Support DGK-style HACKOPTIONS processing (ESR) */
 
 /*
  *	Status Line options.

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)steal.c	1.3	87/07/14
+/*	SCCS Id: @(#)steal.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* steal.c - version 1.0.3 */
 
@@ -200,6 +200,6 @@ register show;
 		tmp = (mtmp->mgold > 10000) ? 10000 : mtmp->mgold;
 		mkgold((long)(tmp + d(dlevel,30)), mtmp->mx, mtmp->my);
 		if(show & cansee(mtmp->mx,mtmp->my))
-			atl(mtmp->mx,mtmp->my, Hallucination ? rndobjsym() : '$');
+			atl(mtmp->mx,mtmp->my, Hallucination ? rndobjsym() : GOLD_SYM);
 	}
 }

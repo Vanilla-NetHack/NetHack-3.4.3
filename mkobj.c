@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	1.3	87/07/14
+/*	SCCS Id: @(#)mkobj.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* mkobj.c - version 1.0.3 */
 
@@ -85,10 +85,10 @@ register otyp;
 	switch(let) {
 	case WEAPON_SYM:
 		otmp->quan = (otmp->otyp <= ROCK) ? rn1(6,6) : 1;
-		if(!rn2(11)) otmp->spe = rnd(3);
+		if(!rn2(11)) otmp->spe = rne(2);
 		else if(!rn2(10)) {
 			otmp->cursed = 1;
-			otmp->spe = -rnd(3);
+			otmp->spe = -rne(2);
 		}
 		break;
 	case FOOD_SYM:
@@ -116,9 +116,9 @@ register otyp;
 #endif
 	case ARMOR_SYM:
 		if(!rn2(8)) otmp->cursed = 1;
-		if(!rn2(10)) otmp->spe = rnd(3);
+		if(!rn2(10)) otmp->spe = rne(2);
 		else if(!rn2(9)) {
-			otmp->spe = -rnd(3);
+			otmp->spe = -rne(2);
 			otmp->cursed = 1;
 		}
 		break;
@@ -131,8 +131,8 @@ register otyp;
 		if(objects[otmp->otyp].bits & SPEC) {
 			if(!rn2(3)) {
 				otmp->cursed = 1;
-				otmp->spe = -rnd(2);
-			} else otmp->spe = rnd(2);
+				otmp->spe = -rne(3);
+			} else otmp->spe = rne(3);
 		} else if(otmp->otyp == RIN_TELEPORTATION ||
 			  otmp->otyp == RIN_AGGRAVATE_MONSTER ||
 			  otmp->otyp == RIN_HUNGER || !rn2(9))

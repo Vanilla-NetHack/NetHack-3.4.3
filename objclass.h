@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h	1.3	87/07/14
+/*	SCCS Id: @(#)objclass.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* objclass.h - version 1.0.3 */
 
@@ -58,6 +58,7 @@ extern struct objclass objects[];
 #define	WAND_SYM	'/'
 #define	RING_SYM	'='
 #define	GEM_SYM		'*'
+#define	GOLD_SYM	'$'
 #ifdef SPELLS
 #define	SPBOOK_SYM	'+'	/* actually SPELL-book */
 #endif

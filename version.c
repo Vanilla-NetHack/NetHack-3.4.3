@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	1.3	87/07/14
+/*	SCCS Id: @(#)version.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* version.c - Usenet version 1.0 */
 
@@ -26,6 +26,8 @@ doversion(){
 		, VERSION, datestring);
 	return(0);
 }
+
+#ifdef DGKMOD
 
 #define pg_line(x)	if(page_line(x)) goto quit;
 
@@ -67,12 +69,14 @@ doMSCversion()
 	pg_line("as well as the following honoured hackers:");
 
 	pg_line("");
-	pg_line("        Scott R. Turner");
-	pg_line("        Gil Neiger");
-	pg_line("        Eric Backus");
+	pg_line("    Scott R. Turner    Tom Almy          John S. Bien");
+	pg_line("    Gil Neiger         Ralf Brown	  Eric S. Raymond");
+	pg_line("    Eric Backus        Roland McGrath    Greg Laskin");
 	set_pager(1);
 	return(0);
 quit:
 	set_pager(2);
 	return(0);
 }
+
+#endif

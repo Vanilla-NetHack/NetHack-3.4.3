@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)search.c	1.3	87/07/14
+/*	SCCS Id: @(#)search.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* search.c - version 1.0.3 */
 
@@ -25,19 +25,11 @@ findit()	/* returns number of things found */
 		for(zx = lx; zx <= hx; zx++) {
 			if(levl[zx][zy].typ == SDOOR) {
 				levl[zx][zy].typ = DOOR;
-#ifdef DGK
-				atl(zx, zy, symbol.door);
-#else
-				atl(zx, zy, '+');
-#endif
+				atl(zx, zy, DOOR_SYM);
 				num++;
 			} else if(levl[zx][zy].typ == SCORR) {
 				levl[zx][zy].typ = CORR;
-#ifdef DGK
-				atl(zx, zy, symbol.corr);
-#else
 				atl(zx, zy, CORR_SYM);
-#endif
 				num++;
 			} else if(ttmp = t_at(zx, zy)) {
 				if(ttmp->ttyp == PIERC){
@@ -47,7 +39,7 @@ findit()	/* returns number of things found */
 				} else if(!ttmp->tseen) {
 					ttmp->tseen = 1;
 					if(!vism_at(zx, zy))
-						atl(zx,zy,'^');
+						atl(zx,zy,TRAP_SYM);
 					num++;
 				}
 			} else if(mtmp = m_at(zx,zy)) if(mtmp->mimic){
@@ -97,13 +89,13 @@ dosearch()
 				rn2(TRAPNUM-2) : trap->ttyp ]);
 
 				if(trap->ttyp == PIERC) {
-					deltrap(trap);
-					mtmp=makemon(PM_PIERCER,x,y);
+				    deltrap(trap);
+				    if((mtmp=makemon(PM_PIERCER,x,y)))
 					pline("You find %s.", defmonnam(mtmp));
-					return(1);
+				    return(1);
 				}
 				trap->tseen = 1;
-				if(!vism_at(x,y)) atl(x,y,'^');
+				if(!vism_at(x,y)) atl(x,y,TRAP_SYM);
 			}
 		}
 	}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)write.c	1.3	87/07/14
+/*	SCCS Id: @(#)write.c	1.4	87/08/08
 /* write.c - version 1.0.3 */
 
 #include "hack.h"
@@ -17,9 +17,9 @@ register struct obj *scroll;
 	switch(scroll->otyp)  {
 # ifdef MAIL
 	case SCR_MAIL:
-# endif
 		return(0);
 		break;
+# endif
 	case SCR_LIGHT:
 	case SCR_GOLD_DETECTION:
 	case SCR_FOOD_DETECTION:

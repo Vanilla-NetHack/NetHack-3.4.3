@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wield.c	1.3	87/07/14
+/*	SCCS Id: @(#)wield.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* wield.c - version 1.0.3 */
 
@@ -26,21 +26,21 @@ dowield()
 	}
 #endif
 	if(!(wep = getobj("#-)", "wield"))) /* nothing */;
-	else if(uwep == wep)
+	else if(wep == &zeroobj) {
+	  if(uwep == 0){
+	    pline("You are already empty handed.");
+	  } else {
+	    setuwep((struct obj *) 0);
+	    res++;
+	    pline("You are empty handed.");
+	  }
+	} else if(uwep == wep)
 		pline("You are already wielding that!");
 	else if(welded(uwep))
 		pline("The %s welded to your hand!",
 			aobjnam(uwep, "are"));
-	else if(wep == &zeroobj) {
-		if(uwep == 0){
-			pline("You are already empty handed.");
-		} else {
-			setuwep((struct obj *) 0);
-			res++;
-			pline("You are empty handed.");
-		}
 	/* Prevent wielding a cockatrice in pack when not wearing gloves KAA*/
-	} else if (!uarmg && wep->otyp == DEAD_COCKATRICE) {
+	else if (!uarmg && wep->otyp == DEAD_COCKATRICE) {
 		pline("You wield the dead cockatrice in your bare hands.");
 		pline("You turn to stone ...");
 		killer="dead cockatrice";
@@ -126,7 +126,7 @@ register char *time;
 
 int
 welded(obj) register struct obj *obj;  {
-	return(obj == uwep && obj->cursed &&
+	return(obj && obj == uwep && obj->cursed &&
 	       (obj->olet == WEAPON_SYM || obj->otyp == HEAVY_IRON_BALL ||
 		obj->otyp == CAN_OPENER || obj->otyp == PICK_AXE));
 }

@@ -1,9 +1,13 @@
-/*	SCCS Id: @(#)topl.c	1.3	87/07/14
+/*	SCCS Id: @(#)topl.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* topl.c - version 1.0.2 */
 
 #include <stdio.h>
 #include "hack.h"
+#ifdef GENIX
+#define	void	int	/* jhn - mod to prevent compiler from bombing */
+#endif
+
 extern char *eos();
 extern int CO;
 

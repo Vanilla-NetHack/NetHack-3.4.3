@@ -1,8 +1,22 @@
-/*	SCCS Id: @(#)hack.h	1.3	87/07/14
+/*	SCCS Id: @(#)hack.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.h - version 1.0.3 */
 
 #include "config.h"
+
+#ifdef __TURBOC__
+/* work around the case-insensitivity of the DOS linker */
+#define Amonnam Amonnam_
+#define Xmonnam Xmonnam_
+#define Monnam Monnam_
+#define POISONOUS POISONOUS_
+#define Doname Doname_
+#define Tmp_at Tmp_at_
+/* rename the next two functions because they clash with the Turbo C library */
+#define getdate getdate_
+#define itoa itoa_
+#endif
+
 
 #define	Null(type)	((struct type *) 0)
 
@@ -44,9 +58,18 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 
 #include "extern.h"
 
+#ifdef GENIX
+#define DIST	jhndist
+/*	genix compiler chokes on DIST macro below - jhn*/
+#else
 #define DIST(x1,y1,x2,y2)       (((x1)-(x2))*((x1)-(x2)) + ((y1)-(y2))*((y1)-(y2)))
+#endif
 
 #define	PL_CSIZ		20	/* sizeof pl_character */
+#ifdef HARD
 #define	MAX_CARR_CAP	120	/* so that boulders can be heavier */
+#else
+#define	MAX_CARR_CAP	500
+#endif
 #define	MAXLEVEL	40
 #define	FAR	(COLNO+2)	/* position outside screen */

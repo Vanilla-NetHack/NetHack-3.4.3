@@ -1,9 +1,13 @@
-/*	SCCS Id: @(#)topten.c	1.3	87/07/14
+/*	SCCS Id: @(#)topten.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* topten.c - version 1.0 */
 
 #include <stdio.h>
 #include "hack.h"
+#ifdef GENIX
+#define	void	int	/* jhn - mod to prevent compiler from bombing */
+#endif
+
 #define	Sprintf	(void) sprintf
 extern char plname[], pl_character[];
 extern char *itoa(), *ordin(), *eos();
@@ -46,7 +50,7 @@ topten(){
 #ifndef DGK
 #define	HUP	if(!done_hup)
 #else
-#define
+#define HUP
 #endif
 #ifdef UNIX
 	while(link(recfile, reclock) == -1) {

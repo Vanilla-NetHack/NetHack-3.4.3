@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixtty.c	1.3	87/07/14
+/*	SCCS Id: @(#)unixtty.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* tty.c - (Unix) version 1.0.3 */
 /* With thanks to the people who sent code for SYSV - hpscdi!jon,
@@ -7,6 +7,7 @@
 #include	<stdio.h>
 #include	"extern.h"
 #include	"flag.h"
+#include	"func_tab.h"
 
 #define	ON	1
 #define OFF	0
@@ -329,3 +330,83 @@ end_of_input()
 	clearlocks();
 	exit(0);
 }
+
+#ifdef COM_COMPL
+/* Read in an extended command - doing command line completion for
+ * when enough character have been entered to make a unique command.
+ * This is just a modified getlin().   -jsb
+ */
+get_ext_cmd(bufp)
+register char *bufp;
+{
+	register char *obufp = bufp;
+	register int c;
+	int com_index, index;
+
+	flags.toplin = 2;		/* nonempty, no --More-- required */
+
+	for(;;) {
+		(void) fflush(stdout);
+		if((c = readchar()) == EOF) {
+			*bufp = 0;
+			return;
+		}
+		if(c == '\033') {
+			*obufp = c;
+			obufp[1] = 0;
+			return;
+		}
+		if(c == erase_char || c == '\b') {
+			if(bufp != obufp) {
+				bufp--;
+				putstr("\b \b"); /* putsym converts \b */
+			} else	bell();
+		} else if(c == '\n') {
+			*bufp = 0;
+			return;
+		} else if(' ' <= c && c < '\177') {
+				/* avoid isprint() - some people don't have it
+				   ' ' is not always a printing char */
+			*bufp = c;
+			bufp[1] = 0;
+			index = 0;
+			com_index = -1;
+
+			while(extcmdlist[index].ef_txt != (char *) 0){
+				if(!strncmp(obufp, extcmdlist[index].ef_txt,
+				strlen(obufp)))
+					if(com_index == -1) /* No matches yet*/
+					    com_index = index;
+					else /* More than 1 match */
+					    com_index = -2;
+				index++;
+			}
+			if(com_index >= 0){
+				strcpy(obufp,
+				extcmdlist[com_index].ef_txt);
+				/* finish print our string */
+				putstr(bufp);
+				bufp = obufp; /* reset it */
+				if(strlen(obufp) < BUFSIZ-1 &&
+				 strlen(obufp) < COLNO)
+					/* set bufp at the end of our
+					 * string
+					 */
+					bufp += strlen(obufp);
+			} else {
+				putstr(bufp);
+				if(bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)
+					bufp++;
+			}
+		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
+				/* this test last - @ might be the kill_char */
+			while(bufp != obufp) {
+				bufp--;
+				putstr("\b \b");
+			}
+		} else
+			bell();
+	}
+
+}
+#endif COM_COMPL

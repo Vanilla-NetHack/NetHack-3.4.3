@@ -1,5 +1,5 @@
 #	Hack or Quest Makefile.
-#	SCCS Id: @(#)Makefile.unix	1.3	87/07/14
+#	SCCS Id: @(#)Makefile.unix	1.4	87/08/08
 
 # if you are cross-compiling (eg. from Xenix into a Dos enviornment)
 # you will have to redefine these filenames.
@@ -19,7 +19,7 @@ GAMEDIR = /usr/games/lib/$(GAME)dir
 SHELLDIR = /usr/games
 MANDIR  = /usr/man/man6
 CFLAGS = -O
-LFLAGS = -X
+LFLAGS =
 
 HACKCSRC = alloc.c apply.c bones.c cmd.c decl.c do.c do_name.c do_wear.c\
 	dog.c dogmove.c dothrow.c eat.c end.c engrave.c fight.c fountain.c\
@@ -57,7 +57,7 @@ HOBJ = alloc.o apply.o bones.o cmd.o decl.o do.o do_name.o do_wear.o\
 
 $(GAME):	specifics $(HOBJ) Makefile
 	@echo "Loading ..."
-	@ld $(LFLAGS) -o $(GAME) /lib/crt0.o $(HOBJ) $(TERMLIB) -lc
+	@cc $(LFLAGS) -o $(GAME) $(HOBJ) $(TERMLIB)
 
 all:	$(GAME) lint
 	@echo "Done."
@@ -68,19 +68,19 @@ makedefs:	makedefs.c alloc.o config.h
 RUMORFILES= rumors.base rumors.kaa rumors.mrx
 
 rumors:	config.h $(RUMORFILES) makedefs
-	makedefs -r
+	./makedefs -r
 
 data:	config.h data.base makedefs
-	makedefs -d
+	./makedefs -d
 
 date.h:	$(SOURCES) makedefs
-	makedefs -D
+	./makedefs -D
 
 trap.h:	config.h makedefs
-	makedefs -t
+	./makedefs -t
 
 onames.h:	makedefs objects.h
-	makedefs -o
+	./makedefs -o
 
 specifics:	main.o tty.o unix.o
 
@@ -131,10 +131,13 @@ initial:
 	chmod 666 $(GAMEDIR)/*
 	chmod 777 $(GAMEDIR) $(GAMEDIR)/save
 
-install: $(VARAUX)
+install: $(VARAUX) $(GAME)
+	-mkdir $(GAMEDIR)
+	-mkdir $(GAMEDIR)/save
 	-rm -f $(GAMEDIR)/$(GAME)
 	-rm -f $(GAMEDIR)/bones*
 	-rm -f $(GAMEDIR)/save/*
+	touch $(GAMEDIR)/perm $(GAMEDIR)/record
 	cp help hh rumors data $(GAMEDIR)
 	cp $(GAME).sh $(SHELLDIR)/$(GAME)
 	cp $(GAME) $(GAMEDIR)/$(GAME)
@@ -144,6 +147,11 @@ install: $(VARAUX)
 	chmod 04755 $(GAMEDIR)/$(GAME)
 	-cp nethack.6 $(MANDIR)
 
+
+tags: $(SOURCES)
+	@echo ctags -tw ...
+	@ctags -tw $(SOURCES)
+  
 clean:
 	rm -f *.o
 

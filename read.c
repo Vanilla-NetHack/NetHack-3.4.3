@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	1.3	87/07/14
+/*	SCCS Id: @(#)read.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.read.c - version 1.0.3 */
 
@@ -67,6 +67,7 @@ doread() {
 seffects(sobj)
 	register struct obj	*sobj;
 {
+	extern struct obj *some_armor();
 	register boolean confused = (Confusion != 0);
 
 	switch(sobj->otyp) {
@@ -76,7 +77,7 @@ seffects(sobj)
 		break;
 #endif
 	case SCR_ENCHANT_ARMOR:
-	    {	extern struct obj *some_armor();
+	    {
 		register struct obj *otmp = some_armor();
 		if(!otmp) {
 			strange_feeling(sobj,"Your skin glows then fades.");
@@ -161,11 +162,13 @@ seffects(sobj)
 		    }
 		if(!ct)
 		    pline("You hear %s in the distance.",
-			   (confused) ? "sad wailing" : "maniacal laughter");
+			  (confused) ? "sad wailing" : "maniacal laughter");
 #ifdef KAA
-		else
-		    pline ("You hear %s close by.",
-			   (confused) ? "sad wailing" : "maniacal laughter");
+# ifdef SPELLS
+		    else if(sobj->otyp == SCR_SCARE_MONSTER)
+# endif
+			pline ("You hear %s close by.",
+			       (confused) ? "sad wailing" : "maniacal laughter");
 #endif
 		break;
 	    }
@@ -321,7 +324,7 @@ seffects(sobj)
 		outtrapmap:
 			cls();
 			for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
-				at(ttmp->tx, ttmp->ty, Hallucination ? rndobjsym() : '$');
+				at(ttmp->tx, ttmp->ty, Hallucination ? rndobjsym() : GOLD_SYM);
 			prme();
 			pline("You feel very greedy!");
 		}
@@ -342,7 +345,7 @@ seffects(sobj)
 		outgoldmap:
 			cls();
 			for(gtmp = fgold; gtmp; gtmp = gtmp->ngold)
-				at(gtmp->gx, gtmp->gy, Hallucination ? rndobjsym() : '$');
+				at(gtmp->gx, gtmp->gy, Hallucination ? rndobjsym() : GOLD_SYM);
 			prme();
 			pline("You feel very greedy, and sense gold!");
 		}
@@ -599,9 +602,7 @@ register char ch;
 	return FALSE;
 }
 
-do_genocide()
-
-{
+do_genocide() {
 	extern char genocided[], fut_geno[];
 	char buf[BUFSZ];
 	register struct monst *mtmp, *mtmp2;
@@ -628,9 +629,11 @@ do_genocide()
 	pline("Wiped out all %c's.", Hallucination ? '@' : *buf);
 	/* Scare the hallucinating player */
 	if(*buf == '@') {
-		if(u.usym != '@') pline("You feel dead inside.");
-		killer = "scroll of genocide";
 		u.uhp = -1;
+		killer = "scroll of genocide";
+	/* A polymorphed character will die as soon as he is rehumanized. */
+		if(u.usym != '@')	pline("You feel dead inside.");
+		else			done("died");
 	}
 #ifdef KAA
 	else if (*buf==u.usym) rehumanize();
@@ -651,18 +654,10 @@ do_mapping()
 
 		if(num == SCORR) {
 			lev->typ = CORR;
-#ifdef DGK
-			lev->scrsym = symbol.corr;
-#else
 			lev->scrsym = CORR_SYM;
-#endif
 		} else	if(num == SDOOR) {
 			lev->typ = DOOR;
-#ifdef DGK
-			lev->scrsym = symbol.door;
-#else
-			lev->scrsym = '+';
-#endif
+			lev->scrsym = DOOR_SYM;
 		/* do sth in doors ? */
 		} else if(lev->seen) continue;
 #ifndef QUEST
@@ -670,7 +665,8 @@ do_mapping()
 #endif
 		{
 			lev->seen = lev->new = 1;
-			if(lev->scrsym == ' ' || !lev->scrsym)	newsym(zx,zy);
+			if(lev->scrsym == STONE_SYM || !lev->scrsym)
+				newsym(zx,zy);
 			else	on_scr(zx,zy);
 		}
 	    }

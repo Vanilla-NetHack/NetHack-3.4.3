@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)spell.c	1.3	87/07/14
-/* hack.spell.c - version 1.0.1		M. Stephenson 07-04-86 */
+/*	SCCS Id: @(#)spell.c	1.4	87/08/08
+/* spell.c - version 1.0.1		M. Stephenson 07-04-86 */
 
 #include "hack.h"
 #ifdef SPELLS
@@ -120,7 +120,7 @@ cursed_book(level)
 	register int	nobj, cnt, onum;
 	register struct obj	*otmp;
 
-	switch(rnd(level)) {
+	switch(rn2(level)) {
 	case 0:
 		pline("you feel a wrenching sensation.");
 		tele();		/* teleport him */
@@ -161,17 +161,8 @@ cursed_book(level)
 		pline("As you read the book, it explodes in your face!");
 		losehp (2*rnd(10)+5, "exploding rune");
 		break;
-	case 7:
-		/* curse a few inventory items at random! */
-		nobj = 0;
-		for (otmp = invent; otmp; otmp = otmp->nobj)  nobj++;
-
-		for (cnt = rnd(6); cnt > 0; cnt--)  {
-
-			onum = rn2(nobj);
-			for(otmp = invent; onum != 0; onum--) otmp = otmp->nobj;
-			otmp->cursed++;
-		}
+	default:
+		rndcurse();
 		break;
 	}
 	return(0);
@@ -179,7 +170,7 @@ cursed_book(level)
 
 docast()
 {
-	register int	 spell, energy;
+	register int	 spell, energy, damage;
 	register boolean confused = (Confusion != 0);
 	register struct  obj	*pseudo;
 	struct	 obj	 *mksobj();
@@ -201,9 +192,12 @@ docast()
 		}
 	}
 #ifdef HARD
-	if ((rn2(10) + u.ulevel + u.uluck - spellev(spell)) < 0) {
+	if (confused ||
+	    (rn2(10) + u.ulevel + u.uluck - spellev(spell)) <= 0) {
 
-		pline("Fizzle.....");
+		if (Hallucination)
+			pline("Far out... a light show!");
+		else	pline("The air around you crackles as you goof up.");
 		return(0);
 	}
 #endif
@@ -228,8 +222,13 @@ docast()
 	case SPE_FINGER_OF_DEATH:
 	case SPE_LIGHT:
 	case SPE_DETECT_UNSEEN:
-		if (!(objects[pseudo->otyp].bits & NODIR))	getdir(1);
-		weffects(pseudo);
+		if (!(objects[pseudo->otyp].bits & NODIR)) {
+			getdir(1);
+			if(!u.dx && !u.dy && !u.dz && (u.ulevel > 8)) {
+			    if((damage = zapyourself(pseudo)))
+				losehp(damage, "self-inflicted injury");
+			} else	weffects(pseudo);
+		} else weffects(pseudo);
 		break;
 /* These are all duplicates of scroll effects */
 	case SPE_CONFUSE_MONSTER:
@@ -253,7 +252,7 @@ docast()
 		break;
 	case SPE_HEALING:
 		pline("You feel a bit better.");
-		healup(rnd(8), 1, 0, 0);
+		healup(rnd(8), 0, 0, 0);
 		break;
 	case SPE_CURE_BLINDNESS:
 		healup(0, 0, 0, 1);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	1.3	87/07/14
+/*	SCCS Id: @(#)makemon.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* makemon.c - version 1.0.2 */
 
@@ -140,13 +140,12 @@ gotmon:
 #endif
 
 	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
-		coord enexto();
 		coord mm;
 		register int cnt = rnd(10);
 		mm.x = x;
 		mm.y = y;
 		while(cnt--) {
-			mm = enexto(mm.x, mm.y);
+			enexto(&mm, mm.x, mm.y);
 			(void) makemon(ptr, mm.x, mm.y);
 		}
 	}
@@ -207,8 +206,8 @@ struct monst *mtmp;
 }
 #endif
 
-coord
-enexto(xx,yy)
+enexto(cc, xx,yy)
+coord	*cc;
 register xchar xx,yy;
 {
 	register xchar x,y;
@@ -245,7 +244,9 @@ register xchar xx,yy;
 		range++;
 	} while(tfoo == foo);
 foofull:
-	return( foo[rn2(tfoo-foo)] );
+	cc->x = foo[rn2(tfoo-foo)].x;
+	cc->y = foo[rn2(tfoo-foo)].y;
+	return(0);
 }
 
 goodpos(x,y)	/* used only in mnexto and rloc */

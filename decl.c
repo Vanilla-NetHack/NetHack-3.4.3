@@ -1,17 +1,33 @@
-/*	SCCS Id: @(#)decl.c	1.3	87/07/14
+/*	SCCS Id: @(#)decl.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Decl.c - version 1.0.3 */
 
 #include	"hack.h"
 char nul[40];			/* contains zeros */
 char plname[PL_NSIZ];		/* player name */
+
+#ifdef GRAPHICS
+struct symbols defsyms = {
+    ' ', '|', '-', '-', '-', '-', '-', '+', '.', '#', '<', '>', '^',
+#ifdef FOUNTAINS
+    '}', '{',
+#endif
+#ifdef NEWCLASS
+    '\\',
+#endif
+#ifdef SPIDERS
+    '"',
+#endif
+};
+#endif
+struct symbols showsyms;	/* will contain the symbols actually used */
+
 #ifdef DGK
 char hackdir[PATHLEN];		/* where rumors, help, record are */
 char levels[PATHLEN];		/* where levels are */
 char lock[FILENAME];		/* pathname of level files */
 char permbones[PATHLEN];	/* where permanent copy of bones go */
 int ramdisk = FALSE;		/* whether to copy bones to levels or not */
-struct symbols symbol = {'|', '-', '-', '-', '-', '-', '+', '.', '#'};
 int saveprompt = TRUE;
 char *alllevels = "levels.*";
 char *allbones = "bones.*";

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	1.3	87/07/14
+/*	SCCS Id: @(#)options.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* options.c - version 1.0.3 */
 
@@ -33,7 +33,8 @@ initoptions()
 #ifdef DGK
 	flags.IBMBIOS = flags.DECRainbow = flags.rawio = FALSE;
 	read_config_file();
-#else
+#endif
+#ifdef HACKOPTIONS
 	if(opts = getenv("HACKOPTIONS"))
 		parseoptions(opts,TRUE);
 #endif
@@ -216,9 +217,59 @@ boolean from_env;
 		}
 		op = index(opts,':');
 		if(!op) goto bad;
-		(void) strncpy(plname, op+1, sizeof(plname)-1);
+		nmcpy(plname, op+1, sizeof(plname)-1);
 		return;
 	}
+
+#ifdef GRAPHICS
+	/* graphics:string */
+	if(!strncmp(opts,"graphics",4)) {
+		char buf[MAXPCHARS];
+		if(!from_env) {
+#ifdef DGK
+		  pline("'graphics' only settable from %s.", configfile);
+#else
+		  pline("The graphics string can be set only from HACKOPTIONS.");
+#endif
+		  return;
+		}
+		op = index(opts,':');
+		if(!op)
+		    goto bad;
+		else
+		    opts++;
+/*
+ * You could have problems here if you configure FOUNTAINS, SPIDERS or NEWCLASS
+ * in or out and forget to change the tail entries in your graphics string.
+ */
+#define SETPCHAR(f, n)	showsyms.f = (strlen(opts) > n) ? opts[n] : defsyms.f
+		SETPCHAR(stone, 0);
+		SETPCHAR(vwall, 1);
+		SETPCHAR(hwall, 2);
+		SETPCHAR(tlcorn, 3);
+		SETPCHAR(trcorn, 4);
+		SETPCHAR(blcorn, 5);
+		SETPCHAR(brcorn, 6);
+		SETPCHAR(door, 7);
+		SETPCHAR(room, 8);
+		SETPCHAR(corr, 9);
+		SETPCHAR(upstair, 10);
+		SETPCHAR(dnstair, 11);
+		SETPCHAR(trap, 12);
+#ifdef FOUNTAINS
+		SETPCHAR(pool, 13);
+		SETPCHAR(fountain, 14);
+#endif
+#ifdef NEWCLASS
+		SETPCHAR(throne, 15);
+#endif
+#ifdef SPIDERS
+		SETPCHAR(web, 16);
+#endif
+#undef SETPCHAR
+		return;
+	}
+#endif /* GRAPHICS */
 
 	/* endgame:5t[op] 5a[round] o[wn] */
 	if(!strncmp(opts,"endgame",3)) {
@@ -253,6 +304,15 @@ boolean from_env;
 		}
 		return;
 	}
+#ifdef	DOGNAME
+	if(!strncmp(opts, "dogname", 3)) {
+		extern char dogname[];
+		op = index(opts, ':');
+		if (!op) goto bad;
+		nmcpy(dogname, ++op, 62);
+		return;
+	}
+#endif	/* DOGNAME */
 bad:
 	if(!from_env) {
 		if(!strncmp(opts, "help", 4)) {
@@ -265,8 +325,11 @@ bad:
 			pline("%s%s",
 "Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,",
 " and DECRainbow.  These can be negated by prefixing them with '!' or \"no\"." );
-			pline("%s%s%s",
+			pline("%s%s%s%s",
 "The compound options are name, as in OPTIONS=name:Merlin-W,",
+#ifdef	DOGNAME
+" dogname, which gives the name of your (first) dog (e.g. dogname:Rover)",
+#endif	/* DOGNAME */
 #ifdef SORTING
 " packorder, which lists the order that items should appear in your pack",
 #ifdef SPELLS
@@ -275,7 +338,11 @@ bad:
 " (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
 #endif /* SPELLS /**/
 #else
-"and engame.", "");
+#ifdef GRAPHICS
+"engame, and graphics.", "", "");
+#else
+"and engame.", "", "");
+#endif
 #endif /* SORTING /**/ 	
 			pline("%s%s%s",
 "Endgame is followed by a description of which parts of the scorelist ",
@@ -291,8 +358,11 @@ bad:
 "Simple (boolean) options are rest_on_space, news, time, ",
 "null, tombstone, (fe)male. ",
 "These can be negated by prefixing them with '!' or \"no\"." );
-			pline("%s%s%s",
+			pline("%s%s%s%s",
 "The compound options are name, as in OPTIONS=name:Merlin-W,",
+#ifdef	DOGNAME
+" dogname, which gives the name of your (first) dog (e.g. dogname:Rover)",
+#endif	/* DOGNAME */
 #ifdef SORTING
 " packorder, which lists the order that items should appear in your pack",
 #ifdef SPELLS
@@ -301,7 +371,7 @@ bad:
 " (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
 #endif /* SPELLS /**/
 #else
-"and engame.", "");
+"and engame.", "", "");
 #endif /* SORTING /**/ 	
 			pline("%s%s%s",
 "Endgame is followed by a description of what parts of the scorelist",
@@ -391,3 +461,19 @@ dotogglepickup() {
 	return (0);
 }
 #endif
+
+nmcpy(dest, source, maxlen)
+	char	*dest, *source;
+	int	maxlen;
+{
+	char	*cs, *cd;
+	int	count;
+
+	cd = dest;
+	cs = source;
+	for(count = 1; count < maxlen; count++) {
+		if(*cs == ',') break;
+		*cd++ = *cs++;
+	}
+	*cd = 0;
+}

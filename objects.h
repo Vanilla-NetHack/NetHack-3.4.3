@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objects.h	1.3	87/07/14
+/*	SCCS Id: @(#)objects.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* def.objects.h - version 1.0.3 */
 
@@ -176,13 +176,23 @@ struct objclass objects[] = {
 		BALL_SYM, 100, 0, 20, 0, 0, 0 },
 	{ "iron chain", NULL, NULL, 1, 0,
 		CHAIN_SYM, 100, 0, 20, 0, 0, 0 },
-#ifdef KAA
 	/* Because giants can throw rocks */
+#ifdef HARD
+# ifdef KAA
 	{ "enormous rock", NULL, NULL, 1, 0,
 		ROCK_SYM, 100, 0, 200 /* > MAX_CARR_CAP */, 0, 20, 20 },
-#else
+# else
 	{ "enormous rock", NULL, NULL, 1, 0,
 		ROCK_SYM, 100, 0, 250 /* > MAX_CARR_CAP */, 0, 0, 0 },
+# endif
+#else
+# ifdef KAA
+	{ "enormous rock", NULL, NULL, 1, 0,
+		ROCK_SYM, 100, 0, 400 /* > MAX_CARR_CAP */, 0, 20, 20 },
+# else
+	{ "enormous rock", NULL, NULL, 1, 0,
+		ROCK_SYM, 100, 0, 550 /* > MAX_CARR_CAP */, 0, 0, 0 },
+# endif
 #endif
 
 #define ARMOR(name,prob,delay,weight,ac,can)	{ name, NULL, NULL, 1, 0,\

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)eat.c	1.3	87/07/14
+/*	SCCS Id: @(#)eat.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* eat.c - version 1.0.3 */
 
@@ -557,7 +557,7 @@ register tp = 0;
 		    nomul(-30);
 		    afternmv = Meatdone;
 		    nomovemsg = "You now again prefer mimicking a human.";
-		    u.usym = '$';
+		    u.usym = GOLD_SYM;
 		    prme();
 		}
 		break;

@@ -1,5 +1,5 @@
-	NetHack & Quest data file - version 1.0
-@	human (or you)
+	NetHack & Quest data file - version 1.1
+@	human (or you in human guise)
 -	a wall
 |	a wall
 +	a door
@@ -22,7 +22,7 @@ $	a pile, pot or chest of gold
 (	a useful item (camera, key, rope etc.)
 0	an iron ball
 _	an iron chain
-`	an enormous rock (or opulant throne)
+`	an enormous rock
 "	an amulet
 ,	a trapper
 :	a chameleon

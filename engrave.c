@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	1.3	87/07/14
+/*	SCCS Id: @(#)engrave.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* engrave.c - version 1.0.2 */
 
@@ -110,26 +110,34 @@ char ch;
 
 read_engr_at(x,y) register int x,y; {
 register struct engr *ep = engr_at(x,y);
+register int	canfeel;
 	if(ep && ep->engr_txt[0]) {
 	    switch(ep->engr_type) {
 	    case DUST:
-		pline("Something is written here in the dust.");
+		if(!Blind) pline("Something is written here in the dust.");
+		canfeel = 0;
 		break;
 	    case ENGRAVE:
 		pline("Something is engraved here on the floor.");
+		canfeel = 1;
 		break;
 	    case BURN:
 		pline("Some text has been burned here in the floor.");
+		canfeel = 1;
 #ifdef MARKER
 	    case MARK:
-		pline("There's some graffiti here on the floor.");
+		if(!Blind) pline("There's some graffiti here on the floor.");
+		canfeel = 0;
 		break;
 #endif
 		break;
 	    default:
 		impossible("Something is written in a very strange way.");
+		canfeel = 1;
 	    }
-	    pline("You read: \"%s\".", ep->engr_txt);
+	    if (canfeel)
+		pline("You %s: \"%s\".",
+		      (Blind) ? "feel the words" : "read",  ep->engr_txt);
 	}
 }
 
@@ -172,8 +180,8 @@ freehand(){
 
 
 doengrave(){
-register int len;
-register char *sp;
+register int len, tmp;
+register char *sp, *sptmp;
 register struct engr *ep, *oep = engr_at(u.ux,u.uy);
 char buf[BUFSZ];
 xchar type;
@@ -388,7 +396,15 @@ register struct obj *otmp;
 				pline("Gravel flies up from the floor.");
 		return(1);
 	}
-	
+	        /* kludge by stewr 870708 */
+	for (sptmp = sp, tmp=0; !(tmp == len); sptmp++,tmp++) {
+	        if (((type == DUST) && !rn2(25))
+		     || (Blind && !rn2(12))
+		     || (Confusion && !rn2(3))) {
+		         *sptmp = '!' + rn2(93); /* ASCII-code only */
+		       }
+	      }
+
 	switch(type) {
 	case DUST:
 	case BURN:

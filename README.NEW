@@ -1,0 +1,62 @@
+			NetHack Release 1.4 README
+
+	Hi there folks.  Here is the new release of NetHack.  What I have
+done over the past few weeks is to collect and implement all of the bug fixes
+and modifications (there were even a few additions!) to the code.
+
+	To implement this update, unpack the files in the same directory as
+your original ***UNADULTERATED*** 1.3d sources.  It is imperitive that you
+haven't patched any of the source since the update is done in a very simple
+way by ed (approximately 150Kb size is saved doing it this way).  Since ed is
+being used to apply the patches, they will be applied by absolute line number,
+not by context.  As a result, any additional or missing lines in your code
+could (almost certainly will) cause the patches to be applied in the wrong
+places.
+
+	You can (with some difficulty) apply the patches by hand.  It is
+easier to do this with a multi-window editor like Emacs.
+
+	There are a couple of additional "Make" files included to extend
+the portability to include the Turbo "C" compiler.  These files have "tcc"
+in the name.
+
+	The file Manifest gives a list of the files which will be modified
+during the update process.
+
+	The Fixes.1.4 file gives a more or less complete list of bug fixes.
+
+	The update is provided in a form which can be run as a shell script.
+Either "sh" or "csh" can be used.  Simply type "[c]sh update.patches".  You
+will require "cp" and "ed".  Each of the (68) files it modifies will be
+processed as follows:
+
+	cp $file $file.orig
+	ed $file
+
+	... modifications made ...
+
+	w
+	q
+
+	There *are* a few bugs still in the code.  Here's a list of the ones
+I know about:
+
+	1)	There is still something wrong with mkmon().  It won't make
+		"B"'s and it seems to be responsible for some of those deep
+	in the dungeon crashes.
+
+	2)	The leash code (as I explained in the README for the initial
+		release) is very crude.  It won't handle the case of you
+	dropping the leash while it is still attached to the dog.  If you do,
+	the game still considers you and the dog to be "attached".
+
+	3)	I have modified the files to build on Xenix and Dos, but have
+		not tested them.  There may be a few minor glitches left.
+
+	I will be going to England for three weeks starting on the 19th of
+August.  As a result, the mail is going to stack up here.  I will take all
+of the patches and fixes when I get back and put together an update for a
+1.5 (or maybe 2.0) release.
+
+			Happy Hacking!!!
+						Mike Stephenson
