@@ -1,11 +1,11 @@
-.\" $Revision: 1.61.2.7 $ $Date: 2003/08/28 11:22:27 $
+.\" $Revision: 1.61.2.20 $ $Date: 2003/12/03 03:00:47 $
 .ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
 .ds vr "NetHack 3.4
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "August 14, 2003
+.ds f2 "December 2, 2003
 .mt
 A Guide to the Mazes of Menace
 (Guidebook for NetHack)
@@ -525,6 +525,8 @@ D%u - drop only unpaid food.
 Kick something (usually a door).
 .lp e
 Eat food.
+.\" Make sure Elbereth is not hyphenated below, the exact spelling matters
+.hw Elbereth
 .lp E
 Engrave a message on the floor.
 Engraving the word ``Elbereth'' will cause most monsters to not attack
@@ -873,6 +875,57 @@ Ladders (`<', `>')
 .pg
 Ladders serve the same purpose as staircases, and the two types of
 inter-level connections are nearly indistinguishable during game play.
+.hn 2
+Shops and shopping
+.pg
+Occasionally you will run across a room with a shopkeeper near the door
+and many items lying on the floor.  You can buy items by picking them
+up and then using the `p' command.  You can inquire about the price
+of an item prior to picking it up by using the ``#chat'' command
+while standing on it.  Using an item prior to paying for it will incur a
+charge, and the shopkeeper won't allow you to leave the shop until you
+have paid any debt you owe.
+.pg
+You can sell items to a shopkeeper by dropping them to the floor while
+inside a shop.  You will either be offered an amount of gold and asked
+whether you're willing to sell, or you'll be told that the shopkeeper
+isn't interested (generally, your item needs to be compatible with the
+type of merchandise carried by the shop).
+.pg
+If you drop something in a shop by accident, the shopkeeper will usually
+claim ownership without offering any compensation.  You'll have to buy
+it back if you want to reclaim it.
+.pg
+Shopkeepers sometimes run out of money.  When that happens, you'll be
+offered credit instead of gold when you try to sell something.  Credit
+can be used to pay for purchases, but it is only good in the shop where
+it was obtained; other shopkeepers won't honor it.  (If you happen to
+find a "credit card" in the dungeon, don't bother trying to use it in
+shops; shopkeepers will not accept it.)
+.pg
+The `$' command, which reports the amount of gold you are carrying
+(in inventory, not inside bags or boxes), will also show current shop
+debt or credit, if any.  The `Iu' command lists unpaid items
+(those which still belong to the shop) if you are carrying any.
+The `Ix' command shows an inventory-like display of any unpaid
+items which have been used up, along with other shop fees, if any.
+.hn 3
+Shop idiosyncracies
+.pg
+Several aspects of shop behavior might be unexpected.
+.\" note: using * instead of \(bu is better for plain text output
+.lp * 2
+The price of a given item can vary due to a variety of factors.
+.lp * 2
+A shopkeeper treats the spot immediately inside the door as if it were
+outside the shop.
+.lp * 2
+While the shopkeeper watches you like a hawk, he will generally ignore
+any other customers.
+.lp * 2
+If a shop is "closed for inventory", it will not open of its own accord.
+.lp * 2
+Shops do not get restocked with new items, regardless of inventory depletion.
 
 .hn 1
 Monsters
@@ -1533,7 +1586,7 @@ counted.
 .pg
 There are several other challenges tracked by the game.  It is possible
 to eliminate one or more species of monsters by genocide; playing without
-this feature is considered a challenge.  When you game offers you an
+this feature is considered a challenge.  When the game offers you an
 opportunity to genocide monsters, you may respond with the monster type
 ``none'' if you want to decline.  You can change the form of an item into
 another item of the same type (``polypiling'') or the form of your own
@@ -1588,6 +1641,7 @@ in \fIsh\fP or \fIksh\fP.
 .hn 2
 Using a configuration file
 .pg
+Any line in the configuration file starting with `#' is treated as a comment.
 Any line in the configuration file starting with ``OPTIONS='' may be
 filled out with options in the same syntax as in NETHACKOPTIONS.
 Any line starting with ``DUNGEON='', ``EFFECTS='', ``MONSTERS='',
@@ -1607,7 +1661,13 @@ A zero in any entry in such a sequence leaves the display of that
 entry unchanged; this feature is not available using the option syntax.
 Such a sequence can be continued to multiple lines by putting a `\e'
 at the end of each line to be continued.
-Any line starting with `#' is treated as a comment.
+.pg
+If your copy of the game included the compile time AUTOPICKUP_EXCEPTIONS
+option, then any line starting with ``AUTOPICKUP_EXCEPTION='' is taken
+as defining an exception to the 
+.op pickup_types
+option. 
+There is a section of this Guidebook that discusses that.
 .pg
 The default name of the configuration file varies on different
 operating systems, but NETHACKOPTIONS can also be set to
@@ -1627,7 +1687,10 @@ Cannot be set with the `O' command.
 Automatically dig if you are wielding a digging tool and moving into a place
 that can be dug (default false).
 .lp "autopickup  "
-Automatically pick up things onto which you move (default on).
+Automatically pick up things onto which you move (default on). 
+See
+.op pickup_types
+to refine the behavior.
 .lp "autoquiver  "
 This option controls what happens when you attempt the `f' (fire)
 command with an empty quiver.  When true, the computer will fill
@@ -1840,13 +1903,17 @@ Menu character accelerator to deselect all items in a menu.
 Implemented by the Amiga, Gem, X11 and tty ports.
 Default '-'.
 .lp menu_deselect_page
-Menu character accelerator deselect all items on this page of a menu.
+Menu character accelerator to deselect all items on this page of a menu.
 Implemented by the Amiga, Gem and tty ports.
 Default '\e'.
 .lp menu_first_page
 Menu character accelerator to jump to the first page in a menu.
 Implemented by the Amiga, Gem and tty ports.
 Default '^'.
+.lp menu_headings
+Controls how the headings in a menu are highlighted.
+Values are 'bold', 'inverse', or 'underline'.
+Not all ports can actually display all three types.
 .lp menu_invert_all
 Menu character accelerator to invert all items in a menu.
 Implemented by the Amiga, Gem, X11 and tty ports.
@@ -1942,7 +2009,7 @@ in setting this with the `O' command.
 Send padding nulls to the terminal (default off).
 .lp number_pad
 Use the number keys to move instead of [yuhjklbn] (default 0 or off).
-(number_pad:2 invokes the old DOS behaviour where `5' means `g', meta-`5'
+(number_pad:2 invokes the old DOS behavior where `5' means `g', meta-`5'
 means `G',  and meta-`0' means `I'.)
 .lp objects
 Set the characters used to display object classes
@@ -1976,7 +2043,12 @@ or overLoaded), you will be asked if you want to continue.
 .lp pickup_types
 Specify the object types to be picked up when
 .op autopickup
-is on.  Default is all types.
+is on.  Default is all types.  If your copy of the game has the experimental
+compile time option AUTOPICKUP_EXCEPTIONS included, you may be able to use 
+.op autopickup_exception
+configuration file lines to further refine
+.op autopickup
+behavior.
 .lp prayconfirm
 Prompt for confirmation before praying (default on).
 .lp pushweapon
@@ -2190,7 +2262,7 @@ the visible area of the window.
 Platform-specific Customization options
 .pg
 Here are explanations of options that are used by specific platforms or ports 
-to customize and change the port behaviour.
+to customize and change the port behavior.
 .lp altkeyhandler
 Select an alternate keystroke handler dll to load (Win32 tty NetHack only).
 The name of the handler is specified without the .dll extension and without any
@@ -2218,7 +2290,7 @@ Cannot be set with the `O' command.
 .lp soundcard
 (default on, PC NetHack only).
 Cannot be set with the `O' command.
-.lp subkeyval
+.lp subkeyvalue
 (Win32 tty NetHack only).
 May be used to alter the value of keystrokes that the operating system
 returns to NetHack to help compensate for international keyboard issues.
@@ -2245,6 +2317,64 @@ Set the intensity level of the three gray scales available
 If the game display is difficult to read, try adjusting these scales;
 if this does not correct the problem, try !color.
 Cannot be set with the `O' command.
+.hn 2
+Configuring autopickup exceptions
+.pg
+There is an experimental compile time option called AUTOPICKUP_EXCEPTIONS.  
+If your copy of the game was built with that option defined, you can 
+further refine the behavior of the
+.op autopickup
+option beyond what is available through the 
+.op pickup_types
+option. 
+.pg
+By placing 
+.op autopickup_exception
+lines in your configuration
+file, you can define patterns to be checked when the game is about to
+autopickup something.
+.lp autopickup_exception
+Sets an exception to the 
+.op pickup_types
+option.
+The
+.op autopickup_exception
+option should be followed by a string of 1-80 characters to be used as a 
+pattern to match against the singular form of the description of an 
+object at your location.
+.pg
+You may use the following special characters in a pattern:
+.sd
+.si
+  *--- matches 0 or more characters.
+  ?--- matches any single character.
+.ei
+.ed
+.pg
+In addition, some characters are treated specially if they occur as the first 
+character in the string pattern, specifically:
+.sd
+.si
+< - always pickup an object that matches the pattern that follows.
+> - never pickup an object that matches the pattern that follows.
+.ei
+.ed
+.pg
+Can be set with the `O' command, but the setting is not preserved
+across saves and restores.
+.pg
+Here's a couple of examples of autopickup_exceptions:
+.sd
+.si
+autopickup_exception="<*arrow"
+autopickup_exception=">*corpse"
+autopickup_exception=">* cursed*"
+.ei
+.ed
+The first example above will result in autopickup of any type of arrow.
+The second example results in the exclusion of any corpse from autopickup.
+The last example results in the exclusion of items known to be cursed from autopickup.
+A `never pickup' rule takes precedence over an `always pickup' rule if both match.
 .hn 2
 Configuring User Sounds
 .pg

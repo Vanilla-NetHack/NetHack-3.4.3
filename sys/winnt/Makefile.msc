@@ -1,4 +1,4 @@
-#       SCCS Id: @(#)Makefile.msc       3.4     $Date: 2003/06/06 02:01:49 $
+#       SCCS Id: @(#)Makefile.msc       3.4     $Date: 2003/11/16 04:50:58 $
 #       Copyright (c) NetHack PC Development Team 1993-2003
 #
 #       NetHack 3.4.x Makefile for MS Visual C++ V6.x and above and MS NMAKE
@@ -469,6 +469,7 @@ $(O)install.tag: 	$(DAT)\data	$(DAT)\rumors	 $(DAT)\dungeon \
 ! IF ("$(USE_DLB)"=="Y")
 	copy nhdat                $(GAMEDIR)
 	copy $(DAT)\license       $(GAMEDIR)
+	copy $(DAT)\opthelp       $(GAMEDIR)
 ! ELSE
 	copy $(DAT)\*.            $(GAMEDIR)
 	copy $(DAT)\*.dat         $(GAMEDIR)
@@ -1321,7 +1322,7 @@ $(O)do_wear.o: do_wear.c $(HACK_H)
 $(O)dog.o: dog.c $(HACK_H) $(INCL)\edog.h
 $(O)dogmove.o: dogmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
 $(O)dokick.o: dokick.c $(HACK_H) $(INCL)\eshk.h
-$(O)dothrow.o: dothrow.c $(HACK_H)
+$(O)dothrow.o: dothrow.c $(HACK_H) $(INCL)\edog.h
 $(O)drawing.o: drawing.c $(HACK_H) $(INCL)\tcap.h
 $(O)dungeon.o: dungeon.c $(HACK_H) $(INCL)\dgn_file.h $(INCL)\dlb.h
 $(O)eat.o: eat.c $(HACK_H)

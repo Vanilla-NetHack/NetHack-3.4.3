@@ -746,14 +746,14 @@ newsym(x,y)
 	 *  Note:  If flags.lit_corridor is set, then corridors act like room
 	 *	   squares.  That is, they light up if in night vision range.
 	 *	   If flags.lit_corridor is not set, then corridors will
-	 *	   remain dark unless lit by a light spell.
+	 *	   remain dark unless lit by a light spell and may darken
+	 *	   again, as discussed above.
 	 *
 	 * These checks and changes must be here and not in back_to_glyph().
 	 * They are dependent on the position being out of sight.
 	 */
 	else if (!lev->waslit) {
-	    if (flags.lit_corridor && lev->glyph == cmap_to_glyph(S_litcorr) &&
-							    lev->typ == CORR)
+	    if (lev->glyph == cmap_to_glyph(S_litcorr) && lev->typ == CORR)
 		show_glyph(x, y, lev->glyph = cmap_to_glyph(S_corr));
 	    else if (lev->glyph == cmap_to_glyph(S_room) && lev->typ == ROOM)
 		show_glyph(x, y, lev->glyph = cmap_to_glyph(S_stone));
@@ -1344,8 +1344,11 @@ flush_screen(cursor_on_u)
      *	    flush_screen->print_glyph->impossible->pline->flush_screen
      */
     static   boolean flushing = 0;
+    static   boolean delay_flushing = 0;
     register int x,y;
 
+    if (cursor_on_u == -1) delay_flushing = !delay_flushing;
+    if (delay_flushing) return;
     if (flushing) return;	/* if already flushing then return */
     flushing = 1;
 

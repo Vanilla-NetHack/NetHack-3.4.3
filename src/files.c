@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)files.c	3.4	2003/02/18	*/
+/*	SCCS Id: @(#)files.c	3.4	2003/11/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,6 +18,10 @@
 #include <errno.h>
 #ifdef _MSC_VER	/* MSC 6.0 defines errno quite differently */
 # if (_MSC_VER >= 600)
+#  define SKIP_ERRNO
+# endif
+#else
+# ifdef NHSTDC
 #  define SKIP_ERRNO
 # endif
 #endif
@@ -550,7 +554,7 @@ int lev, oflag;
 			fd = lftrack.fd;
 			reslt = lseek(fd, 0L, SEEK_SET);
 			if (reslt == -1L)
-			    panic("open_levelfile_exclusively: lseek failed %d", reslt);
+			    panic("open_levelfile_exclusively: lseek failed %d", errno);
 			lftrack.nethack_thinks_it_is_open = TRUE;
 		} else {
 			really_close();
@@ -1115,7 +1119,6 @@ boolean uncomp;
 # endif
 	args[++i] = (char *)0;
 
-	f = fork();
 # ifdef TTY_GRAPHICS
 	/* If we don't do this and we are right after a y/n question *and*
 	 * there is an error message from the compression, the 'y' or 'n' can
@@ -1124,6 +1127,7 @@ boolean uncomp;
 	if (istty)
 	    mark_synch();
 # endif
+	f = fork();
 	if (f == 0) {	/* child */
 # ifdef TTY_GRAPHICS
 		/* any error messages from the compression must come out after
@@ -1368,12 +1372,16 @@ int retryct;
 #define OPENFAILURE(fd) (fd < 0)
     lockptr = -1;
 # endif
-    while (retryct-- && OPENFAILURE(lockptr)) {
-# ifdef AMIGA
-	(void)DeleteFile(lockname); /* in case dead process was here first */
-	lockptr = Open(lockname,MODE_NEWFILE);
+    while (--retryct && OPENFAILURE(lockptr)) {
+# if defined(WIN32) && !defined(WIN_CE)
+	lockptr = sopen(lockname, O_RDWR|O_CREAT, SH_DENYRW, S_IWRITE);
 # else
+	(void)DeleteFile(lockname); /* in case dead process was here first */
+#  ifdef AMIGA
+	lockptr = Open(lockname,MODE_NEWFILE);
+#  else
 	lockptr = open(lockname, O_RDWR|O_CREAT|O_EXCL, S_IWRITE);
+#  endif
 # endif
 	if (OPENFAILURE(lockptr)) {
 	    raw_printf("Waiting for access to %s.  (%d retries left).",
@@ -1554,6 +1562,9 @@ const char *filename;
 		Sprintf(tmp_config, "%s/%s", envp, "Library/Preferences/NetHack Defaults");
 		if ((fp = fopenp(tmp_config, "r")) != (FILE *)0)
 			return(fp);
+		Sprintf(tmp_config, "%s/%s", envp, "Library/Preferences/NetHack Defaults.txt");
+		if ((fp = fopenp(tmp_config, "r")) != (FILE *)0)
+			return(fp);
 	}
 # endif
 	if (errno != ENOENT) {
@@ -1705,6 +1716,10 @@ char		*tmp_levels;
 		parseoptions(bufp, TRUE, TRUE);
 		if (plname[0])		/* If a name was given */
 			plnamesuffix();	/* set the character class */
+#ifdef AUTOPICKUP_EXCEPTIONS
+	} else if (match_varname(buf, "AUTOPICKUP_EXCEPTION", 5)) {
+		add_autopickup_exception(bufp);
+#endif
 #ifdef NOCWD_ASSUMPTIONS
 	} else if (match_varname(buf, "HACKDIR", 4)) {
 		adjust_prefix(bufp, HACKPREFIX);
@@ -2223,20 +2238,27 @@ const char *dir;
 
 /*ARGSUSED*/
 void
-paniclog(why, s)
-const char* why;
-const char* s;
+paniclog(type, reason)
+const char *type;	/* panic, impossible, trickery */
+const char *reason;	/* explanation */
 {
 #ifdef PANICLOG
 	FILE *lfile;
+	char buf[BUFSZ];
 
-	lfile = fopen_datafile(PANICLOG, "a", TROUBLEPREFIX);
-	if (lfile) {
-	    (void) fprintf(lfile, "%08ld: %s %s\n",
-			   yyyymmdd((time_t)0L), why, s);
-	    (void) fclose(lfile);
+	if (!program_state.in_paniclog) {
+		program_state.in_paniclog = 1;
+		lfile = fopen_datafile(PANICLOG, "a", TROUBLEPREFIX);
+		if (lfile) {
+		    (void) fprintf(lfile, "%s %08ld: %s %s\n",
+				   version_string(buf), yyyymmdd((time_t)0L),
+				   type, reason);
+		    (void) fclose(lfile);
+		}
+		program_state.in_paniclog = 0;
 	}
 #endif /* PANICLOG */
+	return;
 }
 
 /* ----------  END PANIC/IMPOSSIBLE LOG ----------- */

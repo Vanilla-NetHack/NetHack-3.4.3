@@ -59,6 +59,10 @@ extern void FDECL(nethack_exit,(int));
 #define nethack_exit exit
 #endif
 
+#ifdef WIN32
+extern boolean getreturn_enabled;	/* from sys/share/pcsys.c */
+#endif
+
 #if defined(MSWIN_GRAPHICS)
 extern void NDECL(mswin_destroy_reg);
 #endif
@@ -291,19 +295,8 @@ char *argv[];
 # endif
 #endif
 
-	if (!*plname) {
-#ifdef WIN32CON
-		boolean revert = FALSE;
-		if (!iflags.rawio) {
-			set_output_mode(1);
-			revert = TRUE;
-		}
-#endif
+	if (!*plname)
 		askname();
-#ifdef WIN32CON
-		if (revert && iflags.rawio) set_output_mode(0);
-#endif
-	}
 	plnamesuffix(); 	/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
@@ -402,6 +395,9 @@ char *argv[];
 	dlb_init();
 
 	display_gamewindows();
+#ifdef WIN32
+	getreturn_enabled = TRUE;
+#endif
 
 	if ((fd = restore_saved_game()) >= 0) {
 #ifdef WIZARD
@@ -457,7 +453,6 @@ not_recovered:
 #ifdef OS2
 	gettty(); /* somehow ctrl-P gets turned back on during startup ... */
 #endif
-
 	return;
 }
 

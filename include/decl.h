@@ -153,6 +153,10 @@ E NEARDATA struct sinfo {
 #if defined(VMS) || defined(WIN32)
 	int exiting;		/* an exit handler is executing */
 #endif
+	int in_impossible;
+#ifdef PANICLOG
+	int in_paniclog;
+#endif
 } program_state;
 
 E boolean restoring;
@@ -289,7 +293,8 @@ E struct c_common_strings {
 		*const c_silly_thing_to, *const c_shudder_for_moment,
 		*const c_something, *const c_Something,
 		*const c_You_can_move_again,
-		*const c_Never_mind, *c_vision_clears;
+		*const c_Never_mind, *c_vision_clears,
+		*const c_the_your[2];
 } c_common_strings;
 #define nothing_happens    c_common_strings.c_nothing_happens
 #define thats_enough_tries c_common_strings.c_thats_enough_tries
@@ -300,6 +305,7 @@ E struct c_common_strings {
 #define You_can_move_again c_common_strings.c_You_can_move_again
 #define Never_mind	   c_common_strings.c_Never_mind
 #define vision_clears	   c_common_strings.c_vision_clears
+#define the_your	   c_common_strings.c_the_your
 
 /* material strings */
 E const char *materialnm[];
@@ -370,6 +376,14 @@ E char *fqn_prefix[PREFIX_COUNT];
 #ifdef PREFIXES_IN_USE
 E char *fqn_prefix_names[PREFIX_COUNT];
 #endif
+
+#ifdef AUTOPICKUP_EXCEPTIONS
+struct autopickup_exception {
+	char *pattern;
+	boolean grab;
+	struct autopickup_exception *next;
+};
+#endif /* AUTOPICKUP_EXCEPTIONS */
 
 #undef E
 

@@ -391,7 +391,8 @@ register struct obj *obj;
 		if(in_town(u.ux, u.uy))
 		    (void) angry_guards(FALSE);
 		return;
-	} else (void) get_wet(obj);
+	} else if (get_wet(obj) && !rn2(2))
+		return;
 
 	/* Acid and water don't mix */
 	if (obj->otyp == POT_ACID) {
@@ -549,7 +550,7 @@ drinksink()
 			      hcolor(OBJ_DESCR(objects[otmp->otyp])));
 			otmp->dknown = !(Blind || Hallucination);
 			otmp->quan++; /* Avoid panic upon useup() */
-			otmp->corpsenm = 1; /* kludge for docall() */
+			otmp->fromsink = 1; /* kludge for docall() */
 			(void) dopotion(otmp);
 			obfree(otmp, (struct obj *)0);
 			break;

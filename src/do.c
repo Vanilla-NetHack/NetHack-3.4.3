@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.4	2003/04/25	*/
+/*	SCCS Id: @(#)do.c	3.4	2003/12/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -66,7 +66,7 @@ boolean pushing;
 	    impossible("Not a boulder?");
 	else if (!Is_waterlevel(&u.uz) && (is_pool(rx,ry) || is_lava(rx,ry))) {
 	    boolean lava = is_lava(rx,ry), fills_up;
-	    const char *what = lava ? "lava" : "water";
+	    const char *what = waterbody_name(rx,ry);
 	    schar ltyp = levl[rx][ry].typ;
 	    int chance = rn2(10);		/* water: 90%; lava: 10% */
 	    fills_up = lava ? chance == 0 : chance != 0;
@@ -94,13 +94,9 @@ boolean pushing;
 	    if (!fills_up || !pushing) {	/* splashing occurs */
 		if (!u.uinwater) {
 		    if (pushing ? !Blind : cansee(rx,ry)) {
-			boolean moat = (ltyp != WATER) &&
-			    !Is_medusa_level(&u.uz) && !Is_waterlevel(&u.uz);
-
 			There("is a large splash as %s %s the %s.",
 			      the(xname(otmp)), fills_up? "fills":"falls into",
-			      lava ? "lava" : ltyp==POOL ? "pool" :
-			      moat ? "moat" : "water");
+			      what);
 		    } else if (flags.soundok)
 			You_hear("a%s splash.", lava ? " sizzling" : "");
 		    wake_nearto(rx, ry, 40);
@@ -198,14 +194,33 @@ const char *verb;
 		return fire_damage(obj, FALSE, FALSE, x, y);
 	} else if (is_pool(x, y)) {
 		/* Reasonably bulky objects (arbitrary) splash when dropped.
+		 * If you're floating above the water even small things make noise.
 		 * Stuff dropped near fountains always misses */
-		if (Blind && flags.soundok && ((x == u.ux) && (y == u.uy)) &&
-		    weight(obj) > 9) {
-		    pline("Splash!");
+		if ((Blind || (Levitation || Flying)) && flags.soundok &&
+		    ((x == u.ux) && (y == u.uy))) {
+		    if (!Underwater) {
+			if (weight(obj) > 9) {
+				pline("Splash!");
+		        } else if (Levitation || Flying) {
+				pline("Plop!");
+		        }
+		    }
 		    map_background(x, y, 0);
 		    newsym(x, y);
 		}
 		water_damage(obj, FALSE, FALSE);
+	} else if (u.ux == x && u.uy == y &&
+		(!u.utrap || u.utraptype != TT_PIT) &&
+		(t = t_at(x,y)) != 0 && t->tseen &&
+			(t->ttyp==PIT || t->ttyp==SPIKED_PIT)) {
+		/* you escaped a pit and are standing on the precipice */
+		if (Blind && flags.soundok)
+			You_hear("%s %s downwards.",
+				The(xname(obj)), otense(obj, "tumble"));
+		else
+			pline("%s %s into %s pit.",
+				The(xname(obj)), otense(obj, "tumble"),
+				the_your[t->madeby_u]);
 	}
 	return FALSE;
 }
@@ -405,20 +420,18 @@ register const char *word;
 		return(FALSE);
 	}
 	if (obj->otyp == LOADSTONE && obj->cursed) {
-		if (*word)
-			pline("For some reason, you cannot %s the stone%s!",
-				word, plur(obj->quan));
-		/* Kludge -- see invent.c */
-		if (obj->corpsenm) {
-			struct obj *otmp;
-
-			otmp = obj;
-			obj = obj->nobj;
-			obj->quan += otmp->quan;
-			obj->owt = weight(obj);
-			freeinv(otmp);
-			obfree(otmp, obj);
+		/* getobj() kludge sets corpsenm to user's specified count
+		   when refusing to split a stack of cursed loadstones */
+		if (*word) {
+			/* getobj() ignores a count for throwing since that is
+			   implicitly forced to be 1; replicate its kludge... */
+			if (!strcmp(word, "throw") && obj->quan > 1L)
+			    obj->corpsenm = 1;
+			pline("For some reason, you cannot %s%s the stone%s!",
+			      word, obj->corpsenm ? " any of" : "",
+			      plur(obj->quan));
 		}
+		obj->corpsenm = 0;		/* reset */
 		obj->bknown = 1;
 		return(FALSE);
 	}
@@ -693,14 +706,20 @@ int retry;
 	    for (i = 0; i < n; i++) {
 		otmp = pick_list[i].item.a_obj;
 		cnt = pick_list[i].count;
-		if (cnt < otmp->quan && !welded(otmp) &&
-			(!otmp->cursed || otmp->otyp != LOADSTONE)) {
+		if (cnt < otmp->quan) {
+		    if (welded(otmp)) {
+			;	/* don't split */
+		    } else if (otmp->otyp == LOADSTONE && otmp->cursed) {
+			/* same kludge as getobj(), for canletgo()'s use */
+			otmp->corpsenm = (int) cnt;	/* don't split */
+		    } else {
 #ifndef GOLDOBJ
-		    if (otmp->oclass == COIN_CLASS)
-			(void) splitobj(otmp, otmp->quan - cnt);
-		    else
+			if (otmp->oclass == COIN_CLASS)
+			    (void) splitobj(otmp, otmp->quan - cnt);
+			else
 #endif
-		    otmp = splitobj(otmp, cnt);
+			    otmp = splitobj(otmp, cnt);
+		    }
 		}
 		n_dropped += drop(otmp);
 	    }
@@ -772,8 +791,14 @@ dodown()
 		if (!(trap = t_at(u.ux,u.uy)) ||
 			(trap->ttyp != TRAPDOOR && trap->ttyp != HOLE)
 			|| !Can_fall_thru(&u.uz) || !trap->tseen) {
-			You_cant("go down here.");
-			return(0);
+
+			if (flags.autodig && !flags.nopick &&
+				uwep && is_pick(uwep)) {
+				return use_pick_axe2(uwep);
+			} else {
+				You_cant("go down here.");
+				return(0);
+			}
 		}
 	}
 	if(u.ustuck) {
@@ -1090,6 +1115,7 @@ boolean at_stairs, falling, portal;
 	/* do this prior to level-change pline messages */
 	vision_reset();		/* clear old level's line-of-sight */
 	vision_full_recalc = 0;	/* don't let that reenable vision yet */
+	flush_screen(-1);	/* ensure all map flushes are postponed */
 
 	if (portal && !In_endgame(&u.uz)) {
 	    /* find the portal on the new level */
@@ -1220,7 +1246,7 @@ boolean at_stairs, falling, portal;
 
 	    if ((mtmp = m_at(u.ux, u.uy)) != 0) {
 		impossible("mnexto failed (do.c)?");
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 	    }
 	}
 
@@ -1238,7 +1264,7 @@ boolean at_stairs, falling, portal;
 	/* Reset the screen. */
 	vision_reset();		/* reset the blockages */
 	docrt();		/* does a full vision recalc */
-	flush_screen(1);
+	flush_screen(-1);
 
 	/*
 	 *  Move all plines beyond the screen reset.

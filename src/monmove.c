@@ -231,7 +231,7 @@ boolean fleemsg;
 		if (fleetime == 1) fleetime++;
 		mtmp->mfleetim = min(fleetime, 127);
 	    }
-	    if (!mtmp->mflee && fleemsg && canseemon(mtmp))
+	    if (!mtmp->mflee && fleemsg && canseemon(mtmp) && !mtmp->mfrozen)
 		pline("%s turns to flee!", (Monnam(mtmp)));
 	    mtmp->mflee = 1;
 	}
@@ -344,7 +344,7 @@ register struct monst *mtmp;
 	/* some monsters teleport */
 	if (mtmp->mflee && !rn2(40) && can_teleport(mdat) && !mtmp->iswiz &&
 	    !level.flags.noteleport) {
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 		return(0);
 	}
 	if (mdat->msound == MS_SHRIEK && !um_dist(mtmp->mx, mtmp->my, 1))
@@ -387,7 +387,7 @@ register struct monst *mtmp;
 
 			if (is_demon(youmonst.data)) {
 			  /* "Good hunting, brother" */
-			    if (!tele_restrict(mtmp)) rloc(mtmp);
+			    if (!tele_restrict(mtmp)) (void) rloc(mtmp, FALSE);
 			} else {
 			    mtmp->minvis = mtmp->perminvis = 0;
 			    /* Why?  For the same reason in real demon talk */
@@ -458,11 +458,15 @@ toofar:
 
 	    /* The scared check is necessary.  Otherwise a monster that is
 	     * one square near the player but fleeing into a wall would keep	
-	     * switching between pick-axe and weapon.
+	     * switching between pick-axe and weapon.  If monster is stuck
+	     * in a trap, prefer ranged weapon (wielding is done in thrwmu).
+	     * This may cost the monster an attack, but keeps the monster
+	     * from switching back and forth if carrying both.
 	     */
 	    mw_tmp = MON_WEP(mtmp);
 	    if (!(scared && mw_tmp && is_pick(mw_tmp)) &&
-		    mtmp->weapon_check == NEED_WEAPON) {
+		mtmp->weapon_check == NEED_WEAPON &&
+		!(mtmp->mtrapped && !nearby && select_rwep(mtmp))) {
 		mtmp->weapon_check = NEED_HTH_WEAPON;
 		if (mon_wield_item(mtmp) != 0) return(0);
 	    }
@@ -697,7 +701,7 @@ register int after;
 	if(ptr == &mons[PM_TENGU] && !rn2(5) && !mtmp->mcan &&
 	   !tele_restrict(mtmp)) {
 	    if(mtmp->mhp < 7 || mtmp->mpeaceful || rn2(2))
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 	    else
 		mnexto(mtmp);
 	    mmoved = 1;
@@ -1031,7 +1035,7 @@ not_special:
 	    if (mtmp->wormno) worm_move(mtmp);
 	} else {
 	    if(is_unicorn(ptr) && rn2(2) && !tele_restrict(mtmp)) {
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 		return(1);
 	    }
 	    if(mtmp->wormno) worm_nomove(mtmp);

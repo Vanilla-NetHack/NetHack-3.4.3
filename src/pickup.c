@@ -397,6 +397,7 @@ int what;		/* should be a long */
 	    count = 0;
 
 	if (!u.uswallow) {
+		struct trap *ttmp = t_at(u.ux, u.uy);
 		/* no auto-pick if no-pick move, nothing there, or in a pool */
 		if (autopickup && (flags.nopick || !OBJ_AT(u.ux, u.uy) ||
 			(is_pool(u.ux, u.uy) && !Underwater) || is_lava(u.ux, u.uy))) {
@@ -410,7 +411,18 @@ int what;		/* should be a long */
 			read_engr_at(u.ux, u.uy);
 		    return (0);
 		}
-
+		if (ttmp && ttmp->tseen) {
+		    /* Allow pickup from holes and trap doors that you escaped
+		     * from because that stuff is teetering on the edge just
+		     * like you, but not pits, because there is an elevation
+		     * discrepancy with stuff in pits.
+		     */
+		    if ((ttmp->ttyp == PIT || ttmp->ttyp == SPIKED_PIT) &&
+			(!u.utrap || (u.utrap && u.utraptype != TT_PIT))) {
+			read_engr_at(u.ux, u.uy);
+			return(0);
+		    }
+		}
 		/* multi && !flags.run means they are in the middle of some other
 		 * action, or possibly paralyzed, sleeping, etc.... and they just
 		 * teleported onto the object.  They shouldn't pick it up.
@@ -583,6 +595,27 @@ end_query:
 	return (n_tried > 0);
 }
 
+#ifdef AUTOPICKUP_EXCEPTIONS
+boolean
+is_autopickup_exception(obj, grab)
+struct obj *obj;
+boolean grab;	 /* forced pickup, rather than forced leave behind? */
+{
+	/*
+	 *  Does the text description of this match an exception?
+	 */
+	char *objdesc = makesingular(doname(obj));
+	struct autopickup_exception *ape = (grab) ?
+					iflags.autopickup_exceptions[AP_GRAB] :
+					iflags.autopickup_exceptions[AP_LEAVE];
+	while (ape) {
+		if (pmatch(ape->pattern, objdesc)) return TRUE;
+		ape = ape->next;
+	}
+	return FALSE;
+}
+#endif /* AUTOPICKUP_EXCEPTIONS */
+
 /*
  * Pick from the given list using flags.pickup_types.  Return the number
  * of items picked (not counts).  Create an array that returns pointers
@@ -603,13 +636,27 @@ menu_item **pick_list;	/* list of objects and counts to pick up */
 
 	/* first count the number of eligible items */
 	for (n = 0, curr = olist; curr; curr = FOLLOW(curr, follow))
+
+
+#ifndef AUTOPICKUP_EXCEPTIONS
 	    if (!*otypes || index(otypes, curr->oclass))
+#else
+	    if ((!*otypes || index(otypes, curr->oclass) ||
+		 is_autopickup_exception(curr, TRUE)) &&
+	    	 !is_autopickup_exception(curr, FALSE))
+#endif
 		n++;
 
 	if (n) {
 	    *pick_list = pi = (menu_item *) alloc(sizeof(menu_item) * n);
 	    for (n = 0, curr = olist; curr; curr = FOLLOW(curr, follow))
+#ifndef AUTOPICKUP_EXCEPTIONS
 		if (!*otypes || index(otypes, curr->oclass)) {
+#else
+	    if ((!*otypes || index(otypes, curr->oclass) ||
+		 is_autopickup_exception(curr, TRUE)) &&
+	    	 !is_autopickup_exception(curr, FALSE)) {
+#endif
 		    pi[n].item.a_obj = curr;
 		    pi[n].count = curr->quan;
 		    n++;
@@ -696,7 +743,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 		    /* if sorting, print type name (once only) */
 		    if (qflags & INVORDER_SORT && !printed_type_name) {
 			any.a_obj = (struct obj *) 0;
-			add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE,
+			add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
 					let_to_name(*pack, FALSE), MENU_UNSELECTED);
 			printed_type_name = TRUE;
 		    }
@@ -1811,8 +1858,9 @@ register struct obj *obj;
 	    if (current_container->no_charge && !obj->unpaid) {
 		/* don't sell when putting the item into your own container */
 		obj->no_charge = 1;
-	    } else {
-		/* sellobj() will take an unpaid item off the shop bill */
+	    } else if (obj->oclass != COIN_CLASS) {
+		/* sellobj() will take an unpaid item off the shop bill
+		 * note: coins are handled later */
 		was_unpaid = obj->unpaid ? TRUE : FALSE;
 		sellobj_state(SELL_DELIBERATE);
 		sellobj(obj, u.ux, u.uy);
@@ -2095,10 +2143,14 @@ register int held;
 		    int t;
 		    char menuprompt[BUFSZ];
 		    boolean outokay = (cnt != 0);
+#ifndef GOLDOBJ
+		    boolean inokay = (invent != 0) || (u.ugold != 0);
+#else
 		    boolean inokay = (invent != 0);
+#endif
 		    if (!outokay && !inokay) {
 			pline("%s", emptymsg);
-			pline("You don't have anything to put in.");
+			You("don't have anything to put in.");
 			return used;
 		    }
 		    menuprompt[0] = '\0';

@@ -27,7 +27,7 @@
 \begin{document}
 %
 % input file: guidebook.mn
-% $Revision: 1.61.2.6 $ $Date: 2003/08/14 11:06:53 $
+% $Revision: 1.61.2.19 $ $Date: 2003/12/03 03:00:50 $
 %
 %.ds h0 "
 %.ds h1 %.ds h2 \%
@@ -40,7 +40,7 @@
 %.au
 \author{Eric S. Raymond\\
 (Extensively edited and expanded for 3.4)}
-\date{August 14, 2003}
+\date{December 2, 2003}
 
 \maketitle
 
@@ -702,6 +702,10 @@ Kick something (usually a door).
 \item[\tb{e}]
 Eat food.
 %.lp
+% Make sure Elbereth is not hyphenated below, the exact spelling matters.
+% (Only specified here to parallel Guidebook.mn; use of \tt font implicity
+% prevents automatic hyphenation in TeX and LaTeX.)
+\hyphenation{Elbereth}		%override the deduced syllable breaks
 \item[\tb{E}]
 Engrave a message on the floor.
 Engraving the word ``{\tt Elbereth}'' will cause most monsters to not attack
@@ -1161,6 +1165,73 @@ monster will arrive on the staircase and you will end up nearby.
 %.pg
 Ladders serve the same purpose as staircases, and the two types of
 inter-level connections are nearly indistinguishable during game play.
+
+%.hn 2
+\subsection*{Shops and shopping}
+
+%.pg
+Occasionally you will run across a room with a shopkeeper near the door
+and many items lying on the floor.  You can buy items by picking them
+up and then using the `{\tt p}' command.  You can inquire about the price
+of an item prior to picking it up by using the ``{\tt \#chat}'' command
+while standing on it.  Using an item prior to paying for it will incur a
+charge, and the shopkeeper won't allow you to leave the shop until you
+have paid any debt you owe.
+
+%.pg
+You can sell items to a shopkeeper by dropping them to the floor while
+inside a shop.  You will either be offered an amount of gold and asked
+whether you're willing to sell, or you'll be told that the shopkeeper
+isn't interested (generally, your item needs to be compatible with the
+type of merchandise carried by the shop).
+
+%.pg
+If you drop something in a shop by accident, the shopkeeper will usually
+claim ownership without offering any compensation.  You'll have to buy
+it back if you want to reclaim it.
+
+%.pg
+Shopkeepers sometimes run out of money.  When that happens, you'll be
+offered credit instead of gold when you try to sell something.  Credit
+can be used to pay for purchases, but it is only good in the shop where
+it was obtained; other shopkeepers won't honor it.  (If you happen to
+find a ``credit card'' in the dungeon, don't bother trying to use it in
+shops; shopkeepers will not accept it.)
+
+%.pg
+The {\tt \$} command, which reports the amount of gold you are carrying
+(in inventory, not inside bags or boxes), will also show current shop
+debt or credit, if any.  The {\tt Iu} command lists unpaid items
+(those which still belong to the shop) if you are carrying any.
+The {\tt Ix} command shows an inventory-like display of any unpaid
+items which have been used up, along with other shop fees, if any.
+
+%.hn 3
+\subsubsection*{Shop idiosyncracies}
+
+%.pg
+Several aspects of shop behavior might be unexpected.
+
+\begin{itemize}
+% note: a bullet is the default item label so we could omit [$\bullet$] here
+%.lp \(bu 2
+\item[$\bullet$]
+The price of a given item can vary due to a variety of factors.
+%.lp \(bu 2
+\item[$\bullet$]
+A shopkeeper treats the spot immediately inside the door as if it were
+outside the shop.
+%.lp \(bu 2
+\item[$\bullet$]
+While the shopkeeper watches you like a hawk, he will generally ignore
+any other customers.
+%.lp \(bu 2
+\item[$\bullet$]
+If a shop is ``closed for inventory'', it will not open of its own accord.
+%.lp \(bu 2
+\item[$\bullet$]
+Shops do not get restocked with new items, regardless of inventory depletion.
+\end{itemize}
 
 %.hn 1
 \section{Monsters}
@@ -1928,7 +1999,7 @@ counted.
 %.pg
 There are several other challenges tracked by the game.  It is possible
 to eliminate one or more species of monsters by genocide; playing without
-this feature is considered a challenge.  When you game offers you an
+this feature is considered a challenge.  When the game offers you an
 opportunity to genocide monsters, you may respond with the monster type
 ``none'' if you want to decline.  You can change the form of an item into
 another item of the same type (``polypiling'') or the form of your own
@@ -1999,6 +2070,7 @@ and the {\it fruit\/} is set to ``papaya'', you would enter the command
 \subsection*{Using a configuration file}
 
 %.pg
+Any line in the configuration file starting with `{\tt \#}' is treated as a comment.
 Any line in the configuration file starting with ``{\tt OPTIONS=}'' may be
 filled out with options in the same syntax as in NETHACKOPTIONS.
 Any line starting with ``{\tt DUNGEON=}'', ``{\tt EFFECTS=}'',
@@ -2013,7 +2085,12 @@ A zero in any entry in such a sequence leaves the display of that
 entry unchanged; this feature is not available using the option syntax.
 Such a sequence can be continued to multiple lines by putting a
 `{\tt \verb+\+}' at the end of each line to be continued.
-Any line starting with `{\tt \#}' is treated as a comment.
+
+%.pg
+If your copy of the game included the compile time AUTOPICKUP\_EXCEPTIONS 
+option, then any line starting with ``{\tt AUTOPICKUP\_EXCEPTION=}'' 
+is taken as defining an exception to the ``{\tt pickup\_types}'' option.
+There is a section of this Guidebook that discusses that.
 
 %.pg
 The default name of the configuration file varies on different
@@ -2042,7 +2119,8 @@ that can be dug (default false).
 %.lp
 \item[\ib{autopickup}]
 Automatically pick up things onto which you move (default on).
-%.Ip
+See ``{\it pickup\_types\/}'' to refine the behavior.
+%.lp
 \item[\ib{autoquiver}]
 This option controls what happens when you attempt the `f' (fire)
 command with an empty quiver.  When true, the computer will fill
@@ -2276,13 +2354,17 @@ Menu character accelerator to deselect all items in a menu.
 Implemented by the Amiga, Gem, X11 and tty ports.
 Default `-'.
 \item[\ib{menu\_deselect\_page}]
-Menu character accelerator deselect all items on this page of a menu.
+Menu character accelerator to deselect all items on this page of a menu.
 Implemented by the Amiga, Gem and tty ports.
 Default `\verb+\+'.
 \item[\ib{menu\_first\_page}]
 Menu character accelerator to jump to the first page in a menu.
 Implemented by the Amiga, Gem and tty ports.
 Default `\verb+^+'.
+\item[\ib{menu\_headings}]
+Controls how the headings in a menu are highlighted.
+Values are ``{\tt bold}'', ``{\tt inverse}'', or ``{\tt underline}''.
+Not all ports can actually display all three types.
 \item[\ib{menu\_invert\_all}]
 Menu character accelerator to invert all items in a menu.
 Implemented by the Amiga, Gem, X11 and tty ports.
@@ -2385,7 +2467,7 @@ Send padding nulls to the terminal (default off).
 %.lp
 \item[\ib{number\_pad}]
 Use the number keys to move instead of {\tt [yuhjklbn]} (default 0 or off).
-(number\_pad:2 invokes the old DOS behaviour where `{\tt 5}' means `{\tt g}', 
+(number\_pad:2 invokes the old DOS behavior where `{\tt 5}' means `{\tt g}', 
 meta-`{\tt 5}' means `{\tt G}',  and meta-`{\tt 0}' means `{\tt I}'.)
 %.lp
 \item[\ib{objects}]
@@ -2421,8 +2503,11 @@ or overLoaded), you will be asked if you want to continue.
 (Default `S').
 %.lp
 \item[\ib{pickup\_types}]
-Specify the object types to be picked up when {\it autopickup\/}
-is on.  Default is all types.
+Specify the object types to be picked up when ``{\it autopickup\/}'' 
+is on.  Default is all types.  If your copy of the game has the
+experimental compile time option AUTOPICKUP\_EXCEPTIONS included,
+you may be able to use ``{\it autopickup\_exception\/}'' configuration
+file lines to further refine ``{\it autopickup\/}'' behavior.
 %.lp
 \item[\ib{prayconfirm}]
 Prompt for confirmation before praying (default on).
@@ -2701,7 +2786,7 @@ the visible area of the window.
 
 %.pg
 Here are explanations of options that are used by specific platforms 
-or ports to customize and change the port behaviour.
+or ports to customize and change the port behavior.
 
 \blist{}
 %.lp
@@ -2739,7 +2824,7 @@ Cannot be set with the `{\tt O}' command.
 (default off, {\it PC NetHack \/} only).
 Cannot be set with the `{\tt O}' command.
 %.lp
-\item[\ib{subkeyval}]
+\item[\ib{subkeyvalue}]
 ({\it Win32 tty NetHack \/} only).
 May be used to alter the value of keystrokes that the operating system
 returns to NetHack to help compensate for international keyboard issues.
@@ -2772,6 +2857,64 @@ If the game display is difficult to read, try adjusting these scales;
 if this does not correct the problem, try {\tt !color}.
 Cannot be set with the `{\tt O}' command.
 \elist
+
+%.lp
+%.hn 2
+\subsection*{Configuring autopickup exceptions}
+
+%.pg
+There is an experimental compile time option called AUTOPICKUP_EXCEPTIONS.  
+If your copy of the game was built with that option defined, you can 
+further refine the behavior of the ``{\tt autopickup}'' option beyond 
+what is available through the ``{\tt pickup\_types}'' option.
+
+%.pg
+By placing ``{\tt autopickup\_exception}'' lines in your configuration
+file, you can define patterns to be checked when the game is about to
+autopickup something.
+
+\blist{}
+%.lp
+\item[\ib{autopickup\_exception}]
+Sets an exception to the `{\it pickup\_types}' option.
+The {\it autopickup\_exception\/} option should be followed by a string of 1--80
+characters to be used as a pattern to match against the singular form
+of the description of an object at your location.
+
+%.pg
+You may use the following special characters in a pattern:
+
+\begin{verbatim}
+    *--- matches 0 or more characters.
+    ?--- matches any single character.
+\end{verbatim}
+
+In addition, some characters are treated specially if they occur as the first 
+character in the specified string pattern, specifically:
+
+%.sd
+%.si
+{\tt <} --- always pickup an object that matches the pattern that follows.\\
+{\tt >} --- never pickup an object that matches the pattern that follows.
+%.ei
+%.ed
+
+Can be set with the `{\tt O}' command, but the setting is not preserved
+across saves and restores.
+\elist
+
+%.pg
+Here's a couple of examples of autopickup\_exceptions:
+\begin{verbatim}
+    autopickup_exception="<*arrow"
+    autopickup_exception=">*corpse"
+    autopickup_exception=">* cursed*"
+\end{verbatim}
+
+The first example above will result in autopickup of any type of arrow.
+The second example results in the exclusion of any corpse from autopickup.
+The last example results in the exclusion of items known to be cursed from autopickup.
+A `never pickup' rule takes precedence over an `always pickup' rule if both match.
 
 %.lp
 %.hn 2

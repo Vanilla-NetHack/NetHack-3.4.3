@@ -2107,7 +2107,7 @@ logDebug(const char *fmt, ...)
 /* Reading and writing settings from the registry. */
 #define CATEGORYKEY         "Software"
 #define COMPANYKEY          "NetHack"
-#define PRODUCTKEY          "NetHack 3.4.2"
+#define PRODUCTKEY          "NetHack 3.4.3"
 #define SETTINGSKEY         "Settings"
 #define MAINSHOWSTATEKEY    "MainShowState"
 #define MAINMINXKEY         "MainMinX"

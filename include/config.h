@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.4	2003/02/19	*/
+/*	SCCS Id: @(#)config.h	3.4	2003/12/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -85,7 +85,9 @@
 #ifdef QT_GRAPHICS
 # define DEFAULT_WC_TILED_MAP   /* Default to tiles if users doesn't say wc_ascii_map */
 # define USER_SOUNDS		/* Use sounds */
-# define USER_SOUNDS_REGEX
+# ifndef __APPLE__
+#  define USER_SOUNDS_REGEX
+# endif
 # define USE_XPM		/* Use XPM format for images (required) */
 # define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
 # ifndef DEFAULT_WINDOW_SYS
@@ -202,11 +204,7 @@
  * otherwise it will be the current directory.
  */
 # ifndef HACKDIR
-#  ifdef __APPLE__
-#    define HACKDIR "nethackdir"	/* nethack directory */
-#  else
-#    define HACKDIR "/usr/games/lib/nethackdir"
-#  endif
+#  define HACKDIR "/usr/games/lib/nethackdir"
 # endif
 
 /*
@@ -351,6 +349,7 @@ typedef unsigned char	uchar;
  */
 
 /*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+/*#define AUTOPICKUP_EXCEPTIONS */ /* exceptions to autopickup */
 
 /* End of Section 5 */
 

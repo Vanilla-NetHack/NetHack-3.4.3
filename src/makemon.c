@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.4	2003/05/25	*/
+/*	SCCS Id: @(#)makemon.c	3.4	2003/09/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -666,9 +666,11 @@ register struct	monst	*mtmp;
 #endif
 }
 
+/* Note: for long worms, always call cutworm (cutworm calls clone_mon) */
 struct monst *
-clone_mon(mon)
+clone_mon(mon, x, y)
 struct monst *mon;
+xchar x, y;	/* clone's preferred location or 0 (near mon) */
 {
 	coord mm;
 	struct monst *m2;
@@ -677,10 +679,21 @@ struct monst *mon;
 	if (mon->mhp <= 1 || (mvitals[monsndx(mon->data)].mvflags & G_EXTINCT))
 	    return (struct monst *)0;
 
-	mm.x = mon->mx;
-	mm.y = mon->my;
-	if (!enexto(&mm, mm.x, mm.y, mon->data) || MON_AT(mm.x, mm.y))
-	    return (struct monst *)0;
+	if (x == 0) {
+	    mm.x = mon->mx;
+	    mm.y = mon->my;
+	    if (!enexto(&mm, mm.x, mm.y, mon->data) || MON_AT(mm.x, mm.y))
+		return (struct monst *)0;
+	} else if (!isok(x, y)) {
+	    return (struct monst *)0;	/* paranoia */
+	} else {
+	    mm.x = x;
+	    mm.y = y;
+	    if (MON_AT(mm.x, mm.y)) {
+		if (!enexto(&mm, mm.x, mm.y, mon->data) || MON_AT(mm.x, mm.y))
+		    return (struct monst *)0;
+	    }
+	}
 	m2 = newmonst(0);
 	*m2 = *mon;			/* copy condition of old monster */
 	m2->nmon = fmon;
@@ -719,9 +732,20 @@ struct monst *mon;
 	if (m2->mnamelth) {
 	    m2->mnamelth = 0; /* or it won't get allocated */
 	    m2 = christen_monst(m2, NAME(mon));
+	} else if (mon->isshk) {
+	    m2 = christen_monst(m2, shkname(mon));
 	}
+
+	/* not all clones caused by player are tame or peaceful */
+	if (!flags.mon_moving) {
+	    if (mon->mtame)
+		m2->mtame = rn2(max(2 + u.uluck, 2)) ? mon->mtame : 0;
+	    else if (mon->mpeaceful)
+		m2->mpeaceful = rn2(max(2 + u.uluck, 2)) ? 1 : 0;
+	}
+
 	newsym(m2->mx,m2->my);	/* display the new monster */
-	if (mon->mtame) {
+	if (m2->mtame) {
 	    struct monst *m3;
 
 	    if (mon->isminion) {
@@ -744,7 +768,49 @@ struct monst *mon;
 		}
 	    }
 	}
+	set_malign(m2);
+
 	return m2;
+}
+
+/*
+ * Propagate a species
+ *
+ * Once a certain number of monsters are created, don't create any more
+ * at random (i.e. make them extinct).  The previous (3.2) behavior was
+ * to do this when a certain number had _died_, which didn't make
+ * much sense.
+ *
+ * Returns FALSE propagation unsuccessful
+ *         TRUE  propagation successful
+ */
+boolean
+propagate(mndx, tally, ghostly)
+int mndx;
+boolean tally;
+boolean ghostly;
+{
+	boolean result;
+	uchar lim = mbirth_limit(mndx);
+	boolean gone = (mvitals[mndx].mvflags & G_GONE); /* genocided or extinct */
+
+	result = (((int) mvitals[mndx].born < lim) && !gone) ? TRUE : FALSE;
+
+	/* if it's unique, don't ever make it again */
+	if (mons[mndx].geno & G_UNIQ) mvitals[mndx].mvflags |= G_EXTINCT;
+
+	if (mvitals[mndx].born < 255 && tally && (!ghostly || (ghostly && result)))
+		 mvitals[mndx].born++;
+	if ((int) mvitals[mndx].born >= lim && !(mons[mndx].geno & G_NOGEN) &&
+		!(mvitals[mndx].mvflags & G_EXTINCT)) {
+#if defined(DEBUG) && defined(WIZARD)
+		if (wizard) pline("Automatically extinguished %s.",
+					makeplural(mons[mndx].mname));
+#endif
+		mvitals[mndx].mvflags |= G_EXTINCT;
+		reset_rndmonst(mndx);
+	}
+	return result;
 }
 
 /*
@@ -767,7 +833,6 @@ register int	mmflags;
 	boolean allow_minvent = ((mmflags & NO_MINVENT) == 0);
 	boolean countbirth = ((mmflags & MM_NOCOUNTBIRTH) == 0);
 	unsigned gpflags = (mmflags & MM_IGNOREWATER) ? MM_IGNOREWATER : 0;
-	uchar lim;
 
 	/* if caller wants random location, do it here */
 	if(x == 0 && y == 0) {
@@ -808,7 +873,7 @@ register int	mmflags;
 		/* if you are to make a specific monster and it has
 		   already been genocided, return */
 		if (mvitals[mndx].mvflags & G_GENOD) return((struct monst *) 0);
-#ifdef DEBUG
+#if defined(WIZARD) && defined(DEBUG)
 		if (wizard && (mvitals[mndx].mvflags & G_EXTINCT))
 		    pline("Explicitly creating extinct monster %s.",
 			mons[mndx].mname);
@@ -832,32 +897,7 @@ register int	mmflags;
 		} while(!goodpos(x, y, &fakemon, gpflags) && tryct++ < 50);
 		mndx = monsndx(ptr);
 	}
-	/* if it's unique, don't ever make it again */
-	if (ptr->geno & G_UNIQ) mvitals[mndx].mvflags |= G_EXTINCT;
-
-	/* Once a certain number of monsters are created, don't create any more
-	 * at random (i.e. make them extinct).  The previous (3.2) behavior was
-	 * to do this when a certain number had _died_, which didn't make
-	 * much sense.
-	 * This version makes a little more sense but still requires that
-	 * the caller manually decrement mvitals if the monster is created
-	 * under circumstances where one would not logically expect the
-	 * creation to reduce the supply of wild monsters.  Monster cloning
- 	 * might be one case that requires that in order to reduce the
-	 * possibility of abuse, but currently doesn't.
-	 */
-	if (mvitals[mndx].born < 255 && countbirth) mvitals[mndx].born++;
-	lim = mbirth_limit(mndx);
-	if ((int) mvitals[mndx].born >= lim && !(mons[mndx].geno & G_NOGEN) &&
-		!(mvitals[mndx].mvflags & G_EXTINCT)) {
-#ifdef DEBUG
-		pline("Automatically extinguished %s.",
-					makeplural(mons[mndx].mname));
-#endif
-		mvitals[mndx].mvflags |= G_EXTINCT;
-		reset_rndmonst(mndx);
-	}
-
+	(void) propagate(mndx, countbirth, FALSE);
 	xlth = ptr->pxlth;
 	if (mmflags & MM_EDOG) xlth += sizeof(struct edog);
 	else if (mmflags & MM_EMIN) xlth += sizeof(struct emin);
@@ -1061,6 +1101,7 @@ int
 mbirth_limit(mndx)
 int mndx;
 {
+	/* assert(MAXMONNO < 255); */
 	return (mndx == PM_NAZGUL ? 9 : mndx == PM_ERINYS ? 3 : MAXMONNO); 
 }
 
@@ -1171,8 +1212,10 @@ rndmonst()
 
 	    rndmonst_state.choice_count = 0;
 	    /* look for first common monster */
-	    for (mndx = LOW_PM; mndx < SPECIAL_PM; mndx++)
+	    for (mndx = LOW_PM; mndx < SPECIAL_PM; mndx++) {
 		if (!uncommon(mndx)) break;
+		rndmonst_state.mchoices[mndx] = 0;
+	    }		
 	    if (mndx == SPECIAL_PM) {
 		/* evidently they've all been exterminated */
 #ifdef DEBUG

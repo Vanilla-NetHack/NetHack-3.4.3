@@ -34,7 +34,7 @@
 #include "winX.h"
 
 
-static Widget extended_command_popup;
+static Widget extended_command_popup = 0;
 static Widget extended_command_form;
 static Widget *extended_commands = 0;
 static int extended_command_selected;	/* index of the selected command; */
@@ -67,6 +67,7 @@ static const char algn_select_translations[] =
     "#override\n\
      <Key>: algn_key()";
 
+static void FDECL(popup_delete, (Widget, XEvent*, String*, Cardinal*));
 static void NDECL(ec_dismiss);
 static Widget FDECL(make_menu, (const char *,const char *,const char *,
 				const char *,XtCallbackProc,
@@ -326,7 +327,7 @@ X11_player_selection()
 	} else if (ps_selected == PS_RANDOM) {
 	    flags.initrole = ROLE_RANDOM;
 	} else if (ps_selected < 0 || ps_selected >= num_roles) {
-	    panic("player_selection: bad role select value %d\n", ps_selected);
+	    panic("player_selection: bad role select value %d", ps_selected);
 	} else {
 	    flags.initrole = ps_selected;
 	}
@@ -391,7 +392,7 @@ X11_player_selection()
 	    } else if (ps_selected == PS_RANDOM) {
 		flags.initrace = ROLE_RANDOM;
 	    } else if (ps_selected < 0 || ps_selected >= num_races) {
-		panic("player_selection: bad race select value %d\n", ps_selected);
+		panic("player_selection: bad race select value %d", ps_selected);
 	    } else {
 		flags.initrace = ps_selected;
 	    }
@@ -456,7 +457,7 @@ X11_player_selection()
 	    } else if (ps_selected == PS_RANDOM) {
 		flags.initgend = ROLE_RANDOM;
 	    } else if (ps_selected < 0 || ps_selected >= num_gends) {
-		panic("player_selection: bad gender select value %d\n", ps_selected);
+		panic("player_selection: bad gender select value %d", ps_selected);
 	    } else {
 		flags.initgend = ps_selected;
 	    }
@@ -520,7 +521,7 @@ X11_player_selection()
 	    } else if (ps_selected == PS_RANDOM) {
 		flags.initalign = ROLE_RANDOM;
 	    } else if (ps_selected < 0 || ps_selected >= num_algns) {
-		panic("player_selection: bad alignment select value %d\n", ps_selected);
+		panic("player_selection: bad alignment select value %d", ps_selected);
 	    } else {
 		flags.initalign = ps_selected;
 	    }
@@ -606,7 +607,24 @@ ec_delete(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
-    ec_dismiss();
+    if (w == extended_command_popup) {
+	ec_dismiss();
+    } else {
+	popup_delete(w, event, params, num_params);
+    }
+}
+
+/* ARGSUSED */
+static void
+popup_delete(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    ps_selected = PS_QUIT;
+    nh_XtPopdown(w);
+    exit_x_event = TRUE;		/* leave event loop */
 }
 
 static void

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.4	2003/01/08	*/
+/*	SCCS Id: @(#)dokick.c	3.4	2003/12/04	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -237,13 +237,18 @@ ghitm(mtmp, gold)
 register struct monst *mtmp;
 register struct obj *gold;
 {
+	boolean msg_given = FALSE;
+
 	if(!likes_gold(mtmp->data) && !mtmp->isshk && !mtmp->ispriest
 			&& !is_mercenary(mtmp->data)) {
 		wakeup(mtmp);
 	} else if (!mtmp->mcanmove) {
 		/* too light to do real damage */
-		if (canseemon(mtmp))
-		    pline_The("gold hits %s.", mon_nam(mtmp));
+		if (canseemon(mtmp)) {
+		    pline_The("%s harmlessly %s %s.", xname(gold),
+			      otense(gold, "hit"), mon_nam(mtmp));
+		    msg_given = TRUE;
+		}
 	} else {
 #ifdef GOLDOBJ
                 long value = gold->quan * objects[gold->otyp].oc_cost;
@@ -317,16 +322,18 @@ register struct obj *gold;
 		     if (mtmp->mpeaceful)
 			    verbalize("That should do.  Now beat it!");
 		     else verbalize("That's not enough, coward!");
-		 }
+		}
 
 #ifndef GOLDOBJ
 		dealloc_obj(gold);
 #else
-                add_to_minv(mtmp, gold);
+		add_to_minv(mtmp, gold);
 #endif
-		return(1);
+		return TRUE;
 	}
-	return(0);
+
+	if (!msg_given) miss(xname(gold), mtmp);
+	return FALSE;
 }
 
 /* container is kicked, dropped, thrown or otherwise impacted by player.
@@ -603,7 +610,7 @@ char *buf;
 	else if (IS_SINK(maploc->typ)) what = "a sink";
 #endif
 	else if (IS_ALTAR(maploc->typ)) what = "an altar";
-	else if (IS_DRAWBRIDGE(maploc->typ)) what = "the drawbridge";
+	else if (IS_DRAWBRIDGE(maploc->typ)) what = "a drawbridge";
 	else if (maploc->typ == STAIRS) what = "the stairs";
 	else if (maploc->typ == LADDER) what = "a ladder";
 	else if (maploc->typ == IRONBARS) what = "an iron bar";
@@ -614,7 +621,7 @@ char *buf;
 int
 dokick()
 {
-	register int x, y;
+	int x, y;
 	int avrg_attrib;
 	register struct monst *mtmp;
 	boolean no_kick = FALSE;
@@ -995,17 +1002,17 @@ ouch:
 		    exercise(A_DEX, FALSE);
 		    exercise(A_STR, FALSE);
 		    if (Blind) feel_location(x,y); /* we know we hit it */
+		    if (is_drawbridge_wall(x,y) >= 0) {
+			pline_The("drawbridge is unaffected.");
+			/* update maploc to refer to the drawbridge */
+			(void) find_drawbridge(&x,&y);
+			maploc = &levl[x][y];
+		    }
 		    if(!rn2(3)) set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
 		    losehp(rnd(ACURR(A_CON) > 15 ? 3 : 5), kickstr(buf),
 			KILLED_BY);
 		    if(Is_airlevel(&u.uz) || Levitation)
 			hurtle(-u.dx, -u.dy, rn1(2,4), TRUE); /* assume it's heavy */
-		    return(1);
-		}
-		if (is_drawbridge_wall(x,y) >= 0) {
-		    pline_The("drawbridge is unaffected.");
-		    if(Levitation)
-			hurtle(-u.dx, -u.dy, rn1(2,4), TRUE); /* it's heavy */
 		    return(1);
 		}
 		goto dumb;

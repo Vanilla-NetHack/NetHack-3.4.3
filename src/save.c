@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.4	2002/08/22	*/
+/*	SCCS Id: @(#)save.c	3.4	2003/11/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1012,6 +1012,9 @@ freedynamicdata()
 	if (iflags.wc_font_menu) free(iflags.wc_font_menu);
 	if (iflags.wc_font_status) free(iflags.wc_font_status);
 	if (iflags.wc_tile_file) free(iflags.wc_tile_file);
+#ifdef AUTOPICKUP_EXCEPTIONS
+	free_autopickup_exceptions();
+#endif
 
 #endif	/* FREE_ALL_MEMORY */
 	return;

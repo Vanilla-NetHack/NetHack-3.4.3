@@ -79,7 +79,7 @@ use_saddle(otmp)
 	    return 1;
 	}
 	ptr = mtmp->data;
-	if (touch_petrifies(ptr) && !Stone_resistance) {
+	if (touch_petrifies(ptr) && !uarmg && !Stone_resistance) {
 	    char kbuf[BUFSZ];
 
 	    You("touch %s.", mon_nam(mtmp));
@@ -424,7 +424,7 @@ int forceit;
     boolean found = FALSE;
     struct trap *t;
 
-    /* avoid known traps (i == 0), but allow them as a backup */
+    /* avoid known traps (i == 0) and boulders, but allow them as a backup */
     if (reason != DISMOUNT_BYCHOICE || Stunned || Confusion || Fumbling) i = 1;
     for (; !found && i < 2; ++i) {
 	for (x = u.ux-1; x <= u.ux+1; x++)
@@ -436,7 +436,9 @@ int forceit;
 		    distance = distu(x,y);
 		    if (min_distance < 0 || distance < min_distance ||
 			    (distance == min_distance && rn2(2))) {
-			if (i > 0 || (t = t_at(x, y)) == 0 || !t->tseen) {
+			if (i > 0 || (((t = t_at(x, y)) == 0 || !t->tseen) &&
+				      (!sobj_at(BOULDER, x, y) ||
+				       throws_rocks(youmonst.data)))) {
 			    spot->x = x;
 			    spot->y = y;
 			    min_distance = distance;
@@ -535,7 +537,7 @@ dismount_steed(reason)
 	    if (enexto(&cc, u.ux, u.uy, mtmp->data))
 		rloc_to(mtmp, cc.x, cc.y);
 	    else	/* evidently no room nearby; move steed elsewhere */
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 	    return;
 	}
 	if (!DEADMONSTER(mtmp)) {

@@ -308,7 +308,7 @@ d_level *lev;
 	/* "something" means the player in this case */
 	if(MON_AT(x, y)) {
 	    /* move the monster if no choice, or just try again */
-	    if(oneshot) rloc(m_at(x,y));
+	    if(oneshot) (void) rloc(m_at(x,y), FALSE);
 	    else return(FALSE);
 	}
 	u_on_newpos(x, y);
@@ -1142,6 +1142,34 @@ register int fd;
 	ebubbles = b;
 	b->next = (struct bubble *)0;
 	was_waterlevel = TRUE;
+}
+
+const char *waterbody_name(x, y)
+xchar x,y;
+{
+	register struct rm *lev;
+	schar ltyp;
+
+	if (!isok(x,y))
+		return "drink";		/* should never happen */
+	lev = &levl[x][y];
+	ltyp = lev->typ;
+
+	if (is_lava(x,y))
+		return "lava";
+	else if (ltyp == ICE ||
+		 (ltyp == DRAWBRIDGE_UP &&
+		  (levl[x][y].drawbridgemask & DB_UNDER) == DB_ICE))
+		return "ice";
+	else if (((ltyp != POOL) && (ltyp != WATER) &&
+	  !Is_medusa_level(&u.uz) && !Is_waterlevel(&u.uz) && !Is_juiblex_level(&u.uz)) ||
+	   (ltyp == DRAWBRIDGE_UP && (levl[x][y].drawbridgemask & DB_UNDER) == DB_MOAT))
+		return "moat";
+	else if ((ltyp != POOL) && (ltyp != WATER) && Is_juiblex_level(&u.uz))
+		return "swamp";
+	else if (ltyp == POOL)
+		return "pool of water";
+	else return "water";
 }
 
 STATIC_OVL void

@@ -311,7 +311,7 @@ tactics(mtmp)
 		mtmp->mavenge = 1; /* covetous monsters attack while fleeing */
 		if (In_W_tower(mtmp->mx, mtmp->my, &u.uz) ||
 			(mtmp->iswiz && !xupstair && !mon_has_amulet(mtmp))) {
-		    if (!rn2(3 + mtmp->mhp/10)) rloc(mtmp);
+		    if (!rn2(3 + mtmp->mhp/10)) (void) rloc(mtmp, FALSE);
 		} else if (xupstair &&
 			 (mtmp->mx != xupstair || mtmp->my != yupstair)) {
 		    (void) mnearto(mtmp, xupstair, yupstair, TRUE);
@@ -353,7 +353,7 @@ tactics(mtmp)
 			    if (cansee(mtmp->mx, mtmp->my))
 				pline("%s picks up %s.",
 				    Monnam(mtmp),
-				    (distu(mtmp->my, mtmp->my) <= 5) ?
+				    (distu(mtmp->mx, mtmp->my) <= 5) ?
 				     doname(otmp) : distant_name(otmp, doname));
 			    obj_extract_self(otmp);
 			    (void) mpickobj(mtmp, otmp);

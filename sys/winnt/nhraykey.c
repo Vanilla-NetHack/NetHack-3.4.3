@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)nhraykey.c	3.4	$Date: 2003/08/24 15:38:48 $   */
+/*	SCCS Id: @(#)nhraykey.c	3.4	$Date: 2003/11/01 23:57:00 $   */
 /* Copyright (c) NetHack PC Development Team 2003                      */
 /* NetHack may be freely redistributed.  See license for details.      */
 
@@ -545,7 +545,11 @@ INPUT_RECORD *ir;
 			if (ch || iskeypad(scan) || altseq) {
 				done = 1;	    /* Stop looking         */
 				retval = 1;         /* Found what we sought */
+			} else {
+				/* Strange Key event; let's purge it to avoid trouble */
+				ReadConsoleInput(hConIn,ir,1,&count);
 			}
+
 		}
 		else if ((ir->EventType == MOUSE_EVENT &&
 		  (ir->Event.MouseEvent.dwButtonState & MOUSEMASK))) {

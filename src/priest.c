@@ -195,7 +195,7 @@ boolean sanctum;   /* is it the seat of the high priest? */
 	int cnt;
 
 	if(MON_AT(sx+1, sy))
-		rloc(m_at(sx+1, sy)); /* insurance */
+		(void) rloc(m_at(sx+1, sy), FALSE); /* insurance */
 
 	priest = makemon(&mons[sanctum ? PM_HIGH_PRIEST : PM_ALIGNED_PRIEST],
 			 sx + 1, sy, NO_MM_FLAGS);
@@ -386,7 +386,9 @@ register int roomno;
 
 		    if(!(mtmp = makemon(&mons[PM_GHOST],u.ux,u.uy,NO_MM_FLAGS)))
 			return;
-		    pline("An enormous ghost appears next to you!");
+		    if (!Blind || sensemon(mtmp))
+			pline("An enormous ghost appears next to you!");
+		    else You("sense a presence close by!");
 		    mtmp->mpeaceful = 0;
 		    set_malign(mtmp);
 		    if(flags.verbose)
@@ -541,7 +543,7 @@ boolean peaceful;
 	if (ptr != &mons[PM_ALIGNED_PRIEST] && ptr != &mons[PM_ANGEL])
 		return((struct monst *)0);
 	
-	if (MON_AT(x, y)) rloc(m_at(x, y));	/* insurance */
+	if (MON_AT(x, y)) (void) rloc(m_at(x, y), FALSE);	/* insurance */
 
 	if (!(roamer = makemon(ptr, x, y, NO_MM_FLAGS)))
 		return((struct monst *)0);

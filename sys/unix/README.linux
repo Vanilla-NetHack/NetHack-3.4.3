@@ -1,4 +1,4 @@
-NetHack 3.4.2 Linux Elf
+NetHack 3.4.3 Linux Elf
 
 This README provides the instructions for using the official Linux binary,
 system platform requirements, as well as steps used to create that binary.
@@ -20,11 +20,13 @@ preserving permissions to put the NetHack files in /usr/games/nethack and
 home directory you might perform these steps.
     % su
     # cd /
-    # gunzip -c ~yourlogin/nh342lin.tgz | tar xpvf -
+    # tar xpvzf ~yourlogin/nethack-343-linux-X11.tgz
 
-(If you have old record and logfile entries from a previous NetHack version,
+If you have old record and logfile entries from a previous NetHack version,
 you might want to save copies before they get overwritten by the new empty
-files; old saved games and bones files from 3.4.x will work with 3.4.2).
+files; old saved games and bones files from 3.4.x will work with 3.4.3.
+If you are installing from the RPM, there is no need to save the old record
+and logfile; they are automatically preserved.
 
 In addition to data files for running the game, you will find other useful
 things in /usr/games/lib/nethackdir (such as a copy of this README :-).
@@ -62,7 +64,7 @@ Steps used to build this binary release, in addition to the basic
 instructions found in sys/unix/Install.unx.  The step numbers below
 correspond to the step numbers in sys/unix/Install.unx.
 
-System:  gcc-3.2, XFree86-libs-4.2.0, ncurses-5.2, glibc-2.2.93 (GLIBC_2.3)
+System:  gcc-3.2, XFree86-libs-4.2.1, ncurses-5.2, glibc-2.3.2 (GLIBC_2.3)
 
 3.  Edit include/config.h and include/unixconf.h
     config.h: define X11_GRAPHICS window support.
@@ -71,6 +73,7 @@ System:  gcc-3.2, XFree86-libs-4.2.0, ncurses-5.2, glibc-2.2.93 (GLIBC_2.3)
               seems to reside on newer Linux's.
               define COMPRESS_EXTENSION as ".gz"
               define DLB
+	      define AUTOPICKUP_EXCEPTIONS
 
     unixconf.h: define LINUX
                 define TIMED_DELAY
@@ -96,7 +99,7 @@ System:  gcc-3.2, XFree86-libs-4.2.0, ncurses-5.2, glibc-2.2.93 (GLIBC_2.3)
 		  FILEPERM = 0664
 		  EXEPERM = 0755
 		  DIRPERM = 0775
-		  VARDATND = x11tiles pet_mark.xbm rip.xpm
+		  VARDATND = x11tiles NetHack.ad pet_mark.xbm rip.xpm
 
     make all; su; make install
 

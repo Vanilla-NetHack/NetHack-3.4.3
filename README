@@ -1,23 +1,31 @@
-                NetHack 3.4.2 -- General information
+                NetHack 3.4.3 -- General information
 
 NetHack 3.4 is an enhancement to the dungeon exploration game NetHack.
 It is a distant descendent of Rogue and Hack, and a direct descendent of
 NetHack 3.3.
 
-NetHack 3.4.2 is a bugfix release for 3.4.1.
- *  A fatal bug that caused a crash when applying figurine, candle, or
-    bell that gets used up
- *  A fatal bug that triggered a panic when your secondary weapon was
-    cursed during bones file creation
- *  A few dozen general bug fixes
- *  Fixed some Gnome compilation problems on Redhat 7.2 and 8.0
- *  Fixed a problem in the util Makefile
- *  win32 tty adjustments and support for loading alternative key handlers
+NetHack 3.4.3 is a bugfix release for NetHack 3.4.2.
+ *  Several dozen general bug fixes including at least one fatal bug
+ *  Correct several inconsistencies
+ *  Handle level completely filled with monsters better
+ *  win32tty performance enhancements when playing on Windows 98 and Windows Me
+ *  win32gui player selection fixes
+ *  X11 player selection fixes, one of which could be fatal
+ *  Eliminated a gold-in-shop-container cheat
+ *  Include bones file version compatibility info in options file
 
 A fuller list of changes for this release can be found in the file 
-doc/fixes34.2 in the source distribution.  The text in there was written 
+doc/fixes34.3 in the source distribution.  The text in there was written 
 for the development team's own use and is provided "as is", so please do 
 not ask us to further explain the entries in that file.
+
+The internal structure of bones and save files has not changed between 
+NetHack 3.4.0, 3.4.1, 3.4.2 and now 3.4.3. That means that if you use the 
+same compiler, the same compiler version and compiler switches, the same 
+NetHack compile-time options, and you have not incorporated any additional 
+source code patches that altered the save file format on your system, then 
+bones and save files from 3.4.0 through 3.4.3 should be compatible.
+
 
                         - - - - - - - - - - -
 
@@ -101,8 +109,9 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         HP 9000s700 running HP-UX 10.x, 11.x
         IBM PS/2 and AT compatibles running OS/2 - 2.0 and up with GCC emx
         Intel 80386 or greater (or clone) boxes running MS-DOS with DPMI.
-        Intel 80386 or greater (or clone) boxes running Linux, BSDI, or
-                Windows 95/98/NT/2000/XP
+        Intel 80386 or greater (or clone) boxes running Linux, or BSDI.
+        Intel 80386 or greater (or clone) boxes running Windows 95/98/Me.
+        Intel 80386 or greater (or clone) boxes running Windows NT/2000/XP/2003.
         Intel Pentium or better (or clone) running BeOS 4.5
         Sun SPARC based machine running SunOS 4.x, Solaris 2.x, or Solaris 7
 
@@ -146,13 +155,15 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     C compiler.
 
     With the demise of Windows NT on the DEC Alpha, no attempt has been
-    made to build NetHack 3.4.2 on that platform.
+    made to build NetHack 3.4.3 on that platform.
 
-    No attempt has been made to build or run NetHack 3.4.2 on Windows Me
-    at this point.  It may work, but then again it may not.
-    
+    Windows 98/Me have been the most problematic Windows platforms for
+    running NetHack so far. Patches for 3.4.2 (courtesy Michael Lehotay)
+    have been incorporated into 3.4.3 to help make them work better. Your
+    results may vary.
+
     A build for Intel 80286 machines and DOS "real mode" overlaid versions 
-    has not been produced for 3.4.2.  Nobody on the porting team has
+    has not been produced for 3.4.3.  Nobody on the porting team has
     the time or the software to attempt the necessary tuning that will allow 
     it to achieve the balance of having just the right amount of available 
     memory, and still have acceptable performance.  The sources necessary 

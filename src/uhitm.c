@@ -520,7 +520,7 @@ int thrown;
 	boolean hittxt = FALSE, destroyed = FALSE, already_killed = FALSE;
 	boolean get_dmg_bonus = TRUE;
 	boolean ispoisoned = FALSE, needpoismsg = FALSE, poiskilled = FALSE;
-	boolean silvermsg = FALSE;
+	boolean silvermsg = FALSE, silverobj = FALSE;
 	boolean valid_weapon_attack = FALSE;
 	boolean unarmed = !uwep && !uarm && !uarms;
 #ifdef STEED
@@ -530,8 +530,11 @@ int thrown;
 	struct obj *monwep;
 	char yourbuf[BUFSZ];
 	char unconventional[BUFSZ];	/* substituted for word "attack" in msg */
+	char saved_oname[BUFSZ];
 
 	unconventional[0] = '\0';
+	saved_oname[0] = '\0';
+
 	wakeup(mon);
 	if(!obj) {	/* attack with bare hands */
 	    if (mdat == &mons[PM_SHADE])
@@ -558,6 +561,7 @@ int thrown;
 		}
 	    }
 	} else {
+	    Strcpy(saved_oname, cxname(obj));
 	    if(obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
 	       obj->oclass == GEM_CLASS) {
 
@@ -642,8 +646,9 @@ int thrown;
 			hittxt = TRUE;
 		    }
 		    if (objects[obj->otyp].oc_material == SILVER
-				&& hates_silver(mdat))
-			silvermsg = TRUE;
+				&& hates_silver(mdat)) {
+			silvermsg = TRUE; silverobj = TRUE;
+		    }
 #ifdef STEED
 		    if (u.usteed && !thrown && tmp > 0 &&
 			    weapon_type(obj) == P_LANCE && mon != u.ustuck) {
@@ -716,11 +721,13 @@ int thrown;
 #endif
 		    case CORPSE:		/* fixed by polder@cs.vu.nl */
 			if (touch_petrifies(&mons[obj->corpsenm])) {
+			    static const char withwhat[] = "corpse";
 			    tmp = 1;
 			    hittxt = TRUE;
-			    You("hit %s with %s corpse.", mon_nam(mon),
+			    You("hit %s with %s %s.", mon_nam(mon),
 				obj->dknown ? the(mons[obj->corpsenm].mname) :
-				an(mons[obj->corpsenm].mname));
+				an(mons[obj->corpsenm].mname),
+				(obj->quan > 1) ? makeplural(withwhat) : withwhat);
 			    if (!munstone(mon, TRUE))
 				minstapetrify(mon, TRUE);
 			    if (resists_ston(mon)) break;
@@ -863,6 +870,15 @@ int thrown;
 			if(tmp < 1) tmp = 1;
 			else tmp = rnd(tmp);
 			if(tmp > 6) tmp = 6;
+			/*
+			 * Things like silver wands can arrive here so
+			 * so we need another silver check.
+			 */
+			if (objects[obj->otyp].oc_material == SILVER
+						&& hates_silver(mdat)) {
+				tmp += rnd(20);
+				silvermsg = TRUE; silverobj = TRUE;
+			}
 		    }
 		}
 	    }
@@ -985,7 +1001,7 @@ int thrown;
 		   && objects[obj->otyp].oc_material == IRON
 		   && mon->mhp > 1 && !thrown && !mon->mcan
 		   /* && !destroyed  -- guaranteed by mhp > 1 */ ) {
-		if (clone_mon(mon)) {
+		if (clone_mon(mon, 0, 0)) {
 			pline("%s divides as you hit it!", Monnam(mon));
 			hittxt = TRUE;
 		}
@@ -1002,13 +1018,20 @@ int thrown;
 	if (silvermsg) {
 		const char *fmt;
 		char *whom = mon_nam(mon);
+		char silverobjbuf[BUFSZ];
 
 		if (canspotmon(mon)) {
 		    if (barehand_silver_rings == 1)
 			fmt = "Your silver ring sears %s!";
 		    else if (barehand_silver_rings == 2)
 			fmt = "Your silver rings sear %s!";
-		    else
+		    else if (silverobj && saved_oname[0]) {
+		    	Sprintf(silverobjbuf, "Your %s%s %s %%s!",
+		    		strstri(saved_oname, "silver") ?
+					"" : "silver ",
+				saved_oname, vtense(saved_oname, "sear"));
+		    	fmt = silverobjbuf;
+		    } else
 			fmt = "The silver sears %s!";
 		} else {
 		    *whom = highc(*whom);	/* "it" -> "It" */
@@ -1406,7 +1429,8 @@ register struct attack *mattk;
 		if (tmp <= 0) tmp = 1;
 		if (!negated && tmp < mdef->mhp) {
 		    char nambuf[BUFSZ];
-		    boolean u_saw_mon = canseemon(mdef);
+		    boolean u_saw_mon = canseemon(mdef) ||
+					(u.uswallow && u.ustuck == mdef);
 		    /* record the name before losing sight of monster */
 		    Strcpy(nambuf, Monnam(mdef));
 		    if (u_teleport_mon(mdef, FALSE) &&
@@ -1583,9 +1607,7 @@ register struct attack *mattk;
 		break;
 	    case AD_SLIM:
 		if (negated) break;	/* physical damage only */
-		if (!rn2(4) && mdef->data != &mons[PM_FIRE_VORTEX] &&
-				mdef->data != &mons[PM_FIRE_ELEMENTAL] &&
-				mdef->data != &mons[PM_SALAMANDER] &&
+		if (!rn2(4) && !flaming(mdef->data) &&
 				mdef->data != &mons[PM_GREEN_SLIME]) {
 		    You("turn %s into slime.", mon_nam(mdef));
 		    (void) newcham(mdef, &mons[PM_GREEN_SLIME], FALSE, FALSE);
@@ -1807,7 +1829,17 @@ register struct attack *mattk;
 			end_engulf();
 			return(2);
 		    case AD_PHYS:
-			pline("%s is pummeled with your debris!",Monnam(mdef));
+			if (youmonst.data == &mons[PM_FOG_CLOUD]) {
+			    pline("%s is laden with your moisture.",
+				  Monnam(mdef));
+			    if (amphibious(mdef->data) &&
+				!flaming(mdef->data)) {
+				dam = 0;
+				pline("%s seems unharmed.", Monnam(mdef));
+			    }
+			} else
+			    pline("%s is pummeled with your debris!",
+				  Monnam(mdef));
 			break;
 		    case AD_ACID:
 			pline("%s is covered with your goo!", Monnam(mdef));

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.4	2003/05/25	*/
+/*	SCCS Id: @(#)trap.c	3.4	2003/10/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -33,7 +33,6 @@ STATIC_OVL boolean FDECL(keep_saddle_with_steedcorpse,
 #ifndef OVLB
 STATIC_VAR const char *a_your[2];
 STATIC_VAR const char *A_Your[2];
-STATIC_VAR const char *the_your[2];
 STATIC_VAR const char tower_of_flame[];
 STATIC_VAR const char *A_gush_of_water_hits;
 STATIC_VAR const char * const blindgas[6];
@@ -42,7 +41,6 @@ STATIC_VAR const char * const blindgas[6];
 
 STATIC_VAR const char * const a_your[2] = { "a", "your" };
 STATIC_VAR const char * const A_Your[2] = { "A", "Your" };
-STATIC_VAR const char * const the_your[2] = { "the", "your" };
 STATIC_VAR const char tower_of_flame[] = "tower of flame";
 STATIC_VAR const char * const A_gush_of_water_hits = "A gush of water hits";
 STATIC_VAR const char * const blindgas[6] = 
@@ -464,6 +462,9 @@ int *fail_reason;
 	    return (struct monst *)0;
 	}
 
+	/* in case statue is wielded and hero zaps stone-to-flesh at self */
+	if (statue->owornmask) remove_worn_item(statue, TRUE);
+
 	/* allow statues to be of a specific gender */
 	if (statue->spe & STATUE_MALE)
 	    mon->female = FALSE;
@@ -479,6 +480,7 @@ int *fail_reason;
 	}
 	m_dowear(mon, TRUE);
 	delobj(statue);
+
 	/* mimic statue becomes seen mimic; other hiders won't be hidden */
 	if (mon->m_ap_type) seemimic(mon);
 	else mon->mundetected = FALSE;
@@ -793,9 +795,12 @@ unsigned trflags;
 	    case RUST_TRAP:
 		seetrap(trap);
 		if (u.umonnum == PM_IRON_GOLEM) {
+		    int dam = u.mhmax;
+
 		    pline("%s you!", A_gush_of_water_hits);
 		    You("are covered with rust!");
-		    rehumanize();
+		    if (Half_physical_damage) dam = (dam+1) / 2;
+		    losehp(dam, "rusting away", KILLED_BY);
 		    break;
 		} else if (u.umonnum == PM_GREMLIN && rn2(3)) {
 		    pline("%s you!", A_gush_of_water_hits);
@@ -1106,7 +1111,7 @@ glovecheck:		(void) rust_dmg(uarmg, "gauntlets", 1, TRUE, &youmonst);
 	    case LANDMINE: {
 #ifdef STEED
 		unsigned steed_mid = 0;
-		struct obj *saddle;
+		struct obj *saddle = 0;
 #endif
 		if (Levitation || Flying) {
 		    if (!already_seen && rn2(3)) break;
@@ -1117,8 +1122,8 @@ glovecheck:		(void) rust_dmg(uarmg, "gauntlets", 1, TRUE, &youmonst);
 					     "a trigger");
 		    if (already_seen && rn2(3)) break;
 		    pline("KAABLAMM!!!  %s %s%s off!",
-		    	    forcebungle ? "Your inept attempt sets" :
-		    	    		  "The air currents set",
+			  forcebungle ? "Your inept attempt sets" :
+					"The air currents set",
 			    already_seen ? a_your[trap->madeby_u] : "",
 			    already_seen ? " land mine" : "it");
 		} else {
@@ -2328,6 +2333,15 @@ long hmask, emask;     /* might cancel timeout */
 	}
 	/* check for falling into pool - added by GAN 10/20/86 */
 	if(!Flying) {
+		if (!u.uswallow && u.ustuck) {
+			if (sticks(youmonst.data))
+				You("aren't able to maintain your hold on %s.",
+					mon_nam(u.ustuck));
+			else
+				pline("Startled, %s can no longer hold you!",
+					mon_nam(u.ustuck));
+			u.ustuck = 0;
+		}
 		/* kludge alert:
 		 * drown() and lava_effects() print various messages almost
 		 * every time they're called which conflict with the "fall
@@ -2872,9 +2886,11 @@ drown()
 	if ((Teleportation || can_teleport(youmonst.data)) &&
 		    !u.usleep && (Teleport_control || rn2(3) < Luck+2)) {
 		You("attempt a teleport spell.");	/* utcsri!carroll */
-		(void) dotele();
-		if(!is_pool(u.ux,u.uy))
-			return(TRUE);
+		if (!level.flags.noteleport) {
+			(void) dotele();
+			if(!is_pool(u.ux,u.uy))
+				return(TRUE);
+		} else pline_The("attempted teleport spell fails.");
 	}
 #ifdef STEED
 	if (u.usteed) {
@@ -3747,7 +3763,7 @@ boolean disarm;
 				    stagger(youmonst.data, "stagger"));
 			}
 			make_stunned(HStun + rn1(7, 16),FALSE);
-			make_hallucinated(HHallucination + rn1(5, 16),FALSE,0L);
+			(void) make_hallucinated(HHallucination + rn1(5, 16),FALSE,0L);
 			break;
 		default: impossible("bad chest trap");
 			break;

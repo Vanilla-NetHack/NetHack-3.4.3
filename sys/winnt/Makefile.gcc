@@ -1,4 +1,4 @@
-#   SCCS Id: @(#)Makefile.gcc       3.4     $Date: 2003/05/18 18:53:57 $
+#   SCCS Id: @(#)Makefile.gcc       3.4     $Date: 2003/11/16 04:50:57 $
 #   Copyright (c) NetHack PC Development Team 1993-2003
 #
 #   NetHack 3.4.x Makefile for MinGW
@@ -498,6 +498,7 @@ $(O)install.tag:  $(DAT)/data    $(DAT)/rumors    $(DAT)/dungeon \
 ifeq  "$(USE_DLB)" "Y"
 	$(subst /,\,copy nhdat                $(GAMEDIR))
 	$(subst /,\,copy $(DAT)/license       $(GAMEDIR))
+	$(subst /,\,copy $(DAT)/opthelp       $(GAMEDIR))
 else
 	$(subst /,\,copy $(DAT)/*.            $(GAMEDIR))
 	$(subst /,\,copy $(DAT)/*.dat         $(GAMEDIR))
@@ -1254,7 +1255,7 @@ $(O)do_wear.o: do_wear.c $(HACK_H)
 $(O)dog.o: dog.c $(HACK_H) $(INCL)/edog.h
 $(O)dogmove.o: dogmove.c $(HACK_H) $(INCL)/mfndpos.h $(INCL)/edog.h
 $(O)dokick.o: dokick.c $(HACK_H) $(INCL)/eshk.h
-$(O)dothrow.o: dothrow.c $(HACK_H)
+$(O)dothrow.o: dothrow.c $(HACK_H) $(INCL)/edog.h
 $(O)drawing.o: drawing.c $(HACK_H) $(INCL)/tcap.h
 $(O)dungeon.o: dungeon.c $(HACK_H) $(INCL)/dgn_file.h $(INCL)/dlb.h
 $(O)eat.o: eat.c $(HACK_H)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.4	2003/05/25	*/
+/*	SCCS Id: @(#)invent.c	3.4	2003/12/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1080,14 +1080,12 @@ register const char *let,*word;
 	if(allowcnt == 2) {	/* cnt given */
 	    if(cnt == 0) return (struct obj *)0;
 	    if(cnt != otmp->quan) {
-		otmp = splitobj(otmp, cnt);
-		/* Very ugly kludge necessary to prevent someone from trying
-		 * to drop one of several loadstones and having the loadstone
-		 * now be separate.
-		 */
-		if (!strcmp(word, "drop") &&
-		    otmp->otyp == LOADSTONE && otmp->cursed)
-		    otmp->corpsenm = otmp->invlet;
+		/* don't split a stack of cursed loadstones */
+		if (otmp->otyp == LOADSTONE && otmp->cursed)
+		    /* kludge for canletgo()'s can't-drop-this message */
+		    otmp->corpsenm = (int) cnt;
+		else
+		    otmp = splitobj(otmp, cnt);
 	    }
 	}
 	return(otmp);
@@ -1765,7 +1763,7 @@ nextclass:
 			if (!flags.sortpack || otmp->oclass == *invlet) {
 			    if (flags.sortpack && !classcount) {
 				any.a_void = 0;		/* zero */
-				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE,
+				add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings,
 				    let_to_name(*invlet, FALSE), MENU_UNSELECTED);
 				classcount++;
 			    }
@@ -2742,7 +2740,7 @@ const char *hdr, *txt;
 	any.a_void = 0;
 	win = create_nhwindow(NHW_MENU);
 	start_menu(win);
-	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE, hdr, MENU_UNSELECTED);
+	add_menu(win, NO_GLYPH, &any, 0, 0, iflags.menu_headings, hdr, MENU_UNSELECTED);
 	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
 	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, txt, MENU_UNSELECTED);
 	end_menu(win, (char *)0);

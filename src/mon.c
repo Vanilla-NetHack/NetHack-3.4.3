@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	3.4	2003/08/24	*/
+/*	SCCS Id: @(#)mon.c	3.4	2003/12/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -96,7 +96,7 @@ int mndx, mode;
 {
 	switch (mndx) {
 /* Quest guardians */
-	case PM_STUDENT:     mndx = mode ? PM_VALKYRIE  : PM_HUMAN; break;
+	case PM_STUDENT:     mndx = mode ? PM_ARCHEOLOGIST  : PM_HUMAN; break;
 	case PM_CHIEFTAIN:   mndx = mode ? PM_BARBARIAN : PM_HUMAN; break;
 	case PM_NEANDERTHAL: mndx = mode ? PM_CAVEMAN   : PM_HUMAN; break;
 	case PM_ATTENDANT:   mndx = mode ? PM_HEALER    : PM_HUMAN; break;
@@ -149,9 +149,16 @@ STATIC_VAR short cham_to_pm[] = {
 		PM_SANDESTIN,
 };
 
-#define KEEPTRAITS(mon)	(mon->isshk || mon->mtame || \
-			 (mon->data->geno & G_UNIQ) || is_reviver(mon->data) || \
-			 (mon->m_id == quest_status.leader_m_id))
+/* for deciding whether corpse or statue will carry along full monster data */
+#define KEEPTRAITS(mon)	((mon)->isshk || (mon)->mtame ||		\
+			 ((mon)->data->geno & G_UNIQ) ||		\
+			 is_reviver((mon)->data) ||			\
+			 /* normally leader the will be unique, */	\
+			 /* but he might have been polymorphed  */	\
+			 (mon)->m_id == quest_status.leader_m_id ||	\
+			 /* special cancellation handling for these */	\
+			 (dmgtype((mon)->data, AD_SEDU) ||		\
+			  dmgtype((mon)->data, AD_SSEX)))
 
 /* Creates a monster corpse, a "special" corpse, or nothing if it doesn't
  * leave corpses.  Monsters which leave "special" corpses should have
@@ -438,7 +445,7 @@ register struct monst *mtmp;
 	    if (mtmp->mhp > 0) {
 		(void) fire_damage(mtmp->minvent, FALSE, FALSE,
 						mtmp->mx, mtmp->my);
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 		return 0;
 	    }
 	    return (1);
@@ -461,7 +468,7 @@ register struct monst *mtmp;
 	    }
 	    mondead(mtmp);
 	    if (mtmp->mhp > 0) {
-		rloc(mtmp);
+		(void) rloc(mtmp, FALSE);
 		water_damage(mtmp->minvent, FALSE, FALSE);
 		return 0;
 	    }
@@ -884,7 +891,7 @@ mpickstuff(mtmp, str)
 #endif
 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s picks up %s.", Monnam(mtmp),
-			      (distu(mtmp->my, mtmp->my) <= 5) ?
+			      (distu(mtmp->mx, mtmp->my) <= 5) ?
 				doname(otmp) : distant_name(otmp, doname));
 		obj_extract_self(otmp);
 		/* unblock point after extract, before pickup */
@@ -1568,13 +1575,18 @@ void
 mongone(mdef)
 register struct monst *mdef;
 {
+	mdef->mhp = 0;	/* can skip some inventory bookkeeping */
 #ifdef STEED
 	/* Player is thrown from his steed when it disappears */
 	if (mdef == u.usteed)
 		dismount_steed(DISMOUNT_GENERIC);
 #endif
 
-	discard_minvent(mdef);	/* release monster's inventory */
+	/* drop special items like the Amulet so that a dismissed Kop or nurse
+	   can't remove them from the game */
+	mdrop_special_objs(mdef);
+	/* release rest of monster's inventory--it is removed from game */
+	discard_minvent(mdef);
 #ifndef GOLDOBJ
 	mdef->mgold = 0L;
 #endif
@@ -1627,7 +1639,8 @@ register struct monst *mdef;
 		/* defer statue creation until after inventory removal
 		   so that saved monster traits won't retain any stale
 		   item-conferred attributes */
-		otmp = mkcorpstat(STATUE, mdef, mdef->data, x, y, FALSE);
+		otmp = mkcorpstat(STATUE, KEEPTRAITS(mdef) ? mdef : 0,
+				  mdef->data, x, y, FALSE);
 		if (mdef->mnamelth) otmp = oname(otmp, NAME(mdef));
 		while ((obj = oldminvent) != 0) {
 		    oldminvent = obj->nobj;
@@ -2020,11 +2033,12 @@ int  typ, fatal;
 		return;
 	}
 	/* suppress killer prefix if it already has one */
-	if (!strncmpi(pname, "the ", 4) ||
-		!strncmpi(pname, "an ", 3) ||
-		!strncmpi(pname, "a ", 2) ||
-	    /* ... or if it seems to be a proper name */
-		isupper(*pname)) {
+	if ((i = name_to_mon(pname)) >= LOW_PM && mons[i].geno & G_UNIQ) {
+	    kprefix = KILLED_BY;
+	    if (!type_is_pname(&mons[i])) pname = the(pname);
+	} else if (!strncmpi(pname, "the ", 4) ||
+	    !strncmpi(pname, "an ", 3) ||
+	    !strncmpi(pname, "a ", 2)) {
 	    /*[ does this need a plural check too? ]*/
 	    kprefix = KILLED_BY;
 	}

@@ -389,7 +389,7 @@ char *name;
 }
 
 #ifdef WIN32
-boolean getreturn_disable;
+boolean getreturn_enabled;
 #endif
 
 void
@@ -397,7 +397,7 @@ getreturn(str)
 const char *str;
 {
 #ifdef WIN32
-	if (getreturn_disable) return;
+	if (!getreturn_enabled) return;
 #endif
 #ifdef TOS
 	msmsg("Hit <Return> %s.", str);
@@ -408,6 +408,7 @@ const char *str;
 	return;
 }
 
+#ifndef WIN32CON
 void
 msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
@@ -416,14 +417,12 @@ msmsg VA_DECL(const char *, fmt)
 	if (iflags.grmode)
 		gr_finish();
 # endif
-#ifdef WIN32CON
-	if (iflags.rawio) set_output_mode(0);
-#endif
 	Vprintf(fmt, VA_ARGS);
 	flushout();
 	VA_END();
 	return;
 }
+#endif
 
 /*
  * Follow the PATH, trying to fopen the file.
@@ -491,10 +490,6 @@ void nethack_exit(code)
 int code;
 {
 	msexit();
-#ifdef MTHREAD_VIEW
-	if (iflags.mthreaded) nh_thread_exit(code);  /* no return from this */
-	else
-#endif
 	exit(code);
 }
 
@@ -537,8 +532,9 @@ static void msexit()
 	 * not vanish instantly after being created.
 	 * GUILaunched is defined and set in nttty.c.
 	 */
-
+	synch_cursor();
 	if (GUILaunched) getreturn("to end");
+	synch_cursor();
 #endif
 	return;
 }

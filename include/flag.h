@@ -168,10 +168,12 @@ struct instance_flags {
 	boolean  menu_requested; /* Flag for overloaded use of 'm' prefix
 				  * on some non-move commands */
 	uchar num_pad_mode;
+	int	menu_headings;	/* ATR for menu headings */
 	int      purge_monsters;	/* # of dead monsters still on fmon list */
 	int *opt_booldup;	/* for duplication of boolean opts in config file */
 	int *opt_compdup;	/* for duplication of compound opts in config file */
 	uchar	bouldersym;	/* symbol for boulder display */
+	boolean travel1;	/* first travel step */
 	coord	travelcc;	/* coordinates for travel_cache */
 #ifdef WIZARD
 	boolean  sanity_check;	/* run sanity checks */
@@ -269,6 +271,11 @@ struct instance_flags {
 	boolean  showrace;	/* show hero glyph by race rather than by role */
 	boolean  travelcmd;	/* allow travel command */
 	int	 runmode;	/* update screen display during run moves */
+#ifdef AUTOPICKUP_EXCEPTIONS
+	struct autopickup_exception *autopickup_exceptions[2];
+#define AP_LEAVE 0
+#define AP_GRAB	 1
+#endif
 #ifdef WIN32CON
 #define MAX_ALTKEYHANDLER 25
 	char	 altkeyhandler[MAX_ALTKEYHANDLER];

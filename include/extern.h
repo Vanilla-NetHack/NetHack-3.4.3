@@ -369,6 +369,9 @@ E int NDECL(Gloves_off);
 E int NDECL(Boots_off);
 E int NDECL(Cloak_off);
 E int NDECL(Shield_off);
+#ifdef TOURIST
+E int NDECL(Shirt_off);
+#endif
 E void NDECL(Amulet_off);
 E void FDECL(Ring_on, (struct obj *));
 E void FDECL(Ring_off, (struct obj *));
@@ -502,7 +505,7 @@ E boolean FDECL(Invocation_lev, (d_level *));
 E xchar NDECL(level_difficulty);
 E schar FDECL(lev_by_name, (const char *));
 #ifdef WIZARD
-E schar FDECL(print_dungeon, (BOOLEAN_P));
+E schar FDECL(print_dungeon, (BOOLEAN_P,schar *,xchar *));
 #endif
 
 /* ### eat.c ### */
@@ -916,7 +919,7 @@ E void FDECL(readmail, (struct obj *));
 /* ### makemon.c ### */
 
 E boolean FDECL(is_home_elemental, (struct permonst *));
-E struct monst *FDECL(clone_mon, (struct monst *));
+E struct monst *FDECL(clone_mon, (struct monst *,XCHAR_P,XCHAR_P));
 E struct monst *FDECL(makemon, (struct permonst *,int,int,int));
 E boolean FDECL(create_critters, (int,struct permonst *));
 E struct permonst *NDECL(rndmonst);
@@ -935,6 +938,7 @@ E void FDECL(mimic_hit_msg, (struct monst *, SHORT_P));
 E void FDECL(mkmonmoney, (struct monst *, long));
 #endif
 E void FDECL(bagotricks, (struct obj *));
+E boolean FDECL(propagate, (int, BOOLEAN_P,BOOLEAN_P));
 
 /* ### mapglyph.c ### */
 
@@ -1028,6 +1032,7 @@ E void NDECL(movebubbles);
 E void NDECL(water_friction);
 E void FDECL(save_waterlevel, (int,int));
 E void FDECL(restore_waterlevel, (int));
+E const char *FDECL(waterbody_name, (XCHAR_P,XCHAR_P));
 
 /* ### mkobj.c ### */
 
@@ -1323,6 +1328,7 @@ E void NDECL(nttty_rubout);
 E int NDECL(tgetch);
 E int FDECL(ntposkey,(int *, int *, int *));
 E void FDECL(set_output_mode, (int));
+E void NDECL(synch_cursor);
 #endif
 
 /* ### o_init.c ### */
@@ -1395,6 +1401,10 @@ E void FDECL(set_duplicate_opt_detection, (int));
 E void FDECL(set_wc_option_mod_status, (unsigned long, int));
 E void FDECL(set_wc2_option_mod_status, (unsigned long, int));
 E void FDECL(set_option_mod_status, (const char *,int));
+#ifdef AUTOPICKUP_EXCEPTIONS
+E int FDECL(add_autopickup_exception, (const char *));
+E void NDECL(free_autopickup_exceptions);
+#endif /* AUTOPICKUP_EXCEPTIONS */
 
 /* ### pager.c ### */
 
@@ -1486,6 +1496,7 @@ E int FDECL(use_container, (struct obj *,int));
 E int FDECL(loot_mon, (struct monst *,int *,boolean *));
 E const char *FDECL(safe_qbuf, (const char *,unsigned,
 				const char *,const char *,const char *));
+E boolean FDECL(is_autopickup_exception, (struct obj *, BOOLEAN_P));
 
 /* ### pline.c ### */
 
@@ -1537,7 +1548,7 @@ E void FDECL(make_stunned, (long,BOOLEAN_P));
 E void FDECL(make_blinded, (long,BOOLEAN_P));
 E void FDECL(make_sick, (long, const char *, BOOLEAN_P,int));
 E void FDECL(make_vomiting, (long,BOOLEAN_P));
-E void FDECL(make_hallucinated, (long,BOOLEAN_P,long));
+E boolean FDECL(make_hallucinated, (long,BOOLEAN_P,long));
 E int NDECL(dodrink);
 E int FDECL(dopotion, (struct obj *));
 E int FDECL(peffects, (struct obj *));
@@ -1894,6 +1905,7 @@ E void FDECL(remove_worn_item, (struct obj *,BOOLEAN_P));
 E int FDECL(steal, (struct monst *, char *));
 E int FDECL(mpickobj, (struct monst *,struct obj *));
 E void FDECL(stealamulet, (struct monst *));
+E void FDECL(mdrop_special_objs, (struct monst *));
 E void FDECL(relobj, (struct monst *,int,BOOLEAN_P));
 #ifdef GOLDOBJ
 E struct obj *FDECL(findgold, (struct obj *));
@@ -1929,7 +1941,7 @@ E void FDECL(domagicportal, (struct trap *));
 E void FDECL(tele_trap, (struct trap *));
 E void FDECL(level_tele_trap, (struct trap *));
 E void FDECL(rloc_to, (struct monst *,int,int));
-E void FDECL(rloc, (struct monst *));
+E boolean FDECL(rloc, (struct monst *, BOOLEAN_P));
 E boolean FDECL(tele_restrict, (struct monst *));
 E void FDECL(mtele_trap, (struct monst *, struct trap *,int));
 E int FDECL(mlevel_tele_trap, (struct monst *, struct trap *,BOOLEAN_P,int));
@@ -2094,6 +2106,7 @@ E boolean NDECL(gd_sound);
 
 /* ### version.c ### */
 
+E char *FDECL(version_string, (char *));
 E char *FDECL(getversionstring, (char *));
 E int NDECL(doversion);
 E int NDECL(doextversion);
@@ -2238,7 +2251,7 @@ E void FDECL(skill_init, (const struct def_skill *));
 
 E void FDECL(were_change, (struct monst *));
 E void FDECL(new_were, (struct monst *));
-E boolean FDECL(were_summon, (struct permonst *,BOOLEAN_P));
+E int FDECL(were_summon, (struct permonst *,BOOLEAN_P,int *,char *));
 E void NDECL(you_were);
 E void FDECL(you_unwere, (BOOLEAN_P));
 
@@ -2295,6 +2308,7 @@ E void FDECL(wormgone, (struct monst *));
 E void FDECL(wormhitu, (struct monst *));
 E void FDECL(cutworm, (struct monst *,XCHAR_P,XCHAR_P,struct obj *));
 E void FDECL(see_wsegs, (struct monst *));
+E void FDECL(detect_wsegs, (struct monst *,BOOLEAN_P));
 E void FDECL(save_worm, (int,int));
 E void FDECL(rest_worm, (int));
 E void FDECL(place_wsegs, (struct monst *));

@@ -251,16 +251,11 @@ nh_timeout()
 			if ((m_idx = name_to_mon(killer)) >= LOW_PM) {
 			    if (type_is_pname(&mons[m_idx])) {
 				killer_format = KILLED_BY;
-			    }
-#if 0				/* at present, there aren't any monster
-				   poisoners with titles rather than names */
-			    else if (mons[m_idx].geno & G_UNIQ) {
-				char buf[BUFSZ];
-				Sprintf(buf, "the %s", killer);
-				Strcpy(u.usick_cause, buf);
+			    } else if (mons[m_idx].geno & G_UNIQ) {
+				killer = the(killer);
+				Strcpy(u.usick_cause, killer);
 				killer_format = KILLED_BY;
 			    }
-#endif
 			}
 			u.usick_type = 0;
 			done(POISONING);
@@ -306,7 +301,7 @@ nh_timeout()
 			break;
 		case HALLUC:
 			HHallucination = 1;
-			make_hallucinated(0L, TRUE, 0L);
+			(void) make_hallucinated(0L, TRUE, 0L);
 			stop_occupation();
 			break;
 		case SLEEPING:

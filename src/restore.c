@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.4	2002/08/21	*/
+/*	SCCS Id: @(#)restore.c	3.4	2003/09/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -270,6 +270,13 @@ boolean ghostly;
 		if (moved && mtmp->data) {
 			int offset = mtmp->data - monbegin;	/*(ptrdiff_t)*/
 			mtmp->data = mons + offset;  /* new permonst location */
+		}
+		if (ghostly) {
+			int mndx = monsndx(mtmp->data);
+			if (propagate(mndx, TRUE, ghostly) == 0) {
+				/* cookie to trigger purge in getbones() */
+				mtmp->mhpmax = DEFUNCT_MONSTER;	
+			}
 		}
 		if(mtmp->minvent) {
 			struct obj *obj;

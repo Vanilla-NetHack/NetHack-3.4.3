@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.4	2003/05/09	*/
+/*	SCCS Id: @(#)objnam.c	3.4	2003/12/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1139,7 +1139,7 @@ register const char *verb;
 		    /* also check for <prefix><space><special_subj>
 		       to catch things like "the invisible erinys" */
 		    if (len > ltmp && *(spot - ltmp) == ' ' &&
-			    strncmpi(*spec, spot - ltmp + 1, ltmp)) goto sing;
+			   !strncmpi(*spec, spot - ltmp + 1, ltmp)) goto sing;
 		}
 
 		return strcpy(buf, verb);
@@ -2051,7 +2051,7 @@ boolean from_user;
 		as++;
 	}
 	/* can't use spellings list for this one due to shuffling */
-	if (!strcmpi(bp, "grey spellbook"))
+	if (!strncmpi(bp, "grey spell", 10))
 		*(bp + 2) = 'a';
     }
 

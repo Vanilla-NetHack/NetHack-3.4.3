@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	3.4	2003/01/02	*/
+/*	SCCS Id: @(#)mhitu.c	3.4	2003/11/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -490,15 +490,38 @@ mattacku(mtmp)
 	    mdat = mtmp->data;
 
 	    if(!rn2(10) && !mtmp->mcan) {
-		if(youseeit) {
+	    	int numseen, numhelp;
+		char buf[BUFSZ], genericwere[BUFSZ];
+
+		Strcpy(genericwere, "creature");
+		numhelp = were_summon(mdat, FALSE, &numseen, genericwere);
+		if (youseeit) {
 			pline("%s summons help!", Monnam(mtmp));
-		} else
-			You_feel("hemmed in.");
-		/* Technically wrong; we really should check if you can see the
-		 * help, but close enough...
-		 */
-		if (!were_summon(mdat,FALSE) && youseeit)
-		    pline("But none comes.");
+			if (numhelp > 0) {
+			    if (numseen == 0)
+				You_feel("hemmed in.");
+			} else pline("But none comes.");
+		} else {
+			const char *from_nowhere;
+
+			if (flags.soundok) {
+				pline("%s %s!", Something,
+					makeplural(growl_sound(mtmp)));
+				from_nowhere = "";
+			} else from_nowhere = " from nowhere";
+			if (numhelp > 0) {
+			    if (numseen < 1) You_feel("hemmed in.");
+			    else {
+				if (numseen == 1)
+			    		Sprintf(buf, "%s appears",
+							an(genericwere));
+			    	else
+			    		Sprintf(buf, "%s appear",
+							makeplural(genericwere));
+				pline("%s%s!", upstart(buf), from_nowhere);
+			    }
+			} /* else no help came; but you didn't know it tried */
+		}
 	    }
 	}
 
@@ -1170,8 +1193,17 @@ dopois:
 				    && !(poly_when_stoned(youmonst.data) &&
 					polymon(PM_STONE_GOLEM))) {
 				Stoned = 5;
-				killer_format = KILLED_BY_AN;
 				delayed_killer = mtmp->data->mname;
+				if (mtmp->data->geno & G_UNIQ) {
+				    if (!type_is_pname(mtmp->data)) {
+					static char kbuf[BUFSZ];
+
+					/* "the" buffer may be reallocated */
+					Strcpy(kbuf, the(delayed_killer));
+					delayed_killer = kbuf;
+				    }
+				    killer_format = KILLED_BY;
+				} else killer_format = KILLED_BY_AN;
 				return(1);
 				/* You("turn to stone..."); */
 				/* done_in_by(mtmp); */
@@ -1251,7 +1283,7 @@ dopois:
 			pline("%s %s.", Monnam(mtmp), mtmp->minvent ?
 		    "brags about the goods some dungeon explorer provided" :
 		    "makes some remarks about how difficult theft is lately");
-			if (!tele_restrict(mtmp)) rloc(mtmp);
+			if (!tele_restrict(mtmp)) (void) rloc(mtmp, FALSE);
 			return 3;
 		} else if (mtmp->mcan) {
 		    if (!Blind) {
@@ -1261,7 +1293,7 @@ dopois:
 			    flags.female ? "unaffected" : "uninterested");
 		    }
 		    if(rn2(3)) {
-			if (!tele_restrict(mtmp)) rloc(mtmp);
+			if (!tele_restrict(mtmp)) (void) rloc(mtmp, FALSE);
 			return 3;
 		    }
 		    break;
@@ -1274,7 +1306,7 @@ dopois:
 			break;
 		  default:
 			if (!is_animal(mtmp->data) && !tele_restrict(mtmp))
-			    rloc(mtmp);
+			    (void) rloc(mtmp, FALSE);
 			if (is_animal(mtmp->data) && *buf) {
 			    if (canseemon(mtmp))
 				pline("%s tries to %s away with %s.",
@@ -1378,7 +1410,7 @@ dopois:
 			mongone(mtmp);
 			return 2;
 		    } else if (!rn2(33)) {
-			if (!tele_restrict(mtmp)) rloc(mtmp);
+			if (!tele_restrict(mtmp)) (void) rloc(mtmp, FALSE);
 			monflee(mtmp, d(3, 6), TRUE, FALSE);
 			return 3;
 		    }
@@ -1492,9 +1524,7 @@ dopois:
 	    case AD_SLIM:    
 		hitmsg(mtmp, mattk);
 		if (!uncancelled) break;
-		if (youmonst.data == &mons[PM_FIRE_VORTEX] ||
-				youmonst.data == &mons[PM_SALAMANDER] ||
-				youmonst.data == &mons[PM_FIRE_ELEMENTAL]) {
+		if (flaming(youmonst.data)) {
 		    pline_The("slime burns away!");
 		    dmg = 0;
 		} else if (Unchanging ||
@@ -1684,11 +1714,15 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		    }
 		    break;
 		case AD_PHYS:
-		    if (mtmp->data == &mons[PM_FOG_CLOUD])
-			You("are laden with moisture and can barely %s!",
-				!breathless(youmonst.data) ? "breathe" :
-				"stay conscious");
-		    else {
+		    if (mtmp->data == &mons[PM_FOG_CLOUD]) {
+			You("are laden with moisture and %s",
+			    flaming(youmonst.data) ? "are smoldering out!" :
+			    Breathless ? "find it mildly uncomfortable." :
+			    amphibious(youmonst.data) ? "feel comforted." :
+			    "can barely breathe!");
+			/* NB: Amphibious includes Breathless */
+			if (Amphibious && !flaming(youmonst.data)) tmp = 0;
+		    } else {
 			You("are pummeled with debris!");
 			exercise(A_STR, FALSE);
 		    }
@@ -1836,9 +1870,11 @@ common:
 			 u.umonnum == PM_VIOLET_FUNGUS ||
 			 dmgtype(youmonst.data, AD_STUN));
 		if (!not_affected) {
+		    boolean chg;
 		    if (!Hallucination)
-			You("are freaked by a blast of kaleidoscopic light!");
-		    make_hallucinated(HHallucination + (long)tmp,FALSE,0L);
+			You("are caught in a blast of kaleidoscopic light!");
+		    chg = make_hallucinated(HHallucination + (long)tmp,FALSE,0L);
+		    You("%s.", chg ? "are freaked out" : "seem unaffected");
 		}
 		break;
 
@@ -1864,33 +1900,33 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 	switch(mattk->adtyp) {
 	    case AD_STON:
 		if (mtmp->mcan || !mtmp->mcansee) {
-		    if (mtmp->data == &mons[PM_MEDUSA] && canseemon(mtmp)) {
-			if (mtmp->mcan) {
-			    pline("%s doesn't look all that ugly.",
-				  Monnam(mtmp));
-			    break;
-			}
-		    }
-		    if (canseemon(mtmp))
-			pline("%s gazes ineffectually.", Monnam(mtmp));
+		    if (!canseemon(mtmp)) break;	/* silently */
+		    pline("%s %s.", Monnam(mtmp),
+			  (mtmp->data == &mons[PM_MEDUSA] && mtmp->mcan) ?
+				"doesn't look all that ugly" :
+				"gazes ineffectually");
 		    break;
 		}
-		if (Reflecting && canspotmon(mtmp) &&
-		    mtmp->data == &mons[PM_MEDUSA]) {
-		    if(!Blind) {
-		    	(void) ureflects("%s gaze is reflected by your %s.",
-		    			s_suffix(Monnam(mtmp)));
-		    	if (mon_reflects(mtmp,
-		    			"The gaze is reflected away by %s %s!"))
-		    	    break;
-			if (!m_canseeu(mtmp)) { /* probably you're invisible */
-			    pline("%s doesn't seem to notice that %s gaze was reflected.",
-				Monnam(mtmp),
-				mhis(mtmp));
-			    break;
-			}
-			pline("%s is turned to stone!", Monnam(mtmp));
+		if (Reflecting && couldsee(mtmp->mx, mtmp->my) &&
+			mtmp->data == &mons[PM_MEDUSA]) {
+		    /* hero has line of sight to Medusa and she's not blind */
+		    boolean useeit = canseemon(mtmp);
+
+		    if (useeit)
+			(void) ureflects("%s gaze is reflected by your %s.",
+					 s_suffix(Monnam(mtmp)));
+		    if (mon_reflects(mtmp, !useeit ? (char *)0 :
+				     "The gaze is reflected away by %s %s!"))
+			break;
+		    if (!m_canseeu(mtmp)) { /* probably you're invisible */
+			if (useeit)
+			    pline(
+		      "%s doesn't seem to notice that %s gaze was reflected.",
+				  Monnam(mtmp), mhis(mtmp));
+			break;
 		    }
+		    if (useeit)
+			pline("%s is turned to stone!", Monnam(mtmp));
 		    stoned = TRUE;
 		    killed(mtmp);
 
@@ -1932,8 +1968,8 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 		    int stun = d(2,6);
 
 		    mtmp->mspec_used = mtmp->mspec_used + (stun + rn2(6));
-		    make_stunned(HStun + stun, TRUE);
 		    pline("%s stares piercingly at you!", Monnam(mtmp));
+		    make_stunned(HStun + stun, TRUE);
 		    stop_occupation();
 		}
 		break;
@@ -2234,7 +2270,7 @@ register struct monst *mon;
 	if (uarm || uarmc) {
 		verbalize("You're such a %s; I wish...",
 				flags.female ? "sweet lady" : "nice guy");
-		if (!tele_restrict(mon)) rloc(mon);
+		if (!tele_restrict(mon)) (void) rloc(mon, FALSE);
 		return 1;
 	}
 	if (u.ualign.type == A_CHAOTIC)
@@ -2366,7 +2402,7 @@ register struct monst *mon;
 #endif
 	}
 	if (!rn2(25)) mon->mcan = 1; /* monster is worn out */
-	if (!tele_restrict(mon)) rloc(mon);
+	if (!tele_restrict(mon)) (void) rloc(mon, FALSE);
 	return 1;
 }
 
