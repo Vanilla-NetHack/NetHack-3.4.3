@@ -12,7 +12,7 @@
 
 #ifdef HARD
 /*	TODO:	Expand this list.	*/
-static const int nasties[] = {
+static const int NEARDATA nasties[] = {
 	PM_COCKATRICE, PM_ETTIN, PM_STALKER, PM_MINOTAUR, PM_RED_DRAGON,
 	PM_GREEN_DRAGON, PM_OWLBEAR, PM_PURPLE_WORM, PM_ROCK_TROLL, PM_XAN,
 	PM_GREMLIN, PM_UMBER_HULK, PM_VAMPIRE_LORD, PM_XORN, PM_ZRUTY,
@@ -22,7 +22,7 @@ static const int nasties[] = {
 	};
 #endif /* HARD */
 
-static const unsigned wizapp[] = {
+static const unsigned NEARDATA wizapp[] = {
 	PM_HUMAN, PM_WATER_DEMON, PM_VAMPIRE,
 	PM_RED_DRAGON, PM_TROLL, PM_UMBER_HULK,
 	PM_XORN, PM_XAN, PM_COCKATRICE,

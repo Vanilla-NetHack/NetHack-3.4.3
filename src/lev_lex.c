@@ -54,6 +54,7 @@ int FDECL (yyoutput, (int));
 
 #ifdef MSDOS
 #undef exit
+extern void FDECL(exit, (int));
 #endif
 
 /* this doesn't always get put in lev_comp.h

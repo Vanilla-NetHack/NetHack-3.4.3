@@ -83,32 +83,26 @@ static int NDECL((*timed_occ_fn));
 
 #endif /* OVL1 */
 
-#ifndef OVERLAY
-static int NDECL(timed_occupation);
-static int NDECL(doextcmd);
+STATIC_PTR int NDECL(timed_occupation);
+STATIC_PTR int NDECL(doextcmd);
 # ifdef POLYSELF
-static int NDECL(domonability);
+STATIC_PTR int NDECL(domonability);
 # endif
 # ifdef WIZARD
-static int NDECL(wiz_wish);
-static int NDECL(wiz_identify);
-static int NDECL(wiz_map);
-static int NDECL(wiz_genesis);
-static int NDECL(wiz_where);
-static int NDECL(wiz_detect);
-static int NDECL(wiz_level_tele);
+STATIC_PTR int NDECL(wiz_wish);
+STATIC_PTR int NDECL(wiz_identify);
+STATIC_PTR int NDECL(wiz_map);
+STATIC_PTR int NDECL(wiz_genesis);
+STATIC_PTR int NDECL(wiz_where);
+STATIC_PTR int NDECL(wiz_detect);
+STATIC_PTR int NDECL(wiz_level_tele);
 # endif
 # ifdef EXPLORE_MODE
-static int NDECL(enter_explore_mode);
+STATIC_PTR int NDECL(enter_explore_mode);
 # endif
 # if defined(WIZARD) || defined(EXPLORE_MODE)
-static int NDECL(wiz_attributes);
+STATIC_PTR int NDECL(wiz_attributes);
 # endif
-#endif /* OVERLAY */
-
-#ifdef REDO
-static char NDECL(popch);
-#endif
 
 #ifdef STUPID_CPP
 static char FDECL(unctrl, (CHAR_P));
@@ -118,10 +112,7 @@ static char FDECL(unmeta, (CHAR_P));
 #ifdef OVL1
 
 /* Count down by decrementing multi */
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 timed_occupation() {
 	(*timed_occ_fn)();
 	if (multi > 0)
@@ -169,6 +160,9 @@ int xtime;
 }
 
 #ifdef REDO
+
+static char NDECL(popch);
+
 /* Provide a means to redo the last command.  The flag `in_doagain' is set
  * to true while redoing the command.  This flag is tested in commands that
  * require additional input (like `throw' which requires a thing and a
@@ -177,7 +171,7 @@ int xtime;
  */
 #define BSIZE 20
 static char pushq[BSIZE], saveq[BSIZE];
-static int phead, ptail, shead, stail;
+static int NEARDATA phead, NEARDATA ptail, NEARDATA shead, NEARDATA stail;
 
 static char
 popch() {
@@ -232,10 +226,7 @@ char ch;
 #endif /* OVL1 */
 #ifdef OVLB
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 doextcmd()	/* here after # - now read a full-word command */
 {
 	char buf[BUFSZ];
@@ -290,10 +281,7 @@ quit:
 }
 
 #ifdef POLYSELF
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 domonability()
 {
 	if (can_breathe(uasmon)) return dobreathe();
@@ -312,10 +300,7 @@ domonability()
 #endif
 
 #ifdef EXPLORE_MODE
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 enter_explore_mode()
 {
 	if(!discover && !wizard) {
@@ -342,10 +327,7 @@ enter_explore_mode()
 #endif
 
 #ifdef WIZARD
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_wish()	/* Unlimited wishes for wizard mode by Paul Polderman */
 {
 	if (wizard)	makewish();
@@ -353,10 +335,7 @@ wiz_wish()	/* Unlimited wishes for wizard mode by Paul Polderman */
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_identify()
 {
 	struct obj *obj;
@@ -372,10 +351,7 @@ wiz_identify()
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_map()
 {
 	if (wizard)	do_mapping();
@@ -383,10 +359,7 @@ wiz_map()
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_genesis()
 {
 	if (wizard)	(void) create_particular();
@@ -394,10 +367,7 @@ wiz_genesis()
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_where()
 {
 	if (wizard) {
@@ -422,10 +392,7 @@ wiz_where()
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_detect()
 {
 	if(wizard)  (void) findit();
@@ -433,10 +400,7 @@ wiz_detect()
 	return 0;
 }
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_level_tele()
 {
 	if (wizard)	level_tele();
@@ -484,8 +448,10 @@ enlightenment() {
 	if (Protection) cornline(1, "You are protected.");
 	if (Warning) cornline(1, "You are warned.");
 	if (Teleport_control) cornline(1, "You have teleport control.");
+#ifdef POLYSELF
 	if (Polymorph) cornline(1, "You are polymorphing.");
 	if (Polymorph_control) cornline(1, "You have polymorph control.");
+#endif
 	if (Telepat) cornline(1, "You are telepathic.");
 	if (Fast) cornline(1, "You are fast.");
 	/* if (Stunned) cornline(1, "You are stunned."); */
@@ -535,10 +501,7 @@ enlightenment() {
 }
 
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_PTR int
 wiz_attributes()
 {
 	if (wizard || discover)
@@ -860,10 +823,10 @@ char sym;
 }
 
 /* 'rogue'-like direction commands */
-const char sdir[] = "hykulnjb><";
-const char ndir[] = "47896321><";
-const schar xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
-const schar ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
+const char NEARDATA sdir[] = "hykulnjb><";
+const char NEARDATA ndir[] = "47896321><";
+const schar NEARDATA xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
+const schar NEARDATA ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
 const schar zdir[10] = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
 
 #ifdef WALKIES
@@ -911,9 +874,6 @@ char sym;
 	return !u.dz;
 }
 
-#endif /* OVL1 */
-#ifdef OVLB
-
 int
 getdir(s)
 boolean s;
@@ -938,6 +898,9 @@ boolean s;
 	if(!u.dz && (Stunned || (Confusion && !rn2(5)))) confdir();
 	return 1;
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 confdir()

@@ -40,7 +40,7 @@ struct prop {
 
 
 	long p_flgs;
-	int (*p_tofn)();	/* called after timeout */
+	int NDECL((*p_tofn));	/* called after timeout */
 };
 
 struct you {

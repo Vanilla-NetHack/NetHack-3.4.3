@@ -17,7 +17,7 @@ SYSTEM = Sysunix
 #
 SHELL=/bin/sh
 
-# if you are cross-compiling (eg. from Xenix into a Dos enviornment) you will
+# if you are cross-compiling (eg. from Xenix into a Dos environment) you will
 # have to redefine this filename prefix (which is used to select the filenames
 # *main.c, *tty.c, and *unix.c for the target environment)
 #
@@ -25,10 +25,9 @@ SHELL=/bin/sh
 # Systos wants 'pc'; everything else normally wants 'unix'
 TARG = unix
 
+
 # if you are using gcc as your compiler:
-#	add -fwritable-strings to your other CFLAGS
 #	uncomment the CC definition below if it's not in your environment
-#	ignore warnings about initializing non-const *s from const *s
 #	if you get setcgtty() warnings during execution, you are feeding gcc
 #		a non-ANSI <sys/ioctl.h> -- either run fixincludes on it or use
 #		-traditional in CFLAGS
@@ -38,21 +37,42 @@ TARG = unix
 # flags for 286 Xenix:
 # CFLAGS = -Ml2t16 -O -LARGE -I../include
 # LFLAGS = -Ml -F 4000 -SEG 512
+
 # flags for 286 Microport SysV-AT
 # CFLAGS = -DDUMB -Ml -I../include
 # LFLAGS = -Ml
+
+# flags for Atari GCC
+# CFLAGS = -mshort -O -I../include
+# LFLAGS = -s -mshort
+
+# flags for Apollos using their native cc
+# (as long as it claims to be __STDC__ but isn't)
+# CFLAGS = -DAPOLLO -O -I../include
+
 # flags for debugging:
 # CFLAGS = -g -I../include
 
 CFLAGS = -O -I../include
 LFLAGS =
 
+
 # on some systems the termcap library is in -ltermcap or -lcurses
 # on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
 # Sysatt uses shared library in lieu of this option
+# Systos needs -lcurses16 if you use -mshort
+#
 # TERMLIB = -ltermcap
 # TERMLIB = -lcurses
 TERMLIB = -ltermlib
+
+# any other strange libraries your system needs (for Sysunix only -- the more
+# specialized targets should already be right)
+#
+# on HP-UX, the malloc(3x) routines in libmalloc.a seem to align things
+# better than the malloc(3) ones in libc.a
+# LIBS = -lmalloc
+LIBS =
 
 # yacc/lex programs to use to generate lev_comp.c, lev_comp.h, and lev_lex.c.
 # if, instead of yacc/lex you have bison/flex, comment/uncomment the following.
@@ -91,8 +111,8 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c bones.c cmd.c\
 # all .c that are part of the main NetHack program and are not system specific
 
 # now the other .c files, with duplicates commented out
-MAKESRC = makedefs.c panic.c # monst.c objects.c
-SPLEVSRC = lev_comp.c lev_lex.c lev_main.c # alloc.c monst.c objects.c panic.c
+MAKESRC = makedefs.c # monst.c objects.c
+SPLEVSRC = lev_comp.c lev_lex.c lev_main.c panic.c # alloc.c monst.c objects.c
 TARGSRC = $(TARG)main.c $(TARG)tty.c $(TARG)unix.c
 
 CSOURCES = $(HACKCSRC) $(TARGSRC) $(MAKESRC) $(SPLEVSRC)
@@ -106,15 +126,15 @@ HACKINCL = amiconf.h artifact.h attrib.h color.h config.h coord.h decl.h\
 	   youprop.h
 
 # all .h files except date.h, onames.h, pm.h & trap.h which would cause
-# dependency loops if run through "make depend".
-# and lev_comp.h, a special level file
+# dependency loops if run through "make depend"
+# and lev_comp.h, a special level file.
 
 HSOURCES = $(HACKINCL) date.h onames.h pm.h trap.h lev_comp.h
 
 SOURCES = $(CSOURCES) $(HSOURCES)
 
 # object files for makedefs
-MAKEOBJS = makedefs.o monst.o objects.o panic.o
+MAKEOBJS = makedefs.o monst.o objects.o
 
 # object files for special levels compiler
 SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o alloc.o monst.o objects.o panic.o
@@ -138,7 +158,7 @@ $(GAME):	$(SYSTEM)
 
 Sysunix:	$(HOBJ) Makefile
 	@echo "Loading ..."
-	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) $(TERMLIB)
+	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) $(TERMLIB) $(LIBS)
 	@touch Sysunix
 
 Sys3B2:	$(HOBJ) Makefile
@@ -151,9 +171,9 @@ Sysatt:	$(HOBJ) Makefile
 	@$(LD) $(LFLAGS) /lib/crt0s.o /lib/shlib.ifile -o $(GAME) $(HOBJ)
 	@touch Sysatt
 
-Systos:	$(HOBJ) oldtos.o Makefile
+Systos:	$(HOBJ) msdos.o Makefile
 	@echo "Loading ..."
-	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) oldtos.o $(TERMLIB)
+	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) msdos.o $(TERMLIB)
 	@touch Systos
 
 SysV-AT:	DUMB.Setup $(HOBJ) Makefile
@@ -184,24 +204,21 @@ DUMB.Setup:	../include/extern.h
 all:	$(GAME)
 
 #
-#	Please note:	The dependency lines for the modules here are
-#			deliberately incorrect.  Including "hack.h" in
-#			the dependency list would cause a dependency
-#			loop.
+#	dependencies for auxiliary programs
 #
 makedefs:	$(MAKEOBJS)
 	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
 
-makedefs.o:  ../include/config.h ../include/permonst.h
+makedefs.o:  ../include/config.h ../include/permonst.h ../include/objclass.h ../include/patchlevel.h
 
 lev_comp:  $(SPLEVOBJS)
 	$(CC) $(LFLAGS) -o lev_comp $(SPLEVOBJS)
 
 lev_comp.o:  ../include/hack.h ../include/sp_lev.h
 
-lev_lex.o:   ../include/lev_comp.h ../include/hack.h ../include/sp_lev.h
+lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h
 
-lev_main.o:  ../include/hack.h ../include/sp_lev.h
+lev_main.o:  ../include/hack.h
 
 ../include/lev_comp.h: lev_comp.c
 
@@ -216,7 +233,7 @@ lev_lex.c: lev_comp.l
 
 #
 #	The following include files depend on makedefs to be created.
-#	As a result, they are not defined in HACKINCL, instead, their
+#	As a result, they are not defined in HACKINCL; instead, their
 #	dependencies are explicitly outlined here.
 #
 
@@ -230,7 +247,7 @@ lev_lex.c: lev_comp.l
 ../include/date.h:	$(HACKCSRC) $(TARGSRC) ../include/hack.h makedefs
 	./makedefs -v
 
-../include/trap.h:	../include/config.h makedefs
+../include/trap.h:	makedefs
 	./makedefs -t
 
 ../include/onames.h:	makedefs
@@ -241,7 +258,7 @@ lev_lex.c: lev_comp.l
 
 #
 #	The following programs vary depending on what OS you are using.
-#	As a result, they are not defined in HACKSRC, and their dependancies
+#	As a result, they are not defined in HACKSRC, and their dependencies
 #	are explicitly outlined here.
 #
 main.o:	../include/hack.h $(TARG)main.c
@@ -281,9 +298,6 @@ clean:
 spotless: clean
 	rm -f a.out core $(GAME) lev_comp makedefs
 	rm -f ../include/onames.h ../include/pm.h
-	touch ../include/onames.h ../include/pm.h
-	touch makedefs.c
-#(make sure files exist and have timestamps in the right order for next compile)
 
 
 depend:
@@ -331,7 +345,7 @@ depend:
 	@rm -f Makefile.bak
 
 # PC dependency for Systos that won't be made on a UNIX system
-oldtos.o:  ../include/hack.h
+msdos.o:  ../include/hack.h
 
 # DO NOT DELETE THIS LINE
 
@@ -372,7 +386,7 @@ mklev.o:  ../include/hack.h
 mkmaze.o:  ../include/hack.h
 mkobj.o:  ../include/hack.h
 mkroom.o:  ../include/hack.h
-mon.o:  ../include/hack.h ../include/mfndpos.h ../include/artifact.h ../include/wseg.h
+mon.o:  ../include/hack.h ../include/mfndpos.h ../include/wseg.h
 mondata.o:  ../include/hack.h ../include/eshk.h ../include/epri.h
 monmove.o:  ../include/hack.h ../include/mfndpos.h ../include/artifact.h
 monst.o:  ../include/config.h ../include/permonst.h ../include/monsym.h ../include/eshk.h ../include/vault.h ../include/epri.h ../include/color.h
@@ -430,9 +444,9 @@ zap.o:  ../include/hack.h
 			touch ../include/decl.h
 ../include/global.h:  ../include/coord.h ../include/vmsconf.h ../include/unixconf.h ../include/pcconf.h ../include/tosconf.h ../include/amiconf.h ../include/macconf.h
 			touch ../include/global.h
-../include/hack.h:  ../include/config.h ../include/decl.h ../include/monsym.h ../include/mkroom.h ../include/objclass.h ../include/gold.h ../include/trap.h ../include/flag.h ../include/rm.h 
+../include/hack.h:  ../include/config.h ../include/decl.h ../include/monsym.h ../include/mkroom.h ../include/objclass.h ../include/gold.h ../include/trap.h ../include/flag.h ../include/rm.h  ../include/trampoli.h 
 			touch ../include/hack.h
-../include/macconf.h:  ../include/msdos.h ../include/system.h 
+../include/macconf.h:  ../include/msdos.h ../include/system.h  ../include/MacAlert.h
 			touch ../include/macconf.h
 ../include/pcconf.h:  ../include/msdos.h ../include/system.h
 			touch ../include/pcconf.h

@@ -4,27 +4,21 @@
 
 #include	"hack.h"
 
-#ifndef OVERLAY
-static int NDECL(picklock);
-static int NDECL(forcelock);
-#else
-int NDECL(picklock);
-int NDECL(forcelock);
-#endif
-static boolean FDECL(obstructed,(int,int));
+STATIC_PTR int NDECL(picklock);
+STATIC_PTR int NDECL(forcelock);
 
-VSTATIC struct xlock_s {
+STATIC_VAR struct xlock_s {
 	int	door_or_box, picktyp;
 	struct rm  *door;
 	struct obj *box;
 	int chance, usedtime;
-} xlock;
+} NEARDATA xlock;
 
 #ifdef OVLB
 
-#ifndef OVERLAY
-static
-#endif
+static boolean FDECL(obstructed,(int,int));
+
+STATIC_PTR
 int
 picklock() {	/* try to open/close a lock */
 
@@ -87,9 +81,7 @@ picklock() {	/* try to open/close a lock */
 	return((xlock.usedtime = 0));
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 forcelock() {	/* try to force a locked chest */
 
@@ -252,7 +244,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	    struct monst *mtmp;
 
 	    door = &levl[x][y];
-	    if (MON_AT(x, y) && canseemon(mtmp = m_at(x,y)) && !mtmp->mimic) {
+	    if ((mtmp = m_at(x,y)) && canseemon(mtmp) && !mtmp->mimic) {
 		if (picktyp == CREDIT_CARD &&
 #ifdef ORACLE
 		    (mtmp->isshk || mtmp->data == &mons[PM_ORACLE]))
@@ -395,7 +387,7 @@ doopen() {		/* try to open a door */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) return(0);
 
-	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic &&
+	if((mtmp = m_at(x,y)) && mtmp->mimic &&
 				mtmp->m_ap_type == M_AP_FURNITURE &&
 				mtmp->mappearance == S_cdoor &&
 				!Protection_from_shape_changers) {
@@ -484,7 +476,7 @@ doclose() {		/* try to close a door */
 		return(1);
 	}
 
-	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic &&
+	if((mtmp = m_at(x,y)) && mtmp->mimic &&
 				mtmp->m_ap_type == M_AP_FURNITURE && 
 				mtmp->mappearance == S_cdoor &&
 				!Protection_from_shape_changers) {
@@ -702,7 +694,8 @@ is_sword(otmp) struct obj * otmp; {
 
 int
 bimanual(otmp) struct obj * otmp; {
-	return(otmp->olet == WEAPON_SYM && objects[otmp->otyp].oc_bimanual);
+	return((otmp->olet == WEAPON_SYM || otmp->otyp == UNICORN_HORN)
+		&& objects[otmp->otyp].oc_bimanual);
 }
 #endif /* STUPID_CPP */
 

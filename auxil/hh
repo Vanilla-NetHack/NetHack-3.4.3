@@ -44,10 +44,10 @@ I	Invent	list selected parts of your inventory
 		I$: count your money
 o	open	open a door
 p	pay	pay your bill (in a shop)
-P	puton	put on a ring
+P	puton	put on a ring or amulet
 q	quaff	drink a potion
 r	read	read a scroll or spell book
-R	remove	remove a ring
+R	remove	remove a ring or amulet
 s	search	search for secret doors, hidden traps and monsters
 t	throw	throw or shoot a weapon
 T	takeoff	take off some armor

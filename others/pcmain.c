@@ -13,9 +13,12 @@
 #include <sys\stat.h>
 #endif
 #endif
+
+#if defined(LATTICE) || defined(MACOS)
+extern short *switches;
+#endif
 #ifdef MACOS
 extern WindowPtr	HackWindow;
-extern short *switches;
 extern short macflags;
 pascal boolean FDECL(startDlogFProc, (DialogPtr, EventRecord *, short *));
 #define msmsg mprintf
@@ -70,6 +73,8 @@ Boolean justscores;
 #ifdef AMIGA_WBENCH
 extern int FromWBench;
 #endif
+
+int FDECL(main, (int,char **));
 
 const char *classes = "ABCEHKPRSTVW";
 
@@ -127,12 +132,14 @@ char *argv[];
 						(int)theFile.fName[0]);
 			(void)strncpy(plname, (char *)&theFile.fName[1],
 						(int)theFile.fName[0]);
-			SetVol(0,theFile.vRefNum);
+			SetVol(0L,theFile.vRefNum);
 			SAVEF[(int)theFile.fName[0]] = '\0';
 			numFiles = 1;
 		} else
 			numFiles = 0;
 	}
+#endif
+#if defined(LATTICE) || defined(MACOS)
 	switches = (short *)malloc((NROFOBJECTS+2) * sizeof(long));
 	for (fd = 0; fd < (NROFOBJECTS + 2); fd++)
 		switches[fd] = fd;
@@ -202,7 +209,10 @@ char *argv[];
 		Strcpy(hackdir, HACKDIR);
 #endif
 	if(argc > 1) {
-	    if (!strncmp(argv[1], "-d", 2)) {
+	    if (!strncmp(argv[1], "-d", 2) && argv[1][2] != 'e') {
+		/* avoid matching "-dec" for DECgraphics; since the man page
+		 * says -d directory, hope nobody's using -desomething_else
+		 */
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -306,6 +316,12 @@ char *argv[];
 			} else
 				Printf("Player name expected after -u\n");
 			break;
+		case 'i':
+			if(!strcmp(argv[0]+1, "ibm")) assign_ibm_graphics();
+			break;
+		case 'd':
+			if(!strcmp(argv[0]+1, "dec")) assign_dec_graphics();
+			break;
 #ifdef DGK
 		/* Player doesn't want to use a RAM disk
 		 */
@@ -401,6 +417,11 @@ Printf("\n       %s [-d dir] [-u name] [-[%s]]", hname, classes);
 # endif
 	Strcat(SAVEF, ".sav");
 #else
+	} else {	/* save file start, didn't askname() */
+		char *stripCharSuffix;
+
+		if (stripCharSuffix = strrchr((char *)plname, '-'))
+			*stripCharSuffix = '\0';
 	}
 	Strcpy(lock,plname);
 	Strcat(lock,".99");
@@ -578,7 +599,7 @@ askname() {
 #define WIZ 18
 #define EXP 19
 #define FEM 20
-#define NEWS_BOX 21
+#define NO_NEWS_BOX 21
 #define SCORES 22
 #define setCheckBox(a,b,c) {GetDItem(a,b,&kind,&knob,&box);SetCtlValue(knob,c?1:0);}
 #define changeRadio(a,b,c) {setCheckBox(a,b,FALSE); setCheckBox(a,c,TRUE);}
@@ -621,9 +642,9 @@ askname() {
 		changeDgenders(asknameDlog,TRUE);
 	}
 #ifdef NEWS
-	setCheckBox(asknameDlog,NEWS_BOX,!flags.nonews);
+	setCheckBox(asknameDlog,NO_NEWS_BOX,flags.nonews);
 #else
-	Hide(NEWS_BOX);
+	Hide(NO_NEWS_BOX);
 #endif
 #ifdef WIZARD
 	wizard = FALSE;
@@ -680,9 +701,9 @@ askname() {
 				changeRadio(asknameDlog,VALKYRIE,ANY);
 			}
 			changeDgenders(asknameDlog,flags.female);
-		} else if(Hit == NEWS_BOX) {
+		} else if(Hit == NO_NEWS_BOX) {
 			flags.nonews = !flags.nonews;
-			setCheckBox(asknameDlog,NEWS_BOX,!flags.nonews);
+			setCheckBox(asknameDlog,NO_NEWS_BOX,flags.nonews);
 		} else if(Hit == SCORES) {
 			justscores = !justscores;
 			setCheckBox(asknameDlog,SCORES,justscores);
@@ -735,7 +756,7 @@ short * itemHit;
 				*itemHit = EXP;
 				return TRUE;
 			case 'N' :
-				*itemHit = NEWS_BOX;
+				*itemHit = NO_NEWS_BOX;
 				return TRUE;
 			case 'J' :
 				*itemHit = SCORES;

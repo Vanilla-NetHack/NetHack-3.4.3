@@ -3,7 +3,9 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
+#ifdef TUTTI_FRUTTI
 #include <ctype.h>	/* for isalpha() */
+#endif
 
 /* "an uncursed partly eaten guardian naga hatchling corpse" */
 #define	PREFIX	50
@@ -11,28 +13,38 @@
 
 #ifndef OVLB
 
-OSTATIC const char *keystr[N_LOX], *lockstr[N_LOX];
+STATIC_DCL const char *keystr[N_LOX], *lockstr[N_LOX];
 
 #else /* OVLB */
 /*	We want the player to be able to learn what key goes in what lock.  */
-XSTATIC const char *keystr[N_LOX] = { "round", "square", "triangular", "oval",
+STATIC_OVL const char NEARDATA *keystr[N_LOX] = { "round", "square", "triangular", "oval",
 			              "octagonal", "hexagonal", "cylindrical",
 			              "irregular", "conical", "wedge-shaped" },
-	          *lockstr[N_LOX] = { "round", "square", "triangular", "oval",
+	         NEARDATA *lockstr[N_LOX] = { "round", "square", "triangular", "oval",
 			              "octagonal", "hexagonal", "wide",
 			              "notched", "large round", "large square" };
 #endif /* OVLB */
 
-static int FDECL(rnd_class, (int,int));
-OSTATIC int FDECL(named_key,(const char *));
-OSTATIC int FDECL(named_box,(const char *));
-OSTATIC char *FDECL(strprepend,(char *,const char *));
-static char *FDECL(sitoa,(int));
+STATIC_DCL int FDECL(named_key,(const char *));
+STATIC_DCL int FDECL(named_box,(const char *));
+STATIC_DCL char *FDECL(strprepend,(char *,const char *));
 
-static struct Jitem {
+#ifdef OVL1
+static char *FDECL(sitoa,(int));
+#endif /* OVL1 */
+
+struct Jitem {
 	int item;
 	const char *name;
-} Japanese_items[] = {
+};
+
+#ifndef OVLB
+
+STATIC_DCL struct Jitem Japanese_items[];
+
+#else /* OVLB */
+
+STATIC_OVL struct Jitem Japanese_items[] = {
 	{ SHORT_SWORD, "wakizashi" },
 	{ BROADSWORD, "ninja-to" },
 	{ GLAIVE, "naginata" },
@@ -40,11 +52,14 @@ static struct Jitem {
 	{ LOCK_PICK, "osaku" },
 	{0, "" }
 };
-OSTATIC const char *FDECL(Japanese_item_name,(int));
+
+#endif /* OVLB */
+
+STATIC_DCL const char *FDECL(Japanese_item_name,(int));
 
 #ifdef OVL1
 
-XSTATIC int
+STATIC_OVL int
 named_key(s) register const char *s; {
 	char tc[BUFSZ];
 	register int i;
@@ -57,7 +72,7 @@ named_key(s) register const char *s; {
 	return(0);
 }
 
-XSTATIC int
+STATIC_OVL int
 named_box(s)
 register const char *s;
 {
@@ -72,7 +87,7 @@ register const char *s;
 	return(0);
 }
 
-XSTATIC char *
+STATIC_OVL char *
 strprepend(s,pref)
 register char *s;
 register const char *pref; {
@@ -91,7 +106,7 @@ sitoa(a) int a; {
 #ifdef LINT	/* static char buf[13]; */
 	char buf[13];
 #else
-	static char buf[13];
+	static char NEARDATA buf[13];
 #endif
 	Sprintf(buf, (a < 0) ? "%d" : "+%d", a);
 	return(buf);
@@ -107,7 +122,7 @@ register int otyp;
 #ifdef LINT	/* static char buf[BUFSZ]; */
 char buf[BUFSZ];
 #else
-static char buf[BUFSZ];
+static char NEARDATA buf[BUFSZ];
 #endif
 register struct objclass *ocl = &objects[otyp];
 register const char *actualn = ocl->oc_name;
@@ -612,12 +627,12 @@ singular(otmp, func)
 register struct obj *otmp;
 char *FDECL((*func), (struct obj *));
 {
-	int savequan;
+	unsigned savequan;
 	char *nam;
 
 	/* Note: using xname for corpses will not give the monster type */
 	if (otmp->otyp == CORPSE && func == xname) {
-		static char buf[31];
+		static char NEARDATA buf[31];
 
 		Sprintf(buf, "%s corpse", mons[otmp->corpsenm].mname);
 		return buf;
@@ -633,12 +648,13 @@ char *
 an(str)
 register const char *str;
 {
-	static char buf[BUFSZ];
+	static char NEARDATA buf[BUFSZ];
 
 	buf[0] = '\0';
 
 	if (strncmp(str, "the ", 4))
 	    if (index(vowels, *str) &&
+		strncmp(str, "useful", 6) &&
 		strncmp(str, "unicorn", 7) &&
 		strncmp(str, "uranium", 7))
 		    Strcpy(buf, "an ");
@@ -737,7 +753,7 @@ makeplural(oldstr)
 const char *oldstr;
 {
 	register char *spot;
-	static char str[BUFSZ];
+	static char NEARDATA str[BUFSZ];
 	const char *excess;
 	int len;
 
@@ -876,8 +892,14 @@ const char *oldstr;
 	}
 
 	/* matzoh/matzot, possible food name */
-	if (len >= 6 && !strcmp(spot-5, "matzoh")) {
-		*(spot) = 't';
+	if (len >= 6 && (!strcmp(spot-5, "matzoh")
+					|| !strcmp(spot-5, "matzah"))) {
+		Strcpy(spot-1, "ot");
+		goto bottom;
+	}
+	if (len >= 5 && (!strcmp(spot-4, "matzo")
+					|| !strcmp(spot-5, "matza"))) {
+		Strcpy(spot, "ot");
 		goto bottom;
 	}
 
@@ -931,12 +953,12 @@ struct o_range {
 
 #ifndef OVLB
 
-OSTATIC const struct o_range o_ranges[];
+STATIC_DCL const struct o_range o_ranges[];
 
 #else /* OVLB */
 
 /* wishable subranges of objects */
-XSTATIC const struct o_range o_ranges[] = {
+STATIC_OVL const struct o_range NEARDATA o_ranges[] = {
 	{ "bag",	TOOL_SYM,   SACK,	    BAG_OF_TRICKS },
 	{ "gloves",	ARMOR_SYM,  LEATHER_GLOVES, GAUNTLETS_OF_DEXTERITY },
 	{ "gauntlets",	ARMOR_SYM,  LEATHER_GLOVES, GAUNTLETS_OF_DEXTERITY },
@@ -963,7 +985,7 @@ makesingular(oldstr)
 const char *oldstr;
 {
 	char *p, *bp;
-	static char str[BUFSZ];
+	static char NEARDATA str[BUFSZ];
 
 	if (!oldstr || !*oldstr) {
 		impossible("singular of null?");
@@ -1228,8 +1250,8 @@ register char *bp;
 
 sing:
 	/* Maybe we need a special strcmp() which ignores capitalization and
-	 * dashes/spaces/underscores, so the below 3 special cases would be
-	 * unnecessary.
+	 * dashes/spaces/underscores, so some of the below special cases would
+	 * be unnecessary.
 	 */
 	/* Alternate spellings (two-handed sword vs. two handed sword) */
 	if(!strcmp(bp, "two handed sword")) {
@@ -1615,7 +1637,7 @@ typfnd:
 	return(otmp);
 }
 
-static int
+int
 rnd_class(first,last)
 int first,last;
 {
@@ -1629,7 +1651,7 @@ int first,last;
 	return 0;
 }
 
-XSTATIC const char *
+STATIC_OVL const char *
 Japanese_item_name(i)
 int i;
 {

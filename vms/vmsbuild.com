@@ -1,211 +1,195 @@
-$ makedefs := $sys$disk:[]makedefs
-$ cc = "CC/NOLIST/OPT=NOINLINE/DEB/INCL=[-.INCLUDE]/DEFI=(""WIZARD=""""GENTZEL"""""")"
-$! cc = "GCC/DEB/INCL=[-.INCLUDE]/DEFI=(""WIZARD=""""GENTZEL"""""")/CC1=""-fwritable-strings"""
-$ link := link/nomap'p2'
-$ if p1 .eqs. "LINK" then goto link
-$ define sys sys$library:
-$ ! /obj=file doesn't work for GCC 1.36, so use rename instead
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.0 patchlevel 8	[pr]
+$ !
+$ ! usage:
+$ !   $ set default [.src]	!or [-.src] if starting from [.vms]
+$ !   $ @[-.vms]vmsbuild  [compiler-option]  [link-option]  [cc-switches]
+$ ! options:
+$ !	compiler-option :  either "VAXC" or "GNUC" or ""	!default VAXC
+$ !	link-option	:  either "SHARE[able]" or "LIB[rary]"	!default SHARE
+$ !	cc-switches	:  optional qualifiers for CC (such as "/noOpt/Debug")
+$ ! notes:
+$ !	If the symbol "CC" is defined, compiler-option is not used.
+$ !	The link-option refers to VAXCRTL (C Run-Time Library) handling;
+$ !	  to specify it while letting compiler-option default, use "" as
+$ !	  the compiler-option.
+$ !	To re-link without compiling, use "LINK" as special 'compiler-option';
+$ !	  to re-link with GNUC library, 'CC' must begin with "G" (or "g").
+$ !	Default wizard definition moved to include/vmsconf.h.
+$
+$	vaxc_ = "CC/NOLIST/OPTIMIZE=NOINLINE"	    !vaxc v3.x (2.x fixed below)
+$	gnuc_ = "GCC/CC1=""-fwritable-strings"""
+$	gnulib = "gnu_cc:[000000]gcclib/Library"    !(not used w/ vaxc)
+$ ! common CC options (/obj=file doesn't work for GCC 1.36, use rename instead)
+$	c_c_  = "/INCLUDE=[-.INCLUDE]"	!/DEFINE=(""WIZARD=""""GENTZEL"""""")
+$	if f$extract(1,3,f$getsyi("VERSION")).lts."4.6" then -
+$		c_c_ = c_c_ + "/DEFINE=(""VERYOLD_VMS"")"
+$ ! miscellaneous setup
+$	ivqual = %x00038240	!DCL-W-IVQUAL (used to check for ancient vaxc)
+$	abort := exit %x1000002A
+$ ! validate first parameter
+$	p1 := 'p1'
+$	c_opt = f$locate("|"+p1, "|VAXC|GNUC|LINK|SPECIAL|") !5
+$     if (c_opt/5)*5 .eq. c_opt then  goto p1_ok
+$	copy sys$input: sys$error:	!p1 usage
+%first arg is compiler option; it must be one of
+       "VAXC" -- use VAX C to compile everything
+   or  "GNUC" -- use GNU C to compile everything
+   or  "LINK" -- skip compilation, just relink nethack.exe
+   or  "SPEC[IAL]" -- just compile and link lev_comp.exe
+   or    ""   -- default operation (VAXC unless 'CC' is defined)
+
+Note: if a DCL symbol for CC is defined, "VAXC" and "GNUC" are no-ops.
+      If the symbol value begins with "G" (or "g"), then the GNU C
+      library will be included in all link operations.  Do not rebuild
+      lev_comp with "SPECIAL" unless you have a CC symbol setup with
+      the proper options.
+$	abort
+$p1_ok:
+$ ! validate second parameter
+$	p2 := 'p2'
+$	l_opt = f$locate("|"+p2, "|SHAREABLE|LIBRARY__|") !10
+$     if (l_opt/10)*10 .eq. l_opt then	goto p2_ok
+$	copy sys$input: sys$error:	!p2 usage
+%second arg is VAXCRTL handling; it must be one of
+       "SHAREABLE" -- link with SYS$SHARE:VAXCRTL.EXE/SHAREABLE
+   or   "LIBRARY"  -- link with SYS$LIBRARY:VAXCRTL.OLB/LIBRARY
+   or      ""      -- default operation (use shareable image)
+
+Note: for MicroVMS 4.x, "SHAREABLE" (which is the default) is required.
+$	abort
+$p2_ok:
+$ ! compiler setup; if a symbol for "CC" is already defined it will be used
+$     if f$type(cc).eqs."STRING" then  goto got_cc
+$	cc = vaxc_			!assume "VAXC" requested or defaulted
+$	if c_opt.eq.5 then  cc = gnuc_	!explicitly invoked w/ "GNUC" option
+$	if c_opt.ne.0 then  goto got_cc !"GNUC" or "LINK", skip compiler check
+$	! we want to prevent function inlining with vaxc v3.x (/opt=noinline)
+$	!   but we can't use noInline with v2.x, so need to determine version
+$	  set noOn
+$	  msgenv = f$environment("MESSAGE")
+$	  set message/noFacil/noSever/noIdent/noText
+$	  cc/noObject _NLA0:/Include=[]     !strip 'noinline' if error
+$	  sts = $status
+$	if sts then  goto reset_msg	!3.0 or later will check out OK
+$	! must be dealing with vaxc 2.x; ancient version (2.2 or earlier)
+$	!   can't handle /include='dir', needs c$include instead
+$	  cc = cc - "=NOINLINE" - ",NOINLINE" - "NOINLINE,"
+$	  if sts.ne.IVQUAL then  goto reset_msg
+$	    define/noLog c$include [-.INCLUDE]
+$	    c_c_ = "/DEFINE=(""ANCIENT_VAXC"")"
+$	    if f$extract(1,3,f$getsyi("VERSION")).lts."4.6" then -
+$		c_c_ = c_c_ - ")" + ",""VERYOLD_VMS"")"
+$reset_msg:
+$	  set message 'msgenv'
+$	  set On
+$got_cc:
+$	cc = cc + c_c_			!append common qualifiers
+$	if p3.nes."" then  cc = cc + p3 !append optional user preferences
+$	g := 'f$extract(0,1,cc)'
+$	if g.nes."G" then  gnulib = ""
+$	if g.eqs."G" then  gnulib = "," + gnulib
+$ ! linker setup; if a symbol for "LINK" is defined, we'll use it
+$	if f$type(link).nes."STRING" then  link = "LINK/NOMAP"
+$	if p4.nes."" then  link = link + p4 !append optional user preferences
+$	vaxcrtl = "sys$library:vaxcrtl.olb/Library"	!object library
+$     if l_opt.ne.0 then  goto vaxcrtl_ok
+$	vaxcrtl = "sys$disk:[]vaxcrtl.opt/Options"	!shareable image
+$     if f$search("vaxcrtl.opt").nes."" then  goto vaxcrtl_ok !assume its right
+$	create sys$disk:[]vaxcrtl.opt
+sys$share:vaxcrtl/Shareable
+sys$library:vaxcrtl/Library	!/Include=C$$TRANSLATE	!for link() substitute
+$vaxcrtl_ok:
+$ ! final setup
+$	nethacklib = "nethack.olb"
+$	milestone = "write sys$output f$fao("" !5%T "",0),"
+$     if c_opt.eq.10 then  goto link	!"LINK" requested, skip compilation
+$	rename	 := rename/New_Vers
+$	touch	 := set file/Truncate
+$	makedefs := $sys$disk:[]makedefs
+$	show symbol cc
+$!
+$!  compile and link makedefs, then nethack, finally lev_comp.
+$!
+$ milestone "<compiling...>"
+$ cc [-.vms]vmsmisc	!try simplest one first
 $ cc alloc.c
-$ cc makedefs.c
+$ if f$search("monst.c").eqs."" then  copy/Concat monst.c1+.c2 *.c
 $ cc monst.c
+$ milestone " (monst)"
 $ cc objects.c
-$ cc panic.c
-$ cc [-.vms]vmsmisc
-$ link makedefs.obj,monst.obj,objects.obj,panic.obj,vmsmisc.obj,sys$input:/opt
-sys$share:vaxcrtl/share
-$ makedefs -p
-$ makedefs -o
-$ makedefs -t
-$ cc allmain.c
-$ cc apply.c
-$ cc artifact.c
-$ cc attrib.c
-$ cc bones.c
-$ cc cmd.c
-$ cc dbridge.c
-$ cc decl.c
-$ cc demon.c
-$ cc do.c
-$ cc do_name.c
-$ cc do_wear.c
-$ cc dog.c
-$ cc dogmove.c
-$ cc dokick.c
-$ cc dothrow.c
-$ cc eat.c
-$ cc end.c
-$ cc engrave.c
-$ cc exper.c
-$ cc extralev.c
-$ cc fountain.c
-$ cc getline.c
-$ cc hack.c
-$ cc invent.c
-$ cc lock.c
-$ cc mail.c
-$ cc [-.vms]vmsmain.c
-$ rename vmsmain.obj main.obj
-$ cc makemon.c
-$ cc mcastu.c
-$ cc mhitm.c
-$ cc mhitu.c
-$ cc mklev.c
-$ cc mkmaze.c
-$ cc mkobj.c
-$ cc mkroom.c
-$ cc mon.c
-$ cc mondata.c
-$ cc monmove.c
-$ cc mthrowu.c
-$ cc music.c
-$ cc o_init.c
-$ cc objnam.c
-$ cc options.c
-$ cc pager.c
-$ cc pickup.c
-$ cc polyself.c
-$ cc potion.c
-$ cc pray.c
-$ cc pri.c
-$ cc priest.c
-$ cc prisym.c
-$ cc read.c
-$ cc restore.c
-$ cc rip.c
-$ cc rnd.c
-$ cc rumors.c
-$ cc save.c
-$ cc search.c
-$ cc shk.c
-$ cc shknam.c
-$ cc sit.c
-$ cc sounds.c
-$ cc sp_lev.c
-$ cc spell.c
-$ cc steal.c
-$ cc termcap.c
-$ cc timeout.c
-$ cc topl.c
-$ cc topten.c
-$ cc track.c
-$ cc trap.c
-$ cc [-.vms]vmstty.c
-$ rename vmstty.obj tty.obj
-$ cc u_init.c
-$ cc uhitm.c
-$ cc [-.vms]vmsunix.c
-$ rename vmsunix.obj unix.obj
-$ cc vault.c
-$ makedefs -v
-$ cc version.c
-$ cc weapon.c
-$ cc were.c
-$ cc wield.c
-$ cc wizard.c
-$ cc worm.c
-$ cc worn.c
-$ cc write.c
-$ cc zap.c
-$ cc [-.others]random.c
-$ create vmstermcap.c
-#define bcopy(s,d,n) memcpy(d,s,n)
-$ append [-.vms]vmstermcap.c []
-$ cc vmstermcap.c
-$ cc [-.vms]vmstparam.c
+$     if c_opt.eq.15 then  goto special !"SPECIAL" requested, skip main build
+$ cc makedefs.c
+$ link makedefs.obj,monst.obj,objects.obj,vmsmisc.obj,-
+	'vaxcrtl''gnulib',sys$input:/Opt
+identification="makedefs 3.0.8"
+$ milestone "makedefs"
+$! create some build-time files
+$ makedefs -p	!pm.h
+$ makedefs -o	!onames.h
+$ makedefs -t	!trap.h
+$ makedefs -v	!date.h
+$! create new object library
+$ libr/Obj 'nethacklib'/Create=(Block=2000,Hist=2) vmsmisc.obj,alloc.obj/Insert
+$ if f$search(f$parse(".olb;-2",nethacklib)).nes."" then -
+$	purge/Keep=2 'nethacklib'
+$! compile most of the source files:
+$ c1 = "decl,version,[-.vms]vmsmain,[-.vms]vmsunix,[-.vms]vmstty," -
+      + "[-.others]random,[-.vms]vmstparam"
+$ c2 = "allmain,apply,artifact,attrib,bones,cmd,dbridge,demon,do,do_name," -
+      + "do_wear,dog,dogmove,dokick,dothrow,eat,end,engrave,exper,extralev"
+$ c3 = "fountain,getline,hack,invent,lock,mail,makemon,mcastu,mhitm,mhitu," -
+      + "mklev,mkmaze,mkobj,mkroom,mon,mondata,monmove,mthrowu,music,o_init"
+$ c4 = "objnam,options,pager,pickup,polyself,potion,pray,pri,priest,prisym," -
+      + "read,restore,rip,rnd,rumors,save,search,shk,shknam,sit,sounds,sp_lev"
+$ c5 = "spell,steal,termcap,timeout,topl,topten,track,trap,u_init,uhitm," -
+      + "vault,weapon,were,wield,wizard,worm,worn,write,zap"
+$! process all 5 lists of files
+$   i = 1
+$list_loop:
+$     list = c'i'	!get next list
+$     j = 0
+$file_loop:
+$	file = f$element(j,",",list)	!get next file
+$	if file.eqs."" .or. file.eqs."," then  goto list_done
+$	cc 'file'.c
+$	if f$extract(0,1,file).eqs."[" then -
+$		file = f$edit(f$parse(file,,,"NAME"),"LOWERCASE")
+$	libr/Obj 'nethacklib' 'file'.obj/Insert
+$	delete 'file'.obj;*
+$	milestone " (",file,")"
+$	j = j + 1
+$     goto file_loop
+$list_done:
+$     i = i + 1
+$   if i.le.5 then  goto list_loop
+$! one special case left
+$ cc [-.vms]vmstermcap.c -
+	/Define=("bcopy(s,d,n)=memcpy((d),(s),(n))","exit=vms_exit")
+$ libr/Obj 'nethacklib' vmstermcap.obj/Insert
+$!
 $link:
-$ link/exe=nethack sys$input:/opt
-allmain.obj,-
-alloc.obj,-
-apply.obj,-
-artifact.obj,-
-attrib.obj,-
-bones.obj,-
-cmd.obj,-
-dbridge.obj,-
-decl.obj,-
-demon.obj,-
-do.obj,-
-do_name.obj,-
-do_wear.obj,-
-dog.obj,-
-dogmove.obj,-
-dokick.obj,-
-dothrow.obj,-
-eat.obj,-
-end.obj,-
-engrave.obj,-
-exper.obj,-
-extralev.obj,-
-fountain.obj,-
-getline.obj,-
-hack.obj,-
-invent.obj,-
-lock.obj,-
-mail.obj,-
-main.obj,-
-makemon.obj,-
-mcastu.obj,-
-mhitm.obj,-
-mhitu.obj,-
-mklev.obj,-
-mkmaze.obj,-
-mkobj.obj,-
-mkroom.obj,-
-mon.obj,-
-mondata.obj,-
-monmove.obj,-
-monst.obj,-
-mthrowu.obj,-
-music.obj,-
-o_init.obj,-
-objects.obj,-
-objnam.obj,-
-options.obj,-
-pager.obj,-
-pickup.obj,-
-polyself.obj,-
-potion.obj,-
-pray.obj,-
-pri.obj,-
-priest.obj,-
-prisym.obj,-
-read.obj,-
-restore.obj,-
-rip.obj,-
-rnd.obj,-
-rumors.obj,-
-save.obj,-
-search.obj,-
-shk.obj,-
-shknam.obj,-
-sit.obj,-
-sounds.obj,-
-sp_lev.obj,-
-spell.obj,-
-steal.obj,-
-termcap.obj,-
-timeout.obj,-
-topl.obj,-
-topten.obj,-
-track.obj,-
-trap.obj,-
-tty.obj,-
-u_init.obj,-
-uhitm.obj,-
-unix.obj,-
-vault.obj,-
-version.obj,-
-weapon.obj,-
-were.obj,-
-wield.obj,-
-wizard.obj,-
-worm.obj,-
-worn.obj,-
-write.obj,-
-zap.obj,-
-random.obj,-
-vmsmisc.obj,-
-vmstermcap.obj,-
-vmstparam.obj
-sys$library:vaxcrtl/library
-!gnu_cc:[000000]gcclib/library
+$ milestone "<linking...>"
+$ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain,allmain,vmsunix,vmstty,decl),-
+	sys$disk:[]monst.obj,objects.obj,-	!(data-only modules, like decl)
+	sys$input:/Opt,'vaxcrtl''gnulib'
+identification="NetHack 3.0.8"
+$ milestone "NetHack"
+$     if c_opt.eq.10 then  goto done	!"LINK" only
+$special:
+$!
+$! build special level compiler
+$!
+$ cc lev_main.c
+$ cc lev_comp.c
+$ copy [-.vms]lev_lex.h stdio.*/Prot=(s:rwd,o:rwd)
+$ cc lev_lex.c
+$ rename stdio.h lev_lex.*
+$ cc panic.c
+$ link lev_comp.obj,lev_lex.obj,lev_main.obj,-
+	monst.obj,objects.obj,alloc.obj,panic.obj,vmsmisc.obj,-
+	'vaxcrtl''gnulib',sys$input:/Opt
+identification="lev_comp 3.0.8"
+$ milestone "lev_comp"
+$!
+$done:
+$ exit

@@ -16,6 +16,9 @@
 /* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
 
+#ifdef OVLB
+static boolean FDECL(isbig, (struct mkroom *));
+static struct mkroom * FDECL(pick_room,(BOOLEAN_P));
 static void NDECL(mkshop), FDECL(mkzoo,(int)), NDECL(mkswamp);
 #ifdef ORACLE
 static void NDECL(mkdelphi);
@@ -28,6 +31,7 @@ static struct permonst * NDECL(morguemon);
 #ifdef ARMY
 static struct permonst * NDECL(squadmon);
 #endif
+#endif /* OVLB */
 
 #define sq(x) ((x)*(x))
 
@@ -167,7 +171,8 @@ gottype:
 }
 
 static struct mkroom *
-pick_room()
+pick_room(strict)
+register boolean strict;
 /* pick an unused room, preferably with only one door */
 {
 	register struct mkroom *sroom;
@@ -179,7 +184,10 @@ pick_room()
 		if(sroom->hx < 0)
 			return (struct mkroom *)0;
 		if(sroom->rtype != OROOM)	continue;
-		if(has_upstairs(sroom) || (has_dnstairs(sroom) && rn2(3)))
+		if(!strict) {
+		    if(has_upstairs(sroom) || (has_dnstairs(sroom) && rn2(3)))
+			continue;
+		} else if(has_upstairs(sroom) || has_dnstairs(sroom))
 			continue;
 		if(sroom->doorct == 1 || !rn2(5))
 			return sroom;
@@ -196,7 +204,7 @@ int type;
 	register int sx,sy,i;
 	int sh, tx, ty, goldlim = 500 * dlevel;
 
-	if(!(sroom = pick_room())) return;
+	if(!(sroom = pick_room(FALSE))) return;
 
 	sroom->rtype = type;
 	sh = sroom->fdoor;
@@ -332,7 +340,7 @@ mkdelphi()
 	int dy,xx,yy;
 
 	if(doorindex >= DOORMAX) return;
-	if(!(sroom = pick_room())) return;
+	if(!(sroom = pick_room(FALSE))) return;
 
 	if(!place_oracle(sroom,&dy,&xx,&yy)) return;
 
@@ -373,7 +381,7 @@ mktemple()
 	register struct mkroom *sroom;
 	int sx,sy;
 
-	if(!(sroom = pick_room())) return;
+	if(!(sroom = pick_room(TRUE))) return;
 
 	/* set up Priest and shrine */
 	sroom->rtype = TEMPLE;
@@ -396,10 +404,12 @@ register int sx, sy;
 {
 	register int dx, dy;
 	register struct rm *lev;
-	for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
+	for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++) {
+		if(!isok(sx+dx, sy+dy)) continue;
 		if(IS_DOOR((lev = &levl[sx+dx][sy+dy])->typ) ||
 		    lev->typ == SDOOR)
 			return(TRUE);
+	}
 	return(FALSE);
 }
 

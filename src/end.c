@@ -14,15 +14,16 @@
 #include "eshk.h"
 
 void NDECL(end_box_display);
-static int NDECL(done_intr);
+STATIC_PTR int NDECL(done_intr);
+static void FDECL(disclose,(int,BOOLEAN_P));
 
-static const char *deaths[] = {		/* the array of death */
+static const char NEARDATA *deaths[] = {		/* the array of death */
 	"died", "choked", "poisoned", "starvation", "drowning",
 	"burning", "crushed", "turned to stone", "genocided",
 	"panic", "trickery",
 	"quit", "escaped", "ascended" };
 
-static const char *ends[] = {		/* "when you..." */
+static const char NEARDATA *ends[] = {		/* "when you..." */
 	"died", "choked", "were poisoned", "starved", "drowned",
 	"burned", "were crushed", "turned to stone", "were genocided",
 	"panicked", "were tricked",
@@ -99,7 +100,7 @@ done2()
 	return 0;
 }
 
-static
+STATIC_PTR
 int
 done_intr(){
 	done_stopprint++;
@@ -240,24 +241,91 @@ panic VA_DECL(const char *, str)
 	done(PANICKED);
 }
 
-/* Be careful not to call panic from here! */
-void
-done(how)
+static void
+disclose(how,taken)
 int how;
+boolean taken;
 {
 #ifdef MACOS
 	int see_c;
 	char mac_buf[80];
 #endif
+	char	c;
+
+	if(invent) {
+#ifndef MACOS
+	    if(taken)
+		pline("Do you want to see what you had when you %s? ",
+			(how == QUIT) ? "quit" : "died");
+	    else
+		pline("Do you want your possessions identified? ");
+	    if ((c = yn_function(ynqchars,'y')) == 'y') {
+#else
+		{
+			extern short macflags;
+		
+			/* stop user from using menus, etc. */
+			macflags &= ~(fDoNonKeyEvt | fDoUpdate);
+		}
+	    if(taken)
+		Sprintf(mac_buf, "Do you want to see what you had when you %s? ",
+			(how == QUIT) ? "quit" : "died");
+	    else
+		Sprintf(mac_buf, "Do you want your possessions identified? ");
+		if(!flags.silent) SysBeep(1);
+	    if ((c = "qqynq"[UseMacAlertText(129,mac_buf)+1]) == 'y') {
+#endif
+	    /* New dump format by maartenj@cs.vu.nl */
+		struct obj *obj;
+
+		for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
+		    makeknown(obj->otyp);
+		    obj->known = obj->bknown = obj->dknown = 1;
+		}
+		doinv(NULL);
+		end_box_display();
+	    }
+	    if (c == 'q')  done_stopprint++;
+	    if (taken) {
+		/* paybill has already given the inventory locations 
+		 * in the shop and put it on the main object list
+		 */
+		struct obj *obj;
+
+		for(obj = invent; obj; obj = obj->nobj) {
+		    obj->owornmask = 0;
+		    if(rn2(5)) curse(obj);
+		}
+	        invent = (struct obj *) 0;
+	    }
+	}
+
+	if (!done_stopprint) {
+#ifdef MACOS
+		c = "qqynq"[UseMacAlertText(129, "Do you want to see your instrinsics ?")+1];
+#else
+	    pline("Do you want to see your intrinsics? ");
+	    c = yn_function(ynqchars, 'y');
+#endif
+	    if (c == 'y') enlightenment();
+	    if (c == 'q') done_stopprint++;
+	}
+
+}
+
+/* Be careful not to call panic from here! */
+void
+done(how)
+int how;
+{
 	struct permonst *upmon;
+	boolean taken;
 	char kilbuf[BUFSZ], buf2[BUFSZ];
 	/* kilbuf: used to copy killer in case it comes from something like
 	 *	xname(), which would otherwise get overwritten when we call
 	 *	xname() when listing possessions
 	 * buf2: same as player name, except it is capitalized
 	 */
-	char	c;
-	boolean taken;
 #ifdef ENDGAME
 	if (how == ASCENDED)
 		killer_format = NO_KILLER_PREFIX;
@@ -346,70 +414,17 @@ die:
 			Strcpy(kilbuf, "quit while already on Charon's boat");
 		}
 	}
-	if (how == ESCAPED) killer_format = NO_KILLER_PREFIX;
+	if (how == ESCAPED || how == PANICKED)
+		killer_format = NO_KILLER_PREFIX;
+
+	/* paybill() must be called unconditionally, or strange things will
+	 * happen to bones levels */
 	taken = paybill();
 	paygd();
 	clearlocks();
 	if(flags.toplin == 1) more();
 
-	if(invent) {
-#ifndef MACOS
-	    if(taken)
-		pline("Do you want to see what you had when you %s? ",
-			(how == QUIT) ? "quit" : "died");
-	    else
-		pline("Do you want your possessions identified? ");
-	    if ((c = yn_function(ynqchars,'y')) == 'y') {
-#else
-		{
-			extern short macflags;
-		
-			/* stop user from using menus, etc. */
-			macflags &= ~(fDoNonKeyEvt | fDoUpdate);
-		}
-	    if(taken)
-		sprintf(mac_buf, "Do you want to see what you had when you %s? ",
-			(how == QUIT) ? "quit" : "died");
-	    else
-		sprintf(mac_buf, "Do you want your possessions identified? ");
-		if(!flags.silent) SysBeep(1);
-	    if ((c = "qqynq"[UseMacAlertText(129,mac_buf)+1]) == 'y') {
-#endif
-	    /* New dump format by maartenj@cs.vu.nl */
-		struct obj *obj;
-
-		for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
-		    makeknown(obj->otyp);
-		    obj->known = obj->bknown = obj->dknown = 1;
-		}
-		doinv(NULL);
-		end_box_display();
-	    }
-	    if (c == 'q')  done_stopprint++;
-	    if (taken) {
-		/* paybill has already given the inventory locations in the shop
-		 * and put it on the main object list
-		 */
-		struct obj *obj;
-
-		for(obj = invent; obj; obj = obj->nobj) {
-		    obj->owornmask = 0;
-		    if(rn2(5)) curse(obj);
-		}
-	        invent = (struct obj *) 0;
-	    }
-	}
-
-	if (!done_stopprint) {
-#ifdef MACOS
-		c = "qqynq"[UseMacAlertText(129, "Do you want to see your instrinsics ?")+1];
-#else
-	    pline("Do you want to see your intrinsics? ");
-	    c = yn_function(ynqchars, 'y');
-#endif
-	    if (c == 'y') enlightenment();
-	    if (c == 'q') done_stopprint++;
-	}
+	disclose(how,taken);
 
 	if(how < GENOCIDED) {
 #ifdef WIZARD
@@ -464,9 +479,57 @@ die:
 #endif
 					) {
 		register struct monst *mtmp;
-		register struct obj *otmp;
+		register struct obj *otmp, *otmp2, *prevobj;
+		struct obj *jewels = (struct obj *)0;
 		long i;
 		register unsigned int worthlessct = 0;
+#if defined(LINT) || defined(__GNULINT__)
+		prevobj = (struct obj *)0;
+#endif
+
+		/* put items that count into jewels chain
+		 * rewriting the fcobj and invent chains here is safe,
+		 * as they'll never be used again
+		 */
+		for(otmp = fcobj; otmp; otmp = otmp2) {
+			otmp2 = otmp->nobj;
+			if(carried(otmp->cobj)
+					&& ((otmp->olet == GEM_SYM &&
+					     otmp->otyp < LUCKSTONE)
+					    || otmp->olet == AMULET_SYM)) {
+				if(otmp == fcobj)
+					fcobj = otmp->nobj;
+				else
+					prevobj->nobj = otmp->nobj;
+				otmp->nobj = jewels;
+				jewels = otmp;
+			} else
+				prevobj = otmp;
+		}
+		for(otmp = invent; otmp; otmp = otmp2) {
+			otmp2 = otmp->nobj;
+			if((otmp->olet == GEM_SYM && otmp->otyp < LUCKSTONE)
+					    || otmp->olet == AMULET_SYM) {
+				if(otmp == invent)
+					invent = otmp->nobj;
+				else
+					prevobj->nobj = otmp->nobj;
+				otmp->nobj = jewels;
+				jewels = otmp;
+			} else
+				prevobj = otmp;
+		}
+
+		/* add points for jewels */
+		for(otmp = jewels; otmp; otmp = otmp->nobj) {
+			if(otmp->olet == GEM_SYM)
+				u.urexp += (long) otmp->quan *
+					    objects[otmp->otyp].g_val;
+			else 	/* amulet */
+				u.urexp += (otmp->spe < 0) ? 2 :
+					otmp->otyp == AMULET_OF_YENDOR ?
+							5000 : 500;
+		}
 
 		keepdogs();
 		mtmp = mydogs;
@@ -498,25 +561,24 @@ die:
 		  Printf("You escaped from the dungeon with %ld points,\n",
 #endif
 		    u.urexp);
-		get_all_from_box(); /* don't forget things in boxes and bags */
-		for(otmp = invent; otmp; otmp = otmp->nobj) {
+
+		/* print jewels chain here */
+		for(otmp = jewels; otmp; otmp = otmp->nobj) {
+			makeknown(otmp->otyp);
 			if(otmp->olet == GEM_SYM && otmp->otyp < LUCKSTONE) {
-				makeknown(otmp->otyp);
 				i = (long) otmp->quan *
 					objects[otmp->otyp].g_val;
 				if(i == 0) {
 					worthlessct += otmp->quan;
 					continue;
 				}
-				u.urexp += i;
 				Printf("        %s (worth %ld zorkmids),\n",
 				    doname(otmp), i);
-			} else if(otmp->olet == AMULET_SYM) {
+			} else {		/* amulet */
 				otmp->known = 1;
 				i = (otmp->spe < 0) ? 2 :
 					otmp->otyp == AMULET_OF_YENDOR ?
 							5000 : 500;
-				u.urexp += i;
 				Printf("        %s (worth %ld zorkmids),\n",
 				    doname(otmp), i);
 			}

@@ -7,27 +7,34 @@
 #  include "artifact.h"
 #endif
 
-VSTATIC struct obj *otmp;
+STATIC_VAR struct obj NEARDATA *otmp;
 
 #ifdef POLYSELF
-OSTATIC void FDECL(urustm, (struct monst *, struct obj *));
+STATIC_DCL void FDECL(urustm, (struct monst *, struct obj *));
+# ifdef OVL1
 static int FDECL(passiveum, (struct permonst *,struct monst *,struct attack *));
-#endif
-#ifdef SEDUCE
-static void FDECL(mayberem, (struct obj *, const char *));
-#endif
-OSTATIC int FDECL(hitmu, (struct monst *,struct attack *));
-OSTATIC int FDECL(gulpmu, (struct monst *,struct attack *));
-OSTATIC int FDECL(explmu, (struct monst *,struct attack *));
-OSTATIC int FDECL(gazemu, (struct monst *,struct attack *));
-static void FDECL(hitmsg,(struct monst *,struct attack *));
-OSTATIC void FDECL(missmu,(struct monst *,BOOLEAN_P,struct attack *));
-OSTATIC void FDECL(mswings,(struct monst *,struct obj *));
-OSTATIC void FDECL(wildmiss,(struct monst *));
+# endif /* OVL1 */
+#endif /* POLYSELF */
 
-OSTATIC void FDECL(hurtarmor,(struct permonst *,int));
+#ifdef OVLB
+# ifdef SEDUCE
+static void FDECL(mayberem, (struct obj *, const char *));
+# endif
+#endif /* OVLB */
+
+STATIC_DCL int FDECL(hitmu, (struct monst *,struct attack *));
+STATIC_DCL int FDECL(gulpmu, (struct monst *,struct attack *));
+STATIC_DCL int FDECL(explmu, (struct monst *,struct attack *));
+STATIC_DCL int FDECL(gazemu, (struct monst *,struct attack *));
+STATIC_DCL void FDECL(missmu,(struct monst *,BOOLEAN_P,struct attack *));
+STATIC_DCL void FDECL(mswings,(struct monst *,struct obj *));
+STATIC_DCL void FDECL(wildmiss,(struct monst *));
+
+STATIC_DCL void FDECL(hurtarmor,(struct permonst *,int));
 
 #ifdef OVL1
+
+static void FDECL(hitmsg,(struct monst *,struct attack *));
 
 static void
 hitmsg(mtmp, mattk)
@@ -69,10 +76,7 @@ register struct attack *mattk;
 	    }
 }
 
-#endif /* OVL1 */
-#ifdef OVLB
-
-XSTATIC void
+STATIC_OVL void
 missmu(mtmp, nearmiss, mattk)		/* monster missed you */
 register struct monst *mtmp;
 register boolean nearmiss;
@@ -88,7 +92,7 @@ register struct attack *mattk;
 	}
 }
 
-XSTATIC void
+STATIC_OVL void
 mswings(mtmp, otemp)		/* monster swings obj */
 register struct monst *mtmp;
 register struct obj *otemp;
@@ -105,7 +109,10 @@ register struct obj *otemp;
 	      xname(otemp));
 }
 
-XSTATIC void
+#endif /* OVL1 */
+#ifdef OVLB
+
+STATIC_OVL void
 wildmiss(mtmp)		/* monster attacked your displaced image */
 	register struct monst *mtmp;
 {
@@ -271,7 +278,7 @@ mattacku(mtmp)
 		    remove_monster(mtmp->mx, mtmp->my);
 		    place_monster(mtmp, u.ux, u.uy);
 		    pmon(mtmp);
-		    enexto(&cc, u.ux, u.uy, &playermon);
+		    (void) enexto(&cc, u.ux, u.uy, &playermon);
 		    teleds(cc.x, cc.y);
 		    You("fall from the ceiling!");
 		    if (is_mercenary(mtmp->data) && m_carrying(mtmp,HELMET)) {
@@ -507,7 +514,7 @@ mattacku(mtmp)
  * helper function for some compilers that have trouble with hitmu
  */
 
-XSTATIC
+STATIC_OVL
 void
 hurtarmor(mdat, attk)
 struct permonst *mdat;
@@ -580,7 +587,7 @@ int attk;
  *	  3 if the monster lives but teleported/paralyzed, so it can't keep
  *	       attacking you
  */
-XSTATIC
+STATIC_OVL
 int
 hitmu(mtmp, mattk)
 	register struct monst *mtmp;
@@ -588,6 +595,7 @@ hitmu(mtmp, mattk)
 {
 	register struct permonst *mdat = mtmp->data;
 	register int dmg, ctmp, ptmp;
+	int armpro;
 	char	 buf[BUFSZ];
 #ifdef POLYSELF
 	struct permonst *olduasmon = uasmon;
@@ -621,9 +629,12 @@ hitmu(mtmp, mattk)
 /*	Use ctmp when the cancellation factor takes into account certain
  *	armor's special magic protection.  Otherwise just use !mtmp->mcan.
  */
-	ctmp = !mtmp->mcan &&
-		(!uarm || (rn2(3) >= objects[uarm->otyp].a_can) || !rn2(50))
-	     && (!uarmc || (rn2(3) >= objects[uarmc->otyp].a_can) || !rn2(50));
+	armpro = 0;
+	if (uarm && armpro < objects[uarm->otyp].a_can)
+		armpro = objects[uarm->otyp].a_can;
+	if (uarmc && armpro < objects[uarmc->otyp].a_can)
+		armpro = objects[uarmc->otyp].a_can;
+	ctmp = !mtmp->mcan && ((rn2(3) >= armpro) || !rn2(50));
 
 /*	Now, adjust damages via resistances or specific attacks */
 	switch(mattk->adtyp) {
@@ -1057,7 +1068,7 @@ dopois:
 	    case AD_CONF:
 		hitmsg(mtmp, mattk);
 		if(!mtmp->mcan && !rn2(4) && !mtmp->mspec_used) {
-		    mtmp->mspec_used += (dmg + rn2(6));
+		    mtmp->mspec_used = mtmp->mspec_used + (dmg + rn2(6));
 		    if(Confusion)
 			 You("are getting even more confused.");
 		    else You("are getting confused.");
@@ -1093,7 +1104,7 @@ dopois:
 #endif /* OVL1 */
 #ifdef OVLB
 
-XSTATIC
+STATIC_OVL
 int
 gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 	register struct monst *mtmp;
@@ -1254,7 +1265,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 	return(1);
 }
 
-XSTATIC
+STATIC_OVL
 int
 explmu(mtmp, mattk)	/* monster explodes in your face */
 	register struct monst *mtmp;
@@ -1302,7 +1313,7 @@ explmu(mtmp, mattk)	/* monster explodes in your face */
 	return(2);	/* it dies */
 }
 
-XSTATIC
+STATIC_OVL
 int
 gazemu(mtmp, mattk)	/* monster gazes at you */
 	register struct monst *mtmp;
@@ -1335,7 +1346,7 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 					!mtmp->mspec_used && rn2(5)) {
 		    int conf = d(3,4);
 
-		    mtmp->mspec_used += (conf + rn2(6));
+		    mtmp->mspec_used = mtmp->mspec_used + (conf + rn2(6));
 		    if(!Confusion)
 			pline("%s's gaze confuses you!", Monnam(mtmp));
 		    else
@@ -1350,7 +1361,7 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 		    int stun = d(2,6);
 
 		    pline("%s stares piercingly at you!", Monnam(mtmp));
-		    mtmp->mspec_used += (stun + rn2(6));
+		    mtmp->mspec_used = mtmp->mspec_used + (stun + rn2(6));
 		    make_stunned(HStun + stun, TRUE);
 		}
 		break;
@@ -1387,7 +1398,7 @@ mdamageu(mtmp, n)	/* mtmp hits you for n points damage */
 #ifdef OVLB
 
 #ifdef POLYSELF
-XSTATIC void
+STATIC_OVL void
 urustm(mon, obj)
 register struct monst *mon;
 register struct obj *obj;
@@ -1561,8 +1572,16 @@ register struct monst *mon;
 	    }
 	}
 
-	pline("%s murmurs in your ear, while helping you undress.",
-		Blind ? (fem ? "She" : "He") : Monnam(mon));
+	if (!uarmc && !uarmf && !uarmg && !uarms && !uarmh
+#ifdef SHIRT
+								&& !uarmu
+#endif
+									)
+		pline("%s murmurs sweet nothings into your ear.",
+			Blind ? (fem ? "She" : "He") : Monnam(mon));
+	else
+		pline("%s murmurs in your ear, while helping you undress.",
+			Blind ? (fem ? "She" : "He") : Monnam(mon));
 	mayberem(uarmc, "cloak");
 	if(!uarmc)
 		mayberem(uarm, "suit");
@@ -1674,7 +1693,7 @@ register struct monst *mon;
 #endif
 	else {
 		long cost = (long)rnd(
-			(int)(u.ugold > 32767L ? 32767 : u.ugold) +10) + 500;
+			(int)(u.ugold > 32757L ? 32757 : u.ugold) +10) + 500;
 
 		if (mon->mpeaceful) {
 			cost /= 5;

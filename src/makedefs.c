@@ -3,14 +3,20 @@
 /* makedefs.c - NetHack version 3.0 */
 
 
-#define EXTERN_H
 #include	"config.h"
 #include	"permonst.h"
 #include	"objclass.h"
+#ifdef MACOS
+#include "patchlevel.h"
+#endif
 #ifdef NULL
 #undef NULL
 #endif /* NULL */
 #define NULL	((genericptr_t)0)
+
+#if defined(VMS) && defined(__GNUC__)
+	char *FDECL(ctime, (time_t *));
+#endif
 
 #if !defined(LINT) && !defined(__GNULINT__)
 static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/11/15";
@@ -26,8 +32,13 @@ extern void FDECL(exit, (int));
 # define RDMODE	"r"
 # define WRMODE	"w"
 #else
-# define RDMODE  "r+"
-# define WRMODE  "w+"
+# ifdef VMS
+#  define RDMODE  "r"
+#  define WRMODE  "w"
+# else
+#  define RDMODE  "r+"
+#  define WRMODE  "w+"
+# endif
 #endif
 
 #ifdef MACOS
@@ -101,10 +112,10 @@ void NDECL(do_monst);
 void NDECL(save_resource);
 #endif
 
-char *FDECL(limit, (char *,BOOLEAN_P));
+char *FDECL(limit, (char *,int));
 
 #if defined(SMALLDATA) && defined(MACOS)
-OSErr FDECL(write_resource, (Handle, short, Str255, short));
+OSErr FDECL(write_resource, (Handle, ResType, short, Str255, short));
 # if defined(AZTEC) || defined(THINKC4)
 int NDECL(getpid);
 # endif
@@ -220,7 +231,7 @@ char	*argv[];
 	(void) fflush(stderr);
 	exit(1);
 /*NOTREACHED*/
-#ifdef MSDOS
+#if defined(MSDOS) || defined(__GNULINT__)
 	return 0;
 #endif
 }
@@ -234,6 +245,10 @@ do_traps() {
 	Sprintf(tempfile, ":include:makedefs.%d", getpid());
 #else
 	Sprintf(tempfile, "makedefs.%d", getpid());
+#endif
+/* an ugly hack to limit pid-extension to 3 digits */
+#ifdef OS2
+	if (strlen(tempfile) > 12) tempfile[12] = '\0';
 #endif
 	if(freopen(tempfile, WRMODE, stdout) == (FILE *)0) {
 		perror(tempfile);
@@ -313,7 +328,7 @@ do_rumors(){
 	(void) fclose(stdin);
 	(void) fclose(stdout);
 #ifdef MACOS
-	strcpy((char *)File, RUMOR_FILE);
+	Strcpy((char *)File, RUMOR_FILE);
 	CtoPstr((char *)File);
 	if(!GetVol(VolName, &vRef) && !GetFInfo(File, vRef, &info)){
 		info.fdCreator = CREATOR;
@@ -363,7 +378,13 @@ do_data(){
 #ifndef INFERNO
 	boolean	skipping_demons = TRUE;
 #endif
-	Sprintf(tempfile, "%s.base", DATA_FILE);
+	Sprintf(tempfile,
+#ifdef OS2
+		"%s.bas",
+#else
+		"%s.base",
+#endif
+		DATA_FILE);
 	if(freopen(tempfile, RDMODE, stdin) == (FILE *)0) {
 		perror(tempfile);
 		exit(1);
@@ -472,7 +493,7 @@ static	char	temp[32];
 char *
 limit(name,pref)	/* limit a name to 30 characters length */
 char	*name;
-boolean	pref;
+int	pref;
 {
 	(void) strncpy(temp, name, pref ? 26 : 30);
 	temp[pref ? 26 : 30] = 0;
@@ -487,7 +508,7 @@ do_objs()
 #ifdef SPELLS
 	int nspell = 0;
 #endif
-	boolean prefix = 0;
+	int prefix = 0;
 	char let = '\0';
 	boolean	sumerr = FALSE;
 
@@ -536,16 +557,27 @@ do_objs()
 			if(objects[i].oc_material == GLASS) {
 			    Printf("/* #define\t%s\t%d */\n",
 							objnam, i);
-			    continue;
+			    prefix = -1;
+			    break;
 			}
 		    default:
 			Printf("#define\t");
 		}
-		Printf("%s\t%d\n", limit(objnam, prefix), i);
+		if (prefix >= 0)
+			Printf("%s\t%d\n", limit(objnam, prefix), i);
 		prefix = 0;
 
 		sum += objects[i].oc_prob;
 	}
+
+	/* check last set of probabilities */
+	if (sum && sum != 1000) {
+	    (void) fprintf(stderr,
+			"prob error for %c (%d%%)", let, sum);
+	    (void) fflush(stderr);
+	    sumerr = TRUE;
+	}
+
 	Printf("#define\tLAST_GEM\t(JADE+1)\n");
 #ifdef SPELLS
 	Printf("#define\tMAXSPELL\t%d\n", nspell+1);
@@ -622,8 +654,9 @@ getpid()
 void
 do_monst()
 {
-	Handle	monstData, objData;
-	short i,j;
+	Handle	monstData, objData, versData;
+	char versStr[32], *vstr = VERSION;
+	short i, j, patlev = PATCHLEVEL;
 	pmstr	*pmMonst;
 	SFReply	reply;
 	short	refNum,error;
@@ -655,22 +688,33 @@ do_monst()
 	}
 	PtrToHand((Ptr)objects, &objData, ((i+1)*sizeof(struct objclass)));
 
-	strcpy((char *)&name[0], "\010NH3.rsrc");
+	/* place a small string in the creator resource to identify version */
+	Sprintf(versStr, "n%s patchlevel%2d", vstr, patlev);
+	*versStr = (int)strlen(VERSION) + 13;  /* n = actual string length */
+	PtrToHand(versStr, &versData, sizeof(versStr));
+
+	Strcpy((char *)&name[0], "\021nethack.proj.rsrc");
 	if (findNamedFile(&name[1], 0, &reply)) {
-	    strncpy((char *)&name[0],(char *)&reply.fName[0], reply.fName[0]+1);
+	    (void)strncpy((char *)&name[0],(char *)&reply.fName[0], reply.fName[0]+1);
 	    if ((refNum = OpenResFile(name)) != -1) {
 		if (ResError() == noErr) {
-		    strcpy((char *)&name[0], "\012MONST_DATA");
-		    if (error = write_resource(monstData,
+		    Strcpy((char *)&name[0], "\012MONST_DATA");
+		    if (error = write_resource(monstData, HACK_DATA,
 						MONST_DATA, name, refNum)) {
 			SysBeep(1);
 			Printf("Couldn't add monster data resource.\n");
 		    }
-		    strcpy((char *)&name[0], "\013OBJECT_DATA");
-		    if (error = write_resource(objData,
+		    Strcpy((char *)&name[0], "\013OBJECT_DATA");
+		    if (error = write_resource(objData, HACK_DATA,
 						OBJECT_DATA, name, refNum)) {
 			SysBeep(1);
 			Printf("Couldn't add object data resource.\n");
+		    }
+		    Strcpy((char *)&name[0], "\000");
+		    if (error = write_resource(versData, CREATOR,
+						0, name, refNum)) {
+			SysBeep(1);
+			Printf("Couldn't add creator info resource.\n");
 		    }
 		    CloseResFile(refNum);
 		    if (ResError() != noErr) {
@@ -735,18 +779,16 @@ char *fname;
 
 
 OSErr
-write_resource(data, resID, resName, refNum)
+write_resource(data, theType, resID, resName, refNum)
 Handle	data;
+ResType	theType;
 short	resID;
 Str255	resName;
 short	refNum;
 {
-	ResType	theType;
 	short	error;
 	Handle	theRes;
 
-    theType = HACK_DATA;
-    error = CurResFile();
     if (theRes = GetResource(theType, resID)) {
 		RmveResource(theRes);
 		error = ResError();

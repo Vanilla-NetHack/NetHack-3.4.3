@@ -2,10 +2,6 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* since this file is also used in auxiliary programs, don't include all the
- * function declarations for all of nethack
- */
-#define EXTERN_H
 #include "config.h"
 #include "permonst.h"
 #include "monsym.h"
@@ -28,13 +24,13 @@
 #endif
 
 #ifndef SPLITMON_2
-struct permonst playermon = {		/* used by weapons bonus code */
+struct permonst NEARDATA playermon = {		/* used by weapons bonus code */
 	"player", S_HUMAN, 1, 10, 10, 0, 0, G_GENO | G_NOGEN,
 	{ { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	45, 400, PL_NSIZ, MS_SILENT, MZ_HUMAN,
 	M1_NEEDPICK | M1_HUMANOID | M1_COLLECT,
 	M2_HUMAN | M2_STRONG, C(HI_DOMESTIC)
-},	*uasmon = &playermon;
+},	NEARDATA *uasmon = &playermon;
 #endif /* SPLITMON_2 */
 
 /*
@@ -76,7 +72,7 @@ struct permonst playermon = {		/* used by weapons bonus code */
 struct permonst *mons;	   /* for SMALLDATA - mons data stored in NetHack app */
 #else
 #ifndef SPLITMON_2
-struct permonst mons[] = {
+struct permonst NEARDATA mons[] = {
 /*	ants	*/
 	{ "giant ant",	S_ANT, 2, 18, 3, 0, 0, (G_GENO | G_SGROUP | 3),
 	  { { AT_BITE, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },

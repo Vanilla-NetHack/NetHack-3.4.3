@@ -2,13 +2,15 @@
 		   on an MS-DOS, TOS, or OS/2 system
 	=====================================================
 	    (or, How to make PC, ST, and OS/2 NetHack 3.0)
-		      Last revision: 17 Feb 1990
+		      Last revision: 22 May 1990
 
-    (Credit for a runnable full PC NetHack 3.0 goes to the overlay team of
-    Pierre Martineau, Stephen Spackman, Norm Meluch, and Kevin Smolkowski,
-    who built on the work of Steve Creps and Mike Threepoint.  Credit for
-    ST and OS/2 NetHack 3.0 goes to Eric Smith and Timo Hakulinen,
-    respectively.)
+    Credit for ST and OS/2 NetHack 3.0 goes to Eric Smith and Timo Hakulinen,
+    respectively.  Additional credit should be given to Steve Creps and
+    Mike Threepoint for PC NetHack.
+
+*** Note: if you intend to compile NetHack on an MS-DOS PC using OVERLAY, 
+    please turn to the instructions in Install.ovl.  The overlay version is
+    currently available only for MSC.
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories src, include, auxil,
@@ -25,13 +27,12 @@
     return and line feed pairs used by DOS and OS/2.  Turbo C 2.0 in
     particular dislikes these; you'll have to convert them (with a utility
     like Rahul Dhesi's "flip").  Also, every file should end with an empty
-    line, because both Microsoft C and MASM have a habit of ignoring the
-    last line of each file. (TOS compilers generally don't have either
-    problem).
+    line, because both Microsoft C has a habit of ignoring the last line of
+    each file. (TOS compilers generally don't have either problem).
 
-2.  Move the .c files from the others directory to your src directory
-    based on the following decisions.  You will probably want to include
-    all of these files.
+2.  Copy the .c files from the others directory to your src directory
+    based on the following decisions.  (You will probably want to include
+    all of these files.)
 
     You will definitely need pc*.c and msdos.c.
 
@@ -50,10 +51,7 @@
     generation routines.
 
     trampoli.c and ovlmgr.obj files are needed for the MS-DOS overlays.
-    The file ovlmgr.uu (MS-DOS overlay manager) is the uuencoded assembled
-    object module for the overlay manager in case you do not have MASM.
-    You will need to run a uudecode utility on this file too, to generate
-    ovlmgr.obj.  
+    You may ignore these.
 
     TOS users should use others/lev_lex.c instead of src/lev_lex.c.
     MS-DOS users should be able to use either, but the one in src
@@ -69,7 +67,7 @@
     file to "Makefile" (no extension), and move it into your src directory.
 
     DOS:
-	Microsoft C 5.1 	Makefile.ovl
+	Microsoft C 5.0+	Makefile.msc
 	Microsoft C 4.0 	Makefile.pc
 	Turbo C 2.0		Makefile.tcc
     OS/2:
@@ -86,6 +84,14 @@
     use Microsoft's or Borland's "make", you'll need to edit the makefile
     into a form your make can use, and add instructions to generate a link
     response file.
+
+    Makefile.os2 can also be used with Microsoft NMAKE, which is shipped with
+    new versions of MS languages.  This "make", although slightly incompatible
+    with NDMAKE, is powerful enough to make NetHack.  Since NDMAKE only works
+    in DOS, the only way to compile NetHack in OS/2 currently is to use NMAKE.
+    However, when cross-compiling for OS/2 in DOS, NDMAKE is a better choice
+    because it requires less RAM for itself.  See Makefile.os2 for more
+    information.
 
     The ST NetHack makefile should work with either the widely available
     PD make, or (much better) GNU Make.
@@ -109,9 +115,9 @@
     make sure the HACKDIR is set properly, and check TERMLIB and COMPRESS.
 
     Also edit pcconf.h for PC or OS/2 NetHack, or tosconf.h for ST NetHack.
-    pcconf.h should not need much editing if you are including termcap.uu,
-    random.c and ovlmgr.uu.  If you are not including any of these you will
-    need to comment out TERMLIB, RANDOM, and/or OVERLAY respectively.
+    pcconf.h should not need much editing.  If you are not going to include
+    random.c or termcap.uu you will need to comment out RANDOM or TERMLIB
+    respectively.  You will definitely need to comment out OVERLAY.
 
     Commenting out the #define TERMLIB in pcconf.h/tosconf.h to disable
     use of termcap routines (relying on the ANSI_DEFAULT feature) will make
@@ -128,10 +134,10 @@
     make some very difficult decisions about which features to include.
 
     The base size of a PC NetHack executable, with no extra features or
-    overlays, will be around 570 kilobytes.  Anything over 590K is likely not
-    to work.  Here's an incomplete and outdated list of the approximate costs
-    of various additional features in terms of executable size, using
-    Microsoft C:
+    overlays, will be around 570 (or better) kilobytes.  Anything over 590K
+    is likely not to work.  Here's an incomplete and outdated list of the
+    approximate costs of various additional features in terms of executable
+    size, using Microsoft C:
 
 	WIZARD		    3K
 	LOGFILE
@@ -179,18 +185,14 @@
 	COM_COMPL	    1K
 	CLIPPING
 
-	OVERLAY		    0K
 	DGK		    7K
 	TERMLIB
 	RANDOM		    1K
 	SHELL
 	TEXTCOLOR	    1K
 
-    Using Microsoft C and overlays, we've managed to enable everything.
-    Unfortunately, the overlay manager doesn't work with Turbo C.  Using
-    Turbo C, we eked by with just WIZARD, ZEROCOMP, BITFIELDS, ELBERETH,
-    HARD, REDO, DGK and TEXTCOLOR.  There's very little leeway for nifty
-    features without an overlay manager.
+    Using Turbo C, we eked by with just WIZARD, ZEROCOMP, BITFIELDS, ELBERETH,
+    HARD, REDO, DGK and TEXTCOLOR.
 
 5.  If you're using a compiler not in the list in step 3, you may want to look
     through system.h, in the include directory.  This file matches the return
@@ -214,15 +216,10 @@
 
     If you elected to use Fred Fish's termcap library (bundled in as
     termcap.arc), you will have to generate termcap.lib from those sources
-    by typing make -f makefile.lib termlib.lib.
-    DOS users must set the TERMLIB option in Makefile.ovl(msc) to link in
-    the resulting termlib.lib.
+    by typing make -f makefile.lib termlib.lib.  DOS / OS/2 users must set the
+    TERMLIB option in Makefile.msc / Makefile.os2 to link in the resulting
+    termlib.lib.
 
-    If you're using Makefile.ovl and you have Microsoft's Macro Assembler
-    version 5.1, you may want to enable the option in the make file to rebuild
-    ovlmgr.obj, although a ready-made object file is provided for those of you
-    without.
-    
     If you are recompiling after patching your sources, or if you got your
     files from somewhere other than the official distribution, "touch
     makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
@@ -232,10 +229,6 @@
     occupied for a long time.  If all goes well, you will get an executable.
     If you tried to compile in too many features, you will probably get a
     dysfunctional executable, and will have to start over.
-
-    Also, as of pl7 with OVERLAY you might need to use MAKE45L.EXE for your
-    compile.  The Makefile.ovl with all of its OVLx funness is a bit much
-    for even generic NDMAKE45.
 
 	Hint:  If you're short on memory, you might enter "make -n all
 	>script.bat", and then in DOS enter "script", or in TOS use the Gulam
@@ -296,66 +289,20 @@ Notes
     and bones files.  (Trying to use such files sometimes produces amusing
     confusions on the game's part, but usually crashes.)
 
-3)  While making the PC and OS/2 versions, during linking the Microsoft
-    Overlay Linker will need temporary storage space.  Make sure you have
+3)  During linking, the Microsoft Overlay Linker will need temporary storage
+    space to make the PC and OS/2 versions.  Make sure you have
     about a meg of free disk where ever you have defined your temporary
-    storage.
+    storage.  It is also a good idea to compile with as much free RAM as
+    possible.  It may otherwise get crowded with the bigger, more complex
+    source files.  (Compiler bombs with "out of heap space" or similar.)
+    If this happens, strip your configuration, zap TSR's etc.
 
-4)  About overlays:
+4)  On a 286 10MHz PC you will have NetHack in about 2 - 2.5 hours.
 
-    First and foremost:  We have been developing with MSC 5.1 as a compiler
-    and NDmake 4.5 as a make.  NDmake is readily available on the Usenet,
-    obtaining MSC might be more of a problem.  MSC 5.0 is broken.  You *will
-    not* be able to compile the overlay version with that compiler due to
-    problems with the /Gt option allowing the CONST segment to become
-    > 64k when linking.
-
-    Anyone who uses Turbo C is free to try to compile the game.  Not only does
-    TLINK not do overlays, it chokes on huge projects, so you will need to use
-    some other linker, probably the Microsoft Overlay Linker.  Also,
-    you will more than likely have to find a way to tell the compiler to
-    keep most of your data out of the default data segment (whence the mystic
-    /Gt24 for MSC in Makefile.ovl).  Certain other problems can probably be
-    anticipated.  Feel free to try other compilers and linkers and please do
-    inform us if you succeed.
-
-    If you use the custom overlay manager, ovlmgr.asm, you will want to use
-    Makefile.ovl.  Otherwise you will have to roll your own make file;
-    Makefile.ovl may serve you as a stylistic guide, but ovlmgr's optimisation
-    characteristics are very different from those of (for example) the
-    standard Microsoft Overlay Manager:  you will find the actual partitioning
-    of the overlays entirely inappropriate to a more conventional system.
-
-    To make the game, follow the instructions above for arrangement of files
-    from the others directory to src.  If you are using the standard Microsoft
-    Overlay Linker (which we have been assuming you are) you should make doubly
-    certain that OVERLAY is defined in pcconf.h, since otherwise things will
-    compile properly but very ugly things are likely to happen wherever
-    function pointers cross overlay boundaries - the linker is a little thick
-    about that.  Now check the variables at the top of the makefile for
-    correctness on your system.  Once you have the compiler, linker, source
-    files moved, and the include files configured, go to the src directory and
-    type "make install".
-
-    RAM requirement for the overlay version is about 550k.  You can load the
-    program in less RAM, but you will begin to experience a serious amount
-    of disk thrashing at 530k or less.  Absolute minimum will probably be in
-    the neighborhood of 400-425k.  You do not want to run the program like
-    that!  And, as always, the more free RAM the better.
-
-    As of patch level 7, version 3.0 has an added feature in the Makefile.  This
-    feature enables a structured break up of the object modules so that we
-    can link heavily used functions together without actual source code
-    movement.  This has provided a great speed improvement for this release.
-
-    The versions of the software we used are:
-
-    MS Overlay Linker	   3.65
-    MSC 		    5.1
-    MASM		    5.1
-
-    NDMake		    4.5
-
-    On a 286 10MHz PC you will have nethack in about 2 - 2.5 hours.
-    Hope you enjoy the game.  We have worked very hard to try to bring it back
-    to the PC.
+5)  Both OS/2 NetHack and the overlaid PC NetHack have been developed using
+    MSC 5.1.  MSC 6.0 is on the market, but since there hasn't been enough
+    time to fully test the game compiled with MSC 6.0, the distribution version
+    supports officially only MSC 5.1.  To compile NetHack with MSC 6.0, it may
+    be necessary to make some slight modifications to respective makefiles
+    as well as some source files.  Also, when compiling OS/2 version with MSC
+    6.0, change library "doscalls" to "os2" in Makefile.os2.

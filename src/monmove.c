@@ -2,12 +2,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifndef LINT
-# ifndef __STDC__
+#ifndef LINT	/* comment line for pre-compiled headers */
+# ifndef __STDC__	/* comment line for pre-compiled headers */
 #define TRAP_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-# endif
-#endif
+# endif	/* comment line for pre-compiled headers */
+#endif	/* comment line for pre-compiled headers */
 
 #include "hack.h"
 #include "mfndpos.h"
@@ -15,10 +15,15 @@
 #  include "artifact.h"
 #endif
 
+#ifdef OVL1
 static void FDECL(distfleeck,(struct monst *,int *,int *,int *));
-#ifdef POLYSELF
+#endif /* OVL1 */
+
+#ifdef OVL0
+# ifdef POLYSELF
 static boolean FDECL(itsstuck,(struct monst *));
-#endif
+# endif
+#endif /* OVL0 */
 
 #ifdef OVLB
 
@@ -96,7 +101,8 @@ register struct monst *mtmp;
 	    newsym(mtmp->mx,mtmp->my);
 	else
 	    mnewsym(mtmp->mx,mtmp->my);
-	here->seen = FALSE;
+	if (!canseeit)
+		here->seen = FALSE;
 	return(TRUE);
 }
 
@@ -340,14 +346,17 @@ register struct monst *mtmp;
 	return(tmp == 2);
 }
 
-static const char practical[] = { WEAPON_SYM, GEM_SYM, FOOD_SYM, 0 };
-static const char magical[] = {
+static const char NEARDATA practical[] = { WEAPON_SYM, GEM_SYM, FOOD_SYM, 0 };
+static const char NEARDATA magical[] = {
 	AMULET_SYM, POTION_SYM, SCROLL_SYM, WAND_SYM, RING_SYM,
 #ifdef SPELLS
 	SPBOOK_SYM,
 #endif
 	0 };
-static const char indigestion[] = { BALL_SYM, ROCK_SYM, 0 };
+static const char NEARDATA indigestion[] = { BALL_SYM, ROCK_SYM, 0 };
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 #ifdef POLYSELF
 static boolean
@@ -361,9 +370,6 @@ register struct monst *mtmp;
 	return(FALSE);
 }
 #endif
-
-#endif /* OVL1 */
-#ifdef OVL0
 
 int
 m_move(mtmp, after)
@@ -517,7 +523,8 @@ not_special:
 		conceals = hides_under(ptr);
 	}
 
-#define	SRCHRADIUS	25
+#define SQSRCHRADIUS	5
+#define	SRCHRADIUS	(SQSRCHRADIUS*SQSRCHRADIUS)
 
       { xchar mind = SRCHRADIUS;		/* not too far away */
 	register int dd;
@@ -539,26 +546,33 @@ not_special:
 	if((likegems || likeobjs || likemagic || likerock || conceals)
 	      && (!in_shop(omx, omy) || (!rn2(25) && !mtmp->isshk))) {
 	    register struct obj *otmp;
+	    register int xx, yy;
 
-	    for(otmp = fobj; otmp; otmp = otmp->nobj)
-		if((likeobjs && index(practical, otmp->olet)) ||
-		   (likemagic && index(magical, otmp->olet)) ||
-		   (likerock && otmp->otyp == BOULDER) ||
-		   (likegems && otmp->olet == GEM_SYM &&
-			otmp->otyp < LAST_GEM + 6) ||
-		   (conceals && !cansee(otmp->ox,otmp->oy)) ||
-		   (ptr == &mons[PM_GELATINOUS_CUBE] &&
-					!index(indigestion, otmp->olet))
-		  ) {
-			if(can_carry(mtmp,otmp))
-			if(ptr->mlet != S_UNICORN ||
-					objects[otmp->otyp].g_val != 0)
-			    if((dd = dist2(omx,omy,otmp->ox,otmp->oy)) < mind){
+	    for(xx = omx-SQSRCHRADIUS; xx <= omx+SQSRCHRADIUS; xx++) {
+		for(yy = omy-SQSRCHRADIUS; yy <= omy+SQSRCHRADIUS; yy++) {
+		    if(!isok(xx, yy)) continue;
+		    if((dd = dist2(omx,omy,xx, yy)) >= mind) continue;
+		    for(otmp = level.objects[xx][yy]; otmp; otmp = otmp->nexthere)
+		      if((likeobjs && index(practical, otmp->olet)) ||
+			 (likemagic && index(magical, otmp->olet)) ||
+			 (likerock && otmp->otyp == BOULDER) ||
+			 (likegems && otmp->olet == GEM_SYM &&
+			  otmp->otyp < LAST_GEM + 6) ||
+			 (conceals && !cansee(otmp->ox,otmp->oy)) ||
+			 (ptr == &mons[PM_GELATINOUS_CUBE] &&
+			  !index(indigestion, otmp->olet))
+			 ) {
+			  if(can_carry(mtmp,otmp))
+			    if(ptr->mlet != S_UNICORN ||
+			       objects[otmp->otyp].g_val != 0){
 				mind = dd;
 				gx = otmp->ox;
 				gy = otmp->oy;
+				break;
 			    }
+		      }
 		}
+	    }
 	}
 	if(mind < SRCHRADIUS && appr == -1) {
 	    if(dist2(omx,omy,mtmp->mux,mtmp->muy) < 10) {
@@ -576,7 +590,7 @@ not_special:
 	if (ptr->mlet == S_UNICORN) flag |= NOTONL;
 	if (passes_walls(ptr)) flag |= (ALLOW_WALL | ALLOW_ROCK);
 	if (can_tunnel) flag |= ALLOW_DIG;
-	if (is_human(ptr)) flag |= ALLOW_SSM;
+	if (is_human(ptr) || ptr == &mons[PM_MINOTAUR]) flag |= ALLOW_SSM;
 	if (is_undead(ptr)) flag |= NOGARLIC;
 	if (throws_rocks(ptr)) flag |= ALLOW_ROCK;
 	if (can_open) flag |= OPENDOOR;
@@ -624,8 +638,7 @@ not_special:
 	    if((info[chi] & ALLOW_M) ||
 		   (nix == mtmp->mux && niy == mtmp->muy)) {
 		int stat;
-		mtmp2 = 
-		    (MON_AT(nix, niy) ? m_at(nix,niy) : (struct monst *)0);
+		mtmp2 = m_at(nix,niy);
 		if((stat = mattackm(mtmp, mtmp2)) == 1 && rn2(4) &&
 			mtmp2->mlstmv != moves && mattackm(mtmp2, mtmp) == 2)
 		    return(2);

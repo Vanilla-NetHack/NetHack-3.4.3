@@ -7,9 +7,9 @@
 #  include "artifact.h"
 #endif
 
-static void FDECL(findone,(XCHAR_P,XCHAR_P,int *));
-
 #ifdef OVLB
+
+static void FDECL(findone,(XCHAR_P,XCHAR_P,int *));
 
 static void
 findone(zx,zy,num)

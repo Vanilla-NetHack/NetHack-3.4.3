@@ -97,7 +97,7 @@ struct monst *mtmp;
 	} else	whd->wdispl = 0;
 	if(wgrowtime[tmp] <= moves) {
 		if(!wgrowtime[tmp]) wgrowtime[tmp] = moves + rnd(5);
-		else wgrowtime[tmp] += 2+rnd(15);
+		else wgrowtime[tmp] = wgrowtime[tmp]+2+rnd(15);
 		mtmp->mhp += 3;
 		if (mtmp->mhp > MHPMAX) mtmp->mhp = MHPMAX;
 		if (mtmp->mhp > mtmp->mhpmax) mtmp->mhpmax = mtmp->mhp;

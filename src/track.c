@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)track.c	1.4	87/08/08
+/*	SCCS Id: @(#)track.c	3.0	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* track.c - version 1.0.2 */
@@ -7,8 +7,8 @@
 
 #define	UTSZ	50
 
-VSTATIC int utcnt, utpnt;
-VSTATIC coord utrack[UTSZ];
+STATIC_VAR int NEARDATA utcnt, NEARDATA utpnt;
+STATIC_VAR coord NEARDATA utrack[UTSZ];
 
 #ifdef OVLB
 void

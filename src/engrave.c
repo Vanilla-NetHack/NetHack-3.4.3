@@ -4,7 +4,7 @@
 
 #include	"hack.h"
 
-VSTATIC struct engr {
+STATIC_VAR struct engr {
 	struct engr *nxt_engr;
 	char *engr_txt;
 	xchar engr_x, engr_y;
@@ -16,10 +16,10 @@ VSTATIC struct engr {
 #define BURN	3
 #define MARK	4
 #define POLY	5	/* temporary type - for polymorphing engraving */
-} *head_engr;
+} NEARDATA *head_engr;
 
-OSTATIC void FDECL(del_engr, (struct engr *));
-OSTATIC struct engr * FDECL(engr_at,(XCHAR_P,XCHAR_P));
+STATIC_DCL void FDECL(del_engr, (struct engr *));
+STATIC_DCL struct engr * FDECL(engr_at,(XCHAR_P,XCHAR_P));
 
 #ifdef OVLB
 /* random engravings */
@@ -37,7 +37,7 @@ const char *random_engr[] =
 #endif /* OVLB */
 #ifdef OVL0
 
-XSTATIC struct engr *
+STATIC_OVL struct engr *
 engr_at(x,y) register xchar x,y; {
 register struct engr *ep = head_engr;
 	while(ep) {
@@ -182,6 +182,8 @@ int
 freehand(){
 	return(!uwep ||
 	   !uwep->cursed ||
+	   (uwep->olet != WEAPON_SYM && uwep->otyp != TIN_OPENER
+		&& uwep->otyp != PICK_AXE && uwep->otyp != UNICORN_HORN) || 
 	   (!bimanual(uwep) && (!uarms || !uarms->cursed)));
 /*	if ((uwep && bimanual(uwep)) ||
 	    (uwep && uarms))
@@ -190,9 +192,9 @@ freehand(){
 		return(1);*/
 }
 
-static const char styluses[] = { '#', '-', TOOL_SYM, WEAPON_SYM, WAND_SYM, 0 };
-static const char too_large[] = { ARMOR_SYM, BALL_SYM, ROCK_SYM, 0 };
-static const char paper[] = { SCROLL_SYM,
+static const char NEARDATA styluses[] = { '#', '-', TOOL_SYM, WEAPON_SYM, WAND_SYM, 0 };
+static const char NEARDATA too_large[] = { ARMOR_SYM, BALL_SYM, ROCK_SYM, 0 };
+static const char NEARDATA paper[] = { SCROLL_SYM,
 #ifdef SPELLS
 	SPBOOK_SYM,
 #endif
@@ -612,7 +614,7 @@ unsigned lth;
 	}
 }
 
-XSTATIC void
+STATIC_OVL void
 del_engr(ep) register struct engr *ep; {
 register struct engr *ept;
 	if(ep == head_engr)

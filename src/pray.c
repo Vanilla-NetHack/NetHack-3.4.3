@@ -650,9 +650,9 @@ pleased() {
 	    case 6:	pline ("An object appears at your %s!",
 				makeplural(body_part(FOOT)));
 #ifdef SPELLS
-			bless(mkobj_at(SPBOOK_SYM, u.ux, u.uy));
+			bless(mkobj_at(SPBOOK_SYM, u.ux, u.uy, TRUE));
 #else
-			bless(mkobj_at(SCROLL_SYM, u.ux, u.uy));
+			bless(mkobj_at(SCROLL_SYM, u.ux, u.uy, TRUE));
 #endif
 			break;
 
@@ -692,7 +692,7 @@ gods_upset()
 }
 
 #ifdef ENDGAME
-static const char sacrifice_types[] = { FOOD_SYM, AMULET_SYM, 0 };
+static const char NEARDATA sacrifice_types[] = { FOOD_SYM, AMULET_SYM, 0 };
 #endif
 
 static void
@@ -772,18 +772,18 @@ dosacrifice()
 		} else {
 			register struct monst *dmon;
     /* Human sacrifice on a chaotic altar is equivalent to demon summoning */
-#ifdef THEOLOGY
+# ifdef THEOLOGY
 			if (altaralign == U_CHAOTIC)
 				pline("The blood covers the altar!");
 			else {
-#endif
+# endif
     pline("The blood floods over the altar, which vanishes in %s cloud!",
 				  an(Hallucination ? hcolor() : black));
 				levl[u.ux][u.uy].typ = ROOM;
 				levl[u.ux][u.uy].altarmask = 0;
-#ifdef THEOLOGY
+# ifdef THEOLOGY
 			}
-#endif
+# endif
 			change_luck(2);
 			if(Invisible) newsym(u.ux, u.uy);
 			if(dmon = makemon(&mons[dlord()], u.ux, u.uy)) {
@@ -817,6 +817,7 @@ dosacrifice()
 #ifdef __GNULINT__
 		else { impossible("Bad unicorn type??"); unicalign = 0; }
 #endif
+#ifdef ALTARS
 		/* If same as altar, always a very bad action. */
 		if (unicalign == altaralign) {
 		    pline("Such an action is an insult to %s!", (unicalign== -1)
@@ -832,9 +833,11 @@ dosacrifice()
 		    else You("feel you are thoroughly on the right path.");
 		    u.ualign = ALIGNLIM;
 		    value += 3;
-		} else if (unicalign == u.ualigntyp) {
+		} else
 		/* If sacrificing unicorn of your alignment to altar not of */
 		/* your alignment, your god gets angry and it's a conversion */
+#endif
+		if (unicalign == u.ualigntyp) {
 		    u.ualign = -1;
 		    value = 1;
 		} else value += 3;
@@ -959,6 +962,7 @@ verbalize("In return for thy service, I grant thee the gift of Immortality!");
 			You("feel the power of %s increase.",
 					u_gname());
 			change_luck(1);
+			/* Yes, this is supposed to be &=, not |= */
 			levl[u.ux][u.uy].altarmask &= A_SHRINE;
 			/* the following accommodates stupid compilers */
 			levl[u.ux][u.uy].altarmask =

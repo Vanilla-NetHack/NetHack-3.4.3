@@ -7,12 +7,15 @@
 static	const char	SCCS_Id[] = "@(#)hack.c	3.0\t89/11/20";
 #endif
 
-OSTATIC int NDECL(moverock);
+STATIC_DCL int NDECL(moverock);
 #ifdef SINKS
-OSTATIC void NDECL(dosinkfall);
+STATIC_DCL void NDECL(dosinkfall);
 #endif
+
+#ifdef OVL1
 static boolean FDECL(is_edge,(XCHAR_P,XCHAR_P));
 static boolean FDECL(bad_rock,(XCHAR_P,XCHAR_P));
+#endif /* OVL1 */
 
 #ifdef OVLB
 
@@ -28,17 +31,24 @@ unsee() {
 
 	if(seehx){
 		seehx = 0;
-	} else
-	for(x = u.ux-1; x < u.ux+2; x++)
-	    for(y = u.uy-1; y < u.uy+2; y++) {
-		if(!isok(x, y)) continue;
-		lev = &levl[x][y];
-		if(!lev->lit && lev->scrsym == ROOM_SYM) {
+	} 
+	/*
+	 *  Erase surrounding positions if needed.  We don't need to do this
+	 *  if we are blind, since we can't see them anyway.  This removes the
+	 *  pl6 bug that makes monsters disappear if they are next to you if
+	 *  you teleport while blind and telepathic.
+	 */
+	else if(!Blind)
+	    for(x = u.ux-1; x < u.ux+2; x++)
+	        for(y = u.uy-1; y < u.uy+2; y++) {
+		    if(!isok(x, y)) continue;
+		    lev = &levl[x][y];
+		    if(!lev->lit && lev->scrsym == ROOM_SYM) {
 			lev->scrsym = STONE_SYM;
 			lev->new = 1;
 			on_scr(x,y);
-		}
-	    }
+		    }
+	        }
 }
 
 /* called:
@@ -87,10 +97,10 @@ int mode;
 #endif /* OVLB */
 #ifdef OVL2
 
-XSTATIC int
+STATIC_OVL int
 moverock() {
 	register xchar rx, ry;
-	register struct obj *otmp;
+	register struct obj *otmp, *otmp2;
 	register struct trap *ttmp;
 	register struct	monst *mtmp;
 
@@ -172,6 +182,23 @@ moverock() {
 				delobj(otmp);
 				continue;
 			}
+				/*
+				 * Re-link at top of fobj chain so that 
+				 * pile order is preserved when level is 
+				 * restored.
+				 */
+			if (otmp != fobj) {
+				otmp2 = fobj;
+				while (otmp2->nobj && otmp2->nobj != otmp) 
+					otmp2 = otmp2->nobj;
+				if (!otmp2->nobj)
+				    impossible("moverock: error in fobj chain");
+				else {
+					otmp2->nobj = otmp->nobj;	
+					otmp->nobj = fobj;
+					fobj = otmp;
+				}
+			}
 			move_object(otmp, rx, ry);
 			/* pobj(otmp); */
 			if(cansee(rx,ry)) atl(rx,ry,otmp->olet);
@@ -182,7 +209,7 @@ moverock() {
 			long lastmovetime;
 			lastmovetime = 0;
 #else
-			static long lastmovetime;
+			static long NEARDATA lastmovetime;
 #endif
 			/* note: this var contains garbage initially and
 			   after a restore */
@@ -229,13 +256,21 @@ register struct obj *obj;
 register xchar ox, oy;
 {
 	remove_object(obj);
-	newsym(obj->ox, obj->oy);
+	if (cansee(obj->ox, obj->oy)) {
+		levl[obj->ox][obj->oy].seen = 0;
+		prl(obj->ox, obj->oy);
+	} else
+		newsym(obj->ox, obj->oy);
 	place_object(obj, ox, oy);
-	newsym(ox, oy);
+	if (cansee(ox, oy)) {
+		levl[ox][oy].seen = 0;
+		prl(ox, oy);
+	} else
+		newsym(ox, oy);
 }
 
 #ifdef SINKS
-XSTATIC
+STATIC_OVL
 void
 dosinkfall() {
 	register struct obj *obj;
@@ -323,7 +358,7 @@ register xchar x,y;
 
 void
 domove() {
-	register struct monst *mtmp = (struct monst *)0;
+	register struct monst *mtmp;
 	register struct rm *tmpr,*ust;
 	register xchar x,y;
 	struct trap *trap;
@@ -393,8 +428,8 @@ domove() {
 #endif
 			}
 		}
-		if (MON_AT(x, y)) {
-			mtmp = m_at(x,y);
+		mtmp = m_at(x,y);
+		if (mtmp) {
 			/* Don't attack if you're running */
 			if (flags.run && !mtmp->mimic &&
 				    (Blind ? Telepat :
@@ -548,7 +583,7 @@ domove() {
 	}
 #ifdef POLYSELF
 	if (tunnels(uasmon) && !needspick(uasmon) && IS_ROCK(tmpr->typ)) {
-		static const char *digtxt;
+		static const char NEARDATA *digtxt;
 
 		if(dig_pos.x != x || dig_pos.y != y
 		    || dig_level != dlevel || dig_down) {
@@ -755,15 +790,17 @@ lookaround() {
 #endif
 	if(Blind || flags.run == 0) return;
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
+		if(!isok(x,y)) continue;
 #ifdef POLYSELF
 		if(u.umonnum == PM_GRID_BUG && x != u.ux && y != u.uy) continue;
 #endif
 		if(x == u.ux && y == u.uy) continue;
-		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
+		if((mtmp = m_at(x,y)) && !mtmp->mimic &&
 		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
-			if((flags.run != 1 && !mtmp->mtame) || (x == u.ux+u.dx && y == u.uy+u.dy))
+			if((flags.run != 1 && !mtmp->mtame)
+					|| (x == u.ux+u.dx && y == u.uy+u.dy))
 				goto stop;
-		} else mtmp = 0;
+		}
 		if(levl[x][y].typ == STONE) continue;
 		if(x == u.ux-u.dx && y == u.uy-u.dy) continue;
 		{
@@ -861,8 +898,9 @@ monster_nearby() {
 	if(!Blind)
 	for(x = u.ux-1; x <= u.ux+1; x++)
 	    for(y = u.uy-1; y <= u.uy+1; y++) {
+		if(!isok(x,y)) continue;
 		if(x == u.ux && y == u.uy) continue;
-		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
+		if((mtmp = m_at(x,y)) && !mtmp->mimic &&
 		   !mtmp->mtame && !mtmp->mpeaceful &&
 		   !noattacks(mtmp->data) &&
 		   mtmp->mcanmove && !mtmp->msleep &&  /* aplvax!jcn */
@@ -931,6 +969,7 @@ xchar *lx1,*hx1,*ly1,*hy1,*lx2,*hx2,*ly2,*hy2;
 	} else {
 		for(ux = u.ux-1; ux <= u.ux+1; ux++)
 			for(uy = u.uy-1; uy <= u.uy+1; uy++) {
+				if(!isok(ux,uy)) continue;
 				if(IS_ROCK(levl[ux][uy].typ) ||
 					IS_DOOR(levl[ux][uy].typ)) continue;
 				/* might have side-by-side walls, in which case

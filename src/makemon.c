@@ -7,15 +7,20 @@
 # include <ctype.h>
 #endif
 
-VSTATIC struct monst zeromonst;
+STATIC_VAR struct monst NEARDATA zeromonst;
 
+#ifdef OVL0
+static int NDECL(cmnum);
 static int FDECL(uncommon, (struct permonst *));
-OSTATIC void FDECL(m_initgrp,(struct monst *,int,int,int));
-static void FDECL(m_initthrow,(struct monst *,int,int));
-OSTATIC void FDECL(m_initweap,(struct monst *));
+#endif /* OVL0 */
+STATIC_DCL void FDECL(m_initgrp,(struct monst *,int,int,int));
+STATIC_DCL void FDECL(m_initthrow,(struct monst *,int,int));
+STATIC_DCL void FDECL(m_initweap,(struct monst *));
+STATIC_DCL void FDECL(rloc_to,(struct monst *,int,int));
+#ifdef OVL1
 static void FDECL(m_initinv,(struct monst *));
-static void FDECL(rloc_to,(struct monst *,int,int));
 static int FDECL(mstrength,(struct permonst *));
+#endif /* OVL1 */
 
 extern int monstr[];
 
@@ -32,7 +37,7 @@ int monstr[NUMMONS];
 
 #ifdef OVLB
 
-XSTATIC void
+STATIC_OVL void
 m_initgrp(mtmp, x, y, n)	/* make a group just like mtmp */
 register struct monst *mtmp;
 register int x, y, n;
@@ -57,19 +62,20 @@ register int x, y, n;
 		 * are peaceful and some are not, the result will just be a
 		 * smaller group.
 		 */
-		enexto(&mm, mm.x, mm.y, mtmp->data);
-		mon = makemon(mtmp->data, mm.x, mm.y);
-		mon->mpeaceful = 0;
-		set_malign(mon);
-		/* Undo the second peace_minded() check in makemon(); if the
-		 * monster turned out to be peaceful the first time we didn't
-		 * create it at all; we don't want a second check.
-		 */
+		if (enexto(&mm, mm.x, mm.y, mtmp->data)) {
+		    mon = makemon(mtmp->data, mm.x, mm.y);
+		    mon->mpeaceful = 0;
+		    set_malign(mon);
+		    /* Undo the second peace_minded() check in makemon(); if the
+		     * monster turned out to be peaceful the first time we
+		     * didn't create it at all; we don't want a second check.
+		     */
+		}
 	}
 }
 
-
-static void
+STATIC_OVL
+void
 m_initthrow(mtmp,otyp,oquan)
 struct monst *mtmp;
 int otyp,oquan;
@@ -85,7 +91,10 @@ int otyp,oquan;
 	mpickobj(mtmp, otmp);
 }
 
-XSTATIC void
+#endif /* OVLB */
+#ifdef OVL2
+
+STATIC_OVL void
 m_initweap(mtmp)
 register struct monst *mtmp;
 {
@@ -360,7 +369,7 @@ register struct monst *mtmp;
 	}
 }
 
-#endif /* OVLB */
+#endif /* OVL2 */
 #ifdef OVL1
 
 static void
@@ -460,7 +469,7 @@ register struct	monst	*mtmp;
 /*
  * called with [x,y] = coordinates;
  *	[0,0] means anyplace
- *	[u.ux,u.uy] means: call mnexto (if !in_mklev)
+ *	[u.ux,u.uy] means: near player (if !in_mklev)
  *
  *	In case we make a monster group, only return the one at [x,y].
  */
@@ -472,6 +481,7 @@ register int	x, y;
 	register struct monst *mtmp;
 	register int	ct;
 	boolean anything = (!ptr);
+	boolean byyou = (x == u.ux && y == u.uy);
 
 	/* if caller wants random location, do it here */
 	if(x == 0 && y == 0) {
@@ -487,6 +497,14 @@ register int	x, y;
 			y = rn2(ROWNO);
 		} while(!goodpos(x, y, ptr) ||
 			(!in_mklev && tryct++ < 50 && inroom(x, y) == uroom));
+	} else if (byyou && !in_mklev) {
+		coord bypos;
+
+		if(enexto(&bypos, u.ux, u.uy, ptr)) {
+			x = bypos.x;
+			y = bypos.y;
+		} else
+			return((struct monst *)0);
 	}
 
 	/* if a monster already exists at the position, return */
@@ -508,7 +526,7 @@ register int	x, y;
 		}
 	}
 	/* if it's unique, don't ever make it again */
-	if (ptr->geno & G_UNIQ) ptr->geno &= G_GENOD;
+	if (ptr->geno & G_UNIQ) ptr->geno |= G_GENOD;
 /* gotmon:	/* label not referenced */
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;		/* clear all entries in structure */
@@ -550,7 +568,7 @@ register int	x, y;
 			mtmp->mhide = 1;
 			if(in_mklev)
 			    if(x && y)
-				(void) mkobj_at(0, x, y);
+				(void) mkobj_at(0, x, y, TRUE);
 			if(OBJ_AT(x, y) || levl[x][y].gmask)
 			    mtmp->mundetected = 1;
 			break;
@@ -600,13 +618,9 @@ register int	x, y;
 		    (ptr == &mons[PM_GIANT_EEL])) && rn2(5))
 			mtmp->msleep = 1;
 	} else {
-		if(x == u.ux && y == u.uy) {
-			mnexto(mtmp);
-			if (ptr->mlet == S_MIMIC) {
-				set_mimic_sym(mtmp);
-				unpmon(mtmp);
-				pmon(mtmp);
-			}
+		if(byyou) {
+			pmon(mtmp);
+			set_apparxy(mtmp);
 		}
 	}
 #ifdef INFERNO
@@ -639,7 +653,7 @@ register int	x, y;
 	return(mtmp);
 }
 
-void
+boolean
 enexto(cc, xx, yy, mdat)
 coord *cc;
 register xchar xx, yy;
@@ -648,41 +662,48 @@ struct permonst *mdat;
 	register xchar x,y;
 	coord foo[15], *tfoo;
 	int range, i;
+	int xmin, xmax, ymin, ymax;
 
 	tfoo = foo;
 	range = 1;
 	do {	/* full kludge action. */
-		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x, yy-range, mdat)) {
+		xmin = max(0, xx-range);
+		xmax = min(COLNO, xx+range);
+		ymin = max(0, yy-range);
+		ymax = min(ROWNO, yy+range);
+
+		for(x = xmin; x <= xmax; x++)
+			if(goodpos(x, ymin, mdat)) {
 				tfoo->x = x;
-				(tfoo++)->y = yy-range;
+				(tfoo++)->y = ymin;
 				if(tfoo == &foo[15]) goto foofull;
 			}
-		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x, yy+range, mdat)) {
+		for(x = xmin; x <= xmax; x++)
+			if(goodpos(x, ymax, mdat)) {
 				tfoo->x = x;
-				(tfoo++)->y = yy+range;
+				(tfoo++)->y = ymax;
 				if(tfoo == &foo[15]) goto foofull;
 			}
-		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx-range, y, mdat)) {
-				tfoo->x = xx-range;
+		for(y = ymin+1; y < ymax; y++)
+			if(goodpos(xmin, y, mdat)) {
+				tfoo->x = xmin;
 				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
 			}
-		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx+range, y, mdat)) {
-				tfoo->x = xx+range;
+		for(y = ymin+1; y < ymax; y++)
+			if(goodpos(xmax, y, mdat)) {
+				tfoo->x = xmax;
 				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		range++;
+		if(range > ROWNO && range > COLNO) return FALSE;
 	} while(tfoo == foo);
 foofull:
 	i = rn2((int)(tfoo - foo));
 	cc->x = foo[i].x;
 	cc->y = foo[i].y;
-	return;
+	return TRUE;
 }
 
 int
@@ -710,7 +731,8 @@ struct permonst *mdat;
 #endif /* OVL1 */
 #ifdef OVLB
 
-static void
+STATIC_OVL
+void
 rloc_to(mtmp, x, y)
 struct monst *mtmp;
 register int x,y;
@@ -732,6 +754,9 @@ register int x,y;
 	set_apparxy(mtmp);
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 void
 rloc(mtmp)
 struct monst *mtmp;
@@ -747,6 +772,9 @@ struct monst *mtmp;
 	   } while(!goodpos(x,y,mtmp->data));
 	rloc_to(mtmp, x, y);
 }
+
+#endif /* OVL2 */
+#ifdef OVLB
 
 void
 vloc(mtmp)
@@ -870,10 +898,10 @@ rndmonst()		/* select a random monster */
 	register struct permonst *ptr;
 	register int i, ct;
 	register int zlevel;
-	static int minmlev, maxmlev, accept;
-	static long oldmoves = 0L;	/* != 1, starting value of moves */
+	static int NEARDATA minmlev, NEARDATA maxmlev, NEARDATA accept;
+	static long NEARDATA oldmoves = 0L;	/* != 1, starting value of moves */
 #ifdef REINCARNATION
-	static boolean upper;
+	static boolean NEARDATA upper;
 
 	upper = (dlevel == rogue_level);
 #endif
@@ -1019,7 +1047,8 @@ register struct monst *mtmp;
 	if (ptr->mlevel >= 50 || mtmp->mhpmax <= 8*mtmp->m_lev)
 	    return ptr;
 	newtype = little_to_big(monsndx(ptr));
-	if (++mtmp->m_lev >= mons[newtype].mlevel) {
+	if (++mtmp->m_lev >= mons[newtype].mlevel
+					&& newtype != monsndx(ptr)) {
 		if (mons[newtype].geno & G_GENOD) {
 			pline("As %s grows up into %s, %s dies!",
 				mon_nam(mtmp),
@@ -1033,6 +1062,8 @@ register struct monst *mtmp;
 	}
 	if (mtmp->m_lev > 3*mtmp->data->mlevel / 2)
 		mtmp->m_lev = 3*mtmp->data->mlevel / 2;
+	if (mtmp->mhp > mtmp->m_lev * 8)
+		mtmp->mhp = mtmp->m_lev * 8;
 	return(mtmp->data);
 }
 
@@ -1145,7 +1176,7 @@ struct monst *mtmp;
 #endif /* OVL1 */
 #ifdef OVLB
 
-static char syms[] = { 0, 1, RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, GOLD_SYM,
+static char NEARDATA syms[] = { 0, 1, RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, GOLD_SYM,
 	SCROLL_SYM, POTION_SYM, ARMOR_SYM, AMULET_SYM, TOOL_SYM, ROCK_SYM,
 	GEM_SYM,
 #ifdef SPELLS

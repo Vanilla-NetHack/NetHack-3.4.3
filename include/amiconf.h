@@ -107,6 +107,7 @@ extern char *FDECL(gets, (char *));
 #define MAIL			/* Get mail at unexpected occasions */
 #define AMIGA_WBENCH		/* Icon support */
 #define DEFAULT_ICON "NetHack:default.icon"	/* private icon for above */
+#define AMIFLUSH		/* toss typeahead (select flush in .cnf) */
 #undef	TERMLIB
 
 #endif /* AMICONF_H */

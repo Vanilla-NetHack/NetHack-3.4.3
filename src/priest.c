@@ -10,14 +10,16 @@
 #include "eshk.h"
 #include "epri.h"
 
+#ifdef OVLB
+
+#if defined(ALTARS) && defined(THEOLOGY)
 static boolean FDECL(histemple_at,(struct monst *,int,int));
 static int FDECL(t_alignment,(struct mkroom *));
 static boolean FDECL(is_shrined,(struct mkroom *));
 static boolean FDECL(t_coaligned,(struct mkroom *));
 struct monst *FDECL(findpriest,(struct mkroom *));
 static boolean FDECL(p_inhistemple,(struct mkroom *));
-
-#ifdef OVLB
+#endif
 
 /* used for the insides of shk_move and pri_move */
 int
@@ -236,17 +238,10 @@ register int lvl, sx, sy, align;
 		    cnt--;
 		}
 #endif
-		if(p_coaligned(priest)) {
+		if(p_coaligned(priest))
 		    (void) mongets(priest, rn2(2) ? CLOAK_OF_PROTECTION
 						  : CLOAK_OF_MAGIC_RESISTANCE);
-#ifdef NAMED_ITEMS
-		    otmp = mk_aligned_artifact((unsigned)EPRI(priest)->shralign + 1);
-		    if(otmp) {
-			otmp->spe = rnd(4);
-			mpickobj(priest, otmp);
-		    }
-#endif
-		} else {
+		else {
 		    if(!rn2(5)) 
 			otmp = mksobj(CLOAK_OF_MAGIC_RESISTANCE, FALSE); 
 		    else otmp = mksobj(CLOAK_OF_PROTECTION, FALSE); 
@@ -254,12 +249,13 @@ register int lvl, sx, sy, align;
 			if(!rn2(2)) curse(otmp);
 			mpickobj(priest, otmp);
 		    }
-		    otmp = mksobj(MACE, FALSE);
-		    if(otmp) {
-			otmp->spe = rnd(3);
-			if(!rn2(2)) curse(otmp);
-			mpickobj(priest, otmp);
-		    }
+		}
+
+		otmp = mksobj(MACE, FALSE);
+		if(otmp) {
+		    otmp->spe = rnd(3);
+		    if(!rn2(2)) curse(otmp);
+		    mpickobj(priest, otmp);
 		}
 	}
 }
@@ -268,7 +264,7 @@ char *
 priestname(priest)
 register struct monst *priest;
 {
-	static char pname[PL_NSIZ];
+	static char NEARDATA pname[PL_NSIZ];
 
 	Strcpy(pname, "the ");
 	if(priest->minvis) Strcat(pname, "invisible ");
@@ -447,6 +443,7 @@ register struct monst *priest;
 	        kludge("%s gives you two bits for an ale.", Monnam(priest));
 	        u.ugold = 2L;
 		if (priest->mgold) priest->mgold -= 2L;
+		flags.botl = 1;
 	    } else
 		kludge("%s is not interested.", Monnam(priest));
 	    return;

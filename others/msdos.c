@@ -27,15 +27,26 @@
 #include <fcntl.h>
 #include <process.h>
 
-static char DOSgetch();
+static char NDECL(DOSgetch);
 # ifdef DGK
-static char BIOSgetch();
+static char NDECL(BIOSgetch);
 # endif
 # ifdef TOS
-static void init_aline();
+static void NDECL(init_aline);
 char *_a_line;			/* for Line A variables */
 # else
-static unsigned int ioctl();
+static unsigned int FDECL(ioctl, (int,int,unsigned));
+static boolean NDECL(comspec_exists);
+# endif
+
+static int FDECL(findfirst, (char *));
+static int NDECL(findnext);
+static boolean NDECL(record_exists);
+# if !defined(TOS) && !defined(__TURBOC__) && !defined(OS2)
+static char NDECL(switchar);
+# endif
+# ifndef OS2
+static char * NDECL(getdta);
 # endif
 
 void
@@ -111,67 +122,67 @@ tgetch() {
  *    shift values below.
  */
 static const struct pad {
-	char normal, shift;
+	char normal, shift, cntrl;
 } keypad[PADKEYS] = {
 #  ifdef TOS
-			{C('['), 'Q'},		/* UNDO */
-			{'?', '/'},		/* HELP */
-			{'(', 'a'},		/* ( */
-			{')', 'w'},		/* ) */
-			{'/', '/'},		/* / */
-			{C('p'), '$'},		/* * */
+			{C('['), 'Q', C('[')},		/* UNDO */
+			{'?', '/', '?'},		/* HELP */
+			{'(', 'a', '('},		/* ( */
+			{')', 'w', ')'},		/* ) */
+			{'/', '/', '/'},		/* / */
+			{C('p'), '$', C('p')},		/* * */
 #  endif
-			{'y', 'Y'},		/* 7 */
-			{'k', 'K'},		/* 8 */
-			{'u', 'U'},		/* 9 */
+			{'y', 'Y', C('y')},		/* 7 */
+			{'k', 'K', C('k')},		/* 8 */
+			{'u', 'U', C('u')},		/* 9 */
 #  ifndef TOS
-			{'m', C('p')},		/* - */
+			{'m', C('p'), C('p')},		/* - */
 #  endif
-			{'h', 'H'},		/* 4 */
+			{'h', 'H', C('h')},		/* 4 */
 #  ifdef TOS
-			{'.', '.'},
+			{'.', '.', '.'},
 #  else
-			{'g', 'g'},		/* 5 */
+			{'g', 'g', 'g'},		/* 5 */
 #  endif
-			{'l', 'L'},		/* 6 */
+			{'l', 'L', C('l')},		/* 6 */
 #  ifndef TOS
-			{'p', 'P'},		/* + */
+			{'p', 'P', C('p')},		/* + */
 #  endif
-			{'b', 'B'},		/* 1 */
-			{'j', 'J'},		/* 2 */
-			{'n', 'N'},		/* 3 */
-			{'i', 'I'},		/* Ins */
-			{'.', ':'}		/* Del */
+			{'b', 'B', C('b')},		/* 1 */
+			{'j', 'J', C('j')},		/* 2 */
+			{'n', 'N', C('n')},		/* 3 */
+			{'i', 'I', C('i')},		/* Ins */
+			{'.', ':', ':'}			/* Del */
 }, numpad[PADKEYS] = {
 #  ifdef TOS
-			{C('['), 'Q'}	,	/* UNDO */
-			{'?', '/'},		/* HELP */
-			{'(', 'a'},		/* ( */
-			{')', 'w'},		/* ) */
-			{'/', '/'},		/* / */
-			{C('p'), '$'},		/* * */
+			{C('['), 'Q', C('[')}	,	/* UNDO */
+			{'?', '/', '?'},		/* HELP */
+			{'(', 'a', '('},		/* ( */
+			{')', 'w', ')'},		/* ) */
+			{'/', '/', '/'},		/* / */
+			{C('p'), '$', C('p')},		/* * */
 #  endif
-			{'7', M('7')},		/* 7 */
-			{'8', M('8')},		/* 8 */
-			{'9', M('9')},		/* 9 */
+			{'7', M('7'), '7'},		/* 7 */
+			{'8', M('8'), '8'},		/* 8 */
+			{'9', M('9'), '9'},		/* 9 */
 #  ifndef TOS
-			{'m', C('p')},		/* - */
+			{'m', C('p'), C('p')},		/* - */
 #  endif
-			{'4', M('4')},		/* 4 */
+			{'4', M('4'), '4'},		/* 4 */
 #  ifdef TOS
-			{'.', '.'},		/* 5 */
+			{'.', '.', '.'},		/* 5 */
 #  else
-			{'g', 'G'},		/* 5 */
+			{'g', 'G', 'g'},		/* 5 */
 #  endif
-			{'6', M('6')},		/* 6 */
+			{'6', M('6'), '6'},		/* 6 */
 #  ifndef TOS
-			{'p', 'P'},		/* + */
+			{'p', 'P', C('p')},		/* + */
 #  endif
-			{'1', M('1')},		/* 1 */
-			{'2', M('2')},		/* 2 */
-			{'3', M('3')},		/* 3 */
-			{'i', 'I'},		/* Ins */
-			{'.', ':'}		/* Del */
+			{'1', M('1'), '1'},		/* 1 */
+			{'2', M('2'), '2'},		/* 2 */
+			{'3', M('3'), '3'},		/* 3 */
+			{'i', 'I', C('i')},		/* Ins */
+			{'.', ':', ':'}			/* Del */
 };
 
 /*
@@ -250,6 +261,8 @@ BIOSgetch() {
 		kpad = flags.num_pad ? numpad : keypad;
 		if (shift & SHIFT)
 			ch = kpad[scan - KEYPADLO].shift;
+		else if (shift & CTRL)
+			ch = kpad[scan - KEYPADLO].cntrl;
 		else
 			ch = kpad[scan - KEYPADLO].normal;
 	}
@@ -359,10 +372,14 @@ dosh() {
 		}
 #ifdef TOS
 /* Some shells (e.g. Gulam) turn the cursor off when they exit */
-		if (flags.IBMBIOS)
+		if (flags.IBMBIOS) {
 			(void)Cursconf(1, -1);
-#endif
+			get_scr_size(); /* maybe they changed the screen */
+		}
+#else
 		gettty(); /* ctrl-P might get turned back on (TH) */
+		get_scr_size(); /* maybe the screen mode changed (TH) */
+#endif
 		chdirx(hackdir, 0);
 		start_screen();
 		docrt();
@@ -655,7 +672,9 @@ int mode;
 		return;
 	}
 
+#  ifdef TOS
 error_copying:
+#  endif
 	/* Last file didn't get there.
 	 */
 	Sprintf(to, "%s%s", topath, allbones);

@@ -229,8 +229,6 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 				    else if (flags.soundok && humanoid(mtmp->data))
 					You("hear a scream!");
 				    if ((mtmp->mhp -= rnd(6)) <= 0) {
-					int saved_conf = u.umconf;
-
 					if(!cansee(x,y))
 					    pline("It is destroyed!");
 					else {
@@ -240,7 +238,6 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 						mon_nam(mtmp));
 					}
 					xkilled(mtmp,0);
-					u.umconf = saved_conf;
 				    }
 				}
 			    } else if (x == u.ux && y == u.uy) {
@@ -394,6 +391,7 @@ struct obj *instr;
 		/* Search for the drawbridge */
 		for(y=u.uy-1; y<=u.uy+1; y++)
 		    for(x=u.ux-1;x<=u.ux+1;x++)
+			if(isok(x,y))
 			if (find_drawbridge(&x,&y)) {
 			    if (levl[x][y].typ == DRAWBRIDGE_DOWN)
 				close_drawbridge(x,y);
@@ -408,6 +406,7 @@ struct obj *instr;
 		ok = FALSE;
 		for(y = u.uy-1; y <= u.uy+1 && !ok; y++)
 		    for(x = u.ux-1; x <= u.ux+1 && !ok; x++)
+			if(isok(x,y))
 			if(IS_DRAWBRIDGE(levl[x][y].typ) ||
 			   is_drawbridge_wall(x,y) >= 0)
 				ok = TRUE;

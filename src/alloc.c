@@ -5,7 +5,7 @@
 /* since this file is also used in auxiliary programs, don't include all the 
  * function declarations for all of nethack
  */
-#define EXTERN_H
+#define EXTERN_H	/* comment line for pre-compiled headers */
 #include "config.h"
 long *FDECL(alloc,(unsigned int));
 

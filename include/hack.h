@@ -124,28 +124,34 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #endif /* MSDOS */
 
 /* Macro for a few items that are only static if we're not overlaid.... */
-#if defined(OVERLAY) && (defined(OVL0) || defined(OVL1) || defined(OVL2) || defined(OVLB))
-# define OSTATIC extern
-# define XSTATIC
-# define OVERLAY_SPLIT
+#if defined(OVERLAY)
+# define STATIC_PTR
+#else
+# define STATIC_PTR static
+#endif
+
+#if defined(OVERLAY) && (defined(OVL0) || defined(OVL1) || defined(OVL2) || defined(OVL3) || defined(OVLB))
+# define STATIC_DCL extern
+# define STATIC_OVL
 # ifdef OVLB
-#  define VSTATIC
+#  define STATIC_VAR
 # else
-#  define VSTATIC extern
+#  define STATIC_VAR extern
 # endif
 #else
-# define OSTATIC static
-# define XSTATIC static
-# define VSTATIC static
+# define STATIC_DCL static
+# define STATIC_OVL static
+# define STATIC_VAR static
 #endif
 
 /* Unless explicit control is being taken of what is linked where, */
 /* always compile everything */
-#if !defined(OVERLAY) || (!defined(OVL0) && !defined(OVL1) && !defined(OVL2) && !defined(OVLB))
-# define OVL0	/* Highest priority */
+#if !defined(OVERLAY) || (!defined(OVL0) && !defined(OVL1) && !defined(OVL2) && !defined(OVL3) && !defined(OVLB))
+# define OVL0  /* Highest priority */
 # define OVL1
-# define OVL2	/* Lowest specified priority */
-# define OVLB	/* The base overlay segment */
+# define OVL2
+# define OVL3  /* Lowest specified priority */
+# define OVLB  /* The base overlay segment */
 #endif
 
 #endif /* HACK_H /**/

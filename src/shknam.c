@@ -9,6 +9,10 @@
 
 #ifdef OVLB
 
+static void FDECL(mkshobj_at, (const struct shclass *,int,int));
+static void FDECL(findname, (char *,const char **));
+static int  FDECL(shkinit, (const struct shclass *,struct mkroom *));
+
 static const char *shkliquors[] = {
     /* Ukraine */
     "Njezjin", "Tsjernigof", "Gomel", "Ossipewsk", "Gorlowka",
@@ -102,7 +106,20 @@ static const char *shktools[] = {
     "Sperc", "Noskcirdneh", "Yawolloh", "Hyeghu", "Niskal", "Trahnil",
     "Htargcm", "Enrobwem", "Kachzi Rellim", "Regien", "Donmyar",
     "Yelpur", "Nosnehpets", "Stewe", "Renrut", "Zlaw", "Nosalnef",
-    "Rewuorb", "Rellenk",
+    "Rewuorb", "Rellenk", "Yad", "Cire Htims", "Y-crad", "Nenilukah", 
+#ifdef OVERLAY
+    "Erreip", "Nehpets", "Mron", "Snivek",
+#endif
+#ifdef MAC
+    "Nhoj-lee", "Evad\'kh", "Ettaw-noj", "Tsew-mot", "Ydna-s",
+#endif
+#ifdef AMIGA
+    "Falo", "Nosid-da\'r", "Ekim-p", "Rebrol-nek", "Noslo", "Yl-rednow",
+    "Mured-oog",
+#endif
+#ifdef VMS
+    "Lez-tneg", "Ytnu-haled", "Niknar",
+#endif
     ""
 };
 
@@ -183,7 +200,7 @@ const struct shclass shtypes[] = {
 static void
 mkshobj_at(shp, sx, sy)
 /* make an object of the appropriate type for a shop square */
-struct shclass *shp;
+const struct shclass *shp;
 int sx, sy;
 {
 	register struct monst *mtmp;
@@ -200,21 +217,21 @@ int sx, sy;
 		}
 	} else if ((atype = get_shop_item(shp - shtypes)) < 0)
 		(void) mksobj_at(-atype, sx, sy);
-	else (void) mkobj_at(atype, sx, sy);
+	else (void) mkobj_at(atype, sx, sy, TRUE);
 }
 
 static void
 findname(nampt, nlp)
 /* extract a shopkeeper name for the given shop type */
 	char *nampt;
-	char *nlp[];
+	const char *nlp[];
 {
     register int i;
 
     for(i = 0; i < dlevel; i++)
 	if (strlen(nlp[i]) == 0) {
 	    /* Not enough names, try general name */
-	    if (nlp != (char **)shkgeneral)
+	    if (nlp != shkgeneral)
 		findname(nampt, shkgeneral);
 	    else
 		Strcpy(nampt, "Dirk");
@@ -226,7 +243,7 @@ findname(nampt, nlp)
 
 static int
 shkinit(shp, sroom)	/* create a new shopkeeper in the given room */
-struct shclass	*shp;
+const struct shclass	*shp;
 struct mkroom	*sroom;
 {
 	register int sh, sx, sy;
@@ -285,7 +302,7 @@ struct mkroom	*sroom;
 	ESHK(shk)->billct = 0;
 	shk->mgold = 1000L + 30L*(long)rnd(100);	/* initial capital */
 	if (shp->shknms == (char **)shktools) {
-		static int who;
+		static int NEARDATA who;
 		who = rn2(sizeof(shktools)/sizeof(char *) - 1);
 		if (who==21) ESHK(shk)->ismale = FALSE;
 		else ESHK(shk)->ismale = TRUE;
@@ -293,7 +310,7 @@ struct mkroom	*sroom;
 		ESHK(shk)->shknam[PL_NSIZ-1] = 0;
 	} else {
 		ESHK(shk)->ismale = dlevel%2;
-		findname(ESHK(shk)->shknam, shp->shknms);
+		findname(ESHK(shk)->shknam, (const char **)shp->shknms);
 	}
 
 	return(sh);
@@ -325,6 +342,10 @@ register struct mkroom *sroom;
 
     if(levl[sx][sy].doormask == D_NODOOR) {
 	    levl[sx][sy].doormask = D_ISOPEN;
+	    mnewsym(sx,sy);
+    }
+    if(levl[sx][sy].typ == SDOOR) {
+	    levl[sx][sy].typ = DOOR;
 	    mnewsym(sx,sy);
     }
     if(levl[sx][sy].doormask & D_TRAPPED) {	

@@ -44,9 +44,6 @@
 #   clean	deletes the object files
 #   spotless	deletes the object files, $(GAME), and more
 #
-# Note:  We do NOT build the Guidebook here since it needs tbl
-# (See the file Auxil:Makefile.auxil for more information)
-
 
 # Precompiled header file:
 #   $(HDEP) should appear in any dependency list for an object file where
@@ -119,8 +116,9 @@ CC	= lc
 
 #[LATTICE]
 #   Note: do not use -ms with Lattice 5.04 (Others:lev_lex.c fails)
-
-CFLAGS	= -b0 -cfi -d1 -iIncl: -ma
+#   Note: make sure your CLI stack size is large or lev_comp and makedefs
+#	may fail terribly - stack checking is disabled.
+CFLAGS	= -b0 -cfi -d1 -iIncl: -ma -v
 
 #[MANX3.6]
 
@@ -338,7 +336,7 @@ AUXFILES = \
 	NetHack:perm		NetHack:record		NetHack:NetHack.cnf \
 	NetHack:hack.font	NetHack:hack		NetHack:hack/8 \
 	NetHack:default.icon	HackExe:NetHack.info	NetHack:NewGame.info \
-	NetHack:NetHackScore.info
+	NetHack:Guidebook.info	NetHack:Guidebook NetHack:NetHackScore.info
 
 
 # Getting down to business:
@@ -449,7 +447,7 @@ O_Src1:lev_comp.o:  Src1:lev_comp.c $(HDEP) Incl:sp_lev.h
 O_Others:lev_lex.o:  Others:lev_lex.c $(HDEP) Incl:lev_comp.h Incl:sp_lev.h
 	$(CC) -dLEV_LEX_C $(CFLAGS) -o$@ Others:lev_lex.c
 
-O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP) Incl:sp_lev.h
+O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP)
 	$(CC) -dLEV_LEX_C -dAMIGA $(CFLAGS) -o$@ Src1:lev_main.c
 
 #
@@ -469,7 +467,7 @@ O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP) Incl:sp_lev.h
 Incl:date.h:  $(HDEP) NetHack:makedefs $(AMIGAOBJ)
 	NetHack:makedefs -v
 
-Incl:trap.h:  Incl:config.h NetHack:makedefs
+Incl:trap.h:  NetHack:makedefs
 	NetHack:makedefs -t
 	-copy makedefs.1 $@
 
@@ -580,6 +578,11 @@ NetHack:NewGame.info:  Amiga:NewGame.uu
 NetHack:NetHackScore.info:  Amiga:NHScore.uu
 	$(UUDEC) Amiga:NHScore.uu
 
+NetHack:Guidebook.info:  Amiga:GBinfo.uu
+	$(UUDEC) Amiga:GBinfo.uu
+
+NetHack:Guidebook:  Auxil:Guidebook.mss
+	copy Auxil:Guidebook.mss $@
 
 # DO NOT DELETE THIS LINE
 
@@ -599,7 +602,7 @@ O_Src1:do_name.o:  Src1:do_name.c $(HDEP)
 O_Src1:do_wear.o:  Src1:do_wear.c $(HDEP)
 O_Src1:dog.o:  Src1:dog.c $(HDEP) Incl:edog.h
 O_Src1:dogmove.o:  Src1:dogmove.c $(HDEP) Incl:mfndpos.h Incl:edog.h
-O_Src1:dokick.o:  Src1:dokick.c $(HDEP)
+O_Src1:dokick.o:  Src1:dokick.c $(HDEP) Incl:eshk.h
 O_Src1:dothrow.o:  Src1:dothrow.c $(HDEP)
 O_Src1:eat.o:  Src1:eat.c $(HDEP)
 O_Src1:end.o:  Src1:end.c $(HDEP) Incl:eshk.h
@@ -620,15 +623,15 @@ O_Src2:mklev.o:  Src2:mklev.c $(HDEP)
 O_Src2:mkmaze.o:  Src2:mkmaze.c $(HDEP)
 O_Src2:mkobj.o:  Src2:mkobj.c $(HDEP)
 O_Src2:mkroom.o:  Src2:mkroom.c $(HDEP)
-O_Src2:mon.o:  Src2:mon.c $(HDEP) Incl:mfndpos.h Incl:artifact.h
+O_Src2:mon.o:  Src2:mon.c $(HDEP) Incl:mfndpos.h Incl:wseg.h
 O_Src2:mondata.o:  Src2:mondata.c $(HDEP) Incl:eshk.h Incl:epri.h
 O_Src2:monmove.o:  Src2:monmove.c $(HDEP) Incl:mfndpos.h Incl:artifact.h
-O_Src2:monst.o:  Src2:monst.c Incl:config.h Incl:permonst.h Incl:monsym.h Incl:eshk.h Incl:vault.h Incl:epri.h
+O_Src2:monst.o:  Src2:monst.c Incl:config.h Incl:permonst.h Incl:monsym.h Incl:eshk.h Incl:vault.h Incl:epri.h Incl:color.h
 	$(CC) $(CFLAGS) -o$@ Src2:monst.c
 O_Src2:mthrowu.o:  Src2:mthrowu.c $(HDEP)
 O_Src2:music.o:  Src2:music.c $(HDEP)
 O_Src2:o_init.o:  Src2:o_init.c $(HDEP)
-O_Src2:objects.o:  Src2:objects.c Incl:config.h Incl:obj.h Incl:objclass.h Incl:prop.h
+O_Src2:objects.o:  Src2:objects.c Incl:config.h Incl:obj.h Incl:objclass.h Incl:prop.h Incl:color.h
 	$(CC) $(CFLAGS) -o$@ Src2:objects.c
 O_Src2:objnam.o:  Src2:objnam.c $(HDEP)
 O_Src2:options.o:  Src2:options.c $(HDEP)
@@ -637,7 +640,7 @@ O_Src2:pickup.o:  Src2:pickup.c $(HDEP)
 O_Src2:polyself.o:  Src2:polyself.c $(HDEP)
 O_Src2:potion.o:  Src2:potion.c $(HDEP)
 O_Src3:pray.o:  Src3:pray.c $(HDEP)
-O_Src3:pri.o:  Src3:pri.c $(HDEP)
+O_Src3:pri.o:  Src3:pri.c $(HDEP) Incl:epri.h Incl:termcap.h
 O_Src3:priest.o:  Src3:priest.c $(HDEP) Incl:mfndpos.h Incl:eshk.h Incl:epri.h
 O_Src3:prisym.o:  Src3:prisym.c $(HDEP) Incl:wseg.h Incl:lev.h
 O_Src3:read.o:  Src3:read.c $(HDEP)
@@ -662,7 +665,7 @@ O_Src3:trap.o:  Src3:trap.c $(HDEP) Incl:edog.h
 O_Src3:u_init.o:  Src3:u_init.c $(HDEP)
 O_Src3:uhitm.o:  Src3:uhitm.c $(HDEP) Incl:artifact.h
 O_Src3:vault.o:  Src3:vault.c $(HDEP) Incl:vault.h
-O_Src3:version.o:  Src3:version.c $(HDEP) Incl:date.h
+O_Src3:version.o:  Src3:version.c $(HDEP) Incl:date.h Incl:patchlevel.h
 O_Src3:weapon.o:  Src3:weapon.c $(HDEP)
 O_Src3:were.o:  Src3:were.c $(HDEP)
 O_Src3:wield.o:  Src3:wield.c $(HDEP)
@@ -674,13 +677,13 @@ O_Src3:zap.o:  Src3:zap.c $(HDEP)
 Incl:config.h:  Incl:tradstdc.h Incl:global.h
 	-setdate Incl:config.h
 	-wait 2
-Incl:decl.h:  Incl:spell.h Incl:obj.h Incl:you.h Incl:onames.h Incl:pm.h
+Incl:decl.h:  Incl:spell.h Incl:color.h Incl:obj.h Incl:you.h Incl:onames.h Incl:pm.h
 	-setdate Incl:decl.h
 	-wait 2
-Incl:global.h:  Incl:coord.h Incl:unixconf.h Incl:pcconf.h Incl:tosconf.h Incl:amiconf.h
+Incl:global.h:  Incl:coord.h Incl:vmsconf.h Incl:unixconf.h Incl:pcconf.h Incl:tosconf.h Incl:amiconf.h Incl:macconf.h
 	-setdate Incl:global.h
 	-wait 2
-Incl:hack.h:  Incl:config.h Incl:decl.h Incl:monsym.h Incl:mkroom.h Incl:objclass.h Incl:gold.h Incl:trap.h Incl:flag.h Incl:rm.h
+Incl:hack.h:  Incl:config.h Incl:decl.h Incl:monsym.h Incl:mkroom.h Incl:objclass.h Incl:gold.h Incl:trap.h Incl:flag.h Incl:rm.h Incl:trampoli.h
 	-setdate Incl:hack.h
 	-wait 2
 Incl:permonst.h:  Incl:monattk.h Incl:monflag.h

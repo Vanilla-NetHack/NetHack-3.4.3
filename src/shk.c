@@ -8,9 +8,12 @@
 
 #include "eshk.h"
 
-#ifdef KOPS
-static int FDECL(makekops, (coord *));
+
+# ifdef KOPS
+STATIC_DCL int FDECL(makekops, (coord *));
+# ifdef OVLB
 static void NDECL(kops_gone);
+# endif /* OVLB */
 #endif /* KOPS */
 
 #define	NOTANGRY(mon)	mon->mpeaceful
@@ -18,19 +21,28 @@ static void NDECL(kops_gone);
 
 /* Descriptor of current shopkeeper. Note that the bill need not be
    per-shopkeeper, since it is valid only when in a shop. */
-VSTATIC struct monst *shopkeeper;
-VSTATIC struct bill_x *bill;
-VSTATIC int shlevel;		/* level of this shopkeeper */
+STATIC_VAR struct monst NEARDATA *shopkeeper;
+STATIC_VAR struct bill_x NEARDATA *bill;
+STATIC_VAR int NEARDATA shlevel; /* level of this shopkeeper */
 /* struct obj *billobjs;	/* objects on bill with bp->useup */
 				/* only accessed here and by save & restore */
-VSTATIC long int total; 	/* filled by addupbill() */
-VSTATIC long int followmsg;	/* last time of follow message */
+STATIC_VAR long int NEARDATA total; 	/* filled by addupbill() */
+STATIC_VAR long int NEARDATA followmsg;	/* last time of follow message */
 
-static void setpaid(), FDECL(findshk, (int));
-static int FDECL(dopayobj, (struct bill_x *)), FDECL(getprice, (struct obj *));
-static struct obj *FDECL(bp_to_obj, (struct bill_x *));
+STATIC_DCL void NDECL(setpaid);
+STATIC_DCL void NDECL(addupbill);
+STATIC_DCL boolean FDECL(monstinroom, (struct permonst *,int));
+STATIC_DCL void FDECL(findshk, (int));
 
 #ifdef OVLB
+
+static struct bill_x * FDECL(onbill, (struct obj *));
+static long FDECL(check_credit, (long,struct monst *));
+static void FDECL(pay, (long,struct monst *));
+static unsigned FDECL(get_cost, (struct obj *));
+static unsigned FDECL(cost_per_charge, (struct obj *));
+static int FDECL(dopayobj, (struct bill_x *)), FDECL(getprice, (struct obj *));
+static struct obj *FDECL(bp_to_obj, (struct bill_x *));
 
 /*
 	invariants: obj->unpaid iff onbill(obj) [unless bp->useup]
@@ -69,7 +81,7 @@ register struct monst *mtmp, *mtmp2;
 	}
 }
 
-static void
+STATIC_OVL void
 setpaid(){	/* caller has checked that shopkeeper exists */
 		/* either we paid or left the shop or he just died */
 	register struct obj *obj;
@@ -97,7 +109,7 @@ setpaid(){	/* caller has checked that shopkeeper exists */
 	}
 }
 
-static void
+STATIC_OVL void
 addupbill(){	/* delivers result in total */
 		/* caller has checked that shopkeeper exists */
 	register int ct = ESHK(shopkeeper)->billct;
@@ -109,8 +121,21 @@ addupbill(){	/* delivers result in total */
 	}
 }
 
+STATIC_OVL boolean
+monstinroom(mdat,roomno)
+struct permonst *mdat;
+int roomno;
+{
+	register struct monst *mtmp;
+
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+		if(mtmp->data == mdat && inroom(mtmp->mx,mtmp->my) == roomno)
+			return(TRUE);
+	return(FALSE);
+}
+
 #endif /* OVLB */
-#ifdef OVL2
+#ifdef OVL1
 
 int
 inshop() {
@@ -205,18 +230,18 @@ inshop() {
 		    break;
 #ifdef ARMY
 		case BARRACKS:
-		    if(!((mons[PM_SOLDIER].geno & G_GENOD) &&
-		         (mons[PM_SERGEANT].geno & G_GENOD) &&
-		         (mons[PM_LIEUTENANT].geno & G_GENOD) &&
-		         (mons[PM_CAPTAIN].geno & G_GENOD)))
+		    if(monstinroom(&mons[PM_SOLDIER], roomno) ||
+			    monstinroom(&mons[PM_SERGEANT], roomno) ||
+			    monstinroom(&mons[PM_LIEUTENANT], roomno) ||
+			    monstinroom(&mons[PM_CAPTAIN], roomno))
 		    	You("enter a military barracks!");
 		    else You("enter an abandoned barracks.");
 		    break;
 #endif
 #ifdef ORACLE
 		case DELPHI:
-		    if(!(mons[PM_ORACLE].geno & G_GENOD))
-		        pline("\"Hello, %s, welcome to Delphi!\"", plname);
+		    if(monstinroom(&mons[PM_ORACLE], roomno))
+			    pline("\"Hello, %s, welcome to Delphi!\"", plname);
 		    break;
 #endif
 		default:
@@ -294,7 +319,7 @@ inshop() {
 	return (int)u.uinshop;
 }
 
-#endif /* OVL2 */
+#endif /* OVL1 */
 #ifdef OVLB
 
 int
@@ -305,6 +330,7 @@ register struct monst *mtmp;
 		ESHK(mtmp)->shoplevel == dlevel));
 }
 
+#ifdef SOUNDS
 boolean
 tended_shop(sroom)
 struct mkroom *sroom;
@@ -316,8 +342,9 @@ struct mkroom *sroom;
 		&& inhishop(mtmp)) return(TRUE);
 	return(FALSE);
 }
+#endif
 
-static void
+STATIC_OVL void
 findshk(roomno)
 register int roomno;
 {
@@ -671,21 +698,23 @@ register struct bill_x *bp;
 /* routine called after dying (or quitting) with nonempty bill or upset shk */
 boolean
 paybill(){
-	register struct monst *mtmp;
+	register struct monst *mtmp, *mtmp2;
 	register long loss = 0L;
 	register struct obj *otmp;
 	register xchar ox, oy;
 	register boolean take = FALSE;
 	register boolean taken = FALSE;
 
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for(mtmp = fmon; mtmp; mtmp = mtmp2) {
+	    mtmp2 = mtmp->nmon;
 	    if(mtmp->isshk) {
 		/* for bones: we don't want a shopless shk around */
 		if(ESHK(mtmp)->shoplevel != dlevel) mongone(mtmp);
 		else shopkeeper = mtmp;
 	    }
+	}
 
-	if(!shopkeeper) return(FALSE);
+	if(!shopkeeper) goto clear;
 
 	/* get one case out of the way: you die in the shop, the */
 	/* shopkeeper is peaceful, nothing stolen, nothing owed. */
@@ -709,8 +738,10 @@ paybill(){
 
 	if(ESHK(shopkeeper)->following || ANGRY(shopkeeper) || take) {
 		if((loss > u.ugold) || !loss) {
-			pline("%s comes and takes all your possessions.",
-					Monnam(shopkeeper));
+			pline("%s %sand takes all your possessions.",
+				Monnam(shopkeeper), 
+				(shopkeeper->msleep || shopkeeper->mfrozen) ?
+				"wakes up " : "comes ");
 			taken = TRUE;
 			shopkeeper->mgold += u.ugold;
 			u.ugold = 0L;
@@ -745,8 +776,10 @@ paybill(){
 		} else {
 			u.ugold -= loss;
 			shopkeeper->mgold += loss;
-			pline("%s comes and takes %ld zorkmid%s %sowed %s.",
+			pline("%s %sand takes %ld zorkmid%s %sowed %s.",
 			      Monnam(shopkeeper),
+			      (shopkeeper->msleep || shopkeeper->mfrozen) ?
+					"wakes up " : "comes ",
 			      loss,
 			      plur(loss),
 			      strncmp(ESHK(shopkeeper)->customer, plname, PL_NSIZ) ? "" : "you ",
@@ -786,27 +819,27 @@ register struct bill_x *bp;
 	return(obj);
 }
 
-static long
+static unsigned
 get_cost(obj)
 register struct obj *obj;
 {
-	register long tmp;
+	register unsigned tmp;
 
-	tmp = (long) getprice(obj);
-	if (!tmp) tmp = 5L;
+	tmp = getprice(obj);
+	if (!tmp) tmp = 5;
 	if (ANGRY(shopkeeper) || 
 		(pl_character[0] == 'T' && u.ulevel < (MAXULEV/2))
 #ifdef SHIRT
 	    || (uarmu && !uarm) /* wearing just a Hawaiian shirt */
 #endif
 	   )
-		tmp += tmp/3L;
-	if (ACURR(A_CHA) > 18)		tmp /= 2L;
-	else if (ACURR(A_CHA) > 17)	tmp = (tmp * 2L)/3L;
-	else if (ACURR(A_CHA) > 15)	tmp = (tmp * 3L)/4L;
-	else if (ACURR(A_CHA) < 6)	tmp *= 2L;
-	else if (ACURR(A_CHA) < 8)	tmp = (tmp * 3L)/2L;
-	else if (ACURR(A_CHA) < 11)	tmp = (tmp * 4L)/3L;
+		tmp += tmp/3;
+	if (ACURR(A_CHA) > 18)		tmp /= 2;
+	else if (ACURR(A_CHA) > 17)	tmp = (tmp * 2)/3;
+	else if (ACURR(A_CHA) > 15)	tmp = (tmp * 3)/4;
+	else if (ACURR(A_CHA) < 6)	tmp *= 2;
+	else if (ACURR(A_CHA) < 8)	tmp = (tmp * 3)/2;
+	else if (ACURR(A_CHA) < 11)	tmp = (tmp * 4)/3;
 	if (!tmp) return 1;
 	return(tmp);
 }
@@ -840,10 +873,11 @@ register boolean ininv;
 	bp->bquan = obj->quan;
 	bp->useup = 0;
 	bp->price = get_cost(obj);
-	Strcpy(buf, "\"For you, ");
-	if (ANGRY(shopkeeper)) Strcat(buf, "scum ");
-	else {
-	    switch(rnd(4)
+	if(!shopkeeper->msleep && !shopkeeper->mfrozen) {
+	    Strcpy(buf, "\"For you, ");
+	    if (ANGRY(shopkeeper)) Strcat(buf, "scum ");
+	    else {
+	        switch(rnd(4)
 #ifdef HARD
 		   + u.udemigod
 #endif
@@ -859,20 +893,23 @@ register boolean ininv;
 		case 5: if (u.ualigntyp == U_CHAOTIC) Strcat(buf, "un");
 			Strcat(buf, "holy");
 			break;
-	    }
+	        }
 #ifdef POLYSELF
-	    if(!is_human(uasmon)) Strcat(buf, " creature");
-	    else
+	        if(!is_human(uasmon)) Strcat(buf, " creature");
+	        else
 #endif
-		Strcat(buf, (flags.female) ? " lady" : " sir");
-	}
-	obj->dknown = 1; /* after all, the shk is telling you what it is */
-	if(ininv) {
+		    Strcat(buf, (flags.female) ? " lady" : " sir");
+	    }
+	    obj->dknown = 1; /* after all, the shk is telling you what it is */
+	    if(ininv) {
 		obj->quan = 1; /* fool xname() into giving singular */
 		pline("%s; only %d %s %s.\"", buf, bp->price,
 			(bp->bquan > 1) ? "per" : "for this", xname(obj));
 		obj->quan = bp->bquan;
-	} else pline("The %s will cost you %d zorkmid%s%s.",
+	    } else pline("The %s will cost you %d zorkmid%s%s.",
+			xname(obj), bp->price, plur((long)bp->price),
+			(bp->bquan > 1) ? " each" : "");
+	} else pline("The list price of %s is %d zorkmid%s%s.",
 			xname(obj), bp->price, plur((long)bp->price),
 			(bp->bquan > 1) ? " each" : "");
 	ESHK(shopkeeper)->billct++;
@@ -911,11 +948,13 @@ register struct obj *obj, *otmp;
 	}
 }
 
-static void
+void
 subfrombill(obj)
 register struct obj *obj;
 {
 	register struct bill_x *bp;
+
+	if(!shopkeeper) return;
 
 	if((bp = onbill(obj)) != 0) {
 		register struct obj *otmp;
@@ -1034,7 +1073,8 @@ int mode;		/* 0: deliver count 1: paged */
 		goto quit;
 	    }
 	    if(bp->useup || bp->bquan > obj->quan) {
-		register int cnt, oquan, uquan;
+		register int cnt;
+		register unsigned oquan, uquan;
 
 		oquan = obj->quan;
 		uquan = (bp->useup ? bp->bquan : bp->bquan - oquan);
@@ -1308,7 +1348,7 @@ register int fall;
 }
 
 #ifdef KOPS
-static int
+STATIC_OVL int
 makekops(mm)		/* returns the number of (all types of) Kops  made */
 coord *mm;
 {
@@ -1318,20 +1358,20 @@ coord *mm;
 	register int kcnt = (cnt / 9);		/* and maybe a kaptain */
 
 	while(cnt--) {
-	    enexto(mm, mm->x, mm->y, &mons[PM_KEYSTONE_KOP]);
-	    (void) makemon(&mons[PM_KEYSTONE_KOP], mm->x, mm->y);
+	    if (enexto(mm, mm->x, mm->y, &mons[PM_KEYSTONE_KOP]))
+		    (void) makemon(&mons[PM_KEYSTONE_KOP], mm->x, mm->y);
 	}
 	while(scnt--) {
-	    enexto(mm, mm->x, mm->y, &mons[PM_KOP_SERGEANT]);
-	    (void) makemon(&mons[PM_KOP_SERGEANT], mm->x, mm->y);
+	    if (enexto(mm, mm->x, mm->y, &mons[PM_KOP_SERGEANT]))
+		    (void) makemon(&mons[PM_KOP_SERGEANT], mm->x, mm->y);
 	}
 	while(lcnt--) {
-	    enexto(mm, mm->x, mm->y, &mons[PM_KOP_LIEUTENANT]);
-	    (void) makemon(&mons[PM_KOP_LIEUTENANT], mm->x, mm->y);
+	    if (enexto(mm, mm->x, mm->y, &mons[PM_KOP_LIEUTENANT]))
+		    (void) makemon(&mons[PM_KOP_LIEUTENANT], mm->x, mm->y);
 	}
 	while(kcnt--) {
-	    enexto(mm, mm->x, mm->y, &mons[PM_KOP_KAPTAIN]);
-	    (void) makemon(&mons[PM_KOP_KAPTAIN], mm->x, mm->y);
+	    if (enexto(mm, mm->x, mm->y, &mons[PM_KOP_KAPTAIN]))
+		    (void) makemon(&mons[PM_KOP_KAPTAIN], mm->x, mm->y);
 	}
 	return(cnt + scnt + lcnt + kcnt);
 }
@@ -1395,7 +1435,7 @@ const char *dmgstr;
 		if(um_dist(shopkeeper->mx, shopkeeper->my, 1)) goto gethim;
 	} else {
 	    /* if a !shopkeeper shows up at the door, move him */
-	    if(MON_AT(x, y) && (mtmp = m_at(x, y)) != shopkeeper) {
+	    if((mtmp = m_at(x, y)) && mtmp != shopkeeper) {
 		if(flags.soundok) {
 		    You("hear an angry voice:");
 		    verbalize("Out of my way, scum!");
@@ -1490,25 +1530,25 @@ kops_gone()
 }
 #endif
 
-static long
+static unsigned
 cost_per_charge(otmp)
 register struct obj *otmp;
 {
-	register long tmp = get_cost(otmp);
+	register unsigned tmp = get_cost(otmp);
 
 	/* The idea is to make the exhaustive use of */
 	/* an unpaid item more expensive than buying */
 	/* outright.				     */
 	if(otmp->otyp == MAGIC_LAMP) {			 /* 1 */
-		tmp += (tmp/3L);
+		tmp += (tmp/3);
 	} else if(otmp->otyp == MAGIC_MARKER) {  	 /* 70 - 100 */
 		/* no way to determine in advance   */
 		/* how many charges will be wasted. */
 		/* so, arbitrarily, one half of the */
 		/* price per use.		    */
-		tmp = (tmp/2L);
+		tmp = (tmp/2);
 	} else if(otmp->otyp == BAG_OF_TRICKS) { 	 /* 1 - 20 */
-		tmp = (tmp/5L);
+		tmp = (tmp/5);
 	} else if(otmp->otyp == CRYSTAL_BALL ||  	 /* 1 - 5 */
 		  otmp->otyp == LAMP ||	                 /* 1-10 */
 #ifdef MUSIC
@@ -1516,9 +1556,9 @@ register struct obj *otmp;
 		  otmp->otyp <= DRUM_OF_EARTHQUAKE) || 	 /* 5 - 9 */
 #endif
 	  	  otmp->olet == WAND_SYM) {		 /* 3 - 11 */
-		if(otmp->spe > 1) tmp = (tmp/4L);
+		if(otmp->spe > 1) tmp = (tmp/4);
 	}
-	else return(0L);
+	else return(0);
 	return(tmp);
 }
 

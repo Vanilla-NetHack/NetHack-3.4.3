@@ -13,9 +13,9 @@
 
 #ifdef OVLB
 
-static const char tools[] = { TOOL_SYM, 0 };
+static const char NEARDATA tools[] = { TOOL_SYM, 0 };
 
-static boolean did_dig_msg;
+static boolean NEARDATA did_dig_msg;
 
 static struct monst *FDECL(bchit, (int, int, int, CHAR_P));
 static void FDECL(use_camera, (struct obj *));
@@ -25,7 +25,7 @@ static void FDECL(use_magic_whistle, (struct obj *));
 #ifdef WALKIES
 static void FDECL(use_leash, (struct obj *));
 #endif
-OSTATIC int NDECL(dig);
+STATIC_DCL int NDECL(dig);
 static boolean FDECL(wield_tool, (struct obj *));
 static int FDECL(use_pick_axe, (struct obj *));
 #ifdef MEDUSA
@@ -353,6 +353,9 @@ struct obj *obj;
 	return;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 boolean
 next_to_u()
 {
@@ -377,6 +380,8 @@ next_to_u()
 	return(TRUE);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
 struct obj *
 get_mleash(mtmp) 	/* assuming mtmp->mleashed has been checked */
 register struct monst *mtmp;
@@ -391,9 +396,11 @@ register struct monst *mtmp;
 	}
 	return((struct obj *)0);
 }
-#endif /* WALKIES */
 #endif /* OVLB */
+
+#endif /* WALKIES */
 #ifdef OVL0
+
 #ifdef WALKIES
 void
 check_leash(x, y)
@@ -446,8 +453,7 @@ register xchar x, y;
 #endif /* OVL0 */
 #ifdef OVLB
 
-XSTATIC
-int
+STATIC_OVL int
 dig() {
 	register struct rm *lev;
 	register int dpx = dig_pos.x, dpy = dig_pos.y;
@@ -632,6 +638,9 @@ dighole()
 				u.utraptype = 0;
 			    }
 			    unsee();
+#ifdef MACOS
+			    segments |= SEG_APPLY;
+#endif
 			    goto_level(dlevel+1, FALSE, TRUE);
 #ifdef WALKIES
 			}
@@ -1067,7 +1076,7 @@ use_crystal_ball(obj)
 	return;
 }
 
-static const char cuddly[] = { TOOL_SYM, 0 };
+static const char NEARDATA cuddly[] = { TOOL_SYM, 0 };
 
 int
 dorub()
@@ -1147,7 +1156,7 @@ static void
 use_tinning_kit(obj)
 register struct obj *obj;
 {
-	register struct obj *corpse, *can;
+	register struct obj *corpse, *can = (struct obj *)0;
 
 	/* This takes only 1 move.  If this is to be changed to take many
 	 * moves, we've got to deal with decaying corpses...
@@ -1172,18 +1181,19 @@ pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 		You("can't tin something that insubstantial!");
 		return;
 	}
-	can = mksobj(TIN,FALSE);
-	can->corpsenm = corpse->corpsenm;
-	can->quan = 1; /* Defeat the occasional creation of pairs of tins */
-	can->owt = weight(can);
-	can->known = 1;
-	can->spe = 0; /* No spinach allowed... */
-	can->cursed = obj->cursed;
-	can->blessed = obj->blessed;
-	can = addinv(can);
-	You("now have %s.", doname(can));
-	if (carried(corpse)) useup(corpse);
-	else useupf(corpse);
+	if(can = mksobj(TIN,FALSE)) {
+	    can->corpsenm = corpse->corpsenm;
+	    can->quan = 1; /*Defeat the occasional creation of pairs of tins */
+	    can->owt = weight(can);
+	    can->known = 1;
+	    can->spe = -1; /* Mark tinned tins. No spinach allowed... */
+	    can->cursed = obj->cursed;
+	    can->blessed = obj->blessed;
+	    can = addinv(can);
+	    You("now have %s.", doname(can));
+	    if (carried(corpse)) useup(corpse);
+	    else useupf(corpse);
+	} else pline("Tinning failed.");
 }
 
 int
@@ -1222,8 +1232,8 @@ struct obj *obj;
 		make_sick(0L, TRUE);
 		did_something++;
 	}
-	if (Blinded && (!did_something || blessed)) {
-		make_blinded(0L, TRUE);
+	if (Blinded > (long)(u.ucreamed+1) && (!did_something || blessed)) {
+		make_blinded(u.ucreamed ? (long)(u.ucreamed+1) : 0L, TRUE);
 		did_something++;
 	}
 	if (Hallucination && (!did_something || blessed)) {

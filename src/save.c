@@ -14,13 +14,13 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif /* !NO_SIGNAL */
-#if defined(EXPLORE_MODE) && !defined(LSC) && !defined(O_RDONLY) && !defined(AZTEC_C)
+#if defined(EXPLORE_MODE) && !defined(LSC) && !defined(O_WRONLY) && !defined(AZTEC_C)
 #include <fcntl.h>
 #endif /* EXPLORE_MODE */
 
 boolean hu;		/* set during hang-up */
 
-#if defined(DGK)
+#ifdef DGK
 struct finfo fileinfo[MAXLEVEL+1];
 long bytes_counted;
 int count_only;
@@ -28,19 +28,20 @@ int count_only;
 boolean level_exists[MAXLEVEL+1];
 #endif
 
-#if defined(DGK)
-static void savelev0();
+#ifdef ZEROCOMP
+static void FDECL(bputc, (UCHAR_P));
+#endif
+static void FDECL(saveobjchn, (int,struct obj *));
+static void FDECL(savemonchn, (int,struct monst *));
+static void FDECL(savegoldchn, (int,struct gold *));
+static void FDECL(savetrapchn, (int,struct trap *));
+static void FDECL(savegenoinfo, (int));
+#ifdef DGK
+static void FDECL(savelev0, (int,XCHAR_P));
+static boolean NDECL(swapout_oldest);
+static void FDECL(copyfile, (char *,char *));
 #endif /* DGK */
-static void saveobjchn();
-static void savemonchn();
-static void savegoldchn();
-static void savetrapchn();
-static void savegenoinfo();
-#if defined(DGK)
-static boolean swapout_oldest();
-static void copyfile();
-#endif /* defined(DGK) */
-static void spill_objs();
+static void FDECL(spill_objs, (struct obj *));
 #ifdef __GNULINT__
 static long nulls[10];
 #else
@@ -93,7 +94,7 @@ dosave0() {
 	register int fd, ofd;
 	int tmp;		/* not register ! */
 	xchar ltmp;
-#if defined(DGK)
+#ifdef DGK
 	long fds, needed;
 	int mode;
 #endif
@@ -158,32 +159,20 @@ dosave0() {
 	{
 		Str255	fileName;
 		OSErr	er;
-		OSType	fileType;
-		Point	where;
-		SFReply	reply;
-		char	*prompt;
+		struct term_info	*t;
+		extern WindowPtr	HackWindow;
 		
-		savenum = 0;
-		(void)GetVol(&fileName, &tmp);
+		t = (term_info *)GetWRefCon(HackWindow);
+		(void)GetVol(&fileName,&tmp);	/* tmp is old volume */
+		(void)SetVol(0L, savenum = t->recordVRefNum);	/* savenum is used below */
 		Strcpy((char *)&fileName[1], SAVEF);
 		fileName[0] = strlen(SAVEF);
-		where.h = where.v =
-		    (SCREEN_BITS.bounds.bottom - SCREEN_BITS.bounds.top) / 4;
-		prompt = "\022Save character in:";
-		SFPutFile(where, prompt, fileName, 0L, &reply);
-		if (reply.good) {
-			SetVol(0L, savenum = reply.vRefNum);
-			strncpy(SAVEF, (char *)&reply.fName[1],
-					(short)reply.fName[0]);
-			SAVEF[(short)reply.fName[0]] = '\0';
-			Strcpy((char *)fileName, (char *)reply.fName);
-		}
-		
-		fileType = (discover == TRUE) ? EXPLORE_TYPE : SAVE_TYPE;
-		if (er = Create(&fileName, 0, CREATOR, fileType))
+
+		if (er = Create(&fileName, 0, CREATOR, discover ? EXPLORE_TYPE : SAVE_TYPE))
 			SysBeep(1);
+		fd = open(SAVEF, O_WRONLY | O_BINARY);
+		(void)SetVol(0L, t->system.sysVRefNum);
 	}
-	fd = open(SAVEF, O_WRONLY | O_BINARY);
 # else
 	fd = creat(SAVEF, FCMASK);
 # endif /* MACOS */
@@ -193,17 +182,20 @@ dosave0() {
 #ifdef AMIGA_WBENCH
 		ami_wbench_unlink(SAVEF);
 #endif
+#ifdef MACOS
+		(void)SetVol(0L, savenum);
+#endif
 		(void) unlink(SAVEF);		/* ab@unido */
+#ifdef MACOS
+		(void)SetVol(0L, tmp);
+#endif
 		return(0);
 	}
-#ifdef MACOS
-	(void)SetVol(0L,tmp);
-#endif
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
 		change_luck(-1);		/* and unido!ab */
 	home();
 	cl_end();
-#if defined(DGK)
+#ifdef DGK
 	if(!hu) msmsg("Saving: ");
 	mode = COUNT;
 again:
@@ -261,7 +253,7 @@ again:
 	savefruitchn(fd);
 #endif
 	savenames(fd);
-#if defined(DGK)
+#ifdef DGK
 	if (mode == COUNT) {
 # ifdef ZEROCOMP
 		bflush(fd);
@@ -294,7 +286,7 @@ again:
 	}
 #endif
 	for(ltmp = (xchar)1; ltmp <= maxdlevel; ltmp++) {
-#if defined(DGK)
+#ifdef DGK
 		if (ltmp == dlevel || !fileinfo[ltmp].where) continue;
 		if (fileinfo[ltmp].where != ACTIVE)
 			swapin_file(ltmp);
@@ -315,6 +307,9 @@ again:
 			(void)SetVol(0L, savenum);
 #endif
 		    (void) unlink(SAVEF);
+#ifdef MACOS
+			(void)SetVol(0L, tmp);
+#endif
 #ifdef AMIGA_WBENCH
 		    ami_wbench_unlink(SAVEF);
 #endif
@@ -327,7 +322,7 @@ again:
 		getlev(ofd, hackpid, ltmp, FALSE);
 		(void) close(ofd);
 		bwrite(fd, (genericptr_t) &ltmp, sizeof ltmp);  /* level number */
-#if defined(DGK)
+#ifdef DGK
 		savelev(fd, ltmp, WRITE);			/* actual level */
 #else
 		savelev(fd, ltmp);			/* actual level */
@@ -355,10 +350,13 @@ again:
 #ifdef AMIGA_WBENCH
 	ami_wbench_iconwrite(SAVEF);
 #endif
+#ifdef MACOS
+	(void)SetVol(0L, tmp);
+#endif
 	return(1);
 }
 
-#if defined(DGK)
+#ifdef DGK
 boolean
 savelev(fd, lev, mode)
 int fd;
@@ -404,7 +402,7 @@ int fd;
 xchar lev;
 {
 #ifdef WORM
-	register struct wseg *wtmp;
+	register struct wseg *wtmp, *wtmp2;
 	register int tmp;
 #endif
 #ifdef TOS
@@ -412,7 +410,7 @@ xchar lev;
 #endif
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
-#if !defined(DGK)
+#ifndef DGK
 	if(lev >= 0 && lev <= MAXLEVEL)
 		level_exists[lev] = TRUE;
 #endif
@@ -490,17 +488,22 @@ xchar lev;
 #ifdef WORM
 	bwrite(fd,(genericptr_t) wsegs,sizeof(wsegs));
 	for(tmp=1; tmp<32; tmp++){
-		for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp->nseg){
+		for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp2){
+			wtmp2 = wtmp->nseg;
 			bwrite(fd,(genericptr_t) wtmp,sizeof(struct wseg));
+#ifdef DGK
+			if (!count_only)
+#endif
+				free((genericptr_t) wtmp);
 		}
-#if defined(DGK)
+#ifdef DGK
 		if (!count_only)
 #endif
 			wsegs[tmp] = 0;
 	}
 	bwrite(fd,(genericptr_t) wgrowtime,sizeof(wgrowtime));
 #endif /* WORM /**/
-#if defined(DGK)
+#ifdef DGK
 	if (count_only)	return;
 #endif
 	billobjs = 0;
@@ -515,10 +518,10 @@ xchar lev;
 #define RLESC '\0'    /* Leading character for run of LRESC's */
 #define flushoutrun(ln) bputc(RLESC); bputc(ln); ln = -1;
 
-static unsigned char outbuf[BUFSZ];
-static unsigned short outbufp = 0;
-static short outrunlength = -1;
-static int bwritefd;
+static unsigned char NEARDATA outbuf[BUFSZ];
+static unsigned short NEARDATA outbufp = 0;
+static short NEARDATA outrunlength = -1;
+static int NEARDATA bwritefd;
 
 /*dbg()
 {
@@ -549,7 +552,7 @@ register int fd;
 	  flushoutrun(outrunlength);
       }
       if (outbufp) {
-#if defined(DGK)
+#ifdef DGK
 	  if (!count_only)    /* flush buffer */
 #endif
 		  (void) write(fd, outbuf, outbufp);
@@ -587,7 +590,7 @@ register int fd;
 register genericptr_t loc;
 register unsigned num;
 {
-#if defined(DGK)
+#ifdef DGK
 	bytes_counted += num;
 	if (!count_only)
 #endif
@@ -620,7 +623,7 @@ register struct obj *otmp;
 	    xl = otmp->onamelth;
 	    bwrite(fd, (genericptr_t) &xl, sizeof(int));
 	    bwrite(fd, (genericptr_t) otmp, xl + sizeof(struct obj));
-#if defined(DGK)
+#ifdef DGK
 	    if (!count_only)
 #endif
 		free((genericptr_t) otmp);
@@ -647,7 +650,7 @@ register struct monst *mtmp;
 		bwrite(fd, (genericptr_t) &xl, sizeof(int));
 		bwrite(fd, (genericptr_t) mtmp, xl + sizeof(struct monst));
 		if(mtmp->minvent) saveobjchn(fd,mtmp->minvent);
-#if defined(DGK)
+#ifdef DGK
 		if (!count_only)
 #endif
 		free((genericptr_t) mtmp);
@@ -665,7 +668,7 @@ register struct gold *gold;
 	while(gold) {
 		gold2 = gold->ngold;
 		bwrite(fd, (genericptr_t) gold, sizeof(struct gold));
-#if defined(DGK)
+#ifdef DGK
 		if (!count_only)
 #endif
 			free((genericptr_t) gold);
@@ -683,7 +686,7 @@ register struct trap *trap;
 	while(trap) {
 		trap2 = trap->ntrap;
 		bwrite(fd, (genericptr_t) trap, sizeof(struct trap));
-#if defined(DGK)
+#ifdef DGK
 		if (!count_only)
 #endif
 			free((genericptr_t) trap);
@@ -710,7 +713,7 @@ register int fd;
 		if (f1->fid >= 0) {
 			bwrite(fd, (genericptr_t) f1, sizeof(struct fruit));
 		}
-#if defined(DGK)
+#ifdef DGK
 		if (!count_only)
 #endif
 			free((genericptr_t) f1);
@@ -730,7 +733,7 @@ register int fd;
 		bwrite(fd, (genericptr_t) &(mons[i].geno), sizeof(unsigned));
 }
 
-#if defined(DGK)
+#ifdef DGK
 boolean
 swapin_file(lev)
 int lev;
@@ -744,12 +747,12 @@ int lev;
 	while (fileinfo[lev].size > freediskspace(to))
 		if (!swapout_oldest())
 			return FALSE;
-#ifdef WIZARD
+# ifdef WIZARD
 	if (wizard) {
 		pline("Swapping in `%s'", from);
 		(void) fflush(stdout);
 	}
-#endif
+# endif
 	copyfile(from, to);
 	(void) unlink(from);
 	fileinfo[lev].where = ACTIVE;
@@ -776,12 +779,12 @@ swapout_oldest() {
 	Sprintf(to, "%s%s", permbones, alllevels);
 	name_file(from, oldest);
 	name_file(to, oldest);
-#ifdef WIZARD
+# ifdef WIZARD
 	if (wizard) {
 		pline("Swapping out `%s'.", from);
 		(void) fflush(stdout);
 	}
-#endif
+# endif
 	copyfile(from, to);
 	(void) unlink(from);
 	fileinfo[oldest].where = SWAPPED;
@@ -793,11 +796,11 @@ void
 copyfile(from, to)
 char *from, *to;
 {
-#ifdef TOS
+# ifdef TOS
 
 	if (_copyfile(from, to))
 		panic("Can't copy %s to %s\n", from, to);
-#else
+# else
 	char buf[BUFSIZ];
 	int nfrom, nto, fdfrom, fdto;
 
@@ -813,7 +816,7 @@ char *from, *to;
 	} while (nfrom == BUFSIZ);
 	(void) close(fdfrom);
 	(void) close(fdto);
-#endif /* TOS */
+# endif /* TOS */
 }
 #endif
 

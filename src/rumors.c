@@ -23,7 +23,9 @@
  * (but not terminated) by "-----" lines.
  */
 static void NDECL(init_rumors);
+#ifdef ORACLE
 static void NDECL(outoracle);
+#endif
 long first_rumor = sizeof(long);
 long true_rumor_size, false_rumor_size, end_rumor_file;
 #ifdef ORACLE

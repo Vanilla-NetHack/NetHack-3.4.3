@@ -7,7 +7,7 @@
 
 #define martial()	((pl_character[0] == 'S' || pl_character[0] == 'P'))
 
-static struct rm *maploc;
+static struct rm NEARDATA *maploc;
 
 #ifdef KICK
 
@@ -18,8 +18,9 @@ extern boolean notonhead;
 static void FDECL(kickdmg, (struct monst *, BOOLEAN_P));
 static void FDECL(kick_monster, (int, int));
 static int FDECL(kick_object, (int, int));
+static char *NDECL(kickstr);
 
-static struct obj *obj = (struct obj *) 0;
+static struct obj NEARDATA *kickobj;
 
 static void
 kickdmg(mon, clumsy)
@@ -298,13 +299,13 @@ int x, y;
 	for (otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
 		if(!otmp->cobj) {
 			cnt++;
-			if(cnt == 1) obj = otmp;
+			if(cnt == 1) kickobj = otmp;
 		}
 
 	/* range < 2 means the object will not move.	*/
 	/* maybe dexterity should also figure here.     */
 	if(cnt) range = (int)((ACURR(A_STR) > 18 ? 20 : 
-				ACURR(A_STR))/2 - obj->owt/4);
+				ACURR(A_STR))/2 - kickobj->owt/4);
 	else range = rnd((int)ACURR(A_STR));
 
 	if(martial()) range = range + rnd(3);
@@ -360,25 +361,26 @@ int x, y;
 		return(1);
 	}
 
-	/* cnt should always be >= 1 here (meaning obj is set) due to
+	/* cnt should always be >= 1 here (meaning kickobj is set) due to
 	 * conditions of call */
-	if(!cnt || obj->otyp == BOULDER || obj == uball || obj == uchain)
+	if(!cnt || kickobj->otyp == BOULDER
+			|| kickobj == uball || kickobj == uchain)
 		return(0);
 
 	/* a box gets a chance of breaking open here */
-	if(Is_box(obj)) {
-		boolean otrp = obj->otrapped;
+	if(Is_box(kickobj)) {
+		boolean otrp = kickobj->otrapped;
 
-		if (!obj->olocked && (!rn2(3) ||
+		if (!kickobj->olocked && (!rn2(3) ||
 					(martial() && !rn2(2)))) {
 		    pline("The lid slams open, then falls shut.");
-		    if(otrp) chest_trap(obj, LEG);
+		    if(otrp) chest_trap(kickobj, LEG);
 		    return(1);
-		} else if (obj->olocked && 
+		} else if (kickobj->olocked && 
 				(!rn2(5) || (martial() && !rn2(2)))) {
 		    You("break open the lock!");
-		    obj->olocked = 0;
-	            if(otrp) chest_trap(obj, LEG);
+		    kickobj->olocked = 0;
+	            if(otrp) chest_trap(kickobj, LEG);
 		    return(1);
 		}
 		/* let it fall through to the next cases... */
@@ -390,16 +392,17 @@ int x, y;
 	}
 
 	/* fragile objects should not be kicked */
-	if (breaks(obj, FALSE)) return(1);
+	if (breaks(kickobj, FALSE)) return(1);
 
 	costly = costly_spot(x, y);
 
 	/* potions get a chance of breaking here */
-	if(obj->olet == POTION_SYM) {
+	if(kickobj->olet == POTION_SYM) {
 		if(rn2(2)) {
-		    You("smash %s %s!", obj->quan==1 ? "the" : "a", xname(obj));
-		    potionbreathe(obj);
-		    useupf(obj);
+		    You("smash %s %s!",
+			    kickobj->quan==1 ? "the" : "a", xname(kickobj));
+		    potionbreathe(kickobj);
+		    useupf(kickobj);
 		    return(1);
 		}
 	}
@@ -412,22 +415,23 @@ int x, y;
 								) {
 			if (Blind) pline("It doesn't come loose.");
 			else pline("The %s do%sn't come loose.",
-				distant_name(obj, xname),
-				(obj->quan==1) ? "es" : "");
+				distant_name(kickobj, xname),
+				(kickobj->quan==1) ? "es" : "");
 			return(!rn2(3) || martial());
 		}
 		if (Blind) pline("It comes loose.");
-		else pline("The %s come%s loose.", distant_name(obj, xname),
-			(obj->quan==1) ? "s" : "");
-		move_object(obj, u.ux, u.uy);
+		else pline("The %s come%s loose.", distant_name(kickobj, xname),
+			(kickobj->quan==1) ? "s" : "");
+		move_object(kickobj, u.ux, u.uy);
 		newsym(x, y);
-		stackobj(obj);
+		stackobj(kickobj);
 		if (Invisible
 #ifdef POLYSELF
 				&& !u.uundetected
 #endif
 						) newsym(u.ux, u.uy);
-		if (costly && !costly_spot(u.ux, u.uy)) addtobill(obj, FALSE);
+		if (costly && !costly_spot(u.ux, u.uy))
+			addtobill(kickobj, FALSE);
 		return(1);
 	}
 
@@ -435,25 +439,25 @@ int x, y;
 	/* in this function when range < 2 (a display bug */
 	/* results otherwise).  			  */
 	if(range <= 2) {
-	    if(Is_box(obj)) pline("THUD!");
+	    if(Is_box(kickobj)) pline("THUD!");
 	    else pline("Thump!");
 	    if(!rn2(3) || martial()) return(1);
 	    return(0);
 	}
 
-	if (obj->quan > 1) (void) splitobj(obj, 1);
+	if (kickobj->quan > 1) (void) splitobj(kickobj, 1);
 
 	/* Needed to fool bhit's display-cleanup to show immediately	*/
 	/* the next object in the pile.  We know here that the object	*/
 	/* will move, so there is no need to worry about the location,	*/
 	/* which merely needs to be something other than ox, oy.	*/
-	move_object(obj, u.ux, u.uy);
+	move_object(kickobj, u.ux, u.uy);
 	if(cnt == 1 && !MON_AT(x, y))
 	    newsym(x, y);
 
-	mon = bhit(u.dx, u.dy, range, obj->olet,
-			(int (*)()) 0, (int (*)()) 0, obj);
-	freeobj(obj);
+	mon = bhit(u.dx, u.dy, range, kickobj->olet,
+			(int (*)()) 0, (int (*)()) 0, kickobj);
+	freeobj(kickobj);
 	if(mon) {
 # ifdef WORM
 		if (mon->mx != bhitpos.x || mon->my != bhitpos.y)
@@ -461,28 +465,25 @@ int x, y;
 # endif
 		/* awake monster if sleeping */
 		wakeup(mon);
-		if(thitmonst(mon, obj)) return(1);
+		if(thitmonst(mon, kickobj)) return(1);
 	}
-	if(costly && !costly_spot(bhitpos.x,bhitpos.y)) addtobill(obj, FALSE);
-	move_object(obj, bhitpos.x, bhitpos.y);
-	obj->nobj = fobj;
-	fobj = obj;
-	stackobj(obj);
-	if(!MON_AT(obj->ox, obj->oy))
-	    newsym(obj->ox, obj->oy);
+	if(costly && !costly_spot(bhitpos.x,bhitpos.y))
+		addtobill(kickobj, FALSE);
+	move_object(kickobj, bhitpos.x, bhitpos.y);
+	kickobj->nobj = fobj;
+	fobj = kickobj;
+	stackobj(kickobj);
+	if(!MON_AT(kickobj->ox, kickobj->oy))
+	    newsym(kickobj->ox, kickobj->oy);
 	return(1);
 }
-#endif /* KICK */
 
-char *
+static char *
 kickstr() {
-	static char buf[BUFSIZ];
+	static char NEARDATA buf[BUFSIZ];
 
-#ifdef KICK
-	if (obj) Sprintf(buf, "kicking %s", doname(obj));
-	else
-#endif
-	if (IS_STWALL(maploc->typ)) Strcpy(buf, "kicking a wall");
+	if (kickobj) Sprintf(buf, "kicking %s", doname(kickobj));
+	else if (IS_STWALL(maploc->typ)) Strcpy(buf, "kicking a wall");
 	else if (IS_ROCK(maploc->typ)) Strcpy(buf, "kicking a rock");
 #ifdef THRONES
 	else if (IS_THRONE(maploc->typ)) Strcpy(buf, "kicking a throne");
@@ -512,9 +513,10 @@ kickstr() {
 
 	return buf;
 }
+#endif /* KICK */
 
 int
-dokick() {		/* try to kick the door down - noisy! */
+dokick() {
         register int x, y;
 	register int avrg_attrib = (ACURR(A_STR)+ACURR(A_DEX)+ACURR(A_CON))/3;
 
@@ -586,6 +588,7 @@ dokick() {		/* try to kick the door down - noisy! */
 		return(1);
 	}
 
+	kickobj = (struct obj *)0;
 	if((OBJ_AT(x, y) || maploc->gmask) && !Levitation) {
 		if(kick_object(x, y)) return(1);
 		else goto ouch;
@@ -630,15 +633,13 @@ dokick() {		/* try to kick the door down - noisy! */
 			mkgold((300L+(long)rn2(201)), x, y);
 			i = Luck + 1;
 			if(i > 6) i = 6;
-			while(i--) (void) mkobj_at(GEM_SYM, x, y);
+			while(i--) (void) mkobj_at(GEM_SYM, x, y, TRUE);
 			prl(x, y);
 			/* prevent endless milking */
 			maploc->looted = T_LOOTED;
 			return(1);
 		    } else if (!rn2(4)) {
-			register struct trap *ttmp = 
-					maketrap(u.ux,u.uy,TRAPDOOR);
-			dotrap(ttmp);
+			fall_through(FALSE);
 			return(1);
 		    }
 		    goto ouch;
@@ -683,7 +684,7 @@ dokick() {		/* try to kick the door down - noisy! */
 			if(!maploc->looted) { /* only once per sink */
 			    if(!Blind) 
 				You("see a ring shining in its midst.");
-			    (void) mkobj_at(RING_SYM, x, y);
+			    (void) mkobj_at(RING_SYM, x, y, TRUE);
 			    prl(x, y);
 			    maploc->looted = T_LOOTED;
 			}

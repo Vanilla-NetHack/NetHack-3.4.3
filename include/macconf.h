@@ -64,7 +64,7 @@ extern char	*calloc();
 #include	<Stdlib.h>
 #include	<String.h>
 #undef getuid
-#if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
+#ifdef CUSTOM_IO
 #ifdef stdout
 #undef stdout
 #define stdout (FILE *)NULL
@@ -144,13 +144,16 @@ typedef struct term_info {
 	short	ascent,descent,height,charWidth;
 	short	maxRow,maxCol;
 	char	**screen;
+	char	**scrAttr;
+	char	curHilite;
+	char	curAttr;
 	short	inColor;
 	short	auxFileVRefNum;
 	short	recordVRefNum;
 	SysEnvRec	system;
 	char	*keyMap;
 	short	color[8];
-	CursHandle	cursor[8];
+	CursHandle	cursor[9];  /* self-contained cursors */
 	Handle	shortMBarHandle,
 			fullMBarHandle;
 } term_info;
@@ -182,10 +185,6 @@ typedef struct term_info {
 #define	LEFT_OFFSET	10
 
 /* for macflags variable */
-#define	fScreenKluges		0x3000
-#define	fFullScrKluge		0x2000
-#define	fCornScrKluge		0x1000
-#define	fDisplayKluge		0x800
 #define	fMoveWRTMouse		0x400
 #define	fZoomOnContextSwitch		0x200
 #define	fUseCustomFont		0x100
@@ -194,7 +193,8 @@ typedef struct term_info {
 #define	fExtCmdSeq1			0x20
 #define	fExtCmdSeq2			0x10
 #define	fExtCmdSeq3			0x08
-#define	fDoNonKeyEvt		0x02
+#define	fDoNonKeyEvt		0x06
+#define	fDoMenus		0x02
 #define	fDoUpdate			0x01
 
 
@@ -209,6 +209,14 @@ typedef struct term_info {
 #define MONST_DATA	101
 #define OBJECT_DATA	104
 #define	DEFAULT_DATA	100
+
+#define SEG_ZAP		0x0020
+#define SEG_SPELL	0x0010
+#define SEG_POTION	0x0008
+#define SEG_EAT		0x0004
+#define SEG_DO		0x0002
+#define SEG_APPLY	0x0001
+extern long segments;	/* defined in mac.c */
 
 #include "extern.h"
 

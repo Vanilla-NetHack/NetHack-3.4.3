@@ -120,7 +120,7 @@ getmailstatus() {
 
 # ifdef VMS
 extern unsigned long pasteboard_id;
-int broadcasts = 0;
+volatile int broadcasts = 0;
 #  define getmailstatus()
 # endif /* VMS */
 
@@ -150,7 +150,7 @@ register int fx, fy;	/* origin, where the '&' is displayed */
 		/* find location next to (fx,fy) closest to (tx,ty) */
 		d1 = dist2(fx,fy,tx,ty);
 		for(dx = -1; dx <= 1; dx++) for(dy = -1; dy <= 1; dy++)
-		    if((dx || dy) && 
+		    if((dx || dy) && isok(fx+dx,fy+dy) && 
 		       !IS_STWALL(levl[fx+dx][fy+dy].typ)) {
 			d2 = dist2(fx+dx,fy+dy,tx,ty);
 			if(d2 < d1) {
@@ -229,10 +229,9 @@ static void
 newmail() {
 	/* deliver a scroll of mail */
 	register boolean invload =
-	((inv_weight() + (int)objects[SCR_MAIL].oc_weight) > 0 ||
-	 inv_cnt() >= 52 || Fumbling);
-	register struct monst *md = 
-	makemon(&mons[PM_MAIL_DAEMON], u.ux, u.uy);
+		((inv_weight() + (int)objects[SCR_MAIL].oc_weight) > 0 ||
+			 inv_cnt() >= 52 || Fumbling);
+	register struct monst *md = makemon(&mons[PM_MAIL_DAEMON], u.ux, u.uy);
 
 	if(!md)	return;
 
@@ -262,6 +261,7 @@ newmail() {
 		/* set known and do prinv() */
 		(void) identify(addinv(mksobj(SCR_MAIL,FALSE)));
 	}
+# endif /* NO_MAILREADER */
 
 	/* disappear again */
 	mdappear(md,TRUE);
@@ -272,7 +272,6 @@ newmail() {
 # ifdef VMS
 	broadcasts--;
 # endif
-# endif /* NO_MAILREADER */
 }
 
 #endif /* OVLB */

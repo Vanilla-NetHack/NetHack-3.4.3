@@ -20,6 +20,8 @@
 #include	<sys/stat.h>
 #endif
 
+static struct tm * NDECL(getlt);
+
 #ifdef OVLB
 
 #ifndef MACOS

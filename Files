@@ -5,21 +5,22 @@ from or not transferred to your system if you wish.
 
 
 (files in top directory)
-Files           Install.ami     Install.dos     Install.mac    Install.unix
-Install.vms     Makefile.top    Porting         README
+Files           Install.ami     Install.dos     Install.mac     Install.ovl
+Install.unix    Install.vms     Makefile.top    Porting         README
 
 amiga:
 (files for Amiga version)
-Makefile.ami    NHScore.uu      NHinfo.uu       NetHack.cnf     NewGame.uu
-ami.lnk         amidos.c        amifont.uu      amifont8.uu     amimenu.c
-amitcap.c       amitty.c        amiunix.c       amiwbench.c     amiwind.c
-compact.lat     dflticon.uu
+GBinfo.uu       Makefile.ami    NHScore.uu      NHinfo.uu       NetHack.cnf
+NewGame.uu      ami.lnk         amidos.c        amifont.uu      amifont8.uu
+amimenu.c       amitcap.c       amitty.c        amiunix.c       amiwbench.c
+amiwind.c       compact.lat     dflticon.uu
 
 auxil:
 (files for all versions)
-Guidebook.mn    castle.des      cmdhelp         data.base       endgame.des
-help            hh              history         license         opthelp
-oracles         rumors.fal      rumors.tru      tower.des
+Guidebook.mn    Guidebook.mss   Guidebook.tex   castle.des      cmdhelp
+data.base       endgame.des     help            hh              history
+license         opthelp         oracles         rumors.fal      rumors.tru
+tower.des
 (files for UNIX versions)
 Makefile.auxil  lev_comp.6      nethack.6       nethack.sh
 (file for Macintosh version)
@@ -42,19 +43,22 @@ lev_comp.h
 
 mac:
 (files for Macintosh version)
-MD.rsrc.hqx     MacAlert.c      NH3.proj.hqx    NH3.rsrc.hqx    Segments.mac
-mac.c           macfile.c       macinit.c
+MD.proj.hqx     MD.rsrc.hqx     MacAlert.c      NH.proj.hqx     NH.rsrc.hqx
+SL.proj.hqx     Segments.mac    mac.c           macfile.c       macinit.c
 
 others:
-(files for MSDOS version)
+(files for MSDOS (and OS/2) version)
 Makefile.lib    Makefile.msc    Makefile.os2    Makefile.ovl    Makefile.pc
-Makefile.tcc    NetHack.cnf     ovlmgr.asm      ovlmgr.doc      ovlmgr.uu
-termcap         termcap.uu      trampoli.c
+Makefile.tcc    NetHack.cnf     exesmurf.c      exesmurf.uu     maintain.ovl
+ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       splitf.c        splitf.uu
+suputils.ovl    termcap.uu      trampoli.c
+(file for MSDOS and VMS versions)
+termcap
 (files for MSDOS, Amiga, and Atari versions)
-lev_lex.c       pcmain.c        pctty.c         pcunix.c
-(file for MSDOS and Atari versions)
-msdos.c
-(files for  Atari version)
+lev_lex.c       pcmain.c
+(files for MSDOS and Atari versions)
+msdos.c         pctty.c         pcunix.c
+(files for Atari version)
 Makefile.st     atari.cnf       atarifnt.uue
 (Berkeley random number file, which may be included in any version)
 random.c
@@ -86,7 +90,7 @@ Makefile.src    unixmain.c      unixtty.c       unixunix.c
 
 vms:
 (files for VMS version)
-Install.com     spec_lev.com    vmsbuild.com    vmsmain.c       vmsmisc.c
-vmstty.c        vmsunix.c
+install.com     lev_lex.h       oldcrtl.c       spec_lev.com    vmsbuild.com
+vmsmain.c       vmsmisc.c       vmstty.c        vmsunix.c
 (GNU termcap files that support VMS version)
 vmstermcap.c    vmstparam.c

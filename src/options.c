@@ -1,11 +1,18 @@
 /*	SCCS Id: @(#)options.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
+
 #include "hack.h"
-static boolean set_order;
+#include "termcap.h"
+
+static boolean NEARDATA set_order;
 
 static void FDECL(nmcpy, (char *, const char *, int));
 void FDECL(escapes,(const char *, char *));
+
+#ifdef AMIGA_WBENCH
+extern int FromWBench;
+#endif
 
 void
 initoptions()
@@ -28,13 +35,16 @@ initoptions()
 	nmcpy(pl_fruit, objects[SLIME_MOLD].oc_name, PL_FSIZ);
 #endif
 	flags.num_pad = FALSE;
+	flags.help = TRUE;
+	flags.IBMgraphics = FALSE;
+	flags.DECgraphics = FALSE;
 #ifdef TEXTCOLOR
 	flags.use_color = TRUE;
 #endif
-#ifdef MSDOS
-#ifdef DECRAINBOW
-	flags.DECRainbow = FALSE;
+#ifdef AMIFLUSH
+	flags.amiflush = FALSE;	/* default to original behaviour */
 #endif
+#ifdef MSDOS
 #ifdef DGK
 	flags.IBMBIOS =
 #ifdef TOS
@@ -45,11 +55,8 @@ initoptions()
 	read_config_file();
 #endif /* MSDOS */
 #ifdef MACOS
-	flags.standout = TRUE;
-	flags.end_around = 2;	/* Mac display routines don't scroll */
-	flags.end_top = 4;
 	read_config_file();
-	
+	flags.standout = TRUE;	
 #endif
 	if(opts = getenv("NETHACKOPTIONS"))
 		parseoptions(opts,TRUE);
@@ -153,6 +160,68 @@ register int glth;
 		showsyms[i] = defsyms[i];
 }
 
+/*
+ * Use the nice IBM Extended ASCII line-drawing characters (codepage 437).
+ *
+ * OS/2 defaults to a multilingual character set (codepage 850, corresponding
+ * to the ISO 8859 character set.  We should probably do a VioSetCp() call to
+ * set the codepage to 437.
+ */
+void
+assign_ibm_graphics()
+{
+#ifdef ASCIIGRAPH
+	flags.IBMgraphics = TRUE;	/* not set from command line */
+
+	showsyms[S_vwall] = 0xb3;	/* meta-3, vertical rule */
+	showsyms[S_hwall] = 0xc4;	/* meta-D, horizontal rule */
+	showsyms[S_tlcorn] = 0xda;	/* meta-Z, top left corner */
+	showsyms[S_trcorn] = 0xbf;	/* meta-?, top right corner */
+	showsyms[S_blcorn] = 0xc0;	/* meta-@, bottom left */
+	showsyms[S_brcorn] = 0xd9;	/* meta-Y, bottom right */
+	showsyms[S_crwall] = 0xc5;	/* meta-E, cross */
+	showsyms[S_tuwall] = 0xc1;	/* meta-A, T up */
+	showsyms[S_tdwall] = 0xc2;	/* meta-B, T down */
+	showsyms[S_tlwall] = 0xb4;	/* meta-4, T left */
+	showsyms[S_trwall] = 0xc3;	/* meta-C, T right */
+	showsyms[S_vbeam] = 0xb3;	/* meta-3, vertical rule */
+	showsyms[S_hbeam] = 0xc4;	/* meta-D, horizontal rule */
+	showsyms[S_ndoor] = 0xfa;
+	showsyms[S_vodoor] = 0xfe;	/* meta-~, small centered square */
+	showsyms[S_hodoor] = 0xfe;	/* meta-~, small centered square */
+	showsyms[S_room] = 0xfa;	/* meta-z, centered dot */
+	showsyms[S_pool] = 0xf7;	/* meta-w, approx. equals */
+#endif  /* ASCIIGRAPH */
+}
+
+/* Use VT100 graphics for terminals that have them */
+void
+assign_dec_graphics()
+{
+#ifdef TERMLIB
+	flags.DECgraphics = TRUE;	/* not set from command line */
+
+	showsyms[S_vwall] = 0xf8;	/* vertical rule */
+	showsyms[S_hwall] = 0xf1;	/* horizontal rule */
+	showsyms[S_tlcorn] = 0xec;	/* top left corner */
+	showsyms[S_trcorn] = 0xeb;	/* top right corner */
+	showsyms[S_blcorn] = 0xed;	/* bottom left */
+	showsyms[S_brcorn] = 0xea;	/* bottom right */
+	showsyms[S_crwall] = 0xee;	/* cross */
+	showsyms[S_tuwall] = 0xf6;	/* T up */
+	showsyms[S_tdwall] = 0xf7;	/* T down */
+	showsyms[S_tlwall] = 0xf5;	/* T left */
+	showsyms[S_trwall] = 0xf4;	/* T right */
+	showsyms[S_vbeam] = 0xf8;	/* vertical rule */
+	showsyms[S_hbeam] = 0xf1;	/* horizontal rule */
+	showsyms[S_ndoor] = 0xfe;
+	showsyms[S_vodoor] = 0xe1;	/* small centered square */
+	showsyms[S_hodoor] = 0xe1;	/* small centered square */
+	showsyms[S_room] = 0xfe;	/* centered dot */
+	showsyms[S_pool] = 0xe0;	/* diamond */
+#endif  /* TERMLIB */
+}
+
 void
 parseoptions(opts, from_env)
 register char *opts;
@@ -233,15 +302,53 @@ boolean from_env;
 		return;
 	}
 
+	if (!strncmp(opts, "hel", 3)) {
+		flags.help = !negated;
+		return;
+	}
+
+	if (!strncmp(opts, "IBMg", 4)) {
+		if(from_env) {
+		    flags.IBMgraphics = !negated;
+		    if(flags.IBMgraphics) assign_ibm_graphics();
+		} else {
+#ifdef MSDOS
+		  pline("\"IBMgraphics\" settable only from %s.", configfile);
+#else
+		  pline("IBMgraphics can be set only from NETHACKOPTIONS.");
+#endif
+		}
+		return;
+	}
+
+	if (!strncmp(opts, "DEC", 3)) {
+		if(from_env) {
+		    flags.DECgraphics = !negated;
+		    if(flags.DECgraphics) assign_dec_graphics();
+		} else {
+#ifdef MSDOS
+		  pline("\"DECgraphics\" settable only from %s.", configfile);
+#else
+		  pline("DECgraphics can be set only from NETHACKOPTIONS.");
+#endif
+		}
+		return;
+	}
+
 #ifdef TEXTCOLOR
 	if (!strncmp(opts, "col", 3)) {
 		flags.use_color = !negated;
 		return;
 	}
 #endif
-
+#ifdef AMIFLUSH
+	if (!strncmp(opts, "flus", 4)) {
+		flags.amiflush = !negated;
+		return;
+	}
+#endif
 #ifdef DGK
-	if (!strncmp(opts, "IBM", 3)) {
+	if (!strncmp(opts, "IBM_", 4)) {
 		flags.IBMBIOS = !negated;
 		return;
 	}
@@ -253,13 +360,6 @@ boolean from_env;
 			pline("\"rawio\" settable only from %s.", configfile);
 		return;
 	}
-
-#ifdef DECRAINBOW
-	if (!strncmp(opts, "DEC", 3)) {
-		flags.DECRainbow = !negated;
-		return;
-	}
-#endif /* DECRAINBOW */
 #endif
 
 	if (!strncmp(opts, "sort", 4)) {
@@ -335,6 +435,12 @@ boolean from_env;
 	if (!strncmp(opts, "name", 4)) {
 		if(!from_env) {
 #ifdef MSDOS
+# ifdef AMIGA_WBENCH
+		 if(FromWBench){
+		  pline("\"name\" settable only from %s or in icon.",
+			configfile);
+		 } else
+# endif
 		  pline("\"name\" settable only from %s.", configfile);
 #else
 		  pline("The playername can be set only from NETHACKOPTIONS.");
@@ -413,6 +519,12 @@ boolean from_env;
 	if (!strncmp(opts, "dog", 3)) {
 		if(!from_env) {
 #ifdef MSDOS
+# ifdef AMIGA_WBENCH
+		if(FromWBench){
+		 pline("\"dogname\" settable only from %s or in icon.",
+			configfile);
+		} else
+# endif
 		  pline("\"dogname\" settable only from %s.", configfile);
 #else
 		  Your("dog's name can be set only from NETHACKOPTIONS.");
@@ -427,6 +539,12 @@ boolean from_env;
 	if (!strncmp(opts, "cat", 3)) {
 		if(!from_env) {
 #ifdef MSDOS
+# ifdef AMIGA_WBENCH
+		if(FromWBench){
+		 pline("\"catname\" settable only from %s or in icon.",
+			configfile);
+		} else
+# endif
 		  pline("\"catname\" settable only from %s.", configfile);
 #else
 		  Your("cat's name can be set only from NETHACKOPTIONS.");
@@ -505,6 +623,7 @@ doset()
 #define EXPLORE_BOX 4
 #define FEM_BOX 5
 #define NEWS_BOX 6
+#define MIN_OK_CHECKBOX 7
 #define FIXINV_BOX 7
 #define TOMB_BOX 8
 #define TIME_BOX 9
@@ -528,6 +647,8 @@ doset()
 #define END_AROUND 27
 #define FRUIT_TEXT 35
 #define PACK_TEXT 34
+#define ENABLE_INFO_BOX 38
+#define ALT_CURS_BOX 41
 #define ITEMTEXT(item,text) {GetDItem(optionDlg,item,&type,&ItemHndl,&box); \
 					         (void)CtoPstr(text); \
 					         SetIText(ItemHndl,text);\
@@ -546,7 +667,7 @@ doset()
 					tmp_name[tmp_name[0]+1] = 0;\
 					if (tmp_name[0] > maxsize)\
 						tmp_name[0] = maxsize;}
-	static boolean *flag_ptrs[20] = {0, 0, 0, 0, &flags.explore,
+	static boolean NEARDATA *flag_ptrs[20] = {0, 0, 0, 0, &flags.explore,
 			&flags.female, &flags.nonews,&flags.invlet_constant,
 			&flags.notombstone, &flags.time, &flags.verbose,
 			&flags.silent, 0, &flags.standout, &flags.sortpack,
@@ -558,6 +679,7 @@ doset()
 			&flags.pickup, &flags.confirm,
 			&flags.safe_dog, &flags.no_rest_on_space};
 	extern short macflags;
+	extern short altCurs;
 	short dlgItem, type;
 	Rect box;
 	extern WindowPtr	HackWindow;
@@ -565,47 +687,43 @@ doset()
 	unsigned num;
 	char *op;
 	char tmp_name[256];
-	char savename[PL_NSIZ];
-	char savedog[63];
-	char savecat[63];
-	char savefruit[PL_FSIZ];
-	char saveorder[20];
 	DialogRecord	dlgR;
 	DialogPtr optionDlg;
 	DialogTHndl	th, centreDlgBox();
 	boolean done = FALSE;
     short savemacflags = macflags;
-	struct flag saveflags;
 	register char	*sp, *tmp;
+	char a_k_a[PL_NSIZ];
+	boolean fairsex, debugger, explorer;
 
+/* Option handling:
+	Startup: read options from Prefs (making changes!)
+	Save exit: write current options to prefs
+	Cancel exit: revert to options as defined in Prefs
+	Use exit: allow changes. erased at next dialog
+*/
+	strncpy(a_k_a, plname, strlen(plname));
+	a_k_a[(int)strlen(plname)] = '\0';
+	fairsex = flags.female;
+	debugger = flags.debug;
+	explorer = flags.explore;
+	read_config_file();
+	macflags = savemacflags;
 	SetCursor(&ARROW_CURSOR);
-
-	BlockMove(&flags, &saveflags, sizeof(struct flag));
 	
 	th = centreDlgBox(130, FALSE);
 
 	optionDlg = GetNewDialog(130, (Ptr)&dlgR, (WindowPtr)-1);
 /* set initial values of text items */
-	nmcpy(savename,plname,sizeof(plname)-1);
 	ITEMTEXT(PLAYER_NAME,plname);
-	if(*dogname){
-		nmcpy(savedog,dogname,62);
-		ITEMTEXT(DOG_NAME,dogname);
-	}
-	if(*catname){
-		nmcpy(savecat,catname,62);
-		ITEMTEXT(CAT_NAME,catname);
-	}
+	if(*dogname) ITEMTEXT(DOG_NAME,dogname);
+	if(*catname) ITEMTEXT(CAT_NAME,catname);
 #ifdef TUTTI_FRUTTI
-	if(*pl_fruit){
-		nmcpy(savefruit,pl_fruit,PL_FSIZ);
-		ITEMTEXT(FRUIT_NAME,pl_fruit);
-	}
+	if(*pl_fruit) ITEMTEXT(FRUIT_NAME,pl_fruit);
 #else
 	HIDETEXT(FRUIT_NAME);
 	HIDETEXT(FRUIT_TEXT);
 #endif
-	nmcpy(saveorder,inv_order,strlen(inv_order)+1);
 	ITEMTEXT(PACKORDER,inv_order);
 /* set initial values of record items */
 	Sprintf(tmp_name,"%u",flags.end_top);
@@ -621,10 +739,6 @@ doset()
 				HIDEITEM(NEWS_BOX);
 				break;
 #endif
-			case TOMB_BOX:
-			case REST_SPACE_BOX:
-				SetCtlValue(ItemHndl,!(*(flag_ptrs[dlgItem])));
-				break;
 			case AUTOZOOM_BOX:
 				SetCtlValue(ItemHndl,macflags & fZoomOnContextSwitch);
 				break;
@@ -637,10 +751,14 @@ doset()
 				SetCtlValue(ItemHndl,*(flag_ptrs[dlgItem]));
 		}
 	}
+	GetDItem(optionDlg, ENABLE_INFO_BOX, &type, &ItemHndl, &box);
+	SetCtlValue(ItemHndl, (int)flags.help);
+	GetDItem(optionDlg, ALT_CURS_BOX, &type, &ItemHndl, &box);
+ 	SetCtlValue(ItemHndl, (short)altCurs);
+
 	SelIText(optionDlg, PLAYER_NAME, 0, 32767);
-	
 	ShowWindow(optionDlg);
-	GetDItem(optionDlg, OK, &type, &ItemHndl, &box);
+	GetDItem(optionDlg, OK_BUTTON, &type, &ItemHndl, &box);
 	SetPort (optionDlg);
 	PenSize(3, 3);
 	InsetRect (&box, -4, -4);
@@ -649,15 +767,28 @@ doset()
 	while(!done) {
 		ModalDialog((ProcPtr)0, &dlgItem);
 		GetDItem(optionDlg, dlgItem, &type, &ItemHndl, &box);
-		if (dlgItem >= MIN_CHECKBOX && dlgItem <= MAX_CHECKBOX) {
+		if ((dlgItem >= MIN_CHECKBOX && dlgItem <= MAX_CHECKBOX)
+			|| dlgItem == ENABLE_INFO_BOX || dlgItem == ALT_CURS_BOX) {
 			SetCtlValue(ItemHndl, ! GetCtlValue (ItemHndl));
-			if (dlgItem != AUTOZOOM_BOX)
-				*(flag_ptrs[dlgItem]) = !*(flag_ptrs[dlgItem]);
-			else
-				macflags ^= fZoomOnContextSwitch;
 		}
 		else switch(dlgItem){
 			case SAVE_BUTTON:
+				for(dlgItem = MIN_CHECKBOX; dlgItem <= MAX_CHECKBOX; dlgItem++) {
+					GetDItem(optionDlg, dlgItem, &type, &ItemHndl, &box);
+					if (dlgItem == AUTOZOOM_BOX) {
+						if ((boolean)GetCtlValue(ItemHndl)) {
+							macflags |= fZoomOnContextSwitch;
+						} else {
+							macflags &= ~fZoomOnContextSwitch;
+						}
+					} else {
+						*(flag_ptrs[dlgItem]) = GetCtlValue(ItemHndl);
+					}
+				}
+				GetDItem(optionDlg, ENABLE_INFO_BOX, &type, &ItemHndl, &box);
+				flags.help = GetCtlValue(ItemHndl);
+				GetDItem(optionDlg, ALT_CURS_BOX, &type, &ItemHndl, &box);
+				altCurs = (short)GetCtlValue(ItemHndl);
 				GETTEXT(PLAYER_NAME,PL_NSIZ-1);
 				strncpy(plname, tmp_name, tmp_name[0]+1);
 				(void)PtoCstr (plname);
@@ -717,20 +848,30 @@ doset()
 					} else op++;
 				}
 				flags.end_around = num;
+				
 				write_opts();
-				nmcpy(dogname,savedog,62);
-				nmcpy(catname,savecat,62);
-				nmcpy(plname,savename,sizeof(plname)-1);
-#ifdef TUTTI_FRUTTI
-				nmcpy(pl_fruit,savefruit,PL_FSIZ-1);
-#endif
-				nmcpy(inv_order,saveorder,strlen(inv_order)+1);
+				done = TRUE;
+				break;
 			case CANCEL_BUTTON:
-				flags = saveflags;
-				macflags = savemacflags;
 				done = TRUE;
 				break;
 			case OK_BUTTON:
+				for (dlgItem = MIN_OK_CHECKBOX; dlgItem <= MAX_CHECKBOX; dlgItem++) {
+					GetDItem(optionDlg, dlgItem, &type, &ItemHndl, &box);
+					if (dlgItem == AUTOZOOM_BOX) {
+						if ((boolean)GetCtlValue(ItemHndl)) {
+							macflags |= fZoomOnContextSwitch;
+						} else {
+							macflags &= ~fZoomOnContextSwitch;
+						}
+					} else {
+						*(flag_ptrs[dlgItem]) = GetCtlValue(ItemHndl);
+					}
+				}
+				GetDItem(optionDlg, ENABLE_INFO_BOX, &type, &ItemHndl, &box);
+				flags.help = GetCtlValue(ItemHndl);
+				GetDItem(optionDlg, ALT_CURS_BOX, &type, &ItemHndl, &box);
+				altCurs = (short)GetCtlValue(ItemHndl);
 				GETTEXT(END_TOP,5);
 				op = tmp_name+1;
 				while(*op) {
@@ -757,9 +898,6 @@ doset()
 				(void)fruitadd(tmp_name);
 				nmcpy(pl_fruit,tmp_name,PL_FSIZ-1);
 #endif
-				nmcpy(dogname,savedog,62);
-				nmcpy(catname,savecat,62);
-				nmcpy(plname,savename,sizeof(plname)-1);
 				GETTEXT(PACKORDER,19);
 				op = tmp_name+1;
 				/* Missing characters in new order are filled in at the end 
@@ -780,13 +918,16 @@ doset()
 					}
 				Strcpy(inv_order, tmp);
 				free((genericptr_t)tmp);
-				flags.female = saveflags.female;
-				flags.explore = saveflags.explore;
 				done = TRUE;
 				break;
 			default:;
 		}
 	} 
+	flags.explore = explorer;
+	flags.debug = debugger;
+	flags.female = fairsex;
+	strncpy(plname, a_k_a, strlen(a_k_a));
+	plname[(int)strlen(a_k_a)] = '\0';
 	HideWindow(optionDlg);
 	DisposDialog (optionDlg);
 	SetPort (HackWindow);
@@ -803,9 +944,6 @@ doset()
 	    if (flags.rawio) Strcat(buf,"rawio,");
 	    if (flags.IBMBIOS) Strcat(buf,"IBM_BIOS,");
 #endif /* DGK */
-#ifdef DECRAINBOW
-	    if (flags.DECRainbow) Strcat(buf,"DEC_Rainbow,");
-#endif /* DECRAINBOW */
 #else /* MSDOS */
 	    Strcpy(buf,"NETHACKOPTIONS=");
 	    if(flags.standout) Strcat(buf,"standout,");
@@ -829,6 +967,12 @@ doset()
 #ifdef TEXTCOLOR
 	    if (flags.use_color) Strcat(buf, "color,");
 #endif
+#ifdef AMIFLUSH
+	    if (flags.amiflush) Strcat(buf, "flush,");
+#endif
+	    if (!flags.help) Strcat(buf, "nohelp,");
+	    if (flags.IBMgraphics) Strcat(buf,"IBMgraphics,");
+	    if (flags.DECgraphics) Strcat(buf,"DECgraphics,");
 	    if (flags.confirm) Strcat(buf,"confirm,");
 	    if (flags.safe_dog) Strcat(buf,"safe_pet,");
 	    if (flags.pickup) Strcat(buf,"pickup,");
@@ -875,6 +1019,11 @@ option_help() {
 	if(page_line("") || page_line(buf) || page_line(""))	 goto quit;
 
 #ifdef MSDOS
+# ifdef AMIGA_WBENCH
+	if(FromWBench){
+	 Sprintf(buf,"Set options as OPTIONS= in %s or in icon;",configfile);
+	} else
+# endif
 	Sprintf(buf, "To set options use OPTIONS=<options> in %s;", configfile);
 	Page_line(buf);
 #else
@@ -886,11 +1035,13 @@ option_help() {
 	Page_line("");
 
 	Page_line("Boolean options (which can be negated by prefixing them with '!' or \"no\"):");
+	Next_opt("DECgraphics, ");
 #ifdef MSDOS
-# ifdef DECRAINBOW
-	Next_opt("DEC_Rainbow, ");
-# endif
 	Next_opt("IBM_BIOS, ");
+#endif
+	Next_opt("IBMgraphics, ");
+#ifdef AMIFLUSH
+	Next_opt("flush, ");
 #endif
 #ifdef TEXTCOLOR
 	Next_opt("color, ");
@@ -900,6 +1051,7 @@ option_help() {
 #ifdef UNIX
 	Next_opt("ignintr, ");
 #endif
+	Next_opt("help, ");
 #ifdef NEWS
 	Next_opt("news, ");
 #endif
@@ -923,6 +1075,7 @@ option_help() {
 	Page_line("Compound options:");
 	Page_line("`name'      - your character's name (e.g., name:Merlin-W),");
 	Page_line("`dogname'   - the name of your (first) dog (e.g., dogname:Fang),");
+	Page_line("`catname'   - the name of your (first) cat (e.g., catname:Tabby),");
 
 	Page_line("`packorder' - the inventory order of the items in your pack");
 	Sprintf(buf, "              (currently, packorder:%s ),", inv_order);

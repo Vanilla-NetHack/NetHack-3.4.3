@@ -12,8 +12,7 @@
 
 /* might display need graphics code? */
 #if !defined(AMIGA) && !defined(TOS) && !defined(MACOS)
-# if defined(TERMLIB) || defined(DECRAINBOW) || defined(OS2)
+# if defined(TERMLIB) || defined(OS2)
 #  define ASCIIGRAPH
-   extern boolean IBMgraphics;      /* does terminal use IBM extended ASCII? */
 # endif
 #endif

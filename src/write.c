@@ -59,7 +59,7 @@ register struct obj *scroll;
 	return(1000);
 }
 
-static const char write_on[] = { SCROLL_SYM, 0 };
+static const char NEARDATA write_on[] = { SCROLL_SYM, 0 };
 
 void
 dowrite(pen)

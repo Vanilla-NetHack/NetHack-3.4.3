@@ -175,7 +175,6 @@ static int
 veryold(fd)
 int fd;
 {
-	register int i;
 	time_t date;
 
 	if(fstat(fd, &buf)) return(0);			/* cannot get status */
@@ -205,6 +204,14 @@ int fd;
 			return(0);
 	}
 	(void) close(fd);
+	return(1);
+}
+
+static int
+eraseoldlocks()
+{
+	register int i;
+
 	for(i = 1; i <= MAXLEVEL+1; i++) {		/* try to remove all */
 		glo(i);
 		(void) unlink(lock);
@@ -218,7 +225,7 @@ void
 getlock()
 {
 	extern int errno;
-	register int i = 0, fd;
+	register int i = 0, fd, c;
 #ifdef NO_FILE_LINKS
 	int hlockfd ;
 	int sleepct = 20 ;
@@ -282,11 +289,29 @@ getlock()
 
 	regularize(lock);
 	glo(0);
-	if(locknum > 25) locknum = 25;
 
-	do {
-		if(locknum) lock[0] = 'a' + i++;
+	if(locknum) {
+		if(locknum > 25) locknum = 25;
 
+		do {
+			lock[0] = 'a' + i++;
+
+			if((fd = open(lock, 0)) == -1) {
+			    if(errno == ENOENT) goto gotlock; /* no such file */
+			    perror(lock);
+			    (void) unlink(LLOCK);
+			    error("Cannot open %s", lock);
+			}
+
+			if(veryold(fd) /* closes fd if true */
+							&& eraseoldlocks())
+				goto gotlock;
+			(void) close(fd);
+		} while(i < locknum);
+
+		(void) unlink(LLOCK);
+		error("Too many hacks running now.");
+	} else {
 		if((fd = open(lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
 			perror(lock);
@@ -294,14 +319,27 @@ getlock()
 			error("Cannot open %s", lock);
 		}
 
-		if(veryold(fd))	/* if true, this closes fd and unlinks lock */
+		if(veryold(fd) /* closes fd if true */ && eraseoldlocks())
 			goto gotlock;
 		(void) close(fd);
-	} while(i < locknum);
 
-	(void) unlink(LLOCK);
-	error(locknum ? "Too many hacks running now."
-		      : "There is a game in progress under your name.");
+		Printf("\nThere is already a game in progress under your name.");
+		Printf("\nDestroy old game? [yn] ");
+		(void) fflush(stdout);
+		c = Getchar();
+		while (Getchar() != '\n') ; /* eat rest of line and newline */
+		if(c == 'y' || c == 'Y')
+			if(eraseoldlocks())
+				goto gotlock;
+			else {
+				(void) unlink(LLOCK);
+				error("Couldn't destroy old game.");
+			}
+		else {
+			(void) unlink(LLOCK);
+			error("");
+		}
+	}
 gotlock:
 	fd = creat(lock, FCMASK);
 	if(unlink(LLOCK) == -1)

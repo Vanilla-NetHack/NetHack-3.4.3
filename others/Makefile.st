@@ -56,11 +56,10 @@ GAMEDIR = \games\$(GAME)
 GAMEFILE = $(GAMEDIR)\$(GAME).ttp
 
 # object files for makedefs
-MAKEOBJS = makedefs.o alloc.o monst.o objects.o panic.o
+MAKEOBJS = makedefs.o monst.o objects.o
 
 # object files for special levels compiler
-SPLEVOBJS = lev_comp.o lev_lex.o \
-	lev_main.o alloc.o monst.o objects.o panic.o
+SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o alloc.o monst.o objects.o panic.o
 
 # nothing below this line should have to be changed
 #
@@ -88,14 +87,14 @@ PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\msdos.h $(INCL)\system.h \
 GLOBAL_H   = $(INCL)\global.h $(INCL)\coord.h $(PCCONF_H)
 CONFIG_H   = $(INCL)\config.h $(INCL)\tradstdc.h $(GLOBAL_H)
 TRAP_H	   = $(INCL)\trap.h
-PERMONST_H = $(INCL)\permonst.h $(INCL)\monflag.h
+PERMONST_H = $(INCL)\permonst.h $(INCL)\monattk.h $(INCL)\monflag.h
 YOU_H	   = $(INCL)\you.h $(INCL)\attrib.h $(PERMONST_H) $(INCL)\mondata.h \
-	     $(INCL)\monst.h $(INCL)\youprop.h
+	     $(INCL)\monst.h $(INCL)\youprop.h $(INCL)\prop.h $(INCL)\pm.h
 DECL_H	   = $(INCL)\decl.h $(INCL)\spell.h $(INCL)\obj.h $(YOU_H) \
-	     $(INCL)\onames.h $(INCL)\pm.h
+	     $(INCL)\onames.h $(INCL)\pm.h $(INCL)\color.h
 HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 	     $(INCL)\objclass.h $(INCL)\gold.h $(INCL)\trap.h $(INCL)\flag.h \
-	     $(INCL)\rm.h
+	     $(INCL)\rm.h $(INCL)\hack.h
 
 # The main target
 $(GAME).ttp: $(HOBJ)
@@ -116,7 +115,7 @@ lev_comp.ttp:  $(SPLEVOBJS)
 
 lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
 lev_lex.o:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
-lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
+lev_main.o:  $(HACK_H)
 
 # If you have yacc or lex programs, and make any changes,
 # you'll need rules like these. The names of the output
@@ -239,7 +238,7 @@ do_name.o:  $(HACK_H)
 do_wear.o:  $(HACK_H)
 dog.o:  $(HACK_H) $(INCL)\edog.h
 dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
-dokick.o:  $(HACK_H)
+dokick.o:  $(HACK_H) $(INCL)\eshk.h
 dothrow.o:  $(HACK_H)
 eat.o:  $(HACK_H)
 end.o:  $(HACK_H) $(INCL)\eshk.h
@@ -251,7 +250,6 @@ getline.o:  $(HACK_H) $(INCL)\func_tab.h
 hack.o:  $(HACK_H)
 invent.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 ioctl.o:  $(HACK_H)
-lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
 lock.o:  $(HACK_H)
 makemon.o:  $(HACK_H)
 mail.o:  $(HACK_H)
@@ -262,7 +260,7 @@ mklev.o:  $(HACK_H)
 mkmaze.o:  $(HACK_H)
 mkobj.o:  $(HACK_H)
 mkroom.o:  $(HACK_H)
-mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\wseg.h
 mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
 monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 
@@ -273,7 +271,7 @@ monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 # a comp.binaries.atari.st site, or get gnu sed (the port to
 # the atari GCC is easy).
 
-monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
+monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h $(INCL)\color.h
 	$(CC) $(CFLAGS) -S -o monst1.s -DSPLITMON_1 monst.c
 	$(CC) $(CFLAGS) -S -o monst2.s -DSPLITMON_2 monst.c
 	sed -e s/LC/LD/ -e s/gcc_compiled.:// monst2.s >>monst1.s
@@ -284,7 +282,7 @@ msdos.o:  $(HACK_H)
 mthrowu.o:  $(HACK_H)
 music.o:  $(HACK_H)
 o_init.o:  $(HACK_H) $(INCL)\onames.h
-objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h
+objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h $(INCL)\color.h
 objnam.o:  $(HACK_H)
 options.o:  $(HACK_H)
 pager.o:  $(HACK_H)
@@ -293,7 +291,7 @@ pickup.o:  $(HACK_H)
 polyself.o:  $(HACK_H)
 potion.o:  $(HACK_H)
 pray.o:  $(HACK_H)
-pri.o:  $(HACK_H) $(INCL)\termcap.h
+pri.o:  $(HACK_H) $(INCL)\epri.h $(INCL)\termcap.h
 priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
 prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 random.o:
@@ -320,7 +318,7 @@ trap.o:  $(HACK_H) $(INCL)\edog.h
 u_init.o:  $(HACK_H)
 uhitm.o:  $(HACK_H) $(INCL)\artifact.h
 vault.o:  $(HACK_H) $(INCL)\vault.h
-version.o:  $(HACK_H) $(INCL)\date.h
+version.o:  $(HACK_H) $(INCL)\date.h $(INCL)\patchlevel.h
 weapon.o:  $(HACK_H)
 were.o:  $(HACK_H)
 wield.o:  $(HACK_H)

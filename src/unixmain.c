@@ -21,7 +21,7 @@ int locknum = 0;				/* max num of players */
 char *catmore = 0;				/* default pager */
 #endif
 
-extern struct passwd *getpwuid();
+extern struct passwd *getpwnam(), *getpwuid();
 #ifdef CHDIR
 static void chdirx();
 #endif /* CHDIR */
@@ -32,7 +32,6 @@ main(argc,argv)
 int argc;
 char *argv[];
 {
-	struct passwd *pw;
 	extern int x_maze_max, y_maze_max;
 	register int fd;
 #ifdef CHDIR
@@ -72,7 +71,10 @@ char *argv[];
 #endif
 	if(argc > 1) {
 #ifdef CHDIR
-	    if (!strncmp(argv[1], "-d", 2)) {
+	    if (!strncmp(argv[1], "-d", 2) && argv[1][2] != 'e') {
+		/* avoid matching "-dec" for DECgraphics; since the man page
+		 * says -d directory, hope nobody's using -desomething_else
+		 */
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -110,6 +112,9 @@ char *argv[];
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
 	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
+#ifdef SIGXCPU
+	(void) signal(SIGXCPU, (SIG_RET_TYPE) hangup);
+#endif
 
 	/*
 	 * Find the creation date of this game,
@@ -137,10 +142,31 @@ char *argv[];
 # endif
 		case 'D':
 # ifdef WIZARD
-			pw = getpwuid(getuid());
-			if(!strcmp(pw->pw_name, WIZARD)) {
-				wizard = TRUE;
-				break;
+			{
+			  char *user;
+			  int uid;
+			  struct passwd *pw = (struct passwd *)0;
+
+			  uid = getuid();
+			  user = getlogin();
+			  if (user) {
+			      pw = getpwnam(user);
+			      if (pw && (pw->pw_uid != uid)) pw = 0;
+			  }
+			  if (pw == 0) {
+			      user = getenv("USER");
+			      if (user) {
+				  pw = getpwnam(user);
+				  if (pw && (pw->pw_uid != uid)) pw = 0;
+			      }
+			      if (pw == 0) {
+				  pw = getpwuid(uid);
+			      }
+			  }
+			  if (pw && !strcmp(pw->pw_name,WIZARD)) {
+			      wizard = TRUE;
+			      break;
+			  }
 			}
 			/* otherwise fall thru to discover */
 # endif
@@ -164,6 +190,12 @@ char *argv[];
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
 				Printf("Player name expected after -u\n");
+			break;
+		case 'i':
+			if(!strcmp(argv[0]+1, "ibm")) assign_ibm_graphics();
+			break;
+		case 'd':
+			if(!strcmp(argv[0]+1, "dec")) assign_dec_graphics();
 			break;
 		default:
 			/* allow -T for Tourist, etc. */

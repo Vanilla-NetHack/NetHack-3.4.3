@@ -26,15 +26,16 @@ extern short macflags;
 #define SEEK_SET 0
 #endif
 
+STATIC_DCL boolean FDECL(clear_help, (CHAR_P));
+STATIC_DCL boolean FDECL(valid_help, (CHAR_P));
+
 #ifndef OVLB
-OSTATIC char hc;
+STATIC_DCL char hc;
 #else /* OVLB */
-XSTATIC char hc = 0;
-#endif /* OVLB */
+STATIC_OVL char NEARDATA hc = 0;
 
 static void FDECL(page_more, (FILE *,int));
-OSTATIC boolean FDECL(clear_help, (CHAR_P));
-OSTATIC boolean FDECL(valid_help, (CHAR_P));
+static boolean FDECL(is_swallow_sym, (UCHAR_P));
 static boolean FDECL(pmatch,(const char *,const char *));
 static boolean FDECL(outspec,(const char *,int));
 static const char *FDECL(lookat,(int,int,UCHAR_P));
@@ -42,8 +43,6 @@ static const char *FDECL(lookat,(int,int,UCHAR_P));
 static void NDECL(wiz_help);
 #endif
 static void NDECL(help_menu);
-
-#ifdef OVLB
 
 /*
  * simple pattern matcher: '*' matches 0 or more characters
@@ -74,6 +73,17 @@ pmatch(patrn, strng)
 }
 
 /*
+ * returns "true" for characters that could represent a monster's stomach
+ */
+
+static boolean
+is_swallow_sym(c)
+uchar c;
+{
+	return (index(" /-\\|", (char)c) != 0);
+}
+
+/*
  * print out another possibility for dowhatis. "new" is the possible new
  * string; "out_flag" indicates whether we really want output, and if
  * so what kind of output: 0 == no output, 1 == "(or %s)" output. 
@@ -85,7 +95,7 @@ outspec(new, out_flag)
 const char *new;
 int out_flag;
 {
-	static char old[50];
+	static char NEARDATA old[50];
 
 	if (!strcmp(old, new))
 		return FALSE;		/* don't print the same thing twice */
@@ -110,7 +120,7 @@ uchar ch;
 	register struct monst *mtmp;
 	register struct obj *otmp;
 	struct trap *trap;
-	static char answer[50];
+	static char NEARDATA answer[50];
 	register char *s, *t;
 	uchar typ;
 
@@ -133,6 +143,8 @@ uchar ch;
 			u.mtimedone ? mons[u.umonnum].mname :
 #endif
 			pl_character, plname);
+	} else if (u.uswallow && is_swallow_sym(ch)) {
+		Sprintf(answer, "interior of %s", defmonnam(u.ustuck));
 	} else if (mtmp && !mtmp->mimic)
 		Sprintf(answer, "%s%s",
 		   mtmp->mtame ? "tame " :
@@ -152,7 +164,12 @@ uchar ch;
 			if (mtmp->mappearance == STRANGE_OBJECT)
 				Strcpy(answer, "strange object");
 			else {
-				otmp = mksobj((int) mtmp->mappearance,FALSE );
+				int oindx = mtmp->mappearance;
+				otmp = mksobj(oindx,FALSE );
+				if(oindx == STATUE || oindx == FIGURINE)
+				    otmp->corpsenm = PM_KOBOLD;
+				else if (oindx == DRAGON_SCALE_MAIL)
+				    otmp->corpsenm = PM_RED_DRAGON;
 				Strcpy(answer, distant_name(otmp, xname));
 				free((genericptr_t) otmp);
 			}
@@ -263,6 +280,7 @@ dowhatis()
 	boolean oldverb = flags.verbose;
 	boolean found_in_file = FALSE, need_to_print = FALSE;
 	int	found = 0;
+	static const char *mon_interior = "the interior of a monster";
 
 #ifdef OS2_CODEVIEW
 	char tmp[PATHLEN];
@@ -321,9 +339,27 @@ selobj:
 			    return 0;
 		}
 		flags.verbose = FALSE;
-		q = levl[cc.x][cc.y].scrsym;
-		if (!q || (!levl[cc.x][cc.y].seen && !MON_AT(cc.x,cc.y)))
-			q = ' ';
+		if (!u.uswallow) {
+			q = levl[cc.x][cc.y].scrsym;
+			if (!q || (!levl[cc.x][cc.y].seen && !MON_AT(cc.x,cc.y)))
+				q = ' ';
+		}
+		else if (cc.x == u.ux && cc.y == u.uy)
+			q = u.usym;
+		else {
+			i = (u.uy - cc.y)+1;
+			if (i < 0 || i > 2)
+				q = ' ';
+			else {
+				firstmatch = (i == 0) ? "/-\\" :
+					(i == 1) ? "| |" : "\\-/";
+				i = (u.ux - cc.x)+1;
+				if (i < 0 || i > 2)
+					q = ' ';
+				else
+					q = firstmatch[i];
+			}
+		}
 	}
 
 	if (!q)
@@ -337,7 +373,7 @@ selobj:
 /*
  * if the user just typed one letter, or we're identifying from the
  * screen, then we have to check all the possibilities and print them
- * out for him/her
+ * out for him/her.
  */
 
 /* Check for monsters */
@@ -349,6 +385,20 @@ selobj:
 			found++;
 			break;
 		}
+	}
+
+/* Special case: if identifying from the screen, and
+ * we're swallowed, and looking at something other than our own symbol,
+ * then just say "the interior of a monster".
+ */
+	if (u.uswallow && is_swallow_sym(q)) {
+		if (!found) {
+			pline("%c       %s", q, mon_interior);
+			(void)outspec(firstmatch=mon_interior, 0);
+		}
+		else
+			(void)outspec(mon_interior, 1);
+		found++; need_to_print = TRUE;
 	}
 
 /* Now check for objects */
@@ -402,6 +452,8 @@ selobj:
 
 checkfile:
 
+	if (!strncmp(inp, "interior of ", 12))
+		inp += 12;
 	if (!strncmp(inp, "a ", 2))
 		inp += 2;
 	else if (!strncmp(inp, "an ", 3))
@@ -415,20 +467,29 @@ checkfile:
 	if (!strncmp(inp, "invisible ", 10))
 		inp += 10;
 
-	if ((!q || found) && *inp) {
+/*
+ * look in the file for more info if:
+ * the user typed in the whole name (!q)
+ * OR we've found a possible match with the character q (found) and
+ *    flags.help is TRUE
+ * and, of course, the name to look for must be non-empty.
+ */
+	if ((!q || (found && flags.help)) && *inp) {
 /* adjust the input to remove "named " and convert to lower case */
  		for (ep = inp; *ep; ) {
 			if ((!strncmp(ep, " named ", 7) && (alt = ep + 7)) ||
 			    !strncmp(ep, " called ", 8))
 				*ep = 0;
-			else
-				(*ep = tolower(*ep)), ep++;
+			else {
+				if(isupper(*ep)) *ep = tolower(*ep);
+				ep++;
+			}
 		}
 
 /*
  * If the object is named, then the name is the alternate search string;
  * otherwise, the result of makesingular() applied to the name is. This
- * isn't strictly optimal, but named objects of interest to the user should
+ * isn't strictly optimal, but named objects of interest to the user
  * will usually be found under their name, rather than under their
  * object type, so looking for a singular form is pointless.
  */
@@ -436,7 +497,8 @@ checkfile:
 		if (!alt)
 			alt = makesingular(inp);
 		else
-			for (ep = alt; *ep; ep++) *ep = tolower(*ep);
+			for (ep = alt; *ep; ep++) 
+				if(isupper(*ep)) *ep = tolower(*ep);
 
 		while(fgets(buf,BUFSZ,fp)) {
 			if(*buf != '\t') {
@@ -555,7 +617,7 @@ dowhatdoes()
 }
 
 /* make the paging of a file interruptible */
-static int got_intrup;
+static volatile int NEARDATA got_intrup;
 
 #if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
 static int
@@ -572,13 +634,6 @@ page_more(fp,strip)
 FILE *fp;
 int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 {
-	register char *bufr;
-#if !defined(MSDOS) && !defined(MINIMAL_TERM)
-	register char *ep;
-#endif
-#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
-	int (*prevsig)() = (int (*)())signal(SIGINT, (SIG_RET_TYPE) intruph);
-#endif
 #ifdef MACOS
 	short tmpflags;
 	
@@ -590,6 +645,13 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 	}
 	macflags |= (tmpflags & fDoUpdate);
 #else
+	register char *bufr;
+#if !defined(MSDOS) && !defined(MINIMAL_TERM)
+	register char *ep;
+#endif
+#if !defined(MSDOS) && !defined(TOS)
+	int (*prevsig)() = (int (*)())signal(SIGINT, (SIG_RET_TYPE) intruph);
+#endif
 #if defined(MSDOS) || defined(MINIMAL_TERM)
 	/* There seems to be a bug in ANSI.SYS  The first tab character
 	 * after a clear screen sequence is not expanded correctly.  Thus
@@ -603,6 +665,8 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 	while (fgets(buf, BUFSIZ, fp) && (!strip || *buf == '\t')){
 		bufp = buf;
 		bufrp = bufr;
+		if (strip && *bufp && *bufp != '\n')
+			*bufrp++ = *bufp++;
 		while (*bufp && *bufp != '\n') {
 			if (*bufp == '\t') {
 				spaces = tabstop - (bufrp - bufr) % tabstop;
@@ -631,11 +695,11 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 ret:
 	free((genericptr_t) bufr);
 	(void) fclose(fp);
-#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
+#if !defined(MSDOS) && !defined(TOS)
 	(void) signal(SIGINT, (SIG_RET_TYPE) prevsig);
 	got_intrup = 0;
 #endif
-#endif
+#endif /* MACOS */
 }
 
 #endif /* OVLB */
@@ -644,11 +708,11 @@ ret:
 
 #ifndef OVLB
 
-OSTATIC boolean whole_screen;
+STATIC_DCL boolean whole_screen;
 
 #else /* OVLB */
 
-XSTATIC boolean whole_screen = TRUE;
+STATIC_OVL boolean NEARDATA whole_screen = TRUE;
 
 void
 set_whole_screen() {	/* called in termcap as soon as LI is known */
@@ -674,7 +738,7 @@ register int mode;	/* 0: open  1: wait+close  2: close */
 #ifdef LINT	/* lint may handle static decl poorly -- static boolean so; */
 	boolean so;
 #else
-	static boolean so;
+	static boolean NEARDATA so;
 #endif
 	if(mode == 0) {
 		if(!whole_screen) {
@@ -688,13 +752,7 @@ register int mode;	/* 0: open  1: wait+close  2: close */
 		so = flags.standout;
 		flags.standout = 1;
 	} else {
-#ifdef MACOS
-		macflags |= fFullScrKluge;
-#endif
 		if(mode == 1) {
-#ifdef MACOS
-			macflags |= fCornScrKluge;
-#endif
 			curs(1, LI);
 			more();
 		}
@@ -705,9 +763,6 @@ register int mode;	/* 0: open  1: wait+close  2: close */
 			curs(1, ROWNO+4);
 			cl_eos();
 		}
-#ifdef MACOS
-		macflags &= ~fScreenKluges;
-#endif
 	}
 }
 
@@ -718,6 +773,10 @@ int
 page_line(s)		/* returns 1 if we should quit */
 register const char *s;
 {
+#ifdef CLIPPING
+/* we assume here that no data files have more than 80 chars/line */
+	static char tmp[81], *t;
+#endif
 	if(cury == LI-1) {
 		if(!*s)
 			return(0);	/* suppress blank lines at top */
@@ -735,6 +794,28 @@ register const char *s;
 			cl_eos();
 		}
 	}
+#ifdef CLIPPING
+/* if lines are too long for the screen, first try stripping leading blanks */
+	if (strlen(s) >= CO) {
+		while (*s == ' ' || *s == '\t') s++;
+	}
+
+/* if it's still too long, try compressing blanks */
+	if (strlen(s) >= CO) {
+		t = tmp;
+		while ( (*t = *s) != 0) {
+			if (*t == ' ') {
+				while (*s == ' ')
+					s++;
+			}
+			else
+				s++;
+			t++;
+		}
+		s = tmp;
+	}
+#endif /* CLIPPING */
+
 #ifdef TERMINFO
 	xputs(s); xputc('\n');
 #else
@@ -767,9 +848,9 @@ const char *text;
 	static struct line {
 		struct line *next_line;
 		char *line_text;
-	} *texthead, *texttail;
-	static int maxlen;
-	static int linect;
+	} NEARDATA *texthead, NEARDATA *texttail;
+	static int NEARDATA maxlen;
+	static int NEARDATA linect;
 	register struct line *tl;
 	register boolean hmenu = FALSE;
 
@@ -817,17 +898,6 @@ const char *text;
 	else
 	if(mode == 2) {
 	    register int curline, lth;
-#ifdef MACOS
-		short tmpflags;
-		extern struct line *mactexthead;
-		extern int macmaxlen, maclinect;
-		
-		tmpflags = macflags;
-		macflags |= fDoUpdate | fDisplayKluge;
-		mactexthead = texthead;
-		macmaxlen = maxlen;
-		maclinect = linect;
-#endif
 
 	    if(flags.toplin == 1) more();	/* ab@unido */
 	    remember_topl();
@@ -862,9 +932,6 @@ const char *text;
 #endif
 		cl_end ();
 		if (!hmenu) {
-#ifdef MACOS
-			macflags |= fCornScrKluge;
-#endif
 			cmore (text);
 		}
 		if (!hmenu || clear_help(hc)) {
@@ -872,15 +939,20 @@ const char *text;
 		    cl_end ();
 		    docorner (lth, curline-1);
 		}
-#ifdef MACOS
-			mactexthead = NULL;
-			macflags |= (tmpflags & (fDoUpdate | fDisplayKluge));
-#endif
 	    } else {					/* feed to pager */
+#ifdef MACOS
+		short	tmpflags;
+		
+		tmpflags = macflags;
+		macflags &= ~fDoNonKeyEvt;
+#endif
 		set_pager(0);
 		for (tl = texthead; tl; tl = tl->next_line) {
 		    if (page_line (tl->line_text)) {
 			set_pager(2);
+#ifdef MACOS
+			macflags = tmpflags;
+#endif
 			while(tl = texthead) {
 			    texthead = tl->next_line;
 			    free((genericptr_t) tl);
@@ -893,6 +965,9 @@ const char *text;
 			set_pager(2);
 		} else
 			set_pager(1);
+#ifdef MACOS
+		macflags = tmpflags;
+#endif
 	    }
 	}
 
@@ -966,7 +1041,7 @@ help_menu() {
 	cornline(-1,"");
 }
 
-XSTATIC boolean
+STATIC_OVL boolean
 clear_help(c)
 char c;
 {
@@ -1004,7 +1079,7 @@ char c;
 		);
 }
 
-XSTATIC boolean
+STATIC_OVL boolean
 valid_help(c)
 char c;
 {

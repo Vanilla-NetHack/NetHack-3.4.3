@@ -19,9 +19,9 @@ extern WindowPtr	HackWindow;
 #endif
 #include <ctype.h>
 
-#ifdef LATTICE
-static void FDECL(lattice_mung_line,(char*));
-static void FDECL(lattice_unmung_line,(char*));
+#ifdef NO_SCAN_BRACK
+static void FDECL(nsb_mung_line,(char*));
+static void FDECL(nsb_unmung_line,(char*));
 #endif
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
@@ -48,15 +48,83 @@ struct toptenentry {
 
 static char *FDECL(itoa, (int));
 static const char *FDECL(ordin, (int));
-static void outheader();
+static void NDECL(outheader);
 static int FDECL(outentry, (int,struct toptenentry *,int));
+static void FDECL(readentry, (FILE *,struct toptenentry *));
+static void FDECL(writeentry, (FILE *,struct toptenentry *));
+static int FDECL(classmon, (CHAR_P,BOOLEAN_P));
+static boolean FDECL(onlyspace, (const char *));
 
 /* must fit with end.c */
-static const char *killed_by_prefix[] = {
+static const char NEARDATA *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
 	"", "crushed to death by ", "petrified by ", "",
 	"", "",
 	"", "", "" };
+
+static void
+readentry(rfile,tt)
+FILE *rfile;
+struct toptenentry *tt;
+{
+# ifdef NO_SCAN_BRACK
+	if(fscanf(rfile,"%6s %d %d %d %d %d %ld%*c%c%c %s %s",
+#  define TTFIELDS 12
+# else
+	if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
+#  define TTFIELDS 11
+# endif
+		tt->date, &tt->uid,
+		&tt->level,
+		&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->points,
+		&tt->plchar, &tt->sex,
+#ifdef LATTICE	/* return value is broken also, sigh */
+		tt->name, tt->death) < 1)
+#else
+		tt->name, tt->death) != TTFIELDS)
+#endif
+#undef TTFIELDS
+			tt->points = 0;
+#ifdef NO_SCAN_BRACK
+	if(tt->points > 0) {
+		nsb_unmung_line(tt->name);
+		nsb_unmung_line(tt->death);
+	}
+#endif
+}
+
+static void
+writeentry(rfile,tt)
+FILE *rfile;
+struct toptenentry *tt;
+{
+#ifdef NO_SCAN_BRACK
+	nsb_mung_line(tt->name);
+	nsb_mung_line(tt->death);
+#endif
+# ifdef NO_SCAN_BRACK
+	(void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s %s\n",
+# else
+	(void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
+# endif
+		tt->date, tt->uid,
+		tt->level,
+		tt->maxlvl, tt->hp, tt->maxhp, tt->points,
+		tt->plchar, tt->sex,
+		onlyspace(tt->name) ? "_" : tt->name, tt->death);
+#ifdef NO_SCAN_BRACK
+	nsb_unmung_line(tt->name);
+	nsb_unmung_line(tt->death);
+#endif
+}
+
+static boolean
+onlyspace(s)
+const char *s;
+{
+	for (;*s;s++) if (!isspace(*s)) return(FALSE);
+	return(TRUE);
+}
 
 void
 topten(how)
@@ -65,7 +133,8 @@ int how;
 	int uid = getuid();
 	int rank, rank0 = -1, rank1 = 0;
 	int occ_cnt = PERSMAX;
-	register struct toptenentry *t0, *t1, *tprev;
+	register struct toptenentry *t0, *tprev;
+	register struct toptenentry *t1;
 #ifdef UNIX
 	char *reclock = "record_lock";
 # ifdef NO_FILE_LINKS
@@ -170,11 +239,7 @@ int how;
 		HUP (void) puts("Cannot open log file!");
 		goto lgend;
 	}
-	(void) fprintf(lfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
-	    t0->date, t0->uid,
-	    t0->level, t0->maxlvl,
-	    t0->hp, t0->maxhp, t0->points,
-	    t0->plchar, t0->sex, t0->name, t0->death);
+	writeentry(lfile, t0);
 	(void) fclose(lfile);
 # if defined(UNIX) || defined(VMS)
 	(void) unlink(loglock);
@@ -228,13 +293,6 @@ int how;
 			short	i;
 	
 			rfile = openFile(recfile,"r");
-			
-			for (i = 0;i < t->maxRow; i++) {
-			    MoveTo(Screen_Border,
-				t->ascent + (i * t->height) + Screen_Border);
-			    DrawText(&t->screen[i][0], 0, t->maxCol);
-			}
-			ValidRect(&(**(*HackWindow).visRgn).rgnBBox);
 		}
 	}
 
@@ -257,24 +315,8 @@ int how;
 	tprev = 0;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for(rank = 1; ; ) {
-#ifdef LATTICE
-	    if(fscanf(rfile,"%6s %d %d %d %d %d %ld%*c%c%c %s %s",
-#else
-	    if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
-#endif /* LATTICE */
-		t1->date, &t1->uid,
-		&t1->level, &t1->maxlvl,
-		&t1->hp, &t1->maxhp, &t1->points,
-		&t1->plchar, &t1->sex,
-#ifdef LATTICE	/* return value is broken also, sigh */
-		t1->name, t1->death) <1    || t1->points < POINTSMIN)
-#else
-		t1->name, t1->death) != 11 || t1->points < POINTSMIN)
-#endif
-			t1->points = 0;
-#ifdef LATTICE
-	    lattice_unmung_line(t1->death);
-#endif
+	    readentry(rfile, t1);
+	    if (t1->points < POINTSMIN) t1->points = 0;
 	    if(rank0 < 0 && t1->points < t0->points) {
 		rank0 = rank++;
 		if(tprev == 0)
@@ -342,47 +384,54 @@ int how;
 	if(!done_stopprint) outheader();
 	t1 = tt_head;
 	for(rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
-#ifdef LATTICE
-	  lattice_mung_line(t1->death);
-	  if(flg) (void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s %s\n",
-#else
-	  if(flg) (void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
-#endif
-	    t1->date, t1->uid,
-	    t1->level, t1->maxlvl,
-	    t1->hp, t1->maxhp, t1->points,
-	    t1->plchar, t1->sex, t1->name, t1->death);
-#ifdef LATTICE
-	  lattice_unmung_line(t1->death);
-#endif
-	  if(done_stopprint) continue;
-	  if(rank > flags.end_top &&
-	    (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
-	    && (!flags.end_own ||
+	    if(flg) writeentry(rfile, t1);
+	    if(done_stopprint) continue;
+	    if(rank > flags.end_top &&
+	      (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
+	      && (!flags.end_own ||
 #ifdef PERS_IS_UID
 				  t1->uid != t0->uid
 #else
 				  strncmp(t1->name, t0->name, NAMSZ)
 #endif
 		)) continue;
-	  if(rank == rank0-flags.end_around &&
-	     rank0 > flags.end_top+flags.end_around+1 &&
-	     !flags.end_own)
+	    if(rank == rank0-flags.end_around &&
+	       rank0 > flags.end_top+flags.end_around+1 &&
+	       !flags.end_own)
 		(void) putchar('\n');
-	  if(rank != rank0)
+	    if(rank != rank0)
 		(void) outentry(rank, t1, 0);
-	  else if(!rank1)
+	    else if(!rank1)
 		(void) outentry(rank, t1, 1);
-	  else {
+	    else {
 		int t0lth = outentry(0, t0, -1);
 		int t1lth = outentry(rank, t1, t0lth);
 		if(t1lth > t0lth) t0lth = t1lth;
 		(void) outentry(0, t0, t0lth);
-	  }
+	    }
 	}
 	if(rank0 >= rank) if(!done_stopprint)
 		(void) outentry(0, t0, 1);
 	(void) fclose(rfile);
+#ifdef MACOS
+	{
+		Str255	name;
+		FInfo	fndrInfo;
+		term_info	*t;
+		short	oldVol, error;
+		
+		t = (term_info *)GetWRefCon(HackWindow);
+		GetVol(name, &oldVol);
+		SetVol(0L, t->recordVRefNum);
+		Strcpy((char *)name,recfile);
+		CtoPstr((char *)name);
+		error = GetFInfo(name, (short)0, &fndrInfo);
+		fndrInfo.fdCreator = CREATOR;
+		if (error == noErr)
+			SetFInfo(name, (short)0, &fndrInfo);
+		SetVol(0L, oldVol);
+	}
+#endif
 #ifdef VMS
 	if (flg) {
 		delete(RECORD);
@@ -469,7 +518,7 @@ register int rank, so;
 	    Sprintf(eos(linebuf), " on dungeon level %d", t1->level);
 	  if(t1->maxlvl != t1->level)
 	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
-	/* kuldge for "quit while already on Charon's boat" */
+	/* kludge for "quit while already on Charon's boat" */
 	  if(!strncmp(t1->death, "quit ", 5))
 	    Strcat(linebuf, t1->death + 4);
 	}
@@ -504,7 +553,7 @@ register int rank, so;
 	/* Quit, starved, ascended, and escaped contain no second line */
 	if (second_line) {
 		Strcpy(linebuf2, t1->death);
-		*linebuf2 = toupper(*linebuf2);
+		if (islower(*linebuf2)) *linebuf2 = toupper(*linebuf2);
 		Strcat(linebuf2, ".");
 	}
 
@@ -619,31 +668,14 @@ char **argv;
 
 	t1 = tt_head = newttentry();
 	for(rank = 1; ; rank++) {
-#ifdef LATTICE
-	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld%*c%c%c %s %s",
-#else
-	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
-#endif /* LATTICE */
-		t1->date, &t1->uid,
-		&t1->level, &t1->maxlvl,
-		&t1->hp, &t1->maxhp, &t1->points,
-		&t1->plchar, &t1->sex,
-#ifdef LATTICE
-		t1->name, t1->death)<1)
-#else
-		t1->name, t1->death) != 11)
-#endif
-			t1->points = 0;
-	  if(t1->points == 0) break;
-#ifdef LATTICE
-	   lattice_unmung_line(t1->death);
-#endif
+	    readentry(rfile, t1);
+	    if(t1->points == 0) break;
 #ifdef PERS_IS_UID
-	  if(!playerct && t1->uid == uid)
+	    if(!playerct && t1->uid == uid)
 		flg++;
-	  else
+	    else
 #endif
-	  for(i = 0; i < playerct; i++){
+	    for(i = 0; i < playerct; i++){
 		if(strcmp(players[i], "all") == 0 ||
 		   strncmp(t1->name, players[i], NAMSZ) == 0 ||
 		  (players[i][0] == '-' &&
@@ -651,8 +683,8 @@ char **argv;
 		   players[i][2] == 0) ||
 		  (digit(players[i][0]) && rank <= atoi(players[i])))
 			flg++;
-	  }
-	  t1 = t1->tt_next = newttentry();
+	    }
+	    t1 = t1->tt_next = newttentry();
 	}
 	(void) fclose(rfile);
 	if(!flg) {
@@ -715,6 +747,9 @@ char **argv;
 		break;
 	}
 #endif /* nonsense /**/
+#ifdef MACOS
+	more();
+#endif
 }
 
 static int
@@ -772,25 +807,8 @@ struct obj *otmp;
 	rank = rnd(10);
 pickentry:
 	for(i = rank; i; i--) {
-#ifdef LATTICE
-	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld%*c%c%c %s %s",
-#else
-	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
-#endif
-		tt->date, &tt->uid,
-		&tt->level, &tt->maxlvl,
-		&tt->hp, &tt->maxhp, &tt->points,
-		&tt->plchar, &tt->sex,
-#ifdef LATTICE
-		tt->name, tt->death) <1)
-#else
-		tt->name, tt->death) != 11)
-#endif
-			tt->points = 0;
-	  if(tt->points == 0) break;
-#ifdef LATTICE
-	  lattice_unmung_line(tt->death);
-#endif
+	    readentry(rfile, tt);
+	    if(tt->points == 0) break;
 	}
 
 	if(tt->points == 0) {
@@ -814,15 +832,16 @@ pickentry:
 	return otmp;
 }
 
-#ifdef LATTICE
+#ifdef NO_SCAN_BRACK
 /* Lattice scanf isn't up to reading the scorefile.  What */
 /* follows deals with that; I admit it's ugly. (KL) */
-static void lattice_mung_line(p)
+/* Now generally available (KL) */
+static void nsb_mung_line(p)
 	char *p;
 	{
 	while(p=strchr(p,' '))*p='|';
 }
-static void lattice_unmung_line(p)
+static void nsb_unmung_line(p)
 	char *p;
 	{
 	while(p=strchr(p,'|'))*p=' ';

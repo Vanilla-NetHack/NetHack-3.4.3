@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trampoli.h 	3.0	89/11/15	  */
+/*	SCCS Id: @(#)trampoli.h 	3.0	90/05/31	  */
 /* Copyright (c) 1989, by Norm Meluch and Stephen Spackman	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -90,8 +90,13 @@
 
 
 /* ### end.c ### */
-#define done1() done1_()
-#define done2() done2_()
+#define done1()     done1_()
+#define done2()     done2_()
+#define hangup()    hangup_()
+#define done_intr() done_intr_()
+#if defined(UNIX) || defined (VMS)
+#define done_hangup() done_hangup_()
+#endif /* UNIX || VMS */
 
 
 /* ### engrave.c ### */
@@ -117,13 +122,11 @@
 
 
 /* ### ioctl.c ### */
-/*
 #ifdef UNIX
-#ifdef SUSPEND
+# ifdef SUSPEND
 #define dosuspend() dosuspend_()
-#endif
-#endif
-*/
+# endif /* SUSPEND */
+#endif /* UNIX */
 
 
 /* ### lock.c ### */
@@ -134,8 +137,13 @@
 #define picklock()  picklock_()
 
 
+/* ### mklev.c ### */
+#define comp(x, y)  comp_(x, y)
+
+
 /* ### mondata.c ### */
-#define canseemon(x)	canseemon_(x)
+/* See comment in trampoli.c before uncommenting canseemon. */
+/* #define canseemon(x)	canseemon_(x) */
 
 
 /* ### o_init.c ### */
@@ -155,10 +163,11 @@
 #define dohelp()     dohelp_()
 #define dohistory()  dohistory_()
 #ifdef UNIX
-#ifdef SHELL
+#define intruph()    intruph_()
+# ifdef SHELL
 #define dosh()       dosh_()
-#endif
-#endif
+# endif /* SHELL */
+#endif /* UNIX */
 #define dowhatdoes() dowhatdoes_()
 #define dowhatis()   dowhatis_()
 
@@ -215,7 +224,7 @@
 
 /* ### spell.c ### */
 #ifdef SPELLS
-#define learn()	learn_()
+#define learn()    learn_()
 #define docast()   docast_()
 #define dovspell() dovspell_()
 #endif
@@ -234,7 +243,7 @@
 #define float_down() float_down_()
 
 /* ### version.c ### */
-#define doversion() doversion_()
+#define doversion()    doversion_()
 #define doextversion() doextversion_()
 
 /* ### wield.c ### */

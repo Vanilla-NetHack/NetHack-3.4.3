@@ -52,7 +52,7 @@ Notes:
 
 1.  A number of systems, such as Xenix, support both the termcap and terminfo
     terminal capability libraries.  Make sure that the TERMINFO definition in
-    unixconf.h and the TERMLIB definition in the source Makefile correspond.
+    config.h and the TERMLIB definition in the source Makefile correspond.
     If spurious characters appear on the screen while kicking, zapping, etc.,
     it is likely that you have linked the source to the wrong library or
     mistakenly defined/undefined TERMINFO.  If your terminal library does not
@@ -100,3 +100,10 @@ Notes:
     -DDUMB to CFLAGS and DUMB.Setup to the Sys.3B2 dependency line.  The
     compiler provided with later versions of the OS has a large enough
     symbol table that it does not need this workaround.
+
+8.  If NetHack seems to compile fine, starts up, allows you to pick a
+    character, and then either hangs or gets a segmentation fault, you
+    should try changing the schar and uchar definitions in config.h to
+    short ints.  This problem is known to occur on the AT&T 3B series,
+    Silicon Graphics Irises, and IBM PC/RT's running AIX, and may occur
+    on other computers as well.

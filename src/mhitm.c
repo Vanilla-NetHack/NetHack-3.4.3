@@ -9,11 +9,9 @@
 
 #ifdef OVLB
 
-static boolean vis, far_noise;
-static long noisetime;
-static struct obj *otmp;
-
-#endif /* OVLB */
+static boolean NEARDATA vis, NEARDATA far_noise;
+static long NEARDATA noisetime;
+static struct obj NEARDATA *otmp;
 
 static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
 static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
@@ -24,8 +22,6 @@ static int FDECL(mdamagem, (struct monst *,struct monst *,struct attack *));
 static void FDECL(mswingsm, (struct monst *, struct monst *, struct obj *));
 static void FDECL(noises,(struct monst *,struct attack *));
 static void FDECL(missmm,(struct monst *,struct monst *,struct attack *));
-
-#ifdef OVLB
 
 static void
 noises(magr, mattk)
@@ -391,52 +387,56 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-#ifdef GOLEMS
-		golemeffects(mdef, AD_FIRE, tmp);
-#endif /* GOLEMS */
 		if(vis) pline("%s is on fire!", Monnam(mdef));
+		tmp += destroy_mitem(mdef, SCROLL_SYM, AD_FIRE);
+#ifdef SPELLS
+		tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
+#endif
 		if(resists_fire(pd)) {
 		    pline("The fire doesn't seem to burn %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
+#ifdef GOLEMS
+		    golemeffects(mdef, AD_FIRE, tmp);
+#endif /* GOLEMS */
 		    tmp = 0;
-		} else {
-		    tmp += destroy_mitem(mdef, SCROLL_SYM, AD_FIRE);
-		    tmp += destroy_mitem(mdef, POTION_SYM, AD_FIRE);
-#ifdef SPELLS
-		    tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
-#endif
 		}
+		/* only potions damage resistant players in destroy_item */
+		tmp += destroy_mitem(mdef, POTION_SYM, AD_FIRE);
 		break;
 	    case AD_COLD:
 		if (magr->mcan) {
 		    tmp = 0;
 		    break;
 		}
-#ifdef GOLEMS
-		golemeffects(mdef, AD_COLD, tmp);
-#endif /* GOLEMS */
 		if(vis) pline("%s is covered in frost!", Monnam(mdef));
 		if(resists_cold(pd)) {
 		    pline("The frost doesn't seem to chill %s!",
 			mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
+#ifdef GOLEMS
+		    golemeffects(mdef, AD_COLD, tmp);
+#endif /* GOLEMS */
 		    tmp = 0;
-		} else tmp += destroy_mitem(mdef, POTION_SYM, AD_COLD);
+		}
+		tmp += destroy_mitem(mdef, POTION_SYM, AD_COLD);
 		break;
 	    case AD_ELEC:
 		if (magr->mcan) {
 		    tmp = 0;
 		    break;
 		}
-#ifdef GOLEMS
-		golemeffects(mdef, AD_ELEC, tmp);
-#endif /* GOLEMS */
 		if(vis) pline("%s gets zapped!", Monnam(mdef));
+		tmp += destroy_mitem(mdef, WAND_SYM, AD_ELEC);
 		if(resists_elec(pd)) {
 		    pline("The zap doesn't shock %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
+#ifdef GOLEMS
+		    golemeffects(mdef, AD_ELEC, tmp);
+#endif /* GOLEMS */
 		    tmp = 0;
 		}
+		/* only rings damage resistant players in destroy_item */
+		tmp += destroy_mitem(mdef, RING_SYM, AD_ELEC);
 		break;
 	    case AD_ACID:
 		if (magr->mcan) {
@@ -459,7 +459,8 @@ mdamagem(magr, mdef, mattk)
 			else if(mdef->mtame)
 			     pline("May %s rust in peace.", mon_nam(mdef));
 			mondied(mdef);
-			magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
+			magr->mhpmax = magr->mhpmax +
+                                            (1 + rn2((int)mdef->m_lev+1));
 			ptr = grow_up(magr);
 			if(!ptr) return(-1);
 			return(2);
@@ -475,7 +476,8 @@ mdamagem(magr, mdef, mattk)
 			else if(mdef->mtame)
 			     pline("May %s rot in peace.", mon_nam(mdef));
 			mondied(mdef);
-			magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
+			magr->mhpmax = magr->mhpmax +
+			                       (1 + rn2((int)mdef->m_lev+1));
 			ptr = grow_up(magr);
 			if(!ptr) return(-1);
 			return(2);
@@ -485,7 +487,8 @@ mdamagem(magr, mdef, mattk)
 		break;
 	    case AD_STON:
 		if(!resists_ston(pd)) {
-			magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
+			magr->mhpmax = magr->mhpmax +
+                                              (1 + rn2((int)mdef->m_lev+1));
 			if(vis) pline("%s turns to stone!", Monnam(mdef));
 			else if(mdef->mtame) You(psf);
 			monstone(mdef);
@@ -571,7 +574,8 @@ mdamagem(magr, mdef, mattk)
 			    else if (mdef->mtame)
 	You("have a strangely sad feeling for a moment, then it passes.");
 			    mondied(mdef);
-			    magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
+			    magr->mhpmax = magr->mhpmax +
+					          (1 + rn2((int)mdef->m_lev+1));
 			    ptr = grow_up(magr);
 			    if(!ptr) return(-1);
 			    return(2);
@@ -657,7 +661,7 @@ mdamagem(magr, mdef, mattk)
 	if(!tmp) return(1);
 
 	if((mdef->mhp -= tmp) < 1) {
-	    magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
+	    magr->mhpmax = magr->mhpmax + (1 + rn2((int)mdef->m_lev+1));
 	    if(vis)
 		pline("%s is %s!", Monnam(mdef),
 			(is_demon(mdef->data) || is_undead(mdef->data)) ?
@@ -669,9 +673,6 @@ mdamagem(magr, mdef, mattk)
 	    if(!ptr) return(-1);
 	    return(2);
 	}
-	/* fixes a bug where max monster hp could overflow. */
-	if(magr->mhpmax <= 0 || magr->mhpmax > MHPMAX) magr->mhpmax = MHPMAX;
-
 	return(1);
 }
 

@@ -1,10 +1,10 @@
 .ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
-.ds vr "NetHack 3.0i
+.ds vr "NetHack 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "February 20, 1990
+.ds f2 "May 28, 1990
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -100,7 +100,7 @@ exception; NetHack continues this fine tradition.  Unlike text
 adventure games that input commands in pseudo-English sentences and
 explain the results in words, NetHack commands are all one or two
 keystrokes and the results are displayed graphically on the screen.  A
-minimum screen size of 24 lines by 80 columns is required; if the
+minimum screen size of 24 lines by 80 columns is recommended; if the
 screen is larger, only a 21x80 section will be used for the map.
 .pg
 NetHack generates a new dungeon every time you play it; even the
@@ -148,7 +148,7 @@ it.  Here are explanations of what the various status items mean
 below):
 .lp Rank\ \ 
 Your character's name and professional ranking (based on the
-experience level, above).
+experience level, see below).
 .lp Strength
 A measure of your character's strength, one of your six basic
 attributes.  Your attributes can range from 3 to 18 inclusive
@@ -158,7 +158,7 @@ successfully you perform physical tasks and how much damage you do in
 combat.
 .lp Dexterity
 Dexterity affects your chances to hit in combat, to avoid traps, and
-do other tasks requring agility or manipulation of objects.
+do other tasks requiring agility or manipulation of objects.
 .lp Constitution
 Constitution affects your ability to withstand injury and other
 strains on your stamina.
@@ -323,18 +323,23 @@ The list of commands is rather long, but it can be read at any time
 during the game through the `?' command, which accesses a menu of
 helpful texts.  Here are the commands for your reference:
 .lp ?
-help menu:  display one of several help texts available.
+Help menu:  display one of several help texts available.
 .lp /
-tell what a symbol represents.  You may choose to specify a location
-or type a symbol to define.
+Tell what a symbol represents.  You may choose to specify a location
+or type a symbol (or even a whole word) to define.  If the
+.op help
+option is on, and NetHack has some special information about an object or
+monster that you looked at, you'll be asked if you want ``More info?''.
+If \fBhelp\fP is off, then you'll only get the special information if you
+explicitly ask for it by typing in the name of the monster or object.
 .lp &
-tell what a command does.
+Tell what a command does.
 .lp <
-go up a staircase to the previous level (if you are on the stairs).
+Go up a staircase to the previous level (if you are on the stairs).
 .lp >
-go down a staircase to the next level (if you are on the stairs).
+Go down a staircase to the next level (if you are on the stairs).
 .lp [yuhjklbn]
-go one step in the direction indicated (see Figure 2).  If there is
+Go one step in the direction indicated (see Figure 2).  If there is
 a monster there, you will fight the monster instead.  Only these
 one-step movement commands cause you to fight monsters; the others
 (below) are ``safe.''
@@ -356,29 +361,29 @@ Figure 2
 .lp [YUHJKLBN]
 Go in that direction until you hit a wall or run into something.
 .lp m[yuhjklbn]
-prefix:  move without picking up any objects.
+Prefix:  move without picking up any objects.
 .lp M[yuhjklbn]
-prefix:  move far, no pickup.
+Prefix:  move far, no pickup.
 .lp "g[yuhjklbn]
-prefix:  move until something interesting is found.
+Prefix:  move until something interesting is found.
 .lp G[yuhjklbn] or <CONTROL->[yuhjklbn]
-prefix:  same as `g', but forking of corridors is not considered interesting.
+Prefix:  same as `g', but forking of corridors is not considered interesting.
 .lp .
-rest, do nothing for one turn.
+Rest, do nothing for one turn.
 .lp a
-apply (use) a tool (pick-axe, key, lamp...).
+Apply (use) a tool (pick-axe, key, lamp...).
 .lp A
-remove all armor.  Use `T' (take off) to take off only one piece of armor.
+Remove all armor.  Use `T' (take off) to take off only one piece of armor.
 .lp ^A
-redo the previous command.
+Redo the previous command.
 .lp c
-close a door.
+Close a door.
 .lp C
 Call (name) an individual monster.
 .lp ^C
-panic button.  Quit the game.
+Panic button.  Quit the game.
 .lp d
-drop something.  Ex. ``d7a'' means drop seven items of object \fIa\fP.
+Drop something.  Ex. ``d7a'' means drop seven items of object \fIa\fP.
 .lp D
 Drop several things.  In answer to the question
 ``What kinds of things do you want to drop? [!%= au]''
@@ -392,9 +397,9 @@ D%u - drop only unpaid food.
 .ei
 .ed
 .lp ^D
-kick something (usually a door).
+Kick something (usually a door).
 .lp e
-eat food.
+Eat food.
 .lp E
 Engrave a message on the floor.
 Engraving the word ``Elbereth'' will cause most monsters to not attack
@@ -407,9 +412,9 @@ E- - write in the dust with your fingers.
 .ei
 .ed
 .lp i
-list your inventory (everything you're carrying).
+List your inventory (everything you're carrying).
 .lp I
-list selected parts of your inventory.
+List selected parts of your inventory.
 .sd
 .si
 I* - list all gems in inventory;
@@ -419,91 +424,91 @@ I$ - count your money.
 .ei
 .ed
 .lp o
-open a door.
+Open a door.
 .lp O
-set options.  You will be asked to enter an option line.  If you enter
+Set options.  You will be asked to enter an option line.  If you enter
 a blank line, the current options are reported.  Entering `?' will
 get you explanations of the various options.  Otherwise, you should
 enter a list of options separated by commas.  The available options
 are listed later in this Guidebook.  Options are usually set before
 the game, not with the `O' command; see the section on options below.
 .lp p
-pay your shopping bill.
+Pay your shopping bill.
 .lp P
 Put on a ring.
 .lp ^P
-repeat previous message (subsequent ^P's repeat earlier messages).
+Repeat previous message (subsequent ^P's repeat earlier messages).
 .lp q
-quaff (drink) a potion.
+Quaff (drink) a potion.
 .lp Q
 Quit the game.
 .lp r
-read a scroll or spell book.
+Read a scroll or spell book.
 .lp R
 Remove a ring.
 .lp ^R
-redraw the screen.
+Redraw the screen.
 .lp s
-search for secret doors and traps around you.  It usually takes several
+Search for secret doors and traps around you.  It usually takes several
 tries to find something.
 .lp S
 Save the game.  The game will be restored automatically the next time
 you play.
 .lp t
-throw an object or shoot a projectile.
+Throw an object or shoot a projectile.
 .lp T
 Take off armor.
 .lp ^T
-teleport, if you have the ability.
+Teleport, if you have the ability.
 .lp v
-display version number.
+Display version number.
 .lp V
-display the game history.
+Display the game history.
 .lp w
-wield weapon.  w- means wield nothing, use your bare hands.
+Wield weapon.  w- means wield nothing, use your bare hands.
 .lp W
 Wear armor.
 .lp x
-list the spells you know (same as `+').
+List the spells you know (same as `+').
 .lp X
-enter explore (discovery) mode.
+Enter explore (discovery) mode.
 .lp z
-zap a wand.
+Zap a wand.
 .lp Z
 Zap (cast) a spell.
 .lp ^Z
-suspend the game
+Suspend the game
 .ux " versions with job control only)." (
 .lp :
-look at what is here.
+Look at what is here.
 .lp ,
-pick up some things.
+Pick up some things.
 .lp @
-toggle the
+Toggle the
 .op pickup
 option on and off.
 .lp ^
-ask for the type of a trap you found earlier.
+Ask for the type of a trap you found earlier.
 .lp )
-tell what weapon you are wielding.
+Tell what weapon you are wielding.
 .lp [
-tell what armor you are wearing.
+Tell what armor you are wearing.
 .lp =
-tell what rings you are wearing.
+Tell what rings you are wearing.
 .lp """
-tell what amulet you are wearing.
+Tell what amulet you are wearing.
 .lp (
-tell what tools you are using.
+Tell what tools you are using.
 .lp $
-count your gold pieces.
+Count your gold pieces.
 .lp +
-list the spells you know (same as `x').
+List the spells you know (same as `x').
 .lp "\\\\
-show what types of objects have been discovered.
+Show what types of objects have been discovered.
 .lp !
-escape to a shell.
+Escape to a shell.
 .lp #
-perform an extended command.  As you can see, the authors of NetHack
+Perform an extended command.  As you can see, the authors of NetHack
 used up all the letters, so this is a way to introduce the less useful
 commands, or commands used under limited circumstances.  You may obtain a
 list of them by entering `?'.  What extended commands are available
@@ -512,52 +517,56 @@ depend on what features the game was compiled with.
 If your keyboard has a meta key (which, when pressed in combination
 with another key, modifies it by setting the `meta' [8th, or `high']
 bit), you can invoke the extended commands by meta-ing the first
-letter of the command.  In PC NetHack and ST NetHack, the `Alt' key
+letter of the command.  In PC and ST NetHack, the `Alt' key
 can be used in this fashion.
+.lp M-a
+Adjust inventory letters (the
+.op fixinvlet
+option must be ``on'' to do this).
 .lp M-c
-talk to someone.
+Talk to someone.
 .lp M-d
-dip an object into something.
+Dip an object into something.
 .lp M-f
-force a lock.
+Force a lock.
 .lp M-j
-jump to another location.
+Jump to another location.
 .lp M-l
-loot a box on the floor.
+Loot a box on the floor.
 .lp M-m
-use a monster's special ability.
+Use a monster's special ability.
 .lp M-N
 Name an item or type of object.
 .lp M-o
-offer a sacrifice to the gods.
+Offer a sacrifice to the gods.
 .lp M-p
-pray to the gods for help.
+Pray to the gods for help.
 .lp M-r
-rub a lamp.
+Rub a lamp.
 .lp M-s
-sit down.
+Sit down.
 .lp M-t
-turn undead.
+Turn undead.
 .lp M-u
-untrap something (usually a trapped object).
+Untrap something (usually a trapped object).
 .lp M-v
-print compile time options for this version of NetHack.
+Print compile time options for this version of NetHack.
 .lp M-w
-wipe off your face.
+Wipe off your face.
 .pg
 If the
 .op number_pad
 option is on, some additional letter commands are available:
 .lp j
-jump to another location.  Same as ``#jump'' or ``M-j''.
+Jump to another location.  Same as ``#jump'' or ``M-j''.
 .lp k
-kick something (usually a door).  Same as `^D'.
+Kick something (usually a door).  Same as `^D'.
 .lp l
-loot a box on the floor.  Same as ``#loot'' or ``M-l''.
+Loot a box on the floor.  Same as ``#loot'' or ``M-l''.
 .lp N
-name an item or type of object.  Same as ``#name'' or ``M-N''.
+Name an item or type of object.  Same as ``#name'' or ``M-N''.
 .lp u
-untrap a trapped object or door.  Same as ``#untrap'' or ``M-u''.
+Untrap a trapped object or door.  Same as ``#untrap'' or ``M-u''.
 
 .hn 1
 Rooms and corridors
@@ -743,6 +752,7 @@ various suits of armor:
 .TS S
 center;
 a n.
+dragon scale mail	1
 plate mail	3
 bronze plate mail	4
 splint mail	4
@@ -805,7 +815,6 @@ blessed, and how many uses it has left.  Some objects of subtle
 enchantment are difficult to identify without these.
 .pg
 If you receive mail while you are playing (on
-.ux
 versions compiled with this feature), a mail daemon may run up and
 deliver it to you as a \fIscroll of mail\fP.  To use this feature,
 you must let NetHack know where to look for new mail by setting the
@@ -858,8 +867,8 @@ Spell books (`+')
 .pg
 Spell books are tomes of mighty magic.  When studied with the `r' (read)
 command, they bestow the knowledge of a spell\(emunless the attempt
-backfires.  Successful or not, books of magic disappear after they are
-studied.  Reading a cursed spell book, or one with mystic runes beyond
+backfires.
+Reading a cursed spell book, or one with mystic runes beyond
 your ken can be harmful to your health!
 .pg
 A spell can also backfire when you cast it.  If you attempt to cast a
@@ -921,7 +930,7 @@ much less valuable.
 Large rocks (`\`')
 .pg
 Statues and boulders are not particularly useful, and are generally
-heavy.
+heavy.  It is rumored that some statues are not what they seem.
 .hn 2
 Gold (`$')
 .pg
@@ -971,43 +980,53 @@ Here are explanations of the various options do.  Character strings
 longer than fifty characters are truncated.  Some of the options
 listed may be inactive in your dungeon.
 .lp catname
-name your starting cat (ex. ``catname:Morris'').
+Name your starting cat (ex. ``catname:Morris'').
 Cannot be set with the `O' command.
 .lp color\ \ \ 
-(default on) use color for different monsters, objects, and dungeon features.
+Use color for different monsters, objects, and dungeon features (default on).
 .lp confirm\ 
-(default on) have user confirm attacks on pets, shopkeepers, and other
-peaceable creatures.
-.lp DEC_Rainbow
-(default off, PC NetHack only) send escape codes to use the
-line-drawing alternate character set on DEC Rainbow machines.
+Have user confirm attacks on pets, shopkeepers, and other
+peaceable creatures (default on).
+.lp DECgraphics
+Use a predefined selection of characters from the DEC VT-xxx/DEC Rainbow/
+ANSI line-drawing character set to display the dungeon instead of having
+to define a full graphics set yourself (default off).
+Cannot be set with the `O' command.
 .lp dogname
-name your starting dog (ex. ``dogname:Fang'').
+Name your starting dog (ex. ``dogname:Fang'').
 Cannot be set with the `O' command.
 .lp endgame
-control what parts of the score list you are shown at the end (ex.
+Control what parts of the score list you are shown at the end (ex.
 ``endgame:5 top scores/4 around my score/own scores'').  Only the first
 letter of each category (`t', `a', or `o') is necessary.
 .lp female
-(default off) set your sex.
+Set your sex (default off).
 Cannot be set with the `O' command.
 .lp fixinvlet
-(default on) an object's inventory letter sticks to it when it's dropped.
+An object's inventory letter sticks to it when it's dropped (default on).
 If this is off, dropping an object shifts all the remaining inventory letters.
 .lp fruit\ \ \ 
-(default ``slime mold'') name a fruit after something you enjoy eating
-(ex. ``fruit:mango'').  Basically a nostalgic whimsy that NetHack uses
+Name a fruit after something you enjoy eating (ex. ``fruit:mango'')
+(default ``slime mold''.  Basically a nostalgic whimsy that NetHack uses
 from time to time.  You should set this to something you find more
 appetizing than slime mold.  Apples, oranges, pears, bananas, and melons
 already exist in NetHack, so don't use those.
 .lp graphics
-(default `` |--------|||-\\/.-|+.#<>^"}{#\\_<>##'')
-set the graphics symbols for screen displays.  The 
+Set the graphics symbols for screen displays
+(default `` |--------|||-\\\\/.-|+.#<>^"}{#\\\\_<>##'').  The
 .op graphics
 option (if used) should come last, followed by a string of up to 35
 characters to be used instead of the default map-drawing characters.
 The dungeon map will use the characters you specify instead of the
 default symbols.
+
+The
+.op DECgraphics
+and
+.op IBMgraphics
+options use predefined selections of graphics symbols, so you need not
+go to the trouble of setting up a full graphics string for these common
+cases.
 
 Note that this option string is now escape-processed in conventional C
 fashion.  This means that `\\' is a prefix to take the following
@@ -1018,16 +1037,6 @@ switches on the meta bit in the following character, and the `^'
 prefix causes the following character to be treated as a control
 character (so any `^' in your old graphics strings should be changed
 to `\\^' now).
-
-Alternate line-drawing character sets can be used on terminals that
-support them.  A graphics string of 
-``\ \\mx\\mq\\ml\\mk\\mm\\mj\\mn\\mv\\mw\\mu\\mt\\mx\\mq\\\\/\\m~\\mq\\mx+\\m~\\ma'' 
-will take advantage of the ANSI line-drawing character set (available
-on some VT100 and higher terminals) if it is loaded as the alternate
-set.  If it doesn't work, your terminal may not support alternate
-character sets, or the termcap entry for your terminal doesn't have
-the appropriate escape sequences.  For the record, the sequences to
-add to the termcap entry are ``:as=^N:ae=^O:ti=\\E)0:''.
 
 The order of the symbols is:  solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
@@ -1042,58 +1051,69 @@ esthetic, boxier display.  Note that in the next release, new symbols
 may be added, or the present ones rearranged.
 
 Cannot be set with the `O' command.
-.lp IBM_BIOS
-(default off, PC NetHack only) use BIOS calls to update the screen
+.lp help
+If more information is available for an object looked at
+with the `/' command, ask if you want to see it (default on). Turning help
+off makes just looking at things faster, since you aren't interrupted with the
+``More info?'' prompt, but it also means that you might miss some
+interesting and/or important information.
+.lp IBM_BIOS\ \ \ \ 
+Use BIOS calls to update the screen
 display quickly and to read the keyboard (allowing the use of arrow
-keys to move) on machines with an IBM PC compatible BIOS ROM.
+keys to move) on machines with an IBM PC compatible BIOS ROM (default off,
+PC and ST NetHack only).
+.lp IBMgraphics
+Use a predefined selection of IBM extended ASCII characters to display the
+dungeon instead of having to define a full graphics set yourself (default off).
+Cannot be set with the `O' command.
 .lp ignintr
-(default off) ignore interrupt signals, including breaks.
+Ignore interrupt signals, including breaks (default off).
 .lp male\ \ \ \ 
-(default on, most hackers are male) set your sex.
+Set your sex (default on, most hackers are male).
 Cannot be set with the `O' command.
 .lp name\ \ \ \ 
-(defaults to your user name) set your character's name.  You can also
+Set your character's name (defaults to your user name).  You can also
 set your character class by appending a dash and the first letter of
 the character class (that is, by suffixing one of
 .op "-A -B -C -E -H -K -P -R -S -T -V -W" ).
 Cannot be set with the `O' command.
 .lp news\ \ \ \ 
-(default on) read the NetHack news file, if present.
+Read the NetHack news file, if present (default on).
 Since the news is shown at the beginning of the game, there's no point
 in setting this with the `O' command.
 .lp number_pad
-(default off) use the number keys to move instead of [yuhjklbn].
+Use the number keys to move instead of [yuhjklbn] (default off).
 .lp null\ \ \ \ 
-(default off) send padding nulls to the terminal.
+Send padding nulls to the terminal (default off).
 .lp packorder
-(default ``\\")[%?+/=!(*'0_'') specify the order to list object types
-in.  The value of this option should be a string containing the
+Specify the order to list object types in (default ``\\")[%?+/=!(*'0_'').
+The value of this option should be a string containing the
 symbols for the various object types.
 .lp pickup\ \ 
-(default on) pick up things you move onto by default.
+Pick up things you move onto by default (default on).
 .lp rawio\ \ \ 
-(default off) force raw (non-cbreak) mode for faster output and more
+Force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `^P' as a printer toggle
-without it).  Note:  DEC Rainbows hang if this is turned on.
+without it) (default off).  Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `O' command.
 .lp rest_on_space
-(default off) make the space bar a synonym for the `.' (rest) command.
+Make the space bar a synonym for the `.' (rest) command (default off).
 .lp safe_pet
-(default on) prevent you from (knowingly) attacking your pets.
+Prevent you from (knowingly) attacking your pets (default on).
 .lp silent\ \ 
-(default on) suppress terminal beeps.
+Suppress terminal beeps (default on).
 .lp sortpack
-(default on) sort the pack contents by type when displaying inventory.
+Sort the pack contents by type when displaying inventory (default on).
 .lp standout
-(default off) boldface monsters and ``\fB--More--\fP''.
+Boldface monsters and ``\fB--More--\fP'' (default off).
 .lp time\ \ \ \ 
-(default off) show the elapsed game time in turns on bottom line.
+Show the elapsed game time in turns on bottom line (default off).
 .lp tombstone
-(default on) draw a tombstone graphic upon your death.
+Draw a tombstone graphic upon your death (default on).
 .lp verbose
-(default on) provide more commentary during the game.
+Provide more commentary during the game (default on).
 .pg
-In the PC NetHack version, options may be set in a configuration file
+In some versions, options may be set in a configuration file
 on disk as well as from NETHACKOPTIONS.
 
 .hn 1
@@ -1126,7 +1146,7 @@ Explore mode
 NetHack is an intricate and difficult game.  Novices might falter
 in fear, aware of their ignorance of the means to survive.  Well, fear
 not.  Your dungeon may come equipped with an ``explore'' or ``discovery''
-mode, that enables you to keep old save files and cheat death, at the
+mode that enables you to keep old save files and cheat death, at the
 paltry cost of not getting on the high score list.
 .pg
 There are two ways of enabling explore mode.  One is to start the game
@@ -1146,11 +1166,12 @@ cribbed from \fIA Guide to the Dungeons of Doom\fP, by Michael C. Toy
 and Kenneth C. R. C. Arnold.  Small portions were adapted from
 \fIFurther Exploration of the Dungeons of Doom\fP, by Ken Arromdee.
 .pg
-NetHack is the product of literally dozens of people's work.  A list of
-\fIsome\fP of those who made major additions to the game appears below:
+NetHack is the product of literally dozens of people's work.
+Main events in the course of the game development are described below:
+
 .pg
-\fBJay Fenlason\fP wrote the original release of Hack, with help from
-Kenny Woodland, Mike Thome and Jon Payne.
+\fBJay Fenlason\fP wrote the original Hack, with help from
+\fBKenny Woodland\fP, \fBMike Thome\fP and \fBJon Payne\fP.
 .pg
 \fBAndries Brouwer\fP did a major re-write, transforming Hack into a
 very different game, and published (at least) three versions (1.0.1,
@@ -1162,46 +1183,59 @@ machines to the Usenet.
 HACK 1.01e, added support for DEC Rainbow graphics in version 1.03g, and went
 on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6).
 .pg
-\fBR. Black\fP ported PC HACK to Lattice C and the Atari 520/1040ST,
+\fBR. Black\fP ported PC HACK 3.51 to Lattice C and the Atari 520/1040ST,
 producing ST Hack 1.03.
 .pg
 \fBMike Stephenson\fP merged these various versions back together,
 incorporating many of the added features, and produced NetHack 1.4.
-He then coordinated a cast of thousands throughout the Usenet in
-adding and debugging features, and released NetHack versions 2.2 and
-2.3.  Later, he coordinated a major rewrite of the game, heading a
-team which included Ken Arromdee, Jean-Christophe Collet, Steve Creps,
-Eric Hendrickson, Izchak Miller, John Rupley, Mike Threepoint, and
-Janet Walz, to produce NetHack 3.0.
+He then coordinated a cast of thousands in enhancing and debugging
+NetHack 1.4 and released NetHack versions 2.2 and 2.3.
+2.3.
 .pg
-\fBOlaf Siebert\fP ported NetHack 2.3 and 3.0 to the Amiga.
+Later, Mike coordinated a major rewrite of the game, heading a
+team which included \fBKen Arromdee\fP, \fBJean-Christophe Collet\fP, \fBSteve
+Creps\fP, \fBEric Hendrickson\fP, \fBIzchak Miller\fP, \fBJohn Rupley\fP,
+\fBMike Threepoint\fP, and \fBJanet Walz\fP, to produce NetHack 3.0c.
 .pg
-\fBEric R. Smith\fP ported NetHack 3.0 to the Atari.
+NetHack 3.0 was ported to the Atari by \fBEric R. Smith\fP, to OS/2 by
+\fBTimo Hakulinen\fP, and to VMS by \fBDavid Gentzel\fP.  The three of them
+and \fBKevin Darcy\fP later joined the main development team to produce
+subsequent revisions of 3.0.
 .pg
-\fBTimo Hakulinen\fP ported NetHack 3.0 to OS/2.
+\fBOlaf Seibert\fP ported NetHack 2.3 and 3.0 to the Amiga.
+\fBNorm Meluch\fP, \fBStephen Spackman\fP and \fBPierre Martineau\fP designed
+overlay code for PC NetHack 3.0.  \fBJohnny Lee\fP ported
+NetHack 3.0 to the Macintosh.  Along with various other Dungeoneers, they
+continued to enhance the PC, Macintosh, and Amiga ports through the later
+revisions of 3.0.
+
 .pg
-\fBDavid Gentzel\fP ported NetHack 3.0 to VMS.
-.pg
-\fBJohnny Lee\fP ported NetHack 3.0 to the Macintosh.
-.pg
-\fBNorm Meluch\fP, \fBStephen Spackman\fP, and \fBPierre Martineau\fP
-designed overlay code for PC NetHack 3.0.
-.pg
-The following folks have made significant contributions to the playability
-of the game:
+From time to time, some depraved individual out there in netland sends a
+particularly intriguing modification to help out with the game.  The Gods of
+the Dungeon sometimes make note of the names of the worst of these miscreants
+in this, the list of Dungeoneers:
 
 .sd
 .TS S
 center;
 c c c.
-Tom Almy	Bruce Holloway	Izchak Miller
-Ken Arromdee	Richard P. Hughey	Gil Neiger
-Eric Backus	Del Lamb	Eric S. Raymond
-John S. Bien	Greg Laskin	John Rupley
-Ralf Brown	Steve Linhart	Kevin Sweet
-Jean-Christophe Collet	Benson I. Margulies	Scott R. Turner
-Steve Creps	Roland McGrath	Janet Walz
-Eric Hendrickson	Bruce Mewborne
+Richard Addison	Bruce Holloway	Pat Rankin
+Tom Almy	Richard P. Hughey	Eric S. Raymond
+Ken Arromdee	Ari Huttunen	John Rupley
+Eric Backus	Del Lamb	Olaf Seibert
+John S. Bien	Greg Laskin	Kevin Sitze
+Ralf Brown	Johnny Lee	Eric R. Smith
+Jean-Christophe Collet	Steve Linhart	Kevin Smolkowski
+Steve Creps	Ken Lorber	Michael Sokolov
+Kevin Darcy	Benson I. Margulies	Stephen Spackman
+Matthew Day	Pierre Martineau	Andy Swanson
+Joshua Delahunty	Roland McGrath	Kevin Sweet
+Jochen Erwied	Norm Meluch	Scott R. Turner
+David Gentzel	Bruce Mewborne	Janet Walz
+Mark Gooderum	Izchak Miller	Jon Watte
+David Hairston	Gil Neiger	Tom West
+Timo Hakulinen	Greg Olson	Gregg Wonderly
+Eric Hendrickson	Mike Passaretti
 .TE
 .ed
 

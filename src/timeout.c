@@ -4,15 +4,15 @@
 
 #include	"hack.h"
 
-#ifdef OVERLAY
-extern void NDECL(stoned_dialog), NDECL(vomiting_dialog), NDECL(choke_dialog);
-extern void FDECL(hatch_it, (struct obj*));
-#endif
+STATIC_DCL void NDECL(stoned_dialogue);
+STATIC_DCL void NDECL(vomiting_dialogue);
+STATIC_DCL void NDECL(choke_dialogue);
+STATIC_DCL void FDECL(hatch_it, (struct obj*));
 
 #ifdef OVLB
 
 /* He is being petrified - dialogue by inmet!tower */
-static const char *stoned_texts[] = {
+static const char NEARDATA *stoned_texts[] = {
 	"You are slowing down.",		/* 5 */
 	"Your limbs are stiffening.",		/* 4 */
 	"Your limbs have turned to stone.",	/* 3 */
@@ -20,7 +20,7 @@ static const char *stoned_texts[] = {
 	"You are a statue."			/* 1 */
 };
 
-XSTATIC void
+STATIC_OVL void
 stoned_dialogue() {
 	register long i = (Stoned & TIMEOUT);
 
@@ -33,7 +33,7 @@ stoned_dialogue() {
 }
 
 /* He is getting sicker and sicker prior to vomiting */
-static const char *vomiting_texts[] = {
+static const char NEARDATA *vomiting_texts[] = {
 	"You are feeling mildly nauseous.",	/* 11 */
 	"You feel slightly confused.",		/* 8 */
 	"You can't seem to think straight.",	/* 5 */
@@ -41,7 +41,7 @@ static const char *vomiting_texts[] = {
 	"You suddenly vomit!"			/* 0 */
 };
 
-XSTATIC void
+STATIC_OVL void
 vomiting_dialogue() {
 	register long i = (Vomiting & TIMEOUT) / 3L;
 
@@ -58,7 +58,7 @@ vomiting_dialogue() {
 	}
 }
 
-static const char *choke_texts[] = {
+static const char NEARDATA *choke_texts[] = {
 	"You find it hard to breathe.",
 	"You're gasping for air.",
 	"You can no longer breathe.",
@@ -66,7 +66,7 @@ static const char *choke_texts[] = {
 	"You suffocate."
 };
 
-XSTATIC void
+STATIC_OVL void
 choke_dialogue()
 {
 	register long i = (Strangled & TIMEOUT);
@@ -208,7 +208,7 @@ timeout()
 #endif /* OVL0 */
 #ifdef OVLB
 
-XSTATIC void
+STATIC_OVL void
 hatch_it(otmp)		/* hatch the egg "otmp" if possible */
 register struct obj *otmp;
 {
@@ -238,16 +238,30 @@ register struct obj *otmp;
 
 #ifdef POLYSELF
 		if (yours) {
+		    struct monst *mtmp2;
+
 		    pline("Its cries sound like \"%s.\"",
 			flags.female ? "mommy" : "daddy");
-		    (void) tamedog(mtmp, (struct obj *)0);
+		    if (mtmp2 = tamedog(mtmp, (struct obj *)0))
+			mtmp = mtmp2;
 		    mtmp->mtame = 20;
+		    while(otmp = (mtmp->minvent)) {
+			mtmp->minvent = otmp->nobj;
+			free((genericptr_t)otmp);
+		    }
 		    return;
 		}
 #endif
 		if(mtmp->data->mlet == S_DRAGON) {
+		    struct monst *mtmp2;
+
 		    verbalize("Gleep!");		/* Mything eggs :-) */
-		    (void) tamedog(mtmp, (struct obj *)0);
+		    if (mtmp2 = tamedog(mtmp, (struct obj *)0))
+			mtmp = mtmp2;
+		    while(otmp = (mtmp->minvent)) {
+			mtmp->minvent = otmp->nobj;
+			free((genericptr_t)otmp);
+		    }
 		}
 	    }
 	}

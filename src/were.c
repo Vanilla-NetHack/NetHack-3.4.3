@@ -4,8 +4,6 @@
 
 #include	"hack.h"
 
-static int FDECL(counter_were,(int));
-
 #ifdef OVL0
 
 void
@@ -28,6 +26,8 @@ register struct monst *mon;
 
 #endif /* OVL0 */
 #ifdef OVLB
+
+static int FDECL(counter_were,(int));
 
 static int
 counter_were(pm)

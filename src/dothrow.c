@@ -10,7 +10,7 @@ static void FDECL(hitfloor, (struct obj *));
 static void FDECL(gem_accept, (struct monst *, struct obj *));
 static boolean NDECL(martial);
 static int FDECL(throw_gold, (struct obj *));
-static const char toss_objs[] = { '0', GOLD_SYM, '#', WEAPON_SYM, 0 };
+static const char NEARDATA toss_objs[] = { '0', GOLD_SYM, '#', WEAPON_SYM, 0 };
 #ifdef WORM
 extern boolean notonhead;
 #endif
@@ -253,14 +253,15 @@ register struct obj   *obj;
 	if (u.uswallow && mon == u.ustuck) tmp += 1000; /* Guaranteed hit */
 
 	if(obj->olet == GEM_SYM && mon->data->mlet == S_UNICORN) {
-		if (mon->mtame)
+		if (mon->mtame) {
 			kludge("%s catches and drops the %s.",
 				Monnam(mon), xname(obj));
-		else {
+			return(0);
+		} else {
 			kludge("%s catches the %s.", Monnam(mon), xname(obj));
 			gem_accept(mon, obj);
+			return(1);
 		}
-		return(1);
 	}
 	if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE ||
 	   obj->otyp == UNICORN_HORN || obj->olet == GEM_SYM) {
@@ -329,9 +330,9 @@ register struct monst *mon;
 register struct obj *obj;
 {
 	char buf[BUFSZ];
-	static const char nogood[] = " is not interested in your junk.";
-	static const char maybeluck[] = " hesitatingly accepts your gift.";
-	static const char addluck[] = " graciously accepts your gift.";
+	static const char NEARDATA nogood[] = " is not interested in your junk.";
+	static const char NEARDATA maybeluck[] = " hesitatingly accepts your gift.";
+	static const char NEARDATA addluck[] = " graciously accepts your gift.";
 
 	Strcpy(buf,Monnam(mon));
 

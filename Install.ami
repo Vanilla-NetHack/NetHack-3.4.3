@@ -2,7 +2,7 @@
 	Instructions for compiling and installing NetHack 3.0
 			on an AMIGA system
 	=====================================================
-		    Last Revision: 17 Feb 1990
+		    Last Revision: 27 May 1990
 
 Overview
 --------
@@ -15,6 +15,18 @@ Overview
     describes, in general, how to produce working binaries from the source.
     Section III and IV are compiler specific sections, with section III
     designed for Lattice users, and section IV for Manx/Aztec users.
+
+Requirements
+------------
+    Amiga 500,1000,2000,2500  running WorkBench 1.3 and KickStart 1.2 or 1.3.
+    (As of this time, the Amiga 3000 running beta-release versions of
+    WorkBench 2.0 are not supported.  While the core of the game appears to
+    function, the custom font is not recognized by the operating system.
+    The NetHack team welcomes reports of specific problems and solutions on
+    this [or any other] subject.)
+	one meg of RAM and one floppy drive (painful, but functional)
+or	one meg of RAM and two floppy drives (much better)
+or	more than one meg of RAM and a hard disk with 2+ meg free (best)
 
 Credits
 -------
@@ -39,14 +51,17 @@ Section I - Installation Guide
 		+ NetHack.info
 		+ NewGame.info
 		+ NetHackScore.info
+		+ Guidebook.info
 		+ default.icon
-	* Special NetHack font.
+	* Special NetHack font (files hack.font and 8).
 
     Installation Steps:
 
 	1) If you have a hard disk, create a directory named NetHack.
 	   Assign Nethack: to be the path to this directory.  If you have a
-	   floppy, format a disk named NetHack.
+	   floppy, format a disk named NetHack.  (If you have a hard disk
+	   but only one meg of memory, you will probably not have enough
+	   memory: you may need to run from a floppy.)
 
 	2) If you have a hard disk, assign HackExe: to the above directory.
 	   If you have a floppy, format an additional disk named HackExe.
@@ -57,10 +72,15 @@ Section I - Installation Guide
 
 	4) Copy the remainder of the files to NetHack:.  If you are using
 	   the optional font, create a Hack subdirectory on NetHack:, and
-	   copy "8" into it.
+	   copy "8" into it.  Be sure that Guidebook and Guidebook.info are
+	   in the same directory, and that the Default Tool field points to
+	   the More program (found on your AmigaDos System disk in the
+	   Utilities directory).  Depending on where you got your copy of
+	   NetHack, the Guidebook file may be called Guidebook.mss.
 
 	5) Configure NetHack.cnf as per your configuration.  Remember not
-	   to set GRAPHICS if you are not using the optional font.
+	   to set GRAPHICS if you are not using the optional font.  If you
+	   have only one meg of ram, do not use a ram disk.
 
     That's all there is to it!  If you are using the CLI interface, make sure
     that the stack is set fairly large (at LEAST 40000 bytes).  Move to the
@@ -70,12 +90,12 @@ Section I - Installation Guide
     the WorkBench pull down menu.  This icon now represents your personal
     profile.  You can now rename this icon, and tailor it to your liking
     as described below.  If you start a game from the WorkBench interface,
-    saving the game will automatically tie the personal file icon with the
+    saving the game will automatically tie the personal file icon to the
     saved game.  So the next time you select your icon, the game will be
     restored.
 
     As mentioned above, the icon representing your personal profile can be
-    customized by you.  This is done via the the Info command available from
+    customized.  This is done via the the Info command available from
     WorkBench.  You can adjust the following using the ToolTypes from the
     WorkBench info command:
 
@@ -90,12 +110,11 @@ Section I - Installation Guide
 
 	* PATH=<path> - To search for files such as rumors, help, etc.
 
-	* CMDLINE=<args> - Arguments as passed on command line from cli.
-	  Note:  only the following flags are valid at this point: n, X,
-	  D, and r.
+	* CMDLINE=<args> - Arguments as passed on the CLI command line.
+	  Note:  only the following flags are valid: n, X, D, and r.
 
 	* SCORE <options> - Display the record of scores.  Options as
-	  available on the command line from CLI after a -s flag.
+	  available on the CLI command line after a -s flag.
 
     Note that the NetHack.cnf file is read first, then the ToolTypes.  This
     means that the options specified in the NetHack.cnf act as defaults
@@ -105,14 +124,19 @@ Section I - Installation Guide
     default values for OPTIONS, which will generally be overridden by
     ToolTypes entries.
 
+    Also, there is one additional option that may be specified in the
+    NetHack.cnf file or on an OPTIONS line: flush.  When enabled, flush
+    discards all characters in the queue except the first, which limits
+    but does NOT completely eliminate the "accidents" which can occur if
+    you get ahead of the game when typing.  The default setting is noflush.
+
 Section II - General Compilation Instructions
 ---------------------------------------------
 
     1)  Before doing any compilation, read the README files distributed
-	with the source.  These should familiarize you with the
-	source tree layout, and what files are shared with what computers.
-	Generally, everything in the amiga directory is used exclusively by
-	the Amiga.
+	with the source.  These should familiarize you with the source tree
+	layout, and what files are shared with what computers.  Generally,
+	everything in the amiga directory is used exclusively by the Amiga.
 
     2)  Create the sub-directories, and name them as indicated in the source
 	README file.  If you have a hard drive, this is fairly trivial
@@ -163,7 +187,7 @@ Section II - General Compilation Instructions
               running from CLI.
 
 	5) If you have significant spare ram, you may wish to make your
-	   compiler resident (Lattice 5.04's lc, lc1, and lc2 need about
+	   compiler resident (Lattice 5.05's lc, lc1, and lc2 need about
 	   215K while Manx's cc and as need about 135K).
 
 	6) At this point, you're almost ready to begin a compile.  Read VERY
@@ -174,15 +198,18 @@ Section II - General Compilation Instructions
 	   the Amiga: directory (font and icons), define the UUDEC symbol
 	   at the appropriate place in the makefile.  The first thing
 	   Makefile.ami does is build a program called 'makedefs', which
-	   handles a variety of data file generation.  Makedefs will then be
+	   handles a variety of data file generation, and a program called 
+	   'lev_comp' which compiles the special levels.  Makedefs will then be
 	   run to create a few files, followed by an alphabetically sorted
 	   compilation of the entire source tree.  This compilation process
 	   will compile selected files from Amiga:, Others:, Src1:, Src2:,
 	   and Src3: directories.  If all goes well, all of the  objects will
 	   be linked together to form a binary.  With all of the options
 	   enabled, the Manx 3.6 executable runs about 790K, and the Lattice
-	   executable runs about 790K (without debug hunks, or about 1050K
-	   with debug hunks - see below).
+	   executable runs about 750K (without debug hunks, or about 1025K
+	   with debug hunks - see below).  After building the main binary,
+	   the makefile will build and install the auxiliary files including
+	   help files, special levels, icons, and the font files.
 
 SECTION III - Lattice Compilation Instructions
 ----------------------------------------------
@@ -194,12 +221,13 @@ SECTION III - Lattice Compilation Instructions
     onto the Ram: disk.  Read through the comments in that script if you
     wish to utilize it.
 
-    Due to a problem with version 5.04, you must make one change:  edit the
-    file Others:lev_lex.c.  At (or near) line 1002 is the definition for the
-    function yyunput.  Delete the word "register" from this line.  Note that
-    if you neglect to do this, you will get an Error 72 at line 318 of file
-    lev_comp.l (this is the correct message - lev_lex.c is flex output).  Save
-    the changed file.  Later compiler versions may or may not need this fix.
+    Due to a problem with versions 5.04 and 5.05, you must make one change:
+    edit the file Others:lev_lex.c.  At (or near) line 1002 is the definition
+    for the function yyunput.  Delete the word "register" from this line.
+    Note that if you neglect to do this, you will get an Error 72 at line 318
+    of file lev_comp.l (this is the correct message - lev_lex.c is flex output).
+    Save the changed file.  Later compiler versions may or may not need this
+    fix.
 
     Type 'CD NetHack:' and then type "lmk -f Amiga:Makefile.ami".  If all
     goes well, you'll have a working binary a couple of hours later (depending
@@ -207,15 +235,14 @@ SECTION III - Lattice Compilation Instructions
     Lattice users on the team:
 
 	* The primary Lattice compiler used on the Amiga port was version
-	  5.04.  However, the patch bringing the compiler to 5.04a does
-	  not appear necessary for compiling NH3.0pl7.
+	  5.05.  Previous versions of NetHack have been successfully compiled
+	  with 5.04 and 5.04a.
 
 	* The function monsndx, in file mondata.c, has a section of code
 	  which Lattice 5.04 compiles incorrectly.  A hack has been written
 	  around this so that Lattice will generate the correct code.  It is
 	  recommended that you leave this in place, and not attempt to
-	  "improve" it.  As of this date (1/90) Lattice is preparing 5.05
-	  which, it is being claimed, fixes this bug.
+	  "improve" it.  This fix "does the right thing" in version 5.05.
 
 	* Included in the Lattice port is code for generating a SnapShot.tb
 	  file upon catching various internal disasters.  That is why the
@@ -225,7 +252,7 @@ SECTION III - Lattice Compilation Instructions
 	  fit on a single disk.
 
 	* The optimizer seems to work, but no extensive testing has been
-	  done with it.
+	  done with it.  (Note: optimizing objnam.c takes several hours.)
 
 	* There are a large number of warnings under Lattice, which are
 	  harmless.
@@ -301,7 +328,8 @@ SECTION IV  - AZTEC/MANX Compilation Instructions
 
 	* Unfortunately, Manx 5.0 arrived too late to integrate into patch
 	  level 7, but merging will occur in the next few weeks.  Contact us
-	  (below) for progress/hints.
+	  (below) for progress/hints.  (Postscript for PL8: the situation is
+	  very much improved, but there may be some problems remaining).
 
 			- - - - - - - - - - - -
 

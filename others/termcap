@@ -71,7 +71,7 @@ nansi|zansi|N/ZANSI.SYS color:\
 	:al=\E[L:dl=\E[M:ic=\E[@:dc=\E[P:
 #
 # For ST NetHack:
-#
+#       for VT100/200/&c in VT52 mode, add :ti=\E[?2l:
 vt52|atari|DEC VT52:\
 	:co#80:li#24:bs:pt:bl=^G:le=^H:do=^J:\
 	:cl=\EH\EJ:ce=\EK:cd=\EJ:\
@@ -80,23 +80,40 @@ vt52|atari|DEC VT52:\
 	:ku=\EA:kd=\EB:kl=\EC:kr=\ED:kb=^H:\
 	:sr=\EI:as=\EF:ae=\EG:
 #
-# For Amiga NetHack:
-#
-vt100|amiga|DEC VT100:\
+# For Amiga or VMS NetHack:
+#       VT100 or clone without the advanced video option installed
+vt100|amiga|vt100-80|vt100-noavo|DEC VT100:\
 	:co#80:li#24:bs:pt:am:mi:bl=^G:le=^H:do=^J:xo:vt#3:\
-	:cl=50\EH\E[J:ce=3\E[K:cd=50\E[J:\
+	:cl=50\E[H\E[J:ce=3\E[K:cd=50\E[J:\
 	:ho=\E[H:cm=5\E[%i%d;%dH:cs=\E[%i%d;%dr:\
 	:up=\E[A:do=\E[B:le=\E[C:ri=\E[D:nd=\E[C:\
 	:UP=\E[%dA:DO=\E[%dB:LE=\E[%dC:RI=\E[%dD:\
 	:so=2\E[7m:se=2\E[m:us=2\E[4m:ue=2\E[m:\
 	:mb=2\E[5m:md=2\E[1m:mr=2\E[7m:me=2\E[m:\
-	:ti=4\E(B\E)0:as=^N:ae=^O:\
+	:ti=4\E<\E(B\E)0:as=^N:ae=^O:\
 	:ks=\E[?1h\E=:ke=\E[?11\E>:ku=\E[A:kd=\E[B:kl=\E[C:kr=\E[D:kb=^H:\
 	:kn#4:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:\
 	:sc=\E7:ec=\E8:sr=5\EM:
 #
-# VT102 (or higher) emulators can add:
-#	:im=\E[4h:ei=\E[4l:al=\E[L:dl=\E[M:dc=\E[P:
+# VT102 and up:
+#       includes VT100 with advanced video option
+vt102|vt102-80|vt100-avo|DEC VT102:\
+	:im=\E[4h:ei=\E[4l:al=5\E[L:dl=5\E[M:dc=5\E[P:\
+	:AL=9\E[%dL:DL=9\E[%dM:tc=vt100:
+vt200|vt200-80|vt220|vt240|vt241|VT200_Series:\
+	:ic=5\E[@:tc=vt102:
+vt300|vt300-80|vt320|vt330|vt340|VT300_Series:\
+	:tc=vt200:
+# VAXstations (should have full entries with no delays and 8-bit CSI's)
+VWS|UIS:tc=vt200:
+DECterm:tc=vt300:
+#
+# Wide screen (magnifying glass not included;-)
+#       note: vt100 w/o AVO only supports 14 lines when in 132-column mode
+vt132|vt100-132:vt102-132:\
+	:co#132:ti=9\E<\E(B\E)0\E[?3h:tc=vt102:
+vt200-132|vt300-132:\
+	:co#132:ti=9\E<\E(B\E)0\E[?3h:tc=vt200:
 #
 #
 # For really complete ANSI emulations (FANSI-CONSOLE?):

@@ -4,9 +4,9 @@
 
 #include	"hack.h"
 
-OSTATIC int FDECL(movedist,(int,int,int,int));
-static void FDECL(drop_throw,(struct obj *,BOOLEAN_P,int,int));
-OSTATIC void FDECL(m_throw,(int,int,int,int,int,struct obj *));
+STATIC_DCL int FDECL(movedist,(int,int,int,int));
+STATIC_DCL void FDECL(drop_throw,(struct obj *,BOOLEAN_P,int,int));
+STATIC_DCL void FDECL(m_throw,(int,int,int,int,int,struct obj *));
 
 #define URETREATING(x,y) (movedist(u.ux,u.uy,x,y) > movedist(u.ux0,u.uy0,x,y))
 
@@ -14,13 +14,14 @@ boolean FDECL(lined_up, (struct monst *));
 
 #ifndef OVLB
 
-OSTATIC const char *breathwep[];
+STATIC_DCL const char *breathwep[];
 
 #else /* OVLB */
 
-schar	tbx = 0, tby = 0;	/* used for direction of throw, buzz, etc. */
+schar NEARDATA tbx = 0, NEARDATA tby = 0;
+	/* used for direction of throw, buzz, etc. */
 
-XSTATIC const char *breathwep[] = {	"fragments",
+STATIC_OVL const char NEARDATA *breathwep[] = {    "fragments",
 				"fire",
 				"sleep gas",
 				"frost",
@@ -70,7 +71,8 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 /* Be sure this corresponds with what happens to player-thrown objects in
  * dothrow.c (for consistency). --KAA
  */
-static void
+
+STATIC_OVL void
 drop_throw(obj, ohit, x, y)
 register struct obj *obj;
 boolean ohit;
@@ -93,7 +95,10 @@ int x,y;
 	} else free((genericptr_t)obj);
 }
 
-XSTATIC void
+#endif /* OVLB */
+#ifdef OVL1
+
+STATIC_OVL void
 m_throw(x, y, dx, dy, range, obj)
 	register int x,y,dx,dy,range;		/* direction and range */
 	register struct obj *obj;
@@ -270,6 +275,9 @@ m_throw(x, y, dx, dy, range, obj)
 	}
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 /* Remove an item from the monster's inventory.
  */
 void
@@ -322,7 +330,7 @@ register struct monst *mtmp;
 		if(!URETREATING(x,y) ||
 		   !rn2(BOLT_LIM-movedist(x,mtmp->mux,y,mtmp->muy)))
 		{
-		    int savequan = otmp->quan;
+		    unsigned savequan = otmp->quan;
 		    const char *verb = "throws";
 
 		    if (otmp->otyp == ARROW
@@ -476,7 +484,7 @@ int type;
 #endif /* OVL0 */
 #ifdef OVL1
 
-XSTATIC int
+STATIC_OVL int
 movedist(x0, x1, y0, y1)
 int x0, x1, y0, y1;
 {

@@ -49,7 +49,7 @@ register char *bufp;
 		if((c = Getchar()) == EOF) {
 			*bufp = 0;
 #ifdef MACOS
-	macflags |= (tmpflags & fDoNonKeyEvt);
+	macflags = tmpflags;
 #endif
 			return;
 		}
@@ -57,7 +57,7 @@ register char *bufp;
 			*obufp = c;
 			obufp[1] = 0;
 #ifdef MACOS
-	macflags |= (tmpflags & fDoNonKeyEvt);
+	macflags = tmpflags;
 #endif
 			return;
 		}
@@ -69,7 +69,7 @@ register char *bufp;
 		} else if(c == '\n') {
 			*bufp = 0;
 #ifdef MACOS
-	macflags |= (tmpflags & fDoNonKeyEvt);
+	macflags = tmpflags;
 #endif
 			return;
 		} else if(' ' <= c && c < '\177' && 
@@ -93,7 +93,7 @@ register char *bufp;
 			bell();
 	}
 #ifdef MACOS
-	macflags |= (tmpflags & fDoNonKeyEvt);
+	macflags = tmpflags;
 #endif
 }
 
@@ -128,10 +128,16 @@ xwaitforspace(s)
 register const char *s;	/* chars allowed besides space or return */
 {
 	register int c;
+#ifdef MACOS
+	short	tmpflags;
+#endif
 
 	morc = 0;
 #ifdef MACOS
 	flags.wantspace = TRUE;
+	tmpflags = macflags;
+	macflags &= ~fDoNonKeyEvt;
+	HideCursor();
 #endif
 
 	while((c = readchar()) != '\n') {
@@ -149,14 +155,16 @@ register const char *s;	/* chars allowed besides space or return */
 	}
 
 #ifdef MACOS
+	ShowCursor();
 	flags.wantspace = FALSE;
+	macflags = tmpflags;
 #endif
 }
 
 #endif /* OVL1 */
 #ifdef OVL0
 
-static int last_multi;
+static int NEARDATA last_multi;
 
 char *
 parse()
@@ -293,6 +301,12 @@ register char *bufp;
 	register char *obufp = bufp;
 	register int c;
 	int com_index, oindex;
+#ifdef MACOS
+	short tmpflags;
+	
+	tmpflags = macflags & ~(fExtCmdSeq1 | fExtCmdSeq2 | fExtCmdSeq3);
+	macflags &= ~fDoNonKeyEvt;
+#endif
 
 	flags.toplin = 2;		/* nonempty, no --More-- required */
 
@@ -300,11 +314,17 @@ register char *bufp;
 		(void) fflush(stdout);
 		if((c = readchar()) == EOF) {
 			*bufp = 0;
+#ifdef MACOS
+			macflags = tmpflags;
+#endif
 			return;
 		}
 		if(c == '\033') {
 			*obufp = c;
 			obufp[1] = 0;
+#ifdef MACOS
+			macflags = tmpflags;
+#endif
 			return;
 		}
 		if(c == erase_char || c == '\b') {
@@ -314,6 +334,9 @@ register char *bufp;
 			} else	bell();
 		} else if(c == '\n') {
 			*bufp = 0;
+#ifdef MACOS
+			macflags = tmpflags;
+#endif
 			return;
 		} else if(' ' <= c && c < '\177') {
 				/* avoid isprint() - some people don't have it
@@ -355,6 +378,9 @@ register char *bufp;
 		} else
 			bell();
 	}
+#ifdef MACOS
+	macflags = tmpflags;
+#endif
 
 }
 #endif /* COM_COMPL */

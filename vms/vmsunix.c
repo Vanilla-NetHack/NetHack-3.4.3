@@ -21,7 +21,21 @@
 #include <errno.h>
 #include <signal.h>
 #undef off_t
+#ifndef VAXC
 #include <sys/stat.h>
+#else   VAXC
+#include <stat.h>
+#endif  VAXC
+#include <ctype.h>
+#ifdef no_c$$translate
+#include <errno.h>
+#define C$$TRANSLATE(status) (errno = EVMSERR,  vaxc$errno = (status))
+#else   /* must link with vaxcrtl object library (/lib or /incl=c$$translate) */
+extern FDECL(C$$TRANSLATE, (unsigned long));
+#endif
+extern unsigned long SYS$PARSE(), SYS$SEARCH(), SYS$ENTER(), SYS$REMOVE();
+extern unsigned long SYS$SETPRV();
+extern unsigned long LIB$GETJPI(), LIB$SPAWN(), LIB$ATTACH();
 
 int FDECL(link, (const char *, const char *));
 
@@ -159,7 +173,7 @@ getlock()
 	 * works
 	 * also incidentally prevents development of any hack-o-matic programs
 	 */
-	if (!isatty(0))
+	if (isatty(0) <= 0)
 		error("You must play from a terminal.");
 #endif
 
@@ -234,19 +248,15 @@ register char *s;
 {
 	register char *lp;
 
-	for (lp = s; *lp; lp++)
-		if (!((*lp >= 'A' && *lp <= 'Z')
-		      || (*lp >= 'a' && *lp <= 'z')
-		      || (*lp >= '0' && *lp <= '9')
-		      || *lp == '$' || *lp == '_'
-		      || (lp > s && *lp == '-')))
+	for (lp = s; *lp; lp++)         /* note: '-' becomes '_' */
+	    if (!(isalpha(*lp) || isdigit(*lp) || *lp == '$'))
 			*lp = '_';
 }
 
 int link(file, new)
 const char *file, *new;
 {
-    int status;
+    unsigned long status;
     struct FAB fab;
     struct NAM nam;
     unsigned short fid[3];
@@ -341,13 +351,13 @@ vms_getuid()
     return (getgid() << 16) | getuid();
 }
 
-#ifdef CHDIR
+#if defined(CHDIR) || defined(SHELL)
 unsigned int oprv[2];
 
 void
 privoff()
 {
-    unsigned int prv[2] = { -1, -1 }, code = JPI$_PROCPRIV;
+    unsigned long prv[2] = { -1, -1 }, code = JPI$_PROCPRIV;
 
     (void) SYS$SETPRV(0, prv, 0, oprv);
     (void) LIB$GETJPI(&code, 0, 0, prv);
@@ -359,10 +369,10 @@ privon()
 {
     (void) SYS$SETPRV(1, oprv, 0, 0);
 }
-#endif
+#endif  /*CHDIR || SHELL*/
 
 #ifdef SHELL
-unsigned int dosh_pid = 0;
+unsigned long dosh_pid = 0;
 
 int
 dosh()
@@ -370,18 +380,18 @@ dosh()
 	int status;
 
 	settty((char *) NULL);	/* also calls end_screen() */
-	(void) signal(SIGINT,SIG_IGN);
+	(void) signal(SIGINT,SIG_DFL);
 	(void) signal(SIGQUIT,SIG_IGN);
 	if (!dosh_pid || !((status = LIB$ATTACH(&dosh_pid)) & 1))
 	{
 #ifdef CHDIR
 		(void) chdir(getenv("PATH"));
-		privoff();
 #endif
+		privoff();
 		dosh_pid = 0;
 		status = LIB$SPAWN(0, 0, 0, 0, 0, &dosh_pid);
-#ifdef CHDIR
 		privon();
+#ifdef CHDIR
 		chdirx((char *) 0, 0);
 #endif
 	}

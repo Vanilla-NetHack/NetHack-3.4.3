@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trampoli.c 	3.0	89/11/15	  */
+/*	SCCS Id: @(#)trampoli.c 	3.0	90/05/31	  */
 /* Copyright (c) 1989, by Norm Meluch and Stephen Spackman	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -181,9 +181,21 @@ int unfaint()     { return unfaint_();    }
 /* ### end.c ### */
 #undef done1
 #undef done2
+#undef hangup
+#undef done_intr
 
-int done1() { return done1_(); }
-int done2() { return done2_(); }
+#if defined(UNIX) || defined(VMS)
+#undef done_hangup
+#endif /* UNIX || VMS */
+
+int done1()     { return done1_();     }
+int done2()     { return done2_();     }
+int hangup()    { return hangup_();    }
+int done_intr() { return done_intr_(); }
+
+#if defined(UNIX) || defined(VMS)
+int done_hangup() { return done_hangup_(); }
+#endif /* UNIX || VMS */
 
 
 /* ### engrave.c ### */
@@ -225,15 +237,13 @@ int dotypeinv()  { return dotypeinv_();  }
 
 
 /* ### ioctl.c ### */
-/*
 #ifdef UNIX
-#ifdef SUSPEND
+# ifdef SUSPEND
 #undef dosuspend
 
 int dosuspend() { return dosuspend_(); }
-#endif
-#endif
-*/
+# endif /* SUSPEND */
+#endif /* UNIX */
 
 
 /* ### lock.c ### */
@@ -249,10 +259,20 @@ int doopen()    { return doopen_();    }
 int forcelock() { return forcelock_(); }
 int picklock()  { return picklock_();  }
 
-/* ### mondata.c ### */
-#undef canseemon
 
-boolean canseemon(x) struct monst *x; { return canseemon_(x); }
+/* ### mklev.c ### */
+#undef comp
+
+int comp(vx, vy) genericptr_t vx, vy;  { return comp_(vx, vy); }
+
+
+/* ### mondata.c ### */
+/* canseemon() is only called by a macro e_boolean.  If e_boolean ever does
+   become a function for purposes of STUPID_CPP this may need to return. */
+
+/* #undef canseemon */
+
+/* boolean canseemon(x) struct monst *x; { return canseemon_(x); } */
 
 
 /* ### o_init.c ### */
@@ -282,13 +302,16 @@ int dotogglepickup() { return dotogglepickup_(); }
 #undef dohistory
 #undef dowhatdoes
 #undef dowhatis
+
 #ifdef UNIX
-#ifdef SHELL
+#undef intruph
+# ifdef SHELL
 #undef dosh
 
 int dosh()       { return dosh_();       }
-#endif
-#endif
+# endif /* SHELL */
+int intruph()	 { return intruph_();    }
+#endif /* UNIX */
 
 int dohelp()     { return dohelp_();     }
 int dohistory()  { return dohistory_();  }
@@ -413,7 +436,7 @@ int float_down() { return float_down_(); }
 #undef doversion
 #undef doextversion
 
-int doversion() { return doversion_(); }
+int doversion()    { return doversion_();    }
 int doextversion() { return doextversion_(); }
 
 

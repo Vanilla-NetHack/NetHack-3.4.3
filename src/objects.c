@@ -2,15 +2,10 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright (c) Mike Threepoint, 1989 (890110) */
 
-/* since this file is also used in auxiliary programs, don't include all the 
- * function declarations for all of nethack
- */
-#define EXTERN_H
 #include "config.h"
 #include "obj.h"
 #include "objclass.h"
 #include "prop.h"
-#undef BOW
 
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * + . */
 
@@ -28,7 +23,7 @@
 struct objclass *objects;
 struct small_objclass sm_obj[] = {
 #else
-struct objclass objects[] = {
+struct objclass NEARDATA objects[] = {
 #endif
 
 #if defined(MACOS) && !defined(MAKEDEFS_C)
@@ -549,6 +544,46 @@ ARMOR("levitation boots", "snow boots",
 #undef ARMOR
 
 #if defined(MACOS) && !defined(MAKEDEFS_C)
+#define GEM(name,desc,prob,wt,gval,glass, color) \
+	{ name, desc}
+#else
+#define GEM(name,desc,prob,wt,gval,glass, color) \
+		{ name, desc, NULL, 0,1,0,0,glass, 0,\
+		GEM_SYM, prob, 0, wt, gval, 3, 3, WP_SLING, C(color)}
+#endif
+GEM("dilithium crystal", "white",	 3, 1, 4500, MINERAL, WHITE),
+GEM("diamond", "white", 		 4, 1, 4000, MINERAL, WHITE),
+GEM("ruby", "red",			 5, 1, 3500, MINERAL, RED),
+GEM("sapphire", "blue", 		 6, 1, 3000, MINERAL, BLUE),
+GEM("emerald", "green", 		 7, 1, 2500, MINERAL, GREEN),
+GEM("turquoise", "green",		 8, 1, 2000, MINERAL, GREEN),
+GEM("aquamarine", "green",		10, 1, 1500, MINERAL, GREEN),
+GEM("amber", "yellowish brown", 	11, 1, 1000, MINERAL, BROWN),
+GEM("topaz", "yellowish brown", 	13, 1,	900, MINERAL, BROWN),
+GEM("opal", "white",			15, 1,	800, MINERAL, WHITE),
+GEM("garnet", "red",			17, 1,	700, MINERAL, RED),
+GEM("amethyst", "violet",		19, 1,  600, MINERAL, MAGENTA),
+GEM("jasper", "red",			21, 1,	500, MINERAL, RED),
+GEM("fluorite", "violet",		22, 1,	400, MINERAL, MAGENTA),
+GEM("jade", "green",			23, 1,	300, MINERAL, GREEN),
+GEM("worthless piece of white glass", "white",	131, 1, 0, GLASS, WHITE),
+GEM("worthless piece of blue glass", "blue",	131, 1, 0, GLASS, BLUE),
+GEM("worthless piece of red glass", "red",	131, 1, 0, GLASS, RED),
+GEM("worthless piece of yellowish brown glass", "yellowish brown",
+						131, 1, 0, GLASS, BROWN),
+GEM("worthless piece of green glass", "green",	131, 1, 0, GLASS, GREEN),
+GEM("worthless piece of violet glass", "violet",131, 1, 0, GLASS, MAGENTA),
+GEM("luckstone", "gray",		 10, 1,  60, MINERAL, GRAY),
+GEM("loadstone", "gray",		 10, 50,  1, MINERAL, GRAY),
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+{ "rock", NULL},
+#else
+{ "rock", NULL, NULL, 1,1,0,0,MINERAL, 0,
+		GEM_SYM, 10, 0, 1, 0, 3, 3, WP_SLING, C(HI_MINERAL)},
+#endif
+#undef GEM
+
+#if defined(MACOS) && !defined(MAKEDEFS_C)
 #define POTION(name,desc,power,prob,cost,color) \
 	{ name, desc}
 #else
@@ -756,47 +791,6 @@ RING("see invisible",	"engagement",	SEE_INVIS,	150, 0, METAL, HI_METAL),
 RING("protection from shape changers", "shining", PROT_FROM_SHAPE_CHANGERS,
 							100, 0, METAL, HI_METAL|BRIGHT),
 #undef RING
-
-/* gems ************************************************************/
-#if defined(MACOS) && !defined(MAKEDEFS_C)
-#define GEM(name,desc,prob,wt,gval,glass, color) \
-	{ name, desc}
-#else
-#define GEM(name,desc,prob,wt,gval,glass, color) \
-		{ name, desc, NULL, 0,1,0,0,glass, 0,\
-		GEM_SYM, prob, 0, wt, gval, 3, 3, WP_SLING, C(color)}
-#endif
-GEM("dilithium crystal", "white",	 3, 1, 4500, MINERAL, WHITE),
-GEM("diamond", "white", 		 4, 1, 4000, MINERAL, WHITE),
-GEM("ruby", "red",			 5, 1, 3500, MINERAL, RED),
-GEM("sapphire", "blue", 		 6, 1, 3000, MINERAL, BLUE),
-GEM("emerald", "green", 		 7, 1, 2500, MINERAL, GREEN),
-GEM("turquoise", "green",		 8, 1, 2000, MINERAL, GREEN),
-GEM("aquamarine", "green",		10, 1, 1500, MINERAL, GREEN),
-GEM("amber", "yellowish brown", 	11, 1, 1000, MINERAL, BROWN),
-GEM("topaz", "yellowish brown", 	13, 1,	900, MINERAL, BROWN),
-GEM("opal", "white",			15, 1,	800, MINERAL, WHITE),
-GEM("garnet", "red",			17, 1,	700, MINERAL, RED),
-GEM("amethyst", "violet",		19, 1,  600, MINERAL, MAGENTA),
-GEM("jasper", "red",			21, 1,	500, MINERAL, RED),
-GEM("fluorite", "violet",		22, 1,	400, MINERAL, MAGENTA),
-GEM("jade", "green",			23, 1,	300, MINERAL, GREEN),
-GEM("worthless piece of white glass", "white",	131, 1, 0, GLASS, WHITE),
-GEM("worthless piece of blue glass", "blue",	131, 1, 0, GLASS, BLUE),
-GEM("worthless piece of red glass", "red",	131, 1, 0, GLASS, RED),
-GEM("worthless piece of yellowish brown glass", "yellowish brown",
-						131, 1, 0, GLASS, BROWN),
-GEM("worthless piece of green glass", "green",	131, 1, 0, GLASS, GREEN),
-GEM("worthless piece of violet glass", "violet",131, 1, 0, GLASS, MAGENTA),
-GEM("luckstone", "gray",		 10, 1,  60, MINERAL, GRAY),
-GEM("loadstone", "gray",		 10, 50,  1, MINERAL, GRAY),
-#if defined(MACOS) && !defined(MAKEDEFS_C)
-{ "rock", NULL},
-#else
-{ "rock", NULL, NULL, 1,1,0,0,MINERAL, 0,
-		GEM_SYM, 10, 0, 1, 0, 3, 3, WP_SLING, C(HI_MINERAL)},
-#endif
-#undef GEM
 
 #if defined(MACOS) && !defined(MAKEDEFS_C)
 	{ NULL, NULL}

@@ -9,15 +9,15 @@
 
 #ifdef OVL0
 
-static const char nofetch[] = { BALL_SYM, CHAIN_SYM, ROCK_SYM, 0 };
+static const char NEARDATA nofetch[] = { BALL_SYM, CHAIN_SYM, ROCK_SYM, 0 };
 
 #endif /* OVL0 */
 
-OSTATIC void FDECL(dog_eat, (struct monst *, struct obj *, XCHAR_P, int, int));
+STATIC_DCL void FDECL(dog_eat, (struct monst *, struct obj *, XCHAR_P, int, int));
 
 #ifdef OVLB
 
-XSTATIC void
+STATIC_OVL void
 dog_eat(mtmp, obj, otyp, x, y)
 register struct monst *mtmp;
 register struct obj * obj;
@@ -140,7 +140,11 @@ long allowflags;
 			edog->droptime = moves;
 		}
 	} else {
-		if((obj=level.objects[omx][omy]) && !index(nofetch,obj->olet)){
+		if((obj=level.objects[omx][omy]) && !index(nofetch,obj->olet)
+#ifdef MAIL
+			&& obj->otyp != SCR_MAIL
+#endif
+									){
 		    if((otyp = dogfood(mtmp, obj)) <= CADAVER){
 			nix = omx;
 			niy = omy;
@@ -353,9 +357,9 @@ newdogpos:
 #ifdef WALKIES
 			if(mtmp->mleashed) { /* play it safe */
 				pline("%s breaks loose of %s leash!", 
+					Monnam(mtmp),
 					is_female(mtmp) ? "her" :
-					is_human(mtmp->data) ? "his" : "its",
-					Monnam(mtmp));
+					is_human(mtmp->data) ? "his" : "its");
 				m_unleash(mtmp);
 			}
 #endif

@@ -9,11 +9,24 @@
 
 /* #include "hack.h"	/* uncomment for the Mac */
 
-#ifdef AMIGA
-#include "hack.h"
-#undef exit
-#endif
+#ifndef VMS
+# if defined(AMIGA) || defined(MSDOS)
+#  include "hack.h"
+#  undef exit
+#  ifdef MSDOS
+extern void FDECL(exit, (int));
+#  endif
+# else
+#  include <stdio.h>
+# endif
+#else  /*VMS*/
+# ifdef ANCIENT_VAXC    /* need KR1ED setup */
+#  define GLOBAL_H      /* don't need other stuff */
+#include "config.h"
+# endif
 #include <stdio.h>
+# define exit vms_exit
+#endif /*VMS*/
 
 #define MAX_ERRORS	25
 
@@ -59,9 +72,10 @@ char **argv;
 	long	j;
 	extern struct permonst *mons;
 	extern struct objclass *objects;
+	char descrip[3][32];    /* 3 special level description files */
 
 	/* sub in the Nethack resource filename */
-	strcpy((char *)name, "\010NH3.rsrc");
+	Strcpy((char *)name, "\021nethack.proj.rsrc");
 	yysbuf = (char *)alloc(YYLMAX);
 	yysptr = yysbuf;
 	yytext = (char *)alloc(YYLMAX);
@@ -92,8 +106,14 @@ char **argv;
 	} else {
 		panic("Can't get OBJECT resource data.");
 	}
-# ifdef THINKC4
-	argc = ccommand(&argv);
+    Sprintf(descrip[1], "%s", ":auxil:castle.des");
+    Sprintf(descrip[2], "%s", ":auxil:endgame.des");
+    Sprintf(descrip[3], "%s", ":auxil:tower.des");
+    argc = 4;    /* argv[0] is irrelevant, argv[i] = descrip[i] */
+#else   /* !MACOS || !SMALLDATA */
+# ifdef VMS
+    extern FILE *yyin, *yyout;
+    yyin = stdin,  yyout = stdout;
 # endif
 #endif
 
@@ -101,7 +121,11 @@ char **argv;
 	    yyparse();
 	else 			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
-#if defined(VMS) || defined(AZTEC_C)
+#ifdef MACOS
+                    argv[i] = descrip[i];
+                    fprintf(stdout, "Working on %s\n", argv[i]);
+#endif
+#if defined(AZTEC_C)
 		    extern FILE *yyin;
 		    yyin = fin = fopen(argv[i], "r");
 #else
@@ -115,7 +139,11 @@ char **argv;
 		    line_number = 1;
 		    fatal_error = 0;
 	    }
+#ifndef VMS
 	return 0;
+#else
+	return 1;       /* vms success */
+#endif /*VMS*/
 }
 
 /* 

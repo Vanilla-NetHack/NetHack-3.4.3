@@ -5,18 +5,14 @@
 #include "hack.h"
 
 #if defined(ALTARS) && defined(THEOLOGY)
-static boolean priesthit = FALSE;
+static boolean NEARDATA priesthit = FALSE;
 #endif
 
 static int FDECL(burn_floor_paper,(int,int));
-#ifndef OVERLAY
-static int FDECL(bhitm,(struct monst *,struct obj *));
-#endif
+STATIC_PTR int FDECL(bhitm,(struct monst *,struct obj *));
 static void FDECL(cancel_item,(struct obj *));
 static int FDECL(bhitgold,(struct gold *,struct obj *));
-#ifndef OVERLAY
-static int FDECL(bhito,(struct obj *,struct obj *));
-#endif
+STATIC_PTR int FDECL(bhito,(struct obj *,struct obj *));
 static void FDECL(backfire,(struct obj *));
 static uchar FDECL(dirlet,(int,int));
 static int FDECL(zhit,(struct monst *,int,int));
@@ -65,9 +61,7 @@ static const int zapcolor[10] = {
 
 /* Routines for IMMEDIATE wands and spells. */
 /* bhitm: monster mtmp was hit by the effect of wand or spell otmp */
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 bhitm(mtmp, otmp)
 register struct monst *mtmp;
@@ -238,7 +232,7 @@ boolean ininv;
 	return mtmp;
 }
 
-static const char charged_objs[] = { WAND_SYM, WEAPON_SYM, ARMOR_SYM, 0 };
+static const char NEARDATA charged_objs[] = { WAND_SYM, WEAPON_SYM, ARMOR_SYM, 0 };
 
 static void
 cancel_item(obj)
@@ -246,24 +240,33 @@ register struct obj *obj;
 {
 	switch(obj->otyp) {
 		case RIN_GAIN_STRENGTH:
-			ABON(A_STR) -= obj->spe;
-			flags.botl = 1;
+			if(obj->owornmask & W_RING) {
+				ABON(A_STR) -= obj->spe;
+				flags.botl = 1;
+			}
 			break;
 		case RIN_ADORNMENT:
-			ABON(A_CHA) -= obj->spe;
-			flags.botl = 1;
+			if(obj->owornmask & W_RING) {
+				ABON(A_CHA) -= obj->spe;
+				flags.botl = 1;
+			}
 			break;
 		case RIN_INCREASE_DAMAGE:
-			u.udaminc -= obj->spe;
+			if(obj->owornmask & W_RING)
+				u.udaminc -= obj->spe;
 			break;
 		case GAUNTLETS_OF_DEXTERITY:
-			ABON(A_DEX) -= obj->spe;
-			flags.botl = 1;
+			if(obj->owornmask & W_ARMG) {
+				ABON(A_DEX) -= obj->spe;
+				flags.botl = 1;
+			}
 			break;
 		case HELM_OF_BRILLIANCE:
-			ABON(A_INT) -= obj->spe;
-			ABON(A_WIS) -= obj->spe;
-			flags.botl = 1;
+			if(obj->owornmask & W_ARMH) {
+				ABON(A_INT) -= obj->spe;
+				ABON(A_WIS) -= obj->spe;
+				flags.botl = 1;
+			}
 			break;
 		/* case RIN_PROTECTION: /* not needed */
 	}
@@ -281,16 +284,19 @@ register struct obj *obj;
 	    obj->otyp == KEY || obj->otyp == SKELETON_KEY ||
 	    obj->otyp == LARGE_BOX || obj->otyp == CHEST))
 		obj->spe = (obj->olet == WAND_SYM) ? -1 : 0;
+
 	if (obj->olet == SCROLL_SYM
 #ifdef MAIL
 	    && obj->otyp != SCR_MAIL
 #endif
 	   )
 	    obj->otyp = SCR_BLANK_PAPER;
+
 	if (obj->olet == POTION_SYM && obj->otyp > POT_BOOZE)
-	    obj->otyp = (obj->otyp==POT_SICKNESS) ? POT_FRUIT_JUICE : POT_WATER;
+	    obj->otyp = (obj->otyp==POT_SICKNESS || obj->otyp==POT_SEE_INVISIBLE) ? POT_FRUIT_JUICE : POT_WATER;
 	    /* sickness is "biologically contaminated" fruit juice; cancel it
-	     * and it just becomes fruit juice...
+	     * and it just becomes fruit juice... whereas see invisible
+	     * tastes like "enchanted" fruit juice, it similarly cancels.
 	     */
 	obj->blessed = obj->cursed = FALSE;
 }
@@ -311,9 +317,7 @@ register struct obj *otmp;
 	return 1;
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 bhito(obj, otmp)	/* object obj was hit by the effect of wand otmp */
 register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
@@ -329,8 +333,11 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 #ifdef SPELLS
 	case SPE_POLYMORPH:
 #endif
+		/* avoid unicorn/tool abuse */
+		if (obj->otyp == UNICORN_HORN) obj->olet = WEAPON_SYM;
+
 		/* preserve symbol and quantity */
-		otmp2 = mkobj_at(obj->olet, obj->ox, obj->oy);
+		otmp2 = mkobj_at(obj->olet, obj->ox, obj->oy, FALSE);
 		otmp2->quan = obj->quan;
 #ifdef MAIL
 		/* You can't send yourself 100 mail messages and then
@@ -346,10 +353,6 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 
 		/* Amulet gets cheap   stewr 870807 */
 		if (obj->otyp == AMULET_OF_YENDOR) otmp2->spe = -1;
-
-		/* Wands of wishing max 3 stewr 870808 */
-		if ((otmp2->otyp == WAN_WISHING)
-		    && (obj->spe > 3)) otmp2->spe = 3;
 
 		otmp2->cursed = obj->cursed;
 		otmp2->blessed = obj->blessed;
@@ -389,16 +392,15 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 		    }
 		}
 
-		/* no named weapons --KAA */
-		if (otmp2->onamelth) {
-			otmp2 = oname(otmp2, "", 0);
-			fobj = otmp2;
-			/* cannot use place_object() */
-			level.objects[otmp2->ox][otmp2->oy] = otmp2;
-		}
-
 		/* no box contents --KAA */
 		if (Is_container(otmp2)) delete_contents(otmp2);
+
+		if(otmp2->otyp == MAGIC_LAMP) otmp2->otyp = LAMP;
+
+		if(otmp2->otyp == WAN_WISHING)
+			while(otmp2->otyp == WAN_WISHING ||
+			      otmp2->otyp == WAN_POLYMORPH)
+			    otmp2->otyp = rnd_class(WAN_LIGHT, WAN_LIGHTNING);
 
 		/* update the weight */
 		otmp2->owt = weight(otmp2);
@@ -529,7 +531,7 @@ backfire(otmp)
 	useup(otmp);
 }
 
-static const char zap_syms[] = { WAND_SYM, 0 };
+static const char NEARDATA zap_syms[] = { WAND_SYM, 0 };
 
 int
 dozap()
@@ -605,6 +607,8 @@ zapyourself(obj)
 #endif /* GOLEMS */
 #endif
 		    }
+		    destroy_item(WAND_SYM, AD_ELEC);
+		    destroy_item(RING_SYM, AD_ELEC);
 		    if(!Blind) {
 			    You("are blinded by the flash!");
 			    make_blinded((long)rnd(100),FALSE);
@@ -706,7 +710,8 @@ zapyourself(obj)
 		    find_ac();
 		    break;
 	       case WAN_MAKE_INVISIBLE:
-		    if (!Invisible) makeknown(WAN_MAKE_INVISIBLE);
+		    if (!Invis && !See_invisible)
+			makeknown(WAN_MAKE_INVISIBLE);
 		    HInvis |= INTRINSIC;
 		    if (!See_invisible) newsym(u.ux, u.uy);
 		    break;
@@ -823,10 +828,25 @@ register struct	obj	*obj;
 		    else
 #endif
 		    {
-			register struct obj *otmp, *otmp2;
+			register struct obj *otmp, *otmp2 = (struct obj *)0;
 
 			if(levl[u.ux][u.uy].gmask)
 				(void) bhitgold(g_at(u.ux, u.uy), obj);
+			/* pre-reverse the polymorph pile,  -dave- 3/90 */
+			if (obj->otyp == WAN_POLYMORPH
+#ifdef SPELLS
+				|| obj->otyp == SPE_POLYMORPH
+#endif
+								) {
+				otmp = level.objects[u.ux][u.uy];
+				level.objects[u.ux][u.uy] = otmp2;
+				while(otmp) {
+					otmp2 = otmp->nexthere;
+					otmp->nexthere = level.objects[u.ux][u.uy];
+					level.objects[u.ux][u.uy] = otmp;
+					otmp = otmp2;
+				}
+			}
 			for(otmp = level.objects[u.ux][u.uy];
 							otmp; otmp = otmp2) {
 				/* changed by GAN to hit all objects there */
@@ -909,6 +929,9 @@ register struct	obj	*obj;
 				stackobj(fobj);
 				if(Invisible) newsym(u.ux, u.uy);
 			    } else {
+#ifdef MACOS
+				segments |= SEG_ZAP;
+#endif
 				dighole();
 			    }
 			    break;
@@ -1075,7 +1098,8 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 # ifdef SPELLS
 			case SPE_KNOCK:
 # endif
-			    (void) open_drawbridge(x,y);
+			    if (is_db_wall(bhitpos.x, bhitpos.y))
+				(void) open_drawbridge(x,y);
 			    break;
 			case WAN_LOCKING:
 # ifdef SPELLS
@@ -1087,7 +1111,9 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 # ifdef SPELLS
 			case SPE_FORCE_BOLT:
 # endif
-			    destroy_drawbridge(x,y);
+			    if (levl[bhitpos.x][bhitpos.y].typ != 
+			   	DRAWBRIDGE_UP)
+			        destroy_drawbridge(x,y);
 		    }
 #endif /* STRONGHOLD /**/
 		if(MON_AT(bhitpos.x, bhitpos.y)){
@@ -1102,10 +1128,25 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 		/* modified by GAN to hit all objects */
 		if(fhito){
 		    int hitanything = 0;
-		    register struct obj *next_obj;
+		    register struct obj *next_obj = (struct obj *)0;
 
 		    if((fhito == bhito) && levl[bhitpos.x][bhitpos.y].gmask)
 			hitanything += bhitgold(g_at(bhitpos.x,bhitpos.y),obj);
+		    /* pre-reverse the polymorph pile,  -dave- 3/90 */
+		    if (obj->otyp == WAN_POLYMORPH
+#ifdef SPELLS
+			    || obj->otyp == SPE_POLYMORPH
+#endif
+							) {
+			otmp = level.objects[bhitpos.x][bhitpos.y];
+			level.objects[bhitpos.x][bhitpos.y] = next_obj;
+			while(otmp) {
+			    next_obj = otmp->nexthere;
+			    otmp->nexthere = level.objects[bhitpos.x][bhitpos.y];
+			    level.objects[bhitpos.x][bhitpos.y] = otmp;
+			    otmp = next_obj; 
+			}
+		    }
 		    for(otmp = level.objects[bhitpos.x][bhitpos.y];
 							otmp; otmp = next_obj) {
 			/* Fix for polymorph bug, Tim Wright */
@@ -1334,8 +1375,9 @@ int x, y;
 #endif
 		if (obj->otyp == SCR_FIRE
 #ifdef SPELLS
-					|| obj->otyp == SPE_FIREBALL)
+					|| obj->otyp == SPE_FIREBALL
 #endif
+		    )
 		    continue;
 		scrquan = obj->quan;
 		for(i = 1; i <= scrquan ; i++)
@@ -1430,7 +1472,14 @@ register int dx,dy;
 		if(abstype == 1 /* fire */ &&
 		   (is_pool(sx,sy) || (lev->typ == ROOM && lev->icedpool))) {
 		    if(lev->typ == ROOM) {
+#ifdef STUPID
+			if (lev->icedpool == ICED_POOL)
+				lev->typ = POOL;
+			else
+				lev->typ = MOAT;
+#else
 			lev->typ = (lev->icedpool == ICED_POOL ? POOL : MOAT);
+#endif
 			lev->icedpool = 0;
 			pline("The ice crackles and melts.");
 			mnewsym(sx,sy);
@@ -1713,6 +1762,10 @@ register int dx,dy;
 #endif
 				    } else
 					dam = d(nd, 6);
+				    if(!rn2(3))
+					destroy_item(WAND_SYM, AD_ELEC);
+				    if(!rn2(3))
+					destroy_item(RING_SYM, AD_ELEC);
 				    break;
 				case 6:		/* poison */
 				    poisoned("blast", A_DEX, "poisoned blast", 15);
@@ -1807,9 +1860,13 @@ register struct obj *obj;
 		ty = rn2(ROWNO);
 	} while(!goodpos(tx,ty,(struct permonst *)0));
 	move_object(obj, tx, ty);
-	if(cansee(otx,oty))
+	mnewsym(otx, oty);
+	if(cansee(otx,oty) && !vism_at(otx,oty) && !Blind &&
+			(Invisible || u.ux != otx || u.uy != oty))
 		newsym(otx,oty);
-	if(cansee(tx,ty))
+	mnewsym(tx, ty);
+	if(cansee(tx,ty) && !vism_at(tx,ty) && !Blind &&
+			(Invisible || u.ux != tx || u.uy != ty))
 		newsym(tx,ty);
 }
 
@@ -1823,6 +1880,7 @@ register struct obj *obj;		   /* no texts here! */
 	obj->owt = weight(obj);
 	obj->olet = GEM_SYM;
 	obj->known = FALSE;
+	obj->onamelth = 0;		/* no names */
 	if(cansee(obj->ox,obj->oy))
 		prl(obj->ox,obj->oy);
 }
@@ -1844,9 +1902,9 @@ register struct obj *obj;
 	if (obj->spe) {
 	    struct obj *magazine;
 #ifdef SPELLS
-	    magazine = mkobj_at(SPBOOK_SYM, obj->ox, obj->oy);
+	    magazine = mkobj_at(SPBOOK_SYM, obj->ox, obj->oy, TRUE);
 #else
-	    magazine = mkobj_at(SCROLL_SYM, obj->ox, obj->oy);
+	    magazine = mkobj_at(SCROLL_SYM, obj->ox, obj->oy, TRUE);
 #endif
 	    magazine->blessed = obj->blessed;
 	    magazine->cursed = obj->cursed;
@@ -1955,7 +2013,10 @@ register int osym, dmgtyp;
 				  : destroy_strings[dindx*3]);
 		if(osym == POTION_SYM && dmgtyp != AD_COLD)
 		    potionbreathe(obj);
-		for(i = 0; i < cnt; i++) useup(obj);
+		for(i = 0; i < cnt; i++) {
+		    if (obj->owornmask) setnotworn(obj);
+		    useup(obj);
+		}
 		if(dmg) {
 		    if(xresist)	You("aren't hurt!");
 		    else	losehp(dmg,
@@ -2107,7 +2168,7 @@ makewish()
 {
 	char buf[BUFSZ];
 	register struct obj *otmp;
-	int wishquan, mergquan;
+	unsigned wishquan, mergquan;
 	register boolean dropit = (inv_cnt() >= 52);
 	int tries = 0;
 

@@ -121,7 +121,7 @@ maze0xy(cc)	/* find random starting point for maze generation */
 #  undef tower
 #endif
 
-static const uchar tower[] = {
+static const uchar NEARDATA tower[] = {
 	MOAT,	  MOAT,     MOAT,     MOAT,	MOAT,	  MOAT,     MOAT,
 	MOAT,	  MOAT,     TLCORNER, HWALL,	TRCORNER, MOAT,     MOAT,
 	MOAT,	  TLCORNER, BRCORNER, ROOM,	BLCORNER, TRCORNER, MOAT,
@@ -279,7 +279,7 @@ makemaz()
 #endif
 	for(x = rn1(8,11); x; x--) {
 		mazexy(&mm);
-		(void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
+		(void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y, TRUE);
 	}
 	for(x = rn1(10,2); x; x--) {
 		mazexy(&mm);

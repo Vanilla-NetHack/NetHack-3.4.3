@@ -73,7 +73,7 @@ struct small_objclass{
 extern struct small_objclass sm_obj[];
 extern struct objclass *objects;
 #else
-extern struct objclass objects[];
+extern struct objclass NEARDATA objects[];
 #endif    /* MACOS && !MAKEDEFS_C */
 
 /* definitions of all object-symbols */

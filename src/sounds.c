@@ -8,9 +8,9 @@
 #include "hack.h"
 #include "edog.h"
 
-static int FDECL(domonnoise,(struct monst *));
-
 #ifdef OVLB
+
+static int FDECL(domonnoise,(struct monst *));
 
 void
 verbalize(str)
@@ -107,7 +107,7 @@ dosounds()
 			You("hear the tones of courtly conversation.");
 			break;
 		    case 1:
-			You("hear a sceptre being pounded in judgement.");
+			You("hear a sceptre being pounded in judgment.");
 			break;
 		    case 2:
 			pline("Someone just shouted \"Off with %s head!\"",

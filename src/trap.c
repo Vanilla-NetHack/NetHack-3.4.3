@@ -36,9 +36,11 @@ const char *traps[] = {
 #endif /* OVLB */
 
 void NDECL(domagictrap);
-OSTATIC boolean FDECL(thitm, (int, struct monst *, struct obj *, int));
+STATIC_DCL boolean FDECL(thitm, (int, struct monst *, struct obj *, int));
 
 #ifdef OVLB
+
+static void NDECL(vtele);
 
 /* Generic rust-armor function.  Returns TRUE if a message was printed;
  * "print", if set, means to print a message (and thus to return TRUE) even
@@ -52,9 +54,9 @@ register const char *ostr;
 int type;
 boolean print;
 {
-	static const char *gook[] = { "slag", "rust", "rot", "corrosion" };
-	static const char *action[] = { "smolder", "rust", "rot", "corrode" };
-	static const char *msg[] =  { "burnt", "rusted", "rotten", "corroded" };
+	static const char NEARDATA *gook[] = { "slag", "rust", "rot", "corrosion" };
+	static const char NEARDATA *action[] = { "smolder", "rust", "rot", "corrode" };
+	static const char NEARDATA *msg[] =  { "burnt", "rusted", "rotten", "corroded" };
 	boolean vulnerable = FALSE;
 	boolean plural;
 
@@ -201,6 +203,49 @@ vtele() {
 }
 
 void
+fall_through(td)
+boolean td;	/* td == TRUE : trapdoor */
+{
+	register int newlevel = dlevel + 1;
+
+	while(!rn2(4) && newlevel < 29) newlevel++;
+	if(td) pline("A trap door opens up under you!");
+	else pline("The floor opens up under you!");
+	if(Levitation || u.ustuck || dlevel == MAXLEVEL
+#ifdef POLYSELF
+		|| is_flyer(uasmon) || u.umonnum == PM_WUMPUS
+#endif
+#ifdef ENDGAME
+		|| dlevel == ENDLEVEL
+#endif
+	) {
+	    You("don't fall in.");
+	    if(!td) {
+		more();
+		pline("The opening under you closes up.");
+	    }
+	    return;
+	}
+#ifdef WALKIES
+	if(!next_to_u()) {
+	    You("are jerked back by your pet!");
+	    if(!td) {
+		more();
+		pline("The opening in the floor closes up.");
+	    }
+	} else {
+#endif
+	    if(in_shop(u.ux, u.uy)) shopdig(1);
+	    unsee();
+	    (void) fflush(stdout);
+	    goto_level(newlevel, FALSE, TRUE);
+	    if(!td) pline("The hole in the ceiling above you closes up.");
+#ifdef WALKIES
+	}
+#endif
+}
+
+void
 dotrap(trap)
 register struct trap *trap;
 {
@@ -271,6 +316,7 @@ register struct trap *trap;
 		    break;
 		case MONST_TRAP:
 		    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
+		      mtmp->mpeaceful = FALSE;
 		      switch(mtmp->data->mlet) {
 			case S_PIERCER:
 			    pline("%s suddenly drops from the ceiling!",
@@ -317,34 +363,7 @@ register struct trap *trap;
 				|| u.uundetected
 #endif
 						) newsym(u.ux, u.uy);
-		    } else {
-			register int newlevel = dlevel + 1;
-			while(!rn2(4) && newlevel < 29) newlevel++;
-			pline("A trap door opens up under you!");
-			if(Levitation || u.ustuck || dlevel == MAXLEVEL
-#ifdef POLYSELF
-				|| is_flyer(uasmon) || u.umonnum == PM_WUMPUS
-#endif
-#ifdef ENDGAME
-				|| dlevel == ENDLEVEL
-#endif
-							) {
-			    You("don't fall in.");
-			    break;
-			}
-#ifdef WALKIES
-			if(!next_to_u())
-			    You("are jerked back by your pet!");
-			else {
-#endif
-			    if(in_shop(u.ux, u.uy)) shopdig(1);
-			    unsee();
-			    (void) fflush(stdout);
-			    goto_level(newlevel, FALSE, TRUE);
-#ifdef WALKIES
-			}
-#endif
-		    }
+		    } else fall_through(TRUE);
 		    break;
 		case DART_TRAP:
 		    pline("A little dart shoots out at you!");
@@ -644,11 +663,11 @@ two_hand:		    corrode_weapon();
 
 #ifdef WALKIES
 
-OSTATIC boolean FDECL(teleport_pet, (struct monst *));
+STATIC_DCL boolean FDECL(teleport_pet, (struct monst *));
 
 #ifdef OVLB
 
-XSTATIC boolean
+STATIC_OVL boolean
 teleport_pet(mtmp)
 register struct monst *mtmp;
 {
@@ -674,11 +693,13 @@ register struct monst *mtmp;
 
 #endif /* OVLB */
 
-#endif
+#endif /* WALKIES */
+
+STATIC_DCL void FDECL(seetrap, (struct trap *));
 
 #ifdef OVLB
 
-XSTATIC void
+STATIC_OVL void
 seetrap(trap)
 
 	register struct trap *trap;
@@ -929,10 +950,18 @@ register struct monst *mtmp;
 
 			if(rn2(3))
 				break; /* monsters usually don't set it off */
-			if(in_sight)
+			if(is_flyer(mtmp->data)) {
+				if (in_sight) {
+	pline("A trigger appears in a pile of soil below %s.", Monnam(mtmp));
+					seetrap(trap);
+				}
+				if (rn2(3)) break;
+				if (in_sight)
+					pline("The air currents set it off!");
+			} else if(in_sight)
 			    pline("KAABLAMM!!!  %s triggers a land mine!",
 				  Monnam(mtmp));
-			else if (flags.soundok)
+			if (!in_sight && flags.soundok)
 				pline("Kaablamm!  You hear an explosion in the distance!");
 			deltrap(t_at(mtmp->mx, mtmp->my));
 			if(thitm(0, mtmp, (struct obj *)0, rnd(16)))
@@ -1246,10 +1275,7 @@ unplacebc(){
 
 void
 level_tele() {
-register int newlevel;
-#ifdef WALKIES
-register boolean pet_by_u = next_to_u();
-#endif
+	register int newlevel;
 
 	if(u.uhave_amulet
 #ifdef ENDGAME
@@ -1284,65 +1310,65 @@ register boolean pet_by_u = next_to_u();
 	    if(dlevel == newlevel)
 		if(is_maze_lev) newlevel--; else newlevel++;
 	}
-	if(newlevel < 0) {
+
 #ifdef WALKIES
-	    if(pet_by_u) {
+	if(!next_to_u()) {
+		You("shudder for a moment...");
+		return;
+	}
 #endif
+
+	if(newlevel < 0) {
 		if(newlevel <= -10) {
 			You("arrive in heaven.");
 			verbalize("Thou art early, but we'll admit thee.");
 			killer_format = NO_KILLER_PREFIX;
 			killer = "went to heaven prematurely";
 			done(DIED);
+			return;
 		} else	if (newlevel == -9) {
 			You("feel deliriously happy. ");
 			pline("(In fact, you're on Cloud 9!) ");
 			more();
 		} else
-#ifndef STRONGHOLD
-			newlevel = 0;
-#else
-			newlevel = 1;
-#endif
-		You("are now high above the clouds...");
+			You("are now high above the clouds...");
+
 		if(Levitation) {
 		    You("float gently down to earth.");
-#ifndef STRONGHOLD
+#ifdef STRONGHOLD
+		    newlevel = 1;
+#else
 		    done(ESCAPED);
 #endif
 		}
 #ifdef POLYSELF
-		if(is_flyer(uasmon)) {
+		else if(is_flyer(uasmon)) {
 		    You("fly down to earth.");
-# ifndef STRONGHOLD
+# ifdef STRONGHOLD
+		    newlevel = 1;
+# else
 		    done(ESCAPED);
 # endif
 		}
 #endif
-		pline("Unfortunately, you don't know how to fly.");
-		You("plummet a few thousand feet to your death.");
-		dlevel = 0;
-		killer_format = NO_KILLER_PREFIX;
-		killer =
+		else {
+		    int save_dlevel;
+
+		    save_dlevel = dlevel;
+		    pline("Unfortunately, you don't know how to fly.");
+		    You("plummet a few thousand feet to your death.");
+		    dlevel = 0;
+		    killer_format = NO_KILLER_PREFIX;
+		    killer =
     self_pronoun("teleported out of the dungeon and fell to %s death","his");
-		done(DIED);
-#ifdef WIZARD
-		return;  
-#endif
-#ifdef WALKIES
-	    } else {
-		You("shudder for a moment...");
-		return;
-	    }
-#endif
+		    done(DIED);
+		    dlevel = save_dlevel;
+		    return;  
+		}
 	}
+
 	/* calls done(ESCAPED) if newlevel==0 */
-#ifdef WALKIES
-	if(!pet_by_u)
-	    You("shudder for a moment...");
-	else
-#endif
-	    goto_level(newlevel, FALSE, FALSE);
+	goto_level(newlevel, FALSE, FALSE);
 }
 
 void
@@ -1418,12 +1444,16 @@ domagictrap() {
 	     case 19:
 		    /* tame nearby monsters */
 		   {   register int i,j;
+		       register struct monst *mtmp;
 
 		       /* below pline added by GAN 10/30/86 */
 		       adjattrib(A_CHA,1,FALSE);
-		       for(i = -1; i <= 1; i++) for(j = -1; j <= 1; j++)
-		       if(MON_AT(u.ux+i, u.uy+j))
-			   (void) tamedog(m_at(u.ux+i, u.uy+j), (struct obj *)0);
+		       for(i = -1; i <= 1; i++) for(j = -1; j <= 1; j++) {
+			   if(!isok(u.ux+i, u.uy+j)) continue;
+			   mtmp = m_at(u.ux+i, u.uy+j);
+			   if(mtmp)
+			       (void) tamedog(mtmp, (struct obj *)0);
+		       }
 		       break;
 		   }
 
@@ -1695,8 +1725,8 @@ register int bodypart;
 		case 4:
 		case 3:
 			pline("Suddenly you are frozen in place!");
+			nomul(-d(5, 6));
 			nomovemsg = "You can move again.";
-			multi = -d(5, 6);
 			break;
 		case 2:
 		case 1:
@@ -1781,7 +1811,7 @@ register const char *item;    /* for anything else that opens */
 
 /* Monster is hit by trap. */
 /* Note: doesn't work if both obj and d_override are null */
-XSTATIC boolean
+STATIC_OVL boolean
 thitm(tlev, mon, obj, d_override)
 register int tlev;
 register struct monst *mon;

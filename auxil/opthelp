@@ -1,9 +1,11 @@
-
 Boolean options available in all versions (with default values in []):
 
 confirm		ask before hitting tame or peaceful monsters  [TRUE]
+DECgraphics	use DEC/VT line-drawing characters for the dungeon [FALSE]
 (fe)male	sex of the player (may only be set on startup)  [MALE]
 fixinv		try to retain the same letter for the same object  [TRUE]
+help		print all available info when using the / command [TRUE]
+IBMgraphics	use IBM extended characters for the dungeon [FALSE]
 ignintr		ignore interrupt signal, including breaks  [FALSE]
 number_pad	use the number keys to move instead of yuhjklbn  [FALSE]
 pickup		automatically pick up objects you move over  [TRUE]
@@ -18,8 +20,6 @@ verbose		print more commentary during the game  [TRUE]
 There are further Boolean options that exist in some versions of NetHack 3.0.
 (You can tell which options exist in your version by checking the short
 option help, which is reached by 'O?'.)
-
-
  
 Boolean option if NEWS was set at compile time:
 news		print any news from game administrator on startup  [TRUE]
@@ -27,8 +27,6 @@ news		print any news from game administrator on startup  [TRUE]
 Boolean options if you are using MS-DOS and DGK was set at compile time:
 IBM_BIOS	allow the use of IBM ROM BIOS calls  [FALSE]
 rawio		allow the use of raw I/O (may only be set on startup)  [FALSE]
-DEC_Rainbow	you are on a DEC Rainbow and want to use its graphics  [FALSE]
-		(if DECRAINBOW was also set at compile time)
 
 Boolean options if DGK was not set at compile time:
 null		allow nulls to be sent to your terminal  [TRUE]
@@ -40,6 +38,8 @@ Boolean option if TEXTCOLOR was set at compile time:
 color		use different colors for objects on screen  [TRUE]
 
 Any Boolean option can be negated by prefixing it with a '!' or 'no'.
+
+ 
 
 
  

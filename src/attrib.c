@@ -152,7 +152,7 @@ const struct clattr {
 		   {	20, 15, 15, 15, 20, 15 },
 		     0,  0, 12, 10, 14,  1,  0 };
 
-static const struct clattr *NDECL(clx);
+static const struct clattr NEARDATA *NDECL(clx);
 static void NDECL(init_align);
 
 void
@@ -164,7 +164,7 @@ adjattrib(ndx, incr, silent)
 	if(!incr) return;
 
 	if(incr > 0) {
-	    if((AMAX(ndx) >= attrmax.a[ndx]) && (ACURR(ndx) == AMAX(ndx))) {
+	    if((AMAX(ndx) >= attrmax.a[ndx]) && (ACURR(ndx) >= AMAX(ndx))) {
 
 		if(!silent && flags.verbose)
 		    pline("You're already as %s as you can get.",
@@ -255,7 +255,7 @@ boolean parameter; /* So I can't think up of a good name.  So sue me. --KAA */
 
 	for(otmp = invent; otmp; otmp=otmp->nobj)
 	    if(otmp->otyp == LUCKSTONE) {
-		if (otmp->cursed) bonchance -= otmp->quan;
+		if (otmp->cursed) bonchance -= (int)otmp->quan;
 		else if (otmp->blessed) bonchance += otmp->quan;
 		else if (parameter) bonchance += otmp->quan;
 	    }

@@ -161,8 +161,9 @@ rndcurse() {			/* curse a few inventory items at random! */
 	}
 
 	for (otmp = invent; otmp; otmp = otmp->nobj)  nobj++;
-	    if (nobj) for (cnt = rnd(6/((!!Antimagic) + 1)); cnt > 0; cnt--)  {
 
+	if (nobj)
+	    for (cnt = rnd(6/((!!Antimagic) + 1)); cnt > 0; cnt--)  {
 		onum = rn2(nobj);
 		for(otmp = invent; onum != 0; onum--)
 		    otmp = otmp->nobj;

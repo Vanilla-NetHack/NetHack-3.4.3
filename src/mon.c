@@ -2,11 +2,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* Aztec C on amiga doesn't recognize defined() at this point! */
+/* Aztec C on amiga doesn't recognize defined() at this point!
+   Neither does the Mac Lightspeed C v.3  compiler. If you're using
+   precompiled headers, you don't want this either */
 #ifndef AZTEC_C
+#ifndef THINK_C
 #if defined(MICROPORT_BUG) || (!defined(LINT) && !defined(__STDC__))
 #define MKROOM_H
 #endif /* Avoid the microport bug */
+#endif
 #endif
 
 #include "hack.h"
@@ -17,25 +21,25 @@
 #endif
 
 #ifdef HARD
-OSTATIC boolean FDECL(restrap,(struct monst *));
+STATIC_DCL boolean FDECL(restrap,(struct monst *));
 #endif
 #ifdef INFERNO
 #  include <ctype.h>
 #endif
 
-static struct obj *FDECL(make_corpse,(struct monst *));
-OSTATIC void NDECL(dmonsfree);
-static void FDECL(m_detach,(struct monst *));
+STATIC_DCL void NDECL(dmonsfree);
 
 #ifdef OVL1
-
 long lastwarntime;
 int lastwarnlev;
 const char *warnings[] = {
 	"white", "pink", "red", "ruby", "purple", "black" };
 
 #endif /* OVL1 */
+
 #ifdef OVLB
+static struct obj *FDECL(make_corpse,(struct monst *));
+static void FDECL(m_detach,(struct monst *));
 
 struct monst *fdmon;  /* chain of dead monsters, need not be saved */
 		      /* otherwise used only in priest.c */
@@ -167,7 +171,7 @@ register struct monst *mtmp;
 #endif /* OVLB */
 #ifdef OVL2
 
-XSTATIC void
+STATIC_OVL void
 dmonsfree(){
 register struct monst *mtmp;
 	while(mtmp = fdmon){
@@ -817,6 +821,9 @@ register struct monst *mtmp;
 	}
 #endif
 	if(mtmp->isshk) shkdead(mtmp);
+	if(mtmp->isgd) {
+		if(!grddead(mtmp)) return;
+	}
 #ifdef WORM
 	if(mtmp->wormno) wormdead(mtmp);
 #endif
@@ -1025,7 +1032,7 @@ xkilled(mtmp, dest)
 							) {
 			int typ;
 
-			otmp = mkobj_at(RANDOM_SYM, x, y);
+			otmp = mkobj_at(RANDOM_SYM, x, y, TRUE);
 			/* Don't create large objects from small monsters */
 			typ = otmp->otyp;
 			if (mdat->msize < MZ_HUMAN && typ != FOOD_RATION
@@ -1071,6 +1078,12 @@ rescham() {	/* force all chameleons to become normal */
 		}
 		if(is_were(mtmp->data) && mtmp->data->mlet != S_HUMAN)
 			(void) new_were(mtmp);
+		if(mtmp->mimic && cansee(mtmp->mx, mtmp->my)) {
+			seemimic(mtmp);
+			/* we pretend that the mimic doesn't */
+			/* know that it has been unmasked.   */
+			mtmp->msleep = 1;
+		}
 	}
 }
 
@@ -1080,9 +1093,16 @@ restartcham() {
 
 	register struct monst *mtmp;
 
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		if (mtmp->data == &mons[PM_CHAMELEON])
 			mtmp->cham = 1;
+		if(mtmp->data->mlet == S_MIMIC && mtmp->msleep &&
+				cansee(mtmp->mx, mtmp->my)) {
+			set_mimic_sym(mtmp);
+			unpmon(mtmp);
+			pmon(mtmp);
+		}
+	}
 }
 
 int
@@ -1099,7 +1119,7 @@ newcham(mtmp, mdat)	/* make a chameleon look like a new monster */
 	tryct = 0;
 	if(mdat == 0) {
 		while (++tryct < 100) {
-			static int num;
+			static int NEARDATA num;
 			mdat = &mons[num=rn2(NUMMONS)];
 			if ((!is_human(mdat) || num == PM_NURSE)
 				&& !type_is_pname(mdat)
@@ -1187,7 +1207,7 @@ mnexto(mtmp)	/* Make monster mtmp next to you (if possible) */
 	struct monst *mtmp;
 {
 	coord mm;
-	enexto(&mm, u.ux, u.uy, mtmp->data);
+	if(!enexto(&mm, u.ux, u.uy, mtmp->data)) return;
 	remove_monster(mtmp->mx, mtmp->my);
 	place_monster(mtmp, mm.x, mm.y);
 	pmon(mtmp);
@@ -1202,7 +1222,7 @@ mnearto(mtmp,x,y,gz)	/* Make monster near (or at) location if possible */
 {
 	coord mm;
 	if(!gz || !goodpos(x,y,mtmp->data)) {
-		enexto(&mm, x, y, mtmp->data);
+		if(!enexto(&mm, x, y, mtmp->data)) return;
 		x = mm.x; y = mm.y;
 	}
 	if(x == mtmp->mx && y == mtmp->my) /* that was easy */
@@ -1262,7 +1282,7 @@ disturb(mtmp)		/* awaken monsters while in the same room.
 }
 
 #ifdef HARD
-XSTATIC boolean
+STATIC_OVL boolean
 restrap(mtmp)
 /* unwatched hiders may hide again,
  * if so, a 1 is returned.

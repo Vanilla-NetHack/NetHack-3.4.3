@@ -28,7 +28,7 @@ uwepgone()
 	}
 }
 
-static const char wield_objs[] = { '#', '-', WEAPON_SYM, TOOL_SYM, 0 };
+static const char NEARDATA wield_objs[] = { '#', '-', WEAPON_SYM, TOOL_SYM, 0 };
 
 int
 dowield()
@@ -160,7 +160,8 @@ register int amount;
 	}
 #endif
 	/* there is a (soft) upper and lower limit to uwep->spe */
-	if(abs(uwep->spe) > 5 && rn2(3)) {
+	if(((uwep->spe > 5 && amount > 0) || (uwep->spe < -5 && amount < 0))
+								&& rn2(3)) {
 	    if (!Blind)
 	    Your("%s violently %s for a while and then evaporate%s.",
 		aobjnam(uwep,"glow"), color, uwep->quan == 1 ? "s" : "");

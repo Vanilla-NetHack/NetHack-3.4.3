@@ -4,14 +4,14 @@
 
 #include "hack.h"
 
-static void FDECL(mkbox_cnts,(struct obj *));
+STATIC_DCL void FDECL(mkbox_cnts,(struct obj *));
 
 struct icp {
     int  iprob; /* probability of an item type */
     char ilet;	/* item class */
 };
 
-#ifdef OVLB
+#ifdef OVL1
 
 const struct icp mkobjprobs[] = {
 {10, WEAPON_SYM},
@@ -70,12 +70,13 @@ const struct icp hellprobs[] = {
 { 8, RING_SYM},
 { 4, AMULET_SYM}};
 
-static int mksx=0, mksy=0;
+static int NEARDATA mksx=0, NEARDATA mksy=0;
 
 struct obj *
-mkobj_at(let,x,y)
+mkobj_at(let,x,y, artif)
 char let;
 int x,y;
+boolean artif;
 {
 	register struct obj *otmp;
 
@@ -84,7 +85,7 @@ int x,y;
 	 * to insure shop boxes are empty.
 	 * Yes, this is a horrible kludge...
 	 */
-	otmp = mkobj(let,TRUE);
+	otmp = mkobj(let,artif);
 	otmp->nobj = fobj;
 	fobj = otmp;
 	place_object(otmp, x, y);
@@ -137,7 +138,8 @@ boolean artif;
 	return(mksobj(i, artif));
 }
 
-static void
+STATIC_OVL
+void
 mkbox_cnts(box)
 /* Note: does not check to see if it overloaded the box capacity; usually
  * possible only with corpses in ice boxes.
@@ -202,6 +204,8 @@ rndmonnum() {	/* select a random, common monster type */
 	return(i);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
 const char dknowns[] = { WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM,
 #ifdef SPELLS
 SPBOOK_SYM,
@@ -437,6 +441,8 @@ register struct obj *otmp;
 	return;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
 void
 blessorcurse(otmp, chance)
 register struct obj *otmp;
@@ -453,6 +459,8 @@ register int chance;
 	return;
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
 int
 bcsign(otmp)
 register struct obj *otmp;
@@ -519,6 +527,8 @@ int x, y;
 	return;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
 struct obj *
 mkcorpstat(objtype, ptr, x, y)
 int objtype;	/* CORPSE or STATUE */
@@ -538,6 +548,8 @@ int x, y;
 	return(otmp);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
 struct obj *
 mk_tt_object(objtype, x, y)
 int objtype; /* CORPSE or STATUE */
@@ -609,6 +621,8 @@ int x, y;
 }
 #endif
 
+#endif /* OVLB */
+#ifdef OVL1
 
 /*
  * These routines maintain the single-linked lists headed in level.objects[][]
@@ -629,6 +643,8 @@ int x, y;
     otmp->oy = y;
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
 void
 remove_object(otmp)
 register struct obj *otmp;

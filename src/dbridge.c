@@ -13,6 +13,7 @@
 #include "hack.h"
 
 #ifdef STRONGHOLD
+# ifdef OVLB
 static void FDECL(redosym, (int, int));
 static void FDECL(get_wall_for_db, (int *, int *));
 static struct entity *FDECL(e_at, (int, int));
@@ -28,7 +29,8 @@ static boolean FDECL(automiss, (struct entity *));
 static boolean FDECL(e_missed, (struct entity *, BOOLEAN_P));
 static boolean FDECL(e_jumps, (struct entity *));
 static void FDECL(do_entity, (struct entity *));
-#endif
+# endif /* OVLB */
+#endif /* STRONGHOLD */
 
 #ifdef OVL0
 
@@ -63,6 +65,9 @@ int x,y;
 	crm->seen = oldseen;
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 static void
 redosym(x,y)
 int x,y;
@@ -75,6 +80,9 @@ int x,y;
 		levl[x][y].seen = 0;
 	}
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 /* 
  * We want to know whether a wall (or a door) is the portcullis (passageway)
@@ -113,9 +121,6 @@ int x,y;
 	return (-1);
 }
 
-#endif /* OVL1 */
-#ifdef OVL1
-
 /*
  * Use is_db_wall where you want to verify that a
  * drawbridge "wall" is UP in the location x, y
@@ -129,8 +134,6 @@ int x,y;
 		levl[x][y].diggable & W_GATEWAY);
 }
 
-#endif /* OVL1 */
-#ifdef OVLB
 
 /*
  * Return true with x,y pointing to the drawbridge if x,y initially indicate
@@ -156,6 +159,9 @@ int *x,*y;
 	}
 	return FALSE;
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 /* 
  * Find the drawbridge wall associated with a drawbridge.
@@ -234,7 +240,7 @@ struct entity {
 
 #define ENTITIES 2
 
-static struct entity occupants[ENTITIES];
+static struct entity NEARDATA occupants[ENTITIES];
 
 static
 struct entity *
@@ -414,12 +420,15 @@ int dest, how;
 		else {
 			coord xy;
 
+			killer_format = KILLED_BY_AN;
+			killer = "falling drawbridge";
 			done(how);
 			/* So, you didn't die */
 			if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
 				pline("A %s force teleports you away...",
 		      		      Hallucination ? "normal" : "strange");
-				enexto(&xy, etmp->ex, etmp->ey, etmp->edata);
+				(void) enexto(&xy, etmp->ex, etmp->ey,
+								etmp->edata);
 				teleds(xy.x, xy.y);
 			}
 		}
@@ -876,8 +885,8 @@ int x,y;
 	lev2->typ = DOOR;
 	lev2->doormask = D_NODOOR;
 	set_entity(x, y, etmp1);
-	e_inview = e_boolean(etmp1, canseemon);
 	if (etmp1->edata) {
+		e_inview = e_boolean(etmp1, canseemon);
 		if (e_missed(etmp1, TRUE)) {
 #ifdef D_DEBUG
 			pline("%s spared!", E_phrase(etmp1, "are"));

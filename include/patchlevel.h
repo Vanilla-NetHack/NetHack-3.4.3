@@ -84,4 +84,17 @@
  *  and the usual bug fixes and hole plugs
  */
 
-#define PATCHLEVEL	7
+/*
+ *  Patch 8, June 3, 1990
+ *  further debug and refine Macintosh port
+ *  refine the overlay manager, rearrange the OVLx breakdown for better
+ *	efficiency, rename the overlay macros, and split off the overlay
+ *	instructions to Install.ovl
+ *  introduce NEARDATA for better Amiga efficiency
+ *  support for more VMS versions (courtesy Joshua Delahunty and Pat Rankin)
+ *  more const fixes
+ *  better support for common graphics (DEC VT and IBM)
+ *  and a number of simple fixes and consistency extensions
+ */
+
+#define PATCHLEVEL	8

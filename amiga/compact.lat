@@ -68,6 +68,8 @@ echo "Compacting lev.h"
 lcompact < Incl:lev.h > Ram:Incl/lev.h
 echo "Compacting lev_comp.h"
 lcompact < Incl:lev_comp.h > Ram:Incl/lev_comp.h
+echo "Compacting macconf.h"
+lcompact < Incl:macconf.h > Ram:Incl/macconf.h
 echo "Compacting mfndpos.h"
 lcompact < Incl:mfndpos.h > Ram:Incl/mfndpos.h
 echo "Compacting mkroom.h"
@@ -108,10 +110,14 @@ echo "Compacting tosconf.h"
 lcompact < Incl:tosconf.h > Ram:Incl/tosconf.h
 echo "Compacting tradstdc.h"
 lcompact < Incl:tradstdc.h > Ram:Incl/tradstdc.h
+echo "Compacting trampoli.h"
+lcompact < Incl:trampoli.h > Ram:Incl/trampoli.h
 echo "Compacting unixconf.h"
 lcompact < Incl:unixconf.h > Ram:Incl/unixconf.h
 echo "Compacting vault.h"
 lcompact < Incl:vault.h > Ram:Incl/vault.h
+echo "Compacting vmsconf.h"
+lcompact < Incl:vmsconf.h > Ram:Incl/vmsconf.h
 echo "Compacting wseg.h"
 lcompact < Incl:wseg.h > Ram:Incl/wseg.h
 echo "Compacting you.h"

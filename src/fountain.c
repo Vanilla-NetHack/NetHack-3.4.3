@@ -18,7 +18,9 @@ dowatersnakes() /* Fountain of snakes! */ {
 	register int num = rnd(6);
 	if (!(mons[PM_WATER_MOCCASIN].geno & G_GENOD)) {
 		if (!Blind)
-			pline("An endless stream of snakes pours forth!");
+			pline("An endless stream of %s pours forth!",
+				Hallucination ? makeplural(rndmonnam())
+				: "snakes");
 		else
 			You("hear something hissing!");
 		while(num-- > 0) (void) makemon(&mons[PM_WATER_MOCCASIN],u.ux,u.uy);
@@ -116,7 +118,7 @@ void
 dofindgem() /* Find a gem in the sparkling waters. */ {
 
 	if (!Blind) You("spot a gem in the sparkling waters!");
-	(void) mkobj_at(GEM_SYM,u.ux,u.uy);
+	(void) mksobj_at(rnd_class(DILITHIUM_CRYSTAL, LUCKSTONE-1), u.ux, u.uy);
 	levl[u.ux][u.uy].looted = T_LOOTED;
 }
 
@@ -352,7 +354,7 @@ drinksink()
 		return;
 	}
 	switch(rn2(20)) {
-		static struct obj *otmp;
+		static struct obj NEARDATA *otmp;
 		case 0: You("take a sip of very cold water.");
 			break;
 		case 1: You("take a sip of very warm water.");
@@ -365,7 +367,7 @@ drinksink()
 		case 3: if (mons[PM_SEWER_RAT].geno & G_GENOD)
 				pline("The sink seems quite dirty.");
 			else {
-				static struct monst *mtmp;
+				static struct monst NEARDATA *mtmp;
 
 				mtmp = makemon(&mons[PM_SEWER_RAT], u.ux, u.uy);
 				pline("Eek!  There's %s in the sink!",
@@ -391,7 +393,7 @@ drinksink()
 			break;
 		case 5: if (!levl[u.ux][u.uy].looted) {
 			    You("find a ring in the sink!");
-			    (void) mkobj_at(RING_SYM, u.ux, u.uy);
+			    (void) mkobj_at(RING_SYM, u.ux, u.uy, TRUE);
 			    levl[u.ux][u.uy].looted = T_LOOTED;
 			} else pline("Some dirty water backs up in the drain.");
 			break;

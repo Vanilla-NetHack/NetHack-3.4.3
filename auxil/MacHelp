@@ -1,35 +1,85 @@
-y k u   7 8 9         UP 
- \|/     \|/          |
-h-.-l   4-.-6   LEFT<- ->RIGHT
- /|\     /|\          |
-b j n   1 2 3        DOWN
-      numberpad  cursor keys
-Move commands:
+                             Macintosh Nethack Primer
+
+Movement
+
+        y k u           7 8 9                 UP              the mouse
+         \|/             \|/                  |               cursor shows
+        h-.-l           4-.-6           LEFT<- ->RIGHT        which way
+         /|\             /|\                  |               you'll move
+        b j n           1 2 3                DOWN             when clicked.
+       keyboard       numberpad          cursor keys          mouse click
+
+Move commands and modifiers:
 yuhjklbn: go one step in specified direction
 YUHJKLBN: go in specified direction until you
-          hit a wall or run into something
+          hit a wall or run into something.
+[CTRL]<dir>,
 g<dir>:   run in direction <dir> until something
-          interesting is seen
-G<dir>,
-[SHIFT]<dir>: same, except a branching corridor isn't considered
-              interesting
-m<dir>:   move without picking up objects
+          interesting is seen.
+[SHIFT]<dir>,
+G<dir>:   same, except a branching corridor isn't considered
+              interesting.
+m<dir>:   move without picking up objects.
 
-If the window title shows "[MOVE]", the number keys move your character,
-otherwise they act as a numeric keypad.
-The 'g', 'G', '[SHIFT]' and 'm' modifiers may also be used with the
-numberpad and the cursor keys.
-The mouse cursor shows which direction you will try to move if you
-press the mouse button when the mouse is in the Nethack window.  You may
-use the 'g', 'G', '[SHIFT]' and 'm' modifiers with the mouse button too.
+For all Macintosh keyboards the [command] key (apple or pretzel key)
+functions as the [control] key and the [~] key functions as the [escape]
+key. The normal [control] and [escape] keys are also supported.
+
+The Number Pad
+When the window title shows "[MOVE]", the number keys may also be used
+to move your character, otherwise they act as a numeric keypad.
+
 The '5' key on the numberpad invokes the "open door" command.
 The '0' key on the numberpad invokes the "do inventory" command.
 
-For pre-ADB keyboards (Mac+ keyboards and earlier), use the Command key
-for the Control key and the "`" (backquote) key for the escape key.
+The 'g', 'G', '[SHIFT]', [CTRL] and 'm' modifiers may also be used with
+the numberpad and the cursor keys.
 
-Press the clear key (on the numberpad) to switch between movement mode
-and numeric keypad mode.
+Press the clear key (or Num Lock) on the number pad to enable or disable
+using the number pad for movement.
 
+The Cursor
+Although NetHack was meant to be played from a keyboard, on the Macintosh
+you can essentially play NetHack using the mouse. The mouse cursor shows
+which direction you will try to move if you press the mouse button when
+the mouse is in the Nethack window. Of course, if you're confused this may
+be different. You may use the 'g', 'G', '[SHIFT]' and 'm' modifiers with
+the mouse button, too. Note that [SHIFT]-clicking on the spot where you're
+standing will "look" at the objects piled there. Holding down the mouse
+button will, after a delay, cause repeated moves in the indicated direction.
+
+The cursor will at times also indicate your current state of well-being.
+These auxiliary cursors may look better on a non-inverted screen (they
+look best against the standard white Macintosh background). The cursor
+madness can be controlled from the "Set Options" dialog (see below).
+
+Alerts
+Occasionally a mac alert will appear in response to some action of yours.
+These mac alerts typically require a "yes" or "no" (or alternate) response.
+You can accept the default response button (indicated by a surrounding
+hilite) by clicking on that button, hitting return or typing the first
+letter of that button (i.e. y for yes). The alternate response(s) can be
+chosen by clicking on them or typing their first letter, appropriately.
+
+Macintosh-specific Options
+MultiFinder AutoZoom: when enabled shrinks the NetHack window to icon size
+when the game is context-swapped out and restores the window upon return.
+
+Alternative Cursors: when enabled allows the standard NetHack arrow cursor
+set to be replaced by "hands" while blind a/o "strange" cursors while
+hallucinating, if not blind, and so on. This does not affect the randomly
+oriented cursors that appear when you're confused or stunned. A fatal
+skull-n-crossbones cursor set will appear if you become deathly sick.
+
+The other NetHack options are described elsewhere under the "?" command.
+The names may be slightly different on the options dialog.
+
+Miscellaneous
 The option key is the meta-key. For option-n, press option-shift-n and
 for option-u, press option-shift-u.
+
+Bug Reports
+Comments, questions, problems, etc. should be directed to (InterNet):
+nethack-bugs@linc.cis.upenn.edu
+
+

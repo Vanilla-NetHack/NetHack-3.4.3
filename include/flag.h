@@ -51,15 +51,18 @@ struct flag {
 	boolean  silent;	/* whether the bell rings or not */
 	boolean  pickup;	/* whether you pickup or move and look */
 	boolean  num_pad;	/* use numbers for movement commands */
+	boolean  help;		/* look in data file for info about stuff */
+	boolean  IBMgraphics;	/* use IBM extended character set */
+	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
 #ifdef TEXTCOLOR
 	boolean  use_color;	/* use color graphics */
+#endif
+#ifdef AMIFLUSH
+	boolean amiflush;	/* kill typeahead */
 #endif
 #ifdef DGK
 	boolean  IBMBIOS;	/* whether we can use a BIOS call for
 				 * redrawing the screen and character input */
-#ifdef DECRAINBOW
-	boolean  DECRainbow;	/* Used for DEC Rainbow graphics. */
-#endif
 	boolean  rawio;		/* Whether can use rawio (IOCTL call) */
 #endif
 #ifdef MACOS

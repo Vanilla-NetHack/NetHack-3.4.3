@@ -5,39 +5,45 @@
 #define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
-#include <ctype.h>  /* for isalpha() */
 #if defined(ALTARS) && defined(THEOLOGY)
 #include "epri.h"
 #endif
 #include "termcap.h"
 
-OSTATIC void FDECL(hilite, (int,int,UCHAR_P, UCHAR_P));
-OSTATIC void FDECL(cornbot, (int));
-#ifdef TEXTCOLOR
-OSTATIC uchar FDECL(mimic_color, (struct monst *));
-#endif
-
-#ifndef ASCIIGRAPH
-# define g_putch  (void) putchar
-#endif
-
-#ifndef g_putch
 #ifdef OVL0
-static boolean GFlag = FALSE; /* graphic flag */
+static void FDECL(fillbot, (int,char *,char *));
+static void NDECL(bot1);
+static void NDECL(bot2);
 #endif /* OVL0 */
+
+STATIC_DCL void FDECL(hilite, (int,int,UCHAR_P, UCHAR_P));
+STATIC_DCL void FDECL(cornbot, (int));
+#ifdef TEXTCOLOR
+STATIC_DCL uchar FDECL(mimic_color, (struct monst *));
 #endif
+
+#ifdef OVL0
+# ifndef ASCIIGRAPH
+# define g_putch  (void) putchar
+# endif /* ASCIIGRAPH */
+
+# ifndef g_putch
+static void FDECL(g_putch, (UCHAR_P));
+static boolean GFlag = FALSE; /* graphic flag */
+# endif
+#endif /* OVL0 */
 
 /* 100 suffices for bot(); must be larger than COLNO */
 #define MAXCO 100
-VSTATIC char oldbot1[MAXCO], newbot1[MAXCO];
-VSTATIC char oldbot2[MAXCO], newbot2[MAXCO];
+STATIC_VAR char NEARDATA oldbot1[MAXCO], NEARDATA newbot1[MAXCO];
+STATIC_VAR char NEARDATA oldbot2[MAXCO], NEARDATA newbot2[MAXCO];
 #ifdef OVL2
-static const char *dispst = "*0#@#0#*0#@#0#*0#@#0#*0#@#0#*0#@#0#*";
+static const char NEARDATA *dispst = "*0#@#0#*0#@#0#*0#@#0#*0#@#0#*0#@#0#*";
 #endif /* OVL2 */
 #ifndef OVLB
-OSTATIC int mrank_sz;
+STATIC_DCL int mrank_sz;
 #else /* OVLB */
-XSTATIC int mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
+STATIC_OVL int NEARDATA mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
 #endif /* OVLB */
 
 #ifdef CLIPPING
@@ -126,6 +132,9 @@ setclipped()
 #endif
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 #ifdef CLIPPING
 void
 cliparound(x, y)
@@ -160,9 +169,6 @@ int x, y;
 }
 #endif /* CLIPPING */
 
-#endif /* OVLB */
-#ifdef OVL0
-
 /*
  *  Allow for a different implementation than this...
  */
@@ -173,7 +179,8 @@ static void
 g_putch(ch)
 uchar ch;
 {
-	if (IBMgraphics)    /* IBM-compatible displays don't need other stuff */
+	if (flags.IBMgraphics)
+		/* IBM-compatible displays don't need other stuff */
 		(void) putchar(ch);
 	else if (ch & 0x80) {
 		if (!GFlag) {
@@ -272,7 +279,11 @@ shieldeff(x, y)		/* produce a magical shield effect at x,y */
 	register const char *ch;
 	register struct monst *mtmp = 0;
 
-	if((x != u.ux) || (y != u.uy)) {
+	nscr();
+
+	if((x == u.ux) && (y == u.uy)) 
+		curs_on_u();
+	else {
 	    if(!(mtmp = m_at(x, y))) {
 
 		impossible("shield effect at %d,%d", x, y);
@@ -429,7 +440,7 @@ docrt()
 #endif /* OVL0 */
 #ifdef OVLB
 
-XSTATIC void
+STATIC_OVL void
 cornbot(lth)
 register int lth;
 {
@@ -677,7 +688,7 @@ nscr() {
 /* Make sure that there are 18 entries in the rank arrays. */
 /* 0 and even entries are male ranks, odd entries are female. */
 
-static const char *mage_ranks[] = {
+static const char NEARDATA *mage_ranks[] = {
 	"Evoker",
 	"Evoker",
 	"Conjurer",
@@ -698,7 +709,7 @@ static const char *mage_ranks[] = {
 	"Mage"
 };
 
-static const char *priest_ranks[] = {
+static const char NEARDATA *priest_ranks[] = {
 	"Aspirant",
 	"Aspirant",
 	"Acolyte",
@@ -719,7 +730,7 @@ static const char *priest_ranks[] = {
 	"High Priestess"
 };
 
-static const char *thief_ranks[] = {
+static const char NEARDATA *thief_ranks[] = {
 	"Footpad",
 	"Footpad",
 	"Cutpurse",
@@ -740,7 +751,7 @@ static const char *thief_ranks[] = {
 	"Thief"
 };
 
-static const char *fighter_ranks[] = {
+static const char NEARDATA *fighter_ranks[] = {
 	"Stripling",
 	"Stripling",
 	"Skirmisher",
@@ -761,7 +772,7 @@ static const char *fighter_ranks[] = {
 	"Lady"
 };
 
-static const char *tourist_ranks[] = {
+static const char NEARDATA *tourist_ranks[] = {
 	"Rambler",
 	"Rambler",
 	"Sightseer",
@@ -782,7 +793,7 @@ static const char *tourist_ranks[] = {
 	"Adventurer"
 };
 
-static const char *nomad_ranks[] = {
+static const char NEARDATA *nomad_ranks[] = {
 	"Troglodyte",
 	"Troglodyte",
 	"Aborigine",
@@ -803,7 +814,7 @@ static const char *nomad_ranks[] = {
 	"Pioneer"
 };
 
-static const char *knight_ranks[] = {
+static const char NEARDATA *knight_ranks[] = {
 	"Gallant",
 	"Gallant",
 	"Esquire",
@@ -824,7 +835,7 @@ static const char *knight_ranks[] = {
 	"Paladin"
 };
 
-static const char *archeo_ranks[] = {
+static const char NEARDATA *archeo_ranks[] = {
 	"Digger",
 	"Digger",
 	"Field Worker",
@@ -845,7 +856,7 @@ static const char *archeo_ranks[] = {
 	"Curator"
 };
 
-static const char *healer_ranks[] = {
+static const char NEARDATA *healer_ranks[] = {
 	"Pre-Med",
 	"Pre-Med",
 	"Med Student",
@@ -866,7 +877,7 @@ static const char *healer_ranks[] = {
 	"Chief Surgeon"
 };
 
-static const char *barbarian_ranks[] = {
+static const char NEARDATA *barbarian_ranks[] = {
 	"Plunderer",
 	"Plunderess",
 	"Pillager",
@@ -887,7 +898,7 @@ static const char *barbarian_ranks[] = {
 	"Conqueress"
 };
 
-static const char *ninja_ranks[] = {
+static const char NEARDATA *ninja_ranks[] = {
 	"Chigo",
 	"Chigo",
 	"Bushi",
@@ -908,7 +919,7 @@ static const char *ninja_ranks[] = {
 	"Jonin",
 };
 
-static const char *elf_ranks[] = {
+static const char NEARDATA *elf_ranks[] = {
 	"Edhel",
 	"Elleth",
 	"Edhel",
@@ -931,11 +942,11 @@ static const char *elf_ranks[] = {
 
 #endif /* OVL1 */
 
-OSTATIC const char **NDECL(rank_array);
+STATIC_DCL const char **NDECL(rank_array);
 
 #ifdef OVL1
 
-XSTATIC const char **
+STATIC_OVL const char **
 rank_array() {
 	register const char **ranks;
 
@@ -959,11 +970,11 @@ rank_array() {
 
 #endif /* OVL1 */
 
-OSTATIC const char *rank();
+STATIC_DCL const char *NDECL(rank);
 
 #ifdef OVL1
 
-XSTATIC const char *
+STATIC_OVL const char *
 rank() {
 	register int place;
 	register const char **ranks = rank_array();
@@ -1261,7 +1272,7 @@ rndmonsym()
  * user programmable
  */
 
-static const char rndobs[] = {
+static const char NEARDATA rndobs[] = {
 	WEAPON_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM, WAND_SYM,
 #ifdef SPELLS
 	SPBOOK_SYM,
@@ -1274,7 +1285,7 @@ rndobjsym()
 	return rndobs[rn2(SIZE(rndobs))];
 }
 
-static const char *hcolors[] = {
+static const char NEARDATA *hcolors[] = {
 			"ultraviolet", "infrared", "hot pink", "psychedelic",
 			"bluish-orange", "reddish-green", "dark white",
 			"light black", "loud", "salty", "sweet", "sour",
@@ -1297,7 +1308,7 @@ hcolor()
 #ifdef OVL0
 
 /*ARGSUSED*/
-XSTATIC void
+STATIC_OVL void
 hilite(x, y, let, typ)
 int x, y;
 uchar let, typ;
@@ -1446,7 +1457,7 @@ struct monst *mon;
 #ifdef TEXTCOLOR
 /* pick an appropriate color for a mimic imitating an object */
 
-XSTATIC uchar
+STATIC_OVL uchar
 mimic_color(mtmp)
 struct monst *mtmp;
 {

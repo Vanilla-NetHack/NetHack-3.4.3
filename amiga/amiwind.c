@@ -82,6 +82,9 @@ long FDECL(RawKeyConvert, (struct InputEvent *, char *, long, struct KeyMap *));
 static int NDECL(BufferGetchar);
 static void FDECL(ConvertKey, (register struct IntuiMessage *));
 static void FDECL(ProcessMessage, (register struct IntuiMessage *));
+#ifdef AMIFLUSH
+static struct Message *FDECL(GetFMsg,(struct MsgPort *));
+#endif
 void NDECL(Initialize);
 
 /*  Now our own variables */
@@ -356,7 +359,11 @@ int kbhit()
     register struct IntuiMessage *message;
 
     while( (KbdBuffered < KBDBUFFER / 2) &&
+#ifdef AMIFLUSH
+	    (message = (struct IntuiMessage *) GetFMsg(HackWindow->UserPort)))
+#else
 	    (message = (struct IntuiMessage *) GetMsg(HackWindow->UserPort)) )
+#endif
 	ProcessMessage(message);
 
     return (int) KbdBuffered;
@@ -465,7 +472,7 @@ void WindowPrintf(fmt, args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 char *fmt;
 long args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
 {
-# ifdef AZTEC_C 	/* Efficient but not portable */
+# ifdef AZTEC_36 	/* Efficient but not portable */
     format(WindowPutchar, fmt, &args);
 #else
     WindowFlush();  /* Don't know if all will fit */
@@ -656,3 +663,31 @@ void Initialize()
 
     Initialized = 1;
 }
+
+#ifdef AMIFLUSH
+/* This routine adapted from AmigaMail IV-37 by Michael Sinz */
+static struct Message *
+GetFMsg(port)
+	struct MsgPort *port;
+	{
+	struct IntuiMessage *msg,*succ,*succ1;
+
+	if(msg=(struct IntuiMessage *)GetMsg(port)){
+		if(!flags.amiflush)return(msg);
+		if(msg->Class==RAWKEY){
+			Forbid();
+			succ=(struct IntuiMessage *)(port->mp_MsgList.lh_Head);
+			while(succ1=(struct IntuiMessage *)
+				 (succ->ExecMessage.mn_Node.ln_Succ)){
+				if(succ->Class==RAWKEY){
+					Remove((struct Node *)succ);
+					ReplyMsg((struct Message *)succ);
+				}
+				succ=succ1;
+			}
+			Permit();
+		}
+	}
+	return(msg);
+}
+#endif

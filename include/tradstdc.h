@@ -32,8 +32,11 @@
 /* #define USE_VARARGS		/* use <varargs.h> instead of <stdarg.h> */
 /* #define USE_OLDARGS		/* don't use any variable argument facilites */
 
-#if defined(__STDC__) || defined(VMS)
-# if !(defined(AMIGA) && defined(AZTEC_C) || defined(USE_VARARGS) || defined(USE_OLDARGS))
+#ifdef __STDC__
+# if defined(__GNUC__) && defined(VMS)
+#   define USE_OLDARGS          /* <stdarg.h> is missing for some versions */
+# endif
+# if !defined(USE_VARARGS) && !defined(USE_OLDARGS)
 #   define USE_STDARG
 # endif
 #endif
@@ -76,7 +79,8 @@
 #endif /* NEED_VARARGS */
 
 
-#if defined(__STDC__) || defined(MSDOS) || defined(THINKC4)
+/* Unfortunately amiga aztec 5.0 doesn't handle prototyping chars correctly */
+#if (defined(__STDC__) && !defined(AZTEC_50)) || defined(MSDOS) || defined(THINKC4)
 
 /* Used for robust ANSI parameter forward declarations:
  * int VDECL(sprintf, (char *, const char *, ...));
@@ -124,9 +128,11 @@ typedef char *		genericptr_t;
 #  endif
 # endif
 
+#ifndef AZTEC_50	/* Take out when aztec handles prototyping OK */
 # define const
 # define signed
 # define volatile
+#endif
 
 #endif /* __STDC__ */
 

@@ -6,8 +6,8 @@
 
 #include "hack.h"
 #ifdef SPELLS
-static schar delay;		/* moves left for this spell */
-static struct obj *book;	/* last/current book being xscribed */
+static schar NEARDATA delay;		/* moves left for this spell */
+static struct obj NEARDATA *book;	/* last/current book being xscribed */
 
 #ifdef HARD
 #define spelluses(spell)	spl_book[spell-1].sp_uses
@@ -16,6 +16,11 @@ static struct obj *book;	/* last/current book being xscribed */
 #define spellev(spell)		spl_book[spell-1].sp_lev
 #define spellname(spell)	objects[spl_book[spell-1].sp_id].oc_name
 #define spellid(spell)		spl_book[spell-1].sp_id
+
+static void FDECL(cursed_book, (int));
+STATIC_PTR int NDECL(learn);
+static int NDECL(getspell);
+static char FDECL(spellet, (int));
 
 static void
 cursed_book(lev)
@@ -77,9 +82,7 @@ cursed_book(lev)
 	return;
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 learn()
 {
@@ -348,6 +351,12 @@ boolean atme;
 	case SPE_FINGER_OF_DEATH:
 	case SPE_LIGHT:
 	case SPE_DETECT_UNSEEN:
+#ifdef MACOS
+		if (pseudo->otyp == SPE_DIG)
+		{
+			segments |= SEG_SPELL;
+		}
+#endif
 		if (!(objects[pseudo->otyp].bits & NODIR)) {
 			if (atme) u.dx = u.dy = u.dz = 0;
 			else (void) getdir(1);

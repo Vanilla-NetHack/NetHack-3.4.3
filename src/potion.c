@@ -5,7 +5,10 @@
 #include "hack.h"
 
 #ifdef OVLB
-static int nothing, unkn;
+static void NDECL(ghost_from_bottle);
+static boolean FDECL(neutralizes, (struct obj *,struct obj *));
+
+static int NEARDATA nothing, NEARDATA unkn;
 #endif /* OVLB */
 
 #ifdef WORM
@@ -22,7 +25,7 @@ boolean notonhead = FALSE;
 
 #ifdef OVLB
 
-static const char beverages[] = { POTION_SYM, 0 };
+static const char NEARDATA beverages[] = { POTION_SYM, 0 };
 
 void
 make_confused(xtime,talk)
@@ -157,11 +160,18 @@ boolean talk;
 static void
 ghost_from_bottle()
 {
-	if(!makemon(&mons[PM_GHOST], u.ux, u.uy)){
+	struct monst *mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy);
+
+	if (!mtmp) {
 		pline("This bottle turns out to be empty.");
 		return;
 	}
-	pline("As you open the bottle, an enormous ghost emerges!");
+	if (Blind) {
+		pline("As you open the bottle, something emerges.");
+		return;
+	}
+	pline("As you open the bottle, an enormous %s emerges!",
+		Hallucination ? rndmonnam() : "ghost");
 	if(flags.verbose)
 	    You("are frightened to death, and unable to move.");
 	nomul(-3);
@@ -268,6 +278,8 @@ peffects(otmp)
 			}
 			if(++i >= A_MAX) i = 0;
 		    }
+		    if((ABASE(A_STR) == AMAX(A_STR)) && (u.uhs >= 3))
+			losestr(1);		/* kludge - mrs */
 		}
 		break;
 	case POT_HALLUCINATION:
@@ -342,11 +354,11 @@ peffects(otmp)
 			unkn++;
 			You("have an uneasy feeling...");
 		} else {
-			You("feel self-knowledgeable...");
 			if (otmp->blessed) {
 				adjattrib(A_INT, 1, FALSE);
 				adjattrib(A_WIS, 1, FALSE);
 			}
+			You("feel self-knowledgeable...");
 			more();
 			enlightenment();
 			pline("The feeling subsides.");
@@ -360,18 +372,19 @@ peffects(otmp)
 		else {
 		     newsym(u.ux,u.uy);
 		     if(!Blind)
-		       pline("Gee!  All of a sudden, you can't see yourself.");
+		       pline(Hallucination ?
+			 "Far out, man!  You can see right through yourself!" :
+			 "Gee!  All of a sudden, you can't see yourself.");
 		     else
 		       You("feel rather airy."), unkn++;
 		}
 		if (otmp->blessed && !(HInvis & INTRINSIC)) {
+			nothing = 0;
 #ifndef MACOS
 			pline("Do you want the invisibility to be permanent? ");
-			nothing = 0;
 			if (yn()=='n') HInvis += rn1(15,31);
 			else HInvis |= INTRINSIC;
 #else
-			nothing = 0;
 			if (UseMacAlertText(128,
 				"Do you want the invisibility to be permanent ?")
 				== 2) HInvis += rn1(15,31);
@@ -520,10 +533,22 @@ peffects(otmp)
 		if (otmp->cursed) {
 			unkn++;
 			/* they went up a level */
-			if(dlevel > 1 && dlevel <= MAXLEVEL) { 
+#ifdef ENDGAME
+			if((dlevel > 1  || u.uhave_amulet) &&
+							dlevel <= MAXLEVEL) { 
 				You("rise up, through the ceiling!");
+				goto_level((dlevel==1) ? ENDLEVEL
+					: dlevel-1, FALSE, FALSE);
+			} else You("have an uneasy feeling.");
+#else
+			if(dlevel > 1 && dlevel <= MAXLEVEL) {
+				You("rise up, through the ceiling!");
+#ifdef MACOS
+				segments |= SEG_POTION;
+#endif
 				goto_level(dlevel-1, FALSE, FALSE);
 			} else You("have an uneasy feeling.");
+#endif
 			break;
 		}
 		pluslvl();
@@ -740,6 +765,8 @@ register struct obj *obj;
 				if(!Blind)
 				pline("%s looks healthier.", Monnam(mon));
 				mon->mhp += d(2,6);
+				if (mon->mhp > mon->mhpmax)
+					mon->mhp = mon->mhpmax;
 			}
 		}
 		/* TO DO: Gremlins multiply when doused with water */
@@ -1023,10 +1050,12 @@ dodip()
 				return(1);
 		}
 
-		obj->spe--; /* diluted */
-		if (obj->otyp == POT_WATER)
-			pline("The mixture bubbles violently, then clears.");
-		else {
+		if (obj->otyp == POT_WATER) {
+			obj->spe = 0; /* in case it was diluted before */
+			pline("The mixture bubbles violently%s.",
+				Blind ? "" : ", then clears");
+		} else {
+			obj->spe--; /* diluted */
 			if (!Blind) {
 				pline("The mixture looks %s.", objects[obj->otyp].oc_descr);
 				obj->dknown = 1;
@@ -1059,6 +1088,7 @@ dodip()
 		potion->otyp = POT_WATER;
 		potion->blessed = 0;
 		potion->cursed = 0;
+		potion->spe = 0;
 		return(1);
 	}
 
@@ -1159,23 +1189,25 @@ register struct obj	*otmp;
 {
 	register struct obj	*objs;
 	register struct monst	*mtmp;
-	boolean mfound=FALSE;
+	boolean mfound=FALSE, mofound=FALSE;
 
 	if(!fobj) {
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
-			if (mtmp->minvent) {
-				/* OK, it's used for 2 different things */
-				mfound = TRUE;
+			/* mofound can be 1 of 2 completely different things,
+			 * either of which stops the "strange feeling"...
+			 */
+			if (mtmp->minvent || (mtmp->mimic && otmp->cursed)) {
+				mofound = TRUE;
 				break;
 			}
 		}
-		if (!mfound) {
+		if (!mofound) {
 			if (otmp)
 			    strange_feeling(otmp, "You feel a pull downward.");
 			return(1);
 		}
 	}
-	mfound = FALSE;
+	if (mofound) goto outobjmap;
 	for(objs = fobj; objs; objs = objs->nobj)
 		if(objs->ox != u.ux || objs->oy != u.uy)
 			goto outobjmap;

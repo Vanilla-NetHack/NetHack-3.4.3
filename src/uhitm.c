@@ -7,11 +7,14 @@
 #  include "artifact.h"
 #endif
 
-static boolean hitum();
+static boolean FDECL(known_hitum, (struct monst *,int));
+static boolean FDECL(hitum, (struct monst *,int));
 #ifdef POLYSELF
-static boolean hmonas();
+static int FDECL(explum, (struct monst *,struct attack *));
+static int FDECL(gulpum, (struct monst *,struct attack *));
+static boolean FDECL(hmonas, (struct monst *,int));
 #endif
-static void nohandglow();
+static void FDECL(nohandglow, (struct monst *));
 
 #ifdef WORM
 extern boolean notonhead;
@@ -26,7 +29,7 @@ struct monst *mon;
 
 	mm.x = mon->mx;
 	mm.y = mon->my;
-	enexto(&mm, mm.x, mm.y, mon->data);
+	if (!enexto(&mm, mm.x, mm.y, mon->data)) return (struct monst *)0;
 	if (MON_AT(mm.x, mm.y) || mon->mhp <= 1) return (struct monst *)0;
 	m2 = newmonst(0);
 	*m2 = *mon;			/* copy condition of old monster */
@@ -64,7 +67,12 @@ struct monst *mon;
 	m2->mdispl = 0;
 	pmon(m2);	/* display the new monster */
 	place_monster(m2, m2->mx, m2->my);
-	if (mon->mtame) (void) tamedog(m2, (struct obj *)0);
+	if (mon->mtame) {
+	    struct monst *m3;
+
+	    if (m3 = tamedog(m2, (struct obj *)0))
+		m2 = m3;
+	}
 	return m2;
 }
 
@@ -81,7 +89,7 @@ register struct monst *mtmp;
 #ifdef MACOS
 			char mac_tbuf[80];
 			if(!flags.silent) SysBeep(1);
-			sprintf(mac_tbuf, "Really attack %s?", mon_nam(mtmp));
+			Sprintf(mac_tbuf, "Really attack %s?", mon_nam(mtmp));
 			if(UseMacAlertText(128, mac_tbuf) != 1) {
 #else
 			pline("Really attack %s? ", mon_nam(mtmp));
@@ -296,7 +304,7 @@ hitum(mon, tmp)		/* returns TRUE if monster still lives */
 struct monst *mon;
 int tmp;
 {
-	static int malive;
+	static int NEARDATA malive;
 	boolean mhit = (tmp > rnd(20) || u.uswallow);
 
 	malive = known_hitum(mon, mhit);
@@ -428,6 +436,7 @@ register int thrown;
 			useup(obj);
 			hittxt = TRUE;
 			tmp = 1;
+			break;
 #endif
 		case EXPENSIVE_CAMERA:
 	You("succeed in destroying your camera.  Congratulations!");
@@ -445,7 +454,7 @@ register int thrown;
 			    kludge("%s turns to stone.", Monnam(mon));
 			    stoned = TRUE;
 			    xkilled(mon,0);
-			    nohandglow();
+			    nohandglow(mon);
 			    return(FALSE);
 			}
 			tmp = mons[obj->corpsenm].msize + 1;
@@ -576,7 +585,7 @@ register int thrown;
 		   /* && !destroyed  -- guaranteed by mhp > 1 */ ) {
 
 		if (clone_mon(mon)) {
-			pline("%s divides as you hit it!", Monnam(mon));
+			kludge("%s divides as you hit it!", Monnam(mon));
 			hittxt = TRUE;
 		}
 	}
@@ -602,13 +611,13 @@ register int thrown;
 	if (poiskilled) {
 		pline("The poison was deadly...");
 		xkilled(mon, 0);
-		nohandglow();
+		nohandglow(mon);
 		return FALSE;
 	} else if (destroyed) {
 		killed(mon);	/* takes care of most messages */
-		nohandglow();
+		nohandglow(mon);
 	} else if(u.umconf && !thrown) {
-		nohandglow();
+		nohandglow(mon);
 		if(!resist(mon, '+', 0, NOTELL)) mon->mconf = 1;
 		if(!mon->mstun && mon->mcanmove && !mon->msleep &&
 		   !Blind && mon->mconf)
@@ -675,41 +684,50 @@ register struct attack *mattk;
 			if(thick_skinned(mdef->data)) tmp = 0;
 		break;
 	    case AD_FIRE:
-# ifdef GOLEMS
-		golemeffects(mdef, AD_FIRE, tmp);
-# endif /* GOLEMS */
+		if(!Blind) pline("%s is on fire!", Monnam(mdef));
+		tmp += destroy_mitem(mdef, SCROLL_SYM, AD_FIRE);
+# ifdef SPELLS
+		tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
+# endif
 		if(resists_fire(pd)) {
+		    if (!Blind)
+			pline("The fire doesn't heat %s!", mon_nam(mdef));
+# ifdef GOLEMS
+		    golemeffects(mdef, AD_FIRE, tmp);
+# endif /* GOLEMS */
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
-		} else {
-		    if(!Blind) pline("%s is on fire!", Monnam(mdef));
-		    tmp += destroy_mitem(mdef, SCROLL_SYM, AD_FIRE);
-		    tmp += destroy_mitem(mdef, POTION_SYM, AD_FIRE);
-# ifdef SPELLS
-		    tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
-# endif
 		}
+		/* only potions damage resistant players in destroy_item */
+		tmp += destroy_mitem(mdef, POTION_SYM, AD_FIRE);
 		break;
 	    case AD_COLD:
-# ifdef GOLEMS
-		golemeffects(mdef, AD_COLD, tmp);
-# endif /* GOLEMS */
+		if(!Blind) pline("%s is covered in frost!", Monnam(mdef));
 		if(resists_cold(pd)) {
 		    shieldeff(mdef->mx, mdef->my);
+		    if (!Blind)
+			pline("The frost doesn't chill %s!", mon_nam(mdef));
+# ifdef GOLEMS
+		    golemeffects(mdef, AD_COLD, tmp);
+# endif /* GOLEMS */
 		    tmp = 0;
-		} else {
-		    if(!Blind) pline("%s is covered in frost.", Monnam(mdef));
-		    tmp += destroy_mitem(mdef, POTION_SYM, AD_COLD);
 		}
+		tmp += destroy_mitem(mdef, POTION_SYM, AD_COLD);
 		break;
 	    case AD_ELEC:
-# ifdef GOLEMS
-		golemeffects(mdef, AD_ELEC, tmp);
-# endif /* GOLEMS */
+		if (!Blind) pline("%s is zapped!", Monnam(mdef));
+		tmp += destroy_mitem(mdef, WAND_SYM, AD_ELEC);
 		if(resists_elec(pd)) {
+		    if (!Blind)
+			pline("The zap doesn't shock %s!", mon_nam(mdef));
+# ifdef GOLEMS
+		    golemeffects(mdef, AD_ELEC, tmp);
+# endif /* GOLEMS */
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
 		}
+		/* only rings damage resistant players in destroy_item */
+		tmp += destroy_mitem(mdef, RING_SYM, AD_ELEC);
 		break;
 	    case AD_ACID:
 		if(resists_acid(pd)) tmp = 0;
@@ -1464,9 +1482,10 @@ generic:
 }
 
 static void
-nohandglow()
+nohandglow(mon)
+struct monst *mon;
 {
-	if (!u.umconf) return; /* for safety */
+	if (!u.umconf || mon->mconf) return;
 	if (u.umconf == 1) {
 		if (Blind)
 			Your("%s stop tingling.", makeplural(body_part(HAND)));

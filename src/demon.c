@@ -122,6 +122,8 @@ struct monst *mtmp;
 		   plur(offer));
 
 	u.ugold -= offer;
+	mtmp->mgold += offer;
+	flags.botl = 1;
 	return(offer);
 }
 #endif

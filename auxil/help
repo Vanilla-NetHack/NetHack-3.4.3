@@ -102,12 +102,12 @@ Commands:
 		the game with a NETHACKOPTIONS environment variable, not
 		with the 'O' command.
 	p	Pay your shopping bill.
-	P	Put on a ring.
+	P	Put on a ring or amulet.
 	^P	Repeat last message (subsequent ^P's repeat earlier messages).
 	q	Drink (quaff) a potion.
 	Q	Quit the game.
 	r	Read a scroll or spell book.
-	R	Remove ring.
+	R	Remove a ring or amulet.
 	^R	Redraw the screen.
 	s	Search for secret doors and traps around you.
 	S	Save the game.

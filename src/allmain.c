@@ -27,52 +27,12 @@ moveloop()
 
 	for(;;) {
 #ifdef MACOS
-	static	int old_dlevel = 0;
-	extern	xchar dlevel; 
 	extern	Boolean	lowMem;
 	extern	long	lowMemLimit;
-	if (!(moves % 20) || lowMem || FreeMem() < lowMemLimit || old_dlevel != dlevel) {
-		old_dlevel = dlevel;
-		UnloadSeg(ddocall);
-		UnloadSeg(castmu);
-		UnloadSeg(doforce);
-		UnloadSeg(doeat);
-		UnloadSeg(dozap);
-		UnloadSeg(initterm);
-		UnloadSeg(doapply);
-		UnloadSeg(dokick);
-		UnloadSeg(outrumor);
-		UnloadSeg(steal);
-		UnloadSeg(done1);
-		UnloadSeg(dodrink);
-		UnloadSeg(doturn);
-#ifdef REINCARNATION
-		UnloadSeg(makeroguerooms);
-#endif
-#ifdef STRONGHOLD
-		UnloadSeg(load_special);
-#endif
-		UnloadSeg(mklev);
-#ifdef MUSIC
-		UnloadSeg(do_play_instrument);
-#endif
-#ifdef SPELLS
-		UnloadSeg(docast);
-#endif
-		UnloadSeg(savebones);
-		UnloadSeg(expels);
-		UnloadSeg(attack);
-		UnloadSeg(doname);
-		if (FreeMem() < 36864)
-		{
-			long	space;
-			
-			UnloadSeg(newhp);
-			UnloadSeg(attack);
+	if (!(moves % 20) || lowMem || FreeMem() < lowMemLimit) {
+		long tmp = 0;
 
-			space = 0x7FFFFFFFL;
-			MaxMem(&space);
-		}
+		freeSegs(&tmp);
 	}
 #endif
 #ifdef CLIPPING

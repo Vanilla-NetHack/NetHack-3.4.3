@@ -12,9 +12,9 @@
 # These two options should be used for most setups.  If you're machine isn't
 # very IBM-compatible, and NetHack doesn't work, try commenting out this line.
 #
-OPTIONS=rawio,IBM_BIOS
+OPTIONS=rawio,IBM_BIOS,IBMgraphics
 # DEC Rainbows will hang if rawio is set, so they should instead use:
-#OPTIONS=IBM_BIOS,DEC_Rainbow
+#OPTIONS=IBM_BIOS,DECgraphics
 #
 #
 # Some options to set personal preferences.  Uncomment and change these to
@@ -68,20 +68,24 @@ SAVE=;n
 # If you specify less that 35 ASCII values, the remaining characters will be
 # set to their respective defaults.
 #
+# If you merely set the IBMgraphics option as above, NetHack will use IBM
+# extended ASCII for dungeon characters.  If you don't like the selections,
+# you can make up your own via the graphics option (and not set IBMgraphics).
 #
 # An example using the IBM graphics character set:
 #	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 249 239 239 254 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
+#GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 249 239 239 254 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
 # An alternative:
 #GRAPHICS= 032 186 205 201 187 200 188 206 202 203 185 204 179 196 092 047 249 239 239 254 249 177 060 062 094 034 247 244 035 092 095 060 062 179 196
 #
 #
 # Using the DEC Rainbow/ANSI line-drawing character set:
 #
-# You must also set the DECRainbow option, above.  NetHack will then switch
-# into the line drawing character set for any values over 128 below.  Just
-# add 128 to the value of any line-drawing character you want to use.  You
-# can use characters from both sets this way.  These are also the characters
-# to use for the ANSI ruling character set '0'.
+# If you have compiled with TERMLIB, merely set the DECgraphics option as
+# above.  NetHack will then switch into the VTxxx line-drawing character set
+# (aka ANSI ruling character set '0') for dungeon characters.  If you don't
+# like the selections, you can make up your own via the graphics option,
+# adding 128 to the value of any line-drawing character you want to use.
+# (In such a case, do not set DECgraphics.)
 #
 #GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 254 241 248 043 254 225

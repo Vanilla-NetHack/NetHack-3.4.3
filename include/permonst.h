@@ -61,9 +61,10 @@ extern struct permonst
 #if defined(SMALLDATA) && !defined(MAKEDEFS_C)
 			*mons;
 #else
-			mons[];		/* the master list of monster types */
+	NEARDATA	mons[];		/* the master list of monster types */
 #endif
-extern struct permonst playermon, *uasmon;	/* you in the same terms */
+extern struct permonst NEARDATA playermon, NEARDATA *uasmon;
+						/* you in the same terms */
 
 #if defined(SMALLDATA) && defined(MAKEDEFS_C)
 

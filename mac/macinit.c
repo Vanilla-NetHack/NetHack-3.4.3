@@ -27,6 +27,7 @@ typedef struct defaultData {
 } defaultData;
 #define	fDFZoomWindow	0x02L
 #define	fDFUseDefaultFont	0x01L
+short altCurs;
 
 
 int
@@ -35,7 +36,7 @@ short	row, col;
 {
 	register short	i, j;
 	short		tempFont, tempSize, fontNum, size;
-	char	*l;
+	char	*l, *m;
 	EventRecord	theEvent;
 	FontInfo	fInfo;
 	Handle	temp;
@@ -80,7 +81,7 @@ short	row, col;
 	theMenu = NewMenu(appleMenu, "\001\024");	/*  apple menu  */
 	{
 		char	tmp[256];
-		sprintf(&tmp[1],"About NetHack %s\311;(-", VERSION);
+		Sprintf(&tmp[1],"About NetHack %s\311;(-", VERSION);
 		tmp[0] = (char)strlen(&tmp[1]);
 		AppendMenu(theMenu,tmp);
 	}
@@ -125,7 +126,7 @@ short	row, col;
 		size = 12;
 	else
 		size = 9;
-	strcpy((char *)&font[0], "\006Monaco");
+	Strcpy((char *)&font[0], "\006Monaco");
 	
 	temp = GetResource(HACK_DATA, DEFAULT_DATA);
 	if (temp) {
@@ -222,15 +223,21 @@ short	row, col;
 		TOP_OFFSET + (row * t->height) + 2 * Screen_Border + 10);
 	
 	t->screen = (char **)malloc(row * sizeof(char *));
+	t->scrAttr = (char **)malloc(row * sizeof(char *));
 	l = malloc(row * col * sizeof(char));
+	m = malloc(row * col * sizeof(char));
 	for (i = 0;i < row;i++) {
 		t->screen[i] = (char *)(l + (i * col * sizeof(char)));
+		t->scrAttr[i] = (char *)(m + (i * col * sizeof(char)));
 	}
 	for (i = 0; i < row; i++) {
 		for (j = 0; j < col; j++) {
 			t->screen[i][j] = ' ';
+			t->scrAttr[i][j] = '\0';
 		}
 	}
+	t->curHilite = 0;
+	t->curAttr = 0;
 
 	/* give time for Multifinder to bring NetHack window to front */
 	for(tempFont = 0; tempFont<10; tempFont++) {
@@ -290,8 +297,10 @@ short	row, col;
 		panic("Can't get OBJECT resource data.");
 	}
 	
-	for (i = 0; i<8; i++) {
-		t->cursor[i] = GetCursor(100+i);
+	for (j = 30; j >= 0; j -= 10) {
+		for (i = 0; i<=8; i++) {
+			t->cursor[i] = GetCursor(100+i+j);	/* self-contained cursors */
+		}
 	}
 	
 	(void)aboutBox(0);	
@@ -380,13 +389,25 @@ free_decl()
 int
 read_config_file()
 {
-
+	term_info	*t;
 	int optfd;
+	Str255	name;
+	short	oldVol;
+	
 	optfd = 0;
-	if ( (optfd = open(OPTIONS, OMASK)) > (int)NULL){
+	t = (term_info *)GetWRefCon(HackWindow);
+
+	GetVol(name, &oldVol);
+	SetVol(0L, t->system.sysVRefNum);
+	if ( (optfd = open(OPTIONS, OMASK)) <= 0) {
+		SetVol(0L, t->recordVRefNum);
+		optfd = open(OPTIONS, OMASK);
+	}
+	if ( optfd > (short)NULL){
 		read_opts(optfd);
 		(void) close(optfd);
 	}
+	SetVol(0L, oldVol);
 }
 
 int
@@ -394,15 +415,23 @@ write_opts()
 {
 	int fd;
 	short temp_flags;
+	term_info	*t;
+
+	t = (term_info *)GetWRefCon(HackWindow);
+	SetVol(0L, t->system.sysVRefNum);
 
 	if((fd = open(OPTIONS, O_WRONLY | O_BINARY)) <= 0) {
 		OSErr	result;
 		char	*tmp;
 		
-		tmp = CtoPstr(OPTIONS);
-		result = Create((StringPtr)tmp, (short)0, CREATOR, AUXIL_TYPE);
-	 	if (result == noErr)
-	 		fd = open(OPTIONS, O_WRONLY | O_BINARY);
+		SetVol(0L, t->recordVRefNum);
+		if((fd = open(OPTIONS, O_WRONLY | O_BINARY)) <= 0) {
+			SetVol(0L, t->system.sysVRefNum);
+			tmp = CtoPstr(OPTIONS);
+			result = Create((StringPtr)tmp, (short)0, CREATOR, AUXIL_TYPE);
+		 	if (result == noErr)
+		 		fd = open(OPTIONS, O_WRONLY | O_BINARY);
+		}
 	 }
 
 	if (fd < 0)
@@ -418,6 +447,8 @@ write_opts()
 		
 		temp_flags = (macflags & fZoomOnContextSwitch) ? 1 : 0;
 		write(fd, &temp_flags, sizeof(short));
+
+		write(fd, &altCurs, sizeof(short));
 	
 #ifdef TUTTI_FRUTTI
 		write(fd, pl_fruit, PL_FSIZ);
@@ -425,6 +456,9 @@ write_opts()
 		write(fd, inv_order, strlen(inv_order)+1);
 		close(fd);
 	}
+	
+	SetVol(0L, t->recordVRefNum);
+	
 	return 0;
 }
 
@@ -448,12 +482,15 @@ int fd;
 	else
 		macflags &= ~fZoomOnContextSwitch;
 
+	read(fd, &altCurs, sizeof(short));
+	
 #ifdef TUTTI_FRUTTI
 	read(fd, pl_fruit, PL_FSIZ);
 #endif
 	read(fd,tmp_order,strlen(inv_order)+1);
 	if(strlen(tmp_order) == strlen(inv_order))
-		strcpy(inv_order,tmp_order);
+		Strcpy(inv_order,tmp_order);
+		
 	return 0;
 }
 

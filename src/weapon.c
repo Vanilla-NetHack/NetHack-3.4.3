@@ -11,7 +11,7 @@
 
 #ifdef OVLB
 
-static const char kebabable[] = { S_XORN, S_DRAGON, S_NAGA, S_GIANT, 0 };
+static const char NEARDATA kebabable[] = { S_XORN, S_DRAGON, S_NAGA, S_GIANT, 0 };
 
 /*
  * 	hitval returns an integer representing the "to hit" bonuses
@@ -176,17 +176,18 @@ set_uasmon() {		/* update the "uasmon" structure */
 #define	Oselect(x)	if((otmp = m_carrying(mtmp, x))) return(otmp);
 
 #ifdef TOLKIEN
-static const int rwep[] =
+static const int NEARDATA rwep[] =
 	{ DWARVISH_SPEAR, ELVEN_SPEAR, SPEAR, ORCISH_SPEAR, JAVELIN,
 	  SHURIKEN, SILVER_ARROW, ELVEN_ARROW, ARROW, ORCISH_ARROW,
 	  CROSSBOW_BOLT, ELVEN_DAGGER, DAGGER, ORCISH_DAGGER, KNIFE, ROCK,
-	  LOADSTONE, LUCKSTONE, DART, BOOMERANG, CREAM_PIE
+	  LOADSTONE, LUCKSTONE, DART, /* BOOMERANG, */ CREAM_PIE
 	  /* note: CREAM_PIE should NOT be #ifdef KOPS */
 	  };
 #else
-static const int rwep[] =
+static const int NEARDATA rwep[] =
 	{ SPEAR, JAVELIN, SHURIKEN, SILVER_ARROW, ARROW, CROSSBOW_BOLT,
-	  DAGGER, KNIFE, ROCK, LOADSTONE, LUCKSTONE, DART, BOOMERANG, CREAM_PIE
+	  DAGGER, KNIFE, ROCK, LOADSTONE, LUCKSTONE, DART, /* BOOMERANG, */
+	  CREAM_PIE
 	  /* note: CREAM_PIE should NOT be #ifdef KOPS */
 	  };
 #endif
@@ -261,7 +262,7 @@ register struct monst *mtmp;
 
 #ifdef TOLKIEN
 /* 0 = used by any monster; 1 = only used by strong monsters */
-static const int hwep[][2] =
+static const int NEARDATA hwep[][2] =
 	{ {DWARVISH_MATTOCK,1}, {TWO_HANDED_SWORD,1}, {KATANA,0},
 	  {UNICORN_HORN,1},
 #ifdef WORM
@@ -288,7 +289,7 @@ static const int hwep[][2] =
 	};
 #else /* TOLKIEN */
 /* 0 = used by any monster; 1 = only used by strong monsters */
-static const int hwep[][2] =
+static const int NEARDATA hwep[][2] =
 	{ {TWO_HANDED_SWORD,1}, {KATANA,0}, {UNICORN_HORN,1},
 #ifdef WORM
 	  {CRYSKNIFE,0},

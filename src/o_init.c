@@ -4,6 +4,10 @@
 
 #include	"hack.h"		/* for typedefs */
 
+#if defined(LATTICE) 				/* This is NOT */
+# define MACOS					/* a typo! */
+#endif
+
 static void NDECL(setgemprobs);
 static void FDECL(shuffle,(int,int,BOOLEAN_P));
 static boolean FDECL(interesting_to_discover,(int));
@@ -28,8 +32,8 @@ const char obj_symbols[] = {
 #endif
 	RING_SYM, GEM_SYM, 0 };
 
-int bases[sizeof(obj_symbols)] = DUMMY;
-static int disco[TOTAL_OBJS] = DUMMY;
+int NEARDATA bases[sizeof(obj_symbols)] = DUMMY;
+static int NEARDATA disco[TOTAL_OBJS] = DUMMY;
 
 int
 letindex(let) register char let; {
@@ -301,7 +305,7 @@ register int fd;
 		objects[i].oc_descr = d[switches[i]].descr;
 	}
 #else
-# if !defined(MSDOS) && !defined(M_XENIX) && !defined(HPUX)
+# if !defined(MSDOS) && !defined(M_XENIX) && !defined(HPUX) && !defined(VAXC)
 	differ = (genericptr_t)&objects[0] - (genericptr_t)then;
 # else
 	differ = (long)&objects[0] - (long)then;
@@ -310,7 +314,7 @@ register int fd;
 	for(i=0; i < TOTAL_OBJS; i++) {
 #ifndef MACOS
 		if (objects[i].oc_name) {
-# if !defined(MSDOS) && !defined(M_XENIX)
+# if !defined(MSDOS) && !defined(M_XENIX) && !defined(HPUX) && !defined(VAXC)
 			objects[i].oc_name += differ;
 # else
 			objects[i].oc_name =
@@ -318,7 +322,7 @@ register int fd;
 # endif
 		}
 		if (objects[i].oc_descr) {
-# if !defined(MSDOS) && !defined(M_XENIX)
+# if !defined(MSDOS) && !defined(M_XENIX) && !defined(HPUX) && !defined(VAXC)
 			objects[i].oc_descr += differ;
 # else
 			objects[i].oc_descr =

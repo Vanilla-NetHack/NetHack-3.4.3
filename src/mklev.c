@@ -25,7 +25,7 @@ static void NDECL(make_niches);
 static void NDECL(makebigroom);
 static void FDECL(addrsx,(int,int,int,int,BOOLEAN_P));
 static void FDECL(addrs,(int,int,int,int));
-static int FDECL(comp,(genericptr_t,genericptr_t));
+STATIC_PTR int FDECL(comp,(genericptr_t,genericptr_t));
 static void FDECL(dosdoor,(int,int,struct mkroom *,int));
 static void NDECL(makecorridors);
 static void FDECL(join,(int,int));
@@ -134,9 +134,10 @@ register int lowx,lowy,hix,hiy;
 
 /* Args must be genericptr_t so that qsort will always be happy. */
 
-static int
+STATIC_PTR int
 comp(vx,vy)
-genericptr_t vx, vy;
+genericptr_t vx;
+genericptr_t vy;
 {
 #ifdef LINT
 /* lint complains about possible pointer alignment problems, but we know
@@ -203,21 +204,21 @@ chk:
 	/* check area around room (and make room smaller if necessary) */
 	for(x = lowx - xlim; x <= hix + xlim; x++) {
 		for(y = lowy - ylim; y <= hiy + ylim; y++) {
-			if(levl[x][y].typ) {
+			if(isok(x,y) && levl[x][y].typ) {
 #ifdef WIZARD
 			    if(wizard && !secret)
 				pline("Strange area [%d,%d] in maker().",x,y);
 #endif
-				if(!rn2(3)) return(0);
-				if(x < lowx)
-					lowx = x+xlim+1;
-				else
-					hix = x-xlim-1;
-				if(y < lowy)
-					lowy = y+ylim+1;
-				else
-					hiy = y-ylim-1;
-				goto chk;
+			    if(!rn2(3)) return(0);
+			    if(x < lowx)
+				    lowx = x+xlim+1;
+			    else
+				    hix = x-xlim-1;
+			    if(y < lowy)
+				    lowy = y+ylim+1;
+			    else
+				    hiy = y-ylim-1;
+			    goto chk;
 			}
 		}
 	}
@@ -540,7 +541,14 @@ register int type;
 		if (levl[x][y].doormask != D_ISOPEN && !shdoor && !rn2(25))
 		    levl[x][y].doormask |= D_TRAPPED;
 	    } else
+#ifdef STUPID
+		if (shdoor)
+			levl[x][y].doormask = D_ISOPEN;
+		else
+			levl[x][y].doormask = D_NODOOR;
+#else
 		levl[x][y].doormask = (shdoor ? D_ISOPEN : D_NODOOR);
+#endif
 	    levl[x][y].scrsym = news0(x,y);
 	} else { /* SDOOR */
 		if(shdoor || !rn2(5))	levl[x][y].doormask = D_LOCKED;
@@ -643,7 +651,7 @@ int trap_type;
 		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
 		    (void) mksobj_at(SCR_TELEPORTATION, xx, yy+dy);
-		    if(!rn2(3)) (void) mkobj_at(0, xx, yy+dy);
+		    if(!rn2(3)) (void) mkobj_at(0, xx, yy+dy, TRUE);
 		}
 	    }
 	    return;
@@ -696,7 +704,7 @@ makebigroom()
 	}
 	n = 6 + rn2(10);
 	while (n--)
-		(void) mkobj_at(0,somex(croom),somey(croom));
+		(void) mkobj_at(0,somex(croom),somey(croom),TRUE);
 }
 
 static void
@@ -989,14 +997,15 @@ skip0:
 	skip_nonrogue:
 #endif
 		if(!rn2(3)) {
-			(void) mkobj_at(0, somex(croom), somey(croom));
+			(void) mkobj_at(0, somex(croom), somey(croom), TRUE);
 			tryct = 0;
 			while(!rn2(5)) {
 				if(++tryct > 100){
 					Printf("tryct overflow4\n");
 					break;
 				}
-				(void) mkobj_at(0, somex(croom), somey(croom));
+				(void) mkobj_at(0, somex(croom), somey(croom),
+									TRUE);
 			}
 		}
 	}

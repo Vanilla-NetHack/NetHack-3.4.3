@@ -5,6 +5,13 @@
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) */
 
 #include "hack.h"
+#ifndef STUPID_CPP
+/* fortunately, only errno is used from <errno.h> and all known STUPID_CPPs
+ * are on UNIX SYSV and will thus all be using the extern int errno; declared
+ * below 
+ */
+#include <errno.h>
+#endif
 
 #if defined(DGK)
 extern struct finfo fileinfo[];
@@ -13,21 +20,19 @@ extern boolean level_exists[];
 #endif
 
 #ifdef SINKS
+# ifdef OVLB
 static void FDECL(trycall, (struct obj *));
-static void FDECL(dosinkring, (struct obj *));
-#endif
-#ifndef OVERLAY
-static int FDECL(drop, (struct obj *));
-#endif
-static void NDECL(litter);
-#ifndef OVERLAY
-static int NDECL(wipeoff);
-#endif
+# endif /* OVLB */
+STATIC_DCL void FDECL(dosinkring, (struct obj *));
+#endif /* SINKS */
+STATIC_PTR int FDECL(drop, (struct obj *));
+STATIC_DCL void NDECL(litter);
+STATIC_PTR int NDECL(wipeoff);
 boolean NDECL(drag_down);
 
 #ifdef OVLB
 
-static const char drop_types[] = { '0', GOLD_SYM, '#', 0 };
+static const char NEARDATA drop_types[] = { '0', GOLD_SYM, '#', 0 };
 
 int
 dodrop() {
@@ -90,7 +95,7 @@ int x,y;
 	    }
 	    obfree(obj, (struct obj *)0);
 	    mnewsym(x,y);
-	    if ((x != u.ux || y != u.uy || Invisible) && !Blind)
+	    if (!vism_at(x,y) && (x != u.ux || y != u.uy || Invisible) && !Blind)
 		newsym(x,y);
 	    return TRUE;
 	}
@@ -132,7 +137,7 @@ register struct obj *obj;
 	   docall(obj);
 }
 
-static
+STATIC_OVL
 void
 dosinkring(obj)  /* obj is a ring being dropped over a kitchen sink */
 register struct obj *obj;
@@ -256,6 +261,9 @@ register struct obj *obj;
 }
 #endif
 
+#endif /* OVLB */
+#ifdef OVL0
+
 /* some common tests when trying to drop or throw items */
 boolean
 canletgo(obj,word)
@@ -297,9 +305,7 @@ register const char *word;
 	return(TRUE);
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 drop(obj) register struct obj *obj; {
 	if(!obj) return(0);
@@ -395,8 +401,11 @@ doddrop() {
 	return(ggetobj("drop", drop, 0));
 }
 
+#endif /* OVL0 */
+#ifdef OVL2
+
 #ifdef STRONGHOLD
-static boolean at_ladder = FALSE;	/* on a ladder, used in goto_level */
+static boolean NEARDATA at_ladder = FALSE;	/* on a ladder, used in goto_level */
 #endif
 
 int
@@ -493,22 +502,18 @@ doup()
 #endif
 		return(1);
 	}
-
-#ifdef ENDGAME
 	if (dlevel == 1) {
 #ifdef MACOS
 		if(!flags.silent) SysBeep(20);
 		if(UseMacAlertText(128,
-			"Beware, there will be no return!  Still climb?") != 1) {
+		    "Beware, there will be no return!  Still climb?") != 1) {
 			return 0;
 		}
 #else
 		pline("Beware, there will be no return!  Still climb? ");
 		if (yn() != 'y') return(0);
-		else more();
 #endif /* MACOS */
 	}
-#endif
 #ifdef WALKIES
 	if(!next_to_u()) {
 		You("are held back by your pet!");
@@ -532,8 +537,11 @@ doup()
 	return(1);
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
 
-static void
+STATIC_OVL
+void
 litter()
 {
 	struct obj *otmp = invent, *nextobj;
@@ -600,6 +608,9 @@ drag_down()
 	return(FALSE);
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 int save_dlevel = 0;
 
 void
@@ -622,20 +633,28 @@ register boolean at_stairs, falling;
 #endif
 		done(ESCAPED);		/* in fact < 0 is impossible */
 
+#ifdef MACOS
+	freeSegs(&segments);
+#endif
 /*	If you have the amulet and are trying to get out of Hell, going
  *	up a set of stairs sometimes does some very strange things!
  */
 #ifdef HARD
-	if(Inhell && up && at_stairs  &&
-	   (dlevel < MAXLEVEL-3) && u.uhave_amulet) {
-	    newlevel = (rn2(5) ? newlevel :
+	if(Inhell && up && !at_ladder &&
+			(dlevel < MAXLEVEL-3) && u.uhave_amulet) {
+	    int olev = newlevel;
+
+	    newlevel = (rn2(4) ? newlevel :
 /* neutral */	     !u.ualigntyp ? (rn2(2) ? dlevel : dlevel + (rnd(5) - 2)) :
 /* lawful */	     (u.ualigntyp == U_LAWFUL) ? dlevel + (rnd(5) - 2) :
 /* chaotic */	     dlevel);
-	    pline("A mysterious force surrounds you...");
 	    if(newlevel < 1) newlevel = dlevel;
-	    if(newlevel == dlevel) (void) dotele();
-		
+	    if(newlevel != olev)
+	        pline("A mysterious force momentarily surrounds you...");
+	    if(newlevel == dlevel) {
+		(void) dotele();
+		return;
+	    }
 	}
 #endif /* HARD /* */
 	if(newlevel == dlevel) return;	      /* this can happen */
@@ -689,7 +708,7 @@ register boolean at_stairs, falling;
 		
 		t = (term_info *)GetWRefCon(HackWindow);
 		fileName[0] = (char)strlen(lock);
-		(void)Strcpy((char *)&fileName[1],lock);
+		Strcpy((char *)&fileName[1],lock);
 		if (FSOpen(fileName, t->system.sysVRefNum, &refNum)) {
 				if (er = Create(&fileName,t->system.sysVRefNum,
 							CREATOR,LEVEL_TYPE))
@@ -799,7 +818,8 @@ register boolean at_stairs, falling;
 #else
 		if((fd = open(lock,0)) < 0) {
 #endif
-			pline("Cannot open %s .", lock);
+			extern int errno;
+			pline("Cannot open \"%s\" (errno %d).", lock, errno);
 			pline("Probably someone removed it.");
 			done(TRICKED);
 		}
@@ -963,17 +983,24 @@ register boolean at_stairs, falling;
 		|| dlevel == ENDLEVEL
 #endif
 		);
+#ifdef MACOS
+	freeSegs(&segments);
+	segments = SEG_DO;
+#endif
 }
+
+#endif /* OVL2 */
+#ifdef OVL3
 
 int
 donull() {
 	return(1);	/* Do nothing, but let other things happen */
 }
 
-#ifndef OVERLAY
-static
-#endif
-int
+#endif /* OVL3 */
+#ifdef OVLB
+
+STATIC_PTR int
 wipeoff() {
 	if(u.ucreamed < 4)	u.ucreamed = 0;
 	else			u.ucreamed -= 4;
@@ -995,7 +1022,7 @@ int
 dowipe()
 {
 	if(u.ucreamed)  {
-		static char buf[39];
+		static char NEARDATA buf[39];
 
 		Sprintf(buf, "wiping off your %s", body_part(FACE));
 		set_occupation(wipeoff, buf, 0);
@@ -1007,6 +1034,9 @@ dowipe()
 	Your("%s is already clean.", body_part(FACE));
 	return(1);
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 /* split obj so that it gets size num */
 /* remainder is put in the object structure delivered by this call */
@@ -1026,6 +1056,9 @@ register struct obj *otmp;
 	if(obj->unpaid) splitbill(obj,otmp);
 	return(otmp);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 set_wounded_legs(side, timex)

@@ -4,7 +4,10 @@
 
 #include "hack.h"
 
+STATIC_DCL int NDECL(stealarm);
+
 #ifdef OVLB
+static const char * FDECL(equipname, (struct obj *));
 
 static const char *
 equipname(otmp)
@@ -63,10 +66,7 @@ register struct monst *mtmp;
 unsigned int stealoid;		/* object to be stolen */
 unsigned int stealmid;		/* monster doing the stealing */
 
-#ifndef OVERLAY
-static 
-#endif
-int
+STATIC_OVL int
 stealarm(){
 	register struct monst *mtmp;
 	register struct obj *otmp;
@@ -75,8 +75,10 @@ stealarm(){
 	  if(otmp->o_id == stealoid) {
 	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	      if(mtmp->m_id == stealmid) {
+		  if(otmp->unpaid) subfrombill(otmp);
 		  freeinv(otmp);
-		  pline("%s steals %s!", Blind ? "It" : Monnam(mtmp), doname(otmp));
+		  pline("%s steals %s!", Blind ? "It" : 
+					Monnam(mtmp), doname(otmp));
 		  mpickobj(mtmp,otmp);
 		  mtmp->mflee = 1;
 		  rloc(mtmp);

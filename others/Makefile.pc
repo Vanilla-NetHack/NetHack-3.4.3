@@ -35,7 +35,7 @@ GAMEDIR = \games\$(GAME)
 GAMEFILE = $(GAMEDIR)\$(GAME).exe
 
 # object files for makedefs
-MAKEOBJS = o\makedefs.o o\alloc.o o\monst.o o\objects.o o\panic.o
+MAKEOBJS = o\makedefs.o o\monst.o o\objects.o
 
 # object files for special levels compiler
 SPLEVOBJS = o\lev_comp.o o\lev_lex.o o\lev_main.o o\alloc.o o\monst.o o\objects.o o\panic.o
@@ -66,14 +66,14 @@ PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\msdos.h $(INCL)\system.h \
 GLOBAL_H   = $(INCL)\global.h $(INCL)\coord.h $(PCCONF_H)
 CONFIG_H   = $(INCL)\config.h $(INCL)\tradstdc.h $(GLOBAL_H)
 TRAP_H	   = $(INCL)\trap.h
-PERMONST_H = $(INCL)\permonst.h $(INCL)\monflag.h
+PERMONST_H = $(INCL)\permonst.h $(INCL)\monattk.h $(INCL)\monflag.h
 YOU_H	   = $(INCL)\you.h $(INCL)\attrib.h $(PERMONST_H) $(INCL)\mondata.h \
-	     $(INCL)\monst.h $(INCL)\youprop.h
+	     $(INCL)\monst.h $(INCL)\youprop.h $(INCL)\prop.h $(INCL)\pm.h
 DECL_H	   = $(INCL)\decl.h $(INCL)\spell.h $(INCL)\obj.h $(YOU_H) \
-	     $(INCL)\onames.h $(INCL)\pm.h
+	     $(INCL)\onames.h $(INCL)\color.h
 HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 	     $(INCL)\objclass.h $(INCL)\gold.h $(INCL)\trap.h $(INCL)\flag.h \
-	     $(INCL)\rm.h
+	     $(INCL)\rm.h $(INCL)\hack.h
 
 # The main target
 $(GAMEDIR)\$(GAME).exe: o $(HOBJ)
@@ -105,7 +105,7 @@ lev_comp.exe:  $(SPLEVOBJS)
 
 o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
 o\lev_lex.o:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
-o\lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
+o\lev_main.o:  $(HACK_H)
 
 # If you have yacc or lex programs, and make any changes,
 # add some .y.c and .l.c rules to your Make.ini.
@@ -204,7 +204,7 @@ o\do_name.o:  $(HACK_H)
 o\do_wear.o:  $(HACK_H)
 o\dog.o:  $(HACK_H) $(INCL)\edog.h
 o\dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
-o\dokick.o:  $(HACK_H)
+o\dokick.o:  $(HACK_H) $(INCL)\eshk.h
 o\dothrow.o:  $(HACK_H)
 o\eat.o:  $(HACK_H)
 o\end.o:  $(HACK_H) $(INCL)\eshk.h
@@ -216,7 +216,6 @@ o\getline.o:  $(HACK_H) $(INCL)\func_tab.h
 o\hack.o:  $(HACK_H)
 o\invent.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 o\ioctl.o:  $(HACK_H)
-o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
 o\lock.o:  $(HACK_H)
 o\makemon.o:  $(HACK_H)
 o\mail.o:  $(HACK_H)
@@ -227,15 +226,15 @@ o\mklev.o:  $(HACK_H)
 o\mkmaze.o:  $(HACK_H)
 o\mkobj.o:  $(HACK_H)
 o\mkroom.o:  $(HACK_H)
-o\mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+o\mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\wseg.h
 o\mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
 o\monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
-o\monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
+o\monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\monsym.h $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h $(INCL)\color.h
 o\msdos.o:  $(HACK_H)
 o\mthrowu.o:  $(HACK_H)
 o\music.o:  $(HACK_H)
-o\o_init.o:  $(HACK_H) $(INCL)\onames.h
-o\objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h
+o\o_init.o:  $(HACK_H)
+o\objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h $(INCL)\color.h
 o\objnam.o:  $(HACK_H)
 o\options.o:  $(HACK_H)
 o\pager.o:  $(HACK_H)
@@ -244,7 +243,7 @@ o\pickup.o:  $(HACK_H)
 o\polyself.o:  $(HACK_H)
 o\potion.o:  $(HACK_H)
 o\pray.o:  $(HACK_H)
-o\pri.o:  $(HACK_H) $(INCL)\termcap.h
+o\pri.o:  $(HACK_H) $(INCL)\epri.h $(INCL)\termcap.h
 o\priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
 o\prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 o\random.o:
@@ -271,7 +270,7 @@ o\trap.o:  $(HACK_H) $(INCL)\edog.h
 o\u_init.o:  $(HACK_H)
 o\uhitm.o:  $(HACK_H) $(INCL)\artifact.h
 o\vault.o:  $(HACK_H) $(INCL)\vault.h
-o\version.o:  $(HACK_H) $(INCL)\date.h
+o\version.o:  $(HACK_H) $(INCL)\date.h $(INCL)\patchlev.h
 o\weapon.o:  $(HACK_H)
 o\were.o:  $(HACK_H)
 o\wield.o:  $(HACK_H)

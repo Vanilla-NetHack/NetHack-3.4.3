@@ -7,8 +7,8 @@
 
 #ifdef OVLB
 
-char dogname[63] = DUMMY;
-char catname[63] = DUMMY;
+char NEARDATA dogname[63] = DUMMY;
+char NEARDATA catname[63] = DUMMY;
 
 #endif /* OVLB */
 
@@ -130,7 +130,7 @@ losedogs(){
 			mtmp0->nmon = mtmp->nmon;
 		    mtmp->nmon = fmon;
 		    fmon = mtmp;
-		    if (mtmp->data->geno & G_GENOD) {
+		    if ((mtmp->data->geno&G_GENOD) && !(mtmp->data->geno&G_UNIQ)) {
 #ifdef KOPS
 			allow_kops = FALSE;
 #endif
@@ -146,6 +146,9 @@ losedogs(){
 		    mtmp0 = mtmp;
 	}
 }
+
+#endif /* OVLB */
+#ifdef OVL2
 
 void
 keepdogs(){
@@ -194,6 +197,9 @@ register struct monst *mtmp;
 		return;		/* (admittedly somewhat primitive) */
 	}
 }
+
+#endif /* OVL2 */
+#ifdef OVLB
 
 void
 fall_down(mtmp, tolev) 
@@ -305,26 +311,31 @@ inroom(x,y) xchar x,y; {
 #endif /* OVL0 */
 #ifdef OVLB
 
-int
+struct monst *
 tamedog(mtmp, obj)
 register struct monst *mtmp;
 register struct obj *obj;
 {
 	register struct monst *mtmp2;
 
+	/* The wiz and medusa aren't even made peaceful. */
+	if (mtmp->iswiz
+#ifdef MEDUSA
+			   || mtmp->data == &mons[PM_MEDUSA]
+#endif
+								)
+		return((struct monst *)0);
+
 	/* worst case, at least he'll be peaceful. */
 	mtmp->mpeaceful = 1;
 	if(flags.moonphase == FULL_MOON && night() && rn2(6) && obj
 						&& mtmp->data->mlet == S_DOG)
-		return(0);
+		return((struct monst *)0);
 
 	/* If we cannot tame him, at least he's no longer afraid. */
 	mtmp->mflee = 0;
 	mtmp->mfleetim = 0;
 	if(mtmp->mtame || !mtmp->mcanmove ||
-#ifdef MEDUSA
-	   mtmp->data == &mons[PM_MEDUSA] ||
-#endif
 	   mtmp->isshk || mtmp->isgd ||
 #if defined(ALTARS) && defined(THEOLOGY)
 	   mtmp->ispriest ||
@@ -334,9 +345,9 @@ register struct obj *obj;
 #else
 	   is_human(mtmp->data) || is_demon(mtmp->data))
 #endif
-		return(0);
+		return((struct monst *)0);
 	if(obj) {
-		if(dogfood(mtmp, obj) >= MANFOOD) return(0);
+		if(dogfood(mtmp, obj) >= MANFOOD) return((struct monst *)0);
 		if(cansee(mtmp->mx,mtmp->my))
 			pline("%s devours the %s.", Monnam(mtmp), xname(obj));
 		obfree(obj, (struct obj *)0);
@@ -347,7 +358,7 @@ register struct obj *obj;
 	if(mtmp->mnamelth) Strcpy(NAME(mtmp2), NAME(mtmp));
 	initedog(mtmp2);
 	replmon(mtmp,mtmp2);
-	return(1);
+	return(mtmp2);
 }
 
 #endif /* OVLB */

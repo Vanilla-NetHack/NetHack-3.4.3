@@ -49,6 +49,7 @@ char *fgets();
 
 #ifdef MSDOS
 # undef exit
+extern void FDECL(exit, (int));
 #endif
 
 #ifdef MACOS

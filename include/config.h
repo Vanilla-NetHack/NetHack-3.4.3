@@ -11,7 +11,7 @@
  *		Select the version of the OS you are using.
  *		For "UNIX" select either SYSV or BSD in unixconf.h.
  *		A "VMS" option is not needed since the VMS C-compiler
- *		provides it (comment out the default OS option here).
+ *              provides it (no need to change sec#1, vmsconf.h handles it).
  */
 
 #define UNIX		/* delete if no fork(), exec() available */
@@ -22,13 +22,22 @@
 /* #define MSDOS	/* define for MS-DOS and most other micros */
 			/* DO NOT define for AMIGA - MSDOS will be
 			 * automatically defined at the right place. */
-# ifdef AZTEC_C 	/* Manx 3.6 auto-defines this */
-#  ifdef MCH_AMIGA	/* Manx 3.6 auto-defines this for AMIGA */
+# ifdef AZTEC_C 	/* Manx auto-defines this */
+#  ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
 #   ifndef AMIGA
 #define AMIGA		/* define for Commodore-Amiga */
 #   endif		/* (Lattice auto-defines AMIGA) */
+/* #define AZTEC_36	/* define for version 3.6 of manx */
+#define AZTEC_50	/* define for version 5.0 of manx */
 #  endif
 # endif
+#ifdef LATTICE
+# define NEARDATA __near /* put some data close */
+# define NO_SCAN_BRACK	/* scanf doesn't handle [] (this define available
+			 * for any system with this problem) */
+#else
+# define NEARDATA
+#endif
 /* #define TOS		/* define for Atari 1040ST */
 
 /* #define STUPID	/* avoid some complicated expressions if
@@ -36,7 +45,8 @@
 /* #define STUPID_CPP	/* use many small functions instead of macros to
 			   avoid overloading limited preprocessors */
 /* #define TERMINFO	/* uses terminfo rather than termcap */
-			/* should be defined for most, but not all, SYSV */
+			/* should be defined for HPUX and most, but not all,
+			   SYSV */
 			/* in particular, it should NOT be defined for the
 			 * UNIXPC unless you remove the use of the shared
 			 * library in the makefile */
@@ -47,26 +57,58 @@
 
 #ifdef AMIGA
 #define NEED_VARARGS
-# ifdef AZTEC_C
+# ifdef AZTEC_36
 #  define KR1ED		/* Aztec 3.6 needs extra help for defined() */
+# endif
+# ifdef AZTEC_50
+#  define USE_OLDARGS	/* Aztec 5.0 prototypes aren't quite right */
 # endif
 #endif
 
 #ifdef MACOS
-/* #define KR1ED	/* for compilers which can't handle defined() */
-			/* Lightspeed & Aztec can't handle defined() yet */
-/* #define LSC		/* for the Lightspeed 3.01p4 C compiler on the Mac */
+#define THINKC4		/* for the Think C 4.0 compiler */
+/* #define LSC		/* for the Lightspeed C 3.01p4 compiler */
 /* #define AZTEC	/* for the Manx Aztec C 3.6c compiler */
-#define THINKC4	/* for the Think C 4 compiler */
-/* #define MAKEDEFS_C	/* uncomment this ONLY while compiling makedefs */
-/* #define CUSTOM_IO	/* uncomment only while compiling Nethack */
+#define SMALLDATA	/* for Mac compilers with 32K global data limit */
+#define CUSTOM_IO	/* uncomment only while compiling Nethack */
+/* #define MAKEDEFS_C	/* uncomment only while compiling makedefs */
 # ifndef MAKEDEFS_C
 #  ifndef NEED_VARARGS
 #define NEED_VARARGS	/* if you're using precompiled headers */
 #  endif
 # endif
-#define SMALLDATA	/* for Mac compilers with 32K global data limit */
-#endif
+# ifdef LSC
+#define KR1ED	/* for compilers which can't handle defined() */
+# endif
+# ifdef AZTEC
+#define KR1ED	/* Lightspeed C & Aztec can't handle defined() yet */
+# endif
+#endif	/* MACOS */
+
+#ifdef VMS      /* really old compilers need special handling, detected here */
+# ifdef VAXC    /* must use CC/DEFINE=ANCIENT_VAXC for vaxc v2.2 or older */
+#  ifdef ANCIENT_VAXC   /* vaxc v2.2 and earlier [lots of warnings to come] */
+#   define KR1ED        /* simulate defined() */
+#   define USE_VARARGS
+#  else                 /* vaxc v2.3,2.4,or 3.x */
+#   if defined(PROTOTYPING_ON)  /* this breaks 2.2 (*forces* use of ANCIENT)*/
+#    define __STDC__ 0  /* vaxc is not yet ANSI compliant, but close enough */
+#    define signed      /* well, almost close enough */
+#include <stddef.h>
+#   endif
+#   define USE_STDARG
+#  endif
+# endif /*VAXC*/
+# ifdef VERYOLD_VMS     /* v4.5 or earlier */
+#  define USE_OLDARGS   /* <varargs.h> is there, vprintf & vsprintf aren't */
+#  ifdef USE_VARARGS
+#   undef USE_VARARGS
+#  endif
+#  ifdef USE_STDARG
+#   undef USE_STDARG
+#  endif
+# endif
+#endif /*VMS*/
 
 
 #ifdef KR1ED		/* For compilers which cannot handle defined() */
@@ -99,7 +141,7 @@
 #define WIZARD  "izchak" /* the person allowed to use the -D option */
 # else
 #define WIZARD
-#define WIZARD_NAME "johnny"
+#define WIZARD_NAME "izchak"
 # endif
 #endif
 

@@ -3,7 +3,6 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-#include <ctype.h>
 
 static void FDECL(center,(int,char *));
 

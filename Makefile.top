@@ -65,7 +65,7 @@ update: $(GAME) data rumors spec_levs
 # copy over new versions of the game files
 	( cd auxil ; cp $(AUX) $(GAMEDIR) )
 #	(don't yank the old version out from under people who're playing it)
-	mv $(GAMEDIR)/$(GAME) $(GAMEDIR)/$(GAME).old
+	-mv $(GAMEDIR)/$(GAME) $(GAMEDIR)/$(GAME).old
 	cp src/$(GAME) $(GAMEDIR)
 	-rm -f $(SHELLDIR)/$(GAME)
 	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
@@ -80,10 +80,13 @@ update: $(GAME) data rumors spec_levs
 	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME)
 	chmod 0755 $(SHELLDIR)/$(GAME)
 	chmod 04755 $(GAMEDIR)/$(GAME)
-# and touch time-sensitive files
+# touch time-sensitive files
 	-touch -c $(GAMEDIR)/bones* $(GAMEDIR)/?lock* $(GAMEDIR)/wizard*
 	-touch -c $(GAMEDIR)/save/*
 	touch $(GAMEDIR)/perm $(GAMEDIR)/record
+# and copy the man pages
+	-$(GAMEMANCREATE) $(MANDIR)/$(GAME).$(MANEXT)
+	-$(LEVMANCREATE) $(MANDIR)/lev_comp.$(MANEXT)
 
 install: $(GAME) data rumors spec_levs
 # set up the directories

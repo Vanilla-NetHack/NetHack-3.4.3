@@ -5,12 +5,12 @@
 #define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
 #include "hack.h"
 
-VSTATIC char toplines[BUFSIZ];
+STATIC_VAR char NEARDATA toplines[BUFSIZ];
 
 #ifndef OVLB
-OSTATIC boolean no_repeat;
+STATIC_DCL boolean no_repeat;
 #else /* OVLB */
-XSTATIC boolean no_repeat = FALSE;
+STATIC_OVL boolean no_repeat = FALSE;
 #endif /* OVLB */
 
 extern xchar tlx, tly;
@@ -18,9 +18,9 @@ extern xchar tlx, tly;
 xchar tlx, tly;			/* set by pline; used by addtopl */
 #endif /* OVLB */
 
-OSTATIC void NDECL(redotoplin);
-OSTATIC void FDECL(xmore,(const char *));
-VSTATIC struct topl {
+STATIC_DCL void NDECL(redotoplin);
+STATIC_DCL void FDECL(xmore,(const char *));
+STATIC_VAR struct topl {
 	struct topl *next_topl;
 	char *topl_text;
 } *old_toplines, *last_redone_topl;
@@ -29,7 +29,7 @@ VSTATIC struct topl {
 
 #ifdef OVL1
 
-XSTATIC void
+STATIC_OVL void
 redotoplin() {
 	home();
 	if(index(toplines, '\n')) cl_end();
@@ -78,7 +78,7 @@ remember_topl() {
 	   !strcmp(toplines, old_toplines->topl_text)) return;
 	last_redone_topl = 0;
 	tl = (struct topl *)
-		alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 1));
+		alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 3));
 	tl->next_topl = old_toplines;
 	tl->topl_text = (char *)(tl + 1);
 	Strcpy(tl->topl_text, toplines);
@@ -108,7 +108,7 @@ const char *s;
 #endif /* OVL1 */
 #ifdef OVL2
 
-XSTATIC void
+STATIC_OVL void
 xmore(s)
 const char *s;	/* allowed chars besides space/return */
 {

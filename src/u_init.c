@@ -545,12 +545,12 @@ register struct trobj *trop;
 		 */
 		if (undefined) {
 #ifdef POLYSELF
-			static unsigned nocreate = STRANGE_OBJECT;
+			static unsigned NEARDATA nocreate = STRANGE_OBJECT;
 #  ifdef SPELLS
-			static unsigned nocreate2 = STRANGE_OBJECT;
+			static unsigned NEARDATA nocreate2 = STRANGE_OBJECT;
 #  endif
 #endif
-			static unsigned nocreate3 = STRANGE_OBJECT;
+			static unsigned NEARDATA nocreate3 = STRANGE_OBJECT;
 
 			while(obj->otyp == WAN_WISHING
 #ifdef POLYSELF

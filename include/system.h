@@ -10,9 +10,13 @@
 /* some old <sys/types.h> may not define off_t and size_t; if your system is
  * one of these, define them by hand below
  */
+#ifndef VAXC
 #if !defined(THINKC4) && !defined(AMIGA) && !defined(MACOS)
 # include <sys/types.h>
 #endif
+#else   /*VAXC*/
+#include <types.h>
+#endif  /*VAXC*/
 
 #if defined(TOS) && defined(__GNUC__) && !defined(_SIZE_T)
 # define _SIZE_T
@@ -21,7 +25,9 @@
 #if defined(MSDOS) || ((defined(AMIGA) || defined(MACOS)) && !defined(THINKC4))
 # ifndef _SIZE_T
 #  define _SIZE_T
+#  if !(defined(MSDOS) && defined(_SIZE_T_DEFINED)) /* MSC 5.1 */
 typedef unsigned int	size_t;
+#  endif
 # endif
 #endif
 
@@ -63,7 +69,7 @@ E void srand48();
 E void FDECL(exit, (int));
 # endif /* MSDOS */
 E void FDECL(free, (genericptr_t));
-# ifdef AMIGA
+# if defined(AMIGA) && !defined(AZTEC_50)
 E int FDECL(perror, (const char *));
 # else
 #  ifndef MACOS
@@ -79,6 +85,7 @@ E void FDECL(qsort, (genericptr_t,size_t,size_t,int(*)(genericptr_t,genericptr_t
 # endif
 #endif
 
+#ifndef AZTEC_50	/* Already defined in include files */
 #ifdef ULTRIX
 E long FDECL(lseek, (int,off_t,int));
   /* Ultrix 3.0 man page mistakenly says it returns an int. */
@@ -99,6 +106,7 @@ E int FDECL(kbhit, (void));
 E int FDECL(chdir, (char *));
 E char *FDECL(getcwd, (char *,int));
 #endif
+#endif  /* AZTEC_50 */
 
 #ifdef TOS
 E int FDECL(creat, (const char *, int));
@@ -207,7 +215,7 @@ E int	FDECL(strlen, (char *));
 # define OLD_SPRINTF
 E char *sprintf();
 #else
-# ifndef TOS	/* problem with prototype mismatches with <stdio.h> */
+# if !defined(TOS) && !defined(AZTEC_50) /* problem with prototype mismatches */
 E int FDECL(sprintf, (char *,const char *,...));
 # endif
 #endif
@@ -273,7 +281,7 @@ E genericptr_t FDECL(malloc, (size_t));
 E struct tm *FDECL(localtime, (const time_t *));
 # endif
 
-# if defined(ULTRIX) || defined(SYSV) || defined(MSDOS)
+# if defined(ULTRIX) || defined(SYSV) || defined(MSDOS) || defined(VMS)
 E time_t FDECL(time, (time_t *));
 # else
 E long FDECL(time, (time_t *));

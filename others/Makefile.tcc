@@ -262,18 +262,20 @@ OVERLAYS = $(ROOT)    ($(OVL01)) ($(OVL02)) ($(OVL03)) ($(OVL04)) ($(OVL05)) \
 # header dependencies
 
 PCCONF_H   = $(INCL)\$(TARG)conf.h  $(INCL)\msdos.h	$(INCL)\system.h
-GLOBAL_H   = $(INCL)\global.h	    $(INCL)\coord.h	$(PCCONF_H)
-CONFIG_H   = $(INCL)\config.h	    $(INCL)\tradstdc.h	$(GLOBAL_H)
+GLOBAL_H   = $(PCCONF_H)	    $(INCL)\global.h	$(INCL)\coord.h
+CONFIG_H   = $(GLOBAL_H)	    $(INCL)\config.h	$(INCL)\tradstdc.h
 TRAP_H	   = $(INCL)\trap.h
-PERMONST_H = $(INCL)\permonst.h     $(INCL)\monflag.h
-YOU_H	   = $(INCL)\you.h	    $(INCL)\attrib.h	$(PERMONST_H) \
-	     $(INCL)\mondata.h	    $(INCL)\monst.h	$(INCL)\youprop.h
-DECL_H	   = $(INCL)\spell.h	    $(INCL)\obj.h	$(YOU_H) \
-	     $(INCL)\onames.h	    $(INCL)\pm.h
-HACK_H	   = $(CONFIG_H)	    $(DECL_H)		$(INCL)\monsym.h \
-	     $(INCL)\mkroom.h	    $(INCL)\objclass.h	$(INCL)\gold.h \
-	     $(INCL)\trap.h	    $(INCL)\flag.h	$(INCL)\rm.h \
-	     $(OVERLAY_H)
+PERMONST_H = $(INCL)\permonst.h     $(INCL)\monattk.h	$(INCL)\monflag.h
+YOUPROP_H  = $(PERMONST_H)	    $(INCL)\prop.h	$(INCL)\mondata.h \
+	     $(INCL)\pm.h	    $(INCL)\youprop.h
+YOU_H	   = $(YOUPROP_H)	    $(INCL)\attrib.h	$(INCL)\monst.h	\
+	     $(INCL)\you.h
+DECL_H	   = $(YOU_H)		    $(INCL)\decl.h	$(INCL)\obj.h \
+	     $(INCL)\onames.h	    $(INCL)\spell.h	$(INCL)\color.h
+HACK_H	   = $(CONFIG_H)	    $(DECL_H)		$(INCL)\trap.h \
+	     $(INCL)\flag.h	    $(INCL)\gold.h	$(INCL)\mkroom.h \
+	     $(INCL)\monsym.h	    $(INCL)\objclass.h	$(INCL)\rm.h \
+	     $(INCL)\hack.h	    $(OVERLAY_H)
 
 ## extern.h, and decl.h contain only external declarations.
 ##
@@ -447,7 +449,7 @@ $(OBJ)\do_name.obj:	$(HACK_H)
 $(OBJ)\do_wear.obj:	$(HACK_H)
 $(OBJ)\dog.obj: 	$(HACK_H)   $(INCL)\edog.h
 $(OBJ)\dogmove.obj:	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\edog.h
-$(OBJ)\dokick.obj:	$(HACK_H)
+$(OBJ)\dokick.obj:	$(HACK_H)   $(INCL)\eshk.h
 $(OBJ)\dothrow.obj:	$(HACK_H)
 $(OBJ)\eat.obj: 	$(HACK_H)
 $(OBJ)\end.obj: 	$(HACK_H)   $(INCL)\eshk.h
@@ -461,7 +463,7 @@ $(OBJ)\invent.obj:	$(HACK_H)   $(INCL)\lev.h	 $(INCL)\wseg.h
 $(OBJ)\ioctl.obj:	$(HACK_H)
 $(OBJ)\lev_comp.obj:	$(HACK_H)   $(INCL)\sp_lev.h
 $(OBJ)\lev_lex.obj:	$(HACK_H)   $(INCL)\sp_lev.h	 $(INCL)\lev_comp.h
-$(OBJ)\lev_main.obj:	$(HACK_H)   $(INCL)\sp_lev.h
+$(OBJ)\lev_main.obj:	$(HACK_H)
 $(OBJ)\lock.obj:	$(HACK_H)
 $(OBJ)\makemon.obj:	$(HACK_H)
 $(OBJ)\mail.obj:	$(HACK_H)
@@ -475,16 +477,17 @@ $(OBJ)\mkroom.obj:	$(HACK_H)
 $(OBJ)\mon.obj: 	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\wseg.h
 $(OBJ)\mondata.obj:	$(HACK_H)   $(INCL)\eshk.h	 $(INCL)\epri.h
 $(OBJ)\monmove.obj:	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\artifact.h
-$(OBJ)\monst.obj:	$(CONFIG_H) $(PERMONST_H)	 $(INCL)\eshk.h \
-				    $(INCL)\vault.h	 $(INCL)\epri.h
+$(OBJ)\monst.obj:	$(CONFIG_H) $(PERMONST_H)	 $(INCL)\monsym.h \
+				    $(INCL)\eshk.h	 $(INCL)\vault.h \
+				    $(INCL)\epri.h	 $(INCL)\color.h
 $(OBJ)\msdos.obj:	$(HACK_H) msdos.c
 	$(CC) $(CFLAGS) -A- $*.c
 # set ANSI only off -- many MS-DOS specific things.
 $(OBJ)\mthrowu.obj:	$(HACK_H)
 $(OBJ)\music.obj:	$(HACK_H)
-$(OBJ)\o_init.obj:	$(HACK_H)   $(INCL)\onames.h
+$(OBJ)\o_init.obj:	$(HACK_H)
 $(OBJ)\objects.obj:	$(CONFIG_H) $(INCL)\obj.h	 $(INCL)\objclass.h \
-				    $(INCL)\prop.h
+				    $(INCL)\prop.h	 $(INCL)\color.h
 $(OBJ)\objnam.obj:	$(HACK_H)
 $(OBJ)\options.obj:	$(HACK_H)
 $(OBJ)\pager.obj:	$(HACK_H)

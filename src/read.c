@@ -8,13 +8,11 @@
 
 boolean	known;
 
-static const char readable[] = { '#', SCROLL_SYM,
+static const char NEARDATA readable[] = { '#', SCROLL_SYM,
 #ifdef SPELLS
 	SPBOOK_SYM,
 #endif
 	0 };
-
-#endif /* OVLB */
 
 static void FDECL(explode, (struct obj *));
 static void NDECL(do_class_genocide);
@@ -23,7 +21,10 @@ static void FDECL(p_glow1,(struct obj *));
 static void FDECL(p_glow2,(struct obj *,const char *));
 static void FDECL(recharge,(struct obj *,int));
 static void FDECL(forget,(BOOLEAN_P));
-OSTATIC void FDECL(show_map_spot,(int,int));
+
+#endif /* OVLB */
+
+STATIC_DCL void FDECL(show_map_spot,(int,int));
 
 #ifdef OVLB
 
@@ -571,7 +572,7 @@ register struct obj	*sobj;
 		register struct monst *mtmp;
 
 		for(i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++)
-		if(MON_AT(u.ux+i, u.uy+j) && (mtmp = m_at(u.ux+i, u.uy+j))) {
+		if(isok(u.ux+i, u.uy+j) && (mtmp = m_at(u.ux+i, u.uy+j))) {
 		    if(sobj->cursed) {
 			if(!mtmp->mtame) mtmp->mpeaceful = 0;
 		    } else {
@@ -656,6 +657,13 @@ register struct obj	*sobj;
 	case SCR_CHARGING:
 		if (confused) {
 		    You("feel charged up!");
+#ifdef SPELLS
+		    if (u.uen < u.uenmax)
+			u.uen = u.uenmax;
+		    else
+			u.uen = u.uenmax + d(5,4);
+		    flags.botl = 1;
+#endif
 		    break;
 		}
 		known = TRUE;
@@ -908,7 +916,8 @@ do_class_genocide()
 				if(mtmp->data == &mons[i])
 				    mondead(mtmp);
 			    }
-			} else if (mons[i].geno & G_GENOD)
+			} else if ((mons[i].geno & G_GENOD) &&
+			  !(mons[i].geno & G_UNIQ))
 			    pline("All %s are already nonexistent.", n);
 			else
 			    You("aren't permitted to genocide %s%s.",
@@ -1016,15 +1025,22 @@ deadmeat:
 	} else {
 	    pline("Sent in some %s.", makeplural(buf));
 	    j = rnd(3) + 3;
-	    for(i=1; i<=j; i++)
-		(void) makemon(ptr, u.ux, u.uy);
+	    for(i=1; i<=j; i++) {
+		struct monst *mmon = makemon(ptr, u.ux, u.uy);
+		struct obj *otmp;
+
+		while(otmp = (mmon->minvent)) {
+			mmon->minvent = otmp->nobj;
+			free((genericptr_t)otmp);
+		}
+	    }
 	}
 }
 
 #endif /* OVLB */
 #ifdef OVL0
 
-XSTATIC void
+STATIC_OVL void
 show_map_spot(x, y)
 register int x, y;
 {
@@ -1161,8 +1177,8 @@ register struct obj	*sobj;
 		uball->owt += 15 * (1 + sobj->cursed);
 		return;
 	}
-	setworn(mkobj_at(CHAIN_SYM, u.ux, u.uy), W_CHAIN);
-	setworn(mkobj_at(BALL_SYM, u.ux, u.uy), W_BALL);
+	setworn(mkobj_at(CHAIN_SYM, u.ux, u.uy, TRUE), W_CHAIN);
+	setworn(mkobj_at(BALL_SYM, u.ux, u.uy, TRUE), W_BALL);
 	uball->spe = 1;		/* special ball (see save) */
 }
 

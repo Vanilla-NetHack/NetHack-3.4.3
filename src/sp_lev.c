@@ -26,7 +26,7 @@
 #define TOP	1
 #define BOTTOM	3
 
-static walk walklist[50];
+static walk NEARDATA walklist[50];
 extern int x_maze_max, y_maze_max;
 
 #ifdef MACOS
@@ -36,7 +36,17 @@ static char Map[COLNO][ROWNO];
 #endif
 static char robjects[10], rloc_x[10], rloc_y[10], rmonst[10],
 	ralign[3] = { A_CHAOS, A_NEUTRAL, A_LAW };
-static xchar xstart, ystart, xsize, ysize;
+static xchar NEARDATA xstart, NEARDATA ystart, NEARDATA xsize, NEARDATA ysize;
+
+static void FDECL(make_walls_nondiggable, (XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
+static int NDECL(rnddoor);
+static int NDECL(rndtrap);
+static void FDECL(get_location, (schar *,schar *));
+static void FDECL(shuffle, (char *,XCHAR_P));
+static void FDECL(shuffle2, (char *,char *,XCHAR_P));
+static boolean FDECL(load_rooms, (FILE *));
+static void FDECL(maze1xy, (coord *));
+static boolean FDECL(load_maze, (FILE *));
 
 /*
  * Make walls of the area (x1, y1, x2, y2) non diggable
@@ -406,11 +416,11 @@ FILE *fd;
 			c = 0;
 
 		if (!c)
-			(void) mkobj_at(0, x, y);
+			(void) mkobj_at(0, x, y, TRUE);
 		else if (tmpobj.id != -1)
 			(void) mksobj_at(tmpobj.id, x, y);
 		else
-			(void) mkobj_at(c, x, y);
+			(void) mkobj_at(c, x, y, TRUE);
 	}
 
 	n = fgetc(fd); /* Number of drawbridges */
@@ -540,7 +550,7 @@ FILE *fd;
 	    mapfact = (int) ((mapcount * 100L) / mapcountmax);
 	    for(x = rnd((int) (20 * mapfact) / 100); x; x--) {
 		    maze1xy(&mm);
-		    (void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y);
+		    (void) mkobj_at(rn2(2) ? GEM_SYM : 0, mm.x, mm.y, TRUE);
 	    }
 	    for(x = rnd((int) (12 * mapfact) / 100); x; x--) {
 		    maze1xy(&mm);

@@ -19,16 +19,6 @@ extern			/* it is defined in libtermlib (libtermcap) */
 short	ospeed = 0;	/* gets around "not defined" error message */
 #endif
 
-#ifdef ASCIIGRAPH
-
-#ifdef OVLB
-
-boolean IBMgraphics = FALSE;
-
-#endif /* OVLB */
-
-#endif
-
 
 #ifdef MICROPORT_286_BUG
 #define Tgetstr(key) (tgetstr(key,tbuf))
@@ -36,31 +26,33 @@ boolean IBMgraphics = FALSE;
 #define Tgetstr(key) (tgetstr(key,&tbufptr))
 #endif /* MICROPORT_286_BUG **/
 
-OSTATIC void FDECL(nocmov, (int, int));
+STATIC_DCL void FDECL(nocmov, (int, int));
 #ifdef TEXTCOLOR
 # ifdef TERMLIB
+#  ifdef OVLB
 static void NDECL(init_hilite);
+#  endif /* OVLB */
 # endif
 #endif
 
-VSTATIC char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
-VSTATIC char *VS, *VE, *US, *UE;
-VSTATIC char *MR, *ME;
+STATIC_VAR char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
+STATIC_VAR char *VS, *VE, *US, *UE;
+STATIC_VAR char *MR, *ME;
 #if 0
-VSTATIC char *MB, *MH;
-VSTATIC char *MD;     /* may already be in use below */
+STATIC_VAR char *MB, *MH;
+STATIC_VAR char *MD;     /* may already be in use below */
 #endif
 #ifdef TERMLIB
 # ifdef TEXTCOLOR
-VSTATIC char *MD;
+STATIC_VAR char *MD;
 # endif
-VSTATIC int SG;
+STATIC_VAR int SG;
 #ifdef OVLB
-XSTATIC char PC = '\0';
+STATIC_OVL char PC = '\0';
 #else /* OVLB */
-OSTATIC char PC;
+STATIC_DCL char PC;
 #endif /* OVLB */
-VSTATIC char tbuf[512];
+STATIC_VAR char tbuf[512];
 #endif
 
 #ifdef OVLB
@@ -68,7 +60,7 @@ static char nullstr[] = "";
 #endif /* OVLB */
 
 #ifndef TERMLIB
-VSTATIC char tgotobuf[20];
+STATIC_VAR char tgotobuf[20];
 # ifdef TOS
 #define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+' ', x+' '), tgotobuf)
 # else
@@ -101,47 +93,6 @@ startup()
 	(void) memcpy((genericptr_t) showsyms, 
 		(genericptr_t) defsyms, sizeof showsyms);
 
-#ifdef ASCIIGRAPH
-	/*
-	 * If we're on an IBM box, default to the nice IBM Extended ASCII
-	 * line-drawing characters (codepage 437).
-	 *
-	 * OS/2 defaults to a multilingual character set (codepage 850,
-	 * corresponding to the ISO 8859 character set.  We should probably
-	 * do a VioSetCp() call to set the codepage to 437.
-	 *
-	 * Someday we should do a full terminfo(4) check for ACS forms
-	 * characters.
-	 */
-# if !defined(MSDOS) || defined(DECRAINBOW) || defined(OS2)
-#  ifdef TERMLIB
-	if (strncmp("AT", term, 2) == 0)
-#  endif
-# endif
-	{
-	    IBMgraphics = TRUE;
-	    showsyms[S_vwall] = 0xb3;	/* meta-3, vertical rule */
-	    showsyms[S_hodoor] = 0xb3;
-	    showsyms[S_hwall] = 0xc4;	/* meta-D, horizontal rule */
-	    showsyms[S_vodoor] = 0xc4;
-	    showsyms[S_tlcorn] = 0xda;	/* meta-Z, top left corner */
-	    showsyms[S_trcorn] = 0xbf;	/* meta-?, top right corner */
-	    showsyms[S_blcorn] = 0xc0;	/* meta-@, bottom left */
-	    showsyms[S_brcorn] = 0xd9;	/* meta-Y, bottom right */
-	    showsyms[S_crwall] = 0xc5;	/* meta-E, cross */
-	    showsyms[S_tuwall] = 0xc1;	/* meta-A, T up */
-	    showsyms[S_tdwall] = 0xc2;	/* meta-B, T down */
-	    showsyms[S_tlwall] = 0xb4;	/* meta-4, T left */
-	    showsyms[S_trwall] = 0xc3;	/* meta-C, T right */
-	    showsyms[S_vbeam] = 0xb3;	/* meta-3, vertical rule */
-	    showsyms[S_hbeam] = 0xc4;	/* meta-D, horizontal rule */
-	    showsyms[S_room] = 0xfa;	/* meta-z, centered dot */
-	    showsyms[S_ndoor] = 0xfa;
-	    showsyms[S_pool] = 0xf7;	/* meta-w, approx. equals */
-	    showsyms[S_hodoor] = 0xfe;	/* meta-~, small centered square */
-	    showsyms[S_vodoor] = 0xfe;
-	}
-#endif /* ASCIIGRAPH */
 
 #ifdef TERMLIB
 	if(!term)
@@ -245,7 +196,7 @@ startup()
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
-#   if !defined(MSDOS) || defined(DECRAINBOW)
+#   if !defined(MSDOS) || defined(TERMLIB)
 		AS = "\016";
 		AE = "\017";
 #   endif
@@ -394,17 +345,17 @@ start_screen()
 {
 	xputs(TI);
 	xputs(VS);
-#ifdef DECRAINBOW
-	/* Select normal ASCII and line drawing character sets.
-	 */
-	if (flags.DECRainbow) {
-		xputs("\033(B\033)0");
-		if (!AS) {
-			AS = "\016";
-			AE = "\017";
-		}
+	if (flags.DECgraphics) {
+		/* select the line-drawing character set as the alternate
+		 * character set
+		 * do not select NA ASCII as the primary character set
+		 * since people may reasonably be using the UK set
+		 */
+		xputs("\033)0");
+		/* 'as' and 'ae' are missing from some termcaps */
+		if (!AS) AS = "\016";  /* ^N */
+		if (!AE) AE = "\017";  /* ^O */
 	}
-#endif /* DECRAINBOW */
 }
 
 void
@@ -416,6 +367,9 @@ end_screen()
 }
 
 /* Cursor movements */
+
+#endif /* OVLB */
+#ifdef OVL0
 
 #ifdef CLIPPING
 /* if (x,y) is currently viewable, move the cursor there and return TRUE */
@@ -432,6 +386,8 @@ int x, y;
 }
 #endif
 
+#endif /* OVLB */
+#ifdef OVLB
 void
 curs(x, y)
 register int x, y;	/* not xchar: perhaps xchar is unsigned and
@@ -457,8 +413,13 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
 
 #endif /* OVLB */
 #ifdef OVL0
+/* Note to OVLx tinkerers.  The placement of this overlay controls the location
+   of the function xputc().  This function is not currnently in trampoli.[ch]
+   files for what is deemed to be performance reasons.  If this define is moved
+   and or xputc() is taken out of the ROOT overlay, then action must be taken
+   in trampoli.[ch]. */
 
-XSTATIC void
+STATIC_OVL void
 nocmov(x, y)
 int x,y;
 {
@@ -518,6 +479,7 @@ register int x, y;
 	curx = x;
 }
 
+/* See note at OVLx ifdef above.   xputc() is a special function. */
 void
 xputc(c)
 char c;
@@ -634,6 +596,9 @@ m_end()
 	if(ME) xputs(ME);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 void
 backsp()
 {
@@ -647,6 +612,9 @@ bell()
 	(void) putchar('\007');		/* curx does not change */
 	(void) fflush(stdout);
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 #ifdef ASCIIGRAPH
 void

@@ -42,9 +42,6 @@
 extern const char *configfile;
 
 #ifdef DGK
-/*	Selectable DGK options:
- */
-/*#define DECRAINBOW	/* enable use of DEC Rainbow graphics */
 
 /*	Non-Selectable DGK options:
  */

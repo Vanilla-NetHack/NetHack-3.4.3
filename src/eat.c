@@ -13,43 +13,34 @@
 # endif
 #endif
 
-static long FDECL(rounddiv, (long, long));
-#ifndef OVERLAY
-static int NDECL(Meatdone);
-#endif
+STATIC_PTR int NDECL(Meatdone);
+STATIC_PTR int NDECL(eatfood);
+STATIC_PTR int NDECL(opentin);
+STATIC_PTR int NDECL(unfaint);
+
+#ifdef OVLB
+static int FDECL(rounddiv, (long, int));
 static void FDECL(choke, (struct obj *));
 static void NDECL(recalc_wt);
 static struct obj *FDECL(touchfood, (struct obj *));
 static void NDECL(do_reset_eat);
-#ifndef OVERLAY
-static int NDECL(eatfood);
-#endif
 static void FDECL(done_eating, (BOOLEAN_P));
 static void FDECL(cprefx, (int));
 static void FDECL(cpostfx, (int));
-#ifndef OVERLAY
-static int NDECL(opentin);
-#endif
 static void FDECL(start_tin, (struct obj *));
-#ifdef POLYSELF
-static int FDECL(rottenfood, (struct obj *));
-#else
-static int NDECL(rottenfood);
-#endif
 static int FDECL(eatcorpse, (struct obj *));
 static void FDECL(start_eating, (struct obj *));
 static void FDECL(fprefx, (struct obj *));
-#ifdef POLYSELF
-static void NDECL(eatspecial);
-static const char * FDECL(foodword, (struct obj *));
-#endif
 static void FDECL(fpostfx, (struct obj *));
 static int NDECL(bite);
-#ifndef OVERLAY
-static int NDECL(unfaint);
-#endif
 
-#ifdef OVLB
+#ifdef POLYSELF
+static int FDECL(rottenfood, (struct obj *));
+static void NDECL(eatspecial);
+static const char * FDECL(foodword, (struct obj *));
+#else
+static int NDECL(rottenfood);
+#endif /* POLYSELF */
 
 char corpsename[60];
 char msgbuf[BUFSZ];
@@ -77,15 +68,28 @@ const char *hu_stat[] = {
 	"Starved "
 };
 
-static const char comestibles[] = { FOOD_SYM, 0 };
+#endif /* OVLB */
+
+#ifndef OVLB
+
+STATIC_DCL const char NEARDATA comestibles[];
+
+#else
+
+STATIC_OVL const char NEARDATA comestibles[] = { FOOD_SYM, 0 };
 #ifdef POLYSELF
-static const char everything[] = { GOLD_SYM, /* must come first */
+STATIC_OVL const char NEARDATA everything[] = { GOLD_SYM, /* must come first */
 	WEAPON_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM, WAND_SYM,
-#ifdef SPELLS
+# ifdef SPELLS
 	SPBOOK_SYM,
-#endif
+# endif
 	RING_SYM, WAND_SYM, AMULET_SYM, FOOD_SYM, TOOL_SYM, GEM_SYM,
 	ROCK_SYM, BALL_SYM, CHAIN_SYM, 0 };
+
+#endif /* POLYSELF */
+#endif /* OVLB */
+#ifdef OVL1
+# ifdef POLYSELF
 
 boolean
 is_edible(obj)
@@ -100,16 +104,19 @@ register struct obj *obj;
 		return TRUE;
 	return !!index(comestibles, obj->olet);
 }
-#endif
+# endif /* POLYSELF */
+#endif /* OVL1 */
+#ifdef OVLB
 
 /* calculate x/y, rounding as appropriate */
 
-static long
+static int
 rounddiv(x, y)
-long x, y;
+long x;
+int y;
 {
 	int divsgn = 1;
-	long r, m;
+	int r, m;
 
 	if (y == 0)
 		panic("division by zero in rounddiv");
@@ -145,7 +152,7 @@ const struct { const char *txt; int nut; } tintxts[] = {
 static struct {
 	struct	obj *tin;
 	int	usedtime, reqtime;
-} tin;
+} NEARDATA tin;
 
 static struct {
 	struct	obj *piece;	/* the thing being eaten, or last thing that
@@ -158,11 +165,9 @@ static struct {
 	Bitfield(fullwarn,1);	/* have warned about being full */
 	Bitfield(eating,1);	/* victual currently being eaten */
 	Bitfield(doreset,1);	/* stop eating at end of turn */
-} victual;
+} NEARDATA victual;
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 Meatdone() {		/* called after mimicing is over */
 	u.usym =
@@ -308,9 +313,7 @@ do_reset_eat() {
 	stop_occupation();
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 eatfood() {		/* called each move during eating process */
 	if(!carried(victual.piece) && !obj_here(victual.piece, u.ux, u.uy)) {
@@ -563,9 +566,7 @@ register int pm;
 	return;
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 opentin()		/* called during each move whilst opening a tin */
 {
@@ -580,26 +581,38 @@ opentin()		/* called during each move whilst opening a tin */
 	}
 	if(tin.usedtime < tin.reqtime)
 		return(1);		/* still busy */
-	if(tin.tin->cursed && !rn2(8)) {
+	if(tin.tin->cursed && tin.tin->spe != -1 && !rn2(8)) {
 		b_trapped("tin");
 		goto use_me;
 	}
 	You("succeed in opening the tin.");
-	if(!tin.tin->spe) {
+	if(tin.tin->spe != 1) {
 	    if(tin.tin->corpsenm == -1) {
 		pline("It turns out to be empty.");
 		tin.tin->dknown = tin.tin->known = TRUE;
 		goto use_me;
 	    }
 	    r = tin.tin->cursed ? 4 : rn2(TTSZ-1); /* Always rotten if cursed */
+#ifdef MACOS
+	{
+		char tmp[128];
+		if(!flags.silent) SysBeep(20);
+		Sprintf(tmp, "It smells like %s. Eat it ?", makeplural(
+		  Hallucination ? rndmonnam() : mons[tin.tin->corpsenm].mname));
+		if(UseMacAlertText(128, tmp) == 2) {
+#else
 	    pline("It smells like %s.", makeplural(
 		  Hallucination ? rndmonnam() : mons[tin.tin->corpsenm].mname));
 	    pline("Eat it? ");
 	    if (yn() == 'n') {
+#endif
 		if (!Hallucination) tin.tin->dknown = tin.tin->known = TRUE;
 		if (flags.verbose) You("discard the open tin.");
 		goto use_me;
 	    }
+#ifdef MACOS
+	}
+#endif
 	    You("consume %s %s.", tintxts[r].txt,
 		  mons[tin.tin->corpsenm].mname);
 	    tin.tin->dknown = tin.tin->known = TRUE;
@@ -615,6 +628,17 @@ opentin()		/* called during each move whilst opening a tin */
 			makeplural(body_part(FINGER)));
 	    }
 	} else {
+#ifdef MACOS
+	{
+		char tmp[128];
+		if(!flags.silent) SysBeep(20);
+	    if (tin.tin->cursed)
+		Sprintf(tmp, "It contains some decaying %s substance. Eat it ?",
+			Hallucination ? hcolor() : green);
+	    else
+		Sprintf(tmp, "It contains spinach. Eat it ?");
+		if(UseMacAlertText(128, tmp) == 2) {
+#else
 	    if (tin.tin->cursed)
 		pline("It contains some decaying %s substance.",
 			Hallucination ? hcolor() : green);
@@ -623,12 +647,16 @@ opentin()		/* called during each move whilst opening a tin */
 
 	    pline("Eat it? ");
 	    if (yn() == 'n') {
+#endif
 		if (!Hallucination && !tin.tin->cursed)
 		    tin.tin->dknown = tin.tin->known = TRUE;
 		if (flags.verbose)
 		    You("discard the open tin.");
 		goto use_me;
 	    }
+#ifdef MACOS
+	}
+#endif
 	    if (!tin.tin->cursed)
 		pline("This makes you feel like %s!",
 		      Hallucination ? "Swee'pea" : "Popeye");
@@ -926,7 +954,7 @@ fprefx(otmp)		/* called on "first bite" of (non-corpse) food */
 		} else 
 #endif
 		{
-		    int oldquan = otmp->quan;
+		    unsigned oldquan = otmp->quan;
 		    otmp->quan = 1;
 		    pline("This %s is %s!", xname(otmp),
 		      otmp->cursed ? (Hallucination ? "grody" : "terrible"):
@@ -956,6 +984,9 @@ eatspecial() /* called after eating non-food */
 	}
 	if (otmp->olet == POTION_SYM) {
 		otmp->quan++; /* dopotion() does a useup() */
+#ifdef MACOS
+		segments |= SEG_EAT;
+#endif
 		(void)dopotion(otmp);
 	}
 	if (otmp == uball) unpunish();
@@ -1103,7 +1134,7 @@ doeat() {		/* generic "eat" command funtion (see cmd.c) */
 	 */
 	    if (u.uhs != SATIATED) victual.canchoke = FALSE;
 	    if(!carried(victual.piece)) {
-		if(victual.piece->quan != 1)
+		if(victual.piece->quan > 1)
 			(void) splitobj(victual.piece, 1);
 	    }
 	    You("resume your meal.");
@@ -1157,7 +1188,7 @@ doeat() {		/* generic "eat" command funtion (see cmd.c) */
 	debug("oeaten == %d, basenutrit == %d", otmp->oeaten, basenutrit);
 #endif
 	victual.reqtime = (basenutrit == 0 ? 0 :
-	  (int)rounddiv(victual.reqtime * (long)otmp->oeaten,(long)basenutrit));
+		rounddiv(victual.reqtime * (long)otmp->oeaten, basenutrit));
 #ifdef DEBUG
 	debug("after rounddiv: victual.reqtime == %d", victual.reqtime);
 #endif
@@ -1271,8 +1302,14 @@ register int num;
 		else {
 		    victual.fullwarn = TRUE;
 		    if (victual.canchoke) {
+#ifdef MACOS
+			if(!flags.silent) SysBeep(20);
+			if(UseMacAlertText(128, "Stop eating ?") == 1)
+#else
 			pline("Stop eating? ");
-			if(yn() == 'y') reset_eat();
+			if(yn() == 'y')
+#endif
+				reset_eat();
 		    }
 		}
 	      }
@@ -1281,9 +1318,7 @@ register int num;
 	newuhs(FALSE);
 }
 
-#ifndef OVERLAY
-static 
-#endif
+STATIC_PTR
 int
 unfaint() {
 	(void) Hear_again();
@@ -1407,11 +1442,20 @@ floorfood(verb,corpseonly)	/* get food from floor or pack */
 #endif
 #ifdef POLYSELF
 	if (feeding && gold && metallivorous(uasmon)) {
+#ifdef MACOS
+		char tmp[128];
+	    if (gold->amount == 1)
+		Sprintf(tmp, "There is 1 gold piece here. Eat it ?");
+	    else Sprintf(tmp, "There are %ld gold pieces here. Eat them ?",
+								gold->amount);
+		if(UseMacAlertText(128, tmp) == 1) {
+#else
 	    if (gold->amount == 1)
 		pline("There is 1 gold piece here; eat it? ");
 	    else pline("There are %ld gold pieces here; eat them? ",
 								gold->amount);
 	    if (yn() == 'y') {
+#endif
 		otmp = newobj(0);
 		otmp->olet = GOLD_SYM;
 		otmp->ox = u.ux;
@@ -1430,12 +1474,26 @@ floorfood(verb,corpseonly)	/* get food from floor or pack */
 		    feeding ? is_edible(otmp) :
 #endif
 						otmp->olet==FOOD_SYM) {
+#ifdef MACOS
+			if(!flags.silent) SysBeep(20);
+		{
+			char tmp[128];
+			Sprintf(tmp, "There %s %s here. %s %s ?",
+				(otmp->quan == 1) ? "is" : "are",
+				doname(otmp), verb,
+				(otmp->quan == 1) ? "it" : "one");
+			if(UseMacAlertText(128, tmp) == 1)
+#else
 			pline("There %s %s here; %s %s? ",
 				(otmp->quan == 1) ? "is" : "are",
 				doname(otmp), verb,
 				(otmp->quan == 1) ? "it" : "one");
 			if(yn() == 'y')
+#endif
 				return(otmp);
+#ifdef MACOS
+		}
+#endif
 		}
 	    }
 	}

@@ -6,6 +6,7 @@
    systems (e.g. MUNIX) the include files <termio.h> and <sgtty.h>
    define the same constants, and the C preprocessor complains. */
 
+#ifndef VMS
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
 #define MONFLAG_H
@@ -89,3 +90,4 @@ dosuspend() {
 	return(0);
 }
 #endif /* SUSPEND /**/
+#endif /*VMS*/

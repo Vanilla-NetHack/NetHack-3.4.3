@@ -59,7 +59,10 @@ char *argv[];
 #endif
 	if(argc > 1) {
 #ifdef CHDIR
-	    if (!strncmp(argv[1], "-d", 2)) {
+	    if (!strncmp(argv[1], "-d", 2) && argv[1][2] != 'e') {
+		/* avoid matching "-dec" for DECgraphics; since the man page
+		 * says -d directory, hope nobody's using -desomething_else
+		 */
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -83,7 +86,7 @@ char *argv[];
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
-		if(isatty(1)) getret();
+		if(isatty(1) > 0) getret();
 		settty(NULL);
 		exit(0);
 	    }
@@ -125,7 +128,7 @@ char *argv[];
 # endif
 		case 'D':
 # ifdef WIZARD
-			if(!strcmp(getenv("USER"), WIZARD)) {
+			if(!strcmp(getenv("USER"), WIZARD_NAME)) {
 				wizard = TRUE;
 				break;
 			}
@@ -152,6 +155,12 @@ char *argv[];
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
 				Printf("Player name expected after -u\n");
+			break;
+		case 'i':
+			if(!strcmp(argv[0]+1, "ibm")) assign_ibm_graphics();
+			break;
+		case 'd':
+			if(!strcmp(argv[0]+1, "dec")) assign_dec_graphics();
 			break;
 		default:
 			/* allow -T for Tourist, etc. */
@@ -318,9 +327,11 @@ chdirx(dir, wr)
 char *dir;
 boolean wr;
 {
+# ifndef HACKDIR
+	static char *defdir = ".";
+# else
 	static char *defdir = HACKDIR;
 
-# ifdef HACKDIR
 	if(dir == NULL)
 		dir = defdir;
 	else if (wr)
@@ -376,12 +387,19 @@ static void
 byebye()
 {
     int (*hup)();
+#ifdef SHELL
     extern unsigned int dosh_pid;
+
+    if (dosh_pid)
+	SYS$DELPRC(&dosh_pid, 0);
+#endif SHELL
 
     /* SIGHUP doesn't seem to do anything on VMS, so we fudge it here... */
     hup = signal(SIGHUP, SIG_IGN);
     if (hup != SIG_DFL && hup != SIG_IGN)
 	(*hup)();
-    if (dosh_pid)
-	SYS$DELPRC(&dosh_pid, 0);
+
+#ifdef CHDIR
+    (void) chdir(getenv("PATH"));
+#endif
 }
