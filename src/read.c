@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.3	1999/11/29	*/
+/*	SCCS Id: @(#)read.c	3.3	2000/03/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,7 +30,6 @@ static NEARDATA const char readable[] =
 		   { ALL_CLASSES, SCROLL_CLASS, SPBOOK_CLASS, 0 };
 static const char all_count[] = { ALLOW_COUNT, ALL_CLASSES, 0 };
 
-static void FDECL(read_grave, (int));
 static void FDECL(wand_explode, (struct obj *));
 static void NDECL(do_class_genocide);
 static void FDECL(stripspe,(struct obj *));
@@ -47,16 +46,6 @@ doread()
 {
 	register struct obj *scroll;
 	register boolean confused;
-
-
-	if (IS_GRAVE(levl[u.ux][u.uy].typ) && !Levitation) {
-	    if(yn("Read the headstone?") == 'y') {
-	    	/* KMH, conduct */
-	    	u.uconduct.literate++;
-	    	read_grave(u.ux + u.uy + urole.name.m[0]);
-	    	return 1;
-	    }
-	}
 
 	known = FALSE;
 	if(check_capacity((char *)0)) return (0);
@@ -114,8 +103,10 @@ doread()
 	    }
 	}
 
-	/* KMH, conduct */
-	if (scroll->otyp != SPE_BOOK_OF_THE_DEAD)
+	/* Actions required to win the game aren't counted towards conduct */
+	if (scroll->otyp != SPE_BOOK_OF_THE_DEAD &&
+		scroll->otyp != SPE_BLANK_PAPER &&
+		scroll->otyp != SCR_BLANK_PAPER)
 	    u.uconduct.literate++;
 
 	confused = (Confusion != 0);
@@ -156,71 +147,6 @@ doread()
 	}
 	return(1);
 }
-
-static void
-read_grave (inscription)
-	int inscription;
-{
-	const char *epitaph;
-
-
-#define EPITAPHS 25
-	switch (inscription % EPITAPHS) {
-		case 0: epitaph = "Note -- there are NO valuable items in this grave.";
-		break;
-		case 1: epitaph = "1994-1995. The Longest-Lived Hacker Ever.";
-		break;
-		case 2: epitaph = "The Grave of the Unknown Hacker.";
-		break;
-		case 3:
-		case 4:
-		case 5: epitaph = "R.I.P.";
-		break;
-		case 6: epitaph = "Rest In Pieces.";
-		break;
-		case 7: epitaph = "We weren't sure who this was, but we buried him here anyway.";
-		break;
-		case 8: epitaph = "Sparky -- he was a very good dog.";
-		break;
-		case 9: epitaph = "Beware of Electric Third Rail.";
-		break;
-		case 10: epitaph = "Made in Taiwan.";
-		break;
-		case 11: epitaph = "Og friend. Og good dude. Og died. Og now food.";
-		break;
-		case 12: epitaph = "Beetlejuice Beetlejuice Beetlejuice";
-		break;
-		case 13: epitaph = "Look out below!";
-		break;
-		case 14: epitaph = "Please don't dig me up. I'm perfectly happy down here. -- Resident";
-		break;
-		case 15: epitaph = "Postman, please note forwarding address: Gehennom, Asmodeus's Fortress, fifth lemure on the left.";
-		break;
-		case 16: epitaph = "This old man, he played one, he played knick-knack on my thumb.";
-		break;
-		case 17: epitaph = "Mary had a little lamb, its fleece was white as snow. When Mary was in trouble here, the lamb was first to go.";
-		break;
-		case 18: epitaph = "Be careful, or this could happen to you! -- occupant";
-		break;
-		case 19: epitaph = "Soon you'll join this fellow in hell! -- the Wizard of Yendor";
-		break;
-		case 20: epitaph = "Caution! This grave contains toxic waste.";
-		break;
-		case 21: epitaph = "Go away!";
-		break;
-		case 22: epitaph = "Saved by the bell.";
-		break;
-		case 23:
-		case 24:
-		default:
-		pline("It is blank...");
-		return;
-	}
-	/* Headstones are engraved, so you can read them while blind */
-	pline("It reads:");
-	pline(epitaph);
-}
-
 
 static void
 stripspe(obj)
@@ -458,9 +384,11 @@ int curse_bless;
 		    if (obj->spe <= 10)
 			obj->spe += rn1(10, 6);
 		    else obj->spe += rn1(5, 6);
+		    if (obj->spe > 50) obj->spe = 50;
 		    p_glow2(obj,blue);
 		} else {
 		    obj->spe += rnd(5);
+		    if (obj->spe > 50) obj->spe = 50;
 		    p_glow1(obj);
 		}
 		break;
@@ -473,9 +401,11 @@ int curse_bless;
 		    stripspe(obj);
 		} else if (is_blessed) {
 		    obj->spe += d(2,4);
+		    if (obj->spe > 20) obj->spe = 20;
 		    p_glow2(obj,blue);
 		} else {
 		    obj->spe += rnd(4);
+		    if (obj->spe > 20) obj->spe = 20;
 		    p_glow1(obj);
 		}
 		break;
@@ -577,6 +507,9 @@ forget_map(howmuch)
 {
 	register int zx, zy;
 
+	if (In_sokoban(&u.uz))
+	    return;
+
 	known = TRUE;
 	for(zx = 0; zx < COLNO; zx++) for(zy = 0; zy < ROWNO; zy++)
 	    if (howmuch & ALL_MAP || rn2(7)) {
@@ -622,10 +555,21 @@ forget_levels(percent)
 	maxl = maxledgerno();
 
 	/* count & save indices of non-forgotten visited levels */
+	/* Sokoban levels are pre-mapped for the player, and should stay
+	 * so, or they become nearly impossible to solve.  But try to
+	 * shift the forgetting elsewhere by fiddling with percent
+	 * instead of forgetting fewer levels.
+	 */
 	for (count = 0, i = 0; i <= maxl; i++)
 	    if ((level_info[i].flags & VISITED) &&
-			!(level_info[i].flags & FORGOTTEN) && i != this_lev)
-		indices[count++] = i;
+			!(level_info[i].flags & FORGOTTEN) && i != this_lev) {
+		if (ledger_to_dnum(i) == sokoban_dnum)
+		    percent += 2;
+		else
+		    indices[count++] = i;
+	    }
+	
+	if (percent > 100) percent = 100;
 
 	randomize(indices, count);
 
@@ -705,6 +649,7 @@ register struct obj	*sobj;
 	    {
 		register schar s;
 		boolean special_armor;
+		boolean same_color;
 
 		otmp = some_armor(&youmonst);
 		if(!otmp) {
@@ -732,20 +677,32 @@ register struct obj	*sobj;
 			}
 			if (otmp->oerodeproof && (otmp->oeroded || otmp->oeroded2)) {
 			    otmp->oeroded = otmp->oeroded2 = 0;
-			    Your("%s %ss good as new!",
-				 xname(otmp), Blind ? "feel" : "look");
+			    Your("%s %s as good as new!",
+				 xname(otmp), Blind ? "feels" : "looks");
 			}
 			break;
 		}
 		special_armor = is_elven_armor(otmp) ||
 				(Role_if(PM_WIZARD) && otmp->otyp == CORNUTHAUM);
+		if (sobj->cursed)
+		    same_color =
+			(otmp->otyp == BLACK_DRAGON_SCALE_MAIL ||
+			 otmp->otyp == BLACK_DRAGON_SCALES);
+		else
+		    same_color =
+			(otmp->otyp == SILVER_DRAGON_SCALE_MAIL ||
+			 otmp->otyp == SILVER_DRAGON_SCALES ||
+			 otmp->otyp == SHIELD_OF_REFLECTION);
+		if (Blind) same_color = FALSE;
+
 		/* KMH -- catch underflow */
 		s = sobj->cursed ? -otmp->spe : otmp->spe;
 		if (s > (special_armor ? 5 : 3) && rn2(s)) {
-		Your("%s violently %s%s for a while, then evaporates.",
+		Your("%s violently %s%s%s for a while, then evaporates.",
 			    xname(otmp),
-			    Blind ? "vibrates" : "glows ",
-			    Blind ? nul : hcolor(sobj->cursed ? Black : silver));
+			    Blind ? "vibrates" : "glows",
+			    (!Blind && !same_color) ? " " : nul,
+			    (Blind || same_color) ? nul : hcolor(sobj->cursed ? Black : silver));
 			if(is_cloak(otmp)) (void) Cloak_off();
 			if(is_boots(otmp)) (void) Boots_off();
 			if(is_helmet(otmp)) (void) Helmet_off();
@@ -775,11 +732,12 @@ register struct obj	*sobj;
 			setworn(otmp, W_ARM);
 			break;
 		}
-		Your("%s %s%s%s for a %s.",
+		Your("%s %s%s%s%s for a %s.",
 			xname(otmp),
 		        s == 0 ? "violently " : nul,
-			Blind ? "vibrates" : "glows ",
-			Blind ? nul : hcolor(sobj->cursed ? Black : silver),
+			Blind ? "vibrates" : "glows",
+			(!Blind && !same_color) ? " " : nul,
+			(Blind || same_color) ? nul : hcolor(sobj->cursed ? Black : silver),
 			  (s*s>1) ? "while" : "moment");
 		otmp->cursed = sobj->cursed;
 		if (!otmp->blessed || sobj->cursed)
@@ -872,7 +830,8 @@ register struct obj	*sobj;
 	    {	register int ct = 0;
 		register struct monst *mtmp;
 
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if (DEADMONSTER(mtmp)) continue;
 		    if(cansee(mtmp->mx,mtmp->my)) {
 			if(confused || sobj->cursed) {
 			    mtmp->mflee = mtmp->mfrozen = mtmp->msleeping = 0;
@@ -882,6 +841,7 @@ register struct obj	*sobj;
 				mtmp->mflee = 1;
 			if(!mtmp->mtame) ct++;	/* pets don't laugh at you */
 		    }
+		}
 		if(!ct)
 		      You_hear("%s in the distance.",
 			       (confused || sobj->cursed) ? "sad wailing" :
@@ -953,7 +913,7 @@ register struct obj	*sobj;
 			}
 			if (uwep->oerodeproof && (uwep->oeroded || uwep->oeroded2)) {
 			    uwep->oeroded = uwep->oeroded2 = 0;
-			    Your("%s good as new!",
+			    Your("%s as good as new!",
 				 aobjnam(uwep, Blind ? "feel" : "look"));
 			}
 		} else return !chwepon(sobj,
@@ -1056,7 +1016,7 @@ register struct obj	*sobj;
 		    if (Hallucination)
 			pline("Wow!  Modern art.");
 		    else
-			Your("head spins in bewilderment.");
+			Your("%s spins in bewilderment.", body_part(HEAD));
 		    make_confused(HConfusion + rnd(30), FALSE);
 		    break;
 		}
@@ -1072,7 +1032,7 @@ register struct obj	*sobj;
 		known = TRUE;
 	case SPE_MAGIC_MAPPING:
 		if (level.flags.nommap) {
-		    Your("head spins as something blocks the spell!");
+		    Your("%s spins as %s blocks the spell!", body_part(HEAD), something);
 		    make_confused(HConfusion + rnd(30), FALSE);
 		    break;
 		}
@@ -1144,6 +1104,8 @@ register struct obj	*sobj;
 	    	pline_The("%s rumbles %s you!", ceiling(u.ux,u.uy),
 	    			sobj->blessed ? "around" : "above");
 	    	known = 1;
+	    	if (In_sokoban(&u.uz))
+	    	    change_luck(-1);	/* Sokoban guilt */
 
 	    	/* Loop through the surrounding squares */
 	    	if (!sobj->cursed) for (x = u.ux-1; x <= u.ux+1; x++) {
@@ -1190,7 +1152,7 @@ register struct obj	*sobj;
 				    } else {
 					if (canspotmon(mtmp))
 					    pline("%s's %s does not protect %s.",
-						Monnam(mtmp), xname(uarmh),
+						Monnam(mtmp), xname(helmet),
 						him[pronoun_gender(mtmp)]);
 				    }
 				}
@@ -1255,15 +1217,22 @@ register struct obj	*sobj;
 		break;
 	case SCR_STINKING_CLOUD: {
 	        coord cc;
-		pline("Where ?");
+
+		You("have found a scroll of stinking cloud!");
+		known = TRUE;
+		pline("Where do you want to center the cloud?");
 		cc.x = u.ux;
 		cc.y = u.uy;
-		if (getpos(&cc, TRUE, "the desired position") < 0) /* force valid */
-		    return 0;	/* abort */
-		if (!cansee(cc.x, cc.y) || distu(cc.x, cc.y) >= 32)
+		if (getpos(&cc, TRUE, "the desired position") < 0) {
+		    pline(Never_mind);
 		    return 0;
-		known = TRUE;
-		(void) create_gas_cloud(cc.x, cc.y, 3, 10);
+		}
+		if (!cansee(cc.x, cc.y) || distu(cc.x, cc.y) >= 32) {
+		    You("smell rotten eggs.");
+		    return 0;
+		}
+		(void) create_gas_cloud(cc.x, cc.y, 3+bcsign(sobj),
+						8+4*bcsign(sobj));
 		break;
 	}
 	default:
@@ -1448,6 +1417,7 @@ do_class_genocide()
 			    gonecnt = 0;
 			    for (mtmp = fmon; mtmp; mtmp = mtmp2) {
 				mtmp2 = mtmp->nmon;
+			    	if (DEADMONSTER(mtmp)) continue;
 				mongone(mtmp);
 				gonecnt++;
 			    }
@@ -1464,6 +1434,9 @@ do_class_genocide()
 			char nam[BUFSZ];
 
 			Strcpy(nam, makeplural(mons[i].mname));
+			/* Although "genus" is Latin for race, the hero benefits
+			 * from both race and role; thus genocide affects either.
+			 */
 			if (Your_Own_Role(i) || Your_Own_Race(i) ||
 				((mons[i].geno & G_GENO)
 				&& !(mvitals[i].mvflags & G_GENOD))) {
@@ -1475,7 +1448,10 @@ do_class_genocide()
 			    kill_genocided_monsters();
 			    update_inventory();		/* eggs & tins */
 			    pline("Wiped out all %s.", nam);
-			    if (Upolyd && i == u.umonnum && !Unchanging) rehumanize();
+			    if (Upolyd && i == u.umonnum) {
+				if (Unchanging) done(GENOCIDED);
+				rehumanize();
+			    }
 			    /* Self-genocide if it matches either your race or role */
 			    /* Assumption: male and female forms share the same letter */
 			    if (i == urole.malenum || i == urace.malenum) {
@@ -1557,6 +1533,9 @@ int how;
 			continue;
 		}
 		ptr = &mons[mndx];
+		/* Although "genus" is Latin for race, the hero benefits
+		 * from both race and role; thus genocide affects either.
+		 */
 		if (Your_Own_Role(mndx) || Your_Own_Race(mndx)) {
 			killplayer++;
 			break;
@@ -1620,8 +1599,11 @@ int how;
 
 	/* Polymorphed characters will die as soon as they're rehumanized. */
 	/* KMH -- Unchanging prevents rehumanization */
-		if (Upolyd && ptr != youmonst.data) You_feel("dead inside.");
-		else
+		if (Upolyd && ptr != youmonst.data) {
+			delayed_killer = killer;
+			killer = 0;
+			You_feel("dead inside.");
+		} else
 			done(GENOCIDED);
 	    } else if (ptr == youmonst.data) {
 		rehumanize();

@@ -76,13 +76,14 @@ stealarm()
 	    if(otmp->o_id == stealoid) {
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		    if(mtmp->m_id == stealmid) {
+			if(DEADMONSTER(mtmp)) impossible("stealarm(): dead monster stealing"); 
 			if(!dmgtype(mtmp->data, AD_SITM)) /* polymorphed */
 			    goto botm;
 			if(otmp->unpaid)
 			    subfrombill(otmp, shop_keeper(*u.ushops));
 			freeinv(otmp);
 			pline("%s steals %s!", Monnam(mtmp), doname(otmp));
-			mpickobj(mtmp,otmp);
+			(void) mpickobj(mtmp,otmp);	/* may free otmp */
 			mtmp->mflee = 1;
 			if (!tele_restrict(mtmp)) rloc(mtmp);
 		        break;
@@ -141,9 +142,8 @@ int
 steal(mtmp)
 struct monst *mtmp;
 {
-	register struct obj *otmp;
-	register int tmp;
-	register int named = 0;
+	struct obj *otmp;
+	int tmp, could_petrify, named = 0;
 
 	/* the following is true if successful on first of two attacks. */
 	if(!monnear(mtmp, u.ux, u.uy)) return(0);
@@ -265,9 +265,9 @@ gotobj:
 
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
-	mpickobj(mtmp,otmp);
-	if (otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm]) &&
-		!(mtmp->misc_worn_check & W_ARMG)) {
+	could_petrify = otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm]);
+	(void) mpickobj(mtmp,otmp);	/* may free otmp */
+	if (could_petrify && !(mtmp->misc_worn_check & W_ARMG)) {
 	    minstapetrify(mtmp, TRUE);
 	    return -1;
 	}
@@ -277,14 +277,18 @@ gotobj:
 #endif /* OVLB */
 #ifdef OVL1
 
-void
+/* Returns 1 if otmp is free'd, 0 otherwise. */
+int
 mpickobj(mtmp,otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
 {
+    int freed_otmp;
+
     if (otmp->oclass == GOLD_CLASS) {
 	mtmp->mgold += otmp->quan;
 	obfree(otmp, (struct obj *)0);
+	freed_otmp = 1;
     } else {
 	boolean snuff_otmp = FALSE;
 	/* don't want hidden light source inside the monster; assumes that
@@ -303,10 +307,11 @@ register struct obj *otmp;
 	carry_obj_effects(otmp);
 	/* add_to_minv() might free otmp [if merged with something else],
 	   so we have to call it after doing the object checks */
-	add_to_minv(mtmp, otmp);
+	freed_otmp = add_to_minv(mtmp, otmp);
 	/* and we had to defer this until object is in mtmp's inventory */
 	if (snuff_otmp) snuff_light_source(mtmp->mx, mtmp->my);
     }
+    return freed_otmp;
 }
 
 #endif /* OVL1 */
@@ -314,45 +319,46 @@ register struct obj *otmp;
 
 void
 stealamulet(mtmp)
-register struct monst *mtmp;
+struct monst *mtmp;
 {
-	register struct obj *otmp;
-	register int	real, fake;
+    struct obj *otmp = (struct obj *)0;
+    int real=0, fake=0;
 
-	/* select the artifact to steal */
-	if(u.uhave.amulet) {
-		real = AMULET_OF_YENDOR ;
-		fake = FAKE_AMULET_OF_YENDOR ;
-	} else if(u.uhave.questart) {
-	    real = fake = 0;		/* gcc -Wall lint */
-	    for(otmp = invent; otmp; otmp = otmp->nobj)
-	        if(is_quest_artifact(otmp)) goto snatch_it;
-	} else if(u.uhave.bell) {
-		real = BELL_OF_OPENING;
-		fake = BELL;
-	} else if(u.uhave.book) {
-		real = SPE_BOOK_OF_THE_DEAD;
-		fake = 0;
-	} else if(u.uhave.menorah) {
-		real = CANDELABRUM_OF_INVOCATION;
-		fake = 0;
-	} else return;	/* you have nothing of special interest */
+    /* select the artifact to steal */
+    if(u.uhave.amulet) {
+	real = AMULET_OF_YENDOR;
+	fake = FAKE_AMULET_OF_YENDOR;
+    } else if(u.uhave.questart) {
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+	    if(is_quest_artifact(otmp)) break;
+	if (!otmp) return;	/* should we panic instead? */
+    } else if(u.uhave.bell) {
+	real = BELL_OF_OPENING;
+	fake = BELL;
+    } else if(u.uhave.book) {
+	real = SPE_BOOK_OF_THE_DEAD;
+    } else if(u.uhave.menorah) {
+	real = CANDELABRUM_OF_INVOCATION;
+    } else return;	/* you have nothing of special interest */
 
-/*	If we get here, real and fake have been set up. */
-	for(otmp = invent; otmp; otmp = otmp->nobj) {
-	    if(otmp->otyp == real || (otmp->otyp == fake && !mtmp->iswiz)) {
-		/* might be an imitation one */
-snatch_it:
-		if (otmp->owornmask)
-		    remove_worn_item(otmp);
-		freeinv(otmp);
-		mpickobj(mtmp,otmp);
-		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
-		if (can_teleport(mtmp->data) && !tele_restrict(mtmp))
-			rloc(mtmp);
-		return;
-	    }
-	}
+    if (!otmp) {
+	/* If we get here, real and fake have been set up. */
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+	    if(otmp->otyp == real || (otmp->otyp == fake && !mtmp->iswiz))
+		break;
+    }
+
+    if (otmp) { /* we have something to snatch */
+	if (otmp->owornmask)
+	    remove_worn_item(otmp);
+	freeinv(otmp);
+	/* mpickobj wont merge otmp because none of the above things
+	   to steal are mergable */
+	(void) mpickobj(mtmp,otmp);	/* may merge and free otmp */
+	pline("%s stole %s!", Monnam(mtmp), doname(otmp));
+	if (can_teleport(mtmp->data) && !tele_restrict(mtmp))
+	    rloc(mtmp);
+    }
 }
 
 #endif /* OVLB */
@@ -405,7 +411,7 @@ boolean is_pet;		/* If true, pet should keep wielded/worn items */
 	/* put kept objects back */
 	while ((otmp = keepobj) != (struct obj *)0) {
 	    keepobj = otmp->nobj;
-	    add_to_minv(mtmp, otmp);
+	    (void) add_to_minv(mtmp, otmp);
 	}
 
 	if (mtmp->mgold) {

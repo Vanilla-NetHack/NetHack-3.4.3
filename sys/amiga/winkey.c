@@ -40,10 +40,10 @@ amii_nh_poskey(x, y, mod)
 	    if( lastevent.un.mouse.qual )
 		*mod = 0;
 
-	    /* X coordinates are 1 based, Y are zero based. */
+	    /* X coordinates are 1 based, Y are 1 based. */
 	    *x = ( (lastevent.un.mouse.x - w->BorderLeft) / mxsize ) + 1;
 	    *y = ( ( lastevent.un.mouse.y - w->BorderTop - MAPFTBASELN ) /
-			mysize );
+			mysize ) + 1;
 #ifdef	CLIPPING
 	    if( clipping )
 	    {

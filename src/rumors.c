@@ -58,10 +58,16 @@ dlb *fp;
 	    true_rumor_size = -1L;	/* init failed */
 }
 
+/* exclude_cookie is a hack used because we sometimes want to get rumors in a
+ * context where messages such as "You swallowed the fortune!" that refer to
+ * cookies should not appear.  This has no effect for true rumors since none
+ * of them contain such references anyway.
+ */
 char *
-getrumor(truth, rumor_buf)
+getrumor(truth, rumor_buf, exclude_cookie)
 int truth; /* 1=true, -1=false, 0=either */
 char *rumor_buf;
+boolean exclude_cookie; 
 {
 	dlb	*rumors;
 	long tidbit, beginning;
@@ -74,6 +80,11 @@ char *rumor_buf;
 	rumors = dlb_fopen(RUMORFILE, "r");
 
 	if (rumors) {
+	    int count = 0;
+	    int adjtruth;
+
+	    do {
+		rumor_buf[0] = '\0';
 		if (true_rumor_size == 0L) {	/* if this is 1st outrumor() */
 		    init_rumors(rumors);
 		    if (true_rumor_size < 0L) {	/* init failed */
@@ -87,7 +98,7 @@ char *rumor_buf;
 		 *	 rn2 \ +1  2=T  1=T  0=F
 		 *	 adj./ +0  1=T  0=F -1=F
 		 */
-		switch (truth += rn2(2)) {
+		switch (adjtruth = truth + rn2(2)) {
 		  case  2:	/*(might let a bogus input arg sneak thru)*/
 		  case  1:  beginning = true_rumor_start;
 			    tidbit = Rand() % true_rumor_size;
@@ -103,15 +114,19 @@ char *rumor_buf;
 		(void) dlb_fseek(rumors, beginning + tidbit, SEEK_SET);
 		(void) dlb_fgets(line, sizeof line, rumors);
 		if (!dlb_fgets(line, sizeof line, rumors) ||
-		    (truth > 0 && dlb_ftell(rumors) > true_rumor_end)) {
+		    (adjtruth > 0 && dlb_ftell(rumors) > true_rumor_end)) {
 			/* reached end of rumors -- go back to beginning */
 			(void) dlb_fseek(rumors, beginning, SEEK_SET);
 			(void) dlb_fgets(line, sizeof line, rumors);
 		}
 		if ((endp = index(line, '\n')) != 0) *endp = 0;
 		Strcat(rumor_buf, xcrypt(line, xbuf));
-		(void) dlb_fclose(rumors);
-		exercise(A_WIS, (truth > 0));
+	    } while(count++ < 50 && exclude_cookie && (strstri(rumor_buf, "fortune") || strstri(rumor_buf, "pity")));
+	    (void) dlb_fclose(rumors);
+	    if (count >= 50)
+		impossible("Can't find non-cookie rumor?");
+	    else
+		exercise(A_WIS, (adjtruth > 0));
 	} else {
 		pline("Can't open rumors file!");
 		true_rumor_size = -1;	/* don't try to open it again */
@@ -137,7 +152,7 @@ int mechanism;
 		pline("What a pity that you cannot read it!");
 		return;
 	}
-	line = getrumor(truth, buf);
+	line = getrumor(truth, buf, reading ? FALSE : TRUE);
 	if (!*line)
 		line = "NetHack rumors file closed for renovation.";
 	switch (mechanism) {
@@ -274,7 +289,7 @@ register struct monst *oracl;
 	multi = 0;
 
 	if (!oracl) {
-		pline("There is no one here to consult.");
+		There("is no one here to consult.");
 		return 0;
 	} else if (!oracl->mpeaceful) {
 		pline("%s is in no mood for consultations.", Monnam(oracl));

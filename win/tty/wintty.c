@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.3	1999/10/28	*/
+/*	SCCS Id: @(#)wintty.c	3.3	2000/06/27	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -131,6 +131,7 @@ extern void FDECL(adjust_cursor_flags, (struct WinDesc *));
 
 #if defined(ASCIIGRAPH) && !defined(NO_TERMS)
 boolean GFlag = FALSE;
+boolean HE_resets_AS;	/* see termcap.c */
 #endif
 
 #ifdef MICRO
@@ -305,19 +306,19 @@ char** argv;
 void
 tty_player_selection()
 {
-	int i, j, k, n;
+	int i, k, n;
 	char pick4u = 'n', thisch, lastch = 0;
 	char pbuf[QBUFSZ];
 	winid win;
 	anything any;
 	menu_item *selected = 0;
 
-	/* Select a role, if necessary */
-	if (flags.initrole < 0) {
+	/* Should we randomly pick for the player? */
+	if (flags.initrole == ROLE_NONE || flags.initrace == ROLE_NONE ||
+		flags.initgend == ROLE_NONE || flags.initalign == ROLE_NONE) {
 	    const char *prompt = "Shall I pick a character for you? [ynq] ";
 	    int echoline;
 
-	    /* Should we randomly pick for the player? */
 	    tty_putstr(BASE_WINDOW, 0, "");
 	    echoline = wins[BASE_WINDOW]->cury;
 	    tty_putstr(BASE_WINDOW, 0, prompt);
@@ -336,28 +337,49 @@ tty_player_selection()
 		 * bottom of the window.
 		 */
 		tty_clear_nhwindow(BASE_WINDOW);
+	    
+	    if (pick4u != 'y' && pick4u != 'n') {
+give_up:	/* Quit */
+		if (selected) free((genericptr_t) selected);
+		bail((char *)0);
+		/*NOTREACHED*/
+		return;
+	    }
+	}
 
+	/* Select a role, if necessary */
+	/* we'll try to be compatible with pre-selected race/gender/alignment,
+	 * but may not succeed */
+	if (flags.initrole < 0) {
 	    /* Process the choice */
-	    switch (pick4u) {
-	    case 'y':
+	    if (pick4u == 'y' || flags.initrole == ROLE_RANDOM) {
 		/* Pick a random role */
-		flags.initrole = randrole();
-		break;
-
-	    case 'n':
+		flags.initrole = pick_role(flags.initrace, flags.initgend,
+						flags.initalign);
+		if (flags.initrole < 0) {
+		    tty_putstr(BASE_WINDOW, 0, "Incompatible role!");
+		    flags.initrole = randrole();
+		}
+	    } else {
 		/* Prompt for a role */
 		win = create_nhwindow(NHW_MENU);
 		start_menu(win);
 		any.a_void = 0;         /* zero out all bits */
 		for (i = 0; roles[i].name.m; i++) {
-		    any.a_int = i+1;	/* must be non-zero */
-		    thisch = lowc(roles[i].name.m[0]);
-		    if (thisch == lastch) thisch = highc(thisch);
-		    add_menu(win, NO_GLYPH, &any, thisch,
+		    if (ok_role(i, flags.initrace, flags.initgend,
+							flags.initalign)) {
+			any.a_int = i+1;	/* must be non-zero */
+			thisch = lowc(roles[i].name.m[0]);
+			if (thisch == lastch) thisch = highc(thisch);
+			add_menu(win, NO_GLYPH, &any, thisch,
 			    0, ATR_NONE, an(roles[i].name.m), MENU_UNSELECTED);
-		    lastch = thisch;
+			lastch = thisch;
+		    }
 		}
-		any.a_int = randrole()+1;	/* must be non-zero */
+		any.a_int = pick_role(flags.initrace, flags.initgend,
+				    flags.initalign)+1;
+		if (any.a_int == 0)	/* must be non-zero */
+		    any.a_int = randrole()+1;
 		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
 				"Random", MENU_UNSELECTED);
 		any.a_int = i+1;	/* must be non-zero */
@@ -373,156 +395,218 @@ tty_player_selection()
 
 		flags.initrole = selected[0].item.a_int - 1;
 		free((genericptr_t) selected),	selected = 0;
-		break;
-
-	    default:
-	    case 'q':
-give_up:	/* Quit */
-		if (selected) free((genericptr_t) selected);
-		bail((char *)0);
-		/*NOTREACHED*/
-		return;
 	    }
 	}
 
-	/* Select a race */
-	if (!validrace(flags.initrole, flags.initrace))
-	    i = j = k = randrace(flags.initrole);
-	else
-	    i = j = k = flags.initrace;
-	/* Count the number of valid races */
-	n = 0;
-	do {
-	    if (validrace(flags.initrole, i)) n++;
-	    else if ((i == k) && (!races[++k].noun)) k = 0;
-	    if (!races[++i].noun) i = 0;
-	} while (i != j);
-	/* Permit the user to pick, if there is more than one */
-	if (!validrace(flags.initrole, flags.initrace)) {
-	    if (pick4u == 'n' && n > 1) {
-		win = create_nhwindow(NHW_MENU);
-		start_menu(win);
-		any.a_void = 0;         /* zero out all bits */
-		for (i = 0; races[i].noun; i++)
-		    if (validrace(flags.initrole, i)) {
-			any.a_int = i+1;	/* must be non-zero */
-			add_menu(win, NO_GLYPH, &any, races[i].noun[0],
+	/* Select a race, if necessary */
+	/* force compatibility with role, try for compatibility with
+	 * pre-selected gender/alignment */
+	if (flags.initrace < 0 || !validrace(flags.initrole, flags.initrace)) {
+	    /* pre-selected race not valid */
+	    if (pick4u == 'y' || flags.initrace == ROLE_RANDOM) {
+		flags.initrace = pick_race(flags.initrole, flags.initgend,
+							flags.initalign);
+		if (flags.initrace < 0) {
+		    tty_putstr(BASE_WINDOW, 0, "Incompatible race!");
+		    flags.initrace = randrace(flags.initrole);
+		}
+	    } else {	/* pick4u == 'n' */
+		/* Count the number of valid races */
+		n = 0;	/* number valid */
+		k = 0;	/* valid race */
+		for (i = 0; races[i].noun; i++) {
+		    if (ok_race(flags.initrole, i, flags.initgend,
+							flags.initalign)) {
+			n++;
+			k = i;
+		    }
+		}
+		if (n == 0) {
+		    for (i = 0; races[i].noun; i++) {
+			if (validrace(flags.initrole, i)) {
+			    n++;
+			    k = i;
+			}
+		    }
+		}
+
+		/* Permit the user to pick, if there is more than one */
+		if (n > 1) {
+		    win = create_nhwindow(NHW_MENU);
+		    start_menu(win);
+		    any.a_void = 0;         /* zero out all bits */
+		    for (i = 0; races[i].noun; i++)
+			if (ok_race(flags.initrole, i, flags.initgend,
+							flags.initalign)) {
+			    any.a_int = i+1;	/* must be non-zero */
+			    add_menu(win, NO_GLYPH, &any, races[i].noun[0],
 				0, ATR_NONE, races[i].noun, MENU_UNSELECTED);
-		    }
-		any.a_int = randrace(flags.initrole)+1;
-		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
-				"Random", MENU_UNSELECTED);
-		any.a_int = i+1;	/* must be non-zero */
-		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
-				"Quit", MENU_UNSELECTED);
-		Sprintf(pbuf, "Pick the race of your %s",
-				roles[flags.initrole].name.m);
-		end_menu(win, pbuf);
-		n = select_menu(win, PICK_ONE, &selected);
-		destroy_nhwindow(win);
-		if (n != 1 || selected[0].item.a_int == any.a_int)
-		    goto give_up;		/* Selected quit */
+			}
+		    any.a_int = pick_race(flags.initrole, flags.initgend,
+					flags.initalign)+1;
+		    if (any.a_int == 0)	/* must be non-zero */
+			any.a_int = randrace(flags.initrole)+1;
+		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				    "Random", MENU_UNSELECTED);
+		    any.a_int = i+1;	/* must be non-zero */
+		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				    "Quit", MENU_UNSELECTED);
+		    Sprintf(pbuf, "Pick the race of your %s",
+				    roles[flags.initrole].name.m);
+		    end_menu(win, pbuf);
+		    n = select_menu(win, PICK_ONE, &selected);
+		    destroy_nhwindow(win);
+		    if (n != 1 || selected[0].item.a_int == any.a_int)
+			goto give_up;		/* Selected quit */
 
-		k = selected[0].item.a_int - 1;
-		free((genericptr_t) selected),	selected = 0;
+		    k = selected[0].item.a_int - 1;
+		    free((genericptr_t) selected),	selected = 0;
+		}
+		flags.initrace = k;
 	    }
 	}
-	flags.initrace = k;
 
-	/* Select a gender */
-	if (!validgend(flags.initrole, flags.initrace, flags.initgend))
-	    /* Pick a random valid gender */
-	    i = j = k = randgend(flags.initrole, flags.initrace);
-	else
-	    i = j = k = flags.initgend;
-	/* Count the number of valid genders */
-	n = 0;
-	do {
-	    if (validgend(flags.initrole, flags.initrace, i)) n++;
-	    else if ((i == k) && (++k >= ROLE_GENDERS)) k = 0;
-	    if (++i >= ROLE_GENDERS) i = 0;
-	} while (i != j);
-	/* Permit the user to pick, if there is more than one */
-	if (!validgend(flags.initrole, flags.initrace, flags.initgend)) {
-	    if (pick4u == 'n' && n > 1) {
-		win = create_nhwindow(NHW_MENU);
-		start_menu(win);
-		any.a_void = 0;         /* zero out all bits */
-		for (i = 0; i < ROLE_GENDERS; i++)
-		    if (validgend(flags.initrole, flags.initrace, i)) {
-			any.a_int = i+1;	/* must be non-zero */
-			add_menu(win, NO_GLYPH, &any, genders[i].adj[0],
+	/* Select a gender, if necessary */
+	/* force compatibility with role/race, try for compatibility with
+	 * pre-selected alignment */
+	if (flags.initgend < 0 || !validgend(flags.initrole, flags.initrace,
+						flags.initgend)) {
+	    /* pre-selected gender not valid */
+	    if (pick4u == 'y' || flags.initgend == ROLE_RANDOM) {
+		flags.initgend = pick_gend(flags.initrole, flags.initrace,
+						flags.initalign);
+		if (flags.initgend < 0) {
+		    tty_putstr(BASE_WINDOW, 0, "Incompatible gender!");
+		    flags.initgend = randgend(flags.initrole, flags.initrace);
+		}
+	    } else {	/* pick4u == 'n' */
+		/* Count the number of valid genders */
+		n = 0;	/* number valid */
+		k = 0;	/* valid gender */
+		for (i = 0; i < ROLE_GENDERS; i++) {
+		    if (ok_gend(flags.initrole, flags.initrace, i,
+							flags.initalign)) {
+			n++;
+			k = i;
+		    }
+		}
+		if (n == 0) {
+		    for (i = 0; i < ROLE_GENDERS; i++) {
+			if (validgend(flags.initrole, flags.initrace, i)) {
+			    n++;
+			    k = i;
+			}
+		    }
+		}
+
+		/* Permit the user to pick, if there is more than one */
+		if (n > 1) {
+		    win = create_nhwindow(NHW_MENU);
+		    start_menu(win);
+		    any.a_void = 0;         /* zero out all bits */
+		    for (i = 0; i < ROLE_GENDERS; i++)
+			if (ok_gend(flags.initrole, flags.initrace, i,
+							    flags.initalign)) {
+			    any.a_int = i+1;
+			    add_menu(win, NO_GLYPH, &any, genders[i].adj[0],
 				0, ATR_NONE, genders[i].adj, MENU_UNSELECTED);
-		    }
-		any.a_int = randgend(flags.initrole, flags.initrace)+1;
-		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
-				"Random", MENU_UNSELECTED);
-		any.a_int = i+1;	/* must be non-zero */
-		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
-				"Quit", MENU_UNSELECTED);
-		Sprintf(pbuf, "Pick the gender of your %s %s",
-				races[flags.initrace].adj,
-				roles[flags.initrole].name.m);
-		end_menu(win, pbuf);
-		n = select_menu(win, PICK_ONE, &selected);
-		destroy_nhwindow(win);
-		if (n != 1 || selected[0].item.a_int == any.a_int)
-		    goto give_up;		/* Selected quit */
+			}
+		    any.a_int = pick_gend(flags.initrole, flags.initrace,
+					    flags.initalign)+1;
+		    if (any.a_int == 0)	/* must be non-zero */
+			any.a_int = randgend(flags.initrole, flags.initrace)+1;
+		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				    "Random", MENU_UNSELECTED);
+		    any.a_int = i+1;	/* must be non-zero */
+		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				    "Quit", MENU_UNSELECTED);
+		    Sprintf(pbuf, "Pick the gender of your %s %s",
+				    races[flags.initrace].adj,
+				    roles[flags.initrole].name.m);
+		    end_menu(win, pbuf);
+		    n = select_menu(win, PICK_ONE, &selected);
+		    destroy_nhwindow(win);
+		    if (n != 1 || selected[0].item.a_int == any.a_int)
+			goto give_up;		/* Selected quit */
 
-		k = selected[0].item.a_int - 1;
-		free((genericptr_t) selected),	selected = 0;
+		    k = selected[0].item.a_int - 1;
+		    free((genericptr_t) selected),	selected = 0;
+		}
+		flags.initgend = k;
 	    }
 	}
-	flags.initgend = k;
 
-	/* Select an alignment */
-	if (!validalign(flags.initrole, flags.initrace, flags.initalign))
-	    /* Pick a random valid alignment */
-	    i = j = k = randalign(flags.initrole, flags.initrace);
-	else
-	    i = j = k = flags.initalign;
-	/* Count the number of valid alignments */
-	n = 0;
-	do {
-	    if (validalign(flags.initrole, flags.initrace, i)) n++;
-	    else if ((i == k) && (++k >= ROLE_ALIGNS)) k = 0;
-	    if (++i >= ROLE_ALIGNS) i = 0;
-	} while (i != j);
-	/* Permit the user to pick, if there is more than one */
-	if (!validalign(flags.initrole, flags.initrace, flags.initalign)) {
-	    if (pick4u == 'n' && n > 1) {
-		win = create_nhwindow(NHW_MENU);
-		start_menu(win);
-		any.a_void = 0;         /* zero out all bits */
-		for (i = 0; i < ROLE_ALIGNS; i++)
-		    if (validalign(flags.initrole, flags.initrace, i)) {
-			any.a_int = i+1;	/* must be non-zero */
-			add_menu(win, NO_GLYPH, &any, aligns[i].adj[0],
+	/* Select an alignment, if necessary */
+	/* force compatibility with role/race/gender */
+	if (flags.initalign < 0 || !validalign(flags.initrole, flags.initrace,
+							flags.initalign)) {
+	    /* pre-selected alignment not valid */
+	    if (pick4u == 'y' || flags.initalign == ROLE_RANDOM) {
+		flags.initalign = pick_align(flags.initrole, flags.initrace,
+							flags.initgend);
+		if (flags.initalign < 0) {
+		    tty_putstr(BASE_WINDOW, 0, "Incompatible alignment!");
+		    flags.initalign = randalign(flags.initrole, flags.initrace);
+		}
+	    } else {	/* pick4u == 'n' */
+		/* Count the number of valid alignments */
+		n = 0;	/* number valid */
+		k = 0;	/* valid alignment */
+		for (i = 0; i < ROLE_ALIGNS; i++) {
+		    if (ok_align(flags.initrole, flags.initrace, flags.initgend,
+							i)) {
+			n++;
+			k = i;
+		    }
+		}
+		if (n == 0) {
+		    for (i = 0; i < ROLE_ALIGNS; i++) {
+			if (validalign(flags.initrole, flags.initrace, i)) {
+			    n++;
+			    k = i;
+			}
+		    }
+		}
+
+		/* Permit the user to pick, if there is more than one */
+		if (n > 1) {
+		    win = create_nhwindow(NHW_MENU);
+		    start_menu(win);
+		    any.a_void = 0;         /* zero out all bits */
+		    for (i = 0; i < ROLE_ALIGNS; i++)
+			if (ok_align(flags.initrole, flags.initrace,
+							flags.initgend, i)) {
+			    any.a_int = i+1;
+			    add_menu(win, NO_GLYPH, &any, aligns[i].adj[0],
 				 0, ATR_NONE, aligns[i].adj, MENU_UNSELECTED);
-		    }
-		any.a_int = randalign(flags.initrole, flags.initrace)+1;
-		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
-				"Random", MENU_UNSELECTED);
-		any.a_int = i+1;	/* must be non-zero */
-		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
-				"Quit", MENU_UNSELECTED);
-		Sprintf(pbuf, "Pick the alignment of your %s %s %s",
-				genders[flags.initgend].adj,
-				races[flags.initrace].adj,
-				(flags.initgend && roles[flags.initrole].name.f) ?
-				roles[flags.initrole].name.f :
-				roles[flags.initrole].name.m);
-		end_menu(win, pbuf);
-		n = select_menu(win, PICK_ONE, &selected);
-		destroy_nhwindow(win);
-		if (n != 1 || selected[0].item.a_int == any.a_int)
-		    goto give_up;		/* Selected quit */
+			}
+		    any.a_int = pick_align(flags.initrole, flags.initrace,
+					    flags.initgend)+1;
+		    if (any.a_int == 0)	/* must be non-zero */
+			any.a_int = randalign(flags.initrole, flags.initrace)+1;
+		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				    "Random", MENU_UNSELECTED);
+		    any.a_int = i+1;	/* must be non-zero */
+		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				    "Quit", MENU_UNSELECTED);
+		    Sprintf(pbuf, "Pick the alignment of your %s %s %s",
+			    genders[flags.initgend].adj,
+			    races[flags.initrace].adj,
+			    (flags.initgend && roles[flags.initrole].name.f) ?
+			    roles[flags.initrole].name.f :
+			    roles[flags.initrole].name.m);
+		    end_menu(win, pbuf);
+		    n = select_menu(win, PICK_ONE, &selected);
+		    destroy_nhwindow(win);
+		    if (n != 1 || selected[0].item.a_int == any.a_int)
+			goto give_up;		/* Selected quit */
 
-		k = selected[0].item.a_int - 1;
-		free((genericptr_t) selected),	selected = 0;
+		    k = selected[0].item.a_int - 1;
+		    free((genericptr_t) selected),	selected = 0;
+		}
+		flags.initalign = k;
 	    }
 	}
-	flags.initalign = k;
 	/* Success! */
 	tty_display_nhwindow(BASE_WINDOW, FALSE);
 }
@@ -1052,7 +1136,7 @@ struct WinDesc *cw;
 
 	if (!page_start) {
 	    /* new page to be displayed */
-	    if (curr_page < 0 || curr_page >= cw->npages)
+	    if (curr_page < 0 || (cw->npages > 0 && curr_page >= cw->npages))
 		panic("bad menu screen page #%d", curr_page);
 
 	    /* clear screen */
@@ -1064,41 +1148,47 @@ struct WinDesc *cw;
 		    clear_screen();
 	    }
 
-	    /* collect accelerators */
-	    page_start = cw->plist[curr_page];
-	    page_end = cw->plist[curr_page + 1];
 	    rp = resp;
-	    for (page_lines = 0, curr = page_start;
-		    curr != page_end;
-		    page_lines++, curr = curr->next) {
-		if (curr->selector)
-		    *rp++ = curr->selector;
+	    if (cw->npages > 0) {
+		/* collect accelerators */
+		page_start = cw->plist[curr_page];
+		page_end = cw->plist[curr_page + 1];
+		for (page_lines = 0, curr = page_start;
+			curr != page_end;
+			page_lines++, curr = curr->next) {
+		    if (curr->selector)
+			*rp++ = curr->selector;
 
-		tty_curs(window, 1, page_lines);
-		if (cw->offx) cl_end();
+		    tty_curs(window, 1, page_lines);
+		    if (cw->offx) cl_end();
 
-		(void) putchar(' ');
-		++ttyDisplay->curx;
-		/*
-		 * Don't use xputs() because (1) under unix it calls
-		 * tputstr() which will interpret a '*' as some kind
-		 * of padding information and (2) it calls xputc to
-		 * actually output the character.  We're faster doing
-		 * this.
-		 */
-		term_start_attr(curr->attr);
-		for (n = 0, cp = curr->str;
-		      *cp && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
-		      cp++, n++)
-		    if (n == 2 && curr->identifier.a_void != 0 &&
-						    curr->selected) {
-			if (curr->count == -1L)
-			    (void) putchar('+'); /* all selected */
-			else
-			    (void) putchar('#'); /* count selected */
-		    } else
-			(void) putchar(*cp);
-		term_end_attr(curr->attr);
+		    (void) putchar(' ');
+		    ++ttyDisplay->curx;
+		    /*
+		     * Don't use xputs() because (1) under unix it calls
+		     * tputstr() which will interpret a '*' as some kind
+		     * of padding information and (2) it calls xputc to
+		     * actually output the character.  We're faster doing
+		     * this.
+		     */
+		    term_start_attr(curr->attr);
+		    for (n = 0, cp = curr->str;
+			  *cp && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
+			  cp++, n++)
+			if (n == 2 && curr->identifier.a_void != 0 &&
+							curr->selected) {
+			    if (curr->count == -1L)
+				(void) putchar('+'); /* all selected */
+			    else
+				(void) putchar('#'); /* count selected */
+			} else
+			    (void) putchar(*cp);
+		    term_end_attr(curr->attr);
+		}
+	    } else {
+		page_start = 0;
+		page_end = 0;
+		page_lines = 0;
 	    }
 	    *rp = 0;
 
@@ -1178,26 +1268,26 @@ struct WinDesc *cw;
 		}
 		/* else fall through */
 	    case MENU_NEXT_PAGE:
-		if (curr_page != cw->npages - 1) {
+		if (cw->npages > 0 && curr_page != cw->npages - 1) {
 		    curr_page++;
 		    page_start = 0;
 		} else
 		    finished = TRUE;	/* questionable behavior */
 		break;
 	    case MENU_PREVIOUS_PAGE:
-		if (curr_page != 0) {
+		if (cw->npages > 0 && curr_page != 0) {
 		    --curr_page;
 		    page_start = 0;
 		}
 		break;
 	    case MENU_FIRST_PAGE:
-		if (curr_page != 0) {
+		if (cw->npages > 0 && curr_page != 0) {
 		    page_start = 0;
 		    curr_page = 0;
 		}
 		break;
 	    case MENU_LAST_PAGE:
-		if (curr_page != cw->npages - 1) {
+		if (cw->npages > 0 && curr_page != cw->npages - 1) {
 		    page_start = 0;
 		    curr_page = cw->npages - 1;
 		}
@@ -1393,10 +1483,10 @@ tty_display_nhwindow(window, blocking)
 	} else
 	    tty_clear_nhwindow(WIN_MESSAGE);
 
-	if (cw->mlist)
-	    process_menu_window(window, cw);
-	else
+	if (cw->data)
 	    process_text_window(window, cw);
+	else
+	    process_menu_window(window, cw);
 	break;
     }
     cw->active = 1;
@@ -1517,7 +1607,7 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
 	end_glyphout();
 
 #ifndef NO_TERMS
-    if(!ND && (cx != x || x <= 3)) { /* Extremely primitive */
+    if(!nh_ND && (cx != x || x <= 3)) { /* Extremely primitive */
 	cmov(x, y); /* bunker!wtm */
 	return;
     }
@@ -1528,11 +1618,11 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
     if(cy <= 3 && cx <= 3) {
 	nocmov(x, y);
 #ifndef NO_TERMS
-    } else if ((x <= 3 && cy <= 3) || (!CM && x < cx)) {
+    } else if ((x <= 3 && cy <= 3) || (!nh_CM && x < cx)) {
 	(void) putchar('\r');
 	ttyDisplay->curx = 0;
 	nocmov(x, y);
-    } else if (!CM) {
+    } else if (!nh_CM) {
 	nocmov(x, y);
 #endif
     } else
@@ -1786,7 +1876,7 @@ boolean complain;
 	    winid datawin = tty_create_nhwindow(NHW_TEXT);
 	    if(complain
 #ifndef NO_TERMS
-		&& CD
+		&& nh_CD
 #endif
 	    ) {
 		/* attempt to scroll text below map window if there's room */
@@ -2044,7 +2134,7 @@ const char *mesg;
 {
     /* "menu" without selection; use ordinary pline, no more() */
     if (how == PICK_NONE) {
-	pline(mesg);
+	pline("%s", mesg);
 	return 0;
     }
 
@@ -2166,11 +2256,11 @@ int in_ch;
     register char ch = (char)in_ch;
 
 # if defined(ASCIIGRAPH) && !defined(NO_TERMS)
-    if (iflags.IBMgraphics)
+    if (iflags.IBMgraphics || iflags.eight_bit_tty) {
 	/* IBM-compatible displays don't need other stuff */
 	(void) putchar(ch);
-    else if (ch & 0x80) {
-	if (!GFlag) {
+    } else if (ch & 0x80) {
+	if (!GFlag || HE_resets_AS) {
 	    graph_on();
 	    GFlag = TRUE;
 	}
@@ -2260,9 +2350,10 @@ tty_print_glyph(window, x, y, glyph)
 #define invis_color(n) color = NO_COLOR
 #define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :	      \
 				/* If no color, try to hilite pets; black  */ \
-				/* should be HI				   */ \
+				/* should be nh_HI			   */ \
 				((iflags.hilite_pet && has_color(CLR_BLACK)) ?     \
 							CLR_BLACK : NO_COLOR)
+#define warn_color(n) color = iflags.use_color ? def_warnsyms[n].color : NO_COLOR
 # if defined(REINCARNATION) && defined(ASCIIGRAPH)
 #  define ROGUE_COLOR
 # endif
@@ -2275,6 +2366,7 @@ tty_print_glyph(window, x, y, glyph)
 #define mon_color(n)
 #define invis_color(n)
 #define pet_color(c)
+#define warn_color(n)
 #endif
 
 #ifdef ROGUE_COLOR
@@ -2298,7 +2390,15 @@ tty_print_glyph(window, x, y, glyph)
      *  Warning:  For speed, this makes an assumption on the order of
      *		  offsets.  The order is set in display.h.
      */
-    if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {		/* swallow */
+    if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
+    	ch = warnsyms[offset];
+# ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS)
+	    color = NO_COLOR;
+	else
+# endif
+	    warn_color(offset);
+    } else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
 	/* see swallow_to_glyph() in display.c */
 	ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
 #ifdef ROGUE_COLOR
@@ -2529,7 +2629,21 @@ tty_nh_poskey(x, y, mod)
     int *x, *y, *mod;
 {
 # if defined(WIN32CON)
-    return ntposkey(x, y, mod);
+    int i;
+    (void) fflush(stdout);
+    /* Note: if raw_print() and wait_synch() get called to report terminal
+     * initialization problems, then wins[] and ttyDisplay might not be
+     * available yet.  Such problems will probably be fatal before we get
+     * here, but validate those pointers just in case...
+     */
+    if (WIN_MESSAGE != WIN_ERR && wins[WIN_MESSAGE])
+	    wins[WIN_MESSAGE]->flags &= ~WIN_STOP;
+    i = ntposkey(x, y, mod);
+    if (!i && mod && *mod == 0)
+    	i = '\033'; /* map NUL to ESC since nethack doesn't expect NUL */
+    if (ttyDisplay && ttyDisplay->toplin == 1)
+		ttyDisplay->toplin = 2;
+    return i;
 # else
     return tty_nhgetch();
 # endif

@@ -1,4 +1,4 @@
-\" @(#)$Id: tmac.n,v 3.0 89/06/21 21:44:28 syd Exp $
+\" @(#)$Id: tmac.n,v 1.3 2000/02/02 18:49:05 dean Exp $
 .\" The News macro package
 .\"
 .\" This  is  the macro package that is used to format news documents.  It
@@ -647,7 +647,8 @@
 .if \n(mo=10 .ds mo October
 .if \n(mo=11 .ds mo November
 .if \n(mo=12 .ds mo December
-.ds dy "\*(mo \n(dy, 19\n(yr
+.nr Yr \n(yr+1900
+.ds dy "\*(mo \n(dy, \n(Yr
 .if \n(dw=1  .ds dw Sunday
 .if \n(dw=2  .ds dw Monday
 .if \n(dw=3  .ds dw Tuesday

@@ -19,8 +19,8 @@ struct ppmscreen {
 static int tiles_across, tiles_down, curr_tiles_across;
 static pixel **image;
 
-static void FDECL(write_header, ());
-static void FDECL(WriteTileStrip, ());
+static void NDECL(write_header);
+static void NDECL(WriteTileStrip);
 
 static void
 write_header()

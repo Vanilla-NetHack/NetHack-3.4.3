@@ -60,8 +60,8 @@ char *argv[];
 	 * The logical name HACKDIR is overridden by a
 	 *  -d command line option (must be the first option given)
 	 */
-	dir = getenv("NETHACKDIR");
-	if (!dir) dir = getenv("HACKDIR");
+	dir = nh_getenv("NETHACKDIR");
+	if (!dir) dir = nh_getenv("HACKDIR");
 #endif
 	if(argc > 1) {
 #ifdef CHDIR
@@ -184,7 +184,9 @@ char *argv[];
 		 */
 		boolean remember_wiz_mode = wizard;
 #endif
-		(void) chmod(SAVEF,0);	/* disallow parallel restores */
+		const char *fq_save = fqname(SAVEF, SAVEPREFIX, 0);
+
+		(void) chmod(fq_save,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef NEWS
 		if(iflags.news) {
@@ -206,7 +208,7 @@ char *argv[];
 			if (yn("Do you want to keep the save file?") == 'n')
 			    (void) delete_savefile();
 			else
-			    (void) chmod(SAVEF,FCMASK); /* back to readable */
+			    (void) chmod(fq_save,FCMASK); /* back to readable */
 		}
 
 		flags.move = 0;
@@ -218,7 +220,7 @@ not_recovered:
 
 		flags.move = 0;
 		set_wear();
-		pickup(1);
+		(void) pickup(1);
 	}
 
 	moveloop();
@@ -244,7 +246,7 @@ char *argv[];
 		switch(argv[0][1]){
 		case 'D':
 #ifdef WIZARD
-			if(!strcmpi(getenv("USER"), WIZARD_NAME)) {
+			if(!strcmpi(nh_getenv("USER"), WIZARD_NAME)) {
 				wizard = TRUE;
 				break;
 			}
@@ -364,7 +366,7 @@ whoami()
 	 */
 	register char *s;
 
-	if (!*plname && (s = getenv("USER")))
+	if (!*plname && (s = nh_getenv("USER")))
 		(void) lcase(strncpy(plname, s, sizeof(plname)-1));
 }
 

@@ -79,7 +79,7 @@ amulet()
 		return;
 	/* find Wizard, and wake him if necessary */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if (mtmp->iswiz && mtmp->msleeping && !rn2(40)) {
+	    if (!DEADMONSTER(mtmp) && mtmp->iswiz && mtmp->msleeping && !rn2(40)) {
 		mtmp->msleeping = 0;
 		if (distu(mtmp->mx,mtmp->my) > 2)
 		    You(
@@ -174,6 +174,7 @@ other_mon_has_arti(mtmp, otyp)
 	register struct monst *mtmp2;
 
 	for(mtmp2 = fmon; mtmp2; mtmp2 = mtmp2->nmon)
+	    /* no need for !DEADMONSTER check here since they have no inventory */
 	    if(mtmp2 != mtmp)
 		if(mon_has_arti(mtmp2, otyp)) return(mtmp2);
 
@@ -346,7 +347,7 @@ tactics(mtmp)
 				  (distu(mtmp->my, mtmp->my) <= 5) ?
 				    doname(otmp) : distant_name(otmp, doname));
 			obj_extract_self(otmp);
-			mpickobj(mtmp, otmp);
+			(void) mpickobj(mtmp, otmp);
 			return(1);
 		    } else return(0);
 		  }
@@ -365,13 +366,14 @@ aggravate()
 {
 	register struct monst *mtmp;
 
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if (!DEADMONSTER(mtmp)) {
 		mtmp->msleeping = 0;
 		if(!mtmp->mcanmove && !rn2(5)) {
 			mtmp->mfrozen = 0;
 			mtmp->mcanmove = 1;
 		}
-	}
+	    }
 }
 
 void
@@ -383,7 +385,8 @@ clonewiz()
 				u.ux, u.uy, NO_MM_FLAGS)) != 0) {
 	    mtmp2->msleeping = mtmp2->mtame = mtmp2->mpeaceful = 0;
 	    if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
-		add_to_minv(mtmp2, mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE));
+		(void) add_to_minv(mtmp2, mksobj(FAKE_AMULET_OF_YENDOR,
+					TRUE, FALSE));
 	    }
 	    mtmp2->m_ap_type = M_AP_MONSTER;
 	    mtmp2->mappearance = wizapp[rn2(SIZE(wizapp))];
@@ -575,7 +578,7 @@ register struct monst	*mtmp;
 		else if (u.uhp < 5 && !rn2(2))	/* Panic */
 		    verbalize(rn2(2) ?
 			  "Even now thy life force ebbs, %s!" :
-			  "Savor thy breath, %s, it be thine last!",
+			  "Savor thy breath, %s, it be thy last!",
 			  random_insult[rn2(SIZE(random_insult))]);
 		else if (mtmp->mhp < 5 && !rn2(2))	/* Parthian shot */
 		    verbalize(rn2(2) ?

@@ -47,17 +47,7 @@
  * Try and keep the number of files here to an ABSOLUTE minimum !
  * include the relevant files in the relevant .c files instead !
  */
-#include <segload.h>
-#include <stdlib.h>
-#include <windows.h>
-#include <memory.h>
-#include <quickdraw.h>
-#include <events.h>
-#include <controls.h>
-#include <dialogs.h>
-#include <fonts.h>
-#include <TextUtils.h>
-
+#include <MacTypes.h>
 /*
  * Turn off the Macsbug calls for the production version.
  */
@@ -114,39 +104,6 @@ extern void error(const char *,...);
 # define PREF_TYPE 'PREF'
 # define DATA_TYPE 'DATA'
 # define MAC_CREATOR 'nh31' /* Registered with DTS ! */
-
-typedef struct macdirs {
-	Str32		dataName ;
-	short		dataRefNum ;
-	long		dataDirID ;
-
-	Str32		saveName ;
-	short		saveRefNum ;
-	long		saveDirID ;
-
-	Str32		levelName ;
-	short		levelRefNum ;
-	long		levelDirID ;
-} MacDirs ;
-
-typedef struct macflags {
-	Bitfield ( processes , 1 ) ;
-	Bitfield ( color , 1 ) ;
-	Bitfield ( folders , 1 ) ;
-	Bitfield ( tempMem , 1 ) ;
-	Bitfield ( help , 1 ) ;
-	Bitfield ( fsSpec , 1 ) ;
-	Bitfield ( trueType , 1 ) ;
-	Bitfield ( aux , 1 ) ;
-	Bitfield ( alias , 1 ) ;
-	Bitfield ( standardFile , 1 ) ;
-	Bitfield ( hasDebugger , 1 ) ;
-	Bitfield ( hasAE , 1 ) ;
-	Bitfield ( gotOpen, 1 );
-} MacFlags ;
-
-extern MacDirs theDirs ;		/* used in files.c */
-extern MacFlags macFlags ;
 
 /*
  * Define PORT_HELP to be the name of the port-specfic help file.

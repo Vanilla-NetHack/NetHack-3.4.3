@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c	3.3	97/06/14	*/
+/*	SCCS Id: @(#)explode.c	3.3	2000/07/07	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -54,6 +54,7 @@ char olet;
 
 	if (olet == MON_EXPLODE) {
 	    str = killer;
+	    killer = 0;		/* set again later as needed */
 	    adtyp = AD_PHYS;
 	} else
 	switch (abs(type) % 10) {
@@ -72,7 +73,7 @@ char olet;
 							"disintegration field";
 			adtyp = AD_DISN;
 			break;
-		case 5: str = "ball lightning";
+		case 5: str = "ball of lightning";
 			adtyp = AD_ELEC;
 			break;
 		case 6: str = "poison gas cloud";
@@ -164,13 +165,12 @@ char olet;
 				break;
 		    }
 		}
-		if (mtmp && cansee(i,j) && !canspotmon(mtmp))
-		    map_invisible(i, j);
-		else if (!mtmp && glyph_is_invisible(levl[i][j].glyph)) {
-		    unmap_object(i, j);
-		    newsym(i, j);
+		if (mtmp && cansee(i+x-1,j+y-1) && !canspotmon(mtmp))
+		    map_invisible(i+x-1, j+y-1);
+		else if (!mtmp && glyph_is_invisible(levl[i+x-1][j+y-1].glyph)) {
+		    unmap_object(i+x-1, j+y-1);
+		    newsym(i+x-1, j+y-1);
 		}
-
 		if (cansee(i+x-1, j+y-1)) visible = TRUE;
 		if (explmask[i][j] == 1) any_shield = TRUE;
 	}
@@ -213,6 +213,7 @@ char olet;
 		    delay_output();
 		}
 
+		tmp_at(DISP_END, 0); /* clear the explosion */
 	} else {
 		if (flags.soundok) You_hear("a blast.");
 	}
@@ -256,9 +257,8 @@ char olet;
 				      (adtyp == AD_DRST) ? "intoxicated" :
 				      (adtyp == AD_ACID) ? "burned" :
 				       "fried");
-		} else
-		pline("%s is caught in the %s!",
-			cansee(i+x-1, j+y-1) ? Monnam(mtmp) : "It", str);
+		} else if (cansee(i+x-1, j+y-1))
+		pline("%s is caught in the %s!", Monnam(mtmp), str);
 
 		idamres += destroy_mitem(mtmp, SCROLL_CLASS, (int) adtyp);
 		idamres += destroy_mitem(mtmp, SPBOOK_CLASS, (int) adtyp);
@@ -277,9 +277,8 @@ char olet;
 			int mdam = dam;
 
 			if (resist(mtmp, olet, 0, FALSE)) {
-				pline("%s resists the %s!",
-					cansee(i+x-1,j+y-1) ? Monnam(mtmp) : "It",
-					str);
+				if (cansee(i+x-1,j+y-1))
+				    pline("%s resists the %s!", Monnam(mtmp), str);
 				mdam = dam/2;
 			}
 			if (mtmp == u.ustuck)
@@ -298,8 +297,6 @@ char olet;
 		}
 	}
 
-	if (visible) tmp_at(DISP_END, 0); /* clear the explosion */
-
 	/* Do your injury last */
 	if (uhurt) {
 		if ((type >= 0 || adtyp == AD_PHYS) &&	/* gas spores */
@@ -309,7 +306,7 @@ char olet;
 		if (adtyp == AD_FIRE) burn_away_slime();
 		if (Invulnerable) {
 		    damu = 0;
-		    pline("You are unharmed!");
+		    You("are unharmed!");
 		}
 		if (adtyp == AD_FIRE) (void) burnarmor(&youmonst);
 		destroy_item(SCROLL_CLASS, (int) adtyp);
@@ -322,25 +319,23 @@ char olet;
 		if (uhurt == 2) u.uhp -= damu, flags.botl = 1;
 
 		if (u.uhp <= 0) {
-			char buf[BUFSZ];
-
 			if (olet == MON_EXPLODE) {
 			    /* killer handled by caller */
-			    Strcpy(buf, str);
+			    if (str != killer_buf)
+				Strcpy(killer_buf, str);
 			    killer_format = KILLED_BY_AN;
 			} else if (type >= 0 && olet != SCROLL_CLASS) {
 			    killer_format = NO_KILLER_PREFIX;
-			    Sprintf(buf, "caught %sself in %s own %s.",
+			    Sprintf(killer_buf, "caught %sself in %s own %s",
 				    him[flags.female], his[flags.female], str);
 			} else {
 			    killer_format = KILLED_BY;
-			    Strcpy(buf, str);
+			    Strcpy(killer_buf, str);
 			}
-			killer = buf;
+			killer = killer_buf;
 			/* Known BUG: BURNING suppresses corpse in bones data,
 			   but done does not handle killer reason correctly */
-			/* done(adtyp == AD_FIRE ? BURNING : DIED); */
-			done(BURNING);
+			done((adtyp == AD_FIRE) ? BURNING : DIED);
 		}
 		exercise(A_STR, FALSE);
 	}
@@ -496,14 +491,9 @@ struct obj *obj;			/* only scatter this obj        */
 				    if (multi) nomul(0);
 				    hitvalu = 8 + stmp->obj->spe;
 				    if (bigmonst(youmonst.data)) hitvalu++;
-				    /* could just use doname all the time,
-				     * except thitu adds "an" to the front
-				     */
 				    hitu = thitu(hitvalu,
-					dmgval(stmp->obj, &youmonst),
-					stmp->obj,
-					(stmp->obj->quan>1) ? doname(stmp->obj)
-						: xname(stmp->obj));
+						 dmgval(stmp->obj, &youmonst),
+						 stmp->obj, (char *)0);
 				    if (hitu) {
 					stmp->range -= 3;
 					stop_occupation();

@@ -358,9 +358,7 @@ update_val(attr_rec, new_value)
 		Strcat(buf, rank_of(u.ulevel, pl_character[0], flags.female));
 
 	} else if (attr_rec == &shown_stats[F_DLEVEL]) {
-	    if (In_endgame(&u.uz)) {
-		Strcpy(buf, (Is_astralevel(&u.uz) ? "Astral Plane":"End Game"));
-	    } else {
+	    if (!describe_level(buf)) {
 		Strcpy(buf, dungeons[u.uz.dnum].dname);
 		Sprintf(eos(buf), ", level %d", depth(&u.uz));
 	    }

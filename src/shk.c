@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.3	99/03/22	*/
+/*	SCCS Id: @(#)shk.c	3.3	2000/03/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -75,9 +75,10 @@ next_shkp(shkp, withbill)
 register struct monst *shkp;
 register boolean withbill;
 {
-	for (; shkp; shkp = shkp->nmon)
-	    if (shkp->isshk)
-		if (ESHK(shkp)->billct || !withbill) break;
+	for (; shkp; shkp = shkp->nmon) {
+	    if (DEADMONSTER(shkp)) continue;
+	    if (shkp->isshk && (ESHK(shkp)->billct || !withbill)) break;
+	}
 
 	if (shkp) {
 	    if (NOTANGRY(shkp)) {
@@ -424,7 +425,7 @@ register char *enterstring;
 	    pline("%s mutters imprecations against shoplifters.", shkname(shkp));
 	} else {
 	    verbalize("%s, %s!  Welcome%s to %s %s!",
-		      Hello(), plname,
+		      Hello(shkp), plname,
 		      eshkp->visitct++ ? " again" : "",
 		      s_suffix(shkname(shkp)),
 		      shtypes[rt - SHOPBASE].name);
@@ -457,6 +458,13 @@ register char *enterstring;
 			  "Leave the %s%s outside.",
 			  tool, plur(cnt));
 		should_block = TRUE;
+#ifdef STEED
+	    } else if (u.usteed) {
+		verbalize(NOTANGRY(shkp) ?
+			  "Will you please leave %s outside?" :
+			  "Leave %s outside.", y_monnam(u.usteed));
+		should_block = TRUE;
+#endif
 	    } else {
 		should_block = (Fast && (sobj_at(PICK_AXE, u.ux, u.uy) ||
 				      sobj_at(DWARVISH_MATTOCK, u.ux, u.uy)));
@@ -942,7 +950,7 @@ dopay()
 	}
 
 	if ((!sk && (!Blind || Blind_telepat)) || (!Blind && !seensk)) {
-      pline("There appears to be no shopkeeper here to receive your payment.");
+      There("appears to be no shopkeeper here to receive your payment.");
 		return(0);
 	}
 
@@ -989,7 +997,7 @@ dopay()
 		}
 		mtmp = m_at(cx, cy);
 		if(!mtmp) {
-		     pline("There is no one there to receive your payment.");
+		     There("is no one there to receive your payment.");
 		     return(0);
 		}
 		if(!mtmp->isshk) {
@@ -1085,7 +1093,8 @@ proceed:
 			return(1);
 		    }
 		    You("try to appease %s by giving %s 1000 gold pieces.",
-			x_monnam(shkp, 1, "angry", 0), him[shk_pronoun]);
+			x_monnam(shkp, ARTICLE_THE, "angry", 0, FALSE),
+			him[shk_pronoun]);
 		    pay(1000L,shkp);
 		    if (strncmp(eshkp->customer, plname, PL_NSIZ) || rn2(3))
 			make_happy_shk(shkp, FALSE);
@@ -1214,8 +1223,10 @@ proceed:
 		    }
 		}
 	    }
+	thanks:
+	    if (!itemize)
+	        update_inventory(); /* Done in dopayobj() if itemize. */
 	}
-thanks:
 	if(!ANGRY(shkp) && paid)
 	    verbalize("Thank you for shopping in %s %s!",
 		s_suffix(shkname(shkp)),
@@ -1316,7 +1327,8 @@ boolean itemize;
 		dealloc_obj(obj);
 		*obj_p = 0;	/* destroy pointer to freed object */
 	    }
-	}
+	} else if (itemize)
+	    update_inventory();	/* Done just once in dopay() if !itemize. */
 	return buy;
 }
 #endif /*OVL3*/
@@ -2543,8 +2555,8 @@ register xchar x, y;
 		    delay_output();
 		    mark_synch();
 		}
-		mpickobj(shkp, obj);
 		subfrombill(obj, shkp);
+		(void) mpickobj(shkp, obj);
 		return(1);
 	}
 	return(0);
@@ -2730,14 +2742,14 @@ boolean catchup;	/* restoring a level */
 				BEARTRAP, TRUE, FALSE);
 		otmp->quan= 1;
 		otmp->owt = weight(otmp);
-		mpickobj(shkp, otmp);
+		(void) mpickobj(shkp, otmp);
 	    }
 	    deltrap(ttmp);
 	    newsym(x, y);
 	    return(3);
 	}
 	if (IS_ROOM(tmp_dam->typ)) {
-	    /* No messages if player already filled trapdoor */
+	    /* No messages if player already filled trap door */
 	    if (catchup || !ttmp)
 		return(1);
 	    newsym(x, y);
@@ -2851,13 +2863,13 @@ register struct monst *shkp;
 		if(eshkp->following) {
 			if(strncmp(eshkp->customer, plname, PL_NSIZ)) {
 			    verbalize("%s, %s!  I was looking for %s.",
-				    Hello(), plname, eshkp->customer);
+				    Hello(shkp), plname, eshkp->customer);
 				    eshkp->following = 0;
 			    return(0);
 			}
 			if(moves > followmsg+4) {
 			    verbalize("%s, %s!  Didn't you forget to pay?",
-				    Hello(), plname);
+				    Hello(shkp), plname);
 			    followmsg = moves;
 			    if (!rn2(9)) {
 			      pline("%s doesn't like customers who don't pay.",
@@ -2888,7 +2900,11 @@ register struct monst *shkp;
 		avoid = FALSE;
 	} else {
 #define	GDIST(x,y)	(dist2(x,y,gx,gy))
-		if(Invis) {
+		if (Invis
+#ifdef STEED
+			|| u.usteed
+#endif
+			) {
 		    avoid = FALSE;
 		} else {
 		    uondoor = (u.ux == eshkp->shd.x && u.uy == eshkp->shd.y);
@@ -2979,8 +2995,8 @@ register int fall;
 		if(obj->owornmask) continue;
 		if(obj->otyp == LEASH && obj->leashmon) continue;
 		freeinv(obj);
-		add_to_minv(shkp, obj);
 		subfrombill(obj, shkp);
+		(void) add_to_minv(shkp, obj);	/* may free obj */
 	    }
     }
 }
@@ -3308,10 +3324,10 @@ register struct monst *shkp;
 	else if (eshk->following) {
 		if (strncmp(eshk->customer, plname, PL_NSIZ)) {
 		    verbalize("%s %s!  I was looking for %s.",
-			    Hello(), plname, eshk->customer);
+			    Hello(shkp), plname, eshk->customer);
 		    eshk->following = 0;
 		} else {
-		    verbalize("%s %s!  Didn't you forget to pay?", Hello(), plname);
+		    verbalize("%s %s!  Didn't you forget to pay?", Hello(shkp), plname);
 		}
 	} else if (eshk->billct) {
 		register long total = addupbill(shkp) + eshk->debit;
@@ -3410,7 +3426,11 @@ boolean altusage; /* some items have an "alternate" use with different cost */
 #endif /*OVL3*/
 #ifdef OVLB
 
-/* for using charges of unpaid objects */
+/* Charge the player for partial use of an unpaid object.
+ *
+ * Note that bill_dummy_object() should be used instead
+ * when an object is completely used.
+ */
 void
 check_unpaid_usage(otmp, altusage)
 struct obj *otmp;
@@ -3549,8 +3569,11 @@ register xchar x, y;
 	if(shkp->mx == sx && shkp->my == sy
 		&& shkp->mcanmove && !shkp->msleeping
 		&& (x == sx-1 || x == sx+1 || y == sy-1 || y == sy+1)
-		&& (Invis || carrying(PICK_AXE) || carrying(DWARVISH_MATTOCK))
-	  ) {
+		&& (Invis || carrying(PICK_AXE) || carrying(DWARVISH_MATTOCK)
+#ifdef STEED
+			|| u.usteed
+#endif
+	  )) {
 		pline("%s%s blocks your way!", shkname(shkp),
 				Invis ? " senses your motion and" : "");
 		return(TRUE);
@@ -3567,7 +3590,7 @@ char *buf;
 struct obj *obj;
 {
 	if (!shk_owns(buf, obj) && !mon_owns(buf, obj))
-	    Strcpy(buf, obj->where == OBJ_INVENT ? "your" : "the");
+	    Strcpy(buf, carried(obj) ? "your" : "the");
 	return buf;
 }
 

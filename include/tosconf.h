@@ -38,6 +38,7 @@
 #define SHELL			/* allow spawning of shell	*/
 #define TERMLIB			/* use termcap			*/
 #define TEXTCOLOR		/* allow color			*/
+#define MAIL			/* enable the fake maildemon */
 #ifdef MINT
 #define SUSPEND			/* allow suspending the game	*/
 #endif
@@ -56,6 +57,15 @@
 extern int FDECL(strcmpi,(const char *, const char *));
 extern int FDECL(strncmpi,(const char *, const char *, size_t));
 #endif
+
+#include <termcap.h>
+#include <unistd.h>
+/* instead of including system.h from pcconf.h */
+#include <string.h>
+#include <stdlib.h>
+#include <types.h>
+#define SIG_RET_TYPE __Sigfunc
+#define SYSTEM_H
 
 #ifndef MICRO_H
 #include "micro.h"

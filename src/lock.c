@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.3	96/05/31	*/
+/*	SCCS Id: @(#)lock.c	3.3	2000/02/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -281,7 +281,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	    int count;
 
 	    if (u.dz < 0) {
-		pline("There isn't any sort of lock up %s.",
+		There("isn't any sort of lock up %s.",
 		      Levitation ? "here" : "there");
 		return 0;
 	    } else if (is_lava(u.ux, u.uy)) {
@@ -348,7 +348,7 @@ pick_lock(pick) /* pick a lock with a given object */
 		}
 	    if (c != 'y') {
 		if (!count)
-		    pline("There doesn't seem to be any sort of lock here.");
+		    There("doesn't seem to be any sort of lock here.");
 		return(0);		/* decided against all boxes */
 	    }
 	} else {			/* pick the lock in a door */
@@ -461,7 +461,7 @@ doforce()		/* try to force a chest with your weapon */
 	for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp->nexthere)
 	    if(Is_box(otmp)) {
 		if (otmp->obroken || !otmp->olocked) {
-		    pline("There is %s here, but its lock is already %s.",
+		    There("is %s here, but its lock is already %s.",
 			  doname(otmp), otmp->obroken ? "broken" : "unlocked");
 		    continue;
 		}
@@ -524,7 +524,7 @@ doopen()		/* try to open a door */
 
 	if(!IS_DOOR(door->typ)) {
 		if (is_db_wall(x,y)) {
-		    pline("There is no obvious way to open the drawbridge.");
+		    There("is no obvious way to open the drawbridge.");
 		    return(0);
 		}
 		You("%s no door there.",
@@ -582,8 +582,10 @@ register int x, y;
 
 	if(mtmp && mtmp->m_ap_type != M_AP_FURNITURE) {
 		if (mtmp->m_ap_type == M_AP_OBJECT) goto objhere;
-		pline("%s stands in the way!", Blind ?
+		pline("%s stands in the way!", !canspotmon(mtmp) ?
 			"Some creature" : Monnam(mtmp));
+		if (!canspotmon(mtmp))
+		    map_invisible(mtmp->mx, mtmp->my);
 		return(TRUE);
 	}
 	if (OBJ_AT(x, y)) {
@@ -633,7 +635,7 @@ doclose()		/* try to close a door */
 
 	if(!IS_DOOR(door->typ)) {
 		if (door->typ == DRAWBRIDGE_DOWN)
-		    pline("There is no obvious way to close the drawbridge.");
+		    There("is no obvious way to close the drawbridge.");
 		else
 		    You("%s no door there.",
 				Blind ? "feel" : "see");
@@ -761,16 +763,19 @@ int x, y;
 	case SPE_WIZARD_LOCK:
 #ifdef REINCARNATION
 	    if (Is_rogue_level(&u.uz)) {
+	    	boolean vis = cansee(x,y);
 		/* Can't have real locking in Rogue, so just hide doorway */
-		pline("%s springs up in the older, more primitive doorway.",
+		if (vis) pline("%s springs up in the older, more primitive doorway.",
 			dustcloud);
+		else
+			You_hear("a swoosh.");
 		if (obstructed(x,y)) {
-			pline_The("cloud %s.",quickly_dissipates);
+			if (vis) pline_The("cloud %s.",quickly_dissipates);
 			return FALSE;
 		}
 		block_point(x, y);
 		door->typ = SDOOR;
-		if (cansee(x,y)) pline_The("doorway vanishes!");
+		if (vis) pline_The("doorway vanishes!");
 		newsym(x,y);
 		return TRUE;
 	    }

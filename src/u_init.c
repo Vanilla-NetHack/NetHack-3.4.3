@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.3	1999/12/05	*/
+/*	SCCS Id: @(#)u_init.c	3.3	2000/06/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,6 +15,7 @@ struct trobj {
 static void FDECL(ini_inv, (struct trobj *));
 static void FDECL(knows_object,(int));
 static void FDECL(knows_class,(CHAR_P));
+static boolean FDECL(restricted_spell_discipline, (int));
 
 #define UNDEF_TYP	0
 #define UNDEF_SPE	'\177'
@@ -510,9 +511,6 @@ u_init()
 {
 	register int i;
 
-	flags.pantheon = -1;		/* role_init() will reset this */
-	/* Initialize the role, race, gender, and alignment */
-	role_init();
 	flags.female = flags.initgend;
 	flags.beginner = 1;
 
@@ -574,7 +572,7 @@ u_init()
 	init_uhunger();
 	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
 	u.ublesscnt = 300;			/* no prayers just yet */
-	u.ualignbase[0] = u.ualignbase[1] = u.ualign.type =
+	u.ualignbase[A_CURRENT] = u.ualignbase[A_ORIGINAL] = u.ualign.type =
 			aligns[flags.initalign].value;
 	u.ulycn = NON_PM;
 
@@ -760,10 +758,10 @@ u_init()
 	case PM_ELF:
 	    /*
 	     * Elves are people of music and song, or they are warriors.
-	     * Non-warriors MAY get an instrument.  We use a kludge to
+	     * Non-warriors get an instrument.  We use a kludge to
 	     * get only non-magic instruments.
 	     */
-	    if (Role_if(PM_HEALER) || Role_if(PM_WIZARD)) {
+	    if (Role_if(PM_PRIEST) || Role_if(PM_WIZARD)) {
 		static int trotyp[] = {
 		    WOODEN_FLUTE, TOOLED_HORN, WOODEN_HARP,
 		    BELL, BUGLE, LEATHER_DRUM
@@ -851,6 +849,40 @@ u_init()
 	return;
 }
 
+/* skills aren't initialized, so we use the role-specific skill lists */
+static boolean
+restricted_spell_discipline(otyp)
+int otyp;
+{
+    struct def_skill *skills;
+    int this_skill = spell_skilltype(otyp);
+
+    switch (Role_switch) {
+     case PM_ARCHEOLOGIST:	skills = Skill_A; break;
+     case PM_BARBARIAN:		skills = Skill_B; break;
+     case PM_CAVEMAN:		skills = Skill_C; break;
+     case PM_HEALER:		skills = Skill_H; break;
+     case PM_KNIGHT:		skills = Skill_K; break;
+     case PM_MONK:		skills = Skill_Mon; break;
+     case PM_PRIEST:		skills = Skill_P; break;
+     case PM_RANGER:		skills = Skill_Ran; break;
+     case PM_ROGUE:		skills = Skill_R; break;
+     case PM_SAMURAI:		skills = Skill_S; break;
+#ifdef TOURIST
+     case PM_TOURIST:		skills = Skill_T; break;
+#endif
+     case PM_VALKYRIE:		skills = Skill_V; break;
+     case PM_WIZARD:		skills = Skill_W; break;
+     default:			skills = 0; break;	/* lint suppression */
+    }
+
+    while (skills->skill != P_NONE) {
+	if (skills->skill == this_skill) return FALSE;
+	++skills;
+    }
+    return TRUE;
+}
+
 static void
 ini_inv(trop)
 register struct trobj *trop;
@@ -875,6 +907,7 @@ register struct trobj *trop;
 			static NEARDATA short nocreate = STRANGE_OBJECT;
 			static NEARDATA short nocreate2 = STRANGE_OBJECT;
 			static NEARDATA short nocreate3 = STRANGE_OBJECT;
+			static NEARDATA short nocreate4 = STRANGE_OBJECT;
 		/*
 		 * For random objects, do not create certain overly powerful
 		 * items: wand of wishing, ring of levitation, or the
@@ -886,35 +919,46 @@ register struct trobj *trop;
 		 * weapon.)
 		 */
 			obj = mkobj(trop->trclass, FALSE);
-			while(obj->otyp == WAN_WISHING
-				|| obj->otyp == nocreate
-				|| obj->otyp == nocreate2
-				|| obj->otyp == nocreate3
+			otyp = obj->otyp;
+			while (otyp == WAN_WISHING
+				|| otyp == nocreate
+				|| otyp == nocreate2
+				|| otyp == nocreate3
+				|| otyp == nocreate4
 #ifdef ELBERETH
-				|| obj->otyp == RIN_LEVITATION
+				|| otyp == RIN_LEVITATION
 #endif
 				/* 'useless' items */
-				|| obj->otyp == POT_HALLUCINATION
-				|| obj->otyp == POT_ACID
-				|| obj->otyp == SCR_AMNESIA
-				|| obj->otyp == SCR_FIRE
-				|| obj->otyp == SCR_STINKING_CLOUD
-				|| obj->otyp == RIN_AGGRAVATE_MONSTER
-				|| obj->otyp == RIN_HUNGER
-				|| obj->otyp == WAN_NOTHING
+				|| otyp == POT_HALLUCINATION
+				|| otyp == POT_ACID
+				|| otyp == SCR_AMNESIA
+				|| otyp == SCR_FIRE
+				|| otyp == SCR_STINKING_CLOUD
+				|| otyp == SCR_BLANK_PAPER
+				|| otyp == SPE_BLANK_PAPER
+				|| otyp == RIN_AGGRAVATE_MONSTER
+				|| otyp == RIN_HUNGER
+				|| otyp == WAN_NOTHING
+				/* Monks don't use weapons */
+				|| (otyp == SCR_ENCHANT_WEAPON &&
+				    Role_if(PM_MONK))
 				/* wizard patch -- they already have one */
-				|| obj->otyp == SPE_FORCE_BOLT
+				|| (otyp == SPE_FORCE_BOLT &&
+				    Role_if(PM_WIZARD))
 				/* powerful spells are either useless to
-				   low level players or unbalancing */
+				   low level players or unbalancing; also
+				   spells in restricted skill categories */
 				|| (obj->oclass == SPBOOK_CLASS &&
-				    objects[obj->otyp].oc_level > 3)
+				    (objects[otyp].oc_level > 3 ||
+				    restricted_spell_discipline(otyp)))
 							) {
 				dealloc_obj(obj);
 				obj = mkobj(trop->trclass, FALSE);
+				otyp = obj->otyp;
 			}
 
 			/* Don't start with +0 or negative rings */
-			if(objects[obj->otyp].oc_charged && obj->spe <= 0)
+			if (objects[otyp].oc_charged && obj->spe <= 0)
 				obj->spe = rne(3);
 
 			/* Heavily relies on the fact that 1) we create wands
@@ -923,23 +967,25 @@ register struct trobj *trop;
 			 * particular symbol is to be prohibited.  (For more
 			 * objects, we need more nocreate variables...)
 			 */
-			switch (obj->otyp) {
+			switch (otyp) {
 			    case WAN_POLYMORPH:
 			    case RIN_POLYMORPH:
+			    case POT_POLYMORPH:
 				nocreate = RIN_POLYMORPH_CONTROL;
 				break;
 			    case RIN_POLYMORPH_CONTROL:
 				nocreate = RIN_POLYMORPH;
 				nocreate2 = SPE_POLYMORPH;
+				nocreate3 = POT_POLYMORPH;
 			}
 			/* Don't have 2 of the same ring or spellbook */
 			if (obj->oclass == RING_CLASS ||
 			    obj->oclass == SPBOOK_CLASS)
-				nocreate3 = obj->otyp;
+				nocreate4 = otyp;
 		}
 
 		obj->dknown = obj->bknown = obj->rknown = 1;
-		if (objects[obj->otyp].oc_uses_known) obj->known = 1;
+		if (objects[otyp].oc_uses_known) obj->known = 1;
 		obj->cursed = 0;
 		if (obj->opoisoned && u.ualign.type != A_CHAOTIC)
 		    obj->opoisoned = 0;
@@ -957,10 +1003,10 @@ register struct trobj *trop;
 		obj = addinv(obj);
 
 		/* Make the type known if necessary */
-		if (OBJ_DESCR(objects[obj->otyp]) && obj->known)
-			discover_object(obj->otyp,TRUE,FALSE);
-		if (obj->otyp == OIL_LAMP)
-			discover_object(POT_OIL,TRUE,FALSE);
+		if (OBJ_DESCR(objects[otyp]) && obj->known)
+			discover_object(otyp, TRUE, FALSE);
+		if (otyp == OIL_LAMP)
+			discover_object(POT_OIL, TRUE, FALSE);
 
 		if(obj->oclass == ARMOR_CLASS){
 			if (is_shield(obj) && !uarms)
@@ -980,19 +1026,13 @@ register struct trobj *trop;
 			else if (is_suit(obj) && !uarm)
 				setworn(obj, W_ARM);
 		}
-		/* below changed by GAN 01/09/87 to allow wielding of
-		 * pick-axe or can-opener if there is no weapon
-		 * Rocks are assumed to be for slings.
-		 */
-		if(obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
-		   obj->otyp == TIN_OPENER || obj->otyp == ROCK) {
-			if(!uwep) setuwep(obj);
-			else if(!uswapwep) setuswapwep(obj);
-			else if (is_ammo(obj) || is_missile(obj) || is_spear(obj) ||
-				(is_blade(obj) && (objects[obj->otyp].oc_dir & PIERCE)) ||
-				obj->otyp == WAR_HAMMER || obj->otyp == AKLYS ||
-				obj->otyp == ROCK)
+
+		if (obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
+			otyp == TIN_OPENER || otyp == FLINT || otyp == ROCK) {
+		    if (is_ammo(obj) || is_missile(obj)) {
 			if (!uquiver) setuqwep(obj);
+		    } else if (!uwep) setuwep(obj);
+		    else if (!uswapwep) setuswapwep(obj);
 		}
 		if (obj->oclass == SPBOOK_CLASS &&
 				obj->otyp != SPE_BLANK_PAPER)
@@ -1010,6 +1050,5 @@ register struct trobj *trop;
 		trop++;
 	}
 }
-
 
 /*u_init.c*/

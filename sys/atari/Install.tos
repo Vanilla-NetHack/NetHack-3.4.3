@@ -1,21 +1,21 @@
-	Instructions for compiling and installing NetHack 3.2
+	Instructions for compiling and installing NetHack 3.3
 		          on a TOS system
 	=====================================================
-	          (or, How to make ST NetHack 3.2)
-		     Last revision: 1 March 1996
+	          (or, How to make ST NetHack 3.3)
+		     Last revision: 2 February 2000
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories dat, doc, include,
-    src, util, sys\atari, sys\share, and sys\unix.  You may have other sub-
-    directories under sys, but they needn't concern you. If you do not follow
-    this structure, the Makefiles will not function properly.  The .c files
-    for the main program belong in src, those for utility programs in util,
-    and Atari-specific ones in sys\atari.  All the .h files belong in include,
-    the documentation in doc, and assorted data files in dat.  You may also
-    use random.c from sys\share.  The Makefiles belong in sys\unix (except
-    for the Atari-specific Makefile.utl found in this directory).
-    (A more detailed explanation of the directory structure may be found in
-    Files, which should be in the top directory.)
+    src, util, sys\atari, sys\share, sys\unix, and at least one of win\tty
+    and win\gem.  You may have other subdirectories under sys and win, but
+    they needn't concern you.  If you do not follow this structure, the
+    Makefiles will not function properly.  The .c files for the main program
+    belong in src, those for utility programs in util, and Atari-specific
+    ones in sys\atari.  All the .h files belong in include, the documentation
+    in doc, and assorted data files in dat.  You may also use random.c from
+    sys\share.  The Makefiles belong in sys\unix.  (A more detailed
+    explanation of the directory structure may be found in Files, which
+    should be in the top directory.)
  
 
 2.  If you don't already have a good command line interpreter, get one.
@@ -25,8 +25,10 @@
     with the Makefiles.  There are several good shells on various
     FTP sites (including atari.archive.umich.edu).
 
-    Run the "setup.g" shell script in sys\atari.  This will move all the
-    makefiles and other files to the appropriate directories.
+    Run the "setup.g" shell script in sys\atari.  This will setup all the
+    makefiles and other files in the appropriate directories.  It assumes
+    that your compiler prefers \ to / as a directory separator.  If not,
+    simply copy the makefiles instead of running sed on them.
 
 3.  Now go to the include subdirectory to edit a couple of the header files
     there.
@@ -39,13 +41,6 @@
        make sure that HACKDIR is defined properly (or not at all)
        make sure that COMPRESS is not defined
 
-    If you want to build a NetHack that will run on a 1 megabyte machine,
-    I'm afraid you're going to have to disable some options.  Just what
-    to disable is a tough choice; NetHack *almost* fits in 1 meg, but
-    almost isn't quite good enough :-(.  On the other hand, if you can
-    compile NetHack, you almost certainly have at least 2 megabytes;
-    certainly gcc won't compile NetHack with less than 4.
-
     Also edit tosconf.h; this shouldn't need much changing. If you are not
     going to include random.c you will need to comment out RANDOM. Gcc users
     don't need RANDOM, since the gcc and MiNT libraries have a Berkeley
@@ -54,23 +49,14 @@
     a termcap library, so TERMLIB should always be "on" with gcc (and you
     don't need to worry about termcap.uu at all).
 
-4.  If you're using a compiler other than the gcc, you may want to look
-    through system.h, in the include directory.  This file matches the return
-    and parameter types for system calls and library routines with various
-    flavors of compilers and operating systems.  Leaving this file alone is
-    unlikely to cause problems, but if you get compile errors with any
-    functions in the standard library, it's worth checking the declarations
-    there.
-
-5.  If you want to change the high score list behavior, examine the top of
+4.  If you want to change the high score list behavior, examine the top of
     topten.c, in the src directory.  You may want to change the definitions of
     PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN to 51 and ENTRYMAX to
     50 to keep the size of the score list down.
 
-6.  Go to the src directory and edit your Makefile.  You'll want the Systos
+5.  Go to the src directory and edit your Makefile.  You'll want the Systos
     target configuration; the comments explain most of what needs to be done,
-    at least for the gcc.  If your compiler doesn't like directories separated
-    by /'s, then change these to \'s.
+    at least for the gcc.
 
     Next, go to the top, util, dat, and doc directories, and edit the Makefiles
     there, as necessary.  You'll need nroff and/or TeX to do the files in doc;
@@ -99,11 +85,11 @@
 	completely compatible. GNU software for the Atari is widely
 	available; for example, by anonymous FTP from atari.archive.umich.edu.
 
-9.  Make sure the support files-- data, rumors, cmdhelp, opthelp, help, hh,
-    history, license, and oracles (if ORACLES was #define'd)-- were copied
-    to the game directory.  If not, move them there from the dat directory
-    yourself.  rumors can be created manually by entering "makedefs -r;"
-    data by entering "makedefs -d."
+9.  Make sure the support files -- data, rumors, cmdhelp, opthelp, help, hh,
+    history, license, and oracles, or simply nhdat if DLB was defined --
+    were copied to the game directory.  If not, move them there from the
+    dat directory yourself.  rumors can be created manually by entering
+    "makedefs -r;" data by entering "makedefs -d."
 
     Also, make sure that the various level files (*.lev, from the dat
     subdirectory) were copied over correctly. If you're not sure what files
@@ -129,7 +115,7 @@ Notes
 -----
 
 1)  Save files and bones files from previous versions will not work with
-    NetHack 3.2.  Don't bother trying to keep them.  
+    NetHack 3.3.  Don't bother trying to keep them.  
 
 2)  To install an update of NetHack after changing something, enter "make"
     from the src directory.  If you add, delete, or reorder monsters or

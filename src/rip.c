@@ -8,7 +8,16 @@ STATIC_DCL void FDECL(center, (int, char *));
 
 extern const char *killed_by_prefix[];
 
-#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac) || defined(__BEOS__) || defined(WIN32_GRAPHICS)
+#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(GEM_GRAPHICS)
+# define TEXT_TOMBSTONE
+#endif
+#if defined(mac) || defined(__BEOS__) || defined(WIN32_GRAPHICS)
+# ifndef TEXT_TOMBSTONE
+#  define TEXT_TOMBSTONE
+# endif
+#endif
+
+#ifdef TEXT_TOMBSTONE
 
 #ifndef NH320_DEDICATION
 /* A normal tombstone for end of game display. */
@@ -157,6 +166,6 @@ int how;
 	rip = 0;
 }
 
-#endif
+#endif	/* TEXT_TOMBSTONE */
 
 /*rip.c*/

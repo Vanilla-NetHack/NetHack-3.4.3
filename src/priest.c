@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.3	1999/12/03	*/
+/*	SCCS Id: @(#)priest.c	3.3	2000/02/19	*/
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989.		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -102,7 +102,7 @@ pick_move:
 			    pline("%s picks up %s.", Monnam(mtmp),
 				distant_name(ib,doname));
 			obj_extract_self(ib);
-			mpickobj(mtmp, ib);
+			(void) mpickobj(mtmp, ib);
 		}
 		return(1);
 	}
@@ -215,7 +215,6 @@ boolean sanctum;   /* is it the seat of the high priest? */
 		if(sanctum && EPRI(priest)->shralign == A_NONE &&
 		     on_level(&sanctum_level, &u.uz)) {
 			(void) mongets(priest, AMULET_OF_YENDOR);
-			flags.made_amulet = 1;
 		}
 		/* Do NOT put the rest in m_initinv.    */
 		/* Priests created elsewhere than in a  */
@@ -223,7 +222,7 @@ boolean sanctum;   /* is it the seat of the high priest? */
 		cnt = rn1(2,3);
 		while(cnt) {
 		    otmp = mkobj(SPBOOK_CLASS, FALSE);
-		    if(otmp) mpickobj(priest, otmp);
+		    if(otmp) (void) mpickobj(priest, otmp);
 		    cnt--;
 		}
 		if(p_coaligned(priest))
@@ -232,7 +231,7 @@ boolean sanctum;   /* is it the seat of the high priest? */
 		    otmp = mksobj(ROBE, TRUE, FALSE);
 		    if(otmp) {
 			if(!rn2(2)) curse(otmp);
-			mpickobj(priest, otmp);
+			(void) mpickobj(priest, otmp);
 		    }
 		}
 		m_dowear(priest, TRUE);
@@ -320,10 +319,12 @@ char roomno;
 {
 	register struct monst *mtmp;
 
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if(mtmp->ispriest && (EPRI(mtmp)->shroom == roomno) &&
 	       histemple_at(mtmp,mtmp->mx,mtmp->my))
 		return(mtmp);
+	}
 	return (struct monst *)0;
 }
 
@@ -674,7 +675,7 @@ clearpriests()
 
     for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 	mtmp2 = mtmp->nmon;
-	if (mtmp->ispriest && !on_level(&(EPRI(mtmp)->shrlevel), &u.uz))
+	if (!DEADMONSTER(mtmp) && mtmp->ispriest && !on_level(&(EPRI(mtmp)->shrlevel), &u.uz))
 	    mongone(mtmp);
     }
 }

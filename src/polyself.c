@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)polyself.c	3.3	2000/07/14	*/
 /*	Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -77,6 +77,7 @@ const char *fmt, *arg;
 			(urace.femalenum != NON_PM &&
 			(mvitals[urace.femalenum].mvflags & G_GENOD))) {
 	    /* intervening activity might have clobbered genocide info */
+	    killer = delayed_killer;
 	    if (!killer || !strstri(killer, "genocid")) {
 		killer_format = KILLED_BY;
 		killer = "self-genocide";
@@ -90,7 +91,7 @@ const char *fmt, *arg;
 
 	if(!Levitation && !u.ustuck &&
 	   (is_pool(u.ux,u.uy) || is_lava(u.ux,u.uy)))
-		spoteffects();
+		spoteffects(TRUE);
 
 	see_monsters();
 }
@@ -102,15 +103,18 @@ change_sex()
 	   swap unintentionally makes `Upolyd' appear to be true */
 	boolean already_polyd = (boolean) Upolyd;
 
-	flags.female = !flags.female;
+	/* Some monsters are always of one sex and their sex can't be changed */
+	/* succubi/incubi are handled below */
+	if (u.umonnum != PM_SUCCUBUS && u.umonnum != PM_INCUBUS && !is_male(youmonst.data) && !is_female(youmonst.data) && !is_neuter(youmonst.data))
+	    flags.female = !flags.female;
 	if (already_polyd)	/* poly'd: also change saved sex */
-		u.mfemale = !u.mfemale;
+	    u.mfemale = !u.mfemale;
 	max_rank_sz();		/* [this appears to be superfluous] */
 	if (flags.female && urole.name.f)
 	    Strcpy(pl_character, urole.name.f);
 	else
 	    Strcpy(pl_character, urole.name.m);
-	u.umonster = (flags.female && urole.femalenum != NON_PM) ?
+	u.umonster = ((already_polyd ? u.mfemale : flags.female) && urole.femalenum != NON_PM) ?
 			urole.femalenum : urole.malenum;
 	if (!already_polyd) {
 	    u.umonnum = u.umonster;
@@ -173,6 +177,7 @@ newman()
 	newuhs(FALSE);
 	if (Sick) make_sick(0L, (char *) 0, FALSE, SICK_ALL);
 	Stoned = 0;
+	delayed_killer = 0;
 	if (u.uhp <= 0 || u.uhpmax <= 0) {
 		if (Polymorph_control) {
 		    if (u.uhp <= 0) u.uhp = 1;
@@ -187,6 +192,10 @@ newman()
 	polyman("feel like a new %s!",
 		(flags.female && urace.individual.f) ? urace.individual.f :
 		(urace.individual.m) ? urace.individual.m : urace.noun);
+	if (Slimed) {
+		Your("body transforms, but there is still slime on you.");
+		Slimed = 10L;
+	}
 	flags.botl = 1;
 	see_monsters();
 	(void) encumber_msg();
@@ -258,8 +267,11 @@ polyself()
 			else
 				mntmp = PM_VAMPIRE;
 		}
-		if (polymon(mntmp))
-			goto made_change;
+		/* if polymon fails, "you feel" message has been given
+		   so don't follow up with another polymon or newman */
+		if (mntmp == PM_HUMAN) newman();	/* werecritter */
+		else (void) polymon(mntmp);
+		goto made_change;    /* maybe not, but this is right anyway */
 	}
 
 	if (mntmp < LOW_PM) {
@@ -338,9 +350,10 @@ int	mntmp;
 	}
 	if (dochange) {
 		flags.female = !flags.female;
-		You("%s %s %s!",
+		You("%s %s%s!",
 		    (u.umonnum != mntmp) ? "turn into a" : "feel like a new",
-		    flags.female ? "female" : "male",
+		    (is_male(&mons[mntmp]) || is_female(&mons[mntmp])) ? "" :
+			flags.female ? "female " : "male ",
 		    mons[mntmp].mname);
 	} else {
 		if (u.umonnum != mntmp)
@@ -353,6 +366,7 @@ int	mntmp;
 		You("turn to stone!");
 		mntmp = PM_STONE_GOLEM;
 		Stoned = 0;
+		delayed_killer = 0;
 	}
 
 	u.mtimedone = rn1(500, 500);
@@ -366,11 +380,21 @@ int	mntmp;
 
 	if (Stone_resistance && Stoned) { /* parnes@eniac.seas.upenn.edu */
 		Stoned = 0;
+		delayed_killer = 0;
 		You("no longer seem to be petrifying.");
 	}
 	if (Sick_resistance && Sick) {
 		make_sick(0L, (char *) 0, FALSE, SICK_ALL);
 		You("no longer feel sick.");
+	}
+	if (Slimed) {
+	    if (mntmp == PM_FIRE_VORTEX || mntmp == PM_FIRE_ELEMENTAL) {
+		pline_The("slime burns away!");
+		Slimed = 0;
+	    } else if (mntmp == PM_GREEN_SLIME) {
+		/* do it silently */
+		Slimed = 0;
+	    }
 	}
 	if (nohands(youmonst.data)) Glib = 0;
 
@@ -475,7 +499,7 @@ int	mntmp;
 	if((!Levitation && !u.ustuck && !Flying &&
 	    (is_pool(u.ux,u.uy) || is_lava(u.ux,u.uy))) ||
 	   (Underwater && !Swimming))
-	    spoteffects();
+	    spoteffects(TRUE);
 	if (Passes_walls && u.utrap && u.utraptype == TT_INFLOOR) {
 	    u.utrap = 0;
 	    pline_The("rock seems to no longer trap you.");
@@ -497,7 +521,7 @@ int	mntmp;
 	    /* probably should burn webs too if PM_FIRE_ELEMENTAL */
 	    u.utrap = 0;
 	}
-	if (youmonst.data->mlet == S_SPIDER && u.utrap && u.utraptype == TT_WEB) {
+	if (webmaker(youmonst.data) && u.utrap && u.utraptype == TT_WEB) {
 	    You("orient yourself on the web.");
 	    u.utrap = 0;
 	}
@@ -690,7 +714,7 @@ dospit()
 	otmp = mksobj(u.umonnum==PM_COBRA ? BLINDING_VENOM : ACID_VENOM,
 			TRUE, FALSE);
 	otmp->spe = 1; /* to indicate it's yours */
-	throwit(otmp);
+	throwit(otmp, 0L);
 	return(1);
 }
 
@@ -843,6 +867,7 @@ doconfuse()
 	flags.botl = 1;
 
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (canseemon(mtmp)) {
 		looked++;
 		if (Invis && !perceives(mtmp->data))
@@ -944,6 +969,8 @@ domindblast()
 		int u_sen;
 
 		nmon = mtmp->nmon;
+		if (DEADMONSTER(mtmp))
+			continue;
 		if (distu(mtmp->mx, mtmp->my) > BOLT_LIM * BOLT_LIM)
 			continue;
 		if(mtmp->mpeaceful)
@@ -992,34 +1019,40 @@ int part;
 	static NEARDATA const char
 	*humanoid_parts[] = { "arm", "eye", "face", "finger",
 		"fingertip", "foot", "hand", "handed", "head", "leg",
-		"light headed", "neck", "spine", "toe", "hair" },
+		"light headed", "neck", "spine", "toe", "hair", "blood", "lung"},
 	*jelly_parts[] = { "pseudopod", "dark spot", "front",
 		"pseudopod extension", "pseudopod extremity",
 		"pseudopod root", "grasp", "grasped", "cerebral area",
 		"lower pseudopod", "viscous", "middle", "surface",
-		"pseudopod extremity", "ripples" },
+		"pseudopod extremity", "ripples", "juices", "surface" },
 	*animal_parts[] = { "forelimb", "eye", "face", "foreclaw", "claw tip",
 		"rear claw", "foreclaw", "clawed", "head", "rear limb",
-		"light headed", "neck", "spine", "rear claw tip", "fur" },
+		"light headed", "neck", "spine", "rear claw tip",
+		"fur", "blood", "lung" },
 	*horse_parts[] = { "foreleg", "eye", "face", "forehoof", "hoof tip",
 		"rear hoof", "foreclaw", "hooved", "head", "rear leg",
-		"light headed", "neck", "backbone", "rear hoof tip", "mane" },
+		"light headed", "neck", "backbone", "rear hoof tip",
+		"mane", "blood", "lung" },
 	*sphere_parts[] = { "appendage", "optic nerve", "body", "tentacle",
 		"tentacle tip", "lower appendage", "tentacle", "tentacled",
 		"body", "lower tentacle", "rotational", "equator", "body",
-		"lower tentacle tip", "cilia" },
+		"lower tentacle tip", "cilia", "life force", "retina" },
 	*fungus_parts[] = { "mycelium", "visual area", "front", "hypha",
 		"hypha", "root", "strand", "stranded", "cap area",
 		"rhizome", "sporulated", "stalk", "root", "rhizome tip",
-		"spores" },
+		"spores", "juices", "gill" },
 	*vortex_parts[] = { "region", "eye", "front", "minor current",
 		"minor current", "lower current", "swirl", "swirled",
 		"central core", "lower current", "addled", "center",
-		"currents", "edge", "currents" },
+		"currents", "edge", "currents", "life force", "center" },
 	*snake_parts[] = { "vestigial limb", "eye", "face", "large scale",
 		"large scale tip", "rear region", "scale gap", "scale gapped",
 		"head", "rear region", "light headed", "neck", "length",
-		"rear scale", "scales" };
+		"rear scale", "scales", "blood", "lung" },
+	*fish_parts[] = { "fin", "eye", "premaxillary", "pelvic axillary",
+		"pelvic fin", "anal fin", "pectoral fin", "finned", "head", "peduncle",
+		"played out", "gills", "dorsal fin", "caudal fin",
+		"scales", "blood", "gill" };
 	/* claw attacks are overloaded in mons[]; most humanoids with
 	   such attacks should still reference hands rather than claws */
 	static const char not_claws[] = {
@@ -1040,6 +1073,8 @@ int part;
 		    mptr != &mons[PM_INCUBUS] && mptr != &mons[PM_SUCCUBUS])
 		return part == HAND ? "claw" : "clawed";
 	}
+	if (mptr == &mons[PM_SHARK] && part == HAIR)
+	    return "skin";	/* sharks don't have scales */
 	if (humanoid(mptr) &&
 		(part == ARM || part == FINGER || part == FINGERTIP ||
 		    part == HAND || part == HANDED))
@@ -1047,12 +1082,14 @@ int part;
 	if (mptr->mlet == S_CENTAUR || mptr->mlet == S_UNICORN ||
 		(mptr == &mons[PM_ROTHE] && part != HAIR))
 	    return horse_parts[part];
+	if (mptr->mlet == S_EEL && mptr != &mons[PM_JELLYFISH])
+	    return fish_parts[part];
 	if (slithy(mptr))
 	    return snake_parts[part];
 	if (mptr->mlet == S_EYE)
 	    return sphere_parts[part];
 	if (mptr->mlet == S_JELLY || mptr->mlet == S_PUDDING ||
-		mptr->mlet == S_BLOB)
+		mptr->mlet == S_BLOB || mptr == &mons[PM_JELLYFISH])
 	    return jelly_parts[part];
 	if (mptr->mlet == S_VORTEX || mptr->mlet == S_ELEMENTAL)
 	    return vortex_parts[part];
@@ -1078,20 +1115,8 @@ poly_gender()
 {
 /* Returns gender of polymorphed player; 0/1=same meaning as flags.female,
  * 2=none.
- * Used in:
- *	- Seduction by succubus/incubus
- *	- Talking to nymphs (sounds.c)
- * Not used in:
- *	- Messages given by nymphs stealing armor (they can't steal from
- *	  incubi/succubi/nymphs, and nonhumanoids can't wear armor).
- *	- Amulet of change (must refer to real gender no matter what
- *	  polymorphed into).
- *	- Priest/Priestess, Caveman/Cavewoman (ditto)
- *	- Polymorph self (only happens when human)
- *	- Shopkeeper messages (since referred to as "creature" and not "sir"
- *	  or "lady" when polymorphed)
  */
-	if (!humanoid(youmonst.data)) return 2;
+	if (is_neuter(youmonst.data) || !humanoid(youmonst.data)) return 2;
 	return flags.female;
 }
 

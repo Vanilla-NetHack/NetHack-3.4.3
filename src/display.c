@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.3	97/01/24	*/
+/*	SCCS Id: @(#)display.c	3.3	2000/07/27	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -120,9 +120,12 @@
 
 STATIC_DCL void FDECL(display_monster,(XCHAR_P,XCHAR_P,struct monst *,int,XCHAR_P));
 STATIC_DCL int FDECL(swallow_to_glyph, (int, int));
+STATIC_DCL void FDECL(display_warning,(struct monst *));
 
 STATIC_DCL int FDECL(check_pos, (int, int, int));
+#ifdef WA_VERBOSE
 STATIC_DCL boolean FDECL(more_than_one, (int, int, int, int, int));
+#endif
 STATIC_DCL int FDECL(set_twall, (int,int, int,int, int,int, int,int));
 STATIC_DCL int FDECL(set_wall, (int, int, int));
 STATIC_DCL int FDECL(set_corn, (int,int, int,int, int,int, int,int));
@@ -154,6 +157,36 @@ vobj_at(x,y)
     return ((struct obj *) 0);
 }
 #endif	/* else vobj_at() is defined in display.h */
+
+/*
+ * magic_map_background()
+ *
+ * This function is similar to map_background (see below) except we pay
+ * attention to and correct unexplored, lit ROOM and CORR spots.
+ */
+void
+magic_map_background(x, y, show)
+    xchar x,y;
+    int  show;
+{
+    int glyph = back_to_glyph(x,y);	/* assumes hero can see x,y */
+    struct rm *lev = &levl[x][y];
+
+    /*
+     * Correct for out of sight lit corridors and rooms that the hero
+     * doesn't remember as lit.
+     */
+    if (!cansee(x,y) && !lev->waslit) {
+	/* Floor spaces are dark if unlit.  Corridors are dark if unlit. */
+	if (lev->typ == ROOM && glyph == cmap_to_glyph(S_room))
+	    glyph = cmap_to_glyph(S_stone);
+	else if (lev->typ == CORR && glyph == cmap_to_glyph(S_litcorr))
+	    glyph = cmap_to_glyph(S_corr);
+    }
+    if (level.flags.hero_memory)
+	lev->glyph = glyph;
+    if (show) show_glyph(x,y, glyph);
+}
 
 /*
  * The routines map_background(), map_object(), and map_trap() could just
@@ -326,7 +359,6 @@ display_monster(x, y, mon, in_sight, worm_tail)
     register boolean mon_mimic = (mon->m_ap_type != M_AP_NOTHING);
     register int sensed = mon_mimic &&
 	(Protection_from_shape_changers || sensemon(mon));
-
     /*
      * We must do the mimic check first.  If the mimic is mimicing something,
      * and the location is in sight, we have to change the hero's memory
@@ -399,6 +431,35 @@ display_monster(x, y, mon, in_sight, worm_tail)
 	}
 	show_glyph(x,y,num);
     }
+}
+
+/*
+ * display_warning()
+ *
+ * This is also *not* a map_XXXX() function!  Monster warnings float
+ * above everything just like monsters do, but only if the monster
+ * is not showing.
+ *
+ * Do not call for worm tails.
+ */
+STATIC_OVL void
+display_warning(mon)
+    register struct monst *mon;
+{
+    int x = mon->mx, y = mon->my;
+    int wl = (int) (mon->m_lev / 4);
+    int glyph;
+
+    if (mon_warning(mon)) {
+        if (wl > WARNCOUNT - 1) wl = WARNCOUNT - 1;
+        glyph = warning_to_glyph(wl);
+    } else if (MATCH_WARN_OF_MON(mon)) {
+	glyph = mon_to_glyph(mon);
+    } else {
+    	impossible("display_warning did not match warning type?");
+        return;
+    }
+    show_glyph(x, y, glyph);
 }
 
 /*
@@ -615,14 +676,19 @@ newsym(x,y)
 
 	    if (canseeself()) display_self();
 	}
-	else if ((mon = m_at(x,y)) &&
-		(sensemon(mon) ||
-		    (see_with_infrared(mon) && mon_visible(mon))) &&
-		!((x != mon->mx) || (y != mon->my))) {
+	else if ((mon = m_at(x,y))
+		&& (sensemon(mon)
+		    || (see_with_infrared(mon) && mon_visible(mon)))
+		&& !((x != mon->mx) || (y != mon->my))) {
 	    /* Monsters are printed every time. */
 	    /* This also gets rid of any invisibility glyph */
 	    display_monster(x,y,mon,0,0);
 	}
+	else if ((mon = m_at(x,y)) && mon_warning(mon) &&
+		 !((x != mon->mx) || (y != mon->my))) {
+	        display_warning(mon);
+	}		
+
 	/*
 	 * If the location is remembered as being both dark (waslit is false)
 	 * and lit (glyph is a lit room or lit corridor) then it was either:
@@ -697,6 +763,8 @@ shieldeff(x,y)
  *	(DISP_CHANGE, glyph)	change glyph
  *	(DISP_END,    0)	close & clean up (second argument doesn't
  *				matter)
+ *	(DISP_FREEMEM, 0)	only used to prevent memory leak during
+ *				exit)
  *	(x, y)			display the glyph at the location
  *
  * DISP_BEAM  - Display the given glyph at each location, but do not erase
@@ -705,61 +773,94 @@ shieldeff(x,y)
  *		previous location's glyph.
  * DISP_ALWAYS- Like DISP_FLASH, but vision is not taken into account.
  */
+
+static struct tmp_glyph {
+    coord saved[COLNO];	/* previously updated positions */
+    int sidx;		/* index of next unused slot in saved[] */
+    int style;		/* either DISP_BEAM or DISP_FLASH or DISP_ALWAYS */
+    int glyph;		/* glyph to use when printing */
+    struct tmp_glyph *prev;
+} tgfirst;
+
 void
 tmp_at(x, y)
     int x, y;
 {
-    static coord saved[COLNO];	/* prev positions, only for DISP_BEAM */
-    static int sidx = 0;	/* index of saved previous positions */
-    static int sx = -1, sy;	/* previous position, only for DISP_FLASH */
-    static int status;		/* either DISP_BEAM or DISP_FLASH */
-    static int glyph;		/* glyph to use when printing */
+    static struct tmp_glyph *tglyph = (struct tmp_glyph *)0;
+    struct tmp_glyph *tmp;
 
     switch (x) {
 	case DISP_BEAM:
 	case DISP_FLASH:
 	case DISP_ALWAYS:
-	    status = x;
-	    glyph  = y;
+	    if (!tglyph)
+		tmp = &tgfirst;
+	    else	/* nested effect; we need dynamic memory */
+		tmp = (struct tmp_glyph *)alloc(sizeof (struct tmp_glyph));
+	    tmp->prev = tglyph;
+	    tglyph = tmp;
+	    tglyph->sidx = 0;
+	    tglyph->style = x;
+	    tglyph->glyph = y;
 	    flush_screen(0);	/* flush buffered glyphs */
-	    break;
+	    return;
 
+	case DISP_FREEMEM:  /* in case game ends with tmp_at() in progress */
+	    while (tglyph) {
+		tmp = tglyph->prev;
+		if (tglyph != &tgfirst) free((genericptr_t)tglyph);
+		tglyph = tmp;
+	    }
+	    return;
+
+	default:
+	    break;
+    }
+
+    if (!tglyph) panic("tmp_at: tglyph not initialized");
+
+    switch (x) {
 	case DISP_CHANGE:
-	    glyph = y;
+	    tglyph->glyph = y;
 	    break;
 
 	case DISP_END:
-	    if (status == DISP_BEAM) {
+	    if (tglyph->style == DISP_BEAM) {
 		register int i;
 
 		/* Erase (reset) from source to end */
-		for (i = 0; i < sidx; i++)
-		    newsym(saved[i].x,saved[i].y);
-		sidx = 0;
-		
-	    } else if (sx >= 0) { /* DISP_FLASH/ALWAYS (called at least once) */
-		newsym(sx,sy);	/* reset the location */
-		sx = -1;	/* reset sx to an illegal pos for next time */
+		for (i = 0; i < tglyph->sidx; i++)
+		    newsym(tglyph->saved[i].x, tglyph->saved[i].y);
+	    } else {		/* DISP_FLASH or DISP_ALWAYS */
+		if (tglyph->sidx)	/* been called at least once */
+		    newsym(tglyph->saved[0].x, tglyph->saved[0].y);
 	    }
+	 /* tglyph->sidx = 0; -- about to be freed, so not necessary */
+	    tmp = tglyph->prev;
+	    if (tglyph != &tgfirst) free((genericptr_t)tglyph);
+	    tglyph = tmp;
 	    break;
 
 	default:	/* do it */
-	    if (!cansee(x,y) && status != DISP_ALWAYS) break;
-
-	    if (status == DISP_BEAM) {
-		saved[sidx  ].x = x;	/* save pos for later erasing */
-		saved[sidx++].y = y;
+	    if (tglyph->style == DISP_BEAM) {
+		if (!cansee(x,y)) break;
+		/* save pos for later erasing */
+		tglyph->saved[tglyph->sidx].x = x;
+		tglyph->saved[tglyph->sidx].y = y;
+		tglyph->sidx += 1;
+	    } else {	/* DISP_FLASH/ALWAYS */
+		if (tglyph->sidx) { /* not first call, so reset previous pos */
+		    newsym(tglyph->saved[0].x, tglyph->saved[0].y);
+		    tglyph->sidx = 0;	/* display is presently up to date */
+		}
+		if (!cansee(x,y) && tglyph->style != DISP_ALWAYS) break;
+		tglyph->saved[0].x = x;
+		tglyph->saved[0].y = y;
+		tglyph->sidx = 1;
 	    }
 
-	    else {	/* DISP_FLASH/ALWAYS */
-		if (sx >= 0)		/* not first call */
-		    newsym(sx,sy);	/* update the old position */
-		sx = x;		/* save previous pos for next call */
-		sy = y;
-	    }
-
-	    show_glyph(x,y,glyph);	/* show it */
-	    flush_screen(0);		/* make sure it shows up */
+	    show_glyph(x, y, tglyph->glyph);	/* show it */
+	    flush_screen(0);			/* make sure it shows up */
 	    break;
     } /* end case */
 }
@@ -922,6 +1023,7 @@ see_monsters()
 {
     register struct monst *mon;
     for (mon = fmon; mon; mon = mon->nmon) {
+	if (DEADMONSTER(mon)) continue;
 	newsym(mon->mx,mon->my);
 	if (mon->wormno) see_wsegs(mon);
     }
@@ -937,7 +1039,7 @@ set_mimic_blocking()
 {
     register struct monst *mon;
     for (mon = fmon; mon; mon = mon->nmon)
-	if(mon->minvis &&
+	if(!DEADMONSTER(mon) && mon->minvis &&
 	   ((mon->m_ap_type == M_AP_FURNITURE &&
 	      (mon->mappearance == S_vcdoor || mon->mappearance == S_hcdoor))||
 	    (mon->m_ap_type == M_AP_OBJECT && mon->mappearance == BOULDER))) {
@@ -1063,7 +1165,7 @@ show_glyph(x,y,glyph)
     /*
      * Check for bad positions and glyphs.
      */
-    if (x <= 0 || x >= COLNO || y < 0 || y >= ROWNO) {
+    if (!isok(x, y)) {
 	const char *text;
 	int  offset;
 
@@ -1074,9 +1176,12 @@ show_glyph(x,y,glyph)
 	 *  This assumes an ordering of the offsets.  See display.h for
 	 *  the definition.
 	 */
-	if (glyph >= GLYPH_SWALLOW_OFF) {		/* swallow border */
+
+	if (glyph >= GLYPH_WARNING_OFF) {	/* a warning */
+	    text = "warning";		offset = glyph - GLYPH_WARNING_OFF;
+	} else if (glyph >= GLYPH_SWALLOW_OFF) {	/* swallow border */
 	    text = "swallow border";	offset = glyph - GLYPH_SWALLOW_OFF;
-	}else if (glyph >= GLYPH_ZAP_OFF) {		/* zap beam */
+	} else if (glyph >= GLYPH_ZAP_OFF) {		/* zap beam */
 	    text = "zap beam";		offset = glyph - GLYPH_ZAP_OFF;
 	} else if (glyph >= GLYPH_CMAP_OFF) {		/* cmap */
 	    text = "cmap_index";	offset = glyph - GLYPH_CMAP_OFF;
@@ -1437,18 +1542,20 @@ check_pos(x, y, which)
 
 /* Return TRUE if more than one is non-zero. */
 /*ARGSUSED*/
+#ifdef WA_VERBOSE
 STATIC_OVL boolean
 more_than_one(x, y, a, b, c)
     int x, y, a, b, c;
 {
     if ((a && (b|c)) || (b && (a|c)) || (c && (a|b))) {
-#ifdef WA_VERBOSE
 	error4(x,y,a,b,c,0);
-#endif
 	return TRUE;
     }
     return FALSE;
 }
+#else
+#define more_than_one(x, y, a, b, c) (((a) && ((b)|(c))) || ((b) && ((a)|(c))) || ((c) && ((a)|(b))))
+#endif
 
 /* Return the wall mode for a T wall. */
 STATIC_OVL int

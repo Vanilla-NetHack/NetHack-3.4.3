@@ -8,4 +8,4 @@ Debug-Mode Quick Reference:
 ^T  ==  do intra-level teleport.
 ^V  ==  do trans-level teleport.
 ^W  ==  make wish.
-^X  ==  show intrinsic attributes.
+^X  ==  show attributes including intrinsic attributes.

@@ -74,10 +74,14 @@ amii_putstr(window,attr,str)
 	wheight = ( w->Height - w->BorderTop -
 			    w->BorderBottom - 3 ) / w->RPort->TxHeight;
 	
+	if (scrollmsg || wheight > 1)
+	    fudge = 0;
+
 	amii_scrollmsg( w, cw );
 
-	strncpy( toplines, str, BUFSZ );
-	toplines[ BUFSZ - 1 ] = 0;
+	while (isspace(*str)) str++;
+	strncpy( toplines, str, TBUFSZ );
+	toplines[ TBUFSZ - 1 ] = 0;
 
 	/* For initial message to be visible, we need to explicitly position the
 	 * cursor.  This flag, cw->curx == -1 is set elsewhere to force the
@@ -119,32 +123,40 @@ amii_putstr(window,attr,str)
 	}
 
 	str = cw->data[i] + SOFF;
-	if( strlen(str) >= (cw->cols-fudge) )
+	if( cw->curx + strlen(str) >= (cw->cols-fudge) )
 	{
 	    int i;
 	    char *ostr = (char *)str;
 	    char *p;
 
-	    while( strlen( str ) >= (cw->cols-fudge) )
+	    while( cw->curx + strlen( str ) >= (cw->cols-fudge) )
 	    {
-		for(p=((char *)&str[ cw->cols ])-fudge; !isspace(*p) && p != str;)
+		for(p=((char *)&str[ cw->cols-1 - cw->curx ])-fudge; !isspace(*p) && p > str;)
 		    --p;
+		if (p < str) p = (char *)str;
 
-		if( p == str )
-		    p = (char *)&str[ cw->cols ];
+		if( p == str ) {
+		/*    p = (char *)&str[ cw->cols ]; */
+		    outmore(cw);
+		    continue;
+		}
 
 		i = (long)p-(long)str;
+		outsubstr( cw, (char *)str, i, fudge );
 		cw->curx += i;
 
-		if( str != ostr )
-		{
+		while(isspace(*p)) p++;
+		str = p;
+
+#if 0
+		if( str != ostr ) {
 		    outsubstr( cw, "+", 1, fudge );
 		    cw->curx+=2;
 		}
-		outsubstr( cw, (char *)str, i, fudge );
-		str = p+(isspace(*p)!= 0);
+#endif
 		if(*str)
 		    amii_scrollmsg( w, cw );
+		amii_cl_end( cw, cw->curx );
 	    }
 
 	    if( *str )
@@ -154,7 +166,7 @@ amii_putstr(window,attr,str)
 		    outsubstr( cw, "+", 1, fudge );
 		    cw->curx+=2;
 		}
-		if( isspace( *str ) )
+		while ( isspace( *str ) )
 		    ++str;
 		outsubstr( cw, (char *)str, i = strlen( (char *)str ), fudge );
 		cw->curx += i;
@@ -440,6 +452,7 @@ amii_doprev_message()
     }
 
     /* When an interlaced/tall screen is in use, the scroll bar will be there */
+    /* Or in some other cases as well */
     if( scrollmsg )
     {
 	struct Gadget *gd;
@@ -458,17 +471,16 @@ amii_doprev_message()
 	    topidx = (((ULONG)hidden * pip->VertPot) + (MAXPOT/2)) >> 16;
 	    for( total = i = 0; i < cw->maxrow; ++i )
 	    {
-		if( cw->data[i][1] == 0 )
+		if( cw->data[i][1] != 0 )
 		    ++total;
 	    }
 
 	    i = 0;
-	    while( (--topidx) >= 0 && i < wheight/2 )
-	    {
-		SetPropInfo( w, &MsgScroll, wheight, total, topidx );
-		DisplayData( WIN_MESSAGE, topidx );
-		++i;
-	    }
+	    topidx -= wheight/4 + 1;
+	    if (topidx < 0)
+		topidx = 0;
+	    SetPropInfo( w, &MsgScroll, wheight, total, topidx );
+	    DisplayData( WIN_MESSAGE, topidx );
 	}
 	return(0);
     }
@@ -484,6 +496,7 @@ amii_doprev_message()
 
     amii_cl_end(cw, 0);
     amii_curs( WIN_MESSAGE, 1, 0 );
+    amii_setdrawpens( amii_wins[WIN_MESSAGE]->win, NHW_MESSAGE );
     Text(w->RPort,str+SOFF,strlen(str+SOFF));
     cw->curx = cw->cols + 1;
 

@@ -28,6 +28,7 @@ STATIC_DCL void FDECL(ghostfruit, (struct obj *));
 STATIC_DCL boolean FDECL(restgamestate, (int, unsigned int *, unsigned int *));
 STATIC_DCL void FDECL(restlevelstate, (unsigned int, unsigned int));
 STATIC_DCL int FDECL(restlevelfile, (int,XCHAR_P));
+STATIC_DCL void FDECL(reset_oattached_mids, (BOOLEAN_P));
 
 /*
  * Save a mapping of IDs from ghost levels to the current level.  This
@@ -572,7 +573,9 @@ register int fd;
 		getlev(fd, 0, ltmp, FALSE);
 #ifdef MICRO
 		curs(WIN_MAP, 1+dotcnt++, 2);
-		putstr(WIN_MAP, 0, ".");
+		if (strncmpi("X11", windowprocs.name, 3)){
+		  putstr(WIN_MAP, 0, ".");
+		}
 		mark_synch();
 #endif
 		rtmp = restlevelfile(fd, ltmp);
@@ -839,6 +842,7 @@ boolean ghostly;
 	/* must come after all mons & objs are restored */
 	relink_timers(ghostly);
 	relink_light_sources(ghostly);
+	reset_oattached_mids(ghostly);
 
 	if (ghostly)
 	    clear_id_mapping();
@@ -910,6 +914,23 @@ lookup_id_mapping(gid, nidp)
     return FALSE;
 }
 
+STATIC_OVL void
+reset_oattached_mids(ghostly)
+boolean ghostly;
+{
+    struct obj *otmp;
+    unsigned oldid, nid;
+    for (otmp = fobj; otmp; otmp = otmp->nobj)
+	if (ghostly && otmp->oattached == OATTACHED_M_ID) {
+	    (void) memcpy((genericptr_t)&oldid, (genericptr_t)otmp->oextra,
+								sizeof(oldid));
+	    if (lookup_id_mapping(oldid, &nid))
+		(void) memcpy((genericptr_t)otmp->oextra, (genericptr_t)&nid,
+								sizeof(nid));
+	    else
+		otmp->oattached = OATTACHED_NOTHING;
+	}
+}
 
 
 #ifdef ZEROCOMP

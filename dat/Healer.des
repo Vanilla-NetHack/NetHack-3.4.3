@@ -88,6 +88,7 @@ MONSTER: 'r',"rabid rat",random
 MONSTER: 'r',"rabid rat",random
 MONSTER: 'r',"rabid rat",random
 MONSTER: ';',"giant eel",random
+MONSTER: ';',"shark",random
 MONSTER: ';', random, random
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
@@ -179,6 +180,8 @@ MONSTER:';',"giant eel",random
 MONSTER:';',"electric eel",random
 MONSTER:';',"electric eel",random
 MONSTER:';',"kraken",random
+MONSTER:';',"shark",random
+MONSTER:';',"shark",random
 MONSTER:';',random, random,hostile
 MONSTER:';',random, random,hostile
 MONSTER: 'D',random,random,hostile
@@ -267,6 +270,8 @@ MONSTER:';',"giant eel",random
 MONSTER:';',"giant eel",random
 MONSTER:';',"electric eel",random
 MONSTER:';',"electric eel",random
+MONSTER:';',"shark",random
+MONSTER:';',"shark",random
 MONSTER:';',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile

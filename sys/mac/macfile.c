@@ -12,6 +12,7 @@
 #include <errors.h>
 #include <resources.h>
 #include <memory.h>
+#include <TextUtils.h>
 #include <ToolUtils.h>
 #include "dlb.h"
 
@@ -30,12 +31,12 @@
 #define APP_NAME_RES_ID		(-16396)
 
 typedef struct handlefile {
-	long		type ;  /* Resource type */
-	short		id ;	/* Resource id */
-	long		mark ;  /* Current position */
-	long		size ;  /* total size */
-	Handle		data ;  /* The resource, purgeable */
-} HandleFile ;
+	long		type;  /* Resource type */
+	short		id;	/* Resource id */
+	long		mark;  /* Current position */
+	long		size;  /* total size */
+	Handle		data;  /* The resource, purgeable */
+} HandleFile;
 
 static  HandleFile *FDECL(IsHandleFile,(int));
 static int FDECL(OpenHandleFile,(const unsigned char *, long));
@@ -43,8 +44,8 @@ static int FDECL(CloseHandleFile,(int));
 static int FDECL(ReadHandleFile,(int, void *, unsigned));
 static long FDECL(SetHandleFilePos,(int, short, long));
 
-HandleFile theHandleFiles [ MAX_HF ] ;
-MacDirs theDirs ;		/* also referenced in macwin.c */
+HandleFile theHandleFiles [MAX_HF];
+MacDirs theDirs;		/* also referenced in macwin.c */
 
 
 static HandleFile *
@@ -62,126 +63,125 @@ IsHandleFile(int fd)
 
 
 static int
-OpenHandleFile ( const unsigned char * name , long fileType )
+OpenHandleFile (const unsigned char *name, long fileType)
 {
-	int i ;
+	int i;
 	OSErr err;
-	Handle h ;
-	Str255 s ;
+	Handle h;
+	Str255 s;
 
-	for ( i = 0 ; i < MAX_HF ; i ++ ) {
-		if ( theHandleFiles[i].data == 0L ) break ;
+	for (i = 0; i < MAX_HF; i ++) {
+		if (theHandleFiles[i].data == 0L) break;
 	}
 	
-	if ( i >= MAX_HF ) {
+	if (i >= MAX_HF) {
 		error("Ran out of HandleFiles");
-		return -1 ;
+		return -1;
 	}
 
-	h = GetNamedResource ( fileType , name ) ;
+	h = GetNamedResource (fileType, name);
 	err = ResError();
 	if (err == resNotFound) return -1;  /* Don't complain, this might be normal */
-	if ( ! itworked(err) ) return -1;
+	if (!itworked(err)) return -1;
 	
 	theHandleFiles[i].data = h;
-	theHandleFiles[i].size = GetHandleSize ( h ) ;
-	GetResInfo ( h, & theHandleFiles[i].id, ( void* ) & theHandleFiles[i].type, s ) ;
-	theHandleFiles[i].mark = 0L ;
+	theHandleFiles[i].size = GetHandleSize (h);
+	GetResInfo (h, &theHandleFiles[i].id, (void*) &theHandleFiles[i].type, s);
+	theHandleFiles[i].mark = 0L;
 
 	return(i + FIRST_HF);
 }
 
 
 static int
-CloseHandleFile ( int fd )
+CloseHandleFile (int fd)
 {
-	if ( ! IsHandleFile ( fd ) ) {
+	if (!IsHandleFile (fd)) {
 	   error("CloseHandleFile: isn't a handle");
-	   return -1 ;
+	   return -1;
 	}
-	fd -= FIRST_HF ;
-	ReleaseResource ( theHandleFiles[fd].data ) ;
-	theHandleFiles[fd].data = 0L ;
+	fd -= FIRST_HF;
+	ReleaseResource (theHandleFiles[fd].data);
+	theHandleFiles[fd].data = 0L;
 	return(0);
 }
 
 
 static int
-ReadHandleFile ( int fd , void * ptr , unsigned len )
+ReadHandleFile (int fd, void *ptr, unsigned len)
 {
-	unsigned maxBytes ;
-	Handle h ;
+	unsigned maxBytes;
+	Handle h;
 
-	if ( ! IsHandleFile ( fd ) ) return -1;
+	if (!IsHandleFile (fd)) return -1;
 	
-	fd -= FIRST_HF ;
-	maxBytes = theHandleFiles[fd].size - theHandleFiles[fd].mark ;
-	if ( len > maxBytes ) len = maxBytes ;
+	fd -= FIRST_HF;
+	maxBytes = theHandleFiles[fd].size - theHandleFiles[fd].mark;
+	if (len > maxBytes) len = maxBytes;
 	
-	h = theHandleFiles[fd].data ;
+	h = theHandleFiles[fd].data;
 	
 	HLock(h);
-	BlockMove ( *h + theHandleFiles[fd].mark , ptr , len );
+	BlockMove (*h + theHandleFiles[fd].mark, ptr, len);
 	HUnlock(h);
-	theHandleFiles[fd].mark += len ;
+	theHandleFiles[fd].mark += len;
 	
 	return(len);
 }
 
 
 static long
-SetHandleFilePos ( int fd , short whence , long pos )
+SetHandleFilePos (int fd, short whence, long pos)
 {
 	long curpos;
 	
-	if ( ! IsHandleFile ( fd ) ) return -1;
+	if (!IsHandleFile (fd)) return -1;
 	
-	fd -= FIRST_HF ;
+	fd -= FIRST_HF;
 	
-	curpos = theHandleFiles [ fd ].mark;
-	switch ( whence ) {
+	curpos = theHandleFiles [fd].mark;
+	switch (whence) {
 		case SEEK_CUR : 
-			curpos += pos ;
-			break ;
+			curpos += pos;
+			break;
 		case SEEK_END : 
-			curpos = theHandleFiles[fd].size  - pos ;
-			break ;
+			curpos = theHandleFiles[fd].size  - pos;
+			break;
 		default : /* set */
-			curpos = pos ;
-			break ;
+			curpos = pos;
+			break;
 	}
 
-	if ( curpos < 0 )
-		curpos = 0 ;
-	else if ( curpos > theHandleFiles [ fd ].size )
-		curpos = theHandleFiles [ fd ].size ;
+	if (curpos < 0)
+		curpos = 0;
+	else if (curpos > theHandleFiles [fd].size)
+		curpos = theHandleFiles [fd].size;
 	
-	theHandleFiles [ fd ].mark = curpos;
+	theHandleFiles [fd].mark = curpos;
 	
-	return curpos ;
+	return curpos;
 }
 
 
 void
-C2P ( const char * c , unsigned char * p )
+C2P (const char *c, unsigned char *p)
 {
-	long len = strlen ( c ) ;
+	int len = strlen (c), i;
 
-	if ( len > 255 ) len = 255 ;
+	if (len > 255) len = 255;
 
-	p[0] = len & 0xff ;
-	while (*c) *++p = *c++;
+	for (i = len; i > 0; i--)
+		p[i] = c[i-1];
+	p[0] = len;
 }
 
 void
-P2C ( const unsigned char * p , char * c )
+P2C (const unsigned char *p, char *c)
 {
-	int idx = p[0];
-	c[idx] = '\0';
-	while (idx > 0) {
-		c[idx-1] = p[idx];
-		--idx;
-	}
+	int idx = *p++;
+	for (; idx > 0; idx--)
+		*c++ = *p++;
+	*c = '\0';
 }
 
 
@@ -203,24 +203,23 @@ replace_resource(Handle new_res, ResType its_type, short its_id, Str255 its_name
 
 
 int
-maccreat ( const char * name , long fileType )
-{
-	return macopen ( name , O_RDWR | O_CREAT | O_TRUNC , fileType ) ;
+maccreat (const char *name, long fileType){
+	return macopen (name, O_RDWR | O_CREAT | O_TRUNC, fileType);
 }
 
 
 int
-macopen ( const char * name , int flags , long fileType )
+macopen (const char *name, int flags, long fileType)
 {
-	short refNum ;
-	short perm ;
-	Str255 s ;
+	short refNum;
+	short perm;
+	Str255 s;
 
-	C2P ( name , s ) ;
-	if ( flags & O_CREAT ) {
-		if ( HCreate ( theDirs.dataRefNum , theDirs.dataDirID , s ,
-			MAC_CREATOR , fileType ) && ( flags & O_EXCL ) ) {
-			return -1 ;
+	C2P (name, s);
+	if (flags & O_CREAT) {
+		if (HCreate (theDirs.dataRefNum, theDirs.dataDirID, s ,
+			MAC_CREATOR, fileType) && (flags & O_EXCL)) {
+			return -1;
 		}
 
 		if (fileType == SAVE_TYPE) {
@@ -256,144 +255,142 @@ macopen ( const char * name , int flags , long fileType )
 	 * we fail with default, etc. etc. Besides, we should use HOpen
 	 * and permissions.
 	 */
-	if ( ( flags & O_RDONLY ) == O_RDONLY ) {
-		perm = fsRdPerm ;
+	if ((flags & O_RDONLY) == O_RDONLY) {
+		perm = fsRdPerm;
 	}
-	if ( ( flags & O_WRONLY ) == O_WRONLY ) {
-		perm = fsWrPerm ;
+	if ((flags & O_WRONLY) == O_WRONLY) {
+		perm = fsWrPerm;
 	}
-	if ( ( flags & O_RDWR ) == O_RDWR ) {
-		perm = fsRdWrPerm ;
+	if ((flags & O_RDWR) == O_RDWR) {
+		perm = fsRdWrPerm;
 	}
-	if ( HOpen ( theDirs.dataRefNum , theDirs.dataDirID , s ,
-		perm , & refNum ) ) {
-		return OpenHandleFile ( s , fileType ) ;
+	if (HOpen (theDirs.dataRefNum, theDirs.dataDirID, s, perm, &refNum)) {
+		return OpenHandleFile (s, fileType);
 	}
-	if ( flags & O_TRUNC ) {
-		if ( SetEOF ( refNum , 0L ) ) {
-			FSClose ( refNum ) ;
-			return -1 ;
+	if (flags & O_TRUNC) {
+		if (SetEOF (refNum, 0L)) {
+			FSClose (refNum);
+			return -1;
 		}
 	}
-	return refNum ;
+	return refNum;
 }
 
 
 int
-macclose ( int fd )
+macclose (int fd)
 {
-	if ( IsHandleFile ( fd ) ) {
-		CloseHandleFile ( fd ) ;
+	if (IsHandleFile (fd)) {
+		CloseHandleFile (fd);
 	} else {
-		if ( FSClose ( fd ) ) {
-			return -1 ;
+		if (FSClose (fd)) {
+			return -1;
 		}
-		FlushVol ( (StringPtr) 0 , theDirs . dataRefNum ) ;
+		FlushVol ((StringPtr) 0, theDirs . dataRefNum);
 	}
-	return 0 ;
+	return 0;
 }
 
 
 int
-macread ( int fd , void * ptr , unsigned len )
+macread (int fd, void *ptr, unsigned len)
 {
 	long amt = len;
 	
-	if ( IsHandleFile ( fd ) ) {
+	if (IsHandleFile (fd)) {
 
-		return ReadHandleFile ( fd , ptr , amt ) ;
+		return ReadHandleFile (fd, ptr, amt);
 	} else {
 
-		short err = FSRead ( fd , & amt , ptr ) ;
-		if ( err == eofErr && len ) {
+		short err = FSRead (fd, &amt, ptr);
+		if (err == eofErr && len) {
 
-			return amt ;
+			return amt;
 		}
-		if  ( itworked ( err ) ) {
+		if  (itworked (err)) {
 
-			return ( amt ) ;
+			return (amt);
 
 		} else {
 
-			return -1 ;
+			return -1;
 		}
 	}
 }
 
 #if 0 /* this function isn't used, if you use it, uncomment prototype in macwin.h */
 char *
-macgets ( int fd , char * ptr , unsigned len )
+macgets (int fd, char *ptr, unsigned len)
 {
-        int idx = 0 ;
+        int idx = 0;
         char c;
 
-        while ( -- len > 0 ) {
-                if ( macread ( fd , ptr + idx , 1 ) <= 0 )
-                        return (char *)0 ;
-                c = ptr[ idx++ ];
-                if ( c  == '\n' || c == '\r' )
-                        break ;
+        while (-- len > 0) {
+                if (macread (fd, ptr + idx, 1) <= 0)
+                        return (char *)0;
+                c = ptr[idx++];
+                if (c  == '\n' || c == '\r')
+                        break;
         }
-        ptr [ idx ] = '\0' ;
-        return ptr ;
+        ptr [idx] = '\0';
+        return ptr;
 }
 #endif /* 0 */
 
 
 int
-macwrite ( int fd , void * ptr , unsigned len )
+macwrite (int fd, void *ptr, unsigned len)
 {
-	long amt = len ;
+	long amt = len;
 
-	if ( IsHandleFile ( fd ) ) return -1 ;
+	if (IsHandleFile (fd)) return -1;
 	
-	if ( itworked( FSWrite ( fd , & amt , ptr ) ) ) return(amt) ;
-		else return(-1) ;
+	if (itworked(FSWrite (fd, &amt, ptr))) return(amt);
+		else return(-1);
 }
 
 
 long
-macseek ( int fd , long where , short whence )
+macseek (int fd, long where, short whence)
 {
-	short posMode ;
-	long curPos ;
+	short posMode;
+	long curPos;
 
-	if ( IsHandleFile ( fd ) ) {
-		return SetHandleFilePos ( fd , whence , where ) ;
+	if (IsHandleFile (fd)) {
+		return SetHandleFilePos (fd, whence, where);
 	}
 
-	switch ( whence ) {
+	switch (whence) {
 		default :
-			posMode = fsFromStart ;
-			break ;
+			posMode = fsFromStart;
+			break;
 		case SEEK_CUR :
-			posMode = fsFromMark ;
-			break ;
+			posMode = fsFromMark;
+			break;
 		case SEEK_END :
-			posMode = fsFromLEOF ;
-			break ;
+			posMode = fsFromLEOF;
+			break;
 	}
 
-	if ( itworked( SetFPos ( fd , posMode, where ) )  &&
-	     itworked( GetFPos ( fd , &curPos )) )
-		    return(curPos);
+	if (itworked(SetFPos (fd, posMode, where)) && itworked(GetFPos (fd, &curPos)))
+		return(curPos);
 	   
 	return(-1);
 }
 
 /* ---------------------------------------------------------------------- */
 
-boolean rsrc_dlb_init(void)
-{
+boolean rsrc_dlb_init(void) {
 	return TRUE;
 }
 
-void rsrc_dlb_cleanup(void)
-{
+void rsrc_dlb_cleanup(void) {
 }
 
-boolean rsrc_dlb_fopen(dlb *dp, const char *name, const char *mode)
-{
+boolean rsrc_dlb_fopen(dlb *dp, const char *name, const char *mode) {
+#if defined(applec) || defined(__MWERKS__)
+# pragma unused(mode)
+#endif
 	Str255 pname;
 	
 	C2P(name, pname);
@@ -401,13 +398,11 @@ boolean rsrc_dlb_fopen(dlb *dp, const char *name, const char *mode)
 	return dp->fd >= 0;
 }
 
-int rsrc_dlb_fclose(dlb *dp)
-{
+int rsrc_dlb_fclose(dlb *dp) {
 	return CloseHandleFile(dp->fd);
 }
 
-int rsrc_dlb_fread(char *buf, int size, int quan, dlb *dp)
-{
+int rsrc_dlb_fread(char *buf, int size, int quan, dlb *dp) {
 	int nread;
 
 	if (size < 0 || quan < 0) return 0;
@@ -416,16 +411,13 @@ int rsrc_dlb_fread(char *buf, int size, int quan, dlb *dp)
 	return nread/size;	/* # of whole pieces (== quan in normal case) */
 }
 
-int rsrc_dlb_fseek(dlb *dp, long pos, int whence)
-{
+int rsrc_dlb_fseek(dlb *dp, long pos, int whence) {
 	return SetHandleFilePos(dp->fd, whence, pos);
 }
 
-char *rsrc_dlb_fgets(char *buf, int len, dlb *dp)
-{
+char *rsrc_dlb_fgets(char *buf, int len, dlb *dp) {
 	HandleFile *hfp = IsHandleFile(dp->fd);
 	char *p;
-	long mark;
 	int bytesLeft, n = 0;
 
 	if (hfp && hfp->mark < hfp->size) {
@@ -445,16 +437,16 @@ char *rsrc_dlb_fgets(char *buf, int len, dlb *dp)
 		HUnlock(hfp->data);
 
 		hfp->mark += n;
+		if (n != 0)
+			buf[n] = '\0';	/* null terminate result */
 	}
 
 	return n ? buf : NULL;
 }
 
-int rsrc_dlb_fgetc(dlb *dp)
-{
+int rsrc_dlb_fgetc(dlb *dp) {
 	HandleFile *hfp = IsHandleFile(dp->fd);
 	int ret;
-	long mark;
 
 	if (!hfp || hfp->size <= hfp->mark) return EOF;
 
@@ -463,8 +455,7 @@ int rsrc_dlb_fgetc(dlb *dp)
 	return ret;
 }
 
-long rsrc_dlb_ftell(dlb *dp)
-{
+long rsrc_dlb_ftell(dlb *dp) {
 	HandleFile *hfp = IsHandleFile(dp->fd);
 
 	if (!hfp) return 0;

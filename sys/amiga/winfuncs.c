@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)winfuncs.c    3.1    96/02/16 */
+/*    SCCS Id: @(#)winfuncs.c    3.1    2000/01/12 */
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993,1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -93,25 +93,25 @@ ami_wininit_data( void )
 	amii_defpens[ 2 ] = C_BLACK;	/* TEXTPEN          */
 	amii_defpens[ 3 ] = C_CYAN;	/* SHINEPEN         */
 	amii_defpens[ 4 ] = C_BLUE;	/* SHADOWPEN        */
-	amii_defpens[ 5 ] = C_GREY;	/* FILLPEN          */
-	amii_defpens[ 6 ] = C_RED;	/* FILLTEXTPEN      */
-	amii_defpens[ 7 ] = C_GREY;	/* BACKGROUNDPEN    */
+	amii_defpens[ 5 ] = C_GREYBLUE;	/* FILLPEN          */
+	amii_defpens[ 6 ] = C_LTGREY;	/* FILLTEXTPEN      */
+	amii_defpens[ 7 ] = C_GREYBLUE;	/* BACKGROUNDPEN    */
 	amii_defpens[ 8 ] = C_RED;	/* HIGHLIGHTTEXTPEN */
 	amii_defpens[ 9 ] = C_WHITE;	/* BARDETAILPEN     */
-	amii_defpens[ 10 ] = C_GREY;	/* BARBLOCKPEN      */
-	amii_defpens[ 11 ] = C_BLUE;	/* BARTRIMPEN       */
-	amii_defpens[ 12 ] = ~0;
+	amii_defpens[ 10] = C_GREYBLUE;	/* BARBLOCKPEN      */
+	amii_defpens[ 11] = C_BLUE;	/* BARTRIMPEN       */
+	amii_defpens[ 12] = (unsigned short) ~0;
 
 	amii_msgAPen = C_WHITE;
-	amii_msgBPen = C_GREY;
+	amii_msgBPen = C_GREYBLUE;
 	amii_statAPen = C_WHITE;
-	amii_statBPen = C_GREY;
+	amii_statBPen = C_GREYBLUE;
 	amii_menuAPen = C_BLACK;
 	amii_menuBPen = C_LTGREY;
 	amii_textAPen = C_BLACK;
 	amii_textBPen = C_LTGREY;
-	amii_otherAPen = C_WHITE;
-	amii_otherBPen = C_GREY;
+	amii_otherAPen = C_RED;
+	amii_otherBPen = C_BLACK;
 	amii_libvers = LIBRARY_TILE_VERSION;
 
 	memcpy( amii_initmap, amiv_init_map, sizeof( amii_initmap ) );
@@ -240,6 +240,10 @@ LayerFillHook(
 {
     register long x, y, xmax, ymax;
     register int apen;
+    struct RastPort rptmp;
+
+    memcpy(&rptmp, rp, sizeof(struct RastPort));
+    rptmp.Layer = NULL;
 
     switch( (int)hk->h_Data )
     {
@@ -271,10 +275,10 @@ LayerFillHook(
     xmax = fp->bounds.MaxX;
     ymax = fp->bounds.MaxY;
 
-    SetAPen( rp, apen );
-    SetBPen( rp, apen );
-    SetDrMd( rp, JAM2 );
-    RectFill( rp, x, y, xmax, ymax );
+    SetAPen(&rptmp, apen);
+    SetBPen(&rptmp, apen);
+    SetDrMd(&rptmp, JAM2);
+    RectFill(&rptmp, x, y, xmax, ymax);
 }
 #endif
 
@@ -287,10 +291,22 @@ amii_create_nhwindow(type)
     register struct amii_WinDesc *wd = NULL;
     struct Window *mapwin = NULL, *stwin = NULL, *msgwin = NULL;
     register int newid;
-    int maph;
+    int maph, stath, scrfontysize;
 
-    maph = ( 22 * mxsize ) + HackScreen->WBorTop +
-			HackScreen->WBorBottom + HackFont->tf_YSize + 1 + 1;
+    scrfontysize = HackScreen->Font->ta_YSize;
+
+    /*
+     * Initial mapwindow height, this might change later in tilemode
+     * and low screen
+     */
+    maph = ( 21 * mxsize ) + 2 + (bigscreen ?
+	HackScreen->WBorTop + HackScreen->WBorBottom + scrfontysize + 1 : 0);
+
+    /* Status window height, avoids having to calculate many times */
+    stath = txheight * 2 + 2 + (WINVERS_AMIV || bigscreen ?
+	HackScreen->WBorTop + HackScreen->WBorBottom +
+	( bigscreen ? scrfontysize + 1 : 0 ) : 0);
+
     if( WIN_STATUS != WIN_ERR && amii_wins[ WIN_STATUS ] )
 	stwin = amii_wins[ WIN_STATUS ]->win;
 
@@ -315,8 +331,8 @@ amii_create_nhwindow(type)
 
     if( WINVERS_AMIV )
     {
-	nw->DetailPen = C_GREYBLUE;
-	nw->BlockPen = C_WHITE;
+	nw->DetailPen = C_WHITE;
+	nw->BlockPen = C_GREYBLUE;
     }
     else
     {
@@ -324,44 +340,37 @@ amii_create_nhwindow(type)
 	nw->BlockPen = C_BLACK;
     }
 
-    if( ( !WINVERS_AMIV && type == NHW_MAP ) || type == NHW_BASE )
-    {
+    if ( type == NHW_BASE ) {
 	nw->LeftEdge = 0;
+	nw->TopEdge = HackScreen->BarHeight+1;
+	nw->Width = HackScreen->Width;
+	nw->Height = HackScreen->Height - nw->TopEdge;
+    } else if( !WINVERS_AMIV && type == NHW_MAP ) {
+	nw->LeftEdge = 0;
+	nw->Height = maph;
 
-	if( !WINVERS_AMIV && ( bigscreen && type == NHW_MAP ) )
-	{
-	    nw->Height = maph;
-	    if( msgwin && stwin )
-	    {
-		nw->TopEdge = msgwin->TopEdge + msgwin->Height +
-			    ((stwin->TopEdge-
-			    (msgwin->TopEdge + msgwin->Height)-maph))/2;
-	    }
-	    else
-	    {
-		panic( "msgwin and stwin must open before map" );
-	    }
-	    nw->Width = HackScreen->Width;
+	if( msgwin && stwin ) {
+	    nw->TopEdge = stwin->TopEdge - maph;
+	} else {
+	    panic( "msgwin and stwin must open before map" );
 	}
-	else
-	{
-	    nw->TopEdge = 1;
-	    nw->Height = amiIDisplay->ypix - nw->TopEdge;
-	}
+	if (nw->TopEdge < 0)
+	    panic( "Too small screen to fit map" );
     }
     else if( type == NHW_MAP && WINVERS_AMIV )
     {
 	struct Window *w;
 
 	w = amii_wins[ WIN_MESSAGE ]->win;
-
 	nw->LeftEdge = 0;
 	nw->TopEdge = w->TopEdge + w->Height;
 	nw->Width = amiIDisplay->xpix - nw->LeftEdge;
+
 	w = amii_wins[ WIN_STATUS ]->win;
 	nw->Height = w->TopEdge - nw->TopEdge;
 	nw->MaxHeight = 0xffff;
 	nw->MaxWidth = 0xffff;
+
 	if( nw->TopEdge + nw->Height > amiIDisplay->ypix - 1 )
 	    nw->Height = amiIDisplay->ypix - nw->TopEdge - 1;
     }
@@ -369,23 +378,18 @@ amii_create_nhwindow(type)
     {
 	if( !WINVERS_AMIV && ( WIN_MAP != WIN_ERR && amii_wins[ WIN_MAP ] ) )
 	    w = amii_wins[ WIN_MAP ]->win;
-	else
-	if( WIN_BASE != WIN_ERR && amii_wins[ WIN_BASE ] )
+	else if( WIN_BASE != WIN_ERR && amii_wins[ WIN_BASE ] )
 	    w = amii_wins[ WIN_BASE ]->win;
 	else
 	    panic( "No window to base STATUS location from" );
 
-	/* Expand the height of window by borders */
-	nw->Height = (txheight * 2) + 4;
-	if( WINVERS_AMIV || bigscreen )
-	    nw->Height += w->WScreen->WBorTop + w->WScreen->WBorBottom + txheight + 1;
-	else
-	    nw->Title = 0;
-
-	nw->TopEdge = amiIDisplay->ypix - nw->Height - 1;
+	nw->Height = stath;
+	nw->TopEdge = amiIDisplay->ypix - nw->Height;
 	nw->LeftEdge = w->LeftEdge;
+
 	if( nw->LeftEdge + nw->Width >= amiIDisplay->xpix )
 	    nw->LeftEdge = 0;
+
 	if( nw->Width >= amiIDisplay->xpix - nw->LeftEdge )
 	    nw->Width = amiIDisplay->xpix - nw->LeftEdge;
     }
@@ -425,44 +429,52 @@ amii_create_nhwindow(type)
 	else
 	    panic( "No window to base STATUS location from" );
 
-	nw->TopEdge = 1;
-	if( !WINVERS_AMIV && ( ( HackScreen->Height - 1 -
-		( ( TextsFont->tf_YSize +
-		    HackScreen->WBorTop + 1 + HackScreen->WBorBottom ) * 2 ) -
-		( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 ) - maph <
-		    TextsFont->tf_YSize + 3 ) )
-	{
+	nw->TopEdge = bigscreen ? HackScreen->BarHeight+1 : 0;
+
+	/* Assume highest possible message window */
+	nw->Height = HackScreen->Height - nw->TopEdge - maph - stath;
+
+	/* In tilemode we can cope with this */
+	if (WINVERS_AMIV && nw->Height < 0)
+	    nw->Height = 0;
+
+	/* If in fontmode messagewindow is too small, open it with 3 lines
+	   and overlap it with map */
+	if (nw->Height < txheight+2) {
+	    nw->Height = txheight*4 + 3 + HackScreen->WBorTop + HackScreen->WBorBottom;
+	}
+
+	if ((nw->Height-2)/txheight < 3) {
 	    scrollmsg = 0;
-	}
-	if( scrollmsg )
-	{
+	    nw->Title = 0;
+	} else {
 	    nw->FirstGadget = &MsgScroll;
-	    if( WINVERS_AMIV )
-	    {
-		nw->Height = TextsFont->tf_YSize + HackScreen->WBorTop + 3 +
-				HackScreen->WBorBottom;
-		if( bigscreen )
-		    nw->Height += ( TextsFont->tf_YSize * 10 );
-		else
-		    nw->Height += ( TextsFont->tf_YSize * 3 );
-	    }
-	    else
-	    {
-		nw->Height = HackScreen->Height - 1 -
-		    /* Size of all borders for bigscreen */
-		    ( ( TextsFont->tf_YSize + HackScreen->WBorTop + 1 +
-					    HackScreen->WBorBottom ) * 2 ) -
-		    /* Text space in status window */
-		    ( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 -
-		    maph;
-	    }
 	    nw->Flags |= WINDOWSIZING|WINDOWDRAG;
+	    nw->Flags &= ~BORDERLESS;
+
+	    if( WINVERS_AMIV || nw->Height == 0) {
+		if( WINVERS_AMIV ) {
+		    nw->Height = TextsFont->tf_YSize + HackScreen->WBorTop + 3 +
+				HackScreen->WBorBottom;
+		    if( bigscreen )
+			nw->Height += ( txheight * 6 );
+		    else
+			nw->Height += ( txheight * 3 );
+		}
+		else
+		{
+		    nw->Height = HackScreen->Height - nw->TopEdge - stath - maph;
+		}
+	    }
 	}
-	else
-	{
-	    nw->Height = HackScreen->WBorTop + 1 +
-		((txheight+1)*(1+(scrollmsg != 0))) + 1 + HackScreen->WBorBottom;
-	}
+
+	/* Do we have room for larger message window ?
+	 * This is possible if we can show full height map in tile
+	 * mode	with default scaling.
+	 */
+	if (nw->Height + stath + maph < HackScreen->Height - nw->TopEdge )
+	    nw->Height = HackScreen->Height - nw->TopEdge - 1 - maph - stath;
+
 #ifdef  INTUI_NEW_LOOK
 	if( IntuitionBase->LibNode.lib_Version >= 37 )
 	{
@@ -501,20 +513,27 @@ amii_create_nhwindow(type)
 	    else
 	    {
 		nw->Flags |= ( WINDOWDRAG | WINDOWDEPTH | SIZEBRIGHT );
-		if( type == NHW_MAP )
-		    nw->Flags |= WINDOWSIZING;
 	    }
 	}
     }
 
-    /* No titles on a hires only screen */
-    if( !bigscreen )
+    if ( WINVERS_AMII && type == NHW_MAP )
+	nw->Flags &= ~WINDOWSIZING;
+
+    if ( type == NHW_MESSAGE && scrollmsg ) {
+	nw->Flags |= WINDOWDRAG|WINDOWDEPTH|SIZEBRIGHT|WINDOWSIZING;
+	nw->Flags &= ~BORDERLESS;
+    }
+
+    /* No titles on a hires only screen except for messagewindow */
+    if( !(WINVERS_AMIV && type == NHW_MAP) && !bigscreen && type != NHW_MESSAGE )
 	nw->Title = 0;
 
     wd = (struct amii_WinDesc *)alloc(sizeof(struct amii_WinDesc));
     memset( wd, 0, sizeof( struct amii_WinDesc ) );
 
-    if( WINVERS_AMIV )
+    /* Both, since user may have changed the pen settings so respect those */
+    if( WINVERS_AMII || WINVERS_AMIV )
     {
 	/* Special backfill for these types of layers */
 	switch( type )
@@ -648,13 +667,12 @@ amii_create_nhwindow(type)
 	 * to the last line that was displayed by ^P.
 	 */
 	case NHW_MESSAGE:
-	    SetMenuStrip(w, HackMenu);
-	    if( WINVERS_AMIV )
-		if(iflags.msg_history<20)iflags.msg_history=20;
-	    else
-		if(iflags.msg_history<40)iflags.msg_history=40;
-
-	    if(iflags.msg_history>400)iflags.msg_history=400;
+	    SetMenuStrip(w, MenuStrip);
+	    iflags.msg_history = wd->rows*10;
+	    if (iflags.msg_history < 40)
+		iflags.msg_history = 40;
+	    if (iflags.msg_history > 400)
+		iflags.msg_history = 400;
 	    iflags.window_inited=TRUE;
 	    wd->data = (char **)alloc( iflags.msg_history*sizeof( char * ) );
 	    memset( wd->data, 0, iflags.msg_history * sizeof( char * ) );
@@ -700,7 +718,7 @@ amii_create_nhwindow(type)
 	     * wd->data[], and here we allocate the space for them.
 	     */
 	case NHW_STATUS:
-	    SetMenuStrip(w, HackMenu);
+	    SetMenuStrip(w, MenuStrip);
 	    /* wd->cols is the number of characters which fit across the
 	     * screen.
 	     */
@@ -714,14 +732,14 @@ amii_create_nhwindow(type)
 	     * manipulating members of the amii_WinDesc structure.
 	     */
 	case NHW_OVER:
-	    SetMenuStrip(w, HackMenu);
+	    SetMenuStrip(w, MenuStrip);
 	    break;
 
 	    /* NHW_MAP does not use wd->data[] or the other text
 	     * manipulating members of the amii_WinDesc structure.
 	     */
 	case NHW_MAP:
-	    SetMenuStrip(w, HackMenu);
+	    SetMenuStrip(w, MenuStrip);
 	    if( WINVERS_AMIV )
 	    {
 		extern struct TextFont *RogueFont;
@@ -742,7 +760,7 @@ amii_create_nhwindow(type)
 
 	    /* The base window must exist until CleanUp() deletes it. */
 	case NHW_BASE:
-	    SetMenuStrip(w, HackMenu);
+	    SetMenuStrip(w, MenuStrip);
 	    /* Make our requesters come to our screen */
 	    {
 		register struct Process *myProcess =
@@ -906,7 +924,6 @@ amii_init_nhwindows(argcp,argv)
 
     if( !bigscreen )
     {
-    	scrollmsg = 0;
     	alwaysinvent = 0;
     }
     amiIDisplay->rows = amiIDisplay->ypix / FONTHEIGHT;
@@ -973,7 +990,10 @@ amii_init_nhwindows(argcp,argv)
 	sprintf(fname,"NetHack %d.%d.%d", VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
 	NewHackScreen.DefaultTitle=fname;
     }
+#if 0
     NewHackScreen.BlockPen = C_BLACK;
+    NewHackScreen.DetailPen = C_WHITE;
+#endif
 #ifdef	INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version >= 37 )
     {
@@ -988,7 +1008,6 @@ amii_init_nhwindows(argcp,argv)
 
 	if( forcenobig == 0 )
 	{
-	    wbscr = LockPubScreen( "Workbench" );
 	    if( ( wbscr = LockPubScreen( "Workbench" ) ) != NULL ||
 		( wbscr = LockPubScreen( NULL ) ) != NULL )
 	    {
@@ -1073,27 +1092,10 @@ amii_init_nhwindows(argcp,argv)
 #endif
 
     if( WINVERS_AMIV )
-    {
-		/* swap the menu colors around */
-	struct Menu *mp = HackMenu;
-	while(mp){
-		struct MenuItem *mip = mp->FirstItem;
-		while(mip){
-			((struct IntuiText *)mip->ItemFill)->FrontPen = C_BLACK;
-			((struct IntuiText *)mip->ItemFill)->BackPen = C_WHITE;
-			mip = mip->NextItem;
-		}
-		mp = mp->NextMenu;
-	}
-
 	amii_bmhd = ReadTileImageFiles( );
-	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
-    }
     else
-    {
 	memcpy( amii_initmap, amii_init_map, sizeof( amii_initmap ) );
-	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
-    }
+    memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
 
     /* Find out how deep the screen needs to be, 32 planes is enough! */
     for( i = 0; i < 32; ++i )
@@ -1103,6 +1105,18 @@ amii_init_nhwindows(argcp,argv)
     }
 
     NewHackScreen.Depth = i;
+
+    /* If for some reason Height/Width became smaller than the required,
+	have the required one */
+    if (NewHackScreen.Height < SCREENHEIGHT)
+	NewHackScreen.Height = SCREENHEIGHT;
+    if (NewHackScreen.Width < WIDTH)
+	NewHackScreen.Width = WIDTH;
+#ifdef HACKFONT
+    i = max(TextsFont->tf_XSize, HackFont->tf_XSize);
+    if (NewHackScreen.Width < 80*i+4)
+	NewHackScreen.Width = 80*i+4;
+#endif
 
     /* While openscreen fails try fewer colors to see if that is the problem. */
     while( ( HackScreen = OpenScreen( (void *)&NewHackScreen ) ) == NULL )
@@ -1129,6 +1143,10 @@ amii_init_nhwindows(argcp,argv)
     amiIDisplay->xpix = HackScreen->Width;
 
     LoadRGB4(&HackScreen->ViewPort, flags.amii_curmap, amii_numcolors );
+
+    VisualInfo = GetVisualInfo(HackScreen, TAG_END);
+    MenuStrip = CreateMenus(GTHackMenu, TAG_END);
+    LayoutMenus(MenuStrip, VisualInfo, GTMN_NewLookMenus, TRUE, TAG_END);
 
     /* Display the copyright etc... */
 
@@ -1521,7 +1539,7 @@ register int x, y;  /* not xchar: perhaps xchar is unsigned and
 	 * the code must compute X,Y in the same manner relative to
 	 * the RastPort coordinates.
 	 *
-	 * y = w->BorderTop + (g_nodes[i].y-1) * rp->TxHeight +
+	 * y = w->BorderTop + (g_nodes[i].y-2) * rp->TxHeight +
 	 *   rp->TxBaseline + 1;
 	 * x = g_nodes[i].x * rp->TxWidth + w->BorderLeft;
 	 */
@@ -1554,7 +1572,7 @@ printf("pos: (%d,%d)->(%d,%d)\n",x,y,qqx,qqy);
 	else
 	{
 	    Move( rp, (x * w->RPort->TxWidth) + w->BorderLeft,
-			w->BorderTop + ( (y + 1) * w->RPort->TxHeight ) +
+			w->BorderTop + ( y * w->RPort->TxHeight ) +
 			w->RPort->TxBaseline + 1 );
 	}
     }
@@ -1936,7 +1954,7 @@ if(u.uz.dlevel != x){
 		/* If no color, try to hilite pets; black  */ \
 		/* should be HI                */ \
 		    ((iflags.hilite_pet) ? CLR_BLACK : NO_COLOR)
-
+# define warn_color(n) color = iflags.use_color ? def_warnsyms[n].color : NO_COLOR
 # else /* no text color */
 
 #define zap_color(n)
@@ -1945,7 +1963,7 @@ if(u.uz.dlevel != x){
 #define mon_color(n)
 #define invis_color(n)
 #define pet_color(n)
-
+#define warn_color(n)
 #endif
 
 	/*
@@ -1954,7 +1972,10 @@ if(u.uz.dlevel != x){
 	 *  Warning:  For speed, this makes an assumption on the order of
 	 *        offsets.  The order is set in display.h.
 	 */
-	if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {  /* swallow */
+	if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
+	    ch = warnsyms[offset];
+	    warn_color(offset);
+	} else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {  /* swallow */
 	    /* see swallow_to_glyph()in display.c */
 	    ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
 	    mon_color(offset >> 3);
@@ -2023,6 +2044,12 @@ amii_raw_print(s)
     if(amiIDisplay)
 	amiIDisplay->rawprint++;
 
+    if (!Initialized) { /* Not yet screen open ... */
+        puts(s);
+        fflush(stdout);
+        return;
+    }
+
     if( Initialized == 0 && WIN_BASE == WIN_ERR )
 	    init_nhwindows(&argc, (char **)0);
 
@@ -2054,6 +2081,12 @@ amii_raw_print_bold(s)
 
     if(amiIDisplay)
 	amiIDisplay->rawprint++;
+
+    if (!Initialized) { /* Not yet screen open ... */
+        puts(s);
+        fflush(stdout);
+        return;
+    }
 
     if( Initialized == 0 && WIN_BASE == WIN_ERR )
 	    init_nhwindows(&argc, (char **)0);
@@ -2139,9 +2172,9 @@ amii_cliparound(x,y)
     int oldx = clipx, oldy = clipy;
     int oldxmax = clipxmax, oldymax = clipymax;
     int COx, LIx;
-#define	SCROLLCNT	3	/* Get there in 3 moves... */
+#define	SCROLLCNT	1	/* Get there in 3 moves... */
     int scrollcnt = SCROLLCNT;	/* ...or 1 if we changed level */
-    if (!clipping)
+    if (!clipping)		/* And 1 in anycase, cleaner, simpler, quicker */
 	return;
 
     if(Is_rogue_level(&u.uz)){
@@ -2175,7 +2208,7 @@ amii_cliparound(x,y)
 	clipxmax = clipx + COx;
     }
     else if (x > clipxmax - xclipbord ) {
-	clipxmax = min(COLNO, clipxmax + (clipxmax - clipx)/2 );
+	clipxmax = min(COLNO, x + (clipxmax - clipx)/2 );
 	clipx = clipxmax - COx;
     }
 
@@ -2184,7 +2217,7 @@ amii_cliparound(x,y)
 	clipymax = clipy + LIx;
     }
     else if (y > clipymax - yclipbord ) {
-	clipymax = min(ROWNO, clipymax + (clipymax - clipy) / 2);
+	clipymax = min(ROWNO, y + (clipymax - clipy) / 2);
 	clipy = clipymax - LIx;
     }
 
@@ -2239,6 +2272,8 @@ amii_cliparound(x,y)
 	 * Set clipping rectangle to be just the region that will be exposed so
 	 * that drawing will be faster
 	 */
+#if 0	/* Doesn't seem to work quite the way it should */
+	/* In some cases hero is 'centered' offscreen */
 	if( xdelta < 0 )
 	{
 	    clipx = oldx;
@@ -2270,7 +2305,7 @@ amii_cliparound(x,y)
 	    clipy = oldy;
 	    clipymax = oldymax;
 	}
-
+#endif
 	/* Now, in scrollcnt moves, move the picture toward the final view */
     	for( i = 0; i < scrollcnt; ++i )
     	{

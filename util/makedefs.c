@@ -5,7 +5,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #define MAKEDEFS_C	/* use to conditionally include file sections */
-/* #define DEBUG /* uncomment for debugging info */
+/* #define DEBUG */	/* uncomment for debugging info */
 
 #include "config.h"
 #include "permonst.h"
@@ -705,6 +705,9 @@ static const char *build_opts[] = {
 #ifdef TOURIST
 		"tourists",
 #endif
+#ifdef PREFIXES_IN_USE
+		"variable playground",
+#endif
 #ifdef VISION_TABLES
 		"vision tables",
 #endif
@@ -724,14 +727,26 @@ static const char *window_opts[] = {
 #ifdef X11_GRAPHICS
 		"X11",
 #endif
+#ifdef QT_GRAPHICS
+		"Qt",
+#endif
+#ifdef GNOME_GRAPHICS
+		"Gnome",
+#endif
 #ifdef MAC
 		"Mac",
 #endif
 #ifdef AMIGA_INTUITION
 		"Amiga Intuition",
 #endif
+#ifdef GEM_GRAPHICS
+		"Gem",
+#endif
 #ifdef WIN32_GRAPHICS
 		"Win32",
+#endif
+#ifdef BEOS_GRAPHICS
+		"BeOS InterfaceKit",
 #endif
 		0
 	};

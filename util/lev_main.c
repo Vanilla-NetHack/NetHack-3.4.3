@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.3	96/06/22	*/
+/*	SCCS Id: @(#)lev_main.c	3.3	2000/08/01	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -53,7 +53,7 @@
 
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
-#define Write(fd, item, size)	(void) write(fd, (genericptr_t)(item), size)
+#define Write(fd, item, size)	if (write(fd, (genericptr_t)(item), size) != size) return FALSE;
 
 #ifdef __BORLANDC__
 extern unsigned _stklen = STKSIZ;
@@ -72,7 +72,7 @@ int FDECL(get_floor_type, (CHAR_P));
 int FDECL(get_room_type, (char *));
 int FDECL(get_trap_type, (char *));
 int FDECL(get_monster_id, (char *,CHAR_P));
-int FDECL(get_object_id, (char *));
+int FDECL(get_object_id, (char *,CHAR_P));
 boolean FDECL(check_monster_char, (CHAR_P));
 boolean FDECL(check_object_char, (CHAR_P));
 char FDECL(what_map_char, (CHAR_P));
@@ -89,12 +89,13 @@ extern void NDECL(monst_init);
 extern void NDECL(objects_init);
 extern void NDECL(decl_init);
 
-static void FDECL(write_common_data, (int,int,lev_init *,long));
-static void FDECL(write_monsters, (int,char *,monster ***));
-static void FDECL(write_objects, (int,char *,object ***));
-static void FDECL(write_engravings, (int,char *,engraving ***));
-static void FDECL(write_maze, (int,specialmaze *));
-static void FDECL(write_rooms, (int,splev *));
+static boolean FDECL(write_common_data, (int,int,lev_init *,long));
+static boolean FDECL(write_monsters, (int,char *,monster ***));
+static boolean FDECL(write_objects, (int,char *,object ***));
+static boolean FDECL(write_engravings, (int,char *,engraving ***));
+static boolean FDECL(write_maze, (int,specialmaze *));
+static boolean FDECL(write_rooms, (int,splev *));
+static void NDECL(init_obj_classes);
 
 static struct {
 	const char *name;
@@ -113,7 +114,7 @@ static struct {
 	{ "pit",	PIT },
 	{ "spiked pit",	SPIKED_PIT },
 	{ "hole",	HOLE },
-	{ "trapdoor",	TRAPDOOR },
+	{ "trap door",	TRAPDOOR },
 	{ "teleport",	TELEP_TRAP },
 	{ "level teleport", LEVEL_TELEP },
 	{ "magic portal",   MAGIC_PORTAL },
@@ -244,6 +245,8 @@ char **argv;
 	monst_init();
 	objects_init();
 	decl_init();
+	/* this one does something... */
+	init_obj_classes();
 
 	init_yyout(stdout);
 	if (argc == 1) {		/* Read standard input */
@@ -395,19 +398,39 @@ char c;
  * Find the index of an object in the table, knowing its name.
  */
 int
-get_object_id(s)
+get_object_id(s, c)
 char *s;
+char c;		/* class */
 {
-	register int i;
-	register const char *objname;
+	int i, class;
+	const char *objname;
 
 	SpinCursor(3);
-	for (i=0; i<NUM_OBJECTS; i++) {
+	class = (c > 0) ? def_char_to_objclass(c) : 0;
+	if (class == MAXOCLASSES) return ERR;
+
+	for (i = class ? bases[class] : 0; i < NUM_OBJECTS; i++) {
+	    if (class && objects[i].oc_class != class) break;
 	    objname = obj_descr[i].oc_name;
 	    if (objname && !strcmp(s, objname))
 		return i;
 	}
 	return ERR;
+}
+
+static void
+init_obj_classes()
+{
+	int i, class, prev_class;
+
+	prev_class = -1;
+	for (i = 0; i < NUM_OBJECTS; i++) {
+	    class = objects[i].oc_class;
+	    if (class != prev_class) {
+		bases[class] = i;
+		prev_class = class;
+	    }
+	}
 }
 
 /*
@@ -930,7 +953,7 @@ store_room()
 /*
  * Output some info common to all special levels.
  */
-static void
+static boolean
 write_common_data(fd, typ, init, flgs)
 int fd, typ;
 lev_init *init;
@@ -953,12 +976,13 @@ long flgs;
 	Write(fd, &len, sizeof len);
 	if (len) Write(fd, tmpmessage, (int) len);
 	tmpmessage[0] = '\0';
+	return TRUE;
 }
 
 /*
  * Output monster info, which needs string fixups, then release memory.
  */
-static void
+static boolean
 write_monsters(fd, nmonster_p, monsters_p)
 int fd;
 char *nmonster_p;
@@ -992,12 +1016,13 @@ monster ***monsters_p;
 	    *monsters_p = 0;
 	}
 	*nmonster_p = 0;
+	return TRUE;
 }
 
 /*
  * Output object info, which needs string fixup, then release memory.
  */
-static void
+static boolean
 write_objects(fd, nobject_p, objects_p)
 int fd;
 char *nobject_p;
@@ -1025,12 +1050,13 @@ object ***objects_p;
 	    *objects_p = 0;
 	}
 	*nobject_p = 0;
+	return TRUE;
 }
 
 /*
  * Output engraving info, which needs string fixup, then release memory.
  */
-static void
+static boolean
 write_engravings(fd, nengraving_p, engravings_p)
 int fd;
 char *nengraving_p;
@@ -1056,6 +1082,7 @@ engraving ***engravings_p;
 	    *engravings_p = 0;
 	}
 	*nengraving_p = 0;
+	return TRUE;
 }
 
 /*
@@ -1081,11 +1108,13 @@ specialmaze *maze_level;
 	fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
 	if (fout < 0) return FALSE;
 
-	if (room_level)
-	    write_rooms(fout, room_level);
-	else if (maze_level)
-	    write_maze(fout, maze_level);
-	else
+	if (room_level) {
+	    if (!write_rooms(fout, room_level))
+		return FALSE;
+	} else if (maze_level) {
+	    if (!write_maze(fout, maze_level))
+		return FALSE;
+	} else
 	    panic("write_level_file");
 
 	(void) close(fout);
@@ -1096,7 +1125,7 @@ specialmaze *maze_level;
  * Here we write the structure of the maze in the specified file (fd).
  * Also, we have to free the memory allocated via alloc().
  */
-static void
+static boolean
 write_maze(fd, maze)
 int fd;
 specialmaze *maze;
@@ -1104,7 +1133,8 @@ specialmaze *maze;
 	short i,j;
 	mazepart *pt;
 
-	write_common_data(fd, SP_LEV_MAZE, &(maze->init_lev), maze->flags);
+	if (!write_common_data(fd, SP_LEV_MAZE, &(maze->init_lev), maze->flags))
+	    return FALSE;
 
 	Write(fd, &(maze->filling), sizeof(maze->filling));
 	Write(fd, &(maze->numpart), sizeof(maze->numpart));
@@ -1262,10 +1292,12 @@ specialmaze *maze;
 		    Free(pt->traps);
 
 	    /* The monsters */
-	    write_monsters(fd, &pt->nmonster, &pt->monsters);
+	    if (!write_monsters(fd, &pt->nmonster, &pt->monsters))
+		    return FALSE;
 
 	    /* The objects */
-	    write_objects(fd, &pt->nobject, &pt->objects);
+	    if (!write_objects(fd, &pt->nobject, &pt->objects))
+		    return FALSE;
 
 	    /* The gold piles */
 	    Write(fd, &(pt->ngold), sizeof(pt->naltar));
@@ -1277,7 +1309,8 @@ specialmaze *maze;
 		    Free(pt->golds);
 
 	    /* The engravings */
-	    write_engravings(fd, &pt->nengraving, &pt->engravings);
+	    if (!write_engravings(fd, &pt->nengraving, &pt->engravings))
+		    return FALSE;
 
 	    Free(pt);
 	}
@@ -1285,12 +1318,13 @@ specialmaze *maze;
 	Free(maze->parts);
 	maze->parts = (mazepart **)0;
 	maze->numpart = 0;
+	return TRUE;
 }
 
 /*
  * Here we write the structure of the room level in the specified file (fd).
  */
-static void
+static boolean
 write_rooms(fd, lev)
 int fd;
 splev *lev;
@@ -1298,7 +1332,8 @@ splev *lev;
 	short i,j, size;
 	room *pt;
 
-	write_common_data(fd, SP_LEV_ROOMS, &(lev->init_lev), lev->flags);
+	if (!write_common_data(fd, SP_LEV_ROOMS, &(lev->init_lev), lev->flags))
+		return FALSE;
 
 	/* Random registers */
 
@@ -1373,10 +1408,12 @@ splev *lev;
 			Write(fd, pt->traps[j], sizeof(trap));
 
 		/* The monsters */
-		write_monsters(fd, &pt->nmonster, &pt->monsters);
+		if (!write_monsters(fd, &pt->nmonster, &pt->monsters))
+			return FALSE;
 
 		/* The objects */
-		write_objects(fd, &pt->nobject, &pt->objects);
+		if (!write_objects(fd, &pt->nobject, &pt->objects))
+			return FALSE;
 
 		/* The gold piles */
 		Write(fd, &(pt->ngold), sizeof(pt->ngold));
@@ -1384,7 +1421,8 @@ splev *lev;
 			Write(fd, pt->golds[j], sizeof(gold));
 
 		/* The engravings */
-		write_engravings(fd, &pt->nengraving, &pt->engravings);
+		if (!write_engravings(fd, &pt->nengraving, &pt->engravings))
+			return FALSE;
 
 	}
 
@@ -1392,6 +1430,7 @@ splev *lev;
 	Write(fd, &lev->ncorr, sizeof(lev->ncorr));
 	for (i=0; i < lev->ncorr; i++)
 		Write(fd, lev->corrs[i], sizeof(corridor));
+	return TRUE;
 }
 
 /*

@@ -3,9 +3,6 @@
 #
 # A '#' at the beginning of a line means the rest of the line is a comment.
 #
-# This configuration file is set up for two cases, for a hard disk
-# (as drive C:), and for two floppy disks.
-#
 # Some options MUST be set in this file, other options can be toggled while
 # playing.  For a list of options available see the <opthelp.> file.  If
 # the game plays slowly you might notice some improvement by setting
@@ -23,38 +20,45 @@
 # If your machine isn't very IBM-compatible, and NetHack doesn't work, 
 # try commenting out this line.
 OPTIONS=rawio,BIOS,IBMgraphics
+
 # To use VGA graphical tiles on an MS-DOS PC with VGA or better,uncomment 
 # this:
 #OPTIONS=video:autodetect
+
 # Some versions of NetHack use the pc speaker to play the notes given when
 # playing music instruments in NetHack.  To use this feature, if available,
 # uncomment the following line:
 #OPTIONS=soundcard:autodetect
-# DEC Rainbows will hang if rawio is set, so they should instead use:
-#OPTIONS=BIOS,DECgraphics
+
 # If your machine is NEC PC-9800, use:
 #OPTIONS=rawio,BIOS,video:default
-#
-#
-# General options.  You might also set "silent" so as not to attract
-# the boss's attention.
-#
-OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
-#
-#
+# If you use an Atari and want tty use:
+#OPTIONS=windowtype:tty,rawio,BIOS
+
+
 # Some options to set personal preferences.  Uncomment and change these to
 # suit your personal preference.  If several people are to use the same
 # configuration, options like these should not be set.
 #
-#OPTIONS=name:Janet-V,female,dogname:Fido,catname:Morris,fruit:apricot
+#OPTIONS=name:Janet,role:Valkyrie,race:Human,gender:female,align:lawful
+#OPTIONS=dogname:Fido,catname:Morris,fruit:guava
+#OPTIONS=horsename:Silver
 #OPTIONS=autopickup,pickup_types:$"=/!?+
 #OPTIONS=packorder:")[%?+/=!(*0_`
 #OPTIONS=scores:10 top/2 around/own
 #OPTIONS=nolegacy,noverbose
 #OPTIONS=menustyle:traditional
 
+#
+# General options.  You might also set "silent" so as not to attract
+# the boss's attention.
+#
+OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
+#
+# If you want to get rid of "use #quit to quit..." use:
+#OPTIONS=suppress_alert:3.3.1
+#
 
-# *** HARD DISK CONFIGURATION ***
 #
 #HACKDIR=c:\games\nethack
 # 
@@ -64,24 +68,7 @@ OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
 #   LEVELS and SAVE default to HACKDIR
 #
 #LEVELS=c:\games\nethack\bones
-#SAVE=c:\games\nethack\bones;n
-#
-#   appending a ";n" to SAVE means don't prompt to insert a disk.
-SAVE=;n
-#
-# Note that RAMDISK must *not* be the same (or even implicitly
-# get expanded to the same path by the OS) as HACKDIR.
-#
-#RAMDISK=d:
-
-
-# *** 2-FLOPPY CONFIGURATION ***
-#
-# HACKDIR=a:\
-# LEVELS=b:\
-# SAVE=b:\
-# RAMDISK=c:
-
+#SAVE=c:\games\nethack\bones
 
 # *** CHARACTER GRAPHICS ***
 #
@@ -158,3 +145,7 @@ SAVE=;n
 # read.  Try following setting.
 #
 #OPTIONS=videocolors:4-2-6-1-5-3-4-2-6-1-5-3,videoshades:normal-normal-normal
+#
+# DEC Rainbows will hang if rawio is set, so they should instead use:
+#OPTIONS=BIOS,DECgraphics
+

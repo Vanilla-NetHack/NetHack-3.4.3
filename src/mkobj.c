@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.3	1999/02/13	*/
+/*	SCCS Id: @(#)mkobj.c	3.3	2000/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -266,12 +266,70 @@ long num;
 }
 
 /*
+ * Insert otmp right after obj in whatever chain(s) it is on.  Then extract
+ * obj from the chain(s).  This function does a literal swap.  It is up to
+ * the caller to provide a valid context for the swap.  When done, obj will
+ * still exist, but not on any chain.
+ *
+ * Note:  Don't use use obj_extract_self() -- we are doing an in-place swap,
+ * not actually moving something.
+ */
+void
+replace_object(obj, otmp)
+struct obj *obj;
+struct obj *otmp;
+{
+    otmp->where = obj->where;
+    switch (obj->where) {
+    case OBJ_FREE:
+	/* do nothing */
+	break;
+    case OBJ_INVENT:
+	otmp->nobj = obj->nobj;
+	obj->nobj = otmp;
+	extract_nobj(obj, &invent);
+	break;
+    case OBJ_CONTAINED:
+	otmp->nobj = obj->nobj;
+	otmp->ocontainer = obj->ocontainer;
+	obj->nobj = otmp;
+	extract_nobj(obj, &obj->ocontainer->cobj);
+	break;
+    case OBJ_MINVENT:
+	otmp->nobj = obj->nobj;
+	otmp->ocarry =  obj->ocarry;
+	obj->nobj = otmp;
+	extract_nobj(obj, &obj->ocarry->minvent);
+	break;
+    case OBJ_FLOOR:
+	otmp->nobj = obj->nobj;
+	otmp->nexthere = obj->nexthere;
+	otmp->ox = obj->ox;
+	otmp->oy = obj->oy;
+	obj->nobj = otmp;
+	obj->nexthere = otmp;
+	extract_nobj(obj, &fobj);
+	extract_nexthere(obj, &level.objects[obj->ox][obj->oy]);
+	break;
+    default:
+	panic("replace_object: obj position");
+	break;
+    }
+}
+
+/*
  * Create a dummy duplicate to put on shop bill.  The duplicate exists
  * only in the billobjs chain.  This function is used when a shop object
  * is being altered, and a copy of the original is needed for billing
  * purposes.  For example, when eating, where an interruption will yield
  * an object which is different from what it started out as; the "I x"
  * command needs to display the original object.
+ *
+ * The caller is responsible for checking otmp->unpaid and
+ * costly_spot(u.ux, u.uy).  This function will make otmp no charge.
+ *
+ * Note that check_unpaid_usage() should be used instead for partial
+ * usage of an object.
  */
 void
 bill_dummy_object(otmp)
@@ -294,6 +352,9 @@ register struct obj *otmp;
 	    (void)strncpy(ONAME(dummy), ONAME(otmp), (int)otmp->onamelth);
 	if (Is_candle(dummy)) dummy->lamplit = 0;
 	addtobill(dummy, FALSE, TRUE, TRUE);
+	otmp->no_charge = 1;
+	otmp->unpaid = 0;
+	return;
 }
 
 #endif /* OVL1 */
@@ -398,7 +459,7 @@ boolean artif;
 	case GEM_CLASS:
 		if (otmp->otyp == LOADSTONE) curse(otmp);
 		else if (otmp->otyp == ROCK) otmp->quan = (long) rn1(6,6);
-		else if (otmp->otyp == KELP_FROND) otmp->quan = (long) rnd(4);
+		else if (otmp->otyp == KELP_FROND) otmp->quan = (long) rnd(2);
 		else if (otmp->otyp != LUCKSTONE && !rn2(6)) otmp->quan = 2L;
 		else otmp->quan = 1L;
 		break;
@@ -466,6 +527,7 @@ boolean artif;
 	    }
 	    break;
 	case AMULET_CLASS:
+		if (otmp->otyp == AMULET_OF_YENDOR) flags.made_amulet = TRUE;
 		if(rn2(10) && (otmp->otyp == AMULET_OF_STRANGULATION ||
 		   otmp->otyp == AMULET_OF_CHANGE ||
 		   otmp->otyp == AMULET_OF_RESTFUL_SLEEP)) {
@@ -683,12 +745,13 @@ register int chance;
 {
 	if(otmp->blessed || otmp->cursed) return;
 
-	if(!rn2(chance))
+	if(!rn2(chance)) {
 	    if(!rn2(2)) {
 		curse(otmp);
 	    } else {
 		bless(otmp);
 	    }
+	}
 	return;
 }
 
@@ -849,6 +912,33 @@ boolean init;
 	    }
 	}
 	return(otmp);
+}
+
+/*
+ * Attach a monster id to an object, to provide
+ * a lasting association between the two.
+ */
+struct obj *
+obj_attach_mid(obj, mid)
+struct obj *obj;
+unsigned mid;
+{
+    struct obj *otmp;
+    int lth, namelth;
+
+    if (!mid || !obj) return (struct obj *)0;
+    lth = sizeof(mid);
+    namelth = obj->onamelth ? strlen(ONAME(obj)) + 1 : 0;
+    if (namelth) 
+	otmp = realloc_obj(obj, lth, (genericptr_t) &mid, namelth, ONAME(obj));
+    else {
+	otmp = obj;
+	otmp->oxlth = sizeof(mid);
+	(void) memcpy((genericptr_t)otmp->oextra, (genericptr_t)&mid,
+								sizeof(mid));
+    }
+    if (otmp && otmp->oxlth) otmp->oattached = OATTACHED_M_ID;	/* mark it */
+    return otmp;
 }
 
 static struct obj *
@@ -1244,7 +1334,12 @@ extract_nexthere(obj, head_ptr)
 }
 
 
-void
+/*
+ * Add obj to mon's inventory.  If obj is able to merge with something already
+ * in the inventory, then the passed obj is deleted and 1 is returned.
+ * Otherwise 0 is returned.
+ */
+int
 add_to_minv(mon, obj)
     struct monst *mon;
     struct obj *obj;
@@ -1257,12 +1352,13 @@ add_to_minv(mon, obj)
     /* merge if possible */
     for (otmp = mon->minvent; otmp; otmp = otmp->nobj)
 	if (merged(&otmp, &obj))
-	    return;
+	    return 1;	/* obj merged and then free'd */
     /* else insert; don't bother forcing it to end of chain */
     obj->where = OBJ_MINVENT;
     obj->ocarry = mon;
     obj->nobj = mon->minvent;
     mon->minvent = obj;
+    return 0;	/* obj on mon's inventory chain */
 }
 
 void
@@ -1417,9 +1513,9 @@ obj_sanity_check()
 	}
 	/* shouldn't be a full container on the bill */
 	if (obj->cobj) {
-	    pline("%s obj %s contains something! %s\n", mesg,
+	    pline("%s obj %s contains %s! %s\n", mesg,
 		fmt_ptr((genericptr_t)obj, obj_address),
-		doname(obj));
+		something, doname(obj));
 	}
     }
 

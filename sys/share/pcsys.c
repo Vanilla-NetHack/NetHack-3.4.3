@@ -70,7 +70,7 @@ static const char *COMSPEC =
 "COMSPEC";
 # endif
 
-#define getcomspec() getenv(COMSPEC)
+#define getcomspec() nh_getenv(COMSPEC)
 
 # ifdef SHELL
 int
@@ -305,7 +305,7 @@ record_exists()
 {
 	FILE *fp;
 
-	fp = fopen_datafile(RECORD, "r");
+	fp = fopen_datafile(RECORD, "r", TRUE);
 	if (fp) {
 		fclose(fp);
 		return TRUE;
@@ -427,18 +427,25 @@ const char *name, *mode;
 
 	/* Try the default directory first.  Then look along PATH.
 	 */
-	Strcpy(buf, name);
+	(void) strncpy(buf, name, BUFSIZ - 1);
+	buf[BUFSIZ-1] = '\0';
 	if (fp = fopen(buf, mode))
 		return fp;
 	else {
+		int ccnt = 0;
 		pp = getenv("PATH");
 		while (pp && *pp) {
 			bp = buf;
-			while (*pp && *pp != PATHSEP)
+			while (*pp && *pp != PATHSEP) {
 				lastch = *bp++ = *pp++;
-			if (lastch != '\\' && lastch != '/')
+				ccnt++;
+			}
+			if (lastch != '\\' && lastch != '/') {
 				*bp++ = '\\';
-			Strcpy(bp, name);
+				ccnt++;
+			}
+			(void) strncpy(bp, name, (BUFSIZ - ccnt) - 2);
+			bp[BUFSIZ-1] = '\0';
 			if (fp = fopen(buf, mode))
 				return fp;
 			if (*pp)
@@ -446,9 +453,13 @@ const char *name, *mode;
 		}
 	}
 #ifdef OS2_CODEVIEW /* one more try for hackdir */
-	Strcpy(buf,hackdir);
-	append_slash(buf);
-	Strcat(buf,name);
+	(void) strncpy(buf, hackdir, BUFSZ);
+	buf[BUFSZ-1] = '\0';
+	if ((strlen(name) + 1 + strlen(buf)) < BUFSZ - 1) {
+		append_slash(buf);
+		Strcat(buf,name);
+	} else 
+		impossible("fopenp() buffer too small for complete filename!");
 	if(fp = fopen(buf,mode))
 		return fp;
 #endif

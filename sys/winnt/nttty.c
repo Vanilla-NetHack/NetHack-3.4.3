@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)nttty.c	3.3	96/10/21
+/*	SCCS Id: @(#)nttty.c	3.3	2000/08/02
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -232,15 +232,16 @@ static const struct pad {
  * scan code table to translate the scan code into a letter, then set the
  * "meta" bit for it.  -3.
  */
-#define SCANLO		0x10
+#define SCANLO		0x02
 
 static const char scanmap[] = { 	/* ... */
+	'1','2','3','4','5','6','7','8','9','0',0,0,0,0,
 	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
 	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
 };
 
-static const char *extendedlist = "acdefijlmnopqrstuvw?";
+static const char *extendedlist = "acdefijlmnopqrstuvw?2";
 
 #define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
 
@@ -336,6 +337,7 @@ int *x, *y, *mod;
 		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED) && (ch || inmap(scan)));
 		if (((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) &&
 		     (ch || (iskeypad(scan)) || altseq)) {
+		     	*mod = 0;
 			return process_keystroke(&ir, &valid);
 		} else if ((ir.EventType == MOUSE_EVENT &&
 		  (ir.Event.MouseEvent.dwButtonState & MOUSEMASK))) {
@@ -360,7 +362,7 @@ int *x, *y, *mod;
 	    }
 	}
 	/* Not Reached */
-	return 32;
+	return '\032';
 }
 
 int
@@ -411,14 +413,25 @@ get_scr_size()
 {
 	if (GetConsoleScreenBufferInfo(hConOut,&csbi))
 	{
-	    LI = csbi.dwSize.Y;
-	    CO = csbi.dwSize.X;
+	    int tmpx, tmpy, ccnt;
+	    COORD newcoord;
+	    
+	    newcoord.X = 0;
+	    newcoord.Y = 0;
+	    FillConsoleOutputCharacter(hConOut,' ',
+			csbi.dwSize.X * csbi.dwSize.Y,
+			newcoord, &ccnt);
+
+	    tmpy = csbi.dwSize.Y;
+	    tmpx = csbi.dwSize.X;
+	    if ((tmpy < 25) || (tmpx < 80)) {
+	    	newcoord.Y = 25;
+	    	newcoord.X = 80;
+	    	SetConsoleScreenBufferSize(hConOut, newcoord);
+	    }
 	}
-	else
-	{	
-		LI = 25;
-		CO = 80;
-	}
+	LI = 25;
+	CO = 80;
 }
 
 
@@ -447,6 +460,21 @@ void
 tty_end_screen()
 {
 	clear_screen();
+	if (GetConsoleScreenBufferInfo(hConOut,&csbi))
+	{
+	    int ccnt;
+	    COORD newcoord;
+	    
+	    newcoord.X = 0;
+	    newcoord.Y = 0;
+	    FillConsoleOutputAttribute(hConOut,
+	    		FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE,
+	    		csbi.dwSize.X * csbi.dwSize.Y,
+	    		newcoord, &ccnt);
+	    FillConsoleOutputCharacter(hConOut,' ',
+			csbi.dwSize.X * csbi.dwSize.Y,
+			newcoord, &ccnt);
+	}
 }
 
 void

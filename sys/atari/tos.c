@@ -7,7 +7,13 @@
 
 #define NEED_VARARGS
 #include "hack.h"
-#include "tcap.h"
+
+#ifdef TTY_GRAPHICS
+# include "tcap.h"
+#else
+/* To avoid error for tos.c; will be removed later */
+static char *nh_HE="\033q";
+#endif
 
 #ifdef TOS
 
@@ -234,10 +240,19 @@ get_scr_size()
 # ifdef MINT
 #  include <ioctl.h>
 	struct winsize win;
+	char *tmp;
 
-	ioctl(0,TIOCGWINSZ, &win);
-	LI = win.ws_row;
-	CO = win.ws_col;
+	if((tmp=nh_getenv("LINES")))
+		LI = atoi(tmp);
+	else if((tmp=nh_getenv("ROWS")))
+		LI = atoi(tmp);
+	if(tmp && (tmp=nh_getenv("COLUMNS")))
+		CO = atoi(tmp);
+	else {
+	    ioctl(0,TIOCGWINSZ, &win);
+	    LI = win.ws_row;
+	    CO = win.ws_col;
+	}
 # else
 	init_aline();
 	LI = (*((WORD  *)(_a_line + -42L))) + 1;
@@ -308,7 +323,7 @@ set_colors()
 		return;
 	} else {
 		colors_changed = TRUE;
-		HE = colorHE;
+		nh_HE = colorHE;
 	}
 }
 
@@ -318,7 +333,7 @@ restore_colors()
 	static char plainHE[] = "\033q";
 
 	if (colors_changed)
-		HE = plainHE;
+		nh_HE = plainHE;
 	colors_changed = FALSE;
 }
 # endif /* TEXTCOLOR */

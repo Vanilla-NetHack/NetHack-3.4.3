@@ -372,7 +372,7 @@ packwritebody( pixel (*tile)[TILE_X], char **planes, int tileno )
 #define CX_BLACK	0
 #define CX_WHITE	1
 #define CX_BROWN	11
-#define CX_CYAN		6
+#define CX_CYAN		2
 #define CX_GREEN	5
 #define CX_MAGENTA	10
 #define CX_BLUE		4

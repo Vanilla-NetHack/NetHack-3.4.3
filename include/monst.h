@@ -6,14 +6,14 @@
 #define MONST_H
 
 /* The weapon_check flag is used two ways:
- * 1) When calling mon_wield_item, is 2 or 3 depending on what is desired.
+ * 1) When calling mon_wield_item, is 2, 3, or 4 depending on what is desired.
  * 2) Between calls to mon_wield_item, is 0 or 1 depending on whether or not
  *    the weapon is known by the monster to be cursed (so it shouldn't bother
  *    trying for another weapon).
  * I originally planned to also use 0 if the monster already had its best
  * weapon, to avoid the overhead of a call to mon_wield_item, but it turns out
  * that there are enough situations which might make a monster change its
- * weapon that this is impractical.
+ * weapon that this is impractical.  --KAA
  */
 # define NO_WEAPON_WANTED 0
 # define NEED_WEAPON 1
@@ -171,5 +171,7 @@ struct monst {
 
 #define MON_WEP(mon)	((mon)->mw)
 #define MON_NOWEP(mon)	((mon)->mw = (struct obj *)0)
+
+#define DEADMONSTER(mon)	((mon)->mhp < 1)
 
 #endif /* MONST_H */

@@ -34,7 +34,14 @@ FNR == 1	{ output_dep()			#finish previous file
 		  file = FILENAME		#setup for current file
 		}
 /^\#[ \t]*include[ \t]+\"/  {			#find `#include "X"'
-		  incl = $2;  if (incl ~ /\.h$/) incl = "../include/" incl
+		  incl = $2;
+		  #[3.3.1: gnomehack headers currently aren't in include]
+		  if (incl ~ /\.h$/) {
+		    if (incl ~ /^gn/)	# gnomehack special case
+		      incl = "../win/gnome/" incl
+		    else
+		      incl = "../include/" incl
+		  }
 		  deps[file] = deps[file] " " incl
 		}
 END		{ output_dep() }		#finish the last file
@@ -48,7 +55,7 @@ END		{ output_dep() }		#finish the last file
 function output_dep(				targ)
 {
   if (file ~ /\.cp*$/) {
-    #prior to very first .c/.cc file, handle some special header file cases
+    #prior to very first .c|.cpp file, handle some special header file cases
     if (!c_count++)
       output_specials()
     #construct object filename from source filename
@@ -101,11 +108,14 @@ function format_dep(target, source,		n, i, list)
   printf("\n")				#terminate
   #write build command if first source entry has non-include path prefix
   source = list[2]
-  if (source ~ /\// && substr(source, 1, 11) != "../include/")
+  if (source ~ /\// && substr(source, 1, 11) != "../include/") {
     if (source ~ /\.cpp$/ )
       print "\t$(CXX) $(CXXFLAGS) -c " source
+    else if (source ~ /\/gnome\//)	# "../win/gnome/foo.c"
+      print "\t$(CC) $(CFLAGS) $(GNOMEINC) -c " source
     else
       print "\t$(CC) $(CFLAGS) -c " source
+  }
 }
 
 #

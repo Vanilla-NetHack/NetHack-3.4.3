@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dig.c	3.3	1999/12/05	*/
+/*	SCCS Id: @(#)dig.c	3.3	2000/04/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -171,7 +171,7 @@ dig_check(madeby, verbose, x, y)
 				  surface(x,y));
 	    return(FALSE);
 	} else if (sobj_at(BOULDER, x, y)) {
-	    if(verbose) pline("There isn't enough room to dig here.");
+	    if(verbose) There("isn't enough room to dig here.");
 	    return(FALSE);
 	} else if (madeby == BY_OBJECT &&
 		    /* the block against existing traps is mainly to
@@ -447,7 +447,7 @@ int ttyp;
 	if (IS_FOUNTAIN(lev->typ)) {
 	    dogushforth(FALSE);
 	    lev->looted |= F_WARNED;		/* force dryup */
-	    dryup(x, y);
+	    dryup(x, y, madeby_u);
 	    return;
 #ifdef SINKS
 	} else if (IS_SINK(lev->typ)) {
@@ -490,7 +490,7 @@ int ttyp;
 		} else
 			u.utrap = 0;
 		if (oldobjs != newobjs)	/* something unearthed */
-			pickup(1);	/* detects pit */
+			(void) pickup(1);	/* detects pit */
 	    } else if(mtmp) {
 		if(is_flyer(mtmp->data) || is_floater(mtmp->data)) {
 		    if(canseemon(mtmp))
@@ -524,7 +524,7 @@ int ttyp;
 		    if (newobjs)
 			impact_drop((struct obj *)0, x, y, 0);
 		    if (oldobjs != newobjs)
-			pickup(1);
+			(void) pickup(1);
 		    if (shopdoor && madeby_u) pay_for_damage("ruin");
 
 		} else {
@@ -540,8 +540,8 @@ int ttyp;
 		    newlevel.dnum = u.uz.dnum;
 		    newlevel.dlevel = u.uz.dlevel + 1;
 		    goto_level(&newlevel, FALSE, TRUE, FALSE);
-		    /* messages for arriving in special rooms, landing on stuff */
-		    spoteffects();
+		    /* messages for arriving in special rooms */
+		    spoteffects(FALSE);
 		}
 	    } else {
 		if (shopdoor && madeby_u) pay_for_damage("ruin");
@@ -730,10 +730,11 @@ dig_up_grave()
 	    break;
 	default:
 	    /* No corpse */
-	    pline("The grave seems unused.  Strange....");
+	    pline_The("grave seems unused.  Strange....");
 	    break;
 	}
 	levl[u.ux][u.uy].typ = ROOM;
+	del_engr_at(u.ux, u.uy);
 	newsym(u.ux,u.uy);
 	return;
 }
@@ -817,7 +818,7 @@ struct obj *obj;
 			if (trap && trap->ttyp == WEB) {
 			    if (!trap->tseen) {
 				seetrap(trap);
-				pline("There is a spider web there!");
+				There("is a spider web there!");
 			    }
 			    Your("%s becomes entangled in the web.",
 				aobjnam(obj, (char *)0));
@@ -857,9 +858,10 @@ struct obj *obj;
 		You("swing your %s through thin air.", aobjnam(obj, (char *)0));
 	} else if (!can_reach_floor()) {
 		You_cant("reach the %s.", surface(u.ux,u.uy));
-	} else if (is_pool(u.ux, u.uy)) {
+	} else if (is_pool(u.ux, u.uy) || is_lava(u.ux, u.uy)) {
 		/* Monsters which swim also happen not to be able to dig */
-		You("cannot stay underwater long enough.");
+		You("cannot stay under%s long enough.",
+				is_pool(u.ux, u.uy) ? "water" : " the lava");
 	} else {
 		if (digging.pos.x != u.ux || digging.pos.y != u.uy ||
 			!on_level(&digging.level, &u.uz) || !digging.down) {
@@ -1327,10 +1329,10 @@ escape_tomb()
 		   noncorporeal(youmonst.data) || unsolid(youmonst.data) ||
 		   (tunnels(youmonst.data) && !needspick(youmonst.data))) {
 
-		    You("%s up through the floor.",
+		    You("%s up through the %s.",
 			(tunnels(youmonst.data) && !needspick(youmonst.data)) ?
 			 "try to tunnel" : (amorphous(youmonst.data)) ?
-			 "ooze" : "phase");
+			 "ooze" : "phase", surface(u.ux, u.uy));
 
 		    if(tunnels(youmonst.data) && !needspick(youmonst.data))
 			good = dighole(TRUE);

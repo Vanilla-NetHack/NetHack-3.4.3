@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.3	1999/11/01	*/
+/*	SCCS Id: @(#)topten.c	3.3	2000/01/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -79,7 +79,7 @@ STATIC_DCL void FDECL(nsb_unmung_line,(char*));
 NEARDATA const char *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
 	"", "dissolved in ", "crushed to death by ", "petrified by ",
-	"", "", "", "", "", "", ""
+	"turned to slime by ", "", "", "", "", "", ""
 };
 
 static winid toptenwin = WIN_ERR;
@@ -157,13 +157,12 @@ struct toptenentry *tt;
 			int i;
 
 		    if (fscanf(rfile, fmt32,
-		    		tt->plrole, tt->plgend,
-		    		tt->name, tt->death) != 4)
-		    	tt->points = 0;
-		    tt->plrole[1] = 0;
+				tt->plrole, tt->plgend,
+				tt->name, tt->death) != 4)
+			tt->points = 0;
+		    tt->plrole[1] = '\0';
 		    if ((i = str2role(tt->plrole)) >= 0)
-		    	(void) strncpy(tt->plrole, roles[i].filecode, ROLESZ);
-		    tt->plrole[ROLESZ] = 0;
+			Strcpy(tt->plrole, roles[i].filecode);
 		    Strcpy(tt->plrace, "?");
 		    Strcpy(tt->plgend, (tt->plgend[0] == 'M') ? "Mal" : "Fem");
 		    Strcpy(tt->plalign, "?");
@@ -333,8 +332,8 @@ int how;
 #endif
 
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
-	if (lock_file(LOGFILE, 10)) {
-	    if(!(lfile = fopen_datafile(LOGFILE,"a"))) {
+	if (lock_file(LOGFILE, SCOREPREFIX, 10)) {
+	    if(!(lfile = fopen_datafile(LOGFILE, "a", TRUE))) {
 		HUP raw_print("Cannot open log file!");
 	    } else {
 		writeentry(lfile, t0);
@@ -356,13 +355,13 @@ int how;
 	    goto showwin;
 	}
 
-	if (!lock_file(RECORD, 60))
+	if (!lock_file(RECORD, SCOREPREFIX, 60))
 		goto destroywin;
 
 #ifdef UPDATE_RECORD_IN_PLACE
-	rfile = fopen_datafile(RECORD, "r+");
+	rfile = fopen_datafile(RECORD, "r+", TRUE);
 #else
-	rfile = fopen_datafile(RECORD, "r");
+	rfile = fopen_datafile(RECORD, "r", TRUE);
 #endif
 
 	if (!rfile) {
@@ -439,7 +438,7 @@ int how;
 				     t0->fpos : final_fpos), SEEK_SET);
 #else
 		(void) fclose(rfile);
-		if(!(rfile = fopen_datafile(RECORD,"w"))){
+		if(!(rfile = fopen_datafile(RECORD, "w", TRUE))){
 			HUP raw_print("Cannot write record file");
 			unlock_file(RECORD);
 			free_ttlist(tt_head);
@@ -564,6 +563,10 @@ boolean so;
 	Sprintf(eos(linebuf), "-%s", t1->plrole);
 	if (t1->plrace[0] != '?')
 		Sprintf(eos(linebuf), "-%s", t1->plrace);
+	/* Printing of gender and alignment is intentional.  It has been
+	 * part of the NetHack Geek Code, and illustrates a proper way to
+	 * specify a character from the command line.
+	 */
 	Sprintf(eos(linebuf), "-%s", t1->plgend);
 	if (t1->plalign[0] != '?')
 		Sprintf(eos(linebuf), "-%s ", t1->plalign);
@@ -743,7 +746,7 @@ char **argv;
 		return;
 	}
 
-	rfile = fopen_datafile(RECORD, "r");
+	rfile = fopen_datafile(RECORD, "r", TRUE);
 	if (!rfile) {
 		raw_print("Cannot open record file!");
 		return;
@@ -863,13 +866,16 @@ classmon(plch, fem)
 	/* Look for this role in the role table */
 	for (i = 0; roles[i].name.m; i++)
 	    if (!strncmp(plch, roles[i].filecode, ROLESZ)) {
-	    	if (fem && roles[i].femalenum != NON_PM)
-	    		return (roles[i].femalenum);
-	    	else if (roles[i].malenum != NON_PM)
-	    		return (roles[i].malenum);
-	    	else
-	    		return (PM_HUMAN);
+		if (fem && roles[i].femalenum != NON_PM)
+		    return roles[i].femalenum;
+		else if (roles[i].malenum != NON_PM)
+		    return roles[i].malenum;
+		else
+		    return PM_HUMAN;
 	    }
+	/* this might be from a 3.2.x score for former Elf class */
+	if (!strcmp(plch, "E")) return PM_RANGER;
+
 	impossible("What weird role is this? (%s)", plch);
 	return (PM_HUMAN_MUMMY);
 }
@@ -890,7 +896,7 @@ struct obj *otmp;
 
 	if (!otmp) return((struct obj *) 0);
 
-	rfile = fopen_datafile(RECORD, "r");
+	rfile = fopen_datafile(RECORD, "r", TRUE);
 	if (!rfile) {
 		impossible("Cannot open record file!");
 		return (struct obj *)0;

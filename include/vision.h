@@ -11,9 +11,9 @@ extern char **viz_array;		/* could see/in sight row pointers */
 extern char *viz_rmin;			/* min could see indices */
 extern char *viz_rmax;			/* max could see indices */
 #endif
-#define COULD_SEE 0x1
-#define IN_SIGHT  0x2
-#define TEMP_LIT  0x4
+#define COULD_SEE 0x1		/* location could be seen, if it were lit */
+#define IN_SIGHT  0x2		/* location can be seen */
+#define TEMP_LIT  0x4		/* location is temporarily lit */
 
 /*
  * Light source sources

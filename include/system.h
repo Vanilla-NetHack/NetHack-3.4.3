@@ -80,7 +80,7 @@ E  long NDECL(random);
 # if !defined(SUNOS4) || defined(RANDOM)
 E void FDECL(srandom, (unsigned int));
 # else
-#  ifndef bsdi
+#  if !defined(bsdi) && !defined(__FreeBSD__)
 E int FDECL(srandom, (unsigned int));
 #  endif
 # endif

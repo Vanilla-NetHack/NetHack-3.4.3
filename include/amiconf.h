@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)amiconf.h	3.3	95/09/03	*/
+/*	SCCS Id: @(#)amiconf.h	3.3	2000/01/12	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1990, 1991, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,6 +55,26 @@ typedef long off_t;
 			 */
 #define RANDOM
 
+/* ### amidos.c ### */
+
+extern void  FDECL(nethack_exit, (int));
+
+/* ### amiwbench.c ### */
+
+extern void NDECL(ami_wbench_init);
+extern void NDECL(ami_wbench_args);
+extern int FDECL(ami_wbench_getsave, (int));
+extern void FDECL(ami_wbench_unlink, (char *));
+extern int FDECL(ami_wbench_iconsize, (char *));
+extern void FDECL(ami_wbench_iconwrite, (char *));
+extern int FDECL(ami_wbench_badopt, (const char *));
+extern void NDECL(ami_wbench_cleanup);
+extern void FDECL(getlind, (const char *,char *,const char *));
+
+/* ### winreq.c ### */
+
+extern void amii_setpens(int);
+
 extern void FDECL(exit, (int));
 extern void NDECL(CleanUp);
 extern void FDECL(Abort, (long));
@@ -109,7 +129,7 @@ extern char *FDECL(gets, (char *));
 #define MAIL			/* Get mail at unexpected occasions */
 #define DEFAULT_ICON "NetHack:default.icon"	/* private icon */
 #define AMIFLUSH		/* toss typeahead (select flush in .cnf) */
-#define OPT_DISPMAP		/* enable fast_map option */
+/* #define OPT_DISPMAP		/* enable fast_map option */
 
 /* new window system options */
 			/* WRONG - AMIGA_INTUITION should go away */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.3	1999/12/10	*/
+/*	SCCS Id: @(#)makemon.c	3.3	2000/06/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -146,7 +146,7 @@ int otyp,oquan;
 	otmp->quan = (long) rn1(oquan, 3);
 	otmp->owt = weight(otmp);
 	if (otyp == ORCISH_ARROW) otmp->opoisoned = TRUE;
-	mpickobj(mtmp, otmp);
+	(void) mpickobj(mtmp, otmp);
 }
 
 #endif /* OVLB */
@@ -243,7 +243,7 @@ register struct monst *mtmp;
 		    if(otmp) {
 			otmp->spe = rnd(3);
 			if(!rn2(2)) curse(otmp);
-			mpickobj(mtmp, otmp);
+			(void) mpickobj(mtmp, otmp);
 		    }
 		}
 		break;
@@ -263,7 +263,7 @@ register struct monst *mtmp;
 		    otmp->oerodeproof = TRUE;
 		    spe2 = rn2(4);
 		    otmp->spe = max(otmp->spe, spe2);
-		    mpickobj(mtmp, otmp);
+		    (void) mpickobj(mtmp, otmp);
 
 		    otmp = mksobj(!rn2(4) || is_lord(ptr) ?
 				  SHIELD_OF_REFLECTION : LARGE_SHIELD,
@@ -271,7 +271,7 @@ register struct monst *mtmp;
 		    otmp->cursed = FALSE;
 		    otmp->oerodeproof = TRUE;
 		    otmp->spe = 0;
-		    mpickobj(mtmp, otmp);
+		    (void) mpickobj(mtmp, otmp);
 		}
 		break;
 
@@ -567,7 +567,7 @@ register struct	monst	*mtmp;
 				      FALSE, FALSE);
 			otmp->quan = (long) rn1(2, 3);
 			otmp->owt = weight(otmp);
-			mpickobj(mtmp, otmp);
+			(void) mpickobj(mtmp, otmp);
 		    }
 		}
 		break;
@@ -575,12 +575,19 @@ register struct	monst	*mtmp;
 		if (ptr == &mons[PM_NAZGUL]) {
 			otmp = mksobj(RIN_INVISIBILITY, FALSE, FALSE);
 			curse(otmp);
-			mpickobj(mtmp, otmp);
+			(void) mpickobj(mtmp, otmp);
 		}
 		break;
 	    case S_LICH:
 		if (ptr == &mons[PM_MASTER_LICH] && !rn2(13))
 			(void)mongets(mtmp, (rn2(7) ? ATHAME : WAN_NOTHING));
+		else if (ptr == &mons[PM_ARCH_LICH] && !rn2(3)) {
+			otmp = mksobj(rn2(3) ? ATHAME : QUARTERSTAFF,
+				      TRUE, rn2(13) ? FALSE : TRUE);
+			if (otmp->spe < 2) otmp->spe = rnd(3);
+			if (!rn2(4)) otmp->oerodeproof = 1;
+			(void) mpickobj(mtmp, otmp);
+		}
 		break;
 	    case S_MUMMY:
 		if (rn2(7)) (void)mongets(mtmp, MUMMY_WRAPPING);
@@ -590,7 +597,7 @@ register struct	monst	*mtmp;
 			otmp = mksobj(LARGE_BOX, FALSE, FALSE);
 			otmp->spe = 1; /* flag for special box */
 			otmp->owt = weight(otmp);
-			mpickobj(mtmp, otmp);
+			(void) mpickobj(mtmp, otmp);
 		}
 		break;
 	    case S_LEPRECHAUN:
@@ -897,13 +904,16 @@ register int	mmflags;
 		flags.djinni_count++;
 	} else if (mndx == PM_GHOST) {
 		flags.ghost_count++;
-		mtmp = christen_monst(mtmp, rndghostname());
+		if (!(mmflags & MM_NONAME))
+			mtmp = christen_monst(mtmp, rndghostname());
 	} else if (mndx == PM_VLAD_THE_IMPALER) {
 		mitem = CANDELABRUM_OF_INVOCATION;
 	} else if (mndx == PM_CROESUS) {
 		mitem = TWO_HANDED_SWORD;
 	} else if (ptr->msound == MS_NEMESIS) {
 		mitem = BELL_OF_OPENING;
+	} else if (mndx == PM_PESTILENCE) {
+		mitem = POT_SICKNESS;
 	}
 	if (mitem && allow_minvent) (void) mongets(mtmp, mitem);
 
@@ -1347,6 +1357,7 @@ register struct monst *mtmp;
 register int otyp;
 {
 	register struct obj *otmp;
+	int spe;
 
 	if (!otyp) return 0;
 	otmp = mksobj(otyp, TRUE, FALSE);
@@ -1383,8 +1394,9 @@ register int otyp;
 		    otmp->spe = 0;
 	    }
 
-	    mpickobj(mtmp, otmp);
-	    return(otmp->spe);
+	    spe = otmp->spe;
+	    (void) mpickobj(mtmp, otmp);	/* might free otmp */
+	    return(spe);
 	} else return(0);
 }
 

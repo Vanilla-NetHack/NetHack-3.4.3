@@ -6,14 +6,19 @@
 # quickly.  This branch isn't particularly difficult, just time
 # consuming.  Some players may wish to skip this branch.
 #
-# The following actions are permitted:
-#   Breaking boulders.
-#   Creating new boulders (e.g., with a scroll of earth).
+# The following actions are currently permitted without penalty:
 #   Carrying or throwing a boulder already in inventory
 #     (player or nonplayer).
 #   Teleporting boulders.
-#   Jumping (note: you won't get far enough across the pits/holes).
 #   Digging in the floor.
+# The following actions are permitted, but with a luck penalty:
+#   Breaking boulders.
+#   Stone-to-fleshing boulders.
+#   Creating new boulders (e.g., with a scroll of earth).
+#   Jumping.
+#   Being pulled by a thrown iron ball.
+#   Hurtling through the air from Newton's 3rd law.
+#   Squeezing past boulders when naked or as a giant.
 # These actions are not permitted:
 #   Moving diagonally between two boulders and/or walls.
 #   Pushing a boulder diagonally.
@@ -385,7 +390,7 @@ MAP
   ------------------
 ENDMAP
 STAIR:(06,11),down
-STAIR:(15,07),up
+STAIR:(15,06),up
 DOOR:locked,(18,10)
 REGION:(00,00,19,12),lit,"ordinary"
 NON_DIGGABLE:(00,00,19,12)
@@ -518,6 +523,7 @@ DOOR:closed,(17,13)
 DOOR:closed,(17,15)
 REGION:(18,10,22,16),lit,"zoo",filled,true
 OBJECT:'(',"bag of holding",place[0]
+ENGRAVING:place[0],burn,"Elbereth"
 
 
 MAZE:"soko1-2",' '
@@ -528,8 +534,8 @@ MAP
   ------------------------
   |......................|
   |..-------------------.|
-----.|                 |.|
-|..|.--  ------        |.|
+----.|    -----        |.|
+|..|.--  --...|        |.|
 |.....|--|....|        |.|
 |.....|..|....|        |.|
 --....|......--        |.|
@@ -609,3 +615,4 @@ DOOR:closed,(17,12)
 DOOR:closed,(17,14)
 REGION:(18,09,22,15),lit,"zoo",filled,true
 OBJECT:'"',"amulet of reflection",place[0]
+ENGRAVING:place[0],burn,"Elbereth"

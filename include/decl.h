@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)decl.h	3.3	99/07/02	*/
+/*	SCCS Id: @(#)decl.h	3.3	2000/06/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,6 +31,9 @@ E NEARDATA int warnlevel;
 E NEARDATA int nroom;
 E NEARDATA int nsubroom;
 E NEARDATA int occtime;
+
+#define WARNCOUNT 6			/* number of different warning levels */
+E uchar warnsyms[WARNCOUNT];
 
 E int x_maze_max, y_maze_max;
 E int otg_temp;
@@ -137,7 +140,8 @@ E NEARDATA char tune[6];
 E struct linfo level_info[MAXLINFO];
 
 E NEARDATA struct sinfo {
-	int stopprint;		/* game over, inhibit further disclosure */
+	int gameover;		/* self explanatory? */
+	int stopprint;		/* inhibit further end of game disclosure */
 #if defined(UNIX) || defined(VMS) || defined (__EMX__)
 	int done_hup;		/* SIGHUP or moral equivalent received
 				 * -- no more screen output */
@@ -166,6 +170,8 @@ E NEARDATA char *save_cm;
 #define NO_KILLER_PREFIX 2
 E NEARDATA int killer_format;
 E const char *killer;
+E const char *delayed_killer;
+E char killer_buf[BUFSZ];
 E const char *configfile;
 E NEARDATA char plname[PL_NSIZ];
 E NEARDATA char dogname[];
@@ -272,7 +278,8 @@ E struct c_common_strings {
     const char	*const c_nothing_happens, *const c_thats_enough_tries,
 		*const c_silly_thing_to, *const c_shudder_for_moment,
 		*const c_something, *const c_Something,
-		*const c_You_can_move_again;
+		*const c_You_can_move_again,
+		*const c_Never_mind;
 } c_common_strings;
 #define nothing_happens    c_common_strings.c_nothing_happens
 #define thats_enough_tries c_common_strings.c_thats_enough_tries
@@ -281,6 +288,23 @@ E struct c_common_strings {
 #define something	   c_common_strings.c_something
 #define Something	   c_common_strings.c_Something
 #define You_can_move_again c_common_strings.c_You_can_move_again
+#define Never_mind	   c_common_strings.c_Never_mind
+
+/* material strings */
+E const char *materialnm[];
+
+/* Monster name articles */
+#define ARTICLE_NONE	0
+#define ARTICLE_THE	1
+#define ARTICLE_A	2
+#define ARTICLE_YOUR	3
+
+/* Monster name suppress masks */
+#define SUPPRESS_IT		0x01
+#define SUPPRESS_INVISIBLE	0x02
+#define SUPPRESS_HALLUCINATION  0x04
+#define SUPPRESS_SADDLE		0x08
+#define EXACT_NAME		0x0F
 
 /* Vision */
 E NEARDATA boolean vision_full_recalc;	/* TRUE if need vision recalc */
@@ -303,6 +327,37 @@ E struct tc_gbl_data {	/* also declared in tcap.h */
 
 /* xxxexplain[] is in drawing.c */
 E const char *monexplain[], *invisexplain, *objexplain[], *oclass_names[];
+
+/* Some systems want to use full pathnames for some subsets of file names,
+ * rather than assuming that they're all in the current directory.  This
+ * provides all the subclasses that seem reasonable, and sets up for all
+ * prefixes being null.  Port code can set those that it wants.
+ */
+#define HACKPREFIX	0
+#define LEVELPREFIX	1
+#define SAVEPREFIX	2
+#define BONESPREFIX	3
+#define DATAPREFIX	4
+#define SCOREPREFIX	5
+#define LOCKPREFIX	6
+#define CONFIGPREFIX	7
+#define PREFIX_COUNT	8
+/* used in files.c; xxconf.h can override if needed */
+# ifndef FQN_MAX_FILENAME
+#define FQN_MAX_FILENAME 512
+# endif
+
+#if defined(NOCWD_ASSUMPTIONS) || defined(VAR_PLAYGROUND)
+/* the bare-bones stuff is unconditional above to simplify coding; for
+ * ports that actually use prefixes, add some more localized things
+ */
+#define PREFIXES_IN_USE
+#endif
+
+E char *fqn_prefix[PREFIX_COUNT];
+#ifdef PREFIXES_IN_USE
+E char *fqn_prefix_names[PREFIX_COUNT];
+#endif
 
 #undef E
 

@@ -11,13 +11,13 @@
 #ifndef _H_tty_private
 # define _H_tty_private
 
-#include <QDOffscreen.h>
-#include <Gestalt.h>
-#include <Errors.h>
-
 # ifndef _H_tty_public
 #include "mactty.h"
 # endif
+
+#include <QDOffscreen.h>
+#include <Gestalt.h>
+#include <Errors.h>
 
 #define TA_TO_RGB(ta,rgb) (((rgb).red=(((ta)>>16)&0xff)*257),((rgb).green=(((ta)>>8)&0xff)*257),\
 	((rgb).blue=((ta)&0xff)*257)),rgb

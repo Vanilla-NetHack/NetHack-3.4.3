@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worn.c	3.3	1999/07/17	*/
+/*	SCCS Id: @(#)worn.c	3.3	2000/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,6 +61,8 @@ long mask;
 		if(oobj && !(oobj->owornmask & wp->w_mask))
 			impossible("Setworn: mask = %ld.", wp->w_mask);
 		if(oobj) {
+		    if (u.twoweap && (oobj->owornmask & (W_WEP|W_SWAPWEP)))
+			u.twoweap = 0;
 		    oobj->owornmask &= ~wp->w_mask;
 		    if (wp->w_mask & ~(W_SWAPWEP|W_QUIVER)) {
 			/* leave as "x = x <op> y", here and below, for broken
@@ -110,6 +112,7 @@ register struct obj *obj;
 	register int p;
 
 	if (!obj) return;
+	if (obj == uwep || obj == uswapwep) u.twoweap = 0;
 	for(wp = worn; wp->w_mask; wp++)
 		if(obj == *(wp->w_obj)) {
 			*(wp->w_obj) = 0;
@@ -183,9 +186,9 @@ boolean on;
     struct obj *otmp;
     int which = (int) objects[obj->otyp].oc_oprop;
 
-    if (!which) return;
-
     unseen = !canseemon(mon);
+    if (!which) goto maybe_blocks;
+
     if (on) {
 	switch (which) {
 	 case INVIS:
@@ -255,6 +258,8 @@ boolean on;
 	    break;
 	}
     }
+
+ maybe_blocks:
     /* obj->owornmask has been cleared by this point, so we can't use it.
        However, since monsters don't wield armor, we don't have to guard
        against that and can get away with a blanket worn-mask value. */
@@ -266,6 +271,11 @@ boolean on;
      default:
 	break;
     }
+
+#ifdef STEED
+	if (!on && mon == u.usteed && obj->otyp == SADDLE)
+	    dismount_steed(DISMOUNT_FELL);
+#endif
 
     /* if couldn't see it but now can, or vice versa, update display */
     if (unseen ^ !canseemon(mon))
@@ -415,15 +425,17 @@ outer_break:
 
 	if (old) /* do this first to avoid "(being worn)" */
 	    old->owornmask = 0L;
-	if (!creation && canseemon(mon)) {
-	    if (old) {
+	if (!creation) {
+	    if (canseemon(mon)) {
 		char buf[BUFSZ];
 
-		Sprintf(buf, "%s", distant_name(old, doname));
-		pline("%s removes %s and puts on %s.",
-		    Monnam(mon), buf, distant_name(best, doname));
-	    } else
-		pline("%s puts on %s.", Monnam(mon),distant_name(best,doname));
+		if (old)
+		    Sprintf(buf, " removes %s and", distant_name(old, doname));
+		else
+		    buf[0] = '\0';
+		pline("%s%s puts on %s.", Monnam(mon),
+		      buf, distant_name(best,doname));
+	    } /* can see it */
 	    m_delay += objects[best->otyp].oc_delay;
 	    mon->mfrozen = m_delay;
 	    if (mon->mfrozen) mon->mcanmove = 0;
@@ -513,24 +525,26 @@ struct monst *mon;
 		m_lose_armor(mon, otmp);
 	    }
 	    if ((otmp = which_armor(mon, W_ARMC)) != 0) {
-		if (vis)
+		if (vis) {
 		    if (is_whirly(mon->data))
 			pline("%s cloak falls, unsupported!",
 				     s_suffix(Monnam(mon)));
 		    else
 			pline("%s shrinks out of %s cloak!", Monnam(mon),
 								ppronoun);
+		}
 		m_lose_armor(mon, otmp);
 	    }
 #ifdef TOURIST
 	    if ((otmp = which_armor(mon, W_ARMU)) != 0) {
-		if (vis)
+		if (vis) {
 		    if (sliparm(mon->data))
 			pline("%s seeps right through %s shirt!",
 					Monnam(mon), ppronoun);
 		    else
 			pline("%s becomes much too small for %s shirt!",
 					Monnam(mon), ppronoun);
+		}
 		m_lose_armor(mon, otmp);
 	    }
 #endif

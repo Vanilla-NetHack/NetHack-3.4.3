@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)mthrowu.c	3.3	2000/07/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -35,13 +35,39 @@ STATIC_OVL NEARDATA const char *breathwep[] = {
 
 int
 thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
-	register int tlev, dam;
-	struct obj *obj;
-	register const char *name;
+int tlev, dam;
+struct obj *obj;
+const char *name;	/* if null, then format `obj' */
 {
-	const char *onm = (obj && obj_is_pname(obj)) ? the(name) :
-			    (obj && obj->quan > 1) ? name : an(name);
-	boolean is_acid = (obj && obj->otyp == ACID_VENOM);
+	const char *onm, *knm;
+	boolean is_acid;
+	char onmbuf[BUFSZ], knmbuf[BUFSZ];
+
+	if (!name) {
+	    struct obj otmp;
+	    unsigned save_ocknown;
+
+	    if (!obj) panic("thitu: name & obj both null?");
+	    name = strcpy(onmbuf, (obj->quan > 1L) ? doname(obj) : xname(obj));
+	    /* killer name should be more specific; however, exact info
+	       like blessed/cursed and rustproof make things too verbose */
+	    otmp = *obj;
+	    save_ocknown = objects[otmp.otyp].oc_name_known;
+	    otmp.known = otmp.dknown = 1;
+	    otmp.bknown = otmp.rknown = otmp.greased = 0;
+	    /* "killed by poisoned <obj>" would be misleading
+	       since poison is not the cause of death */
+	    otmp.opoisoned = 0;
+	    objects[otmp.otyp].oc_name_known = 1;
+	    knm = strcpy(knmbuf,
+			 (otmp.quan > 1L) ? doname(&otmp) : xname(&otmp));
+	    objects[otmp.otyp].oc_name_known = save_ocknown;
+	} else {
+	    knm = name;
+	}
+	onm = (obj && obj_is_pname(obj)) ? the(name) :
+			    (obj && obj->quan > 1L) ? name : an(name);
+	is_acid = (obj && obj->otyp == ACID_VENOM);
 
 	if(u.uac + tlev <= rnd(20)) {
 		if(Blind || !flags.verbose) pline("It misses.");
@@ -62,7 +88,7 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 		else {
 			if (is_acid) pline("It burns!");
 			if (Half_physical_damage) dam = (dam+1) / 2;
-			losehp(dam, name, (obj && obj_is_pname(obj)) ?
+			losehp(dam, knm, (obj && obj_is_pname(obj)) ?
 			       KILLED_BY : KILLED_BY_AN);
 			exercise(A_STR, FALSE);
 		}
@@ -195,11 +221,11 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 		mondied(mtmp);
 	    }
 
-	    if ((otmp->otyp == CREAM_PIE || otmp->otyp == BLINDING_VENOM) &&
-		   haseyes(mtmp->data)) {
-		/* note: resists_blnd() doesn't apply here */
-		if (vis) pline("%s is blinded by %s.",
-				Monnam(mtmp), the(xname(otmp)));
+	    if (can_blnd((struct monst*)0, mtmp,
+		    (uchar)(otmp->otyp == BLINDING_VENOM ? AT_SPIT : AT_WEAP),
+		    otmp)) {
+		if (vis && mtmp->mcansee)
+		    pline("%s is blinded by %s.", Monnam(mtmp), the(xname(otmp)));
 		mtmp->mcansee = 0;
 		tmp = (int)mtmp->mblinded + rnd(25) + 20;
 		if (tmp > 127) tmp = 127;
@@ -326,7 +352,7 @@ m_throw(mon, x, y, dx, dy, range, obj)
 			    /* fall through */
 			case CREAM_PIE:
 			case BLINDING_VENOM:
-			    hitu = thitu(8, 0, singleobj, xname(singleobj));
+			    hitu = thitu(8, 0, singleobj, (char *)0);
 			    break;
 			default:
 			    dam = dmgval(singleobj, &youmonst);
@@ -341,15 +367,27 @@ m_throw(mon, x, y, dx, dy, range, obj)
 				if(singleobj->otyp == ELVEN_ARROW) dam++;
 			    }
 			    if (bigmonst(youmonst.data)) hitv++;
-			    hitv += 8+singleobj->spe;
-
+			    hitv += 8 + singleobj->spe;
 			    if (dam < 1) dam = 1;
-			    hitu = thitu(hitv, dam,
-				    singleobj, xname(singleobj));
+			    hitu = thitu(hitv, dam, singleobj, (char *)0);
 		    }
 		    if (hitu && singleobj->opoisoned) {
-			char *singlename = xname(singleobj);
-			poisoned(singlename, A_STR, singlename, 10);
+			char onmbuf[BUFSZ], knmbuf[BUFSZ];
+			struct obj otmp;
+			unsigned save_ocknown;
+
+			/* [see thitu()'s handling of `name'] */
+			Strcpy(onmbuf, xname(singleobj));
+			otmp = *singleobj;
+			save_ocknown = objects[otmp.otyp].oc_name_known;
+			otmp.known = otmp.dknown = 1;
+			otmp.bknown = otmp.rknown = otmp.greased = 0;
+			/* "poisoned by poisoned <obj>" would be redundant */
+			otmp.opoisoned = 0;
+			objects[otmp.otyp].oc_name_known = 1;
+			Strcpy(knmbuf, xname(&otmp));
+			poisoned(onmbuf, A_STR, knmbuf, 10);
+			objects[otmp.otyp].oc_name_known = save_ocknown;
 		    }
 		    if(hitu && (singleobj->otyp == CREAM_PIE ||
 				 singleobj->otyp == BLINDING_VENOM)) {
@@ -370,6 +408,7 @@ m_throw(mon, x, y, dx, dy, range, obj)
 				&& !(poly_when_stoned(youmonst.data) &&
 				    polymon(PM_STONE_GOLEM)))
 			    Stoned = 5;
+			    killer = (char *) 0;
 		    }
 		    stop_occupation();
 		    if (hitu || !range) {
@@ -431,25 +470,25 @@ void
 thrwmu(mtmp)	/* monster throws item at you */
 register struct monst *mtmp;
 {
-	struct obj *otmp;
+	struct obj *otmp, *mwep;
 	register xchar x, y;
 	boolean ispole;
 	schar skill;
 	int multishot = 1;
 
-
 	/* Rearranged beginning so monsters can use polearms not in a line */
-	    if (mtmp->weapon_check == NEED_WEAPON || !MON_WEP(mtmp)) {
-		mtmp->weapon_check = NEED_RANGED_WEAPON;
-		/* mon_wield_item resets weapon_check as appropriate */
-		if(mon_wield_item(mtmp) != 0) return;
-	    }
+	if (mtmp->weapon_check == NEED_WEAPON || !MON_WEP(mtmp)) {
+	    mtmp->weapon_check = NEED_RANGED_WEAPON;
+	    /* mon_wield_item resets weapon_check as appropriate */
+	    if(mon_wield_item(mtmp) != 0) return;
+	}
 
 	/* Pick a weapon */
-	    otmp = select_rwep(mtmp);
+	otmp = select_rwep(mtmp);
 	if (!otmp) return;
 	ispole = is_pole(otmp);
 	skill = objects[otmp->otyp].oc_skill;
+	mwep = MON_WEP(mtmp);		/* wielded weapon */
 
 	if(ispole || lined_up(mtmp)) {
 		/* If you are coming toward the monster, the monster
@@ -469,12 +508,12 @@ register struct monst *mtmp;
 			|| otmp->otyp == ORCISH_ARROW
 			|| otmp->otyp == YA
 			|| otmp->otyp == CROSSBOW_BOLT) verb = "shoots";
-			if (ispole) {
-				if (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
-						POLE_LIM && couldsee(mtmp->mx, mtmp->my))
-					verb = "thrusts";
-				else return; /* Out of range, or intervening wall */
-			}
+		    if (ispole) {
+			if (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
+				POLE_LIM && couldsee(mtmp->mx, mtmp->my))
+			    verb = "thrusts";
+			else return; /* Out of range, or intervening wall */
+		    }
 
 		    if (canseemon(mtmp)) {
 			pline("%s %s %s!", Monnam(mtmp), verb,
@@ -492,15 +531,15 @@ register struct monst *mtmp;
 				if (bigmonst(youmonst.data)) hitv++;
 				hitv += 8 + otmp->spe;
 				if (dam < 1) dam = 1;
-				(void) thitu(hitv, dam, otmp, xname(otmp));
+				(void) thitu(hitv, dam, otmp, (char *)0);
 
 				return;
 			}
 
 		    /* Multishot calculations */
-		    if (((ammo_and_launcher(otmp, MON_WEP(mtmp)) && skill != -P_SLING) ||
-				skill == P_DAGGER || skill == P_DART ||
-				skill == P_SHURIKEN) && !mtmp->mconf) {
+		    if ((ammo_and_launcher(otmp, mwep) || skill == P_DAGGER ||
+				skill == -P_DART || skill == -P_SHURIKEN) &&
+			    !mtmp->mconf) {
 			/* Assumes lords are skilled, princes are expert */
 			if (is_lord(mtmp->data)) multishot++;
 			if (is_prince(mtmp->data)) multishot += 2;
@@ -513,22 +552,32 @@ register struct monst *mtmp;
 			    if (skill == P_DAGGER) multishot++;
 			    break;
 			case PM_SAMURAI:
-			    if (otmp->otyp == YA && MON_WEP(mtmp) &&
-			    		MON_WEP(mtmp)->otyp == YUMI) multishot++;
+			    if (otmp->otyp == YA && mwep &&
+				    mwep->otyp == YUMI) multishot++;
 			    break;
 			default:
-			    if (is_elf(mtmp->data) && otmp->otyp == ELVEN_ARROW &&
-					MON_WEP(mtmp) && MON_WEP(mtmp)->otyp == ELVEN_BOW)
-				multishot++;
 			    break;
+			}
+			{	/* racial bonus */
+			    if (is_elf(mtmp->data) &&
+				    otmp->otyp == ELVEN_ARROW &&
+				    mwep && mwep->otyp == ELVEN_BOW)
+				multishot++;
+			    else if (is_orc(mtmp->data) &&
+				    otmp->otyp == ORCISH_ARROW &&
+				    mwep && mwep->otyp == ORCISH_BOW)
+				multishot++;
 			}
 		    }
 		    if (otmp->quan < multishot) multishot = (int)otmp->quan;
 		    if (multishot < 1) multishot = 1;
 		    else multishot = rnd(multishot);
 		    while (multishot-- > 0)
-			m_throw(mtmp, mtmp->mx, mtmp->my, sgn(tbx), sgn(tby),
-					distmin(mtmp->mx,mtmp->my,mtmp->mux,mtmp->muy), otmp);
+			m_throw(mtmp, mtmp->mx, mtmp->my,
+				sgn(tbx), sgn(tby),
+				distmin(mtmp->mx, mtmp->my,
+					mtmp->mux, mtmp->muy),
+				otmp);
 		    nomul(0);
 		    return;
 		}

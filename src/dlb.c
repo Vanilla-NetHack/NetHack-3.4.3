@@ -29,7 +29,7 @@ typedef struct dlb_procs {
 } dlb_procs_t;
 
 /* without extern.h via hack.h, these haven't been declared for us */
-extern FILE *FDECL(fopen_datafile, (const char *,const char *));
+extern FILE *FDECL(fopen_datafile, (const char *,const char *,BOOLEAN_P));
 
 #ifdef DLBLIB
 /*
@@ -199,7 +199,7 @@ open_library(lib_name, lp)
 {
     boolean status = FALSE;
 
-    lp->fdata = fopen_datafile(lib_name, RDBMODE);
+    lp->fdata = fopen_datafile(lib_name, RDBMODE, FALSE);
     if (lp->fdata) {
 	if (readlibdir(lp)) {
 	    status = TRUE;
@@ -453,7 +453,7 @@ dlb_fopen(name, mode)
     dp = (dlb *) alloc(sizeof(dlb));
     if (do_dlb_fopen(dp, name, mode))
     	dp->fp = (FILE *) 0;
-    else if ((fp = fopen_datafile(name, mode)) != 0)
+    else if ((fp = fopen_datafile(name, mode, FALSE)) != 0)
 	dp->fp = fp;
     else {
 	/* can't find anything */

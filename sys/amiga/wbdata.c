@@ -1,11 +1,12 @@
-/*    SCCS Id: @(#)wbdata.c     3.1    93/01/08
+/*    SCCS Id: @(#)wbdata.c     3.1    2000/01/12
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1992, 1993.  */
 /* NetHack may be freely redistributed.  See license for details. */
-
+/*
 struct IntuitionBase *IntuitionBase;
 struct GfxBase *GfxBase;
 struct Library *IconBase;
 struct DiskfontBase *DiskfontBase;
+*/
 struct Screen *scrn;
 struct Window *oldwin;
 char *classes = "ABCEHKPRSTVW";
@@ -96,8 +97,10 @@ char *players[ ] =
     "Elf",
     "Healer",
     "Knight",
+/*    "Monk", */
     "Priest",
     "Rogue",
+/*    "Ranger", */
     "Samurai",
     "Tourist",
     "Valkyrie",

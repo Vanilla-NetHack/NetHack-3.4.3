@@ -1,4 +1,4 @@
-            Amiga-specific help file for NetHack 3.2
+            Amiga-specific help file for NetHack 3.3
 
 The Amiga port of NetHack supports a number of additional commands
 and facilities specific to the Amiga.  Listed below are the things
@@ -11,44 +11,9 @@ While playing NetHack you can press:
         CTL-HELP                Scale display (amitile only).
         SHIFT-HELP              Overview window (amitile only).
 
-Separate Icon types for saved games:
-                                Each character class can have a
-                                separate icon.  The first letter
-                                of the character class is used
-                                to derive the name.  e.g. a
-                                Wizard saved game would use
-                                NetHack:w.icon if it is present.
-                                The NetHack:default.icon is used
-                                if the associated character class
-                                icon is not present.
-
 Amiga-specific run-time options:
         altmeta                 use the alt keys as meta keys
-        fast_map                fast screen update algorithm
         flush                   throw away keyboard type-ahead
-
-Recognized ToolTypes entries include the following:
-
-        NAME=                   Character name.
-        SCORES                  Scores for all players.
-        SCORE=                  Scores for specified players.
-        CHARACTER=              Class of player (e.g. Rogue).
-        PENS=xxx,xxx,...        8 pen settings for game palette.
-        FONT=name.font:size     Set the text font for text info.
-                                "courier.font:13" is the default.
-        PATH=                   PATH for locating files.
-        OPTIONS=                Comma separated list of options.
-                windowtype=amii        Traditional NetHack display
-                windowtype=amitile     NetHack with graphics
-                windowtype=tty         TTY mode for BBS use
-        HACKDIR=                Directory to play game in.
-        LEVELS=                 Where to store/create per level
-                                data files.
-        SAVE=                   Where to save games.
-        SCREEN=LACE|NOLACE      Whether or not to play on
-                                an interlaced screen.
-        CMDLINE=                CLI command line options
-                                can be specified here.
 
 Command line options recognized are
 
@@ -59,5 +24,8 @@ Command line options recognized are
         -l                      Never Interlaced screen.
         -u                      Play as player given as
                                 an argument.
+        -r                      Pick a race given as an
+                                argument.
+        -p                      Pick a profession given
+                                as an argument
         -?                      Gives command line usage.
-

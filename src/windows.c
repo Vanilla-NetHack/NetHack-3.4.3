@@ -15,11 +15,14 @@ extern void NDECL(win_X11_init);
 #ifdef QT_GRAPHICS
 extern struct window_procs Qt_procs;
 #endif
+#ifdef GEM_GRAPHICS
+#include "wingem.h"
+#endif
 #ifdef MAC
 extern struct window_procs mac_procs;
 #endif
-#ifdef __begui__
-extern struct window_procs be_procs;
+#ifdef BEOS_GRAPHICS
+extern struct window_procs beos_procs;
 extern void NDECL(be_win_init);
 #endif
 #ifdef AMIGA_INTUITION
@@ -29,6 +32,10 @@ extern void NDECL(ami_wininit_data);
 #endif
 #ifdef WIN32_GRAPHICS
 extern struct window_procs win32_procs;
+#endif
+#ifdef GNOME_GRAPHICS
+#include "winGnome.h"
+extern struct window_procs Gnome_procs;
 #endif
 
 STATIC_DCL void FDECL(def_raw_print, (const char *s));
@@ -49,11 +56,14 @@ struct win_choices {
 #ifdef QT_GRAPHICS
     { &Qt_procs, 0 },
 #endif
+#ifdef GEM_GRAPHICS
+    { &Gem_procs, win_Gem_init },
+#endif
 #ifdef MAC
     { &mac_procs, 0 },
 #endif
-#ifdef __begui__
-    { &be_procs, be_win_init },
+#ifdef BEOS_GRAPHICS
+    { &beos_procs, be_win_init },
 #endif
 #ifdef AMIGA_INTUITION
     { &amii_procs, ami_wininit_data },		/* Old font version of the game */
@@ -61,6 +71,9 @@ struct win_choices {
 #endif
 #ifdef WIN32_GRAPHICS
     { &win32_procs, 0 },
+#endif
+#ifdef GNOME_GRAPHICS
+    { &Gnome_procs, 0 },
 #endif
     { 0, 0 }		/* must be last */
 };

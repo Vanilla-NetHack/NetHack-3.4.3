@@ -298,6 +298,7 @@ char *basename;
 
 	Close(sfd);
 
+#if 0 /* OBSOLETE, HackWB is no longer in use */
 #ifdef AMIGA
 			/* we need to create an icon for the saved game
 			 * or HackWB won't notice the file.
@@ -315,6 +316,7 @@ char *basename;
 	if(in > -1)close(in);
 	if(out > -1)close(out);
 	}
+#endif
 #endif
 	return(0);
 }

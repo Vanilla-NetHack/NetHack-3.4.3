@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dbridge.c	3.3	97/05/25	*/
+/*	SCCS Id: @(#)dbridge.c	3.3	2000/02/05	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -37,33 +37,42 @@ boolean
 is_pool(x,y)
 int x,y;
 {
-       register schar ltyp = levl[x][y].typ;
-       if(ltyp == POOL || ltyp == MOAT || ltyp == WATER) return TRUE;
-       if(ltyp == DRAWBRIDGE_UP &&
-	       (levl[x][y].drawbridgemask & DB_UNDER) == DB_MOAT) return TRUE;
-       return FALSE;
+    schar ltyp;
+
+    if (!isok(x,y)) return FALSE;
+    ltyp = levl[x][y].typ;
+    if (ltyp == POOL || ltyp == MOAT || ltyp == WATER) return TRUE;
+    if (ltyp == DRAWBRIDGE_UP &&
+	(levl[x][y].drawbridgemask & DB_UNDER) == DB_MOAT) return TRUE;
+    return FALSE;
 }
 
 boolean
 is_lava(x,y)
 int x,y;
 {
-       register schar ltyp = levl[x][y].typ;
-       if(ltyp == LAVAPOOL ||
-	  (ltyp == DRAWBRIDGE_UP &&
-	   (levl[x][y].drawbridgemask & DB_UNDER) == DB_LAVA)) return TRUE;
-       return FALSE;
+    schar ltyp;
+
+    if (!isok(x,y)) return FALSE;
+    ltyp = levl[x][y].typ;
+    if (ltyp == LAVAPOOL
+	|| (ltyp == DRAWBRIDGE_UP
+	    && (levl[x][y].drawbridgemask & DB_UNDER) == DB_LAVA)) return TRUE;
+    return FALSE;
 }
 
 boolean
 is_ice(x,y)
 int x,y;
 {
-	register schar ltyp = levl[x][y].typ;
-	if (ltyp == ICE ||
-	    (ltyp == DRAWBRIDGE_UP &&
-		(levl[x][y].drawbridgemask & DB_UNDER) == DB_ICE)) return TRUE;
-	return FALSE;
+    schar ltyp;
+
+    if (!isok(x,y)) return FALSE;
+    ltyp = levl[x][y].typ;
+    if (ltyp == ICE
+	|| (ltyp == DRAWBRIDGE_UP
+	    && (levl[x][y].drawbridgemask & DB_UNDER) == DB_ICE)) return TRUE;
+    return FALSE;
 }
 
 #endif /* OVL0 */
@@ -396,15 +405,20 @@ struct entity *etmp;
 int dest, how;
 {
 	if (is_u(etmp)) {
-		if (how == DROWNING)
+		if (how == DROWNING) {
+			killer = 0;	/* drown() sets its own killer */
 			(void) drown();
-		else if (how == BURNING)
+		} else if (how == BURNING) {
+			killer = 0;	/* lava_effects() sets its own killer */
 			(void) lava_effects();
-		else {
+		} else {
 			coord xy;
 
-			killer_format = KILLED_BY_AN;
-			killer = "falling drawbridge";
+			/* use more specific killer if specified */
+			if (!killer) {
+			    killer_format = KILLED_BY_AN;
+			    killer = "falling drawbridge";
+			}
 			done(how);
 			/* So, you didn't die */
 			if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
@@ -421,6 +435,7 @@ int dest, how;
 		/* we might have crawled out of the moat to survive */
 		etmp->ex = u.ux,  etmp->ey = u.uy;
 	} else {
+		killer = 0;
 		/* fake "digested to death" damage-type suppresses corpse */
 #define mk_message(dest) ((dest & 1) ? "" : (char *)0)
 #define mk_corpse(dest)  ((dest & 2) ? AD_DGST : AD_PHYS)
@@ -915,7 +930,7 @@ int x,y;
 		} else {
 			if (e_inview) {
 			    if (!is_u(etmp1) && Hallucination)
-				pline("%s into some heavy metal",
+				pline("%s into some heavy metal!",
 				      E_phrase(etmp1, "get"));
 			    else
 				pline("%s hit by a huge chunk of metal!",

@@ -26,12 +26,15 @@ int NDECL(yylex);
 	 * int) while the bundled lex and the one with the older unbundled
 	 * compiler do not.  To detect this, we need help from outside --
 	 * sys/unix/Makefile.utl.
+	 *
+	 * Digital UNIX is difficult and still has int in spite of all
+	 * other signs.
 	 */
 # if defined(NeXT) || defined(SVR4) || defined(_AIX32)
 #  define VOIDYYPUT
 # endif
-# if !defined(VOIDYYPUT)
-#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX) && !defined(VMS)
+# if !defined(VOIDYYPUT) && defined(POSIX_TYPES)
+#  if !defined(BOS) && !defined(HISX) && !defined(_M_UNIX) && !defined(VMS)
 #   define VOIDYYPUT
 #  endif
 # endif
@@ -39,6 +42,9 @@ int NDECL(yylex);
 #  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1)
 #   define VOIDYYPUT
 #  endif
+# endif
+# if defined(VOIDYYPUT) && defined(__osf__)
+#  undef VOIDYYPUT
 # endif
 # ifdef VOIDYYPUT
 void FDECL(yyunput, (int));
@@ -188,6 +194,8 @@ noalign		{ yylval.i= AM_NONE; return ALIGNMENT; }
 law		{ yylval.i= AM_LAWFUL; return ALIGNMENT; }
 neutral		{ yylval.i= AM_NEUTRAL; return ALIGNMENT; }
 chaos		{ yylval.i= AM_CHAOTIC; return ALIGNMENT; }
+coaligned	{ yylval.i= AM_SPLEV_CO; return ALIGNMENT; }
+noncoaligned	{ yylval.i= AM_SPLEV_NONCO; return ALIGNMENT; }
 peaceful	{ yylval.i=1; return MON_ATTITUDE; }
 hostile		{ yylval.i=0; return MON_ATTITUDE; }
 asleep		{ yylval.i=1; return MON_ALERTNESS; }

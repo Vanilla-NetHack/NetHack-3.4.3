@@ -125,8 +125,9 @@ register struct obj *sobj;
     known = stale = clear_stale_map(GOLD_CLASS);
 
     /* look for gold carried by monsters (might be in a container) */
-    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	if (mtmp->mgold) {
+    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+    	if (DEADMONSTER(mtmp)) continue;	/* probably not needed in this case but... */
+	if (mtmp->mgold || monsndx(mtmp->data) == PM_GOLD_GOLEM) {
 	    known = TRUE;
 	    goto outgoldmap;	/* skip further searching */
 	} else for (obj = mtmp->minvent; obj; obj = obj->nobj)
@@ -134,7 +135,8 @@ register struct obj *sobj;
 		known = TRUE;
 		goto outgoldmap;	/* skip further searching */
 	    }
-
+    }
+    
     /* look for gold objects */
     for (obj = fobj; obj; obj = obj->nobj)
 	if (o_in(obj, GOLD_CLASS)) {
@@ -165,8 +167,9 @@ outgoldmap:
 	    }
 	    map_object(temp,1);
 	}
-    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	if (mtmp->mgold) {
+    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+    	if (DEADMONSTER(mtmp)) continue;	/* probably overkill here */
+	if (mtmp->mgold || monsndx(mtmp->data) == PM_GOLD_GOLEM) {
 	    struct obj gold;
 
 	    gold.otyp = GOLD_PIECE;
@@ -180,7 +183,8 @@ outgoldmap:
 		map_object(temp,1);
 		break;
 	    }
-
+    }
+    
     newsym(u.ux,u.uy);
     You_feel("very greedy, and sense gold!");
     exercise(A_WIS, TRUE);
@@ -213,13 +217,15 @@ register struct obj	*sobj;
 	    if (obj->ox == u.ux && obj->oy == u.uy) ctu++;
 	    else ct++;
 	}
-    for (mtmp = fmon; mtmp && !ct; mtmp = mtmp->nmon)
+    for (mtmp = fmon; mtmp && !ct; mtmp = mtmp->nmon) {
+	/* no DEADMONSTER(mtmp) check needed since dmons never have inventory */
 	for (obj = mtmp->minvent; obj; obj = obj->nobj)
 	    if (o_in(obj, oclass)) {
 		ct++;
 		break;
 	    }
-
+    }
+    
     if (!ct && !ctu) {
 	known = stale && !confused;
 	if (stale) {
@@ -245,6 +251,7 @@ register struct obj	*sobj;
 		map_object(temp,1);
 	    }
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    /* no DEADMONSTER(mtmp) check needed since dmons never have inventory */
 	    for (obj = mtmp->minvent; obj; obj = obj->nobj)
 		if ((temp = o_in(obj, oclass)) != 0) {
 		    temp->ox = mtmp->mx;
@@ -315,11 +322,11 @@ int		class;		/* an object class, 0 for all */
     }
 
     for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	if (DEADMONSTER(mtmp)) continue;
 	for (obj = mtmp->minvent; obj; obj = obj->nobj) {
 	    if (!class || o_in(obj, class)) ct++;
 	    if (do_dknown) do_dknown_of(obj);
 	}
-
 	if ((is_cursed && mtmp->m_ap_type == M_AP_OBJECT &&
 	    (!class || class == objects[mtmp->mappearance].oc_class)) ||
 	    (mtmp->mgold && (!class || class == GOLD_CLASS))) {
@@ -381,6 +388,7 @@ int		class;		/* an object class, 0 for all */
 
     /* Objects in the monster's inventory override floor objects. */
     for (mtmp = fmon ; mtmp ; mtmp = mtmp->nmon) {
+	if (DEADMONSTER(mtmp)) continue;
 	for (obj = mtmp->minvent; obj; obj = obj->nobj)
 	    if (!class || (otmp = o_in(obj, class))) {
 		if (!class) otmp = obj;
@@ -389,8 +397,6 @@ int		class;		/* an object class, 0 for all */
 		map_object(otmp, 1);
 		break;
 	    }
-
-
 	/* Allow a mimic to override the detected objects it is carrying. */
 	if (is_cursed && mtmp->m_ap_type == M_AP_OBJECT &&
 		(!class || class == objects[mtmp->mappearance].oc_class)) {
@@ -438,8 +444,21 @@ register struct obj *otmp;	/* detecting object (if any) */
 int mclass;			/* monster class, 0 for all */
 {
     register struct monst *mtmp;
+    int mcnt = 0;
 
-    if (!fmon) {
+
+    /* Note: This used to just check fmon for a non-zero value
+     * but in versions since 3.3.0 fmon can test TRUE due to the
+     * presence of dmons, so we have to find at least one
+     * with positive hit-points to know for sure.
+     */
+    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+    	if (!DEADMONSTER(mtmp)) {
+		mcnt++;
+		break;
+	}
+
+    if (!mcnt) {
 	if (otmp)
 	    strange_feeling(otmp, Hallucination ?
 			    "You get the heebie jeebies." :
@@ -450,6 +469,7 @@ int mclass;			/* monster class, 0 for all */
 
 	cls();
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (!mclass || mtmp->data->mlet == mclass)
 	    if (mtmp->mx > 0)
 		show_glyph(mtmp->mx,mtmp->my,mon_to_glyph(mtmp));
@@ -525,17 +545,19 @@ register struct obj *sobj;
 	else found = TRUE;
     }
     for (obj = fobj; obj; obj = obj->nobj) {
-	if ((obj->otyp==LARGE_BOX || obj->otyp==CHEST) && obj->otrapped)
+	if ((obj->otyp==LARGE_BOX || obj->otyp==CHEST) && obj->otrapped) {
 	    if (obj->ox != u.ux || obj->oy != u.uy)
 		goto outtrapmap;
 	    else found = TRUE;
+	}
     }
     for (door = 0; door <= doorindex; door++) {
 	cc = doors[door];
-	if (levl[cc.x][cc.y].doormask & D_TRAPPED)
+	if (levl[cc.x][cc.y].doormask & D_TRAPPED) {
 	    if (cc.x != u.ux || cc.x != u.uy)
 		goto outtrapmap;
 	    else found = TRUE;
+	}
     }
     if (!found) {
 	char buf[42];
@@ -686,7 +708,7 @@ struct obj *obj;
     if (flags.verbose) You("may look for an object or monster symbol.");
     ch = yn_function("What do you look for?", (char *)0, '\0');
     if (index(quitchars,ch)) {
-	if (flags.verbose) pline("Never mind.");
+	if (flags.verbose) pline(Never_mind);
 	return;
     }
     You("peer into %s...", the(bname));
@@ -753,10 +775,10 @@ register int x, y;
 		glyph_to_cmap(lev->glyph) != ROOM) :
 	    (!glyph_is_object(lev->glyph) && !glyph_is_trap(lev->glyph))) {
 	if (level.flags.hero_memory) {
-	    map_background(x,y,0);
-	    newsym(x,y);		/* show it, if not blocked */
+	    magic_map_background(x,y,0);
+	    newsym(x,y);			/* show it, if not blocked */
 	} else {
-	    map_background(x,y,1);	/* display it */
+	    magic_map_background(x,y,1);	/* display it */
 	}
     }
 }
@@ -854,6 +876,13 @@ genericptr_t num;
 			newsym(zx, zy);
 			(*(int*)num)++;
 		}
+		if (!canspotmon(mtmp) &&
+				    !glyph_is_invisible(levl[zx][zy].glyph))
+			map_invisible(zx, zy);
+	} else if (glyph_is_invisible(levl[zx][zy].glyph)) {
+		unmap_object(zx, zy);
+		newsym(zx, zy);
+		(*(int*)num)++;
 	}
 }
 
@@ -1071,7 +1100,6 @@ sokoban_detect()
 	register struct trap *ttmp;
 	register struct obj *obj;
 
-
 	/* Map the background and boulders */
 	for (x = 1; x < COLNO; x++)
 	    for (y = 0; y < ROWNO; y++) {
@@ -1088,8 +1116,6 @@ sokoban_detect()
 	    ttmp->tseen = 1;
 	    map_trap(ttmp, 1);
 	}
-
-	return;
 }
 
 

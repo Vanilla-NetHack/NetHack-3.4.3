@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.h	3.3	1999/07/02	*/
+/*	SCCS Id: @(#)hack.h	3.3	2000/01/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -87,6 +87,9 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define FLASHED_LIGHT	3
 #define INVIS_BEAM	4
 
+#define MATCH_WARN_OF_MON(mon)	 (Warn_of_mon && flags.warntype && \
+		   		 (flags.warntype & (mon)->data->mflags2))
+
 #include "trap.h"
 #include "flag.h"
 #include "rm.h"
@@ -121,6 +124,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define MM_EDOG		  0x04	/* add edog structure */
 #define MM_EMIN		  0x08	/* add emin structure */
 #define MM_ANGRY	  0x10  /* monster is created angry */
+#define MM_NONAME	  0x20  /* monster is not christened */
 
 /* flags to control query_objlist() */
 #define BY_NEXTHERE	  0x1	/* follow objlist by nexthere field */
@@ -138,6 +142,12 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define BILLED_TYPES 0x20
 #define CHOOSE_ALL   0x40
 #define ALL_TYPES_SELECTED -2
+
+/* Flags to control find_mid() */
+#define FM_FMON	       0x01	/* search the fmon chain */
+#define FM_MIGRATE     0x02	/* search the migrating monster chain */
+#define FM_MYDOGS      0x04	/* search mydogs */
+#define FM_EVERYWHERE  (FM_FMON | FM_MIGRATE | FM_MYDOGS)
 
 /*** some utility macros ***/
 #define yn(query) yn_function(query,ynchars, 'n')
@@ -158,6 +168,25 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 /* Macros for launching objects */
 #define ROLL	1
 #define FLING	2
+
+/* Macros for messages referring to hands, eyes, feet, etc... */
+#define ARM 0
+#define EYE 1
+#define FACE 2
+#define FINGER 3
+#define FINGERTIP 4
+#define FOOT 5
+#define HAND 6
+#define HANDED 7
+#define HEAD 8
+#define LEG 9
+#define LIGHT_HEADED 10
+#define NECK 11
+#define SPINE 12
+#define TOE 13
+#define HAIR 14
+#define BLOOD 15
+#define LUNG 16
 
 /* Flags to control menus */
 #define MENUTYPELEN sizeof("traditional ")

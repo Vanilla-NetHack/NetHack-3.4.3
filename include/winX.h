@@ -312,6 +312,8 @@ E void FDECL(destroy_menu_window,(struct xwindow*));
 /* ### winmisc.c ### */
 E void FDECL(ps_key,(Widget, XEvent*, String*, Cardinal*)); /* player selection action */
 E void FDECL(race_key,(Widget, XEvent*, String*, Cardinal*)); /* race selection action */
+E void FDECL(gend_key, (Widget,XEvent *,String *,Cardinal *)); /* gender */
+E void FDECL(algn_key, (Widget,XEvent *,String *,Cardinal *)); /* alignment */
 E void FDECL(ec_delete, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(ec_key,(Widget, XEvent*, String*, Cardinal*)); /* extended command action */
 

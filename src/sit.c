@@ -80,7 +80,7 @@ dosit()
 	    }
 	} else if(Underwater || Is_waterlevel(&u.uz)) {
 	    if (Is_waterlevel(&u.uz))
-		pline("There are no cushions floating nearby.");
+		There("are no cushions floating nearby.");
 	    else
 		You("sit down on the muddy bottom.");
 	} else if(is_pool(u.ux, u.uy)) {
@@ -101,7 +101,7 @@ dosit()
 	    You(sit_message, defsyms[S_altar].explanation);
 	    altar_wrath(u.ux, u.uy);
 
-	} else if(typ == GRAVE) {
+	} else if(IS_GRAVE(typ)) {
 
 	    You(sit_message, defsyms[S_grave].explanation);
 
@@ -275,7 +275,7 @@ dosit()
 		stackobj(uegg);
 		morehungry((int)objects[EGG].oc_nutrition);
 	} else if (u.uswallow)
-		pline("There are no seats in here!");
+		There("are no seats in here!");
 	else
 		pline("Having fun sitting on the %s?", surface(u.ux,u.uy));
 	return(1);

@@ -177,9 +177,10 @@ DOOR:closed,(54,15)
 # Stairs
 STAIR:(03,17),up
 STAIR:(39,10),down
-# Altars - two types.  Both are unattended.
-ALTAR:(26,05),chaos,altar
-ALTAR:(26,15),law,altar
+# Altars - three types.  All are unattended.
+ALTAR:(26,05),align[0],altar
+ALTAR:(26,10),align[1],altar
+ALTAR:(26,15),align[2],altar
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
 # Objects

@@ -18,9 +18,9 @@ static pixel placeholder[TILE_Y][TILE_X];
 static FILE *tile_file;
 static int tile_set, tile_set_indx;
 #if (TILE_X==8)
-static char *text_sets[] = { "monthin.txt", "objthin.txt", "oththin.txt" };
+static const char *text_sets[] = { "monthin.txt", "objthin.txt", "oththin.txt" };
 #else
-static char *text_sets[] = { "monsters.txt", "objects.txt", "other.txt" };
+static const char *text_sets[] = { "monsters.txt", "objects.txt", "other.txt" };
 #endif
 
 extern const char *FDECL(tilename, (int, int));

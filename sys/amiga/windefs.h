@@ -16,6 +16,7 @@
 #include <graphics/gfxbase.h>
 #include <intuition/intuition.h>
 #include <intuition/intuitionbase.h>
+#include <libraries/gadtools.h>
 #include <libraries/dosextens.h>
 /* stddef.h is included in the precompiled version of hack.h .  If we include
  * it here normally (through string.h) we'll get an "illegal typedef" later
@@ -69,12 +70,14 @@ CLIPPING must be defined for the AMIGA version
 #include <clib/console_protos.h>
 #include <clib/layers_protos.h>
 #include <clib/diskfont_protos.h>
+#include <clib/gadtools_protos.h>
 #else
 #include <proto/dos.h>
 #include <proto/exec.h>
 #include <proto/console.h>
 #include <proto/layers.h>
 #include <proto/diskfont.h>
+#include <proto/gadtools.h>
 #endif
 
 /* kludge - see amirip for why */
@@ -168,19 +171,19 @@ CLIPPING must be defined for the AMIGA version
 #define C_BLACK		0
 #define C_WHITE		1
 #define C_BROWN		(WINVERS_AMIV ? 11 : 2)
-#define C_CYAN		(WINVERS_AMIV ? 6  : 3)
-#define C_GREEN		(WINVERS_AMIV ? 10 : 4)
-#define C_MAGENTA	5
+#define C_CYAN		(WINVERS_AMIV ? 2  : 3)
+#define C_GREEN		(WINVERS_AMIV ? 5  : 4)
+#define C_MAGENTA	(WINVERS_AMIV ? 10 : 5)
 #define C_BLUE		(WINVERS_AMIV ? 4  : 6)
-#define C_RED		(WINVERS_AMIV ? 15 : 7)
-#define C_LTGREEN	2
-#define C_YELLOW	3
-#define C_LTBROWN	7
-#define C_GREYBLUE	8
-#define C_ORANGE	9
-#define C_GREY		12
-#define C_PEACH		13
+#define C_RED		7
+#define C_ORANGE	3
+#define C_GREY		6
+#define C_LTGREEN	8
+#define C_YELLOW	9
+#define C_GREYBLUE	12
+#define C_LTBROWN	13
 #define C_LTGREY	14
+#define C_PEACH		15
 
 /* Structure describing tile files */
 struct PDAT

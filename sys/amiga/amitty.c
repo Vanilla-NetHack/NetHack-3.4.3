@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)amitty.c     3.2    96/02/04
+/*    SCCS Id: @(#)amitty.c     3.2    2000/01/12
 /*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993,1996  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,6 +11,7 @@
 #include "hack.h"
 #include "tcap.h"
 #include <stdio.h>
+#include <proto/dos.h>
 
 #ifdef _DCC
 # define getch() getchar()

@@ -27,14 +27,15 @@ get_line_from_key_queue (char * bufp) {
 
 
 static void
-topl_getlin(const char *query, char *bufp, key_func key) {
+topl_getlin(const char *query, char *bufp, Boolean ext) {
 	int q_len = strlen(query);
 
 	if (get_line_from_key_queue (bufp))
 		return;
 
 	enter_topl_mode((char *) query);
-	while ((*key)(nhgetch()));
+	while (topl_key(nhgetch(), ext))
+		;
 	leave_topl_mode(bufp);
 }
 
@@ -53,7 +54,7 @@ mac_getlin(const char *query, char *bufp) {
 		popup_getlin (query, bufp);
 	else
 #endif
-		topl_getlin (query, bufp, &topl_key);
+		topl_getlin (query, bufp, false);
 }
 
 
@@ -66,7 +67,7 @@ mac_get_ext_cmd() {
 	char bufp[BUFSZ];
 	int i;
 
-	topl_getlin("# ", bufp, &topl_ext_key);
+	topl_getlin("# ", bufp, true);
 	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
 		if (!strcmp(bufp, extcmdlist[i].ef_txt)) break;
 	if (extcmdlist[i].ef_txt == (char *)0) i = -1;    /* not found */

@@ -82,6 +82,7 @@ amii_add_menu(window,glyph, id, ch, gch, attr, str, preselected)
     mip->glyph = Is_rogue_level(&u.uz) ? NO_GLYPH : glyph;
     mip->selector = 0;
     mip->gselector = gch;
+    mip->count = -1;
 
     if (id->a_void && !ch && cw->menu.chr != 0)
     {
@@ -135,13 +136,35 @@ amii_end_menu(window,morestr)
     if( morestr && *morestr )
     {
 	anything any;
+#define PROMPTFIRST /* Define this to have prompt first */
+#ifdef PROMPTFIRST
+	amii_menu_item *mip;
+	int i;
+	char *t;
+	mip = cw->menu.last;
+#endif
 	any.a_void = 0;
 	amii_add_menu( window, NO_GLYPH, &any, 0, 0, ATR_NONE, morestr,
 	   MENU_UNSELECTED);
+#ifdef PROMPTFIRST /* Do some shuffling. Last first, push others one forward */
+	mip->next = NULL;
+	cw->menu.last->next = cw->menu.items;
+	cw->menu.items = cw->menu.last;
+	cw->menu.last = mip;
+	t = cw->data[cw->cury-1];
+	for (i=cw->cury-1; i>0; i--) {
+	    cw->data[i] = cw->data[i-1];
+	}
+	cw->data[0] = t;
+#endif
     }
 
+    /* If prompt first, don't put same string in title where in most cases
+       it's not entirely visible anyway */
+#ifndef PROMPTFIRST
     if( morestr )
 	cw->morestr = strdup( morestr );
+#endif
 }
 
 /* Select something from the menu. */
@@ -198,7 +221,7 @@ make_menu_items( register struct amii_WinDesc *cw, register menu_item **rmip )
 	    if( mip->selected )
 	    {
 		mmip->item = mip->identifier;
-		mmip->count = -1;
+		mmip->count = mip->count;
 		mmip++;
 	    }
 	}
@@ -230,6 +253,9 @@ DoMenuScroll( win, blocking, how, retmip )
     static char title[ 100 ];
     int dosize = 1;
     struct Screen *scrn = HackScreen;
+    int x1,x2,y1,y2;
+    long counting = FALSE, count = 0, reset_counting = FALSE;
+    char countString[32];
 
     if( win == WIN_ERR || ( cw = amii_wins[ win ] ) == NULL )
 	panic(winpanicstr,win,"DoMenuScroll");
@@ -531,10 +557,16 @@ DoMenuScroll( win, blocking, how, retmip )
 	    switch( class )
 	    {
 		case NEWSIZE:
-		    /* Ignore every other newsize, no action needed */
+
+		    /*
+		     * Ignore every other newsize, no action needed,
+		     * except RefreshWindowFrame() in case borders got overwritten
+		     * for some reason. It should not happen, but ...
+		     */
 
 		    if( !dosize )
 		    {
+			RefreshWindowFrame(w);
 			dosize = 1;
 			break;
 		    }
@@ -583,12 +615,33 @@ DoMenuScroll( win, blocking, how, retmip )
 		    if( wheight < 2 )
 			wheight = 2;
 
+		    /*
+		     * Clear the right side & bottom. Parts of letters are not erased by
+		     * amii_cl_end if window shrinks and columns decrease.
+		     */
+
+		    if ( WINVERS_AMII || WINVERS_AMIV ) {
+			amii_setfillpens(w, cw->type);
+			SetDrMd(w->RPort, JAM2);
+			x2 = w->Width - w->BorderRight;
+			y2 = w->Height - w->BorderBottom;
+			x1 = x2 - w->IFont->tf_XSize - w->IFont->tf_XSize;
+			y1 = w->BorderTop;
+			if (x1 < w->BorderLeft)
+			    x1 = w->BorderLeft;
+			RectFill(w->RPort, x1, y1, x2, y2);
+			x1 = w->BorderLeft;
+			y1 = y1 - w->IFont->tf_YSize;
+			RectFill(w->RPort, x1, y1, x2, y2);
+			RefreshWindowFrame(w);
+		    }
+
 		    /* Make the prop gadget the right size and place */
 
 		    DisplayData( win, topidx );
 		    SetPropInfo( w, gd, wheight, totalvis, topidx );
 
-		    /* Force the window to a text line boundry <= to
+		    /* Force the window to a text line boundary <= to
 		     * what the user dragged it to.  This eliminates
 		     * having to clean things up on the bottom edge.
 		     */
@@ -603,7 +656,177 @@ DoMenuScroll( win, blocking, how, retmip )
 
 		case VANILLAKEY:
 #define CTRL(x)     ((x)-'@')
-		    if( code == CTRL('D') || code == CTRL('U') )
+		    morc = code = map_menu_cmd(code);
+		    if (code == MENU_SELECT_ALL) {
+			if (how == PICK_ANY) {
+			    amip = cw->menu.items;
+			    while (amip) {
+				if (amip->canselect) {
+				/*
+				 * Select those yet unselected
+				 * and apply count if necessary
+				 */
+				    if (!amip->selected) {
+					amip->selected = TRUE;
+					if (counting) {
+					    amip->count = count;
+					    reset_counting = TRUE;
+					/*
+					 * This makes the assumption that 
+					 * the string is in format "X - foo"
+					 * with additional selecting and formatting
+					 * data in front (size SOFF)
+					 */
+					    amip->str[SOFF+2] = '#';
+					} else {
+					    amip->count = -1;
+					    amip->str[SOFF+2] = '-';
+					}
+				    }
+				}
+				amip=amip->next;
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_UNSELECT_ALL) {
+			if (how == PICK_ANY) {
+			    amip = cw->menu.items;
+			    while (amip) {
+				if (amip->canselect) {
+				    amip->selected = FALSE;
+				    amip->count = -1;
+				    amip->str[SOFF+2] = '-';
+				}
+				amip=amip->next;
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_INVERT_ALL) {
+			if (how == PICK_ANY) {
+			    amip = cw->menu.items;
+			    while (amip) {
+				if (amip->canselect) {
+				    amip->selected = !amip->selected;
+				    if (counting && amip->selected) {
+					amip->count = count;
+					amip->str[SOFF+2] = '#';
+					reset_counting = TRUE;
+				    } else {
+					amip->count = -1;
+					amip->str[SOFF+2] = '-';
+				    }
+				}
+				amip=amip->next;
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_SELECT_PAGE) {
+			if (how == PICK_ANY) {
+			    int i = 0;
+			    amip = cw->menu.items;
+			    while (amip && i++ < topidx)
+				amip = amip->next;
+			    for (i=0;i < wheight && amip; i++, amip=amip->next) {
+				if (amip->canselect) {
+				    if (!amip->selected) {
+					if (counting) {
+					    amip->count = count;
+					    reset_counting = TRUE;
+					    amip->str[SOFF+2] = '#';
+					} else {
+					    amip->count = -1;
+					    amip->str[SOFF+2] = '-';
+					}
+				    }
+	 			    amip->selected = TRUE;
+				}
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_UNSELECT_PAGE) {
+			if (how == PICK_ANY) {
+			    int i = 0;
+			    amip = cw->menu.items;
+			    while (amip && i++ < topidx)
+				amip = amip->next;
+			    for (i=0;i < wheight && amip; i++, amip=amip->next) {
+				if (amip->canselect) {
+				    amip->selected = FALSE;
+				    amip->count = -1;
+				    amip->str[SOFF+2] = '-';
+				}
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_INVERT_PAGE) {
+			if (how == PICK_ANY) {
+			    int i = 0;
+			    amip = cw->menu.items;
+			    while (amip && i++ < topidx)
+				amip = amip->next;
+			    for (i=0;i < wheight && amip; i++, amip=amip->next) {
+				if (amip->canselect) {
+				    amip->selected = !amip->selected;
+				    if (counting && amip->selected) {
+					amip->count = count;
+					amip->str[SOFF+2] = '#';
+					reset_counting = TRUE;
+				    } else {
+					amip->count = -1;
+					amip->str[SOFF+2] = '-';
+				    }
+				}
+			    }
+			    DisplayData(win, topidx);
+			}
+		    } else if (code == MENU_SEARCH && cw->type == NHW_MENU) {
+			if (how == PICK_ONE || how == PICK_ANY) {
+			    char buf[BUFSZ];
+			    amip = cw->menu.items;
+			    amii_getlin("Search for:", buf);
+			    if (!*buf || *buf == '\033')
+				break;
+			    while (amip) {
+				if (amip->canselect && amip->str &&
+				    strstri(&amip->str[SOFF], buf)) {
+				    if (how == PICK_ONE) {
+					amip->selected = TRUE;
+					aredone = 1;
+					break;
+				    }
+				    amip->selected = !amip->selected;
+				    if (counting && amip->selected) {
+					amip->count = count;
+					reset_counting = TRUE;
+					amip->str[SOFF+2] = '#';
+				    } else {
+					amip->count = -1;
+					reset_counting = TRUE;
+					amip->str[SOFF+2] = '-';
+				    }
+				}
+				amip = amip->next;
+			    }
+			}
+			DisplayData(win, topidx);
+		    } else if (how == PICK_ANY && isdigit(code) &&
+			       (counting || (!counting && code !='0'))) {
+			if (count < LARGEST_INT) {
+			    count = count*10 + (long)(code-'0');
+			    if (count > LARGEST_INT)
+				count = LARGEST_INT;
+			    if (count > 0) {
+				counting = TRUE;
+				reset_counting = FALSE;
+			    } else {
+				reset_counting = TRUE;
+			    }
+			    sprintf(countString, "Count: %d", count);
+			    pline(countString);
+			}
+		    } else if( code == CTRL('D') || code == CTRL('U') ||
+			       code == MENU_NEXT_PAGE || code == MENU_PREVIOUS_PAGE ||
+			       code == MENU_FIRST_PAGE || code == MENU_LAST_PAGE )
 		    {
 			int endcnt, i;
 
@@ -613,32 +836,35 @@ DoMenuScroll( win, blocking, how, retmip )
 			if( !gd )
 			    panic("Can't find scroll gadget" );
 
-			endcnt = wheight / 2;
+			endcnt = wheight; /* /2; */
 			if( endcnt == 0 )
 			    endcnt = 1;
 
-			for( i = 0; i < endcnt; ++i )
+			if (code == MENU_FIRST_PAGE) {
+			    topidx = 0;
+			} else if (code == MENU_LAST_PAGE) {
+			    topidx = cw->maxrow - wheight;
+			} else for( i = 0; i < endcnt; ++i )
 			{
-			    if( code == CTRL('D') )
+			    if (code == CTRL('D') || code == MENU_NEXT_PAGE)
 			    {
 				if( topidx + wheight < cw->maxrow )
 				    ++topidx;
 				else
 				    break;
 			    }
-			    else
+			    else if (code = CTRL('U') || code == MENU_PREVIOUS_PAGE)
 			    {
 				if( topidx > 0 )
 				    --topidx;
 				else
 				    break;
 			    }
-
-			    /* Make prop gadget the right size and place */
-
-			    DisplayData( win, topidx );
-			    SetPropInfo( w,gd, wheight, totalvis, topidx );
 			}
+			/* Make prop gadget the right size and place */
+
+			DisplayData( win, topidx );
+			SetPropInfo( w,gd, wheight, totalvis, topidx );
 			oldsecs = oldmics = 0;
 		    }
 		    else if( code == '\b' )
@@ -722,11 +948,15 @@ DoMenuScroll( win, blocking, how, retmip )
 		    }
 		    else if( code == '\33' )
 		    {
-			morc = '\33';
-			aredone = 1;
+			if (counting) {
+			    reset_counting = TRUE;
+			} else {
+			    aredone = 1;
+			}
 		    }
 		    else
 		    {
+			int selected = FALSE;
 			for( amip = cw->menu.items; amip; amip = amip->next )
 			{
 			    if( amip->selector == code )
@@ -734,13 +964,33 @@ DoMenuScroll( win, blocking, how, retmip )
 				if( how == PICK_ONE )
 				    aredone = 1;
 				amip->selected = !amip->selected;
+				if (counting && amip->selected) {
+				    amip->count = count;
+				    reset_counting = TRUE;
+				    amip->str[SOFF+2] = '#';
+				} else {
+				    amip->count = -1;
+				    reset_counting = TRUE;
+				    amip->str[SOFF+2] = '-';
+				}
+				selected = TRUE;
 			    } else if (amip->gselector == code )
 			    {
 				amip->selected = !amip->selected;
+				if (counting) {
+				    amip->count = count;
+				    reset_counting = TRUE;
+				    amip->str[SOFF+2] = '#';
+				} else {
+				    amip->count = -1;
+				    reset_counting = TRUE;
+				    amip->str[SOFF+2] = '-';
+				}
+				selected = TRUE;
 			    }
 			}
-			DisplayData( win, topidx );
-			morc = code;
+			if (selected)
+			    DisplayData( win, topidx );
 		    }
 		    break;
 
@@ -829,6 +1079,15 @@ DoMenuScroll( win, blocking, how, retmip )
 			    {
 				amip = find_menu_item( cw, oidx );
 				amip->selected = 0;
+				amip->count = -1;
+				reset_counting = TRUE;
+				if (amip->canselect)
+				    amip->str[SOFF+2] = '-';
+			    }
+			    if (counting && amip->selected && amip->canselect) {
+				amip->count = count;
+				reset_counting = TRUE;
+				amip->str[SOFF+2] = '#';
 			    }
 			    DisplayData( win, topidx );
 			}
@@ -841,8 +1100,13 @@ DoMenuScroll( win, blocking, how, retmip )
 			    if( amip && oidx != aidx &&
 				    ( oidx > topidx && oidx - topidx < wheight ) )
 			    {
-				if( how != PICK_ANY )
+				if( how != PICK_ANY ) {
 				    amip->selected = 0;
+				    amip->count = -1;
+				    reset_counting = TRUE;
+				    if (amip->canselect)
+					amip->str[SOFF+2] = '-';
+				}
 				oidx = -1;
 			    }
 			    amip = find_menu_item( cw, aidx );
@@ -854,6 +1118,16 @@ DoMenuScroll( win, blocking, how, retmip )
 						    oldmics, secs, mics ) )
 				{
 				    amip->selected = !amip->selected;
+				    if (counting && amip->selected) {
+					amip->count = count;
+					reset_counting = TRUE;
+					amip->str[SOFF+2] = '#';
+				    } else {
+					amip->count = -1;
+					reset_counting = TRUE;
+					if (amip->canselect)
+					    amip->str[SOFF+2] = '-';
+				    }
 				}
 			    }
 			    else
@@ -870,6 +1144,12 @@ DoMenuScroll( win, blocking, how, retmip )
 			DisplayBeep( NULL );
 		    }
 		    break;
+	    }
+	    if (reset_counting) {
+		count = 0;
+		if (counting)
+		    pline("Count: 0");
+		counting = FALSE;
 	    }
 	}
     }
@@ -962,10 +1242,14 @@ FindLine( win, line )
 		    break;
 	    	--len;
 	    }
-	    if( len == 0 )
-		len = strlen(t);
-	    t += len;
-	    col += len;
+	    if( len == 0 ) {
+		while ( *t && *t != ' ') {
+		    t++; col++;
+		}
+	    } else {
+		t += len;
+		col += len;
+	    }
 	    if( *t )
 	    {
 		while( *t == ' ' )
@@ -1025,16 +1309,20 @@ CountLines( win )
 	    len = strlen( t );
 	    if( col + len > cw->cols )
 		len = cw->cols - col;
-	    while( len > 0 && t[len] )
+	    while( len > 0 )
 	    {
-	    	if( t[len] == ' ' )
+	    	if( !t[len] || t[len] == ' ' )
 		    break;
 	    	--len;
 	    }
-	    if( len == 0 )
-		len = strlen(t);
-	    t += len;
-	    col += len;
+	    if( len == 0 ) {
+		while ( *t && *t != ' ') {
+		    t++; col++;
+		}
+	    } else {
+		t += len;
+		col += len;
+	    }
 	    if( *t )
 	    {
 		while( *t == ' ' )
@@ -1097,13 +1385,14 @@ DisplayData( win, start )
 	cw->cols = ( w->Width - w->BorderLeft - w->BorderRight - 4 ) / txwd;
     }
 
+    /* Get the real line to display at */
+    start = FindLine( win, start );
+
     mip = cw->menu.items;
     for( i = 0; mip && i < start; ++i )
     {
 	mip = mip->next;
     }
-    /* Get the real line to display at */
-    start = FindLine( win, start );
 
     /* Skip any initial response to a previous line */
     if( cw->type == NHW_MESSAGE && mip && mip->selected < 0 )
@@ -1116,11 +1405,9 @@ DisplayData( win, start )
 	/* Just erase unused lines in the window */
     	if( i >= cw->maxrow )
     	{
-	    if (WINVERS_AMIV){
-		if(win == WIN_INVEN){
-		    amii_curs( win, 0, disprow - start );
-		    amiga_print_glyph( win, 0, NO_GLYPH);
-		}
+	    if (WINVERS_AMIV && win == WIN_INVEN) {
+		amii_curs( win, 0, disprow - start );
+		amiga_print_glyph( win, 0, NO_GLYPH);
 	    }
 	    amii_curs( win, 1, disprow - start );
 	    amii_cl_end( cw, 0 );
@@ -1138,7 +1425,7 @@ DisplayData( win, start )
 	if( cw->type != NHW_MESSAGE || cw->data[ i ][ SEL_ITEM ] >= 0 )
 	{
 	    amii_curs( win, 1, disprow - start );
-	    if( WINVERS_AMIV )
+	    if( WINVERS_AMIV && win == WIN_INVEN )
 	    {
 		if( mip )
 		    amiga_print_glyph( win, 0, mip->glyph );
@@ -1195,30 +1482,35 @@ DisplayData( win, start )
 	while( *t )
 	{
 	    len = strlen( t );
-	    if( len > cw->cols )
-		len = cw->cols;
+	    if( len > (cw->cols - col) )
+		len = cw->cols - col;
 	    while( len > 0 )
 	    {
 	    	if( !t[len] || t[len] == ' ' )
 		    break;
 	    	--len;
 	    }
-	    if( len == 0 )
-		len = strlen(t);
-	    Text( rp, t, len );
-	    t += len;
-	    col += len;
+	    if( len == 0 ) {
+		Text( rp, t, cw->cols - col );
+		while ( *t && *t != ' ') {
+		    t++; col++;
+		}
+	    } else {
+		Text( rp, t, len );
+		t += len;
+		col += len;
+	    }
 	    amii_cl_end( cw, col );
 	    if( *t )
 	    {
 		++disprow;
 		/* Stop at the bottom of the window */
-		if( disprow >= wheight + start )
+		if( disprow > wheight + start )
 		    break;
 		while( *t == ' ' )
 		    ++t;
 		amii_curs( win, 1, disprow - start - 1 );
-		if( mip && win == WIN_INVEN )
+		if( mip && win == WIN_INVEN && WINVERS_AMIV )
 		{
 		    /* Erase any previous glyph drawn here. */
 		    amiga_print_glyph( win, 0, NO_GLYPH );
@@ -1244,10 +1536,11 @@ DisplayData( win, start )
 	    SetAPen( rp, amii_textBPen );
 	    SetBPen( rp, amii_textBPen );
 	}
-	amii_cl_end( cw, col );
+ 	amii_cl_end( cw, col );
 	whichcolor = -1;
 	if( mip ) mip = mip->next;
     }
+    RefreshWindowFrame(w);
     return;
 }
 
@@ -1270,7 +1563,7 @@ void SetPropInfo( win, gad, vis, total, top )
     /* Scale the body position. */
     /* 2 lines overlap */
 
-    if( hidden > 0 && total != 0 )
+    if( hidden > 0 && total > 2)
 	body = (ULONG) ((vis - 2) * MAXBODY) / (total - 2);
     else
 	body = MAXBODY;

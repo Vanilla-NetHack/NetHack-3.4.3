@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)quest.c	3.3	98/11/04	*/
+/*	SCCS Id: @(#)quest.c	3.3	2000/05/05	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -42,7 +42,7 @@ on_locate()
   if(!Qstat(first_locate)) {
     qt_pager(QT_FIRSTLOCATE);
     Qstat(first_locate) = TRUE;
-  } else if(u.uz0.dlevel < u.uz.dlevel)
+  } else if(u.uz0.dlevel < u.uz.dlevel && !Qstat(killed_nemesis))
 	qt_pager(QT_NEXTLOCATE);
 }
 
@@ -109,14 +109,14 @@ STATIC_OVL boolean
 is_pure(talk)
 boolean talk;
 {
-    aligntyp original_alignment = u.ualignbase[1];
+    aligntyp original_alignment = u.ualignbase[A_ORIGINAL];
 
 #ifdef WIZARD
     if (wizard && talk) {
 	if (u.ualign.type != original_alignment) {
 	    You("are currently %s instead of %s.",
 		align_str(u.ualign.type), align_str(original_alignment));
-	} else if (u.ualignbase[0] != original_alignment) {
+	} else if (u.ualignbase[A_CURRENT] != original_alignment) {
 	    You("have converted.");
 	} else if (u.ualign.record < MIN_QUEST_ALIGN) {
 	    You("are currently %d and require %d.",
@@ -128,7 +128,7 @@ boolean talk;
 #endif
     return (boolean)(u.ualign.record >= MIN_QUEST_ALIGN &&
 		     u.ualign.type == original_alignment &&
-		     u.ualignbase[0] == original_alignment);
+		     u.ualignbase[A_CURRENT] == original_alignment);
 }
 
 /*
@@ -321,6 +321,7 @@ prisoner_speaks (mtmp)
 	    	pline("%s speaks:", Monnam(mtmp));
 	    verbalize("I'm finally free!");
 	    mtmp->mstrategy &= ~STRAT_WAITMASK;
+	    mtmp->mpeaceful = 1;
 
 	    /* Your god is happy... */
 	    adjalign(3);

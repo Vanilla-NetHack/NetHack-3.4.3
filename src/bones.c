@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.3	97/10/17	*/
+/*	SCCS Id: @(#)bones.c	3.3	2000/05/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -34,6 +34,11 @@ d_level *lev;
 		);
 }
 
+/* Call this function for each fruit object saved in the bones level: it marks
+ * that particular type of fruit as existing (the marker is that that type's
+ * ID is positive instead of negative).  This way, when we later save the
+ * chain of fruit types, we know to only save the types that exist.
+ */
 STATIC_OVL void
 goodfruit(id)
 int id;
@@ -76,6 +81,7 @@ boolean restore;
 			otmp->dknown = otmp->bknown = 0;
 			otmp->rknown = 0;
 			otmp->invlet = 0;
+			otmp->no_charge = 0;
 
 			if (otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
 #ifdef MAIL
@@ -130,7 +136,7 @@ struct obj *cont;
 
 		if(rn2(5)) curse(otmp);
 		if (mtmp)
-			add_to_minv(mtmp, otmp);
+			(void) add_to_minv(mtmp, otmp);
 		else if (cont)
 			add_to_container(cont, otmp);
 		else
@@ -175,11 +181,13 @@ can_make_bones()
 
 /* save bones and possessions of a deceased adventurer */
 void
-savebones()
+savebones(corpse)
+struct obj *corpse;
 {
-	register int fd, x, y;
-	register struct trap *ttmp;
-	register struct monst *mtmp, *mtmp2;
+	int fd, x, y;
+	struct trap *ttmp;
+	struct monst *mtmp;
+	struct permonst *mptr;
 	struct fruit *f;
 	char c, *bonesid;
 
@@ -201,17 +209,15 @@ savebones()
 	}
 
  make_bones:
-	dmonsfree();
 	unleash_all();
 	/* in case these characters are not in their home bases */
-	mtmp2 = fmon;
-	while ((mtmp = mtmp2) != 0) {
-		mtmp2 = mtmp->nmon;
-		if(mtmp->iswiz || mtmp->data == &mons[PM_MEDUSA]
-			|| mtmp->data->msound == MS_NEMESIS
-			|| mtmp->data->msound == MS_LEADER
-			|| mtmp->data == &mons[PM_VLAD_THE_IMPALER])
-		    mongone(mtmp);
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
+	    mptr = mtmp->data;
+	    if (mtmp->iswiz || mptr == &mons[PM_MEDUSA] ||
+		    mptr->msound == MS_NEMESIS || mptr->msound == MS_LEADER ||
+		    mptr == &mons[PM_VLAD_THE_IMPALER])
+		mongone(mtmp);
 	}
 #ifdef STEED
 	if (u.usteed) {
@@ -219,10 +225,11 @@ savebones()
 
 	    /* Move the steed to an adjacent square */
 	    if (enexto(&cc, u.ux, u.uy, u.usteed->data))
-	    	rloc_to(u.usteed, cc.x, cc.y);
+		rloc_to(u.usteed, cc.x, cc.y);
 	    u.usteed = 0;
 	}
 #endif
+	dmonsfree();		/* discard dead or gone monsters */
 
 	/* mark all fruits as nonexistent; when we come to them we'll mark
 	 * them as existing (using goodfruit())
@@ -250,13 +257,12 @@ savebones()
 		 * on your location
 		 */
 		in_mklev = TRUE;
-		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy, NO_MM_FLAGS);
+		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy, MM_NONAME);
 		in_mklev = FALSE;
 		if (!mtmp) return;
-		Strcpy((char *) mtmp->mextra, plname);
-		/* Leave a headstone */
-		if (levl[u.ux][u.uy].typ == ROOM && !t_at(u.ux, u.uy))
-		    levl[u.ux][u.uy].typ = GRAVE;
+		mtmp = christen_monst(mtmp, plname);
+		if (corpse)
+			(void) obj_attach_mid(corpse, mtmp->m_id); 
 	} else {
 		/* give your possessions to the monster you become */
 		in_mklev = TRUE;
@@ -314,23 +320,24 @@ savebones()
 	c = (char) (strlen(bonesid) + 1);
 
 #ifdef MFLOPPY  /* check whether there is room */
-	savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
-	/* savelev() initializes bytes_counted to 0, so it must come first
-	 * here even though it does not in the real save.
-	 * the resulting extra bflush() at the end of savelev() may increase
-	 * bytes_counted by a couple over what the real usage will be.
-	 *
-	 * note it is safe to call store_version() here only because
-	 * bufon() is null for ZEROCOMP, which MFLOPPY uses -- otherwise
-	 * this code would have to know the size of the version information
-	 * itself.
-	 */
-	store_version(fd);
-	bwrite(fd, (genericptr_t) &c, sizeof c);
-	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
-	savefruitchn(fd, COUNT_SAVE);
-	bflush(fd);
-	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
+	if (iflags.checkspace) {
+	    savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
+	    /* savelev() initializes bytes_counted to 0, so it must come
+	     * first here even though it does not in the real save.  the
+	     * resulting extra bflush() at the end of savelev() may increase
+	     * bytes_counted by a couple over what the real usage will be.
+	     *
+	     * note it is safe to call store_version() here only because
+	     * bufon() is null for ZEROCOMP, which MFLOPPY uses -- otherwise
+	     * this code would have to know the size of the version
+	     * information itself.
+	     */
+	    store_version(fd);
+	    bwrite(fd, (genericptr_t) &c, sizeof c);
+	    bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
+	    savefruitchn(fd, COUNT_SAVE);
+	    bflush(fd);
+	    if (bytes_counted > freediskspace(bones)) { /* not enough room */
 # ifdef WIZARD
 		if (wizard)
 			pline("Insufficient space to create bones file.");
@@ -338,8 +345,9 @@ savebones()
 		(void) close(fd);
 		cancel_bonesfile();
 		return;
+	    }
+	    co_false();	/* make sure stuff before savelev() gets written */
 	}
-	co_false();	/* make sure stuff before savelev() gets written */
 #endif /* MFLOPPY */
 
 	store_version(fd);

@@ -125,7 +125,7 @@ long FDECL(dlb_ftell, (DLB_P));
 #endif
 
 #define RDTMODE "r"
-#if (defined(MSDOS) || defined(WIN32)) && defined(DLB)
+#if (defined(MSDOS) || defined(WIN32) || defined(TOS)) && defined(DLB)
 #define WRTMODE "w+b"
 #else
 #define WRTMODE "w+"

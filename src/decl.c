@@ -47,6 +47,8 @@ NEARDATA int doorindex = 0;
 NEARDATA char *save_cm = 0;
 NEARDATA int killer_format = 0;
 const char *killer = 0;
+const char *delayed_killer = 0;
+char killer_buf[BUFSZ] = DUMMY;
 const char *nomovemsg = 0;
 const char nul[40] = DUMMY;			/* contains zeros */
 NEARDATA char plname[PL_NSIZ] = DUMMY;		/* player name */
@@ -209,7 +211,16 @@ NEARDATA struct c_color_names c_color_names = {
 struct c_common_strings c_common_strings = {
 	"Nothing happens.",		"That's enough tries!",
 	"That is a silly thing to %s.",	"shudder for a moment.",
-	"something", "Something", "You can move again."
+	"something", "Something", "You can move again.", "Never mind."
+};
+
+/* NOTE: the order of these words exactly corresponds to the
+   order of oc_material values #define'd in objclass.h. */
+const char *materialnm[] = {
+	"mysterious", "liquid", "wax", "organic", "flesh",
+	"paper", "cloth", "leather", "wooden", "bone", "dragonhide",
+	"iron", "metal", "copper", "silver", "gold", "platinum", "mithril",
+	"plastic", "glass", "gemstone", "stone"
 };
 
 /* Vision */
@@ -219,10 +230,19 @@ NEARDATA char	 **viz_array = 0;/* used in cansee() and couldsee() macros */
 /* Global windowing data, defined here for multi-window-system support */
 NEARDATA winid WIN_MESSAGE = WIN_ERR, WIN_STATUS = WIN_ERR;
 NEARDATA winid WIN_MAP = WIN_ERR, WIN_INVEN = WIN_ERR;
-char toplines[BUFSZ];
+char toplines[TBUFSZ];
 /* Windowing stuff that's really tty oriented, but present for all ports */
 struct tc_gbl_data tc_gbl_data = { 0,0, 0,0 };	/* AS,AE, LI,CO */
 
+char *fqn_prefix[PREFIX_COUNT] = { (char *)0, (char *)0, (char *)0, (char *)0,
+				(char *)0, (char *)0, (char *)0, (char *)0 };
+
+#ifdef PREFIXES_IN_USE
+char *fqn_prefix_names[PREFIX_COUNT] = { "hackdir", "leveldir", "savedir",
+					"bonesdir", "datadir", "scoredir",
+					"lockdir", "configdir" };
+#endif
+			
 /* dummy routine used to force linkage */
 void
 decl_init()

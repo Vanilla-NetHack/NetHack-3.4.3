@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for building nethack itself.
-#	SCCS Id: @(#)Makefile.src	3.3	1999/08/29
+#	SCCS Id: @(#)Makefile.src	3.3	2000/08/05
 
 #  Copy this file to [.src]Makefile. and then edit it as needed.
 #  If you changed CC or CFLAGS, make similar changes in [.util]Makefile.
@@ -296,8 +296,8 @@ $(CONFIG_H) : $(INC)config.h $(INC)config1.h $(INC)tradstdc.h $(INC)global.h \
 		$(INC)nhlan.h
 	$(TOUCH) $(CONFIG_H)
 # hack.h timestamp
-$(HACK_H) : $(INC)hack.h $(CONFIG_H) $(INC)dungeon.h \
-		$(INC)align.h $(INC)monsym.h $(INC)mkroom.h \
+$(HACK_H) : $(INC)hack.h $(CONFIG_H) $(INC)align.h \
+		$(INC)dungeon.h $(INC)monsym.h $(INC)mkroom.h \
 		$(INC)objclass.h $(INC)youprop.h $(INC)prop.h \
 		$(INC)permonst.h $(INC)monattk.h \
 		$(INC)monflag.h $(INC)mondata.h $(INC)pm.h \
@@ -325,11 +325,11 @@ tclib.obj :	tclib.c $(CONFIG_H)
 tclib.c :	$(SYSSHR)tclib.c
 	copy $(SYSSHR)tclib.c tclib.c
 #	user interface code -- VMS uses tty (1st 4) only
-getline.obj :	$(TTY)getline.c $(HACK_H) $(INC)wintty.h $(INC)func_tab.h
-termcap.obj :	$(TTY)termcap.c $(HACK_H) $(INC)wintty.h $(INC)tcap.h
-topl.obj :	$(TTY)topl.c $(HACK_H) $(INC)tcap.h $(INC)wintty.h
+getline.obj :	$(TTY)getline.c $(HACK_H) $(INC)func_tab.h
+termcap.obj :	$(TTY)termcap.c $(HACK_H) $(INC)tcap.h
+topl.obj :	$(TTY)topl.c $(HACK_H) $(INC)tcap.h
 wintty.obj :	$(TTY)wintty.c $(HACK_H) $(INC)dlb.h \
-		$(INC)patchlevel.h $(INC)tcap.h $(INC)wintty.h
+		$(INC)patchlevel.h $(INC)tcap.h
 Window.obj :	$(X11)Window.c $(INC)xwindowp.h $(INC)xwindow.h $(CONFIG_H)
 dialogs.obj :	$(X11)dialogs.c $(CONFIG_H)
 winX.obj :	$(X11)winX.c $(HACK_H) $(INC)winX.h $(INC)dlb.h \
@@ -395,8 +395,8 @@ mkroom.obj :	mkroom.c $(HACK_H)
 mon.obj :	mon.c $(HACK_H) $(INC)mfndpos.h $(INC)edog.h
 mondata.obj :	mondata.c $(HACK_H) $(INC)eshk.h $(INC)epri.h
 monmove.obj :	monmove.c $(HACK_H) $(INC)mfndpos.h $(INC)artifact.h
-monst.obj :	monst.c $(CONFIG_H) $(INC)permonst.h $(INC)monattk.h \
-		$(INC)monflag.h $(INC)align.h $(INC)monsym.h \
+monst.obj :	monst.c $(CONFIG_H) $(INC)permonst.h $(INC)align.h \
+		$(INC)monattk.h $(INC)monflag.h $(INC)monsym.h \
 		$(INC)dungeon.h $(INC)eshk.h $(INC)vault.h \
 		$(INC)epri.h $(INC)color.h
 mplayer.obj :	mplayer.c $(HACK_H)
@@ -449,7 +449,7 @@ vision.obj :	vision.c $(HACK_H) $(INC)vis_tab.h
 weapon.obj :	weapon.c $(HACK_H)
 were.obj :	were.c $(HACK_H)
 wield.obj :	wield.c $(HACK_H)
-windows.obj :	windows.c $(HACK_H) $(INC)wintty.h
+windows.obj :	windows.c $(HACK_H) $(INC)wingem.h $(INC)winGnome.h
 wizard.obj :	wizard.c $(HACK_H) $(INC)qtext.h
 worm.obj :	worm.c $(HACK_H) $(INC)lev.h
 worn.obj :	worn.c $(HACK_H)

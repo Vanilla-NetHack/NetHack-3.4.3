@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.3	1999/09/22
+#	SCCS Id: @(#)Makefile.utl	3.3	2000/08/05
 
 #  Copy this file to [.util]Makefile. and then edit it as needed.
 #  Settings for CC and CFLAGS ought to match the ones used in [.src]Makefile.
@@ -155,7 +155,7 @@ $(MAKEDEFS) :	$(MAKEOBJS) $(VMSMAKEOBJS) $(LIBOPT)
 	$(LINK) $(LFLAGS) $(MAKEOBJS),$(VMSMAKEOBJS),$(LIBS)
 
 makedefs.obj :	makedefs.c \
-		$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
+		$(CONFIG_H) $(INC)permonst.h $(INC)objclass.h \
 		$(INC)monsym.h $(INC)artilist.h $(INC)dungeon.h \
 		$(INC)obj.h $(INC)monst.h $(INC)you.h $(INC)flag.h \
 		$(INC)dlb.h $(INC)patchlevel.h $(INC)qtext.h
@@ -183,15 +183,15 @@ $(INC)date.h :	$(MAKEDEFS)
 $(LEVCOMP) : $(SPLEVOBJS) $(VMSSPLEVOBJS)	# $(LIBOPT)
 	$(LINK)/Exe=$(LEVCOMP) $(LFLAGS) $(SPLEVOBJS),$(VMSSPLEVOBJS),$(LIBS)
 
-lev_yacc.obj : $(INC)hack.h $(INC)sp_lev.h lev_yacc.c
+lev_yacc.obj : $(HACK_H) $(INC)sp_lev.h lev_yacc.c
 	$(CC) $(CFLAGS) lev_yacc.c
-lev_lex.obj  : $(INC)hack.h $(INC)lev_comp.h $(INC)sp_lev.h lev_lex.c
+lev_lex.obj  : $(HACK_H) $(INC)lev_comp.h $(INC)sp_lev.h lev_lex.c
 	@ if f$search("lev_lex.h").nes."" then	$(MOVE) lev_lex.h stdio.h
 	$(CC) $(CFLAGS) lev_lex.c
 	@ if f$search("stdio.h").nes."" then  $(MOVE) stdio.h lev_lex.h
-lev_main.obj : $(INC)hack.h $(INC)sp_lev.h $(INC)tcap.h $(INC)date.h lev_main.c
+lev_main.obj : $(HACK_H) $(INC)sp_lev.h $(INC)tcap.h $(INC)date.h lev_main.c
 	$(CC) $(CFLAGS) lev_main.c
-panic.obj    : $(INC)config.h
+panic.obj    : $(CONFIG_H)
 	$(CC) $(CFLAGS) panic.c
 
 $(INC)lev_comp.h : lev_yacc.c
@@ -216,13 +216,13 @@ lev_lex.c : lev_comp.l
 $(DGNCOMP) : $(DGNCOMPOBJS) $(VMSDGNCOBJS)	# $(LIBOPT)
 	$(LINK)/Exe=$(DGNCOMP) $(LFLAGS) $(DGNCOMPOBJS),$(VMSDGNCOBJS),$(LIBS)
 
-dgn_yacc.obj : $(INC)config.h $(INC)dgn_file.h $(INC)date.h dgn_yacc.c
+dgn_yacc.obj : $(CONFIG_H) $(INC)dgn_file.h $(INC)date.h dgn_yacc.c
 	$(CC) $(CFLAGS) dgn_yacc.c
-dgn_lex.obj  : $(INC)config.h $(INC)dgn_comp.h $(INC)dgn_file.h dgn_lex.c
+dgn_lex.obj  : $(CONFIG_H) $(INC)dgn_comp.h $(INC)dgn_file.h dgn_lex.c
 	@ if f$search("lev_lex.h").nes."" then	$(MOVE) lev_lex.h stdio.h
 	$(CC) $(CFLAGS) dgn_lex.c
 	@ if f$search("stdio.h").nes."" then  $(MOVE) stdio.h lev_lex.h
-dgn_main.obj : $(INC)config.h dgn_main.c
+dgn_main.obj : $(CONFIG_H) dgn_main.c
 	$(CC) $(CFLAGS) dgn_main.c
 
 $(INC)dgn_comp.h : dgn_yacc.c
@@ -247,14 +247,14 @@ dgn_lex.c : dgn_comp.l
 $(RECOVER) : $(RECOVOBJS) $(VMSRECOBJS)		# $(LIBOPT)
 	$(LINK) $(LFLAGS) $(RECOVOBJS),$(VMSRECOBJS),$(LIBS)
 
-recover.obj : $(INC)config.h recover.c
+recover.obj : $(CONFIG_H) recover.c
 
 #	dependencies for dlb
 #
 $(DLB) : $(DLBOBJS) $(VMSDLBOBJS)		# $(LIBOPT)
 	$(LINK)/Exe=$(DLB) $(LFLAGS) $(DLBOBJS),$(VMSDLBOBJS),$(LIBS)
 
-dlb_main.obj : $(INC)config.h $(INC)dlb.h dlb_main.c
+dlb_main.obj : $(CONFIG_H) $(INC)dlb.h dlb_main.c
 
 #	dependencies and build rules for tile utilities
 #
@@ -288,43 +288,43 @@ $(INC)tile.h : $(WINSHR)tile.h
 # unwanted "sticky defaults" when $(TEXTIO) is used in a comma-separated
 # list on the link command line.
 #
-$(UTL)tiletxt.obj : $(INC)hack.h $(WINSHR)tilemap.c
+$(UTL)tiletxt.obj : $(HACK_H) $(WINSHR)tilemap.c
 	$(CC) $(CFLAGS) /Def=("TILETEXT")/Obj=$@ $(WINSHR)tilemap.c
-tilemap.obj  : $(INC)hack.h $(WINSHR)tilemap.c
-tiletext.obj : $(INC)config.h $(INC)tile.h $(WINSHR)tiletext.c
-gifread.obj  : $(INC)config.h $(INC)tile.h $(WINSHR)gifread.c
-ppmwrite.obj : $(INC)config.h $(INC)tile.h $(WINSHR)ppmwrite.c
-tile2x11.obj : $(INC)hack.h $(INC)tile.h $(INC)tile2x11.h $(WINX11)tile2x11.c
+tilemap.obj  : $(HACK_H) $(WINSHR)tilemap.c
+tiletext.obj : $(CONFIG_H) $(INC)tile.h $(WINSHR)tiletext.c
+gifread.obj  : $(CONFIG_H) $(INC)tile.h $(WINSHR)gifread.c
+ppmwrite.obj : $(CONFIG_H) $(INC)tile.h $(WINSHR)ppmwrite.c
+tile2x11.obj : $(HACK_H) $(INC)tile.h $(INC)tile2x11.h $(WINX11)tile2x11.c
 
 
 # make sure object files from src are available when needed
 #
-$(SRC)alloc.obj : $(SRC)alloc.c $(INC)config.h
+$(SRC)alloc.obj : $(SRC)alloc.c $(CONFIG_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) alloc.obj
       @ $(CD) $(UTL)
 
-$(SRC)monst.obj : $(SRC)monst.c $(INC)config.h
+$(SRC)monst.obj : $(SRC)monst.c $(CONFIG_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) monst.obj
       @ $(CD) $(UTL)
 
-$(SRC)objects.obj : $(SRC)objects.c $(INC)config.h
+$(SRC)objects.obj : $(SRC)objects.c $(CONFIG_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) objects.obj
       @ $(CD) $(UTL)
 
-$(SRC)decl.obj : $(SRC)decl.c $(INC)hack.h
+$(SRC)decl.obj : $(SRC)decl.c $(HACK_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) decl.obj
       @ $(CD) $(UTL)
 
-$(SRC)drawing.obj : $(SRC)drawing.c $(INC)hack.h
+$(SRC)drawing.obj : $(SRC)drawing.c $(HACK_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) drawing.obj
       @ $(CD) $(UTL)
 
-$(SRC)dlb.obj : $(SRC)dlb.c $(INC)hack.h $(INC)dlb.h
+$(SRC)dlb.obj : $(SRC)dlb.c $(HACK_H) $(INC)dlb.h
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) dlb.obj
       @ $(CD) $(UTL)
@@ -345,7 +345,7 @@ $(SRC)vmsmisc.obj :	$(VMS)vmsmisc.c
 	$(MAKE)$(MAKEFLAGS) vmsmisc.obj
       @ $(CD) $(UTL)
 
-$(SRC)vmsfiles.obj :	$(VMS)vmsfiles.c $(INC)config.h
+$(SRC)vmsfiles.obj :	$(VMS)vmsfiles.c $(CONFIG_H)
 	$(CD) $(SRC)
 	$(MAKE)$(MAKEFLAGS) vmsfiles.obj
       @ $(CD) $(UTL)
@@ -363,4 +363,5 @@ spotless :	clean
       - if f$search("lev_lex.h") .nes."" then  $(RM) lev_lex.h;
       - if f$search("*tab.c")	 .nes."" then  $(RM) *tab.c;
       - if f$search("*.exe").nes."" then \
- $(RM) $(MAKEDEFS),$(LEVCOMP),$(DGNCOMP),$(RECOVER),$(DLB),$(TILEUTILS)
+ $(RM) $(MAKEDEFS),$(LEVCOMP),$(DGNCOMP),$(RECOVER),$(DLB)
+      - if f$search("*.exe").nes."" then  $(RM) $(TILEUTILS)

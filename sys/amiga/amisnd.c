@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)amisnd.c	3.2	95/7/23	*/
+/*	SCCS Id: @(#)amisnd.c	3.2	2000/01/12*/
 /* 	Copyright (c) 1992, 1993, 1995 by Gregg Wonderly */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,10 +23,10 @@
 #include <dos/dosextens.h>
 #include <graphics/gfxbase.h>
 
-#include <clib/exec_protos.h>
+#include <proto/exec.h>
 #include <clib/alib_protos.h>
-#include <clib/dos_protos.h>
-#include <clib/graphics_protos.h>
+#include <proto/dos.h>
+#include <proto/graphics.h>
 
 #include <stdio.h>
 #include <stdlib.h>

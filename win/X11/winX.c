@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.c	3.3	96/04/05	*/
+/*	SCCS Id: @(#)winX.c	3.3	1999/12/21	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -499,7 +499,8 @@ X11_putstr(window, attr, str)
 
     switch (wp->type) {
 	case NHW_MESSAGE:
-	    Strcpy(toplines, str);	/* for Norep(). */
+	    (void) strncpy(toplines, str, TBUFSZ);	/* for Norep(). */
+	    toplines[TBUFSZ - 1] = 0;
 	    append_message(wp, str);
 	    break;
 	case NHW_STATUS:
@@ -860,6 +861,8 @@ static XtActionsRec actions[] = {
     {"ec_delete",	ec_delete},	/* action for ext-com menu delete */
     {"ps_key",		ps_key},	/* action for player selection */
     {"race_key",	race_key},	/* action for race selection */
+    {"gend_key",	gend_key},	/* action for gender selection */
+    {"algn_key",	algn_key},	/* action for alignment selection */
     {"X11_hangup",	X11_hangup},	/* action for delete of top-level */
     {"input",		map_input},	/* action for key input */
     {"scroll",		nh_keyscroll},	/* action for scrolling by keys */
@@ -1123,6 +1126,7 @@ askname_done(w, client_data, call_data)
 
     (void) strncpy(plname, s, len);
     plname[len] = '\0';
+    XtFree(s);
 
     nh_XtPopdown(XtParent(dialog));
     exit_x_event = TRUE;
@@ -1179,6 +1183,7 @@ done_button(w, client_data, call_data)
 
     s = (char *) GetDialogResponse(dialog);
     Strcpy(getline_input, s);
+    XtFree(s);
     nh_XtPopdown(XtParent(dialog));
     exit_x_event = TRUE;
 }

@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 
-/* #define BETA		/* if a beta-test copy	[MRS] */
+/*#define BETA	*/	/* if a beta-test copy	[MRS] */
 
 /*
  * Files expected to exist in the playground directory.
@@ -246,9 +246,14 @@ typedef xchar	boolean;		/* 0 or 1 */
 # define EXIT_FAILURE 1
 #endif
 
-#if defined(X11_GRAPHICS) || defined(AMII_GRAPHICS) || defined(QT_GRAPHICS)
+#if defined(X11_GRAPHICS) || defined(QT_GRAPHICS) || defined(GNOME_GRAPHICS)
 # ifndef USE_TILES
 #  define USE_TILES		/* glyph2tile[] will be available */
+# endif
+#endif
+#if defined(AMII_GRAPHICS) || defined(GEM_GRAPHICS)
+# ifndef USE_TILES
+#  define USE_TILES
 # endif
 #endif
 
@@ -307,6 +312,8 @@ struct version_info {
 
 #define BUFSZ		256	/* for getlin buffers */
 #define QBUFSZ		128	/* for building question text */
+#define TBUFSZ		300	/* toplines[] buffer max msg: 3 81char names */
+				/* plus longest prefix plus a few extra words */
 
 #define PL_NSIZ		32	/* name of player, ghost, shopkeeper */
 #define PL_CSIZ		32	/* sizeof pl_character */

@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_yacc.c	3.3	96/05/16	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.3	2000/01/17	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -46,7 +46,7 @@ extern int FDECL(get_floor_type, (CHAR_P));
 extern int FDECL(get_room_type, (char *));
 extern int FDECL(get_trap_type, (char *));
 extern int FDECL(get_monster_id, (char *,CHAR_P));
-extern int FDECL(get_object_id, (char *));
+extern int FDECL(get_object_id, (char *,CHAR_P));
 extern boolean FDECL(check_monster_char, (CHAR_P));
 extern boolean FDECL(check_object_char, (CHAR_P));
 extern char FDECL(what_map_char, (CHAR_P));
@@ -196,7 +196,7 @@ maze_level	: maze_def flags lev_init messages regions
 				for(i=0;i<npart;i++)
 				    maze.parts[i] = tmppart[i];
 				if (!write_level_file($1, (splev *)0, &maze)) {
-					yyerror("Can't open output file!!");
+					yyerror("Can't write output file!!");
 					exit(EXIT_FAILURE);
 				}
 				npart = 0;
@@ -230,7 +230,7 @@ room_level	: level_def flags lev_init messages rreg_init rooms corridors_def
 				if (check_subrooms()) {
 				    if (!write_level_file($1, &special_lev,
 							  (specialmaze *)0)) {
-					yyerror("Can't open output file!!");
+					yyerror("Can't write output file!!");
 					exit(EXIT_FAILURE);
 				    }
 				}
@@ -894,7 +894,7 @@ object_desc	: chance ':' object_c ',' o_name
 			tmpobj[nobj]->chance = $1;
 			tmpobj[nobj]->id = -1;
 			if ($5) {
-			    int token = get_object_id($5);
+			    int token = get_object_id($5, $<i>3);
 			    if (token == ERR)
 				yywarning(
 				"Illegal object name!  Making random object.");

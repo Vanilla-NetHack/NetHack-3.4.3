@@ -102,7 +102,7 @@ boolean pushing;
 			boolean moat = (ltyp != WATER) &&
 			    !Is_medusa_level(&u.uz) && !Is_waterlevel(&u.uz);
 
-			pline("There is a large splash as %s %s the %s.",
+			There("is a large splash as %s %s the %s.",
 			      the(xname(otmp)), fills_up? "fills":"falls into",
 			      lava ? "lava" : ltyp==POOL ? "pool" :
 			      moat ? "moat" : "water");
@@ -216,7 +216,7 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 	u.uconduct.gnostic++;
 
 	if (obj->blessed || obj->cursed) {
-		pline("There is %s flash as %s hit%s the altar.",
+		There("is %s flash as %s hit%s the altar.",
 			an(hcolor(obj->blessed ? amber : Black)),
 			doname(obj),
 			(obj->quan == 1L) ? "s" : "");
@@ -284,7 +284,7 @@ giveback:
 			(obj->spe<0) ? "weak" : "strong");
 		break;
 	    case RIN_GAIN_CONSTITUTION:
-		pline("The water flow seems %ser now.",
+		pline_The("water flow seems %ser now.",
 			(obj->spe<0) ? "less" : "great");
 		break;
 	    case RIN_INCREASE_ACCURACY:	/* KMH */
@@ -417,7 +417,7 @@ register const char *word;
 	}
 	if (obj->otyp == LEASH && obj->leashmon != 0) {
 		if (*word)
-			pline ("The leash is tied around your %s.",
+			pline_The("leash is tied around your %s.",
 					body_part(HAND));
 		return(FALSE);
 	}
@@ -510,7 +510,7 @@ register struct obj *obj;
 	/* uswallow check done by GAN 01/29/87 */
 	if(u.uswallow) {
 		if (obj != uball) {		/* mon doesn't pick up ball */
-		    mpickobj(u.ustuck,obj);
+		    (void) mpickobj(u.ustuck,obj);
 		}
 	} else  {
 		place_object(obj, u.ux, u.uy);
@@ -735,7 +735,7 @@ currentlevel_rewrite()
 	register int fd;
 
 	/* since level change might be a bit slow, flush any buffered screen
-	 *  output (like "you fall through a trapdoor") */
+	 *  output (like "you fall through a trap door") */
 	mark_synch();
 
 	fd = create_levelfile(ledger_no(&u.uz));
@@ -873,7 +873,7 @@ boolean at_stairs, falling, portal;
 	fd = currentlevel_rewrite();
 	if (fd < 0) return;
 
-	if (falling) /* assuming this is only trapdoor or hole */
+	if (falling) /* assuming this is only trap door or hole */
 	    impact_drop((struct obj *)0, u.ux, u.uy, newlevel->dlevel);
 
 	check_special_room(TRUE);		/* probably was a trap door */
@@ -1018,6 +1018,9 @@ boolean at_stairs, falling, portal;
 			}
 		    }
 		    losehp(rnd(3), "falling downstairs", KILLED_BY);
+#ifdef STEED
+		    if (u.usteed) dismount_steed(DISMOUNT_FELL);
+#endif
 		    selftouch("Falling, you");
 		} else if (u.dz && at_ladder)
 		    You("climb down the ladder.");
@@ -1170,7 +1173,7 @@ boolean at_stairs, falling, portal;
 		You("penetrated a high security area!");
 		pline("An alarm sounds!");
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		    if (mtmp->msleeping) mtmp->msleeping = 0;
+		    if (!DEADMONSTER(mtmp) && mtmp->msleeping) mtmp->msleeping = 0;
 	}
 
 	if (on_level(&u.uz, &astral_level))
@@ -1183,7 +1186,7 @@ boolean at_stairs, falling, portal;
 	save_currentstate();
 #endif
 
-	pickup(1);
+	(void) pickup(1);
 }
 
 STATIC_OVL void
@@ -1196,7 +1199,7 @@ final_level()
 
 	/* reset monster hostility relative to player */
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    reset_hostility(mtmp);
+	    if (!DEADMONSTER(mtmp)) reset_hostility(mtmp);
 
 	/* create some player-monsters */
 	create_mplayers(rn1(4, 3), TRUE);
@@ -1235,7 +1238,8 @@ final_level()
 					d((int)mtmp->m_lev,10) + 30 + rnd(30);
 		    if ((otmp = select_hwep(mtmp)) == 0) {
 			otmp = mksobj(SILVER_SABER, FALSE, FALSE);
-			mpickobj(mtmp, otmp);
+			if (mpickobj(mtmp, otmp))
+			    panic("merged weapon?");
 		    }
 		    bless(otmp);
 		    if (otmp->spe < 4) otmp->spe += rnd(4);

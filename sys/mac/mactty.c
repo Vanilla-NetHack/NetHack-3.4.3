@@ -11,11 +11,10 @@
  */
 
 #include "hack.h"	/* to get flags */
-#undef red
-#undef blue
-#undef green
 #include "mttypriv.h"
 #include <Resources.h>
+
+char game_active = 0;	/* flag to window rendering routines not to use ppat */
 
 /* these declarations are here because I can't include macwin.h without including the world */
 extern void dprintf(char *, ...);	/* dprintf.c */
@@ -34,8 +33,8 @@ static void select_offscreen_port (tty_record *record);
  * Convenience macro for most functions - put last in declaration
  */
 #define RECORD_EXISTS(record) \
-tty_record * record = (tty_record *) GetWRefCon (window); \
-	if (!window || !record) \
+	tty_record * record; \
+	if (!window || !(record = (tty_record *) GetWRefCon (window))) \
 		return general_failure; 
 
 
@@ -59,10 +58,11 @@ static unsigned long s_control = COOKED_CONTROLS;
  */
 static short
 mem_err (void) {
-	if (MemError ()) {
-		return MemError ();
+	short ret_val = MemError();
+	if (!ret_val) {
+		ret_val = general_failure;
 	}
-	return general_failure;
+	return ret_val;
 }
 
 
@@ -109,7 +109,7 @@ dispose_ptr (void *ptr) {
 static short
 alloc_ptr (void **ptr, long size) {
 	*ptr = NewPtr (size);
-	return *ptr ? noErr : mem_err ();
+	return MemError ();
 }
 
 
@@ -155,7 +155,7 @@ short s_err;
 		select_offscreen_port (record);
 		SetOrigin (0, 0);
 		select_onscreen_window (record);
-		dprintf ("New GWorld @ %lx;dm %lx CGrafPtr", gw, gw);
+		dprintf ("New GWorld @ %lx;dm", gw);
 	}
 	return s_err;
 }
@@ -180,7 +180,7 @@ deallocate_gworld (tty_record *record) {
  * Get rid of offscreen bitmap
  */
 static short
-free_bits ( tty_record * record ) {
+free_bits (tty_record *record) {
 	short s_err;
 
 	if (record->uses_gworld) {
@@ -282,20 +282,17 @@ RECORD_EXISTS (record);
  */
 short
 destroy_tty (WindowPtr window) {
-Boolean close_flag;
 short s_err;
 RECORD_EXISTS (record);
 
 	s_err = free_bits (record);
 	if (!s_err) {
-		close_flag = record->was_allocated;
-		DisposePtr ((Ptr) record);
-		s_err = MemError ();
-		if (close_flag) {
+		if (record->was_allocated) {
 			CloseWindow (window);
 		} else {
 			DisposeWindow (window);
 		}
+		s_err = dispose_ptr (record);
 	}
 	
 	return s_err;
@@ -307,7 +304,6 @@ do_set_port_font (tty_record *record) {
 
 	PenNormal ();
 	TextFont (record->font_number);
-	TextFace (0);
 	TextSize (record->font_size);
 	if (0L != (record->attribute [TTY_ATTRIB_FLAGS] & TA_OVERSTRIKE)) {
 		TextMode (srcOr);
@@ -379,7 +375,7 @@ GWorldPtr gw;
 GDHandle gh;
 GrafPtr gp;
 
-	if ( record->uses_gworld) {
+	if (record->uses_gworld) {
 		GetGWorld (&gw, &gh);
 		*(GWorldPtr *) save = gw;
 	} else {
@@ -445,9 +441,6 @@ static void
 copy_bits (tty_record *record, Rect *bounds, short xfer_mode, RgnHandle mask_rgn) {
 GWorldFlags pix_state;
 BitMap * source;
-RGBColor old_fore , old_back;
-RGBColor rgb_black = {0, 0, 0};
-RGBColor rgb_white = {0xffff, 0xffff, 0xffff};
 
 	if (record->uses_gworld) {
 		pix_state = GetPixelsState (GetGWorldPixMap (record->offscreen_world));
@@ -456,13 +449,7 @@ RGBColor rgb_white = {0xffff, 0xffff, 0xffff};
 	}
 	else	source = &record->its_bits;
 	
-	GetForeColor (&old_fore);
-	GetBackColor (&old_back);
-	RGBForeColor (&rgb_black);
-	RGBBackColor (&rgb_white);
 	CopyBits (source, &(record->its_window->portBits), bounds, bounds, xfer_mode, mask_rgn);
-	RGBForeColor (&old_fore);
-	RGBBackColor (&old_back);
 
 	if (record->uses_gworld) {
 		SetPixelsState (GetGWorldPixMap (record->offscreen_world), pix_state);
@@ -475,19 +462,17 @@ RGBColor rgb_white = {0xffff, 0xffff, 0xffff};
  */
 static void
 erase_rect (tty_record *record, Rect *area) {
-	if (u.uhp > 0 && iflags.use_stone && record->its_window == _mt_window) {
+	if (game_active && u.uhp > 0 && iflags.use_stone && record->its_window == _mt_window) {
 		PixPatHandle ppat;
 		
 		ppat = GetPixPat(iflags.use_stone + 127);	/* find which pat to get */
-		if (!ppat) {
-			EraseRect (area);
-		} else {
+		if (ppat) {	/* in game window, using backgroung pattern, and have pattern */
 			FillCRect (area, ppat);
 			DisposePixPat (ppat);
+			return;
 		}
 	}
-	else
-		EraseRect (area);
+	EraseRect (area);
 }
 
 
@@ -500,12 +485,14 @@ force_tty_coordinate_system_recalc (WindowPtr window) {
 short s_err;
 RECORD_EXISTS (record);
 
-	if (s_err = free_bits (record)) {
+	s_err = free_bits (record);
+	if (s_err) {
 		return s_err;
 	}
 	calc_font_sizes (record);
 
-	if (s_err = alloc_bits (record)) {
+	s_err = alloc_bits (record);
+	if (s_err) {
 /*
  * Catastrophe! We could not allocate memory for the bitmap! Things may go very
  * much downhill from here!
@@ -515,7 +502,6 @@ RECORD_EXISTS (record);
 	}
 	select_offscreen_port (record);
 	do_set_port_font (record);
-	select_onscreen_window (record);
 	return clear_tty (window);
 }
 
@@ -600,6 +586,35 @@ RgnHandle rh = NewRgn ();
 
 
 /*
+ * get and set window invalid region.  exposed for HandleUpdateEvent in macwin.c
+ * to correct display problem
+ */
+
+short get_invalid_region (WindowPtr window, Rect *inval_rect) {
+	RECORD_EXISTS (record);
+#if CLIP_RECT_ONLY
+	if (record->invalid_rect.right <= record->invalid_rect.left ||
+		record->invalid_rect.bottom <= record->invalid_rect.top) {
+		return general_failure;
+	}
+	*inval_rect = record->invalid_rect;
+#else
+	if (EmptyRgn (record->invalid_part)) {
+		return return general_failure;
+	}
+	*inval_rect = (*(record->invalid_part))->rgnBBox;
+#endif
+	return noErr;
+}
+
+short set_invalid_region (WindowPtr window, Rect *inval_rect) {
+	RECORD_EXISTS (record);
+	accumulate_rect (record, inval_rect);
+	return noErr;
+}
+
+
+/*
  * Invert the specified position
  */
 static void
@@ -633,7 +648,6 @@ short
 move_tty_cursor (WindowPtr window, short x_pos, short y_pos) {
 RECORD_EXISTS (record);
 
-	select_onscreen_window (record);
 	if (record->x_curs == x_pos && record->y_curs == y_pos) {
 		return noErr;
 	}
@@ -694,7 +708,6 @@ RECORD_EXISTS (record);
 static void
 do_add_string (tty_record *record, char *str, short len) {
 Rect r;
-register int x_pos, count = len;
 
 	if (len < 1) {
 		return;
@@ -767,11 +780,10 @@ do_control (tty_record *record, short character) {
 		case CHAR_LF :
 			record->y_curs++;
 			if (record->y_curs >= record->y_size) {
-				scroll_tty (record->its_window, 0, 1 + record->y_curs -
-					record->y_size);
+				scroll_tty (record->its_window, 0, 1 + record->y_curs - record->y_size);
 			}
 			if (!recurse && (record->attribute [TTY_ATTRIB_CURSOR] & TA_NL_ADD_CR)) {
-				character = 13;
+				character = CHAR_CR;
 				recurse = 1;
 			}
 			else recurse = 0;
@@ -803,6 +815,9 @@ RECORD_EXISTS (record);
 		record->x_curs >= record->x_size)
 		return noErr;		/* Optimize away drawing across border without wrap */
 
+	if (record->curs_state != 0)
+		curs_pos (record, record->x_curs, record->y_curs, 0);
+
 	ch = character;
 	is_control = (ch < sizeof(long) * 8) && ((s_control & (1 << ch)) != 0L);
 	if (is_control)
@@ -826,6 +841,9 @@ register const unsigned char * the_c;
 register unsigned char ch, is_control, tty_wrap;
 register short max_x, pos_x;
 RECORD_EXISTS (record);
+
+	if (record->curs_state != 0)
+		curs_pos (record, record->x_curs, record->y_curs, 0);
 
 	the_c = (const unsigned char *) string;
 	max_x = record->x_size;
@@ -854,7 +872,6 @@ RECORD_EXISTS (record);
 			the_c ++;
 		}
 	}
-	select_onscreen_window (record);
 
 	return noErr;
 }
@@ -871,7 +888,7 @@ RECORD_EXISTS (record);
 	if (attrib < 0 || attrib >= TTY_NUMBER_ATTRIBUTES) {
 		return general_failure;
 	}
-	* value = record->attribute [attrib];
+	*value = record->attribute [attrib];
 
 	return noErr;
 }
@@ -915,7 +932,6 @@ RECORD_EXISTS (record);
 		select_offscreen_port (record);
 		RGBForeColor (&rgb_color);
 		select_onscreen_window (record);
-		RGBForeColor (&rgb_color);
 		break;
 	case TTY_ATTRIB_BACKGROUND :
 /*
@@ -925,7 +941,6 @@ RECORD_EXISTS (record);
 		select_offscreen_port (record);
 		RGBBackColor (&rgb_color);
 		select_onscreen_window (record);
-		RGBBackColor (&rgb_color);
 		break;
 	default :
 		break;
@@ -944,7 +959,6 @@ RgnHandle rgn;
 short s_err;
 RECORD_EXISTS (record);
 
-	select_onscreen_window (record);
 	s_err = update_tty (window);
 
 	rgn = NewRgn ();
@@ -974,15 +988,11 @@ RECORD_EXISTS (record);
 short clear_tty (WindowPtr window) {
 RECORD_EXISTS (record);
 
+	record->curs_state = 0;
 	select_offscreen_port (record);
 	erase_rect (record, &(record->its_bits.bounds));
-	select_onscreen_window (record);
-	erase_rect (record, &(record->its_bits.bounds));
-#if CLIP_RECT_ONLY
-	empty_rect (&(record->invalid_rect));
-#else
-	SetEmptyRgn (record->invalid_part);
-#endif
+	accumulate_rect (record, &(record->its_bits.bounds));
+	update_tty (window);
 
 	return noErr;
 }
@@ -1011,12 +1021,11 @@ short blink_cursor (WindowPtr window, long when) {
  */
 short
 image_tty (EventRecord *theEvent, WindowPtr window) {
-#if defined(applec)
+#if defined(applec) || defined(__MWERKS__)
 # pragma unused(theEvent)
 #endif
 RECORD_EXISTS (record);
 
-	tty_environment_changed (record);
 #if CLIP_RECT_ONLY
 	record->invalid_rect = record->its_bits.bounds;
 #else
@@ -1050,6 +1059,7 @@ RECORD_EXISTS (record);
 		update_tty (window);
 	} else
 		select_onscreen_window (record);
+	return noErr;
 }
 
 

@@ -272,7 +272,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 7:		/* blindness */
 			/* note: resists_blnd() doesn't apply here */
 			if (!Blinded) {
-			    pline("Scales cover your eyes!");
+			    pline("Scales cover your %s!", makeplural(body_part(EYE)));
 			    make_blinded(Half_spell_damage ? 100L:200L, FALSE);
 			    dmg = 0;
 			    break;

@@ -95,9 +95,9 @@ mac_speaker (struct obj *instr, char *melody) {
 }
 
 void tty_nhbell (void) {
-	Handle h;
+	Handle h = GetNamedResource ('snd ', "\pNetHack Bell");
 
-	if (h = GetNamedResource ('snd ', "\pNetHack Bell")) {
+	if (h) {
 		HLock (h);
 		SndPlay ((SndChannelPtr) 0, (SndListHandle) h, 0);
 		ReleaseResource (h);

@@ -25,14 +25,18 @@ extern struct passwd *FDECL(getpwuid,(int));
 #endif
 extern struct passwd *FDECL(getpwnam,(const char *));
 #ifdef CHDIR
-static void chdirx();
+static void FDECL(chdirx, (const char *,BOOLEAN_P));
 #endif /* CHDIR */
-static boolean whoami();
+static boolean NDECL(whoami);
 static void FDECL(process_options, (int, char **));
 
 #ifdef _M_UNIX
 extern void NDECL(check_sco_console);
 extern void NDECL(init_sco_cons);
+#endif
+#ifdef __linux__
+extern void NDECL(check_linux_console);
+extern void NDECL(init_linux_cons);
 #endif
 
 static void NDECL(wd_message);
@@ -65,8 +69,8 @@ char *argv[];
 	 * The environment variable HACKDIR is overridden by a
 	 *  -d command line option (must be the first option given)
 	 */
-	dir = getenv("NETHACKDIR");
-	if (!dir) dir = getenv("HACKDIR");
+	dir = nh_getenv("NETHACKDIR");
+	if (!dir) dir = nh_getenv("HACKDIR");
 #endif
 	if(argc > 1) {
 #ifdef CHDIR
@@ -120,11 +124,17 @@ char *argv[];
 #ifdef _M_UNIX
 	check_sco_console();
 #endif
+#ifdef __linux__
+	check_linux_console();
+#endif
 	initoptions();
 	init_nhwindows(&argc,argv);
 	exact_username = whoami();
 #ifdef _M_UNIX
 	init_sco_cons();
+#endif
+#ifdef __linux__
+	init_linux_cons();
 #endif
 
 	/*
@@ -139,7 +149,7 @@ char *argv[];
 	process_options(argc, argv);	/* command line options */
 
 #ifdef DEF_PAGER
-	if(!(catmore = getenv("HACKPAGER")) && !(catmore = getenv("PAGER")))
+	if(!(catmore = nh_getenv("HACKPAGER")) && !(catmore = nh_getenv("PAGER")))
 		catmore = DEF_PAGER;
 #endif
 #ifdef MAIL
@@ -211,7 +221,9 @@ char *argv[];
 		 */
 		boolean remember_wiz_mode = wizard;
 #endif
-		(void) chmod(SAVEF,0);	/* disallow parallel restores */
+		const char *fq_save = fqname(SAVEF, SAVEPREFIX, 0);
+
+		(void) chmod(fq_save,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef NEWS
 		if(iflags.news) {
@@ -233,8 +245,8 @@ char *argv[];
 			if(yn("Do you want to keep the save file?") == 'n')
 			    (void) delete_savefile();
 			else {
-			    (void) chmod(SAVEF,FCMASK); /* back to readable */
-			    compress(SAVEF);
+			    (void) chmod(fq_save,FCMASK); /* back to readable */
+			    compress(fq_save);
 			}
 		}
 		flags.move = 0;
@@ -246,7 +258,7 @@ not_recovered:
 
 		flags.move = 0;
 		set_wear();
-		pickup(1);
+		(void) pickup(1);
 	}
 
 	moveloop();
@@ -284,7 +296,7 @@ char *argv[];
 			      if (pw && (pw->pw_uid != uid)) pw = 0;
 			  }
 			  if (pw == 0) {
-			      user = getenv("USER");
+			      user = nh_getenv("USER");
 			      if (user) {
 				  pw = getpwnam(user);
 				  if (pw && (pw->pw_uid != uid)) pw = 0;
@@ -374,32 +386,54 @@ chdirx(dir, wr)
 const char *dir;
 boolean wr;
 {
-
-# ifdef SECURE
-	if(dir					/* User specified directory? */
-#  ifdef HACKDIR
+	if (dir					/* User specified directory? */
+# ifdef HACKDIR
 	       && strcmp(dir, HACKDIR)		/* and not the default? */
-#  endif
-		) {
-		(void) setgid(getgid());
-		(void) setuid(getuid());		/* Ron Wessels */
-	}
 # endif
+		) {
+# ifdef SECURE
+	    (void) setgid(getgid());
+	    (void) setuid(getuid());		/* Ron Wessels */
+# endif
+	} else {
+	    /* non-default data files is a sign that scores may not be
+	     * compatible, or perhaps that a binary not fitting this
+	     * system's layout is being used.
+	     */
+# ifdef VAR_PLAYGROUND
+	    int len = strlen(VAR_PLAYGROUND);
+
+	    fqn_prefix[SCOREPREFIX] = (char *)alloc(len+2);
+	    Strcpy(fqn_prefix[SCOREPREFIX], VAR_PLAYGROUND);
+	    if (fqn_prefix[SCOREPREFIX][len-1] != '/') {
+		fqn_prefix[SCOREPREFIX][len] = '/';
+		fqn_prefix[SCOREPREFIX][len+1] = '\0';
+	    }
+# endif
+	}
 
 # ifdef HACKDIR
-	if(dir == (const char *)0)
-		dir = HACKDIR;
+	if (dir == (const char *)0)
+	    dir = HACKDIR;
 # endif
 
-	if(dir && chdir(dir) < 0) {
-		perror(dir);
-		error("Cannot chdir to %s.", dir);
+	if (dir && chdir(dir) < 0) {
+	    perror(dir);
+	    error("Cannot chdir to %s.", dir);
 	}
 
 	/* warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
 	/* unfortunately the access system-call is worthless */
-	if (wr) check_recordfile(dir);
+	if (wr) {
+# ifdef VAR_PLAYGROUND
+	    fqn_prefix[LEVELPREFIX] = fqn_prefix[SCOREPREFIX];
+	    fqn_prefix[SAVEPREFIX] = fqn_prefix[SCOREPREFIX];
+	    fqn_prefix[BONESPREFIX] = fqn_prefix[SCOREPREFIX];
+	    fqn_prefix[LOCKPREFIX] = fqn_prefix[SCOREPREFIX];
+# endif
+	    check_recordfile(dir);
+	}
 }
 #endif /* CHDIR */
 
@@ -419,9 +453,9 @@ whoami() {
 	register char *s;
 
 	if (*plname) return FALSE;
-	if(/* !*plname && */ (s = getenv("USER")))
+	if(/* !*plname && */ (s = nh_getenv("USER")))
 		(void) strncpy(plname, s, sizeof(plname)-1);
-	if(!*plname && (s = getenv("LOGNAME")))
+	if(!*plname && (s = nh_getenv("LOGNAME")))
 		(void) strncpy(plname, s, sizeof(plname)-1);
 	if(!*plname && (s = getlogin()))
 		(void) strncpy(plname, s, sizeof(plname)-1);

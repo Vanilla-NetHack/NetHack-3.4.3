@@ -76,6 +76,7 @@ $       gold    count your gold
 Keyboards that have a meta key can also use these extended commands
 via the meta modifier instead of the # prefix:
 
+M-2     twoweapon toggle two-weapon combat
 M-a     adjust  adjust inventory letters
 M-c     chat    talk to someone
 M-d     dip     dip an object into something
@@ -92,7 +93,6 @@ M-q     quit    stop playing
 M-r     rub     rub a lamp
 M-s     sit     sit down
 M-t     turn    turn undead
-(none)  twoweapon toggle two-weapon combat
 M-u     untrap  untrap something
 M-v     version print compile time options for this version
 M-w     wipe    wipe off your face

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)quest.txt	3.3	1999/11/28
+#	SCCS Id: @(#)quest.txt	3.3	2000/01/31
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -1034,7 +1034,7 @@ Again, you stand before %H.  You vaguely sense that this
 may be the last time you stand before %l.
 %E
 %Cp Kni 00005
-"Hail, %p!  Verily, thou looks well."
+"Hail, %p!  Verily, thou lookest well."
 %E
 %Cp Kni 00006
 "There is word, %p, that %n hath been sighted in the fens
@@ -1050,7 +1050,7 @@ near %i."
 "Many brave %cP died when %n attacked."
 %E
 %Cc Kni 00010
-"Ah, %p.  We see thou hath received our summons.
+"Ah, %p.  We see thou hast received our summons.
 We are in dire need of thy prowess.  But first, We must needs
 decide if thou art ready for this great undertaking."
 %E
@@ -1058,11 +1058,11 @@ decide if thou art ready for this great undertaking."
 "Welcome again, %p.  We hope thou art ready now."
 %E
 %Cp Kni 00012
-"Once again, thou standeth before us, %p.  Art thou ready now?"
+"Once again, thou standest before us, %p.  Art thou ready now?"
 %E
 %Cc Kni 00013
-"Thou disgraceth this noble court with thine impure presence.  We have been
-lenient with thee, but no more.  Thy name shalt be spoken no more.  We
+"Thou disgracest this noble court with thine impure presence.  We have been
+lenient with thee, but no more.  Thy name shall be spoken no more.  We
 hereby strip thee of thy title, thy lands, and thy standing as %ca.
 Begone from our sight!"
 %E
@@ -1076,9 +1076,9 @@ pure, could never hope to defeat the foul %n.
 Our presence when thou hast attained the noble title of %R."
 %E
 %Cc Kni 00015
-"Thou dishonoureth us, %p!  Thou hast strayed from the path of
+"Thou dishonourest us, %p!  Thou hast strayed from the path of
 chivalry! Go from our presence and do penance.  Only when thou art again
-pure may thou return hence."
+pure mayst thou return hence."
 %E
 %Cc Kni 00016
 "Ah, %p.  Thou art truly ready, as no %c before thee hath
@@ -1091,8 +1091,8 @@ battle, %n struck Merlin a great blow, felling him.  Then, as our
 forces were pressed back, %n stole %o.
 
 "We eventually turned the tide, but lost many %cP in doing so.
-Merlin was taken off by his apprentice, but hast not recovered.  We hast
-been told that so long as %n possesses %o,
+Merlin was taken off by his apprentice, but hath not recovered.  We have
+been told that so long as %n possesseth %o,
 Merlin will not regain his health.
 
 "We hereby charge thee with this most important of duties:
@@ -1109,14 +1109,14 @@ We restore Merlin to health."
 "Though %n is verily a mighty foe, we have confidence in thy victory."
 %E
 %Cp Kni 00022
-"Beware, for %n hast surrounded himself with hordes of foul creatures."
+"Beware, for %n hath surrounded himself with hordes of foul creatures."
 %E
 %Cp Kni 00023
 "Great treasure, 'tis said, is hoarded in the lair of %n."
 %E
 %Cp Kni 00024
-"If thou possesseth %o, %p, %ns magic
-shalt therewith be thwarted."
+"If thou possessest %o, %p, %ns magic
+shall therewith be thwarted."
 %E
 %Cp Kni 00025
 "The gates of %i are guarded by forces unseen, %p.
@@ -1157,7 +1157,7 @@ Again, you stand at the entrance to %ns lair.
 then tomorrow, %H shall fall!"
 %E
 %Cp Kni 00051
-"Again, thou challengeth me, %r?  So be it.  Thou wilt die here."
+"Again, thou challengest me, %r?  So be it.  Thou wilt die here."
 %E
 %Cp Kni 00052
 "Thou art truly foolish, %r.  I shall dispatch thee anon."
@@ -1192,7 +1192,7 @@ puny %r.  Thou wilt die in agony!"
 that is the way I like my %c for dinner."
 %E
 %Cp Kni 00068
-"Thy strength wanes, %p.  The time of thy death draws near."
+"Thy strength waneth, %p.  The time of thy death draweth near."
 %E
 %Cp Kni 00069
 "Call upon thy precious %d, %p.  It shall not avail thee."
@@ -1207,7 +1207,7 @@ from a long sleep.
 As %n sinks to the ground, blood gushing from his open mouth, he
 defiantly curses you and %l:
 
-    Thou hast not won yet, %r.  By the gods, I shalt return and dog
+    Thou hast not won yet, %r.  By the gods, I shall return and dog
     thy steps to the grave!
 
 His tail flailing madly, %n tries to crawl towards you, but slumps
@@ -1220,21 +1220,21 @@ As you approach %l, he beams at you and says:
     have received word that Merlin is recovering, and shall soon
     rejoin us.
 
-    He has instructed us that thou art now to be the guardian of
-    %o.  He feels that thou may have need of
-    its powers in thine adventures.  It is our wish that thou keep
-    %o with thee as thou search for the fabled
+    He hath instructed us that thou art now to be the guardian of
+    %o.  He feeleth that thou mayst have need of
+    its powers in thine adventures.  It is our wish that thou keepest
+    %o with thee as thou searchest for the fabled
     Amulet of Yendor.
 %E
 # assumes Magic Mirror of Merlin (glass object)
 %Cc Kni 00082
 "Careful, %p!  %oC might break, and that would
-be a tragic loss.  You are its keeper now, and the time has come
-to resume your search for the Amulet.  %Z await your
-return through the magic portal that brought you here."
+be a tragic loss.  Thou art its keeper now, and the time hath come
+to resume thy search for the Amulet.  %Z await thy
+return through the magic portal that brought thee here."
 %E
 %Cp Kni 00090
-"Well met, %p.  How goest thy search for the Amulet of Yendor?"
+"Well met, %p.  How goeth thy search for the Amulet of Yendor?"
 %E
 %Cc Kni 00091
 "Thou hast succeeded, we see, %p!  Now thou art commanded to take
@@ -1441,7 +1441,7 @@ Suddenly, a voice booms out:
 
     Thou hast defeated the least of my minions, %r.
     Know now that Moloch is aware of thy presence.
-    As for you, %n, I shall deal with thy failure
+    As for thee, %n, I shall deal with thy failure
     at my leisure.
 
 You then hear the voice of %n, screaming in terror...
@@ -1665,7 +1665,7 @@ Suddenly, a voice booms out:
 
     Thou hast defeated the least of my minions, %r.
     Know now that Moloch is aware of thy presence.
-    As for you, %n, I shall deal with thy failure
+    As for thee, %n, I shall deal with thy failure
     at my leisure.
 
 You then hear the voice of %n, screaming in terror...
@@ -1698,13 +1698,13 @@ the Astral plane.  I suspect that I shall never see you again in this
 life, but I hope to at %ds feet."
 %E
 #
-#	Ranger (formerly Elf)
+#	Ranger
 #
 %Cc Ran 00001
 You arrive in familiar surroundings.  In the distance, you %x the
-great stone Circle, the place of worship to %d.
+ancient forest grove, the place of worship to %d.
 
-Something is wrong, though.  Surrounding the circle are centaurs!
+Something is wrong, though.  Surrounding the grove are centaurs!
 And they've noticed you!
 %E
 %Cp Ran 00002
@@ -1715,17 +1715,17 @@ You have the oddest feeling that this may be the last time you
 are to enter %H.
 %E
 %Cp Ran 00005
-"%pC!  I have not seen you in many cycles.  How do you fare?"
+"%pC!  I have not seen you in many moons.  How do you fare?"
 %E
 %Cp Ran 00006
-"%nC continues to threaten the circle.  But we hold fast."
+"%nC continues to threaten the grove.  But we hold fast."
 %E
 %Cp Ran 00007
-"%lC is growing weak.  The magic required to defend the circle drains us."
+"%lC is growing weak.  The magic required to defend the grove drains us."
 %E
 %Cp Ran 00008
-"Remember %i is hard to enter.  Seek the secret
-passageways."
+"Remember %i is hard to enter.  Beware the
+distraction of leatherwings."
 %E
 %Cp Ran 00009
 "We must regain %o.  Without it we will be overrun."
@@ -1744,7 +1744,7 @@ required abilities to take on this responsibility."
 %E
 %Cc Ran 00013
 "%pC!  You have doomed us all.  You fairly radiate %L influences
-and weaken the power we have raised in this circle as a result!
+and weaken the power we have raised in this grove as a result!
 
 "Begone!  We renounce your %shood with us!  You are an outcast now!"
 %E
@@ -1770,7 +1770,7 @@ leader is now only a figurehead, and serves %n.
 
 "During our last gathering of worship here, we were beset by hordes of
 hostile centaurs, as you witnessed.  In the first onslaught a group,
-headed by %n himself, managed to breach the circle and
+headed by %n himself, managed to breach the grove and
 steal %o.
 
 "Since then, we have been besieged.  We do not know how much longer
@@ -1802,11 +1802,10 @@ to reach us."
 The very act of doing so will infuriate him, and give you advantage."
 %E
 %Cp Ran 00025
-"Though %n is as %C as we, he and his kind have always
-hated us."
+"%n and his kind have always hated us."
 %E
 %Cp Ran 00026
-"We cannot hold the circle much longer, %p.  Hurry!"
+"We cannot hold the grove much longer, %p.  Hurry!"
 %E
 %Cp Ran 00027
 "To infiltrate %i, you must be very stealthy."
@@ -1818,14 +1817,23 @@ hated us."
 "You can triumph, %p, if you trust in %d."
 %E
 %Cc Ran 00030
-You descend into the outer regions of %i.  You can hear
-clattering sounds in the corridors, and vague mumblings in the distance.
+This must be %i.
 
-You remember that %ga once told you that there were many secret
-passageways in this complex.
+You are in a cave built of many different rooms, all interconnected
+by tunnels.  Your quest is to find and shoot the evil wumpus that
+resides elsewhere in the cave without running into any bottomless
+pits or using up your limited supply of arrows.  Good luck.
+
+You are in room 9 of the cave.  There are tunnels to rooms
+5, 8, and 10.
+*rustle* *rustle* (must be bats nearby)
+*sniff* (I can smell the evil wumpus nearby!)
 %E
-%Cp Ran 00031
+%Cc Ran 00031
 Once again, you descend into %i.
+
+*whoosh* (I feel a draft from some pits).
+*rustle* *rustle* (must be bats nearby)
 %E
 %Cc Ran 00040
 You descend into a weird place, in which roughly cut cave-like walls
@@ -1866,7 +1874,7 @@ kill you."
 "I shall display your head as a trophy.  What do you think about that wall?"
 %E
 %Cp Ran 00064
-"I shall break your %ls circle, and destroy all the %gP!"
+"I shall break your %ls grove, and destroy all the %gP!"
 %E
 %Cp Ran 00065
 "%d has abandoned you, %c.  You are doomed."
@@ -1900,28 +1908,30 @@ on your speed.
 %Cc Ran 00081
 "%pC!  You have succeeded!  I feared it was not possible!
 
-"Your aura proclaims that you possess %o!
+"You have returned with %o!
 
-"I fear, now, that the Centaurs will select yet another %nt.
+"I fear, now, that the Centaurs will regroup and plot yet another raid.
 This will take some time, but if you can recover the Amulet of Yendor
 for %d before that happens, we will be eternally safe.
 
 "Take %o with you.  It will aid in your quest for
 the Amulet."
 %E
-# assumes Palantir of Westernesse (glass object)
+# assumes The Longbow of Diana
 %Cc Ran 00082
-"Careful, %p!  %oC might break, and that would be
-a tragic loss.  You are its keeper now, and the time has come to
-resume your search for the Amulet.  %Z await your
-return through the magic portal that brought you here."
+%l flexs %o reverently.
+
+"With this wondrous bow, one need never run out of arrows.
+You are its keeper now, and the time has come to resume your
+search for the Amulet.  %Z await your return
+through the magic portal that brought you here."
 %E
 %Cp Ran 00090
 "Welcome, %p.  How have you fared on your quest for the Amulet
 of Yendor?"
 %E
 %Cc Ran 00091
-"Utuelyes!  You have recovered the Amulet of Yendor!
+"You have it!  You have recovered the Amulet of Yendor!
 Now attend to me, %p, and I will tell you what must be done:
 
 "The Amulet has within it magic, the capability to transport you to
@@ -3186,7 +3196,7 @@ essential in locating the Amulet of Yendor."
 "Come here often?"
 %E
 %Cp - 00032
-"Dost pain excite thee?  Wouldst thou prefer the whip?"
+"Doth pain excite thee?  Wouldst thou prefer the whip?"
 %E
 %Cp - 00033
 "Thinkest thou it shall tickle as I rip out thy lungs?"

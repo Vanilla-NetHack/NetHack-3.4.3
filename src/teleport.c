@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)teleport.c	3.3	1999/11/27	*/
+/*	SCCS Id: @(#)teleport.c	3.3	2000/03/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -245,9 +245,10 @@ register int nux,nuy;
 	 *  is now in a new location.
 	 */
 	newsym(u.ux0,u.uy0);
+	see_monsters();
 	vision_full_recalc = 1;
 	nomul(0);
-	spoteffects();
+	spoteffects(TRUE);
 	invocation_message();
 }
 
@@ -604,13 +605,17 @@ level_tele()
 	}
 
 	if (killer) {	/* the chosen destination was not survivable */
+	    d_level lsav;
+
 	    /* set specific death location; this also suppresses bones */
+	    lsav = u.uz;	/* save current level, see below */
 	    u.uz.dnum = 0;	/* main dungeon */
-	    u.uz.dlevel = (newlev <= -10) ? -1 : 0;	/* heaven or surface */
+	    u.uz.dlevel = (newlev <= -10) ? -10 : 0;	/* heaven or surface */
 	    done(DIED);
 	    /* can only get here via life-saving (or declining to die in
 	       explore|debug mode); the hero has now left the dungeon... */
 	    escape_by_flying = "find yourself back on the surface";
+	    u.uz = lsav;	/* restore u.uz so escape code works */
 	}
 
 	/* calls done(ESCAPED) if newlevel==0 */
@@ -825,6 +830,13 @@ struct monst *mtmp;	/* mx==0 implies migrating monster arrival */
 	register int x, y, trycount;
 	xchar omx = mtmp->mx, omy = mtmp->my;
 
+#ifdef STEED
+	if (mtmp == u.usteed) {
+	    tele();
+	    return;
+	}
+#endif
+
 	if (mtmp->iswiz && omx) {	/* Wizard, not just arriving */
 	    if (!In_W_tower(u.ux, u.uy, &u.uz))
 		x = xupstair,  y = yupstair;
@@ -1003,6 +1015,10 @@ register struct obj *obj;
 	boolean restricted_fall;
 	int try_limit = 4000;
 
+	if (obj->otyp == CORPSE && is_rider(&mons[obj->corpsenm])) {
+	    if (revive_corpse(obj)) return;
+	}
+
 	obj_extract_self(obj);
 	otx = obj->ox;
 	oty = obj->oy;
@@ -1023,7 +1039,7 @@ register struct obj *obj;
 	if (flooreffects(obj, tx, ty, "fall")) {
 	    return;
 	} else if (otx == 0 && oty == 0) {
-	    ;	/* fell through a trapdoor; no update of old loc needed */
+	    ;	/* fell through a trap door; no update of old loc needed */
 	} else {
 	    if (costly_spot(otx, oty)
 	      && (!costly_spot(tx, ty) ||

@@ -21,6 +21,9 @@
 
 #define PC_LOCKING		/* Prevent overwrites of aborted or in-progress games */
 				/* without first receiving confirmation. */
+#define NOCWD_ASSUMPTIONS	/* Allow paths to be specified for HACKDIR,
+				   LEVELDIR, SAVEDIR, BONESDIR, DATADIR,
+				   SCOREDIR, LOCKDIR, and CONFIGDIR */
 
 /*
  * -----------------------------------------------------------------
@@ -90,7 +93,6 @@
 
 #ifdef LAN_FEATURES
 #define MAX_LAN_USERNAME 20
-#define LAN_MAIL
 #define LAN_RO_PLAYGROUND	/* not implemented in 3.3.0 */
 #define LAN_SHARED_BONES	/* not implemented in 3.3.0 */
 #include "nhlan.h"

@@ -16,6 +16,7 @@ typedef struct amii_mi {
     struct amii_mi *next;
     anything identifier;	/* Opaque type to identify this selection */
     long glyph;			/* Glyph for menu item */
+    long count;                 /* Object count */
     char selected;		/* Been selected? */
     char selector;		/* Char used to select this entry. */
     char gselector;		/* Group selector */

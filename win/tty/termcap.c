@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.c	3.3	96/07/20	*/
+/*	SCCS Id: @(#)termcap.c	3.3	2000/07/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -35,7 +35,8 @@ static void NDECL(kill_hilite);
 #endif
 
 #ifdef OVLB
-	/* (see tcap.h) -- CM, ND, CD, HI,HE, US,UE, ul_hack */
+	/* (see tcap.h) -- nh_CM, nh_ND, nh_CD, nh_HI,nh_HE, nh_US,nh_UE,
+				ul_hack */
 struct tc_lcl_data tc_lcl_data = { 0, 0, 0, 0,0, 0,0, FALSE };
 #endif /* OVLB */
 
@@ -72,6 +73,10 @@ char NEARDATA *hilites[CLR_MAX]; /* terminal escapes for the various colors */
 static char *KS = (char *)0, *KE = (char *)0;	/* keypad sequences */
 static char nullstr[] = "";
 #endif /* OVLB */
+
+#if defined(ASCIIGRAPH) && !defined(NO_TERMS)
+extern boolean HE_resets_AS;
+#endif
 
 #ifndef TERMLIB
 STATIC_VAR char tgotobuf[20];
@@ -116,15 +121,15 @@ int *wid, *hgt;
 		HO = "\033H";
 		CE = "\033K";		/* the VT52 termcap */
 		UP = "\033A";
-		CM = "\033Y%c%c";	/* used with function tgoto() */
-		ND = "\033C";
+		nh_CM = "\033Y%c%c";	/* used with function tgoto() */
+		nh_ND = "\033C";
 		XD = "\033B";
 		BC = "\033D";
 		SO = "\033p";
 		SE = "\033q";
 	/* HI and HE will be updated in init_hilite if we're using color */
-		HI = "\033p";
-		HE = "\033q";
+		nh_HI = "\033p";
+		nh_HE = "\033q";
 		*wid = CO;
 		*hgt = LI;
 		CL = "\033E";		/* last thing set */
@@ -140,26 +145,26 @@ int *wid, *hgt;
 #   endif
 #  endif
 		HO = "\033[H";
-/*		CD = "\033[J"; */
+/*		nh_CD = "\033[J"; */
 		CE = "\033[K";		/* the ANSI termcap */
 #  ifndef TERMLIB
-		CM = "\033[%d;%dH";
+		nh_CM = "\033[%d;%dH";
 #  else
-		CM = "\033[%i%d;%dH";
+		nh_CM = "\033[%i%d;%dH";
 #  endif
 		UP = "\033[A";
-		ND = "\033[C";
+		nh_ND = "\033[C";
 		XD = "\033[B";
 #  ifdef MICRO	/* backspaces are non-destructive */
 		BC = "\b";
 #  else
 		BC = "\033[D";
 #  endif
-		HI = SO = "\033[1m";
-		US = "\033[4m";
+		nh_HI = SO = "\033[1m";
+		nh_US = "\033[4m";
 		MR = "\033[7m";
-		TI = HE = ME = SE = UE = "\033[0m";
-		/* strictly, SE should be 2, and UE should be 24,
+		TI = nh_HE = ME = SE = nh_UE = "\033[0m";
+		/* strictly, SE should be 2, and nh_UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
 #  ifndef MICRO
@@ -197,8 +202,13 @@ int *wid, *hgt;
 	tbufptr = tbuf;
 	if(!strncmp(term, "5620", 4))
 		flags.null = FALSE;	/* this should be a termcap flag */
-	if(tgetent(tptr, term) < 1)
+	if(tgetent(tptr, term) < 1) {
+		char buf[BUFSZ];
+		(void) strncpy(buf, term,
+				(BUFSZ - 1) - (sizeof("Unknown terminal type: .  ")));
+		buf[BUFSZ-1] = '\0';
 		error("Unknown terminal type: %s.", term);
+	}
 	if ((pc = Tgetstr("pc")) != 0)
 		PC = *pc;
 
@@ -248,7 +258,7 @@ int *wid, *hgt;
 	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
 # endif
-	ND = Tgetstr("nd");
+	nh_ND = Tgetstr("nd");
 	if(tgetflag("os"))
 		error("NetHack can't have OS.");
 	if(tgetflag("ul"))
@@ -261,7 +271,7 @@ int *wid, *hgt;
 	   slightly. Let's leave that till the next release. */
 	XD = Tgetstr("xd");
 /* not:		XD = Tgetstr("do"); */
-	if(!(CM = Tgetstr("cm"))) {
+	if(!(nh_CM = Tgetstr("cm"))) {
 	    if(!UP && !HO)
 		error("NetHack needs CM or UP or HO.");
 	    tty_raw_print("Playing NetHack on terminals without CM is suspect.");
@@ -269,10 +279,10 @@ int *wid, *hgt;
 	}
 	SO = Tgetstr("so");
 	SE = Tgetstr("se");
-	US = Tgetstr("us");
-	UE = Tgetstr("ue");
+	nh_US = Tgetstr("us");
+	nh_UE = Tgetstr("ue");
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
-	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = nullstr;
+	if(!SO || !SE || (SG > 0)) SO = SE = nh_US = nh_UE = nullstr;
 	TI = Tgetstr("ti");
 	TE = Tgetstr("te");
 	VS = VE = nullstr;
@@ -290,22 +300,22 @@ int *wid, *hgt;
 	ME = Tgetstr("me");	/* turn off all attributes */
 	if (!ME || (SE == nullstr)) ME = SE;	/* default to SE value */
 
-	/* Get rid of padding numbers for HI and HE.  Hope they
-	 * aren't really needed!!!  HI and HE are outputted to the
+	/* Get rid of padding numbers for nh_HI and nh_HE.  Hope they
+	 * aren't really needed!!!  nh_HI and nh_HE are outputted to the
 	 * pager as a string - so how can you send it NULs???
 	 *  -jsb
 	 */
-	HI = (char *) alloc((unsigned)(strlen(SO)+1));
-	HE = (char *) alloc((unsigned)(strlen(ME)+1));
+	nh_HI = (char *) alloc((unsigned)(strlen(SO)+1));
+	nh_HE = (char *) alloc((unsigned)(strlen(ME)+1));
 	i = 0;
 	while (digit(SO[i])) i++;
-	Strcpy(HI, &SO[i]);
+	Strcpy(nh_HI, &SO[i]);
 	i = 0;
 	while (digit(ME[i])) i++;
-	Strcpy(HE, &ME[i]);
+	Strcpy(nh_HE, &ME[i]);
 	AS = Tgetstr("as");
 	AE = Tgetstr("ae");
-	CD = Tgetstr("cd");
+	nh_CD = Tgetstr("cd");
 # ifdef TEXTCOLOR
 	MD = Tgetstr("md");
 # endif
@@ -391,6 +401,31 @@ tty_decgraphics_termcap_fixup()
 #ifdef PC9800
 	init_hilite();
 #endif
+
+#if defined(ASCIIGRAPH) && !defined(NO_TERMS)
+	/* some termcaps suffer from the bizarre notion that resetting
+	   video attributes should also reset the chosen character set */
+    {
+	const char *nh_he = nh_HE, *ae = AE;
+	int he_limit, ae_length;
+
+	if (digit(*ae)) {	/* skip over delay prefix, if any */
+	    do ++ae; while (digit(*ae));
+	    if (*ae == '.') { ++ae; if (digit(*ae)) ++ae; }
+	    if (*ae == '*') ++ae;
+	}
+	/* can't use nethack's case-insensitive strstri() here, and some old
+	   systems don't have strstr(), so use brute force substring search */
+	ae_length = strlen(ae), he_limit = strlen(nh_he);
+	while (he_limit >= ae_length) {
+	    if (strncmp(nh_he, ae, ae_length) == 0) {
+		HE_resets_AS = TRUE;
+		break;
+	    }
+	    ++nh_he, --he_limit;
+	}
+    }
+#endif
 }
 #endif	/* TERMLIB */
 
@@ -473,7 +508,7 @@ int x,y;
 				xputs(UP);
 				ttyDisplay->cury--;
 			}
-		} else if(CM) {
+		} else if(nh_CM) {
 			cmov(x, y);
 		} else if(HO) {
 			home();
@@ -485,7 +520,7 @@ int x,y;
 				xputs(XD);
 				ttyDisplay->cury++;
 			}
-		} else if(CM) {
+		} else if(nh_CM) {
 			cmov(x, y);
 		} else {
 			while((int) ttyDisplay->cury < y) {
@@ -496,10 +531,10 @@ int x,y;
 		}
 	}
 	if ((int) ttyDisplay->curx < x) {		/* Go to the right. */
-		if(!ND) cmov(x, y); else	/* bah */
+		if(!nh_ND) cmov(x, y); else	/* bah */
 			/* should instead print what is there already */
 		while ((int) ttyDisplay->curx < x) {
-			xputs(ND);
+			xputs(nh_ND);
 			ttyDisplay->curx++;
 		}
 	} else if ((int) ttyDisplay->curx > x) {
@@ -514,7 +549,7 @@ void
 cmov(x, y)
 register int x, y;
 {
-	xputs(tgoto(CM, x, y));
+	xputs(tgoto(nh_CM, x, y));
 	ttyDisplay->cury = y;
 	ttyDisplay->curx = x;
 }
@@ -588,8 +623,8 @@ home()
 {
 	if(HO)
 		xputs(HO);
-	else if(CM)
-		xputs(tgoto(CM, 0, 0));
+	else if(nh_CM)
+		xputs(tgoto(nh_CM, 0, 0));
 	else
 		tty_curs(BASE_WINDOW, 1, 0);	/* using UP ... */
 	ttyDisplay->curx = ttyDisplay->cury = 0;
@@ -727,9 +762,10 @@ tty_delay_output()
 #  endif
 # endif
 
-	else if(ospeed > 0 && ospeed < SIZE(tmspc10)) if(CM) {
+	else if(ospeed > 0 && ospeed < SIZE(tmspc10) && nh_CM) {
 		/* delay by sending cm(here) an appropriate number of times */
-		register int cmlen = strlen(tgoto(CM, ttyDisplay->curx, ttyDisplay->cury));
+		register int cmlen = strlen(tgoto(nh_CM, ttyDisplay->curx,
+							ttyDisplay->cury));
 		register int i = 500 + tmspc10[ospeed]/2;
 
 		while(i > 0) {
@@ -747,8 +783,8 @@ void
 cl_eos()			/* free after Robert Viduya */
 {				/* must only be called with curx = 1 */
 
-	if(CD)
-		xputs(CD);
+	if(nh_CD)
+		xputs(nh_CD);
 	else {
 		register int cy = ttyDisplay->cury+1;
 		while(cy <= LI-2) {
@@ -773,7 +809,16 @@ cl_eos()			/* free after Robert Viduya */
  * terminfo uses BGR or RGB for its indexes.
  *
  * If we don't get the definitions, then guess.  Original color terminfos
- * used BGR.  Linux using ncurses and SCO UNIX are known to have RGB terminfos.
+ * used BGR for the original Sf (setf, Standard foreground) codes, but
+ * there was a near-total lack of user documentation, so some subsequent
+ * terminfos, such as early Linux ncurses and SCO UNIX, used RGB.  Possibly
+ * as a result of the confusion, AF (setaf, ANSI Foreground) codes were
+ * introduced, but this caused yet more confusion.  Later Linux ncurses
+ * have BGR Sf, RGB AF, and RGB COLOR_FOO, which appears to be the SVR4
+ * standard.  We could switch the colors around when using Sf with ncurses,
+ * which would help things on later ncurses and hurt things on early ncurses.
+ * We'll try just preferring AF and hoping it always agrees with COLOR_FOO,
+ * and falling back to Sf if AF isn't defined.
  *
  * In any case, treat black specially so we don't try to display black
  * characters on the assumed black background.
@@ -789,6 +834,10 @@ cl_eos()			/* free after Robert Viduya */
 #define m_move curses_m_move	/* Some curses.h decl m_move(), not used here */
 
 #include <curses.h>
+
+#ifndef LINUX
+extern char *tparm();
+#endif
 
 #  ifdef COLOR_BLACK	/* trust include file */
 #undef COLOR_BLACK
@@ -822,28 +871,27 @@ init_hilite()
 {
 	register int c;
 	char *setf, *scratch;
-	extern char *tparm();
 
 	for (c = 0; c < SIZE(hilites); c++)
-		hilites[c] = HI;
+		hilites[c] = nh_HI;
 	hilites[CLR_GRAY] = hilites[NO_COLOR] = (char *)0;
 
 	if (tgetnum("Co") < 8
-	    || ((setf = tgetstr("Sf", (char **)0)) == (char *)0
-		&& (setf = tgetstr("AF", (char **)0)) == (char *)0))
+	    || ((setf = tgetstr("AF", (char **)0)) == (char *)0
+		 && (setf = tgetstr("Sf", (char **)0)) == (char *)0))
 		return;
 
 	for (c = 0; c < CLR_MAX / 2; c++) {
-		scratch = tparm(setf, ti_map[c]);
-		if (c != CLR_GRAY) {
-			hilites[c] = (char *) alloc(strlen(scratch) + 1);
-			Strcpy(hilites[c], scratch);
-		}
-		if (c != CLR_BLACK) {
-			hilites[c|BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
-			Strcpy(hilites[c|BRIGHT], MD);
-			Strcat(hilites[c|BRIGHT], scratch);
-		}
+	    scratch = tparm(setf, ti_map[c]);
+	    if (c != CLR_GRAY) {
+		hilites[c] = (char *) alloc(strlen(scratch) + 1);
+		Strcpy(hilites[c], scratch);
+	    }
+	    if (c != CLR_BLACK) {
+		hilites[c|BRIGHT] = (char*) alloc(strlen(scratch)+strlen(MD)+1);
+		Strcpy(hilites[c|BRIGHT], MD);
+		Strcat(hilites[c|BRIGHT], scratch);
+	    }
 
 	}
 }
@@ -851,7 +899,7 @@ init_hilite()
 # else /* UNIX && TERMINFO */
 
 #  ifndef TOS
-/* find the foreground and background colors set by HI or HE */
+/* find the foreground and background colors set by nh_HI or nh_HE */
 static void
 analyze_seq (str, fg, bg)
 char *str;
@@ -908,8 +956,8 @@ int *fg, *bg;
 
 /*
  * Sets up highlighting sequences, using ANSI escape sequences (highlight code
- * found in print.c).  The HI and HE sequences (usually from SO) is scanned to
- * find foreground and background colors.
+ * found in print.c).  The nh_HI and nh_HE sequences (usually from SO) are
+ * scanned to find foreground and background colors.
  */
 
 static void
@@ -942,7 +990,7 @@ init_hilite()
 	if (tos_numcolors == 4) {
 		TI = "\033b0\033c3\033E\033e";
 		TE = "\033b3\033c0\033J";
-		HE = COLHE;
+		nh_HE = COLHE;
 		hilites[CLR_GREEN] = hilites[CLR_GREEN|BRIGHT] = "\033b2";
 		hilites[CLR_RED] = hilites[CLR_RED|BRIGHT] = "\033b1";
 	} else {
@@ -951,7 +999,7 @@ init_hilite()
 
 		TI = "\033b0\033c\017\033E\033e";
 		TE = "\033b\017\033c0\033J";
-		HE = COLHE;
+		nh_HE = COLHE;
 		hilites[CLR_WHITE] = hilites[CLR_BLACK] = NOCOL;
 		hilites[NO_COLOR] = hilites[CLR_GRAY];
 	}
@@ -961,11 +1009,11 @@ init_hilite()
 	int backg, foreg, hi_backg, hi_foreg;
 
 	for (c = 0; c < SIZE(hilites); c++)
-	    hilites[c] = HI;
+	    hilites[c] = nh_HI;
 	hilites[CLR_GRAY] = hilites[NO_COLOR] = (char *)0;
 
-	analyze_seq(HI, &hi_foreg, &hi_backg);
-	analyze_seq(HE, &foreg, &backg);
+	analyze_seq(nh_HI, &hi_foreg, &hi_backg);
+	analyze_seq(nh_HE, &foreg, &backg);
 
 	for (c = 0; c < SIZE(hilites); c++)
 	    /* avoid invisibility */
@@ -1002,9 +1050,9 @@ kill_hilite()
 
 	for (c = 0; c < CLR_MAX / 2; c++) {
 	    if (hilites[c|BRIGHT] == hilites[c])  hilites[c|BRIGHT] = 0;
-	    if (hilites[c] && (hilites[c] != HI))
+	    if (hilites[c] && (hilites[c] != nh_HI))
 		free((genericptr_t) hilites[c]),  hilites[c] = 0;
-	    if (hilites[c|BRIGHT] && (hilites[c|BRIGHT] != HI))
+	    if (hilites[c|BRIGHT] && (hilites[c|BRIGHT] != nh_HI))
 		free((genericptr_t) hilites[c|BRIGHT]),  hilites[c|BRIGHT] = 0;
 	}
 # endif
@@ -1021,10 +1069,10 @@ int n;
 {
     switch (n) {
 	    case ATR_ULINE:
-		    if(US) return US;
+		    if(nh_US) return nh_US;
 	    case ATR_BOLD:
 	    case ATR_BLINK:
-		    return HI;
+		    return nh_HI;
 	    case ATR_INVERSE:
 		    return MR;
     }
@@ -1037,10 +1085,10 @@ int n;
 {
     switch (n) {
 	    case ATR_ULINE:
-		    if(UE) return UE;
+		    if(nh_UE) return nh_UE;
 	    case ATR_BOLD:
 	    case ATR_BLINK:
-		    return HE;
+		    return nh_HE;
 	    case ATR_INVERSE:
 		    return ME;
     }
@@ -1071,14 +1119,14 @@ int attr;
 void
 term_start_raw_bold()
 {
-	xputs(HI);
+	xputs(nh_HI);
 }
 
 
 void
 term_end_raw_bold()
 {
-	xputs(HE);
+	xputs(nh_HE);
 }
 
 
@@ -1087,7 +1135,7 @@ term_end_raw_bold()
 void
 term_end_color()
 {
-	xputs(HE);
+	xputs(nh_HE);
 }
 
 

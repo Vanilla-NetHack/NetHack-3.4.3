@@ -1,13 +1,13 @@
-         Copyright (c) NetHack Development Team 1990-1999
+         Copyright (c) NetHack Development Team 1990-2000
          NetHack may be freely redistributed.  See license for details.
          ==============================================================
                     Instructions for compiling and installing
              NetHack 3.3 on a Windows NT, 2000, or Windows 9x system
          ==============================================================
-         (or, How to make NetHack 3.3.0 for the WIN32 Console subsystem)
-		      Last revision: December 4, 1999
+         (or, How to make NetHack 3.3.1 for the WIN32 Console subsystem)
+		      Last revision: August 2, 2000
 
-Credit for PC versions of NetHack 3.2 goes to the PC Development team
+Credit for the PC versions of NetHack goes to the PC Development team
 of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill
 Dyer, Timo Hakulinen, Yamamoto Keizo, Mike Threepoint, Mike Stephenson,
 Stephen White, Ken Washikita and Janet Walz.
@@ -27,7 +27,7 @@ I.  Dispelling the Myths:
     We have provided a Makefile for building NetHack using the
     following compiler:
 
-        Microsoft Visual C++ V6.0 SP3
+        Microsoft Visual C++ V6.0 SP3 or greater
 
     The Makefile was created for use with MS NMAKE which is provided with 
     the Microsoft compiler.
@@ -50,7 +50,7 @@ Setting Up
     are set up and running correctly.  That includes ensuring that all the
     necessary environment variables for the Microsoft compiler environment
     are set correctly.  ( For example, by executing vcvars32.bat, which
-    is in the bin directory of your compilers directory tree. )
+    is probably in the bin directory of your compilers directory tree. )
 
 2.  Make sure all the NetHack files are in the appropriate directory
     structure.  You should have a main directory with subdirectories
@@ -59,8 +59,8 @@ Setting Up
     they are not necessary for building the TTY version for the Win32 
     console subsystem.  You can delete them to save space.  Your distribution 
     may contain a directory win\win32.  This window port variant was a
-    recent addition and was not ready for the 3.3.0 release.  You may 
-    ignore it (or contribute to it).
+    recent addition and was not ready for the 3.3.0 or 3.3.1  releases.
+    You may ignore it or contribute to it.
 
     Required Directories for a Win32 Console NetHack:
 
@@ -110,7 +110,7 @@ Setting Up
     Change the setting of (GAMEDIR) to reflect the directory where
     you want NetHack to be installed.  
 
-    ie.  GAMEDIR = \games\nethackn
+    ie.  GAMEDIR = \games\nethackntty
 
     The directory you specify *MUST* exist for all remaining steps to be 
     successful. Be sure the directory you want the game installed 
@@ -145,13 +145,13 @@ Running NetHack
 7.  Make sure all of the support files -- Guidebook.txt, license, logfile,
     Defaults.nh, NetHack.exe, nhdat, record, and recover.exe 
     -- were copied to the game directory.  If not, move them there yourself.  
-    Defaults.nh is distributed as sys/winnt/winnt.cnf, but
-    the Makefile should take care of moving it and renaming it correctly.
+    Defaults.nh is actually distributed in the sources as sys/winnt/winnt.cnf, 
+    but the Makefile should take care of moving it and renaming it correctly.
 
     Edit Defaults.nh to reflect your particular setup and personal 
-    preferences, by following the comments.  With this release, HACKDIR
-    defaults to the same directory as that where the NetHack.exe executable
-    resides.  You only need to set HACKDIR in Defaults.nh if, 
+    preferences, by following the comments.  As with all releases since
+    3.2.1, HACKDIR defaults to the same directory as that where the NetHack.exe 
+    executable resides.  You only need to set HACKDIR in Defaults.nh if, 
     for some reason, you wish to override that.
   
 8a. Running from the command prompt:
@@ -169,7 +169,7 @@ Running NetHack
     or from a shortcut, just use the following information when 
     setting up the icon or shortcut.
 
-         Description      :  NetHack 3.3.0 
+         Description      :  NetHack 3.3.1 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
 
    (changing the directory to the appropriate one of course)

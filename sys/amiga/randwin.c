@@ -48,7 +48,7 @@ struct IntuiText Rnd_IText6 = {
 };
 
 struct IntuiText Rnd_IText5 = {
-	1,0,JAM1,	/* front and back text pens, drawmode and fill byte */
+	6,0,JAM1,	/* front and back text pens, drawmode and fill byte */ /* Was 1,0 -jhsa*/
 	67,47,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Character Choice",	/* pointer to text */

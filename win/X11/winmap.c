@@ -112,7 +112,7 @@ X11_print_glyph(window, x, y, glyph)
 #define mon_color(n)  color = mons[n].mcolor
 #define invis_color(n) color = NO_COLOR
 #define pet_color(n)  color = mons[n].mcolor
-
+#define warn_color(n) color = iflags.use_color ? def_warnsyms[n].color : NO_COLOR
 # else /* no text color */
 
 #define zap_color(n)
@@ -121,6 +121,8 @@ X11_print_glyph(window, x, y, glyph)
 #define mon_color(n)
 #define invis_color(n)
 #define pet_color(n)
+#define warn_color(n)
+
 #endif
 
 	/*
@@ -129,7 +131,10 @@ X11_print_glyph(window, x, y, glyph)
 	 *  Warning:  For speed, this makes an assumption on the order of
 	 *            offsets.  The order is set in display.h.
 	 */
-	if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
+	if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) { 	/* a warning flash */
+		ch = warnsyms[offset];
+		warn_color(offset);
+	} else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
 	    /* see swallow_to_glyph() in display.c */
 	    ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
 	    mon_color(offset >> 3);
@@ -243,7 +248,7 @@ Pixel colorpixel;
     if (0!=XReadBitmapFile(dpy, XtWindow(toplevel), filename,
 	    &annotation->width, &annotation->height, &annotation->bitmap,
 	    &annotation->hotx, &annotation->hoty)) {
-	char buf[BUFSIZ];
+	char buf[BUFSZ];
 	Sprintf(buf, "Failed to load %s", filename);
 	X11_raw_print(buf);
     }
@@ -330,7 +335,7 @@ init_tiles(wp)
 
 #ifdef USE_XPM
     {
-	char buf[BUFSIZ];
+	char buf[BUFSZ];
 	XpmAttributes attributes;
 	int errorcode;
 
@@ -363,7 +368,6 @@ init_tiles(wp)
 	}
 
 	if (tile_image->height%total_tiles_used != 0) {
-	    char buf[BUFSIZ];
 	    Sprintf(buf,
 		"%s is not a multiple of %d (the number of tiles) pixels high",
 		appResources.tile_file, total_tiles_used);
@@ -388,7 +392,7 @@ init_tiles(wp)
 	goto tiledone;
     }
 
-    fp = fopen_datafile(appResources.tile_file, RDBMODE);
+    fp = fopen_datafile(appResources.tile_file, RDBMODE, FALSE);
     if (!fp) {
 	X11_raw_print("can't open tile file");
 	result = FALSE;
@@ -435,7 +439,7 @@ init_tiles(wp)
 	if (!XAllocColor(dpy, DefaultColormapOfScreen(screen), &colors[i]) &&
 	    !nhApproxColor(screen, DefaultColormapOfScreen(screen),
 			   (char *)0, &colors[i])) {
-	    char buf[BUFSIZ];
+	    char buf[BUFSZ];
 	    Sprintf(buf, "%dth out of %ld color allocation failed",
 		i, header.ncolors);
 	    X11_raw_print(buf);

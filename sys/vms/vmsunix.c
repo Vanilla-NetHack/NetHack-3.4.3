@@ -138,7 +138,7 @@ getlock()
 		error("You must play from a terminal.");
 
 	/* we ignore QUIT and INT at this point */
-	if (!lock_file(HLOCK, 10)) {
+	if (!lock_file(HLOCK, LOCKPREFIX, 10)) {
 		wait_synch();
 		error("Quitting.");
 	}

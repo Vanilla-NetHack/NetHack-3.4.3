@@ -24,8 +24,8 @@ int MAIN(int argc, char **argv)
 	int fd;
 	char *dir;	
 
-	dir = getenv("NETHACKDIR");
-	if (!dir) dir = getenv("HACKDIR");
+	dir = nh_getenv("NETHACKDIR");
+	if (!dir) dir = nh_getenv("HACKDIR");
 
 	choose_windows(DEFAULT_WINDOW_SYS);
 	chdirx(dir);
@@ -106,7 +106,7 @@ int MAIN(int argc, char **argv)
 			if(yn("Do you want to keep the save file?") == 'n')
 			    (void) delete_savefile();
 			else {
-			    compress(SAVEF);
+			    compress(fqname(SAVEF, SAVEPREFIX, 0));
 			}
 		}
 
@@ -120,7 +120,7 @@ not_recovered:
 
 		flags.move = 0;
 		set_wear();
-		pickup(1);
+		(void) pickup(1);
 	}
 
 	moveloop();
@@ -140,11 +140,11 @@ static void whoami(void)
 	char *s;
 
 	if (*plname) return;
-	if (s = getenv("USER")) {
+	if (s = nh_getenv("USER")) {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 		return;
 	}
-	if (s = getenv("LOGNAME")) {
+	if (s = nh_getenv("LOGNAME")) {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 		return;
 	}

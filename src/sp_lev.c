@@ -29,6 +29,7 @@ extern void FDECL(mkmap, (lev_init *));
 STATIC_DCL void FDECL(get_room_loc, (schar *, schar *, struct mkroom *));
 STATIC_DCL void FDECL(get_free_room_loc, (schar *, schar *, struct mkroom *));
 STATIC_DCL void FDECL(create_trap, (trap *, struct mkroom *));
+STATIC_DCL int FDECL(noncoalignment, (ALIGNTYP_P));
 STATIC_DCL void FDECL(create_monster, (monster *, struct mkroom *));
 STATIC_DCL void FDECL(create_object, (object *, struct mkroom *));
 STATIC_DCL void FDECL(create_engraving, (engraving *,struct mkroom *));
@@ -199,7 +200,7 @@ int humidity;
 	}
 found_it:;
 
-	if (*x <= 0 || *x >= COLNO || *y < 0 || *y >= ROWNO) {
+	if (!isok(*x,*y)) {
 	    impossible("get_location:  (%d,%d) out of bounds", *x, *y);
 	    *x = x_maze_max; *y = y_maze_max;
 	}
@@ -730,6 +731,18 @@ struct mkroom	*croom;
  * Create a monster in a room.
  */
 
+STATIC_OVL int
+noncoalignment(alignment)
+aligntyp alignment;
+{
+	int k;
+
+	k = rn2(2);
+	if (!alignment)
+		return(k ? -1 : 1);
+	return(k ? -alignment : 0);
+}
+
 STATIC_OVL void
 create_monster(m,croom)
 monster	*m;
@@ -755,8 +768,12 @@ struct mkroom	*croom;
 	if (class == MAXMCLASSES)
 	    panic("create_monster: unknown monster class '%c'", m->class);
 
-	amask = (m->align <= -11) ? induced_align(80) :
-	    (m->align < 0 ? ralign[-m->align-1] : m->align);
+	amask = (m->align == AM_SPLEV_CO) ?
+			Align2amask(u.ualignbase[A_ORIGINAL]) :
+		(m->align == AM_SPLEV_NONCO) ?
+			Align2amask(noncoalignment(u.ualignbase[A_ORIGINAL])) :
+		(m->align <= -11) ? induced_align(80) :
+		(m->align < 0 ? ralign[-m->align-1] : m->align);
 
 	if (!class)
 	    pm = (struct permonst *) 0;
@@ -772,6 +789,9 @@ struct mkroom	*croom;
 	    /* if we can't get a specific monster type (pm == 0) then the
 	       class has been genocided, so settle for a random monster */
 	}
+	if (In_mines(&u.uz) && pm && your_race(pm) &&
+			(Race_if(PM_DWARF) || Race_if(PM_GNOME)) && rn2(3))
+	    pm = (struct permonst *) 0;
 
 	x = m->x;
 	y = m->y;
@@ -946,11 +966,12 @@ struct mkroom	*croom;
 
 	/* assume we wouldn't be given an egg corpsenm unless it was
 	   hatchable */
-	if (otmp->otyp == EGG && otmp->corpsenm != NON_PM)
+	if (otmp->otyp == EGG && otmp->corpsenm != NON_PM) {
 	    if (dead_species(otmp->otyp, TRUE))
 		kill_egg(otmp);	/* make sure nothing hatches */
 	    else
 		attach_egg_hatch_timeout(otmp);	/* attach new hatch timeout */
+	}
 
 	if (o->name.str) {	/* Give a name to that object */
 	    otmp = oname(otmp, o->name.str);
@@ -1097,8 +1118,12 @@ create_altar(a, croom)
 	 * shared by many other parts of the special level code.
 	 */
 
-	amask = (a->align == -11) ? induced_align(80) :
-	    (a->align < 0 ? ralign[-a->align-1] : a->align);
+	amask = (a->align == AM_SPLEV_CO) ?
+			Align2amask(u.ualignbase[A_ORIGINAL]) :
+		(a->align == AM_SPLEV_NONCO) ?
+			Align2amask(noncoalignment(u.ualignbase[A_ORIGINAL])) :
+		(a->align == -11) ? induced_align(80) :
+		(a->align < 0 ? ralign[-a->align-1] : a->align);
 
 	levl[x][y].typ = ALTAR;
 	levl[x][y].altarmask = amask;
@@ -2070,7 +2095,7 @@ dlb *fd;
 
     /* Initialize map */
     Fread((genericptr_t) &filling, 1, sizeof(filling), fd);
-    if(!init_lev.init_present) /* don't init if mkmap() has been called */
+    if (!init_lev.init_present) { /* don't init if mkmap() has been called */
       for(x = 2; x <= x_maze_max; x++)
 	for(y = 0; y <= y_maze_max; y++)
 	    if (filling == -1) {
@@ -2083,6 +2108,7 @@ dlb *fd;
 	    } else {
 		    levl[x][y].typ = filling;
 	    }
+    }
 
     /* Start reading the file */
     Fread((genericptr_t) &numpart, 1, sizeof(numpart), fd);
@@ -2525,11 +2551,12 @@ dlb *fd;
 		levl[x][y].flags = 0;
 	    }
 
-	    if (!(y % 2))
+	    if (!(y % 2)) {
 		if (dir == W_SOUTH)
 		    y++;
 		else
 		    y--;
+	    }
 
 	    walkfrom(x, y);
     }

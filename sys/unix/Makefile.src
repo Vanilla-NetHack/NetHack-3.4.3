@@ -32,6 +32,8 @@ SYSTEM = Sysunix
 # clone or you'll need to do make depend, etc. by hand. In either case,
 # the line below probably needs changing
 SHELL=/bin/sh
+# for Atari
+# SHELL=E:/GEMINI2/MUPFEL.TTP
 
 # Pick the SYSSRC and SYSOBJ lines corresponding to your desired operating
 # system.
@@ -61,7 +63,7 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 #	For Bull DPX/2 systems at B.O.S. 2.0 or higher use the following:
 #
 # CC = gcc -ansi -D_BULL_SOURCE -D_XOPEN_SOURCE -D_POSIX_SOURCE
-# 
+#
 #	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
 #
 # CC = gcc -ansi
@@ -81,9 +83,12 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 # CFLAGS = -DDUMB -Ml -I../include
 # LFLAGS = -Ml
 
-# flags for Atari gcc
+# flags for Atari gcc (3.2.1)
 # CFLAGS = -O -I../include
 # LFLAGS = -s
+# flags for Atari gcc (3.3)
+# CFLAGS = -mshort -O2 -fomit-frame-pointer -I../include
+# LFLAGS = -mshort -s
 
 # flags for AIX 3.1 cc on IBM RS/6000 to define
 # a suitable subset of standard libraries
@@ -129,20 +134,30 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 #LD = gcc
 #LFLAGS = -Xlinker -soname=_APP_
 
+# Only used for the Gnome interface.
+# When including the Gnome interface, you need to include gnome specific
+# directories.  The ones given below is the usual spot for linux systems.
+# The paths are for glibconfig.h and gnomesupport.h respectively.
+#
+GNOMEINC=-I/usr/lib/glib/include -I/usr/lib/gnome-libs/include -I../win/gnome
+
 # flags for debugging:
 # CFLAGS = -g -I../include
 
 CFLAGS = -O -I../include
-LFLAGS = 
+LFLAGS =
 
-# Only used for Qt interface (other interfaces are standard C)
-CXXFLAGS = -g $(CFLAGS) -I. -I$(QTDIR)/include
-# Qt is C++, so define the compiler and linker thus required:
-#CXX=g++
+# The Qt and Be window systems are written in C++, while the rest of
+# NetHack is standard C.  If using Qt, uncomment the LD line here to get
+# the C++ libraries linked in.
+CXXFLAGS = $(CFLAGS) -I. -I$(QTDIR)/include
+CXX=g++
 #LD=g++
 
 # Set the WINSRC, WINOBJ, and WINLIB lines to correspond to your desired
 # combination of windowing systems.  Also set windowing systems in config.h.
+# Note that if you are including multiple tiled window systems, you don't
+# want two copies of tile.o, so comment out all but the first.
 #
 # files for a straight tty port using no native windowing system
 WINTTYSRC = ../win/tty/getline.c ../win/tty/termcap.c ../win/tty/topl.c \
@@ -162,9 +177,32 @@ WINX11OBJ = Window.o dialogs.o winX.o winmap.o winmenu.o winmesg.o \
 #
 WINQTSRC = ../win/Qt/qt_win.cpp ../win/Qt/qt_clust.cpp
 WINQTOBJ = qt_win.o qt_clust.o tile.o
+#
+# Files for a Gnome port
+#
+WINGNOMESRC = ../win/gnome/gnaskstr.c ../win/gnome/gnbind.c \
+	../win/gnome/gnglyph.c ../win/gnome/gnmain.c ../win/gnome/gnmap.c \
+	../win/gnome/gnmenu.c ../win/gnome/gnmesg.c ../win/gnome/gnopts.c \
+	../win/gnome/gnplayer.c ../win/gnome/gnsignal.c \
+	../win/gnome/gnstatus.c ../win/gnome/gntext.c ../win/gnome/gnyesno.c
+WINGNOMEOBJ = gnaskstr.o gnbind.o gnglyph.o gnmain.o gnmap.o gnmenu.o \
+	gnmesg.o gnopts.o gnplayer.o gnsignal.o gnstatus.o gntext.o \
+	gnyesno.o tile.o
+#
+# Files for a Gem port
+WINGEMSRC = ../win/gem/wingem.c ../win/gem/wingem1.c ../win/gem/load_img.c \
+	tile.c
+WINGEMOBJ = wingem.o wingem1.o load_img.o tile.o
+#
+# Files for a BeOS InterfaceKit port -- not ready for prime time
+WINBESRC =
+WINBEOBJ =
+#WINBESRC = ../win/BeOS/winbe.cpp ../win/BeOS/NHWindow.cpp \
+#	../win/BeOS/NHMenuWindow.cpp ../win/BeOS/NHMapWindow.cpp tile.c
+#WINBEOBJ = winbe.o NHWindow.o NHMenuWindow.o NHMapWindow.o tile.o
 
 #
-# 
+#
 WINSRC = $(WINTTYSRC)
 WINOBJ = $(WINTTYOBJ)
 
@@ -197,7 +235,14 @@ WINQTLIB = -L$(QTDIR)/lib -lqt
 # libraries for KDE (with Qt)
 WINKDELIB = -lkdecore -lkdeui -lXext
 #
+# libraries for Gnome
+WINGNOMELIB = -lgnomeui -lgnome -lart_lgpl -lgtk -lgdk -lpopt
 #
+# libraries for Gem port
+WINGEMLIB = -le_gem -lgem
+#
+# libraries for BeOS 
+WINBELIB = -lbe
 
 WINLIB = $(WINTTYLIB)
 
@@ -217,6 +262,9 @@ WINLIB = $(WINTTYLIB)
 # versions compile fine using SYSV without this.)
 # LIBS = -lbsd
 #
+# for CYGWIN32 aka cygwin 1.1.1
+# LIBS = -lcygwin
+#
 # Solaris 2.x seems to work with the following
 # LIBS = -lsocket -lnsl
 #
@@ -227,6 +275,7 @@ LIBS =
 
 # make NetHack
 GAME     = nethack
+# GAME     = nethack.prg
 
 # if you defined RANDOM in unixconf.h/tosconf.h since your system did not come
 # with a reasonable random number generator
@@ -274,14 +323,14 @@ SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 	../sys/unix/unixunix.c ../sys/be/bemain.c
 
 # all windowing-system-dependent .c (for dependencies and such)
-WINCSRC = $(WINTTYSRC) $(WINX11SRC)
+WINCSRC = $(WINTTYSRC) $(WINX11SRC) $(WINGNOMESRC) $(WINGEMSRC)
 # all windowing-system-dependent .cpp (for dependencies and such)
-WINCXXSRC = $(WINQTSRC)
+WINCXXSRC = $(WINQTSRC) $(WINBESRC)
 
 # .c files for this version (for date.h)
 VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) monstr.c vis_tab.c
 
-# .c files for all UNIX versions (for lint and tags)
+# .c files for all versions using this Makefile (for lint and tags)
 CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) monstr.c vis_tab.c
 
 
@@ -353,10 +402,12 @@ SysV-AT:	DUMB.Setup $(HOBJ) Makefile
 SysBe: $(HOBJ) Makefile
 	@echo "Loading ..."
 	@$(LD) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
+	@xres -o $(GAME) ../win/BeOS/nethack.rsrc
+	@mimeset -f $(GAME)
 	@touch SysBe
 
 DUMB.Setup:	../include/extern.h
-	cp ../include/extern.h ../include/extern.h.BAK 
+	cp ../include/extern.h ../include/extern.h.BAK
 	cat ../include/extern.h | \
 		sed -e '/^E\ int\ /!b' \
 			-e '/[^;/ 	]$$/N' \
@@ -371,8 +422,8 @@ DUMB.Setup:	../include/extern.h
 		sed -e '/^E\ void\ /!b' \
 			-e '/[^;/ 	]$$/N' \
 			-e 's/^\(.*\)$$/\/\* \1 \/\*\*\//' \
-				>../include/extern.DUMB 
-	cp ../include/extern.DUMB ../include/extern.h 
+				>../include/extern.DUMB
+	cp ../include/extern.DUMB ../include/extern.h
 	@touch DUMB.Setup
 
 all:	$(GAME)
@@ -394,10 +445,10 @@ objects.o:
 
 # Qt windowport meta-object-compiler output
 qt_kde0.moc: ../include/qt_kde0.h
-	moc $< >$@
+	$(QTDIR)/bin/moc ../include/qt_kde0.h > qt_kde0.moc
 
 qt_win.moc: ../include/qt_win.h
-	moc $< >$@
+	$(QTDIR)/bin/moc ../include/qt_win.h > qt_win.moc
 
 $(MAKEDEFS): ../util/makedefs.c  $(CONFIG_H) ../include/permonst.h \
 		../include/objclass.h ../include/monsym.h \
@@ -418,6 +469,9 @@ vis_tab.c: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../src/vis_tab.c )
 tile.c: ../win/share/tilemap.c $(HACK_H)
 	@( cd ../util ; $(MAKE) ../src/tile.c )
+
+../win/gnome/gn_rip.h: ../win/X11/rip.xpm
+	cp ../win/X11/rip.xpm ../win/gnome/gn_rip.h
 
 #	date.h should be remade any time any of the source or include code
 #	is modified.  Unfortunately, this would make the contents of this
@@ -452,7 +506,8 @@ clean:
 spotless: clean
 	-rm -f a.out core $(GAME) Sys*
 	-rm -f ../include/date.h ../include/onames.h ../include/pm.h
-	-rm -f monstr.c ../include/vis_tab.h vis_tab.c tile.c
+	-rm -f monstr.c ../include/vis_tab.h vis_tab.c tile.c *.moc
+	-rm -f ../win/gnome/gn_rip.h
 
 
 depend: ../sys/unix/depend.awk $(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(HACKCSRC)
@@ -552,6 +607,53 @@ wintext.o: ../win/X11/wintext.c $(HACK_H) ../include/winX.h ../include/xwindow.h
 	$(CC) $(CFLAGS) -c ../win/X11/wintext.c
 winval.o: ../win/X11/winval.c $(HACK_H) ../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winval.c
+tile.o: tile.c $(HACK_H)
+gnaskstr.o: ../win/gnome/gnaskstr.c ../win/gnome/gnaskstr.h \
+		../win/gnome/gnmain.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnaskstr.c
+gnbind.o: ../win/gnome/gnbind.c ../win/gnome/gnbind.h ../win/gnome/gnmain.h \
+		../win/gnome/gnaskstr.h ../win/gnome/gnyesno.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnbind.c
+gnglyph.o: ../win/gnome/gnglyph.c ../win/gnome/gnglyph.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnglyph.c
+gnmain.o: ../win/gnome/gnmain.c ../win/gnome/gnmain.h ../win/gnome/gnsignal.h \
+		../win/gnome/gnbind.h ../win/gnome/gnopts.h $(HACK_H) \
+		../include/date.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnmain.c
+gnmap.o: ../win/gnome/gnmap.c ../win/gnome/gnmap.h ../win/gnome/gnglyph.h \
+		../win/gnome/gnsignal.h $(HACK_H)
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnmap.c
+gnmenu.o: ../win/gnome/gnmenu.c ../win/gnome/gnmenu.h ../win/gnome/gnmain.h \
+		../win/gnome/gnbind.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnmenu.c
+gnmesg.o: ../win/gnome/gnmesg.c ../win/gnome/gnmesg.h ../win/gnome/gnsignal.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnmesg.c
+gnopts.o: ../win/gnome/gnopts.c ../win/gnome/gnopts.h ../win/gnome/gnglyph.h \
+		../win/gnome/gnmain.h ../win/gnome/gnmap.h $(HACK_H)
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnopts.c
+gnplayer.o: ../win/gnome/gnplayer.c ../win/gnome/gnplayer.h \
+		../win/gnome/gnmain.h $(HACK_H)
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnplayer.c
+gnsignal.o: ../win/gnome/gnsignal.c ../win/gnome/gnsignal.h \
+		../win/gnome/gnmain.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnsignal.c
+gnstatus.o: ../win/gnome/gnstatus.c ../win/gnome/gnstatus.h \
+		../win/gnome/gnsignal.h ../win/gnome/gn_xpms.h \
+		../win/gnome/gnomeprv.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnstatus.c
+gntext.o: ../win/gnome/gntext.c ../win/gnome/gntext.h ../win/gnome/gnmain.h \
+		../win/gnome/gn_rip.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gntext.c
+gnyesno.o: ../win/gnome/gnyesno.c ../win/gnome/gnbind.h ../win/gnome/gnyesno.h
+	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnyesno.c
+wingem.o: ../win/gem/wingem.c $(HACK_H) ../include/func_tab.h ../include/dlb.h \
+		../include/patchlevel.h ../include/wingem.h
+	$(CC) $(CFLAGS) -c ../win/gem/wingem.c
+wingem1.o: ../win/gem/wingem1.c ../include/gem_rsc.h ../include/load_img.h \
+		../include/wintype.h ../include/wingem.h
+	$(CC) $(CFLAGS) -c ../win/gem/wingem1.c
+load_img.o: ../win/gem/load_img.c ../include/load_img.h
+	$(CC) $(CFLAGS) -c ../win/gem/load_img.c
 tile.o: tile.c $(HACK_H)
 qt_win.o: ../win/Qt/qt_win.cpp $(HACK_H) ../include/func_tab.h \
 		../include/dlb.h ../include/patchlevel.h ../include/qt_win.h \
@@ -666,7 +768,7 @@ vision.o: vision.c $(HACK_H) ../include/vis_tab.h
 weapon.o: weapon.c $(HACK_H)
 were.o: were.c $(HACK_H)
 wield.o: wield.c $(HACK_H)
-windows.o: windows.c $(HACK_H)
+windows.o: windows.c $(HACK_H) ../include/wingem.h ../include/winGnome.h
 wizard.o: wizard.c $(HACK_H) ../include/qtext.h
 worm.o: worm.c $(HACK_H) ../include/lev.h
 worn.o: worn.c $(HACK_H)

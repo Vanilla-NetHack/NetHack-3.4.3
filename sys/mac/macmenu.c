@@ -23,17 +23,17 @@
 /******** Application Defines ********/
 #include "hack.h"
 #include "mactty.h"
-#include "macpopup.h"
 #include "macwin.h"
+#include "macpopup.h"
 #include "patchlevel.h"
 
 /******** Toolbox Defines ********/
 #include <Menus.h>
 #include <Devices.h>
 #include <Resources.h>
+#include <TextUtils.h>
 #include <ToolUtils.h>
 #include <Sound.h>
-#include <LowMem.h>		// for LMGetWindowList
 
 /******** Local Defines ********/
 
@@ -81,11 +81,9 @@ enum
 	____Apple__1,
 
 	/* File */
-	menuFileOpenMap = 1,
-	menuFileRedraw,
+	menuFileRedraw = 1,
 	menuFilePrevMsg,
 	menuFileCleanup,
-	menuFileClose,
 	____File___1,
 	menuFilePlayMode,
 	menuFileEnterExplore,
@@ -212,8 +210,6 @@ static	void mustGetMenuAlerts(void);
 static	void menuError(short);
 static	pascal void drawANUserItem(WindowPtr, short);
 static	void aboutNetHack(void);
-static	void openMap(void);
-static	void closeFrontWindow(void);
 static	void optionEditor(void);
 static	void askSave(void);
 static	void askQuit(void);
@@ -514,7 +510,7 @@ void mac_askname ()
 				if (**h > 31) {
 					**h = 31;
 				}
-				BlockMove (*h, pName , **h + 1);
+				BlockMove (*h, pName, **h + 1);
 				DisposeHandle (h);
 			}
 		}
@@ -839,14 +835,14 @@ menuError(short menuErr)
 void
 InitMenuRes()
 {
-	static Boolean was_inited = 0 ;
+	static Boolean was_inited = 0;
 	short			i, j;
 	menuListHandle	mlHnd;
 	MenuHandle		mHnd;
 
 	if (was_inited)
 		return;
-	was_inited = 1 ;
+	was_inited = 1;
 
 	mustGetMenuAlerts();
 
@@ -860,8 +856,8 @@ InitMenuRes()
 		for (j = 0; j < (**mlHnd).numMenus; j++)
 		{
 			if (! (mHnd = (MenuHandle) GetMenu((**mlHnd).mref[j].mresID))) {
-			Str31 d ;
-				NumToString ( (**mlHnd).mref[j].mresID , d ) ;
+			Str31 d;
+				NumToString ((**mlHnd).mref[j].mresID, d);
 				menuError(errGetMenu);
 			}
 
@@ -888,8 +884,8 @@ AdjustMenus(short dimMenubar)
 	short		i;
 
 	/*
-	 *	if ( windowprocs != mac_procs ) {
-	 *		return ;
+	 *	if (windowprocs != mac_procs) {
+	 *		return;
 	 *	}
 	 */
 	/* determine the new menubar state */
@@ -956,17 +952,9 @@ AdjustMenus(short dimMenubar)
 			/* enable the file menu, but ... */
 			EnableItem(MHND_FILE, 0);
 
-			if (theMenubar == mbarDA)
-				DisableItem(MHND_FILE, menuFileOpenMap);
-			else
-				EnableItem(MHND_FILE, menuFileOpenMap);
-
 			/* ... disable the window commands! */
 			for (i = menuFileRedraw; i <= menuFileEnterExplore; i++)
 				DisableItem(MHND_FILE, i);
-
-			if (theMenubar != mbarNoWindows)
-				EnableItem(MHND_FILE, menuFileClose);
 
 			/* ... and disable the rest of the menus */
 			for (i = menuEdit; i < NUM_MBAR; i++)
@@ -985,9 +973,6 @@ AdjustMenus(short dimMenubar)
 
 			/* ... except the unused Edit menu */
 			DisableItem(MHND_EDIT, 0);
-
-			/* ... the map is already open! */
-			DisableItem(MHND_FILE, menuFileOpenMap);
 
 			/* ... enable the window commands */
 			for (i = menuFileRedraw; i <= menuFileEnterExplore; i++)
@@ -1033,28 +1018,20 @@ DoMenuEvt(long menuEntry)
 	case menuFile:
 		switch(menuItem)
 		{
-		case menuFileOpenMap:
-			openMap();
-			break;
-
 		case menuFileRedraw:
-			AddToKeyQueue ( 'R' & 0x1f , 1 ) ;
+			AddToKeyQueue ('R' & 0x1f, 1);
 			break;
 
 		case menuFilePrevMsg:
-			AddToKeyQueue ( 'P' & 0x1f , 1 ) ;
+			AddToKeyQueue ('P' & 0x1f, 1);
 			break;
 
 		case menuFileCleanup:
 			(void) SanePositions();
 			break;
 
-		case menuFileClose:
-			closeFrontWindow();
-			break;
-
 		case menuFileEnterExplore:
-			AddToKeyQueue ( 'X' , 1 ) ;
+			AddToKeyQueue ('X', 1);
 			break;
 
 		case menuFileSave:
@@ -1109,42 +1086,12 @@ aboutNetHack() {
 	}
 }
 
-static void
-openMap()
-{
-	WindowPeek	peekWindow = *(WindowPeek*) LMGetWindowList();
-
-	while (peekWindow && (peekWindow->windowKind != WKND_MAP))
-		peekWindow = peekWindow->nextWindow;
-
-	if (! peekWindow)
-		return;				/* impossible? */
-
-	ShowWindow((WindowPtr) peekWindow);
-	SelectWindow((WindowPtr) peekWindow);
-}
-
-static void
-closeFrontWindow()
-{
-	WindowPeek	peekWindow = (WindowPeek) FrontWindow();
-
-	if (! peekWindow)
-		return;				/* impossible? */
-	else if (peekWindow->windowKind < 0)
-		CloseDeskAcc(peekWindow->windowKind);
-	else if (peekWindow->windowKind == WKND_MAP)
-		HideWindow((WindowPtr) peekWindow);
-	else
-		WindowGoAway((EventRecord *) 0L, (WindowPtr) peekWindow);
-}
-
 
 static void
 askSave()
 {
-	Boolean doSave = 1 ;
-	Boolean doYes = 0 ;
+	Boolean doSave = 1;
+	Boolean doYes = 0;
 
 	if (theMenubar < mbarRegular) {
 	short	itemHit;
@@ -1154,15 +1101,15 @@ askSave()
 		ResetAlertStage();
 
 		if (itemHit != bttnMenuAlertYes) {
-			doSave = 0 ;
+			doSave = 0;
 		} else {
-			doYes = 1 ;
+			doYes = 1;
 		}
 	}
-	if ( doSave ) {
-		AddToKeyQueue ( 'S' , 1 ) ;
-		if ( doYes ) {
-			AddToKeyQueue ( 'y' , 1 ) ;
+	if (doSave) {
+		AddToKeyQueue ('S', 1);
+		if (doYes) {
+			AddToKeyQueue ('y', 1);
 		}
 	}
 }
@@ -1170,10 +1117,16 @@ askSave()
 static void
 askQuit()
 {
-	Boolean doQuit = 1 ;
-	Boolean doYes = 0 ;
-	char *quitinput = "#quit";
+	Boolean doQuit = 1;
+	Boolean doYes = 0;
+	Boolean winMac;
+	char *quitinput;
 
+	if (!strcmp (windowprocs.name, "mac"))
+		winMac = 1;
+	else
+		winMac = 0;
+		
 	if (theMenubar < mbarRegular) {
 	short	itemHit;
 
@@ -1182,17 +1135,30 @@ askQuit()
 		ResetAlrtStage();
 
 		if (itemHit != bttnMenuAlertYes) {
-			doQuit = 0 ;
+			doQuit = 0;
 		} else {
-			doYes = 1 ;
+			doYes = 1;
 		}
 	}
-	if ( doQuit ) {
+	if (doQuit) {
+		/* MWM -- forgive me lord, an even uglier kludge to deal with differences
+			in command input handling
+		 */
+		 if (winMac)
+			quitinput = "#quit\r";
+		else
+			quitinput = "#q\r";
+			
 		/* KMH -- Ugly kludge */
 		while (*quitinput)
 			AddToKeyQueue(*quitinput++, 1);
-		if ( doYes ) {
-			AddToKeyQueue ( 'y' , 1 ) ;
+		if (doYes) {
+			if (winMac)
+				quitinput = "y\rq\r\r\r";
+			else
+				quitinput = "yq\r";
+			while (*quitinput)
+				AddToKeyQueue(*quitinput++, 1);
 		}
 	}
 }

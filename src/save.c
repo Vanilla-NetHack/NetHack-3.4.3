@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.3	99/03/29	*/
+/*	SCCS Id: @(#)save.c	3.3	2000/07/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -52,6 +52,9 @@ static long nulls[10];
 #define HUP
 # endif
 #endif
+
+/* need to preserve these during save to avoid accessing freed memory */
+static unsigned ustuck_id = 0, usteed_id = 0;
 
 int
 dosave()
@@ -109,15 +112,14 @@ int sig_unused;
 int
 dosave0()
 {
+	const char *fq_save;
 	register int fd, ofd;
 	xchar ltmp;
 	d_level uz_save;
-#ifdef MFLOPPY
-	long fds, needed;
-#endif
 
 	if (!SAVEF[0])
 		return 0;
+	fq_save = fqname(SAVEF, SAVEPREFIX, 1);	/* level files take 0 */
 
 #if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP, SIG_IGN);
@@ -131,14 +133,14 @@ dosave0()
 #endif
 
 	HUP if (iflags.window_inited) {
-	    uncompress(SAVEF);
+	    uncompress(fq_save);
 	    fd = open_savefile();
 	    if (fd > 0) {
 		(void) close(fd);
 		clear_nhwindow(WIN_MESSAGE);
-		pline("There seems to be an old save file.");
+		There("seems to be an old save file.");
 		if (yn("Overwrite the old file?") == 'n') {
-		    compress(SAVEF);
+		    compress(fq_save);
 		    return 0;
 		}
 	    }
@@ -154,9 +156,6 @@ dosave0()
 		return(0);
 	}
 
-	/* purge any dead monsters (necessary if we're in the midst of
-	   a panic save rather than a normal one) */
-	dmonsfree();
 	/* undo date-dependent luck adjustments made at startup time */
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
 		change_luck(-1);		/* and unido!ab */
@@ -173,31 +172,40 @@ dosave0()
 #endif
 #ifdef MFLOPPY
 	/* make sure there is enough disk space */
-	savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
-	savegamestate(fd, COUNT_SAVE);
-	needed = bytes_counted;
-	for (ltmp = 1; ltmp <= maxledgerno(); ltmp++)
-		if (ltmp != ledger_no(&u.uz) && level_info[ltmp].where)
-			needed += level_info[ltmp].size + (sizeof ltmp);
-# ifdef AMIGA
-	needed+=ami_wbench_iconsize(SAVEF);
-# endif
-	fds = freediskspace(SAVEF);
-	if(needed > fds) {
-	    HUP {
-		pline("There is insufficient space on SAVE disk.");
-		pline("Require %ld bytes but only have %ld.", needed, fds);
-	    }
-	    flushout();
-	    (void) close(fd);
-	    (void) delete_savefile();
-	    return 0;
-	}
+	if (iflags.checkspace) {
+	    long fds, needed;
 
-	co_false();
+	    savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
+	    savegamestate(fd, COUNT_SAVE);
+	    needed = bytes_counted;
+
+	    for (ltmp = 1; ltmp <= maxledgerno(); ltmp++)
+		if (ltmp != ledger_no(&u.uz) && level_info[ltmp].where)
+		    needed += level_info[ltmp].size + (sizeof ltmp);
+# ifdef AMIGA
+	    needed += ami_wbench_iconsize(fq_save);
+# endif
+	    fds = freediskspace(fq_save);
+	    if (needed > fds) {
+		HUP {
+		    There("is insufficient space on SAVE disk.");
+		    pline("Require %ld bytes but only have %ld.", needed, fds);
+		}
+		flushout();
+		(void) close(fd);
+		(void) delete_savefile();
+		return 0;
+	    }
+
+	    co_false();
+	}
 #endif /* MFLOPPY */
 
 	store_version(fd);
+	ustuck_id = (u.ustuck ? u.ustuck->m_id : 0);
+#ifdef STEED
+	usteed_id = (u.usteed ? u.usteed->m_id : 0);
+#endif
 	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
 	savegamestate(fd, WRITE_SAVE | FREE_SAVE);
 
@@ -214,7 +222,9 @@ dosave0()
 		if (!(level_info[ltmp].flags & LFILE_EXISTS)) continue;
 #ifdef MICRO
 		curs(WIN_MAP, 1 + dotcnt++, 2);
-		putstr(WIN_MAP, 0, ".");
+		if (strncmpi("X11", windowprocs.name, 3)){
+		  putstr(WIN_MAP, 0, ".");
+		}
 		mark_synch();
 #endif
 		ofd = open_levelfile(ltmp);
@@ -239,9 +249,9 @@ dosave0()
 	/* get rid of current level --jgm */
 	delete_levelfile(ledger_no(&u.uz));
 	delete_levelfile(0);
-	compress(SAVEF);
+	compress(fq_save);
 #ifdef AMIGA
-	ami_wbench_iconwrite(SAVEF);
+	ami_wbench_iconwrite(fq_save);
 #endif
 	return(1);
 }
@@ -284,11 +294,11 @@ register int fd, mode;
 				sizeof(struct spell) * (MAXSPELL + 1));
 	save_artifacts(fd);
 	save_oracles(fd, mode);
-	if(u.ustuck)
-	    bwrite(fd, (genericptr_t) &(u.ustuck->m_id), sizeof u.ustuck->m_id);
+	if(ustuck_id)
+	    bwrite(fd, (genericptr_t) &ustuck_id, sizeof ustuck_id);
 #ifdef STEED
-	if(u.usteed)
-		bwrite(fd, (genericptr_t) &(u.usteed->m_id), sizeof u.usteed->m_id);
+	if(usteed_id)
+	    bwrite(fd, (genericptr_t) &usteed_id, sizeof usteed_id);
 #endif
 	bwrite(fd, (genericptr_t) pl_character, sizeof pl_character);
 	bwrite(fd, (genericptr_t) pl_fruit, sizeof pl_fruit);
@@ -352,6 +362,10 @@ savestateinlock()
 		    (void) write(fd, (genericptr_t) &currlev, sizeof(currlev));
 		    save_savefile_name(fd);
 		    store_version(fd);
+		    ustuck_id = (u.ustuck ? u.ustuck->m_id : 0);
+#ifdef STEED
+		    usteed_id = (u.usteed ? u.usteed->m_id : 0);
+#endif
 		    savegamestate(fd, WRITE_SAVE);
 		}
 		bclose(fd);
@@ -370,9 +384,14 @@ int mode;
 	if (mode & COUNT_SAVE) {
 		bytes_counted = 0;
 		savelev0(fd, lev, COUNT_SAVE);
-		while (bytes_counted > freediskspace(levels))
-			if (!swapout_oldest())
-				return FALSE;
+		/* probably bytes_counted will be filled in again by an
+		 * immediately following WRITE_SAVE anyway, but we'll
+		 * leave it out of checkspace just in case */
+		if (iflags.checkspace) {
+			while (bytes_counted > freediskspace(levels))
+				if (!swapout_oldest())
+					return FALSE;
+		}
 	}
 	if (mode & (WRITE_SAVE | FREE_SAVE)) {
 		bytes_counted = 0;
@@ -404,6 +423,13 @@ int mode;
 	   (which happens upon entrance to the endgame or after an aborted
 	   restore attempt) then we don't want to do any actual I/O */
 	if (mode == FREE_SAVE) goto skip_lots;
+	if (iflags.purge_monsters) {
+		/* purge any dead monsters (necessary if we're starting
+		 * a panic save rather than a normal one, or sometimes
+		 * when changing levels without taking time -- e.g.
+		 * create statue trap then immediately level teleport) */
+		dmonsfree();
+	}
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
 #ifdef MFLOPPY
@@ -909,6 +935,7 @@ freedynamicdata()
 	unload_qtlist();
 	free_invbuf();	/* let_to_name (invent.c) */
 	free_youbuf();	/* You_buf,&c (pline.c) */
+	tmp_at(DISP_FREEMEM, 0);	/* temporary display effects */
 #ifdef FREE_ALL_MEMORY
 # define freeobjchn(X)	(saveobjchn(0, X, FREE_SAVE),  X = 0)
 # define freemonchn(X)	(savemonchn(0, X, FREE_SAVE),  X = 0)
@@ -969,9 +996,11 @@ int lev;
 	Sprintf(to, "%s%s", levels, alllevels);
 	set_levelfile_name(from, lev);
 	set_levelfile_name(to, lev);
-	while (level_info[lev].size > freediskspace(to))
-		if (!swapout_oldest())
-			return FALSE;
+	if (iflags.checkspace) {
+		while (level_info[lev].size > freediskspace(to))
+			if (!swapout_oldest())
+				return FALSE;
+	}
 # ifdef WIZARD
 	if (wizard) {
 		pline("Swapping in `%s'", from);

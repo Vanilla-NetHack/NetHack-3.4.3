@@ -72,6 +72,10 @@ struct termio termio;
 extern void NDECL(sco_mapon);
 extern void NDECL(sco_mapoff);
 #endif
+#ifdef __linux__
+extern void NDECL(linux_mapon);
+extern void NDECL(linux_mapoff);
+#endif
 
 #ifdef AUX
 void
@@ -156,6 +160,9 @@ dosuspend()
 #  ifdef _M_UNIX
 		sco_mapon();
 #  endif
+#  ifdef __linux__
+		linux_mapon();
+#  endif
 		(void) signal(SIGTSTP, SIG_DFL);
 #  ifdef AUX
 		( void ) kill ( 0 , SIGSTOP ) ;
@@ -164,6 +171,9 @@ dosuspend()
 #  endif
 #  ifdef _M_UNIX
 		sco_mapoff();
+#  endif
+#  ifdef __linux__
+		linux_mapoff();
 #  endif
 		resume_nhwindows();
 	} else {

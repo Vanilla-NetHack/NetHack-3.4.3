@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.3	99/07/02	*/
+/*	SCCS Id: @(#)rm.h	3.3	1999/12/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -43,16 +43,16 @@
 #define TLWALL		10
 #define TRWALL		11
 #define DBWALL		12
-#define SDOOR		13
-#define SCORR		14
-#define POOL		15
-#define MOAT		16	/* pool that doesn't boil, adjust messages */
-#define WATER		17
-#define DRAWBRIDGE_UP	18
-#define LAVAPOOL	19
-#define IRONBARS	20	/* KMH */
-#define DOOR		21
-#define TREE		22	/* KMH */
+#define TREE		13	/* KMH */
+#define SDOOR		14
+#define SCORR		15
+#define POOL		16
+#define MOAT		17	/* pool that doesn't boil, adjust messages */
+#define WATER		18
+#define DRAWBRIDGE_UP	19
+#define LAVAPOOL	20
+#define IRONBARS	21	/* KMH */
+#define DOOR		22
 #define CORR		23
 #define ROOM		24
 #define STAIRS		25
@@ -224,6 +224,7 @@ struct symdef {
 
 extern const struct symdef defsyms[MAXPCHARS];	/* defaults */
 extern uchar showsyms[MAXPCHARS];
+extern const struct symdef def_warnsyms[WARNCOUNT];
 
 /*
  * Graphics sets for display symbols
@@ -503,8 +504,10 @@ extern dlevel_t level;	/* structure describing the current level */
 			 !(level.monsters[x][y])->mburied)
 #define MON_BURIED_AT(x,y)	(level.monsters[x][y] != (struct monst *)0 && \
 				(level.monsters[x][y])->mburied)
+#ifndef STEED
 #define place_monster(m,x,y)	((m)->mx=(x),(m)->my=(y),\
 				 level.monsters[(m)->mx][(m)->my]=(m))
+#endif
 #define place_worm_seg(m,x,y)	level.monsters[x][y] = m
 #define remove_monster(x,y)	level.monsters[x][y] = (struct monst *)0
 #define m_at(x,y)		(MON_AT(x,y) ? level.monsters[x][y] : \

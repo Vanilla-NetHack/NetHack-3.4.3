@@ -906,7 +906,7 @@ X11_select_menu(window, how, menu_list)
 
 	num_args = 0;
 	XtSetArg(args[num_args], XtNforceColumns, True);	num_args++;
-	XtSetArg(args[num_args], XtNcolumnSpacing, 0);		num_args++;
+	XtSetArg(args[num_args], XtNcolumnSpacing, 1);		num_args++;
 	XtSetArg(args[num_args], XtNdefaultColumns, 1);		num_args++;
 	XtSetArg(args[num_args], XtNlist,
 			menu_info->curr_menu.list_pointer);	num_args++;

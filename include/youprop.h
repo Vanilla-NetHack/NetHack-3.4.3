@@ -64,6 +64,7 @@
 #define HSick_resistance	u.uprops[SICK_RES].intrinsic
 #define Sick_resistance		(HSick_resistance || \
 				 youmonst.data->mlet == S_FUNGUS || \
+				 youmonst.data == &mons[PM_GHOUL] || \
 				 defends(AD_DISE,uwep))
 #define Invulnerable		u.uprops[INVULNERABLE].intrinsic    /* [Tom] */
 
@@ -148,6 +149,11 @@
 #define EWarning		u.uprops[WARNING].extrinsic
 #define Warning			(HWarning || EWarning)
 
+/* Warning for a specific type of monster */
+#define HWarn_of_mon		u.uprops[WARN_OF_MON].intrinsic
+#define EWarn_of_mon		u.uprops[WARN_OF_MON].extrinsic
+#define Warn_of_mon		(HWarn_of_mon || EWarn_of_mon)
+
 #define HUndead_warning		u.uprops[WARN_UNDEAD].intrinsic
 #define Undead_warning		(HUndead_warning)
 
@@ -180,6 +186,7 @@
 #define Invis			((HInvis || EInvis || \
 				 pm_invisible(youmonst.data)) && !BInvis)
 #define Invisible		(Invis && !See_invisible)
+		/* Note: invisibility also hides inventory and steed */
 
 #define EDisplaced		u.uprops[DISPLACED].extrinsic
 #define Displaced		EDisplaced

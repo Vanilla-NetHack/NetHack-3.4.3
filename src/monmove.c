@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monmove.c	3.3	1999/12/03	*/
+/*	SCCS Id: @(#)monmove.c	3.3	2000/07/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -83,6 +83,8 @@ dochugw(mtmp)
 	register int x = mtmp->mx, y = mtmp->my;
 	boolean already_saw_mon = !occupation ? 0 : canspotmon(mtmp);
 	int rd = dochug(mtmp);
+#if 0
+	/* part of the original warning code which was replaced in 3.3.1 */
 	int dd;
 
 	if(Warning && !rd && !mtmp->mpeaceful &&
@@ -97,6 +99,7 @@ dochugw(mtmp)
 	    else if ((int) (mtmp->m_lev / 4) > warnlevel)
 		warnlevel = (mtmp->m_lev / 4);
 	}
+#endif /* 0 */
 
 	/* a similar check is in monster_nearby() in hack.c */
 	/* check whether hero notices monster and stops current activity */
@@ -265,16 +268,7 @@ register struct monst *mtmp;
 
 /*	Pre-movement adjustments	*/
 
-	if(mtmp->cham && !rn2(6))	/* polymorph chameleons */
-	    (void) newcham(mtmp, (struct permonst *)0);
-
-	/* regenerate monsters */
-	mon_regen(mtmp, FALSE);
-
-	/* polymorph lycanthropes */
-	were_change(mtmp);
-
-	mdat = mtmp->data; /* after newcham and were_change */
+	mdat = mtmp->data;
 
 	if (mtmp->mstrategy & STRAT_ARRIVE) {
 	    int res = m_arrival(mtmp);
@@ -313,7 +307,8 @@ register struct monst *mtmp;
 	if (mtmp->mstun && !rn2(10)) mtmp->mstun = 0;
 
 	/* some monsters teleport */
-	if (mtmp->mflee && !rn2(40) && can_teleport(mdat) && !mtmp->iswiz) {
+	if (mtmp->mflee && !rn2(40) && can_teleport(mdat) && !mtmp->iswiz &&
+	    !level.flags.noteleport) {
 		rloc(mtmp);
 		return(0);
 	}
@@ -355,9 +350,10 @@ register struct monst *mtmp;
 			pline("%s whispers at thin air.",
 			    cansee(mtmp->mux, mtmp->muy) ? Monnam(mtmp) : "It");
 
-			if (is_demon(youmonst.data)) rloc(mtmp);
+			if (is_demon(youmonst.data)) {
 			  /* "Good hunting, brother" */
-			else {
+			    if (!tele_restrict(mtmp)) rloc(mtmp);
+			} else {
 			    mtmp->minvis = mtmp->perminvis = 0;
 			    /* Why?  For the same reason in real demon talk */
 			    pline("%s gets angry!", Amonnam(mtmp));
@@ -399,7 +395,8 @@ register struct monst *mtmp;
 		}
 		for(m2=fmon; m2; m2 = nmon) {
 			nmon = m2->nmon;
-			if (m2->mpeaceful != mtmp->mpeaceful) continue;
+			if (DEADMONSTER(m2)) continue;
+			if (m2->mpeaceful == mtmp->mpeaceful) continue;
 			if (mindless(m2->data)) continue;
 			if (m2 == mtmp) continue;
 			if ((telepathic(m2->data) &&
@@ -419,7 +416,15 @@ toofar:
 	if((!mtmp->mpeaceful || Conflict) && inrange &&
 	   dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <= 8
 	   && attacktype(mdat, AT_WEAP)) {
-	    if (mtmp->weapon_check == NEED_WEAPON || !MON_WEP(mtmp)) {
+	    struct obj *mw_tmp;
+
+	    /* The scared check is necessary.  Otherwise a monster that is
+	     * one square near the player but fleeing into a wall would keep	
+	     * switching between pick-axe and weapon.
+	     */
+	    mw_tmp = MON_WEP(mtmp);
+	    if (!(scared && mw_tmp && is_pick(mw_tmp)) &&
+		    mtmp->weapon_check == NEED_WEAPON) {
 		mtmp->weapon_check = NEED_HTH_WEAPON;
 		if (mon_wield_item(mtmp) != 0) return(0);
 	    }
@@ -554,7 +559,7 @@ register int after;
 		!Is_rogue_level(&u.uz) &&
 #endif
 		(!needspick(ptr) || m_carrying(mtmp, PICK_AXE) ||
-		m_carrying(mtmp, DWARVISH_MATTOCK));
+		(m_carrying(mtmp, DWARVISH_MATTOCK) && !which_armor(mtmp, W_ARMS)));
 	can_open = !(nohands(ptr) || verysmall(ptr));
 	can_unlock = ((can_open && m_carrying(mtmp, SKELETON_KEY)) ||
 		      mtmp->iswiz || is_rider(ptr));
@@ -619,7 +624,8 @@ register int after;
 #endif
 
 	/* teleport if that lies in our nature */
-	if(ptr == &mons[PM_TENGU] && !rn2(5) && !mtmp->mcan) {
+	if(ptr == &mons[PM_TENGU] && !rn2(5) && !mtmp->mcan &&
+	   !tele_restrict(mtmp)) {
 	    if(mtmp->mhp < 7 || mtmp->mpeaceful || rn2(2))
 		rloc(mtmp);
 	    else
@@ -790,14 +796,9 @@ not_special:
       }
 
 	if (can_tunnel && needspick(ptr) &&
-		(mw_tmp = MON_WEP(mtmp)) != 0 && !is_pick(mw_tmp)) {
-	    /* not wielding its pick-axe yet; if its current weapon
-	       is cursed, then it can't switch; when approaching,
-	       it won't switch if the desired destination can be reached
-	       without digging [to inhibit repeated pick/weapon flip-flop] */
-	    if (mw_tmp->cursed || (appr > 0 && m_cansee(mtmp, gx, gy)))
-		can_tunnel = FALSE;
-	}
+		(mw_tmp = MON_WEP(mtmp)) != 0 && !is_pick(mw_tmp) &&
+		mw_tmp->cursed && mtmp->weapon_check == NO_WEAPON_WANTED)
+	    can_tunnel = FALSE;
 
 	nix = omx;
 	niy = omy;
@@ -863,10 +864,12 @@ not_special:
 	    if (mmoved==1 && (u.ux != nix || u.uy != niy) && itsstuck(mtmp))
 		return(3);
 
-	    if (mmoved==1 && can_tunnel && needspick(ptr) &&
-		(!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp))) {
+	    if(IS_ROCK(levl[nix][niy].typ) && may_dig(nix,niy) &&
+		    mmoved==1 && can_tunnel && needspick(ptr) &&
+		    (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp))) {
 		mtmp->weapon_check = NEED_PICK_AXE;
-		(void)mon_wield_item(mtmp);
+		if (mon_wield_item(mtmp))
+		    return(3);
 	    }
 	    /* If ALLOW_U is set, either it's trying to attack you, or it
 	     * thinks it is.  In either case, attack this spot in preference to
@@ -930,7 +933,7 @@ not_special:
 	    /* Place a segment at the old position. */
 	    if (mtmp->wormno) worm_move(mtmp);
 	} else {
-	    if(is_unicorn(ptr) && rn2(2)) {
+	    if(is_unicorn(ptr) && rn2(2) && !tele_restrict(mtmp)) {
 		rloc(mtmp);
 		return(1);
 	    }
@@ -957,7 +960,7 @@ postmov:
 		    boolean btrapped = (here->doormask & D_TRAPPED);
 
 		    if(here->doormask & (D_LOCKED|D_CLOSED) && amorphous(ptr)) {
-			if (flags.verbose && canseeit)
+			if (flags.verbose && canseemon(mtmp))
 			    pline("%s %ss under the door.", Monnam(mtmp),
 				  (ptr == &mons[PM_FOG_CLOUD] ||
 				   ptr == &mons[PM_YELLOW_LIGHT])

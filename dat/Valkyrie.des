@@ -220,11 +220,15 @@ OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
+# Traps
+TRAP:"board",(13,08)
+TRAP:"board",(21,08)
 # Random traps
 TRAP:"fire",random
 TRAP:"fire",random
 TRAP:"fire",random
 TRAP:"fire",random
+TRAP:"board",random
 TRAP:random,random
 TRAP:random,random
 # Random monsters.

@@ -49,6 +49,7 @@ char *name;
 
     register char *np, *path;
     char filename[MAXPATHLEN+1], *getenv();
+    int pathlen;
 
     if (index(name, '/') != (char *)0 || (path = getenv("PATH")) == (char *)0)
 	path = "";
@@ -56,19 +57,26 @@ char *name;
     for (;;) {
 	if ((np = index(path, ':')) == (char *)0)
 	    np = path + strlen(path);       /* point to end str */
-	if (np - path <= 1)		     /* %% */
-	    Strcpy(filename, name);
-	else {
-	    (void) strncpy(filename, path, np - path);
-	    filename[np - path] = '/';
-	    Strcpy(filename + (np - path) + 1, name);
+	pathlen = np - path;
+	if (pathlen > MAXPATHLEN)
+	    pathlen = MAXPATHLEN;
+	if (pathlen <= 1) {		     /* %% */
+	    (void) strncpy(filename, name, MAXPATHLEN);
+	} else {
+	    (void) strncpy(filename, path, pathlen);
+	    filename[pathlen] = '/';
+	    (void) strncpy(filename + pathlen + 1, name,
+				(MAXPATHLEN - 1) - pathlen);
 	}
+	filename[MAXPATHLEN] = '\0';
 	if (stat(filename, &hbuf) == 0)
 	    return;
 	if (*np == '\0')
 	path = "";
 	path = np + 1;
     }
+    if (strlen(name) > BUFSZ/2)
+	name = name + strlen(name) - BUFSZ/2;
     error("Cannot get status of %s.", (np = rindex(name, '/')) ? np+1 : name);
 # endif /* WANT_GETHDATE */
 }
@@ -125,10 +133,11 @@ eraseoldlocks()
 	for(i = 1; i <= MAXDUNGEON*MAXLEVEL + 1; i++) {
 		/* try to remove all */
 		set_levelfile_name(lock, i);
-		(void) unlink(lock);
+		(void) unlink(fqname(lock, LEVELPREFIX, 0));
 	}
 	set_levelfile_name(lock, 0);
-	if(unlink(lock)) return(0);			/* cannot remove it */
+	if(unlink(fqname(lock, LEVELPREFIX, 0)))
+		return 0;				/* cannot remove it */
 	return(1);					/* success! */
 }
 
@@ -137,34 +146,35 @@ getlock()
 {
 	register int i = 0, fd, c, ci, ct;
 	char tbuf[BUFSZ];
+	const char *fq_lock;
 # if defined(MSDOS) && defined(NO_TERMS)
 	int grmode;
 # endif
 	
 	/* we ignore QUIT and INT at this point */
-	if (!lock_file(HLOCK, 10)) {
+	if (!lock_file(HLOCK, LOCKPREFIX, 10)) {
 		wait_synch();
 		chdirx(orgdir, 0);
 		error("Quitting.");
 	}
 
 	/* regularize(lock); */ /* already done in pcmain */
-	Sprintf(tbuf,lock);
+	Sprintf(tbuf,fqname(lock, LEVELPREFIX, 0));
 	set_levelfile_name(lock, 0);
-
-	if((fd = open(lock,0)) == -1) {
+	fq_lock = fqname(lock, LEVELPREFIX, 1);
+	if((fd = open(fq_lock,0)) == -1) {
 		if(errno == ENOENT) goto gotlock;    /* no such file */
 		chdirx(orgdir, 0);
-		perror(lock);
+		perror(fq_lock);
 		unlock_file(HLOCK); 
-		error("Cannot open %s", lock);
+		error("Cannot open %s", fq_lock);
 	}
 
 	(void) close(fd);
 
 	if(iflags.window_inited) { 
 	  pline("There is already a game in progress under your name.");
-	  pline(tbuf,"You may be able to use \"recover %s\" to get it back.\n",lock);
+	  pline("You may be able to use \"recover %s\" to get it back.\n",tbuf);
 	  c = yn("Do you want to destroy the old game?");
 	} else {
 # if defined(MSDOS) && defined(NO_TERMS)
@@ -212,20 +222,20 @@ getlock()
 	}
 
 gotlock:
-	fd = creat(lock, FCMASK);
+	fd = creat(fq_lock, FCMASK);
 	unlock_file(HLOCK);
 	if(fd == -1) {
 		chdirx(orgdir, 0);
-		error("cannot creat lock file.");
+		error("cannot creat lock file (%s.)", fq_lock);
 	} else {
 		if(write(fd, (char *) &hackpid, sizeof(hackpid))
 		    != sizeof(hackpid)){
 			chdirx(orgdir, 0);
-			error("cannot write lock");
+			error("cannot write lock (%s)", fq_lock);
 		}
 		if(close(fd) == -1) {
 			chdirx(orgdir, 0);
-			error("cannot close lock");
+			error("cannot close lock (%s)", fq_lock);
 		}
 	}
 # if defined(MSDOS) && defined(NO_TERMS)

@@ -123,7 +123,10 @@ static const char *shktools[] = {
 #endif
 #ifdef AMIGA
     "Falo", "Nosid-da\'r", "Ekim-p", "Rebrol-nek", "Noslo", "Yl-rednow",
-    "Mured-oog",
+    "Mured-oog", "Ivrajimsal",
+#endif
+#ifdef TOS
+    "Nivram",
 #endif
 #ifdef VMS
     "Lez-tneg", "Ytnu-haled", "Niknar",
@@ -309,10 +312,9 @@ const char *nlp[];
 		    shname = shk->female ? "Lucrezia" : "Dirk";
 		}
 
-		/* is name already is use on this level? */
+		/* is name already in use on this level? */
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
-		    if (mtmp == shk) continue;
-		    if (!mtmp->isshk) continue;
+		    if (DEADMONSTER(mtmp) || (mtmp == shk) || !mtmp->isshk) continue;
 		    if (strcmp(ESHK(mtmp)->shknam, shname)) continue;
 		    break;
 		}

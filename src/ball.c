@@ -31,12 +31,13 @@ ballfall()
 		int dmg = rn1(7,25);
 		pline_The("iron ball falls on your %s.",
 			body_part(HEAD));
-		if (uarmh)
+		if (uarmh) {
 		    if(is_metallic(uarmh)) {
 			pline("Fortunately, you are wearing a hard helmet.");
 			dmg = 3;
 		    } else if (flags.verbose)
 			Your("%s does not protect you.", xname(uarmh));
+		}
 		losehp(dmg, "Crunched in the head by an iron ball",
 			NO_KILLER_PREFIX);
 	}
@@ -439,7 +440,7 @@ boolean *cause_delay;
 		*ballx = uchain->ox;
 		*bally = uchain->oy;
 		move_bc(0, *bc_control, *ballx, *bally, *chainx, *chainy);
-		spoteffects();
+		spoteffects(TRUE);
 		return FALSE;
 	    }
 	}
@@ -540,8 +541,11 @@ xchar x, y;
 	    u.bc_order = bc_order();
 	}
 	newsym(u.ux0,u.uy0);		/* clean up old position */
-	if (u.ux0 != u.ux || u.uy0 != u.uy)
-	    spoteffects();
+	if (u.ux0 != u.ux || u.uy0 != u.uy) {
+	    spoteffects(TRUE);
+	    if (In_sokoban(&u.uz))
+		change_luck(-1);	/* Sokoban guilt */
+	}
     }
 }
 

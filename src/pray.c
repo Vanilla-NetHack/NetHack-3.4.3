@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pray.c	3.3	1999/11/26	*/
+/*	SCCS Id: @(#)pray.c	3.3	2000/06/29	*/
 /* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -136,7 +136,7 @@ in_trouble()
 		(uleft && uleft->otyp==RIN_LEVITATION && uleft->cursed) ||
 		(uright && uright->otyp==RIN_LEVITATION && uright->cursed))
 		return(TROUBLE_CURSED_LEVITATION);
-	if(ublindf && ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
+	if(Blindfolded && ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
 
 	if(Punished) return(TROUBLE_PUNISHED);
 	for(otmp=invent; otmp; otmp=otmp->nobj)
@@ -150,6 +150,8 @@ in_trouble()
 	   (uarmc && uarmc->cursed) ||	/* cloak */
 	   (uarmf && uarmf->cursed && uarmf->otyp != LEVITATION_BOOTS) ||
 					/* boots */
+	   (ublindf && ublindf->otyp == LENSES && ublindf->cursed) ||
+	   				/* lenses: blindfold is TROUBLE_CURSED_BLINDFOLD */
 #ifdef TOURIST
 	   (uarmu && uarmu->cursed) ||  /* shirt */
 #endif
@@ -186,10 +188,12 @@ register int trouble;
 	    case TROUBLE_STONED:
 		    You_feel("more limber.");
 		    Stoned = 0;
+		    delayed_killer = 0;
 		    break;
 	    case TROUBLE_SLIMED:
 		    pline_The("slime disappears.");
 		    Slimed = 0;
+		    delayed_killer = 0;
 		    break;
 	    case TROUBLE_STRANGLED:
 		    if (uamul && uamul->otyp == AMULET_OF_STRANGULATION) {
@@ -220,9 +224,17 @@ register int trouble;
 		    make_sick(0L, (char *) 0, FALSE, SICK_ALL);
 		    break;
 	    case TROUBLE_HIT:
+		    /* "fix all troubles" will keep trying if hero has
+		       5 or less hit points, so make sure they're always
+		       boosted to be more than that */
 		    You_feel("much better.");
-		    if (Upolyd) u.mh = u.mhmax += rnd(5);
+		    if (Upolyd) {
+			u.mhmax += rnd(5);
+			if (u.mhmax <= 5) u.mhmax = 5+1;
+			u.mh = u.mhmax;
+		    }
 		    if (u.uhpmax < u.ulevel * 5 + 11) u.uhpmax += rnd(5);
+		    if (u.uhpmax <= 5) u.uhpmax = 5+1;
 		    u.uhp = u.uhpmax;
 		    flags.botl = 1;
 		    break;
@@ -292,6 +304,8 @@ register int trouble;
 			    what = rightglow;
 		    } else if (uamul && uamul->cursed) /* amulet */
 			    otmp = uamul;
+		    else if (ublindf && ublindf->cursed) /* eyewear */
+			    otmp = ublindf;  /* must be non-blinding lenses */
 		    /* if weapon wasn't handled above, do it now */
 		    else if (welded(uwep))		/* weapon */
 			    otmp = uwep;
@@ -302,6 +316,10 @@ register int trouble;
 					break;
 		    }
 decurse:
+		    if (!otmp) {
+			impossible("fix_worst_trouble: nothing to uncurse.");
+			return;
+		    }
 		    uncurse(otmp);
 		    otmp->bknown = TRUE;
 		    if (!Blind)
@@ -471,14 +489,7 @@ aligntyp resp_god;
 			      youmonst.data->mlet == S_HUMAN ? "mortal" : "creature");
 			verbalize("Thou must relearn thy lessons!");
 			(void) adjattrib(A_WIS, -1, FALSE);
-			if (u.ulevel > 1) {
-			    losexp();
-			    if(u.uhp < 1) u.uhp = 1;
-			    if(u.uhpmax < 1) u.uhpmax = 1;
-			} else  {
-			    u.uexp = 0;
-			    flags.botl = 1;
-			}
+			losexp((char *)0);
 			break;
 	    case 6:	if (!Punished) {
 			    gods_angry(resp_god);
@@ -728,12 +739,6 @@ pleased(g_align)
 			    !carrying(SPE_FINGER_OF_DEATH)) {
 			obj = mksobj(SPE_FINGER_OF_DEATH, TRUE, FALSE);
 			bless(obj);
-			for (sp_no = 0; sp_no < MAXSPELL; sp_no++)
-			    if (spl_book[sp_no].sp_id == SPE_FINGER_OF_DEATH) {
-				/* if spell is already known, enhance weapon */
-				if (uwep) obj = uwep;	/* to be blessed,&c */
-				break;
-			    }
 			dropped_item = "A spellbook appears";
 		    } else if (!exist_artifact(LONG_SWORD,
 					       artiname(ART_VORPAL_BLADE))) {
@@ -750,10 +755,19 @@ pleased(g_align)
 			dropy(obj);
 			u.ugifts++;
 		    }
-		    /* acquire this skill regardless of weapon */
+		    /* acquire this skill regardless of weapon (or book) */
 		    unrestrict_weapon_skill(P_LONG_SWORD);
 		    if (obj && obj->oartifact == ART_VORPAL_BLADE)
 			discover_artifact(ART_VORPAL_BLADE);
+		    /* when getting a new book for known spell, enhance
+		       currently wielded weapon rather than the book */
+		    if (obj && obj->otyp == SPE_FINGER_OF_DEATH) {
+			for (sp_no = 0; sp_no < MAXSPELL; sp_no++)
+			    if (spl_book[sp_no].sp_id == SPE_FINGER_OF_DEATH) {
+				if (uwep) obj = uwep;	/* to be blessed,&c */
+				break;
+			    }
+		    }
 		    break;
 		case A_CHAOTIC:
 		    u.uevent.uhand_of_elbereth = 3;
@@ -935,6 +949,7 @@ dosacrifice()
 {
     register struct obj *otmp;
     int value = 0;
+    int pm;
     aligntyp altaralign = a_align(u.ux,u.uy);
 
     if (!on_altar()) {
@@ -953,15 +968,15 @@ dosacrifice()
       gods as easy to please as an angry dog!
 
       Now only accepts corpses, based on the game's evaluation of their
-      toughness.  Human sacrifice, as well as sacrificing unicorns of
-      your alignment, is strongly discouraged.  (We can't tell whether
-      a pet corpse was tame, so you can still sacrifice it.)
+      toughness.  Human and pet sacrifice, as well as sacrificing unicorns
+      of your alignment, is strongly discouraged.
      */
 
 #define MAXVALUE 24 /* Highest corpse value (besides Wiz) */
 
     if (otmp->otyp == CORPSE) {
 	register struct permonst *ptr = &mons[otmp->corpsenm];
+	struct monst *mtmp;
 	extern const int monstr[];
 
 	/* KMH, conduct */
@@ -1013,8 +1028,8 @@ dosacrifice()
 		    change_luck(altaralign == A_NONE ? -2 : 2);
 		    demonless_msg = "blood coagulates";
 		}
-		if ((dmon = makemon(&mons[dlord(altaralign)],
-						u.ux, u.uy, NO_MM_FLAGS ))) {
+		if ((pm = dlord(altaralign)) != NON_PM &&
+		    (dmon = makemon(&mons[pm], u.ux, u.uy, NO_MM_FLAGS))) {
 		    You("have summoned %s!", a_monnam(dmon));
 		    if (sgn(u.ualign.type) == sgn(dmon->data->maligntyp))
 			dmon->mpeaceful = TRUE;
@@ -1033,6 +1048,15 @@ dosacrifice()
 	    if (carried(otmp)) useup(otmp);
 	    else useupf(otmp, 1L);
 	    return(1);
+	} else if (otmp->oxlth && otmp->oattached == OATTACHED_MONST
+		    && ((mtmp = get_mtraits(otmp, FALSE)) != (struct monst *)0)
+		    && mtmp->mtame) {
+	    /* mtmp is a temporary pointer to a tame monster's attributes,
+	     * not a real monster */
+	    pline("So this is how you repay loyalty?");
+	    adjalign(-3);
+	    value = -1;
+	    HAggravate_monster |= FROMOUTSIDE;
 	} else if (is_undead(ptr)) { /* Not demons--no demon corpses */
 	    if (u.ualign.type != A_CHAOTIC)
 		value += 1;
@@ -1148,7 +1172,7 @@ verbalize("In return for thy service, I grant thee the gift of Immortality!");
 	    /* Is this a conversion ? */
 	    /* An unaligned altar in Gehennom will always elicit rejection. */
 	    if (ugod_is_angry() || (altaralign == A_NONE && Inhell)) {
-		if(u.ualignbase[0] == u.ualignbase[1] &&
+		if(u.ualignbase[A_CURRENT] == u.ualignbase[A_ORIGINAL] &&
 		   altaralign != A_NONE) {
 		    You("have a strong feeling that %s is angry...", u_gname());
 		    consume_offering(otmp);
@@ -1156,9 +1180,9 @@ verbalize("In return for thy service, I grant thee the gift of Immortality!");
 
 		    /* The player wears a helm of opposite alignment? */
 		    if (uarmh && uarmh->otyp == HELM_OF_OPPOSITE_ALIGNMENT)
-			u.ualignbase[0] = altaralign;
+			u.ualignbase[A_CURRENT] = altaralign;
 		    else
-			u.ualign.type = u.ualignbase[0] = altaralign;
+			u.ualign.type = u.ualignbase[A_CURRENT] = altaralign;
 		    u.ublessed = 0;
 		    flags.botl = 1;
 
@@ -1166,7 +1190,7 @@ verbalize("In return for thy service, I grant thee the gift of Immortality!");
 		    /* Beware, Conversion is costly */
 		    change_luck(-3);
 		    u.ublesscnt += 300;
-		    adjalign((int)(u.ualignbase[1] * (ALIGNLIM / 2)));
+		    adjalign((int)(u.ualignbase[A_ORIGINAL] * (ALIGNLIM / 2)));
 		} else {
 		    u.ugangr += 3;
 		    adjalign(-5);
@@ -1482,6 +1506,7 @@ doturn()
 	}
 	pline("Calling upon %s, you chant an arcane formula.", u_gname());
 	exercise(A_WIS, TRUE);
+	u.uconduct.gnostic++;
 
 	/* note: does not perform unturn_dead() on victims' inventories */
 	range = BOLT_LIM + (u.ulevel / 5);	/* 5 to 11 */
@@ -1489,6 +1514,8 @@ doturn()
 	once = 0;
 	for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 	    mtmp2 = mtmp->nmon;
+
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (!cansee(mtmp->mx,mtmp->my) ||
 		distu(mtmp->mx,mtmp->my) > range) continue;
 
@@ -1629,7 +1656,7 @@ register int x, y;
     }
 }
 
-/* assumes is_ok() at one space away, but not necessarily at two */
+/* assumes isok() at one space away, but not necessarily at two */
 STATIC_OVL boolean
 blocked_boulder(dx,dy)
 int dx,dy;

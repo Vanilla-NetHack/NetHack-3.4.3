@@ -57,12 +57,12 @@
 #	Compiler and linker selection.
 #
 
-CC	= cl		# MSC
-#CC	= gcc		# GCC
+#CC	= cl		# MSC
+CC	= gcc		# GCC
 #CC	= icc		# CSet/2
 
-LINK	= link		# MSC
-#LINK	= link386	# GCC OMF, CSet/2
+#LINK	= link		# MSC
+LINK	= link386	# GCC OMF, CSet/2
 
 #
 #	Make syntax peculiarities.
@@ -79,22 +79,22 @@ LINK	= link		# MSC
 #E	= )		#   - " -      end   - " -
 #S	= ;		# Command separator  - " -
 #P	= %		# Literal percent sign
-MAKEB	= nmake
-CMD	=
-AB	= $(@B).c
-CB	= $$(@B).c
-B	= (
-E	= )
-S	= &
-P	= %%
-#MAKEB	= dmake
-#CMD	= cmd /C
-#AB	= $(@:B).c
-#CB	= $$(@:B).c
-#B	= $(CMD) "
-#E	= "
+#MAKEB	= nmake
+#CMD	=
+#AB	= $(@B).c
+#CB	= $$(@B).c
+#B	= (
+#E	= )
 #S	= &
-#P	= %
+#P	= %%
+MAKEB	= dmake
+CMD	= cmd /C
+AB	= $(@:B).c
+CB	= $$(@:B).c
+B	= $(CMD) "
+E	= "
+S	= &
+P	= %
 
 #
 #	Most makes execute actions automatically inside a subshell,
@@ -148,7 +148,7 @@ LEXYYC	= lexyy.c
 #	Source tree base directory.
 #
 
-NHSRC	= \nh32
+NHSRC	= \nethack\3.3.1\uunet
 
 #
 #	Source directories.  Makedefs hardcodes these, don't change them.
@@ -175,9 +175,9 @@ SSYS	= $(NHSRC)\sys\share	# Shared system files
 
 OBJ	= \tmp\obj		# Object files
 TEMP	= \tmp\bin		# Temporary files during make process
-GAMEDIR = \games\nh32		# Game directory
-PLIBP	= d:\c6\lib		# Protected mode C libraries
-RLIBP	= d:\c6\lib		# Possible real mode C libraries
+GAMEDIR = \games\nh331		# Game directory
+PLIBP	= c:\emx\lib		# Protected mode C libraries
+RLIBP	= c:\emx\lib		# Possible real mode C libraries
 
 TLIBP	= \toolkt20\os2lib	# CSet/2 Toolkit libpath (OS2386.LIB)
 
@@ -186,7 +186,7 @@ TLIBP	= \toolkt20\os2lib	# CSet/2 Toolkit libpath (OS2386.LIB)
 #
 
 GAME	= nethack
-GAMEDES = "NetHack 3.3"
+GAMEDES = "NetHack 3.3.1"
 
 #
 #	Only if you're using CSet/2.  Define the upper line for ver. 1,
@@ -216,10 +216,10 @@ CSETVER = /DOS2_CSET2_VER_2
 #	include file path, debug flags, ANSI conformance.
 #
 
-CFLAGS	= /c /DOS2_MSC /AL /O /Gs /G2 /Gt10 /Zp1 /FPi $(WARN) /I$(INCL) $(BIGC) $(CDFLAGS) $(STDC)
-O	= /Fo
-#CFLAGS	= -c -DOS2_GCC $(GCCO) $(WARN) -I$(INCL) $(CDFLAGS) $(STDC)
-#O	= -o
+#CFLAGS	= /c /DOS2_MSC /AL /O /Gs /G2 /Gt10 /Zp1 /FPi $(WARN) /I$(INCL) $(BIGC) $(CDFLAGS) $(STDC)
+#O	= /Fo
+CFLAGS	= -c -DOS2_GCC $(GCCO) $(WARN) -I$(INCL) $(CDFLAGS) $(STDC)
+O	= -s -O -o
 #CFLAGS	= /c /DOS2_CSET2 $(CSETVER) /Sm /Gs+ /Gt- /Gi+ /O+ /Q+ /Mp $(WARN) /I$(INCL) $(CDFLAGS) $(STDC)
 #O	= /Fo
 
@@ -241,8 +241,8 @@ O	= /Fo
 #	lots of extra warnings.
 #
 
-WARN	= /W0 #/W3		# MSC
-#WARN	= #-W -Wimplicit -Wreturn-type -Wunused -Wformat -Wswitch -Wshadow -Wcast-qual -Wwrite-strings -DGCC_WARN # GCC
+#WARN	= /W0 #/W3		# MSC
+WARN	= #-W -Wimplicit -Wreturn-type -Wunused -Wformat -Wswitch -Wshadow -Wcast-qual -Wwrite-strings -DGCC_WARN # GCC
 #WARN	= #/W3 #/Kbper	# CSet/2
 
 #
@@ -250,8 +250,8 @@ WARN	= /W0 #/W3		# MSC
 #	object format, the lower for Unix style a.out format.
 #
 
-#GCCO	= -Zomf -Zsys	# GCC OMF
-GCCO	=		# GCC a.out
+GCCO	= -Zomf -Zsys	# GCC OMF
+#GCCO	=		# GCC a.out
 
 #
 #	MSC 5.1 needs the large model first pass of the compiler.
@@ -276,8 +276,8 @@ CL	=
 #	CSet/2: give it a bit more stack since we can.
 #
 
-LFLAGS	= /noig /nod /stack:8192 /seg:1024 $(LDFLAGS)	# MSC
-#LFLAGS	= /noig /stack:40000				# GCC OMF
+#LFLAGS	= /noig /nod /stack:8192 /seg:1024 $(LDFLAGS)	# MSC
+LFLAGS	= /noig /stack:40000				# GCC OMF
 #LFLAGS	= /noig /nod /stack:32768 /seg:1024 $(LDFLAGS)	# CSet/2
 
 #
@@ -299,14 +299,14 @@ LDFLAGS =
 
 #STDC	=		# MSC 5.1
 STDC	= /D__STDC__	# MSC 6.0, CSet/2
-#STDC	= -ansi		# GCC
+STDC	= -ansi		# GCC
 
 #
 #	Possible system object files required during linking.
 #
 
-SYSOBJ	=			# MSC, GCC a.out, CSet/2
-#SYSOBJ	= $(PLIBP)\crt0.obj	# GCC OMF
+#SYSOBJ	=			# MSC, GCC a.out, CSet/2
+SYSOBJ	= $(PLIBP)\crt0.obj	$(PLIBP)\end.lib# GCC OMF
 
 #
 #	Compiler library selection.  Change if necessary.
@@ -329,9 +329,9 @@ SYSOBJ	=			# MSC, GCC a.out, CSet/2
 #
 
 #PLIBS	= $(PLIBP)\llibcep $(PLIBP)\doscalls	# MSC 5.1
-PLIBS	= $(PLIBP)\llibcep $(PLIBP)\os2		# MSC 6.0
+#PLIBS	= $(PLIBP)\llibcep $(PLIBP)\os2		# MSC 6.0
 #PLIBS	= $(PLIBP)\libc $(PLIBP)\libgcc $(PLIBP)\libsys $(PLIBP)\libos2	# GCC emx 0.8 OMF
-#PLIBS	= $(PLIBP)\st\c $(PLIBP)\st\c_app $(PLIBP)\c_alias $(PLIBP)\gcc $(PLIBP)\st\sys $(PLIBP)\os2	# GCC emx 0.9 OMF
+PLIBS	= $(PLIBP)\st\c $(PLIBP)\st\c_app $(PLIBP)\c_alias $(PLIBP)\gcc $(PLIBP)\st\sys $(PLIBP)\os2	# GCC emx 0.9 OMF
 #PLIBS	= -lgcc -lc -lgcc -los2			# GCC a.out (defining -lgcc twice is required)
 #PLIBS	= $(PLIBP)\dde4sbs.lib $(PLIBP)\dde4sbm.lib $(TLIBP)\os2386.lib # CSet/2 ver 1
 #PLIBS	= $(PLIBP)\dde4sbs.lib $(TLIBP)\os2386.lib # CSet++ ver 2
@@ -351,18 +351,18 @@ RLIBS	= $(PLIBS)
 #	MSC and CSet/2 and the lowermost six for GCC.
 #
 
-SRCCC	= $(CC) $(CFLAGS) $(O)$@ $(SRC)\$(AB)
-UTILCC	= $(CC) $(CFLAGS) $(O)$@ $(UTIL)\$(AB)
-SYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SYS)\$(AB)
-SSYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SSYS)\$(AB)
-PSYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SSYS)\pc$(AB)
-WINCC	= $(CC) $(CFLAGS) $(O)$@ $(WIN)\$(AB)
-#SRCCC	= $(CC) $(CFLAGS) $(O) $@ $(AB)
-#UTILCC	= $(B) cd $(UTIL) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-#SYSCC	= $(B) cd $(SYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-#SSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-#PSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ pc$(AB) $(E)
-#WINCC	= $(B) cd $(WIN) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
+#SRCCC	= $(CC) $(CFLAGS) $(O)$@ $(SRC)\$(AB)
+#UTILCC	= $(CC) $(CFLAGS) $(O)$@ $(UTIL)\$(AB)
+#SYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SYS)\$(AB)
+#SSYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SSYS)\$(AB)
+#PSYSCC	= $(CC) $(CFLAGS) $(O)$@ $(SSYS)\pc$(AB)
+#WINCC	= $(CC) $(CFLAGS) $(O)$@ $(WIN)\$(AB)
+SRCCC	= $(CC) $(CFLAGS) $(O) $@ $(AB)
+UTILCC	= $(B) cd $(UTIL) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
+SYSCC	= $(B) cd $(SYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
+SSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
+PSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ pc$(AB) $(E)
+WINCC	= $(B) cd $(WIN) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
 
 #
 #	Default linker skeletons.  The upper six lines for everything
@@ -429,12 +429,12 @@ TERMLIB =
 #	Only three files need consideration.
 #
 
-GUIDEBOO = Guideboo	# FAT
-PATCHLEV = patchlev	# - " -
-DATABASE = data.bas	# - " -
-#GUIDEBOO = Guidebook	# HPFS
-#PATCHLEV = patchlevel	# - " -
-#DATABASE = data.base	# - " -
+#GUIDEBOO = Guideboo	# FAT
+#PATCHLEV = patchlev	# - " -
+#DATABASE = data.bas	# - " -
+GUIDEBOO = Guidebook	# HPFS
+PATCHLEV = patchlevel	# - " -
+DATABASE = data.base	# - " -
 
 
 #
@@ -493,8 +493,8 @@ do_touch : faketouch
 #	file manually somewhere else.
 #
 
-#do_icon : icon_msg	# show message if changed
-do_icon : icon_act	# extract icon file
+do_icon : icon_msg	# show message if changed
+#do_icon : icon_act	# extract icon file
 
 #
 #	If you don't want to generate nethack.cmd, use the upper line.
@@ -646,7 +646,7 @@ VOBJ15 = $(OBJ)\muse.o     $(OBJ)\music.o    $(OBJ)\o_init.o   $(OBJ)\objects.o
 VOBJ16 = $(OBJ)\objnam.o   $(OBJ)\options.o  $(OBJ)\os2.o      $(OBJ)\pager.o
 VOBJ17 = $(OBJ)\pcsys.o    $(OBJ)\pickup.o   $(OBJ)\pline.o    $(OBJ)\polyself.o
 VOBJ18 = $(OBJ)\potion.o   $(OBJ)\pray.o     $(OBJ)\priest.o   $(OBJ)\quest.o
-VOBJ19 = $(OBJ)\questpgr.o $(OBJ)\read.o     $(OBJ)\rect.o     $(OBJ)\restore.o
+VOBJ19 = $(OBJ)\questpgr.o $(OBJ)\read.o     $(OBJ)\rect.o     $(OBJ)\region.o $(OBJ)\restore.o
 VOBJ20 = $(OBJ)\rip.o      $(OBJ)\rnd.o      $(OBJ)\rumors.o   $(OBJ)\save.o
 VOBJ21 = $(OBJ)\shk.o      $(OBJ)\shknam.o   $(OBJ)\sit.o      $(OBJ)\sounds.o
 VOBJ22 = $(OBJ)\sp_lev.o   $(OBJ)\spell.o    $(OBJ)\steal.o    $(OBJ)\teleport.o
@@ -1191,6 +1191,12 @@ $(GAMEDIR)\wizard1.lev : $(DAT)\yendor.des $(TEMP)\lev_comp.exe
 	$(RM) wizard?.lev
 	$(RM) fakewiz?.lev
 
+$(GAMEDIR)\soko1-1.lev : $(DAT)\sokoban.des $(TEMP)\lev_comp.exe
+	$(TEMP)\lev_comp $(DAT)\sokoban.des
+	$(CP) soko?-?.lev $(GAMEDIR)
+	$(RM) soko?-?.lev
+
+
 #	Quest dungeons
 
 $(AFILES) : $(DAT)\Arch.des $(TEMP)\lev_comp.exe
@@ -1454,6 +1460,8 @@ $(OBJ)\quest.o    : $(SRC)\$(CB) $(HACK_H) $(INCL)\quest.h $(INCL)\qtext.h
 $(OBJ)\questpgr.o : $(SRC)\$(CB) $(HACK_H) $(INCL)\qtext.h
 	$(SRCCC)
 $(OBJ)\read.o     : $(SRC)\$(CB) $(HACK_H)
+	$(SRCCC)
+$(OBJ)\region.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)
 $(OBJ)\rect.o     : $(SRC)\$(CB) $(HACK_H)
 	$(SRCCC)

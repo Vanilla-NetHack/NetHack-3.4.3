@@ -1,20 +1,33 @@
-	SCCS Id: @(#)Install.dos	 3.3		1999/12/04
+	SCCS Id: @(#)Install.dos	 3.3		2000/08/02
 
-	   Copyright (c) NetHack PC Development Team 1990-1999.
+	   Copyright (c) NetHack PC Development Team 1990-2000.
        NetHack may be freely redistributed.  See license for details.
        ==============================================================
               Instructions for compiling and installing
 		     NetHack 3.3 on a DOS system
          ======================================================
-                  (or, How to make PC NetHack 3.3)
-		  Last revision: December  4, 1999
+                   (or, How to make PC NetHack 3.3)
+                    Last revision: August 2, 2000
 
 Credit for a runnable full PC NetHack 3.3 goes to the PC Development team
 of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill Dyer, 
 Timo Hakulinen, Yamamoto Keizo, Mike Threepoint, Mike Stephenson, 
 Stephen White, Ken Washikita and Janet Walz.  The present port is based
-on the work of Pierre Martineau, Stephen Spackman, Steve Creps, Mike
+on the previous effort of Pierre Martineau, Stephen Spackman, Steve Creps, Mike
 Threepoint, Mike Stephenson, Norm Meluch and Don Kneller.
+
+CONTENTS:
+
+        I.  Dispelling the Myths
+        II. Compiling on a DOS machine
+        Appendix A - Building the "official binaries"
+        Appendix B - Building other binaries
+        Appendix C - Microsoft C Compiler notes
+        Appendix D - DJGPP Compiler (gcc ported to msdos) notes
+        Appendix E - Borland C++ Compiler notes
+        Appendix F - Microsoft C Compiler Warnings
+        Appendix G - Additional Notes
+        Appendix H - Contacting Us
 
 I.  Dispelling the Myths:
 
@@ -24,16 +37,16 @@ I.  Dispelling the Myths:
 
     We have provided the proper makefiles for building NetHack using the
     following compilers:
-
-    Microsoft C 7.0 and Microsoft Visual C++ Professional (MSVC) 1.0 or later
-    djgpp V2.0 or later
+	Microsoft C 7.0 and Microsoft Visual C++ Professional (MSVC) 1.52c
+    	djgpp V2.0 or later
+	Borland C V3.1
 
     For specific details concerning each compiler, please see the
     corresponding appendix.
 
-    The makefile named Makefile.MSC is for use with NMAKE, the make
-    utility that ships with the Microsoft C Compiler version 7.0 and
-    above, including Microsoft Visual C++ Professional.
+    The makefile named Makefile.MSC is for use with Microsoft's NMAKE, 
+    the make utility that ships with the Microsoft C Compiler version 7.0 
+    and above, including the 16-bit Microsoft Visual C++ Professional.
 
     The makefile named Makefile.GCC is for use with GNU Make that
     accompanies djgpp.
@@ -63,7 +76,7 @@ II. To compile your copy of NetHack on a DOS machine:
     win\share.  Other subdirectories may also be included in your
     distribution, but they are not necessary for use with DOS.  You can
     delete them to save space.  If you are using MSC7 or MSVC, the makefile
-    will create an additional directory src\o.
+    will create an additional working directory src\o.
 
     Required Source Directories for DOS NetHack:
 
@@ -209,7 +222,7 @@ II. To compile your copy of NetHack on a DOS machine:
     50 to keep the size of the score list down.
 
 7.  Go to the src directory and edit the top of your Makefile.  Be sure the
-    directory you want the game installed (GAMEDIR) in actually exists.
+    directory you want the game installed in (GAMEDIR) actually exists.
 
     If you elected to use termcap (TERMLIB defined), then uncomment the
     TERMLIB macro in your Makefile that points to the location of the
@@ -234,12 +247,15 @@ II. To compile your copy of NetHack on a DOS machine:
     b) For Microsoft C 7.0 or greater, and Microsoft Visual C++
 
        The only overlay schema available is Schema3 so you don't have to 
-       choose one.  The Makefile is set up for it already.
+       choose one.  The Makefile is set up for it already.  The overlay
+       description file src\Schema3.def is created from sys\msdos\Schema3.MSC
+       by setup.bat.
 
     If you elected to add graphical tile support, set TILESUPPORT to Y.
 
     Set USE_DLB to Y if you wish to place NetHack's many runtime files into
     a special archive that NetHack can utilize.  This is highly recommended!
+    In fact, we haven't tested NetHack without it for several releases now.
 
 8.  Now that everything is set up, what you do next depends on which
     compiler and version you are using.  You will need to execute either
@@ -288,9 +304,6 @@ II. To compile your copy of NetHack on a DOS machine:
     If you changed your build settings to include TERMCAP support, copy
     termcap to your game directory.  
 
-    Edit defaults.nh to reflect your particular setup and personal 
-    preferences, by following the comments.
-
     Also, make sure the file msdoshlp.txt made it to your game directory.
     If it didn't, move it from sys\msdos to your game directory
     yourself.
@@ -310,15 +323,42 @@ II. To compile your copy of NetHack on a DOS machine:
 Appendix A - Building the "official binaries"
 
     If you wish to build a copy of NetHack identical to the ones that
-    the pc team distributes, observe the following:
+    the pc team distributes, simply do the following:
+
+1.  16-bit Real Mode Overlaid version
+    Use the 16-bit  Microsoft Visual C++ V1.52c compiler
+
+    Paths below are relative to the top of your unpacked
+    NetHack source distribution:
+
+       md \games\nethack
+       cd sys\msdos
+       setup MSC
+       cd ..\..\src
+       nmake install
+
+2.  32-bit Protected Mode DPMI version
+    Use the 32-bit djgpp compiler V2.03 or greater
+
+    Paths below are relative to the top of your unpacked
+    NetHack source distribution:
+
+       md \games\nethackd
+       cd sys\msdos
+       setup GCC
+       cd ..\..\src
+       make install
+
+
+Appendix B - Building other binaries
 
     Make sure that USE_DLB and TILESUPPORT (if using Microsoft C or Borland
     C) are both set to be turned on in the appropriate makefile.
 
-    For the overlaid binary built with Microsoft C 7.00, make no changes to
+    For an overlaid binary built with Microsoft C 7.00, make no changes to
     any of the defines and use the Makefile.MSC as distributed.
 
-    For the overlaid binary built with Borland C++ 3.1, make no changes to
+    For an overlaid binary built with Borland C++ 3.1, make no changes to
     any of the defines and use the makefile Makefile.BC as distributed.
 
     For the 32-bit binary built with DJGPP (playable on a 386 or
@@ -334,7 +374,7 @@ Appendix A - Building the "official binaries"
 
     Place all the files in a clean directory and test.
 
-Appendix B - Microsoft C Compilers
+Appendix C - Microsoft C Compilers
 
     Officially, support is no longer provided for MSC versions prior to
     7.0.  For versions of MSC 7.0 and greater (including Visual C++ ),
@@ -344,7 +384,7 @@ Appendix B - Microsoft C Compilers
 
     MSC Version 7.0 works with or without the August 1992 patch.
 
-    MSVC Professional 1.x works as distributed.  In some rare cases
+    MSVC Professional 1.52c works as distributed.  In some rare cases
     you may encounter a problem with the compiler where it stops
     part way through the build with a memory error.  Things proceed
     normally after starting 'nmake install' once again.  The problem,
@@ -354,8 +394,10 @@ Appendix B - Microsoft C Compilers
     MSC Version 7.0 and MSVC take advantage of the CL environment variables
     to set the compiler flags, as they exceed the MSDOS limitation of 128
     characters on the command line.  Please read the Makefile carefully
-    and select those options that go with the compiler.  Also, remember
-    to run setup.bat to set the CL environment variable before you compile.
+    and select those options that go with the compiler.  The Makefile
+    will set the CL environment variable within the context of the build,
+    so you do not have to do it elsewhere.
+
 
   Microsoft C version 7.0 and
   Microsoft Visual C++ Professional versions up to 1.52c.
@@ -371,12 +413,12 @@ Appendix B - Microsoft C Compilers
     The Microsoft Visual C++ Professional compiler utilizes the same
     Makefiles and instructions for compiling as Microsoft C version 7.0.
 
-Appendix C - DJGPP Compiler (gcc ported to msdos)
+Appendix D - DJGPP Compiler (gcc ported to msdos)
 
     If you have a 386 or better machine, you are in luck.  You can compile
     NetHack without spending money on a compiler.  DJGPP is available free
     from many archive sites.
-    At the time of this release, the URL
+    At the time of this release in August 2000, the URL
 	http://www.delorie.com/djgpp/zip-picker.html/
     had information on how to obtain djgpp and what pieces to get.
 
@@ -386,7 +428,7 @@ Appendix C - DJGPP Compiler (gcc ported to msdos)
     dungeon compilers.  They should be available at the same place you got
     djgpp.
 
-    The latest version of djgpp, V2.0 will produce a binary that will run
+    The latest version of djgpp, V2.03 will produce a binary that will run
     under Microsoft Windows, or any other DPMI provider.  djgpp also comes
     with a DPMI provider called CWSDPMI.  Place CWSDPMI.EXE in your path
     and it will be used in the absence of any other DPMI provider.
@@ -397,7 +439,7 @@ Appendix C - DJGPP Compiler (gcc ported to msdos)
     of the compiler, so we pick and choose the ones that work.
     See video.c for details.
 
-Appendix D - Borland C++ Compiler
+Appendix E - Borland C++ Compiler
 
     Officially, support is not provided for any version of Borland C++ or
     Turbo C++ other than Borland C++ 3.1.  It does not work with Borland
@@ -436,7 +478,7 @@ Appendix D - Borland C++ Compiler
 	#define __BORLANDC__	__TURBOC__
     at the very very top of hack.h.  If it works, be sure to tell us.
 
-Appendix E - Microsoft C Compiler Warnings
+Appendix F - Microsoft C Compiler Warnings
 
     If you are using MSC for your compile with any of the /W levels set,
     you can expect warnings.  The list below are those warnings that we
@@ -456,7 +498,7 @@ C4761 (Integral size mismatch in argument; conversion supplied)
     These should be no problem.  Prototyping compilers will do the con-
     version, and non-prototyping compilers will go through int anyway.
 
-Appendix F - Additional Notes
+Appendix G - Additional Notes
 
 1)  Save files and bones files from previous versions of NetHack will not
     work with this NetHack.  Don't bother trying to keep them.  Record
@@ -484,7 +526,12 @@ Appendix F - Additional Notes
     space.  Make sure you have about a meg of free disk wherever you have
     defined your temporary storage.
 
-4)  If you discover a bug and wish to report it please send mail to:
+Appendix H - Contacting the Development Team
+
+    If you discover a bug and wish to report it please send mail to:
         nethack-bugs@nethack.org 
+
     If you have comments or suggestions, feel free to drop us a line c/o
         DevTeam@nethack.org
+
+

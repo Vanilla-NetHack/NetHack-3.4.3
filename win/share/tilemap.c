@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tilemap.c	3.3	1999/03/28	*/
+/*	SCCS Id: @(#)tilemap.c	3.3	2000/06/04	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -11,6 +11,7 @@
 
 const char * FDECL(tilename, (int, int));
 void NDECL(init_tilemap);
+void FDECL(process_substitutions, (FILE *));
 
 #ifdef MICRO
 #undef exit
@@ -86,7 +87,7 @@ struct conditionals {
 	 * don't know what a slime mold should look like when renamed anyway
 	 */
 #ifndef MAIL
-	{ OBJ_GLYPH, SCR_CHARGING+6, "stamped / mail" },
+	{ OBJ_GLYPH, SCR_STINKING_CLOUD+4, "stamped / mail" },
 #endif
 	{ 0, 0, 0}
 };
@@ -102,8 +103,8 @@ struct conditionals {
  */
 struct substitute {
 	int first_glyph, last_glyph;
-	char *sub_name;		/* for explanations */
-	char *level_test;
+	const char *sub_name;		/* for explanations */
+	const char *level_test;
 } substitutes[] = {
 	{ GLYPH_CMAP_OFF + S_vwall, GLYPH_CMAP_OFF + S_trwall,
 					"mine walls", "In_mines(plev)" },
@@ -180,7 +181,7 @@ int set, entry;
 
 	tilenum = 0;	/* set-relative number */
 	for (i = 0; i < MAXPCHARS; i++) {
-		if (set == OTH_GLYPH && tilenum == entry)
+		if (set == OTH_GLYPH && tilenum == entry) {
 			if (*defsyms[i].explanation)
 				return defsyms[i].explanation;
 			else {
@@ -200,6 +201,7 @@ int set, entry;
 				}
 				return buf;
 			}
+		}
 		tilenum++;
 		while (conditionals[condnum].sequence == OTH_GLYPH &&
 			conditionals[condnum].predecessor == i) {
@@ -209,7 +211,7 @@ int set, entry;
 			tilenum++;
 		}
 	}
-
+	
 	i = entry - tilenum;
 	if (i < (NUM_ZAP << 2)) {
 		if (set == OTH_GLYPH) {
@@ -218,6 +220,15 @@ int set, entry;
 		}
 	}
 	tilenum += (NUM_ZAP << 2);
+
+	i = entry - tilenum;
+	if (i < WARNCOUNT) {
+		if (set == OTH_GLYPH) {
+			Sprintf(buf, "warning %d", i);
+			return buf;
+	        }
+	}
+	tilenum += WARNCOUNT;
 
 	for (i = 0; i < SIZE(substitutes); i++) {
 	    j = entry - tilenum;
@@ -262,7 +273,8 @@ int lastmontile, lastobjtile, lastothtile;
  * with entries for all supported compilation options
  *
  * "other" contains cmap and zaps (the swallow sets are a repeated portion
- * of cmap)
+ * of cmap), as well as the "flash" glyphs for the new warning system
+ * introduced in 3.3.1.
  */
 void
 init_tilemap()
@@ -346,11 +358,22 @@ init_tilemap()
 	for (i = 0; i < NUM_ZAP << 2; i++) {
 		tilemap[GLYPH_ZAP_OFF+i] = tilenum;
 		tilenum++;
+		while (conditionals[condnum].sequence == OTH_GLYPH &&
+			conditionals[condnum].predecessor == (i + MAXPCHARS)) {
+			condnum++;
+			tilenum++;
+		}
 	}
+
+	for (i = 0; i < WARNCOUNT; i++) {
+		tilemap[GLYPH_WARNING_OFF+i] = tilenum;
+		tilenum++;
+	}
+
 	lastothtile = tilenum - 1;
 }
 
-char *prolog[] = {
+const char *prolog[] = {
 	"",
 	"",
 	"void",
@@ -361,7 +384,7 @@ char *prolog[] = {
 	""
 };
 
-char *epilog[] = {
+const char *epilog[] = {
 	"}"
 };
 

@@ -720,8 +720,8 @@ vision_recalc(control)
 		    newsym(col,row);
 	    }
 
-	    else if (next_row[col] & COULD_SEE
-				&& (lev->lit || next_row[col] & TEMP_LIT)) {
+	    else if ((next_row[col] & COULD_SEE)
+				&& (lev->lit || (next_row[col] & TEMP_LIT))) {
 		/*
 		 * We see this position because it is lit.
 		 */
@@ -756,7 +756,7 @@ vision_recalc(control)
 		    if ( !(old_row[col] & IN_SIGHT) || oldseenv != lev->seenv)
 			newsym(col,row);
 		}
-	    } else if (next_row[col] & COULD_SEE && lev->waslit) {
+	    } else if ((next_row[col] & COULD_SEE) && lev->waslit) {
 		/*
 		 * If we make it here, the hero _could see_ the location,
 		 * but doesn't see it (location is not lit).
@@ -768,13 +768,24 @@ vision_recalc(control)
 		newsym(col,row);
 	    }
 	    /*
-	     * At this point we know that the row position is *not* in
-	     * sight.  If the old one *was* in sight, then clean up the
-	     * position.
+	     * At this point we know that the row position is *not* in normal
+	     * sight.  That is, the position is could be seen, but is dark
+	     * or LOS is just plain blocked.
+	     *
+	     * Update the position if:
+	     * o If the old one *was* in sight.  We may need to clean up
+	     *   the glyph -- E.g. darken room spot, etc.
+	     * o If we now could see the location (yet the location is not
+	     *   lit), but previously we couldn't see the location, or vice
+	     *   versa.  Update the spot because there there may be an infared
+	     *   monster there.
 	     */
 	    else {
 not_in_sight:
-		if (old_row[col] & IN_SIGHT) newsym(col,row);
+		if ((old_row[col] & IN_SIGHT)
+			|| ((next_row[col] & COULD_SEE)
+				^ (old_row[col] & COULD_SEE)))
+		    newsym(col,row);
 	    }
 
 	} /* end for col . . */

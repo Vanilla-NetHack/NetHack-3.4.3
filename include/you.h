@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)you.h	3.3	1999/11/01	*/
+/*	SCCS Id: @(#)you.h	3.3	2000/05/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -58,8 +58,8 @@ struct u_event {
  * times a challenge has been violated.
  */
 struct u_conduct {		/* number of times... */
-	long	meat;		/* eaten corpse, tin, egg, tripe, body part */
-	long	flesh;		/* ... or anything "fleshy" */
+	long	unvegetarian;	/* eaten any animal */
+	long	unvegan;	/* ... or any animal byproduct */
 	long	food;		/* ... or any comestible */
 	long	gnostic;	/* used prayer, priest, or altar */
 	long	weaphit;	/* hit a monster with a weapon */
@@ -142,6 +142,10 @@ extern struct Role urole;
 #define Role_if(X)	(urole.malenum == (X))
 #define Role_switch	(urole.malenum)
 
+/* used during initialization for race, gender, and alignment
+   as well as for character class */
+#define ROLE_NONE	(-1)
+#define ROLE_RANDOM	(-2)
 
 /*** Unified structure specifying race information ***/
 
@@ -189,7 +193,6 @@ extern const struct Race races[];	/* Table of available races */
 extern struct Race urace;
 #define Race_if(X)	(urace.malenum == (X))
 #define Race_switch	(urace.malenum)
-
 
 /*** Unified structure specifying gender information ***/
 struct Gender {
@@ -260,23 +263,6 @@ struct you {
 #define SICK_NONVOMITABLE 0x02
 #define SICK_ALL 0x03
 
-/* For messages referring to hands, eyes, feet, etc... when polymorphed */
-#define ARM 0
-#define EYE 1
-#define FACE 2
-#define FINGER 3
-#define FINGERTIP 4
-#define FOOT 5
-#define HAND 6
-#define HANDED 7
-#define HEAD 8
-#define LEG 9
-#define LIGHT_HEADED 10
-#define NECK 11
-#define SPINE 12
-#define TOE 13
-#define HAIR 14
-
 	/* These ranges can never be more than MAX_RANGE (vision.h). */
 	int nv_range;		/* current night vision range */
 	int xray_range;		/* current xray vision range */
@@ -323,6 +309,8 @@ struct you {
 			atime;		/* used for loss/gain countdown */
 	align	ualign;			/* character alignment */
 #define CONVERT		2
+#define A_ORIGINAL	1
+#define A_CURRENT	0
 	aligntyp ualignbase[CONVERT];	/* for ualign conversion record */
 	schar uluck, moreluck;		/* luck and luck bonus */
 #define Luck	(u.uluck + u.moreluck)

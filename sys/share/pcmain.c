@@ -132,15 +132,27 @@ char *argv[];
 # endif
 #endif /* !AMIGA && !GNUDOS */
 
-	dir = getenv("NETHACKDIR");
+	dir = nh_getenv("NETHACKDIR");
 	if (dir == (char *)0)
-		dir = getenv("HACKDIR");
+		dir = nh_getenv("HACKDIR");
 #ifdef EXEPATH
 	if (dir == (char *)0)
 		dir = exepath(argv[0]);
 #endif
 	if (dir != (char *)0) {
-		Strcpy(hackdir, dir);
+		(void) strncpy(hackdir, dir, PATHLEN - 1);
+		hackdir[PATHLEN-1] = '\0';
+#ifdef NOCWD_ASSUMPTIONS
+		{
+		    int prefcnt;
+
+		    fqn_prefix[0] = (char *)alloc(strlen(hackdir)+2);
+		    Strcpy(fqn_prefix[0], hackdir);
+		    append_slash(fqn_prefix[0]);
+		    for (prefcnt = 1; prefcnt < PREFIX_COUNT; prefcnt++)
+			fqn_prefix[prefcnt] = fqn_prefix[0];
+		}
+#endif
 #ifdef CHDIR
 		chdirx (dir, 1);
 #endif
@@ -204,7 +216,7 @@ char *argv[];
 			prscore(argc, argv);
 			nethack_exit(EXIT_SUCCESS);
 		}
-		/* Don't inialize the window system just to print usage */
+		/* Don't initialize the window system just to print usage */
 		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "/?", 2)) {
 			nhusage();
 			nethack_exit(EXIT_SUCCESS);
@@ -286,9 +298,20 @@ char *argv[];
 # endif
 	getlock();
 #else   /* PC_LOCKING */
+# ifdef AMIGA /* We'll put the bones & levels in the user specified directory -jhsa */
+	Strcat(lock,plname);
+	Strcat(lock,".99");
+# else
+#  ifndef MFLOPPY
+	/* I'm not sure what, if anything, is left here, but MFLOPPY has
+	 * conflicts with set_lock_and_bones() in files.c.
+	 */
 	Strcpy(lock,plname);
 	Strcat(lock,".99");
 	regularize(lock);	/* is this necessary? */
+				/* not compatible with full path a la AMIGA */
+#  endif
+# endif
 #endif	/* PC_LOCKING */
 
 	/* Set up level 0 file to keep the game state.
@@ -375,7 +398,7 @@ not_recovered:
 
 		flags.move = 0;
 		set_wear();
-		pickup(1);
+		(void) pickup(1);
 		read_engr_at(u.ux,u.uy);
 	}
 
@@ -506,14 +529,14 @@ nhusage()
 	 * is deprecated and will not be listed here.
 	 */
 	(void) Sprintf(buf1,
-"\nUsage: %s [-d dir] -s [-r role] [-p profession] [maxrank] [name]...\n       or",
+"\nUsage: %s [-d dir] -s [-r race] [-p profession] [maxrank] [name]...\n       or",
 		hname);
 	if (!iflags.window_inited)
 		raw_printf(buf1);
 	else
 		(void)	printf(buf1);
 	(void) Sprintf(buf1,
-	 "\n       %s [-d dir] [-u name] [-r role] [-p profession] [-[DX]]",
+	 "\n       %s [-d dir] [-u name] [-r race] [-p profession] [-[DX]]",
 		hname);
 #ifdef NEWS
 	Strcat(buf1," [-n]");

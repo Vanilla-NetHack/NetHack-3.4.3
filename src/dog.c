@@ -27,6 +27,7 @@ register struct monst *mtmp;
 	EDOG(mtmp)->ogoal.y = -1;
 	EDOG(mtmp)->abuse = 0;
 	EDOG(mtmp)->revivals = 0;
+	EDOG(mtmp)->mhpmax_penalty = 0;
 	EDOG(mtmp)->killed_by_u = 0;
 }
 
@@ -62,7 +63,7 @@ boolean quietly;
 		pm = rndmonst();
 		if (!pm) {
 		  if (!quietly)
-		    pline("There seems to be nothing available for a familiar.");
+		    There("seems to be nothing available for a familiar.");
 		  break;
 		}
 	    }
@@ -126,7 +127,8 @@ makedog()
 		petname = catname;
 
 	/* default pet names */
-	if (!*petname) {
+	if (!*petname && pettype == PM_LITTLE_DOG) {
+	    /* All of these names were for dogs. */
 	    if(Role_if(PM_CAVEMAN)) petname = "Slasher";   /* The Warrior */
 	    if(Role_if(PM_SAMURAI)) petname = "Hachi";     /* Shibuya Station */
 	    if(Role_if(PM_BARBARIAN)) petname = "Idefix";  /* Obelix */
@@ -140,8 +142,10 @@ makedog()
 #ifdef STEED
 	/* Horses already wear a saddle */
 	if (pettype == PM_PONY && !!(otmp = mksobj(SADDLE, TRUE, FALSE))) {
-	    mpickobj(mtmp, otmp);
+	    if (mpickobj(mtmp, otmp))
+		panic("merged saddle?");
 	    mtmp->misc_worn_check |= W_SADDLE;
+	    otmp->dknown = otmp->bknown = otmp->rknown = 1;
 	    otmp->owornmask = W_SADDLE;
 	    otmp->leashmon = mtmp->m_id;
 	    update_mon_intrinsics(mtmp, otmp, TRUE);
@@ -165,7 +169,7 @@ update_mlstmv()
 	/* monst->mlstmv used to be updated every time `monst' actually moved,
 	   but that is no longer the case so we just do a blanket assignment */
 	for (mon = fmon; mon; mon = mon->nmon)
-	    mon->mlstmv = monstermoves;
+	    if (!DEADMONSTER(mon)) mon->mlstmv = monstermoves;
 }
 
 void
@@ -428,6 +432,7 @@ boolean pets_only;	/* true for ascension or final escape */
 
 	for (mtmp = fmon; mtmp; mtmp = mtmp2) {
 	    mtmp2 = mtmp->nmon;
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (pets_only && !mtmp->mtame) continue;
 	    if (((monnear(mtmp, u.ux, u.uy) && levl_follower(mtmp)) ||
 #ifdef STEED
@@ -600,6 +605,7 @@ register struct obj *obj;
 		case MEATBALL:
 		case MEAT_RING:
 		case MEAT_STICK:
+		case HUGE_CHUNK_OF_MEAT:
 		    return (carni ? DOGFOOD : MANFOOD);
 		case EGG:
 		    if (touch_petrifies(&mons[obj->corpsenm]) && !resists_ston(mon))
@@ -614,11 +620,9 @@ register struct obj *obj;
 			(poisonous(&mons[obj->corpsenm]) &&
 						!resists_poison(mon)))
 			return POISON;
-		    else if (fptr->mlet == S_FUNGUS)
+		    else if (vegan(fptr))
 			return (herbi ? CADAVER : MANFOOD);
-		    else if (is_meaty(fptr))
-		        return (carni ? CADAVER : MANFOOD);
-		    else return (carni ? ACCFOOD : MANFOOD);
+		    else return (carni ? CADAVER : MANFOOD);
 		case CLOVE_OF_GARLIC:
 		    return (is_undead(mon->data) ? TABU :
 			    (herbi ? ACCFOOD : MANFOOD));
@@ -764,10 +768,13 @@ wary_dog(mtmp, quietly)
 struct monst *mtmp;
 boolean quietly;
 {
+    int has_edog;
+
     if (!mtmp->mtame) return;
-    mtmp->mpeaceful = 0;
-    if ((EDOG(mtmp)->killed_by_u == 1) || (EDOG(mtmp)->abuse > 2)) {
-	mtmp->mtame = 0;
+    has_edog = !mtmp->isminion;
+    if (has_edog &&
+		((EDOG(mtmp)->killed_by_u == 1) || (EDOG(mtmp)->abuse > 2))) {
+	mtmp->mpeaceful = mtmp->mtame = 0;
 	if (EDOG(mtmp)->abuse >= 0 && EDOG(mtmp)->abuse < 10)
 		if (!rn2(EDOG(mtmp)->abuse + 1)) mtmp->mpeaceful = 1;
 	if(!quietly && cansee(mtmp->mx, mtmp->my)) {
@@ -786,11 +793,11 @@ boolean quietly;
     } else {
     	/* chance it goes wild anyway - Pet Semetary */
     	if (!rn2(mtmp->mtame)) {
-    		mtmp->mtame = 0;
+    		mtmp->mpeaceful = mtmp->mtame = 0;
     	}
     }
     /* if its still a pet, start a clean pet-slate now */
-    if (mtmp->mtame) {
+    if (has_edog && mtmp->mtame) {
 	EDOG(mtmp)->revivals++;
     	EDOG(mtmp)->killed_by_u = 0;
     	EDOG(mtmp)->abuse = 0;
@@ -806,7 +813,7 @@ struct monst *mtmp;
 	if (Aggravate_monster || Conflict) mtmp->mtame /=2;
 	else mtmp->mtame--;
 
-	if (mtmp->mtame) 
+	if (mtmp->mtame && !mtmp->isminion)
 		EDOG(mtmp)->abuse++;
 
 	if (mtmp->mtame && rn2(mtmp->mtame)) yelp(mtmp);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.3	1999/10/31	*/
+/*	SCCS Id: @(#)cmd.c	3.3	2000/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -127,8 +127,9 @@ STATIC_DCL void FDECL(contained, (winid, const char *, long *, long *));
 STATIC_PTR int NDECL(wiz_show_stats);
 # endif
 STATIC_PTR int NDECL(enter_explore_mode);
-STATIC_PTR int NDECL(wiz_attributes);
+STATIC_PTR int NDECL(doattributes);
 STATIC_PTR int NDECL(doconduct); /**/
+STATIC_PTR void NDECL(minimal_enlightenment);
 
 #ifdef OVLB
 STATIC_DCL void FDECL(enlght_line, (const char *,const char *,const char *));
@@ -440,8 +441,8 @@ domonability()
 	else if (u.umonnum == PM_GREMLIN) {
 	    if(IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
 		if (split_mon(&youmonst, (struct monst *)0))
-		    dryup(u.ux, u.uy);
-	    } else pline("There is no fountain here.");
+		    dryup(u.ux, u.uy, TRUE);
+	    } else There("is no fountain here.");
 	} else if (is_unicorn(youmonst.data)) {
 	    use_unicorn_horn((struct obj *)0);
 	    return 1;
@@ -759,23 +760,31 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 		}
 	}
 	if (Stoned) you_are("turning to stone");
+	if (Slimed) you_are("turning into slime");
 	if (Strangled) you_are((u.uburied) ? "buried" : "being strangled");
 	if (Glib) {
 		Sprintf(buf, "slippery %s", makeplural(body_part(FINGER)));
 		you_have(buf);
 	}
-	if (Slimed) you_are("turning into slime");
 	if (Fumbling) enl_msg("You fumble", "", "d", "");
 	if (Wounded_legs) {
 		Sprintf(buf, "wounded %s", makeplural(body_part(LEG)));
 		you_have(buf);
 	}
+	if (Sleeping) enl_msg("You ", "fall", "fell", " asleep");
 	if (Hunger) enl_msg("You hunger", "", "ed", " rapidly");
 
 	/*** Vision and senses ***/
 	if (See_invisible) enl_msg(You_, "see", "saw", " invisible");
 	if (Blind_telepat) you_are("telepathic");
 	if (Warning) you_are("warned");
+	if (Warn_of_mon && flags.warntype) {
+		Sprintf(buf, "aware of the presence of %s",
+			(flags.warntype & M2_ORC) ? "orcs" :
+			(flags.warntype & M2_DEMON) ? "demons" :
+			something); 
+		you_are(buf);
+	}
 	if (Undead_warning) you_are("warned of undead");
 	if (Searching) you_have("automatic searching");
 	if (Clairvoyant) you_are("clairvoyant");
@@ -807,11 +816,29 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	if (Breathless) you_can("survive without air");
 	else if (Amphibious) you_can("breathe water");
 	if (Passes_walls) you_can("walk through walls");
+#ifdef STEED
+	if (u.usteed) {
+	    Sprintf(buf, "riding %s", y_monnam(u.usteed));
+	    you_are(buf);
+	}
+#endif
+	if (u.uswallow) {
+	    Sprintf(buf, "swallowed by %s", a_monnam(u.ustuck));
+#ifdef WIZARD
+	    if (wizard) Sprintf(eos(buf), " (%u)", u.uswldtim);
+#endif
+	    you_are(buf);
+	} else if (u.ustuck) {
+	    Sprintf(buf, "%s %s",
+		    (Upolyd && sticks(youmonst.data)) ? "holding" : "held by",
+		    a_monnam(u.ustuck));
+	    you_are(buf);
+	}
 
 	/*** Physical attributes ***/
 	if (Slow_digestion) you_have("slower digestion");
 	if (Regeneration) enl_msg("You regenerate", "", "d", "");
-	if (Protection) you_are("protected");
+	if (u.uspellprot || Protection) you_are("protected");
 	if (Protection_from_shape_changers)
 		you_are("protected from shape changers");
 	if (Polymorph) you_are("polymorphing");
@@ -835,6 +862,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	if (Fixed_abil) you_have("fixed abilities");
 	if (Lifesaved)
 		enl_msg("Your life ", "will be", "would have been", " saved");
+	if (u.twoweap) you_are("wielding two weapons at once");
 
 	/*** Miscellany ***/
 	if (Luck) {
@@ -919,13 +947,99 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	return;
 }
 
-STATIC_PTR int
-wiz_attributes()
+/*
+ * Courtesy function for non-debug, non-explorer mode players
+ * to help refresh them about who/what they are.
+ */
+STATIC_OVL void
+minimal_enlightenment()
 {
+	winid tmpwin;
+	menu_item *selected;
+	anything any;
+	char buf[BUFSZ], buf2[BUFSZ];
+	static char fmtstr[] = "%-15s: %-12s";
+
+	any.a_void = 0;
+	buf[0] = buf2[0] = '\0';
+	tmpwin = create_nhwindow(NHW_MENU);
+	start_menu(tmpwin);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, "Starting", FALSE);
+
+	/* Starting name, race, role, gender */
+	Sprintf(buf, fmtstr, "name", plname);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	Sprintf(buf, fmtstr, "race", urace.noun);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	Sprintf(buf, fmtstr, "role",
+		(flags.initgend && urole.name.f) ? urole.name.f : urole.name.m);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	Sprintf(buf, fmtstr, "gender", genders[flags.initgend].adj);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	/* Starting alignment */
+	Sprintf(buf, fmtstr, "alignment", align_str(u.ualignbase[A_ORIGINAL]));
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	/* Current name, race, role, gender */
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, "Current", FALSE);
+	Sprintf(buf, fmtstr, "race", Upolyd ? youmonst.data->mname : urace.noun);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	if (!Upolyd) {
+	    Sprintf(buf, fmtstr, "role",
+		(flags.female && urole.name.f) ? urole.name.f : urole.name.m);
+	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	}
+	Sprintf(buf, fmtstr, "gender", genders[poly_gender()].adj);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	if (Upolyd) {
+	    Sprintf(buf, fmtstr, "gender (base)", genders[u.mfemale].adj);
+	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	}
+
+	/* Current alignment */
+	Sprintf(buf, fmtstr, "alignment", align_str(u.ualign.type));
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	/* Deity list */
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, "Deities", FALSE);
+	Sprintf(buf2, "%-17s%s", align_gname(A_CHAOTIC),
+	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
+		&& u.ualign.type == A_CHAOTIC) ? " (s,c)" :
+	    (u.ualignbase[A_ORIGINAL] == A_CHAOTIC)       ? " (s)" :
+	    (u.ualign.type   == A_CHAOTIC)       ? " (c)" : "");
+    	Sprintf(buf, fmtstr, "chaotic deity", buf2);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	Sprintf(buf2, "%-17s%s", align_gname(A_NEUTRAL),
+	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
+		&& u.ualign.type == A_NEUTRAL) ? " (s,c)" :
+	    (u.ualignbase[A_ORIGINAL] == A_NEUTRAL)       ? " (s)" :
+	    (u.ualign.type   == A_NEUTRAL)       ? " (c)" : "");
+    	Sprintf(buf, fmtstr, "neutral deity", buf2);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	Sprintf(buf2, "%-17s%s", align_gname(A_LAWFUL),
+	    (u.ualignbase[A_ORIGINAL] == u.ualign.type && u.ualign.type == A_LAWFUL)  ? " (s,c)" :
+	    (u.ualignbase[A_ORIGINAL] == A_LAWFUL)        ? " (s)" :
+	    (u.ualign.type   == A_LAWFUL)        ? " (c)" : "");
+    	Sprintf(buf, fmtstr, "lawful  deity", buf2);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+
+	end_menu(tmpwin, "Base Attributes");
+	(void) select_menu(tmpwin, PICK_NONE, &selected);
+	destroy_nhwindow(tmpwin);
+}
+
+STATIC_PTR int
+doattributes()
+{
+	minimal_enlightenment();
 	if (wizard || discover)
 		enlightenment(0);
-	else
-		pline("Unavailable command '^X'.");
 	return 0;
 }
 
@@ -954,9 +1068,9 @@ int final;
 	if (!u.uconduct.food)
 	    enl_msg(You_, "have gone", "went", " without food");
 	    /* But beverages are okay */
-	else if (!u.uconduct.flesh)
-	    you_have_been("a strict vegan");
-	else if (!u.uconduct.meat)
+	else if (!u.uconduct.unvegan)
+	    you_have_X("followed a strict vegan diet");
+	else if (!u.uconduct.unvegetarian)
 	    you_have_been("vegetarian");
 
 	if (!u.uconduct.gnostic)
@@ -1063,7 +1177,7 @@ static const struct func_tab cmdlist[] = {
 	{C('v'), TRUE, wiz_level_tele},
 	{C('w'), TRUE, wiz_wish},
 #endif
-	{C('x'), TRUE, wiz_attributes},
+	{C('x'), TRUE, doattributes},
 #ifdef SUSPEND
 	{C('z'), TRUE, dosuspend},
 #endif
@@ -1149,6 +1263,7 @@ static const struct func_tab cmdlist[] = {
 	{'^', TRUE, doidtrap},
 	{'\\', TRUE, dodiscovered},		/* Robert Viduya */
 	{'@', TRUE, dotogglepickup},
+	{M('2'), FALSE, dotwoweapon},
 	{WEAPON_SYM,  TRUE, doprwep},
 	{ARMOR_SYM,  TRUE, doprarm},
 	{RING_SYM,  TRUE, doprring},
@@ -1330,6 +1445,7 @@ contained(win, src, total_count, total_size)
 	count_obj(fobj, &count, &size, FALSE, TRUE);
 	count_obj(level.buriedobjlist, &count, &size, FALSE, TRUE);
 	count_obj(migrating_objs, &count, &size, FALSE, TRUE);
+	/* DEADMONSTER check not required in this loop since they have no inventory */
 	for (mon = fmon; mon; mon = mon->nmon)
 	    count_obj(mon->minvent, &count, &size, FALSE, TRUE);
 	for (mon = migrating_mons; mon; mon = mon->nmon)
@@ -1784,8 +1900,8 @@ parse()
 	}
 	in_line[0] = foo;
 	in_line[1] = '\0';
-	if (foo == 'g' || foo == 'G' || (iflags.num_pad && foo == '5') ||
-	    foo == 'm' || foo == 'M' || foo == 'F') {
+	if (foo == 'g' || foo == 'G' || foo == 'm' || foo == 'M' ||
+	    foo == 'F' || (iflags.num_pad && (foo == '5' || foo == '-'))) {
 	    foo = readchar();
 #ifdef REDO
 	    savech((char)foo);

@@ -11,7 +11,7 @@
 #include "tile2x11.h"		/* x11 output file header structure */
 
 #define OUTNAME "x11tiles"	/* output file name */
-/*#define PRINT_COLORMAP	/* define to print the colormap */
+/* #define PRINT_COLORMAP */	/* define to print the colormap */
 
 
 x11_header	header;

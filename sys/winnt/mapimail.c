@@ -1,4 +1,4 @@
-/*      SCCS Id: @(#)mapimail.c 3.3     1999/10/28        */
+/*      SCCS Id: @(#)mapimail.c 3.3     2000/04/25        */
 /* Copyright (c) Michael Allison, 1997                  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,7 @@
 #endif
 
 #include "hack.h"
+# ifdef LAN_MAIL
 #include "win32api.h"
 #include <mapi.h>
 
@@ -476,4 +477,6 @@ int DeInitMAPI()
     FreeLibrary(hLibrary);
     return 0;
 }
+
+#endif /*LAN_MAIL*/
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.3	1999/12/02	*/
+/*	SCCS Id: @(#)end.c	3.3	2000/06/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -28,16 +28,20 @@ static struct val_list { struct valuable_data *list; int size; } valuables[] = {
 	{ 0, 0 }
 };
 
+#ifndef NO_SIGNAL
 STATIC_PTR void FDECL(done_intr, (int));
+# if defined(UNIX) || defined(VMS) || defined (__EMX__)
+static void FDECL(done_hangup, (int));
+# endif
+#endif
 STATIC_DCL void FDECL(disclose,(int,BOOLEAN_P));
 STATIC_DCL void FDECL(get_valuables, (struct obj *));
 STATIC_DCL void FDECL(sort_valuables, (struct valuable_data *,int));
+STATIC_DCL void FDECL(add_artifact_score, (struct obj *));
+STATIC_DCL void FDECL(display_artifact_score, (struct obj *,winid));
 STATIC_DCL void FDECL(savelife, (int));
 STATIC_DCL void NDECL(list_vanquished);
 STATIC_DCL void NDECL(list_genocided);
-#if defined(UNIX) || defined(VMS) || defined (__EMX__)
-static void FDECL(done_hangup, (int));
-#endif
 
 #if defined(__BEOS__) || defined(MICRO) || defined(WIN32) || defined(OS2)
 extern void FDECL(nethack_exit,(int));
@@ -76,6 +80,8 @@ static NEARDATA const char *ends[] = {		/* "when you..." */
 	"were genocided", "panicked", "were tricked",
 	"quit", "escaped", "ascended"
 };
+
+extern const char *killed_by_prefix[];
 
 
 /*ARGSUSED*/
@@ -143,22 +149,21 @@ done2()
 	return 0;
 }
 
+#ifndef NO_SIGNAL
 /*ARGSUSED*/
 STATIC_PTR void
 done_intr(sig_unused) /* called as signal() handler, so sent at least one arg */
 int sig_unused;
 {
 	done_stopprint++;
-#ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
 # if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, SIG_IGN);
 # endif
-#endif /* NO_SIGNAL */
 	return;
 }
 
-#if defined(UNIX) || defined(VMS) || defined(__EMX__)
+# if defined(UNIX) || defined(VMS) || defined(__EMX__)
 static void
 done_hangup(sig)	/* signal() handler */
 int sig;
@@ -168,7 +173,8 @@ int sig;
 	done_intr(sig);
 	return;
 }
-#endif
+# endif
+#endif /* NO_SIGNAL */
 
 void
 done_in_by(mtmp)
@@ -191,7 +197,7 @@ register struct monst *mtmp;
 		Strcat(buf, "hallucinogen-distorted ");
 
 	if(mtmp->data == &mons[PM_GHOST]) {
-		register char *gn = (char *) mtmp->mextra;
+		char *gn = NAME(mtmp);
 		if (!distorted && !mtmp->minvis && *gn) {
 			Strcat(buf, "the ");
 			killer_format = KILLED_BY;
@@ -206,9 +212,12 @@ register struct monst *mtmp;
 		   it overrides the effect of Hallucination on priestname() */
 		killer = m_monnam(mtmp);
 		Strcat(buf, killer);
-	} else Strcat(buf, mtmp->data->mname);
+	} else {
+		Strcat(buf, mtmp->data->mname);
+		if (mtmp->mnamelth)
+		    Sprintf(eos(buf), " called %s", NAME(mtmp));
+	}
 
-	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	if (multi) Strcat(buf, ", while helpless");
 	killer = buf;
 	if (mtmp->data->mlet == S_WRAITH)
@@ -346,6 +355,7 @@ int how;
 	if(u.utrap && u.utraptype == TT_LAVA) u.utrap = 0;
 	flags.botl = 1;
 	u.ugrave_arise = NON_PM;
+	HUnchanging = 0L;
 	curs_on_u();
 }
 
@@ -407,6 +417,55 @@ int size;		/* max value is less than 20 */
     return;
 }
 
+STATIC_OVL void
+add_artifact_score(list)
+struct obj *list;
+{
+    struct obj *otmp;
+
+    for (otmp = list; otmp; otmp = otmp->nobj)
+	if (otmp->oartifact ||
+			otmp->otyp == BELL_OF_OPENING ||
+			otmp->otyp == SPE_BOOK_OF_THE_DEAD ||
+			otmp->otyp == CANDELABRUM_OF_INVOCATION) {
+	    /* shopkeepers charge 100x; 250x is arbitrary */
+	    u.urexp += 250L * (long)objects[otmp->otyp].oc_cost;
+	if (Has_contents(otmp))
+	    add_artifact_score(otmp->cobj);
+    }
+}
+
+STATIC_OVL void
+display_artifact_score(list,endwin)
+struct obj *list;
+winid endwin;
+{
+    char pbuf[BUFSZ];
+    struct obj *otmp;
+
+    for (otmp = list; otmp; otmp = otmp->nobj) {
+	if (otmp->oartifact ||
+			otmp->otyp == BELL_OF_OPENING ||
+			otmp->otyp == SPE_BOOK_OF_THE_DEAD ||
+			otmp->otyp == CANDELABRUM_OF_INVOCATION) {
+	    short dummy;
+
+	    makeknown(otmp->otyp);
+	    otmp->known = otmp->bknown = otmp->dknown =
+		otmp->rknown = 1;
+	    /* assumes artifacts don't have quan>1 */
+	    Sprintf(pbuf, "%s (worth %ld zorkmids and %ld points)",
+		otmp->oartifact ? artifact_name(xname(otmp), &dummy) :
+			OBJ_NAME(objects[otmp->otyp]),
+		100L * (long)objects[otmp->otyp].oc_cost,
+		250L * (long)objects[otmp->otyp].oc_cost);
+	    putstr(endwin, 0, pbuf);
+	}
+	if (Has_contents(otmp))
+	    display_artifact_score(otmp->cobj,endwin);
+    }
+}
+
 /* Be careful not to call panic from here! */
 void
 done(how)
@@ -416,6 +475,7 @@ int how;
 	char kilbuf[BUFSZ], pbuf[BUFSZ];
 	winid endwin = WIN_ERR;
 	boolean bones_ok, have_windows = iflags.window_inited;
+	struct obj *corpse = (struct obj *)0;
 
 	/* kilbuf: used to copy killer in case it comes from something like
 	 *	xname(), which would otherwise get overwritten when we call
@@ -477,6 +537,7 @@ int how;
      */
 
 die:
+	program_state.gameover = 1;
 	/* in case of a subsequent panic(), there's no point trying to save */
 	program_state.something_worth_saving = 0;
 	/* turn off vision subsystem */
@@ -512,9 +573,15 @@ die:
 		u.ugrave_arise = (NON_PM - 2);	/* leave no corpse */
 	    else if (how == STONING)
 		u.ugrave_arise = (NON_PM - 1);	/* statue instead of corpse */
-	    else if (u.ugrave_arise == NON_PM)
-		(void) mk_named_object(CORPSE, &mons[u.umonnum],
+	    else if (u.ugrave_arise == NON_PM) {
+		corpse = mk_named_object(CORPSE, &mons[u.umonnum],
 				       u.ux, u.uy, plname);
+		Sprintf(pbuf, "%s, %s%s", plname,
+			killer_format == NO_KILLER_PREFIX ? "" :
+			killed_by_prefix[how],
+			killer_format == KILLED_BY_AN ? an(killer) : killer);
+		make_grave(u.ux, u.uy, pbuf);
+	    }
 	}
 
 	if (how == QUIT) {
@@ -569,7 +636,10 @@ die:
 #ifdef WIZARD
 	    if (!wizard || yn("Save bones?") == 'y')
 #endif
-		savebones();
+		savebones(corpse);
+	    /* corpse may be invalid pointer now so
+		ensure that it isn't used again */
+	    corpse = (struct obj *)0;
 	}
 
 	/* clean up unneeded windows */
@@ -629,12 +699,7 @@ die:
 			u.urexp += val->list[i].count
 				  * (long)objects[val->list[i].typ].oc_cost;
 
-	    /* add points for artifacts */
-	    for (otmp = invent; otmp; otmp = otmp->nobj)
-		if (otmp->oartifact) {
-		    /* shopkeepers charge 100x; 250x is arbitrary */
-		    u.urexp += 250L * (long)objects[otmp->otyp].oc_cost;
-		}
+	    add_artifact_score(invent);
 
 	    keepdogs(TRUE);
 	    viz_array[0][0] |= IN_SIGHT; /* need visibility for naming */
@@ -661,21 +726,8 @@ die:
 		putstr(endwin, 0, pbuf);
 	    }
 
-	    for (otmp = invent; otmp; otmp = otmp->nobj) {
-		if (otmp->oartifact) {
-		    short dummy;
-
-		    makeknown(otmp->otyp);
-		    otmp->known = otmp->bknown = otmp->dknown =
-			otmp->rknown = 1;
-		    /* assumes artifacts don't have quan>1 */
-		    Sprintf(pbuf, "%s (worth %ld zorkmids and %ld points)",
-			artifact_name(xname(otmp), &dummy),
-			100L * (long)objects[otmp->otyp].oc_cost,
-			250L * (long)objects[otmp->otyp].oc_cost);
-		    putstr(endwin, 0, pbuf);
-		}
-	    }
+	    if (!done_stopprint)
+		display_artifact_score(invent,endwin);
 
 	    /* list valuables here */
 	    for (val = valuables; val->list; val++) {
@@ -689,6 +741,7 @@ die:
 			otmp = mksobj(typ, FALSE, FALSE);
 			makeknown(otmp->otyp);
 			otmp->known = 1;	/* for fake amulets */
+			otmp->dknown = 1;	/* seen it (blindness fix) */
 			otmp->onamelth = 0;
 			otmp->quan = count;
 			Sprintf(pbuf, "%8ld %s (worth %ld zorkmids),",

@@ -148,7 +148,7 @@ TERMLIB =
 # time you change schemas.
 #
 
-SCHEMA	= 1
+SCHEMA	= 2
 
 #
 # OPTIONAL TILE SUPPORT.

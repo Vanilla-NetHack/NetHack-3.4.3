@@ -1,9 +1,12 @@
-/*	SCCS Id: @(#)hack.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)hack.c	3.3	2000/04/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
+#ifdef OVL1
+static void NDECL(maybe_wail);
+#endif /*OVL1*/
 STATIC_DCL int NDECL(moverock);
 STATIC_DCL int FDECL(still_chewing,(XCHAR_P,XCHAR_P));
 #ifdef SINKS
@@ -255,14 +258,21 @@ moverock()
 	cannot_push:
 	    if (throws_rocks(youmonst.data)) {
 #ifdef STEED
-		if (u.usteed && P_SKILL(P_RIDING) < P_BASIC)
-			You("aren't skilled enough to %s %s from %s.",
-				flags.pickup ? "pick up" : "push aside",
-				the(xname(otmp)), mon_nam(u.usteed));
-		else
+		if (u.usteed && P_SKILL(P_RIDING) < P_BASIC) {
+		    You("aren't skilled enough to %s %s from %s.",
+			(flags.pickup && !In_sokoban(&u.uz))
+			    ? "pick up" : "push aside",
+			the(xname(otmp)), mon_nam(u.usteed));
+		} else
 #endif
-		  pline("However, you can easily %s.",
-			flags.pickup ? "pick it up" : "push it aside");
+		{
+		    pline("However, you can easily %s.",
+			(flags.pickup && !In_sokoban(&u.uz))
+			    ? "pick it up" : "push it aside");
+		    if (In_sokoban(&u.uz))
+			change_luck(-1);	/* Sokoban guilt */
+		    break;
+		}
 		break;
 	    }
 
@@ -275,6 +285,8 @@ moverock()
 				     && IS_ROCK(levl[sx][u.uy].typ))))
 		|| verysmall(youmonst.data))) {
 		pline("However, you can squeeze yourself into a small opening.");
+		if (In_sokoban(&u.uz))
+		    change_luck(-1);	/* Sokoban guilt */
 		break;
 	    } else
 		return (-1);
@@ -325,6 +337,10 @@ still_chewing(x,y)
 	digging.chew = TRUE;
 	return 1;
     }
+
+    /* Okay, you've chewed through something */
+    u.uconduct.food++;
+    u.uhunger += rnd(20);
 
     if (boulder) {
 	delobj(boulder);		/* boulder goes bye-bye */
@@ -686,6 +702,8 @@ domove()
 		if(mtmp->m_ap_type && !Protection_from_shape_changers
 						    && !sensemon(mtmp))
 		    stumble_onto_mimic(mtmp);
+		else if (mtmp->mpeaceful)
+		    pline("Pardon me, %s.", m_monnam(mtmp));
 		else
 		    You("move right into %s.", mon_nam(mtmp));
 		return;
@@ -727,7 +745,6 @@ domove()
 	    unmap_object(x, y);
 	    newsym(x, y);
 	}
-
 	/* not attacking an animal, so we try to move */
 #ifdef STEED
 	if (u.usteed && !u.usteed->mcanmove && (u.dx || u.dy)) {
@@ -751,7 +768,9 @@ domove()
 			clear_nhwindow(WIN_MESSAGE);
 			You("free your %s.", body_part(LEG));
 		    } else if (!(--u.utrap)) {
-			You("crawl to the edge of the pit.");
+			You("%s to the edge of the pit.",
+				(In_sokoban(&u.uz) && Levitation) ?
+				"struggle against the air currents and float" : "crawl");
 			fill_pit(u.ux, u.uy);
 			vision_full_recalc = 1;	/* vision limits change */
 		    } else if (flags.verbose)
@@ -782,7 +801,8 @@ domove()
 		} else if (u.utraptype == TT_INFLOOR) {
 		    if(--u.utrap) {
 			if(flags.verbose)
-			    Norep("You are stuck in the floor.");
+			    Norep("You are stuck in the %s.",
+					surface(u.ux, u.uy));
 		    } else You("finally wiggle free.");
 		} else {
 		    if(flags.verbose)
@@ -1024,7 +1044,7 @@ domove()
 	if (Punished)				/* put back ball and chain */
 	    move_bc(0,bc_control,ballx,bally,chainx,chainy);
 
-	spoteffects();
+	spoteffects(TRUE);
 
 	/* delay next move because of ball dragging */
 	/* must come after we finished picking up, in spoteffects() */
@@ -1053,7 +1073,8 @@ invocation_message()
 #ifdef OVL2
 
 void
-spoteffects()
+spoteffects(pick)
+boolean pick;
 {
 	register struct trap *trap;
 	register struct monst *mtmp;
@@ -1100,8 +1121,8 @@ stillinwater:;
 	if(IS_SINK(levl[u.ux][u.uy].typ) && Levitation)
 		dosinkfall();
 #endif
-	if (!in_steed_dismounting)
-		pickup(1);
+	if (pick && !in_steed_dismounting)
+		(void) pickup(1);
 	if ((trap = t_at(u.ux,u.uy)) != 0)
 		dotrap(trap);	/* fall into pit, arrow trap, etc. */
 	if((mtmp = m_at(u.ux, u.uy)) && !u.uswallow) {
@@ -1116,11 +1137,11 @@ stillinwater:;
 			    pline("Its blow glances off your helmet.");
 			else if (u.uac + 3 <= rnd(20))
 			    You("are almost hit by %s!",
-				x_monnam(mtmp, 2, "falling", 1));
+				x_monnam(mtmp, ARTICLE_A, "falling", 0, TRUE));
 			else {
 			    int dmg;
 			    You("are hit by %s!",
-				x_monnam(mtmp, 2, "falling", 1));
+				x_monnam(mtmp, ARTICLE_A, "falling", 0, TRUE));
 			    dmg = d(4,6);
 			    if(Half_physical_damage) dmg = (dmg+1) / 2;
 			    mdamageu(mtmp, dmg);
@@ -1152,7 +1173,7 @@ int roomno;
 	register struct monst *mtmp;
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		if(mtmp->data == mdat &&
+		if(!DEADMONSTER(mtmp) && mtmp->data == mdat &&
 		   index(in_rooms(mtmp->mx, mtmp->my, 0), roomno + ROOMOFFSET))
 			return(TRUE);
 	return(FALSE);
@@ -1336,7 +1357,8 @@ register boolean newlev;
 		    break;
 		case DELPHI:
 		    if(monstinroom(&mons[PM_ORACLE], roomno))
-			verbalize("%s, %s, welcome to Delphi!", Hello(), plname);
+			verbalize("%s, %s, welcome to Delphi!",
+					Hello((struct monst *) 0), plname);
 		    break;
 		case TEMPLE:
 		    intemple(roomno + ROOMOFFSET);
@@ -1375,7 +1397,7 @@ register boolean newlev;
 		}
 		if (rt == COURT || rt == SWAMP || rt == MORGUE || rt == ZOO)
 		    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-			if (!Stealth && !rn2(3)) mtmp->msleeping = 0;
+			if (!DEADMONSTER(mtmp) && !Stealth && !rn2(3)) mtmp->msleeping = 0;
 	    }
 	}
 
@@ -1406,15 +1428,25 @@ dopickup()
 	    if (Wwalking || is_floater(youmonst.data) || is_clinger(youmonst.data)
 			|| (Flying && !Breathless)) {
 		You("cannot dive into the water to pick things up.");
-		return(1);
+		return(0);
 	    } else if (!Underwater) {
 		You_cant("even see the bottom, let alone pick up %s.",
 				something);
-		return(1);
+		return(0);
+	    }
+	}
+	if (is_lava(u.ux, u.uy)) {
+	    if (Wwalking || is_floater(youmonst.data) || is_clinger(youmonst.data)
+			|| (Flying && !Breathless)) {
+		You_cant("reach the bottom to pick things up.");
+		return(0);
+	    } else if (!likes_lava(youmonst.data)) {
+		You("would burn to a crisp trying to pick things up.");
+		return(0);
 	    }
 	}
 	if(!OBJ_AT(u.ux, u.uy)) {
-		pline("There is nothing here to pick up.");
+		There("is nothing here to pick up.");
 		return(0);
 	}
 	if (!can_reach_floor()) {
@@ -1425,10 +1457,9 @@ dopickup()
 		else
 #endif
 		You("cannot reach the %s.", surface(u.ux,u.uy));
-		return(1);
+		return(0);
 	}
-	pickup(-count);
-	return(1);
+	return (pickup(-count));
 }
 
 #endif /* OVLB */
@@ -1610,6 +1641,37 @@ const char *msg_override;
 #endif /* OVL2 */
 #ifdef OVL1
 
+static void
+maybe_wail()
+{
+    static short powers[] = { TELEPORT, SEE_INVIS, POISON_RES, COLD_RES,
+			      SHOCK_RES, FIRE_RES, SLEEP_RES, DISINT_RES,
+			      TELEPORT_CONTROL, STEALTH, FAST, INVIS };
+
+    if (moves <= wailmsg + 50) return;
+
+    wailmsg = moves;
+    if (Role_if(PM_WIZARD) || Race_if(PM_ELF) || Role_if(PM_VALKYRIE)) {
+	const char *who;
+	int i, powercnt;
+
+	who = (Role_if(PM_WIZARD) || Role_if(PM_VALKYRIE)) ?
+		urole.name.m : "Elf";
+	if (u.uhp == 1) {
+	    pline("%s is about to die.", who);
+	} else {
+	    for (i = 0, powercnt = 0; i < SIZE(powers); ++i)
+		if (u.uprops[powers[i]].intrinsic & INTRINSIC) ++powercnt;
+
+	    pline(powercnt >= 4 ? "%s, all your powers will be lost..."
+				: "%s, your life force is running out.", who);
+	}
+    } else {
+	You_hear(u.uhp == 1 ? "the wailing of the Banshee..."
+			    : "the howling of the CwnAnnwn...");
+    }
+}
+
 void
 losehp(n, knam, k_format)
 register int n;
@@ -1620,7 +1682,10 @@ boolean k_format;
 		u.mh -= n;
 		if (u.mhmax < u.mh) u.mhmax = u.mh;
 		flags.botl = 1;
-		if (u.mh < 1) rehumanize();
+		if (u.mh < 1)
+		    rehumanize();
+		else if (n > 0 && u.mh*10 < u.mhmax && Unchanging)
+		    maybe_wail();
 		return;
 	}
 
@@ -1633,38 +1698,8 @@ boolean k_format;
 		killer = knam;		/* the thing that killed you */
 		You("die...");
 		done(DIED);
-	} else if (u.uhp*10 < u.uhpmax && moves-wailmsg > 50 && n > 0) {
-		wailmsg = moves;
-		if (Role_if(PM_WIZARD) || Race_if(PM_ELF) || Role_if(PM_VALKYRIE)) {
-			if (u.uhp == 1)
-				pline("%s is about to die.",
-			    		(Role_if(PM_WIZARD) || Role_if(PM_VALKYRIE)) ?
-			    		urole.name.m : "Elf");
-			else if (4 <= (!!(HTeleportation & INTRINSIC)) +
-				    (!!(HSee_invisible & INTRINSIC)) +
-				    (!!(HPoison_resistance & INTRINSIC)) +
-				    (!!(HCold_resistance & INTRINSIC)) +
-				    (!!(HShock_resistance & INTRINSIC)) +
-				    (!!(HFire_resistance & INTRINSIC)) +
-				    (!!(HSleep_resistance & INTRINSIC)) +
-				    (!!(HDisint_resistance & INTRINSIC)) +
-				    (!!(HTeleport_control & INTRINSIC)) +
-				    (!!(HStealth & INTRINSIC)) +
-				    (!!(HFast & INTRINSIC)) +
-				    (!!(HInvis & INTRINSIC)))
-				pline("%s, all your powers will be lost...",
-			    		(Role_if(PM_WIZARD) || Role_if(PM_VALKYRIE)) ?
-			    		urole.name.m : "Elf");
-			else
-				pline("%s, your life force is running out.",
-			    		(Role_if(PM_WIZARD) || Role_if(PM_VALKYRIE)) ?
-			    		urole.name.m : "Elf");
-		} else {
-			if(u.uhp == 1)
-				You_hear("the wailing of the Banshee...");
-			else
-				You_hear("the howling of the CwnAnnwn...");
-		}
+	} else if (n > 0 && u.uhp*10 < u.uhpmax) {
+		maybe_wail();
 	}
 }
 

@@ -1,6 +1,9 @@
 #	NetHack Makefile.
 #	SCCS Id: @(#)Makefile.doc	3.3	96/03/23
 
+# for Atari
+# SHELL=E:/GEMINI2/MUPFEL.TTP
+
 GUIDEBOOK = Guidebook		# regular ASCII file
 #GUIDEBOOK = Guidebook.ps	# PostScript file
 #GUIDEBOOK = Guidebook.dvi	# TeX device-independent file

@@ -284,7 +284,7 @@ main(argc, argv)
 
     case 'x': {			/* extract archive contents */
 	int f, n;
-	long total_read;
+	long remainder, total_read;
 	char buf[BUFSIZ];
 
 	if (!open_library(library_file, &lib)) {
@@ -319,8 +319,11 @@ main(argc, argv)
 	    /* read chunks from library and write them out */
 	    total_read = 0;
 	    do {
-		r = lib.dir[i].fsize - total_read;
-		if (r > (int) sizeof(buf)) r = (int) sizeof(buf);
+		remainder = lib.dir[i].fsize - total_read;
+		if (remainder > (long) sizeof(buf))
+		    r = (int) sizeof(buf);
+		else
+		    r = remainder;
 
 		n = fread(buf, 1, r, lib.fdata);
 		if (n != r) {

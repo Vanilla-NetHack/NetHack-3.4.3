@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_wear.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)do_wear.c	3.3	2000/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -52,6 +52,7 @@ STATIC_DCL struct obj *NDECL(do_takeoff);
 STATIC_PTR int NDECL(take_off);
 STATIC_DCL int FDECL(menu_remarm, (int));
 STATIC_DCL void FDECL(already_wearing, (const char*));
+STATIC_DCL void FDECL(already_wearing2, (const char*, const char*));
 
 void
 off_msg(otmp)
@@ -91,7 +92,7 @@ Boots_on()
 	case KICKING_BOOTS:
 		break;
 	case WATER_WALKING_BOOTS:
-		if (u.uinwater) spoteffects();
+		if (u.uinwater) spoteffects(TRUE);
 		break;
 	case SPEED_BOOTS:
 		/* Speed boots are still better than intrinsic speed, */
@@ -147,7 +148,7 @@ Boots_off()
 			    && !Flying && !is_clinger(youmonst.data)) {
 			makeknown(otyp);
 			/* make boots known in case you survive the drowning */
-			spoteffects();
+			spoteffects(TRUE);
 		}
 		break;
 	case ELVEN_BOOTS:
@@ -353,7 +354,7 @@ Helmet_off()
 		adj_abon(uarmh, -uarmh->spe);
 		break;
 	case HELM_OF_OPPOSITE_ALIGNMENT:
-		u.ualign.type = u.ualignbase[0];
+		u.ualign.type = u.ualignbase[A_CURRENT];
 		u.ublessed = 0; /* lose the other god's protection */
 		flags.botl = 1;
 		break;
@@ -518,19 +519,34 @@ Amulet_on()
 	case AMULET_VERSUS_POISON:
 	case AMULET_OF_REFLECTION:
 	case AMULET_OF_MAGICAL_BREATHING:
-	case AMULET_OF_UNCHANGING:
 	case FAKE_AMULET_OF_YENDOR:
 		break;
+	case AMULET_OF_UNCHANGING:
+		if (Slimed) {
+		    Slimed = 0;
+		    flags.botl = 1;
+		}
+		break;
 	case AMULET_OF_CHANGE:
-		makeknown(AMULET_OF_CHANGE);
+	    {
+		int orig_sex = poly_gender();
+
+		if (Unchanging) break;
 		change_sex();
 		/* Don't use same message as polymorph */
-		You("are suddenly very %s!", flags.female ? "feminine"
+		if (orig_sex != poly_gender()) {
+		    makeknown(AMULET_OF_CHANGE);
+		    You("are suddenly very %s!", flags.female ? "feminine"
 			: "masculine");
-		flags.botl = 1;
+		    flags.botl = 1;
+		} else
+		    /* already polymorphed into single-gender monster; only
+		       changed the character's base sex */
+		    You("don't feel like yourself.");
 		pline_The("amulet disintegrates!");
 		useup(uamul);
 		break;
+	    }
 	case AMULET_OF_STRANGULATION:
 		makeknown(AMULET_OF_STRANGULATION);
 		pline("It constricts your throat!");
@@ -556,6 +572,7 @@ Amulet_off()
 	case AMULET_OF_LIFE_SAVING:
 	case AMULET_VERSUS_POISON:
 	case AMULET_OF_REFLECTION:
+	case AMULET_OF_CHANGE:
 	case AMULET_OF_UNCHANGING:
 	case FAKE_AMULET_OF_YENDOR:
 		break;
@@ -570,9 +587,6 @@ Amulet_off()
 		    (void) drown();
 		    return;
 		}
-		break;
-	case AMULET_OF_CHANGE:
-		impossible("Wearing an amulet of change?");
 		break;
 	case AMULET_OF_STRANGULATION:
 		if (Strangled) {
@@ -620,7 +634,6 @@ register struct obj *obj;
 	case RIN_COLD_RESISTANCE:
 	case RIN_SHOCK_RESISTANCE:
 	case RIN_CONFLICT:
-	case RIN_WARNING:
 	case RIN_TELEPORT_CONTROL:
 	case RIN_POLYMORPH:
 	case RIN_POLYMORPH_CONTROL:
@@ -628,6 +641,9 @@ register struct obj *obj;
 	case RIN_SLOW_DIGESTION:
 	case RIN_SUSTAIN_ABILITY:
 	case MEAT_RING:
+		break;
+	case RIN_WARNING:
+		see_monsters();
 		break;
 	case RIN_SEE_INVISIBLE:
 		/* can now see invisible monsters */
@@ -733,7 +749,6 @@ boolean gone;
 	case RIN_COLD_RESISTANCE:
 	case RIN_SHOCK_RESISTANCE:
 	case RIN_CONFLICT:
-	case RIN_WARNING:
 	case RIN_TELEPORT_CONTROL:
 	case RIN_POLYMORPH:
 	case RIN_POLYMORPH_CONTROL:
@@ -741,6 +756,9 @@ boolean gone;
 	case RIN_SLOW_DIGESTION:
 	case RIN_SUSTAIN_ABILITY:
 	case MEAT_RING:
+		break;
+	case RIN_WARNING:
+		see_monsters();
 		break;
 	case RIN_SEE_INVISIBLE:
 		/* Make invisible monsters go away */
@@ -852,7 +870,9 @@ register struct obj *otmp;
 	off_msg(otmp);
 
 	if (Blind) {
-	    if (was_blind)
+	    if (otmp->otyp == LENSES)
+		; /* "still cannot see" makes no sense for lenses; do nothing */
+	    else if (was_blind)
 		You("still cannot see.");
 	    else
 		You("cannot see anything now!");
@@ -1113,6 +1133,13 @@ const char *cc;
 	You("are already wearing %s%c", cc, (cc == c_that_) ? '!' : '.');
 }
 
+STATIC_OVL void
+already_wearing2(cc1, cc2)
+const char *cc1, *cc2;
+{
+	You_cant("wear %s because you're wearing %s there already.", cc1, cc2);
+}
+
 /*
  * canwearobj checks to see whether the player can wear a piece of armor
  *
@@ -1214,7 +1241,7 @@ boolean noisy;
 	    err++;
 	} else
 	    *mask = W_ARMC;
-    } else {
+    } else if (is_suit(otmp)) {
 	if (uarmc) {
 	    if (noisy) You("cannot wear armor over a cloak.");
 	    err++;
@@ -1223,6 +1250,12 @@ boolean noisy;
 	    err++;
 	} else
 	    *mask = W_ARM;
+    } else {
+	/* getobj can't do this after setting its allow_all flag; that
+	   happens if you have armor for slots that are covered up or
+	   extra armor for slots that are filled */
+	if (noisy) pline(silly_thing_to, "wear");
+	err++;
     }
 /* Unnecessary since now only weapons and special items like pick-axes get
  * welded to your hand, not armor
@@ -1323,7 +1356,7 @@ doputon()
 			return(0);
 		}
 		if(uleft && uright){
-			pline("There are no more %s%s to fill.",
+			There("are no more %s%s to fill.",
 				humanoid(youmonst.data) ? "ring-" : "",
 				makeplural(body_part(FINGER)));
 			return(0);
@@ -1379,17 +1412,23 @@ doputon()
 			return(1);
 		}
 		Amulet_on();
-	} else {	/* it's a blindfold */
+	} else {	/* it's a blindfold, towel, or lenses */
 		if (ublindf) {
 			if (ublindf->otyp == TOWEL)
 				Your("%s is already covered by a towel.",
 					body_part(FACE));
-			else if (ublindf->otyp == BLINDFOLD)
-				already_wearing("a blindfold");
-			else if (ublindf->otyp == LENSES)
-				already_wearing("some lenses");
-			else
-				already_wearing("something"); /* ??? */
+			else if (ublindf->otyp == BLINDFOLD) {
+				if (otmp->otyp == LENSES)
+					already_wearing2("lenses", "a blindfold");
+				else
+					already_wearing("a blindfold");
+			} else if (ublindf->otyp == LENSES) {
+				if (otmp->otyp == BLINDFOLD)
+					already_wearing2("a blindfold", "some lenses");
+				else
+					already_wearing("some lenses");
+			} else
+				already_wearing(something); /* ??? */
 			return(0);
 		}
 		if (otmp->otyp != BLINDFOLD && otmp->otyp != TOWEL && otmp->otyp != LENSES) {
@@ -1460,6 +1499,19 @@ glibr()
 			Ring_off(uright);
 			dropx(otmp);
 		}
+	}
+
+	otmp = uswapwep;
+	if (u.twoweap && otmp) {
+		Your("%s %sslips from your %s.",
+			is_sword(otmp) ? c_sword :
+				makesingular(oclass_names[(int)otmp->oclass]),
+			xfl ? "also " : "",
+			makeplural(body_part(HAND)));
+		setuswapwep((struct obj *)0);
+		xfl++;
+		if (otmp->otyp != LOADSTONE || !otmp->cursed)
+			dropx(otmp);
 	}
 	otmp = uwep;
 	if (otmp && !welded(otmp)) {
@@ -1751,6 +1803,13 @@ take_off()
 	}
 
 	if (otmp) todelay += objects[otmp->otyp].oc_delay;
+
+	/* Since setting the occupation now starts the counter next move, that
+         * would always produce a delay 1 too big per item unless we subtract
+	 * 1 here to account for it.
+	 */
+	if (todelay>0) todelay--;
+
 	set_occupation(take_off, "disrobing", 0);
 	return(1);		/* get busy */
 }
@@ -1775,7 +1834,8 @@ doddoremarm()
     if (taking_off || takeoff_mask) {
 	You("continue disrobing.");
 	set_occupation(take_off, "disrobing", 0);
-	return(take_off());
+	(void) take_off();
+	return 0;
     } else if (!uwep && !uswapwep && !uquiver && !uamul && !ublindf &&
 		!uleft && !uright && !wearing_armor()) {
 	You("are not wearing anything.");
@@ -1787,7 +1847,13 @@ doddoremarm()
 	    (result = ggetobj("take off", select_off, 0, FALSE)) < -1)
 	result = menu_remarm(result);
 
-    return takeoff_mask ? take_off() : 0;
+    if (takeoff_mask)
+	(void) take_off();
+    /* The time to perform the command is already completely accounted for
+     * in take_off(); if we return 1, that would add an extra turn to each
+     * disrobe.
+     */
+    return 0;
 }
 
 STATIC_OVL int
@@ -1827,7 +1893,7 @@ int retry;
 	    (void) select_off(pick_list[i].item.a_obj);
 	free((genericptr_t) pick_list);
     } else if (n < 0) {
-	pline("There is nothing else you can remove or unwield.");
+	There("is nothing else you can remove or unwield.");
     }
     return 0;
 }

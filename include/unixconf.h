@@ -38,6 +38,7 @@
 			/* e.g. Suns sharing a playground through NFS */
 /* #define SUNOS4 */	/* SunOS 4.x */
 /* #define LINUX */	/* Another Unix clone */
+/* #define CYGWIN32 */	/* Unix on Win32 -- use with case sensitive defines */
 /* #define GENIX */	/* Yet Another Unix Clone */
 /* #define HISX */	/* Bull Unix for XPS Machines */
 /* #define BOS */	/* Bull Open Software - Unix for DPX/2 Machines */
@@ -45,6 +46,7 @@
 /* #define AIX_31 */	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
 			 * job control (note that AIX is SYSV otherwise)
 			 * Also define this for AIX 3.2 */
+
 #define TERMINFO	/* uses terminfo rather than termcap */
 			/* Should be defined for most SYSV, SVR4 (including
 			 * Solaris 2+), HPUX, and Linux systems.  In
@@ -95,6 +97,12 @@
 
 /* #define NO_FILE_LINKS */	/* if no hard links */
 /* #define LOCKDIR "/usr/games/lib/nethackdir" */	/* where to put locks */
+
+/*
+ * If you want the static parts of your playground on a read-only file
+ * system, define VAR_PLAYGROUND to be where the variable parts are kept.
+ */
+/* #define VAR_PLAYGROUND "/var/lib/games/nethack" */
 
 
 /*
@@ -167,7 +175,7 @@
 #  endif
 #else
 # if defined(SYSV) || defined(DGUX) || defined(HPUX)
-#  ifdef M_XENIX
+#  if defined(M_XENIX) || defined(__FreeBSD__)
 #define DEF_MAILREADER	"/usr/bin/mail"
 #  else
 #   ifdef __sgi
@@ -289,7 +297,7 @@
 #endif
 
 /* Use the high quality random number routines. */
-#if defined(BSD) || defined(ULTRIX) || defined(RANDOM)
+#if defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) || defined(RANDOM)
 #define Rand()	random()
 #else
 #define Rand()	lrand48()

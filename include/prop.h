@@ -71,8 +71,8 @@
 #define PASSES_WALLS		62
 #define SLOW_DIGESTION		63
 #define INFRAVISION		64
-#define DETECT_MONSTERS		65
-
+#define WARN_OF_MON		65
+#define DETECT_MONSTERS		66
 #define LAST_PROP		(DETECT_MONSTERS)
 
 /*** Where the properties come from ***/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)spell.c	3.3	1999/11/01	*/
+/*	SCCS Id: @(#)spell.c	3.3	2000/01/10	*/
 /*	Copyright (c) M. Stephenson 1988			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -238,7 +238,7 @@ raise_dead:
     } else if(book2->blessed) {
 	for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 	    mtmp2 = mtmp->nmon;		/* tamedog() changes chain */
-	    if(is_undead(mtmp->data) && cansee(mtmp->mx, mtmp->my)) {
+	    if(!DEADMONSTER(mtmp) && is_undead(mtmp->data) && cansee(mtmp->mx, mtmp->my)) {
 		mtmp->mpeaceful = TRUE;
 		if(sgn(mtmp->data->maligntyp) == sgn(u.ualign.type)
 		   && distu(mtmp->mx, mtmp->my) < 4)
@@ -378,14 +378,17 @@ register struct obj *spellbook;
 			} else {
 			    /* uncursed - chance to fail */
 			    int read_ability = ACURR(A_INT) + 4 + u.ulevel/2
-				- 2*objects[booktype].oc_level;
+					       - 2*objects[booktype].oc_level;
 			    /* only wizards know if a spell is too difficult */
 			    if (Role_if(PM_WIZARD) && read_ability < 20) {
 				char qbuf[QBUFSZ];
 				Sprintf(qbuf,
 		      "This spellbook is %sdifficult to comprehend. Continue?",
 					(read_ability < 12 ? "very " : ""));
-				if (ynq(qbuf) != 'y') return(1);
+				if (yn(qbuf) != 'y') {
+				    spellbook->in_use = FALSE;
+				    return(1);
+				}
 			    }
 			    /* its up to random luck now */
 			    if (rnd(20) > read_ability) {
@@ -668,14 +671,6 @@ boolean atme;
 		if (spellid(spell) != SPE_DETECT_FOOD) {
 			int hungr = energy * 2;
 
-			/* don't put player (quite) into fainting from
-			 * casting a spell, particularly since they might
-			 * not even be hungry at the beginning; however,
-			 * this is low enough that they must eat before
-			 * casting anything else except detect food
-			 */
-			if (hungr > u.uhunger-3)
-				hungr = u.uhunger-3;
 			/* If hero is a wizard, their current intelligence
 			 * (bonuses + temporary + current)
 			 * affects hunger reduction in casting a spell.
@@ -690,12 +685,22 @@ boolean atme;
 			 * understand quite well how to cast spells.
 			 */
 			intell = acurr(A_INT);
+			if (!Role_if(PM_WIZARD)) intell = 10;
 			switch (intell) {
-				case 18:
+				case 25: case 24: case 23: case 22:
+				case 21: case 20: case 19: case 18:
 				case 17: hungr = 0; break;
 				case 16: hungr /= 4; break;
 				case 15: hungr /= 2; break;
 			}
+			/* don't put player (quite) into fainting from
+			 * casting a spell, particularly since they might
+			 * not even be hungry at the beginning; however,
+			 * this is low enough that they must eat before
+			 * casting anything else except detect food
+			 */
+			if (hungr > u.uhunger-3)
+				hungr = u.uhunger-3;
 			morehungry(hungr);
 		}
 	}
@@ -724,14 +729,10 @@ boolean atme;
 
 	switch(pseudo->otyp)  {
 	/*
-	 * At first these act as expected.  As the character increases in
-	 * experience the spell increases in its ability.  Initially the
-	 * spells have their expected levels of damage.  When the hero level
-	 * reaches three times the level of the spell the spell does special
-	 * damage.  This special damage is indicated before each spell.  Note
-	 * even when the hero reaches three times the level of the spell she
-	 * still has the choice of casting either spell. Also the new level
-	 * of spell has an increased cost in casting it.
+	 * At first spells act as expected.  As the hero increases in skill
+	 * with the appropriate spell type, some spells increase in their
+	 * effects, e.g. more damage, further distance, and so on, without
+	 * additional cost to the spellcaster.
 	 */
 	case SPE_CONE_OF_COLD:
 	case SPE_FIREBALL:
@@ -752,7 +753,8 @@ boolean atme;
 				    u.ulevel/2 + 1 + spell_damage_bonus(), 0);
 			}
 			u.dx = cc.x+rnd(3)-2; u.dy = cc.y+rnd(3)-2;
-			if (!cansee(u.dx,u.dy) || IS_STWALL(levl[u.dx][u.dy].typ)) {
+			if (!isok(u.dx,u.dy) || !cansee(u.dx,u.dy) ||
+			    IS_STWALL(levl[u.dx][u.dy].typ) || u.uswallow) {
 			    /* Spell is reflected back to center */
 			    u.dx = cc.x;
 			    u.dy = cc.y;
@@ -796,16 +798,12 @@ boolean atme;
 
 	/* these are all duplicates of scroll effects */
 	case SPE_REMOVE_CURSE:
-		/*
-		 * When the hero is skilled enough the spell is equivalent
-		 * to a blessed scroll.
-		 */
-		if (role_skill >= P_SKILLED)
-		    pseudo->blessed=1;
-		/* fall through */
 	case SPE_CONFUSE_MONSTER:
 	case SPE_DETECT_FOOD:
 	case SPE_CAUSE_FEAR:
+		/* high skill yields effect equivalent to blessed scroll */
+		if (role_skill >= P_SKILLED) pseudo->blessed = 1;
+		/* fall through */
 	case SPE_CHARM_MONSTER:
 	case SPE_MAGIC_MAPPING:
 	case SPE_CREATE_MONSTER:
@@ -819,6 +817,9 @@ boolean atme;
 	case SPE_DETECT_MONSTERS:
 	case SPE_LEVITATION:
 	case SPE_RESTORE_ABILITY:
+		/* high skill yields effect equivalent to blessed potion */
+		if (role_skill >= P_SKILLED) pseudo->blessed = 1;
+		/* fall through */
 	case SPE_INVISIBILITY:
 		(void) peffects(pseudo);
 		break;
@@ -829,7 +830,7 @@ boolean atme;
 	case SPE_CURE_SICKNESS:
 		if (Sick) You("are no longer ill.");
 		if (Slimed) {
-		    pline("The slime disappears!");
+		    pline_The("slime disappears!");
 		    Slimed = 0;
 		}
 		healup(0, 0, TRUE, FALSE);
@@ -849,8 +850,8 @@ boolean atme;
 		cast_protection();
 		break;
 	case SPE_JUMPING:
-		if (!jump(role_skill))
-			pline("Nothing happens.");
+		if (!jump(max(role_skill,1)))
+			pline(nothing_happens);
 		break;
 	default:
 		impossible("Unknown spell %d attempted.", spell);
@@ -885,10 +886,10 @@ throwspell()
 	    return 0;	/* user pressed ESC */
 	/* The number of moves from hero to where the spell drops.*/
 	if (distmin(u.ux, u.uy, cc.x, cc.y) > 10) {
-	    pline("The spell dissipates over the distance!");
+	    pline_The("spell dissipates over the distance!");
 	    return 0;
 	} else if (u.uswallow) {
-	    pline("The spell is cut short!");
+	    pline_The("spell is cut short!");
 	    exercise(A_WIS, FALSE); /* What were you THINKING! */
 	    u.dx = 0;
 	    u.dy = 0;

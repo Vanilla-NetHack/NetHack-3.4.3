@@ -22,6 +22,7 @@
 uchar oc_syms[MAXOCLASSES] = DUMMY; /* the current object  display symbols */
 uchar showsyms[MAXPCHARS]  = DUMMY; /* the current feature display symbols */
 uchar monsyms[MAXMCLASSES] = DUMMY; /* the current monster display symbols */
+uchar warnsyms[WARNCOUNT]  = DUMMY;  /* the current warning display symbols */
 
 /* Default object class symbols.  See objclass.h. */
 const char def_oc_syms[MAXOCLASSES] = {
@@ -185,6 +186,17 @@ const char *monexplain[MAXMCLASSES] = {
     "human or elf",		"ghost",		"golem",
     "major demon",		"sea monster",		"lizard",
     "long worm tail",		"mimic"
+};
+
+const struct symdef def_warnsyms[WARNCOUNT] = {
+	{'0', "unknown creature causing you worry", C(CLR_WHITE)},  	/* white warning  */
+	{'1', "unknown creature causing you concern", C(CLR_RED)},	/* pink warning   */
+	{'2', "unknown creature causing you anxiety", C(CLR_RED)},	/* red warning    */
+	{'3', "unknown creature causing you disquiet", C(CLR_RED)},	/* ruby warning   */
+	{'4', "unknown creature causing you alarm",
+						C(CLR_MAGENTA)},        /* purple warning */
+	{'5', "unknown creature causing you dread",
+						C(CLR_BRIGHT_MAGENTA)}	/* black warning  */
 };
 
 /*
@@ -720,9 +732,16 @@ static const uchar r_oc_syms[MAXOCLASSES] = {
 };
 
 # ifdef ASCIIGRAPH
+/* Rogue level graphics.  Under IBM graphics mode, use the symbols that were
+ * used for Rogue on the IBM PC.  Unfortunately, this can't be completely
+ * done because some of these are control characters--armor and rings under
+ * DOS, and a whole bunch of them under Linux.  Use the TTY Rogue characters
+ * for those cases.
+ */
 static const uchar IBM_r_oc_syms[MAXOCLASSES] = {	/* a la EPYX Rogue */
 /* 0*/	'\0',
 	ILLOBJ_SYM,
+#  if defined(MSDOS) || defined(WIN32) || defined(OS2)
 	0x18,			/* weapon: up arrow */
 /*	0x0a, */ ARMOR_SYM,	/* armor:  Vert rect with o */
 /*	0x09, */ RING_SYM,	/* ring:   circle with arrow */
@@ -735,6 +754,20 @@ static const uchar IBM_r_oc_syms[MAXOCLASSES] = {	/* a la EPYX Rogue */
 	0xe7,			/* wand:   greek tau */
 	0x0f,			/* gold:   yes it's the same as gems */
 	0x0f,			/* gems:   fancy '*' */
+#  else
+	')',			/* weapon  */
+	ARMOR_SYM,		/* armor */
+	RING_SYM,		/* ring */
+/* 5*/	',',			/* amulet  */
+	TOOL_SYM,
+	':',			/* food    */
+	0xad,			/* potion: upside down '!' */
+	SCROLL_SYM,		/* scroll  */
+/*10*/	SPBOOK_SYM,
+	0xe7,			/* wand:   greek tau */
+	GEM_SYM,		/* gold:   yes it's the same as gems */
+	GEM_SYM,		/* gems    */
+#  endif
 	ROCK_SYM,
 /*15*/	BALL_SYM,
 	CHAIN_SYM,

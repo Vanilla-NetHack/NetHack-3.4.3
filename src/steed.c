@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)steed.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)steed.c	3.3	2000/07/29	*/
 /* Copyright (c) Kevin Hugo, 1998-1999. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,8 +22,8 @@ can_saddle(mtmp)
 {
 	struct permonst *ptr = mtmp->data;
 
-	return (index(steeds, ptr->mlet) &&
-			!humanoid(ptr) && (ptr->msize >= MZ_MEDIUM) &&
+	return (index(steeds, ptr->mlet) && (ptr->msize >= MZ_MEDIUM) &&
+			(!humanoid(ptr) || ptr->mlet == S_CENTAUR) &&
 			!amorphous(ptr) && !noncorporeal(ptr) &&
 			!is_whirly(ptr) && !unsolid(ptr));
 }
@@ -50,7 +50,7 @@ use_saddle(otmp)
 
 	/* Select an animal */
 	if (u.uswallow || Underwater || !getdir((char *)0)) {
-	    pline("Never mind.");
+	    pline(Never_mind);
 	    return 0;
 	}
 	if (!u.dx && !u.dy) {
@@ -67,7 +67,7 @@ use_saddle(otmp)
 	/* Is this a valid monster? */
 	if (mtmp->misc_worn_check & W_SADDLE ||
 			which_armor(mtmp, W_SADDLE)) {
-	    pline("%s is already saddled.", Monnam(mtmp));
+	    pline("%s doesn't need another one.", Monnam(mtmp));
 	    return 1;
 	}
 	ptr = mtmp->data;
@@ -132,7 +132,9 @@ use_saddle(otmp)
 	if (rn2(100) < chance) {
 	    You("put the saddle on %s.", mon_nam(mtmp));
 	    freeinv(otmp);
-	    mpickobj(mtmp, otmp);
+	    /* mpickobj may free otmp it if merges, but we have already
+	       checked for a saddle above, so no merger should happen */
+	    (void) mpickobj(mtmp, otmp);
 	    mtmp->misc_worn_check |= W_SADDLE;
 	    otmp->owornmask = W_SADDLE;
 	    otmp->leashmon = mtmp->m_id;
@@ -160,15 +162,17 @@ int
 doride()
 {
 	boolean forcemount = FALSE;
+
 	if (u.usteed)
 	    dismount_steed(DISMOUNT_BYCHOICE);
-	else if(getdir((char *)0) && isok(u.ux+u.dx, u.uy+u.dy)) {
+	else if (getdir((char *)0) && isok(u.ux+u.dx, u.uy+u.dy)) {
 #ifdef WIZARD
 	if (wizard && yn("Force the mount to succeed?") == 'y')
 		forcemount = TRUE;
 #endif
-	    (void) mount_steed(m_at(u.ux+u.dx, u.uy+u.dy), forcemount);
-	}
+	    return (mount_steed(m_at(u.ux+u.dx, u.uy+u.dy), forcemount));
+	} else
+	    return 0;
 	return 1;
 }
 
@@ -192,6 +196,10 @@ mount_steed(mtmp, force)
 	}
 
 	/* Is the player in the right form? */
+	if (Hallucination && !force) {
+	    pline("Maybe you should find a designated driver.");
+	    return (FALSE);
+	}
 	if (Upolyd && (!humanoid(youmonst.data) || verysmall(youmonst.data) ||
 			bigmonst(youmonst.data))) {
 	    if (!force)
@@ -205,8 +213,13 @@ mount_steed(mtmp, force)
 
 	/* Can the player reach and see the monster? */
     if (u.uswallow || u.ustuck || u.utrap || Punished) {
-        if (!force)
-        	You("are stuck here for now.");
+        if (!force) {
+		if (Punished)
+			You("are unable to swing your %s over.",
+				body_part(LEG)); 
+		else
+        		You("are stuck here for now.");
+	}
         return (FALSE);
     }
 	if (!mtmp || (!force && ((Blind && !Blind_telepat) ||
@@ -267,7 +280,15 @@ mount_steed(mtmp, force)
 	if (!force && (Confusion || Fumbling || Glib || Wounded_legs ||
 			otmp->cursed || (u.ulevel+mtmp->mtame < rnd(MAXULEV/2+5)))) {
 	    You("slip while trying to get on %s.", mon_nam(mtmp));
-	    Sprintf(buf, "slipped while mounting %s", a_monnam(mtmp));
+	    /* Unfortunately we don't have a version of the monster-naming
+	     * function that works well with "a" and "the" but ignores
+	     * hallucination.  Fortunately, we know the monster must be saddled
+	     * at this point, and that it can't have type_is_pname(), so we
+	     * don't need to worry about the special cases such a function
+	     * would have to consider.
+	     */
+	    Sprintf(buf, "slipped while mounting a saddled %s",
+		    m_monnam(mtmp));
 	    losehp(rn1(5,10), buf, NO_KILLER_PREFIX);
 	    return (FALSE);
 	}
@@ -386,29 +407,29 @@ dismount_steed(reason)
 	u.ugallop = 0L;
 
 	/* Set player and steed's position.  Try moving the player first */
-	place_monster(mtmp, u.ux, u.uy);
-	if (!u.uswallow && !u.ustuck && enexto(&cc, u.ux, u.uy, youmonst.data)) {
-	    /* The steed may drop into water/lava */
-	    if (mtmp->mhp > 0 && is_pool(u.ux,u.uy) &&
-	    		!is_flyer(mtmp->data) && !is_floater(mtmp->data) &&
-	    		!is_clinger(mtmp->data)) {
-	    	if (!Underwater)
-	    	    pline("%s falls into the %s!", Monnam(mtmp), surface(u.ux,u.uy));
-	    	if (!is_swimmer(mtmp->data) && !amphibious(mtmp->data)) {
-	    	    killed(mtmp);
-	    	    adjalign(-1);
-	    	}
-	    }
-	    if (mtmp->mhp > 0 && is_lava(u.ux,u.uy) &&
-	    		!is_flyer(mtmp->data) && !is_floater(mtmp->data) &&
-	    		!is_clinger(mtmp->data)) {
-	    	pline("%s is pulled into the lava!", Monnam(mtmp));
-	    	if (!likes_lava(mtmp->data)) {
-	    	    killed(mtmp);
-	    	    adjalign(-1);
-	    	}
-	    }
+	if (!DEADMONSTER(mtmp)) {
+	    place_monster(mtmp, u.ux, u.uy);
+	    if (!u.uswallow && !u.ustuck && enexto(&cc, u.ux, u.uy, youmonst.data)) {
+		struct permonst *mdat = mtmp->data;
 
+		/* The steed may drop into water/lava */
+		if (!is_flyer(mdat) && !is_floater(mdat) && !is_clinger(mdat)) {
+		    if (is_pool(u.ux, u.uy)) {
+			if (!Underwater)
+			    pline("%s falls into the %s!", Monnam(mtmp),
+							surface(u.ux, u.uy));
+			if (!is_swimmer(mdat) && !amphibious(mdat)) {
+			    killed(mtmp);
+			    adjalign(-1);
+			}
+		    } else if (is_lava(u.ux, u.uy)) {
+			pline("%s is pulled into the lava!", Monnam(mtmp));
+			if (!likes_lava(mdat)) {
+			    killed(mtmp);
+			    adjalign(-1);
+			}
+		    }
+		}
 	    /* Steed dismounting consists of two steps: being moved to another
 	     * square, and descending to the floor.  We have functions to do
 	     * each of these activities, but they're normally called
@@ -426,34 +447,53 @@ dismount_steed(reason)
 	     * able to walk onto a square with a hole, and autopickup before
 	     * falling into the hole).
 	     */
-	    /* Keep steed here, move the player to cc; teleds() clears u.utrap */
-	    in_steed_dismounting = TRUE;
-	    teleds(cc.x, cc.y);
-	    in_steed_dismounting = FALSE;
-	    if (reason != DISMOUNT_ENGULFED) /* being swallowed anyway in that case */
-		vision_full_recalc = 1;
+		/* Keep steed here, move the player to cc; teleds() clears u.utrap */
+		in_steed_dismounting = TRUE;
+		teleds(cc.x, cc.y);
+		in_steed_dismounting = FALSE;
 
-	    /* Put your steed in your trap */
-	    if (save_utrap && mtmp->mhp > 0)
-	    	(void) mintrap(mtmp);
+		/* Put your steed in your trap */
+		if (save_utrap)
+		    (void) mintrap(mtmp);
 
-	/* Couldn't... try placing the steed */
-	} else if (enexto(&cc, u.ux, u.uy, mtmp->data))
-	    /* Keep player here, move the steed to cc */
-	    rloc_to(mtmp, cc.x, cc.y);
-	    /* Player stays put */
-	/* Otherwise, kill the steed */
-	else {
-	    killed(mtmp);
-	    adjalign(-1);
+	    /* Couldn't... try placing the steed */
+	    } else if (enexto(&cc, u.ux, u.uy, mtmp->data)) {
+		/* Keep player here, move the steed to cc */
+		rloc_to(mtmp, cc.x, cc.y);
+		/* Player stays put */
+	    /* Otherwise, kill the steed */
+	    } else {
+		killed(mtmp);
+		adjalign(-1);
+	    }
 	}
 
 	/* Return the player to the floor */
 	(void) float_down(0L, W_SADDLE);
 	flags.botl = 1;
-	if (reason != DISMOUNT_ENGULFED) (void)encumber_msg();
+	if (reason != DISMOUNT_ENGULFED) {
+		(void)encumber_msg();
+		vision_full_recalc = 1;
+	}
 	return;
 }
 
+void
+place_monster(mon, x, y)
+struct monst *mon;
+int x, y;
+{
+    if (mon == u.usteed ||
+	    /* special case is for convoluted vault guard handling */
+	    (DEADMONSTER(mon) && !(mon->isgd && x == 0 && y == 0))) {
+	impossible("placing %s onto map?",
+		   (mon == u.usteed) ? "steed" : "defunct monster");
+	return;
+    }
+    mon->mx = x, mon->my = y;
+    level.monsters[x][y] = mon;
+}
 
 #endif /* STEED */
+
+/*steed.c*/

@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)amiwind.c     3.2    96/02/17
+/*    SCCS Id: @(#)amiwind.c     3.2    2000/01/12
 /*    Copyright (c) Olaf Seibert (KosmoSoft), 1989, 1992	  */
 /*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993,1996  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -32,6 +32,8 @@ struct Screen *HackScreen;
 struct Window *pr_WindowPtr;
 struct MsgPort *HackPort;
 struct IOStdReq ConsoleIO;
+struct Menu *MenuStrip;
+APTR *VisualInfo;
 char Initialized = 0;
 WEVENT lastevent;
 
@@ -216,6 +218,7 @@ register struct IntuiMessage *message;
 		clipymax = LI + clipy;
 		if( CO < COLNO || LI < ROWNO )
 		{
+		    clipping = TRUE;
 		    amii_cliparound( u.ux, u.uy );
 		}
 		else
@@ -410,9 +413,9 @@ register struct IntuiMessage *message;
 	    thismenu = message->Code;
 	    while (thismenu != MENUNULL)
 	    {
-		item = ItemAddress(HackMenu, (ULONG) thismenu);
+		item = ItemAddress(MenuStrip, (ULONG) thismenu);
 		if (KbdBuffered < KBDBUFFER)
-		    BufferQueueChar(item->Command); /* Unused: No COMMSEQ */
+		    BufferQueueChar((char)(GTMENUITEM_USERDATA(item)));
 		thismenu = item->NextSelect;
 	    }
 	}
@@ -531,7 +534,7 @@ register struct IntuiMessage *message;
 
 #if defined(TTY_GRAPHICS) && !defined(AMII_GRAPHICS)
 int kbhit(){
-	return 0
+	return 0;
 }
 #else
 int
@@ -648,6 +651,8 @@ void amii_cleanup()
 #ifdef  INTUI_NEW_LOOK
 	if( IntuitionBase->LibNode.lib_Version >= 37 )
 	{
+	    if (MenuStrip) FreeMenus(MenuStrip);
+	    if (VisualInfo) FreeVisualInfo(VisualInfo);
 	    while( CloseScreen( HackScreen ) == FALSE )
 	    {
 		struct EasyStruct easy =

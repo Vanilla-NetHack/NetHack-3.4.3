@@ -55,8 +55,8 @@ NON_DIGGABLE:(00,00,75,19)
 
 # Objects
 # **LOTS** of dead bodies (all human).
-# note: no priest(esse)s - maybe Moloch has a *special*
-#       fate reserved for members of *that* class.
+# note: no priest(esse)s or monks - maybe Moloch has a *special*
+#       fate reserved for members of *those* classes.
 #
 OBJECT:'%',"corpse",random,"archeologist",0
 OBJECT:'%',"corpse",random,"archeologist",0
@@ -68,6 +68,8 @@ OBJECT:'%',"corpse",random,"healer",0
 OBJECT:'%',"corpse",random,"healer",0
 OBJECT:'%',"corpse",random,"knight",0
 OBJECT:'%',"corpse",random,"knight",0
+OBJECT:'%',"corpse",random,"ranger",0
+OBJECT:'%',"corpse",random,"ranger",0
 OBJECT:'%',"corpse",random,"rogue",0
 OBJECT:'%',"corpse",random,"rogue",0
 OBJECT:'%',"corpse",random,"samurai",0
@@ -250,6 +252,8 @@ MONSTER:'F',random,random
 MONSTER:'F',random,random
 MONSTER:'m',random,random
 MONSTER:'m',random,random
+MONSTER:';',"jellyfish",random
+MONSTER:';',"jellyfish",random
 # Some random objects
 OBJECT:'!',random,random
 OBJECT:'!',random,random

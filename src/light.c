@@ -55,7 +55,6 @@ typedef struct ls_t {
 
 static light_source *light_base = 0;
 
-struct monst *FDECL(find_mid, (unsigned));
 STATIC_DCL void FDECL(write_ls, (int, light_source *));
 STATIC_DCL int FDECL(maybe_write_ls, (int, int, BOOLEAN_P));
 
@@ -216,19 +215,23 @@ do_light_sources(cs_rows)
 #define mon_is_local(mon)	((mon)->mx > 0)
 
 struct monst *
-find_mid(nid)
+find_mid(nid, fmflags)
 unsigned nid;
+unsigned fmflags;
 {
 	struct monst *mtmp;
 
 	if (!nid)
 	    return &youmonst;
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if (mtmp->m_id == nid) return mtmp;
-	for (mtmp = migrating_mons; mtmp; mtmp = mtmp->nmon)
-	    if (mtmp->m_id == nid) return mtmp;
-	for (mtmp = mydogs; mtmp; mtmp = mtmp->nmon)
-	    if (mtmp->m_id == nid) return mtmp;
+	if (fmflags & FM_FMON)
+		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+		    if (!DEADMONSTER(mtmp) && mtmp->m_id == nid) return mtmp;
+	if (fmflags & FM_MIGRATE)
+		for (mtmp = migrating_mons; mtmp; mtmp = mtmp->nmon)
+	    	    if (mtmp->m_id == nid) return mtmp;
+	if (fmflags & FM_MYDOGS)
+		for (mtmp = mydogs; mtmp; mtmp = mtmp->nmon)
+	    	    if (mtmp->m_id == nid) return mtmp;
 	return (struct monst *) 0;
 }
 
@@ -323,7 +326,7 @@ relink_light_sources(ghostly)
 		    ls->id = (genericptr_t) find_oid(nid);
 		} else {
 		    which = 'm';
-		    ls->id = (genericptr_t) find_mid(nid);
+		    ls->id = (genericptr_t) find_mid(nid, FM_EVERYWHERE);
 		}
 		if (!ls->id)
 		    impossible("relink_light_sources: cant find %c_id %d",
@@ -404,7 +407,7 @@ write_ls(fd, ls)
 		mtmp = (struct monst *)ls->id;
 		ls->id = (genericptr_t)mtmp->m_id;
 #ifdef DEBUG
-		if (find_mid((unsigned)ls->id) != mtmp)
+		if (find_mid((unsigned)ls->id, FM_EVERYWHERE) != mtmp)
 		    panic("write_ls: can't find mon #%u!", (unsigned)ls->id);
 #endif
 	    }

@@ -450,7 +450,7 @@ static NEARDATA const char *trap_engravings[TRAPNUM] = {
 			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
 			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
 			(char *)0, (char *)0, (char *)0, (char *)0,
-			/* 14..16: trapdoor, teleport, level-teleport */
+			/* 14..16: trap door, teleport, level-teleport */
 			"Vlad was here", "ad aerarium", "ad aerarium",
 			(char *)0, (char *)0, (char *)0, (char *)0, (char *)0,
 			(char *)0,
@@ -719,7 +719,7 @@ makelevel()
 	register int u_depth = depth(&u.uz);
 
 #ifdef WIZARD
-	if(wizard && getenv("SHOPTYPE")) mkroom(SHOPBASE); else
+	if(wizard && nh_getenv("SHOPTYPE")) mkroom(SHOPBASE); else
 #endif
 	if (u_depth > 1 &&
 	    u_depth < depth(&medusa_level) &&
@@ -846,7 +846,8 @@ mineralize()
 	if (In_endgame(&u.uz)) return;
 	for (x = 2; x < (COLNO - 2); x++)
 	    for (y = 1; y < (ROWNO - 1); y++)
-	    	if ((levl[x][y].typ == POOL || levl[x][y].typ == MOAT) && !rn2(3))
+		if ((levl[x][y].typ == POOL && !rn2(10)) ||
+			(levl[x][y].typ == MOAT && !rn2(30)))
 	    	    (void)mksobj_at(KELP_FROND, x, y, TRUE);
 
 	/* determine if it is even allowed;
@@ -1376,6 +1377,7 @@ struct mkroom *croom;
 	coord m;
 	register int tryct = 0;
 	register struct obj *otmp;
+	boolean dobell = !rn2(10);
 
 
 	if(croom->rtype != OROOM) return;
@@ -1387,7 +1389,7 @@ struct mkroom *croom;
 	} while (occupied(m.x, m.y) || bydoor(m.x, m.y));
 
 	/* Put a grave at m.x, m.y */
-	levl[m.x][m.y].typ = GRAVE;
+	make_grave(m.x, m.y, dobell ? "Saved by the bell!" : (char *) 0);
 
 	/* Possibly fill it with objects */
 	if (!rn2(3)) (void) mkgold(0L, m.x, m.y);
@@ -1401,7 +1403,7 @@ struct mkroom *croom;
 	}
 
 	/* Leave a bell, in case we accidentally buried someone alive */
-	if (!rn2(25)) (void) mksobj_at(BELL, m.x, m.y, TRUE);
+	if (dobell) (void) mksobj_at(BELL, m.x, m.y, TRUE);
 	return;
 }
 

@@ -210,6 +210,29 @@ bot1()
 	putstr(WIN_STATUS, 0, newbot1);
 }
 
+/* provide the name of the current level for display by various ports */
+int
+describe_level(buf)
+char *buf;
+{
+	int ret = 1;
+
+	/* TODO:	Add in dungeon name */
+	if (Is_knox(&u.uz))
+		Sprintf(buf, "%s ", dungeons[u.uz.dnum].dname);
+	else if (In_quest(&u.uz))
+		Sprintf(buf, "Home %d ", dunlev(&u.uz));
+	else if (In_endgame(&u.uz))
+		Sprintf(buf,
+			Is_astralevel(&u.uz) ? "Astral Plane " : "End Game ");
+	else {
+		/* ports with more room may expand this one */
+		Sprintf(buf, "Dlvl:%-2d ", depth(&u.uz));
+		ret = 0;
+	}
+	return ret;
+}
+
 STATIC_OVL void
 bot2()
 {
@@ -222,16 +245,7 @@ bot2()
 	hpmax = Upolyd ? u.mhmax : u.uhpmax;
 
 	if(hp < 0) hp = 0;
-/* TODO:	Add in dungeon name */
-	if (Is_knox(&u.uz))
-		Sprintf(newbot2, "%s ", dungeons[u.uz.dnum].dname);
-	else if (In_quest(&u.uz))
-		Sprintf(newbot2, "Home %d ", dunlev(&u.uz));
-	else if (In_endgame(&u.uz))
-		Sprintf(newbot2,
-			Is_astralevel(&u.uz) ? "Astral Plane " : "End Game ");
-	else
-		Sprintf(newbot2, "Dlvl:%-2d ", depth(&u.uz));
+	(void) describe_level(newbot2);
 	Sprintf(nb = eos(newbot2),
 		"%c:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d", oc_syms[GOLD_CLASS],
 		u.ugold, hp, hpmax, u.uen, u.uenmax, u.uac);

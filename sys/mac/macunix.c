@@ -14,8 +14,7 @@
 #if 0
 int
 uptodate(int fd)
-{
-#if defined(applec)
+#if defined(applec) || defined(__MWERKS__)
 # pragma unused(fd)
 #endif
 	return(1);
@@ -28,28 +27,29 @@ regularize(char *s)
 {
 	register char *lp;
 
-	while((lp=index(s, '.')) || (lp=index(s, ':')) )
-		*lp = '_';
+	for (lp = s; *lp; lp++) {
+		if (*lp == '.' || *lp == ':')
+			*lp = '_';
+	}
 }
 
 
 void
-getlock( void )
+getlock(void)
 {
-	int fd ;
-	int pid = getpid() ; /* Process Serial Number ? */
+	int fd;
+	int pid = getpid(); /* Process Serial Number ? */
+	
+	set_levelfile_name (lock, 0);
 
-	set_levelfile_name ( lock , 0 ) ;
-
-	if ( ( fd = open ( lock , O_RDWR | O_EXCL | O_CREAT , LEVL_TYPE ) ) == -1 ) {
-		raw_printf ( "Could not lock the game %s." , lock ) ;
-		panic ( "Another game in progress ?" ) ;
+	if ((fd = open (lock, O_RDWR | O_EXCL | O_CREAT, LEVL_TYPE)) == -1) {
+		raw_printf ("Could not lock the game %s.", lock);
+		panic ("Another game in progress?");
 	}
 
-	if ( write ( fd , ( char * ) & pid , sizeof ( pid ) ) != sizeof ( pid ) ) {
-		raw_printf ( "Could not lock the game %s." , lock ) ;
-		panic ( "Disk Locked ?" ) ;
+	if (write (fd, (char *)&pid, sizeof (pid)) != sizeof (pid))  {
+		raw_printf ("Could not lock the game %s.", lock);
+		panic("Disk locked?");
 	}
-
-	close ( fd ) ;
+	close (fd);
 }

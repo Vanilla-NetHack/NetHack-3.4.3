@@ -7,14 +7,12 @@
 #include "macwin.h"
 
 #include <Folders.h>
-#include <Windows.h>
-#include <ToolUtils.h>
+#include <TextUtils.h>
 #include <Resources.h>
-#include <Files.h>
 
 
 static Boolean winFileInit = 0;
-static unsigned char winFileName [32];
+static unsigned char winFileName [32] = "\pNetHack Preferences";
 static long winFileDir;
 static short winFileVol;
 
@@ -28,11 +26,6 @@ typedef struct WinPosSave {
 } WinPosSave;
 
 static WinPosSave savePos [kLastWindowKind + 1];
-
-static void InitWinFile (void);
-static void SavePosition (short, short, short);
-static void SaveSize (short, short, short);
-
 
 
 static void
@@ -55,14 +48,12 @@ InitWinFile (void)
 	if (sh && *sh) {
 		BlockMove (*sh, winFileName, **sh + 1);
 		ReleaseResource ((Handle) sh);
-	} else {
-		BlockMove ("\PNetHack Preferences", winFileName, 20);
 	}
 	if (HOpen (winFileVol, winFileDir, winFileName, fsRdPerm, &ref)) {
 		return;
 	}
 	len = sizeof (savePos);
-	if (! FSRead (ref, &len, savePos)) {
+	if (!FSRead (ref, &len, savePos)) {
 		winFileInit = 1;
 	}
 	FSClose (ref);
@@ -75,8 +66,8 @@ FlushWinFile (void)
 	short ref;
 	long len;
 
-	if (! winFileInit) {
-		if (! winFileName [0]) {
+	if (!winFileInit) {
+		if (!winFileName [0]) {
 			return;
 		}
 		HCreate (winFileVol, winFileDir, winFileName, MAC_CREATOR, PREF_TYPE);
@@ -95,20 +86,20 @@ Boolean
 RetrievePosition (short kind, short *top, short *left) {
 Point p;
 
-	InitWinFile ();
 	if (kind < 0 || kind > kLastWindowKind) {
 		dprintf ("Retrieve Bad kind %d", kind);
 		return 0;
 	}
-	if (! savePos [kind].validPos) {
+	InitWinFile ();
+	if (!savePos [kind].validPos) {
 		dprintf ("Retrieve Not stored kind %d", kind);
 		return 0;
 	}
-	*top = savePos [kind].top;
-	*left = savePos [kind].left;
-	p.h = *left;
-	p.v = *top;
-	dprintf ("Retrieve Kind %d Point (%d,%d)", kind, *left, *top);
+	p.v = savePos [kind].top;
+	p.h = savePos [kind].left;
+	*left = p.h;
+	*top = p.v;
+	dprintf ("Retrieve Kind %d Pt (%d,%d)", kind, p.h, p.v);
 	return PtInRgn (p, GetGrayRgn ());
 }
 
@@ -118,11 +109,11 @@ RetrieveSize (short kind, short top, short left, short *height, short *width)
 {
 	Point p;
 
-	InitWinFile ();
 	if (kind < 0 || kind > kLastWindowKind) {
 		return 0;
 	}
-	if (! savePos [kind].validSize) {
+	InitWinFile ();
+	if (!savePos [kind].validSize) {
 		return 0;
 	}
 	*width = savePos [kind].width;
@@ -133,29 +124,30 @@ RetrieveSize (short kind, short top, short left, short *height, short *width)
 }
 
 
-void
+static void
 SavePosition (short kind, short top, short left)
 {
-	InitWinFile ();
 	if (kind < 0 || kind > kLastWindowKind) {
 		dprintf ("Save bad kind %d", kind);
 		return;
 	}
+	InitWinFile ();
 	savePos [kind].validPos = 1;
 	savePos [kind].top = top;
 	savePos [kind].left = left;
-	dprintf ("Save kind %d point (%d,%d)", kind, left, top);
+	dprintf ("Save kind %d pt (%d,%d)", kind, left, top);
 	FlushWinFile ();
 }
 
 
-void
+static void
 SaveSize (short kind, short height, short width)
 {
-	InitWinFile ();
 	if (kind < 0 || kind > kLastWindowKind) {
+		dprintf ("Save bad kind %d", kind);
 		return;
 	}
+	InitWinFile ();
 	savePos [kind].validSize = 1;
 	savePos [kind].width = width;
 	savePos [kind].height = height;
@@ -166,20 +158,16 @@ SaveSize (short kind, short height, short width)
 static short
 GetWinKind (WindowPtr win)
 {
-short kind;
-NhWindow *nhw = GetNhWin (win);
-char *typeStr [] = {
-	"map", "status", "message", "text", "menu" ,
-};
+	short kind;
 
-	if (! nhw || (((long) nhw) & 1) || nhw->its_window != win) {
+	if (!CheckNhWin (win)) {
 		return -1;
 	}
 	kind = ((WindowPeek) win)->windowKind - WIN_BASE_KIND;
 	if (kind < 0 || kind > NHW_TEXT) {
 		return -1;
 	}
-	dprintf ("Got window kind %d (%lx)->%lx", kind, win, nhw);
+	dprintf ("In win kind %d (%lx)", kind, win);
 	switch (kind) {
 	case NHW_MAP :
 	case NHW_STATUS :
@@ -196,51 +184,38 @@ char *typeStr [] = {
 		kind = kTextWindow;
 		break;
 	}
-	dprintf ("Returning kind %s", typeStr [kind]);
+	dprintf ("Out kind %d", kind);
 	return kind;
 }
 
 
 Boolean
 RetrieveWinPos (WindowPtr win, short *top, short *left)
-{
-	short kind;
-
-	kind = GetWinKind (win);
-	if (kind < 0 || kind > kLastWindowKind) {
-		return 0;
-	}
-	return RetrievePosition (kind, top, left);
+{	return RetrievePosition (GetWinKind (win), top, left);
 }
 
 
 void
 SaveWindowPos (WindowPtr win)
 {
-	short kind;
 	GrafPtr gp;
 	Point p = { 0, 0 };
 
-	kind = GetWinKind (win);
-	if (kind < 0 || kind > kLastWindowKind) {
-		return;
-	}
 	GetPort (&gp);
 	SetPort (win);
 	LocalToGlobal (&p);
 	AddPt (*(Point *) &(win->portRect), &p); /* Adjust for origin */
 	SetPort (gp);
-	SavePosition (kind, p.v, p.h);
+	SavePosition (GetWinKind (win), p.v, p.h);
 }
 
 
 void
 SaveWindowSize (WindowPtr win)
 {
-	short kind, width, height;
+	short width, height;
 
-	kind = GetWinKind (win);
 	width = win->portRect.right - win->portRect.left;
 	height = win->portRect.bottom - win->portRect.top;
-	SaveSize (kind, height, width);
+	SaveSize (GetWinKind (win), height, width);
 }

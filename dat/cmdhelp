@@ -13,7 +13,7 @@
 ^T      Teleport around level
 ^V      Teleport between levels (available in debug mode only)
 ^W      Wish (available in debug mode only)
-^X      Show your intrinsic attributes (in debug or explore mode only)
+^X      Show your attributes (intrinsic ones included in debug or explore mode)
 ^Z      Suspend game (only if defined)
 a       Apply (use) a tool
 A       Remove all armor
@@ -97,6 +97,7 @@ Z       Zap (cast) a spell
 $       Count your gold
 +       List known spells
 #       Perform an extended command
+M-2     Toggle two-weapon combat
 M-a     Adjust inventory letters
 M-c     Talk to someone
 M-d     Dip an object into something

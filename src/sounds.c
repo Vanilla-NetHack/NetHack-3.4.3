@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sounds.c	3.3	97/05/25	*/
+/*	SCCS Id: @(#)sounds.c	3.3	2000/07/24	*/
 /*	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -67,7 +67,8 @@ dosounds()
 		"Someone shouts \"Off with %s head!\"",
 		"Queen Beruthiel's cats!",
 	};
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if ((mtmp->msleeping ||
 			is_lord(mtmp->data) || is_prince(mtmp->data)) &&
 		!is_animal(mtmp->data) &&
@@ -79,6 +80,7 @@ dosounds()
 		else		pline(throne_msg[2], his[flags.female]);
 		return;
 	    }
+	}
     }
     if (level.flags.has_swamp && !rn2(200)) {
 	static const char *swamp_msg[3] = {
@@ -133,7 +135,8 @@ dosounds()
 	return;
     }
     if (level.flags.has_beehive && !rn2(200)) {
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if ((mtmp->data->mlet == S_ANT && is_flyer(mtmp->data)) &&
 		mon_in_room(mtmp, BEEHIVE)) {
 		switch (rn2(2)+hallu) {
@@ -150,9 +153,11 @@ dosounds()
 		}
 		return;
 	    }
+	}
     }
     if (level.flags.has_morgue && !rn2(200)) {
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (is_undead(mtmp->data) &&
 		mon_in_room(mtmp, MORGUE)) {
 		switch (rn2(2)+hallu) {
@@ -170,6 +175,7 @@ dosounds()
 		}
 		return;
 	    }
+	}
     }
     if (level.flags.has_barracks && !rn2(200)) {
 	static const char *barracks_msg[4] = {
@@ -180,7 +186,8 @@ dosounds()
 	};
 	int count = 0;
 
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if (is_mercenary(mtmp->data) &&
 #if 0		/* don't bother excluding these */
 		!strstri(mtmp->data->mname, "watch") &&
@@ -192,6 +199,7 @@ dosounds()
 		You_hear(barracks_msg[rn2(3)+hallu]);
 		return;
 	    }
+	}
     }
     if (level.flags.has_zoo && !rn2(200)) {
 	static const char *zoo_msg[3] = {
@@ -199,12 +207,14 @@ dosounds()
 		"a sound reminiscent of a seal barking.",
 		"Doctor Doolittle!",
 	};
-	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
 	    if ((mtmp->msleeping || is_animal(mtmp->data)) &&
 		    mon_in_room(mtmp, ZOO)) {
 		You_hear(zoo_msg[rn2(2)+hallu]);
 		return;
 	    }
+	}
     }
     if (level.flags.has_shop && !rn2(200)) {
 	if (!(sroom = search_special(ANY_SHOP))) {
@@ -226,7 +236,7 @@ dosounds()
     if (Is_oracle_level(&u.uz) && !rn2(400)) {
 	/* make sure the Oracle is still here */
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if (mtmp->data == &mons[PM_ORACLE])
+	    if (!DEADMONSTER(mtmp) && mtmp->data == &mons[PM_ORACLE])
 		break;
 	/* and don't produce silly effects when she's clearly visible */
 	if (mtmp && (hallu || !canseemon(mtmp))) {
@@ -414,9 +424,17 @@ register struct monst *mtmp;
     register const char *pline_msg = 0,	/* Monnam(mtmp) will be prepended */
 			*verbl_msg = 0;	/* verbalize() */
     struct permonst *ptr = mtmp->data;
+    char verbuf[BUFSZ];
 
     /* presumably nearness and sleep checks have already been made */
     if (!flags.soundok) return(0);
+    if (ptr->msound == MS_SILENT) return(0);
+
+    /* be sure to do this before talking; the monster might teleport away, in
+     * which case we want to check its pre-teleport position
+     */
+    if (!canspotmon(mtmp))
+	map_invisible(mtmp->mx, mtmp->my);
 
     switch (ptr->msound) {
 	case MS_ORACLE:
@@ -433,10 +451,69 @@ register struct monst *mtmp;
 	    shk_chat(mtmp);
 	    break;
 	case MS_VAMPIRE:
-	    if (mtmp->mpeaceful)
-	    	verbl_msg = "I only drink... potions.";
-	    else
-	    	verbl_msg = "I vant to suck your blood!";
+	    {
+	    /* vampire messages are varied by tameness, peacefulness, and time of night */
+		boolean isnight = night();
+		boolean kindred =    (Upolyd && (u.umonnum == PM_VAMPIRE ||
+				       u.umonnum == PM_VAMPIRE_LORD));
+		boolean nightchild = (Upolyd && (u.umonnum == PM_WOLF ||
+				       u.umonnum == PM_WINTER_WOLF ||
+	    			       u.umonnum == PM_WINTER_WOLF_CUB));
+		const char *racenoun = (flags.female && urace.individual.f) ?
+					urace.individual.f : (urace.individual.m) ?
+					urace.individual.m : urace.noun;
+
+		if (mtmp->mtame) {
+			if (kindred) {
+				Sprintf(verbuf, "Good %s to you Master%s",
+					isnight ? "evening" : "day",
+					isnight ? "!" : ".  Why do we not rest?");
+				verbl_msg = verbuf;
+		    	} else {
+		    	    Sprintf(verbuf,"%s%s",
+				nightchild ? "Child of the night, " : "",
+				midnight() ?
+					"I can stand this craving no longer!" :
+				isnight ?
+					"I beg you, help me satisfy this growing craving!" :
+					"I find myself growing a little weary.");
+				verbl_msg = verbuf;
+			}
+		} else if (mtmp->mpeaceful) {
+			if (kindred && isnight) {
+				Sprintf(verbuf, "Good feeding %s!",
+	    				flags.female ? "sister" : "brother");
+				verbl_msg = verbuf;
+ 			} else if (nightchild && isnight) {
+				Sprintf(verbuf,
+				    "How nice to hear you, child of the night!");
+				verbl_msg = verbuf;
+	    		} else
+		    		verbl_msg = "I only drink... potions.";
+    	        } else {
+			int vampindex;
+	    		static const char *vampmsg[] = {
+			       /* These first two (0 and 1) are specially handled below */
+	    			"I vant to suck your %s!",
+	    			"I vill come after %s without regret!",
+		    	       /* other famous vampire quotes can follow here if desired */
+	    		};
+			if (kindred)
+			    verbl_msg = "This is my hunting ground that you dare to prowl!";
+			else {
+			    vampindex = rn2(SIZE(vampmsg));
+			    if (vampindex == 0) {
+				Sprintf(verbuf, vampmsg[vampindex], body_part(BLOOD));
+	    			verbl_msg = verbuf;
+			    } else if (vampindex == 1) {
+				Sprintf(verbuf, vampmsg[vampindex],
+					Upolyd ? an(mons[u.umonnum].mname) : an(racenoun));
+	    			verbl_msg = verbuf;
+		    	    } else
+			    	verbl_msg = vampmsg[vampindex];
+			}
+	        }
+	    }
 	    break;
 	case MS_WERE:
 	    if (flags.moonphase == FULL_MOON && (night() ^ !rn2(13))) {
@@ -448,8 +525,6 @@ register struct monst *mtmp;
 		pline_msg =
 		     "whispers inaudibly.  All you can make out is \"moon\".";
 	    break;
-	case MS_SILENT:
-	    return 0;
 	case MS_BARK:
 	    if (flags.moonphase == FULL_MOON && night()) {
 		pline_msg = "howls.";
@@ -460,8 +535,10 @@ register struct monst *mtmp;
 		    pline_msg = "whines.";
 		else if (mtmp->mtame && EDOG(mtmp)->hungrytime > moves + 1000)
 		    pline_msg = "yips.";
-		else
-		    pline_msg = "barks.";
+		else {
+		    if (mtmp->data != &mons[PM_DINGO])	/* dingos do not actually bark */
+			    pline_msg = "barks.";
+		}
 	    } else {
 		pline_msg = "growls.";
 	    }
@@ -586,11 +663,15 @@ register struct monst *mtmp;
 		verbl_msg = !rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?";
 	    else if (!mtmp->mcansee)
 		verbl_msg = "I can't see!";
-	    else if (mtmp->mtrapped)
+	    else if (mtmp->mtrapped) {
+		struct trap *t = t_at(mtmp->mx, mtmp->my);
+
+		if (t) t->tseen = 1;
 		verbl_msg = "I'm trapped!";
-	    else if (mtmp->mhp < mtmp->mhpmax/2)
+	    } else if (mtmp->mhp < mtmp->mhpmax/2)
 		pline_msg = "asks for a potion of healing.";
-	    else if (mtmp->mtame && moves > EDOG(mtmp)->hungrytime)
+	    else if (mtmp->mtame && !mtmp->isminion &&
+						moves > EDOG(mtmp)->hungrytime)
 		verbl_msg = "I'm hungry.";
 	    /* Specific monsters' interests */
 	    else if (is_elf(ptr))
@@ -627,10 +708,11 @@ register struct monst *mtmp;
 			(void) doseduce(mtmp);
 			break;
 	    }
-	    switch ((poly_gender() != (int) mtmp->female) ? rn2(3) : 0) {
+	    switch ((poly_gender() != (int) mtmp->female) ? rn2(3) : 0)
 #else
-	    switch ((poly_gender() == 0) ? rn2(3) : 0) {
+	    switch ((poly_gender() == 0) ? rn2(3) : 0)
 #endif
+	    {
 		case 2:
 			verbl_msg = "Hello, sailor.";
 			break;
@@ -711,8 +793,6 @@ register struct monst *mtmp;
 	    break;
     }
 
-    if (!canspotmon(mtmp))
-	map_invisible(mtmp->mx, mtmp->my);
     if (pline_msg) pline("%s %s", Monnam(mtmp), pline_msg);
     else if (verbl_msg) verbalize(verbl_msg);
     return(1);
@@ -768,6 +848,10 @@ dochat()
 
     (void) getdir("Talk to whom? [in what direction]");
 
+#ifdef STEED
+    if (u.usteed && u.dz > 0)
+	return (domonnoise(u.usteed));
+#endif
     if (u.dz) {
 	pline("They won't hear you %s there.", u.dz < 0 ? "up" : "down");
 	return(0);

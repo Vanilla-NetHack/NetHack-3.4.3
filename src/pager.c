@@ -109,7 +109,7 @@ lookat(x, y, buf, monbuf)
 		    (!hp && mtmp->mtame && !Hallucination) ? "tame " :
 		    (!hp && mtmp->mpeaceful && !Hallucination) ?
 		                                          "peaceful " : "",
-		    (hp ? "high priest" : l_monnam(mtmp)));
+		    (hp ? "high priest" : x_monnam(mtmp, ARTICLE_NONE, (char *)0, 0, TRUE)));
 	    if (u.ustuck == mtmp)
 		Strcat(buf, (Upolyd && sticks(youmonst.data)) ?
 			", being held" : ", holding you");
@@ -142,6 +142,8 @@ lookat(x, y, buf, monbuf)
 		    ways_seen++;
 		if (Detect_monsters)
 		    ways_seen++;
+		if (MATCH_WARN_OF_MON(mtmp))
+		    ways_seen++;
 
 		if (ways_seen > 1 || !normal) {
 		    if (normal) {
@@ -171,6 +173,12 @@ lookat(x, y, buf, monbuf)
 		    if (Detect_monsters) {
 			Strcat(monbuf, "monster detection");
 			if (ways_seen-- > 1) Strcat(monbuf, ", ");
+		    }
+		    if (MATCH_WARN_OF_MON(mtmp)) {
+		    	char wbuf[BUFSZ];
+		    	Sprintf(wbuf, "warned of %s", makeplural(mtmp->data->mname));
+		    	Strcat(monbuf, wbuf);
+		    	if (ways_seen-- > 1) Strcat(monbuf, ", ");
 		    }
 		}
 	    }
@@ -484,6 +492,9 @@ do_look(quick)
 		sym = showsyms[glyph_to_swallow(glyph)+S_sw_tl];
 	    } else if (glyph_is_invisible(glyph)) {
 		sym = DEF_INVISIBLE;
+	    } else if (glyph_is_warning(glyph)) {
+		sym = glyph_to_warning(glyph);
+	    	sym = warnsyms[sym];
 	    } else {
 		impossible("do_look:  bad glyph %d at (%d,%d)",
 						glyph, (int)cc.x, (int)cc.y);
@@ -594,6 +605,22 @@ do_look(quick)
 	    }
 	}
 
+	/* Now check for warning symbols */
+	for (i = 0; i < WARNCOUNT; i++) {
+	    x_str = def_warnsyms[i].explanation;
+	    if (sym == (from_screen ? warnsyms[i] : def_warnsyms[i].sym)) {
+		if (!found) {
+			Sprintf(out_str, "%c       %s",
+				sym, def_warnsyms[i].explanation);
+			firstmatch = def_warnsyms[i].explanation;
+			found++;
+		} else {
+			found += append_str(out_str, def_warnsyms[i].explanation);
+		}
+		break;	/* out of for loop*/
+	    }
+	}
+    
 	/* if we ignored venom and list turned out to be short, put it back */
 	if (skipped_venom && found < 2) {
 	    x_str = objexplain[VENOM_CLASS];

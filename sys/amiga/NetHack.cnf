@@ -1,16 +1,14 @@
 # A '#' at the beginning of a line means the rest of the line is a comment.
 
-# This configuration file is set up for two cases, a person with a hard
-# disk as drive DH0:, and 1 person with two floppy disks.  If several people
-# are to use it, don't specify "name" or personal prefences like "dogname"
-# or "packorder" in OPTIONS.
+# This is an example configuration file.
+# If several people are to use it, don't specify "name" or personal
+# prefences like "dogname" or "packorder" in OPTIONS.
 
 # To change configuration, comment out the unwanted configurations, and
 # remove the comment from the configuration you want.
 
 # Some options to set personal preferences.  If several people are to
 # use it, options like these should not be set here - use the command line
-# (if playing from CLI) or ToolTypes (if playing from WorkBench)
 #OPTIONS=name:Janet-V,female,dogname:Fido,fruit:apricot
 #OPTIONS=packorder:")[%?+/=!(*0_`,scores:10t/2a,noverbose
 
@@ -18,17 +16,14 @@
 #OPTIONS=time,rest_on_space,noautopickup
 
 # The search path for files like record, help, opthelp, etc.
-#PATH=NetHack:
 PATH=NetHack:
 
 # My own setup
-#OPTIONS=name:Rhialto,catname:Killie,time,noautopickup
+#OPTIONS=nolegacy,fruit:lemon,time,autopickup,checkpoint,showexp,showscore,standout,nonews
+#OPTIONS=nomail,flush,eight_bit_tty,scores:10t/2a,pickup_types:$,suppress_alert:3.3.0
 
 # The windowtype option must be set before any options regarding colors and palette
 # are set otherwise previously set values will be overridden by the defaults
-#
-# Tty/BBS version of the game
-#OPTIONS=windowtype:tty
 #
 # The font version of the game
 OPTIONS=windowtype:amii
@@ -38,25 +33,6 @@ OPTIONS=windowtype:amii
 #
 # A hard disk configuration.
 #
-#HACKDIR=DH0:/games/hack
-# The ";n" means don't prompt to insert a disk.
-#SAVE=;n
-#LEVELS=DH0:games/hack/bones
-#SAVE=DH0:/games/hack/bones;n
-
-# A development HD configuration
-#
-#HACKDIR=NetHack:
-#LEVELS=NetHack:levels
-#SAVE=NetHack:save;n
-
-# A 2-floppy, 2-megabyte configuration.
-#
-#HACKDIR=NetHack:
-#LEVELS=df1:
-#SAVE=df1:save
-
-# A minimal configuration
 HACKDIR=NetHack:
 LEVELS=Nethack:levels
 SAVE=Nethack:save
@@ -83,6 +59,8 @@ EFFECTS =  241 240 242 243 042 033 123 125	   \
 	   064 038 042 035			   \
 	   244 245 246 247 239 248 249 250	   \
 	   230 234 231 236 212 237 232 235 233
+
+WARNING =  048 049 050 051 052 053
 
 # Monitors vary greatly in their color response.  If the default colors
 # are not good on your monitor, here are some other alternatives for the
@@ -138,8 +116,12 @@ EFFECTS =  241 240 242 243 042 033 123 125	   \
 # These are the default values for reference purposes.
 #
 #DEPTH=4
-#PENS=000,fff,6f0,ff0,258,f0f,acf,b40,466,f60,090,940,79b,fb9,ddb,c00
-#DRIPENS=0,1,0,6,4,12,15,12,15,1,12,4
+#defaults for tilemode:
+#PENS=000,fff,0bf,f60,00f,090,69b,f00,6f0,ff0,f0f,940,466,c40,ddb,fb9
+#DRIPENS=0,1,0,2,4,12,14,12,7,1,12,4
+#defaults for fontmode:
+#PENS=000,fff,830,7ac,181,c06,23e,c00
+#DRIPENS=0,6,2,1,6,3,1,3,7,1,3,6
 # 
 # The APEN and BPEN values in the various types of windows can be set in
 # the manner shown below.  These values are for a 32 color version of

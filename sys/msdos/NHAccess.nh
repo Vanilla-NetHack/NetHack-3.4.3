@@ -2,8 +2,8 @@
 #	Copyright (c) NetHack PC Development Team 1993, 1996, 1999
 #	NetHack may be freely redistributed.  See license for details.
 #
-# Modified NetHack.cnf for blind access.  Copy to working directory as
-# NetHack.cnf.
+# Modified defaults.nh for blind access.  Copy to working directory as
+# defaults.nh.
 #
 # A '#' at the beginning of a line means the rest of the line is a comment.
 #

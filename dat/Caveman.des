@@ -50,7 +50,7 @@ BRANCH:(71,09,71,09),(0,0,0,0)
 # Doors
 DOOR:locked,(19,06)
 # The temple altar (this will force a priest(ess) to be created)
-ALTAR:(36,02),law,shrine
+ALTAR:(36,02),coaligned,shrine
 # Shaman Karnov
 MONSTER:'@',"Shaman Karnov",(35,02)
 # The treasure of Shaman Karnov

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.3	1999/11/30	*/
+/*	SCCS Id: @(#)allmain.c	3.3	2000/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,93 +20,92 @@ void
 moveloop()
 {
 #ifdef MICRO
-	char ch;
-	int abort_lev;
+    char ch;
+    int abort_lev;
 #endif
-	int moveamt = 0, wtcap = 0, change = 0;
-	boolean didmove = FALSE, monscanmove = FALSE;
+    int moveamt = 0, wtcap = 0, change = 0;
+    boolean didmove = FALSE, monscanmove = FALSE;
 
-	flags.moonphase = phase_of_the_moon();
-	if(flags.moonphase == FULL_MOON) {
-		You("are lucky!  Full moon tonight.");
-		change_luck(1);
-	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful!  New moon tonight.");
-	}
-	flags.friday13 = friday_13th();
-	if (flags.friday13) {
-		pline("Watch out!  Bad things can happen on Friday the 13th.");
-		change_luck(-1);
-	}
+    flags.moonphase = phase_of_the_moon();
+    if(flags.moonphase == FULL_MOON) {
+	You("are lucky!  Full moon tonight.");
+	change_luck(1);
+    } else if(flags.moonphase == NEW_MOON) {
+	pline("Be careful!  New moon tonight.");
+    }
+    flags.friday13 = friday_13th();
+    if (flags.friday13) {
+	pline("Watch out!  Bad things can happen on Friday the 13th.");
+	change_luck(-1);
+    }
 
-	initrack();
+    initrack();
 
 
-	/* Note:  these initializers don't do anything except guarantee that
-		we're linked properly.
-	*/
-	decl_init();
-	monst_init();
-	monstr_init();	/* monster strengths */
-	objects_init();
+    /* Note:  these initializers don't do anything except guarantee that
+	    we're linked properly.
+    */
+    decl_init();
+    monst_init();
+    monstr_init();	/* monster strengths */
+    objects_init();
 
 #ifdef WIZARD
-	if (wizard) add_debug_extended_commands();
+    if (wizard) add_debug_extended_commands();
 #endif
 
-	(void) encumber_msg(); /* in case they auto-picked up something */
+    (void) encumber_msg(); /* in case they auto-picked up something */
 
-	u.uz0.dlevel = u.uz.dlevel;
+    u.uz0.dlevel = u.uz.dlevel;
+    youmonst.movement = NORMAL_SPEED;	/* give the hero some movement points */
 
-	for(;;) {
+    for(;;) {
 #ifdef CLIPPING
-		cliparound(u.ux, u.uy);
+	cliparound(u.ux, u.uy);
 #endif
-		get_nh_event();
+	get_nh_event();
 #ifdef POSITIONBAR
-		do_positionbar();
+	do_positionbar();
 #endif
 
-		didmove = flags.move;
-		if(didmove) {
-		    /* actual time passed */
-		    if (youmonst.movement >= NORMAL_SPEED) {
-			youmonst.movement -= NORMAL_SPEED;
-			++moves;
-		    }
+	didmove = flags.move;
+	if(didmove) {
+	    /* actual time passed */
+	    youmonst.movement -= NORMAL_SPEED;
 
-		    if (u.utotype) deferred_goto();
-		    wtcap = encumber_msg();
-		    dosounds();
+	    do { /* hero can't move this turn loop */
+		wtcap = encumber_msg();
 
-		    flags.mon_moving = TRUE;
-		    do {
-			monscanmove = movemon();
-			if (youmonst.movement > NORMAL_SPEED)
-			    break;	/* it's now your turn */
-		    } while (monscanmove);
-		    flags.mon_moving = FALSE;
+		flags.mon_moving = TRUE;
+		do {
+		    monscanmove = movemon();
+		    if (youmonst.movement > NORMAL_SPEED)
+			break;	/* it's now your turn */
+		} while (monscanmove);
+		flags.mon_moving = FALSE;
 
-		    if (!monscanmove && youmonst.movement < NORMAL_SPEED) {
-			/* both you and the monsters are out of steam this round */
-			struct monst *mtmp;
-			mcalcdistress();	/* adjust monsters' trap, blind, etc */
+		if (!monscanmove && youmonst.movement < NORMAL_SPEED) {
+		    /* both you and the monsters are out of steam this round */
+		    /* set up for a new turn */
+		    struct monst *mtmp;
+		    mcalcdistress();	/* adjust monsters' trap, blind, etc */
 
-			/* reallocate movement rations to monsters */
-			for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-			    mcalcmove(mtmp);
+		    /* reallocate movement rations to monsters */
+		    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			mtmp->movement += mcalcmove(mtmp);
 
-			if(!rn2(u.uevent.udemigod ? 25 :
-				(depth(&u.uz) > depth(&stronghold_level)) ? 50 : 70))
-			    (void) makemon((struct permonst *)0, 0, 0, NO_MM_FLAGS);
+		    if(!rn2(u.uevent.udemigod ? 25 :
+			    (depth(&u.uz) > depth(&stronghold_level)) ? 50 : 70))
+			(void) makemon((struct permonst *)0, 0, 0, NO_MM_FLAGS);
 
-			/* calculate how much time passed. */
+		    /* calculate how much time passed. */
 #ifdef STEED
-		      if (u.usteed && flags.mv) {
+		    if (u.usteed && flags.mv) {
 			/* your speed doesn't augment steed's speed */
-			moveamt = u.usteed->movement;
-		      } else {
+			moveamt = mcalcmove(u.usteed);
+		    } else
 #endif
+		    {
 			moveamt = youmonst.data->mmove;
 
 			if (Very_fast) {	/* speed boots or potion */
@@ -117,24 +116,27 @@ moveloop()
 			    /* average movement is 1.33 times normal */
 			    if (rn2(3) != 0) moveamt += NORMAL_SPEED / 2;
 			}
-#ifdef STEED
-		      }
-#endif
-			switch (wtcap) {
+		    }
+
+		    switch (wtcap) {
 			case UNENCUMBERED: break;
 			case SLT_ENCUMBER: moveamt -= (moveamt / 4); break;
 			case MOD_ENCUMBER: moveamt -= (moveamt / 2); break;
 			case HVY_ENCUMBER: moveamt -= ((moveamt * 3) / 4); break;
 			case EXT_ENCUMBER: moveamt -= ((moveamt * 7) / 8); break;
 			default: break;
-			}
+		    }
 
-			youmonst.movement += moveamt;
-			if (youmonst.movement < 0) youmonst.movement = 0;
-			settrack();
+		    youmonst.movement += moveamt;
+		    if (youmonst.movement < 0) youmonst.movement = 0;
+		    settrack();
 
-			monstermoves++;
-		    }			
+		    monstermoves++;
+		    moves++;
+
+		    /********************************/
+		    /* once-per-turn things go here */
+		    /********************************/
 
 		    if(Glib) glibr();
 		    nh_timeout();
@@ -142,7 +144,7 @@ moveloop()
 
 		    if (u.ublesscnt)  u.ublesscnt--;
 		    if(flags.time && !flags.run)
-			    flags.botl = 1;
+			flags.botl = 1;
 
 		    /* One possible result of prayer is healing.  Whether or
 		     * not you get healed depends on your current hit points.
@@ -217,7 +219,7 @@ moveloop()
 			    tele();
 #ifdef REDO
 			    if (u.ux != old_ux || u.uy != old_uy) {
-			    	/* clear doagain keystrokes */
+				/* clear doagain keystrokes */
 				pushch(0);
 				savech(0);
 			    }
@@ -241,6 +243,7 @@ moveloop()
 		    }
 
 		    if(Searching && multi >= 0) (void) dosearch0(1);
+		    dosounds();
 		    do_storms();
 		    gethungry();
 		    age_spells();
@@ -261,123 +264,139 @@ moveloop()
 		    if (Is_waterlevel(&u.uz))
 			movebubbles();
 		    else if (Underwater)
-		    	under_water(0);
+			under_water(0);
 		    /* vision while buried done here */
 		    else if (u.uburied) under_ground(0);
-		}
-		if(multi < 0) {
-		    if (++multi == 0)	/* finished yet? */
-			unmul((char *)0);
-		}
 
-		find_ac();
-		if(!flags.mv || Blind) {
-		    /* redo monsters if hallu or wearing a helm of telepathy */
-		    if (Hallucination) {	/* update screen randomly */
-			see_monsters();
-			see_objects();
-			see_traps();
-			if (u.uswallow) swallowed(0);
-		    } else if (Unblind_telepat) {
-			see_monsters();
+		    /* when immobile, count is in turns */
+		    if(multi < 0) {
+			if (++multi == 0)	/* finished yet? */
+			    unmul((char *)0);
 		    }
-		    if (vision_full_recalc) vision_recalc(0);	/* vision! */
-		}
-		if(flags.botl || flags.botlx) bot();
+		}			
+	    } while (youmonst.movement<NORMAL_SPEED); /* hero can't move loop */
 
-		flags.move = 1;
+	    /******************************************/
+	    /* once-per-hero-took-time things go here */
+	    /******************************************/
 
-		if(multi >= 0 && occupation) {
+
+	} /* actual time passed */
+
+	/****************************************/
+	/* once-per-player-input things go here */
+	/****************************************/
+
+	find_ac();
+	if(!flags.mv || Blind) {
+	    /* redo monsters if hallu or wearing a helm of telepathy */
+	    if (Hallucination) {	/* update screen randomly */
+		see_monsters();
+		see_objects();
+		see_traps();
+		if (u.uswallow) swallowed(0);
+	    } else if (Unblind_telepat) {
+		see_monsters();
+	    } else if (Warning || Warn_of_mon)
+	     	see_monsters();
+
+	    if (vision_full_recalc) vision_recalc(0);	/* vision! */
+	}
+	if(flags.botl || flags.botlx) bot();
+
+	flags.move = 1;
+
+	if(multi >= 0 && occupation) {
 #ifdef MICRO
-		    abort_lev = 0;
-		    if (kbhit()) {
-			if ((ch = Getchar()) == ABORT)
-			    abort_lev++;
+	    abort_lev = 0;
+	    if (kbhit()) {
+		if ((ch = Getchar()) == ABORT)
+		    abort_lev++;
 # ifdef REDO
-			else
-			    pushch(ch);
+		else
+		    pushch(ch);
 # endif /* REDO */
-		    }
-		    if (!abort_lev && (*occupation)() == 0)
+	    }
+	    if (!abort_lev && (*occupation)() == 0)
 #else
-		    if ((*occupation)() == 0)
+	    if ((*occupation)() == 0)
 #endif
-			occupation = 0;
-		    if(
+		occupation = 0;
+	    if(
 #ifdef MICRO
-			   abort_lev ||
+		   abort_lev ||
 #endif
-			   monster_nearby()) {
-			stop_occupation();
-			reset_eat();
-		    }
+		   monster_nearby()) {
+		stop_occupation();
+		reset_eat();
+	    }
 #ifdef MICRO
-		    if (!(++occtime % 7))
-			display_nhwindow(WIN_MAP, FALSE);
+	    if (!(++occtime % 7))
+		display_nhwindow(WIN_MAP, FALSE);
 #endif
-		    continue;
-		}
+	    continue;
+	}
 
-		if ((u.uhave.amulet || Clairvoyant) &&
-		    !In_endgame(&u.uz) && !BClairvoyant &&
-		    !(moves % 15) && !rn2(2))
-			do_vicinity_map();
+	if ((u.uhave.amulet || Clairvoyant) &&
+	    !In_endgame(&u.uz) && !BClairvoyant &&
+	    !(moves % 15) && !rn2(2))
+		do_vicinity_map();
 
-		if(u.utrap && u.utraptype == TT_LAVA) {
-		    if(!is_lava(u.ux,u.uy))
-			u.utrap = 0;
-		    else {
-			u.utrap -= 1<<8;
-			if(u.utrap < 1<<8) {
-			    killer_format = KILLED_BY;
-			    killer = "molten lava";
-			    You("sink below the surface and die.");
-			    done(DISSOLVED);
-			} else if(didmove && !u.umoved) {
-			    Norep("You sink deeper into the lava.");
-			    u.utrap += rnd(4);
-			}
-		    }
+	if(u.utrap && u.utraptype == TT_LAVA) {
+	    if(!is_lava(u.ux,u.uy))
+		u.utrap = 0;
+	    else if (!u.uinvulnerable) {
+		u.utrap -= 1<<8;
+		if(u.utrap < 1<<8) {
+		    killer_format = KILLED_BY;
+		    killer = "molten lava";
+		    You("sink below the surface and die.");
+		    done(DISSOLVED);
+		} else if(didmove && !u.umoved) {
+		    Norep("You sink deeper into the lava.");
+		    u.utrap += rnd(4);
 		}
+	    }
+	}
 
 #ifdef WIZARD
-		if (iflags.sanity_check)
-		    sanity_check();
+	if (iflags.sanity_check)
+	    sanity_check();
 #endif
 
-		u.umoved = FALSE;
+	u.umoved = FALSE;
 
-		if (multi > 0) {
-		    lookaround();
-		    if (!multi) {
-			/* lookaround may clear multi */
-			flags.move = 0;
-			continue;
-		    }
-		    if (flags.mv) {
-			if(multi < COLNO && !--multi)
-			    flags.mv = flags.run = 0;
-			domove();
-		    } else {
-			--multi;
-			rhack(save_cm);
-		    }
-		} else if (multi == 0) {
+	if (multi > 0) {
+	    lookaround();
+	    if (!multi) {
+		/* lookaround may clear multi */
+		flags.move = 0;
+		continue;
+	    }
+	    if (flags.mv) {
+		if(multi < COLNO && !--multi)
+		    flags.mv = flags.run = 0;
+		domove();
+	    } else {
+		--multi;
+		rhack(save_cm);
+	    }
+	} else if (multi == 0) {
 #ifdef MAIL
-		    ckmailstatus();
+	    ckmailstatus();
 #endif
-		    rhack((char *)0);
-		}
-		if (u.utotype)		/* change dungeon level */
-		    deferred_goto();	/* after rhack() */
-		/* !flags.move here: multiple movement command stopped */
-		else if (flags.time && (!flags.move || !flags.mv))
-		    flags.botl = 1;
-
-		if (vision_full_recalc) vision_recalc(0);	/* vision! */
-		if (multi && multi%7 == 0)
-		    display_nhwindow(WIN_MAP, FALSE);
+	    rhack((char *)0);
 	}
+	if (u.utotype)		/* change dungeon level */
+	    deferred_goto();	/* after rhack() */
+	/* !flags.move here: multiple movement command stopped */
+	else if (flags.time && (!flags.move || !flags.mv))
+	    flags.botl = 1;
+
+	if (vision_full_recalc) vision_recalc(0);	/* vision! */
+	if (multi && multi%7 == 0)
+	    display_nhwindow(WIN_MAP, FALSE);
+    }
 }
 
 #endif /* OVL0 */
@@ -446,9 +465,16 @@ newgame()
 		mvitals[i].mvflags = mons[i].geno & G_NOCORPSE;
 
 	init_objects();		/* must be before u_init() */
+
+	flags.pantheon = -1;	/* role_init() will reset this */
+	role_init();		/* must be before init_dungeons(), u_init(),
+				 * and init_artifacts() */
+
+	init_dungeons();	/* must be before u_init() to avoid rndmonst()
+				 * creating odd monsters for initial tins and
+				 * eggs */
 	u_init();
-	init_dungeons();	/* must be after u_init() */
-	init_artifacts();	/* must be after u_init() */
+	init_artifacts();
 
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
@@ -506,8 +532,8 @@ boolean new_game;	/* false => restoring an old game */
      * restores it's only shown if different from its original value.
      */
     *buf = '\0';
-    if (new_game || u.ualignbase[1] != u.ualignbase[0])
-	Sprintf(eos(buf), " %s", align_str(u.ualignbase[1]));
+    if (new_game || u.ualignbase[A_ORIGINAL] != u.ualignbase[A_CURRENT])
+	Sprintf(eos(buf), " %s", align_str(u.ualignbase[A_ORIGINAL]));
     if (!urole.name.f &&
 	    (new_game ? (urole.allow & ROLE_GENDMASK) == (ROLE_MALE|ROLE_FEMALE) :
 	     currentgend != flags.initgend))
@@ -515,7 +541,7 @@ boolean new_game;	/* false => restoring an old game */
 
     pline(new_game ? "%s %s, welcome to NetHack!  You are a%s %s %s."
 		   : "%s %s, the%s %s %s, welcome back to NetHack!",
-	  Hello(), plname, buf, urace.adj,
+	  Hello((struct monst *) 0), plname, buf, urace.adj,
 	  (currentgend && urole.name.f) ? urole.name.f : urole.name.m);
 }
 

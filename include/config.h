@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)config.h	3.3	2000/07/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -43,14 +43,15 @@
  * Some combinations make no sense.  See the installation document.
  */
 #define TTY_GRAPHICS	/* good old tty based graphics */
-/* #define X11_GRAPHICS */ /* X11 interface */
+/* #define X11_GRAPHICS */	/* X11 interface */
 /* #define QT_GRAPHICS */	/* Qt interface */
+/* #define GNOME_GRAPHICS */	/* Gnome interface */
 
 /*
  * Define the default window system.  This should be one that is compiled
  * into your system (see defines above).  Known window systems are:
  *
- *	tty, X11, mac, amii, Qt
+ *	tty, X11, mac, amii, BeOS, Qt, Gem, Gnome
  */
 
 /* MAC also means MAC windows */
@@ -66,9 +67,18 @@
 # define DEFAULT_WINDOW_SYS "amii"	/* "amii", "amitile" or "tty" */
 #endif
 
+/* Atari supports GEM_GRAPHICS and/or TTY_GRAPHICS */
+#ifdef TOS
+# define GEM_GRAPHICS			/* Atari GEM interface (optional) */
+# define DEFAULT_WINDOW_SYS "Gem"	/* "Gem" or "tty" */
+#endif
+
 #ifdef __BEOS__
-/* leave at tty graphics for now */
-/* # define DEFAULT_WINDOW_SYS "be" */
+#define BEOS_GRAPHICS /* (optional) */
+#define DEFAULT_WINDOW_SYS "BeOS"  /* "tty" */
+#ifndef HACKDIR	/* override the default hackdir below */
+# define HACKDIR "/boot/apps/NetHack"
+#endif
 #endif
 
 #ifdef QT_GRAPHICS
@@ -76,6 +86,14 @@
 # define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
 # ifndef DEFAULT_WINDOW_SYS
 #  define DEFAULT_WINDOW_SYS "Qt"
+# endif
+#endif
+
+#ifdef GNOME_GRAPHICS
+# define USE_XPM		/* Use XPM format for images (required) */
+# define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
+# ifndef DEFAULT_WINDOW_SYS
+#  define DEFAULT_WINDOW_SYS "Gnome"
 # endif
 #endif
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)flag.h	3.3	1999/11/26	*/
+/*	SCCS Id: @(#)flag.h	3.3	2000/01/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -89,11 +89,13 @@ struct flag {
 	unsigned no_of_wizards; /* 0, 1 or 2 (wizard and his shadow) */
 	unsigned run;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */
 				/* 3: FH, 4: ff+, 5: ff-, 6: FF+, 7: FF- */
+	unsigned long warntype; /* warn_of_mon monster type M2 */
+	int	 warnlevel;
 	int	 djinni_count, ghost_count;	/* potion effect tuning */
 	int	 pickup_burden;		/* maximum burden before prompt */
 	char	 inv_order[MAXOCLASSES];
 	char	 pickup_types[MAXOCLASSES];
-	char	 end_disclose[5];	/* disclose various info upon exit */
+	char	 end_disclose[6];	/* disclose various info upon exit */
 	char	 menu_style;	/* User interface style setting */
 #ifdef AMII_GRAPHICS
 	int numcols;
@@ -145,6 +147,7 @@ struct instance_flags {
 	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
 	boolean  echo;		/* 1 to echo characters */
 #ifdef TTY_GRAPHICS
+	boolean  eight_bit_tty;	/* pass eight-bit characters through to tty */
 	boolean  extmenu;	/* extended commands use menu interface */
 #endif
 	boolean  IBMgraphics;	/* use IBM extended character set */
@@ -152,6 +155,7 @@ struct instance_flags {
 	boolean  num_pad;	/* use numbers for movement commands */
 	boolean  news;		/* print news */
 	boolean  window_inited; /* true if init_nhwindows() completed */
+	int      purge_monsters;	/* # of dead monsters still on fmon list */
 
 #ifdef WIZARD
 	boolean  sanity_check;	/* run sanity checks */
@@ -170,6 +174,11 @@ struct instance_flags {
 #ifdef MAC
 	boolean  popup_dialog;	/* put queries in pop up dialogs instead of
 				   in the message window */
+#endif
+#ifdef MFLOPPY
+	boolean  checkspace;	/* check disk space before writing files */
+				/* (in iflags to allow restore after moving
+				 * to >2GB partition) */
 #endif
 #ifdef MICRO
 	boolean  BIOS;		/* use IBM or ST BIOS calls when appropriate */

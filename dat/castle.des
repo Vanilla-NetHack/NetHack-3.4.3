@@ -136,11 +136,11 @@ ENGRAVING:place[0],burn,"Elbereth"
 # The treasure of the lord
 OBJECT:'(',"chest",(37,08)
 # Traps
-TRAP:"trapdoor",(40,08)
-TRAP:"trapdoor",(44,08)
-TRAP:"trapdoor",(48,08)
-TRAP:"trapdoor",(52,08)
-TRAP:"trapdoor",(55,08)
+TRAP:"trap door",(40,08)
+TRAP:"trap door",(44,08)
+TRAP:"trap door",(48,08)
+TRAP:"trap door",(52,08)
+TRAP:"trap door",(55,08)
 # Soldiers guarding the entry hall
 MONSTER:'@',"soldier",(08,06)
 MONSTER:'@',"soldier",(09,05)
@@ -165,11 +165,15 @@ MONSTER:'D',random,(47,05)
 MONSTER:'D',random,(47,06)
 MONSTER:'D',random,(47,10)
 MONSTER:'D',random,(47,11)
-# Eels in the moat
+# Sea monsters in the moat
 MONSTER:';',"giant eel",(05,07)
 MONSTER:';',"giant eel",(05,09)
 MONSTER:';',"giant eel",(57,07)
 MONSTER:';',"giant eel",(57,09)
+MONSTER:';',"shark",(05,00)
+MONSTER:';',"shark",(05,16)
+MONSTER:';',"shark",(57,00)
+MONSTER:';',"shark",(57,16)
 # The throne room and the court monsters
 MONSTER:monster[0],random,(27,05)
 MONSTER:monster[1],random,(30,05)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artifact.c 3.3	1999/11/26	*/
+/*	SCCS Id: @(#)artifact.c 3.3	2000/01/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -132,7 +132,9 @@ aligntyp alignment;	/* target alignment, or A_NONE */
 		    (a->alignment == alignment ||
 			(a->alignment == A_NONE && u.ugifts > 0))) &&
 		(!(a->spfx & SPFX_NOGEN) || unique) && !artiexist[m]) {
-		if (by_align && a->role == Role_switch)
+		if (by_align && a->race != NON_PM && race_hostile(&mons[a->race]))
+		    continue;	/* skip enemies' equipment */
+		else if (by_align && Role_if(a->role))
 		    goto make_artif;	/* 'a' points to the desired one */
 		else
 		    eligible[n++] = m;
@@ -405,8 +407,19 @@ long wp_mask;
 	    else ETeleport_control &= ~wp_mask;
 	}
 	if (spfx & SPFX_WARN) {
-	    if (on) EWarning |= wp_mask;
-	    else EWarning &= ~wp_mask;
+	    if (spec_m2(otmp)) {
+	    	if (on) {
+			EWarn_of_mon |= wp_mask;
+			flags.warntype |= spec_m2(otmp);
+	    	} else {
+			EWarn_of_mon &= ~wp_mask;
+	    		flags.warntype &= ~spec_m2(otmp);
+		}
+		see_monsters();
+	    } else {
+		if (on) EWarning |= wp_mask;
+	    	else EWarning &= ~wp_mask;
+	    }
 	}
 	if (spfx & SPFX_EREGEN) {
 	    if (on) EEnergy_regeneration |= wp_mask;
@@ -460,8 +473,9 @@ touch_artifact(obj,mon)
        will have to be extended to explicitly include quest artifacts */
     self_willed = ((oart->spfx & SPFX_INTEL) != 0);
     if (yours || !(mon->data->mflags3 & M3_WANTSALL)) {
-	badclass = (oart->role && self_willed &&
-		    (!yours || oart->role != Role_switch));
+	badclass = (self_willed && (!yours ||
+			(oart->role != NON_PM && !Role_if(oart->role)) ||
+			(oart->race != NON_PM && !Race_if(oart->race))));
 	badalign = (oart->spfx & SPFX_RESTR) &&
 		   oart->alignment != A_NONE &&
 	    ((oart->alignment !=
@@ -529,15 +543,8 @@ struct monst *mtmp;
 	} else if (weap->spfx & SPFX_DFLAG1) {
 	    return ((ptr->mflags1 & weap->mtype) != 0L);
 	} else if (weap->spfx & SPFX_DFLAG2) {
-	    if (yours) {
-		if ((weap->mtype & M2_HUMAN) != 0 &&
-				maybe_polyd(is_human(ptr),  Race_if(PM_HUMAN)))
-			return 1;
-		if ((weap->mtype & M2_ELF) != 0 &&
-				maybe_polyd(is_elf(ptr), Race_if(PM_ELF)))
-			return 1;
-	    }
-	    return ((ptr->mflags2 & weap->mtype) != 0L);
+	    return ((ptr->mflags2 & weap->mtype) ||
+		(yours && !Upolyd && (urace.selfmask & weap->mtype)));
 	} else if (weap->spfx & SPFX_DALIGN) {
 	    return yours ? (u.ualign.type != weap->alignment) :
 			   (ptr->maligntyp == A_NONE ||
@@ -568,6 +575,17 @@ struct monst *mtmp;
 	    }
 	}
 	return(0);
+}
+
+/* return the M2 flags of monster that an artifact's special attacks apply against */
+long
+spec_m2(otmp)
+struct obj *otmp;
+{
+	register const struct artifact *artifact = get_artifact(otmp);
+	if (artifact)
+		return artifact->mtype;
+	return 0L;
 }
 
 /* special attack bonus */
@@ -616,6 +634,23 @@ xchar m;
     impossible("couldn't discover artifact (%d)", (int)m);
 }
 
+/* used to decide whether an artifact has been fully identified */
+boolean
+undiscovered_artifact(m)
+xchar m;
+{
+    int i;
+
+    /* look for this artifact in the discoveries list;
+       if we hit an empty slot then it's undiscovered */
+    for (i = 0; i < NROFARTIFACTS; i++)
+	if (artidisco[i] == m)
+	    return FALSE;
+	else if (artidisco[i] == 0)
+	    break;
+    return TRUE;
+}
+
 /* display a list of discovered artifacts; return their count */
 int
 disp_artifact_discoveries(tmpwin)
@@ -630,7 +665,7 @@ winid tmpwin;		/* supplied by dodiscover() */
 	m = artidisco[i];
 	otyp = artilist[m].otyp;
 	Sprintf(buf, "  %s [%s %s]", artiname(m),
-		align_str(artilist[m].alignment), OBJ_NAME(objects[otyp]));
+		align_str(artilist[m].alignment), simple_typename(otyp));
 	putstr(tmpwin, 0, buf);
     }
     return i;
@@ -683,7 +718,9 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 	/* the four basic attacks: fire, cold, shock and missiles */
 	if (attacks(AD_FIRE, otmp)) {
 	    if (realizes_damage) {
-		pline_The("fiery blade burns %s!", hittee);
+		pline_The("fiery blade %s %s!",
+			(mdef->data == &mons[PM_WATER_ELEMENTAL]) ?
+			"vaporizes part of" : "burns", hittee);
 		if (!rn2(4)) (void) destroy_mitem(mdef, POTION_CLASS, AD_FIRE);
 		if (!rn2(4)) (void) destroy_mitem(mdef, SCROLL_CLASS, AD_FIRE);
 		if (!rn2(7)) (void) destroy_mitem(mdef, SPBOOK_CLASS, AD_FIRE);
@@ -954,9 +991,9 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				return ((boolean)(youattack || vis));
 			}
 			if (noncorporeal(mdef->data) || amorphous(mdef->data)) {
-				pline("%s slices through %s neck.",
+				pline("%s slices through %s %s.",
 				      artilist[ART_VORPAL_BLADE].name,
-				      s_suffix(mon_nam(mdef)));
+				      s_suffix(mon_nam(mdef)), mbodypart(mdef,NECK));
 				return TRUE;
 			}
 			*dmgptr = mdef->mhp + FATAL_DAMAGE;
@@ -973,8 +1010,8 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				return TRUE;
 			}
 			if (noncorporeal(youmonst.data) || amorphous(youmonst.data)) {
-				pline("%s slices through your neck.",
-				      artilist[ART_VORPAL_BLADE].name);
+				pline("%s slices through your %s.",
+				      artilist[ART_VORPAL_BLADE].name, body_part(NECK));
 				return TRUE;
 			}
 			*dmgptr = (Upolyd ? u.mh : u.uhp) + FATAL_DAMAGE;
@@ -1022,7 +1059,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 			else
 				pline("%s drains your life!",
 				      The(distant_name(otmp, xname)));
-			losexp();
+			losexp("life drainage");
 			if (magr->mhp < magr->mhpmax) {
 			    magr->mhp += (u.uhpmax - oldhpmax)/2;
 			    if (magr->mhp > magr->mhpmax) magr->mhp = magr->mhpmax;
@@ -1057,7 +1094,7 @@ arti_invoke(obj)
 	if(obj->otyp == CRYSTAL_BALL)
 	    use_crystal_ball(obj);
 	else
-	    pline("Nothing happens.");
+	    pline(nothing_happens);
 	return 1;
     }
 
@@ -1273,19 +1310,7 @@ void arti_speak(obj)
 	if (!oart || !(oart->spfx & SPFX_SPEAK))
 		return;
 
-	/* Get a rumor.  Kludge: do not include rumors that specifically refer
-	 * to fortune cookies.  Such rumors are always false rumors, so this
-	 * problem doesn't happen when, for instance, getting Oracle
-	 * pronouncements.  This is an awful hack because it relies on knowing
-	 * exactly what text is in the cookie files.
-	 */
-	{
-	    int count=0;
-
-	    do {
-		line = getrumor(obj->blessed ? 1 : obj->cursed ? -1 : 0, buf);
-	    } while (line && (strstri(line, "fortune") || strstri(line, "pity")) && ++count < 30);
-	}
+	line = getrumor(bcsign(obj), buf, TRUE);
 	if (!*line)
 		line = "NetHack rumors file closed for renovation.";
 	pline("%s whispers:", The(xname(obj)));

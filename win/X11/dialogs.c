@@ -216,7 +216,7 @@ SetDialogPrompt(w, newprompt)
     XtSetValues(label, args, ONE);
 }
 
-/* get what the user typed */
+/* get what the user typed; caller must free the response */
 String
 GetDialogResponse(w)
     Widget w;

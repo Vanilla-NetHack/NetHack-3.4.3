@@ -8,126 +8,132 @@
 #	Here you meet your (besieged) class leader, Orion,
 #	and receive your quest assignment.
 #
-MAZE: "Ran-strt",' '
-FLAGS: noteleport,hardfloor
-GEOMETRY:center,center
+MAZE: "Ran-strt",'.'
+FLAGS: noteleport,hardfloor,arboreal
+INIT_MAP:'.','.',true,true,lit,false
+GEOMETRY:left,center
+#1234567890123456789012345678901234567890123456789012345678901234567890
 MAP
-.................................... . .....................................
-................................... ... ....................................
-.................................... . .....................................
-................................... ... ....................................
-.................................... . .....................................
-..............................}}}}}}}.}}}}}}}...............................
-............................}}}|----...----|}}}.............................
-...........................}}|--...........--|}}............................
-.................... . . . }|-...............-|} . . . .....................
-................... . . . .}|.................|}. . . . ....................
-............................................................................
-................... . . . .}|.................|}. . . . ....................
-.................... . . . }|-...............-|} . . . .....................
-...........................}}|--...........--|}}............................
-............................}}}|----...----|}}}.............................
-..............................}}}}}}}.}}}}}}}...............................
-.................................... . .....................................
-................................... ... ....................................
-.................................... . .....................................
-................................... ... ....................................
+  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..
+ TT...................................TT.
+TT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TT
+T..TT...............F...............TT..T
+T.TT..TTTTTTTTTTTTT.F.TTTTTTTTTTTTT..TT.T
+T.T..TT.............F.............TT..T.T
+T.T.TT..TTTTTTTTTTTTTTTTTTTTTTTTT..TT.T.T
+T.T.T..TT.......................TT..T...T
+T.T.T.TT..TTTTTTTTTTTTTTTTTTTTT..TT.TTTTT
+T...T.T..TT.|.....................T......
+TFFFT.T.TT..S..................TTTTTTTTTT
+T...T.T..TT.|.................TT....T...T
+T.T.T.TT..TTTTTTTTTTTTTTTTTTTTT..TT.T.T.T
+T.T.T..TT.......................TT..T.T.T
+T.T.TT..TTTTTTTTTTTTTTTTTTTTTTTTT..TT.T.T
+T.T..TT.............F.............TT..T.T
+T.TT..TTTTTTTTTTTTT.F.TTTTTTTTTTTTT..TT.T
+T..TT...............F...............TT..T
+TT..TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..TT
+ TT...................................TT.
+  TTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTTT..
 ENDMAP
 # Dungeon Description
-REGION:(00,00,75,19),lit,"ordinary"
+REGION:(00,00,40,20),lit,"ordinary"
 # Stairs
-STAIR:(40,13),down
+STAIR:(10,10),down
 # Portal arrival point
-BRANCH:(00,14,00,14),(0,0,0,0)
-# Altar
-ALTAR:(37,10),chaos,altar
+BRANCH:levregion(01,00,79,20),(0,0,40,20)
 # Orion
-MONSTER:'@',"Orion",(37,10)
+MONSTER:'@',"Orion",(20,10)
 # The treasure of Orion
-OBJECT:'(',"chest",(37,10)
-# elf guards for the audience chamber
-MONSTER:'@',"hunter",(38,09)
-MONSTER:'@',"hunter",(38,10)
-MONSTER:'@',"hunter",(38,11)
-MONSTER:'@',"hunter",(36,09)
-MONSTER:'@',"hunter",(36,10)
-MONSTER:'@',"hunter",(36,11)
-MONSTER:'@',"hunter",(37,09)
-MONSTER:'@',"hunter",(37,11)
+OBJECT:'(',"chest",(20,10)
+# Guards for the audience chamber
+MONSTER:'@',"hunter",(19,09)
+MONSTER:'@',"hunter",(20,09)
+MONSTER:'@',"hunter",(21,09)
+MONSTER:'@',"hunter",(19,10)
+MONSTER:'@',"hunter",(21,10)
+MONSTER:'@',"hunter",(19,11)
+MONSTER:'@',"hunter",(20,11)
+MONSTER:'@',"hunter",(21,11)
 # Non diggable walls
-NON_DIGGABLE:(00,00,75,19)
-# traps
-# One pit at each cardinal point.
-TRAP:"pit",(37,05)
-TRAP:"pit",(46,10)
-TRAP:"pit",(37,15)
-TRAP:"pit",(28,10)
-TRAP:random,random
-TRAP:random,random
+NON_DIGGABLE:(00,00,40,20)
+# Traps
+TRAP:"arrow",(30,09)
+TRAP:"arrow",(30,10)
+TRAP:"pit",(40,09)
+TRAP:"spiked pit",random
+TRAP:"bear",random
+TRAP:"bear",random
 # Monsters on siege duty.
-MONSTER: 'C',"forest centaur",(35,04),hostile
-MONSTER: 'C',"forest centaur",(36,03),hostile
-MONSTER: 'C',"forest centaur",(48,09),hostile
-MONSTER: 'C',"forest centaur",(35,16),hostile
-MONSTER: 'C',"forest centaur",(36,17),hostile
-MONSTER: 'C',"forest centaur",(26,09),hostile
-MONSTER: 'C',"forest centaur",(37,03),hostile
-MONSTER: 'C',"forest centaur",(38,03),hostile
-MONSTER: 'C',"forest centaur",(39,04),hostile
-MONSTER: 'C',"forest centaur",(48,10),hostile
-MONSTER: 'C',"forest centaur",(48,11),hostile
-MONSTER: 'C',"plains centaur",(37,17),hostile
-MONSTER: 'C',"plains centaur",(38,17),hostile
-MONSTER: 'C',"plains centaur",(39,16),hostile
-MONSTER: 'C',"plains centaur",(26,10),hostile
-MONSTER: 'C',"plains centaur",(26,11),hostile
+MONSTER: 'H',"minotaur",(33,09),hostile,asleep
+MONSTER: 'C',"forest centaur",(19,03),hostile
+MONSTER: 'C',"forest centaur",(19,04),hostile
+MONSTER: 'C',"forest centaur",(19,05),hostile
+MONSTER: 'C',"forest centaur",(21,03),hostile
+MONSTER: 'C',"forest centaur",(21,04),hostile
+MONSTER: 'C',"forest centaur",(21,05),hostile
+MONSTER: 'C',"forest centaur",(01,09),hostile
+MONSTER: 'C',"forest centaur",(02,09),hostile
+MONSTER: 'C',"forest centaur",(03,09),hostile
+MONSTER: 'C',"forest centaur",(01,11),hostile
+MONSTER: 'C',"forest centaur",(02,11),hostile
+MONSTER: 'C',"forest centaur",(03,11),hostile
+MONSTER: 'C',"forest centaur",(19,15),hostile
+MONSTER: 'C',"forest centaur",(19,16),hostile
+MONSTER: 'C',"forest centaur",(19,17),hostile
+MONSTER: 'C',"forest centaur",(21,15),hostile
+MONSTER: 'C',"forest centaur",(21,16),hostile
+MONSTER: 'C',"forest centaur",(21,17),hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 'C',"plains centaur",random,hostile
+MONSTER: 's',"scorpion",random,hostile
+MONSTER: 's',"scorpion",random,hostile
+
 
 #
 #	The "locate" level for the quest.
 #
-#	Here you have to infiltrate the Cave of Scorpius to go
+#	Here you have to infiltrate the Cave of the Wumpus to go
 #	further towards your assigned quest.
 #
 
 MAZE: "Ran-loca",' '
 FLAGS: hardfloor
 GEOMETRY:center,center
+#1234567890123456789012345678901234567890123456789012345678901234567890
 MAP
-                                                                            
- ..       ....            ......            ...        .......         ..   
-  ..     ......S...     ..........         .....       ........       ....  
-   ..    .. ...   .    ......... ..          .           .....       ....   
-    ..  ..        .      .....    ..         .             ..       .....   
-     ....         .         ..     ..        S               ..        ..   
-    ....          S        ..       ..      ....               ..      ..   
-    .....        ...      ..         ..    ........              ..    ..   
-   ......      ......   ...           ..  ............           ...  ...   
-    ....      .. ....   ....       ........................S....S......     
-       ..    ..   ..     ...     ........................         ..        
-        ..  ..          ..       ........................          ..       
-  ....   ....          ..         ........................         ..       
- ......   ..          ..    ...    ....................           ..        
-  ....   ....        ..    .....    ............                 ..         
-   ..   ..  ..      ..       ...  .S    ............          ....     ...  
-   .. ..     ..............    ....      ............      ....  ..   ..... 
-    ...                   ..            ..     ....    .....      ..   .... 
-                           ..............         ......           .....    
-                                                                            
+              .......  .........  .......              
+     ...................       ...................     
+  ....        .......             .......        ....  
+...    .....     .       .....       .     .....    ...
+.   .......... .....  ...........  ..... ..........   .
+.  ..  ..... ..........  .....  .......... .....  ..  .
+.  .     .     .....       .       .....     .     .  .
+.  .   .....         .............         .....   .  .
+.  .  ................  .......  ................  .  .
+.  .   .....            .......            .....   .  .
+.  .     .    ......               ......    .     .  .
+.  .     ...........   .........   ...........     .  .
+.  .          ..........       ..........          .  .
+.  ..  .....     .       .....       .     .....  ..  .
+.   .......... .....  ...........  ..... ..........   .
+.      ..... ..........  .....  .......... .....      .
+.        .     .....       .       .....     .        .
+...   .......           .......           .......   ...
+  ..............     .............     ..............  
+      .......  .......  .......  .......  .......      
 ENDMAP
 # Dungeon Description
-REGION:(00,00,75,19),unlit,"ordinary"
-# Doors
-DOOR:closed,(15,02)
-DOOR:closed,(18,06)
-DOOR:closed,(35,15)
-DOOR:closed,(45,05)
-DOOR:closed,(59,09)
-DOOR:closed,(64,09)
+REGION:(00,00,54,19),lit,"ordinary"
 # Stairs
-STAIR:(01,01),up
-STAIR:(45,01),down
+STAIR:(25,05),up
+STAIR:(27,18),down
 # Non diggable walls
-NON_DIGGABLE:(00,00,75,19)
+NON_DIGGABLE:(00,00,54,19)
 # Objects
 OBJECT:random,random,random
 OBJECT:random,random,random
@@ -137,46 +143,38 @@ OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
-OBJECT:random,random,random
 # Random traps
-TRAP:"pit",(13,10)
-TRAP:"spiked pit",(45,03)
-TRAP:"board",(41,16)
-TRAP:"magic",(60,09)
-TRAP:random,random
-TRAP:random,random
+TRAP:"spiked pit",random
+TRAP:"spiked pit",random
+TRAP:"teleport",random
+TRAP:"teleport",random
+TRAP:"arrow",random
+TRAP:"arrow",random
 # Random monsters.
-MONSTER:'C',"forest centaur",(40,10),hostile
-MONSTER:'C',"forest centaur",(41,10),hostile
-MONSTER:'C',"forest centaur",(42,10),hostile
-MONSTER:'C',"forest centaur",(43,10),hostile
-MONSTER:'C',"mountain centaur",(44,10),hostile
-MONSTER:'C',"mountain centaur",(45,10),hostile
-MONSTER:'C',"mountain centaur",(40,11),hostile
-MONSTER:'C',"mountain centaur",(41,11),hostile
-MONSTER:'C',"mountain centaur",(42,11),hostile
-MONSTER:'C',"mountain centaur",(43,11),hostile
-MONSTER:'C',"mountain centaur",(44,11),hostile
-MONSTER:'C',"mountain centaur",(45,11),hostile
-MONSTER:'C',"mountain centaur",(41,12),hostile
-MONSTER:'C',"mountain centaur",(42,12),hostile
-MONSTER:'C',"mountain centaur",(43,12),hostile
-MONSTER:'C',"mountain centaur",(44,12),hostile
+MONSTER:'q',"wumpus",(27,18),hostile,asleep
+MONSTER:'B',"giant bat",random,hostile
+MONSTER:'B',"giant bat",random,hostile
+MONSTER:'B',"giant bat",random,hostile
+MONSTER:'B',"giant bat",random,hostile
+MONSTER:'C',"forest centaur",random,hostile
+MONSTER:'C',"forest centaur",random,hostile
+MONSTER:'C',"forest centaur",random,hostile
+MONSTER:'C',"forest centaur",random,hostile
 MONSTER:'C',"mountain centaur",random,hostile
-MONSTER:'C',random,random,hostile
-MONSTER:'C',random,random,hostile
-MONSTER:'s',"scorpion",(42,13),hostile
-MONSTER:'s',"scorpion",(43,13),hostile
-MONSTER:'s',"scorpion",(44,13),hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
 MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',random,random,hostile
+MONSTER:'s',random,random,hostile
 
-WALLIFY
 
 #
 #	The "goal" level for the quest.
@@ -217,7 +215,7 @@ STAIR:(19,10),up
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
 # Objects
-OBJECT:')',"bow",(37,10),blessed,0,"The Longbow of Artemis"
+OBJECT:')',"bow",(37,10),blessed,0,"The Longbow of Diana"
 OBJECT:'(',"chest",(37,10)
 OBJECT:random,random,(36,09)
 OBJECT:random,random,(36,10)
@@ -296,7 +294,7 @@ WALLIFY
 #
 
 MAZE: "Ran-fila" , ' '
-INIT_MAP: '.' , ' ', true, true, random, true
+INIT_MAP: '.' , 'T', true, true, random, true
 NOMAP
 #
 STAIR: random, up

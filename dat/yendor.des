@@ -58,6 +58,8 @@ MONSTER:';',"kraken",(19,04)
 MONSTER:';',"giant eel",(19,06)
 MONSTER:';',"kraken",(15,08)
 MONSTER:';',"giant eel",(17,08)
+MONSTER:';',"piranha",(15,02)
+MONSTER:';',"piranha",(19,08)
 # Random monsters
 MONSTER:'D',random,random
 MONSTER:'H',random,random

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.3	1999/11/30	*/
+/*	SCCS Id: @(#)invent.c	3.3	2000/04/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -177,13 +177,13 @@ struct obj **potmp, **pobj;
 		if (obj->owornmask) {
 			otmp->owornmask |= obj->owornmask;
 			/* (it isn't necessary to "unwear" `obj' first) */
-			if (otmp->where == OBJ_INVENT)
+			if (carried(otmp))
 			    setworn(otmp, otmp->owornmask);
 #if 0
 			/* (this should never be necessary, since items
 			    already in a monster's inventory don't ever get
 			    merged into other objects [only vice versa]) */
-			else if (otmp->where == OBJ_MINVENT) {
+			else if (mcarried(otmp)) {
 			    if (obj == MON_WEP(otmp->ocarry))
 				MON_WEP(otmp->ocarry) = otmp;
 			}
@@ -334,6 +334,8 @@ hold_another_object(obj, drop_fmt, drop_arg, hold_msg)
 struct obj *obj;
 const char *drop_fmt, *drop_arg, *hold_msg;
 {
+	char buf[BUFSZ];
+
 	if (!Blind) obj->dknown = 1;	/* maximize mergibility */
 	if (Fumbling) {
 		if (drop_fmt) pline(drop_fmt, drop_arg);
@@ -344,6 +346,13 @@ const char *drop_fmt, *drop_arg, *hold_msg;
 		/* encumbrance only matters if it would now become worse
 		   than max( current_value, stressed ) */
 		if (prev_encumbr < MOD_ENCUMBER) prev_encumbr = MOD_ENCUMBER;
+		if (drop_arg) {
+			/* addinv() may redraw the entire inventory, overwriting
+			 * drop_arg when it comes from something like doname()
+			 */
+			Strcpy(buf, drop_arg);
+			drop_arg = buf;
+		}
 		obj = addinv(obj);
 		if (inv_cnt() > 52
 		    || ((obj->otyp != LOADSTONE || !obj->cursed)
@@ -646,7 +655,7 @@ register const char *let,*word;
 	register struct obj *otmp;
 	register char ilet;
 	char buf[BUFSZ], qbuf[QBUFSZ];
-	char lets[BUFSZ];
+	char lets[BUFSZ], altlets[BUFSZ], *ap;
 	register int foo = 0;
 	register char *bp = buf;
 	xchar allowcnt = 0;	/* 0, 1 or 2 */
@@ -682,6 +691,7 @@ register const char *let,*word;
 	if(allownone) *bp++ = '-';
 	if(allowgold) *bp++ = def_oc_syms[GOLD_CLASS];
 	if(bp > buf && bp[-1] == '-') *bp++ = ' ';
+	ap = altlets;
 
 	ilet = 'a';
 	for (otmp = invent; otmp; otmp = otmp->nobj) {
@@ -757,10 +767,11 @@ register const char *let,*word;
 		    )
 			foo--;
 		/* ugly check for unworn armor that can't be worn */
-		else if (!strcmp(word, "wear") && *let==ARMOR_CLASS &&
-		    !canwearobj(otmp,&dummymask,FALSE)) {
+		else if (!strcmp(word, "wear") && *let == ARMOR_CLASS &&
+			 !canwearobj(otmp, &dummymask, FALSE)) {
 			foo--;
 			allowall = TRUE;
+			*ap++ = otmp->invlet;
 		}
 	    } else {
 
@@ -781,6 +792,7 @@ register const char *let,*word;
 	Strcpy(lets, bp);	/* necessary since we destroy buf */
 	if(foo > 5)			/* compactify string */
 		compactify(bp);
+	*ap = '\0';
 
 	if(!foo && !allowall && !allowgold && !allownone) {
 		You("don't have anything %sto %s.",
@@ -817,7 +829,7 @@ register const char *let,*word;
 		}
 		if(index(quitchars,ilet)) {
 		    if(flags.verbose)
-			pline("Never mind.");
+			pline(Never_mind);
 		    return((struct obj *)0);
 		}
 		if(ilet == '-') {
@@ -859,11 +871,15 @@ register const char *let,*word;
 			}
 		}
 		if(ilet == '?' || ilet == '*') {
-		    ilet = display_inventory(ilet=='?' ? lets:(char *)0, TRUE);
+		    char *allowed_choices = (ilet == '?') ? lets : (char *)0;
+
+		    if (ilet == '?' && !*lets && *altlets)
+			allowed_choices = altlets;
+		    ilet = display_inventory(allowed_choices, TRUE);
 		    if(!ilet) continue;
 		    if(ilet == '\033') {
 			if(flags.verbose)
-			    pline("Never mind.");
+			    pline(Never_mind);
 			return((struct obj *)0);
 		    }
 		    /* they typed a letter (not a space) at the prompt */
@@ -905,7 +921,7 @@ register const char *let,*word;
 			    obj->otyp == LOADSTONE && obj->cursed)
 				otmp->corpsenm = obj->invlet;
 			if(otmp == uwep) setuwep(obj);
-			else if (otmp == uquiver) setuqwep(obj);                
+			else if (otmp == uquiver) setuqwep(obj);
 			if (otmp == uswapwep) setuswapwep(obj);
 		}
 	}
@@ -1767,7 +1783,7 @@ char *buf;
 	    cmap = S_vodbridge;			/* "lowered drawbridge" */
 	else if (ltyp == DBWALL)
 	    cmap = S_vcdbridge;			/* "raised drawbridge" */
-	else if (ltyp == GRAVE)
+	else if (IS_GRAVE(ltyp))
 	    cmap = S_grave;				/* "grave" */
 	else if (ltyp == TREE)
 	    cmap = S_tree;				/* "tree" */
@@ -1798,9 +1814,8 @@ boolean picked_some;
 		You("%s no objects here.", verb);
 		return(!!Blind);
 	}
-	read_engr_at(u.ux, u.uy); /* Eric Backus */
 	if (!skip_objects && (trap = t_at(u.ux,u.uy)) && trap->tseen)
-		pline("There is %s here.",
+		There("is %s here.",
 			an(defsyms[trap_to_defsym(trap->ttyp)].explanation));
 
 	otmp = level.objects[u.ux][u.uy];
@@ -1824,8 +1839,9 @@ boolean picked_some;
 	if (dfeature)
 		Sprintf(fbuf, "There is %s here.", an(dfeature));
 
-	if (!otmp || (is_pool(u.ux,u.uy) && !Underwater)) {
+	if (!otmp || is_lava(u.ux,u.uy) || (is_pool(u.ux,u.uy) && !Underwater)) {
 		if (dfeature) pline(fbuf);
+		read_engr_at(u.ux, u.uy); /* Eric Backus */
 		if (!skip_objects && (Blind || !dfeature))
 		    You("%s no objects here.", verb);
 		return(!!Blind);
@@ -1834,12 +1850,14 @@ boolean picked_some;
 
 	if (skip_objects) {
 	    if (dfeature) pline(fbuf);
-	    pline("There are %s%s objects here.",
+	    read_engr_at(u.ux, u.uy); /* Eric Backus */
+	    There("are %s%s objects here.",
 		  (obj_cnt <= 10) ? "several" : "many",
 		  picked_some ? " more" : "");
 	} else if (!otmp->nexthere) {
 	    /* only one object */
 	    if (dfeature) pline(fbuf);
+	    read_engr_at(u.ux, u.uy); /* Eric Backus */
 #ifdef INVISIBLE_OBJECTS
 	    if (otmp->oinvis && !See_invisible) verb = "feel";
 #endif
@@ -1859,6 +1877,7 @@ boolean picked_some;
 	    }
 	    display_nhwindow(tmpwin, TRUE);
 	    destroy_nhwindow(tmpwin);
+	    read_engr_at(u.ux, u.uy); /* Eric Backus */
 	}
 	return(!!Blind);
 }
@@ -1885,7 +1904,7 @@ boolean force_touch;
 	    else
 			pline("Touching the %s corpse is a fatal mistake...",
 				mons[otmp->corpsenm].mname);
-		Sprintf(kbuf, "%s corpse", an(mons[otmp->corpsenm].mname));            
+		Sprintf(kbuf, "%s corpse", an(mons[otmp->corpsenm].mname));
 		instapetrify(kbuf);
 	}
 }
@@ -1920,6 +1939,7 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 #ifdef INVISIBLE_OBJECTS
 		obj->oinvis != otmp->oinvis ||
 #endif
+	    obj->greased != otmp->greased ||
 	    obj->oeroded != otmp->oeroded ||
 	    obj->oeroded2 != otmp->oeroded2)
 	    return(FALSE);
@@ -1994,9 +2014,13 @@ doprgold()
 int
 doprwep()
 {
-	if(!uwep) You("are empty %s.", body_part(HANDED));
-	else prinv((char *)0, uwep, 0L);
-	return 0;
+    if (!uwep) {
+	You("are empty %s.", body_part(HANDED));
+    } else {
+	prinv((char *)0, uwep, 0L);
+	if (u.twoweap) prinv((char *)0, uswapwep, 0L);
+    }
+    return 0;
 }
 
 int
@@ -2232,10 +2256,11 @@ doorganize()	/* inventory organizer by Del Lamb */
 	/* blank out all the letters currently in use in the inventory */
 	/* except those that will be merged with the selected object   */
 	for (otmp = invent; otmp; otmp = otmp->nobj)
-		if (otmp != obj && !mergable(otmp,obj))
+		if (otmp != obj && !mergable(otmp,obj)) {
 			if (otmp->invlet <= 'Z')
 				alphabet[(otmp->invlet) - 'A' + 26] = ' ';
 			else	alphabet[(otmp->invlet) - 'a']	    = ' ';
+		}
 
 	/* compact the list by removing all the blanks */
 	for (ix = cur = 0; ix <= 52; ix++)
@@ -2249,7 +2274,7 @@ doorganize()	/* inventory organizer by Del Lamb */
 		Sprintf(qbuf, "Adjust letter to what [%s]?",buf);
 		let = yn_function(qbuf, (char *)0, '\0');
 		if(index(quitchars,let)) {
-			pline("Never mind.");
+			pline(Never_mind);
 			return(0);
 		}
 		if (let == '@' || !letter(let))
@@ -2350,7 +2375,7 @@ int dflags;
 	int do_all = (dflags & MINV_ALL) != 0,
 	    do_gold = (do_all && mon->mgold);
 
-	Sprintf(tmp,"%s %s:", s_suffix(Monnam(mon)),
+	Sprintf(tmp,"%s %s:", s_suffix(noit_Monnam(mon)),
 		do_all ? "possessions" : "armament");
 
 	if (do_all ? (mon->minvent || mon->mgold)
@@ -2361,12 +2386,19 @@ int dflags;
 	    youmonst.data = mon->data;
 
 	    if (do_gold) {
-		/* make temporary gold object & insert at head of inventory */
+		/*
+		 * Make temporary gold object and insert at the head of
+		 * the mon's inventory.  We can get away with using a
+		 * stack variable object because monsters don't carry
+		 * gold in their inventory, so it won't merge.
+		 */
 		m_gold = zeroobj;
 		m_gold.otyp = GOLD_PIECE;  m_gold.oclass = GOLD_CLASS;
 		m_gold.quan = mon->mgold;  m_gold.dknown = 1;
 		m_gold.where = OBJ_FREE;
-		add_to_minv(mon, &m_gold);
+		/* we had better not merge and free this object... */
+		if (add_to_minv(mon, &m_gold))
+		    panic("display_minventory: static object freed.");
 	    }
 
 	    n = query_objlist(tmp, mon->minvent, INVORDER_SORT, &selected,

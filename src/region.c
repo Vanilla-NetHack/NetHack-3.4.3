@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)region.c	3.3	1999/11/29	*/
+/*	SCCS Id: @(#)region.c	3.3	1999/12/29	*/
 /* Copyright (c) 1996 by Jean-Christophe Collet	 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -49,8 +49,6 @@ static callback_proc callbacks[] = {
 #define EXPIRE_GAS_CLOUD 1
     expire_gas_cloud
 };
-
-extern struct monst *find_mid();
 
 /* Should be inlined. */
 boolean
@@ -302,6 +300,9 @@ NhRegion *reg;
     /* Check for monsters inside the region */
     for (i = reg->bounding_box.lx; i <= reg->bounding_box.hx; i++)
 	for (j = reg->bounding_box.ly; j <= reg->bounding_box.hy; j++) {
+	    /* Some regions can cross the level boundaries */
+	    if (!isok(i,j))
+		continue;
 	    if (MON_AT(i, j) && inside_region(reg, i, j))
 		add_mon_to_reg(reg, level.monsters[i][j]);
 	    if (reg->visible && cansee(i, j))
@@ -330,7 +331,7 @@ NhRegion *reg;
     if (reg->visible)
 	for (x = reg->bounding_box.lx; x <= reg->bounding_box.hx; x++)
 	    for (y = reg->bounding_box.ly; y <= reg->bounding_box.hy; y++)
-		if (inside_region(reg, x, y) && cansee(x, y))
+		if (isok(x,y) && inside_region(reg, x, y) && cansee(x, y))
 		    newsym(x, y);
 
     free_region(reg);
@@ -390,23 +391,17 @@ run_regions()
 	/* Check if any monster is inside region */
 	if (f_indx != NO_CALLBACK) {
 	    for (j = 0; j < regions[i]->n_monst; j++) {
-		struct monst *mtmp = find_mid(regions[i]->monsters[j]);
+		struct monst *mtmp = find_mid(regions[i]->monsters[j], FM_EVERYWHERE);
 
-		if (mtmp && (*callbacks[f_indx])(regions[i], mtmp)) {
+		if (!mtmp || mtmp->mhp <= 0 ||
+				(*callbacks[f_indx])(regions[i], mtmp)) {
 		    /* The monster died, remove it from list */
-		    regions[i]->monsters[j] = 0;
+		    k = (regions[i]->n_monst -= 1);
+		    regions[i]->monsters[j] = regions[i]->monsters[k];
+		    regions[i]->monsters[k] = 0;
+		    --j;    /* current slot has been reused; recheck it next */
 		}
 	    }
-	    /* clean up monster list */
-	    for (j = 0, k = 0; j < regions[i]->n_monst; j++)
-		if (regions[i]->monsters[j] == 0) {
-		    k++;
-		    if (j != regions[i]->n_monst) {
-			regions[i]->monsters[j] = regions[i]->monsters[j + 1];
-			regions[i]->monsters[j + 1] = 0;
-		    }
-		}
-	    regions[i]->n_monst -= k;
 	}
     }
 }
@@ -787,7 +782,7 @@ genericptr_t p2;
     } else {
 	mtmp = (struct monst *) p2;
 	if (canseemon(mtmp))
-	    pline("%s bumps into something!", Monnam(mtmp));
+	    pline("%s bumps into %s!", Monnam(mtmp), something);
     }
     return FALSE;
 }
@@ -872,7 +867,7 @@ genericptr_t p2;
 	if (!Blind)
 	    make_blinded(1L, FALSE);
 	if (!Poison_resistance) {
-	    pline("Something is burning your lungs!");
+	    pline("%s is burning your %s!", Something, makeplural(body_part(LUNG)));
 	    You("cough and spit blood!");
 	    losehp(rnd(dam) + 5, "gas cloud", KILLED_BY_AN);
 	    return FALSE;
@@ -887,17 +882,14 @@ genericptr_t p2;
 	if (!nonliving(mtmp->data) && !breathless(mtmp->data)) {
 	    if (cansee(mtmp->mx, mtmp->my))
 		pline("%s coughs!", Monnam(mtmp));
+	    setmangry(mtmp);
 	    if (resists_poison(mtmp))
 		return FALSE;
 	    mtmp->mhp -= rnd(dam) + 5;
 	    if (mtmp->mhp <= 0) {
-		int xx = mtmp->mx;
-		int yy = mtmp->my;
-
-		monkilled(mtmp, "gas", AD_PHYS);
-		if (mtmp->mhp <= 0) {
-		    newsym(xx, yy);
-		    return TRUE;	/* The monster died, signal it! */
+		killed(mtmp);
+		if (mtmp->mhp <= 0) {	/* not lifesaved */
+		    return TRUE;
 		}
 	    }
 	}
@@ -933,7 +925,7 @@ int damage;
     cloud->expire_f = EXPIRE_GAS_CLOUD;
     cloud->arg = (genericptr_t) damage;
     cloud->visible = TRUE;
-    cloud->glyph = monnum_to_glyph(PM_FOG_CLOUD);
+    cloud->glyph = cmap_to_glyph(S_cloud);
     add_region(cloud);
     return cloud;
 }

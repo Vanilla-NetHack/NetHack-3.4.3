@@ -17,6 +17,10 @@
 extern void NDECL(sco_mapon);
 extern void NDECL(sco_mapoff);
 #endif
+#ifdef __linux__
+extern void NDECL(linux_mapon);
+extern void NDECL(linux_mapoff);
+#endif
 
 static struct stat buf, hbuf;
 
@@ -42,6 +46,7 @@ gethdate(name)
 
 	register const char *np, *path;
 	char filename[MAXPATHLEN+1];
+	int pathlen;
 
 	if (index(name, '/') != (char *)0 ||
 					(path = getenv("PATH")) == (char *)0)
@@ -50,19 +55,26 @@ gethdate(name)
 	for (;;) {
 		if ((np = index(path, ':')) == (char *)0)
 			np = path + strlen(path);	/* point to end str */
-		if (np - path <= 1)			/* %% */
-			Strcpy(filename, name);
-		else {
-			(void) strncpy(filename, path, np - path);
-			filename[np - path] = '/';
-			Strcpy(filename + (np - path) + 1, name);
+		pathlen = np - path;
+		if (pathlen > MAXPATHLEN)
+			pathlen = MAXPATHLEN;
+		if (pathlen <= 1) {			/* %% */
+			(void) strncpy(filename, name, MAXPATHLEN);
+		} else {
+			(void) strncpy(filename, path, pathlen);
+			filename[pathlen] = '/';
+			(void) strncpy(filename + pathlen + 1, name,
+					(MAXPATHLEN - 1) - pathlen);
 		}
+		filename[MAXPATHLEN] = '\0';
 		if (stat(filename, &hbuf) == 0)
 			return;
 		if (*np == '\0')
 			break;
 		path = np + 1;
 	}
+	if (strlen(name) > BUFSZ/2)
+		name = name + strlen(name) - BUFSZ/2;
 #if defined(BOS) && defined(NHSTDC)
 /*
  *	This one is really **STUPID**.  I don't know why it's happening
@@ -149,10 +161,11 @@ eraseoldlocks()
 	for(i = 1; i <= MAXDUNGEON*MAXLEVEL + 1; i++) {
 		/* try to remove all */
 		set_levelfile_name(lock, i);
-		(void) unlink(lock);
+		(void) unlink(fqname(lock, LEVELPREFIX, 0));
 	}
 	set_levelfile_name(lock, 0);
-	if(unlink(lock)) return(0);			/* cannot remove it */
+	if (unlink(fqname(lock, LEVELPREFIX, 0)))
+		return(0);				/* cannot remove it */
 	return(1);					/* success! */
 }
 
@@ -161,6 +174,7 @@ getlock()
 {
 	extern int errno;
 	register int i = 0, fd, c;
+	const char *fq_lock;
 
 #ifdef TTY_GRAPHICS
 	/* idea from rpick%ucqais@uccba.uc.edu
@@ -176,7 +190,7 @@ getlock()
 #endif
 
 	/* we ignore QUIT and INT at this point */
-	if (!lock_file(HLOCK, 10)) {
+	if (!lock_file(HLOCK, LOCKPREFIX, 10)) {
 		wait_synch();
 		error("%s", "");
 	}
@@ -189,12 +203,13 @@ getlock()
 
 		do {
 			lock[0] = 'a' + i++;
+			fq_lock = fqname(lock, LEVELPREFIX, 0);
 
-			if((fd = open(lock, 0)) == -1) {
+			if((fd = open(fq_lock, 0)) == -1) {
 			    if(errno == ENOENT) goto gotlock; /* no such file */
-			    perror(lock);
+			    perror(fq_lock);
 			    unlock_file(HLOCK);
-			    error("Cannot open %s", lock);
+			    error("Cannot open %s", fq_lock);
 			}
 
 			if(veryold(fd) /* closes fd if true */
@@ -206,11 +221,12 @@ getlock()
 		unlock_file(HLOCK);
 		error("Too many hacks running now.");
 	} else {
-		if((fd = open(lock, 0)) == -1) {
+		fq_lock = fqname(lock, LEVELPREFIX, 0);
+		if((fd = open(fq_lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
-			perror(lock);
+			perror(fq_lock);
 			unlock_file(HLOCK);
-			error("Cannot open %s", lock);
+			error("Cannot open %s", fq_lock);
 		}
 
 		if(veryold(fd) /* closes fd if true */ && eraseoldlocks())
@@ -242,17 +258,17 @@ getlock()
 	}
 
 gotlock:
-	fd = creat(lock, FCMASK);
+	fd = creat(fq_lock, FCMASK);
 	unlock_file(HLOCK);
 	if(fd == -1) {
-		error("cannot creat lock file.");
+		error("cannot creat lock file (%s).", fq_lock);
 	} else {
 		if(write(fd, (genericptr_t) &hackpid, sizeof(hackpid))
 		    != sizeof(hackpid)){
-			error("cannot write lock");
+			error("cannot write lock (%s)", fq_lock);
 		}
 		if(close(fd) == -1) {
-			error("cannot close lock");
+			error("cannot close lock (%s)", fq_lock);
 		}
 	}
 }
@@ -315,6 +331,9 @@ int wt;
 #ifdef _M_UNIX
 	sco_mapon();
 #endif
+#ifdef __linux__
+	linux_mapon();
+#endif
 	if((f = fork()) == 0){		/* child */
 		(void) setgid(getgid());
 		(void) setuid(getuid());
@@ -333,6 +352,9 @@ int wt;
 	(void) wait( (int *) 0);
 #ifdef _M_UNIX
 	sco_mapoff();
+#endif
+#ifdef __linux__
+	linux_mapoff();
 #endif
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef WIZARD

@@ -239,7 +239,7 @@ DOOR:locked,(26,09)
 # Stairs
 STAIR:(36,05),up
 # The altar.  Unattended.
-ALTAR:(63,04),align[2],altar
+ALTAR:(63,04),noncoaligned,altar
 NON_DIGGABLE:(00,00,75,19)
 # Objects
 OBJECT:'*',"luckstone",(63,04),blessed,0,"The Heart of Ahriman"

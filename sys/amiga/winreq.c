@@ -675,20 +675,20 @@ struct COLDEF amiv_colnames[ AMII_MAXCOLORS ] =
 {
     "Black","(000)",
     "White","(fff)",
+    "Cyan","(0bf)",
+    "Orange","(f60)",
+    "Blue","(00f)",
+    "Green","(090)",
+    "Grey","(69b)",
+    "Red","(f00)",
     "Light Green","(6f0)",
     "Yellow","(ff0)",
-    "Blue","(13a)",
     "Magenta","(f0f)",
-    "Cyan","(bef)",
-    "Light Brown","(b40)",
-    "Grey Blue","(466)",
-    "Orange","(f60)",
-    "Green","(090)",
     "Brown","(940)",
-    "Grey","(58c)",
-    "Peach","(fb9)",
+    "Grey Blue","(466)",
+    "Light Brown","(c40)",
     "Light Grey","(ddb)",
-    "Red","(c00)",
+    "Peach","(fb9)",
     "Col 16","(222)",
     "Col 17","(eee)",
     "Col 18","(000)",
@@ -958,7 +958,14 @@ void getlind(prompt,bufp, dflt)
     if( !once )
     {
 	if( bigscreen )
-	    StrWindow.TopEdge = (HackScreen->Height/2) - (StrWindow.Height/2);
+/*
+ * Old method, on pal interlace overscan screen this window opens right on
+ * top of possible description of scroll/potion effect, thus requiring the
+ * user to move the window elsewhere.
+ * New method places the query window on top of gamemap window
+ *	    StrWindow.TopEdge = (HackScreen->Height/2) - (StrWindow.Height/2);
+ */
+	    StrWindow.TopEdge = amii_wins[WIN_MAP]->win->TopEdge;
 	SetBorder( &String );
 	SetBorder( &Gadget2 );
 	once = 1;

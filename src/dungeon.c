@@ -637,8 +637,27 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	pd.n_levs = pd.n_brs = 0;
 
 	dgn_file = dlb_fopen(DUNGEON_FILE, RDBMODE);
-	if (!dgn_file)
-	    panic("Cannot open dungeon description file \"%s\"!", DUNGEON_FILE);
+	if (!dgn_file) {
+	    char tbuf[BUFSZ];
+	    Sprintf(tbuf, "Cannot open dungeon description - \"%s",
+		DUNGEON_FILE);
+#ifdef DLBRSRC /* using a resource from the executable */
+	    Strcat(tbuf, "\" resource!");
+#else /* using a file or DLB file */
+# if defined(DLB)
+	    Strcat(tbuf, "\" from ");
+#  ifdef PREFIXES_IN_USE
+	    Strcat(tbuf, "\n\"");
+	    if (fqn_prefix[DATAPREFIX]) Strcat(tbuf, fqn_prefix[DATAPREFIX]);
+#  else
+	    Strcat(tbuf, "\"");
+#  endif
+	    Strcat(tbuf, DLBFILE);
+# endif
+	    Strcat(tbuf, "\" file!");
+#endif
+	    panic(tbuf);
+	}
 
 	/* validate the data's version against the program's version */
 	Fread((genericptr_t) &vers_info, sizeof vers_info, 1, dgn_file);

@@ -76,7 +76,7 @@ mkshop()
 	/* first determine shoptype */
 	if(wizard){
 #ifndef MAC
-		ep = getenv("SHOPTYPE");
+		ep = nh_getenv("SHOPTYPE");
 		if(ep){
 			if(*ep == 'z' || *ep == 'Z'){
 				mkzoo(ZOO);
@@ -326,8 +326,8 @@ struct mkroom *sroom;
 			if(!rn2(10))	/* lots of treasure buried with dead */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
 					     sx, sy, TRUE);
-			if (!rn2(5) && levl[sx][sy].typ == ROOM)
-			    levl[sx][sy].typ = GRAVE;
+			if (!rn2(5))
+			    make_grave(sx, sy, (char *)0);
 			break;
 		    case BEEHIVE:
 			if(!rn2(3))
@@ -459,6 +459,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 			if(!eelct || !rn2(4)) {
 			    /* mkclass() won't do, as we might get kraken */
 			    (void) makemon(rn2(5) ? &mons[PM_GIANT_EEL]
+						  : rn2(2) ? &mons[PM_PIRANHA]
 						  : &mons[PM_ELECTRIC_EEL],
 						sx, sy, NO_MM_FLAGS);
 			    eelct++;
@@ -743,7 +744,8 @@ struct mkroom *r;
 	mread(fd, (genericptr_t) r, sizeof(struct mkroom));
 	for(i=0; i<r->nsubrooms; i++) {
 		r->sbrooms[i] = &subrooms[nsubroom];
-		rest_room(fd, &subrooms[nsubroom++]);
+		rest_room(fd, &subrooms[nsubroom]);
+		subrooms[nsubroom++].resident = (struct monst *)0;
 	}
 }
 

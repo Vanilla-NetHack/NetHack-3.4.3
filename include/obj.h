@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	3.3	1999/03/13	*/
+/*	SCCS Id: @(#)obj.h	3.3	1999/12/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -80,7 +80,7 @@ struct obj {
 	Bitfield(oattached,2);	/* obj struct has special attachment */
 #define OATTACHED_NOTHING 0
 #define OATTACHED_MONST   1	/* monst struct in oextra */
-#define OATTACHED_UNUSED2 2
+#define OATTACHED_M_ID    2	/* monst id in oextra */
 #define OATTACHED_UNUSED3 3
 
 	Bitfield(in_use,1);	/* for magic items before useup items */
@@ -160,6 +160,7 @@ struct obj {
 #define is_poisonable(otmp)	(otmp->oclass == WEAPON_CLASS && \
 			 objects[otmp->otyp].oc_skill >= -P_SHURIKEN && \
 			 objects[otmp->otyp].oc_skill <= -P_BOW)
+#define uslinging()	(uwep && objects[uwep->otyp].oc_skill == P_SLING)
 
 /* Armor */
 #define is_shield(otmp) (otmp->oclass == ARMOR_CLASS && \

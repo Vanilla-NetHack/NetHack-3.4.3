@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)role.c	3.3	1999/11/26	*/
+/*	SCCS Id: @(#)role.c	3.3	2000/05/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985-1999. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -154,15 +154,15 @@ const struct Role roles[] = {
 	10, 8,-2, 0,  9, A_WIS, SPE_TURN_UNDEAD,     -4
 },
 {	{"Monk", 0}, {
-	{"Candidate",                 0},
-	{"Novice",                    0},
-	{"Initiate",                  0},
-	{"Student of the Stone path", 0},
-	{"Student of the Waters",     0},
-	{"Student of Metals",         0},
-	{"Student of the Winds",      0},
-	{"Student of Fire",           0},
-	{"Master",                    0} },
+	{"Candidate",         0},
+	{"Novice",            0},
+	{"Initiate",          0},
+	{"Student of Stones", 0},
+	{"Student of Waters", 0},
+	{"Student of Metals", 0},
+	{"Student of Winds",  0},
+	{"Student of Fire",   0},
+	{"Master",            0} },
 	"Shan Lai Ching", "Chih Sung-tzu", "Huan Ti", /* Chinese */
 	"Mon", "the Monastery of Chan-Sune",
 	  "the Monastery of the Earth-Lord",
@@ -263,7 +263,7 @@ const struct Role roles[] = {
 	PM_RANGER, NON_PM, PM_LITTLE_DOG /* Orion & canis major */,
 	PM_ORION, PM_HUNTER, PM_SCORPIUS,
 	PM_FOREST_CENTAUR, PM_SCORPION, S_CENTAUR, S_SPIDER,
-	ART_LONGBOW_OF_ARTEMIS,
+	ART_LONGBOW_OF_DIANA,
 	MH_HUMAN|MH_ELF|MH_GNOME|MH_ORC | ROLE_MALE|ROLE_FEMALE |
 	  ROLE_NEUTRAL|ROLE_CHAOTIC,
 	/* Str Int Wis Dex Con Cha */
@@ -502,6 +502,9 @@ const struct Align aligns[] = {
 	{"evil",	"unaligned",	"Una",	0,		A_NONE}
 };
 
+/* used by str2XXX() */
+static char NEARDATA randomstr[] = "random";
+
 
 boolean
 validrole(rolenum)
@@ -526,28 +529,28 @@ str2role(str)
 
 	/* Is str valid? */
 	if (!str || !str[0])
-	    return (-1);
-
-	/* "@" returns a random role */
-	if (str[0] == '@')
-		return (randrole());
+	    return ROLE_NONE;
 
 	/* Match as much of str as is provided */
 	len = strlen(str);
 	for (i = 0; roles[i].name.m; i++) {
 	    /* Does it match the male name? */
 	    if (!strncmpi(str, roles[i].name.m, len))
-	    	return (i);
+		return i;
 	    /* Or the female name? */
 	    if (roles[i].name.f && !strncmpi(str, roles[i].name.f, len))
-	    	return (i);
+		return i;
 	    /* Or the filecode? */
 	    if (!strcmpi(str, roles[i].filecode))
-	    	return (i);
+		return i;
 	}
 
+	if ((len == 1 && (*str == '*' || *str == '@')) ||
+		!strncmpi(str, randomstr, len))
+	    return ROLE_RANDOM;
+
 	/* Couldn't find anything appropriate */
-	return (-1);
+	return ROLE_NONE;
 }
 
 
@@ -594,21 +597,25 @@ str2race(str)
 
 	/* Is str valid? */
 	if (!str || !str[0])
-	    return (-1);
+	    return ROLE_NONE;
 
 	/* Match as much of str as is provided */
 	len = strlen(str);
 	for (i = 0; races[i].noun; i++) {
 	    /* Does it match the noun? */
 	    if (!strncmpi(str, races[i].noun, len))
-	    	return (i);
+		return i;
 	    /* Or the filecode? */
 	    if (!strcmpi(str, races[i].filecode))
-	    	return (i);
+		return i;
 	}
 
+	if ((len == 1 && (*str == '*' || *str == '@')) ||
+		!strncmpi(str, randomstr, len))
+	    return ROLE_RANDOM;
+
 	/* Couldn't find anything appropriate */
-	return (-1);
+	return ROLE_NONE;
 }
 
 
@@ -657,21 +664,24 @@ str2gend(str)
 
 	/* Is str valid? */
 	if (!str || !str[0])
-	    return (-1);
+	    return ROLE_NONE;
 
 	/* Match as much of str as is provided */
 	len = strlen(str);
 	for (i = 0; i < ROLE_GENDERS; i++) {
 	    /* Does it match the adjective? */
 	    if (!strncmpi(str, genders[i].adj, len))
-	    	return (i);
+		return i;
 	    /* Or the filecode? */
 	    if (!strcmpi(str, genders[i].filecode))
-	    	return (i);
+		return i;
 	}
+	if ((len == 1 && (*str == '*' || *str == '@')) ||
+		!strncmpi(str, randomstr, len))
+	    return ROLE_RANDOM;
 
 	/* Couldn't find anything appropriate */
-	return (-1);
+	return ROLE_NONE;
 }
 
 
@@ -720,21 +730,272 @@ str2align(str)
 
 	/* Is str valid? */
 	if (!str || !str[0])
-	    return (-1);
+	    return ROLE_NONE;
 
 	/* Match as much of str as is provided */
 	len = strlen(str);
 	for (i = 0; i < ROLE_ALIGNS; i++) {
 	    /* Does it match the adjective? */
 	    if (!strncmpi(str, aligns[i].adj, len))
-	    	return (i);
+		return i;
 	    /* Or the filecode? */
 	    if (!strcmpi(str, aligns[i].filecode))
-	    	return (i);
+		return i;
 	}
+	if ((len == 1 && (*str == '*' || *str == '@')) ||
+		!strncmpi(str, randomstr, len))
+	    return ROLE_RANDOM;
 
 	/* Couldn't find anything appropriate */
-	return (-1);
+	return ROLE_NONE;
+}
+
+/* is rolenum compatible with any racenum/gendnum/alignnum constraints? */
+boolean
+ok_role(rolenum, racenum, gendnum, alignnum)
+int rolenum, racenum, gendnum, alignnum;
+{
+    int i;
+    short allow;
+
+    if (rolenum >= 0 && rolenum < SIZE(roles)-1) {
+	allow = roles[rolenum].allow;
+	if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		!(allow & races[racenum].allow & ROLE_RACEMASK))
+	    return FALSE;
+	if (gendnum >= 0 && gendnum < ROLE_GENDERS &&
+		!(allow & genders[gendnum].allow & ROLE_GENDMASK))
+	    return FALSE;
+	if (alignnum >= 0 && alignnum < ROLE_ALIGNS &&
+		!(allow & aligns[alignnum].allow & ROLE_ALIGNMASK))
+	    return FALSE;
+	return TRUE;
+    } else {
+	for (i = 0; i < SIZE(roles)-1; i++) {
+	    allow = roles[i].allow;
+	    if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		    !(allow & races[racenum].allow & ROLE_RACEMASK))
+		continue;
+	    if (gendnum >= 0 && gendnum < ROLE_GENDERS &&
+		    !(allow & genders[gendnum].allow & ROLE_GENDMASK))
+		continue;
+	    if (alignnum >= 0 && alignnum < ROLE_ALIGNS &&
+		    !(allow & aligns[alignnum].allow & ROLE_ALIGNMASK))
+		continue;
+	    return TRUE;
+	}
+	return FALSE;
+    }
+}
+
+/* pick a random role subject to any racenum/gendnum/alignnum constraints */
+int
+pick_role(racenum, gendnum, alignnum)
+int racenum, gendnum, alignnum;
+{
+    int i;
+    int roles_ok = 0;
+
+    for (i = 0; i < SIZE(roles)-1; i++) {
+	if (ok_role(i, racenum, gendnum, alignnum))
+	    roles_ok++;
+    }
+    if (roles_ok == 0)
+	return ROLE_NONE;
+    roles_ok = rn2(roles_ok);
+    for (i = 0; i < SIZE(roles)-1; i++) {
+	if (ok_role(i, racenum, gendnum, alignnum)) {
+	    if (roles_ok == 0)
+		return i;
+	    else
+		roles_ok--;
+	}
+    }
+    return ROLE_NONE;
+}
+
+/* is racenum compatible with any rolenum/gendnum/alignnum constraints? */
+boolean
+ok_race(rolenum, racenum, gendnum, alignnum)
+int rolenum, racenum, gendnum, alignnum;
+{
+    int i;
+    short allow;
+
+    if (racenum >= 0 && racenum < SIZE(races)-1) {
+	allow = races[racenum].allow;
+	if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		!(allow & roles[rolenum].allow & ROLE_RACEMASK))
+	    return FALSE;
+	if (gendnum >= 0 && gendnum < ROLE_GENDERS &&
+		!(allow & genders[gendnum].allow & ROLE_GENDMASK))
+	    return FALSE;
+	if (alignnum >= 0 && alignnum < ROLE_ALIGNS &&
+		!(allow & aligns[alignnum].allow & ROLE_ALIGNMASK))
+	    return FALSE;
+	return TRUE;
+    } else {
+	for (i = 0; i < SIZE(races)-1; i++) {
+	    allow = races[i].allow;
+	    if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		    !(allow & roles[rolenum].allow & ROLE_RACEMASK))
+		continue;
+	    if (gendnum >= 0 && gendnum < ROLE_GENDERS &&
+		    !(allow & genders[gendnum].allow & ROLE_GENDMASK))
+		continue;
+	    if (alignnum >= 0 && alignnum < ROLE_ALIGNS &&
+		    !(allow & aligns[alignnum].allow & ROLE_ALIGNMASK))
+		continue;
+	    return TRUE;
+	}
+	return FALSE;
+    }
+}
+
+/* pick a random race subject to any rolenum/gendnum/alignnum constraints */
+int
+pick_race(rolenum, gendnum, alignnum)
+int rolenum, gendnum, alignnum;
+{
+    int i;
+    int races_ok = 0;
+
+    for (i = 0; i < SIZE(races)-1; i++) {
+	if (ok_race(rolenum, i, gendnum, alignnum))
+	    races_ok++;
+    }
+    if (races_ok == 0)
+	return ROLE_NONE;
+    races_ok = rn2(races_ok);
+    for (i = 0; i < SIZE(races)-1; i++) {
+	if (ok_race(rolenum, i, gendnum, alignnum)) {
+	    if (races_ok == 0)
+		return i;
+	    else
+		races_ok--;
+	}
+    }
+    return ROLE_NONE;
+}
+
+/* is gendnum compatible with any rolenum/racenum/alignnum constraints? */
+/* gender and alignment are not comparable (and also not constrainable) */
+boolean
+ok_gend(rolenum, racenum, gendnum, alignnum)
+int rolenum, racenum, gendnum, alignnum;
+{
+    int i;
+    short allow;
+
+    if (gendnum >= 0 && gendnum < ROLE_GENDERS) {
+	allow = genders[gendnum].allow;
+	if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		!(allow & roles[rolenum].allow & ROLE_GENDMASK))
+	    return FALSE;
+	if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		!(allow & races[racenum].allow & ROLE_GENDMASK))
+	    return FALSE;
+	return TRUE;
+    } else {
+	for (i = 0; i < ROLE_GENDERS; i++) {
+	    allow = genders[i].allow;
+	    if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		    !(allow & roles[rolenum].allow & ROLE_GENDMASK))
+		continue;
+	    if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		    !(allow & races[racenum].allow & ROLE_GENDMASK))
+		continue;
+	    return TRUE;
+	}
+	return FALSE;
+    }
+}
+
+/* pick a random gender subject to any rolenum/racenum/alignnum constraints */
+/* gender and alignment are not comparable (and also not constrainable) */
+int
+pick_gend(rolenum, racenum, alignnum)
+int rolenum, racenum, alignnum;
+{
+    int i;
+    int gends_ok = 0;
+
+    for (i = 0; i < ROLE_GENDERS; i++) {
+	if (ok_gend(rolenum, racenum, i, alignnum))
+	    gends_ok++;
+    }
+    if (gends_ok == 0)
+	return ROLE_NONE;
+    gends_ok = rn2(gends_ok);
+    for (i = 0; i < ROLE_GENDERS; i++) {
+	if (ok_gend(rolenum, racenum, i, alignnum)) {
+	    if (gends_ok == 0)
+		return i;
+	    else
+		gends_ok--;
+	}
+    }
+    return ROLE_NONE;
+}
+
+/* is alignnum compatible with any rolenum/racenum/gendnum constraints? */
+/* alignment and gender are not comparable (and also not constrainable) */
+boolean
+ok_align(rolenum, racenum, gendnum, alignnum)
+int rolenum, racenum, gendnum, alignnum;
+{
+    int i;
+    short allow;
+
+    if (alignnum >= 0 && alignnum < ROLE_ALIGNS) {
+	allow = aligns[alignnum].allow;
+	if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		!(allow & roles[rolenum].allow & ROLE_ALIGNMASK))
+	    return FALSE;
+	if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		!(allow & races[racenum].allow & ROLE_ALIGNMASK))
+	    return FALSE;
+	return TRUE;
+    } else {
+	for (i = 0; i < ROLE_ALIGNS; i++) {
+	    allow = races[i].allow;
+	    if (rolenum >= 0 && rolenum < SIZE(roles)-1 &&
+		    !(allow & roles[rolenum].allow & ROLE_ALIGNMASK))
+		continue;
+	    if (racenum >= 0 && racenum < SIZE(races)-1 &&
+		    !(allow & races[racenum].allow & ROLE_ALIGNMASK))
+		continue;
+	    return TRUE;
+	}
+	return FALSE;
+    }
+}
+
+/* pick a random alignment subject to any rolenum/racenum/gendnum constraints */
+/* alignment and gender are not comparable (and also not constrainable) */
+int
+pick_align(rolenum, racenum, gendnum)
+int rolenum, racenum, gendnum;
+{
+    int i;
+    int aligns_ok = 0;
+
+    for (i = 0; i < ROLE_ALIGNS; i++) {
+	if (ok_align(rolenum, racenum, gendnum, i))
+	    aligns_ok++;
+    }
+    if (aligns_ok == 0)
+	return ROLE_NONE;
+    aligns_ok = rn2(aligns_ok);
+    for (i = 0; i < ROLE_ALIGNS; i++) {
+	if (ok_align(rolenum, racenum, gendnum, i)) {
+	    if (aligns_ok == 0)
+		return i;
+	    else
+		aligns_ok--;
+	}
+    }
+    return ROLE_NONE;
 }
 
 
@@ -751,23 +1012,27 @@ plnamesuffix()
 	    /* Isolate the next token */
 	    sptr = eptr;
 	    if ((eptr = index(sptr, '-')) != (char *)0)
-	    	*eptr++ = '\0';
+		*eptr++ = '\0';
 
 	    /* Try to match it to something */
-	    if ((i = str2role(sptr)) >= 0)
-	    	flags.initrole = i;
-	    else if ((i = str2race(sptr)) >= 0)
-	    	flags.initrace = i;
-	    else if ((i = str2gend(sptr)) >= 0)
-	    	flags.initgend = i;
-	    else if ((i = str2align(sptr)) >= 0)
-	    	flags.initalign = i;
+	    if ((i = str2role(sptr)) != ROLE_NONE)
+		flags.initrole = i;
+	    else if ((i = str2race(sptr)) != ROLE_NONE)
+		flags.initrace = i;
+	    else if ((i = str2gend(sptr)) != ROLE_NONE)
+		flags.initgend = i;
+	    else if ((i = str2align(sptr)) != ROLE_NONE)
+		flags.initalign = i;
 	}
 	if(!plname[0]) {
 	    askname();
 	    plnamesuffix();
 	}
-	return;
+
+	/* commas in the plname confuse the record file, convert to spaces */
+	for (sptr = plname; *sptr; sptr++) {
+		if (*sptr == ',') *sptr = ' ';
+	}
 }
 
 
@@ -836,7 +1101,7 @@ role_init()
 	if (urole.ldrnum != NON_PM) {
 	    mons[urole.ldrnum].msound = MS_LEADER;
 	    mons[urole.ldrnum].mflags2 |= (M2_PEACEFUL);
-	    mons[urole.ldrnum].mflags3 = M3_CLOSE;
+	    mons[urole.ldrnum].mflags3 |= M3_CLOSE;
 	    mons[urole.ldrnum].maligntyp = alignmnt * 3;
 	}
 
@@ -851,7 +1116,7 @@ role_init()
 	    mons[urole.neminum].msound = MS_NEMESIS;
 	    mons[urole.neminum].mflags2 &= ~(M2_PEACEFUL);
 	    mons[urole.neminum].mflags2 |= (M2_NASTY|M2_STALK|M2_HOSTILE);
-	    mons[urole.neminum].mflags3 = M3_WANTSARTI | M3_WAITFORU;
+	    mons[urole.neminum].mflags3 |= M3_WANTSARTI | M3_WAITFORU;
 	}
 
 	/* Fix up the god names */
@@ -889,19 +1154,25 @@ role_init()
 }
 
 const char *
-Hello()
+Hello(mtmp)
+struct monst *mtmp;
 {
 	switch (Role_switch) {
 	case PM_KNIGHT:
 	    return ("Salutations"); /* Olde English */
 	case PM_SAMURAI:
-	    return ("Konnichi wa"); /* Japanese */
+	    return (mtmp && mtmp->data == &mons[PM_SHOPKEEPER] ?
+	    		"Irasshaimase" : "Konnichi wa"); /* Japanese */
 #ifdef TOURIST
 	case PM_TOURIST:
 	    return ("Aloha");       /* Hawaiian */
 #endif
 	case PM_VALKYRIE:
-	    return ("Velkommen");   /* Norse */
+	    return (
+#ifdef MAIL
+	    		mtmp && mtmp->data == &mons[PM_MAIL_DAEMON] ? "Hallo" :
+#endif
+	    		"Velkommen");   /* Norse */
 	default:
 	    return ("Hello");
 	}

@@ -24,6 +24,9 @@ Boolean Options:
         rawio                   Allow the use of raw I/O (may only be set
                                 on startup)
                                 Default: [FALSE]
+        preload_tiles           Preload tiles into RAM at start of game.
+                                Faster, but uses more memory.
+                                Default: [TRUE]
 
 Color Options:
 
@@ -161,6 +164,7 @@ While playing NetHack under MSDOS you can press the ALT key in combination
 with another key to execute an extended command as an alternative method
 to pressing a # key sequence:
 
+Alt-2    twoweapon      - toggle two-weapon combat
 Alt-a    adjust         - adjust inventory letters.
 Alt-c    chat           - talk to someone or something.
 Alt-d    dip            - dip an object into something.

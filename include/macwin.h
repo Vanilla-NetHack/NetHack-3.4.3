@@ -4,6 +4,11 @@
 
 #ifndef MACWIN_H
 # define MACWIN_H
+#undef red			/* undef internal color const strings from decl */
+#undef green
+#undef blue
+#include <windows.h>
+#include <dialogs.h>
 
 /* more headers */
 #ifdef THINK_C
@@ -32,6 +37,39 @@ typedef ModalFilterProcPtr ModalFilterUPP;
 # define ResumeProcPtr long		/* for call to InitDialogs */
 #endif
 
+/* working dirs structure */
+typedef struct macdirs {
+	Str32		dataName;
+	short		dataRefNum;
+	long		dataDirID;
+
+	Str32		saveName;
+	short		saveRefNum;
+	long		saveDirID;
+
+	Str32		levelName;
+	short		levelRefNum;
+	long		levelDirID;
+} MacDirs;
+
+typedef struct macflags {
+	Bitfield (processes, 1);
+	Bitfield (color, 1);
+	Bitfield (folders, 1);
+	Bitfield (tempMem, 1);
+	Bitfield (help, 1);
+	Bitfield (fsSpec, 1);
+	Bitfield (trueType, 1);
+	Bitfield (aux, 1);
+	Bitfield (alias, 1);
+	Bitfield (standardFile, 1);
+	Bitfield (hasDebugger, 1);
+	Bitfield (hasAE, 1);
+	Bitfield (gotOpen, 1);
+} MacFlags;
+
+extern MacDirs theDirs;		/* used in macfile.c */
+extern MacFlags macFlags;
 
 /*
  * Mac windows
@@ -63,22 +101,21 @@ typedef struct {
 } MacMHMenuItem;
 
 typedef struct NhWindow {
-	WindowPtr		its_window ;
-/*	short			kind ;*/
+	WindowPtr		its_window;
 
-	short			font_number ;
-	short			font_size ;
-	short			char_width ;
-	short			row_height ;
-	short			ascent_height ;
+	short			font_number;
+	short			font_size;
+	short			char_width;
+	short			row_height;
+	short			ascent_height;
 	
 	short			x_size;
 	short			y_size;
 	short			x_curs;
 	short			y_curs;
 	
-	short		last_more_lin ; /* Used by message window */
-	short		save_lin ;		/* Used by message window */
+	short		last_more_lin; /* Used by message window */
+	short		save_lin;		/* Used by message window */
 
 	short			miSize;		/* size of menu items arrays */
 	short			miLen;		/* number of menu items in array */
@@ -88,14 +125,14 @@ typedef struct NhWindow {
 	short			miSelLen;	/* number of items selected */
 	short			how;		/* menu mode */
 
-	char			drawn ;
-	Handle			windowText ;
-	long			windowTextLen ;
-	short		scrollPos ;
-	ControlHandle	scrollBar ;
-} NhWindow ;
+	char			drawn;
+	Handle			windowText;
+	long			windowTextLen;
+	short		scrollPos;
+	ControlHandle	scrollBar;
+} NhWindow;
 
-extern NhWindow *GetNhWin(WindowPtr mac_win);
+extern Boolean CheckNhWin(WindowPtr mac_win);
 
 
 #define NUM_STAT_ROWS 2
@@ -103,12 +140,12 @@ extern NhWindow *GetNhWin(WindowPtr mac_win);
 #define NUM_COLS 80 /* We shouldn't use column 0 */
 #define QUEUE_LEN 24
 
-extern NhWindow * theWindows ;
+extern NhWindow * theWindows;
 
-extern struct window_procs mac_procs ;
+extern struct window_procs mac_procs;
 
 #define NHW_BASE 0
-extern winid BASE_WINDOW , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
+extern winid BASE_WINDOW, WIN_MAP, WIN_MESSAGE, WIN_INVEN, WIN_STATUS;
 
 
 /*
@@ -119,26 +156,27 @@ extern winid BASE_WINDOW , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
 
 /* ### dprintf.c ### */
 
-extern void dprintf ( char * , ... ) ;
+extern void dprintf (char *, ...);
 
 /* ### maccurs.c ### */
 
-extern Boolean RetrievePosition ( short , short * , short * ) ;
-extern Boolean RetrieveSize ( short , short , short , short * , short * ) ;
-extern void SaveWindowPos ( WindowPtr ) ;
-extern void SaveWindowSize ( WindowPtr ) ;
+extern Boolean RetrievePosition (short, short *, short *);
+extern Boolean RetrieveSize (short, short, short, short *, short *);
+extern void SaveWindowPos (WindowPtr);
+extern void SaveWindowSize (WindowPtr);
 extern Boolean FDECL(RetrieveWinPos, (WindowPtr,short *,short *));
 
 /* ### macerrs.c ### */
 
-extern void comment(char *,long);
 extern void showerror(char *,const char *);
-extern Boolean itworked( short );
-extern void mustwork( short );
-extern void attemptingto( char *  );
-extern void pushattemptingto( char *  );
-extern void popattempt( void );
-
+extern Boolean itworked(short);
+extern void mustwork(short);
+extern void attemptingto(char *);
+/* appear to be unused 
+extern void comment(char *,long);
+extern void pushattemptingto(char *);
+extern void popattempt(void);
+*/
 /* ### macfile.c ### */
 
 /* extern char *macgets(int fd, char *ptr, unsigned len); unused */
@@ -147,73 +185,52 @@ extern void FDECL(P2C,(const unsigned char *p, char *c));
 
 /* ### macmenu.c ### */
 
-extern void DoMenuEvt ( long ) ;
+extern void DoMenuEvt (long);
 extern void InitMenuRes(void);
 extern void AdjustMenus(short);
-
-/* ### macmain.c ### */
-
-extern void FDECL ( process_openfile, (short src_vol, long src_dir, Str255 fName, OSType ftype));
-
-/* ### macwin.c ### */
-
-extern void AddToKeyQueue(int, Boolean);
-extern int GetFromKeyQueue ( void ) ;
-void trans_num_keys ( EventRecord * ) ;
-extern void NDECL ( InitMac ) ;
-int FDECL ( try_key_queue , ( char * ) ) ;
-void FDECL ( enter_topl_mode , ( char * ) ) ;
-void FDECL ( leave_topl_mode , ( char * ) ) ;
-void FDECL ( topl_set_resp , ( char * , char ) ) ;
-Boolean FDECL ( topl_key , ( unsigned char ) ) ;
-Boolean FDECL ( topl_ext_key , ( unsigned char ) ) ;
-extern void WindowGoAway(EventRecord *, WindowPtr);
-E void FDECL(HandleEvent, (EventRecord *));	/* used in mmodal.c */
-extern void NDECL(port_help);
-
 #define DimMenuBar() AdjustMenus(1)
 #define UndimMenuBar() AdjustMenus(0)
 
-extern Boolean small_screen ;
+/* ### macmain.c ### */
 
-/* ### mstring.c ### */
+extern void FDECL (process_openfile, (short s_vol, long s_dir, Str255 fNm, OSType ft));
 
-#ifdef applec
-extern char *PtoCstr(unsigned char *);
-extern unsigned char *CtoPstr(char *);
-#endif
+/* ### macwin.c ### */
+
+extern void AddToKeyQueue(unsigned char, Boolean);
+extern unsigned char GetFromKeyQueue (void);
+void trans_num_keys (EventRecord *);
+extern void NDECL (InitMac);
+int FDECL (try_key_queue, (char *));
+void FDECL (enter_topl_mode, (char *));
+void FDECL (leave_topl_mode, (char *));
+void FDECL (topl_set_resp, (char *, char));
+Boolean FDECL (topl_key, (unsigned char, Boolean));
+E void FDECL(HandleEvent, (EventRecord *));	/* used in mmodal.c */
+extern void NDECL(port_help);
+
+extern Boolean small_screen;
 
 E void FDECL(mac_init_nhwindows, (int *, char **));
-E void NDECL(mac_player_selection);
 E void NDECL(mac_askname);
-E void NDECL(mac_get_nh_event) ;
+E void NDECL(mac_get_nh_event);
 E void FDECL(mac_exit_nhwindows, (const char *));
-E void FDECL(mac_suspend_nhwindows, (const char *));
-E void NDECL(mac_resume_nhwindows);
 E winid FDECL(mac_create_nhwindow, (int));
 E void FDECL(mac_clear_nhwindow, (winid));
 E void FDECL(mac_display_nhwindow, (winid, BOOLEAN_P));
 E void FDECL(mac_destroy_nhwindow, (winid));
 E void FDECL(mac_curs, (winid,int,int));
 E void FDECL(mac_putstr, (winid, int, const char *));
-E void FDECL(mac_display_file, (const char *, BOOLEAN_P));
 E void FDECL(mac_start_menu, (winid));
 E void FDECL(mac_add_menu, (winid,int,const anything *,
 		CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
 E void FDECL(mac_end_menu, (winid, const char *));
 E int FDECL(mac_select_menu, (winid, int, menu_item **));
-E void NDECL(mac_update_inventory);
-E void NDECL(mac_mark_synch);
-E void NDECL(mac_wait_synch);
 #ifdef CLIPPING
 E void FDECL(mac_cliparound, (int, int));
 #endif
-E void FDECL(mac_print_glyph, (winid,XCHAR_P,XCHAR_P,int));
-E void FDECL(mac_raw_print, (const char *));
-E void FDECL(mac_raw_print_bold, (const char *));
 E int NDECL(mac_nhgetch);
 E int FDECL(mac_nh_poskey, (int *, int *, int *));
-E void NDECL(mac_nhbell);
 E int NDECL(mac_doprev_message);
 E char FDECL(mac_yn_function, (const char *, const char *, CHAR_P));
 E void FDECL(mac_getlin, (const char *,char *));

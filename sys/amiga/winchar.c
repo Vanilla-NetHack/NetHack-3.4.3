@@ -1036,10 +1036,10 @@ amii_flush_glyph_buffer( w )
     /* Go ahead and start dumping the stuff */
     for(i=0; i<glyph_node_index; ++i) {
 	/* These coordinate calculations must be synced with the
-	 * code in amii_curs() in winami.c.  curs_on_u() calls amii_curs()
+	 * code in amii_curs() in winfuncs.c.  curs_on_u() calls amii_curs()
 	 * to draw the cursor on top of the player
 	 */
-	y = w->BorderTop + (amii_g_nodes[i].y-1) * rp->TxHeight +
+	y = w->BorderTop + (amii_g_nodes[i].y-2) * rp->TxHeight +
 	    rp->TxBaseline + 1;
 	x = amii_g_nodes[i].x * rp->TxWidth + w->BorderLeft;
 

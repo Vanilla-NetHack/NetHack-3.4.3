@@ -430,8 +430,10 @@ spotless: clean
 	if exist lev_comp.exe	   del lev_comp.exe
 	if exist dgn_comp.exe	   del dgn_comp.exe
 	if exist $(SRC)\lev_lex.c  del $(SRC)\lev_lex.c
+	if exist $(SRC)\lev_flex.c del $(SRC)\lev_flex.c
 	if exist $(SRC)\lev_yacc.c del $(SRC)\lev_yacc.c
 	if exist $(SRC)\dgn_lex.c  del $(SRC)\dgn_lex.c
+	if exist $(SRC)\dgn_flex.c del $(SRC)\dgn_flex.c
 	if exist $(SRC)\dgn_yacc.c del $(SRC)\dgn_yacc.c
 	if exist recover.exe	   del recover.exe
 	if exist $(INCL)\onames.h  del $(INCL)\onames.h
@@ -457,6 +459,8 @@ spotless: clean
 	if exist $(SRC)\msdos.c	   del $(SRC)\msdos.c
 	if exist $(SRC)\pckeys.c   del $(SRC)\pckeys.c
 	if exist $(SRC)\video.c	   del $(SRC)\video.c
+	if exist $(SRC)\vidtxt.c   del $(SRC)\vidtxt.c
+	if exist $(SRC)\vidvga.c   del $(SRC)\vidvga.c
 	if exist $(SRC)\sound.c	   del $(SRC)\sound.c
 	if exist $(SRC)\tilemap.c  del $(SRC)\tilemap.c
 	if exist $(SRC)\gifread.c  del $(SRC)\gifread.c
@@ -466,6 +470,12 @@ spotless: clean
 	if exist $(SRC)\pcsys.c	   del $(SRC)\pcsys.c
 	if exist $(SRC)\pctty.c	   del $(SRC)\pctty.c
 	if exist $(SRC)\tile.c	   del $(SRC)\tile.c
+	if exist $(SRC)\tiletext.c del $(SRC)\tiletext.c
+	if exist $(SRC)\pctiles.c  del $(SRC)\pctiles.c
+	if exist $(SRC)\thintile.c del $(SRC)\thintile.c
+	if exist $(SRC)\thintile.exe del $(SRC)\thintile.exe
+	if exist $(SRC)\thintile.tag del $(SRC)\thintile.tag
+	if exist $(SRC)\til2bin2.exe del $(SRC)\til2bin2.exe
 	if exist $(INCL)\date.h	   del $(INCL)\date.h
 	if exist $(INCL)\onames.h  del $(INCL)\onames.h
 	if exist $(INCL)\pm.h	   del $(INCL)\pm.h
@@ -479,7 +489,6 @@ spotless: clean
 	if exist tile2bin.exe      del tile2bin.exe
 	if exist $(DAT)\data	   del $(DAT)\data
 	if exist $(DAT)\*.lev      del $(DAT)\*.lev
-	if exist $(DAT)\data	   del $(DAT)\data
 	if exist $(DAT)\dungeon	   del $(DAT)\dungeon
 	if exist $(DAT)\options	   del $(DAT)\options
 	if exist $(DAT)\oracles	   del $(DAT)\oracles
@@ -494,7 +503,15 @@ spotless: clean
 	if exist sp_lev.tag	   del sp_lev.tag
 	if exist $(PLANAR_TIB)	   del $(PLANAR_TIB)
 	if exist $(OVERVIEW_TIB)   del $(OVERVIEW_TIB)
-
+	if exist thintile.tag	   del thintile.tag
+	if exist thintile.exe	   del thintile.exe
+	if exist til2bin2.exe	   del til2bin2.exe
+	if exist $(INCL)\dgn_comp.h del $(INCL)\dgn_comp.h
+	if exist $(INCL)\lev_comp.h del $(INCL)\lev_comp.h
+	if exist $(DAT)\dungeon.pdf del $(DAT)\dungeon.pdf
+	if exist $(WSHR)\monthin.txt del $(WSHR)\monthin.txt
+	if exist $(WSHR)\objthin.txt del $(WSHR)\objthin.txt
+	if exist $(WSHR)\oththin.txt del $(WSHR)\oththin.txt
 
 #
 #  Secondary Targets.
@@ -562,7 +579,7 @@ lev_$(LEX).o:  $(HACK_H)   $(SP_LEV_H)	  $(INCL)\lev_comp.h \
 lev_main.c:  $(UTIL)\lev_main.c
 	copy $(UTIL)\lev_main.c .
 
-lev_main.o:  $(HACK_H) lev_main.c
+lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h $(INCL)\date.h lev_main.c
 
 $(INCL)\lev_comp.h: lev_yacc.c
 

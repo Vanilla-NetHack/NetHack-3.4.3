@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.ami	3.2	96/02/17
+#	SCCS Id: @(#)Makefile.ami	3.2	2000/01/12
 # Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991,1992,1993,1996.
 # NetHack may be freely redistributed.  See license for details.
 
@@ -212,20 +212,23 @@ ASM	= asm
 # undefine this to not compile with GSTs
 #GST=gst=$(GSTFILE)
 #
-#DEBUG=debug=ff
-#OPTFLAGS=opt optsize optinl optcomp=10 optpeep optgo optdep=5 \
-#	optrdep=5 optalias
-CFLAGS	= data=far nminc $(DEBUG) idir=$(I) cpu=any nostkchk nover \
-	codename=none strmerge ppbuf=8000 $(OPTFLAGS) $(TILES) $(SAVEDS) \
+#DEBUG=debug=sf
+OPTFLAGS=opt opttime optpeep optgo optinl optsched optcomp=10 optdep=5 optrdep=5 #optalias +OPTTIME -OPTSIZE
+CFLAGS	= data=far nominc $(DEBUG) idir=$(I) cpu=any nostkchk nover \
+	codename=nhcode dataname=nhdata strmerge $(OPTFLAGS) $(TILES) $(SAVEDS) \
 	afp $(ERRREXX) $(GST)
 # for files that are too large for the standard flags:
-CFLAGS2 = code=far nostrmerge $(SAVEDS)
+CFLAGS2 = code=far strmerge $(SAVEDS)
 WBCFLAGS = ignore=217,62 data=far ansi nminc code=far idir=$(I) cpu=any afp \
 	$(DEBUG) $(ERRREXX) define=AMIGA $(GST)
 XXX = data=far ansi nminc idir=$(I) cpu=any afp opt optinline optinlocal \
 	optloop opttime
 WBC2FLAGS = define=CLI
 SPLFLAGS = define=SPLIT #dollarok
+#for amistack.c
+CFLAGS3	= data=near dataname=__MERGED nominc $(DEBUG) idir=$(I) cpu=any nover nostkchk \
+	codename=nhcode strmerge $(OPTFLAGS) $(TILES) $(SAVEDS) \
+	afp $(ERRREXX) $(GST)
 
 #[MANX]
 #CFLAGS = -i$(I) -mc -md -ms -pa -ps -bs -wo -qq
@@ -286,10 +289,10 @@ AOBJSPEC = -o
 
 #[SAS6]
 
-LINK	= slink noicons maxhunk 10000
+LINK	= slink noicons verbose maxhunk 65536 stripdebug
 LIN	= from lib:catch.o
 LLINK	= with $(AMI)ami.lnk
-LLIB	= lib Lib:sc.lib lib lib:amiga.lib BATCH #scnb.lib or sc.lib
+LLIB	= lib lib:scnb.lib BATCH #lib lib:amiga.lib BATCH #scnb.lib or sc.lib
 FLLIB	= $(FBLIB) lib Lib:sc.lib BATCH
 OBJSPEC = objname=
 PNSPEC = noicons to #pname=
@@ -373,10 +376,10 @@ COMMOBJ = \
 	$(O)potion.o	$(O)pray.o	$(O)priest.o	$(O)quest.o	\
 	$(O)questpgr.o	$(O)read.o	$(O)rect.o	$(O)region.o	\
 	$(O)restore.o	$(O)rnd.o	$(O)role.o	$(O)rumors.o	\
-	$(O)save.o		$(O)shk.o	$(O)shknam.o	$(O)sit.o	\
+	$(O)save.o	$(O)shk.o	$(O)shknam.o	$(O)sit.o	\
 	$(O)sounds.o	$(O)sp_lev.o	$(O)spell.o	$(O)steal.o	\
 	$(O)steed.o	$(O)teleport.o	$(O)timeout.o	$(O)topten.o	\
-	$(O)track.o	$(O)trap.o		$(O)u_init.o	$(O)uhitm.o	\
+	$(O)track.o	$(O)trap.o	$(O)u_init.o	$(O)uhitm.o	\
 	$(O)vault.o	$(O)version.o	$(O)vision.o	$(O)weapon.o	\
 	$(O)were.o	$(O)wield.o	$(O)windows.o	$(O)wizard.o	\
 	$(O)worm.o	$(O)worn.o	$(O)write.o	$(O)zap.o
@@ -387,11 +390,12 @@ MAKEDEFOBJ = \
 AMIGAOBJ = \
 	$(O)amidos.o	$(O)amirip.o 	$(O)amisnd.o	$(O)amiwbench.o	\
 	$(O)amiwind.o	$(O)winami.o	$(O)winchar.o	$(O)winfuncs.o	\
-	$(O)winkey.o	$(O)winmenu.o	$(O)winreq.o	$(O)winstr.o
+	$(O)winkey.o	$(O)winmenu.o	$(O)winreq.o	$(O)winstr.o \
+	$(O)amistack.o
 
 # Objects from assembly sources (because DMake can't handle default rules)
 AMIGAOBJ2 = \
-	$(O)dispmap.o
+#	$(O)dispmap.o
 
 SHAREOBJ = \
 	$(O)pcmain.o	$(RANDOBJ)
@@ -429,7 +433,7 @@ CDFILES= $(SLIB)Cav-goal.lev $(CDFILES1)
 
 HDFILES1= $(SLIB)Hea-fila.lev $(SLIB)Hea-filb.lev $(SLIB)Hea-loca.lev \
 	$(SLIB)Hea-strt.lev
-HDFILES= $(SLIB)H-goal.lev $(HDFILES1)
+HDFILES= $(SLIB)Hea-goal.lev $(HDFILES1)
 
 KDFILES1= $(SLIB)Kni-fila.lev $(SLIB)Kni-filb.lev $(SLIB)Kni-loca.lev \
 	$(SLIB)Kni-strt.lev
@@ -511,8 +515,9 @@ INSTDUNGEONFILES= $(NETHACK)NetHack.cnf $(INSTDUNGEONFILES1)
 
 INSTDATAFILES= \
 	$(NETHACK)license	$(NETHACK)logfile	$(NETHACK)record \
-	$(NETHACK)HackWB.hlp	$(NETHACK)WBDefaults.def $(NETHACK)amii.hlp \
-	$(NETHACK)tomb.iff
+	$(NETHACK)tomb.iff	$(NETHACK)amii.hlp 	$(NETHACK)Recover.txt \
+	$(NETHACK)GuideBook.txt	$(NETHACK)NetHack.txt	$(NETHACK)Install.ami \
+#	$(NETHACK)HackWB.hlp	$(NETHACK)WBDefaults.def
 
 LIBFILES= \
 	$(INSTDUNGEONFILES1) \
@@ -527,14 +532,18 @@ LIBFILES= \
 
 #SFD_INSTEAD all:  $(SBIN)lev_comp $(SBIN)dgn_comp $(SBIN)NetHack \
 all:  $(COMPACT_HEADERS) $(SBIN)lev_comp $(SBIN)dgn_comp $(SBIN)NetHack \
-	$(NETHACK)HackWB $(NETHACK)recover $(NETHACK)HackCli $(SBIN)splitter \
-	$(SBIN)dlb
+	$(SBIN)dlb $(NETHACK)recover #$(NETHACK)HackCli $(SBIN)splitter \
+#	$(NETHACK)HackWB 
 
-install: inst-data inst-dungeon inst-icons inst-fonts inst-sounds inst-tiles \
-	 $(NETHACK)NetHack.dir $(NETHACK)nhdat
+install: inst-data inst-dungeon inst-fonts inst-sounds inst-tiles \
+	 $(NETHACK)recover $(NETHACK)NetHack $(NETHACK)nhdat
+	#$(NETHACK)NetHack.dir inst-icons
 
 $(SBIN)NetHack:  $(HOBJ) $(AMI)ami.lnk
 	$(LINK) $(LNSPEC) $(SBIN)NetHack $(LIN) $(LLINK) $(LLIB)
+
+$(NETHACK)NetHack: $(SBIN)NetHack
+	copy $(SBIN)NetHack $(NETHACK)NetHack
 
 link:
 	$(LINK) $(LNSPEC) $(SBIN)NetHack $(LIN) $(LLINK) $(LLIB)
@@ -715,7 +724,7 @@ $(OO)lev_main.o:  $(UTIL)lev_main.c $(HDEP) $(I)pm.h $(I)onames.h $(I)date.h
 	$(CC) $(DEFSPEC)LEV_LEX_C $(DEFSPEC)AMIGA $(CFLAGS) $(OBJSPEC)$@ \
 		$(UTIL)lev_main.c
 
-$(OO)dgn_yacc.o:  $(UTIL)dgn_yacc.c $(HDEP) $(I)dgn_file.h
+$(OO)dgn_yacc.o:  $(UTIL)dgn_yacc.c $(HDEP) $(I)dgn_file.h $(I)patchlevel.h
 	$(CC) $(DEFSPEC)LEV_LEX_C $(CFLAGS) $(DEFSPEC)alloca=malloc \
 		$(OBJSPEC)$@ $(UTIL)dgn_yacc.c
 
@@ -741,9 +750,9 @@ $(NETHACK)recover: $(OO)recover.o
 # comment them out and be careful! (You're not guaranteed to have the most
 # up to date *_comp.c, *_comp.h and *_lex.c)
 
-$(I)lev_comp.h: $(UTIL)lev_yacc.c
+$(I)lev_comp.h: $(UTIL)lev_yacc.c $(I)patchlevel.h
 
-$(UTIL)lev_yacc.c:  $(UTIL)lev_comp.y
+$(UTIL)lev_yacc.c:  $(UTIL)lev_comp.y $(I)patchlevel.h
 	$(BISON) -d $(UTIL)lev_comp.y
 #	copy y.tab.c $(UTIL)lev_yacc.c
 #	copy y.tab.h $(I)lev_comp.h
@@ -754,14 +763,14 @@ $(UTIL)lev_yacc.c:  $(UTIL)lev_comp.y
 	delete $(UTIL)lev_comp.tab.c
 	delete $(UTIL)lev_comp.tab.h
 
-$(UTIL)lev_lex.c:  $(UTIL)lev_comp.l
+$(UTIL)lev_lex.c:  $(UTIL)lev_comp.l $(I)patchlevel.h
 	$(FLEX) $(UTIL)lev_comp.l
 	copy lex.yy.c $(UTIL)lev_lex.c
 	delete lex.yy.c
 
-$(I)dgn_comp.h: $(UTIL)dgn_yacc.c
+$(I)dgn_comp.h: $(UTIL)dgn_yacc.c $(I)patchlevel.h
 
-$(UTIL)dgn_yacc.c:  $(UTIL)dgn_comp.y
+$(UTIL)dgn_yacc.c:  $(UTIL)dgn_comp.y $(I)patchlevel.h
 	$(BISON) -d $(UTIL)dgn_comp.y
 #	copy y.tab.c $(UTIL)dgn_yacc.c
 #	copy y.tab.h $(I)dgn_comp.h
@@ -772,7 +781,7 @@ $(UTIL)dgn_yacc.c:  $(UTIL)dgn_comp.y
 	delete $(UTIL)dgn_comp.tab.c
 	delete $(UTIL)dgn_comp.tab.h
 
-$(UTIL)dgn_lex.c:  $(UTIL)dgn_comp.l
+$(UTIL)dgn_lex.c:  $(UTIL)dgn_comp.l $(I)patchlevel.h
 	$(FLEX) $(UTIL)dgn_comp.l
 	copy lex.yy.c $(UTIL)dgn_lex.c
 	delete lex.yy.c
@@ -792,7 +801,7 @@ $(UTIL)dgn_lex.c:  $(UTIL)dgn_comp.l
 #
 
 #SFD_INSTEAD $(I)date.h $(DAT)options::  $(HDEP) $(SBIN)makedefs $(AMIGAOBJ)
-$(I)date.h $(DAT)options:  $(HDEP) $(SBIN)makedefs $(AMIGAOBJ)
+$(I)date.h $(DAT)options:  $(HDEP) $(SBIN)makedefs $(AMIGAOBJ) $(I)patchlevel.h
 	$(SBIN)makedefs -v
 	$(EXECUTE) $(AMI)ifchange MOVE $(I)t.date.h $(I)date.h
 	-wait 2
@@ -852,7 +861,7 @@ $(O)winkey.o:	$(AMI)winkey.c $(HDEP) $(AMDEP)
 
 $(O)winmenu.o:	$(AMI)winmenu.c $(HDEP) $(AMDEP)
 
-$(O)winami.o:	$(AMI)winami.c $(HDEP) $(AMDEP) $(AMI)char.c $(AMI)randwin.c
+$(O)winami.o:	$(AMI)winami.c $(HDEP) $(AMDEP) #$(AMI)char.c $(AMI)randwin.c
 
 #$(O)amilib.o:	$(AMI)amilib.c $(HDEP) $(AMDEP)
 
@@ -957,13 +966,13 @@ $(SBIN)txt2iff: $(OO)txt2iff.o $(NAMEOBJS) $(OO)tiletext.o $(OO)tiletxt.o
 	$(LINK) $(LNSPEC) $@ $(LIN) $(OO)txt2iff.o $(NAMEOBJS) $(OO)tiletext.o \
 		$(OO)tiletxt.o  $(FLLIB)
 
-$(NETHACK)tiles/objects.iff: /win/share/objects.txt $(SBIN)txt2iff
+$(NETHACK)tiles/objects.iff: $(WSHARE)objects.txt $(SBIN)txt2iff
 	$(SBIN)txt2iff $(WSHARE)objects.txt $(NETHACK)tiles/objects.iff
 
-$(NETHACK)tiles/monsters.iff : /win/share/monsters.txt $(SBIN)txt2iff
+$(NETHACK)tiles/monsters.iff: $(WSHARE)monsters.txt $(SBIN)txt2iff
 	$(SBIN)txt2iff $(WSHARE)monsters.txt $(NETHACK)tiles/monsters.iff
 
-$(NETHACK)tiles/other.iff : /win/share/other.txt $(SBIN)txt2iff
+$(NETHACK)tiles/other.iff: $(WSHARE)other.txt $(SBIN)txt2iff
 	$(SBIN)txt2iff $(WSHARE)other.txt $(NETHACK)tiles/other.iff
 
 # Sound installation rules.
@@ -1240,6 +1249,18 @@ $(NETHACK)license:  $(DAT)license
 $(SLIB)opthelp:  $(DAT)opthelp
 	copy $(DAT)opthelp $@
 
+$(NETHACK)Recover.txt: $(DOC)Recover.txt
+	copy $(DOC)Recover.txt $@
+
+$(NETHACK)GuideBook.txt: $(DOC)GuideBook.txt
+	copy $(DOC)GuideBook.txt $@
+
+$(NETHACK)NetHack.txt: $(DOC)NetHack.txt
+	copy $(DOC)NetHack.txt $@
+
+$(NETHACK)Install.ami: $(AMI)Install.ami
+	copy $(AMI)Install.ami $@
+
 #SFD_INSTEAD $(NETHACK)logfile: $(NETHACK)logfile
 $(NETHACK)logfile:
 	echo to $@
@@ -1254,8 +1275,8 @@ $(SLIB)wizhelp: $(DAT)wizhelp
 # Create the directories here because NetHack.cnf puts them there by default
 $(NETHACK)NetHack.cnf:  $(AMI)NetHack.cnf
 	copy $(AMI)NetHack.cnf $@
-	-makedir nethack:save
-	-makedir nethack:levels
+	-makedir $(NETHACK)save
+	-makedir $(NETHACK)levels
 
 #SFD_BEGIN
 #SFD_ELSE
@@ -1276,8 +1297,8 @@ $(NETHACK)hack/8:  $(AMI)amifont8.uu $(NETHACK)hack
 
 $(NETHACK)hack.font:  $(AMI)amifont.uu
 	$(UUDEC) $(AMI)amifont.uu
-#	copy hack.font $(NETHACK)hack.font
-#	delete hack.font
+	copy hack.font $(NETHACK)hack.font
+	delete hack.font
 
 #SFD_INSTEAD $(NETHACK)hack: $(NETHACK)hack
 $(NETHACK)hack:
@@ -1371,6 +1392,7 @@ $(O)dokick.o:  $(NHS)dokick.c $(HDEP) $(I)eshk.h
 $(O)dothrow.o:  $(NHS)dothrow.c $(HDEP)
 
 $(O)drawing.o:  $(NHS)drawing.c $(HDEP) $(I)tcap.h
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)drawing.c
 
 $(O)dungeon.o:  $(NHS)dungeon.c $(HDEP) $(I)dgn_file.h $(I)dlb.h
 
@@ -1409,6 +1431,7 @@ $(O)mcastu.o:  $(NHS)mcastu.c $(HDEP)
 $(O)mhitm.o:  $(NHS)mhitm.c $(HDEP) $(I)artifact.h $(I)edog.h
 
 $(O)mhitu.o:  $(NHS)mhitu.c $(HDEP) $(I)artifact.h $(I)edog.h
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)mhitu.c
 
 $(O)minion.o:  $(NHS)minion.c $(HDEP) $(I)emin.h $(I)epri.h
 
@@ -1440,6 +1463,7 @@ $(O)mplayer.o:	$(NHS)mplayer.c $(HDEP)
 $(O)mthrowu.o:  $(NHS)mthrowu.c $(HDEP)
 
 $(O)muse.o:	$(NHS)muse.c $(HDEP)
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)muse.c
 
 $(O)music.o:  $(NHS)music.c $(HDEP) #interp.c
 
@@ -1523,6 +1547,7 @@ $(O)trap.o:  $(NHS)trap.c $(HDEP)
 $(O)u_init.o:  $(NHS)u_init.c $(HDEP)
 
 $(O)uhitm.o:  $(NHS)uhitm.c $(HDEP)
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)uhitm.c
 
 $(O)vault.o:  $(NHS)vault.c $(HDEP) $(I)vault.h
 
@@ -1549,6 +1574,7 @@ $(O)worn.o:  $(NHS)worn.c $(HDEP)
 $(O)write.o:  $(NHS)write.c $(HDEP)
 
 $(O)zap.o:  $(NHS)zap.c $(HDEP)
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ $(NHS)zap.c
 
 $(O)getline.o:	$(TTY)getline.c $(HDEP) $(I)wintty.h
 
@@ -1560,6 +1586,9 @@ $(O)wintty.o:	$(TTY)wintty.c $(HDEP) $(I)wintty.h $(I)tcap.h \
 		$(I)patchlevel.h
 
 $(O)amitty.o:	$(AMI)amitty.c $(HDEP)
+
+$(O)amistack.o:	$(AMI)amistack.c
+	$(CC) $(CFLAGS3) $(CSYM) $(OBJSPEC)$@ $(AMI)amistack.c
 
 $(O)rip.o:	$(NHS)rip.c $(HDEP)
 

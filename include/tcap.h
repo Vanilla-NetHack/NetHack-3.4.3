@@ -34,13 +34,14 @@ extern struct tc_lcl_data {   /* defined and set up in termcap.c */
     char *tc_HI, *tc_HE, *tc_US, *tc_UE;
     boolean tc_ul_hack;
 } tc_lcl_data;
-#define CM tc_lcl_data.tc_CM
-#define ND tc_lcl_data.tc_ND
-#define CD tc_lcl_data.tc_CD
-#define HI tc_lcl_data.tc_HI
-#define HE tc_lcl_data.tc_HE
-#define US tc_lcl_data.tc_US
-#define UE tc_lcl_data.tc_UE
+/* some curses.h declare CM etc. */
+#define nh_CM tc_lcl_data.tc_CM
+#define nh_ND tc_lcl_data.tc_ND
+#define nh_CD tc_lcl_data.tc_CD
+#define nh_HI tc_lcl_data.tc_HI
+#define nh_HE tc_lcl_data.tc_HE
+#define nh_US tc_lcl_data.tc_US
+#define nh_UE tc_lcl_data.tc_UE
 #define ul_hack tc_lcl_data.tc_ul_hack
 
 extern short ospeed;		/* set up in termcap.c */

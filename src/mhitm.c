@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.3	98/08/15	*/
+/*	SCCS Id: @(#)mhitm.c	3.3	2000/07/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -123,7 +123,12 @@ fightm(mtmp)		/* have monsters fight each other */
 	for(mon = fmon; mon; mon = nmon) {
 	    nmon = mon->nmon;
 	    if(nmon == mtmp) nmon = mtmp->nmon;
-	    if(mon != mtmp) {
+	    /* Be careful to ignore monsters that are already dead, since we
+	     * might be calling this before we've cleaned them up.  This can
+	     * happen if the monster attacked a cockatrice bare-handedly, for
+	     * instance.
+	     */
+	    if(mon != mtmp && !DEADMONSTER(mon)) {
 		if(monnear(mtmp,mon->mx,mon->my)) {
 		    if(!u.uswallow && (mtmp == u.ustuck)) {
 			if(!rn2(4)) {
@@ -158,7 +163,7 @@ fightm(mtmp)		/* have monsters fight each other */
  *
  * This function returns a result bitfield:
  *
- *	    --------- agressor died
+ *	    --------- aggressor died
  *	   /  ------- defender died
  *	  /  /  ----- defender was hit
  *	 /  /  /
@@ -252,6 +257,9 @@ mattackm(magr, mdef)
 	    case AT_TUCH:
 	    case AT_BUTT:
 	    case AT_TENT:
+		/* Nymph that teleported away on first attack? */
+		if (distmin(magr->mx,magr->my,mdef->mx,mdef->my) > 1)
+		    return MM_MISS;
 		/* Monsters won't attack cockatrices physically if they
 		 * have a weapon instead.  This instinct doesn't work for
 		 * players, or under conflict or confusion. 
@@ -290,6 +298,12 @@ mattackm(magr, mdef)
 		break;
 
 	    case AT_ENGL:
+#ifdef STEED
+		if (u.usteed && (mdef == u.usteed)) {
+		    strike = 0;
+		    break;
+		} 
+#endif
 		/* Engulfing attacks are directed at the hero if
 		 * possible. -dlc
 		 */
@@ -510,6 +524,7 @@ mdamagem(magr, mdef, mattk)
 {
 	struct	permonst *pa = magr->data, *pd = mdef->data;
 	int	tmp = d((int)mattk->damn,(int)mattk->damd);
+	struct obj *obj;
 	char buf[BUFSZ];
 
 	if (touch_petrifies(pd) && !resists_ston(magr) &&
@@ -547,6 +562,8 @@ mdamagem(magr, mdef, mattk)
 		}
 		if(flags.verbose && flags.soundok) verbalize("Burrrrp!");
 		tmp = mdef->mhp;
+		/* Use up amulet of life saving */
+		if (!!(obj = mlifesaver(mdef))) m_useup(mdef, obj);
 		break;
 	    case AD_STUN:
 		if (magr->mcan) break;
@@ -661,8 +678,8 @@ mdamagem(magr, mdef, mattk)
 		    pline("%s is covered in acid!", Monnam(mdef));
 		    pline("It burns %s!", mon_nam(mdef));
 		}
-		if(!rn2(30)) erode_armor(mdef, TRUE);
-		if(!rn2(6)) erode_weapon(mdef, TRUE);
+		if (!rn2(30)) erode_armor(mdef, TRUE);
+		if (!rn2(6)) erode_weapon(MON_WEP(mdef), TRUE);
 		break;
 	    case AD_RUST:
 		if (!magr->mcan && pd == &mons[PM_IRON_GOLEM]) {
@@ -674,7 +691,11 @@ mdamagem(magr, mdef, mattk)
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
-		hurtmarmor(magr->data, mdef, AD_RUST);
+		hurtmarmor(mdef, AD_RUST);
+		tmp = 0;
+		break;
+	    case AD_CORRODE:
+		hurtmarmor(mdef, AD_CORRODE);
 		tmp = 0;
 		break;
 	    case AD_DCAY:
@@ -688,7 +709,7 @@ mdamagem(magr, mdef, mattk)
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
-		hurtmarmor(magr->data, mdef, AD_DCAY);
+		hurtmarmor(mdef, AD_DCAY);
 		tmp = 0;
 		break;
 	    case AD_STON:
@@ -718,7 +739,11 @@ label2:			if (mdef->mhp > 0) return 0;
 		       we'll get "it" in the suddenly disappears message */
 		    if (vis) Strcpy(mdef_Monnam, Monnam(mdef));
 		    rloc(mdef);
-		    if (vis && !cansee(mdef->mx, mdef->my))
+		    if (vis && !canspotmon(mdef)
+#ifdef STEED
+		    	&& mdef != u.usteed
+#endif
+		    	)
 			pline("%s suddenly disappears!", mdef_Monnam);
 		}
 		break;
@@ -762,10 +787,10 @@ label2:			if (mdef->mhp > 0) return 0;
 		}
 		break;
 	    case AD_BLND:
-		if (!magr->mcan && !resists_blnd(mdef)) {
+		if (can_blnd(magr, mdef, mattk->aatyp, (struct obj*)0)) {
 		    register unsigned rnd_tmp;
 
-		    if (vis)
+		    if (vis && mdef->mcansee)
 			pline("%s is blinded.", Monnam(mdef));
 		    rnd_tmp = d((int)mattk->damn, (int)mattk->damd);
 		    if ((rnd_tmp += mdef->mblinded) > 127) rnd_tmp = 127;
@@ -816,9 +841,13 @@ label2:			if (mdef->mhp > 0) return 0;
 		magr->mgold += mdef->mgold;
 		mdef->mgold = 0;
 		if (vis) {
-			Strcpy(buf, Monnam(magr));
-			pline("%s steals some gold from %s.", buf,
-								mon_nam(mdef));
+		    Strcpy(buf, Monnam(magr));
+		    pline("%s steals some gold from %s.", buf, mon_nam(mdef));
+		}
+		if (!tele_restrict(magr)) {
+		    rloc(magr);
+		    if (vis && !canspotmon(magr))
+			pline("%s suddenly disappears!", buf);
 		}
 		break;
 	    case AD_DRLI:
@@ -839,9 +868,19 @@ label2:			if (mdef->mhp > 0) return 0;
 	    case AD_SITM:	/* for now these are the same */
 	    case AD_SEDU:
 		if (!magr->mcan && mdef->minvent) {
-			char onambuf[BUFSZ];
+			char onambuf[BUFSZ], mdefnambuf[BUFSZ];
+
+			/* make a special x_monnam() call that never omits
+			   the saddle, and save it for later messages */
+			Strcpy(mdefnambuf, x_monnam(mdef, ARTICLE_THE, (char *)0, 0, FALSE));
 
 			otmp = mdef->minvent;
+#ifdef STEED
+			if (u.usteed == mdef &&
+					otmp == which_armor(mdef, W_SADDLE))
+				/* "You can no longer ride <steed>." */
+				dismount_steed(DISMOUNT_POLY);
+#endif
 			obj_extract_self(otmp);
 			if (otmp->owornmask) {
 				mdef->misc_worn_check &= ~otmp->owornmask;
@@ -851,17 +890,23 @@ label2:			if (mdef->mhp > 0) return 0;
 			/* add_to_minv() might free otmp [if it merges] */
 			if (vis)
 				Strcpy(onambuf, doname(otmp));
-			add_to_minv(magr, otmp);
+			(void) add_to_minv(magr, otmp);
 			if (vis) {
 				Strcpy(buf, Monnam(magr));
 				pline("%s steals %s from %s!", buf,
-				      onambuf, mon_nam(mdef));
+				    onambuf, mdefnambuf);
 			}
 			possibly_unwield(mdef);
 			mselftouch(mdef, (const char *)0, FALSE);
 			if (mdef->mhp <= 0)
 				return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
+			if (magr->data->mlet == S_NYMPH &&
+			    !tele_restrict(magr)) {
+			    rloc(magr);
+			    if (vis && !canspotmon(magr))
+				pline("%s suddenly disappears!", buf);
+			}
 		}
 		tmp = 0;
 		break;
@@ -935,7 +980,9 @@ label2:			if (mdef->mhp > 0) return 0;
 	if((mdef->mhp -= tmp) < 1) {
 	    if (m_at(mdef->mx, mdef->my) == magr) {  /* see gulpmm() */
 		remove_monster(mdef->mx, mdef->my);
+		mdef->mhp = 1;	/* otherwise place_monster will complain */
 		place_monster(mdef, mdef->mx, mdef->my);
+		mdef->mhp = 0;
 	    }
 	    monkilled(mdef, "", (int)mattk->adtyp);
 	    if (mdef->mhp > 0) return 0; /* mdef lifesaved */
@@ -1003,9 +1050,20 @@ mrustm(magr, mdef, obj)
 register struct monst *magr, *mdef;
 register struct obj *obj;
 {
+	boolean is_acid;
+
 	if (!magr || !mdef || !obj) return; /* just in case */
-	if (mdef->data == &mons[PM_RUST_MONSTER] && !mdef->mcan &&
-	    is_rustprone(obj) && obj->oeroded < MAX_ERODE) {
+
+	if (dmgtype(mdef->data, AD_CORRODE))
+	    is_acid = TRUE;
+	else if (dmgtype(mdef->data, AD_RUST))
+	    is_acid = FALSE;
+	else
+	    return;
+
+	if (!mdef->mcan &&
+	    (is_acid ? is_corrodeable(obj) : is_rustprone(obj)) &&
+	    (is_acid ? obj->oeroded2 : obj->oeroded) < MAX_ERODE) {
 		if (obj->greased || obj->oerodeproof || (obj->blessed && rn2(3))) {
 		    if (cansee(mdef->mx, mdef->my) && flags.verbose)
 			pline("%s weapon is not affected.",
@@ -1014,10 +1072,12 @@ register struct obj *obj;
 		} else {
 		    if (cansee(mdef->mx, mdef->my)) {
 			pline("%s %s%s!", s_suffix(Monnam(magr)),
-			      aobjnam(obj, "rust"),
-			      obj->oeroded ? " further" : "");
+			    aobjnam(obj, (is_acid ? "corrode" : "rust")),
+			    (is_acid ? obj->oeroded2 : obj->oeroded)
+				? " further" : "");
 		    }
-		    obj->oeroded++;
+		    if (is_acid) obj->oeroded2++;
+		    else obj->oeroded++;
 		}
 	}
 }

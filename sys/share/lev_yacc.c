@@ -8,7 +8,7 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #define yyerrok (yyerrflag=0)
 #define YYRECOVERING (yyerrflag!=0)
 #define YYPREFIX "yy"
-/*	SCCS Id: @(#)lev_yacc.c	3.3	96/05/16	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.3	2000/01/17	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,7 +55,7 @@ extern int FDECL(get_floor_type, (CHAR_P));
 extern int FDECL(get_room_type, (char *));
 extern int FDECL(get_trap_type, (char *));
 extern int FDECL(get_monster_id, (char *,CHAR_P));
-extern int FDECL(get_object_id, (char *));
+extern int FDECL(get_object_id, (char *,CHAR_P));
 extern boolean FDECL(check_monster_char, (CHAR_P));
 extern boolean FDECL(check_object_char, (CHAR_P));
 extern char FDECL(what_map_char, (CHAR_P));
@@ -1062,7 +1062,7 @@ case 7:
 				for(i=0;i<npart;i++)
 				    maze.parts[i] = tmppart[i];
 				if (!write_level_file(yyvsp[-4].map, (splev *)0, &maze)) {
-					yyerror("Can't open output file!!");
+					yyerror("Can't write output file!!");
 					exit(EXIT_FAILURE);
 				}
 				npart = 0;
@@ -1095,7 +1095,7 @@ case 8:
 				if (check_subrooms()) {
 				    if (!write_level_file(yyvsp[-6].map, &special_lev,
 							  (specialmaze *)0)) {
-					yyerror("Can't open output file!!");
+					yyerror("Can't write output file!!");
 					exit(EXIT_FAILURE);
 				    }
 				}
@@ -1646,7 +1646,7 @@ case 133:
 			tmpobj[nobj]->chance = yyvsp[-4].i;
 			tmpobj[nobj]->id = -1;
 			if (yyvsp[0].map) {
-			    int token = get_object_id(yyvsp[0].map);
+			    int token = get_object_id(yyvsp[0].map, yyvsp[-2].i);
 			    if (token == ERR)
 				yywarning(
 				"Illegal object name!  Making random object.");

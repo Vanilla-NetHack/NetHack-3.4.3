@@ -91,11 +91,12 @@ int drinking;
 	int madepool = 0;
 
 	do_clear_area(u.ux, u.uy, 7, gush, (genericptr_t)&madepool);
-	if (!madepool)
+	if (!madepool) {
 	    if (drinking)
 		Your("thirst is quenched.");
 	    else
 		pline("Water sprays all over you.");
+	}
 }
 
 STATIC_PTR void
@@ -142,11 +143,10 @@ dofindgem() /* Find a gem in the sparkling waters. */
 }
 
 void
-dryup(x,y)
+dryup(x, y, isyou)
 xchar x, y;
+boolean isyou;
 {
-	boolean isyou = (x == u.ux && y == u.uy);
-
 	if (IS_FOUNTAIN(levl[x][y].typ) &&
 	    (!rn2(3) || (levl[x][y].looted & F_WARNED))) {
 		s_level *slev = Is_special(&u.uz);
@@ -156,7 +156,8 @@ xchar x, y;
 			levl[x][y].looted |= F_WARNED;
 			/* Warn about future fountain use. */
 			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
-			    if((mtmp->data == &mons[PM_WATCHMAN] ||
+			    if (DEADMONSTER(mtmp)) continue;
+			    if ((mtmp->data == &mons[PM_WATCHMAN] ||
 				mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
 			       couldsee(mtmp->mx, mtmp->my) &&
 			       mtmp->mpeaceful) {
@@ -284,8 +285,17 @@ drinkfountain()
 
 		case 25: /* See invisible */
 
-			You("see an image of someone stalking you.");
-			pline("But it disappears.");
+			if (Blind) {
+			  if (Invisible) {
+			    You("feel very self-conscious.");
+			    pline("Then it passes.");
+			  } else {
+			    You("feel transparent.");
+			  }
+			} else {
+			   You("see an image of someone stalking you.");
+			   pline("But it disappears.");
+			}
 			HSee_invisible |= FROMOUTSIDE;
 			newsym(u.ux,u.uy);
 			exercise(A_WIS, TRUE);
@@ -314,6 +324,7 @@ drinkfountain()
 
 			pline("This water gives you bad breath!");
 			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			    if(!DEADMONSTER(mtmp))
 				mtmp->mflee = 1;
 			}
 			break;
@@ -329,7 +340,7 @@ drinkfountain()
 			break;
 	    }
 	}
-	dryup(u.ux, u.uy);
+	dryup(u.ux, u.uy, TRUE);
 }
 
 void
@@ -347,6 +358,8 @@ register struct obj *obj;
 	    && u.ulevel >= 5 && !rn2(6)
 	    && !obj->oartifact
 	    && !exist_artifact(LONG_SWORD, artiname(ART_EXCALIBUR))) {
+		s_level *slev = Is_special(&u.uz);
+
 		if (u.ualign.type != A_LAWFUL) {
 			/* Ha!  Trying to cheat her. */
 			pline("A freezing mist rises from the water and envelopes the sword.");
@@ -371,6 +384,8 @@ register struct obj *obj;
 		levl[u.ux][u.uy].looted = 0;
 		if(Invisible) newsym(u.ux, u.uy);
 		level.flags.nfountains--;
+		if(slev && slev->flags.town)
+		    (void) angry_guards(FALSE);
 		return;
 	} else (void) get_wet(obj);
 
@@ -406,8 +421,10 @@ register struct obj *obj;
 			dowatersnakes();
 			break;
 		case 24: /* Find a gem */
-			dofindgem();
-			break;
+			if (!levl[u.ux][u.uy].looted) {
+				dofindgem();
+				break;
+			}
 		case 25: /* Water gushes forth */
 			dogushforth(FALSE);
 			break;
@@ -433,6 +450,8 @@ register struct obj *obj;
 		 * surface.  After all, there will have been more people going
 		 * by.	Just like a shopping mall!  Chris Woodbury  */
 
+		    if (levl[u.ux][u.uy].looted) break;
+		    levl[u.ux][u.uy].looted |= F_LOOTED;
 		    (void) mkgold((long)
 			(rnd((dunlevs_in_dungeon(&u.uz)-dunlev(&u.uz)+1)*2)+5),
 			u.ux, u.uy);
@@ -442,7 +461,7 @@ register struct obj *obj;
 		    newsym(u.ux,u.uy);
 		    break;
 	}
-	dryup(u.ux, u.uy);
+	dryup(u.ux, u.uy, TRUE);
 }
 
 #ifdef SINKS

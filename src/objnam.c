@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)objnam.c	3.3	2000/07/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -151,6 +151,22 @@ register int otyp;
 	if(dn)
 		Sprintf(eos(buf), " (%s)", dn);
 	return(buf);
+}
+
+/* less verbose result than obj_typename(); either the actual name
+   or the description (but not both); user-assigned name is ignored */
+char *
+simple_typename(otyp)
+int otyp;
+{
+    char *bufp, *pp, *save_uname = objects[otyp].oc_uname;
+
+    objects[otyp].oc_uname = 0;		/* suppress any name given by user */
+    bufp = obj_typename(otyp);
+    objects[otyp].oc_uname = save_uname;
+    if ((pp = strstri(bufp, " (")) != 0)
+	*pp = '\0';		/* strip the appended description */
+    return bufp;
 }
 
 boolean
@@ -308,10 +324,10 @@ register struct obj *obj;
 			Strcat(buf, " of spinach");
 		    else if (obj->corpsenm == NON_PM)
 		        Strcpy(buf, "empty tin");
-		    else if (is_meaty(&mons[obj->corpsenm]))
-			Sprintf(eos(buf), " of %s meat", mons[obj->corpsenm].mname);
-		    else
+		    else if (vegetarian(&mons[obj->corpsenm]))
 			Sprintf(eos(buf), " of %s", mons[obj->corpsenm].mname);
+		    else
+			Sprintf(eos(buf), " of %s meat", mons[obj->corpsenm].mname);
 		}
 		break;
 	    case GOLD_CLASS:
@@ -320,7 +336,9 @@ register struct obj *obj;
 		break;
 	    case ROCK_CLASS:
 		if (typ == STATUE)
-		    Sprintf(buf, "%s of %s%s", actualn,
+		    Sprintf(buf, "%s%s of %s%s",
+			(Role_if(PM_ARCHEOLOGIST) && obj->spe) ? "historic " : "" ,
+			actualn,
 			type_is_pname(&mons[obj->corpsenm]) ? "" :
 			  (mons[obj->corpsenm].geno & G_UNIQ) ? "the " :
 			    (index(vowels,*(mons[obj->corpsenm].mname)) ?
@@ -679,21 +697,21 @@ ring:
 	}
 
 	if((obj->owornmask & W_WEP) && !mrg_to_wielded) {
-		if (obj->quan != 1L)
+		if (obj->quan != 1L) {
 			Strcat(bp, " (wielded)");
-		else {
-			Strcat(bp, " (weapon in ");
-			Strcat(bp, body_part(HAND));
-			Strcat(bp, ")");
+		} else {
+			const char *hand_s = body_part(HAND);
+
+			if (bimanual(obj)) hand_s = makeplural(hand_s);
+			Sprintf(eos(bp), " (weapon in %s)", hand_s);
 		}
 	}
 	if(obj->owornmask & W_SWAPWEP) {
-		if (u.twoweap) {
-			Strcat(bp, " (wielded in other ");
-			Strcat(bp, body_part(HAND));
-			Strcat(bp, ")");
-		} else
-			Strcat(bp, " (secondary weapon)");
+		if (u.twoweap)
+			Sprintf(eos(bp), " (wielded in other %s)",
+				body_part(HAND));
+		else
+			Strcat(bp, " (alternate weapon; not wielded)");
 	}
 	if(obj->owornmask & W_QUIVER) Strcat(bp, " (in quiver)");
 	if(obj->unpaid)
@@ -701,7 +719,8 @@ ring:
 	if (!strncmp(prefix, "a ", 2) &&
 			index(vowels, *(prefix+2) ? *(prefix+2) : *bp)
 			&& (*(prefix+2) || (strncmp(bp, "uranium", 7)
-				&& strncmp(bp, "unicorn", 7)))) {
+				&& strncmp(bp, "unicorn", 7)
+				&& strncmp(bp, "eucalyptus", 10)))) {
 		Strcpy(tmpbuf, prefix);
 		Strcpy(prefix, "an ");
 		Strcpy(prefix+3, tmpbuf+2);
@@ -726,6 +745,8 @@ register struct obj *otmp;
 	    !otmp->bknown ||
 #endif
 	    !objects[otmp->otyp].oc_name_known)	/* ?redundant? */
+	return TRUE;
+    if (otmp->oartifact && undiscovered_artifact(otmp->oartifact))
 	return TRUE;
     /* otmp->rknown is the only item of interest if we reach here */
        /*
@@ -800,7 +821,8 @@ register const char *str;
 		if (index(vowels, *str) &&
 		    strncmp(str, "useful", 6) &&
 		    strncmp(str, "unicorn", 7) &&
-		    strncmp(str, "uranium", 7))
+		    strncmp(str, "uranium", 7) &&
+		    strncmp(str, "eucalyptus", 10))
 			Strcpy(buf, "an ");
 		else
 			Strcpy(buf, "a ");
@@ -1310,10 +1332,9 @@ const char *oldstr;
 			   !BSTRCMP(bp, p-14, "shape changers") ||
 			   !BSTRCMP(bp, p-15, "detect monsters") ||
 			   !BSTRCMPI(bp, p-11, "Aesculapius") || /* staff */
-			   !BSTRCMPI(bp, p-7, "Artemis") || /* bow */
-		       !BSTRCMP(bp, p-10, "eucalyptus") ||
+			   !BSTRCMP(bp, p-10, "eucalyptus") ||
 #ifdef WIZARD
-			   !BSTRCMP(bp, p-4, "bars") ||
+			   !BSTRCMP(bp, p-9, "iron bars") ||
 #endif
 			   !BSTRCMP(bp, p-5, "aklys"))
 				return bp;
@@ -1373,6 +1394,11 @@ boolean retry_inverted;	/* optional extra "of" handling */
 		return fuzzymatch(u_str + 7, o_str + 6, " -", TRUE);
 	    else if (!strncmpi(u_str, "elfin ", 6))
 		return fuzzymatch(u_str + 6, o_str + 6, " -", TRUE);
+	} else if (!strcmp(o_str, "aluminum")) {
+		/* this special case doesn't really fit anywhere else... */
+		/* (note that " wand" will have been stripped off by now) */
+	    if (!strcmpi(u_str, "aluminium"))
+		return fuzzymatch(u_str + 9, o_str + 8, " -", TRUE);
 	}
 
 	return FALSE;
@@ -1434,8 +1460,7 @@ register char *bp;
 	int isinvisible;
 #endif
 	int halfeaten, mntmp, contents;
-	int islit, unlabeled;
-	int isdiluted;
+	int islit, unlabeled, ishistoric, isdiluted;
 	struct fruit *f;
 	int ftype = current_fruit;
 	char fruitbuf[BUFSZ];
@@ -1464,7 +1489,7 @@ register char *bp;
 		isinvisible =
 #endif
 		ispoisoned = isgreased = eroded = eroded2 = erodeproof =
-		halfeaten = islit = unlabeled = isdiluted = 0;
+		halfeaten = islit = unlabeled = ishistoric = isdiluted = 0;
 	mntmp = NON_PM;
 #define UNDEFINED 0
 #define EMPTY 1
@@ -1508,7 +1533,8 @@ register char *bp;
 			   !strncmpi(bp, "erodeproof ", l=11) ||
 			   !strncmpi(bp, "corrodeproof ", l=13) ||
 			   !strncmpi(bp, "fixed ", l=6) ||
-			   !strncmpi(bp, "fireproof ", l=10)) {
+			   !strncmpi(bp, "fireproof ", l=10) ||
+			   !strncmpi(bp, "rotproof ", l=9)) {
 			erodeproof = 1;
 		} else if (!strncmpi(bp,"lit ", l=4) ||
 			   !strncmpi(bp,"burning ", l=8)) {
@@ -1546,6 +1572,8 @@ register char *bp;
 			very = 0;
 		} else if (!strncmpi(bp, "partly eaten ", l=13)) {
 			halfeaten = 1;
+		} else if (!strncmpi(bp, "historic ", l=9)) {
+			ishistoric = 1;
 		} else if (!strncmpi(bp, "diluted ", l=8)) {
 			isdiluted = 1;
 		} else break;
@@ -1675,10 +1703,10 @@ register char *bp;
 		*p = 0;
 	}
 	/* Find corpse type w/o "of" (red dragon scale mail, yeti corpse) */
-	if (strncmp(bp, "samurai sword", 13)) /* not the "samurai" monster! */
-	if (strncmp(bp, "wizard lock", 11)) /* not the "wizard" monster! */
-	if (strncmp(bp, "ninja-to", 8)) /* not the "ninja" rank */
-	if (strncmp(bp, "master key", 10)) /* not the "master" rank */
+	if (strncmpi(bp, "samurai sword", 13)) /* not the "samurai" monster! */
+	if (strncmpi(bp, "wizard lock", 11)) /* not the "wizard" monster! */
+	if (strncmpi(bp, "ninja-to", 8)) /* not the "ninja" rank */
+	if (strncmpi(bp, "master key", 10)) /* not the "master" rank */
 	if (mntmp < LOW_PM && strlen(bp) > 2 &&
 	    (mntmp = name_to_mon(bp)) >= LOW_PM) {
 		int mntmptoo, mntmplen;	/* double check for rank title */
@@ -1741,14 +1769,6 @@ register char *bp;
 		typ = SPE_BLANK_PAPER;
 		goto typfnd;
 	}
-#if 0
-#ifdef TOURIST
-	if (!BSTRCMPI(bp, p-5, "shirt")) {
-		typ = HAWAIIAN_SHIRT;
-		goto typfnd;
-	}
-#endif
-#endif
 	/*
 	 * NOTE: Gold pieces are handled as objects nowadays, and therefore
 	 * this section should probably be reconsidered as well as the entire
@@ -2015,6 +2035,14 @@ srch:
 			newsym(u.ux, u.uy);
 			return &zeroobj;
 		}
+		if (!BSTRCMP(bp, p-4, "lava")) {  /* also matches "molten lava" */
+			levl[u.ux][u.uy].typ = LAVAPOOL;
+			del_engr_at(u.ux, u.uy);
+			pline("A pool of molten lava.");
+			if (!(Levitation || Flying)) (void) lava_effects();
+			newsym(u.ux, u.uy);
+			return &zeroobj;
+		}
 
 		if(!BSTRCMP(bp, p-5, "altar")) {
 		    aligntyp al;
@@ -2037,7 +2065,7 @@ srch:
 		}
 
 		if(!BSTRCMP(bp, p-5, "grave") || !BSTRCMP(bp, p-9, "headstone")) {
-		    levl[u.ux][u.uy].typ = GRAVE;
+		    make_grave(u.ux, u.uy, (char *) 0);
 		    pline("A grave.");
 		    newsym(u.ux, u.uy);
 		    return(&zeroobj);
@@ -2065,14 +2093,14 @@ typfnd:
 	if (typ) oclass = objects[typ].oc_class;
 
 	/* check for some objects that are not allowed */
-	if (typ && objects[typ].oc_unique)
+	if (typ && objects[typ].oc_unique) {
+#ifdef WIZARD
+	    if (wizard)
+		;	/* allow unique objects */
+	    else
+#endif
 	    switch (typ) {
 		case AMULET_OF_YENDOR:
-#ifdef WIZARD
-		    if (wizard && !flags.made_amulet)
-			flags.made_amulet = TRUE;
-		    else
-#endif
 			typ = FAKE_AMULET_OF_YENDOR;
 		    break;
 		case CANDELABRUM_OF_INVOCATION:
@@ -2085,6 +2113,7 @@ typfnd:
 		    typ = SPE_BLANK_PAPER;
 		    break;
 	    }
+	}
 
 	/* catch any other non-wishable objects */
 	if (objects[typ].oc_nowish
@@ -2229,6 +2258,7 @@ typfnd:
 		case STATUE: otmp->corpsenm = mntmp;
 			if (Has_contents(otmp) && verysmall(&mons[mntmp]))
 			    delete_contents(otmp);	/* no spellbook */
+			otmp->spe = ishistoric;
 			break;
 		case SCALE_MAIL:
 			/* Dragon mail - depends on the order of objects */

@@ -348,7 +348,7 @@ const QFont& NetHackQtSettings::normalFont()
 
 const QFont& NetHackQtSettings::normalFixedFont()
 {
-    static int size[]={ 20, 14, 13, 10 };
+    static int size[]={ 18, 14, 13, 10 };
     normalfixed.setPointSize(size[fontsize.currentItem()]);
     return normalfixed;
 }
@@ -636,9 +636,9 @@ NetHackQtPlayerSelector::NetHackQtPlayerSelector(NetHackQtKeyBuffer& ks) :
     int i;
     int nrole;
 
-    for (nrole=0; roles[nrole].name.m; nrole++) // XXX QListView unsorted goes in rev.
+    for (nrole=0; roles[nrole].name.m; nrole++)
 	;
-    for (i=nrole-1; i>=0; i--) {
+    for (i=nrole-1; i>=0; i--) { // XXX QListView unsorted goes in rev.
 	new NhPSListViewRole( role, i );
     }
     connect( role, SIGNAL(selectionChanged()), this, SLOT(selectRole()) );
@@ -1003,6 +1003,7 @@ NetHackQtMapWindow::NetHackQtMapWindow(NetHackQtClickBuffer& click_sink) :
     connect(qt_settings,SIGNAL(tilesChanged()),this,SLOT(updateTiles()));
 
     updateTiles();
+    //setFocusPolicy(StrongFocus);
 }
 
 void NetHackQtMapWindow::updateTiles()
@@ -1169,6 +1170,7 @@ void NetHackQtMapWindow::paintEvent(QPaintEvent* event)
 #define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
 #define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
 #define pet_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define warn_color(n) color = iflags.use_color ? def_warnsyms[n].color : NO_COLOR
 
 # else /* no text color */
 
@@ -1177,9 +1179,14 @@ void NetHackQtMapWindow::paintEvent(QPaintEvent* event)
 #define obj_color(n)
 #define mon_color(n)
 #define pet_color(c)
+#define warn_color(c)
 		painter.setPen( green );
 #endif
-		if ((offset = (g - GLYPH_SWALLOW_OFF)) >= 0) {		/* swallow */
+
+		if ((offset = (g - GLYPH_WARNING_OFF)) >= 0) { 	  /* a warning flash */
+		    ch = warnsyms[offset];
+		    warn_color(offset);
+		} else if ((offset = (g - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
 		    /* see swallow_to_glyph() in display.c */
 		    ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
 		    mon_color(offset >> 3);
@@ -1465,7 +1472,8 @@ protected:
 	    p->setFont(bold);
 	}
 
-	p->drawText(3,0,width(),cellHeight(),AlignLeft|AlignVCenter,uitem.text);
+	p->drawText(3, 0, cellWidth(), cellHeight(),
+		AlignLeft|AlignVCenter, uitem.text);
 
 	if (uitem.attr) {
 	    p->setFont(font());
@@ -2036,12 +2044,10 @@ void NetHackQtStatusWindow::updateStats()
     }
     name.setLabel(buf,NetHackQtLabelledIcon::NoNum,u.ulevel);
 
-    if (In_endgame(&u.uz)) {
-	Strcpy(buf, (Is_astralevel(&u.uz) ? "Astral Plane":"End Game"));
+    if (describe_level(buf)) {
 	dlevel.setLabel(buf,TRUE);
     } else {
-	Strcpy(buf, dungeons[u.uz.dnum].dname);
-	Sprintf(eos(buf), ", level ");
+	Sprintf(buf, "%s, level ", dungeons[u.uz.dnum].dname);
 	dlevel.setLabel(buf,(long)depth(&u.uz));
     }
 
@@ -2363,19 +2369,21 @@ int NetHackQtMenuWindow::SelectMenu(int h, MENU_ITEM_P **menu_list)
     setFocus();
     while (dialog->result()<0) {
 	qApp->enter_loop();
+	// changed the defaults below to the values in wintype.h 000119 - azy
 	if (dialog->result()<0 && !keysource.Empty()) {
 	    char k=keysource.GetAscii();
+	    k=map_menu_cmd(k); /* added 000119 - azy */
 	    if (k=='\033')
 		dialog->Reject();
 	    else if (k=='\r' || k=='\n' || k==' ')
 		dialog->Accept();
-	    else if (k=='/')
+	    else if (k==MENU_SEARCH)
 		Search();
-	    else if (k=='*')
+	    else if (k==MENU_SELECT_ALL)
 		All();
-	    else if (k=='@')
+	    else if (k==MENU_INVERT_ALL)
 		Invert();
-	    else if (k=='%')
+	    else if (k==MENU_UNSELECT_ALL)
 		ChooseNone();
 	    else {
 		for (int i=0; i<itemcount; i++) {
@@ -2650,6 +2658,7 @@ NetHackQtRIP::NetHackQtRIP(QWidget* parent) :
 	pixmap=new QPixmap;
 	tryload(*pixmap, "rip.xpm");
     }
+    riplines=0;
     resize(pixmap->width(),pixmap->height());
     setFont(QFont("times",12)); // XXX may need to be configurable
 }
@@ -2662,37 +2671,39 @@ void NetHackQtRIP::setLines(char** l, int n)
 
 void NetHackQtRIP::paintEvent(QPaintEvent* event)
 {
-    int pix_x=(width()-pixmap->width())/2;
-    int pix_y=(height()-pixmap->height())/2;
+    if ( riplines ) {
+	int pix_x=(width()-pixmap->width())/2;
+	int pix_y=(height()-pixmap->height())/2;
 
-    // XXX positions based on RIP image
-    int rip_text_x=pix_x+156;
-    int rip_text_y=pix_y+67;
-    int rip_text_h=94/riplines;
+	// XXX positions based on RIP image
+	int rip_text_x=pix_x+156;
+	int rip_text_y=pix_y+67;
+	int rip_text_h=94/riplines;
 
-    QPainter painter;
-    painter.begin(this);
-    painter.drawPixmap(pix_x,pix_y,*pixmap);
-    for (int i=0; i<riplines; i++) {
-	painter.drawText(rip_text_x-i/2,rip_text_y+i*rip_text_h,
-	    1,1,DontClip|AlignHCenter,line[i]);
+	QPainter painter;
+	painter.begin(this);
+	painter.drawPixmap(pix_x,pix_y,*pixmap);
+	for (int i=0; i<riplines; i++) {
+	    painter.drawText(rip_text_x-i/2,rip_text_y+i*rip_text_h,
+		1,1,DontClip|AlignHCenter,line[i]);
+	}
+	painter.end();
     }
-    painter.end();
 }
 
 NetHackQtTextWindow::NetHackQtTextWindow(NetHackQtKeyBuffer& ks) :
     QDialog(0,0,FALSE),
     keysource(ks),
-    rip(this),
+    use_rip(FALSE),
+    str_fixed(FALSE),
     ok("Dismiss",this),
     search("Search",this),
-    lines(new NetHackQtTextListBox(this))
+    lines(new NetHackQtTextListBox(this)),
+    rip(this)
 {
     ok.setDefault(TRUE);
     connect(&ok,SIGNAL(clicked()),this,SLOT(accept()));
     connect(&search,SIGNAL(clicked()),this,SLOT(Search()));
-    use_rip=FALSE;
-    str_fixed=FALSE;
 
     connect(qt_settings,SIGNAL(fontChanged()),this,SLOT(doUpdate()));
 }
@@ -2931,7 +2942,7 @@ void NetHackQtInvUsageWindow::paintEvent(QPaintEvent*)
 {
     //  012
     //
-    //0  hB   
+    //0 WhB   
     //1 s"w   
     //2 gCg   
     //3 =A=   
@@ -2942,7 +2953,6 @@ void NetHackQtInvUsageWindow::paintEvent(QPaintEvent*)
     painter.begin(this);
 
     // Blanks
-    drawWorn(painter,0,0,0,FALSE);
     drawWorn(painter,0,0,4,FALSE);
     drawWorn(painter,0,0,5,FALSE);
     drawWorn(painter,0,2,4,FALSE);
@@ -2965,6 +2975,7 @@ void NetHackQtInvUsageWindow::paintEvent(QPaintEvent*)
     drawWorn(painter,uright,2,3); // RingR
 
     drawWorn(painter,uwep,2,1); // Weapon
+    drawWorn(painter,uswapwep,0,0); // Secondary weapon
     drawWorn(painter,uamul,1,1); // Amulet
     drawWorn(painter,ublindf,2,0); // Blindfold
 
@@ -3023,6 +3034,7 @@ NetHackQtMainWindow::NetHackQtMainWindow(NetHackQtKeyBuffer& ks) :
 	{ apparel,	0, 0 },
 	{ apparel,	"Wield weapon\tw",      "w" },
 	{ apparel,	"Exchange weapons\tx",      "x" },
+	{ apparel,	"Two weapon combat\t#two",      "#tw" },
 	{ apparel,	0, 0 },
 	{ apparel,	"Wear armour\tShift-W",       "W" },
 	{ apparel,	"Take off armour\tShift-T",   "T" },
@@ -3272,6 +3284,32 @@ void NetHackQtMainWindow::keyPressEvent(QKeyEvent* event)
     }
 }
 
+void NetHackQtMainWindow::closeEvent(QCloseEvent* e)
+{
+    if ( program_state.something_worth_saving ) {
+	switch ( QMessageBox::information( this, "NetHack",
+	    "This will end your NetHack session",
+	    "&Save", "&Quit", "&Cancel", 0, 2 ) )
+	{
+	    case 0:
+		// See dosave() function
+		if (dosave0()) {
+		    u.uhp = -1;
+		    terminate(EXIT_SUCCESS);
+		}
+		break;
+	    case 1:
+		u.uhp = -1;
+		terminate(EXIT_SUCCESS);
+		break;
+	    case 2:
+		break; // ignore the event
+	}
+    } else {
+	e->accept();
+    }
+}
+
 void NetHackQtMainWindow::ShowIfReady()
 {
     if (message && map && status) {
@@ -3420,7 +3458,7 @@ NetHackQtGlyphs::NetHackQtGlyphs()
 	tile_file = "nhtiles.bmp";
 	if (!img.load(tile_file)) {
 	    QString msg;
-	    msg.sprintf("Cannot load tiles.xpm or nhtiles.bmp");
+	    msg.sprintf("Cannot load x11tiles or nhtiles.bmp");
 	    QMessageBox::warning(0, "IO Error", msg);
 	} else {
 	    tiles_per_row = 40;
@@ -3570,7 +3608,6 @@ NetHackQtBind::NetHackQtBind(int& argc, char** argv) :
     QApplication(argc,argv)
 #endif
 {
-    QApplication::setFont(QFont("Helvetica",12));
     main = new NetHackQtMainWindow(keybuffer);
     setMainWidget(main);
     qt_settings=new NetHackQtSettings(main->width(),main->height());
@@ -3611,13 +3648,19 @@ int NetHackQtBind::qt_kbhit()
     return !keybuffer.Empty();
 }
 
+static bool have_asked = FALSE;
+
 void NetHackQtBind::qt_player_selection()
 {
+    if ( !have_asked )
+	qt_askname();
 }
 
 void NetHackQtBind::qt_askname()
 {
-    // We do it all here, and nothing in player selection.
+    have_asked = TRUE;
+
+    // We do it all here, and nothing in askname
 
     NetHackQtPlayerSelector selector(keybuffer);
 
@@ -3921,7 +3964,7 @@ char NetHackQtBind::qt_yn_function(const char *question, const char *choices, CH
 	}
 
 	if (strcmp (choices,"yn") == 0) {
-	    switch (QMessageBox::information(0,"Slashem",question,"&Yes", "&No",0,1))
+	    switch (QMessageBox::information(0,"NetHack",question,"&Yes", "&No",0,1))
 	    {
 	      case 0: return 'y';
 	      case 1: return 'n'; 
@@ -4115,8 +4158,10 @@ bool NetHackQtBind::notify(QObject *receiver, QEvent *event)
 	    }
 	    char ch=key_event->ascii();
 	    if (!macro && ch) {
-		keybuffer.Put(key_event->key(),ch
-		    + ((key_event->state()&AltButton) ? 128 : 0),
+		int k = key_event->key();
+		bool alt = (key_event->state()&AltButton) ||
+		   (k >= Key_0 && k <= Key_9 && (key_event->state()&ControlButton));
+		keybuffer.Put(key_event->key(),ch + (alt ? 128 : 0),
 		    key_event->state());
 		key_event->accept();
 		result=TRUE;
@@ -4198,7 +4243,8 @@ struct window_procs Qt_procs = {
 extern "C" void play_usersound(const char* filename, int volume)
 {
 #ifdef USER_SOUNDS
-    QAudio::play(filename,volume);
+    // Qt 2.2 has sound
+    //QSound::play(filename,volume);
 #endif
 }
 

@@ -46,6 +46,7 @@ struct artifact {
 	uchar	    inv_prop;	/* property obtained by invoking artifact */
 	aligntyp    alignment;	/* alignment of bequeathing gods */
 	short	    role;	/* character role associated with */
+	short	    race;	/* character race associated with */
 };
 
 /* invoked properties with special powers */

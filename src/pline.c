@@ -160,14 +160,26 @@ pline_The VA_DECL(const char *,line)
 
 /*VARARGS1*/
 void
+There VA_DECL(const char *,line)
+	char *tmp;
+	VA_START(line);
+	VA_INIT(line, const char *);
+	vpline(YouMessage(tmp, "There ", line), VA_ARGS);
+	VA_END();
+}
+
+/*VARARGS1*/
+void
 You_hear VA_DECL(const char *,line)
 	char *tmp;
 	VA_START(line);
 	VA_INIT(line, const char *);
-	if (!Underwater)
-		YouPrefix(tmp, "You hear ", line);
-	else
+	if (Underwater)
 		YouPrefix(tmp, "You barely hear ", line);
+	else if (u.usleep)
+		YouPrefix(tmp, "You dream that you hear ", line);
+	else
+		YouPrefix(tmp, "You hear ", line);
 	vpline(strcat(tmp, line), VA_ARGS);
 	VA_END();
 }
@@ -309,13 +321,10 @@ register struct monst *mtmp;
 	if (mtmp == u.usteed)	  Strcat(info, ", carrying you");
 #endif
 
-	Strcpy(monnambuf, mon_nam(mtmp));
 	/* avoid "Status of the invisible newt ..., invisible" */
-	if (mtmp->minvis && strstri(monnambuf, "invisible")) {
-	    mtmp->minvis = 0;
-	    Strcpy(monnambuf, mon_nam(mtmp));
-	    mtmp->minvis = 1;
-	}
+	/* and unlike a normal mon_nam, use "saddled" even if it has a name */
+	Strcpy(monnambuf, x_monnam(mtmp, ARTICLE_THE, (char *)0,
+	    (SUPPRESS_IT|SUPPRESS_INVISIBLE), FALSE));
 
 	pline("Status of %s (%s):  Level %d  HP %d(%d)  AC %d%s.",
 		monnambuf,
@@ -344,6 +353,7 @@ ustatusline()
 		}
 	}
 	if (Stoned)		Strcat(info, ", solidifying");
+	if (Slimed)		Strcat(info, ", becoming slimy");
 	if (Strangled)		Strcat(info, ", being strangled");
 	if (Vomiting)		Strcat(info, ", nauseated"); /* !"nauseous" */
 	if (Confusion)		Strcat(info, ", confused");
@@ -369,7 +379,7 @@ ustatusline()
 	if (Glib)		Sprintf(eos(info), ", slippery %s",
 					makeplural(body_part(HAND)));
 	if (u.utrap)		Strcat(info, ", trapped");
-	if (Fast)		Strcat(info, (Fast & ~INTRINSIC) ?
+	if (Fast)		Strcat(info, Very_fast ?
 						", very fast" : ", fast");
 	if (u.uundetected)	Strcat(info, ", concealed");
 	if (Invis)		Strcat(info, ", invisible");
@@ -399,7 +409,8 @@ ustatusline()
 		info);
 }
 
-void self_invis_message()
+void
+self_invis_message()
 {
 	pline("%s %s.",
 	    Hallucination ? "Far out, man!  You" : "Gee!  All of a sudden, you",
@@ -408,5 +419,4 @@ void self_invis_message()
 }
 
 #endif /* OVLB */
-
 /*pline.c*/

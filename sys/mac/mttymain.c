@@ -3,12 +3,11 @@
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 #include "hack.h"
+#include "macwin.h"
 #include "mttypriv.h"
 #include "mactty.h"
-#include "macwin.h"
 #include "wintty.h"
 
-#include <stdarg.h>
 #include <Palettes.h>
 
 #define MT_WINDOW 135
@@ -22,9 +21,6 @@
  * Statics are prefixed _
  * Mac-tty becomes mt_
  */
-
-
-static void _mt_set_colors (long *colors);
 
 static long _mt_attrs [5] [2] = {
 	{ 0x000000, 0xffffff }, /* Normal */
@@ -214,9 +210,7 @@ short hor, vert;
 	 * offscreen GWorld
 	 */
 	if (!Gestalt (gestaltQuickdrawVersion, &resp) && resp > 0x1ff) {
-	GDHandle gdh;
-
-		gdh = GetDeviceList ();
+		GDHandle gdh = GetDeviceList ();
 		while (gdh) {
 			if (TestDeviceAttribute (gdh, screenDevice)) {
 				if (HasDepth (gdh, 4, 1, 1) ||
@@ -256,15 +250,12 @@ short hor, vert;
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
 	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
-	flag |= TA_BLINKING_CURSOR;
-#ifdef applec
-	flag &= ~ TA_CR_ADD_NL;
-#else
-	flag &= ~ TA_NL_ADD_CR;
-#endif
+	flag |= (TA_BLINKING_CURSOR | TA_NL_ADD_CR);
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
+
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FOREGROUND, _mt_colors [NO_COLOR] [0]));
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_BACKGROUND, _mt_colors [NO_COLOR] [1]));
+	clear_tty (_mt_window);//
 
 	InitMenuRes ();
 }
@@ -275,7 +266,6 @@ tgetch (void) {
 EventRecord event;
 long sleepTime = 0;
 int ret = 0;
-int key;
 
 	for (;!ret;) {
 		WaitNextEvent (-1, &event, sleepTime, 0);
@@ -303,7 +293,7 @@ getreturn (char *str) {
 
 int
 has_color (int color) {
-#if defined(applec)
+#if defined(applec) || defined(__MWERKS__)
 # pragma unused(color)
 #endif
 Rect r;
@@ -316,7 +306,7 @@ GDHandle gh;
 
 	r = _mt_window->portRect;
 	SetPort (_mt_window);
-	GlobalToLocal (&p);
+	LocalToGlobal (&p);
 	OffsetRect (&r, p.h, p.v);
 
 	gh = GetMaxDevice (&r);
@@ -371,7 +361,7 @@ short err;
 
 void
 term_end_attr (int attr) {
-#if defined(applec)
+#if defined(applec) || defined(__MWERKS__)
 # pragma unused (attr)
 #endif
 	_mt_set_colors (_mt_attrs [0]);
@@ -421,7 +411,7 @@ term_end_color (void) {
 void
 cl_end (void) {
 	_mt_set_colors (_mt_attrs [0]);
-	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury ,
+	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury,
 		CO - 1, ttyDisplay->cury);
 }
 
@@ -436,7 +426,7 @@ clear_screen (void) {
 void
 cl_eos (void) {
 	_mt_set_colors (_mt_attrs [0]);
-	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury, CO - 1 ,
+	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury, CO - 1,
 		LI - 1);
 }
 
@@ -500,16 +490,6 @@ long flag;
 	flag |= TA_INHIBIT_VERT_SCROLL; /* don't scroll */
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
-	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
-
-#ifdef applec
-	flag &= ~ TA_CR_ADD_NL;
-#else
-	flag &= ~ TA_NL_ADD_CR;
-#endif
-
-	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
-
 	iflags.cbreak = 1;
 }
 
@@ -539,16 +519,6 @@ long flag;
 	flag |= TA_ALWAYS_REFRESH;
 	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
-	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
-
-#ifdef applec
-	flag |= TA_CR_ADD_NL;
-#else
-	flag |= TA_NL_ADD_CR;
-#endif
-
-	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
-
 	tty_raw_print ("\n");
 	if (str) {
 		tty_raw_print (str);
@@ -558,7 +528,7 @@ long flag;
 
 void
 tty_number_pad (int arg) {
-#if defined(applec)
+#if defined(applec) || defined(__MWERKS__)
 # pragma unused(arg)
 #endif
 }

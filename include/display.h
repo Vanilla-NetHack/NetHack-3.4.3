@@ -33,8 +33,16 @@
 	(distu(mon->mx, mon->my) <= (BOLT_LIM * BOLT_LIM))))		      \
 )
 
-#define sensemon(mon) (tp_sensemon(mon) || Detect_monsters)
+#define sensemon(mon) (tp_sensemon(mon) || Detect_monsters || MATCH_WARN_OF_MON(mon))
 
+/*
+ * mon_warning() is used to warn of any dangerous monsters in your
+ * vicinity, and a glyph representing the warning level is displayed.
+ */
+
+#define mon_warning(mon) (Warning && !(mon)->mpeaceful && 				\
+			 (distu((mon)->mx, (mon)->my) < 100) &&				\
+			 (((int) ((mon)->m_lev / 4)) >= flags.warnlevel))
 
 /*
  * mon_visible()
@@ -165,11 +173,12 @@
 /*
  * tmp_at() control calls.
  */
-#define DISP_BEAM   (-1)  /* Keep all glyphs showing & clean up at end. */
-#define DISP_FLASH  (-2)  /* Clean up each glyph before displaying new one. */
-#define DISP_ALWAYS (-3)  /* Like flash, but still displayed if not visible. */
-#define DISP_CHANGE (-4)  /* Change glyph. */
-#define DISP_END    (-5)  /* Clean up. */
+#define DISP_BEAM    (-1)  /* Keep all glyphs showing & clean up at end. */
+#define DISP_FLASH   (-2)  /* Clean up each glyph before displaying new one. */
+#define DISP_ALWAYS  (-3)  /* Like flash, but still displayed if not visible. */
+#define DISP_CHANGE  (-4)  /* Change glyph. */
+#define DISP_END     (-5)  /* Clean up. */
+#define DISP_FREEMEM (-6)  /* Free all memory during exit only. */
 
 
 /* Total number of cmap indices in the sheild_static[] array. */
@@ -188,7 +197,7 @@
 	(u.usteed && mon_visible(u.usteed)) ?			\
 				ridden_mon_to_glyph(u.usteed) :		\
 	youmonst.m_ap_type == M_AP_NOTHING ?				\
-				monnum_to_glyph(u.umonnum) :	\
+				hero_glyph :					\
 	youmonst.m_ap_type == M_AP_FURNITURE ?				\
 				cmap_to_glyph(youmonst.mappearance) :	\
 	youmonst.m_ap_type == M_AP_OBJECT ?				\
@@ -198,12 +207,11 @@
 #define display_self()							\
     show_glyph(u.ux, u.uy,						\
 	youmonst.m_ap_type == M_AP_NOTHING ?				\
-				monnum_to_glyph(Upolyd ? u.umonnum : urace.malenum) :	\
+				hero_glyph :					\
 	youmonst.m_ap_type == M_AP_FURNITURE ?				\
 				cmap_to_glyph(youmonst.mappearance) :	\
 	youmonst.m_ap_type == M_AP_OBJECT ?				\
 				objnum_to_glyph(youmonst.mappearance) : \
-    !Upolyd ? monnum_to_glyph(urace.malenum) :		\
 	/* else M_AP_MONSTER */ monnum_to_glyph(youmonst.mappearance))
 #endif
 
@@ -246,6 +254,8 @@
  *		shifted over 3 positions and the swallow position is stored
  *		in the lower three bits.  Count: NUMMONS << 3
  *
+ * warning	A set of six representing the different warning levels.
+ *
  * The following are offsets used to convert to and from a glyph.
  */
 #define NUM_ZAP 8	/* number of zap beam types */
@@ -260,13 +270,14 @@
 #define GLYPH_CMAP_OFF		(NUM_OBJECTS	+ GLYPH_OBJ_OFF)
 #define GLYPH_ZAP_OFF		(MAXPCHARS	+ GLYPH_CMAP_OFF)
 #define GLYPH_SWALLOW_OFF	((NUM_ZAP << 2) + GLYPH_ZAP_OFF)
-#define MAX_GLYPH		((NUMMONS << 3) + GLYPH_SWALLOW_OFF)
+#define GLYPH_WARNING_OFF	((NUMMONS << 3) + GLYPH_SWALLOW_OFF)
+#define MAX_GLYPH		(WARNCOUNT      + GLYPH_WARNING_OFF)
 
 #define NO_GLYPH MAX_GLYPH
 
 #define GLYPH_INVISIBLE GLYPH_INVIS_OFF
 
-
+#define warning_to_glyph(mwarnlev) ((mwarnlev)+GLYPH_WARNING_OFF)
 #define mon_to_glyph(mon) ((int) what_mon(monsndx((mon)->data))+GLYPH_MON_OFF)
 #define detected_mon_to_glyph(mon) ((int) what_mon(monsndx((mon)->data))+GLYPH_DETECT_OFF)
 #define ridden_mon_to_glyph(mon) ((int) what_mon(monsndx((mon)->data))+GLYPH_RIDDEN_OFF)
@@ -293,6 +304,11 @@
 #define detected_monnum_to_glyph(mnum)	((int) (mnum) + GLYPH_DETECT_OFF)
 #define ridden_monnum_to_glyph(mnum)	((int) (mnum) + GLYPH_RIDDEN_OFF)
 #define petnum_to_glyph(mnum)	((int) (mnum) + GLYPH_PET_OFF)
+
+/* The hero's glyph when seen as a monster.  Could also be...
+ * mon_to_glyph(Upolyd || Race_if(PM_HUMAN) ? u.umonnum : urace.malenum)
+ */
+#define hero_glyph monnum_to_glyph(u.umonnum)
 
 
 /*
@@ -327,6 +343,9 @@
 #define glyph_to_swallow(glyph)						\
 	(glyph_is_swallow(glyph) ? (((glyph) - GLYPH_SWALLOW_OFF) & 0x7) : \
 	0)
+#define glyph_to_warning(glyph)						\
+	(glyph_is_warning(glyph) ? ((glyph) - GLYPH_WARNING_OFF) :	\
+	NO_GLYPH);
 
 /*
  * Return true if the given glyph is what we want.  Note that bodies are
@@ -360,5 +379,6 @@
     ((glyph) >= GLYPH_CMAP_OFF && (glyph) < (GLYPH_CMAP_OFF+MAXPCHARS))
 #define glyph_is_swallow(glyph) \
     ((glyph) >= GLYPH_SWALLOW_OFF && (glyph) < (GLYPH_SWALLOW_OFF+(NUMMONS << 3)))
-
+#define glyph_is_warning(glyph)	\
+    ((glyph) >= GLYPH_WARNING_OFF && (glyph) < (GLYPH_WARNING_OFF + WARNCOUNT))
 #endif /* DISPLAY_H */

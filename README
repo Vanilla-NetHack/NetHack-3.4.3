@@ -1,18 +1,16 @@
-                NetHack 3.3 -- General information
+                NetHack 3.3.1 -- General information
 
-NetHack 3.3 is a new enhancement to the dungeon exploration game NetHack.
+NetHack 3.3.1 is an enhancement to the dungeon exploration game NetHack.
 It is a distant descendent of Rogue and Hack, and a direct descendent of
-NetHack 3.2.
+NetHack 3.2 and 3.3.0.  This version is primarily a bug fix release.
 
 Here is a brief overview of new additions and changes in the game.
 To give more would be cheating, wouldn't it?
 
 o Many, many bug fixes and minor tweaks
-o Incorporate the wizard patch by Larry Stewart Zebra and Warwick Allison
-o Split the character's race from his/her/its role in life
-o Add elf, dwarf, orc, and gnome races
-o Add new Ranger role
-
+o New warning system that is more pleasant than the old one
+o The Amiga and Atari ports are resurrected
+o The Gnome toolkit interface is now offered as an experimental option
 
 
                         - - - - - - - - - - -
@@ -57,8 +55,10 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         windowing systems.
     w.  A 'win/Qt' subdirectory, which contains files specific to Qt.
     x.  A 'win/X11' subdirectory, which contains files specific to X11.
-    y.  A 'win/tty' subdirectory, which contains files specific to ttys.
-    z.  A 'win/win32' subdirectory, which contains files specific to the
+    y.  A 'win/gem' subdirectory, which contains files specific to GEM.
+    z.  A 'win/gnome' subdirectory, which contains files specific to GNOME.
+    A.  A 'win/tty' subdirectory, which contains files specific to ttys.
+    B.  A 'win/win32' subdirectory, which contains files specific to the
         Windows NT Win32 API.
 
     The names of these directories should not be changed unless you are
@@ -91,6 +91,9 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     At the time of this release, NetHack 3.3 is known to run/compile on:
 
         Apple Macintosh running MacOS 7.5 or higher, LinuxPPC, BeOS 4.0
+        Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
+        Commodore Amiga running AmigaDOS 3.0 or higher with SAS/C 6.x
+                (but see Makefile.ami about DICE and Manx)
         DEC Alpha/VMS (aka OpenVMS AXP), running V1.x through V7.0
         DEC VAX/VMS, running V4.6 through V7.0
         HP 9000s700 running HP-UX 10.x, 11.x
@@ -100,21 +103,18 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         Intel 80386 or greater (or clone) and DEC Alpha desktop machines
                 running Windows NT
         Intel 80386 or greater (or clone) boxes running Linux, BSDI, or
-		Windows 95,98
+		Windows 95,98,2000
 	Intel Pentium or better (or clone) running BeOS 4.5
         Sun SPARC based machine running SunOS 4.x, Solaris 2.x, or Solaris 7
 
     Previous versions of NetHack were tested on the following systems,
     and we expect that NetHack 3.3 will work on them as well:
 
-        Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
         AT&T 3B1 running System V (3.51)
         AT&T 3B2/600 & 3B2/622 running System V R3.2.1
         AT&T 3B2/1000 Model 80 running System V R3.2.2
         AT&T 3B4000 running System V
         AT&T 6386 running System V R3.2
-        Commodore Amiga running AmigaDOS 1.3 or greater with SAS/C 6.55
-                (but see Install.ami about DICE and Manx)
         Data General AViiON systems running DG/UX
         DEC vaxen running BSD, Ultrix
         Decstations running Ultrix 3.1, 4.x
@@ -139,13 +139,18 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     Unless otherwise mentioned, the compiler used was the OS-vendor's
     C compiler.
 
-    The Atari and Amiga ports have fallen into the unsupported category
-    due to a lack of people with machines and time.
+    The Atari and Amiga ports are struggling to stay supported due to a
+    lack of people with machines and time.
 
-    Support for Intel 80286 machines and DOS "real mode" versions has been
-    suspended.  Builds have not been attempted in quite a while.  The
-    overlay mechanism is still present in the code if someone wishes to
-    attempt to make it work.
+    With the demise of Windows NT on the DEC Alpha, no attempt has been
+    made to build NetHack 3.3.1 on that platform.
+    
+    A build for Intel 80286 machines and DOS "real mode" overlaid versions 
+    has been produced for 3.3.1, with a marginal attempt at tuning it for 
+    suitable performance.  If someone has access to real-mode compiler and 
+    lots of spare time on their hands, you may be able to enhance the 
+    performance even further.  We don't know how well it runs on a real
+    80286 since we no longer have access to one.
 
                         - - - - - - - - - - -
 
@@ -154,8 +159,25 @@ development team may be reached at
 
                     nethack-bugs@nethack.org
 
-Please be sure to include your machine type, OS, and patchlevel.
-Alternatively, please fill out the bug report form on our web
+When sending correspondence, please observe the following:
+o Please be sure to include your machine type, OS, and patchlevel.
+o Never send binary files (e.g. save files or bones files) to the
+  nethack-bugs address.  Whichever platform you are using, only a small
+  minority of the development team has access to it, and you will rapidly
+  annoy the others.  If you have found a bug and think that your save file
+  would aid in solving the problem, send us a description in words of the
+  problem, your machine type, your operating system, and the version of
+  NetHack.  Tell us that you have a save file, but do not actually send it.
+  In the rare case that we think your save file would be helpful, you will
+  be contacted by a member of the development team with the address of a
+  specific person to send the save file to.
+o Though we make an effort to reply to each bug report, it may take some
+  time before you receive feedback.  This is especially true during the
+  period immediately after a new release, when we get the most bug reports.
+o We don't give hints for playing the game.
+o Don't bother to ask when the next version will be out.  You will not get
+  a reply.
+Alternatively, you may fill out the bug report form on our web
 page at www.nethack.org.
 
 Patches especially should be directed to this address.  If you've changed

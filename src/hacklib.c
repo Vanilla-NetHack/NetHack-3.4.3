@@ -443,7 +443,7 @@ setrandom()
 #ifdef RANDOM	/* srandom() from sys/share/random.c */
 	srandom((unsigned int) time((time_t *)0));
 #else
-# if defined(BSD) || defined(ULTRIX)	/* system srandom() */
+# if defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) /* system srandom() */
 #  ifdef BSD
 #   if defined(SUNOS4)
 	(void)
@@ -485,6 +485,7 @@ getyear()
 	return(1900 + getlt()->tm_year);
 }
 
+#if 0
 /* This routine is no longer used since in 2000 it will yield "100mmdd". */
 char *
 yymmdd(date)
@@ -506,6 +507,7 @@ time_t date;
 		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
 	return(datestr);
 }
+#endif
 
 long
 yyyymmdd(date)

@@ -1,22 +1,22 @@
-/*	SCCS Id: @(#)patchlevel.h	3.3	1999/11/27	*/
+/*	SCCS Id: @(#)patchlevel.h	3.3	2000/07/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.3.0 */
+/* NetHack 3.3.1 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	3
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	0
+#define PATCHLEVEL	1
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
  */
-#define EDITLEVEL	19
+#define EDITLEVEL	0
 
 #define COPYRIGHT_BANNER_A \
-"NetHack, Copyright 1985-1999"
+"NetHack, Copyright 1985-2000"
 
 #define COPYRIGHT_BANNER_B \
 "         By Stichting Mathematisch Centrum and M. Stephenson."
@@ -38,7 +38,25 @@
 #endif
 
 /*****************************************************************************/
-/* Version 3.3.0 */
+/* Version 3.3.1 */
+
+/*  Patch 1, August 9, 2000
+ *  Many, many general fixes, including a number for riding, twoweapon,
+ *	and invisible monsters
+ *  A security fix for a couple of potentially exploitable buffer overflows
+ *	in previous versions
+ *  Redo Ranger quest
+ *  Introduction of differentiation between different causes of blindness
+ *  Overhaul of warning
+ *  Functionality restored to Amiga (courtesy Janne Salmijarvi) and Atari
+ *	(courtesy Christian "Marvin" Bressler) ports
+ *  Mac: multiple interface fixes
+ *  win32: fixed bug that caused messages to stop displaying after escape
+ *  tty: use ANSI color (AF) over standard color (Sf) when given the choice
+ *  several ports: offer for player selection only choices consistent with
+ *	those already made by config file/command line (e.g., only offer roles
+ *	that are compatible with specified race)
+ */
 
 /*
  *  NetHack 3.3.0, December 10, 1999

@@ -1,4 +1,4 @@
-/*    SCCS Id: @(#)winext.h    3.1    93/04/02 */
+/*    SCCS Id: @(#)winext.h    3.1    2000/01/12 */
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois,  1991,1992,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,16 +30,23 @@ extern int bigscreen;
 extern int amii_numcolors;
 extern long amii_scrnmode;
 extern winid amii_rawprwin;
-extern const char *roles[];
 extern struct Screen *HackScreen;
-extern struct Library *ConsoleDevice;
 extern char Initialized;
-extern char toplines[ BUFSZ ];
-extern NEARDATA winid WIN_MESSAGE;
-extern NEARDATA winid WIN_MAP;
-extern NEARDATA winid WIN_STATUS;
-extern NEARDATA winid WIN_INVEN;
-extern winid WIN_OVER;
+/* These have already been defined elsewhere (and some are conflicting)
+ * ... going ... going once ... going twice .... 
+ * extern const char *roles[];
+ * extern struct Library *ConsoleDevice;
+ * extern char toplines[ TBUFSZ ];
+ * extern NEARDATA winid WIN_MESSAGE;
+ * extern NEARDATA winid WIN_MAP;
+ * extern NEARDATA winid WIN_STATUS;
+ * extern NEARDATA winid WIN_INVEN;
+ * extern winid WIN_OVER;
+ * extern struct GfxBase *GfxBase;
+ * extern struct Library *DiskfontBase;
+ * extern struct IntuitionBase *IntuitionBase;
+ * extern struct Library *LayersBase;
+ */
 extern int amii_msgAPen;
 extern int amii_msgBPen;
 extern int amii_statAPen;
@@ -53,12 +60,6 @@ extern int amii_otherBPen;
 #else
 extern WinamiBASE *WinamiBase;
 #endif
-
-extern struct GfxBase *GfxBase;
-extern struct Library *DiskfontBase;
-extern struct IntuitionBase *IntuitionBase;
-extern struct Library *LayersBase;
-
 /* All kinds of shared stuff */
 extern struct TextAttr Hack160;
 extern struct TextAttr Hack40;
@@ -66,6 +67,9 @@ extern struct TextAttr Hack80;
 extern struct TextAttr TextsFont13;
 extern struct Window *pr_WindowPtr;
 extern struct Menu HackMenu[];
+extern struct Menu *MenuStrip;
+extern struct NewMenu GTHackMenu[];
+extern APTR *VisualInfo;
 extern unsigned char KbdBuffered;
 extern struct TextFont *TextsFont;
 extern struct TextFont *HackFont;

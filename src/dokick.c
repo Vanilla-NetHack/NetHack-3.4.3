@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.3	1999/11/15	*/
+/*	SCCS Id: @(#)dokick.c	3.3	2000/04/21	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,6 +25,8 @@ static NEARDATA struct obj *kickobj;
 
 #define IS_SHOP(x)	(rooms[x].rtype >= SHOPBASE)
 
+static const char kick_passes_thru[] = "kick passes harmlessly through";
+
 STATIC_OVL void
 kickdmg(mon, clumsy)
 register struct monst *mon;
@@ -39,10 +41,10 @@ register boolean clumsy;
 	    dmg += 5;
 
 	/* excessive wt affects dex, so it affects dmg */
-	if(clumsy) dmg = dmg/2;
+	if (clumsy) dmg /= 2;
 
 	/* kicking a dragon or an elephant will not harm it */
-	if(thick_skinned(mon->data)) dmg = 0;
+	if (thick_skinned(mon->data)) dmg = 0;
 
 	/* attacking a shade is useless */
 	if (mon->data == &mons[PM_SHADE])
@@ -52,13 +54,16 @@ register boolean clumsy;
 		uarmf->blessed)
 	    blessed_foot_damage = 1;
 
-	if (mon->data == &mons[PM_SHADE] && !blessed_foot_damage)
-	    pline_The("kick passes harmlessly through.");
+	if (mon->data == &mons[PM_SHADE] && !blessed_foot_damage) {
+	    pline_The("%s.", kick_passes_thru);
+	    /* doesn't exercise skill or abuse alignment or frighten pet,
+	       and shades have no passive counterattack */
+	    return;
+	}
 
-	/* a good kick exercises your dex */
-	exercise(A_DEX, TRUE);
+	if(mon->m_ap_type) seemimic(mon);
 
-/*	it is unchivalrous to attack the defenseless or from behind */
+	/* it is unchivalrous to attack the defenseless or from behind */
 	if (Role_if(PM_KNIGHT) &&
 		u.ualign.type == A_LAWFUL && u.ualign.record > -10 &&
 		(!mon->mcanmove || mon->msleeping || mon->mflee)) {
@@ -84,6 +89,8 @@ register boolean clumsy;
 		    if (dmg > 1) kick_skill = P_MARTIAL_ARTS;
 		    dmg += rn2(ACURR(A_DEX)/2 + 1);
 		}
+		/* a good kick exercises your dex */
+		exercise(A_DEX, TRUE);
 	}
 	if (blessed_foot_damage) dmg += rnd(4);
 	if (uarmf) dmg += uarmf->spe;
@@ -134,24 +141,33 @@ register xchar x, y;
 	 * normally, getting all your attacks _including_ all your kicks.
 	 * If you have >1 kick attack, you get all of them.
 	 */
-	if (attacktype(youmonst.data, AT_KICK)) {
+	if (Upolyd && attacktype(youmonst.data, AT_KICK)) {
+	    struct attack *uattk;
+	    int sum;
 	    schar tmp = find_roll_to_hit(mon);
-	    for(i=0; i<NATTK; i++) {
-		if (youmonst.data->mattk[i].aatyp == AT_KICK && multi >= 0) {
-		    /* check multi; maybe they had 2 kicks and the first */
-		    /* was a kick against a floating eye */
-		    if (tmp > rnd(20)) {
-			int sum;
 
-			You("kick %s.", mon_nam(mon));
-			sum = damageum(mon, &(youmonst.data->mattk[i]));
-			if (sum == 2)
-				(void)passive(mon, 1, 0, AT_KICK);
-			else (void)passive(mon, sum, 1, AT_KICK);
-		    } else {
-			missum(mon, &(youmonst.data->mattk[i]));
-			(void)passive(mon, 0, 1, AT_KICK);
-		    }
+	    for (i = 0; i < NATTK; i++) {
+		/* first of two kicks might have provoked counterattack
+		   that has incapacitated the hero (ie, floating eye) */
+		if (multi < 0) break;
+
+		uattk = &youmonst.data->mattk[i];
+		/* we only care about kicking attacks here */
+		if (uattk->aatyp != AT_KICK) continue;
+
+		if (mon->data == &mons[PM_SHADE] &&
+			(!uarmf || !uarmf->blessed)) {
+		    /* doesn't matter whether it would have hit or missed,
+		       and shades have no passive counterattack */
+		    Your("%s %s.", kick_passes_thru, mon_nam(mon));
+		    break;	/* skip any additional kicks */
+		} else if (tmp > rnd(20)) {
+		    You("kick %s.", mon_nam(mon));
+		    sum = damageum(mon, uattk);
+		    (void)passive(mon, (boolean)(sum > 0), (sum != 2), AT_KICK);
+		} else {
+		    missum(mon, uattk);
+		    (void)passive(mon, 0, 1, AT_KICK);
 		}
 	    }
 	    return;
@@ -337,10 +353,10 @@ xchar x, y;
 	    if (!(poly_when_stoned(youmonst.data) && polymon(PM_STONE_GOLEM))) {
 		You("turn to stone...");
 		killer_format = KILLED_BY;
-			/* KMH -- otmp should be kickobj */
-			Sprintf(kbuf, "kicking a %s corpse without boots",
-					mons[kickobj->corpsenm].mname);
-			killer = kbuf;
+		/* KMH -- otmp should be kickobj */
+		Sprintf(kbuf, "kicking a %s corpse without boots",
+			mons[kickobj->corpsenm].mname);
+		killer = kbuf;
 		done(STONING);
 	    }
 	}
@@ -561,12 +577,16 @@ dokick()
 		no_kick = TRUE;
 #ifdef STEED
 	} else if (u.usteed) {
-		You("kick %s.", mon_nam(u.usteed));
-		kick_steed();
-		return (1);
+		if (yn_function("Kick your steed?", ynchars, 'y') == 'y') {
+		    You("kick %s.", mon_nam(u.usteed));
+		    kick_steed();
+		    return 1;
+		} else {
+		    return 0;
+		}
 #endif
 	} else if (Wounded_legs) {
-		/* note: dojump() has similar code */
+		/* note: jump() has similar code */
 		long wl = (EWounded_legs & BOTH_SIDES);
 		const char *bp = body_part(LEG);
 
@@ -658,11 +678,15 @@ dokick()
 
 		mtmp = m_at(x, y);
 		mdat = mtmp->data;
-		flags.forcefight = TRUE; /* attack even if invisible */
+		if (!mtmp->mpeaceful || !canspotmon(mtmp))
+		    flags.forcefight = TRUE; /* attack even if invisible */
 		kick_monster(x, y);
 		flags.forcefight = FALSE;
 		/* see comment in attack_checks() */
 		if (!canspotmon(mtmp) &&
+		    /* check x and y; a monster that evades your kick by
+		       jumping to an unseen square doesn't leave an I behind */
+		    mtmp->mx == x && mtmp->my == y &&
 		    !glyph_is_invisible(levl[x][y].glyph) &&
 		    !(u.uswallow && mtmp == u.ustuck))
 			map_invisible(x, y);
@@ -822,9 +846,9 @@ dokick()
 		    	mm.x = x; mm.y = y;
 			pline("You've disturbed the occupants!");
 			while (cnt--)
-				if (enexto(&mm, mm.x, mm.y, &mons[PM_KILLER_BEE]))
-				    (void) makemon(&mons[PM_KILLER_BEE],
-						mm.x, mm.y, MM_ANGRY);
+			    if (enexto(&mm, mm.x, mm.y, &mons[PM_KILLER_BEE]))
+				(void) makemon(&mons[PM_KILLER_BEE],
+					       mm.x, mm.y, MM_ANGRY);
 			maploc->looted |= TREE_SWARM;
 			return(1);
 		    }
@@ -832,6 +856,10 @@ dokick()
 		}
 #ifdef SINKS
 		if(IS_SINK(maploc->typ)) {
+		    int gend = poly_gender();
+		    short washerndx = (gend == 1 || (gend == 2 && rn2(2))) ?
+					PM_INCUBUS : PM_SUCCUBUS;
+
 		    if(Levitation) goto dumb;
 		    if(rn2(5)) {
 			if(flags.soundok)
@@ -853,13 +881,11 @@ dokick()
 			maploc->looted |= S_LPUDDING;
 			return(1);
 		    } else if(!(maploc->looted & S_LDWASHER) && !rn2(3) &&
-			      !(mvitals[poly_gender() == 1 ? PM_INCUBUS
-					: PM_SUCCUBUS].mvflags & G_GONE)) {
+			      !(mvitals[washerndx].mvflags & G_GONE)) {
 			/* can't resist... */
 			pline("%s returns!", (Blind ? Something :
 							"The dish washer"));
-			if (makemon(&mons[poly_gender() == 1 ?
-				PM_INCUBUS : PM_SUCCUBUS], x, y, NO_MM_FLAGS))
+			if (makemon(&mons[washerndx], x, y, NO_MM_FLAGS))
 			    newsym(x,y);
 			maploc->looted |= S_LDWASHER;
 			exercise(A_DEX, TRUE);
@@ -960,6 +986,7 @@ dumb:
 		}
 		if ((slev = Is_special(&u.uz)) && slev->flags.town)
 		  for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if (DEADMONSTER(mtmp)) continue;
 		    if((mtmp->data == &mons[PM_WATCHMAN] ||
 			mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
 			couldsee(mtmp->mx, mtmp->my) &&
@@ -976,6 +1003,7 @@ dumb:
 	    pline("WHAMMM!!!");
 	    if ((slev = Is_special(&u.uz)) && slev->flags.town)
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if (DEADMONSTER(mtmp)) continue;
 		    if ((mtmp->data == &mons[PM_WATCHMAN] ||
 				mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
 			    mtmp->mpeaceful && couldsee(mtmp->mx, mtmp->my)) {
@@ -1227,7 +1255,7 @@ boolean shop_floor_obj;
 	     * possible to kick/throw an object belonging to one
 	     * shop into another shop through a gap in the wall,
 	     * and cause objects belonging to the other shop to
-	     * fall down a trapdoor--thereby getting two shopkeepers
+	     * fall down a trap door--thereby getting two shopkeepers
 	     * angry at the hero in one shot.
 	     */
 	    impact_drop(otmp, x, y, 0);
@@ -1300,7 +1328,7 @@ long num;
 	    else
 		Sprintf(eos(obuf), " and fall%s %s.",
 			otmp->quan == 1L ? "s" : "", gate_str);
-	    pline(obuf);
+	    pline("%s", obuf);
 	} else if(!nodrop)
 	    pline("%s fall%s %s.", obuf,
 		  otmp->quan == 1L ? "s" : "", gate_str);

@@ -104,7 +104,7 @@ projects can use the default preferences:
 The SIOUX library may be replaced with console.stubs.c for the NetHack
 project.
 
-NOTE: As NetHack 3.3, you must turn off OLDROUTINENAMES -- so you can't use
+NOTE: As NetHack 3.3, you must turn on OLDROUTINENAMES -- so you can't use
 the default pre-compiled header.  You should either remove it from the
 preferences or insert another precompiled header that has this define off.
 
@@ -142,7 +142,85 @@ NetHack.u: Basic ToolBox PPC
 
 
 ------------------------
+Creating projects for NetHack with MetroWerks IDE 3.3 (Pro 4)
 
+This is what I changed from the default settings when creating a 68K version.  Some of
+the settings may not be necessary.  For example, NetHack doesn't use floating point,
+so I didn't have to check 8 byte doubles.  Some are interrelated.  For example, the
+codegen and the Math and MSL libraries used.
+
+For MakeDefs.u, DgnComp.u, LevComp.u: 
+1. Select File>>New Project...>>MacOS>>C_C++>>Standard Console>>Std C Console 68K
+2. 68K Settings:
+	Target Settings:
+		+ Set "Target Name" to {MakeDefs,DgnComp,LevComp}.
+	68K Target:
+		+ Set "File Name" to {MakeDefs,DgnComp,LevComp}.
+	C/C++ Language:
+		+ Check Require Function Prototypes, uncheck everything else.
+		+ Clear "Prefix File".
+	68K Processor:
+		+ Set "Code Model" to Large.
+		+ Check 68020 Codegen, 4-Byte Ints, 8-Byte Doubles, Far Data, Far Method Tables,
+			Far String Constants.  Uncheck everything else.
+3. Libraries 68K
+	+ Remove the C++ Library (it is not needed).
+	+ Change math library to MathLib68K Fa(4i_8d).Lib.
+	+ Change MSL C library to MSL C.68K Fa(4i_8d).Lib.
+	Note: The actual libraries used must match the CodeGen options in 68K Processor.
+
+
+For NetHack.u:
+1. Select File>>New Project...>>MacOS>>C_C++>>MacOS ToolBox>>MacOS ToolBox 68K
+2. 68K Settings
+	Target Settings:
+		+ Set "Target Name" to NetHack Debug and NetHack Final.
+	68K Target:
+		+ Set "File Name" to NetHack Debug and NetHack Final.
+		+ Set "Creator" to 'nh31'.
+		+ Set "Preferred Heap Size (k)" to 2500.
+		+ Set "Minimum Heap Size (k)" to 1500.
+	C/C++ Language:
+		+ Check Require Function Prototypes, uncheck everything else.
+		+ Set "Prefix File" to LocalDefines.h.  I use this header to define
+		  OLDROUTINENAMES because the pre-compiled header doesn't have it set
+		  any more.  One of these days we'll fix up the code...
+	68K Processor:
+		+ Set "Code Model" to Large.
+		+ Check 68020 Codegen, 4-Byte Ints, 8-Byte Doubles, Far Data, Far Method Tables,
+			Far String Constants.  Uncheck everything else.
+3. Libraries 68K
+	+ Remove the C++ Library (it is not needed).
+	+ Change math library to MathLib68K Fa(4i_8d).Lib.
+	+ Change MSL C library to MSL C.68K Fa(4i_8d).Lib.
+	Note: The actual libraries used must match the CodeGen options in 68K Processor.
+	
+
+For Recover.u:
+1. Select File>>New Project...>>MacOS>>C_C++>>MacOS ToolBox>>MacOS ToolBox 68K
+2. 68K Settings
+	Target Settings:
+		+ Set "Target Name" to Recover Debug and Recover Final.
+	68K Target:
+		+ Set "File Name" to Recover Debug and Recover Final.
+		+ Set "Creator" to 'nhRc'.
+	C/C++ Language:
+		+ Check Require Function Prototypes, uncheck everything else.
+		+ Set "Prefix File" to LocalDefines.h.  I use this header to define
+		  OLDROUTINENAMES because the pre-compiled header doesn't have it set
+		  any more.  One of these days we'll fix up the code...
+	68K Processor:
+		+ Set "Code Model" to Large.
+		+ Check 68020 Codegen, 4-Byte Ints, 8-Byte Doubles, Far Data, Far Method Tables,
+			Far String Constants.  Uncheck everything else.
+3. Libraries 68K
+	+ Remove the C++ Library (it is not needed).
+	+ Change math library to MathLib68K Fa(4i_8d).Lib.
+	+ Change MSL C library to MSL C.68K Fa(4i_8d).Lib.
+	Note: The actual libraries used must match the CodeGen options in 68K Processor.
+
+
+------------------------
 
 Project Contents:
 
@@ -193,6 +271,7 @@ NetHack.u should contain the following source files:
 	sys:mac
 		*.c	except mrecover.c
 		NetHack.rsrc
+		machelp.bh	[for baloon help]
 		Sound.rsrc	[if you wish to have a few, crude sounds]
 		Files.r		[if you use DLB (on by default)]
 	sys:share
@@ -203,3 +282,8 @@ NetHack.u should contain the following source files:
 	Note: src:monstr.c and src:vis_tab.c are created by MakeDefs -m and -s
 	respectively.
 
+Recover.u should contain the following source files:
+
+	sys:mac
+		mrecover.c
+		mrecover.rsrc

@@ -5,16 +5,6 @@
 #include "hack.h"
 #include "macwin.h"
 
-#include <Types.h>
-#include <stdarg.h>
-#include <stdio.h>
-#ifndef THINK_C
-#include <strings.h>
-#endif
-
-static Boolean KeyDown(unsigned short code);
-
-
 static Boolean
 KeyDown (unsigned short code) {
 unsigned char keys [16];
@@ -27,7 +17,7 @@ unsigned char keys [16];
 void
 dprintf (char *format, ...)
 {
-static char buffer [100];
+char buffer [500];
 va_list list;
 int doit;
 #define DO_DEBUGSTR 1

@@ -53,7 +53,7 @@ BRANCH:levregion(01,00,79,20),(30,06,46,13)
 # Non diggable walls
 NON_DIGGABLE:(30,06,46,13)
 # Objects
-CONTAINER:'`',"statue",(36,10),uncursed,"knight",0,"Perseus"
+CONTAINER:'`',"statue",(36,10),uncursed,"knight",1,"Perseus"
 OBJECT[75%]:'[',"shield of reflection",contained,cursed,+0
 OBJECT[25%]:'[',"levitation boots",contained,random,+0
 OBJECT[50%]:')',"scimitar",contained,blessed,+2
@@ -88,6 +88,9 @@ MONSTER:'@',"Medusa",(36,10),asleep
 MONSTER:';',"giant eel",(11,06)
 MONSTER:';',"giant eel",(23,13)
 MONSTER:';',"giant eel",(29,02)
+MONSTER:';',"jellyfish",(02,02)
+MONSTER:';',"jellyfish",(00,08)
+MONSTER:';',"jellyfish",(04,18)
 MONSTER:'T',"water troll",(51,03)
 MONSTER:'T',"water troll",(64,11)
 MONSTER:'S',random,(38,07)
@@ -148,7 +151,7 @@ BRANCH:levregion(01,00,79,20),(59,01,73,17)
 NON_DIGGABLE:(01,02,06,17)
 NON_DIGGABLE:(60,02,73,17)
 # Objects
-CONTAINER:'`',"statue",(68,10),uncursed,"knight",0,"Perseus"
+CONTAINER:'`',"statue",(68,10),uncursed,"knight",1,"Perseus"
 OBJECT[25%]:'[',"shield of reflection",contained,cursed,+0
 OBJECT[75%]:'[',"levitation boots",contained,random,+0
 OBJECT[50%]:')',"scimitar",contained,blessed,+2
@@ -186,6 +189,9 @@ MONSTER:';',"electric eel",(10,14)
 MONSTER:';',"electric eel",(11,14)
 MONSTER:';',"electric eel",(10,15)
 MONSTER:';',"electric eel",(11,15)
+MONSTER:';',"jellyfish",(01,01)
+MONSTER:';',"jellyfish",(00,08)
+MONSTER:';',"jellyfish",(04,19)
 MONSTER:''',"stone golem",(64,08),asleep
 MONSTER:''',"stone golem",(65,08),asleep
 MONSTER:''',"stone golem",(64,09),asleep

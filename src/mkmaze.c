@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmaze.c	3.3	99/04/24	*/
+/*	SCCS Id: @(#)mkmaze.c	3.3	2000/01/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,13 +24,12 @@ STATIC_DCL void FDECL(move, (int *,int *,int));
 STATIC_DCL void NDECL(setup_waterlevel);
 STATIC_DCL void NDECL(unsetup_waterlevel);
 
-#define OUT_OF_BOUNDS(x,y) ((x)<=0 || (y)<0 || (x)>COLNO-1 || (y)>ROWNO-1)
 
 STATIC_OVL boolean
 iswall(x,y)
 int x,y;
 {
-	if (OUT_OF_BOUNDS(x,y)) return FALSE;
+	if (!isok(x,y)) return FALSE;
 	return (IS_WALL(levl[x][y].typ) || IS_DOOR(levl[x][y].typ)
 		|| levl[x][y].typ == SDOOR);
 }
@@ -42,7 +41,7 @@ iswall_or_stone(x,y)
     register int type;
 
     /* out of bounds = stone */
-    if (OUT_OF_BOUNDS(x,y)) return TRUE;
+    if (!isok(x,y)) return TRUE;
 
     type = levl[x][y].typ;
     return (type == STONE || IS_WALL(type) || IS_DOOR(type) || type == SDOOR);
@@ -53,7 +52,7 @@ STATIC_OVL boolean
 is_solid(x,y)
     int x, y;
 {
-    return (OUT_OF_BOUNDS(x,y) || IS_STWALL(levl[x][y].typ));
+    return (!isok(x,y) || IS_STWALL(levl[x][y].typ));
 }
 
 
@@ -518,6 +517,9 @@ register const char *s;
 	    Strcat(protofile, LEV_EXT);
 	    if(load_special(protofile)) {
 		fixup_special();
+		/* some levels can end up with monsters
+                   on dead mon list, including light source monsters */
+		dmonsfree();
 		return;	/* no mazification right now */
 	    }
 	    impossible("Couldn't load \"%s\" - making a maze.", protofile);

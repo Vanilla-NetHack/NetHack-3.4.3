@@ -596,7 +596,7 @@ create_ripout_widget(Widget parent)
 	attributes.closeness = 65535; /* Try anything */
 	errorcode = XpmReadFileToImage(XtDisplay(parent), appResources.tombstone, &rip_image, 0, &attributes);
 	if (errorcode != XpmSuccess) {
-	    char buf[BUFSIZ];
+	    char buf[BUFSZ];
 	    Sprintf(buf, "Failed to load %s: %s", appResources.tombstone,
 			XpmGetErrorString(errorcode));
 	    X11_raw_print(buf);

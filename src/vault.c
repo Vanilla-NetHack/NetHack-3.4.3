@@ -101,7 +101,7 @@ findgd()
 	register struct monst *mtmp;
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(mtmp->isgd && on_level(&(EGD(mtmp)->gdlevel), &u.uz))
+	    if(mtmp->isgd && !DEADMONSTER(mtmp) && on_level(&(EGD(mtmp)->gdlevel), &u.uz))
 		return(mtmp);
 	return((struct monst *)0);
 }
@@ -481,7 +481,7 @@ register struct monst *grd;
 		return(0);
 	    }
 
-	    if (!u_in_vault)
+	    if (!u_in_vault) {
 		if (u_carry_gold) {	/* player teleported */
 		    m = grd->mx;
 		    n = grd->my;
@@ -504,6 +504,7 @@ letknow:
 		    egrd->gddone = 1;
 		    goto cleanup;
 		}
+	    }
 	}
 
 	if(egrd->fcend > 1) {
@@ -728,7 +729,7 @@ paygd()
 	    Sprintf(buf,
 		"To Croesus: here's the gold recovered from %s the %s.",
 		plname, mons[u.umonster].mname);
-	    make_engr_at(gx, gy, buf, 0L, ENGRAVE);
+	    make_grave(gx, gy, buf);
 	}
 	place_object(gold = mkgoldobj(u.ugold), gx, gy);
 	stackobj(gold);

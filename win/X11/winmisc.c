@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmisc.c	3.3	93/02/04	*/
+/*	SCCS Id: @(#)winmisc.c	3.3	2000/05/21	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,13 +41,14 @@ static int extended_command_selected;	/* index of the selected command; */
 static int ps_selected;			/* index of selected role */
 #define PS_RANDOM (-50)
 #define PS_QUIT   (-75)
+static const char ps_randchars[] = "*@";
+static const char ps_quitchars[] = "\033qQ";
 
 #define EC_NCHARS 32
 static boolean ec_active = FALSE;
 static int ec_nchars = 0;
 static char ec_chars[EC_NCHARS];
 static Time ec_time;
-
 
 static const char extended_command_translations[] =
     "#override\n\
@@ -56,11 +57,15 @@ static const char extended_command_translations[] =
 static const char player_select_translations[] =
     "#override\n\
      <Key>: ps_key()";
-
 static const char race_select_translations[] =
     "#override\n\
      <Key>: race_key()";
-
+static const char gend_select_translations[] =
+    "#override\n\
+     <Key>: gend_key()";
+static const char algn_select_translations[] =
+    "#override\n\
+     <Key>: algn_key()";
 
 static void NDECL(ec_dismiss);
 static Widget FDECL(make_menu, (const char *,const char *,const char *,
@@ -69,6 +74,9 @@ static Widget FDECL(make_menu, (const char *,const char *,const char *,
 				int,const char **, Widget **,
 				XtCallbackProc,Widget *));
 static void NDECL(init_extended_commands_popup);
+static void FDECL(ps_quit, (Widget,XtPointer,XtPointer));
+static void FDECL(ps_random, (Widget,XtPointer,XtPointer));
+static void FDECL(ps_select, (Widget,XtPointer,XtPointer));
 
 
 /* Player Selection -------------------------------------------------------- */
@@ -110,24 +118,38 @@ ps_key(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
-#if 0 /* uses obsolete pl_classes; for now, don't accept key accelerators.. */
     char ch, *mark;
+    char rolechars[QBUFSZ];
+    int i;
 
+    (void)memset(rolechars, '\0', sizeof rolechars);  /* for index() */
+    for (i = 0; roles[i].name.m; ++i) {
+	ch = lowc(*roles[i].name.m);
+     /* if (flags.female && roles[i].name.f) ch = lowc(*roles[i].name.f); */
+	/* this supports at most two roles with the same first letter */
+	if (index(rolechars, ch)) ch = highc(ch);
+	rolechars[i] = ch;
+    }
     ch = key_event_to_char((XKeyEvent *) event);
     if (ch == '\0') {	/* don't accept nul char/modifier event */
 	/* don't beep */
 	return;
     }
-    mark = index(pl_classes, highc(ch));
+    mark = index(rolechars, ch);
+    if (!mark) mark = index(rolechars, lowc(ch));
+    if (!mark) mark = index(rolechars, highc(ch));
     if (!mark) {
-	X11_nhbell();		/* no such class */
-	return;
-    }
-    ps_selected = mark - pl_classes;
+	if (index(ps_randchars, ch))
+	    ps_selected = PS_RANDOM;
+	else if (index(ps_quitchars, ch))
+	    ps_selected = PS_QUIT;
+	else {
+	    X11_nhbell();	/* no such class */
+	    return;
+	}
+    } else
+	ps_selected = (int)(mark - rolechars);
     exit_x_event = TRUE;
-#else
-    X11_nhbell();		/* just beep */
-#endif
 }
 
 /* ARGSUSED */
@@ -138,49 +160,148 @@ race_key(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
-#if 0 /* uses obsolete pl_races; for now, don't accept key accelerators.. */
     char ch, *mark;
+    char racechars[QBUFSZ];
+    int i;
+
+    (void)memset(racechars, '\0', sizeof racechars);  /* for index() */
+    for (i = 0; races[i].noun; ++i) {
+	ch = lowc(*races[i].noun);
+	/* this supports at most two races with the same first letter */
+	if (index(racechars, ch)) ch = highc(ch);
+	racechars[i] = ch;
+    }
+    ch = key_event_to_char((XKeyEvent *) event);
+    if (ch == '\0') {	/* don't accept nul char/modifier event */
+	/* don't beep */
+	return;
+    }
+    mark = index(racechars, ch);
+    if (!mark) mark = index(racechars, lowc(ch));
+    if (!mark) mark = index(racechars, highc(ch));
+    if (!mark) {
+	if (index(ps_randchars, ch))
+	    ps_selected = PS_RANDOM;
+	else if (index(ps_quitchars, ch))
+	    ps_selected = PS_QUIT;
+	else {
+	    X11_nhbell();	/* no such race */
+	    return;
+	}
+    } else
+	ps_selected = (int)(mark - racechars);
+    exit_x_event = TRUE;
+}
+
+/* ARGSUSED */
+void
+gend_key(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    char ch, *mark;
+    static char gendchars[] = "mf";
 
     ch = key_event_to_char((XKeyEvent *) event);
     if (ch == '\0') {	/* don't accept nul char/modifier event */
 	/* don't beep */
 	return;
     }
-    mark = index(pl_races, highc(ch));
+    mark = index(gendchars, ch);
+    if (!mark) mark = index(gendchars, lowc(ch));
     if (!mark) {
-	X11_nhbell();		/* no such class */
-	return;
-    }
-    ps_selected = mark - pl_races;
+	if (index(ps_randchars, ch))
+	    ps_selected = PS_RANDOM;
+	else if (index(ps_quitchars, ch))
+	    ps_selected = PS_QUIT;
+	else {
+	    X11_nhbell();	/* no such gender */
+	    return;
+	}
+    } else
+	ps_selected = (int)(mark - gendchars);
     exit_x_event = TRUE;
-#else
-    X11_nhbell();		/* just beep */
-#endif
 }
 
+/* ARGSUSED */
+void
+algn_key(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    char ch, *mark;
+    static char algnchars[] = "LNC";
+
+    ch = key_event_to_char((XKeyEvent *) event);
+    if (ch == '\0') {	/* don't accept nul char/modifier event */
+	/* don't beep */
+	return;
+    }
+    mark = index(algnchars, ch);
+    if (!mark) mark = index(algnchars, highc(ch));
+    if (!mark) {
+	if (index(ps_randchars, ch))
+	    ps_selected = PS_RANDOM;
+	else if (index(ps_quitchars, ch))
+	    ps_selected = PS_QUIT;
+	else {
+	    X11_nhbell();	/* no such alignment */
+	    return;
+	}
+    } else
+	ps_selected = (int)(mark - algnchars);
+    exit_x_event = TRUE;
+}
 
 /* Global functions ========================================================= */
 void
 X11_player_selection()
 {
-    int num_roles, num_races, i;
+    int num_roles, num_races, num_gends, num_algns,
+	i, availcount, availindex;
     Widget popup, player_form;
-    const char **role_names = 0, **race_names = 0;
+    const char **choices;
+    const char *namep;
+    char qbuf[QBUFSZ];
 
-    if (flags.initrole < 0) {
+    while (flags.initrole < 0) {
+	if (flags.initrole == ROLE_RANDOM) {
+	    flags.initrole = pick_role(flags.initrace,
+				       flags.initgend, flags.initalign);
+	    break;
+	}
 	/* select a role */
-	for (num_roles = 0; roles[num_roles].name.m; num_roles++)
-	    ;	/* do nothing */
-	role_names = (const char **)alloc(sizeof(char *) * num_roles);
-	for (i = 0; i < num_roles; i++)
-	    role_names[i] = roles[i].name.m;	/* ??? chose female name? */
+	for (num_roles = 0; roles[num_roles].name.m; ++num_roles) continue;
+	choices = (const char **)alloc(sizeof(char *) * num_roles);
+	for (;;) {
+	    availcount = 0;
+	    for (i = 0; i < num_roles; i++) {
+		choices[i] = 0;
+		if (ok_role(i, flags.initrace,
+			    flags.initgend, flags.initalign)) {
+		    choices[i] = roles[i].name.m;
+		    if (flags.initgend >= 0 && flags.female && roles[i].name.f)
+			choices[i] = roles[i].name.f;
+		    ++availcount;
+		}
+	    }
+	    if (availcount > 0) break;
+	    else if (flags.initalign >= 0) flags.initalign = -1;    /* reset */
+	    else if (flags.initgend >= 0) flags.initgend = -1;
+	    else if (flags.initrace >= 0) flags.initrace = -1;
+	    else panic("no available ROLE+race+gender+alignment combinations");
+	}
 	popup = make_menu("player_selection", "Choose a Role",
 		    player_select_translations,
 		    "quit", ps_quit,
 		    "random", ps_random,
-		    num_roles, role_names, (Widget **)0, ps_select, &player_form);
+		    num_roles, choices, (Widget **)0, ps_select, &player_form);
 
-	ps_selected = 0;
+	ps_selected = -1;
 	positionpopup(popup, FALSE);
 	nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
 
@@ -189,68 +310,222 @@ X11_player_selection()
 
 	nh_XtPopdown(popup);
 	XtDestroyWidget(popup);
+	free((genericptr_t)choices), choices = 0;
 
 	if (ps_selected == PS_QUIT) {
 	    clearlocks();
 	    X11_exit_nhwindows((char *)0);
 	    terminate(0);
 	} else if (ps_selected == PS_RANDOM) {
-	    flags.initrole = randrole();
+	    flags.initrole = ROLE_RANDOM;
 	} else if (ps_selected < 0 || ps_selected >= num_roles) {
-	    panic("player_selection: bad select value %d\n", ps_selected);
+	    panic("player_selection: bad role select value %d\n", ps_selected);
 	} else {
 	    flags.initrole = ps_selected;
 	}
     }
 
-    if (!validrace(flags.initrole, flags.initrace)) {
-	/* select a race */
-	for (num_races = 0; races[num_races].noun; num_races++)
-	    ;	/* do nothing */
-	race_names = (const char **)alloc(sizeof(char *) * num_races);
-	for (i = 0; i < num_races; i++)
-	    race_names[i] = races[i].noun;
-
-	popup = make_menu("race_selection", "Choose a Race",
-		    race_select_translations,
-		    "quit", ps_quit,
-		    "random", ps_random,
-		    num_races, race_names, (Widget **)0,
-		    ps_select, &player_form);
-
-	ps_selected = 0;
-	positionpopup(popup, FALSE);
-	nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
-
-	/* The callbacks will enable the event loop exit. */
-	(void) x_event(EXIT_ON_EXIT);
-
-	nh_XtPopdown(popup);
-	XtDestroyWidget(popup);
-
-	if (ps_selected == PS_QUIT) {
-	    clearlocks();
-	    X11_exit_nhwindows((char *)0);
-	    terminate(0);
-	} else if (ps_selected == PS_RANDOM) {
-	    flags.initrace = randrace(flags.initrole);
-	} else if (ps_selected < 0 || ps_selected >= num_races) {
-	    panic("player_selection: bad select value %d\n", ps_selected);
-	} else {
-	    flags.initrace = ps_selected;
+    while (!validrace(flags.initrole, flags.initrace)) {
+	if (flags.initrace == ROLE_RANDOM) {
+	    flags.initrace = pick_race(flags.initrole,
+				       flags.initgend, flags.initalign);
+	    break;
 	}
+	/* select a race */
+	for (num_races = 0; races[num_races].noun; ++num_races) continue;
+	choices = (const char **)alloc(sizeof(char *) * num_races);
+	for (;;) {
+	    availcount = availindex = 0;
+	    for (i = 0; i < num_races; i++) {
+		choices[i] = 0;
+		if (ok_race(flags.initrole, i,
+			    flags.initgend, flags.initalign)) {
+		    choices[i] = races[i].noun;
+		    ++availcount;
+		    availindex = i;	/* used iff only one */
+		}
+	    }
+	    if (availcount > 0) break;
+	    else if (flags.initalign >= 0) flags.initalign = -1;    /* reset */
+	    else if (flags.initgend >= 0) flags.initgend = -1;
+	    else panic("no available role+RACE+gender+alignment combinations");
+	}
+
+	if (availcount == 1) {
+	    flags.initrace = availindex;
+	    free((genericptr_t)choices), choices = 0;
+	} else {
+	    namep = roles[flags.initrole].name.m;
+	    if (flags.initgend >= 0 && flags.female &&
+		    roles[flags.initrole].name.f)
+		namep = roles[flags.initrole].name.f;
+	    Sprintf(qbuf, "Pick your %s race", s_suffix(namep));
+	    popup = make_menu("race_selection", qbuf,
+			race_select_translations,
+			"quit", ps_quit,
+			"random", ps_random,
+			num_races, choices, (Widget **)0,
+			ps_select, &player_form);
+
+	    ps_selected = -1;
+	    positionpopup(popup, FALSE);
+	    nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
+
+	    /* The callbacks will enable the event loop exit. */
+	    (void) x_event(EXIT_ON_EXIT);
+
+	    nh_XtPopdown(popup);
+	    XtDestroyWidget(popup);
+	    free((genericptr_t)choices), choices = 0;
+
+	    if (ps_selected == PS_QUIT) {
+		clearlocks();
+		X11_exit_nhwindows((char *)0);
+		terminate(0);
+	    } else if (ps_selected == PS_RANDOM) {
+		flags.initrace = ROLE_RANDOM;
+	    } else if (ps_selected < 0 || ps_selected >= num_races) {
+		panic("player_selection: bad race select value %d\n", ps_selected);
+	    } else {
+		flags.initrace = ps_selected;
+	    }
+	} /* more than one race choice available */
     }
 
-    /* gender and alignment selection goes here... */
-    if (!validgend(flags.initrole, flags.initrace, flags.initgend))
-	flags.initgend = randgend(flags.initrole, flags.initrace);
-    if (!validalign(flags.initrole, flags.initrace, flags.initalign))
-	flags.initalign = randalign(flags.initrole, flags.initrace);
+    while (!validgend(flags.initrole, flags.initrace, flags.initgend)) {
+	if (flags.initgend == ROLE_RANDOM) {
+	    flags.initgend = pick_gend(flags.initrole, flags.initrace,
+				       flags.initalign);
+	    break;
+	}
+	/* select a gender */
+	num_gends = 2;		/* genders[2] isn't allowed */
+	choices = (const char **)alloc(sizeof(char *) * num_gends);
+	for (;;) {
+	    availcount = availindex = 0;
+	    for (i = 0; i < num_gends; i++) {
+		choices[i] = 0;
+		if (ok_gend(flags.initrole, flags.initrace,
+			    i, flags.initalign)) {
+		    choices[i] = genders[i].adj;
+		    ++availcount;
+		    availindex = i;	/* used iff only one */
+		}
+	    }
+	    if (availcount > 0) break;
+	    else if (flags.initalign >= 0) flags.initalign = -1;    /* reset */
+	    else panic("no available role+race+GENDER+alignment combinations");
+	}
 
-    if (role_names != 0)
-	free((genericptr_t)role_names);
-    if (race_names != 0)
-	free((genericptr_t)race_names);
+	if (availcount == 1) {
+	    flags.initgend = availindex;
+	    free((genericptr_t)choices), choices = 0;
+	} else {
+	    namep = roles[flags.initrole].name.m;
+	    if (flags.initgend >= 0 && flags.female &&
+		    roles[flags.initrole].name.f)
+		namep = roles[flags.initrole].name.f;
+	    Sprintf(qbuf, "Your %s %s gender?",
+		    races[flags.initrace].adj, s_suffix(namep));
+	    popup = make_menu("gender_selection", qbuf,
+			gend_select_translations,
+			"quit", ps_quit,
+			"random", ps_random,
+			num_gends, choices, (Widget **)0,
+			ps_select, &player_form);
+
+	    ps_selected = -1;
+	    positionpopup(popup, FALSE);
+	    nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
+
+	    /* The callbacks will enable the event loop exit. */
+	    (void) x_event(EXIT_ON_EXIT);
+
+	    nh_XtPopdown(popup);
+	    XtDestroyWidget(popup);
+	    free((genericptr_t)choices), choices = 0;
+
+	    if (ps_selected == PS_QUIT) {
+		clearlocks();
+		X11_exit_nhwindows((char *)0);
+		terminate(0);
+	    } else if (ps_selected == PS_RANDOM) {
+		flags.initgend = ROLE_RANDOM;
+	    } else if (ps_selected < 0 || ps_selected >= num_gends) {
+		panic("player_selection: bad gender select value %d\n", ps_selected);
+	    } else {
+		flags.initgend = ps_selected;
+	    }
+	} /* more than one gender choice available */
+    }
+
+    while (!validalign(flags.initrole, flags.initrace, flags.initalign)) {
+	if (flags.initalign == ROLE_RANDOM) {
+	    flags.initalign = pick_align(flags.initrole, flags.initrace,
+					 flags.initgend);
+	    break;
+	}
+	/* select an alignment */
+	num_algns = 3;		/* aligns[3] isn't allowed */
+	choices = (const char **)alloc(sizeof(char *) * num_algns);
+	for (;;) {
+	    availcount = availindex = 0;
+	    for (i = 0; i < num_algns; i++) {
+		choices[i] = 0;
+		if (ok_align(flags.initrole, flags.initrace,
+			     flags.initgend, i)) {
+		    choices[i] = aligns[i].adj;
+		    ++availcount;
+		    availindex = i;	/* used iff only one */
+		}
+	    }
+	    if (availcount > 0) break;
+	    else panic("no available role+race+gender+ALIGNMENT combinations");
+	}
+
+	if (availcount == 1) {
+	    flags.initalign = availindex;
+	    free((genericptr_t)choices), choices = 0;
+	} else {
+	    namep = roles[flags.initrole].name.m;
+	    if (flags.initgend >= 0 && flags.female &&
+		    roles[flags.initrole].name.f)
+		namep = roles[flags.initrole].name.f;
+	    Sprintf(qbuf, "%s %s %s alignment?",
+		    genders[flags.initgend].adj,
+		    races[flags.initrace].adj, s_suffix(namep));
+	    qbuf[0] = highc(qbuf[0]);
+	    popup = make_menu("alignment_selection", qbuf,
+			algn_select_translations,
+			"quit", ps_quit,
+			"random", ps_random,
+			num_algns, choices, (Widget **)0,
+			ps_select, &player_form);
+
+	    ps_selected = -1;
+	    positionpopup(popup, FALSE);
+	    nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
+
+	    /* The callbacks will enable the event loop exit. */
+	    (void) x_event(EXIT_ON_EXIT);
+
+	    nh_XtPopdown(popup);
+	    XtDestroyWidget(popup);
+	    free((genericptr_t)choices), choices = 0;
+
+	    if (ps_selected == PS_QUIT) {
+		clearlocks();
+		X11_exit_nhwindows((char *)0);
+		terminate(0);
+	    } else if (ps_selected == PS_RANDOM) {
+		flags.initalign = ROLE_RANDOM;
+	    } else if (ps_selected < 0 || ps_selected >= num_algns) {
+		panic("player_selection: bad alignment select value %d\n", ps_selected);
+	    } else {
+		flags.initalign = ps_selected;
+	    }
+	} /* more than one alignment choice available */
+    }
 }
 
 
@@ -569,11 +844,11 @@ make_menu(popup_name, popup_label, popup_translations,
     /*
      * Create and place the command widgets.
      */
-    for (i = 0, above = left, curr = commands; i < num_names;
-					i++, above = *curr, curr++) {
+    for (i = 0, above = left, curr = commands; i < num_names; i++) {
+	if (!widget_names[i]) continue;
 	num_args = 0;
 	XtSetArg(args[num_args], XtNfromVert, above);	num_args++;
-	if (i == 0) {
+	if (above == left) {
 	    /* if first, we are farther apart */
 	    XtSetArg(args[num_args], XtNvertDistance, skip);	num_args++;
 	}
@@ -583,6 +858,7 @@ make_menu(popup_name, popup_label, popup_translations,
 		    form,
 		    args, num_args);
 	XtAddCallback(*curr, XtNcallback, name_callback, (XtPointer) i);
+	above = *curr++;
     }
 
     /*
@@ -601,10 +877,12 @@ make_menu(popup_name, popup_label, popup_translations,
     if (width > max_width) max_width = width;
 
     /* Finally, the commands. */
-    for (i = 0, curr = commands; i < num_names; i++, curr++) {
+    for (i = 0, curr = commands; i < num_names; i++) {
+	if (!widget_names[i]) continue;
 	XtSetArg(args[0], XtNwidth, &width);
 	XtGetValues(*curr, args, ONE);
 	if (width > max_width) max_width = width;
+	curr++;
     }
 
     /*
@@ -613,9 +891,11 @@ make_menu(popup_name, popup_label, popup_translations,
     XtSetArg(args[0], XtNwidth, max_width);
     XtSetValues(label, args, ONE);
 
-    for (i = 0, curr = commands; i < num_names; i++, curr++) {
+    for (i = 0, curr = commands; i < num_names; i++) {
+	if (!widget_names[i]) continue;
 	XtSetArg(args[0], XtNwidth, max_width);
 	XtSetValues(*curr, args, ONE);
+	curr++;
     }
 
     if (command_widgets)

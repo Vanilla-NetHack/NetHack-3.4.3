@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.3	1999/02/13	*/
+/*	SCCS Id: @(#)timeout.c	3.3	2000/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -95,18 +95,24 @@ choke_dialogue()
 	if(i > 0 && i <= SIZE(choke_texts)) {
 	    if (Breathless || !rn2(50))
 		pline(choke_texts2[SIZE(choke_texts2) - i], body_part(NECK));
-	    else
-		pline(choke_texts[SIZE(choke_texts) - i], hcolor(blue));
+	    else {
+		const char *str = choke_texts[SIZE(choke_texts)-i];
+
+		if (index(str, '%'))
+		    pline(str, hcolor(blue));
+		else
+		    pline(str);
+	    }
 	}
 	exercise(A_STR, FALSE);
 }
 
 static NEARDATA const char *slime_texts[] = {
-	"You are turning a little green.",           /* 5 */
+	"You are turning a little %s.",           /* 5 */
 	"Your limbs are getting oozy.",              /* 4 */
 	"Your skin begins to peel away.",            /* 3 */
-	"You are turning into a green slime.",       /* 2 */
-	"You have become a green slime."             /* 1 */
+	"You are turning into %s.",       /* 2 */
+	"You have become %s."             /* 1 */
 };
 
 STATIC_OVL void
@@ -115,8 +121,18 @@ slime_dialogue()
 	register long i = (Slimed & TIMEOUT) / 2L;
 
 	if (((Slimed & TIMEOUT) % 2L) && i >= 0
-	    && i < SIZE(slime_texts))
-	    pline(slime_texts[SIZE(slime_texts) - i - 1]);
+		&& i < SIZE(slime_texts)) {
+	    const char *str = slime_texts[SIZE(slime_texts)-i-1];
+
+	    if (index(str, '%')) {
+		if (i == 4) {
+		    if (!Blind)
+			pline(str, hcolor(green));
+		} else
+		    pline(str, an(Hallucination ? rndmonnam() : "green slime"));
+	    } else
+		pline(str);
+	}
 	if(i == 4)
 	    HFast = 0;
 	exercise(A_DEX, FALSE);
@@ -142,8 +158,12 @@ nh_timeout()
 	register struct prop *upp;
 	int sleeptime;
 	int m_idx;
+	int baseluck = (flags.moonphase == FULL_MOON) ? 1 : 0;
 
-	if(u.uluck && moves % (u.uhave.amulet || u.ugangr ? 300 : 600) == 0) {
+	if (flags.friday13) baseluck -= 1;
+
+	if (u.uluck != baseluck &&
+		moves % (u.uhave.amulet || u.ugangr ? 300 : 600) == 0) {
 	/* Cursed luckstones stop bad luck from timing out; blessed luckstones
 	 * stop good luck from timing out; normal luckstones stop both;
 	 * neither is stopped if you don't have a luckstone.
@@ -151,9 +171,6 @@ nh_timeout()
 	 */
 	    register int time_luck = stone_luck(FALSE);
 	    boolean nostone = !carrying(LUCKSTONE) && !stone_luck(TRUE);
-	    int baseluck = (flags.moonphase == FULL_MOON) ? 1 : 0;
-
-	    baseluck -= (flags.friday13 ? 1 : 0);
 
 	    if(u.uluck > baseluck && (nostone || time_luck < 0))
 		u.uluck--;
@@ -196,16 +213,28 @@ nh_timeout()
 	    if((upp->intrinsic & TIMEOUT) && !(--upp->intrinsic & TIMEOUT)) {
 		switch(upp - u.uprops){
 		case STONED:
+			if (delayed_killer && !killer) {
+				killer = delayed_killer;
+				delayed_killer = 0;
+			}
 			if (!killer) {
-				killer_format = KILLED_BY;
-				killer = "petrification";
-			} done(STONING);
+				/* leaving killer_format would make it
+				   "petrified by petrification" */
+				killer_format = NO_KILLER_PREFIX;
+				killer = "killed by petrification";
+			}
+			done(STONING);
 			break;
 		case SLIMED:
+			if (delayed_killer && !killer) {
+				killer = delayed_killer;
+				delayed_killer = 0;
+			}
 			if (!killer) {
-				killer_format = KILLED_BY;
-				killer = "turning into green slime";
-			} done(TURNED_SLIME);
+				killer_format = NO_KILLER_PREFIX;
+				killer = "turned into green slime";
+			}
+			done(TURNED_SLIME);
 			break;
 		case VOMITING:
 			make_vomiting(0L, TRUE);
@@ -277,11 +306,11 @@ nh_timeout()
 		case SLEEPING:
 			if (unconscious() || Sleep_resistance)
 				HSleeping += rnd(100);
-			else if (ESleeping) {
+			else if (Sleeping) {
 				You("fall asleep.");
 				sleeptime = rnd(20);
 				fall_asleep(-sleeptime, TRUE);
-				HSleeping = sleeptime + rnd(100);
+				HSleeping += sleeptime + rnd(100);
 			}
 			break;
 		case LEVITATION:
@@ -392,7 +421,8 @@ long timeout;
 
 	mon = mon2 = (struct monst *)0;
 	mnum = big_to_little(egg->corpsenm);
-	yours = egg->spe != 0;
+	/* The identity of one's father is learned, not innate */
+	yours = (egg->spe || (!flags.female && carried(egg) && !rn2(2)));
 	silent = (timeout != monstermoves);	/* hatched while away */
 
 	/* only can hatch when in INVENT, FLOOR, MINVENT */
@@ -409,12 +439,10 @@ long timeout;
 		       same dungeon level, or any dragon egg which hatches
 		       while it's in your inventory */
 		    if ((yours && !silent) ||
-			(mon->data->mlet == S_DRAGON &&
-				egg->where == OBJ_INVENT)) {
+			(carried(egg) && mon->data->mlet == S_DRAGON)) {
 			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0) {
 			    mon = mon2;
-			    if (egg->where == OBJ_INVENT &&
-				    mon->data->mlet != S_DRAGON)
+			    if (carried(egg) && mon->data->mlet != S_DRAGON)
 				mon->mtame = 20;
 			}
 		    }
@@ -472,16 +500,17 @@ long timeout;
 	    switch (egg->where) {
 		case OBJ_INVENT:
 		    knows_egg = TRUE; /* true even if you are blind */
-		    if (Blind)
+		    if (!cansee_hatchspot)
 			You_feel("%s %s from your pack!", something,
 			    locomotion(mon->data, "drop"));
 		    else
 			You("see %s %s out of your pack!",
 			    monnambuf, locomotion(mon->data, "drop"));
 		    if (yours) {
-			pline("%s cries sound like \"%s.\"",
+			pline("%s cries sound like \"%s%s\"",
 			    siblings ? "Their" : "Its",
-			    flags.female ? "mommy" : "daddy");
+			    flags.female ? "mommy" : "daddy",
+			    egg->spe ? "." : "?");
 		    } else if (mon->data->mlet == S_DRAGON) {
 			verbalize("Gleep!");		/* Mything eggs :-) */
 		    }
@@ -532,6 +561,8 @@ long timeout;
 		    (void) start_timer((long)rnd(12), TIMER_OBJECT,
 					HATCH_EGG, (genericptr_t)egg);
 		}
+	    } else if (carried(egg)) {
+		useup(egg);
 	    } else {
 		/* free egg here because we use it above */
 		obj_extract_self(egg);
@@ -620,6 +651,9 @@ slip_or_trip()
 		You("stumble.");
 		break;
 	}
+#ifdef STEED
+	if (u.usteed) dismount_steed(DISMOUNT_FELL);
+#endif
 }
 
 /* Print a lamp flicker message with tailer. */
@@ -704,7 +738,7 @@ long timeout;
 
 	/* only interested in INVENT, FLOOR, and MINVENT */
 	if (get_obj_location(obj, &x, &y, 0)) {
-	    canseeit = cansee(x, y);
+	    canseeit = !Blind && cansee(x, y);
 	    /* set up `whose[]' to be "Your" or "Fred's" or "The goblin's" */
 	    (void) Shk_Your(whose, obj);
 	} else {

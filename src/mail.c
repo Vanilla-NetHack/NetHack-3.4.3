@@ -65,25 +65,26 @@ static struct stat omstat,nmstat;
 static char *mailbox = (char *)0;
 static long laststattime;
 
-# ifdef AMS				/* Just a placeholder for AMS */
+# if !defined(MAILPATH) && defined(AMS)	/* Just a placeholder for AMS */
 #  define MAILPATH "/dev/null"
-# else
-#  ifdef LINUX
-#   define MAILPATH "/var/spool/mail"
-#  else
-#   if defined(BSD) || defined(ULTRIX)
-#    define MAILPATH "/usr/spool/mail/"
-#   endif
-#   if defined(SYSV) || defined(HPUX)
-#    define MAILPATH "/usr/mail/"
-#   endif
-#  endif /* LINUX */
-# endif /* AMS */
+# endif
+# if !defined(MAILPATH) && (defined(LINUX) || defined(__osf__))
+#  define MAILPATH "/var/spool/mail/"
+# endif
+# if !defined(MAILPATH) && defined(__FreeBSD__)
+#  define MAILPATH "/var/mail/"
+# endif
+# if !defined(MAILPATH) && (defined(BSD) || defined(ULTRIX))
+#  define MAILPATH "/usr/spool/mail/"
+# endif
+# if !defined(MAILPATH) && (defined(SYSV) || defined(HPUX))
+#  define MAILPATH "/usr/mail/"
+# endif
 
 void
 getmailstatus()
 {
-	if(!mailbox && !(mailbox = getenv("MAIL"))) {
+	if(!mailbox && !(mailbox = nh_getenv("MAIL"))) {
 #  ifdef MAILPATH
 #   ifdef AMS
 	        struct passwd ppasswd;
@@ -96,9 +97,10 @@ getmailstatus()
 		} else
 		  return;
 #   else
-		mailbox = (char *) alloc(sizeof(MAILPATH)+8);
+		const char *pw_name = getpwuid(getuid())->pw_name;
+		mailbox = (char *) alloc(sizeof(MAILPATH)+strlen(pw_name));
 		Strcpy(mailbox, MAILPATH);
-		Strcat(mailbox, getpwuid(getuid())->pw_name);
+		Strcat(mailbox, pw_name);
 #  endif /* AMS */
 #  else
 		return;
@@ -380,7 +382,7 @@ struct mail_info *info;
     if (!md_rush(md, stop.x, stop.y)) goto go_back;
 
     message_seen = TRUE;
-    verbalize("%s, %s!  %s.", Hello(), plname, info->display_txt);
+    verbalize("%s, %s!  %s.", Hello(md), plname, info->display_txt);
 
     if (info->message_typ) {
 	struct obj *obj = mksobj(SCR_MAIL, FALSE, FALSE);
@@ -419,7 +421,7 @@ ckmailstatus()
 {
 	if (u.uswallow || !flags.biff) return;
 	if (mustgetmail < 0) {
-#if defined(AMIGA) || defined(MSDOS)
+#if defined(AMIGA) || defined(MSDOS) || defined(TOS)
 	    mustgetmail=(moves<2000)?(100+rn2(2000)):(2000+rn2(3000));
 #endif
 	    return;
@@ -502,7 +504,7 @@ struct obj *otmp;
 	register const char *mr = 0;
 
 	display_nhwindow(WIN_MESSAGE, FALSE);
-	if(!(mr = getenv("MAILREADER")))
+	if(!(mr = nh_getenv("MAILREADER")))
 		mr = DEF_MAILREADER;
 
 	if(child(1)){

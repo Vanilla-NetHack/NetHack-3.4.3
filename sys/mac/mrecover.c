@@ -58,8 +58,10 @@
 #include <StandardFile.h>
 #include <ToolUtils.h>
 #include <Processes.h>
+#include <Fonts.h>
+#include <TextUtils.h>
 
-#ifndef __MWERKS__	/* glue for System 7 Icon Family call (needed by Think C 5.0.4) */
+#ifdef THINK	/* glue for System 7 Icon Family call (needed by Think C 5.0.4) */
 pascal OSErr GetIconSuite(Handle *theIconSuite, short theResID, long selector)
 	= {0x303C, 0x0501, 0xABC9};
 #endif

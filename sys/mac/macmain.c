@@ -7,6 +7,7 @@
 #include "hack.h"
 #include "dlb.h"
 #include "macwin.h"
+#include "mactty.h"
 
 #include <OSUtils.h>
 #include <files.h>
@@ -107,6 +108,7 @@ main (void)
 #endif
 		pline("Restoring save file...");
 		mark_synch();	/* flush output */
+		game_active = 1;
 		if (dorecover(fd)) {
 #ifdef WIZARD
 			if(!wizard && remember_wiz_mode) wizard = TRUE;
@@ -117,7 +119,7 @@ main (void)
 				if(yn("Do you want to keep the save file?") == 'n')
 					(void) delete_savefile();
 				else {
-					compress(SAVEF);
+					compress(fqname(SAVEF, SAVEPREFIX, 0));
 				}
 			}
 		}
@@ -127,9 +129,10 @@ main (void)
 	}
 	if (fd < 0) {
 		player_selection();
+		game_active = 1;	/* done with selection, draw active game window */
 		newgame();
 		set_wear();
-		pickup(1);
+		(void) pickup(1);
 	}
 
 	if (discover)
@@ -233,7 +236,7 @@ process_openfile (short src_vol, long src_dir, Str255 fName, OSType ftype)
 				Str255 save_f_p;
 				P2C(*(StringHandle)name, plname);
 				set_savefile_name();
-				C2P(SAVEF, save_f_p);
+				C2P(fqname(SAVEF, SAVEPREFIX, 0), save_f_p);
 				force_hdelete(theDirs.dataRefNum, theDirs.dataDirID, save_f_p);
 
 				if (HRename(theDirs.dataRefNum, theDirs.dataDirID, fName, save_f_p) == noErr)
@@ -261,6 +264,7 @@ finder_file_request(void)
 			}
 		}	
 	}
+#if 0
 #ifdef MAC68K
 	else {
 		short finder_msg, file_count;
@@ -280,6 +284,7 @@ finder_file_request(void)
 		}
 	}
 #endif /* MAC68K */
+#endif /* 0 */
 }
 
 /*macmain.c*/

@@ -164,7 +164,9 @@ update_topl(bp)
 	    }
 	}
 	remember_topl();
-	Strcpy(toplines, bp);
+	(void) strncpy(toplines, bp, TBUFSZ);
+	toplines[TBUFSZ - 1] = 0;
+
 	for(tl = toplines; n0 >= CO; ){
 	    otl = tl;
 	    for(tl+=CO-1; tl != otl && !isspace(*tl); --tl) ;
