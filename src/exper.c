@@ -16,7 +16,7 @@ register unsigned lev;
 #else
 	if(lev < 10) return (10L*(1L << lev));
 	if(lev < 20) return (10000L*(1L << (lev-10)));
-	return (10000000L*(lev-19));
+	return((long)(10000000L*(lev-19)));
 #endif
 }
 

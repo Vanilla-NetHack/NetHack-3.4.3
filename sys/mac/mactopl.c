@@ -29,7 +29,7 @@ char
 queued_resp(char *resp)
 {
 	char buf[30];
-	if (try_key_queue(&buf)) {
+	if (try_key_queue(buf)) {
 		if (!resp || strchr(resp, buf[0]))
 			return buf[0];
 		if (digit(buf[0]) && strchr(resp, '#')) {
@@ -108,7 +108,7 @@ YNAQFilter ( DialogPtr dp , EventRecord * ev , short * itemHit )
 {
 	unsigned char code ;
 	char ch ;
-	char * re = gRespStr ;
+	char * re = (char *) gRespStr ;
 
 	if ( ev -> what != keyDown ) {
 
@@ -192,13 +192,13 @@ do_question_dialog ( char * query , int dlog , int defbut , char * resp )
 	DialogPtr dp ;
 	short item ;
 
-	char c = queued_resp ( resp ) ;
+	char c = queued_resp ( (char *) resp ) ;
 	if ( c )
 		return c ;
 
 	dlogID = dlog ;
-	strcpy ( p , query ) ;
-	ParamText ( CtoPstr ( p ) , NULL , NULL , NULL ) ;
+	strcpy ( (char *) p , query ) ;
+	ParamText ( CtoPstr ( (char *) p ) , (uchar *) NULL , (uchar *) NULL , (uchar *) NULL ) ;
 	dp = mv_get_new_dialog ( dlog ) ;
 	if ( ! dp ) {
 
@@ -289,7 +289,7 @@ char def ;
 	unsigned char com [ 32 ] = { 1 , 27 } ; // margin for getitext
 	Str255 pQuery ;
 
-	char c = queued_resp ( resp ) ;
+	char c = queued_resp ( (char *) resp ) ;
 	if ( c )
 		return c ;
 
@@ -313,7 +313,7 @@ char def ;
 		strcat ( ( char * ) pQuery , resp ) ;
 		strcat ( ( char * ) pQuery , ")" ) ;
 	}
-	ParamText ( CtoPstr ( pQuery ) , NULL , NULL , NULL ) ;
+	ParamText ( CtoPstr ( (char *) pQuery ) , (uchar *) NULL , (uchar *) NULL , (uchar *) NULL ) ;
 	GetDItem ( dp , 4 , & k , & h , & r ) ;
 	SetIText ( h , com ) ;
 	SelIText ( dp , 4 , 0 , 0x7fff ) ;
@@ -368,8 +368,8 @@ char def ;
 		return generic_yn_function ( query , resp , def ) ;
 	}
 
-	return do_question_dialog ( query , dia ,
-		( strchr ( resp , def ) - resp ) + 1 , resp ) ;
+	return do_question_dialog ( (char *) query , dia ,
+		( strchr ( resp , def ) - resp ) + 1 , (char *) resp ) ;
 }
 
 
@@ -379,10 +379,10 @@ const char *query,*resp;
 char def;
 {
 	char buf[30];
-	char c = queued_resp(resp);
+	char c = queued_resp((char *) resp);
 	if (!c) {
-		enter_topl_mode(query);
-		topl_set_resp(resp, def);
+		enter_topl_mode((char *) query);
+		topl_set_resp((char *) resp, def);
 
 		do {
 			c = readchar();
@@ -393,7 +393,7 @@ char def;
 		} while (!c);
 
 		topl_set_resp("", '\0');
-		leave_topl_mode(&buf);
+		leave_topl_mode(buf);
 		if (c == '#')
 			yn_number = atoi(buf);
 	}

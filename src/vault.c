@@ -739,7 +739,7 @@ gd_sound()  /* prevent "You hear footsteps.." when inappropriate */
 {
 	register struct monst *grd = findgd();
 
-	return(grd == (struct monst *)0);
+	return((boolean)(grd == (struct monst *)0));
 }
 #endif
 

@@ -1,6 +1,6 @@
 # =========================================================================
-# NTWIN32.MAK - Win32 application master NMAKE definitions file for the
-#               Microsoft Win32 SDK for Windows NT programming samples
+# NHINCL.MAK - Modified Win32 application master NMAKE definitions file for
+#              NetHack 3.1.3 - NetHack PC Development Team 93/07/12
 # -------------------------------------------------------------------------
 # NMAKE Options
 #
@@ -116,7 +116,7 @@ hc     = hc
 # -------------------------------------------------------------------------
 
 # declarations common to all compilers.
-ccommon = -c -W0
+ccommon = -c -W0 -nologo
 
 !IF "$(CPU)" == "i386"
 cflags = $(ccommon) -G3 -D_X86_=1
@@ -271,8 +271,8 @@ guilflags = -subsystem:windows -entry:WinMainCRTStartup
 psxlflags = -subsystem:posix -entry:__PosixProcessStartup
 
 # for compatibility with older style makefiles
-conflags  = $(conlflags)
-guiflags  = $(guilflags)
+conflags  = $(conlflags) -IGNORE:505
+guiflags  = $(guilflags) -IGNORE:505
 psxflags  = $(psxlflags)
 
 # -------------------------------------------------------------------------

@@ -24,11 +24,11 @@
 # ifdef applec	/* Means the MPW compiler, I hope */
 #  define MPWTOOL
 #  include <CursorCtl.h>
+#  include <string.h>
+#  include <ctype.h>
 # else		/* MAC without MPWTOOL */
 #  define MACsansMPWTOOL
 # endif
-#include <string.h>
-#include <ctype.h>
 #endif /* MAC */
 
 #ifndef MPWTOOL
@@ -59,7 +59,7 @@ extern void FDECL(exit, (int));
 #define WRMODE  "w+"
 #define RDMODE  "r"
 /* the quest.dat file is binary, while everything else is text... */
-#if defined(MICRO) && !defined(AMIGA)
+#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
 # define WRBMODE "w+b"
 #else
 # define WRBMODE "w+"

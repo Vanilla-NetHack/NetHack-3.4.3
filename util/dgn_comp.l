@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_lex.c	3.1	92/10/23	*/
+/*	SCCS Id: @(#)dgn_lex.c	3.1	93/06/17	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson	     */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,12 +15,12 @@ long *FDECL(alloc, (unsigned int));
  * Most of these don't exist in flex, yywrap is macro and
  * yyunput is properly declared in flex.skel.
  */
-#ifndef FLEX_SCANNER
-int FDECL (yyback, (int *, int));
-int NDECL (yylook);
-int NDECL (yyinput);
-int NDECL (yywrap);
-int NDECL (yylex);
+#if !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
+int FDECL(yyback, (int *, int));
+int NDECL(yylook);
+int NDECL(yyinput);
+int NDECL(yywrap);
+int NDECL(yylex);
 	/* Traditional lexes let yyunput() and yyoutput() default to int;
 	 * newer ones may declare them as void since they don't return
 	 * values.  For even more fun, the lex supplied as part of the
@@ -44,16 +44,16 @@ int NDECL (yylex);
 #  endif
 # endif
 # ifdef VOIDYYPUT
-void FDECL (yyunput, (int));
-void FDECL (yyoutput, (int));
+void FDECL(yyunput, (int));
+void FDECL(yyoutput, (int));
 # else
-int FDECL (yyunput, (int));
-int FDECL (yyoutput, (int));
+int FDECL(yyunput, (int));
+int FDECL(yyoutput, (int));
 # endif
-#endif	/* FLEX_SCANNER */
+#endif	/* !FLEX_SCANNER && !FLEXHACK_SCANNER */
 
-void FDECL (init_yyin, (FILE *));
-void FDECL (init_yyout, (FILE *));
+void FDECL(init_yyin, (FILE *));
+void FDECL(init_yyout, (FILE *));
 
 #ifdef MICRO
 #undef exit
@@ -71,7 +71,7 @@ int line_number = 1;
  *	This is a hack required by Michael Hamel to get things
  *	working on the Mac.
  */
-#if defined(applec) && !defined(FLEX_SCANNER)
+#if defined(applec) && !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
 #undef input
 #undef unput
 #define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }				  
@@ -80,8 +80,8 @@ int line_number = 1;
 # endif
 
 char
-input() {	/* Under MPW \n is chr(13)! Compensate for this. */
-
+input()		/* Under MPW \n is chr(13)! Compensate for this. */
+{
 	if (yysptr > yysbuf) return(*--yysptr);
 	else {
 		yytchar = getc(yyin);
@@ -93,7 +93,7 @@ input() {	/* Under MPW \n is chr(13)! Compensate for this. */
 		else		    return(yytchar);
 	}
 }
-#endif	/* applec && !FLEX_SCANNER */
+#endif	/* applec && !FLEX_SCANNER && !FLEXHACK_SCANNER */
 
 %}
 %%
@@ -140,7 +140,7 @@ RNDCHLEVEL	return(RNDCHLEVEL);
 void init_yyin( input_f )
 FILE *input_f;
 {
-#ifdef FLEX_SCANNER
+#if defined(FLEX_SCANNER) || defined(FLEXHACK_SCANNER)
 	if (yyin)
 	    yyrestart(input_f);
 	else

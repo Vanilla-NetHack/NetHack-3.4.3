@@ -67,6 +67,10 @@
 #include "amiga:lib/libmacs.h"
 #endif
 
+#ifdef	INTUI_NEW_LOOK
+#include <utility/tagitem.h>
+#endif
+
 /* cw->data[x] contains 2 characters worth of special information.  These
  * characters are stored at the offsets as described here.
  */

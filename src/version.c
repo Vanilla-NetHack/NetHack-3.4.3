@@ -40,7 +40,7 @@ boolean
 comp_times(filetime)
 long filetime;
 {
-	return (filetime < BUILD_TIME);
+	return((boolean)(filetime < BUILD_TIME));
 }
 #endif
 

@@ -6,7 +6,7 @@ REM     NetHack may be freely redistributed.  See license for details.
 
 REM setup batch file for msdos, see Install.dos for details.
 
-if not %1 .==. goto ok_parm
+if not %1.==. goto ok_parm
 goto err_set
 
 :ok_parm

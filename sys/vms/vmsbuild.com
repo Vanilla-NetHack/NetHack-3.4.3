@@ -1,4 +1,5 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.1 patchlevel 1	[pr]
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.1.*			[pr]
+$	version_number = "3.1.3"
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
@@ -131,6 +132,7 @@ $got_cc:
 $	cc = cc + c_c_			!append common qualifiers
 $	if p3.nes."" then  cc = cc + p3 !append optional user preferences
 $	g := 'f$extract(0,1,cc)'
+$	if f$edit(f$extract(1,1,cc),"UPCASE").eqs."E" then  g := X	!GEMC
 $	if g.nes."G" .and. c_opt.ne.o_GNUC then  gnulib = ""
 $	if g.eqs."G"  .or. c_opt.eq.o_GNUC then  gnulib = "," + gnulib
 $ ! linker setup; if a symbol for "LINK" is defined, we'll use it
@@ -143,6 +145,13 @@ $     if f$search("crtl.opt").nes."" then  goto crtl_ok !assume its right
 $	create sys$disk:[-.src]crtl.opt
 sys$share:vaxcrtl.exe/Shareable
 $crtl_ok:
+$ ! version ID info for linker to record in .EXE files
+$	create ident.opt
+$	open/Append f ident.opt
+$	write f "identification=""",version_number,"""	!version"
+$	close f
+$	if f$search("ident.opt;-1").nes."" then  purge/noLog ident.opt
+$	ident_opt = ",sys$disk:[-.src]ident.opt/Options"
 $ ! final setup
 $	nethacklib = "[-.src]nethack.olb"
 $	milestone = "write sys$output f$fao("" !5%T "",0),"
@@ -201,8 +210,7 @@ $     if c_opt.eq.o_SPCL then  goto special !"SPECIAL" requested, skip main buil
 $ set default [-.util]
 $ c_list = "#makedefs"
 $ gosub compile_list
-$ link makedefs.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="makedefs 3.1.2"
+$ link makedefs.obj,'nethacklib'/Lib,'crtl''gnulib''ident_opt'
 $ milestone "makedefs"
 $! create some build-time files
 $ makedefs -p	!pm.h
@@ -241,9 +249,7 @@ $ gosub compile_list
 $!
 $link:
 $ milestone "<linking...>"
-$ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain),'crtl''gnulib',-
-	sys$input:/Opt
-identification="NetHack 3.1.2"
+$ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain),'crtl''gnulib''ident_opt'
 $ milestone "NetHack"
 $     if c_opt.eq.o_LINK then  goto done	!"LINK" only
 $special:
@@ -259,18 +265,15 @@ $ copy [-.sys.vms]lev_lex.h stdio.*/Prot=(s:rwd,o:rwd)
 $ gosub compile_list
 $ rename stdio.h lev_lex.*
 $ link/exe=lev_comp lev_main,lev_yacc,lev_lex,-
-	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="lev_comp 3.1.2"
+	panic.obj,'nethacklib'/Lib,'crtl''gnulib''ident_opt'
 $ milestone "lev_comp"
 $ link/exe=dgn_comp dgn_main,dgn_yacc,dgn_lex,-
-	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="dgn_comp 3.1.2"
+	panic.obj,'nethacklib'/Lib,'crtl''gnulib''ident_opt'
 $ milestone "dgn_comp"
 $!
 $ c_list = "#recover"
 $ gosub compile_list
-$ link/exe=[] recover.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="recover 3.1.2"
+$ link/exe=[] recover.obj,'nethacklib'/Lib,'crtl''gnulib''ident_opt'
 $ milestone "recover"
 $!
 $done:

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)nttty.c	3.1	90/05/23
+/*	SCCS Id: @(#)nttty.c	3.1	93/07/04
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,6 +18,7 @@
 #pragma pack(8)
 #include <windows.h>
 #include <wincon.h>
+#pragma pack()
 
 void FDECL(cmov, (int, int));
 void FDECL(nocmov, (int, int));
@@ -47,7 +48,7 @@ INPUT_RECORD ir;
 /* Flag for whether NetHack was launched via progman, not command line.
  * The reason we care at all, is so that we can get
  * a final RETURN at the end of the game when launched from progman
- * to prevent the scoreboard (or panic message :-| from vanishing
+ * to prevent the scoreboard (or panic message :-|) from vanishing
  * immediately after it is displayed, yet not bother when started
  * from the command line. 
  */
@@ -93,43 +94,132 @@ setftty()
 	start_screen();
 }
 
+/*
+ *  Keyboard translation tables.
+ *  (Adopted from the MSDOS port)
+ */
+
+#define KEYPADLO	0x47
+#define KEYPADHI	0x53
+
+#define PADKEYS 	(KEYPADHI - KEYPADLO + 1)
+#define iskeypad(x)	(KEYPADLO <= (x) && (x) <= KEYPADHI)
+
+/*
+ * Keypad keys are translated to the normal values below.
+ * Shifted keypad keys are translated to the
+ *    shift values below.
+ */
+
+static const struct pad {
+	char normal, shift, cntrl;
+} keypad[PADKEYS] = {
+			{'y', 'Y', C('y')},		/* 7 */
+			{'k', 'K', C('k')},		/* 8 */
+			{'u', 'U', C('u')},		/* 9 */
+			{'m', C('p'), C('p')},		/* - */
+			{'h', 'H', C('h')},		/* 4 */
+			{'g', 'g', 'g'},		/* 5 */
+			{'l', 'L', C('l')},		/* 6 */
+			{'p', 'P', C('p')},		/* + */
+			{'b', 'B', C('b')},		/* 1 */
+			{'j', 'J', C('j')},		/* 2 */
+			{'n', 'N', C('n')},		/* 3 */
+			{'i', 'I', C('i')},		/* Ins */
+			{'.', ':', ':'}			/* Del */
+}, numpad[PADKEYS] = {
+			{'7', M('7'), '7'},		/* 7 */
+			{'8', M('8'), '8'},		/* 8 */
+			{'9', M('9'), '9'},		/* 9 */
+			{'m', C('p'), C('p')},		/* - */
+			{'4', M('4'), '4'},		/* 4 */
+			{'g', 'G', 'g'},		/* 5 */
+			{'6', M('6'), '6'},		/* 6 */
+			{'p', 'P', C('p')},		/* + */
+			{'1', M('1'), '1'},		/* 1 */
+			{'2', M('2'), '2'},		/* 2 */
+			{'3', M('3'), '3'},		/* 3 */
+			{'i', 'I', C('i')},		/* Ins */
+			{'.', ':', ':'}			/* Del */
+};
+/*
+ * Unlike Ctrl-letter, the Alt-letter keystrokes have no specific ASCII
+ * meaning unless assigned one by a keyboard conversion table
+ * To interpret Alt-letters, we use a
+ * scan code table to translate the scan code into a letter, then set the
+ * "meta" bit for it.  -3.
+ */
+#define SCANLO		0x10
+
+static const char scanmap[] = { 	/* ... */
+	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
+	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
+	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
+};
+
+#define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
+
 int
 tgetch()
 {
-	int ch;
 	int valid = 0;
 	int metaflags = 0;
 	int count;
+	unsigned short int scan;
+	unsigned char ch;
+	unsigned long shiftstate;
+	int altseq;
+	const struct pad *kpad;
+	char keymess[100];
 
+	shiftstate = 0L;
 	valid = 0;
 	while (!valid)
 	{
-	    ReadConsoleInput(hConIn,&ir,1,&count);
-	    /* We only care about ascii press-down KEY_EVENTs */
-	    if ((ir.EventType == KEY_EVENT) &&
-	       (ir.Event.KeyEvent.bKeyDown) &&	
-	       (ir.Event.KeyEvent.uChar.AsciiChar)) valid = 1;
+	   ReadConsoleInput(hConIn,&ir,1,&count);
+	   if ((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) {
+		ch    = ir.Event.KeyEvent.uChar.AsciiChar;
+		scan  = ir.Event.KeyEvent.wVirtualScanCode;
+		shiftstate = ir.Event.KeyEvent.dwControlKeyState;
+		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) && inmap(scan);
+		if (ch || (iskeypad(scan)) || altseq)
+			valid = 1;
+	   }
 	}
-	metaflags = ir.Event.KeyEvent.dwControlKeyState;
-	/*
-	 * metaflags can be checked to see if various special
-         * keys were pressed at the same time as the key.
-         * Currently we are using the ALT keys only.
-	 *
-	 *           RIGHT_ALT_PRESSED, LEFT_ALT_PRESSED,
-         *           RIGHT_CTRL_PRESSED, LEFT_CTRL_PRESSED,
-         *           SHIFT_PRESSED,NUMLOCK_ON, SCROLLLOCK_ON,
-         *           CAPSLOCK_ON, ENHANCED_KEY
-         *
-	 * are all valid bit masks to use on metaflags
-         * eg. (metaflags & LEFT_CTRL_PRESSED) is true if the
-         *      left control key was pressed with the keystroke.
-         */
-	ch = (ir.Event.KeyEvent.uChar.AsciiChar == '\r') ?
-			 '\n' :ir.Event.KeyEvent.uChar.AsciiChar;
-	if (metaflags & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED))
-	   ch = tolower(ch) | 0x080;
-	return ch;
+	if (valid) {
+    	    /*
+	    * shiftstate can be checked to see if various special
+            * keys were pressed at the same time as the key.
+            * Currently we are using the ALT & SHIFT & CONTROLS.
+            *
+            *           RIGHT_ALT_PRESSED, LEFT_ALT_PRESSED,
+            *           RIGHT_CTRL_PRESSED, LEFT_CTRL_PRESSED,
+            *           SHIFT_PRESSED,NUMLOCK_ON, SCROLLLOCK_ON,
+            *           CAPSLOCK_ON, ENHANCED_KEY
+            *
+            * are all valid bit masks to use on shiftstate.
+            * eg. (shiftstate & LEFT_CTRL_PRESSED) is true if the
+            *      left control key was pressed with the keystroke.
+            */
+            if (iskeypad(scan)) {
+                kpad = flags.num_pad ? numpad : keypad;
+                if (shiftstate & SHIFT_PRESSED) {
+                    ch = kpad[scan - KEYPADLO].shift;
+                }
+                else if (shiftstate & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
+                    ch = kpad[scan - KEYPADLO].cntrl;
+                }
+                else {
+                    ch = kpad[scan - KEYPADLO].normal;
+                }
+            }
+            else if (shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) { /* ALT sequence */
+                    if (inmap(scan))
+                        ch = scanmap[scan - SCANLO];
+                    ch = (isprint(ch) ? M(ch) : ch);
+            }
+            return (ch == '\r') ? '\n' : ch;
+	}
 }
 
 int
@@ -137,32 +227,33 @@ kbhit()
 {
 	int done = 0;	/* true =  "stop searching"        */
 	int retval;	/* true =  "we had a match"        */
-	int count;	/* scratch-pad area for API call   */
-
+	int count;
+	unsigned short int scan;
+	unsigned char ch;
+	unsigned long shiftstate;
+	int altseq;
+        
 	done = 0;
 	retval = 0;
 	while (!done)
 	{
 	    count = 0;
 	    PeekConsoleInput(hConIn,&ir,1,&count);
-	    if (count > 0)
-            {
-		/* Make sure its an ascii press-down KEY_EVENT */
-	        if ((ir.EventType == KEY_EVENT) &&
-	        (ir.Event.KeyEvent.bKeyDown) &&	
-	        (ir.Event.KeyEvent.uChar.AsciiChar))
-	        { 
-		     /* This is what we were looking for        */
-		     done = 1;	        /* Stop looking         */
-		     retval = 1;        /* Found what we sought */
-	        }
-		/* Discard it, its an insignificant event */
-	        else ReadConsoleInput(hConIn,&ir,1,&count);
-	    }
-	    else  /* There are no events in console event queue*/
-	    {
+	    if (count > 0) {
+		ch    = ir.Event.KeyEvent.uChar.AsciiChar;
+		scan  = ir.Event.KeyEvent.wVirtualScanCode;
+		shiftstate = ir.Event.KeyEvent.dwControlKeyState;
+		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) && inmap(scan);
+		if (((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) &&
+		     (ch || (iskeypad(scan)) || altseq)) {
+			done = 1;	    /* Stop looking         */
+			retval = 1;         /* Found what we sought */
+		}
+		else /* Discard it, its an insignificant event */
+			ReadConsoleInput(hConIn,&ir,1,&count);
+		} else  /* There are no events in console event queue */ {
 		done = 1;	  /* Stop looking               */
-		retval = 0;	  /* No ascii press-down key    */
+		retval = 0;
 	    }
 	}
 	return retval;
@@ -173,7 +264,10 @@ void
 nttty_open()
 {
         HANDLE hStdOut;
-
+        long cmode;
+        long mask;
+        unsigned int codepage;
+        
         /* The following 6 lines of code were suggested by 
          * Bob Landau of Microsoft WIN32 Developer support,
          * as the only current means of determining whether
@@ -193,11 +287,17 @@ nttty_open()
 			GENERIC_READ |GENERIC_WRITE,
 			FILE_SHARE_READ |FILE_SHARE_WRITE,
 			NULL, OPEN_EXISTING, 0, NULL);					
-
+	GetConsoleMode(hConIn,&cmode);
+	mask = ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT |
+	       ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT | ENABLE_WINDOW_INPUT;   
+	cmode &= ~mask;
+	SetConsoleMode(hConIn,cmode);
+	
 	hConOut = CreateFile("CONOUT$",
 			GENERIC_READ |GENERIC_WRITE,
 			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			NULL, OPEN_EXISTING, 0, NULL);					
+			NULL, OPEN_EXISTING, 0, NULL);					        
+        
 	get_scr_size();
 }
 
@@ -364,7 +464,13 @@ tty_nhbell()
 void
 tty_delay_output()
 {
-	/* delay 50 ms - not implimented */
+	/* delay 50 ms - uses ANSI C clock() function now */
+	clock_t goal;
+
+	goal = 50 + clock();
+	while (goal > clock()) {
+	    /* Do nothing */
+	}
 }
 
 void
@@ -523,4 +629,3 @@ standoutend()
 }
 
 #endif /* WIN32CON */
-

@@ -94,8 +94,9 @@ setup.g         tos.c
 
 sys/mac:
 (files for Macintosh versions)
-Install.mpw     MacHelp         NHDeflts        NHmake.hqx      NHrez.hqx
-NHrsrc.hqx      NHsound.hqx     News            dprintf.c       hack.h
+DCproj.hqx      Install.mpw     Install.thk     MacHelp         LCproj.hqx
+MDproj.hqx      NHDeflts        NHmake.hqx      NHproj.hqx      NHrsrc.hqx
+NHsound.hqx     NetHack.r       News            dprintf.c       hack.h
 maccurs.c       macerrs.c       macfile.c       macmain.c       macmenu.c
 macsnd.c        mactopl.c       mactty.c        macunix.c       macwin.c
 mgetline.c      mhdump.c        mmodal.c        mrecover.c      mrecover.hqx
@@ -105,8 +106,8 @@ sys/msdos:
 (files for MSDOS version)
 Install.dos     MakeGCC.src     MakeGCC.utl     MakeMSC.src     MakeMSC.utl
 Makefile.dat    exesmurf.c      exesmurf.doc    maintovl.doc    msdos.c
-ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       setup.bat       trampoli.c
-video.c
+msdos.hlp       ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       setup.bat
+trampoli.c      video.c
 (files for running MSDOS binary under Windows)
 nhico.uu        nhpif.uu
 

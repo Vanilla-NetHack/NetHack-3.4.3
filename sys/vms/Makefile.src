@@ -90,7 +90,7 @@ RANDOBJ = random.obj
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
 VERSION  =3.1
-PATCHLVL =2
+PATCHLVL =3
 
 MAKEDEFS = $(UTL)makedefs.exe;
 

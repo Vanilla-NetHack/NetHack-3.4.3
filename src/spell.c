@@ -92,7 +92,7 @@ static void
 deadbook(book2)
 struct obj *book2;
 {
-    You("turn the pages of the Book of the Dead....");
+    You("turn the pages of the Book of the Dead...");
     makeknown(SPE_BOOK_OF_THE_DEAD);
     if(invocation_pos(u.ux, u.uy) && !On_stairs(u.ux, u.uy)) {
 	register struct obj *otmp;
@@ -571,7 +571,7 @@ static char
 spellet(spl)
 int spl;
 {
-	return (spl < 27) ? ('a' + spl - 1) : ('A' + spl - 27);
+	return((char)((spl < 27) ? ('a' + spl - 1) : ('A' + spl - 27)));
 }
 
 int

@@ -194,9 +194,7 @@ void
 eraseall(path, files)
 const char *path, *files;
 {
-    char buf[FILENAME];
-    short i;
-    BPTR fileLock, dirLock, dirLock2;
+    BPTR dirLock, dirLock2;
     struct FileInfoBlock *fibp;
     int chklen;
 #ifdef BETA
@@ -422,7 +420,7 @@ char orgdir[1];
 static BPTR OrgDirLock = NO_LOCK;
 
 chdir(dir)
-char *dir;
+const char *dir;
 {
     if (dir == orgdir) {
 	    /* We want to go back to where we came from. */

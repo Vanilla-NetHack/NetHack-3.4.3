@@ -210,7 +210,7 @@ pascal short ( * func ) ( WindowPtr window , void * * ptr , long ) =
 static short
 allocate_offscreen_world ( tty_record * record ) {
 GWorldPtr gw = NULL ;
-GWorldFlags world_flags = clipPix ;
+GWorldFlags world_flags = 0 ;
 long mem_here , mem_there , other , required_mem ;
 Point p = { 0 , 0 } ;
 Rect r_screen ;
@@ -239,11 +239,12 @@ GDHandle gdh ;
 		}
 		world_flags |= useTempMem ;
 	}
-	s_err = NewGWorld ( & gw , 16 , & r_screen , NULL , NULL , world_flags ) ;
+	s_err = NewGWorld ( & gw , 0 , & r_screen , NULL , NULL , world_flags ) ;
 	if ( ! s_err ) {
 		record -> offscreen_world = gw ;
 		select_offscreen_port ( record ) ;
 		SetOrigin ( 0 , 0 ) ;
+		select_onscreen_window ( record ) ;
 		dprintf ( "New GWorld @ %lx;dm %lx CGrafPtr" , gw , gw ) ;
 	}
 	return s_err ;
@@ -654,6 +655,7 @@ update_offscreen_info ( tty_record * record ) {
 
 	select_offscreen_port ( record ) ;
 	do_set_port_font ( record ) ;
+	select_onscreen_window ( record ) ;
 }
 
 
@@ -703,6 +705,7 @@ RECORD ( record ) ;
 			NULL , NULL , stretchPix ) ;
 		select_offscreen_port ( record ) ;
 		SetOrigin ( 0 , 0 ) ;
+		select_onscreen_window ( record ) ;
 	}
 	return s_err ;
 }
@@ -919,6 +922,7 @@ register int x_pos , count = len ;
 		copy_bits ( record , & r , srcCopy , NULL ) ;
 	} else {
 		accumulate_rect ( record , & r ) ;
+		select_onscreen_window ( record ) ;
 	}
 }
 
@@ -1295,7 +1299,14 @@ RECORD ( record ) ;
 	case updateEvt :
 		if ( event -> message == ( long ) window ) {
 			BeginUpdate ( window ) ;
+			
+			/* Why do we have to erase the same area we are about to
+				do a copy_bits to?
+				
 			erase_rect ( record , & ( record -> its_bits . bounds ) ) ;
+			
+			*/
+			
 			tty_environment_changed ( window ) ;
 			s_err = image_tty ( window ) ;
 			EndUpdate ( window ) ;
@@ -1444,7 +1455,8 @@ RECORD ( record ) ;
 	accumulate_rect ( record , & r ) ;
 	if ( DRAW_DIRECT ) {
 		update_tty ( window ) ;
-	}
+	} else
+		select_onscreen_window ( record ) ;
 }
 
 
@@ -1468,7 +1480,8 @@ RECORD ( record ) ;
 	accumulate_rect ( record , & r ) ;
 	if ( DRAW_DIRECT ) {
 		update_tty ( window ) ;
-	}
+	} else
+		select_onscreen_window ( record ) ;
 }
 
 
@@ -1490,7 +1503,8 @@ RECORD ( record ) ;
 	accumulate_rect ( record , & r ) ;
 	if ( DRAW_DIRECT ) {
 		update_tty ( window ) ;
-	}
+	} else
+		select_onscreen_window ( record ) ;
 }
 
 
@@ -1528,7 +1542,8 @@ RECORD ( record ) ;
 	accumulate_rect ( record , & r ) ;
 	if ( DRAW_DIRECT ) {
 		update_tty ( window ) ;
-	}
+	} else
+		select_onscreen_window ( record ) ;
 }
 
 

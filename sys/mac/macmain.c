@@ -13,14 +13,13 @@
 #include <String.h>
 #include <Strings.h>
 #endif
-#ifdef MAC_THINKC5
-#include <pascal.h>
-#endif
 #include <Dialogs.h>
 #include <Packages.h>
 #include <ToolUtils.h>
 #include <Resources.h>
+#ifndef THINK_C
 #include <SysEqu.h>
+#endif
 #include <Errors.h>
 
 #ifndef O_RDONLY
@@ -540,7 +539,7 @@ void InitSegMgmt(void * mainSeg)
 pascal long GetA5(void) = { 0x2E8D };					/* MOVE.L A5,(A7) */
 pascal short GetCurJTOffset(void) = { 0x3EB8, 0x934 };   /* MOVE.W CurJTOffset,(SP) */
 #endif
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 pascal long GetA5(void) = { 0x2E8D };					/* MOVE.L A5,(A7) */
 pascal short GetCurJTOffset(void) = { 0x3EB8, 0x934 };   /* MOVE.W CurJTOffset,(SP) */
 #endif

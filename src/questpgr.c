@@ -10,7 +10,7 @@
 #include "qtext.h"
 
 #define QTEXT_FILE	"quest.dat"
-#if defined(MICRO) && !defined(AMIGA)
+#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
 # define RDMODE "rb"
 #else
 # define RDMODE "r"
@@ -243,7 +243,7 @@ class_index()
 	    case 'A':	return(0);
 	    case 'B':	return(1);
 	    case 'C':	return(2);
-	    case 'E':	return(3+flags.female);
+	    case 'E':	return((unsigned)(3+flags.female));
 	    case 'H':	return(5);
 	    case 'K':	return(6);
 	    case 'P':	return(7);
@@ -280,7 +280,7 @@ boolean
 is_quest_artifact(otmp)
 struct obj *otmp;
 {
-	return(otmp->oartifact == qt_matrix[class_index()].artinum);
+	return((boolean)(otmp->oartifact == qt_matrix[class_index()].artinum));
 }
 
 static const char *
@@ -305,7 +305,7 @@ boolean
 leaderless()	/* return true iff leader is dead */
 {
 	int i = qt_matrix[class_index()].ldrnum;
-	return (u.nr_killed[i] > 0);
+	return((boolean)(u.nr_killed[i] > 0));
 }
 
 static struct qtmsg *

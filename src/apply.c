@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	3.1	93/05/25	*/
+/*	SCCS Id: @(#)apply.c	3.1	93/06/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,6 +39,10 @@ static boolean NDECL(rm_waslit);
 static void FDECL(mkcavepos, (XCHAR_P,XCHAR_P,int,BOOLEAN_P,BOOLEAN_P));
 static void FDECL(mkcavearea, (BOOLEAN_P));
 static void FDECL(digactualhole, (int));
+
+#ifdef	AMIGA
+void FDECL( amii_speaker, ( struct obj *, char *, int ) );
+#endif
 
 #ifdef TOURIST
 static int
@@ -270,7 +274,7 @@ boolean
 um_dist(x,y,n)
 register xchar x, y, n;
 {
-	return(abs(u.ux - x) > n  || abs(u.uy - y) > n);
+	return((boolean)(abs(u.ux - x) > n  || abs(u.uy - y) > n));
 }
 
 #endif /* OVLB */
@@ -674,7 +678,7 @@ dig()
 		register struct trap *ttmp;
 
 		if(dig_effort > 250) {
-			dighole();
+			(void) dighole(FALSE);
 			dig_level.dnum = 0;
 			dig_level.dlevel = -1;
 			return(0);	/* done with digging */
@@ -693,9 +697,10 @@ dig()
 			angry_priest();
 		}
 
-		digactualhole(PIT);	/* at u.ux, u.uy */
-		dig_level.dnum = 0;
-		dig_level.dlevel = -1;
+		if (dighole(TRUE)) {	/* make pit at <u.ux,u.uy> */
+		    dig_level.dnum = 0;
+		    dig_level.dlevel = -1;
+		}
 		return(0);
 	}
 	if(dig_effort > 100) {
@@ -824,13 +829,30 @@ int x, y;
     register int x1, y1;
     int lo_x = max(1,x-1), hi_x = min(x+1,COLNO-1),
 	lo_y = max(0,y-1), hi_y = min(y+1,ROWNO-1);
+    int pool_cnt = 0, moat_cnt = 0, lava_cnt = 0;
 
     for (x1 = lo_x; x1 <= hi_x; x1++)
 	for (y1 = lo_y; y1 <= hi_y; y1++)
-	    if(levl[x1][y1].typ == MOAT || levl[x1][y1].typ == LAVAPOOL)
-		return levl[x1][y1].typ;
+	    if (levl[x1][y1].typ == POOL)
+		pool_cnt++;
+	    else if (levl[x1][y1].typ == MOAT ||
+		    (levl[x1][y1].typ == DRAWBRIDGE_UP &&
+			(levl[x1][y1].drawbridgemask & DB_UNDER) == DB_MOAT))
+		moat_cnt++;
+	    else if (levl[x1][y1].typ == LAVAPOOL ||
+		    (levl[x1][y1].typ == DRAWBRIDGE_UP &&
+			(levl[x1][y1].drawbridgemask & DB_UNDER) == DB_LAVA))
+		lava_cnt++;
+    pool_cnt /= 3;		/* not as much liquid as the others */
 
-    return ROOM;
+    if (lava_cnt > moat_cnt + pool_cnt && rn2(lava_cnt + 1))
+	return LAVAPOOL;
+    else if (moat_cnt > 0 && rn2(moat_cnt + 1))
+	return MOAT;
+    else if (pool_cnt > 0 && rn2(pool_cnt + 1))
+	return POOL;
+    else
+	return ROOM;
 }
 
 static void
@@ -861,7 +883,7 @@ int ttyp;
 		if (oldobjs != newobjs)	/* something unearthed */
 			pickup(1);	/* detects pit */
 		else
-			You("dig a pit.");
+			You("dig a pit in the %s.", surface(u.ux, u.uy));
 
 	} else {	/* TRAPDOOR */
 		pline("You dig a hole through the %s.", surface(u.ux,u.uy));
@@ -909,8 +931,10 @@ int ttyp;
 	}
 }
 
-void
-dighole()
+/* return TRUE if digging succeeded, FALSE otherwise */
+boolean
+dighole(pit_only)
+boolean pit_only;
 {
 	register struct trap *ttmp = t_at(u.ux, u.uy);
 	struct rm *lev = &levl[u.ux][u.uy];
@@ -927,7 +951,13 @@ dighole()
 		wake_nearby();	/* splashing */
 
 	} else if (lev->typ == DRAWBRIDGE_DOWN) {
-		destroy_drawbridge(u.ux,u.uy);
+		if (pit_only) {
+		    pline("The drawbridge seems too hard to dig through.");
+		    return FALSE;
+		} else {
+		    destroy_drawbridge(u.ux, u.uy);
+		    return TRUE;
+		}
 
 	} else if ((boulder_here = sobj_at(BOULDER, u.ux, u.uy)) != 0) {
 		if (ttmp && (ttmp->ttyp == PIT || ttmp->ttyp == SPIKED_PIT)) {
@@ -958,6 +988,7 @@ dighole()
 			}
 		}
 		delobj(boulder_here);
+		return TRUE;
 
 	} else if (lev->typ == DRAWBRIDGE_UP) {
 		/* must be floor or ice, other cases handled above */
@@ -965,21 +996,19 @@ dighole()
 		typ = fillholetyp(u.ux,u.uy);
 
 		if (typ == ROOM) {
-		    if (lev->drawbridgemask & DB_ICE)
-			typ = MOAT;
-		    else {
 			/*
-			 * We can't dig a pit here since that will destroy
+			 * We can't dig a hole here since that will destroy
 			 * the drawbridge.  The following is a cop-out. --dlc
 			 */
-			pline("The floor here is too hard to dig in.");
-			return;
-		    }
+			pline("The %s here is too hard to dig in.",
+			      surface(u.ux, u.uy));
+			return FALSE;
 		}
 
-		lev->drawbridgemask &= DB_DIR;
-		if (typ == LAVAPOOL) lev->drawbridgemask |= DB_LAVA;
-	    liquid_flow:
+		lev->drawbridgemask &= ~DB_UNDER;
+		lev->drawbridgemask |= (typ == LAVAPOOL) ? DB_LAVA : DB_MOAT;
+
+ liquid_flow:
 		newsym(u.ux,u.uy);
 
 		pline("As you dig a pit, it fills with %s!",
@@ -994,13 +1023,16 @@ dighole()
 		    else if (!Wwalking)
 			(void) drown();
 		}
+		return TRUE;
 
 	} else if (IS_FOUNTAIN(lev->typ)) {
 		dogushforth(FALSE);
 		dryup(u.ux,u.uy);
+		return TRUE;
 #ifdef SINKS
 	} else if (IS_SINK(lev->typ)) {
 		breaksink(u.ux, u.uy);
+		return TRUE;
 #endif
 	/* the following two are here for the wand of digging */
 	} else if (IS_THRONE(lev->typ)) {
@@ -1010,21 +1042,23 @@ dighole()
 		pline("The altar is too hard to break apart.");
 
 	} else {
-		if (lev->typ == ICE) {
-			typ = fillholetyp(u.ux,u.uy);
+		typ = fillholetyp(u.ux,u.uy);
 
-			if (typ != ROOM) {
-			    lev->typ = typ;
-			    goto liquid_flow;
-			}
+		if (typ != ROOM) {
+			lev->typ = typ;
+			goto liquid_flow;
 		}
 
 		/* finally we get to make a hole */
-		if (nohole) {	/* can't make a trapdoor, so make a pit */
+		if (nohole || pit_only)
 			digactualhole(PIT);
-		} else
+		else
 			digactualhole(TRAPDOOR);
+
+		return TRUE;
 	}
+
+	return FALSE;
 }
 
 static boolean
@@ -1168,11 +1202,11 @@ struct obj *obj;
 			dig_pos.y = u.uy;
 			assign_level(&dig_level, &u.uz);
 			dig_effort = 0;
-			You("start digging in the %s.", surface(u.ux,u.uy));
+			You("start digging downward.");
 			if(*u.ushops)
 				shopdig(0);
 		} else
-			You("continue digging in the %s.", surface(u.ux,u.uy));
+			You("continue digging downward.");
 		did_dig_msg = FALSE;
 		set_occupation(dig, "digging", 0);
 	}
@@ -1327,7 +1361,7 @@ register struct obj *obj;
 
 	if(Underwater) {
 #ifdef	AMIGA
-	    amii_speaker( obj, "AwDwGwEwDhEhAqDqFwGw", AMII_MUFFLED_VOLUME );
+	    amii_speaker( obj, "AhDhGqEqDhEhAqDqFhGw", AMII_MUFFLED_VOLUME );
 #endif
 	    pline("But the sound is muffled.");
 	    return;
@@ -1338,7 +1372,7 @@ register struct obj *obj;
 		return;
 	    }
 #ifdef	AMIGA
-	    amii_speaker( obj, "awdwgwewdhehaqdqfwgw", AMII_MUFFLED_VOLUME );
+	    amii_speaker( obj, "ahdhgqeqdhehaqdqfhgw", AMII_MUFFLED_VOLUME );
 #endif
 	    if(obj->cursed && !rn2(3)) {
 		register struct monst *mtmp;
@@ -1382,7 +1416,7 @@ cursed_bell:
 		register int cnt = openit();
 		if(cnt == -1) return; /* was swallowed */
 #ifdef	AMIGA
-		amii_speaker( obj, "awawawDwEwCw", AMII_SOFT_VOLUME );
+		amii_speaker( obj, "ahahahDhEhCw", AMII_SOFT_VOLUME );
 #endif
 		switch(cnt) {
 		  case 0:  pline(nothing_happens); break;
@@ -1394,7 +1428,7 @@ cursed_bell:
 	    } else pline(nothing_happens);
 	} else {  /* uncursed */
 #ifdef	AMIGA
-	    amii_speaker( obj, "AeFeaeFeAefegW", AMII_OKAY_VOLUME );
+	    amii_speaker( obj, "AeFeaeFeAefegw", AMII_OKAY_VOLUME );
 #endif
 	    if(obj->spe > 0) {
 		register int cnt = findit();
@@ -1770,6 +1804,15 @@ dojump()
 	}
 }
 
+boolean
+tinnable(corpse)
+struct obj *corpse;
+{
+	if (corpse->oeaten) return 0;
+	if (!mons[corpse->corpsenm].cnutrit) return 0;
+	return 1;
+}
+
 static void
 use_tinning_kit(obj)
 register struct obj *obj;
@@ -1779,7 +1822,7 @@ register struct obj *obj;
 	/* This takes only 1 move.  If this is to be changed to take many
 	 * moves, we've got to deal with decaying corpses...
 	 */
-	if (!(corpse = floorfood("tin", 1))) return;
+	if (!(corpse = floorfood("tin", 2))) return;
 	if (corpse->oeaten) {
 		You("cannot tin something which is partly eaten.");
 		return;

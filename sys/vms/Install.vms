@@ -1,4 +1,4 @@
-               Instructions for Installing NetHack 3.1.2
+               Instructions for Installing NetHack 3.1.3
                            on a VMS system
                =========================================
 
@@ -26,7 +26,7 @@
         [.include]      -- C header files
         [.src]          -- primary source files
         [.sys]          -- parent for [.sys.*]
-        [.sys   .share] -- files shared by several ports, incl. VMS
+        [.sys   .share] -- files shared by several ports, including VMS
         [.sys   .vms]   -- VMS-specific source and support files
         [.util]         -- sources for essential utility programs
         [.win]          -- parent for [.win.*]
@@ -141,12 +141,15 @@
 
 Notes:
 
-1.  Save files and bones files from previous versions will not work with
-    NetHack 3.1.2.  The scoreboard file (RECORD) from 3.1.1 or 3.1.0 is
-    compatible with 3.1.2, but one from 3.0pl10 or earlier is not.
+1.  Save files and bones files from earlier versions, including 3.1.2,
+    will not work with 3.1.3.  The scoreboard file (RECORD) from 3.1.<any>
+    is compatible with 3.1.3, but one from 3.0pl10 or earlier is not.
+    When moving an existing scoreboard file into the new playground
+    directory, it must end up as file version one (RECORD.;1) or NetHack
+    will ignore it.
 
 2.  To specify user-preference options in your environment, define the
-    logical name NETHACKOPTIONS to have value of a quoted string
+    logical name NETHACKOPTIONS to have the value of a quoted string
     containing a comma separated list of option values.  The option names
     are case-insensitive.
        $ define nethackoptions "noAutoPickup,Dog:Rover,Cat:Felix,DECgraphics"
@@ -259,12 +262,9 @@ Notes:
     waste any time compiling the rest of the code.  Consider that to be
     stage 1.  For stage 2, go back to step #5, but set the symbol for
     invoking CC to have a value similar to the following
-       $ CC == " GEMC/Standard=VAXC"
-    Note the leading space in the value; if that's not included, vmsbuild
-    will take the leading "G" as an indication that GCC is being used and
-    end up selecting some wrong options.  Also set up symbols for cross-
-    architecture access to the linker and librarian (these examples assume
-    building an AXP version from a VAX)
+       $ CC == "GEMC/Standard=VAXC"
+    Also set up symbols for cross-architecture access to the linker and
+    librarian (these examples assume building an AXP version from a VAX)
        $ LINK == "LINK/Alpha"   !or LINK/VAX
        $ LIBR == "LIBR/Alpha"   !or LIBR/VAX
     Now re-do step #6, but specify "/noExe" as the 4th parameter to
@@ -527,4 +527,4 @@ Notes:
     Always include version information for NetHack, the operating system,
     and the C compiler used.
 
-29-MAY-1993
+ 6-JUL-1993

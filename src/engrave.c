@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.1	92/05/18	*/
+/*	SCCS Id: @(#)engrave.c	3.1	92/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,6 +61,8 @@ register int x, y;
 	    return "ice";
 	else if (is_lava(x,y))
 	    return "lava";
+	else if (lev->typ == DRAWBRIDGE_DOWN)
+	    return "bridge";
 	else if ((IS_ROOM(lev->typ) && !Is_earthlevel(&u.uz)) ||
 		 IS_WALL(lev->typ) || IS_DOOR(lev->typ) || lev->typ == SDOOR)
 	    return "floor";
@@ -441,7 +443,8 @@ doengrave()
 	    case FOOD_CLASS:
 	    case SCROLL_CLASS:
 	    case SPBOOK_CLASS:
-		Your("%s would get too dirty.", xname(otmp));
+		Your("%s would get %s.", xname(otmp),
+			is_ice(u.ux,u.uy) ? "all frosty" : "too dirty");
 		ptext = FALSE;
 		break;
 
@@ -647,13 +650,16 @@ doengrave()
 				if (!Blind)
 				    You("wipe out the message here.");
 				else
-				    Your("%s gets dusty.", xname(otmp));
+				    Your("%s gets %s.", xname(otmp),
+					  is_ice(u.ux,u.uy) ?
+					  "frosty" : "dusty");
 				dengr = TRUE;
 			    } else
 				Your("%s can't wipe out this engraving.",
 				     xname(otmp));
 			else
-			    Your("%s gets dusty.", xname(otmp));
+			    Your("%s gets %s.", xname(otmp),
+				  is_ice(u.ux,u.uy) ? "frosty" : "dusty");
 			break;
 		    default:
 			break;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	3.1	93/05/26	*/
+/*	SCCS Id: @(#)mon.c	3.1	93/06/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -215,7 +215,7 @@ warn_effects()
 		break;
 	    default:
 		if (Hallucination)
-		    Your("spider-sense is tingling....");
+		    Your("spider-sense is tingling...");
 		else
 		    You("feel apprehensive as you sense a %s flash.",
 			warnings[warnlevel]);
@@ -379,7 +379,8 @@ meatgold(mtmp)
 	/* Eats topmost metal object if it is there */
 	for (otmp = level.objects[mtmp->mx][mtmp->my];
 						    otmp; otmp = otmp->nexthere)
-	    if (is_metallic(otmp) && touch_artifact(otmp,mtmp)) {
+	    if (is_metallic(otmp) && !obj_resists(otmp, 5, 95) &&
+		touch_artifact(otmp,mtmp)) {
 		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s eats %s!", Monnam(mtmp),
 				distant_name(otmp,doname));
@@ -418,7 +419,8 @@ meatobj(mtmp)		/* for gelatinous cubes */
 	/* Engulfs others, except huge rocks and metal attached to player */
 	for (otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nexthere;
-	    if(is_organic(otmp) && touch_artifact(otmp,mtmp)) {
+	    if (is_organic(otmp) && !obj_resists(otmp, 5, 95) &&
+		    touch_artifact(otmp,mtmp)) {
 		if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
 						&& !resists_ston(mtmp->data))
 		    continue;
@@ -603,7 +605,7 @@ struct obj *otmp;
 
 	/* nymphs deal in stolen merchandise, but not boulders or statues */
 	if (mtmp->data->mlet == S_NYMPH)
-		return !(otmp->oclass == ROCK_CLASS);
+		return((boolean)(!(otmp->oclass == ROCK_CLASS)));
 
 	if(curr_mon_load(mtmp) + newload > max_mon_load(mtmp)) return(FALSE);
 
@@ -778,7 +780,7 @@ register int x,y;
 {
 	register int distance = dist2(mon->mx, mon->my, x, y);
 	if (distance==2 && mon->data==&mons[PM_GRID_BUG]) return 0;
-	return (distance < 3);
+	return((boolean)(distance < 3));
 }
 
 #endif /* OVL1 */
@@ -983,6 +985,9 @@ mondied(mdef)
 register struct monst *mdef;
 {
 	mondead(mdef);
+#ifdef MUSE
+	if(mdef->mhp > 0) return; /* lifesaved */
+#endif
 	if(rn2(3)
 #ifdef REINCARNATION
 	   && !Is_rogue_level(&u.uz)
@@ -1137,7 +1142,8 @@ xkilled(mtmp, dest)
 	boolean wasinside = u.uswallow && (u.ustuck == mtmp);
 
 	if (dest & 1) {
-	    if(!canseemon(mtmp) && !sensemon(mtmp)) You("destroy it!");
+	    if(!wasinside && !canseemon(mtmp) && !sensemon(mtmp))
+		You("destroy it!");
 	    else {
 		You("destroy %s!",
 			mtmp->mtame ? x_monnam(mtmp, 0, "poor", 0)

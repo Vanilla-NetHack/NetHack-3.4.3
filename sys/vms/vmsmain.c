@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmain.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)vmsmain.c	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
@@ -6,6 +6,8 @@
 #include "hack.h"
 
 #include <signal.h>
+
+volatile int exiting = 0;
 
 static void NDECL(whoami);
 static void FDECL(process_options, (int, char **));
@@ -381,7 +383,7 @@ byebye()
 
     /* SIGHUP doesn't seem to do anything on VMS, so we fudge it here... */
     hup = (int(*)()) signal(SIGHUP, SIG_IGN);
-    if (hup != (int(*)()) SIG_DFL && hup != (int(*)()) SIG_IGN)
+    if (!exiting++ && hup != (int(*)()) SIG_DFL && hup != (int(*)()) SIG_IGN)
 	(void) (*hup)();
 
 #ifdef CHDIR

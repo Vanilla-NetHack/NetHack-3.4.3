@@ -1,4 +1,4 @@
-# SCCS Id: @(#)MakeMSC.src	3.1	93/05/23
+# SCCS Id: @(#)MakeMSC.src	3.1	93/07/11
 # Copyright (c) NetHack PC Development Team 1992, 1993
 # PC NetHack 3.1 Makefile for Microsoft(tm) "C" >= 6.0ax and MSVC >= 1.0
 #
@@ -67,7 +67,7 @@ MAKEBIN = make45l	# Make Utility
 # command line exceeds the MSDOS 128 character limit.
 #
 CFLAGS	= /c
-LFLAGS	= /noi /seg:512 /map /st:5120 /DYNAMIC:1050 /INFO
+LFLAGS	= /noi /seg:512 /map /st:5120 /DYNAMIC:1052 /INFO
 OVLMUCKING =	# None required
 MSC6MUCK =	# None required
 OVERLAY =	# None required
@@ -137,12 +137,12 @@ RANDOM	= $(OBJ)\random.o
 # RANDOM	=
 
 #
-# If TERMLIB is NOT #defined in the source (in include\pcconf.h), 
-# comment out the lower line and uncomment the upper.  Make sure 
+# If TERMLIB is #defined in the source (in include\pcconf.h), 
+# comment out the upper line and uncomment the lower.  Make sure 
 # that TERMLIB contains the full pathname to the termcap library. 
 
-#TERMLIB =
-TERMLIB = $(SSYS)\termcap.lib
+TERMLIB =
+#TERMLIB = $(SSYS)\termcap.lib
 
 #
 #	Nothing below this line should have to be changed.
@@ -382,6 +382,7 @@ install.tag: $(GAMEFILE) $(MSC6MUCK)
 	copy $(DAT)\*.lev		$(GAMEDIR)
 	copy $(SSYS)\NetHack.cnf	$(GAMEDIR)
 	copy $(UTL)\recover.exe		$(GAMEDIR)
+	copy $(SYS)\msdos.hlp		$(GAMEDIR)
 	del  $(GAMEDIR)\makefile
 	echo install done > install.tag
 

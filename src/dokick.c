@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.1	93/05/14	*/
+/*	SCCS Id: @(#)dokick.c	3.1	93/06/15	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -344,7 +344,7 @@ xchar x, y;
 		for(otmp = kickobj->cobj; otmp; otmp = otmp2) {
 			otmp2 = otmp->nobj;
 			if (objects[otmp->otyp].oc_material == GLASS
-								&& !rn2(3)) {
+			    && !obj_resists(otmp, 33, 100)) {
 				You("hear a muffled shatter.");
 				if(costly) loss += stolen_value(otmp, x, y, 
 					    (boolean)shkp->mpeaceful, TRUE);

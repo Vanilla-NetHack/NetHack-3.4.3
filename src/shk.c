@@ -495,7 +495,7 @@ register struct mkroom *sroom;
 	if (!mtmp)
 		return(FALSE);
 	else
-		return(inhishop(mtmp));
+		return((boolean)(inhishop(mtmp)));
 }
 #endif	/* SOUNDS */
 
@@ -2168,6 +2168,7 @@ move_on:
 			    if (!obj->unpaid && !saleitem) obj->no_charge = 1;
 			    subfrombill(obj, shkp);
 			    pay(-offer, shkp);
+			    shk_names_obj(obj);     /* identify some non-magic objects */
 			    You("sold %s for %ld gold piece%s.", doname(obj),
 				offer, plur(offer));
 			    break;
@@ -2180,6 +2181,9 @@ int
 doinvbill(mode)
 int mode;		/* 0: deliver count 1: paged */
 {
+#ifdef	__SASC
+	void sasc_bug(struct obj *, unsigned);
+#endif
 	register struct monst* shkp;
 	register struct bill_x *bp, *end_bp;
 	register struct obj *obj;
@@ -2651,7 +2655,7 @@ boolean
 is_fshk(mtmp)
 register struct monst *mtmp;
 {
-	return(mtmp->isshk && ESHK(mtmp)->following);
+	return((boolean)(mtmp->isshk && ESHK(mtmp)->following));
 }
 
 /* You are digging in the shop. */
@@ -2902,9 +2906,9 @@ register xchar x, y;
 	shkp = shop_keeper(*in_rooms(x, y, SHOPBASE));
 	if(!shkp || !inhishop(shkp)) return(FALSE);
 
-	return(inside_shop(x, y) &&
+	return((boolean)(inside_shop(x, y) &&
 		!(x == ESHK(shkp)->shk.x &&
-			y == ESHK(shkp)->shk.y));
+			y == ESHK(shkp)->shk.y)));
 }
 
 /* called by dotalk(sounds.c) when #chatting; returns obj if location
@@ -3235,6 +3239,7 @@ register xchar x, y;
 #endif /* OVLB */
 
 #ifdef __SASC
+void
 sasc_bug(struct obj *op, unsigned x){
 	op->unpaid=x;
 }

@@ -16,7 +16,7 @@ amii_putstr(window,attr,str)
 {
     struct Window *w;
     register struct amii_WinDesc *cw;
-    register char *ob;
+    char *ob;
     int i, j, n0, bottom, totalvis, wheight;
 
 #ifdef	VIEWWINDOW
@@ -72,10 +72,8 @@ amii_putstr(window,attr,str)
 #define MORE_FUDGE  10  /* 8 for --more--, 1 for preceeding sp, 1 for */
 		/* putstr pad */
     case NHW_MESSAGE:
-    	bottom = w->Height - w->BorderTop - w->BorderBottom - 2;
-    	bottom /= w->RPort->TxHeight;
-    	if( bottom > 0 )
-	    --bottom;
+    	/* Calculate the bottom line */
+    	bottom = amii_msgborder( w );
 
 	wheight = ( w->Height - w->BorderTop -
 			    w->BorderBottom - 3 ) / w->RPort->TxHeight;
@@ -267,6 +265,20 @@ amii_putstr(window,attr,str)
     }
 }
 
+int
+amii_msgborder( w )
+    struct Window *w;
+{
+    register int bottom;
+
+    /* There is a one pixel border at the borders, so subtract two */
+    bottom = w->Height - w->BorderTop - w->BorderBottom - 2;
+    bottom /= w->RPort->TxHeight;
+    if( bottom > 0 )
+	--bottom;
+    return( bottom );
+}
+
 void
 outmore( cw )
     register struct amii_WinDesc *cw;
@@ -278,16 +290,15 @@ outmore( cw )
 	if( scrollmsg )
 	{
 	    int bottom;
-	    bottom = w->Height - w->BorderTop - w->BorderBottom;
-	    bottom /= w->RPort->TxHeight;
-	    if( bottom > 0 )
-		--bottom;
+
+	    bottom = amii_msgborder( w );
+
 	    ScrollRaster( w->RPort, 0, w->RPort->TxHeight,
 			w->BorderLeft-1, w->BorderTop+1,
 			w->Width - w->BorderRight-1,
 			w->Height - w->BorderBottom - 1 );
 	    amii_curs( WIN_MESSAGE, 1, bottom );
-	    Text( w->RPort, "--more--", 9 );
+	    Text( w->RPort, "--more--", 8 );
 	}
 	else
 	    Text( w->RPort, " --more--", 9 );

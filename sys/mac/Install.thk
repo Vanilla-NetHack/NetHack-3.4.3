@@ -1,0 +1,279 @@
+Notes on Building NH3.1.3 with Think C
+
+In General
+
+	What is different between MPW and Think C?
+
+	Think C does not have a shell, :-(.  MPW does.  Ugh.  The lack of
+shell requires the cumbersome task of result file management.  Our approach
+has been to move all result files into the topmost directory.  This is done
+so that NetHack can be compiled and run from the topmost directory.  (In
+the future, we want to modify the compilers to place to result files into a
+result directory, and NetHack to look for its files in the result directory).
+
+	Life without a shell also requires the NetHack resource file to 
+be put together by hand.  This is one area that Think C 6.0 has improved our
+lives.  Under 6.0, we can now add E.rsrc and E.r files as source to the
+project.  Dot rsrc files will be added to the project rsrc file directly and
+dot r files will be compiled and then added.  For those who are without Think
+6.0, good luck.  The best approach is to use the resource compiler to compile
+the dot r file, and name the result as the projects rsrc file.
+
+	Makedefs is another story.  When run, a command window pops up.  Just
+type in the options you require.  When the files are generated, some of the
+result files will have to be moved to the top level directory (data files) or
+to the include area (header files).
+
+	Needless to say, all of the above stuff that we must do because of
+the lack of shell also implies no Makefile, so we must be aware of what
+files that we have modified and which files are dependent upon these modified
+files.  In other words, we must constantly ask ourselves "gee, do we need to
+run Makedefs again?".  Life is tuff; this is to help you get used to it.
+
+	What follows are most of the steps that we take in compiling NH3.1.3.
+If some are left out, blame it on late night TV and a small PB screen.  If
+you find something left out, or think a little more detail is needed, send us
+some mail.
+
+	This is the second release of these notes.  We are sure stuff has
+been left out.  So if you hit a snag, feel free to contact us.  We want and
+need to debug this port.
+
+	We can be reached at nethack-bugs@linc.cis.upenn.edu
+
+The Steps
+
+	-2.	Read the Think C manuals.  Know your compiler and your
+environment.  They are your friends and you are stuck with them.
+	
+	-1.	Get Think Reference or buy a bunch of books that cover
+Macintosh programming (the correct number of books can be determined when you
+start seeing the same stuff over and over again -- or you run out of cash).
+		
+	0.	Learn C and the standard io library.
+	
+	From here, we will assume that you know how to build and compile
+projects, how file names are resolved, what a project's resource file is
+for, and how the resource compiler works.  If you don't, repeat the above
+steps.
+	
+	1.	Grab the sources, maintaining the directory structure.  We will
+refer to the top most directory as 'top'.
+
+	2.	Move the project files to top.  The projects are MakeDefs.proj,
+DgnComp.proj, LevComp.proj and NetHack.proj.
+	
+	3. Modify the source
+
+	sys:mac:hack.h
+		a. this should be deleted.  It is needed for the MPW build
+		   and will interfere with the Think C compile.
+		   
+	include:hack.h
+		a. this file should be renamed 'include:realhack.h'.
+		b. create a new file 'sys:mac:NetHack Headers.c'
+		 with a single line :
+			#include "realhack.h"
+		c. precompile this new file and save the precompile output
+		   as 'include:hack.h'
+
+	sys:share:lev_lex.c sys:share:lev_yacc.c sys:share:lev_main.c
+		a. change inclusion of 'hack.h' to 'realhack.h'
+
+	4. Move and/or rename files
+
+		a. move top:sys:mac:MacHelp to top:MacHelp
+		b. move top:sys:mac:News to top:News
+		c. move and rename top:sys:mac:NHDeflts to
+		 top:sys:mac:NetHack Defaults
+
+	5. Build and run MakeDefs
+
+		a. -v to build 'options'.
+		b. -o to create 'onames.h'.
+		c. -p to create 'pm.h'.
+		d. -z to create 'vis_tab.c'.
+		e. -e to create 'dundeon.pdf'.
+		f. -m to create 'monstr.c'.
+		g. -d to create 'data'.
+		Move 'top:dat:data' to 'top:data'.
+		h. -r to create 'rumors'.
+		Move 'top:dat:rumors' to 'top:rumors'.
+		i. -h to create 'oracles'.
+		Move 'top:dat:oracles' to 'top:oracles'.
+		j. -q to create 'quest.dat'.
+		Move 'top:dat:quest.dat' to 'top:quest.dat'.
+
+		
+	6. Compile and run LevComp.
+
+	7. Compile and run DgnComp.
+		Move 'top:dat:dungeon' to 'top:dungeon'.
+
+	8. Compile and run NetHack.
+
+Appendix
+
+A. Futures
+
+	1.	Modify NetHack to look for data files in the folder 'data'.
+	2.	Take advantage of the new scripting abilities of Think C 6.0.
+
+B. Project Contents
+
+All projects should have both far code and far data set.  Set the
+application size of NetHack.proj to a couple of megs.
+
+Set the application size of LevComp.proj to a meg (We suspect that there is a
+memory leak in there somewhere).  All projects should contain the libraries
+MacTraps, ANSI, and unix.
+		
+		MakeDefs.proj should contain the following source files:
+		
+			objects.c
+			monst.c
+			MakeDefs.c
+			
+		DgnComp.proj should contain the following source files:
+			
+			dgn_lex.c
+			dgn_main.c
+			dgn_yacc.c
+			alloc.c
+			panic.c
+
+		LevComp.proj should contain the following source files:
+		
+			monst.c
+			objects.c
+			drawing.c
+			alloc.c
+			panic.c
+			lev_lex.c
+			lev_yacc.c
+			macerrs.c
+			decl.c
+			lev_main.c
+			
+			add #define SPEC_LEV to prefix
+			
+		NetHack.proj should contain the following source files:
+
+			allmain.c
+			alloc.c
+			apply.c
+			artifact.c
+			attrib.c
+			ball.c
+			bones.c
+			botl.c
+			cmd.c
+			dbridge.c
+			decl.c
+			detect.c
+			display.c
+			do.c
+			do_name.c
+			do_wear.c
+			dog.c
+			dogmove.c
+			dokick.c
+			dothrow.c
+			drawing.c
+			dungeon.c
+			eat.c
+			end.c
+			engrave.c
+			exper.c
+			explode.c
+			extralev.c
+			files.c
+			fountain.c
+			hack.c
+			hacklib.c
+			invent.c
+			lock.c
+			maccurs.c
+			macerrs.c
+			macfile.c
+			macmain.c
+			macmenu.c
+			macsnd.c
+			macunix.c
+			macwin.c
+			makemon.c
+			mcastu.c
+			mgetline.c
+			mhitm.c
+			mhitu.c
+			minion.c
+			mklev.c
+			mkmap.c
+			mkmaze.c
+			mkobj.c
+			mkroom.c
+			mmodal.c
+			mon.c
+			mondata.c
+			monmove.c
+			monst.c
+			monstr.c NOTE: created by MakeDefs -m, so add it later
+			mplayer.c
+			mstring.c
+			mthrowu.c
+			muse.c
+			music.c
+			o_init.c
+			objects.c
+			objnam.c
+			options.c
+			pager.c
+			pickup.c
+			pline.c
+			polyself.c
+			potion.c
+			pray.c
+			priest.c
+			quest.c
+			questpgr.c
+			random.c
+			read.c
+			rect.c
+			restore.c
+			rip.c
+			rnd.c
+			rumors.c
+			save.c
+			shk.c
+			shknam.c
+			sit.c
+			sounds.c
+			sp_lev.c
+			spell.c
+			steal.c
+			timeout.c
+			mactopl.c
+			topten.c
+			track.c
+			trap.c
+			u_init.c
+			uhitm.c
+			vault.c
+			version.c
+			vision.c
+			vis_tab.c	NOTE:generated by Makedefs
+			weapon.c
+			were.c
+			wield.c
+			windows.c
+			wizard.c
+			worm.c
+			worn.c
+			write.c
+			zap.c
+			getline.c
+			topl.c
+			wintty.c
+			mactty.c
+			mttymain.c
+			dprintf.c

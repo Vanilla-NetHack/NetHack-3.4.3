@@ -74,8 +74,9 @@ struct mesg_info_t {
     XFontStruct *fs;		/* Font for the window. */
     int		num_lines;	/* line count */
     struct line_element *head;	/* head of circular line queue */
+    struct line_element *line_here;/* current drawn line position */
     struct line_element *last_pause;/* point to the line after the prev */
-				/*	bottom of screen */
+				/*     bottom of screen			*/
     struct line_element *last_pause_head;/* pointer to head of previous */
 				/* turn					*/
     GC		gc;		/* GC for text drawing */

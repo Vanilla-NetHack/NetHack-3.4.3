@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macwin.c	3.1	93/01/24		  */
+/*	SCCS Id: @(#)macwin.c	3.1	93/07/09		  */
 /* Copyright (c) Jon W{tte, Hao-Yang Wang, Jonathan Handler 1992. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,8 +24,10 @@
 #include <dialogs.h>
 #include <textedit.h>
 #include <menus.h>
-#ifndef MAC_THINKC5
+#ifndef THINK_C
 #include <sysequ.h>
+#else
+#include <LoMem.h>
 #endif
 #include <resources.h>
 #include <desk.h>
@@ -37,6 +39,8 @@
 #include <Packages.h>
 #include <Sound.h>
 #include <DiskInit.h>
+
+static short kApplicInFront = 1;
 
 NhWindow * theWindows = (NhWindow *) NULL ;
 
@@ -61,7 +65,7 @@ extern WindowPtr _mt_window;
  * response to a yn query, while topl_resp[topl_def_idx] is the
  * default response to a yn query.
  */
-TEHandle top_line = nil;
+TEHandle top_line = (TEHandle) nil;
 int		 topl_query_len;
 int		 topl_def_idx = -1;
 char	 topl_resp[10] = "";
@@ -136,7 +140,7 @@ AddToKeyQueue ( int ch , Boolean force )
 /*
  * Cursor movement
  */
-RgnHandle gMouseRgn = NULL ;
+RgnHandle gMouseRgn = (RgnHandle) NULL ;
 
 /*
  * _Gestalt madness - we rely heavily on the _Gestalt glue, since we
@@ -178,6 +182,9 @@ MenuHandle extendedMenu ;
 MenuHandle infoMenu ;
 MenuHandle helpMenu ;
 
+#ifdef NHW_BASE
+# undef NHW_BASE
+#endif
 #define NHW_BASE 0
 extern winid BASE_WINDOW ; // Was: , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
 
@@ -202,7 +209,7 @@ void FlashButton ( DialogPtr , short ) ;
 
 void trans_num_keys ( EventRecord * ) ;
 
-#ifndef MAC_THINKC5
+#ifndef THINK_C
 /*
  * Why aren't these declared when including hack.h - I thought
  * they were...
@@ -235,8 +242,8 @@ static void FDECL(macCursorTerm, ( EventRecord * , WindowPtr , RgnHandle )) ;
 static void FDECL(macCursorMenu, ( EventRecord * , WindowPtr , RgnHandle )) ;
 static void FDECL(macCursorText, ( EventRecord * , WindowPtr , RgnHandle )) ;
 
-static void NDECL(UpdateMenus);
-static void FDECL(DoMenu, (long choise));
+void NDECL(UpdateMenus);
+void FDECL(DoMenu, (long choise));
 
 static void FDECL (DrawScrollbar, ( NhWindow * , WindowPtr ));
 static void FDECL (InvalScrollBar, ( NhWindow * ));
@@ -273,7 +280,7 @@ GetNhWin(WindowPtr mac_win)
 	for (ix = 0; ix < NUM_MACWINDOWS; ++ix)
 		if (mac_win == theWindows[ix].theWindow)
 			return theWindows + ix;
-	return nil;
+	return ((NhWindow *) nil) ;
 }
 
 
@@ -290,18 +297,19 @@ InitMac( void )
 {
 	int i ;
 	long l ;
+	long applLimit;
 
 #ifdef applec
 	UnloadSeg((Ptr) _DataInit);
 #endif
 
 	if ( * ( long * ) DefltStack < 50 * 1024L ) {
-		SetApplLimit ( 
-					( void * ) 
-					( 
-					( * ( long * ) CurStackBase ) - 50 * 1024L 
-					) 
-				 ) ;
+#ifdef THINK_C
+		applLimit = (long) CurStackBase - (50 * 1024L);
+#else
+		applLimit = (* (long *) CurStackBase) - (50 * 1024L);
+#endif
+		SetApplLimit ( ( void * ) applLimit ) ;
 	}
 	MaxApplZone ( ) ;
 	for ( i = 0 ; i < 5 ; i ++ )
@@ -570,7 +578,7 @@ got1 :
 /*HARDCODED*/
 
 	SetPort ( aWin -> theWindow ) ;
-	PenPat ( &qd . black ) ;
+	PenPat ( (void *) &qd . black ) ;
 
 	switch ( type ) {
 		case NHW_MESSAGE :
@@ -630,7 +638,7 @@ static MenuHandle
 mustGetMHandle(int menu_id)
 {
 	MenuHandle menu = GetMHandle(menu_id);
-	if (menu == nil) {
+	if (menu == (MenuHandle)  nil) {
 		comment("Cannot find the menu.", menu_id);
 		ExitToShell();
 	}
@@ -650,7 +658,7 @@ long ret ;
 	memset ( & fcb , 0 , sizeof ( fcb ) ) ;
 
 	fcb . ioRefNum = CurResFile ( ) ;
-	fcb . ioNamePtr = name ;
+	fcb . ioNamePtr = (uchar *) name ;
 	if ( PBGetFCBInfoSync ( & fcb ) ) {
 		return A_LOT ;
 	}
@@ -663,93 +671,7 @@ long ret ;
 void
 InitRes ( void )
 {
-#if 1	/* see macmenu.c:InitMenuRes */
-# if 0
-extern void InitMenuRes(void);
-int resIDIndex ;
-int resTypeIndex ;
-ResType resType , infoType ;
-Str255 name ;
-short id ;
-long spaceFree , totalContig ;
-Handle theResource ;
-static Boolean stuffLoaded = 0 ;
-# endif
-
 	InitMenuRes();
-
-# if 0
-/*
- * For better performance (and powerbooks) we may want to load in the
- * entire game to avoid spinning the disk up.
- * This doesn't seem to be efficient, though. Better to just use whatever
- * memory is assigned for default resource caching.
- */
-	if ( ! stuffLoaded ) {
-		PurgeSpace ( & spaceFree , & totalContig ) ;
-		if ( spaceFree > SpaceToLoad ( name ) ) {
-			dprintf ( "Space now: %ld" , spaceFree ) ;
-			SetResLoad ( 0 ) ;
-			for ( resTypeIndex = Count1Types ( ) ; resTypeIndex > 0 ; resTypeIndex -- ) {
-				Get1IndType ( & resType , resTypeIndex ) ;
-				for ( resIDIndex = Count1Resources ( resType ) ; resIDIndex > 0 ; resIDIndex -- ) {
-					theResource = Get1IndResource ( resType , resIDIndex ) ;
-					if ( ! * theResource ) {
-						GetResInfo ( theResource , & id , & infoType , name ) ;
-#  ifdef applec
-						if ( infoType != 'CODE'  || ! EqualString ( name , "\P%A5Init" , 0 , 0 ) ) {
-#  else
-						if ( infotype != 'ZREF' && infoType != 'DATA' ) {
-#  endif
-							LoadResource ( theResource ) ;
-							HUnlock ( theResource ) ;
-							MoveHHi ( theResource ) ;
-							HLock ( theResource ) ;
-						}
-					}
-				}
-			}
-			SetResLoad ( 1 ) ;
-			stuffLoaded = 1 ;
-		} else {
-			dprintf ( "Space now: %ld" , spaceFree ) ;
-		}
-	}
-# endif
-
-#else
-Str255 str ;
-
-	mBar = GetNewMBar ( 128 ) ;
-	mustwork(ResError());
-	SetMenuBar ( mBar ) ;
-	
-	appleMenu = mustGetMHandle ( 128 ) ;
-	AppendMenu ( appleMenu , ( ConstStr255Param ) "\002(-" ) ;
-	AddResMenu ( appleMenu , 'DRVR' ) ;
-
-	fileMenu = mustGetMHandle ( 129 ) ;
-	editMenu = mustGetMHandle ( 130 ) ;
-	actionMenu = mustGetMHandle ( 131 ) ;
-	inventoryMenu = mustGetMHandle ( 132 ) ;
-	thingsMenu = mustGetMHandle ( 133 ) ;
-	extendedMenu = mustGetMHandle ( 134 ) ;
-	infoMenu = mustGetMHandle ( 135 ) ;
-
-	if ( macFlags . help ) {
-		if ( HMGetHelpMenuHandle ( & helpMenu ) ) {
-			helpMenu = (MenuHandle) NULL ;
-		}
-	}
-	if ( helpMenu ) {
-		GetIndString ( str , 128 , 1 ) ;
-		AppendMenu ( helpMenu , str ) ;
-	} else AppendMenu ( appleMenu , str ) ;
-	
-	DrawMenuBar ( ) ;
-
-	return ;
-#endif	/* see macmenu.c:InitMenuRes */
 }
 
 
@@ -1101,7 +1023,7 @@ topl_ext_key(unsigned char ch)
 				oindex++;
 			}
 			if(com_index >= 0)
-				topl_replace(extcmdlist[com_index].ef_txt);
+				topl_replace((char *) extcmdlist[com_index].ef_txt);
 			return true;
 		}
 	}
@@ -1144,7 +1066,7 @@ topl_set_resp(char *resp, char def)
 
 	if (!resp) {
 		const char any_str[2] = { CHAR_ANY, '\0' };
-		resp = any_str;
+		resp = (char *) any_str;
 		def = CHAR_ANY;
 	}
 
@@ -1226,8 +1148,11 @@ topl_resp_key(char ch)
 void
 adjust_window_pos(NhWindow *aWin, WindowPtr theWindow, short w)
 {
-	const Rect scr_r   = (*GetGrayRgn())->rgnBBox,
-			   win_ind = { 20, 2, 3, 3 };
+#ifdef THINK_C
+	Rect scr_r   = (*GetGrayRgn())->rgnBBox, win_ind = { 20, 2, 3, 3 };
+#else
+	const Rect scr_r   = (*GetGrayRgn())->rgnBBox, win_ind = { 20, 2, 3, 3 };
+#endif
 	const short	min_w = theWindow->portRect.right - theWindow->portRect.left,
 				max_w = scr_r.right - scr_r.left - win_ind.left - win_ind.right;
 	Point pos;
@@ -1878,7 +1803,7 @@ macUpdateMessage ( EventRecord * theEvent , WindowPtr theWindow )
 			default:
 				tmp[0] = 1;
 				tmp[1] = topl_resp[l];
-				name = &tmp;
+				name = tmp;
 				break;
 		}
 		TextFont(geneva);
@@ -1948,7 +1873,7 @@ macUpdateMessage ( EventRecord * theEvent , WindowPtr theWindow )
 #if 1
 	r.bottom = r.top + aWin->save_lin * aWin->charHeight;
 	r.top	 = r.bottom - 1;
-	FillRect(&r, &qd.gray);
+	FillRect(&r, (void *) &qd.gray);
 #endif
 
 	SetClip(org_clip);
@@ -2110,7 +2035,7 @@ macCursorTerm ( EventRecord * theEvent , WindowPtr theWindow , RgnHandle mouseRg
 	if ( cursor_locked )
 		dir = NULL ;
 	else {
-		dir_bas = flags . num_pad ? ndir : sdir ;
+		dir_bas = flags . num_pad ? (char *) ndir : (char *) sdir ;
 		dir = strchr ( dir_bas , click_to_cmd ( where . h / nhw -> charWidth + 1 ,
 												where . v / nhw -> charHeight ,
 												CLICK_1 ) ) ;
@@ -2164,72 +2089,18 @@ macCursorText ( EventRecord * theEvent , WindowPtr theWindow , RgnHandle mouseRg
 void
 UpdateMenus ( void )
 {
-#if 1	/* see macmenu.c:AdjustMenus */
 	extern void AdjustMenus(short);
 
 	AdjustMenus(0);
-#else
-	WindowPeek w = ( WindowPeek ) FrontWindow ( ) ;
-	Boolean enable = FALSE ;
-	int i ;
-
-	/* All menu items are OK, except the "edit" menu */
-
-	if ( w && w -> windowKind < 0 ) {
-		enable = TRUE ;
-	}
-	for ( i = 1 ; i < 7 ; i ++ ) {
-		if ( i == 2 )
-			continue ;
-		if ( enable ) {
-			EnableItem ( editMenu , i ) ;
-		} else {
-			DisableItem ( editMenu , i ) ;
-		}
-	}
-#endif	/* see macmenu.c:AdjustMenus */
 }
 
 
 void
 DoMenu ( long choise )
 {
-#if 1	/* see macmenu.c:DoMenuEvt */
 	extern void DoMenuEvt(long);
 
 	DoMenuEvt(choise);
-#else
-	WindowPeek w = ( WindowPeek ) FrontWindow ( ) ;
-	short menu = choise >> 16 ;
-	short item = choise & 0xffff ;
-	int i ;
-	Str255 str ;
-
-	HiliteMenu ( menu ) ;
-
-	if ( menu == kHMHelpMenuID ) {
-		menu = 128 ;
-		item = 2 ;
-	}
-
-	if ( menu == 128 && item > 2 ) /* apple, DA */ {
-		GetItem ( appleMenu , item , str ) ;
-		OpenDeskAcc ( str ) ;
-	} else if ( menu == 130 ) /* edit */ {
-		SystemEdit ( item - 1 ) ;
-	} else {
-		GetIndString ( str , menu + 1 , item ) ;
-		if ( str [ 0 ] > QUEUE_LEN ) {
-			error ( "Too long command : menul %d item %d" , menu , item ) ;
-			str [ 0 ] = QUEUE_LEN ;
-		}
-		for ( i = 1 ; i <= str [ 0 ] ; i ++ ) {
-			AddToKeyQueue ( str [ i ] , 0 ) ;
-		}
-	}
-
-	HiliteMenu ( 0 ) ;
-#endif	/* see macmenu.c:DoMenuEvt */
 }
 
 
@@ -2383,6 +2254,8 @@ DoOsEvt ( EventRecord * theEvent )
 	} else {
 
 		/* Suspend/resume */
+		if ( ( ( theEvent -> message & osEvtMessageMask) >> 24 ) == suspendResumeMessage )
+			kApplicInFront = ( theEvent -> message & resumeFlag );
 	}
 }
 
@@ -2449,46 +2322,18 @@ WindowGoAway ( EventRecord * theEvent, WindowPtr theWindow )
 void
 DimMenuBar ( void )
 {
-#if 1	/* see macmenu.c:AdjustMenus */
 	extern void AdjustMenus(short);
 
 	AdjustMenus(1);
-#else
-	if ( appleMenu ) {
-		DisableItem ( appleMenu , 0 ) ;
-		DisableItem ( fileMenu , 0 ) ;
-		DisableItem ( editMenu , 0 ) ;
-		DisableItem ( actionMenu , 0 ) ;
-		DisableItem ( inventoryMenu , 0 ) ;
-		DisableItem ( thingsMenu , 0 ) ;
-		DisableItem ( extendedMenu , 0 ) ;
-		DisableItem ( infoMenu , 0 ) ;
-		DrawMenuBar ( ) ;
-	}
-#endif	/* see macmenu.c:AdjustMenus */
 }
 
 
 void
 UndimMenuBar ( void )
 {
-#if 1	/* see macmenu.c:AdjustMenus */
 	extern void AdjustMenus(short);
 
 	AdjustMenus(0);
-#else
-	if ( appleMenu ) {
-		EnableItem ( appleMenu , 0 ) ;
-		EnableItem ( fileMenu , 0 ) ;
-		EnableItem ( editMenu , 0 ) ;
-		EnableItem ( actionMenu , 0 ) ;
-		EnableItem ( inventoryMenu , 0 ) ;
-		EnableItem ( thingsMenu , 0 ) ;
-		EnableItem ( extendedMenu , 0 ) ;
-		EnableItem ( infoMenu , 0 ) ;
-		DrawMenuBar ( ) ;
-	}
-#endif	/* see macmenu.c:AdjustMenus */
 }
 
 static int mBarDimmed = 0 ;
@@ -2518,9 +2363,10 @@ mac_get_nh_event( void )
 		SetPort ( asyDSC -> theWindow ) ;
 		DrawScrollbar ( asyDSC , asyDSC -> theWindow ) ;
 	}
-	if ( ! WaitNextEvent ( -1 , & anEvent , doDawdle , gMouseRgn ) ) {
-		anEvent . what = nullEvent ;
+	if ( kApplicInFront ) {
+		AdjustMenus ( 0 ) ;
 	}
+	(void) WaitNextEvent ( -1 , & anEvent , doDawdle , gMouseRgn ) ;
 	doDawdle = 0L ;
 #if 0
 	/* I don't want to make the tty cursor blinking. */
@@ -2553,7 +2399,7 @@ int ix , ret ;
 int
 mac_nhgetch( void ) {
 int ch ;
-NhWindow * nhw = flags . window_inited ? theWindows + WIN_MAP : nil ;
+NhWindow * nhw = flags . window_inited ? theWindows + WIN_MAP : (NhWindow *) nil ;
 
 	if ( theWindows ) {
 	NhWindow * aWin = theWindows + WIN_MESSAGE ;
@@ -2615,7 +2461,7 @@ NhWindow * nhw = flags . window_inited ? theWindows + WIN_MAP : nil ;
 		gClickedToMove = 0 ;
 	}
 
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 	if (ch == '\r') ch = '\n';
 #endif
 
@@ -3102,118 +2948,7 @@ CharacterDialogFilter ( DialogPtr dp , EventRecord * ev , short * item )
 void
 mac_player_selection ( void )
 {
-#if 0	/* see macmain.c:mac_askname() and macmenu.c:DialogAskName() */
-	ControlHandle	ctrl;
-	DialogPtr		characterDialog;
-	short			itemHit, lastItemSelected, type;
-	Rect			box;
-
-	char pc;
-	if ((pc = highc(pl_character[0])) != 0) {
-		char pbuf[QBUFSZ];
-		EventRecord update_evt;
-		if(index(pl_classes, pc) != (char*) 0) {
-			pl_character[0] = pc;
-			return;
-		}
-		putstr(WIN_MESSAGE, 0, "");
-		Sprintf(pbuf, "Unknown role: %c", pc);
-		putstr(WIN_MESSAGE, 0, pbuf);
-		while (CheckUpdate(&update_evt))
-			HandleUpdate(&update_evt);
-	}
-
-	characterDialog = GetNewDialog(132, (Ptr) NULL, (WindowPtr) -1);
-	
-	/*
-	** Default selection is random, beginning at the first item after the "Cancel" button.
-	*/
-	
-	lastItemSelected = rn1(12, 3);
-
-	/*
-	** Mark the default selection.
-	*/
-	
-	GetDItem(characterDialog, lastItemSelected, &type, (Handle *) &ctrl, &box);
-	SetCtlValue(ctrl, 1);
-
-	InitCursor ( ) ;
-	SetFrameItem ( characterDialog , 15 , 1 ) ;
-	do {
-		ModalDialog((ModalFilterProcPtr) CharacterDialogFilter , &itemHit);
-		if ((itemHit != 1) && (itemHit != 2)) {
-			/*
-			** If OK and Cancel (items 1 and 2) weren't selected then a radio button 
-			** was pushed.  Unmark the previous selection.
-			*/
-			
-			GetDItem(characterDialog, lastItemSelected, &type, (Handle *) &ctrl, &box);
-			SetCtlValue(ctrl, 0);
-			
-			/*
-			** Mark the current selection.
-			*/
-			
-			GetDItem(characterDialog, itemHit, &type, (Handle *) &ctrl, &box);
-			SetCtlValue(ctrl, 1);
-
-			/*
-			** Save the item number for use later.
-			*/
-			
-			lastItemSelected = itemHit;
-		}
-	} while ((itemHit != 1) && (itemHit != 2));
-	
-	if (itemHit == 2) {
-
-		clearlocks();
-		ExitToShell();
-
-	} else {
-		switch (lastItemSelected) {
-		case 3:
-			pl_character [ 0 ] = 'A';
-			break;
-		case 4:
-			pl_character [ 0 ] = 'B';
-			break;
-		case 5:
-			pl_character [ 0 ] = 'C';
-			break;
-		case 6:
-			pl_character [ 0 ] = 'E';
-			break;
-		case 7:
-			pl_character [ 0 ] = 'H';
-			break;
-		case 8:
-			pl_character [ 0 ] = 'K';
-			break;
-		case 9:
-			pl_character [ 0 ] = 'P';
-			break;
-		case 10:
-			pl_character [ 0 ] = 'R';
-			break;
-		case 11:
-			pl_character [ 0 ] = 'S';
-			break;
-		case 12:
-			pl_character [ 0 ] = 'T';
-			break;
-		case 13:
-			pl_character [ 0 ] = 'V';
-			break;
-		case 14:
-			pl_character [ 0 ] = 'W';
-			break;
-		}
-	}
-	
-	DisposDialog(characterDialog);
-#endif
+/* see macmain.c:mac_askname() and macmenu.c:DialogAskName() */
 }
 
 void
@@ -3223,7 +2958,7 @@ mac_update_inventory ( void )
 
 
 void
-mac_suspend_nhwindows ( const char * )
+mac_suspend_nhwindows ( const char * foo)
 {
 	/*	Can't relly do that :-)		*/
 }
@@ -3305,8 +3040,8 @@ struct window_procs mac_procs = {
     mac_number_pad,
     mac_delay_output,
 #ifdef CHANGE_COLOR
-	donull,
-	donull,
+	(void *) donull,
+	(void *) donull,
 #endif
     /* other defs that really should go away (they're tty specific) */
 	0,	//    mac_start_screen,

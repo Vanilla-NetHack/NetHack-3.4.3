@@ -4,9 +4,6 @@
 
 #include "hack.h"
 #include "Dialogs.h"
-#ifdef THINK_C
-#include "pascal.h"
-#endif
 #include <Packages.h>
 
 // void FDECL(getlin,(const char *, char *));
@@ -138,7 +135,7 @@ topl_getlin(const char *query, char *bufp, key_func key)
 	if ( get_line_from_key_queue ( bufp ) )
 		return ;
 
-	enter_topl_mode(query);
+	enter_topl_mode((char *) query);
 	while ((*key)(nhgetch())) ;
 	leave_topl_mode(bufp);
 }
@@ -352,12 +349,7 @@ popup_get_ext_cmd(char *bufp)
 void
 mac_get_ext_cmd(char *bufp)
 {
-#if 0	/* already in error and then broken by macmenu.c */
-	if (flags.popup_dialog)
-		popup_get_ext_cmd(bufp);
-	else
-#endif
-		topl_getlin("# ", bufp, &topl_ext_key);
+	topl_getlin("# ", bufp, &topl_ext_key);
 }
 
 #endif /* COM_COMPL /* */

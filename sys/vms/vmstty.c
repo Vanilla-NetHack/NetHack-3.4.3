@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmstty.c	3.1	93/05/28	*/
+/*	SCCS Id: @(#)vmstty.c	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (VMS) version */
@@ -138,7 +138,8 @@ vms_getchar()
 	} else {
 	    key = (short)kb_buf;
 	}
-    } else if (sts == SS$_HANGUP || iosb.status == SS$_HANGUP) {
+    } else if (sts == SS$_HANGUP || iosb.status == SS$_HANGUP
+	    || sts == SS$_DEVOFFLINE) {
 	gsignal(SIGHUP);
 	key = ESC;
     } else			/*(this should never happen)*/

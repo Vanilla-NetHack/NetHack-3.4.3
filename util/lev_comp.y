@@ -202,7 +202,7 @@ maze_level	: maze_def flags lev_init messages regions
 				char lbuf[20];
 				Strcpy(lbuf, $1);
 				Strcat(lbuf, LEV_EXT);
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY);
 #else
 				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
@@ -237,7 +237,7 @@ room_level	: level_def flags lev_init messages rreg_init rooms corridors_def
 				char lbuf[20];
 				Strcpy(lbuf, $1);
 				Strcat(lbuf, LEV_EXT);
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY);
 #else
 				fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);

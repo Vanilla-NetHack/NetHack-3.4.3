@@ -358,7 +358,7 @@ copyngst:
 	copy $(NHGSTFILE) to $(GSTFILE)
 
 Amiga:ami.lnk: Amiga:Makefile.ami
-	list to Amiga:ami.lnk OBJ:\#?.o QUICK NOHEAD
+	list to Amiga:ami.lnk lformat="OBJ:%s" OBJ:\#?.o QUICK NOHEAD
 
 obj:  $(HOBJ)
 obja:  $(AMIGAOBJ)

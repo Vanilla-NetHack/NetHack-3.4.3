@@ -687,7 +687,7 @@ int x;
 #ifdef WIN32_BUG
 		else return(x=((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp));
 #else
-		else return((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp);
+		else return((schar)((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp));
 #endif
 	} 
 #ifdef POLYSELF
@@ -700,7 +700,7 @@ int x;
 #ifdef WIN32_BUG
 	return(x=((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp));
 #else
-	return((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp);
+	return((schar)((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp));
 #endif
 }
 
@@ -711,9 +711,9 @@ acurrstr()
 {
 	register int str = ACURR(A_STR);
 
-	if (str <= 18) return str;
-	if (str <= 121) return (19 + str / 50); /* map to 19-21 */
-	else return str - 100;
+	if (str <= 18) return((schar)str);
+	if (str <= 121) return((schar)(19 + str / 50)); /* map to 19-21 */
+	else return((schar)(str - 100));
 }
 
 #endif /* OVL0 */

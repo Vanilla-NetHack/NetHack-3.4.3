@@ -122,7 +122,7 @@ mv_modal_dialog(ModalFilterProcPtr filterProc, short *itemHit)
 		DialogPtr dialog = FrontWindow();
 		EventRecord evt;
 
-		WaitNextEvent(everyEvent, &evt, GetCaretTime(), nil);
+		WaitNextEvent(everyEvent, &evt, GetCaretTime(), (RgnHandle) nil);
 
 		if (evt.what == keyDown)
 			if (evt.modifiers & cmdKey) {

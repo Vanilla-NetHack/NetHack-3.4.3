@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)quest.txt	3.1	92/10/17
+#	SCCS Id: @(#)quest.txt	3.1	93/07/05
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -66,99 +66,99 @@ You are back at %H.
 You have an odd feeling this may be the last time you ever come here.
 %E
 %Cp A 00005
-Man, the dig this year was a real bust!
+"Man, the dig this year was a real bust!"
 %E
 %Cp A 00006
-Hey man, have you got any potions of hallucination for sale?
+"Hey man, got any potions of hallucination for sale?"
 %E
 %Cp A 00007
-Did you see the artifact %l brought back from the last dig?
+"Did you see the artifact %l brought back from the last dig?"
 %E
 %Cp A 00008
-So what species do *you* think we evolved from?
+"So what species do *you* think we evolved from?"
 %E
 %Cp A 00009
-So you're %l's prize pupil!  I don't know what he sees in you.
+"So you're %l's prize pupil!  I don't know what he sees in you."
 %E
 %Cc A 00010
-Finally you have returned, %p.  You were always
+"Finally you have returned, %p.  You were always
 my most promising student.  Allow me to see if you are ready for the
-most difficult task of your career.
+most difficult task of your career."
 %E
 %Cp A 00011
-Again, %p, you stand before me.
-Let me see if you have gained experience in the interim.
+"Again, %p, you stand before me.
+Let me see if you have gained experience in the interim."
 %E
 %Cp A 00012
-Once more, %p, you have returned from the field.
-Are you finally ready for the task that must be accomplished?
+"Once more, %p, you have returned from the field.
+Are you finally ready for the task that must be accomplished?"
 %E
 %Cc A 00013
-%p, you have failed us.  All of my careful training has been in
+"%p, you have failed us.  All of my careful training has been in
 vain.  Begone!  Your tenure at this college has been revoked!
 
-You are a disgrace to the profession!
+"You are a disgrace to the profession!"
 %E
 %Cc A 00014
-%p, you are yet too inexperienced to undertake such a demanding
+"%p, you are yet too inexperienced to undertake such a demanding
 quest.  A mere %r could not possibly face the rigors demanded and
 survive.  Go forth, and come here again when your adventures have further
-taught you.
+taught you."
 %E
 %Cc A 00015
-%p!  I've heard that you've been using sloppy techniques.  Your
+"%p!  I've heard that you've been using sloppy techniques.  Your
 results lately can hardly be called suitable for %ra!
 
-How could you have strayed from the %a path?  Go from here, and come
-back only when you have purified yourself.
+"How could you have strayed from the %a path?  Go from here, and come
+back only when you have purified yourself."
 %E
 %Cc A 00016
-Grave times have befallen the college, for %na has
+"Grave times have befallen the college, for %na has
 stolen %o.  Without it, the board of directors of
 the university will soon have no choice but to revoke our research grants.
 
-You must locate the entrance to %i.  Within it,
+"You must locate the entrance to %i.  Within it,
 you will find the %n.
 
-You must the defeat the %n and return %o
+"You must the defeat the %n and return %o
 to me.
 
-Only in this way will we be able to prevent the budget cuts that could
+"Only in this way will we be able to prevent the budget cuts that could
 close this college.
 
-May the wisdom of %d be your guide.
+"May the wisdom of %d be your guide."
 %E
 %Cp A 00020
-Beware, for the %n is powerful and cunning.
+"Beware, for the %n is powerful and cunning."
 %E
 %Cp A 00021
-To locate the entrance to %i, you must pass
-many traps.
+"To locate the entrance to %i, you must pass
+many traps."
 %E
 %Cp A 00022
-%nA may be vulnerable to attacks by magical cold.
+"%nA may be vulnerable to attacks by magical cold."
 %E
 %Cp A 00023
-Call upon %d when you encounter the %n.
+"Call upon %d when you encounter the %n."
 %E
 %Cp A 00024
-You must destroy the %n.  It will pursue you otherwise.
+"You must destroy the %n.  It will pursue you otherwise."
 %E
 %Cp A 00025
-%oC is a mighty talisman.  With it you
-can destroy the %n.
+"%oC is a mighty talisman.  With it you
+can destroy the %n."
 %E
 %Cp A 00026
-Go forth with the blessings of %d.
+"Go forth with the blessings of %d."
 %E
 %Cp A 00027
-I will have my %gP watch for your return.
+"I will have my %gP watch for your return."
 %E
 %Cp A 00028
-Remember not to stray from the true %a path.
+"Remember not to stray from the true %a path."
 %E
 %Cp A 00029
-You may be able to sense %o when you are near.
+"You may be able to sense %o when you are near."
 %E
 %Cp A 00030
 You have the feeling that you will soon find the entrance to
@@ -174,55 +174,55 @@ You sense the presence of %o.
 The familiar presence of %o is in the ether.
 %E
 %Cc A 00050
-So, %p, you think that you can succeed in recovering
+"So, %p, you think that you can succeed in recovering
 %o, when your teacher, %l, has already failed.
 
-Come, try your best!  I shall destroy you, and gnaw on your bones.
+"Come, try your best!  I shall destroy you, and gnaw on your bones."
 %E
 %Cc A 00051
-Again you try to best me, eh %p?  Well, you shall fail again.
+"Again you try to best me, eh %p?  Well, you shall fail again.
 
-You shall never recover %o.
+"You shall never recover %o.
 
-I shall bear your soul to the Plane of Origins for my master's pleasure.
+"I shall bear your soul to the Plane of Origins for my master's pleasure."
 %E
 %Cp A 00052
-You persist yet %p!  Good.  Now, you shall die!
+"You persist yet %p!  Good.  Now, you shall die!"
 %E
 %Cp A 00053
-I shall have %o from you, %p, then feast
-upon your entrails!
+"I shall have %o from you, %p, then feast
+upon your entrails!"
 %E
 %Cp A 00060
-Try your best, %p.  You cannot defeat me.
+"Try your best, %p.  You cannot defeat me."
 %E
 %Cp A 00061
-I shall rend the flesh from your body whilst you still breathe!
+"I shall rend the flesh from your body whilst you still breathe!"
 %E
 %Cp A 00062
-First you, %p, then I shall destroy your mentor, %l.
+"First you, %p, then I shall destroy your mentor, %l."
 %E
 %Cp A 00063
-Tiring yet, %p?  I draw my power from my master and cannot
-falter!
+"Tiring yet, %p?  I draw my power from my master and cannot
+falter!"
 %E
 %Cp A 00064
-I shall rend thy soul from thy body and consume it!
+"I shall rend thy soul from thy body and consume it!"
 %E
 %Cp A 00065
-You are far too %a -- it weakens you.  You shall die in this place.
+"You are far too %a -- it weakens you.  You shall die in this place."
 %E
 %Cp A 00066
-%d has forsaken you!  You are lost now!
+"%d has forsaken you!  You are lost now!"
 %E
 %Cp A 00067
-A mere %r cannot hope to defeat me!
+"A mere %r cannot hope to defeat me!"
 %E
 %Cp A 00068
-If you are the best %l can send, I have nothing to fear.
+"If you are the best %l can send, I have nothing to fear."
 %E
 %Cp A 00069
-Die %c!  I shall exhibit your carcass as a trophy.
+"Die %c!  I shall exhibit your carcass as a trophy."
 %E
 %Cc A 00070
 The power of %o flows through your body!  You feel
@@ -246,19 +246,19 @@ guard it now far better than I.
 May the blessings of %d follow you and guard you."
 %E
 %Cc A 00090
-Welcome back, %p.  Have you progressed with your quest to
-regain the Amulet of Yendor for %d?
+"Welcome back, %p.  Have you progressed with your quest to
+regain the Amulet of Yendor for %d?"
 %E
 %Cc A 00091
-Congratulations, %p.  I wondered if anyone could prevail against
+"Congratulations, %p.  I wondered if anyone could prevail against
 the Wizard and the minions of Moloch.  Now, you must embark on one
 final adventure.
 
-Take the Amulet, and find your way onto the astral plane.
+"Take the Amulet, and find your way onto the astral plane.
 There you must find the altar of %d and sacrifice the
 Amulet on that altar to fulfill your destiny.
 
-Remember, your path now should always be upwards.
+"Remember, your path now should always be upwards."
 %E
 #
 #	Barbarian
@@ -286,108 +286,108 @@ Again, and you think possibly for the last time, you approach
 %H.
 %E
 %Cp B 00005
-The battles here have been good -- our enemies' blood soaks the soil!
+"The battles here have been good -- our enemies' blood soaks the soil!"
 %E
 %Cp B 00006
-Remember that glory is crushing your enemies beneath your feet!
+"Remember that glory is crushing your enemies beneath your feet!"
 %E
 %Cp B 00007
-There has been little treasure to loot, since the horde arrived.
+"There has been little treasure to loot, since the horde arrived."
 %E
 %Cp B 00008
-The horde is mighty in numbers, but they have little courage.
+"The horde is mighty in numbers, but they have little courage."
 %E
 %Cp B 00009
-%l is a strange one, but he has helped defend us.
+"%l is a strange one, but he has helped defend us."
 %E
 %Cc B 00010
-Ah, %p.  You have returned at last.  The world is in dire
+"Ah, %p.  You have returned at last.  The world is in dire
 need of your help.  There is a great quest you must undertake.
 
-But first, I must see if you are ready to take on such a challenge.
+"But first, I must see if you are ready to take on such a challenge."
 %E
 %Cp B 00011
-%p, you are back.  Are you ready now for the challenge?
+"%p, you are back.  Are you ready now for the challenge?"
 %E
 %Cp B 00012
-Again, you stand before me, %p.  Surely you have prepared yourself.
+"Again, you stand before me, %p.  Surely you have prepared yourself."
 %E
 %Cc B 00013
-Pah!  You have betrayed the gods, %p.  You will never attain
+"Pah!  You have betrayed the gods, %p.  You will never attain
 the glory which you aspire to.  Your failure to follow the true path has
 closed this future to you.
 
-I will protect these people as best I can, but soon %n will overcome
-me and destroy all who once called you %s.  Now begone!
+"I will protect these people as best I can, but soon %n will overcome
+me and destroy all who once called you %s.  Now begone!"
 %E
 %Cc B 00014
-%p, I fear that you are as yet too inexperienced to face
+"%p, I fear that you are as yet too inexperienced to face
 %n.  Only %Ra with the help of %d could ever hope to
-defeat him.
+defeat him."
 %E
 %Cp B 00015
-%p!  You have wandered from the path of the %a!
+"%p!  You have wandered from the path of the %a!
 If you attempt to overcome %n in this state, he will surely
 enslave your soul.  Your only hope, and ours, lies in your purification.
-Go forth, and return when you feel ready.
+Go forth, and return when you feel ready."
 %E
 %Cc B 00016
-The world is in great need of your assistance, %p.
+"The world is in great need of your assistance, %p.
 
-About six months ago, I learned that a mysterious sorcerer, known
+"About six months ago, I learned that a mysterious sorcerer, known
 as %n, had begun to gather a large group of cutthroats and brigands
 about him.
 
-At about the same time, these people you once rode with "liberated" a
+"At about the same time, these people you once rode with `liberated' a
 potent magical talisman, %o, from a Turanian caravan.
 
-%n and his Black Horde swept down upon %i and defeated
+"%n and his Black Horde swept down upon %i and defeated
 the people there, driving them out into the desert.  He has taken
 %o, and seeks to bend it to his will.  I detected the
 subtle changes in the currents of fate, and joined these people.
 Then I sent forth a summons for you.
 
-If %n can bend %o to his will, he will become
+"If %n can bend %o to his will, he will become
 almost indestructible.  He will then be able to enslave the minds of
 men across the world.  You are the only hope.  The gods smile upon you,
 and with %d behind you, you alone can defeat %n.
 
-You must go to %i.  From there, you can track down
+"You must go to %i.  From there, you can track down
 %n, defeat him, and return %o to us.  Only
-then will the world be safe.
+then will the world be safe."
 %E
 %Cp B 00020
-%n is strong in the dark arts, but not immune to cold steel.
+"%n is strong in the dark arts, but not immune to cold steel."
 %E
 %Cp B 00021
-Remember that %n is a great sorcerer.  He lived in the time
-of Atlantis.
+"Remember that %n is a great sorcerer.  He lived in the time
+of Atlantis."
 %E
 %Cp B 00022
-If you fail, %p, I will not be able to protect these people long.
+"If you fail, %p, I will not be able to protect these people long."
 %E
 %Cp B 00023
-To enter %i, you must be very stealthy.  The horde will be on
-guard.
+"To enter %i, you must be very stealthy.  The horde will be on
+guard."
 %E
 %Cp B 00024
-Call upon %d in your time of need.
+"Call upon %d in your time of need."
 %E
 %Cp B 00025
-May %d protect you, and guide your steps.
+"May %d protect you, and guide your steps."
 %E
 %Cp B 00026
-If you can lay hands upon %o, wear it for protection.
+"If you can lay hands upon %o, carry it for good fortune."
 %E
 %Cp B 00027
-I cannot stand against %n's sorcery.  But %d will help you.
+"I cannot stand against %n's sorcery.  But %d will help you."
 %E
 %Cp B 00028
-Do not fear %n.  I know you can defeat him.
+"Do not fear %n.  I know you can defeat him."
 %E
 %Cp B 00029
-You have a great road to travel, %p, but only after you defeat
-%n.
+"You have a great road to travel, %p, but only after you defeat
+%n."
 %E
 %Cc B 00030
 The scent of water comes to you in the desert breeze.  You know that
@@ -405,50 +405,50 @@ make you turn and run.  This is surely the lair of %n.
 Yet again you feel the air around you heavy with malevolent magical energy.
 %E
 %Cc B 00050
-So.  This is what that second rate sorcerer %l sends to do his bidding.
+"So.  This is what that second rate sorcerer %l sends to do his bidding.
 I have slain many before you.  You shall give me little sport.
 
-Prepare to die, %c.
+"Prepare to die, %c."
 %E
 %Cp B 00051
-I have wasted too much time on you already.  Now, you shall die.
+"I have wasted too much time on you already.  Now, you shall die."
 %E
 %Cp B 00052
-You return yet again, %c!  Are you prepared for death now?
+"You return yet again, %c!  Are you prepared for death now?"
 %E
 %Cp B 00053
-I shall have %o back, you pitiful excuse for %ca.
-And your life as well.
+"I shall have %o back, you pitiful excuse for %ca.
+And your life as well."
 %E
 %Cp B 00060
-My pets will dine on your carcass tonight!
+"My pets will dine on your carcass tonight!"
 %E
 %Cp B 00061
-You are a sorry excuse for %ra.
+"You are a sorry excuse for %ra."
 %E
 %Cp B 00062
-Run while you can, %c.  My next spell will be your last.
+"Run while you can, %c.  My next spell will be your last."
 %E
 %Cp B 00063
-I shall use your very skin to bind my next grimoire.
+"I shall use your very skin to bind my next grimoire."
 %E
 %Cp B 00064
-%d cannot protect you now.  Here, you die.
+"%d cannot protect you now.  Here, you die."
 %E
 %Cp B 00065
-Your %a nature makes you weak.  You cannot defeat me.
+"Your %a nature makes you weak.  You cannot defeat me."
 %E
 %Cp B 00066
-Come, %c.  I shall kill you, then unleash the horde on your tribe.
+"Come, %c.  I shall kill you, then unleash the horde on your tribe."
 %E
 %Cp B 00067
-Once you are dead, my horde shall finish off %l, and your tribe.
+"Once you are dead, my horde shall finish off %l, and your tribe."
 %E
 %Cp B 00068
-Fight, %c, or are you afraid of the mighty %n?
+"Fight, %c, or are you afraid of the mighty %n?"
 %E
 %Cp B 00069
-You have failed, %c.  Now, my victory is complete.
+"You have failed, %c.  Now, my victory is complete."
 %E
 %Cc B 00070
 As you pick up %o, you feel the power of it
@@ -479,14 +479,14 @@ When %l sees %o, he smiles, and says:
     time comes.
 %E
 %Cp B 00090
-Tell us, %p, have you fared well on your great quest?
+"Tell us, %p, have you fared well on your great quest?"
 %E
 %Cc B 00091
-This is wondrous, %p.  I feared that you could not possibly
+"This is wondrous, %p.  I feared that you could not possibly
 succeed in your quest, but here you are in possession of the Amulet
 of Yendor!
 
-I have studied the texts of the magi constantly since you left.  In
+"I have studied the texts of the magi constantly since you left.  In
 the Book of Skelos, I found this:
 
     %d will cause a child to be sent into the world.  This child is to
@@ -494,7 +494,7 @@ the Book of Skelos, I found this:
     It is said that the child of %d will recover the Amulet of Yendor
     that was stolen from the Creator at the beginning of time.
 
-As you now possess the amulet, %p, I suspect that the Book
+"As you now possess the amulet, %p, I suspect that the Book
 speaks of you.
 
     The child of %d will take the Amulet, and travel to the Astral
@@ -502,7 +502,7 @@ speaks of you.
     will be sacrificed to %d, there on His altar.  Then the child will
     stand by %d as champion of all %cP for eternity.
 
-This is all I know, %p.  I hope it will help you.
+"This is all I know, %p.  I hope it will help you."
 %E
 #
 #	Cave(wo)man
@@ -523,113 +523,113 @@ For some reason, you think that this may be the last time you will
 enter %H.
 %E
 %Cp C 00005
-We have not been able to gather as much food since the Giants sealed
-off our access to the outer world.
+"We have not been able to gather as much food since the Giants sealed
+off our access to the outer world."
 %E
 %Cp C 00006
-Since the %n sent her minions, we have been constantly fighting.
+"Since the %n sent her minions, we have been constantly fighting."
 %E
 %Cp C 00007
-I have heard your vision quest was successful.  Is this so?
+"I have heard your vision quest was successful.  Is this so?"
 %E
 %Cp C 00008
-So, tell me, %p, how have you fared?
+"So, tell me, %p, how have you fared?"
 %E
 %Cp C 00009
-The %l grows old.  We know not who will guide us after he ascends.
+"The %l grows old.  We know not who will guide us after he ascends."
 %E
 %Cc C 00010
-You have returned from your vision quest, %p.  Thank %d.
+"You have returned from your vision quest, %p.  Thank %d.
 
-We are in dire need of your help, my %S.
+"We are in dire need of your help, my %S.
 
-But first, I must see if you are yet capable of the quest I would
-ask you to undertake.
+"But first, I must see if you are yet capable of the quest I would
+ask you to undertake."
 %E
 %Cp C 00011
-Again, you return to us, %p.  Let me see if you are ready now.
+"Again, you return to us, %p.  Let me see if you are ready now."
 %E
 %Cp C 00012
-Ah, %p.  Are you finally ready?
+"Ah, %p.  Are you finally ready?"
 %E
 %Cc C 00013
-%p!  You have sealed our fate.  You seem unable to reform yourself,
+"%p!  You have sealed our fate.  You seem unable to reform yourself,
 so I must select another to take your place.
 
-Begone from %H!  You have betrayed us by choosing
+"Begone from %H!  You have betrayed us by choosing
 the path of the %C over the true path of the %L.
 
-You no longer live in our eyes.
+"You no longer live in our eyes."
 %E
 %Cc C 00014
-Alas, %p, you are as yet too inexperienced to embark upon such
+"Alas, %p, you are as yet too inexperienced to embark upon such
 a difficult quest as that I propose to give you.
 
-%rA could not possibly survive the rigors demanded to find
+"%rA could not possibly survive the rigors demanded to find
 %i, never mind to confront the %n herself.
 
-Adventure some more, and you will learn the skills you will require.
-%d decrees it.
+"Adventure some more, and you will learn the skills you will require.
+%d decrees it."
 %E
 %Cc C 00015
-%p!  You have deviated from my teachings.  You no longer follow
+"%p!  You have deviated from my teachings.  You no longer follow
 the path of the %a as you should.  I banish you from these caves, to
 go forth and purify yourself.  Then, you might be able to accomplish this
-quest.
+quest."
 %E
 %Cc C 00016
-You are indeed ready now, %p.  I shall tell you a tale of
+"You are indeed ready now, %p.  I shall tell you a tale of
 great suffering among your people:
 
-Shortly after you left on your vision quest, the caves were invaded by
+"Shortly after you left on your vision quest, the caves were invaded by
 the creatures sent against us by the %n.
 
-She, herself, could not attack us due to her great size, but her minions
+"She, herself, could not attack us due to her great size, but her minions
 have harassed us ever since.  In the first attacks, many died, and the
 minions of the %n managed to steal %o.
 They took it to %i and there, none of our
 %g warriors have been able to go.
 
-You must find %i, and within it wrest
+"You must find %i, and within it wrest
 %o from the %n.  She guards it as
 jealously as she guards all treasures she attains.  But with it,
 we can make our caves safe once more.
 
-Please, %p, recover %o for us, and return it here.
+"Please, %p, recover %o for us, and return it here."
 %E
 %Cp C 00020
-The %n is immune to her own breath weapons.
-You should use magic upon her that she does not use herself.
+"The %n is immune to her own breath weapons.
+You should use magic upon her that she does not use herself."
 %E
 %Cp C 00021
-When you encounter the %n, call upon %d for assistance.
+"When you encounter the %n, call upon %d for assistance."
 %E
 %Cp C 00022
-There will be nowhere to hide inside the %n's inner sanctum.
+"There will be nowhere to hide inside the %n's inner sanctum."
 %E
 %Cp C 00023
-Your best chance with the %n will be to keep moving.
+"Your best chance with the %n will be to keep moving."
 %E
 %Cp C 00024
-Do not be distracted by the great treasures in the %n's lair.
-Concentrate on %o.
+"Do not be distracted by the great treasures in the %n's lair.
+Concentrate on %o."
 %E
 %Cp C 00025
-%oC is the only object that the %n truly fears.
+"%oC is the only object that the %n truly fears."
 %E
 %Cp C 00026
-Do not be fooled by the %n's size.  She is fast, and it is
-rumored that she uses magic.
+"Do not be fooled by the %n's size.  She is fast, and it is
+rumored that she uses magic."
 %E
 %Cp C 00027
-I would send a party of %gP with you, but we will need all
-of our strength to defend ourselves.
+"I would send a party of %gP with you, but we will need all
+of our strength to defend ourselves."
 %E
 %Cp C 00028
-Remember, be %a at all times.  This is your strength.
+"Remember, be %a at all times.  This is your strength."
 %E
 %Cp C 00029
-If only we had an amulet of reflection, this would not have happened.
+"If only we had an amulet of reflection, this would not have happened."
 %E
 %Cc C 00030
 You %x many large claw marks on the ground.  The tunnels ahead
@@ -655,48 +655,48 @@ The %n is clearly visible, but she seems to be asleep.
 Once again, you find yourself in the lair of the %n.
 %E
 %Cc C 00050
-So, human, you seek to invade the lair of the %n.
-Only my meals are allowed down here.  Prepare to be eaten!
+"So, human, you seek to invade the lair of the %n.
+Only my meals are allowed down here.  Prepare to be eaten!"
 %E
 %Cp C 00051
-So, again you face me, %c.  No human has ever before escaped me.
-Now I shall kill you.
+"So, again you face me, %c.  No human has ever before escaped me.
+Now I shall kill you."
 %E
 %Cp C 00052
-You are getting annoying, %c.  Prepare to die.
+"You are getting annoying, %c.  Prepare to die."
 %E
 %Cp C 00053
-I'll have %o from you, %c.  You shall die.
+"I'll have %o from you, %c.  You shall die."
 %E
 %Cp C 00060
-You are weak, %c.  No challenge for the Mother of all Dragons.
+"You are weak, %c.  No challenge for the Mother of all Dragons."
 %E
 %Cp C 00061
-I grow hungry, human.  You look like a nice appetizer!
+"I grow hungry, human.  You look like a nice appetizer!"
 %E
 %Cp C 00062
-Join me for lunch?  You're the main course, %c.
+"Join me for lunch?  You're the main course, %c."
 %E
 %Cp C 00063
-With %o, I am invincible!  You cannot succeed.
+"With %o, I am invincible!  You cannot succeed."
 %E
 %Cp C 00064
-Your mentor, the %l has failed.  You are nothing to fear.
+"Your mentor, the %l has failed.  You are nothing to fear."
 %E
 %Cp C 00065
-You shall die here, %c.  %rA cannot hope to defeat me.
+"You shall die here, %c.  %rA cannot hope to defeat me."
 %E
 %Cp C 00066
-You, a mere %r challenge the might of the %n?  Hah!
+"You, a mere %r challenge the might of the %n?  Hah!"
 %E
 %Cp C 00067
-I am the Mother of all Dragons!  You cannot hope to defeat me.
+"I am the Mother of all Dragons!  You cannot hope to defeat me."
 %E
 %Cp C 00068
-My claws are sharp now.  I shall rip you to shreds!
+"My claws are sharp now.  I shall rip you to shreds!"
 %E
 %Cp C 00069
-%d has deserted you, %c.  This is my domain.
+"%d has deserted you, %c.  This is my domain."
 %E
 %Cc C 00070
 As you pick up %o it seems heavy at first, but as you
@@ -722,19 +722,19 @@ He smiles and says:
     quest for the Amulet of Yendor.
 %E
 %Cp C 00090
-%p!  Welcome back.
-How goes your quest to recover the Amulet for %d?
+"%p!  Welcome back.
+How goes your quest to recover the Amulet for %d?"
 %E
 %Cc C 00091
-You have been successful, I see, %p.
+"You have been successful, I see, %p.
 
-Now that the Amulet of Yendor is yours, here is what you must do:
+"Now that the Amulet of Yendor is yours, here is what you must do:
 
-Journey upwards to the open air.  The Amulet you carry will then
+"Journey upwards to the open air.  The Amulet you carry will then
 take you into the Astral Planes, where the Great Temple of %d
 casts its influence throughout our world.
 
-Sacrifice the Amulet on the altar.  Thus shall %d become supreme!
+"Sacrifice the Amulet on the altar.  Thus shall %d become supreme!"
 %E
 #
 #	Elf
@@ -754,108 +754,108 @@ You have the oddest feeling that this may be the last time you
 are to enter %H.
 %E
 %Cp E 00005
-%p!  I have not seen you in many cycles.  How do you fare?
+"%p!  I have not seen you in many cycles.  How do you fare?"
 %E
 %Cp E 00006
-The %n continues to threaten the circle.  But we hold fast.
+"The %n continues to threaten the circle.  But we hold fast."
 %E
 %Cp E 00007
-%l is growing weak.  The magic required to defend the circle drains us.
+"%l is growing weak.  The magic required to defend the circle drains us."
 %E
 %Cp E 00008
-Remember %i is hard to enter.  Seek the secret
-passageways.
+"Remember %i is hard to enter.  Seek the secret
+passageways."
 %E
 %Cp E 00009
-We must regain %o.  Without it we will be overrun.
+"We must regain %o.  Without it we will be overrun."
 %E
 %Cc E 00010
-%p!  You have returned!  Thank %d.
+"%p!  You have returned!  Thank %d.
 
-We have great need of you.  But first, I must see if you have the
-required abilities to take on this responsibility.
+"We have great need of you.  But first, I must see if you have the
+required abilities to take on this responsibility."
 %E
 %Cp E 00011
-Once again, %p, you stand in our midst.  Are you ready now?
+"Once again, %p, you stand in our midst.  Are you ready now?"
 %E
 %Cp E 00012
-Ah, you are here again, %p.  Allow me to determine your readiness...
+"Ah, you are here again, %p.  Allow me to determine your readiness..."
 %E
 %Cc E 00013
-%p!  You have doomed us all.  You fairly radiate %L influences
+"%p!  You have doomed us all.  You fairly radiate %L influences
 and weaken the power we have raised in this circle as a result!
 
-Begone!  We renounce your %shood with us!  You are an outcast now!
+"Begone!  We renounce your %shood with us!  You are an outcast now!"
 %E
 %Cc E 00014
-%p, you are yet too inexperienced to withstand the demands of that
+"%p, you are yet too inexperienced to withstand the demands of that
 which we need you to do.  %RA might just be able to do this thing.
 
-Return to us when you have learned more, my %S.
+"Return to us when you have learned more, my %S."
 %E
 %Cc E 00015
-You have strayed, %p!  You know that %d requires that
+"You have strayed, %p!  You know that %d requires that
 we maintain a pure devotion to things %a!
 
-You must go from us.  Return when you have purified yourself.
+"You must go from us.  Return when you have purified yourself."
 %E
 %Cc E 00016
-You are indeed ready, %p.  I shall tell you what has transpired,
+"You are indeed ready, %p.  I shall tell you what has transpired,
 and why we so desperately need your help:
 
-A short time ago, the Uruk-hai tribes of the mountains to the east
+"A short time ago, the Uruk-hai tribes of the mountains to the east
 invaded and enslaved the Goblin tribes in this area.  The local
 %n is now only a figurehead, and serves the Uruk-hai Overlord.
 
-During our last gathering of worship here, we were beset by hordes of
+"During our last gathering of worship here, we were beset by hordes of
 orcs and goblins, as you witnessed.  In the first onslaught a group,
 headed by the %n himself, managed to breach the circle and
 steal %o.
 
-Since then, we have been besieged.  We do not know how much longer
+"Since then, we have been besieged.  We do not know how much longer
 we will be able to maintain our magical barriers.
 
-If we are to survive, you, %p, must infiltrate
+"If we are to survive, you, %p, must infiltrate
 %i.  There, you will find a pathway down, to the
 underground castle of the %n.  He has always coveted
 %o, and will surely keep it on his person,
 until he delivers it to the Uruk-hai Overlord.
 
-Recover %o for us, %p!  Only then will
-the circle of %d be safe.
+"Recover %o for us, %p!  Only then will
+the circle of %d be safe."
 %E
 %Cp E 00020
-It is rumored that the Uruk-hai have a pact with the Hill Ogres.
+"It is rumored that the Uruk-hai have a pact with the Hill Ogres."
 %E
 %Cp E 00021
-The %n is strong, but not very smart.
+"The %n is strong, but not very smart."
 %E
 %Cp E 00022
-Use %o, when you find it.  It will help you survive
-to reach us.
+"Use %o, when you find it.  It will help you survive
+to reach us."
 %E
 %Cp E 00023
-Remember, let %d be your guide.
+"Remember, let %d be your guide."
 %E
 %Cp E 00024
-Call upon %d when you face the %n.
-The very act of doing so will infuriate him, and give you advantage.
+"Call upon %d when you face the %n.
+The very act of doing so will infuriate him, and give you advantage."
 %E
 %Cp E 00025
-Though the %n is as %C as we, he and his kind have always
-hated us.
+"Though the %n is as %C as we, he and his kind have always
+hated us."
 %E
 %Cp E 00026
-We cannot hold the circle much longer, %p.  Hurry!
+"We cannot hold the circle much longer, %p.  Hurry!"
 %E
 %Cp E 00027
-To infiltrate %i, you must be very stealthy.
+"To infiltrate %i, you must be very stealthy."
 %E
 %Cp E 00028
-Remember that the %n is a braggart.  Trust not what he says.
+"Remember that the %n is a braggart.  Trust not what he says."
 %E
 %Cp E 00029
-You can triumph, %p, if you trust in %d.
+"You can triumph, %p, if you trust in %d."
 %E
 %Cc E 00030
 You descend into the outer regions of %i.  You can hear
@@ -878,49 +878,49 @@ Off in the distance, you hear the sounds of a large, raucous gathering.
 Once again, you enter the distorted castle of the %n.
 %E
 %Cc E 00050
-So, %c.  %l has sent you to recover %o.
+"So, %c.  %l has sent you to recover %o.
 
-Well, I shall keep that bauble.  It pleases me.  You, %c, shall die.
+"Well, I shall keep that bauble.  It pleases me.  You, %c, shall die."
 %E
 %Cp E 00051
-Back again, eh?  Well, a mere %r is no threat to me!  Die, %c!
+"Back again, eh?  Well, a mere %r is no threat to me!  Die, %c!"
 %E
 %Cp E 00052
-You haven't learned your lesson, %c.  You can't kill me!  You shall die now.
+"You haven't learned your lesson, %c.  You can't kill me!  You shall die now."
 %E
 %Cp E 00053
-I shall have %o from you, %r.  Then I shall
-kill you.
+"I shall have %o from you, %r.  Then I shall
+kill you."
 %E
 %Cp E 00060
-Your %d is nothing, %c.  You are mine now!
+"Your %d is nothing, %c.  You are mine now!"
 %E
 %Cp E 00061
-Run away little %c!  You can never hope to defeat the %n!
+"Run away little %c!  You can never hope to defeat the %n!"
 %E
 %Cp E 00062
-My Uruk-hai servants will rip you to shreds!
+"My Uruk-hai servants will rip you to shreds!"
 %E
 %Cp E 00063
-I shall display your head as a trophy.  What do you think about that wall?
+"I shall display your head as a trophy.  What do you think about that wall?"
 %E
 %Cp E 00064
-I shall break your %l's circle, and destroy all the %gP!
+"I shall break your %l's circle, and destroy all the %gP!"
 %E
 %Cp E 00065
-%d has abandoned you, %c.  You are doomed.
+"%d has abandoned you, %c.  You are doomed."
 %E
 %Cp E 00066
-%rA?  %l sends a mere %r against me?  Hah!
+"%rA?  %l sends a mere %r against me?  Hah!"
 %E
 %Cp E 00067
-%l has failed, %c.  %oC will never leave here.
+"%l has failed, %c.  %oC will never leave here."
 %E
 %Cp E 00068
-You really think you can defeat me, eh %c?  You are wrong!
+"You really think you can defeat me, eh %c?  You are wrong!"
 %E
 %Cp E 00069
-You weaken, %c.  I shall kill you now.
+"You weaken, %c.  I shall kill you now."
 %E
 %Cc E 00070
 As you pick up %o, it seems to glow, and a warmth
@@ -937,32 +937,32 @@ The %n collapses to the ground, cursing you and %l, then says:
     dying breath!  You shall die before you leave my castle!
 %E
 %Cc E 00081
-%p!  You have succeeded!  I feared it was not possible!
+"%p!  You have succeeded!  I feared it was not possible!
 
-Your aura proclaims that you possess %o!
+"Your aura proclaims that you possess %o!
 
-I fear, now, that the Uruk-hai will select yet another %n.
+"I fear, now, that the Uruk-hai will select yet another %n.
 This will take some time, but if you can recover the Amulet of Yendor
 for %d before that happens, we will be eternally safe.
 
-Take %o with you.  It will aid in your quest for
-the Amulet.
+"Take %o with you.  It will aid in your quest for
+the Amulet."
 %E
 %Cp E 00090
-Welcome, %p.  How have you fared on your quest for the Amulet
-of Yendor?
+"Welcome, %p.  How have you fared on your quest for the Amulet
+of Yendor?"
 %E
 %Cc E 00091
-I am amazed, %p!  You have recovered the Amulet of Yendor!
-Now attend to me, and I will tell you what must be done:
+"Utuelyes!  You have recovered the Amulet of Yendor!
+Now attend to me, %p, and I will tell you what must be done:
 
-The Amulet has within it magic, the capability to transport you to
+"The Amulet has within it magic, the capability to transport you to
 the Astral Plane, where the primary circle of %d resides.
 
-To activate this magic, you must travel upwards as far as you can.
+"To activate this magic, you must travel upwards as far as you can.
 When you reach the temple, sacrifice the Amulet to %d.
 
-Thus will you fulfill your destiny.
+"Thus will you fulfill your destiny."
 %E
 #
 #	Healer
@@ -991,63 +991,63 @@ The smell of death and disease permeates the air.  You do not have
 to be %Ra to know that the %n is on the verge of victory.
 %E
 %Cp H 00005
-Did you read that new treatise on the therapeutic use of leeches?
+"Did you read that new treatise on the therapeutic use of leeches?"
 %E
 %Cp H 00006
-Paint a red caduceus on your shield and monsters won't hit you.
+"Paint a red caduceus on your shield and monsters won't hit you."
 %E
 %Cp H 00007
-I passed handwriting so they are demoting me a rank.
+"I passed handwriting so they are demoting me a rank."
 %E
 %Cp H 00008
-I've heard that even %l has not been able to cure Chiron.
+"I've heard that even %l has not been able to cure Chiron."
 %E
 %Cp H 00009
-We think the %n has used his alchemists, and %o,
-to unleash a new disease we call 'the cold' on Gehennom.
+"We think the %n has used his alchemists, and %o,
+to unleash a new disease we call 'the cold' on Gehennom."
 %E
 %Cc H 00010
-Feebly, %l raises his head to look at you.
+"Feebly, %l raises his head to look at you.
 
-It is good to see you again, %p.  I see the concern in your
+"It is good to see you again, %p.  I see the concern in your
 eyes, but do not worry for me.  I am not ready for Hades yet.  We have
 exhausted much of our healing powers holding off the %n.
 I need your fresh strength to carry on our work.
 
-Come closer and let me lay hands on you, and determine if you have
-the skills necessary to accomplish this mission.
+"Come closer and let me lay hands on you, and determine if you have
+the skills necessary to accomplish this mission."
 %E
 %Cp H 00011
-Again you return to me, %p.  I sense that each trip back
+"Again you return to me, %p.  I sense that each trip back
 the pleurisy and maladies of our land begin to infect you.  Let us
 hope and pray to %d that you become ready for your task before
-you fall victim to the bad humors.
+you fall victim to the bad humors."
 %E
 %Cp H 00012
-Chiron has fallen, Hermes has fallen, what else must I tell you to
+"Chiron has fallen, Hermes has fallen, what else must I tell you to
 impress upon you the importance of your mission!  I hope that you
-have come prepared this time.
+have come prepared this time."
 %E
 %Cc H 00013
-You have failed us, %p.  You are a quack!  A charlatan!
+"You have failed us, %p.  You are a quack!  A charlatan!
 
-Hades will be happy to hear that you are once again practicing your
-arts on the unsuspecting.
+"Hades will be happy to hear that you are once again practicing your
+arts on the unsuspecting."
 %E
 %Cc H 00014
-Alas, %p, you are yet too inexperienced to deal with the rigors
+"Alas, %p, you are yet too inexperienced to deal with the rigors
 of such a task.  You must be able to draw on the knowledge of botany,
 vetenary, and alchemy before I can send you on this quest with good
 conscience.
 
-Return when you wear %Ra's caduceus.
+"Return when you wear %Ra's caduceus."
 %E
 %Cc H 00015
-You have learned much of the remedies that benefit, but you must also
+"You have learned much of the remedies that benefit, but you must also
 know which physic for which ail.  That is why %d's teachings are a
 part of your training.
 
-Return to us when you have healed thyself.
+"Return to us when you have healed thyself."
 %E
 %Cc H 00016
 For the first time, you sense a smile on %l' face.
@@ -1069,37 +1069,37 @@ For the first time, you sense a smile on %l' face.
     follow the trail to the %n's island lair.  Be careful.
 %E
 %Cp H 00020
-Remember, %p, to always wash your hands before operating.
+"Remember, %p, to always wash your hands before operating."
 %E
 %Cp H 00021
-The %n has no real magic of his own.  To this he is vulnerable.
+"The %n has no real magic of his own.  To this he is vulnerable."
 %E
 %Cp H 00022
-If you have been true to %d, you can draw on the power of
-%o.
+"If you have been true to %d, you can draw on the power of
+%o."
 %E
 %Cp H 00023
-Bring with you antidotes for poisons.
+"Bring with you antidotes for poisons."
 %E
 %Cp H 00024
-Remember this, %n cannot use %o
-to harm you, it has only healing powers.
+"Remember this, %n cannot use %o
+to harm you, it has only healing powers."
 %E
 %Cp H 00025
-I have sent for Chiron, but I am afraid he will come too late.
+"I have sent for Chiron, but I am afraid he will come too late."
 %E
 %Cp H 00026
-Maybe when you return the snakes will once again begin to shed.
+"Maybe when you return the snakes will once again begin to shed."
 %E
 %Cp H 00027
-The plague grows worse as we speak.  Hurry, %p!
+"The plague grows worse as we speak.  Hurry, %p!"
 %E
 %Cp H 00028
-Many times the %n has caused trouble in these lands.  It is
-time that he was eradicated like the diseases he has caused.
+"Many times the %n has caused trouble in these lands.  It is
+time that he was eradicated like the diseases he has caused."
 %E
 %Cp H 00029
-With but one eye, the %n should be easy to blind.  Remember this.
+"With but one eye, the %n should be easy to blind.  Remember this."
 %E
 %Cc H 00030
 You stand before the entrance to %i.  Strange
@@ -1122,52 +1122,52 @@ heal them on your return, but not now.
 Once again, you %x the Isle of the %n in the distance.
 %E
 %Cc H 00050
-They have made a mistake in sending you, %p.
+"They have made a mistake in sending you, %p.
 
-When I add your youth to mine, it will just make it easier for me
-to defeat %l.
+"When I add your youth to mine, it will just make it easier for me
+to defeat %l."
 %E
 %Cp H 00051
-Unlike your patients, you seem to keep coming back, %p!
+"Unlike your patients, you seem to keep coming back, %p!"
 %E
 %Cp H 00052
-Which would you like, %p?  Boils, pleurisy, convulsions?
+"Which would you like, %p?  Boils, pleurisy, convulsions?"
 %E
 %Cp H 00053
-I'll have %o back from you, %r.  You are
-not going to live to escape this place.
+"I'll have %o back from you, %r.  You are
+not going to live to escape this place."
 %E
 %Cp H 00060
-They might as well give scalpels to wizards as to let you try to
-use %o!
+"They might as well give scalpels to wizards as to let you try to
+use %o!"
 %E
 %Cp H 00061
-If I could strike %l, surrounded by his %gP, imagine what I
-can do to you here by yourself.
+"If I could strike %l, surrounded by his %gP, imagine what I
+can do to you here by yourself."
 %E
 %Cp H 00062
-I will put my %Rp to work making a physic out of your ashes.
+"I will put my %Rp to work making a physic out of your ashes."
 %E
 %Cp H 00063
-As we speak, Hades gathers your patients to join you.
+"As we speak, Hades gathers your patients to join you."
 %E
 %Cp H 00064
-After I'm done with you, I'll destroy %l as well.
+"After I'm done with you, I'll destroy %l as well."
 %E
 %Cp H 00065
-You will have to kill me if you ever hope to leave this place.
+"You will have to kill me if you ever hope to leave this place."
 %E
 %Cp H 00066
-I will impale your head on my caduceus for all to see.
+"I will impale your head on my caduceus for all to see."
 %E
 %Cp H 00067
-There is no materia medica in your sack which will cure you of me!
+"There is no materia medica in your sack which will cure you of me!"
 %E
 %Cp H 00068
-Do not fight too hard, I want your soul strong, not weakened!
+"Do not fight too hard, I want your soul strong, not weakened!"
 %E
 %Cp H 00069
-You should have stopped studying at vetenary.
+"You should have stopped studying at vetenary."
 %E
 %Cc H 00070
 As you pick up %o, you feel its healing begin to
@@ -1199,15 +1199,15 @@ has finished he speaks to you.
     now and continue your journey.
 %E
 %Cp H 00090
-You have again returned to us, %p.  We have done well in your
-absence, yes?  How fare you upon your quest for the Amulet?
+"You have again returned to us, %p.  We have done well in your
+absence, yes?  How fare you upon your quest for the Amulet?"
 %E
 %Cc H 00091
-Ah, you have recovered the Amulet, %p.  Well done!
+"Ah, you have recovered the Amulet, %p.  Well done!
 
-Now, you should know that you must travel through the elemental planes
+"Now, you should know that you must travel through the elemental planes
 to the astral, and there return the Amulet to %d.  Go forth and
-may our prayers be as a wind upon your back.
+may our prayers be as a wind upon your back."
 %E
 #
 #	Knight
@@ -1228,105 +1228,105 @@ Again, you stand before %H.  You vaguely sense that this
 may be the last time you stand before %l.
 %E
 %Cp K 00005
-Hail, %p!  Verily, thou looks well.
+"Hail, %p!  Verily, thou looks well."
 %E
 %Cp K 00006
-There is word, %p, that %n hath been sighted in the fens
-near %i.
+"There is word, %p, that %n hath been sighted in the fens
+near %i."
 %E
 %Cp K 00007
-Thou art our only hope now, %p.
+"Thou art our only hope now, %p."
 %E
 %Cp K 00008
-Verily, %l could have no better champion, %p.
+"Verily, %l could have no better champion, %p."
 %E
 %Cp K 00009
-Many brave %cP died when %n attacked.
+"Many brave %cP died when %n attacked."
 %E
 %Cc K 00010
-Ah, %p.  We see thou hath received our summons.
+"Ah, %p.  We see thou hath received our summons.
 We are in dire need of thy prowess.  But first, We must needs
-decide if thou art ready for this great undertaking.
+decide if thou art ready for this great undertaking."
 %E
 %Cp K 00011
-Welcome again, %p.  We hope thou art ready now.
+"Welcome again, %p.  We hope thou art ready now."
 %E
 %Cp K 00012
-Once again, thou standeth before us, %p.  Art thou ready now?
+"Once again, thou standeth before us, %p.  Art thou ready now?"
 %E
 %Cp K 00013
-Thou disgraceth this noble court with thine impure presence.  We have been
+"Thou disgraceth this noble court with thine impure presence.  We have been
 lenient with thee, but no more.  Thy name shalt be spoken no more.  We
 hereby strip thee of thy title, thy lands, and thy standing as %ca.
-Begone from our sight!
+Begone from our sight!"
 %E
 %Cp K 00014
-Verily, %p, thou hast done well.  That thou hast survived thus
+"Verily, %p, thou hast done well.  That thou hast survived thus
 far is a credit to thy valor, but thou art yet unprepared for
 the demands required as Our Champion.  %rA, no matter how
 pure, could never hope to defeat the foul %n.
 
-Journey forth from this place, and hone thy skills.  Return to
-Our presence when thou hast attained the noble title of %R.
+"Journey forth from this place, and hone thy skills.  Return to
+Our presence when thou hast attained the noble title of %R."
 %E
 %Cp K 00015
-Thou dishonoureth us, %p!  Thou hast strayed from the path of
+"Thou dishonoureth us, %p!  Thou hast strayed from the path of
 chivalry! Go from our presence and do penance.  Only when thou art again
-pure may thou return hence.
+pure may thou return hence."
 %E
 %Cc K 00016
-Ah, %p.  Thou art truly ready, as no %c before thee hath
+"Ah, %p.  Thou art truly ready, as no %c before thee hath
 been.  Hear now Our words:
 
-As thou noticed as thou approached %H, a great battle hath
+"As thou noticed as thou approached %H, a great battle hath
 been fought recently in these fields.  Know thou that Merlin himself
 came to aid us here as we battled the foul %n.  In the midst of that
 battle, %n struck Merlin a great blow, felling him.  Then, as our
 forces were pressed back, %n stole %o.
 
-We eventually turned the tide, but lost many %cP in doing so.
+"We eventually turned the tide, but lost many %cP in doing so.
 Merlin was taken off by his apprentice, but hast not recovered.  We hast
 been told that so long as %n possesses %o,
 Merlin will not regain his health.
 
-We hereby charge thee with this most important of duties:
+"We hereby charge thee with this most important of duties:
 
-Go forth from this place, to the fens, and there thou wilt find
+"Go forth from this place, to the fens, and there thou wilt find
 %i.  From there, thou must track down %n.  Destroy the
 beast, and return to Us %o.  Only then can
-We restore Merlin to health.
+We restore Merlin to health."
 %E
 %Cp K 00020
-Remember, %p, follow always the path of %d.
+"Remember, %p, follow always the path of %d."
 %E
 %Cp K 00021
-Though %n is verily a mighty foe, we have confidence in thy victory.
+"Though %n is verily a mighty foe, we have confidence in thy victory."
 %E
 %Cp K 00022
-Beware, for %n hast surrounded himself with hordes of foul creatures.
+"Beware, for %n hast surrounded himself with hordes of foul creatures."
 %E
 %Cp K 00023
-Great treasure, 'tis said, is hoarded in the lair of %n.
+"Great treasure, 'tis said, is hoarded in the lair of %n."
 %E
 %Cp K 00024
-If thou possesseth %o, %p, %n's magic
-shalt therewith be thwarted.
+"If thou possesseth %o, %p, %n's magic
+shalt therewith be thwarted."
 %E
 %Cp K 00025
-The gates of %i are guarded by forces unseen, %p.
-Go carefully.
+"The gates of %i are guarded by forces unseen, %p.
+Go carefully."
 %E
 %Cp K 00026
-Return %o to us quickly, %p.
+"Return %o to us quickly, %p."
 %E
 %Cp K 00027
-Destroy %n, %p, else %H shall surely fall.
+"Destroy %n, %p, else %H shall surely fall."
 %E
 %Cp K 00028
-Call upon %d when thou art in need.
+"Call upon %d when thou art in need."
 %E
 %Cp K 00029
-To find %i, thou must keep thy heart pure.
+"To find %i, thou must keep thy heart pure."
 %E
 %Cc K 00030
 You stand at the foot of %i.  Atop, you can %x a shrine.
@@ -1347,49 +1347,49 @@ pieces of rusted metal and broken weapons show above the surface.
 Again, you stand at the entrance to %n's lair.
 %E
 %Cp K 00050
-Hah!  Another puny %c seeks death.  I shall dine well tonight,
-then tomorrow, %H shall fall!
+"Hah!  Another puny %c seeks death.  I shall dine well tonight,
+then tomorrow, %H shall fall!"
 %E
 %Cp K 00051
-Again, thou challengeth me, %r?  So be it.  Thou wilt die here.
+"Again, thou challengeth me, %r?  So be it.  Thou wilt die here."
 %E
 %Cp K 00052
-Thou art truly foolish, %r.  I shall dispatch thee anon.
+"Thou art truly foolish, %r.  I shall dispatch thee anon."
 %E
 %Cp K 00053
-So, thou darest touch MY property!  I shall have that bauble back,
-puny %r.  Thou wilt die in agony!
+"So, thou darest touch MY property!  I shall have that bauble back,
+puny %r.  Thou wilt die in agony!"
 %E
 %Cp K 00060
-A mere %r can never withstand me!
+"A mere %r can never withstand me!"
 %E
 %Cp K 00061
-I shall kill thee now, and feast!
+"I shall kill thee now, and feast!"
 %E
 %Cp K 00062
-Puny %c.  What manner of death dost thou wish?
+"Puny %c.  What manner of death dost thou wish?"
 %E
 %Cp K 00063
-First thee, %p, then I shall feast upon %l.
+"First thee, %p, then I shall feast upon %l."
 %E
 %Cp K 00064
-Hah!  Thou hast failed, %r.  Now thou shalt die.
+"Hah!  Thou hast failed, %r.  Now thou shalt die."
 %E
 %Cp K 00065
-Die, %c.  Thou art as nothing against my might.
+"Die, %c.  Thou art as nothing against my might."
 %E
 %Cp K 00066
-I shall suck the marrow from thy bones, %c.
+"I shall suck the marrow from thy bones, %c."
 %E
 %Cp K 00067
-Let's see...  Broiled?  No.  Fried?  Nay.  Baked?  Yea verily,
-that is the way I like my %c for dinner.
+"Let's see...  Broiled?  No.  Fried?  Nay.  Baked?  Yea verily,
+that is the way I like my %c for dinner."
 %E
 %Cp K 00068
-Thy strength wanes, %p.  The time of thy death draws near.
+"Thy strength wanes, %p.  The time of thy death draws near."
 %E
 %Cp K 00069
-Call upon thy precious %d, %p.  It shalt not avail thee.
+"Call upon thy precious %d, %p.  It shalt not avail thee."
 %E
 %Cc K 00070
 As you pick up %o, you feel its protective fields
@@ -1410,26 +1410,27 @@ to the ground and dies in a pool of his own blood.
 %Cc K 00081
 As you approach %l, he beams at you and says:
 
-Well done!  Thou art truly the Champion of %H.  We have
-received word that Merlin is recovering, and shall soon rejoin us.
+    Well done!  Thou art truly the Champion of %H.  We
+    have received word that Merlin is recovering, and shall soon
+    rejoin us.
 
-He has instructed us that thou art now to be the guardian of
-%o.  He feels that thou may have need of
-its powers in thine adventures.  It is our wish that thou keep
-%o with thee as thou search for the fabled
-Amulet of Yendor.
+    He has instructed us that thou art now to be the guardian of
+    %o.  He feels that thou may have need of
+    its powers in thine adventures.  It is our wish that thou keep
+    %o with thee as thou search for the fabled
+    Amulet of Yendor.
 %E
 %Cp K 00090
-Well met, %p.  How goest thy search for the Amulet of Yendor?
+"Well met, %p.  How goest thy search for the Amulet of Yendor?"
 %E
 %Cc K 00091
-Thou hast succeeded, we see, %p!  Now thou art commanded to take
+"Thou hast succeeded, we see, %p!  Now thou art commanded to take
 the Amulet to be sacrificed to %d in the plane of the astral.
 
-Merlin hath counseled us that thou must travel always upwards through
+"Merlin hath counseled us that thou must travel always upwards through
 the planes of the elements, to achieve this goal.
 
-Go with %d, %p.
+"Go with %d, %p."
 %E
 #
 #	Priest
@@ -1450,100 +1451,100 @@ Again you face %H.  Your intuition hints that this may be
 the final time you come here.
 %E
 %Cp P 00005
-Greetings, honored %r.  It is good to see you.
+"Greetings, honored %r.  It is good to see you."
 %E
 %Cp P 00006
-Ah, %p!  Surely you can help us in our hour of need.
+"Ah, %p!  Surely you can help us in our hour of need."
 %E
 %Cp P 00007
-Greetings, %s.  The %l has great need of your help.
+"Greetings, %s.  The %l has great need of your help."
 %E
 %Cp P 00008
-Alas, it seems as if even %d has deserted us.
+"Alas, it seems as if even %d has deserted us."
 %E
 %Cp P 00009
-May %d be with you, %s.
+"May %d be with you, %s."
 %E
 %Cc P 00010
-Ah, %p, my %S.  You have returned to us at last.
+"Ah, %p, my %S.  You have returned to us at last.
 A great blow has befallen our order; perhaps you can help us.
 First, however, I must determine if you are prepared for this
-great challenge.
+great challenge."
 %E
 %Cp P 00011
-Again, my %S, you stand before me.  Are you ready now to help us?
+"Again, my %S, you stand before me.  Are you ready now to help us?"
 %E
 %Cp P 00012
-Once more, %p, you stand within the sanctum.  Are you ready now?
+"Once more, %p, you stand within the sanctum.  Are you ready now?"
 %E
 %Cc P 00013
-You are a heretic, %p!  How can you, %ra, deviate so from the
+"You are a heretic, %p!  How can you, %ra, deviate so from the
 teachings of %d?  Begone from this temple.  You are no longer
 %sa to this order.  We will pray to %d for other assistance,
-as you have failed us utterly.
+as you have failed us utterly."
 %E
 %Cc P 00014
-Alas, %p, it is not yet to be.  A mere %r could never
+"Alas, %p, it is not yet to be.  A mere %r could never
 withstand the might of %n.  Go forth, again into the world, and return
-when you have attained the post of %R.
+when you have attained the post of %R."
 %E
 %Cc P 00015
-This is terrible, %p.  You have deviated from the true path!
+"This is terrible, %p.  You have deviated from the true path!
 You know that %d requires the most strident devotion of this
 order.  The %shood must stand for utmost piety.
 
-Go from here, atone for your sins against %d.  Return only when
-you have purified yourself.
+"Go from here, atone for your sins against %d.  Return only when
+you have purified yourself."
 %E
 %Cc P 00016
-Yes, %p.  You are truly ready now.  Attend to me and I shall
+"Yes, %p.  You are truly ready now.  Attend to me and I shall
 tell you of what has transpired:
 
-At one of the Great Festivals a short time ago, %n and a legion
+"At one of the Great Festivals a short time ago, %n and a legion
 of undead invaded %H.  Many %gP were killed, including
 the one carrying %o.
 
-As a final act of vengefulness, %n desecrated the altar here.
+"As a final act of vengefulness, %n desecrated the altar here.
 Without it, we could not mount a counter-attack.  Now, there are
 barely enough %gP left to keep the undead at bay.
 
-We need you to find %i, then, from there, travel
+"We need you to find %i, then, from there, travel
 to %n's lair.  If you can manage to defeat %n and return
 %o here, we can then drive off the legions of
 undead that befoul the land.
 
-Go with %d as your guide, %p.
+"Go with %d as your guide, %p."
 %E
 %Cp P 00020
-You can prevail, if you rely on %d.
+"You can prevail, if you rely on %d."
 %E
 %Cp P 00021
-Remember that %n has great magic at his command.
+"Remember that %n has great magic at his command."
 %E
 %Cp P 00022
-Be pure, my %S.
+"Be pure, my %S."
 %E
 %Cp P 00023
-Beware, %i is surrounded by a great graveyard.
+"Beware, %i is surrounded by a great graveyard."
 %E
 %Cp P 00024
-You may be able to affect %n with magical cold.
+"You may be able to affect %n with magical cold."
 %E
 %Cp P 00025
-Acquire and wear %o if you can.  It will aid you
-against %n.
+"Acquire and wear %o if you can.  It will aid you
+against %n."
 %E
 %Cp P 00026
-Call upon %d when your need is greatest.  You will be answered.
+"Call upon %d when your need is greatest.  You will be answered."
 %E
 %Cp P 00027
-The undead legions are weakest during the daylight hours.
+"The undead legions are weakest during the daylight hours."
 %E
 %Cp P 00028
-Do not loose faith, %p.  If you do so, %n will grow stronger.
+"Do not loose faith, %p.  If you do so, %n will grow stronger."
 %E
 %Cp P 00029
-Wear %o.  It will assist you against the undead.
+"Wear %o.  It will assist you against the undead."
 %E
 %Cc P 00030
 You stand facing a large graveyard.  The sky above is filled with clouds
@@ -1566,51 +1567,51 @@ Ahead, there is a small clearing amidst the bubbling pits of lava...
 Again, you have invaded %n's domain.
 %E
 %Cc P 00050
-Ah, so the %l has sent another %g to retrieve
+"Ah, so the %l has sent another %g to retrieve
 %o.
 
-No, I see you are no %g.  Perhaps I shall have some fun today
+"No, I see you are no %g.  Perhaps I shall have some fun today
 after all.  Prepare to die, %r!  You shall never regain
-%o.
+%o."
 %E
 %Cp P 00051
-So, %r.  Again you challenge me.
+"So, %r.  Again you challenge me."
 %E
 %Cp P 00052
-Die now, %r.  %d has no power here to aid you.
+"Die now, %r.  %d has no power here to aid you."
 %E
 %Cp P 00053
-You shall die, %r, and I will have %o back.
+"You shall die, %r, and I will have %o back."
 %E
 %Cp P 00060
-Submit to my will, %c, and I shall spare you.
+"Submit to my will, %c, and I shall spare you."
 %E
 %Cp P 00061
-Your puny powers are no match for me, %c.
+"Your puny powers are no match for me, %c."
 %E
 %Cp P 00062
-I shall have you turned into a zombie for my pleasure!
+"I shall have you turned into a zombie for my pleasure!"
 %E
 %Cp P 00063
-Despair now, %r.  %d cannot help you.
+"Despair now, %r.  %d cannot help you."
 %E
 %Cp P 00064
-I shall feast upon your soul for many days, %c.
+"I shall feast upon your soul for many days, %c."
 %E
 %Cp P 00065
-Your death will be slow and painful.  That I promise!
+"Your death will be slow and painful.  That I promise!"
 %E
 %Cp P 00066
-You cannot defeat %n, you fool.  I shall kill you now.
+"You cannot defeat %n, you fool.  I shall kill you now."
 %E
 %Cp P 00067
-Your precious %l will be my next victim.
+"Your precious %l will be my next victim."
 %E
 %Cp P 00068
-I feel your powers failing you, %r.  You shall die now.
+"I feel your powers failing you, %r.  You shall die now."
 %E
 %Cp P 00069
-With %o, nothing can stand in my way.
+"With %o, nothing can stand in my way."
 %E
 %Cc P 00070
 As you pick up %o, you feel the essence of
@@ -1636,24 +1637,24 @@ Suddenly, a voice booms out:
 You then hear the voice of %n, screaming in terror...
 %E
 %Cc P 00081
-You have returned, %p.  And with %o, I see.
+"You have returned, %p.  And with %o, I see.
 Congratulations.
 
-I have been in meditation, and have received direction from
+"I have been in meditation, and have received direction from
 a minion of %d.  %d commands that you retain
 %o.  With it, you must recover the Amulet
 of Yendor.
 
-Go forth, and let %d guide your steps.
+"Go forth, and let %d guide your steps."
 %E
 %Cp P 00090
-Welcome back, %p.  How is your quest for the Amulet going?
+"Welcome back, %p.  How is your quest for the Amulet going?"
 %E
 %Cc P 00091
-You have prevailed, %p!  %d is surely with you.  Now,
+"You have prevailed, %p!  %d is surely with you.  Now,
 you must take the amulet, and sacrifice it on %d's altar on
 the Astral plane.  I suspect that I shall never see you again in this
-life, but I hope to at %d's feet.
+life, but I hope to at %d's feet."
 %E
 #
 #	Rogue (with apologies to all Norsk speakers -dean)
@@ -1673,100 +1674,100 @@ the back of your neck stay down, and prepare yourself for your meeting
 with the %l.
 %E
 %Cp R 00005
-I hear that Lady Tyvefelle's household is lightly guarded.
+"I hear that Lady Tyvefelle's household is lightly guarded."
 %E
 %Cp R 00006
-You're back?  Even the Twain don't come back anymore.
+"You're back?  Even the Twain don't come back anymore."
 %E
 %Cp R 00007
-Can you spare an old cutpurse a zorkmid for some grog?
+"Can you spare an old cutpurse a zorkmid for some grog?"
 %E
 %Cp R 00008
-Fritz tried to join the other side, and now he's hell-hound chow.
+"Fritz tried to join the other side, and now he's hell-hound chow."
 %E
 %Cp R 00009
-Be careful what you steal, I hear the boss has perfected turning
-rocks into worthless pieces of glass.
+"Be careful what you steal, I hear the boss has perfected turning
+rocks into worthless pieces of glass."
 %E
 %Cc R 00010
-Well, look who it is boys -- %p has come home.  You seem to have
+"Well, look who it is boys -- %p has come home.  You seem to have
 fallen behind in your dues.  I should kill you as an example to these
 other worthless cutpurses, but I have a better plan.  If you are ready
 maybe you could work off your back dues by performing a little job for
-me.  Let us just see if you are ready...
+me.  Let us just see if you are ready..."
 %E
 %Cp R 00011
-Well, I didn't expect to see you back.  It shows that you are either stupid,
+"Well, I didn't expect to see you back.  It shows that you are either stupid,
 or you are finally ready to accept my offer.  Let us hope for your sake it
-isn't stupidity that brings you back.
+isn't stupidity that brings you back."
 %E
 %Cp R 00012
-Did you perhaps mistake me for some other %l?  You must
-think me as stupid as your behavior.  I warn you not to try my patience.
+"Did you perhaps mistake me for some other %l?  You must
+think me as stupid as your behavior.  I warn you not to try my patience."
 %E
 %Cc R 00013
-Well %gp, it looks like our friend has forgotten who is the boss
+"Well %gp, it looks like our friend has forgotten who is the boss
 around here.  Our friend seems to think that %rp have been put in
-charge.  Wrong.  DEAD WRONG!
+charge.  Wrong.  DEAD WRONG!"
 
 Your sudden shift in surroundings prevents you from hearing the end
 of the %l's curse.
 %E
 %Cc R 00014
-In the time that you've been gone you've only been able to master the
+"In the time that you've been gone you've only been able to master the
 arts of %ra?  I've trained ten times again as many %Rp
 in that time.  Maybe I should send one of them, no?  Where would that
-leave you, %p?  Oh yeah, I remember, I was going to kill you!
+leave you, %p?  Oh yeah, I remember, I was going to kill you!"
 %E
 %Cc R 00015
-Maybe I should chain you to my perch here for a while.  Perhaps watching
+"Maybe I should chain you to my perch here for a while.  Perhaps watching
 real %A men at work will bring some sense back to you.  I don't
 think I could stand the sight of you for that long though.  Come back
-when you can be trusted to act properly.
+when you can be trusted to act properly."
 %E
 %Cc R 00016
-Will everyone not going to retrieve %o from that
+"Will everyone not going to retrieve %o from that
 jerk, the %n, take one step backwards.  Good choice,
 %p, because I was going to send you anyway.  My other %gp
 are too valuable to me.
 
-Here's the deal.  I want %o, the %n
+"Here's the deal.  I want %o, the %n
 has %o.  You are going to get %o
 and bring it back to me.  So simple an assignment even you can understand
-it.
+it."
 %E
 %Cc R 00020
-You don't seem to understand, %o isn't here so
-neither should you be!
+"You don't seem to understand, %o isn't here so
+neither should you be!"
 %E
 %Cp R 00021
-May %d curse you with lead fingers.  Get going!
+"May %d curse you with lead fingers.  Get going!"
 %E
 %Cp R 00022
-We don't have all year.  GET GOING!
+"We don't have all year.  GET GOING!"
 %E
 %Cc R 00023
-How would you like a scar necklace?  I'm just the jeweler to do it!
+"How would you like a scar necklace?  I'm just the jeweler to do it!"
 %E
 %Cp R 00024
-Lazy S.O.B.  Maybe I should call up someone else...
+"Lazy S.O.B.  Maybe I should call up someone else..."
 %E
 %Cp R 00025
-Maybe I should open your skull and see if my instructions are inside?
+"Maybe I should open your skull and see if my instructions are inside?"
 %E
 %Cp R 00026
-This is not a task you can complete in the afterlife, you know.
+"This is not a task you can complete in the afterlife, you know."
 %E
 %Cc R 00027
-Inside every living person is a dead person trying to get out, and I have
-your key!
+"Inside every living person is a dead person trying to get out, and I have
+your key!"
 %E
 %Cp R 00028
-We're almost out of hell-hound chow, so why don't you just get moving!
+"We're almost out of hell-hound chow, so why don't you just get moving!"
 %E
 %Cp R 00029
-You know, %o isn't going to come when you
-whistle.  You must get it yourself.
+"You know, %o isn't going to come when you
+whistle.  You must get it yourself."
 %E
 %Cp R 00030
 Those damn little hairs tell you that you are nearer to
@@ -1784,91 +1785,91 @@ You feel a great swelling up of courage, sensing the presence of
 The hairs on the back of your neck whisper -- it's fear.
 %E
 %Cc R 00050
-Ah!  You must be the %l's ... er, "hero".  A pleasure
-to meet you.
+"Ah!  You must be the %l's ... er, `hero'.  A pleasure
+to meet you."
 %E
 %Cc R 00051
-We meet again.  Please reconsider your actions.
+"We meet again.  Please reconsider your actions."
 %E
 %Cp R 00052
-Surely, %p, you have learned that you cannot trust any bargains
+"Surely, %p, you have learned that you cannot trust any bargains
 that the %l has made.  I can show you how to continue on
-your quest without having to run into him again.
+your quest without having to run into him again."
 %E
 %Cp R 00053
-Please, think for a moment about what you are doing.  Do you truly
+"Please, think for a moment about what you are doing.  Do you truly
 believe that %d would want the %l to have
-%o?
+%o?"
 %E
 %Cp R 00060
-May I suggest a compromise.  Are you interested in gold or gems?
+"May I suggest a compromise.  Are you interested in gold or gems?"
 %E
 %Cp R 00061
-Please don't force me to kill you.
+"Please don't force me to kill you."
 %E
 %Cp R 00062
-Grim times are upon us all.  Will you not see reason?
+"Grim times are upon us all.  Will you not see reason?"
 %E
 %Cp R 00063
-I knew the %l, and you're no %l, thankfully.
+"I knew the %l, and you're no %l, thankfully."
 %E
 %Cp R 00064
-It is a shame that we are not meeting under more pleasant circumstances.
+"It is a shame that we are not meeting under more pleasant circumstances."
 %E
 %Cp R 00065
-I was once like you are now, %p.  Believe in me -- our way
-is better.
+"I was once like you are now, %p.  Believe in me -- our way
+is better."
 %E
 %Cp R 00066
-Stay with me, and I will make you %o's guardian.
+"Stay with me, and I will make you %o's guardian."
 %E
 %Cp R 00067
-When you return, with or without %o,
-the %l will have you killed.
+"When you return, with or without %o,
+the %l will have you killed."
 %E
 %Cp R 00068
-Do not be fooled; I am prepared to kill to defend %o.
+"Do not be fooled; I am prepared to kill to defend %o."
 %E
 %Cp R 00069
-I can reunite you with the Twain.  Oh, the stories you can swap.
+"I can reunite you with the Twain.  Oh, the stories you can swap."
 %E
 %Cc R 00070
-As you pick up %o, the hairs on the back of your
+"As you pick up %o, the hairs on the back of your
 neck fall out.  At once you realize why the %n was
 willing to die to keep it out of the %l's hands.  Somehow
-you know that you must do likewise.
+you know that you must do likewise."
 %E
 %Cc R 00080
-I know what you are thinking, %p.  It is not too late for you
+"I know what you are thinking, %p.  It is not too late for you
 to use %o wisely.  For the sake of your guild
-%sp, do what is right.
+%sp, do what is right."
 
 You sit and wait for death to come for the %n, and then you
 brace yourself for your next meeting with the %l!
 %E
 %Cc R 00081
-Well, I'll be damned.  You got it.  I am proud of you, a fine %r
+"Well, I'll be damned.  You got it.  I am proud of you, a fine %r
 you've turned out to be.
 
-While you were gone I got to thinking, you and %o
+"While you were gone I got to thinking, you and %o
 together could bring me more treasure than either of you apart, so why don't
 you take it with you.  All I ask is a cut of whatever loot you come by.
 That is a better deal than I offered the %n.
 
-But, you see what happened to the %n when he refused.
-Don't make me find another to send after you this time.
+"But, you see what happened to the %n when he refused.
+Don't make me find another to send after you this time."
 %E
 %Cc R 00090
-Quite the little thief, aren't we, %p.  Can I interest you in a
+"Quite the little thief, aren't we, %p.  Can I interest you in a
 swap for %o.  Look around, anything in the keep
-is yours for the asking.
+is yours for the asking."
 %E
 %Cc R 00091
-I see that with your abilities, and my brains, we could rule this world.
+"I see that with your abilities, and my brains, we could rule this world.
 
-All that we would need to be all-powerful is for you to take that little
+"All that we would need to be all-powerful is for you to take that little
 trinket you've got there up to the Astral plane.  From there, %d will
-show you what to do with it.  Once that's done, we will be invincible!
+show you what to do with it.  Once that's done, we will be invincible!"
 %E
 #
 #	Samurai
@@ -1895,101 +1896,101 @@ if you do not succeed in your quest, %n will have destroyed
 the kami of %H before you return again.
 %E
 %Cp S 00005
-To succeed, you must walk like a butterfly on the wind.
+"To succeed, you must walk like a butterfly on the wind."
 %E
 %Cp S 00006
-Ikaga desu ka?
+"Ikaga desu ka?"
 %E
 %Cp S 00007
-I fear for The Land of The Gods.
+"I fear for The Land of The Gods."
 %E
 %Cp S 00008
-%n has hired the Ninja -- be careful.
+"%n has hired the Ninja -- be careful."
 %E
 %Cp S 00009
-If %o is not returned, we will all be ronin.
+"If %o is not returned, we will all be ronin."
 %E
 %Cc S 00010
-Ah, %p-san, it is good to see you again.  I need someone who can
+"Ah, %p-san, it is good to see you again.  I need someone who can
 lead my samurai against %n.  If you are ready, you will be
-that person.
+that person."
 %E
 %Cp S 00011
-Once again, %p-san, you kneel before me.  Are you yet capable of
-being my vassal?
+"Once again, %p-san, you kneel before me.  Are you yet capable of
+being my vassal?"
 %E
 %Cp S 00012
-You begin to test my matsu, %p-san.
+"You begin to test my matsu, %p-san.
 If you cannot determine what I want in a samurai, how can I rely on you
-to figure out what I need from a samurai?
+to figure out what I need from a samurai?"
 %E
 %Cp S 00013
-You are no longer my samurai, %p.
+"You are no longer my samurai, %p.
 
-Hara-kiri is denied.  You are ordered to shave your head and then to
-become a monk.  Your fief and family are forfeit.  Wakarimasu?
+"Hara-kiri is denied.  You are ordered to shave your head and then to
+become a monk.  Your fief and family are forfeit.  Wakarimasu?"
 %E
 %Cp S 00014
-%p-san, you have learned well and honored your family.
+"%p-san, you have learned well and honored your family.
 I require the skills of %Ra in order to defeat %n.
 Go and seek out teachers.  Learn what they have learned.  When you
-are ready, return to me.
+are ready, return to me."
 %E
 %Cp S 00015
-%p-san, you would do better to join the kyokaku.
+"%p-san, you would do better to join the kyokaku.
 
-You have skills, but until you can call upon the bushido to know when and
+"You have skills, but until you can call upon the bushido to know when and
 how to use them you are not samurai.  When you can think %A and
-act %A then return.
+act %A then return."
 %E
 %Cc S 00016
-Domo %p-san, indeed you are ready.  I can now tell you what
+"Domo %p-san, indeed you are ready.  I can now tell you what
 it is that I require of you.
 
-The daimyo, %n, has betrayed us.  He has stolen from us
+"The daimyo, %n, has betrayed us.  He has stolen from us
 %o and taken it to his donjon deep within
 %i.
 
-If I cannot show the emperor %o when he comes
+"If I cannot show the emperor %o when he comes
 for the festival he will know that I have failed in my duty, and
 request that I commit seppuku.
 
-You must gain entrance to %i and retrieve the
+"You must gain entrance to %i and retrieve the
 emperor's property.  Be quick!  The emperor will be here for the
 cha-no-you in 5 sticks.
 
-Wakarimasu?
+"Wakarimasu?"
 %E
 %Cp S 00020
-To defeat %n you must overcome the seven emotions:
-hate, adoration, joy, anxiety, anger, grief, and fear.
+"To defeat %n you must overcome the seven emotions:
+hate, adoration, joy, anxiety, anger, grief, and fear."
 %E
 %Cp S 00021
-Remember your honor is my honor, you perform in my name.
+"Remember your honor is my honor, you perform in my name."
 %E
 %Cp S 00022
-I will go to the temple and burn incense for your safe return.
+"I will go to the temple and burn incense for your safe return."
 %E
 %Cp S 00023
-Sayonara.
+"Sayonara."
 %E
 %Cp S 00024
-There can be honor in defeat, but no gain.
+"There can be honor in defeat, but no gain."
 %E
 %Cp S 00025
-Your kami must be strong in order to succeed.
+"Your kami must be strong in order to succeed."
 %E
 %Cp S 00026
-You are indeed a worthy %R, but now you must be a worthy samurai.
+"You are indeed a worthy %R, but now you must be a worthy samurai."
 %E
 %Cp S 00027
-If you fail, %n will be like a tai-fun on the land.
+"If you fail, %n will be like a tai-fun on the land."
 %E
 %Cp S 00028
-If you are truly %A, %d will listen.
+"If you are truly %A, %d will listen."
 %E
 %Cp S 00029
-Sharpen your swords and your wits for the task before you.
+"Sharpen your swords and your wits for the task before you."
 %E
 %Cc S 00030
 You instinctively reach for your swords.  You do not recognize the
@@ -2011,52 +2012,52 @@ As you arrive once again at the home of %n, your thoughts
 turn only to %o.
 %E
 %Cp S 00050
-Ah, so it is to be you, %p-san.  I offer you seppuku.
-I will be your second if you wish.
+"Ah, so it is to be you, %p-san.  I offer you seppuku.
+I will be your second if you wish."
 %E
 %Cp S 00051
-I have offered you the honorable exit.  Now I will have your
-head to send unwashed to %l.
+"I have offered you the honorable exit.  Now I will have your
+head to send unwashed to %l."
 %E
 %Cp S 00052
-After I have dispatched you, I will curse your kami.
+"After I have dispatched you, I will curse your kami."
 %E
 %Cp S 00053
-You have fought my samurai; surely you must know that you
+"You have fought my samurai; surely you must know that you
 will not be able to take %o back to
-%H.
+%H."
 %E
 %Cp S 00060
-Ahh, I finally meet the daimyo of the kyokaku!
+"Ahh, I finally meet the daimyo of the kyokaku!"
 %E
 %Cp S 00061
-There is no honor for me in your death.
+"There is no honor for me in your death."
 %E
 %Cp S 00062
-You know that I cannot resash my swords until they have killed.
+"You know that I cannot resash my swords until they have killed."
 %E
 %Cp S 00063
-Your presence only compounds the dishonor of %l in not coming himself.
+"Your presence only compounds the dishonor of %l in not coming himself."
 %E
 %Cp S 00064
-I will make tea with your hair and serve it to %l.
+"I will make tea with your hair and serve it to %l."
 %E
 %Cp S 00065
-Your fear shows in your eyes, coward!
+"Your fear shows in your eyes, coward!"
 %E
 %Cp S 00066
-I have not heard of you, %p-san; has your life been that unworthy?
+"I have not heard of you, %p-san; has your life been that unworthy?"
 %E
 %Cp S 00067
-If you will not obey me, you will die.
+"If you will not obey me, you will die."
 %E
 %Cp S 00068
-Kneel now and make the two cuts of honor.  I will tell your %sp
-of your honorable death.
+"Kneel now and make the two cuts of honor.  I will tell your %sp
+of your honorable death."
 %E
 %Cp S 00069
-Your master was a poor teacher.  You will pay for his mistakes in
-your teaching.
+"Your master was a poor teacher.  You will pay for his mistakes in
+your teaching."
 %E
 %Cc S 00070
 As you pick up %o, you feel the strength of its karma.
@@ -2077,31 +2078,32 @@ thrown into the sea.
 %Cc S 00081
 As you bow before %l, he welcomes you:
 
-You have brought your family great honor, %p-sama.
+    You have brought your family great honor, %p-sama.
 
-While you have been gone the emperor's advisors have discovered in the
-ancient texts that the karma of the samurai who seeks to recover the
-amulet and the karma of %o are joined as the seasons
-join to make a year.
+    While you have been gone the emperor's advisors have discovered in
+    the ancient texts that the karma of the samurai who seeks to recover
+    the amulet and the karma of %o are joined
+    as the seasons join to make a year.
 
-Because you have shown such fidelity, the emperor requests that you
-take leave of other obligations and continue on the road that fate
-has set your feet upon.  I would consider it an honor if you would
-allow me to watch your household until you return with the amulet.
+    Because you have shown such fidelity, the emperor requests
+    that you take leave of other obligations and continue on the
+    road that fate has set your feet upon.  I would consider it
+    an honor if you would allow me to watch your household until
+    you return with the amulet.
 
 With that, %l bows, and places his sword atop
 %o.
 %E
 %Cp S 00090
-%l bows.  %p-sama, tell us of your search for the Amulet.
+%l bows.  "%p-sama, tell us of your search for the Amulet."
 %E
 %Cc S 00091
-Ah, %p-sama.  You have wasted your efforts returning home.
+"Ah, %p-sama.  You have wasted your efforts returning home.
 Now that you are in possession of the Amulet, you are honor-bound to
 finish the quest you have undertaken.  There will be plenty of time
 for saki and stories when you have finished.
 
-Go now, and may our prayers be a wind at your back.
+"Go now, and may our prayers be a wind at your back."
 %E
 #
 #	Tourist
@@ -2125,102 +2127,102 @@ Things appear to have become so bad that you fear that soon
 %H will not be here to return to.
 %E
 %Cp T 00005
-Gehennom on 5 zorkmids a day -- more like 500 a day if you ask me.
+"Gehennom on 5 zorkmids a day -- more like 500 a day if you ask me."
 %E
 %Cp T 00006
-Do you know where I could find some nice postcards of The Gnomish Mines?
+"Do you know where I could find some nice postcards of The Gnomish Mines?"
 %E
 %Cp T 00007
-Have you tried the weird toilets?
+"Have you tried the weird toilets?"
 %E
 %Cp T 00008
-Don't stay at the Inn, I hear the food is terrible and it has rats.
+"Don't stay at the Inn, I hear the food is terrible and it has rats."
 %E
 %Cp T 00009
-They told me that this was the off season!
+"They told me that this was the off season!"
 %E
 %Cc T 00010
-Is it really you, %p!  I had given up hope for your return.
+"Is it really you, %p!  I had given up hope for your return.
 As you can %x, we are desperately in need of your talents.  Someone must
 defeat the %n if our town is become what it once was.
 
-Let me see if you are ready to be that someone.
+"Let me see if you are ready to be that someone."
 %E
 %Cp T 00011
-Things are getting worse, %p.
-I hope that this time you are ready.
+"Things are getting worse, %p.
+I hope that this time you are ready."
 %E
 %Cp T 00012
-I hope that for the sake of %H you have prepared
-yourself this time.
+"I hope that for the sake of %H you have prepared
+yourself this time."
 %E
 %Cc T 00013
-It is too late, %p.  You are not even worthy to die amongst us.
-Leave %H and never return.
+"It is too late, %p.  You are not even worthy to die amongst us.
+Leave %H and never return."
 %E
 %Cc T 00014
-There is still too much that you have to learn before you can undertake
+"There is still too much that you have to learn before you can undertake
 the next step.  Return to us as a proven %R, and perhaps then
 you will be ready.
 
-Go back now, and may the teachings of %d serve you well.
+"Go back now, and may the teachings of %d serve you well."
 %E
 %Cc T 00015
-It would be an affront to %d to have one not true to the
+"It would be an affront to %d to have one not true to the
 %a path undertake her bidding.
 
-You must not return to us until you have purified yourself of these
+"You must not return to us until you have purified yourself of these
 bad influences on your actions.  Remember, only by following the %a
-path can you hope to overcome the obstacles you will face.
+path can you hope to overcome the obstacles you will face."
 %E
 %Cc T 00016
 %E
-You have indeed proven yourself a worthy %c, %p.
+"You have indeed proven yourself a worthy %c, %p.
 
-But now your kinfolk and I must ask you to put aside your travels and
+"But now your kinfolk and I must ask you to put aside your travels and
 help us in our time of need.  After you left us we elected a new mayor,
 the %n.  He proved to be a most heinous and vile creature.
 
-Soon after taking office he absconded with %o
+"Soon after taking office he absconded with %o
 and fled town, leaving behind his henchmen to rule over us.  In order
 for us to regain control of our town, you must enter %i
 and recover %o.
 
-Do not be distracted on your quest.  If you do not return quickly I fear
+"Do not be distracted on your quest.  If you do not return quickly I fear
 that all will be lost.  Let us both pray now that %d will guide you
-and keep you safe.
+and keep you safe."
 %Cp T 00020
-Do not be fooled by the false promises of the %n.
+"Do not be fooled by the false promises of the %n."
 %E
 %Cp T 00021
-To enter %i you must pass many traps.
+"To enter %i you must pass many traps."
 %E
 %Cp T 00022
-If you do not return with %o, your quest
-will be in vain.
+"If you do not return with %o, your quest
+will be in vain."
 %E
 %Cp T 00023
-Do not be afraid to call upon %d if you truly need help.
+"Do not be afraid to call upon %d if you truly need help."
 %E
 %Cp T 00024
-If you do not destroy the %n, he will follow you back here!
+"If you do not destroy the %n, he will follow you back here!"
 %E
 %Cp T 00025
-Take %o from the %n
-and you may be able to defeat him.
+"Take %o from the %n
+and you may be able to defeat him."
 %E
 %Cp T 00026
-You must hurry, %p!
+"You must hurry, %p!"
 %E
 %Cp T 00027
-You are like %Sa to me, %p.  Do not let me down.
+"You are like %Sa to me, %p.  Do not let me down."
 %E
 %Cp T 00028
-If you are %a at all times you may succeed, %p.
+"If you are %a at all times you may succeed, %p."
 %E
 %Cp T 00029
-Let all who meet you on your journey know that you are on an quest for
-%l and grant safe passage.
+"Let all who meet you on your journey know that you are on an quest for
+%l and grant safe passage."
 %E
 %Cp T 00030
 Only your faith in %d keeps you from trembling.  You %x
@@ -2237,65 +2239,65 @@ You gain confidence, knowing that you may soon be united with
 %o.
 %E
 %Cc T 00050
-So, %p, %l thinks that you can wrest
+"So, %p, %l thinks that you can wrest
 %o from me!
 
-It only proves how desperate he has become that he sends %ra to
+"It only proves how desperate he has become that he sends %ra to
 try and defeat me.  When this day is over, I will have you enslaved
 in the mines where you will rue the day that you ever entered
-%i.
+%i."
 %E
 %Cc T 00051
-I let you live the last time because it gave me pleasure.  This time I will
-destroy you, %p.
+"I let you live the last time because it gave me pleasure.  This time I will
+destroy you, %p."
 %E
 %Cp T 00052
-These meetings come to bore me.  You disturb my workings with
+"These meetings come to bore me.  You disturb my workings with
 %o.
 
-If you do not run away now, I will inflict so much suffering on you that
-%l will feel guilty for ever having sent his %S to me!
+"If you do not run away now, I will inflict so much suffering on you that
+%l will feel guilty for ever having sent his %S to me!"
 %E
 %Cp T 00053
-You fool.  You do not know how to call upon the powers of
+"You fool.  You do not know how to call upon the powers of
 %o.
 
-Return it to me and I will teach you how to use it, and together we
+"Return it to me and I will teach you how to use it, and together we
 will rule %H.  But do so now, as my patience
-grows thin.
+grows thin."
 %E
 %Cp T 00060
-I defeated %l and I will defeat you, %p.
+"I defeated %l and I will defeat you, %p."
 %E
 %Cp T 00061
-Where is %d now!  You must realize no one can help you here.
+"Where is %d now!  You must realize no one can help you here."
 %E
 %Cp T 00062
-Beg for mercy now and I may be lenient on you.
+"Beg for mercy now and I may be lenient on you."
 %E
 %Cp T 00063
-If you were not so %a, you might have stood a chance.
+"If you were not so %a, you might have stood a chance."
 %E
 %Cp T 00064
-Vengeance is mine at last, %p.
+"Vengeance is mine at last, %p."
 %E
 %Cp T 00065
-I only wish that %l had a more worthy %r to send against me.
+"I only wish that %l had a more worthy %r to send against me."
 %E
 %Cp T 00066
-With %o in my possession you cannot
-hope to defeat me.
+"With %o in my possession you cannot
+hope to defeat me."
 %E
 %Cp T 00067
-The %n has never been defeated, NEVER!
+"The %n has never been defeated, NEVER!"
 %E
 %Cp T 00068
-Are you truly the best %H has to send against me?
-I pity %l.
+"Are you truly the best %H has to send against me?
+I pity %l."
 %E
 %Cp T 00069
-How do you spell %p?  I want to ensure the marker on your grave is
-correct as a warning to your %sp.
+"How do you spell %p?  I want to ensure the marker on your grave is
+correct as a warning to your %sp."
 %E
 %Cc T 00070
 As you pick up %o, you feel a great
@@ -2321,18 +2323,18 @@ As he looks up from %o he says:
     %a path, you may yet recover the Amulet of Yendor.
 %E
 %Cc T 00090
-I could not be more proud than if you were my own %S, %p!
-Tell me of your adventures in quest of the Amulet of Yendor.
+"I could not be more proud than if you were my own %S, %p!
+Tell me of your adventures in quest of the Amulet of Yendor."
 %E
 %Cc T 00091
-Stand back and let me look at you, %p.
+"Stand back and let me look at you, %p.
 Now that you have recovered the Amulet of Yendor, I'm afraid living
 out your days in %H would seem pretty tame.
 
-You have come too far to stop now, for there are still more tasks that
+"You have come too far to stop now, for there are still more tasks that
 our oral history foretells for you.  Forever more, though, your name shall
 be spoken by the %gP with awe.  You are truly an inspiration to your
-%sp!
+%sp!"
 %E
 #
 #	Valkyrie
@@ -2355,104 +2357,104 @@ Again you materialize near the %l's abode.  You have a nagging feeling
 that this may be the last time you come here.
 %E
 %Cp V 00005
-Hail, and well met, brave %c.
+"Hail, and well met, brave %c."
 %E
 %Cp V 00006
-May %d guide your steps, %p.
+"May %d guide your steps, %p."
 %E
 %Cp V 00007
-The %l weakens.  Without %o, her foresight is dim.
+"The %l weakens.  Without %o, her foresight is dim."
 %E
 %Cp V 00008
-You must hurry, %p, else Ragnarok may well come.
+"You must hurry, %p, else Ragnarok may well come."
 %E
 %Cp V 00009
-I would deal with this foul %n myself, but %d forbids it.
+"I would deal with this foul %n myself, but %d forbids it."
 %E
 %Cc V 00010
-Ah, %p, my %S.  You have returned to %H
+"Ah, %p, my %S.  You have returned to %H
 at last.  We are in dire need of your aid, but I must determine if you
 are yet ready for such an undertaking.
 
-Let me read your fate...
+"Let me read your fate..."
 %E
 %Cp V 00011
-Let me read the future for you now, %p, perhaps you have managed to
-change it enough...
+"Let me read the future for you now, %p, perhaps you have managed to
+change it enough..."
 %E
 %Cp V 00012
-Again, I shall read your fate, my %S.  Let us both hope that you have
-made changes to become ready for this task...
+"Again, I shall read your fate, my %S.  Let us both hope that you have
+made changes to become ready for this task..."
 %E
 %Cc V 00013
-No, %p.  Your fate is sealed.  I must cast about for another
+"No, %p.  Your fate is sealed.  I must cast about for another
 champion.  Begone from my presence, and never return.  Know this, that
-you shall never succeed in this life, and Valhalla is denied to you.
+you shall never succeed in this life, and Valhalla is denied to you."
 %E
 %Cc V 00014
-I see you and %n fighting, %p.  But you are not prepared and
+"I see you and %n fighting, %p.  But you are not prepared and
 shall die at %n's hand if you proceed.  No.  This will not do.
 Go back out into the world, and grow more experienced at the ways of
 war.  Only when you have returned %Ra will you be able to defeat
-%n.
+%n."
 %E
 %Cc V 00015
-NO!  This is terrible.  I see you becoming an ally of %n, and
+"NO!  This is terrible.  I see you becoming an ally of %n, and
 leading his armies in the final great battles.  This must not come to
-pass! You have strayed from the %a path.  You must purge yourself,
-and return here only when you have regained a state of purity.
+pass!  You have strayed from the %a path.  You must purge yourself,
+and return here only when you have regained a state of purity."
 %E
 %Cc V 00016
-It is not clear, %p, for my sight is limited without
+"It is not clear, %p, for my sight is limited without
 %o.  But it is now likely that you can defeat %n,
 and recover %o.
 
-A short time ago, %n and his minions attacked this place.  They
+"A short time ago, %n and his minions attacked this place.  They
 opened the huge volcanic vents you %x about the hill, and attacked.
 I knew that this was to come to pass, and had asked %d for a group
 of %gP to help defend this place.  The few you %x here are the
 mightiest of Valhalla's own, and are all that are left of one hundred
 %d sent.
 
-Despite the great and glorious battle we fought, %n managed at last
+"Despite the great and glorious battle we fought, %n managed at last
 to steal %o.  This has upset the balance of the universe, and
 unless %o is returned into my care, %n may start Ragnarok.
 
-You must find the entrance to %i.  Travel downward
+"You must find the entrance to %i.  Travel downward
 from there and you will find %n's lair.  Defeat him and
-return %o to me.
+return %o to me."
 %E
 %Cp V 00020
-Go with the blessings of %d.
+"Go with the blessings of %d."
 %E
 %Cp V 00021
-Call upon %d when you are in need.
+"Call upon %d when you are in need."
 %E
 %Cp V 00022
-Use %o if you can.  It will protect you.
+"Use %o if you can.  It will protect you."
 %E
 %Cp V 00023
-Magical cold is very effective against %n.
+"Magical cold is very effective against %n."
 %E
 %Cp V 00024
-To face %n, you will need to be immune to fire.
+"To face %n, you will need to be immune to fire."
 %E
 %Cp V 00025
-May %d strengthen your sword-arm.
+"May %d strengthen your sword-arm."
 %E
 %Cp V 00026
-Trust in %d.  He will not desert you.
+"Trust in %d.  He will not desert you."
 %E
 %Cp V 00027
-It becomes more likely that Ragnarok will come with every passing moment.
-You must hurry, %p.
+"It becomes more likely that Ragnarok will come with every passing moment.
+You must hurry, %p."
 %E
 %Cp V 00028
-If %n can master %o, he will be powerful enough to
-face %d far earlier than is fated.  This must not be!
+"If %n can master %o, he will be powerful enough to
+face %d far earlier than is fated.  This must not be!"
 %E
 %Cp V 00029
-Remember your training, %p.  You can succeed.
+"Remember your training, %p.  You can succeed."
 %E
 %Cc V 00030
 The ice and snow gives way to a valley floor.  You %x ahead of you
@@ -2472,52 +2474,52 @@ from something that the %l said.  This is the lair of %n.
 Once again, you stand in sight of %n's lair.
 %E
 %Cc V 00050
-So!  The %l has finally sent %ca to challenge me!
+"So!  The %l has finally sent %ca to challenge me!
 
-I thought that mastering %o would enable me to challenge %d,
+"I thought that mastering %o would enable me to challenge %d,
 but it has shown me that first I must kill you!
 So come, little %s.  Once I defeat you, I can at last begin
-the final battle with %d.
+the final battle with %d."
 %E
 %Cp V 00051
-Again you challenge me, %r.  Good.  I will kill you now.
+"Again you challenge me, %r.  Good.  I will kill you now."
 %E
 %Cp V 00052
-Have you not learned yet?  You cannot defeat %n!
+"Have you not learned yet?  You cannot defeat %n!"
 %E
 %Cp V 00053
-I will kill you, %c, and wrest %o from your mangled hands.
+"I will kill you, %c, and wrest %o from your mangled hands."
 %E
 %Cp V 00060
-I am your death, %c.
+"I am your death, %c."
 %E
 %Cp V 00061
-You cannot prevail, %r.  I have foreseen your every move.
+"You cannot prevail, %r.  I have foreseen your every move."
 %E
 %Cp V 00062
-With you out of the way, Valhalla will be mine for the taking.
+"With you out of the way, Valhalla will be mine for the taking."
 %E
 %Cp V 00063
-I killed scores of %d's best when I took %o.
-Do you really think that one %c can stand against me?
+"I killed scores of %d's best when I took %o.
+Do you really think that one %c can stand against me?"
 %E
 %Cp V 00064
-Who bears the souls of %cP to Valhalla, %r?
+"Who bears the souls of %cP to Valhalla, %r?"
 %E
 %Cp V 00065
-No, %d cannot help you here.
+"No, %d cannot help you here."
 %E
 %Cp V 00066
-Some instrument of %d you are, %p.  You are a weakling!
+"Some instrument of %d you are, %p.  You are a weakling!"
 %E
 %Cp V 00067
-Never have I seen %ca so clumsy in battle.
+"Never have I seen %ca so clumsy in battle."
 %E
 %Cp V 00068
-You die now, little %s.
+"You die now, little %s."
 %E
 %Cp V 00069
-Your body I destroy now, your soul when my hordes overrun Valhalla!
+"Your body I destroy now, your soul when my hordes overrun Valhalla!"
 %E
 %Cc V 00070
 As you pick up %o, your mind is suddenly filled with images,
@@ -2535,25 +2537,25 @@ Suddenly, %n grasps his head and screams in agony, then dies.
 %Cc V 00081
 As you approach, the %l rises and touches %o.
 
-You may take %o with you, %p.  I have removed from
+"You may take %o with you, %p.  I have removed from
 it the power to foretell the future, for that power no mortal should
 have.  Its other abilities, however, you have at your disposal.
 
-You must now begin in %d's name to search for the Amulet of Yendor.
-May your steps be guided by %d, my %S.
+"You must now begin in %d's name to search for the Amulet of Yendor.
+May your steps be guided by %d, my %S."
 %E
 %Cp V 00090
-Greetings, %p.  I have not been able to pay as much attention to
-your search for the Amulet as I have wished.  How do you fare?
+"Greetings, %p.  I have not been able to pay as much attention to
+your search for the Amulet as I have wished.  How do you fare?"
 %E
 %Cc V 00091
-Excellent, %p.  I see you have recovered the Amulet!
+"Excellent, %p.  I see you have recovered the Amulet!
 
-You must take the Amulet to the Great Temple of %d, on the Astral
+"You must take the Amulet to the Great Temple of %d, on the Astral
 plane.  There you must offer the Amulet to %d.
 
-Go now, my %S.  I cannot tell you your fate, as the power of the
-Amulet interferes with mine.  I hope for your success.
+"Go now, my %S.  I cannot tell you your fate, as the power of the
+Amulet interferes with mine.  I hope for your success."
 %E
 #
 #	Wizard
@@ -2578,108 +2580,108 @@ You are back at %H.
 You have an odd feeling this may be the last time you ever come here.
 %E
 %Cp W 00005
-Would you happen to have some eye of newt in that overstuffed pack, %s?
+"Would you happen to have some eye of newt in that overstuffed pack, %s?"
 %E
 %Cp W 00006
-Ah, the spell to create the magic portal worked.  Outstanding!
+"Ah, the spell to create the magic portal worked.  Outstanding!"
 %E
 %Cp W 00007
-Hurry!  The %l may not survive that casting of the
-portal spell!!
+"Hurry!  The %l may not survive that casting of the
+portal spell!!"
 %E
 %Cp W 00008
-We must strive to return balance to the world, or all is lost.
+"We must strive to return balance to the world, or all is lost."
 %E
 %Cp W 00009
-I, too, will venture into the world, because the %n is but one of
-many evils to be vanquished.
+"I, too, will venture into the world, because the %n is but one of
+many evils to be vanquished."
 %E
 %Cc W 00010
-Come closer, %p, for my voice falters in my old age.
+"Come closer, %p, for my voice falters in my old age.
 Yes, I see that you have come a long way since you went out into the
 world, leaving the safe confines of this tower.  However, I must first
 determine if you have all of the skills required to take on the task
-I require of you.
+I require of you."
 %E
 %Cp W 00011
-Well, %p, you have returned.  Perhaps you are now ready...
+"Well, %p, you have returned.  Perhaps you are now ready..."
 %E
 %Cp W 00012
-This is getting tedious, %p, but perseverance is a sign of a true mage.
-I certainly hope that you are truly ready this time!
+"This is getting tedious, %p, but perseverance is a sign of a true mage.
+I certainly hope that you are truly ready this time!"
 %E
 %Cc W 00013
-You fool, %p!  Why did I waste all of those years teaching you
-the esoteric arts?  Get out of here!  I shall find another.
+"You fool, %p!  Why did I waste all of those years teaching you
+the esoteric arts?  Get out of here!  I shall find another."
 %E
 %Cc W 00014
-Alas, %p, you have not yet shown your proficiency as a worthy
+"Alas, %p, you have not yet shown your proficiency as a worthy
 spellcaster.  As %ra, you would surely be overcome in the challenge
 ahead.  Go, now, expand your horizons, and return when you have attained
-renown as %Ra.
+renown as %Ra."
 %E
 %Cc W 00015
-You amaze me, %p!  How many times did I tell you that Balance
+"You amaze me, %p!  How many times did I tell you that Balance
 requires care.  One must use the world with care, lest one leave it in ruins
 and simplify the task of the %n.
 
-You must go back and show your worthiness.  Do not return until you are
-truly ready for this quest.  May %d guide you in this task.
+"You must go back and show your worthiness.  Do not return until you are
+truly ready for this quest.  May %d guide you in this task."
 %E
 %Cc W 00016
 %E
-Yes, %p, you truly are ready for this dire task.  Listen,
+"Yes, %p, you truly are ready for this dire task.  Listen,
 carefully, for what I tell you now will be of vital importance.
 
-Since you left us to hone your skills in the world, we unexpectedly came
+"Since you left us to hone your skills in the world, we unexpectedly came
 under attack by the forces of the %n.  As you know, we thought
 the %n had perished at the end of the last age, but, alas, this was
 not the case.
 
-The %n sent an army of abominations against us.  Among them was a
+"The %n sent an army of abominations against us.  Among them was a
 minion, mindless and ensorcelled, and thus, in the confusion, it was able
 to penetrate our defenses.  Alas, this creature has stolen
 %o and I fear it has delivered %o
 to the %n.
 
-Over the years, I had woven most of my power into this amulet, and thus,
+"Over the years, I had woven most of my power into this amulet, and thus,
 without it, I have but a shadow of my former power, and I fear that I
 shall soon perish.
 
-You must travel to %i, and within its dungeons,
+"You must travel to %i, and within its dungeons,
 find and overcome the %n, and return %o to me.
 
-Go now, with %d, and return Balance to the world.
+"Go now, with %d, and return Balance to the world."
 %Cp W 00020
-Beware, for the %n is immune to most magical attacks.
+"Beware, for the %n is immune to most magical attacks."
 %E
 %Cp W 00021
-To enter %i you must pass many traps.
+"To enter %i you must pass many traps."
 %E
 %Cp W 00022
-The %n may be vulnerable to physical attacks.
+"The %n may be vulnerable to physical attacks."
 %E
 %Cp W 00023
-%d will come to your aid when you call.
+"%d will come to your aid when you call."
 %E
 %Cp W 00024
-You must utterly destroy the %n.  He will pursue you otherwise.
+"You must utterly destroy the %n.  He will pursue you otherwise."
 %E
 %Cp W 00025
-%oC is a mighty artifact.  With it you can
-destroy the %n.
+"%oC is a mighty artifact.  With it you can
+destroy the %n."
 %E
 %Cp W 00026
-Go forth with the blessings of %d.
+"Go forth with the blessings of %d."
 %E
 %Cp W 00027
-I will have my %gP watch for your return.
+"I will have my %gP watch for your return."
 %E
 %Cp W 00028
-Feel free to take any items in that chest that might aid you.
+"Feel free to take any items in that chest that might aid you."
 %E
 %Cp W 00029
-You will know when %o is near.  Proceed with care!
+"You will know when %o is near.  Proceed with care!"
 %E
 %Cp W 00030
 Wisps of fog swirl nearby.  You feel that the %n's lair is close.
@@ -2694,58 +2696,58 @@ You feel your mentor's presence; perhaps %o is nearby.
 The aura of %o tingles at the edge of your perception.
 %E
 %Cc W 00050
-Ah, I recognize you, %p.  So, the %l has sent you to steal
+"Ah, I recognize you, %p.  So, the %l has sent you to steal
 %o from me, hmmm?  Well, the %l is a
 fool to send such a mental weakling against me.
 
-Your destruction, however, should make for good sport.  In the end, you
-shall beg me to kill you!
+"Your destruction, however, should make for good sport.  In the end, you
+shall beg me to kill you!"
 %E
 %Cc W 00051
-How nice of you to return, %p!  I enjoyed our last meeting.  Are you
+"How nice of you to return, %p!  I enjoyed our last meeting.  Are you
 still hungry for more pain?
 
-Come!  Your soul, like %o, shall soon be mine to
-command.
+"Come!  Your soul, like %o, shall soon be mine to
+command."
 %E
 %Cp W 00052
-I'm sure that your perseverance shall be the subject of innumerable
-ballads, but you shall not be around to hear them, I fear!
+"I'm sure that your perseverance shall be the subject of innumerable
+ballads, but you shall not be around to hear them, I fear!"
 %E
 %Cp W 00053
-Thief!  %o belongs to me, now.  I shall feed
-your living flesh to my minions.
+"Thief!  %o belongs to me, now.  I shall feed
+your living flesh to my minions."
 %E
 %Cp W 00060
-Your puny powers are no match for me, fool!
+"Your puny powers are no match for me, fool!"
 %E
 %Cp W 00061
-When you are defeated, your torment will last for a thousand years.
+"When you are defeated, your torment will last for a thousand years."
 %E
 %Cp W 00062
-After your downfall, %p, I shall devour the %l
-for dessert!
+"After your downfall, %p, I shall devour the %l
+for dessert!"
 %E
 %Cp W 00063
-Are you ready yet to beg for mercy?  I could be lenient...
+"Are you ready yet to beg for mercy?  I could be lenient..."
 %E
 %Cp W 00064
-Your soul shall join the enslaved multitude I command!
+"Your soul shall join the enslaved multitude I command!"
 %E
 %Cp W 00065
-Your lack of will is evident, and you shall die as a result.
+"Your lack of will is evident, and you shall die as a result."
 %E
 %Cp W 00066
-Your faith in %d is for naught!  Come, give in to me now!
+"Your faith in %d is for naught!  Come, submit to me now!"
 %E
 %Cp W 00067
-A mere %r is nothing compared to my skill!
+"A mere %r is nothing compared to my skill!"
 %E
 %Cp W 00068
-So, you are the best hope of the %l?  How droll.
+"So, you are the best hope of the %l?  How droll."
 %E
 %Cp W 00069
-Feel my power, %c!  My victory is imminent!
+"Feel my power, %c!  My victory is imminent!"
 %E
 %Cc W 00070
 As you touch %o, its comforting power infuses you
@@ -2777,19 +2779,19 @@ beams at you and says:
     May %d guide you in your quest, and keep you from harm.
 %E
 %Cc W 00090
-Come near, my %S, and share your adventures with me.  So, have you
-succeeded in your quest for the Amulet of Yendor?
+"Come near, my %S, and share your adventures with me.  So, have you
+succeeded in your quest for the Amulet of Yendor?"
 %E
 %Cc W 00091
-Congratulations, %p.  I always knew that if anyone could succeed
+"Congratulations, %p.  I always knew that if anyone could succeed
 in defeating the Wizard of Yendor and his minions, it would be you.
 
-Go now, and take the Amulet to the astral plane.  Once there, present
+"Go now, and take the Amulet to the astral plane.  Once there, present
 the Amulet on the altar of %d.  Along the way you shall pass through the
 four elemental planes.  These planes are like nothing you have ever
 experienced before, so be prepared!
 
-For this you were born, %s!  I am very proud of you.
+"For this you were born, %s!  I am very proud of you."
 %E
 #
 #	General
@@ -2826,97 +2828,97 @@ You again sense %l pleading for help.
 #	Angelic maledictions.
 #
 %Cp - 00010
-Repent, and thou shalt be saved!
+"Repent, and thou shalt be saved!"
 %E
 %Cp - 00011
-Thou shalt pay for thine insolence!
+"Thou shalt pay for thine insolence!"
 %E
 %Cp - 00012
-Very soon, my child, thou shalt meet thy maker.
+"Very soon, my child, thou shalt meet thy maker."
 %E
 %Cp - 00013
-The great %D has sent me to make you pay for your sins!
+"The great %D has sent me to make you pay for your sins!"
 %E
 %Cp - 00014
-The wrath of %D is now upon you!
+"The wrath of %D is now upon you!"
 %E
 %Cp - 00015
-Thy life belongs to %D now!
+"Thy life belongs to %D now!"
 %E
 %Cp - 00016
-Dost thou wish to receive thy final blessing?
+"Dost thou wish to receive thy final blessing?"
 %E
 %Cp - 00017
-Thou art but a godless void.
+"Thou art but a godless void."
 %E
 %Cp - 00018
-Thou art not worthy to seek the Amulet.
+"Thou art not worthy to seek the Amulet."
 %E
 %Cp - 00019
-No one expects the Spanish Inquisition!
+"No one expects the Spanish Inquisition!"
 %E
 #
 #	Demonic maledictions.
 #
 %Cp - 00030
-I first mistook thee for a statue, when I regarded thy head of stone.
+"I first mistook thee for a statue, when I regarded thy head of stone."
 %E
 %Cp - 00031
-Come here often?
+"Come here often?"
 %E
 %Cp - 00032
-Dost pain excite thee?  Wouldst thou prefer the whip?
+"Dost pain excite thee?  Wouldst thou prefer the whip?"
 %E
 %Cp - 00033
-Thinkest thou it shall tickle as I rip out thy lungs?
+"Thinkest thou it shall tickle as I rip out thy lungs?"
 %E
 %Cp - 00034
-Eat slime and die!
+"Eat slime and die!"
 %E
 %Cp - 00035
-Go ahead, fetch thy mama!  I shall wait.
+"Go ahead, fetch thy mama!  I shall wait."
 %E
 %Cp - 00036
-Go play leapfrog with a herd of unicorns!
+"Go play leapfrog with a herd of unicorns!"
 %E
 %Cp - 00037
-Hast thou been drinking, or art thou always so clumsy?
+"Hast thou been drinking, or art thou always so clumsy?"
 %E
 %Cp - 00038
-This time I shall let thee off with a spanking, but let it not happen again.
+"This time I shall let thee off with a spanking, but let it not happen again."
 %E
 %Cp - 00039
-I've met smarter (and prettier) acid blobs.
+"I've met smarter (and prettier) acid blobs."
 %E
 %Cp - 00040
-Look!  Thy bootlace is undone!
+"Look!  Thy bootlace is undone!"
 %E
 %Cp - 00041
-Mercy!  Dost thou wish me to die of laughter?
+"Mercy!  Dost thou wish me to die of laughter?"
 %E
 %Cp - 00042
-Run away!  Live to flee another day!
+"Run away!  Live to flee another day!"
 %E
 %Cp - 00043
-Thou hadst best fight better than thou canst dress!
+"Thou hadst best fight better than thou canst dress!"
 %E
 %Cp - 00044
-Twixt thy cousin and thee, Medusa is the prettier.
+"Twixt thy cousin and thee, Medusa is the prettier."
 %E
 %Cp - 00045
-Methinks thou wert unnaturally interested in yon corpse back there, eh, varlet?
+"Methinks thou wert unnaturally interested in yon corpse back there, eh, varlet?"
 %E
 %Cp - 00046
-Up thy nose with a rubber hose!
+"Up thy nose with a rubber hose!"
 %E
 %Cp - 00047
-Verily, thy corpse could not smell worse!
+"Verily, thy corpse could not smell worse!"
 %E
 %Cp - 00048
-Wait!  I shall polymorph into a grid bug to give thee a fighting chance!
+"Wait!  I shall polymorph into a grid bug to give thee a fighting chance!"
 %E
 %Cp - 00049
-Why search for the Amulet?  Thou wouldst but lose it, cretin.
+"Why search for the Amulet?  Thou wouldst but lose it, cretin."
 %E
 
 #

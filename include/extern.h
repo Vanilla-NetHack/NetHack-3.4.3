@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)extern.h	3.1	93/05/31	*/
+/*	SCCS Id: @(#)extern.h	3.1	93/06/27	*/
 /* Copyright (c) Steve Creps, 1988.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,7 +41,7 @@ E int NDECL(dig);
 #endif
 E int NDECL(doapply);
 E int NDECL(holetime);
-E void NDECL(dighole);
+E boolean FDECL(dighole, (BOOLEAN_P));
 E int NDECL(dorub);
 E int NDECL(dojump);
 #ifdef WALKIES
@@ -58,6 +58,7 @@ E boolean FDECL(snuff_candle, (struct obj *));
 E boolean FDECL(snuff_lit, (struct obj *));
 E void NDECL(check_lamps);
 E void FDECL(use_unicorn_horn, (struct obj *));
+E boolean FDECL(tinnable, (struct obj *));
 
 /* ### artifact.c ### */
 
@@ -463,7 +464,7 @@ E void NDECL(reset_faint);
 E void NDECL(sync_hunger);
 #endif
 E void FDECL(newuhs, (BOOLEAN_P));
-E struct obj *FDECL(floorfood, (const char *,BOOLEAN_P));
+E struct obj *FDECL(floorfood, (const char *,int));
 E void NDECL(vomit);
 E int FDECL(eaten_stat, (int,struct obj *));
 E void FDECL(food_disappears, (struct obj *));
@@ -766,6 +767,7 @@ E void FDECL(readmail, (struct obj *));
 
 /* ### makemon.c ### */
 
+E boolean FDECL(is_home_elemental, (struct permonst *));
 E struct monst *FDECL(makemon, (struct permonst *,int,int));
 E boolean FDECL(enexto, (coord *,XCHAR_P,XCHAR_P,struct permonst *));
 E int FDECL(goodpos, (int,int,struct monst *,struct permonst *));
@@ -1651,6 +1653,14 @@ E int NDECL(doextversion);
 #ifdef MICRO
 E boolean FDECL(comp_times, (long));
 #endif
+
+/* ### video.c ### */
+
+#ifdef VIDEOSHADES
+E int FDECL(assign_videoshades, (uchar *,int));
+E int FDECL(assign_videocolors, (uchar *,int));
+#endif /* VIDEOSHADES */
+
 
 /* ### vis_tab.c ### */
 

@@ -50,14 +50,14 @@ boolean
 digit(c)		/* is 'c' a digit? */
     char c;
 {
-    return '0' <= c && c <= '9';
+    return((boolean)('0' <= c && c <= '9'));
 }
 
 boolean
 letter(c)		/* is 'c' a letter?  note: '@' classed as letter */
     char c;
 {
-    return ('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z');
+    return((boolean)(('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z')));
 }
 #endif /* OVLB */
 
@@ -66,14 +66,14 @@ char
 highc(c)			/* force 'c' into uppercase */
     char c;
 {
-    return ('a' <= c && c <= 'z') ? (c & ~040) : c;
+    return((char)(('a' <= c && c <= 'z') ? (c & ~040) : c));
 }
 
 char
 lowc(c)			/* force 'c' into lowercase */
     char c;
 {
-    return ('A' <= c && c <= 'Z') ? (c | 040) : c;
+    return((char)(('A' <= c && c <= 'Z') ? (c | 040) : c));
 }
 #endif /* OVL1 */
 
@@ -277,7 +277,7 @@ online2(x0, y0, x1, y1) /* are two points lined up (on a straight line)? */
   /*  If either delta is zero then they're on an orthogonal line,
    :  else if the deltas are equal (signs ignored) they're on a diagonal.
    */
-    return !dy || !dx || (dy == dx) || (dy + dx == 0);	/* (dy == -dx) */
+    return((boolean)(!dy || !dx || (dy == dx) || (dy + dx == 0)));	/* (dy == -dx) */
 }
 
 #endif /* OVL0 */
@@ -295,10 +295,10 @@ pmatch(patrn, strng)	/* match a string against a pattern */
 pmatch_top:
     s = *strng++;  p = *patrn++;	/* get next chars and pre-advance */
     if (!p)			/* end of pattern */
-	return (s == '\0');		/* matches iff end of string too */
+	return((boolean)(s == '\0'));		/* matches iff end of string too */
     else if (p == '*')		/* wildcard reached */
-	return (!*patrn || pmatch(patrn, strng-1)) ? TRUE :
-		s ? pmatch(patrn-1, strng) : FALSE;
+	return((boolean)((!*patrn || pmatch(patrn, strng-1)) ? TRUE :
+		s ? pmatch(patrn-1, strng) : FALSE));
     else if (p != s && (p != '?' || !s))  /* check single character */
 	return FALSE;		/* doesn't match */
     else				/* return pmatch(patrn, strng); */
@@ -498,7 +498,7 @@ friday_13th()
 {
 	register struct tm *lt = getlt();
 
-	return (lt->tm_wday == 5 /* friday */ && lt->tm_mday == 13);
+	return((boolean)(lt->tm_wday == 5 /* friday */ && lt->tm_mday == 13));
 }
 
 int

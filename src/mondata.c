@@ -30,8 +30,8 @@ boolean
 poly_when_stoned(ptr)
     struct permonst *ptr;
 {
-    return (is_golem(ptr) && ptr != &mons[PM_STONE_GOLEM] &&
-	    !(mons[PM_STONE_GOLEM].geno & G_GENOD));	/* allow G_EXTINCT */
+    return((boolean)(is_golem(ptr) && ptr != &mons[PM_STONE_GOLEM] &&
+	    !(mons[PM_STONE_GOLEM].geno & G_GENOD)));	/* allow G_EXTINCT */
 }
 
 boolean
@@ -39,7 +39,7 @@ resists_drli(ptr)	/* returns TRUE if monster is drain-life resistant */
 
 	register struct permonst *ptr;
 {
-	return(is_undead(ptr) || is_demon(ptr) || is_were(ptr));
+	return((boolean)(is_undead(ptr) || is_demon(ptr) || is_were(ptr)));
 }
 
 #endif /* OVLB */
@@ -70,9 +70,9 @@ hates_silver(ptr)
 register struct permonst *ptr;
 /* returns TRUE if monster is especially affected by silver weapons */
 {
-	return (is_were(ptr) || ptr->mlet==S_VAMPIRE || is_demon(ptr) ||
+	return((boolean)(is_were(ptr) || ptr->mlet==S_VAMPIRE || is_demon(ptr) ||
 		ptr == &mons[PM_SHADE] ||
-		(ptr->mlet==S_IMP && ptr != &mons[PM_TENGU]));
+		(ptr->mlet==S_IMP && ptr != &mons[PM_TENGU])));
 }
 
 #endif /* OVL0 */
@@ -85,7 +85,7 @@ can_track(ptr)		/* returns TRUE if monster can track well */
 	if (uwep && uwep->oartifact == ART_EXCALIBUR)
 		return TRUE;
 	else
-		return(haseyes(ptr));
+		return((boolean)haseyes(ptr));
 }
 
 #endif /* OVL1 */
@@ -96,16 +96,16 @@ boolean
 sliparm(ptr)	/* creature will slide out of armor */
 	register struct permonst *ptr;
 {
-	return is_whirly(ptr) || ptr->msize <= MZ_SMALL ||
-		ptr == &mons[PM_GHOST];
+	return((boolean)(is_whirly(ptr) || ptr->msize <= MZ_SMALL ||
+		ptr == &mons[PM_GHOST]));
 }
 
 boolean
 breakarm(ptr)	/* creature will break out of armor */
 	register struct permonst *ptr;
 {
-	return((bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr))
-	                || ptr == &mons[PM_MARILITH]) && !sliparm(ptr));
+	return((boolean)((bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr))
+	                || ptr == &mons[PM_MARILITH]) && !sliparm(ptr)));
 	/* Marilith is about the only case of a monster which is otherwise
 	 * humanoid but cannot wear armor (too many arms).  Centaurs would
 	 * be another except that they are already accounted for by
@@ -120,8 +120,8 @@ boolean
 sticks(ptr)	/* creature sticks other creatures it hits */
 	register struct permonst *ptr;
 {
-	return(dmgtype(ptr,AD_STCK) || dmgtype(ptr,AD_WRAP) ||
-		attacktype(ptr,AT_HUGS));
+	return((boolean)(dmgtype(ptr,AD_STCK) || dmgtype(ptr,AD_WRAP) ||
+		attacktype(ptr,AT_HUGS)));
 }
 
 boolean
@@ -270,7 +270,7 @@ boolean
 webmaker(ptr)   /* creature can spin a web */
 	register struct permonst *ptr;
 {
-	return (ptr->mlet == S_SPIDER && ptr != &mons[PM_SCORPION]);
+	return((boolean)(ptr->mlet == S_SPIDER && ptr != &mons[PM_SCORPION]));
 }
 #endif
 
@@ -302,8 +302,8 @@ boolean
 levl_follower(mtmp)
 register struct monst *mtmp;
 {
-	return (mtmp->mtame || (mtmp->data->mflags2 & M2_STALK) || is_fshk(mtmp)
-		|| (mtmp->iswiz && !mon_has_amulet(mtmp)));
+	return((boolean)(mtmp->mtame || (mtmp->data->mflags2 & M2_STALK) || is_fshk(mtmp)
+		|| (mtmp->iswiz && !mon_has_amulet(mtmp))));
 }
 
 struct permonst *

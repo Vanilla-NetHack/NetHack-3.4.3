@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.1	93/04/24	*/
+/*	SCCS Id: @(#)cmd.c	3.1	93/06/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -201,8 +201,8 @@ popch() {
 	 * pushed back on the pushq.
 	 */
 	if (occupation) return '\0';
-	if (in_doagain) return (shead != stail) ? saveq[stail++] : '\0';
-	else		return (phead != ptail) ? pushq[ptail++] : '\0';
+	if (in_doagain) return(char)((shead != stail) ? saveq[stail++] : '\0');
+	else		return(char)((phead != ptail) ? pushq[ptail++] : '\0');
 }
 
 char
@@ -211,7 +211,7 @@ pgetchar() {		/* curtesy of aeb@cwi.nl */
 
 	if(!(ch = popch()))
 		ch = nhgetch();
-	return(ch);
+	return((char)ch);
 }
 
 /* A ch == 0 resets the pushq */
@@ -581,6 +581,14 @@ boolean final;
 		enl_msg("Bad luck ", "does", "did", " not time out for you");
 	    if (ltmp >= 0)
 		enl_msg("Good luck ", "does", "did", " not time out for you");
+	}
+
+	if (u.umortality) {
+	    if (u.umortality == 1)
+		Sprintf(buf, "once");
+	    else
+		Sprintf(buf, "%d times", u.umortality);
+	    enl_msg("You ", "have been killed ", "died ", buf);
 	}
 
 	display_nhwindow(en_win, TRUE);

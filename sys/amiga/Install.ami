@@ -2,10 +2,15 @@
 	  Using, Compiling, and Installing Amiga NetHack 3.1
       (or Everything You Never Wanted to Know Before NetHacking)
 
-	     Last Revision: 12 May 1993 for NetHack 3.1.2
+	     Last Revision: 18 June 1993 for NetHack 3.1.3
 
 
-0. Pre-intro for NetHack 3.1.2.
+0. Pre-intro for NetHack 3.1.3.
+   New for 3.1.3:
+     Updated this file: new binary release organization and missing options.
+     Fixed PAL screen calculation error.
+     Improved font characters for walls, floor, wands, doors, and swallowed.
+     Support for individual icons per character type.
    New for 3.1.2:
      Addition of asksavedisk option to eliminate need for savedir;n syntax
      Scrolling message window if screen is tall enough.
@@ -51,7 +56,7 @@ I.B. Getting Help
     you are playing the Amiga version.  Finally, if you are having trouble
     compiling NetHack, you may use the same address, or, for compiler
     specific problems, send mail to:
-    	Greg Olson (golson@sundown.sun.com)  for Manx
+    	Greg Olson (golson@sundown.sun.com) for Manx.
     	Richard Addison (addison@pollux.usc.edu) for SAS/C.
     We do not currently have a contact for the DICE port.
 
@@ -103,6 +108,11 @@ II.B. The Amiga NetHack WorkBench Front End
 	* SCORE <options> - Display the record of scores.  Options as
 	  available on the CLI command line after a -s flag.
 
+	* FONT=name.font:size - Set font used for text on screens which are
+	  tall enough (>250 lines).
+
+	* PENS=col0/col1/.../col7 - Set palette colors.
+
     Note that the NetHack.cnf file is read first, then the ToolTypes.  This
     means that the options specified in the NetHack.cnf act as defaults
     which can be overridden by an individual's personal icon's ToolTypes.
@@ -115,7 +125,7 @@ II.B. The Amiga NetHack WorkBench Front End
     NetHack.cnf file or on an OPTIONS line: flush and silent.  When enabled,
     flush discards all characters in the queue except the first, which limits
     typeahead accidents.  The default setting is noflush.  Silent turns off
-    the (new for 3.1.1) audio output.
+    the audio output.
 
     Usually, most of the confusing options will be set in the NetHack.cnf
     file once when the game is installed and can be ignored after that.
@@ -138,19 +148,19 @@ III.A. General Installation
     each archive in the appropriate directory will put the files in the
     places they belong (note that the archives may have been split
     for distribution).  If you are installing from source, most of this
-    work will be done by the time the build is finished.
+    work will be done by the time the build is finished.  See below for
+    complete installation instructions.
 
     IF YOU ALREADY HAVE A PREVIOUS VERSION INSTALLED YOU MUST DELETE THE
     OLD SAVE AND BONES FILES - THEY WILL NOT WORK!  This includes save
-    and bones files from NetHack 3.1.0.
+    and bones files from NetHack 3.1.0 and 3.1.1.
 
 Will NetHack fit on your machine?
     NetHack 3.1 is large.  NetHack 3.1 is very large.  You will need:
-    > Amiga 500, 1000, 2000, 2500, or 3000.  The A600, A1200, and A4000
+    > Amiga 500, 1000, 2000, 2500, 3000, or 4000.  The A600, and A1200
       should work, but have not been tested.
-    > WorkBench 1.3 or 2.04.  WorkBench 1.2 will NOT work; we will NOT
-      be fixing that.  WorkBench 2.1 and 3.0 should work but have not been
-      tested.
+    > WorkBench 1.3 or 2.04 or later.  WorkBench 1.2 or 2.02 will NOT work;
+      we will NOT be fixing that. 
     > At least 2 meg of RAM.  NetHack will NOT run in 1 meg.
     > Mass storage: NetHack will run on one floppy - but it won't be nice.
       Two floppies are almost enough.  A hard drive with over 3 meg of
@@ -158,82 +168,117 @@ Will NetHack fit on your machine?
 
 Find space for the files
     Floppy installation:
-	Format four disks named:
+	Format five disks named:
 	    NetHack
 	    HackExe
+	    HackExe2
 	    NHsave
 	    NHlevels
     Hard Disk installation:
     	cd to wherever you want to install NetHack
 	make a new directory to be the main NetHack directory:
-	  makedir NetHack
-	and the subdirectories:
-	  makedir NetHack/save
-	  makedir NetHack/levels
-	In s:User-Sequence (under 2.0 or later) or s:Startup (under 1.3),
-	assign NetHack: to the NetHack directory you created above.
-	assign HackExe: to the same directory.
+	  makedir NH313
+	  makedir NH313/NetHack
+	  makedir NH313/HackExe
+	  makedir NH313/HackExe2
+	In S:User-Startup (under 2.0 or later) or S:Startup-Sequence
+	(under 1.3):
+	  assign NetHack: to the NetHack directory you created above.
+	  assign HackExe: to the HackExe directory.
+	  assign HackExe2: to the HackExe2 directory.
+
 Install the files
-    Unpack the archives in the directories or onto the disks (you can
-    tell what to unpack where by the file names) by cd'ing to HackExe:
-    and unpacking archive 1 and then to NetHack: and unpacking archive 2.
+    Unpack the archives in the directories or onto the disks.  Cd to
+    the appropriate places then unpack the files:
+    Archive 1 (the one this ReadMe came in), should be unpacked into
+    NetHack:.  If you are installing to hard disk, cd to the NH313 directory
+    before unpacking.
+      lz x NH31P3-1.lzh
+    Archive 2 unpacks in two sections to two different places.  If you are
+    installing to hard disk, cd to the NH313 directory before unpacking; if
+    you are installing to floppies, unpack each section to a different disk.
+      lz x NH31P3-2.lzh HackExe/#?
+      lz x NH31P3-2.lzh HackExe2/#?
+      
     Use the table in the next section to see where things should end up.
     Be sure that the file 8 ends up in NetHack:hack/8 and that the sounds
     files end up in the NetHack:sounds directory.
+
+Floppy fixup
+    If you are installing to floppies the files on each disk are probably one
+    level too far down (for example NetHack:NetHack.cnf is probably
+    NetHack:NetHack/NetHack.cnf).  This is how to fix that:
+    Put the following lines into the file ram:fixit (be sure to delete the
+    blanks from the start of the lines or this will NOT work!)
+      .key x
+      rename <x> /<x>
+
+    For each of the disks NH313, NetHack, and HackExe, cd into the "inner"
+    directory (for example "cd NetHack:NetHack") and execute these commands:
+      list >ram:x lformat="execute ram:fixit %s" #?
+      execute ram:x
 
 Configuration
     Using your favorite text editor, edit NetHack:NetHack.cnf to match
     your system.  Check HackExe:NetHack.dir and be sure that the paths
     are correct (note that the C or D beginning the line is required and
     is not part of the file path).  The HackWB program uses two standard
-    Amiga programs that must be installed in their standard places: c:copy,
-    c:rename.
+    Amiga programs that must be installed in their standard places: c:copy
+    and c:rename.  The icons for the documentation invoke SYS:Utilities/More
+    and will probably need to be updated for your installation.
+
+    Create the save file directory (makedir NetHack:save) and the levels file
+    directory (makedir NetHack:levels) - if you use floppies than these
+    directories will each be a different floppy.
+
+    Create the score file (echo to NetHack:record) and, if desired, the log
+    file (echo to NetHack:logfile).
 
 III.B. File Location Table
-    NetHack:
+NetHack:
+	amii.hlp	cmdhelp		data		default.icon
+	dungeon		Guidebook	Guidebook.info	hack.font
+	hack/8		HackCli		HackCli.info	HackWB
+	HackWB.hlp	HackWB.info	help		hh
+	history		license		ManPage		ManPage.info
+	NetHack.cnf	NewGame.info	opthelp		options
+	oracles		quest.dat	ReadMe		ReadMe.info
+	Recover		Recover.info	RecoverMan	RecoverMan.info	
+	rumors
+	sounds/Bell			sounds/Bugle
+	sounds/Drum_Of_Earthquake	sounds/Fire_Horn
+	sounds/Frost_Horn		sounds/Leather_Drum
+	sounds/Magic_Flute		sounds/Magic_Harp
+	sounds/Tooled_Horn		sounds/Wooden_Flute
+	sounds/Wooden_Harp
+	wizhelp
+
+HackExe:
 	A-filla.lev	A-fillb.lev	A-goal.lev	A-locate.lev
 	A-start.lev	air.lev		asmodeus.lev	astral.lev
 	B-filla.lev	B-fillb.lev	B-goal.lev	B-locate.lev
 	B-start.lev	baalz.lev	bigroom.lev	C-filla.lev
 	C-fillb.lev	C-goal.lev	C-locate.lev	C-start.lev
-	castle.lev	cmdhelp		data		default.icon
-	dungeon		E-filla.lev	E-fillb.lev	E-goal.lev
+	castle.lev	E-filla.lev	E-fillb.lev	E-goal.lev
 	E-locate.lev	E-start.lev	earth.lev	fakewiz1.lev
-	fakewiz2.lev	fire.lev	Guidebook	Guidebook.info
-	H-filla.lev	H-fillb.lev	H-goal.lev	H-locate.lev
-	H-start.lev	hack.font	HackWB		HackWB.info
-	HackCli		help		hh		history
-	juiblex.lev	K-filla.lev	K-fillb.lev	K-goal.lev
-	K-locate.lev	K-start.lev	knox.lev	license
-	logfile		ManPage		ManPage.info	medusa-1.lev
-	medusa-2.lev	minefill.lev	minetown.lev	mine_end.lev
-	NetHack.cnf	NetHack.c01	NetHack.d00	news
-	NewGame.info	opthelp		options		oracle.lev
-	oracles		orcus.lev	P-filla.lev	P-fillb.lev
-	P-goal.lev	P-locate.lev	P-start.lev	perm
-	quest.dat	R-filla.lev	R-fillb.lev	R-goal.lev
-	R-locate.lev	R-start.lev	ReadMe		ReadMe.info
-	record		recover		rumors		S-filla.lev
-	S-fillb.lev	S-goal.lev	S-locate.lev	S-start.lev
-	sanctum.lev	T-filla.lev	T-fillb.lev	T-goal.lev
-	T-locate.lev	T-start.lev	tower1.lev	tower2.lev
-	tower3.lev	V-filla.lev	V-fillb.lev	V-goal.lev
-	V-locate.lev	V-start.lev	valley.lev	W-filla.lev
-	W-fillb.lev	W-goal.lev	W-locate.lev	W-start.lev
-	water.lev	wizard1.lev	wizard2.lev	wizard3.lev
-	wizhelp
+	fakewiz2.lev	fire.lev	H-filla.lev	H-fillb.lev
+	H-goal.lev	H-locate.lev	H-start.lev	juiblex.lev
+	K-filla.lev	K-fillb.lev	K-goal.lev	K-locate.lev
+	K-start.lev	knox.lev	medusa-1.lev	medusa-2.lev
+	minefill.lev	minetown.lev	mine_end.lev	NetHack.c01
+	NetHack.d00	NetHack.dir	oracle.lev	orcus.lev
+	P-filla.lev	P-fillb.lev	P-goal.lev	P-locate.lev
+	P-start.lev	R-filla.lev	R-fillb.lev	R-goal.lev
+	R-locate.lev	R-start.lev	S-filla.lev	S-fillb.lev
+	S-goal.lev	S-locate.lev	S-start.lev	sanctum.lev
+	T-filla.lev	T-fillb.lev	T-goal.lev	T-locate.lev
+	T-start.lev	tower1.lev	tower2.lev	tower3.lev
+	V-filla.lev	V-fillb.lev	V-goal.lev	V-locate.lev
+	V-start.lev	valley.lev	W-filla.lev	W-fillb.lev
+	W-goal.lev	W-locate.lev	W-start.lev	water.lev
+	wizard1.lev	wizard2.lev	wizard3.lev
 
-    NetHack:hack
-	8
-
-    NetHack:sounds
-	Bell		Bugle		Drum_Of_Earthquake
-	Fire_Horn	Frost_Horn	Leather_Drum
-	Magic_Flute	Magic_Harp	Tooled_Horn
-	Wooden_Flute	Wooden_Harp
-
-    HackExe:
-	NetHack.dir
+HackExe2:
 	NetHack.c00
 
 
@@ -249,7 +294,7 @@ IV.A. Compilation Overview
 IV.B. Basic Compilation
     NetHack can be built with SAS/C version 6.2, Manx/Aztec version 5,
     or the registered version of DICE.  The "official" compiler for NetHack 3.1
-    patchlevel 1 is SAS/C 6.2 - we have dropped support for SAS/C 5.x.
+    patchlevel 3 is SAS/C 6.2 - we have dropped support for SAS/C 5.x.
 
 IV.B.1. Introduction to Compiling NetHack
     Before doing any compilation, read the README files distributed
@@ -354,10 +399,10 @@ IV.C.1 Splitter
     be the correct contents for a floppy based system.
 
 IV.C.2 TTY Interface
-    There is a basic tty interface available under 3.1.2.  This is a
+    There is a basic tty interface available since 3.1.2.  This is a
     preliminary version and it will change in the future.  Expect bugs.
     (Due to the instability of the interface it will not be in the
-    official binaries for 3.1.2).  The TTY mode is designed for use in
+    official binaries for 3.1.3).  The TTY mode is designed for use in
     a BBS setting - it is specifically not recommended for use on the
     console.  The TTY interface is not currently compatible with split
     binaries - invoke NetHack directly as NetHack.  In addition, you should

@@ -208,12 +208,12 @@ you_have(mask)
 	register int mask;
 {
 	switch(mask) {
-	    case M3_WANTSAMUL:	return(u.uhave.amulet);
-	    case M3_WANTSBELL:	return(u.uhave.bell);
-	    case M3_WANTSCAND:	return(u.uhave.menorah);
-	    case M3_WANTSBOOK:	return(u.uhave.book);
+	    case M3_WANTSAMUL:	return(boolean)(u.uhave.amulet);
+	    case M3_WANTSBELL:	return(boolean)(u.uhave.bell);
+	    case M3_WANTSCAND:	return(boolean)(u.uhave.menorah);
+	    case M3_WANTSBOOK:	return(boolean)(u.uhave.book);
 #ifdef MULDGN
-	    case M3_WANTSARTI:	return(u.uhave.questart);
+	    case M3_WANTSARTI:	return(boolean)(u.uhave.questart);
 #endif
 	    default:		break;
 	}

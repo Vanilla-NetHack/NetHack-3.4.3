@@ -80,7 +80,7 @@ create_message_window(wp, create_popup, parent)
 
     mesg_info->fs = 0;
     mesg_info->num_lines = 0;
-    mesg_info->head = mesg_info->last_pause =
+    mesg_info->head = mesg_info->line_here = mesg_info->last_pause =
 			mesg_info->last_pause_head = (struct line_element *) 0;
     mesg_info->dirty = False;
     mesg_info->viewport_width = mesg_info->viewport_height = 0;
@@ -445,7 +445,7 @@ redraw_message_window(wp)
 {
     struct mesg_info_t *mesg_info = wp->mesg_information;
     register struct line_element *curr;
-    register int row;
+    register int row, y_base;
 
     /*
      * Do this the cheap and easy way.  Clear the window and just redraw
@@ -456,13 +456,15 @@ redraw_message_window(wp)
      *
      * Only need to clear if window has new text.
      */
-    if (mesg_info->dirty) XClearWindow(XtDisplay(wp->w), XtWindow(wp->w));
+    if (mesg_info->dirty) {
+	XClearWindow(XtDisplay(wp->w), XtWindow(wp->w));
+	mesg_info->line_here = mesg_info->last_pause;
+    }
 
     /* For now, just update the whole shootn' match. */
-    for (row = 0, curr = mesg_info->head;
-			row < mesg_info->num_lines; row++, curr = curr->next) {
-
-	register int y_base = row * mesg_info->char_height;
+    for (y_base = row = 0, curr = mesg_info->head;
+		row < mesg_info->num_lines;
+		row++, y_base += mesg_info->char_height, curr = curr->next) {
 
 	XDrawString(XtDisplay(wp->w), XtWindow(wp->w),
 		mesg_info->gc,
@@ -470,12 +472,11 @@ redraw_message_window(wp)
 		mesg_info->char_ascent + y_base,
 		curr->line,
 		curr->str_length);
-
 	/*
 	 * This draws a line at the _top_ of the line of text pointed to by
 	 * mesg_info->last_pause.
 	 */
-	if (appResources.message_line && curr == mesg_info->last_pause) {
+	if (appResources.message_line && curr == mesg_info->line_here) {
 	    XDrawLine(XtDisplay(wp->w), XtWindow(wp->w),
 		mesg_info->gc,
 		0, y_base, wp->pixel_width, y_base);

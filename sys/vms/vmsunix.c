@@ -491,7 +491,7 @@ boolean screenoutput;
 	hack_resume(screenoutput);
 
 	if (!vms_ok(status)) {
-		pline("  Spawn failed.  (%%x%08X) ", status);
+		pline("  Spawn failed.  (%%x%08lX) ", status);
 		mark_synch();
 	}
 	return 0;
@@ -526,7 +526,7 @@ dosuspend()
 	hack_resume(1);	/* resume game tty environment & refresh screen */
 
 	if (!vms_ok(status)) {
-		pline("  Unable to attach to parent.  (%%x%08X) ", status);
+		pline("  Unable to attach to parent.  (%%x%08lX) ", status);
 		mark_synch();
 	}
 	return 0;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)potion.c	3.1	93/07/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,7 +55,7 @@ boolean talk;
 	}
 	if (xtime && !old) {
 		if (talk)
-			You("stagger....");
+			You("stagger...");
 		flags.botl = 1;
 	}
 	HStun = xtime;
@@ -458,11 +458,11 @@ peffects(otmp)
 		newsym(u.ux,u.uy); /* see yourself! */
 		break;
 	case POT_PARALYSIS:
-		if(Levitation || Is_waterlevel(&u.uz))
-			You("are motionlessly suspended.");
+		if (Levitation || Is_airlevel(&u.uz) || Is_waterlevel(&u.uz))
+		    You("are motionlessly suspended.");
 		else
-			Your("%s are frozen to the floor!",
-				makeplural(body_part(FOOT)));
+		    Your("%s are frozen to the %s!",
+			 makeplural(body_part(FOOT)), surface(u.ux, u.uy));
 		nomul(-(rn1(10, 25 - 12*bcsign(otmp))));
 		exercise(A_DEX, FALSE);
 		break;
@@ -643,7 +643,6 @@ peffects(otmp)
 			} while (lmoves < 1 || lmoves > 300);
 			HLevitation += lmoves;
 		} else HLevitation += rnd(150);
-		u.uprops[LEVITATION].p_tofn = float_down;
 		break;
 	case POT_GAIN_ENERGY:			/* M. Stephenson */
 		{	register int	 num;

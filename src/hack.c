@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.c	3.1	93/05/18	*/
+/*	SCCS Id: @(#)hack.c	3.1	93/06/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -126,8 +126,8 @@ moverock()
 		    }
 		    continue;
 		case TRAPDOOR:
-		    pline("%s falls into and plugs a hole in the ground!",
-			  The(xname(otmp)));
+		    pline("%s falls into and plugs a hole in the %s!",
+			  The(xname(otmp)), surface(rx, ry));
 		    deltrap(ttmp);
 		    delobj(otmp);
 		    bury_objs(rx, ry);
@@ -394,14 +394,14 @@ may_dig(x,y)
 register xchar x,y;
 /* intended to be called only on ROCKs */
 {
-return (!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONDIGGABLE)));
+return((boolean)(!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONDIGGABLE))));
 }
 
 boolean
 may_passwall(x,y)
 register xchar x,y;
 {
-return (!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONPASSWALL)));
+return((boolean)(!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONPASSWALL))));
 }
 
 #endif /* OVLB */
@@ -411,19 +411,19 @@ STATIC_OVL boolean
 bad_rock(x,y)
 register xchar x,y;
 {
-	return(IS_ROCK(levl[x][y].typ)
+	return((boolean)(IS_ROCK(levl[x][y].typ)
 #ifdef POLYSELF
 		    && !(passes_walls(uasmon) && may_passwall(x,y))
 		    && (!tunnels(uasmon) || needspick(uasmon) || !may_dig(x,y))
 #endif
-	);
+	));
 }
 
 boolean
 invocation_pos(x, y)
 xchar x, y;
 {
-        return(Invocation_lev(&u.uz) && x == inv_pos.x && y == inv_pos.y);
+        return((boolean)(Invocation_lev(&u.uz) && x == inv_pos.x && y == inv_pos.y));
 }
 
 #endif /* OVL1 */
@@ -954,8 +954,11 @@ spoteffects()
 		if (!is_pool(u.ux,u.uy)) {
 			if (Is_waterlevel(&u.uz))
 				You("pop into an air bubble.");
+			else if (is_lava(u.ux, u.uy))
+				You("leave the water...");	/* oops! */
 			else
-				You("are on solid ground again.");
+				You("are on solid %s again.",
+				    is_ice(u.ux, u.uy) ? "ice" : "land");
 		}
 		else if (Is_waterlevel(&u.uz))
 			goto stillinwater;
@@ -1081,7 +1084,7 @@ register int typewanted;
 
 	min_x = x - 1;
 	max_x = x + 1;
-	if (x < 0)
+	if (x < 1)
 		min_x += step;
 	else 
 	if (x >= COLNO)

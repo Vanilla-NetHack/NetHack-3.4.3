@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c 3.1	93/05/15	*/
+/*	SCCS Id: @(#)polyself.c 3.1	93/06/24	*/
 /*	Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -118,7 +118,8 @@ newman()
 #ifdef POLYSELF
 	polyman();
 #endif
-	You("feel like a new %sman!", flags.female ? "wo" : "");
+	You("feel like a new %s!",
+	    pl_character[0] == 'E' ? "elf" : flags.female ? "woman" : "man");
 	flags.botl = 1;
 	(void) encumber_msg();
 }
@@ -345,7 +346,7 @@ int	mntmp;
 	    if (u.usym == S_UNICORN)
 		pline(use_thec,monsterc,"use your horn");
 	    if (u.umonnum == PM_MIND_FLAYER)
-		pline(use_thec,monsterc,"for a mental blast");
+		pline(use_thec,monsterc,"emit a mental blast");
 	    if (uasmon->msound == MS_SHRIEK) /* worthless, actually */
 		pline(use_thec,monsterc,"shriek");
 	    if ((lays_eggs(uasmon) || u.umonnum==PM_QUEEN_BEE) && flags.female)
@@ -442,7 +443,7 @@ break_armor()
 	}
 	if ((otmp = uarmh) != 0) {
 	    if (donning(otmp)) cancel_don();
-	    Your("helmet falls to the floor!");
+	    Your("helmet falls to the %s!", surface(u.ux, u.uy));
 	    (void) Helmet_off();
 	    dropx(otmp);
 	}

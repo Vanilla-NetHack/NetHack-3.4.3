@@ -129,10 +129,10 @@ bad_location(x, y, lx, ly, hx, hy)
     xchar x, y;
     xchar lx, ly, hx, hy;
 {
-    return(occupied(x, y) ||
+    return((boolean)(occupied(x, y) ||
 	   ((x >= lx) && (x <= hx) && (y >= ly) && (y <= hy)) ||
 	   !((levl[x][y].typ == CORR && level.flags.is_maze_lev) ||
-	       levl[x][y].typ == ROOM || levl[x][y].typ == AIR));
+	       levl[x][y].typ == ROOM || levl[x][y].typ == AIR)));
 }
 
 /* pick a location in area (lx, ly, hx, hy) but not in (nlx, nly, nhx, nhy) */

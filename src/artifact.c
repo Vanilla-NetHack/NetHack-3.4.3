@@ -235,7 +235,7 @@ unsigned abil;
 {
 	const struct artifact *arti = get_artifact(otmp);
 
-	return(arti && (arti->spfx & abil));
+	return((boolean)(arti && (arti->spfx & abil)));
 }
 
 #endif /* OVL0 */
@@ -256,8 +256,8 @@ register const char *name;
 		 */
 	for (a = artilist+1; a->otyp; a++)
 	    if (a->otyp == otmp->otyp && !strcmp(a->name, name))
-		return ((a->spfx & (SPFX_NOGEN|SPFX_RESTR)) != 0 ||
-			otmp->quan > 1L);
+		return ((boolean)((a->spfx & (SPFX_NOGEN|SPFX_RESTR)) != 0 ||
+			otmp->quan > 1L));
 
 	return FALSE;
 }
@@ -270,7 +270,7 @@ register struct obj *otmp;
 	register const struct artifact *weap;
 
 	if ((weap = get_artifact(otmp)) != 0)
-		return(weap->attk.adtyp == adtyp);
+		return((boolean)(weap->attk.adtyp == adtyp));
 	return(0);
 }
 
@@ -282,7 +282,7 @@ register struct obj *otmp;
 	register const struct artifact *weap;
 
 	if ((weap = get_artifact(otmp)) != 0)
-		return(weap->defn.adtyp == adtyp);
+		return((boolean)(weap->defn.adtyp == adtyp));
 	return(0);
 }
 
@@ -844,13 +844,13 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 					pline("Somehow, %s misses wildly.",
 						mon_nam(magr));
 				*dmgptr = 0;
-				return (youattack || vis);
+				return ((boolean)(youattack || vis));
 			}
 			if (noncorporeal(mdef->data) || amorphous(mdef->data)) {
 				pline("%s slices through %s neck.",
 				      artilist[ART_VORPAL_BLADE].name,
 				      s_suffix(mon_nam(mdef)));
-				return (youattack || vis);
+				return ((boolean)(youattack || vis));
 			}
 			*dmgptr = mdef->mhp;
 			pline(behead_msg[rn2(SIZE(behead_msg))],

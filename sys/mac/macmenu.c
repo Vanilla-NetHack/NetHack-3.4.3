@@ -15,8 +15,8 @@
 /****************************************\
  * Edit History:
  *
- * 930512	- More bug fixes and getting tty to work again, Jon WŠtte
- * 930508	- Bug fixes in-flight, Jon WŠtte
+ * 930512	- More bug fixes and getting tty to work again, Jon W{tte
+ * 930508	- Bug fixes in-flight, Jon W{tte
  * 04/29/93 - 1st Release Draft, David Hairston
  * 04/11/93 - 1st Draft, David Hairston
 \****************************************/
@@ -47,6 +47,11 @@
 /* Think/MPW incompatibility from LoMem.h/SysEqu.h */
 #if !defined(__LOMEM__) && !defined(__SYSEQU__)
 enum { WindowList = 0x9D6 };
+#endif
+
+/* Think has separated out c2pstr and other pascal odditites */
+#if defined(THINK_C)
+#include <pascal.h>
 #endif
 
 /******** Local Defines ********/
@@ -442,7 +447,7 @@ DialogAskName(asknameRec *pANR)
 		} else {
 			Handle h ;
 			h = GetResource ( 'STR ' , -16096 ) ;
-			if ( ( NULL != h ) && ( GetHandleSize ( h ) > 0 ) ) {
+			if ( ( (Handle) NULL != h ) && ( GetHandleSize ( h ) > 0 ) ) {
 				DetachResource ( h ) ;
 				HLock ( h ) ;
 				if ( * * h > 31 ) {
@@ -456,8 +461,8 @@ DialogAskName(asknameRec *pANR)
 			GetDItem ( ( WindowPtr ) & dRec , etxtANWho , & kind , & item , & area ) ;
 			SetIText ( item , pName ) ;
 			if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-				(*pANR).anMenu[anRole] = ( strchr ( uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
-					uitmChar [ 0 ] ) ;
+				(*pANR).anMenu[anRole] = ( strchr ( (char *) uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
+					(char *) uitmChar [ 0 ] ) ;
 			}
 		}
 	}
@@ -601,8 +606,8 @@ DialogAskName(asknameRec *pANR)
  		GetIText ( item , ( * pANR ) . anWho ) ;
 		BlockMove ( pANR -> anWho , pName , pANR -> anWho [ 0 ] + 1 ) ;
 		if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-			(*pANR).anMenu[anRole] = ( strchr ( uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
-				uitmChar [ 0 ] ) ;
+			(*pANR).anMenu[anRole] = ( strchr ( (char *) uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
+				(char *) uitmChar [ 0 ] ) ;
 		}
 	}
 

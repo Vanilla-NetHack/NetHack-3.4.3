@@ -701,7 +701,7 @@ register const char *let,*word;
 		    (otmp->oclass == TOOL_CLASS &&
 		     otmp->otyp != MAGIC_MARKER && otmp->otyp != TOWEL))
 		|| (!strcmp(word, "tin") &&
-		    (otmp->otyp != CORPSE))
+		    (otmp->otyp != CORPSE || !tinnable(otmp)))
 		|| (!strcmp(word, "rub") &&
 		    (otmp->oclass == TOOL_CLASS &&
 		     otmp->otyp != OIL_LAMP && otmp->otyp != MAGIC_LAMP &&
@@ -870,26 +870,26 @@ register struct obj *otmp;
 
 static boolean
 wearing_armor() {
-	return(uarm || uarmc || uarmf || uarmg || uarmh || uarms
+	return((boolean)(uarm || uarmc || uarmf || uarmg || uarmh || uarms
 #ifdef TOURIST
 		|| uarmu
 #endif
-		);
+		));
 }
 
 static boolean
 is_worn(otmp)
 register struct obj *otmp;
 {
-    return(!!(otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)));
+    return((boolean)(!!(otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP))));
 }
 
 static boolean
 is_fully_identified(otmp)
 register struct obj *otmp;
 {
-    return(otmp->known && otmp->dknown && otmp->bknown && otmp->rknown
-	   && objects[otmp->otyp].oc_name_known);
+    return((boolean)(otmp->known && otmp->dknown && otmp->bknown && otmp->rknown
+	   && objects[otmp->otyp].oc_name_known));
 }
 
 static NEARDATA const char removeables[] =
@@ -1127,7 +1127,7 @@ register struct obj *obj;
 	ilet = 'a';
 	for(otmp = invent; otmp && otmp != obj; otmp = otmp->nobj)
 		if(++ilet > 'z') ilet = 'A';
-	return(otmp ? ilet : NOINVSYM);
+	return((char)(otmp ? ilet : NOINVSYM));
 }
 
 /*
@@ -1675,7 +1675,7 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 
 	if(obj->known == otmp->known ||
 		!objects[otmp->otyp].oc_uses_known) {
-		return(objects[obj->otyp].oc_merge);
+		return((boolean)(objects[obj->otyp].oc_merge));
 	} else return(FALSE);
 }
 

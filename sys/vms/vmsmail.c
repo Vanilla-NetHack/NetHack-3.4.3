@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmail.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)vmsmail.c	3.1	93/06/22	*/
 /* Copyright (c) Robert Patrick Rankin, 1991.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -256,6 +256,9 @@ other:
 	nam = join;
     }
 # endif /* SHELL */
+    /* truncate really long messages to prevent verbalize() from blowing up */
+    if (txt && strlen(txt) > BUFSZ - 50) txt[BUFSZ - 50] = '\0';
+
     msg.message_typ  = typ;	/* simple index */
     msg.display_txt  = txt;	/* text for daemon to pline() */
     msg.object_nam   = nam;	/* 'name' for mail scroll */

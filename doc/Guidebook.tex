@@ -980,9 +980,9 @@ wielding a cursed one.
 
 %.pg
 Enchanted weapons have a ``plus'' (which can also be a minus)
-that adds to your chance
-to hit and the damage you do to a monster.  The only way to find out
-if a weapon is enchanted is to have it magically identified somehow.
+that adds to your chance to hit and the damage you do to a monster.
+The only way to determine a weapon's enchantment
+is to have it magically identified somehow.
 
 %.pg
 Those of you in the audience who are AD\&D players, be aware that each
@@ -1043,9 +1043,10 @@ The commands to use armor are `{\tt W}' (wear) and `{\tt T}' (take off).
 
 %.pg
 Food is necessary to survive.  If you go too long without eating you
-will faint, and eventually die of starvation.  Unprotected food does
-not stay fresh indefinitely; after a while it will spoil, and be
-unhealthy to eat.  Food stored in ice boxes or tins (``cans'' to you
+will faint, and eventually die of starvation.
+Some types of food will spoil, and become unhealthy to eat,
+if not protected.
+Food stored in ice boxes or tins (``cans'' to you
 Americans) will usually stay fresh, but ice boxes are heavy, and tins
 take a while to open.
 
@@ -1573,6 +1574,21 @@ Draw a tombstone graphic upon your death (default on).
 \item[\ib{verbose}]
 Provide more commentary during the game (default on).
 %.lp
+\item[\ib{videocolors}]
+Set the color palette for PC systems using NO\_TERMS
+(default 4 2 6 1 5 3 15 12 10 14 9 13 11).
+The order of colors is red, green, brown, blue, magenta, cyan,
+bright.white, bright.red, bright.green, yellow, bright.blue,
+bright.magenta, and bright.cyan.
+Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{videoshades}]
+Set the intensity level of the three gray scales available
+(default dark normal light, {\it PC\/ NetHack\/} only).
+If the game display is difficult to read, try adjusting these scales;
+if this does not correct the problem, try !color.
+Cannot be set with the `{\tt O}' command.
+%.lp
 \item[\ib{windowtype}]
 Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
 (default depends on version).
@@ -1724,16 +1740,20 @@ and {\it Paul Winner}, ported {\it NetHack\/} 3.1 to the PC.
 
 %.pg
 \medskip
-\nd {\it Jon W\"atte}, with help from {\it Ross Brown}, {\it Mike Engber},
-{\it David Hairston}, {\it Michael Hamel}, {\it Jonathan Handler},
-{\it Johnny Lee}, {\it Tim Lennan}, {\it Rob Menke}, {\it Andy Swanson}, and
-especially from {\it Hao-yang Wang}, developed {\it NetHack\/} 3.1 for the Macintosh.
+\nd {\it Jon W\"atte} and {\it Hao-yang Wang},
+with help from {\it Ross Brown}, {\it Mike Engber}, {\it David Hairston},
+{\it Michael Hamel}, {\it Jonathan Handler}, {\it Johnny Lee},
+{\it Tim Lennan}, {\it Rob Menke}, and {\it Andy Swanson},
+developed {\it NetHack\/} 3.1 for the Macintosh, porting it for MPW.
+Building on their development, {\it Barton House} added a Think C port.
 
 %.pg
 \medskip
-\nd {\it Timo Hakulinen\/} ported {\it NetHack\/} 3.1 to OS/2.  {\it Eric Smith\/}
-ported {\it NetHack\/} 3.1 to the Atari.  {\it Pat Rankin}, with help from
-{\it Joshua Delahunty}, is responsible for the VMS version of {\it NetHack\/} 3.1.
+\nd {\it Timo Hakulinen\/} ported {\it NetHack\/} 3.1 to OS/2.
+{\it Eric Smith\/} ported {\it NetHack\/} 3.1 to the Atari.
+{\it Pat Rankin}, with help from {\it Joshua Delahunty},
+is responsible for the VMS version of {\it NetHack\/} 3.1.
+{\it Michael Allison} ported {\it NetHack\/} 3.1 to Windows NT.
 
 %.pg
 \medskip
@@ -1751,27 +1771,28 @@ in this, the list of Dungeoneers:
 \begin{center}
 \begin{tabular}{lll}
 Richard Addison        & Eric Hendrickson    & Mike Passaretti   \\
-Tom Almy               & Bruce Holloway      & Pat Rankin        \\
-Ken Arromdee           & Richard P. Hughey   & Eric S. Raymond   \\
-Eric Backus            & Ari Huttunen        & Frederick Roeber  \\
-John S. Bien           & John Kallen         & John Rupley       \\
-Ralf Brown             & Del Lamb            & Carl Schelin      \\
-Ross Brown             & Greg Laskin         & Olaf Seibert      \\
-David Cohrs            & Johnny Lee          & Kevin Sitze       \\
-Jean-Christophe Collet & Tim Lennan          & Eric R. Smith     \\
-Steve Creps            & Merlyn LeRoy        & Kevin Smolkowski  \\
-Kevin Darcy            & Steve Linhart       & Michael Sokolov   \\
-Matthew Day            & Ken Lorber          & Stephen Spackman  \\
-Joshua Delahunty       & Dean Luick          & Andy Swanson      \\
-Bill Dyer              & Benson I. Margulies & Kevin Sweet       \\
-Mike Engber            & Pierre Martineau    & Scott R. Turner   \\
-Jochen Erwied          & Roland McGrath      & Steve VanDevender \\
-Mike Gallop            & Norm Meluch         & Janet Walz        \\
-David Gentzel          & Rob Menke           & Hao-yang Wang     \\
-Mark Gooderum          & Deron Meranda       & Jon W\"atte       \\
-David Hairston         & Bruce Mewborne      & Tom West          \\
-Timo Hakulinen         & Izchak Miller       & Paul Winner       \\
-Michael Hamel          & Gil Neiger          & Gregg Wonderly    \\
+Michael Allison        & Bruce Holloway      & Pat Rankin        \\
+Tom Almy               & Barton House        & Eric S. Raymond   \\
+Ken Arromdee           & Richard P. Hughey   & Frederick Roeber  \\
+Eric Backus            & Ari Huttunen        & John Rupley       \\
+John S. Bien           & John Kallen         & Carl Schelin      \\
+Ralf Brown             & Del Lamb            & Olaf Seibert      \\
+Ross Brown             & Greg Laskin         & Kevin Sitze       \\
+David Cohrs            & Johnny Lee          & Eric R. Smith     \\
+Jean-Christophe Collet & Tim Lennan          & Kevin Smolkowski  \\
+Steve Creps            & Merlyn LeRoy        & Michael Sokolov   \\
+Kevin Darcy            & Steve Linhart       & Stephen Spackman  \\
+Matthew Day            & Ken Lorber          & Andy Swanson      \\
+Joshua Delahunty       & Dean Luick          & Kevin Sweet       \\
+Bill Dyer              & Benson I. Margulies & Scott R. Turner   \\
+Mike Engber            & Pierre Martineau    & Steve VanDevender \\
+Jochen Erwied          & Roland McGrath      & Janet Walz        \\
+Mike Gallop            & Norm Meluch         & Hao-yang Wang     \\
+David Gentzel          & Rob Menke           & Jon W\"atte       \\
+Mark Gooderum          & Deron Meranda       & Tom West          \\
+David Hairston         & Bruce Mewborne      & Paul Winner       \\
+Timo Hakulinen         & Izchak Miller       & Gregg Wonderly    \\
+Michael Hamel          & Gil Neiger          &                   \\
 Jonathan Handler       & Greg Olson          &
 \end{tabular}
 \end{center}

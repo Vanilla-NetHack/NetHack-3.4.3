@@ -121,6 +121,7 @@ WINOBJ = $(WINTTYOBJ)
 # Systos needs -lcurses16 if you use -mshort
 # AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in config.h
 # and -ltermcap otherwise
+# Linux uses -ltermcap
 #
 # libraries for tty ports
 # WINTTYLIB = -ltermcap
@@ -145,6 +146,10 @@ WINLIB = $(WINTTYLIB)
 # DPX/2's also use the malloc(3x) routines.  In addition, if you are building
 # for X11, you must include libinet.a.
 # LIBS = -lmalloc -linet
+#
+# Linux NetHack uses some bsd style ioctl functions, thus it is necessary to
+# use the bsd libs.
+# LIBS = -lbsd
 LIBS =
 
 # make NetHack

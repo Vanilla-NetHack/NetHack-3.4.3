@@ -41,7 +41,7 @@ register struct mkroom *sroom;
 {
 	register int area = (sroom->hx - sroom->lx + 1)
 			   * (sroom->hy - sroom->ly + 1);
-	return( area > 20 );
+	return((boolean)( area > 20 ));
 }
 
 void
@@ -110,7 +110,7 @@ mkshop()
 				return;
 			}
 			for(i=0; shtypes[i].name; i++)
-				if(*ep == def_oc_syms[shtypes[i].symb])
+				if(*ep == def_oc_syms[(int)shtypes[i].symb])
 				    goto gottype;
 			if(*ep == 'g' || *ep == 'G')
 				i = 0;
@@ -296,7 +296,10 @@ struct mkroom *sroom;
 		switch(type) {
 		    case ZOO:
 			if(sroom->doorct)
-			    i = sq(dist2(sx,sy,doors[sh].x,doors[sh].y));
+			{
+			    int distval = dist2(sx,sy,doors[sh].x,doors[sh].y);
+			    i = sq(distval);
+			}
 			else
 			    i = goldlim;
 			if(i >= goldlim) i = 5*level_difficulty();
@@ -474,7 +477,7 @@ register struct mkroom *sroom;
 	if (sroom == dnstairs_room)
 		return TRUE;
 	if (sstairs.sx && !sstairs.up)
-		return sroom == sstairs_room;
+		return((boolean)(sroom == sstairs_room));
 	return FALSE;
 }
 
@@ -485,7 +488,7 @@ register struct mkroom *sroom;
 	if (sroom == upstairs_room)
 		return TRUE;
 	if (sstairs.sx && sstairs.up)
-		return sroom == sstairs_room;
+		return((boolean)(sroom == sstairs_room));
 	return FALSE;
 }
 
@@ -511,8 +514,8 @@ inside_room(croom, x, y)
 struct mkroom *croom;
 xchar x, y;
 {
-	return (x >= croom->lx-1 && x <= croom->hx+1 &&
-		y >= croom->ly-1 && y <= croom->hy+1);
+	return((boolean)(x >= croom->lx-1 && x <= croom->hx+1 &&
+		y >= croom->ly-1 && y <= croom->hy+1));
 }
 
 boolean

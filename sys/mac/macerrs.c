@@ -14,8 +14,7 @@
 #ifdef MAC_MPW32
 #include <String.h>
 #include <Strings.h>
-#endif
-#ifdef MAC_THINKC5
+#else
 #include <pascal.h>
 #endif
 #include <Dialogs.h>

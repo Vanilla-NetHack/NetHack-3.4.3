@@ -206,7 +206,7 @@ drinkfountain()
 		    if (++i >= A_MAX) i = 0;
 		}
 		display_nhwindow(WIN_MESSAGE, FALSE);
-		pline("A wisp of vapor escapes the fountain....");
+		pline("A wisp of vapor escapes the fountain...");
 		exercise(A_WIS, TRUE);
 		levl[u.ux][u.uy].blessedftn = 0;
 		return;
@@ -222,7 +222,7 @@ drinkfountain()
 
 		case 19: /* Self-knowledge */
 
-			You("feel self-knowledgeable....");
+			You("feel self-knowledgeable...");
 			display_nhwindow(WIN_MESSAGE, FALSE);
 			enlightenment(FALSE);
 			exercise(A_WIS, TRUE);
@@ -521,9 +521,9 @@ drinksink()
 #endif
 			break;
 		/* more odd messages --JJB */
-		case 11: You("hear clanking from the pipes....");
+		case 11: You("hear clanking from the pipes...");
 			break;
-		case 12: You("hear snatches of song from among the sewers....");
+		case 12: You("hear snatches of song from among the sewers...");
 			break;
 		case 19: if (Hallucination) {
 		   pline("From the murky drain, a hand reaches up... --oops--");

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)weapon.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)weapon.c	3.1	93/07/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
  *	bonuses for any given weapon used, as well as weapons selection
  *	code for monsters.
  */
-#include	"hack.h"
+#include "hack.h"
 
 #ifdef OVLB
 
@@ -344,6 +344,7 @@ register struct monst *mon;
 		return;
 	}
 	if (!attacktype(mon->data, AT_WEAP)) {
+		mw_tmp->owornmask &= ~W_WEP;
 		MON_NOWEP(mon);
 		mon->weapon_check = NO_WEAPON_WANTED;
 		if (cansee(mon->mx, mon->my)) {
@@ -424,20 +425,25 @@ register struct monst *mon;
 		 */
 		if (mw_tmp && mw_tmp->cursed && mw_tmp->otyp != CORPSE) {
 		    if (canseemon(mon)) {
+			char welded_buf[BUFSZ];
+
+			Sprintf(welded_buf, "%s welded to %s hand%s",
+				(mw_tmp->quan == 1L) ? "is" : "are",
+				his[pronoun_gender(mon)],
+				objects[mw_tmp->otyp].oc_bimanual ? "s" : "");
+
 			if (obj->otyp == PICK_AXE) {
-			    pline("Since %s weapon %s welded to %s hand,",
+			    pline("Since %s weapon%s %s,",
 				  s_suffix(mon_nam(mon)),
-				  (mw_tmp->quan == 1L) ? "is" : "are",
-				  his[pronoun_gender(mon)]);
+				  plur(mw_tmp->quan), welded_buf);
 			    pline("%s cannot wield that %s.",
 				mon_nam(mon), xname(obj));
 			} else {
 			    pline("%s tries to wield %s.", Monnam(mon),
 				doname(obj));
-			    pline("%s %s %s welded to %s hand!",
-				  s_suffix(Monnam(mon)), xname(mw_tmp),
-				  (mw_tmp->quan == 1L) ? "is" : "are",
-				  his[pronoun_gender(mon)]);
+			    pline("%s %s %s!",
+				  s_suffix(Monnam(mon)),
+				  xname(mw_tmp), welded_buf);
 			}
 			mw_tmp->bknown = 1;
 		    }
@@ -445,6 +451,7 @@ register struct monst *mon;
 		    return 1;
 		}
 		mon->mw = obj;		/* wield obj */
+		if (mw_tmp) mw_tmp->owornmask &= ~W_WEP;
 		mon->weapon_check = NEED_WEAPON;
 		if (canseemon(mon)) {
 			pline("%s wields %s!", Monnam(mon), doname(obj));
@@ -457,6 +464,7 @@ register struct monst *mon;
 				obj->bknown = 1;
 			}
 		}
+		obj->owornmask = W_WEP;
 		return 1;
 	}
 	mon->weapon_check = NEED_WEAPON;

@@ -196,7 +196,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    if (Stunned)
 				You("struggle to keep your balance.");
 			    else
-				You("reel....");
+				You("reel...");
 			    dmg = d(ACURR(A_DEX) < 12 ? 6 : 4, 4);
 			    if(Half_spell_damage) dmg = (dmg+1) / 2;
 			    make_stunned(HStun + dmg, FALSE);

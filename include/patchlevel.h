@@ -2,18 +2,27 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.1.2 */
+/* NetHack 3.1.3 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	1
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	2
+#define PATCHLEVEL	3
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
  */
 #define EDITLEVEL	0
+
+/*
+ *  Patch 3, July 12, 1993
+ *  further revise Mac windowing and extend to Think C (courtesy
+ *	Barton House)
+ *  fix confusing black/gray/white display on some MSDOS hardware
+ *  remove fatal bugs dealing with horns of plenty and VMS bones levels,
+ *	as well as more minor ones
+ */
 
 /*
  *  Patch 2, June 1, 1993

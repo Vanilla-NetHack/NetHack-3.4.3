@@ -17,7 +17,7 @@ extern void FDECL(exit, (int));
 # endif
 #endif
 
-#if defined(MICRO) && !defined(AMIGA)
+#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
 # define WRMODE "w+b"
 #else
 # define WRMODE "w+"
@@ -60,7 +60,7 @@ char **argv;
 	char	infile[64], outfile[64];
 	FILE	*fin, *fout;
 	int	i, len;
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 	static char *mac_argv[] = {	"dgn_comp",	/* dummy argv[0] */
 				":dat:dungeon.pdf"
 				};

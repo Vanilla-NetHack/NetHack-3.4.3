@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.1	93/05/27	*/
+/*	SCCS Id: @(#)lev_main.c	3.1	93/07/10	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -81,8 +81,8 @@ void FDECL(free_rooms, (room **, int));
 
 static struct {
 	const char *name;
-	short type;
-} trap_types[TRAPNUM] = {
+	int type;
+} trap_types[] = {
 	{ "arrow",	ARROW_TRAP },
 	{ "dart",	DART_TRAP },
 	{ "falling rock", ROCKTRAP },
@@ -102,9 +102,10 @@ static struct {
 	{ "statue",	STATUE_TRAP },
 	{ "magic",	MAGIC_TRAP },
 	{ "anti magic",	ANTI_MAGIC },
-#ifdef POLYSELF
-	{ "polymorph",	POLY_TRAP },
+#ifndef POLYSELF
+#define POLY_TRAP NO_TRAP	/* this will result in a random trap */
 #endif
+	{ "polymorph",	POLY_TRAP },
 	{ 0, 0 }
 };
 
@@ -192,7 +193,7 @@ char **argv;
 {
 	FILE *fin;
 	int i;
-#ifdef MAC_THINKC5
+#ifdef THINK_C
 	static char *mac_argv[] = {	"lev_comp",	/* dummy argv[0] */
 				":dat:Arch.des",
 				":dat:Barb.des",
@@ -362,9 +363,9 @@ char *s;
 	register int i;
 
 	SpinCursor(3);
-	for(i=0; i < TRAPNUM - 1; i++)
+	for (i=0; trap_types[i].name; i++)
 	    if(!strcmp(s,trap_types[i].name))
-		return((int)trap_types[i].type);
+		return trap_types[i].type;
 	return ERR;
 }
 

@@ -186,11 +186,11 @@ struct monst *mtmp;
 			mtmp->data->mlet == S_HUMAN || mtmp->mpeaceful ||
 			mtmp->data == &mons[PM_MINOTAUR])
 		return(FALSE);
-	return(
+	return((boolean)(
 #ifdef ELBERETH
 		   sengr_at("Elbereth", x, y) ||
 #endif
-		    sobj_at(SCR_SCARE_MONSTER, x, y) != (struct obj *)0);
+		    sobj_at(SCR_SCARE_MONSTER, x, y) != (struct obj *)0));
 }
 
 #endif /* OVL2 */
@@ -1069,15 +1069,15 @@ boolean
 closed_door(x, y)
 register int x, y;
 {
-	return(IS_DOOR(levl[x][y].typ) &&
-			(levl[x][y].doormask & (D_LOCKED | D_CLOSED)));
+	return((boolean)(IS_DOOR(levl[x][y].typ) &&
+			(levl[x][y].doormask & (D_LOCKED | D_CLOSED))));
 }
 
 boolean
 accessible(x, y)
 register int x, y;
 {
-	return(ACCESSIBLE(levl[x][y].typ) && !closed_door(x, y));
+	return((boolean)(ACCESSIBLE(levl[x][y].typ) && !closed_door(x, y)));
 }
 
 #endif /* OVL2 */

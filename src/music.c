@@ -47,6 +47,10 @@ static void FDECL(playstring, (char *,size_t));
 static void FDECL(speaker,(struct obj *,char *));
 #endif
 
+#ifdef AMIGA
+void FDECL( amii_speaker, ( struct obj *, char *, int ) );
+#endif
+
 /*
  * Wake every monster in range...
  */
@@ -433,7 +437,10 @@ int
 do_play_instrument(instr)
 struct obj *instr;
 {
-    char buf[BUFSZ], *s, c = 'y';
+    char buf[BUFSZ], c = 'y';
+#ifndef	AMIGA
+	char *s;
+#endif
     int x,y;
     boolean ok;
 

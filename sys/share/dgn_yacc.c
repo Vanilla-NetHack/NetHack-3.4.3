@@ -1,4 +1,13 @@
-extern char *malloc(), *realloc();
+#ifndef lint
+static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
+#endif
+#define YYBYACC 1
+#define YYMAJOR 1
+#define YYMINOR 9
+#define yyclearin (yychar=(-1))
+#define yyerrok (yyerrflag=0)
+#define YYRECOVERING (yyerrflag!=0)
+#define YYPREFIX "yy"
 /*	SCCS Id: @(#)dgn_comp.c	3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
@@ -64,42 +73,266 @@ static int in_dungeon = 0, n_dgns = -1, n_levs = -1, n_brs = -1;
 extern int fatal_error;
 extern const char *fname;
 
-typedef union 
+typedef union
 {
 	int	i;
 	char*	str;
 } YYSTYPE;
-# define INTEGER 257
-# define A_DUNGEON 258
-# define BRANCH 259
-# define CHBRANCH 260
-# define LEVEL 261
-# define RNDLEVEL 262
-# define CHLEVEL 263
-# define RNDCHLEVEL 264
-# define UP_OR_DOWN 265
-# define PROTOFILE 266
-# define DESCRIPTION 267
-# define DESCRIPTOR 268
-# define LEVELDESC 269
-# define ALIGNMENT 270
-# define LEVALIGN 271
-# define ENTRY 272
-# define STAIR 273
-# define NO_UP 274
-# define NO_DOWN 275
-# define PORTAL 276
-# define STRING 277
-#define yyclearin yychar = -1
-#define yyerrok yyerrflag = 0
-extern int yychar;
-extern int yyerrflag;
-#ifndef YYMAXDEPTH
-#define YYMAXDEPTH 150
+#define INTEGER 257
+#define A_DUNGEON 258
+#define BRANCH 259
+#define CHBRANCH 260
+#define LEVEL 261
+#define RNDLEVEL 262
+#define CHLEVEL 263
+#define RNDCHLEVEL 264
+#define UP_OR_DOWN 265
+#define PROTOFILE 266
+#define DESCRIPTION 267
+#define DESCRIPTOR 268
+#define LEVELDESC 269
+#define ALIGNMENT 270
+#define LEVALIGN 271
+#define ENTRY 272
+#define STAIR 273
+#define NO_UP 274
+#define NO_DOWN 275
+#define PORTAL 276
+#define STRING 277
+#define YYERRCODE 256
+short yylhs[] = {                                        -1,
+    0,    0,    4,    4,    5,    5,    5,    5,    6,    1,
+    1,    7,    7,    7,   11,   12,   14,   14,   13,    9,
+    9,    9,    9,    9,   15,   15,   16,   16,   17,   17,
+   18,   18,   19,   19,    8,    8,   21,   22,    3,    3,
+    3,    3,    3,    2,    2,   20,   10,
+};
+short yylen[] = {                                         2,
+    0,    1,    1,    2,    1,    1,    1,    1,    6,    0,
+    1,    1,    1,    1,    3,    1,    3,    3,    3,    1,
+    1,    1,    1,    1,    6,    7,    7,    8,    3,    3,
+    7,    8,    8,    9,    1,    1,    7,    8,    0,    1,
+    1,    1,    1,    0,    1,    5,    5,
+};
+short yydefred[] = {                                      0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    3,    5,    6,    7,    8,
+   12,   13,   14,   16,   20,   21,   22,   23,   24,   35,
+   36,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    4,    0,    0,    0,    0,    0,
+    0,    0,   19,   17,   29,   18,   30,   15,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,   11,    9,    0,   40,   41,
+   42,   43,    0,    0,    0,    0,    0,    0,    0,    0,
+   45,   37,    0,   27,    0,    0,    0,    0,    0,   38,
+   28,   33,    0,   47,   46,   34,
+};
+short yydgoto[] = {                                      14,
+   77,   92,   83,   15,   16,   17,   18,   19,   20,   67,
+   21,   22,   23,   24,   25,   26,   27,   28,   29,   69,
+   30,   31,
+};
+short yysindex[] = {                                   -237,
+  -50,  -49,  -48,  -47,  -46,  -45,  -44,  -43,  -39,  -38,
+  -30,  -22,  -21,    0, -237,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0, -239, -238, -236, -235, -234, -233, -232, -230, -228,
+ -220, -219, -218, -206,    0, -225,  -11, -223, -222, -221,
+ -217, -215,    0,    0,    0,    0,    0,    0,   17,   18,
+   20,   -5,    2, -213, -212, -190, -189, -188, -271,   17,
+   18,   18,   27,   28,   29,    0,    0,   30,    0,    0,
+    0,    0, -193, -271, -182, -180,   17,   17, -179, -178,
+    0,    0, -193,    0, -177, -176, -175,   42,   43,    0,
+    0,    0, -172,    0,    0,    0,
+};
+short yyrindex[] = {                                     86,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,   87,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,   16,    0,    1,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,   31,    1,   46,    0,    0,    0,    0,    0,
+    0,    0,   31,    0,   61,   76,    0,    0,    0,    0,
+    0,    0,   91,    0,    0,    0,
+};
+short yygindex[] = {                                      0,
+    0,   -4,    4,    0,   75,    0,    0,    0,    0,  -70,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,  -65,
+    0,    0,
+};
+#define YYTABLESIZE 363
+short yytable[] = {                                      84,
+   39,   79,   80,   81,   82,   85,   86,   32,   33,   34,
+   35,   36,   37,   38,   39,   10,   96,   97,   40,   41,
+    1,    2,    3,    4,    5,    6,    7,   42,    8,    9,
+   44,   10,   11,   12,   13,   43,   44,   46,   47,   54,
+   48,   49,   50,   51,   52,   25,   53,   55,   56,   57,
+   58,   59,   60,   61,   62,   63,   66,   68,   71,   64,
+   26,   65,   70,   73,   74,   72,   75,   76,   78,   87,
+   88,   91,   89,   90,   94,   31,   95,   98,   99,  101,
+  102,  103,  104,  105,  106,    1,    2,   93,  100,   45,
+   32,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,
+    0,    0,    0,    0,    0,    0,    0,    0,   39,   39,
+   39,   39,   39,   39,   39,   39,   39,   39,    0,   39,
+   39,   39,   39,   10,   10,   10,   10,   10,   10,   10,
+    0,   10,   10,    0,   10,   10,   10,   10,   44,   44,
+   44,   44,   44,   44,   44,    0,   44,   44,    0,   44,
+   44,   44,   44,   25,   25,   25,   25,   25,   25,   25,
+    0,   25,   25,    0,   25,   25,   25,   25,   26,   26,
+   26,   26,   26,   26,   26,    0,   26,   26,    0,   26,
+   26,   26,   26,   31,   31,   31,   31,   31,   31,   31,
+    0,   31,   31,    0,   31,   31,   31,   31,   32,   32,
+   32,   32,   32,   32,   32,    0,   32,   32,    0,   32,
+   32,   32,   32,
+};
+short yycheck[] = {                                      70,
+    0,  273,  274,  275,  276,   71,   72,   58,   58,   58,
+   58,   58,   58,   58,   58,    0,   87,   88,   58,   58,
+  258,  259,  260,  261,  262,  263,  264,   58,  266,  267,
+    0,  269,  270,  271,  272,   58,   58,  277,  277,  268,
+  277,  277,  277,  277,  277,    0,  277,  268,  268,  268,
+  257,  277,   64,  277,  277,  277,   40,   40,   64,  277,
+    0,  277,   43,  277,  277,   64,  257,  257,  257,   43,
+   43,  265,   44,   44,  257,    0,  257,  257,  257,  257,
+  257,  257,   41,   41,  257,    0,    0,   84,   93,   15,
+    0,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,
+   -1,   -1,   -1,   -1,   -1,   -1,   -1,   -1,  258,  259,
+  260,  261,  262,  263,  264,  265,  266,  267,   -1,  269,
+  270,  271,  272,  258,  259,  260,  261,  262,  263,  264,
+   -1,  266,  267,   -1,  269,  270,  271,  272,  258,  259,
+  260,  261,  262,  263,  264,   -1,  266,  267,   -1,  269,
+  270,  271,  272,  258,  259,  260,  261,  262,  263,  264,
+   -1,  266,  267,   -1,  269,  270,  271,  272,  258,  259,
+  260,  261,  262,  263,  264,   -1,  266,  267,   -1,  269,
+  270,  271,  272,  258,  259,  260,  261,  262,  263,  264,
+   -1,  266,  267,   -1,  269,  270,  271,  272,  258,  259,
+  260,  261,  262,  263,  264,   -1,  266,  267,   -1,  269,
+  270,  271,  272,
+};
+#define YYFINAL 14
+#ifndef YYDEBUG
+#define YYDEBUG 0
 #endif
-YYSTYPE yylval, yyval;
-# define YYERRCODE 256
-
+#define YYMAXTOKEN 277
+#if YYDEBUG
+char *yyname[] = {
+"end-of-file",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,"'('","')'",0,"'+'","','",0,0,0,0,0,0,0,0,0,0,0,0,0,"':'",0,0,0,0,0,
+"'@'",0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"INTEGER",
+"A_DUNGEON","BRANCH","CHBRANCH","LEVEL","RNDLEVEL","CHLEVEL","RNDCHLEVEL",
+"UP_OR_DOWN","PROTOFILE","DESCRIPTION","DESCRIPTOR","LEVELDESC","ALIGNMENT",
+"LEVALIGN","ENTRY","STAIR","NO_UP","NO_DOWN","PORTAL","STRING",
+};
+char *yyrule[] = {
+"$accept : file",
+"file :",
+"file : dungeons",
+"dungeons : dungeon",
+"dungeons : dungeons dungeon",
+"dungeon : dungeonline",
+"dungeon : dungeondesc",
+"dungeon : branches",
+"dungeon : levels",
+"dungeonline : A_DUNGEON ':' STRING STRING rcouple optional_int",
+"optional_int :",
+"optional_int : INTEGER",
+"dungeondesc : entry",
+"dungeondesc : descriptions",
+"dungeondesc : prototype",
+"entry : ENTRY ':' INTEGER",
+"descriptions : desc",
+"desc : DESCRIPTION ':' DESCRIPTOR",
+"desc : ALIGNMENT ':' DESCRIPTOR",
+"prototype : PROTOFILE ':' STRING",
+"levels : level1",
+"levels : level2",
+"levels : levdesc",
+"levels : chlevel1",
+"levels : chlevel2",
+"level1 : LEVEL ':' STRING STRING '@' acouple",
+"level1 : RNDLEVEL ':' STRING STRING '@' acouple INTEGER",
+"level2 : LEVEL ':' STRING STRING '@' acouple INTEGER",
+"level2 : RNDLEVEL ':' STRING STRING '@' acouple INTEGER INTEGER",
+"levdesc : LEVELDESC ':' DESCRIPTOR",
+"levdesc : LEVALIGN ':' DESCRIPTOR",
+"chlevel1 : CHLEVEL ':' STRING STRING STRING '+' rcouple",
+"chlevel1 : RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER",
+"chlevel2 : CHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER",
+"chlevel2 : RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER INTEGER",
+"branches : branch",
+"branches : chbranch",
+"branch : BRANCH ':' STRING '@' acouple branch_type direction",
+"chbranch : CHBRANCH ':' STRING STRING '+' rcouple branch_type direction",
+"branch_type :",
+"branch_type : STAIR",
+"branch_type : NO_UP",
+"branch_type : NO_DOWN",
+"branch_type : PORTAL",
+"direction :",
+"direction : UP_OR_DOWN",
+"acouple : '(' INTEGER ',' INTEGER ')'",
+"rcouple : '(' INTEGER ',' INTEGER ')'",
+};
+#endif
+#ifdef YYSTACKSIZE
+#undef YYMAXDEPTH
+#define YYMAXDEPTH YYSTACKSIZE
+#else
+#ifdef YYMAXDEPTH
+#define YYSTACKSIZE YYMAXDEPTH
+#else
+#define YYSTACKSIZE 500
+#define YYMAXDEPTH 500
+#endif
+#endif
+int yydebug;
+int yynerrs;
+int yyerrflag;
+int yychar;
+short *yyssp;
+YYSTYPE *yyvsp;
+YYSTYPE yyval;
+YYSTYPE yylval;
+short yyss[YYSTACKSIZE];
+YYSTYPE yyvs[YYSTACKSIZE];
+#define yystacksize YYSTACKSIZE
 
 void
 init_dungeon()
@@ -333,850 +566,494 @@ output_dgn()
 								stdout);
 	}
 }
-int yyexca[] ={
--1, 1,
-	0, -1,
-	-2, 0,
-	};
-# define YYNPROD 48
-# define YYLAST 145
-int yyact[]={
-
-     8,    22,    23,    24,    25,    28,    29,    74,    21,    30,
-    73,    26,    31,    27,    19,    65,    79,    80,    81,    82,
-   106,    64,    63,    62,    61,    59,    56,    55,    52,    51,
-    50,    49,    48,    46,    58,    57,    54,    53,    91,   103,
-   102,   101,    99,    98,    95,    94,    83,    77,    76,    47,
-    90,    66,    78,    68,    72,    71,    60,    45,    44,    43,
-    42,    41,    40,    39,    38,    37,    36,    35,    34,    33,
-    92,    89,    88,    87,    70,   105,   104,    67,    69,     3,
-    13,    12,    32,    18,    17,    16,    15,    14,    20,    11,
-    10,     9,     7,     6,     5,     4,     2,     1,    75,     0,
-     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     0,     0,    84,     0,     0,    85,    86,     0,     0,     0,
-     0,     0,     0,     0,     0,     0,     0,    93,     0,    96,
-    97,     0,     0,     0,   100 };
-int yypact[]={
-
-  -258, -1000,  -258, -1000, -1000, -1000, -1000, -1000,    11, -1000,
- -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000, -1000,    10,
- -1000,     9,     8,     7,     6,     5,     4,     3,     2,     1,
-     0,    -1, -1000,  -244,  -208,  -245,  -246,  -247,  -248,  -249,
-  -231,  -232,  -250,  -251,  -233,  -234,  -252, -1000, -1000,    -8,
-  -253,  -254,  -255, -1000, -1000,  -256,  -262, -1000, -1000,    37,
-    38,    31,    -9,   -10,  -267,  -270,  -209,  -210,  -257,  -211,
-    37,    38,    38,    30,    29, -1000, -1000,    27,  -227, -1000,
- -1000, -1000, -1000,    26,  -257,  -212,  -213,    37,    37,  -214,
- -1000, -1000,  -215,  -227, -1000,  -216,  -217,  -218,    35,    34,
- -1000, -1000, -1000,  -237, -1000, -1000, -1000 };
-int yypgo[]={
-
-     0,    98,    50,    52,    97,    96,    79,    95,    94,    93,
-    92,    51,    91,    90,    89,    88,    87,    86,    85,    84,
-    83,    53,    81,    80 };
-int yyr1[]={
-
-     0,     4,     4,     5,     5,     6,     6,     6,     6,     7,
-     1,     1,     8,     8,     8,    12,    13,    15,    15,    14,
-    10,    10,    10,    10,    10,    16,    16,    17,    17,    18,
-    18,    19,    19,    20,    20,     9,     9,    22,    23,     3,
-     3,     3,     3,     3,     2,     2,    21,    11 };
-int yyr2[]={
-
-     0,     0,     3,     2,     4,     2,     2,     2,     2,    13,
-     1,     3,     2,     2,     2,     7,     2,     7,     7,     7,
-     2,     2,     2,     2,     2,    13,    15,    15,    17,     7,
-     7,    15,    17,    17,    19,     2,     2,    15,    17,     1,
-     3,     3,     3,     3,     1,     3,    11,    11 };
-int yychk[]={
-
- -1000,    -4,    -5,    -6,    -7,    -8,    -9,   -10,   258,   -12,
-   -13,   -14,   -22,   -23,   -16,   -17,   -18,   -19,   -20,   272,
-   -15,   266,   259,   260,   261,   262,   269,   271,   263,   264,
-   267,   270,    -6,    58,    58,    58,    58,    58,    58,    58,
-    58,    58,    58,    58,    58,    58,   277,   257,   277,   277,
-   277,   277,   277,   268,   268,   277,   277,   268,   268,   277,
-    64,   277,   277,   277,   277,   277,   -11,    40,   -21,    40,
-    43,    64,    64,   277,   277,    -1,   257,   257,    -3,   273,
-   274,   275,   276,   257,   -11,   -21,   -21,    43,    43,    44,
-    -2,   265,    44,    -3,   257,   257,   -11,   -11,   257,   257,
-    -2,   257,   257,   257,    41,    41,   257 };
-int yydef[]={
-
-     1,    -2,     2,     3,     5,     6,     7,     8,     0,    12,
-    13,    14,    35,    36,    20,    21,    22,    23,    24,     0,
-    16,     0,     0,     0,     0,     0,     0,     0,     0,     0,
-     0,     0,     4,     0,     0,     0,     0,     0,     0,     0,
-     0,     0,     0,     0,     0,     0,     0,    15,    19,     0,
-     0,     0,     0,    29,    30,     0,     0,    17,    18,     0,
-     0,     0,     0,     0,     0,     0,    10,     0,    39,     0,
-     0,     0,     0,     0,     0,     9,    11,     0,    44,    40,
-    41,    42,    43,     0,    39,    25,     0,     0,     0,     0,
-    37,    45,     0,    44,    27,    26,    31,     0,     0,     0,
-    38,    28,    33,    32,    47,    46,    34 };
-typedef struct { char *t_name; int t_val; } yytoktype;
-#ifndef YYDEBUG
-#	define YYDEBUG	0	/* don't allow debugging */
-#endif
-
-#if YYDEBUG
-
-yytoktype yytoks[] =
-{
-	"INTEGER",	257,
-	"A_DUNGEON",	258,
-	"BRANCH",	259,
-	"CHBRANCH",	260,
-	"LEVEL",	261,
-	"RNDLEVEL",	262,
-	"CHLEVEL",	263,
-	"RNDCHLEVEL",	264,
-	"UP_OR_DOWN",	265,
-	"PROTOFILE",	266,
-	"DESCRIPTION",	267,
-	"DESCRIPTOR",	268,
-	"LEVELDESC",	269,
-	"ALIGNMENT",	270,
-	"LEVALIGN",	271,
-	"ENTRY",	272,
-	"STAIR",	273,
-	"NO_UP",	274,
-	"NO_DOWN",	275,
-	"PORTAL",	276,
-	"STRING",	277,
-	"-unknown-",	-1	/* ends search */
-};
-
-char * yyreds[] =
-{
-	"-no such reduction-",
-	"file : /* empty */",
-	"file : dungeons",
-	"dungeons : dungeon",
-	"dungeons : dungeons dungeon",
-	"dungeon : dungeonline",
-	"dungeon : dungeondesc",
-	"dungeon : branches",
-	"dungeon : levels",
-	"dungeonline : A_DUNGEON ':' STRING STRING rcouple optional_int",
-	"optional_int : /* empty */",
-	"optional_int : INTEGER",
-	"dungeondesc : entry",
-	"dungeondesc : descriptions",
-	"dungeondesc : prototype",
-	"entry : ENTRY ':' INTEGER",
-	"descriptions : desc",
-	"desc : DESCRIPTION ':' DESCRIPTOR",
-	"desc : ALIGNMENT ':' DESCRIPTOR",
-	"prototype : PROTOFILE ':' STRING",
-	"levels : level1",
-	"levels : level2",
-	"levels : levdesc",
-	"levels : chlevel1",
-	"levels : chlevel2",
-	"level1 : LEVEL ':' STRING STRING '@' acouple",
-	"level1 : RNDLEVEL ':' STRING STRING '@' acouple INTEGER",
-	"level2 : LEVEL ':' STRING STRING '@' acouple INTEGER",
-	"level2 : RNDLEVEL ':' STRING STRING '@' acouple INTEGER INTEGER",
-	"levdesc : LEVELDESC ':' DESCRIPTOR",
-	"levdesc : LEVALIGN ':' DESCRIPTOR",
-	"chlevel1 : CHLEVEL ':' STRING STRING STRING '+' rcouple",
-	"chlevel1 : RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER",
-	"chlevel2 : CHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER",
-	"chlevel2 : RNDCHLEVEL ':' STRING STRING STRING '+' rcouple INTEGER INTEGER",
-	"branches : branch",
-	"branches : chbranch",
-	"branch : BRANCH ':' STRING '@' acouple branch_type direction",
-	"chbranch : CHBRANCH ':' STRING STRING '+' rcouple branch_type direction",
-	"branch_type : /* empty */",
-	"branch_type : STAIR",
-	"branch_type : NO_UP",
-	"branch_type : NO_DOWN",
-	"branch_type : PORTAL",
-	"direction : /* empty */",
-	"direction : UP_OR_DOWN",
-	"acouple : '(' INTEGER ',' INTEGER ')'",
-	"rcouple : '(' INTEGER ',' INTEGER ')'",
-};
-#endif /* YYDEBUG */
-#line 1 "/usr/lib/yaccpar"
-/*	@(#)yaccpar 1.10 89/04/04 SMI; from S5R3 1.10	*/
-
-/*
-** Skeleton parser driver for yacc output
-*/
-
-/*
-** yacc user known macros and defines
-*/
-#define YYERROR		goto yyerrlab
-#define YYACCEPT	{ free(yys); free(yyv); return(0); }
-#define YYABORT		{ free(yys); free(yyv); return(1); }
-#define YYBACKUP( newtoken, newvalue )\
-{\
-	if ( yychar >= 0 || ( yyr2[ yytmp ] >> 1 ) != 1 )\
-	{\
-		yyerror( "syntax error - cannot backup" );\
-		goto yyerrlab;\
-	}\
-	yychar = newtoken;\
-	yystate = *yyps;\
-	yylval = newvalue;\
-	goto yynewstate;\
-}
-#define YYRECOVERING()	(!!yyerrflag)
-#ifndef YYDEBUG
-#	define YYDEBUG	1	/* make debugging available */
-#endif
-
-/*
-** user known globals
-*/
-int yydebug;			/* set to 1 to get debugging */
-
-/*
-** driver internal defines
-*/
-#define YYFLAG		(-1000)
-
-/*
-** static variables used by the parser
-*/
-static YYSTYPE *yyv;			/* value stack */
-static int *yys;			/* state stack */
-
-static YYSTYPE *yypv;			/* top of value stack */
-static int *yyps;			/* top of state stack */
-
-static int yystate;			/* current state */
-static int yytmp;			/* extra var (lasts between blocks) */
-
-int yynerrs;			/* number of errors */
-
-int yyerrflag;			/* error recovery flag */
-int yychar;			/* current input token number */
-
-
-/*
-** yyparse - return 0 if worked, 1 if syntax error not recovered from
-*/
+#define YYABORT goto yyabort
+#define YYREJECT goto yyabort
+#define YYACCEPT goto yyaccept
+#define YYERROR goto yyerrlab
 int
 yyparse()
 {
-	register YYSTYPE *yypvt;	/* top of value stack for $vars */
-	unsigned yymaxdepth = YYMAXDEPTH;
-
-	/*
-	** Initialize externals - yyparse may be called more than once
-	*/
-	yyv = (YYSTYPE*)malloc(yymaxdepth*sizeof(YYSTYPE));
-	yys = (int*)malloc(yymaxdepth*sizeof(int));
-	if (!yyv || !yys)
-	{
-		yyerror( "out of memory" );
-		return(1);
-	}
-	yypv = &yyv[-1];
-	yyps = &yys[-1];
-	yystate = 0;
-	yytmp = 0;
-	yynerrs = 0;
-	yyerrflag = 0;
-	yychar = -1;
-
-	goto yystack;
-	{
-		register YYSTYPE *yy_pv;	/* top of value stack */
-		register int *yy_ps;		/* top of state stack */
-		register int yy_state;		/* current state */
-		register int  yy_n;		/* internal state number info */
-
-		/*
-		** get globals into registers.
-		** branch to here only if YYBACKUP was called.
-		*/
-	yynewstate:
-		yy_pv = yypv;
-		yy_ps = yyps;
-		yy_state = yystate;
-		goto yy_newstate;
-
-		/*
-		** get globals into registers.
-		** either we just started, or we just finished a reduction
-		*/
-	yystack:
-		yy_pv = yypv;
-		yy_ps = yyps;
-		yy_state = yystate;
-
-		/*
-		** top of for (;;) loop while no reductions done
-		*/
-	yy_stack:
-		/*
-		** put a state and value onto the stacks
-		*/
+    register int yym, yyn, yystate;
 #if YYDEBUG
-		/*
-		** if debugging, look up token value in list of value vs.
-		** name pairs.  0 and negative (-1) are special values.
-		** Note: linear search is used since time is not a real
-		** consideration while debugging.
-		*/
-		if ( yydebug )
-		{
-			register int yy_i;
+    register char *yys;
+    extern char *getenv();
 
-			(void)printf( "State %d, token ", yy_state );
-			if ( yychar == 0 )
-				(void)printf( "end-of-file\n" );
-			else if ( yychar < 0 )
-				(void)printf( "-none-\n" );
-			else
-			{
-				for ( yy_i = 0; yytoks[yy_i].t_val >= 0;
-					yy_i++ )
-				{
-					if ( yytoks[yy_i].t_val == yychar )
-						break;
-				}
-				(void)printf( "%s\n", yytoks[yy_i].t_name );
-			}
-		}
-#endif /* YYDEBUG */
-		if ( ++yy_ps >= &yys[ yymaxdepth ] )	/* room on stack? */
-		{
-			/*
-			** reallocate and recover.  Note that pointers
-			** have to be reset, or bad things will happen
-			*/
-			int yyps_index = (yy_ps - yys);
-			int yypv_index = (yy_pv - yyv);
-			int yypvt_index = (yypvt - yyv);
-			yymaxdepth += YYMAXDEPTH;
-			yyv = (YYSTYPE*)realloc((char*)yyv,
-				yymaxdepth * sizeof(YYSTYPE));
-			yys = (int*)realloc((char*)yys,
-				yymaxdepth * sizeof(int));
-			if (!yyv || !yys)
-			{
-				yyerror( "yacc stack overflow" );
-				return(1);
-			}
-			yy_ps = yys + yyps_index;
-			yy_pv = yyv + yypv_index;
-			yypvt = yyv + yypvt_index;
-		}
-		*yy_ps = yy_state;
-		*++yy_pv = yyval;
-
-		/*
-		** we have a new state - find out what to do
-		*/
-	yy_newstate:
-		if ( ( yy_n = yypact[ yy_state ] ) <= YYFLAG )
-			goto yydefault;		/* simple state */
-#if YYDEBUG
-		/*
-		** if debugging, need to mark whether new token grabbed
-		*/
-		yytmp = yychar < 0;
+    if ((yys = getenv("YYDEBUG")) != 0)
+    {
+        yyn = *yys;
+        if (yyn >= '0' && yyn <= '9')
+            yydebug = yyn - '0';
+    }
 #endif
-		if ( ( yychar < 0 ) && ( ( yychar = yylex() ) < 0 ) )
-			yychar = 0;		/* reached EOF */
-#if YYDEBUG
-		if ( yydebug && yytmp )
-		{
-			register int yy_i;
 
-			(void)printf( "Received token " );
-			if ( yychar == 0 )
-				(void)printf( "end-of-file\n" );
-			else if ( yychar < 0 )
-				(void)printf( "-none-\n" );
-			else
-			{
-				for ( yy_i = 0; yytoks[yy_i].t_val >= 0;
-					yy_i++ )
-				{
-					if ( yytoks[yy_i].t_val == yychar )
-						break;
-				}
-				(void)printf( "%s\n", yytoks[yy_i].t_name );
-			}
-		}
-#endif /* YYDEBUG */
-		if ( ( ( yy_n += yychar ) < 0 ) || ( yy_n >= YYLAST ) )
-			goto yydefault;
-		if ( yychk[ yy_n = yyact[ yy_n ] ] == yychar )	/*valid shift*/
-		{
-			yychar = -1;
-			yyval = yylval;
-			yy_state = yy_n;
-			if ( yyerrflag > 0 )
-				yyerrflag--;
-			goto yy_stack;
-		}
+    yynerrs = 0;
+    yyerrflag = 0;
+    yychar = (-1);
 
-	yydefault:
-		if ( ( yy_n = yydef[ yy_state ] ) == -2 )
-		{
+    yyssp = yyss;
+    yyvsp = yyvs;
+    *yyssp = yystate = 0;
+
+yyloop:
+    if ((yyn = yydefred[yystate]) != 0) goto yyreduce;
+    if (yychar < 0)
+    {
+        if ((yychar = yylex()) < 0) yychar = 0;
 #if YYDEBUG
-			yytmp = yychar < 0;
+        if (yydebug)
+        {
+            yys = 0;
+            if (yychar <= YYMAXTOKEN) yys = yyname[yychar];
+            if (!yys) yys = "illegal-symbol";
+            printf("%sdebug: state %d, reading %d (%s)\n",
+                    YYPREFIX, yystate, yychar, yys);
+        }
 #endif
-			if ( ( yychar < 0 ) && ( ( yychar = yylex() ) < 0 ) )
-				yychar = 0;		/* reached EOF */
+    }
+    if ((yyn = yysindex[yystate]) != 0 && (yyn += yychar) >= 0 &&
+            yyn <= YYTABLESIZE && yycheck[yyn] == yychar)
+    {
 #if YYDEBUG
-			if ( yydebug && yytmp )
-			{
-				register int yy_i;
-
-				(void)printf( "Received token " );
-				if ( yychar == 0 )
-					(void)printf( "end-of-file\n" );
-				else if ( yychar < 0 )
-					(void)printf( "-none-\n" );
-				else
-				{
-					for ( yy_i = 0;
-						yytoks[yy_i].t_val >= 0;
-						yy_i++ )
-					{
-						if ( yytoks[yy_i].t_val
-							== yychar )
-						{
-							break;
-						}
-					}
-					(void)printf( "%s\n", yytoks[yy_i].t_name );
-				}
-			}
-#endif /* YYDEBUG */
-			/*
-			** look through exception table
-			*/
-			{
-				register int *yyxi = yyexca;
-
-				while ( ( *yyxi != -1 ) ||
-					( yyxi[1] != yy_state ) )
-				{
-					yyxi += 2;
-				}
-				while ( ( *(yyxi += 2) >= 0 ) &&
-					( *yyxi != yychar ) )
-					;
-				if ( ( yy_n = yyxi[1] ) < 0 )
-					YYACCEPT;
-			}
-		}
-
-		/*
-		** check for syntax error
-		*/
-		if ( yy_n == 0 )	/* have an error */
-		{
-			/* no worry about speed here! */
-			switch ( yyerrflag )
-			{
-			case 0:		/* new error */
-				yyerror( "syntax error" );
-				goto skip_init;
-			yyerrlab:
-				/*
-				** get globals into registers.
-				** we have a user generated syntax type error
-				*/
-				yy_pv = yypv;
-				yy_ps = yyps;
-				yy_state = yystate;
-				yynerrs++;
-			skip_init:
-			case 1:
-			case 2:		/* incompletely recovered error */
-					/* try again... */
-				yyerrflag = 3;
-				/*
-				** find state where "error" is a legal
-				** shift action
-				*/
-				while ( yy_ps >= yys )
-				{
-					yy_n = yypact[ *yy_ps ] + YYERRCODE;
-					if ( yy_n >= 0 && yy_n < YYLAST &&
-						yychk[yyact[yy_n]] == YYERRCODE)					{
-						/*
-						** simulate shift of "error"
-						*/
-						yy_state = yyact[ yy_n ];
-						goto yy_stack;
-					}
-					/*
-					** current state has no shift on
-					** "error", pop stack
-					*/
-#if YYDEBUG
-#	define _POP_ "Error recovery pops state %d, uncovers state %d\n"
-					if ( yydebug )
-						(void)printf( _POP_, *yy_ps,
-							yy_ps[-1] );
-#	undef _POP_
+        if (yydebug)
+            printf("%sdebug: state %d, shifting to state %d\n",
+                    YYPREFIX, yystate, yytable[yyn]);
 #endif
-					yy_ps--;
-					yy_pv--;
-				}
-				/*
-				** there is no state on stack with "error" as
-				** a valid shift.  give up.
-				*/
-				YYABORT;
-			case 3:		/* no shift yet; eat a token */
-#if YYDEBUG
-				/*
-				** if debugging, look up token in list of
-				** pairs.  0 and negative shouldn't occur,
-				** but since timing doesn't matter when
-				** debugging, it doesn't hurt to leave the
-				** tests here.
-				*/
-				if ( yydebug )
-				{
-					register int yy_i;
-
-					(void)printf( "Error recovery discards " );
-					if ( yychar == 0 )
-						(void)printf( "token end-of-file\n" );
-					else if ( yychar < 0 )
-						(void)printf( "token -none-\n" );
-					else
-					{
-						for ( yy_i = 0;
-							yytoks[yy_i].t_val >= 0;
-							yy_i++ )
-						{
-							if ( yytoks[yy_i].t_val
-								== yychar )
-							{
-								break;
-							}
-						}
-						(void)printf( "token %s\n",
-							yytoks[yy_i].t_name );
-					}
-				}
-#endif /* YYDEBUG */
-				if ( yychar == 0 )	/* reached EOF. quit */
-					YYABORT;
-				yychar = -1;
-				goto yy_newstate;
-			}
-		}/* end if ( yy_n == 0 ) */
-		/*
-		** reduction by production yy_n
-		** put stack tops, etc. so things right after switch
-		*/
-#if YYDEBUG
-		/*
-		** if debugging, print the string that is the user's
-		** specification of the reduction which is just about
-		** to be done.
-		*/
-		if ( yydebug )
-			(void)printf( "Reduce by (%d) \"%s\"\n",
-				yy_n, yyreds[ yy_n ] );
+        if (yyssp >= yyss + yystacksize - 1)
+        {
+            goto yyoverflow;
+        }
+        *++yyssp = yystate = yytable[yyn];
+        *++yyvsp = yylval;
+        yychar = (-1);
+        if (yyerrflag > 0)  --yyerrflag;
+        goto yyloop;
+    }
+    if ((yyn = yyrindex[yystate]) != 0 && (yyn += yychar) >= 0 &&
+            yyn <= YYTABLESIZE && yycheck[yyn] == yychar)
+    {
+        yyn = yytable[yyn];
+        goto yyreduce;
+    }
+    if (yyerrflag) goto yyinrecovery;
+#ifdef lint
+    goto yynewerror;
 #endif
-		yytmp = yy_n;			/* value to switch over */
-		yypvt = yy_pv;			/* $vars top of value stack */
-		/*
-		** Look in goto table for next state
-		** Sorry about using yy_state here as temporary
-		** register variable, but why not, if it works...
-		** If yyr2[ yy_n ] doesn't have the low order bit
-		** set, then there is no action to be done for
-		** this reduction.  So, no saving & unsaving of
-		** registers done.  The only difference between the
-		** code just after the if and the body of the if is
-		** the goto yy_stack in the body.  This way the test
-		** can be made before the choice of what to do is needed.
-		*/
-		{
-			/* length of production doubled with extra bit */
-			register int yy_len = yyr2[ yy_n ];
-
-			if ( !( yy_len & 01 ) )
-			{
-				yy_len >>= 1;
-				yyval = ( yy_pv -= yy_len )[1];	/* $$ = $1 */
-				yy_state = yypgo[ yy_n = yyr1[ yy_n ] ] +
-					*( yy_ps -= yy_len ) + 1;
-				if ( yy_state >= YYLAST ||
-					yychk[ yy_state =
-					yyact[ yy_state ] ] != -yy_n )
-				{
-					yy_state = yyact[ yypgo[ yy_n ] ];
-				}
-				goto yy_stack;
-			}
-			yy_len >>= 1;
-			yyval = ( yy_pv -= yy_len )[1];	/* $$ = $1 */
-			yy_state = yypgo[ yy_n = yyr1[ yy_n ] ] +
-				*( yy_ps -= yy_len ) + 1;
-			if ( yy_state >= YYLAST ||
-				yychk[ yy_state = yyact[ yy_state ] ] != -yy_n )
-			{
-				yy_state = yyact[ yypgo[ yy_n ] ];
-			}
-		}
-					/* save until reenter driver code */
-		yystate = yy_state;
-		yyps = yy_ps;
-		yypv = yy_pv;
-	}
-	/*
-	** code supplied by user is placed in this switch
-	*/
-	switch( yytmp )
-	{
-		
-case 2:{
+yynewerror:
+    yyerror("syntax error");
+#ifdef lint
+    goto yyerrlab;
+#endif
+yyerrlab:
+    ++yynerrs;
+yyinrecovery:
+    if (yyerrflag < 3)
+    {
+        yyerrflag = 3;
+        for (;;)
+        {
+            if ((yyn = yysindex[*yyssp]) != 0 && (yyn += YYERRCODE) >= 0 &&
+                    yyn <= YYTABLESIZE && yycheck[yyn] == YYERRCODE)
+            {
+#if YYDEBUG
+                if (yydebug)
+                    printf("%sdebug: state %d, error recovery shifting\
+ to state %d\n", YYPREFIX, *yyssp, yytable[yyn]);
+#endif
+                if (yyssp >= yyss + yystacksize - 1)
+                {
+                    goto yyoverflow;
+                }
+                *++yyssp = yystate = yytable[yyn];
+                *++yyvsp = yylval;
+                goto yyloop;
+            }
+            else
+            {
+#if YYDEBUG
+                if (yydebug)
+                    printf("%sdebug: error recovery discarding state %d\n",
+                            YYPREFIX, *yyssp);
+#endif
+                if (yyssp <= yyss) goto yyabort;
+                --yyssp;
+                --yyvsp;
+            }
+        }
+    }
+    else
+    {
+        if (yychar == 0) goto yyabort;
+#if YYDEBUG
+        if (yydebug)
+        {
+            yys = 0;
+            if (yychar <= YYMAXTOKEN) yys = yyname[yychar];
+            if (!yys) yys = "illegal-symbol";
+            printf("%sdebug: state %d, error recovery discards token %d (%s)\n",
+                    YYPREFIX, yystate, yychar, yys);
+        }
+#endif
+        yychar = (-1);
+        goto yyloop;
+    }
+yyreduce:
+#if YYDEBUG
+    if (yydebug)
+        printf("%sdebug: state %d, reducing by rule %d (%s)\n",
+                YYPREFIX, yystate, yyn, yyrule[yyn]);
+#endif
+    yym = yylen[yyn];
+    yyval = yyvsp[1-yym];
+    switch (yyn)
+    {
+case 2:
+{
 			output_dgn();
-		  } break;
-case 9:{
+		  }
+break;
+case 9:
+{
 			init_dungeon();
-			strcpy(tmpdungeon[n_dgns].name, yypvt[-3].str);
-			if (!strcmp(yypvt[-2].str, "none"))
+			strcpy(tmpdungeon[n_dgns].name, yyvsp[-3].str);
+			if (!strcmp(yyvsp[-2].str, "none"))
 				tmpdungeon[n_levs].boneschar = '\0';
-			else if (yypvt[-2].str[1])
+			else if (yyvsp[-2].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmpdungeon[n_dgns].boneschar = yypvt[-2].str[0];
+				tmpdungeon[n_dgns].boneschar = yyvsp[-2].str[0];
 			tmpdungeon[n_dgns].lev.base = couple.base;
 			tmpdungeon[n_dgns].lev.rand = couple.rand;
-			tmpdungeon[n_dgns].chance = yypvt[-0].i;
-		  } break;
-case 10:{
+			tmpdungeon[n_dgns].chance = yyvsp[0].i;
+		  }
+break;
+case 10:
+{
 			yyval.i = 0;
-		  } break;
-case 11:{
-			yyval.i = yypvt[-0].i;
-		  } break;
-case 15:{
-			tmpdungeon[n_dgns].entry_lev = yypvt[-0].i;
-		  } break;
-case 17:{
-			if(yypvt[-0].i <= TOWN || yypvt[-0].i >= D_ALIGN_CHAOTIC)
+		  }
+break;
+case 11:
+{
+			yyval.i = yyvsp[0].i;
+		  }
+break;
+case 15:
+{
+			tmpdungeon[n_dgns].entry_lev = yyvsp[0].i;
+		  }
+break;
+case 17:
+{
+			if(yyvsp[0].i <= TOWN || yyvsp[0].i >= D_ALIGN_CHAOTIC)
 			    yyerror("Illegal description - ignoring!");
 			else
-			    tmpdungeon[n_dgns].flags |= yypvt[-0].i ;
-		  } break;
-case 18:{
-			if(yypvt[-0].i && yypvt[-0].i < D_ALIGN_CHAOTIC)
+			    tmpdungeon[n_dgns].flags |= yyvsp[0].i ;
+		  }
+break;
+case 18:
+{
+			if(yyvsp[0].i && yyvsp[0].i < D_ALIGN_CHAOTIC)
 			    yyerror("Illegal alignment - ignoring!");
 			else
-			    tmpdungeon[n_dgns].flags |= yypvt[-0].i ;
-		  } break;
-case 19:{
-			strcpy(tmpdungeon[n_dgns].protoname, yypvt[-0].str);
-		  } break;
-case 25:{
+			    tmpdungeon[n_dgns].flags |= yyvsp[0].i ;
+		  }
+break;
+case 19:
+{
+			strcpy(tmpdungeon[n_dgns].protoname, yyvsp[0].str);
+		  }
+break;
+case 25:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-3].str);
-			if (!strcmp(yypvt[-2].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-3].str);
+			if (!strcmp(yyvsp[-2].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-2].str[1])
+			else if (yyvsp[-2].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-2].str[0];
+				tmplevel[n_levs].boneschar = yyvsp[-2].str[0];
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmpdungeon[n_dgns].levels++;
-		  } break;
-case 26:{
+		  }
+break;
+case 26:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
-			if (!strcmp(yypvt[-3].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-4].str);
+			if (!strcmp(yyvsp[-3].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-3].str[1])
+			else if (yyvsp[-3].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-3].str[0];
+				tmplevel[n_levs].boneschar = yyvsp[-3].str[0];
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].rndlevs = yypvt[-0].i;
+			tmplevel[n_levs].rndlevs = yyvsp[0].i;
 			tmpdungeon[n_dgns].levels++;
-		  } break;
-case 27:{
+		  }
+break;
+case 27:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
-			if (!strcmp(yypvt[-3].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-4].str);
+			if (!strcmp(yyvsp[-3].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-3].str[1])
+			else if (yyvsp[-3].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-3].str[0];
+				tmplevel[n_levs].boneschar = yyvsp[-3].str[0];
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].chance = yypvt[-0].i;
+			tmplevel[n_levs].chance = yyvsp[0].i;
 			tmpdungeon[n_dgns].levels++;
-		  } break;
-case 28:{
+		  }
+break;
+case 28:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
-			if (!strcmp(yypvt[-4].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-5].str);
+			if (!strcmp(yyvsp[-4].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-4].str[1])
+			else if (yyvsp[-4].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-4].str[0];
+				tmplevel[n_levs].boneschar = yyvsp[-4].str[0];
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].chance = yypvt[-1].i;
-			tmplevel[n_levs].rndlevs = yypvt[-0].i;
+			tmplevel[n_levs].chance = yyvsp[-1].i;
+			tmplevel[n_levs].rndlevs = yyvsp[0].i;
 			tmpdungeon[n_dgns].levels++;
-		  } break;
-case 29:{
-			if(yypvt[-0].i >= D_ALIGN_CHAOTIC)
+		  }
+break;
+case 29:
+{
+			if(yyvsp[0].i >= D_ALIGN_CHAOTIC)
 			    yyerror("Illegal description - ignoring!");
 			else
-			    tmplevel[n_levs].flags |= yypvt[-0].i ;
-		  } break;
-case 30:{
-			if(yypvt[-0].i && yypvt[-0].i < D_ALIGN_CHAOTIC)
+			    tmplevel[n_levs].flags |= yyvsp[0].i ;
+		  }
+break;
+case 30:
+{
+			if(yyvsp[0].i && yyvsp[0].i < D_ALIGN_CHAOTIC)
 			    yyerror("Illegal alignment - ignoring!");
 			else
-			    tmplevel[n_levs].flags |= yypvt[-0].i ;
-		  } break;
-case 31:{
+			    tmplevel[n_levs].flags |= yyvsp[0].i ;
+		  }
+break;
+case 31:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
-			if (!strcmp(yypvt[-3].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-4].str);
+			if (!strcmp(yyvsp[-3].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-3].str[1])
+			else if (yyvsp[-3].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-3].str[0];
-			tmplevel[n_levs].chain = getchain(yypvt[-2].str);
+				tmplevel[n_levs].boneschar = yyvsp[-3].str[0];
+			tmplevel[n_levs].chain = getchain(yyvsp[-2].str);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
-		  } break;
-case 32:{
+		  }
+break;
+case 32:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
-			if (!strcmp(yypvt[-4].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-5].str);
+			if (!strcmp(yyvsp[-4].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-4].str[1])
+			else if (yyvsp[-4].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-4].str[0];
-			tmplevel[n_levs].chain = getchain(yypvt[-3].str);
+				tmplevel[n_levs].boneschar = yyvsp[-4].str[0];
+			tmplevel[n_levs].chain = getchain(yyvsp[-3].str);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].rndlevs = yypvt[-0].i;
+			tmplevel[n_levs].rndlevs = yyvsp[0].i;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
-		  } break;
-case 33:{
+		  }
+break;
+case 33:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
-			if (!strcmp(yypvt[-4].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-5].str);
+			if (!strcmp(yyvsp[-4].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-4].str[1])
+			else if (yyvsp[-4].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-4].str[0];
-			tmplevel[n_levs].chain = getchain(yypvt[-3].str);
+				tmplevel[n_levs].boneschar = yyvsp[-4].str[0];
+			tmplevel[n_levs].chain = getchain(yyvsp[-3].str);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].chance = yypvt[-0].i;
+			tmplevel[n_levs].chance = yyvsp[0].i;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
-		  } break;
-case 34:{
+		  }
+break;
+case 34:
+{
 			init_level();
-			strcpy(tmplevel[n_levs].name, yypvt[-6].str);
-			if (!strcmp(yypvt[-5].str, "none"))
+			strcpy(tmplevel[n_levs].name, yyvsp[-6].str);
+			if (!strcmp(yyvsp[-5].str, "none"))
 				tmplevel[n_levs].boneschar = '\0';
-			else if (yypvt[-5].str[1])
+			else if (yyvsp[-5].str[1])
 				yyerror("Bones marker must be a single char, or \"none\"!");
 			else
-				tmplevel[n_levs].boneschar = yypvt[-5].str[0];
-			tmplevel[n_levs].chain = getchain(yypvt[-4].str);
+				tmplevel[n_levs].boneschar = yyvsp[-5].str[0];
+			tmplevel[n_levs].chain = getchain(yyvsp[-4].str);
 			tmplevel[n_levs].lev.base = couple.base;
 			tmplevel[n_levs].lev.rand = couple.rand;
-			tmplevel[n_levs].chance = yypvt[-1].i;
-			tmplevel[n_levs].rndlevs = yypvt[-0].i;
+			tmplevel[n_levs].chance = yyvsp[-1].i;
+			tmplevel[n_levs].rndlevs = yyvsp[0].i;
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
-		  } break;
-case 37:{
+		  }
+break;
+case 37:
+{
 			init_branch();
-			strcpy(tmpbranch[n_brs].name, yypvt[-4].str);
+			strcpy(tmpbranch[n_brs].name, yyvsp[-4].str);
 			tmpbranch[n_brs].lev.base = couple.base;
 			tmpbranch[n_brs].lev.rand = couple.rand;
-			tmpbranch[n_brs].type = yypvt[-1].i;
-			tmpbranch[n_brs].up = yypvt[-0].i;
+			tmpbranch[n_brs].type = yyvsp[-1].i;
+			tmpbranch[n_brs].up = yyvsp[0].i;
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
-		  } break;
-case 38:{
+		  }
+break;
+case 38:
+{
 			init_branch();
-			strcpy(tmpbranch[n_brs].name, yypvt[-5].str);
-			tmpbranch[n_brs].chain = getchain(yypvt[-4].str);
+			strcpy(tmpbranch[n_brs].name, yyvsp[-5].str);
+			tmpbranch[n_brs].chain = getchain(yyvsp[-4].str);
 			tmpbranch[n_brs].lev.base = couple.base;
 			tmpbranch[n_brs].lev.rand = couple.rand;
-			tmpbranch[n_brs].type = yypvt[-1].i;
-			tmpbranch[n_brs].up = yypvt[-0].i;
+			tmpbranch[n_brs].type = yyvsp[-1].i;
+			tmpbranch[n_brs].up = yyvsp[0].i;
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
-		  } break;
-case 39:{
+		  }
+break;
+case 39:
+{
 			yyval.i = TBR_STAIR;	/* two way stair */
-		  } break;
-case 40:{
+		  }
+break;
+case 40:
+{
 			yyval.i = TBR_STAIR;	/* two way stair */
-		  } break;
-case 41:{
+		  }
+break;
+case 41:
+{
 			yyval.i = TBR_NO_UP;	/* no up staircase */
-		  } break;
-case 42:{
+		  }
+break;
+case 42:
+{
 			yyval.i = TBR_NO_DOWN;	/* no down staircase */
-		  } break;
-case 43:{
+		  }
+break;
+case 43:
+{
 			yyval.i = TBR_PORTAL;	/* portal connection */
-		  } break;
-case 44:{
+		  }
+break;
+case 44:
+{
 			yyval.i = 0;	/* defaults to down */
-		  } break;
-case 45:{
-			yyval.i = yypvt[-0].i;
-		  } break;
-case 46:{
-			if (yypvt[-3].i < -MAXLEVEL || yypvt[-3].i > MAXLEVEL) {
+		  }
+break;
+case 45:
+{
+			yyval.i = yyvsp[0].i;
+		  }
+break;
+case 46:
+{
+			if (yyvsp[-3].i < -MAXLEVEL || yyvsp[-3].i > MAXLEVEL) {
 			    yyerror("Abs base out of dlevel range - zeroing!");
 			    couple.base = couple.rand = 0;
-			} else if (yypvt[-1].i < -1 ||
-				((yypvt[-3].i < 0) ? (MAXLEVEL + yypvt[-3].i + yypvt[-1].i + 1) > MAXLEVEL :
-					(yypvt[-3].i + yypvt[-1].i) > MAXLEVEL)) {
+			} else if (yyvsp[-1].i < -1 ||
+				((yyvsp[-3].i < 0) ? (MAXLEVEL + yyvsp[-3].i + yyvsp[-1].i + 1) > MAXLEVEL :
+					(yyvsp[-3].i + yyvsp[-1].i) > MAXLEVEL)) {
 			    yyerror("Abs range out of dlevel range - zeroing!");
 			    couple.base = couple.rand = 0;
 			} else {
-			    couple.base = yypvt[-3].i;
-			    couple.rand = yypvt[-1].i;
+			    couple.base = yyvsp[-3].i;
+			    couple.rand = yyvsp[-1].i;
 			}
-		  } break;
-case 47:{
-			if (yypvt[-3].i < -MAXLEVEL || yypvt[-3].i > MAXLEVEL) {
+		  }
+break;
+case 47:
+{
+			if (yyvsp[-3].i < -MAXLEVEL || yyvsp[-3].i > MAXLEVEL) {
 			    yyerror("Rel base out of dlevel range - zeroing!");
 			    couple.base = couple.rand = 0;
 			} else {
-			    couple.base = yypvt[-3].i;
-			    couple.rand = yypvt[-1].i;
+			    couple.base = yyvsp[-3].i;
+			    couple.rand = yyvsp[-1].i;
 			}
-		  } break;
-	}
-	goto yystack;		/* reset registers in driver code */
+		  }
+break;
+    }
+    yyssp -= yym;
+    yystate = *yyssp;
+    yyvsp -= yym;
+    yym = yylhs[yyn];
+    if (yystate == 0 && yym == 0)
+    {
+#if YYDEBUG
+        if (yydebug)
+            printf("%sdebug: after reduction, shifting from state 0 to\
+ state %d\n", YYPREFIX, YYFINAL);
+#endif
+        yystate = YYFINAL;
+        *++yyssp = YYFINAL;
+        *++yyvsp = yyval;
+        if (yychar < 0)
+        {
+            if ((yychar = yylex()) < 0) yychar = 0;
+#if YYDEBUG
+            if (yydebug)
+            {
+                yys = 0;
+                if (yychar <= YYMAXTOKEN) yys = yyname[yychar];
+                if (!yys) yys = "illegal-symbol";
+                printf("%sdebug: state %d, reading %d (%s)\n",
+                        YYPREFIX, YYFINAL, yychar, yys);
+            }
+#endif
+        }
+        if (yychar == 0) goto yyaccept;
+        goto yyloop;
+    }
+    if ((yyn = yygindex[yym]) != 0 && (yyn += yystate) >= 0 &&
+            yyn <= YYTABLESIZE && yycheck[yyn] == yystate)
+        yystate = yytable[yyn];
+    else
+        yystate = yydgoto[yym];
+#if YYDEBUG
+    if (yydebug)
+        printf("%sdebug: after reduction, shifting from state %d \
+to state %d\n", YYPREFIX, *yyssp, yystate);
+#endif
+    if (yyssp >= yyss + yystacksize - 1)
+    {
+        goto yyoverflow;
+    }
+    *++yyssp = yystate;
+    *++yyvsp = yyval;
+    goto yyloop;
+yyoverflow:
+    yyerror("yacc stack overflow");
+yyabort:
+    return (1);
+yyaccept:
+    return (0);
 }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.1	93/05/15	*/
+/*	SCCS Id: @(#)dothrow.c	3.1	93/06/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -539,6 +539,15 @@ register struct obj   *obj;
 			return(gem_accept(mon, obj));
 		}
 	}
+#ifdef MULDGN
+	/* don't make game unwinnable if naive player throws artifact
+	   at leader.... */
+	if (mon->data->msound == MS_LEADER && is_quest_artifact(obj)) {
+		if (mon->mcanmove)
+			pline("%s ignores %s.", Monnam(mon), the(xname(obj)));
+		return(0);
+	}
+#endif
 	if(obj->oclass == WEAPON_CLASS || obj->otyp == PICK_AXE ||
 	   obj->otyp == UNICORN_HORN || obj->oclass == GEM_CLASS) {
 		if(obj->otyp < DART || obj->oclass == GEM_CLASS) {
@@ -695,6 +704,8 @@ breaks(obj, loose)
 register struct obj   *obj;
 register boolean loose;		/* if not loose, obj is in fobj chain */
 {
+	if (obj_resists(obj, 1, 100)) return 0;
+
 	switch(obj->otyp) {
 		case MIRROR:
 			change_luck(-2);	/* and fall through */

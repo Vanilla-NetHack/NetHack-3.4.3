@@ -591,7 +591,7 @@ register struct obj *obj;
 	else if (obj->otyp == GOLD_PIECE)
 		return (int)((obj->quan + 50L) / 100L);
 	else if (obj->otyp == HEAVY_IRON_BALL && obj->owt != 0)
-		return obj->owt;	/* kludge for "very" heavy iron ball */
+		return((int)(obj->owt));	/* kludge for "very" heavy iron ball */
 	return(wt ? wt*(int)obj->quan : ((int)obj->quan + 1)>>1);
 }
 
@@ -681,7 +681,7 @@ register struct obj *otmp;
 
 	if (objects[otyp].oc_oprop == FIRE_RES) return FALSE;
 
-	return((objects[otyp].oc_material <= WOOD &&
+	return((boolean)(objects[otyp].oc_material <= WOOD &&
 			objects[otyp].oc_material != LIQUID));
 }
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.1	93/05/28	*/
+/*	SCCS Id: @(#)lock.c	3.1	93/06/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -38,8 +38,8 @@ boolean
 picking_at(x, y)
 int x, y;
 {
-	return((occupation == picklock) && 
-	       xlock.door_or_box && (xlock.door == &levl[x][y])); 
+	return((boolean)((occupation == picklock) && 
+	       xlock.door_or_box && (xlock.door == &levl[x][y]))); 
 }
 
 /* produce an occupation string appropriate for the current activity */
@@ -154,7 +154,7 @@ forcelock()	/* try to force a locked chest */
 	if(xlock.picktyp) {	/* blade */
 
 	    if(rn2(1000-(int)uwep->spe) > (992-(int)uwep->oeroded*10) && 
-	       !uwep->cursed) {
+	       !uwep->cursed && !obj_resists(uwep, 0, 99)) {
 		/* for a +0 weapon, probability that it survives an unsuccessful
 		 * attempt to force the lock is (.992)^50 = .67
 		 */

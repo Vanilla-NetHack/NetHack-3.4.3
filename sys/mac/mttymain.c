@@ -188,7 +188,7 @@ extern struct DisplayDesc *ttyDisplay;	/* the tty display descriptor */
 char kill_char = 27 ;
 char erase_char = 8 ;
 
-WindowPtr _mt_window = NULL ;
+WindowPtr _mt_window = (WindowPtr) NULL ;
 static Boolean _mt_in_color = 0 ;
 
 
@@ -201,7 +201,7 @@ short char_width , row_height ;
 short hor , vert ;
 
 #if 1
-	if ( windowprocs == mac_procs ) {
+	if ( !strcmp(windowprocs.name, mac_procs.name) ) {
 		dprintf ( "Mac Windows" ) ;
 		MT_HEIGHT -= 1 ;
 	} else {
@@ -264,24 +264,29 @@ short hor , vert ;
 	SizeWindow ( _mt_window , win_width + 6 , win_height + 6 , 1 ) ;
 	dprintf ( "Checking for TTY window position" ) ;
 	if ( RetrievePosition ( kMapWindow , & vert , & hor ) ) {
-		dprintf ( "\PMoving window to (%d,%d)" , hor , vert ) ;
+		dprintf ( "Moving window to (%d,%d)" , hor , vert ) ;
 		MoveWindow ( _mt_window , hor , vert , 1 ) ;
 	}
 	ShowWindow ( _mt_window ) ;
 	SetPort ( _mt_window ) ;
 
 	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , & flag ) ) ;
-/* Start in raw, always flushing mode */
-	flag |= TA_ALWAYS_REFRESH ;
+	
+	/* Start in raw, always flushing mode */
+
+	flag |= TA_ALWAYS_REFRESH | TA_WRAP_AROUND;
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
 
 	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
-	flag |= TA_BLINKING_CURSOR | TA_WRAP_AROUND ;
+	
+	flag |= TA_BLINKING_CURSOR;
+
 #ifdef applec
 	flag &= ~ TA_CR_ADD_NL ;
 #else
-	flag |= ~ TA_NL_ADD_CR ;
+	flag &= ~ TA_NL_ADD_CR ;
 #endif
+
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
 
 	InitRes ( ) ;
@@ -332,6 +337,7 @@ tgetch ( void ) {
 EventRecord event ;
 long sleepTime = 0 ;
 int ret ;
+int key ;
 
 	while ( 1 ) {
 		update_tty ( _mt_window ) ;
@@ -346,7 +352,9 @@ int ret ;
 		}
 		if ( event . what == keyDown || event . what == autoKey ) {
 			if ( ! ( event . modifiers & cmdKey ) ) {
-				return ( event . message & 0xff ) ;
+				key = event . message & 0xff;
+				if(key == '\r') key = '\n';
+				return ( key ) ;
 			} else {
 				DoMenu ( MenuKey ( event . message & 0xff ) ) ;
 			}
@@ -495,7 +503,7 @@ standoutbeg ( void ) {
 
 
 void
-xputs ( char * str ) {
+xputs ( const char * str ) {
 short err ;
 
 	err = add_tty_string ( _mt_window , str ) ;
@@ -562,7 +570,7 @@ short err ;
 void
 msmsg ( const char * str , ... ) {
 va_list args ;
-char * buf = alloc ( 1000 ) ;
+char * buf = (char *) alloc ( 1000 ) ;
 
 	va_start ( args , str ) ;
 	vsprintf ( buf , str , args ) ;
@@ -604,11 +612,13 @@ long flag ;
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
 
 	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
+
 #ifdef applec
 	flag &= ~ TA_CR_ADD_NL ;
 #else
-	flag |= ~ TA_NL_ADD_CR ;
+	flag &= ~ TA_NL_ADD_CR ;
 #endif
+
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
 
 	flags . cbreak = 1 ;
@@ -641,11 +651,13 @@ long flag ;
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
 
 	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
+
 #ifdef applec
 	flag |= TA_CR_ADD_NL ;
 #else
 	flag |= TA_NL_ADD_CR ;
 #endif
+
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
 
 	tty_raw_print ( "\n" ) ;

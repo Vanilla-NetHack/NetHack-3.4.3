@@ -26,7 +26,7 @@ void mac_speaker ( struct obj * instr , char * melody ) ;
 void
 mac_speaker ( struct obj * instr , char * melody )
 {
-	SndChannelPtr theChannel = NULL ;
+	SndChannelPtr theChannel = (SndChannelPtr) NULL ;
 	SndCommand theCmd ;
 	Handle theSound ;
 	unsigned char theName [ 32 ] ;
@@ -70,7 +70,7 @@ mac_speaker ( struct obj * instr , char * melody )
 
 		theCmd . cmd = soundCmd ;
 		theCmd . param1 = 0 ;
-		theCmd . param2 = SND_BUFFER ( theSound ) ;
+		theCmd . param2 = (long) SND_BUFFER ( theSound ) ;
 		err = SndDoCommand ( theChannel , & theCmd , false ) ;
 
 	/*

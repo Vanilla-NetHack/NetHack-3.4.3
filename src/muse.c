@@ -379,7 +379,7 @@ struct monst *mtmp;
 			m.has_defense = MUSE_SCR_CREATE_MONSTER;
 		}
 	}
-botm:	return !!m.has_defense;
+botm:	return((boolean)(!!m.has_defense));
 #undef nomore
 }
 
@@ -452,7 +452,8 @@ mon_tele:
 			}
 			if (Is_botlevel(&u.uz)) goto mon_tele;
 			else {
-			    int nlev = max(depth(&u.uz), 0);
+			    int dpth = depth(&u.uz);
+			    int nlev = max(dpth, 0);
 			    d_level flev;
 
 			    if (rn2(5)) nlev = rnd(nlev + 3);
@@ -784,7 +785,7 @@ struct monst *mtmp;
 		}
 #endif
 	}
-	return !!m.has_offense;
+	return((boolean)(!!m.has_offense));
 #undef nomore
 }
 
@@ -1161,7 +1162,7 @@ struct monst *mtmp;
 			m.has_misc = MUSE_WAN_POLYMORPH;
 		}
 	}
-	return !!m.has_misc;
+	return((boolean)(!!m.has_misc));
 #undef nomore
 }
 
@@ -1346,7 +1347,7 @@ struct obj *obj;
 	int typ = obj->otyp;
 
 	if (is_animal(mon->data) || mindless(mon->data)) return FALSE;
-	return((obj->oclass == WAND_CLASS && objects[typ].oc_dir == RAY)
+	return((boolean)((obj->oclass == WAND_CLASS && objects[typ].oc_dir == RAY)
 		|| typ == WAN_STRIKING
 		|| (!mon->minvis &&
 			(typ == WAN_MAKE_INVISIBLE || typ == POT_INVISIBILITY))
@@ -1369,7 +1370,7 @@ struct obj *obj;
 		|| typ == AMULET_OF_LIFE_SAVING
 		|| ((mon->misc_worn_check & W_ARMG) && typ == CORPSE
 			&& obj->corpsenm == PM_COCKATRICE)
-	);
+	));
 }
 
 boolean

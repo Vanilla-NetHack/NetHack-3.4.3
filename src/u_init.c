@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.1	93/04/24	*/
+/*	SCCS Id: @(#)u_init.c	3.1	93/07/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -274,8 +274,8 @@ u_init()
 	/* zero u, including pointer values --
 	 * necessary when aborting from a failed restore */
 	(void) memset((genericptr_t)&u, 0, sizeof(u));
-	for (i = 0; i < LAST_PROP+1; i++) u.uprops[i].p_tofn = 0;
 	u.ustuck = (struct monst *)0;
+	u.usick_cause = NULL;
 
 #if 0	/* documentation of more zero values as desirable */
 	u.uluck  = u.moreluck = 0;
@@ -304,6 +304,7 @@ u_init()
 
 	u.usym = S_HUMAN;
 	u.umoved = FALSE;
+	u.umortality = 0;
 	u.ugrave_arise = -1;
 
 	u.ulevel = 0;	/* set up some of the initial attributes */
@@ -319,6 +320,12 @@ u_init()
 	u.umonnum = -1;
 	u.ulycn = -1;
 	set_uasmon();
+#endif
+
+#ifdef BSD
+	(void) time((long *)&u.ubirthday);
+#else
+	(void) time(&u.ubirthday);
 #endif
 
 	/*

@@ -45,6 +45,7 @@ static void grass ( int x , int y );
 static void strand ( int x , int y , int dir );
 static void tomb_text ( char *p );
 void draw_moon(int phase);
+void FDECL( amii_outrip, ( winid, int ) );
 
 extern char *killed_by_prefix[];
 struct Window *ripwin;

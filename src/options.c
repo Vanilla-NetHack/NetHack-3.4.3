@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	3.1	93/05/29	*/
+/*	SCCS Id: @(#)options.c	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -159,6 +159,10 @@ static struct Comp_Opt
 	{ "pettype",  "your preferred initial pet type," },
 	{ "pickup_types", "types of objects to pick up automatically," },
 	{ "scores",   "the parts of the score list you wish to see," },
+#ifdef VIDEOSHADES
+	{ "videocolors", "color mappings for internal screen routines," },
+	{ "videoshades", "gray shades to map to black/gray/white," },
+#endif
 	{ "windowtype", "windowing system to use." },
 	{ NULL, NULL }
 };
@@ -169,6 +173,11 @@ static boolean need_redraw; /* for doset() */
 
 #if defined(TOS) && defined(TEXTCOLOR)
 extern boolean colors_changed;	/* in tos.c */
+#endif
+
+#ifdef VIDEOSHADES
+extern char *shade[3];		  /* in sys/msdos/video.c */
+extern char ttycolors[MAXCOLORS]; /* in sys/msdos/video.c */
 #endif
 
 extern const char *roles[];	/* from u_init.c */
@@ -838,6 +847,29 @@ goodfruit:
 		return;
 	}
 
+#ifdef VIDEOSHADES
+	/* videocolors:string */
+	if (!strncmpi(opts, "videocolors", 6)) {
+		int length;
+
+		if (!(opts = string_for_env_opt("videocolors", opts, FALSE))) {
+			return;
+		}
+		badoption(opts);
+		return;
+	}
+	/* videoshades:string */
+	if (!strncmpi(opts, "videoshades", 6)) {
+		int length;
+
+		if (!(opts = string_for_env_opt("videoshades", opts, FALSE))) {
+			return;
+		}
+		badoption(opts);
+		return;
+	}
+#endif /* VIDEOSHADES */
+
 	if (!strncmpi(opts, "windowtype", 3)) {
 	    if ((op = string_for_env_opt("windowtype", opts, FALSE)) != 0) {
 		char buf[16];
@@ -1057,10 +1089,22 @@ doset()
 	    oc_to_str(flags.pickup_types, ocl);
 	    Sprintf(buf, " pickup_types: %s", (ocl[0]) ? ocl : "all");
 	    putstr(tmpwin, 0, buf);
-	    Sprintf(buf, " scores: %utop/%uaround%s",
+	    Sprintf(buf, " scores: %u top/%u around%s",
 		        flags.end_top, flags.end_around,
 		        (flags.end_own ? "/own" : ""));
 	    putstr(tmpwin, 0, buf);
+#ifdef VIDEOSHADES
+            Sprintf(buf, " videoshades: %s %s %s",
+				shade[0],shade[1],shade[2]);
+            putstr(tmpwin, 0, buf);
+            Sprintf(buf, " videocolors: %d %d %d %d %d %d %d %d %d %d %d %d",
+		 ttycolors[RED],ttycolors[GREEN],ttycolors[BROWN],
+                 ttycolors[BLUE],ttycolors[MAGENTA],ttycolors[CYAN],
+                 ttycolors[ORANGE_COLORED],ttycolors[BRIGHT_GREEN],
+		 ttycolors[YELLOW],ttycolors[BRIGHT_BLUE],
+                 ttycolors[BRIGHT_MAGENTA],ttycolors[BRIGHT_CYAN]);
+            putstr(tmpwin, 0, buf);
+#endif /* VIDEOSHADES */
 	    Sprintf(buf, " windowtype: %s", windowprocs.name);
 	    putstr(tmpwin, 0, buf);
 	    display_nhwindow(tmpwin, TRUE);

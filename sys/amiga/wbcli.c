@@ -218,7 +218,10 @@ __builtin_printf("sending '%s'\n",argline);
 	run_game(gptr);
 
 /* wait for game to end */
-	WaitEOG(gptr);
+	if(gptr->wbs)
+	    WaitEOG(gptr);
+	/* else load failed */
+
 	FreeGITEM(gptr);
 #endif /* TESTCMDLINE */
 /* ask about another? */
@@ -958,6 +961,7 @@ int flash;
     {
 	vprintf( str, vp );
 	va_end( vp );
+	printf("\n");
 	return;
     }
 

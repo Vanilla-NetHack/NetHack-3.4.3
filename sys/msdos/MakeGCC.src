@@ -1,48 +1,37 @@
-#       SCCS Id: @(#)MakeGCC.src       3.1     93/05/03
+#	SCCS Id: @(#)MakeGCC.src       3.1     93/04/07
 #	Copyright (c) NetHack PC Development Team 1992, 1993.
-#       PC NetHack 3.1 Src Makefile for djgpp 1.09 and ndmake 4.5
+#	PC NetHack 3.1 src Makefile for djgpp 1.10 and ndmake 4.5
 #
-#       For questions read the Install.dos file included with
-#       the distribution.
+#	For questions read the Install.dos file included with
+#	the distribution.
 #
-#       Kevin D Smolkowski, Kevins@ori.org
-
-#
-#   Programs
-#   gcc and go32 dos extender
-
+#	Kevin D Smolkowski, Kevins@ori.org
 
 CC       = gcc
 STUB     = go32.exe         # Can be either stub.exe or go32.exe
-STUBPATH = f:\djgpp\bin\    # Must be complete path with trailing '\'
+STUBPATH = p:\djgpp\bin\    # Must be complete path with trailing '\'
 LINK     = gcc
 
-#
-#  Set the gamedir according to your preference.  It must be present prior
-#  to compilation.
+#	Set the gamedir according to your preference.  It must be present prior
+#	to compilation.
 
 GAME    = nethack                 # Game Name
 GAMEDIR = c:\games\nethack        # Game directory
 
-#
-#  Flags.
-#
+#	Compilation Flags.
 
-# Debugging
+#	Debugging
 #CFLAGS = -pg -c -I../include
 #LFLAGS = -pg
 
+#	Normal 
 CFLAGS = -c -O -I../include
 LFLAGS =
 
-#
-# Special libraries
+#	Special libraries
 LIBS = -lpc
 
-#
-#  Source directories.    Makedefs hardcodes these, don't change them.
-#
-
+#	Source directories.    Makedefs hardcodes these, don't change them.
 INCL = ..\include   # NetHack include files
 DAT  = ..\dat       # NetHack data files
 DOC  = ..\doc       # NetHack documentation files
@@ -53,47 +42,36 @@ MSYS = ..\sys\msdos # Msdos specific files
 WIN  = ..\win\tty   # Character terminal files
 GAMEFILE = $(GAMEDIR)\$(GAME).exe # whole thing
 
-#
-#  The default make target (so just typing 'make' is useful).
-#
-
+#	The default make target (so just typing 'make' is useful).
 default : $(GAMEFILE)
 
-#
-#  If TERMLIB is defined in pcconf.h, comment out the upper line and
-#  uncomment the lower.  Note that you must build the termc library
-#  and place it in djgpp's lib directory.  See termcap.zip for details
+#	If TERMLIB is defined in pcconf.h, comment out the upper line and
+#	uncomment the lower.  Note that you must build the termc library
+#	and place it in djgpp's lib directory.  See termcap.zip for details
 
 TERMLIB =
 #TERMLIB = -ltermc
 
 LIBRARIES = $(LIBS) $(TERMLIB)
 
-######################################################################
-#
 #  Nothing below this line should have to be changed.
 #
 #  Other things that have to be reconfigured are in
-#       config.h, pccconf.h and possibly system.h.
+#       config.h, pcconf.h and possibly system.h.
 #
 
 #       This line should not be deleted.
 
-#
 #  Make Rules.
-#
 
 .SUFFIXES:  .exe .o .c .y .l
 
 .c.o:
         $(CC) $(CFLAGS) -o$*.o $*.c
 
-
-#
 #  Object files for the game itself.
-#
 
-VOBJ01 = allmain.o  alloc.o    apply.o    artifact.o  attrib.o
+VOBJ01 = allmain.o  alloc.o    apply.o    artifact.o attrib.o
 VOBJ02 = ball.o     bones.o    botl.o     cmd.o      dbridge.o
 VOBJ03 = decl.o     detect.o   display.o  do.o       do_name.o
 VOBJ04 = do_wear.o  dog.o      dogmove.o  dokick.o   dothrow.o
@@ -119,54 +97,40 @@ SOBJ    = msdos.o    sys.o      tty.o      unix.o    video.o
 
 VVOBJ  = version.o
 
-
 VOBJ   = $(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) \
          $(VOBJ06) $(VOBJ07) $(VOBJ08) $(VOBJ09) $(VOBJ10) \
          $(VOBJ11) $(VOBJ12) $(VOBJ13) $(VOBJ14) $(VOBJ15) \
          $(VOBJ16) $(VOBJ17) $(VOBJ18) $(VOBJ19) $(VOBJ20) \
          $(VOBJ21)
 
-ALLOBJ =     $(VOBJ) $(VVOBJ) $(SOBJ)
+ALLOBJ = $(VOBJ) $(VVOBJ) $(SOBJ)
 
-DGN_FILE_H = $(INCL)\align.h    $(INCL)\dgn_file.h
-DUNGEON_H  = $(INCL)\align.h    $(INCL)\dungeon.h
-EMIN_H     = $(DUNGEON_H)       $(INCL)\emin.h
-EPRI_H     = $(DUNGEON_H)       $(INCL)\align.h     $(INCL)\epri.h
-ESHK_H     = $(DUNGEON_H)       $(INCL)\eshk.h
-MONDATA_H  = $(INCL)\align.h    $(INCL)\mondata.h
-MONST_H    = $(INCL)\align.h    $(INCL)\monst.h
-PERMONST_H = $(INCL)\monattk.h  $(INCL)\monflag.h   $(INCL)\align.h   \
-             $(INCL)\permonst.h
-RM_H       = $(INCL)\align.h    $(INCL)\rm.h
-SP_LEV_H   = $(INCL)\align.h    $(INCL)\sp_lev.h
-VAULT_H    = $(DUNGEON_H)       $(INCL)\vault.h
-YOUPROP_H  = $(PERMONST_H)      $(MONDATA_H)        $(INCL)\prop.h    \
-             $(INCL)\pm.h       $(INCL)\youprop.h
-YOU_H      = $(MONST_H)         $(YOUPROP_H)        $(INCL)\align.h   \
-             $(INCL)\attrib.h   $(INCL)\you.h
-DISPLAY_H  = $(MONDATA_H)       $(INCL)\vision.h    $(INCL)\display.h
-PCCONF_H   = $(INCL)\micro.h    $(INCL)\system.h    $(INCL)\pcconf.h
-CONFIG_H   = $(GLOBAL_H)        $(INCL)\tradstdc.h  $(INCL)\config.h
-DECL_H     = $(YOU_H)           $(INCL)\spell.h     $(INCL)\color.h   \
-             $(INCL)\obj.h      $(INCL)\onames.h    $(INCL)\pm.h      \
-             $(INCL)\decl.h
-GLOBAL_H   = $(PCCONF_H)        $(INCL)\coord.h     $(INCL)\global.h
-HACK_H     = $(CONFIG_H)        $(DUNGEON_H)        $(DECL_H)         \
-             $(DISPLAY_H)       $(INCL)\monsym.h    $(INCL)\mkroom.h  \
-             $(INCL)\objclass.h $(INCL)\trap.h      $(INCL)\flag.h    \
-             $(RM_H)            $(INCL)\vision.h    $(INCL)\wintype.h \
-             $(INCL)\engrave.h  $(INCL)\rect.h      $(INCL)\extern.h \
-             $(INCL)\hack.h
+RM_H      = $(INCL)\rm.h  $(INCL)\align.h
+DISPLAY_H = $(INCL)\display.h  $(INCL)\vision.h $(INCL)\mondata.h
+DECL_H    = $(INCL)\decl.h $(INCL)\quest.h $(INCL)\spell.h \
+            $(INCL)\color.h $(INCL)\obj.h $(INCL)\you.h \
+            $(INCL)\onames.h $(INCL)\pm.h
+ESHK_H    = $(INCL)\eshk.h  $(INCL)\dungeon.h
+PCCONF_H  = $(INCL)\pcconf.h  $(INCL)\micro.h $(INCL)\system.h
+DUNGEON_H = $(INCL)\dungeon.h  $(INCL)\align.h
+EPRI_H    = $(DUNGEON_H)  $(INCL)\epri.h
+EMIN_H    = $(DUNGEON_H)  $(INCL)\emin.h
+PERM_H    = $(INCL)\permonst.h $(INCL)\monattk.h $(INCL)\monflag.h \
+            $(INCL)\align.h
+CONFIG_H  = $(INCL)\config.h $(INCL)\tradstdc.h $(INCL)\global.h \
+            $(PCCONF_H)
+HACK_H    = $(INCL)\hack.h $(CONFIG_H) $(DUNGEON_H) $(DECL_H)    \
+            $(DISPLAY_H) $(RM_H) $(INCL)\monsym.h                \
+            $(INCL)\mkroom.h $(INCL)\objclass.h $(INCL)\trap.h   \
+            $(INCL)\flag.h  $(INCL)\vision.h $(INCL)\display.h   \
+            $(INCL)\wintype.h $(INCL)\engrave.h $(INCL)\rect.h   \
+            $(INCL)\winprocs.h $(INCL)\wintty.h
 
 
-
-
-#
 #  The default target.
-#
 
-all :     $(GAMEFILE) install.tag
-    @echo Done.
+all :  $(GAMEFILE) install.tag
+       @echo Done.
 
 install: install.tag
 
@@ -177,6 +141,7 @@ install.tag:    $(GAMEFILE) $(DAT)\sp_lev.tag
     copy $(DAT)\*.lev         $(GAMEDIR)
     copy $(SYS)\NetHack.cnf   $(GAMEDIR)
     copy $(UTIL)\recover.exe  $(GAMEDIR)
+    copy $(MSYS)\msdos.hlp    $(GAMEDIR)
     del   $(GAMEDIR)\makefile
     echo install done > install.tag
 
@@ -186,7 +151,7 @@ install.tag:    $(GAMEFILE) $(DAT)\sp_lev.tag
 $(GAMEFILE) : $(GAME).res  $(UTIL)\utility.tag
     $(CC) $(LFLAGS) @$(GAME).res $(LIBRARIES)
     copy /b $(STUBPATH)$(STUB) + a.out $(GAMEFILE)
-#    del a.out
+    del a.out
 
 $(GAME).res : $(ALLOBJ)
     @echo $(VOBJ01) > $@
@@ -213,12 +178,11 @@ $(GAME).res : $(ALLOBJ)
     @echo $(SOBJ)   >> $@
     @echo $(VVOBJ)  >> $@
 
-#
 #  The following include files depend on makedefs to be created.
 #
 #  date.h should be remade every time any of the source or include
 #  files is modified.
-#
+
 
 $(INCL)\date.h : $(VOBJ)
     $(UTIL)\makedefs -v
@@ -232,56 +196,7 @@ $(INCL)\pm.h :
 $(INCL)\trap.h :
     $(UTIL)\makedefs -t
 
-#
-#       System specific modules
-#
-#             Ndmake doesn't like unix style / directory specs and
-#             djgcc doesn't like dos style directory specs.  So we
-#             get to copy stuff where we might need it.   Fun eh?
-#
 
-main.o:  $(HACK_H) $(SYS)\pcmain.c
-    copy $(SYS)\pcmain.c .
-    $(CC) $(CFLAGS) -omain.o pcmain.c
-
-tty.o:   $(HACK_H) $(INCL)\wintty.h $(SYS)\pctty.c
-    copy $(SYS)\pctty.c .
-    $(CC) $(CFLAGS) -otty.o  pctty.c
-
-unix.o:  $(SYS)\pcunix.c $(HACK_H)
-    copy $(SYS)\pcunix.c .
-    $(CC) $(CFLAGS) -ounix.o pcunix.c
-
-sys.o : $(SYS)\pcsys.c $(HACK_H)
-    copy $(SYS)\pcsys.c .
-    $(CC) $(CFLAGS) -o$*.o pcsys.c
-
-msdos.o : $(HACK_H)  $(MSYS)\msdos.c
-    copy $(MSYS)\msdos.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
-
-video.o : $(HACK_H)  $(MSYS)\video.c
-    copy $(MSYS)\video.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
-
-
-# some other files requiring movement
-
-getline.o : $(WIN)\getline.c
-    copy $(WIN)\getline.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
-
-termcap.o : $(CONFIG_H) $(WIN)\termcap.c
-    copy $(WIN)\termcap.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
-
-topl.o : $(CONFIG_H) $(WIN)\topl.c
-    copy $(WIN)\topl.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
-
-wintty.o : $(CONFIG_H) $(WIN)\wintty.c
-    copy $(WIN)\wintty.c .
-    $(CC) $(CFLAGS) -o$*.o $*.c
 
 #
 #  Housekeeping.
@@ -304,121 +219,156 @@ spotless : clean
     -del $(UTIL)\*.map
     -del $(DAT)\data
     -del $(DAT)\rumors
-    -del $(UTIL)\guideboo.dvi
 
 # dependencies
-allmain.o     : $(HACK_H)
-alloc.o       : $(CONFIG_H)
-apply.o       : $(HACK_H)
-artifact.o    : $(HACK_H)       $(INCL)\artifact.h
-attrib.o      : $(HACK_H)
-bones.o       : $(HACK_H)
-botl.o        : $(HACK_H)
-cmd.o         : $(HACK_H)       $(INCL)\func_tab.h
-dbridge.o     : $(HACK_H)
-decl.o        : $(HACK_H)       $(INCL)\quest.h
-detect.o      : $(HACK_H)
-display.o     : $(HACK_H)
-do.o          : $(HACK_H)       $(INCL)\lev.h
-do_name.o     : $(HACK_H)
-do_wear.o     : $(HACK_H)
-dog.o         : $(HACK_H)       $(INCL)\edog.h
-dogmove.o     : $(HACK_H)       $(INCL)\mfndpos.h   $(INCL)\edog.h
-dokick.o      : $(HACK_H)       $(ESHK_H)
-dothrow.o     : $(HACK_H)
-drawing.o     : $(HACK_H)       $(INCL)\termcap.h
-dungeon.o     : $(HACK_H)       $(DGN_FILE_H)
-eat.o         : $(HACK_H)
-end.o         : $(HACK_H)       $(ESHK_H)
-engrave.o     : $(HACK_H)       $(INCL)\lev.h
-exper.o       : $(HACK_H)
-explode.o     : $(HACK_H)
-extralev.o    : $(HACK_H)
-files.o       : $(HACK_H)
-fountain.o    : $(HACK_H)
-getline.o     : $(HACK_H)
-hack.o        : $(HACK_H)
-invent.o      : $(HACK_H)
-lock.o        : $(HACK_H)
-mail.o        : $(HACK_H)
-hacklib.o     : $(HACK_H)
-main.o        : $(HACK_H)
-makemon.o     : $(HACK_H)
-mcastu.o      : $(HACK_H)
-mhitm.o       : $(HACK_H)
-mhitu.o       : $(HACK_H)
-minion.o      : $(HACK_H)
-mklev.o       : $(HACK_H)
-mkmap.o       : $(HACK_H)
-mkmaze.o      : $(HACK_H)
-mkobj.o       : $(HACK_H)
-mkroom.o      : $(HACK_H)
-mon.o         : $(HACK_H)
-mondata.o     : $(HACK_H)
-monmove.o     : $(HACK_H)       $(INCL)\mfndpos.h   $(INCL)\artifact.h
-monst.o       : $(CONFIG_H)     $(PERMONST_H)       $(INCL)\monsym.h     \
-                $(ESHK_H)       $(VAULT_H)          $(INCL)\color.h      \
-                $(EPRI_H)
-monstr.o      : $(CONFIG_H)
-mplayer.o     : $(HACK_H)
-mthrowu.o     : $(HACK_H)
-muse.o        : $(HACK_H)
-music.o       : $(HACK_H)
-o_init.o      : $(HACK_H)
-objects.o     : $(CONFIG_H)     $(INCL)\obj.h       $(INCL)\objclass.h   \
-                $(INCL)\prop.h  $(INCL)\color.h
-objects.o     : $(HACK_H)
-objnam.o      : $(HACK_H)
-options.o     : $(HACK_H)       $(INCL)\termcap.h
-msdos.o       : $(HACK_H)
-pager.o       : $(HACK_H)
-pickup.o      : $(HACK_H)
-pline.o       : $(HACK_H)     $(EPRI_H)
-polyself.o    : $(HACK_H)
-potion.o      : $(HACK_H)
-priest.o      : $(HACK_H)     $(INCL)\mfndpos.h   $(ESHK_H) \
-                $(EPRI_H)     $(EMIN_H)
-quest.o       : $(HACK_H)     $(INCL)\quest.h     $(INCL)\qtext.h
-questpgr.o    : $(HACK_H)     $(INCL)\quest.h     $(INCL)\qtext.h
-pray.o        : $(HACK_H)
-priest.o      : $(HACK_H)
-read.o        : $(HACK_H)
-rect.o        : $(HACK_H)
-restore.o     : $(HACK_H)     $(INCL)\lev.h       $(INCL)\quest.h
-rip.o         : $(HACK_H)
-rnd.o         : $(HACK_H)
-rumors.o      : $(HACK_H)
-save.o        : $(HACK_H)     $(INCL)\lev.h       $(INCL)\quest.h
-search.o      : $(HACK_H)     $(INCL)\artifact.h
-shk.o         : $(HACK_H)
-shknam.o      : $(HACK_H)     $(ESHK_H)
-sit.o         : $(HACK_H)
-sounds.o      : $(HACK_H)     $(INCL)\edog.h      $(ESHK_H)
-sp_lev.o      : $(HACK_H)
-spell.o       : $(HACK_H)
-steal.o       : $(HACK_H)
-sys.o         : $(HACK_H)
-termcap.o     : $(HACK_H)
-timeout.o     : $(HACK_H)
-topl.o        : $(HACK_H)
-topten.o      : $(HACK_H)
-track.o       : $(HACK_H)
-trap.o        : $(HACK_H)     $(INCL)\edog.h
-tty.o         : $(HACK_H)
-u_init.o      : $(HACK_H)
-uhitm.o       : $(HACK_H)
-unix.o        : $(HACK_H)
-vault.o       : $(HACK_H)     $(INCL)\vault.h
-version.o     : $(HACK_H)     $(INCL)\date.h      $(INCL)\patchlev.h
-vision.o      : $(HACK_H)     $(INCL)\vis_tab.h
-vis_tab.o     : $(HACK_H)
-weapon.o      : $(HACK_H)
-were.o        : $(HACK_H)
-wield.o       : $(HACK_H)
-windows.o     : $(HACK_H)
-wintty.o      : $(HACK_H)
-wizard.o      : $(HACK_H)
-worm.o        : $(HACK_H)     $(INCL)\lev.h
-worn.o        : $(HACK_H)
-write.o       : $(HACK_H)
-zap.o         : $(HACK_H)
+# some files require movement as Ndmake doesn't like unix style '/'
+# directory specs and djgcc doesn't like dos style directory specs.
+# So we get to copy stuff where we might need it.   Fun eh?
+
+# sys\share
+main.o:  $(HACK_H) $(SYS)\pcmain.c
+    copy $(SYS)\pcmain.c .
+    $(CC) $(CFLAGS) -omain.o pcmain.c
+
+tty.o:   $(HACK_H) $(INCL)\wintty.h $(SYS)\pctty.c
+    copy $(SYS)\pctty.c .
+    $(CC) $(CFLAGS) -otty.o  pctty.c
+
+unix.o:  $(HACK_H) $(SYS)\pcunix.c
+    copy $(SYS)\pcunix.c .
+    $(CC) $(CFLAGS) -ounix.o pcunix.c
+
+sys.o : $(HACK_H) $(SYS)\pcsys.c
+    copy $(SYS)\pcsys.c .
+    $(CC) $(CFLAGS) -o$*.o pcsys.c
+
+# sys\msdos
+msdos.o : $(HACK_H)  $(MSYS)\msdos.c
+    copy $(MSYS)\msdos.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+video.o : $(HACK_H)  $(MSYS)\video.c
+    copy $(MSYS)\video.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+# win/tty
+getline.o : $(HACK_H) $(INCL)\wintty.h $(WIN)\getline.c
+    copy $(WIN)\getline.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+termcap.o : $(CONFIG_H) $(WIN)\termcap.c
+    copy $(WIN)\termcap.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+topl.o : $(CONFIG_H) $(WIN)\topl.c
+    copy $(WIN)\topl.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+wintty.o : $(CONFIG_H) $(WIN)\wintty.c
+    copy $(WIN)\wintty.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+# src dependencies
+allmain.o:  $(HACK_H)
+alloc.o:    $(CONFIG_H)
+apply.o:    $(HACK_H) $(INCL)\edog.h
+artifact.o: $(HACK_H) $(INCL)\artifact.h $(INCL)\artilist.h
+attrib.o:   $(HACK_H) $(INCL)\artifact.h
+ball.o:     $(HACK_H)
+bones.o:    $(HACK_H) $(INCL)\lev.h
+botl.o:     $(HACK_H)
+cmd.o:      $(HACK_H) $(INCL)\func_tab.h
+dbridge.o:  $(HACK_H)
+decl.o:     $(HACK_H) $(INCL)\quest.h
+detect.o:   $(HACK_H) $(INCL)\artifact.h
+display.o:  $(HACK_H)
+do.o:       $(HACK_H) $(INCL)\lev.h
+do_name.o:  $(HACK_H)
+do_wear.o:  $(HACK_H)
+dog.o:      $(HACK_H) $(INCL)\edog.h
+dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+dokick.o:   $(HACK_H) $(ESHK_H)
+dothrow.o:  $(HACK_H)
+drawing.o:  $(HACK_H) $(INCL)\termcap.h
+dungeon.o:  $(HACK_H) $(INCL)\dgn_file.h
+eat.o:      $(HACK_H)
+end.o:      $(HACK_H) $(ESHK_H)
+engrave.o:  $(HACK_H) $(INCL)\lev.h
+exper.o:    $(HACK_H)
+explode.o:  $(HACK_H)
+extralev.o:  $(HACK_H)
+files.o:     $(HACK_H)
+fountain.o:  $(HACK_H)
+hack.o:      $(HACK_H)
+hacklib.o:   $(HACK_H)
+invent.o:    $(HACK_H) $(INCL)\artifact.h
+lock.o:      $(HACK_H)
+mail.o:      $(HACK_H) $(INCL)\mail.h
+makemon.o:   $(HACK_H) $(EPRI_H) $(EMIN_H)
+mcastu.o:    $(HACK_H)
+mhitm.o:     $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+mhitu.o:     $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+minion.o:    $(HACK_H) $(EMIN_H) $(EPRI_H)
+mklev.o:     $(HACK_H)
+mkmap.o:     $(HACK_H) $(INCL)\sp_lev.h
+mkmaze.o:    $(HACK_H) $(INCL)\sp_lev.h
+mkobj.o:     $(HACK_H) $(INCL)\artifact.h $(INCL)\prop.h
+mkroom.o:    $(HACK_H)
+mon.o:       $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+mondata.o:   $(HACK_H) $(ESHK_H) $(EPRI_H)
+monmove.o:   $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+monst.o:     $(CONFIG_H) $(PERM_H) $(ESHK_H) $(EPRI_H) \
+             $(INCL)\color.h $(INCL)\monsym.h $(INCL)\vault.h
+mplayer.o:   $(HACK_H)
+mthrowu.o:   $(HACK_H)
+muse.o:      $(HACK_H)
+music.o:     $(HACK_H)
+o_init.o:    $(HACK_H)
+objects.o:   $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h \
+             $(INCL)\prop.h $(INCL)\color.h
+objnam.o:    $(HACK_H)
+options.o:   $(CONFIG_H) $(HACK_H) $(INCL)\objclass.h $(INCL)\flag.h \
+             $(INCL)\termcap.h
+pager.o:     $(HACK_H)
+pickup.o:    $(HACK_H)
+pline.o:     $(HACK_H) $(EPRI_H)
+polyself.o:  $(HACK_H)
+potion.o:    $(HACK_H)
+pray.o:      $(HACK_H) $(EPRI_H)
+priest.o:    $(HACK_H) $(INCL)\mfndpos.h $(ESHK_H) $(EPRI_H) $(EMIN_H)
+quest.o:     $(HACK_H) $(INCL)\quest.h $(INCL)\qtext.h
+questpgr.o:  $(HACK_H) $(INCL)\qtext.h
+read.o:      $(HACK_H)
+rect.o:      $(HACK_H)
+restore.o:   $(HACK_H) $(INCL)\lev.h $(INCL)\termcap.h $(INCL)\quest.h
+rip.o:       $(HACK_H)
+rnd.o:       $(HACK_H)
+rumors.o:    $(HACK_H)
+save.o:      $(HACK_H) $(INCL)\lev.h $(INCL)\quest.h
+shk.o:       $(HACK_H) $(ESHK_H)
+shknam.o:    $(HACK_H) $(ESHK_H)
+sit.o:       $(HACK_H) $(INCL)\artifact.h
+sounds.o:    $(HACK_H) $(INCL)\edog.h
+sp_lev.o:    $(HACK_H) $(INCL)\sp_lev.h $(INCL)\align.h $(INCL)\rect.h
+spell.o:     $(HACK_H)
+steal.o:     $(HACK_H)
+timeout.o:   $(HACK_H)
+topten.o:    $(HACK_H)
+track.o:     $(HACK_H)
+trap.o:      $(HACK_H)
+u_init.o:    $(HACK_H)
+uhitm.o:     $(HACK_H)
+vault.o:     $(HACK_H) $(INCL)\vault.h
+version.o:   $(HACK_H) $(INCL)\date.h  $(INCL)\patchlev.h
+vision.o:    $(HACK_H) $(INCL)\vis_tab.h
+weapon.o:    $(HACK_H)
+were.o:      $(HACK_H)
+wield.o:     $(HACK_H)
+windows.o:   $(HACK_H) $(INCL)\wintty.h
+wizard.o:    $(HACK_H) $(INCL)\qtext.h
+worm.o:      $(HACK_H) $(INCL)\lev.h
+worn.o:      $(HACK_H)
+write.o:     $(HACK_H)
+zap.o:       $(HACK_H)
+
+# end of file

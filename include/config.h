@@ -42,13 +42,14 @@
 # define MAC
 # undef UNIX		/*	Just in case				*/
 #endif
-/* #define MAC		/*	We're on some mac-ish platform	*/
 
-#ifdef MAC
-# ifdef THINK_C
-#  define NEED_VARARGS
-# endif
+#ifdef THINK_C
+# define MAC
+# define NEED_VARARGS
+# undef UNIX		/*	Just in case				*/
 #endif
+
+/* #define MAC		/*	We're on some mac-ish platform	*/
 
 /*
  * Amiga setup.
@@ -265,7 +266,7 @@
 
 /* An example of one alternative you might want to use: */
 /* # define COMPRESS "/usr/local/bin/gzip"   /* FSF gzip compression */
-/* # define COMPRESS_EXTENSION ".z"	     /* normal gzip extension */
+/* # define COMPRESS_EXTENSION ".gz"	     /* normal gzip extension */
 #endif
 #ifndef COMPRESS
 # define INTERNAL_COMP	/* control use of NetHack's compression routines */

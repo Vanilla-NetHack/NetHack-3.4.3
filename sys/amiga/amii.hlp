@@ -1,4 +1,4 @@
-            Amiga specific help file for NetHack 3.1.2
+            Amiga specific help file for NetHack 3.1.3
 
 The Amiga port of NetHack supports a number of additional commands
 and facilities specific to the Amiga.  Listed below are the things
@@ -12,6 +12,17 @@ While playing NetHack you can press:
                                 these settings of the pens to allow
                                 the game to be resumed with the
                                 same palette at a later date.
+
+Separate Icon types for saved games:
+                                Each character class can have a
+                                separate icon.  The first letter
+                                of the character class is used
+                                for deriving the name.  e.g. a
+                                Wizard saved game would use
+                                Nethack:w.icon if it is present.
+                                The NetHack:default.icon is used
+                                if the associated character class
+                                icon is not present.
 
 Amiga-specific run-time option:
         flush                   throw away keyboard type-ahead

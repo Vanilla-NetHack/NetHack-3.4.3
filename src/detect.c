@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.1	93/03/30	*/
+/*	SCCS Id: @(#)detect.c	3.1	93/06/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -53,9 +53,9 @@ register char oclass;
 	if (glyph_is_object(lev->glyph)) {
 	    /* there's some object shown here */
 	    if (oclass == ALL_CLASSES) {
-		return !(level.objects[x][y] ||     /* stale if nothing here */
+		return((boolean)( !(level.objects[x][y] ||     /* stale if nothing here */
 			    ((mtmp = m_at(x,y)) != 0 &&
-				(mtmp->mgold || mtmp->minvent)));
+				(mtmp->mgold || mtmp->minvent)))));
 	    } else if (objects[glyph_to_obj(lev->glyph)].oc_class == oclass) {
 		/* the object shown here is of interest */
 		for (otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
@@ -587,7 +587,7 @@ struct obj *obj;
     }
     oops = (rnd(20) > ACURR(A_INT) || obj->cursed);
     if (oops && (obj->spe > 0)) {
-	switch(rnd(5)) {
+	switch (rnd(obj->oartifact ? 4 : 5)) {
 	case 1 : pline("%s is too much to comprehend!", The(bname));
 	    break;
 	case 2 : pline("%s confuses you!", The(bname));

@@ -86,9 +86,9 @@ doread()
 	    pline("As you read the scroll, it disappears.");
 	  if(confused) {
 	    if (Hallucination)
-		pline("Being so trippy, you screw up....");
+		pline("Being so trippy, you screw up...");
 	    else
-		pline("Being confused, you mispronounce the magic words....");
+		pline("Being confused, you mispronounce the magic words...");
 	  }
 	}
 	if(!seffects(scroll))  {
@@ -1194,7 +1194,7 @@ create_particular()
 	if (tries == 5) pline(thats_enough_tries);
 	else {
 	    (void) cant_create(&which);
-	    return makemon(&mons[which], u.ux, u.uy) != 0;
+	    return((boolean)(makemon(&mons[which], u.ux, u.uy) != 0));
 	}
 	return FALSE;
 }

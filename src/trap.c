@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.1	93/05/25	*/
+/*	SCCS Id: @(#)trap.c	3.1	93/06/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -819,7 +819,7 @@ mintrap(mtmp)
 register struct monst *mtmp;
 {
 	register struct trap *trap = t_at(mtmp->mx, mtmp->my);
-	boolean trapkilled = FALSE, tdoor = FALSE;
+	boolean trapkilled = FALSE;
 	struct permonst *mptr = mtmp->data;
 	struct obj *otmp;
 
@@ -1003,86 +1003,93 @@ register struct monst *mtmp;
 			if(!Can_fall_thru(&u.uz))
 			    panic("Trapdoors cannot exist on this level.");
 
-			if ( (mptr == &mons[PM_WUMPUS]) ||
-			     (mtmp->wormno && count_wsegs(mtmp) > 5) ) break;
-			tdoor = TRUE;
+			if (is_flyer(mptr) || mptr == &mons[PM_WUMPUS] ||
+			    (mtmp->wormno && count_wsegs(mtmp) > 5)) break;
 			/* Fall through */
 		case LEVEL_TELEP:
-			/* long worms w/tails can now change levels! - Norm */
-			if (!is_flyer(mptr)) {
-			    register int nlev;
+		case MAGIC_PORTAL:
+			if (mtmp == u.ustuck)	/* probably a vortex */
+			    break;		/* temporary? kludge */
+#ifdef WALKIES
+			if (teleport_pet(mtmp))
+#endif
+			{
 			    d_level tolevel;
-#ifdef WALKIES
-			    if(teleport_pet(mtmp)) {
-#endif
-				if(tdoor) {
-				    if(Is_stronghold(&u.uz))
-				        assign_level(&tolevel, &valley_level);
-				    else if(Is_botlevel(&u.uz)) {
-				        pline("%s avoids the trap.", 
-					                  Monnam(mtmp));
-					break;
-				    } else get_level(&tolevel,depth(&u.uz)+1);
+			    int migrate_typ = 0;
+
+			    if (tt == TRAPDOOR) {
+				if (Is_stronghold(&u.uz)) {
+				    assign_level(&tolevel, &valley_level);
+				} else if (Is_botlevel(&u.uz)) {
+				    pline("%s avoids the trap.", Monnam(mtmp));
+				    break;
 				} else {
-#ifdef MULDGN
-				    if(Is_knox(&u.uz)) {
-				        rloc(mtmp);
-					break;
-				    }
-#endif
-				    nlev = rnd(3);
-				    if(!rn2(2)) nlev = -(nlev);
-				    nlev = dunlev(&u.uz) + nlev;
-				    if(nlev > dunlevs_in_dungeon(&u.uz)) {
-				    	nlev = dunlevs_in_dungeon(&u.uz);
-					/* teleport up if already on bottom */
-					if (Is_botlevel(&u.uz)) 
-					    nlev -= rnd(3);
-				    }
-				    if (nlev < 1) {
-					nlev = 1;
-					if (dunlev(&u.uz) == 1) {
-					    nlev += rnd(3);
-					    if (nlev >
-					          dunlevs_in_dungeon(&u.uz)) 
-					        nlev = 
-						  dunlevs_in_dungeon(&u.uz);
-					}
-				    }
-				    /* can't seem to go anywhere    */
-				    /* (possible in short dungeons) */
-				    if (nlev == dunlev(&u.uz)) {
-					rloc(mtmp);
-					break;
-				    }
-				    nlev = dungeons[u.uz.dnum].depth_start +
-				                               nlev;
-				    get_level(&tolevel, nlev);
+				    get_level(&tolevel, depth(&u.uz) + 1);
 				}
-				if(in_sight) {
-		pline("Suddenly, %s disappears out of sight.", mon_nam(mtmp));
-				    seetrap(trap);
+			    } else if (tt == MAGIC_PORTAL) {
+				if (In_endgame(&u.uz) &&
+				    (mon_has_amulet(mtmp) ||
+					is_home_elemental(mptr))) {
+				    if (in_sight && mptr->mlet != S_ELEMENTAL) {
+				     pline("%s seems to shimmer for a moment.",
+					   Monnam(mtmp));
+					seetrap(trap);
+				    }
+				    break;
+				} else {
+				    assign_level(&tolevel, &trap->dst);
+				    migrate_typ = 6; /* see dog.c */
 				}
-				migrate_to_level(mtmp, 
-						 ledger_no(&tolevel), 0);
-				return(3);	/* no longer on this level */
-#ifdef WALKIES
+			    } else { /* (tt == LEVEL_TELEP) */
+				register int nlev;
+
+				if (mon_has_amulet(mtmp)) break;
+				nlev = rnd(3);
+				if (!rn2(2)) nlev = -nlev;
+				nlev += dunlev(&u.uz);
+				if (nlev > dunlevs_in_dungeon(&u.uz)) {
+				    nlev = dunlevs_in_dungeon(&u.uz);
+				    /* teleport up if already on bottom */
+				    if (Is_botlevel(&u.uz)) nlev -= rnd(3);
+				}
+				if (nlev < 1) {
+				    nlev = 1;
+				    if (dunlev(&u.uz) == 1) {
+					nlev += rnd(3);
+					if (nlev > dunlevs_in_dungeon(&u.uz)) 
+					    nlev = dunlevs_in_dungeon(&u.uz);
+				    }
+				}
+				/* can't seem to go anywhere    */
+				/* (possible in short dungeons) */
+				if (nlev == dunlev(&u.uz)) {
+				    rloc(mtmp);
+				    break;
+				}
+				nlev += dungeons[u.uz.dnum].depth_start;
+				get_level(&tolevel, nlev);
 			    }
-#endif
+
+			    if (in_sight) {
+				pline("Suddenly, %s disappears out of sight.",
+				      mon_nam(mtmp));
+				seetrap(trap);
+			    }
+			    migrate_to_level(mtmp, 
+					     ledger_no(&tolevel),
+					     migrate_typ);
+			    return(3);	/* no longer on this level */
 			}
 			break;
 
 		case TELEP_TRAP:
 			if(tele_restrict(mtmp)) break;
-		case MAGIC_PORTAL:
 #ifdef WALKIES
 			if(teleport_pet(mtmp)) {
 #endif
 			    /* Note: don't remove the trap if a vault.  Other-
 			     * wise the monster will be stuck there, since 
 			     * the guard isn't going to come for it...
-			     * Also: don't remove if magic portal.  In short,
-			     * don't remove :-)
 			     */
 			    if (in_sight) {
 				pline("%s suddenly disappears!", 
@@ -1096,7 +1103,7 @@ register struct monst *mtmp;
 #endif
 			break;
 
-	       case WEB:
+		case WEB:
 			/* Monster in a web. */
 			if (mptr->mlet == S_SPIDER) break;
 			if (amorphous(mptr)) {
@@ -1142,8 +1149,8 @@ register struct monst *mtmp;
 		case MAGIC_TRAP:
 			/* A magic trap.  Monsters immune. */
 			break;
-		case ANTI_MAGIC:	
-                        break;
+		case ANTI_MAGIC:
+			break;
 
 		case LANDMINE: {
 			register struct monst *mntmp = fmon;
@@ -1338,17 +1345,17 @@ float_down()
 	if (!trap) {
 		if(Is_airlevel(&u.uz))
 			You("begin to tumble in place.");
-		if(Is_waterlevel(&u.uz) && !no_msg)
+		else if (Is_waterlevel(&u.uz) && !no_msg)
 			You("feel heavier.");
 		/* u.uinwater msgs already in spoteffects()/drown() */
 		else if (!u.uinwater && !no_msg) {
 			if (Hallucination)
 				pline("Bummer!  You've %s.",
 				      is_pool(u.ux,u.uy) ?
-			      		"splashed down" : "hit the ground");
+					"splashed down" : "hit the ground");
 			else
 				You("float gently to the %s.",
-				    is_pool(u.ux,u.uy) ? "water" : "ground");
+				    surface(u.ux, u.uy));
 		}
 		trap = t_at(u.ux,u.uy);
 	}
@@ -2426,7 +2433,7 @@ boolean disarm;
 		case 2:
 		case 1:
 		case 0:
-			pline("A cloud of %s gas billows from %s",
+			pline("A cloud of %s gas billows from %s.",
 			      hcolor(), the(xname(obj)));
 			if(!Stunned) {
 			    if (Hallucination)
@@ -2559,10 +2566,10 @@ int d_override;
 boolean
 unconscious()
 {
-	return (multi < 0 && (!nomovemsg ||
+	return((boolean)(multi < 0 && (!nomovemsg ||
 		u.usleep ||
 		!strncmp(nomovemsg,"You regain con", 15) ||
-		!strncmp(nomovemsg,"You are consci", 15)));
+		!strncmp(nomovemsg,"You are consci", 15))));
 }
 
 static char lava_killer[] = "molten lava";
@@ -2622,7 +2629,7 @@ lava_effects()
 			pline("You're still burning.");
 			done(BURNING);
 		}
-	You("find yourself back on solid ground.");
+	You("find yourself back on solid %s.", surface(u.ux, u.uy));
 	return(TRUE);
     }
 

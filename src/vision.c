@@ -1446,7 +1446,7 @@ clear_path(col1,row1,col2,row2)
 	}
     }
 cleardone:
-    return result;
+    return((boolean)result);
 }
 
 #ifdef VISION_TABLES

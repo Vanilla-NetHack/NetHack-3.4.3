@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.1	93/03/30	*/
+/*	SCCS Id: @(#)dog.c	3.1	93/06/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -195,6 +195,14 @@ losedogs()
 			/* let monster move a bit on the new level */
 			/* see placement code below */
 			mtmp->mx = min(nmv, 8);
+#ifdef MULDGN
+			/*	temporary hack...
+			 * Ft.Ludios' entry chamber isn't classified as a
+			 * room by lev_comp and any movement greater than
+			 * 1 can result in placement beyond solid walls.
+			 */
+			if (Is_knox(&u.uz)) mtmp->mx = 1;
+#endif
 
 			if(!regenerates(mtmp->data)) nmv /= 20;
 			if((long)mtmp->mhp + nmv >= (long)mtmp->mhpmax)
@@ -215,6 +223,7 @@ losedogs()
 			home_shk(mtmp, TRUE);
 		    else switch(mtmp->my) {
 			xchar xlocale, ylocale;
+			register struct trap *t;
 
 			case 1: xlocale = xupstair; ylocale = yupstair;
 				goto common;
@@ -226,31 +235,42 @@ losedogs()
 				goto common;
 			case 5: xlocale = sstairs.sx; ylocale = sstairs.sy;
 				goto common;
+			case 6:		/* portal */
+				for (t = ftrap; t; t = t->ntrap)
+				    if (t->ttyp == MAGIC_PORTAL) break;
+				if (t) {
+				    xlocale = t->tx;
+				    ylocale = t->ty;
+				} else {
+				    if (!In_endgame(&u.uz))
+			      impossible("losedogs: no corresponding portal?");
+				    xlocale = ylocale = 0;
+				}
+				goto common;
 common:
-				if (xlocale) {
-				    if(mtmp->mx) {
-					/* monster moved a bit */
-					/* pick a nearby location */
-					/* mnearto() deals w/stone, et al */
+				if (xlocale && mtmp->mx) {
+				    /* monster moved a bit */
+				    /* pick a nearby location */
+				    /* mnearto() deals w/stone, et al */
+				    char *r = in_rooms(xlocale, ylocale, 0);
+				    if (r && *r) {
+					coord c;
+					/* somexy() handles irregular rooms */
+					if (somexy(&rooms[*r - ROOMOFFSET], &c))
+					    xlocale = c.x,  ylocale = c.y;
+					else
+					    xlocale = ylocale = 0;
+				    } else {
 					int i, j;
-					char *rmlist = in_rooms(xlocale,
-								ylocale, 0);
-
-					if (rmlist) {
-					    xlocale = somex(
-						&rooms[*rmlist - ROOMOFFSET]);
-					    ylocale = somey(
-						&rooms[*rmlist - ROOMOFFSET]);
-					} else {
-					    i = max(1, xlocale - mtmp->mx);
-					    j = min(COLNO-1, xlocale+mtmp->mx);
-					    xlocale = rn1(j-i,i);
-
-					    i = max(0, ylocale - mtmp->mx);
-					    j = min(ROWNO-1, ylocale+mtmp->mx);
-					    ylocale = rn1(j-i,i);
-					}
+					i = max(1, xlocale - mtmp->mx);
+					j = min(COLNO-1, xlocale + mtmp->mx);
+					xlocale = rn1(j - i, i);
+					i = max(0, ylocale - mtmp->mx);
+					j = min(ROWNO-1, ylocale + mtmp->mx);
+					ylocale = rn1(j - i, i);
 				    }
+				}
+				if (xlocale) {
 				    (void) mnearto(mtmp,
 						   xlocale, ylocale, FALSE);
 				    break;
@@ -309,8 +329,10 @@ keepdogs()
 			set_residency(mtmp, TRUE);
 
 		if (mtmp->wormno) {
+		    register int cnt;
 		    /* NOTE: worm is truncated to # segs = max wormno size */
-		    num_segs = min(count_wsegs(mtmp), MAX_NUM_WORMS - 1);
+		    cnt = count_wsegs(mtmp);
+		    num_segs = min(cnt, MAX_NUM_WORMS - 1);
 		    wormgone(mtmp);
 		}
 
@@ -346,6 +368,7 @@ migrate_to_level(mtmp, tolev, xyloc)
 			 *	3: < ladder,
 			 *	4: > ladder,
 			 *	5: sstairs
+			 *	6: portal
 			 */ 
 {
         register struct obj *obj;
@@ -355,8 +378,10 @@ migrate_to_level(mtmp, tolev, xyloc)
 	    set_residency(mtmp, TRUE);
 
 	if (mtmp->wormno) {
+	    register int cnt;
 	  /* **** NOTE: worm is truncated to # segs = max wormno size **** */
-	    num_segs = min(count_wsegs(mtmp), MAX_NUM_WORMS - 1);
+	    cnt = count_wsegs(mtmp);
+	    num_segs = min(cnt, MAX_NUM_WORMS - 1);
 	    wormgone(mtmp);
 	}
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.1	93/05/22	*/
+/*	SCCS Id: @(#)bones.c	3.1	93/06/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -26,7 +26,7 @@ d_level *lev;
 
 	if (ledger_no(&save_dlevel)) assign_level(lev, &save_dlevel);
 
-	return (((sptr = Is_special(lev)) && !sptr->boneid)
+	return (boolean)(((sptr = Is_special(lev)) && !sptr->boneid)
 		|| !dungeons[lev->dnum].boneid
 		   /* no bones on the last or multiway branch levels */
 		   /* in any dungeon (level 1 isn't multiway).       */
@@ -172,7 +172,7 @@ savebones()
 #ifdef TUTTI_FRUTTI
 	struct fruit *f;
 #endif
-	char *bonesid;
+	char c, *bonesid;
 
 	if(ledger_no(&u.uz) <= 0 || ledger_no(&u.uz) > maxledgerno()) return;
 	if(no_bones_level(&u.uz)) return; /* no bones for specific levels */
@@ -321,7 +321,9 @@ savebones()
 	co_false();	/* make sure bonesid and savefruitchn get written */
 #endif /* MFLOPPY */
 
-	bwrite(fd, (genericptr_t) bonesid, 7);	/* DD.nnn */
+	c = (char) (strlen(bonesid) + 1);
+	bwrite(fd, (genericptr_t) &c, sizeof c);
+	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
 #ifdef TUTTI_FRUTTI
 	savefruitchn(fd, WRITE_SAVE | FREE_SAVE);
 #endif
@@ -335,7 +337,7 @@ getbones()
 {
 	register int fd;
 	register int ok;
-	char *bonesid, oldbonesid[7];
+	char c, *bonesid, oldbonesid[10];
 
 #ifdef EXPLORE_MODE
 	if(discover)		/* save bones files for real games */
@@ -362,7 +364,8 @@ getbones()
 		}
 #endif
 		minit();	/* ZEROCOMP */
-		mread(fd, (genericptr_t) oldbonesid, 7);	/* DD.nnn */
+		mread(fd, (genericptr_t) &c, sizeof c);	/* length incl. '\0' */
+		mread(fd, (genericptr_t) oldbonesid, (unsigned) c); /* DD.nnn */
 		if (strcmp(bonesid, oldbonesid)) {
 #ifdef WIZARD
 			if (wizard) {

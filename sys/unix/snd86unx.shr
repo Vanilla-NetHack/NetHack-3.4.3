@@ -1,65 +1,46 @@
-#! /bin/sh
-# This is a shell archive.  Remove anything before this line, then unpack
-# it by saving it into a file and typing "sh file".  To overwrite existing
-# files, type "sh file -c".  You can also feed this as standard input via
-# unshar, or by typing "sh <file", e.g..  If this archive is complete, you
-# will see the following message at the end:
-#		"End of shell archive."
-# Contents:  Makefile READ.ME install.bsd spkr.7 spkr.c
-# Wrapped by billr@saab on Thu Jun 10 16:41:24 1993
-PATH=/bin:/usr/bin:/usr/ucb ; export PATH
-if test -f 'Makefile' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Makefile'\"
-else
-echo shar: Extracting \"'Makefile'\" \(378 characters\)
-sed "s/^X//" >'Makefile' <<'END_OF_FILE'
-X#
-X# Speaker driver package makefile
-X#
-XCFLAGS = -I. -O # -DDEBUG
-XLDFLAGS = -s
-X
-Xall: Driver.o
-X
-Xinstall:
-X	./Install
-X
-XDriver.o: spkr.c
-X	$(CC) $(CFLAGS) -c spkr.c
-X	mv spkr.o Driver.o
-X
-Xclean:
-X	rm -f Driver.o *~ speaker.shar
-X
-XDSP =  Files Install Master Name Node Remove Size System 
-Xshar:
-X	shar READ.ME install.bsd spkr.7 Makefile spkr.[ch] \
-X		interp.c $(DSP) playtest >speaker.shar
-END_OF_FILE
-if test 378 -ne `wc -c <'Makefile'`; then
-    echo shar: \"'Makefile'\" unpacked with wrong size!
-fi
-# end of 'Makefile'
-fi
-if test -f 'READ.ME' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'READ.ME'\"
-else
-echo shar: Extracting \"'READ.ME'\" \(1372 characters\)
-sed "s/^X//" >'READ.ME' <<'END_OF_FILE'
+# This is a shell archive.  Save it in a file, remove anything before
+# this line, and then unpack it by entering "sh file".  Note, it may
+# create directories; files and directories will be owned by you and
+# have default permissions.
+#
+# This archive contains:
+#
+#	READ.ME
+#	install.bsd
+#	spkr.7
+#	Makefile
+#	spkr.c
+#	spkr.h
+#	interp.c
+#	Files
+#	Install
+#	Master
+#	Name
+#	Node
+#	Remove
+#	Size
+#	System
+#	playtest
+#
+echo x - READ.ME
+sed 's/^X//' >READ.ME << 'END-of-READ.ME'
 X		Console Speaker Driver Package (v1.1)
 X
 X		by Eric S. Raymond (esr@snark.thyrsus.com)
 X
 XThis package gives 80386 machines running SVr3.2 or later the ability to play
-Xtunes on the console speaker. It is structured as a standard installable driver
-Xkit containing the following files:
+Xtunes on the console speaker.  It has been extended to 386BSD (and possibly
+XBSDI) by Andrew A. Chernov, and to SCO UNIX 3.2.4 (and possibly other VPIX
+Xsystems) by Andreas Arens.
+X
+XThe following files are contained in the kit:
 X
 XDocumentation and examples:
 XREAD.ME		-- this file
 Xspeaker.7	-- man page for the driver
 Xplaytest	-- test script exercising familiar tunes
 X
-XInstallable driver kit parts:
+XInstallable driver kit parts, for SVr3.2 or later:
 XFiles		-- list of driver package file locations
 XInstall		-- installation script for driver kit
 XMaster		-- mdevice entry for speaker driver
@@ -69,14 +50,23 @@ XRemove		-- Driver removal script
 XSize		-- installation size data
 XSystem		-- sdevice entry for speaker driver
 X
-XDriver source code:
+XDriver source code, for SVr3.2 or later and 386BSD:
 XMakefile	-- Makefile for driver code
 Xspkr.c		-- the driver source
 Xspeaker.h	-- ioctl interface file
 X
-XTo make the installable code, simply type `make' and wait. The type ./Install
+XCommon source code:
+Xinterp.c	-- play string interpretation code
+X
+XFor SVr3.2 or later, simply type `make' and wait. Then type ./Install
 Xand follow its instructions. You will have to install the man pages by hand.
 XBe aware that the speaker.7 man page uses tbl(1) constructs.
+X
+XFor 386BSD, follow the installation instructions in install.bsd.
+X
+XFor SCO UNIX 3.2.4, no new kernel drivers are needed, and you need only
+Xcopy interp.c to your src directory and proceed with making NetHack, with
+XVPIX_MUSIC set in unixconf.h.
 X
 XInteresting tunes mailed to the author will be periodically posted in batches
 Xand added to the test script for future versions.
@@ -85,17 +75,9 @@ X			Revision notes
 X
 X1.1 -- fixed minor bug in M[LSN] interpretation, added octave-tracking.
 X       Tweaked the playtest examples.
-END_OF_FILE
-if test 1372 -ne `wc -c <'READ.ME'`; then
-    echo shar: \"'READ.ME'\" unpacked with wrong size!
-fi
-# end of 'READ.ME'
-fi
-if test -f 'install.bsd' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'install.bsd'\"
-else
-echo shar: Extracting \"'install.bsd'\" \(1434 characters\)
-sed "s/^X//" >'install.bsd' <<'END_OF_FILE'
+END-of-READ.ME
+echo x - install.bsd
+sed 's/^X//' >install.bsd << 'END-of-install.bsd'
 XCopy spkr.c and interp.c to /sys/i386/isa
 XCopy spkr.h to /sys/sys
 X
@@ -155,17 +137,9 @@ Xthen go to /sys/compile/YOUR_MACHINE_NAME and type
 X	make depend
 X	make
 X
-END_OF_FILE
-if test 1434 -ne `wc -c <'install.bsd'`; then
-    echo shar: \"'install.bsd'\" unpacked with wrong size!
-fi
-# end of 'install.bsd'
-fi
-if test -f 'spkr.7' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'spkr.7'\"
-else
-echo shar: Extracting \"'spkr.7'\" \(5193 characters\)
-sed "s/^X//" >'spkr.7' <<'END_OF_FILE'
+END-of-install.bsd
+echo x - spkr.7
+sed 's/^X//' >spkr.7 << 'END-of-spkr.7'
 X.TH SPKR 7
 X.SH NAME
 Xspkr \- console speaker device driver
@@ -283,17 +257,34 @@ X.SH FILES
 X/dev/speaker -- speaker device file
 X.SH AUTHOR
 XEric S. Raymond (esr@snark.thyrsus.com) Feb 1990
-END_OF_FILE
-if test 5193 -ne `wc -c <'spkr.7'`; then
-    echo shar: \"'spkr.7'\" unpacked with wrong size!
-fi
-# end of 'spkr.7'
-fi
-if test -f 'spkr.c' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'spkr.c'\"
-else
-echo shar: Extracting \"'spkr.c'\" \(13871 characters\)
-sed "s/^X//" >'spkr.c' <<'END_OF_FILE'
+END-of-spkr.7
+echo x - Makefile
+sed 's/^X//' >Makefile << 'END-of-Makefile'
+X#
+X# Speaker driver package makefile
+X#
+XCFLAGS = -I. -O # -DDEBUG
+XLDFLAGS = -s
+X
+Xall: Driver.o
+X
+Xinstall:
+X	./Install
+X
+XDriver.o: spkr.c
+X	$(CC) $(CFLAGS) -c spkr.c
+X	mv spkr.o Driver.o
+X
+Xclean:
+X	rm -f Driver.o *~ speaker.shar
+X
+XDSP =  Files Install Master Name Node Remove Size System 
+Xshar:
+X	shar READ.ME install.bsd spkr.7 Makefile spkr.[ch] \
+X		interp.c $(DSP) playtest >speaker.shar
+END-of-Makefile
+echo x - spkr.c
+sed 's/^X//' >spkr.c << 'END-of-spkr.c'
 X/*
 X * spkr.c -- device driver for console speaker on 80386
 X *
@@ -326,6 +317,10 @@ X#include <sys/user.h>
 X#include <sys/sysmacros.h> 
 X#include <limits.h>
 X
+X#define CADDR char *
+X#define err_ret(x) u.u_error = (x)
+X#endif
+X
 X#include "spkr.h"
 X
 X/**************** MACHINE DEPENDENT PART STARTS HERE *************************
@@ -340,8 +335,8 @@ X * Programmable Peripheral Interface (PPI) attached to the 80x86's speaker. The
 X * PPI controls whether sound is passed through at all; the PIT's channel 2 is
 X * used to generate clicks (a square wave) of whatever frequency is desired.
 X *
-X * This code requires SVr3.2-compatible inb(), outb(), timeout(), sleep(),
-X * and wakeup().
+X * The non-BSD code requires SVr3.2-compatible inb(), outb(), timeout(),
+X * sleep(), and wakeup().
 X */
 X
 X/*
@@ -373,7 +368,7 @@ X
 Xstatic int endtone()
 X/* turn off the speaker, ending current tone */
 X{
-X    wakeup(endtone);
+X    wakeup((CADDR)endtone);
 X    outb(PPI, inb(PPI) & ~PPI_SPKR);
 X}
 X
@@ -389,9 +384,13 @@ X    printf("tone: hz=%d ticks=%d\n", hz, ticks);
 X#endif /* DEBUG */
 X
 X    /* set timer to generate clicks at given frequency in Hertz */
+X#ifdef __386BSD__
+X    sps = spltty();
+X#else
 X    sps = spl5();
+X#endif
 X    outb(PIT_CTRL, PIT_MODE);		/* prepare timer */
-X    outb(PIT_COUNT, (divisor & 0xff));	/* send lo byte */
+X    outb(PIT_COUNT, (unsigned char) divisor);  /* send lo byte */
 X    outb(PIT_COUNT, (divisor >> 8));	/* send hi byte */
 X    splx(sps);
 X
@@ -403,14 +402,14 @@ X     * Set timeout to endtone function, then give up the timeslice.
 X     * This is so other processes can execute while the tone is being
 X     * emitted.
 X     */
-X    timeout(endtone, (char *)NULL, ticks);
-X    sleep(endtone, PZERO - 1);
+X    timeout((CADDR)endtone, (CADDR)NULL, ticks);
+X    sleep((CADDR)endtone, PZERO - 1);
 X}
 X
 Xstatic int endrest()
 X/* end a rest */
 X{
-X    wakeup(endrest);
+X    wakeup((CADDR)endrest);
 X}
 X
 Xstatic void rest(ticks)
@@ -425,9 +424,232 @@ X     */
 X#ifdef DEBUG
 X    printf("rest: %d\n", ticks);
 X#endif /* DEBUG */
-X    timeout(endrest, (char *)NULL, ticks);
-X    sleep(endrest, PZERO - 1);
+X    timeout((CADDR)endrest, (CADDR)NULL, ticks);
+X    sleep((CADDR)endrest, PZERO - 1);
 X}
+X
+X#include "interp.c"	/* playinit() and playstring() */
+X
+X/******************* UNIX DRIVER HOOKS BEGIN HERE **************************
+X *
+X * This section implements driver hooks to run playstring() and the tone(),
+X * endtone(), and rest() functions defined above.  For non-BSD systems,
+X * SVr3.2-compatible copyin() is also required.
+X */
+X
+Xstatic int spkr_active;	/* exclusion flag */
+X#ifdef __386BSD__
+Xstatic struct  buf *spkr_inbuf; /* incoming buf */
+X#endif
+X
+Xint spkropen(dev)
+Xdev_t	dev;
+X{
+X#ifdef DEBUG
+X    printf("spkropen: entering with dev = %x\n", dev);
+X#endif /* DEBUG */
+X
+X    if (minor(dev) != 0)
+X	err_ret(ENXIO);
+X    else if (spkr_active)
+X	err_ret(EBUSY);
+X    else
+X    {
+X	playinit();
+X#ifdef __386BSD__
+X	spkr_inbuf = geteblk(DEV_BSIZE);
+X#endif
+X	spkr_active = 1;
+X    }
+X#ifdef __386BSD__
+X    return(0);
+X#endif
+X}
+X
+X#ifdef __386BSD__
+Xint spkrwrite(dev, uio)
+Xstruct uio *uio;
+X#else
+Xint spkrwrite(dev)
+X#endif
+Xdev_t	dev;
+X{
+X#ifdef __386BSD__
+X    register unsigned n;
+X    char *cp;
+X    int error;
+X#endif
+X#ifdef DEBUG
+X#ifdef __386BSD__
+X    printf("spkrwrite: entering with dev = %x, count = %d\n",
+X		dev, uio->uio_resid);
+X#else
+X    printf("spkrwrite: entering with dev = %x, u.u_count = %d\n",
+X		dev, u.u_count);
+X#endif
+X#endif /* DEBUG */
+X
+X    if (minor(dev) != 0)
+X	err_ret(ENXIO);
+X    else
+X    {
+X#ifdef __386BSD__
+X	n = MIN(DEV_BSIZE, uio->uio_resid);
+X	cp = spkr_inbuf->b_un.b_addr;
+X	error = uiomove(cp, n, uio);
+X	if (!error)
+X		playstring(cp, n);
+X	return(error);
+X#else
+X	char	bfr[STD_BLK];
+X
+X	copyin(u.u_base, bfr, u.u_count);
+X	playstring(bfr, u.u_count);
+X	u.u_base += u.u_count;
+X	u.u_count = 0;
+X#endif
+X    }
+X}
+X
+Xint spkrclose(dev)
+Xdev_t	dev;
+X{
+X#ifdef DEBUG
+X    printf("spkrclose: entering with dev = %x\n", dev);
+X#endif /* DEBUG */
+X
+X    if (minor(dev) != 0)
+X	err_ret(ENXIO);
+X    else
+X    {
+X	endtone();
+X#ifdef __386BSD__
+X	brelse(spkr_inbuf);
+X#endif
+X	spkr_active = 0;
+X    }
+X#ifdef __386BSD__
+X    return(0);
+X#endif
+X}
+X
+Xint spkrioctl(dev, cmd, cmdarg)
+Xdev_t	dev;
+Xint	cmd;
+XCADDR   cmdarg;
+X{
+X#ifdef DEBUG
+X    printf("spkrioctl: entering with dev = %x, cmd = %x\n", dev, cmd);
+X#endif /* DEBUG */
+X
+X    if (minor(dev) != 0)
+X	err_ret(ENXIO);
+X    else if (cmd == SPKRTONE)
+X    {
+X	tone_t	*tp = (tone_t *)cmdarg;
+X
+X	if (tp->frequency == 0)
+X	    rest(tp->duration);
+X	else
+X	    tone(tp->frequency, tp->duration);
+X    }
+X    else if (cmd == SPKRTUNE)
+X    {
+X#ifdef __386BSD__
+X	tone_t  *tp = (tone_t *)(*(caddr_t *)cmdarg);
+X	tone_t ttp;
+X	int error;
+X
+X	for (; ; tp++) {
+X	    error = copyin(tp, &ttp, sizeof(tone_t));
+X	    if (error)
+X		    return(error);
+X	    if (ttp.duration == 0)
+X		    break;
+X	    if (ttp.frequency == 0)
+X		rest(ttp.duration);
+X	    else
+X		tone(ttp.frequency, ttp.duration);
+X	}
+X#else
+X	tone_t	*tp = (tone_t *)cmdarg;
+X
+X	for (; tp->duration; tp++)
+X	    if (tp->frequency == 0)
+X		rest(tp->duration);
+X	    else
+X		tone(tp->frequency, tp->duration);
+X#endif
+X    }
+X    else
+X	err_ret(EINVAL);
+X#ifdef __386BSD__
+X    return(0);
+X#endif
+X}
+X
+X#endif  /* !defined(__386BSD__) || (NSPEAKER > 0) */
+X/* spkr.c ends here */
+END-of-spkr.c
+echo x - spkr.h
+sed 's/^X//' >spkr.h << 'END-of-spkr.h'
+X/*
+X * spkr.h -- interface definitions for speaker ioctl()
+X *
+X * v1.1 by Eric S. Raymond (esr@snark.thyrsus.com) Feb 1990
+X *      modified for 386bsd by Andrew A. Chernov <ache@astral.msk.su>
+X */
+X
+X#ifndef _SPKR_H_
+X#define _SPKR_H_
+X
+X#ifdef __386BSD__
+X#ifndef KERNEL
+X#include <sys/ioctl.h>
+X#else
+X#include "ioctl.h"
+X#endif
+X
+X#define SPKRTONE        _IOW('S', 1, tone_t)    /* emit tone */
+X#define SPKRTUNE        _IO('S', 2)             /* emit tone sequence*/
+X#else /* SYSV */
+X#define	SPKRIOC		('S'<<8)
+X#define	SPKRTONE	(SPKRIOC|1)	/* emit tone */
+X#define	SPKRTUNE	(SPKRIOC|2)	/* emit tone sequence*/
+X#endif
+X
+Xtypedef struct
+X{
+X    int	frequency;	/* in hertz */
+X    int duration;	/* in 1/100ths of a second */
+X}
+Xtone_t;
+X
+X#endif /* _SPKR_H_ */
+X/* spkr.h ends here */
+END-of-spkr.h
+echo x - interp.c
+sed 's/^X//' >interp.c << 'END-of-interp.c'
+X/*
+X * interp.c -- device driver for console speaker on 80386
+X *
+X * v1.1 by Eric S. Raymond (esr@snark.thyrsus.com) Feb 1990
+X *
+X * this is the part of the code common to all 386 UNIX OSes
+X *
+X * playinit() and playstring() are called from the appropriate driver
+X */
+X
+X#ifdef __386BSD__
+X#include "param.h"
+X#else
+X#include <sys/param.h>
+X#endif
+X
+X#ifndef HZ
+X#define HZ 60
+X#endif
+X
 X
 X/**************** PLAY STRING INTERPRETER BEGINS HERE **********************
 X *
@@ -515,7 +737,7 @@ X	sdenom *= DENOM_MULT;
 X    }
 X
 X    if (pitch == -1)
-X	rest(whole * snum / value * sdenom);
+X	rest(whole * snum / (value * sdenom));
 X    else
 X    {
 X	sound = (whole * snum) / (value * sdenom)
@@ -713,13 +935,13 @@ X	    break;
 X	}
 X    }
 X}
-XEND-of-interp.c
-Xecho x - Files
-Xsed 's/^X//' >Files << 'END-of-Files'
+END-of-interp.c
+echo x - Files
+sed 's/^X//' >Files << 'END-of-Files'
 X/usr/include/sys/spkr.h
-XEND-of-Files
-Xecho x - Install
-Xsed 's/^X//' >Install << 'END-of-Install'
+END-of-Files
+echo x - Install
+sed 's/^X//' >Install << 'END-of-Install'
 X#
 X# Speaker driver installation script
 X#
@@ -757,21 +979,21 @@ Xcp spkr.h /usr/include/sys/spkr.h
 X
 Xecho "Performing shutdown..."
 Xcd /; exec /etc/shutdown -g0 -y
-XEND-of-Install
-Xecho x - Master
-Xsed 's/^X//' >Master << 'END-of-Master'
+END-of-Install
+echo x - Master
+sed 's/^X//' >Master << 'END-of-Master'
 Xspeaker	ocwi	iocH	spkr	0	0	1	1	-1
-XEND-of-Master
-Xecho x - Name
-Xsed 's/^X//' >Name << 'END-of-Name'
+END-of-Master
+echo x - Name
+sed 's/^X//' >Name << 'END-of-Name'
 X386 UNIX Speaker Device Driver Package
-XEND-of-Name
-Xecho x - Node
-Xsed 's/^X//' >Node << 'END-of-Node'
+END-of-Name
+echo x - Node
+sed 's/^X//' >Node << 'END-of-Node'
 Xspeaker	speaker	c	0
-XEND-of-Node
-Xecho x - Remove
-Xsed 's/^X//' >Remove << 'END-of-Remove'
+END-of-Node
+echo x - Remove
+sed 's/^X//' >Remove << 'END-of-Remove'
 X#
 X# Speaker driver remove script
 X#
@@ -797,18 +1019,18 @@ X
 Xrm -f /dev/speaker $TMP /usr/include/sys/spkr.h
 X
 Xexit 0
-XEND-of-Remove
-Xecho x - Size
-Xsed 's/^X//' >Size << 'END-of-Size'
+END-of-Remove
+echo x - Size
+sed 's/^X//' >Size << 'END-of-Size'
 XROOT=1400
 XUSR=100
-XEND-of-Size
-Xecho x - System
-Xsed 's/^X//' >System << 'END-of-System'
+END-of-Size
+echo x - System
+sed 's/^X//' >System << 'END-of-System'
 Xspeaker	Y	1	0	0	0	0	0	0	0
-XEND-of-System
-Xecho x - playtest
-Xsed 's/^X//' >playtest << 'END-of-playtest'
+END-of-System
+echo x - playtest
+sed 's/^X//' >playtest << 'END-of-playtest'
 X:
 X# Test script for the speaker driver
 X#
@@ -834,13 +1056,5 @@ X	echo "dance -- Lord of the Dance (aka Simple Gifts)"
 X	echo "loony -- Loony Toons theme"
 X	;;
 Xesac
-XEND-of-playtest
-Xexit
-END_OF_FILE
-if test 13871 -ne `wc -c <'spkr.c'`; then
-    echo shar: \"'spkr.c'\" unpacked with wrong size!
-fi
-# end of 'spkr.c'
-fi
-echo shar: End of shell archive.
-exit 0
+END-of-playtest
+exit

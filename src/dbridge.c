@@ -112,7 +112,7 @@ boolean
 is_db_wall(x,y)
 int x,y;
 {
-	return( levl[x][y].typ == DBWALL );
+	return((boolean)( levl[x][y].typ == DBWALL ));
 }
 
 
@@ -379,14 +379,14 @@ int x, y;
 	if (noncorporeal(etmp->edata))
 		return(TRUE);
 	if (is_pool(x, y))
-		return((is_u(etmp) && (Wwalking || Amphibious || Levitation)) ||
+		return((boolean)((is_u(etmp) && (Wwalking || Amphibious || Levitation)) ||
 		       is_swimmer(etmp->edata) || is_flyer(etmp->edata) ||
-		       is_floater(etmp->edata));
+		       is_floater(etmp->edata)));
 	/* must force call to lava_effects in e_died if is_u */
 	if (is_lava(x, y))
-		return(is_u(etmp) ? !!Levitation : resists_fire(etmp->edata));
+		return((boolean)(is_u(etmp) ? !!Levitation : resists_fire(etmp->edata)));
 	if (is_db_wall(x, y))
-		return(passes_walls(etmp->edata));
+		return((boolean)(passes_walls(etmp->edata)));
 	return(TRUE);
 }
 
@@ -434,7 +434,7 @@ static boolean
 automiss(etmp)
 struct entity *etmp;
 {
-	return(passes_walls(etmp->edata) || noncorporeal(etmp->edata));
+	return((boolean)(passes_walls(etmp->edata) || noncorporeal(etmp->edata)));
 }
 
 /*
@@ -477,7 +477,7 @@ boolean chunks;
 	pline("Miss chance = %d (out of 8)", misses);
 #endif
 
-	return((misses >= rnd(8))? TRUE : FALSE);
+	return((boolean)((misses >= rnd(8))? TRUE : FALSE));
 }
 
 /*
@@ -507,7 +507,7 @@ struct entity *etmp;
 #ifdef D_DEBUG
 	pline("%s to jump (%d chances in 10)", E_phrase(etmp, "try"), tmp);
 #endif
-	return((tmp >= rnd(10))? TRUE : FALSE);
+	return((boolean)((tmp >= rnd(10))? TRUE : FALSE));
 }
 
 static void

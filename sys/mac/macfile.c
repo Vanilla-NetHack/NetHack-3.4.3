@@ -294,7 +294,7 @@ macclose ( int fd )
 		if ( FSClose ( fd ) ) {
 			return -1 ;
 		}
-		FlushVol ( NULL , theDirs . dataRefNum ) ;
+		FlushVol ( (StringPtr) NULL , theDirs . dataRefNum ) ;
 	}
 	return 0 ;
 }
@@ -330,15 +330,18 @@ macread ( int fd , void * ptr , unsigned len )
 char *
 macgets ( int fd , char * ptr , unsigned len )
 {
-	int idx = 0 ;
-	while ( -- len > 0 ) {
-		if ( macread ( fd , ptr + idx , 1 ) <= 0 )
-			return NULL ;
-		if ( ptr [ idx ++ ] == '\n' )
-			break ;
-	}
-	ptr [ idx ] = '\0' ;
-	return ptr ;
+        int idx = 0 ;
+        char c;
+
+        while ( -- len > 0 ) {
+                if ( macread ( fd , ptr + idx , 1 ) <= 0 )
+                        return NULL ;
+                c = ptr[ idx++ ];
+                if ( c  == '\n' || c == '\r' )
+                        break ;
+        }
+        ptr [ idx ] = '\0' ;
+        return ptr ;
 }
 
 

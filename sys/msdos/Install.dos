@@ -1,13 +1,13 @@
-	SCCS Id: @(#)Install.dos	 3.1		93/05/10
+	SCCS Id: @(#)Install.dos	 3.1		93/07/07
 
         Copyright (c) NetHack PC Development Team 1990 - 1993.
-        NetHack may be freely redistributed.  See license for details.
-	    ======================================================
-            Instructions for compiling and installing
-                 NetHack 3.1 on an MS-DOS system
-	    ======================================================
-                 (or, How to make PC NetHack 3.1)
-                    Last revision: May 10, 1993
+       NetHack may be freely redistributed.  See license for details.
+       ==============================================================
+              Instructions for compiling and installing
+                    NetHack 3.1 on an MS-DOS system
+         ======================================================
+                  (or, How to make PC NetHack 3.1)
+                     Last revision: July 11, 1993
 
 Credit for a runnable full PC NetHack 3.1 goes to the PC Development team
 of Norm Meluch, Kevin Smolkowski, Paul Winner, Michael Allison and Steve
@@ -25,15 +25,19 @@ I.  Dispelling the Myths:
 
     Microsoft C 6.0a
     Microsoft C 7.0 and Microsoft Visual C++ Professional (MSVC) 1.0
-    DJGPP       1.9   (gcc version 2.2 for msdos,
-                       free from your local archive sites)
+    DJGPP       1.9 or later
 
     For specific details concerning each compiler, please see the
     corresponding appendix.
 
     All the makefiles were created for use with NDMAKE.  The make programs
-    provided by the various vendors all seem to lack necessary features.
+    provided by the various vendors all seem to lack necessary features,
+    or differ enough in their syntax that the supplied makefiles won't
+    work.  That is the case with 'nmake' supplied with the MSC compiler.  
     NDMAKE is available free from your local archive site.
+
+    If you want to build a copy of NetHack that is identical to the
+    "official binaries", please see appendix A.
 
     You may find it useful to obtain copies of lex (flex) and yacc (bison).
     While not strictly necessary to compile nethack, they are required should
@@ -73,7 +77,7 @@ II. To compile your copy of NetHack on a MSDOS machine:
     termcap.zip.  termcap.zip contains several files of termcap routines.
     Using them with NetHack involves very little knowledge of the UNIX concept
     of a termcap database; mostly you need to know enough to set a TERM
-    environment variable.  You can unzip termcap.zip in the sys/msdos
+    environment variable.  You can unzip termcap.zip in the sys/share
     directory, but if you are going to use it, it is probably better to
     unzip a copy in a special directory and copy the library files to where
     your linker can find them.
@@ -82,6 +86,10 @@ II. To compile your copy of NetHack on a MSDOS machine:
     library file.  Makemsc.lib works with Microsoft C (MSC and MSVC)
     and generates termcap.lib, Makegcc.lib works with DJGPP and generates
     libtermc.a.
+
+    Note that you only need the termcap library if you have changed 
+    pcconf.h to define TERMLIB, and commented out the #define NO_TERMS 
+    (See point 6).
 
 4.  ovlmgr.uu (MS-DOS overlay manager) is the uuencoded assembled
     object module for the overlay manager used with Microsoft C 6.0
@@ -104,36 +112,46 @@ II. To compile your copy of NetHack on a MSDOS machine:
 
     First check config.h according to the comments to match your system and
     desired set of features.  Mostly you need to check the WIZARD option,
-    make sure the HACKDIR is set properly, and check TERMLIB and COMPRESS.
+    make sure the HACKDIR is set properly or disabled, and check TERMLIB
+    and COMPRESS.
 
     We've managed to enable all the special features.  You may include all
-    or as few of them as you wish.
+    or as few of them as you wish.  To conserve disk space, you may wish
+    to disable LOGFILE and NEWS.
 
     Also check pcconf.h, which should not need much editing (if you are
-    including termcap.uu and random.c).  If you are not including random.c
-    you will need to comment out RANDOM. 
+    including random.c, and if you do not require termcap for screen
+    management).  If you are not including random.c you will need to 
+    comment out RANDOM. 
 
     There are several options available for screen management with this
     release of PC NetHack.  The features #define TERMLIB, #define
     ANSI_DEFAULT, and #define NO_TERMS in pcconf.h control the various
     options.
 
-    Commenting out the #define TERMLIB in pcconf.h to disable use of termcap
-    routines means relying on either the ANSI_DEFAULT feature, or the
-    NO_TERMS feature, and will make your job a bit easier.
-    You can elect to compile with both TERMLIB and ANSI_DEFAULT
-    and simply not set your TERM variable if you do not wish to use the
-    termcap file settings.  The NO_TERMS feature has the advantage of not
-    needing the DEVICE=ANSI.SYS statement in config.sys.  It will not
-    work with TERMLIB, nor with ANSI_DEFAULT.  It uses internal routines 
-    for screen management, and may be an ideal choice if your
-    play machine is industry standard (has an IBM compatible BIOS).
+    The NO_TERMS feature (the default) has the advantage of not needing the
+    DEVICE=ANSI.SYS statement in config.sys.  The supplied sources and
+    header files are distributed with support for NO_TERMS enabled.  
+    NO_TERMS will not work with TERMLIB, nor with ANSI_DEFAULT defined.  
+    The NO_TERMS feature uses internal routines for screen management, and 
+    may be an ideal choice if your play machine is industry standard (has 
+    an IBM compatible BIOS).
 
-    Should you define NO_TERMS, only define one of the two screen
-    access methods.  If compiling for Microsoft machines, use
-    SCREEN_BIOS, if using DJGPP you can choose between SCREEN_BIOS
+    Should you choose to leave NO_TERMS defined, define only one of the two 
+    screen access methods.  If compiling for Microsoft compilers, use
+    SCREEN_BIOS; if using DJGPP, you can choose between SCREEN_BIOS
     and SCREEN_DJGPPFAST.  Never, never, ever choose both.  Bad things
     will happen.
+
+    If you leave the #define TERMLIB commented in pcconf.h to disable use
+    of termcap routines, then your screen management must rely on either 
+    the NO_TERMS feature described above, or the ANSI_DEFAULT feature.  
+    Either of these will make your job a bit easier than if you choose to 
+    use TERMLIB.  If you elect to include TERMLIB support, you may compile 
+    with both TERMLIB and ANSI_DEFAULT, and simply not set your TERM variable 
+    if you do not wish to use the termcap file settings.  You will need
+    to uudecode the termcap library in sys\share if you are using the TERMLIB
+    feature.  
     
     If you are using a Microsoft compiler you should make doubly certain
     that OVERLAY is defined in pcconf.h, since otherwise things will 
@@ -154,11 +172,12 @@ II. To compile your copy of NetHack on a MSDOS machine:
     commenting out RANDOM in pcconf.h or tosconf.h, comment out (or set equal
     to nothing) the RANDOM macro in your Makefile.
 
-    If you elected not to use termcap, then comment out (or set equal to
-    nothing) the TERMLIB macro in your Makefile.
+    If you elected to use termcap (TERMLIB defined), then uncomment the 
+    TERMLIB macro in your Makefile that points to the location of the
+    library.
     
-    That is,    TERMLIB = (SSYS)\termlib.lib
-    should be   TERMLIB =
+    That is,    TERMLIB =
+    should be   TERMLIB = (SSYS)\termlib.lib
 
     If you are recompiling after patching your sources, or if you got your
     files from somewhere other than the official distribution, "touch
@@ -184,6 +203,10 @@ II. To compile your copy of NetHack on a MSDOS machine:
     termcap to your game directory.  Edit NetHack.cnf to reflect your
     particular setup and personal preferences, by following the comments.
 
+    Also, make sure the file msdos.hlp made it to your game directory.
+    If it didn't, move it from sys\msdos to your game directory
+    yourself.
+
     If you'll be running NetHack from a different subdirectory, you will
     want to "set HACKDIR=c:\games\nethack" (or whatever drive and directory 
     you want to use) now.  Add it to your autoexec.bat (in DOS), as you'll
@@ -191,8 +214,29 @@ II. To compile your copy of NetHack on a MSDOS machine:
 
 11. Play NetHack.  If it works, you're done!
 
+Appendix A - Building the "offical binaries"
 
-Appendix A - Microsoft C Compilers
+    If you wish to build a copy of NetHack identical to the ones that
+    the pc team distributes, observe the following:
+
+    For the binary built with Microsoft C 7.00, make no changes to
+    any of the defines.  
+
+    For the 386 binary built with DJGPP, set the following
+    - include/pcconf.h
+      comment out #SCREEN_BIOS
+      define SCREEN_DJGPPFAST
+
+    Make sure the following files have been converted from the
+    unix style "^J" end of line, to the msdos style "^M^J":
+      license, help, hh, termcap, history, cmdhelp wizhelp and
+      nethack.cnf.
+
+    Uudecode nhico.uu nhpif.uu.
+
+    Place all the files in a clean directory and test.
+
+Appendix B - Microsoft C Compilers
 
     You can compile NetHack using almost any version of Microsoft C later
     than 5.1, including Microsoft Visual C++ Professional 1.0.  MSC Versions
@@ -269,7 +313,7 @@ Appendix A - Microsoft C Compilers
     The Microsoft Visual C++ Professional compiler can utilize the same
     Makefiles and instructions for compiling as Microsoft C version 7.0.
 
-Appendix B - DJGPP Compiler (gcc ported to msdos)
+Appendix C - DJGPP Compiler (gcc ported to msdos)
 
     If you have a 386 or better machine, you are in luck.  You can compile
     NetHack without spending money on a compiler.  DJGPP is available free
@@ -281,17 +325,15 @@ Appendix B - DJGPP Compiler (gcc ported to msdos)
     dungeon compilers.  They should be available at the same place you got
     djgpp.
 
-    The executable version of NetHack built with DJGPP runs in protected mode
-    without overlays and is quite fast.  It cannot run under Microsoft
-    Windows.  See the DJGPP documentation for more details on particular
-    memory requirements.
+    The latest version of djgpp, 1.10, will produce a binary that will
+    run under Microsoft Windows.
 
     If you want to use the built-in DJGPP screen routines, uncomment
     SCREEN_DJGPPFAST in pcconf.h.  Note that some of these routines
-    seem to be broken so we pick and choose the ones that work.  See
-    video.c for details. 
+    are broken under early versions of the compiler, so we pick and 
+    choose the ones that work.  See video.c for details. 
 
-Appendix C - Borland C Compiler
+Appendix D - Borland C Compiler
 
     NetHack will not compile at all with any version of Turbo C/C++.  It
     has been made to compile with Borland C v2.0 after much work, but the
@@ -331,7 +373,7 @@ Appendix C - Borland C Compiler
        to convert the raw data files into game readable form.  If you
        get errors then something is wrong.
 
-Appendix D - Microsoft C Compiler Warnings
+Appendix E - Microsoft C Compiler Warnings
 
     If you are using MSC for your compile with any of the /W levels set,
     you can expect warnings.  The list below are those warnings that we

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)dungeon.c	3.1	93/06/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 #ifdef OVL1
 
 #define	DUNGEON_FILE	"dungeon"
-#if defined(MICRO) && !defined(AMIGA)
+#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
 # define RDMODE "rb"
 #else
 # define RDMODE "r"
@@ -182,9 +182,8 @@ const char	*s;
 	    if (!strcmp(dungeons[i].dname, s)) return i;
 
 	panic("Couldn't resolve dungeon number for name \"%s\".", s);
-#if defined(LINT) || defined(GCC_WARN)
+	/*NOT REACHED*/
 	return (xchar)0;
-#endif
 }
 
 s_level *
@@ -233,9 +232,8 @@ struct proto_dungeon *pd;
 		return(pdnum);
 
 	panic("parent_dnum: couldn't resolve branch.");
-#if defined(LINT) || defined(GCC_WARN)
+	/*NOT REACHED*/
 	return (xchar)0;
-#endif
 }
 
 /*
@@ -856,7 +854,7 @@ xchar
 ledger_no(lev)
 d_level	*lev;
 {
-	return(lev->dlevel + dungeons[lev->dnum].ledger_start);
+	return((xchar)(lev->dlevel + dungeons[lev->dnum].ledger_start));
 }
 
 /*
@@ -881,12 +879,17 @@ xchar
 ledger_to_dnum(ledgerno)
 xchar	ledgerno;
 {
-	xchar	i;
+	register int i;
 
-	for(i = 0; i < n_dgns; i++)
-	    if(dungeons[i].ledger_start >= ledgerno) return(i-1);
+	/* find i such that (i->base + 1) <= ledgerno <= (i->base + i->count) */
+	for (i = 0; i < n_dgns; i++)
+	    if (dungeons[i].ledger_start < ledgerno &&
+		ledgerno <= dungeons[i].ledger_start + dungeons[i].num_dunlevs)
+		return (xchar)i;
 
-	return(MAXDUNGEON);
+	panic("level number out of range [ledger_to_dnum(%d)]", (int)ledgerno);
+	/*NOT REACHED*/
+	return (xchar)0;
 }
 
 /* return the level of the dungeon this ledgerno exists in */
@@ -894,7 +897,7 @@ xchar
 ledger_to_dlev(ledgerno)
 xchar	ledgerno;
 {
-	return(ledgerno - dungeons[ledger_to_dnum(ledgerno)].ledger_start);
+	return((xchar)(ledgerno - dungeons[ledger_to_dnum(ledgerno)].ledger_start));
 }
 
 #endif /* OVL1 */
@@ -906,14 +909,14 @@ schar
 depth(lev)
 d_level	*lev;
 {
-	return dungeons[lev->dnum].depth_start + lev->dlevel - 1;
+	return((schar)( dungeons[lev->dnum].depth_start + lev->dlevel - 1));
 }
 
 boolean
 on_level(lev1, lev2)	/* are "lev1" and "lev2" actually the same? */
 d_level	*lev1, *lev2;
 {
-	return((lev1->dnum == lev2->dnum) && (lev1->dlevel == lev2->dlevel));
+	return((boolean)((lev1->dnum == lev2->dnum) && (lev1->dlevel == lev2->dlevel)));
 }
 
 #endif /* OVL0 */
@@ -1034,26 +1037,26 @@ boolean
 On_stairs(x, y)
 xchar x, y;
 {
-	return((x == xupstair && y == yupstair) ||
+	return((boolean)((x == xupstair && y == yupstair) ||
 	       (x == xdnstair && y == ydnstair) ||
 	       (x == xdnladder && y == ydnladder) ||
 	       (x == xupladder && y == yupladder) ||
-	       (x == sstairs.sx && y == sstairs.sy));
+	       (x == sstairs.sx && y == sstairs.sy)));
 }
 
 boolean
 Is_botlevel(lev)
 d_level *lev;
 {
-	return lev->dlevel == dungeons[lev->dnum].num_dunlevs;
+	return((boolean)(lev->dlevel == dungeons[lev->dnum].num_dunlevs));
 }
 
 boolean
 Can_dig_down(lev)
 d_level *lev;
 {
-	return !level.flags.hardfloor
-	    && !Is_botlevel(lev) && !Invocation_lev(lev);
+	return((boolean)(!level.flags.hardfloor
+	    && !Is_botlevel(lev) && !Invocation_lev(lev)));
 }
 
 /*
@@ -1065,7 +1068,7 @@ boolean
 Can_fall_thru(lev)
 d_level *lev;
 {
-	return Can_dig_down(lev) || Is_stronghold(lev);
+	return((boolean)(Can_dig_down(lev) || Is_stronghold(lev)));
 }
 
 /*
@@ -1078,10 +1081,10 @@ boolean
 Can_rise_up(lev)
 d_level *lev;
 {
-    return !In_endgame(lev) &&
+    return((boolean)(!In_endgame(lev) &&
 	(lev->dlevel > 1 ||
 	 (dungeons[lev->dnum].entry_lev == 1 && ledger_no(lev) != 1 &&
-	  sstairs.sx && sstairs.up));
+	  sstairs.sx && sstairs.up))));
 }
 
 /*
@@ -1151,7 +1154,7 @@ boolean
 In_quest(lev)	/* are you in the quest dungeon? */
 d_level *lev;
 {
-	return(lev->dnum == quest_dnum);
+	return((boolean)(lev->dnum == quest_dnum));
 }
 #endif /* MULDGN */
 
@@ -1163,7 +1166,7 @@ boolean
 In_mines(lev)	/* are you in the mines dungeon? */
 d_level	*lev;
 {
-	return(lev->dnum == mines_dnum);
+	return((boolean)(lev->dnum == mines_dnum));
 }
 
 /*
@@ -1207,7 +1210,7 @@ at_dgn_entrance(s)
     branch *br;
 
     br = dungeon_branch(s);
-    return on_level(&u.uz, &br->end1) ? TRUE : FALSE;
+    return((boolean)(on_level(&u.uz, &br->end1) ? TRUE : FALSE));
 }
 #endif /* MULDGN */
 
@@ -1215,7 +1218,7 @@ boolean
 In_tower(lev)	/* are you inside the tower? */
 d_level	*lev;
 {
-	return(lev->dnum == tower_dnum);
+	return((boolean)(lev->dnum == tower_dnum));
 }
 
 #endif /* OVL1 */
@@ -1225,7 +1228,7 @@ boolean
 In_hell(lev)	/* are you in one of the Hell levels? */
 d_level	*lev;
 {
-	return(dungeons[lev->dnum].flags.hellish);
+	return((boolean)(dungeons[lev->dnum].flags.hellish));
 }
 
 #endif /* OVL0 */
@@ -1291,8 +1294,8 @@ boolean
 Invocation_lev(lev)
 d_level *lev;
 {
-	return(In_hell(lev) &&
-		lev->dlevel == (dungeons[lev->dnum].num_dunlevs - 1));
+	return((boolean)(In_hell(lev) &&
+		lev->dlevel == (dungeons[lev->dnum].num_dunlevs - 1)));
 }
 
 /* use instead of depth() wherever a degree of difficulty is made
@@ -1302,7 +1305,7 @@ xchar
 level_difficulty()
 {
 	if (In_endgame(&u.uz))
-		return((xchar) depth(&sanctum_level) + u.ulevel/2);
+		return((xchar)(depth(&sanctum_level) + u.ulevel/2));
 	else
 		if (u.uhave.amulet)
 			return(deepest_lev_reached(FALSE));

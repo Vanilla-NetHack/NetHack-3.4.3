@@ -11,8 +11,9 @@
  * This could probably be automagic later on - I believe there's
  * a unique symbol for MPW at least (it's "macintosh")
  */
-#  define MAC_MPW32		/* Headers, and for avoiding a bug */
-/* #  define MAC_THINKC5	/* Maybe supported now ... */
+#  ifdef applec
+#   define MAC_MPW32		/* Headers, and for avoiding a bug */
+#  endif
 
 #  define RANDOM
 #  define NO_SIGNAL	/* You wouldn't believe our signals ... */

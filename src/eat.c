@@ -103,7 +103,7 @@ register struct obj *obj;
 		return TRUE;
 	if (u.umonnum == PM_GELATINOUS_CUBE && is_organic(obj))
 		return TRUE;
-	return !!index(comestibles, obj->oclass);
+	return((boolean)(!!index(comestibles, obj->oclass)));
 }
 # endif /* POLYSELF */
 #endif /* OVL1 */
@@ -956,8 +956,11 @@ start_tin(otmp)		/* called when starting to open a tin */
 
 #ifdef POLYSELF
 	if (metallivorous(uasmon)) {
-		You("bite right into the metal tin....");
+		You("bite right into the metal tin...");
 		tmp = 1;
+	} else if (nolimbs(uasmon)) {
+		You("cannot handle the tin properly to open it.");
+		return;
 	} else
 #endif
 	if (otmp->blessed) {
@@ -1718,7 +1721,7 @@ unfaint()
 boolean
 is_fainted()
 {
-	return(u.uhs == FAINTED);
+	return((boolean)(u.uhs == FAINTED));
 }
 
 void
@@ -1832,9 +1835,9 @@ newuhs(incr)		/* compute and comment on your (new?) hunger status */
  * in inventory.
  */
 struct obj *
-floorfood(verb,corpseonly)	/* get food from floor or pack */
+floorfood(verb,corpsecheck)	/* get food from floor or pack */
 	const char *verb;
-	boolean corpseonly;
+	int corpsecheck; /* 0, no check, 1, corpses, 2, tinnable corpses */
 {
 	register struct obj *otmp;
 	char qbuf[QBUFSZ];
@@ -1859,7 +1862,8 @@ floorfood(verb,corpseonly)	/* get food from floor or pack */
 	if (!(Levitation && !Is_airlevel(&u.uz)  && !Is_waterlevel(&u.uz))
 	    && !u.uswallow) {
 	    for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp->nexthere) {
-		if(corpseonly ? otmp->otyp==CORPSE :
+		if(corpsecheck ?
+		(otmp->otyp==CORPSE && (corpsecheck == 1 || tinnable(otmp))) :
 #ifdef POLYSELF
 		    feeding ? (otmp->oclass != GOLD_CLASS && is_edible(otmp)) :
 #endif

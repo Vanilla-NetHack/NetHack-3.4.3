@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)sp_lev.c	3.1	93/06/29	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -42,7 +42,7 @@ static void FDECL(create_corridor, (corridor *));
 static boolean FDECL(create_subroom, (struct mkroom *, XCHAR_P, XCHAR_P,
 					XCHAR_P, XCHAR_P, XCHAR_P, XCHAR_P));
 
-#if defined(MICRO) && !defined(AMIGA)
+#if (defined(MICRO) && !defined(AMIGA)) || defined(THINK_C)
 # define RDMODE "rb"
 #else
 # define RDMODE "r"
@@ -962,7 +962,7 @@ create_altar(a, croom)
 		croom_is_temple = FALSE;
 	} else {
 	    get_location(&x, &y, DRY);
-	    if (sproom = (schar) *in_rooms(x, y, TEMPLE))
+	    if ((sproom = (schar) *in_rooms(x, y, TEMPLE)) != 0)
 		croom = &rooms[sproom - ROOMOFFSET];
 	    else
 		croom_is_temple = FALSE;
@@ -1376,17 +1376,17 @@ int n;
 		r = ro[n];
 		Free(r->name);
 		Free(r->parent);
-		if (j = r->ndoor) {
+		if ((j = r->ndoor) != 0) {
 			while(j--)
 			    Free(r->doors[j]);
 			Free(r->doors);
 		}
-		if (j = r->ntrap) {
+		if ((j = r->ntrap) != 0) {
 			while (j--)
 			    Free(r->traps[j]);
 			Free(r->traps);
 		}
-		if (j = r->nmonster) {
+		if ((j = r->nmonster) != 0) {
 			while (j--) {
 				Free(r->monsters[j]->name);
 				Free(r->monsters[j]->appear_as);
@@ -1394,46 +1394,46 @@ int n;
 			}
 			Free(r->monsters);
 		}
-		if (j = r->nobject) {
+		if ((j = r->nobject) != 0) {
 			while(j--) {
 				Free(r->objects[j]->name);
 				Free(r->objects[j]);
 			}
 			Free(r->objects);
 		}
-		if (j = r->nstair) {
+		if ((j = r->nstair) != 0) {
 			while(j--)
 			    Free(r->stairs[j]);
 			Free(r->stairs);
 		}
-		if (j = r->naltar) {
+		if ((j = r->naltar) != 0) {
 			while (j--)
 			    Free(r->altars[j]);
 			Free(r->altars);
 		}
-		if (j = r->ngold) {
+		if ((j = r->ngold) != 0) {
 			while(j--)
 			    Free(r->golds[j]);
 			Free(r->golds);
 		}
-		if (j = r->nengraving) {
+		if ((j = r->nengraving) != 0) {
 			while(j--) {
 				Free(r->engravings[j]->e.text);
 				Free(r->engravings[j]);
 			}
 			Free(r->engravings);
 		}
-		if (j = r->nfountain) {
+		if ((j = r->nfountain) != 0) {
 			while(j--)
 			    Free(r->fountains[j]);
 			Free(r->fountains);
 		}
-		if (j = r->nsink) {
+		if ((j = r->nsink) != 0) {
 			while(j--)
 			    Free(r->sinks[j]);
 			Free(r->sinks);
 		}
-		if (j = r->npool) {
+		if ((j = r->npool) != 0) {
 			while(j--)
 			    Free(r->pools[j]);
 			Free(r->pools);
@@ -1685,7 +1685,7 @@ FILE *fd;
 
 		/* read the doors */
 		Fread((genericptr_t) &r->ndoor, 1, sizeof(r->ndoor), fd);
-		if(n = r->ndoor)
+		if ((n = r->ndoor) != 0)
 		    r->doors = NewTab(room_door, n);
 		while(n--) {
 			r->doors[n] = New(room_door);
@@ -1695,7 +1695,7 @@ FILE *fd;
 
 		/* read the traps */
 		Fread((genericptr_t) &r->ntrap, 1, sizeof(r->ntrap), fd);
-		if(n = r->ntrap)
+		if ((n = r->ntrap) != 0)
 		    r->traps = NewTab(trap, n);
 		while(n--) {
 			r->traps[n] = New(trap);
@@ -1704,7 +1704,7 @@ FILE *fd;
 
 		/* read the monsters */
 		Fread((genericptr_t) &r->nmonster, 1, sizeof(r->nmonster), fd);
-		if(n = r->nmonster)
+		if ((n = r->nmonster) != 0)
 		    r->monsters = NewTab(monster, n);
 		while(n--) {
 			r->monsters[n] = New(monster);
@@ -1732,7 +1732,7 @@ FILE *fd;
 
 		/* read the objects */
 		Fread((genericptr_t) &r->nobject, 1, sizeof(r->nobject), fd);
-		if(n = r->nobject)
+		if ((n = r->nobject) != 0)
 		    r->objects = NewTab(object, n);
 		while (n--) {
 			r->objects[n] = New(object);
@@ -1750,7 +1750,7 @@ FILE *fd;
 
 		/* read the stairs */
 		Fread((genericptr_t) &r->nstair, 1, sizeof(r->nstair), fd);
-		if (n = r->nstair)
+		if ((n = r->nstair) != 0)
 		    r->stairs = NewTab(stair, n);
 		while (n--) {
 			r->stairs[n] = New(stair);
@@ -1760,7 +1760,7 @@ FILE *fd;
 
 		/* read the altars */
 		Fread((genericptr_t) &r->naltar, 1, sizeof(r->naltar), fd);
-		if (n = r->naltar)
+		if ((n = r->naltar) != 0)
 		    r->altars = NewTab(altar, n);
 		while (n--) {
 			r->altars[n] = New(altar);
@@ -1770,7 +1770,7 @@ FILE *fd;
 
 		/* read the gold piles */
 		Fread((genericptr_t) &r->ngold, 1, sizeof(r->ngold), fd);
-		if (n = r->ngold)
+		if ((n = r->ngold) != 0)
 		    r->golds = NewTab(gold, n);
 		while (n--) {
 			r->golds[n] = New(gold);
@@ -1780,7 +1780,7 @@ FILE *fd;
 		/* read the engravings */
 		Fread((genericptr_t) &r->nengraving, 1,
 			sizeof(r->nengraving), fd);
-		if (n = r->nengraving)
+		if ((n = r->nengraving) != 0)
 		    r->engravings = NewTab(engraving,n);
 		while(n--) {
 			r->engravings[n] = New(engraving);
@@ -1796,7 +1796,7 @@ FILE *fd;
 		/* read the fountains */
 		Fread((genericptr_t) &r->nfountain, 1,
 			sizeof(r->nfountain), fd);
-		if (n = r->nfountain)
+		if ((n = r->nfountain) != 0)
 		    r->fountains = NewTab(fountain, n);
 		while (n--) {
 			r->fountains[n] = New(fountain);
@@ -1806,7 +1806,7 @@ FILE *fd;
 
 		/* read the sinks */
 		Fread((genericptr_t) &r->nsink, 1, sizeof(r->nsink), fd);
-		if (n = r->nsink)
+		if ((n = r->nsink) != 0)
 		    r->sinks = NewTab(sink, n);
 		while (n--) {
 			r->sinks[n] = New(sink);
@@ -1815,7 +1815,7 @@ FILE *fd;
 
 		/* read the pools */
 		Fread((genericptr_t) &r->npool, 1, sizeof(r->npool), fd);
-		if (n = r->npool)
+		if ((n = r->npool) != 0)
 		    r->pools = NewTab(pool,n);
 		while (n--) {
 			r->pools[n] = New(pool);
@@ -1835,7 +1835,7 @@ FILE *fd;
 			if (tmproom[j]->name && !strcmp(tmproom[j]->name,
 						       tmproom[i]->parent)) {
 				n = tmproom[j]->nsubroom++;
-				tmproom[j]->subrooms[n] = tmproom[i];
+				tmproom[j]->subrooms[(int)n] = tmproom[i];
 				break;
 			}
 	    }
@@ -2183,8 +2183,8 @@ FILE *fd;
 
 	/* now that we have rooms _and_ associated doors, fill the rooms */
 	for(n = 0; n < SIZE(mustfill); n++)
-	    if(mustfill[n])
-		fill_room(&rooms[n], (mustfill[n] == 2));
+	    if(mustfill[(int)n])
+		fill_room(&rooms[(int)n], (mustfill[(int)n] == 2));
 
 	/* if special boundary syms (CROSSWALL) in map, remove them now */
 	if(has_bounds) {

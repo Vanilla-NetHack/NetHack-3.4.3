@@ -1065,7 +1065,7 @@ do_stone:
 				!Is_medusa_level(&u.uz) &&
 				!Is_waterlevel(&u.uz);
 
-			    pline("%s drowns you....", Monnam(mtmp));
+			    pline("%s drowns you...", Monnam(mtmp));
 			    killer_format = KILLED_BY_AN;
 			    Sprintf(buf, "%s by %s",
 				    moat ? "moat" : "pool of water",

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.1	93/03/30	*/
+/*	SCCS Id: @(#)do.c	3.1	93/06/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -153,7 +153,6 @@ const char *verb;
 		 (t->ttyp==PIT || t->ttyp==SPIKED_PIT || t->ttyp==TRAPDOOR)) {
 		struct monst *mtmp;
 
-		bury_objs(x, y);
 		if(!Can_fall_thru(&u.uz) && t->ttyp == TRAPDOOR)
 			return FALSE;
 		if (((mtmp = m_at(x, y)) && mtmp->mtrapped) ||
@@ -166,8 +165,6 @@ const char *verb;
 			if (!passes_walls(mtmp->data) && !throws_rocks(mtmp->data))
 				if (hmon(mtmp, obj, TRUE))
 				    return FALSE;	/* still alive */
-				else
-				    bury_objs(x, y);	/* treasure, corpse */
 		    } else
 #ifdef POLYSELF
 			if (!passes_walls(uasmon) && !throws_rocks(uasmon))
@@ -193,6 +190,7 @@ const char *verb;
 		}
 		deltrap(t);
 		obfree(obj, (struct obj *)0);
+		bury_objs(x, y);
 		newsym(x,y);
 		return TRUE;
 	} else if (is_pool(x, y)) {
@@ -219,8 +217,7 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 	} else {
 		pline("%s land%s on the altar.", Doname2(obj),
 			(obj->quan == 1L) ? "s" : "");
-		if (obj->otyp != GOLD_PIECE)
-			obj->bknown = 1;
+		obj->bknown = 1;
 	}
 }
 
@@ -976,8 +973,7 @@ register boolean at_stairs, falling, portal;
 		    if (enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL])) {
 			if ((mtmp = mk_roamer(&mons[PM_ANGEL], u.ualign.type,
 					   mm.x, mm.y, TRUE)) != 0) {
-			    register struct obj *otmp =
-					   mksobj(SILVER_SABER, FALSE, FALSE);
+			    register struct obj *otmp;
 
 			    if (!Blind)
 				pline("An angel appears near you.");
@@ -992,9 +988,19 @@ register boolean at_stairs, falling, portal;
 			    mtmp->m_lev = rn1(8,15);
 			    mtmp->mhp = mtmp->mhpmax =
 					d((int)mtmp->m_lev,10) + 30 + rnd(30);
+			    if ((otmp = select_hwep(mtmp)) == 0) {
+				otmp = mksobj(SILVER_SABER, FALSE, FALSE);
+				mpickobj(mtmp, otmp);
+			    }
 			    bless(otmp);
-			    otmp->spe = 7;
-			    mpickobj(mtmp, otmp);
+			    if (otmp->spe < 4) otmp->spe += rnd(4);
+#ifdef MUSE
+			    if ((otmp = which_armor(mtmp, W_ARMS)) == 0
+			      || otmp->otyp != SHIELD_OF_REFLECTION) {
+				(void) mongets(mtmp, AMULET_OF_REFLECTION);
+				m_dowear(mtmp, TRUE);
+			    }
+#endif
 			}
 		    }
 		}

@@ -171,7 +171,7 @@ register struct monst *mtmp;
 	if (is_orc(mtmp->data) && pl_character[0]=='E') tmp++;
 
 /*	with a lot of luggage, your agility diminishes */
-	if(tmp2 = near_capacity()) tmp -= (tmp2*2) - 1;
+	if ((tmp2 = near_capacity()) != 0) tmp -= (tmp2*2) - 1;
 	if(u.utrap) tmp -= 3;
 #ifdef POLYSELF
 /*	Some monsters have a combination of weapon attacks and non-weapon
@@ -312,6 +312,7 @@ register int mhit;
 		/* 1/20 chance of shattering defender's weapon */
 		struct obj *obj = MON_WEP(mon);
 
+		obj->owornmask &= ~W_WEP;
 		MON_NOWEP(mon);
 		m_useup(mon, obj);
 		pline("%s weapon shatters!", s_suffix(Monnam(mon)));
@@ -357,7 +358,7 @@ hitum(mon, tmp)		/* returns TRUE if monster still lives */
 struct monst *mon;
 int tmp;
 {
-	static NEARDATA int malive;
+	static NEARDATA boolean malive;
 	boolean mhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
 
 	if(tmp > dieroll) exercise(A_DEX, TRUE);
@@ -743,7 +744,7 @@ register int thrown;
 	}
 #endif
 
-	return(destroyed ? FALSE : TRUE);
+	return((boolean)(destroyed ? FALSE : TRUE));
 }
 
 #ifdef POLYSELF
@@ -1283,7 +1284,7 @@ use_weapon:
 			/* Enemy dead, before any special abilities used */
 			if (!known_hitum(mon,dhit)) return 0;
 			/* might be a worm that gets cut in half */
-			if (m_at(u.ux+u.dx, u.uy+u.dy) != mon) return(nsum);
+			if (m_at(u.ux+u.dx, u.uy+u.dy) != mon) return((boolean)(nsum != 0));
 			/* Do not print "You hit" message, since known_hitum
 			 * already did it.
 			 */
@@ -1410,7 +1411,7 @@ use_weapon:
 	    }
 	    if (dhit == -1)
 		rehumanize();
-	    if(sum[i] == 2) return(passive(mon, 1, 0, (mattk->aatyp==AT_KICK)));
+	    if(sum[i] == 2) return((boolean)passive(mon, 1, 0, (mattk->aatyp==AT_KICK)));
 							/* defender dead */
 	    else {
 		(void) passive(mon, sum[i], 1, (mattk->aatyp==AT_KICK));
@@ -1421,7 +1422,7 @@ use_weapon:
 	    if (multi < 0)
 		break; /* If paralyzed while attacking, i.e. floating eye */
 	}
-	return(nsum);
+	return((boolean)(nsum != 0));
 }
 
 #endif /* POLYSELF */

@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)timeout.c	3.1	93/03/30	*/
+/*	SCCS Id: @(#)timeout.c	3.1	93/07/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 STATIC_DCL void NDECL(stoned_dialogue);
 STATIC_DCL void NDECL(vomiting_dialogue);
@@ -123,8 +123,7 @@ nh_timeout()
 
 	for(upp = u.uprops; upp < u.uprops+SIZE(u.uprops); upp++)
 	    if((upp->p_flgs & TIMEOUT) && !(--upp->p_flgs & TIMEOUT)) {
-		if(upp->p_tofn) (*upp->p_tofn)();
-		else switch(upp - u.uprops){
+		switch(upp - u.uprops){
 		case STONED:
 			if (!killer) {
 				killer_format = KILLED_BY_AN;
@@ -196,6 +195,9 @@ nh_timeout()
 				Sleeping = sleeptime + rnd(100);
 			}
 			break;
+		case LEVITATION:
+			(void) float_down();
+			break;
 		case STRANGLED:
 			killer_format = KILLED_BY;
 			killer = "strangulation";
@@ -255,14 +257,14 @@ register struct obj *otmp;
 #ifdef POLYSELF
 	int yours = otmp->spe;
 #endif
+	long egg_age = monstermoves - otmp->age;
 
-	if(monstermoves-otmp->age > 200)  /* very old egg - it's dead */
+	if (egg_age > 200L) {		/* very old egg - it's dead */
 	    otmp->corpsenm = -1;
-#ifdef LINT	/* long conv. ok */
-	else if(rnd(150) > 150) {
-#else
-	else if(rnd((int)(monstermoves-otmp->age)) > 150) {
-#endif
+	    return;
+	} else if (egg_age <= 150L) {	/* too young to hatch */
+	    return;
+	} else if (rnd((int)egg_age) > 150) {
 	    mtmp = makemon(&mons[big_to_little(otmp->corpsenm)], u.ux, u.uy);
 	    useup(otmp);
 	    if(mtmp) {

@@ -162,8 +162,8 @@ EditColor()
 		    else if( gd->GadgetID == GADCOLSAVE )
 		    {
 		    	FILE *fp, *nfp;
-		    	char buf[ 300 ];
-				int once = 0;
+		    	char buf[ 300 ], nname[ 300 ], oname[ 300 ];
+			int once = 0;
 
     			fp = fopen( configfile, "r" );
 			if( !fp )
@@ -172,7 +172,20 @@ EditColor()
                     	    break;
 			}
 
-    			nfp = fopen( "New_NetHack.cnf", "w" );
+			strcpy( oname, dirname( configfile ) );
+			if( oname[ strlen(oname)-1 ] != ':' )
+			{
+			    sprintf( nname, "%s/New_NetHack.cnf", oname );
+			    strcat( oname, "/" );
+			    strcat( oname, "Old_NetHack.cnf" );
+			}
+			else
+			{
+			    sprintf( nname, "%sNew_NetHack.cnf", oname );
+			    strcat( oname, "Old_NetHack.cnf" );
+			}
+
+    			nfp = fopen( nname, "w" );
     			if( !nfp )
     			{
 			    pline( "can't write to New_NetHack.cnf" );
@@ -213,9 +226,9 @@ EditColor()
 			}
 			fclose( fp );
 			fclose( nfp );
-			unlink( "Old_NetHack.cnf" );
-			rename( configfile, "Old_NetHack.cnf" );
-			rename( "New_NetHack.cnf", configfile );
+			unlink( oname );
+			if( filecopy( configfile, oname ) == 0 )
+			    filecopy( nname, configfile );
 			done = 1;
 			okay = 1;
 		    }
@@ -279,6 +292,69 @@ EditColor()
 
     LoadRGB4( &scrn->ViewPort, flags.amii_curmap, 1L << DEPTH );
     CloseWindow( nw );
+}
+
+char *dirname( str )
+    char *str;
+{
+    char *t, c;
+    static char dir[ 300 ];
+
+    t = strrchr( str, '/' );
+    if( !t )
+	t = strrchr( str, ':' );
+    if( !t )
+	t = str;
+    else
+    {
+    	c = *t;
+    	*t = 0;
+    	strcpy( dir, str );
+    	*t = c;
+    }
+    return( dir );
+}
+
+char *basename( str )
+    char *str;
+{
+    char *t;
+
+    t = strrchr( str, '/' );
+    if( !t )
+	t = strrchr( str, ':' );
+    if( !t )
+	t = str;
+    else
+	++t;
+    return( t );
+}
+
+filecopy( from, to )
+    char *from, *to;
+{
+    char *buf;
+    int i = 0;
+
+    buf = malloc( strlen(to) + strlen(from) + 20 );
+    if( buf )
+    {
+    	sprintf( buf, "c:copy \"%s\" \"%s\" clone", from, to );
+
+    	/* Check SysBase instead?  Shouldn't matter  */
+#ifdef	INTUI_NEW_LOOK
+	if( IntuitionBase->LibNode.lib_Version >= 37 )
+	    i = System( buf, NULL );
+	else
+#endif
+	    Execute( buf, NULL, NULL );
+    	free( buf );
+    }
+    else
+    {
+    	return( -1 );
+    }
+    return( i );
 }
 
 /* The colornames, and the default values for the pens */

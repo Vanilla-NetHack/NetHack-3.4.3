@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.1	93/05/29	*/
+/*	SCCS Id: @(#)end.c	3.1	93/06/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,6 +17,10 @@ static struct obj *FDECL(get_valuables, (struct obj *));
 static void FDECL(savelife, (int));
 static void NDECL(list_vanquished);
 static void NDECL(list_genocided);
+
+#ifdef AMIGA
+void NDECL(clear_icon);
+#endif
 
 /*
  * The order of these needs to match the macros in hack.h.
@@ -382,6 +386,7 @@ int how;
 		return;
 	}
 #endif
+	if (how < PANICKED) u.umortality++;
 	if (Lifesaved && how <= GENOCIDED) {
 		pline("But wait...");
 		makeknown(AMULET_OF_LIFE_SAVING);
@@ -684,7 +689,8 @@ container_contents(list, identified, all_containers)
 		    for (obj = box->cobj; obj; obj = obj->nobj) {
 			if (identified) {
 			    makeknown(obj->otyp);
-			    obj->known = obj->bknown = obj->dknown = 1;
+			    obj->known = obj->bknown =
+			    obj->dknown = obj->rknown = 1;
 			}
 			putstr(tmpwin, 0, doname(obj));
 		    }

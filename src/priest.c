@@ -132,8 +132,8 @@ histemple_at(priest, x, y)
 register struct monst *priest;
 register xchar x, y;
 {
-	return((EPRI(priest)->shroom == *in_rooms(x, y, TEMPLE)) &&
-	       on_level(&(EPRI(priest)->shrlevel), &u.uz));
+	return((boolean)((EPRI(priest)->shroom == *in_rooms(x, y, TEMPLE)) &&
+	       on_level(&(EPRI(priest)->shrlevel), &u.uz)));
 }
 
 /*
@@ -305,7 +305,7 @@ boolean
 p_coaligned(priest)
 struct monst *priest;
 {
-	return(u.ualign.type == ((int)EPRI(priest)->shralign));
+	return((boolean)(u.ualign.type == ((int)EPRI(priest)->shralign)));
 }
 
 static boolean
@@ -319,7 +319,7 @@ struct monst *pri;
 	lev = &levl[EPRI(pri)->shrpos.x][EPRI(pri)->shrpos.y];
 	if (!IS_ALTAR(lev->typ) || !(lev->altarmask & AM_SHRINE))
 		return(FALSE);
-	return(EPRI(pri)->shralign == Amask2align(lev->altarmask & ~AM_SHRINE));
+	return((boolean)(EPRI(pri)->shralign == Amask2align(lev->altarmask & ~AM_SHRINE)));
 }
 
 struct monst *
@@ -483,7 +483,9 @@ register struct monst *priest;
 		    verbalize("I bestow upon thee a blessing.");
 		    Clairvoyant += rn1(500,500);
 		}
-	    } else if(offer < (u.ulevel * 600)) {
+	    } else if(offer < (u.ulevel * 600) &&
+		      u.ublessed < 20 &&
+		      (u.ublessed < 9 || !rn2(u.ublessed))) {
 		verbalize("Thy devotion has been rewarded.");
 		if (!(Protection & INTRINSIC))  {
 			Protection |= FROMOUTSIDE;
@@ -493,7 +495,7 @@ register struct monst *priest;
 		verbalize("Thy selfless generosity is deeply appreciated.");
 		if(u.ugold < (offer * 2L) && coaligned) {
 		    if(strayed && (moves - u.ucleansed) > 5000L) {
-			u.ualign.record = 0; /* cleanse him */
+			u.ualign.record = 0; /* cleanse thee */
 			u.ucleansed = moves;
 		    } else {
 			u.ualign.record += 2;
@@ -561,7 +563,7 @@ xchar x, y;
 	    (roomno != *in_rooms(x, y, TEMPLE)) ||
 	    !(priest = findpriest(roomno)))
 		return(FALSE);
-	return(has_shrine(priest) && p_coaligned(priest) && priest->mpeaceful);
+	return((boolean)(has_shrine(priest) && p_coaligned(priest) && priest->mpeaceful));
 }
 
 void

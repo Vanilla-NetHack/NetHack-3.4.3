@@ -107,11 +107,16 @@ static const char *shktools[] = {
     "Htargcm", "Enrobwem", "Kachzi Rellim", "Regien", "Donmyar",
     "Yelpur", "Nosnehpets", "Stewe", "Renrut", "_Zlaw", "Nosalnef",
     "Rewuorb", "Rellenk", "Yad", "Cire Htims", "Y-crad", "Nenilukah",
+    "Corsh", "Aned",
 #ifdef OVERLAY
-    "Erreip", "Nehpets", "Mron", "Snivek",
+    "Erreip", "Nehpets", "Mron", "Snivek", "Lapu",
+#endif
+#ifdef WIN32
+    "Lechaim",
 #endif
 #ifdef MAC
     "Nhoj-lee", "Evad\'kh", "Ettaw-noj", "Tsew-mot", "Ydna-s",
+    "Yao-hang", "Tonbar",
 #endif
 #ifdef AMIGA
     "Falo", "Nosid-da\'r", "Ekim-p", "Rebrol-nek", "Noslo", "Yl-rednow",

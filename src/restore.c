@@ -25,6 +25,10 @@ static void FDECL(restgenoinfo, (int));
 static boolean FDECL(restgamestate, (int, unsigned int *));
 static int FDECL(restlevelfile, (int,XCHAR_P));
 
+#ifdef AMII_GRAPHICS
+void NDECL( amii_setpens );		/* use colors from save file */
+#endif
+
 #ifdef MULDGN
 #include "quest.h"
 #endif
@@ -241,7 +245,17 @@ boolean ghostly;
 		if(mtmp->minvent)
 			mtmp->minvent = restobjchn(fd, ghostly);
 #ifdef MUSE
-		if (mtmp->mw) mtmp->mw = mtmp->minvent;	/* wield 1st obj in inventory */
+		if (mtmp->mw) {
+			struct obj *obj;
+
+			for(obj = mtmp->minvent; obj; obj = obj->nobj)
+				if (obj->owornmask & W_WEP) break;
+			if (obj) mtmp->mw = obj;
+			else {
+				MON_NOWEP(mtmp);
+				impossible("bad monster weapon restore");
+			}
+		}
 #endif
 		if (mtmp->isshk) restshk(mtmp, ghostly);
 		if (mtmp->ispriest) restpriest(mtmp, ghostly);
@@ -641,7 +655,7 @@ boolean ghostly;
 		uchar	len;
 		struct rm r;
 		
-#if defined(applec)
+#if defined(MAC)
 		memset ( & r , 0 , sizeof ( r ) ) ; /* Suppress warning about used before set */
 #endif
 		i = 0; j = 0; len = 0;

@@ -439,9 +439,9 @@ int *dy, *xx, *yy;
 	}
 	*xx = dd.x;
 	*yy = dd.y;
-	return((isok(*xx,*yy+*dy) && levl[*xx][*yy+*dy].typ == STONE)
+	return((boolean)((isok(*xx,*yy+*dy) && levl[*xx][*yy+*dy].typ == STONE)
 	    && (isok(*xx,*yy-*dy) && !IS_POOL(levl[*xx][*yy-*dy].typ)
-				  && !IS_FURNITURE(levl[*xx][*yy-*dy].typ)));
+				  && !IS_FURNITURE(levl[*xx][*yy-*dy].typ))));
 }
 
 /* there should be one of these per trap, in the same order as trap.h */
@@ -1057,7 +1057,7 @@ boolean
 occupied(x, y)
 register xchar x, y;
 {
-	return(t_at(x, y) || levl[x][y].typ == STAIRS
+	return((boolean)(t_at(x, y) || levl[x][y].typ == STAIRS
 		|| IS_FOUNTAIN(levl[x][y].typ)
 		|| IS_THRONE(levl[x][y].typ)
 #ifdef SINKS
@@ -1067,7 +1067,7 @@ register xchar x, y;
 		|| is_lava(x,y)
 		|| is_pool(x,y)
 		|| invocation_pos(x,y)
-		);
+		));
 }
 
 /* make a trap somewhere (in croom if mazeflag = 0 && !tm) */

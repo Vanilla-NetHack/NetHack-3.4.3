@@ -142,8 +142,8 @@ boolean
 obj_is_pname(obj)
 register struct obj *obj;
 {
-    return (obj->dknown && obj->known && obj->onamelth && obj->oartifact &&
-	    !objects[obj->otyp].oc_unique);
+    return((boolean)(obj->dknown && obj->known && obj->onamelth && obj->oartifact &&
+	    !objects[obj->otyp].oc_unique));
 }
 
 /* Give the name of an object seen at a distance.  Unlike xname/doname,
@@ -441,6 +441,7 @@ register struct obj *obj;
 		Strcpy(prefix, "a ");
 
 	if (obj->bknown && 
+	    obj->oclass != GOLD_CLASS &&
 	    (obj->otyp != POT_WATER || !objects[POT_WATER].oc_name_known
 		|| (!obj->cursed && !obj->blessed))) {
 	    /* allow 'blessed clear potion' if we don't know it's holy water;
@@ -993,8 +994,14 @@ const char *oldstr;
 
 	/* Japanese words: plurals are the same as singlar */
 	if ((len == 2 && !strcmp(str, "ya")) ||
-	    (len > 2 && !strcmp(spot-2, " ya")))
-	    goto bottom;
+	    (len > 2 && !strcmp(spot-2, " ya")) ||
+	    (len >= 5 && (!strcmp(spot-4, "ninja") ||
+			!strcmp(spot-4, "ronin") ||
+			!strcmp(spot-4, "shito") ||
+			!strcmp(spot-4, "tengu"))) ||
+	    (len >= 7 && (!strcmp(spot-6, "samurai") ||
+			!strcmp(spot-6, "gunyoki"))))
+		goto bottom;
 
 	/* Default: append an 's' */
 	Strcpy(spot+1, "s");

@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)video.c   3.1     93/05/09                        */
+/*   SCCS Id: @(#)video.c   3.1     93/06/28                        */
 /*   Copyright (c) NetHack PC Development Team 1993                 */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*                                                                  */
@@ -12,15 +12,44 @@
  *     Use CO,LI in decl.c           M. Allison      93/04/24
  *     Add djgpp support             K. Smolkowski   93/04/26
  *     Add runtime monoadapter check M. Allison      93/05/09
+ *     Fix grays                     M. Allison      93/06/15
+ *     MONO_CHECK not BIOS specific  M. Allison      93/06/19
+ *     Add .cnf videoshades support  M. Allison      93/06/25
+ *     Add .cnf videocolors support  M. Allison      93/06/27
+ *     Make tty_delay_output() work  M. Allison      93/06/28
  */
 
 #include "hack.h"
 
 #include <dos.h>
 
-#ifdef SCREEN_BIOS
-#define MONO_CHECK	   		/* Enable monochrome adapter support */
-#endif
+/*
+ * Choose compile options for different compilers/environments.
+ * Current optional features in video.c :
+ *
+ *     MONO_CHECK     Enables runtime checking for monochrome
+ *                    adapter. 93/06/19
+ *     ENABLE_SLEEP   Enables the tty_delay_output() function. 93/06/28
+ *
+ */
+
+# ifdef SCREEN_BIOS
+# define MONO_CHECK		/* Video BIOS can do the check       */ 
+#  if defined(_MSC_VER) && _MSC_VER >= 700
+# define ENABLE_SLEEP		/* enable napping for visual effects */
+#  endif
+# endif
+
+# ifdef SCREEN_DJGPPFAST
+/*# define MONO_CHECK 		/* djgpp should be able to do check  */ 
+# define ENABLE_SLEEP		/* enable napping for visual effects */
+# endif
+
+# ifdef PC9801
+#  ifdef MONO_CHECK
+#undef MONO_CHECK		/* Don't suppose it can do the check */
+#  endif                        /* Can it?                           */
+# endif
 
 /*
  * PC interrupts
@@ -37,27 +66,31 @@
  */
 #define ATTRIB_NORMAL         0x07	/* Normal attribute */
 #define ATTRIB_INTENSE 	      0x0f	/* Intense White */
+
 #ifdef MONO_CHECK
 #define ATTRIB_MONO_UNDERLINE 0x01	/* Underlined,white */
 #define ATTRIB_MONO_BLINK     0x87	/* Flash bit, white */
 #define ATTRIB_MONO_REVERSE   0x70	/* Black on white */
 #endif
+
 /*
  * Video BIOS functions
  */
-#ifdef PC9801
+#if defined(PC9801)
 #define SETCURPOS   0x13    /* Set Cursor Position */
 #define SENSEMODE   0x0b    /* Sense CRT Mode */
 #else
-#define GETCURPOS   0x03    /* Get Cursor Position */
 #define SETCURPOS   0x02    /* Set Cursor Position */
+#endif
+
+#define GETCURPOS   0x03    /* Get Cursor Position */
 #define GETMODE     0x0f    /* Get Video Mode */
 #define SETMODE     0x00    /* Set Video Mode */
 #define SETPAGE     0x05    /* Set Video Page */
 #define FONTINFO    0x1130  /* Get Font Info */
 #define SCROLL      0x06    /* Scroll or initialize window */
 #define PUTCHARATT  0x09    /* Write attribute & char at cursor */
-#endif
+
 
 #ifdef OVLB
 
@@ -78,7 +111,7 @@ get_scr_size()
 
 	LI = (regs.h.al & 0x01) ? 20 : 25;
 	CO = (regs.h.al & 0x02) ? 40 : 80;
-# else
+# else 
 	regs.x.ax = FONTINFO;
 	regs.x.bx = 0;			/* current ROM BIOS font */
 	regs.h.dl = 24;			/* default row count */
@@ -105,7 +138,7 @@ get_scr_size()
 	CO = regs.h.ah;
 # endif /* PC9801 */
 }
-#endif
+#endif /*OVLB*/
 
 #ifdef NO_TERMS
 
@@ -121,14 +154,11 @@ void FDECL(nocmov, (int, int));
 # ifdef TEXTCOLOR
 char ttycolors[MAXCOLORS];
 static void NDECL(init_ttycolor);
-# endif
+# endif /* TEXTCOLOR */
 
 # ifdef SCREEN_BIOS
 void FDECL(gotoxy, (int,int));
 void FDECL(get_cursor, (int *, int *));
-#  ifdef MONO_CHECK
-int  NDECL(monoadapt_check);
-#  endif
 # endif
 
 # ifdef SCREEN_DJGPPFAST
@@ -136,11 +166,14 @@ int  NDECL(monoadapt_check);
 #define get_cursor(x,y) ScreenGetCursor(y,x)
 # endif
 
+# ifdef MONO_CHECK
+int  NDECL(monoadapt_check);
+# endif
+
 /* 
  *  LI, CO are ifdefs of a data structure in decl.c, and are initialized
  *  by get_scr_size()
  */
-/*extern  int LI, CO; */	/* decl.h does this already */
 char g_attribute;		/* Current attribute to use */
 
 # ifdef MONO_CHECK
@@ -170,6 +203,7 @@ clear_screen()
  * so for now we just use the BIOS Routines
  */
 {
+
 	union REGS regs;
 
 	regs.h.dl = CO - 1;	  /* columns */
@@ -377,14 +411,22 @@ term_start_raw_bold(void)
 }
 
 # endif /* OVLB */
-# ifdef OVL1
+# ifdef OVL0
 
 void
 tty_delay_output()
 {
-	/* delay 50 ms - not implimented */
+	/* delay 50 ms - now uses clock() which is ANSI C */
+#  if defined(ENABLE_SLEEP) || defined(__STDC__)
+	clock_t goal;
+
+	goal = 50 + clock();
+	while ( goal > clock()) {
+	    /* do nothing */
+	}
+#  endif /* ENABLE_SLEEP || __STDC__*/
 }
-# endif /* OVL1 */
+# endif /* OVL0 */
 
 # ifdef OVLB
 void
@@ -473,8 +515,12 @@ char ch;
 	int x,y;
 	char attribute;
 
+#  ifdef MONO_CHECK
+	attribute = ((g_attribute == 0) ? ATTRIB_NORMAL : g_attribute);
+#  else
 	attribute = (((g_attribute > 0) && (g_attribute < MAXCOLORS)) ?
 			g_attribute : ATTRIB_NORMAL);
+#  endif
 
 #  ifdef SCREEN_DJGPPFAST
 	get_cursor(&x,&y);
@@ -485,13 +531,7 @@ char ch;
 	regs.h.ah = PUTCHARATT;	/* write attribute & character */
 	regs.h.al = ch;			/* character */
 	regs.h.bh = 0;			/* display page */
-					/* BL = attribute */
-#    ifdef MONO_CHECK
-	regs.h.bl = ((g_attribute == 0) ? ATTRIB_NORMAL : g_attribute);
-#    else
-	regs.h.bl = (((g_attribute > 0) && (g_attribute < MAXCOLORS)) ? 
-			g_attribute : ATTRIB_NORMAL);
-#    endif
+	regs.h.bl = attribute;		/* BL = attribute */
 	regs.x.cx = 1;			/* one character */
 	int86(VIDEO_BIOS, &regs, &regs); /* write attribute & character */
 	get_cursor(&x,&y);
@@ -501,8 +541,7 @@ char ch;
 }
 
 /*
- *  Supporting routines.  None of these routines are required to 
- *  resolve references outside this source file.
+ *  Supporting routines.
  */
 #  ifdef SCREEN_BIOS
 void
@@ -543,6 +582,8 @@ int x,y;
 	 * returns nothing.  -3.
 	 */
 }
+#  endif /* SCREEN_BIOS */ 
+
 #  ifdef MONO_CHECK
 int monoadapt_check()
 {
@@ -553,13 +594,13 @@ int monoadapt_check()
 	int86(VIDEO_BIOS, &regs, &regs);
 	return (regs.h.al == 7) ? 1 : 0;	/* 7 means monochrome mode */
 }
-#   endif /* MONO_CHECK */
-#  endif /* SCREEN_BIOS */
+#  endif /* MONO_CHECK */
 
 # endif /* OVL0 */
-# ifdef OVLB
 
-#  ifdef TEXTCOLOR
+# ifdef TEXTCOLOR
+#  ifdef OVLB
+
 /*
  * BLACK                0
  * RED                  1
@@ -581,29 +622,142 @@ int monoadapt_check()
  * BRIGHT               8
  */
 
+#  ifdef VIDEOSHADES
+/* assign_videoshades() is prototyped in extern.h */
+int shadeflag;					/* shades are initialized */
+int colorflag;					/* colors are initialized */
+char *schoice[3] = {"dark","normal","light"};
+char *shade[3];
+#  endif /* VIDEOSHADES */
+
 static void
 init_ttycolor()
 {
-	ttycolors[BLACK] = 7;                  	/* mapped to 7 = white */
-	ttycolors[RED] = 4;			/*  4 = red */
-	ttycolors[GREEN] = 2;			/*  2 = green */
-	ttycolors[BROWN] = 6;			/*  6 = brown */
-	ttycolors[BLUE] = 1;			/*  1 = blue */
-	ttycolors[MAGENTA] = 5;			/*  5 = magenta */
-	ttycolors[CYAN] = 3;			/*  3 = cyan */
-	ttycolors[GRAY] = 8;			/*  8 = dark gray */
-	ttycolors[BRIGHT] = 15;			/* 15 = intense white */
-	ttycolors[ORANGE_COLORED] = 12;		/* 12 = light red */
-	ttycolors[BRIGHT_GREEN] = 10;		/* 10 = light green */
-	ttycolors[YELLOW] = 14;			/* 14 = yellow */
-	ttycolors[BRIGHT_BLUE] = 9;		/*  9 = light blue */
-	ttycolors[BRIGHT_MAGENTA] = 13;		/* 13 = light magenta */
-	ttycolors[BRIGHT_CYAN] = 11;		/* 11 = light cyan */
-	ttycolors[WHITE] = 7;			/*  7 = white */
+#   ifdef VIDEOSHADES
+	if (!shadeflag) {
+		ttycolors[BLACK] = 8;           /*  8 = dark gray */
+		ttycolors[WHITE] = 15;          /* 15 = bright white */
+		ttycolors[GRAY]  = 7;		/*  7 = normal white */
+		shade[0] = schoice[0];
+		shade[1] = schoice[1];
+		shade[2] = schoice[2];
+	}
+#   else
+	ttycolors[BLACK] = 7;			/*  mapped to white */
+	ttycolors[WHITE] = 7;			/*  mapped to white */
+	ttycolors[GRAY]  = 7;			/*  mapped to white */
+#   endif
+
+#   ifdef VIDEOSHADES
+    	if (!colorflag) {
+#   endif
+		ttycolors[RED] = 4;			/*  4 = red */
+		ttycolors[GREEN] = 2;			/*  2 = green */
+		ttycolors[BROWN] = 6;			/*  6 = brown */
+		ttycolors[BLUE] = 1;			/*  1 = blue */
+		ttycolors[MAGENTA] = 5;			/*  5 = magenta */
+		ttycolors[CYAN] = 3;			/*  3 = cyan */
+		ttycolors[BRIGHT] = 15;			/* 15 = bright white */
+		ttycolors[ORANGE_COLORED] = 12;		/* 12 = light red */
+		ttycolors[BRIGHT_GREEN] = 10;		/* 10 = light green */
+		ttycolors[YELLOW] = 14;			/* 14 = yellow */
+		ttycolors[BRIGHT_BLUE] = 9;		/*  9 = light blue */
+		ttycolors[BRIGHT_MAGENTA] = 13;		/* 13 = light magenta */
+		ttycolors[BRIGHT_CYAN] = 11;		/* 11 = light cyan */
+#   ifdef VIDEOSHADES
+	}
+#   endif
 }
 
-#  endif /* TEXTCOLOR */
-# endif OVLB
+#   ifdef VIDEOSHADES
+int assign_videoshades(uchar *choiceptr,int linelen)
+{
+	char choices[120];
+	char *cptr, *cvalue[3];
+	int i,icolor;
+
+	strncpy(choices,choiceptr,linelen);
+	choices[linelen] = '\0';
+	cvalue[0] = choices;
+
+        /* find the next ' ' or tab */
+        cptr = index(cvalue[0], ' ');
+        if (!cptr) cptr = index(cvalue[0], '\t');
+        if (!cptr) return 0;
+	*cptr = '\0';
+        /* skip  whitespace between '=' and value */
+        do { ++cptr; } while (isspace(*cptr));
+	cvalue[1] = cptr;
+
+        cptr = index(cvalue[1], ' ');
+        if (!cptr) cptr = index(cvalue[1], '\t');
+        if (!cptr) return 0;
+	*cptr = '\0';
+        do { ++cptr; } while (isspace(*cptr));
+	cvalue[2] = cptr;
+
+	for (i=0; i < 3; ++i) {
+		switch(i) {
+			case 0: icolor = BLACK;
+				break;
+			case 1: icolor = GRAY;
+				break;
+			case 2: icolor = WHITE;
+				break;
+		}
+
+		shadeflag = 1;			
+		if ((strncmpi(cvalue[i],"black",5) == 0) ||
+		    (strncmpi(cvalue[i],"dark",4) == 0)) {
+			shade[i] = schoice[0];
+			ttycolors[icolor] = 8;  /* dark gray */
+		} else if ((strncmpi(cvalue[i],"gray",4) == 0) ||
+		           (strncmpi(cvalue[i],"grey",4) == 0) ||
+			   (strncmpi(cvalue[i],"medium",6) == 0) ||
+			   (strncmpi(cvalue[i],"normal",6) == 0)) {
+			shade[i] = schoice[1];
+			ttycolors[icolor] = 7;  /* regular gray */
+		} else if ((strncmpi(cvalue[i],"white",5) == 0) ||
+			   (strncmpi(cvalue[i],"light",5) == 0)) {
+			shade[i] = schoice[2];
+			ttycolors[icolor] = 15;  /* bright white */
+		} else {
+			shadeflag = 0;
+			return 0;
+		}
+	}
+	return 1;
+}
+
+/*
+ * Process NetHack.cnf option VIDEOCOLORS=
+ * Left to right assignments for: 
+ * 	red green brown blue magenta cyan orange br.green yellow 
+ * 	br.blue br.mag br.cyan
+ *
+ * Default Mapping: 4 2 6 1 5 3 12 10 14 9 13 11
+ */
+int assign_videocolors(uchar *tmpcolor,int len)
+{
+	int i,icolor,max1,max2;
+
+	init_ttycolor();	/* in case nethack.cnf entry wasn't complete */
+	icolor = RED;
+	for( i = 0; i < len; ++i) {
+		if (icolor < (WHITE)) {
+			ttycolors[icolor++] = tmpcolor[i];
+			if ((icolor > CYAN) && (icolor < ORANGE_COLORED)) {
+				 icolor = ORANGE_COLORED;
+			}
+		}
+	}
+	colorflag = 1;
+	return 1;
+}
+#   endif /* VIDEOSHADES */
+
+#  endif /* OVLB */
+# endif /* TEXTCOLOR */
 
 #endif /* NO_TERMS */
 

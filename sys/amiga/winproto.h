@@ -12,6 +12,9 @@ void amii_setpens ( void );
 void amii_getlin ( const char *prompt , char *bufp );
 void getlind ( const char *prompt , char *bufp , const char *dflt );
 char *amii_get_color_string( void );
+int filecopy( char *from, char *to );
+char *basename( char *str );
+char *dirname( char *str );
 
 /* winstr.c */
 void amii_putstr ( winid window , int attr , const char *str );
@@ -23,6 +26,7 @@ void TextSpaces ( struct RastPort *rp , int nr );
 void amii_remember_topl ( void );
 int amii_doprev_message ( void );
 void flushIDCMP( struct MsgPort * );
+int amii_msgborder( struct Window * );
 
 /* winkey.c */
 int amii_nh_poskey ( int *x , int *y , int *mod );

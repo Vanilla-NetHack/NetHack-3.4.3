@@ -8,7 +8,7 @@
 #include "incl:patchlevel.h"
 
 int topl_addspace=1;
-
+extern struct TagItem scrntags[];
 
 void
 amii_destroy_nhwindow(win)      /* just hide */
@@ -224,6 +224,14 @@ amii_create_nhwindow(type)
 	nw->TopEdge = 1;
 	nw->Height = HackScreen->WBorTop + 1 +
 		((txheight+1)*(1+(scrollmsg != 0))) + 1 + HackScreen->WBorBottom;
+	if( ( HackScreen->Height - 1 -
+		( ( TextsFont->tf_YSize +
+		    HackScreen->WBorTop + 1 + HackScreen->WBorBottom ) * 2 ) -
+		( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 ) - maph <
+		    TextsFont->tf_YSize + 3 )
+	{
+	    scrollmsg = 0;
+	}
 	if( scrollmsg )
 	{
 	    nw->FirstGadget = &MsgScroll;
@@ -234,10 +242,7 @@ amii_create_nhwindow(type)
 		/* Text space in status window */
 		( ( TextsFont->tf_YSize + 1 ) * 2 ) - 2 -
 		maph;
-	    nw->Flags |= WINDOWSIZING;
-#ifdef	VIEWWINDOW
-	    nw->Flags |= WINDOWDRAG;
-#endif
+	    nw->Flags |= WINDOWSIZING|WINDOWDRAG;
 	}
 #ifdef  INTUI_NEW_LOOK
 	if( IntuitionBase->LibNode.lib_Version >= 37 )
@@ -248,7 +253,7 @@ amii_create_nhwindow(type)
 	/* Just allow height adjustments */
 	nw->MinWidth = w->Width;
 	nw->MinHeight = HackScreen->WBorTop +
-		HackScreen->WBorBottom + ((w->RPort->TxHeight+1)*2) + 3;
+		HackScreen->WBorBottom + ((TextsFont->tf_YSize+1)*2) + 3;
     }
 
     nw->IDCMPFlags |= MENUPICK;
@@ -294,7 +299,8 @@ amii_create_nhwindow(type)
     {
 	char buf[ 100 ];
 
-	sprintf( buf, "nw is l: %d, t: %d, w: %d, h: %d",
+	sprintf( buf, "nw(%d) is l: %d, t: %d, w: %d, h: %d",
+		type,
 		nw->LeftEdge, nw->TopEdge,
 		nw->Width, nw->Height );
 	raw_print( buf );
@@ -520,6 +526,8 @@ amii_create_nhwindow(type)
 void
 amii_init_nhwindows()
 {
+    int forcenobig = 0;
+
     if (HackScreen)
 	panic( "init_nhwindow() called twice", 0 );
 
@@ -572,19 +580,22 @@ amii_init_nhwindows()
 	    NewHackScreen.ViewModes |= LACE;
 	    bigscreen = 1;
 	}
-	else if( GfxBase->NormalDisplayRows >= 240 )
+	else if( GfxBase->NormalDisplayRows >= 270 )
 	{
 	    bigscreen = 1;
 	}
     }
     else if( bigscreen == -1 )
+    {
 	bigscreen = 0;
+	forcenobig = 1;
+    }
     else if( bigscreen )
     {
 	/* If bigscreen requested and we don't have enough rows in
 	 * noninterlaced mode, switch to interlaced...
 	 */
-	if( GfxBase->NormalDisplayRows < 240 )
+	if( GfxBase->NormalDisplayRows < 270 )
 	{
 	    amiIDisplay->ypix *= 2;
 	    NewHackScreen.ViewModes |= LACE;
@@ -679,10 +690,45 @@ amii_init_nhwindows()
     }
     NewHackScreen.BlockPen = C_CYAN;
 #ifdef	INTUI_NEW_LOOK
-    if( IntuitionBase->LibNode.lib_Version >= 37 && bigscreen )
+    if( IntuitionBase->LibNode.lib_Version >= 37 )
     {
+    	int i;
+    	long modeid;
+	struct Screen *wbscr;
+
+	for( i = 0; scrntags[i].ti_Tag != SA_DisplayID &&
+		    scrntags[i].ti_Tag != TAG_DONE; ++i )
+	{
+	    continue;
+	}
+
 	NewHackScreen.Width = STDSCREENWIDTH;
 	NewHackScreen.Height = STDSCREENHEIGHT;
+
+	if( forcenobig == 0 )
+	{
+	    wbscr = LockPubScreen( "Workbench" );
+	    if( wbscr )
+		modeid = GetVPModeID( &wbscr->ViewPort ); 
+
+	    if( ( wbscr != NULL ) && ( modeid != INVALID_ID ) )
+	    {
+		if( wbscr->ViewPort.Modes & LACE )
+		    NewHackScreen.ViewModes |= LACE;
+		UnlockPubScreen( NULL, wbscr );
+		if( scrntags[i].ti_Tag == SA_DisplayID )
+		{
+		    scrntags[i].ti_Data = (ULONG)modeid;
+		}
+	    }
+	}
+	else
+	{
+	    if( scrntags[i].ti_Tag == SA_DisplayID )
+	    {
+		scrntags[i].ti_Tag = TAG_IGNORE;
+	    }
+	}
     }
 #endif
 
@@ -1082,7 +1128,7 @@ amii_set_text_font( name, size )
     TextsFont13.ta_Name = nname;
     TextsFont13.ta_YSize = size;
 
-    /* No alternate text font allowed for 640x250 or smaller */
+    /* No alternate text font allowed for 640x269 or smaller */
     if( !HackScreen || !bigscreen )
 	return;
 

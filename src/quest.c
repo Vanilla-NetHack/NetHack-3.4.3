@@ -123,13 +123,13 @@ artitouch()
 boolean
 ok_to_quest()
 {
-	return(Qstat(got_quest) || Qstat(got_thanks));
+	return((boolean)(Qstat(got_quest) || Qstat(got_thanks)));
 }
 
 static boolean
 not_capable()
 {
-	return(u.ulevel < MIN_QUEST_LEVEL);
+	return((boolean)(u.ulevel < MIN_QUEST_LEVEL));
 }
 
 /* TODO:	This one needs tuning. */
@@ -145,7 +145,7 @@ not_pure()
 		u.ualign.record = MIN_QUEST_ALIGN;
 	}
 #endif
-  return(u.ualign.record < MIN_QUEST_ALIGN);
+  return((boolean)(u.ualign.record < MIN_QUEST_ALIGN));
 }
 
 /*

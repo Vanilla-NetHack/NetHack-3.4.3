@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	3.1	93/02/07	*/
+/*	SCCS Id: @(#)pcmain.c	3.1	93/06/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -48,6 +48,9 @@ static void FDECL(process_options,(int argc,char **argv));
 int FDECL(main, (int,char **));
 
 const char *classes = "ABCEHKPRSTVW";
+#ifdef	AMIGA
+void NDECL( preserve_icon );
+#endif
 
 int
 main(argc,argv)
@@ -479,5 +482,16 @@ boolean wr;
 	if (wr) check_recordfile(dir ? dir : thisdir);
 }
 #endif /* CHDIR */
+
+#ifdef  PORT_HELP
+# if defined(MSDOS) || defined(WIN32)
+void
+port_help()
+{
+    /* display port specific help file */
+    display_file( PORT_HELP, 1 );
+}
+# endif /* MSDOS || WIN32 */
+#endif /* PORT_HELP */
 
 /*pcmain.c*/

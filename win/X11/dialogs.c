@@ -34,6 +34,11 @@
  *	We don't need it here.
  *    + Add the function positionpopup() from another part of ghostview
  *	to this code.
+ *
+ * Modified 2/93, Various.
+ *    + Added workaround for SYSV include problem.
+ *    + Changed the default width response text widget to be as wide as the
+ *	window itself.  Suggestion from David E. Wexelblat, dwex@goblin.org.
  */
 
 #ifndef SYSV
@@ -226,26 +231,29 @@ GetDialogResponse(w)
     return XtNewString(s);
 }
 
+#define max(a,b) (((a) > (b)) ? (a) : (b))
 /* set the default reponse */
 void
 SetDialogResponse(w, s)
     Widget w;
     String s;
 {
-    Arg args[3];
+    Arg args[4];
     Widget response;
     XFontStruct *font;
-    Dimension width, leftMargin, rightMargin;
+    Dimension width, nwidth, leftMargin, rightMargin;
 
     response = XtNameToWidget(w, "response");
     XtSetArg(args[0], XtNfont, &font);
     XtSetArg(args[1], XtNleftMargin, &leftMargin);
     XtSetArg(args[2], XtNrightMargin, &rightMargin);
-    XtGetValues(response, args, THREE);
-    width = font->max_bounds.width * strlen(s) + leftMargin + rightMargin;
+    XtSetArg(args[3], XtNwidth, &width);
+    XtGetValues(response, args, FOUR);
+    nwidth = max(((font->max_bounds.width * strlen(s))+leftMargin+rightMargin),
+		 (width-(leftMargin+rightMargin)));
 
     XtSetArg(args[0], XtNstring, s);
-    XtSetArg(args[1], XtNwidth, width);
+    XtSetArg(args[1], XtNwidth, nwidth);
     XtSetValues(response, args, TWO);
     XawTextSetInsertionPoint(response, strlen(s));
 }

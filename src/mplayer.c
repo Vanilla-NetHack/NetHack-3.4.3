@@ -24,7 +24,7 @@ static const char *developers[] = {
 	/* Amiga team */
 	"Greg", "Gregg", "Keni", "Mike", "Olaf", "Richard",
 	/* Mac team */
-	"David", "Johnny", "Jon", "Jonathan", "Michael", "Rob",
+	"Barton", "David", "Johnny", "Jon", "Jonathan", "Michael", "Rob",
 	"Tim", "Wang",
 	/* Atari team */
 	"Eric",

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.1	93/05/26	*/
+/*	SCCS Id: @(#)save.c	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,6 +13,9 @@
 #endif /* EXPLORE_MODE */
 
 boolean hu;		/* set during hang-up */
+#ifdef VMS
+extern volatile int exiting;		/* sys/vms/vmsmain.c */
+#endif
 
 #ifdef MULDGN
 #include "quest.h"
@@ -74,13 +77,17 @@ dosave()
 
 #ifndef NOSAVEONHANGUP
 int
-hangup() {
+hangup()
+{
 	if(!hu) {
 		hu = TRUE;
 		(void) dosave0();
-# ifndef VMS
-		terminate(1);
+# ifdef VMS
+		/* don't call exit when already within an exit handler;
+		   that would cancel any other pending user-mode handlers */
+		if (!exiting)
 # endif
+		terminate(1);
 	}
 	return 0;
 }

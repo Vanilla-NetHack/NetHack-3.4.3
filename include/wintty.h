@@ -52,6 +52,9 @@ struct DisplayDesc {
 #define MAXWIN 20		/* maximum number of windows, cop-out */
 
 /* tty dependent window types */
+#ifdef NHW_BASE
+#undef NHW_BASE
+#endif
 #define NHW_BASE    6
 
 extern struct window_procs tty_procs;
@@ -190,6 +193,10 @@ E void FDECL(genl_outrip, (winid,int));
 
 #ifdef NO_TERMS
 # ifdef MAC
+#  ifdef putchar
+#   undef putchar
+#   undef putc
+#  endif
 #  define putchar term_putc
 #  define putc term_fputc
 #  define fputc term_fputc

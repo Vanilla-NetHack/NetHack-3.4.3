@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.1	93/05/10	*/
+/*	SCCS Id: @(#)makemon.c	3.1	93/06/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,7 +19,6 @@ STATIC_VAR NEARDATA struct monst zeromonst;
 static boolean NDECL(cmavail);
 static int FDECL(align_shift, (struct permonst *));
 #endif /* OVL0 */
-STATIC_DCL boolean FDECL(is_home_elemental,(struct permonst *));
 STATIC_DCL boolean FDECL(wrong_elem_type, (struct permonst *));
 STATIC_DCL void FDECL(m_initgrp,(struct monst *,int,int,int));
 STATIC_DCL void FDECL(m_initthrow,(struct monst *,int,int));
@@ -36,19 +35,18 @@ extern int monstr[];
 #define tooweak(monindx, lev)	(monstr[monindx] < lev)
 
 #ifdef OVLB
-STATIC_OVL boolean
+boolean
 is_home_elemental(ptr)
 register struct permonst *ptr;
 {
-	if (ptr->mlet != S_ELEMENTAL) return FALSE;
-	if (!In_endgame(&u.uz)) return FALSE;
-	switch(monsndx(ptr)) {
+	if (ptr->mlet == S_ELEMENTAL)
+	    switch (monsndx(ptr)) {
 		case PM_AIR_ELEMENTAL: return Is_airlevel(&u.uz);
 		case PM_FIRE_ELEMENTAL: return Is_firelevel(&u.uz);
 		case PM_EARTH_ELEMENTAL: return Is_earthlevel(&u.uz);
 		case PM_WATER_ELEMENTAL: return Is_waterlevel(&u.uz);
-	}
-	return FALSE;	/* shouldn't be reached */
+	    }
+	return FALSE;
 }
 
 /*
@@ -58,7 +56,9 @@ STATIC_OVL boolean
 wrong_elem_type(ptr)
     register struct permonst *ptr;
 {
-    if (Is_earthlevel(&u.uz)) {
+    if (ptr->mlet == S_ELEMENTAL) {
+	return((boolean)(!is_home_elemental(ptr)));
+    } else if (Is_earthlevel(&u.uz)) {
 	/* no restrictions? */
     } else if (Is_waterlevel(&u.uz)) {
 	/* just monsters that can swim */
@@ -1303,12 +1303,19 @@ register int otyp;
 		otmp->oerodeproof = TRUE;
 	    } else if(is_mplayer(mtmp->data) && is_sword(otmp))
 			otmp->spe = (3 + rn2(4));
+
 	    if(otmp->otyp == CANDELABRUM_OF_INVOCATION) {
 		otmp->spe = 0;
 		otmp->age = 0L;
 		otmp->lamplit = FALSE;
 		otmp->blessed = otmp->cursed = FALSE;
+	    } else if (otmp->otyp == BELL_OF_OPENING) {
+		otmp->blessed = otmp->cursed = FALSE;
+	    } else if (otmp->otyp == SPE_BOOK_OF_THE_DEAD) {
+		otmp->blessed = FALSE;
+		otmp->cursed = TRUE;
 	    }
+
 	    mpickobj(mtmp, otmp);
 	    return(otmp->spe);
 	} else return(0);
@@ -1363,14 +1370,14 @@ register struct permonst *ptr;
 	if (mal < A_NEUTRAL && u.uhave.amulet) return FALSE;
 
 	/* minions are hostile to players that have strayed at all */
-	if (is_minion(ptr)) return(u.ualign.record >= 0);
+	if (is_minion(ptr)) return((boolean)(u.ualign.record >= 0));
 
 	/* Last case:  a chance of a co-aligned monster being
 	 * hostile.  This chance is greater if the player has strayed
 	 * (u.ualign.record negative) or the monster is not strongly aligned.
 	 */
-	return !!rn2(16 + (u.ualign.record < -15 ? -15 : u.ualign.record)) &&
-		!!rn2(2 + abs(mal));
+	return((boolean)(!!rn2(16 + (u.ualign.record < -15 ? -15 : u.ualign.record)) &&
+		!!rn2(2 + abs(mal))));
 }
 
 /* Set malign to have the proper effect on player alignment if monster is
@@ -1414,20 +1421,23 @@ struct monst *mtmp;
 		else
 			mtmp->malign = 20;	/* really hostile */
 	} else if (always_peaceful(mtmp->data)) {
+		int absmal = abs(mal);
 		if (mtmp->mpeaceful)
-			mtmp->malign = -3*max(5,abs(mal));
+			mtmp->malign = -3*max(5,absmal);
 		else
-			mtmp->malign = 3*max(5,abs(mal)); /* renegade */
+			mtmp->malign = 3*max(5,absmal); /* renegade */
 	} else if (always_hostile(mtmp->data)) {
+		int absmal = abs(mal);
 		if (coaligned)
 			mtmp->malign = 0;
 		else
-			mtmp->malign = max(5,abs(mal));
+			mtmp->malign = max(5,absmal);
 	} else if (coaligned) {
+		int absmal = abs(mal);
 		if (mtmp->mpeaceful)
-			mtmp->malign = -3*max(3,abs(mal));
+			mtmp->malign = -3*max(3,absmal);
 		else	/* renegade */
-			mtmp->malign = max(3,abs(mal));
+			mtmp->malign = max(3,absmal);
 	} else	/* not coaligned and therefore hostile */
 		mtmp->malign = abs(mal);
 }

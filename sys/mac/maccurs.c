@@ -19,7 +19,7 @@ static Boolean winFileInit = 0 ;
 static unsigned char winFileName [ 32 ] ;
 static long winFileDir ;
 static short winFileVol ;
-static Handle winFileContents = NULL ;
+static Handle winFileContents = (Handle) NULL ;
 
 typedef struct WinPosSave {
 	short			validPos ;
@@ -54,7 +54,7 @@ InitWinFile ( void )
 	sh = GetString ( 128 ) ;
 	if ( sh && * sh ) {
 		BlockMove ( * sh , winFileName , * * sh + 1 ) ;
-		ReleaseResource ( sh ) ;
+		ReleaseResource ( (Handle) sh ) ;
 	} else {
 		BlockMove ( "\PNetHack Windows" , winFileName , 16 ) ;
 	}

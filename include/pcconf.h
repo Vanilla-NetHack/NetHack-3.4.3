@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcconf.h	3.1	93/04/04  	*/
+/*	SCCS Id: @(#)pcconf.h	3.1	93/06/28  	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,8 +18,8 @@
  */
 
 # if !defined (__GO32__) && !defined(__BORLANDC__) && !defined(AMIGA)
-#  define OVERLAY         /* MS DOS overlay manager - PGM */
-/* #define MOVERLAY /* Microsoft's MOVE overlay system (MSC >= 7.0) */
+/* #  define OVERLAY         /* MS DOS overlay manager - PGM */
+#define MOVERLAY /* Microsoft's MOVE overlay system (MSC >= 7.0) */
 # endif
 
 
@@ -28,19 +28,19 @@
 # endif
 
 # define SHELL           /* via exec of COMMAND.COM */
-# define TERMLIB        /* enable use of termcap file /etc/termcap */
+/* # define TERMLIB        /* enable use of termcap file /etc/termcap */
 			/* or ./termcap for MSDOS (SAC) */
 			/* compile and link in Fred Fish's termcap library, */
 			/* enclosed in TERMCAP.ARC, to use this */
 
-# define ANSI_DEFAULT    /* allows NetHack to run without a ./termcap */
+/* # define ANSI_DEFAULT    /* allows NetHack to run without a ./termcap */
 
-/*# define NO_TERMS	/* Allows Nethack to run without ansi.sys by linking */
+# define NO_TERMS	/* Allows Nethack to run without ansi.sys by linking */
 			/* screen routines into the .exe     */
 
-# ifdef NO_TERMS		/* if NO_TERMS select screen package below */
-#  define SCREEN_BIOS		/* Use bios calls for all screen control */
-/*  #define SCREEN_DJGPPFAST	/* Use djgpp fast screen routines       */
+# ifdef NO_TERMS	/* if NO_TERMS select one screen package below */
+#define SCREEN_BIOS		/* Use bios calls for all screen control */
+/* #define SCREEN_DJGPPFAST	/* Use djgpp fast screen routines       */
 # endif
 
 /*# define PC9801	/* Allows NetHack to run on NEC PC-9801 machines */
@@ -114,13 +114,39 @@ extern struct finfo fileinfo[];
 
 #ifdef MSDOS
 # define TEXTCOLOR /* */
+# define PORT_HELP "msdos.hlp"	/* msdos port specific help file */
 #endif
 
 #ifdef NO_TERMS		/* Sanity check, do not modify this block */
+# ifdef TERMLIB
+#  ifdef _MSC_VER
+#   pragma message("Warning -- TERMLIB defined with NO_TERMS in pcconf.h")
+#   pragma message("           Forcing undef of TERMLIB") 
+#  endif
 # undef TERMLIB
+# endif
+# ifdef ANSI_DEFAULT
+#  ifdef _MSC_VER
+#   pragma message("Warning -- ANSI_DEFAULT defined with NO_TERMS in pcconf.h")
+#   pragma message("           Forcing undef of ANSI_DEFAULT") 
+#  endif
 # undef ANSI_DEFAULT
+# endif
+/* only one screen package is allowed */
+# if defined(SCREEN_BIOS) && defined(SCREEN_DJGPPFAST)
+#  ifdef _MSC_VER
+#   pragma message("Warning -- More than one screen package defined in pcconf.h")
+#   pragma message("           Forcing undef of SCREEN_DJGPPFAST") 
+#   undef SCREEN_DJGPPFAST	/* Can't use djgpp fast with MSC anyway */
+#  else
+#   undef SCREEN_BIOS
+#  endif
+# endif
 # define ASCIIGRAPH
-#endif 
+# ifdef TEXTCOLOR
+# define VIDEOSHADES
+# endif
+#endif 			/* End of sanity check block */
 
 #ifdef MSC7_WARN	/* define with cl /DMSC7_WARN	*/
 #pragma warning(disable:4131)

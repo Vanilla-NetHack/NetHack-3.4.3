@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_wear.c	3.1	93/05/25	*/
+/*	SCCS Id: @(#)do_wear.c	3.1	93/06/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -64,16 +64,16 @@ boolean
 is_boots(otmp)
 register struct obj *otmp;
 {
-	return(otmp->otyp >= LOW_BOOTS &&
-		otmp->otyp <= LEVITATION_BOOTS);
+	return((boolean)(otmp->otyp >= LOW_BOOTS &&
+		otmp->otyp <= LEVITATION_BOOTS));
 }
 
 boolean
 is_helmet(otmp)
 register struct obj *otmp;
 {
-	return(otmp->otyp >= ELVEN_LEATHER_HELM &&
-		otmp->otyp <= HELM_OF_TELEPATHY);
+	return((boolean)(otmp->otyp >= ELVEN_LEATHER_HELM &&
+		otmp->otyp <= HELM_OF_TELEPATHY));
 }
 
 #endif /* OVLB */
@@ -83,8 +83,8 @@ boolean
 is_gloves(otmp)
 register struct obj *otmp;
 {
-	return(otmp->otyp >= LEATHER_GLOVES &&
-		otmp->otyp <= GAUNTLETS_OF_DEXTERITY);
+	return((boolean)(otmp->otyp >= LEATHER_GLOVES &&
+		otmp->otyp <= GAUNTLETS_OF_DEXTERITY));
 }
 
 #endif /* OVL2 */
@@ -94,16 +94,16 @@ boolean
 is_cloak(otmp)
 register struct obj *otmp;
 {
-	return(otmp->otyp >= MUMMY_WRAPPING &&
-		otmp->otyp <= CLOAK_OF_DISPLACEMENT);
+	return((boolean)(otmp->otyp >= MUMMY_WRAPPING &&
+		otmp->otyp <= CLOAK_OF_DISPLACEMENT));
 }
 
 boolean
 is_shield(otmp)
 register struct obj *otmp;
 {
-	return(otmp->otyp >= SMALL_SHIELD &&
-		otmp->otyp <= SHIELD_OF_REFLECTION);
+	return((boolean)(otmp->otyp >= SMALL_SHIELD &&
+		otmp->otyp <= SHIELD_OF_REFLECTION));
 }
 
 /*
@@ -781,10 +781,10 @@ boolean
 donning(otmp)
 register struct obj *otmp;
 {
-    return (otmp == uarmf && (afternmv == Boots_on || afternmv == Boots_off))
+    return((boolean)((otmp == uarmf && (afternmv == Boots_on || afternmv == Boots_off))
 	|| (otmp == uarmh && (afternmv == Helmet_on || afternmv == Helmet_off))
 	|| (otmp == uarmg && (afternmv == Gloves_on || afternmv == Gloves_off))
-	|| (otmp == uarm && (afternmv == Armor_on || afternmv == Armor_off));
+	|| (otmp == uarm && (afternmv == Armor_on || afternmv == Armor_off))));
 }
 
 void
@@ -865,8 +865,8 @@ dotakeoff()
 		pline("The bear trap prevents you from pulling your %s out.",
 		      body_part(FOOT));
 	    else
-		You("are stuck in the floor, and cannot pull your %s out.",
-		     makeplural(body_part(FOOT)));
+		You("are stuck in the %s, and cannot pull your %s out.",
+		    surface(u.ux, u.uy), makeplural(body_part(FOOT)));
 		return(0);
 	}
 	reset_remarm();			/* since you may change ordering */
@@ -1067,18 +1067,19 @@ dowear()
 		}
 		if(!err) mask = W_ARMS;
 	} else if(is_boots(otmp)) {
-		   if(uarmf) {
+		if (uarmf) {
 			already_wearing("boots.");
 			err++;
-		   } if (u.utrap && (u.utraptype == TT_BEARTRAP ||
-				     u.utraptype == TT_INFLOOR)) {
-		       if (u.utraptype == TT_BEARTRAP)
-			   Your("%s is trapped!", body_part(FOOT));
-		       else
-			   Your("%s are stuck in the floor!",
-				makeplural(body_part(FOOT)));
-		       err++;
-		   } else
+		} if (u.utrap && (u.utraptype == TT_BEARTRAP ||
+				  u.utraptype == TT_INFLOOR)) {
+			if (u.utraptype == TT_BEARTRAP)
+			    Your("%s is trapped!", body_part(FOOT));
+			else
+			    Your("%s are stuck in the %s!",
+				 makeplural(body_part(FOOT)),
+				 surface(u.ux, u.uy));
+			err++;
+		} else
 			mask = W_ARMF;
 	} else if(is_gloves(otmp)) {
 		if(uarmg) {
@@ -1337,7 +1338,7 @@ glibr()
 		/* changed so cursed weapons don't fall, GAN 10/30/86 */
 		Your("%s %sslips from your %s.",
 			is_sword(otmp) ? "sword" :
-				makesingular(oclass_names[otmp->oclass]),
+				makesingular(oclass_names[(int)otmp->oclass]),
 			xfl ? "also " : "",
 			makeplural(body_part(HAND)));
 		setuwep((struct obj *)0);
@@ -1614,7 +1615,8 @@ register struct obj *atmp;
 	} else if((otmp = uarm) && (!atmp || atmp == uarm)) {
 		/* may be disintegrated by spell or dragon breath... */
 		if (donning(otmp)) cancel_don();
-		Your("armor turns to dust and falls to the floor!");
+		Your("armor turns to dust and falls to the %s!",
+			surface(u.ux,u.uy));
 		(void) Armor_gone();
 		useup(otmp);
 #ifdef TOURIST

@@ -14,6 +14,9 @@
 
 #ifdef MAC
 # define MICRO /* The Mac is a MICRO only for this file, not in general! */
+# ifdef THINK_C
+   extern void msmsg(const char *,...);
+# endif
 #endif
 
 #ifndef NO_TERMS
@@ -1361,7 +1364,7 @@ int in_ch;
 #endif	/* ASCIIGRAPH && !NO_TERMS */
 
     return;
-};
+}
 
 #ifdef CLIPPING
 void

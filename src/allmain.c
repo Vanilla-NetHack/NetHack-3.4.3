@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.1	93/05/23	*/
+/*	SCCS Id: @(#)allmain.c	3.1	93/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -163,7 +163,13 @@ moveloop()
 		    }
 
 		    if(!u.uinvulnerable) {
-			if(Teleportation && !rn2(85)) tele();
+			if(Teleportation && !rn2(85)) {
+#ifdef REDO		    /* clear doagain keystrokes */
+			    pushch(0);
+			    savech(0);
+#endif
+			    tele();
+			}
 #ifdef POLYSELF
 			if(Polymorph && !rn2(100)) {
 			    if (multi >= 0) {

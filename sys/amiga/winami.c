@@ -159,6 +159,8 @@ unsigned short amii_initmap[ 1L << DEPTH ] =
 
 struct Rectangle lastinvent, lastmsg;
 
+static int FDECL( put_ext_cmd, ( char *, int, struct amii_WinDesc *, int ) );
+
 #ifdef	SHAREDLIB
 WinamiBASE *WinamiBase;
 
@@ -445,6 +447,7 @@ struct TagItem scrntags[] =
     { SA_PubName, (ULONG)"NetHack" },
     { SA_Overscan, OSCAN_TEXT },
     { SA_Pens, (ULONG)scrnpens },
+    { SA_DisplayID, 0 },
     { TAG_DONE, 0 },
 };
 #endif
@@ -770,17 +773,23 @@ register char *bufp;
     if( WIN_MESSAGE == WIN_ERR || ( cw = amii_wins[ WIN_MESSAGE ] ) == NULL )
 	panic(winpanicstr, WIN_MESSAGE, "get_ext_cmd");
     amii_clear_nhwindow( NHW_MESSAGE );
-    pline("# ");
+    if( scrollmsg )
+    {
+	pline("#");
+	amii_putstr( WIN_MESSAGE, -1, " " );
+    }
+    else
+    {
+	pline("# ");
+    }
     colx = 3;
     w = cw->win;
 
     if( bigscreen )
     {
-    	bottom = w->Height - w->BorderTop - w->BorderBottom;
-    	bottom /= w->RPort->TxHeight;
-    	if( bottom > 0 )
-	    --bottom;
+    	bottom = amii_msgborder( w );
     }
+
     while((c = WindowGetchar()) != EOF)
     {
 	amii_curs( WIN_MESSAGE, colx, bottom );
@@ -788,6 +797,16 @@ register char *bufp;
 	{
 	    int win, i, sel;
 	    char buf[ 100 ];
+
+	    if(did_comp){
+		while(bufp!=obufp){
+		    bufp--;
+		    amii_curs(WIN_MESSAGE, --colx, bottom);
+		    Text(w->RPort,spaces,1);
+		    amii_curs(WIN_MESSAGE,colx,bottom);
+		    did_comp=0;
+		}
+	    }
 
 	    win = amii_create_nhwindow( NHW_MENU );
 	    amii_start_menu( win );
@@ -808,6 +827,7 @@ register char *bufp;
 	    {
 		*obufp = '\33';
 		obufp[ 1 ] = 0;
+		return;
 	    }
 	    else
 	    {
@@ -818,14 +838,16 @@ register char *bufp;
 		}
 
 		/* copy in the text */
-		amii_clear_nhwindow( WIN_MESSAGE );
-		strcpy( obufp, extcmdlist[ i ].ef_txt );
-		colx = 0;
-		pline( "# " );
-		pline( obufp );
-		bufp = obufp + 2;
+		if( extcmdlist[ i ].ef_txt != NULL )
+		{
+		    amii_clear_nhwindow( WIN_MESSAGE );
+		    strcpy( obufp = bufp, extcmdlist[ i ].ef_txt );
+		    (void) put_ext_cmd( obufp, colx, cw, bottom );
+		    return;
+		}
+		else
+		    DisplayBeep( NULL );
 	    }
-	    return;
 	}
 	else if(c == '\033')
 	{
@@ -884,17 +906,15 @@ register char *bufp;
 	    {
 		Strcpy(obufp, extcmdlist[com_index].ef_txt);
 		/* finish printing our string */
-		Text( w->RPort, bufp, strlen( bufp ) );
-		amii_curs( WIN_MESSAGE, colx += strlen( bufp ), bottom);
+		colx = put_ext_cmd( obufp, colx, cw, bottom );
 		bufp = obufp; /* reset it */
 		if(strlen(obufp) < BUFSZ-1 && strlen(obufp) < COLNO)
 		    bufp += strlen(obufp);
-		    did_comp=1;
+		did_comp=1;
 	    }
 	    else
 	    {
-		Text( w->RPort, bufp, strlen( bufp ) );
-		amii_curs( WIN_MESSAGE, colx += strlen( bufp ), bottom);
+		colx = put_ext_cmd( obufp, colx, cw, bottom );
 		if(bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)
 		    bufp++;
 	    }
@@ -910,6 +930,56 @@ register char *bufp;
     }
     *bufp = 0;
     return;
+}
+
+static int
+put_ext_cmd( obufp, colx, cw, bottom )
+    char *obufp;
+    int colx, bottom;
+    struct amii_WinDesc *cw;
+{
+    struct Window *w = cw->win;
+    char *t;
+
+    t = malloc( strlen( obufp ) + 7 );
+    if( t != NULL )
+    {
+	if( scrollmsg )
+	{
+	    sprintf( t, "xxx%s", obufp );
+	    t[0] = 1;
+	    t[1] = -1;
+	    t[2] = ' ';
+	    amii_curs( WIN_MESSAGE, 0, bottom);
+	    SetAPen( w->RPort, C_WHITE );
+	    Text(w->RPort, "># ", 3 );
+	    SetAPen( w->RPort, C_RED );
+	    Text(w->RPort, t+3, strlen( t ) - 3 );
+	}
+	else
+	{
+	    sprintf( t, "# %s", obufp );
+	    amii_curs( WIN_MESSAGE, 0, bottom);
+	    SetAPen( w->RPort, C_WHITE );
+	    Text(w->RPort, t, strlen( t ) );
+	}
+	if( scrollmsg )
+	    SetAPen( w->RPort, C_WHITE );
+	if( cw->data[ cw->maxrow - 1 ] )
+	    free( cw->data[ cw->maxrow - 1 ] );
+	cw->data[ cw->maxrow - 1 ] = t;
+    }
+    else
+    {
+	amii_curs( WIN_MESSAGE, 0, bottom);
+	SetAPen( w->RPort, C_WHITE );
+	Text(w->RPort, "# ", 2 );
+	SetAPen( w->RPort, C_RED );
+	Text(w->RPort, obufp, strlen( obufp ) );
+	SetAPen( w->RPort, C_WHITE );
+    }
+    amii_curs( WIN_MESSAGE, colx = strlen( obufp ) + 3 + ( scrollmsg != 0 ), bottom);
+    return( colx );
 }
 #endif /* COM_COMPL */
 

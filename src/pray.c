@@ -770,7 +770,7 @@ water_prayer(bless_water)
 	      (changed > 1L ? "s" : ""), (changed > 1L ? "" : "s"),
 	      (bless_water ? amber : Black));
     }
-    return (changed > 0L);
+    return((boolean)(changed > 0L));
 }
 
 static void

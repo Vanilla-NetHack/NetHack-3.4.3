@@ -105,5 +105,6 @@ void SetUpMenus( register struct Menu *mp, register struct Screen *scrn );
 void UpdateCnfFile( void );
 char *basename( char * );
 void flushIDCMP( struct MsgPort *);
+filecopy( char *, char * );
 
 #undef P

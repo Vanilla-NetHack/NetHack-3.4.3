@@ -148,12 +148,17 @@ m_throw(mon, x, y, dx, dy, range, obj)
 #ifdef MUSE
 		/* not possibly_unwield, which checks the object's */
 		/* location, not its existence */
-		if (MON_WEP(mon) == obj)
+		if (MON_WEP(mon) == obj) {
+			obj->owornmask &= ~W_WEP;
 			MON_NOWEP(mon);
+		}
 #endif
 		m_useup(mon, obj);
 	    }
 	}
+#ifdef MUSE
+	singleobj->owornmask = 0; /* threw one of multiple weapons in hand? */
+#endif
 
 	if (singleobj->cursed && (dx || dy) && !rn2(7)) {
 	    if(canseemon(mon) && flags.verbose) {
@@ -550,7 +555,7 @@ register xchar ax, ay, bx, by;
 	if((!tbx || !tby || abs(tbx) == abs(tby)) /* straight line or diagonal */
 	   && distmin(tbx, tby, 0, 0) < BOLT_LIM) {
 
-	    if(ax == u.ux && ay == u.uy) return couldsee(bx,by);
+	    if(ax == u.ux && ay == u.uy) return((boolean)(couldsee(bx,by)));
 	    else if(clear_path(ax,ay,bx,by)) return TRUE;
 	}
 	return FALSE;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)zap.c	3.1	93/05/17	*/
+/*	SCCS Id: @(#)zap.c	3.1	93/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -425,7 +425,7 @@ int ochance, achance;	/* percent chance for ordinary objects, artifacts */
 	} else {
 		int chance = rn2(100);
 
-		return (chance < (obj->oartifact ? achance : ochance));
+		return((boolean)(chance < (obj->oartifact ? achance : ochance)));
 	}
 }
 
@@ -447,7 +447,7 @@ struct obj *obj;
 	/* adjust for "large" quantities of identical things */
 	if(obj->quan > 4L) zap_odds /= 2;
 
-	return (! rn2(zap_odds));
+	return((boolean)(! rn2(zap_odds)));
 }
 
 /* Use up at least minwt number of things made of material mat.
@@ -963,15 +963,16 @@ zapyourself(obj)
 		case WAN_FIRE:
 		    makeknown(WAN_FIRE);
 		case FIRE_HORN:
-		    pline("You've set yourself afire!");
 		    if (Fire_resistance) {
 			shieldeff(u.ux, u.uy);
 			You("feel rather warm.");
 #ifdef POLYSELF
 			ugolemeffects(AD_FIRE, d(12,6));
 #endif
-		    } else
+		    } else {
+			pline("You've set yourself afire!");
 			damage = d(12,6);
+		    }
 		    destroy_item(SCROLL_CLASS, AD_FIRE);
 		    destroy_item(POTION_CLASS, AD_FIRE);
 		    destroy_item(SPBOOK_CLASS, AD_FIRE);
@@ -1258,7 +1259,7 @@ register struct	obj	*obj;
 				    stackobj(fobj);
 				    if(Invisible) newsym(u.ux, u.uy);
 				} else {
-				    dighole();
+				    (void) dighole(FALSE);
 				}
 			    }
 			    break;
@@ -2175,6 +2176,7 @@ boolean *shopdamage;
 		} else {
 		    rangemod -= 3;
 		    if (lev->typ == DRAWBRIDGE_UP) {
+			lev->drawbridgemask &= ~DB_UNDER;  /* clear lava */
 			lev->drawbridgemask |= (lava ? DB_FLOOR : DB_ICE);
 		    } else {
 			if (!lava)

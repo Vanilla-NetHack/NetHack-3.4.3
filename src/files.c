@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)files.c	3.1	93/02/20	*/
+/*	SCCS Id: @(#)files.c	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -927,10 +927,23 @@ char		*tmp_levels;
 	    /* monsyms[0] is unused */
 	    (void) get_uchars(fp, buf, bufp, &(monsyms[1]),
 					MAXMCLASSES-1, "MONSTERS");
+#ifdef VIDEOSHADES
+	} else if (!strncmpi(buf, "VIDEOCOLORS", 6)) {
+	    uchar   transcolors[MAXCOLORS];
+	    int   len;
+
+	    len = get_uchars(fp, buf, bufp, transcolors,
+					MAXCOLORS, "VIDEOCOLORS");
+	    assign_videocolors(transcolors, len);
+	} else if (!strncmpi(buf, "VIDEOSHADES", 6)) {
+	    int   len;
+
+	    len = strlen(bufp);
+	    assign_videoshades(bufp, len);
+#endif
 #ifdef AMIGA
 	} else if (!strncmpi(buf, "FONT", 4)) {
 		char *t;
-		int size;
 		extern void amii_set_text_font( char *, int );
 
 		if( t = strchr( buf+5, ':' ) )
@@ -941,6 +954,8 @@ char		*tmp_levels;
 		}
 	} else if (!strncmpi(buf, "PATH", 4)) {
 		(void) strncpy(PATH, bufp, PATHLEN);
+#endif
+#ifdef AMIGA
 	} else if (!strncmpi(buf, "PENS", 3)) {
 # ifdef AMII_GRAPHICS
 		int i;

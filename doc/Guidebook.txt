@@ -940,7 +940,7 @@
 
                Enchanted weapons have a  ``plus''  (which  can  also  be  a
           minus) that adds to your chance to hit and the damage you do to a
-          monster.  The only way to find out if a weapon is enchanted is to
+          monster.  The only way to determine a weapon's enchantment is  to
           have it magically identified somehow.
 
                Those of you in the audience who are AD&D players, be  aware
@@ -1006,11 +1006,11 @@
           7.4.  Food (`%')
 
                Food is necessary to survive.  If you go  too  long  without
-          eating  you will faint, and eventually die of starvation.  Unpro-
-          tected food does not stay fresh indefinitely; after  a  while  it
-          will spoil, and be unhealthy to eat.  Food stored in ice boxes or
-          tins (``cans'' to you Americans) will usually stay fresh, but ice
-          boxes are heavy, and tins take a while to open.
+          eating  you  will  faint, and eventually die of starvation.  Some
+          types of food will spoil, and become unhealthy  to  eat,  if  not
+          protected.   Food  stored  in  ice boxes or tins (``cans'' to you
+          Americans) will usually stay fresh, but ice boxes are heavy,  and
+          tins take a while to open.
 
                When you kill monsters, they usually leave corpses which are
           also ``food.''  Many, but not all, of these are edible; some also
@@ -1598,6 +1598,21 @@
           verbose
                Provide more commentary during the game (default on).
 
+          videocolors
+               Set the color palette for PC systems using NO_TERMS (default
+               4  2  6  1 5 3 15 12 10 14 9 13 11).  The order of colors is
+               red,  green,  brown,  blue,  magenta,  cyan,   bright.white,
+               bright.red,      bright.green,      yellow,     bright.blue,
+               bright.magenta, and bright.cyan.  Cannot be set with the `O'
+               command.
+
+          videoshades
+               Set the intensity level of the three gray  scales  available
+               (default  dark  normal light, PC NetHack only).  If the game
+               display is difficult to read, try adjusting these scales; if
+               this  does  not  correct the problem, try !color.  Cannot be
+               set with the `O' command.
+
           windowtype
                Select which windowing system to use,  such  as  ``tty''  or
                ``X11''  (default  depends  on version).  Cannot be set with
@@ -1629,6 +1644,16 @@
           list is, you can type nethack -s all on most versions.
 
 
+          NetHack 3.1                                      January 25, 1993
+
+
+
+
+
+
+          NetHack Guidebook                                              26
+
+
           10.  Explore mode
 
                NetHack is an intricate and difficult game.   Novices  might
@@ -1642,16 +1667,6 @@
           start the game with the -X switch.  The other is to issue the `X'
           command while already playing the game.  The  other  benefits  of
           explore mode are left for the trepid reader to discover.
-
-
-          NetHack 3.1                                      January 25, 1993
-
-
-
-
-
-
-          NetHack Guidebook                                              26
 
 
           11.  Credits
@@ -1692,6 +1707,19 @@
           Creps,  Eric  Hendrickson,  Izchak  Miller,  John  Rupley,   Mike
           Threepoint, and Janet Walz, to produce NetHack 3.0c.
 
+
+
+
+          NetHack 3.1                                      January 25, 1993
+
+
+
+
+
+
+          NetHack Guidebook                                              27
+
+
                NetHack 3.0 was ported to the Atari by  Eric  R.  Smith,  to
           OS/2  by  Timo Hakulinen, and to VMS by David Gentzel.  The three
           of them and Kevin Darcy later joined the main development team to
@@ -1708,18 +1736,6 @@
           and  Janet  Walz, the development team which now included Ken Ar-
           romdee, David Cohrs, Jean-Christophe Collet,  Kevin  Darcy,  Matt
           Day,  Timo Hakulinen, Steve Linhart, Dean Luick, Pat Rankin, Eric
-
-
-          NetHack 3.1                                      January 25, 1993
-
-
-
-
-
-
-          NetHack Guidebook                                              27
-
-
           Raymond, and Eric Smith undertook  a  radical  revision  of  3.0.
           They re-structured the game's design, and re-wrote major parts of
           the code.  They added multiple dungeons, a new  display,  special
@@ -1734,14 +1750,16 @@
           lin, Stephen Spackman, Steve VanDevender, and Paul Winner, ported
           NetHack 3.1 to the PC.
 
-               Jon Watte, with help from Ross  Brown,  Mike  Engber,  David
-          Hairston,  Michael  Hamel, Jonathan Handler, Johnny Lee, Tim Len-
-          nan, Rob Menke, Andy Swanson, and especially from Hao-yang  Wang,
-          developed NetHack 3.1 for the Macintosh.
+               Jon Watte and Hao-yang Wang, with help from Ross Brown, Mike
+          Engber,  David  Hairston, Michael Hamel, Jonathan Handler, Johnny
+          Lee, Tim Lennan, Rob Menke, and Andy Swanson,  developed  NetHack
+          3.1  for  the  Macintosh,  porting it for MPW.  Building on their
+          development, Barton House added a Think C port.
 
                Timo Hakulinen ported NetHack 3.1 to OS/2.  Eric Smith port-
           ed  NetHack  3.1 to the Atari.  Pat Rankin, with help from Joshua
-          Delahunty, is responsible for the VMS version of NetHack 3.1.
+          Delahunty, is responsible for the VMS  version  of  NetHack  3.1.
+          Michael Allison ported NetHack 3.1 to Windows NT.
 
                Dean Luick, with help from David  Cohrs,  developed  NetHack
           3.1 for X11.
@@ -1752,24 +1770,6 @@
           with the game.  The Gods of the Dungeon sometimes  make  note  of
           the  names  of the worst of these miscreants in this, the list of
           Dungeoneers:
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -1787,32 +1787,32 @@
 
 
                   Richard Addison        Eric Hendrickson      Mike Passaretti
-                      Tom Almy            Bruce Holloway         Pat Rankin
-                    Ken Arromdee         Richard P. Hughey     Eric S. Raymond
-                    Eric Backus            Ari Huttunen       Frederick Roeber
-                    John S. Bien            John Kallen          John Rupley
-                     Ralf Brown              Del Lamb           Carl Schelin
-                     Ross Brown             Greg Laskin         Olaf Seibert
-                    David Cohrs             Johnny Lee           Kevin Sitze
-               Jean-Christophe Collet       Tim Lennan          Eric R. Smith
-                    Steve Creps            Merlyn LeRoy       Kevin Smolkowski
-                    Kevin Darcy            Steve Linhart       Michael Sokolov
-                    Matthew Day             Ken Lorber        Stephen Spackman
-                  Joshua Delahunty          Dean Luick          Andy Swanson
-                     Bill Dyer          Benson I. Margulies      Kevin Sweet
-                    Mike Engber          Pierre Martineau      Scott R. Turner
-                   Jochen Erwied          Roland McGrath      Steve VanDevender
-                    Mike Gallop             Norm Meluch         Janet Walz
-                   David Gentzel             Rob Menke          Hao-yang Wang
-                   Mark Gooderum           Deron Meranda          Jon Watte
-                   David Hairston         Bruce Mewborne          Tom West
-                   Timo Hakulinen          Izchak Miller         Paul Winner
-                   Michael Hamel            Gil Neiger         Gregg Wonderly
+                  Michael Allison         Bruce Holloway         Pat Rankin
+                      Tom Almy             Barton House        Eric S. Raymond
+                    Ken Arromdee         Richard P. Hughey    Frederick Roeber
+                    Eric Backus            Ari Huttunen          John Rupley
+                    John S. Bien            John Kallen         Carl Schelin
+                     Ralf Brown              Del Lamb           Olaf Seibert
+                     Ross Brown             Greg Laskin          Kevin Sitze
+                    David Cohrs             Johnny Lee          Eric R. Smith
+               Jean-Christophe Collet       Tim Lennan        Kevin Smolkowski
+                    Steve Creps            Merlyn LeRoy        Michael Sokolov
+                    Kevin Darcy            Steve Linhart      Stephen Spackman
+                    Matthew Day             Ken Lorber          Andy Swanson
+                  Joshua Delahunty          Dean Luick           Kevin Sweet
+                     Bill Dyer          Benson I. Margulies    Scott R. Turner
+                    Mike Engber          Pierre Martineau     Steve VanDevender
+                   Jochen Erwied          Roland McGrath         Janet Walz
+                    Mike Gallop             Norm Meluch         Hao-yang Wang
+                   David Gentzel             Rob Menke            Jon Watte
+                   Mark Gooderum           Deron Meranda          Tom West
+                   David Hairston         Bruce Mewborne         Paul Winner
+                   Timo Hakulinen          Izchak Miller       Gregg Wonderly
+                   Michael Hamel            Gil Neiger
                   Jonathan Handler          Greg Olson
 
           Brand and product names are trademarks or  registered  trademarks
           of their respective holders.
-
 
 
 

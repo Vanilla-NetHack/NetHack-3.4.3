@@ -1030,7 +1030,7 @@ int mdead;
 		if (!magr->mstun) {
 		    magr->mstun = 1;
 		    if (canseemon(magr))
-			pline("%s staggers....", Monnam(magr));
+			pline("%s staggers...", Monnam(magr));
 		}
 		tmp = 0;
 		break;

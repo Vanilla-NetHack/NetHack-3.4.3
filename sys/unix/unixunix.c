@@ -260,16 +260,24 @@ regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
 register char *s;
 {
 	register char *lp;
+#if defined(SYSV) && !defined(AIX_31) && defined(COMPRESS)
+	int i;
+#endif
 
 	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
 		*lp = '_';
 #if defined(SYSV) && !defined(AIX_31)
 	/* avoid problems with 14 character file name limit */
 # ifdef COMPRESS
-	if(strlen(s) > 10)
-		/* leave room for .e from error and .Z from compress
-		 * appended to save files */
-		s[10] = '\0';
+	/* leave room for .e from error and .Z from compress appended to
+	 * save files */
+#  ifdef COMPRESS_EXTENSION
+	i = 12 - strlen(COMPRESS_EXTENSION);
+#  else
+	i = 10;		/* should never happen... */
+#  endif
+	if(strlen(s) > i)
+		s[i] = '\0';
 # else
 	if(strlen(s) > 11)
 		/* leave room for .nn appended to level files */

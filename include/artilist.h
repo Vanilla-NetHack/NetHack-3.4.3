@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artilist.h	3.1	93/05/25	*/
+/*	SCCS Id: @(#)artilist.h	3.1	93/06/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -58,14 +58,16 @@ A("Cleaver",			BATTLE_AXE,
 A("Grimtooth",			ORCISH_DAGGER,
 	SPFX_RESTR, 0, 0,
 	PHYS(2,6),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	 0  ),
-
+/*
+ *	Orcrist and Sting have same alignment as elves.
+ */
 A("Orcrist",			ELVEN_BROADSWORD,
 	SPFX_DFLAG2, 0, M2_ORC,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	'E' ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	'E' ),
 
 A("Sting",			ELVEN_DAGGER,
 	(SPFX_WARN|SPFX_DFLAG2), 0, M2_ORC,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	 0  ),
 /*
  *	Magicbane is a bit different!  Its magic fanfare
  *	unbalances victims in addition to doing some damage.
@@ -108,7 +110,7 @@ A("Ogresmasher",		WAR_HAMMER,
 
 A("Trollsbane",			MORNING_STAR,
 	(SPFX_RESTR|SPFX_DCLAS), 0, S_TROLL,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	 0  ),
 /*
  *	Two problems:  1) doesn't let trolls regenerate heads,
  *	2) doesn't give unusual message for 2-headed monsters (but

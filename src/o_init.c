@@ -309,8 +309,8 @@ static boolean
 interesting_to_discover(i)
 register int i;
 {
-    return objects[i].oc_uname != NULL ||
-		(objects[i].oc_name_known && OBJ_DESCR(objects[i]) != NULL);
+    return((boolean)(objects[i].oc_uname != NULL ||
+		(objects[i].oc_name_known && OBJ_DESCR(objects[i]) != NULL)));
 }
 
 int

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worn.c	3.1	93/02/09
+/*	SCCS Id: @(#)worn.c	3.1	93/06/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -212,7 +212,7 @@ struct monst *mon;
 			*ppronoun = his[pronoun_gender(mon)];
 
 	if (breakarm(mdat)) {
-	    if (otmp = which_armor(mon, W_ARM)) {
+	    if ((otmp = which_armor(mon, W_ARM)) != 0) {
 		if (vis)
 		    pline("%s breaks out of %s armor!", Monnam(mon), ppronoun);
 		else
@@ -220,7 +220,7 @@ struct monst *mon;
 		mon->misc_worn_check &= ~W_ARM;
 		m_useup(mon, otmp);
 	    }
-	    if (otmp = which_armor(mon, W_ARMC)) {
+	    if ((otmp = which_armor(mon, W_ARMC)) != 0) {
 		if (otmp->oartifact) {
 		    if (vis)
 			pline("%s cloak falls off!", s_suffix(Monnam(mon)));
@@ -237,7 +237,7 @@ struct monst *mon;
 		}
 	    }
 # ifdef TOURIST
-	    if (otmp = which_armor(mon, W_ARMU)) {
+	    if ((otmp = which_armor(mon, W_ARMU)) != 0) {
 		if (vis)
 		    pline("%s shirt rips to shreds!", s_suffix(Monnam(mon)));
 		else
@@ -247,7 +247,7 @@ struct monst *mon;
 	    }
 # endif
         } else if (sliparm(mdat)) {
-	    if (otmp = which_armor(mon, W_ARM)) {
+	    if ((otmp = which_armor(mon, W_ARM)) != 0) {
 		if (vis)
 		    pline("%s armor falls around %s!", 
 			         s_suffix(Monnam(mon)), pronoun);
@@ -257,7 +257,7 @@ struct monst *mon;
 		otmp->owornmask &= ~W_ARM;
 		rel_1_obj(mon, otmp);
 	    }
-	    if (otmp = which_armor(mon, W_ARMC)) {
+	    if ((otmp = which_armor(mon, W_ARMC)) != 0) {
 		if (vis)
 		    if (is_whirly(mon->data))
 			pline("%s cloak falls, unsupported!", 
@@ -270,7 +270,7 @@ struct monst *mon;
 		rel_1_obj(mon, otmp);
 	    }
 # ifdef TOURIST
-	    if (otmp = which_armor(mon, W_ARMU)) {
+	    if ((otmp = which_armor(mon, W_ARMU)) != 0) {
 		if (vis)
 		    if (sliparm(mon->data))
 			pline("%s seeps right through %s shirt!",
@@ -285,7 +285,7 @@ struct monst *mon;
 # endif
 	}
 	if (nohands(mdat) || verysmall(mdat)) {
-	    if (otmp = which_armor(mon, W_ARMG)) {
+	    if ((otmp = which_armor(mon, W_ARMG)) != 0) {
 		if (vis)
 		    pline("%s drops %s gloves%s!", Monnam(mon), ppronoun,
 					MON_WEP(mon) ? " and weapon" : "");
@@ -294,7 +294,7 @@ struct monst *mon;
 		otmp->owornmask &= ~W_ARMG;
 		rel_1_obj(mon, otmp);
 	    }
-	    if (otmp = which_armor(mon, W_ARMS)) {
+	    if ((otmp = which_armor(mon, W_ARMS)) != 0) {
 		if (vis)
 		    pline("%s can no longer hold %s shield!", Monnam(mon),
 								ppronoun);
@@ -304,10 +304,10 @@ struct monst *mon;
 		otmp->owornmask &= ~W_ARMS;
 		rel_1_obj(mon, otmp);
 	    }
-	    if (otmp = which_armor(mon, W_ARMH)) {
+	    if ((otmp = which_armor(mon, W_ARMH)) != 0) {
 		if (vis)
-		    pline("%s helmet falls to the floor!", 
-			           s_suffix(Monnam(mon)));
+		    pline("%s helmet falls to the %s!", 
+			  s_suffix(Monnam(mon)), surface(mon->mx, mon->my));
 		else
 		    You("hear a clank.");
 		mon->misc_worn_check &= ~W_ARMH;
@@ -317,7 +317,7 @@ struct monst *mon;
 	}
 	if (nohands(mdat) || verysmall(mdat) || slithy(mdat) ||
 	    mdat->mlet == S_CENTAUR) {
-	    if (otmp = which_armor(mon, W_ARMF)) {
+	    if ((otmp = which_armor(mon, W_ARMF)) != 0) {
 		if (vis) {
 		    if (is_whirly(mon->data))
 			pline("%s boots fall away!", 

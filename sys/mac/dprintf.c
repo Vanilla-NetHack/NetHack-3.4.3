@@ -7,7 +7,9 @@
 #include <Types.h>
 #include <stdarg.h>
 #include <stdio.h>
+#ifndef THINK_C
 #include <strings.h>
+#endif
 #include <GestaltEqu.h>
 
 
@@ -48,7 +50,7 @@ static Boolean trapAvailable = 0 ;
 	buffer [ 0 ] = strlen ( & buffer [ 1 ] ) ;
 	if ( trapAvailable ) {
 		if ( KeyDown ( 0x39 ) ) {									/* Caps Lock */
-			DebugStr ( buffer ) ;
+			DebugStr ( (uchar *) buffer ) ;
 		} else if ( KeyDown ( 0x3B ) && flags . window_inited &&	/* Control */
 			( WIN_MESSAGE != -1 ) && theWindows [ WIN_MESSAGE ] . theWindow ) {
 			pline ( "%s" , & buffer [ 1 ] ) ;

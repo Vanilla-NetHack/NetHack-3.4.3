@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)you.h	3.1	93/04/24	*/
+/*	SCCS Id: @(#)you.h	3.1	93/07/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -51,7 +51,6 @@ struct prop {
 #define INTRINSIC	(FROMOUTSIDE|FROMEXPER)
 
 	long p_flgs;
-	int NDECL((*p_tofn));	/* called after timeout */
 };
 
 struct u_have {
@@ -207,8 +206,10 @@ struct you {
 	long	ucleansed;	/* to record moves when player was cleansed */
 	int uinvault;
 	struct monst *ustuck;
+	int	umortality;		/* how many times you died */
 	int ugrave_arise; /* you die and become something aside from a ghost */
 	int nr_killed[NUMMONS];		/* used for experience bookkeeping */
+	time_t	ubirthday;		/* real world time when game began */
 };
 
 #endif	/* YOU_H */

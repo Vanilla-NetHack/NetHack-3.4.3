@@ -4,8 +4,8 @@
 	    Instructions for compiling and installing
 		 NetHack 3.1 on a Windows NT system
 	    ======================================================
-		 (or, How to make NT NetHack 3.1.2)
-		    Last revision: Apr 16, 1993
+		 (or, How to make NT NetHack 3.1.3)
+		    Last revision: Jun 30, 1993
 
 Credit for the PC versions of NetHack goes to the PC Development team 
 consisting of Norm Meluch, Kevin Smolkowski, Paul Winner and Steve 
@@ -20,7 +20,7 @@ their help, testing effort, and suggestions which contributed to the
 completion of the first Windows NT port of NetHack: Doug Thompson, 
 Phil Mills, Scott Murray. 
 
-This first version of NetHack for Windows NT is a tty port utilizing 
+This current version of NetHack for Windows NT is a tty port utilizing 
 the NT WIN32 Console I/O subsystem.
 
 
@@ -197,7 +197,7 @@ Running from Windows NT Program Manager
     "Working Directory:" dialogue box field when creating your 
     Program Manager Icon:
 
-    ie.  Description      :  NetHack 3.1.2 
+    ie.  Description      :  NetHack 3.1.3 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
          Working Directory:  C:\GAMES\NETHACK
          Shortcut key     :
@@ -232,8 +232,11 @@ Notes:
 	More than 1,900,000 bytes, nethack.exe when debugging information 
         is included in the .exe, and more than 1,200,000 bytes without.
 
-3)  If you want to use the number pad on the keyboard for movement when
-    playing the game, be sure the NUMLOCK is on.
+3)  Beginning with NetHack 3.1.3, the keyboard command sequences match
+    those in the MSDOS port of NetHack more exactly.  The keypad may be used for
+    movement without having the NUMLOCK on.  This also gives you the advantage
+    of being able to RUN by pressing the SHIFT key at the same time as one
+    of the directional movement keys on the keypad (1,2,3,4,6,7,8,9).
 
 4)  A true Windows (WIN32s) version of NetHack is currently under development
     by the PC Windows Porting team.

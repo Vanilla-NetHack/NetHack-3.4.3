@@ -405,7 +405,6 @@ char *
 ami_default_icon( defname )
     char *defname;
 {
-    long lock;
     static char name[ 300 ];
 
     strcpy( name, "NetHack:x.icon" );

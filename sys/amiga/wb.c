@@ -2124,10 +2124,13 @@ void menu_config()
 
         			fp = fopen( StrConf, "r" );
         			if( !fp )
+        			{
 				    fp = fopen( "NetHack:NetHack.cnf", "r" );
+				    strcpy( StrConf, "NetHack:NetHack.cnf" );
+				}
         			if( !fp )
         			{
-                        	    errmsg( FLASH, "Can't open nethack.cnf" );
+                        	    errmsg( FLASH, "Can't open config file" );
                         	    break;
                         	}
 
@@ -2147,7 +2150,7 @@ void menu_config()
         			nfp = fopen( nname, "w" );
         			if( !nfp )
         			{
-                        	    errmsg( FLASH, "Can't open new_nethack.cnf for write" );
+                        	    errmsg( FLASH, "Can't open new config file for write" );
                         	    fclose( fp );
                         	    break;
                         	}
@@ -2212,6 +2215,7 @@ UpdateCnfFile()
     FILE *fp, *nfp;
     char buf[ 300 ];
     char path=0,option=0,dir=0,pens=0,levels=0,save=0;
+    char oname[ 300 ], nname[ 300 ];
 
     setoneopt( PATH_IDX, StrPath );
     PutOptions( curopts );
@@ -2220,16 +2224,30 @@ UpdateCnfFile()
     setoneopt( LEVELS_IDX, StrLevels );
     setoneopt( SAVE_IDX, StrSave );
 
-    fp = fopen( "nethack.cnf", "r" );
+    strcpy( oname, dirname( StrConf ) );
+    if( oname[ strlen(oname)-1 ] != ':' )
+    {
+	sprintf( nname, "%s/new_nethack.cnf", oname );
+	strcat( oname, "/" );
+	strcat( oname, "old_nethack.cnf" );
+    }
+    else
+    {
+	sprintf( nname, "%snew_nethack.cnf", oname );
+	strcat( oname, "old_nethack.cnf" );
+    }
+
+    fp = fopen( StrConf, "r" );
     if( !fp )
     {
         errmsg( FLASH, "Can't open nethack.cnf" );
 		return;
     }
-    nfp = fopen( "new_nethack.cnf", "w" );
+    nfp = fopen( nname, "w" );
     if( !nfp )
     {
-        errmsg( FLASH, "Can't open new_nethack.cnf for write" );
+        sprintf( buf, "Can't open %s for write", nname );
+        errmsg( FLASH, buf );
         fclose( fp );
         return;
     }
@@ -2288,9 +2306,35 @@ UpdateCnfFile()
     /* Close up and rename files */
     fclose( fp );
     fclose( nfp );
-    unlink( "old_nethack.cnf" );
-    rename( "nethack.cnf", "old_nethack.cnf" );
-    rename( "new_nethack.cnf", "nethack.cnf" );
+    unlink( oname );
+    if( filecopy( StrConf, oname ) == 0 )
+	filecopy( nname, StrConf );
+}
+
+filecopy( from, to )
+    char *from, *to;
+{
+    char *buf;
+    int i = 0;
+
+    buf = malloc( strlen(to) + strlen(from) + 20 );
+    if( buf )
+    {
+    	sprintf( buf, "c:copy \"%s\" \"%s\" clone", from, to );
+
+    	/* Check SysBase instead?  Shouldn't matter  */
+	if( IntuitionBase->LibNode.lib_Version >= 37 )
+	    i = System( buf, NULL );
+	else
+	    Execute( buf, NULL, NULL );
+    	free( buf );
+    }
+    else
+    {
+    	errmsg( FLASH, "Failed to allocate memory for copy command" );
+    	return( -1 );
+    }
+    return( i );
 }
 
 void do_gadgetup( imsg )
