@@ -1,6 +1,6 @@
-#	SCCS Id: @(#)Healer.des	3.1	93/01/23
+#	SCCS Id: @(#)Healer.des	3.1	93/02/06
 #	Copyright (c) 1989 by Jean-Christophe Collet
-#	Copyright (c) 1991 by M. Stephenson
+#	Copyright (c) 1991, 1993 by M. Stephenson, P. Winner
 # NetHack may be freely redistributed.  See license for details.
 #
 #	The "start" level for the quest.
@@ -21,7 +21,7 @@ PPPP....PPPPPPPPPPPP...................................PPPPP.PPPPPPPPPPPPPPP
 PPPP........PPPPP.........-----------------------........PP...PPPPPPP.....PP
 PPP............PPPPP....--|.|......S..........S.|--.....PPPP.PPPPPPP.......P
 PPPP..........PPPPP.....|.S.|......-----------|S|.|......PPPPPP.PPP.......PP
-PPPPPP......PPPPPP......|.|.|......|...|......|.|.|.....PPPPPP...PP.......PP
+PPPPPP......PPPPPP......|.|.|...\..|...|......|.|.|.....PPPPPP...PP.......PP
 PPPPPPPPPPPPPPPPPPP.....+.|.|......S.\.S......|.|.+......PPPPPP.PPPP.......P
 PPP...PPPPP...PPPP......|.|.|......|...|......|.|.|.......PPPPPPPPPPP.....PP
 PP.....PPP.....PPP......|.|S|-----------......|.S.|......PPPPPPPPPPPPPPPPPPP
@@ -34,13 +34,15 @@ PPP.............PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP....PPPPPP
 PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP
 ENDMAP
 # Random Monsters
-RANDOM_MONSTERS: 'r', ';', 'D'
+RANDOM_MONSTERS: 'r', ';', 'D', 'S'
 # Dungeon Description
 REGION:(00,00,75,19),lit,"ordinary"
 # Stairs
 STAIR:(37,9),down
 # Portal arrival point
 BRANCH:(04,12,04,12),(0,0,0,0)
+# altar for the Temple
+ALTAR:(32,09),neutral,altar
 # Doors
 DOOR:locked,(24,10)
 DOOR:closed,(26,08)
@@ -59,14 +61,14 @@ MONSTER:'@',"Hippocrates",(37,10)
 # The treasure of Hippocrates
 OBJECT:'(',"chest",(37,10)
 # intern guards for the audience chamber
-MONSTER:'@',"intern",(29,08)
-MONSTER:'@',"intern",(29,09)
-MONSTER:'@',"intern",(29,10)
-MONSTER:'@',"intern",(29,11)
-MONSTER:'@',"intern",(40,09)
-MONSTER:'@',"intern",(40,10)
-MONSTER:'@',"intern",(40,11)
-MONSTER:'@',"intern",(40,13)
+MONSTER:'@',"attendant",(29,08)
+MONSTER:'@',"attendant",(29,09)
+MONSTER:'@',"attendant",(29,10)
+MONSTER:'@',"attendant",(29,11)
+MONSTER:'@',"attendant",(40,09)
+MONSTER:'@',"attendant",(40,10)
+MONSTER:'@',"attendant",(40,11)
+MONSTER:'@',"attendant",(40,13)
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
 # Random traps
@@ -94,7 +96,11 @@ MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
- 
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
 #
 #	The "locate" level for the quest.
 #
@@ -166,15 +172,6 @@ MONSTER:'r',"rabid rat",random
 MONSTER:'r',"rabid rat",random
 MONSTER:'r',"rabid rat",random
 MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
 MONSTER:'r',random,random,hostile
 MONSTER:';',"giant eel",random
 MONSTER:';',"giant eel",random
@@ -191,6 +188,15 @@ MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
 
 #
 #	The "goal" level for the quest.
@@ -219,7 +225,7 @@ P....PPPPP...PPPP..PPPPP...PPPPPPP...PP..
 PPP..................................PPP.
 ENDMAP
 # Random Monsters
-RANDOM_MONSTERS: 'r', ';', 'D'
+RANDOM_MONSTERS: 'r', ';', 'D', 'S'
 # Dungeon Description
 REGION:(00,00,40,11),lit,"ordinary"
 # Stairs
@@ -255,19 +261,6 @@ MONSTER:'H',"Cyclops",(20,06),hostile
 MONSTER:'r',"rabid rat",random
 MONSTER:'r',"rabid rat",random
 MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
-MONSTER:'r',"rabid rat",random
 MONSTER:'r',random,random,hostile
 MONSTER:'r',random,random,hostile
 MONSTER:';',"giant eel",random
@@ -284,6 +277,16 @@ MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
 
 #
 #	The "fill" levels for the quest.
@@ -298,7 +301,7 @@ MAZE: "H-filla" , 'P'
 INIT_MAP: '.' , 'P' , false , true , lit , false
 NOMAP
 # Random Monsters
-RANDOM_MONSTERS: 'r', ';', 'D'
+RANDOM_MONSTERS: 'r', ';', 'D', 'S'
 #
 STAIR: random, up
 STAIR: random, down
@@ -313,9 +316,6 @@ OBJECT: random, random, random
 OBJECT: random, random, random
 #
 MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
 MONSTER: 'r', random, random,hostile
 MONSTER: 'r', random, random,hostile
 MONSTER: ';', "giant eel", random
@@ -325,6 +325,9 @@ MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
 #
 TRAP: random, random
 TRAP: random, random
@@ -335,7 +338,7 @@ MAZE: "H-fillb" , 'P'
 INIT_MAP: '.' , 'P' , false , true , lit , false
 NOMAP
 # Random Monsters
-RANDOM_MONSTERS: 'r', ';', 'D'
+RANDOM_MONSTERS: 'r', ';', 'D', 'S'
 #
 STAIR: random, up
 STAIR: random, down
@@ -354,9 +357,6 @@ OBJECT: random, random, random
 #
 MONSTER: 'r', "rabid rat", random
 MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
-MONSTER: 'r', "rabid rat", random
 MONSTER: 'r', random, random,hostile
 MONSTER: 'r', random, random,hostile
 MONSTER: ';', "giant eel", random
@@ -370,6 +370,9 @@ MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
 MONSTER: 'D',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
+MONSTER: 'S',random,random,hostile
 #
 TRAP: random, random
 TRAP: random, random

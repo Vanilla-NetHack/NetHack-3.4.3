@@ -110,7 +110,7 @@ s_suffix(s)		/* return a name converted to possessive */
 	Strcat(buf, "s");
     else if(*(eos(buf)-1) == 's')
 	Strcat(buf, "'");
-    else 
+    else
 	Strcat(buf, "'s");
     return buf;
 }
@@ -465,21 +465,32 @@ get_date()
 	return(datestr);
 }
 
+/*
+ * moon period = 29.53058 days ~= 30, year = 365.2422 days
+ * days moon phase advances on first day of year compared to preceding year
+ *	= 365.2422 - 12*29.53058 ~= 11
+ * years in Metonic cycle (time until same phases fall on the same days of
+ *	the month) = 18.6 ~= 19
+ * moon phase on first day of year (epact) ~= (11*(year%19) + 29) % 30
+ *	(29 as initial condition)
+ * current phase in days = first day phase + days elapsed in year
+ * 6 moons ~= 177 days
+ * 177 ~= 8 reported phases * 22
+ * + 11/22 for rounding
+ */
 int
-phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
-/* moon period: 2551442 seconds == 29.53058 days */
-/* 722578680: date when there was a new moon (Tue Nov 24 04:18 1992) */
-/* *8/2551442: divide into 8 phases */
-/* *8 +2551442/2 /2551442: let the division round to nearest instead of down */
+phase_of_the_moon()		/* 0-7, with 0: new, 4: full */
 {
-#ifdef BSD
-	long now = time((long *)0);
-#else
-	long now = time((time_t *)0);
-#endif
+	register struct tm *lt = getlt();
+	register int epact, diy, goldn;
 
-	return (int) (((((now - 722578680L) % 2551442L) * 8L) + 2551442L/2L)
-		/ 2551442L);
+	diy = lt->tm_yday;
+	goldn = (lt->tm_year % 19) + 1;
+	epact = (11 * goldn + 18) % 30;
+	if ((epact == 25 && goldn > 11) || epact == 24)
+		epact++;
+
+	return( (((((diy + epact) * 6) + 11) % 177) / 22) & 7 );
 }
 
 boolean

@@ -1,0 +1,376 @@
+#       SCCS Id: @(#)Makefile.src       3.1     93/02/21
+#       Copyright (c) NetHack PC Development Team 1993
+#
+#       NT NetHack 3.1 Src Makefile 
+#	for MS NMAKE for Windows NT
+#  
+#	NT Version Tested:  October 1992 SDK pre-release
+#			    + December '92 compiler fix
+#
+#       For questions read the Install.nt file included with
+#       the distribution.
+#
+#	Michael Allison
+#
+#----------------------------------------------------------------------
+# The following nmake include sets up the environment
+# correctly for the Windows NT Console I/O subsystem
+#
+# Do not delete the following include.
+#
+!include <..\sys\winnt\nhincl.mak>
+
+#
+#  Set the gamedir according to your preference.  It must be present prior
+#  to compilation.
+
+GAME    = nethack            # Game Name
+GAMEDIR = c:\games\hackdir      # Game directory
+
+#
+#  Source directories.    Makedefs hardcodes these, don't change them.
+#
+
+INCL = ..\include   # NetHack include files
+DAT  = ..\dat       # NetHack data files
+DOC  = ..\doc       # NetHack documentation files
+UTIL = ..\util      # Utility source
+SRC  = ..\src       # Main source
+SYS  = ..\sys\share # Shared system files
+MSYS = ..\sys\winnt # NT Win32 specific files
+WIN  = ..\win\tty   # windows files (wintty)
+GAMEFILE = $(GAMEDIR)\$(GAME).exe # whole thing
+
+RANDOM = ..\sys\share\random.o
+#RANDOM = 
+
+#
+#  Uncomment the next two lines _ONLY_ if you do not want any
+#  debug capability in the object files, or in the NetHack executable.
+#cdebug =
+#linkdebug =
+
+#
+#  The default make target (so just typing 'nmake' is useful).
+#
+
+default : $(GAMEFILE)
+
+######################################################################
+#
+#  Nothing below this line should have to be changed.
+#
+#  Other things that have to be reconfigured are in
+#       config.h, pccconf.h and possibly system.h.
+#
+
+#       This line should not be deleted.
+
+NTSUB = -DWIN32CON
+#
+#  Make Rules.
+#
+
+.SUFFIXES:  .exe .o .c .y .l
+
+.c.o:
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $*.c
+
+
+#
+#  Object files for the game itself.
+#
+
+VOBJ01 = allmain.o  alloc.o    $(RANDOM)  apply.o    artifact.o  attrib.o
+VOBJ02 = ball.o     bones.o    botl.o     cmd.o      dbridge.o
+VOBJ03 = decl.o     detect.o   display.o  do.o       do_name.o
+VOBJ04 = do_wear.o  dog.o      dogmove.o  dokick.o   dothrow.o
+VOBJ05 = drawing.o  dungeon.o  eat.o      end.o      engrave.o
+VOBJ06 = exper.o    explode.o  extralev.o files.o    fountain.o
+VOBJ07 = hack.o     hacklib.o  invent.o   lock.o
+VOBJ08 = mail.o     main.o     makemon.o  mcastu.o   mhitm.o
+VOBJ09 = mhitu.o    minion.o   mkmap.o    mklev.o    mkmaze.o
+VOBJ10 = mkobj.o    mkroom.o   mon.o      mondata.o  monmove.o
+VOBJ11 = monst.o    monstr.o   mplayer.o  mthrowu.o  muse.o
+VOBJ12 = music.o    o_init.o   objects.o  objnam.o   options.o
+VOBJ13 = pickup.o   pline.o    polyself.o potion.o   quest.o
+VOBJ14 = questpgr.o pager.o    pray.o     priest.o   read.o
+VOBJ15 = rect.o     restore.o  rip.o      rnd.o      rumors.o
+VOBJ16 = save.o     shk.o      shknam.o   sit.o      sounds.o
+VOBJ17 = sp_lev.o   spell.o    steal.o    timeout.o
+VOBJ18 = topten.o   track.o    trap.o     u_init.o
+VOBJ19 = uhitm.o    vault.o    vision.o   vis_tab.o  weapon.o
+VOBJ20 = were.o     wield.o    windows.o  wizard.o
+VOBJ21 = worm.o     worn.o     write.o    zap.o
+WOBJ   = topl.o     getline.o  wintty.o
+SOBJ   = winnt.o    sys.o      tty.o      unix.o
+VVOBJ  = version.o
+
+
+VOBJ   = $(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) \
+         $(VOBJ06) $(VOBJ07) $(VOBJ08) $(VOBJ09) $(VOBJ10) \
+         $(VOBJ11) $(VOBJ12) $(VOBJ13) $(VOBJ14) $(VOBJ15) \
+         $(VOBJ16) $(VOBJ17) $(VOBJ18) $(VOBJ19) $(VOBJ20) \
+         $(VOBJ21)
+
+ALLOBJ = $(VOBJ) $(SOBJ) $(WOBJ) $(VVOBJ)
+
+DGN_FILE_H = $(INCL)\align.h    $(INCL)\dgn_file.h
+DUNGEON_H  = $(INCL)\align.h    $(INCL)\dungeon.h
+EMIN_H     = $(DUNGEON_H)       $(INCL)\emin.h
+EPRI_H     = $(DUNGEON_H)       $(INCL)\align.h     $(INCL)\epri.h
+ESHK_H     = $(DUNGEON_H)       $(INCL)\eshk.h
+MONDATA_H  = $(INCL)\align.h    $(INCL)\mondata.h
+MONST_H    = $(INCL)\align.h    $(INCL)\monst.h
+PERMONST_H = $(INCL)\monattk.h  $(INCL)\monflag.h   $(INCL)\align.h   \
+             $(INCL)\permonst.h
+RM_H       = $(INCL)\align.h    $(INCL)\rm.h
+SP_LEV_H   = $(INCL)\align.h    $(INCL)\sp_lev.h
+VAULT_H    = $(DUNGEON_H)       $(INCL)\vault.h
+YOUPROP_H  = $(PERMONST_H)      $(MONDATA_H)        $(INCL)\prop.h    \
+             $(INCL)\pm.h       $(INCL)\youprop.h
+YOU_H      = $(MONST_H)         $(YOUPROP_H)        $(INCL)\align.h   \
+             $(INCL)\attrib.h   $(INCL)\you.h
+DISPLAY_H  = $(MONDATA_H)       $(INCL)\vision.h    $(INCL)\display.h
+NTCONF_H   = $(INCL)\micro.h    $(INCL)\system.h    $(INCL)\ntconf.h
+CONFIG_H   = $(GLOBAL_H)        $(INCL)\tradstdc.h  $(INCL)\config.h
+DECL_H     = $(YOU_H)           $(INCL)\spell.h     $(INCL)\color.h   \
+             $(INCL)\obj.h      $(INCL)\onames.h    $(INCL)\pm.h      \
+             $(INCL)\decl.h
+GLOBAL_H   = $(NTCONF_H)        $(INCL)\coord.h     $(INCL)\global.h
+HACK_H     = $(CONFIG_H)        $(DUNGEON_H)        $(DECL_H)         \
+             $(DISPLAY_H)       $(INCL)\monsym.h    $(INCL)\mkroom.h  \
+             $(INCL)\objclass.h $(INCL)\trap.h      $(INCL)\flag.h    \
+             $(RM_H)            $(INCL)\vision.h    $(INCL)\wintype.h \
+             $(INCL)\engrave.h  $(INCL)\rect.h      $(INCL)\extern.h \
+             $(INCL)\trampoli.h $(INCL)\hack.h
+
+
+
+#
+#  The default target.
+#
+
+all :     $(GAMEFILE) install.tag
+    @echo Done.
+
+install: install.tag
+
+install.tag:    $(GAMEFILE) $(DAT)\sp_lev.tag
+    copy $(SYS)\termcap       $(GAMEDIR)
+    copy $(DAT)\*.?           $(GAMEDIR)
+    copy $(DAT)\*.dat         $(GAMEDIR)
+    copy $(DAT)\*.lev         $(GAMEDIR)
+    copy $(SYS)\NetHack.cnf   $(GAMEDIR)
+    copy $(UTIL)\recover.exe  $(GAMEDIR)
+    del   $(GAMEDIR)\makefile
+    echo install done > install.tag
+
+#
+#  The main target.
+#
+$(GAMEFILE) : $(GAME).res  $(UTIL)\utility.tag
+    $(link) $(linkdebug) $(conflags) -out:$*.exe @$(GAME).res $(conlibs)
+
+$(GAME).res : $(ALLOBJ)
+    @echo $(VOBJ01) > $@
+    @echo $(VOBJ02) >> $@
+    @echo $(VOBJ03) >> $@
+    @echo $(VOBJ04) >> $@
+    @echo $(VOBJ05) >> $@
+    @echo $(VOBJ06) >> $@
+    @echo $(VOBJ07) >> $@
+    @echo $(VOBJ08) >> $@
+    @echo $(VOBJ09) >> $@
+    @echo $(VOBJ10) >> $@
+    @echo $(VOBJ11) >> $@
+    @echo $(VOBJ12) >> $@
+    @echo $(VOBJ13) >> $@
+    @echo $(VOBJ14) >> $@
+    @echo $(VOBJ15) >> $@
+    @echo $(VOBJ16) >> $@
+    @echo $(VOBJ17) >> $@
+    @echo $(VOBJ18) >> $@
+    @echo $(VOBJ19) >> $@
+    @echo $(VOBJ20) >> $@
+    @echo $(VOBJ21) >> $@
+    @echo $(WOBJ) >> $@
+    @echo $(SOBJ) >> $@
+    @echo $(VVOBJ) >> $@
+
+
+#
+#  The following include files depend on makedefs to be created.
+#
+#  date.h should be remade every time any of the source or include
+#  files is modified.
+#
+
+$(INCL)\date.h : $(VOBJ)
+    $(UTIL)\makedefs -v
+
+$(INCL)\onames.h :
+    $(UTIL)\makedefs -o
+
+$(INCL)\pm.h :
+    $(UTIL)\makedefs -p
+
+main.o:  $(HACK_H) $(SYS)\pcmain.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SYS)\pcmain.c
+
+tty.o:   $(HACK_H) $(INCL)\wintty.h $(MSYS)\nttty.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(MSYS)\nttty.c
+
+unix.o:  $(SYS)\pcunix.c $(HACK_H)
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SYS)\pcunix.c
+
+sys.o : $(SYS)\pcsys.c $(HACK_H)
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SYS)\pcsys.c
+
+winnt.o : $(HACK_H) $(MSYS)\winnt.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(MSYS)\winnt.c
+
+
+# some other files in other directories
+
+getline.o : $(WIN)\getline.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
+
+termcap.o : $(CONFIG_H) $(WIN)\termcap.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
+
+topl.o : $(CONFIG_H) $(WIN)\topl.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
+
+wintty.o : $(CONFIG_H) $(WIN)\wintty.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
+
+#
+#  Housekeeping.
+#
+
+clean :
+    -del *.o
+
+spotless : clean
+    -del $(INCL)\date.h
+    -del $(INCL)\onames.h
+    -del $(INCL)\pm.h
+    -del $(INCL)\vis_tab.h
+    -del vis_tab.c
+    -del $(UTIL)\makedefs.exe
+    -del $(UTIL)\lev_comp.exe
+    -del $(UTIL)\dgn_comp.exe
+    -del $(UTIL)\*.res
+    -del $(UTIL)\*.def
+    -del $(UTIL)\*.map
+    -del $(DAT)\data
+    -del $(DAT)\rumors
+    -del $(UTIL)\guideboo.dvi
+
+# dependencies
+allmain.o     : $(HACK_H)
+alloc.o       : $(CONFIG_H)
+apply.o       : $(HACK_H)
+artifact.o    : $(HACK_H)       $(INCL)\artifact.h
+attrib.o      : $(HACK_H)
+bones.o       : $(HACK_H)
+botl.o        : $(HACK_H)
+cmd.o         : $(HACK_H)       $(INCL)\func_tab.h
+dbridge.o     : $(HACK_H)
+decl.o        : $(HACK_H)       $(INCL)\quest.h
+detect.o      : $(HACK_H)
+display.o     : $(HACK_H)
+do.o          : $(HACK_H)       $(INCL)\lev.h
+do_name.o     : $(HACK_H)
+do_wear.o     : $(HACK_H)
+dog.o         : $(HACK_H)       $(INCL)\edog.h
+dogmove.o     : $(HACK_H)       $(INCL)\mfndpos.h   $(INCL)\edog.h
+dokick.o      : $(HACK_H)       $(ESHK_H)
+dothrow.o     : $(HACK_H)
+drawing.o     : $(HACK_H)       $(INCL)\termcap.h
+dungeon.o     : $(HACK_H)       $(DGN_FILE_H)
+eat.o         : $(HACK_H)
+end.o         : $(HACK_H)       $(ESHK_H)
+engrave.o     : $(HACK_H)       $(INCL)\lev.h
+exper.o       : $(HACK_H)
+explode.o     : $(HACK_H)
+extralev.o    : $(HACK_H)
+files.o       : $(HACK_H)
+fountain.o    : $(HACK_H)
+hack.o        : $(HACK_H)
+invent.o      : $(HACK_H)
+lock.o        : $(HACK_H)
+mail.o        : $(HACK_H)
+hacklib.o     : $(HACK_H)
+makemon.o     : $(HACK_H)
+mcastu.o      : $(HACK_H)
+mhitm.o       : $(HACK_H)
+mhitu.o       : $(HACK_H)
+minion.o      : $(HACK_H)
+mklev.o       : $(HACK_H)
+mkmap.o       : $(HACK_H)
+mkmaze.o      : $(HACK_H)
+mkobj.o       : $(HACK_H)
+mkroom.o      : $(HACK_H)
+mon.o         : $(HACK_H)
+mondata.o     : $(HACK_H)
+monmove.o     : $(HACK_H)       $(INCL)\mfndpos.h   $(INCL)\artifact.h
+monst.o       : $(CONFIG_H)     $(PERMONST_H)       $(INCL)\monsym.h     \
+                $(ESHK_H)       $(VAULT_H)          $(INCL)\color.h      \
+                $(EPRI_H)
+monstr.o      : $(CONFIG_H)
+mplayer.o     : $(HACK_H)
+mthrowu.o     : $(HACK_H)
+muse.o        : $(HACK_H)
+music.o       : $(HACK_H)
+o_init.o      : $(HACK_H)
+objects.o     : $(CONFIG_H)     $(INCL)\obj.h       $(INCL)\objclass.h   \
+                $(INCL)\prop.h  $(INCL)\color.h
+objnam.o      : $(HACK_H)
+options.o     : $(HACK_H)       $(INCL)\termcap.h
+pager.o       : $(HACK_H)
+pickup.o      : $(HACK_H)
+pline.o       : $(HACK_H)     $(EPRI_H)
+polyself.o    : $(HACK_H)
+potion.o      : $(HACK_H)
+priest.o      : $(HACK_H)     $(INCL)\mfndpos.h   $(ESHK_H) \
+                $(EPRI_H)     $(EMIN_H)
+quest.o       : $(HACK_H)     $(INCL)\quest.h     $(INCL)\qtext.h
+questpgr.o    : $(HACK_H)     $(INCL)\quest.h     $(INCL)\qtext.h
+pray.o        : $(HACK_H)
+read.o        : $(HACK_H)
+rect.o        : $(HACK_H)
+restore.o     : $(HACK_H)     $(INCL)\lev.h       $(INCL)\quest.h
+rip.o         : $(HACK_H)
+rnd.o         : $(HACK_H)
+rumors.o      : $(HACK_H)
+save.o        : $(HACK_H)     $(INCL)\lev.h       $(INCL)\quest.h
+search.o      : $(HACK_H)     $(INCL)\artifact.h
+shk.o         : $(HACK_H)
+shknam.o      : $(HACK_H)     $(ESHK_H)
+sit.o         : $(HACK_H)
+sounds.o      : $(HACK_H)     $(INCL)\edog.h      $(ESHK_H)
+sp_lev.o      : $(HACK_H)
+spell.o       : $(HACK_H)
+steal.o       : $(HACK_H)
+timeout.o     : $(HACK_H)
+topten.o      : $(HACK_H)
+track.o       : $(HACK_H)
+trap.o        : $(HACK_H)     $(INCL)\edog.h
+u_init.o      : $(HACK_H)
+uhitm.o       : $(HACK_H)
+vault.o       : $(HACK_H)     $(INCL)\vault.h
+version.o     : $(HACK_H)     $(INCL)\date.h      $(INCL)\patchlev.h
+vision.o      : $(HACK_H)     $(INCL)\vis_tab.h
+vis_tab.o     : $(HACK_H)
+weapon.o      : $(HACK_H)
+were.o        : $(HACK_H)
+wield.o       : $(HACK_H)
+windows.o     : $(HACK_H)
+wintty.o      : $(HACK_H)
+wizard.o      : $(HACK_H)
+worm.o        : $(HACK_H)     $(INCL)\lev.h
+worn.o        : $(HACK_H)
+write.o       : $(HACK_H)
+zap.o         : $(HACK_H)

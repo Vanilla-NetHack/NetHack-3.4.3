@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.1	92/11/25	*/
+/*	SCCS Id: @(#)cmd.c	3.1	93/02/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -117,10 +117,6 @@ static void NDECL(end_of_input);
 #endif
 #endif /* OVLB */
 
-#ifdef OVL0
-static int FDECL(click_to_cmd, (int,int,int));
-#endif /* OVL0 */
-
 STATIC_OVL char *NDECL(parse);
 
 #ifdef UNIX
@@ -195,7 +191,7 @@ static char NDECL(popch);
  */
 #define BSIZE 20
 static char pushq[BSIZE], saveq[BSIZE];
-static int NEARDATA phead, NEARDATA ptail, NEARDATA shead, NEARDATA stail;
+static NEARDATA int phead, ptail, shead, stail;
 
 static char
 popch() {
@@ -261,7 +257,6 @@ again:
 #else
 	getlin("#", buf);
 #endif
-	clear_nhwindow(WIN_MESSAGE);
 	if(buf[0] == '\0' || buf[0] == '\033')
 		return 0;
 	if(buf[0] == '?') {
@@ -660,6 +655,7 @@ static const struct func_tab cmdlist[] = {
 	{M('m'), domonability},
 #endif /* POLYSELF */
 	{'N', ddocall}, /* if number_pad is on */
+	{M('n'), ddocall},
 	{M('N'), ddocall},
 	{'o', doopen},
 	{'O', doset},
@@ -699,6 +695,7 @@ static const struct func_tab cmdlist[] = {
 	{'/', dowhatis},
 	{'&', dowhatdoes},
 	{'?', dohelp},
+	{M('?'), doextlist},
 #ifdef SHELL
 	{'!', dosh},
 #endif
@@ -720,7 +717,6 @@ static const struct func_tab cmdlist[] = {
 	{'#', doextcmd},
 	{0,0,0}
 };
-#undef M
 
 const struct ext_func_tab extcmdlist[] = {
 	{"adjust", "adjust inventory letters", doorganize},
@@ -977,12 +973,12 @@ register int x, y;
 	return x >= 1 && x <= COLNO-1 && y >= 0 && y <= ROWNO-1;
 }
 
-static int NEARDATA last_multi;
+static NEARDATA int last_multi;
 
 /*
  * convert a MAP window position into a movecmd
  */
-static int
+int
 click_to_cmd(x, y, mod)
     int x, y, mod;
 {
@@ -1007,7 +1003,8 @@ click_to_cmd(x, y, mod)
     if(mod == CLICK_1) {
 	return (flags.num_pad ? ndir[x] : sdir[x]);
     } else {
-	return (sdir[x] - 'a' + 'A'); /* run command */
+	return (flags.num_pad ? M(ndir[x]) :
+		(sdir[x] - 'a' + 'A')); /* run command */
     }
 }
 

@@ -78,7 +78,7 @@ TRAP:random,random
 # Monsters on siege duty.
 MONSTER: '@',"ronin",(64,00),hostile
 MONSTER: 'd',"wolf",(65,01)
-MONSTER: '@',"ronin",(66,02),hostile
+MONSTER: '@',"ronin",(67,02),hostile
 MONSTER: '@',"ronin",(69,05),hostile
 MONSTER: '@',"ronin",(69,06),hostile
 MONSTER: 'd',"wolf",(69,07)

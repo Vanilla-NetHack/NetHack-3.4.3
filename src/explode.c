@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c 3.1	90/11/06
+/*	SCCS Id: @(#)explode.c 3.1	93/02/17
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -146,7 +146,7 @@ char olet;
 				pline("%s gets heartburn!",
 				      Monnam(u.ustuck));
 			else
-				pline("%s gets toasted slightly!",
+				pline("%s gets slightly toasted!",
 				      Monnam(u.ustuck));
 		} else
 		pline("%s is caught in the %s!",
@@ -203,8 +203,7 @@ char olet;
 			if (type >= 0 && olet != SCROLL_CLASS) {
 			    killer_format = NO_KILLER_PREFIX;
 			    Sprintf(buf, "caught %sself in %s own %s.",
-				flags.female ? "her" : "him",
-				flags.female ? "her" : "his", str);
+				    him[flags.female], his[flags.female], str);
 			} else {
 			    killer_format = KILLED_BY;
 			    Strcpy(buf, str);

@@ -3,7 +3,11 @@
                 =======================================
 
 0.  Read this entire file before starting, and come back to the Notes
-    below if you have any problems.
+    below if you have any problems.  If you are trying to use X11,
+    also read all of win/X11/Install.X11.  For help in controlling
+    and running the game after it is installed, see the '?' command
+    within the game and doc/Guidebook (non-installers want to know
+    about those things too).
 
 1.  Make sure all the NetHack files are in the appropriate directory
     structure.  You should have a main directory with subdirectories dat,
@@ -56,8 +60,8 @@
     that if you don't want to run NetHack either setuid or setgid, and
     people in more than one group will be playing it, you'll need to go back
     and set FCMASK to 0666 in unixconf.h and let everybody fiddle with the
-    files NetHack creates.)  Type 'make spec_levs' and 'make dungeon' from
-    the top directory to set up files for some of the special levels.
+    files NetHack creates.)  Type 'make all' from the top directory to
+    set up all the auxiliary files the main executable will use.
     Then become root if necessary and type 'make install'.  Everything
     should now be set.
 

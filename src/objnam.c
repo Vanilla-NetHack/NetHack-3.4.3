@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.1	92/12/13	*/
+/*	SCCS Id: @(#)objnam.c	3.1	93/02/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -167,16 +167,16 @@ xname(obj)
 register struct obj *obj;
 {
 #ifdef LINT	/* lint may handle static decl poorly -- static char bufr[]; */
-char bufr[BUFSZ];
+	char bufr[BUFSZ];
 #else
-static char bufr[BUFSZ];
+	static char bufr[BUFSZ];
 #endif
-register char *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
-register int typ = obj->otyp;
-register int nn = objects[typ].oc_name_known;
-register const char *actualn = OBJ_NAME(objects[typ]);
-register const char *dn = OBJ_DESCR(objects[typ]);
-register const char *un = objects[typ].oc_uname;
+	register char *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
+	register int typ = obj->otyp;
+	register int nn = objects[typ].oc_name_known;
+	register const char *actualn = OBJ_NAME(objects[typ]);
+	register const char *dn = OBJ_DESCR(objects[typ]);
+	register const char *un = objects[typ].oc_uname;
 
 	if (pl_character[0] == 'S' && Japanese_item_name(typ))
 		actualn = Japanese_item_name(typ);
@@ -385,14 +385,16 @@ register const char *un = objects[typ].oc_uname;
 	default:
 		Sprintf(buf,"glorkum %d %d %d", obj->oclass, typ, obj->spe);
 	}
-	if(obj->quan != 1L) Strcpy(buf, makeplural(buf));
+	if (obj->quan != 1L) Strcpy(buf, makeplural(buf));
 
-	if(obj->onamelth &&
-	   (!obj->oartifact || !objects[obj->otyp].oc_unique)) {
+	if (obj->onamelth &&
+	    (!obj->oartifact || !objects[obj->otyp].oc_unique)) {
 		Strcat(buf, " named ");
 	    nameit:
 		Strcat(buf, ONAME(obj));
 	}
+
+	if (!strncmpi(buf, "the ", 4)) buf += 4;
 	return(buf);
 }
 
@@ -487,7 +489,7 @@ plus:
 			Strcat(prefix,
 			       is_rustprone(obj) ? "rusty " :
 			       is_corrodeable(obj) ? "corroded " :
-			       is_flammable(obj) ? "burnt " : "");
+			       is_flammable(obj) ? "burnt " : "eroded ");
 		} else if (obj->rknown && obj->oerodeproof)
 			Strcat(prefix,
 			       is_rustprone(obj) ? "rustproof " :
@@ -904,7 +906,7 @@ const char *oldstr;
 
 	/* same singular and plural */
 	/* note: also swine, trout, grouse */
-	if ((len >= 7 && !strcmp(spot-6, "samurai")) ||
+	if ((len >= 2 && !strcmp(spot-1, "ai")) || /* samurai, Uruk-hai */
 #ifdef TUTTI_FRUTTI
 	    (len >= 5 &&
 	     (!strcmp(spot-4, "manes") || !strcmp(spot-4, "sheep"))) ||
@@ -971,7 +973,8 @@ const char *oldstr;
 	}
 
 	/* Japanese words: plurals are the same as singlar */
-	if (len == 2 && !strcmp(str, "ya"))
+	if ((len == 2 && !strcmp(str, "ya")) ||
+	    (len > 2 && !strcmp(spot-2, " ya")))
 	    goto bottom;
 
 	/* Default: append an 's' */
@@ -1535,6 +1538,7 @@ sing:
 		p = eos(bp);
 		if(!BSTRCMP(bp, p-8, "fountain")) {
 			levl[u.ux][u.uy].typ = FOUNTAIN;
+			level.flags.nfountains++;
 			if(!strncmpi(bp, "magic ", 6))
 				levl[u.ux][u.uy].blessedftn = 1;
 			pline("A %sfountain.",
@@ -1542,6 +1546,15 @@ sing:
 			newsym(u.ux, u.uy);
 			return(&zeroobj);
 		}
+# ifdef SINKS
+		if(!BSTRCMP(bp, p-4, "sink")) {
+			levl[u.ux][u.uy].typ = SINK;
+			level.flags.nsinks++;
+			pline("A sink.");
+			newsym(u.ux, u.uy);
+			return &zeroobj;
+		}
+# endif
 		if(!BSTRCMP(bp, p-5, "altar")) {
 		    aligntyp al;
 
@@ -1670,16 +1683,13 @@ typfnd:
 		    typ = SPE_BLANK_PAPER;
 		    break;
 	    }
-
-	/* venom isn't really an object and can't be wished for; but allow
-	 * wizards to wish for it since it's faster than polymorphing and
-	 * spitting.
-	 */
-	if(let == VENOM_CLASS)
+	/* catch any other non-wishable objects */
+	if (objects[typ].oc_nowish
 #ifdef WIZARD
-		if (!wizard)
+	    && !wizard
 #endif
-			return((struct obj *)0);
+	    )
+	    return((struct obj *)0);
 
 	if(typ) {
 		otmp = mksobj(typ, TRUE, FALSE);
@@ -1696,6 +1706,7 @@ typfnd:
 #ifdef WIZARD
 		wizard ||
 #endif
+		 (cnt <= 7 && Is_candle(otmp)) ||
 		 (cnt <= 20 &&
 		  ((let == WEAPON_CLASS && typ <= SHURIKEN) || (typ == ROCK)))))
 			otmp->quan = (long) cnt;
@@ -1858,6 +1869,21 @@ typfnd:
 		otmp = oname(otmp, name, 0);
 		if (otmp->oartifact) otmp->quan = 1L;
 	}
+
+	/* more wishing abuse: don't allow wishing for certain artifacts */
+	/* and make them pay; charge them for the wish anyway! */
+	if ((is_quest_artifact(otmp) || 
+	     (otmp->oartifact && rn2(nartifact_exist()) > 1))
+# ifdef WIZARD
+	    && !wizard
+# endif
+	    ) {
+	    artifact_unexist(otmp);
+	    obfree(otmp, (struct obj *) 0);
+	    otmp = &zeroobj;
+	    pline("For a moment, you feel something in your %s, but it disappears!", makeplural(body_part(HAND)));
+	}
+	
 	otmp->owt = weight(otmp);
 	if (very && otmp->otyp == HEAVY_IRON_BALL) otmp->owt += 160;
 	if (halfeaten && otmp->oclass == FOOD_CLASS) {

@@ -20,7 +20,7 @@ const char obj_symbols[] = {
 	POTION_CLASS, SCROLL_CLASS, WAND_CLASS,
 	SPBOOK_CLASS, RING_CLASS, GEM_CLASS, 0 };
 
-static short NEARDATA disco[TOTAL_OBJS] = DUMMY;
+static NEARDATA short disco[TOTAL_OBJS] = DUMMY;
 
 int
 letindex(acls) register char acls; {

@@ -62,7 +62,7 @@ GPTR FindGame P(( char *name ));
 void setoneopt P(( int idx , char *str ));
 char *dirname P(( char *str ));
 int StrRequest P(( char *prompt , char *buff , char *val ));
-void LoadDefaults P(( char *player ));
+int LoadDefaults P(( char *player ));
 void SaveDefaults P(( char *player ));
 void CopyDefs2Gad P(( void ));
 void CopyGad2Defs P(( void ));
@@ -101,5 +101,8 @@ struct Window *MyOpenWindow P(( struct ExtNewWindow *nw ));
 struct Window *MyOpenWindow P(( struct NewWindow *nw ));
 #endif
 void SetUpMenus( register struct Menu *mp, register struct Screen *scrn );
+void UpdateCnfFile( void );
+char *basename( char * );
+void flushIDCMP( struct MsgPort *);
 
 #undef P

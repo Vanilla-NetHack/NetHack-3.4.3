@@ -7,9 +7,8 @@
  * Common definitions for binary file splitting and loading of split files.
  */
 
-#define SVER	1	/* Basic file splitting capability */
-/*#define SVER	2	/* */
-/*#define SVER	3	/* */
+/*#define SVER	1	/* Basic file splitting capability */
+#define SVER	2	/* emit HUNK_RELOC32s as appropriate */
 
 /* Nothing below this line should need to be modified. */
 
@@ -17,8 +16,9 @@
  __SPLIT_H__SVER_MUST_BE_DEFINED
 #endif
 
-#if SVER >= 2
+#if SVER == 2
 	/* enable options */
+# define EMIT_32s
 #endif
 
 /* internal structures, etc */
@@ -176,6 +176,7 @@ extern int renumber2(int,int);
 extern void write_header(void);
 extern void owrite(void*,long);
 extern void owrite_long(long);
+extern void owrite_short(short);
 extern void out_start(char *);
 extern void out_stop(void);
 extern void new_file(void);

@@ -535,7 +535,7 @@ const char *
 level_distance(where)
 d_level *where;
 {
-    register xchar ll = depth(&u.uz) - depth(where);
+    register schar ll = depth(&u.uz) - depth(where);
     register boolean indun = (u.uz.dnum == where->dnum);
 
     if (ll < 0) {
@@ -639,7 +639,7 @@ struct obj *obj;
 	if (flags.verbose) pline("Never mind.");
 	return;
     }
-    You("peer into %s", the(bname));
+    You("peer into %s...", the(bname));
     nomul(-rnd(10));
     nomovemsg = "";
     if (obj->spe <= 0)
@@ -661,19 +661,20 @@ struct obj *obj;
 		    break;
 		default:
 		    {
-		    short i = rn2(SIZE(level_detects));
+		    int i = rn2(SIZE(level_detects));
 		    You("see %s, %s.",
 			level_detects[i].what,
 			level_distance(level_detects[i].where));
 		    }
-		    ret = 1;
+		    ret = 0;
 		    break;
 	}
 
-	if (!ret)
+	if (ret) {
 	    if (!rn2(100))  /* make them nervous */
 		You("see the Wizard of Yendor gazing out at you.");
-		else pline("The vision is unclear.");
+	    else pline("The vision is unclear.");
+	}
     }
     return;
 }

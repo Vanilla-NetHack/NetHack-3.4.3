@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)uhitm.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)uhitm.c	3.1	93/02/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -102,7 +102,7 @@ register struct monst *mtmp;
 			else if ((obj = level.objects[mtmp->mx][mtmp->my]) != 0)
 			    pline("Wait!  There's %s hiding under %s!",
 					an(l_monnam(mtmp)), doname(obj));
-			wakeup(mtmp);
+			mtmp->msleep = 0;
 			mtmp->data->mflags3 &= ~M3_WAITMASK;
 			return(TRUE);
 		}
@@ -350,7 +350,7 @@ hitum(mon, tmp)		/* returns TRUE if monster still lives */
 struct monst *mon;
 int tmp;
 {
-	static int NEARDATA malive;
+	static NEARDATA int malive;
 	boolean mhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
 
 	if(tmp > dieroll) exercise(A_DEX, TRUE);
@@ -426,13 +426,13 @@ register int thrown;
 	       obj->otyp == UNICORN_HORN || obj->oclass == ROCK_CLASS) {
 
 		/* If not a melee weapon, and either not thrown, or thrown */
-		/* and a bow (bows are >BOOMERANG), or thrown and a missile */
-		/* without a propellor (missiles are <DART), do 1-2 points */
-		if((obj->otyp >= BOW || obj->otyp < DART)
+		/* and a bow (bows are >= BOW), or thrown and a missile */
+		/* without a propellor (which means <DART), do 1-2 points */
+		if((obj->otyp >= BOW || obj->otyp < BOOMERANG)
 			&& obj->otyp != PICK_AXE && obj->otyp != UNICORN_HORN
 			&& (!thrown ||
 			    (obj->oclass != ROCK_CLASS &&
-			    (obj->otyp > BOOMERANG ||
+			    (obj->otyp >= BOW ||
 				(obj->otyp < DART &&
 				    (!uwep ||
 				    objects[obj->otyp].w_propellor !=
@@ -448,6 +448,7 @@ register int thrown;
 			artifact_hit(&youmonst, mon, obj, &tmp, dieroll)) {
 			if(mon->mhp <= 0) /* artifact killed monster */
 			    return FALSE;
+			if (tmp == 0) return TRUE;
 			hittxt = TRUE;
 		    }
 		    if (objects[obj->otyp].oc_material == SILVER
@@ -662,12 +663,7 @@ register int thrown;
 	if(mon->mhp < 1)
 		destroyed = TRUE;
 	if(mon->mtame && (!mon->mflee || mon->mfleetim)) {
-#ifdef SOUNDS
-		if (rn2(8)) yelp(mon);
-		else growl(mon); /* give them a moment's worry */
-#endif
-		mon->mtame--;
-		if(!mon->mtame) newsym(mon->mx, mon->my);
+		abuse_dog(mon);
 		mon->mflee = TRUE;		/* Rick Richardson */
 		mon->mfleetim += 10*rnd(tmp);
 	}
@@ -758,7 +754,8 @@ register struct attack *mattk;
 		&& u.umonnum != PM_BALROG) {
 	    struct monst *dtmp;
 	    pline("Some hell-p has arrived!");
-	    if((dtmp = makemon(!rn2(6) ? &mons[ndemon()] : uasmon, u.ux, u.uy)))
+	    if((dtmp = makemon(!rn2(6) ? &mons[ndemon(u.ualign.type)] :
+					 uasmon, u.ux, u.uy)))
 		(void)tamedog(dtmp, (struct obj *)0);
 	    exercise(A_WIS, TRUE);
 	    return(0);
@@ -859,15 +856,13 @@ register struct attack *mattk;
 		    }
 		    if (stealoid) {
 			boolean stolen = FALSE;
-			/* Is "he"/"his" always correct? */
 			if (gender(mdef) == u.mfemale &&
 						uasmon->mlet == S_NYMPH)
 	You("charm %s.  She gladly hands over her possessions.", mon_nam(mdef));
 			else
-		You("seduce %s and %s starts to take off %s clothes.",
-				mon_nam(mdef),
-				gender(mdef) ? "she" : "he",
-				gender(mdef) ? "her" : "his");
+			You("seduce %s and %s starts to take off %s clothes.",
+			    mon_nam(mdef), he[pronoun_gender(mdef)],
+			    his[pronoun_gender(mdef)]);
 			while(mdef->minvent) {
 				otmp = mdef->minvent;
 				mdef->minvent = otmp->nobj;
@@ -892,7 +887,7 @@ register struct attack *mattk;
 				impossible("Player steal fails!");
 			else {
 				pline("%s finishes taking off %s suit.",
-				   Monnam(mdef), gender(mdef) ? "her" : "his");
+				      Monnam(mdef), his[pronoun_gender(mdef)]);
 				You("steal %s!", doname(stealoid));
 # if defined(ARMY) && !defined(MUSE)
 				mdef->data = &mons[PM_UNARMORED_SOLDIER];
@@ -910,6 +905,11 @@ register struct attack *mattk;
 #ifdef MUSE
 			possibly_unwield(mdef);
 			otmp->owornmask = 0L;
+			mselftouch(mdef, (const char *)0, TRUE);
+			if (mdef->mhp <= 0) {
+				tmp = 1; /* avoid early return from damageum */
+				break;
+			}
 #endif
 		   }
 		}
@@ -959,11 +959,12 @@ register struct attack *mattk;
 			int xtmp = d(2,6);
 			pline("%s suddenly seems weaker!", Monnam(mdef));
 			mdef->mhpmax -= xtmp;
-			if ((mdef->mhp -= xtmp) <= 0 || !mdef->m_lev--) {
+			if ((mdef->mhp -= xtmp) <= 0 || !mdef->m_lev) {
 				pline("%s dies!", Monnam(mdef));
 				xkilled(mdef,0);
 				return(2);
 			}
+			mdef->m_lev--;
 		}
 		tmp = 0;
 		break;
@@ -1008,9 +1009,7 @@ register struct attack *mattk;
 #ifdef MUSE
 		if ((mdef->misc_worn_check & W_ARMH) && rn2(8)) {
 		    pline("%s helmet blocks your attack to %s head.",
-			  s_suffix(Monnam(mdef)),
-			  (Blind || !humanoid(mdef->data)) ? "its" :
-				(mdef->female ? "her" : "his"));
+			  s_suffix(Monnam(mdef)), his[pronoun_gender(mdef)]);
 		    break;
 		}
 #endif

@@ -20,37 +20,39 @@ take_gold()
 int
 dosit()
 {
-	char pbuf[BUFSZ];
+	static const char *sit_message = "sit on the %s.";
 	register struct trap *trap;
 	register int typ = levl[u.ux][u.uy].typ;
 
 	if(Levitation)  {
-	    pline("There's nothing to sit on up here.");
+	    pline("You're sitting on air.");
 	    return 0;
 	} 
-
-	Strcpy(pbuf, "You sit on the %s.");
 
 	if(OBJ_AT(u.ux, u.uy)) { 
 	    register struct obj *obj;
 
 	    obj = level.objects[u.ux][u.uy];
 	    You("sit on %s.", the(xname(obj)));
-	    if(!Is_box(obj)) pline("It is not very comfortable...");
+	    if(!Is_box(obj)) pline("It's not very comfortable...");
 
 	} else if(trap = t_at(u.ux, u.uy)) {
 
-	    if(u.utrap) {
-	        if(u.utraptype == TT_BEARTRAP) {
-		    You("can't sit down!");
+	    if (u.utrap) {
+		exercise(A_WIS, FALSE);	/* you're getting stuck longer */
+		if(u.utraptype == TT_BEARTRAP) {
+		    You("can't sit down with your %s in the bear trap.", body_part(FOOT));
 		    u.utrap++;
 	        } else if(u.utraptype == TT_PIT) {
-		    You("sit in the bottom of the pit.");
-		    if(trap->ttyp == SPIKED_PIT) pline("This hurts!");
+		    if(trap->ttyp == SPIKED_PIT) {
+			You("sit down on a spike.  Ouch!");
+			losehp(1, "sitting on an iron spike", KILLED_BY);
+			exercise(A_STR, FALSE);
+		    } else
+			You("sit down in the pit.");
 		    u.utrap += rn2(5);
 		} else if(u.utraptype == TT_WEB) {
-		    pline(pbuf, "giant spider's web");
-		    You("are further entangled!");
+		    You("sit in the spider web and get entangled further!");
 		    u.utrap += rn1(10, 5);
 		} else if(u.utraptype == TT_LAVA) {
 		    /* Must have fire resistance or they'd be dead already */
@@ -67,7 +69,7 @@ dosit()
 	    }
 	} else if(Underwater || Is_waterlevel(&u.uz)) {
 	    if (Is_waterlevel(&u.uz))
-		pline("There are no seats floating in the neighborhood.");
+		pline("There are no cushions floating nearby.");
 	    else
 		You("sit down in the muddy bottom.");
 	} else if(is_pool(u.ux, u.uy)) {
@@ -84,42 +86,42 @@ dosit()
 #ifdef SINKS
 	} else if(IS_SINK(typ)) {
 
-	    pline(pbuf, defsyms[S_sink].explanation);
+	    You(sit_message, defsyms[S_sink].explanation);
 	    Your("%s gets wet.", humanoid(uasmon) ? "rump" : "underside");
 #endif
 	} else if(IS_ALTAR(typ)) {
 
-	    pline(pbuf, defsyms[S_altar].explanation);
+	    You(sit_message, defsyms[S_altar].explanation);
 	    altar_wrath(u.ux, u.uy);
 
 	} else if(typ == STAIRS) {
 
-	    pline(pbuf, "stairs");
+	    You(sit_message, "stairs");
 
 	} else if(typ == LADDER) {
 
-	    pline(pbuf, "ladder");
+	    You(sit_message, "ladder");
 
 	} else if (is_lava(u.ux, u.uy)) {
 
 	    /* must be WWalking */
-	    pline(pbuf, "lava");
-	    pline("It burns you!");
+	    You(sit_message, "lava");
+	    pline("The lava burns you!");
 	    losehp(d((Fire_resistance ? 2 : 10), 10),
 		   "sitting on lava", KILLED_BY);
 
 	} else if (is_ice(u.ux, u.uy)) {
 
-	    pline(pbuf, defsyms[S_ice].explanation);
-	    if (!Cold_resistance) pline("It's very cold...");
+	    You(sit_message, defsyms[S_ice].explanation);
+	    if (!Cold_resistance) pline("The ice feels cold.");
 
 	} else if (typ == DRAWBRIDGE_DOWN) {
 
-	    pline(pbuf, "drawbridge");
+	    You(sit_message, "drawbridge");
 
 	} else if(IS_THRONE(typ)) {
 
-	    pline(pbuf, defsyms[S_throne].explanation);
+	    You(sit_message, defsyms[S_throne].explanation);
 	    if (rnd(6) > 4)  {
 		switch (rnd(13))  {
 		    case 1:
@@ -130,11 +132,10 @@ dosit()
 			(void) adjattrib(rn2(A_MAX), 1, FALSE);
 			break;
 		    case 3:
-		pline("A%s charge of electricity shoots through your body!",
+			pline("A%s electric shock shoots through your body!",
 			      (Shock_resistance) ? "" : " massive");
-			if(Shock_resistance)
-				losehp(rnd(6), "electric chair", KILLED_BY_AN);
-			else	losehp(rnd(30), "electric chair", KILLED_BY_AN);
+			losehp(Shock_resistance ? rnd(6) : rnd(30),
+			       "electric chair", KILLED_BY_AN);
 			exercise(A_CON, FALSE);
 			break;
 		    case 4:
@@ -159,7 +160,7 @@ dosit()
 			{
 			register int cnt = rnd(10);
 
-			You("hear a voice echo:");
+			pline("A voice echoes:");
 			verbalize("Thy audience hath been summoned, %s!",
 				  flags.female ? "Dame" : "Sire");
 			while(cnt--)
@@ -167,13 +168,13 @@ dosit()
 			break;
 			}
 		    case 8:
-			You("hear a voice echo:");
+			pline("A voice echoes:");
 			verbalize("By thy Imperious order, %s...",
 				  flags.female ? "Dame" : "Sire");
 			do_genocide(1);
 			break;
 		    case 9:
-			You("hear a voice echo:");
+			pline("A voice echoes:");
 	verbalize("A curse upon thee for sitting upon this most holy throne!");
 			if (Luck > 0)  {
 			    make_blinded(Blinded + rn1(100,250),TRUE);
@@ -191,7 +192,7 @@ dosit()
 					do_mapping();
 				}
 			} else  {
-				Your("vision clarifies.");
+				Your("vision becomes clear.");
 				HSee_invisible |= FROMOUTSIDE;
 				newsym(u.ux, u.uy);
 			}
@@ -207,7 +208,7 @@ dosit()
 			}
 			break;
 		    case 12:
-			You("are granted a gift of insight!");
+			You("are granted an insight!");
 			if (invent) {
 			    int ret, cval = rn2(5); /* agrees w/seffects() */
 			    do {
@@ -241,7 +242,7 @@ dosit()
 		}
 
 		if (u.uhunger < (int)objects[EGG].oc_nutrition) {
-			You("are too weak to lay an egg.");
+			You("don't have enough energy to lay an egg.");
 			return 0;
 		}
 

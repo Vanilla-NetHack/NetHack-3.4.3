@@ -5,7 +5,7 @@
 #include	"hack.h"
 #include	"date.h"
 #ifndef BETA
-# if defined(MICRO) && !defined(AMIGA) && !defined(TOS)
+# if defined(MICRO) && !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS)
 # include	"patchlev.h"
 # else
 # include	"patchlevel.h"

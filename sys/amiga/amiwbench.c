@@ -344,6 +344,7 @@ char *base;
     }
     KillIcon=FALSE;
 
+#if 0
     dobj=GetDiskObject(base);
 
     /* Save the current pointer */
@@ -376,9 +377,8 @@ char *base;
     /* Put in the pen colors... */
     for( j = 0; j < (1L << DEPTH); ++j )
     {
-	extern unsigned short amii_curmap[];
 	sprintf( types[ PENS ] + strlen( types[ PENS ] ),
-	  "%03x,", amii_curmap[ j ] );
+	  "%03x,", flags.amii_curmap[ j ] );
     }
 
     /* Remove trailing comma */
@@ -395,6 +395,7 @@ char *base;
 
     dobj->do_ToolTypes = (void *)savtp;
     FreeDiskObject(dobj);
+#endif
 }
 
 /* How much disk space will we need for the icon? */

@@ -1,4 +1,4 @@
-	Splitter			[split.doc 93/01/08]
+	Splitter			[split.doc 93/02/21]
 
 Usage:
 	splitter [-Cc_prototype] [-Dd_prototype] [-ddir_prototype] binary
@@ -31,7 +31,8 @@ if it is necessary for them to be moved by the user.  All C entries must
 preceed all D entries.
 
 Maximum output file size is 800K (819200 bytes) - this leaves just enough
-space on an empty floppy for a small icon.
+space on an empty floppy for a small icon.  Note that splitter will not
+break a hunk - VERY large hunks will result in files above the limit.
 
 Code file contents:
 The first code file contains:
@@ -48,11 +49,15 @@ COMPILING
 	[SASC5]
 	lc -L splitter.c arg.c
 
+CHANGES FOR 3.1.1:
+	Faster loading by buffering offsets.
+	Smaller files: splitter will now write out HUNK_RELOC32short
+	relocation blocks whenever possible.
+	Blanks may now be between the C/D and the file name in the .dir file.
+
 BUGS
 	The present system for generating multiple files is a hack -
 	multi.[ch] should be upgraded instead.
 
 	Many optimizations for minimizing the size of the output file
 	could/should/will be added.
-
-	Not tested with SASC 6.0 yet.

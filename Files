@@ -4,6 +4,7 @@ necessary for which versions, so that you can tell which files may be deleted
 from or not transferred to your system if you wish.
 
 
+.:
 (files in top directory)
 Files           Porting         README
 
@@ -30,13 +31,13 @@ dgn_file.h      display.h       dungeon.h       edog.h          emin.h
 engrave.h       epri.h          eshk.h          extern.h        flag.h
 func_tab.h      global.h        hack.h          lev.h           macconf.h
 mail.h          mfndpos.h       micro.h         mkroom.h        monattk.h
-mondata.h       monflag.h       monst.h         monsym.h        obj.h
-objclass.h      os2conf.h       patchlevel.h    pcconf.h        permonst.h
-prop.h          qtext.h         quest.h         rect.h          rm.h
-sp_lev.h        spell.h         system.h        termcap.h       tosconf.h
-tradstdc.h      trampoli.h      trap.h          unixconf.h      vault.h
-vision.h        vmsconf.h       winami.h        winprocs.h      wintype.h
-you.h           youprop.h
+mondata.h       monflag.h       monst.h         monsym.h        ntconf.h
+obj.h           objclass.h      os2conf.h       patchlevel.h    pcconf.h
+permonst.h      prop.h          qtext.h         quest.h         rect.h
+rm.h            sp_lev.h        spell.h         system.h        termcap.h
+tosconf.h       tradstdc.h      trampoli.h      trap.h          unixconf.h
+vault.h         vision.h        vmsconf.h       winami.h        winprocs.h
+wintype.h       you.h           youprop.h
 (file for tty versions)
 wintty.h
 (files for X versions)
@@ -69,12 +70,13 @@ sys/amiga:
 (files for Amiga version)
 HackWB.uu       Install.ami     Makefile.ami    NHinfo.uu       NetHack.cnf
 NewGame.uu      amidos.c        amidos.p        amifont.uu      amifont8.uu
-amigst.c        amii.hlp        amimenu.c       amirip.c        amiwbench.c
-amiwind.c       amiwind.p       ask.uu          char.c          charwin.uu
-colors.uu       colorwin.c      dflticon.uu     hackwb.hlp      ifchange
-randwin.c       randwin.uu      scroll.uu       string.uu       wb.c
-wbcli.c         wbdata.c        wbdefs.h        wbprotos.h      wbstruct.h
-wbwin.c         wbwin.uu        winami.c        winami.p
+amigst.c        amii.hlp        amimenu.c       amirip.c        amisnd.c
+amiwbench.c     amiwind.c       amiwind.p       ask.uu          char.c
+charwin.uu      colors.uu       colorwin.c      cvtsnd.c        dflticon.uu
+hackwb.hlp      ifchange        randwin.c       randwin.uu      scroll.uu
+string.uu       wb.c            wbcli.c         wbdata.c        wbdefs.h
+wbprotos.h      wbstruct.h      wbwin.c         wbwin.uu        winami.c
+winami.p
 
 sys/amiga/splitter:
 (more files for Amiga version)
@@ -94,7 +96,7 @@ macfile.c       macmain.c       macsnd.c        mactopl.c       macunix.c
 macwin.c        mgetline.c      mhdump.c        mmodal.c        mstring.c
 
 sys/msdos:
-(files for MSDOS versions)
+(files for MSDOS version)
 Install.dos     MakeGCC.src     MakeGCC.utl     MakeMSC.src     MakeMSC.utl
 Makefile.dat    exesmurf.c      exesmurf.doc    maintovl.doc    msdos.c
 ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       setup.bat       trampoli.c
@@ -108,17 +110,25 @@ Install.os2     Makefile.os2    nhpmico.uu      os2.c
 sys/share:
 (files for MSDOS and OS/2 versions)
 Makefile.lib    NetHack.cnf     termcap.uu
-(file for MSDOS, OS/2, Amiga, and Atari versions)
+(file for MSDOS, OS/2, NT, Amiga, and Atari versions)
 pcmain.c
-(files for MSDOS, OS/2 and Atari versions)
-pcsys.c         pctty.c         pcunix.c
+(files for MSDOS, OS/2, NT, and Atari versions)
+pcsys.c         pcunix.c
+(file for MSDOS, OS/2, and Atari versions)
+pctty.c
 (Berkeley random number file, which may be included in any version)
 random.c
-(file for MSDOS, OS/2 and VMS versions)
+(file for MSDOS, OS/2, and VMS versions)
 termcap
 (lex/yacc output for special level and dungeon compilers)
 dgn_comp.h      dgn_lex.c       dgn_yacc.c      lev_comp.h      lev_lex.c
 lev_yacc.c
+
+sys/share/sounds:
+(files for Amiga and Macintosh versions)
+README          bell.uu         bugle.uu        erthdrum.uu     firehorn.uu
+frsthorn.uu     lethdrum.uu     mgcflute.uu     mgcharp.uu      toolhorn.uu
+wdnflute.uu     wdnharp.uu
 
 sys/unix:
 (files for UNIX versions)
@@ -138,6 +148,11 @@ spec_lev.com    vmsbuild.com    vmsfiles.c      vmsmail.c       vmsmain.c
 vmsmisc.c       vmstty.c        vmsunix.c
 (GNU termcap files that support VMS version)
 gnutermcap.c    gnutparam.c
+
+sys/winnt:
+(files for Windows NT version)
+Install.nt      Makefile.dat    Makefile.src    Makefile.utl    nhico.uu
+nhincl.mak      nttty.c         setup.bat       winnt.c
 
 util:
 (files for all versions)

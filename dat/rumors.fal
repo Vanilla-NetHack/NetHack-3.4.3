@@ -47,6 +47,7 @@ Demons *HATE* Priests and Priestesses.
 Didn't you forget to pay?
 Didn't your mother tell you not to eat food off the floor?
 Direct a direct hit on your direct opponent, directing in the right direction.
+Do you want to make more money?  Sure, we all do!  Join the Fort Ludios guard!
 Don't eat too much:  you might start hiccoughing!
 Don't play hack at your work; your boss might hit you!
 Don't tell a soul you found a secret door, otherwise it isn't a secret anymore.
@@ -87,7 +88,7 @@ Keep a clear mind:  quaff clear potions.
 Kicking the terminal doesn't hurt the monsters.
 Killer bees keep appearing till you kill their queen.
 Killer bunnies can be tamed with carrots only.
-Latest news?  Put 'rec.games.hack' in your .newsrc!
+Latest news?  Put `rec.games.hack' in your .newsrc!
 Learn how to spell.  Play NetHack!
 Leprechauns hide their gold in a secret room.
 Let your fingers do the walking on the yulkjhnb keys.
@@ -136,6 +137,8 @@ Praying will frighten demons.
 Row (3x) that boat gently down the stream, Charon (4x), death is but a dream.
 Running is good for your legs.
 Screw up your courage!  You've screwed up everything else.
+Scrolls fading?  It's not the heat, it's the humidity.
+Seepage?  Leaky pipes?  Rising damp?  Summon the plumber!
 Segmentation fault (core dumped).
 Shopkeepers sometimes die from old age.
 Some mazes (especially small ones) have no solutions, says man 6 maze.
@@ -145,6 +148,7 @@ Sorry, no fortune this time.  Better luck next cookie!
 Spare your scrolls of make-edible until it's really necessary!
 Suddenly, the dungeon will collapse...
 Taming a mail daemon may cause a system security violation.
+The crowd was so tough, the Stooges won't play the Dungeon anymore, nyuk nyuk.
 The leprechauns hide their treasure in a small hidden room.
 The longer the wand the better.
 The use of dynamite is dangerous.
@@ -178,7 +182,7 @@ They say that a hacker named Dorothy once rode a fog cloud to Oz.
 They say that a hacker named Mary once lost a white sheep in the mazes.
 They say that a helm of brilliance is not to be taken lightly.
 They say that a hot dog and a hell hound are the same thing.
-They say that a lamp named Aladdin contains a djinni with 3 wishes.
+They say that a lamp named Aladdin's Lamp contains a djinni with 3 wishes.
 They say that a large dog named Lassie will lead you to the amulet.
 They say that a long sword is not a light sword.
 They say that a manes won't mince words with you.
@@ -189,6 +193,7 @@ They say that a potion of oil is difficult to grasp.
 They say that a potion of yogurt is a cancelled potion of sickness.
 They say that a purple worm is not a baby purple dragon.
 They say that a quivering blob tastes different than a gelatinous cube.
+They say that a runed broadsword named Stormbringer attracts vortices.
 They say that a scroll of summoning has other names.
 They say that a shaman can bestow blessings but usually doesn't.
 They say that a shaman will bless you for an eye of newt and wing of bat.
@@ -198,7 +203,6 @@ They say that a spotted dragon is the ultimate shape changer.
 They say that a stethoscope is no good if you can only hear your heartbeat.
 They say that a succubus named Suzy will sometimes warn you of danger.
 They say that a wand of cancellation is not like a wand of polymorph.
-They say that a wide sword named Stormbringer attracts vortices.
 They say that a wood golem named Pinocchio would be easy to control.
 They say that after killing a dragon its time for a change of scenery.
 They say that an amulet of strangulation is worse than ring around the collar.
@@ -227,6 +231,7 @@ They say that finding worthless glass is worth something.
 They say that fortune cookies are food for thought.
 They say that gold is only wasted on a pet dragon.
 They say that good things come to those that wait.
+They say that greased objects will slip out of monsters' hands.
 They say that if you can't spell then you'll wish you had a spell book.
 They say that if you live by the sword, you'll die by the sword.
 They say that if you play like a monster you'll have a better game.
@@ -275,8 +280,9 @@ They say that real hackers never sleep.
 They say that shopkeepers never carry more than 20 gold pieces, at night.
 They say that shopkeepers never sell blessed potions of invisibility.
 They say that soldiers wear kid gloves and silly helmets.
+They say that some Kops are on the take.
+They say that some guards' palms can be greased.
 They say that some monsters may kiss your boots to stop your drum playing.
-They say that someone said that the stooges once played here, nyuck, nyuck.
 They say that sometimes you can be the hit of the party when playing a horn.
 They say that the NetHack gods generally welcome your sacrifices.
 They say that the Three Rings are named Vilya, Nenya and Narya.
@@ -296,7 +302,7 @@ They say that there once was a fearsome chaotic samurai named Luk No.
 They say that there was a time when cursed holy water wasn't water.
 They say that there's no point in crying over a gray ooze.
 They say that there's only hope left after you've opened Pandora's box.
-They say that trapdoors should always be marked 'Caution:  Trap Door'.
+They say that trapdoors should always be marked `Caution:  Trap Door'.
 They say that using an amulet of change isn't a difficult operation.
 They say that water walking boots are better if you are fast like Hermes.
 They say that when you wear a circular amulet you might resemble a troll.
@@ -337,7 +343,7 @@ Ulch!  That meat was painted!
 Unfortunately, this message was left intentionally blank.
 Using a morning star in the evening has no effect.
 Want a hint?  Zap a wand of make invisible on your weapon!
-Wanted: shopkeepers.  Send a scroll of mail to: Mage of Yendor/Level 35/Dungeon.
+Wanted: shopkeepers.  Send a scroll of mail to Mage of Yendor/Level 35/Dungeon.
 Warning:  fortune reading can be hazardous to your health.
 We have new ways of detecting treachery...
 What a pity, you cannot read it!

@@ -322,7 +322,7 @@ cutworm(worm, x, y, weap)
     int wnum = worm->wormno;
     int cut_chance, new_wnum;
 
-/*  if (!wnum) return; /* bullet proofing */
+    if (!wnum) return; /* bullet proofing */
 
     if (x == worm->mx && y == worm->my) return;		/* hit on head */
 
@@ -370,7 +370,7 @@ cutworm(worm, x, y, weap)
     if (rn2(3) || !(new_wnum = get_wormno())) {
 	You("cut part of the tail off of %s.", mon_nam(worm));
 	toss_wsegs(new_tail, TRUE);
-	worm->mhp /= 2;
+	if (worm->mhp > 1) worm->mhp /= 2;
 	return;
     }
 

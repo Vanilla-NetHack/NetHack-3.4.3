@@ -17,19 +17,19 @@ int locknum = 0;		/* max num of simultaneous users */
 char *catmore = 0;		/* default pager */
 #endif
 
-int NEARDATA bases[MAXOCLASSES] = DUMMY;
+NEARDATA int bases[MAXOCLASSES] = DUMMY;
 
-int NEARDATA multi = 0;
-int NEARDATA warnlevel = 0;		/* used by movemon and dochugw */
-int NEARDATA nroom = 0;
-int NEARDATA nsubroom = 0;
-int NEARDATA occtime = 0;
+NEARDATA int multi = 0;
+NEARDATA int warnlevel = 0;		/* used by movemon and dochugw */
+NEARDATA int nroom = 0;
+NEARDATA int nsubroom = 0;
+NEARDATA int occtime = 0;
 
 int x_maze_max, y_maze_max;	/* initialized in main, used in mkmaze.c */
 int otg_temp;			/* used by object_to_glyph() [otg] */
 
 #ifdef REDO
-int NEARDATA in_doagain = 0;
+NEARDATA int in_doagain = 0;
 #endif
 
 /*
@@ -43,33 +43,33 @@ struct dgn_topology dungeon_topology = {DUMMY};
 struct q_score	quest_status = DUMMY;
 #endif
 
-int NEARDATA smeq[MAXNROFROOMS+1] = DUMMY;
-int NEARDATA doorindex = 0;
+NEARDATA int smeq[MAXNROFROOMS+1] = DUMMY;
+NEARDATA int doorindex = 0;
 
-char NEARDATA *save_cm = 0;
-int NEARDATA killer_format = 0;
-const char NEARDATA *killer = 0;
-const char NEARDATA *nomovemsg = 0;
-const char NEARDATA nul[40] = DUMMY;		/* contains zeros */
-char NEARDATA plname[PL_NSIZ] = DUMMY;		/* player name */
-char NEARDATA pl_character[PL_CSIZ] = DUMMY;
+NEARDATA char *save_cm = 0;
+NEARDATA int killer_format = 0;
+NEARDATA const char *killer = 0;
+NEARDATA const char *nomovemsg = 0;
+NEARDATA const char nul[40] = DUMMY;		/* contains zeros */
+NEARDATA char plname[PL_NSIZ] = DUMMY;		/* player name */
+NEARDATA char pl_character[PL_CSIZ] = DUMMY;
 
 #ifdef TUTTI_FRUTTI
-char NEARDATA pl_fruit[PL_FSIZ] = DUMMY;
-int NEARDATA current_fruit = 0;
-struct fruit NEARDATA *ffruit = (struct fruit *)0;
+NEARDATA char pl_fruit[PL_FSIZ] = DUMMY;
+NEARDATA int current_fruit = 0;
+NEARDATA struct fruit *ffruit = (struct fruit *)0;
 #endif
 
-char NEARDATA tune[6] = DUMMY;
+NEARDATA char tune[6] = DUMMY;
 
-const char NEARDATA *occtxt = DUMMY;
-const char NEARDATA quitchars[] = " \r\n\033";
-const char NEARDATA vowels[] = "aeiouAEIOU";
-const char NEARDATA ynchars[] = "yn";
-const char NEARDATA ynqchars[] = "ynq";
-const char NEARDATA ynaqchars[] = "ynaq";
-const char NEARDATA ynNaqchars[] = "yn#aq";
-long NEARDATA yn_number = 0L;
+NEARDATA const char *occtxt = DUMMY;
+NEARDATA const char quitchars[] = " \r\n\033";
+NEARDATA const char vowels[] = "aeiouAEIOU";
+NEARDATA const char ynchars[] = "yn";
+NEARDATA const char ynqchars[] = "ynq";
+NEARDATA const char ynaqchars[] = "ynaq";
+NEARDATA const char ynNaqchars[] = "yn#aq";
+NEARDATA long yn_number = 0L;
 
 #ifdef MICRO
 char hackdir[PATHLEN];		/* where rumors, help, record are */
@@ -92,68 +92,68 @@ boolean level_exists[INFOSIZE];
 #undef INFOSIZE
 
 /* 'rogue'-like direction commands (cmd.c) */
-const char NEARDATA sdir[] = "hykulnjb><";
-const char NEARDATA ndir[] = "47896321><";	/* number pad mode */
-const schar NEARDATA xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
-const schar NEARDATA ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
-const schar zdir[10]	      = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
+NEARDATA const char sdir[] = "hykulnjb><";
+NEARDATA const char ndir[] = "47896321><";	/* number pad mode */
+NEARDATA const schar xdir[10] = { -1,-1, 0, 1, 1, 1, 0,-1, 0, 0 };
+NEARDATA const schar ydir[10] = {  0,-1,-1,-1, 0, 1, 1, 1, 0, 0 };
+NEARDATA const schar zdir[10]	      = {  0, 0, 0, 0, 0, 0, 0, 0, 1,-1 };
 
-schar NEARDATA tbx = 0, NEARDATA tby = 0;	/* mthrowu: target */
-int NEARDATA dig_effort = 0;	/* effort expended on current pos */
-d_level NEARDATA dig_level = { 0, 0 };
-coord NEARDATA dig_pos = DUMMY;
-boolean NEARDATA dig_down = FALSE;
+NEARDATA schar tbx = 0, tby = 0;	/* mthrowu: target */
+NEARDATA int dig_effort = 0;	/* effort expended on current pos */
+NEARDATA d_level dig_level = { 0, 0 };
+NEARDATA coord dig_pos = DUMMY;
+NEARDATA boolean dig_down = FALSE;
 
-dungeon NEARDATA dungeons[MAXDUNGEON];	/* ini'ed by init_dungeon() */
-s_level NEARDATA *sp_levchn;
-int NEARDATA done_stopprint = 0;
-int NEARDATA done_hup = 0;
-stairway NEARDATA upstair = { 0, 0 }, NEARDATA dnstair = { 0, 0 };
-stairway NEARDATA upladder = { 0, 0 }, NEARDATA dnladder = { 0, 0 };
-stairway NEARDATA sstairs = { 0, 0 };
-dest_area NEARDATA updest = { 0, 0, 0, 0, 0, 0, 0, 0 };
-dest_area NEARDATA dndest = { 0, 0, 0, 0, 0, 0, 0, 0 };
-coord NEARDATA inv_pos = { 0, 0 };
+NEARDATA dungeon dungeons[MAXDUNGEON];	/* ini'ed by init_dungeon() */
+NEARDATA s_level *sp_levchn;
+NEARDATA int done_stopprint = 0;
+NEARDATA int done_hup = 0;
+NEARDATA stairway upstair = { 0, 0 }, dnstair = { 0, 0 };
+NEARDATA stairway upladder = { 0, 0 }, dnladder = { 0, 0 };
+NEARDATA stairway sstairs = { 0, 0 };
+NEARDATA dest_area updest = { 0, 0, 0, 0, 0, 0, 0, 0 };
+NEARDATA dest_area dndest = { 0, 0, 0, 0, 0, 0, 0, 0 };
+NEARDATA coord inv_pos = { 0, 0 };
 
-boolean NEARDATA in_mklev = FALSE;
-boolean	NEARDATA stoned = FALSE;	/* done to monsters hit by 'c' */
-boolean	NEARDATA unweapon = FALSE;
-boolean NEARDATA mrg_to_wielded = FALSE;
+NEARDATA boolean in_mklev = FALSE;
+NEARDATA boolean stoned = FALSE;	/* done to monsters hit by 'c' */
+NEARDATA boolean unweapon = FALSE;
+NEARDATA boolean mrg_to_wielded = FALSE;
 			 /* weapon picked is merged with wielded one */
 
 #ifdef KOPS
-boolean NEARDATA allow_kops = TRUE;
+NEARDATA boolean allow_kops = TRUE;
 #endif
 
-coord NEARDATA bhitpos = DUMMY;
-coord NEARDATA doors[DOORMAX] = {DUMMY};
+NEARDATA coord bhitpos = DUMMY;
+NEARDATA coord doors[DOORMAX] = {DUMMY};
 
-struct mkroom NEARDATA rooms[(MAXNROFROOMS+1)*2] = {DUMMY};
-struct mkroom* NEARDATA subrooms = &rooms[MAXNROFROOMS+1];
+NEARDATA struct mkroom rooms[(MAXNROFROOMS+1)*2] = {DUMMY};
+NEARDATA struct mkroom* subrooms = &rooms[MAXNROFROOMS+1];
 struct mkroom *upstairs_room, *dnstairs_room, *sstairs_room;
 
 dlevel_t level;		/* level map */
 struct trap *ftrap = (struct trap *)0;
-struct monst NEARDATA youmonst = DUMMY;
-struct flag NEARDATA flags = DUMMY;
-struct you NEARDATA u = DUMMY;
+NEARDATA struct monst youmonst = DUMMY;
+NEARDATA struct flag flags = DUMMY;
+NEARDATA struct you u = DUMMY;
 
-struct obj NEARDATA *invent = (struct obj *)0, 
-        NEARDATA *uwep = (struct obj *)0, NEARDATA *uarm = (struct obj *)0,
+NEARDATA struct obj *invent = (struct obj *)0, 
+	*uwep = (struct obj *)0, *uarm = (struct obj *)0,
 #ifdef TOURIST
-	NEARDATA *uarmu = (struct obj *)0, /* under-wear, so to speak */
+	*uarmu = (struct obj *)0, /* under-wear, so to speak */
 #endif
 #ifdef POLYSELF
-	NEARDATA *uskin = (struct obj *)0, /* dragon armor, if a dragon */
+	 *uskin = (struct obj *)0, /* dragon armor, if a dragon */
 #endif
-	NEARDATA *uarmc = (struct obj *)0, NEARDATA *uarmh = (struct obj *)0, 
-        NEARDATA *uarms = (struct obj *)0, NEARDATA *uarmg = (struct obj *)0,
-        NEARDATA *uarmf = (struct obj *)0, NEARDATA *uamul = (struct obj *)0,
-	NEARDATA *uright = (struct obj *)0,
-        NEARDATA *uleft = (struct obj *)0,
-        NEARDATA *ublindf = (struct obj *)0,
-	NEARDATA *uchain = (struct obj *)0,
-        NEARDATA *uball = (struct obj *)0;
+	*uarmc = (struct obj *)0, *uarmh = (struct obj *)0, 
+        *uarms = (struct obj *)0, *uarmg = (struct obj *)0,
+        *uarmf = (struct obj *)0, *uamul = (struct obj *)0,
+	*uright = (struct obj *)0,
+        *uleft = (struct obj *)0,
+        *ublindf = (struct obj *)0,
+	*uchain = (struct obj *)0,
+        *uball = (struct obj *)0;
 
 #ifdef TEXTCOLOR
 /*
@@ -177,30 +177,35 @@ const int shield_static[SHIELD_COUNT] = {
     S_ss1, S_ss2, S_ss3, S_ss2, S_ss1, S_ss2, S_ss4,
 };
 
-struct spell NEARDATA spl_book[MAXSPELL + 1] = {DUMMY};
+NEARDATA struct spell spl_book[MAXSPELL + 1] = {DUMMY};
 
-long NEARDATA moves = 1L, NEARDATA monstermoves = 1L;
+NEARDATA long moves = 1L, monstermoves = 1L;
 	 /* These diverge when player is Fast */
-long NEARDATA wailmsg = 0L;
+NEARDATA long wailmsg = 0L;
 
 /* objects that are moving to another dungeon level */
-struct obj NEARDATA *migrating_objs = (struct obj *)0;
+NEARDATA struct obj *migrating_objs = (struct obj *)0;
 /* objects not yet paid for */
-struct obj NEARDATA *billobjs = (struct obj *)0;
+NEARDATA struct obj *billobjs = (struct obj *)0;
 
 /* used to zero all elements of a struct obj */
-struct obj NEARDATA zeroobj = DUMMY;
+NEARDATA struct obj zeroobj = DUMMY;
+
+/* monster pronouns, index is return value of gender(mtmp) */
+NEARDATA const char *he[3]  = { "he",  "she", "it" };
+NEARDATA const char *him[3] = { "him", "her", "it" };
+NEARDATA const char *his[3] = { "his", "her", "its" };
 
 /* originally from dog.c */
-char NEARDATA dogname[63] = DUMMY;
-char NEARDATA catname[63] = DUMMY;
+NEARDATA char dogname[63] = DUMMY;
+NEARDATA char catname[63] = DUMMY;
 char preferred_pet;	/* '\0', 'c', 'd' */
 /* monsters that went down/up together with @ */
-struct monst NEARDATA *mydogs = (struct monst *)0;
+NEARDATA struct monst *mydogs = (struct monst *)0;
 /* monsters that are moving to another dungeon level */
-struct monst NEARDATA *migrating_mons = (struct monst *)0;
+NEARDATA struct monst *migrating_mons = (struct monst *)0;
 
-struct c_color_names NEARDATA c_color_names = {
+NEARDATA struct c_color_names c_color_names = {
 	"black", "amber", "golden",
 	"light blue", "red", "green",
 	"silver", "blue", "purple",
@@ -213,12 +218,12 @@ struct c_common_strings c_common_strings = {
 };
 
 /* Vision */
-boolean	NEARDATA vision_full_recalc = 0;
-char	NEARDATA **viz_array = 0;/* used in cansee() and couldsee() macros */
+NEARDATA boolean vision_full_recalc = 0;
+NEARDATA char	 **viz_array = 0;/* used in cansee() and couldsee() macros */
 
 /* Global windowing data, defined here for multi-window-system support */
-winid NEARDATA WIN_MESSAGE = WIN_ERR, NEARDATA WIN_STATUS = WIN_ERR;
-winid NEARDATA WIN_MAP = WIN_ERR, NEARDATA WIN_INVEN = WIN_ERR;
+NEARDATA winid WIN_MESSAGE = WIN_ERR, WIN_STATUS = WIN_ERR;
+NEARDATA winid WIN_MAP = WIN_ERR, WIN_INVEN = WIN_ERR;
 char toplines[BUFSZ];
 /* Windowing stuff that's really tty oriented, but present for all ports */
 struct tc_gbl_data tc_gbl_data = { 0,0, 0,0 };	/* AS,AE, LI,CO */

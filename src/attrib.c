@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)attrib.c	3.1	92/10/26	*/
+/*	SCCS Id: @(#)attrib.c	3.1	93/02/17	*/
 /*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -156,7 +156,7 @@ const struct clattr {
 		    { A_NEUTRAL, 0 },  12, 10, 14,  1,  0 };
 
 static long next_check = 600L;	/* arbitrary first setting */
-static const struct clattr NEARDATA *NDECL(clx);
+static NEARDATA const struct clattr *NDECL(clx);
 static void NDECL(init_align);
 static void NDECL(exerper);
 
@@ -449,7 +449,7 @@ exerchk()
 				break;
 		    case A_WIS: You((mod_val >0) ?
 				    "must have been very observant." :
-				    "must not have been paying attention.");
+				    "haven't been paying attention.");
 				break;
 		    case A_DEX: You((mod_val >0) ?
 				    "must have been working on your reflexes." :
@@ -457,7 +457,7 @@ exerchk()
 				break;
 		    case A_CON: You((mod_val >0) ?
 				    "must be leading a healthy life-style." :
-				    "must not have been watching your health.");
+				    "haven't been watching your health.");
 				break;
 		    }
 		}

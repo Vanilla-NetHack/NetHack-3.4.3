@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	3.1	92/12/10		  */
+/*	SCCS Id: @(#)potion.c	3.1	93/02/06		  */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 static void NDECL(ghost_from_bottle);
 static boolean FDECL(neutralizes, (struct obj *,struct obj *));
 
-static int NEARDATA nothing, NEARDATA unkn;
+static NEARDATA int nothing, unkn;
 #endif /* OVLB */
 
 extern boolean notonhead;	/* for long worms */
@@ -18,7 +18,7 @@ boolean notonhead = FALSE;
 
 #ifdef OVLB
 
-static const char NEARDATA beverages[] = { POTION_CLASS, 0 };
+static NEARDATA const char beverages[] = { POTION_CLASS, 0 };
 
 void
 make_confused(xtime,talk)
@@ -310,8 +310,8 @@ peffects(otmp)
 	case POT_WATER:
 		if(!otmp->blessed && !otmp->cursed) {
 			pline("This tastes like %swater.",
-			      otmp->spe == -1 ? "impure " : "");
-			lesshungry(rnd(otmp->spe == -1 ? 3 : 10));
+			      otmp->odiluted ? "impure " : "");
+			lesshungry(rnd(otmp->odiluted ? 3 : 10));
 			break;
 		}
 		unkn++;
@@ -365,11 +365,13 @@ peffects(otmp)
 		break;
 	case POT_BOOZE:
 		unkn++;
-		pline("Ooph!  This tastes like %s!",
+		pline("Ooph!  This tastes like %s%s!",
+		      otmp->odiluted ? "watered down " : "",
 		      Hallucination ? "furniture polish" : "liquid fire");
 		if (!otmp->blessed) make_confused(HConfusion + d(3,8),FALSE);
 		/* the whiskey makes us feel better */
-		if(u.uhp < u.uhpmax) losehp(-1, "", 0); /* can't kill you */
+		if (u.uhp < u.uhpmax && !otmp->odiluted)
+			losehp(-1, "", 0); /* can't kill you */
 		lesshungry(10 * (2 + bcsign(otmp)));
 		exercise(A_WIS, FALSE);
 		if(otmp->cursed) {
@@ -429,14 +431,16 @@ peffects(otmp)
 		else pline (Hallucination ?
 #ifdef TUTTI_FRUTTI
 		   "This tastes like 10%% real %s juice all-natural beverage." :
-		   "This tastes like %s juice.", pl_fruit
+		   "This tastes like %s%s juice.",
+		   otmp->odiluted ? "reconstituted " : "", pl_fruit
 #else
 		   "This tastes like 10%% real fruit juice all-natural beverage." :
-		   "This tastes like fruit juice."
+		   "This tastes like %sfruit juice.",
+		   otmp->odiluted ? "reconstituted " : ""
 #endif
 			    );
 		if (otmp->otyp == POT_FRUIT_JUICE) {
-			lesshungry(10 * (2 + bcsign(otmp)));
+			lesshungry((otmp->odiluted ? 5 : 10) * (2 + bcsign(otmp)));
 			break;
 		}
 		if (!otmp->cursed) {
@@ -985,11 +989,11 @@ register struct obj *obj;
 	    case POTION_CLASS:
 		if (obj->otyp == POT_WATER) return FALSE;
 		Your("%s.", aobjnam(obj,"dilute"));
-		if (obj->spe == -1) {
-			obj->spe = 0;
+		if (obj->odiluted) {
+			obj->odiluted = 0;
 			obj->blessed = obj->cursed = FALSE;
 			obj->otyp = POT_WATER;
-		} else obj->spe--;
+		} else obj->odiluted++;
 		return TRUE;
 	    case SCROLL_CLASS:
 		if (obj->otyp != SCR_BLANK_PAPER
@@ -1139,7 +1143,7 @@ dodip()
 		if (Blind) obj->dknown = 0;
 
 		switch (neutralizes(obj, potion) ||
-			obj->spe == -1 /* diluted */ ? 1 : rnd(8)) {
+			obj->odiluted ? 1 : rnd(8)) {
 			case 1:
 				obj->otyp = POT_WATER;
 				obj->blessed = obj->cursed = 0;
@@ -1165,11 +1169,11 @@ dodip()
 		}
 
 		if (obj->otyp == POT_WATER) {
-			obj->spe = 0; /* in case it was diluted before */
+			obj->odiluted = 0; /* in case it was diluted before */
 			pline("The mixture bubbles violently%s.",
 				Blind ? "" : ", then clears");
 		} else {
-			obj->spe--; /* diluted */
+			obj->odiluted++;
 			if (!Blind) {
 				pline("The mixture looks %s.",
 					OBJ_DESCR(objects[obj->otyp]));
@@ -1208,7 +1212,7 @@ dodip()
 		potion->otyp = POT_WATER;
 		potion->blessed = 0;
 		potion->cursed = 0;
-		potion->spe = 0;
+		potion->odiluted = 0;
 		return(1);
 	}
 

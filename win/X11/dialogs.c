@@ -36,6 +36,10 @@
  *	to this code.
  */
 
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Xos.h>
@@ -44,6 +48,13 @@
 #include <X11/Xaw/Label.h>
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Command.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "config.h"	/* #define for const for non __STDC__ compilers */
 
@@ -260,8 +271,9 @@ ClearDialogResponse(w)
 
 /* position popup window under the cursor */
 void
-positionpopup(w)
+positionpopup(w, bottom)
     Widget w;
+    boolean bottom;	/* position y on bottom? */
 {
     Arg args[3];
     Cardinal num_args;
@@ -283,16 +295,22 @@ positionpopup(w)
     XtSetArg(args[num_args], XtNborderWidth, &b_width); num_args++;
     XtGetValues(w, args, num_args);
 
+    /* position so that the cursor is center,center or center,bottom */
     width += 2 * b_width;
-    height += 2 * b_width;
-
     x -= ( (Position) width/2 );
     if (x < 0) x = 0;
     if ( x > (max_x = (Position) (XtScreen(w)->width - width)) ) x = max_x;
 
-    y -= ( (Position) height/2 );
+    if (bottom) {
+	y -= (height+b_width-1);
+	height += 2 * b_width;
+    } else {
+	height += 2 * b_width;
+	y -= ( (Position) height/2 );
+    }
     if (y < 0) y = 0;
     if ( y > (max_y = (Position) (XtScreen(w)->height - height)) ) y = max_y;
+
 
     num_args = 0;
     XtSetArg(args[num_args], XtNx, x); num_args++;

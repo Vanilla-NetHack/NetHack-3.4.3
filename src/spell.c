@@ -4,8 +4,8 @@
 
 #include "hack.h"
 
-static schar NEARDATA delay;		/* moves left for this spell */
-static struct obj NEARDATA *book;	/* last/current book being xscribed */
+static NEARDATA schar delay;		/* moves left for this spell */
+static NEARDATA struct obj *book;	/* last/current book being xscribed */
 
 #define spelluses(spell)	spl_book[spell-1].sp_uses
 #define decrnuses(spell)	spl_book[spell-1].sp_uses--
@@ -92,6 +92,8 @@ static void
 deadbook(book2)
 struct obj *book2;
 {
+    You("turn the pages of the Book of the Dead....");
+    makeknown(SPE_BOOK_OF_THE_DEAD);
     if(invocation_pos(u.ux, u.uy) && !On_stairs(u.ux, u.uy)) {
 	register struct obj *otmp;
 	register boolean arti1_primed = FALSE, arti2_primed = FALSE,

@@ -2,7 +2,7 @@
                                on an OS/2 system
              =====================================================
                                 Timo Hakulinen
-                          Last revision: 24 Jan 1993
+                          Last revision: 4 Feb 1993
 
 0.  Read this entire file before starting, and come back to the Notes below if
     you have any problems.
@@ -78,6 +78,11 @@
     definitions there, because every compiler has its own way of declaring
     the necessary system functions and data structures.  In general you
     should prefer the compiler's offerings, if possible.
+
+    If you are going to compile the game on an HPFS drive, uncomment OS2_HPFS,
+    which will enable the use of longer file names during compilation.  The
+    generated executable will only use file names compatible with FAT drives,
+    however.
 
     If you are using a 32 bit compiler other than GCC emx 0.8f or C Set/2 in
     OS/2 2.x, force OS2_32BITAPI to be defined.  Otherwise it is defined only

@@ -8,25 +8,28 @@
 
 void
 msummon(ptr)		/* ptr summons a monster */
-	register struct permonst *ptr;
+register struct permonst *ptr;
 {
-	register int dtype = 0, cnt = 0;
+	register int dtype = 0, cnt = 0, atyp = sgn(ptr->maligntyp);
 
-	if(is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
+	if (is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 
-	    dtype = (!rn2(20)) ? dprince() : (!rn2(4)) ? dlord() : ndemon();
+	    dtype = (!rn2(20)) ? dprince(atyp) :
+				 (!rn2(4)) ? dlord(atyp) : ndemon(atyp);
 	    cnt = (!rn2(4) && !is_dprince(&mons[dtype])) ? 2 : 1;
 
-	} else if(is_dlord(ptr)) {
+	} else if (is_dlord(ptr)) {
 
-	    dtype = (!rn2(50)) ? dprince() : (!rn2(20)) ? dlord() : ndemon();
+	    dtype = (!rn2(50)) ? dprince(atyp) :
+				 (!rn2(20)) ? dlord(atyp) : ndemon(atyp);
 	    cnt = (!rn2(4) && is_ndemon(&mons[dtype])) ? 2 : 1;
 
-	} else if(is_ndemon(ptr)) {
+	} else if (is_ndemon(ptr)) {
 
-	    dtype = (!rn2(20)) ? dlord() : (!rn2(6)) ? ndemon() : monsndx(ptr);
+	    dtype = (!rn2(20)) ? dlord(atyp) :
+				 (!rn2(6)) ? ndemon(atyp) : monsndx(ptr);
 	    cnt = 1;
-	} else if(is_lminion(ptr)) {
+	} else if (is_lminion(ptr)) {
 
 	    dtype = (is_lord(ptr) && !rn2(20)) ? llord() :
 		     (is_lord(ptr) || !rn2(6)) ? lminion() : monsndx(ptr);
@@ -34,9 +37,18 @@ msummon(ptr)		/* ptr summons a monster */
 
 	}
 
-	if(!dtype) return;
+	if (!dtype) return;
 
-	while(cnt > 0) {
+	/*
+	 * If this daemon is unique and being re-summoned (the only way we
+	 * could get this far with an extinct dtype), try another.
+	 */
+	if (mons[dtype].geno & (G_EXTINCT | G_GENOD)) {
+	    dtype = ndemon(atyp);
+	    if (!dtype) return;
+	}
+
+	while (cnt > 0) {
 
 	    (void)makemon(&mons[dtype], u.ux, u.uy);
 	    cnt--;
@@ -46,35 +58,34 @@ msummon(ptr)		/* ptr summons a monster */
 
 void
 summon_minion(alignment, talk)
-    aligntyp alignment;
-    boolean talk;
+aligntyp alignment;
+boolean talk;
 {
     register struct monst *mon;
     int mnum;
 
-    switch(alignment) {
-    case A_LAWFUL: {
-	mnum = lminion();
-	break;
+    switch ((int)alignment) {
+	case A_LAWFUL:
+	    mnum = lminion();
+	    break;
+	case A_NEUTRAL:
+	    mnum = PM_AIR_ELEMENTAL + rn2(4);
+	    break;
+	case A_CHAOTIC:
+	case A_NONE:
+	    mnum = ndemon(alignment);
+	    break;
+	default:
+	    impossible("unaligned player?");
+	    mnum = ndemon(A_NONE);
+	    break;
     }
-    case A_NEUTRAL: {
-	mnum = PM_AIR_ELEMENTAL + rn2(4);
-	break;
-    }
-    case A_CHAOTIC:
-	mnum = ndemon();
-	break;
-    default:
-	impossible("unaligned player?");
-	mnum = ndemon();
-	break;
-    }
-    if(mons[mnum].pxlth == 0) {
+    if (mons[mnum].pxlth == 0) {
 	struct permonst *pm = &mons[mnum];
 	pm->pxlth = sizeof(struct emin);
 	mon = makemon(pm, u.ux, u.uy);
 	pm->pxlth = 0;
-	if(mon) {
+	if (mon) {
 	    mon->isminion = TRUE;
 	    EMIN(mon)->min_align = alignment;
 	}
@@ -86,11 +97,11 @@ summon_minion(alignment, talk)
 	}
     } else
 	mon = makemon(&mons[mnum], u.ux, u.uy);
-    if(mon) {
-	if(talk) {
+    if (mon) {
+	if (talk) {
 	    pline("The voice of %s booms:", align_gname(alignment));
 	    verbalize("Thou shalt pay for thy indiscretion!");
-	    if(!Blind)
+	    if (!Blind)
 		pline("%s appears before you.", Amonnam(mon));
 	}
 	mon->mpeaceful = FALSE;
@@ -106,7 +117,7 @@ register struct monst *mtmp;
 {
 	long	demand, offer;
 
-	if(uwep && uwep->oartifact == ART_EXCALIBUR) {
+	if (uwep && uwep->oartifact == ART_EXCALIBUR) {
 	    pline("%s looks very angry.", Amonnam(mtmp));
 	    mtmp->mpeaceful = mtmp->mtame = 0;
 	    newsym(mtmp->mx, mtmp->my);
@@ -114,31 +125,31 @@ register struct monst *mtmp;
 	}
 
 	/* Slight advantage given. */
-	if(is_dprince(mtmp->data) && mtmp->minvis) {
+	if (is_dprince(mtmp->data) && mtmp->minvis) {
 	    mtmp->minvis = 0;
 	    if (!Blind) pline("%s appears before you.", Amonnam(mtmp));
 	    newsym(mtmp->mx,mtmp->my);
 	}
-	if(u.usym == S_DEMON) {	/* Won't blackmail their own. */
+	if (u.usym == S_DEMON) {	/* Won't blackmail their own. */
 
 	    pline("%s says, \"Good hunting, %s.\" and vanishes.",
 		  Amonnam(mtmp), flags.female ? "Sister" : "Brother");
 	    rloc(mtmp);
 	    return(1);
 	}
-	demand = (u.ugold * (rnd(80) + 20 * Athome)) / 100;
-	if(!demand)  		/* you have no gold */
+	demand = (u.ugold * (rnd(80) + 20 * Athome)) /
+		 100 * (1 + (sgn(u.ualign.type) == sgn(mtmp->data->maligntyp)));
+	if (!demand)  		/* you have no gold */
 	    return mtmp->mpeaceful = 0;
 	else {
-
 	    pline("%s demands %ld zorkmid%s for safe passage.",
 		  Amonnam(mtmp), demand, plur(demand));
 
-	    if((offer = bribe(mtmp)) >= demand) {
+	    if ((offer = bribe(mtmp)) >= demand) {
 		pline("%s vanishes, laughing about cowardly mortals.",
 		      Amonnam(mtmp));
 	    } else {
-		if((long)rnd(40) > (demand - offer)) {
+		if ((long)rnd(40) > (demand - offer)) {
 		    pline("%s scowls at you menacingly, then vanishes.",
 			  Amonnam(mtmp));
 		} else {
@@ -161,14 +172,15 @@ struct monst *mtmp;
 	getlin("How much will you offer?", buf);
 	(void) sscanf(buf, "%ld", &offer);
 
-/*Michael Paddon -- fix for negative offer to monster*/	/*JAR880815 - */
- 	if(offer < 0L) {
- 		You("try to shortchange %s, but fumble.", 
+	/*Michael Paddon -- fix for negative offer to monster*/
+	/*JAR880815 - */
+ 	if (offer < 0L) {
+ 		You("try to shortchange %s, but fumble.",
  			mon_nam(mtmp));
  		offer = 0L;
- 	} else if(offer == 0L) {
+ 	} else if (offer == 0L) {
 		You("refuse.");
- 	} else if(offer >= u.ugold) {
+ 	} else if (offer >= u.ugold) {
 		You("give %s all your gold.", mon_nam(mtmp));
 		offer = u.ugold;
 	} else You("give %s %ld zorkmid%s.", mon_nam(mtmp), offer,
@@ -181,35 +193,40 @@ struct monst *mtmp;
 }
 
 int
-dprince() {
-	int	tryct, pm;
+dprince(atyp)
+aligntyp atyp;
+{
+	int tryct, pm;
 
-	for(tryct = 0; tryct < 20; tryct++) {
+	for (tryct = 0; tryct < 20; tryct++) {
 	    pm = rn1(PM_DEMOGORGON + 1 - PM_ORCUS, PM_ORCUS);
-	    if(!(mons[pm].geno & (G_GENOD | G_EXTINCT)))
+	    if (!(mons[pm].geno & (G_GENOD | G_EXTINCT)) &&
+		    (atyp == A_NONE || sgn(mons[pm].maligntyp) == sgn(atyp)))
 		return(pm);
 	}
-	return(dlord());	/* approximate */
+	return(dlord(atyp));	/* approximate */
 }
 
 int
-dlord()
+dlord(atyp)
+aligntyp atyp;
 {
-	int	tryct, pm;
+	int tryct, pm;
 
-	for(tryct = 0; tryct < 20; tryct++) {
+	for (tryct = 0; tryct < 20; tryct++) {
 	    pm = rn1(PM_YEENOGHU + 1 - PM_JUIBLEX, PM_JUIBLEX);
-	    if(!(mons[pm].geno & (G_GENOD | G_EXTINCT)))
+	    if (!(mons[pm].geno & (G_GENOD | G_EXTINCT)) &&
+		    (atyp == A_NONE || sgn(mons[pm].maligntyp) == sgn(atyp)))
 		return(pm);
 	}
-	return(ndemon());	/* approximate */
+	return(ndemon(atyp));	/* approximate */
 }
 
 /* create lawful (good) lord */
 int
 llord()
 {
-	if(!(mons[PM_ARCHON].geno & (G_GENOD | G_EXTINCT)))
+	if (!(mons[PM_ARCHON].geno & (G_GENOD | G_EXTINCT)))
 		return(PM_ARCHON);
 
 	return(lminion());	/* approximate */
@@ -221,22 +238,26 @@ lminion()
 	int	tryct;
 	struct	permonst *ptr;
 
-	for(tryct = 0; tryct < 20; tryct++)
-	    if((ptr = mkclass(S_ANGEL,0)) && !is_lord(ptr))
+	for (tryct = 0; tryct < 20; tryct++) {
+	    ptr = mkclass(S_ANGEL,0);
+	    if (ptr && !is_lord(ptr))
 		return(monsndx(ptr));
+	}
 
 	return(0);
 }
 
 int
-ndemon()
+ndemon(atyp)
+aligntyp atyp;
 {
 	int	tryct;
 	struct	permonst *ptr;
 
 	for (tryct = 0; tryct < 20; tryct++) {
 	    ptr = mkclass(S_DEMON, 0);
-	    if (is_ndemon(ptr))
+	    if (is_ndemon(ptr) &&
+		    (atyp == A_NONE || sgn(ptr->maligntyp) == sgn(atyp)))
 		return(monsndx(ptr));
 	}
 

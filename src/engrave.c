@@ -6,7 +6,7 @@
 #include "lev.h"
 #include <ctype.h>
 
-STATIC_VAR struct engr NEARDATA *head_engr;
+STATIC_VAR NEARDATA struct engr *head_engr;
 
 STATIC_DCL void FDECL(del_engr, (struct engr *));
 
@@ -225,7 +225,7 @@ freehand()
 		return(1);*/
 }
 
-static const char NEARDATA styluses[] =
+static NEARDATA const char styluses[] =
 	{ ALL_CLASSES, ALLOW_NONE, TOOL_CLASS, WEAPON_CLASS, WAND_CLASS,
 	  GEM_CLASS, RING_CLASS, 0 };
 
@@ -256,10 +256,10 @@ static const char NEARDATA styluses[] =
  * moonstone  -  6	(orthoclase)	*
  */
 
-static const short NEARDATA hard_gems[] =
+static NEARDATA const short hard_gems[] =
 	{ DIAMOND, RUBY, SAPPHIRE, TOPAZ, EMERALD, AQUAMARINE, GARNET, 0 };
 
-static const char NEARDATA *hard_ring_names[] =
+static NEARDATA const char *hard_ring_names[] =
 	{"diamond", "ruby", "sapphire", "emerald", "topaz", ""};
 
 /* return 1 if action took 1 (or more) moves, 0 if error or aborted */
@@ -758,7 +758,6 @@ You("are not going to get anywhere trying to write in the dust with your dust.")
 	/* Prompt for engraving! */
 	Sprintf(qbuf,"What do you want to %s %s here?", everb, eloc);
 	getlin(qbuf, ebuf);
-	clear_nhwindow(WIN_MESSAGE);
 
 	/* Mix up engraving if surface or state of mind is unsound.  */
 	/* Original kludge by stewr 870708.  modified by njm 910722. */

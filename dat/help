@@ -44,9 +44,10 @@ on.
         `        A boulder or statue.
         A to Z, a to z, and several others:  Monsters.
 
-                 You can find out what a character represents by typing
-                 '/' followed by the character, as in "/A", which will
-                 tell you that 'A' is an Ape.
+                 You can find out what a symbol represents by typing
+                 '/' and following the directions to move the cursor
+                 to the symbol in question.  For instance, a 'd' may
+                 turn out to be a dog.
 
 
 y k u   7 8 9   Move commands:
@@ -63,8 +64,8 @@ b j n   1 2 3           g<dir>:   run in direction <dir> until something
 Commands:
         NetHack knows the following commands:
         ?       Help menu.
-        /       (followed by any symbol):  tell what this symbol represents.
-                You may choose to specify a location or give a symbol argument.
+        /       Tell what a symbol represents.  You may choose to specify
+                a location or give a symbol argument.
         &       Tell what a command does.
         <       Go up a staircase (if you are standing on it).
         >       Go down a staircase (if you are standing on it).

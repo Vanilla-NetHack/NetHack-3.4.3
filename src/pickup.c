@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.1	93/01/04	*/
+/*	SCCS Id: @(#)pickup.c	3.1	93/02/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -138,10 +138,8 @@ ask_again:
 		Sprintf(qbuf,"What kinds of thing do you want to %s? [%s]",
 			action, ilets);
 		getlin(qbuf,inbuf);
-		if (*inbuf == '\033') {
-			clear_nhwindow(WIN_MESSAGE);
-			return FALSE;
-		}
+		if (*inbuf == '\033') return FALSE;
+
 		for (p = inbuf; (sym = *p++); ) {
 		    /* new A function (selective all) added by GAN 01/09/87 */
 		    if (sym == ' ') continue;
@@ -236,13 +234,6 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 		}
 	}
 
-#ifdef POLYSELF
-	if (nolimbs(uasmon)) {
-		You("cannot pick things up without limbs.");
-		return;
-	}
-#endif
-
 	/* added by GAN 10/24/86 to allow selective picking up */
 	if (!all) {
 		if (!query_classes(olets, &selective, &all_of_a_type,
@@ -261,7 +252,7 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 
 		    if (!all_of_a_type) {
 			char qbuf[QBUFSZ];
-			Sprintf(qbuf,"Pick up %s?", doname(obj));
+			Sprintf(qbuf, "Pick up %s?", doname(obj));
 			switch ((obj->quan < 2L) ? ynaq(qbuf) : ynNaq(qbuf)) {
 			case 'q': return;
 			case 'n': continue;
@@ -276,7 +267,7 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 			case '#':	/* count was entered */
 			    if (!yn_number) continue; /* 0 count => No */
 			    else count = yn_number;
-			    /* fall thru :-} */
+			    /* fall thru */
 			default:	/* 'y' */
 			    break;
 			}
@@ -384,7 +375,6 @@ struct obj *obj, *objx;
 		exercise(A_WIS, FALSE);
 		return FALSE;
 	    }
-
 	} else  if (obj->otyp == SCR_SCARE_MONSTER) {
 	    if (obj->blessed) obj->blessed = 0;
 	    else if (!obj->spe && !obj->cursed) obj->spe = 1;
@@ -454,9 +444,27 @@ struct obj *obj, *objx;
 lift_some:
 	if (inv_cnt() >= 52) {
 	    if (objx) unsplitobj(obj, objx, 0L);
-	    Your("knapsack cannot accommodate any more items.");
 	    if (obj->otyp == SCR_SCARE_MONSTER) obj->spe = 0;
+	    Your("knapsack cannot accommodate any more items.");
 	    return TRUE;
+	}
+
+	if (obj->otyp != LOADSTONE &&
+	    (wt*2 / weight_cap()) + 1 > SLT_ENCUMBER) {
+	    /* as in near_capacity() */
+		char qbuf[QBUFSZ];
+		char ch;
+
+		Sprintf(qbuf, "%s %s.  Continue?", nearloadmsg, doname(obj));
+		switch (ch = ynq(qbuf)) {
+			case 'n':
+			case 'q':
+				if (objx) unsplitobj(obj, objx, 0L);
+				if (obj->otyp == SCR_SCARE_MONSTER)
+					obj->spe = 0;
+				return (ch == 'q');
+			default:  break;	/* 'y' */
+		}
 	}
 
 	pickquan = obj->quan;	/* save number picked up */
@@ -465,9 +473,8 @@ lift_some:
 	if (!Blind) obj->dknown = 1;
 	if (uwep && uwep == obj) mrg_to_wielded = TRUE;
 	nearload = near_capacity();
-	prinv(nearload > SLT_ENCUMBER ? nearloadmsg :
-	      nearload > UNENCUMBERED ? moderateloadmsg : NULL,
-	      obj, pickquan);
+	prinv(nearload > UNENCUMBERED && nearload < MOD_ENCUMBER ?
+	      moderateloadmsg : NULL, obj, pickquan);
 	mrg_to_wielded = FALSE;
 	return FALSE;
 }
@@ -612,7 +619,7 @@ mbag_explodes(obj, depthin)
 
 /* A variable set in use_container(), to be used by the callback routines */
 /* chk_bg(), in_container(), and out_container() from askchain().	  */
-static struct obj NEARDATA *current_container;
+static NEARDATA struct obj *current_container;
 #define Icebox (current_container->otyp == ICE_BOX)
 
 STATIC_PTR int
@@ -806,6 +813,8 @@ register struct obj *obj;
 	if(!obj->unpaid && !carried(current_container) &&
 	     costly_spot(current_container->ox, current_container->oy)) {
 
+		obj->ox = current_container->ox;
+		obj->oy = current_container->oy;
 		addtobill(obj, FALSE, FALSE, FALSE);
 	}
 
@@ -826,7 +835,7 @@ register struct obj *obj;
 }
 
 /* for getobj: allow counts, allow all types, expect food */
-static const char NEARDATA frozen_food[] =
+static NEARDATA const char frozen_food[] =
 	{ ALLOW_COUNT, ALL_CLASSES, FOOD_CLASS, 0 };
 
 int

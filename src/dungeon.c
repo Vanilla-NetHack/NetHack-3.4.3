@@ -639,7 +639,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 
 	    if (i) {	/* set depth */
 		branch *br;
-		xchar from_depth;
+		schar from_depth;
 		boolean from_up;
 
 		br = add_branch(i, dungeons[i].entry_lev, &pd);
@@ -770,7 +770,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	    assign_level(&knox_level, &x->dlevel);
 	    /*
 	     * Kludge to allow floating Knox entrance.  We specify a floating
-	     * entrance by the fact that it's entrance (end1) has a bogus dnum,
+	     * entrance by the fact that its entrance (end1) has a bogus dnum,
 	     * namely n_dgns.
 	     */
 	    for (br = branches; br; br = br->next)
@@ -844,7 +844,7 @@ boolean noquest;
 	 */
 	register int i;
 	d_level tmp;
-	register xchar ret = 0;
+	register schar ret = 0;
 
 	for(i = 0; i < n_dgns; i++) {
 	    if((tmp.dlevel = dungeons[i].dunlev_ureached) == 0) continue;
@@ -853,7 +853,7 @@ boolean noquest;
 	    tmp.dnum = i;
 	    if(depth(&tmp) > ret) ret = depth(&tmp);
 	}
-	return(ret);
+	return((xchar) ret);
 }
 
 /* return a bookkeeping level number for purpose of comparisons and
@@ -908,7 +908,7 @@ xchar	ledgerno;
 
 /* returns the depth of a level, in floors below the surface	*/
 /* (note levels in different dungeons can have the same depth).	*/
-xchar
+schar
 depth(lev)
 d_level	*lev;
 {
@@ -1110,7 +1110,7 @@ int levnum;
 	xchar dgn = u.uz.dnum;
 
 	if (levnum <= 0) {
-	    impossible("get_level:  levnum = %d\n", levnum);
+	    /* can only currently happen in endgame */
 	    levnum = u.uz.dlevel;
 	} else if (levnum > dungeons[dgn].depth_start
 			    + dungeons[dgn].num_dunlevs - 1) {
@@ -1308,12 +1308,12 @@ xchar
 level_difficulty()
 {
 	if (In_endgame(&u.uz))
-		return(depth(&sanctum_level) + u.ulevel/2);
+		return((xchar) depth(&sanctum_level) + u.ulevel/2);
 	else
 		if (u.uhave.amulet)
 			return(deepest_lev_reached(FALSE));
 		else
-			return(depth(&u.uz));
+			return((xchar) depth(&u.uz));
 }
 
 

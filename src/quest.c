@@ -55,51 +55,33 @@ on_goal() {
 }
 
 void
-quest_init() {
+quest_init()
+{
 /*
  *	Special setup modifications here:
  *
- *	Unfortunately, this is going to have to be done on each level,
- *	on start-up, and on entry, since you lose the permonst mods
+ *	Unfortunately, this is going to have to be done
+ *	on each newgame or restore, because you lose the permonst mods
  *	across a save/restore :-)
  *
  *	1 - The Rogue Leader is the Tourist Nemesis.
- *	1 - Elves can have one of two different leaders, work it out here.
  *	2 - Priests start with a random alignment - convert the leader and
  *	    guardians here.
+ *	3 - Elves can have one of two different leaders, but can't work it
+ *	    out here because it requires hacking the level file data (see
+ *	    sp_lev.c).
  */
 #ifdef TOURIST
-    if(pl_character[0] == 'T' && Is_nemesis(&u.uz)) {
-	register struct monst *mtmp;
+    if (pl_character[0] == 'T') {
 	mons[PM_MASTER_OF_THIEVES].msound = MS_NEMESIS;
 	mons[PM_MASTER_OF_THIEVES].mflags2 &= ~(M2_PEACEFUL);
 	mons[PM_MASTER_OF_THIEVES].mflags2 |= (M2_NASTY|M2_STALK|M2_HOSTILE);
 	mons[PM_MASTER_OF_THIEVES].mflags3 = M3_WANTSARTI | M3_WAITFORU;
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) /* find the leader... */
-	    if(mtmp->data->msound == MS_NEMESIS) {
-		set_malign(mtmp); /* changed M2_PEACEFUL */
-		break;
-	    }
     } else
 #endif
-    if(pl_character[0] == 'E' && flags.female && Is_qstart(&u.uz)) {
-	register struct monst *mtmp;
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) /* find the leader... */
-	    if(mtmp->data->msound == MS_LEADER) {
-		mtmp->data = &mons[PM_ELWING]; /* sex-change */
-		break;
-	    }
-    } else if(pl_character[0] == 'P' && Is_qstart(&u.uz)) {
-
-	register struct monst *mtmp;
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) /* find leader & guards */
-	   if(mtmp->data->msound == MS_LEADER ||
-	      mtmp->data->msound == MS_GUARDIAN) {
-	       /* use game-start alignment for reference */
-		mtmp->data->maligntyp = u.ualignbase[1]*3;
-		mtmp->mpeaceful = TRUE;
-		set_malign(mtmp); /* mpeaceful may have changed */
-	   }
+    if (pl_character[0] == 'P') {
+	mons[PM_ARCH_PRIEST].maligntyp = u.ualignbase[1]*3;
+	mons[PM_ACOLYTE].maligntyp = u.ualignbase[1]*3;
     }
 }
 

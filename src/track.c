@@ -7,8 +7,8 @@
 
 #define	UTSZ	50
 
-STATIC_VAR int NEARDATA utcnt, NEARDATA utpnt;
-STATIC_VAR coord NEARDATA utrack[UTSZ];
+STATIC_VAR NEARDATA int utcnt, utpnt;
+STATIC_VAR NEARDATA coord utrack[UTSZ];
 
 #ifdef OVLB
 void

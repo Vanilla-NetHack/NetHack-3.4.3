@@ -4,9 +4,10 @@
 .ds vr "NetHack 3.1
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "May 28, 1990
+.ds f2 "January 25, 1993
 .mt
 A Guide to the Mazes of Menace
+(Guidebook for NetHack 3.1)
 .au
 Eric S. Raymond
 (Extensively edited and expanded for 3.0 by Mike Threepoint)
@@ -20,7 +21,7 @@ You have just finished your years as a student at the local adventurer's
 guild.  After much practice and sweat you have finally completed your
 training and are ready to embark upon a perilous adventure.  To prove
 your worthiness, the local guildmasters have sent you into the Mazes of
-Menace.  Your quest is to return with the Amulet of Yendor.  According
+Menace.  Your quest is to retrieve the Amulet of Yendor.  According
 to legend, the gods will grant immortality to the one who recovers this
 artifact; true or not, its recovery will bring honor and full guild
 membership (not to mention the attentions of certain wealthy wizards).
@@ -436,7 +437,7 @@ the game, not with the `O' command; see the section on options below.
 .lp p
 Pay your shopping bill.
 .lp P
-Put on a ring.
+Put on a ring or other accessory (amulet, blindfold).
 .lp ^P
 Repeat previous message (subsequent ^P's repeat earlier messages).
 .lp q
@@ -446,7 +447,7 @@ Quit the game.
 .lp r
 Read a scroll or spell book.
 .lp R
-Remove a ring.
+Remove an accessory (ring, amulet, etc).
 .lp ^R
 Redraw the screen.
 .lp s
@@ -482,6 +483,8 @@ Suspend the game
 .ux " versions with job control only)." (
 .lp :
 Look at what is here.
+.lp ;
+Show what type of thing a visible symbol corresponds to.
 .lp ,
 Pick up some things.
 .lp @
@@ -1164,6 +1167,9 @@ Set your character's name (defaults to your user name).  You can also
 set your character class by appending a dash and the first letter of
 the character class (that is, by suffixing one of
 .op "-A -B -C -E -H -K -P -R -S -T -V -W" ).
+If
+.op "-@"
+is used for the class, then a random one will be automatically chosen.
 Cannot be set with the `O' command.
 .lp news\ \ \ \ 
 Read the NetHack news file, if present (default on).

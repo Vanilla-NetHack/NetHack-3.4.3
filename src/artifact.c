@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artifact.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)artifact.c	3.1	93/02/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -190,6 +190,22 @@ nartifact_exist()
 	if(artiexist[--n]) a++;
 
     return a;
+}
+
+/*
+ * This function is used to un-create an artifact.  Normally, when an artifact
+ * is destroyed, it cannot be re-created by any means.  However, if you call
+ * this function _before_ destroying the object, then the artifact can be
+ * re-created later on.  Currently used only by the wish code.
+ */
+void
+artifact_unexist(otmp)
+    register struct obj *otmp;
+{
+    if (otmp->oartifact && artiexist[otmp->oartifact])
+	artiexist[otmp->oartifact] = 0;
+    else
+	impossible("Destroying non-existing artifact?!");
 }
 
 #endif /* OVLB */
@@ -401,7 +417,7 @@ touch_artifact(obj,mon)
 	char buf[BUFSZ];
 
 	if (!yours) return 0;
-	You("feel a blast of power flow from %s!", the(xname(obj)));
+	pline("You are blasted by %s power!", s_suffix(the(xname(obj))));
 	dmg = d((Antimagic ? 2 : 4) , ((oart->spfx & SPFX_INTEL) ? 10 : 4));
 	Sprintf(buf, "touching %s", oart->name);
 	losehp(dmg, buf, KILLED_BY);
@@ -410,7 +426,7 @@ touch_artifact(obj,mon)
 
     /* can pick it up unless you're totally non-synch'd with the artifact */
     if(badclass && badalign && (oart->spfx & SPFX_INTEL)) {
-	if (yours) pline("%s refuses to be held by you!", The(xname(obj)));
+	if (yours) pline("%s evades your grasp!", The(xname(obj)));
 	return 0;
     }
 
@@ -550,7 +566,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 	}
 	if (attacks(AD_COLD, otmp)) {
 		if (realizes_damage) {
-			pline("The chilling blade freezes %s!", hittee);
+			pline("The ice-cold blade freezes %s!", hittee);
 			return TRUE;
 		}
 	}
@@ -558,7 +574,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 		if (realizes_damage) {
 			if(youattack && otmp != uwep)
 			    pline("%s hits %s!", The(xname(otmp)), hittee);
-			pline("A bolt of lightning zaps %s!", hittee);
+			pline("Lightning strikes %s!", hittee);
 			return TRUE;
 		}
 	}
@@ -723,7 +739,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				}
 			} else if (youdefend && !MB_RESISTED_ATTACK
 				   && (attack_index == MB_INDEX_PURGE)) {
-				You("lose some magical energy!");
+				You("lose magical energy!");
 				if (u.uenmax > 0) u.uenmax--;
 				if (u.uen > 0) u.uen--;
 					flags.botl = 1;
@@ -800,10 +816,10 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 		if (!youdefend) {
 			if (!has_head(mdef->data) || notonhead) {
 				if (youattack)
-					pline("Somehow you miss %s wildly.",
+					pline("Somehow, you miss %s wildly.",
 						mon_nam(mdef));
 				else if (vis)
-					pline("Somehow %s misses wildly.",
+					pline("Somehow, %s misses wildly.",
 						mon_nam(magr));
 				*dmgptr = 0;
 				return (youattack || vis);
@@ -817,7 +833,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 		} else {
 #ifdef POLYSELF
 			if (!has_head(uasmon)) {
-				pline("Somehow %s misses you wildly.",
+				pline("Somehow, %s misses you wildly.",
 					mon_nam(magr));
 				*dmgptr = 0;
 				return TRUE;
@@ -884,7 +900,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 }
 
 static const char recharge_type[] = { ALLOW_COUNT, ALL_CLASSES, 0 };
-static const char NEARDATA invoke_types[] =
+static NEARDATA const char invoke_types[] =
 	{ ALL_CLASSES, WEAPON_CLASS, ARMOR_CLASS, RING_CLASS, AMULET_CLASS,
 	      TOOL_CLASS, 0 };
 
@@ -1021,7 +1037,7 @@ arti_invoke(obj)
 		You("feel very disoriented for a moment.");
 	    } else {
 		if(!Blind) You("are surrounded by a shimmering sphere!");
-		else You("momentarily feel weightless.");
+		else You("feel weightless for a moment.");
 		goto_level(&newlev, FALSE, FALSE, FALSE);
 	    }
 	    break;
@@ -1048,13 +1064,13 @@ arti_invoke(obj)
 	nothing_special:
 	    /* you had the property from some other source too */
 	    if (carried(obj))
-		You("feel a surge of power, but notice no effect.");
+		You("feel a surge of power, but nothing seems to happen.");
 	    return 1;
 	}
 	switch(oart->inv_prop) {
 	case CONFLICT:
 	    if(on) You("feel like a rabble-rouser.");
-	    else You("feel the tension decrease in your vicinity.");
+	    else You("feel the tension decrease around you.");
 	    break;
 	case LEVITATION:
 	    if(on) float_up();

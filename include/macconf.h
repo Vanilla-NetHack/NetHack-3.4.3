@@ -37,6 +37,14 @@ typedef long off_t ;
 #  include <fonts.h>
 
 /*
+ * Turn off the Macsbug calls for the production version.
+ */
+#undef Debugger
+#undef DebugStr
+#define Debugger()
+#define DebugStr(aStr)
+
+/*
  * We could use the PSN under sys 7 here ...
  */
 #  define getpid() 1
@@ -168,13 +176,14 @@ typedef struct NhWindow {
 	void			( * cursorFunc ) ( EventRecord * , WindowPtr , RgnHandle ) ;
 	Handle			windowText ;
 	long			windowTextLen ;
-	long			textBase ;
 	Point			cursor ;		/* In CHARS / LINES */
 	short			leading ;
 	short			charHeight ;
 	short			charWidth ;
 	short			fontNum ;
 	short			fontSize ;
+	short			last_more_lin ;	/* Used by message window */
+	short			save_lin ;		/* Used by message window */
 	short			lin ;			/* Used by menus */
 	short			wid ;			/* Used by menus */
 	char			itemChars [ NUM_MENU_ITEMS ] ;

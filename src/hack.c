@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.c	3.1	92/12/04	*/
+/*	SCCS Id: @(#)hack.c	3.1	93/02/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -162,7 +162,7 @@ moverock()
 		long lastmovetime;
 		lastmovetime = 0;
 #else
-		static long NEARDATA lastmovetime;
+		static NEARDATA long lastmovetime;
 #endif
 		/* note: this var contains garbage initially and
 		   after a restore */
@@ -224,12 +224,15 @@ still_chewing(x,y)
 {
     struct rm *lev      = &(levl[x][y]);
     struct obj *boulder = sobj_at(BOULDER,x,y);
+    register boolean shopedge = *in_rooms(x, y, SHOPBASE);
+    register const char *digtxt = (const char*) 0, *dmgtxt = (const char*) 0;
 
     if (dig_pos.x != x || dig_pos.y != y ||
 				!on_level(&dig_level, &u.uz) || dig_down) {
-	if (!boulder && (lev->diggable & W_NONDIGGABLE))
+	if (!boulder && (lev->diggable & W_NONDIGGABLE)) {
 	    You("hurt your teeth on the hard stone.");
-	else {
+	    nomul(0);
+	} else {
 	    dig_down = FALSE;
 	    dig_pos.x = x;
 	    dig_pos.y = y;
@@ -250,8 +253,8 @@ still_chewing(x,y)
     }
 
     if (boulder) {
-	You("eat the boulder.");	/* yum */
 	delobj(boulder);		/* boulder goes bye-bye */
+	You("eat the boulder.");	/* yum */
 
 	/*
 	 *  The location could still block because of
@@ -267,7 +270,11 @@ still_chewing(x,y)
 	}
 	
     } else if (IS_WALL(lev->typ)) {
-	You("chew a hole in the wall.");
+	if(shopedge) {
+	    add_damage(x, y, 10L * ACURRSTR);
+	    dmgtxt = "damage";
+	}
+	digtxt = "chew a hole in the wall.";
 	if (level.flags.is_maze_lev) {
 	    lev->typ = ROOM;
 	} else if (level.flags.is_cavernous_lev) {
@@ -278,30 +285,37 @@ still_chewing(x,y)
 	}
     } else if (lev->typ == SDOOR) {
 	if (lev->doormask & D_TRAPPED) {
-	    b_trapped("secret door");
 	    lev->doormask = D_NODOOR;
+	    b_trapped("secret door");
 	} else {
-	    You("chew through the secret door.");
+	    digtxt = "chew through the secret door.";
 	    lev->doormask = D_BROKEN;
 	}
 	lev->typ = DOOR;
 
     } else if (IS_DOOR(lev->typ)) {
+	if(shopedge) {
+	    add_damage(x, y, 400L);
+	    dmgtxt = "break";
+	}
 	if (lev->doormask & D_TRAPPED) {
-	    b_trapped("door");
 	    lev->doormask = D_NODOOR;
+	    b_trapped("door");
 	} else {
-	    You("chew through the door.");
+	    digtxt = "chew through the door.";
 	    lev->doormask = D_BROKEN;
 	}
 
     } else { /* STONE or SCORR */
-	You("chew a passage through the rock.");
+	digtxt = "chew a passage through the rock.";
 	lev->typ = CORR;
     }
 
     unblock_point(x, y);	/* vision */
     newsym(x, y);
+    if (digtxt) You(digtxt);	/* after newsym */
+    if (dmgtxt)
+	pay_for_damage(dmgtxt);
     dig_level.dnum = 0;
     dig_level.dlevel = -1;
     return 0;
@@ -379,6 +393,13 @@ register xchar x,y;
 return (!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONDIGGABLE)));
 }
 
+boolean
+may_passwall(x,y)
+register xchar x,y;
+{
+return (!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONPASSWALL)));
+}
+
 #endif /* OVLB */
 #ifdef OVL1
 
@@ -388,7 +409,7 @@ register xchar x,y;
 {
 	return(IS_ROCK(levl[x][y].typ)
 #ifdef POLYSELF
-		    && !passes_walls(uasmon)
+		    && !(passes_walls(uasmon) && may_passwall(x,y))
 		    && (!tunnels(uasmon) || needspick(uasmon) || !may_dig(x,y))
 #endif
 	);
@@ -643,7 +664,7 @@ domove()
 	if (IS_ROCK(tmpr->typ)) {
 	    if (Blind) feel_location(x,y);
 #ifdef POLYSELF
-	    if (passes_walls(uasmon)) {
+	    if (passes_walls(uasmon) && may_passwall(x,y)) {
 		;	/* do nothing */
 	    } else if (tunnels(uasmon) && !needspick(uasmon)) {
 		/* Eat the rock. */
@@ -781,11 +802,21 @@ domove()
 		int swap_result;
 
 		/* if trapped, there's a chance the pet goes wild */
-		if (mtmp->mtrapped && !rn2(4)) {
-		    pline ("%s suddenly goes wild!",
-			   mtmp->mnamelth ? NAME(mtmp) : Monnam(mtmp));
-		    mtmp->mtame = mtmp->mpeaceful = mtmp->msleep = 0;
-		}
+		if (mtmp->mtrapped) {
+		    if (!rn2(mtmp->mtame)) {
+			mtmp->mtame = mtmp->mpeaceful = mtmp->msleep = 0;
+#ifndef SOUNDS
+			pline ("%s suddenly goes wild!",
+			       mtmp->mnamelth ? NAME(mtmp) : Monnam(mtmp));
+#else
+		        growl(mtmp);
+		    } else {
+		        yelp(mtmp);
+#endif
+		    }
+	        }
+
+		if(!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
 
 		mtmp->mtrapped = 0;
 		mtmp->mundetected = 0;
@@ -807,11 +838,11 @@ domove()
 		case 1:	/* trapped */
 		case 3: /* changed levels */
 		    /* there's already been a trap message, reinforce it */
+		    abuse_dog(mtmp);
+#ifndef SOUNDS	/* else complaint from abuse_dog() */
 		    pline("Trapping your pet was a selfish move.");
-		    if (!rn2(4)) {
-			pline("You'll pay!");
-			adjalign(-5);
-		    }
+#endif
+		    adjalign(-3);
 		    break;
 		case 2:
 		    /* it may have drowned or died.  that's no way to
@@ -820,7 +851,7 @@ domove()
 		    if (rn2(4)) {
 			pline ("%s complains in a booming voice:", u_gname());
 			verbalize("Losing your pet like this was a mistake!");
-			u.ugangr++ ;
+			u.ugangr++;
 			adjalign(-15);
 		    }
 		    break;
@@ -915,10 +946,12 @@ spoteffects()
 		}
 		else if (Is_waterlevel(&u.uz))
 			goto stillinwater;
-		else if (Levitation || is_floater(uasmon))
+		else if (Levitation)
 			You("pop out of the water like a cork!");
+#ifdef POLYSELF
 		else if (is_flyer(uasmon))
 			You("fly out of the water.");
+#endif
 		else if (Wwalking)
 			You("slowly rise above the surface.");
 		else
@@ -1133,7 +1166,7 @@ register boolean newlev;
 	    return;		/* no entrance messages necessary */
 
 	/* Did we just enter a shop? */
-	if (*u.ushops_entered)
+	if (*u.ushops_entered && !newlev)
             u_entered_shop(u.ushops_entered);
 
 	for (ptr = &u.uentered[0]; *ptr; ptr++) {
@@ -1250,14 +1283,6 @@ dopickup()
 			  Blind ? "feel" : "see");
 		return(1);
 	}
-	if(!OBJ_AT(u.ux, u.uy)) {
-		pline("There is nothing here to pick up.");
-		return(0);
-	}
-	if(Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
-		You("cannot reach the floor.");
-		return(1);
-	}
 	if(is_pool(u.ux, u.uy)) {
 		if(Wwalking
 #ifdef POLYSELF
@@ -1271,6 +1296,14 @@ dopickup()
 			You("can't even see the bottom, let alone pick up something.");
 			return(1);
 		}
+	}
+	if(!OBJ_AT(u.ux, u.uy)) {
+		pline("There is nothing here to pick up.");
+		return(0);
+	}
+	if(Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
+		You("cannot reach the floor.");
+		return(1);
 	}
 	pickup(-count);
 	return(1);
@@ -1521,8 +1554,14 @@ weight_cap()
 		carrcap = MAX_CARR_CAP;
 	else {
 		if(carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
-		if(Wounded_legs & LEFT_SIDE) carrcap -= 100;
-		if(Wounded_legs & RIGHT_SIDE) carrcap -= 100;
+#ifdef POLYSELF
+		if (!is_flyer(uasmon))
+#endif
+					{
+			if(Wounded_legs & LEFT_SIDE) carrcap -= 100;
+			if(Wounded_legs & RIGHT_SIDE) carrcap -= 100;
+		}
+		if (carrcap < 0) carrcap = 0;
 	}
 	return((int) carrcap);
 }
@@ -1555,10 +1594,11 @@ inv_weight()
 int
 near_capacity()
 {
-    int cap, wt = inv_weight();
+    int cap, wt = inv_weight(), wc = weight_cap();
 
-    if (wt < 0) return UNENCUMBERED;
-    cap = (wt / (weight_cap()/2)) + 1;
+    if (wt <= 0) return UNENCUMBERED;
+    if (wc <= 1) return OVERLOADED;
+    cap = (wt*2 / wc) + 1;
     return min(cap, OVERLOADED);
 }
 

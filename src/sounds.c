@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sounds.c	3.1	92/07/07
+/*	SCCS Id: @(#)sounds.c	3.1	93/02/09
 /* 	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -64,11 +64,11 @@ dosounds()
 		You("hear the tones of courtly conversation.");
 		break;
 	    case 1:
-		You("hear a sceptre being pounded in judgment.");
+		You("hear a sceptre pounded in judgment.");
 		break;
 	    case 2:
-		pline("Someone just shouted \"Off with %s head!\"",
-		    flags.female ? "her" : "his");
+		pline("Someone shouts \"Off with %s head!\"",
+		      his[flags.female]);
 		break;
 	    case 3:
 		You("hear Queen Beruthiel's cats!");
@@ -186,10 +186,10 @@ dosounds()
     if (level.flags.has_zoo && !rn2(200)) {
 	switch (rn2(2)+hallu) {
 	    case 0:
-	You("hear a sound reminding you of an elephant stepping on a peanut.");
+		You("hear a sound reminiscent of an elephant stepping on a peanut.");
 		break;
 	    case 1:
-		You("hear a sound reminding you of a trained seal.");
+		You("hear a sound reminiscent of a seal barking.");
 		break;
 	    case 2:
 		You("hear Doctor Doolittle!");
@@ -421,7 +421,7 @@ register struct monst *mtmp;
 #endif
 	case MS_BONES:
 	    pline("%s rattles noisily.", Monnam(mtmp));
-	    You("freeze momentarily.");
+	    You("freeze for a moment.");
 	    nomul(-2);
 	    break;
 	case MS_HUMANOID:
@@ -449,7 +449,7 @@ register struct monst *mtmp;
 	    else if (likes_magic(mtmp->data))
 		pline("%s talks about spellcraft.", Monnam(mtmp));
 	    else if (carnivorous(mtmp->data))
-		pline("%s discusses what kinds of meat are safe to eat.", Monnam(mtmp));
+		pline("%s discusses hunting.", Monnam(mtmp));
 	    else switch (monsndx(mtmp->data)){
 		case PM_HOBBIT:
 		    if (mtmp->mhpmax - mtmp->mhp >= 10)
@@ -460,9 +460,11 @@ pline("%s complains about unpleasant dungeon conditions.", Monnam(mtmp));
 		case PM_ARCHEOLOGIST:
 pline("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(mtmp));
 		    break;
+# ifdef TOURIST
 		case PM_TOURIST:
 		    verbalize("Aloha.");
 		    break;
+# endif
 		default:
 		    pline("%s discusses dungeon exploration.", Monnam(mtmp));
 	    }
@@ -632,7 +634,7 @@ dochat()
 
 #ifdef POLYSELF
     if (uasmon->msound == MS_SILENT) {
-	Your("current form seems unable to speak.");
+	pline("As %s, you cannot speak.", an(uasmon->mname));
 	return(0);
     }
 #endif
@@ -645,7 +647,7 @@ dochat()
 	return(0);
     }
     if (Underwater) {
-	pline("All you can utter is a mouthful of air bubbles.");
+	pline("Your speech is unintelligible underwater.");
 	return(0);
     }
 

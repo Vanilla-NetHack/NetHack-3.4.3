@@ -1,6 +1,18 @@
 #	Makefile for NetHack's utility programs.
 #	SCCS Id: @(#)Makefile.utl	3.1	92/11/01
 
+# newer makes predefine $(MAKE) to 'make' and do smarter processing of
+# recursive make calls if $(MAKE) is used
+# these makes allow $(MAKE) to be overridden by the environment if someone
+# wants to (or has to) use something other than the standard make, so we do
+# not want to unconditionally set $(MAKE) here
+#
+# unfortunately, some older makes do not predefine $(MAKE); if you have one of
+# these, uncomment the following line
+# (you will know that you have one if you get complaints about unable to
+# execute things like 'foo.o')
+# MAKE = make
+
 # if you are using gcc as your compiler,
 #	uncomment the CC definition below if it's not in your environment
 # CC = gcc
@@ -129,13 +141,11 @@ lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h
 panic.o:     ../include/config.h
 
 # see lev_comp.l for WEIRD_LEX discussion
-# egrep returns failure if it doesn't find anything, so we have to go to
-# some trouble to check for $(CC) failures
-lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h
-	-@rm lev_lex.o 2>/dev/null
+# egrep will return failure if it doesn't find anything, but we know there
+# is one "_cplusplus" inside a comment
+lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h lev_lex.c
 	@echo $(CC) -c $(CFLAGS) lev_lex.c
-	-@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus lev_lex.c` lev_lex.c
-	@test -r lev_lex.o
+	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus lev_lex.c` lev_lex.c
 
 ../include/lev_comp.h: lev_yacc.c
 
@@ -163,13 +173,9 @@ dgn_yacc.o:  ../include/config.h ../include/dgn_file.h
 dgn_main.o:  ../include/config.h
 
 # see dgn_comp.l for WEIRD_LEX discussion
-# egrep returns failure if it doesn't find anything, so we have to go to
-# some trouble to check for $(CC) failures
-dgn_lex.o:   ../include/config.h ../include/dgn_comp.h ../include/dgn_file.h
-	-@rm dgn_lex.o 2>/dev/null
+dgn_lex.o:   ../include/config.h ../include/dgn_comp.h ../include/dgn_file.h dgn_lex.c
 	@echo $(CC) -c $(CFLAGS) dgn_lex.c
-	-@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus dgn_lex.c` dgn_lex.c
-	@test -r dgn_lex.o
+	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus dgn_lex.c` dgn_lex.c
 
 
 ../include/dgn_comp.h: dgn_yacc.c

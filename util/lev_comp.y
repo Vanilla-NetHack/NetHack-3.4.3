@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_comp.c	3.1	92/07/12	*/
+/*	SCCS Id: @(#)lev_comp.c	3.1	93/02/13	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -95,6 +95,7 @@ altar *tmpaltar[256];
 lad *tmplad[256];
 stair *tmpstair[256];
 digpos *tmpdig[256];
+digpos *tmppass[32];
 char *tmpmap[ROWNO];
 region *tmpreg[256];
 lev_region *tmplreg[32];
@@ -126,7 +127,7 @@ int n_olist = 0, n_mlist = 0, n_plist = 0;
 unsigned int nlreg = 0, nreg = 0, ndoor = 0, ntrap = 0, nmons = 0, nobj = 0;
 unsigned int ndb = 0, nwalk = 0, npart = 0, ndig = 0, nlad = 0, nstair = 0;
 unsigned int naltar = 0, ncorridor = 0, nrooms = 0, ngold = 0, nengraving = 0;
-unsigned int nfountain = 0, npool = 0, nsink = 0;
+unsigned int nfountain = 0, npool = 0, nsink = 0, npass = 0;
 
 static unsigned long lev_flags = 0;
 
@@ -157,7 +158,7 @@ extern char* fname;
 %token	<i> OBJECT_ID MONSTER_ID TRAP_ID DOOR_ID DRAWBRIDGE_ID
 %token	<i> MAZEWALK_ID WALLIFY_ID REGION_ID FILLING
 %token	<i> RANDOM_OBJECTS_ID RANDOM_MONSTERS_ID RANDOM_PLACES_ID
-%token	<i> ALTAR_ID LADDER_ID STAIR_ID NON_DIGGABLE_ID ROOM_ID
+%token	<i> ALTAR_ID LADDER_ID STAIR_ID NON_DIGGABLE_ID NON_PASSWALL_ID ROOM_ID
 %token	<i> PORTAL_ID TELEPRT_ID BRANCH_ID LEV CHANCE_ID
 %token	<i> CORRIDOR_ID GOLD_ID ENGRAVING_ID FOUNTAIN_ID POOL_ID SINK_ID NONE
 %token	<i> RAND_CORRIDOR_ID DOOR_STATE LIGHT_STATE CURSE_TYPE ENGRAVING_TYPE
@@ -309,16 +310,17 @@ flags		: /* nothing */
 		| FLAGS_ID ':' flag_list
 		  {
 			$$ = lev_flags;
+			lev_flags = 0;	/* clear for next user */
 		  }
 		;
 
-flag_list	: FLAG_TYPE
+flag_list	: FLAG_TYPE ',' flag_list
 		  {
 			lev_flags |= $1;
 		  }
-		| FLAG_TYPE ',' flag_list
+		| FLAG_TYPE
 		  {
-			lev_flags |= $3;
+			lev_flags |= $1;
 		  }
 		;
 
@@ -813,6 +815,7 @@ map_detail	: monster_detail
 		| gold_detail
 		| engraving_detail
 		| diggable_detail
+		| passwall_detail
 		;
 
 monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
@@ -1215,6 +1218,17 @@ diggable_detail : NON_DIGGABLE_ID ':' region
 			tmpdig[ndig]->x2 = current_region.x2;
 			tmpdig[ndig]->y2 = current_region.y2;
 			ndig++;
+		  }
+		;
+
+passwall_detail : NON_PASSWALL_ID ':' region
+		  {
+			tmppass[npass] = New(digpos);
+			tmppass[npass]->x1 = current_region.x1;
+			tmppass[npass]->y1 = current_region.y1;
+			tmppass[npass]->x2 = current_region.x2;
+			tmppass[npass]->y2 = current_region.y2;
+			npass++;
 		  }
 		;
 

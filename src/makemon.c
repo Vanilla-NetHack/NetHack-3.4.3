@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.1	92/11/01	*/
+/*	SCCS Id: @(#)makemon.c	3.1	93/02/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@
 # include <ctype.h>
 #endif
 
-STATIC_VAR struct monst NEARDATA zeromonst;
+STATIC_VAR NEARDATA struct monst zeromonst;
 
 #define uncommon(ptr) \
 	(((ptr)->geno & (G_GENOD | G_EXTINCT | G_NOGEN | G_UNIQ)) || \
@@ -859,7 +859,7 @@ struct permonst *mdat;
 			return 1;
 		else return
 			(is_flyer(mdat) || (mdat == &mons[PM_FIRE_ELEMENTAL]));
-	    if (passes_walls(mdat)) return 1;
+	    if (passes_walls(mdat) && may_passwall(x,y)) return 1;
 	}
 	if (!ACCESSIBLE(levl[x][y].typ)) return 0;
 	if (closed_door(x, y) && (!mdat || !amorphous(mdat)))
@@ -1020,8 +1020,8 @@ static int
 align_shift(ptr)
 register struct permonst *ptr;
 {
-    static long NEARDATA oldmoves = 0L;	/* != 1, starting value of moves */
-    static s_level NEARDATA *lev;
+    static NEARDATA long oldmoves = 0L;	/* != 1, starting value of moves */
+    static NEARDATA s_level *lev;
     register int alshift;
 
     if(oldmoves != moves) {
@@ -1048,12 +1048,12 @@ rndmonst()		/* select a random monster */
 	register struct permonst *ptr;
 	register int i, ct;
 	register int zlevel;
-	static int NEARDATA minmlev, NEARDATA maxmlev, NEARDATA accept;
-	static long NEARDATA oldmoves = 0L;	/* != 1, starting value of moves */
+	static NEARDATA int minmlev, maxmlev, accept;
+	static NEARDATA long oldmoves = 0L;	/* != 1, starting value of moves */
 #ifdef REINCARNATION
-	static boolean NEARDATA upper;
+	static NEARDATA boolean upper;
 #endif
-	static boolean NEARDATA elemlevel;
+	static NEARDATA boolean elemlevel;
 
 #ifdef MULDGN
 	if(u.uz.dnum == quest_dnum && (ptr = qt_montype())) return(ptr);
@@ -1084,7 +1084,7 @@ rndmonst()		/* select a random monster */
 		if(tooweak(ct, minmlev) || toostrong(ct, maxmlev))
 		    continue;
 #ifdef REINCARNATION
-		if(upper && !isupper(def_monsyms[ptr->mlet])) continue;
+		if(upper && !isupper(def_monsyms[(int)ptr->mlet])) continue;
 #endif
 		if(elemlevel && wrong_elem_type(ptr)) continue;
 		if(uncommon(ptr)) continue;
@@ -1107,7 +1107,7 @@ rndmonst()		/* select a random monster */
 		if(tooweak(i, minmlev) || toostrong(i, maxmlev))
 		    continue;
 #ifdef REINCARNATION
-		if(upper & !isupper(def_monsyms[ptr->mlet])) continue;
+		if(upper & !isupper(def_monsyms[(int)ptr->mlet])) continue;
 #endif
 		if(elemlevel && wrong_elem_type(ptr)) continue;
 		if(uncommon(ptr)) continue;
@@ -1156,7 +1156,8 @@ int	spc;
 	for(last = first; last < NUMMONS && mons[last].mlet == class; last++)
 	    if(!(mons[last].geno & mask)) {
 		/* consider it */
-		if(num && toostrong(last, maxmlev) && rn2(2)) break;
+		if(num && toostrong(last, maxmlev) &&
+		   monstr[last] != monstr[last-1] && rn2(2)) break;
 		num += mons[last].geno & G_FREQ;
 	    }
 
@@ -1168,8 +1169,12 @@ int	spc;
 	for(num = rnd(num); num > 0; first++)
 	    if(!(mons[first].geno & mask)) {
 		/* skew towards lower value monsters at lower exp. levels */
-		if(adj_lev(&mons[first]) > (u.ulevel*2)) num--;
 		num -= mons[first].geno & G_FREQ;
+		if (num && adj_lev(&mons[first]) > (u.ulevel*2)) {
+		    /* but not when multiple monsters are same level */
+		    if (mons[first].mlevel != mons[first+1].mlevel)
+			num--;
+		}
 	    }
 	first--; /* correct an off-by-one error */
 
@@ -1410,7 +1415,7 @@ struct monst *mtmp;
 #endif /* OVL1 */
 #ifdef OVLB
 
-static char NEARDATA syms[] = {
+static NEARDATA char syms[] = {
 	MAXOCLASSES, MAXOCLASSES+1, RING_CLASS, WAND_CLASS, WEAPON_CLASS,
 	FOOD_CLASS, GOLD_CLASS, SCROLL_CLASS, POTION_CLASS, ARMOR_CLASS,
 	AMULET_CLASS, TOOL_CLASS, ROCK_CLASS, GEM_CLASS, SPBOOK_CLASS,

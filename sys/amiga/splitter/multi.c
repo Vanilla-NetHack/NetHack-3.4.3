@@ -94,7 +94,10 @@ start_next_file(multifh *mfp){
 			break;			/* comment, blank lines */
 		default:
 			if(line[0]==mfp->mfh_mo.r.mor_tag){
-				mfp->mfh_fh=Open(&line[1],MODE_OLDFILE);
+						/* allow blanks after tag */
+				char *file= &line[1];
+				while(*file && isspace(*file))file++;
+				mfp->mfh_fh=Open(file,MODE_OLDFILE);
 				if(!mfp->mfh_fh){
 					return -1;	/* error */
 				}

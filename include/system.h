@@ -50,8 +50,13 @@ typedef long	off_t;
  * impossible to get right automatically.
  * This is the type of signal handling functions.
  */
-#if defined(NHSTDC) || defined(POSIX_TYPES) || defined(OS2) || defined(MSDOS) || defined(__DECC)
-# define SIG_RET_TYPE void (*)()
+#if defined(MOVERLAY)
+# define SIG_RET_TYPE void (__cdecl *)(int)
+#endif
+#ifndef SIG_RET_TYPE
+# if defined(NHSTDC) || defined(POSIX_TYPES) || defined(OS2) || defined(__DECC)
+#  define SIG_RET_TYPE void (*)()
+# endif
 #endif
 #ifndef SIG_RET_TYPE
 # if defined(ULTRIX) || defined(SUNOS4) || defined(SVR3) || defined(SVR4)
@@ -235,7 +240,7 @@ E int FDECL(system, (const char *));
 E long NDECL(fork);
 #endif
 
-#if defined(SYSV) || defined(VMS) || defined(MAC) || defined(SUNOS4)
+#if defined(SYSV) || defined(VMS) || defined(MAC) || defined(SUNOS4) || defined(POSIX_TYPES)
 # if defined(NHSTDC) || defined(POSIX_TYPES) || (defined(VMS) && !defined(ANCIENT_VAXC))
 #  if !(defined(SUNOS4) && defined(__STDC__))	/* Solaris unbundled cc (acc) */
 E int FDECL(memcmp, (const void *,const void *,size_t));
@@ -243,15 +248,22 @@ E void *FDECL(memcpy, (void *, const void *, size_t));
 E void *FDECL(memset, (void *, int, size_t));
 #  endif
 # else
+#  ifndef memcmp	/* some systems seem to macro these back to b*() */
 E int memcmp();
-E char *memcpy(), *memset();
+#  endif
+#  ifndef memcpy
+E char *memcpy();
+#  endif
+#  ifndef memset
+E char *memset();
+#  endif
 # endif
-#endif
-
-#ifdef HPUX
+#else
+# ifdef HPUX
 E int FDECL(memcmp, (char *,char *,int));
 E void *FDECL(memcpy, (char *,char *,int));
 E void *FDECL(memset, (char*,int,int));
+# endif
 #endif
 
 #if defined(MICRO) && !defined(LATTICE)

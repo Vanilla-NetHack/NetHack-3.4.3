@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fountain.c	3.1	92/12/19	*/
+/*	SCCS Id: @(#)fountain.c	3.1	93/02/13	*/
 /*	Copyright Scott R. Turner, srt@ucla, 10/27/86 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,14 +41,14 @@ dowaterdemon() /* Water demon */
 	if(mons[PM_WATER_DEMON].geno & (G_GENOD | G_EXTINCT)) return;
 	if((mtmp = makemon(&mons[PM_WATER_DEMON],u.ux,u.uy))) {
 	    if (!Blind)
-		You("have unleashed %s!", a_monnam(mtmp));
+		You("unleash %s!", a_monnam(mtmp));
 	    else
 		You("feel the presence of evil.");
 
 	/* Give those on low levels a (slightly) better chance of survival */
-	    if ( rnd(100) > (80 + level_difficulty())) {
+	    if (rnd(100) > (80 + level_difficulty())) {
 		pline("Grateful for %s release, %s grants you a wish!",
-			Blind ? "its" : "his", Blind ? "it" : "he" );
+		      his[pronoun_gender(mtmp)], he[pronoun_gender(mtmp)]);
 		makewish();
 		mongone(mtmp);
 	    } else if (t_at(mtmp->mx, mtmp->my))
@@ -64,7 +64,7 @@ dowaternymph() /* Water Nymph */
 	if(mons[PM_WATER_NYMPH].geno & (G_GENOD | G_EXTINCT)) return;
 	if((mtmp = makemon(&mons[PM_WATER_NYMPH],u.ux,u.uy))) {
 		if (!Blind)
-		   You("have attracted %s!", a_monnam(mtmp));
+		   You("attract %s!", a_monnam(mtmp));
 		else
 		   You("hear a seductive voice.");
 		mtmp->msleep = 0;
@@ -111,6 +111,8 @@ genericptr_t poolcnt;
 
 	levl[x][y].typ = POOL;
 
+	water_damage(level.objects[x][y], FALSE, TRUE);
+
 	if ((mtmp = m_at(x, y)) != 0)
 		(void) minwater(mtmp);
 	else
@@ -153,7 +155,7 @@ xchar x, y;
 			    }
 			}
 			/* You can see or hear this effect */
-			if(!mtmp) pline("The waterflow reduces to a trickle.");
+			if(!mtmp) pline("The flow reduces to a trickle.");
 			return;
 		}
 #ifdef WIZARD
@@ -450,7 +452,7 @@ drinksink()
 		return;
 	}
 	switch(rn2(20)) {
-		static struct obj NEARDATA *otmp;
+		static NEARDATA struct obj *otmp;
 		case 0: You("take a sip of very cold water.");
 			break;
 		case 1: You("take a sip of very warm water.");
@@ -463,7 +465,7 @@ drinksink()
 		case 3: if (mons[PM_SEWER_RAT].geno & (G_GENOD | G_EXTINCT))
 				pline("The sink seems quite dirty.");
 			else {
-				static struct monst NEARDATA *mtmp;
+				static NEARDATA struct monst *mtmp;
 
 				mtmp = makemon(&mons[PM_SEWER_RAT], u.ux, u.uy);
 				pline("Eek!  There's %s in the sink!",
@@ -479,12 +481,10 @@ drinksink()
 				}
 			} while(!otmp);
 			otmp->cursed = otmp->blessed = 0;
-			if (Blind)
-				pline("The sink emits some odd liquid.");
-			else
-				pline("The sink emits a stream of %s water.",
-				    Hallucination ? hcolor() :
-				    OBJ_DESCR(objects[otmp->otyp]));
+			pline("Some %s liquid flows from the faucet.",
+			      Blind ? "odd" :
+			      Hallucination ? hcolor() :
+			      OBJ_DESCR(objects[otmp->otyp]));
 			otmp->dknown = !(Blind || Hallucination);
 			otmp->quan++; /* Avoid panic upon useup() */
 			otmp->corpsenm = 1; /* kludge for docall() */

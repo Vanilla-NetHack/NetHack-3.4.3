@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mklev.c	3.1	92/10/10	*/
+/*	SCCS Id: @(#)mklev.c	3.1	93/02/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -437,19 +437,22 @@ int *dy, *xx, *yy;
 	}
 	*xx = dd.x;
 	*yy = dd.y;
-	return(isok(*xx,*yy+*dy) && levl[*xx][(*yy)+(*dy)].typ == STONE);
+	return((isok(*xx,*yy+*dy) && levl[*xx][*yy+*dy].typ == STONE)
+	    && (isok(*xx,*yy-*dy) && !IS_POOL(levl[*xx][*yy-*dy].typ)
+				  && !IS_FURNITURE(levl[*xx][*yy-*dy].typ)));
 }
 
-/* there should be one of these per trap */
-const char *trap_engravings[TRAPNUM] = {
-				"", "", "", "", "", "", "",
-				"", "", "", "", "", "",
-				"ad ae?ar um", "?la? ?as ?er?", "ad ae?ar um",
-				"", "", "", ""
+/* there should be one of these per trap, in the same order as trap.h */
+static NEARDATA const char *trap_engravings[TRAPNUM] = {
+				NULL, NULL, NULL, NULL, NULL, NULL,
+				NULL, NULL, NULL, NULL, NULL, NULL,
+			/* 12..14: trapdoor, teleport, level-teleport */
+				"?la? ?as ?er?", "ad ae?ar um", "ad ae?ar um",
+				NULL, NULL, NULL, NULL, NULL,
 #ifdef POLYSELF
-				,""
+				NULL,
 #endif
-				};
+};
 
 static void
 makeniche(trap_type)
@@ -477,8 +480,9 @@ int trap_type;
 			trap_type = ROCKTRAP;
 		    ttmp = maketrap(xx, yy+dy, trap_type);
 		    ttmp->once = 1;
-		    if (*trap_engravings[trap_type])
-			make_engr_at(xx, yy-dy, trap_engravings[trap_type], 0L, DUST);
+		    if (trap_engravings[trap_type])
+			make_engr_at(xx, yy-dy,
+				     trap_engravings[trap_type], 0L, DUST);
 		}
 		dosdoor(xx, yy, aroom, SDOOR);
 	    } else {
@@ -571,6 +575,7 @@ clear_level_structures()
 	nroom = 0;
 	rooms[0].hx = -1;
 	nsubroom = 0;
+	subrooms[0].hx = -1;
 	doorindex = 0;
 	init_rect();
 	init_vault();
@@ -769,7 +774,7 @@ skip0:
 				     somex(croom), somey(croom), TRUE);
 
 		/* maybe make some graffiti */
-		if(!rn2(27 + 3 * depth(&u.uz))) {
+		if(!rn2(27 + 3 * abs(depth(&u.uz)))) {
 		    const char *mesg = random_engraving();
 		    if (mesg) {
 			do {
@@ -808,6 +813,8 @@ mklev()
 	makelevel();
 	bound_digging();
 	in_mklev = FALSE;
+	/* has_morgue gets cleared once morgue entered; graveyard stays set */
+	level.flags.graveyard = level.flags.has_morgue;
 	if(!level.flags.is_maze_lev) {
 	    for (croom = &rooms[0]; croom != &rooms[nroom]; croom++)
 #ifdef SPECIALIZATION
@@ -1341,7 +1348,7 @@ xchar x, y;
 	extern int n_dgns;		/* from dungeon.c */
 	d_level *source;
 	branch *br;
-	xchar u_depth;
+	schar u_depth;
 
 	br = dungeon_branch("Fort Ludios");
 	if (on_level(&knox_level, &br->end1)) {

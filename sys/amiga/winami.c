@@ -175,10 +175,10 @@ extern char toplines[BUFSZ];
 char morc;  /* the character typed in response to a --more-- prompt */
 char spaces[] =
 "                                                                           ";
-extern winid WIN_MESSAGE;
-extern winid WIN_MAP;
-extern winid WIN_STATUS;
-extern winid WIN_INVEN;
+extern NEARDATA winid WIN_MESSAGE;
+extern NEARDATA winid WIN_MAP;
+extern NEARDATA winid WIN_STATUS;
+extern NEARDATA winid WIN_INVEN;
 
 winid WIN_BASE = WIN_ERR;
 
@@ -194,6 +194,7 @@ int bigscreen = 0;
 static void outmore(struct WinDesc *);
 static void outsubstr(struct WinDesc *,char *,int);
 static void dismiss_nhwindow(winid);
+static void removetopl(int);
 
 /* This gadget data is replicated for menu/text windows... */
 static struct PropInfo PropScroll = { AUTOKNOB+FREEVERT,
@@ -230,7 +231,7 @@ struct win_setup {
     xchar offx,offy,maxrow,rows,maxcol,cols;	/* CHECK TYPES */
 } new_wins[] = {
 
-    /* First entry not used, types are based on 1 */
+    /* First entry not used, types are based at 1 */
     {{0}},
 
     /* NHW_MESSAGE */
@@ -339,7 +340,7 @@ static const char winpanicstr[]="Bad winid %d in %s()";
 #define         SIZEOF_DISKNAME 8
 
 /* The current color map */
-unsigned short amii_curmap[] = {
+unsigned short amii_initmap[] = {
 #define C_BLACK		0
 #define C_WHITE		1
 #define C_BROWN		2
@@ -389,13 +390,18 @@ struct NewScreen NewHackScreen =
 #endif
     ,
     &Hack80,  /* Font */
-    (UBYTE *)" NetHack 3.1",
+    (UBYTE *)" NetHack 3.1.1",
     NULL,     /* Gadgets */
     NULL,     /* CustomBitmap */
 #ifdef  INTUI_NEW_LOOK
     scrntags,
 #endif
 };
+
+/* topl kludges */
+#define TOPL_NOSPACE	topl_addspace=0
+#define TOPL_SPACE	topl_addspace=1
+int topl_addspace=1;
 
 /* Make sure the user sees a text string when no windowing is available */
 
@@ -659,7 +665,6 @@ amii_player_selection()
     register struct Gadget *gd;
     static int once=0;
     long class, code;
-    int i;
 
     amii_clear_nhwindow( WIN_BASE );
     if( *pl_character ){
@@ -687,6 +692,7 @@ amii_player_selection()
     {
 	return;
     }
+    WindowToFront( cwin );
 
     while( !aredone )
     {
@@ -764,7 +770,6 @@ amii_player_selection()
     CloseShWindow( cwin );
 }
 
-#ifndef KENI_S_WAY
 #include "Amiga:randwin.c"
 
 static void
@@ -788,6 +793,7 @@ allocerr:
 	if( tport ) DeletePort( tport );
 	if( trq ) DeleteExtIO( (struct IORequest *)trq );
 	Delay( 8 * 50 );
+	return;
     }
 
     if( OpenDevice( TIMERNAME, UNIT_VBLANK, (struct IORequest *)trq, 0L ) != 0 )
@@ -834,6 +840,8 @@ allocerr:
 	    if( gd->GadgetID != 0 )
 		SetBorder( gd );
 	}
+	Rnd_NewWindowStructure1.IDCMPFlags |= VANILLAKEY;
+
 	once = 1;
     }
 
@@ -859,8 +867,6 @@ allocerr:
 	    aredone = 1;
 	    timerdone = 1;
 	    GetMsg( tport );
-	    CloseShWindow( w );
-	    w = NULL;
         }
         while( w && ( imsg = (struct IntuiMessage *) GetMsg( w->UserPort ) ) )
         {
@@ -879,6 +885,11 @@ allocerr:
 	    case GADGETUP:
 		aredone = 1;
 		break;
+
+	    case VANILLAKEY:
+		if(imsg->Code=='\n' || imsg->Code==' ' || imsg->Code=='\r')
+		    aredone = 1;
+		break;
 	    }
 	    ReplyMsg( (struct Message *)imsg );
         }
@@ -895,7 +906,6 @@ allocerr:
     DeletePort( tport );
     if(w) CloseShWindow( w );
 }
-#endif
 
 /* this should probably not be needed (or be renamed)
 void
@@ -1104,7 +1114,15 @@ amii_create_nhwindow(type)
 	w=OpenShWindow( (void *)nw );
 
     if( w == NULL && type != NHW_MENU && type != NHW_TEXT )
+    {
+	char buf[ 100 ];
+
+	sprintf( buf, "nw is l: %d, t: %d, w: %d, h: %d",
+		nw->LeftEdge, nw->TopEdge,
+		nw->Width, nw->Height );
+	raw_print( buf );
 	panic("bad openwin %d",type);
+    }
 
     /* Check for an empty slot */
 
@@ -1365,9 +1383,11 @@ amii_init_nhwindows()
 	PubScreenStatus( HackScreen, 0 );
     }
 #endif
+    amiIDisplay->ypix = HackScreen->Height;
+    amiIDisplay->xpix = HackScreen->Width;
 
 #ifdef TEXTCOLOR
-    LoadRGB4(&HackScreen->ViewPort, amii_curmap, 1L << DEPTH );
+    LoadRGB4(&HackScreen->ViewPort, flags.amii_curmap, 1L << DEPTH );
 #endif
 
     /* Display the copyright etc... */
@@ -1556,12 +1576,13 @@ struct NewWindow Ask_Window = {
 
 /* Ask a question and get a response */
 
+#ifdef OLDCODE
+
 char amii_yn_function( prompt, resp, def )
     const char *prompt,*resp;
     char def;
 {
     char ch;
-#ifndef WINDOW_YN
     char buf[ 80 ];
 
     if( def && def!='q')
@@ -1582,104 +1603,149 @@ char amii_yn_function( prompt, resp, def )
 	    ch = def;
 	    break;
 	}
+	else if( isdigit(ch) && index(resp, '#')){
+		
+	}
     } while( resp && *resp && index( resp, ch ) == 0 );
 
     cursor_off( WIN_MESSAGE );
     if( ch == '\33' )
     {
-	/*amii_addtopl( " you change your mind..." );*/
-	ch = 0;
+	if(index(resp, 'q'))
+		ch = 'q';
+	else if(index(resp, 'n'))
+		ch = 'n';
+	else ch = def;
     }
     /* Try this to make topl behave more appropriately? */
     clear_nhwindow( WIN_MESSAGE );
-#else
-    struct Window *cwin;
-    struct IntuiMessage *imsg;
-    int aredone = 0, xcor;
-    struct Gadget *gd;
-    char buf[ 4 ];
-
-    *StrString = 0;
-
-    Ask_Window.Screen = HackScreen;
-    Ask_IText1.IText = buf;
-    Ask_IText2.IText = prompt;
-    if( def )
-    {
-	sprintf( buf, "[%c]", def );
-	Ask_Window.FirstGadget = &Ask_Gadget1;
-	Ask_IText2.LeftEdge = 44;
-    }
-    else
-    {
-	Ask_Window.FirstGadget = NULL;
-	Ask_IText2.LeftEdge = 9;
-    }
-
-    /* Use this RPort to get needed dimensions */
-
-    if( cwin = wins[WIN_MAP]->win )
-    {
-    Ask_IText1.LeftEdge =
-	(Ask_Gadget1.Width - cwin->BorderLeft - cwin->BorderRight) / 2;
-    Ask_Window.Width =
-	 Ask_IText2.LeftEdge + (5 + strlen( prompt )) * txwidth;
-    xcor = Ask_IText2.LeftEdge + (2 + strlen( prompt )) * txwidth;
-    }
-
-    if( ( cwin = OpenShWindow( (void *)&Ask_Window ) ) == NULL )
-	return( 0 );
-
-    PrintIText( cwin->RPort, &Ask_IntuiTextList1, 0, 0 );
-
-    while( !aredone )
-    {
-	WaitPort( cwin->UserPort );
-	while( ( imsg = (void *) GetMsg( cwin->UserPort ) ) != NULL )
-	{
-	    switch( imsg->Class )
-	    {
-		case VANILLAKEY:
-		    Move( cwin->RPort, xcor,
-			Ask_IText2.TopEdge + txheight - 1 );
-		    ch = imsg->Code;
-		    if( ch != '\33' )
-		    {
-			Text( cwin->RPort, &ch, 1 );
-			if( resp == NULL || *resp == 0 ||
-							index( resp, ch ) )
-			{
-			    aredone = 1;
-			    Delay( 45 );
-			}
-			else
-			    DisplayBeep( NULL );
-		    }
-		    else
-		    {
-			aredone = 1;
-		    }
-		    break;
-
-		case GADGETUP:
-		    gd = (struct Gadget *) imsg->IAddress;
-		    switch( gd->GadgetID )
-		    {
-			case 1:
-			    ch = def;
-			    aredone = 1;
-			    break;
-		    }
-		    break;
-	    }
-	    ReplyMsg( (struct Message *) imsg );
-	}
-    }
-
-    CloseShWindow( cwin );
-#endif
     return( ch );
 }
+#else
+char amii_yn_function(query,resp, def)
+const char *query,*resp;
+char def;
+/*
+ *   Generic yes/no function. 'def' is the default (returned by space or
+ *   return; 'esc' returns 'q', or 'n', or the default, depending on
+ *   what's in the string. The 'query' string is printed before the user
+ *   is asked about the string.
+ *   If resp is NULL, any single character is accepted and returned.
+ */
+{
+	register char q;
+	char rtmp[40];
+	boolean digit_ok, allow_num;
+	char prompt[QBUFSZ];
+
+	if(resp) {
+	    allow_num = (index(resp, '#') != 0);
+	    if(def)
+		Sprintf(prompt, "%s [%s] (%c) ", query, resp, def);
+	    else
+		Sprintf(prompt, "%s [%s] ", query, resp);
+	    amii_addtopl(prompt);
+	} else {
+	    amii_addtopl(query);
+	    q = WindowGetchar();
+	    goto clean_up;
+	}
+
+	do {	/* loop until we get valid input */
+	    cursor_on(WIN_MESSAGE);
+	    q = lowc(WindowGetchar());
+	    cursor_off(WIN_MESSAGE);
+#if 0
+/* fix for PL2 */
+	    if (q == '\020') { /* ctrl-P */
+		if(!doprev) (void) tty_doprev_message(); /* need two initially */
+		(void) tty_doprev_message();
+		q = (char)0;
+		doprev = 1;
+		continue;
+	    } else if(doprev) {
+		tty_clear_nhwindow(WIN_MESSAGE);
+		cw->maxcol = cw->maxrow;
+		doprev = 0;
+		amii_addtopl(prompt);
+		continue;
+	    }
+#endif
+	    digit_ok = allow_num && digit(q);
+	    if (q == '\033') {
+		if (index(resp, 'q'))
+		    q = 'q';
+		else if (index(resp, 'n'))
+		    q = 'n';
+		else
+		    q = def;
+		break;
+	    } else if (index(quitchars, q)) {
+		q = def;
+		break;
+	    }
+	    if (!index(resp, q) && !digit_ok) {
+		amii_bell();
+		q = (char)0;
+	    } else if (q == '#' || digit_ok) {
+		char z, digit_string[2];
+		int n_len = 0;
+		long value = 0;
+		TOPL_NOSPACE;
+		amii_addtopl("#"),  n_len++;
+		TOPL_SPACE;
+		digit_string[1] = '\0';
+		if (q != '#') {
+		    digit_string[0] = q;
+		    TOPL_NOSPACE;
+		    amii_addtopl(digit_string),  n_len++;
+		    TOPL_SPACE;
+		    value = q - '0';
+		    q = '#';
+		}
+		do {	/* loop until we get a non-digit */
+		    cursor_on(WIN_MESSAGE);
+		    z = lowc(WindowGetchar());
+		    cursor_off(WIN_MESSAGE);
+		    if (digit(z)) {
+			value = (10 * value) + (z - '0');
+			if (value < 0) break;	/* overflow: try again */
+			digit_string[0] = z;
+			TOPL_NOSPACE;
+			amii_addtopl(digit_string),  n_len++;
+			TOPL_SPACE;
+		    } else if (z == 'y' || index(quitchars, z)) {
+			if (z == '\033')  value = -1;	/* abort */
+			z = '\n';	/* break */
+		    } else if ( z == '\b') {
+			if (n_len <= 1) { value = -1;  break; }
+			else { value /= 10;  removetopl(1),  n_len--; }
+		    } else {
+			value = -1;	/* abort */
+			amii_bell();
+			break;
+		    }
+		} while (z != '\n');
+		if (value > 0) yn_number = value;
+		else if (value == 0) q = 'n';		/* 0 => "no" */
+		else {	/* remove number from top line, then try again */
+			removetopl(n_len),  n_len = 0;
+			q = '\0';
+		}
+	    }
+	} while(!q);
+
+	if (q != '#') {
+		Sprintf(rtmp, "%c", q);
+		amii_addtopl(rtmp);
+	}
+    clean_up:
+	cursor_off(WIN_MESSAGE);
+	clear_nhwindow(WIN_MESSAGE);
+	return q;
+}
+
+#endif
 
 /* Add a line in the message window */
 
@@ -1730,15 +1796,14 @@ amii_putstr(window,attr,str)
 
     if( window == WIN_ERR || ( cw = wins[window] ) == NULL )
     {
-	/* tty does this differently - is this OK? */
 	flags.window_inited=0;
 	panic(winpanicstr,window, "putstr");
     }
 
     w = cw->win;
 
-    if(!str)return;
-    amiIDisplay->lastwin=window;    /* do we care??? */
+    if(!str) return;
+    amiIDisplay->lastwin = window;    /* do we care??? */
 
     /* NHW_MENU windows are not opened immediately, so check if we
      * have the window pointer yet
@@ -1778,7 +1843,7 @@ amii_putstr(window,attr,str)
 	    cw->curx = 0;
 	}
 
-	if(strlen(str) >= (cw->cols-MORE_FUDGE))
+	if( strlen(str) >= (cw->cols-MORE_FUDGE) )
 	{
 	    int i;
 	    char *p;
@@ -1810,27 +1875,27 @@ amii_putstr(window,attr,str)
 	    amii_cl_end( cw, cw->curx );
 	}
 
-	    /* If used all of history lines, move them down */
+	/* If used all of history lines, move them down */
 
-	    if( cw->maxrow == flags.msg_history )
-	    {
-		if( cw->data[ 0 ] )
-		    free( cw->data[ 0 ] );
-		memcpy( cw->data, &cw->data[ 1 ],
-		    ( flags.msg_history - 1 ) * sizeof( char * ) );
-		cw->data[ flags.msg_history - 1 ] =
-				(char *) alloc( strlen( toplines ) + 1 );
-		strcpy( cw->data[ flags.msg_history - 1 ], toplines );
-	    }
-	    else
-	    {
-		/* Otherwise, allocate a new one and copy the line in */
-		cw->data[ cw->maxrow ] = (char *)
-					    alloc( strlen( toplines ) + 1 );
-		strcpy( cw->data[ cw->maxrow++ ], toplines );
-	    }
-	    cw->maxcol = cw->maxrow;
-	    break;
+	if( cw->maxrow == flags.msg_history )
+	{
+	    if( cw->data[ 0 ] )
+		free( cw->data[ 0 ] );
+	    memcpy( cw->data, &cw->data[ 1 ],
+		( flags.msg_history - 1 ) * sizeof( char * ) );
+	    cw->data[ flags.msg_history - 1 ] =
+			    (char *) alloc( strlen( toplines ) + 1 );
+	    strcpy( cw->data[ flags.msg_history - 1 ], toplines );
+	}
+	else
+	{
+	    /* Otherwise, allocate a new one and copy the line in */
+	    cw->data[ cw->maxrow ] = (char *)
+					alloc( strlen( toplines ) + 1 );
+	    strcpy( cw->data[ cw->maxrow++ ], toplines );
+	}
+	cw->maxcol = cw->maxrow;
+	break;
 
     case NHW_STATUS:
 	if( cw->data[ cw->cury ] == NULL )
@@ -1942,7 +2007,7 @@ outsubstr( cw, str, len )
 	    outmore( cw );
 	}
 	else
-	{
+	if(topl_addspace){
 	    /* Otherwise, move and put out a blank separator */
 	    Text( w->RPort, spaces, 1 );
 	    cw->curx += 1;
@@ -2073,7 +2138,10 @@ amii_exit_nhwindows(str)
      * left behind...
      */
     kill_nhwindows( 0 );
-    if( str ) raw_print( str );
+    if( str ){
+	raw_print( "\n");	/* be sure we're not under the top margin */
+	raw_print( str );
+    }
 }
 
 amii_nh_poskey(x, y, mod)
@@ -2185,8 +2253,7 @@ amii_display_nhwindow(win,blocking)
     if( win == WIN_ERR || ( cw = wins[win] ) == NULL )
 	panic(winpanicstr,win,"display_nhwindow");
 
-    if( cw->type == NHW_MAP || cw->type == NHW_STATUS ||
-						cw->type == NHW_MESSAGE )
+    if( cw->type == NHW_STATUS || cw->type == NHW_MESSAGE )
     {
 	return;
     }
@@ -2234,8 +2301,9 @@ amii_display_nhwindow(win,blocking)
 	}
 
 	/* Do more if it is time... */
-	if( blocking == TRUE )
-	    outmore( wins[ win ] );
+	if( blocking == TRUE && wins[ WIN_MESSAGE ]->curx ){
+	    outmore( wins[ WIN_MESSAGE ] );
+	}
     }
 }
 
@@ -2286,6 +2354,7 @@ boolean complain;
     if( wins[ win ]->cury > 0 )
 	amii_display_nhwindow( win, TRUE );
 
+    wins[win]->morestr = NULL;		/* don't free title string */
     amii_destroy_nhwindow( win );
 }
 
@@ -3216,6 +3285,7 @@ void getlind(prompt,bufp, dflt)
 	return;
     }
 
+    WindowToFront( cwin );
     while( !aredone )
     {
 	WaitPort( cwin->UserPort );
@@ -3372,6 +3442,7 @@ void amii_bell()
 #define GADGREENPEN     4
 #define GADCOLOKAY      5
 #define GADCOLCANCEL    6
+#define GADCOLSAVE      7
 
 #include "colorwin.c"
 
@@ -3403,6 +3474,7 @@ EditColor()
     {
 	SetBorder( &Col_Okay );
 	SetBorder( &Col_Cancel );
+	SetBorder( &Col_Save );
 	once = 1;
     }
 
@@ -3489,6 +3561,66 @@ EditColor()
 			done = 1;
 			okay = 1;
 		    }
+		    else if( gd->GadgetID == GADCOLSAVE )
+		    {
+		    	FILE *fp, *nfp;
+		    	char buf[ 300 ];
+				int once = 0;
+
+    			fp = fopen( "nethack.cnf", "r" );
+    			if( !fp )
+    			{
+			    pline( "can't find nethack.cnf" );
+                    	    break;
+                    	}
+
+    			nfp = fopen( "new_nethack.cnf", "w" );
+    			if( !nfp )
+    			{
+			    pline( "can't write to new_nethack.cnf" );
+                    	    fclose( fp );
+                    	    break;
+                    	}
+			while( fgets( buf, sizeof( buf ), fp ) )
+			{
+			    if( strncmp( buf, "PENS=", 5 ) == 0 )
+			    {
+				once = 1;
+			    	fputs( "PENS=", nfp );
+			    	for( i = 0; i < (1l << DEPTH); ++i )
+			    	{
+			    	    fprintf( nfp, "%03x", colors[i] );
+			    	    if(( i + 1 ) < (1l << DEPTH))
+			    	        putc( ',', nfp );
+			    	}
+		    	        putc( '\n', nfp );
+			    }
+			    else
+			    {
+			    	fputs( buf, nfp );
+			    }
+			}
+
+			/* If none in the file yet, now write it */
+			if( !once )
+			{
+    		    	    fputs( "PENS=", nfp );
+    		    	    for( i = 0; i < (1l << DEPTH); ++i )
+    		    	    {
+    		    	        fprintf( nfp, "%03x", colors[i] );
+    		    	        if(( i + 1 ) < (1l << DEPTH))
+    		    	            putc( ',', nfp );
+    		    	    }
+    	    	            putc( '\n', nfp );
+			}
+			fclose( fp );
+			fclose( nfp );
+			unlink( "old_nethack.cnf" );
+			rename( "nethack.cnf", "old_nethack.cnf" );
+			rename( "new_nethack.cnf", "nethack.cnf" );
+			done = 1;
+			okay = 1;
+		    }
 		    else if( gd->GadgetID == GADCOLCANCEL )
 		    {
 			done = 1;
@@ -3545,10 +3677,10 @@ EditColor()
     if( okay )
     {
 	for( i = 0; i < ( 1L << DEPTH ); ++i )
-	    amii_curmap[ i ] = colors[ i ];
+	    flags.amii_curmap[ i ] = colors[ i ];
     }
 
-    LoadRGB4( &scrn->ViewPort, amii_curmap, 1L << DEPTH );
+    LoadRGB4( &scrn->ViewPort, flags.amii_curmap, 1L << DEPTH );
     CloseWindow( nw );
 }
 
@@ -3578,45 +3710,60 @@ DrawCol( w, idx, colors )
     int i, incx, incy, r, g, b;
     long flags;
 
-    bxylen = Col_NewWindowStructure1.Height - Col_Okay.Height - 4 -
+    bxylen = Col_NewWindowStructure1.Height - (Col_Okay.Height + txheight + 8) -
 		    ( Col_BluePen.TopEdge + Col_BluePen.Height + 6 );
     bxxlen = Col_BluePen.Width;
-    bxorx = Col_BluePen.LeftEdge;
+    bxorx = Col_BluePen.LeftEdge + 2;
     bxory = Col_BluePen.TopEdge + Col_BluePen.Height + 2;
 
     incx = bxxlen / (1L << DEPTH);
     incy = bxylen - 2;
 
-    SetAPen( w->RPort, 1 );
-    SetBPen( w->RPort, 0 );
+    SetAPen( w->RPort, C_WHITE );
+    SetBPen( w->RPort, C_BLACK );
     SetDrMd( w->RPort, JAM2 );
     RectFill( w->RPort, bxorx, bxory, bxorx + bxxlen - 1, bxory + bxylen );
-    SetAPen( w->RPort, 0 );
+
+    SetAPen( w->RPort, C_BLACK );
     RectFill( w->RPort, bxorx+2, bxory+1,
 				    bxorx + bxxlen - 4, bxory + bxylen - 1);
 
     for( i = 0; i < (1L << DEPTH); ++i )
     {
 	if( i == idx )
-	    SetAPen( w->RPort, 1 );
-	else
-	    SetAPen( w->RPort, 0 );
-	SetBPen( w->RPort, 0 );
-	SetDrMd( w->RPort, JAM2 );
-	RectFill( w->RPort, bxorx + 3 + (i*incx)+1, bxory + 2,
-				    bxorx + ((i+1)*incx)-2, bxory+bxylen - 2);
+	{
+	    SetAPen( w->RPort, scrnpens[ SHADOWPEN ] );
+	    Move( w->RPort, bxorx + 3 + (i*incx)+0, bxory+bxylen - 1);
+	    Draw( w->RPort, bxorx + 3 + (i*incx)+0, bxory + 1 );
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-1, bxory + 1 );
 
-	SetAPen( w->RPort, 0 );
-	SetBPen( w->RPort, 0 );
-	SetDrMd( w->RPort, JAM2 );
-	RectFill( w->RPort, bxorx + 3 + (i*incx)+2, bxory + 3,
-				    bxorx + ((i+1)*incx)-4, bxory+bxylen - 3);
+	    Move( w->RPort, bxorx + 3 + (i*incx)+1, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + 3 + (i*incx)+1, bxory + 2 );
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory + 2 );
+
+	    SetAPen( w->RPort, scrnpens[ SHINEPEN ] );
+	    Move( w->RPort, bxorx + 3 + (i*incx)+0, bxory+bxylen - 1);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-1, bxory+bxylen - 1);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-1, bxory + 1 );
+
+	    Move( w->RPort, bxorx + 3 + (i*incx)+1, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory + 2);
+	}
+	else
+	{
+	    SetAPen( w->RPort, scrnpens[ SHINEPEN ] );
+	    Move( w->RPort, bxorx + 3 + (i*incx)+1, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + 3 + (i*incx)+1, bxory + 2 );
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory + 2 );
+	    Move( w->RPort, bxorx + 3 + (i*incx)+1, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory+bxylen - 2);
+	    Draw( w->RPort, bxorx + ((i+1)*incx)-2, bxory + 2);
+	}
 
 	SetAPen( w->RPort, i );
-	SetBPen( w->RPort, 0 );
-	SetDrMd( w->RPort, JAM2 );
-	RectFill( w->RPort, bxorx + 3 +(i*incx)+4, bxory + 4,
-				    bxorx + ((i+1)*incx)-6, bxory+bxylen - 4 );
+	RectFill( w->RPort, bxorx + 3 + (i*incx)+3, bxory + 4,
+				    bxorx + ((i+1)*incx)-4, bxory+bxylen - 4);
     }
 
     DispCol( w, idx, colors );
@@ -3648,9 +3795,9 @@ DispCol( w, idx, colors )
 {
     char buf[ 50 ];
 
-    Move( w->RPort, Col_Okay.LeftEdge + Col_Okay.Width +
-	txwidth, Col_Cancel.TopEdge + txbaseline + 2 );
-    sprintf( buf, "%s=%03x %s%s", colnames[idx].name, colors[idx],
+    Move( w->RPort, Col_Save.LeftEdge,
+	Col_Save.TopEdge - 4 );
+    sprintf( buf, "%s=%03x default=%s%s", colnames[idx].name, colors[idx],
 	colnames[idx].defval,
 	"        "+strlen(colnames[idx].name)+1 );
     SetAPen( w->RPort, C_WHITE );
@@ -3667,7 +3814,7 @@ amii_setpens()
      */
     if( HackScreen != NULL )
     {
-	LoadRGB4( &HackScreen->ViewPort, amii_curmap, 1L << DEPTH );
+	LoadRGB4( &HackScreen->ViewPort, flags.amii_curmap, 1L << DEPTH );
     }
 }
 
@@ -3828,4 +3975,18 @@ port_help()
 }
 #endif
 
+static void
+removetopl(cnt)
+	int cnt;
+{
+    struct WinDesc *cw=wins[WIN_MESSAGE];
+					/* NB - this is sufficient for
+					 * yn_function, but that's it
+					 */
+    if(cw->curx < cnt)cw->curx=0;
+    else cw->curx -= cnt;
+
+    amii_curs(WIN_MESSAGE, cw->curx+1, 0);
+    amii_cl_end(cw, cw->curx);
+}
 #endif /* AMIGA_INTUITION */

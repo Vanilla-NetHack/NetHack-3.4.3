@@ -134,4 +134,11 @@
  *  directory rearrangement (dat, doc, sys, win, util)
  */
 
-#define PATCHLEVEL	0
+/*
+ *  Patch 1, February 25, 1993
+ *  add Windows NT console port (courtesy Michael Allison)
+ *  polishing of Amiga, Mac, and X11 windowing
+ *  fixing many small bugs, including the infamous 3.0 nurse relmon bug
+ */
+
+#define PATCHLEVEL	1

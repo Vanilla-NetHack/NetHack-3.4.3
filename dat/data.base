@@ -1,4 +1,4 @@
-#	NetHack data file - version 3.1a
+#	NetHack data file - version 3.1
 #	The demons are all listed first because makedefs used to have to give
 #	them special handling for #ifndef INFERNO; it doesn't matter any more.
 balrog
@@ -426,7 +426,7 @@ rust monster
 sasquatch
 		An ape-like humanoid  native to densely forested  mountains,
 		the sasquatch is  also known as "bigfoot".   Normally benign
-		are rarely seen,  this creature is reputed to be  a relative
+		and rarely seen,  this creature is reputed to be  a relative
 		of the ferocious yeti.
 snickersnee
 		Ah, never shall I forget the cry, 
@@ -503,7 +503,7 @@ wizard of yendor
 		than any normal man's, he grew weary of lesser mortals;  and
 		so, spurning all human company,  he forsook the dwellings of
 		men  and  went to live in the depths of the  Earth.  He took
-		with him the mystical artifact, the Amulet of Yendor,  which
+		with him the dreadful artifact, the Book of the Dead,  which
 		is said to hold great power indeed. Many have sought to find
 		the  wizard and  his treasure,  but none have found  him and
 		lived to tell the tale.  Woe be to the incautious adventurer

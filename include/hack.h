@@ -71,7 +71,7 @@
 #include "decl.h"
 #endif
 
-extern coord bhitpos;	/* place where thrown weapon falls to the ground */
+NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 
 /* types of calls to bhit() */
 #define ZAPPED_WAND	0

@@ -51,7 +51,7 @@ struct window_procs {
     void NDECL((*win_end_screen));
 };
 
-extern struct window_procs NEARDATA windowprocs;
+extern NEARDATA struct window_procs windowprocs;
 
 /*
  * If you wish to only support one window system and not use procedure

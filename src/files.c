@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)files.c	3.1	92/12/07	*/
+/*	SCCS Id: @(#)files.c	3.1	93/02/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,7 +17,7 @@ extern int errno;
 #include <signal.h>
 #endif
 
-#if defined(MSDOS) || defined(OS2) || defined(TOS)
+#if defined(MSDOS) || defined(OS2) || defined(TOS) || defined(WIN32)
 # ifndef GNUDOS
 #include <sys\stat.h>
 # else
@@ -62,6 +62,8 @@ char SAVEP[SAVESIZE];	/* holds path of directory for save file */
 #ifdef AMIGA
 extern char PATH[];	/* see sys/amiga/amidos.c */
 #endif
+
+extern int n_dgns;		/* from dungeon.c */
 
 static char * FDECL(set_bonesfile_name, (char *,d_level*));
 
@@ -146,11 +148,11 @@ int lev;
 	 */
 	fd = open(lock, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
 #else
-#ifdef MAC
-	fd = maccreat ( lock , LEVL_TYPE ) ;
-#else /* MAC */
+# ifdef MAC
+	fd = maccreat(lock, LEVL_TYPE);
+# else
 	fd = creat(lock, FCMASK);
-#endif /* MAC */
+# endif
 #endif /* MICRO */
 
 	return fd;
@@ -169,11 +171,11 @@ int lev;
 	if (fileinfo[lev].where != ACTIVE)
 		swapin_file(lev);
 #endif
-# ifdef MAC
-	fd = macopen ( lock , O_RDONLY | O_BINARY , LEVL_TYPE ) ;
-# else /* MAC */
+#ifdef MAC
+	fd = macopen(lock, O_RDONLY | O_BINARY, LEVL_TYPE);
+#else
 	fd = open(lock, O_RDONLY | O_BINARY, 0);
-# endif /* MAC */
+#endif
 	return fd;
 }
 
@@ -202,7 +204,8 @@ clearlocks()
 # if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP, SIG_IGN);
 # endif
-	for (x = maxledgerno(); x >= 0; x--)
+	/* can't access maxledgerno() before dungeons are created -dlc */
+	for (x = (n_dgns ? maxledgerno() : 0); x >= 0; x--)
 		delete_levelfile(x);	/* not all levels need be present */
 #endif
 }
@@ -253,11 +256,11 @@ char **bonesid;
 	fd = open(bones, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
 #else
 # ifdef MAC
-	fd = maccreat ( bones , BONE_TYPE ) ;
-# else /* MAC */
+	fd = maccreat(bones, BONE_TYPE);
+# else
 	fd = creat(bones, FCMASK);
-# endif /* MAC */
-#  if defined(VMS) && !defined(SECURE)
+# endif
+# if defined(VMS) && !defined(SECURE)
 	/*
 	   Re-protect bones file with world:read+write+execute+delete access.
 	   umask() doesn't seem very reliable; also, vaxcrtl won't let us set
@@ -267,7 +270,7 @@ char **bonesid;
 	   denies some or all access to world.
 	 */
 	(void) chmod(bones, FCMASK | 007);  /* allow other users full access */
-#  endif /* VMS && !SECURE */
+# endif /* VMS && !SECURE */
 #endif /* MICRO */
 
 	return fd;
@@ -284,7 +287,7 @@ char **bonesid;
 	*bonesid = set_bonesfile_name(bones, lev);
 	uncompress(bones);	/* no effect if nonexistent */
 #ifdef MAC
-	fd = macopen ( bones , O_RDONLY | O_BINARY , BONE_TYPE ) ;
+	fd = macopen(bones, O_RDONLY | O_BINARY, BONE_TYPE);
 #else
 	fd = open(bones, O_RDONLY | O_BINARY, 0);
 #endif
@@ -340,8 +343,8 @@ set_savefile_name()
 # else
 	Sprintf(SAVEF, "save/%d%s", (int)getuid(), plname);
 	regularize(SAVEF+5);	/* avoid . or / in name */
-# endif
-#endif
+# endif	/* MICRO */
+#endif	/* VMS */
 }
 
 #ifdef INSURANCE
@@ -366,11 +369,11 @@ set_error_savefile()
       }
 	Strcat(SAVEF, ".e;1");
 # else
-#ifdef MAC
+#  ifdef MAC
 	Strcat(SAVEF, "-e");
-#else
+#  else
 	Strcat(SAVEF, ".e");
-#endif
+#  endif
 # endif
 }
 #endif
@@ -381,30 +384,30 @@ int
 create_savefile()
 {
 	int fd;
-# ifdef AMIGA
+#ifdef AMIGA
 	fd = ami_wbench_getsave(O_WRONLY | O_CREAT | O_TRUNC);
-# else
-#  ifdef MICRO
+#else
+# ifdef MICRO
 	fd = open(SAVEF, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
+# else
+#  ifdef MAC
+	fd = maccreat(SAVEF, SAVE_TYPE);
 #  else
-#   ifdef MAC
-	fd = creat(SAVEF, SAVE_TYPE);
-#   else /* MAC */
 	fd = creat(SAVEF, FCMASK);
-#   endif /* MAC */
-#   if defined(VMS) && !defined(SECURE)
+#  endif
+#  if defined(VMS) && !defined(SECURE)
 	/*
 	   Make sure the save file is owned by the current process.  That's
 	   the default for non-privileged users, but for priv'd users the
 	   file will be owned by the directory's owner instead of the user.
 	 */
-#    ifdef getuid	/*(see vmsunix.c)*/
-#     undef getuid
-#    endif
+#   ifdef getuid	/*(see vmsunix.c)*/
+#    undef getuid
+#   endif
 	(void) chown(SAVEF, getuid(), getgid());
-#   endif /* VMS && !SECURE */
-#  endif
-# endif
+#  endif /* VMS && !SECURE */
+# endif	/* MICRO */
+#endif	/* AMIGA */
 
 	return fd;
 }
@@ -420,10 +423,10 @@ open_savefile()
 	fd = ami_wbench_getsave(O_RDONLY);
 #else
 # ifdef MAC
-	fd = macopen ( SAVEF , O_RDONLY , SAVE_TYPE ) ;
-# else /* MAC */
-	fd = open(SAVEF, O_RDONLY, 0);
-# endif /* MAC */
+	fd = macopen(SAVEF, O_RDONLY | O_BINARY, SAVE_TYPE);
+# else
+	fd = open(SAVEF, O_RDONLY | O_BINARY, 0);
+# endif
 #endif /* AMIGA */
 	return fd;
 }
@@ -476,7 +479,9 @@ const char *filename;
 	int fd;
 
 	Strcpy(cfn,filename);
-	Strcat(cfn,".Z");
+# ifdef COMPRESS_EXTENSION
+	Strcat(cfn,COMPRESS_EXTENSION);
+# endif
 	if((fd = open(cfn,O_RDONLY)) >= 0) {
 	    (void) close(fd);
 	    Strcpy(cmd, COMPRESS);
@@ -556,6 +561,14 @@ int retryct;
 			HUP raw_printf("No write permission to lock %s!",
 				       filename);
 			return FALSE;
+# ifdef VMS			/* c__translate(vmsfiles.c) */
+		    case EPERM:
+			/* could be misleading, but usually right */
+			HUP raw_printf(
+				  "Can't lock %s due to directory protection.",
+				       filename);
+			return FALSE;
+# endif
 		    case EEXIST:
 			break;	/* retry checks below */
 		    default:
@@ -620,11 +633,11 @@ const char *configfile =
 #ifdef UNIX
 			".nethackrc";
 #else
-#ifdef MAC
+# ifdef MAC
 			"NetHack defaults";
-#else
+# else
 			"NetHack.cnf";
-#endif
+# endif
 #endif
 
 static FILE *FDECL(fopen_config_file, (const char *));
@@ -825,14 +838,15 @@ char		*tmp_levels;
 #ifdef AMIGA
 	} else if (!strncmpi(buf, "PATH", 4)) {
 		(void) strncpy(PATH, bufp, PATHLEN);
+#endif
+#ifdef AMII_GRAPHICS
 	} else if (!strncmpi(buf, "PENS", 3)) {
 		int i;
 		char *t;
-		extern unsigned short amii_curmap[];
 		for (i = 0, t = strtok(bufp, ",");
 				t && i < 8;
 				t = strtok(NULL, ","), ++i) {
-			sscanf(t, "%hx", &amii_curmap[i]);
+			sscanf(t, "%hx", &flags.amii_curmap[i]);
 		}
 		amii_setpens();
 #endif
@@ -861,28 +875,26 @@ const char *filename;
 	char	buf[BUFSZ];
 	FILE	*fp;
 
-#if defined(MAC)
-	{
-		long nul = 0L ;
-		Str255 volName ;
-		/*
-		 * We should try and get this data from a rsrc, in the profile file
-		 * the user double-clicked... This data should be saved with the
-		 * save file in the resource fork, AND be saveable in "stationery"
-		 */
-		GetVol ( volName , & theDirs . dataRefNum ) ;
-		GetWDInfo ( theDirs . dataRefNum , & theDirs . dataRefNum , & theDirs .
-			dataDirID , & nul ) ;
-		if ( volName [ 0 ] > 31 ) volName [ 0 ] = 31 ;
-		for ( nul = 1 ; nul <= volName [ 0 ] ; nul ++ ) {
-			if ( volName [ nul ] == ':' ) {
-				volName [ nul ] = 0 ;
-				volName [ 0 ] = nul - 1 ;
-				break ;
-			}
+#ifdef MAC
+	long nul = 0L ;
+	Str255 volName ;
+	/*
+	 * We should try to get this data from a rsrc, in the profile file
+	 * the user double-clicked...  This data should be saved with the
+	 * save file in the resource fork, AND be saveable in "stationery"
+	 */
+	GetVol ( volName , & theDirs . dataRefNum ) ;
+	GetWDInfo ( theDirs . dataRefNum , & theDirs . dataRefNum , & theDirs .
+		dataDirID , & nul ) ;
+	if ( volName [ 0 ] > 31 ) volName [ 0 ] = 31 ;
+	for ( nul = 1 ; nul <= volName [ 0 ] ; nul ++ ) {
+		if ( volName [ nul ] == ':' ) {
+			volName [ nul ] = 0 ;
+			volName [ 0 ] = nul - 1 ;
+			break ;
 		}
-		BlockMove ( volName , theDirs . dataName , 32L ) ;
 	}
+	BlockMove ( volName , theDirs . dataName , 32L ) ;
 #endif /* MAC */
 
 	if (!(fp = fopen_config_file(filename))) return;

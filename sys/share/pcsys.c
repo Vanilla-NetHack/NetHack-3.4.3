@@ -26,6 +26,10 @@ static boolean NDECL(record_exists);
 static boolean NDECL(comspec_exists);
 #endif
 
+#ifdef WIN32CON
+extern int ProgmanLaunched;    /* from nttty.c */
+#endif
+
 # ifdef MICRO
 
 void
@@ -58,7 +62,11 @@ dosh()
 		suspend_nhwindows((char *)0);
 #   endif /* TOS */
 		chdirx(orgdir, 0);
+#ifdef __GO32__
+		if (system(comspec) < 0) {  /* wsu@eecs.umich.edu */
+#else
 		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
+#endif
 			raw_printf("Can't spawn \"%s\"!", comspec);
 			getreturn("to continue");
 		}
@@ -422,7 +430,9 @@ int code;
 
 	flushout();
 # ifndef TOS
+#  ifndef WIN32
 	enable_ctrlP();		/* in case this wasn't done */
+#  endif
 # endif
 # ifdef MFLOPPY
 	if (ramdisk) copybones(TOPERM);
@@ -438,6 +448,15 @@ int code;
 	if (colors_changed)
 		restore_colors();
 #  endif
+# endif
+# ifdef WIN32CON
+	/* Only if we started from Progman, not command prompt,
+	 * we need to get one last return, so the score board does
+	 * not vanish instantly after being created.
+	 * ProgmanLaunched is defined and set in nttty.c.
+         */
+	 
+	if (ProgmanLaunched) getreturn("to end");
 # endif
 	exit(code);
 	return;

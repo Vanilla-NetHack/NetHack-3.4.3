@@ -11,10 +11,6 @@
 #define NEED_VARARGS
 #include "hack.h"
 
-#ifdef TTY_GRAPHICS
-#include "wintty.h"
-#endif
-
 /*
  * The distinctions here are not BSD - rest but rather USG - rest, as
  * BSD still has the old sgttyb structure, but SYSV has termio. Thus:
@@ -286,7 +282,7 @@ intron()		/* enable kbd interupts if enabled when game started */
 {
 #ifdef TTY_GRAPHICS
 	/* Ugly hack to keep from changing tty modes for non-tty games -dlc */
-	if (windowprocs.win_init_nhwindows == tty_init_nhwindows &&
+	if (!strcmp(windowprocs.name, "tty") &&
 	    intr_char != nonesuch && curttyb2.intr_sym != '\003') {
 	    curttyb2.intr_sym = '\003';
 	    setctty();
@@ -299,7 +295,7 @@ introff()		/* disable kbd interrupts if required*/
 {
 #ifdef TTY_GRAPHICS
 	/* Ugly hack to keep from changing tty modes for non-tty games -dlc */
-	if (windowprocs.win_init_nhwindows == tty_init_nhwindows &&
+	if (!strcmp(windowprocs.name, "tty") &&
 	   curttyb2.intr_sym != nonesuch) {
 	    curttyb2.intr_sym = nonesuch;
 	    setctty();

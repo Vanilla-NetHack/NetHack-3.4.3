@@ -27,8 +27,11 @@ register int x;
 		impossible("rn2(0) attempted");
 		return(0);
 	}
-#endif
+	x = RND(x);
+	return(x);
+#else
 	return(RND(x));
+#endif
 }
 
 #endif /* OVL0 */
@@ -69,8 +72,11 @@ register int x;
 		impossible("rnd(0) attempted");
 		return(1);
 	}
-#endif
+	x = RND(x)+1;
+	return(x);
+#else
 	return(RND(x)+1);
+#endif
 }
 
 #endif /* OVL0 */
@@ -83,7 +89,7 @@ register int n, x;
 	register int tmp = n;
 
 #ifdef DEBUG
-	if (x == 0) {
+	if (x == 0 && n != 0) {
 		impossible("d(n,0) attempted");
 		return(1);
 	}

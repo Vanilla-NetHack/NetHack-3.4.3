@@ -636,11 +636,11 @@ register const char *let,*word;
 				word, buf);
 		}
 #ifdef REDO
-		if(!in_doagain)
-		    ilet = yn_function(qbuf, NULL, '\0');
+		if (in_doagain)
+		    ilet = readchar();
 		else
 #endif
-		    ilet = readchar();
+		    ilet = yn_function(qbuf, NULL, '\0');
 		if(ilet == '0') prezero = TRUE;
 		while(digit(ilet) && allowcnt) {
 #ifdef REDO
@@ -721,10 +721,16 @@ register const char *let,*word;
 		}
 		if(!otmp) {
 			You("don't have that object.");
+#ifdef REDO
+			if (in_doagain) return((struct obj *) 0);
+#endif
 			continue;
 		} else if (cnt < 0 || otmp->quan < cnt) {
 			You("don't have that many!  You have only %ld.",
 			    otmp->quan);
+#ifdef REDO
+			if (in_doagain) return((struct obj *) 0);
+#endif
 			continue;
 		}
 		break;
@@ -776,7 +782,7 @@ register struct obj *otmp;
     return(!!(otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)));
 }
 
-static const char NEARDATA removeables[] =
+static NEARDATA const char removeables[] =
 	{ ARMOR_CLASS, WEAPON_CLASS, RING_CLASS, AMULET_CLASS, TOOL_CLASS, 0 };
 
 /* interactive version of getobj - used for Drop, Identify and */
@@ -826,16 +832,23 @@ register int FDECL((*fn),(OBJ_P)), mx;
 	    ilets[iletct++] = ' ';
 	    if (unpaid) ilets[iletct++] = 'u';
 	    if (invent) ilets[iletct++] = 'a';
+	} else if (takeoff && invent) {
+	    ilets[iletct++] = ' ';
 	}
-	ilets[iletct] = '\0';	/* outside the if to catch iletct==0 case */
+	ilets[iletct++] = 'i';
+	ilets[iletct] = '\0';
 
-	Sprintf(qbuf,"What kinds of thing do you want to %s? [%s]",
-		word, ilets);
-	getlin(qbuf, buf);
-	if(buf[0] == '\033') {
-		clear_nhwindow(WIN_MESSAGE);
-		return(0);
-	}
+	do {
+	    Sprintf(qbuf,"What kinds of thing do you want to %s? [%s]",
+		    word, ilets);
+	    getlin(qbuf, buf);
+	    if (buf[0] == '\033') return(0);
+	    if (index(buf, 'i')) {
+		(void) display_inventory(NULL, FALSE);
+	    } else
+		break;
+	} while (1);
+
 	ip = buf;
 	olets[0] = 0;
 	while ((sym = *ip++) != 0) {
@@ -920,7 +933,7 @@ register int FDECL((*fn),(OBJ_P)), FDECL((*ckfn),(OBJ_P));
 	 */
 nextclass:
 	ilet = 'a'-1;
-	if ((*objchn)->otyp == GOLD_PIECE) ilet--;	/* extra iteration */
+	if (*objchn && (*objchn)->otyp == GOLD_PIECE) ilet--;	/* extra iteration */
 	for (otmp = *objchn; otmp; otmp = otmp2) {
 		if(ilet == 'z') ilet = 'A'; else ilet++;
 		otmp2 = otmp->nobj;
@@ -1500,29 +1513,35 @@ static boolean
 mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	register struct obj *otmp, *obj;
 {
-	if(obj->otyp != otmp->otyp || obj->unpaid != otmp->unpaid ||
-	   obj->spe != otmp->spe || obj->dknown != otmp->dknown ||
-	   (obj->bknown != otmp->bknown && pl_character[0] != 'P') ||
-	   obj->cursed != otmp->cursed || obj->blessed != otmp->blessed ||
-	   obj->no_charge != otmp->no_charge ||
-	   obj->obroken != otmp->obroken ||
-	   obj->otrapped != otmp->otrapped ||
-	   obj->oeroded != otmp->oeroded)
+	if (obj->otyp != otmp->otyp || obj->unpaid != otmp->unpaid ||
+	    obj->spe != otmp->spe || obj->dknown != otmp->dknown ||
+	    (obj->bknown != otmp->bknown && pl_character[0] != 'P') ||
+	    obj->cursed != otmp->cursed || obj->blessed != otmp->blessed ||
+	    obj->no_charge != otmp->no_charge ||
+	    obj->obroken != otmp->obroken ||
+	    obj->otrapped != otmp->otrapped ||
+	    obj->lamplit != otmp->lamplit ||
+	    obj->oeroded != otmp->oeroded)
 	    return(FALSE);
 
-	if((obj->oclass==WEAPON_CLASS || obj->oclass==ARMOR_CLASS) &&
-	   (obj->oerodeproof!=otmp->oerodeproof || obj->rknown!=otmp->rknown))
-		return FALSE;
+	if ((obj->oclass==WEAPON_CLASS || obj->oclass==ARMOR_CLASS) &&
+	    (obj->oerodeproof!=otmp->oerodeproof || obj->rknown!=otmp->rknown))
+	    return FALSE;
 
-	if(obj->oclass == FOOD_CLASS && (obj->oeaten != otmp->oeaten ||
-		obj->orotten != otmp->orotten))
-		return(FALSE);
+	if (obj->oclass == FOOD_CLASS && (obj->oeaten != otmp->oeaten ||
+					  obj->orotten != otmp->orotten))
+	    return(FALSE);
 
-	if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN) {
+	if (obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN) {
 		if((obj->corpsenm != otmp->corpsenm) ||
 			(ONAME(obj) && strcmp(ONAME(obj), ONAME(otmp))))
 				return FALSE;
 	}
+
+	/* allow candle merging only if their ages are close */
+	/* see burn_lamps() for a reference for the magic "25" */
+	if (Is_candle(obj) && obj->age/25 != otmp->age/25)
+	    return(FALSE);
 
 /* if they have names, make sure they're the same */
 	if ( (obj->onamelth != otmp->onamelth &&
@@ -1661,13 +1680,13 @@ extern const char obj_symbols[];	/* o_init.c */
  * Conversion from a symbol to a string for printing object classes.
  * This must match the array obj_symbols[].
  */
-static const char NEARDATA *names[] = {
+static NEARDATA const char *names[] = {
 	"Illegal objects", "Amulets", "Coins", "Comestibles", "Weapons",
 	"Tools", "Iron balls", "Chains", "Boulders/Statues", "Armor",
 	"Potions", "Scrolls", "Wands", "Spellbooks", "Rings", "Gems"
 };
 
-static const char NEARDATA oth_symbols[] = {
+static NEARDATA const char oth_symbols[] = {
 #ifdef WIZARD
 	VENOM_CLASS,
 #endif
@@ -1675,7 +1694,7 @@ static const char NEARDATA oth_symbols[] = {
 	'\0'
 };
 
-static const char NEARDATA *oth_names[] = {
+static NEARDATA const char *oth_names[] = {
 #ifdef WIZARD
 	"Venoms",
 #endif
@@ -1690,8 +1709,8 @@ boolean unpaid;
 	const char *class_name;
 	const char *pos = index(obj_symbols, let);
 	int len;
-	static char NEARDATA *buf = NULL;
-	static unsigned NEARDATA bufsiz = 0;
+	static NEARDATA char *buf = NULL;
+	static NEARDATA unsigned bufsiz = 0;
 
 	if (pos)
 	    class_name = names[pos - obj_symbols];

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)read.c	3.1	93/02/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,7 +15,7 @@
 
 boolean	known;
 
-static const char NEARDATA readable[] =
+static NEARDATA const char readable[] =
 		   { ALL_CLASSES, SCROLL_CLASS, SPBOOK_CLASS, 0 };
 static const char all_count[] = { ALLOW_COUNT, ALL_CLASSES, 0 };
 
@@ -281,6 +281,7 @@ int curse_bless;
 		break;
 	    case HORN_OF_PLENTY:
 	    case BAG_OF_TRICKS:
+	    case CAN_OF_GREASE:
 		if (is_cursed) stripspe(obj);
 		else if (is_blessed) {
 		    if (obj->spe <= 10)
@@ -289,6 +290,21 @@ int curse_bless;
 		    p_glow2(obj,blue);
 		} else {
 		    obj->spe += rnd(5);
+		    p_glow1(obj);
+		}
+		break;
+	    case MAGIC_FLUTE:
+	    case MAGIC_HARP:
+	    case FROST_HORN:
+	    case FIRE_HORN:
+	    case DRUM_OF_EARTHQUAKE:
+		if (is_cursed) {
+		    stripspe(obj);
+		} else if (is_blessed) {
+		    obj->spe += d(2,4);
+		    p_glow2(obj,blue);
+		} else {
+		    obj->spe += rnd(4);
 		    p_glow1(obj);
 		}
 		break;
@@ -349,7 +365,8 @@ register struct obj	*sobj;
 	register boolean confused = (Confusion != 0);
 	register struct obj *otmp;
 
-	exercise(A_WIS, TRUE);		/* just for trying */
+	if (objects[sobj->otyp].oc_magic)
+		exercise(A_WIS, TRUE);		/* just for trying */
 	switch(sobj->otyp) {
 #ifdef MAIL
 	case SCR_MAIL:
@@ -599,6 +616,8 @@ register struct obj	*sobj;
 		    (void) makemon (confused ? &mons[PM_ACID_BLOB] :
 					(struct permonst *) 0, u.ux, u.uy);
 		}
+		/* flush monsters before asking for identification */
+		flush_screen(0);
 		break;
 	    }
 /*	    break;	/*NOTREACHED*/
@@ -836,14 +855,24 @@ register boolean on;
 struct obj *obj;
 {
 	/* first produce the text (provided you're not blind) */
-	if(Blind) goto do_it;
 	if(!on) {
-		if(u.uswallow) {
+		register struct obj *otmp;
+
+		if (!Blind) {
+		    if(u.uswallow) {
 			pline("It seems even darker in here than before.");
 			return;
+		    }
+		    You("are surrounded by darkness!");
 		}
-		You("are surrounded by darkness!");
+
+		/* the magic douses lamps, et al, too */
+		for(otmp = invent; otmp; otmp = otmp->nobj)
+		    if (otmp->lamplit)
+			(void) snuff_lit(otmp);
+		if (Blind) goto do_it;
 	} else {
+		if (Blind) goto do_it;
 		if(u.uswallow){
 			if (is_animal(u.ustuck->data))
 				pline("%s stomach is lit.",

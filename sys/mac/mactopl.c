@@ -7,7 +7,6 @@
 #include <OSUtils.h>
 #include <Packages.h>
 
-// int NDECL(mac_doprev_message);
 // char FDECL(yn_function,(const char *, const char *, CHAR_P));
 
 int FDECL ( try_key_queue , ( char * ) ) ;
@@ -24,34 +23,6 @@ void FDECL ( topl_set_resp , ( char * , char ) ) ;
 
 extern winid inSelect ;
 extern short frame_corner ;
-
-int
-mac_doprev_message(void)
-{
-	NhWindow * aWin = & theWindows [ WIN_MESSAGE ] ;
-	char * start , * stop ;
-
-	if ( ! WIN_MESSAGE )
-		return 0 ;
-
-	stop = * aWin -> windowText ;
-	start = * aWin -> windowText + aWin -> textBase - 2 ;
-
-	while ( start > stop && * start != 10 && * start != 13 )
-		start -- ;
-
-	if ( start <= stop )
-		aWin -> textBase = 0L ;
-	else
-		aWin -> textBase = start - stop + 1 ;
-	if ( aWin -> textBase > aWin -> windowTextLen )
-		aWin -> textBase = aWin -> windowTextLen ;
-
-	display_nhwindow ( WIN_MESSAGE , FALSE ) ;
-	InvalRect ( & ( aWin -> theWindow -> portRect ) ) ;
-
-	return 0 ;
-}
 
 
 char
@@ -414,7 +385,7 @@ char def;
 		topl_set_resp(resp, def);
 
 		do {
-			c = nhgetch();
+			c = readchar();
 			if (c && resp && !strchr(resp, c)) {
 				nhbell();
 				c = '\0';

@@ -27,7 +27,7 @@
 #define HUNK_RELOC32	1004
 #define HUNK_RELOC16	1005
 #define HUNK_RELOC8	1006
-/*#define HUNK_RELOC32s ???		/* ADOS 2.0 */
+#define HUNK_RELOC32s	0x3fc		/* ADOS 2.0 */
 #define HUNK_DRELOC32	0x3f7		/* Lattice & ADOS 2.0 */
 #define HUNK_DRELOC16	0x3f8		/* Lattice & ADOS 2.0 */
 #define HUNK_DRELOC8	0x3f9		/* Lattice & ADOS 2.0 */

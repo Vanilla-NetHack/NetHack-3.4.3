@@ -11,8 +11,8 @@
  */
 #define MAGIC_COOKIE 1000
 
-static boolean NEARDATA obj_zapped;
-static int NEARDATA poly_zapped;
+static NEARDATA boolean obj_zapped;
+static NEARDATA int poly_zapped;
 
 #ifdef MUSE
 /* kludge to use mondied instead of killed */
@@ -21,18 +21,19 @@ extern boolean m_using;
 
 static boolean FDECL(obj_resists, (struct obj *));
 static boolean FDECL(obj_shudders, (struct obj *));
-static void FDECL(polyuse,(struct obj*, int, int));
+static void FDECL(polyuse, (struct obj*, int, int));
 static void FDECL(do_osshock, (struct obj *));
 static void FDECL(create_polymon, (struct obj *));
 static int FDECL(burn_floor_paper,(int,int));
-static void FDECL(cancel_item,(struct obj *));
+static void FDECL(costly_cancel, (struct obj *));
+static void FDECL(cancel_item, (struct obj *));
 static int FDECL(bhitm, (struct monst *,struct obj *));
 #ifndef MUSE
-STATIC_PTR int FDECL(bhito,(struct obj *,struct obj *));
+STATIC_PTR int FDECL(bhito, (struct obj *,struct obj *));
 #endif
-STATIC_PTR int FDECL(bhitpile,(struct obj *,int (*)(OBJ_P,OBJ_P),int,int));
-static void FDECL(backfire,(struct obj *));
-static int FDECL(zhit,(struct monst *,int,int));
+STATIC_PTR int FDECL(bhitpile, (struct obj *,int (*)(OBJ_P,OBJ_P),int,int));
+static void FDECL(backfire, (struct obj *));
+static int FDECL(zhit, (struct monst *,int,int));
 
 #define ZT_MAGIC_MISSILE	(AD_MAGM-1)
 #define ZT_FIRE			(AD_FIRE-1)
@@ -267,7 +268,34 @@ boolean ininv;
 	return mtmp;
 }
 
-static const char NEARDATA charged_objs[] = { WAND_CLASS, WEAPON_CLASS, ARMOR_CLASS, 0 };
+static NEARDATA const char charged_objs[] = { WAND_CLASS, WEAPON_CLASS, ARMOR_CLASS, 0 };
+
+static void
+costly_cancel(obj)
+register struct obj *obj;
+{
+	register struct monst *shkp = (struct monst *)0;
+
+	if (carried(obj)) {
+		if (obj->unpaid) {
+	            shkp = shop_keeper(*in_rooms(u.ux, u.uy, SHOPBASE));
+		    if (!shkp) return;
+		    Norep("You cancel an unpaid object, you pay for it!");
+		    bill_dummy_object(obj);
+		}
+	} else {
+	        shkp = shop_keeper(*in_rooms(obj->ox, obj->oy, SHOPBASE));
+		if (!shkp || !inhishop(shkp)) return;
+		if (!costly_spot(obj->ox, obj->oy)) return;
+		if (costly_spot(u.ux, u.uy) && 
+				*in_rooms(u.ux, u.uy, 0) ==
+					*in_rooms(shkp->mx, shkp->my, 0)) {
+		    Norep("You cancel it, you pay for it!");
+		    bill_dummy_object(obj);
+		} else
+		    (void) stolen_value(obj, obj->ox, obj->oy, FALSE, FALSE);
+	}
+}
 
 /* cancel obj, possibly carried by you or a monster */
 static void
@@ -275,6 +303,8 @@ cancel_item(obj)
 register struct obj *obj;
 {
 	boolean	u_ring = (obj == uleft) || (obj == uright);
+	register boolean unpaid = (carried(obj) && obj->unpaid);
+	register boolean holy = (obj->otyp == POT_WATER && obj->blessed);
 
 	switch(obj->otyp) {
 		case RIN_GAIN_STRENGTH:
@@ -320,41 +350,52 @@ register struct obj *obj;
 	    obj->otyp == SLIME_MOLD ||
 #endif
 	    obj->otyp == SKELETON_KEY ||
-	    obj->otyp == LARGE_BOX || obj->otyp == CHEST))
+	    obj->otyp == LARGE_BOX || obj->otyp == CHEST ||
+	    obj->otyp == OIL_LAMP || obj->otyp == BRASS_LANTERN ||
+	    Is_candle(obj) || obj->otyp == CANDELABRUM_OF_INVOCATION)) {
+	        costly_cancel(obj);
 		obj->spe = (obj->oclass == WAND_CLASS) ? -1 : 0;
-
-	if (obj->otyp == OIL_LAMP || obj->otyp == BRASS_LANTERN
-	    || Is_candle(obj) || obj->otyp == CANDELABRUM_OF_INVOCATION) {
-
-	    /* reducing a candle's age to 0 is */
-	    /* the same as destroying it.      */
-	    if (!Is_candle(obj)) obj->age = 0;
-
-	    /* reducing a candelabrum age to 0 */
-	    /* is the same as de-candling it.  */
-	    if(obj->otyp == CANDELABRUM_OF_INVOCATION) obj->spe = 0;
-
-	    obj->lamplit = 0;
-	    check_lamps();
-	}
-
+		if (unpaid) addtobill(obj, TRUE, FALSE, TRUE);
+	    }
 	if (obj->oclass == SCROLL_CLASS
+	    && obj->otyp != SCR_BLANK_PAPER
 #ifdef MAIL
 	    && obj->otyp != SCR_MAIL
 #endif
-	   )
+	   ) {
+	    costly_cancel(obj);
 	    obj->otyp = SCR_BLANK_PAPER;
-
-	if (obj->oclass == SPBOOK_CLASS && obj->otyp != SPE_BOOK_OF_THE_DEAD)
+	    if (unpaid) addtobill(obj, TRUE, FALSE, TRUE);
+        }
+	if (obj->oclass == SPBOOK_CLASS &&
+	                   obj->otyp != SPE_BOOK_OF_THE_DEAD &&
+	                   obj->otyp != SPE_BLANK_PAPER) {
+	    costly_cancel(obj);
 	    obj->otyp = SPE_BLANK_PAPER;
-
-	if (obj->oclass == POTION_CLASS && obj->otyp != POT_BOOZE)
-	    obj->otyp = (obj->otyp==POT_SICKNESS || obj->otyp==POT_SEE_INVISIBLE || obj->otyp==POT_FRUIT_JUICE) ? POT_FRUIT_JUICE : POT_WATER;
+	    if (unpaid) addtobill(obj, TRUE, FALSE, TRUE);
+	}
+	if (obj->oclass == POTION_CLASS && obj->otyp != POT_BOOZE) {
+	    if (obj->otyp==POT_SICKNESS ||
+	                 obj->otyp==POT_SEE_INVISIBLE) {
+	            costly_cancel(obj);
+	            obj->otyp = POT_FRUIT_JUICE;
+		    if (unpaid) addtobill(obj, TRUE, FALSE, TRUE);
+	    } else {
+	            if (obj->otyp != POT_FRUIT_JUICE &&
+			                     obj->otyp != POT_WATER) {
+		        costly_cancel(obj);
+	                obj->otyp = POT_WATER;
+			if (unpaid) addtobill(obj, TRUE, FALSE, TRUE);
+		    }
+	    }
 	    /* sickness is "biologically contaminated" fruit juice; cancel it
 	     * and it just becomes fruit juice... whereas see invisible
 	     * tastes like "enchanted" fruit juice, it similarly cancels.
 	     */
+	}
+	if (holy) costly_cancel(obj);
 	unbless(obj);
+	if (unpaid && holy) addtobill(obj, TRUE, FALSE, TRUE);
 	uncurse(obj);
 }
 
@@ -434,6 +475,7 @@ create_polymon(obj)
 {
 	struct permonst *mdat = (struct permonst *)0;
 	struct monst *mtmp;
+	char *material;
 	int pm_index;
 
 	/* no golems if you zap only one object -- not enough stuff */
@@ -445,6 +487,7 @@ create_polymon(obj)
 	case METAL:
 	case MITHRIL:
 	    pm_index = PM_IRON_GOLEM;
+	    material = "metal ";
 	    break;
 	case COPPER:
 	case SILVER:
@@ -454,23 +497,29 @@ create_polymon(obj)
 	case GLASS:
 	case MINERAL:
 	    pm_index = rn2(2) ? PM_STONE_GOLEM : PM_CLAY_GOLEM;
+	    material = "lithic ";
 	    break;
 	case 0:
 	    /* there is no flesh type, but all food is type 0, so we use it */
 	    pm_index = PM_FLESH_GOLEM;
+	    material = "organic ";
 	    break;
 	case WOOD:
 	    pm_index = PM_WOOD_GOLEM;
+	    material = "wood ";
 	    break;
 	case LEATHER:
 	    pm_index = PM_LEATHER_GOLEM;
+	    material = "leather ";
 	    break;
 	case CLOTH:
 	    pm_index = PM_ROPE_GOLEM;
+	    material = "cloth ";
 	    break;
 	default:
 	    /* if all else fails... */
 	    pm_index = PM_STRAW_GOLEM;
+	    material = "";
 	    break;
 	}
 
@@ -481,8 +530,8 @@ create_polymon(obj)
 	polyuse(obj, poly_zapped, (int)mons[pm_index].cwt);
 
 	if(!Blind && mtmp) {
-	    pline("Some objects in the pile merge.");
-	    pline("%s rises from the pile!", Amonnam(mtmp));
+	    pline("Some %sobjects meld, and %s arises from the pile!",
+		  material, a_monnam(mtmp));
 	}
 }
 
@@ -579,6 +628,10 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 		otmp2->blessed = obj->blessed;
 		otmp2->oeroded = obj->oeroded;
 		otmp2->oerodeproof = obj->oerodeproof;
+
+		/* reduce spellbook abuse */
+		if (obj->oclass == SPBOOK_CLASS)
+		    otmp2->spestudied = obj->spestudied + 1;
 
 		/* Keep chest/box traps and poisoned ammo if we may */
 		if (obj->otrapped && Is_box(otmp2))
@@ -744,7 +797,7 @@ register struct obj *wand;
 	if(wand->spe < 0 || (wand->spe == 0 && rn2(121)))
 		return 0;
 	if(wand->spe == 0)
-		You("wrest one more spell from the worn-out wand.");
+		You("wrest one last charge from the worn-out wand.");
 	wand->spe--;
 	return 1;
 }
@@ -798,7 +851,7 @@ backfire(otmp)
 	useup(otmp);
 }
 
-static const char NEARDATA zap_syms[] = { WAND_CLASS, 0 };
+static NEARDATA const char zap_syms[] = { WAND_CLASS, 0 };
 
 int
 dozap()
@@ -830,8 +883,7 @@ dozap()
 		weffects(obj);
 	}
 	if (obj->spe < 0) {
-	    pline ("%s %sturns to dust.",
-		   The(xname(obj)), Blind ? "" : "glows violently, then ");
+	    pline("%s turns to dust.", The(xname(obj)));
 	    useup(obj);
 	}
 	return(1);
@@ -850,7 +902,7 @@ zapyourself(obj)
 			shieldeff(u.ux, u.uy);
 			pline("Boing!");
 		    } else {
-			You("magically bash yourself!");
+			You("bash yourself!");
 			damage=d(8,6);
 			exercise(A_STR, FALSE);
 		    }
@@ -859,7 +911,7 @@ zapyourself(obj)
 		case WAN_LIGHTNING:
 		    makeknown(WAN_LIGHTNING);
 		    if (!Shock_resistance) {
-			pline("Idiot!  You've shocked yourself!");
+			You("shock yourself!");
 			damage = d(12,6);
 			exercise(A_CON, FALSE);
 		    } else {
@@ -883,10 +935,10 @@ zapyourself(obj)
 		case WAN_FIRE:
 		    makeknown(WAN_FIRE);
 		case FIRE_HORN:
-		    pline("You've set light to yourself!");
+		    pline("You've set yourself afire!");
 		    if (Fire_resistance) {
 			shieldeff(u.ux, u.uy);
-			You("feel mildly hot.");
+			You("feel rather warm.");
 #ifdef POLYSELF
 			ugolemeffects(AD_FIRE, d(12,6));
 #endif
@@ -902,7 +954,7 @@ zapyourself(obj)
 		case FROST_HORN:
 		    if (Cold_resistance) {
 			shieldeff(u.ux, u.uy);
-			You("feel mildly chilly.");
+			You("feel a little chill.");
 #ifdef POLYSELF
 			ugolemeffects(AD_COLD, d(12,6));
 #endif
@@ -1389,6 +1441,15 @@ struct obj *obj;			/* object tossed/used */
 			    break;
 		    }
 
+		if (weapon == THROWN_WEAPON || weapon == KICKED_WEAPON) {
+		    /* can't hit monsters/objects in rock w/solid weapons */
+		    /* but beams/zaps _can_, so we need an extra pre-check */
+		    if(!ZAP_POS(typ) || closed_door(bhitpos.x, bhitpos.y)) {
+			bhitpos.x -= ddx;
+			bhitpos.y -= ddy;
+			break;
+		    }
+		}
 		if ((mtmp = m_at(bhitpos.x, bhitpos.y)) != 0) {
 			if(weapon != ZAPPED_WAND) {
 				if(weapon != INVIS_BEAM) tmp_at(DISP_END, 0);
@@ -1495,7 +1556,7 @@ int dx, dy;
 				break;
 			} else {	/* we catch it */
 				tmp_at(DISP_END, 0);
-				pline("Skillfully, you catch the boomerang.");
+				pline("You skillfully catch the boomerang.");
 				return(&youmonst);
 			}
 		}
@@ -1634,7 +1695,9 @@ int x, y;
 	    /* Bug fix - KAA */
 	    if(obj->oclass == SCROLL_CLASS
 			|| obj->oclass == SPBOOK_CLASS) {
-		if (obj->otyp == SCR_FIRE || obj->otyp == SPE_FIREBALL)
+		if (obj->otyp == SCR_FIRE || obj->otyp == SPE_FIREBALL
+			|| obj->otyp == SPE_BOOK_OF_THE_DEAD
+		        || obj->oartifact)
 		    continue;
 		scrquan = obj->quan;
 		for(i = 1; i <= scrquan ; i++)
@@ -1711,14 +1774,26 @@ register int dx,dy;
 	    if (type >= 0) mon->data->mflags3 &= ~M3_WAITMASK;
 	    if (rnd(20) < 18 + find_mac(mon)) {
 #ifdef MUSE
-		struct obj *oshld = which_armor(mon, W_ARMS);
+		struct obj *orefl = which_armor(mon, W_ARMS);
 
-		if (oshld && oshld->otyp == SHIELD_OF_REFLECTION) {
+		if (orefl && orefl->otyp == SHIELD_OF_REFLECTION) {
 		    if(cansee(mon->mx,mon->my)) {
 			hit(fltxt, mon, exclam(0));
 			pline("But it reflects from %s shield!",
 			      s_suffix(mon_nam(mon)));
 			makeknown(SHIELD_OF_REFLECTION);
+			shieldeff(sx, sy);
+		    }
+
+		    dx = -dx;
+		    dy = -dy;
+		} else if ((orefl = which_armor(mon, W_AMUL)) &&
+					orefl->otyp == AMULET_OF_REFLECTION) {
+		    if(cansee(mon->mx,mon->my)) {
+			hit(fltxt, mon, exclam(0));
+			pline("But it reflects from %s amulet!",
+			      s_suffix(mon_nam(mon)));
+			makeknown(AMULET_OF_REFLECTION);
 			shieldeff(sx, sy);
 		    }
 
@@ -1734,10 +1809,10 @@ register int dx,dy;
 			    hit(fltxt, mon, exclam(tmp));
 			    pline("%s disintegrates.", Monnam(mon));
 			    if(Blind)
-		       You("sense the fragments of %s body reassembling!",
+		       You("hear the fragments of %s body reassembling!",
 			         s_suffix(mon_nam(mon)));
 			    else
-		       pline("%s body fragments reassemble before your %s!",
+		       pline("%s body reintegrates before your %s!",
 			         s_suffix(Monnam(mon)),
 			         makeplural(body_part(EYE)));
 		            pline("%s resurrects!", Monnam(mon));
@@ -1969,7 +2044,7 @@ register int dx,dy;
 	    }
 	    bounce = 0;
 	    range--;
-	    if(range && cansee(lsx,lsy))
+	    if(range && isok(lsx, lsy) && cansee(lsx,lsy))
 		pline("%s bounces!", The(fltxt));
 	    if(!dx || !dy || !rn2(20)) {
 		dx = -dx;
@@ -2037,7 +2112,7 @@ boolean *shopdamage;
 		if (x == u.ux && y == u.uy)
 			spoteffects();	/* possibly drown */
 	    } else if(is_pool(x,y)) {
-		const char *msgtxt = "You hear a hissing sound.";
+		const char *msgtxt = "You hear hissing gas.";
 		if(lev->typ != POOL) {	/* MOAT or DRAWBRIDGE_UP */
 		    if (cansee(x,y)) msgtxt = "Some water evaporates.";
 		} else {
@@ -2065,7 +2140,7 @@ boolean *shopdamage;
 		    if (cansee(x,y))
 			pline("The water freezes for a moment.");
 		    else
-			You("hear a soft crackling sound");
+			You("hear a soft crackling.");
 		    rangemod -= 1000;	/* stop */
 		} else {
 		    rangemod -= 3;
@@ -2155,7 +2230,7 @@ boolean *shopdamage;
 			newsym(x,y);
 		    }
 		    else if(flags.soundok)
-			You("hear a crashing sound.");
+			You("hear crashing wood.");
 		    break;
 		case ZT_LIGHTNING:
 		    if(type >= 0 && *in_rooms(x, y, SHOPBASE)) {
@@ -2169,7 +2244,7 @@ boolean *shopdamage;
 			newsym(x,y);
 		    }
 		    else if(flags.soundok)
-			You("hear a crackling sound.");
+			You("hear crackling.");
 		    break;
 		default:
 		def_case:
@@ -2188,6 +2263,8 @@ boolean *shopdamage;
 		    newsym(x,y);
 		    if(!Blind)
 			You("see a puff of smoke.");
+		    else
+			You("smell a whiff of smoke.");
 		}
 	if ((mon = m_at(x,y)) != 0) {
 		/* Cannot use wakeup() which also angers the monster */
@@ -2575,11 +2652,12 @@ retry:
 		/* The(aobjnam()) is safe since otmp is unidentified -dlc */
 		(void) hold_another_object(otmp, u.uswallow ?
 				       "Oops!  %s out of your reach!" :
-				       Is_airlevel(&u.uz) ?
-				       "Oops!  %s out of your grasp!" :
+				       Is_airlevel(&u.uz) || u.uinwater ?
+				       "Oops!  %s away from you!" :
 				       "Oops!  %s to the floor!",
-				       The(aobjnam(otmp, Is_airlevel(&u.uz) ?
-					       "slip" : "drop")),
+				       The(aobjnam(otmp,
+					     Is_airlevel(&u.uz) || u.uinwater ?
+						   "slip" : "drop")),
 				       (const char *)0);
 	    u.ublesscnt += rn1(100,50);  /* the gods take notice */
 	}

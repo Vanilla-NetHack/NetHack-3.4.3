@@ -106,8 +106,8 @@ DUNGEON:	"The Elemental Planes" "E" (5, 0)
 DESCRIPTION:	mazelike
 ALIGNMENT:	unaligned
 ENTRY:		-1
-LEVEL:		"astral" "Z" @ (1, 0)
-LEVEL:		"water"  "W" @ (2, 0)
-LEVEL:		"fire"   "F" @ (3, 0)
-LEVEL:		"air"    "A" @ (4, 0)
-LEVEL:		"earth"  "E" @ (5, 0)
+LEVEL:		"astral" "none" @ (1, 0)
+LEVEL:		"water"  "none" @ (2, 0)
+LEVEL:		"fire"   "none" @ (3, 0)
+LEVEL:		"air"    "none" @ (4, 0)
+LEVEL:		"earth"  "none" @ (5, 0)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ball.c	3.1	92/11/04	*/
+/*	SCCS Id: @(#)ball.c	3.1	93/02/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -367,20 +367,20 @@ xchar *ballx, *bally, *chainx, *chainy;
 
 	if ((is_pool(uchain->ox, uchain->oy) &&
 			(levl[uchain->ox][uchain->oy].typ == POOL ||
-			 !is_pool(uball->ox, uball->oy) || 
+			 !is_pool(uball->ox, uball->oy) ||
 			 levl[uball->ox][uball->oy].typ == POOL))
-	    || ((t = t_at(uchain->ox, uchain->oy)) && 
+	    || ((t = t_at(uchain->ox, uchain->oy)) &&
 			(t->ttyp == PIT ||
 			 t->ttyp == SPIKED_PIT ||
 			 t->ttyp == TRAPDOOR)) ) {
 
 	    if (Levitation) {
-		You("feel a tug from your iron ball.");
+		You("feel a tug from the iron ball.");
 		if (t) t->tseen = 1;
 	    } else {
 		struct monst *victim;
 
-		You("are jerked back by your iron ball!");
+		You("are jerked back by the iron ball!");
 		if (victim = m_at(uchain->ox, uchain->oy)) {
 		    int tmp;
 
@@ -556,7 +556,7 @@ drag_down()
 
 	if (forward) {
 		if(rn2(6)) {
-			You("get dragged downstairs by the iron ball.");
+			pline("The iron ball drags you downstairs!");
 			losehp(rnd(6), "dragged downstairs by an iron ball",
 				NO_KILLER_PREFIX);
 			litter();
@@ -569,7 +569,7 @@ drag_down()
 			dragchance -= 2;
 		} 
 		if( (int) dragchance >= rnd(6)) {
-			You("get dragged downstairs by the iron ball.");
+			pline("The iron ball drags you downstairs!");
 			losehp(rnd(3), "dragged downstairs by an iron ball",
 				NO_KILLER_PREFIX);
 			exercise(A_STR, FALSE);

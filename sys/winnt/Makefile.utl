@@ -1,0 +1,289 @@
+#       SCCS Id: @(#)Makefile.utl               3.1     93/02/21
+#       Copyright (c) NetHack PC Development Team 1993
+#
+#       NT NetHack 3.1 Utilities Makefile 
+#	for MS NMAKE for Windows NT
+#  
+#	NT Version Tested:  October 1992 SDK pre-release
+#			    + December '92 compiler fix
+#
+#       For questions read the Install.nt file included with
+#       the distribution.
+#
+#	Michael Allison 
+#
+# ---------------------------------------------------------------------
+#  In addition to your C compiler,
+#
+#  if you want to change   you will need a
+#  files with suffix   workalike for
+#         .y         yacc
+#         .l         lex
+#
+#  Executables.
+#
+# All the compiler and linker executables and flags are defined
+# by including the following nmake include file.
+#
+# Do not delete the following include.
+#
+!include <..\sys\winnt\nhincl.mak>
+#
+#YACC  = bison -y
+YACC   = yacc
+LEX   = flex
+#LEX   = lex
+
+#flex skeleton file (if needed)
+FLEXSKEL =
+#FLEXSKEL = -S../sys/winnt/flex.ske
+
+YTABC  = ytab.c
+YTABH  = ytab.h
+LEXYYC   = lexyy.c
+
+#
+#  Flags.
+#
+# Most flags for Windows NT Console I/O are defined in
+# the nmake include file above.
+#
+
+#
+#       Directories
+#
+
+INCL    = ..\include
+DAT     = ..\dat
+SRC     = ..\src
+DINCL   = ..\include
+
+default: all
+
+
+#############################################################################
+#
+# nothing below this line should have to be changed
+#
+NTSUB = -DWIN32CON
+#
+#  Utility Objects.
+#
+
+MAKESRC     = makedefs.c
+
+SPLEVSRC    = lev_yacc.c  lev_lex.c   lev_main.c  panic.c
+
+DGNCOMPSRC  = dgn_yacc.c  dgn_lex.c   dgn_main.c
+
+MAKEOBJS    = makedefs.o  monst.o        objects.o
+
+SPLEVOBJS   = lev_yacc.o  lev_$(LEX).o  lev_main.o  alloc.o     \
+              monst.o     objects.o     panic.o  \
+              drawing.o   decl.o
+
+DGNCOMPOBJS = dgn_yacc.o  dgn_$(LEX).o  dgn_main.o  alloc.o      \
+              panic.o
+
+RECOVOBJS   =  recover.o
+
+#
+#  Header Objects.
+#
+
+DGN_FILE_H = $(INCL)\align.h    $(INCL)\dgn_file.h
+DUNGEON_H  = $(INCL)\align.h    $(INCL)\dungeon.h
+EMIN_H     = $(DUNGEON_H)       $(INCL)\emin.h
+EPRI_H     = $(DUNGEON_H)       $(INCL)\align.h     $(INCL)\epri.h
+ESHK_H     = $(DUNGEON_H)       $(INCL)\eshk.h
+MONDATA_H  = $(INCL)\align.h    $(INCL)\mondata.h
+MONST_H    = $(INCL)\align.h    $(INCL)\monst.h
+PERMONST_H = $(INCL)\monattk.h  $(INCL)\monflag.h   $(INCL)\align.h   \
+             $(INCL)\permonst.h
+RM_H       = $(INCL)\align.h    $(INCL)\rm.h
+SP_LEV_H   = $(INCL)\align.h    $(INCL)\sp_lev.h
+VAULT_H    = $(DUNGEON_H)       $(INCL)\vault.h
+YOUPROP_H  = $(PERMONST_H)      $(MONDATA_H)        $(INCL)\prop.h    \
+             $(INCL)\pm.h       $(INCL)\youprop.h
+YOU_H      = $(MONST_H)         $(YOUPROP_H)        $(INCL)\align.h   \
+             $(INCL)\attrib.h   $(INCL)\you.h
+DISPLAY_H  = $(MONDATA_H)       $(INCL)\vision.h    $(INCL)\display.h
+NTCONF_H   = $(INCL)\micro.h    $(INCL)\system.h    $(INCL)\ntconf.h
+CONFIG_H   = $(GLOBAL_H)        $(INCL)\tradstdc.h  $(INCL)\config.h
+DECL_H     = $(YOU_H)           $(INCL)\spell.h     $(INCL)\color.h   \
+             $(INCL)\obj.h      $(INCL)\onames.h    $(INCL)\pm.h      \
+             $(INCL)\decl.h
+GLOBAL_H   = $(NTCONF_H)        $(INCL)\coord.h     $(INCL)\global.h
+HACK_H     = $(CONFIG_H)        $(DUNGEON_H)        $(DECL_H)         \
+             $(DISPLAY_H)       $(INCL)\monsym.h    $(INCL)\mkroom.h  \
+             $(INCL)\objclass.h $(INCL)\trap.h      $(INCL)\flag.h    \
+             $(RM_H)            $(INCL)\vision.h    $(INCL)\wintype.h \
+             $(INCL)\engrave.h  $(INCL)\rect.h      $(INCL)\extern.h \
+             $(INCL)\trampoli.h $(INCL)\hack.h
+
+
+
+#
+#  Make Rules.
+#
+
+.SUFFIXES:  .exe .o .c .y .l
+
+.c.o:
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $*.c
+
+#
+#  Primary Targets.
+#
+all:   utility.tag
+
+utility.tag: $(INCL)\trap.h    $(INCL)\onames.h        \
+             $(INCL)\pm.h      $(SRC)\monstr.c   $(SRC)\vis_tab.c  \
+             lev_comp.exe      dgn_comp.exe    recover.exe
+    echo utilities made > utility.tag
+
+clean:
+    if exist *.o del *.o
+    if exist *.map del *.map
+
+spotless: clean
+    if exist utility.tag       del utility.tag
+    if exist makedefs.exe      del makedefs.exe
+    if exist lev_comp.exe      del lev_comp.exe
+    if exist dgn_comp.exe      del dgn_comp.exe
+    if exist recover.exe       del recover.exe
+    if exist $(INCL)\date.h    del $(INCL)\date.h
+    if exist $(INCL)\onames.h  del $(INCL)\onames.h
+    if exist $(INCL)\pm.h      del $(INCL)\pm.h
+    if exist $(INCL)\vis_tab.h del $(INCL)\vis_tab.h
+    if exist $(SRC)\monstr.c   del $(SRC)\monstr.c
+    if exist $(SRC)\vis_tab.c  del $(SRC)\vis_tab.c
+
+#
+#  Secondary Targets.
+#
+
+$(INCL)\onames.h: makedefs.exe
+    .\makedefs -o
+
+$(INCL)\pm.h: makedefs.exe
+    .\makedefs -p
+
+$(SRC)\monstr.c: makedefs.exe
+    .\makedefs -m
+
+$(SRC)\vis_tab.h: makedefs.exe
+    .\makedefs -z
+
+$(SRC)\vis_tab.c: makedefs.exe
+    .\makedefs -z
+
+#
+#  Makedefs Stuff
+#
+
+makedefs.exe:  $(MAKEOBJS)
+    $(link) $(linkdebug) $(conflags) -out:$*.exe $(MAKEOBJS) $(conlibs)
+
+makedefs.o:  $(CONFIG_H)        $(PERMONST_H)      $(INCL)\objclass.h \
+             $(INCL)\monsym.h   $(INCL)\qtext.h
+
+#
+#  Level Compiler Dependencies
+#
+
+lev_comp.exe:  $(SPLEVOBJS)
+    @echo $(SPLEVOBJS) > $*.res
+    $(link) $(linkdebug) $(conflags) -out:$*.exe @$*.res $(conlibs)
+
+lev_yacc.o:  $(HACK_H)   $(SP_LEV_H)    lev_yacc.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $*.c
+
+lev_$(LEX).o:  $(HACK_H)   $(SP_LEV_H)    $(INCL)\lev_comp.h \
+               lev_lex.c
+	$(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o \
+               lev_lex.c
+
+lev_main.o:  $(HACK_H)
+
+$(INCL)\lev_comp.h: lev_yacc.c
+
+lev_yacc.c:  lev_comp.y
+    $(YACC) -d lev_comp.y
+    copy $(YTABC) lev_yacc.c
+    copy $(YTABH) $(DINCL)\lev_comp.h
+    del $(YTABC)
+    del $(YTABH)
+
+
+lev_lex.c:  lev_comp.l
+    $(LEX) $(FLEXSKEL) lev_comp.l
+    copy $(LEXYYC) lev_lex.c
+    del $(LEXYYC)
+
+
+#
+#  Dungeon Dependencies
+#
+
+dgn_comp.exe:  $(DGNCOMPOBJS)
+    @echo $(DGNCOMPOBJS) > $*.res
+    $(link) $(linkdebug) $(conflags) -out:$*.exe @$*.res $(conlibs)
+
+dgn_yacc.o:  $(HACK_H)   $(DGN_FILE_H)  dgn_yacc.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $*.c
+
+dgn_$(LEX).o:  $(HACK_H)   $(DGN_FILE_H)  $(INCL)\dgn_comp.h \
+               dgn_lex.c
+	$(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o \
+	       dgn_lex.c
+
+dgn_main.o:  $(HACK_H)
+
+$(INCL)\dgn_comp.h:  dgn_yacc.c
+
+dgn_yacc.c: dgn_comp.y
+    $(YACC) -d dgn_comp.y
+    copy $(YTABC) dgn_yacc.c
+    copy $(YTABH) $(DINCL)\dgn_comp.h
+    del $(YTABC)
+    del $(YTABH)
+
+dgn_lex.c:  dgn_comp.l
+    $(LEX) $(FLEXSKEL)  dgn_comp.l
+    copy $(LEXYYC) dgn_lex.c
+    del $(LEXYYC)
+
+#
+#  Recover Utility
+#
+
+recover.exe:   $(RECOVOBJS)
+    $(link) $(linkdebug) $(conflags) -out:$*.exe $(RECOVOBJS) $(conlibs)
+
+recover.o:   $(CONFIG_H) recover.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $*.c
+
+#
+#  Other Dependencies.
+#
+
+alloc.o: $(CONFIG_H)     $(SRC)\alloc.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SRC)\$*.c
+
+drawing.o: $(CONFIG_H) $(SRC)\drawing.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SRC)\$*.c
+
+decl.o: $(CONFIG_H) $(SRC)\decl.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SRC)\$*.c
+
+monst.o: $(CONFIG_H)         $(PERMONST_H)      $(ESHK_H)          \
+         $(EPRI_H)           $(VAULT_H)         $(INCL)\monsym.h   \
+         $(INCL)\color.h     $(SRC)\monst.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SRC)\$*.c
+
+objects.o: $(CONFIG_H)        $(INCL)\obj.h      $(INCL)\objclass.h \
+           $(INCL)\prop.h     $(INCL)\color.h    $(SRC)\objects.c
+    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(SRC)\$*.c
+
+panic.o:   $(CONFIG_H)

@@ -454,7 +454,7 @@ MONSTER:'E',"water elemental",random,hostile
 
 
 MAZE:"astral",' '
-FLAGS: noteleport,hardfloor,shortsighted
+FLAGS: noteleport,hardfloor,nommap,shortsighted
 MESSAGE: "You arrive on the Astral Plane!"
 MESSAGE: "Here the High Temples of the aligned gods are located."
 MESSAGE: "You sense alarm, hostility, and excitement in the air!"

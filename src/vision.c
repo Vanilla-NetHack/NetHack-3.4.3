@@ -484,7 +484,7 @@ vision_recalc(control)
 		    next_rmax[row] = max(next_rmax[row], col);
 		    next_array[row][col] = IN_SIGHT;
 		}
-	    }
+	}
 
 	/* if in a pit, just update for immediate locations */
 	else if (u.utrap && u.utraptype == TT_PIT) {

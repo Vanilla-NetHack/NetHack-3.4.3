@@ -102,15 +102,14 @@ static const struct pad {
  * "meta" bit for it.  -3.
  */
 #define SCANLO		0x10
-#define SCANHI		0x32
-#define SCANKEYS	(SCANHI - SCANLO + 1)
-#define inmap(x)	(SCANLO <= (x) && (x) <= SCANHI)
 
-static const char scanmap[SCANKEYS] = { 	/* ... */
+static const char scanmap[] = { 	/* ... */
 	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
-	0, '\\', 'z','x','c','v','b','N','m' 	/* ... */
+	0, '\\', 'z','x','c','v','b','N','m',',','.','?' 	/* ... */
 };
+
+#define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
 
 /*
  * BIOSgetch gets keys directly with a BIOS call.
@@ -232,9 +231,18 @@ char *str;
 void
 get_scr_size()
 {
+# ifdef MINT
+#  include <ioctl.h>
+	struct winsize win;
+
+	ioctl(0,TIOCGWINSZ, &win);
+	LI = win.ws_row;
+	CO = win.ws_col;
+# else
 	init_aline();
 	LI = (*((WORD  *)(_a_line + -42L))) + 1;
 	CO = (*((WORD  *)(_a_line + -44L))) + 1;
+# endif
 }
 
 # define BIGBUF  8192
@@ -289,6 +297,8 @@ unsigned long tos_numcolors = 2;
 void
 set_colors()
 {
+	static char colorHE[] = "\033q\033b0";
+
 	if (!flags.BIOS)
 		return;
 	init_aline();
@@ -298,12 +308,17 @@ set_colors()
 		return;
 	} else {
 		colors_changed = TRUE;
+		HE = colorHE;
 	}
 }
 
 void
 restore_colors()
 {
+	static char plainHE[] = "\033q";
+
+	if (colors_changed)
+		HE = plainHE;
 	colors_changed = FALSE;
 }
 # endif /* TEXTCOLOR */

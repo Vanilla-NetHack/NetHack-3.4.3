@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	3.1	92/11/26	*/
+/*	SCCS Id: @(#)dogmove.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,7 +31,7 @@ register struct monst *mon;
 }
 #endif
 
-static const char NEARDATA nofetch[] = { BALL_CLASS, CHAIN_CLASS, ROCK_CLASS, 0 };
+static NEARDATA const char nofetch[] = { BALL_CLASS, CHAIN_CLASS, ROCK_CLASS, 0 };
 
 #endif /* OVL0 */
 
@@ -479,7 +479,13 @@ skipu:;
 			 && (perceives(mtmp->data) || !mtmp2->minvis)) ||
 			(mtmp2->data==&mons[PM_GELATINOUS_CUBE] && rn2(10)) ||
 			(max_passive_dmg(mtmp2, mtmp) >= mtmp->mhp) ||
-			(mtmp->mhp*4 < mtmp->mhpmax &&
+			((mtmp->mhp*4 < mtmp->mhpmax ||
+#ifdef MULDGN
+			  mtmp2->data->msound == MS_GUARDIAN ||
+			  mtmp2->data->msound == MS_LEADER
+#endif
+
+			  ) &&
 			 mtmp2->mpeaceful && !Conflict) ||
 			   (mtmp2->data->mlet == S_COCKATRICE &&
 				!resists_ston(mtmp->data)))
@@ -493,7 +499,8 @@ skipu:;
 		    if (stat & MM_AGR_DIED) return 2;
 
 		    if ((stat & MM_HIT) && !(stat & MM_DEF_DIED) &&
-			rn2(4) && mtmp2->mlstmv != monstermoves) {
+			rn2(4) && mtmp2->mlstmv != monstermoves &&
+			!onscary(mtmp->mx, mtmp->my, mtmp2)) {
 			stat = mattackm(mtmp2, mtmp);	/* return attack */
 			if (stat & MM_DEF_DIED) return 2;
 		    }
@@ -536,7 +543,8 @@ skipu:;
 
 		/* dog eschews cursed objects, but likes dog food */
 		for (obj = level.objects[nx][ny]; obj; obj = obj->nexthere) {
-		    if (obj->cursed && !mtmp->mleashed && uncursedcnt)
+		    if (obj->cursed && !mtmp->mleashed && uncursedcnt &&
+			has_edog)
 			goto nxti;
 		    if (obj->cursed) cursemsg = TRUE;
 		    if (has_edog && (otyp = dogfood(mtmp, obj)) < MANFOOD &&
@@ -575,10 +583,7 @@ newdogpos:
 #ifdef WALKIES
 			if (mtmp->mleashed) { /* play it safe */
 				pline("%s breaks loose of %s leash!",
-					Monnam(mtmp),
-					humanoid(mtmp->data)
-					    ? (mtmp->female ? "her" : "his")
-					    : "its");
+				      Monnam(mtmp), his[pronoun_gender(mtmp)]);
 				m_unleash(mtmp);
 			}
 #endif

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)mkobj.c	3.1	93/02/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -66,7 +66,7 @@ const struct icp hellprobs[] = {
 { 4, AMULET_CLASS}
 };
 
-static int NEARDATA mksx=0, NEARDATA mksy=0;
+static NEARDATA int mksx=0, mksy=0;
 
 struct obj *
 mkobj_at(let,x,y, artif)
@@ -598,7 +598,7 @@ register struct obj *obj;
 	if (obj->otyp == CORPSE && obj->corpsenm > -1)
 		return (int)obj->quan * mons[obj->corpsenm].cwt;
 	else if (obj->otyp == GOLD_PIECE)
-		return (int)((obj->quan + 500L) / 1000L);
+		return (int)((obj->quan + 50L) / 100L);
 	return(wt ? wt*(int)obj->quan : ((int)obj->quan + 1)>>1);
 }
 
@@ -676,7 +676,6 @@ register int lth;
 		otmp = oname(otmp, nm, FALSE);
 		fobj = otmp;
 		level.objects[x][y] = otmp;
-		if (is_pool(x,y)) water_damage(otmp,TRUE);
 	}
 	return(otmp);
 }
@@ -689,9 +688,8 @@ register struct obj *otmp;
 
 	if (objects[otyp].oc_oprop == FIRE_RES) return FALSE;
 
-	return((objects[otyp].oc_material == WOOD ||
-			objects[otyp].oc_material == 0));
-
+	return((objects[otyp].oc_material <= WOOD &&
+			objects[otyp].oc_material != LIQUID));
 }
 
 #endif /* OVLB */
@@ -719,7 +717,6 @@ int x, y;
 	otmp->nexthere = otmp2;
 	level.objects[x][y] = otmp;
     }
-    if (is_pool(x,y)) water_damage(otmp,TRUE);
 
     /* set the new object's location */
     otmp->ox = x;

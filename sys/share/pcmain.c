@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)pcmain.c	3.1	92/12/04	*/
+/*	SCCS Id: @(#)pcmain.c	3.1	93/02/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* main.c - MSDOS, OS/2, ST, and Amiga NetHack */
+/* main.c - MSDOS, OS/2, ST, Amiga, and NT NetHack */
 
 #include "hack.h"
 
@@ -38,6 +38,9 @@ long _stksize = 16*1024;
 
 #ifdef AMIGA
 extern int bigscreen;
+#endif
+#ifdef AMII_GRAPHICS
+extern unsigned short amii_initmap[8];
 #endif
 
 static void FDECL(process_options,(int argc,char **argv));
@@ -104,6 +107,9 @@ char *argv[];
 	ami_argc=argc;
 	ami_argv=argv;
 #endif
+#ifdef AMII_GRAPHICS
+	memcpy(flags.amii_curmap,amii_initmap,sizeof(flags.amii_curmap));
+#endif
 	initoptions();
 
 #if defined(TOS) && defined(TEXTCOLOR)
@@ -160,14 +166,9 @@ char *argv[];
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = 0;	/* prevent flush_screen() */
 
-	/*
-	 * Find the creation date of this game,
-	 * so as to avoid restoring outdated savefiles.
-	 */
-	/* gethdate(hname); */
-
-	/*
-	 * We cannot do chdir earlier, otherwise gethdate will fail.
+	/* chdir shouldn't be called before this point to keep the
+	 * code parallel to other ports which call gethdate just
+	 * before here.
 	 */
 #ifdef CHDIR
 	chdirx(hackdir,1);
@@ -260,7 +261,10 @@ char *argv[];
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 #ifdef NEWS
-		if(flags.news) display_file(NEWS, FALSE);
+		if(flags.news){
+		    display_file(NEWS, FALSE);
+		    flags.news = FALSE;
+		}
 #endif
 		pline("Restoring save file...");
 		mark_synch();	/* flush output */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	3.1	92/09/01		  */
+/*	SCCS Id: @(#)pager.c	3.1	93/02/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -93,11 +93,11 @@ lookat(x, y, buf)
 		    (hp ? "high priest" : l_monnam(mtmp)),
 		    u.ustuck == mtmp ?
 #ifdef POLYSELF
-			(u.mtimedone ? ", being held" :
+			((u.mtimedone && sticks(uasmon)) ? ", being held" :
 #endif
-			", holding you"
+			 ", holding you"
 #ifdef POLYSELF
-			)
+			 )
 #endif
 			: "");
 	}
@@ -313,7 +313,7 @@ do_look(quick)
 	cc.y = u.uy;
     } else {
 	getlin("Specify what? (type the word)", out_str);
-	if (out_str[0] == '\033')
+	if (out_str[0] == '\0' || out_str[0] == '\033')
 	    return 0;
 
 	if (out_str[1]) {	/* user typed in a complete string */

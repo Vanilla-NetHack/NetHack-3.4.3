@@ -131,6 +131,9 @@
 #define M3_WANTSCAND	0x08		/* wants the candelabrum */
 #ifdef MULDGN
 #define M3_WANTSARTI	0x10		/* wants the quest artifact */
+#define M3_WANTSALL	0x1f		/* wants any major artifact */
+#else
+#define M3_WANTSALL	0x0f		/* wants any major artifact */
 #endif
 #define M3_WAITFORU	0x40		/* waits to see you or get attacked */
 #define M3_CLOSE	0x80		/* lets you close unless attacked */

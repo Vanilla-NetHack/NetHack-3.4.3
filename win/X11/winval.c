@@ -7,11 +7,23 @@
  * form widget.
  */
 #include <stdio.h>
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Xaw/Label.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Cardinals.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "config.h"	/* #define for const for non __STDC__ compilers */
 

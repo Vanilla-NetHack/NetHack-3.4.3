@@ -41,7 +41,7 @@ uwepgone()
 	}
 }
 
-static const char NEARDATA wield_objs[] =
+static NEARDATA const char wield_objs[] =
 	{ ALL_CLASSES, ALLOW_NONE, WEAPON_CLASS, TOOL_CLASS, 0 };
 
 int

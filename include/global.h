@@ -61,7 +61,9 @@ typedef xchar	boolean;		/* 0 or 1 */
 #endif
 
 #ifndef STRNCMPI
-# define strcmpi(a,b) strncmpi((a),(b),-1)
+# ifndef __SASC_60		/* SAS/C already shifts to stricmp */
+#  define strcmpi(a,b) strncmpi((a),(b),-1)
+# endif
 #endif
 
 /* comment out to test effects of each #define -- these will probably
@@ -168,6 +170,10 @@ typedef int winid;		/* a window identifier */
 # include "macconf.h"
 #endif
 
+#if defined(WIN32) && !defined(NTCONF_H)
+# include "ntconf.h"
+#endif
+
 /* Displayable name of this port; don't redefine if defined in *conf.h */
 #ifndef PORT_ID
 # ifdef AMIGA
@@ -190,6 +196,9 @@ typedef int winid;		/* a window identifier */
 # endif
 # ifdef VMS
 #  define PORT_ID	"VMS"
+# endif
+# ifdef WIN32CON
+#  define PORT_ID	"NT-Console"
 # endif
 #endif
 

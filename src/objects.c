@@ -27,11 +27,11 @@
 /*	the ctnr field of BITS currently does not map into struct objclass,
  *	and is ignored in the expansion */
 
-struct objdescr NEARDATA obj_descr[] = {
+NEARDATA struct objdescr obj_descr[] = {
 #else
 /* second pass -- object definitions */
 
-# define BITS(nmkn,mrg,uskn,ctnr,mgc,chrg,uniq,big,dir,mtrl) nmkn,mrg,uskn,mgc,chrg,uniq,big,dir,mtrl /* SCO ODT 1.1 cpp fodder */
+# define BITS(nmkn,mrg,uskn,ctnr,mgc,chrg,uniq,nwsh,big,dir,mtrl) nmkn,mrg,uskn,mgc,chrg,uniq,nwsh,big,dir,mtrl /* SCO ODT 1.1 cpp fodder */
 /* SCO's version of MSC 5.x barfs on the line above without a trailing space */
 
 #ifdef TEXTCOLOR
@@ -44,23 +44,23 @@ struct objdescr NEARDATA obj_descr[] = {
 	 prob, wt, cost, sdam, ldam, oc1, oc2, nut}
 #endif
 
-struct objclass NEARDATA objects[] = {
+NEARDATA struct objclass objects[] = {
 #endif
 /* dummy object[0] -- description [2nd arg] *must* be NULL */
-	OBJECT(OBJ("strange object",NULL), BITS(1,0,0,0,0,0,0,0,0,0), 0,
+	OBJECT(OBJ("strange object",NULL), BITS(1,0,0,0,0,0,0,0,0,0,0), 0,
 			ILLOBJ_CLASS, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0),
 
 /* weapons ... */
 #define WEAPON(name,app,kn,mg,bi,prob,wt,cost,sdam,ldam,hitbon,metal,color) OBJECT( \
-		OBJ(name,app), BITS(kn,mg,1,0,0,1,0,bi,0,metal), 0, \
+		OBJ(name,app), BITS(kn,mg,1,0,0,1,0,0,bi,0,metal), 0, \
 		WEAPON_CLASS, prob, 0, \
 		wt, cost, sdam, ldam, hitbon, 0, wt, color )
 #define PROJECTILE(name,app,kn,prob,wt,cost,sdam,ldam,hitbon,metal,prop,color) OBJECT( \
-		OBJ(name,app), BITS(kn,1,1,0,0,1,0,0,0,metal), 0, \
+		OBJ(name,app), BITS(kn,1,1,0,0,1,0,0,0,0,metal), 0, \
 		WEAPON_CLASS, prob, 0, \
 		wt, cost, sdam, ldam, hitbon, prop, wt, color )
 #define BOW(name,app,kn,prob,wt,cost,sdam,ldam,hitbon,metal,prop,color) OBJECT( \
-		OBJ(name,app), BITS(kn,0,1,0,0,1,0,0,0,metal), 0, \
+		OBJ(name,app), BITS(kn,0,1,0,0,1,0,0,0,0,metal), 0, \
 		WEAPON_CLASS, prob, 0, \
 		wt, cost, sdam, ldam, hitbon, -(prop), wt, color )
 
@@ -202,7 +202,7 @@ BOW("crossbow",   NULL,         1,  45, 50,  40, 35, 6, 0, WOOD, WP_CROSSBOW, HI
  * Some creatures are vulnerable to SILVER.
  */
 #define ARMOR(name,desc,kn,mgc,blk,power,prob,delay,wt,cost,ac,can,metal,c) OBJECT( \
-		OBJ(name,desc), BITS(kn,0,1,0,mgc,1,0,blk,0,metal), power, \
+		OBJ(name,desc), BITS(kn,0,1,0,mgc,1,0,0,blk,0,metal), power, \
 		ARMOR_CLASS, prob, delay, wt, cost, \
 		0, 0, 10 - ac, can, wt, c )
 
@@ -372,7 +372,7 @@ ARMOR("levitation boots", "snow boots",
 
 /* rings ... */
 #define RING(name,stone,power,cost,mgc,spec,metal,color) OBJECT( \
-		OBJ(name,stone), BITS(0,0,spec,0,mgc,spec,0,0,0,metal), \
+		OBJ(name,stone), BITS(0,0,spec,0,mgc,spec,0,0,0,0,metal), \
 		power, RING_CLASS, 0, 0, 3, cost, 0, 0, 0, 0, 15, color )
 RING("adornment",         "wooden",     ADORNED,        100, 0, 1, WOOD,     HI_WOOD),
 RING("gain strength",     "granite",    0,              150, 1, 1, MINERAL,  HI_MINERAL),
@@ -407,7 +407,7 @@ RING("protection from shape changers", "shiny", PROT_FROM_SHAPE_CHANGERS,
 
 /* amulets ... - THE Amulet comes last because it is special */
 #define AMULET(name,desc,power,prob) OBJECT( \
-		OBJ(name,desc), BITS(0,0,0,0,1,0,0,0,0,IRON), power, \
+		OBJ(name,desc), BITS(0,0,0,0,1,0,0,0,0,0,IRON), power, \
 		AMULET_CLASS, prob, 0, 20, 150, 0, 0, 0, 0, 20, HI_METAL )
 
 AMULET("amulet of ESP",           "circular",   TELEPAT,    180),
@@ -420,24 +420,24 @@ AMULET("amulet of change",        "square",     0,          140),
 AMULET("amulet of reflection",    "hexagonal",  REFLECTING,  80),
 AMULET("amulet of magical breathing", "octagonal",	MAGICAL_BREATHING, 70),
 OBJECT(OBJ("cheap plastic imitation of the Amulet of Yendor",
-	"Amulet of Yendor"), BITS(0,0,1,0,0,0,0,0,0,PLASTIC), 0,
+	"Amulet of Yendor"), BITS(0,0,1,0,0,0,0,0,0,0,PLASTIC), 0,
 	AMULET_CLASS, 0, 0, 20,    0, 0, 0, 0, 0,  1, HI_METAL),
-OBJECT(OBJ("Amulet of Yendor",NULL), BITS(1,0,1,0,1,0,1,0,0,MITHRIL), 0,
+OBJECT(OBJ("Amulet of Yendor",NULL), BITS(1,0,1,0,1,0,1,1,0,0,MITHRIL), 0,
 	AMULET_CLASS, 0, 0, 20, 3500, 0, 0, 0, 0, 20, HI_METAL),
 #undef AMULET
 
 /* tools ... */
 /* tools with weapon characteristics come last */
 #define TOOL(name,desc,kn,mrg,mgc,chg,prob,wt,cost,material,color) OBJECT( \
-		OBJ(name,desc), BITS(kn,mrg,chg,0,mgc,chg,0,0,0,material), 0, \
+		OBJ(name,desc), BITS(kn,mrg,chg,0,mgc,chg,0,0,0,0,material), 0, \
 		TOOL_CLASS, prob, 0, \
 		wt, cost, 0, 0, 0, 0, wt, color )
 #define CONTAINER(name,desc,kn,mgc,chg,prob,wt,cost,material,color) OBJECT( \
-		OBJ(name,desc), BITS(kn,0,chg,1,mgc,chg,0,0,0,material), 0, \
+		OBJ(name,desc), BITS(kn,0,chg,1,mgc,chg,0,0,0,0,material), 0, \
 		TOOL_CLASS, prob, 0, \
 		wt, cost, 0, 0, 0, 0, wt, color )
 #define WEPTOOL(name,desc,kn,mgc,bi,prob,wt,cost,sdam,ldam,hitbon,material,color) OBJECT( \
-		OBJ(name,desc), BITS(kn,0,1,0,mgc,1,0,bi,0,material), 0, \
+		OBJ(name,desc), BITS(kn,0,1,0,mgc,1,0,0,bi,0,material), 0, \
 		TOOL_CLASS, prob, 0, \
 		wt, cost, sdam, ldam, hitbon, 0, wt, color )
 /* containers */
@@ -516,17 +516,17 @@ WEPTOOL("unicorn horn", NULL,   1, 1, 1,         0,  20, 100,
 			12, 12, 0,	BONE, WHITE),
 /* two special, one of each kind, "tools" */
 OBJECT(OBJ("Candelabrum of Invocation", "candelabrum"),
-		BITS(0,0,1,0,1,0,1,0,0,GOLD), 0,
+		BITS(0,0,1,0,1,0,1,1,0,0,GOLD), 0,
 		TOOL_CLASS, 0, 0,10, 3000, 0, 0, 0, 0, 200, HI_GOLD),
 OBJECT(OBJ("Bell of Opening", "silver bell"),
-		BITS(0,0,1,0,1,0,1,0,0,SILVER), 0,
+		BITS(0,0,1,0,1,0,1,1,0,0,SILVER), 0,
 		TOOL_CLASS, 0, 0,10, 1000, 0, 0, 0, 0, 50, HI_SILVER),
 #undef TOOL
 #undef WEPTOOL
 
 /* comestibles ... */
 #define FOOD(name,prob,delay,wt,uk,tin,nutrition,color) OBJECT( \
-		OBJ(name,NULL), BITS(1,1,uk,0,0,0,0,0,0,tin), 0, \
+		OBJ(name,NULL), BITS(1,1,uk,0,0,0,0,0,0,0,tin), 0, \
 		FOOD_CLASS, prob, delay, \
 		wt, nutrition/20 + 5, 0, 0, 0, 0, nutrition, color )
 /* all types of food (except tins & corpses) must have a delay of at least 1. */
@@ -574,7 +574,7 @@ OBJECT(OBJ("Bell of Opening", "silver bell"),
 
 /* potions ... */
 #define POTION(name,desc,mgc,power,prob,cost,color) OBJECT( \
-		OBJ(name,desc), BITS(0,1,0,0,mgc,0,0,0,0,GLASS), power, \
+		OBJ(name,desc), BITS(0,1,0,0,mgc,0,0,0,0,0,GLASS), power, \
 		POTION_CLASS, prob, 0, 20, cost, 0, 0, 0, 0, 10, color )
 POTION("gain ability",      "ruby",           1, 0,          45, 300, RED),
 POTION("restore ability",   "pink",           1, 0,          45, 100, BRIGHT_MAGENTA),
@@ -601,7 +601,7 @@ POTION("water",             "clear",          0, 0,         125, 100, CYAN),
 
 /* scrolls ... */
 #define SCROLL(name,text,mgc,prob,cost) OBJECT( \
-		OBJ(name,text), BITS(0,1,0,0,mgc,0,0,0,0,PAPER), 0, \
+		OBJ(name,text), BITS(0,1,0,0,mgc,0,0,0,0,0,PAPER), 0, \
 		SCROLL_CLASS, prob, 0, 5, cost, 0, 0, 0, 0, 6, HI_PAPER )
 	SCROLL("enchant armor",         "ZELGO MER",            1,  63,  80),
 	SCROLL("destroy armor",         "JUYED AWK YACC",       1,  45, 100),
@@ -637,7 +637,7 @@ POTION("water",             "clear",          0, 0,         125, 100, CYAN),
 
 /* spellbooks ... */
 #define SPELL(name,desc,prob,delay,level,mgc,dir,color) OBJECT( \
-		OBJ(name,desc), BITS(0,1,0,0,mgc,0,0,0,dir,PAPER), 0, \
+		OBJ(name,desc), BITS(0,0,0,0,mgc,0,0,0,0,dir,PAPER), 0, \
 		SPBOOK_CLASS, prob, delay, \
 		50, level*100, 0, 0, 0, level, 20, color )
 SPELL("dig",             "parchment",   22,  6, 5, 1, RAY,       HI_PAPER),
@@ -682,13 +682,13 @@ SPELL(NULL,		 "thick",        0,  0, 0, 1, 0,         HI_PAPER),
 /* blank spellbook must come last because it retains its description */
 SPELL("blank paper",     "plain",       20,  0, 0, 0, 0,         HI_PAPER),
 /* a special, one of a kind, spellbook */
-OBJECT(OBJ("Book of the Dead", "papyrus"), BITS(0,0,1,0,1,0,1,0,0,PAPER), 0,
+OBJECT(OBJ("Book of the Dead", "papyrus"), BITS(0,0,1,0,1,0,1,1,0,0,PAPER), 0,
 	SPBOOK_CLASS, 0, 0,20, 3500, 0, 0, 0, 7, 20, HI_PAPER),
 #undef SPELL
 
 /* wands ... */
 #define WAND(name,typ,prob,cost,mgc,dir,metal,color) OBJECT( \
-		OBJ(name,typ), BITS(0,0,1,0,mgc,1,0,0,dir,metal), 0, WAND_CLASS, \
+		OBJ(name,typ), BITS(0,0,1,0,mgc,1,0,0,0,dir,metal), 0, WAND_CLASS, \
 		prob, 0, 7, cost, 0, 0, 0, 0, 30, color )
 WAND("light",           "glass",        95, 100, 1, NODIR,     GLASS,    HI_GLASS),
 WAND("secret door detection", "balsa",  50, 150, 1, NODIR,     WOOD,     HI_WOOD),
@@ -720,17 +720,17 @@ WAND(NULL,		"jeweled",       0, 150, 1, 0,         IRON,     HI_MINERAL),
 
 /* coins ... - so far, gold is all there is */
 #define COIN(name,prob,metal) OBJECT( \
-		OBJ(name,NULL), BITS(0,1,0,0,0,0,0,0,0,metal), 0, \
+		OBJ(name,NULL), BITS(0,1,0,0,0,0,0,0,0,0,metal), 0, \
 		GOLD_CLASS, prob, 0, 1, 0, 0, 0, 0, 0, 0, HI_GOLD )
 	COIN("gold piece",      1000, GOLD),
 #undef COIN
 
 /* gems ... - includes stones but not boulders */
 #define GEM(name,desc,prob,wt,gval,nutr,glass,color) OBJECT( \
-		OBJ(name,desc), BITS(0,1,0,0,0,0,0,0,0,glass), 0, \
+		OBJ(name,desc), BITS(0,1,0,0,0,0,0,0,0,0,glass), 0, \
 		GEM_CLASS, prob, 0, 1, gval, 3, 3, 0, WP_SLING, nutr, color )
 #define ROCK(name,desc,kn,prob,wt,gval,mgc,nutr,glass,color) OBJECT( \
-		OBJ(name,desc), BITS(kn,1,0,0,mgc,0,0,0,0,glass), 0, \
+		OBJ(name,desc), BITS(kn,1,0,0,mgc,0,0,0,0,0,glass), 0, \
 		GEM_CLASS, prob, 0, wt, gval, 3, 3, 0, WP_SLING, nutr, color )
 GEM("dilithium crystal", "white",        3, 1, 4500, 15, GEMSTONE, WHITE),
 GEM("diamond", "white",                  4, 1, 4000, 15, GEMSTONE, WHITE),
@@ -765,24 +765,24 @@ ROCK("rock", NULL,                       1,100, 10,  0, 0, 10, MINERAL, GRAY),
  * probabilities only come into effect when you try to polymorph them.
  * Boulders and statues weigh more than MAX_CARR_CAP.
  */
-OBJECT(OBJ("boulder",NULL), BITS(1,0,0,0,0,0,0,1,0,MINERAL), 0,
+OBJECT(OBJ("boulder",NULL), BITS(1,0,0,0,0,0,0,0,1,0,MINERAL), 0,
 		ROCK_CLASS,   100, 0, 6000,  0, 20, 20, 0, 0, 2000, HI_MINERAL),
-OBJECT(OBJ("statue", NULL), BITS(1,0,0,1,0,0,0,0,0,MINERAL), 0,
-		ROCK_CLASS,   900, 0, 2500,  0, 20, 20, 0, 0, 2500, HI_MINERAL),
-OBJECT(OBJ("heavy iron ball", NULL), BITS(1,0,0,0,0,0,0,0,0,IRON), 0,
+OBJECT(OBJ("statue", NULL), BITS(1,0,0,1,0,0,0,0,0,0,MINERAL), 0,
+		ROCK_CLASS,   900, 0, 2500,  0, 20, 20, 0, 0, 2500, WHITE),
+OBJECT(OBJ("heavy iron ball", NULL), BITS(1,0,0,0,0,0,0,0,0,0,IRON), 0,
 		BALL_CLASS,  1000, 0,  480, 10,  0,  0, 0, 0,  200, HI_METAL),
-OBJECT(OBJ("iron chain", NULL), BITS(1,0,0,0,0,0,0,0,0,IRON), 0,
+OBJECT(OBJ("iron chain", NULL), BITS(1,0,0,0,0,0,0,0,0,0,IRON), 0,
 		CHAIN_CLASS, 1000, 0,  120,  0,  0,  0, 0, 0,  200, HI_METAL),
 OBJECT(OBJ("blinding venom", "splash of venom"),
-		BITS(0,1,0,0,0,0,0,0,0,LIQUID), 0,
+		BITS(0,1,0,0,0,0,0,1,0,0,LIQUID), 0,
 		VENOM_CLASS,  500, 0,	 1,  0,  0,  0, 0, 0,	 0, HI_ORGANIC),
 OBJECT(OBJ("acid venom", "splash of venom"),
-		BITS(0,1,0,0,0,0,0,0,0,LIQUID), 0,
+		BITS(0,1,0,0,0,0,0,1,0,0,LIQUID), 0,
 		VENOM_CLASS,  500, 0,	 1,  0,  6,  6, 0, 0,	 0, HI_ORGANIC),
 		/* +d6 small or large */
 
 /* fencepost -- name [1st arg] *must* be NULL */
-	OBJECT(OBJ(NULL,NULL), BITS(0,0,0,0,0,0,0,0,0,0), 0,
+	OBJECT(OBJ(NULL,NULL), BITS(0,0,0,0,0,0,0,0,0,0,0), 0,
 		ILLOBJ_CLASS, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
 }; /* objects[] */
 

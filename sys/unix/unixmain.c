@@ -13,7 +13,7 @@
 #endif
 
 #if !defined(_BULL_SOURCE) && !defined(sgi)
-# if defined(POSIX_TYPES) || defined(SVR4)
+# if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
 # else
 extern struct passwd *FDECL(getpwuid,(int));
@@ -130,11 +130,16 @@ char *argv[];
 #endif
 	if(!*plname || !strncmp(plname, "player", 4)
 		    || !strncmp(plname, "games", 4)) {
-		exact_username = FALSE;
 		askname();
+	} else if (exact_username) {
+		/* guard against user names with hyphens in them */
+		int len = strlen(plname);
+		/* append the current role, if any, so that last dash is ours */
+		if (++len < sizeof plname)
+			(void)strncat(strcat(plname, "-"),
+				      pl_character, sizeof plname - len - 1);
 	}
-	if (!exact_username) /* what if their LOGNAME looks suffixed-like? */
-		plnamesuffix();	/* strip suffix from name; calls askname() */
+	plnamesuffix();		/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
 #ifdef WIZARD
@@ -191,7 +196,10 @@ char *argv[];
 		(void) chmod(SAVEF,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef NEWS
-		if(flags.news) display_file(NEWS, FALSE);
+		if(flags.news) {
+		    display_file(NEWS, FALSE);
+		    flags.news = FALSE; /* in case dorecover() fails */
+		}
 #endif
 		pline("Restoring save file...");
 		mark_synch();	/* flush output */
@@ -316,7 +324,6 @@ char *argv[];
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
 				raw_print("Player name expected after -u");
-			plnamesuffix();
 			break;
 		case 'I':
 		case 'i':

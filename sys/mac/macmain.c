@@ -114,7 +114,10 @@ main ( void )
 		boolean remember_wiz_mode = wizard;
 #endif
 #ifdef NEWS
-		if(flags.news) display_file(NEWS, FALSE);
+		if(flags.news) {
+			display_file(NEWS, FALSE);
+			flags.news = FALSE;	/* in case dorecover() fails */
+		}
 #endif
 		pline("Restoring save file...");
 		mark_synch();	/* flush output */
@@ -174,12 +177,21 @@ not_recovered:
 	attemptingto("proceed");
 #if defined(MAC_MPW32) && !defined(MODEL_FAR)
 	UnloadAllSegments();						/* Do this before naming residents */
-	IsResident( (Ptr) display_nhwindow );		/* Sample resident segments */
+	IsResident( (Ptr) um_dist );				/* Sample resident segments */
+	IsResident( (Ptr) flush_screen );
 	IsResident( (Ptr) rhack );
+	IsResident( (Ptr) remove_cadavers );
+	IsResident( (Ptr) dog_move );
+	IsResident( (Ptr) gethungry );
 	IsResident( (Ptr) engr_at );
+	IsResident( (Ptr) domove );
+	IsResident( (Ptr) carried );
 	IsResident( (Ptr) movemon );
 	IsResident( (Ptr) attacktype ) ;
 	IsResident( (Ptr) mac_get_nh_event ) ;
+	IsResident( (Ptr) dosounds ) ;
+	IsResident( (Ptr) t_at ) ;
+	IsResident( (Ptr) nh_timeout ) ;
 #endif
 	moveloop();
 	/*NOTREACHED*/
@@ -434,8 +446,7 @@ BoolListHandle   gIsResidentSeg;		/* Resident flags */
 #define	kUnLoaded 0x3F3C				/* if unloaded then a LoadSeg trap */
 										/* Note: probably incorrect for -model far! */
 
-/* #define TRACKSEGS /* Utility to print a trace of segment load frequencies. Add
-   a call to ListGUnloads into terminate() in end.c to use it */
+/* #define TRACKSEGS /* Utility to print a trace of segment load frequencies. */
 
 #ifdef TRACKSEGS
 
@@ -447,7 +458,7 @@ void ListGUnloads(void)
   int i;
   FILE *f;
   
-  f = fopen("unloads","r+");
+  f = fopen("unloads","w");
   fprintf(f,"%d calls to UnloadAllSegments\n\n",gUnloads[0]);
   for (i=1; i<=pMaxSegNum; i++) {
 	 fprintf(f,"Unloaded %10s, segment %2d, %6d times\n",gSegNames[i],i,gUnloads[i]);
@@ -504,6 +515,7 @@ void InitSegMgmt(void * mainSeg)
 	SetResLoad(false);	
 
 	#ifdef TRACKSEGS
+	atexit(&ListGUnloads);
 	gUnloads[0]=0;
 	#endif
 	for (i=1; i<=pMaxSegNum; i++) {

@@ -31,9 +31,9 @@ static int FDECL(restlevelfile, (int,XCHAR_P));
 
 boolean restoring = FALSE;
 #ifdef TUTTI_FRUTTI
-static struct fruit NEARDATA *oldfruit;
+static NEARDATA struct fruit *oldfruit;
 #endif
-static long NEARDATA omoves;
+static NEARDATA long omoves;
 
 /* Recalculate level.objects[x][y], since this info was not saved. */
 static void
@@ -251,7 +251,8 @@ boolean ghostly;
 #ifdef MUSE
 		if (mtmp->mw) mtmp->mw = mtmp->minvent;	/* wield 1st obj in inventory */
 #endif
-		if (mtmp->isshk) restshk(mtmp);
+		if (mtmp->isshk) restshk(mtmp, ghostly);
+		if (mtmp->ispriest) restpriest(mtmp, ghostly);
 
 		mtmp2 = mtmp;
 	}
@@ -330,7 +331,12 @@ unsigned int *mid;
 	flags.msg_history = oldflags.msg_history;
 	flags.echo = oldflags.echo;
 	flags.cbreak = oldflags.cbreak;
-
+#ifdef NEWS
+	flags.news = oldflags.news;
+#endif
+#ifdef AMII_GRAPHICS
+	amii_setpens();		/* use colors from save file */
+#endif
 	mread(fd, (genericptr_t) &u, sizeof(struct you));
 	if(u.uhp <= 0) {
 	    You("were not healthy enough to survive restoration.");
@@ -452,6 +458,9 @@ register int fd;
 		restoring = FALSE;
 		return(0);
 	}
+#ifdef MULDGN
+	quest_init();
+#endif
 #ifdef INSURANCE
 	savestateinlock();
 #endif
@@ -485,8 +494,9 @@ register int fd;
 			break;
 		getlev(fd, 0, ltmp, FALSE);
 #ifdef MICRO
-		curs(WIN_MAP, 11 + dotcnt++, 1);
+		curs(WIN_MAP, 1+dotcnt++, 2);
 		putstr(WIN_MAP, 0, ".");
+		mark_synch();
 #endif
 		rtmp = restlevelfile(fd, ltmp);
 		if (rtmp < 2) return(rtmp);  /* dorecover called recursively */
@@ -814,6 +824,14 @@ boolean ghostly;
 		}
 		break;
 	    }
+	} else if (ghostly && !Is_branchlev(&u.uz)) {
+	    /* Make sure there are no dangling portals.  If so, remove them */
+	    register struct trap *ttmp;
+	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+		if (ttmp->ttyp == MAGIC_PORTAL) {
+		    deltrap(ttmp);
+		    break; /* max of 1 portal/level */
+		}
 	}
 }
 
@@ -823,11 +841,11 @@ boolean ghostly;
 #ifndef ZEROCOMP_BUFSIZ
 #define ZEROCOMP_BUFSIZ BUFSZ
 #endif
-static unsigned char NEARDATA inbuf[ZEROCOMP_BUFSIZ];
-static unsigned short NEARDATA inbufp = 0;
-static unsigned short NEARDATA inbufsz = 0;
-static short NEARDATA inrunlength = -1;
-static int NEARDATA mreadfd;
+static NEARDATA unsigned char inbuf[ZEROCOMP_BUFSIZ];
+static NEARDATA unsigned short inbufp = 0;
+static NEARDATA unsigned short inbufsz = 0;
+static NEARDATA short inrunlength = -1;
+static NEARDATA int mreadfd;
 
 static int
 mgetc()

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	3.1	93/01/19	*/
+/*	SCCS Id: @(#)mon.c	3.1	93/02/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -230,7 +230,8 @@ register struct monst *mtmp;
 {
     boolean inpool, infountain;
 
-    inpool = is_pool(mtmp->mx,mtmp->my);
+    inpool = is_pool(mtmp->mx,mtmp->my) &&
+	     !is_flyer(mtmp->data) && !is_floater(mtmp->data);
     infountain = IS_FOUNTAIN(levl[mtmp->mx][mtmp->my].typ);
 
     /* Gremlin multiplying won't go on forever since the hit points
@@ -246,15 +247,26 @@ register struct monst *mtmp;
 		pline("%s multiplies.", Monnam(mtmp));
 	    dryup(mtmp->mx,mtmp->my);
 	}
+	if (inpool) water_damage(mtmp->minvent, FALSE, FALSE);
 	return (0);
     }
     if (inpool) {
-	/* most monsters drown in pools */
-	if (!is_flyer(mtmp->data) && !is_clinger(mtmp->data)
+	/* Most monsters drown in pools.  flooreffects() will take care of
+	 * water damage to dead monsters' inventory, but survivors need to
+	 * be handled here.  Swimmers are able to protect their stuff...
+	 */
+	if (!is_clinger(mtmp->data)
 	    && !is_swimmer(mtmp->data) && !magic_breathing(mtmp->data)) {
 	    if (cansee(mtmp->mx,mtmp->my))
 		pline("%s drowns.", Monnam(mtmp));
 	    mondead(mtmp);
+#ifdef MUSE
+	    if (mtmp->mhp > 0) {
+		rloc(mtmp);
+		water_damage(mtmp->minvent, FALSE, FALSE);
+		return 0;
+	    }
+#endif
 	    return (1);
 	}
     } else {
@@ -494,10 +506,15 @@ mpickstuff(mtmp, str)
 #ifdef MUSE
 		!str ? searches_for_item(mtmp,otmp) :
 #endif
-		  (index(str, otmp->oclass)
-		   && (otmp->otyp != CORPSE || mtmp->data->mlet == S_NYMPH))) {
-		if (!touch_artifact(otmp,mtmp)) return;
-		if (!can_carry(mtmp,otmp)) return;
+		  !!(index(str, otmp->oclass))) {
+		if (otmp->otyp == CORPSE && mtmp->data->mlet != S_NYMPH
+#ifdef MUSE
+    && (otmp->corpsenm != PM_COCKATRICE || !(mtmp->misc_worn_check & W_ARMG))
+#endif
+									)
+			continue;
+		if (!touch_artifact(otmp,mtmp)) continue;
+		if (!can_carry(mtmp,otmp)) continue;
 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s picks up %s.", Monnam(mtmp), doname(otmp));
 		freeobj(otmp);
@@ -565,6 +582,9 @@ struct obj *otmp;
 	register int newload = otmp->owt;
 
 	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
+#ifdef MUSE
+			&& !(mtmp->misc_worn_check & W_ARMG)
+#endif
 						&& !resists_ston(mtmp->data))
 		return(FALSE);
 	if (mtmp->isshk) return(TRUE); /* no limit */
@@ -624,8 +644,9 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 	for(nx = max(1,x-1); nx <= maxx; nx++)
 	  for(ny = max(0,y-1); ny <= maxy; ny++) {
 	    if(nx == x && ny == y) continue;
-	    if(IS_ROCK(ntyp = levl[nx][ny].typ) && !(flag & ALLOW_WALL) &&
-		!((flag & ALLOW_DIG) && may_dig(nx,ny))) continue;
+	    if(IS_ROCK(ntyp = levl[nx][ny].typ) &&
+	       !((flag & ALLOW_WALL) && may_passwall(nx,ny)) &&
+	       !((flag & ALLOW_DIG) && may_dig(nx,ny))) continue;
 	    if(IS_DOOR(ntyp) && !amorphous(mon->data) &&
 	       ((levl[nx][ny].doormask & D_CLOSED && !(flag & OPENDOOR)) ||
 		(levl[nx][ny].doormask & D_LOCKED && !(flag & UNLOCKDOOR))
@@ -837,6 +858,46 @@ register struct monst *mtmp;
 	if(mtmp->wormno) wormgone(mtmp);
 }
 
+#ifdef MUSE
+static void FDECL(lifesaved_monster, (struct monst *));
+
+static void
+lifesaved_monster(mtmp)
+struct monst *mtmp;
+{
+	struct obj *lifesave;
+
+	if ((lifesave = which_armor(mtmp, W_AMUL))
+			&& lifesave->otyp == AMULET_OF_LIFE_SAVING) {
+		pline("But wait...");
+		if (canseemon(mtmp)) {
+			pline("%s's medallion begins to glow!",
+				Monnam(mtmp));
+			makeknown(AMULET_OF_LIFE_SAVING);
+			pline("%s looks much better!", Monnam(mtmp));
+			pline("The medallion crumbles to dust!");
+		} else
+			pline("Maybe not...");
+		m_useup(mtmp, lifesave);
+		if (mtmp->mhpmax <= 0) mtmp->mhpmax = 10;
+		mtmp->mhp = mtmp->mhpmax;
+		mtmp->mcanmove = 1;
+		mtmp->mfrozen = 0;
+		if (mtmp->mtame && !mtmp->isminion) {
+			struct edog *edog = EDOG(mtmp);
+			if (edog->hungrytime < moves+500)
+				edog->hungrytime = moves+500;
+		}
+		if (mtmp->data->geno & G_GENOD)
+			pline("Unfortunately %s is still genocided...",
+				mon_nam(mtmp));
+		else
+			return;
+	}
+	mtmp->mhp = 0;
+}
+#endif
+
 void
 mondead(mtmp)
 register struct monst *mtmp;
@@ -848,6 +909,10 @@ register struct monst *mtmp;
 		 * the m_detach or there will be relmon problems later */
 		if(!grddead(mtmp)) return;
 	}
+#ifdef MUSE
+	lifesaved_monster(mtmp);
+	if (mtmp->mhp > 0) return;
+#endif
 
 	/* restore chameleon, lycanthropes to true form at death */
 	if(mtmp->cham) mtmp->data = &mons[PM_CHAMELEON];
@@ -948,6 +1013,15 @@ register struct monst *mdef;
 	struct obj *otmp, *contents;
 	xchar x = mdef->mx, y = mdef->my;
 
+#ifdef MUSE
+	/* we have to make the statue before calling mondead, to be able to
+	 * put inventory in it, and we have to check for lifesaving before
+	 * making the statue....
+	 */
+	lifesaved_monster(mdef);
+	if (mdef->mhp > 0) return;
+#endif
+
 	if((int)mdef->data->msize > MZ_TINY ||
 	   !rn2(2 + ((mdef->data->geno & G_FREQ) > 2))) {
 		otmp = mk_named_object(STATUE, mdef->data, x, y,
@@ -971,10 +1045,9 @@ register struct monst *mdef;
 	} else
 		otmp = mksobj_at(ROCK, x, y, TRUE);
 
-	mondead(mdef);
-
 	stackobj(otmp);
 	if (cansee(x, y)) newsym(x,y);
+	mondead(mdef);
 }
 
 /* another monster has killed the monster mdef */
@@ -1066,6 +1139,10 @@ xkilled(mtmp, dest)
 	if(stoned) monstone(mtmp);
 	else mondead(mtmp);
 
+#ifdef MUSE
+	if (mtmp->mhp > 0) return; /* monster lifesaved */
+#endif
+
 	mdat = mtmp->data; /* note: mondead can change mtmp->data */
 
 	if (stoned) {
@@ -1077,7 +1154,8 @@ xkilled(mtmp, dest)
 #ifdef REINCARNATION
 		 || Is_rogue_level(&u.uz)
 #endif
-	   || (mdat == &mons[PM_WRAITH] && Is_valley(&u.uz) && rn2(5)))
+	   || (level.flags.graveyard && is_undead(mdat) &&
+			rn2(mdat == &mons[PM_WRAITH] ? 5 : 2)))
 		goto cleanup;
 
 #ifdef MAIL
@@ -1136,7 +1214,7 @@ xkilled(mtmp, dest)
 	if(redisp) newsym(x,y);
 cleanup:
 	/* punish bad behaviour */
-	if(is_human(mdat) && !always_hostile(mdat) &&
+	if(is_human(mdat) && (!always_hostile(mdat) && mtmp->malign <= 0) &&
 	   (monsndx(mdat) < PM_ARCHEOLOGIST || monsndx(mdat) > PM_WIZARD) &&
 	   u.ualign.type != A_CHAOTIC) {
 		HTelepat &= ~INTRINSIC;
@@ -1321,7 +1399,22 @@ register struct monst *mtmp;
     if(mtmp->data->msound == MS_SHRIEK) {
 	if(flags.soundok)
 	    pline("%s shrieks.", Monnam(mtmp));
+	if (!rn2(10)) {
+	    if (!rn2(13))
+		(void) makemon(&mons[PM_PURPLE_WORM], 0, 0);
+	    else
+		(void) makemon((struct permonst *)0, 0, 0);
+
+	}
 	aggravate();
+    }
+    if(mtmp->data == &mons[PM_MEDUSA] && !mtmp->mcan) {
+	register int i;
+	for(i = 0; i < NATTK; i++)
+	     if(mtmp->data->mattk[i].aatyp == AT_GAZE) {
+		 (void) gazemu(mtmp, &mtmp->data->mattk[i]);
+		 break;
+	     }
     }
 }
 
@@ -1552,6 +1645,10 @@ register struct permonst *mdat;
 	newsym(mtmp->mx,mtmp->my);
 #ifdef MUSE
 	mon_break_armor(mtmp);
+	/* Unfortunately, by now we forgot who did the polymorph, so we don't
+	 * have any way to give the player credit if this was a polymorph wand.
+	 */
+	mselftouch(mtmp, "No longer petrify-resistant, ", FALSE);
 	possibly_unwield(mtmp);
 #endif
 	return(1);

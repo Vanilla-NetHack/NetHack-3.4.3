@@ -223,7 +223,7 @@ struct entity {
 
 #define ENTITIES 2
 
-static struct entity NEARDATA occupants[ENTITIES];
+static NEARDATA struct entity occupants[ENTITIES];
 
 static
 struct entity *

@@ -9,29 +9,31 @@ their digging wands to hasten exits through the pavement.
 If thou hast had trouble with rust on thy armor or weapons, thou shouldst
 know that thou canst prevent this by, while in a confused state, reading the
 magical parchments which normally are used to cause their enchantment.
+Unguents of lubrication may provide similar protection, albeit of a
+transitory nature.
 -----
 Behold the cockatrice, whose diminutive stature belies its hidden might.  The
 cockatrice can petrify any ordinary being it contacts--save those wise
 adventurers who eat a dead lizard or blob of acid when they feel themselves
 slowly turning to stone.
 -----
-While some wayfarers rely on finding finished armour in the dungeon, the
-resourceful consider dragon scales as truly enchanting raw material and
-realize that dragon scale mail is an excellent investment.
+While some wayfarers rely on scrounging finished armour in the dungeon, the
+resourceful know the mystical means by which mail may be fashioned out of
+scales from a dragon's hide.
 -----
-It is well known among travelers that extra-healing draughts may clear thy
-senses when thou art addled by hallucinations.  But never forget, the lowly
-potion which makes one sick may be used for the same purpose.
+It is customarily known among travelers that extra-healing draughts may clear
+thy senses when thou art addled by delusory visions.  But never forget, the
+lowly potion which makes one sick may be used for the same purpose.
 -----
-While the consumption of lizard flesh or water beloved of the gods may
-straighten thy head after confusion, the application of the horn of a
-creature of utmost purity can alleviate many other afflictions as well.
+While the consumption of lizard flesh or water beloved of the gods may clear
+the muddled head, the application of the horn of a creature of utmost purity
+can alleviate many other afflictions as well.
 -----
-If thou wishest to travel quickly between distant levels, thou must be
-able to control thy teleports, and be confused, and read the scroll
-which usually teleports thyself around on the level.  Daring adventurers
-have also performed the same feat sans need for scrolls or potions by
-stepping on the correct type of trap.
+If thou wouldst travel quickly between distant locations, thou must be
+able to control thy teleports, and in a confused state misread the scroll
+which usually teleports thyself locally.  Daring adventurers have also
+performed the same feat sans need for scrolls or potions by stepping into
+a particular ambuscade.
 -----
 Almost all adventurers who come this way hope to pass the dread Medusa.  To
 do this, the best advice is to keep thine eyes blindfolded and to cause the
@@ -52,7 +54,7 @@ its pernicious surface reflecteth greater truth than many homilies, yet
 even so, few hath developed the skill to identify enchanted rings by the
 transfigurations effected upon the voracious device's frame.
 -----
-The meat of enchanted creatures will ofttimes convey magical properties
+The meat of enchanted creatures ofttimes conveyeth magical properties
 unto the consumer.  A fresh corpse of floating eye doth fetch a high
 price among wizards for its utility in conferring Telepathy, by which
 the sightless may locate surrounding minds.
@@ -65,12 +67,6 @@ of the gods.
 At times, the gods may favor worthy supplicants with named blades whose
 powers echo throughout legend.  Learned wayfarers can reproduce blades of
 elven lineage, hated of the orcs, without the need for such intervention.
------
-Adventurers searching for Medusa or the Wizard of Yendor needst not wait until
-their dungeon level corresponds with their enemies' to know their location.
-Eat a floating eye, blind thyself, and use a mirror in thine own direction,
-and provided thou art lucky, thou shalt know the approximate locations of
-thine enemies.
 -----
 There are many stories of a mighty amulet, the origins of which are said
 to be ancient Yendor.  This amulet doth have awesome power, and the gods
@@ -88,13 +84,13 @@ pure sound of a silver bell shall announce thee.  The terrible runes,
 read from Moloch's book, shall cause the earth to tremble mightily.  The
 light of an enchanted candelabrum shall show thee the way.
 -----
-In the nethermost recesses of the dungeon, there standeth a castle, wherein
-layeth a wand of wishes.  If thou wouldst gain entry, bear with thee an
-instrument of music, for the drawbridge may be charmed down with the proper
-melody.  What notes comprise it only the gods know, but a musical mastermind
-may yet succeed by witful improvization.  However, the less perspicacious are
-not without recourse, should they be prepared to circumambulate the castle to
-the postern.
+In the deepest recesses of the Dungeons of Doom, guarding access to the
+nether regions, there standeth a castle, wherein layeth a wand of wishes.
+If thou wouldst gain entry, bear with thee an instrument of music, for the
+pontlevis may be charmed down with the proper melody.  What notes comprise
+it only the gods know, but a musical mastermind may yet succeed by witful
+improvization.  However, the less perspicacious are not without recourse,
+should they be prepared to circumambulate the castle to the postern.
 ----- ELBERETH
 The name of Elbereth may strike fear into the hearts of thine enemies, if
 thou doest write it upon the ground at thy feet.  If thou maintain the utmost

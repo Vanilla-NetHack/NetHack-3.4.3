@@ -126,22 +126,62 @@ main( argc, wbs )
     char *name;
     char namebuf[50];
     char **argv=(char **)wbs;
+#undef CMDLINE
+#define CMDLINE
+#ifdef CMDLINE
+    char newcmdline[80]="";
+    char forcenewcmd=0;
+#endif
 
     ZapOptions( curopts );
     InitWB( argc, (struct WBStartup *)argv );
-    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1!\n" );
+    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1.1!\n" );
     CopyRight( );
 
     ReadConfig( );
 
     /* Wait till user quits */
 
+#ifdef CMDLINE
+    {
+    int c;
+				/* slow but easy - not a critical path */
+    for(c=1;c<argc;c++){
+	if(strlen(newcmdline)+strlen(argv[c])>=sizeof(newcmdline)){
+	    forcenewcmd=1;
+	    break;
+	}
+	strcpy(eos(newcmdline),argv[c]);
+	if(!strncmp(argv[c],"-u",2)){
+	    if(!strcmp(argv[c],"-u")){
+		name= argv[c+1];
+	    }else{
+		name= &argv[c][2];
+	    }
+	}
+	if(c<argc)strcpy(eos(newcmdline)," ");
+    }
+    eos(newcmdline)[-1]='\0';
+    strcpy(argline,newcmdline);
+    if(!name){
+	errmsg(NO_FLASH, "No name found.\n");
+	argline[0]=' ';
+    }
+    }
+#endif
+
     while( !quit )
     {
-	char tbuf[8];
+	char tbuf[80];
 	char *p=tbuf;
 	char *dirname=cnfsavedir;
 /* play a game */
+
+#ifdef CMDLINE
+	if(forcenewcmd)goto build_new_argline;	/* allow initial args to be
+						 * wrong */
+#endif
+#ifndef CMDLINE
 	{
 	    int c;
 	    argline[0]='\0';
@@ -153,13 +193,22 @@ main( argc, wbs )
 		    if(!strcmp(argv[c],"-u")){
 			name= argv[c+1];
 		    }else{
-			name= &argv[c][1];
+			name= &argv[c][2];
 		    }
 		}
 		if(c<argc)strcpy(eos(argline)," ");
 	    }
 	    eos(argline)[-1]='\0';
 	}
+	if(!name){
+	    errmsg(NO_FLASH,"No name found.\n");
+	    cleanup(1);
+	}
+#endif
+#undef TESTCMDLINE
+#ifdef TESTCMDLINE
+__builtin_printf("sending '%s'\n",argline);
+#else
 	strcpy(namebuf,cnfsavedir);
 	condaddslash(namebuf);
 	strcpy(eos(namebuf),name);
@@ -170,21 +219,27 @@ main( argc, wbs )
 	    strcpy(eos(namebuf),"NewGame.info");
 	    lc=Lock(namebuf,ACCESS_READ);
 	    if(!lc){
-		errmsg(NO_FLASH,"can't find NewGame.info");
+		errmsg(NO_FLASH,"Can't find NewGame.info");
 		cleanup(1);
 	    }
 	}
-	Examine(lc,&finfo);
+	if(!Examine(lc,&finfo)){
+	    errmsg(NO_FLASH,"Can't find info file.\n");
+	    cleanup(1);
+	}
 	lc2=ParentDir(lc);
 	UnLock(lc);
 	gptr=GetWBIcon(lc2,dirname,&finfo);
+	if(!gptr)cleanup(1);
 	UnLock(lc2);
 	run_game(gptr);
 
 /* wait for game to end */
 	WaitEOG(gptr);
 	FreeGITEM(gptr);
+#endif /* TESTCMDLINE */
 /* ask about another? */
+#ifndef CMDLINE
 	printf("Play again? [yn] ");
 	fgets(tbuf,sizeof(tbuf),stdin);
 	while(*p && isspace(*p))p++;
@@ -193,6 +248,25 @@ main( argc, wbs )
 	case 'N':
 	    quit=1;
 	}
+#else
+build_new_argline:
+	forcenewcmd=0;
+	{
+#define NBA	*stpblk(argline)	/* non-blank argline */
+	printf("Enter options for next game %s%s%s(space return to clear) ",
+	    NBA?"(default ":"" ,
+	    NBA?argline:"" ,
+	    NBA?")\n":"");
+	printf("or Q to quit: ");
+	fgets(tbuf,sizeof(tbuf),stdin);
+	tbuf[strlen(tbuf)-1]='\0';		/* kill \n */
+	if(strlen(tbuf)==1 && (*p=='q' || *p=='Q')){
+	    quit=1;
+	} else
+	    if(strlen(tbuf))strcpy(argline,tbuf);
+	}
+#undef NBA
+#endif
     }
     cleanup(0);
 }
@@ -408,7 +482,7 @@ run_game( gptr )
     }
 
     /* Set the game name for the status command */
-    sprintf( gptr->gname, "NetHack 3.1 %s", gptr->name );
+    sprintf( gptr->gname, "NetHack 3.1.1 %s", gptr->name );
 
     /* Create a process for the game to execute in */
     ctask = FindTask( NULL );
@@ -444,7 +518,7 @@ freemem:
     gptr->wbs->sm_Process = proc;
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
-    gptr->wbs->sm_ToolWindow = "con:0/0/100/300/NetHack 3.1";
+    gptr->wbs->sm_ToolWindow = "con:0/0/100/300/NetHack 3.1.1";
     gptr->wbs->sm_ArgList = gptr->wba;
 
     /* Fill in the args */
@@ -1537,7 +1611,7 @@ void CopyOptionStr( optr, str )
     sidx = -1;
 
     /* Start past the 'options=' part */
-    for( t = str; !done; ++t )
+    for( t = str; *str && !done; ++t )
     {
 	if( state == 0 && isspace( *t ) )
 	    continue;
@@ -1629,7 +1703,7 @@ void CopyOptionStr( optr, str )
 		}
 		else
 		{
-		    errmsg( FLASH, "Unrecognized option %s", buf );
+		    errmsg( FLASH, "Unrecognized option `%s'", buf );
 		    return;
 		}
 	    }

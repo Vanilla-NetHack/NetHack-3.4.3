@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worn.c	3.1	92/12/13
+/*	SCCS Id: @(#)worn.c	3.1	93/02/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -104,8 +104,9 @@ register struct monst *mon;
 
 /* Wear first object of that type it finds, and never switch unless it
  * has none at all.  This means that monsters with leather armor never
- * switch to plate mail, but it also avoids the overhead of having seven
- * struct obj *s for every monster in the game, more if we ever extend this.
+ * switch to plate mail, but it also avoids the overhead of either having 8
+ * struct obj *s for every monster in the game, or of doing multiple inventory
+ * searches each round using which_armor().
  */
 void
 m_dowear(mon, creation)
@@ -124,11 +125,13 @@ boolean creation;
 	for(obj = mon->minvent; obj; obj = obj->nobj) {
 		long flag;
 
+		if (obj->otyp == AMULET_OF_LIFE_SAVING ||
+				obj->otyp == AMULET_OF_REFLECTION)
+			flag = W_AMUL;
 # ifdef TOURIST
-		if (obj->otyp == HAWAIIAN_SHIRT) flag = W_ARMU;
-		else
+		else if (obj->otyp == HAWAIIAN_SHIRT) flag = W_ARMU;
 # endif
-		if (is_cloak(obj)) flag = W_ARMC;
+		else if (is_cloak(obj)) flag = W_ARMC;
 		else if (is_helmet(obj)) flag = W_ARMH;
 		else if (is_shield(obj)) {
 			if (MON_WEP(mon) && bimanual(MON_WEP(mon)))
@@ -201,13 +204,9 @@ struct monst *mon;
 	register struct obj *otmp;
 	struct permonst *mdat = mon->data;
 	boolean vis = cansee(mon->mx, mon->my);
-	const char *pronoun, *ppronoun;
+	const char *pronoun = him[pronoun_gender(mon)],
+			*ppronoun = his[pronoun_gender(mon)];
 
-	switch(gender(mon)) {
-	    case 0: pronoun = "him"; ppronoun = "his"; break;
-	    case 1: pronoun = ppronoun = "her"; break;
-	    default: pronoun = "it"; ppronoun = "its"; break;
-	}
 	if (breakarm(mdat)) {
 	    if (otmp = which_armor(mon, W_ARM)) {
 		if (vis)

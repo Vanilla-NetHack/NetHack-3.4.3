@@ -62,7 +62,7 @@ static void FDECL(writeentry, (FILE *,struct toptenentry *));
 static int FDECL(classmon, (CHAR_P,BOOLEAN_P));
 
 /* must fit with end.c */
-const char NEARDATA *killed_by_prefix[] = {
+NEARDATA const char *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
 	"", "crushed to death by ", "petrified by ", "",
 	"", "",
@@ -148,6 +148,10 @@ int how;
 #else
 #define	HUP	if(!done_hup)
 #endif
+
+#ifdef TOS
+	restore_colors();	/* make sure the screen is black on white */
+#endif
 	/* create a new 'topten' entry */
 	t0 = newttentry();
 	/* deepest_lev_reached() is in terms of depth(), and reporting the
@@ -172,11 +176,13 @@ int how;
 		default: impossible("bad killer format?");
 		case KILLED_BY_AN:
 			Strcat(t0->death, killed_by_prefix[how]);
-			(void) strncat(t0->death, an(killer), DTHSZ);
+			(void) strncat(t0->death, an(killer),
+						DTHSZ-strlen(t0->death));
 			break;
 		case KILLED_BY:
 			Strcat(t0->death, killed_by_prefix[how]);
-			(void) strncat(t0->death, killer, DTHSZ);
+			(void) strncat(t0->death, killer,
+						DTHSZ-strlen(t0->death));
 			break;
 		case NO_KILLER_PREFIX:
 			(void) strncat(t0->death, killer, DTHSZ);

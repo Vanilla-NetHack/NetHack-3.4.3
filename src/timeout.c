@@ -14,7 +14,7 @@ static void FDECL(age_candle, (struct obj *));
 #ifdef OVLB
 
 /* He is being petrified - dialogue by inmet!tower */
-static const char NEARDATA *stoned_texts[] = {
+static NEARDATA const char *stoned_texts[] = {
 	"You are slowing down.",		/* 5 */
 	"Your limbs are stiffening.",		/* 4 */
 	"Your limbs have turned to stone.",	/* 3 */
@@ -36,7 +36,7 @@ stoned_dialogue() {
 }
 
 /* He is getting sicker and sicker prior to vomiting */
-static const char NEARDATA *vomiting_texts[] = {
+static NEARDATA const char *vomiting_texts[] = {
 	"You are feeling mildly nauseous.",	/* 14 */
 	"You feel slightly confused.",		/* 11 */
 	"You can't seem to think straight.",	/* 8 */
@@ -67,7 +67,7 @@ vomiting_dialogue() {
 	exercise(A_CON, FALSE);
 }
 
-static const char NEARDATA *choke_texts[] = {
+static NEARDATA const char *choke_texts[] = {
 	"You find it hard to breathe.",
 	"You're gasping for air.",
 	"You can no longer breathe.",
@@ -334,10 +334,11 @@ hatch_eggs()	    /* hatch any eggs that have been too long in pack */
 void
 burn_lamps()
 {
-	register struct obj *obj;
+	register struct obj *obj, *obj2;
 
 	/* Note: magic lamps never go out as long as the genie's inside */
-	for(obj=invent; obj; obj=obj->nobj) {
+	for (obj=invent; obj; obj=obj2) {
+	    obj2 = obj->nobj;
 	    if ((obj->otyp == OIL_LAMP || obj->otyp == BRASS_LANTERN)
 							&& obj->lamplit) {
 		obj->age--;
@@ -376,7 +377,7 @@ burn_lamps()
 	    }
 	    if ((obj->otyp == CANDELABRUM_OF_INVOCATION || Is_candle(obj)) &&
 			obj->lamplit)
-		age_candle(obj);
+		age_candle(obj);	/* candles may vanish */
 	}
 }
 

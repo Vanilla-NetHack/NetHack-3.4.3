@@ -39,7 +39,7 @@ int NDECL (yylex);
 #  endif
 # endif
 # if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
-#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX != 0) 
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1) 
 #   define VOIDYYPUT
 #  endif
 # endif

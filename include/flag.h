@@ -43,6 +43,9 @@ struct flag {
 	boolean  nopick;	/* do not pickup objects (as when running) */
 	boolean  null;		/* OK to send nulls to the terminal */
 	boolean  num_pad;	/* use numbers for movement commands */
+#ifdef MAC
+	boolean  page_wait;	/* put up a --More-- after a page of messages */
+#endif
 	boolean  pickup;	/* whether you pickup or move and look */
 #ifdef MAC
 	boolean  popup_dialog;	/* put queries in pop up dialogs instead of
@@ -88,8 +91,11 @@ struct flag {
 	boolean  MACgraphics;	/* use Macintosh extended character set, as
 				   as defined in the special font HackFont */
 #endif
+#ifdef AMII_GRAPHICS
+	unsigned short amii_curmap[8]; /* colormap */
+#endif
 };
 
-extern struct flag NEARDATA flags;
+extern NEARDATA struct flag flags;
 
 #endif /* FLAG_H */

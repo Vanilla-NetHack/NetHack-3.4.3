@@ -6,12 +6,11 @@
 
 #include "hack.h"
 
-static void FDECL(hitfloor, (struct obj *));
 static int FDECL(gem_accept, (struct monst *, struct obj *));
 static int FDECL(throw_gold, (struct obj *));
 static void FDECL(check_shop_obj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P));
 
-static const char NEARDATA toss_objs[] =
+static NEARDATA const char toss_objs[] =
 	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, WEAPON_CLASS, 0 };
 extern boolean notonhead;	/* for long worms */
 
@@ -75,14 +74,12 @@ dothrow()
 	return(throwit(obj));
 }
 
-static void
+void
 hitfloor(obj)
 register struct obj *obj;
 {
 	if (IS_SOFT(levl[u.ux][u.uy].typ) || u.uinwater) {
 		dropy(obj);
-		if(*u.ushops)
-		    check_shop_obj(obj, obj->ox, obj->oy, FALSE);
 		return;
 	}
 	if (IS_ALTAR(levl[u.ux][u.uy].typ)) doaltarobj(obj);
@@ -99,8 +96,6 @@ register struct obj *obj;
 		if(ship_object(obj, u.ux, u.uy, FALSE)) 
 		    return;
 		dropy(obj);
-		if(*u.ushops)
-		    check_shop_obj(obj, obj->ox, obj->oy, FALSE);
 	}
 }
 
@@ -130,7 +125,8 @@ hurtle(dx, dy, range)
 	ny = u.uy + dy;
 
 	if(!isok(nx,ny)) break;
-	if(IS_ROCK(levl[nx][ny].typ) || closed_door(nx,ny)) {
+	if(IS_ROCK(levl[nx][ny].typ) || closed_door(nx,ny) ||
+	   (IS_DOOR(levl[nx][ny].typ) && (levl[nx][ny].doormask & D_ISOPEN))) {
 	    pline("Ouch!");
 	    losehp(rnd(2+range), IS_ROCK(levl[nx][ny].typ) ?
 		   "bumping to a wall" : "bumping into a door", KILLED_BY);
@@ -215,19 +211,20 @@ register struct obj *obj;
 			   Hallucination || Fumbling);
 	int do_death = 0;
 
-	if (obj->cursed && (u.dx || u.dy) && !rn2(7)) {
+	if ((obj->cursed || obj->greased) && (u.dx || u.dy) && !rn2(7)) {
 		boolean slipok = TRUE;
 	    if ((obj->oclass == WEAPON_CLASS || obj->oclass == GEM_CLASS)
 		&& uwep && (objects[obj->otyp].w_propellor > 0) &&
 		(objects[obj->otyp].w_propellor ==
                                              -objects[uwep->otyp].w_propellor))
-		pline("The %s misfires!", xname(obj));
+		pline("%s misfires!", The(xname(obj)));
 	    else {
-		/* only slip if it's meant to be thrown */
-		if((obj->otyp >= DART && obj->otyp <= JAVELIN) ||
+		/* only slip if it's greased or meant to be thrown */
+		if(obj->greased ||
+		   (obj->otyp >= DART && obj->otyp <= JAVELIN) ||
 		   (obj->otyp >= DAGGER && obj->otyp <= CRYSKNIFE &&
 		    obj->otyp != ATHAME) || obj->otyp == WAR_HAMMER)
-		    pline("The %s slips as you throw it!", xname(obj));
+		    pline("%s slips as you throw it!", The(xname(obj)));
 		else slipok = FALSE;
 	    }
 	    if (slipok) {
@@ -284,8 +281,6 @@ register struct obj *obj;
 		if (!breaks(obj, TRUE)) {
 		    if(!ship_object(obj, u.ux, u.uy, FALSE)) {
 			dropy(obj);
-			if(*u.ushops)
-			    check_shop_obj(obj, obj->ox, obj->oy, FALSE);
 		    }
 		}
 		if (do_death == STONING)
@@ -372,15 +367,19 @@ register struct obj *obj;
 
 		if (obj->oartifact == ART_MJOLLNIR && pl_character[0] == 'V') {
 		    /* we must be wearing Gauntlets of Power to get here */
-		    int x = bhitpos.x - u.dx, y = bhitpos.y - u.dy;
 
-		    tmp_at(DISP_FLASH, obj_glyph);
-		    while(x != u.ux || y != u.uy) {
-			tmp_at(x, y);
-			delay_output();
-			x -= u.dx; y -= u.dy;
+		    /* might already be our location (bounced off a wall) */
+		    if (bhitpos.x != u.ux || bhitpos.y != u.uy) {
+			int x = bhitpos.x - u.dx, y = bhitpos.y - u.dy;
+
+			tmp_at(DISP_FLASH, obj_glyph);
+			while(x != u.ux || y != u.uy) {
+			    tmp_at(x, y);
+			    delay_output();
+			    x -= u.dx; y -= u.dy;
+			}
+			tmp_at(DISP_END, 0);
 		    }
-		    tmp_at(DISP_END, 0);
 
 		    if(!impaired) {
 			pline("%s returns to your hand!", The(xname(obj)));
@@ -603,11 +602,11 @@ register struct obj *obj;
 	boolean is_buddy = sgn(mon->data->maligntyp) == sgn(u.ualign.type);
 	boolean is_gem = objects[obj->otyp].oc_material == GEMSTONE;
 	int ret = 0;
-	static const char NEARDATA nogood[] = " is not interested in your junk.";
-	static const char NEARDATA acceptgift[] = " accepts your gift.";
-	static const char NEARDATA maybeluck[] = " hesitatingly";
-	static const char NEARDATA noluck[] = " graciously";
-	static const char NEARDATA addluck[] = " gratefully";
+	static NEARDATA const char nogood[] = " is not interested in your junk.";
+	static NEARDATA const char acceptgift[] = " accepts your gift.";
+	static NEARDATA const char maybeluck[] = " hesitatingly";
+	static NEARDATA const char noluck[] = " graciously";
+	static NEARDATA const char addluck[] = " gratefully";
 
 	Strcpy(buf,Monnam(mon));
 

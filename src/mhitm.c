@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)mhitm.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,9 +8,9 @@
 
 #ifdef OVLB
 
-static boolean NEARDATA vis, NEARDATA far_noise;
-static long NEARDATA noisetime;
-static struct obj NEARDATA *otmp;
+static NEARDATA boolean vis, far_noise;
+static NEARDATA long noisetime;
+static NEARDATA struct obj *otmp;
 
 static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
 static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
@@ -213,6 +213,8 @@ mattackm(magr, mdef)
 			magr->weapon_check = NEED_HTH_WEAPON;
 			if (mon_wield_item(magr) != 0) return 0;
 		}
+		remove_cadavers(&magr->minvent);
+		possibly_unwield(magr);
 		otmp = MON_WEP(magr);
 #else
 		otmp = select_hwep(magr);
@@ -456,7 +458,10 @@ explmm(magr, mdef, mattk)
 	/* Kill off agressor if it didn't die. */
 	if (!(result & MM_AGR_DIED)) {
 	    mondead(magr);
-	    result |= MM_AGR_DIED;
+#ifdef MUSE
+	    if (magr->mhp <= 0)
+#endif
+		result |= MM_AGR_DIED;
 	}
 
 	return result;
@@ -481,7 +486,7 @@ mdamagem(magr, mdef, mattk)
 	   (mattk->aatyp != AT_WEAP || !otmp) &&
 	   (mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL) &&
 #ifdef MUSE
-	   (!which_armor(magr, W_ARMG))) {
+	   (!(magr->misc_worn_check & W_ARMG))) {
 #else
 	   (!is_mercenary(pa) || !m_carrying(magr, LEATHER_GLOVES))) {
 	   /* Note: other monsters may carry gloves, only soldiers have them */
@@ -515,6 +520,11 @@ mdamagem(magr, mdef, mattk)
 			tmp = 0;
 		else if(mattk->aatyp == AT_WEAP) {
 		    if(otmp) {
+#ifdef MUSE
+			if (otmp->otyp == CORPSE &&
+				otmp->corpsenm == PM_COCKATRICE)
+			    goto do_stone_goto_label;
+#endif
 			tmp += dmgval(otmp, pd);
 			if (otmp->oartifact) {
 			    (void)artifact_hit(magr,mdef, otmp, &tmp, dieroll);
@@ -599,6 +609,9 @@ mdamagem(magr, mdef, mattk)
 			else if(mdef->mtame)
 			     pline("May %s rust in peace.", mon_nam(mdef));
 			mondied(mdef);
+#ifdef MUSE
+			if (mdef->mhp > 0) return 0;
+#endif
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
@@ -611,12 +624,18 @@ mdamagem(magr, mdef, mattk)
 			else if(mdef->mtame)
 			     pline("May %s rot in peace.", mon_nam(mdef));
 			mondied(mdef);
+#ifdef MUSE
+			if (mdef->mhp > 0) return 0;
+#endif
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
 		tmp = 0;
 		break;
 	    case AD_STON:
+#ifdef MUSE
+do_stone_goto_label:
+#endif
 		if(poly_when_stoned(pd)) {
 		    mon_to_stone(mdef);
 		    tmp = 0;
@@ -626,10 +645,13 @@ mdamagem(magr, mdef, mattk)
 			if(vis) pline("%s turns to stone!", Monnam(mdef));
 			else if(mdef->mtame) You(psf);
 			monstone(mdef);
+#ifdef MUSE
+			if (mdef->mhp > 0) return 0;
+#endif
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		}
-		tmp = 0;	/* no damage if this fails */
+		tmp = (mattk->adtyp == AD_STON ? 0 : 1);
 		break;
 	    case AD_TLPT:
 		if(!magr->mcan && tmp < mdef->mhp) {
@@ -703,6 +725,9 @@ mdamagem(magr, mdef, mattk)
 			    else if (mdef->mtame)
 	You("have a strangely sad feeling for a moment, then it passes.");
 			    mondied(mdef);
+#ifdef MUSE
+			    if (mdef->mhp > 0) return 0;
+#endif
 			    return (MM_DEF_DIED | (grow_up(magr,mdef) ?
 							0 : MM_AGR_DIED));
 		      }
@@ -760,6 +785,10 @@ mdamagem(magr, mdef, mattk)
 				mdef->misc_worn_check &= ~otmp->owornmask;
 				otmp->owornmask = 0;
 			}
+			mselftouch(mdef, (const char *)0, FALSE);
+			if (mdef->mhp <= 0)
+				return (MM_DEF_DIED | (grow_up(magr,mdef) ?
+							0 : MM_AGR_DIED));
 #endif
 		}
 		tmp = 0;
@@ -828,6 +857,7 @@ mdamagem(magr, mdef, mattk)
 		place_monster(mdef, mdef->mx, mdef->my);
 	    }
 	    monkilled(mdef, "", mattk->adtyp);
+	    if (mdef->mhp > 0) return 0; /* mdef lifesaved */
 	    return (MM_DEF_DIED | (grow_up(magr,mdef) ? 0 : MM_AGR_DIED));
 	}
 	return(MM_HIT);
@@ -884,15 +914,12 @@ register struct obj *otemp;
 {
 	char buf[BUFSZ];
 	Strcpy(buf, mon_nam(mdef));
-	if (!flags.verbose || Blind || otemp->oclass != WEAPON_CLASS) return;
+	if (!flags.verbose || Blind) return;
 	pline("%s %s %s %s at %s.", Monnam(magr),
-	      ((otemp->otyp >= SPEAR &&
-	        otemp->otyp <= LANCE) ||
-	       (otemp->otyp >= PARTISAN &&
-	        otemp->otyp <= SPETUM) ||
+	      ((otemp->otyp >= SPEAR && otemp->otyp <= LANCE) ||
+	       (otemp->otyp >= PARTISAN && otemp->otyp <= SPETUM) ||
 	       otemp->otyp == TRIDENT) ? "thrusts" : "swings",
-	      humanoid(magr->data) ? (magr->female ? "her" : "his") : "its",
-	      xname(otemp), buf);
+	      his[pronoun_gender(magr)], xname(otemp), buf);
 }
 
 /*

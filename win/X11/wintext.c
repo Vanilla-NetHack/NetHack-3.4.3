@@ -7,12 +7,25 @@
  * 
  * 	+ No global functions.
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
 #include <X11/Xos.h>
 #include <X11/Xaw/AsciiText.h>
 #include <X11/Xaw/Cardinals.h>
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "hack.h"
 #include "winX.h"
@@ -24,6 +37,30 @@ static const char text_translations[] =
     "#override\n\
      <BtnDown>: dismiss_text()\n\
      <Key>: key_dismiss_text()";
+
+
+/*ARGSUSED*/
+void
+delete_text(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    struct xwindow *wp;
+    struct text_info_t *text_info;
+
+    wp = find_widget(w);
+    text_info = wp->text_information;
+
+    nh_XtPopdown(w);
+
+    if (text_info->blocked) {
+	exit_x_event = TRUE;
+    } else if (text_info->destroy_on_ack) {
+	destroy_text_window(wp);
+    }
+}
 
 /*
  * Callback used for all text windows.  The window is poped down on any key
@@ -141,10 +178,12 @@ display_text_window(wp, blocking)
 
 #ifdef TRANSIENT_TEXT
     XtRealizeWidget(wp->popup);
-    positionpopup(wp->popup);
+    XSetWMProtocols(XtDisplay(wp->popup), XtWindow(wp->popup), 
+		    &wm_delete_window, 1);
+    positionpopup(wp->popup, FALSE);
 #endif
 
-    nh_XtPopup(wp->popup, XtGrabNone, wp->w);
+    nh_XtPopup(wp->popup, (int)XtGrabNone, wp->w);
 
     /* Kludge alert.  Scrollbars are not sized correctly by the Text widget */
     /* if added before the window is displayed, so do it afterward. */
@@ -198,6 +237,8 @@ create_text_window(wp)
     wp->popup = XtCreatePopupShell("text", topLevelShellWidgetClass,
 				   toplevel, args, num_args);
 #endif
+    XtOverrideTranslations(wp->popup,
+	XtParseTranslationTable("<Message>WM_PROTOCOLS: delete_text()"));
 
     num_args = 0;
     XtSetArg(args[num_args], XtNdisplayCaret, False);		num_args++;
@@ -266,7 +307,7 @@ append_text_buffer(tb, str, concat)
     if (!tb->text) panic("append_text_buffer:  null text buffer");
 
     if (str) {
-    	length = strlen(str);
+	length = strlen(str);
     } else {
 	length = 0;
     }

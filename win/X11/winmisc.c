@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmisc.c	3.1	92/10/21	*/
+/*	SCCS Id: @(#)winmisc.c	3.1	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,11 @@
  * 
  * 	+ Global functions: player_selection() and get_ext_cmd().
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
@@ -15,6 +20,14 @@
 #include <X11/Xaw/Label.h>
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xos.h>	/* for index() */
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "hack.h"
 #include "func_tab.h"
@@ -38,7 +51,10 @@ static const char player_select_translations[] =
      <Key>: ps_key()";
 
 
-static Widget make_menu();
+static Widget FDECL(make_menu, (const char *,const char *,String,
+				const char *,XtCallbackProc,
+				const char *,XtCallbackProc,
+				int,char **,XtCallbackProc,Widget *));
 
 
 /* Player Selection -------------------------------------------------------- */
@@ -121,8 +137,8 @@ X11_player_selection()
 		num_roles, roles, ps_select, &player_form);
 
     ps_selected = 0;
-    positionpopup(popup);
-    nh_XtPopup(popup, XtGrabExclusive, player_form);
+    positionpopup(popup, FALSE);
+    nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
 
     /* The callbacks will enable the event loop exit. */
     (void) x_event(EXIT_ON_EXIT);
@@ -167,8 +183,9 @@ X11_get_ext_cmd(input)
 {
     extended_command_selected = -1;		/* reset selected value */
 
-    positionpopup(extended_command_popup);	/* center on cursor */
-    nh_XtPopup(extended_command_popup, XtGrabExclusive, extended_command_form);
+    positionpopup(extended_command_popup, FALSE); /* center on cursor */
+    nh_XtPopup(extended_command_popup, (int)XtGrabExclusive,
+					extended_command_form);
 
     /* The callbacks will enable the event loop exit. */
     (void) x_event(EXIT_ON_EXIT);
@@ -212,6 +229,19 @@ extend_help(w, client_data, call_data)
 {
     /* We might need to make it known that we already have one listed. */
     (void) doextlist();
+}
+
+/* ARGSUSED */
+void
+ec_delete(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    extended_command_selected = -1;	/* dismiss */
+    nh_XtPopdown(extended_command_popup);
+    exit_x_event = TRUE;		/* leave event loop */
 }
 
 /* ARGSUSED */
@@ -327,12 +357,12 @@ make_menu(popup_name, popup_label, popup_translations,
 		left_name, left_callback,
 		right_name, right_callback,
 		num_names, widget_names, name_callback, formp)
-    char	   *popup_name;
-    char	   *popup_label;
+    const char	   *popup_name;
+    const char	   *popup_label;
     String	   popup_translations;
-    char	   *left_name;
+    const char	   *left_name;
     XtCallbackProc left_callback;
-    char	   *right_name;
+    const char	   *right_name;
     XtCallbackProc right_callback;
     int		   num_names;
     char	   **widget_names;
@@ -357,6 +387,8 @@ make_menu(popup_name, popup_label, popup_translations,
     popup = XtCreatePopupShell(popup_name,
 				transientShellWidgetClass,
 				toplevel, args, num_args);
+    XtOverrideTranslations(popup,
+	XtParseTranslationTable("<Message>WM_PROTOCOLS: ec_delete()"));
 
     num_args = 0;
     XtSetArg(args[num_args], XtNtranslations,
@@ -414,6 +446,8 @@ make_menu(popup_name, popup_label, popup_translations,
 		    args, num_args);
     XtAddCallback(right, XtNcallback, right_callback, (XtPointer) 0);
 
+    XtInstallAccelerators(form, left);
+    XtInstallAccelerators(form, right);
 
     /*
      * Create and place the command widgets.
@@ -470,6 +504,7 @@ make_menu(popup_name, popup_label, popup_translations,
     free((char *) commands);
 
     XtRealizeWidget(popup);
+    XSetWMProtocols(XtDisplay(popup), XtWindow(popup), &wm_delete_window, 1);
 
     return popup;
 }

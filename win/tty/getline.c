@@ -48,6 +48,11 @@ register char *bufp;
 			obufp[1] = 0;
 			break;
 		}
+		if (ttyDisplay->intr) {
+		    ttyDisplay->intr--;
+		    *bufp = 0;
+		    putsyms(obufp);
+		}
 		if(c == '\020') { /* ctrl-P */
 		    if(!doprev)
 			(void) tty_doprev_message(); /* need two initially */
@@ -76,7 +81,7 @@ register char *bufp;
 			*bufp = 0;
 			break;
 		} else if(' ' <= c && c < '\177' && 
-			    (bufp-obufp < BUFSZ-1 || bufp-obufp < COLNO)) {
+			    (bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)) {
 				/* avoid isprint() - some people don't have it
 				   ' ' is not always a printing char */
 			*bufp = c;
@@ -94,6 +99,7 @@ register char *bufp;
 	}
 	ttyDisplay->toplin = 2;		/* nonempty, no --More-- required */
 	ttyDisplay->inread--;
+	clear_nhwindow(WIN_MESSAGE);	/* clean up after ourselves */
 }
 
 void
@@ -133,19 +139,25 @@ register char *bufp;
 	register int c;
 	int com_index, oindex;
 
+	ttyDisplay->toplin = 3; /* special prompt state */
+	ttyDisplay->inread++;
 	pline("# ");
-	ttyDisplay->toplin = 2;		/* nonempty, no --More-- required */
 
 	for(;;) {
 		(void) fflush(stdout);
 		if((c = readchar()) == EOF) {
 			*bufp = 0;
-			return;
+			break;
 		}
 		if(c == '\033') {
 			*obufp = c;
 			obufp[1] = 0;
-			return;
+			break;
+		}
+		if (ttyDisplay->intr) {
+		    ttyDisplay->intr--;
+		    *bufp = 0;
+		    putsyms(obufp);
 		}
 		if(c == erase_char || c == '\b') {
 			if(bufp != obufp) {
@@ -158,8 +170,9 @@ register char *bufp;
 		} else if(c == '\n') {
 #endif
 			*bufp = 0;
-			return;
-		} else if(' ' <= c && c < '\177') {
+			break;
+		} else if(' ' <= c && c < '\177' &&
+			    (bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)) {
 				/* avoid isprint() - some people don't have it
 				   ' ' is not always a printing char */
 			*bufp = c;
@@ -199,7 +212,9 @@ register char *bufp;
 		} else
 			tty_nhbell();
 	}
-
+	ttyDisplay->toplin = 2;		/* nonempty, no --More-- required */
+	ttyDisplay->inread--;
+	clear_nhwindow(WIN_MESSAGE);	/* clean up after ourselves */
 }
 #endif /* COM_COMPL */
 

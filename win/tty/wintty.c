@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.1	92/10/21	*/
+/*	SCCS Id: @(#)wintty.c	3.1	93/02/21	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -177,7 +177,7 @@ tty_init_nhwindows()
     ttyDisplay->rows = hgt;
     ttyDisplay->cols = wid;
     ttyDisplay->curx = ttyDisplay->cury = 0;
-    ttyDisplay->inmore = ttyDisplay->inread = 0;
+    ttyDisplay->inmore = ttyDisplay->inread = ttyDisplay->intr = 0;
 #ifdef TEXTCOLOR
     ttyDisplay->color = NO_COLOR;
 #endif
@@ -323,24 +323,26 @@ tty_askname()
 	ct = 0;
 	while((c = tty_nhgetch()) != '\n') {
 		if(c == EOF) error("End of input\n");
-#ifndef VMS
 		/* some people get confused when their erase char is not ^H */
-		if(c == '\b') {
+		if (c == '\b' || c == '\177') {
 			if(ct) {
 				ct--;
-# ifdef MICRO
-				msmsg("\b \b");
+#ifdef MICRO
+# if defined(WIN32CON)
+				nttty_rubout();  /* \b is visible on NT */
 # else
+				msmsg("\b \b");
+# endif 
+#else
 				(void) putchar('\b');
 				(void) putchar(' ');
 				(void) putchar('\b');
-# endif
+#endif
 			}
 			continue;
 		}
-#endif
 #if defined(UNIX) || defined(VMS)
-		if(c != '-')
+		if(c != '-' && c != '@')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
 #endif
 		if(ct < sizeof(plname)-1) {
@@ -1244,10 +1246,12 @@ tty_wait_synch()
 	    addtopl("--More--");
 	    (void) fflush(stdout);
 	} else if(ttyDisplay->inread) {
+	    /* this can only happen if we were reading and got interrupted */
 	    ttyDisplay->toplin = 3;
 	    /* do this twice; 1st time gets the Quit? message again */
 	    (void) tty_doprev_message();
 	    (void) tty_doprev_message();
+	    ttyDisplay->intr++;
 	    (void) fflush(stdout);
 	}
     }
@@ -1576,6 +1580,9 @@ tty_nh_poskey(x, y, mod)
 void
 win_tty_init()
 {
+# if defined(WIN32CON)
+    nttty_open();
+# endif
     return;
 }
 

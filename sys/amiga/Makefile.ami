@@ -1,12 +1,12 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.ami	3.3	93/01/08
+#	SCCS Id: @(#)Makefile.ami	3.3	93/02/02
 # Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991, 1992, 1993.
 # NetHack may be freely redistributed.  See license for details.
 
-# This makefile is arranged for compiling for the Amiga with SAS/C 5.10b but
-# can be configured for compiling with Manx C 5, SAS/C 6.1, or registered DICE
+# This makefile is arranged for compiling for the Amiga with SAS/C 6.2 but
+# can be configured for compiling with Manx C 5, or registered DICE
 # with simple changes.  The appropriate changes are identified by #[compiler]
-# where compiler is one of: SAS5, SAS6, MANX, or DICE; the options in
+# where compiler is one of: SAS6, MANX, or DICE; the options in
 # this makefile as should be set according to the compiler being used.
 
 # Note: When using the Manx compiler, an alternate make utility is
@@ -34,12 +34,6 @@
 #	smake -f Amiga:Makefile.ami
 #	cd NetHack:
 #	smake -f Amiga:Makefile.ami install
-#
-#[SAS5]
-#	cd OBJ:
-#	lmk -f Amiga:Makefile.ami
-#	cd NetHack:
-#	lmk -f Amiga:Makefile.ami install
 #
 #[MANX]
 #	cd OBJ:
@@ -82,26 +76,11 @@
 #	setdate Ram:hack.sym {date & time of Incl:hack.h}
 #	smake -f Amiga:Makefile.ami
 #
-#[SAS5]
-#	cd NetHack:
-#	lmk -f Amiga:Makefile.ami Ram:hack.sym
-#	setdate Ram:hack.sym {date & time of Incl:hack.h}
-#	lmk -f Amiga:Makefile.ami
-#
 #[MANX]
 #	cd NetHack:
 #	make -f Amiga:Makefile.ami Ram:hack.sym
 #	setdate Ram:hack.sym {date & time of Incl:hack.h}
 #	make -f Amiga:Makefile.ami
-
-#[SAS5]
-#   If we were to use the precompiled header file feature, we would uncomment
-#   these following two lines.  However, there are still problems in the
-#   behavior of this feature in version 5.04, so these lines are commented
-#   out for now.
-
-#HDEP	= Ram:hack.sym
-#CSYM	= -HRam:hack.sym
 
 #[SAS5]
 #   If we were to use the precompiled header file feature in a newer version
@@ -138,7 +117,7 @@ BISON	= bison
 # FBFIL and FBLIB may be used, if required by your version of flex or bison,
 # to specify additional files or libraries to be linked with
 FBFIL	=
-FBLIB	= lib:compat.lib
+FBLIB	= #lib lib:compat.lib
 
 # If you're compiling this on a 1.3 system, you'll have to uncomment the
 # following (for use with the ifchange script below).  Also useful instead of
@@ -148,10 +127,7 @@ EXECUTE = execute
 # Pathname for the C compiler being used.
 
 #[SAS6]
-#CC	= sc
-
-#[SAS5]
-CC	= lc
+CC	= sc
 
 #[MANX]
 #CC	= cc
@@ -183,38 +159,24 @@ CC	= lc
 # undefine this to not compile with GSTs
 #GST=gst=$(GSTFILE)
 #
-#DEBUG=l
-#CFLAGS	= data=far nminc debug=$(DEBUG) idir=incl: cpu=any nostkchk ign=104 \
-#		ignore=85,62 strmerge optsize ppbuf=8000 afp $(ERRREXX) $(GST)
+DEBUG=l
+CFLAGS	= data=far nminc debug=$(DEBUG) idir=incl: cpu=any nostkchk ign=104 \
+	codename=none ignore=85,62 strmerge optsize ppbuf=8000 \
+	afp $(ERRREXX) $(GST)
 # for files that are too large for the standard flags:
-#CFLAGS2 = code=far nostrmerge
-#WBCFLAGS = ignore=217,62 data=far ansi nminc code=far debug=sf $(ERRREXX) $(GST)
-#WBC2FLAGS = define=CLI
-#WBLFLAGS =
-#CCFLAGS = define=
-#SPLFLAGS = ignore=77 define=SPLIT
-
-#[SAS5]
-#   Note: make sure your CLI stack size is large (at least 50K) or lev_comp
-#   and makedefs may fail terribly - stack checking is disabled.
-CFLAGS	= -b0 -cfi -d1 -iIncl: -ma -v -cs -ms -z8000 -r0 #-O
-# for files that are too large for the standard flags: 
-CFLAGS2 = -r0
-CCDEF = -d
-WBCFLAGS = -r0 -b0 -cafis -d1 #-O
-WBC2FLAGS = -dCLI
-WBLFLAGS =
-SPLFLAGS = -cd -dSPLIT
+CFLAGS2 = code=far nostrmerge
+WBCFLAGS = ignore=217,62 data=far ansi nminc code=far \
+	debug=sf $(ERRREXX) $(GST)
+WBC2FLAGS = define=CLI
+SPLFLAGS = ignore=77 define=SPLIT dollarok
 
 #[MANX]
 #CFLAGS = -iincl: -mc -md -ms -pa -ps -bs -wo -qq
 #WBCFLAGS = -mc -md -ms -pa -ps -bs -wo -qq -pp
-#WBLFLAGS = +cd
 
 #[DICE]
 #CFLAGS = -c -Iincl: -mD -mC -ms
 #WBCFLAGS = -c -ms
-#WBLFLAGS =
 
 # Components of varous link command lines:
 #   $(LINK) should be the pathname of the linker being used (with any options
@@ -230,30 +192,17 @@ SPLFLAGS = -cd -dSPLIT
 
 #[SAS6]
 
-#LINK	= sc link
-#LIN	= startup=catch
-#LLINK	= with Amiga:ami.lnk
-#LLIB	= lib=Lib:sc.lib lib=lib:amiga.lib BATCH #scnb.lib or sc.lib
-#FLLIB	= lib=$(FBLIB) Lib:sc.lib BATCH
-#OBJSPEC = objname=
-#PNSPEC = pname=
-#INCLSPEC = idir=
-#DEFSPEC = define=
-#IGNSPEC = ignore=
-#COMPACT_HEADERS=$(GSTFILE) $(COPYNGST)
-
-#[SAS5]
-
-LINK	= Blink to
-LIN	= from Lib:catch.o
+LINK	= slink noicons maxhunk 10000 to
+LIN	= from lib:catch.o
 LLINK	= with Amiga:ami.lnk
-LLIB	= lib Lib:lc.lib lib:amiga.lib BATCH #lcnb.lib or lc.lib
-FLLIB	= lib $(FBLIB) Lib:lc.lib BATCH
-OBJSPEC = -o
+LLIB	= lib Lib:sc.lib lib lib:amiga.lib BATCH #scnb.lib or sc.lib
+FLLIB	= $(FBLIB) lib Lib:sc.lib BATCH
+OBJSPEC = objname=
 PNSPEC =
-INCLSPEC = -i
-DEFSPEC = -d
-IGNSPEC = -j
+INCLSPEC = idir=
+DEFSPEC = define=
+IGNSPEC = ignore=
+COMPACT_HEADERS=$(GSTFILE) $(COPYNGST)
 
 #[MANX]
 
@@ -348,7 +297,7 @@ MAKEDEFOBJ = \
 
 AMIGAOBJ = \
 	OBJ:amidos.o	OBJ:amirip.o 	OBJ:amiwbench.o OBJ:amiwind.o	\
-	OBJ:winami.o
+	OBJ:winami.o	OBJ:amisnd.o
 
 SHAREOBJ = \
 	OBJ:pcmain.o	$(RANDOBJ)
@@ -363,7 +312,7 @@ HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(SHAREOBJ) $(MAKEDEFOBJ)
 all:  $(COMPACT_HEADERS) NetHack:lev_comp NetHack:dgn_comp $(GAME) \
 	NetHack:HackWB NetHack:recover NetHack:HackCli NetHack:splitter
 
-install: inst-data inst-dungeon inst-icons inst-fonts HackExe:NetHack.dir
+install: inst-data inst-dungeon inst-icons inst-fonts inst-sounds HackExe:NetHack.dir
 
 Amiga:compacted:
 	lmk -f compact.lmk DST=$(COMPACT_DEST) SRC=$(COMPACT_SRC)
@@ -396,7 +345,6 @@ objs:  $(SHAREOBJ)
 # The default method for creating object files:
 
 #[SAS6]
-#[SAS5]
 
 .c.o:
 	$(CC) $(CFLAGS) $(CSYM) $(OBJSPEC)$@ $<
@@ -611,6 +559,9 @@ OBJ:amirip.o:  Amiga:amirip.c $(HDEP)
 
 OBJ:amiwind.o:  Amiga:amiwind.c Amiga:amimenu.c $(HDEP)
 
+OBJ:amisnd.o:	Amiga:amisnd.c $(HDEP)
+	$(CC) $(CFLAGS) debug=ff $(OBJSPEC)OBJ:amisnd.o Amiga:amisnd.c
+
 OBJ:winami.o:	Amiga:winami.c $(HDEP) Amiga:char.c Amiga:colorwin.c Amiga:randwin.c
 
 OBJ:amiwbench.o:  Amiga:amiwbench.c $(HDEP)
@@ -674,6 +625,80 @@ XDFILES=	$(ADFILES) $(BDFILES) $(CDFILES) $(EDFILES) $(HDFILES) \
 		$(KDFILES) $(PDFILES) $(RDFILES) $(SDFILES) $(TDFILES) \
 		$(VDFILES) $(WDFILES)
 
+SOUNDFILES= \
+	NetHack:cvtsnd \
+	NetHack:sounds \
+	NetHack:sounds/Bell NetHack:sounds/Bugle NetHack:sounds/Drum_Of_Earthquake \
+	NetHack:sounds/Fire_Horn NetHack:sounds/Frost_Horn \
+	NetHack:sounds/Leather_Drum NetHack:sounds/Magic_Flute \
+	NetHack:sounds/Magic_Harp NetHack:sounds/Tooled_Horn \
+	NetHack:sounds/Wooden_Flute NetHack:sounds/Wooden_Harp
+
+inst-sounds: ${SOUNDFILES}
+
+NetHack:sounds:
+	-makedir NetHack:sounds
+
+NetHack:cvtsnd: OBJO:cvtsnd.o
+	${LINK} ${PNSPEC}$@ $(LIN) OBJO:cvtsnd.o $(FLLIB)
+
+OBJO:cvtsnd.o: Amiga:cvtsnd.c
+
+NetHack:sounds/Bell: share:sounds/bell.uu
+	uudecode share:sounds/bell.uu
+	NetHack:cvtsnd Bell NetHack:sounds/Bell
+	-delete Bell
+
+NetHack:sounds/Bugle: share:sounds/bugle.uu
+	uudecode share:sounds/Bugle.uu
+	NetHack:cvtsnd Bugle NetHack:sounds/Bugle
+	-delete Bugle
+
+NetHack:sounds/Drum_Of_Earthquake: share:sounds/erthdrum.uu
+	uudecode share:sounds/erthdrum.uu
+	NetHack:cvtsnd Drum_Of_Earthquake NetHack:sounds/Drum_Of_Earthquake
+	-delete Drum_Of_Earthquake
+
+NetHack:sounds/Fire_Horn: share:sounds/firehorn.uu
+	uudecode share:sounds/firehorn.uu
+	NetHack:cvtsnd Fire_Horn NetHack:sounds/Fire_Horn
+	-delete Fire_Horn
+
+NetHack:sounds/Frost_Horn: share:sounds/frsthorn.uu
+	uudecode share:sounds/frsthorn.uu
+	NetHack:cvtsnd Frost_Horn NetHack:sounds/Frost_Horn
+	-delete Frost_Horn
+
+NetHack:sounds/Leather_Drum: share:sounds/lethdrum.uu
+	uudecode share:sounds/lethdrum.uu
+	NetHack:cvtsnd Leather_Drum NetHack:sounds/Leather_Drum
+	-delete Leather_Drum
+
+NetHack:sounds/Magic_Flute: share:sounds/mgcflute.uu
+	uudecode share:sounds/mgcflute.uu
+	NetHack:cvtsnd Magic_Flute NetHack:sounds/Magic_Flute
+	-delete Magic_Flute
+
+NetHack:sounds/Magic_Harp: share:sounds/mgcharp.uu
+	uudecode share:sounds/mgcharp.uu
+	NetHack:cvtsnd Magic_Harp NetHack:sounds/Magic_Harp
+	-delete Magic_Harp
+
+NetHack:sounds/Tooled_Horn: share:sounds/toolhorn.uu
+	uudecode share:sounds/toolhorn.uu
+	NetHack:cvtsnd Tooled_Horn NetHack:sounds/Tooled_Horn
+	-delete Tooled_Horn
+
+NetHack:sounds/Wooden_Flute: share:sounds/wdnflute.uu
+	uudecode share:sounds/wdnflute.uu
+	NetHack:cvtsnd Wooden_Flute NetHack:sounds/Wooden_Flute
+	-delete Wooden_Flute
+
+NetHack:sounds/Wooden_Harp: share:sounds/wdnharp.uu
+	uudecode share:sounds/wdnharp.uu
+	NetHack:cvtsnd Wooden_Harp NetHack:sounds/Wooden_Harp
+	-delete Wooden_Harp
+
 INSTDUNGEONFILES= \
 	NetHack:NetHack.cnf NetHack:air.lev NetHack:asmodeus.lev \
 	NetHack:astral.lev NetHack:baalz.lev NetHack:bigroom.lev \
@@ -702,66 +727,83 @@ NetHack:bigroom.lev:	Dat:bigroom.des NetHack:lev_comp
 NetHack:castle.lev:  Dat:castle.des NetHack:lev_comp
 	NetHack:lev_comp Dat:castle.des
 
-NetHack:air.lev NetHack:earth.lev NetHack:fire.lev NetHack:water.lev NetHack:astral.lev:	Dat:endgame.des NetHack:lev_comp
+NetHack:air.lev NetHack:earth.lev NetHack:fire.lev NetHack:water.lev NetHack:astral.lev:	do_endgame
+do_endgame:	Dat:endgame.des NetHack:lev_comp
 	NetHack:lev_comp Dat:endgame.des
 
-NetHack:asmodeus.lev NetHack:baalz.lev NetHack:juiblex.lev NetHack:orcus.lev NetHack:sanctum.lev NetHack:valley.lev:	Dat:gehennom.des NetHack:lev_comp
+NetHack:asmodeus.lev NetHack:baalz.lev NetHack:juiblex.lev NetHack:orcus.lev NetHack:sanctum.lev NetHack:valley.lev:	do_gehennom
+do_gehennom:	Dat:gehennom.des NetHack:lev_comp
 	NetHack:lev_comp Dat:gehennom.des
 
 NetHack:knox.lev: Dat:knox.des NetHack:lev_comp
 	NetHack:lev_comp Dat:knox.des
 
-NetHack:mine_end.lev NetHack:minetown.lev NetHack:minefill.lev: Dat:mines.des NetHack:lev_comp
+NetHack:mine_end.lev NetHack:minetown.lev NetHack:minefill.lev:	do_mines
+do_mines:	Dat:mines.des NetHack:lev_comp
 	NetHack:lev_comp Dat:mines.des
 
 NetHack:oracle.lev: Dat:oracle.des NetHack:lev_comp
 	NetHack:lev_comp Dat:oracle.des
 
-NetHack:tower1.lev NetHack:tower2.lev NetHack:tower3.lev:  Dat:tower.des NetHack:lev_comp
+NetHack:tower1.lev NetHack:tower2.lev NetHack:tower3.lev:	do_tower
+do_tower:	Dat:tower.des NetHack:lev_comp
 	NetHack:lev_comp Dat:tower.des
 
-NetHack:wizard1.lev NetHack:wizard2.lev NetHack:wizard3.lev NetHack:fakewiz1.lev NetHack:fakewiz2.lev:   Dat:yendor.des NetHack:lev_comp
+NetHack:wizard1.lev NetHack:wizard2.lev NetHack:wizard3.lev NetHack:fakewiz1.lev NetHack:fakewiz2.lev:  do_yendor
+do_yendor:	Dat:yendor.des NetHack:lev_comp
 	NetHack:lev_comp Dat:yendor.des
 
-NetHack:medusa-1.lev NetHack:medusa-2.lev: Dat:medusa.des NetHack:lev_comp
+NetHack:medusa-1.lev NetHack:medusa-2.lev:	do_medusa
+do_medusa:	Dat:medusa.des NetHack:lev_comp
 	NetHack:lev_comp Dat:medusa.des
 
-$(ADFILES):	Dat:Arch.des NetHack:lev_comp
+$(ADFILES):	do_adfiles
+do_adfiles:	Dat:Arch.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Arch.des
 
-$(BDFILES):	Dat:Barb.des NetHack:lev_comp
+$(BDFILES):	do_bdfiles
+do_bdfiles:	Dat:Barb.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Barb.des
 
-$(CDFILES):	Dat:Caveman.des NetHack:lev_comp
+$(CDFILES):	do_cdfiles
+do_cdfiles:	Dat:Caveman.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Caveman.des
 
-$(EDFILES):	Dat:Elf.des NetHack:lev_comp
+$(EDFILES):	do_edfiles
+do_edfiles:	Dat:Elf.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Elf.des
 
-$(HDFILES):	Dat:Healer.des NetHack:lev_comp
+$(HDFILES):	do_hdfiles
+do_hdfiles:	Dat:Healer.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Healer.des
 
-$(KDFILES):	Dat:Knight.des NetHack:lev_comp
+$(KDFILES):	do_kdfiles
+do_kdfiles:	Dat:Knight.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Knight.des
 
-$(PDFILES):	Dat:Priest.des NetHack:lev_comp
+$(PDFILES):	do_pdfiles
+do_pdfiles:	Dat:Priest.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Priest.des
 
-$(RDFILES):	Dat:Rogue.des NetHack:lev_comp
+$(RDFILES):	do_rdfiles
+do_rdfiles:	Dat:Rogue.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Rogue.des
 
-$(SDFILES):	Dat:Samurai.des NetHack:lev_comp
+$(SDFILES):	do_sdfiles
+do_sdfiles:	Dat:Samurai.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Samurai.des
 
-$(TDFILES):	Dat:Tourist.des NetHack:lev_comp
+$(TDFILES):	do_tdfiles
+do_tdfiles:	Dat:Tourist.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Tourist.des
 
-$(VDFILES):	Dat:Valkyrie.des NetHack:lev_comp
+$(VDFILES):	do_vdfiles
+do_vdfiles:	Dat:Valkyrie.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Valkyrie.des
 
-$(WDFILES):	Dat:Wizard.des NetHack:lev_comp
+$(WDFILES):	do_wdfiles
+do_wdfiles:	Dat:Wizard.des NetHack:lev_comp
 	NetHack:lev_comp Dat:Wizard.des
-
 
 NetHack:dungeon:  Dat:dungeon.def NetHack:makedefs NetHack:dgn_comp
 	NetHack:makedefs -e

@@ -184,6 +184,14 @@ losedogs()
 			if(nmv > (long)mtmp->mspec_used) mtmp->mspec_used = 0;
 			else mtmp->mspec_used -= nmv;
 
+			/* reduce tameness for every 150 moves you are away */
+			if (mtmp->mtame > nmv/150) mtmp->mtame -= nmv/150;
+			else mtmp->mtame = 0;
+
+			/* let monster move a bit on the new level */
+			/* see placement code below */
+			mtmp->mx = min(nmv, 8);
+
 			if(!regenerates(mtmp->data)) nmv /= 20;
 			if((long)mtmp->mhp + nmv >= (long)mtmp->mhpmax)
 			    mtmp->mhp = mtmp->mhpmax;
@@ -202,21 +210,45 @@ losedogs()
 		    } else if (mtmp->isshk && mtmp->mpeaceful)
 			home_shk(mtmp, TRUE);
 		    else switch(mtmp->my) {
-			xchar *xlocale, *ylocale;
+			xchar xlocale, ylocale;
 
-			case 1: xlocale = &xupstair; ylocale = &yupstair;
+			case 1: xlocale = xupstair; ylocale = yupstair;
 				goto common;
-			case 2: xlocale = &xdnstair; ylocale = &ydnstair;
+			case 2: xlocale = xdnstair; ylocale = ydnstair;
 				goto common;
-			case 3: xlocale = &xupladder; ylocale = &yupladder;
+			case 3: xlocale = xupladder; ylocale = yupladder;
 				goto common;
-			case 4: xlocale = &xdnladder; ylocale = &ydnladder;
+			case 4: xlocale = xdnladder; ylocale = ydnladder;
 				goto common;
-			case 5: xlocale = &sstairs.sx; ylocale = &sstairs.sy;
+			case 5: xlocale = sstairs.sx; ylocale = sstairs.sy;
 				goto common;
 common:
-				if (*xlocale && *ylocale) {
-			    (void) mnearto(mtmp, *xlocale, *ylocale, FALSE);
+				if (xlocale) {
+				    if(mtmp->mx) {
+					/* monster moved a bit */
+					/* pick a nearby location */
+					/* mnearto() deals w/stone, et al */
+					int i, j;
+					char *rmlist = in_rooms(xlocale,
+								ylocale, 0);
+
+					if (rmlist) {
+					    xlocale = somex(
+						&rooms[*rmlist - ROOMOFFSET]);
+					    ylocale = somey(
+						&rooms[*rmlist - ROOMOFFSET]);
+					} else {
+					    i = max(1, xlocale - mtmp->mx);
+					    j = min(COLNO-1, xlocale+mtmp->mx);
+					    xlocale = rn1(j-i,i);
+
+					    i = max(0, ylocale - mtmp->mx);
+					    j = min(ROWNO-1, ylocale+mtmp->mx);
+					    ylocale = rn1(j-i,i);
+					}
+				    }
+				    (void) mnearto(mtmp,
+						   xlocale, ylocale, FALSE);
 				    break;
 				} /* else fall through */
 			default: 
@@ -336,11 +368,11 @@ migrate_to_level(mtmp, tolev, xyloc)
 	migrating_mons = mtmp;
 #ifdef WALKIES
 	if (mtmp->mleashed)  {
-		pline("The leash comes off!");
 		m_unleash(mtmp);
+		mtmp->mtame--;
+		pline("The leash comes off!");
 	}
 #endif
-	mtmp->mtame = 0;
 	newsym(mtmp->mx,mtmp->my);
 	/* make sure to reset mtmp->[mx,my] to 0 when releasing, */
 	/* so rloc() on next level doesn't affect MON_AT() state */
@@ -455,16 +487,20 @@ register struct obj *obj;
 	    )
 		return((struct monst *)0);
 
-	/* worst case, at least he'll be peaceful. */
+	/* worst case, at least it'll be peaceful. */
 	mtmp->mpeaceful = 1;
 	set_malign(mtmp);
 	if(flags.moonphase == FULL_MOON && night() && rn2(6) && obj
 						&& mtmp->data->mlet == S_DOG)
 		return((struct monst *)0);
 
-	/* If we cannot tame him, at least he's no longer afraid. */
+	/* If we cannot tame it, at least it's no longer afraid. */
 	mtmp->mflee = 0;
 	mtmp->mfleetim = 0;
+	/* feeding it treats makes it tamer */
+	if (mtmp->mtame && mtmp->mtame < 20 && 
+	    obj && dogfood(mtmp, obj) > ACCFOOD)
+	    mtmp->mtame++;
 	if(mtmp->mtame || !mtmp->mcanmove ||
 	   /* monsters with conflicting structures cannot be tamed */
 	   mtmp->isshk || mtmp->isgd || mtmp->ispriest || mtmp->isminion ||
@@ -480,11 +516,17 @@ register struct obj *obj;
 	if(obj) {
 		if(dogfood(mtmp, obj) >= MANFOOD) return((struct monst *)0);
 		if(cansee(mtmp->mx,mtmp->my))
-			pline("%s devours the %s.", Monnam(mtmp), xname(obj));
+			pline("%s devours %s.", Monnam(mtmp), the(xname(obj)));
 		obfree(obj, (struct obj *)0);
 	}
 	if (u.uswallow && mtmp == u.ustuck)
 		expels(mtmp, mtmp->data, TRUE);
+	else if (mtmp == u.ustuck
+#ifdef POLYSELF
+		 && !(u.mtimedone && sticks(uasmon))
+#endif
+		 )
+		unstuck(mtmp);
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
 	*mtmp2 = *mtmp;
 	mtmp2->mxlth = sizeof(struct edog);
@@ -493,6 +535,22 @@ register struct obj *obj;
 	replmon(mtmp,mtmp2);
 	newsym(mtmp2->mx, mtmp2->my);
 	return(mtmp2);
+}
+
+void
+abuse_dog(mtmp)
+struct monst *mtmp;
+{
+	if (!mtmp->mtame) return;
+
+	if (Aggravate_monster || Conflict) mtmp->mtame /=2;
+	else mtmp->mtame--;
+
+#ifdef SOUNDS
+	if (mtmp->mtame && rn2(mtmp->mtame)) yelp(mtmp);
+	else growl(mtmp);	/* give them a moment's worry */
+#endif
+	if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
 }
 
 #endif /* OVLB */

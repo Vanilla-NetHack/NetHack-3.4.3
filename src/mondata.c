@@ -274,9 +274,18 @@ webmaker(ptr)   /* creature can spin a web */
 /* returns 3 values (0=male, 1=female, 2=none) */
 int
 gender(mtmp)
-	register struct monst *mtmp;
+register struct monst *mtmp;
 {
 	if (is_neuter(mtmp->data)) return 2;
+	return mtmp->female;
+}
+
+/* like gender(), but lower animals and such are still "it" */
+int
+pronoun_gender(mtmp)
+register struct monst *mtmp;
+{
+	if (Blind || !humanoid(mtmp->data)) return 2;
 	return mtmp->female;
 }
 

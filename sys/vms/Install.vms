@@ -1,4 +1,4 @@
-               Instructions for Installing NetHack 3.1.0
+               Instructions for Installing NetHack 3.1.1
                            on a VMS system
                =========================================
 
@@ -143,6 +143,8 @@ Notes:
     NetHack 3.1.0.  Don't bother trying to keep them.  Ditto for RECORD,
     the scoreboard file.  One minor change of note is that the default
     name for a player's character is now a lowercase copy of the username.
+    Scoreboard files from 3.1.0 are compatible with 3.1.1, but save files
+    and bones files are not.
 
 2.  To specify user-preference options in your environment, define the
     logical name NETHACKOPTIONS to have value of a quoted string
@@ -166,9 +168,14 @@ Notes:
     file.  Otherwise, the following are tried:  file specified by logical
     name NETHACKINI, file SYS$LOGIN:NETHACK.INI, and file HOME:NETHACK.CNF
     (note that the C run-time library sets up the value of HOME to match
-    sys$login).  Syntax for the configuration file is essentially the same
-    as for NETHACKOPTIONS, but multiple lines can be used and comments can
-    be included by placing '#' in the first column.
+    sys$login).  Syntax for the configuration file is similar to
+    NETHACKOPTIONS, but multiple lines can be used, each must start with
+    OPTIONS=, and comments can be included by placing '#' in the first
+    column.  Several options which take more complex values (graphics
+    representation) can also be present; see the "Guidebook" for details.
+    (Guidebook.txt can be found in the [.dat] subdirectory; a copy gets
+    placed in the playground directory by install.com.  Also, an example
+    configuration file can be found in [.win.X11]nethack.rc.)
 
 3.  Instead of using vmsbuild.com to compile and link everything, you can
     use the set of Makefiles found in the vms subdirectory, provided you
@@ -306,7 +313,7 @@ Notes:
     its potential security ramifications should even consider it.
 
     The default setup by install.com assumes no privileges and uses
-    world-writeable files to allow arbitrary users to play.  This is
+    world-writable files to allow arbitrary users to play.  This is
     NOT secure and not advisable in any environment where there are
     untrustworthy users, but works fine for many sites.  If you allow
     users to run NetHack from captive accounts (VMS 5.1-* or earlier)
@@ -447,7 +454,48 @@ Notes:
     the C run-time library's program startup code from converting it into
     lowercase.  Any character name will be ignored in favor of "wizard".
 
-14. Unless you have both Motif and the Athena Widget set from MIT, you
+14. At program startup time, NetHack uses the empty file PERM to prevent
+    two different processes from using the same character name (under the
+    same UIC ownership) at the same time.  It does this by temporarily
+    giving that file a second directory entry named PERM.LOCK, then
+    removing the alternate entry once started.  If the PERM file is
+    missing or inaccessible, NetHack will give a message and then quit.
+    Several possible messages and their usual causes are:
+       Can't find file perm;1 to lock!
+    PERM.;1 is missing from the playground directory.  Fix:  reinstall
+    the playground directory using install.com, or use CREATE or an editor
+    to make an empty file named PERM.  Version number must be 1.
+       Can't lock perm;1 due to directory protection.
+    The playground directory is not allowing write access.  Fix:  players
+    need to be able to write files for dungeon levels and "bones" into
+    the playground directory.  Set the protection or ACL on the xxx.DIR;1
+    file in the playground's parent directory to allow write access.
+       Can't unlink perm.lock;1.
+    The empty file PERM.;1 is protected against delete access; only matters
+    under some versions of VMS.  Fix:  set the protection or ACL on PERM.;1
+    to allow delete access to players.  Under VMS V5.5-2, delete access is
+    not necessary.  PERM does not have to remain writable.
+       Waiting for access to perm;1.  (# retries left).
+    If some other process is also starting up NetHack at about the same
+    time, you may have to wait a short period.  NetHack will retry once
+    per second, counting down to 0.  If 0 is reached, the message
+       Perhaps there is an old perm.lock;1 around?
+    will be displayed and then NetHack will give up.  Fix:  to forcibly
+    remove a stale PERM.LOCK entry, issue the following command
+       $ SET FILE/REMOVE PERM.LOCK;1
+    from the playground directory.  The file PERM should remain intact.
+    Do not use that command for real files, only alternate directory
+    entries.  If output from a DIRECTORY command on the playground reports
+       PERM.LOCK;1          no such file
+    then someone has deleted PERM.;1 while the synonym entry was still
+    in place, and PERM.LOCK was left as a dangling name which no longer
+    points at any file.  The SET FILE/REMOVE command above will fix it.
+
+    In similar fashion, synchronized access to the scoreboard file RECORD
+    is accomplished using temporary entry RECORD.LOCK and LOGFILE using
+    entry LOGFILE.LOCK.
+
+15. Unless you have both Motif and the Athena Widget set from MIT, you
     will not be able to use the X11 interface on VMS.  Even if you do
     have both those things, such a configuration has not been tested and
     there are no provisions for it in vmsbuild.com.  Makefile.src does
@@ -473,11 +521,11 @@ Notes:
     window manager in order for any changes to take effect; it's easiest
     to just make the session manager quit and then log in again.
 
-15. There is no support for VMS POSIX in this release of NetHack.
+16. There is no support for VMS POSIX in this release of NetHack.
 
-16. If necessary, send problem reports via e-mail to
+17. If necessary, send problem reports via e-mail to
        "nethack-bugs@linc.cis.upenn.edu"  (numeric address 130.91.6.8).
     Always include version information for NetHack, the operating system,
     and the C compiler used.
 
-23-JAN-1993
+24-FEB-1993

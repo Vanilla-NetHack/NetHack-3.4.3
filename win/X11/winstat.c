@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winstat.c	3.1	92/3/7
+/*	SCCS Id: @(#)winstat.c	3.1	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,11 @@
  * made.  This code assumes that only one fancy status will ever be made.
  * Currently, only one status window (of any type) is _ever_ made.
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
@@ -16,6 +21,14 @@
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xaw/Form.h>
 #include <X11/Xaw/Label.h>
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "hack.h"
 #include "winX.h"
@@ -23,8 +36,8 @@
 extern const char *hu_stat[]; /* from eat.c */
 extern const char *enc_stat[]; /* from botl.c */
 
-static void update_fancy_status();
-static Widget create_fancy_status();
+static void FDECL(update_fancy_status, (struct xwindow *));
+static Widget FDECL(create_fancy_status, (Widget,Widget));
 
 void
 create_status_window(wp, create_popup, parent)
@@ -63,6 +76,10 @@ create_status_window(wp, create_popup, parent)
     wp->popup = parent = XtCreatePopupShell("status_popup",
 					topLevelShellWidgetClass,
 					toplevel, args, num_args);
+    /*
+     * If we're here, then this is an auxiliary status window.  If we're
+     * cancelled via a delete window message, we should just pop down.
+     */
 
     num_args = 0;
     XtSetArg(args[num_args], XtNdisplayCaret, False); num_args++;
@@ -202,16 +219,17 @@ struct X_status_value {
 #define F_EXP      15
 #define F_ALIGN	   16
 #define F_TIME     17
+#define F_SCORE	   18
 
-#define F_HUNGER   18
-#define F_CONFUSED 19
-#define F_SICK	   20
-#define F_BLIND	   21
-#define F_STUNNED  22
-#define F_HALLU    23
-#define F_ENCUMBER 24
+#define F_HUNGER   19
+#define F_CONFUSED 20
+#define F_SICK	   21
+#define F_BLIND	   22
+#define F_STUNNED  23
+#define F_HALLU    24
+#define F_ENCUMBER 25
 
-#define NUM_STATS  25
+#define NUM_STATS  26
 
 /*
  * Notes:
@@ -220,7 +238,7 @@ struct X_status_value {
  */
 static struct X_status_value shown_stats[NUM_STATS] = {
     { "Strength",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },	/* 0*/
-    { "Dexerity",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
+    { "Dexterity",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
     { "Constitution",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
     { "Intelligence",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
     { "Wisdom",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
@@ -238,15 +256,15 @@ static struct X_status_value shown_stats[NUM_STATS] = {
     { "Experience",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },	/*15*/
     { "Alignment",	SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
     { "Time",		SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
+    { "Score",		SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
 
     { "",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE }, /* hunger*/
-    { "Confused",	SV_NAME,  (Widget) 0,  1, 0, FALSE, TRUE },
-    { "Sick",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },	/*20*/
+    { "Confused",	SV_NAME,  (Widget) 0,  1, 0, FALSE, TRUE },	/*20*/
+    { "Sick",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Blind",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Stunned",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Hallucinating",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE }, /*encumbr*/
-
 };
 
 
@@ -387,6 +405,57 @@ update_val(attr_rec, new_value)
 	    }
 	    if(!flagtime) return;
 	}
+
+	/* special case: exp can be enabled & disabled */
+	else if (attr_rec == &shown_stats[F_EXP]) {
+	    static boolean flagexp = TRUE;
+#ifdef EXP_ON_BOTL
+
+	    if (flags.showexp && !flagexp) {
+		set_name(attr_rec->w, shown_stats[F_EXP].name);
+		force_update = TRUE;
+		flagexp = flags.showexp;
+	    } else if(!flags.showexp && flagexp) {
+		set_name(attr_rec->w, "");
+		set_value(attr_rec->w, "");
+		flagexp = flags.showexp;
+	    }
+	    if (!flagexp) return;
+#else
+	    if (flagexp) {
+		set_name(attr_rec->w, "");
+		set_value(attr_rec->w, "");
+		flagexp = FALSE;
+	    }
+	    return;	/* don't show it at all */
+#endif
+	}
+
+	/* special case: score can be enabled & disabled */
+	else if (attr_rec == &shown_stats[F_SCORE]) {
+	    static boolean flagscore = TRUE;
+#ifdef SCORE_ON_BOTL
+
+	    if(flags.showscore && !flagscore) {
+		set_name(attr_rec->w, shown_stats[F_SCORE].name);
+		force_update = TRUE;
+		flagscore = flags.showscore;
+	    } else if(!flags.showscore && flagscore) {
+		set_name(attr_rec->w, "");
+		set_value(attr_rec->w, "");
+		flagscore = flags.showscore;
+	    }
+	    if(!flagscore) return;
+#else
+	    if (flagscore) {
+		set_name(attr_rec->w, "");
+		set_value(attr_rec->w, "");
+		flagscore = FALSE;
+	    }
+	    return;
+#endif
+	}
+
 #ifdef POLYSELF
 	/* special case: when polymorphed, show "HD", disable exp */
 	else if (attr_rec == &shown_stats[F_LEVEL]) {
@@ -475,8 +544,6 @@ update_val(attr_rec, new_value)
  * Information on the first line:
  *	name, attributes, alignment, score
  *
- * Not done: score
- *
  * Information on the second line:
  * 	dlvl, gold, hp, power, ac, {level & exp or HD **}
  * 	status (hunger, conf, halu, stun, sick, blind), time, encumbrance
@@ -542,9 +609,18 @@ update_fancy_status(wp)
 #else
 	    case F_LEVEL:	val = (long) u.ulevel;	break;
 #endif
-	    case F_EXP:		val = (long) u.uexp;	break;
+#ifdef EXP_ON_BOTL
+	    case F_EXP:		val = flags.showexp ? u.uexp : 0L; break;
+#else
+	    case F_EXP:		val = 0L; break;
+#endif
 	    case F_ALIGN:	val = (long) u.ualign.type; break;
 	    case F_TIME:	val = flags.time ? (long) moves : 0L;	break;
+#ifdef SCORE_ON_BOTL
+	    case F_SCORE:	val = flags.showscore ? botl_score():0L; break;
+#else
+	    case F_SCORE:	val = 0L; break;
+#endif
 	    default:
 	    {
 		/*
@@ -625,6 +701,7 @@ width_string(sv_index)
 	case F_EXP:	return "4294967295";	/* max ulong */
 	case F_ALIGN:	return "Neutral";
 	case F_TIME:	return "4294967295";	/* max ulong */
+	case F_SCORE:	return "4294967295";	/* max ulong */
     }
     impossible("width_string: unknown index %d\n", sv_index);
     return "";
@@ -781,8 +858,10 @@ static int attrib_indices[] = { F_STR,F_DEX,F_CON,F_INT,F_WIS,F_CHA, -1,0,0 };
 static int status_indices[] = { F_HUNGER, F_CONFUSED, F_SICK, F_BLIND,
 				F_STUNNED, F_HALLU, F_ENCUMBER, -1,0,0 };
 
-static int col2_indices[] = { F_MAXHP,F_ALIGN,F_TIME,F_EXP,F_MAXPOWER,-1,0,0 };
-static int col1_indices[] = { F_HP, F_AC, F_GOLD, F_LEVEL, F_POWER,   -1,0,0 };
+static int col2_indices[] = { F_MAXHP,    F_ALIGN, F_TIME, F_EXP,
+			      F_MAXPOWER, -1,0,0 };
+static int col1_indices[] = { F_HP,       F_AC,    F_GOLD, F_LEVEL,
+			      F_POWER,    F_SCORE, -1,0,0 };
 
 
 /*

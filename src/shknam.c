@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)shknam.c	3.1	93/02/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -163,7 +163,7 @@ const struct shclass shtypes[] = {
 	{"used armor dealership", ARMOR_CLASS, 14,
 	    D_SHOP, {{90, ARMOR_CLASS}, {10, WEAPON_CLASS}, {0, 0}},
 	     shkarmors},
-	{"second hand bookstore", SCROLL_CLASS, 10, D_SHOP,
+	{"second-hand bookstore", SCROLL_CLASS, 10, D_SHOP,
 	    {{90, SCROLL_CLASS}, {10, SPBOOK_CLASS}, {0, 0}}, shkbooks},
 	{"liquor emporium", POTION_CLASS, 10, D_SHOP,
 	    {{100, POTION_CLASS}, {0, 0}, {0, 0}}, shkliquors},

@@ -18,7 +18,7 @@
 #include <intuition/intuition.h>
 
 #undef COUNT
-#ifdef LATTICE
+#ifdef __SASC_60
 # include <proto/exec.h>
 # include <proto/dos.h>
 #endif
@@ -35,7 +35,7 @@
 
 extern char Initialized;
 
-#ifndef __SASC
+#ifndef __SASC_60
 int Enable_Abort = 0;   /* for stdio package */
 #endif
 

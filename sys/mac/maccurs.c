@@ -91,6 +91,9 @@ FlushWinFile ( void )
 }
 
 
+#if 0
+/* Now we use click_to_cmd() instead. */
+
 int
 clickSector ( int x , int y , int toX , int toY )
 {
@@ -155,7 +158,7 @@ clickSector ( int x , int y , int toX , int toY )
 	}
 }
 
-
+#endif
 
 
 Boolean

@@ -660,7 +660,7 @@ do_data()
 	Sprintf(tempfile, DATA_TEMPLATE, "database.tmp");
 	Sprintf(filename, DATA_TEMPLATE, DATA_FILE);
 	Strcat(strcpy(infile, filename),
-#ifdef OS2
+#if (defined(OS2) && !defined(OS2_HPFS)) || defined(WIN32)
 		".bas"
 #else
 		".base"

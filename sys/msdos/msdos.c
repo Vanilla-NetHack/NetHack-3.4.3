@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	 3.1	 93/01/05		  */
+/*	SCCS Id: @(#)msdos.c	 3.1	 93/02/16		  */
 /* Copyright (c) NetHack PC Development Team 1990, 1991, 1992	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -128,15 +128,14 @@ static const struct pad {
  * "meta" bit for it.  -3.
  */
 #define SCANLO		0x10
-#define SCANHI		0x32
-#define SCANKEYS	(SCANHI - SCANLO + 1)
-#define inmap(x)	(SCANLO <= (x) && (x) <= SCANHI)
 
-static const char scanmap[SCANKEYS] = { 	/* ... */
+static const char scanmap[] = { 	/* ... */
 	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
-	0, '\\', 'z','x','c','v','b','N','m' 	/* ... */
+	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
 };
+
+#define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
 
 /*
  * BIOSgetch gets keys directly with a BIOS call.

@@ -1,6 +1,18 @@
 #	NetHack Makefile.
 #	SCCS Id: @(#)Makefile.src	3.1	93/01/25
 
+# newer makes predefine $(MAKE) to 'make' and do smarter processing of
+# recursive make calls if $(MAKE) is used
+# these makes allow $(MAKE) to be overridden by the environment if someone
+# wants to (or has to) use something other than the standard make, so we do
+# not want to unconditionally set $(MAKE) here
+#
+# unfortunately, some older makes do not predefine $(MAKE); if you have one of
+# these, uncomment the following line
+# (you will know that you have one if you get complaints about being unable
+# to find 'makedefs')
+# MAKE = make
+
 # This makefile replaces the previous Makefile.unix, Makefile.xenix,
 # Makefile.3B2, Makefile.att, and Makefile.tos.
 # Set SYSTEM to one of:
@@ -430,7 +442,7 @@ ioctl.o: ../sys/unix/ioctl.c  ../include/hack.h ../include/termcap.h
 	$(CC) $(CFLAGS) -c ../sys/unix/ioctl.c
 unixmain.o: ../sys/unix/unixmain.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixmain.c
-unixtty.o: ../sys/unix/unixtty.c  ../include/hack.h ../include/wintty.h
+unixtty.o: ../sys/unix/unixtty.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixtty.c
 unixunix.o: ../sys/unix/unixunix.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixunix.c
@@ -442,7 +454,7 @@ topl.o: ../win/tty/topl.c  ../include/hack.h ../include/termcap.h ../include/win
 	$(CC) $(CFLAGS) -c ../win/tty/topl.c
 wintty.o: ../win/tty/wintty.c  ../include/hack.h ../include/termcap.h ../include/wintty.h
 	$(CC) $(CFLAGS) -c ../win/tty/wintty.c
-Window.o: ../win/X11/Window.c  ../include/WindowP.h
+Window.o: ../win/X11/Window.c  ../include/WindowP.h ../include/config.h
 	$(CC) $(CFLAGS) -c ../win/X11/Window.c
 dialogs.o: ../win/X11/dialogs.c  ../include/config.h
 	$(CC) $(CFLAGS) -c ../win/X11/dialogs.c
@@ -581,7 +593,7 @@ zap.o:  ../include/hack.h
 	touch ../include/eshk.h
 ../include/global.h:  ../include/coord.h ../include/vmsconf.h ../include/unixconf.h \
 		../include/os2conf.h ../include/pcconf.h ../include/tosconf.h \
-		../include/amiconf.h ../include/macconf.h
+		../include/amiconf.h ../include/macconf.h ../include/ntconf.h
 	touch ../include/global.h
 ../include/hack.h:  ../include/config.h ../include/dungeon.h ../include/monsym.h \
 		../include/mkroom.h ../include/objclass.h ../include/decl.h \

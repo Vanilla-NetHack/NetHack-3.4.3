@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)mhitu.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)mhitu.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "artifact.h"
 
-STATIC_VAR struct obj NEARDATA *otmp;
+STATIC_VAR NEARDATA struct obj *otmp;
 
 #ifdef POLYSELF
 STATIC_DCL void FDECL(urustm, (struct monst *, struct obj *));
@@ -24,7 +24,6 @@ STATIC_DCL boolean FDECL(diseasemu, (struct permonst *));
 STATIC_DCL int FDECL(hitmu, (struct monst *,struct attack *));
 STATIC_DCL int FDECL(gulpmu, (struct monst *,struct attack *));
 STATIC_DCL int FDECL(explmu, (struct monst *,struct attack *,BOOLEAN_P));
-STATIC_DCL int FDECL(gazemu, (struct monst *,struct attack *));
 STATIC_DCL void FDECL(missmu,(struct monst *,BOOLEAN_P,struct attack *));
 STATIC_DCL void FDECL(mswings,(struct monst *,struct obj *));
 STATIC_DCL void FDECL(wildmiss,(struct monst *));
@@ -107,16 +106,13 @@ mswings(mtmp, otemp)		/* monster swings obj */
 register struct monst *mtmp;
 register struct obj *otemp;
 {
-	if (!flags.verbose || Blind || !mon_visible(mtmp) ||
-		otemp->oclass != WEAPON_CLASS) return;
+	if (!flags.verbose || Blind || !mon_visible(mtmp))
+		return;
 	pline("%s %s %s %s.", Monnam(mtmp),
-	      ((otemp->otyp >= SPEAR &&
-	        otemp->otyp <= LANCE) ||
-	       (otemp->otyp >= PARTISAN &&
-	        otemp->otyp <= SPETUM) ||
+	      ((otemp->otyp >= SPEAR && otemp->otyp <= LANCE) ||
+	       (otemp->otyp >= PARTISAN && otemp->otyp <= SPETUM) ||
 	       otemp->otyp == TRIDENT) ? "thrusts" : "swings",
-	      !humanoid(mtmp->data) ? "its" : mtmp->female ? "her" : "his",
-	      xname(otemp));
+	      his[pronoun_gender(mtmp)], xname(otemp));
 }
 
 #endif /* OVL1 */
@@ -311,7 +307,11 @@ mattacku(mtmp)
 						Monnam(mtmp), uasmon->mname);
 			killed(mtmp);
 			newsym(u.ux,u.uy);
-			return(0);
+#ifdef MUSE
+			if (mtmp->mhp > 0) return(0);
+			else
+#endif
+				return(1);
 		    }
 		    if (u.usym != S_PIERCER)
 			return(0);	/* trappers don't attack */
@@ -405,8 +405,7 @@ mattacku(mtmp)
 
 	    if(!rn2(10) && !mtmp->mcan) {
 		if(youseeit) {
-			pline("%s summons help!",youseeit ?
-				Monnam(mtmp) : "It");
+			pline("%s summons help!", Monnam(mtmp));
 		} else
 			You("feel hemmed in.");
 		/* Technically wrong; we really should check if you can see the
@@ -501,7 +500,12 @@ mattacku(mtmp)
 			    }
 			    stoned = TRUE;
 			    killed(mtmp);
-			    sum[i] = 2;
+#ifdef MUSE
+			    if (mtmp->mhp > 0)
+				sum[i] = 0;
+			    else
+#endif
+				sum[i] = 2;
 			}
 			break;
 
@@ -564,6 +568,8 @@ mattacku(mtmp)
 			    if (foundyou) {
 				set_uasmon();
 #ifdef MUSE
+				remove_cadavers(&mtmp->minvent);
+				possibly_unwield(mtmp);
 				otmp = MON_WEP(mtmp);
 #else
 				otmp = select_hwep(mtmp);
@@ -648,7 +654,11 @@ int attk;
 			continue;
 		break;
 	    case 1:
-		if (uarmc) break;
+		if (uarmc) {
+		    if (!rusting)
+			(void)rust_dmg(uarmc, "cloak", hurt, TRUE);
+		    break;
+		}
 		/* Note the difference between break and continue;
 		 * break means it was hit and didn't rust; continue
 		 * means it wasn't a target and though it didn't rust
@@ -764,8 +774,21 @@ hitmu(mtmp, mattk)
 #endif
 								) {
 		    if(!u.ustuck && rn2(2)) {
-			u.ustuck = mtmp;
-			pline("%s grabs you!", Monnam(mtmp));
+			register struct obj *obj = (uarmc ? uarmc : uarm);
+
+			/* if your cloak/armor is greased, monster slips off */
+			if (obj && obj->greased) {
+			    dmg = 0;
+			    pline("%s grabs you, but cannot hold onto your greased %s!",
+				  Monnam(mtmp), xname(obj));
+			    if (!rn2(2)) {
+				pline("The grease wears off.");
+				obj->greased = 0;
+			    }
+			} else {
+			    u.ustuck = mtmp;
+			    pline("%s grabs you!", Monnam(mtmp));
+			}
 		    } else if(u.ustuck == mtmp) {
 		        exercise(A_STR, FALSE);
 			You("are being %s.",
@@ -774,12 +797,23 @@ hitmu(mtmp, mattk)
 		    }
 		} else {			  /* hand to hand weapon */
 		    if(mattk->aatyp == AT_WEAP && otmp) {
+#ifdef MUSE
+			if (otmp->otyp == CORPSE
+				&& otmp->corpsenm == PM_COCKATRICE) {
+			    dmg = 1;
+			    pline("%s hits you with the cockatrice corpse.",
+				Monnam(mtmp));
+			    if (!Stoned)
+			        goto do_stone;
+			}
+#endif
 			dmg += dmgval(otmp, uasmon);
 			if (dmg <= 0) dmg = 1;
 			if (!(otmp->oartifact &&
 				artifact_hit(mtmp, &youmonst, otmp, &dmg,dieroll)))
 			     hitmsg(mtmp, mattk);
 #ifdef POLYSELF
+			if (!dmg) break;
 			if (u.mh > 1 && u.mh > ((u.uac>0) ? dmg : dmg+u.uac) &&
 					(u.umonnum==PM_BLACK_PUDDING
 					|| u.umonnum==PM_BROWN_PUDDING)) {
@@ -962,6 +996,9 @@ dopois:
 		    } else {
 			if (flags.soundok)
 			    You("hear %s hissing!", s_suffix(mon_nam(mtmp)));
+#ifdef MUSE
+do_stone:
+#endif
 			if((!rn2(10) ||
 			    (flags.moonphase == NEW_MOON && !have_lizard()))
 #ifdef POLYSELF
@@ -987,14 +1024,28 @@ dopois:
 							) u.ustuck = mtmp;
 		break;
 	    case AD_WRAP:
-		if(ctmp
+		if((!mtmp->mcan || (u.ustuck == mtmp))
 #ifdef POLYSELF
 			&& !sticks(uasmon)
 #endif
 					  ) {
 		    if(!u.ustuck && !rn2(10)) {
-			pline("%s swings itself around you!", Monnam(mtmp));
-			u.ustuck = mtmp;
+			register struct obj *obj = (uarmc ? uarmc : uarm);
+
+			/* if your cloak/armor is greased, monster slips off */
+			if (obj && obj->greased) {
+			    dmg = 0;
+			    pline("%s slips off of your greased %s!",
+				  Monnam(mtmp), xname(obj));
+			    if (!rn2(2)) {
+				pline("The grease wears off.");
+				obj->greased = 0;
+			    }
+			} else {
+			    pline("%s swings itself around you!",
+				  Monnam(mtmp));
+			    u.ustuck = mtmp;
+			}
 		    } else if(u.ustuck == mtmp) {
 			if (is_pool(mtmp->mx,mtmp->my)
 #ifdef POLYSELF
@@ -1002,7 +1053,17 @@ dopois:
 #endif
 			    && !Magical_breathing
 			   ) {
+			    boolean moat = (levl[u.ux][u.uy].typ != POOL) &&
+				(levl[u.ux][u.uy].typ != WATER) &&
+				!Is_medusa_level(&u.uz) &&
+				!Is_waterlevel(&u.uz);
+
 			    pline("%s drowns you....", Monnam(mtmp));
+			    killer_format = KILLED_BY_AN;
+			    Sprintf(buf, "%s by %s",
+				    moat ? "moat" : "pool of water",
+				    a_monnam(mtmp));
+			    killer = buf;
 			    done(DROWNING);
 			} else if(mattk->aatyp == AT_HUGS)
 			    You("are being crushed.");
@@ -1087,8 +1148,13 @@ dopois:
 	    case AD_SAMU:
 		hitmsg(mtmp, mattk);
 		/* when the Wiz hits, 1/20 steals the amulet */
-		if (!u.uhave.amulet) break;
-		if (!rn2(20)) stealamulet(mtmp);
+		if ( u.uhave.amulet ||
+		     u.uhave.bell || u.uhave.book || u.uhave.menorah
+#ifdef MULDGN
+		     || u.uhave.questart /* carrying the Quest Artifact */
+#endif
+		   )
+		    if (!rn2(20)) stealamulet(mtmp);
 		break;
 
 	    case AD_TLPT:
@@ -1149,7 +1215,12 @@ dopois:
 		        exercise(A_STR, TRUE);
 		        exercise(A_CON, TRUE);
 			flags.botl = 1;
-			if(!rn2(50)) rloc(mtmp);
+			if (mtmp->mhp == 0)
+			    return 2; /* mongone() was called above */
+			if(!rn2(50)) {
+			    rloc(mtmp);
+			    return 3;
+			}
 			dmg = 0;
 		} else
 		    if(pl_character[0] == 'H') {
@@ -1279,9 +1350,12 @@ dopois:
 	}
 
 #ifdef POLYSELF
-	res = passiveum(olduasmon, mtmp, mattk);
-	stop_occupation();
-	return res;
+	if (dmg) {
+	    res = passiveum(olduasmon, mtmp, mattk);
+	    stop_occupation();
+	    return res;
+	} else
+	    return 1;
 #else
 	stop_occupation();
 	return 1;
@@ -1325,7 +1399,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		}
 #ifdef WALKIES
 		if((i = number_leashed()) > 0) {
-			pline("The leash%s snap%s loose...",
+			pline("The leash%s snap%s loose.",
 					(i > 1) ? "es" : "",
 					(i > 1) ? "" : "s");
 			unleash_all();
@@ -1336,7 +1410,11 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 			pline("%s turns to stone!", Monnam(mtmp));
 			stoned = 1;
 			xkilled(mtmp, 0);
-			return 2;
+# ifdef MUSE
+			if (mtmp->mhp > 0) return 0;
+			else
+# endif
+				return 2;
 		}
 #endif
 		display_nhwindow(WIN_MESSAGE, FALSE);
@@ -1356,9 +1434,10 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 	    switch(mattk->adtyp) {
 
 		case AD_DGST:
-		    if(!u.uswldtim) {	/* a3 *//*no cf unsigned <=0*/
+		    if(u.uswldtim <= 1) {	/* a3 *//*no cf unsigned <=0*/
 			pline("%s totally digests you!", Monnam(mtmp));
 			tmp = u.uhp;
+			if (Half_physical_damage) tmp *= 2; /* sorry */
 		    } else {
 			pline("%s digests you!", Monnam(mtmp));
 		        exercise(A_STR, FALSE);
@@ -1437,7 +1516,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 	    }
 	}
 
-	if(Half_physical_damage) tmp = (tmp+1) / 2;
+	if (Half_physical_damage) tmp = (tmp+1) / 2;
 
 	mdamageu(mtmp, tmp);
 	if(tmp) stop_occupation();
@@ -1452,7 +1531,6 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 	    if (u.umonnum == PM_COCKATRICE) {
 		pline("%s very hurriedly %s you!", Monnam(mtmp), 
 		       is_animal(mtmp->data)? "regurgitates" : "expels");
-		u.uswldtim = 0;
 	    } else {
 #endif
 		You("get %s!", 
@@ -1490,10 +1568,11 @@ boolean ufound;
 		not_affected |= Cold_resistance;
 
 		if (!not_affected) {
-		    if (flags.verbose) You("get blasted!");
 		    if (ACURR(A_DEX) > rnd(20)) {
-			You("duck the blast...");
+			You("duck some of the blast.");
 			tmp = (tmp+1) / 2;
+		    } else {
+		        if (flags.verbose) You("get blasted!");
 		    }
 		    if (Half_physical_damage) tmp = (tmp+1) / 2;
 		    mdamageu(mtmp, tmp);
@@ -1511,6 +1590,7 @@ boolean ufound;
 			You("are blinded by a blast of light!");
 			make_blinded((long)tmp, FALSE);
 		    } else
+			if (flags.verbose)
 			You("get the impression it was not terribly bright.");
 		}
 		break;
@@ -1526,10 +1606,13 @@ boolean ufound;
 	}
     }
     mondead(mtmp);
+#ifdef MUSE
+    if (mtmp->mhp > 0) return(0);
+#endif
     return(2);	/* it dies */
 }
 
-STATIC_OVL int
+int
 gazemu(mtmp, mattk)	/* monster gazes at you */
 	register struct monst *mtmp;
 	register struct attack  *mattk;
@@ -1627,9 +1710,10 @@ urustm(mon, obj)
 register struct monst *mon;
 register struct obj *obj;
 {
-	boolean vis = cansee(mon->mx, mon->my);
+	boolean vis;
 
 	if (!mon || !obj) return; /* just in case */
+	vis = cansee(mon->mx, mon->my);
 	if (u.umonnum == PM_RUST_MONSTER && 
 	    is_rustprone(obj) && obj->oeroded < MAX_ERODE) {
 		if (obj->greased || obj->oerodeproof || (obj->blessed && rn2(3))) {
@@ -1716,14 +1800,14 @@ register struct monst *mon;
 
 	if (mon->mcan || mon->mspec_used) {
   		pline("%s acts as though %s has got a %sheadache.",
-  			Monnam(mon), Blind ? "it" : fem ? "she" : "he",
-			mon->mcan ? "severe " : "");
+		      Monnam(mon), he[pronoun_gender(mon)],
+		      mon->mcan ? "severe " : "");
 		return 0;
 	}
 
 	if (unconscious()) {
 		pline("%s seems dismayed at your lack of response.",
-			Monnam(mon));
+		      Monnam(mon));
 		return 0;
 	}
 
@@ -2024,7 +2108,7 @@ register struct attack *mattk;
 		    mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL &&
 		    mattk->aatyp != AT_MAGC &&
 #ifdef MUSE
-		    (!which_armor(mtmp, W_ARMG))) {
+		    (!(mtmp->misc_worn_check & W_ARMG))) {
 #else
 		    (!is_mercenary(mdat) ||
 				      !m_carrying(mtmp, LEATHER_GLOVES))) {
@@ -2036,6 +2120,9 @@ register struct attack *mattk;
 		    pline("%s turns to stone!", Monnam(mtmp));
 		    stoned = 1;
 		    xkilled(mtmp, 0);
+#ifdef MUSE
+		    if (mtmp->mhp > 0) return 1;
+#endif
 		    return 2;
 		}
 		return 1;
@@ -2125,6 +2212,9 @@ register struct attack *mattk;
 	if((mtmp->mhp -= tmp) <= 0) {
 		pline("%s dies!", Monnam(mtmp));
 		xkilled(mtmp,0);
+#ifdef MUSE
+		if (mtmp->mhp > 0) return 1;
+#endif
 		return 2;
 	}
 	return 1;

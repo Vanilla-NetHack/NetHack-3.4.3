@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.1	92/01/05
+/*	SCCS Id: @(#)priest.c	3.1	93/02/09
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989. 		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -265,7 +265,7 @@ char *
 priestname(mon)
 register struct monst *mon;
 {
-	static char NEARDATA pname[PL_NSIZ];
+	static NEARDATA char pname[PL_NSIZ];
 
 	Strcpy(pname, "the ");
 	if (mon->minvis) Strcat(pname, "invisible ");
@@ -414,10 +414,7 @@ register struct monst *priest;
 		 !priest->mpeaceful || !priest->mcanmove || priest->msleep) {
 	    if(!priest->mcanmove || priest->msleep) {
 		pline("%s breaks out of %s reverie!",
-			humanoid(priest->data)
-				? (priest->female ? "her" : "his")
-				: "its",
-			Monnam(priest));
+		      Monnam(priest), his[pronoun_gender(priest)]);
 		priest->mfrozen = priest->msleep = 0;
 		priest->mcanmove = 1;
 	    }
@@ -430,7 +427,7 @@ register struct monst *priest;
 		   verbalize("Talk?  Here is what I have to say!");
 		   break;
 		default:
-		   verbalize("Pilgrim, I have lost mine desire to talk.");
+		   verbalize("Pilgrim, I would speak no longer with thee.");
 		   break;
 	    }
 	    return;
@@ -632,6 +629,34 @@ angry_priest()
 
 	if(priest = findpriest(temple_occupied(u.urooms)))
 		wakeup(priest);
+}
+
+/*
+ * When saving bones, find priests that aren't on their shrine level,
+ * and remove them.   This avoids big problems when restoring bones.
+ */
+void
+clearpriests()
+{
+    register struct monst *mtmp, *mtmp2;
+
+    for(mtmp = fmon; mtmp; mtmp = mtmp2) {
+	mtmp2 = mtmp->nmon;
+	if (mtmp->ispriest && !on_level(&(EPRI(mtmp)->shrlevel), &u.uz))
+	    mongone(mtmp);
+    }
+}
+
+/* munge priest-specific structure when restoring -dlc */
+void
+restpriest(mtmp, ghostly)
+register struct monst *mtmp;
+boolean ghostly;
+{
+    if(u.uz.dlevel) {
+	if (ghostly)
+	    assign_level(&(EPRI(mtmp)->shrlevel), &u.uz);
+    }
 }
 
 #endif /* OVLB */

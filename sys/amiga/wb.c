@@ -87,7 +87,7 @@ main( argc, argv )
     ZapOptions( curopts );
     InitWB( argc, argv );
     SetupWB( ); /* open window, build menus */
-    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1!" );
+    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1.1!" );
     CopyRight( );
 
     ReadConfig( );
@@ -151,6 +151,7 @@ main( argc, argv )
 
 	    case MENUPICK:
 		do_menu( mimsg.Code );
+		flushIDCMP( win->UserPort );
 		break;
 
 	    case RAWKEY:
@@ -169,6 +170,7 @@ main( argc, argv )
 			    &Help2_IntuiTextList8 );
 		    }
 		}
+		flushIDCMP( win->UserPort );
 		break;
 
 	    case CLOSEWINDOW:
@@ -190,6 +192,7 @@ main( argc, argv )
 
 	    case MOUSEBUTTONS:
 		do_buttons( &mimsg );
+		flushIDCMP( win->UserPort );
 		break;
 	    }
 	}
@@ -248,6 +251,15 @@ main( argc, argv )
 	}
     }
     cleanup( 0 );
+}
+
+void
+flushIDCMP( port )
+	struct MsgPort *port;
+{
+	struct Message *msg;
+	while( msg = GetMsg( port ) )
+		ReplyMsg( msg );
 }
 
 void CopyRight( )
@@ -325,7 +337,7 @@ InitWB( argc, wbs )
 		case 'c':       /* Configuration to load */
 		    if( i + 1 < argc && argv[i][j+1] == 0 )
 		    {
-			strcpy( NetHackCnf, argv[ ++i ] );
+			strcpy( StrConf, argv[ ++i ] );
 			goto nextargv;
 		    }
 		    else
@@ -371,7 +383,7 @@ InitWB( argc, wbs )
 		    fprintf( stderr, "%s: invalid option %c\n",
 			argv[0], c );
 		    fprintf( stderr,
-			"usage: %s [-m] [-f name] [-c name][ -N screen] \n",
+"usage: %s [-m] [-f .def filename] [-c config filename] [ -N screen]\n",
 			argv[ 0 ] );
 		    cleanup( 1 );
 		}
@@ -402,7 +414,7 @@ nextargv:;
 
 	    if( s = FindToolType( tools, "CONFIG" ) )
 	    {
-		strcpy( NetHackCnf, s );
+		strcpy( StrConf, s );
 	    }
 
 	    /* A different set of defaults then 'wbdefaults.def' */
@@ -445,9 +457,9 @@ void ReadConfig()
 
     /* If the file is not there, can't load it */
 
-    if( ( fp = fopen( NetHackCnf, "r" ) ) == NULL )
+    if( ( fp = fopen( StrConf, "r" ) ) == NULL )
     {
-	errmsg( FLASH, "Can't load config file %s", NetHackCnf );
+	errmsg( FLASH, "Can't load config file %s", StrConf );
 	free( buf );
 	return;
     }
@@ -468,7 +480,7 @@ void ReadConfig()
 	}
 	else if( strnicmp( buf, "PENS=", 4 ) == 0 )
 	{
-	    setoneopt( PENS_IDX, buf + 4 );
+	    setoneopt( PENS_IDX, buf + 5 );
 	}
 	else if( strnicmp( buf, "OPTIONS=", 8 ) == 0 )
 	{
@@ -544,6 +556,8 @@ void SetupWB( )
 
     NewScreenStructure.Width = GfxBase->NormalDisplayColumns;
     NewScreenStructure.Height = GfxBase->NormalDisplayRows;
+
+    NewScreenStructure.DefaultTitle = "WorkBench for V3.1.1 of NetHack";
 
 #ifdef  INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version < 37 )
@@ -630,7 +644,7 @@ void SetupWB( )
 
 #ifdef  INTUI_NEW_LOOK
     if( scrlocked )
-	strcpy( mytitle, "NetHack WB 3.1 - Select a GAME or press HELP" );
+	strcpy( mytitle, "NetHack WB 3.1.1 - Select a GAME or press HELP" );
     else
 	strcpy( mytitle, "Select a GAME or press HELP" );
 
@@ -1056,6 +1070,7 @@ void help_requester( file )
 	Help3_NewWindowStructure10.Height += txtdiff;
     }
 
+    Help3_NewWindowStructure10.Title = "Help for NetHack WorkBench V3.1.1";
     Help3_NewWindowStructure10.Screen = scrn;
     if( ( win = MyOpenWindow( &Help3_NewWindowStructure10 ) ) == NULL )
     {
@@ -1111,6 +1126,9 @@ void help_requester( file )
 		    done = 1;
 		    break;
 
+		case MOUSEBUTTONS:
+		case INACTIVEWINDOW:
+		case ACTIVEWINDOW:
 		case GADGETUP:
 		    lastdown = 0;
 		    break;
@@ -1132,7 +1150,7 @@ void help_requester( file )
 				win->BorderLeft,
 				win->BorderTop + 2,
 				win->Width - win->BorderRight - 1,
-				win->BorderTop + 2 +
+				win->BorderTop + 1 +
 				(lines*win->RPort->TxHeight) );
 			    getline( fp, loff, line + lines - 1,
 				buf, sizeof( buf ) );
@@ -1146,6 +1164,7 @@ void help_requester( file )
 			{
 			    /* EOF */
 			    DisplayBeep( scrn );
+			    lastdown = 0;
 			}
 		    }
 		    else if( lastdown == GADHELPBKWD )
@@ -1160,7 +1179,7 @@ void help_requester( file )
 				win->BorderLeft,
 				win->BorderTop + 2,
 				win->Width - win->BorderRight - 1,
-				win->BorderTop + 2 +
+				win->BorderTop + 1 +
 				(lines*win->RPort->TxHeight) );
 			    getline( fp, loff, line, buf, sizeof( buf ) );
 			    Move( win->RPort, win->BorderLeft + 2, topline );
@@ -1170,6 +1189,7 @@ void help_requester( file )
 			else
 			{
 			    DisplayBeep( scrn );
+			    lastdown = 0;
 			}
 		    }
 		    break;
@@ -1409,7 +1429,7 @@ run_game( gptr )
 
     /* Set the game name for the status command */
 
-    sprintf( gptr->gname, "NetHack 3.1 %s", gptr->name );
+    sprintf( gptr->gname, "NetHack 3.1.1 %s", gptr->name );
 
     /* Create a process for the game to execute in */
 
@@ -1451,7 +1471,7 @@ freemem:
     gptr->wbs->sm_Process = proc;
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
-    gptr->wbs->sm_ToolWindow = "con:0/0/350/50/Amiga NetHack 3.1";
+    gptr->wbs->sm_ToolWindow = "con:0/0/350/50/Amiga NetHack 3.1.1";
     gptr->wbs->sm_ArgList = gptr->wba;
 
     /* Fill in the args */
@@ -2025,7 +2045,10 @@ void menu_config()
 				ActivateGadget( gd, cwin, NULL );
 			    break;
 
-			case GADCONFLOAD: case GADCONFNAME:
+			case GADCONFNAME:	/* Do nothing... */
+			    break;
+
+			case GADCONFLOAD:
 			    ReadConfig( );
 			    strcpy( StrPath, options[ PATH_IDX ] );
 			    strcpy( StrHackdir, options[ HACKDIR_IDX ] );
@@ -2036,7 +2059,78 @@ void menu_config()
 			    break;
 
 			case GADCONFSAVE:
-			    errmsg( FLASH, "Save not implemented" );
+        		    {
+        		    	FILE *fp, *nfp;
+        		    	char buf[ 300 ], *t, nname[ 100 ], oname[100], *b;
+
+                                setoneopt( PATH_IDX, StrPath );
+                                PutOptions( curopts );
+                                setoneopt( HACKDIR_IDX, StrHackdir );
+                                setoneopt( PENS_IDX, StrPens );
+                                setoneopt( LEVELS_IDX, StrLevels );
+                                setoneopt( SAVE_IDX, StrSave );
+
+        			fp = fopen( StrConf, "r" );
+        			if( !fp )
+				    fp = fopen( "NetHack:NetHack.cnf", "r" );
+        			if( !fp )
+        			{
+                        	    errmsg( FLASH, "Can't open nethack.cnf" );
+                        	    break;
+                        	}
+
+                          	t = dirname( StrConf );
+                        	b = basename( StrConf );
+                          	if( t[ strlen(t)-1 ] == ':' )
+                          	{
+                          	    sprintf( nname, "%snew_%s", t, b);
+                          	    sprintf( oname, "%sold_%s", t, b);
+                        	}
+                     		else
+				{
+                            	    sprintf( oname, "%s/old_%s", t, b);
+                            	    sprintf( nname, "%s/new_%s", t, b);
+                        	}
+
+        			nfp = fopen( nname, "w" );
+        			if( !nfp )
+        			{
+                        	    errmsg( FLASH, "Can't open new_nethack.cnf for write" );
+                        	    fclose( fp );
+                        	    break;
+                        	}
+
+        			while( fgets( buf, sizeof( buf ), fp ) )
+        			{
+        			    if( strncmp( buf, "PATH=", 5 ) == 0 )
+        			    	fprintf( nfp, "PATH=%s\n",
+						options[ PATH_IDX ] );
+        			    else if( strncmp( buf, "LEVELS=", 7 ) == 0 )
+        			    	fprintf( nfp, "LEVELS=%s\n",
+						options[ LEVELS_IDX ] );
+        			    else if( strncmp( buf, "PENS=", 5 ) == 0 )
+        			    	fprintf( nfp, "PENS=%s\n",
+						options[ PENS_IDX ] );
+        			    else if( strncmp( buf, "OPTIONS=", 8 ) == 0 )
+        			    	fprintf( nfp, "OPTIONS=%s\n",
+						options[ OPTIONS_IDX ] );
+        			    else if( strncmp( buf, "SAVE=", 5 ) == 0 )
+        			    	fprintf( nfp, "SAVE=%s\n",
+						options[ SAVE_IDX ] );
+        			    else if( strncmp( buf, "HACKDIR=", 8 ) == 0 )
+        			    	fprintf( nfp, "HACKDIR=%s\n",
+						options[ HACKDIR_IDX ] );
+        			    else
+        			    {
+        			    	fputs( buf, nfp );
+        			    }
+        			}
+        			fclose( fp );
+        			fclose( nfp );
+        			unlink( oname );
+        			rename( StrConf, oname );
+        			rename( nname, StrConf );
+        		    }
 			    break;
 
 			default:
@@ -2061,11 +2155,98 @@ void menu_config()
     MapGadgets( R_DISK, 1 );
 }
 
+void
+UpdateCnfFile()
+{
+    FILE *fp, *nfp;
+    char buf[ 300 ];
+    char path=0,option=0,dir=0,pens=0,levels=0,save=0;
+
+    setoneopt( PATH_IDX, StrPath );
+    PutOptions( curopts );
+    setoneopt( HACKDIR_IDX, StrHackdir );
+    setoneopt( PENS_IDX, StrPens );
+    setoneopt( LEVELS_IDX, StrLevels );
+    setoneopt( SAVE_IDX, StrSave );
+
+    fp = fopen( "nethack.cnf", "r" );
+    if( !fp )
+    {
+        errmsg( FLASH, "Can't open nethack.cnf" );
+		return;
+    }
+    nfp = fopen( "new_nethack.cnf", "w" );
+    if( !nfp )
+    {
+        errmsg( FLASH, "Can't open new_nethack.cnf for write" );
+        fclose( fp );
+        return;
+    }
+    while( fgets( buf, sizeof( buf ), fp ) )
+    {
+        if( strncmp( buf, "PATH=", 5 ) == 0 )
+	{
+            fprintf( nfp, "PATH=%s\n", options[ PATH_IDX ] );
+	    path=1;
+	}
+        else if( strncmp( buf, "LEVELS=", 7 ) == 0 )
+	{
+            fprintf( nfp, "LEVELS=%s\n", options[ LEVELS_IDX ] );
+	    levels=1;
+	}
+        else if( strncmp( buf, "PENS=", 5 ) == 0 )
+	{
+            fprintf( nfp, "PENS=%s\n", options[ PENS_IDX ] );
+	    pens=1;
+	}
+        else if( strncmp( buf, "OPTIONS=", 8 ) == 0 )
+	{
+            fprintf( nfp, "OPTIONS=%s\n", options[ OPTIONS_IDX ] );
+	    option=1;
+	}
+        else if( strncmp( buf, "SAVE=", 5 ) == 0 )
+	{
+            fprintf( nfp, "SAVE=%s\n", options[ SAVE_IDX ] );
+	    save=1;
+	}
+        else if( strncmp( buf, "HACKDIR=", 8 ) == 0 )
+	{
+            fprintf( nfp, "HACKDIR=%s\n", options[ HACKDIR_IDX ] );
+	    dir=1;
+	}
+        else
+        {
+       	    fputs( buf, nfp );
+        }
+    }
+
+    /* Write any that weren't already in the file */
+    if( !path )
+        fprintf( nfp, "PATH=%s\n", options[ PATH_IDX ] );
+    if( !levels )
+        fprintf( nfp, "LEVELS=%s\n", options[ LEVELS_IDX ] );
+    if( !pens )
+        fprintf( nfp, "PENS=%s\n", options[ PENS_IDX ] );
+    if( !option )
+        fprintf( nfp, "OPTIONS=%s\n", options[ OPTIONS_IDX ] );
+    if( !save )
+        fprintf( nfp, "SAVE=%s\n", options[ SAVE_IDX ] );
+    if( !dir )
+        fprintf( nfp, "HACKDIR=%s\n", options[ HACKDIR_IDX ] );
+
+    /* Close up and rename files */
+    fclose( fp );
+    fclose( nfp );
+    unlink( "old_nethack.cnf" );
+    rename( "nethack.cnf", "old_nethack.cnf" );
+    rename( "new_nethack.cnf", "nethack.cnf" );
+}
+
 void menu_editdef( gametype )
     int gametype;
 {
     register struct Window *cwin;
-    int done = 0;
+    int done = 0, err;
     USHORT mcode;
     long class, qual, code;
     register struct IntuiMessage *imsg;
@@ -2259,13 +2440,16 @@ void menu_editdef( gametype )
 			    break;
 
 			case GADDEFLOAD:
-			    LoadDefaults( DefPlayerName );
-			    strcpy( DefOutFile, DefPlayerName );
-			    CopyDefs2Gad();
-			    UpdateTypes( cwin );
-			    sprintf( buf, "Game definition loaded from: %s",
-				DefPlayerName );
-			    errmsg( NO_FLASH, buf );
+			    err = !LoadDefaults( DefPlayerName );
+			    if( !err )
+			    {
+				strcpy( DefOutFile, DefPlayerName );
+				CopyDefs2Gad();
+				UpdateTypes( cwin );
+				sprintf( buf, "Game definition loaded from: %s",
+				    DefPlayerName );
+				errmsg( NO_FLASH, buf );
+			    }
 			    break;
 
 			default:
@@ -2634,6 +2818,7 @@ void menu_info()
 			     * is displayed in the gadget.
 			     */
 
+			    sp = gptr->dobj->do_ToolTypes;
 			    strcpy( StrTools, *sp );
 			    UpdateInfoWin( cwin );
 			    break;
@@ -2804,6 +2989,12 @@ void error( str )
 void SetGadgetUP( gad )
     register struct Gadget *gad;
 {
+    if( gad->Flags & GADGIMAGE )
+    {
+	DrawImage( win->RPort, (struct Image *)gad->GadgetRender,
+		gad->LeftEdge, gad->TopEdge );
+    }
+#if 0
     RemoveGadget( win, gad );
     gad->Flags &= ~(SELECTED|GADGHIGHBITS);
     gad->Flags |= GADGHIMAGE|GADGIMAGE;
@@ -2815,6 +3006,7 @@ void SetGadgetUP( gad )
     gad->Flags |= GADGHNONE;
     gad->Activation &= ~TOGGLESELECT;
     AddGadget( win, gad, 0 );
+#endif
 }
 
 /*
@@ -2824,6 +3016,12 @@ void SetGadgetUP( gad )
 void SetGadgetDOWN( gad )
     register struct Gadget *gad;
 {
+    if( gad->Flags & GADGHIMAGE )
+    {
+	DrawImage( win->RPort, (struct Image *)gad->SelectRender,
+		gad->LeftEdge, gad->TopEdge );
+    }
+#if 0
     RemoveGadget( win, gad );
     gad->Flags &= ~GADGHIGHBITS;
     gad->Flags |= GADGHIMAGE|GADGIMAGE|SELECTED;
@@ -2835,6 +3033,7 @@ void SetGadgetDOWN( gad )
     gad->Flags |= GADGHNONE;
     gad->Activation &= ~TOGGLESELECT;
     AddGadget( win, gad, 0 );
+#endif
 }
 
 /*
@@ -2935,7 +3134,7 @@ int StrRequest( prompt, buff, val )
  * Load a defaults file into global structures
  */
 
-void LoadDefaults( player )
+LoadDefaults( player )
     char *player;
 {
     FILE *fp;
@@ -2950,7 +3149,7 @@ void LoadDefaults( player )
     {
 	errmsg( FLASH,
 	    "Can't open defaults, %s, in current directory", fname );
-	return;
+	return 0;
     }
 
     while( fgets( buf, sizeof( buf ), fp ) != NULL )
@@ -2986,9 +3185,14 @@ void LoadDefaults( player )
 	    defgame.options = strdup( buf + 8 );
 	}
 	else
+	{
 	    errmsg( FLASH, "Invalid line in defaults file" );
+	    fclose( fp );
+	    return( 0 );
+	}
     }
     fclose( fp );
+    return( 1 );
 }
 
 /*
@@ -3083,6 +3287,8 @@ void UpdateTypes( cwin )
 
     Defs_PlayerType.GadgetText->IText = players[ defgame.pltype ];
     RefreshGList( &Defs_PlayerType, cwin, NULL, 1 );
+    RefreshGList( &Defs_PlayerName, cwin, NULL, 1 );
+    RefreshGList( &Defs_DefaultName, cwin, NULL, 1 );
 }
 
 /*
@@ -3321,11 +3527,11 @@ void ChgNewGameItems( menup, enable )
 	    case ITEM_SETOPT:
 	    case ITEM_RENAME:
 	    case ITEM_DISCARD:
-	    case ITEM_COPYOPT:
 		ino = MENUITEMNO( 1,i,NOSUB );
 		OffMenu( win, ino );
 		break;
 
+	    case ITEM_COPYOPT:
 	    case ITEM_INFO:
 	    case ITEM_SETCOMMENT:
 		ino = MENUITEMNO( 1,i,NOSUB );
@@ -3808,4 +4014,19 @@ void Game2Defs( gptr )
     if( defgame.options )
 	free( defgame.options );
     defgame.options = strdup( ToolsEntry( gptr, "OPTIONS" ) );
+}
+
+char *basename( str )
+    char *str;
+{
+    char *t;
+
+    t = strrchr( str, '/' );
+    if( !t )
+	t = strrchr( str, ':' );
+    if( !t )
+	t = str;
+    else
+	++t;
+    return( t );
 }

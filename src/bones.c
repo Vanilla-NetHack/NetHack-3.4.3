@@ -165,7 +165,14 @@ savebones()
 
 	if(ledger_no(&u.uz) <= 0 || ledger_no(&u.uz) > maxledgerno()) return;
 	if(no_bones_level(&u.uz)) return; /* no bones for specific levels */
-	if(!rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
+	if(!Is_branchlev(&u.uz)) {
+	    /* no bones on non-branches with portals */
+	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+		if (ttmp->ttyp == MAGIC_PORTAL) return;
+	}
+
+	if(depth(&u.uz) <= 0 ||		/* bulletproofing for endgame */
+	   !rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
 #ifdef WIZARD
 		&& !wizard
 #endif
@@ -259,7 +266,6 @@ savebones()
 		if(mtmp->mtame) mtmp->mtame = mtmp->mpeaceful = 0;
 	}
 	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
-	        if(ttmp->ttyp == MAGIC_PORTAL) deltrap(ttmp);
 		ttmp->tseen = 0;
 	}
 	resetobjs(fobj,FALSE);

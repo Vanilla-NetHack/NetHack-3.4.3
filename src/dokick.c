@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.1	92/10/06	*/
+/*	SCCS Id: @(#)dokick.c	3.1	93/02/18	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,7 +13,7 @@
 			 || is_bigfoot(uasmon))
 #endif
 
-static struct rm NEARDATA *maploc;
+static NEARDATA struct rm *maploc;
 
 extern boolean notonhead;	/* for long worms */
 
@@ -25,7 +25,7 @@ static void FDECL(otransit_msg, (struct obj *, XCHAR_P, BOOLEAN_P, int));
 static const char *FDECL(gate_str, (XCHAR_P));
 static void FDECL(drop_to, (coord *, XCHAR_P));
 
-static struct obj NEARDATA *kickobj;
+static NEARDATA struct obj *kickobj;
 
 #define IS_SHOP(x)	(rooms[x].rtype >= SHOPBASE)
 
@@ -48,12 +48,7 @@ register boolean clumsy;
 
 	/* squeeze some guilt feelings... */
 	if(mon->mtame) {
-#ifdef SOUNDS
-	    if (rn2(10)) yelp(mon);
-	    else growl(mon); /* give them a moment's worry */
-#endif
-	    mon->mtame--;
-	    if(!mon->mtame) newsym(mon->mx, mon->my);
+	    abuse_dog(mon);
 	    mon->mflee = mon->mtame ? 1 : 0;
 #ifdef HISX
 	    mon->mfleetim = mon->mfleetim + (dmg ? rnd(dmg) : 1);
@@ -70,13 +65,15 @@ register boolean clumsy;
 		killed(mon);
 		return;
 	}
-	if(martial() && !bigmonst(mon->data) && !rn2(3) && mon->mcanmove) {
+	if(martial() && !bigmonst(mon->data) && !rn2(3) && mon->mcanmove
+	   && mon != u.ustuck) {
 		/* see if the monster has a place to move into */
 		mdx = mon->mx + u.dx;
 		mdy = mon->my + u.dy;
 		if(goodpos(mdx, mdy, mon, mon->data)) {
 			pline("%s reels from the blow.", Monnam(mon));
 			remove_monster(mon->mx, mon->my);
+			newsym(mon->mx, mon->my);
 			place_monster(mon, mdx, mdy);
 			newsym(mon->mx, mon->my);
 			set_apparxy(mon);
@@ -231,8 +228,8 @@ register struct obj *gold;
 				robbed -= gold->quan;
 				if (robbed < 0) robbed = 0;
 				pline("The amount %scovers %s recent losses.",
-					!robbed ? "" : "partially ",
-					mtmp->female ? "her" : "his");
+				      !robbed ? "" : "partially ",
+				      his[mtmp->female]);
 				ESHK(mtmp)->robbed = robbed;
 				if(!robbed)
 					make_happy_shk(mtmp, FALSE);
@@ -250,33 +247,31 @@ register struct obj *gold;
 			    verbalize("Thank you for your contribution.");
 			else verbalize("Thanks, scum!");
 		}
-		else if(is_mercenary(mtmp->data)) {
-		    if(rn2(3)) {
-			if(mtmp->data == &mons[PM_SOLDIER]) {
-			   if(gold->quan > 100 + (u.ugold + (u.ulevel*rn2(5)))
-					    /ACURR(A_CHA))
-			    mtmp->mpeaceful = 1;
-			    }
-			if(mtmp->data == &mons[PM_SERGEANT]) {
-			   if(gold->quan > 250 + (u.ugold + (u.ulevel*rn2(5)))
-					    /ACURR(A_CHA))
-			    mtmp->mpeaceful = 1;
-			    }
-			if(mtmp->data == &mons[PM_LIEUTENANT]) {
-			   if(gold->quan > 500 + (u.ugold + (u.ulevel*rn2(5)))
-					    /ACURR(A_CHA))
-			    mtmp->mpeaceful = 1;
-			    }
-			if(mtmp->data == &mons[PM_CAPTAIN]) {
-			   if(gold->quan > 750 + (u.ugold + (u.ulevel*rn2(5)))
-					    /ACURR(A_CHA))
-			    mtmp->mpeaceful = 1;
-			    }
+#ifdef ARMY
+		else if (is_mercenary(mtmp->data)) {
+		    long goldreqd = 0L;
+
+		    if (rn2(3)) {
+			if (mtmp->data == &mons[PM_SOLDIER])
+			   goldreqd = 100L;
+			else if (mtmp->data == &mons[PM_SERGEANT])
+			   goldreqd = 250L;
+			else if (mtmp->data == &mons[PM_LIEUTENANT])
+			   goldreqd = 500L;
+			else if (mtmp->data == &mons[PM_CAPTAIN])
+			   goldreqd = 750L;
+
+			if (goldreqd) {
+			   if (gold->quan > goldreqd +
+				(u.ugold + u.ulevel*rn2(5))/ACURR(A_CHA))
+			    mtmp->mpeaceful = TRUE;
+			}
 		     }
-		     if(mtmp->mpeaceful)
+		     if (mtmp->mpeaceful)
 			    verbalize("That should do.  Now beat it!");
 		     else verbalize("That's not enough, coward!");
-		     }
+		 }
+#endif
 
 		dealloc_obj(gold);
 		return(1);
@@ -512,7 +507,7 @@ xchar x, y;
 static char *
 kickstr()
 {
-	static char NEARDATA buf[BUFSZ];
+	static NEARDATA char buf[BUFSZ];
 
 	if (kickobj) Sprintf(buf, "kicking %s", doname(kickobj));
 	else {
@@ -547,6 +542,8 @@ dokick()
 {
 	register int x, y;
 	register int avrg_attrib = (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3;
+	register struct monst *mtmp;
+	register s_level *slev = Is_special(&u.uz);
 
 #ifdef POLYSELF
 	if(nolimbs(uasmon)) {
@@ -616,14 +613,15 @@ dokick()
 	/* non-doors, doors.			   */
 
 	if(MON_AT(x, y)) {
+		struct permonst *mdat = m_at(x,y)->data;
 		kick_monster(x, y);
 		if((Is_airlevel(&u.uz) || Levitation) && flags.move) {
 		    int range;
-		    struct monst *mon;
 
-		    mon = m_at(x,y);
-		    range = (3*(int)mon->data->cwt) /
-			((int)uasmon->cwt + (weight_cap() + inv_weight()));
+		    range = ((int)uasmon->cwt + (weight_cap() + inv_weight()));
+		    if (range < 1) range = 1; /* divide by zero avoidance */
+		    range = (3*(int)mdat->cwt) / range;
+
 		    if(range < 1) range = 1;
 		    hurtle(-u.dx, -u.dy, range);
 		}
@@ -811,8 +809,10 @@ dumb:
 			exercise(A_STR, FALSE);
 			set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
 		}
-		if(Is_airlevel(&u.uz) || Levitation)
-		    hurtle(-u.dx, -u.dy, rn2(2));
+		if ((Is_airlevel(&u.uz) || Levitation) && rn2(2)) {
+		    hurtle(-u.dx, -u.dy, 1);
+		    return 1;		/* you moved, so use up a turn */
+		}
 		return(0);
 	}
 
@@ -847,10 +847,40 @@ dumb:
 		else
 		    newsym(x,y);
 		unblock_point(x,y);		/* vision */
+		if(slev && slev->flags.town)
+		  for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if((mtmp->data == &mons[PM_WATCHMAN] ||
+			mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
+			couldsee(mtmp->mx, mtmp->my) &&
+			mtmp->mpeaceful) {
+			pline("%s yells:", Amonnam(mtmp));
+			verbalize("Halt, thief!  You're under arrest!");
+			(void) angry_guards(FALSE);
+			break;
+		    }
+		  }
 	} else {
 	    if (Blind) feel_location(x,y);	/* we know we hit it */
 	    exercise(A_STR, TRUE);
 	    pline("WHAMMM!!!");
+	    if(slev && slev->flags.town)
+	      for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	        if((mtmp->data == &mons[PM_WATCHMAN] ||
+		  mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
+	          couldsee(mtmp->mx, mtmp->my) &&
+	          mtmp->mpeaceful) {
+		
+		  pline("%s yells:", Amonnam(mtmp));
+		  if(levl[x][y].looted & D_WARNED) {
+			verbalize("Halt, vandal!  You're under arrest!");
+			(void) angry_guards(FALSE);
+		  } else {
+			verbalize("Hey, stop damaging that door!");
+			levl[x][y].looted |= D_WARNED;
+		  }
+		  break;
+	        }
+	      }
 	}
 	return(1);
 }
@@ -955,6 +985,7 @@ register xchar x, y, dlev;
 		if(obj == missile) continue;
 		/* number of objects in the pile */
 		oct += obj->quan;
+		if(obj == uball || obj == uchain) continue;
 		/* boulders can fall too, but rarely & never due to rocks */
 		if((isrock && obj->otyp == BOULDER) ||
 		   rn2(obj->otyp == BOULDER ? 30 : 3)) continue;

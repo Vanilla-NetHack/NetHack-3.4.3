@@ -55,7 +55,7 @@ You have just finished your years as a student at the local adventurer's
 guild.  After much practice and sweat you have finally completed your
 training and are ready to embark upon a perilous adventure.  To prove
 your worthiness, the local guildmasters have sent you into the Mazes of
-Menace.  Your quest is to return with the Amulet of Yendor.  According
+Menace.  Your quest is to retrieve the Amulet of Yendor.  According
 to legend, the gods will grant immortality to the one who recovers this
 artifact; true or not, its recovery will bring honor and full guild
 membership (not to mention the attentions of certain wealthy wizards).
@@ -595,7 +595,7 @@ the game, not with the `{\tt O}' command; see the section on options below.
 Pay your shopping bill.
 %.lp
 \item[\tb{P}]
-Put on a ring.
+Put on a ring or other accessory (amulet, blindfold).
 %.lp
 \item[\tb{\^{}P}]
 Repeat previous message (subsequent {\tt \^{}P}'s repeat earlier messages).
@@ -610,7 +610,7 @@ Quit the game.
 Read a scroll or spell book.
 %.lp
 \item[\tb{R}]
-Remove a ring.
+Remove an accessory (ring, amulet, etc).
 %.lp
 \item[\tb{\^{}R}]
 Redraw the screen.
@@ -662,6 +662,9 @@ Suspend the game (UNIX versions with job control only).
 %.lp
 \item[\tb{:}]
 Look at what is here.
+%.lp
+\item[\tb{;}]
+Show what type of thing a visible symbol corresponds to.
 %.lp
 \item[\tb{,}]
 Pick up some things.
@@ -1481,6 +1484,8 @@ Set your character's name (defaults to your user name).  You can also
 set your character class by appending a dash and the first letter of
 the character class (that is, by suffixing one of
 ``{\tt -A -B -C -E -H -K -P -R -S -T -V -W}'').
+If ``{\tt -@}'' is used for the class, then a random one will be
+automatically chosen.
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{news}]

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.1	92/12/29	*/
+/*	SCCS Id: @(#)do_name.c	3.1	93/02/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -29,6 +29,9 @@ const char *goal;
 #endif
     curs(WIN_MAP, cx,cy);
     flush_screen(0);
+#ifdef MAC
+	lock_mouse_cursor(TRUE);
+#endif
     while((c = nh_poskey(&tx, &ty, &sidx)) != '.') {
         if(c == '\033') {
             cc->x = -10;
@@ -86,8 +89,7 @@ const char *goal;
 		    loopback:
 			for (ty = lasty; ty < ROWNO; ty++) {
 			    for (tx = lastx; tx < COLNO; tx++) {
-				if ((IS_POOL(levl[tx][ty].typ) ||
-				     IS_FURNITURE(levl[tx][ty].typ)) &&
+				if (glyph_is_cmap(levl[tx][ty].glyph) &&
 	 defsyms[sidx].sym == defsyms[glyph_to_cmap(levl[tx][ty].glyph)].sym) {
 				    cx = tx;
 				    lastx = tx+1;
@@ -127,6 +129,9 @@ const char *goal;
 	curs(WIN_MAP,cx,cy);
 	flush_screen(0);
     }
+#ifdef MAC
+	lock_mouse_cursor(FALSE);
+#endif
     cc->x = cx;
     cc->y = cy;
     return;
@@ -198,7 +203,6 @@ do_mname()
 	Sprintf(qbuf, "What do you want to call %s?", x_monnam(mtmp, 0,
 		(char *)0, 1));
 	getlin(qbuf,buf);
-	clear_nhwindow(WIN_MESSAGE);
 	if(!*buf || *buf == '\033') return(0);
 
 	/* unnames monster if all spaces */
@@ -226,7 +230,6 @@ register struct obj *obj;
 
 	Sprintf(qbuf, "What do you want to name %s?", doname(obj));
 	getlin(qbuf, buf);
-	clear_nhwindow(WIN_MESSAGE);
 	if(!*buf || *buf == '\033')	return;
 
 	/* strip trailing spaces; unnames item if all spaces */
@@ -314,7 +317,7 @@ register int ininv;
 	return otmp2;
 }
 
-static const char NEARDATA callable[] = {
+static NEARDATA const char callable[] = {
 	SCROLL_CLASS, POTION_CLASS, WAND_CLASS, RING_CLASS, AMULET_CLASS,
 	GEM_CLASS, SPBOOK_CLASS, ARMOR_CLASS, TOOL_CLASS, 0 };
 
@@ -380,7 +383,6 @@ register struct obj *obj;
 	} else
 		Sprintf(qbuf, "Call %s:", an(xname(&otemp)));
 	getlin(qbuf, buf);
-	clear_nhwindow(WIN_MESSAGE);
 	if(!*buf || *buf == '\033')
 		return;
 
@@ -453,7 +455,7 @@ const char *adjective;
 		return name;
 	}
 	if(!canseemon(mtmp) && !sensemon(mtmp) &&
-					!(u.uswallow && mtmp == u.ustuck)) {
+				!(u.uswallow && mtmp == u.ustuck) && !killer) {
 	    if(!mtmp->wormno || (mtmp != m_at(bhitpos.x, bhitpos.y)) ||
 	       !(cansee(bhitpos.x, bhitpos.y) && mon_visible(mtmp))) {
 		Strcpy(buf, "it");
@@ -478,7 +480,7 @@ const char *adjective;
 		Strcat(buf, adjective);
 		Strcat(buf, " ");
 	}
-	if (mtmp->minvis)
+	if (mtmp->minvis && !Blind)
 		Strcat(buf, "invisible ");
 	if (name && !called) {
 		Strcat(buf, name);
@@ -579,7 +581,7 @@ register struct monst *mtmp;
 	return(bp);
 }
 
-static const char NEARDATA *bogusmons[] = {
+static NEARDATA const char *bogusmons[] = {
 	"jumbo shrimp", "giant pigmy", "gnu", "killer penguin", 
 	"giant cockroach", "giant slug", "maggot", "pterodactyl",
 	"tyrannosaurus rex", "basilisk", "beholder", "nightmare",
@@ -640,7 +642,7 @@ rndmonnam() {  /* Random name of monster type, if hallucinating */
 
 #ifdef OVL2
 
-static const char NEARDATA *hcolors[] = {
+static NEARDATA const char *hcolors[] = {
 	"ultraviolet", "infrared", "bluish-orange",
 	"reddish-green", "dark white", "light black", "sky blue-pink",
 	"salty", "sweet", "sour", "bitter",
@@ -670,7 +672,7 @@ self_pronoun(str, pronoun)
 const char *str;
 const char *pronoun;
 {
-	static char NEARDATA buf[BUFSZ];
+	static NEARDATA char buf[BUFSZ];
 	register int i;
 
 	for(i=0; pronoun_pairs[i][0]; i++) {

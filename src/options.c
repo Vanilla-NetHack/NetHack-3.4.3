@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)options.c	3.1	93/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,8 @@
 /*
  *  NOTE:  If you add (or delete) an option, please update the short
  *  options help (option_help()), the long options help (dat/opthelp),
- *  and the current options setting display function (doset()).
+ *  and the current options setting display function (doset()),
+ *  and also the Guidebooks.
  */
 
 #if defined(TOS) && defined(TEXTCOLOR)
@@ -20,14 +21,14 @@ extern const char *roles[];	/* from u_init.c */
 extern char inv_order[];	/* from invent.c */
 
 static boolean initial, from_file;
-static boolean NEARDATA set_order;
 
 static void FDECL(nmcpy, (char *, const char *, int));
 static void FDECL(escapes, (const char *, char *));
 static void FDECL(rejectoption, (const char *));
 static void FDECL(badoption, (const char *));
+static char *FDECL(string_for_opt, (char *));
 static char *FDECL(string_for_env_opt, (const char *, char *));
-static int FDECL(change_inv_order, (char *, int));
+static int FDECL(change_inv_order, (char *));
 static void FDECL(oc_to_str, (char *, char *));
 
 static struct Bool_Opt
@@ -72,13 +73,16 @@ static struct Bool_Opt
 	{"legacy",&flags.legacy, TRUE},
 	{"lit_corridor", &flags.lit_corridor, FALSE},
 #ifdef MAC_GRAPHICS_ENV
-	{"MACgraphics", &flags.MACgraphics, TRUE},
+	{"Macgraphics", &flags.MACgraphics, TRUE},
 #endif
 #ifdef NEWS
 	{"news", &flags.news, TRUE},
 #endif
 	{"null", &flags.null, TRUE},
 	{"number_pad", &flags.num_pad, FALSE},
+#ifdef MAC
+	{"page_wait", &flags.page_wait, TRUE},
+#endif
 	{"pickup", &flags.pickup, TRUE},
 #ifdef MAC
 	{"popup_dialog", &flags.popup_dialog, FALSE},
@@ -87,7 +91,7 @@ static struct Bool_Opt
 	{"rawio", &flags.rawio, FALSE},
 #endif
 	{"rest_on_space", &flags.rest_on_space, FALSE},
-	{"safepet", &flags.safe_dog, TRUE},
+	{"safe_pet", &flags.safe_dog, TRUE},
 #ifdef EXP_ON_BOTL
 	{"showexp", &flags.showexp, FALSE},
 #endif
@@ -129,7 +133,7 @@ initoptions()
 	    	monsyms[i] = (uchar) def_monsyms[i];
 
 	switch_graphics(ASCII_GRAPHICS);	/* set default characters */
-#ifdef UNIX
+#if defined(UNIX) && defined(TTY_GRAPHICS)
 	/*
 	 * Set defaults for some options depending on what we can
 	 * detect about the environment's capabilities.
@@ -144,13 +148,15 @@ initoptions()
 		flags.use_color = TRUE;
 # endif
 	}
-#endif /* UNIX */
+#endif /* UNIX && TTY_GRAPHICS */
 #if defined(UNIX) || defined(VMS)
+# ifdef TTY_GRAPHICS
 	/* detect whether a "vt" terminal can handle alternate charsets */
 	if (!strncmpi(getenv("TERM"), "vt", 2) && (AS && AE) &&
 	    !strcmp(AS, "\016") && !strcmp(AE, "\017")) {
 		switch_graphics(DEC_GRAPHICS);
 	}
+# endif
 #endif /* UNIX || VMS */
 
 #ifdef MAC_GRAPHICS_ENV
@@ -186,7 +192,7 @@ initoptions()
 	/* result in the player's preferred fruit [better than "\033"].	*/
 	obj_descr[SLIME_MOLD].oc_name = "fruit";
 #endif
-	if(flags.female)  {	/* should have been set in NETHACKOPTIONS */
+	if (flags.female)  {	/* should have been set in NETHACKOPTIONS */
 		roles[2] = "Cavewoman";
 		roles[6] = "Priestess";
 	}
@@ -292,11 +298,11 @@ static void
 badoption(opts)
 const char *opts;
 {
-	if(!initial) {
-	    if(!strncmp(opts, "h", 1) || !strncmp(opts, "?", 1))
+	if (!initial) {
+	    if (!strncmp(opts, "h", 1) || !strncmp(opts, "?", 1))
 		option_help();
 	    else
-		pline("Unknown option: %s.  Enter \"?g\" for help.", opts);
+		pline("Bad syntax: %s.  Enter \"?g\" for help.", opts);
 	    return;
 	}
 # ifdef AMIGA
@@ -313,17 +319,12 @@ const char *opts;
 }
 
 static char *
-string_for_env_opt(optname, opts)
-const char *optname;
+string_for_opt(opts)
 char *opts;
 {
 	register char *colon;
 
-	if(!initial) {
-		rejectoption(optname);
-		return NULL;
-	}
-	colon = index(opts,':');
+	colon = index(opts, ':');
 	if(!colon) {
 		badoption(opts);
 		return NULL;
@@ -331,35 +332,43 @@ char *opts;
 	return ++colon;
 }
 
+static char *
+string_for_env_opt(optname, opts)
+const char *optname;
+char *opts;
+{
+	if(!initial) {
+		rejectoption(optname);
+		return NULL;
+	}
+	return string_for_opt(opts);
+}
+
 /*
  * Change the inventory order, using the given string as the new order.
  * Missing characters in the new order are filled in at the end from
  * the current inv_order.
  *
- * This routine always returns 1 unless the parameter 'fail' is true
- * and there is a duplicate or bad char in the string.
+ * This routine returns 1 unless there is a duplicate or bad char in
+ * the string.
  */
 static int
-change_inv_order(op, fail)
-    char *op;
-    int  fail;	/* If TRUE, return 0 if any duplicates or bad chars. */
+change_inv_order(op)
+char *op;
 {
     int oc_sym, num;
-    char *sp, *tmp, buf[BUFSZ];
+    char *sp, buf[BUFSZ];
 
     for (sp = op; *sp; sp++) {
 	oc_sym = def_char_to_objclass(*sp);
 
 	/* Remove bad or duplicate entries. */
 	if (oc_sym == MAXOCLASSES ||
-		(!index(inv_order, oc_sym)) || (index(sp+1, *sp))) {
+		(!index(inv_order, oc_sym)) || (index(sp+1, *sp)))
 
-	    if (fail) return 0;
-	    for(tmp = sp; *tmp; tmp++)
-		tmp[0] = tmp[1];
-	    sp--;
-	} else
-	    *sp = (char) oc_sym;
+	    return 0;
+
+	*sp = (char) oc_sym;
     } 
     Strcpy(buf, op);
     for (sp = inv_order, num = strlen(buf); *sp; sp++)
@@ -393,107 +402,20 @@ boolean tinitial, tfrom_file;
 	op = eos(opts);
 	while (--op >= opts && isspace(*op)) *op = '\0';
 
-	if(!*opts) return;
+	if (!*opts) return;
 	negated = FALSE;
-	while((*opts == '!') || !strncmpi(opts, "no", 2)) {
-		if(*opts == '!') opts++; else opts += 2;
+	while ((*opts == '!') || !strncmpi(opts, "no", 2)) {
+		if (*opts == '!') opts++; else opts += 2;
 		negated = !negated;
 	}
 	
-#if defined(MICRO) && !defined(AMIGA)
-	/* included for compatibility with old NetHack.cnf files */
-	if (!strncmp(opts, "IBM_", 4)) {
-		flags.BIOS = !negated;
-		return;
-	}
+	/* special boolean options */
 
-	/* put here cause it has to come from the config file */
-	if (!strncmpi(opts, "raw", 3)) {
-		if (initial)
-			flags.rawio = !negated;
-		else
-			rejectoption("rawio");
-		return;
-	}
-#endif /* MICRO */
-
-#if defined(TOS) && defined(TEXTCOLOR)
-	if (!strncmpi(opts, "col", 3)) {
-		flags.use_color = !negated;
-		if (flags.BIOS && !initial) {
-			if (colors_changed)
-				restore_colors();
-			else
-				set_colors();
-		}
-	}
-#endif
-	/* other special-case boolean options */
-#ifdef TERMLIB
-	if (!strncmpi(opts, "DEC", 3)) {
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(FALSE);
-#endif
-		flags.DECgraphics = !negated;
-		need_redraw = TRUE;
-		switch_graphics(flags.DECgraphics ?
-				DEC_GRAPHICS : ASCII_GRAPHICS);
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(TRUE);
-#endif
-		return;
-	}
-#endif /* TERMLIB */
-#ifdef ASCIIGRAPH
-	if (!strncmpi(opts, "IBMg", 4)) {
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(FALSE);
-#endif
-		flags.IBMgraphics = !negated;
-		need_redraw = TRUE;
-		switch_graphics(flags.IBMgraphics ?
-				IBM_GRAPHICS : ASCII_GRAPHICS);
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(TRUE);
-#endif
-		return;
-	}
-#endif /* ASCIIGRAPH */
-#ifdef MAC_GRAPHICS_ENV
-	if (!strncmpi(opts, "MACg", 4)) {
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(FALSE);
-#endif
-		flags.MACgraphics = !negated;
-		need_redraw = TRUE;
-		switch_graphics(flags.MACgraphics ?
-				MAC_GRAPHICS : ASCII_GRAPHICS);
-#ifdef REINCARNATION
-		if (!initial && Is_rogue_level(&u.uz))
-			assign_rogue_graphics(TRUE);
-#endif
-		return;
-	}
-#endif /* MAC_GRAPHICS_ENV */
-
-	/* common boolean options */
-
-	if (!strncmpi(opts, "fem", 3)) {
+	if (!strncmpi(opts, "female", 3)) {
 		if(!initial && flags.female == negated)
 			pline("That is not anatomically possible.");
 		else
 			flags.female = !negated;
-		return;
-	}
-
-	if (!strncmpi(opts, "fix", 3)) {
-		flags.invlet_constant = !negated;
-		if (!initial && flags.invlet_constant) reassign();
 		return;
 	}
 
@@ -505,40 +427,17 @@ boolean tinitial, tfrom_file;
 		return;
 	}
 
-	if (!strncmpi(opts, "num", 3)) {
-		flags.num_pad = !negated;
-		if (!initial) number_pad(flags.num_pad ? 1 : 0);
+#if defined(MICRO) && !defined(AMIGA)
+	/* included for compatibility with old NetHack.cnf files */
+	if (!strncmp(opts, "IBM_", 4)) {
+		flags.BIOS = !negated;
 		return;
 	}
-#ifdef EXP_ON_BOTL
-	if (!strncmpi(opts, "showexp", 7)) {
-		flags.showexp = !negated;
-		flags.botl = 1;
-		return;
-	}
-#endif
-#ifdef SCORE_ON_BOTL
-	if (!strncmpi(opts, "showscore", 9)) {
-		flags.showscore = !negated;
-		flags.botl = 1;
-		return;
-	}
-#endif
-	if (!strncmpi(opts, "time", 4)) {
-		flags.time = !negated;
-		flags.botl = 1;
-		return;
-	}
-
-	if (!strncmpi(opts, "legacy", 6)) {
-	        if(!initial) rejectoption("legacy");
-		else flags.legacy = !negated;
-		return;
-	}
+#endif /* MICRO */
 
 	/* compound options */
 
-	if (!strncmpi(opts, "pet", 3)) {
+	if (!strncmpi(opts, "pettype", 3)) {
 		if ((op = string_for_env_opt("pettype", opts)) != 0)
 		    switch (*op) {
 			case 'd':	/* dog */
@@ -552,47 +451,42 @@ boolean tinitial, tfrom_file;
 			    preferred_pet = 'c';
 			    break;
 			default:
-			    pline("Unrecognized pettype '%s'", op);
+			    pline("Unrecognized pet type '%s'", op);
 			    break;
 		    }
 		return;
 	}
 
-	if (!strncmpi(opts, "cat", 3)) {
+	if (!strncmpi(opts, "catname", 3)) {
 		if ((op = string_for_env_opt("catname", opts)) != 0)
 			nmcpy(catname, op, 62);
 		return;
 	}
 
-	if (!strncmpi(opts, "dog", 3)) {
+	if (!strncmpi(opts, "dogname", 3)) {
 		if ((op = string_for_env_opt("dogname", opts)) != 0)
 			nmcpy(dogname, op, 62);
 		return;
 	}
 
-	if (!strncmpi(opts, "msg", 3)) {
+	if (!strncmpi(opts, "msghistory", 3)) {
 		if ((op = string_for_env_opt("msghistory", opts)) != 0) {
 			flags.msg_history = atoi(op);
 		}
 		return;
 	}
 #ifdef TUTTI_FRUTTI
-	if (!strncmpi(opts, "fr", 2)) {
-		op = index(opts, ':');
-		if (!op) {
-			badoption(opts);
-			return;
-		}
-		op++;
+	if (!strncmpi(opts, "fruit", 2)) {
+		if (!(op = string_for_opt(opts))) return;
 		if (!initial) {
 		    struct fruit *f;
-		    int numfruits = 0;
 
+		    num = 0;
 		    for(f=ffruit; f; f=f->nextf) {
 			if (!strcmp(op, f->fname)) goto goodfruit;
-			numfruits++;
+			num++;
 		    }
-		    if (numfruits >= 100) {
+		    if (num >= 100) {
 			pline("Doing that so many times isn't very fruitful.");
 			return;
 		    }
@@ -612,26 +506,26 @@ goodfruit:
 	}
 #endif
 	/* graphics:string */
-	if (!strncmpi(opts, "gr", 2)) {
+	if (!strncmpi(opts, "graphics", 2)) {
 		uchar translate[MAXPCHARS+1];
-		int lth;
+		int length;
 
 		if (!(opts = string_for_env_opt("graphics", opts)))
 			return;
 		escapes(opts, opts);
 
-		lth = strlen(opts);
-		if (lth > MAXPCHARS) lth = MAXPCHARS;
+		length = strlen(opts);
+		if (length > MAXPCHARS) length = MAXPCHARS;
 		/* match the form obtained from PC configuration files */
-		for (i = 0; i < lth; i++)
+		for (i = 0; i < length; i++)
 			translate[i] = (uchar) opts[i];
-		assign_graphics(translate, lth);
+		assign_graphics(translate, length);
 		return;
 	}
 
 	/* objects:string */
 	if (!strncmpi(opts, "objects", 7)) {
-		int k, length;
+		int length;
 
 		if (!(opts = string_for_env_opt("objects", opts)))
 			return;
@@ -650,14 +544,14 @@ goodfruit:
 		if (length >= MAXOCLASSES)
 		    length = MAXOCLASSES-1;	/* don't count RANDOM_OBJECT */
 
-		for (k = 0; k < length; k++)
-		    oc_syms[k+1] = (uchar) opts[k];
+		for (i = 0; i < length; i++)
+		    oc_syms[i+1] = (uchar) opts[i];
 		return;
 	}
 
 	/* monsters:string */
 	if (!strncmpi(opts, "monsters", 8)) {
-		int k, length;
+		int length;
 
 		if (!(opts = string_for_env_opt("monsters", opts)))
 			return;
@@ -668,8 +562,8 @@ goodfruit:
 		if (length >= MAXMCLASSES)
 		    length = MAXMCLASSES-1;	/* mon class 0 unused */
 
-		for (k = 0; k < length; k++)
-		    monsyms[k+1] = (uchar) opts[k];
+		for (i = 0; i < length; i++)
+		    monsyms[i+1] = (uchar) opts[i];
 		return;
 	}
 
@@ -681,30 +575,19 @@ goodfruit:
 	}
 
 	/* the order to list the pack */
-	if (!strncmpi(opts, "pack", 4)) {
-		op = index(opts,':');
-		if(!op) {
-			badoption(opts);
-			return;
-		}
-		op++;			/* skip : */
+	if (!strncmpi(opts, "packorder", 4)) {
+		if (!(op = string_for_opt(opts))) return;
 
-		if (!change_inv_order(op, 1))
-		    	set_order = TRUE;
-		else
+		if (!change_inv_order(op))
 		    	badoption(opts);
 		return;
 	}
 
 	/* scores:5t[op] 5a[round] o[wn] */
 	if (!strncmpi(opts, "scores", 6)) {
-		op = index(opts,':');
-		if(!op) {
-			badoption(opts);
-			return;
-		}
-		op++;
-		while(*op) {
+		if (!(op = string_for_opt(opts))) return;
+
+		while (*op) {
 			num = 1;
 			if(digit(*op)) {
 				num = atoi(op);
@@ -737,7 +620,8 @@ goodfruit:
 		}
 		return;
 	}
-	if (!strncmpi(opts, "win", 3)) {
+
+	if (!strncmpi(opts, "windowtype", 3)) {
 	    if ((op = string_for_env_opt("windowtype", opts)) != 0) {
 		char buf[16];
 		nmcpy(buf, op, 15);
@@ -750,16 +634,81 @@ goodfruit:
 	 * options list
 	 */
 	for (i = 0; boolopt[i].name; i++) {
-		if (boolopt[i].addr && !strncmpi(boolopt[i].name, opts, 3)) {
-			*(boolopt[i].addr) = !negated;
-#ifdef TEXTCOLOR
-			if((boolopt[i].addr) == &flags.use_color)
-			    need_redraw = TRUE;
-
-			if((boolopt[i].addr) == &flags.hilite_pet)
-			    need_redraw = TRUE;
+		if (boolopt[i].addr && strlen(opts) >= 3 &&
+		    !strncmpi(boolopt[i].name, opts, strlen(opts))) {
+		        /* options that must come from config file */
+			if (!initial &&
+			    ((boolopt[i].addr) == &flags.legacy
+#if defined(MICRO) && !defined(AMIGA)
+			  || (boolopt[i].addr) == &flags.rawio
 #endif
-			if (!initial && boolopt[i].addr==&flags.lit_corridor) {
+			     )) {
+			    rejectoption(boolopt[i].name);
+			    return;
+			}
+
+			*(boolopt[i].addr) = !negated;
+
+#if defined(TERMLIB) || defined(ASCIIGRAPH) || defined(MAC_GRAPHICS_ENV)
+			if (FALSE
+# ifdef TERMLIB
+				 || (boolopt[i].addr) == &flags.DECgraphics
+# endif
+# ifdef ASCIIGRAPH
+				 || (boolopt[i].addr) == &flags.IBMgraphics
+# endif
+# ifdef MAC_GRAPHICS_ENV
+				 || (boolopt[i].addr) == &flags.MACgraphics
+# endif
+				) {
+# ifdef REINCARNATION
+			    if (!initial && Is_rogue_level(&u.uz))
+				assign_rogue_graphics(FALSE);
+# endif
+			    need_redraw = TRUE;
+# ifdef TERMLIB
+			    if ((boolopt[i].addr) == &flags.DECgraphics)
+				switch_graphics(flags.DECgraphics ?
+						DEC_GRAPHICS : ASCII_GRAPHICS);
+# endif
+# ifdef ASCIIGRAPH
+			    if ((boolopt[i].addr) == &flags.IBMgraphics)
+				switch_graphics(flags.IBMgraphics ?
+						IBM_GRAPHICS : ASCII_GRAPHICS);
+# endif
+# ifdef MAC_GRAPHICS_ENV
+			    if ((boolopt[i].addr) == &flags.MACgraphics)
+				switch_graphics(flags.MACgraphics ?
+						MAC_GRAPHICS : ASCII_GRAPHICS);
+# endif
+# ifdef REINCARNATION
+			    if (!initial && Is_rogue_level(&u.uz))
+				assign_rogue_graphics(TRUE);
+# endif
+			}
+#endif /* TERMLIB || ASCIIGRAPH || MAC_GRAPHICS_ENV */
+
+			/* only do processing below if setting with doset() */
+			if (initial) return;
+
+			if ((boolopt[i].addr) == &flags.time
+#ifdef EXP_ON_BOTL
+			 || (boolopt[i].addr) == &flags.showexp
+#endif
+#ifdef SCORE_ON_BOTL
+			 || (boolopt[i].addr) == &flags.showscore
+#endif
+			    )
+			    flags.botl = TRUE;
+
+			else if ((boolopt[i].addr) == &flags.invlet_constant) {
+			    if (flags.invlet_constant) reassign();
+			}
+
+			else if ((boolopt[i].addr) == &flags.num_pad)
+			    number_pad(flags.num_pad ? 1 : 0);
+
+			else if ((boolopt[i].addr) == &flags.lit_corridor) {
 			    /*
 			     * All corridor squares seen via night vision or
 			     * candles & lamps change.  Update them by calling
@@ -770,6 +719,23 @@ goodfruit:
 			    vision_recalc(2);		/* shut down vision */
 			    vision_full_recalc = 1;	/* delayed recalc */
 			}
+
+#ifdef TEXTCOLOR
+			else if ((boolopt[i].addr) == &flags.use_color
+			      || (boolopt[i].addr) == &flags.hilite_pet) {
+			    need_redraw = TRUE;
+# ifdef TOS
+			    if ((boolopt[i].addr) == &flags.use_color
+				&& flags.BIOS) {
+				if (colors_changed)
+				    restore_colors();
+				else
+				    set_colors();
+			    }
+# endif
+			}
+#endif
+
 			return;
 		}
 	}
@@ -869,7 +835,6 @@ doset()
 	case 's':
 	    clear_nhwindow(WIN_MESSAGE);
 	    getlin("What options do you want to set?", buf);
-	    clear_nhwindow(WIN_MESSAGE);
 	    if(buf[0] == '\033') return 0;
 	    need_redraw = FALSE;
 	    parseoptions(buf, FALSE, FALSE);

@@ -67,16 +67,16 @@ static boolean FDECL(create_subroom, (struct mkroom *, XCHAR_P, XCHAR_P,
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
 
-static walk NEARDATA walklist[50];
+static NEARDATA walk walklist[50];
 extern int min_rx, max_rx, min_ry, max_ry; /* from mkmap.c */
 
 static char Map[COLNO][ROWNO];
 static char robjects[10], rloc_x[10], rloc_y[10], rmonst[10];
 static aligntyp	ralign[3] = { AM_CHAOTIC, AM_NEUTRAL, AM_LAWFUL };
-static xchar NEARDATA xstart, NEARDATA ystart;
-static char NEARDATA xsize, NEARDATA ysize;
+static NEARDATA xchar xstart, ystart;
+static NEARDATA char xsize, ysize;
 
-static void FDECL(make_walls_nondiggable, (XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
+static void FDECL(set_wall_property, (XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P,int));
 static int NDECL(rnddoor);
 static int NDECL(rndtrap);
 static void FDECL(get_location, (schar *,schar *,int));
@@ -96,19 +96,20 @@ int num_lregions = 0;
 lev_init init_lev;
 
 /*
- * Make walls of the area (x1, y1, x2, y2) non diggable
+ * Make walls of the area (x1, y1, x2, y2) non diggable/non passwall-able
  */
 
 static void
-make_walls_nondiggable(x1,y1,x2,y2)
+set_wall_property(x1,y1,x2,y2, prop)
 xchar x1, y1, x2, y2;
+int prop;
 {
 	register xchar x, y;
 
 	for(y = y1; y <= y2; y++)
 	    for(x = x1; x <= x2; x++)
 		if(IS_STWALL(levl[x][y].typ))
-		    levl[x][y].diggable |= W_NONDIGGABLE;
+		    levl[x][y].diggable |= prop;
 }
 
 /*
@@ -843,7 +844,17 @@ bad_class:
 		/* changed mpeaceful again; have to reset malign */
 		set_malign(mtmp);
 	    }
-	    if (m->asleep >= 0) mtmp->msleep = m->asleep;
+	    if (m->asleep >= 0) {
+#ifdef UNIXPC
+		/* optimizer bug strikes again */
+		if (m->asleep)
+			mtmp->msleep = TRUE;
+		else
+			mtmp->msleep = FALSE;
+#else
+		mtmp->msleep = m->asleep;
+#endif
+	    }
 	}
 }
 
@@ -1035,6 +1046,10 @@ int		typ;
 	    get_location(&x, &y, DRY);
 	}
 	levl[x][y].typ = typ;
+	if (typ == FOUNTAIN)
+	    level.flags.nfountains++;
+	else if (typ == SINK)
+	    level.flags.nsinks++;
 }
 
 /* 
@@ -1294,54 +1309,57 @@ boolean prefilled;
 	if (!croom || croom->rtype == OROOM)
 	    return;
 
-	if(prefilled) {
-	    switch(croom->rtype) {
+	if (!prefilled) {
+	    int x,y;
+
+	    /* Shop ? */
+	    if (croom->rtype >= SHOPBASE) {
+		    stock_room(croom->rtype - SHOPBASE, croom);
+		    level.flags.has_shop = TRUE;
+		    return;
+	    }
+
+	    switch (croom->rtype) {
+		case VAULT:
+		    for (x=croom->lx;x<=croom->hx;x++)
+			for (y=croom->ly;y<=croom->hy;y++)
+			    mkgold((long)rn1(abs(depth(&u.uz))*100, 51), x, y);
+		    break;
+		case COURT:
+		case ZOO:
+		case BEEHIVE:
+		case MORGUE:
+		case BARRACKS:
+		    fill_zoo(croom);
+		    break;
+	    }
+	}
+	switch (croom->rtype) {
+	    case VAULT:
+		level.flags.has_vault = TRUE;
+		break;
+	    case ZOO:
+		level.flags.has_zoo = TRUE;
+		break;
 	    case COURT:
-		level.flags.has_court = 1;
+		level.flags.has_court = TRUE;
+		break;
+	    case MORGUE:
+		level.flags.has_morgue = TRUE;
+		break;
+	    case BEEHIVE:
+		level.flags.has_beehive = TRUE;
 		break;
 #ifdef ARMY
 	    case BARRACKS:
-		level.flags.has_barracks = 1;
+		level.flags.has_barracks = TRUE;
 		break;
 #endif
-	    case ZOO:
-		level.flags.has_zoo = 1;
-		break;
-	    case MORGUE:
-		level.flags.has_morgue = 1;
+	    case TEMPLE:
+		level.flags.has_temple = TRUE;
 		break;
 	    case SWAMP:
-		level.flags.has_swamp = 1;
-		break;
-	    case BEEHIVE:
-		level.flags.has_beehive = 1;
-		break;
-	    }
-	    return;
-	}
-	/* Vault ? */
-	if (croom->rtype == VAULT) {
-		int x,y;
-		for (x=croom->lx;x<=croom->hx;x++)
-		    for (y=croom->ly;y<=croom->hy;y++)
-			mkgold((long)rn1(depth(&u.uz)*100, 51), x, y);
-		return;
-	}
-
-	/* Shop ? */
-	if (croom->rtype >= SHOPBASE) {
-		stock_room(croom->rtype - SHOPBASE, croom);
-		return;
-	}
-
-	/* Zoo ? */
-	switch (croom->rtype) {
-	      case COURT:
-	      case ZOO:
-	      case BEEHIVE:
-	      case MORGUE:
-	      case BARRACKS:
-		fill_zoo(croom);
+		level.flags.has_swamp = TRUE;
 		break;
 	}
 }
@@ -2263,8 +2281,20 @@ FILE *fd;
 		get_location(&tmpdig.x1, &tmpdig.y1, DRY|WET);
 		get_location(&tmpdig.x2, &tmpdig.y2, DRY|WET);
 
-		make_walls_nondiggable(tmpdig.x1, tmpdig.y1,
-				       tmpdig.x2, tmpdig.y2);
+		set_wall_property(tmpdig.x1, tmpdig.y1,
+				  tmpdig.x2, tmpdig.y2, W_NONDIGGABLE);
+	}
+
+	Fread((genericptr_t) &n, 1, sizeof(n), fd);
+						/* Number of non_passables */
+	while(n--) {
+		Fread((genericptr_t)&tmpdig, 1, sizeof(tmpdig), fd);
+
+		get_location(&tmpdig.x1, &tmpdig.y1, DRY|WET);
+		get_location(&tmpdig.x2, &tmpdig.y2, DRY|WET);
+
+		set_wall_property(tmpdig.x1, tmpdig.y1,
+				  tmpdig.x2, tmpdig.y2, W_NONPASSWALL);
 	}
 
 	Fread((genericptr_t) &n, 1, sizeof(n), fd);

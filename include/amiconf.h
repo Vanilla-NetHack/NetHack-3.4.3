@@ -6,13 +6,16 @@
 #define AMICONF_H
 
 #undef abs		/* avoid using macro form of abs */
-#undef min		/* this gets redefined */
-#undef max		/* this gets redefined */
+#ifndef __SASC_60
+# undef min		/* this gets redefined */
+# undef max		/* this gets redefined */
+#endif
 
 #include <time.h>	/* get time_t defined before use! */
 
-#ifdef LATTICE		/* since Lattice can prevent re-inclusion */
-# include <stdlib.h>	/* and other things, including builtins */
+#ifdef __SASC_60	/* since SAS can prevent re-inclusion */
+# include <stdlib.h>	/* general things, including builtins */
+# include <string.h>
 #endif
 
 #ifdef AZTEC_50
@@ -20,12 +23,6 @@
 # define AZTEC_C_WORKAROUND /* Bug which turns up in sounds.c. Bummer... */
 # define NO_SIGNAL	/* 5.0 signal handling doesn't like SIGINT...   */
 #endif
-
-#ifdef LATTICE		/* Lattice defines DEBUG when you use -d1 which */
-# ifdef DEBUG		/* we need for useful SnapShots, but DEBUG is   */
-#  undef DEBUG		/* used in several files to turn on things we   */
-# endif			/* don't want (e.g. eat.c), so we get rid of    */
-#endif			/* DEBUG unless asked for in a particular file  */
 
 #ifdef _DCC
 # include <stdlib.h>
@@ -72,18 +69,9 @@ extern char **ami_argv;
 
 #define remove(x)       unlink(x)
 
-#ifdef LATTICE
-#define FFLUSH(fp) _flsbf(-1, fp)    /* Was fflush */
-#endif
-
 #ifdef AZTEC_C
-#define FFLUSH(fp) flsh_(fp, -1)     /* Was fflush */
 extern FILE *FDECL(freopen, (const char *, const char *, FILE *));
 extern char *FDECL(gets, (char *));
-#endif
-
-#ifdef _DCC
-#define FFLUSH(fp) fflush(fp)
 #endif
 
 #define msmsg		raw_printf
@@ -108,7 +96,7 @@ extern char *FDECL(gets, (char *));
 /*#define AMIGA_WINDOWED_CORNLINE /* Use windows for pager, inventory, etc */
 
 /* new window system options */
-#define AMIGA_INTUITION		/* high power graphics interface */
+#define AMIGA_INTUITION		/* high power graphics interface (amii) */
 
 #ifdef	TEXTCOLOR
 # define	DEPTH	3
@@ -119,5 +107,10 @@ extern char *FDECL(gets, (char *));
 #define PORT_HELP	"nethack:amii.hlp"
 
 #undef	TERMLIB
+
+#define	AMII_MUFFLED_VOLUME	40
+#define	AMII_SOFT_VOLUME	50
+#define	AMII_OKAY_VOLUME	60
+#define	AMII_LOUDER_VOLUME	80
 
 #endif /* AMICONF_H */

@@ -18,13 +18,13 @@ struct IntuiText Col_IText1 = {
 	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	13,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
-	"Okay",	/* pointer to text */
+	"Save",	/* pointer to text */
 	NULL	/* next IntuiText structure */
 };
 
-struct Gadget Col_Okay = {
+struct Gadget Col_Save = {
 	NULL,	/* next gadget */
-	8,65,	/* origin XY of hit box relative to window TopLeft */
+	9,77,	/* origin XY of hit box relative to window TopLeft */
 	58,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY,	/* activation flags */
@@ -34,7 +34,7 @@ struct Gadget Col_Okay = {
 	&Col_IText1,	/* first IntuiText structure */
 	NULL,	/* gadget mutual-exclude long word */
 	NULL,	/* SpecialInfo structure */
-	GADCOLOKAY,	/* user-definable data */
+	GADCOLSAVE,	/* user-definable data */
 	NULL	/* pointer to user-definable data */
 };
 
@@ -55,6 +55,45 @@ struct Border Col_Border2 = {
 
 struct IntuiText Col_IText2 = {
 	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	17,1,	/* XY origin relative to container TopLeft */
+	NULL,	/* font pointer or NULL for default */
+	"Use",	/* pointer to text */
+	NULL	/* next IntuiText structure */
+};
+
+struct Gadget Col_Okay = {
+	&Col_Save,	/* next gadget */
+	117,77,	/* origin XY of hit box relative to window TopLeft */
+	58,11,	/* hit box width and height */
+	NULL,	/* gadget flags */
+	RELVERIFY,	/* activation flags */
+	BOOLGADGET,	/* gadget type flags */
+	(APTR)&Col_Border2,	/* gadget border or image to be rendered */
+	NULL,	/* alternate imagery for selection */
+	&Col_IText2,	/* first IntuiText structure */
+	NULL,	/* gadget mutual-exclude long word */
+	NULL,	/* SpecialInfo structure */
+	GADCOLOKAY,	/* user-definable data */
+	NULL	/* pointer to user-definable data */
+};
+
+SHORT Col_BorderVectors3[] = {
+	0,0,
+	59,0,
+	59,12,
+	0,12,
+	0,0
+};
+struct Border Col_Border3 = {
+	-1,-1,	/* XY origin relative to container TopLeft */
+	3,0,JAM1,	/* front pen, back pen and drawmode */
+	5,	/* number of XY vectors */
+	Col_BorderVectors3,	/* pointer to XY vectors */
+	NULL	/* next border in list */
+};
+
+struct IntuiText Col_IText3 = {
+	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	6,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Cancel",	/* pointer to text */
@@ -63,14 +102,14 @@ struct IntuiText Col_IText2 = {
 
 struct Gadget Col_Cancel = {
 	&Col_Okay,	/* next gadget */
-	218,65,	/* origin XY of hit box relative to window TopLeft */
+	218,77,	/* origin XY of hit box relative to window TopLeft */
 	58,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY,	/* activation flags */
 	BOOLGADGET,	/* gadget type flags */
-	(APTR)&Col_Border2,	/* gadget border or image to be rendered */
+	(APTR)&Col_Border3,	/* gadget border or image to be rendered */
 	NULL,	/* alternate imagery for selection */
-	&Col_IText2,	/* first IntuiText structure */
+	&Col_IText3,	/* first IntuiText structure */
 	NULL,	/* gadget mutual-exclude long word */
 	NULL,	/* SpecialInfo structure */
 	GADCOLCANCEL,	/* user-definable data */
@@ -174,7 +213,7 @@ struct Gadget Col_BluePen = {
 
 struct NewWindow Col_NewWindowStructure1 = {
 	175,45,	/* window XY origin relative to TopLeft of screen */
-	285,80,	/* window width and height */
+	284,93,	/* window width and height */
 	0,1,	/* detail and block pens */
 	MOUSEBUTTONS+MOUSEMOVE+GADGETDOWN+GADGETUP+CLOSEWINDOW+VANILLAKEY+INTUITICKS,	/* IDCMP flags */
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,	/* other window flags */

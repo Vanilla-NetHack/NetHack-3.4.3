@@ -371,8 +371,8 @@ morguemon()
 	register int i = rn2(100), hd = rn2(level_difficulty());
 
 	if(hd > 10 && i < 10)
-		return((Inhell || In_endgame(&u.uz)) ? 
-		                    mkclass(S_DEMON,0) : &mons[ndemon()]);
+		return((Inhell || In_endgame(&u.uz)) ? mkclass(S_DEMON,0) :
+						       &mons[ndemon(A_NONE)]);
 	if(hd > 8 && i > 85)
 		return(mkclass(S_VAMPIRE,0));
 

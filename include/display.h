@@ -64,7 +64,7 @@
  * is considered irrelevant for this special case.
  */
 #define canspotmon(mon)	\
-	(mon && (Blind ? sensemon(mon) : (!mon->minvis || See_invisible)))
+	(mon && ((!Blind && (!mon->minvis || See_invisible)) || sensemon(mon)))
 
 /*
  * is_safepet(mon)

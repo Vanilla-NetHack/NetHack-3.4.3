@@ -110,6 +110,15 @@ register char *s;
 # endif
 		    *lp == '|' || *lp >= 127 || (*lp >= '[' && *lp <= ']'))
                         *lp = '_';
+# ifdef WIN32
+              /* "Open" was failing on NT, but only on FAT file system     */
+              /* volumes, not on NTFS volumes.  NT does not auto-truncate  */
+              /* the way MSDOS did in such cases, so we need to check      */
+              /* the file name to see if it falls with-in the file systems */
+              /* limitations, and if necessary truncate it ourselves       */
+
+                nt_regularize(s);         /* In winnt.c */
+# endif
 }
 
 #endif /* OVLB */

@@ -24,7 +24,6 @@ struct obj {
 				   marks your eggs, spinach tins
 				   indicates statues have spellbooks inside
 				   tells which fruit a fruit is
-				   marks diluted potions
 				   special for uball and amulet %% BAH */
 	char	oclass;		/* object class */
 	char	invlet;		/* designation in inventory */
@@ -42,6 +41,7 @@ struct obj {
 	Bitfield(oeroded,2);	/* rusted/corroded/burnt/rotted weapon/armor */
 #define MAX_ERODE 3
 #define orotten oeroded		/* rotten food */
+#define odiluted oeroded	/* diluted potions */
 	Bitfield(oerodeproof,1); /* erodeproof weapon/armor */
 	Bitfield(olocked,1);	/* object is locked */
 #define recharged olocked	/* recharged once */

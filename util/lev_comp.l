@@ -36,7 +36,7 @@ int NDECL (yylex);
 #  endif
 # endif
 # if !defined(VOIDYYPUT) && defined(WEIRD_LEX)
-#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX != 0) 
+#  if defined(SUNOS4) && defined(__STDC__) && (WEIRD_LEX > 1) 
 #   define VOIDYYPUT
 #  endif
 # endif
@@ -125,7 +125,7 @@ input() {	/* Under MPW \n is chr(13)! Compensate for this. */
 		  yylval.map[yyleng-6] = 0;
 		  return MAP_ID;
 		}
-<MAPC>[-|}{+ABCISKPLW\\#. ]*\n	{ line_number++; yymore(); }
+<MAPC>[-|}{+ABCISHKPLW\\#. ]*\n	{ line_number++; yymore(); }
 ^#.*\n		{ line_number++; }
 :		{ colon_line_number = line_number; return ':'; }
 MESSAGE		return MESSAGE_ID;
@@ -157,6 +157,7 @@ FOUNTAIN	return FOUNTAIN_ID;
 SINK		return SINK_ID;
 POOL		return POOL_ID;
 NON_DIGGABLE	return NON_DIGGABLE_ID;
+NON_PASSWALL	return NON_PASSWALL_ID;
 ROOM		return ROOM_ID;
 SUBROOM		return SUBROOM_ID;
 RANDOM_CORRIDORS	return RAND_CORRIDOR_ID;

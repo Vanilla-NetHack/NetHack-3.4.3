@@ -223,6 +223,7 @@ map_detail	: monster_detail
 		| gold_detail
 		| engraving_detail
 		| diggable_detail
+		| passwall_detail
 
 monster_detail	: "MONSTER" ':' monster_c ',' m_name ',' coordinate
 		  monster_infos
@@ -295,6 +296,8 @@ sink_detail	: "SINK" ':' coordinate
 pool_detail	: "POOL" ':' coordinate
 
 diggable_detail	: "NON_DIGGABLE" ':' region
+
+passwall_detail	: "NON_PASSWALL" ':' region
 
 region_detail	: "REGION" ':' region ',' light_state ','
 		  room_type prefilled
@@ -403,6 +406,7 @@ The maximum size of a map is normally 76 columns by 21 rows.
 \&'C'	cloudy air
 \&'I'	ice
 \&'S'	a secret door
+\&'H'	a secret corridor
 \&'{'	a fountain
 \&'\\'	a throne
 \&'K'	a sink (if SINKS is defined, else a room location)

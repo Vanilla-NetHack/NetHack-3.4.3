@@ -1,4 +1,4 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.1 patchlevel 0	[pr]
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.1 patchlevel 1	[pr]
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
@@ -183,7 +183,6 @@ $begin:
 $!
 $! miscellaneous special source file setup
 $!
-$ if f$search("monst.c").eqs."" then  copy/Concat monst.c1+.c2 monst.c
 $ if f$search("random.c").eqs."" then  copy [-.sys.share]random.c []*.*
 $ if f$search("[-.util]lev_yacc.c").eqs."" then  @[-.sys.vms]spec_lev.com
 $!
@@ -203,7 +202,7 @@ $ set default [-.util]
 $ c_list = "#makedefs"
 $ gosub compile_list
 $ link makedefs.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="makedefs 3.1.0"
+identification="makedefs 3.1.1"
 $ milestone "makedefs"
 $! create some build-time files
 $ makedefs -p	!pm.h
@@ -245,7 +244,7 @@ $link:
 $ milestone "<linking...>"
 $ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain),'crtl''gnulib',-
 	sys$input:/Opt
-identification="NetHack 3.1.0"
+identification="NetHack 3.1.1"
 $ milestone "NetHack"
 $     if c_opt.eq.o_LINK then  goto done	!"LINK" only
 $special:
@@ -262,17 +261,17 @@ $ gosub compile_list
 $ rename stdio.h lev_lex.*
 $ link/exe=lev_comp lev_main,lev_yacc,lev_lex,-
 	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="lev_comp 3.1.0"
+identification="lev_comp 3.1.1"
 $ milestone "lev_comp"
 $ link/exe=dgn_comp dgn_main,dgn_yacc,dgn_lex,-
 	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="dgn_comp 3.1.0"
+identification="dgn_comp 3.1.1"
 $ milestone "dgn_comp"
 $!
 $ c_list = "#recover"
 $ gosub compile_list
 $ link/exe=[] recover.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="recover 3.1.0"
+identification="recover 3.1.1"
 $ milestone "recover"
 $!
 $done:

@@ -9,17 +9,29 @@
 STATIC_PTR int NDECL(picklock);
 STATIC_PTR int NDECL(forcelock);
 
-STATIC_VAR struct xlock_s {
+STATIC_VAR NEARDATA struct xlock_s {
 	int	door_or_box, picktyp;
 	struct rm  *door;
 	struct obj *box;
 	int chance, usedtime;
-} NEARDATA xlock;
+} xlock;
 
 #ifdef OVLB
 
 static boolean FDECL(obstructed,(int,int));
 static void FDECL(chest_shatter_msg, (struct obj *));
+
+boolean
+picking_lock(x, y)
+	int *x, *y;
+{
+	if(occupation != picklock) return 0;
+	else {
+		*x = u.ux + u.dx;
+		*y = u.uy + u.dy;
+		return 1;
+	}
+}
 
 boolean
 picking_at(x, y)

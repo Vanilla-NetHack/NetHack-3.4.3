@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)mthrowu.c	3.1	93/02/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,7 @@ STATIC_DCL const char *breathwep[];
 /*
  * Keep consistent with breath weapons in zap.c, and AD_* in monattk.h.
  */
-STATIC_OVL const char NEARDATA *breathwep[] = {
+STATIC_OVL NEARDATA const char *breathwep[] = {
 				"fragments",
 				"fire",
 				"frost",
@@ -95,14 +95,16 @@ int x,y;
 		  obj->otyp == ROCK))
 		create = !rn2(3);
 	else create = 1;
+
 	if (create && !((mtmp = m_at(x, y)) && (mtmp->mtrapped) && 
 			(t = t_at(x, y)) && ((t->ttyp == PIT) || 
-			(t->ttyp == SPIKED_PIT))) && 
-	    !flooreffects(obj,x,y,"fall")) { /* don't double-dip on damage */
+			(t->ttyp == SPIKED_PIT)))) {
+	    if (!flooreffects(obj,x,y,"fall")) { /* don't double-dip on damage */
 		place_object(obj, x, y);
 		obj->nobj = fobj;
 		fobj = obj;
 		stackobj(fobj);
+	    }
 	} else obfree(obj, (struct obj*) 0);
 }
 
@@ -160,8 +162,8 @@ m_throw(mon, x, y, dx, dy, range, obj)
 		   && objects[singleobj->otyp].w_propellor)
 		    pline("%s misfires!", Monnam(mon));
 		else
-		    pline("The %s slips as %s throws it!",
-			  xname(singleobj), mon_nam(mon));
+		    pline("%s slips as %s throws it!",
+			  The(xname(singleobj)), mon_nam(mon));
 	    }
 	    dx = rn2(3)-1;
 	    dy = rn2(3)-1;
@@ -396,6 +398,9 @@ struct obj *obj;
 		}
 		prev = otmp;
 	}
+#ifdef MUSE
+	possibly_unwield(mon);
+#endif
 }
 
 #endif /* OVLB */

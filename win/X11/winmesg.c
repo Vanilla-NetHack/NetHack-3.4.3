@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmesg.c	3.1	92/05/19		  */
+/*	SCCS Id: @(#)winmesg.c	3.1	93/02/02		  */
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,49 +6,44 @@
  * Message window routines.
  *
  * Global functions:
- *	set_message_height()
  *	create_message_window()
  *	destroy_message_window()
  *	display_message_window()
  *	append_message()
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xaw/Viewport.h>
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
+
 #include "Window.h"	/* Window widget declarations */
 
 #include "hack.h"
 #include "winX.h"
 
-static const char message_translations[] =
-    "#override\n\
-    <Key>: no-op()";
-
-static struct line_element *get_previous();
-static void set_circle_buf();
-static char *split();
-static void add_line();
-static void redraw_message_window();
-static void mesg_check_size_change();
-static void mesg_exposed();
-static void get_gc();
-static void mesg_resized();
-
-/* Adjust the number of rows on the given message window. */
-void
-set_message_height(wp, rows)
-    struct xwindow *wp;
-    Dimension rows;
-{
-    Arg args[1];
-
-    wp->pixel_height = wp->mesg_information->char_height * rows;
-
-    XtSetArg(args[0], XtNheight, wp->pixel_height);
-    XtSetValues(wp->w, args, ONE);
-}
+static struct line_element *FDECL(get_previous, (struct line_element *));
+static void FDECL(set_circle_buf, (struct mesg_info_t *,int));
+static char *FDECL(split, (char *,XFontStruct *,DIMENSION_P));
+static void FDECL(add_line, (struct mesg_info_t *,const char *));
+static void FDECL(redraw_message_window, (struct xwindow *));
+static void FDECL(mesg_check_size_change, (struct xwindow *));
+static void FDECL(mesg_exposed, (Widget,XtPointer,XtPointer));
+static void FDECL(get_gc, (Widget,struct mesg_info_t *));
+static void FDECL(mesg_resized, (Widget,XtPointer,XtPointer));
 
 /* Move the message window's vertical scrollbar's slider to the bottom. */
 void
@@ -115,6 +110,10 @@ create_message_window(wp, create_popup, parent)
 	wp->popup = parent = XtCreatePopupShell("message_popup",
 					topLevelShellWidgetClass,
 					toplevel, args, num_args);
+	/*
+	 * If we're here, then this is an auxiliary message window.  If we're
+	 * cancelled via a delete window message, we should just pop down.
+	 */
     }
 
     /*
@@ -125,19 +124,17 @@ create_message_window(wp, create_popup, parent)
     num_args = 0;
     XtSetArg(args[num_args], XtNallowVert,  True);      num_args++;
     viewport = XtCreateManagedWidget(
-                        "mesg_viewport",         /* name */
-                        viewportWidgetClass,    /* widget class from Window.h */
-                        parent,                 /* parent widget */
-                        args,                   /* set some values */
-                        num_args);              /* number of values to set */
+			"mesg_viewport",	/* name */
+			viewportWidgetClass,	/* widget class from Window.h */
+			parent,			/* parent widget */
+			args,			/* set some values */
+			num_args);		/* number of values to set */
 
     /*
      * Create a message window.  We will change the width and height once
      * we know what font we are using.
      */
     num_args = 0;
-    XtSetArg(args[num_args], XtNtranslations,
-	XtParseTranslationTable(message_translations));	num_args++;
     wp->w = XtCreateManagedWidget(
 		"message",		/* name */
 		windowWidgetClass,	/* widget class from Window.h */
@@ -166,7 +163,7 @@ create_message_window(wp, create_popup, parent)
 
     get_gc(wp->w, mesg_info);
 
-    wp->pixel_height = DEFAULT_LINES_DISPLAYED * mesg_info->char_height;
+    wp->pixel_height = ((int)flags.msg_history) * mesg_info->char_height;
 
     /* If a variable spaced font, only use 2/3 of the default size */
     if (mesg_info->fs->min_bounds.width != mesg_info->fs->max_bounds.width) {
@@ -182,17 +179,23 @@ create_message_window(wp, create_popup, parent)
     XtSetArg(args[num_args], XtNheight,       wp->pixel_height); num_args++;
     XtSetValues(wp->w, args, num_args);
 
-    XtAddEventHandler(wp->w, KeyPressMask, False,
-		      (XtEventHandler) msgkey, (XtPointer) 0);
+    /* make sure viewport height makes sense before realizing it */
+    num_args = 0;
+    mesg_info->viewport_height =
+	DEFAULT_LINES_DISPLAYED * mesg_info->char_height;
+    XtSetArg(args[num_args], XtNheight, mesg_info->viewport_height);num_args++;
+    XtSetValues(viewport, args, num_args);
+
     XtAddCallback(wp->w, XtNresizeCallback, mesg_resized, (XtPointer) 0);
 
     /*
      * If we have created our own popup, then realize it so that the
-     * viewport is also realized.  Then resize the mesg window.
+     * viewport is also realized.
      */
     if (create_popup) {
 	XtRealizeWidget(wp->popup);
-	set_message_height(wp, (int) flags.msg_history);
+	XSetWMProtocols(XtDisplay(wp->popup), XtWindow(wp->popup),
+			&wm_delete_window, 1);
     }
 }
 
@@ -450,8 +453,10 @@ redraw_message_window(wp)
      *
      * This could be done more effecently with one call to XDrawText() instead
      * of many calls to XDrawString().  Maybe later.
+     *
+     * Only need to clear if window has new text.
      */
-    XClearWindow(XtDisplay(wp->w), XtWindow(wp->w));
+    if (mesg_info->dirty) XClearWindow(XtDisplay(wp->w), XtWindow(wp->w));
 
     /* For now, just update the whole shootn' match. */
     for (row = 0, curr = mesg_info->head;
@@ -460,9 +465,9 @@ redraw_message_window(wp)
 	register int y_base = row * mesg_info->char_height;
 
 	XDrawString(XtDisplay(wp->w), XtWindow(wp->w),
-                mesg_info->gc,
+		mesg_info->gc,
 		mesg_info->char_lbearing,
-                mesg_info->char_ascent + y_base,
+		mesg_info->char_ascent + y_base,
 		curr->line,
 		curr->str_length);
 
@@ -472,7 +477,7 @@ redraw_message_window(wp)
 	 */
 	if (appResources.message_line && curr == mesg_info->last_pause) {
 	    XDrawLine(XtDisplay(wp->w), XtWindow(wp->w),
-                mesg_info->gc,
+		mesg_info->gc,
 		0, y_base, wp->pixel_width, y_base);
 	}
     }
@@ -514,16 +519,31 @@ mesg_check_size_change(wp)
 /* Event handler for message window expose events. */
 /*ARGSUSED*/
 static void
-mesg_exposed(w, event)
+mesg_exposed(w, client_data, widget_data)
     Widget w;
-    XExposeEvent *event;	/* unused */
+    XtPointer client_data;	/* unused */
+    XtPointer widget_data;	/* expose event from Window widget */
 {
-    struct xwindow *wp;
+    XExposeEvent *event = (XExposeEvent *) widget_data;
 
-    if (!XtIsRealized(w)) return;
-    wp = find_widget(w);
-    mesg_check_size_change(wp);
-    redraw_message_window(wp);
+    if (XtIsRealized(w) && event->count == 0) {
+	struct xwindow *wp;
+	Display *dpy;
+	Window   win;
+	XEvent   evt;
+
+	/*
+	 * Drain all pending expose events for the message window;
+	 * we'll redraw the whole thing at once.
+	 */
+	dpy = XtDisplay(w);
+	win = XtWindow(w);
+	while (XCheckTypedWindowEvent(dpy, win, Expose, &evt)) continue;
+
+	wp = find_widget(w);
+	mesg_check_size_change(wp);
+	redraw_message_window(wp);
+    }
 }
 
 

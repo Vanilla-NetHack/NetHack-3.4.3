@@ -185,6 +185,7 @@ struct xwindow {
 E struct xwindow window_list[MAX_WINDOWS];
 E XtAppContext   app_context;		/* context of application */
 E Widget	 toplevel;		/* toplevel widget */
+E Atom		 wm_delete_window;	/* delete window protocol */
 E boolean	 exit_x_event;		/* exit condition for event loop */
 #define EXIT_ON_KEY_PRESS	    0	/* valid values for exit_x_event */
 #define EXIT_ON_KEY_OR_BUTTON_PRESS 1
@@ -217,7 +218,7 @@ E Widget FDECL(CreateDialog, (Widget, String, XtCallbackProc, XtCallbackProc));
 E void FDECL(SetDialogPrompt,(Widget, String));
 E String FDECL(GetDialogResponse,(Widget));
 E void FDECL(SetDialogResponse,(Widget, String));
-E void FDECL(positionpopup,(Widget));
+E void FDECL(positionpopup,(Widget,BOOLEAN_P));
 
 /* ### winX.c ### */
 E struct xwindow *FDECL(find_widget,(Widget));
@@ -228,7 +229,6 @@ E void FDECL(nh_XtPopdown, (Widget));
 E void NDECL(win_X11_init);
 
 /* ### winmesg.c ### */
-E void FDECL(set_message_height, (struct xwindow*, DIMENSION_P));
 E void FDECL(set_message_slider, (struct xwindow*));
 E void FDECL(create_message_window,(struct xwindow*, BOOLEAN_P, Widget));
 E void FDECL(destroy_message_window,(struct xwindow*));
@@ -240,19 +240,21 @@ E void FDECL(set_last_pause, (struct xwindow*));
 E void FDECL(check_cursor_visibility,(struct xwindow*));
 E void FDECL(display_map_window,(struct xwindow*));
 E void FDECL(clear_map_window,(struct xwindow*));
-E void FDECL(extern_map_input,(XEvent*));
+E void FDECL(map_input, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(set_map_size,(struct xwindow*, DIMENSION_P, DIMENSION_P));
 E void FDECL(create_map_window,(struct xwindow*, BOOLEAN_P, Widget));
 E void FDECL(destroy_map_window,(struct xwindow*));
 E int  FDECL(x_event,(int));
 
 /* ### winmenu.c ### */
+E void FDECL(menu_delete, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(menu_key,(Widget, XEvent*, String*, Cardinal*));
 E void FDECL(create_menu_window,(struct xwindow*));
 E void FDECL(destroy_menu_window,(struct xwindow*));
 
 /* ### winmisc.c ### */
 E void FDECL(ps_key,(Widget, XEvent*, String*, Cardinal*)); /* player selection action */
+E void FDECL(ec_delete, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(ec_key,(Widget, XEvent*, String*, Cardinal*)); /* extended command action */
 E void NDECL(init_extended_commands_popup);
 
@@ -264,6 +266,7 @@ E void NDECL(null_out_status);
 E void NDECL(check_turn_events);
 
 /* ### wintext.c ### */
+E void FDECL(delete_text, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(dismiss_text,(Widget, XEvent*, String*, Cardinal*));
 E void FDECL(key_dismiss_text,(Widget, XEvent*, String*, Cardinal*));
 E void FDECL(add_to_text_window,(struct xwindow*, int, const char*));

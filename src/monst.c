@@ -48,14 +48,14 @@ void NDECL(monst_init);
  */
 
 #ifndef SPLITMON_2
-struct permonst NEARDATA playermon = {		/* used by weapons bonus code */
+NEARDATA struct permonst playermon = {		/* used by weapons bonus code */
 	"player", S_HUMAN, 1, 10, 10, 0, 0, G_GENO | G_NOGEN,
 	{ { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK,
 	  NO_ATTK, NO_ATTK, NO_ATTK },
 	WT_HUMAN, 400, PL_NSIZ, MS_HUMANOID, MZ_HUMAN, 0, 0,
 	M1_NEEDPICK | M1_HUMANOID | M1_OMNIVORE,
 	M2_HUMAN | M2_STRONG | M2_COLLECT, 0, C(HI_DOMESTIC)
-},	NEARDATA *uasmon = &playermon;
+},	*uasmon = &playermon;
 #endif /* SPLITMON_2 */
 
 /*
@@ -97,7 +97,7 @@ struct permonst NEARDATA playermon = {		/* used by weapons bonus code */
  */
 
 #ifndef SPLITMON_2
-struct permonst NEARDATA mons[] = {
+NEARDATA struct permonst mons[] = {
 /*	ants	*/
 	{ "giant ant",	S_ANT, 2, 18, 3, 0, 0, (G_GENO | G_SGROUP | 3),
 	  { { AT_BITE, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK,
@@ -1437,7 +1437,8 @@ struct permonst _mons2[] = {
 	  WT_HUMAN, 400, 0, MS_VAMPIRE, MZ_HUMAN, MR_SLEEP | MR_POISON, 0,
 	  M1_FLY | M1_BREATHLESS | M1_HUMANOID | M1_POIS | M1_REGEN,
 	  M2_NOPOLY | M2_UNDEAD | M2_STALK | M2_HOSTILE | M2_PNAME | M2_STRONG |
-	  M2_NASTY | M2_PRINCE | M2_MALE, M3_WANTSBOOK, C(HI_LORD) },
+	  M2_NASTY | M2_PRINCE | M2_MALE, M3_WAITFORU | M3_WANTSBOOK,
+	  C(HI_LORD) },
 /*	Wraiths 	*/
 	{ "barrow wight", S_WRAITH, 3, 12, 5, 5, -3, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_MAGC, AD_SPEL, 0, 0 },
@@ -1794,7 +1795,7 @@ struct permonst _mons2[] = {
 	  MR_POISON | MR_STONE, MR_POISON | MR_STONE, M1_SWIM |
 	  M1_AMPHIBIOUS | M1_HUMANOID | M1_SLITHY | M1_POIS | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HOSTILE | M2_STRONG | M2_PNAME | M2_FEMALE,
-	  0, C(BRIGHT_GREEN) },
+	  M3_WAITFORU, C(BRIGHT_GREEN) },
 	{ "Wizard of Yendor", S_HUMAN, 30, 12, -8, 100, A_NONE, G_NOGEN,
 	  { { AT_CLAW, AD_SAMU, 2, 12 }, { AT_MAGC, AD_SPEL, 0, 0 },
 	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
@@ -1811,7 +1812,7 @@ struct permonst _mons2[] = {
 	    NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_GUARD, MZ_HUMAN,
 	  MR_STONE, MR_STONE, M1_HUMANOID | M1_SEE_INVIS | M1_OMNIVORE,
-	  M2_NOPOLY | M2_HUMAN | M2_STALK | M2_PEACEFUL | M2_STRONG | M2_NASTY |
+	  M2_NOPOLY | M2_HUMAN | M2_STALK | M2_HOSTILE | M2_STRONG | M2_NASTY |
 	  M2_PNAME | M2_PRINCE | M2_MALE | M2_GREEDY | M2_JEWELS | M2_COLLECT |
 	  M2_MAGIC, 0, C(HI_LORD) },
 #endif
@@ -1973,7 +1974,7 @@ struct permonst _mons2[] = {
 	  M1_ACID | M1_POIS,
 	  M2_NOPOLY | M2_DEMON | M2_STALK | M2_HOSTILE | M2_PNAME | M2_NASTY |
 	  M2_LORD | M2_MALE,
-	  M3_WANTSAMUL, C(BRIGHT_GREEN) },
+	  M3_WAITFORU | M3_WANTSAMUL, C(BRIGHT_GREEN) },
 	{ "Yeenoghu", S_DEMON, 56, 18, -5, 80, -15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 3, 6 }, { AT_WEAP, AD_CONF, 2, 8 },
@@ -1992,7 +1993,7 @@ struct permonst _mons2[] = {
 	  MR_FIRE | MR_POISON, 0,
 	  M1_FLY | M1_SEE_INVIS | M1_POIS, M2_NOPOLY | M2_DEMON | M2_STALK |
 	  M2_HOSTILE | M2_PNAME | M2_NASTY | M2_PRINCE | M2_MALE | M2_COLLECT,
-	  M3_WANTSBOOK | M3_WANTSAMUL, C(HI_LORD) },
+	  M3_WAITFORU | M3_WANTSBOOK | M3_WANTSAMUL, C(HI_LORD) },
 	{ "Geryon", S_DEMON, 72, 3, -3, 75, 15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_CLAW, AD_PHYS, 3, 6 }, { AT_CLAW, AD_PHYS, 3, 6 },
@@ -2303,8 +2304,8 @@ struct permonst _mons2[] = {
 	  M2_NOPOLY | M2_HUMAN | M2_PEACEFUL | M2_STRONG | M2_NASTY |
 	  M2_COLLECT | M2_MAGIC, M3_CLOSE, C(WHITE) },
 	{ "Master of Thieves", S_HUMAN, 20, 15, 0, 30, -20, (G_NOGEN | G_UNIQ),
-	  { { AT_WEAP, AD_PHYS, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 6 }, NO_ATTK,
-	    NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_WEAP, AD_PHYS, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 6 },
+	    { AT_CLAW, AD_SAMU, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_LEADER, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_PEACEFUL | M2_STRONG | M2_MALE |
@@ -2346,21 +2347,23 @@ struct permonst _mons2[] = {
 	{ "Minion of Huhetol", S_DEMON, 16, 10, -2, 75, -14,
 	  (G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 8, 4 }, { AT_WEAP, AD_PHYS, 4, 6 },
-	    { AT_MAGC, AD_SPEL, 0, 0 }, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_MAGC, AD_SPEL, 0, 0 }, { AT_CLAW, AD_SAMU, 2, 6 },
+	    NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_LARGE, MR_FIRE | MR_POISON, 0,
 	  M1_FLY | M1_SEE_INVIS | M1_POIS,
 	  M2_NOPOLY | M2_DEMON | M2_STALK | M2_HOSTILE | M2_STRONG | M2_NASTY |
 	  M2_COLLECT, M3_WANTSARTI | M3_WAITFORU, C(RED) },
 	{ "Thoth Amon", S_HUMAN, 16, 10, 0, 10, -14, (G_NOGEN | G_UNIQ),
 	  { { AT_MAGC, AD_SPEL, 0, 0 }, { AT_MAGC, AD_SPEL, 0, 0 },
-	    { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_WEAP, AD_PHYS, 1, 6 }, { AT_CLAW, AD_SAMU, 1, 4 },
+	    NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_HUMAN, MR_POISON, MR_POISON,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_STALK | M2_HOSTILE | M2_NASTY |
 	  M2_COLLECT | M2_MAGIC, M3_WANTSARTI | M3_WAITFORU, C(HI_LORD) },
 	{ "Chromatic Dragon", S_DRAGON, 16, 10, 0, 30, -14, (G_NOGEN | G_UNIQ),
 	  { { AT_BREA, AD_RBRE, 6, 8 }, { AT_MAGC, AD_SPEL, 0, 0 },
-	    { AT_BITE, AD_PHYS, 4, 8 }, { AT_BITE, AD_PHYS, 4, 8 },
+	    { AT_CLAW, AD_SAMU, 2, 8 }, { AT_BITE, AD_PHYS, 4, 8 },
 	    { AT_BITE, AD_PHYS, 4, 8 }, { AT_STNG, AD_PHYS, 1, 6 } },
 	  WT_DRAGON, 1700, 0, MS_NEMESIS, MZ_GIGANTIC,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_DISINT | MR_POISON,
@@ -2371,14 +2374,14 @@ struct permonst _mons2[] = {
 	  M3_WANTSARTI | M3_WAITFORU, C(HI_LORD) },
 	{ "Goblin King", S_ORC, 15, 10, MARM(10,4), 0, -15, (G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_CLAW, AD_SAMU, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  750, 350, 0, MS_NEMESIS, MZ_HUMAN, 0, 0, M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_ORC | M2_HOSTILE | M2_STRONG | M2_STALK | M2_NASTY |
 	  M2_MALE | M2_GREEDY | M2_JEWELS | M2_COLLECT | M2_MAGIC,
 	  M3_WANTSARTI | M3_WAITFORU, C(HI_LORD) },
 	{ "Cyclops", S_GIANT, 18, 10, 0, 0, -15, (G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 4, 8 }, { AT_WEAP, AD_PHYS, 4, 8 },
-	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_CLAW, AD_SAMU, 2, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  1900, 700, 0, MS_NEMESIS, MZ_HUGE, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_GIANT | M2_STRONG | M2_ROCKTHROW | M2_STALK |
@@ -2387,7 +2390,7 @@ struct permonst _mons2[] = {
 	{ "Ixoth", S_DRAGON, 15, 9, -1, 20, -14, (G_NOGEN | G_UNIQ),
 	  { { AT_BREA, AD_FIRE, 8, 6 }, { AT_BITE, AD_PHYS, 4, 8 },
 	    { AT_MAGC, AD_SPEL, 0, 0 }, { AT_CLAW, AD_PHYS, 2, 4 },
-	    { AT_CLAW, AD_PHYS, 2, 4 }, NO_ATTK  },
+	    { AT_CLAW, AD_SAMU, 2, 4 }, NO_ATTK  },
 	  WT_DRAGON, 1600, 0, MS_NEMESIS, MZ_GIGANTIC, MR_FIRE, MR_FIRE,
 	  M1_FLY | M1_THICK_HIDE | M1_NOHANDS | M1_CARNIVORE | M1_SEE_INVIS,
 	  M2_NOPOLY | M2_HOSTILE | M2_PNAME | M2_STRONG | M2_NASTY | M2_STALK |
@@ -2396,14 +2399,15 @@ struct permonst _mons2[] = {
 	{ "Nalzok", S_DEMON, 16, 10, -2, 85, -127,
 	  (G_NOGEN | G_UNIQ | G_NOCORPSE),
 	  { { AT_WEAP, AD_PHYS, 8, 4 }, { AT_WEAP, AD_PHYS, 4, 6 },
-	    { AT_MAGC, AD_SPEL, 0, 0 }, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_MAGC, AD_SPEL, 0, 0 }, { AT_CLAW, AD_SAMU, 2, 6 },
+	    NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_LARGE, MR_FIRE | MR_POISON, 0,
 	  M1_FLY | M1_SEE_INVIS | M1_POIS,
 	  M2_NOPOLY | M2_DEMON | M2_PNAME | M2_HOSTILE | M2_STRONG | M2_STALK |
 	  M2_NASTY | M2_COLLECT, M3_WANTSARTI | M3_WAITFORU, C(RED) },
 	{ "Master Assassin", S_HUMAN, 15, 15, 0, 30, 18, (G_NOGEN | G_UNIQ),
-	  { { AT_WEAP, AD_DRST, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 8 }, NO_ATTK,
-	    NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_WEAP, AD_DRST, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 8 },
+	    { AT_CLAW, AD_SAMU, 2, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_HOSTILE | M2_STALK | M2_NASTY |
@@ -2412,8 +2416,8 @@ struct permonst _mons2[] = {
 	/* A renegade daimyo who led a 13 year civil war against the shogun */
 	/* of his time. */
 	{ "Ashikaga Takauji", S_HUMAN, 15, 15, 0, 40, -13, (G_NOGEN | G_UNIQ),
-	  { { AT_WEAP, AD_PHYS, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 6 }, NO_ATTK,
-	    NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_WEAP, AD_PHYS, 2, 6 }, { AT_WEAP, AD_PHYS, 2, 6 },
+	    { AT_CLAW, AD_SAMU, 2, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_PNAME | M2_HOSTILE | M2_STALK |
@@ -2423,8 +2427,8 @@ struct permonst _mons2[] = {
 /*	NOTE: the Master of Thieves was defined above. */
 
 	{ "Lord Surtur", S_GIANT, 15, 12, 2, 50, 12, (G_NOGEN | G_UNIQ),
-	  { { AT_WEAP, AD_PHYS, 2, 10 }, { AT_WEAP, AD_PHYS, 2, 10 }, NO_ATTK,
-	    NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_WEAP, AD_PHYS, 2, 10 }, { AT_WEAP, AD_PHYS, 2, 10 },
+	    { AT_CLAW, AD_SAMU, 2, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  2250, 850, 0, MS_NEMESIS, MZ_HUGE, MR_FIRE, MR_FIRE,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_GIANT | M2_STRONG | M2_ROCKTHROW | M2_STALK |
@@ -2432,7 +2436,8 @@ struct permonst _mons2[] = {
 	  M3_WANTSARTI | M3_WAITFORU, C(HI_LORD) },
 	{ "Dark One", S_HUMAN, 15, 10, 0, 80, -10, (G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 1, 6 }, { AT_MAGC, AD_SPEL, 0, 0 },
-	    { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
+	    { AT_WEAP, AD_PHYS, 1, 6 }, { AT_CLAW, AD_SAMU, 1, 4 },
+	    NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_NEMESIS, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_HOSTILE | M2_STALK | M2_NASTY |
@@ -2467,7 +2472,7 @@ struct permonst _mons2[] = {
 	  WT_ELF, 350, 0, MS_GUARDIAN, MZ_HUMAN, MR_SLEEP, MR_SLEEP,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_ELF | M2_PEACEFUL | M2_COLLECT, 0, C(HI_DOMESTIC) },
-	{ "intern", S_HUMAN, 5, 10, 10, 10, 3, G_NOGEN,
+	{ "attendant", S_HUMAN, 5, 10, 10, 10, 3, G_NOGEN,
 	  { { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK,
 	    NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_GUARDIAN, MZ_HUMAN, MR_POISON, MR_POISON,
@@ -2506,7 +2511,7 @@ struct permonst _mons2[] = {
 	{ "ronin", S_HUMAN, 5, 10, 10, 10, 3, G_NOGEN,
 	  { { AT_WEAP, AD_PHYS, 1, 8 }, NO_ATTK, NO_ATTK,
 	    NO_ATTK, NO_ATTK, NO_ATTK },
-	  WT_HUMAN, 400, 0, MS_GUARDIAN, MZ_HUMAN, 0, 0,
+	  WT_HUMAN, 400, 0, MS_HUMANOID, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HUMAN | M2_HOSTILE | M2_STRONG | M2_COLLECT,
 	  0, C(HI_DOMESTIC) },

@@ -222,8 +222,12 @@
 #define memcmp(s1, s2, n)	bcmp(s2, s1, n)
 # endif
 #else	/* therefore SYSV */
+# ifndef index	/* some systems seem to do this for you */
 #define index	strchr
+# endif
+# ifndef rindex
 #define rindex	strrchr
+# endif
 #endif
 
 /* A safety check for BOS and AUX */

@@ -171,7 +171,10 @@ char *argv[];
 		(void) chmod(SAVEF,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef NEWS
-		if(flags.news) display_file(NEWS, FALSE);
+		if(flags.news) {
+		    display_file(NEWS, FALSE);
+		    flags.news = FALSE; /* in case dorecover() fails */
+		}
 #endif
 		pline("Restoring save file...");
 		mark_synch();	/* flush output */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.1	92/11/11	*/
+/*	SCCS Id: @(#)do.c	3.1	93/02/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -40,7 +40,7 @@ static int NDECL(currentlevel_rewrite);
 
 #ifdef OVLB
 
-static const char NEARDATA drop_types[] =
+static NEARDATA const char drop_types[] =
 	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, 0 };
 
 int
@@ -60,7 +60,7 @@ dodrop()
 #ifdef OVL0
 
 /* Called when a boulder is dropped, thrown, or pushed.  If it ends up
- * in a pool, it either fills the pool up or sinks away.  In either case, 
+ * in a pool, it either fills the pool up or sinks away.  In either case,
  * it's gone for good...  If the destination is not a pool, returns FALSE.
  */
 boolean
@@ -95,17 +95,25 @@ boolean pushing;
 		}
 	    }
 	    if (!fills_up || !pushing) {	/* splashing occurs */
-		if (pushing ? !Blind : cansee(rx,ry))
-		    pline("There is a large splash as %s %s the %s.",
-			the(xname(otmp)), fills_up ? "fills" : "falls into",
-			lava ? "lava" : ltyp==POOL ? "pool" : "moat");
-		else if (flags.soundok)
-		    You("hear a%s splash.", lava ? " sizzling" : "");
-		wake_nearby();
+		if (!u.uinwater) {
+		    if (pushing ? !Blind : cansee(rx,ry)) {
+			boolean moat = (ltyp != WATER) &&
+			    !Is_medusa_level(&u.uz) && !Is_waterlevel(&u.uz);
+
+			pline("There is a large splash as %s %s the %s.",
+			      the(xname(otmp)), fills_up? "fills":"falls into",
+			      lava ? "lava" : ltyp==POOL ? "pool" :
+			      moat ? "moat" : "water");
+		    } else if (flags.soundok)
+			You("hear a%s splash.", lava ? " sizzling" : "");
+		    wake_nearby();
+		}
 
 		if (fills_up && u.uinwater && distu(rx,ry) == 0) {
-		    You("find yourself on dry land again!");
 		    u.uinwater = 0;
+		    docrt();
+		    vision_full_recalc = 1;
+		    You("find yourself on dry land again!");
 		} else if (lava && distu(rx,ry) <= 2) {
 		    You("are hit by molten lava%c",
 			Fire_resistance ? '.' : '!');
@@ -136,6 +144,9 @@ const char *verb;
 {
 	struct trap *t;
 
+	/* make sure things like water_damage() have no pointers to follow */
+	obj->nobj = obj->nexthere = (struct obj *)0;
+
 	if (obj->otyp == BOULDER && boulder_hits_pool(obj, x, y, FALSE))
 		return TRUE;
 	else if (obj->otyp == BOULDER && (t = t_at(x,y)) != 0 &&
@@ -149,22 +160,22 @@ const char *verb;
 		    (u.utrap && x==u.ux && y==u.uy)) {
 		    /* u.utrap = 0;     /* player remains trapped. See trap.c */
 		    if (*verb)
-			pline("The boulder %ss into the pit%s.", verb, 
-			      (mtmp)? "" : " with you");
+			pline("The boulder %ss into the pit%s.", verb,
+				(mtmp) ? "" : " with you");
 		    if (mtmp) {
 			if (!passes_walls(mtmp->data) && !throws_rocks(mtmp->data))
 				if (hmon(mtmp, obj, TRUE))
-					return FALSE; 	       /* still alive */
+					return FALSE;	  /* still alive */
 				else
 					delallobj(x, y);  /* treasure, corpse */
 		    } else
 #ifdef POLYSELF
-		    	if (!passes_walls(uasmon) && !throws_rocks(uasmon))
+			if (!passes_walls(uasmon) && !throws_rocks(uasmon))
 #endif
 			{
-			       losehp(rnd(15), "squished under a boulder",
-			       	      NO_KILLER_PREFIX);
-		    	       return FALSE;
+				losehp(rnd(15), "squished under a boulder",
+					NO_KILLER_PREFIX);
+				return FALSE;
 			}
 		}
 		if (*verb) {
@@ -175,15 +186,17 @@ const char *verb;
 					You("hear the boulder %s.", verb);
 			} else if (cansee(x, y)) {
 				pline("The boulder %sfills a %s.",
-				      t->tseen ? "" : "triggers and ",
-				      t->ttyp == TRAPDOOR ? 
-				      "trap door" : "pit");
+					 t->tseen ? "" : "triggers and ",
+					 t->ttyp == TRAPDOOR ?
+					 "trap door" : "pit");
 			}
 		}
 		deltrap(t);
 		obfree(obj, (struct obj *)0);
 		newsym(x,y);
 		return TRUE;
+	} else if (is_pool(x, y)) {
+		water_damage(obj, FALSE, FALSE);
 	}
 	return FALSE;
 }
@@ -198,10 +211,10 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 	if (Blind) return;
 	if (obj->blessed || obj->cursed) {
 		pline("There is %s flash as %s hit%s the altar.",
-		      an(Hallucination ? hcolor() :
-			 obj->blessed ? amber : Black),
-		      doname(obj),
-		      (obj->quan == 1L) ? "s" : "");
+			an(Hallucination ? hcolor() :
+				obj->blessed ? amber : Black),
+			doname(obj),
+			(obj->quan == 1L) ? "s" : "");
 		if (!Hallucination) obj->bknown = 1;
 	} else {
 		pline("%s land%s on the altar.", Doname2(obj),
@@ -231,10 +244,16 @@ register struct obj *obj;
 	register boolean ideed = TRUE;
 
 	You("drop %s down the drain.", doname(obj));
+#ifndef NO_SIGNAL
+	obj->in_use = TRUE;	/* block free identification via interrupt */
+#endif
 	switch(obj->otyp) {	/* effects that can be noticed without eyes */
 	    case RIN_SEARCHING:
 		You("thought your %s got lost in the sink, but there it is!",
 			xname(obj));
+#ifndef NO_SIGNAL
+		obj->in_use = FALSE;
+#endif
 		dropx(obj);
 		trycall(obj);
 		return;
@@ -339,6 +358,9 @@ register struct obj *obj;
 	    You("hear the ring bouncing down the drainpipe.");
 	if (!rn2(20)) {
 		pline("The sink backs up, leaving %s.", doname(obj));
+#ifndef NO_SIGNAL
+		obj->in_use = FALSE;
+#endif
 		dropx(obj);
 	}
 	else
@@ -356,7 +378,7 @@ register struct obj *obj;
 register const char *word;
 {
 	if(obj->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)){
-	       if (*word)
+		if (*word)
 			Norep("You cannot %s something you are wearing.",word);
 		return(FALSE);
 	}
@@ -380,7 +402,7 @@ register const char *word;
 	}
 #ifdef WALKIES
 	if (obj->otyp == LEASH && obj->leashmon != 0) {
-	       if (*word)
+		if (*word)
 			pline ("The leash is tied around your %s.",
 					body_part(HAND));
 		return(FALSE);
@@ -412,6 +434,14 @@ register struct obj *obj;
 		return(1);
 	}
 #endif
+	if (Levitation && !(Is_airlevel(&u.uz) || Is_waterlevel(&u.uz) ||
+			    is_pool(u.ux, u.uy) || u.uswallow)) {
+	    if(flags.verbose) You("drop %s.", doname(obj));
+	    if (obj->otyp != GOLD_PIECE) freeinv(obj);
+	    (void) snuff_candle(obj);
+	    hitfloor(obj);
+	    return(1);
+	}
 	if (IS_ALTAR(levl[u.ux][u.uy].typ) && !u.uswallow) {
 		doaltarobj(obj);	/* set bknown */
 	} else
@@ -429,7 +459,7 @@ register struct obj *obj;
 	if (obj->otyp != GOLD_PIECE) freeinv(obj);
 	(void) snuff_candle(obj);
 	if(!u.uswallow && obj != uball &&
-		          ship_object(obj, u.ux, u.uy, FALSE)) return;
+			  ship_object(obj, u.ux, u.uy, FALSE)) return;
 	dropy(obj);
 }
 
@@ -483,7 +513,7 @@ doddrop()
 #ifdef OVL2
 
 /* on a ladder, used in goto_level */
-static boolean NEARDATA at_ladder = FALSE;
+static NEARDATA boolean at_ladder = FALSE;
 
 int
 dodown()
@@ -516,7 +546,7 @@ dodown()
 		You("are standing at the gate to Gehennom.");
 		pline("Unspeakable cruelty and harm lurk down there.");
 		if (yn("Are you sure you want to enter?") != 'y')
-		     return(0);
+			return(0);
 		else pline("So be it.");
 		u.uevent.gehennom_entered = 1;	/* don't ask again */
 	}
@@ -546,7 +576,7 @@ doup()
 	     && (!xupladder || u.ux != xupladder || u.uy != yupladder)
 	     && (!sstairs.sx || u.ux != sstairs.sx || u.uy != sstairs.sy
 			|| !sstairs.up)
- 	  ) {
+	  ) {
 		You("can't go up here.");
 		return(0);
 	}
@@ -557,7 +587,7 @@ doup()
 	if(near_capacity() > SLT_ENCUMBER) {
 		/* No levitation check; inv_weight() already allows for it */
 		Your("load is too heavy to climb the %s.",
-		      levl[u.ux][u.uy].typ == STAIRS ? "stairs" : "ladder");
+			levl[u.ux][u.uy].typ == STAIRS ? "stairs" : "ladder");
 		return(1);
 	}
 	if(ledger_no(&u.uz) == 1) {
@@ -583,6 +613,10 @@ static int
 currentlevel_rewrite()
 {
 	register int fd;
+
+	/* since level change might be a bit slow, flush any buffered screen
+	 *  output (like "you fall through a trapdoor") */
+	mark_synch();
 
 	fd = create_levelfile(ledger_no(&u.uz));
 
@@ -636,8 +670,8 @@ static boolean
 badspot(x, y)
 register xchar x, y;
 {
-        return((levl[x][y].typ != ROOM && levl[x][y].typ != AIR &&
-		         levl[x][y].typ != CORR) || MON_AT(x, y));
+	return((levl[x][y].typ != ROOM && levl[x][y].typ != AIR &&
+			 levl[x][y].typ != CORR) || MON_AT(x, y));
 }
 */
 
@@ -653,64 +687,63 @@ register boolean at_stairs, falling, portal;
 	int new = 0;	/* made a new level? */
 #endif
 
-	if(dunlev(newlevel) > dunlevs_in_dungeon(newlevel))
-	    	newlevel->dlevel = dunlevs_in_dungeon(newlevel);
-	if(newdungeon && In_endgame(newlevel)) { /* 1st Endgame Level !!! */
-	    	if(u.uhave.amulet) 
+	if (dunlev(newlevel) > dunlevs_in_dungeon(newlevel))
+		newlevel->dlevel = dunlevs_in_dungeon(newlevel);
+	if (newdungeon && In_endgame(newlevel)) { /* 1st Endgame Level !!! */
+		if (u.uhave.amulet)
 		    assign_level(newlevel, &earth_level);
-	    	else return;
+		else return;
 	}
-	if(ledger_no(newlevel) <= 0)
-	    	done(ESCAPED);	/* in fact < 0 is impossible */
+	if (ledger_no(newlevel) <= 0)
+		done(ESCAPED);	/* in fact < 0 is impossible */
 	/* If you have the amulet and are trying to get out of Hell, going
 	 * up a set of stairs sometimes does some very strange things!
 	 */
-	if(Inhell && up && !newdungeon && u.uhave.amulet &&
-	   			(dunlev(&u.uz) < dunlevs_in_dungeon(&u.uz)-3)) {
-	    	if(!rn2(4)) {
-		    if(!u.ualign.type) {		    /* neutral */
-		        if(rn2(2)) assign_level(newlevel, &u.uz);
-		        else assign_rnd_level(newlevel, &u.uz, rnd(3));
-		    } else if(u.ualign.type == A_LAWFUL) {    /* lawful */
+	if (Inhell && up && !newdungeon && u.uhave.amulet &&
+				(dunlev(&u.uz) < dunlevs_in_dungeon(&u.uz)-3)) {
+		if (!rn2(4)) {
+		    if (u.ualign.type == A_CHAOTIC ||
+			    (u.ualign.type == A_NEUTRAL && rn2(2)))
+			assign_level(newlevel, &u.uz);
+		    else
 			assign_rnd_level(newlevel, &u.uz, rnd(3));
-		    } else assign_level(newlevel, &u.uz); /* chaotic */
-	        }
-		pline("A mysterious force momentarily surrounds you...");
-	    	if(ledger_no(newlevel) < 1) assign_level(newlevel, &u.uz);
-	    	if(on_level(newlevel, &u.uz)) {
-		    (void) safe_teleds();
+
+		    pline("A mysterious force momentarily surrounds you...");
+		    if (on_level(newlevel, &u.uz)) {
+			(void) safe_teleds();
 #ifdef WALKIES
-		    (void) next_to_u();
+			(void) next_to_u();
 #endif
-		    return;
+			return;
+		    }
 		}
 	}
 #ifdef MULDGN
-/*	Prevent the player from going past the first quest level unless
- *	(s)he has been given the go-ahead by the leader.
- */
-	if(on_level(&u.uz, &qstart_level) && !newdungeon && !ok_to_quest()) {
+	/* Prevent the player from going past the first quest level unless
+	 * (s)he has been given the go-ahead by the leader.
+	 */
+	if (on_level(&u.uz, &qstart_level) && !newdungeon && !ok_to_quest()) {
 
 		pline("A mysterious force prevents you from descending.");
 		return;
 	}
 #endif
-	if(on_level(newlevel, &u.uz)) return;	      /* this can happen */
+	if (on_level(newlevel, &u.uz)) return;		/* this can happen */
 
 	fd = currentlevel_rewrite();
-	if(fd < 0) return;
+	if (fd < 0) return;
 
 	if (falling) /* assuming this is only trapdoor */
 	    impact_drop((struct obj *)0, u.ux, u.uy, newlevel->dlevel);
 
 	check_special_room(TRUE);		/* probably was a trap door */
-	if(Punished) unplacebc();
+	if (Punished) unplacebc();
 	u.utrap = 0;				/* needed in level_tele */
 	fill_pit(u.ux, u.uy);
 	u.ustuck = 0;				/* idem */
 	u.uinwater = 0;
 	keepdogs();
-	if(u.uswallow)				/* idem */
+	if (u.uswallow)				/* idem */
 		u.uswldtim = u.uswallow = 0;
 	/*
 	 *  We no longer see anything on the level.  Make sure that this
@@ -730,7 +763,7 @@ register boolean at_stairs, falling, portal;
 	assign_level(&u.uz, newlevel);
 	assign_level(&u.utolev, newlevel);
 	u.utotype = 0;
-	if(dunlev_reached(&u.uz) < dunlev(&u.uz))
+	if (dunlev_reached(&u.uz) < dunlev(&u.uz))
 		dunlev_reached(&u.uz) = dunlev(&u.uz);
 
 	/* set default level change destination areas */
@@ -738,7 +771,7 @@ register boolean at_stairs, falling, portal;
 	(void) memset((genericptr_t) &updest, 0, sizeof updest);
 	(void) memset((genericptr_t) &dndest, 0, sizeof dndest);
 
-	if(In_endgame(&u.uz) ||
+	if (In_endgame(&u.uz) ||
 #ifdef MFLOPPY
 	    /* If the level has no .where yet, it hasn't been made */
 	    !fileinfo[ledger_no(&u.uz)].where) {
@@ -763,29 +796,25 @@ register boolean at_stairs, falling, portal;
 		getlev(fd, hackpid, ledger_no(&u.uz), FALSE);
 		(void) close(fd);
 	}
-#ifdef MULDGN
-	quest_init();	/* re-initialize */
-#endif
 
-	if(portal && !In_endgame(&u.uz)) {
+	if (portal && !In_endgame(&u.uz)) {
 	    /* find the portal on the new level */
 	    register struct trap *ttrap;
 
-	    for(ttrap = ftrap; ttrap; ttrap = ttrap->ntrap)
-		if(ttrap->ttyp == MAGIC_PORTAL) break;
+	    for (ttrap = ftrap; ttrap; ttrap = ttrap->ntrap)
+		if (ttrap->ttyp == MAGIC_PORTAL) break;
 
-	    if(ttrap) {
-		u.ux = ttrap->tx;
-		u.uy = ttrap->ty;
-	    } else panic("goto_level: no corresponding portal!");
-	} else if(at_stairs && !In_endgame(&u.uz)) {
-	    if(up) {
-		if(at_ladder) {
+	    if (!ttrap) panic("goto_level: no corresponding portal!");
+	    u.ux = ttrap->tx;
+	    u.uy = ttrap->ty;
+	} else if (at_stairs && !In_endgame(&u.uz)) {
+	    if (up) {
+		if (at_ladder) {
 		    u.ux = xdnladder;
 		    u.uy = ydnladder;
 		} else {
-		    if(newdungeon) {
-			if(Is_stronghold(&u.uz)) {
+		    if (newdungeon) {
+			if (Is_stronghold(&u.uz)) {
 			    register xchar x, y;
 
 			    do {
@@ -797,69 +826,59 @@ register boolean at_stairs, falling, portal;
 			    u.uy = y;
 			} else u_on_sstairs();
 		    } else u_on_dnstairs();
-		} 
-		/* Remove bug which crashes with */ 
-		/* levitation/punishment  KAA    */
-		if(Punished) {
-		    if(!Levitation)
+		}
+		/* Remove bug which crashes with levitation/punishment  KAA */
+		if (Punished && !Levitation) {
 			pline("With great effort you climb the %s.",
-			      !at_ladder ? "stairs" : "ladder");
-		    placebc();
-		} 
-		if(at_ladder && (!Punished || Levitation))
+				at_ladder ? "ladder" : "stairs");
+		} else if (at_ladder)
 		    You("climb up the ladder.");
-	    } else { /* down */
-		if(at_ladder) {
+	    } else {	/* down */
+		if (at_ladder) {
 		    u.ux = xupladder;
 		    u.uy = yupladder;
 		} else {
-		    if(newdungeon) u_on_sstairs();
+		    if (newdungeon) u_on_sstairs();
 		    else u_on_upstairs();
 		}
-		if(at_stairs && u.dz && !up &&
-		   ((near_capacity()>UNENCUMBERED) || Punished || Fumbling)) {
-		    You("fall down the %s.",
-			!at_ladder ? "stairs" : "ladder");
-		    if(Punished) {
+		if (u.dz &&
+		    (near_capacity() > UNENCUMBERED || Punished || Fumbling)) {
+		    You("fall down the %s.", at_ladder ? "ladder" : "stairs");
+		    if (Punished) {
 			drag_down();
-			if(carried(uball)) {
+			if (carried(uball)) {
 			    if (uwep == uball)
 				setuwep((struct obj *)0);
-			    if (uwep != uball)
-				freeinv(uball);
+			    freeinv(uball);
 			}
-			placebc();
-		    } 
+		    }
 		    losehp(rnd(3), "falling downstairs", KILLED_BY);
 		    selftouch("Falling, you");
-		} 
-		else if(at_ladder && u.dz)
+		} else if (u.dz && at_ladder)
 		    You("climb down the ladder.");
 	    }
-	} else { /* trap door or level_tele or In_endgame */
-	    if(up)
+	} else {	/* trap door or level_tele or In_endgame */
+	    if (up)
 		place_lregion(updest.lx, updest.ly,
-			      updest.hx, updest.hy,
-			      updest.nlx, updest.nly,
-			      updest.nhx, updest.nhy,
-			      LR_UPTELE, (d_level *) 0);
+				updest.hx, updest.hy,
+				updest.nlx, updest.nly,
+				updest.nhx, updest.nhy,
+				LR_UPTELE, (d_level *) 0);
 	    else
 		place_lregion(dndest.lx, dndest.ly,
-			      dndest.hx, dndest.hy,
-			      dndest.nlx, dndest.nly,
-			      dndest.nhx, dndest.nhy,
-			      LR_DOWNTELE, (d_level *) 0);
-	    if(Punished) {
-		if(falling) ballfall();
-		placebc();
-	    }
-	    if(falling)
+				dndest.hx, dndest.hy,
+				dndest.nlx, dndest.nly,
+				dndest.nhx, dndest.nhy,
+				LR_DOWNTELE, (d_level *) 0);
+	    if (falling) {
+		if (Punished) ballfall();
 		selftouch("Falling, you");
+	    }
 	}
 
+	if (Punished) placebc();
 	losedogs();
 	obj_delivery();
-	check_special_room(FALSE);
 
 	initrack();
 
@@ -878,18 +897,21 @@ register boolean at_stairs, falling, portal;
 	vision_reset();		/* reset the blockages */
 	docrt();		/* does a full vision recalc */
 
+	/* give room entrance message, if any */
+	check_special_room(FALSE);
+
 	/* In Nethack 3.1, Gehennom starts after the stronghold.  Moreover,
 	 * there are traps in the stronghold, that can send the player
 	 * to Gehennom (gnark, gnark)!  So we have to test here:
 	 */
 	if(!In_hell(&u.uz0) && Inhell) {
-            if(Is_valley(newlevel)) {
+	    if(Is_valley(newlevel)) {
 		You("arrive at the Valley of the Dead...");
-	    	pline("There is a smell of burnt flesh and decay here.");
+		pline("The odor of burnt flesh and decay pervades the air.");
 #ifdef MICRO
-	    	display_nhwindow(WIN_MESSAGE, FALSE);
+		display_nhwindow(WIN_MESSAGE, FALSE);
 #endif
-		pline("The sounds of groans and moans fill the air.");
+		You("hear groans and moans everywhere.");
 	    } else pline("It is hot here.  You smell smoke...");
 	}
 
@@ -898,7 +920,7 @@ register boolean at_stairs, falling, portal;
 	 *  Move all plines beyond the screen reset.
 	 */
 	if (new && Is_rogue_level(&u.uz))
-	 You("have entered what appears to be an older, more primitive world.");
+	    You("enter what seems to be an older, more primitive world.");
 #endif
 	/* Final confrontation */
 	if (In_endgame(&u.uz) && newdungeon && u.uhave.amulet &&
@@ -912,19 +934,19 @@ register boolean at_stairs, falling, portal;
 	    com_pager(2);	/* the message from the leader */
 
 	if(Is_knox(&u.uz)) {
-	        register struct monst *mtmp;
+		register struct monst *mtmp;
 
-	        You("penetrated a high security area!");
+		You("penetrated a high security area!");
 		pline("An alarm sounds!");
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) 
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		    if(mtmp->msleep) mtmp->msleep = 0;
 	}
 #endif /* MULDGN */
 	if(on_level(&u.uz, &astral_level)) {
-	        register struct monst *mtmp;
+		register struct monst *mtmp;
 
-	        /* reset monster hostility relative to player */
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) 
+		/* reset monster hostility relative to player */
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		    reset_hostility(mtmp);
 
 		/* create some player-monsters */
@@ -934,47 +956,47 @@ register boolean at_stairs, falling, portal;
 		if (Conflict) {
 		    coord mm;
 		    int i = rnd(4);
-	pline("A voice booms: \"Thy desire for conflict shall be rewarded!\"");
+	pline("A voice booms: \"Thy desire for conflict shall be fulfilled!\"");
 		    while(i--) {
 			mm.x = u.ux;
 			mm.y = u.uy;
 			if(enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL]))
 			    (void) mk_roamer(&mons[PM_ANGEL], u.ualign.type,
-					     mm.x, mm.y, FALSE);
+						mm.x, mm.y, FALSE);
 		    }
 
-		} else if(u.ualign.record > 3) {
+		} else if(u.ualign.record > 8 /* fervent */) {
 		    coord mm;
 
 		pline("A voice whispers: \"Thou hast been worthy of me!\"");
 		    mm.x = u.ux;
 		    mm.y = u.uy;
-		    if(enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL])) {
-			if((mtmp = mk_roamer(&mons[PM_ANGEL], u.ualign.type,
+		    if (enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL])) {
+			if ((mtmp = mk_roamer(&mons[PM_ANGEL], u.ualign.type,
 					   mm.x, mm.y, TRUE)) != 0) {
-			     register struct obj *otmp =
-			                   mksobj(SILVER_SABER, FALSE, FALSE);
+			    register struct obj *otmp =
+					   mksobj(SILVER_SABER, FALSE, FALSE);
 
-			     if(!Blind)
-		                 pline("An angel appears near you.");
-			     else 
-		       You("feel the presence of a friendly angel near you.");
+			    if (!Blind)
+				pline("An angel appears near you.");
+			    else
+			You("feel the presence of a friendly angel near you.");
 			    /* guardian angel -- the one case mtame doesn't
 			     * imply an edog structure, so we don't want to
 			     * call tamedog().
 			     */
-			     mtmp->mtame = 10;
-			     /* make him strong enough vs. endgame foes */
-			     mtmp->m_lev = rn1(8,15);
-			     mtmp->mhp = mtmp->mhpmax = 
-				       d((int)mtmp->m_lev,10) + 30 + rnd(30);
-			     bless(otmp);
-			     otmp->spe = 7;
-			     mpickobj(mtmp, otmp);
-		        }
+			    mtmp->mtame = 10;
+			    /* make him strong enough vs. endgame foes */
+			    mtmp->m_lev = rn1(8,15);
+			    mtmp->mhp = mtmp->mhpmax =
+					d((int)mtmp->m_lev,10) + 30 + rnd(30);
+			    bless(otmp);
+			    otmp->spe = 7;
+			    mpickobj(mtmp, otmp);
+			}
 		    }
 		}
-        }
+	}
 
 #ifdef MULDGN
 	onquest();
@@ -1101,6 +1123,7 @@ struct obj **chain;
 	} else if(obj->cobj && Is_container(obj) && obj->otyp != ICE_BOX)
 	    remove_cadavers(&obj->cobj);
 	/* pobj is only used for containers, which don't allow revive() -dlc */
+	/* and for monster inventory (special cases only) under MUSE */
 	if (obj) pobj = obj;
     }
 }
@@ -1136,7 +1159,7 @@ int
 dowipe()
 {
 	if(u.ucreamed)  {
-		static char NEARDATA buf[39];
+		static NEARDATA char buf[39];
 
 		Sprintf(buf, "wiping off your %s", body_part(FACE));
 		set_occupation(wipeoff, buf, 0);

@@ -22,7 +22,7 @@
  *			level.
  * (leather) drum	Will awaken monsters like the horn.
  * drum of earthquake	Will initiate an earthquake whose intensity depends
- *			on player level.  That is, it creates ramdom pits
+ *			on player level.  That is, it creates random pits
  *			called here chasms.
  */
 
@@ -136,7 +136,7 @@ awaken_soldiers() {
 		if (canseemon(mtmp))
 		    pline("%s is now ready for battle!", Monnam(mtmp));
 		else
-		    Norep("You hear the sound of battle gear being readied.");
+		    Norep("You hear the rattle of battle gear being readied.");
 	    }
 	    mtmp = mtmp->nmon;
 	}
@@ -247,6 +247,10 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 				pline("%s falls into a chasm!", Monnam(mtmp));
 			    else if (flags.soundok && humanoid(mtmp->data))
 				You("hear a scream!");
+#ifdef MUSE
+			    mselftouch(mtmp, "Falling, ", TRUE);
+			    if (mtmp->mhp > 0)
+#endif
 			    if ((mtmp->mhp -= rnd(6)) <= 0) {
 				if(!cansee(x,y))
 				    pline("It is destroyed!");
@@ -301,6 +305,9 @@ struct obj *instr;
 	mac_speaker ( instr , "C" ) ;
 #endif
 
+#ifdef AMIGA
+	amii_speaker ( instr , "Cw", AMII_OKAY_VOLUME ) ;
+#endif
 	if (Confusion)
 	  pline("What you produce is quite far from music...");
 	else
@@ -425,7 +432,7 @@ char	*buf;
 
     if ((fd = open("/dev/speaker", 1)) != -1)
     {
-	/* emit a prefix to modify instrumental `timbre' */
+	/* send a prefix to modify instrumental `timbre' */
 	switch (instr->otyp)
 	{
 	case WOODEN_FLUTE:
@@ -472,7 +479,10 @@ struct obj *instr;
     }
     if (c == 'n') {
 	getlin("What tune are you playing? [what 5 notes]", buf);
+#ifndef	AMIGA
+	/* The AMIGA supports two octaves of notes */
 	for (s=buf; *s; s++) *s = highc(*s);
+#endif
 	You("extract a strange sound from %s!", the(xname(instr)));
 #ifdef SYSV386MUSIC 
 	/* if user is at the console, play through the console speaker */
@@ -481,6 +491,19 @@ struct obj *instr;
 #endif /* SYSV386MUSIC */
 #ifdef MAC
 	mac_speaker ( instr , buf ) ;
+#endif
+#ifdef AMIGA
+	{
+		char nbuf[ 20 ];
+		int i;
+		for( i = 0; buf[i] && i < 5; ++i )
+		{
+			nbuf[ i*2 ] = buf[ i ];
+			nbuf[ (i*2)+1 ] = 'h';
+		}
+		nbuf[ i*2 ] = 0;
+		amii_speaker ( instr , nbuf, AMII_OKAY_VOLUME ) ;
+	}
 #endif
 	/* Check if there was the Stronghold drawbridge near
 	 * and if the tune conforms to what we're waiting for.

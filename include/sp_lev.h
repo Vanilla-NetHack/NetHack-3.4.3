@@ -164,6 +164,8 @@ typedef struct {
 	walk **walks;
 	char ndig;
 	digpos **digs;
+	char npass;
+	digpos **passs;
 	char nlad;
 	lad **lads;
 	char nstair;

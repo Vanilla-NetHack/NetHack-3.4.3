@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.1	92/11/13	*/
+/*	SCCS Id: @(#)u_init.c	3.1	93/02/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,6 +21,8 @@ static int FDECL(role_index,(CHAR_P));
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
 #define	UNDEF_BLESS	2
+
+static boolean random_role = FALSE;
 
 /* all roles must all have distinct first letter */
 const char *roles[] = {	/* also used in options.c and winxxx.c */
@@ -260,6 +262,10 @@ u_init()
 	    terminate(0);
 	}
 	i = role_index(pc);
+	if (random_role) {
+	    pline("This game you will be %s.", an(roles[i]));
+	    display_nhwindow(WIN_MESSAGE, TRUE);
+	}
 
 	(void) strncpy(pl_character, roles[i], PL_CSIZ-1);
 	pl_character[PL_CSIZ-1] = 0;
@@ -475,6 +481,8 @@ u_init()
 	if (discover)
 		ini_inv(Wishing);
 #endif
+	u.ugold0 += hidden_gold();	/* in case sack has gold in it */
+
 	find_ac();			/* get initial ac value */
 	init_attr(75);			/* init attribute values */
 	max_rank_sz();			/* set max str size for class ranks */
@@ -518,10 +526,10 @@ register struct trobj *trop;
 		 */
 		if (undefined) {
 #ifdef POLYSELF
-			static unsigned NEARDATA nocreate = STRANGE_OBJECT;
-			static unsigned NEARDATA nocreate2 = STRANGE_OBJECT;
+			static NEARDATA unsigned nocreate = STRANGE_OBJECT;
+			static NEARDATA unsigned nocreate2 = STRANGE_OBJECT;
 #endif
-			static unsigned NEARDATA nocreate3 = STRANGE_OBJECT;
+			static NEARDATA unsigned nocreate3 = STRANGE_OBJECT;
 
 			while(obj->otyp == WAN_WISHING
 #ifdef POLYSELF
@@ -649,16 +657,24 @@ register struct trobj *trop;
 }
 
 void
-plnamesuffix() {
+plnamesuffix()
+{
 	register char *p;
 	if ((p = rindex(plname, '-')) != 0) {
-		*p = 0;
+		*p = '\0';
 		pl_character[0] = p[1];
-		pl_character[1] = 0;
+		pl_character[1] = '\0';
+		random_role = FALSE;
 		if(!plname[0]) {
 			askname();
 			plnamesuffix();
 		}
+	}
+	if (pl_character[0] == '@') {	/* explicit request for random class */
+		int i = rn2((int)strlen(pl_classes));
+		pl_character[0] = pl_classes[i];
+		pl_character[1] = '\0';
+		random_role = TRUE;
 	}
 }
 

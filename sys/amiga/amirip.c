@@ -42,7 +42,6 @@
 static void grass ( int x , int y );
 static void strand ( int x , int y , int dir );
 static void tomb_text ( char *p );
-static void getret( void );
 void draw_moon(int phase);
 
 extern char *killed_by_prefix[];
@@ -159,7 +158,6 @@ static unsigned char tomb_line;
 
 extern struct DisplayDesc *amiIDisplay;
 extern struct Screen *HackScreen;
-extern unsigned short amii_curmap[];
 extern int havelace;
 
 #undef  BLACK
@@ -181,7 +179,7 @@ static unsigned short toppalette[] = {
     0x0000, 0x0EEF, 0x0730, 0x0778, 0x0082, 0x0573, 0x0000, 0x0000,
 };
 
-#define AREA_SIZE   500
+#define AREA_SIZE   200
 static WORD areabuffer[ AREA_SIZE ];
 
 static struct NewWindow newwin =
@@ -194,7 +192,7 @@ static struct NewWindow newwin =
 
 int wh; /* was local in outrip, but needed for SCALE macro */
 
-#define DEPTH ripwin->RPort->BitMap->Depth
+#define WIN_DEPTH ripwin->RPort->BitMap->Depth
 /*TODO: should use real algorithm to get circles */
 #define SCALE(x) ((wh<300)?(x):((x)*2))
 #define MOONSX  MOONSIZE
@@ -215,19 +213,23 @@ draw_moon(int phase)
     struct BitMap sbm;
     struct RastPort srp;
     struct AreaInfo ainfo;
-    short abuf[5];
+    WORD abuf[100];
     struct TmpRas atr;
-    PLANEPTR ap;
+    PLANEPTR ap = NULL;
+
+#define	XSZ		8
+#define	YSZ		8
 
     /*TODO: sizes here are bigger than needed */
-    InitBitMap(&sbm,DEPTH,MOONSIZE*4,MOONSIZE*2);
-    for(x=0;x<DEPTH;x++){
-	sbm.Planes[x]=(PLANEPTR)AllocRaster(MOONSIZE*2,MOONSIZE*4);
+    InitBitMap(&sbm,WIN_DEPTH,MOONSIZE*XSZ,MOONSIZE*YSZ);
+    for(x=0;x<WIN_DEPTH;x++){
+	sbm.Planes[x]=(PLANEPTR)AllocRaster(MOONSIZE*XSZ,MOONSIZE*YSZ);
 	if(!sbm.Planes[x])goto free;
     }
     InitRastPort(&srp);
     srp.BitMap=&sbm;
-    InitArea(&ainfo,abuf,2);
+    memset( abuf, 0, sizeof( abuf ) );		/* Must be zeroed */
+    InitArea(&ainfo,abuf,sizeof(abuf)/5);	/* 5 bytes per vertex */
     srp.AreaInfo= &ainfo;
     ap=AllocRaster(320,200);
     if(!ap)goto free;
@@ -318,12 +320,14 @@ draw_moon(int phase)
     }
 
 free:
-    for(x=0;x<DEPTH;x++)
+    for(x=0;x<WIN_DEPTH;x++)
+    {
 	if(sbm.Planes[x])
-	    FreeRaster(sbm.Planes[x],MOONSIZE*2,MOONSIZE*4);
+	    FreeRaster(sbm.Planes[x],MOONSIZE*XSZ,MOONSIZE*YSZ);
+    }
     if(ap)FreeRaster(ap,320,200);
 }
-#undef DEPTH
+#undef WIN_DEPTH
 
 void
 outrip( how, tmpwin )
@@ -389,17 +393,22 @@ winid tmpwin;
     /* stars */
     SetAPen(rp,WHITE);
     for(c=d(30,40);c;c--)
-	WritePixel(rp,rn2(ripwin->Width),rn2(horizon));
+	WritePixel(rp,rn2(ripwin->Width-1),rn2(horizon));
 
     /* moon (NB destroys area fill pattern) */
     phase = phase_of_the_moon() % 8;
     draw_moon(phase);
 
     /* grass */
-    offset=(phase<4)?-1:1;
     SetAPen(rp,GREEN);
-    for( x = 0; x < ripwin->Width; x+=10+rn2(10))
+    for( x = 5; x < ripwin->Width-5; x+=5+rn2(8))
 	grass(x, horizon+5 );
+    for( x = 5; x < ripwin->Width-5; x+=5+rn2(10))
+	grass(x, horizon+10 );
+    for( x = 5; x < ripwin->Width-5; x+=5+rn2(15))
+	grass(x, horizon+10 );
+    for( x = 5; x < ripwin->Width-5; x+=5+rn2(20))
+	grass(x, horizon+10 );
 
     /* fence - horizontal, then vertical, each with a moonlit side */
     SetAPen(rp,GREY);
@@ -408,6 +417,7 @@ winid tmpwin;
     Move(rp,0,horizon+30);
     Draw(rp,ripwin->Width,horizon+30);
 
+    offset=(phase<4)?-1:1;
     for(x=30;x<ripwin->Width;x+=50)
     {
 	Move(rp,x,horizon-SCALE(25));
@@ -459,10 +469,11 @@ winid tmpwin;
 
     {
 	char *p=buf;
-	int x;
+	int x, tmp;
 	for(x=STONE_LINE_LEN;x;x--)*p++='W';
 	*p='\0';
-	tw = max( tw, TextLength(rp,buf,STONE_LINE_LEN) + 40 );
+	tmp = TextLength(rp,buf,STONE_LINE_LEN) + 40;
+	tw = max( tw, tmp);
     }
 
     SetAPen( rp, phase ? BLACK : GREY );
@@ -631,7 +642,7 @@ winid tmpwin;
     CloseWindow( ripwin );
     ripwin = NULL;
     Permit();
-    LoadRGB4( &HackScreen->ViewPort, amii_curmap, 8L );
+    LoadRGB4( &HackScreen->ViewPort, flags.amii_curmap, 8L );
 }
 
 static void grass(x,y)

@@ -159,7 +159,7 @@
 #define StrPens		(Sbuff(&Conf_StrPens))
 #define StrLevels	(Sbuff(&Conf_StrLevels))
 #define StrSave		(Sbuff(&Conf_StrSave))
-#define NetHackCnf	(Sbuff(&Conf_ConfigName))
+#define StrConf		(Sbuff(&Conf_ConfigName))
 
 #define RstDir		(Sbuff(&Rst_RestDir))
 #define RstOld		(Sbuff(&Rst_RestOld))

@@ -49,7 +49,7 @@ extern short ospeed;		/* set up in termcap.c */
 # ifdef TOS
 extern const char *hilites[MAXCOLORS];
 # else
-extern char NEARDATA *hilites[MAXCOLORS];
+extern NEARDATA char *hilites[MAXCOLORS];
 # endif
 #endif
 

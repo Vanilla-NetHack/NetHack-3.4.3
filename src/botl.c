@@ -30,7 +30,7 @@ static void NDECL(bot2);
 #ifndef OVLB
 STATIC_DCL int mrank_sz;
 #else /* OVLB */
-STATIC_OVL int NEARDATA mrank_sz = 0; /* loaded by max_rank_sz (from u_init) */
+STATIC_OVL NEARDATA int mrank_sz = 0; /* loaded by max_rank_sz (from u_init) */
 #endif /* OVLB */
 
 struct rank_title {
@@ -99,13 +99,13 @@ struct class_ranks all_classes[] = {
 	{"Elentar",	"Elentari"}	/* Star-king, -queen (Q.) */
   } },
   {					'H',0,	PM_HEALER, {
-	{"Barber",	"Midwife"},
-	{"Leech",	0},
+	{"Rhizotomist",  0},
+	{"Empiric",	0},
 	{"Embalmer",	0},
 	{"Dresser",	0},
-	{"Bone Setter",	0},
+	{"Medici ossium",	0},
 	{"Herbalist",	0},
-	{"Apothecary",	0},
+	{"Magister",	0},
 	{"Physician",	0},
 	{"Chirurgeon",	0}
   } },
@@ -286,6 +286,20 @@ max_rank_sz()
 #endif /* OVLB */
 #ifdef OVL0
 
+#ifdef SCORE_ON_BOTL
+long
+botl_score()
+{
+    int deepest = deepest_lev_reached(FALSE);
+    long ugold = u.ugold + hidden_gold();
+
+    if ((ugold -= u.ugold0) < 0L) ugold = 0L;
+    return ugold + u.urexp + (long)(50 * (deepest - 1))
+			  + (long)(deepest > 30 ? 10000 :
+				   deepest > 20 ? 1000*(deepest - 20) : 0);
+}
+#endif
+
 static void
 bot1()
 {
@@ -335,16 +349,8 @@ bot1()
 	Sprintf(nb = eos(nb), (u.ualign.type == A_CHAOTIC) ? "  Chaotic" :
 			(u.ualign.type == A_NEUTRAL) ? "  Neutral" : "  Lawful");
 #ifdef SCORE_ON_BOTL
-	if (flags.showscore) {
-	    int deepest = deepest_lev_reached(FALSE);
-	    long ugold = u.ugold + hidden_gold();
-
-	    if ((ugold -= u.ugold0) < 0L) ugold = 0L;
-	    Sprintf(nb = eos(nb), " S:%ld",
-		    ugold + u.urexp + (long)(50 * (deepest - 1))
-			  + (long)(deepest > 30 ? 10000 :
-				   deepest > 20 ? 1000*(deepest - 20) : 0));
-	}
+	if (flags.showscore)
+	    Sprintf(nb = eos(nb), " S:%ld", botl_score());
 #endif
 	curs(WIN_STATUS, 1, 0);
 	putstr(WIN_STATUS, 0, newbot1);

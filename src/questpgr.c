@@ -183,9 +183,9 @@ static struct qt_matrix {
 	  ART_PALANTIR_OF_WESTERNESSE },
 
 /* H */ { "the Temple of Coeus",
-	  "the Isle of the Healers",
-	  PM_HIPPOCRATES, PM_CYCLOPS, PM_NURSE,
-	  PM_GIANT_RAT, PM_APE, S_RODENT, S_YETI,
+	  "the Temple of Epidaurus",
+	  PM_HIPPOCRATES, PM_CYCLOPS, PM_ATTENDANT,
+	  PM_GIANT_RAT, PM_SNAKE, S_RODENT, S_YETI,
 	  ART_STAFF_OF_AESCULAPIUS },
 
 /* K */ { "the Isle of Glass",
@@ -346,7 +346,7 @@ char c;
 			break;
 	    case 'i':	str = intermed();
 			break;
-	    case 'o':	str = artiname(qt_matrix[class_index()].artinum);
+	    case 'o':	str = the(artiname(qt_matrix[class_index()].artinum));
 			break;
 	    case 'n':	str = neminame();
 			break;
@@ -398,6 +398,19 @@ convert_line()
 			if (*(c+1)) {
 			    convert_arg(*(++c));
 			    switch (*(c+1)) {
+
+				case 'A': Strcat(cc, An(cvt_buf));
+				    cc += strlen(cc);
+				    c++;
+				    continue; /* for */
+				case 'a': Strcat(cc, an(cvt_buf));
+				    cc += strlen(cc);
+				    c++;
+				    continue; /* for */
+
+				case 'C': cvt_buf[0] = highc(cvt_buf[0]);
+				    c++;
+				    break;
 
 				case 'P': cvt_buf[0] = highc(cvt_buf[0]);
 				case 'p': Strcpy(cvt_buf, makeplural(cvt_buf));

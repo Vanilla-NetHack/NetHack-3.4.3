@@ -242,7 +242,11 @@ gotobj:
 	(void) snuff_candle(otmp);
 	mpickobj(mtmp,otmp);
 	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
-	    && !resists_ston(mtmp->data)) {
+	    && !resists_ston(mtmp->data)
+#ifdef MUSE
+	    && !(mtmp->misc_worn_check & W_ARMG)
+#endif
+		) {
 	    pline("%s turns to stone.", Monnam(mtmp));
 	    stoned = TRUE;
 	    xkilled(mtmp, 0);
@@ -271,11 +275,33 @@ stealamulet(mtmp)
 register struct monst *mtmp;
 {
 	register struct obj *otmp;
+	register int	real, fake;
 
+	/* select the artifact to steal */
+        if(u.uhave.amulet) {
+		real = AMULET_OF_YENDOR ;
+		fake = FAKE_AMULET_OF_YENDOR ;
+#ifdef MULDGN
+	} else if(u.uhave.questart) {
+	    for(otmp = invent; otmp; otmp = otmp->nobj)
+	        if(is_quest_artifact(otmp)) goto snatch_it;
+#endif
+	} else if(u.uhave.bell) {
+		real = BELL_OF_OPENING;
+		fake = BELL;
+	} else if(u.uhave.book) {
+		real = SPE_BOOK_OF_THE_DEAD;
+		fake = 0;
+	} else if(u.uhave.menorah) {
+		real = CANDELABRUM_OF_INVOCATION;
+		fake = 0;
+	} else return;	/* you have nothing of special interest */
+
+/*	If we get here, real and fake have been set up. */
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
-	    if(otmp->otyp == AMULET_OF_YENDOR ||
-	       (otmp->otyp == FAKE_AMULET_OF_YENDOR && !mtmp->iswiz)) {
+	    if(otmp->otyp == real || (otmp->otyp == fake && !mtmp->iswiz)) {
 		/* might be an imitation one */
+snatch_it:
 		setnotworn(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);

@@ -308,7 +308,8 @@ tty_startup(wid, hgt)
 	free((genericptr_t)tptr);
 # ifdef TEXTCOLOR
 #  if defined(TOS) && defined(__GNUC__)
-	if (!strcmp(term, "builtin") || !strcmp(term, "tw52")) {
+	if (!strcmp(term, "builtin") || !strcmp(term, "tw52") ||
+	    !strcmp(term, "st52")) {
 		init_hilite();
 	}
 #  else
@@ -811,18 +812,8 @@ init_hilite()
 	register int c;
 #  ifdef TOS
 	extern unsigned long tos_numcolors;	/* in tos.c */
-	static const char NOCOL[] = "\033b0", COLHE[] = "\033q\033b0";
+	static char NOCOL[] = "\033b0", COLHE[] = "\033q\033b0";
 
-	HI = "\033p";
-#  else
-	int backg, foreg, hi_backg, hi_foreg;
-#  endif
-
-	for (c = 0; c < SIZE(hilites); c++)
-	    hilites[c] = HI;
-	hilites[GRAY] = hilites[NO_COLOR] = NULL;
-
-#  ifdef TOS
 	if (tos_numcolors <= 2) {
 		return;
 	}
@@ -833,11 +824,13 @@ init_hilite()
  */
 	hilites[0] = NOCOL;
 	for (c = 1; c < SIZE(hilites); c++) {
-		hilites[c] = (char *) alloc(sizeof("\033b0"));
+		char *foo;
+		foo = (char *) alloc(sizeof("\033b0"));
 		if (tos_numcolors > 4)
-			Sprintf(hilites[c], "\033b%c", (c&~BRIGHT)+'0');
+			Sprintf(foo, "\033b%c", (c&~BRIGHT)+'0');
 		else
-			Strcpy(hilites[c], HI);
+			Strcpy(foo, "\033b0");
+		hilites[c] = foo;
 	}
 
 	if (tos_numcolors == 4) {
@@ -858,6 +851,13 @@ init_hilite()
 	}
 
 #  else /* TOS */
+
+	int backg, foreg, hi_backg, hi_foreg;
+
+ 	for (c = 0; c < SIZE(hilites); c++)
+	    hilites[c] = HI;
+	hilites[GRAY] = hilites[NO_COLOR] = NULL;
+
 	analyze_seq(HI, &hi_foreg, &hi_backg);
 	analyze_seq(HE, &foreg, &backg);
 

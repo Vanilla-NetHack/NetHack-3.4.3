@@ -90,7 +90,7 @@ RANDOBJ = random.obj
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
 VERSION  =3.1
-PATCHLVL =0
+PATCHLVL =1
 
 MAKEDEFS = $(UTL)makedefs.exe;
 
@@ -213,7 +213,7 @@ objects.obj :
 	$(CC) $(CFLAGS) objects.c
      @- if f$search("$(MAKEDEFS)").nes."" then delete $(MAKEDEFS)
 
-$(MAKEDEFS) :	$(FIRSTOBJ) $(UTL)makedefs.c $(INC)patchlevel.h \
+$(MAKEDEFS) :	$(FIRSTOBJ) $(UTL)makedefs.c \
 		$(INC)config.h $(INC)artilist.h $(INC)qtext.h  $(LIBOPT)
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(MAKEDEFS)
@@ -273,7 +273,7 @@ getline.obj :	$(TTY)getline.c $(INC)hack.h $(INC)wintty.h $(INC)func_tab.h
 termcap.obj :	$(TTY)termcap.c $(INC)hack.h $(INC)wintty.h $(INC)termcap.h
 topl.obj :	$(TTY)topl.c $(INC)hack.h $(INC)termcap.h $(INC)wintty.h
 wintty.obj :	$(TTY)wintty.c $(INC)hack.h $(INC)termcap.h $(INC)wintty.h
-Window.obj :	$(X11)Window.c $(INC)WindowP.h
+Window.obj :	$(X11)Window.c $(INC)WindowP.h $(INC)config.h
 dialogs.obj :	$(X11)dialogs.c $(INC)config.h
 winX.obj :	$(X11)winX.c $(INC)hack.h $(INC)winX.h \
 		$(X11)nh72icon $(X11)nh56icon $(X11)nh32icon
@@ -421,8 +421,9 @@ $(INC)epri.h :	$(INC)dungeon.h $(INC)align.h
 $(INC)eshk.h :	$(INC)dungeon.h
 			$(TOUCH) $(INC)eshk.h
 # ignore the non-VMS configuration headers
-#$(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h $(INC)unixconf.h $(INC)os2conf.h \
-#		   $(INC)pcconf.h $(INC)tosconf.h $(INC)amiconf.h $(INC)macconf.h
+#$(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h $(INC)unixconf.h \
+#		   $(INC)os2conf.h $(INC)pcconf.h $(INC)tosconf.h \
+#		   $(INC)amiconf.h $(INC)macconf.h $(INC)ntconf.h
 $(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h
 			$(TOUCH) $(INC)global.h
 $(INC)hack.h :	$(INC)config.h $(INC)dungeon.h $(INC)monsym.h $(INC)mkroom.h \

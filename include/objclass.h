@@ -20,6 +20,7 @@ struct objclass {
 	Bitfield(oc_magic,1);	/* inherently magical object */
 	Bitfield(oc_charged,1);	/* may have +n or (n) charges */
 	Bitfield(oc_unique,1);	/* special one-of-a-kind object */
+	Bitfield(oc_nowish,1);	/* cannot wish for this object */
 	Bitfield(oc_big,1);
 #define oc_bimanual	oc_big	/* for weapons */
 #define oc_bulky	oc_big	/* for armor */
@@ -89,8 +90,8 @@ struct objdescr {
 	const char *oc_descr;		/* description when name unknown */
 };
 
-extern struct objclass NEARDATA objects[];
-extern struct objdescr NEARDATA obj_descr[];
+extern NEARDATA struct objclass objects[];
+extern NEARDATA struct objdescr obj_descr[];
 
 /*
  * All objects have a class. Make sure that all classes have a corresponding

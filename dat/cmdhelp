@@ -83,6 +83,8 @@ Z       Zap (cast) a spell (only if defined)
 .       Rest one move while doing nothing
         Rest one move while doing nothing (if rest_on_space option is on)
 :       Look at what is on the floor
+;       Show what type of thing a map symbol on the level corresponds to
+,       Pick up things at the current location
 @       Toggle the pickup option on/off
 )       Show the weapon currently wielded
 [       Show the armor currently worn

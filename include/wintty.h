@@ -43,6 +43,7 @@ struct DisplayDesc {
     int rawprint;		/* number of raw_printed lines since synch */
     int inmore;			/* non-zero if more() is active */
     int inread;			/* non-zero if reading a character */
+    int intr;			/* non-zero if inread was interrupted */
     winid lastwin;		/* last window used for I/O */
 };
 

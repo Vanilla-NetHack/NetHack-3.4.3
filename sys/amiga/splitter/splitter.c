@@ -293,6 +293,34 @@ write_lreloc(hp,ll)
 	hunk *hp;listlist *ll;
 	{
 	block *bp;
+#ifdef EMIT_32s
+	int x;
+	ULONG *p;
+		/* can we write the entire block with a HUNK_RELOC32s? */
+	foreach(bp,&(ll->list),(block*)){
+		if((((*hlist)[bp->b[1]]).h->hunknum)>0xffff)goto no_32s; /*no*/
+		for(p= &(bp->b[2]), x=bp->b[0];x;x--,p++){
+			if(*p>0xffff)goto no_32s;	/*no, offset too big*/
+		}
+	}
+		/* yes */
+	owrite_long(HUNK_RELOC32s);
+	foreach(bp,&(ll->list),(block*)){
+		owrite_long(bp->b[0]);
+		owrite_short(((*hlist)[bp->b[1]]).h->hunknum);
+		for(p= &(bp->b[2]), x=bp->b[0];x;x--,p++){
+			owrite_short(*p);
+		}
+			/* force long alignment.  Not documented, but makes
+			 * reading dumps easier */
+		if((bp->b[0] & 1) == 0){	/* note hunknum also short */
+			owrite_short(0);
+		}
+	}
+	owrite_long(0);
+	return;
+no_32s:
+#endif
 	owrite_long(HUNK_RELOC32);
 	foreach(bp,&(ll->list),(block*)){
 		owrite_long(bp->b[0]);
@@ -360,6 +388,14 @@ owrite_long(literal)
 }
 
 void
+owrite_short(literal)
+	short literal;
+{
+	short x=literal;
+	owrite(&x,sizeof(x));
+}
+
+void
 owrite(where,len)
 	void *where;
 	long len;
@@ -390,6 +426,16 @@ owrite_long(literal)
 	long literal;
 {
 	long x=literal;
+	if((osize+sizeof(x))>SPLITSIZE)new_file();
+	owrite(&x,sizeof(x));
+	osize += sizeof(x);
+}
+
+void
+owrite_short(literal)
+	short literal;
+{
+	short x=literal;
 	if((osize+sizeof(x))>SPLITSIZE)new_file();
 	owrite(&x,sizeof(x));
 	osize += sizeof(x);

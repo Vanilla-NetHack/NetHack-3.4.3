@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.1	93/01/07	*/
+/*	SCCS Id: @(#)save.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,7 +61,6 @@ dosave()
 	} else {
 		clear_nhwindow(WIN_MESSAGE);
 		pline("Saving...");
-		mark_synch();	/* flush output */
 		hu = FALSE;
 		if(dosave0()) {
 			/* make sure they see the Saving message */
@@ -93,6 +92,7 @@ dosave0()
 {
 	register int fd, ofd;
 	xchar ltmp;
+	d_level uz_save;
 #ifdef MFLOPPY
 	long fds, needed;
 #endif
@@ -122,7 +122,8 @@ dosave0()
 	    }
 	}
 #endif
-	
+	if (!hu) mark_synch();	/* flush any buffered screen output */
+
 	fd = create_savefile();
 
 	if(fd < 0) {
@@ -170,8 +171,16 @@ dosave0()
 	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
 	savegamestate(fd, WRITE_SAVE | FREE_SAVE);
 
+	/* While copying level files around, zero out u.uz to keep
+	 * parts of the restore code from completely initializing all
+	 * in-core data structures, since all we're doing is copying.
+	 * This also avoids at least one nasty core dump.
+	 */
+	uz_save = u.uz;
+	u.uz.dnum = u.uz.dlevel = 0;
+
 	for(ltmp = (xchar)1; ltmp <= maxledgerno(); ltmp++) {
-		if (ltmp == ledger_no(&u.uz)) continue;
+		if (ltmp == ledger_no(&uz_save)) continue;
 #ifdef MFLOPPY
 		if (!fileinfo[ltmp].where) continue;
 #else
@@ -179,8 +188,9 @@ dosave0()
 #endif
 #ifdef MICRO
 		if(!hu) {
-		    curs(WIN_MAP, 8 + dotcnt++, 1);
+		    curs(WIN_MAP, 1 + dotcnt++, 2);
 		    putstr(WIN_MAP, 0, ".");
+		    mark_synch();
 		}
 #endif
 		ofd = open_levelfile(ltmp);
@@ -199,6 +209,8 @@ dosave0()
 		delete_levelfile(ltmp);
 	}
 	bclose(fd);
+
+	u.uz = uz_save;
 
 	/* get rid of current level --jgm */
 	delete_levelfile(ledger_no(&u.uz));
@@ -455,12 +467,12 @@ int mode;
 #define flushoutrun(ln) (bputc(RLESC), bputc(ln), ln = -1)
 
 #ifndef ZEROCOMP_BUFSIZ
-#define ZEROCOMP_BUFSIZ BUFSZ
+# define ZEROCOMP_BUFSIZ BUFSZ
 #endif
-static unsigned char NEARDATA outbuf[ZEROCOMP_BUFSIZ];
-static unsigned short NEARDATA outbufp = 0;
-static short NEARDATA outrunlength = -1;
-static int NEARDATA bwritefd;
+static NEARDATA unsigned char outbuf[ZEROCOMP_BUFSIZ];
+static NEARDATA unsigned short outbufp = 0;
+static NEARDATA short outrunlength = -1;
+static NEARDATA int bwritefd;
 
 /*dbg()
 {
@@ -676,8 +688,10 @@ register struct obj *otmp;
 
 	    if (Is_container(otmp) || otmp->otyp == STATUE)
 		saveobjchn(fd,otmp->cobj,mode);
-	    if (mode & FREE_SAVE)
+	    if (mode & FREE_SAVE) {
+		if(otmp->oclass == FOOD_CLASS) food_disappears(otmp);
 		dealloc_obj(otmp);
+	    }
 	    otmp = otmp2;
 	}
 	bwrite(fd, (genericptr_t) &minusone, sizeof(int));

@@ -18,7 +18,7 @@ struct rogueroom {
 #define LEFT 4
 #define RIGHT 8
 
-static struct rogueroom NEARDATA r[3][3];
+static NEARDATA struct rogueroom r[3][3];
 static void FDECL(roguejoin,(int,int,int,int,int));
 static void FDECL(roguecorr,(int,int,int));
 static void FDECL(miniwalk,(int,int));

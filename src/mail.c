@@ -50,7 +50,7 @@ int mustgetmail = -1;
 /* DON'T trust all Unices to declare getpwuid() in <pwd.h> */
 #  if !defined(_BULL_SOURCE) && !defined(sgi)
 /* DO trust all SVR4 to typedef uid_t in <sys/types.h> (probably to a long) */
-#   if defined(POSIX_TYPES) || defined(SVR4)
+#   if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
 #   else 
 extern struct passwd *FDECL(getpwuid,(int));
@@ -242,7 +242,7 @@ md_stop(stopp, startp)
 }
 
 /* Let the mail daemon have a larger vocabulary. */
-static const char NEARDATA *mail_text[] = {
+static NEARDATA const char *mail_text[] = {
     "Gangway!",
     "Look out!",
     "Pardon me!"
@@ -561,7 +561,6 @@ struct obj *otmp;
 
     Sprintf(qbuf, "System command (%s)", cmd);
     getlin(qbuf, buf);
-    clear_nhwindow(WIN_MESSAGE);
     if (*buf != '\033') {
 	for (p = eos(buf); p > buf; *p = '\0')
 	    if (*--p != ' ') break;	/* strip trailing spaces */

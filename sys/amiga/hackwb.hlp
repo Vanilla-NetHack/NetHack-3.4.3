@@ -1,62 +1,54 @@
-The front end to NetHack, HackWB, provides a graphical
-interface to starting NetHack. Through some special features
-provided by 'splitter', HackWB also provides a faster game
-restart after the first game.
+HackWB provides a WorkBench-like setting for NetHack - if
+you know how to use WorkBench you know how to use HackWb.
+If you prefer a command line interface, use HackCli.
+Happy Hacking!
 
-When HackWB is first started, it will load the
-NetHack:NewGame.info icon and any icons in the SAVE
-directory specified in the nethack.cnf file. To play, you
-can simply double click on the NewGame icon, or one of the
-saved game icons.
+Main Window
+    Single click to select a game.
+    Double click to start a game.
+    Use the NewGame icon to start a new game.
 
-The NewGame icon can be populated with tooltypes entries
-to tell NetHack how to configure the game for you.
-The Project menu contains 2 things useful for configuring
-NetHack.  There is an "Edit Configuration" menu item
-which allows you to override what is in the NetHack.cnf
-file.  The data in the requester brought up by this menu
-item is copied to the TOOLSTYPE entries of the NewGame
-icon for subsequent games that are started by double
-clicking on the NewGame icon.
+Options Window
+    Click on the options to toggle them on/off or enter
+    strings as appropriate.
 
-The "Edit Default Game" selection is used to create new
-character preferences for subsequent games started by
-double clicking on the NewGame icon. The initial requester
-uses the "Player's Name:" string gadget contents to create
-a file name which is <contents>.def.  When the game
-first starts, WBDefaults.def is loaded.  When you type in
-a character name and hit return, the definition associated
-with that file is loaded.
+Edit Game Definition Window
+    Enter name of player and select load to load previously
+    saved game definition.
 
-From this requester, you can set the character's class
-(species, origin, whatever-your-term-is) by using the
-Character menu provided.  The selected 'class' is
-displayed on the requester.  The options which are
-usually selected in the OPTIONS= line in nethack.cnf
-are accessed by clicking on the "Edit Options" gadget.
-Select all of the various settings desired and close
-the requester by selecting Okay. Exit back out of
-these two requesters and any time that you double click
-on the NewGame icon, the selected character and options
-will be copied into the NewGame icon.  That icon will
-be updated on disk and then passed to NetHack to tell
-it how to configure the game.
+Project Menu
+ Help        - This file...
+ About       - Credit where credit is due...
+ Top Scores  - View the score file.
+ Recover     - Recover a game which was interrupted by a
+               GURU, Software Failure, or other disaster.
+ Edit Default Game - The file wbdefaults.def is always
+               loaded to provide the default ToolTypes
+               information for the NewGame icon (specifying
+               options, character name and character type).
+               The window opened by this selection allows
+               you to edit this information as well as
+               create new "games" by changing wbdefaults to
+               a different name and using save/load.
+ Edit Configuration - The string data in nethack.cnf can be
+               edited saved and loaded using the requester
+               opened by this selection.
 
-Existing games can be edited by selecting an icon with
-a single click.  The "Game" menu will then become
-ungreyed.  The Game Menu has icon editing actions which
-are...
-
-Info            to browse through the icons tooltype
-                information.
-Change Comment  to edit the file comment.
-Set Options     to edit the OPTIONS string with the
-                requester.
-Copy Options    to create a new icon without a save file
-                which will allow you to play a similar
-                game under another name.
-Discard         to remove the saved game/icon.
-Rename          to change the icon name.
-
-On the Project menu, there are other selections which
-should be self explanatory.
+Game Menu
+ Info        - This selection lets you edit the tooltypes
+               entries for the selected icons.  The Edit
+               Game Configuration  gadget lets you change
+               the options that "Edit Default Game" let you
+               enter.  
+ Change Comment  - Lets you set a comment string for the
+               save file.
+ Set Options - takes you directly to the options editing
+               requester.
+ Copy Options - Creates a new icon with the same options as
+               the selected game.  The new Icon has no saved
+               game associated with it.
+ Discard     - Deletes the icon and any saved game
+               associated with it.
+ Rename      - Lets you rename the Icon file and saved game.
+               The information in the save file is not
+               changed.

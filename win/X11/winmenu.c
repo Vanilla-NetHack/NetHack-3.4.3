@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmenu.c	3.1	92/3/7
+/*	SCCS Id: @(#)winmenu.c	3.1	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,19 +7,33 @@
  * 
  * 	+ Global functions: start_menu, add_menu, end_menu, select_menu
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
 #include <X11/Xaw/List.h>
 #include <X11/Xaw/Viewport.h>
 #include <X11/Xaw/Cardinals.h>
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 #include "hack.h"
 #include "winX.h"
 
 
-static void clear_old_menu();
-static char *copy_of();
+static void FDECL(menu_select, (Widget,XtPointer,XtPointer));
+static void FDECL(clear_old_menu, (struct xwindow *));
+static char *FDECL(copy_of, (const char *));
 
 #define check_menu(func_name)					\
 {								\
@@ -66,6 +80,22 @@ menu_select(w, client_data, call_data)
     menu_selected = curr->selector;
 
     nh_XtPopdown(wp->popup);	/* this removes the event grab */
+    exit_x_event = TRUE;	/* exit our event handler */
+}
+
+/*
+ * Called when menu window is deleted.
+ */
+/* ARGSUSED */
+void
+menu_delete(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+    menu_selected = '\033';
+    nh_XtPopdown(w);		/* this removes the event grab */
     exit_x_event = TRUE;	/* exit our event handler */
 }
 
@@ -247,6 +277,8 @@ X11_select_menu(window)
 
     wp->popup = XtCreatePopupShell("menu", transientShellWidgetClass,
 				   toplevel, args, num_args);
+    XtOverrideTranslations(wp->popup,
+	XtParseTranslationTable("<Message>WM_PROTOCOLS: menu_delete()"));
 
     menu_info->list_pointer =
 	(String *) alloc((unsigned) (sizeof(String) * (menu_info->count+1)));
@@ -305,11 +337,11 @@ X11_select_menu(window)
     }
 
     XtRealizeWidget(wp->popup);	/* need to realize before we position */
-    positionpopup(wp->popup);
+    positionpopup(wp->popup, FALSE);
 
     menu_selected = '\0';
 
-    nh_XtPopup(wp->popup, XtGrabExclusive, wp->w);
+    nh_XtPopup(wp->popup, (int)XtGrabExclusive, wp->w);
     (void) x_event(EXIT_ON_EXIT);
 
     return menu_selected;
@@ -319,7 +351,7 @@ X11_select_menu(window)
 
 static char *
 copy_of(s)
-    char *s;
+    const char *s;
 {
     char *copy;
     if (s) {

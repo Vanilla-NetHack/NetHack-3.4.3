@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.1	93/01/12	*/
+/*	SCCS Id: @(#)shk.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,7 @@ static void FDECL(kops_gone, (BOOLEAN_P));
 
 extern const struct shclass shtypes[];	/* defined in shknam.c */
 
-STATIC_VAR long int NEARDATA followmsg;	/* last time of follow message */
+STATIC_VAR NEARDATA long int followmsg;	/* last time of follow message */
 
 STATIC_DCL void FDECL(setpaid, (struct monst *));
 STATIC_DCL long FDECL(addupbill, (struct monst *));
@@ -43,7 +43,7 @@ static const char *FDECL(shk_embellish, (struct obj *, long));
 static long FDECL(cost_per_charge, (struct obj *));
 static long FDECL(cheapest_item, (struct monst *));
 static int FDECL(dopayobj, (struct monst *, struct bill_x *,
-			    struct obj *, int, BOOLEAN_P));
+			    struct obj **, int, BOOLEAN_P));
 static long FDECL(stolen_container, (struct obj *, struct monst *, long,
 				     BOOLEAN_P));
 static long FDECL(getprice, (struct obj *));
@@ -55,7 +55,8 @@ static void FDECL(rile_shk, (struct monst *));
 static void FDECL(remove_damage, (struct monst *, BOOLEAN_P));
 static void FDECL(sub_one_frombill, (struct obj *, struct monst *));
 static void FDECL(add_one_tobill, (struct obj *, BOOLEAN_P));
-static void FDECL(dropped_container, (struct obj *));
+static void FDECL(dropped_container, (struct obj *, struct monst *,
+				      BOOLEAN_P));
 static void FDECL(bill_box_content, (struct obj *, BOOLEAN_P, BOOLEAN_P,
 				     struct monst *));
 
@@ -134,11 +135,18 @@ register struct monst *mtmp, *mtmp2;
 
 /* do shopkeeper specific structure munging -dlc */
 void
-restshk(mtmp)
+restshk(mtmp, ghostly)
 register struct monst *mtmp;
+boolean ghostly;
 {
-    if(ESHK(mtmp)->bill_p != (struct bill_x *) -1000)
-	ESHK(mtmp)->bill_p = &(ESHK(mtmp)->bill[0]);
+    if(u.uz.dlevel) {
+	if(ESHK(mtmp)->bill_p != (struct bill_x *) -1000)
+	    ESHK(mtmp)->bill_p = &(ESHK(mtmp)->bill[0]);
+	/* shoplevel can change as dungeons move around */
+	/* savebones guarantees that non-homed shk's will be gone */
+	if (ghostly)
+	    assign_level(&(ESHK(mtmp)->shoplevel), &u.uz);
+    }
 }
 
 /* Clear the unpaid bit on all of the objects in the list. */
@@ -857,8 +865,8 @@ proceed:
 
 	/* ltmp is still eshkp->robbed here */
 	if (!eshkp->billct && !eshkp->debit) {
-		const char *pronoun = shkp->female ? "her" : "him";
-		const char *possessive = shkp->female ? "her" : "his";
+		const char *pronoun = him[shkp->female];
+		const char *possessive = his[shkp->female];
 
 		if(!ltmp && NOTANGRY(shkp)) {
 		    You("do not owe %s anything.", mon_nam(shkp));
@@ -980,11 +988,16 @@ proceed:
 	    for (pass = 0; pass <= 1; pass++) {
 		tmp = 0;
 		while (tmp < eshkp->billct) {
-		    register struct obj *otmp;
+		    struct obj *otmp;
 		    register struct bill_x *bp = &(eshkp->bill_p[tmp]);
 
 		    /* find the object on one of the lists */
-		    if (!(otmp = bp_to_obj(bp))) {
+		    if ((otmp = bp_to_obj(bp)) != 0) {
+			/* if completely used up, object quantity is stale;
+			   restoring it to its original value here avoids
+			   making the partly-used-up code more complicated */
+			if (bp->useup) otmp->quan = bp->bquan;
+		    } else {
 			impossible("Shopkeeper administration out of order.");
 			setpaid(shkp);	/* be nice to the player */
 			return 1;
@@ -996,7 +1009,7 @@ proceed:
 			 * are processed on both passes */
 			tmp++;
 		    } else {
-			switch (dopayobj(shkp, bp, otmp, pass, itemize)) {
+			switch (dopayobj(shkp, bp, &otmp, pass, itemize)) {
 			  case PAY_CANT:
 				return 1;	/*break*/
 			  case PAY_BROKE:
@@ -1033,13 +1046,14 @@ thanks:
 /*	 -1 if skip this object     */
 /*	 -2 if no money/credit left */
 static int
-dopayobj(shkp, bp, obj, which, itemize)
+dopayobj(shkp, bp, obj_p, which, itemize)
 register struct monst *shkp;
 register struct bill_x *bp;
-register struct obj *obj;
+struct obj **obj_p;
 int	which;		/* 0 => used-up item, 1 => other (unpaid or lost) */
 boolean itemize;
 {
+	register struct obj *obj = *obj_p;
 	long ltmp, quan, save_quan;
 	int buy;
 	boolean stashed_gold = (hidden_gold() > 0L),
@@ -1106,24 +1120,28 @@ boolean itemize;
 	obj->quan = save_quan;		/* restore original count */
 	/* quan => amount just bought, save_quan => remaining unpaid count */
 	if (consumed) {
-	    if (quan != save_quan) {
+	    if (quan != bp->bquan) {
 		/* eliminate used-up portion; remainder is still unpaid */
 		bp->bquan = obj->quan;
 		obj->unpaid = 1;
 		bp->useup = 0;
+		buy = PAY_SOME;
 	    } else {	/* completely used-up, so get rid of it */
-		register struct obj *otmp = billobjs;
-		if(obj == billobjs)
-			billobjs = obj->nobj;
-		else {
-			while(otmp && otmp->nobj != obj) otmp = otmp->nobj;
-			if(otmp) otmp->nobj = obj->nobj;
-			else impossible("Error in shopkeeper administration.");
+		if (obj == billobjs) {
+		    billobjs = obj->nobj;
+		} else {
+		    register struct obj *otmp = billobjs;
+
+		    while (otmp && otmp->nobj != obj) otmp = otmp->nobj;
+		    if (otmp) otmp->nobj = obj->nobj;
+		    else impossible("Error in shopkeeper administration.");
 		}
+	     /* assert( obj == *obj_p ); */
 		dealloc_obj(obj);
+		*obj_p = 0;	/* destroy pointer to freed object */
 	    }
 	}
-	return quan != save_quan ? PAY_SOME : PAY_BUY;
+	return buy;
 }
 
 /* routine called after dying (or quitting) */
@@ -1353,7 +1371,7 @@ register boolean usell;
 	    register boolean goods = saleable(rooms[ESHK(shkp)->shoproom -
 					   ROOMOFFSET].rtype-SHOPBASE, otmp);
 
-	    if(otmp->otyp == GOLD_PIECE) continue;
+	    if(otmp->oclass == GOLD_CLASS) continue;
 
 	    /* the "top" container is evaluated by caller */
 	    if(usell) {
@@ -1383,7 +1401,7 @@ register struct obj *obj;
 
 	/* accumulate contained gold */
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
-	    if (otmp->otyp == GOLD_PIECE)
+	    if (otmp->oclass == GOLD_CLASS)
 		value += otmp->quan;
 	    else if (Is_container(otmp))
 		value += contained_gold(otmp);
@@ -1392,21 +1410,27 @@ register struct obj *obj;
 }
 
 static void
-dropped_container(obj)
+dropped_container(obj, shkp, sale)
 register struct obj *obj;
+register struct monst *shkp;
+register boolean sale;
 {
 	register struct obj *otmp;
+	register boolean saleitem;
 
 	/* the "top" container is treated in the calling fn */
 	for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 
-	    if(otmp->otyp == GOLD_PIECE) continue;
+	    if(otmp->oclass == GOLD_CLASS) continue;
 
-	    if(!otmp->unpaid)
+	    saleitem = saleable(rooms[ESHK(shkp)->shoproom -
+					ROOMOFFSET].rtype-SHOPBASE, otmp);
+
+	    if(!otmp->unpaid && !(sale && saleitem))
 		otmp->no_charge = 1;
 
 	    if(Is_container(otmp))
-		dropped_container(otmp);
+		dropped_container(otmp, shkp, sale);
 	}
 }
 
@@ -1419,7 +1443,7 @@ register struct obj *obj;
 	/* the "top" container is treated in the calling fn */
 	for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 
-	    if(otmp->otyp == GOLD_PIECE) continue;
+	    if(otmp->oclass == GOLD_CLASS) continue;
 
 	    if(otmp->no_charge)
 		otmp->no_charge = 0;
@@ -1535,7 +1559,7 @@ register struct monst *shkp;
 
 	for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 
-		if(obj->otyp == GOLD_PIECE) continue;
+		if(otmp->oclass == GOLD_CLASS) continue;
 		/* the "top" box is added in addtobill() */
 		if(!otmp->no_charge)
 		    add_one_tobill(otmp, dummy);
@@ -1576,7 +1600,8 @@ register boolean ininv, dummy, silent;
 		return;
 	}
 
-	if(!obj->no_charge) ltmp = get_cost(obj, shkp);
+	if(!obj->no_charge)
+	    ltmp = get_cost(obj, shkp);
 
 	if (obj->no_charge && !container) {
 		obj->no_charge = 0;
@@ -1754,7 +1779,7 @@ register struct monst *shkp;
 
 	if(Is_container(obj))
 	    for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-		if(otmp->otyp == GOLD_PIECE) continue;
+		if(otmp->oclass == GOLD_CLASS) continue;
 
 		if(Is_container(otmp))
 		    subfrombill(otmp, shkp);
@@ -1783,7 +1808,7 @@ register boolean ininv;
 	/* the price of contained objects, if any */
 	for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 
-	    if(otmp->otyp == GOLD_PIECE) continue;
+	    if(otmp->oclass == GOLD_CLASS) continue;
 
 	    if(!Is_container(otmp)) {
 		if(ininv) {
@@ -1825,7 +1850,7 @@ register boolean peaceful, silent;
 				   ROOMOFFSET].rtype-SHOPBASE, obj);
 	goods = (goods && !obj->no_charge);
 
-	if(obj->otyp == GOLD_PIECE) {
+	if(obj->oclass == GOLD_CLASS) {
 	    gvalue += obj->quan;
 	} else if(Is_container(obj)) {
 	    register boolean ininv = !!count_unpaid(obj->cobj);
@@ -1845,7 +1870,7 @@ register boolean peaceful, silent;
 	    ESHK(shkp)->debit += value;
 
 	    if(!silent) {
-		if(obj->otyp == GOLD_PIECE)
+		if(obj->oclass == GOLD_CLASS)
 		    You("owe %s %ld zorkmids!", mon_nam(shkp), value);
 		else You("owe %s %ld zorkmids for %s!",
 			mon_nam(shkp),
@@ -1928,13 +1953,16 @@ register xchar x, y;
 
 	offer = ltmp + cltmp;
 
+	/* get one case out of the way: nothing to sell, and no gold */
 	if(!isgold && (offer + gltmp) == 0L) {
 		register boolean unpaid = (obj->unpaid ||
 				  (container && count_unpaid(obj->cobj)));
 
 		if(container) {
 		    if(obj->cobj != (struct obj *)0) {
-			dropped_container(obj);
+			dropped_container(obj, shkp, FALSE);
+			if(!obj->unpaid && !saleitem)
+			    obj->no_charge = 1;
 			if(obj->unpaid || count_unpaid(obj->cobj))
 			    subfrombill(obj, shkp);
 		    } else obj->no_charge = 1;
@@ -1948,8 +1976,10 @@ register xchar x, y;
 	/* you dropped something of your own - probably want to sell it */
 	if(shkp->msleep || !shkp->mcanmove) {
 		if(container && obj->cobj != (struct obj *)0) {
-		    dropped_container(obj);
+		    dropped_container(obj, shkp, TRUE);
 		}
+		if(!obj->unpaid && !saleitem && !isgold)
+		    obj->no_charge = 1;
 		if(!shkp->mcanmove) {
 		    if(ANGRY(shkp) && !rn2(4))
 			pline("%s utters a curse.", Monnam(shkp));
@@ -1963,15 +1993,24 @@ register xchar x, y;
 
 	eshkp = ESHK(shkp);
 
-	if(isgold || cgold) {
-		if(ANGRY(shkp)) {
-		    if(!offer) {
-			 pline("%s is not appeased.", Monnam(shkp));
-			 if(cgold) subfrombill(obj, shkp);
-			 return;
-		    } else goto move_on;
-		}
+	if (ANGRY(shkp)) { /* they become shop-objects, no pay */
+		pline("Thank you, scum!");
+		subfrombill(obj, shkp);
+		return;
+	}
 
+	if(eshkp->robbed) {  /* shkp is not angry? */
+		if(isgold) offer = obj->quan;
+		else if(cgold) offer += cgold;
+		if((eshkp->robbed -= offer < 0L))
+			eshkp->robbed = 0L;
+		if(offer) verbalize(
+  "Thank you for your contribution to restock this recently plundered shop.");
+		subfrombill(obj, shkp);
+		return;
+	}
+
+	if(isgold || cgold) {
 		if(!cgold) gltmp = obj->quan;
 
 		if(eshkp->debit >= gltmp) {
@@ -1997,42 +2036,31 @@ register xchar x, y;
 		}
 		if(offer) goto move_on;
 		else {
-		    if(container && obj->cobj != (struct obj *)0) {
-			dropped_container(obj);
+		    if(!isgold) {
+		        if(container && obj->cobj != (struct obj *)0) {
+			    dropped_container(obj, shkp, FALSE);
+		        }
+		        if(!obj->unpaid && !saleitem)
+			    obj->no_charge = 1;
+		        subfrombill(obj, shkp);
 		    }
-		    subfrombill(obj, shkp);
-		    obj->no_charge = 1;
 		    return;
 		}
 	}
 move_on:
-	if (ANGRY(shkp)) { /* they become shop-objects, no pay */
-		pline("Thank you, scum!");
-		subfrombill(obj, shkp);
-		return;
-	}
-
 	if((!saleitem && !(container && cltmp > 0L))
 	   || eshkp->billct == BILLSZ
-	   || obj->oclass == BALL_CLASS || offer == 0L
+	   || obj->oclass == BALL_CLASS
+	   || obj->oclass == CHAIN_CLASS || offer == 0L
 	   || (obj->oclass == FOOD_CLASS && obj->oeaten)
 	   || (Is_candle(obj) &&
 		   obj->age < 20L * (long)objects[obj->otyp].oc_cost)) {
 		pline("%s seems not interested%s.", Monnam(shkp),
 					   cgold ? " in the rest" : "");
 		if(container && obj->cobj != (struct obj *)0) {
-		    dropped_container(obj);
+		    dropped_container(obj, shkp, FALSE);
 		}
 		obj->no_charge = 1;
-		return;
-	}
-
-	if(eshkp->robbed) {  /* shkp is not angry? */
-		if((eshkp->robbed -= offer < 0L))
-			eshkp->robbed = 0L;
-		verbalize(
-  "Thank you for your contribution to restock this recently plundered shop.");
-		subfrombill(obj, shkp);
 		return;
 	}
 
@@ -2050,10 +2078,11 @@ move_on:
 		    subfrombill(obj, shkp);
 		} else {
 		    if(container && obj->cobj != (struct obj *)0) {
-				dropped_container(obj);
+				dropped_container(obj, shkp, FALSE);
 		    }
+		    if(!obj->unpaid)
+			obj->no_charge = 1;
 		    subfrombill(obj, shkp);
-		    obj->no_charge = 1;
 		}
 	} else {
 		int qlen;
@@ -2085,13 +2114,17 @@ move_on:
 		switch (sell_response ? sell_response : ynaq(qbuf)) {
 		 case 'q':  sell_response = 'n';
 		 case 'n':  if(container && obj->cobj != (struct obj *)0) {
-				dropped_container(obj);
+				dropped_container(obj, shkp, FALSE);
 			    }
+		            if(!obj->unpaid) obj->no_charge = 1;
 			    subfrombill(obj, shkp);
-			    obj->no_charge = 1;
 			    break;
 		 case 'a':  sell_response = 'y';
-		 case 'y':  subfrombill(obj, shkp);
+		 case 'y':  if(container && obj->cobj != (struct obj *)0)
+		                dropped_container(obj, shkp, TRUE);
+		            if(!obj->unpaid && !saleitem)
+			        obj->no_charge = 1;
+		            subfrombill(obj, shkp);
 			    pay(-offer, shkp);
 			    You("sold %s for %ld gold piece%s.", doname(obj),
 				offer, plur(offer));
@@ -2192,9 +2225,6 @@ register struct obj *obj;
 	case ARMOR_CLASS:
 	case WEAPON_CLASS:
 		if (obj->spe > 0) tmp += 10L * (long) obj->spe;
-		break;
-	case CHAIN_CLASS:
-		pline("Strange... carrying a chain?");
 		break;
 	case TOOL_CLASS:
 		if (Is_candle(obj) &&
@@ -2630,7 +2660,7 @@ STATIC_OVL void
 makekops(mm)		/* returns the number of (all types of) Kops  made */
 coord *mm;
 {
-	register int cnt = depth(&u.uz) + rnd(5);
+	register int cnt = abs(depth(&u.uz)) + rnd(5);
 	register int scnt = (cnt / 3) + 1;	/* at least one sarge */
 	register int lcnt = (cnt / 6);		/* maybe a lieutenant */
 	register int kcnt = (cnt / 9);		/* and maybe a kaptain */
@@ -2864,7 +2894,7 @@ register struct obj *first_obj;
 	if (otmp->otyp == GOLD_PIECE) {
 	 /* if (otmp == first_obj)  first_obj = otmp->nexthere; */
 	    continue;	/* don't quote a price on this */
-	} else if (otmp->no_charge) {
+	} else if (otmp->no_charge || otmp == uball || otmp == uchain) {
 	    Strcpy(price, "no charge");
 	} else {
 	    cost = get_cost(otmp, (struct monst *)0);
@@ -2877,10 +2907,15 @@ register struct obj *first_obj;
     if (cnt > 1) {
 	display_nhwindow(tmpwin, TRUE);
     } else if (cnt == 1) {
-	cost = get_cost(first_obj, (struct monst *)0);
-	pline("%s, price %ld zorkmid%s%s%s", doname(first_obj),
+	if (first_obj->no_charge || first_obj == uball || first_obj == uchain){
+	    pline("%s!", buf);	/* buf still contains the string */
+	} else {
+	    /* print cost in slightly different format, so can't reuse buf */
+	    cost = get_cost(first_obj, (struct monst *)0);
+	    pline("%s, price %ld zorkmid%s%s%s", doname(first_obj),
 		cost, plur(cost), first_obj->quan > 1L ? " each" : "",
 		shk_embellish(first_obj, cost));
+	}
     }
     destroy_nhwindow(tmpwin);
 }
@@ -2972,7 +3007,8 @@ register struct obj *otmp;
 		    if (otmp->spe > 1) tmp /= 4L;
 	} else if (otmp->oclass == SPBOOK_CLASS) {
 		    tmp -= tmp / 5L;
-	}
+	} else if (otmp->otyp == CAN_OF_GREASE)
+	            tmp /= 10L;
 	return(tmp);
 }
 

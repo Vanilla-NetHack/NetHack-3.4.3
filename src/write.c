@@ -62,7 +62,7 @@ register struct obj *otmp;
 	return(1000);
 }
 
-static const char NEARDATA write_on[] = { SCROLL_CLASS, SPBOOK_CLASS, 0 };
+static NEARDATA const char write_on[] = { SCROLL_CLASS, SPBOOK_CLASS, 0 };
 
 int
 dowrite(pen)
@@ -89,16 +89,17 @@ register struct obj *pen;
 	if(!paper)
 		return(0);
 	if(Blind && !paper->dknown) {
-		You("can't tell if that %s's blank or not!",
+		You("don't know if that %s is blank or not!",
 		      paper->oclass == SPBOOK_CLASS ? "spellbook" :
 		      "scroll");
 		return(1);
 	}
 	paper->dknown = 1;
 	if(paper->otyp != SCR_BLANK_PAPER && paper->otyp != SPE_BLANK_PAPER) {
-		You("fool, that %s's not blank!",
+		pline("That %s is not blank!",
 		    paper->oclass == SPBOOK_CLASS ? "spellbook" :
 		    "scroll");
+		exercise(A_WIS, FALSE);
 		return(1);
 	}
 
@@ -183,14 +184,15 @@ register struct obj *pen;
 	makeknown(new_obj->otyp);
 
 	/* success */
-	new_obj = addinv(new_obj);
 	new_obj->blessed = (curseval > 0);
 	new_obj->cursed = (curseval < 0);
-	prinv(NULL, new_obj, 1L);
 #ifdef MAIL
 	if (new_obj->otyp == SCR_MAIL) new_obj->spe = 1;
 #endif
-	new_obj->known = 1;
+	new_obj = hold_another_object(new_obj, "Oops!  %s out of your grasp!",
+					       The(aobjnam(new_obj, "slip")),
+					       (const char *)0);
+	if (new_obj) new_obj->known = 1;
 	return(1);
 }
 

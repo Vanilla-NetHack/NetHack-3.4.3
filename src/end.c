@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.1	93/01/15	*/
+/*	SCCS Id: @(#)end.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,14 +18,14 @@ static void FDECL(savelife, (int));
 /*
  * The order of these needs to match the macros in hack.h.
  */
-static const char NEARDATA *deaths[] = {		/* the array of death */
+static NEARDATA const char *deaths[] = {		/* the array of death */
 	"died", "choked", "poisoned", "starvation", "drowning",
 	"burning", "crushed", "turned to stone", "genocided",
 	"panic", "trickery",
 	"quit", "escaped", "ascended"
 };
 
-static const char NEARDATA *ends[] = {		/* "when you..." */
+static NEARDATA const char *ends[] = {		/* "when you..." */
 	"died", "choked", "were poisoned", "starved", "drowned",
 	"burned", "were crushed", "turned to stone", "were genocided",
 	"panicked", "were tricked",
@@ -130,6 +130,7 @@ register struct monst *mtmp;
 	char buf[BUFSZ];
 
 	You("die...");
+	mark_synch();	/* flush buffered screen output */
 	buf[0] = '\0';
 	if (type_is_pname(mtmp->data) || (mtmp->data->geno & G_UNIQ)) {
 	     if (!(type_is_pname(mtmp->data) && (mtmp->data->geno & G_UNIQ)))
@@ -399,7 +400,7 @@ int how;
 	 * On those rare occasions you get hosed immediately, go out
 	 * smiling... :-)  -3.
 	 */
-	if (moves <= 1 && how < QUIT)
+	if (moves <= 1 && how < PANICKED)
 	    /* You die... --More-- */
 	    pline("Do not pass go.  Do not collect 200 zorkmids.");
 
@@ -446,6 +447,7 @@ die:
 	 * happen to bones levels */
 	taken = paybill(how != QUIT);
 	paygd();
+	clearpriests();
 	clearlocks();
 #ifdef AMIGA
 	clear_icon();
@@ -459,6 +461,24 @@ die:
 	    if (!wizard || yn("Save bones?") == 'y')
 #endif
 		savebones();
+	}
+
+	/* calculate score */
+	{
+	    long tmp;
+	    int deepest = deepest_lev_reached(FALSE);
+
+	    u.ugold += hidden_gold();	/* accumulate gold from containers */
+	    tmp = u.ugold - u.ugold0;
+	    if (tmp < 0L)
+		tmp = 0L;
+	    if (how < PANICKED)
+		tmp -= tmp / 10L;
+	    u.urexp += tmp;
+	    u.urexp += 50L * (long)(deepest - 1);
+	    if (deepest > 20)
+		u.urexp += 1000L * (long)((deepest > 30) ? 10 : deepest - 20);
+	    if (how == ASCENDED) u.urexp *= 2L;
 	}
 
 	/* clean up unneeded windows */
@@ -485,21 +505,6 @@ die:
 		   (const char *) (flags.female ? "Demigoddess" : "Demigod"));
 	    putstr(endwin, 0, pbuf);
 	    putstr(endwin, 0, "");
-	}
-	{   long tmp;
-	    int deepest = deepest_lev_reached(FALSE);
-
-	    u.ugold += hidden_gold();	/* accumulate gold from containers */
-	    tmp = u.ugold - u.ugold0;
-	    if (tmp < 0L)
-		tmp = 0L;
-	    if (how < PANICKED)
-		tmp -= tmp / 10L;
-	    u.urexp += tmp;
-	    u.urexp += 50L * (long)(deepest - 1);
-	    if (deepest > 20)
-		u.urexp += 1000L * (long)((deepest > 30) ? 10 : deepest - 20);
-	    if (how == ASCENDED) u.urexp *= 2L;
 	}
 	if (how == ESCAPED || how == ASCENDED) {
 		register struct monst *mtmp;
@@ -672,7 +677,7 @@ container_contents(list, identified, all_containers)
 	    if (Is_container(box) && box->otyp != BAG_OF_TRICKS) {
 		if (box->cobj) {
 		    winid tmpwin = create_nhwindow(NHW_MENU);
-		    Sprintf(buf, "Contents of the %s:", xname(box));
+		    Sprintf(buf, "Contents of %s:", the(xname(box)));
 		    putstr(tmpwin, 0, buf); putstr(tmpwin, 0, "");
 		    for (obj = box->cobj; obj; obj = obj->nobj) {
 			if (identified) {

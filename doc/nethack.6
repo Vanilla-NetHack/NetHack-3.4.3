@@ -12,7 +12,7 @@ nethack \- Exploring The Mazes of Menace
 .B \-n
 ]
 [
-.B \-[ABCEHKPRSTVW]
+.B \-[ABCEHKPRSTVW@]
 ]
 [
 .B \-[DX]
@@ -100,6 +100,12 @@ A
 suffix or a separate option consisting of one of
 .B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
 can be used to determine the character role.
+Likewise,
+.B "\-@"
+can be used to explicitly request that a random role be chosen.
+It may need to be quoted with a backslash (-\\@) if @
+is the "kill" character (see "stty") for the terminal, in order
+to prevent the current input line from being cleared.
 .PP
 The
 .B \-s

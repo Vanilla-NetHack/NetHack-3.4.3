@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)permonst.h 3.1	92/11/21	*/
+/*	SCCS Id: @(#)permonst.h 3.1	93/02/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,7 +55,7 @@ struct permonst {
 	uchar		msize;			/* physical size (3 bits) */
 	uchar		mresists;		/* resistances */
 	uchar		mconveys;		/* conveyed by eating */
-	long		mflags1,		/* boolean bitflags */
+	unsigned long	mflags1,		/* boolean bitflags */
 			mflags2;		/* more boolean bitflags */
 	uchar		mflags3;		/* yet more boolean bitflags */
 # ifdef TEXTCOLOR
@@ -63,9 +63,9 @@ struct permonst {
 # endif
 };
 
-extern struct permonst
-	NEARDATA	mons[];		/* the master list of monster types */
-extern struct permonst NEARDATA playermon, NEARDATA *uasmon;
+extern NEARDATA struct permonst
+		mons[];		/* the master list of monster types */
+extern NEARDATA struct permonst playermon, *uasmon;
 						/* you in the same terms */
 
 #endif /* PERMONST_H */

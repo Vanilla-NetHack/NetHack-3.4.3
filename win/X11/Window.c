@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)Window.c	3.1	92/3/7
+/*	SCCS Id: @(#)Window.c	3.1	93/02/02		  */
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,9 +6,24 @@
  * Data structures and support routines for the Window widget.  This is a
  * drawing canvas with 16 colors and one font.
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/IntrinsicP.h>
 #include <X11/StringDefs.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
+
 #include "WindowP.h"
+
+#include "config.h"
 
 static XtResource resources[] = {
 #define offset(field) XtOffset(WindowWidget, window.field)
@@ -62,15 +77,8 @@ static XtResource resources[] = {
 #undef offset
 };
 
-/* ARGSUSED */
-static void InputAction(w, event, params, num_params)
-    Widget   w;
-    XEvent   *event;
-    String   *params;		/* unused */
-    Cardinal *num_params;	/* unused */
-{
-    XtCallCallbacks(w, XtNcallback, (caddr_t) event);
-}
+extern void FDECL(map_input, (Widget, XEvent*, String*, Cardinal*));
+							/* from winmap.c */
 
 /* ARGSUSED */
 static void no_op(w, event, params, num_params)
@@ -83,7 +91,7 @@ static void no_op(w, event, params, num_params)
 
 static XtActionsRec actions[] =
 {
-    {"input",	InputAction},
+    {"input",	map_input},
     {"no-op",	no_op},
 };
 
@@ -95,10 +103,11 @@ static char translations[] =
 /* ARGSUSED */
 static void Redisplay(w, event, region)
     Widget w;
-    XEvent *event;	/* unused */
-    Region *region;
+    XEvent *event;
+    Region region;	/* unused */
 {
-    XtCallCallbacks(w, XtNexposeCallback, (caddr_t) region);
+    /* This isn't correct - we need to call the callback with region. */
+    XtCallCallbacks(w, XtNexposeCallback, (caddr_t) event);
 }
 
 /* ARGSUSED */

@@ -244,7 +244,7 @@ int	mntmp;
 		if(flags.female) dochange = TRUE;
 	} else if (is_female(&mons[mntmp])) {
 		if(!flags.female) dochange = TRUE;
-	} else if (!is_neuter(&mons[mntmp])) {
+	} else if (!is_neuter(&mons[mntmp]) && mntmp != u.ulycn) {
 		if(!rn2(10)) dochange = TRUE;
 	}
 	if (dochange) {
@@ -777,33 +777,33 @@ int part;
 	 * plus the trailing null, after pluralizing (since sometimes a
 	 * buffer is made a fixed size and must be able to hold it)
 	 */
-	static const char NEARDATA *humanoid_parts[] = { "arm", "eye", "face", "finger",
+	static NEARDATA const char *humanoid_parts[] = { "arm", "eye", "face", "finger",
 		"fingertip", "foot", "hand", "handed", "head", "leg",
 		"light headed", "neck", "spine", "toe" };
 #ifdef POLYSELF
-	static const char NEARDATA *jelly_parts[] = { "pseudopod", "dark spot", "front",
+	static NEARDATA const char *jelly_parts[] = { "pseudopod", "dark spot", "front",
 		"pseudopod extension", "pseudopod extremity",
 		"pseudopod root", "grasp", "grasped", "cerebral area",
 		"lower pseudopod", "viscous", "middle", "surface",
 		"pseudopod extremity" },
-	NEARDATA *animal_parts[] = { "forelimb", "eye", "face", "foreclaw", "claw tip",
+	*animal_parts[] = { "forelimb", "eye", "face", "foreclaw", "claw tip",
 		"rear claw", "foreclaw", "clawed", "head", "rear limb",
 		"light headed", "neck", "spine", "rear claw tip" },
-	NEARDATA *horse_parts[] = { "forelimb", "eye", "face", "forehoof", "hoof tip",
+	*horse_parts[] = { "forelimb", "eye", "face", "forehoof", "hoof tip",
 		"rear hoof", "foreclaw", "hooved", "head", "rear limb",
 		"light headed", "neck", "backbone", "rear hoof tip" },
-	NEARDATA *sphere_parts[] = { "appendage", "optic nerve", "body", "tentacle",
+	*sphere_parts[] = { "appendage", "optic nerve", "body", "tentacle",
 		"tentacle tip", "lower appendage", "tentacle", "tentacled",
 		"body", "lower tentacle", "rotational", "equator", "body",
 		"lower tentacle tip" },
-	NEARDATA *fungus_parts[] = { "mycelium", "visual area", "front", "hypha",
+	*fungus_parts[] = { "mycelium", "visual area", "front", "hypha",
 		"hypha", "root", "strand", "stranded", "cap area",
 		"rhizome", "sporulated", "stalk", "root", "rhizome tip" },
-	NEARDATA *vortex_parts[] = { "region", "eye", "front", "minor current",
+	*vortex_parts[] = { "region", "eye", "front", "minor current",
 		"minor current", "lower current", "swirl", "swirled",
 		"central core", "lower current", "addled", "center",
 		"currents", "edge" },
-	NEARDATA *snake_parts[] = { "vestigial limb", "eye", "face", "large scale",
+	*snake_parts[] = { "vestigial limb", "eye", "face", "large scale",
 		"large scale tip", "rear region", "scale gap", "scale gapped",
 		"head", "rear region", "light headed", "neck", "length",
 		"rear scale" };

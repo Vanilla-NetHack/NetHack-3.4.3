@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)trap.c	3.1	93/02/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -57,8 +57,8 @@ register const char *ostr;
 int type;
 boolean print;
 {
-	static const char NEARDATA *action[] = { "smoulder", "rust", "rot", "corrode" };
-	static const char NEARDATA *msg[] =  { "burnt", "rusted", "rotten", "corroded" };
+	static NEARDATA const char *action[] = { "smoulder", "rust", "rot", "corrode" };
+	static NEARDATA const char *msg[] =  { "burnt", "rusted", "rotten", "corroded" };
 	boolean vulnerable = FALSE;
 	boolean plural;
 	boolean grprot = FALSE;
@@ -76,13 +76,13 @@ boolean print;
 
 	plural = is_gloves(otmp) || is_boots(otmp);
 
-	if (!vulnerable)
+	if (!vulnerable) {
 		if (flags.verbose)
 		    Your("%s %s not affected.", ostr, plural ? "are" : "is");
-	else if (otmp->oeroded < MAX_ERODE) {
-		if (grprot && otmp->greased)
+	} else if (otmp->oeroded < MAX_ERODE) {
+		if (grprot && otmp->greased) {
 			grease_protect(otmp,ostr,plural);
-		else if (otmp->oerodeproof || (otmp->blessed && !rnl(4))) {
+		} else if (otmp->oerodeproof || (otmp->blessed && !rnl(4))) {
 			if (flags.verbose)
 				pline("Somehow, your %s %s not affected.",
 					ostr, plural ? "are" : "is");
@@ -93,11 +93,12 @@ boolean print;
 				otmp->oeroded ? " further" : "");
 			otmp->oeroded++;
 		}
-	} else
+	} else {
 		if (flags.verbose)
 			Your("%s %s%s completely %s.", ostr,
 			     Blind ? "feel" : "look",
 			     plural ? "" : "s", msg[type]);
+	}
 	return(TRUE);
 }
 
@@ -126,7 +127,7 @@ register int x, y, typ;
 	register struct trap *ttmp;
 	register boolean oldplace;
 
-	if (ttmp = t_at(x,y)) {
+	if ((ttmp = t_at(x,y)) != 0) {
 	    oldplace = TRUE;
 	    if (u.utrap && (x == u.ux) && (y == u.uy) && 
 	      ((u.utraptype == TT_BEARTRAP && typ != BEAR_TRAP) ||
@@ -174,7 +175,7 @@ boolean trapok;
 	boolean	tmp1, tmp2, tmp3, tmp4;
 # ifdef POLYSELF
 	tmp1 = isok(x,y) && (!IS_ROCK(levl[x][y].typ) ||
-		passes_walls(uasmon)) && !MON_AT(x, y);
+		(passes_walls(uasmon) && may_passwall(x,y))) && !MON_AT(x, y);
 # else
 	tmp1 = isok(x,y) && !IS_ROCK(levl[x][y].typ) && !MON_AT(x, y);
 # endif
@@ -191,7 +192,8 @@ boolean trapok;
 #else
 	return( isok(x,y) &&
 # ifdef POLYSELF
-		(!IS_ROCK(levl[x][y].typ) || passes_walls(uasmon)) &&
+		(!IS_ROCK(levl[x][y].typ) ||
+		 (passes_walls(uasmon) && may_passwall(x,y))) &&
 # else
 		!IS_ROCK(levl[x][y].typ) &&
 # endif
@@ -317,9 +319,9 @@ register struct trap *trap;
 #else
 	   !(ttype == PIT || ttype == SPIKED_PIT) &&
 #endif
-	   !(ttype == MAGIC_PORTAL || ttype == ANTI_MAGIC) && !rn2(5))
+	   !(ttype == MAGIC_PORTAL || ttype == ANTI_MAGIC) && !rn2(5)) {
 		You("escape a%s.", traps[ttype]);
-	else {
+	} else {
 	    seetrap(trap);
 	    switch(ttype) {
 		case ARROW_TRAP:
@@ -327,9 +329,9 @@ register struct trap *trap;
 		    otmp = mksobj(ARROW, TRUE, FALSE);
 		    otmp->quan = 1L;
 		    otmp->owt = weight(otmp);
-		    if(thitu(8,dmgval(otmp,uasmon),otmp,"arrow"))
+		    if(thitu(8,dmgval(otmp,uasmon),otmp,"arrow")) {
 			obfree(otmp, (struct obj *)0);
-		    else {
+		    } else {
 			place_object(otmp, u.ux, u.uy);
 			otmp->nobj = fobj;
 			fobj = otmp;		
@@ -366,12 +368,14 @@ register struct trap *trap;
 	pline("A trap door in the ceiling opens and a rock falls on your %s!",
 				body_part(HEAD));
 
-			if (uarmh)
+			if (uarmh) {
 			    if(is_metallic(uarmh)) {
 				pline("Fortunately, you are wearing a hard helmet.");
 				dmg = 2;
-			    } else if (flags.verbose)
+			    } else if (flags.verbose) {
  				Your("%s does not protect you.", xname(uarmh));
+			    }
+			}
 
 			stackobj(otmp);
 			newsym(u.ux,u.uy);	/* map the rock */
@@ -447,7 +451,7 @@ register struct trap *trap;
 		    } else
 		    if (u.umonnum == PM_GREMLIN && rn2(3)) {
 			pline("A gush of water hits you!");
-			if(mtmp = cloneu()) {
+			if ((mtmp = cloneu()) != 0) {
 			    mtmp->mhpmax = (u.mhmax /= 2);
 			    You("multiply.");
 			}
@@ -505,9 +509,9 @@ two_hand:		    erode_weapon(FALSE);
 #endif
 			) {
 			if(Blind) break;
-			if(trap->tseen)
+			if(trap->tseen) {
 			    You("see a pit below you.");
-			else {
+			} else {
 			    pline("A pit opens up under you!");
 			    You("don't fall in!");
 			}
@@ -657,10 +661,11 @@ two_hand:		    erode_weapon(FALSE);
 		case STATUE_TRAP:
 		    deltrap(trap);
 		    newsym(u.ux,u.uy);	/* get rid of trap symbol */
-		    for(otmp=level.objects[u.ux][u.uy];
+		    for (otmp = level.objects[u.ux][u.uy];
 						otmp; otmp = otmp->nexthere)
-			if(otmp->otyp == STATUE)
-			    if(mtmp=makemon(&mons[otmp->corpsenm],u.ux,u.uy)) {
+			if (otmp->otyp == STATUE)
+			    if ((mtmp = makemon(&mons[otmp->corpsenm],
+						u.ux, u.uy)) != 0) {
 				pline("The statue comes to life!");
 				/* mimic statues become seen mimics */
 				if(mtmp->m_ap_type) seemimic(mtmp);
@@ -715,6 +720,7 @@ two_hand:		    erode_weapon(FALSE);
 			pline("KAABLAMM!!!  You triggered a land mine!");
 			set_wounded_legs(LEFT_SIDE, rn1(35, 41));
 			set_wounded_legs(RIGHT_SIDE, rn1(35, 41));
+			exercise(A_DEX, FALSE);
 		    }
 		    losehp(rnd(16), "land mine", KILLED_BY_AN);
 		    /* wake everything on the level */
@@ -804,7 +810,7 @@ register struct monst *mtmp;
 	if(!trap) {
 		mtmp->mtrapped = 0;	/* perhaps teleported? */
 	} else if (mtmp->mtrapped) {	/* was in trap */
-		if(!rn2(40)) 
+		if(!rn2(40)) {
 			if (sobj_at(BOULDER, mtmp->mx, mtmp->my) && 
 			    ((trap->ttyp == PIT) || 
 			     (trap->ttyp == SPIKED_PIT))) {
@@ -814,6 +820,7 @@ register struct monst *mtmp;
 				}
 			} else
 				mtmp->mtrapped = 0;
+		}
 	} else {
 	    register int tt = trap->ttyp;
 
@@ -874,16 +881,17 @@ register struct monst *mtmp;
 		case BEAR_TRAP:
 			if(mptr->msize > MZ_SMALL &&
 			   !amorphous(mptr) && !is_flyer(mptr)) {
-				mtmp->mtrapped = 1;
-				if(in_sight) {
-				  pline("%s is caught in a bear trap!",
-					Monnam(mtmp));
-				  seetrap(trap);
-				} else
-				    if((mptr == &mons[PM_OWLBEAR]
-					|| mptr == &mons[PM_BUGBEAR])
-					&& flags.soundok)
-			    You("hear the roaring of an angry bear!");
+			    mtmp->mtrapped = 1;
+			    if(in_sight) {
+				pline("%s is caught in a bear trap!",
+				      Monnam(mtmp));
+				seetrap(trap);
+			    } else {
+				if((mptr == &mons[PM_OWLBEAR]
+				    || mptr == &mons[PM_BUGBEAR])
+				   && flags.soundok)
+				    You("hear the roaring of an angry bear!");
+			    }
 			}
 			break;
 
@@ -912,7 +920,10 @@ register struct monst *mtmp;
 				    pline("May %s rust in peace.",
 								mon_nam(mtmp));
 				mondied(mtmp);
-				trapkilled = TRUE;
+#ifdef MUSE
+				if (mtmp->mhp <= 0)
+#endif
+					trapkilled = TRUE;
 			} else if (mptr == &mons[PM_GREMLIN] && rn2(3)) {
 				struct monst *mtmp2 = clone_mon(mtmp);
 
@@ -957,8 +968,15 @@ register struct monst *mtmp;
 				    pline("%s falls into a pit!", Monnam(mtmp));
 				    seetrap(trap);
 				}
+#ifdef MUSE
+				mselftouch(mtmp, "Falling, ", FALSE);
+				if(mtmp->mhp <= 0 ||
+					thitm(0, mtmp, (struct obj *)0,
+					 rnd((tt==PIT) ? 6 : 10)))
+#else
 				if(thitm(0, mtmp, (struct obj *)0,
 					 rnd((tt==PIT) ? 6 : 10)))
+#endif
 				    trapkilled = TRUE;
 			}
 			break;
@@ -1166,7 +1184,7 @@ void
 selftouch(arg)
 const char *arg;
 {
-	if(uwep && (uwep->otyp == CORPSE && uwep->corpsenm == PM_COCKATRICE)
+	if(uwep && uwep->otyp == CORPSE && uwep->corpsenm == PM_COCKATRICE
 #ifdef POLYSELF
 			&& !resists_ston(uasmon)
 #endif
@@ -1182,6 +1200,34 @@ const char *arg;
 		done(STONING);
 	}
 }
+
+#ifdef MUSE
+void
+mselftouch(mon,arg,byplayer)
+struct monst *mon;
+const char *arg;
+boolean byplayer;
+{
+	struct obj *mwep = MON_WEP(mon);
+
+	if (mwep && mwep->otyp == CORPSE && mwep->corpsenm == PM_COCKATRICE
+			&& !resists_ston(mon->data)) {
+		if (cansee(mon->mx, mon->my)) {
+			pline("%s%s touches the cockatrice corpse.",
+			    arg ? arg : "", arg ? mon_nam(mon) : Monnam(mon));
+			pline("%s turns to stone.", Monnam(mon));
+		}
+		if (poly_when_stoned(mon->data)) {
+			mon_to_stone(mon);
+			return;
+		}
+		if (byplayer) {
+			stoned = TRUE;
+			xkilled(mon,0);
+		} else monstone(mon);
+	}
+}
+#endif
 
 void
 float_up()
@@ -1279,7 +1325,7 @@ float_down()
 		else if (!u.uinwater && !no_msg) {
 			if (Hallucination)
 				pline("Bummer!  You've %s.",
-			      	is_pool(u.ux,u.uy) ?
+				      is_pool(u.ux,u.uy) ?
 			      		"splashed down" : "hit the ground");
 			else
 				You("float gently to the %s.",
@@ -1337,9 +1383,9 @@ tele()
 			    || wizard
 #endif
 					) {
-	    if (unconscious())
+	    if (unconscious()) {
 		pline("Being unconscious, you cannot control your teleport.");
-	    else {
+	    } else {
 		    pline("To what position do you want to be teleported?");
 		    cc.x = u.ux;
 		    cc.y = u.uy;
@@ -1516,8 +1562,10 @@ level_tele()
 	    char buf[BUFSZ];
 
 	    do {
-	      getlin("To what level do you want to teleport? [type a number]",
+		getlin("To what level do you want to teleport? [type a number]",
 			buf);
+		if (!strcmp(buf,"\033"))	/* cancelled */
+		    return;
 	    } while(!digit(buf[0]) && (buf[0] != '-' || !digit(buf[1])));
 	    newlev = atoi(buf);
 
@@ -1597,7 +1645,11 @@ level_tele()
 		} else
 			You("are now high above the clouds...");
 
-		if(Levitation || is_floater(uasmon)) {
+		if(Levitation
+#ifdef POLYSELF
+		   || is_floater(uasmon)
+#endif
+		   ) {
 		    You("float gently down to earth.");
 		    u.uz.dnum = 0; /* he might have been in another dgn */
 		    newlev = 1;
@@ -1802,13 +1854,13 @@ domagictrap()
 }
 
 void
-water_damage(obj,force)
+water_damage(obj, force, here)
 register struct obj *obj;
-register boolean force;
+register boolean force, here;
 {
 	/* Scrolls, spellbooks, potions, weapons and
 	   pieces of armor may get affected by the water */
-	for(; obj; obj = obj->nobj) {
+	for (; obj; obj = (here ? obj->nexthere : obj->nobj)) {
 
 		(void) snuff_lit(obj);
 
@@ -1816,7 +1868,7 @@ register boolean force;
 			if (force || !rn2(2)) obj->greased = 0;
 		} else if(Is_container(obj) && !Is_box(obj) &&
 			(obj->otyp != OILSKIN_SACK || (obj->cursed && !rn2(3)))) {
-			water_damage(obj->cobj,force);
+			water_damage(obj->cobj, force, FALSE);
 		} else if(obj->oclass == SCROLL_CLASS && (force || rn2(12) > Luck)
 #ifdef MAIL
 			  && obj->otyp != SCR_MAIL
@@ -1909,7 +1961,11 @@ drown()
 
 	/* happily wading in the same contiguous pool */
 	if (u.uinwater && is_pool(u.ux-u.dx,u.uy-u.dy) &&
-	   Magical_breathing) {
+	    (
+#ifdef POLYSELF
+	     is_swimmer(uasmon) ||
+#endif
+	     Magical_breathing)) {
 		/* water effects on objects every now and then */
 		if (!rn2(5)) inpool_ok = TRUE;
 		else return(FALSE);
@@ -1926,18 +1982,24 @@ drown()
 			Hallucination ? "the Titanic" : "a rock");
 	}
 
-	water_damage(invent,FALSE);
+	water_damage(invent, FALSE, FALSE);
 
 #ifdef POLYSELF
 	if(u.umonnum == PM_GREMLIN && rn2(3)) {
 		struct monst *mtmp;
-		if(mtmp = cloneu()) {
+		if ((mtmp = cloneu()) != 0) {
 			mtmp->mhpmax = (u.mhmax /= 2);
 			You("multiply.");
 		}
 	}
 
-	if(is_swimmer(uasmon)) return(FALSE);
+	if(is_swimmer(uasmon) && !inpool_ok) {
+	    if (Punished) placebc();
+	    u.uinwater = 1;
+	    under_water(1);
+	    vision_full_recalc = 1;
+	    return(FALSE);
+	}
 #endif
 	if (inpool_ok) return(FALSE);
 #ifdef WALKIES
@@ -1956,6 +2018,7 @@ drown()
 		if (Punished) placebc();
 		u.uinwater = 1;
 		under_water(1);
+		vision_full_recalc = 1;
 		return(FALSE);
 	}
 	if((Teleportation || can_teleport(uasmon)) &&
@@ -2305,11 +2368,14 @@ boolean disarm;
 		case 0:
 			pline("A cloud of %s gas billows from %s",
 			      hcolor(), the(xname(obj)));
-			if(!Stunned)
+			if(!Stunned) {
 			    if (Hallucination)
 				pline("What a groovy feeling!");
+			    else if (Blind)
+				You("stagger and get dizzy...");
 			    else
 				You("stagger and your vision blurs...");
+			}
 			make_stunned(HStun + rn1(7, 16),FALSE);
 			make_hallucinated(HHallucination + rn1(5, 16),FALSE,0L);
 			break;
@@ -2410,8 +2476,14 @@ int d_override;
 			int yy = mon->my;
 
 			monkilled(mon, "", AD_PHYS);
-			newsym(xx, yy);
-			trapkilled = TRUE;
+#ifdef MUSE
+			if (mon->mhp <= 0) {
+#endif
+				newsym(xx, yy);
+				trapkilled = TRUE;
+#ifdef MUSE
+			}
+#endif
 		}
 	}
 	if (obj && (!strike || d_override)) {

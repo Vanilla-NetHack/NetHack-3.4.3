@@ -152,6 +152,7 @@ extern altar *tmpaltar[];
 extern lad *tmplad[];
 extern stair *tmpstair[];
 extern digpos *tmpdig[];
+extern digpos *tmppass[];
 extern char *tmpmap[];
 extern region *tmpreg[];
 extern lev_region *tmplreg[];
@@ -174,7 +175,7 @@ extern corridor *tmpcor[];
 extern int n_olist, n_mlist, n_plist;
 
 extern unsigned int nlreg, nreg, ndoor, ntrap, nmons, nobj;
-extern unsigned int ndb, nwalk, npart, ndig, nlad, nstair;
+extern unsigned int ndb, nwalk, npart, ndig, npass, nlad, nstair;
 extern unsigned int naltar, ncorridor, nrooms, ngold, nengraving;
 extern unsigned int nfountain, npool, nsink;
 
@@ -441,6 +442,7 @@ what_map_char(c)
 		  case 'B'  : return(CROSSWALL); /* hack: boundary location */
 		  case 'C'  : return(CLOUD);
 		  case 'S'  : return(SDOOR);
+		  case 'H'  : return(SCORR);
 		  case '{'  : return(FOUNTAIN);
 		  case '\\' : return(THRONE);
 		  case 'K'  :
@@ -707,6 +709,15 @@ store_part()
 		    tmppart[npart]->digs[i] = tmpdig[i];
 	}
 	ndig = 0;
+
+	/* The non_passwall directives */
+
+	if ((tmppart[npart]->npass = npass) != 0) {
+		tmppart[npart]->passs = NewTab(digpos, npass);
+		for(i=0;i<npass;i++)
+		    tmppart[npart]->passs[i] = tmppass[i];
+	}
+	npass = 0;
 
 	/* The ladders */
 
@@ -1059,6 +1070,15 @@ specialmaze *maze;
 	    }
 	    if (pt->ndig > 0)
 		    Free(pt->digs);
+
+	    /* The non_passwall directives */
+	    Write(fd, &(pt->npass), sizeof(pt->npass));
+	    for(j=0;j<pt->npass;j++) {
+		    Write(fd, pt->passs[j], sizeof(digpos));
+		    Free(pt->passs[j]);
+	    }
+	    if (pt->npass > 0)
+		    Free(pt->passs);
 
 	    /* The ladders */
 	    Write(fd, &(pt->nlad), sizeof(pt->nlad));

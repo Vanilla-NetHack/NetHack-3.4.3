@@ -8,6 +8,12 @@ known to work under UNIX, using X11R4 or X11R5.  Other X11R4+ platforms
 may work as well, with some tweaking likely.  Follow WIN* in
 sys/unix/Makefile.src for compilation hints.
 
+(If you try to compile it with X11R3 or earlier, you will get many errors,
+starting with complaints about XtPointer not being declared.  If you get
+around the compilation problems, you will still need a recent library of
+Athena Widgets to link against.  Once compiled, you can probably run it
+under an R3 X server, though.)
+
 The reason this uses the Athena widget set is that the Athena widgets come
 free from MIT (like X11).  Unfortunately, the companies that resell X11
 (value subtracted er, added software; yea, yea, that's the ticket) usually
@@ -15,10 +21,21 @@ discourage its use by either omitting the set or putting it on the
 "unsupported" portion of their tape.  If you do not have the Athena
 widgets, you may obtain them via anonymous ftp from export.lcs.mit.edu.
 
-To use this code, define X11_GRAPHICS in include/config.h.  Add $(WINX11SRC),
+To use this code, define X11_GRAPHICS in include/config.h.  (You can comment
+out TTY_GRAPHICS or change DEFAULT_WINDOW_SYS if you want to, but there's
+little reason to do so.  The X11 version almost requires a config file
+for full effect, so you can just as well set windowtype there; also, you
+or someone else might just possibly be stuck in a situation where you can't
+use the X version -- over a non-blindingly-fast modem, say.)  Add $(WINX11SRC),
 $(WINX11OBJ), and $(WINX11LIB) to WINSRC, WINOBJ, and WINLIB respectively
 in src/Makefile.  This will give you an executable supporting both X11 and
 tty windowing.
+
+If you are using Xauthority security, installing NetHack setuid may cause
+problems since the alternate id will probably not have permission to open
+your display.  NetHack will be just as happy setgid, but you will have to
+change the file permissions in the top Makefile before 'make install' to
+do that.
 
 If you want special graphics symbols, you will also need to install one
 or both of the included X11 fonts and use the symbol mappings found in
@@ -54,37 +71,36 @@ add a line to nethack.sh specifying this additional applications
 defaults directory:
 	XAPPLRESDIR=$HACKDIR; export XAPPLRESDIR
 
-Two icon suggestions to the window manager are supported:  nh72 and nh56.
-Data for them comes from source files nh72icon and nh56icon and they are
-compiled into the program via #include in winX.c.  Selection between them
-is controlled by the "icon" resource in NetHack.ad; the default is nh72.
+Three icon suggestions to the window manager are supported:  nh72, nh56,
+and nh32.  Data for them comes from the source files nh72icon, nh56icon,
+and nh32icon; they are compiled into the program via #includes in winX.c.
+Selection between them is controlled by the "icon" resource in NetHack.ad;
+the default is nh72.
 
 Sorry, an Imakefile is not included.  Unlike many X11 programs, X11
 support is only a small, optional, part of nethack, and the Makefile is
 needed for systems that don't use X11.
 
-Notes for Sun's OpenWindows 3.x (2.x will not work):
-    1.	Define OPENWINBUG in include/unixconf.h.  Add -I/usr/openwin/include
-	to CFLAGS, -L/usr/openwin/lib to LFLAGS, and -lm to WINX11LIB in
-	src/Makefile.  (Naturally, if your OpenWindows is installed
-	elsewhere, adapt the two openwin paths.)  This will allow you
-	to create a game executable.
+Notes for Sun's OpenWindows:
+    1.	For OpenWindows 3.x (NOT 2.x), define OPENWINBUG in include/unixconf.h.
+	The library bug from SunOS 4.1.x is apparently fixed in Solaris 2.x, 
+	so it is also unnecessary there.  (Defining it when unnecessary
+	causes the same problem being avoided when it is necessary. :-)
+	Add -I/usr/openwin/include to CFLAGS, -L/usr/openwin/lib to LFLAGS,
+	and -lm to WINX11LIB in src/Makefile.  (Naturally, if your OpenWindows
+	is installed elsewhere, adapt the two openwin paths.)  This will
+	allow you to create a game executable.
 
     2.	Run the fonts through convertfont and run bldfamily on the directory.
-	The environment variable FONTPATH must include the directory the fonts
-	are in when NetHack is run.  For a personal installation, setting the
-	variable in your .profile or .login is the simplest thing.  For a
-	multi-user installation, add the lines
-		FONTPATH=$FONTPATH:$HACKDIR/fonts
-		export FONTPATH
-	near the top of sys/unix/nethack.sh (before installation), and put
-	the fonts and associated files in the "fonts" subdirectory of your
-	GAMEDIR from the top Makefile (after installation via 'make install').
+	Now you must let your X server know where to find the fonts.  For a
+	personal installation, the simplest thing is to include the directory
+	of the fonts in the environment variable FONTPATH, as set in your
+	.profile or .login before starting the server.  For a multi-user
+	installation, you have the various "xset fp+" options outlined
+	above for standard X.
 
-    3.  Something must still be done with the NetHack.ad file.  All three
-	of the possibilities mentioned for standard X11 should work, but
-	it may be simplest to use the second or third, paralleling your
-	FONTPATH choice.
+    3.  Something must still be done with the NetHack.ad file -- all three
+	of the possibilities mentioned for standard X11 should work.
 
 
 File				Description

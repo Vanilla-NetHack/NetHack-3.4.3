@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmap.c	3.1	92/04/30		  */
+/*	SCCS Id: @(#)winmap.c	3.1	93/02/02		  */
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,12 +14,26 @@
  *	  values in the Window widget.  I am _not_ in favor of including
  *	  some nethack include file for Window.c.
  */
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
 #include <X11/Xaw/Cardinals.h>
 #include <X11/Xaw/Scrollbar.h>
 #include <X11/Xaw/Viewport.h>
+#include <X11/Xatom.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
+
 #include "Window.h"	/* map widget declarations */
 
 #include "hack.h"
@@ -30,15 +44,14 @@
 /* #define VERBOSE_UPDATE	/* print screen update bounds */
 /* #define VERBOSE_INPUT	/* print input events */
 
-static void set_button_values();
-static void map_check_size_change();
-static void map_update();
-static void map_exposed();
-static void map_input();
-static void set_gc();
-static void get_gc();
-static void get_char_info();
-static void display_cursor();
+static void FDECL(set_button_values, (Widget,int,int,unsigned));
+static void FDECL(map_check_size_change, (struct xwindow *));
+static void FDECL(map_update, (struct xwindow *,int,int,int,int,BOOLEAN_P));
+static void FDECL(map_exposed, (Widget,XtPointer,XtPointer));
+static void FDECL(set_gc, (Widget,Font,char *,Pixel,GC *,GC *));
+static void FDECL(get_gc, (struct xwindow *,Font));
+static void FDECL(get_char_info, (struct xwindow *));
+static void FDECL(display_cursor, (struct xwindow *));
 
 /* Global functions ======================================================== */
 
@@ -514,27 +527,21 @@ int incount = 0;
 int inptr = 0;	/* points to valid data */
 
 
-void
-extern_map_input(event)
-    XEvent *event;
-{
-    if(event->type == KeyPress)
-	map_input(window_list[WIN_MAP].w, (XtPointer) 0, (XtPointer) event);
-}
-
 /*
  * Keyboard and button event handler for map window.
  */
-/* ARGSUSED */
-static void
-map_input(w, client_data, call_data)
-    Widget w;
-    XtPointer client_data, call_data;
+void
+map_input(w, event, params, num_params)
+    Widget   w;
+    XEvent   *event;
+    String   *params;
+    Cardinal *num_params;
 {
-    XEvent *event = (XEvent *) call_data;
     XKeyEvent *key;
     XButtonEvent *button;
+    boolean meta = FALSE;
     int i, nbytes;
+    Cardinal in_nparams = (num_params ? *num_params : 0);
     char c;
     char keystring[MAX_KEY_STRING];
 
@@ -544,6 +551,12 @@ map_input(w, client_data, call_data)
 #ifdef VERBOSE_INPUT
 	    printf("button press\n");
 #endif
+	    if (in_nparams > 0 &&
+		(nbytes = strlen(params[0])) < MAX_KEY_STRING) {
+		Strcpy(keystring, params[0]);
+		key = (XKeyEvent *) event; /* just in case */
+		goto key_events;
+	    }
 	    set_button_values(w, button->x, button->y, button->button);
 	    break;
 	case KeyPress:
@@ -551,7 +564,7 @@ map_input(w, client_data, call_data)
 	    printf("key: ");
 #endif
 	    if(appResources.slow && input_func) {
-		(*input_func)(w, event, NULL, NULL);
+		(*input_func)(w, event, params, num_params);
 		break;
 	    }
 
@@ -560,7 +573,19 @@ map_input(w, client_data, call_data)
 	     * to allow keys mapped to multiple characters.
 	     */
 	    key = (XKeyEvent *) event;
-	    nbytes = XLookupString(key, keystring, MAX_KEY_STRING, NULL, NULL);
+	    if (in_nparams > 0 &&
+		(nbytes = strlen(params[0])) < MAX_KEY_STRING) {
+		Strcpy(keystring, params[0]);
+	    } else {
+		/*
+		 * Assume that mod1 is really the meta key.
+		 */
+		meta = !!(key->state & Mod1Mask);
+		nbytes =
+		    XLookupString(key, keystring, MAX_KEY_STRING,
+				  (KeySym *)0, (XComposeStatus *)0);
+	    }
+	key_events:
 	    /* Modifier keys return a zero length string when pressed. */
 	    if (nbytes) {
 #ifdef VERBOSE_INPUT
@@ -571,16 +596,13 @@ map_input(w, client_data, call_data)
 
 		    if (incount < INBUF_SIZE) {
 			inbuf[(inptr+incount)%INBUF_SIZE] =
-			    ((int) c) + ((key->state & Mod1Mask) ? 0x80 : 0);
+			    ((int) c) + (meta ? 0x80 : 0);
 			incount++;
 		    } else {
 			X11_nhbell();
 		    }
 #ifdef VERBOSE_INPUT
-		    /*
-		     * Assume that mod1 is really the meta key.
-		     */
-		    if (key->state & Mod1Mask)	/* meta will print as M<c> */
+		    if (meta)			/* meta will print as M<c> */
 			(void) putchar('M');
 		    if (c < ' ') {		/* ctrl will print as ^<c> */
 			(void) putchar('^');
@@ -629,18 +651,21 @@ set_button_values(w, x, y, button)
 /*
  * Map window expose callback.
  */
+/*ARGSUSED*/
 static void
-map_exposed(w, event)
+map_exposed(w, client_data, widget_data)
     Widget w;
-    XExposeEvent *event;
+    XtPointer client_data;	/* unused */
+    XtPointer widget_data;	/* expose event from Window widget */
 {
     int x, y;
     struct xwindow *wp;
     struct map_info_t *map_info;
     unsigned width, height;
     int start_row, stop_row, start_col, stop_col;
+    XExposeEvent *event = (XExposeEvent *) widget_data;
 
-    if (!XtIsRealized(w)) return;
+    if (!XtIsRealized(w) || event->count > 0) return;
 
     wp = find_widget(w);
     map_info = wp->map_information;
@@ -839,6 +864,10 @@ create_map_window(wp, create_popup, parent)
 	wp->popup = parent = XtCreatePopupShell("nethack",
 					topLevelShellWidgetClass,
 				       toplevel, args, num_args);
+	/*
+	 * If we're here, then this is an auxiliary map window.  If we're
+	 * cancelled via a delete window message, we should just pop down.
+	 */
     }
 
     num_args = 0;
@@ -869,7 +898,6 @@ create_map_window(wp, create_popup, parent)
 		args,			/* set some values */
 		num_args);		/* number of values to set */
 
-    XtAddCallback(map, XtNcallback,	  map_input,      (XtPointer) 0);
     XtAddCallback(map, XtNexposeCallback, map_exposed, (XtPointer) 0);
 
     get_char_info(wp);
@@ -898,6 +926,8 @@ create_map_window(wp, create_popup, parent)
      */
     if (create_popup) {
 	XtRealizeWidget(wp->popup);
+	XSetWMProtocols(XtDisplay(wp->popup), XtWindow(wp->popup),
+			&wm_delete_window, 1);
 	set_map_size(wp, COLNO, ROWNO);
     }
 }

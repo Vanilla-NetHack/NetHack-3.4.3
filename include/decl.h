@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)decl.h	3.1	92/12/11	*/
+/*	SCCS Id: @(#)decl.h	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,19 +24,19 @@ E char SAVEF[];
 E char SAVEP[];
 #endif
 
-E int NEARDATA bases[];
+E NEARDATA int bases[];
 
-E int NEARDATA multi;
-E int NEARDATA warnlevel;
-E int NEARDATA nroom;
-E int NEARDATA nsubroom;
-E int NEARDATA occtime;
+E NEARDATA int multi;
+E NEARDATA int warnlevel;
+E NEARDATA int nroom;
+E NEARDATA int nsubroom;
+E NEARDATA int occtime;
 
 E int x_maze_max, y_maze_max;
 E int otg_temp;
 
 #ifdef REDO
-E int NEARDATA in_doagain;
+E NEARDATA int in_doagain;
 #endif
 
 E struct dgn_topology {	/* special dungeon levels for speed */
@@ -102,25 +102,25 @@ E struct dgn_topology {	/* special dungeon levels for speed */
 #define knox_level		(dungeon_topology.d_knox_level)
 #endif
 
-E stairway NEARDATA dnstair, NEARDATA upstair; /* stairs up and down. */
+E NEARDATA stairway dnstair, upstair; /* stairs up and down. */
 #define xdnstair	(dnstair.sx)
 #define ydnstair	(dnstair.sy)
 #define xupstair	(upstair.sx)
 #define yupstair	(upstair.sy)
 
-E stairway NEARDATA dnladder, NEARDATA upladder; /* ladders up and down. */
+E NEARDATA stairway dnladder, upladder; /* ladders up and down. */
 #define xdnladder	(dnladder.sx)
 #define ydnladder	(dnladder.sy)
 #define xupladder	(upladder.sx)
 #define yupladder	(upladder.sy)
 
-E stairway NEARDATA sstairs;
+E NEARDATA stairway sstairs;
 
-E dest_area NEARDATA updest, NEARDATA dndest; /* level-change dest. areas */
+E NEARDATA dest_area updest, dndest; /* level-change dest. areas */
 
-E coord NEARDATA inv_pos;
-E dungeon NEARDATA dungeons[];
-E s_level NEARDATA *sp_levchn;
+E NEARDATA coord inv_pos;
+E NEARDATA dungeon dungeons[];
+E NEARDATA s_level *sp_levchn;
 #define dunlev_reached(x)	(dungeons[(x)->dnum].dunlev_ureached)
 
 #ifdef MULDGN
@@ -128,63 +128,63 @@ E s_level NEARDATA *sp_levchn;
 E struct q_score 	quest_status;
 #endif
 
-E int NEARDATA done_stopprint;
-E int NEARDATA done_hup;
+E NEARDATA int done_stopprint;
+E NEARDATA int done_hup;
 
-E char NEARDATA pl_character[PL_CSIZ];
+E NEARDATA char pl_character[PL_CSIZ];
 #ifdef TUTTI_FRUTTI
-E char NEARDATA pl_fruit[PL_FSIZ];
-E int NEARDATA current_fruit;
-E struct fruit NEARDATA *ffruit;
+E NEARDATA char pl_fruit[PL_FSIZ];
+E NEARDATA int current_fruit;
+E NEARDATA struct fruit *ffruit;
 #endif
 
-E char NEARDATA tune[6];
+E NEARDATA char tune[6];
 
-E const char NEARDATA quitchars[];
-E const char NEARDATA vowels[];
-E const char NEARDATA ynchars[];
-E const char NEARDATA ynqchars[];
-E const char NEARDATA ynaqchars[];
-E const char NEARDATA ynNaqchars[];
-E long NEARDATA yn_number;
-E int NEARDATA smeq[];
-E int NEARDATA doorindex;
-E char NEARDATA *save_cm;
+E NEARDATA const char quitchars[];
+E NEARDATA const char vowels[];
+E NEARDATA const char ynchars[];
+E NEARDATA const char ynqchars[];
+E NEARDATA const char ynaqchars[];
+E NEARDATA const char ynNaqchars[];
+E NEARDATA long yn_number;
+E NEARDATA int smeq[];
+E NEARDATA int doorindex;
+E NEARDATA char *save_cm;
 #define KILLED_BY_AN	 0
 #define KILLED_BY	 1
 #define NO_KILLER_PREFIX 2
-E int NEARDATA killer_format;
-E const char NEARDATA *killer;
+E NEARDATA int killer_format;
+E NEARDATA const char *killer;
 E const char *configfile;
-E char NEARDATA plname[PL_NSIZ];
-E char NEARDATA dogname[];
-E char NEARDATA catname[];
+E NEARDATA char plname[PL_NSIZ];
+E NEARDATA char dogname[];
+E NEARDATA char catname[];
 E char preferred_pet;
-E const char NEARDATA *occtxt;		/* defined when occupation != NULL */
-E const char NEARDATA *nomovemsg;
-E const char NEARDATA nul[];
+E NEARDATA const char *occtxt;		/* defined when occupation != NULL */
+E NEARDATA const char *nomovemsg;
+E NEARDATA const char nul[];
 E const char *traps[];
 E char lock[];
 
-E const char NEARDATA sdir[], NEARDATA ndir[];
-E const schar NEARDATA xdir[], NEARDATA ydir[], zdir[];
+E NEARDATA const char sdir[], ndir[];
+E NEARDATA const schar xdir[], ydir[], zdir[];
 
-E schar NEARDATA tbx, NEARDATA tby;		/* set in mthrowu.c */
-E int NEARDATA dig_effort;	/* apply.c, hack.c */
-E d_level NEARDATA dig_level;
-E coord NEARDATA dig_pos;
-E boolean NEARDATA dig_down;
+E NEARDATA schar tbx, tby;		/* set in mthrowu.c */
+E NEARDATA int dig_effort;	/* apply.c, hack.c */
+E NEARDATA d_level dig_level;
+E NEARDATA coord dig_pos;
+E NEARDATA boolean dig_down;
 
-E long NEARDATA moves, NEARDATA monstermoves;
-E long NEARDATA wailmsg;
+E NEARDATA long moves, monstermoves;
+E NEARDATA long wailmsg;
 
-E boolean NEARDATA in_mklev;
-E boolean NEARDATA stoned;
-E boolean NEARDATA unweapon;
-E boolean NEARDATA mrg_to_wielded;
+E NEARDATA boolean in_mklev;
+E NEARDATA boolean stoned;
+E NEARDATA boolean unweapon;
+E NEARDATA boolean mrg_to_wielded;
 
 #ifdef KOPS
-E boolean NEARDATA allow_kops;
+E NEARDATA boolean allow_kops;
 #endif
 
 E const int shield_static[];
@@ -192,7 +192,7 @@ E const int shield_static[];
 #ifndef SPELLS_H
 #include "spell.h"
 #endif
-E struct spell NEARDATA spl_book[];	/* sized in decl.c */
+E NEARDATA struct spell spl_book[];	/* sized in decl.c */
 
 #ifdef TEXTCOLOR
 # ifndef COLOR_H
@@ -207,45 +207,47 @@ E const char def_monsyms[MAXMCLASSES];	/* default class symbols */
 E uchar monsyms[MAXMCLASSES];		/* current class symbols */
 
 #ifndef OBJ_H
-#include "obj.h"
+# include "obj.h"
 #endif
 
-E struct obj NEARDATA *invent, NEARDATA *uarm, NEARDATA *uarmc,
-	NEARDATA *uarmh, NEARDATA *uarms, NEARDATA *uarmg, NEARDATA *uarmf,
+E NEARDATA struct obj *invent, *uarm, *uarmc, *uarmh, *uarms, *uarmg, *uarmf,
 #ifdef TOURIST
-	NEARDATA *uarmu, /* under-wear, so to speak */
+	*uarmu, /* under-wear, so to speak */
 #endif
 #ifdef POLYSELF
-	NEARDATA *uskin,
+	*uskin,
 #endif
-	NEARDATA *uamul, NEARDATA *uleft, NEARDATA *uright, NEARDATA *ublindf,
-	NEARDATA *uwep;
+	*uamul, *uleft, *uright, *ublindf, *uwep;
 
-E struct obj NEARDATA *uchain;	/* defined only when punished */
-E struct obj NEARDATA *uball;
-E struct obj NEARDATA *migrating_objs;
-E struct obj NEARDATA *billobjs;
-E struct obj NEARDATA zeroobj;		/* init'd and defined in decl.c */
+E NEARDATA struct obj *uchain;	/* defined only when punished */
+E NEARDATA struct obj *uball;
+E NEARDATA struct obj *migrating_objs;
+E NEARDATA struct obj *billobjs;
+E NEARDATA struct obj zeroobj;		/* init'd and defined in decl.c */
+
+E NEARDATA const char *he[3];
+E NEARDATA const char *him[3];
+E NEARDATA const char *his[3];
 
 #ifndef YOU_H
-#include "you.h"
+# include "you.h"
 #endif
 
-E struct you NEARDATA u;
+E NEARDATA struct you u;
 
 #ifndef ONAMES_H
-#include "onames.h"
+# include "onames.h"
 #endif
 #ifndef PM_H
-#include "pm.h"
+# include "pm.h"
 #endif
 
-E struct permonst NEARDATA playermon, NEARDATA *uasmon;
+E NEARDATA struct permonst playermon, *uasmon;
 					/* also decl'd extern in permonst.h */
 					/* init'd in monst.c */
 
-E struct monst NEARDATA youmonst;	/* init'd and defined in decl.c */
-E struct monst NEARDATA *mydogs, NEARDATA *migrating_mons;
+E NEARDATA struct monst youmonst;	/* init'd and defined in decl.c */
+E NEARDATA struct monst *mydogs, *migrating_mons;
 
 E struct c_color_names {
     char const	*const c_black, *const c_amber, *const c_golden,
@@ -274,12 +276,12 @@ E struct c_common_strings {
 #define shudder_for_moment c_common_strings.c_shudder_for_moment
 
 /* Vision */
-E boolean NEARDATA vision_full_recalc;	/* TRUE if need vision recalc */
-E char NEARDATA **viz_array;	/* could see/in sight row pointers */
+E NEARDATA boolean vision_full_recalc;	/* TRUE if need vision recalc */
+E NEARDATA char **viz_array;	/* could see/in sight row pointers */
 
 /* Window system stuff */
-E winid NEARDATA WIN_MESSAGE, NEARDATA WIN_STATUS;
-E winid NEARDATA WIN_MAP, NEARDATA WIN_INVEN;
+E NEARDATA winid WIN_MESSAGE, WIN_STATUS;
+E NEARDATA winid WIN_MAP, WIN_INVEN;
 E char toplines[];
 #ifndef TERMCAP_H
 E struct tc_gbl_data {	/* also declared in termcap.h */
@@ -295,7 +297,7 @@ E struct tc_gbl_data {	/* also declared in termcap.h */
 /* xxxexplain[] is in drawing.c */
 E const char *monexplain[], *objexplain[], *oclass_names[];
 
-E const char NEARDATA *pl_classes;
+E NEARDATA const char *pl_classes;
 
 #undef E
 

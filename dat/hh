@@ -68,7 +68,8 @@ $       gold    count your gold
 :       look    look at what is here
 ;       farlook look at what is somewhere else by selecting a map symbol
 
-Keyboards that have a meta key can also use these extended commands:
+Keyboards that have a meta key can also use these extended commands
+via the meta modifier instead of the # prefix:
 
 M-a     adjust  adjust inventory letters
 M-c     chat    talk to someone
@@ -88,7 +89,7 @@ M-u     untrap  untrap something (usually a trapped object)
 M-v     version print compile time options for this version
 M-w     wipe    wipe off your face
 
-If the "number_pad" option is on, these additional commands are available:
+If the "number_pad" option is on, these additional variants are available:
 
 n               followed by number of times to repeat the next command
 j       jump    jump to another location

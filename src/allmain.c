@@ -30,10 +30,6 @@ moveloop()
 	monstr_init();	/* monster strengths */
 	objects_init();
 
-#ifdef MULDGN
-	quest_init();	/* set up dynamic quest data */
-#endif
-
 	(void) encumber_msg(); /* in case they auto-picked up something */
 
 	for(;;) {
@@ -47,10 +43,16 @@ moveloop()
 
 		didmove = flags.move;
 		if(flags.move) {	/* actual time passed */
+#ifdef POLYSELF
+		    int oldmtimedone;
+#endif
 		    int wtcap;
 
 		    if (u.utotype) deferred_goto();
 		    wtcap = encumber_msg();
+#ifdef POLYSELF
+		    oldmtimedone = u.mtimedone;
+#endif
 
 #ifdef SOUNDS
 		    dosounds();
@@ -201,6 +203,10 @@ moveloop()
 		    else if (Underwater)
 			under_water(0);
 
+#ifdef POLYSELF
+		    if ((oldmtimedone && !u.mtimedone) ||
+			(!oldmtimedone && u.mtimedone)) moverate = 0;
+#endif
 		}
 		if(multi < 0) {
 			if(!++multi){
@@ -358,6 +364,7 @@ display_gamewindows()
      */
     display_nhwindow(WIN_STATUS, FALSE);
     display_nhwindow(WIN_MESSAGE, FALSE);
+    clear_glyph_buffer();
     display_nhwindow(WIN_MAP, FALSE);
 }
 
@@ -385,6 +392,7 @@ newgame()
 #endif
 #ifdef MULDGN
 	load_qtlist();	/* load up the quest text info */
+	quest_init();
 	if(flags.legacy && moves == 1) com_pager(1);
 #endif
 	mklev();

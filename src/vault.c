@@ -253,7 +253,6 @@ fnd:
 		mongone(guard);
 		return;
 	}
-	clear_nhwindow(WIN_MESSAGE);
 	verbalize("I don't know you.");
 	if (!u.ugold && !hidden_gold())
 	    verbalize("Please follow me.");
@@ -330,12 +329,11 @@ struct monst *grd;
 	for(x = lowx-1; x <= hix+1; x++)
 	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
-		    struct monst *mon;
-
-		    if((mon = m_at(x, y)) && grd->mx != x && grd->my != y) {
+		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
+			struct monst *mon = m_at(x,y);
 			if (mon->data->msound != MS_SILENT)
-			    You("hear a scream.");
-			rloc(m_at(x,y));
+			    yelp(mon);
+			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
 			move_gold(gold, EGD(grd)->vroom);
@@ -368,8 +366,10 @@ struct monst *grd;
 	    for(y = lowy; y <= hiy; y++) {
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
 		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
-			You("hear a scream.");
-			rloc(m_at(x,y));
+			struct monst *mon = m_at(x,y);
+			if (mon->data->msound != MS_SILENT)
+			    yelp(mon);
+			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
 			move_gold(gold, EGD(grd)->vroom);
@@ -483,7 +483,7 @@ letknow:
 			    l_monnam(grd));
 		    return(-1);
 		} else {
-		    verbalize("Well, be gone your way.");
+		    verbalize("Well, begone.");
 		    wallify_vault(grd);
 		    egrd->gddone = 1;
 		    goto cleanup;
@@ -708,8 +708,8 @@ paygd()
 	    gx = rooms[EGD(grd)->vroom].lx + rn2(2);
 	    gy = rooms[EGD(grd)->vroom].ly + rn2(2);
 	    Sprintf(buf,
-		"To Croesus: here's the gold recovered from the %s %s...",
-		player_mon()->mname, plname);
+		"To Croesus: here's the gold recovered from %s the %s.",
+		plname, player_mon()->mname);
 	    make_engr_at(gx, gy, buf, 0L, ENGRAVE);
 	}
 	place_object(gold = mkgoldobj(u.ugold), gx, gy);

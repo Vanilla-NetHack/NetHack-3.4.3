@@ -2,8 +2,19 @@
 	  Using, Compiling, and Installing Amiga NetHack 3.1
       (or Everything You Never Wanted to Know Before NetHacking)
 
-	     Last Revision: 12 January 1993 for NetHack 3.1
+	     Last Revision: 22 February 1993 for NetHack 3.1.1
 
+
+0. Pre-intro for NetHack 3.1.1.
+   New for 3.1.1:
+     Audio support.
+     Much faster loading, slightly smaller files.
+     HackWB allows NewGame to be copied for multiple sets of defaults.
+     HackCli allows options to be changed between games.
+     Many fewer bugs.
+
+   We would also like to thank each and every one of the people who took
+   the time and effort to report bugs to us.  THANK YOU!
 
 I. Introduction
 
@@ -53,25 +64,30 @@ I.C. Credits
 
 
 II. Using Amiga NetHack 3.1
+    The short version: from the WorkBench click on HackWB and from the
+    CLI invoke HackCli.
 
 II.A. Sources of Information
     Where to go depends on what you want to find out.  If you want to find
     out about distributing NetHack, read the license (in NetHack:license or
     type ?i during the game).  For an introduction to NetHack, read the
     GuideBook file.  Finally, for information during the game on all kinds
-    of things, type ? and select from the menu.
+    of things, type ? and select from the menu.  Further information on
+    HackWB is below and available from HackWB - press the Help key; more
+    information on HackCli is in the NetHack ManPage.
 
 II.B. The Amiga NetHack WorkBench Front End
-    The Amiga NetHack Front End looks more or less like a WorkBench
-    Drawer - and acts the same way.  Games start with double clicks and
-    menus provide more detailed control of games and defaults.  On-line
+    The Amiga NetHack WorkBench Front End, HackWB, looks more or less like a
+    WorkBench Drawer - and acts the same way.  Games start with double clicks
+    and menus provide more detailed control of games and defaults.  On-line
     help is available - just press the help key.
 
     Just as with WorkBench itself, options for games are set using the Info
     menu item to modify Tooltypes.  Most common options can be set more 
     easily using buttons available via Info also.
 
-    You can adjust the following using the ToolTypes from the Info command:
+    If necessary, you can adjust the following using the ToolTypes from the
+    Info command:
 
 	* OPTIONS=<options> - Options as available in the NetHack.cnf file.
 
@@ -96,21 +112,22 @@ II.B. The Amiga NetHack WorkBench Front End
     values for OPTIONS, which will generally be overridden by ToolTypes
     entries.
 
-    Also, there is one additional option that may be specified in the
-    NetHack.cnf file or on an OPTIONS line: flush.  When enabled, flush
-    discards all characters in the queue except the first, which limits
-    typeahead accidents.  The default setting is noflush.
+    Also, there are two additional options that may be specified in the
+    NetHack.cnf file or on an OPTIONS line: flush and silent.  When enabled,
+    flush discards all characters in the queue except the first, which limits
+    typeahead accidents.  The default setting is noflush.  Silent turns off
+    the (new for 3.1.1) audio output.
 
     Usually, most of the confusing options will be set in the NetHack.cnf
     file once when the game is installed and can be ignored after that.
 
 II.C. The Amiga NetHack CLI Front End
-    The CLI Front End provides the standard Unix-like command line interface
-    to NetHack.  Unlike the Unix front end however, the CLI front end will
-    ask if you want to play again before exiting.  See the ManPage file for
-    the standard Unix flags for NetHack.  In addition to those flags, Amiga
-    NetHack accepts flags -l to force non-interlaced mode and -L to force
-    interlaced mode.
+    The CLI Front End, HackCli, provides the standard Unix-like command line
+    interface to NetHack.  Unlike the Unix front end however, the CLI front
+    end will ask if you want to play again (and optionally change the
+    arguments) before exiting.  See the ManPage file for the standard Unix
+    flags for NetHack.  In addition to those flags, Amiga NetHack accepts
+    flags -l to force non-interlaced mode and -L to force interlaced mode.
 
 
 III. Installing Amiga NetHack 3.1
@@ -125,7 +142,8 @@ III.A. General Installation
     work will be done by the time the build is finished.
 
     IF YOU ALREADY HAVE A PREVIOUS VERSION INSTALLED YOU MUST DELETE THE
-    OLD SAVE AND BONES FILES - THEY WILL NOT WORK!
+    OLD SAVE AND BONES FILES - THEY WILL NOT WORK!  This includes save
+    and bones files from NetHack 3.1.0.
 
 Will NetHack fit on your machine?
     NetHack 3.1 is large.  NetHack 3.1 is very large.  You will need:
@@ -148,57 +166,66 @@ Find space for the files
 	    NHlevels
     Hard Disk installation:
     	cd to wherever you want to install NetHack
-	makedir NetHack
-	makedir NetHack/save
-	makedir NetHack/levels
+	make a new directory to be the main NetHack directory:
+	  makedir NetHack
+	and the subdirectories:
+	  makedir NetHack/save
+	  makedir NetHack/levels
 	In s:User-Sequence (under 2.0 or later) or s:Startup (under 1.3),
 	assign NetHack: to the NetHack directory you created above.
 	assign HackExe: to the same directory.
 Install the files
     Unpack the archives in the directories or onto the disks (you can
-    tell what to unpack where by the file names).  Use the table in the
-    next section to see where things should end up.  Be sure that the
-    file 8 ends up in NetHack:hack/8.
+    tell what to unpack where by the file names) by cd'ing to HackExe:
+    and unpacking archive 1 and then to NetHack: and unpacking archive 2.
+    Use the table in the next section to see where things should end up.
+    Be sure that the file 8 ends up in NetHack:hack/8 and that the sounds
+    files end up in the NetHack:sounds directory.
 
 Configuration
     Using your favorite text editor, edit NetHack:NetHack.cnf to match
     your system.  Check HackExe:NetHack.dir and be sure that the paths
-    are correct.  The HackWB program uses several standard Amiga programs
-    that must be installed in their standard places: c:copy, c:rename.
+    are correct (note that the C or D beginning the line is required and
+    is not part of the file path).  The HackWB program uses two standard
+    Amiga programs that must be installed in their standard places: c:copy,
+    c:rename.
 
 III.B. File Location Table
     NetHack:
 	A-filla.lev	A-fillb.lev	A-goal.lev	A-locate.lev
 	A-start.lev	air.lev		asmodeus.lev	astral.lev
 	B-filla.lev	B-fillb.lev	B-goal.lev	B-locate.lev
-	B-start.lev	baalz.lev	bigroom.lev	C-filla.lev
-	C-fillb.lev	C-goal.lev	C-locate.lev	C-start.lev
-	castle.lev	cmdhelp		data		default.icon
+	B-start.lev	baalz.lev	Bell		bigroom.lev
+	Bugle		C-filla.lev	C-fillb.lev	C-goal.lev
+	C-locate.lev	C-start.lev	castle.lev	cmdhelp
+	data		default.icon	Drum_Of_Earthquake
 	dungeon		E-filla.lev	E-fillb.lev	E-goal.lev
 	E-locate.lev	E-start.lev	earth.lev	fakewiz1.lev
-	fakewiz2.lev	fire.lev	Guidebook	Guidebook.info
-	H-filla.lev	H-fillb.lev	H-goal.lev	H-locate.lev
-	H-start.lev	hack/8		hack.font	HackWB
-	HackWB.info	HackCli		help		hh
-	history		juiblex.lev	K-filla.lev	K-fillb.lev
-	K-goal.lev	K-locate.lev	K-start.lev	knox.lev
-	license		logfile		ManPage		ManPage.info
-	medusa-1.lev	medusa-2.lev	minefill.lev	minetown.lev
-	mine_end.lev	NetHack.cnf	NetHack.c01	NetHack.d00
-	news		NewGame.info	opthelp		options
-	oracle.lev	oracles		orcus.lev	P-filla.lev
-	P-fillb.lev	P-goal.lev	P-locate.lev	P-start.lev
-	perm		quest.dat	R-filla.lev	R-fillb.lev
-	R-goal.lev	R-locate.lev	R-start.lev	ReadMe
-	ReadMe.info	record		recover		rumors
-	S-filla.lev	S-fillb.lev	S-goal.lev	S-locate.lev
-	S-start.lev	sanctum.lev	T-filla.lev	T-fillb.lev
-	T-goal.lev	T-locate.lev	T-start.lev	tower1.lev
-	tower2.lev	tower3.lev	V-filla.lev	V-fillb.lev
-	V-goal.lev	V-locate.lev	V-start.lev	valley.lev
-	W-filla.lev	W-fillb.lev	W-goal.lev	W-locate.lev
-	W-start.lev	water.lev	wizard1.lev	wizard2.lev
-	wizard3.lev	wizhelp
+	fakewiz2.lev	Fire_Horn	fire.lev	Frost_Horn
+	Guidebook	Guidebook.info	H-filla.lev	H-fillb.lev
+	H-goal.lev	H-locate.lev	H-start.lev	hack/8
+	hack.font	HackWB		HackWB.info	HackCli
+	help		hh		history		juiblex.lev
+	K-filla.lev	K-fillb.lev	K-goal.lev	K-locate.lev
+	K-start.lev	knox.lev	Leather_Drum	license
+	logfile		Magic_Flute	Magic_Harp	ManPage
+	ManPage.info	medusa-1.lev	medusa-2.lev	minefill.lev
+	minetown.lev	mine_end.lev	NetHack.cnf	NetHack.c01
+	NetHack.d00	news		NewGame.info	opthelp
+	options		oracle.lev	oracles		orcus.lev
+	P-filla.lev	P-fillb.lev	P-goal.lev	P-locate.lev
+	P-start.lev	perm		quest.dat	R-filla.lev
+	R-fillb.lev	R-goal.lev	R-locate.lev	R-start.lev
+	ReadMe		ReadMe.info	record		recover
+	rumors		S-filla.lev	S-fillb.lev	S-goal.lev
+	S-locate.lev	S-start.lev	sanctum.lev	T-filla.lev
+	T-fillb.lev	T-goal.lev	T-locate.lev	T-start.lev
+	Tooled_Horn	tower1.lev	tower2.lev	tower3.lev
+	V-filla.lev	V-fillb.lev	V-goal.lev	V-locate.lev
+	V-start.lev	valley.lev	W-filla.lev	W-fillb.lev
+	W-goal.lev	W-locate.lev	W-start.lev	water.lev
+	wizard1.lev	wizard2.lev	wizard3.lev	wizhelp
+	Wooden_Flute	Wooden_Harp
 
     HackExe:
 	NetHack.dir
@@ -215,12 +242,9 @@ IV.A. Compilation Overview
     good bit of memory.
 
 IV.B. Basic Compilation
-    NetHack can be built with SAS/C version 5.10b, Manx/Aztec version 5,
+    NetHack can be built with SAS/C version 6.2, Manx/Aztec version 5,
     or the registered version of DICE.  The "official" compiler for NetHack 3.1
-    patchlevel 0 is SAS/C 5.10b - we expect to be moving to SAS/C version 6.2
-    after it is released (6.0 was not available soon enough to gain our
-    confidence for releasing binaries based on it).  The game will compile
-    under SAS/C 6.x with small changes.
+    patchlevel 1 is SAS/C 6.2 - we have dropped support for SAS/C 5.x.
 
 IV.B.1. Introduction to Compiling NetHack
     Before doing any compilation, read the README files distributed
@@ -236,13 +260,8 @@ IV.B.1. Introduction to Compiling NetHack
     need to be checked:
 
 	UNIX - undef
-	MACROCPATH - undef
+	MACRO_CPATH - undef
 	HACKDIR - define as "NetHack:"
-
-    For SAS/C 6.x, in config.h, make sure that '#define NEARDATA' is used
-    and not '#define NEARDATA __near'.  The v5 compiler recognizes a
-    different syntax than the v6 compiler for this construct. You will
-    need to build without __near for now to get around this problem.
 
     At this point, you're almost ready to begin a compile.  Read VERY
     CAREFULLY through the Makefile to familiarize yourself with which
@@ -264,9 +283,6 @@ IV.B.1. Introduction to Compiling NetHack
     make install should be done in NetHack:; for both runs, the makefile
     is Amiga:Makefile.ami.
 
-    For SAS/C 6.x: in Makefile.ami, comment out the SAS5 macros and
-    uncomment the SAS6 macros.
-
     Note that not all the source is simple C code.  If you are modifying
     lev_comp or dgn_comp you may need bison and/or flex (depending on what
     modifications you are making).  If you wish to modify the Intuition
@@ -282,15 +298,11 @@ IV.B.1. Introduction to Compiling NetHack
     fails due to prototype errors for malloc and realloc, try deleting
     the first line of lev_comp.c and dgn_comp.c.
 
-IV.B.2. Compiling NetHack with SAS/C version 5
+IV.B.2. Compiling NetHack with SAS/C version 6.2
 
-    NOTE WELL - Amiga NetHack will be dropping support for SAS/C version 5
-    and moving to SAS/C version 6 almost immediately.  Upgrade now!  You
-    have been warned.
-
-    This version of NetHack was developed with SAS/C 5.10b and SAS/C 6.1.
-    Earlier versions of the compiler are known to cause problems - don't
-    use them.
+    NOTE WELL - Amiga NetHack has dropped support for SAS/C version 5.
+    This version of NetHack was developed with SAS/C 6.2.  Earlier versions
+    of the compiler are known to cause problems - don't use them.
 
     A couple of notes and warnings from the SAS/C users on the team:
 
@@ -300,29 +312,18 @@ IV.B.2. Compiling NetHack with SAS/C version 5
 	  image, but it does not increase the run time memory requirements.
           (But note that this is not useful for split binaries - see below.)
 
-	* The 5.10b optimizer does not produce correct code for NetHack.
+	* The 5.10b optimizer did not produce correct code for NetHack.  The
+	  current optimizer has not been tested.
 
 	* There are a large number of warnings under SAS/C, which are
 	  harmless.
 
-	* Some versions of flex produce #line statements with the file name
-	  in quotes: version 5.10b doesn't like this.  For some reason lc tries
-	  to access this file, which results in a bogus requestor for "Util:
-	  (yes, there is one quote mark in front of Util:) - select cancel
-	  and ignore the problem or add -L to the FLEX definition in
-	  Makefile.ami.  SAS says that this will be fixed in 6.0.
-
-IV.B.3. Compiling NetHack with SAS/C version 6
-    Very simliar to compiling under version 5 except all the command lines
-    are different - see the Makefile.  Also, see the note above about
-    NEARDATA.
-
-IV.B.4. Compiling NetHack with Manx/Aztec version 5
+IV.B.3. Compiling NetHack with Manx/Aztec version 5
     The Manx port has not been tested recently and is probably broken.  We
     expect to have it back in shape soon but we welcome context diffs.  As
     of the last check, NetHack required version 5.0B of the compiler.  
 
-IV.B.5	Compiling NetHack with the registered version of DICE
+IV.B.4	Compiling NetHack with the registered version of DICE
     The DICE port was complete at one point but has not been tested in
     several months - it probably will not work as is.  We welcome context
     diffs (or volunteers) to fix it.
@@ -347,4 +348,3 @@ IV.C.1 Splitter
     decision is based on the presence (or absence) of HackExe:NetHack.dir.
     Note that the contents of NetHack.dir after a build will generally not
     be the correct contents for a floppy based system.
-   

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)weapon.c	3.1	93/01/15	*/
+/*	SCCS Id: @(#)weapon.c	3.1	93/02/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,7 +11,7 @@
 
 #ifdef OVLB
 
-static const char NEARDATA kebabable[] = { S_XORN, S_DRAGON, S_NAGA, S_GIANT, 0 };
+static NEARDATA const char kebabable[] = { S_XORN, S_DRAGON, S_NAGA, S_GIANT, 0 };
 
 /*
  *	hitval returns an integer representing the "to hit" bonuses
@@ -168,13 +168,17 @@ int x;
 	struct obj *otmp;
 
 	for(otmp=mtmp->minvent; otmp; otmp = otmp->nobj) {
-		if (otmp->otyp == x && touch_artifact(otmp,mtmp))
+		if (otmp->otyp == x && touch_artifact(otmp,mtmp)
+#ifdef MUSE
+			 && !(x == CORPSE && otmp->corpsenm != PM_COCKATRICE)
+#endif
+									)
 			return otmp;
 	}
 	return (struct obj *)0;
 }
 
-static const int NEARDATA rwep[] =
+static NEARDATA const int rwep[] =
 	{ DWARVISH_SPEAR, ELVEN_SPEAR, SPEAR, ORCISH_SPEAR, JAVELIN,
 	  SHURIKEN, SILVER_ARROW, ELVEN_ARROW, ARROW, ORCISH_ARROW,
 	  CROSSBOW_BOLT, ELVEN_DAGGER, DAGGER, ORCISH_DAGGER, KNIFE, ROCK,
@@ -269,7 +273,10 @@ register struct monst *mtmp;
 }
 
 /* 0 = used by any monster; 1 = only used by strong monsters */
-static const struct hwep { short otyp, big; } NEARDATA hwep[] = {
+static NEARDATA const struct hwep { short otyp, big; } hwep[] = {
+#ifdef MUSE
+	  {CORPSE,0},  /* cockatrice corpse */
+#endif
 	  {TSURUGI,1}, {RUNESWORD,0},
 	  {DWARVISH_MATTOCK,1}, {TWO_HANDED_SWORD,1}, {BATTLE_AXE,1},
 	  {KATANA,0}, {UNICORN_HORN,1}, {CRYSKNIFE,0},
@@ -306,7 +313,8 @@ register struct monst *mtmp;
 	for (i = 0, hw = hwep; i < SIZE(hwep); i++, hw++)
 	    if ((strong || !hw->big) &&
 #ifdef MUSE
-	      (!objects[hw->otyp].oc_bimanual || !which_armor(mtmp, W_ARMS)) &&
+	      (!objects[hw->otyp].oc_bimanual ||
+					(mtmp->misc_worn_check & W_ARMS)) &&
 #endif
 	(objects[hw->otyp].oc_material != SILVER || !hates_silver(mtmp->data)))
 		Oselect(hw->otyp);
@@ -366,6 +374,8 @@ register struct monst *mon;
 	 * be handled by waiting until mon_wield_item is actually called.
 	 * Though the monster still wields the wrong weapon until then,
 	 * this is OK since the player can't see it.
+	 * Note that if there is no change, setting the check to NEED_WEAPON
+	 * is harmless.
 	 * Possible problem: big monster with big cursed weapon gets
 	 * polymorphed into little monster.  But it's not quite clear how to
 	 * handle this anyway....
@@ -412,31 +422,24 @@ register struct monst *mon;
 		 * can know it's cursed and needn't even bother trying.
 		 * Still....
 		 */
-		if (mw_tmp && mw_tmp->cursed) {
-		    if (obj->otyp == PICK_AXE) {
-			if (canseemon(mon)) {
+		if (mw_tmp && mw_tmp->cursed && mw_tmp->otyp != CORPSE) {
+		    if (canseemon(mon)) {
+			if (obj->otyp == PICK_AXE) {
 			    pline("Since %s weapon %s welded to %s hand,",
-				s_suffix(mon_nam(mon)),
-				(mw_tmp->quan == 1L) ? "is" : "are",
-				humanoid(mon->data)
-					? (mon->female ? "her" : "his")
-					: "its");
+				  s_suffix(mon_nam(mon)),
+				  (mw_tmp->quan == 1L) ? "is" : "are",
+				  his[pronoun_gender(mon)]);
 			    pline("%s cannot wield that %s.",
 				mon_nam(mon), xname(obj));
-			    mw_tmp->bknown = 1;
-			}
-		    } else {
-			if (canseemon(mon)) {
+			} else {
 			    pline("%s tries to wield %s.", Monnam(mon),
 				doname(obj));
 			    pline("%s %s %s welded to %s hand!",
-				s_suffix(Monnam(mon)), xname(mw_tmp),
-				(mw_tmp->quan == 1L) ? "is" : "are",
-				humanoid(mon->data)
-					? (mon->female ? "her" : "his")
-					: "its");
-			    mw_tmp->bknown = 1;
+				  s_suffix(Monnam(mon)), xname(mw_tmp),
+				  (mw_tmp->quan == 1L) ? "is" : "are",
+				  his[pronoun_gender(mon)]);
 			}
+			mw_tmp->bknown = 1;
 		    }
 		    mon->weapon_check = NO_WEAPON_WANTED;
 		    return 1;
@@ -445,7 +448,7 @@ register struct monst *mon;
 		mon->weapon_check = NEED_WEAPON;
 		if (canseemon(mon)) {
 			pline("%s wields %s!", Monnam(mon), doname(obj));
-			if (obj->cursed) {
+			if (obj->cursed && obj->otyp != CORPSE) {
 				pline("%s %s to %s hand!",
 					The(xname(obj)),
 					(obj->quan == 1L) ? "welds itself"

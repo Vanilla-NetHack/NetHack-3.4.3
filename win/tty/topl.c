@@ -331,6 +331,7 @@ char def;
     clean_up:
 	ttyDisplay->inread--;
 	ttyDisplay->toplin = 2;
+	if (ttyDisplay->intr) ttyDisplay->intr--;
 	if(wins[WIN_MESSAGE]->cury)
 	    tty_clear_nhwindow(WIN_MESSAGE);
 

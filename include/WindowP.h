@@ -6,8 +6,20 @@
 #define _WindowP_h
 
 #include "Window.h"
+
+#ifndef SYSV
+#define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
+#endif
+
 /* include superclass private header file */
 #include <X11/CoreP.h>
+
+#ifdef PRESERVE_NO_SYSV
+# ifdef SYSV
+#  undef SYSV
+# endif
+# undef PRESERVE_NO_SYSV
+#endif
 
 /* define unique representation types not found in <X11/StringDefs.h> */
 

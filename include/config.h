@@ -9,7 +9,7 @@
 /*
  * Section 1:	OS selection.
  *		Select the version of the OS you are using.
- *		For "UNIX" select either SYSV or BSD in unixconf.h.
+ *		For "UNIX" select BSD, ULTRIX, SYSV, or HPUX in unixconf.h.
  *		A "VMS" option is not needed since the VMS C-compilers
  *		provide it (no need to change sec#1, vmsconf.h handles it).
  */
@@ -57,14 +57,15 @@
 # ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
 #  ifndef AMIGA
 #define AMIGA		/* define for Commodore-Amiga */
-#  endif		/* (Lattice auto-defines AMIGA) */
+#  endif		/* (SAS/C auto-defines AMIGA) */
 #define AZTEC_50	/* define for version 5.0 of manx */
 # endif
 #endif
-#ifdef LATTICE
+#ifdef __SASC_60
 # define NEARDATA __near /* put some data close */
 # define NO_SCAN_BRACK	/* scanf doesn't handle [] (this define available
 			 * for any system with this problem) */
+			/* is this still true as of 6.2? (keni) */
 #else
 # define NEARDATA
 #endif
@@ -86,6 +87,16 @@
 #  undef UNIX
 #  define TOS
 # endif
+#endif
+
+/*
+ * Windows NT Autodetection
+ */
+
+#ifdef WIN32CON
+# undef UNIX
+# undef MSDOS
+# define WIN32              /* need for ALL NT environs */
 #endif
 
 /*
@@ -201,6 +212,7 @@
 /* no options yet: Amiga also means Intuition windows */
 #ifdef AMIGA
 # undef TTY_GRAPHICS
+# define AMII_GRAPHICS
 # define DEFAULT_WINDOW_SYS "amii"
 #endif
 
@@ -237,10 +249,19 @@
  *	additional code and time.  Currently, only UNIX fully implements
  *	COMPRESS; other ports should be able to uncompress save files a
  *	la unixmain.c if so inclined.
+ *	If you define COMPRESS, you must also define COMPRESS_EXTENSION
+ *	as the extension your compressor appends to filenames after
+ *	compression.
  */
 
 #ifdef UNIX
-# define COMPRESS "/usr/ucb/compress"  /* path name for 'compress' */
+/* path and file name extension for compression program */
+# define COMPRESS "/usr/ucb/compress"	     /* Lempel-Ziv compression */
+# define COMPRESS_EXTENSION ".Z"	     /* compress's extension */
+
+/* An example of one alternative you might want to use: */
+/* # define COMPRESS "/usr/local/bin/gzip"   /* FSF gzip compression */
+/* # define COMPRESS_EXTENSION ".z"	     /* normal gzip extension */
 #endif
 #ifndef COMPRESS
 # define INTERNAL_COMP	/* control use of NetHack's compression routines */

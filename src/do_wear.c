@@ -6,7 +6,7 @@
 
 #ifdef OVLB
 
-static int NEARDATA todelay;
+static NEARDATA int todelay;
 
 #endif /*OVLB */
 
@@ -16,9 +16,9 @@ STATIC_DCL long takeoff_mask, taking_off;
 
 #else /* OVLB */
 
-STATIC_OVL long NEARDATA takeoff_mask = 0L, NEARDATA taking_off = 0L;
+STATIC_OVL NEARDATA long takeoff_mask = 0L, taking_off = 0L;
 
-static const long NEARDATA takeoff_order[] = { WORN_BLINDF, 1L, /* weapon */
+static NEARDATA const long takeoff_order[] = { WORN_BLINDF, 1L, /* weapon */
 	WORN_SHIELD, WORN_GLOVES, LEFT_RING, RIGHT_RING, WORN_CLOAK,
 	WORN_HELMET, WORN_AMUL, WORN_ARMOR,
 #ifdef TOURIST
@@ -220,7 +220,7 @@ Cloak_on() {
 		}
 		break;
 	case OILSKIN_CLOAK:
-		pline("The %s fits very tightly.",xname(uarmc));
+		pline("%s fits very tightly.",The(xname(uarmc)));
 		break;
 	default: impossible("Unknown type of cloak (%d)", uarmc->otyp);
     }
@@ -774,8 +774,8 @@ cancel_don()
 	multi = 0;
 }
 
-static const char NEARDATA clothes[] = {ARMOR_CLASS, 0};
-static const char NEARDATA accessories[] = {RING_CLASS, AMULET_CLASS, TOOL_CLASS, 0};
+static NEARDATA const char clothes[] = {ARMOR_CLASS, 0};
+static NEARDATA const char accessories[] = {RING_CLASS, AMULET_CLASS, TOOL_CLASS, 0};
 
 int
 dotakeoff()
@@ -1120,7 +1120,8 @@ dowear()
 }
 
 int
-doputon() {
+doputon()
+{
 	register struct obj *otmp;
 	long mask = 0L;
 

@@ -322,7 +322,7 @@ arrow:
  *  It would certainly look nicer if this could be done using a
  *  PA_SOFTINT message port, but we cannot call RawKeyConvert()
  *  during a software interrupt.
- *  Anyway, kbhit() is called often enough, and usually gets
+ *  Anyway, amikbhit()/kbhit() is called often enough, and usually gets
  *  ahead of input demands, when the user types ahead.
  */
 
@@ -388,7 +388,18 @@ register struct IntuiMessage *message;
  *  between characters and incoming messages.
  */
 
-int kbhit()
+int
+kbhit()
+{
+    int c;
+    c = amikbhit();
+    if( c <= 0 )
+    	return( 0 );
+    return( c );
+}
+
+int
+amikbhit()
 {
     register struct IntuiMessage *message;
     while( KbdBuffered < KBDBUFFER / 2 )
@@ -417,7 +428,7 @@ int kbhit()
 
 int WindowGetchar( )
 {
-    while ((lastevent.type = WEUNK), kbhit() <= 0) {
+    while ((lastevent.type = WEUNK), amikbhit() <= 0) {
 	WaitPort(HackPort);
     }
     return BufferGetchar();
@@ -426,7 +437,7 @@ int WindowGetchar( )
 WETYPE WindowGetevent()
 {
     lastevent.type = WEUNK;
-    while (kbhit() == 0)
+    while (amikbhit() == 0)
     {
 	WaitPort(HackPort);
     }
@@ -456,6 +467,11 @@ void CleanUp()
     ((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
     if (ConsoleIO.io_Device)
 	CloseDevice( (struct IORequest *)&ConsoleIO );
+    ConsoleIO.io_Device = 0;
+
+    if( ConsoleIO.io_Message.mn_ReplyPort )
+	DeletePort( ConsoleIO.io_Message.mn_ReplyPort );
+    ConsoleIO.io_Message.mn_ReplyPort = 0;
 
     if (HackPort) {
 	Forbid();
@@ -478,7 +494,7 @@ void CleanUp()
 		    sizeof( struct EasyStruct ),
 		    0,
 		    "Nethack Problem",
-		    "Can't Close Screen, Close Remaining Windows",
+		    "Can't Close Screen, Close Visiting Windows",
 		    "Okay",
 		};
 		EasyRequest( NULL, &easy, NULL, NULL );

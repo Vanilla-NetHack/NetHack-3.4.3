@@ -19,7 +19,7 @@ extern struct window_procs mac_procs ;
 extern struct window_procs amii_procs ;
 #endif
 
-struct window_procs NEARDATA windowprocs;
+NEARDATA struct window_procs windowprocs;
 
 static
 struct win_choices {
@@ -41,6 +41,14 @@ struct win_choices {
     { 0, 0 }		/* must be last */
 };
 
+static
+void
+def_raw_print(s)
+const char *s;
+{
+    puts(s);
+}
+
 void
 choose_windows(s)
 const char *s;
@@ -54,9 +62,15 @@ const char *s;
 	    return;
 	}
 
+    if (!windowprocs.win_raw_print)
+	windowprocs.win_raw_print = def_raw_print;
+
     raw_printf("Window type %s not recognized.  Choices are:", s);
     for(i=0; winchoices[i].procs; i++)
 	raw_printf("        %s", winchoices[i].procs->name);
+
+    if (windowprocs.win_raw_print == def_raw_print)
+	terminate(0);
 }
 
 /*windows.c*/

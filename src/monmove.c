@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monmove.c	3.1	92/12/06	*/
+/*	SCCS Id: @(#)monmove.c	3.1	93/02/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,13 +10,10 @@
 
 static int FDECL(disturb,(struct monst *));
 static void FDECL(distfleeck,(struct monst *,int *,int *,int *));
+STATIC_DCL boolean FDECL(mdig_tunnel,(struct monst *));
+static void FDECL(watch_on_duty,(struct monst *));
 
 #endif /* OVL0 */
-#ifdef OVL1
-
-STATIC_OVL boolean FDECL(mdig_tunnel,(struct monst *));
-
-#endif /* OVL1 */
 #ifdef OVLB
 
 boolean /* TRUE : mtmp died */
@@ -33,13 +30,47 @@ register struct monst *mtmp;
 	mtmp->mhp -= rnd(15);
 	if(mtmp->mhp <= 0) {
 		mondied(mtmp);
-		return(TRUE);
+#ifdef MUSE
+		if (mtmp->mhp > 0) /* lifesaved */
+			return(FALSE);
+		else
+#endif
+			return(TRUE);
 	}
 	return(FALSE);
 }
 
 #endif /* OVLB */
-#ifdef OVL1
+#ifdef OVL0
+
+static void
+watch_on_duty(mtmp)
+register struct monst *mtmp;
+{
+	register s_level *slev = Is_special(&u.uz);
+	int	x, y;
+
+	if(slev && slev->flags.town && mtmp->mpeaceful &&
+	   m_canseeu(mtmp) && !rn2(3)) {
+
+	    if(picking_lock(&x, &y) && IS_DOOR(levl[x][y].typ) &&
+	       (levl[x][y].doormask & D_LOCKED)) {
+
+		if(couldsee(mtmp->mx, mtmp->my)) {
+
+		  pline("%s yells:", Amonnam(mtmp));
+		  if(levl[x][y].looted & D_WARNED) {
+			verbalize("Halt, thief!  You're under arrest!");
+			angry_guards(!(flags.soundok));
+		  } else {
+			verbalize("Hey, stop picking that lock!");
+			levl[x][y].looted |=  D_WARNED;
+		  }
+		  stop_occupation();
+		}
+	    }
+	}
+}
 
 /* Return TRUE if monster died, FALSE otherwise. */
 STATIC_OVL boolean
@@ -65,7 +96,7 @@ register struct monst *mtmp;
 		}
 	    } else {
 		if(!rn2(3) && flags.verbose)	/* not too often.. */
-		    You("feel an unexpected draft of air.");
+		    You("feel an unexpected draft.");
 		here->doormask = D_BROKEN;
 	    }
 	    newsym(mtmp->mx,mtmp->my);
@@ -84,7 +115,7 @@ register struct monst *mtmp;
 
 	if(IS_WALL(here->typ)) {
 	    if(flags.soundok && flags.verbose && !rn2(5))
-		You("hear the sound of crashing rock.");
+		You("hear crashing rock.");
 	    if (*in_rooms(mtmp->mx, mtmp->my, SHOPBASE))
 	    	add_damage(mtmp->mx, mtmp->my, 0L);
 	    if (level.flags.is_maze_lev) {
@@ -107,6 +138,9 @@ register struct monst *mtmp;
 	    unblock_point(mtmp->mx,mtmp->my);	/* vision */
 	return FALSE ;
 }
+
+#endif /* OVL0 */
+#ifdef OVL1
 
 int
 dochugw(mtmp)
@@ -302,22 +336,24 @@ register struct monst *mtmp;
 	wipe_engr_at(mtmp->mx, mtmp->my, 1);
 
 	/* confused monsters get unconfused with small probability */
-	if(mtmp->mconf && !rn2(50)) mtmp->mconf = 0;
+	if (mtmp->mconf && !rn2(50)) mtmp->mconf = 0;
 
 	/* stunned monsters get un-stunned with larger probability */
-	if(mtmp->mstun && !rn2(10)) mtmp->mstun = 0;
+	if (mtmp->mstun && !rn2(10)) mtmp->mstun = 0;
 
 	/* some monsters teleport */
-	if(mtmp->mflee && !rn2(40) && can_teleport(mdat) && !mtmp->iswiz) {
+	if (mtmp->mflee && !rn2(40) && can_teleport(mdat) && !mtmp->iswiz) {
 		rloc(mtmp);
 		return(0);
 	}
-	if(mdat->msound == MS_SHRIEK && !um_dist(mtmp->mx, mtmp->my, 1))
+	if (mdat->msound == MS_SHRIEK && !um_dist(mtmp->mx, mtmp->my, 1))
 	    m_respond(mtmp);
-	if(mdat->mmove < rnd(6)) return(0);
+	if (mdat == &mons[PM_MEDUSA] && cansee(mtmp->mx, mtmp->my))
+	    m_respond(mtmp);
+	if (mdat->mmove < rnd(6)) return(0);
 
 	/* fleeing monsters might regain courage */
-	if(mtmp->mflee && !mtmp->mfleetim
+	if (mtmp->mflee && !mtmp->mfleetim
 	   && mtmp->mhp == mtmp->mhpmax && !rn2(25)) mtmp->mflee = 0;
 
 	set_apparxy(mtmp);
@@ -347,7 +383,7 @@ register struct monst *mtmp;
 	if(nearby && mdat->msound == MS_BRIBE &&
 	   mtmp->mpeaceful && !mtmp->mtame) {
 		if (mtmp->mux != u.ux || mtmp->muy != u.uy) {
-			pline("%s whispers something to thin air.",
+			pline("%s whispers at thin air.",
 			    cansee(mtmp->mux, mtmp->muy) ? Monnam(mtmp) : "It");
 #ifdef POLYSELF
 			if (is_demon(uasmon)) rloc(mtmp);
@@ -356,7 +392,7 @@ register struct monst *mtmp;
 #endif
 			    mtmp->minvis = 0;
 			    /* Why?  For the same reason in real demon talk */
-			    pline("%s gets angry.", Amonnam(mtmp));
+			    pline("%s gets angry!", Amonnam(mtmp));
 			    mtmp->mpeaceful = 0;
 			    /* since no way is an image going to pay it off */
 #ifdef POLYSELF
@@ -365,7 +401,11 @@ register struct monst *mtmp;
 		} else if(demon_talk(mtmp)) return(1);	/* you paid it off */
 	}
 
-	if (mdat == &mons[PM_MIND_FLAYER] && !rn2(20)) {
+	/* the watch will look around and see if you are up to no good :-) */
+	if (mdat == &mons[PM_WATCHMAN] || mdat == &mons[PM_WATCH_CAPTAIN]) 
+		watch_on_duty(mtmp);
+
+	else if (mdat == &mons[PM_MIND_FLAYER] && !rn2(20)) {
 		struct monst *m2, *nmon = (struct monst *)0;
 
 		if (canseemon(mtmp))
@@ -374,16 +414,16 @@ register struct monst *mtmp;
 			You("sense a faint wave of psychic energy.");
 			goto toofar;
 		}
-		You("sense a wave of psychic energy pouring over you!");
+		pline("A wave of psychic energy pours over you!");
 		if (mtmp->mpeaceful &&
 		    (!Conflict || resist(mtmp, RING_CLASS, 0, 0)))
-			pline("It seems quite soothing.");
+			pline("It feels quite soothing.");
 		else {
 			register boolean m_sen = sensemon(mtmp);
 
 			if (m_sen || (Telepat && rn2(2)) || !rn2(10)) {
 				int dmg;
-				pline("It locks in on your %s!",
+				pline("It locks on to your %s!",
 					m_sen ? "telepathy" :
 					Telepat ? "latent telepathy" : "mind");
 				dmg = rnd(15);
@@ -399,7 +439,7 @@ register struct monst *mtmp;
 			if ((telepathic(m2->data) &&
 			    (rn2(2) || m2->mblinded)) || !rn2(10)) {
 				if (cansee(m2->mx, m2->my))
-				    pline("It locks in on %s.", mon_nam(m2));
+				    pline("It locks on to %s.", mon_nam(m2));
 				m2->mhp -= rnd(15);
 				if (m2->mhp <= 0)
 				    monkilled(m2, "", AD_DRIN);
@@ -484,11 +524,11 @@ toofar:
 	return(tmp == 2);
 }
 
-static const char NEARDATA practical[] = { WEAPON_CLASS, ARMOR_CLASS, GEM_CLASS, FOOD_CLASS, 0 };
-static const char NEARDATA magical[] = {
+static NEARDATA const char practical[] = { WEAPON_CLASS, ARMOR_CLASS, GEM_CLASS, FOOD_CLASS, 0 };
+static NEARDATA const char magical[] = {
 	AMULET_CLASS, POTION_CLASS, SCROLL_CLASS, WAND_CLASS, RING_CLASS,
 	SPBOOK_CLASS, 0 };
-static const char NEARDATA indigestion[] = { BALL_CLASS, ROCK_CLASS, 0 };
+static NEARDATA const char indigestion[] = { BALL_CLASS, ROCK_CLASS, 0 };
 
 #ifdef POLYSELF
 boolean
@@ -710,9 +750,15 @@ not_special:
 	    for(otmp = fobj; otmp; otmp = otmp->nobj) {
 		xx = otmp->ox;
 		yy = otmp->oy;
+		/* Nymphs take everything.  Most other creatures should not
+		 * pick up corpses except as a special case like in
+		 * searches_for_item().  We need to do this check in
+		 * mpickstuff() as well.
+		 */
 		if(xx >= lmx && xx <= oomx && yy >= lmy && yy <= oomy) {
 		    if(((likegold && otmp->otyp == GOLD_PIECE) ||
-		       (likeobjs && index(practical, otmp->oclass)) ||
+		       (likeobjs && index(practical, otmp->oclass) &&
+			(otmp->otyp != CORPSE || ptr->mlet == S_NYMPH)) ||
 		       (likemagic && index(magical, otmp->oclass)) ||
 #ifdef MUSE
 		       (uses_items && searches_for_item(mtmp, otmp)) ||
@@ -918,9 +964,9 @@ postmov:
 		    } else {
 			if (flags.verbose) {
 			    if (canseeit)
-			      You("see a door being unlocked and opened.");
+			       You("see a door unlock and open.");
 			    else if (flags.soundok)
-			       You("hear a door being unlocked and opened.");
+			       You("hear a door unlock and open.");
 		        }
 		        here->doormask = D_ISOPEN;
 			/* newsym(mtmp->mx, mtmp->my); */
@@ -935,9 +981,9 @@ postmov:
 		    } else {
 		        if (flags.verbose) {
 			    if (canseeit)
-			         You("see a door being opened.");
+			         You("see a door open.");
 			    else if (flags.soundok)
-			         You("hear the sound of a door opening.");
+			         You("hear a door open.");
 		        }
 		        here->doormask = D_ISOPEN;
 			/* newsym(mtmp->mx, mtmp->my); */  /* done below */
@@ -955,7 +1001,7 @@ postmov:
 			    if (canseeit)
 			        You("see a door crash open.");
 			    else if (flags.soundok)
-			        You("hear the sound of a door crashing open.");
+			        You("hear a door crash open.");
 		        }
 		        if (here->doormask & D_LOCKED && !rn2(2))
 			        here->doormask = D_NODOOR;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.1	92/09/01		  */
+/*	SCCS Id: @(#)rm.h	3.1	93/02/21		  */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -224,6 +224,13 @@ extern uchar showsyms[MAXPCHARS];
 #define F_WARNED	2
 
 /*
+ * Doors are even worse :-) The special warning has a side effect
+ * of instantly trapping the door, and if it was defined as trapped,
+ * the guards consider that you have already been warned!
+ */
+#define D_WARNED	16
+
+/*
  * Sinks have 3 different types of loot that shouldn't be abused
  */
 #define S_LPUDDING	1
@@ -254,6 +261,7 @@ extern uchar showsyms[MAXPCHARS];
 #define W_DIGGABLE	0
 #define W_NONDIGGABLE	1
 #define W_REPAIRED	2
+#define W_NONPASSWALL	4
 
 /*
  * Ladders (in Vlad's tower) may be up or down.
@@ -321,6 +329,7 @@ struct levelflags {
 	Bitfield(nommap,1);
 	Bitfield(hero_memory,1);	/* hero has memory */
 	Bitfield(shortsighted,1);	/* monsters are shortsighted */
+	Bitfield(graveyard,1);		/* has_morgue, but remains set */
 	Bitfield(is_maze_lev,1);
 	Bitfield(is_cavernous_lev,1);
 };

@@ -17,25 +17,25 @@
  *  or greater.
  */
 
-#if !defined (__GO32__) && !defined(__BORLANDC__) && !defined(AMIGA)
-#define OVERLAY         /* MS DOS overlay manager - PGM */
+# if !defined (__GO32__) && !defined(__BORLANDC__) && !defined(AMIGA)
+#  define OVERLAY         /* MS DOS overlay manager - PGM */
 /* #define MOVERLAY /* Microsoft's MOVE overlay system (MSC >= 7.0) */
-#endif
+# endif
 
 
-#ifndef __GO32__
-#define MFLOPPY         /* Support for floppy drives and ramdisks by dgk */
-#define SHELL           /* via exec of COMMAND.COM */
-#endif
+# ifndef __GO32__
+#  define MFLOPPY         /* Support for floppy drives and ramdisks by dgk */
+# endif
 
+# define SHELL           /* via exec of COMMAND.COM */
 # define TERMLIB        /* enable use of termcap file /etc/termcap */
 			/* or ./termcap for MSDOS (SAC) */
 			/* compile and link in Fred Fish's termcap library, */
 			/* enclosed in TERMCAP.ARC, to use this */
 
-#define ANSI_DEFAULT    /* allows NetHack to run without a ./termcap */
+# define ANSI_DEFAULT    /* allows NetHack to run without a ./termcap */
 
-#define RANDOM		/* have Berkeley random(3) */
+# define RANDOM		/* have Berkeley random(3) */
 
 #endif /* MSDOS configuration stuff */
 
@@ -43,14 +43,14 @@
 #define PATHLEN		64	/* maximum pathlength */
 #define FILENAME	80	/* maximum filename length (conservative) */
 #ifndef MICRO_H
-#include "micro.h"      /* contains necessary externs for [os_name].c */
+# include "micro.h"      /* contains necessary externs for [os_name].c */
 #endif
 
 #ifdef MFLOPPY
-#define FROMPERM        1      /* for ramdisk use */
-#define TOPERM          2      /* for ramdisk use */
-#define ACTIVE          1
-#define SWAPPED         2
+# define FROMPERM        1      /* for ramdisk use */
+# define TOPERM          2      /* for ramdisk use */
+# define ACTIVE          1
+# define SWAPPED         2
 
 struct finfo {
 	int	where;
@@ -58,7 +58,7 @@ struct finfo {
 	long	size;
 };
 extern struct finfo fileinfo[];
-#define ZFINFO  { 0, 0L, 0L }
+# define ZFINFO  { 0, 0L, 0L }
 
 #endif /* MFLOPPY */
 
@@ -67,24 +67,29 @@ extern struct finfo fileinfo[];
  */
 
 #ifndef SYSTEM_H
-#include "system.h"
+# include "system.h"
 #endif
-#define index	strchr
-#define rindex	strrchr
+
+#ifndef index
+# define index	strchr
+#endif
+#ifndef rindex
+# define rindex	strrchr
+#endif
 
 #ifndef AMIGA
-#include <time.h>
+# include <time.h>
 #endif
 
 #ifdef RANDOM
 /* Use the high quality random number routines. */
-#define Rand()	random()
+# define Rand()	random()
 #else
-#define Rand()	rand()
+# define Rand()	rand()
 #endif
 
 #ifndef TOS
-#define FCMASK	0660	/* file creation mask */
+# define FCMASK	0660	/* file creation mask */
 #endif
 
 #include <fcntl.h>
@@ -92,12 +97,16 @@ extern struct finfo fileinfo[];
 #define exit	msexit		/* do chdir first */
 
 #ifndef REDO
-#undef	Getchar
-#define Getchar nhgetch
+# undef	Getchar
+# define Getchar nhgetch
 #endif
 
 #ifdef MSDOS
-#  define TEXTCOLOR /* */
+# define TEXTCOLOR /* */
+#endif
+
+#ifdef MSC7_WARN	/* define with cl /DMSC7_WARN	*/
+#pragma warning(disable:4131)
 #endif
 
 #endif /* PCCONF_H */

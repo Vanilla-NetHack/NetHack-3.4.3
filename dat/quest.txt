@@ -107,13 +107,13 @@ taught you.
 %E
 %Cc A 00015
 %p!  I've heard that you've been using sloppy techniques.  Your
-results lately can hardly be called suitable for a %r!
+results lately can hardly be called suitable for %ra!
 
 How could you have strayed from the %a path?  Go from here, and come
 back only when you have purified yourself.
 %E
 %Cc A 00016
-Grave times have befallen the college, for a %n has
+Grave times have befallen the college, for %na has
 stolen %o.  Without it, the board of directors of
 the university will soon have no choice but to revoke our research grants.
 
@@ -136,7 +136,7 @@ To locate the entrance to %i, you must pass
 many traps.
 %E
 %Cp A 00022
-A %n may be vulnerable to attacks by magical cold.
+%nA may be vulnerable to attacks by magical cold.
 %E
 %Cp A 00023
 Call upon %d when you encounter the %n.
@@ -145,7 +145,7 @@ Call upon %d when you encounter the %n.
 You must destroy the %n.  It will pursue you otherwise.
 %E
 %Cp A 00025
-%o is a mighty talisman.  With it you
+%oC is a mighty talisman.  With it you
 can destroy the %n.
 %E
 %Cp A 00026
@@ -322,7 +322,7 @@ me and destroy all who once called you %s.  Now begone!
 %E
 %Cc B 00014
 %p, I fear that you are as yet too inexperienced to face
-%n.  Only a %R with the help of %d could ever hope to
+%n.  Only %Ra with the help of %d could ever hope to
 defeat him.
 %E
 %Cp B 00015
@@ -349,7 +349,7 @@ Then I sent forth a summons for you.
 
 If %n can bend %o to his will, he will become
 almost indestructible.  He will then be able to enslave the minds of
-men across the world.  You are the only hope.  The Gods smile upon you,
+men across the world.  You are the only hope.  The gods smile upon you,
 and with %d behind you, you alone can defeat %n.
 
 You must go to %i.  From there, you can track down
@@ -417,14 +417,14 @@ I have wasted too much time on you already.  Now, you shall die.
 You return yet again, %c!  Are you prepared for death now?
 %E
 %Cp B 00053
-I shall have %o back, you pitiful excuse for a %c.
+I shall have %o back, you pitiful excuse for %ca.
 And your life as well.
 %E
 %Cp B 00060
 My pets will dine on your carcass tonight!
 %E
 %Cp B 00061
-You are a sorry excuse for a %r.
+You are a sorry excuse for %ra.
 %E
 %Cp B 00062
 Run while you can, %c.  My next spell will be your last.
@@ -565,7 +565,7 @@ You no longer live in our eyes.
 Alas, %p, you are as yet too inexperienced to embark upon such
 a difficult quest as that I propose to give you.
 
-A %r could not possibly survive the rigors demanded to find
+%rA could not possibly survive the rigors demanded to find
 %i, never mind to confront the %n herself.
 
 Adventure some more, and you will learn the skills you will require.
@@ -615,7 +615,7 @@ Do not be distracted by the great treasures in the %n's lair.
 Concentrate on %o.
 %E
 %Cp C 00025
-%o is the only object that the %n truly fears.
+%oC is the only object that the %n truly fears.
 %E
 %Cp C 00026
 Do not be fooled by the %n's size.  She is fast, and it is
@@ -684,7 +684,7 @@ With %o, I am invincible!  You cannot succeed.
 Your mentor, the %l has failed.  You are nothing to fear.
 %E
 %Cp C 00065
-You shall die here, %c.  A %r cannot hope to defeat me.
+You shall die here, %c.  %rA cannot hope to defeat me.
 %E
 %Cp C 00066
 You, a mere %r challenge the might of the %n?  Hah!
@@ -789,7 +789,7 @@ Begone!  We renounce your %shood with us!  You are an outcast now!
 %E
 %Cc E 00014
 %p, you are yet too inexperienced to withstand the demands of that
-which we need you to do.  A %R might just be able to do this thing.
+which we need you to do.  %RA might just be able to do this thing.
 
 Return to us when you have learned more, my %S.
 %E
@@ -861,7 +861,7 @@ You can triumph, %p, if you trust in %d.
 You descend into the outer regions of %i.  You can hear
 scuffling sounds in the corridors, and vague mumblings in the distance.
 
-You remember that a %g once told you that there were many secret
+You remember that %ga once told you that there were many secret
 passageways in this complex.
 %E
 %Cp E 00031
@@ -911,10 +911,10 @@ I shall break your %l's circle, and destroy all the %gP!
 %d has abandoned you, %c.  You are doomed.
 %E
 %Cp E 00066
-A %r?  %l sends a mere %r against me?  Hah!
+%rA?  %l sends a mere %r against me?  Hah!
 %E
 %Cp E 00067
-%l has failed, %c.  %o will never leave here.
+%l has failed, %c.  %oC will never leave here.
 %E
 %Cp E 00068
 You really think you can defeat me, eh %c?  You are wrong!
@@ -972,8 +972,12 @@ What sorcery has brought you back to %H?  The smell
 of fresh funeral pyres tells you that something is amiss with the healing
 powers that used to practice here.
 
-No %gP are tending the materia medica gardens, and where are the
+No rhizotomists are tending the materia medica gardens, and where are the
 common folk who used to come for the cures?
+
+You know that you must quickly make your way to the collegium, and
+%l's iatreion, and find out what has happened in your
+absence.
 %E
 %Cp H 00002
 After your last experience you expected to be here, but you certainly
@@ -984,7 +988,7 @@ succeed.
 Again, you %x %H in the distance.
 
 The smell of death and disease permeates the air.  You do not have
-to be a %R to know that the %n is on the verge of victory.
+to be %Ra to know that the %n is on the verge of victory.
 %E
 %Cp H 00005
 Did you read that new treatise on the therapeutic use of leeches?
@@ -1036,7 +1040,7 @@ of such a task.  You must be able to draw on the knowledge of botany,
 vetenary, and alchemy before I can send you on this quest with good
 conscience.
 
-Return when you wear a %R's caduceus.
+Return when you wear %Ra's caduceus.
 %E
 %Cc H 00015
 You have learned much of the remedies that benefit, but you must also
@@ -1078,7 +1082,7 @@ If you have been true to %d, you can draw on the power of
 Bring with you antidotes for poisons.
 %E
 %Cp H 00024
-Remember this, %n can not use %o
+Remember this, %n cannot use %o
 to harm you, it has only healing powers.
 %E
 %Cp H 00025
@@ -1251,24 +1255,24 @@ Welcome again, %p.  We hope thou art ready now.
 Once again, thou standeth before us, %p.  Art thou ready now?
 %E
 %Cp K 00013
+Thou disgraceth this noble court with thine impure presence.  We have been
+lenient with thee, but no more.  Thy name shalt be spoken no more.  We
+hereby strip thee of thy title, thy lands, and thy standing as %ca.
+Begone from our sight!
+%E
+%Cp K 00014
 Verily, %p, thou hast done well.  That thou hast survived thus
 far is a credit to thy valor, but thou art yet unprepared for
-the demands required as Our Champion.  A %r, no matter how
+the demands required as Our Champion.  %rA, no matter how
 pure, could never hope to defeat the foul %n.
 
 Journey forth from this place, and hone thy skills.  Return to
 Our presence when thou hast attained the noble title of %R.
 %E
-%Cp K 00014
+%Cp K 00015
 Thou dishonoureth us, %p!  Thou hast strayed from the path of
 chivalry! Go from our presence and do penance.  Only when thou art again
 pure may thou return hence.
-%E
-%Cp K 00015
-Thou disgraceth this noble court with thine impure presence.  We have been
-lenient with thee, but no more.  Thy name shalt be spoken no more.  We
-hereby strip thee of thy title, thy lands, and thy standing as a %c.
-Begone from our sight!
 %E
 %Cc K 00016
 Ah, %p.  Thou art truly ready, as no %c before thee hath
@@ -1473,9 +1477,9 @@ Again, my %S, you stand before me.  Are you ready now to help us?
 Once more, %p, you stand within the sanctum.  Are you ready now?
 %E
 %Cc P 00013
-You are a heretic, %p!  How can you, a %r, deviate so from the
+You are a heretic, %p!  How can you, %ra, deviate so from the
 teachings of %d?  Begone from this temple.  You are no longer
-a %s to this order.  We will pray to %d for other assistance,
+%sa to this order.  We will pray to %d for other assistance,
 as you have failed us utterly.
 %E
 %Cc P 00014
@@ -1611,7 +1615,7 @@ With %o, nothing can stand in my way.
 %Cc P 00070
 As you pick up %o, you feel the essence of
 %d fill your soul.  You know now why %n stole it from
-%H, for with it, a %c of %d could
+%H, for with it, %ca of %d could
 easily defeat his plans.
 
 You sense a message from %d.  Though not verbal, you
@@ -1710,7 +1714,7 @@ of the %l's curse.
 %E
 %Cc R 00014
 In the time that you've been gone you've only been able to master the
-arts of a %r?  I've trained ten times again as many %Rp
+arts of %ra?  I've trained ten times again as many %Rp
 in that time.  Maybe I should send one of them, no?  Where would that
 leave you, %p?  Oh yeah, I remember, I was going to kill you!
 %E
@@ -1787,7 +1791,7 @@ to meet you.
 We meet again.  Please reconsider your actions.
 %E
 %Cp R 00052
-Surely, %p, you have learned that you can not trust any bargains
+Surely, %p, you have learned that you cannot trust any bargains
 that the %l has made.  I can show you how to continue on
 your quest without having to run into him again.
 %E
@@ -1830,7 +1834,7 @@ I can reunite you with the Twain.  Oh, the stories you can swap.
 %E
 %Cc R 00070
 As you pick up %o, the hairs on the back of your
-neck fall out.  At once you you realize why the %n was
+neck fall out.  At once you realize why the %n was
 willing to die to keep it out of the %l's hands.  Somehow
 you know that you must do likewise.
 %E
@@ -1927,26 +1931,26 @@ become a monk.  Your fief and family are forfeit.  Wakarimasu?
 %E
 %Cp S 00014
 %p-san, you have learned well and honored your family.
-I require the skills of a %R in order to defeat %n.
+I require the skills of %Ra in order to defeat %n.
 Go and seek out teachers.  Learn what they have learned.  When you
 are ready, return to me.
 %E
 %Cp S 00015
-%p-san, you are no better than eta!
+%p-san, you would do better to join the kyokaku.
 
 You have skills, but until you can call upon the bushido to know when and
 how to use them you are not samurai.  When you can think %A and
 act %A then return.
 %E
 %Cc S 00016
-Tomo %p-san, indeed you are ready.  I can now tell you what
+Domo %p-san, indeed you are ready.  I can now tell you what
 it is that I require of you.
 
 The daimyo, %n, has betrayed us.  He has stolen from us
 %o and taken it to his donjon deep within
 %i.
 
-If I can not show the emperor %o when he comes
+If I cannot show the emperor %o when he comes
 for the festival he will know that I have failed in my duty, and
 request that I commit seppuku.
 
@@ -2023,13 +2027,13 @@ will not be able to take %o back to
 %H.
 %E
 %Cp S 00060
-%l may not know eta when he sees one, but I do!
+Ahh, I finally meet the daimyo of the kyokaku!
 %E
 %Cp S 00061
 There is no honor for me in your death.
 %E
 %Cp S 00062
-You know that I can not resash my swords until they have killed.
+You know that I cannot resash my swords until they have killed.
 %E
 %Cp S 00063
 Your presence only compounds the dishonor of %l in not coming himself.
@@ -2209,7 +2213,7 @@ and you may be able to defeat him.
 You must hurry, %p!
 %E
 %Cp T 00027
-You are like a %S to me, %p.  Do not let me down.
+You are like %Sa to me, %p.  Do not let me down.
 %E
 %Cp T 00028
 If you are %a at all times you may succeed, %p.
@@ -2236,7 +2240,7 @@ You gain confidence, knowing that you may soon be united with
 So, %p, %l thinks that you can wrest
 %o from me!
 
-It only proves how desperate he has become that he sends a %r to
+It only proves how desperate he has become that he sends %ra to
 try and defeat me.  When this day is over, I will have you enslaved
 in the mines where you will rue the day that you ever entered
 %i.
@@ -2279,7 +2283,7 @@ Vengeance is mine at last, %p.
 I only wish that %l had a more worthy %r to send against me.
 %E
 %Cp T 00066
-With %o in my possession you can not
+With %o in my possession you cannot
 hope to defeat me.
 %E
 %Cp T 00067
@@ -2389,7 +2393,7 @@ you shall never succeed in this life, and Valhalla is denied to you.
 I see you and %n fighting, %p.  But you are not prepared and
 shall die at %n's hand if you proceed.  No.  This will not do.
 Go back out into the world, and grow more experienced at the ways of
-war.  Only when you have returned a %R will you be able to defeat
+war.  Only when you have returned %Ra will you be able to defeat
 %n.
 %E
 %Cc V 00015
@@ -2468,7 +2472,7 @@ from something that the %l said.  This is the lair of %n.
 Once again, you stand in sight of %n's lair.
 %E
 %Cc V 00050
-So!  The %l has finally sent a %c to challenge me!
+So!  The %l has finally sent %ca to challenge me!
 
 I thought that mastering %o would enable me to challenge %d,
 but it has shown me that first I must kill you!
@@ -2507,7 +2511,7 @@ No, %d cannot help you here.
 Some instrument of %d you are, %p.  You are a weakling!
 %E
 %Cp V 00067
-Never have I seen a %c so clumsy in battle.
+Never have I seen %ca so clumsy in battle.
 %E
 %Cp V 00068
 You die now, little %s.
@@ -2610,9 +2614,9 @@ the esoteric arts?  Get out of here!  I shall find another.
 %E
 %Cc W 00014
 Alas, %p, you have not yet shown your proficiency as a worthy
-spellcaster.  As a %r, you would surely be overcome in the challenge
+spellcaster.  As %ra, you would surely be overcome in the challenge
 ahead.  Go, now, expand your horizons, and return when you have attained
-renown as a %R.
+renown as %Ra.
 %E
 %Cc W 00015
 You amaze me, %p!  How many times did I tell you that Balance
@@ -2662,7 +2666,7 @@ The %n may be vulnerable to physical attacks.
 You must utterly destroy the %n.  He will pursue you otherwise.
 %E
 %Cp W 00025
-%o is a mighty artifact.  With it you can
+%oC is a mighty artifact.  With it you can
 destroy the %n.
 %E
 %Cp W 00026
@@ -2801,7 +2805,7 @@ It is written in the Book of %d:
     Under World, where he now lurks, and bides his time.
 
 Your god %d seeks to possess the Amulet, and with it
-to gain his deserved ascendance over the other gods.
+to gain deserved ascendance over the other gods.
 
 You, a newly trained %r, have been heralded
 from birth as the instrument of %d.  You are destined
@@ -2937,6 +2941,9 @@ Why search for the Amulet?  Thou wouldst but lose it, cretin.
  %L:	return("lawful");
  %x:	return((Blind) ? "sense" : "see");
  %%:	return(percent_sign);
+ a suffix:	return an(root);
+ A suffix:	return An(root);
+ C suffix:	return capitalized(root);
  p suffix:	return makeplural(root);
  P suffix:	return makeplural(capitalized(root));
 %E

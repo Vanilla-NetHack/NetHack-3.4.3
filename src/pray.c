@@ -524,7 +524,8 @@ pleased(g_align)
 	case 0:	break;
 	case 1:
 	    if (uwep && (welded(uwep) || uwep->oclass == WEAPON_CLASS ||
-			 uwep->otyp == PICK_AXE) && (!uwep->blessed)) {
+			 uwep->otyp == PICK_AXE || uwep->otyp == UNICORN_HORN)
+				&& (!uwep->blessed)) {
 		if (uwep->cursed) {
 		    uwep->cursed = FALSE;
 		    uwep->bknown = TRUE;
@@ -533,7 +534,7 @@ pleased(g_align)
 			     Hallucination ? hcolor() : amber);
 		    else You("feel the power of %s over your %s.",
 			u_gname(), xname(uwep));
-		} else if(uwep->otyp < BOW) {
+		} else if(uwep->otyp < BOW || uwep->otyp > CROSSBOW) {
 		    uwep->blessed = uwep->bknown = TRUE;
 		    if (!Blind)
 			Your("%s with %s aura.",
@@ -696,7 +697,7 @@ pleased(g_align)
 		    break;
 		}
 		/* enhance weapon regardless of alignment or artifact status */
-		if (obj && (obj->oclass == WEAPON_CLASS)) {
+		if (obj && obj->oclass == WEAPON_CLASS) {
 		    bless(obj);
 		    obj->oeroded = 0;
 		    obj->oerodeproof = TRUE;
@@ -788,7 +789,7 @@ gods_upset(g_align)
 	angrygods(g_align);
 }
 
-static const char NEARDATA sacrifice_types[] = { FOOD_CLASS, AMULET_CLASS, 0 };
+static NEARDATA const char sacrifice_types[] = { FOOD_CLASS, AMULET_CLASS, 0 };
 
 static void
 consume_offering(otmp)
@@ -866,7 +867,7 @@ dosacrifice()
 		    exercise(A_WIS, FALSE);
 		}
 
-	    if (altaralign != A_CHAOTIC) {
+	    if (altaralign != A_CHAOTIC && altaralign != A_NONE) {
 		/* curse the lawful/neutral altar */
 		pline("The altar is stained with %sn blood.",
 		      (pl_character[0]=='E') ? "elve" : "huma");
@@ -874,8 +875,8 @@ dosacrifice()
 		angry_priest();
 	    } else {
 		register struct monst *dmon;
-		/* Human sacrifice on a chaotic altar is equivalent */
-		/* to demon summoning */
+		/* Human sacrifice on a chaotic or unaligned altar */
+		/* is equivalent to demon summoning */
 		if(u.ualign.type != A_CHAOTIC) {
 		pline("The blood floods the altar, which vanishes in %s cloud!",
 			  an(Hallucination ? hcolor() : Black));
@@ -886,9 +887,9 @@ dosacrifice()
 		    pline("The blood covers the altar!");
 		    change_luck(2);
 		}
-		if ((dmon = makemon(&mons[dlord()], u.ux, u.uy)) != 0) {
+		if ((dmon = makemon(&mons[dlord(altaralign)], u.ux, u.uy))) {
 		    You("have summoned %s!", a_monnam(dmon));
-		    if (u.ualign.type == A_CHAOTIC)
+		    if (sgn(u.ualign.type) == sgn(dmon->data->maligntyp))
 			dmon->mpeaceful = TRUE;
 		    You("are terrified, and unable to move.");
 		    nomul(-3);
@@ -1279,7 +1280,7 @@ int
 doturn()
 {	/* Knights & Priest(esse)s only please */
 
-	register struct monst *mtmp;
+	register struct monst *mtmp, *mtmp2;
 	register int	xlev = 6;
 
 	if((pl_character[0] != 'P') &&
@@ -1319,7 +1320,8 @@ doturn()
 	}
 	pline("Calling upon %s, you chant an arcane formula.", u_gname());
 	exercise(A_WIS, TRUE);
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	for(mtmp = fmon; mtmp; mtmp = mtmp2) {
+	    mtmp2 = mtmp->nmon;
 	    if(cansee(mtmp->mx,mtmp->my)) {
 		if(!mtmp->mpeaceful && (is_undead(mtmp->data) ||
 		   (is_demon(mtmp->data) && (u.ulevel > (MAXULEV/2))))) {
@@ -1328,7 +1330,7 @@ doturn()
 			pline("Unfortunately, your voice falters.");
 			mtmp->mflee = mtmp->mfrozen = mtmp->msleep = FALSE;
 			mtmp->mcanmove = TRUE;
-		    } else if (! resist(mtmp, '\0', 0, TELL))
+		    } else if (! resist(mtmp, '\0', 0, TELL)) {
 			switch (mtmp->data->mlet) {
 			    /* this is intentional, lichs are tougher
 			       than zombies. */
@@ -1352,8 +1354,10 @@ doturn()
 			default:    mtmp->mflee = TRUE;
 			    break;
 			}
-		   }
+		    }
+		}
 	    }
+	}
 	nomul(-5);
 	return(1);
 }
