@@ -1,4 +1,4 @@
-.TH LEV_COMP 6 "5 JULY 1989"
+.TH LEV_COMP 6 "5 July 1989"
 .UC 4
 .SH NAME
 lev_comp \- NetHack special levels compiler
@@ -7,21 +7,22 @@ lev_comp \- NetHack special levels compiler
 [
 .I files
 ]
+.PP
+If no arguments are given, it reads standard input.
 .SH DESCRIPTION
 .PP
 .I Lev_comp
-is a special level compiler for NetHack version 3.0 and higher.
-It takes description files as arguments and produces level files that can be
-loaded by NetHack at runtime.
-If no arguments are given, it reads standard input.
+is a special level compiler for NetHack version 3.0 and higher.  It
+takes description files as arguments and produces level files that can
+be loaded by NetHack at runtime.
 .PP
-The purpose of this tool is to provide NetHack administrators and implementors
-with a convenient way for adding special levels to the game,
-or modifying existing ones,
-without having to recompile the entire world.
-At this time, the special levels code is not fully implemented,
-as the decision to load the special levels is hard-coded in the game.
-In a future release, it is expected to be a run-time decision.
+The purpose of this tool is to provide NetHack administrators and
+implementors with a convenient way for adding special levels to the
+game, or modifying existing ones, without having to recompile the
+entire world.  At this time, the special levels code is not fully
+implemented, as the decision to load the special levels is hard-coded
+in the game.  In a future release, it is expected to be a run-time
+decision.
 .SH GRAMMAR
 .PP
 .LP
@@ -183,29 +184,39 @@ Here is an example of a description file (a very simple one):
 MAZE : "fortress"
 GEOMETRY : center , center
 MAP
-}}}}}}}}}}}}}
-}}}|-----|}}}
-}}}|.....|}}}
-}|--.....--|}
-}|.........|}
-}|--.....--|}
-}}}|.....|}}}
-}}}|-----|}}}
-}}}}}}}}}}}}}
+}}}}}}}}}
+}}}|-|}}}
+}}|-.-|}}
+}|-...-|}
+}|.....|}
+}|-...-|}
+}}|-.-|}}
+}}}|-|}}}
+}}}}}}}}}
 ENDMAP
-MONSTER: '@',"wizard of yendor", (6,4)
+MONSTER: '@', "Wizard of Yendor", (4,4)
+OBJECT: '"', "Amulet of Yendor", (4,4)
+# a hell hound flanking the Wiz on a random side
+RANDOM_PLACES: (4,3), (4,5), (3,4), (5,4)
+MONSTER: 'd', "hell hound", place[0]
+# a chest on another random side
+OBJECT: '(', "chest", place[1]
 # a random dragon somewhere
 MONSTER: 'D', random, random
-# a random trap in the EAST part
-TRAP: random, (10,4)
+# a random trap in the EAST end
+TRAP: random, (6,4)
+# an electric eel below the SOUTH end
+MONSTER: ';', "electric eel", (4,8)
+# make the walls non-diggable
+NON_DIGGABLE: (0,0,8,8)
 .fi
 .PP
 This example will produce a file named "fortress" that can be integrated into
-one of the numerous mazes of the game...
+one of the numerous mazes of the game.
 
 .SH AUTHOR
 .PP
-Jean-christophe Collet.
+Jean-Christophe Collet.
 .SH BUGS
 .PP
 Probably infinite.

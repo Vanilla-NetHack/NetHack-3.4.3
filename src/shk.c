@@ -1302,7 +1302,6 @@ register int x, y;
 register char *dmgstr;
 {
 	register struct monst *mtmp;
-	register int ox, oy;
 	register int roomno = inroom(x, y);
 	register int damage = (ACURR(A_STR) > 18) ? 400 : 20 * ACURR(A_STR);
 
@@ -1327,11 +1326,8 @@ register char *dmgstr;
 		return;
 	}
 
-	ox = shopkeeper->mx;
-	oy = shopkeeper->my;
-
 	/* if he's not in his shop.. */
-	if(!in_shop(ox, oy)) return;
+	if(!in_shop(shopkeeper->mx ,shopkeeper->my)) return;
 
 	/* if a !shopkeeper shows up at the door, move him */
 	if(levl[x][y].mmask && (mtmp = m_at(x, y)) != shopkeeper) {
@@ -1376,15 +1372,8 @@ chase:
 		pline("Mollified, %s accepts your restitution.",
 			shkname(shopkeeper));
 
-		/* clear ox oy of another monster, if one got there somehow */
-		if(levl[ox][oy].mmask) mnearto(m_at(ox,oy),ox,oy,FALSE);
-
-		/* move shk back to his orig loc */
-		levl[shopkeeper->mx][shopkeeper->my].mmask = 0;
-		levl[ox][oy].mmask = 1;
-		shopkeeper->mx = ox;
-		shopkeeper->my = oy;
-		unpmon(shopkeeper);
+		/* move shk back to his home loc */
+		home_shk(shopkeeper);
 		NOTANGRY(shopkeeper) = 1;
 	}
 	else {

@@ -66,7 +66,7 @@ dowield()
 			makeplural(body_part(HAND)));
 	    You("turn to stone...");
 	    killer="cockatrice corpse";
-	    done("stoned");
+	    done(STONING);
 	} else if(uarms && bimanual(wep))
 	    You("cannot wield a two-handed %s and hold a shield.",
 		 is_sword(wep) ? "sword" : "weapon");

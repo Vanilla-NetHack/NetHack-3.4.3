@@ -120,8 +120,15 @@ E struct spell spl_book[];	/* sized in decl.c */
 E int in_doagain;
 #endif
 
-#ifdef MSDOSCOLOR
-E char *HI_RED, *HI_YELLOW, *HI_GREEN, *HI_BLUE, *HI_WHITE; /* termcap.c */
+#ifdef TEXTCOLOR
+#define RED		1
+#define GREEN		2
+#define YELLOW		3
+#define BLUE		4
+#define MAGENTA 	5
+#define CYAN		6
+#define WHITE		7
+E char *HI_COLOR[8];	/* termcap.c */
 #endif
 
 #ifndef OBJ_H

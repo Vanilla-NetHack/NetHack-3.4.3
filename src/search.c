@@ -201,8 +201,8 @@ void
 seemimic(mtmp)
 register struct monst *mtmp;
 {
-		mtmp->mimic = 0;
-		mtmp->mappearance = 0;
-		unpmon(mtmp);
-		pmon(mtmp);
+	mtmp->mimic = 0;
+	mtmp->mappearance = 0;
+	unpmon(mtmp);
+	pmon(mtmp);
 }

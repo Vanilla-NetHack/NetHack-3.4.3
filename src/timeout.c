@@ -78,12 +78,12 @@ timeout()
 		else switch(upp - u.uprops){
 		case STONED:
 			killer = "cockatrice";
-			done("stoned");
+			done(STONING);
 			break;
 		case SICK:
 			You("die from food poisoning.");
 			killer = u.usick_cause;
-			done("died");
+			done(POISONING);
 			break;
 		case FAST:
 			You("feel yourself slowing down.");
@@ -125,7 +125,7 @@ timeout()
 			break;
 		case STRANGLED:
 			killer = "strangulation";
-			done("died");
+			done(DIED);
 			break;
 		case FUMBLING:
 			/* call this only when a move took place.  */

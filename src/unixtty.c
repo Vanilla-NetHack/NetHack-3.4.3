@@ -37,6 +37,8 @@
 #define CBRKMASK	ICANON
 #define CBRKON		! /* reverse condition */
 #define OSPEED(x)	((x).c_cflag & CBAUD)
+#define inputflags	c_iflag
+#define STRIPHI		ISTRIP
 #define GTTY(x)		(ioctl(0, TCGETA, x))
 /* STTY now modified to run under Sys V R3.	- may have to be #ifdef'ed */
 #define STTY(x)		(ioctl(0, TCSETAW, x))	/* TCSETAF? TCSETAW? */
@@ -59,6 +61,8 @@
 #define cbrkflgs	sg_flags
 #define CBRKMASK	CBREAK
 #define CBRKON		/* empty */
+#define inputflags	sg_flags	/* don't know how enabling meta bits */
+#define STRIPHI		0		/* should actually be done on BSD */
 #define OSPEED(x)	(x).sg_ospeed
 #define GTTY(x)		(gtty(0, x))
 #define STTY(x)		(stty(0, x))
@@ -118,6 +122,7 @@ char *s;
 		perror("NetHack (settty)");
 	flags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
 	flags.cbreak = (CBRKON(inittyb.cbrkflgs & CBRKMASK)) ? ON : OFF;
+	curttyb.inputflags |= STRIPHI;
 	setioctls();
 }
 
@@ -148,6 +153,7 @@ register int change = 0;
 #endif
 		change++;
 	}
+	curttyb.inputflags &=~ STRIPHI;
 	/* If an interrupt character is used, it will be overriden and
 	 * set to ^C.
 	 */

@@ -24,3 +24,6 @@ spec_levs:
 	../src/lev_comp castle.des
 	../src/lev_comp endgame.des
 	../src/lev_comp tower.des
+
+spotless:
+	-rm -f Guidebook data rumors castle endgame tower1 tower2 tower3

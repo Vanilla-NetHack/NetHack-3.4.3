@@ -35,7 +35,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 {
 	int	dmg = 0, ml = mtmp->m_lev;
 
-	if(mtmp->mcan || mtmp->mspec_used) {  /* could not attack */
+	if(mtmp->mcan || mtmp->mspec_used || !ml) {  /* could not attack */
 	    cursetxt(mtmp);
 	    return(0);
 	} else {
@@ -105,7 +105,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 				You("have an out of body experience.");
 			    else  {
 				killer = "touch of death";
-				done("died");
+				done(DIED);
 			    }
 			} else {
 				if(Antimagic) shieldeff(u.ux, u.uy);
@@ -166,7 +166,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 5:		/* make invisible if not */
 		    case 4:
 			if(!mtmp->minvis) {
-			    if(canseemon(mtmp) && !See_invisible)
+			    if(canseemon(mtmp) && !See_invisible && !Telepat)
 				pline("%s suddenly disappears!",
 				      Monnam(mtmp));
 			    mtmp->minvis = 1;

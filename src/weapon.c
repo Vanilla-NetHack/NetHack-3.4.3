@@ -205,7 +205,7 @@ register struct monst *mtmp;
 
 	    /* shooting gems from slings; this goes just before the darts */
 	    if (rwep[i]==DART && !likes_gems(mtmp->data)
-			/* && m_carrying(mtmp, SLING) */) {
+			&& m_carrying(mtmp, SLING)) {
 		for(otmp=mtmp->minvent; otmp; otmp=otmp->nobj) {
 		    if(otmp->olet==GEM_SYM &&
 				(otmp->otyp != LOADSTONE || !otmp->cursed))
@@ -224,14 +224,25 @@ register struct monst *mtmp;
 		  no_propellor = !(m_carrying(mtmp, BOW));
 #endif
 		  break;
-		/* case WP_SLING:
+		case WP_SLING:
 		  no_propellor = (m_carrying(mtmp, SLING) != 0);
-		  break; */
+		  break;
 		case WP_CROSSBOW:
 		  no_propellor = (m_carrying(mtmp, CROSSBOW) != 0);
 		}
 	      }
-	    if (!no_propellor) Oselect(rwep[i]);
+	    if (!no_propellor) {
+		/* Note: cannot use m_carrying for loadstones, since it will
+		 * always select the first object of a type, and maybe the
+		 * monster is carrying two but only the first is unthrowable.
+		 */
+		if (rwep[i] != LOADSTONE) {
+			Oselect(rwep[i]);
+		} else for(otmp=mtmp->minvent; otmp; otmp=otmp->nobj) {
+		    if (otmp->otyp == LOADSTONE && !otmp->cursed)
+			return otmp;
+		}
+	    }
 	  }
 
 	/* failure */
@@ -327,7 +338,7 @@ abon() {	/* attack bonus for strength & dexterity */
 	else if(ACURR(A_DEX) < 6) return(sbon-2);
 	else if(ACURR(A_DEX) < 8) return(sbon-1);
 	else if(ACURR(A_DEX) < 14) return(sbon);
-	else return(sbon+ACURR(A_DEX)-15);
+	else return(sbon+ACURR(A_DEX)-14);
 }
 
 int

@@ -20,12 +20,14 @@ many of the added features, and produced NetHack version 1.4.  He then
 coordinated a cast of thousands in enhancing and debugging NetHack 1.4 and 
 released NetHack versions 2.2 and 2.3.  Later, he coordinated a major rewrite
 of the game, heading a team which included Ken Arromdee, Jean-Christophe
-Collet, Steve Creps, Eric Hendrickson, Izchak Miller, John Rupley, Mike
-Threepoint, and Janet Walz, to produce NetHack 3.0. 
+Collet, Steve Creps, Eric Hendrickson, Izchak Miller, Eric S. Raymond, John 
+Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0. 
 
 Olaf Seibert ported NetHack 2.3 and 3.0 to the Amiga.
 
 Eric R. Smith ported NetHack 3.0 to the Atari.
+
+Timo Hakulinen ported NetHack 3.0 to OS/2.
 
  
 From time to time, some depraved individual out there in netland sends a
@@ -33,13 +35,11 @@ particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
 
-    Tom Almy                  Eric Hendrickson       Izchak Miller
-    Ken Arromdee              Bruce Holloway         Gil Neiger
-    Eric Backus               Richard P. Hughey      Eric S. Raymond
+    Tom Almy                  Bruce Holloway         Izchak Miller
+    Ken Arromdee              Richard P. Hughey      Gil Neiger
+    Eric Backus               Del Lamb               Eric S. Raymond
     John S. Bien              Greg Laskin            John Rupley
     Ralf Brown                Steve Linhart          Kevin Sweet
-    Jean-Christophe Collet    Roland McGrath         Scott R. Turner
-    Steve Creps               Bruce Mewborne         Janet Walz
-
-    and...                    The Unknown Hacker
-
+    Jean-Christophe Collet    Benson I. Margulies    Scott R. Turner
+    Steve Creps               Roland McGrath         Janet Walz
+    Eric Hendrickson          Bruce Mewborne

@@ -660,7 +660,7 @@ register int (*fn)(), mx;
 	olets[0] = 0;
 	while(sym = *ip++){
 		if(sym == ' ') continue;
-		if(takeoff) {
+		if(takeoff && !(uwep && sym == uwep->olet)) {
 		    if(!index(removeables,sym)) {
 			pline("Not applicable.");
 			return(0);
@@ -1082,8 +1082,8 @@ dolook() {
 	       		(otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
 			    pline("Touching the dead cockatrice is a fatal mistake...");
 			    You("turn to stone...");
-			    killer = "dead cockatrice";
-		 	    done("stoned");
+			    killer = "cockatrice corpse";
+			    done(STONING);
 	    		}
 		}
     	}

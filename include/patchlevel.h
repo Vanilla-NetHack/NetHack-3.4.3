@@ -9,4 +9,15 @@
  *  add more instructions for new environments and things commonly done wrong
  */
 
-#define PATCHLEVEL	1
+/*
+ *  Patch 2, August 16, 1989
+ *  add support for OS/2 (courtesy Timo Hakulinen)
+ *  add a better makefile for MicroSoft C (courtesy Paul Gyugyi)
+ *  more accomodation of compilers and preprocessors
+ *  add better screen-size sensing
+ *  expand color use for PCs and introduce it for SVR3 UNIX machines
+ *  extend '/' to multiple identifications
+ *  fix various minor bugs, and do further code cleaning
+ */
+
+#define PATCHLEVEL	2

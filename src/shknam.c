@@ -258,6 +258,8 @@ struct mkroom	*sroom;
 			return(-1);
 		    }
 
+	if(levl[sx][sy].mmask) rloc(m_at(sx, sy)); /* insurance */
+
 	/* now initialize the shopkeeper monster structure */
 	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy))) return(-1);
 	shk->isshk = shk->mpeaceful = 1;

@@ -114,6 +114,8 @@ moverock() {
 				You("push the boulder into a pit!");
 				deltrap(ttmp);
 				delobj(otmp);
+				if(cansee(rx,ry)) newsym(rx,ry);
+				else levl[rx][ry].seen = 0;
 				if(flags.verbose)
 				    pline("It completely fills the pit!");
 				continue;
@@ -121,6 +123,8 @@ moverock() {
 				pline("The boulder falls into and plugs a hole in the ground!");
 				deltrap(ttmp);
 				delobj(otmp);
+				if(cansee(rx,ry)) newsym(rx,ry);
+				else levl[rx][ry].seen = 0;
 				continue;
 			    case LEVEL_TELEP:
 			    case TELEP_TRAP:
@@ -300,7 +304,7 @@ void
 domove() {
 	register struct monst *mtmp = (struct monst *)0;
 	register struct rm *tmpr,*ust;
-	register xchar x,y;
+	register xchar x,y,xx,yy;
 	struct trap *trap;
 
 	u_wipe_engr(rnd(5));
@@ -312,8 +316,11 @@ domove() {
 	}
 	if(u.uswallow) {
 		u.dx = u.dy = 0;
+		xx = u.ux;
+		yy = u.uy;
 		x = u.ux = u.ustuck->mx;
 		y = u.uy = u.ustuck->my;
+		if(xx != u.ustuck->mx || yy != u.ustuck->my) newsym(xx,yy);
 	} else {
 		x = u.ux + u.dx;
 		y = u.uy + u.dy;
@@ -399,15 +406,15 @@ domove() {
 	if(u.utrap) {
 		if(u.utraptype == TT_PIT) {
 		    if(flags.verbose)
-			You("are still in a pit.");
+			Norep("You are still in a pit.");
 		    u.utrap--;
 		} else if (u.utraptype == TT_WEB) {
 		    if(flags.verbose)
-		    	You("are stuck to the web.");
+		    	Norep("You are stuck to the web.");
 		    u.utrap--;
 		} else {
 		    if(flags.verbose)
-			You("are caught in a bear trap.");
+			Norep("You are caught in a bear trap.");
 		    if((u.dx && u.dy) || !rn2(5)) u.utrap--;
 		}
 		return;
@@ -535,6 +542,7 @@ domove() {
 #endif
 	u.ux += u.dx;
 	u.uy += u.dy;
+	reset_occupations();
 	if(flags.run) {
 		if(IS_DOOR(tmpr->typ) ||
 #ifdef POLYSELF
@@ -688,7 +696,7 @@ lookaround() {
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(x == u.ux && y == u.uy) continue;
 		if(levl[x][y].mmask && (mtmp = m_at(x,y)) && !mtmp->mimic &&
-		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
+		    (!mtmp->minvis || See_invisible || Telepat) && !mtmp->mundetected) {
 			if((flags.run != 1 && !mtmp->mtame) || (x == u.ux+u.dx && y == u.uy+u.dy))
 				goto stop;
 		} else mtmp = 0;
@@ -792,7 +800,7 @@ monster_nearby() {
 		   !mtmp->mtame && !mtmp->mpeaceful &&
 		   !noattacks(mtmp->data) &&
 		   !mtmp->mfroz && !mtmp->msleep &&  /* aplvax!jcn */
-		   (!mtmp->minvis || See_invisible) &&
+		   (!mtmp->minvis || See_invisible || Telepat) &&
 		   !onscary(u.ux, u.uy, mtmp))
 			return(1);
 	}
@@ -804,10 +812,10 @@ cansee(x,y)
 xchar x,y;
 {
 	if(Blind || (u.uswallow && (x != u.ux || y != u.uy))) return(0);
-	if(dist(x,y) < 3) return(1);
 	if(IS_ROCK(levl[x][y].typ) && levl[u.ux][u.uy].typ == CORR &&
-							!levl[u.ux][u.uy].lit)
+				!levl[x][y].mmask && !levl[u.ux][u.uy].lit)
 		return(0);
+	if(dist(x,y) < 3) return(1);
 	if(levl[x][y].lit &&
 		((seelx <= x && x <= seehx && seely <= y && y <= seehy) ||
 		(seelx2 <= x && x <= seehx2 && seely2 <= y && y <= seehy2)))
@@ -935,7 +943,7 @@ losehp(n, knam)
 	if(u.uhp < 1) {
 		killer = knam;	/* the thing that killed you */
 		You("die...");
-		done("died");
+		done(DIED);
 	} else if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50 && n > 0){
 		wailmsg = moves;
 		if(index("WEV", pl_character[0])) {
@@ -1030,6 +1038,16 @@ inv_cnt() {
 		otmp = otmp->nobj;
 	}
 	return(ct);
+}
+
+int
+identify(otmp)		/* also called by newmail() */
+	register struct obj *otmp;
+{
+	makeknown(otmp->otyp);
+	otmp->known = otmp->dknown = otmp->bknown = 1;
+	prinv(otmp);
+	return(1);
 }
 
 #ifdef STUPID_CPP	/* otherwise these functions are macros in hack.h */

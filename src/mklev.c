@@ -14,6 +14,7 @@ static void mksink();
 #ifdef ALTARS
 static void mkaltar();
 #endif
+static boolean occupied();
 
 int
 somex(croom)
@@ -501,7 +502,7 @@ register int type;
 	    if(!rn2(3)) {      /* is it a locked door, closed, or a doorway? */
 		if(!rn2(5))
 		    levl[x][y].doormask = D_ISOPEN;
-		else if(!rn2(4))
+		else if(!rn2(6))
 		    levl[x][y].doormask = D_LOCKED;
 		else
 		    levl[x][y].doormask = D_CLOSED;
@@ -798,8 +799,10 @@ makelevel() {
 		croom = &rooms[rn2(nroom-1)];
 		if(croom >= troom) croom++;
 	}
-	xupstair = somex(croom);    /* %% < and > might be in the same place */
-	yupstair = somey(croom);
+	do {
+	    xupstair = somex(croom);
+	    yupstair = somey(croom);
+	} while(occupied(xupstair, yupstair));
 	levl[xupstair][yupstair].scrsym = UP_SYM;
 	levl[xupstair][yupstair].typ = STAIRS;
 #ifdef STRONGHOLD
@@ -1025,6 +1028,7 @@ register xchar x, y;
 #ifdef ALTARS
 		|| levl[x][y].typ == ALTAR
 #endif
+		|| is_pool(x,y)
 		);
 }
 

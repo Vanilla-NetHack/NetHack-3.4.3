@@ -1,7 +1,7 @@
 /*	SCCS Id: @(#)pcmain.c	3.0	88/11/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
-/* main.c - (PC, TOS and AMIGA) version */
+/* main.c - PC, ST, and Amiga NetHack */
 
 #include "hack.h"
 #ifndef NO_SIGNAL
@@ -15,6 +15,7 @@ extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
 
 int (*afternmv)(), (*occupation)();
 static void moveloop();	/* a helper function for MSC optimizer */
+static void newgame();
 
 #if defined(DGK) && !defined(OLD_TOS)
 struct finfo	zfinfo = ZFINFO;
@@ -74,7 +75,7 @@ char *argv[];
 # endif
 	if (getcwd(orgdir, sizeof orgdir) == NULL) {
 		xputs("NetHack: current directory path too long\n");
-		_exit(1);
+		return 1;
 	}
 	funcp = exit;	/* Kludge to get around LINT_ARGS of signal.
 			 * This will produce a compiler warning, but that's OK.
@@ -85,7 +86,8 @@ char *argv[];
 #endif /* AMIGA */
 
 	/* Set the default values of the presentation characters */
-	memcpy((genericptr_t) &showsyms, (genericptr_t) &defsyms, sizeof(struct symbols));
+	(void) memcpy((genericptr_t) &showsyms,
+		(genericptr_t) &defsyms, sizeof(struct symbols));
 	if ((dir = getenv("HACKDIR")) != NULL) {
 		Strcpy(hackdir, dir);
 #ifdef CHDIR
@@ -101,10 +103,12 @@ char *argv[];
 	initoptions();
 	if (!hackdir[0])
 		Strcpy(hackdir, orgdir);
+
+	if(argc > 1) {
 #ifdef TOS
-	if(argc > 1 && !strncmp(argv[1], "-D", 2)) {
+	    if(!strncmp(argv[1], "-D", 2)) {
 #else
-	if(argc > 1 && !strncmp(argv[1], "-d", 2)) {
+	    if(!strncmp(argv[1], "-d", 2)) {
 #endif
 		argc--;
 		argv++;
@@ -115,25 +119,29 @@ char *argv[];
 			argv++;
 			dir = argv[0];
 		}
-		if(!*dir)
-		    error("Flag -d must be followed by a directory name.");
+		if(!*dir) {
+		    /* can't use error() until termcap read in */
+		    xputs("Flag -d must be followed by a directory name.\n");
+		    return 1;
+		}
 		Strcpy(hackdir, dir);
-	}
+	    }
 
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
 	 */
 #ifdef TOS
-	if(argc > 1 && !strncmp(argv[1], "-S", 2)) {
+	    else if (!strncmp(argv[1], "-S", 2)) {
 #else
-	if(argc > 1 && !strncmp(argv[1], "-s", 2)) {
+	    else if (!strncmp(argv[1], "-s", 2)) {
 #endif
 #ifdef CHDIR
 		chdirx(hackdir,0);
 #endif
 		prscore(argc, argv);
 		exit(0);
+	    }
 	}
 
 #ifndef AMIGA
@@ -149,14 +157,22 @@ char *argv[];
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
+
+	/*
+	 * Find the creation date of this game,
+	 * so as to avoid restoring outdated savefiles.
+	 */
+	/* gethdate(hname); */
+
 #ifndef OLD_TOS
 	/*
 	 * We cannot do chdir earlier, otherwise gethdate will fail.
 	 */
-#ifdef CHDIR
+# ifdef CHDIR
 	chdirx(hackdir,1);
+# endif
 #endif
-#endif
+
 	/*
 	 * Process options.
 	 */
@@ -165,9 +181,9 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-#ifndef TOS
+# ifndef TOS
 		case 'D':
-#endif	/* TOS */
+# endif
 		case 'X':
 # ifdef WIZARD
 			/* Must have "name" set correctly by NETHACK.CNF,
@@ -186,10 +202,16 @@ char *argv[];
 #endif
 #ifdef NEWS
 		case 'N':
+# ifndef TOS
+		case 'n':
+# endif
 			flags.nonews = TRUE;
 			break;
 #endif
 		case 'U':
+#ifndef TOS
+		case 'u':
+#endif
 			if(argv[0][2])
 			  (void) strncpy(plname, argv[0]+2, sizeof(plname)-1);
 			else if(argc > 1) {
@@ -202,16 +224,27 @@ char *argv[];
 #ifdef DGK
 		/* Person does not want to use a ram disk
 		 */
+# ifdef TOS
 		case 'R':
+# else
+		case 'r':
+# endif
 			ramdisk = FALSE;
 			break;
 #endif
 		case 'C':   /* character role is next character */
-			/* allow -T for Tourist, etc. */
+			/* allow -CT for Tourist, etc. */
 			(void) strncpy(pl_character, argv[0]+2,
 				sizeof(pl_character)-1);
+			break;
 		default:
+#ifndef TOS
+			/* allow -T for Tourist, etc. */
+			(void) strncpy(pl_character, argv[0]+1,
+				sizeof(pl_character)-1);
+#else
 			Printf("Unknown option: %s\n", *argv);
+#endif
 		}
 	}
 
@@ -274,8 +307,11 @@ char *argv[];
 		/* get shopkeeper set properly if restore is in shop */
 		(void) inshop();
 #ifdef EXPLORE_MODE
-		if (discover) {
+		if (discover)
 			You("are in non-scoring discovery mode.");
+#endif
+#if defined(EXPLORE_MODE) || defined(WIZARD)
+		if (discover || wizard) {
 			pline("Do you want to keep the save file? ");
 			if(yn() == 'n')
 				(void) unlink(SAVEF);
@@ -284,44 +320,19 @@ char *argv[];
 		flags.move = 0;
 	} else {
 not_recovered:
-#ifdef DGK
-		gameDiskPrompt();
-#endif
-		fobj = fcobj = invent = 0;
-		fmon = fallen_down = 0;
-		ftrap = 0;
-		fgold = 0;
-		flags.ident = 1;
-		init_objects();
-		u_init();
-#ifndef NO_SIGNAL
-		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-#endif
-		mklev();
-		u.ux = xupstair;
-		u.uy = yupstair;
-		(void) inshop();
-		setsee();
-		flags.botlx = 1;
-		/* Fix bug with dog not being made because a monster
-		 * was on the level 1 staircase
-		 */
-		if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
-		(void) makedog();
-		seemons();
-#ifdef NEWS
-		if(flags.nonews || !readnews())
-			/* after reading news we did docrt() already */
-#endif
-			docrt();
-
+		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
+#ifdef EXPLORE_MODE
+		if (discover)
+			You("are in non-scoring discovery mode.");
+#endif
+		flags.move = 0;
 		set_wear();
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
-		flags.move = 0;
 	}
+
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		You("are lucky!  Full moon tonight.");
@@ -333,6 +344,9 @@ not_recovered:
 	initrack();
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
+#endif
+#ifdef OS2
+	gettty(); /* somehow ctrl-P gets turned back on during startup ... */
 #endif
 	/* Help for Microsoft optimizer.  Otherwise main is too large -dgk*/
 	moveloop();
@@ -376,7 +390,7 @@ moveloop()
 #endif
 			    if(u.uhp < 1) {
 				You("die...");
-				done("died");
+				done(DIED);
 			    }
 #ifdef POLYSELF
 			if (u.mtimedone) {
@@ -590,12 +604,24 @@ boolean wr;
 #else
 		dir = ".";
 #endif
-	    if((fd = open(RECORD, 2)) < 0) {
-#ifdef DGK
+#ifdef OS2_CODEVIEW  /* explicit path on opening for OS/2 */
+		{
 		char tmp[PATHLEN];
 
 		Strcpy(tmp, dir);
 		append_slash(tmp);
+		Strcat(tmp, RECORD);
+		if((fd = open(tmp, 2)) < 0) {
+#else
+		if((fd = open(RECORD, 2)) < 0) {
+#endif
+#ifdef DGK
+#ifndef OS2_CODEVIEW
+		char tmp[PATHLEN];
+
+		Strcpy(tmp, dir);
+		append_slash(tmp);
+#endif
 		msmsg("Warning: cannot write %s%s\n", tmp, RECORD);
 		getreturn("to continue");
 #else
@@ -604,6 +630,9 @@ boolean wr;
 #endif
 	    } else
 		(void) close(fd);
+#ifdef OS2_CODEVIEW
+		}
+#endif
 	}
 }
 #endif /* CHDIR /**/
@@ -619,4 +648,48 @@ stop_occupation()
 		pushch(0);
 #endif
 	}
+}
+
+static void
+newgame() {
+#ifdef DGK
+	gameDiskPrompt();
+#endif
+
+	fobj = fcobj = invent = 0;
+	fmon = fallen_down = 0;
+	ftrap = 0;
+	fgold = 0;
+	flags.ident = 1;
+
+	init_objects();
+	u_init();
+
+#ifndef NO_SIGNAL
+	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#endif
+
+	mklev();
+	u.ux = xupstair;
+	u.uy = yupstair;
+	(void) inshop();
+
+	setsee();
+	flags.botlx = 1;
+
+	/* Move the monster from under you or else
+	 * makedog() will fail when it calls makemon().
+	 * 			- ucsfcgl!kneller
+	 */
+	if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
+
+	(void) makedog();
+	seemons();
+#ifdef NEWS
+	if(flags.nonews || !readnews())
+		/* after reading news we did docrt() already */
+#endif
+		docrt();
+
+	return;
 }

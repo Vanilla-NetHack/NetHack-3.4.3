@@ -380,7 +380,7 @@ register struct monst *mtmp;
 	    break;
 	case MS_HUMANOID:
 	    /* Generic humanoid behaviour. */
-	    if (!mtmp->mpeaceful || !mtmp->mtame) break;
+	    if (!mtmp->mpeaceful && !mtmp->mtame) break;
 	    if (mtmp->mhp < 10)
 		kludge("%s moans.", Monnam(mtmp));
 	    else if (mtmp->mflee)
@@ -420,13 +420,15 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 	    break;
 	case MS_SEDUCE:
 # ifdef SEDUCE
-	    if ((mtmp->data==&mons[PM_SUCCUBUS] ||
-		mtmp->data==&mons[PM_INCUBUS])) {
-		doseduce(mtmp);
-		break;
+	    if (mtmp->data->mlet != S_NYMPH &&
+		could_seduce(mtmp, &youmonst, (struct attack *)0) == 1) {
+			(void) doseduce(mtmp);
+			break;
 	    }
+	    switch ((poly_gender() != is_female(mtmp)) ? rn2(3) : 0) {
+# else
+	    switch ((poly_gender() == 0) ? rn2(3) : 0) {
 # endif
-	    switch (poly_gender() == 0 ? rn2(3) : 0) {
 		case 2:
 			verbalize("Hello, sailor.");
 			break;

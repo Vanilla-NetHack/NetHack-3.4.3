@@ -7,7 +7,7 @@
 struct monst zeromonst;
 static int uncommon P((struct permonst *));
 
-static int monstr[NUMMONS];
+int monstr[NUMMONS];
 
 #define m_initsgrp(mtmp, x, y) m_initgrp(mtmp, x, y, 3)
 #define m_initlgrp(mtmp, x, y) m_initgrp(mtmp, x, y, 10)
@@ -115,6 +115,9 @@ register struct monst *mtmp;
 			    break;
 			case 1:
 			    (void)mongets(mtmp, ELVEN_DAGGER);
+			    break;
+			case 2:
+			    (void)mongets(mtmp, SLING);
 			    break;
 		      }
 		    if (!rn2(10)) (void)mongets(mtmp, ELVEN_MITHRIL_COAT);
@@ -541,7 +544,11 @@ register int	x, y;
 	} else {
 		if(x == u.ux && y == u.uy && ptr->mlet != S_GHOST) {
 			mnexto(mtmp);
-			if (ptr->mlet == S_MIMIC) set_mimic_sym(mtmp);
+			if (ptr->mlet == S_MIMIC) {
+				set_mimic_sym(mtmp);
+				unpmon(mtmp);
+				pmon(mtmp);
+			}
 		}
 	}
 #ifdef HARD
@@ -1092,12 +1099,12 @@ register struct monst *mtmp;
 		sym = ALTAR_SYM;
 #endif
 	/* We won't bother with beehives, morgues, barracks, throne rooms
-	 * since they shouldn't contain mimics anyway...
+	 * since they shouldn't contain too many mimics anyway...
 	 */
 	else if (rt >= SHOPBASE) {
 		int s_sym = get_shop_item(rt - SHOPBASE);
 
-		if (s_sym < 0) sym = objects[-sym].oc_olet;
+		if (s_sym < 0) sym = objects[-s_sym].oc_olet;
 		else if (s_sym == RANDOM_SYM)
 			sym = syms[rn2(sizeof(syms)-2) + 2];
 		else sym = s_sym;

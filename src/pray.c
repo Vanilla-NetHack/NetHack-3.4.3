@@ -1,5 +1,6 @@
 /*	SCCS Id: @(#)pray.c	3.0	89/01/10
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -37,25 +38,25 @@ struct ghods {
 0,0,0,0
 };
 
-#define TROUBLE_STONED 1
-#define TROUBLE_STRANGLED 2
-#define TROUBLE_SICK 3
-#define TROUBLE_STARVING 4
-#define TROUBLE_HIT 5
-#define TROUBLE_STUCK_IN_WALL 6
-#define TROUBLE_LEVITATED_FOREVER 7
-#define TROUBLE_BLINDED_FOREVER 8
+#define TROUBLE_STONED 8
+#define TROUBLE_STRANGLED 7
+#define TROUBLE_SICK 6
+#define TROUBLE_STARVING 5
+#define TROUBLE_HIT 4
+#define TROUBLE_STUCK_IN_WALL 3
+#define TROUBLE_CURSED_BLINDFOLD 2
+#define TROUBLE_CURSED_LEVITATION 1
 
-#define TROUBLE_PUNISHED (-1)
-#define TROUBLE_LYCANTHROPE (-2)
+#define TROUBLE_LYCANTHROPE (-1)
+#define TROUBLE_PUNISHED (-2)
 #define TROUBLE_CURSED_ITEMS (-3)
-#define TROUBLE_HUNGRY (-4)
-#define TROUBLE_POISONED (-5)
-#define TROUBLE_HALLUCINATION (-6)
-#define TROUBLE_BLIND (-7)
-#define TROUBLE_WOUNDED_LEGS (-8)
-#define TROUBLE_STUNNED (-9)
-#define TROUBLE_CONFUSED (-10)
+#define TROUBLE_BLIND (-4)
+#define TROUBLE_HUNGRY (-5)
+#define TROUBLE_POISONED (-6)
+#define TROUBLE_WOUNDED_LEGS (-7)
+#define TROUBLE_STUNNED (-8)
+#define TROUBLE_CONFUSED (-9)
+#define TROUBLE_HALLUCINATION (-10)
 
 /* We could force rehumanize of polyselfed people, but we can't tell
    unintentional shape changes from the other kind. Oh well. */
@@ -108,14 +109,14 @@ in_trouble()
 	    ) return(TROUBLE_STUCK_IN_WALL);
 	if((uarmf && uarmf->otyp==LEVITATION_BOOTS && uarmf->cursed) ||
 		(uleft && uleft->otyp==RIN_LEVITATION && uleft->cursed) ||
-		(uright && uright->otyp==RIN_LEVITATION && uleft->cursed))
-		return(TROUBLE_LEVITATED_FOREVER);
-	if(ublindf && ublindf->cursed) return(TROUBLE_BLINDED_FOREVER);
+		(uright && uright->otyp==RIN_LEVITATION && uright->cursed))
+		return(TROUBLE_CURSED_LEVITATION);
+	if(ublindf && ublindf->cursed) return(TROUBLE_CURSED_BLINDFOLD);
 
-	if(Punished) return(TROUBLE_PUNISHED);
 #ifdef POLYSELF
 	if(u.ulycn >= 0) return(TROUBLE_LYCANTHROPE);
 #endif
+	if(Punished) return(TROUBLE_PUNISHED);
 	for(otmp=invent; otmp; otmp=otmp->nobj)
 		if((otmp->otyp==LOADSTONE || otmp->otyp==LUCKSTONE) &&
 			otmp->cursed) 
@@ -137,14 +138,14 @@ in_trouble()
 
 	   return(TROUBLE_CURSED_ITEMS);
 
+	if(Blinded > 1) return(TROUBLE_BLIND);
 	if(u.uhs >= HUNGRY) return(TROUBLE_HUNGRY);
 	for(i=0; i<A_MAX; i++)
 	    if(ABASE(i) < AMAX(i)) return(TROUBLE_POISONED);
-	if(Hallucination) return(TROUBLE_HALLUCINATION);
-	if(Blinded > 1) return(TROUBLE_BLIND);
 	if(Wounded_legs) return (TROUBLE_WOUNDED_LEGS);
 	if(HStun) return (TROUBLE_STUNNED);
 	if(HConfusion) return (TROUBLE_CONFUSED);
+	if(Hallucination) return(TROUBLE_HALLUCINATION);
 
 	return(0);
 }
@@ -194,7 +195,7 @@ register int trouble;
 		    Your("surroundings change.");
 		    tele();
 		    break;
-	    case TROUBLE_LEVITATED_FOREVER:
+	    case TROUBLE_CURSED_LEVITATION:
 		    if (uarmf && uarmf->otyp==LEVITATION_BOOTS
 						&& uarmf->cursed)
 			otmp = uarmf;
@@ -208,7 +209,7 @@ register int trouble;
 		    }
 		    goto decurse;
 		    break;
-	    case TROUBLE_BLINDED_FOREVER:
+	    case TROUBLE_CURSED_BLINDFOLD:
 		    otmp = ublindf;
 		    goto decurse;
 		    break;
@@ -404,7 +405,7 @@ ohno:
 			}
 			You("fry to a crisp.");
 			killer = "holy wrath";
-			done("died");
+			done(DIED);
 			break;
 	}
 	u.ublesscnt = rnz(300);
@@ -545,27 +546,29 @@ pleased() {
 			}
 			break;
 		}
-	    case 5:	pline("A voice booms out:  \"Thou hast pleased me with thy progress,\"");
-			pline("\"and thus I grant thee the gift of ");
+	    case 5:
+		{
+			char *msg="\"and thus I grant thee the gift of %s!\"";
+			pline("A voice booms out:  \"Thou hast pleased me with thy progress,\"");
 			if (!(HTelepat & INTRINSIC))  {
 				HTelepat |= INTRINSIC;
-				addtopl("Telepathy!\"");
+				pline(msg, "Telepathy");
 			} else if (!(Fast & INTRINSIC))  {
 				Fast |= INTRINSIC;
-				addtopl("Speed!\"");
+				pline(msg, "Speed");
 			} else if (!(Stealth & INTRINSIC))  {
 				Stealth |= INTRINSIC;
-				addtopl("Stealth!\"");
+				pline(msg, "Stealth");
 			} else {
 			    if (!(Protection & INTRINSIC))  {
 				Protection |= INTRINSIC;
 				if (!u.ublessed)  u.ublessed = rnd(3) + 1;
 			    } else u.ublessed++;
-			    addtopl("our protection!\"");
+			    pline(msg, "my protection");
 			}
 			pline ("\"Use it wisely in my name!\"");
 			break;
-
+		}
 	    case 7:
 #ifdef ELBERETH
 			if (u.ualign > 3 && !u.uhand_of_elbereth) {
@@ -587,6 +590,7 @@ pleased() {
 #endif
 			    } else {
 				register struct obj *obj;
+#ifdef NAMED_ITEMS
 				pline("A voice booms out:  \"Thou art chosen to steal souls for Arioch!\"");
 				/* This does the same damage as Excalibur.
 				 * Disadvantages: doesn't do bonuses to undead;
@@ -617,6 +621,9 @@ pleased() {
 			 */
 				obj->spe = 1;
 				dropy(obj);
+#else
+				pline("Thou shalt become the servant of Arioch!");
+#endif
 			    }
 			    break;
 			}
@@ -716,9 +723,10 @@ dosacrifice()
 
 	if (otmp->otyp == CORPSE) {
 	    register struct permonst *mtmp = &mons[otmp->corpsenm];
+	    extern int monstr[];
 
 	    if (otmp->corpsenm == PM_ACID_BLOB || (moves <= otmp->age + 50))
-		value = mtmp->mlevel + 1; /* only fresh kills */
+		value = monstr[otmp->corpsenm] + 1;
 
 	    if (is_human(mtmp)) { /* Human sacrifice! */
 #ifdef POLYSELF
@@ -822,7 +830,7 @@ dosacrifice()
 		}
 		else {
 		    /* The final Test.	Did you win? */
-		    if(uamul && uamul->otyp == otmp->otyp) Amulet_off();
+		    if(uamul == otmp) Amulet_off();
 		    useup(otmp);    /* well, it's gone now */
 		    You("offer the Amulet to %s...", a_gname());
 		    if (u.ualigntyp !=
@@ -835,13 +843,13 @@ dosacrifice()
 			pline("Fortunately, %s permits you to live...", a_gname());
 			pline("A cloud of %s smoke surrounds you...",
 				Hallucination ? hcolor() : "orange");
-			done("escaped");
+			done(ESCAPED);
 		    } else {	    /* super big win */
 	    pline("An invisible choir sings, and you are bathed in radiance...");
 	    pline("\"Congratulations, mortal!  In return for thy service,");
-			pline("\"I grant thee the gift of Immortality!\"");
+			pline("I grant thee the gift of Immortality!\"");
 			You("ascend to the status of Demigod...");
-			done("ascended");
+			done(ASCENDED);
 		    }
 		}
 	}

@@ -139,7 +139,11 @@ Commands:
 		the commands you can use with "#" type "#?".  The extended
 		commands you can use depends upon what options the game was
 		compiled with, along with your class and what type of monster
-		you most closely resemble at a given moment.
+		you most closely resemble at a given moment. If your keyboard
+		has a meta key (that is, one which when pressed in combination
+		with another key modified it by turning on the 'meta' or 0x80
+		bit) these extended commands can be invoked by meta-ing the
+		first letter of the command.
 
 	If the "number_pad" option is on, some additional letter commands
 	are available:

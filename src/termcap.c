@@ -8,6 +8,10 @@
 #define MONATTK_H
 #include "hack.h"	/* for ROWNO, COLNO, *HI, *HE, *AS, *AE */
 
+#ifndef MSDOS
+# define TERMLIB	/* include termcap code */
+#endif
+
 #if !defined(SYSV) || defined(TOS) || defined(UNIXPC)
 # ifndef LINT
 extern			/* it is defined in libtermlib (libtermcap) */
@@ -24,63 +28,93 @@ short	ospeed = 0;	/* gets around "not defined" error message */
 #endif /* MICROPORT_286_BUG **/
 
 static void nocmov();
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
+# ifdef TERMLIB
 static void init_hilite();
-#endif /* MSDOSCOLOR */
+# endif
+#define NONE		0
+#define HIGH_INTENSITY	1
+#define BLACK		0
+#define HILITE_ATTRIB	HIGH_INTENSITY
+#endif /* TEXTCOLOR */
 
-static char tbuf[512];
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
 static char *VS, *VE, *US, *UE;
 static char *MR, *ME;
 #if 0
 static char *MB, *MD, *MH;
 #endif
+#ifdef TERMLIB
 static int SG;
 static char PC = '\0';
-
-#if defined(MSDOS) && !defined(TERMLIB)
-static char tgotobuf[20];
-#ifdef TOS
-#define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+' ', x+' '), tgotobuf)
-#else
-#define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+1, x+1), tgotobuf)
+static char tbuf[512];
 #endif
-#endif /* MSDOS /**/
+
+#ifndef TERMLIB
+static char tgotobuf[20];
+# ifdef TOS
+#define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+' ', x+' '), tgotobuf)
+# else
+#define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+1, x+1), tgotobuf)
+# endif
+#endif /* TERMLIB */
 
 void
 startup()
 {
-#if defined(TOS) && !defined(TERMLIB)
-	HO = "\033H";
-	CL = "\033E";		/* the VT52 termcap */
-	CE = "\033K";
-	UP = "\033A";
-	CM = "\033Y%c%c";	/* used with function tgoto() */
-	ND = "\033C";
-	XD = "\033B";
-	BC = "\033D";
-	SO = "\033p";
-	SE = "\033q";
-	HI = "\033p";
-	HE = "\033q";
-#else
+#ifdef TERMLIB
 	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
+#endif
 	register int i;
 
+#ifdef TERMLIB
 	if(!(term = getenv("TERM")))
+#endif
+#if defined(TOS) && defined(__GNUC__)	/* library has a default */
+		term = "st52";
+#else
 # ifdef ANSI_DEFAULT
+#  ifdef TOS
 	{
+		HO = "\033H";
+		CL = "\033E";		/* the VT52 termcap */
+		CE = "\033K";
+		UP = "\033A";
+		CM = "\033Y%c%c";	/* used with function tgoto() */
+		ND = "\033C";
+		XD = "\033B";
+		BC = "\033D";
+		SO = "\033p";
+		SE = "\033q";
+		HI = "\033p";
+		HE = "\033q";
+	}
+#  else /* TOS */
+	{
+#   ifdef DGK
+		get_scr_size();
+		if(CO < COLNO || LI < ROWNO+3)
+			setclipped();
+#   endif
 		HO = "\033[H";
 		CL = "\033[2J";		/* the ANSI termcap */
 /*		CD = "\033[J"; */
 		CE = "\033[K";
+#   ifndef TERMLIB
+		CM = "\033[%d;%dH";
+#   else
 		CM = "\033[%i%d;%dH";
+#   endif
 		UP = "\033[A";
 		ND = "\033[C";
 		XD = "\033[B";
+#   ifdef MSDOS	/* backspaces are non-destructive */
+		BC = "\b";
+#   else
 		BC = "\033[D";
+#   endif
 		HI = SO = "\033[1m";
 		US = "\033[4m";
 		MR = "\033[7m";
@@ -88,26 +122,26 @@ startup()
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
+#   if !defined(MSDOS) || defined(DECRAINBOW)
 		AS = "\016";
 		AE = "\017";
-		VS = VE = "";
-#  ifdef MSDOSCOLOR
-		HI_WHITE = HI;
-		HI_RED = "\033[1;31m";
-		HI_YELLOW = "\033[1;33m";
-		HI_GREEN = "\033[1;32m";
-		HI_BLUE = "\033[1;34m";
-#  endif
+#   endif
+		TE = VS = VE = "";
+#   ifdef TEXTCOLOR
+		for (i = 0; i < SIZE(HI_COLOR); i++) {
+			HI_COLOR[i] = (char *) alloc(sizeof("E[0;33;44m"));
+			Sprintf(HI_COLOR[i], "\033[%d;3%dm",
+				i == BLACK ? NONE : HILITE_ATTRIB, i);
+		}
+#   endif
 		return;
 	}
+#  endif /* TOS */
 # else
-#  if defined(TOS) && defined(__GNUC__)		/* library has a default */
-		term = "st52";
-#  else
 		error("Can't get TERM.");
-#  endif
-# endif
-
+# endif /* ANSI_DEFAULT */
+#endif /* __GNUC__ */
+#ifdef TERMLIB
 	tptr = (char *) alloc(1024);
 
 	tbufptr = tbuf;
@@ -117,26 +151,38 @@ startup()
 		error("Unknown terminal type: %s.", term);
 	if(pc = Tgetstr("pc"))
 		PC = *pc;
-#ifdef TERMINFO
+# ifdef TERMINFO
 	if(!(BC = Tgetstr("le"))) {	
-#else
+# else
 	if(!(BC = Tgetstr("bc"))) {	
-#endif
-#if !defined(MINIMAL_TERM) && !defined(HISX)
+# endif
+# if !defined(MINIMAL_TERM) && !defined(HISX)
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
-#endif
+# endif
 		BC = tbufptr;
 		tbufptr += 2;
 		*BC = '\b';
 	}
-#ifdef MINIMAL_TERM
+# ifdef MINIMAL_TERM
 	HO = NULL;
-#else
+# else
 	HO = Tgetstr("ho");
-#endif
+# endif
+	/*
+	 * LI and CO are set in ioctl.c via a TIOCGWINSZ if available.  If
+	 * the kernel has values for either we should use them rather than
+	 * the values from TERMCAP ...
+	 */
+# ifndef DGK
+	if (!CO) CO = tgetnum("co");
+	if (!LI) LI = tgetnum("li");
+# else
 	CO = tgetnum("co");
 	LI = tgetnum("li");
+	if (!LI || !CO)			/* if we don't override it */
+		get_scr_size();
+# endif
 	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
 	if(!(CL = Tgetstr("cl")))
@@ -167,11 +213,11 @@ startup()
 	TI = Tgetstr("ti");
 	TE = Tgetstr("te");
 	VS = VE = "";
-#if 0
+# if 0
 	MB = Tgetstr("mb");	/* blink */
 	MD = Tgetstr("md");	/* boldface */
 	MH = Tgetstr("mh");	/* dim */
-#endif
+# endif
 	MR = Tgetstr("mr");	/* reverse */
 	ME = Tgetstr("me");
 
@@ -194,10 +240,10 @@ startup()
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free((genericptr_t)tptr);
-# ifdef MSDOSCOLOR
+# ifdef TEXTCOLOR
 	init_hilite();
 # endif
-#endif /* TOS /* */
+#endif /* TERMLIB */
 }
 
 void
@@ -318,7 +364,7 @@ void
 xputs(s)
 char *s;
 {
-#if defined(MSDOS) && !defined(TERMLIB)
+#ifndef TERMLIB
 	(void) fputs(s, stdout);
 #else
 # ifdef __STDC__
@@ -496,28 +542,55 @@ cl_eos()			/* free after Robert Viduya */
 	}
 }
 
-#ifdef MSDOSCOLOR
-/* Sets up highlighting, using ANSI escape sequences, for monsters,
- * objects, and gold (highlight code found in pri.c).
- * The termcap entry for HI (from SO) is scanned to find the background 
- * color. If everything is OK, monsters are displayed in the color
- * used to define HILITE_MONSTER, objects are displayed in the color
- * used to define HILITE_OBJECT, and gold is displayed in the color
- * used to define HILITE_GOLD. -3. */
+#if defined(TEXTCOLOR) && defined(TERMLIB)
+# ifdef UNIX
+/*
+ * Sets up color highlighting, using terminfo(4) escape sequences (highlight
+ * code found in pri.c).  It is assumed that the background color is black.
+ */
+/* terminfo indexes for the basic colors it guarantees */
+#define COLOR_BLACK   0
+#define COLOR_BLUE    1
+#define COLOR_GREEN   2
+#define COLOR_CYAN    3
+#define COLOR_RED     4
+#define COLOR_MAGENTA 5
+#define COLOR_YELLOW  6
+#define COLOR_WHITE   7
 
-#define ESC		0x1b
-#define NONE		0
-#define HIGH_INTENSITY	1
-#define BLACK		0
-#define RED		1
-#define GREEN		2
-#define YELLOW		3
-#define BLUE		4
-#define MAGENTA		5
-#define CYAN		6
-#define WHITE		7
+/* map ANSI RGB to terminfo BGR */
+const int ti_map[8] = {
+	COLOR_BLACK, COLOR_RED, COLOR_GREEN, COLOR_YELLOW,
+	COLOR_BLUE, COLOR_MAGENTA, COLOR_CYAN, COLOR_WHITE };
 
-#define HILITE_ATTRIB	HIGH_INTENSITY
+static void
+init_hilite()
+{
+	int erret;
+	char *setf, *scratch;
+	extern int setupterm();
+	extern char *tparm(), *tigetstr();
+
+	for (c = 0; c < SIZE(HI_COLOR); c++)
+		HI_COLOR[c] = HI;
+
+	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", 0)) == (char *)NULL)
+		return;
+
+	for (c = 0; c < SIZE(HI_COLOR); c++) {
+		scratch = tparm(setf, ti_map[c]);
+		HI_COLOR[c] = (char *)alloc(strlen(scratch) + 1);
+		Strcpy(HI_COLOR[c], scratch);
+	}
+}
+
+# else /* UNIX */
+
+/*
+ * Sets up highlighting sequences, using ANSI escape sequences (highlight code
+ * found in pri.c).  The termcap entry for HI (from SO) is scanned to find the
+ * background color.
+ */
 
 static void
 init_hilite()
@@ -525,7 +598,8 @@ init_hilite()
 	int backg = BLACK, foreg = WHITE, len;
 	register int c, color;
 
-	HI_RED = HI_YELLOW = HI_GREEN = HI_BLUE = HI_WHITE = HI;
+	for (c = 0; c < SIZE(HI_COLOR); c++)
+		HI_COLOR[c] = HI;
 
 	/* find the background color, HI[len] == 'm' */
 	len = strlen(HI) - 1;
@@ -546,36 +620,14 @@ init_hilite()
 	    c++;
 	}
 
-	/* avoid invisibility */
-	if (foreg != RED && backg != RED) {
-	    HI_RED = (char *) alloc(sizeof("E[0;33;44;54m"));
-	    Sprintf(HI_RED, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB,
-		    RED, backg);
-	}
-
-	if (foreg != YELLOW && backg != YELLOW) {
-	    HI_YELLOW = (char *) alloc(sizeof("E[0;33;44;54m"));
-	    Sprintf(HI_YELLOW, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB,
-		    YELLOW, backg);
-	}
-
-	if (foreg != GREEN && backg != GREEN) {
-	    HI_GREEN = (char *) alloc(sizeof("E[0;33;44;54m"));
-	    Sprintf(HI_GREEN, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB,
-		    GREEN, backg);
-	}
-
-	if (foreg != BLUE && backg != BLUE) {
-	    HI_BLUE = (char *) alloc(sizeof("E[0;33;44;54m"));
-	    Sprintf(HI_BLUE, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB,
-		    BLUE, backg);
-	}
-
-	if (foreg != WHITE && backg != WHITE) {
-	    HI_WHITE = (char *) alloc(sizeof("E[0;33;44;54m"));
-	    Sprintf(HI_WHITE, "%c[%d;3%d;4%dm", ESC, HILITE_ATTRIB,
-		    WHITE, backg);
-	}
+	for (c = 0; c < SIZE(HI_COLOR); c++)
+	    /* avoid invisibility */
+	    if (foreg != c && backg != c) {
+		HI_COLOR[c] = (char *) alloc(sizeof("E[0;33;44;54m"));
+		Sprintf(HI_COLOR[c], "\033[%d;3%d;4%dm",
+			c == BLACK ? NONE : HILITE_ATTRIB,
+			c, backg);
+	    }
 }
-
-#endif
+# endif /* UNIX */
+#endif /* TEXTCOLOR */

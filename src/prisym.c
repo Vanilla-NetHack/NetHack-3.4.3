@@ -106,14 +106,14 @@ int x, y;
 uchar let;
 xchar cnt;
 coord tc[COLNO];	/* but watch reflecting beams! */
-# ifdef MSDOSCOLOR
+# ifdef TEXTCOLOR
 uchar col;
 # endif
 #else
 static uchar let;
 static xchar cnt;
 static coord tc[COLNO];	/* but watch reflecting beams! */
-# ifdef MSDOSCOLOR
+# ifdef TEXTCOLOR
 static uchar col;
 # endif
 #endif
@@ -123,7 +123,7 @@ register int xx,yy;
 		if(y > 0) {	/* open call */
 			let = y;
 			cnt = 0;
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
 			col = AT_ZAP;
 #endif
 			return;
@@ -140,7 +140,7 @@ register int xx,yy;
 	    case -2:		/* change let call */
 		let = y;
 		return;
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
 	    case -3:		/* set color call */
 		col = y;
 		return;
@@ -149,7 +149,7 @@ register int xx,yy;
 	/* normal call */
 	if(cansee(x,y)) {
 		if(cnt) delay_output();
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
 		at(x,y,let,col);
 #else
 		at(x,y,let,AT_ZAP);
@@ -218,7 +218,7 @@ prl(x,y)
 		return;
 	if(room->mmask) mtmp = m_at(x,y);
 	if(mtmp && !mtmp->mhide &&
-		(!mtmp->minvis || See_invisible)) {
+		(!mtmp->minvis || See_invisible || Telepat)) {
 #ifdef WORM
 		if(m_atseg)
 			pwseg(m_atseg);
@@ -235,7 +235,7 @@ prl(x,y)
 	else if((!mtmp || mtmp->data == &mons[PM_GIANT_SPIDER]) &&
 		  (ttmp = t_at(x,y)) && ttmp->ttyp == WEB)
 		atl(x,y,(char)WEB_SYM);
-	else if(mtmp && (!mtmp->minvis || See_invisible)) {
+	else if(mtmp && (!mtmp->minvis || See_invisible || Telepat)) {
 		/* must be a hiding monster, but not hiding right now */
 		/* assume for the moment that long worms do not hide */
 		pmon(mtmp);

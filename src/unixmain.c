@@ -67,8 +67,8 @@ char *argv[];
 	}
 #endif /* CHDIR /**/
 	/* Set the default values of the presentation characters */
-	(void) memcpy((char *) &showsyms, 
-		(char *) &defsyms, sizeof(struct symbols));
+	(void) memcpy((genericptr_t) &showsyms,
+		(genericptr_t) &defsyms, sizeof(struct symbols));
 	initoptions();
 	whoami();
 	/*
@@ -240,8 +240,11 @@ char *argv[];
 		/* get shopkeeper set properly if restore is in shop */
 		(void) inshop();
 #ifdef EXPLORE_MODE
-		if (discover) {
+		if (discover)
 			You("are in non-scoring discovery mode.");
+#endif
+#if defined(EXPLORE_MODE) || defined(WIZARD)
+		if (discover || wizard) {
 			pline("Do you want to keep the save file? ");
 			if(yn() == 'n')
 				(void) unlink(SAVEF);
@@ -305,7 +308,7 @@ not_recovered:
 #endif
 			    if(u.uhp < 1) {
 				You("die...");
-				done("died");
+				done(DIED);
 			    }
 #ifdef POLYSELF
 			if (u.mtimedone) {

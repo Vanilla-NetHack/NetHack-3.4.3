@@ -285,7 +285,8 @@ drop(obj) register struct obj *obj; {
 		/* turn water into [(un)holy] water */
 		if (obj->otyp == POT_WATER) {
 			obj->blessed = !!(levl[u.ux][u.uy].altarmask & A_LAW);
-			obj->cursed = !!(levl[u.ux][u.uy].altarmask & A_CHAOS);
+			obj->cursed =
+			    !(levl[u.ux][u.uy].altarmask & (A_LAW | A_NEUTRAL));
 		}
 		doaltarobj(obj);	/* set bknown */
 	} else
@@ -342,12 +343,12 @@ int
 dodown()
 {
 	struct trap *trap = 0;
+
+	if((u.ux != xdnstair || u.uy != ydnstair)
 #ifdef STRONGHOLD
-	if((u.ux != xdnstair || u.uy != ydnstair) &&
-	   (!xdnladder || u.ux != xdnladder || u.uy != ydnladder)) {
-#else
-	if(u.ux != xdnstair || u.uy != ydnstair) {
-#endif /* STRONGHOLD /**/
+	   && (!xdnladder || u.ux != xdnladder || u.uy != ydnladder)
+#endif
+	  ) {
 		if (!(trap = t_at(u.ux,u.uy)) || trap->ttyp != TRAPDOOR
 							|| !trap->tseen) {
 			You("can't go down here.");
@@ -364,7 +365,7 @@ dodown()
 		      levl[u.ux][u.uy].typ == STAIRS ? "stairs" : "ladder");
 #else
 		pline("You're floating high above the stairs.");
-#endif /* STRONGHOLD /**/
+#endif
 		return(0);
 	}
 
@@ -393,12 +394,11 @@ dodown()
 int
 doup()
 {
+	if((u.ux != xupstair || u.uy != yupstair)
 #ifdef STRONGHOLD
-	if((u.ux != xupstair || u.uy != yupstair) &&
-	   (!xupladder || u.ux != xupladder || u.uy != yupladder)) {
-#else
-	if(u.ux != xupstair || u.uy != yupstair) {
-#endif /* STRONGHOLD /**/
+	   && (!xupladder || u.ux != xupladder || u.uy != yupladder)
+#endif
+	  ) {
 		You("can't go up here.");
 		return(0);
 	}
@@ -413,7 +413,7 @@ doup()
 		      levl[u.ux][u.uy].typ == STAIRS ? "stairs" : "ladder");
 #else
 		Your("load is too heavy to climb the stairs.");
-#endif /* STRONGHOLD /**/
+#endif
 		return(1);
 	}
 
@@ -464,7 +464,7 @@ register boolean at_stairs;
 		newlevel = ENDLEVEL;	/* Endgame Level !!! */
 	    else
 #endif
-		done("escaped");    /* in fact < 0 is impossible */
+		done(ESCAPED);		/* in fact < 0 is impossible */
 
 /*	If you have the amulet and are trying to get out of Hell, going
  *	up a set of stairs sometimes does some very strange things!
@@ -510,7 +510,7 @@ register boolean at_stairs;
 		You("die...");
 		dlevel = maxdlevel = newlevel;
 		killer = "visit to hell";
-		done("burned");
+		done(BURNING);
 		dlevel = newlevel = save_dlevel; /* in case they survive */
 	    }
 	}
@@ -615,7 +615,7 @@ register boolean at_stairs;
 #endif
 			pline("Cannot open %s .", lock);
 			pline("Probably someone removed it.");
-			done("tricked");
+			done(TRICKED);
 		}
 #ifdef ZEROCOMP
 		minit();
@@ -734,6 +734,7 @@ register boolean at_stairs;
 	if (dlevel == 1 && u.uhave_amulet && flags.no_of_wizards == 0)
 	    resurrect();
 #endif
+	is_maze_lev = !xdnstair;
 }
 
 int

@@ -87,24 +87,7 @@ register struct monst *mtmp;
 	}
 
 	if(mtmp->mimic && !Protection_from_shape_changers) {
-		if(!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data,AD_STCK))
-			u.ustuck = mtmp;
-		if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == DOOR_SYM)
-#ifdef SPELLS
-		{
-		    if (okdoor(u.ux+u.dx, u.uy+u.dy))
-#endif
-			pline("The door actually was %s.", defmonnam(mtmp));
-#ifdef SPELLS
-		    else
-			pline("That spellbook was %s.", defmonnam(mtmp));
-		}
-#endif
-		else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == GOLD_SYM)
-			pline("That gold was %s!", defmonnam(mtmp));
-		else
-			pline("Wait!  That's %s!", defmonnam(mtmp));
-		wakeup(mtmp);	/* clears mtmp->mimic */
+		stumble_onto_mimic(mtmp);
 		return(TRUE);
 	}
 
@@ -127,6 +110,53 @@ register struct monst *mtmp;
 	return(FALSE);
 }
 
+schar
+find_roll_to_hit(mtmp)
+register struct monst *mtmp;
+{
+	schar tmp;
+	struct permonst *mdat = mtmp->data;
+
+#ifdef POLYSELF
+	tmp = Luck + mdat->ac + abon() +
+		     ((u.umonnum >= 0) ? uasmon->mlevel : u.ulevel);
+#else
+	tmp = Luck + u.ulevel + mdat->ac + abon();
+#endif
+/*	it is unchivalrous to attack the defenseless or from behind */
+	if (pl_character[0] == 'K' && u.ualigntyp == U_LAWFUL &&
+	    (mtmp->mfroz || mtmp->msleep || mtmp->mflee) &&
+	    u.ualign > -10) adjalign(-1);
+
+/*	Adjust vs. (and possibly modify) monster state.		*/
+
+	if(mtmp->mstun) tmp += 2;
+	if(mtmp->mflee) tmp += 2;
+
+	if(mtmp->msleep) {
+		mtmp->msleep = 0;
+		tmp += 2;
+	}
+	if(mtmp->mfroz) {
+		tmp += 4;
+		if(!rn2(10)) mtmp->mfroz = 0;
+	}
+	if (is_orc(mtmp->data) && pl_character[0]=='E') tmp++;
+
+/*	with a lot of luggage, your agility diminishes */
+	tmp -= (inv_weight() + 40)/20;
+	if(u.utrap) tmp -= 3;
+#ifdef POLYSELF
+/*	Some monsters have a combination of weapon attacks and non-weapon
+ *	attacks.  It is therefore wrong to add hitval to tmp; we must add it
+ *	only for the specific attack (in hmonas()).
+ */
+	if(uwep && u.umonnum == -1) tmp += hitval(uwep, mdat);
+#else
+	if(uwep) tmp += hitval(uwep, mdat);
+#endif
+	return tmp;
+}
 
 /* try to attack; return FALSE if monster evaded */
 /* u.dx and u.dy must be set */
@@ -188,46 +218,14 @@ register struct monst *mtmp;
 			return(TRUE);
 		}
 	}
-	tmp = Luck + mdat->ac + abon() +
-		     ((u.umonnum >= 0) ? uasmon->mlevel : u.ulevel);
-#else
-	tmp = Luck + u.ulevel + mdat->ac + abon();
 #endif
 
-/*	it is unchivalrous to attack the defenseless or from behind */
-	if (pl_character[0] == 'K' && u.ualigntyp == U_LAWFUL &&
-	    (mtmp->mfroz || mtmp->msleep || mtmp->mflee) &&
-	    u.ualign > -10) adjalign(-1);
-
-/*	Adjust vs. (and possibly modify) monster state.		*/
-
-	if(mtmp->mstun) tmp += 2;
-	if(mtmp->mflee) tmp += 2;
-
-	if(mtmp->msleep) {
-		mtmp->msleep = 0;
-		tmp += 2;
-	}
-	if(mtmp->mfroz) {
-		tmp += 4;
-		if(!rn2(10)) mtmp->mfroz = 0;
-	}
-	if (is_orc(mtmp->data) && pl_character[0]=='E') tmp++;
-
-/*	with a lot of luggage, your agility diminishes */
-	tmp -= (inv_weight() + 40)/20;
-	if(u.utrap) tmp -= 3;
-
+	tmp = find_roll_to_hit(mtmp);
 #ifdef POLYSELF
-	if(u.umonnum >= 0) (void) hmonas(mtmp, tmp);
-	else {
+	if (u.umonnum >= 0) (void) hmonas(mtmp, tmp);
+	else
 #endif
-		if(uwep) tmp += hitval(uwep, mdat);
-		(void) hitum(mtmp, tmp);
-#ifdef POLYSELF
-	}
-#endif
-
+	    (void) hitum(mtmp, tmp);
 	return(TRUE);
 }
 
@@ -246,7 +244,7 @@ register int mhit;
 	if(!mhit) {
 	    if(!Blind && flags.verbose) You("miss %s.", mon_nam(mon));
 	    else			You("miss it.");
-	    if(is_human(mon->data) && !(mon->msleep || mon->mfroz))
+	    if(!mon->msleep && !mon->mfroz)
 		wakeup(mon);
 	} else {
 	    /* we hit the monster; be careful: it might die! */
@@ -289,7 +287,7 @@ int tmp;
 	boolean mhit = !((tmp <= rnd(20)) && !u.uswallow);
 
 	malive = known_hitum(mon, mhit);
-	(void) passive(mon, mhit, malive);
+	(void) passive(mon, mhit, malive, FALSE);
 	return(malive);
 }
 
@@ -300,9 +298,28 @@ register struct obj *obj;
 register int thrown;
 {
 	register int tmp;
+	/* Why all these booleans?  This stuff has to be done in the
+	 *      following order:
+	 * 1) Know what we're attacking with, and print special hittxt for
+	 *	unusual cases.
+	 * 2a) Know whether we did damage (depends on 1)
+	 * 2b) Know if it's poisoned (depends on 1)
+	 * 2c) Know whether we get a normal damage bonus or not (depends on 1)
+	 * 3a) Know what the value of the damage bonus is (depends on 2c)
+	 * 3b) Know how much poison damage was taken (depends on 2b) and if the
+	 *	poison instant-killed it
+	 * 4) Know if it was killed (requires knowing 3a, 3b) except by instant-
+	 *	kill poison
+	 * 5) Print hit message (depends on 1 and 4)
+	 * 6a) Print poison message (must be done after 5)
+	 * 6b) Rust weapon (must be done after 5)
+	 * 7) Possibly kill monster (must be done after 6a, 6b)
+	 * 8) Instant-kill from poison (can happen anywhere between 5 and 9)
+	 * 9) Hands not glowing (must be done after 7 and 8)
+	 */
 	boolean hittxt = FALSE, destroyed = FALSE;
 	boolean get_dmg_bonus = TRUE;
-	boolean ispoisoned = FALSE, needpoismsg = FALSE;
+	boolean ispoisoned = FALSE, needpoismsg = FALSE, poiskilled = FALSE;
 
 	wakeup(mon);
 	if(!obj) {
@@ -502,11 +519,7 @@ register int thrown;
 		needpoismsg = TRUE;
 	    else if (rn2(10))
 		tmp += rnd(6);
-	    else {
-		pline("The poison was deadly...");
-		xkilled(mon,0);
-		return FALSE;
-	    }
+	    else poiskilled = TRUE;
 	}
 	if(tmp < 1) tmp = 1;
 
@@ -545,7 +558,11 @@ register int thrown;
 	if (needpoismsg)
 		kludge("The poison doesn't seem to affect %s.", mon_nam(mon));
 
-	if (destroyed)
+	if (poiskilled) {
+		pline("The poison was deadly...");
+		xkilled(mon, 0);
+		return FALSE;
+	} else if (destroyed)
 		killed(mon);	/* takes care of messages */
 	else if(u.umconf && !thrown) {
 		if(!Blind) {
@@ -579,7 +596,8 @@ register int thrown;
 }
 
 #ifdef POLYSELF
-static int
+
+int
 damageum(mdef, mattk)
 register struct monst *mdef;
 register struct attack *mattk;
@@ -589,10 +607,10 @@ register struct attack *mattk;
 
 	stoned = FALSE;
 	if (is_demon(uasmon) && !rn2(13) && !uwep
-#ifdef HARD
+# ifdef HARD
 		&& u.umonnum != PM_SUCCUBUS && u.umonnum != PM_INCUBUS
 		&& u.umonnum != PM_BALROG
-#endif
+# endif
 	    ) {
 	    struct monst *dtmp;
 	    pline("Some hell-p has arrived!");
@@ -617,9 +635,9 @@ register struct attack *mattk;
 			if(thick_skinned(mdef->data)) tmp = 0;
 		break;
 	    case AD_FIRE:
-#ifdef GOLEMS
+# ifdef GOLEMS
 		golemeffects(mdef, AD_FIRE, tmp);
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		if(resists_fire(pd)) {
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
@@ -627,15 +645,15 @@ register struct attack *mattk;
 		    if(!Blind) pline("%s is on fire!", Monnam(mdef));
 		    tmp += destroy_mitem(mdef, SCROLL_SYM, AD_FIRE);
 		    tmp += destroy_mitem(mdef, POTION_SYM, AD_FIRE);
-#ifdef SPELLS
+# ifdef SPELLS
 		    tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
-#endif
+# endif
 		}
 		break;
 	    case AD_COLD:
-#ifdef GOLEMS
+# ifdef GOLEMS
 		golemeffects(mdef, AD_COLD, tmp);
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		if(resists_cold(pd)) {
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
@@ -645,9 +663,9 @@ register struct attack *mattk;
 		}
 		break;
 	    case AD_ELEC:
-#ifdef GOLEMS
+# ifdef GOLEMS
 		golemeffects(mdef, AD_ELEC, tmp);
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		if(resists_elec(pd)) {
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
@@ -665,9 +683,9 @@ register struct attack *mattk;
 		}
 		tmp = 0;	/* no damage if this fails */
 		break;
-#ifdef SEDUCE
+# ifdef SEDUCE
 	    case AD_SSEX:
-#endif
+# endif
 	    case AD_SEDU:
 	    case AD_SITM:
 		if(mdef->minvent) {
@@ -710,9 +728,9 @@ register struct attack *mattk;
 				kludge("%s finishes taking off his suit.",
 							Monnam(mdef));
 				You("steal a %s.", xname(stealoid));
-#ifdef ARMY
+# ifdef ARMY
 				mdef->data = &mons[PM_UNARMORED_SOLDIER];
-#endif
+# endif
 			}
 		   } else {
 		   	   otmp = mdef->minvent;
@@ -751,7 +769,7 @@ register struct attack *mattk;
 		break;
 	    case AD_CURS:
 		if (night() && !rn2(10) && !mdef->mcan) {
-#ifdef GOLEMS
+# ifdef GOLEMS
 		    if (mdef->data == &mons[PM_CLAY_GOLEM]) {
 			if (!Blind)
 			    pline("Some writing vanishes from %s's head!",
@@ -759,7 +777,7 @@ register struct attack *mattk;
 			xkilled(mdef, 0);
 			return 2;
 		      }
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		    mdef->mcan = 1;
 		    You("chuckle.");
 		}
@@ -779,24 +797,24 @@ register struct attack *mattk;
 		tmp = 0;
 		break;
 	    case AD_RUST:
-#ifdef GOLEMS
+# ifdef GOLEMS
 		if (pd == &mons[PM_IRON_GOLEM]) {
 			kludge("%s falls to pieces!", Monnam(mdef));
 			xkilled(mdef,0);
 			return(2);
 		}
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		tmp = 0;
 		break;
 	    case AD_DCAY:
-#ifdef GOLEMS
+# ifdef GOLEMS
 		if (pd == &mons[PM_WOOD_GOLEM] ||
 		    pd == &mons[PM_LEATHER_GOLEM]) {
 			kludge("%s falls to pieces!", Monnam(mdef));
 			xkilled(mdef,0);
 			return(2);
 		}
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 	    case AD_DRST:
 	    case AD_DRDX:
 	    case AD_DRCO:
@@ -827,7 +845,7 @@ register struct attack *mattk;
 	if((mdef->mhp -= tmp) < 1) {
 
 	    if(mdef->mtame) {
-		if(!Blind) You("killed your %s!", mon_nam(mdef));
+		if(!Blind) You("killed your %s!", lmonnam(mdef) + 4);
 		else	You("feel embarrassed for a moment.");
 	    } else {
 		if(!Blind && flags.verbose)  pline("%s is killed!", Monnam(mdef));
@@ -863,11 +881,11 @@ register struct attack *mattk;
 			 killed(mdef);
 			 return(2);
 		    }
-#ifdef GOLEMS
+# ifdef GOLEMS
 		} else if (is_golem(mdef->data)) {
 		    golemeffects(mdef, AD_COLD, d(6,6));
 		    shieldeff(mdef->mx, mdef->my);
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 		} else {
 		    shieldeff(mdef->mx, mdef->my);
 		    kludge("The blast doesn't seem to affect %s.",
@@ -894,17 +912,17 @@ register struct attack *mattk;
 	 * after exactly 1 round of attack otherwise.  -KAA
 	 */
 
-#ifdef WORM
+# ifdef WORM
 	if(mdef->wormno) return 0;
-#endif
+# endif
 	if(u.uhunger < 1500 && !u.uswallow) {
 
 	    if(mdef->data->mlet != S_COCKATRICE) {
-#ifdef LINT	/* static char msgbuf[BUFSZ]; */
+# ifdef LINT	/* static char msgbuf[BUFSZ]; */
 		char msgbuf[BUFSZ];
-#else
+# else
 		static char msgbuf[BUFSZ];
-#endif
+# endif
 /* TODO: get the symbol display also to work (monster symbol is removed from
  * the screen and you moved onto it, then you get moved back and it gets
  * moved back if the monster survives--just like when monsters swallow you.
@@ -949,9 +967,9 @@ register struct attack *mattk;
 				kludge("%s seems unhurt.", Monnam(mdef));
 				dam = 0;
 			    }
-#ifdef GOLEMS
+# ifdef GOLEMS
 			    golemeffects(mdef,(int)mattk->adtyp,dam);
-#endif
+# endif
 			} else dam = 0;
 			break;
 		    case AD_COLD:
@@ -961,9 +979,9 @@ register struct attack *mattk;
 				dam = 0;
 			    } else
 				kludge("%s is freezing to death!",Monnam(mdef));
-#ifdef GOLEMS
+# ifdef GOLEMS
 			    golemeffects(mdef,(int)mattk->adtyp,dam);
-#endif
+# endif
 			} else dam = 0;
 			break;
 		    case AD_FIRE:
@@ -973,9 +991,9 @@ register struct attack *mattk;
 				dam = 0;
 			    } else
 				kludge("%s is burning to a crisp!",Monnam(mdef));
-#ifdef GOLEMS
+# ifdef GOLEMS
 			    golemeffects(mdef,(int)mattk->adtyp,dam);
-#endif
+# endif
 			} else dam = 0;
 			break;
 		}
@@ -994,29 +1012,24 @@ register struct attack *mattk;
 		kludge("You bite into %s", mon_nam(mdef));
 		You("turn to stone...");
 		killer = "poor choice of food";
-		done("stoned");
+		done(STONING);
 	    }
 	}
 	return(0);
 }
 
-static void
-missum(mdef)
+void
+missum(mdef,mattk)
 register struct monst *mdef;
+register struct attack *mattk;
 {
-#ifdef POLYSELF
-	if (u.usym==S_NYMPH
-#  ifdef SEDUCE
-|| ((u.umonnum==PM_INCUBUS || u.umonnum==PM_SUCCUBUS) && !incompatible(mdef))
-#  endif
-									)
+	if (could_seduce(&youmonst, mdef, mattk))
 		kludge("You pretend to be friendly to %s.", mon_nam(mdef));
+	else if(!Blind && flags.verbose)
+		You("miss %s.", mon_nam(mdef));
 	else
-#endif
-	if(!Blind && flags.verbose)  You("miss %s.", mon_nam(mdef));
-	else	    You("miss it.");
-	if(is_human(mdef->data) && !(mdef->msleep || mdef->mfroz))
-		wakeup(mdef);
+		You("miss it.");
+	wakeup(mdef);
 }
 
 static boolean
@@ -1031,6 +1044,7 @@ register int tmp;
 
 	for(i = 0; i < NATTK; i++) {
 
+	    sum[i] = 0;
 	    mattk = &(uasmon->mattk[i]);
 	    switch(mattk->aatyp) {
 		case AT_WEAP:
@@ -1054,29 +1068,32 @@ use_weapon:
 			if (dhit && mattk->adtyp != AD_SPEL
 				&& mattk->adtyp != AD_PHYS)
 				sum[i] = damageum(mon,mattk);
-			else sum[i] = 0;
 			break;
 		case AT_CLAW:
 			if (i==0 && uwep && humanoid(uasmon)) goto use_weapon;
+# ifdef SEDUCE
+			/* succubi/incubi are humanoid, but their _second_
+			 * attack is AT_CLAW, not their first...
+			 */
+			if (i==1 && uwep && (u.umonnum == PM_SUCCUBUS ||
+				u.umonnum == PM_INCUBUS)) goto use_weapon;
+# endif
 		case AT_KICK:
 		case AT_BITE:
 		case AT_STNG:
 		case AT_TUCH:
 		case AT_BUTT:
-			if (i==0 && uwep && (u.usym==S_LICH
-				)) goto use_weapon;
+			if (i==0 && uwep && (u.usym==S_LICH)) goto use_weapon;
 			if(dhit = (tmp > rnd(20) || u.uswallow)) {
-/* <----- <----- <----- <----- <----- <----- <----- <----- <----- */
-if (!u.uswallow && (u.usym==S_NYMPH
-#ifdef SEDUCE
-  || ((u.umonnum==PM_INCUBUS || u.umonnum==PM_SUCCUBUS) && !incompatible(mon))
-#endif
-									)) {
-		kludge("You %s %s %s.", mon->mblinded ? "talk to" : "smile at",
-			mon_nam(mon),
-			incompatible(mon) ? "engagingly" : "seductively");
-}
-/* <----- <----- <----- <----- <----- <----- <----- <----- <----- */
+				int compat;
+
+				if (!u.uswallow &&
+				    (compat = could_seduce(&youmonst,
+							    mon, mattk)))
+				pline("You %s %s %s.",
+				    mon->mblinded ? "talk to" : "smile at",
+				    Blind ? "it" : mon_nam(mon),
+				    compat == 2 ? "engagingly" : "seductively");
 				else if (mattk->aatyp == AT_KICK)
 					kludge("You kick %s.", mon_nam(mon));
 				else if (mattk->aatyp == AT_BITE)
@@ -1089,10 +1106,8 @@ if (!u.uswallow && (u.usym==S_NYMPH
 					kludge("You touch %s.", mon_nam(mon));
 				else kludge("You hit %s.", mon_nam(mon));
 				sum[i] = damageum(mon, mattk);
-			} else {
-				missum(mon);
-				sum[i] = 0;
-			}
+			} else
+				missum(mon, mattk);
 			break;
 
 		case AT_HUGS:
@@ -1100,19 +1115,19 @@ if (!u.uswallow && (u.usym==S_NYMPH
 			 * already grabbed in a previous attack
 			 */
 			dhit = 1;
-			if (sticks(mon->data)) sum[i] = 0;
-			else if (mon==u.ustuck) {
-			    kludge("%s is being %s.", Monnam(mon),
-#ifdef GOLEMS
-				u.umonnum==PM_ROPE_GOLEM ? "choked":
-#endif
-				"crushed");
-			    sum[i] = damageum(mon, mattk);
-			} else if(sum[i-1] && sum[i-2]) {
-			    kludge("You grab %s!", mon_nam(mon));
-			    u.ustuck = mon;
-			    sum[i] = damageum(mon, mattk);
-			} else sum[i] = 0;
+			if (!sticks(mon->data))
+			    if (mon==u.ustuck) {
+				kludge("%s is being %s.", Monnam(mon),
+# ifdef GOLEMS
+				    u.umonnum==PM_ROPE_GOLEM ? "choked":
+# endif
+				    "crushed");
+				sum[i] = damageum(mon, mattk);
+			    } else if(sum[i-1] && sum[i-2]) {
+				kludge("You grab %s!", mon_nam(mon));
+				u.ustuck = mon;
+				sum[i] = damageum(mon, mattk);
+			    }
 			break;
 
 		case AT_EXPL:	/* automatic hit if next to */
@@ -1123,10 +1138,8 @@ if (!u.uswallow && (u.usym==S_NYMPH
 		case AT_ENGL:
 			if((dhit = (tmp > rnd(20+i))))
 				sum[i]= gulpum(mon,mattk);
-			else {
-				missum(mon);
-				sum[i] = 0;
-			}
+			else
+				missum(mon, mattk);
 			break;
 
 		case AT_MAGC:
@@ -1139,7 +1152,6 @@ if (!u.uswallow && (u.usym==S_NYMPH
 				)) goto use_weapon;
 
 		case AT_NONE:
-			sum[i] = 0;
 			continue;
 			/* Not break--avoid passive attacks from enemy */
 
@@ -1149,14 +1161,15 @@ if (!u.uswallow && (u.usym==S_NYMPH
 		case AT_BREA:
 		case AT_SPIT:
 		case AT_GAZE:	/* all done using #monster command */
-			sum[i] = dhit = 0;
+			dhit = 0;
 			break;
 	    }
 	    if (dhit == -1)
 		rehumanize();
-	    if(sum[i] == 2) return(passive(mon, 1, 0)); /* defender dead */
+	    if(sum[i] == 2) return(passive(mon, 1, 0, (mattk->aatyp==AT_KICK)));
+							/* defender dead */
 	    else {
-		(void) passive(mon, sum[i], 1);
+		(void) passive(mon, sum[i], 1, (mattk->aatyp==AT_KICK));
 		nsum |= sum[i];
 	    }
 	    if (uasmon == &playermon)
@@ -1167,15 +1180,16 @@ if (!u.uswallow && (u.usym==S_NYMPH
 	return(nsum);
 }
 
-#endif
+#endif /* POLYSELF */
 
 /*	Special (passive) attacks on you by monsters done here.		*/
 
 int
-passive(mon, mhit, malive)
+passive(mon, mhit, malive, kicked)
 register struct monst *mon;
 register boolean mhit;
 register int malive;
+boolean kicked;
 {
 	register struct permonst *ptr = mon->data;
 	register int i, tmp;
@@ -1201,7 +1215,12 @@ register int malive;
 			mdamageu(mon, tmp);
 		if(!rn2(30)) corrode_armor();
 	    }
-	    if(mhit && !rn2(6)) corrode_weapon();
+	    if(mhit && !rn2(6)) {
+		if (kicked) {
+		    if (uarmf)
+			(void) rust_dmg(uarmf, xname(uarmf), 1, TRUE);
+		} else corrode_weapon();
+	    }
 	    break;
 	  case AD_MAGM:
 	    /* wrath of gods for attacking Oracle */
@@ -1306,4 +1325,33 @@ register int malive;
 	    }
 	}
 	return(malive | mhit);
+}
+
+/* Note: caller must ascertain mtmp->mimic... */
+void
+stumble_onto_mimic(mtmp)
+register struct monst *mtmp;
+{
+	if(!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data,AD_STCK))
+		u.ustuck = mtmp;
+	if (Blind) goto generic;
+	else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == DOOR_SYM)
+#ifdef SPELLS
+	{
+		if (IS_ROCK(levl[u.ux+u.dx][u.uy+u.dy].typ) ||
+		    IS_DOOR(levl[u.ux+u.dx][u.uy+u.dy].typ))
+#endif
+			pline("The door actually was %s.", defmonnam(mtmp));
+#ifdef SPELLS
+		else
+			pline("That spellbook was %s.", defmonnam(mtmp));
+	}
+#endif
+	else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == GOLD_SYM)
+		pline("That gold was %s!", defmonnam(mtmp));
+	else {
+generic:
+		pline("Wait!  That's %s!", defmonnam(mtmp));
+	}
+	wakeup(mtmp);	/* clears mtmp->mimic */
 }

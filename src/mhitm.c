@@ -19,20 +19,6 @@ static int explmm P((struct monst *,struct attack *));
 static int mdamagem P((struct monst *,struct monst *,struct attack *));
 static void mswingsm P((struct monst *, struct monst *, struct obj *));
 
-static boolean
-m_incompat(magr, mdef)
-/* This must work like in mhitu.c.  Specifically, if it's a shopkeeper
- * polymorphed into a monster of a specific gender, the specific gender
- * overrides.  Thus, do not use is_female(), since then a female shopkeeper
- * polymorphed into an incubus, or any shopkeeper turned into something
- * genderless, would be treated improperly.
- * This nonsense could be avoided if every monster had a gender field...
- */
-register struct monst *magr, *mdef;
-{
-	return(gender(magr) != 1-gender(mdef));
-}
-
 static void
 noises(magr, mattk)
 	register struct monst *magr;
@@ -60,11 +46,10 @@ missmm(magr, mdef, mattk)
 	if(vis) {
 		if(mdef->mimic) seemimic(mdef);
 		if(magr->mimic) seemimic(magr);
-		if (sp_melee(magr) && !magr->mcan &&
-			    (is_nymph(magr) || !m_incompat(magr,mdef))) {
+		if (could_seduce(magr,mdef,mattk) && !magr->mcan)
 			Sprintf(buf, "%s pretends to be friendly to",
 								Monnam(magr));
-		} else
+		else
 			Sprintf(buf,"%s misses", Monnam(magr));
 		pline("%s %s.", buf, mon_nam(mdef));
 	} else  noises(magr, mattk);
@@ -195,21 +180,19 @@ hitmm(magr, mdef, mattk)
 	register struct monst *magr,*mdef;
 	struct	attack *mattk;
 {
-
 	if(vis){
+		int compat;
 		char buf[BUFSZ];
+
 		if(mdef->mimic) seemimic(mdef);
 		if(magr->mimic) seemimic(magr);
-		if(sp_melee(magr) && !magr->mcan) {
-			if(!is_nymph(magr) && m_incompat(magr,mdef))
-				goto strike;
+		if((compat = could_seduce(magr,mdef,mattk)) && !magr->mcan) {
 			Sprintf(buf, "%s %s", Monnam(magr),
 				mdef->mblinded ? "talks to" : "smiles at");
 			pline("%s %s %s.", buf, mon_nam(mdef),
-				m_incompat(magr,mdef) ?
+				compat == 2 ?
 					"engagingly" : "seductively");
 		} else {
-	strike:
 		    switch (mattk->aatyp) {
 			case AT_BITE:
 				Sprintf(buf,"%s bites", Monnam(magr));
@@ -282,6 +265,9 @@ gulpmm(magr, mdef, mattk)
 	if((tmp = mdamagem(magr, mdef, mattk)) == 2) {
 		levl[mx][my].mmask = 0;
 		levl[magr->mx][magr->my].mmask = 1;
+		/* if mdamagem left a corpse it erased magr's symbol */
+		unpmon(magr);
+		pmon(magr);
 		return(2);	/* defender died */
 	} else {		/* defender survived */
 		if(cansee(mdef->mx, mdef->my))
@@ -317,7 +303,7 @@ explmm(magr, mattk)
 	if(dist2(magr->mx, magr->my, u.ux, u.uy) < 3)
 		(void) mdamageu(magr, d((int)mattk->damn, (int)mattk->damd));
 
-	mondied(magr);
+	mondead(magr);
 	return(2);
 }
 

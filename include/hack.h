@@ -26,6 +26,25 @@
 #define NULL  ((genericptr_t)0)
 #define DUMMY { 0 }
 
+/* this is the way the game ends */
+/* if these are rearranged, the arrays in end.c will need to be changed */
+#define DIED		0
+#define CHOKING 	1
+#define POISONING	2
+#define STARVING	3
+#define DROWNING	4
+#define BURNING 	5
+#define CRUSHING	6
+#define STONING 	7
+#define GENOCIDED	8
+#define PANICKED	9
+#define TRICKED 	10
+#define QUIT		11
+#define ESCAPED 	12
+#ifdef ENDGAME
+#define ASCENDED	13
+#endif
+
 #ifndef DECL_H
 #include "decl.h"
 #endif

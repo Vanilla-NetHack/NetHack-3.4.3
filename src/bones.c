@@ -42,6 +42,9 @@ int lev;
 {
 	return (lev == medusa_level ||
 		lev == wiz_level
+#ifdef REINCARNATION
+		|| lev == rogue_level
+#endif
 #ifdef STRONGHOLD
 		|| lev == stronghold_level ||
 		(lev >= tower_level && lev <= tower_level+2)
@@ -240,7 +243,9 @@ savebones(){
 	savefruitchn(fd);
 #endif
 	savelev(fd, dlevel, COUNT);
+#ifdef ZEROCOMP
 	bflush(fd);
+#endif
 	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
 #ifdef WIZARD
 		if (wizard)

@@ -16,7 +16,7 @@ static char BC[] = "\b";            /* Cursor left  BS */
 static char MR[] = "\2337m";        /* Reverse on   CSI 7 m */
 static char ME[] = "\2330m";        /* Reverse off  CSI 0 m */
 
-#ifdef MSDOSCOLOR    /* creps@silver.bacs.indiana.edu */
+#ifdef TEXTCOLOR
 static char SO[] = "\23333m";       /* Standout: Color #3 (orange) */
 static char SE[] = "\2330m";
 #else
@@ -24,10 +24,19 @@ static char SO[] = "\2337m";        /* Inverse video */
 static char SE[] = "\2330m";
 #endif
 
+#ifdef TEXTCOLOR
+/* color maps */
+static int foreg[8] = { 2, 3, 1, 3, 3, 3, 3, 0 };
+static int backg[8] = { 1, 2, 2, 0, 1, 1, 1, 1 };
+#endif
 
 void
 startup()
 {
+#ifdef TEXTCOLOR
+    register int c;
+#endif  
+
     (void) Initialize();        /* This opens screen, window, console, &c */
 
     CO = COLNO;
@@ -37,19 +46,27 @@ startup()
 
     CD = "\233J";               /* used in pager.c */
 
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
     /*
      * We need 5 different 'colors', but in a 4-color screen we really
      * cannot make these available, even more so because we use the user's
      * preferred Workbench colors. Instead, we use different combinations
      * of the 4 possible colors. For orientation: default colors are
      * white (1) on blue (0), and a orange (3) cursor on a black (2) character.
+     *
+     * "Black": Black on White
+     * "Red":	Orange on Black
+     * "Green": White on Black
+     * "Yellow": Orange on Blue
+     * "Blue":	Orange on White
+     * "Magenta": White on Black
+     * "Cyan":	White on Black
+     * "White": Blue on White
      */
-    HI_GREEN  = "\23331;42m";   /* White on Black */
-    HI_RED    = "\23333;42m";   /* Orange on Black */
-    HI_YELLOW = "\23333;40m";   /* Orange on Blue */
-    HI_BLUE   = "\23333;41m";   /* Orange on White */
-    HI_WHITE  = "\23330;41m";   /* Blue on White */
+    for (c = 0; c < SIZE(HI_COLOR); c++) {
+	HI_COLOR[c] = (char *) alloc(sizeof("E0;33;44m"));
+	Sprintf(HI_COLOR[c], "\2333%d;4%dm", foreg[c], backg[c]);
+    }
 
     HI = "\2331m";              /* Bold (hilight) */
     HE = "\2330m";              /* Plain */

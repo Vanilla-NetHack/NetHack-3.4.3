@@ -633,7 +633,7 @@ char *oldstr;
 	Strcpy(str, oldstr);
 
 	/* Search for common compounds, i.e. lump of royal jelly */
-	for(excess=0, spot=str; *spot; spot++) {
+	for(excess=(char *)0, spot=str; *spot; spot++) {
 		if (!strncmp(spot, " of ", 4)
 				|| !strncmp(spot, " labeled ", 9)
 				|| !strncmp(spot, " called ", 8)
@@ -651,7 +651,7 @@ char *oldstr;
 				|| !strncmp(spot, " du ", 4)
 #endif
 				) {
-			excess = oldstr + (spot - str);
+			excess = oldstr + (int) (spot - str);
 			*spot = 0;
 			break;
 		}
@@ -1102,7 +1102,7 @@ sing:
 		goto typfnd;
 	}
 #endif
-	if (strlen(bp) == 1 && index(obj_symbols, *bp)) {
+	if (strlen(bp) == 1 && index(obj_symbols, *bp) && *bp != ILLOBJ_SYM) {
 		let = *bp;
 		goto any;
 	}
@@ -1374,6 +1374,10 @@ typfnd:
 	} else if (spesgn < 0) {
 		curse(otmp);
 	}
+
+	/* prevent wishing abuse */
+	if (otmp->otyp == WAN_WISHING || otmp->otyp == MAGIC_LAMP)
+		otmp->recharged = 1;
 
 	/* set poisoned */
 	if (ispoisoned) {

@@ -231,11 +231,11 @@ boolean artif;
 	case WEAPON_SYM:
 		otmp->quan = (otmp->otyp <= SHURIKEN) ? rn1(6,6) : 1;
 		if(!rn2(11)) {
-			otmp->spe = rne(2);
+			otmp->spe = rne(3);
 			otmp->blessed = rn2(2);
 		} else if(!rn2(10)) {
 			curse(otmp);
-			otmp->spe = -rne(2);
+			otmp->spe = -rne(3);
 		} else	blessorcurse(otmp, 10);
 
 #ifdef NAMED_ITEMS
@@ -349,9 +349,9 @@ boolean artif;
 		   otmp->otyp == GAUNTLETS_OF_FUMBLING ||
 		   !rn2(11))) {
 			curse(otmp);
-			otmp->spe = -rne(2);
+			otmp->spe = -rne(3);
 		} else if(!rn2(10)) {
-			otmp->spe = rne(2);
+			otmp->spe = rne(3);
 			otmp->blessed = rn2(2);
 		} else	blessorcurse(otmp, 10);
 		if(otmp->otyp == DRAGON_SCALE_MAIL)

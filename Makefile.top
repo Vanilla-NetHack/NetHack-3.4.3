@@ -55,7 +55,9 @@ update: $(GAME) data rumors spec_levs
 #	(don't yank the old version out from under people who're playing it)
 	mv $(GAMEDIR)/$(GAME) $(GAMEDIR)/$(GAME).old
 	cp src/$(GAME) $(GAMEDIR)
-	cp auxil/$(GAME).sh $(SHELLDIR)/$(GAME)
+	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
+		< auxil/nethack.sh \
+		> $(SHELLDIR)/$(GAME)
 # correct the permissions on the new versions
 	-( cd $(GAMEDIR) ; chown $(GAMEUID) $(AUX) $(GAME) ; \
 			chgrp $(GAMEGRP) $(AUX) $(GAME) ; \
@@ -79,7 +81,9 @@ install: $(GAME) data rumors spec_levs
 # copy over the game files
 	( cd auxil ; cp $(AUX) $(GAMEDIR) )
 	cp src/$(GAME) $(GAMEDIR)
-	cp auxil/$(GAME).sh $(SHELLDIR)/$(GAME)
+	sed -e 's;/usr/games/lib/nethackdir;$(GAMEDIR);' \
+		< auxil/nethack.sh \
+		> $(SHELLDIR)/$(GAME)
 # set up the permissions
 	-chown $(GAMEUID) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
 	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
@@ -91,8 +95,13 @@ install: $(GAME) data rumors spec_levs
 	-$(GAMEMANCREATE) $(MANDIR)/$(GAME).$(MANEXT)
 	-$(LEVMANCREATE) $(MANDIR)/lev_comp.$(MANEXT)
 
+# 'make clean' removes all the .o files, but leaves around all the executables
+# and compiled data files
 clean:
-	( cd src ; make clean)
+	( cd src ; make clean )
 
+# 'make spotless' returns the source tree to near-distribution condition.
+# it removes .o files, executables, and compiled data files
 spotless:
-	( cd src ; make spotless)
+	( cd src ; make spotless )
+	( cd auxil ; make spotless )

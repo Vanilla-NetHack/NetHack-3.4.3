@@ -674,8 +674,8 @@ char *str;
 		    (!strncmp(buf, "tin of ", 7) && name_to_mon(buf+7) > -1) ||
 		    !strcmp(buf, "empty tin") ||
 		    !strcmp(buf, "tin of spinach") ||
-		    ((!strncmp(eos(buf)-6," corpse",6) ||
-						!strncmp(eos(buf)-3, " egg",3))
+		    ((!strncmp(eos(buf)-6," corpse",7) ||
+						!strncmp(eos(buf)-3, " egg",4))
 			&& name_to_mon(buf) > -1))
 			{
 				Strcpy(buf, pl_fruit);

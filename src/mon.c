@@ -10,6 +10,7 @@
 
 #ifdef HARD
 static boolean restrap();
+#  include <ctype.h>
 #endif
 
 long lastwarntime;
@@ -211,9 +212,15 @@ movemon()
 			/* continue if the monster died fighting */
 			fr = -1;
 /* TODO:	Handle the case of the agressor dying? */
-			if(Conflict && cansee(mtmp->mx,mtmp->my)
-				&& !mtmp->iswiz
-				&& (fr = fightm(mtmp)) == 2)
+			if(Conflict && !mtmp->iswiz &&
+			   /* area you can see if you're not blind */
+			   (dist(mtmp->mx,mtmp->my) < 3 ||
+			    (levl[mtmp->mx][mtmp->my].lit &&
+			     ((seelx <= mtmp->mx && mtmp->mx <= seehx &&
+			       seely <= mtmp->my && mtmp->my <= seehy) ||
+			      (seelx2 <= mtmp->mx && mtmp->mx <= seehx2 &&
+			       seely2 <= mtmp->my && mtmp->my <= seehy2)))) &&
+			   (fr = fightm(mtmp)) == 2)
 				continue;
   			if(fr<0 && dochugw(mtmp))
 				continue;
@@ -635,9 +642,14 @@ register int  typ;
 	    /* so have "poison arrow", "poison dart", etc... */
 	    plural = (string[strlen(string) - 1] == 's')? 1 : 0;
 	    if(Blind)
-		pline("%s poisoned.", (plural) ? "They were" : "It was");
+		pline("%s poisoned.", plural ? "They were" : "It was");
+#ifdef HARD
+	    /* avoid "The" Orcus's sting was poisoned... */
+	    else if(isupper(*string))
+		pline("%s %s poisoned!", string, plural ? "were" : "was");
+#endif
 	    else
-		pline("The %s %s poisoned!", string, (plural) ? "were" : "was");
+		pline("The %s %s poisoned!", string, plural ? "were" : "was");
 	}
 
 	if(Poison_resistance) {
@@ -657,7 +669,7 @@ register int  typ;
 	}
 	if(u.uhp < 1) {
 		killer = pname;
-		done("died");
+		done(POISONING);
 	}
 }
 
@@ -831,7 +843,8 @@ xkilled(mtmp, dest)
 #ifdef DEBUG
 		pline("Automatically genocided %s.", makeplural(mons[tmp].mname));
 #endif
-		mons[tmp].geno |= G_GENOD;
+		if (tmp != PM_WIZARD_OF_YENDOR)
+			mons[tmp].geno |= G_GENOD;
 	}
 #ifdef MAIL
 	/* If you kill the mail daemon, no more mail delivery.  -3. */

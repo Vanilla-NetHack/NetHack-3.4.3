@@ -1,0 +1,320 @@
+#	SCCS Id: @(#)Makefile.os2	3.0	89/08/10
+#	PC NetHack 3.0 Makefile for Microsoft(tm) C 5.1 and OS/2
+#
+#	NDMAKE ver 4.3+ is required, MS-MAKE does *not* work
+#
+# Large memory model
+CC	= cl
+LINK	= link
+MODEL	= L
+
+# Directories (makedefs hardcodes these, don't change them)
+INCL	= ..\include
+AUX	= ..\auxil
+SRC	= ..\src
+
+# memory model, compile only, #define LINT_ARGS, disable optimization,
+# remove stack probes, 80286 instruction set, dedicated datasegment for
+# items >= 5 bytes, pack structures on 1 byte boundaries, generate code
+# for 8087 coprocessor, include file path
+CFLAGS	= /A$(MODEL) /c /DLINT_ARGS /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /I$(INCL)
+
+# + prepare for CodeView symbolic debugger
+#CFLAGS	= /A$(MODEL) /c /DLINT_ARGS /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /I$(INCL) /Zi
+
+# don't ignore case in symbols, no default lib search, stack 4096 bytes
+# (actually a bit of overkill), allow max 1024 segments in program
+LFLAGS	= /noig /nod /stack:4096 /seg:1024
+
+# + prepare for CodeView symbolic debugger
+#LFLAGS	= /noig /nod /stack:4096 /seg:1024 /CO
+
+# real mode C libraries for 8087 coprocessor
+RLIBS	= $(MODEL)libc7r
+
+# protected mode C libraries for 8087, OS/2 API entry points
+PLIBS	= $(MODEL)libc7p doscalls
+
+# termcap routines
+TERMLIB= termlib.lib
+
+# module definition file for OS/2
+OS2DEFS	= $(GAME).def
+
+# target system
+TARG	= pc
+
+.c.o:
+	$(CC) $(CFLAGS) /Foo\$*.o $*.c
+
+# Optional high-quality BSD random number generation routines (see pcconf.h).
+# Set to nothing if not used.
+RANDOM = o\random.o
+
+# Termcap objs
+TERMOBJS= o\tgetent.o o\tgetflag.o o\tgetnum.o o\tgetstr.o o\tgoto.o o\tputs.o o\isdigit.o o\fgetlr.o
+
+# For NDMAKE, to handle the .o suffix.
+.SUFFIXES: .exe .o .c .y .l
+
+# The game name
+GAME= nethack
+
+# The game directory
+GAMEDIR = \games\$(GAME)
+
+# The game filename
+GAMEFILE = $(GAMEDIR)\$(GAME).exe
+
+# object files for makedefs
+MAKEOBJS = o\makedefs.o o\alloc.o o\monst.o o\objects.o o\panic.o
+
+# object files for special levels compiler
+SPLEVOBJS = o\lev_comp.o o\lev_lex.o o\lev_main.o o\alloc.o o\monst.o o\objects.o o\panic.o
+
+# nothing below this line should have to be changed
+#
+# other things that have to be reconfigured are in config.h,
+# {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
+
+VOBJ =	o\alloc.o o\apply.o o\artifact.o o\attrib.o o\bones.o o\cmd.o \
+	o\dbridge.o o\decl.o o\demon.o o\do.o o\do_name.o o\do_wear.o \
+	o\dog.o o\dogmove.o o\dokick.o o\dothrow.o o\eat.o o\end.o o\engrave.o \
+	o\exper.o o\extralev.o o\fountain.o o\getline.o o\hack.o o\invent.o \
+	o\lock.o o\mail.o o\main.o o\makemon.o o\mcastu.o o\mhitm.o o\mhitu.o \
+	o\mklev.o o\mkmaze.o o\mkobj.o o\mkroom.o o\mon.o o\mondata.o \
+	o\msdos.o o\monmove.o o\monst.o o\mthrowu.o o\music.o o\o_init.o \
+	o\objects.o o\objnam.o o\options.o o\pager.o o\pickup.o o\polyself.o \
+	o\potion.o o\pray.o o\pri.o o\priest.o o\prisym.o $(RANDOM) o\read.o \
+	o\restore.o o\rip.o o\rnd.o o\rumors.o o\save.o o\search.o o\shk.o \
+	o\shknam.o o\sit.o o\sounds.o o\sp_lev.o o\spell.o o\steal.o \
+	o\termcap.o o\timeout.o o\topl.o o\topten.o o\track.o o\trap.o \
+	o\tty.o o\u_init.o o\uhitm.o o\unix.o o\vault.o o\weapon.o o\were.o \
+	o\wield.o o\wizard.o o\worm.o o\worn.o o\write.o o\zap.o
+HOBJ =	$(VOBJ) o\version.o
+
+PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\msdos.h $(INCL)\system.h \
+	     $(INCL)\extern.h $(INCL)\def_os2.h 
+GLOBAL_H   = $(INCL)\global.h $(INCL)\coord.h $(PCCONF_H)
+CONFIG_H   = $(INCL)\config.h $(INCL)\tradstdc.h $(GLOBAL_H)
+TRAP_H	   = $(INCL)\trap.h
+PERMONST_H = $(INCL)\permonst.h $(INCL)\monflag.h
+YOU_H	   = $(INCL)\you.h $(INCL)\attrib.h $(PERMONST_H) $(INCL)\mondata.h \
+	     $(INCL)\monst.h $(INCL)\youprop.h
+DECL_H	   = $(INCL)\decl.h $(INCL)\spell.h $(INCL)\obj.h $(YOU_H) \
+	     $(INCL)\onames.h $(INCL)\pm.h
+HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
+	     $(INCL)\objclass.h $(INCL)\gold.h $(INCL)\trap.h $(INCL)\flag.h \
+	     $(INCL)\rm.h
+
+# The main target
+$(GAMEDIR)\$(GAME).exe: o $(HOBJ) $(OS2DEFS) $(TERMLIB)
+	$(LINK) $(HOBJ),$(GAMEDIR)\$(GAME),$(GAME),$(PLIBS) $(TERMLIB),$(OS2DEFS) $(LFLAGS) ;
+
+# NDMAKE automatically generates LINK response files, so you can
+# uncomment the second line if you are using NDMAKE.
+
+$(GAME): $(GAMEDIR)\$(GAME).exe
+$(GAME).exe: $(GAMEDIR)\$(GAME).exe
+
+all:	o makedefs lev_comp $(GAME) auxil record
+	@echo Done.
+
+o:
+	mkdir o
+
+$(TERMLIB): $(TERMOBJS)
+	lib $(TERMLIB) -+ $(TERMOBJS) ;
+
+makedefs:	makedefs.exe
+makedefs.exe:	$(MAKEOBJS)
+	$(LINK) $(MAKEOBJS),,,$(RLIBS) $(LFLAGS) ;
+
+o\makedefs.o:  $(INCL)\config.h $(INCL)\permonst.h $(INCL)\objclass.h
+
+lev_comp:  lev_comp.exe
+lev_comp.exe:  $(SPLEVOBJS)
+	$(LINK) $(SPLEVOBJS),lev_comp,,$(RLIBS) $(LFLAGS) ;
+
+o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
+o\lev_lex.o:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
+o\lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
+
+# If you have yacc or lex programs, and make any changes,
+# add some .y.c and .l.c rules to your Make.ini.
+
+lev_comp.c:  lev_comp.y
+lev_lex.c:  lev_comp.l
+
+#
+#	The following include files depend on makedefs to be created.
+#
+#	date.h should be remade any time any of the source or include code
+#	is modified.
+#
+$(INCL)\date.h:	 $(VOBJ) makedefs.exe
+	.\makedefs -v
+
+$(INCL)\trap.h:	makedefs.exe
+	.\makedefs -t
+
+$(INCL)\onames.h: makedefs.exe
+	.\makedefs -o
+
+$(INCL)\pm.h: makedefs.exe
+	.\makedefs -p
+
+data:	$(AUX)\data.base makedefs.exe
+	.\makedefs -d
+
+rumors: $(AUX)\rumors.tru $(AUX)\rumors.fal makedefs.exe
+	.\makedefs -r
+
+#
+#	The following programs vary depending on what OS you are using.
+#
+o\main.o:   $(HACK_H) $(TARG)main.c
+	$(CC) $(CFLAGS) /Foo\main.o $(TARG)main.c
+
+o\tty.o:   $(HACK_H) $(INCL)\func_tab.h $(TARG)tty.c
+	$(CC) $(CFLAGS) /Foo\tty.o $(TARG)tty.c
+
+o\unix.o:   $(HACK_H) $(TARG)unix.c
+	$(CC) $(CFLAGS) /Foo\unix.o $(TARG)unix.c
+
+#
+# Secondary targets
+#
+
+auxil:	spec_levs
+	xcopy $(AUX)\*. $(GAMEDIR)
+
+spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
+	lev_comp $(AUX)\castle.des
+	lev_comp $(AUX)\endgame.des
+	lev_comp $(AUX)\tower.des
+	xcopy castle $(GAMEDIR)
+	del castle
+	xcopy endgame $(GAMEDIR)
+	del endgame
+	xcopy tower? $(GAMEDIR)
+	del tower?
+
+$(OS2DEFS):
+	echo NAME $(GAME) WINDOWCOMPAT> $(OS2DEFS)
+	echo DESCRIPTION 'NetHack 3.0'>> $(OS2DEFS)
+	echo PROTMODE>> $(OS2DEFS)
+	echo EXETYPE OS2>> $(OS2DEFS)
+
+record: $(GAMEDIR)\record
+$(GAMEDIR)\record:
+	echo foo> $(GAMEDIR)\record
+
+clean:
+	del o\*.obj
+	rmdir o
+
+spotless: clean
+	del $(INCL)\date.h
+	del $(INCL)\onames.h
+	del $(INCL)\pm.h
+	touch $(INCL)\date.h $(INCL)\onames.h $(INCL)\pm.h
+	del makedefs.exe
+	if exist lev_comp.exe del lev_comp.exe
+
+#
+# Other dependencies
+#
+
+# GO AHEAD, DELETE THIS LINE
+
+o\alloc.o:  $(CONFIG_H)
+o\apply.o:  $(HACK_H) $(INCL)\edog.h
+o\artifact.o:  $(HACK_H) $(INCL)\artifact.h
+o\attrib.o:  $(HACK_H)
+o\bones.o:  $(HACK_H)
+o\cmd.o:  $(HACK_H) $(INCL)\func_tab.h
+o\dbridge.o: $(HACK_H)
+o\decl.o:  $(HACK_H)
+o\demon.o:  $(HACK_H)
+o\do.o:  $(HACK_H)
+o\do_name.o:  $(HACK_H)
+o\do_wear.o:  $(HACK_H)
+o\dog.o:  $(HACK_H) $(INCL)\edog.h
+o\dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+o\dokick.o:  $(HACK_H)
+o\dothrow.o:  $(HACK_H)
+o\eat.o:  $(HACK_H)
+o\end.o:  $(HACK_H) $(INCL)\eshk.h
+o\engrave.o:  $(HACK_H)
+o\exper.o:  $(HACK_H)
+o\extralev.o:  $(HACK_H)
+o\fountain.o:  $(HACK_H)
+o\getline.o:  $(HACK_H) $(INCL)\func_tab.h
+o\hack.o:  $(HACK_H)
+o\invent.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+o\ioctl.o:  $(HACK_H)
+o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
+o\lock.o:  $(HACK_H)
+o\makemon.o:  $(HACK_H)
+o\mail.o:  $(HACK_H)
+o\mcastu.o:  $(HACK_H)
+o\mhitm.o:  $(HACK_H) $(INCL)\artifact.h
+o\mhitu.o:  $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+o\mklev.o:  $(HACK_H)
+o\mkmaze.o:  $(HACK_H)
+o\mkobj.o:  $(HACK_H)
+o\mkroom.o:  $(HACK_H)
+o\mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+o\mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
+o\monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+o\monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
+o\msdos.o:  $(HACK_H)
+o\mthrowu.o:  $(HACK_H)
+o\music.o:  $(HACK_H)
+o\o_init.o:  $(HACK_H) $(INCL)\onames.h
+o\objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h
+o\objnam.o:  $(HACK_H)
+o\options.o:  $(HACK_H)
+o\pager.o:  $(HACK_H)
+o\panic.o:  $(CONFIG_H)
+o\pickup.o:  $(HACK_H)
+o\polyself.o:  $(HACK_H)
+o\potion.o:  $(HACK_H)
+o\pray.o:  $(HACK_H)
+o\pri.o:  $(HACK_H)
+o\priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
+o\prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+o\random.o:
+o\read.o:  $(HACK_H)
+o\restore.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+o\rip.o:  $(HACK_H)
+o\rnd.o:  $(HACK_H)
+o\rumors.o:  $(HACK_H)
+o\save.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+o\search.o:  $(HACK_H) $(INCL)\artifact.h
+o\shk.o:  $(HACK_H) $(INCL)\eshk.h
+o\shknam.o:  $(HACK_H) $(INCL)\eshk.h
+o\sit.o:  $(HACK_H)
+o\sounds.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
+o\sp_lev.o:  $(HACK_H) $(INCL)\sp_lev.h
+o\spell.o:  $(HACK_H)
+o\steal.o:  $(HACK_H)
+o\termcap.o:  $(HACK_H)
+o\timeout.o:  $(HACK_H)
+o\topl.o:  $(HACK_H)
+o\topten.o:  $(HACK_H)
+o\track.o:  $(HACK_H)
+o\trap.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\trapname.h
+o\u_init.o:  $(HACK_H)
+o\uhitm.o:  $(HACK_H) $(INCL)\artifact.h
+o\vault.o:  $(HACK_H) $(INCL)\vault.h
+o\version.o:  $(HACK_H) $(INCL)\date.h
+o\weapon.o:  $(HACK_H)
+o\were.o:  $(HACK_H)
+o\wield.o:  $(HACK_H)
+o\wizard.o:  $(HACK_H)
+o\worm.o:  $(HACK_H) $(INCL)\wseg.h
+o\worn.o:  $(HACK_H)
+o\write.o:  $(HACK_H)
+o\zap.o:  $(HACK_H)

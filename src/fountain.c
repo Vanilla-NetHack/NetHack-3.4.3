@@ -87,6 +87,7 @@ register int madepool = 0;
 	    levl[mx][my].typ = POOL;
 	    levl[mx][my].doormask = 0;
 	    if(!Blind) atl(mx,my,(char) POOL_SYM);
+	    else levl[mx][my].seen = 0;
 	    madepool = 1;
 	}
 

@@ -571,7 +571,20 @@ char *name;
 	boolean result;
 	schar c;
 
+#ifdef OS2_CODEVIEW
+	{
+	char tmp[PATHLEN];
+
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,name);
+	fd = fopen(tmp, RDMODE);
+#else
 	fd = fopen(name, RDMODE);
+#endif
+#ifdef OS2_CODEVIEW
+	}
+#endif
 	if (!fd) return FALSE;
 
 	if ((c = fgetc(fd)) == EOF) {

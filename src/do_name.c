@@ -34,8 +34,8 @@ int force; char *goal;
 	register int cx, cy, i, c;
 	char *sdp = flags.num_pad ? ndir : sdir;
 	if(flags.verbose) pline("(For instructions type a ?)");
-	cx = u.ux;
-	cy = u.uy;
+	cx = cc->x;
+	cy = cc->y;
 	curs(cx,cy+2);
 	while((c = readchar()) != '.'){
 		for(i=0; i<8; i++) if(sdp[i] == c){
@@ -46,13 +46,12 @@ int force; char *goal;
 			goto nxtc;
 		}
 		if(c == '?'){
-		    if(flags.verbose) {
 			pline("Use [%s] to move the cursor to %s.",
 			      flags.num_pad ? "2468" : "hjkl", goal);
 			pline("Type a . when you are at the right place.");
-		    }
 		} else {
-			pline("Unknown direction: '%s' (%s).",
+			if (!index(quitchars, c))
+			    pline("Unknown direction: '%s' (%s).",
 				visctrl(c),
 				force ?
 				    flags.num_pad ? "use 2468 or ." :
@@ -80,6 +79,8 @@ do_mname(){
 	register char *curr;
 	boolean blank;
 
+	cc.x = u.ux;
+	cc.y = u.uy;
 	getpos(&cc, 0, "the monster you want to name");
 	cx = cc.x;
 	cy = cc.y;

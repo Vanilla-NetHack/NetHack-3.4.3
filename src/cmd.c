@@ -90,6 +90,26 @@ timed_occupation() {
 	return multi > 0;
 }
 
+/* If you have moved since initially setting some occupations, they
+ * now shouldn't be able to restart.
+ *
+ * The basic rule is that if you are carrying it, you can continue
+ * since it is with you.  If you are acting on something at a distance,
+ * your orientation to it must have changed when you moved.
+ *
+ * The exception to this is taking off items, since they can be taken
+ * off in a number of ways in the intervening time, screwing up ordering.
+ *
+ *	Currently:	Take off all armor.
+ *			Picking Locks / Forcing Chests.
+ */
+void
+reset_occupations() {
+
+	reset_remarm();
+	reset_pick();
+}
+
 /* If a time is given, use it to timeout this function, otherwise the
  * function times out by its own means.
  */
@@ -417,41 +437,46 @@ wiz_attributes()
 }
 #endif /* WIZARD || EXPLORE_MODE */
 
+#define M(c)		(0x80 | (c))
+#define C(c)		(0x1f & (c))
 const struct func_tab cmdlist[]={
-	{'\004', /* ^D */ dokick},	/* "D" is for door!...? */
+	{C('d'), dokick},	/* "D" is for door!...? */
 #ifdef WIZARD
-	{'\005', /* ^E */ wiz_detect},
-	{'\006', /* ^F */ wiz_map},
-	{'\007', /* ^G */ wiz_genesis},
-	{'\011', /* ^I */ wiz_identify},
-	{'\017', /* ^O */ wiz_where},
+	{C('e'), wiz_detect},
+	{C('f'), wiz_map},
+	{C('g'), wiz_genesis},
+	{C('i'), wiz_identify},
+	{C('o'), wiz_where},
 #endif
-	{'\020', /* ^P */ doredotopl},
-	{'\022', /* ^R */ doredraw},
-	{'\024', /* ^T */ dotele},
+	{C('p'), doredotopl},
+	{C('r'), doredraw},
+	{C('t'), dotele},
 #ifdef WIZARD
-	{'\026', /* ^V */ wiz_level_tele},
-	{'\027', /* ^W */ wiz_wish},
+	{C('v'), wiz_level_tele},
+	{C('w'), wiz_wish},
 #endif
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-	{'\030', /* ^X */ wiz_attributes},
+	{C('x'), wiz_attributes},
 #endif
 #ifdef SUSPEND
-	{'\032', /* ^Z */ dosuspend},
+	{C('z'), dosuspend},
 #endif
 	{'a', doapply},
 	{'A', doddoremarm},
 /*	'b', 'B' : go sw */
 	{'c', doclose},
 	{'C', do_mname},
+	{M('c'), dotalk},
 	{'d', dodrop},
 	{'D', doddrop},
+	{M('d'), dodip},
 	{'e', doeat},
 	{'E', doengrave},
 /* Soon to be
 	{'f', dofight, "fighting"},
 	{'F', doFight, "fighting"},
  */
+	{M('f'), doforce},
 /*	'g', 'G' : multiple go */
 /*	'h', 'H' : go west */
 	{'h', dohelp}, /* if number_pad is set */
@@ -459,28 +484,45 @@ const struct func_tab cmdlist[]={
 	{'I', dotypeinv},		/* Robert Viduya */
 /*	'j', 'J', 'k', 'K', 'l', 'L', 'm', 'M', 'n', 'N' : move commands */
 	{'j', dojump}, /* if number_pad is on */
+	{M('j'), dojump},
 	{'k', dokick}, /* if number_pad is on */
 	{'l', doloot}, /* if number_pad is on */
+	{M('l'), doloot},
 /*	'n' prefixes a count if number_pad is on */
+#ifdef POLYSELF
+	{M('m'), domonability},
+#endif /* POLYSELF */
 	{'N', ddocall}, /* if number_pad is on */
+	{M('N'), ddocall},
 	{'o', doopen},
 	{'O', doset},
+#ifdef THEOLOGY
+	{M('o'), dosacrifice},
+#endif /* THEOLOGY */
 	{'p', dopay},
 	{'P', doputon},
+#ifdef THEOLOGY
+	{M('p'), dopray},
+#endif /* THEOLOGY */
 	{'q', dodrink},
 	{'Q', done2},
 	{'r', doread},
 	{'R', doremring},
+	{M('r'), dorub},
 	{'s', dosearch, "searching"},
 	{'S', dosave},
+	{M('s'), dosit},
 	{'t', dothrow},
 	{'T', dotakeoff},
+	{M('t'), doturn},
 /*	'u', 'U' : go ne */
 	{'u', dountrap}, /* if number_pad is on */
+	{M('u'), dountrap},
 	{'v', doversion},
 	{'V', dohistory},
 	{'w', dowield},
 	{'W', dowear},
+	{M('w'), dowipe},
 #ifdef SPELLS
 	{'x', dovspell},			/* Mike Stephenson */
 #endif
@@ -516,6 +558,8 @@ const struct func_tab cmdlist[]={
 	{'#', doextcmd},
 	{0,0,0}
 };
+#undef M
+#undef C
 
 const struct ext_func_tab extcmdlist[] = {
 	"chat", "talk to someone", dotalk,	/* converse? */
@@ -618,7 +662,7 @@ register char *cmd;
 		goto rush;
 	}
 	while(tlist->f_char) {
-		if(*cmd == tlist->f_char){
+		if((*cmd & 0xff) == (tlist->f_char & 0xff)){
 			/* Special case of *cmd == ' ' handled here */
 			if (*cmd == ' ' && flags.no_rest_on_space)
 				break;
@@ -642,6 +686,11 @@ register char *cmd;
 	  while(*cmd && cp-expcmd < sizeof(expcmd)-2) {
 		if(*cmd >= 040 && *cmd < 0177)
 			*cp++ = *cmd++;
+		else if (*cmd & 0200) {
+			*cp++ = 'M';
+			*cp++ = '-';
+			*cp++ = *cmd++ &=~ 0200;
+		}
 		else {
 			*cp++ = '^';
 			*cp++ = *cmd++ ^ 0100;

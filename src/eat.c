@@ -127,7 +127,7 @@ register int pm;
 			You("turn to stone.");
 			Sprintf(killer, "%s meat",
 				      mons[pm].mname);
-			done("stoned");
+			done(STONING);
 #ifdef POLYSELF
 		}
 #endif
@@ -409,14 +409,11 @@ eatcorpse(otmp) register struct obj *otmp; {
 /* Created by GAN 01/28/87
  * Amended by AKP 09/22/87: if not hard, don't choke, just vomit.
  * Amended by 3.  06/12/89: if not hard, sometimes choke anyway, to keep risk.
- *
- * Note that if you have enough food, you can always stop being Sick!
- * choke() returns if you don't choke, kills you if you do.
  */
 /*ARGSUSED*/
 static void
 choke(food)
-register struct objclass *food;
+register struct obj *food;
 {
 	/* only happens if you were satiated */
 	if(u.uhs != SATIATED) return;
@@ -431,11 +428,16 @@ register struct objclass *food;
 		vomit();
 	} else {
 #endif
-		if(food)	killer = food->oc_name;
-		else		killer = "exuberant appetite";
+		if(food) {
+			int savequan = food->quan;
+			food->quan = 1;
+			killer = xname(food);
+			food->quan = savequan;
+		} else
+			killer = "exuberant appetite";
 		You("choke over your food.");
 		You("die...");
-		done("choked");
+		done(CHOKING);
 #ifndef HARD
 	}
 #endif
@@ -508,7 +510,7 @@ doeat() {
 		rottenfood();
 		lesshungry(ftmp->nutrition >> 2);
 	    } else {
-		if(u.uhunger >= 1500) choke(ftmp);
+		if(u.uhunger >= 1500) choke(otmp);
 
 		switch(otmp->otyp){
 		case FOOD_RATION:
@@ -617,7 +619,7 @@ doeat() {
 					u.uhp = u.uhpmax;
 				} else if(u.uhp <= 0) {
 					killer = "rotten jelly lump";
-					done("died");
+					done(POISONING);
 				}
 				if(!otmp->cursed) heal_legs();
 				break;
@@ -701,7 +703,7 @@ lesshungry(num)
 register int num;
 {
 	u.uhunger += num;
-	if(u.uhunger >= 2000) choke((struct objclass *) 0);
+	if(u.uhunger >= 2000) choke((struct obj *) 0);
 	else {
 	    /* Have lesshungry() report when you're nearly full so all eating
 	     * warns when you're about to choke.
@@ -749,7 +751,7 @@ newuhs(incr) boolean incr; {
 			flags.botl = 1;
 			bot();
 			You("die from starvation.");
-			done("starved");
+			done(STARVING);
 		}
 	}
 
@@ -785,7 +787,7 @@ newuhs(incr) boolean incr; {
 		if(u.uhp < 1) {
 			You("die from hunger and exhaustion.");
 			killer = "exhaustion";
-			done("starved");
+			done(STARVING);
 		}
 	}
 }

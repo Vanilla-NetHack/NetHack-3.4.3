@@ -24,8 +24,8 @@ bchit(ddx,ddy,range,sym) register int ddx,ddy,range; char sym; {
 
 	if(sym) {
 		Tmp_at2(-1, sym);	/* open call */
-#ifdef MSDOSCOLOR
-		Tmp_at2(-3, (int)AT_WHITE);
+#ifdef TEXTCOLOR
+		Tmp_at2(-3, WHITE);
 #endif
 	}
 	while(range--) {
@@ -305,8 +305,7 @@ struct obj *obj;
 			pline("This %s is already leashed!", lmonnam(mtmp)+4);
 			return;
 		}
-		You("slip the leash around your %s.",
-				mtmp->data->mname);
+		You("slip the leash around your %s.", lmonnam(mtmp)+4);
 		mtmp->mleashed = 1;
 		obj->leashmon = (int)mtmp->m_id;
 		if(mtmp->msleep)  mtmp->msleep = 0;
@@ -490,7 +489,10 @@ dig() {
 			if (break_statue(obj))
 				digtxt = "The statue shatters.";
 			else
-	digtxt = "Instead of shattering, the statue suddenly comes alive!";
+				/* it was a statue trap; break_statue()
+				 * printed a message and updated the screen
+				 */
+				digtxt = NULL;
 		} else if(!lev->typ || lev->typ == SCORR) {
 			lev->typ = CORR;
 			digtxt = "You succeeded in cutting away some rock.";
@@ -518,7 +520,7 @@ dig() {
 		  digtxt = "Now what exactly was it that you were digging in?";
 		mnewsym(dpx, dpy);
 		prl(dpx, dpy);
-		pline(digtxt);		/* after mnewsym & prl */
+		if (digtxt) pline(digtxt);	/* after mnewsym & prl */
 		if(IS_DOOR(lev->typ) && (lev->doormask & D_TRAPPED)) {
 			b_trapped("door");
 			lev->doormask = D_NODOOR;
@@ -747,15 +749,20 @@ static void
 use_mirror(obj)
 struct obj *obj;
 {
-     register struct monst *mtmp;
-     register char mlet;
+	register struct monst *mtmp;
+	register char mlet;
 
 	if(!getdir(1)){		/* ask: in what direction? */
 		flags.move = multi = 0;
 		return;
 	}
+	if(obj->cursed && !rn2(2)) {
+		if (!Blind)
+			pline("The mirror gets foggy and doesn't reflect!");
+		return;
+	}
 	if(!u.dx && !u.dy && !u.dz) {
-		if(!Blind && !Invisible)
+		if(!Blind && !Invisible) {
 #ifdef POLYSELF
 		    if(u.umonnum == PM_FLOATING_EYE) {
 			pline("Yikes!  You've frozen yourself!");
@@ -788,7 +795,7 @@ struct obj *obj;
 				ACURR(A_CHA) > 14 ?
 				(poly_gender()==1 ? "beautiful" : "handsome") :
 				"ugly");
-		else {
+		} else {
 		if (rn2(4-u.uluck/3) || !HTelepat ||
 		    (u.ukilled_medusa
 #ifdef HARD
@@ -838,61 +845,72 @@ struct obj *obj;
 			(u.dz > 0) ? "floor" : "ceiling");
 		return;
 	}
-	if((mtmp = bchit(u.dx, u.dy, COLNO, 0)) && haseyes(mtmp->data)) {
-	    mlet = mtmp->data->mlet;
-	    if(mtmp->msleep) {
-		if (!Blind)
+	if(!(mtmp = bchit(u.dx, u.dy, COLNO, 0)) || !haseyes(mtmp->data))
+		return;
+
+	mlet = mtmp->data->mlet;
+	if(mtmp->msleep) {
+		if(!Blind)
 		    pline ("%s is tired and doesn't look at your mirror.",
 			    Monnam(mtmp));
 		mtmp->msleep = 0;
-	    } else if (!mtmp->mcansee) {
+	} else if (!mtmp->mcansee) {
 		if (!Blind)
 		    pline("%s can't see anything at the moment.", Monnam(mtmp));
-	    } else if (mtmp->minvis || mlet == S_VAMPIRE ||
-					mlet == S_DEMON || mlet == S_GHOST) {
+	/* some monsters do special things */
+	} else if (mlet == S_VAMPIRE || mlet == S_DEMON || mlet == S_GHOST ||
+		  (mtmp->minvis && !perceives(mtmp->data) && !See_invisible)) {
 		if (!Blind)
 		   pline ("%s doesn't seem to reflect anything.", Monnam(mtmp));
-	    } else if (!mtmp->mcan) {
-	    /* some monsters do special things */
-		if(obj->cursed && !rn2(2)) {
-		    if (!Blind)
-			pline("The mirror gets foggy and doesn't reflect!");
-		    return;
-		} else if(mtmp->data == &mons[PM_MEDUSA]) {
-		    if (!Blind)
+	} else if(!mtmp->mcan && mtmp->data == &mons[PM_MEDUSA]) {
+		if (!Blind)
 			pline("%s is turned to stone!", Monnam(mtmp));
-		    stoned = TRUE;
-		    killed(mtmp);
-		} else if(mtmp->data == &mons[PM_FLOATING_EYE]) {
-		    if (!Blind)
+		stoned = TRUE;
+		killed(mtmp);
+	} else if(!mtmp->mcan && !mtmp->minvis &&
+					mtmp->data == &mons[PM_FLOATING_EYE]) {
+	/* Note: floating eyes cannot use their abilities while invisible,
+	 * but medusas and umber hulks can.
+	 */
+		if (!Blind)
 			pline("%s is frozen by its reflection.",Monnam(mtmp));
-		    mtmp->mfroz = 1;
-		} else if(mtmp->data == &mons[PM_UMBER_HULK]) {
-		    if (!Blind)
+		mtmp->mfroz = 1;
+	} else if(!mtmp->mcan && mtmp->data == &mons[PM_UMBER_HULK]) {
+		if (!Blind)
 			pline ("%s has confused itself!", Monnam(mtmp));
-	    	    mtmp->mconf = 1;
-		} else if(mlet == S_NYMPH
+	    	mtmp->mconf = 1;
+	} else if(!mtmp->mcan && !mtmp->minvis && (mlet == S_NYMPH
 #ifdef HARD
 			  || mtmp->data==&mons[PM_SUCCUBUS]
 #endif
-			  ) {
-		    if (!Blind) {
-	    	      pline ("%s looks beautiful in your mirror.",Monnam(mtmp));
-	    	      pline ("She decides to take it!");
-		    } else pline ("It steals your mirror!");
-	    	    freeinv(obj);
-	    	    mpickobj(mtmp,obj);
-	    	    rloc(mtmp);
-		}
-	    } else if (mlet != S_UNICORN && !humanoid(mtmp->data) && rn2(5)) {
+			  )) {
+		if (!Blind) {
+	    	    pline ("%s looks beautiful in your mirror.",Monnam(mtmp));
+	    	    pline ("She decides to take it!");
+		} else pline ("It steals your mirror!");
+	    	freeinv(obj);
+	    	mpickobj(mtmp,obj);
+	    	rloc(mtmp);
+	} else if (mlet != S_UNICORN && !humanoid(mtmp->data) && 
+			(!mtmp->minvis || perceives(mtmp->data)) && rn2(5)) {
 		if (!Blind)
-		pline ("%s is frightened by its reflection.", Monnam(mtmp));
+			pline ("%s is frightened by its reflection%s.",
+				Monnam(mtmp), (mtmp->minvis && !See_invisible
+					&& !Telepat) ?
+				", though you see nothing" : "");
 		mtmp->mflee = 1;
 		mtmp->mfleetim += d(2,4);
-	    } else if (!Blind)
-		pline("%s doesn't seem to mind %s reflection.", Monnam(mtmp),
-		      (is_female(mtmp) ? "her" :
-		       is_human(mtmp->data) ? "his" : "its"));
+	} else if (!Blind) {
+		if (mtmp->minvis && !See_invisible)
+		    pline("%s doesn't seem to reflect anything.",
+			Monnam(mtmp));
+		else if (mtmp->minvis && !perceives(mtmp->data))
+		    pline("%s doesn't seem to be aware of its reflection.",
+			Monnam(mtmp));
+		else
+		    pline("%s doesn't seem to mind %s reflection.",
+			Monnam(mtmp), (is_female(mtmp) ? "her" :
+		        is_human(mtmp->data) ? "his" : "its"));
 	}
 }/* use_mirror */
 
@@ -1048,6 +1066,8 @@ dojump()
 		return 0;
 	}
 	pline("Where do you want to jump?");
+	cc.x = u.ux;
+	cc.y = u.uy;
 	getpos(&cc, 1, "the desired position");
 	if (dist(cc.x, cc.y) > 9) {
 		pline("Too far!");
@@ -1095,7 +1115,7 @@ register struct obj *obj;
 pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 		You("turn to stone...");
 		killer = "unwise tinning decision";
-		done("stoned");
+		done(STONING);
 	}
 	can = mksobj(TIN,FALSE);
 	can->corpsenm = corpse->corpsenm;

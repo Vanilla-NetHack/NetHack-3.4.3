@@ -127,7 +127,7 @@ polyself()
 		} else {
 		    Your("new form doesn't seem healthy enough to survive.");
 		    killer="unsuccessful polymorph";
-		    done("died");
+		    done(DIED);
 		}
 	    }
 	    set_uasmon();
@@ -160,7 +160,7 @@ newname:	more();
 	if (Inhell && !Fire_resistance) {
 	    You("burn to a crisp.");
 	    killer = "unwise polymorph";
-	    done("burned");
+	    done(BURNING);
 	}
 }
 
@@ -358,11 +358,11 @@ rehumanize()
 	set_uasmon();
 	You("return to %sn form!",(pl_character[0]=='E')?"elve":"huma");
 
-	if (u.uhp < 1)	done("died");
+	if (u.uhp < 1)	done(DIED);
 	if (!Fire_resistance && Inhell) {
 	    You("burn to a crisp.");
 	    killer = "dissipating polymorph spell";
-	   done("burned");
+	    done(BURNING);
 	}
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 	if (sticky) uunstick();
@@ -507,7 +507,7 @@ doconfuse()
 		looked = 1;
 		if (Invis && !perceives(mtmp->data))
 		    pline("%s seems not to notice your gaze.", Monnam(mtmp));
-		else if (mtmp->minvis && !See_invisible)
+		else if (mtmp->minvis && !See_invisible && !Telepat)
 		    You("can't see where to gaze at %s.", Monnam(mtmp));
 		else if (mtmp->mimic)
 		    continue;
@@ -547,8 +547,9 @@ doconfuse()
 #ifdef MEDUSA
 		    if ((mtmp->data==&mons[PM_MEDUSA]) && !mtmp->mcan) {
 			pline("Gazing at an awake medusa is not a very good idea...");
+			/* as if gazing at a sleeping anything is fruitful... */
 			You("turn to stone...");
-			done("stoned");
+			done(STONING);
 		    }
 #endif
 		}

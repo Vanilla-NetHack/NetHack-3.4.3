@@ -76,6 +76,7 @@ E void name_file P((char *,int));
 
 /* ### cmd.c ### */
 
+E void reset_occupations ();
 E void set_occupation P((int(*)(),char *,int));
 #ifdef REDO
 E char pgetchar();
@@ -189,7 +190,9 @@ E void find_ac();
 E void glibr();
 E struct obj *some_armor();
 E void corrode_armor();
+E void reset_remarm();
 E int doddoremarm();
+E int destroy_arm P((struct obj *));
 E void adj_abon P((struct obj *,schar));
 
 /* ### dog.c ### */
@@ -240,7 +243,7 @@ E int done1();
 E int done2();
 E void done_in_by P((struct monst *));
 E void panic P((char *,...));
-E void done P((char *));
+E void done P((int));
 E void clearlocks();
 #ifdef NOSAVEONHANGUP
 E void hangup();
@@ -322,8 +325,7 @@ E void losehp P((int,char *));
 E int weight_cap();
 E int inv_weight();
 E int inv_cnt();
-E int little_to_big P((int));
-E int big_to_little P((int));     
+E int identify P((struct obj *));
 #ifdef STUPID_CPP	/* otherwise these functions are macros in hack.h */
 E char yn();
 E char ynq();
@@ -380,6 +382,7 @@ E int dosuspend();
 
 /* ### lock.c ### */
 
+E void reset_pick();
 E int pick_lock P((struct obj *));
 E int doforce();
 E int boxlock P((struct obj *,struct obj *));
@@ -434,15 +437,13 @@ E int noattacks P((struct permonst *));
 /* ### mhitu.c ### */
 
 #ifdef POLYSELF
-E boolean incompatible P((struct monst *));
 E struct monst *cloneu();
 #endif
-E boolean is_nymph P((struct monst *));
-E boolean sp_melee P((struct monst *));
 E int mattacku P((struct monst *));
 E void mdamageu P((struct monst *,int));
+E int could_seduce P((struct monst *,struct monst *,struct attack *));
 #ifdef SEDUCE
-E void doseduce P((struct monst *));
+E int doseduce P((struct monst *));
 #endif
 
 /* ### mklev.c ### */
@@ -564,9 +565,12 @@ E boolean is_female P((struct monst *));
 E int gender P((struct monst *));
 E boolean levl_follower P((struct monst *));
 E struct permonst *player_mon();
+E int little_to_big P((int));
+E int big_to_little P((int));     
 
 /* ### monmove.c ### */
 
+E boolean mb_trapped P((struct monst *));
 E int dochugw P((struct monst *));
 E boolean onscary P((int,int,struct monst *));
 E int dochug P((struct monst *));
@@ -582,6 +586,7 @@ E boolean mdig_tunnel P((struct monst *));
 E void flushout();
 E int tgetch();
 E int dosh();
+# ifdef DGK
 E long freediskspace P((char *));
 E long filesize P((char *));
 E void eraseall P((char *,char *));
@@ -589,17 +594,29 @@ E void copybones P((int));
 E void playwoRAMdisk();
 E int saveDiskPrompt P((int));
 E void gameDiskPrompt();
+# endif
 E void read_config_file();
 E void set_lock_and_bones();
 E void append_slash P((char *));
 E void getreturn P((char *));
 E void msmsg P((char *,...));
 E void chdrive P((char *));
+# ifndef TOS
 E void disable_ctrlP();
 E void enable_ctrlP();
+# endif
+# ifdef DGK
 E FILE *fopenp P((char *,char *));
+# endif
 E void msexit P((int));
+# ifdef DGK
+E void get_scr_size();
+# endif
 #endif /* MSDOS */
+#ifdef TOS
+E int _copyfile P((int, int));
+E int kbhit();
+#endif /* TOS */
 
 /* ### mthrowu.c ### */
 
@@ -681,7 +698,7 @@ E int (*afternmv)();
 E void askname();
 E void impossible P((char *,...));
 #ifdef CHDIR
-E void chdirx P((char *,char));
+E void chdirx P((char *,boolean));
 #endif /* CHDIR */
 E void stop_occupation();
 #endif /* MSDOS */
@@ -845,12 +862,10 @@ E void unpobj P((struct obj *));
 
 E int doread();
 E int seffects P((struct obj *));
-E int identify P((struct obj *));
 E void litroom P((boolean));
 E void do_genocide P((int));
 E void do_mapping();
 E void do_vicinity_map();
-E int destroy_arm P((struct obj *));
 E int gold_detect P((struct obj *));
 E int food_detect P((struct obj *));
 E void punish P((struct obj *));
@@ -1043,6 +1058,7 @@ E void more();
 E void cmore P((char *));
 E void clrlin();
 E void pline P((const char *,...));
+E void Norep P((const char *,...));
 E void You P((const char *,...));
 E void Your P((const char *,...));
 E void putsym P((char));
@@ -1099,9 +1115,13 @@ E void plnamesuffix();
 
 E struct monst *clone_mon P((struct monst *));
 E boolean special_case P((struct monst *));
+E schar find_roll_to_hit P((struct monst *));
 E boolean attack P((struct monst *));
 E boolean hmon P((struct monst *,struct obj *,int));
-E int passive P((struct monst *,boolean,int));
+E int damageum P((struct monst *, struct attack *));
+E void missum P((struct monst *, struct attack *));
+E int passive P((struct monst *,boolean,int,boolean));
+E void stumble_onto_mimic P((struct monst *));
 
 /* ### unixmain.c ### */
 

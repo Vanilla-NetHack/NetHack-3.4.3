@@ -50,7 +50,7 @@ register boolean clumsy;
 		mon->mhp -= (!martial() ? rnd(dmg) :
 			rnd(dmg)+rnd(ACURR(A_DEX)/2));  
 	if(mon->mhp < 1) {
-		(void) passive(mon, TRUE, 0);
+		(void) passive(mon, TRUE, 0, TRUE);
 		killed(mon);
 		return;
 	}
@@ -68,7 +68,7 @@ register boolean clumsy;
 			set_apparxy(mon);
 	    	}
 	}
-	(void) passive(mon, FALSE, 1);
+	(void) passive(mon, FALSE, 1, TRUE);
 
 /*	it is unchivalrous to attack the defenseless or from behind */
 	if (pl_character[0] == 'K' && u.ualigntyp == U_LAWFUL && 
@@ -85,6 +85,36 @@ register int x, y;
 	register struct monst *mon = m_at(x, y);
 	register int i, j;
 
+	if(special_case(mon)) return;
+	setmangry(mon);
+#ifdef POLYSELF
+	/* Kick attacks by kicking monsters are normal attacks, not special.
+	 * If you have >1 kick attack, you get all of them.
+	 */
+	if (attacktype(uasmon, AT_KICK)) {
+	    schar tmp = find_roll_to_hit(mon);
+	    for(i=0; i<NATTK; i++) {
+		int sum = 0;
+		if (uasmon->mattk[i].aatyp == AT_KICK && multi >= 0) {
+		    /* check multi; maybe they had 2 kicks and the first */
+		    /* was a kick against a floating eye */
+		    j = 1;
+		    if (tmp > rnd(20)) {
+			kludge("You kick %s.", mon_nam(mon));
+			sum = damageum(mon, &(uasmon->mattk[i]));
+			if (sum == 2)
+				(void)passive(mon, 1, 0, TRUE);
+			else (void)passive(mon, sum, 1, TRUE);
+		    } else {
+			missum(mon, &(uasmon->mattk[i]));
+			(void)passive(mon, 0, 1, TRUE);
+		    }
+		}
+	    }
+	    return;
+	}
+#endif
+
 	/* no need to check POLYSELF since only ghosts, which you can't turn */
 	/* into, are noncorporeal */
 	if(noncorporeal(mon->data)) {
@@ -92,14 +122,10 @@ register int x, y;
 		return;
 	}
 
-	if(special_case(mon)) return;
-
-	setmangry(mon);
-
 	if(Levitation && !rn2(3) && verysmall(mon->data) &&
 	   !is_flyer(mon->data)) {
 		pline("Floating in the air, you miss wildly!");
-		(void) passive(mon, FALSE, 1);
+		(void) passive(mon, FALSE, 1, TRUE);
 		return;
 	}
 
@@ -110,7 +136,7 @@ register int x, y;
 		if(!rn2((i < j/10) ? 2 : (i < j/5) ? 3 : 4)) {
 			if(martial() && !rn2(2)) goto doit;
 			Your("clumsy kick does no damage.");
-			(void) passive(mon, FALSE, 1);
+			(void) passive(mon, FALSE, 1, TRUE);
 			return;
 		}
 		if(i < j/10) clumsy = TRUE;
@@ -130,7 +156,7 @@ doit:
 		if(!nohands(mon->data) && !rn2(martial() ? 5 : 3)) {
 		    kludge("%s blocks your %skick.", Monnam(mon), 
 				clumsy ? "clumsy " : "");
-		    (void) passive(mon, FALSE, 1);
+		    (void) passive(mon, FALSE, 1, TRUE);
 		    return;
 		} else {
 		    mnexto(mon);
@@ -138,13 +164,13 @@ doit:
 		        pline("%s %s, %s evading your %skick.", 
 				Blind ? "It" : Monnam(mon),
 				(can_teleport(mon->data) ? "teleports" :
-				 is_flyer(mon->data) ? "flutters" :
 				 is_floater(mon->data) ? "floats" :
+				 is_flyer(mon->data) ? "flutters" :
 				 nolimbs(mon->data) ? "slides" :
 				 "jumps"),
 				clumsy ? "easily" : "nimbly",
 				clumsy ? "clumsy " : "");
-			(void) passive(mon, FALSE, 1);
+			(void) passive(mon, FALSE, 1, TRUE);
 		        return;
 		    } 
 		}

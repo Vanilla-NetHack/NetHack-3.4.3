@@ -331,12 +331,13 @@ register char *s;
 	/* avoid problems with 14 character file name limit */
 # ifdef COMPRESS
 	if(strlen(s) > 10)
-		/* leave room for .e from error and .Z from compress */
+		/* leave room for .e from error and .Z from compress
+		 * appended to save files */
 		s[10] = '\0';
 # else
-	if(strlen(s) > 12)
-		/* leave room for .e from error */
-		s[12] = '\0';
+	if(strlen(s) > 11)
+		/* leave room for .nn appended to level files */
+		s[11] = '\0';
 # endif
 #endif
 }

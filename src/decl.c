@@ -71,8 +71,8 @@ char *HI = DUMMY, *HE = DUMMY, *AS = DUMMY, *AE = DUMMY, *CD = DUMMY;
 	/* set up in termcap.c */
 int CO = 0, LI = 0;	/* set up in termcap.c: usually COLNO and ROWNO+3 */
 
-#ifdef MSDOSCOLOR
-char *HI_RED, *HI_YELLOW, *HI_GREEN, *HI_BLUE, *HI_WHITE; /* termcap.c */
+#ifdef TEXTCOLOR
+char *HI_COLOR[8];		/* terminal escapes for the various colors */
 #endif
 
 #ifdef MSDOS

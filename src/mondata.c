@@ -96,7 +96,7 @@ boolean
 canseemon(mtmp)
 	register struct monst *mtmp;
 {
-	return((!mtmp->minvis || See_invisible)
+	return((!mtmp->minvis || See_invisible || Telepat)
 		&& (!mtmp->mhide ||
 		    (levl[mtmp->mx][mtmp->my].omask == 0 &&
 		     levl[mtmp->mx][mtmp->my].gmask == 0))
@@ -121,15 +121,17 @@ monsndx(ptr)		/* return an index into the mons array */
 	struct	permonst	*ptr;
 {
 	register int	i;
-	register struct permonst *mdat;
 
 	if(ptr == &playermon) return(-1);
 
-	for(i = 0, mdat = &mons[0]; mdat->mlet; i++)
-	     if(ptr == mdat++) return(i);
+	i = (int)(ptr - &mons[0]);
 
-	panic("monsndx - could not index monster (%x)", ptr);
-	return FALSE;			   /* will not get here */
+	if(i < 0 || i >= NUMMONS) {    
+	    panic("monsndx - could not index monster (%x)", ptr);
+	    return FALSE;		/* will not get here */
+	}
+
+	return(i);
 }
 
 int
@@ -630,12 +632,12 @@ int
 cantweararm(ptr) struct permonst *ptr; {
 	return(breakarm(ptr) || sliparm(ptr));
 }
+# endif /* POLYSELF */
 
 int
 nolimbs(ptr) struct permonst *ptr; {
 	return((ptr->mflags2 & M2_NOLIMBS) != 0L);
 }
-# endif /* POLYSELF */
 
 int
 carnivorous(ptr) struct permonst *ptr; {

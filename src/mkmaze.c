@@ -164,6 +164,11 @@ maze0xy(cc)	/* find random starting point for maze generation */
 	return;
 }
 
+/* NCR towers define "tower".  Blecccch. */
+#ifdef tower
+#  undef tower
+#endif
+
 static const uchar tower[] = {
 	MOAT,	  MOAT,     MOAT,     MOAT,	MOAT,	  MOAT,     MOAT,
 	MOAT,	  MOAT,     TLCORNER, HWALL,	TRCORNER, MOAT,     MOAT,
@@ -233,7 +238,7 @@ makemaz()
 			return;
 		}
 		impossible("Cannot build the EndGame Level!");
-		done("escaped");
+		done(ESCAPED);
 	}
 # endif
 #endif

@@ -198,12 +198,13 @@ int all;
 		    pline("Touching the dead cockatrice is a fatal mistake.");
 		    You("turn to stone.");
 		    You("die...");
-		    killer = "cockatrice cadaver";
-		    done("stoned");
+		    killer = "cockatrice corpse";
+		    done(STONING);
 		}
 
 		if(obj->otyp == SCR_SCARE_MONSTER){
-		  if(!obj->spe) obj->spe = 1;
+		  if(obj->blessed) obj->blessed = 0;
+		  else if(!obj->spe && !obj->cursed) obj->spe = 1;
 		  else {
 		    pline("The scroll turns to dust as you pick it up.");
 			if(!(objects[SCR_SCARE_MONSTER].oc_name_known) &&

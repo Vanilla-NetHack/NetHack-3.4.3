@@ -34,7 +34,17 @@ init_rumors()
 {
 	register FILE *fp;
 
+#ifdef OS2_CODEVIEW
+	{
+	char tmp[PATHLEN];
+
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,RUMORFILE);
+	if(fp = fopen(tmp, "r")) {
+#else
 	if(fp = fopen(RUMORFILE, "r")) {
+#endif
 	    (void) fread((genericptr_t)&true_rumor_size,sizeof(long),1,fp);
 	    (void) fseek(fp, 0L, 2);
 	    end_rumor_file = ftell(fp);
@@ -44,8 +54,21 @@ init_rumors()
 		pline("Can't open rumors file!");
 		end_rumor_file = -1;	/* don't try to open it again */
 	}
+#ifdef OS2_CODEVIEW
+	}
+#endif
 #ifdef ORACLE
+#ifdef OS2_CODEVIEW
+	{
+	char tmp[PATHLEN];
+
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,ORACLEFILE);
+	if(fp = fopen(tmp, "r")) {
+#else
 	if(fp = fopen(ORACLEFILE, "r")) {
+#endif
 	    (void) fseek(fp, 0L, 2);
 	    oracle_size = ftell(fp);
 	    (void) fclose(fp);
@@ -53,6 +76,9 @@ init_rumors()
 		pline("Can't open oracles file!");
 		oracle_size = -1;	/* don't try to open it again */
 	}
+#ifdef OS2_CODEVIEW
+	}
+#endif
 #endif
 }
 
@@ -76,7 +102,17 @@ boolean cookie;
 	}
 	if (end_rumor_file < 0) /* We couldn't open RUMORFILE */
 		return;
+#ifdef OS2_CODEVIEW
+	{
+	char tmp[PATHLEN];
+
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,RUMORFILE);
+	if(rumors = fopen(tmp, "r")) {
+#else
 	if(rumors = fopen(RUMORFILE, "r")) {
+#endif
 		if (!end_rumor_file) {	/* if this is the first outrumor() */
 			init_rumors();
 		}
@@ -109,6 +145,9 @@ boolean cookie;
 		pline("Can't open rumors file!");
 		end_rumor_file = -1;	/* don't try to open it again */
 	}
+#ifdef OS2_CODEVIEW
+	}
+#endif
 }
 
 #ifdef ORACLE
@@ -121,7 +160,17 @@ outoracle()
 
 	if (oracle_size < 0)	/* We couldn't open ORACLEFILE */
 		return;
+#ifdef OS2_CODEVIEW
+	{
+    char tmp[PATHLEN];
+
+    Strcpy(tmp,hackdir);
+    append_slash(tmp);
+    Strcat(tmp,ORACLEFILE);
+	if(oracles = fopen(tmp, "r")) {
+#else
 	if(oracles = fopen(ORACLEFILE, "r")) {
+#endif
 		if (!oracle_size) {	/* if this is the first outrumor() */
 			init_rumors();
 		}
@@ -148,6 +197,9 @@ outoracle()
 		pline("Can't open oracles file!");
 		oracle_size = -1;	/* don't try to open it again */
 	}
+#ifdef OS2_CODEVIEW
+	}
+#endif
 }
 
 int

@@ -14,11 +14,11 @@
 
 #define	UNIX		/* delete if no fork(), exec() available */
 
-#ifdef __MSDOS__	/* Turbo C auto-defines __MSDOS__, others MSDOS */
-#define MSDOS	 	/* define for MS-DOS (actually defined by compiler) */
+#ifdef __MSDOS__	/* Turbo C auto-defines __MSDOS__, MSC defines MSDOS */
+#define MSDOS		/* define for MS-DOS (in case compiler doesn't) */
 #else
-/* # define MSDOS	/* define for MS-DOS and most other micros */
-/* # define AMIGA	/* define for Commodore-Amiga */
+/* #define MSDOS	/* define for MS-DOS and most other micros */
+/* #define AMIGA	/* define for Commodore-Amiga */
 /* #define TOS		/* for Atari 520/1040 */
 
 /* #define STUPID	/* avoid some complicated expressions if

@@ -5,7 +5,7 @@
 # Makefile.3B2, Makefile.att, and Makefile.tos.
 # Set SYSTEM to one of:
 #	'Sysunix'	-- generic UNIX
-#	'Sysxenix'	-- 286 Xenix (386 Xenix can use Sysunix)
+#	'Sysxenix'	-- 286 Xenix (386 Xenix should use Sysunix)
 #	'Sys3B2'	-- AT&T 3B2, 3B5, etc.
 #	'Sysatt'	-- AT&T UNIXPC, 7300, 3B1
 #	'Systos'	-- Atari
@@ -60,6 +60,7 @@ SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o alloc.o monst.o objects.o panic.o
 #	      Spanic.o
 
 # on some systems the termcap library is in -ltermcap or -lcurses
+# on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
 # Sysatt uses shared library in lieu of this option
 # TERMLIB = -ltermcap
 # TERMLIB = -lcurses
@@ -100,7 +101,12 @@ HACKCSRC = alloc.c apply.c artifact.c attrib.c bones.c cmd.c dbridge.c decl.c\
 
 # all .c that are part of the main NetHack program and are not system specific
 
-CSOURCES = $(HACKCSRC) $(TARG)main.c $(TARG)main.c $(TARG)main.c makedefs.c panic.c
+# now the other .c files, with duplicates commented out
+MAKESRC = makedefs.c panic.c # monst.c objects.c
+SPLEVSRC = lev_comp.c lev_lex.c lev_main.c # alloc.c monst.c objects.c panic.c
+TARGSRC = $(TARG)main.c $(TARG)tty.c $(TARG)unix.c
+
+CSOURCES = $(HACKCSRC) $(TARGSRC) $(MAKESRC) $(SPLEVSRC)
 
 HACKINCL = artifact.h attrib.h config.h coord.h decl.h edog.h epri.h eshk.h\
 	   extern.h flag.h func_tab.h global.h gold.h hack.h lev.h mfndpos.h\
@@ -110,8 +116,9 @@ HACKINCL = artifact.h attrib.h config.h coord.h decl.h edog.h epri.h eshk.h\
 
 # all .h files except date.h, onames.h, pm.h & trap.h which would cause
 # dependency loops if run through "make depend".
+# and lev_comp.h, a special level file
 
-HSOURCES = $(HACKINCL) date.h onames.h pm.h trap.h
+HSOURCES = $(HACKINCL) date.h onames.h pm.h trap.h lev_comp.h
 
 SOURCES = $(CSOURCES) $(HSOURCES)
 
@@ -265,7 +272,7 @@ Spanic.o:	panic.c
 #	files, we kludge around this by making date.h dependent on hack.h,
 #	even though it doesn't include this file.
 #
-../include/date.h:	$(CSOURCES) ../include/hack.h makedefs
+../include/date.h:	$(HACKCSRC) $(TARGSRC) ../include/hack.h makedefs
 	./makedefs -v
 
 ../include/trap.h:	../include/config.h makedefs
@@ -300,7 +307,7 @@ lint:
 # doweararm() versus dowearring().
 # _flsbuf comes from <stdio.h>, a bug in the system libraries.
 	@echo lint -axbh -DLINT ...
-	@lint -axbh -I../include -DLINT $(HACKCSRC) $(TARG)main.c $(TARG)tty.c $(TARG)unix.c | sed '/_flsbuf/d'
+	@lint -axbh -I../include -DLINT $(HACKCSRC) $(TARGSRC) | sed '/_flsbuf/d'
 
 
 diff:

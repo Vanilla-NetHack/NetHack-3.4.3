@@ -142,6 +142,9 @@ forcelock() {	/* try to force a locked chest */
 	return((xlock.usedtime = 0));
 }
 
+void
+reset_pick() { xlock.usedtime = 0; }
+
 int
 pick_lock(pick) /* pick a lock with a given object */
 	register struct	obj	*pick;
@@ -184,7 +187,9 @@ pick_lock(pick) /* pick a lock with a given object */
 	    if(levl[x][y].omask)
 	    for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if((otmp->ox == x) && (otmp->oy == y))
-		    if(Is_box(otmp)) {
+		    if(Is_box(otmp) &&
+		       /* credit cards are only good for unlocking */
+		       (picktyp != CREDIT_CARD || otmp->olocked)) {
 			pline("There is %s here, %s the lock? ",
 			doname(otmp), (!otmp->olocked) ? "close" :
 			((picktyp == LOCK_PICK) ? "pick" : "open" ));
@@ -232,7 +237,7 @@ pick_lock(pick) /* pick a lock with a given object */
 #else
 		    mtmp->isshk)
 #endif
-		    pline("\"No checks, no credit, no problem.\"");
+		    verbalize("No checks, no credit, no problem.");
 		else
 		    kludge("I don't think %s would appreciate that.", mon_nam(mtmp));
 		return(0);
@@ -259,6 +264,12 @@ pick_lock(pick) /* pick a lock with a given object */
 		    pline("This door is broken.");
 		    return(0);
 		default:
+		    /* credit cards are only good for unlocking */
+		    if(picktyp == CREDIT_CARD && !(door->doormask & D_LOCKED)) {
+			You("can't lock a door with a credit card.");
+			return(0);
+		    }
+
 		    pline("%sock it? ", (door->doormask & D_LOCKED) ? "Unl" : "L" );
 
 		    c = yn();
@@ -356,6 +367,7 @@ int
 doopen() {		/* try to open a door */
 	register int x, y;
 	register struct rm *door;
+	struct monst *mtmp;
 
 	if(!getdir(1)) return(0);
 
@@ -363,11 +375,18 @@ doopen() {		/* try to open a door */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) return(0);
 
+	if(levl[x][y].mmask && (mtmp = m_at(x,y))->mimic && 
+				mtmp->mappearance == DOOR_SYM &&
+				!Protection_from_shape_changers) {
+		stumble_onto_mimic(mtmp);
+		return(1);
+	}
+
 	door = &levl[x][y];
 
 	if(!IS_DOOR(door->typ)) {
 #ifdef STRONGHOLD
-		if (is_drawbridge_wall(x,y) >= 0) {
+		if (is_db_wall(x,y)) {
 		    pline("There is no obvious way to open the drawbridge.");
 		    return(0);
 		}
@@ -431,6 +450,7 @@ int
 doclose() {		/* try to close a door */
 	register int x, y;
 	register struct rm *door;
+	struct monst *mtmp;
 
 	if(!getdir(1)) return(0);
 
@@ -440,6 +460,14 @@ doclose() {		/* try to close a door */
 		You("are in the way!");
 		return(1);
 	}
+
+	if(levl[x][y].mmask && (mtmp = m_at(x,y))->mimic && 
+				mtmp->mappearance == DOOR_SYM &&
+				!Protection_from_shape_changers) {
+		stumble_onto_mimic(mtmp);
+		return(1);
+	}
+
 	door = &levl[x][y];
 
 	if(!IS_DOOR(door->typ)) {
@@ -592,6 +620,30 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 		if(door->doormask & D_LOCKED) {
 		    door->doormask = D_CLOSED | (door->doormask & D_TRAPPED);
 		    if(cansee(x,y)) pline("The door unlocks!");
+		} else res = 0;
+		break;
+	    case WAN_STRIKING:
+#ifdef SPELLS
+	    case SPE_FORCE_BOLT:
+#endif
+		if(door->doormask & (D_LOCKED | D_CLOSED)) {
+		    if(door->doormask & D_TRAPPED) {
+			if (levl[x][y].mmask)
+			    (void) mb_trapped(m_at(x,y));
+			else if (flags.verbose)
+			    if (cansee(x,y))
+			       pline("KABOOM!!	You see a door explode.");
+			    else if (flags.soundok)
+			       You("hear a distant explosion.");
+			door->doormask = D_NODOOR;
+			break;
+		    }
+		    door->doormask = D_BROKEN;
+		    if (flags.verbose)
+			if (cansee(x,y))
+			    pline("The door crashes open!");
+			else if (flags.soundok)
+			    You("hear a crashing sound.");
 		} else res = 0;
 		break;
 	    default:	impossible("magic (%d) attempted on door.", otmp->otyp);

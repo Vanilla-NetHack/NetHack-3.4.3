@@ -88,7 +88,7 @@ mkshop()
 				return;
 			}
 #ifdef THRONES
-			if(*ep == 't' || *ep == 'T'){
+			if(*ep == 't' || *ep == 'T' || *ep == '\\'){
 				mkzoo(COURT);
 				return;
 			}
@@ -111,7 +111,10 @@ mkshop()
 			}
 			for(i=0; shtypes[i].name; i++)
 				if(*ep == shtypes[i].symb) goto gottype;
-			i = -1;
+			if(*ep == 'g' || *ep == 'G')
+				i = 0;
+			else
+				i = -1;
 		}
 	}
 gottype:
@@ -320,6 +323,8 @@ mkdelphi()
 	if(!(sroom = pick_room())) return;
 
 	if(!place_oracle(sroom,&dy,&xx,&yy)) return;
+
+	if(levl[xx][yy].mmask) rloc(m_at(xx, yy)); /* insurance */
 
 	/* set up Oracle and environment */
 	if(!(oracl = makemon(&mons[PM_ORACLE],xx,yy))) return;

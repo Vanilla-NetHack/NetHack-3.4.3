@@ -47,7 +47,8 @@ register struct monst *mon;
 	}
 
 	if(canseemon(mon))
-	    pline("%s changes into a %s.", Monnam(mon), mons[pm].mname);
+	    pline("%s changes into a %s.", Monnam(mon),
+			Hallucination ? rndmonnam() : mons[pm].mname);
 
 	mon->data = &mons[pm];
 	/* regenerate by 1/4 of the lost hit points */

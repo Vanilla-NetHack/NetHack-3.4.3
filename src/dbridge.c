@@ -62,15 +62,19 @@ int x,y;
 	struct rm *lev;
 
 	lev = &levl[x][y];
-	if ( lev->typ == VWALL || lev->typ == DOOR) {
-		if (IS_DRAWBRIDGE(levl[x+1][y].typ) && 
-		    (levl[x+1][y].drawbridgemask & DB_DIR) == DB_WEST)
+	if (lev->typ != DOOR && !(lev->diggable & W_GATEWAY))
+		return (-1);
+	switch (lev->typ) {
+	    case DOOR:
+	    case VWALL:
+		if (IS_DRAWBRIDGE(levl[x+1][y].typ) &&
+ 		    (levl[x+1][y].drawbridgemask & DB_DIR) == DB_WEST)
 			return (DB_WEST);
 		if (IS_DRAWBRIDGE(levl[x-1][y].typ) && 
 		    (levl[x-1][y].drawbridgemask & DB_DIR) == DB_EAST)
 			return (DB_EAST);
-	}
-	if ( lev->typ == HWALL || lev->typ == DOOR) {
+		if (lev->typ == VWALL) break;
+	    case HWALL:
 		if (IS_DRAWBRIDGE(levl[x][y-1].typ) && 
 		    (levl[x][y-1].drawbridgemask & DB_DIR) == DB_SOUTH)
 			return (DB_SOUTH);
@@ -252,7 +256,7 @@ int x,y;
 
 		You("are crushed by a falling portcullis.");
 		killer = "closing drawbridge";
-		done("died");
+		done(CRUSHING);
 		/* So, you didn't die */
 		pline("A %s force teleports you away...",
 		      Hallucination ? "normal" : "strange");
@@ -295,7 +299,7 @@ int x,y;
 			newsym(x2,y2);
 		You("are hit by the descending drawbridge!");
 		killer = "descending drawbridge";
-		done("died");
+		done(CRUSHING);
 	}
 	redosym(x,y);
 	redosym(x2,y2);
@@ -354,7 +358,7 @@ int x,y;
 
 		You("are crushed by a falling portcullis.");
 		killer = "collapsing drawbridge";
-		done("died");
+		done(CRUSHING);
 		/* So, you didn't die */
 		pline("A %s force teleports you away...",
 		      Hallucination ? "normal" : "strange");

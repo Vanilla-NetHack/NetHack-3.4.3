@@ -6,6 +6,10 @@
 #ifndef PCCONF_H
 #define PCCONF_H
 
+/* #define OS2		/* define for OS/2 (Timo Hakulinen) */
+/* #define OS2_CODEVIEW /* define for OS/2 CodeView debugger,
+			   otherwise path searches may fail (TH) */
+
 /*
  *  The following options are configurable:
  */
@@ -86,12 +90,17 @@ extern const char *configfile;
 #endif
 
 #ifndef TOS
-#  define MSDOSCOLOR /* */
+#  define TEXTCOLOR /* */
+#endif
+
+#ifdef TEXTCOLOR
 /* configurable colors */
-#  define HI_MON  HI_RED	/* red slaps! */
-#  define HI_OBJ  HI_GREEN
-#  define HI_GOLD HI_YELLOW
-#  define HI_ZAP  HI_BLUE	/* blue zaps! */
+#  define HI_MON	RED	/* red slaps! */
+#  define HI_OBJ	MAGENTA
+#  define HI_METAL	CYAN
+#  define HI_ORGANIC	GREEN
+#  define HI_GOLD	YELLOW
+#  define HI_ZAP	BLUE	/* blue zaps! */
 #endif
 
 #ifndef EXTERN_H

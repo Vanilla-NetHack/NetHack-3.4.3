@@ -6,6 +6,7 @@
 
 char toplines[BUFSIZ];
 xchar tlx, tly;			/* set by pline; used by addtopl */
+static boolean no_repeat = FALSE;
 
 struct topl {
 	struct topl *next_topl;
@@ -148,7 +149,7 @@ const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
 	if(!line || !*line) return;
 	if(!index(line, '%')) Strcpy(pbuf,line); else
 	Sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
-/*	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;*/
+	if(no_repeat && flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
 	nscr();		/* %% */
 
 	/* If there is room on the line, print message on same line */
@@ -201,6 +202,20 @@ again:
 		if(n0 && tl[0]) Strcat(tl, "\n");
 	}
 	redotoplin();
+}
+
+/*VARARGS1*/
+void
+Norep(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
+#ifndef TOS
+register
+#endif
+const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
+{
+	no_repeat = TRUE;
+	pline(line, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	no_repeat = FALSE;
+	return;
 }
 
 /*VARARGS1*/

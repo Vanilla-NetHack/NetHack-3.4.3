@@ -69,7 +69,7 @@ register int x;
 {
 	register int tmp = 1;
 	while(!rn2(x)) tmp++;
-	return(tmp);
+	return(min(tmp,(u.ulevel < 15) ? 5 : (int)u.ulevel/3));
 }
 
 #ifdef THEOLOGY

@@ -77,8 +77,8 @@
 #define can_breathe(ptr)	attacktype(ptr, AT_BREA)
 #define cantwield(ptr)		(nohands(ptr) || verysmall(ptr))
 #define cantweararm(ptr)	(breakarm(ptr) || sliparm(ptr))
-#define nolimbs(ptr)		(((ptr)->mflags2 & M2_NOLIMBS) != 0L)
 #endif /* POLYSELF */
+#define nolimbs(ptr)		(((ptr)->mflags2 & M2_NOLIMBS) != 0L)
 #define carnivorous(ptr)	(((ptr)->mflags2 & M2_CARNIVORE) != 0L)
 #define herbivorous(ptr)	(((ptr)->mflags2 & M2_HERBIVORE) != 0L)
 #define thick_skinned(ptr)	(((ptr)->mflags2 & M2_THICK_HIDE) != 0L)

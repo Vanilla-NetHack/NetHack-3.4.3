@@ -52,7 +52,11 @@ dosave(){
 		if(multi > 0) nomul(0);
 	} else {
 #ifdef EXPLORE_MODE
+# ifdef WIZARD
+		if(!discover && !wizard) {
+# else
 		if(!discover) {
+# endif
 	pline("Do you want to create a non-scoring, restartable save file? ");
 			if(yn() == 'y')  discover = TRUE;
 		}
@@ -162,6 +166,7 @@ again:
 	bwrite(fd, (genericptr_t) &moves, sizeof moves);
 	bwrite(fd, (genericptr_t) &wiz_level, sizeof wiz_level);
 	bwrite(fd, (genericptr_t) &medusa_level, sizeof medusa_level);
+	bwrite(fd, (genericptr_t) &bigroom_level, sizeof bigroom_level);
 #ifdef ORACLE
 	bwrite(fd, (genericptr_t) &oracle_level, sizeof oracle_level);
 #endif
@@ -232,7 +237,7 @@ again:
 		    if(!hu) pline("Error while saving: cannot read %s.", lock);
 		    (void) close(fd);
 		    (void) unlink(SAVEF);
-		    if(!hu) done("tricked");
+		    if(!hu) done(TRICKED);
 		    return(0);
 		}
 #ifdef ZEROCOMP

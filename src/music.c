@@ -135,13 +135,14 @@ static void
 charm_monsters(distance)
 int distance;
 {
-	register struct monst *mtmp = fmon;
+	register struct monst *mtmp = fmon, *mtmp2;
 
 	while(mtmp) {
+		mtmp2 = mtmp->nmon;
 		if(dist(mtmp->mx, mtmp->my) <= distance)
 		    if(!resist(mtmp, SCROLL_SYM, 0, NOTELL))
 			(void) tamedog(mtmp, (struct obj *) 0);
-		mtmp = mtmp->nmon;
+		mtmp = mtmp2;
 	}
 
 }

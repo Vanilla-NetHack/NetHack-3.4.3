@@ -129,7 +129,15 @@ losedogs(){
 			mtmp0->nmon = mtmp->nmon;
 		    mtmp->nmon = fmon;
 		    fmon = mtmp;
-		    if (mtmp->isshk)
+		    if (mtmp->data->geno & G_GENOD) {
+#ifdef KOPS
+			allow_kops = FALSE;
+#endif
+			mondead(mtmp);	/* must put in fmon list first */
+#ifdef KOPS
+			allow_kops = TRUE;
+#endif
+		    } else if (mtmp->isshk)
 			home_shk(mtmp);
 		    else
 			rloc(mtmp);
@@ -215,7 +223,8 @@ dogfood(mon,obj)
 struct monst *mon;
 register struct obj *obj;
 {
-	boolean carn = carnivorous(mon->data);
+	boolean carni = carnivorous(mon->data);
+	boolean herbi = herbivorous(mon->data);
 
 	switch(obj->olet) {
 	case FOOD_SYM:
@@ -223,27 +232,41 @@ register struct obj *obj;
 		!resists_ston(mon->data))
 		    return TABU;
 
-	    if (!carn && !herbivorous(mon->data))
+	    if (!carni && !herbi)
 		    return (obj->cursed ? UNDEF : APPORT);
 
 	    switch (obj->otyp) {
 		case TRIPE_RATION:
-		    return (carn ? DOGFOOD : MANFOOD);
+		    return (carni ? DOGFOOD : MANFOOD);
 		case EGG:
 		    if (obj->corpsenm == PM_COCKATRICE &&
 						!resists_ston(mon->data))
 			return POISON;
-		    return (carn ? CADAVER : MANFOOD);
+		    return (carni ? CADAVER : MANFOOD);
 		case CORPSE:
 		    if ((obj->age+50 <= moves && mon->data->mlet != S_FUNGUS) ||
 			(poisonous(&mons[obj->corpsenm]) &&
 						!resists_poison(mon->data)))
 			return POISON;
-		    else return (carn ? CADAVER : MANFOOD);
+		    else return (carni ? CADAVER : MANFOOD);
 		case DEAD_LIZARD:
-		    return (carn ? ACCFOOD : MANFOOD);
+		    return (carni ? ACCFOOD : MANFOOD);
+		case CLOVE_OF_GARLIC:
+		    return (is_undead(mon->data) ? TABU :
+			    (herbi ? ACCFOOD : MANFOOD));
+		case TIN:
+		    return MANFOOD;
+		case APPLE:
+		case CARROT:
+		    return (herbi ? DOGFOOD : MANFOOD);
 		default:
-		    return (obj->otyp < CARROT ? ACCFOOD : MANFOOD);
+#ifdef SLIME_MOLD
+		    return (obj->otyp > SLIME_MOLD ?
+#else
+		    return (obj->otyp > CLOVE_OF_GARLIC ?
+#endif
+			    (carni ? ACCFOOD : MANFOOD) :
+			    (herbi ? ACCFOOD : MANFOOD));
 	    }
 	default:
 	    if(!obj->cursed) return(APPORT);
@@ -302,10 +325,8 @@ register struct obj *obj;
 	   or get in your way */
 	if(obj) {
 		if(dogfood(mtmp, obj) >= MANFOOD) return(0);
-		if(cansee(mtmp->mx,mtmp->my)){
-			pline("%s devours the %s.", Monnam(mtmp),
-				objects[obj->otyp].oc_name);
-		}
+		if(cansee(mtmp->mx,mtmp->my))
+			pline("%s devours the %s.", Monnam(mtmp), xname(obj));
 		obfree(obj, (struct obj *)0);
 	}
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);

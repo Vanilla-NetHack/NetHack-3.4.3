@@ -21,6 +21,9 @@ static char hc = 0;
 
 static void page_more();
 
+const char nonlets[] = { S_EEL, S_CHAMELEON, S_DEMON, S_GHOST, S_HUMAN,
+	S_GOLEM, 0 };
+
 int
 dowhatis()
 {
@@ -28,69 +31,100 @@ dowhatis()
 	char bufr[BUFSZ+6];
 	register char *buf = &bufr[6], *ep, q;
 	register struct monst *mtmp;
+#ifdef OS2_CODEVIEW
+	char tmp[PATHLEN];
 
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,DATAFILE);
+	if(!(fp = fopen(tmp,"r")))
+#else
 	if(!(fp = fopen(DATAFILE, "r")))
+#endif
 		pline("Cannot open data file!");
 	else {
 		coord	cc;
 		uchar	r;
+		boolean bycurs = FALSE;
 
 		pline ("Specify unknown object by cursor? ");
 		q = ynq();
-		cc.x = cc.y = -1;
 		if (q == 'q') {
 			(void) fclose(fp);
 			return 0;
 		} else if (q == 'n') {
+			cc.x = cc.y = -1;
 			pline("Specify what? ");
 			r = readchar();
 		} else {
+		    bycurs = TRUE;
+		    cc.x = u.ux;
+		    cc.y = u.uy;
+	selobj:
 		    if(flags.verbose)
-			pline("Please move the cursor to the unknown object.");
-		    getpos(&cc, TRUE, "the unknown object");
+			pline("Please move the cursor to an unknown object.");
+		    getpos(&cc, FALSE, "an unknown object");
+		    if (cc.x < 0) {
+			    (void) fclose(fp); /* sweet@scubed */
+			    return 0;
+		    }
 		    r = levl[cc.x][cc.y].scrsym;
 		}
 
-		if (r == showsyms.stone) q = defsyms.stone;
-		else if (r == showsyms.vwall) q = defsyms.vwall;
-		else if (r == showsyms.hwall) q = defsyms.hwall;
-		else if (r == showsyms.tlcorn) q = defsyms.tlcorn;
-		else if (r == showsyms.trcorn) q = defsyms.trcorn;
-		else if (r == showsyms.blcorn) q = defsyms.blcorn;
-		else if (r == showsyms.brcorn) q = defsyms.brcorn;
-		else if (r == showsyms.crwall) q = defsyms.crwall;
-		else if (r == showsyms.tuwall) q = defsyms.tuwall;
-		else if (r == showsyms.tdwall) q = defsyms.tdwall;
-		else if (r == showsyms.tlwall) q = defsyms.tlwall;
-		else if (r == showsyms.trwall) q = defsyms.trwall;
-		else if (r == showsyms.door) q = defsyms.door;
-		else if (r == showsyms.room) q = defsyms.room;
-		else if (r == showsyms.corr) q = defsyms.corr;
-		else if (r == showsyms.upstair) q = defsyms.upstair;
-		else if (r == showsyms.dnstair) q = defsyms.dnstair;
-		else if (r == showsyms.trap) q = defsyms.trap;
+#define conv_sym(x)	if(r == showsyms.x) q = defsyms.x
+		conv_sym(stone);
+		else conv_sym(vwall);
+		else conv_sym(hwall);
+		else conv_sym(tlcorn);
+		else conv_sym(trcorn);
+		else conv_sym(blcorn);
+		else conv_sym(brcorn);
+		else conv_sym(crwall);
+		else conv_sym(tuwall);
+		else conv_sym(tdwall);
+		else conv_sym(tlwall);
+		else conv_sym(trwall);
+		else conv_sym(door);
+		else conv_sym(room);
+		else conv_sym(corr);
+		else conv_sym(upstair);
+		else conv_sym(dnstair);
+		else conv_sym(trap);
+		else conv_sym(web); 
+		else conv_sym(pool);
 #ifdef FOUNTAINS
-		else if (r == showsyms.pool) q = defsyms.pool;
-		else if (r == showsyms.fountain) q = defsyms.fountain;
+		else conv_sym(fountain);
+#endif
+#ifdef SINKS
+		else conv_sym(sink);
 #endif
 #ifdef THRONES
-		else if (r == showsyms.throne) q = defsyms.throne;
-#endif
-		else if (r == showsyms.web) q = defsyms.web;
-#ifdef SINKS
-		else if (r == showsyms.sink) q = defsyms.sink;
+		else conv_sym(throne);
 #endif
 #ifdef ALTARS
-		else if (r == showsyms.altar) q = defsyms.altar;
+		else conv_sym(altar);
 #endif
-		else
-		    q = r;
+#ifdef STRONGHOLD
+		else conv_sym(upladder);
+		else conv_sym(dnladder);
+		else conv_sym(dbvwall);
+		else conv_sym(dbhwall);
+#endif
+		else q = r;
+#undef conv_sym
+
 		if (index(quitchars, q)) {
 			(void) fclose(fp); /* sweet@scubed */
 			return 0;
 		}
 		if(q == '%') {
 			pline("%%       a piece of food");
+			if(bycurs) {
+				buf = &bufr[6];
+				more();
+				rewind(fp);
+				goto selobj;
+			}
 			(void) fclose(fp);
 			return 0;
 		}
@@ -108,18 +142,68 @@ dowhatis()
 				(void) strncpy(buf+1, "       ", 7);
 			}
 			pline(buf);
-			if(cc.x != -1 && IS_ALTAR(levl[cc.x][cc.y].typ)) {
-			    int type = levl[u.ux][u.uy].altarmask & ~A_SHRINE;
-			    pline("(%s)", (type==0) ? "chaotic" :
-				(type==1) ? "neutral" : "lawful");
+			if(cc.x != -1) {
+#ifdef ALTARS
+			    if (r == showsyms.altar && q == defsyms.altar &&
+				(IS_ALTAR(levl[cc.x][cc.y].typ) ||
+				 (levl[cc.x][cc.y].mmask &&
+				    m_at(cc.x,cc.y)->mimic))
+			       ) {
+				    int type = levl[cc.x][cc.y].altarmask &
+						~A_SHRINE;
+				    pline((type == A_CHAOS) ? "(chaotic)" :
+					  (type == A_NEUTRAL) ? "(neutral)" :
+					  "(lawful)");
+			    } else
+			    if (q == CHAIN_SYM && levl[cc.x][cc.y].omask)
+				    pline("(chain)");
+			    else
+#endif
+			    if (r == showsyms.door && q == defsyms.door &&
+				(IS_DOOR(levl[cc.x][cc.y].typ) ||
+                                 (levl[cc.x][cc.y].mmask &&
+				    m_at(cc.x,cc.y)->mimic))) {
+				/* Note: this will say mimics in walls are
+				 *	 closed doors, which we want.
+				 */
+				switch(levl[cc.x][cc.y].doormask & ~D_TRAPPED) {
+				    case D_NODOOR: pline("(doorway)"); break;
+				    case D_BROKEN: pline("(broken door)"); break;
+				    case D_ISOPEN: pline("(open door)"); break;
+				    default:	   pline("(closed door)"); break;
+						   /* locked or not */
+				}
+			    }
+#ifdef SPELLS
+			    else
+			    if (q == SPBOOK_SYM && levl[cc.x][cc.y].omask)
+				    pline("(spellbook)");
+#endif
+#ifdef STRONGHOLD
+			    else
+			    if (((r == showsyms.dbvwall && q == defsyms.dbvwall) ||
+				 (r == showsyms.dbvwall && q == defsyms.dbvwall)) &&
+				is_db_wall(cc.x,cc.y))
+				    pline("(raised drawbridge)");
+#endif
+#ifdef SINKS
+			    else
+			    if (r == showsyms.sink && q == defsyms.sink &&
+				IS_SINK(levl[cc.x][cc.y].typ))
+				    pline("(sink)");
+#endif
 			}
-			if (!Invisible && u.ux==cc.x && u.uy==cc.y) {
+			if (!Invisible 
+#ifdef POLYSELF
+				&& !u.uundetected
+#endif
+					&& u.ux==cc.x && u.uy==cc.y) {
 			    pline("(%s named %s)",
 #ifdef POLYSELF
 				u.mtimedone ? mons[u.umonnum].mname :
 #endif
 				pl_character, plname);
-			} else if((q >= 'A' && q <= 'z') || index(";:& @`",q)) {
+			} else if((q >= 'A' && q <= 'z') || index(nonlets,q)) {
 			    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 				if(mtmp->mx == cc.x && mtmp->my == cc.y) {
 				    pline("(%s%s)",
@@ -137,6 +221,12 @@ dowhatis()
 					return 0;
 				}
 			}
+			if(bycurs) {
+				buf = &bufr[6];
+				more();
+				rewind(fp);
+				goto selobj;
+			}
 			(void) fclose(fp); 	/* kopper@psuvax1 */
 			return 0;
 		    }
@@ -152,11 +242,20 @@ dowhatdoes()
 	FILE *fp;
 	char bufr[BUFSZ+6];
 	register char *buf = &bufr[6], *ep, q, ctrl;
+#ifdef OS2_CODEVIEW
+	char tmp[PATHLEN];
 
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,CMDHELPFILE);
+	if(!(fp = fopen(tmp,"r"))) {
+#else
 	if(!(fp = fopen(CMDHELPFILE, "r"))) {
+#endif
 		pline("Cannot open data file!");
 		return 0;
 	}
+
 	pline("What command? ");
 #ifdef UNIX
 	introff();
@@ -456,7 +555,11 @@ char *text;
 		for (tl = texthead; tl; tl = tl->next_line) {
 		    if (page_line (tl->line_text)) {
 			set_pager(2);
-			goto cleanup;
+			while(tl = texthead) {
+			    texthead = tl->next_line;
+			    free((genericptr_t) tl);
+			}
+			return;
 		    }
 		}
 		if(text) {
@@ -467,7 +570,6 @@ char *text;
 	    }
 	}
 
-cleanup:
 	while(tl = texthead) {
 		texthead = tl->next_line;
 		free((genericptr_t) tl);
@@ -592,8 +694,16 @@ boolean silent;
 #else
       {
 	FILE *f;			/* free after Robert Viduya */
+#ifdef OS2_CODEVIEW
+	char tmp[PATHLEN];
 
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,fnam);
+	if ((f = fopen (tmp, "r")) == (FILE *) 0) {
+#else
 	if ((f = fopen (fnam, "r")) == (FILE *) 0) {
+#endif
 		if(!silent) {
 			home(); perror (fnam); flags.toplin = 1;
 			pline ("Cannot open %s.", fnam);

@@ -1,6 +1,6 @@
 /*	SCCS Id: @(#)spell.c	3.0	88/09/18
  *
- *	Copyright (c) M. Stepheneon 1988
+ *	Copyright (c) M. Stephenson 1988
  */
 /* NetHack may be freely redistributed.  See license for details. */
 

@@ -8,7 +8,7 @@
 #  include "artifact.h"
 #endif
 
-static boolean /* TRUE : mtmp died */
+boolean /* TRUE : mtmp died */
 mb_trapped(mtmp)
 register struct monst *mtmp;
 {
@@ -684,6 +684,7 @@ postmov:
 		u.uy = mtmp->my;
 	        if(mtmp->mx != mtmp->mdx || mtmp->my != mtmp->mdy) {
 		    swallowed(0);
+		    newsym(mtmp->mdx,mtmp->mdy);
 		    mtmp->mdx = mtmp->mx;
 		    mtmp->mdy = mtmp->my;
 		}

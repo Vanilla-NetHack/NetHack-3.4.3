@@ -211,6 +211,7 @@ register int fd;
 	mread(fd, (genericptr_t) &moves, sizeof moves);
 	mread(fd, (genericptr_t) &wiz_level, sizeof wiz_level);
 	mread(fd, (genericptr_t) &medusa_level, sizeof medusa_level);
+	mread(fd, (genericptr_t) &bigroom_level, sizeof bigroom_level);
 #ifdef ORACLE
 	mread(fd, (genericptr_t) &oracle_level, sizeof oracle_level);
 #endif
@@ -424,7 +425,7 @@ boolean ghostly;
 		pline("Strange, this map is not as I remember it.");
 		pline("Somebody is trying some trickery here...");
 		pline("This game is void.");
-		done("tricked");
+		done(TRICKED);
 	}
 
 	mread(fd, (genericptr_t) levl, sizeof(levl));
@@ -598,7 +599,13 @@ boolean ghostly;
 
 		mtmp2 = mtmp->nmon;
 		if(mtmp->data->geno & G_GENOD) {
+#ifdef KOPS
+			allow_kops = FALSE;
+#endif
 			mondead(mtmp);
+#ifdef KOPS
+			allow_kops = TRUE;
+#endif
 			continue;
 		}
 

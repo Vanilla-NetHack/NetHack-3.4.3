@@ -10,6 +10,7 @@ dsummon(ptr)		/* summon demon */
 {
 	register int dtype, cnt = 0;
 
+#ifdef HARD
 	if(is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 
 	    dtype = (!rn2(20)) ? dprince() : (!rn2(4)) ? dlord() : ndemon();
@@ -27,6 +28,10 @@ dsummon(ptr)		/* summon demon */
 	}
 
 	if(!dtype) return;
+#else
+	dtype = PM_DEMON;
+	cnt = 1;
+#endif
 
 	while(cnt > 0) {
 
@@ -100,11 +105,10 @@ register struct monst *mtmp;
 }
 #endif
 
-#if defined(HARD) || (defined(ALTARS) && defined(SOUNDS))
+#if defined(HARD) || (defined(ALTARS) && defined(THEOLOGY))
 long
 bribe(mtmp)
-
-	struct monst *mtmp;
+struct monst *mtmp;
 {
 	char buf[80];
 	long offer;
@@ -118,10 +122,13 @@ bribe(mtmp)
  		You("try to shortchange %s, but fumble.", 
  			x_monnam(mtmp, 0));
  		offer = 0L;
+ 	} else if(offer == 0L) {
+		You("refuse.");
  	} else if(offer >= u.ugold) {
 		You("give %s all your gold.", x_monnam(mtmp, 0));
 		offer = u.ugold;
-	} else You("give %s %ld Zorkmids.", x_monnam(mtmp, 0), offer);
+	} else You("give %s %ld Zorkmid%s.", x_monnam(mtmp, 0), offer,
+		   offer == 1 ? "" : "s");
 
 	u.ugold -= offer;
 	return(offer);
@@ -131,36 +138,38 @@ bribe(mtmp)
 int
 dprince() {
 #ifdef HARD
-	int	tryct;
-	struct	permonst *ptr;
+	int	tryct, pm;
 
-	for(tryct = 0; tryct < 20; tryct++)
-	    if(is_dprince((ptr = mkclass(S_DEMON))))
-		return(monsndx(ptr));
-
+	for(tryct = 0; tryct < 20; tryct++) {
+	    pm = rn1(PM_DEMOGORGON + 1 - PM_ORCUS, PM_ORCUS);
+	    if(!(mons[pm].geno & G_GENOD))
+		return(pm);
+	}
+	return(dlord());	/* approximate */
+#else
+	return(PM_DEMON);
 #endif
-	return(dlord());
 }
 
 int
 dlord() {
 #ifdef HARD
-	int	tryct;
-	struct	permonst *ptr;
+	int	tryct, pm;
 
-	for(tryct = 0; tryct < 20; tryct++)
-	    if(is_dlord((ptr = mkclass(S_DEMON))))
-		return(monsndx(ptr));
-
+	for(tryct = 0; tryct < 20; tryct++) {
+	    pm = rn1(PM_YEENOGHU + 1 - PM_JUIBLEX, PM_JUIBLEX);
+	    if(!(mons[pm].geno & G_GENOD))
+		return(pm);
+	}
+	return(ndemon());	/* approximate */
+#else
+	return(PM_DEMON);
 #endif
-	return(ndemon());
 }
 
 int
 ndemon() {
-#ifndef HARD
-	return(PM_DEMON);
-#else
+#ifdef HARD
 	int	tryct;
 	struct	permonst *ptr;
 
@@ -169,5 +178,7 @@ ndemon() {
 		return(monsndx(ptr));
 
 	return(0);
+#else
+	return(PM_DEMON);
 #endif
 }

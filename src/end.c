@@ -13,6 +13,18 @@
 
 void end_box_display();
 
+static const char *deaths[] = { 	/* the array of death */
+	"died", "choked", "poisoned", "starvation", "drowning",
+	"burning", "crushed", "turned to stone", "genocided",
+	"panic", "trickery",
+	"quit", "escaped", "ascended" };
+
+static const char *ends[] = {		/* "when you..." */
+	"died", "choked", "were poisoned", "starved", "drowned",
+	"burned", "were crushed", "turned to stone", "were genocided",
+	"panicked", "were tricked",
+	"quit", "escaped", "ascended" };
+
 int
 done1()
 {
@@ -60,7 +72,7 @@ done2()
 	}
 #endif
 #ifndef LINT
-	done("quit");
+	done(QUIT);
 #endif
 	return 0;
 }
@@ -97,22 +109,22 @@ register struct monst *mtmp;
 
 	You("die...");
 	buf[0] = '\0';
+	if (mtmp->iswiz)
+		Strcat(buf, "the ");
 	if (mtmp->minvis)
-		Sprintf(eos(buf), "invisible ");
+		Strcat(buf, "invisible ");
 	if (Hallucination)
-		Sprintf(eos(buf), "hallucinogen-distorted ");
+		Strcat(buf, "hallucinogen-distorted ");
 
 	if(mtmp->data->mlet == S_GHOST) {
 		register char *gn = (char *) mtmp->mextra;
 		if (!Hallucination && !mtmp->minvis && *gn)
-			Sprintf(eos(buf), "the ");
+			Strcat(buf, "the ");
 		Sprintf(eos(buf), (*gn ? "ghost of %s" : "ghost%s"), gn);
 	} else if(mtmp->isshk) {
 		Sprintf(eos(buf), "%s %s, the shopkeeper",
 			(ESHK(mtmp)->ismale ? "Mr." : "Ms."), shkname(mtmp));
-	} else if (mtmp->iswiz)
-		Sprintf(eos(buf), "the %s", mons[PM_WIZARD_OF_YENDOR].mname);
-	else Sprintf(eos(buf), "%s", mtmp->data->mname);
+	} else Strcat(buf, mtmp->data->mname);
 	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
 	if (mtmp->data->mlet == S_WRAITH)
@@ -125,9 +137,9 @@ register struct monst *mtmp;
 	if (u.ugrave_arise > -1 && (mons[u.ugrave_arise].geno & G_GENOD))
 		u.ugrave_arise = -1;
 	if (mtmp->data->mlet == S_COCKATRICE)
-		done("stoned");
+		done(STONING);
 	else
-		done("died");
+		done(DIED);
 	return;
 }
 
@@ -170,20 +182,17 @@ char *str;
 		    abort();	/* generate core dump */
 # endif
 #endif
-	done("panicked");
+	done(PANICKED);
 }
 
-/* called with arg "died", "drowned", "escaped", "quit", "choked", "panicked",
-   "burned", "starved", "stoned", or "tricked" */
 /* Be careful not to call panic from here! */
 void
-done(st1)
-register char *st1;
+done(how)
+int how;
 {
 	struct permonst *upmon;
-	char buf[BUFSZ], buf1[BUFSZ], buf2[BUFSZ], buf3[BUFSZ];
+	char buf[BUFSZ], buf2[BUFSZ], buf3[BUFSZ];
 	/* buf: used if killer gets changed
-	 * buf1: used if st1 gets changed
 	 * buf2: same as player name, except it is capitalized
 	 * buf3: used to copy killer in case it comes from something like
 		xname(), which would otherwise get overwritten when we call
@@ -192,15 +201,15 @@ register char *st1;
 	char	c;
 	boolean taken;
 
-	Strcpy(buf3, killer);
+	Strcpy(buf3, (!killer || how >= PANICKED ? deaths[how] : killer));
 	killer = buf3;
 #ifdef WIZARD
-	if (wizard && *st1=='t') {
+	if (wizard && how == TRICKED) {
 		You("are a very tricky wizard, it seems.");
 		return;
 	}
 #endif
-	if(Lifesaved && index("bcds", *st1)){
+	if(Lifesaved && how <= GENOCIDED) {
 		u.uswldtim = 0;
 		if(u.uhpmax < 0) u.uhpmax = 10;	/* arbitrary */
 		u.uhp = u.uhpmax;
@@ -212,7 +221,6 @@ register char *st1;
 		You("feel much better!");
 		pline("The medallion crumbles to dust!");
 		useup(uamul);
-		Lifesaved = 0;
 		if (u.uhunger < 500) u.uhunger = 500;
 		nomovemsg = "You survived that attempt on your life.";
 		curs_on_u();
@@ -220,14 +228,15 @@ register char *st1;
 		if(multi > 0) multi = 0; else multi = -1;
 		flags.botl = 1;
 		u.ugrave_arise = -1;
-		if (!strncmp(killer, "genocide", 8)) {
+		if (how == GENOCIDED)
 			pline("Unfortunately you are still genocided...");
-			done("died");
+		else {
+			killer = 0;
+			return;
 		}
-		return;
 	}
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-	if((wizard || discover) && index("bcds", *st1)){
+	if((wizard || discover) && how <= GENOCIDED) {
 		pline("Die? ");
 		if(yn() == 'y') goto die;
 		u.uswldtim = 0;
@@ -241,6 +250,7 @@ register char *st1;
 		if(multi > 0) multi = 0; else multi = -1;
 		flags.botl = 1;
 		u.ugrave_arise = -1;
+		killer = 0;
 		return;
 	}
 #endif /* WIZARD || EXPLORE_MODE */
@@ -254,21 +264,18 @@ die:
 #endif /* NO_SIGNAL /* */
 	upmon = player_mon();
 	if(u.ugrave_arise > -1) /* create no corpse */ ;
-	else if(*st1 == 's' && st1[2] == 'o') 
+	else if(how == STONED)
 		(mk_named_object(STATUE, upmon, u.ux, u.uy, plname,
 					strlen(plname)))->spe = 0;
 	else
 		(void) mk_named_object(CORPSE, upmon, u.ux, u.uy, plname,
 							strlen(plname));
-	if(*st1 == 'q' && u.uhp < 1){
-		st1 = "died";
-		killer = "quit while already on Charon's boat";
+
+	if(how == QUIT && u.uhp < 1) {
+		how = DIED;
+		Strcpy(buf, "quit while already on Charon's boat");
+		killer = buf;
 	}
-	if(*st1 == 's' && st1[2] == 'a') killer = "starvation"; else
-	if(*st1 == 'd' && st1[1] == 'r') killer = "drowning"; else
-	if(*st1 == 'p') killer = "panic"; else
-	if(*st1 == 't') killer = "trickery"; else
-	if(!index("bcds", *st1)) killer = st1;
 	taken = paybill();
 	paygd();
 	clearlocks();
@@ -277,7 +284,7 @@ die:
 	if(invent) {
 	    if(taken)
 		pline("Do you want to see what you had when you %s? ",
-			(*st1=='q') ? "quit" : "died");
+			(how == QUIT) ? "quit" : "died");
 	    else
 		pline("Do you want your possessions identified? ");
 	    /* New dump format by maartenj@cs.vu.nl */
@@ -306,7 +313,7 @@ die:
 	    }
 	}
 
-	if(index("bcds", *st1)){
+	if(how < GENOCIDED) {
 #ifdef WIZARD
 	    if(wizard) {
 		pline("Save bones? ");
@@ -316,22 +323,20 @@ die:
 		savebones();
 	    if(!flags.notombstone) outrip();
 	}
-	if(*st1 == 'c') killer = st1;		/* after outrip() */
-	if(*st1 == 's' && st1[2] == 'o') {
-		Sprintf(buf, "turned to stone by %s",killer);
+	if(how == STONING) {
+		Strcpy(buf, "turned to stone by ");
+		Strcat(buf, killer);
 		/* No a or an; topten.c will do that. */
 		killer = buf;
-		st1 = "turned to stone";
 	}
-	Strcpy(buf1, st1);
-	if(u.uhave_amulet) Strcat(killer," (with the Amulet)");
+	if(u.uhave_amulet) Strcat(killer, " (with the Amulet)");
 	settty(NULL);	/* does a clear_screen() */
 	Strcpy(buf2, plname);
 	if('a' <= buf2[0] && buf2[0] <= 'z') buf2[0] += 'A'-'a';
 	if(!done_stopprint)
 	    Printf("Goodbye %s the %s...\n\n", buf2,
 #ifdef ENDGAME
-		   *st1 != 'a' ? pl_character : "Demigod");
+		   how != ASCENDED ? pl_character : "Demigod");
 #else
 		   pl_character);
 #endif
@@ -339,23 +344,22 @@ die:
 	  tmp = u.ugold - u.ugold0;
 	  if(tmp < 0)
 		tmp = 0;
-	  if(*st1 == 'd' || *st1 == 'b')
+	  if(how < PANICKED)
 		tmp -= tmp/10;
 	  u.urexp += tmp;
 	  u.urexp += 50 * maxdlevel;
 	  if(maxdlevel > 20)
 		u.urexp += 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20);
 #ifdef ENDGAME
-	  if(*st1 == 'a') u.urexp *= 2;
+	  if(how == ASCENDED) u.urexp *= 2;
 #endif
 	}
-	if(*st1 == 'e') {
+	if(how == ESCAPED) {
 		register struct monst *mtmp;
 		register struct obj *otmp;
 		long i;
 		register unsigned int worthlessct = 0;
 
-		killer = st1;
 		keepdogs();
 		mtmp = mydogs;
 		if(mtmp) {
@@ -400,14 +404,11 @@ die:
 		if(worthlessct)
 		  Printf("        %u worthless piece%s of colored glass,\n",
 			worthlessct, plur((long)worthlessct));
-		if(u.uhave_amulet) killer = "escaped (with Amulet)";
-		else killer = "escaped";
 	} else
 		if(!done_stopprint) {
-		    Printf("You %s ", 
-			!strcmp(st1, "tricked") ? "were tricked" : st1);
+		    Printf("You %s ", ends[how]);
 #ifdef ENDGAME
-		    if (*st1 != 'a') {
+		    if (how != ASCENDED) {
 			if(dlevel == ENDLEVEL)
 			     Printf("in the endgame ");
 		    	else Printf("on dungeon level %d ", dlevel);
@@ -422,12 +423,12 @@ die:
 	    u.ugold, plur(u.ugold), moves, plur(moves));
 	if(!done_stopprint)
   Printf("You were level %u with a maximum of %d hit points when you %s.\n",
-	    u.ulevel, u.uhpmax, buf1);
-	if(*st1 == 'e' && !done_stopprint){
+	    u.ulevel, u.uhpmax, ends[how]);
+	if(how == ESCAPED && !done_stopprint){
 		getret();	/* all those pieces of coloured glass ... */
 		cls();
 	}
-#if defined(WIZARD) || defined(EXPLORE_MODE)
+#if (defined(WIZARD) || defined(EXPLORE_MODE)) && !defined(LOGFILE)
 	if(wizard || discover)
 		Printf("\nSince you were in %s mode, the score list \
 will not be checked.\n", wizard ? "wizard" : "discover");

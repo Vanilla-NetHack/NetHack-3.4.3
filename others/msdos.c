@@ -16,6 +16,9 @@
 #   undef getdate
 #  endif
 # endif
+#ifdef OS2
+# include "def_os2.h"    /* OS2 definitions (Timo Hakulinen) */
+#endif
 static char DOSgetch();
 #ifdef DGK
 static char BIOSgetch();
@@ -43,13 +46,27 @@ tgetch() {
 	return ((ch == '\r') ? '\n' : ch);
 }
 
+#ifndef OS2
 #define DIRECT_INPUT	0x7
+#endif
 static char
 DOSgetch() {
+#ifdef OS2
+	KBDKEYINFO CharData;
+	USHORT IOWait = 0;
+	HKBD KbdHandle = 0;
+
+	KbdCharIn(&CharData,IOWait,KbdHandle);
+	if (CharData.chChar == 0) {	/* an extended code -- not yet supported */
+		KbdCharIn(&CharData,IOWait,KbdHandle);	   /* eat the next character */
+		CharData.chChar = 0;		/* and return a 0 */
+	}
+	return (CharData.chChar);
+#else
 #ifdef TOS
 	return (Crawcin() & 0x007f);
 #else
-	union REGS regs;
+    union REGS regs;
 
 	regs.h.ah = DIRECT_INPUT;
 	intdos(&regs, &regs);
@@ -60,6 +77,7 @@ DOSgetch() {
 	}
 	return (regs.h.al);
 #endif /* TOS */
+#endif /* OS2 */
 }
 
 #include <ctype.h>
@@ -93,15 +111,20 @@ dosh() {
 			flags.toplin = 0;
 			more();
 		}
+		gettty(); /* ctrl-P might get turned back on (TH) */
 		chdirx(hackdir, 0);
 		start_screen();
 		docrt();
 	} else
+#ifdef OS2
+		pline("Cannot exec CMD.EXE");
+#else
 #ifdef TOS
 		pline("Cannot find SHELL");
 #else
 		pline("Cannot exec COMMAND.COM");
 #endif
+#endif /* OS2 */
 	return 0;
 }
 #endif /* SHELL */
@@ -173,17 +196,30 @@ static const struct pad {
 #define SHIFT		(0x1 | 0x2)
 /* #define CTRL		0x4 */
 /* #define ALT		0x8 */
+#ifndef OS2
 #define KEYBRD_BIOS	0x16
+#endif
 
 static char
 BIOSgetch() {
 	unsigned char scan, shift, ch;
+	struct pad (*kpad)[PADKEYS];
+
+#ifdef OS2
+	KBDKEYINFO CharData;
+	USHORT IOWait = 0;
+	HKBD KbdHandle = 0;
+
+	KbdCharIn(&CharData,IOWait,KbdHandle);
+	ch = CharData.chChar;
+	scan = CharData.chScan;
+	shift = CharData.fsState;
+#else /* OS2 */
 #ifdef TOS
 	long  x;
 #else
 	union REGS regs;
 #endif
-	struct pad (*kpad)[PADKEYS];
 
 	/* Get scan code.
 	 */
@@ -191,7 +227,7 @@ BIOSgetch() {
 	x = Crawcin();
 	ch = x & 0x0ff;
 	scan = (x & 0x00ff0000L) >> 16;
-#else	
+#else
 	regs.h.ah = 0;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	ch = regs.h.al;
@@ -206,15 +242,14 @@ BIOSgetch() {
 	int86(KEYBRD_BIOS, &regs, &regs);
 	shift = regs.h.al;
 #endif
+#endif /* OS2 */
+
 	/* If scan code is for the keypad, translate it.
 	 */
 	kpad = flags.num_pad ? numpad : keypad;
 	if (iskeypad(scan)) {
 		if (shift & SHIFT) {
-#ifndef TOS
-			flags.mv = flags.run = 1;
-			/* necessary if number_pad is on */
-#endif
+			/* if number_pad is on, this makes little difference */
 			ch = (*kpad)[scan - KEYPADLOW].shift;
 		} else
 			ch = (*kpad)[scan - KEYPADLOW].normal;
@@ -224,31 +259,56 @@ BIOSgetch() {
 
 #ifndef TOS
 
+#ifndef OS2
 #define FINDFIRST	0x4E00
 #define FINDNEXT	0x4F00
 #define GETDTA		0x2F00
 #define SETFILETIME	0x5701
 #define GETSWITCHAR	0x3700
 #define FREESPACE	0x36
+#endif
 
 #ifdef __TURBOC__
 #define switchar()	(char)getswitchar()
 #else
+#ifndef OS2
 static char
 switchar()
 {
-	union REGS regs;
+    union REGS regs;
 
 	regs.x.ax = GETSWITCHAR;
 	intdos(&regs, &regs);
 	return regs.h.dl;
 }
+#endif /* OS2 */
 #endif
 
 long
 freediskspace(path)
 char *path;
 {
+#ifdef OS2
+	struct {
+		ULONG  idFileSystem;
+		ULONG  cSectorUnit;
+		ULONG  cUnit;
+		ULONG  cUnitAvail;
+		USHORT cbSector;
+	} FSInfoBuf;
+	USHORT DriveNumber, FSInfoLevel = 1, res;
+
+	if (path[0] && path[1] == ':')
+		DriveNumber = (toupper(path[0]) - 'A') + 1;
+	else
+		DriveNumber = 0;
+	res = DosQFSInfo(DriveNumber,FSInfoLevel,(PBYTE)&FSInfoBuf,sizeof(FSInfoBuf));
+	if (res)
+		return -1L;		/* error */
+	else
+		return ((long) FSInfoBuf.cSectorUnit * FSInfoBuf.cUnitAvail *
+			       FSInfoBuf.cbSector);
+#else
 	union REGS regs;
 
 	regs.h.ah = FREESPACE;
@@ -261,7 +321,13 @@ char *path;
 		return -1L;		/* bad drive number */
 	else
 		return ((long) regs.x.bx * regs.x.cx * regs.x.ax);
+#endif /* OS2 */
 }
+
+#ifdef OS2
+FILEFINDBUF ResultBuf;
+HDIR DirHandle;
+#endif
 
 /* Functions to get filenames using wildcards
  */
@@ -269,6 +335,13 @@ static int
 findfirst(path)
 char *path;
 {
+#ifdef OS2
+	USHORT res, SearchCount = 1;
+
+	DirHandle = 1;
+	res = DosFindFirst((PSZ)path,&DirHandle,0,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount,0L);
+	return(!res);
+#else
 	union REGS regs;
 	struct SREGS sregs;
 
@@ -278,17 +351,26 @@ char *path;
 	sregs.ds = FP_SEG(path);
 	intdosx(&regs, &regs, &sregs);
 	return !regs.x.cflag;
+#endif /* OS2 */
 }
 
 static int
 findnext() {
+#ifdef OS2
+	USHORT res, SearchCount = 1;
+
+	res = DosFindNext(DirHandle,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount);
+	return(!res);
+#else
 	union REGS regs;
 
 	regs.x.ax = FINDNEXT;
 	intdos(&regs, &regs);
 	return !regs.x.cflag;
+#endif /* OS2 */
 }
 
+#ifndef OS2
 /* Get disk transfer area, Turbo C already has getdta */
 static char *
 getdta() {
@@ -306,6 +388,7 @@ getdta() {
 #endif
 	return ret;
 }
+#endif  /* OS2 */
 
 #else /* TOS */
 
@@ -348,11 +431,17 @@ long
 filesize(file)
 char *file;
 {
+#ifndef OS2
 	char *dta;
+#endif
 
 	if (findfirst(file)) {
+#ifdef OS2
+		return  (* (long *) (ResultBuf.cbFileAlloc));
+#else
 		dta = getdta();
 		return  (* (long *) (dta + 26));
+#endif
 	} else
 		return -1L;
 }
@@ -361,13 +450,25 @@ void
 eraseall(path, files)
 char *path, *files;
 {
-	char *dta, buf[PATHLEN];
+	char
+#ifndef OS2
+		*dta,
+#endif
+	buf[PATHLEN];
 
+#ifndef OS2
 	dta = getdta();
+#endif
 	Sprintf(buf, "%s%s", path, files);
 	if (findfirst(buf))
 		do {
-			Sprintf(buf, "%s%s", path, dta + 30);
+			Sprintf(buf, "%s%s", path,
+#ifdef OS2
+				ResultBuf.achName
+#else
+				dta + 30
+#endif
+				);
 			(void) unlink(buf);
 		} while (findnext());
 	return;
@@ -378,10 +479,15 @@ char *path, *files;
 void
 copybones(mode) {
 	char from[PATHLEN], to[PATHLEN], last[13], copy[8];
-	char *frompath, *topath, *dta, *comspec;
+	char *frompath, *topath,
+#ifndef OS2
+	*dta,
+#endif
+	*comspec;
 	int status;
 	long fs;
 	extern saveprompt;
+
 #ifdef TOS
 	extern int _copyfile();
 #endif
@@ -391,7 +497,9 @@ copybones(mode) {
 	/* Find the name of the last file to be transferred
 	 */
 	frompath = (mode != TOPERM) ? permbones : levels;
+#ifndef OS2
 	dta = getdta();
+#endif
 	last[0] = '\0';
 	Sprintf(from, "%s%s", frompath, allbones);
 	topath = (mode == TOPERM) ? permbones : levels;
@@ -406,14 +514,26 @@ copybones(mode) {
 			if (_copyfile(from, to))
 				goto error_copying;
 #endif
-			Strcpy(last, dta + 30);
+			Strcpy(last,
+#ifdef OS2
+				ResultBuf.achName
+#else
+				dta + 30
+#endif
+				);
 		} while (findnext());
 #ifdef TOS
 	else
 		return;
 #else
 	if (last[0]) {
-		Sprintf(copy, "%cC copy", switchar());
+		Sprintf(copy, "%cC copy",
+#ifdef OS2
+			'/'
+#else
+			switchar()
+#endif
+			);
 
 		/* Remove any bones files in `to' directory.
 		 */
@@ -516,8 +636,16 @@ saveDiskPrompt(start) {
 static boolean
 record_exists() {
 	int fd;
+#ifdef OS2_CODEVIEW
+	char tmp[PATHLEN];
 
+	Strcpy(tmp,hackdir);
+	append_slash(tmp);
+	Strcat(tmp,RECORD);
+	if ((fd = open(tmp, 0)) >= 0) {
+#else
 	if ((fd = open(RECORD, 0)) >= 0) {
+#endif
 		(void) close(fd);
 		return TRUE;
 	}
@@ -788,14 +916,18 @@ long a1, a2, a3;
 /* Chdrive() changes the default drive.
  */
 #ifndef __TURBOC__
+#ifndef OS2
 #define SELECTDISK	0x0E
+#endif
 void
 chdrive(str)
 char *str;
 {
 	char *ptr;
 #ifndef TOS
+#ifndef OS2
 	union REGS inregs;
+#endif
 #endif
 	char drive;
 
@@ -804,9 +936,13 @@ char *str;
 #ifdef TOS
 		Dsetdrv(drive - 'A');
 #else
+#ifdef OS2
+		DosSelectDisk((USHORT)(drive - 'A' + 1));
+#else
 		inregs.h.ah = SELECTDISK;
 		inregs.h.dl = drive - 'A';
 		intdos(&inregs, &inregs);
+#endif
 #endif
 	}
 	return;
@@ -829,6 +965,7 @@ char *str;
  * Thanks to Mark Zbikowski (markz@microsoft.UUCP).
  */
 
+#ifndef OS2
 #define DEVICE		0x80
 #define RAW		0x20
 #define IOCTL		0x44
@@ -836,35 +973,63 @@ char *str;
 #define STDOUT		fileno(stdout)
 #define GETBITS		0
 #define SETBITS		1
+#endif
 
 static unsigned	int old_stdin, old_stdout;
 
 void
 disable_ctrlP() {
+#ifdef OS2
+	KBDINFO KbdInfo;
+	HKBD KbdHandle = 0;
+#endif
+
 #ifdef DGK
 	if (!flags.rawio) return;
 #endif
+#ifdef OS2
+	KbdInfo.cb = 10;
+	KbdGetStatus(&KbdInfo,KbdHandle);
+	KbdInfo.fsMask &= 0xFFF7; /* ASCII off */
+	KbdInfo.fsMask |= 0x0004; /* BINARY on */
+	KbdSetStatus(&KbdInfo,KbdHandle);
+#else
 	old_stdin = ioctl(STDIN, GETBITS, 0);
 	old_stdout = ioctl(STDOUT, GETBITS, 0);
 	if (old_stdin & DEVICE)
 		ioctl(STDIN, SETBITS, old_stdin | RAW);
 	if (old_stdout & DEVICE)
 		ioctl(STDOUT, SETBITS, old_stdout | RAW);
+#endif /* OS2 */
 	return;
 }
 
 void
 enable_ctrlP() {
+#ifdef OS2
+	KBDINFO KbdInfo;
+	HKBD KbdHandle = 0;
+#endif
+
 #ifdef DGK
 	if (!flags.rawio) return;
 #endif
+#ifdef OS2
+	KbdInfo.cb = 10;
+	KbdGetStatus(&KbdInfo,KbdHandle);
+	KbdInfo.fsMask &= 0xFFFB; /* BINARY off */
+	KbdInfo.fsMask |= 0x0008; /* ASCII on */
+	KbdSetStatus(&KbdInfo,KbdHandle);
+#else
 	if (old_stdin)
 		(void) ioctl(STDIN, SETBITS, old_stdin);
 	if (old_stdout)
 		(void) ioctl(STDOUT, SETBITS, old_stdout);
+#endif
 	return;
 }
 
+#ifndef OS2
 static unsigned int
 ioctl(handle, mode, setvalue)
 int handle, mode;
@@ -880,6 +1045,7 @@ unsigned setvalue;
 	intdos(&regs, &regs);
 	return (regs.x.dx);
 }
+#endif /* OS2 */
 #endif /* TOS */
 
 #ifdef DGK
@@ -918,6 +1084,13 @@ char *name, *mode;
 				pp++;
 		}
 	}
+#ifdef OS2_CODEVIEW /* one more try for hackdir */
+	Strcpy(buf,hackdir);
+	append_slash(buf);
+	Strcat(buf,name);
+	if(fp = fopen(buf,mode))
+		return fp;
+#endif
 	return (FILE *)0;
 }
 #endif /* DGK */
@@ -950,6 +1123,57 @@ msexit(code)
 	exit(code);
 	return;
 }
+
+# ifdef DGK		/* for flags.IBMBIOS */
+void
+get_scr_size()
+{
+#  ifdef OS2
+	VIOMODEINFO ModeInfo;
+	HVIO VideoHandle = 0;
+
+	ModeInfo.cb = sizeof(ModeInfo);
+
+	VioGetMode(&ModeInfo,VideoHandle);
+
+	CO = ModeInfo.col;
+	LI = ModeInfo.row;
+#  else
+	union REGS regs;
+
+	if (!flags.IBMBIOS) {		/* assume standard screen size */
+		CO = 80;
+		LI = 24;
+		return;
+	}
+
+	regs.x.ax = 0x1130;		/* Func AH = 11h, Subfunc AL = 30h */
+	regs.x.bx = 0;			/* current ROM BIOS font */
+	regs.h.dl = 24;			/* default row count */
+					/* in case no EGA/MCGA/VGA */
+	int86(0x10, &regs, &regs);	/* Get Font Information */
+
+	/* MDA/CGA/PCjr ignore INT 10h, Function 11h, but since we
+	 * cleverly loaded up DL with the default, everything's fine.
+	 *
+	 * Otherwise, DL now contains rows - 1.  Also, CX contains the
+	 * points (bytes per character) and ES:BP points to the font
+	 * table.  -3.
+	 */
+
+	regs.h.ah = 0x0f;
+	int86(0x10, &regs, &regs);	/* Get Video Mode */
+
+	/* This goes back all the way to the original PC.  Completely
+	 * safe.  AH contains # of columns, AL contains display mode,
+	 * and BH contains the active display page.
+	 */
+
+	LI = regs.h.dl + 1;
+	CO = regs.h.ah;
+#  endif
+}
+# endif
 #endif /* MSDOS */
 
 #ifdef TOS

@@ -56,10 +56,24 @@ static struct stat omstat,nmstat;
 static char *mailbox;
 static long laststattime;
 
+#  ifdef BSD
+#   define MAILPATH "/usr/spool/mail/"
+#  endif
+#  ifdef SYSV
+#   define MAILPATH "/usr/mail/"
+#  endif
+
 void
 getmailstatus() {
-	if(!(mailbox = getenv("MAIL")))
+	if(!(mailbox = getenv("MAIL"))) {
+#  ifdef MAILPATH
+		mailbox = (char *) alloc(sizeof(MAILPATH)+8);
+		Strcpy(mailbox, MAILPATH);
+		Strcat(mailbox, getlogin());
+#  else
 		return;
+#  endif
+	}
 	if(stat(mailbox, &omstat)){
 #  ifdef PERMANENT_MAILBOX
 		pline("Cannot get status of MAIL=%s .", mailbox);

@@ -4,7 +4,7 @@
 .ds vr "NetHack Version 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "July 22, 1989
+.ds f2 "August 13, 1989
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -500,21 +500,24 @@ used up all the letters, so this is a way to introduce the less useful
 commands.  You may obtain a list of them by entering `?'.  What
 extended commands are available depend on what features the game was
 compiled with.  Most extended commands are used only under limited
-circumstances.
+circumstances. Note that if your keyboard has a meta key (that is, one which
+when pressed in combination with another key modified it by turning on
+the 'meta' or 0x80 bit) these extended commands can be invoked by meta-ing the
+first letter of the command.
 .pg
 If the
 .op number_pad
 option is on, some additional letter commands are available:
 .lp j
-jump to another location.  Same as ``#jump''.
+jump to another location.  Same as ``#jump'' or meta-j.
 .lp k
 kick something (usually a door).  Same as `^D'.
 .lp l
-loot a box on the floor.  Same as ``#loot''.
+loot a box on the floor.  Same as ``#loot'' or meta-l.
 .lp N
-name an object or type of object.  Same as ``#name''.
+name an object or type of object.  Same as ``#name'' or meta-n.
 .lp u
-untrap a trapped object or door.  Same as ``#untrap''.
+untrap a trapped object or door.  Same as ``#untrap'' or meta-u.
 
 .hn 1
 Rooms and corridors
@@ -836,11 +839,13 @@ Chests and boxes
 .pg
 You may encounter chests or boxes in your travels.  These can be
 opened with the ``#loot'' extended command when they are on the floor,
-or with the `a' (apply) command when you are carrying one.
-Chests are unwieldy objects, and must be set down to be unlocked
-(which can be accomplished by kicking them,
-using a key or lock picking tool with the `a' (apply) command, or
-by using a weapon to force the lock with the ``#force'' extended command).
+or with the `a' (apply) command when you are carrying one.  However,
+chests are often locked, and require you to either use a key to unlock
+it, a tool to pick the lock, or to break it open with brute force.
+Chests are unwieldy objects, and must be set down to be unlocked (by
+kicking them, using a key or lock picking tool with the `a' (apply)
+command, or by using a weapon to force the lock with the ``#force''
+extended command).
 .pg
 Some chests are trapped, causing nasty things to happen when you
 unlock or open them.  You can check for and try to deactivate traps
@@ -969,7 +974,7 @@ on some VT100 and higher terminals) if it is loaded as the alternate
 set.  If it doesn't work, your terminal may not support alternate
 character sets, or the termcap entry for your terminal doesn't have
 the appropriate escape sequences.  For the record, the sequences to
-add to the termcap entry are ``:as=^O:ae=^N:ti=\\E)0:''.
+add to the termcap entry are ``:as=^N:ae=^O:ti=\\E)0:''.
 
 The order of the symbols is:  solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
@@ -1119,6 +1124,8 @@ Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0.
 .pg
 \fBEric R. Smith\fP ported NetHack 3.0 to the Atari.
 .pg
+\fBTimo Hakulinen\fP ported NetHack 3.0 to OS/2.
+.pg
 The following folks have made significant contributions to the playability
 of the game:
 
@@ -1126,13 +1133,14 @@ of the game:
 .TS S
 center;
 c c c.
-Tom Almy	Eric Hendrickson	Izchak Miller
-Ken Arromdee	Bruce Holloway		Gil Neiger
-Eric Backus	Richard P. Hughey	Eric S. Raymond
-John S. Bien	Greg Laskin		John Rupley
-Ralf Brown	Steve Linhart		Kevin Sweet
-Jean-Christophe Collet	Roland McGrath	Scott R. Turner
-Steve Creps	Bruce Mewborne		Janet Walz
+Tom Almy	Bruce Holloway	Izchak Miller
+Ken Arromdee	Richard P. Hughey	Gil Neiger
+Eric Backus	Del Lamb	Eric S. Raymond
+John S. Bien	Greg Laskin	John Rupley
+Ralf Brown	Steve Linhart	Kevin Sweet
+Jean-Christophe Collet	Benson I. Margulies	Scott R. Turner
+Steve Creps	Roland McGrath	Janet Walz
+Eric Hendrickson	Bruce Mewborne
 .TE
 .ed
 

@@ -80,7 +80,7 @@ boolean talk;
 {
 	long old = Blinded;
 
-	if (!xtime && old) {
+	if (!xtime && old && !Blindfolded) {
 		if (talk) {
 			if (Hallucination) pline("Oh, like, wow!  What a rush.");
 			else		   You("can see again.");
@@ -476,9 +476,11 @@ peffects(otmp)
 	case POT_GAIN_LEVEL:
 		if (otmp->cursed) {
 			unkn++;
-			You("rise up, through the ceiling!");
 			/* they went up a level */
-			goto_level(dlevel-1, FALSE);
+			if(dlevel > 1 && dlevel <= MAXLEVEL) { 
+				You("rise up, through the ceiling!");
+				goto_level(dlevel-1, FALSE);
+			} else You("have an uneasy feeling.");
 			break;
 		}
 		pluslvl();
@@ -979,7 +981,7 @@ register struct obj *obj;
 
 	mnexto(mtmp);
 	if (!Blind)
-		pline("In a cloud of smoke, a djinni emerges!");
+		pline("In a cloud of smoke, %s emerges!", defmonnam(mtmp));
 	else	You("smell acrid fumes.");
 	if (!Blind)
 		pline("%s speaks.", Monnam(mtmp));
@@ -997,7 +999,8 @@ register struct obj *obj;
 		mtmp->mpeaceful = 1;
 		break;
 	case 3 : pline("\"It is about time!\"");
-		pline("The djinni vanishes.");
+		pline("The %s vanishes.",
+			Hallucination ? rndmonnam() : "djinni");
 		mongone(mtmp);
 		break;
 	default: pline("\"You disturbed me, fool!\"");

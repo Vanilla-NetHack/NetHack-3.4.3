@@ -27,7 +27,7 @@ V	history	print game history
 
 Game commands:
 ^T	'port	teleport (if you can)
-^D	kick	kick a door
+^D	kick	kick (a door, or something else)
 a	apply	apply or use a tool (pick-axe, key, camera, etc.)
 A	remove	take off all armor
 c	close	close a door
@@ -73,3 +73,6 @@ k	kick	kick a door
 l	loot	loot a box on the floor
 N	name	name an object or type of object
 u	untrap	untrap a trapped object
+
+If your keyboard has a meta key, 'jump' 'loot', 'name' and 'untrap' are
+available as M-j, M-l, M-N or M-u respectively.

@@ -150,7 +150,10 @@ prme(){
 #ifdef POLYSELF
 			&& !u.uundetected
 #endif
-					) atl(u.ux,u.uy,(char)u.usym);
+					) {
+		levl[u.ux][u.uy].seen = 0; /* force atl */
+		atl(u.ux,u.uy,(char)u.usym);
+	}
 }
 
 void
@@ -219,7 +222,9 @@ docrt()
 			&& !u.uundetected
 #endif
 					) {
-		levl[(u.udisx = u.ux)][(u.udisy = u.uy)].scrsym = u.usym;
+		u.udisx = u.ux;
+		u.udisy = u.uy;
+		levl[u.udisx][u.udisy].scrsym = u.usym;
 		levl[u.udisx][u.udisy].seen = 1;
 		u.udispl = 1;
 	} else	u.udispl = 0;
@@ -229,7 +234,7 @@ docrt()
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
-#if defined(DGK) && !defined(MSDOSCOLOR)
+#if defined(DGK) && !defined(TEXTCOLOR)
 	/* Otherwise, line buffer the output to do the redraw in
 	 * about 2/3 of the time.
 	 */
@@ -261,7 +266,7 @@ docrt()
 				curx = end + 1;
 			}
 		}
-#else /* DGK && !MSDOSCOLOR */
+#else /* DGK && !TEXTCOLOR */
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
 			if((room = &levl[x][y])->new) {
@@ -269,7 +274,7 @@ docrt()
 				at(x,y,room->scrsym,AT_APP);
 			} else if(room->seen)
 				at(x,y,room->scrsym,AT_APP);
-#endif /* DGK && !MSDOSCOLOR */
+#endif /* DGK && !TEXTCOLOR */
 #ifndef g_putch
 	if (GFlag) {
 		graph_off();
@@ -1100,53 +1105,70 @@ uchar let, typ;
 	}
 
 	if (!typ) {
-		char *isobjct = index(obj_symbols, (char) let);
-
 		if (let == GOLD_SYM)
 			typ = AT_GLD;
-#ifdef MSDOSCOLOR
-		else if (let == POOL_SYM)
-			if (HI_BLUE == HI) typ = AT_MAP;
-			else typ = AT_BLUE;
-#endif
-		else if (isobjct != NULL || let == S_MIMIC_DEF)
+		else if (index(obj_symbols, (char) let) != NULL
+			 || let == S_MIMIC_DEF)
 			/* is an object */
 			typ = AT_OBJ;
 		else if (ismnst((char) let))
 			/* is a monster */
 			typ = AT_MON;
 	}
-#ifndef MSDOSCOLOR
-	if (typ == AT_MON) revbeg();
-#else
+#ifdef TEXTCOLOR
 	switch (typ) {
 	    case AT_MON:
-		xputs(let != S_MIMIC_DEF ? HI_MON : HI_OBJ);
+		switch (let) {
+		    case S_MIMIC_DEF:
+			typ = HI_OBJ;
+			break;
+		    case S_YLIGHT:	/* make 'em "glow" */
+			typ = YELLOW;
+			break;
+		    default:
+			typ = HI_MON;
+		}
 		break;
 	    case AT_OBJ:
-		xputs(let == GOLD_SYM ? HI_GOLD : HI_OBJ);
+		switch (let) {
+		    case GOLD_SYM:
+			typ = HI_GOLD;
+			break;
+		    case WEAPON_SYM:
+		    case ARMOR_SYM:
+		    case RING_SYM:
+		    case AMULET_SYM:
+			typ = HI_METAL;
+			break;
+		    case FOOD_SYM:
+		    case POTION_SYM:
+			typ = HI_ORGANIC;
+			break;
+		    default:
+			typ = HI_OBJ;
+		}
 		break;
 	    case AT_MAP:
-		if (!(typ = (let == POOL_SYM)))
-		    break;
-	    case AT_BLUE:
-		xputs(HI_BLUE);
+#ifdef FOUNTAINS
+		typ = ((let == POOL_SYM || let == FOUNTAIN_SYM)
+#else
+		typ = (let == POOL_SYM
+#endif
+			&& HI_COLOR[BLUE] != HI ? BLUE : 0);
 		break;
 	    case AT_ZAP:
-		xputs(HI_ZAP);
-		break;
-	    case AT_RED:
-		xputs(HI_RED);
-		break;
-	    case AT_WHITE:
-		xputs(HI_WHITE);
+		typ = HI_ZAP;
 		break;
 	}
+	if (typ)
+		xputs(HI_COLOR[typ]);
+#else
+	if (typ == AT_MON) revbeg();
 #endif
 
 	g_putch(let);
 
-#ifdef MSDOSCOLOR
+#ifdef TEXTCOLOR
 	if (typ) xputs(HE);
 #else
 	if (typ == AT_MON) m_end();

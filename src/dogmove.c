@@ -173,7 +173,7 @@ long allowflags;
 		if(appr == 0){
 			obj = invent;
 			while(obj){
-				if(obj->otyp == TRIPE_RATION){
+				if(dogfood(mtmp, obj) == DOGFOOD) {
 					appr = 1;
 					break;
 				}
@@ -216,7 +216,7 @@ long allowflags;
 
 			    if(mtmp2->m_lev >= mtmp->m_lev+2 ||
 			       (mtmp2->data->mlet == S_COCKATRICE &&
-				!(mtmp->data->mflags1 & M1_STON_RES)))
+				!resists_ston(mtmp->data)))
 				continue;
 			    if(after) return(0); /* hit only once each move */
 

@@ -43,6 +43,13 @@ const char *fl[]= {
 	""
 };
 
+#ifdef TEXTCOLOR
+static const int zapcolor[10] = {
+	AT_ZAP, RED, AT_ZAP, WHITE, AT_ZAP, WHITE,
+	AT_ZAP, AT_ZAP, AT_ZAP, AT_ZAP
+};
+#endif
+
 /* Routines for IMMEDIATE wands and spells. */
 /* bhitm: monster mtmp was hit by the effect of wand or spell otmp */
 static int
@@ -657,7 +664,7 @@ zapyourself(obj)
 		    You("die.");
 		    makeknown(WAN_DEATH);
 			/* They might survive with an amulet of life saving */
-		    done("died");
+		    done(DIED);
 		    break;
 #ifdef SPELLS
 		case SPE_TURN_UNDEAD:
@@ -705,39 +712,30 @@ register struct	obj	*obj;
 	if(objects[obj->otyp].bits & IMMEDIATE) {
 	    if(u.uswallow)	(void)bhitm(u.ustuck, obj);
 	    else if(u.dz) {
-		if(u.dz > 0 && levl[u.ux][u.uy].omask) {
-		    register struct obj *otmp,*otmp2;
+		if(u.dz > 0) {
+#ifdef STRONGHOLD
+		    if(levl[u.ux][u.uy].typ == DRAWBRIDGE_DOWN &&
+		       (obj->otyp == WAN_LOCKING
+# ifdef SPELLS
+			|| obj->otyp == SPE_WIZARD_LOCK
+# endif
+			))
+				(void)close_drawbridge(u.ux, u.uy);
+		    else
+#endif
+		    if (levl[u.ux][u.uy].omask) {
+			register struct obj *otmp,*otmp2;
 
-		    /* changed by GAN to hit all objects there */
-		    for(otmp = fobj; otmp ; otmp = otmp2) {
-			otmp2 = otmp->nobj;
-			/* save pointer as bhito may destroy otmp */
-			if(otmp->ox == u.ux && otmp->oy == u.uy)
-			    (void) bhito(otmp, obj);
+			/* changed by GAN to hit all objects there */
+			for(otmp = fobj; otmp ; otmp = otmp2) {
+				otmp2 = otmp->nobj;
+				/* save pointer as bhito may destroy otmp */
+				if(otmp->ox == u.ux && otmp->oy == u.uy)
+			    		(void) bhito(otmp, obj);
+			}
 		    }
 		}
-	    } else if((obj->otyp == WAN_OPENING) ||
-#ifdef SPELLS
-		      (obj->otyp == SPE_KNOCK) ||
-		      (obj->otyp == SPE_WIZARD_LOCK) ||
-#endif
-		      (obj->otyp == WAN_LOCKING)) {
-		    (void)bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
-#ifdef STRONGHOLD
-	    } else if(obj->otyp == WAN_STRIKING
-#ifdef SPELLS
-		      || obj->otyp == SPE_FORCE_BOLT
-#endif /* SPELLS /**/
-		      ) {
-		    int x,y;
-		    x = u.ux + u.dx;
-		    y = u.uy + u.dy;
-		    if (find_drawbridge(&x,&y))
-			destroy_drawbridge(x,y);
-
-		    else (void) bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
-#endif /* STRONGHOLD /**/
-	    } else  (void) bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
+	    } else (void) bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
 	} else {
 	    switch(obj->otyp){
 		case WAN_LIGHT:
@@ -935,6 +933,8 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 	register struct monst *mtmp;
 	register struct obj *otmp;
 	register int typ;
+	boolean shopdoor = FALSE;
+	xchar dlx, dly;
 
 	bhitpos.x = u.ux;
 	bhitpos.y = u.uy;
@@ -944,23 +944,32 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 		tmp_at(-3, (int)AT_OBJ);
 	}
 	while(range-- > 0) {
+#ifdef STRONGHOLD
+		int x,y;
+#endif
 		bhitpos.x += ddx;
 		bhitpos.y += ddy;
-		typ = levl[bhitpos.x][bhitpos.y].typ;
 #ifdef STRONGHOLD
-		if(IS_DRAWBRIDGE(typ))
+		x = bhitpos.x; y = bhitpos.y;
+		if (find_drawbridge(&x,&y))
 		    switch (obj->otyp) {
 			case WAN_OPENING:
 # ifdef SPELLS
 			case SPE_KNOCK:
 # endif
-			    (void) open_drawbridge(bhitpos.x,bhitpos.y);
+			    (void) open_drawbridge(x,y);
 			    break;
 			case WAN_LOCKING:
 # ifdef SPELLS
 			case SPE_WIZARD_LOCK:
 # endif
-			    (void) close_drawbridge(bhitpos.x,bhitpos.y);
+			    (void) close_drawbridge(x,y);
+			    break;
+			case WAN_STRIKING:
+# ifdef SPELLS
+			case SPE_FORCE_BOLT:
+# endif
+			    destroy_drawbridge(x,y);
 		    }
 #endif /* STRONGHOLD /**/
 		if(levl[bhitpos.x][bhitpos.y].mmask){
@@ -987,16 +996,25 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 		    }
 		    if(hitanything)	range--;
 		}
+		typ = levl[bhitpos.x][bhitpos.y].typ;
 		if(IS_DOOR(typ) || typ == SDOOR) {
 		    switch (obj->otyp) {
 			case WAN_OPENING:
 			case WAN_LOCKING:
+			case WAN_STRIKING:
 #ifdef SPELLS
 			case SPE_KNOCK:
 			case SPE_WIZARD_LOCK:
+			case SPE_FORCE_BOLT:
 #endif
-			    if (doorlock(obj,bhitpos.x,bhitpos.y))
-				    makeknown(obj->otyp);
+			    if (doorlock(obj, bhitpos.x, bhitpos.y)) {
+				makeknown(obj->otyp);
+				if (levl[bhitpos.x][bhitpos.y].doormask == D_BROKEN
+				    && in_shop(bhitpos.x, bhitpos.y)) {
+					shopdoor = TRUE;
+					dlx = bhitpos.x; dly = bhitpos.y;
+				}
+			    }
 			    break;
 		    }
 		}
@@ -1017,6 +1035,10 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 	/* leave last symbol unless in a pool */
 	if(sym)
 	   tmp_at(-1, is_pool(bhitpos.x,bhitpos.y) ? -1 : 0);
+
+	if(shopdoor && !in_shop(u.ux, u.uy))
+		pay_for_door(dlx, dly, "destroy");
+
 	return (struct monst *)0;
 }
 
@@ -1032,7 +1054,11 @@ int dx, dy;
 
 	for(i=0; i<8; i++) if(xdir[i] == dx && ydir[i] == dy) break;
 	tmp_at(-1, sym);	/* open call */
+#ifndef TEXTCOLOR
 	tmp_at(-3, (int)AT_OBJ);
+#else
+	tmp_at(-3, HI_METAL);
+#endif
 	for(ct=0; ct<10; ct++) {
 		if(i == 8) i = 0;
 		sym = ')' + '(' - sym;
@@ -1225,10 +1251,8 @@ register int dx,dy;
 	if(type < 0) pru();
 	range = rn1(7,7);
 	Tmp_at2(-1, (int) dirlet(dx,dy));	/* open call */
-#ifdef MSDOSCOLOR
-	Tmp_at2(-3, (int)(abstype == 1 ? AT_RED :	/* fire */
-			  abstype == 3 || abstype == 5 ? AT_WHITE :	/* cold/elec */
-			  AT_ZAP));
+#ifdef TEXTCOLOR
+	Tmp_at2(-3, zapcolor[abstype]);
 #endif
 	while(range-- > 0) {
 		sx += dx;

@@ -534,14 +534,19 @@ register struct trobj *trop;
 		 * items: wand of wishing, ring of levitation, or the
 		 * polymorph/polymorph control combination.  Specific objects,
 		 * i.e. the discovery wishing, are still OK.
+		 * Also, don't get a couple of really useless items.  (Note:
+		 * punishment isn't "useless".  Some players who start out with
+		 * one will immediately read it and use the iron ball as a
+		 * weapon.)
 		 */
 		if (undefined) {
 #ifdef POLYSELF
-			static int nocreate = STRANGE_OBJECT;
+			int nocreate = STRANGE_OBJECT;
 #  ifdef SPELLS
-			static int nocreate2 = STRANGE_OBJECT;
+			int nocreate2 = STRANGE_OBJECT;
 #  endif
 #endif
+			int nocreate3 = STRANGE_OBJECT;
 
 			while(obj->otyp == WAN_WISHING
 #ifdef POLYSELF
@@ -550,9 +555,17 @@ register struct trobj *trop;
 				|| obj->otyp == nocreate2
 #  endif
 #endif
+				|| obj->otyp == nocreate3
 #ifdef ELBERETH
 				|| obj->otyp == RIN_LEVITATION
 #endif
+				/* 'useless' items */
+				|| obj->otyp == POT_HALLUCINATION
+				|| obj->otyp == SCR_AMNESIA
+				|| obj->otyp == SCR_FIRE
+				|| obj->otyp == RIN_AGGRAVATE_MONSTER
+				|| obj->otyp == RIN_HUNGER
+				|| obj->otyp == WAN_NOTHING
 							) {
 				free((genericptr_t) obj);
 				obj = mkobj(trop->trolet, FALSE);
@@ -565,20 +578,25 @@ register struct trobj *trop;
 			/* Heavily relies on the fact that 1) we create wands
 			 * before rings, 2) that we create rings before
 			 * spellbooks, and that 3) not more than 1 object of a
-			 * particular symbol is to be prohibited.
+			 * particular symbol is to be prohibited.  (For more
+			 * objects, we need more nocreate variables...)
 			 */
 #ifdef POLYSELF
-			if (obj->otyp == WAN_POLYMORPH)
+			switch (obj->otyp) {
+			    case WAN_POLYMORPH:
+			    case RIN_POLYMORPH:
 				nocreate = RIN_POLYMORPH_CONTROL;
-			if (obj->otyp == RIN_POLYMORPH)
-				nocreate = RIN_POLYMORPH_CONTROL;
-			if (obj->otyp == RIN_POLYMORPH_CONTROL) {
+				break;
+			    case RIN_POLYMORPH_CONTROL:
 				nocreate = RIN_POLYMORPH;
 #  ifdef SPELLS
 				nocreate2 = SPE_POLYMORPH;
 #  endif /* SPELLS */
 			}
 #endif /* POLYSELF */
+			/* Don't have 2 of the same ring */
+			if (obj->olet == RING_SYM)
+				nocreate3 = obj->otyp;
 		}
 
 		obj->bknown = trop->trknown;
@@ -606,7 +624,7 @@ register struct trobj *trop;
 				&& obj->otyp != SACK
 				&& obj->otyp != CHEST
 				&& obj->otyp != LARGE_BOX
-				&& obj->otyp != ICE_BOX)
+				&& obj->otyp != ICE_BOX);
 		}
 		*/
 		if(trop->trspe != UNDEF_SPE)

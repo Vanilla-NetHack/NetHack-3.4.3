@@ -173,7 +173,7 @@ register struct monst *priest;
 	return(move_special(priest,temple,TRUE,FALSE,avoid,omx,omy,gx,gy));
 }
 
-/* exclusevely for mktemple() */
+/* exclusively for mktemple() */
 void
 priestini(lvl, sx, sy, align)
 register int lvl, sx, sy, align;
@@ -183,8 +183,9 @@ register int lvl, sx, sy, align;
 #ifdef SPELLS
 	register int cnt;
 #endif
+	if(levl[sx+1][sy].mmask) rloc(m_at(sx+1, sy)); /* insurance */
 
-	if (priest = makemon(&mons[!rn2(2) ? PM_TEMPLE_PRIEST : 
+	if(priest = makemon(&mons[!rn2(2) ? PM_TEMPLE_PRIEST : 
 			PM_TEMPLE_PRIESTESS], sx+1, sy)) {
 		EPRI(priest)->shroom = inroom(sx, sy);
 		EPRI(priest)->shralign = align;

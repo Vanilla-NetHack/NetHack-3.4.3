@@ -26,6 +26,25 @@ getioctls() {
 #else
 	(void) ioctl(fileno(stdin), (int) TCGETA, &termio);
 #endif
+#ifdef TIOCGWINSZ
+	{
+		/*
+		 * ttysize is found on Suns and BSD
+		 * winsize is found on Suns, BSD, and Ultrix
+		 */
+		struct winsize ttsz;
+
+		(void) ioctl(fileno(stdin), (int) TIOCGWINSZ, (char *) &ttsz);
+		/*
+		 * Use the kernel's values for lines and columns if it has
+		 * any idea.
+		 */
+		if (ttsz.ws_row)
+			LI = ttsz.ws_row;
+		if (ttsz.ws_col)
+			CO = ttsz.ws_col;
+	}
+#endif
 }
 
 void

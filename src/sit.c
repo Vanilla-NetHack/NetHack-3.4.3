@@ -181,7 +181,7 @@ attrcurse() {			/* remove a random INTRINSIC ability */
 			if (Inhell && !Fire_resistance) {
 			    You("burn to a crisp.");
 			    killer = "gremlin curse";
-			    done("died");
+			    done(BURNING);
 			} else You("feel warmer.");
 			break;
 		}

@@ -24,13 +24,14 @@ TARG	= pc
 # Optional PC NetHack features (see pcconf.h).  Set to nothing if not used.
 #
 #	Fish's TERMLIB termcap library.
-TERMLIB = $(LIB)\termlib.lib
+#TERMLIB = $(LIB)\termlib.lib
+TERMLIB =
 #
 # 	High-quality BSD random number generation routines.
 RANDOM = o\random.obj
 
 LFLAGS	= /noi
-TLFLAGS = /x /c
+TLFLAGS = /x/c
 # No need to link in the floating point library
 LIBS	= $(LIB)\c$(MODEL)
 
@@ -43,6 +44,11 @@ LIBS	= $(LIB)\c$(MODEL)
 # reason with too many objects it produces a file that freaks out
 # and hangs the system.
 #
+# Also note:
+#
+# Using /EXEPACK with LINK will greatly reduce the size of the
+# executable (about 50K), it will also greatly increase the memory
+# required to load it (about 20K).
 TLINK	= tlink
 LINK	= link
 
@@ -76,15 +82,15 @@ VOBJS = o\main.obj o\tty.obj o\unix.obj o\hack.obj \
 VOBJM = o\apply.obj o\artifact.obj o\attrib.obj o\bones.obj o\dbridge.obj \
 	o\demon.obj o\do.obj o\do_name.obj o\do_wear.obj o\dog.obj \
 	o\dogmove.obj o\dokick.obj o\dothrow.obj o\eat.obj o\engrave.obj \
-	o\exper.obj o\fountain.obj o\invent.obj o\lock.obj o\mcastu.obj \
-	o\mhitm.obj o\mhitu.obj o\msdos.obj o\mthrowu.obj o\music.obj \
-	o\objnam.obj o\options.obj o\pager.obj o\pickup.obj o\polyself.obj \
-	o\potion.obj o\pray.obj o\priest.obj o\read.obj o\restore.obj \
-	o\rip.obj o\rnd.obj o\rumors.obj o\save.obj o\search.obj o\shk.obj \
-	o\sit.obj o\sounds.obj o\spell.obj o\steal.obj o\termcap.obj \
-	o\track.obj o\trap.obj o\uhitm.obj o\vault.obj o\weapon.obj \
-	o\were.obj o\wield.obj o\wizard.obj o\worm.obj o\worn.obj \
-	o\write.obj o\zap.obj
+	o\exper.obj o\fountain.obj o\invent.obj o\lock.obj \
+	o\mcastu.obj o\mhitm.obj o\mhitu.obj o\msdos.obj o\mthrowu.obj \
+	o\music.obj o\objnam.obj o\options.obj o\pager.obj o\pickup.obj \
+	o\polyself.obj o\potion.obj o\pray.obj o\priest.obj o\read.obj \
+	o\restore.obj o\rip.obj o\rnd.obj o\rumors.obj o\save.obj \
+	o\search.obj o\shk.obj o\sit.obj o\sounds.obj o\spell.obj \
+	o\steal.obj o\termcap.obj o\track.obj o\trap.obj o\uhitm.obj \
+	o\vault.obj o\weapon.obj o\were.obj o\wield.obj o\wizard.obj \
+	o\worm.obj o\worn.obj o\write.obj o\zap.obj
 VOBJL = o\mklev.obj o\mkmaze.obj o\extralev.obj o\sp_lev.obj o\mkroom.obj \
 	o\shknam.obj o\topten.obj o\end.obj o\o_init.obj o\u_init.obj
 VOBJ  = $(VOBJS) $(VOBJM) $(VOBJL)
@@ -102,11 +108,11 @@ PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\msdos.h
 GLOBAL_H   = $(INCL)\global.h $(INCL)\coord.h $(PCCONF_H)
 CONFIG_H   = $(INCL)\config.h $(INCL)\tradstdc.h $(GLOBAL_H)
 TRAP_H	   = $(INCL)\trap.h
-PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\system.h $(INCL)\extern.h
+#PCCONF_H  = $(INCL)\system.h $(INCL)\extern.h
 PERMONST_H = $(INCL)\permonst.h $(INCL)\monflag.h
 YOU_H	   = $(INCL)\you.h $(INCL)\attrib.h $(PERMONST_H) $(INCL)\mondata.h \
 	     $(INCL)\monst.h $(INCL)\youprop.h
-DECL_H	   = $(INCL)\decl.h
+#DECL_H	   = $(INCL)\decl.h
 DECL_H	   = $(INCL)\spell.h $(INCL)\obj.h $(YOU_H) $(INCL)\onames.h \
 	     $(INCL)\pm.h
 HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
@@ -122,8 +128,8 @@ HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 
 # The main target
 $(GAMEFILE): o $(HOBJ) Makefile
-	if exist $(GAMEFILE) del $(GAMEFILE)
-	link $(C0) $(HOBJ),$(GAMEFILE) /seg:1024 /e,,$(LIBS) $(TERMLIB) $(LFLAGS)
+	if exist $@ del $@
+	$(LINK) $(C0) $(HOBJ),$@ /seg:1024,,$(LIBS) $(TERMLIB) $(LFLAGS)
 	echo 
 $(GAME): $(GAMEFILE)
 
@@ -198,7 +204,7 @@ auxil:	spec_levs
 	cd $(AUX)
 	xcopy *. $(GAMEDIR)
 
-spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
+spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des lev_comp.exe
 	lev_comp $(AUX)\castle.des
 	lev_comp $(AUX)\endgame.des
 	lev_comp $(AUX)\tower.des
@@ -220,6 +226,9 @@ spotless: clean
 	del onames.h
 	del pm.h
 	touch date.h onames.h pm.h
+	cd $(AUX)
+	del data
+	del rumors
 	cd $(SRC)
 	del makedefs.exe
 	if exist lev_comp.exe del lev_comp.exe

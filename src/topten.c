@@ -48,8 +48,8 @@ topten(){
 # ifdef NO_FILE_LINKS
 	int lockfd ;
 # endif
+	int sleepct = 100;
 #endif /* UNIX */
-	int sleepct = 300;
 	FILE *rfile;
 	register int flg = 0;
 #ifdef LOGFILE
@@ -67,41 +67,6 @@ topten(){
 #define	HUP	if(!done_hup)
 #endif
 
-#ifdef UNIX
-# ifdef NO_FILE_LINKS
-	reclock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(recfile)+7);
-	Strcpy(reclock,LOCKDIR) ;
-	Strcat(reclock,"/") ;
-	Strcat(reclock,recfile) ;
-	Strcat(reclock,"_lock") ;
-	while ((lockfd = open(reclock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
-# else
-	while(link(recfile, reclock) == -1) {
-# endif /* NO_FILE_LINKS */
-		HUP perror(reclock);
-		if(!sleepct--) {
-			HUP (void) puts("I give up.  Sorry.");
-			HUP (void) puts("Perhaps there is an old record_lock around?");
-			return;
-		}
-		HUP Printf("Waiting for access to record file. (%d)\n",
-			sleepct);
-		HUP (void) fflush(stdout);
-# if defined(SYSV) || defined(ULTRIX)
-		(void)
-# endif
-		    sleep(1);
-	}
-#endif /* UNIX */
-	if(!(rfile = fopen(recfile,"r"))){
-		HUP (void) puts("Cannot open record file!");
-		goto unlock;
-	}
-#ifdef NO_FILE_LINKS
-	(void) close(lockfd) ;
-#endif
-	HUP (void) putchar('\n');
-
 	/* create a new 'topten' entry */
 	t0 = newttentry();
 	t0->level = dlevel;
@@ -118,8 +83,6 @@ topten(){
 	(t0->death)[DTHSZ] = 0;
 	Strcpy(t0->date, getdate());
 
-	/* assure minimum number of points */
-	if(t0->points < POINTSMIN) t0->points = 0;
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
 # ifdef UNIX
 #  ifdef NO_FILE_LINKS
@@ -168,7 +131,52 @@ topten(){
 # ifdef NO_FILE_LINKS
 	(void) close(lockfd) ;
 # endif
+# if defined(WIZARD) || defined(EXPLORE_MODE)
+	if (wizard || discover) {
+ Printf("\nSince you were in %s mode, the score list will not be checked.\n",
+	wizard ? "wizard" : "discover");
+		return;
+	}
+# endif
 #endif /* LOGFILE */
+
+#ifdef UNIX
+# ifdef NO_FILE_LINKS
+	reclock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(recfile)+7);
+	Strcpy(reclock,LOCKDIR) ;
+	Strcat(reclock,"/") ;
+	Strcat(reclock,recfile) ;
+	Strcat(reclock,"_lock") ;
+	while ((lockfd = open(reclock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
+# else
+	while(link(recfile, reclock) == -1) {
+# endif /* NO_FILE_LINKS */
+		HUP perror(reclock);
+		if(!sleepct--) {
+			HUP (void) puts("I give up.  Sorry.");
+			HUP (void) puts("Perhaps there is an old record_lock around?");
+			return;
+		}
+		HUP Printf("Waiting for access to record file. (%d)\n",
+			sleepct);
+		HUP (void) fflush(stdout);
+# if defined(SYSV) || defined(ULTRIX)
+		(void)
+# endif
+		    sleep(1);
+	}
+#endif /* UNIX */
+	if(!(rfile = fopen(recfile,"r"))){
+		HUP (void) puts("Cannot open record file!");
+		goto unlock;
+	}
+#ifdef NO_FILE_LINKS
+	(void) close(lockfd) ;
+#endif
+	HUP (void) putchar('\n');
+
+	/* assure minimum number of points */
+	if(t0->points < POINTSMIN) t0->points = 0;
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
@@ -320,63 +328,67 @@ register int rank, so;
 	char linebuf[BUFSZ];
 	linebuf[0] = 0;
 	if(rank) Sprintf(eos(linebuf), " %2d", rank);
-		else Sprintf(eos(linebuf), "   ");
+		else Strcat(linebuf, "   ");
 	Sprintf(eos(linebuf), " %7ld  %.10s", t1->points, t1->name);
 	Sprintf(eos(linebuf), "-%c ", t1->plchar);
 	if(!strncmp("escaped", t1->death, 7)) {
-	  if(!strcmp(" (with amulet)", t1->death+7))
-	    Sprintf(eos(linebuf), "escaped the dungeon with amulet");
+	  if(!strcmp(" (with the Amulet)", t1->death+7))
+	    Strcat(linebuf, "escaped the dungeon with the Amulet");
 	  else
 	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
 	      t1->maxlvl);
 #ifdef ENDGAME
 	} else if(!strncmp("ascended", t1->death, 8)) {
-	   Sprintf(eos(linebuf), "ascended to demigod-hood");
+	   Strcat(linebuf, "ascended to demigod-hood");
 #endif
 	} else {
 	  if(!strncmp(t1->death,"quit",4)) {
 		quit = TRUE;
-		Sprintf(eos(linebuf), "quit");
-	  } else if(!strcmp(t1->death,"choked"))
+		Strcat(linebuf, "quit");
+	  } else if(!strcmp(t1->death,"choked")) {
 		Sprintf(eos(linebuf), "choked on %s food",
 			(t1->sex == 'F') ? "her" : "his");
-	  else if(!strncmp(t1->death,"starv",5)) {
-		Sprintf(eos(linebuf), "starved to death");
+	  } else if(!strncmp(t1->death,"starv",5)) {
+		Strcat(linebuf, "starved to death");
 		starv = TRUE;
+	  } else if(!strcmp(t1->death,"poisoned")) {
+		Strcat(linebuf, "was posioned");
+	  } else if(!strcmp(t1->death,"crushed")) {
+		Strcat(linebuf, "was crushed to death");
 	  } else if(!strncmp(t1->death, "turned to stone by ",19)) {
-		Sprintf(eos(linebuf), "was petrified");
+		Strcat(linebuf, "was petrified");
 		isstoned = TRUE;
 	  } else {
-		Sprintf(eos(linebuf), "was killed");
+		Strcat(linebuf, "was killed");
 		iskilled = TRUE;
 	  }
 #ifdef ENDLEVEL
 	  if (t1->level == ENDLEVEL)
-		Strcpy(eos(linebuf), " in the endgame");
+		Strcat(linebuf, " in the endgame");
 	  else
 #endif
 	    Sprintf(eos(linebuf), " on%s level %d",
 	      (iskilled || isstoned || starv) ? "" : " dungeon", t1->level);
 	  if(t1->maxlvl != t1->level)
 	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
-	  if(quit && t1->death[4]) Sprintf(eos(linebuf), t1->death + 4);
+	  if(quit && t1->death[4]) Strcat(linebuf, t1->death + 4);
 	}
 	if(iskilled) Sprintf(eos(linebuf), " by %s%s",
 	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4)
 	   || !strncmp(t1->death, "Mr. ", 4) || !strncmp(t1->death, "Ms. ", 4)
-	   || !strncmp(eos(t1->death)-4, "tion", 4)
+	   || !strncmp(eos(t1->death)-5, "ation", 5)
 	   ) ? "" :
 	  index(vowels,*t1->death) ? "an " : "a ",
 	  t1->death);
 	if (isstoned) Sprintf(eos(linebuf), " by %s%s", index(vowels,
 		*(t1->death + 19)) ? "an " : "a ", t1->death + 19);
-	Sprintf(eos(linebuf), ".");
+	Strcat(linebuf, ".");
 	if(t1->maxhp) {
 	  register char *bp = eos(linebuf);
 	  char hpbuf[10];
 	  int hppos;
 	  int lngr = strlen(linebuf);
-	  Sprintf(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
+	  Strcpy(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
 	  hppos = COLNO - 7 - strlen(hpbuf);
 	  if (lngr >= hppos) hppos = (2*COLNO) - 7 - strlen(hpbuf);
 	  if(bp <= linebuf + hppos) {

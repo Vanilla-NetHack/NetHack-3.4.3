@@ -520,7 +520,11 @@ register struct obj *obj;
 #endif
 		break;
 	case RIN_SEE_INVISIBLE:
-		if (Invisible && !Blind) {
+		if (Invis && !oldprop
+#ifdef POLYSELF
+				&& !perceives(uasmon)
+#endif
+							&& !Blind) {
 			newsym(u.ux,u.uy);
 			pline("Suddenly you can see yourself.");
 			makeknown(RIN_SEE_INVISIBLE);
@@ -739,6 +743,7 @@ dotakeoff() {
 		pline("The bear trap prevents you from pulling your foot out.");
 		return(0);
 	}
+	reset_remarm();			/* since you may change ordering */
 	(void) armoroff(otmp);
 	return(1);
 }
@@ -1386,6 +1391,9 @@ take_off() {
 	return(1);		/* get busy */
 }
 
+void
+reset_remarm() { taking_off = takeoff_mask =0L; }
+
 int
 doddoremarm() {
 
@@ -1399,6 +1407,47 @@ doddoremarm() {
 	(void) ggetobj("take off", select_off, 0);
 	if(takeoff_mask) return(take_off());
 	else		 return(0);
+}
+
+int
+destroy_arm(atmp)
+register struct obj *atmp;
+{
+	register struct obj *otmp;
+
+	if((otmp = uarmc) && (!atmp || atmp == uarmc)) {
+		Your("cloak crumbles and turns to dust!");
+		(void) Cloak_off();
+		useup(otmp);
+	} else if((otmp = uarm) && (!atmp || atmp == uarm)) {
+		Your("armor turns to dust and falls to the floor!");
+		(void) Armor_gone();
+		useup(otmp);
+#ifdef SHIRT
+	} else if((otmp = uarmu) && (!atmp || atmp == uarmu)) {
+		Your("shirt crumbles into tiny threads and falls apart!");
+		useup(otmp);
+#endif
+	} else if((otmp = uarmh) && (!atmp || atmp == uarmh)) {
+		Your("helmet turns to dust and is blown away!");
+		(void) Helmet_off();
+		useup(otmp);
+	} else if((otmp = uarmg) && (!atmp || atmp == uarmg)) {
+		Your("gloves vanish!");
+		(void) Gloves_off();
+		useup(otmp);
+		selftouch("You");
+	} else if((otmp = uarmf) && (!atmp || atmp == uarmf)) {
+		Your("boots disintegrate!");
+		(void) Boots_off();
+		useup(otmp);
+	} else if((otmp =uarms) && (!atmp || atmp == uarms)) {
+		Your("shield crumbles away!");
+		(void) Shield_off();
+		useup(otmp);
+	} else 	return(0);		/* could not destroy anything */
+
+	return(1);
 }
 
 void

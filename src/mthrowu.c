@@ -133,7 +133,7 @@ m_throw(x, y, dx, dy, range, obj)
 				kludge("The poison doesn't seem to affect %s.",
 								mon_nam(mtmp));
 			    else {
-				if (rn2(10)) damage += rnd(6);
+				if (rn2(30)) damage += rnd(6);
 				else {
 				    pline("The poison was deadly...");
 				    damage = mtmp->mhp;

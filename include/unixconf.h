@@ -42,6 +42,8 @@
 			   run with Microport Sys V/AT version 2.4.
 			   By Jay Maynard */
 
+/* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
+
 
 /*
  * The next two defines are intended mainly for the Andrew File System,
@@ -72,7 +74,15 @@
  */
 
 #define	MAIL
-#define	DEF_MAILREADER	"/usr/ucb/Mail"		/* or e.g. /bin/mail */
+#if defined(BSD) || defined(ULTRIX)
+#define	DEF_MAILREADER	"/usr/ucb/Mail"
+#else
+# ifdef SYSV
+#define	DEF_MAILREADER	"/usr/bin/mailx"
+# else
+#define	DEF_MAILREADER	"/bin/mail"
+# endif
+#endif
 #define	MAILCKFREQ	50
 
 #ifdef COMPRESS
@@ -131,12 +141,24 @@
 #ifdef hc	/* older versions of the MetaWare High-C compiler define this */
 # ifdef __HC__
 #  undef __HC__
-# endif __HC__
+# endif
 # define __HC__ hc
 # undef hc
-#endif hc
+#endif
 
+#ifdef TEXTCOLOR
+/* configurable colors */
+#  define HI_MON	RED	/* red slaps! */
+#  define HI_OBJ	MAGENTA
+#  define HI_METAL	CYAN
+#  define HI_ORGANIC	GREEN
+#  define HI_GOLD	YELLOW
+#  define HI_ZAP	BLUE	/* blue zaps! */
+#endif
+
+#ifndef EXTERN_H
 #include "extern.h"
+#endif
 
 #endif /* UNIXCONF_H /* */
 #endif /* UNIX /* */

@@ -4,6 +4,9 @@
 
 #include	"hack.h"
 #include	"date.h"
+#ifndef BETA
+#include	"patchlevel.h"
+#endif
 
 int
 doversion(){
@@ -11,7 +14,7 @@ doversion(){
 #ifdef BETA
 	pline("%s NetHack Beta Version %s - last build %s.",
 #else
-	pline("%s NetHack Version %s - last build %s.",
+	pline("%s NetHack Version %s Patchlevel %d - last build %s.",
 #endif
 #if defined(MSDOS)
 # if defined(TOS)
@@ -20,13 +23,21 @@ doversion(){
 #  if defined(AMIGA)
 		"Amiga",
 #  else
+#   if defined(OS2)
+		"OS/2",
+#   else
 		"PC",
+#   endif
 #  endif
 # endif
 #endif
 #ifdef UNIX
 		"Unix",
 #endif
-		VERSION, datestring);
+		VERSION,
+#ifndef BETA
+		PATCHLEVEL,
+#endif
+		datestring);
 	return 0;
 }

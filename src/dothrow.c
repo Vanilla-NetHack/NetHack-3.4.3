@@ -251,8 +251,8 @@ register struct obj   *obj;
 		}
 		return(1);
 	}
-	if(obj->olet == WEAPON_SYM || obj->otyp == ROCK || obj->olet == GEM_SYM) {
-		if(obj->otyp < DART || obj->otyp == ROCK || obj->olet == GEM_SYM) {
+	if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE || obj->olet == GEM_SYM) {
+		if(obj->otyp < DART || obj->olet == GEM_SYM) {
 		    if (!uwep ||
 			objects[obj->otyp].w_propellor !=
 			-objects[uwep->otyp].w_propellor)

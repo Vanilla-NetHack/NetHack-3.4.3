@@ -27,7 +27,7 @@
  *  Configurable Amiga options:
  */
 
-#define MSDOSCOLOR              /* Use colored monsters and objects */
+#define TEXTCOLOR              /* Use colored monsters and objects */
 #define HACKFONT                /* Use special hack.font */
 #define SHELL                   /* Have a shell escape command (!) */
 #define MAIL                    /* Get mail at unexpected occasions */

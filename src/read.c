@@ -192,7 +192,8 @@ register struct obj	*sobj;
 			  sobj->cursed ? black : silver,
 			  (s*s>1) ? "while" : "moment");
 		otmp->cursed = sobj->cursed;
-		otmp->blessed = sobj->blessed;
+		if (!otmp->blessed || sobj->cursed)
+			otmp->blessed = sobj->blessed;
 		otmp->spe += s;
 		adj_abon(otmp, s);
 		break;
@@ -329,8 +330,7 @@ register struct obj	*sobj;
 		if(confused || sobj->cursed) cnt += 12;
 		while(cnt--) {
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-		    if(wizard || discover)
-			if (!create_particular())
+		    if((!wizard && !discover) || !create_particular())
 #endif /* WIZARD || EXPLORE_MODE */
 		    (void) makemon (confused ? &mons[PM_ACID_BLOB] :
 					(struct permonst *) 0, u.ux, u.uy);
@@ -694,16 +694,6 @@ register struct obj *obj;
     useup(obj);
 }
 
-int
-identify(otmp)		/* also called by newmail() */
-	register struct obj *otmp;
-{
-	makeknown(otmp->otyp);
-	otmp->known = otmp->dknown = otmp->bknown = 1;
-	prinv(otmp);
-	return(1);
-}
-
 void
 litroom(on)
 register boolean on;
@@ -811,7 +801,7 @@ do_class_genocide()
 				    You("feel dead inside.");
 				else
 #endif
-				    done("died");
+				    done(GENOCIDED);
 			    }
 			    /* for simplicity (and fairness) let's avoid
 			     * alignment changes here...
@@ -917,7 +907,7 @@ deadmeat:
 		if(u.umonnum >= 0)	You("feel dead inside.");
 		else
 #endif
-			done("died");
+			done(GENOCIDED);
 		return;
 	    }
 #ifdef POLYSELF
@@ -983,47 +973,6 @@ do_vicinity_map() {
 	    for(zx = (u.ux-9 < 0 ? 0 : u.ux-9); 
 			zx < (u.ux+10 > COLNO ? COLNO : u.ux+10); zx++)
 		show_map_spot(zx, zy);
-}
-
-int
-destroy_arm(atmp)
-register struct obj *atmp;
-{
-	register struct obj *otmp;
-
-	if((otmp = uarmc) && (!atmp || atmp == uarmc)) {
-		Your("cloak crumbles and turns to dust!");
-		(void) Cloak_off();
-		useup(otmp);
-	} else if((otmp = uarm) && (!atmp || atmp == uarm)) {
-		Your("armor turns to dust and falls to the floor!");
-		(void) Armor_gone();
-		useup(otmp);
-#ifdef SHIRT
-	} else if((otmp = uarmu) && (!atmp || atmp == uarmu)) {
-		Your("shirt crumbles into tiny threads and falls apart!");
-		useup(otmp);
-#endif
-	} else if((otmp = uarmh) && (!atmp || atmp == uarmh)) {
-		Your("helmet turns to dust and is blown away!");
-		(void) Helmet_off();
-		useup(otmp);
-	} else if((otmp = uarmg) && (!atmp || atmp == uarmg)) {
-		Your("gloves vanish!");
-		(void) Gloves_off();
-		useup(otmp);
-		selftouch("You");
-	} else if((otmp = uarmf) && (!atmp || atmp == uarmf)) {
-		Your("boots disintegrate!");
-		(void) Boots_off();
-		useup(otmp);
-	} else if((otmp =uarms) && (!atmp || atmp == uarms)) {
-		Your("shield crumbles away!");
-		(void) Shield_off();
-		useup(otmp);
-	} else 	return(0);		/* could not destroy anything */
-
-	return(1);
 }
 
 int

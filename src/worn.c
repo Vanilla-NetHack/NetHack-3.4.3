@@ -68,7 +68,7 @@ long mask;
 	if (Inhell && !Fire_resistance) {
 		pline(crispy);
 		killer = "loss of fire protection";
-		done("burned");
+		done(BURNING);
 		/* If we're here they survived with life saving, so put the
 		 * weapon they just unwielded back in their hands...
 		 */
@@ -108,7 +108,7 @@ register struct obj *obj;
 	if (Inhell && !Fire_resistance && obj->olet != AMULET_SYM) {
 		pline(crispy);
 		killer = "loss of fire protection";
-		done("burned");
+		done(BURNING);
 		/* Survived with lifesaving, etc...; there's no general way
 		 * to undo the setnotworn()--we can't re-wear/wield the
 		 * item since it might have been stolen, disintegrated, etc....
@@ -121,7 +121,7 @@ register struct obj *obj;
 			 */
 #endif
 			You("are still burning and die again...");
-			done("burned");
+			done(BURNING);
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 		}
 #endif

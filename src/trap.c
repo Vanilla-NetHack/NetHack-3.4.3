@@ -259,7 +259,11 @@ register struct trap *trap;
 			fobj->quan = 1;
 			fobj->owt = weight(fobj);
 			stackobj(fobj);
-			if(Invisible) newsym(u.ux, u.uy);
+			if(Invisible
+#ifdef POLYSELF
+				|| u.uundetected
+#endif
+						) newsym(u.ux, u.uy);
 		    } else {
 			register int newlevel = dlevel + 1;
 			while(!rn2(4) && newlevel < 29) newlevel++;
@@ -422,6 +426,8 @@ two_hand:		    corrode_weapon();
 		    selftouch("Falling, you");
 		    break;
 		case LEVEL_TELEP:
+		{   int oldl = dlevel;
+
 		    pline("You have %s onto a level teleport trap!",
 #ifdef POLYSELF
 			is_flyer(uasmon) ? "flown" :
@@ -429,8 +435,10 @@ two_hand:		    corrode_weapon();
 #else
 			Levitation ? "moved" : "stepped");
 #endif
-		    if(Antimagic)
+		    if(Antimagic) {
+			pru();
 			shieldeff(u.ux, u.uy);
+		    }
 		    if(Antimagic
 #ifdef ENDGAME
 				|| dlevel == ENDLEVEL
@@ -446,6 +454,15 @@ two_hand:		    corrode_weapon();
 		    deltrap(trap);
 		    newsym(u.ux,u.uy);
 		    level_tele();
+		    if(oldl == dlevel && !Invisible
+#ifdef POLYSELF
+						&& !u.uundetected
+#endif
+								) {
+			levl[u.ux][u.uy].seen = 0; /* force atl */
+			atl(u.ux,u.uy,(char)u.usym);
+		    }
+		}
 		    break;
 #ifdef SPELLS
 		case ANTI_MAGIC:
@@ -477,7 +494,11 @@ two_hand:		    corrode_weapon();
 			u.uen = (u.uenmax += 2);
 #endif
 			deltrap(trap);
-			if(Invisible) newsym(u.ux,u.uy);
+			if(Invisible
+#ifdef POLYSELF
+				&& !u.uundetected
+#endif
+						) newsym(u.ux,u.uy);
 		    } else domagictrap();
 		    break;
 		case SQBRD:	    /* Stepped on a squeaky board. */
@@ -604,7 +625,7 @@ register struct monst *mtmp;
 	/* A bug fix for dumb messages by ab@unido.
 	 */
 	    int in_sight = cansee(mtmp->mx,mtmp->my)
-			   && (!mtmp->minvis || See_invisible);
+			   && (!mtmp->minvis || See_invisible || Telepat);
 
 	    if(mtmp->mtrapseen & (1 << tt)) {
 		/* he has been in such a trap - perhaps he escapes */
@@ -822,7 +843,7 @@ char *arg;
 		pline("%s touch the cockatrice corpse.", arg);
 		You("turn to stone...");
 		killer = "cockatrice corpse accident";
-		done("stoned");
+		done(STONING);
 	}
 }
 
@@ -910,6 +931,8 @@ tele() {
 		pline("Being unconscious, you cannot control your teleport.");
 	    else {
 		    pline("To what position do you want to be teleported?");
+		    cc.x = u.ux;
+		    cc.y = u.uy;
 		    getpos(&cc, 1, "the desired position"); /* 1: force valid */
 		    /* possible extensions: introduce a small error if
 		       magic power is low; allow transfer to solid rock */
@@ -1116,7 +1139,7 @@ register boolean pet_by_u = next_to_u();
 			You("arrive in heaven.");
 			pline("\"You are here a bit early, but we'll let you in.\"");
 			killer = "visit to heaven";
-			done("died");
+			done(DIED);
 		} else	if (newlevel == -9) {
 			You("feel deliriously happy. ");
 			pline("(In fact, you're on Cloud 9!) ");
@@ -1131,14 +1154,14 @@ register boolean pet_by_u = next_to_u();
 		if(Levitation) {
 		    You("float gently down to earth.");
 #ifndef STRONGHOLD
-		    done("escaped");
+		    done(ESCAPED);
 #endif
 		}
 #ifdef POLYSELF
 		if(is_flyer(uasmon)) {
 		    You("fly down to earth.");
 # ifndef STRONGHOLD
-		    done("escaped");
+		    done(ESCAPED);
 # endif
 		}
 #endif
@@ -1146,7 +1169,7 @@ register boolean pet_by_u = next_to_u();
 		You("plummet a few thousand feet to your death.");
 		dlevel = 0;
 		killer = "long fall";
-		done("died");
+		done(DIED);
 #ifdef WALKIES
 	    } else {
 		You("shudder for a moment...");
@@ -1154,7 +1177,7 @@ register boolean pet_by_u = next_to_u();
 	    }
 #endif
 	}
-	/* calls done("escaped") if newlevel==0 */
+	/* calls done(ESCAPED) if newlevel==0 */
 #ifdef WALKIES
 	if(!pet_by_u)
 	    You("shudder for a moment...");
@@ -1313,7 +1336,7 @@ drown() {
 	}
 	You("drown.");
 	killer = levl[u.ux][u.uy].typ == POOL ? "pool of water" : "moat";
-	done("drowned");
+	done(DROWNING);
 }
 
 #ifdef SPELLS
@@ -1364,7 +1387,8 @@ dountrap() {	/* disarm a trapped object */
 				case 'n': continue;
 			    }
 
-			    if((otmp->otrapped && !confused && rn2(44-dlevel*2) < 10)
+			    if((otmp->otrapped && !confused 
+					&& rn2(MAXLEVEL+2-dlevel) < 10)
 			       || confused && !rn2(3)) {
 				You("find a trap on the %s!  Disarm it? ",
 				       xname(otmp));
@@ -1383,7 +1407,7 @@ dountrap() {	/* disarm a trapped object */
 					chest_trap(otmp, FINGER);
 				    } else {
 					You("disarm it!");
-					otmp->otrapped = 0;
+				        otmp->otrapped = 0;
 				    }
 				} else pline("That %s was not trapped.",
 					     doname(otmp));
@@ -1422,7 +1446,7 @@ dountrap() {	/* disarm a trapped object */
 	}
 
 	if ((levl[x][y].doormask & D_TRAPPED && !confused &&
-	     rn2(44-dlevel*2) < 10)
+	     rn2(MAXLEVEL+2-dlevel) < 10)
 	    || confused && !rn2(3)) {
 		You("find a trap on the door!  Disarm it? ");
 		if (ynq() != 'y') return(1);
@@ -1433,10 +1457,9 @@ dountrap() {	/* disarm a trapped object */
 		    if(confused || Fumbling || rnd(75+dlevel/2) > ch) {
 			    You("set it off!");
 			    b_trapped("door");
-		    } else {
+		    } else
 			    You("disarm it!");
-			    levl[x][y].doormask &= ~D_TRAPPED;
-		    }
+		    levl[x][y].doormask &= ~D_TRAPPED;
 		} else pline("This door was not trapped.");
 		return(1);
 	} else {
@@ -1581,11 +1604,13 @@ void
 b_trapped(item)		/* used for doors. can be used */
 register char *item;    /* for anything else that opens */
 {
-	register int dmg = rn2(15) + rnd((int)u.ulevel);
+	register int dmg = rnd(5+(dlevel < 5 ? dlevel : 2+dlevel/2));
 
 	pline("KABOOM!!  The %s was booby-trapped!", item);
+	if(u.ulevel < 4 && dlevel < 3 && !rn2(3)) 
+		You("are shaken, but luckily unhurt.");		
+	else losehp(dmg, "explosion");
 	make_stunned(HStun + dmg, TRUE);
-	losehp(dmg, "explosion");
 }
 
 /* Monster is hit by trap. */

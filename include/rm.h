@@ -122,7 +122,7 @@ extern const struct symbols defsyms;
 
 #define	ERRCHAR	']'
 
-#define MAXPCHARS	28	/* maximum number of mapped characters */
+#define MAXPCHARS	32	/* maximum number of mapped characters */
 
 /*
  * The 5 possible states of doors
@@ -185,10 +185,7 @@ extern const struct symbols defsyms;
  * at() display character types, in order of precedence.
  */
 #define AT_APP		(uchar)0
-/* specific overrides */
-#define AT_RED		(uchar)1	/* flame */
-#define AT_BLUE 	(uchar)4	/* water */
-#define AT_WHITE	(uchar)7	/* lightning */
+/* 1-7 are specific overrides, see decl.h */
 /* non-specific */
 #define AT_ZAP		(uchar)8
 #define AT_MON		(uchar)9
