@@ -1,0 +1,42 @@
+
+Behold, mortal, the origins of NetHack...
+
+Jay Fenlason wrote the original Hack with help from Kenny Woodland,
+Mike Thome, and Jon Payne.
+
+Andries Brouwer did a major re-write and published (at least) three versions
+(1.0.1, 1.0.2, and 1.0.3) for UNIX(tm) machines to the Usenet.
+
+Don Kneller ported 1.0.3 Hack to Microsoft(tm) C and MSDOS(tm), producing
+PC HACK 1.01e, added support for DEC Rainbow graphics in version 1.03g,
+and went on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6).
+
+R. Black ported PC HACK 3.51 to Lattice(tm) C and the Atari 520/1040,
+producing ST Hack 1.03.
+
+Mike Stephenson merged these various versions back together, incorporating
+many of the added features, and produced NetHack version 1.4.  He then
+coordinated a cast of thousands in enhancing and debugging NetHack 1.4 and 
+released NetHack versions 2.2 and 2.3.  Later, he coordinated a major rewrite
+of the game, heading a team which included Ken Arromdee, Jean-Christophe
+Collet, Steve Creps, Eric Hendrickson, Izchak Miller, John Rupley, Mike
+Threepoint, and Janet Walz, to produce NetHack 3.0. 
+
+Olaf Seibert ported NetHack 2.3 and 3.0 to the Amiga.
+
+ 
+From time to time, some depraved individual out there in netland sends a
+particularly intriguing modification to help out with the game.  The Gods of
+the Dungeon sometimes make note of the names of the worst of these miscreants
+in this, the list of Dungeoneers:
+
+    Tom Almy                  Eric Hendrickson       Izchak Miller
+    Ken Arromdee              Bruce Holloway         Gil Neiger
+    Eric Backus               Richard P. Hughey      Eric S. Raymond
+    John S. Bien              Greg Laskin            John Rupley
+    Ralf Brown                Steve Linhart          Kevin Sweet
+    Jean-Christophe Collet    Roland McGrath         Scott R. Turner
+    Steve Creps               Bruce Mewborne         Janet Walz
+
+    and...                    The Unknown Hacker
+

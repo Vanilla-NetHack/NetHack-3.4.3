@@ -1,0 +1,15 @@
+-w
+-o Ram:NetHack
++ss
+amidos.o amitcap.o amitty.o amiunix.o amiwind.o alloc.o apply.o artifact.o
+attrib.o bones.o cmd.o dbridge.o decl.o demon.o do.o do_name.o do_wear.o
+dog.o dogmove.o dothrow.o eat.o end.o engrave.o exper.o extralev.o
+fountain.o hack.o invent.o lock.o main.o makemon.o mcastu.o mhitm.o mhitu.o
+mklev.o mkmaze.o mkobj.o mkshop.o mon.o mondata.o monmove.o monst.o
+mthrowu.o music.o o_init.o objects.o objnam.o options.o pager.o pickup.o
+polyself.o potion.o pray.o pri.o prisym.o random.o read.o restore.o rip.o
+rnd.o rumors.o save.o search.o shk.o shknam.o sit.o sounds.o sp_lev.o
+spell.o steal.o timeout.o topl.o topten.o track.o trap.o u_init.o uhitm.o
+vault.o version.o weapon.o were.o wield.o wizard.o worm.o worn.o write.o
+zap.o
+-lml -lcl

@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)pcunix.c	1.4	87/08/08
+/*	SCCS Id: @(#)pcunix.c	3.0	88/07/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* unix.c - version 1.0.3 */
+/* NetHack may be freely redistributed.  See license for details. */
 
 /* This file collects some Unix dependencies; pager.c contains some more */
 
@@ -13,33 +13,36 @@
  *	- determination of what files are "very old"
  */
 
-#include <stdio.h>	/* mainly for NULL */
 #include "hack.h"	/* mainly for index() which depends on BSD */
-
-#ifndef __TURBOC__  /* Turbo C has time_t in time.h */
-#include	<sys/types.h>		/* for time_t */
+#ifdef TOS
+#ifdef UNIXDEBUG
+#include <errno.h>
+#else
+#include <error.h>
+#endif /* UNIXDEBUG */
 #endif
-#include	<time.h>
-#include        <sys/stat.h>
 
-extern time_t time();
+#include	<sys/types.h>
+#include	<sys/stat.h>
+
+#ifndef TOS
 static struct stat buf, hbuf;
-
+void
 setrandom()
 {
-	(void) srand((int) time ((time_t *) 0));
+	(void) Srand((int) time ((time_t *) 0));
 }
 
-struct tm *
+static struct tm *
 getlt()
 {
 	time_t date;
-	struct tm *localtime();
 
 	(void) time(&date);
 	return(localtime(&date));
 }
 
+int
 getyear()
 {
 	return(1900 + getlt()->tm_year);
@@ -51,13 +54,14 @@ getdate()
 	static char datestr[7];
 	register struct tm *lt = getlt();
 
-	(void) sprintf(datestr, "%2d%2d%2d",
+	Sprintf(datestr, "%2d%2d%2d",
 		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
 	if(datestr[2] == ' ') datestr[2] = '0';
 	if(datestr[4] == ' ') datestr[4] = '0';
 	return(datestr);
 }
 
+int
 phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
 {					/* moon period: 29.5306 days */
 					/* year: 365.2422 days */
@@ -73,6 +77,7 @@ phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
 	return( (((((diy + epact) * 6) + 11) % 177) / 22) & 7 );
 }
 
+int
 night()
 {
 	register int hour = getlt()->tm_hour;
@@ -80,18 +85,22 @@ night()
 	return(hour < 6 || hour > 21);
 }
 
+int
 midnight()
 {
 	return(getlt()->tm_hour == 0);
 }
 
-gethdate(name) char *name; {
+void
+gethdate(name)
+char *name;
+{
 /* old version - for people short of space */
 /*
 /* register char *np;
 /*      if(stat(name, &hbuf))
-/*              error("Cannot get status of %s.",
-/*                      (np = rindex(name, '/')) ? np+1 : name);
+/*	      error("Cannot get status of %s.",
+/*		      (np = rindex(name, '/')) ? np+1 : name);
 /*
 /* version using PATH from: seismo!gregc@ucsf-cgl.ARPA (Greg Couch) */
 
@@ -100,50 +109,53 @@ gethdate(name) char *name; {
  * does not exist on all systems, and moreover, that it sometimes includes
  * <sys/types.h> again, so that the compiler sees these typedefs twice.
  */
-#define         MAXPATHLEN      1024
+#define	 MAXPATHLEN      1024
 
-register char *np, *path;
-char filename[MAXPATHLEN+1];
+    register char *np, *path;
+    char filename[MAXPATHLEN+1], *getenv();
 
     if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
-        path = "";
+	path = "";
 
     for (;;) {
-        if ((np = index(path, ':')) == NULL)
-            np = path + strlen(path);       /* point to end str */
-        if (np - path <= 1)                     /* %% */
-            (void) strcpy(filename, name);
-        else {
-            (void) strncpy(filename, path, np - path);
-            filename[np - path] = '/';
-            (void) strcpy(filename + (np - path) + 1, name);
-        }
-        if (stat(filename, &hbuf) == 0)
-            return;
-        if (*np == '\0')
-        path = "";
-        path = np + 1;
+	if ((np = index(path, ':')) == NULL)
+	    np = path + strlen(path);       /* point to end str */
+	if (np - path <= 1)		     /* %% */
+	    Strcpy(filename, name);
+	else {
+	    (void) strncpy(filename, path, np - path);
+	    filename[np - path] = '/';
+	    Strcpy(filename + (np - path) + 1, name);
+	}
+	if (stat(filename, &hbuf) == 0)
+	    return;
+	if (*np == '\0')
+	path = "";
+	path = np + 1;
     }
     error("Cannot get status of %s.", (np = rindex(name, '/')) ? np+1 : name);
 }
 
+int
 uptodate(fd) {
     if(fstat(fd, &buf)) {
-        pline("Cannot get status of saved level? ");
-        return(0);
+	pline("Cannot get status of saved level? ");
+	return(0);
     }
     if(buf.st_mtime < hbuf.st_mtime) {
-        pline("Saved level is out of date. ");
-        return(0);
+	pline("Saved level is out of date. ");
+	return(0);
     }
     return(1);
 }
+#endif /* TOS /* */
 
-regularize(s)	/* normalize file name - we don't like ..'s or /'s */
+void
+regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
 register char *s;
 {
 	register char *lp;
 
-	while((lp = index(s, '.')) || (lp = index(s, '/')))
+	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
 		*lp = '_';
 }

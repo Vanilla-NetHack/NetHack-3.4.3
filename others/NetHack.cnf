@@ -1,58 +1,86 @@
 # A '#' at the beginning of a line means the rest of the line is a comment.
+#
+# This configuration file is set up for two cases, for a hard disk
+# (as drive C:), and for two floppy disks.
+#
+# To change the configuration, comment out the unwanted lines, and
+# uncomment the configuration you want.
 
-# This configuration file is set up for three cases, a person with a hard
-# disk as drive C:, 1 person with two floppy disks, and several people
-# with two floppy disks.  The default configuration is the second one.
-# To change configuration, comment out the unwanted configurations, and
-# remove the comment from the configuration you want.
 
-# I use OPTIONS=name:NickD-W, silent, rawio, IBMBIOS
+# *** OPTIONS ***
+#
+# These two options should be used for most setups.  If you're machine isn't
+# very IBM-compatible, and NetHack doesn't work, try commenting out this line.
+#
+OPTIONS=rawio,IBM_BIOS
+# DEC Rainbows will hang if rawio is set, so they should instead use:
+#OPTIONS=IBM_BIOS,DEC_Rainbow
+#
+#
+# Some options to set personal preferences.  Uncomment and change these to
+# suit your personal preference.  If several people are to use the same
+# configuration, options like these should not be set.
+#
+#OPTIONS=name:Janet-V,female,dogname:Fido,catname:Morris,fruit:apricot
+#OPTIONS=packorder:")[%?+/=!(*0_`,endgame:10 top/2 around/own
+#
+#
+# Other general options.  You might also set "silent" so as not to attract
+# the boss's attention.
+#
+OPTIONS=time,rest_on_space,nopickup,number_pad
 
-# A hard disk configuration.
+
+# *** HARD DISK CONFIGURATION ***
 #
 HACKDIR=c:\games\nethack
-SAVE=c:\games\nethack\bones;n
+#
+#   LEVELS and SAVE default to HACKDIR
+#
+#LEVELS=c:\games\nethack\bones
+#SAVE=c:\games\nethack\bones;n
+#
+#   appending a ";n" to SAVE means don't prompt to insert a disk.
+SAVE=;n
+#
 #RAMDISK=d:
-LEVELS=c:\games\nethack\bones
-OPTIONS=name:Steve,dogname:Bodacious,rest_on_space,time,IBMBIOS,packorder:%/=?!+)[(*0,endgame:10 t / 2 a,rawio,nopickup
 
-# A 2-floppy configuration.
+
+# *** 2-FLOPPY CONFIGURATION ***
 #
 # HACKDIR=a:\
 # LEVELS=b:\
 # SAVE=b:\
-# OPTIONS=name:Steve-s,rest_on_space,time,IBMBIOS,packorder:%/=?!+)[(*0,endgame:10 t / 2 a,rawio,nopickup
 # RAMDISK=c:
 
-# The 17 GRAPHICS characters (0-16) are:
-# stone, vertical wall, horizontal wall, top left corner, top right corner
-# bottom left corner, bottom right corner, door, floor, corridor, up stairs,
-# down stairs, trap, pool, fountain, throne, web
-# An example using the IBM graphics character set.
-GRAPHICS = 039 179 196 218 191 192 217 206 250 176 060 062 094 247 202 198 157
 
-
-#     Special section for DEC Rainbow owners.
+# *** CHARACTER GRAPHICS ***
 #
-#  You *must* include the option `DECRainbow' in the OPTIONS line
-#  if you want to use line-drawing charcters.  Also, you must *not*
-#  use the option `rawio' or your system will hang!
+# The 32 GRAPHICS characters (0-31) are:
+# stone, vertical wall, horizontal wall, top left corner, top right corner, 
+# bottom left corner, bottom right corner, crosswall, up T wall, down T wall, 
+# left T wall, right T wall, vertical beam, horizontal beam, left slant, right
+# slant, door, floor, corridor, up stairs, down stairs, trap, web, pool,
+# fountain, sink, throne, altar, up ladder, down ladder, vertical drawbridge
+# wall, horizontal drawbridge wall 
 #
-#  You can select the "Rainbow line-drawing character set"
-#  for drawing the dungeon.  For *graphics* characters,
-#  128 has been added to the decimal value of the character.
-#  Adding 128 lets PC HACK know you want it to use the line-drawing
-#  character set.  Non-graphical characters are indicated by
-#  their decimal value.  You can mix both types of characters in
-#  the GRAPHICS line.
+# If you specify less that 32 ASCII values, the remaining characters will be
+# set to their respective defaults.
 #
-#  A recommended configuration for the Rainbow using the
-#  line-drawing character set, two floppies and no ramdisk is:
-# SAVE=b:\
-# LEVELS=b:\
-# OPTIONS=name:YourName,DECRainbow
-# GRAPHICS = 248 241 236 235 237 234 238 254 225
-# this example lists options 1-9, as in the PC Hack version. You should modify
-# it (if using a DECRainbow) to have options 0-16 for PC Nethack. --sac
-
-
+#
+# An example using the IBM graphics character set:
+#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
+GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 239 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
+# An alternative:
+#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 185 204 179 196 092 047 239 249 177 060 062 094 034 247 244 035 092 095 060 062 179 196
+#
+#
+# Using the DEC Rainbow/ANSI line-drawing character set:
+#
+# You must also set the DECRainbow option, above.  NetHack will then switch
+# into the line drawing character set for any values over 128 below.  Just
+# add 128 to the value of any line-drawing character you want to use.  You
+# can use characters from both sets this way.  These are also the characters
+# to use for the ANSI ruling character set '0'.
+#
+#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 043 254 225

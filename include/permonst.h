@@ -1,60 +1,54 @@
-/*	SCCS Id: @(#)permonst.h	2.3	87/12/16
+/*	SCCS Id: @(#)permonst.h	3.0	88/04/05
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-struct permonst {
-	char *mname,mlet;
-	schar mlevel,mmove,ac,mr,damn,damd;
-	unsigned pxlth;
+#ifndef PERMONST_H
+#define PERMONST_H
+
+/*	This structure covers all attack forms.
+ *	aatyp is the gross attack type (eg. claw, bite, breath, ...)
+ *	adtyp is the damage type (eg. physical, fire, cold, spell, ...)
+ *	damn is the number of hit dice of damage from the attack.
+ *	damd is the number of sides on each die.
+ *
+ *	Some attacks can do no points of damage.  Additionally, some can
+ *	have special effects *and* do damage as well.  If damn and damd
+ *	are set, they may have a special meaning.  For example, if set
+ *	for a blinding attack, they determine the amount of time blinded.
+ */
+struct attack {
+
+	uchar           aatyp;
+	uchar           adtyp, damn, damd;
 };
 
-extern struct permonst mons[];
-#define PM_GNOME	&mons[1]
-#define PM_HOBGOBLIN	&mons[2]
-#ifndef KOPS
-#define PM_KOBOLD	&mons[4]
-#endif
-#define PM_ACID_BLOB	&mons[7]
-#ifdef ROCKMOLE
-#define PM_ORC		&mons[10]
-#define	PM_ZOMBIE	&mons[12]
-#else
-#define PM_ORC		&mons[11]
-#define	PM_ZOMBIE	&mons[13]
-#endif
-#define	PM_PIERCER	&mons[17]
-#define PM_CENTAUR	&mons[22]
-#define	PM_KILLER_BEE	&mons[26]
-#ifdef SPIDERS
-#define PM_SPIDER	&mons[31]
-#endif
-#define	PM_WRAITH	&mons[33]
-#define	PM_MIMIC	&mons[37]
-#define PM_TROLL	&mons[38]
-#define	PM_VAMPIRE	&mons[43]
-#define PM_XORN		&mons[44]
-#define	PM_CHAMELEON	&mons[47]
-#define PM_DRAGON	&mons[48]
-#define PM_ETTIN	&mons[49]
-/* The ones below changed to include giants. */
-#define	PM_DEMON	&mons[55]
+/*	Max # of attacks for any given monster.
+ */
 
-#define	PM_MINOTAUR	&mons[56]	/* last in mons array */
-#define	PM_SHK		&mons[57]	/* very last */
+#define	NATTK	5
 
-#define	PM_GHOST	&pm_ghost
-#define	PM_EEL		&pm_eel
-#define	PM_WIZARD	&pm_wizard
-#ifdef RPH
-#define PM_MEDUSA	&pm_medusa
-#endif
-#ifdef SAC
-#define PM_SOLDIER	&pm_soldier
-#endif
-#define	CMNUM		56		/* number of common monsters */
-#ifdef STOOGES
-#define PM_LARRY	&pm_larry
-#define PM_CURLY	&pm_curly
-#define PM_MOE		&pm_moe
-#endif
-#define PM_DJINNI	&pm_djinni
-#define PM_GREMLIN	&pm_gremlin
+#include "monattk.h"
+#include "monflag.h"
+
+struct permonst {
+
+	char		*mname, mlet;		/* full name and sym */
+	schar		mlevel,			/* base monster level */
+			mmove,			/* move speed */
+			ac,			/* (base) armor class */
+			mr,			/* (base) magic resistance */
+			maligntyp;		/* basic monster alignment */
+	unsigned	geno;			/* creation/geno mask value */
+	struct	attack	mattk[NATTK];		/* attacks matrix */
+	unsigned	cwt,			/* weight of corpse */
+			cnutrit;		/* its nutritional value */
+	short		pxlth;			/* length of extension */
+	uchar		msound;			/* noise it makes */
+	long		mflags1,		/* boolean bitflags */
+			mflags2;		/* more boolean bitflags */
+};
+
+extern struct permonst mons[];		/* the master list of monster types */
+extern struct permonst playermon, *uasmon;	/* you in the same terms */
+
+#endif /* PERMONST_H /**/

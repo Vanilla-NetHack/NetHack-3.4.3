@@ -1,16 +1,13 @@
-/*	SCCS Id: @(#)shknam.c	2.3	87/12/18
+/*	SCCS Id: @(#)shknam.c	3.0	88/04/13
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
 /* shknam.c -- initialize a shop */
 
 #include "hack.h"
-#include "mkroom.h"
 #include "eshk.h"
 
-extern struct monst *makemon();
-extern struct obj *mkobj_at(), *mksobj_at();
-
-static char *shkliquors[] = {
+static const char *shkliquors[] = {
     /* Ukraine */
     "Njezjin", "Tsjernigof", "Gomel", "Ossipewsk", "Gorlowka",
     /* N. Russia */
@@ -25,7 +22,7 @@ static char *shkliquors[] = {
     ""
 };
 
-static char *shkbooks[] = {
+static const char *shkbooks[] = {
     /* Eire */
     "Skibbereen", "Kanturk", "Rath Luirc", "Ennistymon", "Lahinch",
     "Kinnegad", "Lugnaquillia", "Enniscorthy", "Gweebarra",
@@ -36,7 +33,7 @@ static char *shkbooks[] = {
     ""
 };
 
-static char *shkarmors[] = {
+static const char *shkarmors[] = {
     /* Turquie */
     "Demirci", "Kalecik", "Boyabai", "Yildizeli", "Gaziantep",
     "Siirt", "Akhalataki", "Tirebolu", "Aksaray", "Ermenak",
@@ -47,7 +44,7 @@ static char *shkarmors[] = {
     ""
 };
 
-static char *shkwands[] = {
+static const char *shkwands[] = {
     /* Wales */
     "Yr Wyddgrug", "Trallwng", "Mallwyd", "Pontarfynach",
     "Rhaeader", "Llandrindod", "Llanfair-ym-muallt",
@@ -61,7 +58,7 @@ static char *shkwands[] = {
     ""
 };
 
-static char *shkrings[] = {
+static const char *shkrings[] = {
     /* Hollandse familienamen */
     "Feyfer", "Flugi", "Gheel", "Havic", "Haynin", "Hoboken",
     "Imbyze", "Juyn", "Kinsky", "Massis", "Matray", "Moy",
@@ -74,7 +71,7 @@ static char *shkrings[] = {
     ""
 };
 
-static char *shkfoods[] = {
+static const char *shkfoods[] = {
     /* Indonesia */
     "Djasinga", "Tjibarusa", "Tjiwidej", "Pengalengan",
     "Bandjar", "Parbalingga", "Bojolali", "Sarangan",
@@ -86,7 +83,7 @@ static char *shkfoods[] = {
     ""
 };
 
-static char *shkweapons[] = {
+static const char *shkweapons[] = {
     /* Perigord */
     "Voulgezac", "Rouffiac", "Lerignac", "Touverac", "Guizengeard",
     "Melac", "Neuvicq", "Vanzac", "Picq", "Urignac", "Corignac",
@@ -97,7 +94,17 @@ static char *shkweapons[] = {
     ""
 };
 
-static char *shkgeneral[] = {
+static const char *shktools[] = {
+    /* Spmi */
+    "Ymla", "Eed-morra", "Cubask", "Nieb", "Bnowr Falr", "Telloc Cyaj",
+    "Sperc", "Noskcirdneh", "Yawolloh", "Hyeghu", "Niskal", "Trahnil",
+    "Htargcm", "Enrobwem", "Kachzi Rellim", "Regien", "Donmyar",
+    "Yelpur", "Nosnehpets", "Stewe", "Renrut", "Zlaw", "Nosalnef",
+    "Rewuorb", "Rellenk",
+    ""
+};
+
+static const char *shkgeneral[] = {
     /* Suriname */
     "Hebiwerie", "Possogroenoe", "Asidonhopo", "Manlobbi",
     "Adjama", "Pakka Pakka", "Kabalebo", "Wonotobo",
@@ -130,12 +137,12 @@ static char *shkgeneral[] = {
  * In the latter case, prepend it with a unary minus so the code can know
  * (by testing the sign) whether to use mkobj() or mksobj().
  */
-struct shclass shtypes[] = {
+const struct shclass shtypes[] = {
 	{"general store", RANDOM_SYM,
 #ifdef SPELLS
-	    47,
+	    44,
 #else
-	    50,
+	    47,
 #endif
 	    D_SHOP, {{100, RANDOM_SYM}, {0, 0}, {0, 0}}, shkgeneral},
 	{"used armor dealership", ARMOR_SYM, 14,
@@ -154,15 +161,20 @@ struct shclass shtypes[] = {
 	{"delicatessen", FOOD_SYM, 5, D_SHOP,
 	    {{95, FOOD_SYM}, {5, POTION_SYM}, {0, 0}}, shkfoods},
 	{"jewelers", RING_SYM, 3, D_SHOP,
-	    {{90, RING_SYM}, {10, GEM_SYM}, {0, 0}}, shkrings},
+	    {{85, RING_SYM}, {10, GEM_SYM}, {5, AMULET_SYM}, {0, 0}}, shkrings},
 	{"quality apparel and accessories", WAND_SYM, 3, D_SHOP,
-	    {{90, WAND_SYM}, {5, -PAIR_OF_GLOVES}, {5, -ELVEN_CLOAK}, {0, 0}},
+	    {{90, WAND_SYM}, {5, -LEATHER_GLOVES}, {5, -ELVEN_CLOAK}, {0, 0}},
 	     shkwands},
+	{"hardware store", TOOL_SYM, 3, D_SHOP,
+	    {{100, TOOL_SYM}, {0, 0}, {0, 0}}, shktools},
+	/* Actually shktools is ignored; the code specifically chooses a
+	 * random implementor name (the only shop type with random shopkeepers)
+	 */
 #ifdef SPELLS
 	{"rare books", SPBOOK_SYM, 3, D_SHOP,
 	    {{90, SPBOOK_SYM}, {10, SCROLL_SYM}, {0, 0}}, shkbooks},
 #endif
-	{(char *)0, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, (char **)0}
+	{NULL, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, (char **)0}
 };
 
 static void
@@ -171,115 +183,113 @@ mkshobj_at(shp, sx, sy)
 struct shclass *shp;
 int sx, sy;
 {
-    register int	i, j;
-    register struct monst *mtmp;
-    int		atype;
+	register struct monst *mtmp;
+	int atype;
 
-    /* select an appropriate artifact type at random */
-    for(j = rnd(100), i = 0; j -= shp->iprobs[i].iprob; i++)
-	if (j < 0)
-	    break;
-
-    /* generate the appropriate object */
-    if ((atype = shp->iprobs[i].itype) >= 0)	/* if a class was given */
-    {
-	/* the artifact may actually be a mimic */
-	if(rn2(100) < dlevel && !m_at(sx,sy) && (mtmp=makemon(PM_MIMIC,sx,sy)))
-	{
-	    mtmp->mimic = 1;
-	    mtmp->mappearance =	(atype && rn2(10) < dlevel) ? atype : ']';
-	    return;
-	}
-
-	/* it's not, go ahead and generate an article of the class */
-	(void) mkobj_at(atype, sx, sy);
-    }
-    else	/* particular object was to be generated */
-	(void) mksobj_at(-atype, sx, sy);
+	if (rn2(100) < dlevel && levl[sx][sy].mmask == 0 &&
+				(mtmp=makemon(mkclass(S_MIMIC),sx,sy))) {
+		mtmp->mimic = 1;
+		/* note: makemon will set the mimic symbol to a shop item */
+		if (rn2(10) >= dlevel) mtmp->mappearance = S_MIMIC_DEF;
+	} else if ((atype = get_shop_item(shp - shtypes)) < 0)
+		(void) mksobj_at(-atype, sx, sy);
+	else (void) mkobj_at(atype, sx, sy);
 }
 
-void
+static void
 findname(nampt, nlp)
 /* extract a shopkeeper name for the given shop type */
-char *nampt;
-char *nlp[];
+	char *nampt;
+	char *nlp[];
 {
     register int i;
 
     for(i = 0; i < dlevel; i++)
-	if (strlen(nlp[i]) == 0)
-	{
+	if (strlen(nlp[i]) == 0) {
 	    /* Not enough names, try general name */
 	    if (nlp != shkgeneral)
 		findname(nampt, shkgeneral);
 	    else
-		(void) strcpy(nampt, "Dirk");
+		Strcpy(nampt, "Dirk");
 	    return;
 	}
-    (void) strncpy(nampt, nlp[i], PL_NSIZ);
+    (void) strncpy(nampt, nlp[i-1], PL_NSIZ);
     nampt[PL_NSIZ-1] = 0;
 }
 
 static int
-shkinit(shp, sroom)
-/* create a new shopkeeper in the given room */
+shkinit(shp, sroom)	/* create a new shopkeeper in the given room */
 struct shclass	*shp;
 struct mkroom	*sroom;
 {
-    register int sh, sx, sy;
-    struct monst *shk;
+	register int sh, sx, sy;
+	struct monst *shk;
 
-    /* place the shopkeeper in the given room */
-    sh = sroom->fdoor;
-    sx = doors[sh].x;
-    sy = doors[sh].y;
+	/* place the shopkeeper in the given room */
+	sh = sroom->fdoor;
+	sx = doors[sh].x;
+	sy = doors[sh].y;
 
-    /* check that the shopkeeper placement is sane */
-    if(sx == sroom->lx-1) sx++; else
-	if(sx == sroom->hx+1) sx--; else
-	    if(sy == sroom->ly-1) sy++; else
-		if(sy == sroom->hy+1) sy--; else {
-#ifdef WIZARD
-		    /* Said to happen sometimes, but I've never seen it. */
-		    if(wizard) {
-			register int j = sroom->doorct;
-			extern int doorindex;
+	/* check that the shopkeeper placement is sane */
+	if(sx == sroom->lx-1) sx++; else
+	    if(sx == sroom->hx+1) sx--; else
+		if(sy == sroom->ly-1) sy++; else
+		    if(sy == sroom->hy+1) sy--; else {
+#ifdef DEBUG
+# ifdef WIZARD
+		    /* Said to happen sometimes, but I have never seen it. */
+		    /* Supposedly fixed by fdoor change in mklev.c */
+			if(wizard) {
+			    register int j = sroom->doorct;
 
-			pline("Where is shopdoor?");
-			pline("Room at (%d,%d),(%d,%d).", sroom->lx, sroom->ly,
-			      sroom->hx, sroom->hy);
-			pline("doormax=%d doorct=%d fdoor=%d",
-			doorindex, sroom->doorct, sh);
-			while(j--) {
-			    pline("door [%d,%d]", doors[sh].x, doors[sh].y);
-			    sh++;
+			    pline("Where is shopdoor?");
+			    pline("Room at (%d,%d),(%d,%d).",
+				  sroom->lx, sroom->ly, sroom->hx, sroom->hy);
+			    pline("doormax=%d doorct=%d fdoor=%d",
+			    doorindex, sroom->doorct, sh);
+			    while(j--) {
+				pline("door [%d,%d]", doors[sh].x, doors[sh].y);
+				sh++;
+			    }
+			    more();
 			}
-			more();
-		    }
+# endif
 #endif
-		    return(-1);
-		}
+			return(-1);
+		    }
 
-    /* now initialize the shopkeeper's monster structure */
-#define	ESHK	((struct eshk *)(&(shk->mextra[0])))
-    if(!(shk = makemon(PM_SHK,sx,sy)))
-	return(-1);
-    shk->isshk = shk->mpeaceful = 1;
-    shk->msleep = 0;
-    shk->mtrapseen = ~0;	/* we know all the traps already */
-    ESHK->shoproom = sroom - rooms;
-    ESHK->shoplevel = dlevel;
-    ESHK->shd = doors[sh];
-    ESHK->shk.x = sx;
-    ESHK->shk.y = sy;
-    ESHK->robbed = 0;
-    ESHK->visitct = 0;
-    ESHK->following = 0;
-    shk->mgold = 1000 + 30*rnd(100);	/* initial capital */
-    ESHK->billct = 0;
-    findname(ESHK->shknam, shp->shknms);
+	/* now initialize the shopkeeper monster structure */
+	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy))) return(-1);
+	shk->isshk = shk->mpeaceful = 1;
+	shk->msleep = 0;
+	shk->mtrapseen = ~0;	/* we know all the traps already */
+	ESHK(shk)->shoproom = sroom - rooms;
+	ESHK(shk)->shoplevel = dlevel;
+	ESHK(shk)->shd = doors[sh];
+	ESHK(shk)->shk.x = sx;
+	ESHK(shk)->shk.y = sy;
+	/* makemon() has already zeroed out all the extra space
+	ESHK(shk)->robbed = 0;
+	ESHK(shk)->credit = 0;
+	ESHK(shk)->debit = 0;
+	ESHK(shk)->visitct = 0;
+	ESHK(shk)->following = 0;
+	ESHK(shk)->billct = 0;
+	*/
+	shk->mgold = 1000 + 30*rnd(100);	/* initial capital */
+	if (shp->shknms == shktools) {
+		static int who;
+		who = rn2(sizeof(shktools)/sizeof(char *));
+		if (who==21) ESHK(shk)->ismale = FALSE;
+		else ESHK(shk)->ismale = TRUE;
+		(void) strncpy(ESHK(shk)->shknam, shp->shknms[who], PL_NSIZ);
+		ESHK(shk)->shknam[PL_NSIZ-1] = 0;
+	} else {
+		ESHK(shk)->ismale = dlevel%2;
+		findname(ESHK(shk)->shknam, shp->shknms);
+	}
 
-    return(sh);
+	return(sh);
 }
 
 void
@@ -300,8 +310,16 @@ register struct mkroom *sroom;
     if ((sh = shkinit(shp, sroom)) < 0)
 	return;
 
+    /* make sure no doorways without doors in shops */
+    for(sx = sroom->lx - 1; sx <= sroom->hx + 1; sx++)
+	for(sy = sroom->ly - 1; sy <= sroom->hy + 1; sy++) {
+	    if(IS_DOOR(levl[sx][sy].typ))
+		if (levl[sx][sy].doormask == D_NODOOR)
+		    levl[sx][sy].doormask = D_ISOPEN;
+    }
+
     for(sx = sroom->lx; sx <= sroom->hx; sx++)
-	for(sy = sroom->ly; sy <= sroom->hy; sy++){
+	for(sy = sroom->ly; sy <= sroom->hy; sy++) {
 	    if((sx == sroom->lx && doors[sh].x == sx-1) ||
 	       (sx == sroom->hx && doors[sh].x == sx+1) ||
 	       (sy == sroom->ly && doors[sh].y == sy-1) ||
@@ -315,9 +333,10 @@ register struct mkroom *sroom;
      */
 }
 
+int
 saleable(nshop, obj)			/* does "shop" stock this item type */
-	register int	nshop;
-	register struct	obj *obj;
+register int nshop;
+register struct	obj *obj;
 {
 	int i;
 
@@ -327,7 +346,22 @@ saleable(nshop, obj)			/* does "shop" stock this item type */
 		if(shtypes[nshop].iprobs[i].itype < 0) {
 		   if(shtypes[nshop].iprobs[i].itype == - obj->otyp) return(1);
 		}
-	        else if(shtypes[nshop].iprobs[i].itype == obj->olet) return(1);
+		else if(shtypes[nshop].iprobs[i].itype == obj->olet) return(1);
 	}
 	return(0);
+}
+
+/* positive value: letter; negative value: specific item type */
+int
+get_shop_item(type)
+int type;
+{
+	struct shclass *shp = shtypes+type;
+	register int i,j;
+
+	/* select an appropriate artifact type at random */
+	for(j = rnd(100), i = 0; j -= shp->iprobs[i].iprob; i++)
+		if (j < 0) break;
+
+	return shp->iprobs[i].itype;
 }

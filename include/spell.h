@@ -1,5 +1,6 @@
 /*	SCCS Id: @(#)spell.h	2.1	87/10/18
-/* M. Stephenson  07-07-86 */
+/*	Copyright 1986, M. Stephenson */
+/* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef SPELL_H
 #define SPELL_H
@@ -14,5 +15,5 @@ struct	spell  {
 #endif
 };
 
+#endif /* SPELL_H /**/
 
-#endif

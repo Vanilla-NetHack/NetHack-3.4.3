@@ -1,0 +1,77 @@
+This is a listing of all files in a full NetHack 3.0 distribution, organized in
+their standard manner on a UNIX system.  It indicates which files are necessary
+for which versions, so that you can tell which files may be deleted from or not
+transferred to your system if you wish.
+
+
+(files in top directory)
+Files           Install.dos     Install.unix    Makefile.top    Porting
+README
+
+
+amiga:
+(files for Amiga version)
+Install.ami     Makefile.ami    NetHack.cnf     ami.lnk         amidos.c
+amifont.uu      amifont8.uu     amimenu.c       amitcap.c       amitty.c
+amiunix.c       amiwind.c       fcntl.h         signal.h        stdio.h
+
+
+auxil:
+(files for all versions)
+Guidebook.mn    castle.des      cmdhelp         data.base       endgame.des
+help            hh              history         license         opthelp
+oracles         rumors.fal      rumors.tru      tower.des
+(files for UNIX versions)
+Makefile.auxil  lev_comp.6      nethack.6       nethack.sh
+
+
+others:
+(files for MSDOS version)
+Make.ini        Makefile.pc     Makefile.tcc    Maketcc.ini     NetHack.cnf
+msdos.c         termcap
+(files for MSDOS, Amiga, and Atari versions)
+pcmain.c        pctty.c         pcunix.c
+(file for Atari version)
+tos.c
+(file with random number routines, which may be included in any version)
+random.c
+
+
+include:
+(files for all versions)
+amiconf.h       artifact.h      attrib.h        config.h        coord.h
+decl.h          edog.h          epri.h          eshk.h          extern.h
+flag.h          func_tab.h      global.h        gold.h          hack.h
+lev.h           mfndpos.h       mkroom.h        monattk.h       mondata.h
+monflag.h       monst.h         monsym.h        msdos.h         obj.h
+objclass.h      osbind.h        patchlevel.h    pcconf.h        permonst.h
+prop.h          rm.h            sp_lev.h        spell.h         system.h
+tosconf.h       tradstdc.h      trap.h          trapname.h      unixconf.h
+vault.h         wseg.h          you.h           youprop.h
+(file for special level compiler (STRONGHOLD option))
+lev_comp.h
+
+src:
+(files for all versions)
+alloc.c         apply.c         artifact.c      attrib.c        bones.c
+cmd.c           dbridge.c       decl.c          demon.c         do.c
+do_name.c       do_wear.c       dog.c           dogmove.c       dokick.c
+dothrow.c       eat.c           end.c           engrave.c       exper.c
+extralev.c      fountain.c      getline.c       hack.c          invent.c
+ioctl.c         lock.c          mail.c          makedefs.c      makemon.c
+mcastu.c        mhitm.c         mhitu.c         mklev.c         mkmaze.c
+mkobj.c         mkroom.c        mon.c           mondata.c       monmove.c
+monst.c         mthrowu.c       music.c         o_init.c        objects.c
+objnam.c        options.c       pager.c         panic.c         pickup.c
+polyself.c      potion.c        pray.c          pri.c           priest.c
+prisym.c        read.c          restore.c       rip.c           rnd.c
+rumors.c        save.c          search.c        shk.c           shknam.c
+sit.c           sounds.c        sp_lev.c        spell.c         steal.c
+termcap.c       timeout.c       topl.c          topten.c        track.c
+trap.c          u_init.c        uhitm.c         vault.c         version.c
+weapon.c        were.c          wield.c         wizard.c        worm.c
+worn.c          write.c         zap.c
+(files for special level compiler (STRONGHOLD option))
+lev_comp.c      lev_comp.l      lev_comp.y      lev_lex.c       lev_main.c
+(files for UNIX versions)
+Makefile.src    unixmain.c      unixtty.c       unixunix.c

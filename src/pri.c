@@ -1,57 +1,111 @@
-/*	SCCS Id: @(#)pri.c	2.3	87/12/12
+/*	SCCS Id: @(#)pri.c	3.0	89/06/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
+/* block some unused #defines to avoid overloading some cpp's */
+#define MONATTK_H
 #include "hack.h"
-#ifdef GENIX
-#define	void	int	/* jhn - mod to prevent compiler from bombing */
+#include <ctype.h>  /* for isalpha() */
+
+static void hilite P((uchar, uchar));
+static void cornbot P((int));
+static boolean ismnst P((char));
+#if !defined(DECRAINBOW) && !defined(UNIX)
+#  define g_putch  (void) putchar
 #endif
-#ifdef MSDOSCOLOR
-extern int hilite();
+
+#ifndef g_putch
+static boolean GFlag = FALSE; /* graphic flag */
 #endif
 
-xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
+/* 100 suffices for bot(); must be larger than COLNO */
+#define MAXCO 100
+static char oldbot1[MAXCO], newbot1[MAXCO];
+static char oldbot2[MAXCO], newbot2[MAXCO];
+static const char *dispst = "*0#@#0#*0#@#0#*0#@#0#*0#@#0#*0#@#0#*";
+static int mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
 
-extern char *hu_stat[];	/* in eat.c */
-extern char *CD;
-extern struct monst *makemon();
-
-swallowed()
+void
+swallowed(first)
+register int first;
 {
-	char *ulook = "|@|";
-	ulook[1] = u.usym;
-
-	cls();
+	if(first) cls();
+	else {
+		curs(u.ustuck->mdx-1, u.ustuck->mdy+1);
+		(void) fputs("   ", stdout);
+		curx = u.ustuck->mdx+2;
+		curs(u.ustuck->mdx-1, u.ustuck->mdy+2);
+		(void) fputs("   ", stdout);
+		curx = u.ustuck->mdx+2;
+		curs(u.ustuck->mdx-1, u.ustuck->mdy+3);
+		(void) fputs("   ", stdout);
+		curx = u.ustuck->mdx+2;
+	}
 	curs(u.ux-1, u.uy+1);
-	fputs("/-\\", stdout);
+	(void) fputs("/-\\", stdout);
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+2);
-	fputs(ulook, stdout);
+	(void) putchar('|');
+	hilite(u.usym, AT_MON);
+	(void) putchar('|');
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+3);
-	fputs("\\-/", stdout);
+	(void) fputs("\\-/", stdout);
 	curx = u.ux+2;
 	u.udispl = 1;
 	u.udisx = u.ux;
 	u.udisy = u.uy;
 }
 
-setclipped(){
-	error("Hack needs a screen of size at least %d by %d.\n",
-		ROWNO+2, COLNO);
+void
+setclipped()
+{
+	error("NetHack needs a screen of size at least %d by %d.\n",
+		ROWNO+3, COLNO);
 }
 
-#ifdef DGK
-static int multipleAts;		/* TRUE if we have many at()'s to do */
-static int DECgraphics;		/* The graphics mode toggle */
+/*
+ *  Allow for a different implementation than this...
+ */
 
-#define DECgraphicsON() ((void) putchar('\16'), DECgraphics = TRUE)
-#define DECgraphicsOFF() ((void) putchar('\17'), DECgraphics = FALSE)
+#ifndef g_putch
+
+static void
+g_putch(ch)
+uchar ch;
+{
+	if (ch & 0x80) {
+		if (!GFlag) {
+			graph_on();
+			GFlag = TRUE;
+		}
+		(void) putchar(ch ^ 0x80); /* Strip 8th bit */
+	} else {
+		if (GFlag) {
+			graph_off();
+			GFlag = FALSE;
+		}
+		(void) putchar(ch);
+	}
+}
+
 #endif
 
-at(x,y,ch)
+static boolean
+showmon(mon)
+register struct monst *mon;
+{
+	register boolean show = (Blind && Telepat) || canseemon(mon);
+
+	if (!show && (HTelepat & WORN_HELMET))
+		show = (dist(mon->mx, mon->my) <= (BOLT_LIM * BOLT_LIM));
+	return(show);
+}
+
+void
+at(x,y,ch,typ)
 register xchar x,y;
-char ch;
+uchar ch,typ;
 {
 #ifndef LINT
 	/* if xchar is unsigned, lint will complain about  if(x < 0)  */
@@ -64,70 +118,104 @@ char ch;
 		impossible("At gets null at %d %d.", x, y);
 		return;
 	}
+
+	if (typ == AT_APP
+#ifndef MSDOS
+	    && flags.standout
+#endif
+	   )
+		/* don't hilite if this isn't a monster or object.
+		 *
+		 * not complete; a scroll dropped by some monster
+		 * on an unseen doorway which is later magic mapped
+		 * will still hilite the doorway symbol.  -3.
+		 */
+		if (!vism_at(x,y) &&
+		    (!levl[x][y].omask && !levl[x][y].gmask || is_pool(x,y)))
+		    typ = AT_MAP;
+
 	y += 2;
 	curs(x,y);
-#ifdef DGK
-	if (flags.DECRainbow) {
-		/* If there are going to be many at()s in a row without
-		 * intervention, only change the graphics mode when the
-		 * character changes between graphic and regular.
-		 */
-		if (multipleAts) {
-			if (ch & 0x80) {
-				if (!DECgraphics)
-					DECgraphicsON();
-				(void) putchar(ch ^ 0x80); /* Strip 8th bit */
-			} else {
-				if (DECgraphics)
-					DECgraphicsOFF();
-				(void) putchar(ch);
-			}
-		/* Otherwise, we don't know how many at()s will be happening
-		 * before printing of normal strings, so change to graphics
-		 * mode when necessary, then change right back.
-		 */
-		} else {
-			if (ch & 0x80) {
-				DECgraphicsON();
-				(void) putchar(ch ^ 0x80); /* Strip 8th bit */
-				DECgraphicsOFF();
-			} else
-				(void) putchar(ch);
-		}
-	} else
-#endif
-#ifdef MSDOSCOLOR
-		hilite(ch);
-#else
-		(void) putchar(ch);
-#endif
+
+	hilite(ch,typ);
 	curx++;
 }
 
+void
 prme(){
-	if(!Invisible) at(u.ux,u.uy,u.usym);
+	if(!Invisible
+#ifdef POLYSELF
+			&& !u.uundetected
+#endif
+					) at(u.ux,u.uy,u.usym,AT_U);
 }
 
+void
+shieldeff(x, y)		/* produce a magical shield effect at x,y */
+	register xchar x, y;
+{
+	register char *ch;
+	register struct monst *mtmp = 0;
+
+	if((x != u.ux) || (y != u.uy)) {
+	    if(!(mtmp = m_at(x, y))) {
+
+		impossible("shield effect at %d,%d", x, y);
+		return;
+	    }
+	    if(!showmon(mtmp)) return;
+	}
+
+	for(ch = dispst; *ch; ch++)  {
+		at(x, y, (uchar) *ch, AT_ZAP);
+		(void) fflush(stdout);
+		delay_output();
+		delay_output();
+	}
+
+	nomul(0);
+	if(!mtmp) {
+		if(Invisible) {
+			prl(x, y);
+			at(x, y, levl[x][y].scrsym, AT_APP);
+		} else prme();
+	} else {
+		mtmp->mdispl = 0;	/* make sure it gets redrawn */
+		prl(x, y);
+		if(mtmp->minvis)
+			at(x, y, levl[x][y].scrsym, AT_APP);
+		else	at(x, y, (uchar) mtmp->data->mlet, AT_MON);
+	}
+
+	return;
+}
+
+int
 doredraw()
 {
 	docrt();
-	return(0);
+	return 0;
 }
 
+void
 docrt()
 {
-	register x,y;
+	register int x,y;
 	register struct rm *room;
 	register struct monst *mtmp;
 
 	if(u.uswallow) {
-		swallowed();
+		swallowed(1);
 		return;
 	}
 	cls();
 
 /* Some ridiculous code to get display of @ and monsters (almost) right */
-	if(!Invisible) {
+	if(!Invisible
+#ifdef POLYSELF
+			|| u.uundetected
+#endif
+					) {
 		levl[(u.udisx = u.ux)][(u.udisy = u.uy)].scrsym = u.usym;
 		levl[u.udisx][u.udisy].seen = 1;
 		u.udispl = 1;
@@ -137,36 +225,19 @@ docrt()
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
-/* This nonsense should disappear soon --------------------------------- */
 
 #if defined(DGK) && !defined(MSDOSCOLOR)
-	/* I don't know DEC Rainbows, but if HILITE_COLOR is applicable,
-	 * the !defined(HILITE_COLOR) will have to be compensated for.
-	 * -kjs */
-	/* For DEC Rainbows, we must translate each character to strip
-	 * out the 8th bit if necessary.
-	 */
-	if (flags.DECRainbow) {
-		multipleAts = TRUE;
-		for(y = 0; y < ROWNO; y++)
-			for(x = 0; x < COLNO; x++)
-				if((room = &levl[x][y])->new) {
-					room->new = 0;
-					at(x,y,room->scrsym);
-				} else if(room->seen)
-					at(x,y,room->scrsym);
-		multipleAts = FALSE;
-		if (DECgraphics)
-			DECgraphicsOFF();
-	} else {
 	/* Otherwise, line buffer the output to do the redraw in
 	 * about 2/3 of the time.
 	 */
 		for(y = 0; y < ROWNO; y++) {
 			char buf[COLNO+1];
 			int start, end;
-
+#ifdef TOS
+			setmem(buf, COLNO, ' ');
+#else
 			memset(buf, ' ', COLNO);
+#endif /* TOS */
 			for(x = 0, start = -1, end = -1; x < COLNO; x++)
 				if((room = &levl[x][y])->new) {
 					room->new = 0;
@@ -183,34 +254,51 @@ docrt()
 			if (end >= 0) {
 				buf[end + 1] = '\0';
 				curs(start, y + 2);
-				fputs(buf + start, stdout);
+				(void) fputs(buf + start, stdout);
 				curx = end + 1;
 			}
 		}
-	}
-#else
+#else /* DGK && !MSDOSCOLOR */
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
 			if((room = &levl[x][y])->new) {
 				room->new = 0;
-				at(x,y,room->scrsym);
+				at(x,y,room->scrsym,AT_APP);
 			} else if(room->seen)
-				at(x,y,room->scrsym);
+				at(x,y,room->scrsym,AT_APP);
+#endif /* DGK && !MSDOSCOLOR */
+#ifndef g_putch
+	if (GFlag) {
+		graph_off();
+		GFlag = FALSE;
+	}
 #endif
 	scrlx = COLNO;
 	scrly = ROWNO;
 	scrhx = scrhy = 0;
-	flags.botlx = 1;
+	cornbot(0);
 	bot();
 }
 
-docorner(xmin,ymax) register xmin,ymax; {
-	register x,y;
+static void
+cornbot(lth)
+register int lth;
+{
+	oldbot1[lth] = 0;
+	oldbot2[lth] = 0;
+	flags.botl = 1;
+}
+
+void
+docorner(xmin, ymax)
+register int xmin, ymax;
+{
+	register int x, y;
 	register struct rm *room;
 	register struct monst *mtmp;
 
 	if(u.uswallow) {	/* Can be done more efficiently */
-		swallowed();
+		swallowed(1);
 		return;
 	}
 
@@ -220,127 +308,168 @@ docorner(xmin,ymax) register xmin,ymax; {
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
-#ifdef DGK
-	if (flags.DECRainbow)
-		multipleAts = TRUE;
-#endif
 	for(y = 0; y < ymax; y++) {
-		if(y > ROWNO && CD) break;
+		if(y > ROWNO+1 && CD) break;
 		curs(xmin,y+2);
 		cl_end();
 		if(y < ROWNO) {
 		    for(x = xmin; x < COLNO; x++) {
 			if((room = &levl[x][y])->new) {
 				room->new = 0;
-				at(x,y,room->scrsym);
+				at(x,y,room->scrsym,AT_APP);
 			} else
 				if(room->seen)
-					at(x,y,room->scrsym);
+					at(x,y,room->scrsym,AT_APP);
 		    }
 		}
 	}
-#ifdef DGK
-	if (flags.DECRainbow) {
-		multipleAts = FALSE;
-		if (DECgraphics)
-			DECgraphicsOFF();
+#ifndef g_putch
+	if (GFlag) {
+		graph_off();
+		GFlag = FALSE;
 	}
 #endif
+	/* Note:          y values: 0 to ymax-1
+	 * screen positions from y: 2 to ymax+1
+	 *            whole screen: 1 to ROWNO+3
+	 *                top line: 1
+	 *         dungeon display: 2 to ROWNO+1
+	 *       first bottom line: ROWNO+2
+	 *      second bottom line: ROWNO+3
+	 *         lines on screen: ROWNO+3
+	 */
 	if(ymax > ROWNO) {
 		cornbot(xmin-1);
-		if(ymax > ROWNO+1 && CD) {
-			curs(1,ROWNO+3);
+		if(ymax > ROWNO+2 && CD) {	/* clear portion of long */
+			curs(1,ROWNO+4);	/* screen below status lines */
 			cl_eos();
 		}
 	}
 }
 
+void
+seeglds()
+{
+	register struct gold *gold, *gold2;
+
+	for(gold = fgold; gold; gold = gold2) {
+	    gold2 = gold->ngold;
+	    if(Hallucination && cansee(gold->gx,gold->gy))
+		if(!(gold->gx == u.ux && gold->gy == u.uy) || Invisible)
+		    atl(gold->gx,gold->gy,rndobjsym());
+	}
+}
+
 /* Trolls now regenerate thanks to KAA */
 
-seeobjs(){
-register struct obj *obj, *obj2;
+void
+seeobjs()
+{
+	register struct obj *obj, *obj2;
+
 	for(obj = fobj; obj; obj = obj2) {
 	    obj2 = obj->nobj;
-	    if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE) {
 
-		if (obj->otyp == DEAD_TROLL && obj->age + 20 < moves) {
-			delobj(obj);
-			if (cansee(obj->ox, obj->oy)) 
-				pline("The troll rises from the dead!");
-			(void) makemon(PM_TROLL,obj->ox, obj->oy);
+	    if(Hallucination && cansee(obj->ox,obj->oy))
+		if(!(obj->ox == u.ux && obj->oy == u.uy) || Invisible)
+		    atl(obj->ox,obj->oy,rndobjsym());
+
+	    if(obj->olet == FOOD_SYM && obj->otyp == CORPSE) {
+
+		if(mons[obj->corpsenm].mlet == S_TROLL &&
+		    obj->age + 20 < moves) {
+			boolean visible = cansee(obj->ox,obj->oy);
+			struct monst *mtmp = revive(obj, FALSE);
+
+			if (mtmp && visible)
+				pline("%s rises from the dead!", Monnam(mtmp));
 		} else if (obj->age + 250 < moves) delobj(obj);
 	    }
 	}
 
 	for(obj = invent; obj; obj = obj2) {
 	    obj2 = obj->nobj;
-	    if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE) {
+	    if(obj->otyp == CORPSE) {
+		if(mons[obj->corpsenm].mlet == S_TROLL
+			    && obj->age + 20 < moves) {
+		    boolean wielded = (obj==uwep);
+		    struct monst *mtmp = revive(obj, TRUE);
 
-		if (obj->otyp == DEAD_TROLL && obj->age + 20 < moves) {
-		    if (obj == uwep)
-			pline("The dead troll writhes out of your grasp!");
-		    else
-			pline("You feel squirming in your backpack!");
-		    (void)makemon(PM_TROLL,u.ux,u.uy);
-		    useup(obj);
+		    if (mtmp && wielded)
+			pline("The %s %s writhes out of your grasp!",
+				mtmp->data->mname, xname(obj));
+		    else if (mtmp)
+			You("feel squirming in your backpack!");
 		} else if (obj->age + 250 < moves) useup(obj);
 	    }
 	}
 }
 
-seemons(){
-register struct monst *mtmp;
-	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
-		if(mtmp->data->mlet == ';')
-			mtmp->minvis = (u.ustuck != mtmp &&
-					levl[mtmp->mx][mtmp->my].typ == POOL);
-		pmon(mtmp);
-#ifndef NOWORM
-		if(mtmp->wormno) wormsee(mtmp->wormno);
+void
+seemons()
+{
+	register struct monst *mtmp;
+
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if(mtmp->data->mlet == S_EEL)
+		mtmp->minvis = (u.ustuck != mtmp && is_pool(mtmp->mx,mtmp->my));
+	    pmon(mtmp);
+#ifdef WORM
+	    if(mtmp->wormno) wormsee(mtmp->wormno);
 #endif
 	}
 }
 
-pmon(mon) register struct monst *mon; {
-register int show = (Blind && Telepat) || canseemon(mon);
-	if(mon->mdispl){
-		if(mon->mdx != mon->mx || mon->mdy != mon->my || !show)
-			unpmon(mon);
-	}
+void
+pmon(mon)
+register struct monst *mon;
+{
+	register int show = showmon(mon);
+
+	if(mon->mdispl)
+	    if(mon->mdx != mon->mx || mon->mdy != mon->my || !show)
+		unpmon(mon);
 
 /* If you're hallucinating, the monster must be redrawn even if it has
-   already been printed.  Problem: the monster must also be redrawn right
-   after hallucination is over, so it looks normal again.  Therefore 
-   code similar to pmon is in timeout.c. */
+ * already been printed.
+ */
 	if(show && (!mon->mdispl || Hallucination)) {
-		if (Hallucination) 
-		atl(mon->mx,mon->my,
-			(!mon->mimic || Protection_from_shape_changers) ?
-				rndmonsym() :
-				(mon->mappearance == DOOR_SYM) ? DOOR_SYM
-				: rndobjsym());
-		else
+	    if (Hallucination)
+	    atl(mon->mx,mon->my,
+		(char) ((!mon->mimic || Protection_from_shape_changers) ?
+		rndmonsym() : (mon->mappearance == DOOR_SYM) ?
+		DOOR_SYM : rndobjsym()));
+	    else
 
 		atl(mon->mx,mon->my,
-		 (!mon->mappearance
-		  || u.uprops[PROP(RIN_PROTECTION_FROM_SHAPE_CHAN)].p_flgs
-		 ) ? mon->data->mlet : mon->mappearance);
+		    (!mon->mappearance ||
+		     Protection_from_shape_changers) ?
+		     mon->data->mlet : mon->mappearance);
 		mon->mdispl = 1;
 		mon->mdx = mon->mx;
 		mon->mdy = mon->my;
 	}
+#ifndef g_putch
+	if (GFlag) {
+		graph_off();
+		GFlag = FALSE;
+	}
+#endif
 }
 
-unpmon(mon) register struct monst *mon; {
-	if(mon->mdispl){
+void
+unpmon(mon)
+register struct monst *mon;
+{
+	if(mon->mdispl) {
 		newsym(mon->mdx, mon->mdy);
 		mon->mdispl = 0;
 	}
 }
 
-nscr()
-{
-	register x,y;
+void
+nscr() {
+	register int x, y;
 	register struct rm *room;
 
 	if(u.uswallow || u.ux == FAR || flags.nscrinh) return;
@@ -349,228 +478,687 @@ nscr()
 		for(x = scrlx; x <= scrhx; x++)
 			if((room = &levl[x][y])->new) {
 				room->new = 0;
-				at(x,y,room->scrsym);
+				at(x,y,room->scrsym,AT_APP);
 			}
+#ifndef g_putch
+	if (GFlag) {
+		graph_off();
+		GFlag = FALSE;
+	}
+#endif
 	scrhx = scrhy = 0;
 	scrlx = COLNO;
 	scrly = ROWNO;
 }
 
-/* 100 suffices for bot(); no relation with COLNO */
-char oldbot[100], newbot[100];
-cornbot(lth)
-register int lth;
-{
-	if(lth < sizeof(oldbot)) {
-		oldbot[lth] = 0;
-		flags.botl = 1;
+/* Make sure that there are 18 entries in the rank arrays. */
+/* 0 and even entries are male ranks, odd entries are female. */
+
+static const char *mage_ranks[] = {
+	"Evoker",
+	"Evoker",
+	"Conjurer",
+	"Conjurer",
+	"Thaumaturge",
+	"Thaumaturge",
+	"Magician",
+	"Magician",
+	"Enchanter",
+	"Enchanter",
+	"Sorcerer",
+	"Sorceress",
+	"Necromancer",
+	"Necromancer",
+	"Wizard",
+	"Wizard",
+	"Mage",
+	"Mage"
+};
+
+static const char *priest_ranks[] = {
+	"Aspirant",
+	"Aspirant",
+	"Acolyte",
+	"Acolyte",
+	"Adept",
+	"Adept",
+	"Priest",
+	"Priestess",
+	"Curate",
+	"Curate",
+	"Canon",
+	"Canoness",
+	"Lama",
+	"Lama",
+	"Patriarch",
+	"Matriarch",
+	"High Priest",
+	"High Priestess"
+};
+
+static const char *thief_ranks[] = {
+	"Footpad",
+	"Footpad",
+	"Cutpurse",
+	"Cutpurse",
+	"Rogue",
+	"Rogue",
+	"Pilferer",
+	"Pilferer",
+	"Robber",
+	"Robber",
+	"Burglar",
+	"Burglar",
+	"Filcher",
+	"Filcher",
+	"Magsman",
+	"Magswoman",
+	"Thief",
+	"Thief"
+};
+
+static const char *fighter_ranks[] = {
+	"Stripling",
+	"Stripling",
+	"Skirmisher",
+	"Skirmisher",
+	"Fighter",
+	"Fighter",
+	"Man-at-arms",
+	"Woman-at-arms",
+	"Warrior",
+	"Warrior",
+	"Swashbuckler",
+	"Swashbuckler",
+	"Hero",
+	"Heroine",
+	"Champion",
+	"Champion",
+	"Lord",
+	"Lady"
+};
+
+static const char *tourist_ranks[] = {
+	"Rambler",
+	"Rambler",
+	"Sightseer",
+	"Sightseer",
+	"Excursionist",
+	"Excursionist",
+	"Peregrinator",
+	"Peregrinator",
+	"Traveler",
+	"Traveler",
+	"Journeyer",
+	"Journeyer",
+	"Voyager",
+	"Voyager",
+	"Explorer",
+	"Explorer",
+	"Adventurer",
+	"Adventurer"
+};
+
+static const char *nomad_ranks[] = {
+	"Troglodyte",
+	"Troglodyte",
+	"Aborigine",
+	"Aborigine",
+	"Wanderer",
+	"Wanderer",
+	"Vagrant",
+	"Vagrant",
+	"Wayfarer",
+	"Wayfarer",
+	"Roamer",
+	"Roamer",
+	"Nomad",
+	"Nomad",
+	"Rover",
+	"Rover",
+	"Pioneer",
+	"Pioneer"
+};
+
+static const char *knight_ranks[] = {
+	"Gallant",
+	"Gallant",
+	"Esquire",
+	"Esquire",
+	"Bachelor",
+	"Bachelor",
+	"Sergeant",
+	"Sergeant",
+	"Knight",
+	"Knight",
+	"Banneret",
+	"Banneret",
+	"Chevalier",
+	"Chevalier",
+	"Seignieur",
+	"Seignieur",
+	"Paladin",
+	"Paladin"
+};
+
+static const char *archeo_ranks[] = {
+	"Digger",
+	"Digger",
+	"Field Worker",
+	"Field Worker",
+	"Investigator",
+	"Investigator",
+	"Exhumer",
+	"Exhumer",
+	"Excavator",
+	"Excavator",
+	"Spelunker",
+	"Spelunker",
+	"Speleologist",
+	"Speleologist",
+	"Collector",
+	"Collector",
+	"Curator",
+	"Curator"
+};
+
+static const char *healer_ranks[] = {
+	"Pre-Med",
+	"Pre-Med",
+	"Med Student",
+	"Med Student",
+	"Medic",
+	"Medic",
+	"Intern",
+	"Intern",
+	"Doctor",
+	"Doctor",
+	"Physician",
+	"Physician",
+	"Specialist",
+	"Specialist",
+	"Surgeon",
+	"Surgeon",
+	"Chief Surgeon",
+	"Chief Surgeon"
+};
+
+static const char *barbarian_ranks[] = {
+	"Plunderer",
+	"Plunderess",
+	"Pillager",
+	"Pillager",
+	"Bandit",
+	"Bandit",
+	"Brigand",
+	"Brigand",
+	"Raider",
+	"Raider",
+	"Reaver",
+	"Reaver",
+	"Slayer",
+	"Slayer",
+	"Chieftain",
+	"Chieftainess",
+	"Conqueror",
+	"Conqueress"
+};
+
+static const char *ninja_ranks[] = {
+	"Chigo",
+	"Chigo",
+	"Bushi",
+	"Bushi",
+	"Genin",
+	"Genin",
+	"Genin",
+	"Genin",
+	"Chunin",
+	"Chunin",
+	"Chunin",
+	"Chunin",
+	"Jonin",
+	"Jonin",
+	"Jonin",
+	"Jonin",
+	"Jonin",
+	"Jonin",
+};
+
+static const char *elf_ranks[] = {
+	"Edhel",
+	"Elleth",
+	"Edhel",
+	"Elleth", 	/* elf-maid */
+	"Ohtar", 	/* warrior */
+	"Ohtie",
+	"Kano", 	/* commander (Q.) ['a] */
+	"Kanie", 	/* educated guess, until further research- SAC */
+	"Arandur", 	/* king's servant, minister (Q.) - educated guess */
+	"Aranduriel", 	/* educated guess */
+	"Hir", 		/* lord (S.) */
+	"Hiril", 	/* lady (S.) ['ir] */
+	"Aredhel", 	/* noble elf (S.) */
+	"Arwen", 	/* noble maiden (S.) */
+	"Ernil", 	/* prince (S.) */
+	"Elentariel", 	/* elf-maiden (Q.) */
+	"Elentar", 	/* Star-king (Q.) */
+	"Elentari", 	/* Star-queen (Q.) */ /* Elbereth (S.) */
+};
+
+static const char **
+rank_array() {
+	register const char **ranks;
+
+	switch(pl_character[0]) {
+		case 'A':  ranks = archeo_ranks; break;
+		case 'B':  ranks = barbarian_ranks; break;
+		case 'C':  ranks = nomad_ranks; break;
+		case 'E':  ranks = elf_ranks; break;
+		case 'H':  ranks = healer_ranks; break;
+		case 'K':  ranks = knight_ranks; break;
+		case 'P':  ranks = priest_ranks; break;
+		case 'R':  ranks = thief_ranks; break;
+		case 'S':  ranks = ninja_ranks; break;
+		case 'T':  ranks = tourist_ranks; break;
+		case 'V':  ranks = fighter_ranks; break;
+		case 'W':  ranks = mage_ranks; break;
+		default:   ranks = 0; break;
 	}
+	return(ranks);
 }
 
-bot()
+static char *
+rank() {
+	register int place;
+	register const char **ranks = rank_array();
+
+	if(u.ulevel < 3) place = 0;
+	else if(u.ulevel <  6) place =  2;
+	else if(u.ulevel < 10) place =  4;
+	else if(u.ulevel < 14) place =  6;
+	else if(u.ulevel < 18) place =  8;
+	else if(u.ulevel < 22) place = 10;
+	else if(u.ulevel < 26) place = 12;
+	else if(u.ulevel < 30) place = 14;
+	else place = 16;
+	if(flags.female) place++;
+
+	if (!!ranks) return(ranks[place]);
+	return(pl_character);
+}
+
+void
+max_rank_sz() {
+	register int i, maxr = 0;
+	register const char **ranks = rank_array();
+
+	if (!!ranks) {
+		for(i = flags.female; i < 18; i += 2)
+			if(strlen(ranks[i]) > maxr) maxr = strlen(ranks[i]);
+		mrank_sz = maxr;
+	}
+	else mrank_sz = strlen(pl_character);
+}
+
+static void
+fillbot(row,oldbot,newbot)
+int row;
+char *oldbot, *newbot;
 {
-register char *ob = oldbot, *nb = newbot;
-register int i;
-extern char *eos();
-	if(flags.botlx) *ob = 0;
-	flags.botl = flags.botlx = 0;
-	(void) sprintf(newbot,
-#ifdef GOLD_ON_BOTL
-# ifdef SPELLS
-		"Lev %-2d Gp %-5lu Hp %3d(%d) Ep %3d(%d) Ac %-2d  ",
-		dlevel, u.ugold,
-#  ifdef KAA
-		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
-		u.uen, u.uenmax, u.uac);
-#  else
-		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
-#  endif
-# else
-		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  ",
-		dlevel, u.ugold,
-#  ifdef KAA
-		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
-		u.uac);
-#  else
-		u.uhp, u.uhpmax, u.uac);
-#  endif
-# endif
-#else
-# ifdef SPELLS
-		"Level %-2d Hp %3d(%d) Energy %3d(%d) Ac %-2d ",
-		dlevel,
-#  ifdef KAA
-		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
-		u.uen, u.uenmax, u.uac);
-#  else
-		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
-#  endif
-# else
-		"Level %-2d   Hp %3d(%d)   Ac %-2d   ",
-		dlevel,
-#  ifdef KAA
-		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
-		u.uac);
-#  else
-		u.uhp, u.uhpmax, u.uac);
-#  endif
-# endif
-#endif
-#ifdef KAA
-	if (u.mtimedone)
-		(void) sprintf(eos(newbot), "HD %d", mons[u.umonnum].mlevel);
-	else
-#endif
-	    if(u.ustr>18) {
-		if(u.ustr>117)
-		    (void) strcat(newbot,"Str 18/**");
-		else
-		    (void) sprintf(eos(newbot), "Str 18/%02d",u.ustr-18);
-	    } else
-		(void) sprintf(eos(newbot), "Str %-2d   ",u.ustr);
-#ifdef EXP_ON_BOTL
-	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
-#else
-	(void) sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
-#endif
-	(void) strcat(newbot, hu_stat[u.uhs]);
-	if(flags.time)
-	    (void) sprintf(eos(newbot), "  %ld", moves);
-#ifdef SCORE_ON_BOTL
-	(void) sprintf(eos(newbot)," S:%lu "
-	    ,(u.ugold - u.ugold0 > 0 ? u.ugold - u.ugold0 : 0)
-	    + u.urexp + (50 * maxdlevel)
-	    + (maxdlevel > 20? 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20) :0));
-#endif
-	if(strlen(newbot) >= COLNO) {
-		register char *bp0, *bp1;
-		bp0 = bp1 = newbot;
+	register char *ob = oldbot, *nb = newbot;
+	register int i;
+	int fillcol;
+
+	fillcol = min(CO, MAXCO-1);
+
+	/* compress in case line too long */
+	if(strlen(newbot) >= fillcol) {
+		register char *bp0 = newbot, *bp1 = newbot;
+
 		do {
 			if(*bp0 != ' ' || bp0[1] != ' ' || bp0[2] != ' ')
 				*bp1++ = *bp0;
 		} while(*bp0++);
 	}
-	for(i = 1; i<COLNO; i++) {
-		if(*ob != *nb){
-			curs(i,ROWNO+2);
-			(void) putchar(*nb ? *nb : ' ');
+	newbot[fillcol] = '\0';
+
+	for(i = 1; i < fillcol; i++) {
+		if(!*nb) {
+			if(*ob || flags.botlx) {
+				/* last char printed may be in middle of line */
+				curs(strlen(newbot)+1,row);
+				cl_end();
+			}
+			break;
+		}
+		if(*ob != *nb) {
+			curs(i,row);
+			(void) putchar(*nb);
 			curx++;
 		}
 		if(*ob) ob++;
-		if(*nb) nb++;
+		nb++;
 	}
-	(void) strcpy(oldbot, newbot);
+	Strcpy(oldbot, newbot);
 }
 
-#if defined(WAN_PROBING) || defined(KAA)
-mstatusline(mtmp) register struct monst *mtmp; {
-	pline("Status of %s: ", monnam(mtmp));
-	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)",
-	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->mhpmax);
-	pline("Ac %-2d  Dam %d %s %s",
-	    mtmp->data->ac, (mtmp->data->damn + 1) * (mtmp->data->damd + 1),
-	    mtmp->mcan ? ", cancelled" : "" ,mtmp->mtame ? " (tame)" : "");
+static void
+bot1()
+{
+	register int i,j;
+
+	Strcpy(newbot1, plname);
+	if('a' <= newbot1[0] && newbot1[0] <= 'z') newbot1[0] += 'A'-'a';
+	newbot1[10] = 0;
+	Sprintf(eos(newbot1)," the ");
+#ifdef POLYSELF
+	if (u.mtimedone) {
+		char mbot[BUFSZ];
+		int k = 0;
+
+		Strcpy(mbot, mons[u.umonnum].mname);
+		while(mbot[k] != 0) {
+		    if ((k == 0 || (k > 0 && mbot[k-1] == ' ')) &&
+					'a' <= mbot[k] && mbot[k] <= 'z')
+			mbot[k] += 'A' - 'a';
+		    k++;
+		}
+		Sprintf(eos(newbot1), mbot);
+	} else
+		Sprintf(eos(newbot1), rank());
+#else
+	Sprintf(eos(newbot1), rank());
+#endif
+	Sprintf(eos(newbot1),"  ");
+	i = mrank_sz + 15;
+	j = strlen(newbot1);
+	if((i - j) > 0)
+	      do { Sprintf(eos(newbot1)," "); /* pad with spaces */
+		   i--;
+	      } while((i - j) > 0);
+	if(ACURR(A_STR)>18) {
+		if(ACURR(A_STR)>118)
+		    Sprintf(eos(newbot1),"St:%2d ",ACURR(A_STR)-100);
+		else if(ACURR(A_STR)<118)
+		    Sprintf(eos(newbot1), "St:18/%02d ",ACURR(A_STR)-18);
+		else
+		    Sprintf(eos(newbot1),"St:18/** ");
+	} else
+		Sprintf(eos(newbot1), "St:%-1d ",ACURR(A_STR));
+	Sprintf(eos(newbot1),
+		"Dx:%-1d Co:%-1d In:%-1d Wi:%-1d Ch:%-1d",
+		ACURR(A_DEX), ACURR(A_CON), ACURR(A_INT), ACURR(A_WIS), ACURR(A_CHA));
+	Sprintf(eos(newbot1), (u.ualigntyp == U_CHAOTIC) ? "  Chaotic" :
+			(u.ualigntyp == U_NEUTRAL) ? "  Neutral" : "  Lawful");
+#ifdef SCORE_ON_BOTL
+	Sprintf(eos(newbot1)," S:%lu"
+	    ,(u.ugold - u.ugold0 > 0 ? u.ugold - u.ugold0 : 0)
+	    + u.urexp + (50 * maxdlevel)
+	    + (maxdlevel > 20? 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20) :0));
+#endif
+	fillbot(ROWNO+2, oldbot1, newbot1);
 }
 
-extern char plname[];
-ustatusline() {
-	pline("Status of %s%s ", (Badged) ? "Officer " : "", plname);
-	pline("Level %d, gold %lu, hit points %d(%d), AC %d.",
-# ifdef KAA
-		u.ulevel, u.ugold, u.mtimedone ? u.mh : u.uhp,
+static void
+bot2()
+{
+#ifdef ENDGAME
+	if(dlevel == ENDLEVEL)
+		Sprintf(newbot2, "EndLevel ");
+	else
+#endif
+#ifdef SPELLS
+		Sprintf(newbot2, "Dlvl:%-2d ", dlevel);
+#else
+		Sprintf(newbot2, "Level:%-1d ", dlevel);
+#endif
+	Sprintf(eos(newbot2),
+#ifdef SPELLS
+		"G:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d",
+		u.ugold,
+# ifdef POLYSELF
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
+		u.uen, u.uenmax, u.uac);
+# else
+		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
+# endif
+#else
+		"Gold:%-1lu HP:%d(%d) AC:%-1d",
+		u.ugold,
+# ifdef POLYSELF
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
+		u.uac);
+# else
+		u.uhp, u.uhpmax, u.uac);
+# endif
+#endif
+#ifdef POLYSELF
+	if (u.mtimedone)
+		Sprintf(eos(newbot2), " HD:%d", mons[u.umonnum].mlevel);
+	else
+#endif
+#ifdef EXP_ON_BOTL
+	Sprintf(eos(newbot2), " Xp:%u/%-1ld", u.ulevel,u.uexp);
+#else
+	Sprintf(eos(newbot2), " Exp:%u", u.ulevel);
+#endif
+	if(flags.time)
+	    Sprintf(eos(newbot2), " T:%ld", moves);
+	if(strcmp(hu_stat[u.uhs], "        ")) {
+		Sprintf(eos(newbot2), " ");
+		Strcat(newbot2, hu_stat[u.uhs]);
+	}
+	if(Confusion)	   Sprintf(eos(newbot2), " Conf");
+	if(Sick)	   Sprintf(eos(newbot2), " Sick");
+	if(Blinded)	   Sprintf(eos(newbot2), " Blind");
+	if(Stunned)	   Sprintf(eos(newbot2), " Stun");
+	if(Hallucination)  Sprintf(eos(newbot2), " Hallu");
+	fillbot(ROWNO+3, oldbot2, newbot2);
+}
+
+void
+bot() {
+register char *ob1 = oldbot1, *ob2 = oldbot2;
+	if(flags.botlx) *ob1 = *ob2 = 0;
+	bot1();
+	bot2();
+	flags.botl = flags.botlx = 0;
+}
+
+
+void
+mstatusline(mtmp)
+register struct monst *mtmp;
+{
+	pline("Status of %s (%s): ", mon_nam(mtmp),
+		(mtmp->data->maligntyp <= -1) ? "chaotic" :
+		mtmp->data->maligntyp ? "lawful" : "neutral");
+	pline("Level %d  Gold %lu  HP %d(%d)",
+	    mtmp->m_lev, mtmp->mgold, mtmp->mhp, mtmp->mhpmax);
+	pline("AC %d%s%s", mtmp->data->ac,
+	    mtmp->mcan ? ", cancelled" : "" ,mtmp->mtame ? ", tame" : "");
+}
+
+void
+ustatusline()
+{
+	pline("Status of %s (%s%s):", plname,
+		(u.ualign > 3) ? "stridently " :
+		(u.ualign == 3) ? "" :
+		(u.ualign >= 1) ? "haltingly " :
+		(u.ualign == 0) ? "nominally " :
+				"insufficiently ",
+		(u.ualigntyp == U_CHAOTIC) ? "chaotic" :
+		u.ualigntyp ? "lawful" : "neutral");
+	pline("Level %d  Gold %lu  HP %d(%d)  AC %d",
+# ifdef POLYSELF
+		u.mtimedone ? mons[u.umonnum].mlevel : u.ulevel,
+		u.ugold, u.mtimedone ? u.mh : u.uhp,
 		u.mtimedone ? u.mhmax : u.uhpmax, u.uac);
 # else
 		u.ulevel, u.ugold, u.uhp, u.uhpmax, u.uac);
 # endif
 }
-#endif
 
-cls(){
+void
+cls()
+{
+	extern xchar tlx, tly;
+
 	if(flags.toplin == 1)
 		more();
 	flags.toplin = 0;
 
 	clear_screen();
 
+	tlx = tly = 1;
+
 	flags.botlx = 1;
 }
 
-rndmonsym() {
-	register int x;
-	if((x=rn2(58)) < 26)
-		return('a'+x);
-	else if (x<52)
-		return('A'+x-26);
-	else switch(x) {
-		case 52: return(';');
-		case 53: return('&');
-		case 54: return(':');
-		case 55: return('\'');
-		case 56: return(',');
-		case 57: return('9');
-		default: impossible("Bad random monster %d",x); return('{');
-	}
-}
-
-rndobjsym() {
-	char *rndsym=")[!?%/=*($`";
-	return *(rndsym+rn2(11));
-}
-
-char *hcolors[] = { "ultraviolet","infrared","hot pink", "psychedelic",
-"bluish-orange","reddish-green","dark white","light black","loud",
-"salty","sweet","sour","bitter","luminescent","striped","polka-dotted",
-"square","round","triangular","brilliant","navy blue","cerise",
-"chartreuse","copper","sea green","spiral","swirly","blotchy",
-"fluorescent green","burnt orange","indigo","amber","tan",
-"sky blue-pink","lemon yellow" };
-
-char *
-hcolor() {
-	return hcolors[rn2(35)];
-}
-
-#ifdef MSDOSCOLOR
-/* what if a level character is the same as an object/monster? */
-
-extern char obj_symbols[];
-
-hilite(let)
-char let;
+char
+rndmonsym()
 {
-	char *isobjct = index(obj_symbols, let);
-	int ismnst();
+	return(mons[rn2(NUMMONS - 1)].mlet);
+}
 
-	if (!HI || !HE) {
-		(void) putchar(let);
+static const char objsyms[] = {
+	WEAPON_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM, WAND_SYM,
+#ifdef SPELLS
+	SPBOOK_SYM,
+#endif
+	RING_SYM, AMULET_SYM, FOOD_SYM, TOOL_SYM, GEM_SYM, GOLD_SYM, ROCK_SYM };
+
+char
+rndobjsym()
+{
+	return objsyms[rn2(SIZE(objsyms))];
+}
+
+static const char *hcolors[] = {
+			"ultraviolet", "infrared", "hot pink", "psychedelic",
+			"bluish-orange", "reddish-green", "dark white",
+			"light black", "loud", "salty", "sweet", "sour",
+			"bitter", "luminescent", "striped", "polka-dotted",
+			"square", "round", "triangular", "brilliant",
+			"navy blue", "cerise", "chartreuse", "mauve",
+			"lime green", "copper", "sea green", "spiral",
+			"swirly", "blotchy", "fluorescent green",
+			"burnt orange", "indigo", "amber", "tan",
+			"sky blue-pink", "lemon yellow", "off-white",
+			"paisley", "plaid", "argyle", "incandescent"};
+
+const char *
+hcolor()
+{
+	return hcolors[rn2(SIZE(hcolors))];
+}
+
+/*  Bug: if a level character is the same as an object/monster, it may be
+ *  hilited, because we use a kludge to figure out if a character is an
+ *  object/monster symbol.  It's smarter than it was in 2.3, but you
+ *  can still fool it (ex. if an object is in a doorway you have not seen,
+ *  and you look at a map, the '+' will be taken as a spellbook symbol).
+ *
+ *  The problem is that whenever a portion of the map needs to be redrawn
+ *  (by ^R, after an inventory dropover, after regurgitation...), the
+ *  levl[][].scrsym field is used to redraw the map.  A great duplication
+ *  of code would be needed to trace back every scrsym to find out what color
+ *  it should be.
+ *
+ *  What is really needed is a levl[][].color field; the color be figured
+ *  out at the same time as the screen symbol, and be restored with
+ *  redraws.  Unfortunately, as this requires much time and testing,
+ *  it will have to wait for NetHack 3.1.  -3.
+ */
+
+static void
+hilite(let,typ)
+uchar let, typ;
+{
+
+	if (let == ' '
+#ifndef MSDOS
+	    || !flags.standout
+#endif
+	    ) {
+		/* don't hilite spaces; it's pointless colorwise,
+		   and also hilites secret corridors and dark areas. -3. */
+		g_putch(let);
 		return;
 	}
-	if (isobjct != NULL || let == GOLD_SYM) {
-	/* is an object */
-		printf("%s%c%s", HI_OBJ, let, HE);
-	} else if (ismnst(let)) {
-	/* is a monster */
-		printf("%s%c%s", HI_MON, let, HE);
-	} else {	
-	/* default */
-		(void) putchar(let);
+
+	if (!typ) {
+		char *isobjct = index(obj_symbols, (char) let);
+
+		if (let == GOLD_SYM)
+			typ = AT_GLD;
+#ifdef MSDOSCOLOR
+		else if (let == POOL_SYM)
+			if (HI_BLUE == HI) typ = AT_MAP;
+			else typ = AT_BLUE;
+#endif
+		else if (isobjct != NULL || let == S_MIMIC_DEF)
+			/* is an object */
+			typ = AT_OBJ;
+		else if (ismnst((char) let))
+			/* is a monster */
+			typ = AT_MON;
 	}
+#ifndef MSDOSCOLOR
+	if (typ == AT_MON) revbeg();
+#else
+	switch (typ) {
+	    case AT_MON:
+		xputs(let != S_MIMIC_DEF ? HI_MON : HI_OBJ);
+		break;
+	    case AT_OBJ:
+		xputs(let == GOLD_SYM ? HI_GOLD : HI_OBJ);
+		break;
+	    case AT_MAP:
+		if (!(typ = (let == POOL_SYM)))
+		    break;
+	    case AT_BLUE:
+		xputs(HI_BLUE);
+		break;
+	    case AT_ZAP:
+		xputs(HI_ZAP);
+		break;
+	    case AT_RED:
+		xputs(HI_RED);
+		break;
+	    case AT_WHITE:
+		xputs(HI_WHITE);
+		break;
+	}
+#endif
+
+	g_putch(let);
+
+#ifdef MSDOSCOLOR
+	if (typ) xputs(HE);
+#else
+	if (typ == AT_MON) m_end();
+#endif
 }
 
-int
+static boolean
 ismnst(let)
 char let;
 {
 	register int ct;
 	register struct permonst *ptr;
 
-	for (ct = 0 ; ct < CMNUM + 2 ; ct++) {
+	if (let & 0x80) return 0;
+	if (isalpha(let)) return 1; /* for speed */
+
+	for (ct = 0 ; ct < NUMMONS; ct++) {
 		ptr = &mons[ct];
-		if(ptr->mlet == let) return(1);
+		if(ptr->mlet == let) return 1;
 	}
-	if (let == '1') return(1);
-	else if (let == '2') return(1);
-	else if (let == ';') return(1);
-	else return(0);
-}
+#ifdef WORM
+	if (let == S_WORM_TAIL) return 1;
 #endif
+	return 0;
+}

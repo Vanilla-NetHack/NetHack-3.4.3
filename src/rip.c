@@ -1,13 +1,8 @@
-/*	SCCS Id: @(#)rip.c	2.3	88/02/11
+/*	SCCS Id: @(#)rip.c	3.0	88/04/27
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
 #include "hack.h"
-#ifdef GENIX
-#define	void	int	/* jhn - mod to prevent compiler from bombing */
-#endif
-
-extern char plname[];
 
 static char *rip[] = {
 "                       ----------",
@@ -27,31 +22,39 @@ static char *rip[] = {
 0
 };
 
+static void
+center(line, text)
+int line;
+char *text;
+{
+	register char *ip,*op;
+	ip = text;
+	op = &rip[line][28 - ((strlen(text)+1)>>1)];
+	while(*ip) *op++ = *ip++;
+}
+
+void
 outrip(){
 	register char **dp = rip;
 	register char *dpx;
 	char buf[BUFSZ];
-	register x,y;
+	register int x, y;
 
 	cls();
-	(void) sprintf(buf,"%s%s", (Badged) ? "Officer " : "", plname);
+	Sprintf(buf,"%s", plname);
 	buf[16] = 0;
 	center(6, buf);
-	(void) sprintf(buf, "%ld AU", u.ugold);
+	Sprintf(buf, "%ld AU", u.ugold);
 	center(7, buf);
-	(void) sprintf(buf, "killed by%s",
+	Sprintf(buf, "killed by%s",
 		!strncmp(killer, "the ", 4) ? "" :
 		!strcmp(killer, "starvation") ? "" :
-		!strncmp(killer, "Mr.") ? "" :
-		!strncmp(killer, "Ms.") ? "" :
-#ifdef STOOGES
-		!strcmp(killer, "Larry") ? "" :
-		!strcmp(killer, "Curly") ? "" :
-		!strcmp(killer, "Moe") ? "" :
-#endif
+ 		!strcmp(killer, "strangulation") ? "" :
+		!strncmp(killer, "Mr.", 3) ? "" :
+		!strncmp(killer, "Ms.", 3) ? "" :
 		index(vowels, *killer) ? " an" : " a");
 	center(8, buf);
-	(void) strcpy(buf, killer);
+	Strcpy(buf, killer);
 	if(strlen(buf) > 16) {
 	    register int i,i0,i1;
 		i0 = i1 = 0;
@@ -63,7 +66,7 @@ outrip(){
 		buf[i0] = 0;
 	}
 	center(9, buf);
-	(void) sprintf(buf, "%4d", getyear());
+	Sprintf(buf, "%4d", getyear());
 	center(11, buf);
 	for(y=8; *dp; y++,dp++){
 		x = 0;
@@ -72,7 +75,6 @@ outrip(){
 			while(dpx[x] == ' ') x++;
 			curs(x,y);
 			while(dpx[x] && dpx[x] != ' '){
-				extern int done_stopprint;
 				if(done_stopprint)
 					return;
 				curx++;
@@ -83,9 +85,3 @@ outrip(){
 	getret();
 }
 
-center(line, text) int line; char *text; {
-register char *ip,*op;
-	ip = text;
-	op = &rip[line][28 - ((strlen(text)+1)/2)];
-	while(*ip) *op++ = *ip++;
-}

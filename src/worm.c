@@ -1,28 +1,37 @@
-/*	SCCS Id: @(#)worm.c	1.4	87/08/08
+/*	SCCS Id: @(#)worm.c	3.0	88/11/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* worm.c - version 1.0.2 */
+/* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-#ifndef NOWORM
+
+#ifdef WORM
 #include "wseg.h"
 
-struct wseg *wsegs[32];	/* linked list, tail first */
-struct wseg *wheads[32];
-long wgrowtime[32];
+struct wseg *wsegs[32] = DUMMY, *wheads[32] = DUMMY, *m_atseg = 0;
+long wgrowtime[32] = DUMMY;
 
-getwn(mtmp) struct monst *mtmp; {
-register tmp;
-	for(tmp=1; tmp<32; tmp++) if(!wsegs[tmp]) {
+int
+getwn(mtmp)
+struct monst *mtmp;
+{
+	register int tmp;
+
+	for(tmp = 1; tmp < 32; tmp++)
+	    if(!wsegs[tmp]) {
 		mtmp->wormno = tmp;
 		return(1);
-	}
+	    }
 	return(0);	/* level infested with worms */
 }
 
 /* called to initialize a worm unless cut in half */
-initworm(mtmp) struct monst *mtmp; {
-register struct wseg *wtmp;
-register tmp = mtmp->wormno;
+void
+initworm(mtmp)
+struct monst *mtmp;
+{
+	register struct wseg *wtmp;
+	register int tmp = mtmp->wormno;
+
 	if(!tmp) return;
 	wheads[tmp] = wsegs[tmp] = wtmp = newseg();
 	wgrowtime[tmp] = 0;
@@ -32,9 +41,24 @@ register tmp = mtmp->wormno;
 	wtmp->nseg = 0;
 }
 
-worm_move(mtmp) struct monst *mtmp; {
-register struct wseg *wtmp, *whd;
-register tmp = mtmp->wormno;
+static void
+remseg(mtmp,wtmp)
+struct monst *mtmp;
+register struct wseg *wtmp;
+{
+	if (mtmp->mx != wtmp->wx || mtmp->my != wtmp->wy)
+		levl[wtmp->wx][wtmp->wy].mmask = 0;
+	if(wtmp->wdispl) newsym(wtmp->wx, wtmp->wy);
+	free((genericptr_t) wtmp);
+}
+
+void
+worm_move(mtmp)
+struct monst *mtmp;
+{
+	register struct wseg *wtmp, *whd;
+	register int tmp = mtmp->wormno;
+
 	wtmp = newseg();
 	wtmp->wx = mtmp->mx;
 	wtmp->wy = mtmp->my;
@@ -44,86 +68,100 @@ register tmp = mtmp->wormno;
 	wheads[tmp] = wtmp;
 	if(cansee(whd->wx,whd->wy)){
 		unpmon(mtmp);
-		atl(whd->wx, whd->wy, '~');
+		atl(whd->wx, whd->wy, S_WORM_TAIL);
 		whd->wdispl = 1;
 	} else	whd->wdispl = 0;
 	if(wgrowtime[tmp] <= moves) {
 		if(!wgrowtime[tmp]) wgrowtime[tmp] = moves + rnd(5);
 		else wgrowtime[tmp] += 2+rnd(15);
-		mtmp->mhpmax += 3;
 		mtmp->mhp += 3;
+		if (mtmp->mhp > MHPMAX) mtmp->mhp = MHPMAX;
+		if (mtmp->mhp > mtmp->mhpmax) mtmp->mhpmax = mtmp->mhp;
 		return;
 	}
 	whd = wsegs[tmp];
 	wsegs[tmp] = whd->nseg;
-	remseg(whd);
+	remseg(mtmp, whd);
 }
 
-worm_nomove(mtmp) register struct monst *mtmp; {
-register tmp;
-register struct wseg *wtmp;
+void
+worm_nomove(mtmp)
+register struct monst *mtmp;
+{
+	register int tmp;
+	register struct wseg *wtmp;
+
 	tmp = mtmp->wormno;
 	wtmp = wsegs[tmp];
 	if(wtmp == wheads[tmp]) return;
 	if(wtmp == 0 || wtmp->nseg == 0) panic("worm_nomove?");
 	wsegs[tmp] = wtmp->nseg;
-	remseg(wtmp);
-	mtmp->mhp -= 3;	/* mhpmax not changed ! */
+	remseg(mtmp, wtmp);
+	if (mtmp->mhp > 3) mtmp->mhp -= 3;	/* mhpmax not changed ! */
+	else mtmp->mhp = 1;
 }
 
-wormdead(mtmp) register struct monst *mtmp; {
-register tmp = mtmp->wormno;
-register struct wseg *wtmp, *wtmp2;
+void
+wormdead(mtmp)
+register struct monst *mtmp;
+{
+	register int tmp = mtmp->wormno;
+	register struct wseg *wtmp, *wtmp2;
+
 	if(!tmp) return;
 	mtmp->wormno = 0;
-	for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp2){
+	for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp2) {
 		wtmp2 = wtmp->nseg;
-		remseg(wtmp);
+		remseg(mtmp, wtmp);
 	}
 	wsegs[tmp] = 0;
 }
 
-wormhit(mtmp) register struct monst *mtmp; {
-register tmp = mtmp->wormno;
-register struct wseg *wtmp;
+void
+wormhit(mtmp)
+register struct monst *mtmp;
+{
+	register int tmp = mtmp->wormno;
+	register struct wseg *wtmp;
+
 	if(!tmp) return;	/* worm without tail */
 	for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp->nseg)
-		(void) hitu(mtmp,1);
+		if (dist(wtmp->wx, wtmp->wy) < 3) (void) mattacku(mtmp);
 }
 
-wormsee(tmp) register unsigned tmp; {
-register struct wseg *wtmp = wsegs[tmp];
+void
+wormsee(tmp)
+register unsigned int tmp;
+{
+	register struct wseg *wtmp = wsegs[tmp];
+
 	if(!wtmp) panic("wormsee: wtmp==0");
+
 	for(; wtmp->nseg; wtmp = wtmp->nseg)
-		if(!cansee(wtmp->wx,wtmp->wy) && wtmp->wdispl){
+		if(!cansee(wtmp->wx,wtmp->wy) && wtmp->wdispl) {
 			newsym(wtmp->wx, wtmp->wy);
 			wtmp->wdispl = 0;
 		}
 }
 
-pwseg(wtmp) register struct wseg *wtmp; {
-	if(!wtmp->wdispl){
-		atl(wtmp->wx, wtmp->wy, '~');
-		wtmp->wdispl = 1;
-	}
-}
-
-cutworm(mtmp,x,y,weptyp)
+void
+cutworm(mtmp, x, y, weptyp)
 register struct monst *mtmp;
 register xchar x,y;
-register uchar weptyp;		/* uwep->otyp or 0 */
+register unsigned weptyp;		/* uwep->otyp or 0 */
 {
 	register struct wseg *wtmp, *wtmp2;
 	register struct monst *mtmp2;
-	register tmp,tmp2;
+	register int tmp, tmp2;
+
 	if(mtmp->mx == x && mtmp->my == y) return;	/* hit headon */
 
 	/* cutting goes best with axe or sword */
 	tmp = rnd(20);
-	if(weptyp == LONG_SWORD || weptyp == TWO_HANDED_SWORD ||
-	   weptyp == SCIMITAR || weptyp == SHORT_SWORD ||
-	   weptyp == BROAD_SWORD || weptyp == AXE || weptyp == KATANA)
+	if(weptyp >= SHORT_SWORD && weptyp <= KATANA ||
+	   weptyp == AXE)
 		tmp += 5;
+
 	if(tmp < 12) return;
 
 	/* if tail then worm just loses a tail segment */
@@ -131,7 +169,7 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 	wtmp = wsegs[tmp];
 	if(wtmp->wx == x && wtmp->wy == y){
 		wsegs[tmp] = wtmp->nseg;
-		remseg(wtmp);
+		remseg(mtmp, wtmp);
 		return;
 	}
 
@@ -143,6 +181,8 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 	/* sometimes the tail end dies */
 	if(rn2(3) || !getwn(mtmp2)){
 		monfree(mtmp2);
+		levl[mtmp2->mx][mtmp2->my].mmask = 1;
+			/* since mtmp is still on that spot */
 		tmp2 = 0;
 	} else {
 		tmp2 = mtmp2->wormno;
@@ -150,38 +190,37 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 		wgrowtime[tmp2] = 0;
 	}
 	do {
-		if(wtmp->nseg->wx == x && wtmp->nseg->wy == y){
-			if(tmp2) wheads[tmp2] = wtmp;
-			wsegs[tmp] = wtmp->nseg->nseg;
-			remseg(wtmp->nseg);
-			wtmp->nseg = 0;
-			if(tmp2){
-				pline("You cut the worm in half.");
-				mtmp2->mhpmax = mtmp2->mhp =
-					d(mtmp2->data->mlevel, 8);
-				mtmp2->mx = wtmp->wx;
-				mtmp2->my = wtmp->wy;
-				mtmp2->nmon = fmon;
-				fmon = mtmp2;
-				unpmon(mtmp2);			/* MRS */
-				pmon(mtmp2);
-			} else {
-				pline("You cut off part of the worm's tail.");
-				remseg(wtmp);
-			}
-			mtmp->mhp /= 2;
-			return;
+	    if(wtmp->nseg->wx == x && wtmp->nseg->wy == y){
+		if(tmp2) wheads[tmp2] = wtmp;
+		wsegs[tmp] = wtmp->nseg->nseg;
+		remseg(mtmp, wtmp->nseg);
+		wtmp->nseg = 0;
+		if(tmp2) {
+		    You("cut the worm in half.");
+		/* devalue the monster level of both halves of the worm */
+		    mtmp->m_lev = (mtmp->m_lev <= 2) ? 2 : mtmp->m_lev - 2;
+		    mtmp2->m_lev = mtmp->m_lev;
+		/* calculate the mhp on the new (lower) monster level */
+		    mtmp2->mhpmax = mtmp2->mhp = d((int)mtmp2->m_lev, 8);
+		    mtmp2->mx = wtmp->wx;
+		    mtmp2->my = wtmp->wy;
+		    levl[mtmp2->mx][mtmp2->my].mmask = 1;
+		    mtmp2->nmon = fmon;
+		    fmon = mtmp2;
+		    mtmp2->mdispl = 0;
+		    pmon(mtmp2);
+		} else {
+			You("cut off part of the worm's tail.");
+			remseg(mtmp, wtmp);
 		}
-		wtmp2 = wtmp->nseg;
-		if(!tmp2) remseg(wtmp);
-		wtmp = wtmp2;
+		mtmp->mhp /= 2;
+		return;
+	    }
+	    wtmp2 = wtmp->nseg;
+	    if(!tmp2) remseg(mtmp, wtmp);
+	    wtmp = wtmp2;
 	} while(wtmp->nseg);
 	panic("Cannot find worm segment");
 }
 
-remseg(wtmp) register struct wseg *wtmp; {
-	if(wtmp->wdispl)
-		newsym(wtmp->wx, wtmp->wy);
-	free((char *) wtmp);
-}
-#endif /* NOWORM /**/
+#endif /* WORM /**/

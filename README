@@ -1,164 +1,124 @@
-			      NetHack V2.2 README
 
-	This file contains information on the 2.2 release of NetHack.  For
-information on previous releases, see the README.OLD file.  For a detailed
-history of the game, see the README.ORIG file, which contains three separate
-readme files, dating back to the original release of the game (then named
-hack) by Jay Fenlason.
+		NetHack 3.0 -- General information
 
-	This release of the game contains a large number of bug fixes, as
-well as several new features.  There has been a large amount of play-testing
-done on this release, as it is to be a complete release (approximately 1Mb)
-of source and uuencoded auxilary files.  For a detailed list of bug fixes,
-and additions look at the file "Fixes.2.2".  I cannot guarantee that every
-modification done has been included, but I have done my best to chronicle the
-changes and fixes made there.  Here are the high points:
+NetHack 3.0 is a new generation of the dungeon exploration game NetHack.
+It is a distant descendent of Hack, and a direct descendent of NetHack 2.3.
+It is the product of a year-long, very intensive, international team
+effort.  Many parts of 2.3 were rewritten for NetHack 3.0, and many new
+features were added.  Judged by size alone, with all options enabled,
+NetHack 3.0 is twice as big as 2.3.
 
-  1)	New flags in "config.h" (some of these were included in 1.4f):
+While aiming at retaining the general atmosphere of NetHack 2.3, we sought
+to open up new directions of development for the game.  Alignment, both for
+player characters and for monsters, was introduced.  Player character
+attributes were added and integrated into the game.  Special compiled
+levels were added, and these open up endless future possibilities.  An
+endgame was written, for a climactic ending.  The code for monsters and
+objects was massively rewritten, and many new creatures and items were
+added.  The self-polymorph code was debugged and greatly enriched.  Shops,
+too, were enhanced.  There are now doors in doorways and chests that may
+contain valuables, both of which may be closed or locked.  New commands to
+open or kick doors and force locks on chests were added.  You can also use
+kicking as an attack mode, and you can kick objects around if it pleases
+you.  You will discover the rest for yourselves...
 
-	COM_COMPL	Command line completion by John S. Bien
-	GRAPHICS	Funky screen character support (Eric S. Raymond)
-	HACKOPTIONS	Support DGK-style HACKOPTIONS processing (ESR)
-	RPH		Various hacks by Richard P. Hughey
-	KJSMODS		Various changes made by Kevin Sweet
-	BVH		Additions by Bruce Holloway
+To compensate for the massive additions, we rewrote the code around some
+new map fields for an increase in speed up to, if not beyond, that of 2.3.
+The code is now organized, and nearly lint-free.
 
-	In addition, in an MSDOS enviornment, when GRAPHICS is defined:
+We dedicate the game to the many unknown hackers, both past and future, who
+contribute so much to the game.
 
-	MSDOSCOLOR	Colour highlighting of monsters, etc.
+			- - - - - - - - - - -
 
-	Of the above, I haven't tested HACKOPTIONS and MSDOSCOLOR.  If you
-	find bugs in these, send me the reports.
+Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 
-  2)	New objects:
+1.  Unpack the code in a dedicated new directory.  We will refer to that
+    directory as the 'Top' directory.  It makes no difference what you
+    call it.
 
-	blindfold - allows you to avoid the gaze of a Floating Eye and to
-		    use your telepathy on command if you have it.
+2.  If there is no flaw in the packaging, FIVE sub-directories will be
+    automatically created, and files will be deposited in them: 
 
-	mirror - scares monsters if you use it on them (and other uses).
+    a.  A 'src' directory, which will contain general *.c files.
+    b.  An 'include' directory, which will contain general *.h files.
+    c.  An 'auxil' directory, which will contain a variety of data files.
+    d.  An 'amiga' directory, which will contain the Amiga-specific files.
+    e.  An 'others' directory, which will contain MSDOS and TOS files.
 
-	ring of polymorph - (usually cursed) forces random polymorphs.
+    The names of these directories should not be changed, unless you are
+    ready to go through the makefiles and the makedefs program and change
+    all the directory references in them.
 
-	ring of polymorph control - prevents system shock and allows choice of
-				    creature to polymorph into.
+3.  Having unpacked, you should have a file called 'Files' in your Top
+    directory.  This file contains the list of all the files you now SHOULD 
+    have in each directory.  Please check the files in each directory 
+    against this list to make sure that you have a complete set.
 
-  3)	New Files:
+4.  Before you do anything else, please read carefully the file called
+    'license' in the auxil subdirectory.  It is expected that you comply
+    with the terms of that license, and we are very serious about it.  In
+    particular, you are prohibited by the terms of the license from using
+    NetHack 3.0 for gainful purposes.   
 
-	- A new set of documentation, the "Guidebook to the Mazes of Menace"
-	has been supplied by Eric S. Raymond.  The guidebook is written for
-	nroff using the "mn" macro set supplied with Bnews 2.11 or greater.
-	Since not everyone has these macros, I have run the guidebook through
-	nroff, and supplied it in flat ascii format as well.  [Moderator's
-	note: because of past problems, I ran the formatted version
-	through "col -b" before passing it on to remove ^H's, etc.  -br]
+5.  If everything is in order, you can now turn to trying to get the program
+    to compile and run on your particular system.  It is worth mentioning
+    that the default configuration is Ultrix (simply because the code was
+    housed on such a system).  It is also worth mentioning here that NetHack
+    3.0 is a huge program by comparison with 2.3.  If you intend to run it
+    on a small machine, you'll have to make hard choices among the options
+    available in config.h.
 
-	- A copy of "HACK.CNF" which has been renamed "NetHack.cnf" was
-	supplied by Steve Creps. The file decl.c has been updated to reflect
-	this change.
+    The files Install.* were written to guide you in configuring the program
+    for your operating system.  Reading them, and the man page, should answer
+    most of your questions.
 
-	- A new "Makefile" for the AT&T Unix machines has been added.
+    At the time of this release, NetHack 3.0 is known to run on:
 
-	- I was hoping to get documentation on "NANSI.SYS" as well, but got
-	no responses to the mail I sent the author, direct and via Bill
-	Randle at tekred.  As per usual, I will gladly publish any relevant
-	documentation I get.
+	DEC vaxen running Ultrix and BSD
+	Sun-3s running SunOS 4.0
+	Encore Multimax running UMAX 4.2
+	Bull XPS100 running System V R2.2 or R3.1
+	AT&T 3B4000 running System V
+	AT&T 3B1 running System V (3.51)
+	286 box running Microport SysV/AT (not extensively tested)
+	IBM PC compatibles running MicroSoft C or Turbo C under MS-DOS
+	Commodore Amiga (probably -- there have been some changes since
+		the Amiga port was done, but we believe it should still work)
 
-  4)	Major game changes:
+    There are also many hooks for an Atari TOS port, but we have not had a
+    chance to test the 3.0 code on an Atari.  Undoubtedly, some tweaks will 
+    have to be made.
 
-	- Shop generation has been significantly changed.  A new structure
-	has been introduced which allows shops (except the "general" type)
-	to have up to three different types of object inside.  There is also
-	a new "distribution pattern" parameter which tells the generation
-	code how to lay out the shop (this is preliminary to the addition of
-	two new types of shop, the temple and barracks - more on this later).
+			- - - - - - - - - - -
 
-	- Shopkeepers will now tell you how much they expect for each object
-	you pick up.  This gives you the ability to haggle with the merchant
-	in question by dropping and picking up objects until you are more or
-	less satisfied with the price.  I have re-written "getprice()" in
-	shk.c in an attempt to make sure that you cannot actually sell any
-	particular object for more than the shopkeeper will charge for it.
+If you have problems building the game, or you find bugs in it, the 
+development team may be reached as
+ 
+		    nethack-bugs@linc.cis.upenn.edu.  
 
-	- Another change to shopkeepers has them potentially getting angry if
-	you stay beside them after not paying your bill.  Each they time they
-	ask you to pay up, there is a chance they will decide they don't like
-	people who don't pay...
+Patches especially should be directed to this address.  If you've changed 
+something to get NetHack to run on your system, it's likely that others have
+done it by making slightly different modifications.  By routing your patches
+through the development team, we should be able to avoid making everyone else
+choose among variant patches claiming to do the same thing, to keep most of
+the copies of 3.0 synchronized by means of official patches, and to maintain
+the painfully-created file organization.  (Remember the mess when everybody
+just posted their own patches to 2.3?  There were no archived bug-fixes to
+give people who got 2.3 after its initial release, so the same bugs kept being
+discovered by new batches of people.  Please cooperate to keep this from
+happening to 3.0.)
 
-	- A new monster, the hydra, has been added (as you have probably seen
-	on the net).  I haven't had much chance to test out this feature of
-	the game.  Mirrors have also been added, and seem to work quite well.
+It is inevitable that we will reject some proposed additions of new features
+either because they do not fit our conception of the game, or because they 
+require more code than we consider they're worth.  If we reject your feature,
+you are free, of course, to post the patches to the net yourself and let the
+marketplace decide its worth.
 
-	- Changes have been made to the object ocurrence chances in objects.h,
-	so that the relatively rare tools, etc. have at least a 1% chance of
-	showing up.
+All of this amounts to the following:  If you decide to apply a free-lanced
+patch to your 3.0 code, you are on your own.  In our own patches, including
+those which will update to 3.1, we will assume that your code is synchronized
+with ours.
 
-	- Throwing and zapping code has been modified so that there is a
-	chance that said can be done through a doorway.  Bolts can still
-	bounce however...
+		  -- Good luck, and happy Hacking --
 
-	- The infamous and dreaded makemon() bug has been eliminated.  In
-	addition to this, "r"ats and "K"obolds have been added back into the
-	game.  "K"ops no longer leave treasure (just what they were carrying,
-	plus maybe a club or whistle).
-
-	- Two new "super"swords have been added.  They are the katana named
-	"Snickersnee" which is +5 on damage (due to sharpness), and the long
-	sword "Excalibur" which is +rnd(10) to hit, +5 on damage, and has a
-	couple of other features I won't go into right now.  The only way
-	for a character to get "Excalibur" is as a gift from someone.  You
-	cannot write the word "Excalibur" on things for some reason...
-
-	- There have been two additions to disallow infinite wand charges.
-	First of all, wands with less than zero charges will automatically
-	turn to dust (thanks to Kevin Sweet).  Next, a wand of cancellation
-	will set the number of charges in the wand to -1, which will make it
-	forever useless, (thanks to Ron Wessels).
-
-  5)	Minor game changes:
-
-	- The fountain code has been tightened slightly so you can no longer
-	dip objects into a fountain or drink from one while you are floating
-	in mid-air due to levitation.
-
-	- Teleporting to hell via a teleportation trap will no longer occur
-	if the character does not have fire resistance.  I found this just
-	too arbitrary a way to die (and so did several other people who com-
-	plained about it).
-
-	- A new trap, the "polymorph" trap has been added by Richard Hughey.
-	It's inclusion is dependant on having "KAA" defined.
-
-	- In wizard mode, the wizard player has infinite wishes, and the
-	ability to instantly identify everything (s)he is carrying. The wizard
-	player is also no longer limited by the standard multiple / bonus res-
-	trictions on objects wished for.
-
-	- Random number generation has been changed around to make it (I hope)
-	more unpredictable.
-
-	- A large number of typos have been fixed, and all of the British
-	spellings converted to American.  I would like to see a shell script
-	to allow conversion back (or something like that) in the future.
-
-	- I have done a "make depend" for the makefiles to reflect a slight
-	restructuring in the order of inclusion of header files.
-
-  6)	Future additions:
-
-	- Steve Creps is working on "barracks" and "soldier" code which is
-	now ready for addition.  I have added the "soldier" side into the
-	game, but haven't really tested it.  Steve will be adding the
-	"barracks" section in and sending me the resulting patches.  There
-	will be a minor (read patch) release as soon as he can get the code
-	integrated into this release and sent up here to me.
-
-	- There are also several other new room projects in the works which
-	should be able to be included in that minor release, along with any
-	bug reports that are made in the interim.
-
-						Mike Stephenson
-
-Mail:	Genamation Inc.		Phone:	(416) 475-9434
-	351 Steelcase Rd. W
-	Markham, Ontario.	UUCP:	uunet!{mnetor, utzoo}!genat!mike
-	Canada   L3R 3W1

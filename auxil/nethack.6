@@ -1,9 +1,9 @@
-.TH NETHACK 6 "21 September 1987"
+.TH NETHACK 6 "28 March 1989"
 .UC 4
 .SH NAME
-hack \- Exploring The Mazes of Menace
+nethack \- Exploring The Mazes of Menace
 .SH SYNOPSIS
-.B /usr/games/net[hack quest]
+.B nethack
 [
 .B \-d
 .I directory
@@ -12,18 +12,24 @@ hack \- Exploring The Mazes of Menace
 .B \-n
 ]
 [
+.B \-[ABCEHKPRSTVW]
+]
+[
+.B \-[DX]
+]
+[
 .B \-u
 .I playername
 ]
 .br
-.B /usr/games/net[hack quest]
+.B nethack
 [
 .B \-d
 .I directory
 ]
 .B \-s
 [
-.B \-X
+.B \-[ABCEHKPRSTVW]
 ]
 [
 .I playernames
@@ -33,112 +39,143 @@ hack \- Exploring The Mazes of Menace
 .I NetHack
 is a display oriented Dungeons & Dragons(tm) - like game.
 Both display and command structure resemble rogue.
-(For a game with the same structure but entirely different display -
-a real cave instead of dull rectangles - try NetQuest.)
 .PP
 To get started you really only need to know two commands.  The command
 .B ?
-will give you a list of the available commands and the command
+will give you a list of the available commands (as well as other information)
+and the command
 .B /
 will identify the things you see on the screen.
 .PP
-To win the game (as opposed to merely playing to beat other people high
+To win the game (as opposed to merely playing to beat other people's high
 scores) you must locate the Amulet of Yendor which is somewhere below
-the 20th level of the dungeon and get it out.  Nobody has achieved this
-yet and if somebody does, he will probably go down in history as a hero
-among heros.
+the 20th level of the dungeon and get it out.
+Nobody has achieved this yet; anybody who does will probably go down
+in history as a hero among heros.
 .PP
-When the game ends, either by your death, when you quit, or if you escape
+When the game ends, whether by your dying, quitting, or escaping
 from the caves,
-.I hack
-will give you (a fragment of) the list of top scorers.  The scoring
-is based on many aspects of your behavior but a rough estimate is
-obtained by taking the amount of gold you've found in the cave plus four
-times your (real) experience. Precious stones may be worth a lot of gold
-when brought to the exit.
+.I NetHack
+will give you (a fragment of) the list of top scorers.
+The scoring is based on many aspects of your behavior, but a rough estimate
+is obtained by taking the amount of gold you've found in the cave plus four
+times your (real) experience.
+Precious stones may be worth a lot of gold when brought to the exit.
 There is a 10% penalty for getting yourself killed.
 .PP
-The administration of the game is kept in the directory specified with the
-.B \-d
-option, or, if no such option is given, in the directory specified by
-the environment variable HACKDIR, or, if no such variable exists, in
-the current directory. This same directory contains several auxiliary
-files such as lockfiles and the list of topscorers and a subdirectory
-.I save
-where games are saved.
-The game administrator may however choose to install hack with a fixed
-playing ground, usually /usr/games/lib/nethackdir.
-.PP
-The
-.B \-n
-option suppresses printing of the news.
+The environment variable NETHACKOPTIONS can be used to initialize many
+run-time options.
+The ? command provides a description of these options and syntax.
 .PP
 The
 .B \-u
 .I playername
 option supplies the answer to the question "Who are you?".
-When
+It overrides any name from NETHACKOPTIONS, USER, LOGNAME, or getlogin(),
+which will otherwise be tried in order.
+If none of these provides a useful name, the player will be asked for one.
+A
 .I playername
-has as suffix one of
-.B \-T \-S \-K \-F \-C \-W \-N \-A \-P \-V \-E \-H
-then this supplies the answer to the question "What kind of character ... ?".
+suffix or a separate option consisting of one of
+.B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
+can be used to determine the character role.
 .PP
 The
 .B \-s
-option will print out the list of your scores. It may be followed by arguments
-.B \-X
-where X is one of the letters C, B, K, S, T, W, N, A, P, V, E, H to print the
-scores of Cave(wo)men, Barbarians, Knights, Samurai, Tourists, Wizards,
-Ninjas, Archaeologists, Priest(esse)s, Valkyries, Elves, or Healers.
+option alone will print out the list of your scores.
+It may be followed by arguments
+.B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
+to print the
+scores of Archeologists, Barbarians, Cave(wo)men, Elves, Healers, Knights,
+Priest(esse)s, Rogues, Samurai, Tourists, Valkyries, or Wizards.
 It may also be followed by one or more player names to print the scores of the
-players mentioned.
+players mentioned, or by 'all' to print out all scores.
+.PP
+The
+.B \-n
+option suppresses printing of any news from the game administrator.
+.PP
+The
+.B \-D
+or
+.B \-X
+option will start the game in a special non-scoring discovery mode
+(or in debugging (wizard) mode if the player is the game administrator).
+.PP
+The
+.B \-d
+option, which must be the first argument if it appears,
+supplies a directory which is to serve as the playground.
+It overrides the value from HACKDIR or the directory specified by the game
+administrator during compilation (usually /usr/games/lib/nethackdir).
+This option is usually only useful to the game administrator.
+The playground must contain several auxiliary files such as help files,
+the list of top scorers, and a subdirectory
+.I save
+where games are saved.
 .SH AUTHORS
 .PP
 Jay Fenlason (+ Kenny Woodland, Mike Thome and Jon Payne) wrote the
 original hack, very much like rogue (but full of bugs).
 .PP
-Andries Brouwer continuously deformed their sources into the current
-version - in fact an entirely different game.
+Andries Brouwer continuously deformed their sources into an entirely
+different game.
 .PP
-Mike Stephenson has continued the perversion of sources adding various
+Mike Stephenson has continued the perversion of sources, adding various
 warped character classes and sadistic traps with the help of many strange
 people who reside in that place between the worlds, the Usenet Zone.
+A number of these miscreants are immortalized in the historical
+roll of dishonor and various other places.
 .PP
-Don Kneller, Gil Neiger, Scott Turner and Ken Arromdee deserve special
-mention in this regard.
-.PP
-The resulting mess is now called NetHack (or NetQuest), to denote its
+The resulting mess is now called NetHack, to denote its
 development by the Usenet.  Andries Brouwer has made this request for the
 distinction, as he may eventually release a new version of his own.
 .SH FILES
+.PP
+All files are in the playground, normally /usr/games/lib/nethackdir.
+.br
 .DT
-.ta \w'data, rumors\ \ \ 'u
-nethack		The hack program.
+.ta \w'tower1, tower2, tower3\ \ \ 'u
+nethack		The program itself.
 .br
-netquest	The quest program.
-.br
-data, rumors	Data files used by hack.
+data, oracles, rumors	Data files used by NetHack.
 .br
 help, hh	Help data files.
 .br
-record	The list of topscorers.
+cmdhelp, opthelp	More help data files.
+.br
+castle, endgame	Predefined special levels.
+.br
+tower1, tower2, tower3	More special levels.
+.br
+history	A short history of NetHack.
+.br
+license	Rules governing redistribution.
+.br
+record	The list of top scorers.
+.br
+logfile	An extended list of games played.
 .br
 save	A subdirectory containing the saved
 .br
 	games.
 .br
-bones_dd	Descriptions of the ghost and
+bones.dd	Descriptions of the ghost and
 .br
-	belongings of a deceased adventurer.
+	belongings of a deceased
+.br
+	adventurer.
 .br
 xlock.dd	Description of a dungeon level.
 .br
-safelock	Lock file for xlock.
+perm, safelock	Lock files for xlock.dd.
 .br
 record_lock	Lock file for record.
+.br
+logfile_lock	Lock file for logfile.
 .SH ENVIRONMENT
 .DT
-.ta \w'HACKPAGER, PAGER\ \ \ 'u
+.ta \w'HACKPAGER or PAGER\ \ \ 'u
 USER or LOGNAME	Your login name.
 .br
 HOME		Your home directory.
@@ -147,25 +184,26 @@ SHELL		Your shell.
 .br
 TERM		The type of your terminal.
 .br
-HACKPAGER, PAGER	Pager used instead of default pager.
+HACKPAGER or PAGER	Replacement for default pager.
 .br
 MAIL	Mailbox file.
 .br
-MAILREADER	Reader used instead of default
+MAILREADER	Replacement for default reader
 .br
 	(probably /bin/mail or /usr/ucb/mail).
 .br
 HACKDIR	Playground.
 .br
-HACKOPTIONS	String predefining several hack options
+NETHACKOPTIONS	String predefining several NetHack
 .br
-	(see help file).
+	options.
 .br
 
-Several other environment variables are used in debugging (wizard) mode,
-like GENOCIDED, INVENT, MAGIC and SHOPTYPE.
+In addition, SHOPTYPE is used in debugging (wizard) mode.
 .SH BUGS
 .PP
 Probably infinite.
+
+
 .PP
 Dungeons & Dragons is a Trademark of TSR Inc.

@@ -1,195 +1,331 @@
-/*	SCCS Id: @(#)end.c	2.3	87/12/16
+/*	SCCS Id: @(#)end.c	3.0	88/05/03
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
+#ifndef TOS
 #include <signal.h>
+#endif
+
+/* block some unused #defines to avoid overloading some cpp's */
+#define MONATTK_H
 #include "hack.h"
-#define	Sprintf	(void) sprintf
-extern char plname[], pl_character[], SAVEF[];
 
-xchar maxdlevel = 1;
-int done_stopprint;
-int done_hup;
+#include "eshk.h"
 
+void end_box_display();
 
+int
 done1()
 {
+#ifndef TOS
 	(void) signal(SIGINT,SIG_IGN);
-#if defined(WIZARD) && defined(UNIX) && !defined(KJSMODS)
+#endif
+	if(flags.ignintr) {
+#ifndef TOS
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#endif
+		clrlin();
+		curs_on_u();
+		(void) fflush(stdout);
+		if(multi > 0) nomul(0);
+		return 0;
+	}
+	return done2();
+} 
+
+int
+done2()
+{
+	pline("Really quit? ");
+	if(yn() == 'n') {
+#ifndef TOS
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#endif
+		clrlin();
+		curs_on_u();
+		(void) fflush(stdout);
+		if(multi > 0) nomul(0);
+		return 0;
+	}
+#if defined(WIZARD) && defined(UNIX)
 	if(wizard) {
-	    pline("Dump core?");
-	    if(readchar() == 'y') {
-		(void) signal(SIGINT,done1);
-		abort();
+	    pline("Dump core? ");
+	    if(yn() == 'y') {
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+		settty(NULL);
+#ifdef SYSV
+		(void)
+#endif
+		    abort();
 	    }
 	}
 #endif
-	pline("Really quit?");
-	if(readchar() != 'y') {
-		(void) signal(SIGINT,done1);
-		clrlin();
-		(void) fflush(stdout);
-		if(multi > 0) nomul(0);
-		return(0);
-	}
+#ifndef LINT
 	done("quit");
-	/* NOTREACHED */
+#endif
+	return 0;
 }
 
+static
+int
 done_intr(){
 	done_stopprint++;
+#ifndef TOS
 	(void) signal(SIGINT, SIG_IGN);
 #ifdef UNIX
 	(void) signal(SIGQUIT, SIG_IGN);
 #endif
+#endif /* TOS /* */
+	return 0;
 }
 
 #ifdef UNIX
+static
+int
 done_hangup(){
 	done_hup++;
-	(void) signal(SIGHUP, SIG_IGN);
-	done_intr();
+	(void)signal(SIGHUP, SIG_IGN);
+	(void)done_intr();
+	return 0;
 }
 #endif
 
+void
 done_in_by(mtmp)
 register struct monst *mtmp;
 {
-	static char buf[BUFSZ];
-	extern char *eos(), *shkname();
+	char buf[BUFSZ];
 
-	pline("You die ...");
-	Sprintf(buf, "");
+	You("die...");
+	buf[0] = '\0';
 	if (mtmp->minvis)
 		Sprintf(eos(buf), "invisible ");
 	if (Hallucination)
 		Sprintf(eos(buf), "hallucinogen-distorted ");
 
-	if(mtmp->data->mlet == ' ') {
+	if(mtmp->data->mlet == S_GHOST) {
 		register char *gn = (char *) mtmp->mextra;
 		if (!Hallucination && !mtmp->minvis && *gn)
 			Sprintf(eos(buf), "the ");
 		Sprintf(eos(buf), (*gn ? "ghost of %s" : "ghost%s"), gn);
 	} else if(mtmp->isshk) {
-		Sprintf(eos(buf), "%s %s, the shopkeeper)",
-			(rn2(2) ? "Mr." : "Ms."), shkname(mtmp));
-	} else Sprintf(eos(buf), "%s", mtmp->data->mname);
+		Sprintf(eos(buf), "%s %s, the shopkeeper",
+			(ESHK(mtmp)->ismale ? "Mr." : "Ms."), shkname(mtmp));
+	} else if (mtmp->iswiz)
+		Sprintf(eos(buf), "the %s", mons[PM_WIZARD_OF_YENDOR].mname);
+	else Sprintf(eos(buf), "%s", mtmp->data->mname);
 	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
-	done("died");
+	if (mtmp->data->mlet == S_WRAITH)
+		u.ugrave_arise = PM_WRAITH;
+	else if (mtmp->data->mlet == S_MUMMY)
+		u.ugrave_arise = (pl_character[0]=='E') ?
+						PM_ELF_MUMMY : PM_HUMAN_MUMMY;
+	else if (mtmp->data->mlet == S_VAMPIRE)
+		u.ugrave_arise = PM_VAMPIRE;
+	if (u.ugrave_arise > -1 && (mons[u.ugrave_arise].geno & G_GENOD))
+		u.ugrave_arise = -1;
+	if (mtmp->data->mlet == S_COCKATRICE)
+		done("stoned");
+	else
+		done("died");
+	return;
 }
 
 /*VARARGS1*/
 boolean panicking;
+extern boolean hu;	/* from save.c */
 
+void
 panic(str,a1,a2,a3,a4,a5,a6)
 char *str;
 {
-	if(panicking++) abort();    /* avoid loops - this should never happen*/
+	if(panicking++)
+#ifdef SYSV
+	    (void)
+#endif
+		abort();    /* avoid loops - this should never happen*/
 				    /* was exit(1) */
 	home(); cls();
-	puts(" Suddenly, the dungeon collapses.");
+	(void) puts(" Suddenly, the dungeon collapses.");
 #ifdef WIZARD
-	pline("Report error to %s and it may be possible to rebuild.",WIZARD);
-	more();
-	(void) sprintf (SAVEF, "%s.e", SAVEF);
-	dosave0(0);
-#endif	
-	fputs(" ERROR:  ", stdout);
-	printf(str,a1,a2,a3,a4,a5,a6);
+# ifndef MSDOS
+	if(!wizard) {
+	    pline("Report error to %s and it may be possible to rebuild.",WIZARD);
+	    more();
+	}
+	Sprintf (SAVEF, "%s.e", SAVEF);
+	hu = FALSE;
+	(void) dosave0();
+# endif
+#endif
+	(void) fputs(" ERROR:  ", stdout);
+	Printf(str,a1,a2,a3,a4,a5,a6);
 	more();				/* contains a fflush() */
 #ifdef WIZARD
 # ifdef UNIX
-	if (wizard)	abort();	/* generate core dump */
+	if (wizard)	
+#  ifdef SYSV
+		(void)
+#  endif
+		    abort();	/* generate core dump */
 # endif
 #endif
 	done("panicked");
 }
 
 /* called with arg "died", "drowned", "escaped", "quit", "choked", "panicked",
-   "burned", "starved" or "tricked" */
+   "burned", "starved", "stoned", or "tricked" */
 /* Be careful not to call panic from here! */
+void
 done(st1)
 register char *st1;
 {
-#ifdef DIAGS
+	struct permonst *upmon;
+	char buf[BUFSZ], buf1[BUFSZ], buf2[BUFSZ];
 	char	c;
-#endif
+	boolean taken;
 #ifdef WIZARD
-	extern char	*nomovemsg;
-
-	if(wizard && index("bcds", *st1)){
-		char buf[BUFSZ];
-		pline("Die? ");
-		getlin(buf);
-		if(index("yY",buf[0])) goto die;
+	if (wizard && *st1=='t') {
+		You("are a very tricky wizard, it seems.");
+		return;
+	}
+#endif
+	if(Lifesaved && index("bcds", *st1)){
 		u.uswldtim = 0;
-		if(u.uhpmax < 0) u.uhpmax = 100;	/* arbitrary */
+		if(u.uhpmax < 0) u.uhpmax = 10;	/* arbitrary */
 		u.uhp = u.uhpmax;
-		pline("Ok, so you don't die.");
+		adjattrib(A_CON, -1, TRUE);
+		pline("But wait...");
+		makeknown(AMULET_OF_LIFE_SAVING);
+		Your("medallion %s!",
+		      !Blind ? "begins to glow" : "feels warm");
+		You("feel much better!");
+		pline("The medallion crumbles to dust!");
+		useup(uamul);
+		Lifesaved = 0;
+		if (u.uhunger < 500) u.uhunger = 500;
 		nomovemsg = "You survived that attempt on your life.";
+		curs_on_u();
 		flags.move = 0;
 		if(multi > 0) multi = 0; else multi = -1;
 		flags.botl = 1;
+		u.ugrave_arise = -1;
+		if (!strncmp(killer, "genocide", 8)) {
+			pline("Unfortunately you are still genocided...");
+			done("died");
+		}
 		return;
 	}
-#endif /* WIZARD /**/
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+	if((wizard || discover) && index("bcds", *st1)){
+		pline("Die? ");
+		if(yn() == 'y') goto die;
+		u.uswldtim = 0;
+		if(u.uhpmax < 0) u.uhpmax = 100;	/* arbitrary */
+		u.uhp = u.uhpmax;
+		if (u.uhunger < 500) u.uhunger = 500;
+		pline("Ok, so you don't die.");
+		nomovemsg = "You survived that attempt on your life.";
+		curs_on_u();
+		flags.move = 0;
+		if(multi > 0) multi = 0; else multi = -1;
+		flags.botl = 1;
+		u.ugrave_arise = -1;
+		return;
+	}
+#endif /* WIZARD || EXPLORE_MODE */
 die:
-	(void) signal(SIGINT, done_intr);
+#ifndef TOS
+	(void) signal(SIGINT, (SIG_RET_TYPE) done_intr);
 #ifdef UNIX
-	(void) signal(SIGQUIT, done_intr);
-	(void) signal(SIGHUP, done_hangup);
+	(void) signal(SIGQUIT, (SIG_RET_TYPE) done_intr);
+	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
 #endif
+#endif /* TOS /* */
+	upmon = player_mon();
+	if(u.ugrave_arise > -1) /* create no corpse */ ;
+	else if(*st1 == 's' && st1[2] == 'o') 
+		(mk_named_object(STATUE, upmon, u.ux, u.uy, plname,
+					strlen(plname)))->spe = 0;
+	else
+		(void) mk_named_object(CORPSE, upmon, u.ux, u.uy, plname,
+							strlen(plname));
 	if(*st1 == 'q' && u.uhp < 1){
 		st1 = "died";
 		killer = "quit while already on Charon's boat";
 	}
-	if(*st1 == 's') killer = "starvation"; else
+	if(*st1 == 's' && st1[2] == 'a') killer = "starvation"; else
 	if(*st1 == 'd' && st1[1] == 'r') killer = "drowning"; else
 	if(*st1 == 'p') killer = "panic"; else
 	if(*st1 == 't') killer = "trickery"; else
-	if(!index("bcd", *st1)) killer = st1;
-	paybill();
+	if(!index("bcds", *st1)) killer = st1;
+	taken = paybill();
+	paygd();
 	clearlocks();
 	if(flags.toplin == 1) more();
-#ifdef DIAGS
-	pline("Do you want to have your possessions identified? [Yynq] ");
-	/* New dump format by maartenj@cs.vu.nl */
-	if ((c = readchar()) == 'y' || c == 'Y') {
-	    struct obj *obj;
 
-	    for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
-		objects[obj->otyp].oc_name_known = 1;
-# ifdef KAA
-		obj->known = 1;
-		if (obj->olet != WEAPON_SYM) obj->dknown = 1;
-# else
-		obj->known = obj->dknown = 1;
-# endif /* KAA */
+	if(invent) {
+	    if(taken)
+		pline("Do you want to see what you had when you %s? ",
+			(*st1=='q') ? "quit" : "died");
+	    else
+		pline("Do you want your possessions identified? ");
+	    /* New dump format by maartenj@cs.vu.nl */
+	    if ((c = yn_function(ynqchars,'y')) == 'y') {
+		struct obj *obj;
+
+		for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
+		    makeknown(obj->otyp);
+		    obj->known = obj->bknown = obj->dknown = 1;
+		}
+		doinv(NULL);
+		end_box_display();
 	    }
-	    doinv((char *) 0);
+	    if (c == 'q')  done_stopprint++;
+	    if (taken) {
+		/* paybill has already given the inventory locations in the shop
+		 * and put it on the main object list
+		 */
+		struct obj *obj;
+
+		for(obj = invent; obj; obj = obj->nobj) {
+		    obj->owornmask = 0;
+		    if(rn2(5)) curse(obj);
+		}
+	        invent = (struct obj *) 0;
+	    }
 	}
-	if (c == 'q' || c == 'Y')  done_stopprint++;
-#endif
+
 	if(index("bcds", *st1)){
 #ifdef WIZARD
 	    if(wizard) {
-		char buf[BUFSZ];
 		pline("Save bones? ");
-		getlin(buf);
-		if(buf[0] == 'y') savebones();
+		if(yn() == 'y') savebones();
 	    }  else
 #endif
 		savebones();
-		if(!flags.notombstone) outrip();
+	    if(!flags.notombstone) outrip();
 	}
 	if(*st1 == 'c') killer = st1;		/* after outrip() */
-#ifdef KJSMODS
-	if(with_amulet()) (void) strcat(killer," (with amulet)");
-#endif 
-	settty((char *) 0);	/* does a clear_screen() */
+	if(*st1 == 's' && st1[2] == 'o') {
+		Sprintf(buf, "turned to stone by %s",killer);
+		/* No a or an; topten.c will do that. */
+		killer = buf;
+		st1 = "turned to stone";
+	}
+	Strcpy(buf1, st1);
+	if(u.uhave_amulet) Strcat(killer," (with the Amulet)");
+	settty(NULL);	/* does a clear_screen() */
+	Strcpy(buf2, plname);
+	if('a' <= buf2[0] && buf2[0] <= 'z') buf2[0] += 'A'-'a';
 	if(!done_stopprint)
-	    printf("Goodbye %s %s...\n\n", (Badged) ? "Officer" : pl_character, plname);
+	    Printf("Goodbye %s the %s...\n\n", buf2,
+#ifdef ENDGAME
+		   *st1 != 'a' ? pl_character : "Demigod");
+#else
+		   pl_character);
+#endif
 	{ long int tmp;
 	  tmp = u.ugold - u.ugold0;
 	  if(tmp < 0)
@@ -200,130 +336,125 @@ die:
 	  u.urexp += 50 * maxdlevel;
 	  if(maxdlevel > 20)
 		u.urexp += 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20);
+#ifdef ENDGAME
+	  if(*st1 == 'a') u.urexp *= 2;
+#endif
 	}
 	if(*st1 == 'e') {
-		extern struct monst *mydogs;
 		register struct monst *mtmp;
 		register struct obj *otmp;
-#ifdef DGKMOD
 		long i;
-#else
-		register int i;
-#endif
-		register unsigned worthlessct = 0;
-		boolean has_amulet = FALSE;
+		register unsigned int worthlessct = 0;
 
 		killer = st1;
 		keepdogs();
 		mtmp = mydogs;
 		if(mtmp) {
-			if(!done_stopprint) printf("You");
+			if(!done_stopprint) Printf("You");
 			while(mtmp) {
 				if(!done_stopprint)
-					printf(" and %s", monnam(mtmp));
+					Printf(" and %s", mon_nam(mtmp));
 				if(mtmp->mtame)
 					u.urexp += mtmp->mhp;
 				mtmp = mtmp->nmon;
 			}
 			if(!done_stopprint)
-		    printf("\nescaped from the dungeon with %ld points,\n",
+		    Printf("\nescaped from the dungeon with %ld points,\n",
 			u.urexp);
 		} else
 		if(!done_stopprint)
-		  printf("You escaped from the dungeon with %ld points,\n",
+		  Printf("You escaped from the dungeon with %ld points,\n",
 		    u.urexp);
+		get_all_from_box(); /* don't forget things in boxes and bags */
 		for(otmp = invent; otmp; otmp = otmp->nobj) {
-			if(otmp->olet == GEM_SYM){
-				objects[otmp->otyp].oc_name_known = 1;
-#ifdef DGKMOD
+			if(otmp->olet == GEM_SYM && otmp->otyp < LUCKSTONE) {
+				makeknown(otmp->otyp);
 				i = (long) otmp->quan *
 					objects[otmp->otyp].g_val;
-#else
-				i = otmp->quan*objects[otmp->otyp].g_val;
-#endif
 				if(i == 0) {
 					worthlessct += otmp->quan;
 					continue;
 				}
 				u.urexp += i;
-#ifndef DGKMOD
-				if(!done_stopprint)
-				  printf("\t%s (worth %d Zorkmids),\n",
-#else
-				printf("        %s (worth %ld Zorkmids),\n",
-#endif
+				Printf("        %s (worth %ld Zorkmids),\n",
 				    doname(otmp), i);
 			} else if(otmp->olet == AMULET_SYM) {
 				otmp->known = 1;
-				i = (otmp->spe < 0) ? 2 : 5000;
+				i = (otmp->spe < 0) ? 2 : 
+					otmp->otyp == AMULET_OF_YENDOR ?
+							5000 : 500;
 				u.urexp += i;
-#ifndef DGKMOD
-				if(!done_stopprint)
-				  printf("\t%s (worth %d Zorkmids),\n",
-#else
-				printf("        %s (worth %d Zorkmids),\n",
-#endif
+				Printf("        %s (worth %ld Zorkmids),\n",
 				    doname(otmp), i);
-				if(otmp->spe >= 0) {
-					has_amulet = TRUE;
-					killer = "escaped (with amulet)";
-				}
 			}
 		}
 		if(worthlessct)
-#ifndef DGKMOD
-		  if(!done_stopprint)
-		    printf("\t%u worthless piece%s of colored glass,\n",
-#else
-		  printf("        %u worthless piece%s of colored glass,\n",
-#endif
-			worthlessct, plur(worthlessct));
-		if(has_amulet) u.urexp *= 2;
+		  Printf("        %u worthless piece%s of colored glass,\n",
+			worthlessct, plur((long)worthlessct));
+		if(u.uhave_amulet) killer = "escaped (with Amulet)";
+		else killer = "escaped";
 	} else
-		if(!done_stopprint)
-		  printf("You %s on dungeon level %d with %ld points,\n",
-		    st1, dlevel, u.urexp);
+		if(!done_stopprint) {
+		    Printf("You %s ", 
+			!strcmp(st1, "tricked") ? "were tricked" : st1);
+#ifdef ENDGAME
+		    if (*st1 != 'a') {
+			if(dlevel == ENDLEVEL)
+			     Printf("in the endgame ");
+		    	else Printf("on dungeon level %d ", dlevel);
+		    }
+#else
+		    Printf("on dungeon level %d ", dlevel);
+#endif
+		    Printf("with %ld points,\n", u.urexp);
+		}
 	if(!done_stopprint)
-	  printf("and %ld piece%s of gold, after %ld move%s.\n",
+	  Printf("and %ld piece%s of gold, after %ld move%s.\n",
 	    u.ugold, plur(u.ugold), moves, plur(moves));
 	if(!done_stopprint)
-  printf("You were level %u with a maximum of %d hit points when you %s.\n",
-	    u.ulevel, u.uhpmax, st1);
+  Printf("You were level %u with a maximum of %d hit points when you %s.\n",
+	    u.ulevel, u.uhpmax, buf1);
 	if(*st1 == 'e' && !done_stopprint){
 		getret();	/* all those pieces of coloured glass ... */
 		cls();
 	}
-#ifdef MSDOSCOLOR
-	end_screen();
-#endif
-#ifdef WIZARD
-	if(!wizard)
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+	if(wizard || discover)
+		Printf("\nSince you were in %s mode, the score list \
+will not be checked.\n", wizard ? "wizard" : "discover");
+	else
 #endif
 		topten();
-	if(done_stopprint) printf("\n\n");
+/* "So when I die, the first thing I will see in Heaven is a score list?" */
+	if(done_stopprint) Printf("\n\n");
 #ifdef APOLLO
 	getret();
 #endif
 	exit(0);
 }
+
+void
 clearlocks(){
-#ifdef DGK
+#if defined(DGK) && !defined(TOS)
 	eraseall(levels, alllevels);
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-# ifdef UNIX
-register x;
+#if defined(UNIX) || (defined(MSDOS) && !defined(TOS))
+	register int x;
+#ifdef UNIX
 	(void) signal(SIGHUP,SIG_IGN);
+#endif
 	for(x = maxdlevel; x >= 0; x--) {
 		glo(x);
 		(void) unlink(lock);	/* not all levels need be present */
 	}
-# endif
+#endif
 #endif
 }
 
 #ifdef NOSAVEONHANGUP
+int
 hangup()
 {
 	(void) signal(SIGINT, SIG_IGN);
@@ -332,22 +463,30 @@ hangup()
 }
 #endif
 
-/* it is the callers responsibility to check that there is room for c */
-charcat(s,c) register char *s, c; {
-	while(*s) s++;
-	*s++ = c;
-	*s = 0;
-}
-
-#ifdef KJSMODS
-with_amulet()
+void
+end_box_display()
 {
-	register struct obj *otmp;
-	for(otmp = invent; otmp; otmp = otmp->nobj) {
-		if(otmp->olet == AMULET_SYM) { 
-			if(otmp->spe >= 0) return(1);
+	register struct obj *box, *obj;
+	char buf[BUFSZ];
+
+	for(box=invent; box; box=box->nobj) {
+	    if (Is_container(box) && box->otyp != BAG_OF_TRICKS) {
+		int cnt=0;
+
+		for(obj=fcobj; obj; obj=obj->nobj) {
+		    if (obj->cobj == box) {
+			if (!cnt) {
+			    Sprintf(buf, "Contents of the %s:",xname(box));
+			    cornline(0, buf);
+			}
+			makeknown(obj->otyp);
+			obj->known = obj->bknown = obj->dknown = 1;
+			cornline(1,doname(obj));
+			cnt++;
+		    }
 		}
+		if (!cnt) pline("The %s is empty.", xname(box));
+		else cornline(2,"");
+	    }
 	}
-	return(0);
 }
-#endif 

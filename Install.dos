@@ -1,0 +1,131 @@
+Instructions for installing NetHack 3.0 on an MS-DOS system
+===========================================================
+
+1.  Make sure all the NetHack files are in the appropriate directory structure.
+    You should have a main directory with subdirectories src, include, auxil,
+    amiga, and others.  If you do not follow this structure, the Makefile
+    will not function properly.  All the UNIX .c files and the source Makefile
+    belong in src; all the PC .c files and Makefiles belong in others; all the
+    .h files belong in include; other assorted files belong in auxil.  The
+    PC version does not use any files from the amiga directory.
+
+    If you downloaded or ftp'd the sources from a UNIX system, the lines will
+    probably end in UNIX-style newlines, instead of DOS-style carriage return
+    and line feed pairs.  Turbo C in particular does not like these; you will
+    have to run a program such as Rahul Dhesi's 'flip' to convert them.
+
+2.  Move everything from the others directory to your src directory; you'll
+    be needing it, especially pc*.c.  PC NetHack needs msdos.c, ST NetHack
+    needs tos.c.
+
+3.  You should have several Makefiles in your src directory now.  If you are
+    using Microsoft C, rename Makefile.pc to Makefile; if Turbo C, rename
+    Makefile.tcc to Makefile, and also rename Maketcc.ini to Make.ini.
+    NDMake can find Make.ini anywhere on your PATH, so you may relocate it
+    if you wish.  If you are using another compiler, you will have to adapt
+    one of the Makefiles and the Make.ini file to your needs.  Good luck.
+
+    As for the other Makefiles, I would delete them to make space, but you may
+    want to keep them around for comparison in case something goes wrong.  Two
+    other Makefiles we will not be using, Makefile.top and Makefile.auxil,
+    reside in the top and auxil directories.  We won't need those either.
+
+4.  Go to the include subdirectory and edit config.h according to the comments
+    to match your system and desired set of features.  Similarly edit
+    pcconf.h.
+
+    The base size of the executable, with no extra features, will be around
+    520K in size.  Anything over 540K is likely not to work.  With MicroSoft
+    C, here is an incomplete list of the costs of various additional features
+    in terms of executable size:
+
+    ALTARS		 4K
+    ARMY		 1K
+    COM_COMPL		 1K
+    COMPRESS		 2K
+    DGK			 7K
+    ENDGAME		 2K
+    EXPLORE_MODE	 1K
+    FOUNTAINS		 2K
+    GOLEMS		 2K
+    HARD - SEDUCE	 5K
+    MSDOSCOLOR		 1K
+    MUSIC		 6K
+    POLYSELF		31K
+    PROBING		 0K
+    REDO		 1K
+    REINCARNATION	 7K
+    SINKS		 5K
+    SOUNDS		 6K
+    SPELLS		10K
+    STRONGHOLD		13K
+    THEOLOGY		11K
+    THRONES		 3K
+    WALKIES		 4K
+    WALLIFIED_MAZE	 0K
+    WIZARD		 3K
+
+    I eked by with just DGK, MSDOSCOLOR, REDO, HARD, MEDUSA, EXPLORE_MODE,
+    and WIZARD, to give you an idea of just how little leeway you have for all
+    these nifty features.  Maybe those of you with overlay linkers can get by
+    with more.
+
+5.  If you want to, look through system.h.  This file attempts to match the
+    types for system calls and library routines with various flavors of
+    operating systems.  Leaving this file alone is unlikely to cause problems,
+    but if you're using a different compiler and get compile errors with
+    any functions in the standard library, it's worth checking the
+    declarations there.
+
+6.  If you want to change the high score list behavior, go to the src
+    subdirectory and look at the top of topten.c.  You may want to change the
+    definitions of PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN of
+    51 and ENTRYMAX of 50 to keep the size of the score list down.
+
+7.  Edit the top section of the Makefile.  (If you are doing a full
+    recompile, or if you got your files from someplace besides the official
+    distribution, type 'touch makedefs.c' to make sure certain files (onames.h,
+    pm.h) get remade instead of relying on the potentially troublesome
+    timestamps.)  Be sure the directory you want the game installed in
+    actually exists.  If you elected to use the high-quality BSD random
+    routines by defining RANDOM in pcconf.h, you will have to add random.c
+    to the dependency and link macros.  If you elected to use Fred Fish's
+    termcap library (bundled in as termcap.arc), you will have to generate
+    termcap.lib from those sources (follow the comments therein, if you can).
+
+    Now, type 'make all', and take a long siesta; your computer will be
+    occupied for a long time.  If all goes well, you will get an executable.
+    If you tried to compile in too many features, you probably will not get
+    a working one, and have to start over.
+
+8.  Edit NetHack.cnf to reflect your particular setup, following the comments.
+    Then move the file to your game directory, along with the termcap file.
+
+    If your game directory is not on your PATH, you will want to 'set HACKDIR
+    =\games\nethack' (or whatever directory you want to use) now, and add it
+    to your autoexec.bat if you'll be playing often.
+
+    Make sure the support files data, rumors, cmdhelp, opthelp, help, hh,
+    history, and license (and oracles, if you compiled in that feature) got
+    copied to the game directory.  If not, move them there from the auxil
+    directory yourself.  rumors can be created manually by typing 'makedefs
+    -r'; data by typing 'makedefs -d'.
+
+    If you compiled in the special levels, make sure castle, tower?, and
+    perhaps endgame are there, too.  lev_comp file.des will create these.
+
+Notes:
+
+1.  No, your old save files and bones files will not work with NetHack 3.0.
+    Don't bother trying to keep them.  The old score list will work fine,
+    but I recommend you delete it and create a new, empty one ('type record
+    >record' will do this nicely).  It is a good deal harder to achieve the
+    same scores in this version.
+
+2.  To install an update of this version of NetHack after changing something,
+    type 'make' from the src directory.  If you created the new version
+    yourself, it should be safe to use 'make update' as long as you did not
+    add, delete, or reorder monsters or objects and you did not change 
+    the format of saved level files.  If you did any of these things, you
+    should also delete any saved games and bones levels.  (Trying to use such
+    files often produces amusing but useless confusions on the game's part.)

@@ -1,60 +1,75 @@
-y k u	Move commands:
- \|/		hykulnjb: single move in specified direction
-h-+-l		HYKULNJB: repeated move in specified direction
- /|\			  (until stopped by e.g. a wall)
-b j n		g<dir>:   fast movement in direction <dir>
-			  (until something interesting is seen)
-		m<dir>:   move without picking up objects
+y k u	7 8 9	Move commands:
+ \|/	 \|/		yuhjklbn: go one step in specified direction
+h-.-l	4-.-6		YUHJKLBN: go in specified direction until you
+ /|\	 /|\			    hit a wall or run into something
+b j n	1 2 3		g<dir>:   run in direction <dir> until something
+      numberpad 		    interesting is seen
+			G<dir>,   same, except a branching corridor isn't
+			^<dir>:     considered interesting
+			m<dir>:   move without picking up objects
+		If the numberpad option is set, the number keys move instead.
 
 Meta commands:
-Q	quit	leave the game
+?	help	print one of several informative texts
+Q	quit	end the game
 S	save	save the game (to be continued later)
-!	sh	escape to some SHELL
+!	sh	escape to some SHELL (if allowed)
 ^Z	suspend suspend the game (independent of your current suspend char)
-O	set	set options
-?	help	print information
+O	options set options
 /	whatis	give name (and sometimes more info) of specified monster
 \	known	print list of what's been discovered
 v	version	print version number
-V	history	print game history.
+V	history	print game history
+^A	again	redo the previous command
 ^R	redraw	redraw the screen (^R denotes the symbol CTRL/R)
 ^P	print	repeat last message  (subsequent ^P's repeat earlier messages)
 #		introduces a long command (# ? for list of long commands)
 
 Game commands:
-^T	teleport teleport
-a	apply, use  use something (a key, camera, etc.)
-c	call	give a name to a class of objects
-d	drop	drop an object. d7a: drop seven items of object a.
+^T	'port	teleport (if you can)
+^D	kick	kick a door
+a	apply	apply or use a tool (pick-axe, key, camera, etc.)
+A	remove	take off all armor
+c	close	close a door
+C	name	name an individual monster (e.g., baptize your dog)
+d	drop	drop an object.  d7a:  drop seven items of object 'a'
+D	drop	drop several things
 e	eat	eat something
+E	engrave write a message in the dust on the floor  (E-  use fingers)
 i	invent	list the inventory (all objects you are carrying)
 I	invent	list selected parts of the inventory
-		IU: list unpaid objects
-		IX: list unpaid but used up items
+		Iu: list unpaid objects
+		Ix: list unpaid but used up items
 		I$: count your money
+o	open	open a door
 p	pay	pay your bill
-q	drink	quaff a potion
-r	read	read a scroll
+P	wear	put on a ring
+q	quaff	drink a potion
+r	read	read a scroll or spell book
+R	remove	remove a ring
 s	search	search for secret doors, hidden traps and monsters
 t	throw	throw or shoot a weapon
+T	remove	take off some armor
 w	wield	wield a weapon	(w-  wield nothing)
-x	spells	print a list of know spells
-X	Xcribe	transcribe (learn) a spell
+W	wear	put on some armor
 z	zap	zap a wand
 Z	cast	cast a spell
-C	name	name an individual monster (e.g., baptize your dog)
-D	Drop	drop several things
-E	Engrave write a message in the dust on the floor  (E-  use fingers)
-P	wear	put on a ring
-R	remove	remove a ring
-W	wear	put on some armor
-T	remove	take off some armor
-A	remove	take off some or all armor
 <	up	go up the stairs
 >	down	go down the stairs
 ^	trap_id identify a previously found trap
-),[,=		ask for current weapon, armor, rings, respectively
+),[,=,",(		ask for current items of specified symbol in use
 $	gold	count your gold
++	spells	list the spells you know
 .	rest	wait a moment
 ,	pickup	pick up all you can carry
+@		turn "autopickup" on and off
 :	look	look at what is here
+
+And if the "number_pad" option is on, these additional commands:
+
+n		followed by number of times to repeat the next command
+j	jump	jump to a location
+k	kick	kick a door
+l	loot	loot a box on the floor
+N	name	name an object or type of object
+u	untrap	untrap a trapped object

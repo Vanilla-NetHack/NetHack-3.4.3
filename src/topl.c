@@ -1,14 +1,8 @@
-/*	SCCS Id: @(#)topl.c	2.0	87/09/15
+/*	SCCS Id: @(#)topl.c	3.0	89/01/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
 #include "hack.h"
-#ifdef GENIX
-#define	void	int	/* jhn - mod to prevent compiler from bombing */
-#endif
-
-extern char *eos();
-extern int CO;
 
 char toplines[BUFSIZ];
 xchar tlx, tly;			/* set by pline; used by addtopl */
@@ -19,22 +13,18 @@ struct topl {
 } *old_toplines, *last_redone_topl;
 #define	OTLMAX	20		/* max nr of old toplines remembered */
 
-doredotopl(){
-	if(last_redone_topl)
-		last_redone_topl = last_redone_topl->next_topl;
-	if(!last_redone_topl)
-		last_redone_topl = old_toplines;
-	if(last_redone_topl){
-		(void) strcpy(toplines, last_redone_topl->topl_text);
-	}
-	redotoplin();
-	return(0);
-}
-
+static void
 redotoplin() {
 	home();
 	if(index(toplines, '\n')) cl_end();
-	putstr(toplines);
+	if((*toplines & 0x80) && AS) {
+		/* kludge for the / command, the only time we ever want a */
+		/* graphics character on the top line */
+		putstr(AS);
+		xputc(*toplines);
+		putstr(AE);
+		putstr(toplines+1);
+	} else putstr(toplines);
 	cl_end();
 	tlx = curx;
 	tly = cury;
@@ -43,9 +33,23 @@ redotoplin() {
 		more();
 }
 
+int
+doredotopl(){
+	if(last_redone_topl)
+		last_redone_topl = last_redone_topl->next_topl;
+	if(!last_redone_topl)
+		last_redone_topl = old_toplines;
+	if(last_redone_topl){
+		Strcpy(toplines, last_redone_topl->topl_text);
+	}
+	redotoplin();
+	return 0;
+}
+
+void
 remember_topl() {
-register struct topl *tl;
-register int cnt = OTLMAX;
+	register struct topl *tl;
+	register int cnt = OTLMAX;
 	if(last_redone_topl &&
 	   !strcmp(toplines, last_redone_topl->topl_text)) return;
 	if(old_toplines &&
@@ -55,18 +59,19 @@ register int cnt = OTLMAX;
 		alloc((unsigned)(strlen(toplines) + sizeof(struct topl) + 1));
 	tl->next_topl = old_toplines;
 	tl->topl_text = (char *)(tl + 1);
-	(void) strcpy(tl->topl_text, toplines);
+	Strcpy(tl->topl_text, toplines);
 	old_toplines = tl;
 	while(cnt && tl){
 		cnt--;
 		tl = tl->next_topl;
 	}
 	if(tl && tl->next_topl){
-		free((char *) tl->next_topl);
+		free((genericptr_t) tl->next_topl);
 		tl->next_topl = 0;
 	}
 }
 
+void
 addtopl(s) char *s; {
 	curs(tlx,tly);
 	if(tlx + strlen(s) > CO) putsym('\n');
@@ -76,6 +81,7 @@ addtopl(s) char *s; {
 	flags.toplin = 1;
 }
 
+static void
 xmore(s)
 char *s;	/* allowed chars besides space/return */
 {
@@ -95,25 +101,32 @@ char *s;	/* allowed chars besides space/return */
 		home();
 		cl_end();
 		docorner(1, tly-1);
+		tlx = tly = 1;
 	}
 	flags.toplin = 0;
 }
 
+void
 more(){
 	xmore("");
 }
 
+void
 cmore(s)
 register char *s;
 {
 	xmore(s);
 }
 
+void
 clrlin(){
 	if(flags.toplin) {
 		home();
 		cl_end();
-		if(tly > 1) docorner(1, tly-1);
+		if(tly > 1) {
+			docorner(1, tly-1);
+			tlx = tly = 1;
+		}
 		remember_topl();
 	}
 	flags.toplin = 0;
@@ -121,17 +134,21 @@ clrlin(){
 
 /*VARARGS1*/
 /* Because the modified mstatusline has 9 arguments KAA */
+void
 pline(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
-register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
+#ifndef TOS
+register
+#endif
+const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
 {
 	char pbuf[BUFSZ];
 	register char *bp = pbuf, *tl;
 	register int n,n0;
 
 	if(!line || !*line) return;
-	if(!index(line, '%')) (void) strcpy(pbuf,line); else
-	(void) sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
-	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
+	if(!index(line, '%')) Strcpy(pbuf,line); else
+	Sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
+/*	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;*/
 	nscr();		/* %% */
 
 	/* If there is room on the line, print message on same line */
@@ -139,14 +156,27 @@ register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
 	n0 = strlen(bp);
 	if(flags.toplin == 1 && tly == 1 &&
 	    n0 + strlen(toplines) + 3 < CO-8 &&  /* leave room for --More-- */
-	    strncmp(bp, "You ", 4)) {
-		(void) strcat(toplines, "  ");
-		(void) strcat(toplines, bp);
+	    strncmp(bp, "You die", 7)) {
+		Strcat(toplines, "  ");
+		Strcat(toplines, bp);
 		tlx += 2;
 		addtopl(bp);
 		return;
 	}
+	if(flags.toplin == 1 && !strcmp(pbuf, toplines) &&
+	    (n0 + strlen(toplines) + 3 >= CO-8)) {
+		more();
+		home();
+		putstr("");
+		cl_end();
+		goto again;
+	}
 	if(flags.toplin == 1) more();
+	else if(tly > 1) {	/* for when flags.toplin == 2 && tly > 1 */
+		docorner(1, tly-1);	/* reset tly = 1 if redraw screen */
+		tlx = tly = 1;	/* from home--cls() and docorner(1,n) */
+	}
+again:
 	remember_topl();
 	toplines[0] = 0;
 	while(n0){
@@ -168,15 +198,55 @@ register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
 			tl[--n0] = 0;
 
 		n0 = strlen(bp);
-		if(n0 && tl[0]) (void) strcat(tl, "\n");
+		if(n0 && tl[0]) Strcat(tl, "\n");
 	}
 	redotoplin();
 }
 
-putsym(c) char c; {
+/*VARARGS1*/
+void
+You(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
+#ifndef TOS
+register
+#endif
+const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
+{
+	char *tmp;
+	tmp = (char *)alloc((unsigned int)(strlen(line) + 5));
+	Strcpy(tmp, "You ");
+	Strcat(tmp, line);
+	pline(tmp, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	free(tmp);
+	return;
+}
+
+/*VARARGS1*/
+void
+Your(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
+#ifndef TOS
+register
+#endif
+const char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
+{
+	char *tmp;
+	tmp = (char *)alloc((unsigned int)(strlen(line) + 6));
+	Strcpy(tmp, "Your ");
+	Strcat(tmp, line);
+	pline(tmp, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+	free(tmp);
+	return;
+}
+
+void
+putsym(c)
+char c;
+{
 	switch(c) {
 	case '\b':
 		backsp();
+		curx--;
+		if(curx == 1 && cury > 1)
+			curs(CO, cury-1);
 		return;
 	case '\n':
 		curx = 1;
@@ -186,12 +256,44 @@ putsym(c) char c; {
 	default:
 		if(curx == CO)
 			putsym('\n');	/* 1 <= curx <= CO; avoid CO */
-		else
-			curx++;
+		curx++;
 	}
 	(void) putchar(c);
 }
 
-putstr(s) register char *s; {
+void
+putstr(s)
+register char *s;
+{
 	while(*s) putsym(*s++);
+}
+
+char
+yn_function(resp, def)
+char *resp, def;
+/*
+ *   Generic yes/no function
+ */
+{
+	register char q;
+	char rtmp[8];
+
+	Sprintf(rtmp, "[%s] ", resp);
+	addtopl(rtmp);
+
+	do {
+		q = lowc(readchar());
+
+		if (index(quitchars, q)) q = def;
+		else if (!index(resp, q)) {
+			bell();
+			q = (char)0;
+		}
+	} while(!q);
+
+	Sprintf(rtmp, "%c", q);
+	addtopl(rtmp);
+	flags.toplin = 2;
+
+	return q;
 }

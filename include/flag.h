@@ -1,60 +1,66 @@
-/*	SCCS Id: @(#)flag.h	1.4	87/08/08
+/*	SCCS Id: @(#)flag.h	3.0	89/02/02
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* flag.h - version 1.0.3 */
+/* NetHack may be freely redistributed.  See license for details. */
+
+#ifndef FLAG_H
+#define FLAG_H
 
 struct flag {
 	unsigned ident;		/* social security number for each monster */
-	unsigned debug;		/* in debugging mode */
+	boolean  debug;		/* in debugging mode */
 #define	wizard	flags.debug
+	boolean  explore;	/* in exploration mode */
+#define	discover	flags.explore
 	unsigned toplin;	/* a top line (message) has been printed */
 				/* 0: top line empty; 2: no --More-- reqd. */
-	unsigned cbreak;	/* in cbreak mode, rogue format */
-	unsigned standout;	/* use standout for --More-- */
-	unsigned nonull;	/* avoid sending nulls to the terminal */
-	unsigned time;		/* display elapsed 'time' */
-	unsigned nonews;	/* suppress news printing */
-	unsigned notombstone;
+	boolean  cbreak;	/* in cbreak mode, rogue format */
+	boolean  standout;	/* use standout for --More-- */
+	boolean  nonull;	/* avoid sending nulls to the terminal */
+	boolean  ignintr;	/* ignore interrupts */
+	boolean  time;		/* display elapsed 'time' */
+	boolean  nonews;	/* suppress news printing */
+	boolean  notombstone;
 	unsigned end_top, end_around;	/* describe desired score list */
-	unsigned end_own;		/* idem (list all own scores) */
-	unsigned no_rest_on_space;	/* spaces are ignored */
-	unsigned beginner;
-	unsigned female;
-	unsigned invlet_constant;	/* let objects keep their
+	boolean  end_own;		/* idem (list all own scores) */
+	boolean  no_rest_on_space;	/* spaces are ignored */
+	boolean  beginner;
+	boolean  female;
+	boolean  invlet_constant;	/* let objects keep their
 					   inventory symbol */
-	unsigned move;
-	unsigned mv;
+	boolean  move;
+	boolean  mv;
 	unsigned run;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */
 				/* 3: FH, 4: ff+, 5: ff-, 6: FF+, 7: FF- */
-	unsigned nopick;	/* do not pickup objects */
-	unsigned echo;		/* 1 to echo characters */
-	unsigned botl;		/* partially redo status line */
-	unsigned botlx;		/* print an entirely new bottom line */
-	unsigned nscrinh;	/* inhibit nscr() in pline(); */
-	unsigned made_amulet;
+	boolean  nopick;	/* do not pickup objects (as when running) */
+	boolean  echo;		/* 1 to echo characters */
+	boolean  botl;		/* partially redo status line */
+	boolean  botlx;		/* print an entirely new bottom line */
+	boolean  nscrinh;	/* inhibit nscr() in pline(); */
+	boolean  made_amulet;
 	unsigned no_of_wizards;	/* 0, 1 or 2 (wizard and his shadow) */
 				/* reset from 2 to 1, but never to 0 */
 	unsigned moonphase;
 #define	NEW_MOON	0
 #define	FULL_MOON	4
 
-#ifdef SORTING
-	unsigned sortpack;	/* sorted inventory */
-#endif
-#ifdef SAFE_ATTACK
-	unsigned confirm;	/* confirm before hitting tame monsters */
-#endif
-#ifdef DGKMOD
-	unsigned silent;	/* whether the bell rings or not */
-	unsigned pickup;	/* whether you pickup or move and look */
-#endif
+	boolean  sortpack;	/* sorted inventory */
+	boolean  confirm;	/* confirm before hitting tame monsters */
+	boolean  safe_dog;	/* give complete protection to the dog */
+	boolean  soundok;	/* ok to tell about sounds heard */
+	boolean  verbose;	/* max battle info */
+	boolean  silent;	/* whether the bell rings or not */
+	boolean  pickup;	/* whether you pickup or move and look */
+	boolean  num_pad;	/* use numbers for movement commands */
 #ifdef DGK
-	unsigned IBMBIOS;	/* whether we can use a BIOS call for
+	boolean  IBMBIOS;	/* whether we can use a BIOS call for
 				 * redrawing the screen and character input */
-	unsigned DECRainbow;	/* Used for DEC Rainbow graphics. */
-	unsigned rawio;		/* Whether can use rawio (IOCTL call) */
-	unsigned extra1;
-	unsigned extra2;
+#ifdef DECRAINBOW
+	boolean  DECRainbow;	/* Used for DEC Rainbow graphics. */
+#endif
+	boolean  rawio;		/* Whether can use rawio (IOCTL call) */
 #endif
 };
 
 extern struct flag flags;
+
+#endif /* FLAG_H /**/

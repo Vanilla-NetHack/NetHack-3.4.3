@@ -1,57 +1,93 @@
-/*	SCCS Id: @(#)rnd.c	2.3	87/12/12
+/*	SCCS Id: @(#)rnd.c	3.0	87/07/06
  */
-#include	"config.h"
+/* NetHack may be freely redistributed.  See license for details. */
+
+#include	"hack.h"
+
+#if defined(LINT) && defined(UNIX)	/* rand() is long... */
+extern int rand();
+#define RND(x)	(rand() % x)
+#else /* LINT */
 /* rand() is either random() or lrand48() - see config.h. */
 #ifdef UNIX
-#define RND(x)	(rand() % (x))
+#define RND(x)	(int)(Rand() % (long)(x))
 #else
 /* Good luck: the bottom order bits are cyclic. */
-#define RND(x)	((rand()>>3) % (x))
+#define RND(x)	(int)((Rand()>>3) % (x))
 #endif
+#endif /* LINT */
 
-rn1(x,y)	/* y <= rn1(x,y) < (y+x) */ 
-register x,y;
+int
+rn1(x,y)	/* y <= rn1(x,y) < (y+x) */
+register int x, y;
 {
 	return(RND(x)+y);
 }
 
+int
 rn2(x)		/* 0 <= rn2(x) < x */
-register x;
+register int x;
 {
 	return(RND(x));
 }
 
+int
+rnl(x)		/* 0 <= rnl(x) < x; somtimes subtracting Luck */
+register x;	/* good luck approaches 0, bad luck approaches (x-1) */
+{
+	register int i = RND(x);
+
+	if (Luck && rn2(50 - Luck)) {
+	    i -= (x <= 15 && Luck >= -5 ? Luck/3 : Luck);
+	    if (i < 0) i = 0;
+	    else if (i >= x) i = x-1;
+	}
+
+	return i;
+}
+
+int
 rnd(x)		/* 1 <= rnd(x) <= x */
-register x;
+register int x;
 {
 	return(RND(x)+1);
 }
 
+int
 d(n,x)		/* n <= d(n,x) <= (n*x) */
-register n,x;
+register int n, x;
 {
-	register tmp = n;
+	register int tmp = n;
 
 	while(n--) tmp += RND(x);
 	return(tmp);
 }
 
-rne(x)          /* by stewr 870807 */
-register x;
+int
+rne(x)	  /* by stewr 870807 */
+register int x;
 {
-        register tmp = 1;
+	register int tmp = 1;
 	while(!rn2(x)) tmp++;
 	return(tmp);
 }
 
+#ifdef THEOLOGY
+int
 rnz(i)
 int i;
 {
+# ifdef LINT
+	int x = i;
+	int tmp = 1000;
+# else
 	register long x = i;
-        register long tmp = 1000;
+	register long tmp = 1000;
+# endif
 	tmp += rn2(1000);
 	tmp *= rne(4);
 	if (rn2(2)) { x *= tmp; x /= 1000; }
 	else { x *= 1000; x /= tmp; }
 	return((int)x);
 }
+#endif

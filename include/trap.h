@@ -1,6 +1,9 @@
-/*	SCCS Id: @(#)trap.h	1.4	87/08/08
+/*	SCCS Id: @(#)trap.h	3.0	88/06/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* trap.h - version 1.0.2 */
+/* NetHack may be freely redistributed.  See license for details. */
+
+#ifndef TRAP_H
+#define TRAP_H
 
 struct trap {
 	struct trap *ntrap;
@@ -8,23 +11,23 @@ struct trap {
 	Bitfield(ttyp,5);
 	Bitfield(tseen,1);
 	Bitfield(once,1);
+	unsigned pm;		/* monster type for (MONST | STATUE)_TRAP */
 };
 
 extern struct trap *ftrap;
-struct trap *t_at();
 #define newtrap()	(struct trap *) alloc(sizeof(struct trap))
 
 /* Standard Hack traps. */
 #define NO_TRAP         0
-#define BEAR_TRAP       1
-#define ARROW_TRAP      2
-#define DART_TRAP       3
-#define TRAPDOOR        4
-#define TELEP_TRAP      5
-#define PIT             6
-#define SLP_GAS_TRAP    7
-#define PIERC           8
-#define MIMIC           9
+#define MONST_TRAP      1
+#define STATUE_TRAP     2
+#define BEAR_TRAP       3
+#define ARROW_TRAP      4
+#define DART_TRAP       5
+#define TRAPDOOR        6
+#define TELEP_TRAP      7
+#define PIT             8
+#define SLP_GAS_TRAP    9
 
 /* Defines below this line are automatically added by makedefs (-t option) */
 /* if you add any additional code below the next line, it will disappear.  */
@@ -38,5 +41,8 @@ struct trap *t_at();
 #define	ANTI_MAGIC	15
 #define	RUST_TRAP	16
 #define	POLY_TRAP	17
+#define	LANDMINE	18
 
-#define	TRAPNUM	18
+#define	TRAPNUM	19
+
+#endif /* TRAP_H /**/

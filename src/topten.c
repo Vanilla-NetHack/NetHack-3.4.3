@@ -1,19 +1,16 @@
-/*	SCCS Id: @(#)topten.c	2.3	88/02/01
+/*	SCCS Id: @(#)topten.c	3.0	88/11/24
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
+/* block some unused #defines to avoid overloading some cpp's */
+#define MONATTK_H
 #include "hack.h"
-#ifdef GENIX
-#define	void	int	/* jhn - mod to prevent compiler from bombing */
-#endif
 
-#define	Sprintf	(void) sprintf
-extern char plname[], pl_character[];
-#ifndef MSC		/* set by the Microsoft "C" compiler */
-extern	char	*itoa();
-#endif
-extern	char	*ordin(), *eos();
-extern int done_hup, done_stopprint;
+#include <errno.h>      /* George Barbanis */
+
+static char *itoa P((int)), *ordin P((int));
+static void outheader();
+static int outentry P((int,struct toptenentry *,int));
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
 #define	NAMSZ	10
@@ -36,6 +33,7 @@ struct toptenentry {
 	char date[7];		/* yymmdd */
 } *tt_head;
 
+void
 topten(){
 	int uid = getuid();
 	int rank, rank0 = -1, rank1 = 0;
@@ -47,37 +45,41 @@ topten(){
 #endif
 	int sleepct = 300;
 	FILE *rfile;
-	register flg = 0;
-	extern char *getdate();
+	register int flg = 0;
 #ifdef LOGFILE
 	char *lgfile = LOGFILE;
 	FILE *lfile;
+#ifdef UNIX
 	char *loglock = "logfile_lock";
 	int sleeplgct = 30;
-#endif
+#endif /* UNIX */
+#endif /* LOGFILE */
 
-#ifndef DGK
-#define	HUP	if(!done_hup)
-#else
+#ifdef MSDOS
 #define HUP
+#else
+#define	HUP	if(!done_hup)
 #endif
 
 #ifdef UNIX
 	while(link(recfile, reclock) == -1) {
 		HUP perror(reclock);
 		if(!sleepct--) {
-			HUP puts("I give up. Sorry.");
-			HUP puts("Perhaps there is an old record_lock around?");
+			HUP (void) puts("I give up.  Sorry.");
+			HUP (void) puts("Perhaps there is an old record_lock around?");
 			return;
 		}
-		HUP printf("Waiting for access to record file. (%d)\n",
+		HUP Printf("Waiting for access to record file. (%d)\n",
 			sleepct);
 		HUP (void) fflush(stdout);
-		sleep(1);
+#if defined(SYSV) || defined(ULTRIX)
+		(void)
+#endif
+		    sleep(1);
 	}
 #endif
 	if(!(rfile = fopen(recfile,"r"))){
-		HUP puts("Cannot open record file!");
+		HUP (void) puts("Cannot open record file!");
 		goto unlock;
 	}
 	HUP (void) putchar('\n');
@@ -96,50 +98,74 @@ topten(){
 	(t0->name)[NAMSZ] = 0;
 	(void) strncpy(t0->death, killer, DTHSZ);
 	(t0->death)[DTHSZ] = 0;
-	(void) strcpy(t0->date, getdate());
+	Strcpy(t0->date, getdate());
 
 	/* assure minimum number of points */
-	if(t0->points < POINTSMIN)
-		t0->points = 0;
+	if(t0->points < POINTSMIN) t0->points = 0;
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
+#ifdef UNIX
 	while(link(lgfile, loglock) == -1) {
+		extern int errno;
+
+		if (errno == ENOENT) /* If no such file, do not keep log */
+			goto lgend;  /* George Barbanis */
 		HUP perror(loglock);
 		if(!sleeplgct--) {
-			HUP puts("I give up. Sorry.");
-			HUP puts("Perhaps there is an old logfile_lock around?");
+			HUP (void) puts("I give up.  Sorry.");
+			HUP (void) puts("Perhaps there is an old logfile_lock around?");
 			goto lgend;
 		}
-		HUP printf("Waiting for access to log file. (%d)\n",
+		HUP Printf("Waiting for access to log file. (%d)\n",
  			sleeplgct);
 		HUP (void) fflush(stdout);
-		sleep(1);
+#if defined(SYSV) || defined(ULTRIX)
+		(void)
+#endif
+		    sleep(1);
 	}
+#endif /* UNIX */
 	if(!(lfile = fopen(lgfile,"a"))){
-		HUP puts("Cannot open log file!");
+		HUP (void) puts("Cannot open log file!");
 		goto lgend;
 	}
-	fprintf(lfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
+	(void) fprintf(lfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
 	    t0->date, t0->uid,
 	    t0->level, t0->maxlvl,
 	    t0->hp, t0->maxhp, t0->points,
 	    t0->plchar, t0->sex, t0->name, t0->death);
-	fclose(lfile);
+	(void) fclose(lfile);
+#ifdef UNIX
 	(void) unlink(loglock);
-      lgend:;	
-#endif
+#endif /* UNIX */
+      lgend:;
+#endif /* LOGFILE */
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for(rank = 1; ; ) {
-	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
+#ifdef TOS
+	    char k1[2],k2[2];
+	    if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
+#else
+	    if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
+#endif
 		t1->date, &t1->uid,
 		&t1->level, &t1->maxlvl,
 		&t1->hp, &t1->maxhp, &t1->points,
-		&t1->plchar, &t1->sex, t1->name, t1->death) != 11
-	  || t1->points < POINTSMIN)
+#ifdef TOS
+		k1, k2,
+#else
+		&t1->plchar, &t1->sex,
+#endif
+		t1->name, t1->death) != 11 || t1->points < POINTSMIN)
 			t1->points = 0;
-	  if(rank0 < 0 && t1->points < t0->points) {
+
+#ifdef TOS
+	    t1->plchar=k1[0];
+	    t1->sex=k2[0];
+#endif
+	    if(rank0 < 0 && t1->points < t0->points) {
 		rank0 = rank++;
 		if(tprev == 0)
 			tt_head = t0;
@@ -148,48 +174,48 @@ topten(){
 		t0->tt_next = t1;
 		occ_cnt--;
 		flg++;		/* ask for a rewrite */
-	  } else
-		tprev = t1;
-	  if(t1->points == 0) break;
-	  if(
+	    } else tprev = t1;
+
+	    if(t1->points == 0) break;
+	    if(
 #ifdef PERS_IS_UID
-	     t1->uid == t0->uid &&
+		t1->uid == t0->uid &&
 #else
-	     strncmp(t1->name, t0->name, NAMSZ) == 0 &&
+		strncmp(t1->name, t0->name, NAMSZ) == 0 &&
 #endif
-	     t1->plchar == t0->plchar && --occ_cnt <= 0){
-		if(rank0 < 0){
+		t1->plchar == t0->plchar && --occ_cnt <= 0) {
+		    if(rank0 < 0) {
 			rank0 = 0;
 			rank1 = rank;
-	HUP printf("You didn't beat your previous score of %ld points.\n\n",
+	HUP Printf("You didn't beat your previous score of %ld points.\n\n",
 				t1->points);
-		}
-		if(occ_cnt < 0){
+		    }
+		    if(occ_cnt < 0) {
 			flg++;
 			continue;
+		    }
 		}
-	  }
-	  if(rank <= ENTRYMAX){
+	    if(rank <= ENTRYMAX) {
 		t1 = t1->tt_next = newttentry();
 		rank++;
-	  }
-	  if(rank > ENTRYMAX){
+	    }
+	    if(rank > ENTRYMAX) {
 		t1->points = 0;
 		break;
-	  }
+	    }
 	}
 	if(flg) {	/* rewrite record file */
 		(void) fclose(rfile);
 		if(!(rfile = fopen(recfile,"w"))){
-			HUP puts("Cannot write record file\n");
+			HUP (void) puts("Cannot write record file\n");
 			goto unlock;
 		}
 
 		if(!done_stopprint) if(rank0 > 0){
 		    if(rank0 <= 10)
-			puts("You made the top ten list!\n");
+			(void) puts("You made the top ten list!\n");
 		    else
-		printf("You reached the %d%s place on the top %d list.\n\n",
+		Printf("You reached the %d%s place on the top %d list.\n\n",
 			rank0, ordin(rank0), ENTRYMAX);
 		}
 	}
@@ -198,7 +224,7 @@ topten(){
 	if(!done_stopprint) outheader();
 	t1 = tt_head;
 	for(rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
-	  if(flg) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
+	  if(flg) (void) fprintf(rfile,"%6s %d %d %d %d %d %ld %c%c %s,%s\n",
 	    t1->date, t1->uid,
 	    t1->level, t1->maxlvl,
 	    t1->hp, t1->maxhp, t1->points,
@@ -237,118 +263,134 @@ unlock:	;
 #endif
 }
 
+static void
 outheader() {
-char linebuf[BUFSZ];
-register char *bp;
-#ifdef KJSMODS
-	(void) strcpy(linebuf, " No  Points    Name");
-#else
-	(void) strcpy(linebuf, "Number Points  Name");
-#endif
+	char linebuf[BUFSZ];
+	register char *bp;
+
+	Strcpy(linebuf, " No  Points   Name");
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
-	(void) strcpy(bp, "Hp [max]");
-	puts(linebuf);
+	Strcpy(bp, "Hp [max]");
+	(void) puts(linebuf);
 }
 
 /* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
-int
-outentry(rank,t1,so) register struct toptenentry *t1; {
-boolean quit = FALSE, killed = FALSE, starv = FALSE;
-char linebuf[BUFSZ];
+static int
+outentry(rank, t1, so)
+register struct toptenentry *t1;
+register int rank, so;
+{
+	register boolean quit = FALSE, iskilled = FALSE, starv = FALSE,
+		isstoned = FALSE;
+	char linebuf[BUFSZ];
 	linebuf[0] = 0;
-	if(rank) Sprintf(eos(linebuf), "%3d", rank);
+	if(rank) Sprintf(eos(linebuf), " %2d", rank);
 		else Sprintf(eos(linebuf), "   ");
-#ifdef KJSMODS
-	Sprintf(eos(linebuf), " %7ld %10s", t1->points, t1->name);
-#else
-# ifdef DGKMOD
-	Sprintf(eos(linebuf), " %6ld %10s", t1->points, t1->name);
-# else
-	Sprintf(eos(linebuf), " %6ld %8s", t1->points, t1->name);
-# endif
-#endif
-	if(t1->plchar == 'X') Sprintf(eos(linebuf), " ");
-	else Sprintf(eos(linebuf), "-%c ", t1->plchar);
+	Sprintf(eos(linebuf), " %7ld  %.10s", t1->points, t1->name);
+	Sprintf(eos(linebuf), "-%c ", t1->plchar);
 	if(!strncmp("escaped", t1->death, 7)) {
 	  if(!strcmp(" (with amulet)", t1->death+7))
 	    Sprintf(eos(linebuf), "escaped the dungeon with amulet");
 	  else
 	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
 	      t1->maxlvl);
+#ifdef ENDGAME
+	} else if(!strncmp("ascended", t1->death, 8)) {
+	   Sprintf(eos(linebuf), "ascended to demigod-hood");
+#endif
 	} else {
 	  if(!strncmp(t1->death,"quit",4)) {
-	    quit = TRUE;
-#ifndef KJSMODS
-	    if(t1->maxhp < 3*t1->hp && t1->maxlvl < 4)
-		Sprintf(eos(linebuf), "cravenly gave up");
-	    else
-#endif
+		quit = TRUE;
 		Sprintf(eos(linebuf), "quit");
+	  } else if(!strcmp(t1->death,"choked"))
+		Sprintf(eos(linebuf), "choked on %s food",
+			(t1->sex == 'F') ? "her" : "his");
+	  else if(!strncmp(t1->death,"starv",5)) {
+		Sprintf(eos(linebuf), "starved to death");
+		starv = TRUE;
+	  } else if(!strncmp(t1->death, "turned to stone by ",19)) {
+		Sprintf(eos(linebuf), "was petrified");
+		isstoned = TRUE;
+	  } else {
+		Sprintf(eos(linebuf), "was killed");
+		iskilled = TRUE;
 	  }
-	  else if(!strcmp(t1->death,"choked"))
-	    Sprintf(eos(linebuf), "choked on %s food",
-		(t1->sex == 'F') ? "her" : "his");
-	  else if(!strncmp(t1->death,"starv",5))
-	    Sprintf(eos(linebuf), "starved to death"), starv = TRUE;
-	  else Sprintf(eos(linebuf), ", killed"), killed = TRUE;
-	  Sprintf(eos(linebuf), " on%s level %d",
-	    (killed || starv) ? "" : " dungeon", t1->level);
+#ifdef ENDLEVEL
+	  if (t1->level == ENDLEVEL)
+		Strcpy(eos(linebuf), " in the endgame");
+	  else
+#endif
+	    Sprintf(eos(linebuf), " on%s level %d",
+	      (iskilled || isstoned || starv) ? "" : " dungeon", t1->level);
 	  if(t1->maxlvl != t1->level)
 	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
 	  if(quit && t1->death[4]) Sprintf(eos(linebuf), t1->death + 4);
 	}
-	if(killed) Sprintf(eos(linebuf), " by %s%s",
-	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4))
-		? "" :
+	if(iskilled) Sprintf(eos(linebuf), " by %s%s",
+	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4)
+	   || !strncmp(t1->death, "Mr. ", 4) || !strncmp(t1->death, "Ms. ", 4)
+	   ) ? "" :
 	  index(vowels,*t1->death) ? "an " : "a ",
 	  t1->death);
+	if (isstoned) Sprintf(eos(linebuf), " by %s%s", index(vowels,
+		*(t1->death + 19)) ? "an " : "a ", t1->death + 19);
 	Sprintf(eos(linebuf), ".");
 	if(t1->maxhp) {
 	  register char *bp = eos(linebuf);
 	  char hpbuf[10];
 	  int hppos;
-#ifdef KJSMODS
 	  int lngr = strlen(linebuf);
-#endif
 	  Sprintf(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
 	  hppos = COLNO - 7 - strlen(hpbuf);
-#ifdef KJSMODS
 	  if (lngr >= hppos) hppos = (2*COLNO) - 7 - strlen(hpbuf);
-#endif
 	  if(bp <= linebuf + hppos) {
 	    /* pad any necessary blanks to the hit point entry */
 	    while(bp < linebuf + hppos) *bp++ = ' ';
-	    (void) strcpy(bp, hpbuf);
-	    Sprintf(eos(bp), " [%d]", t1->maxhp);
+	    Strcpy(bp, hpbuf);
+	    if(t1->maxhp < 10)
+		 Sprintf(eos(bp), "   [%d]", t1->maxhp);
+	    else if(t1->maxhp < 100)
+		 Sprintf(eos(bp), "  [%d]", t1->maxhp);
+	    else Sprintf(eos(bp), " [%d]", t1->maxhp);
 	  }
 	}
-	if(so == 0) puts(linebuf);
+	if(so == 0) (void) puts(linebuf);
 	else if(so > 0) {
 	  register char *bp = eos(linebuf);
 	  if(so >= COLNO) so = COLNO-1;
 	  while(bp < linebuf + so) *bp++ = ' ';
 	  *bp = 0;
 	  standoutbeg();
-	  fputs(linebuf,stdout);
+	  (void) fputs(linebuf,stdout);
 	  standoutend();
 	  (void) putchar('\n');
 	}
 	return(strlen(linebuf));
 }
 
-char *
+static char *
 itoa(a) int a; {
+#ifdef LINT	/* static char buf[12]; */
+char buf[12];
+#else
 static char buf[12];
+#endif
 	Sprintf(buf,"%d",a);
 	return(buf);
 }
 
-char *
-ordin(n) int n; {
-register int d = n%10;
-	return((d==0 || d>3 || n/10==1) ? "th" : (d==1) ? "st" :
-		(d==2) ? "nd" : "rd");
+static char *
+ordin(n)
+int n; {
+	register int dd = n%10;
+
+#if ENTRYMAX > 110
+	return((dd==0 || dd>3 || (n/10)%10==1) ? "th" :
+#else
+	return((dd==0 || dd>3 || n/10==1) ? "th" :
+#endif
+	       (dd==1) ? "st" : (dd==2) ? "nd" : "rd");
 }
 
 char *
@@ -364,16 +406,18 @@ register char *s;
  * requested. Otherwise, find scores for the current player (and list them
  * if argc == -1).
  */
-prscore(argc,argv) int argc; char **argv; {
-	extern char *hname;
+void
+prscore(argc,argv)
+int argc;
+char **argv;
+{
 	char **players;
 	int playerct;
 	int rank;
 	register struct toptenentry *t1, *t2;
 	char *recfile = RECORD;
 	FILE *rfile;
-	register flg = 0;
-	register int i;
+	register int flg = 0, i;
 #ifdef nonsense
 	long total_score = 0L;
 	char totchars[10];
@@ -387,7 +431,7 @@ prscore(argc,argv) int argc; char **argv; {
 #endif
 
 	if(!(rfile = fopen(recfile,"r"))){
-		puts("Cannot open record file!");
+		(void) puts("Cannot open record file!");
 		return;
 	}
 
@@ -395,7 +439,7 @@ prscore(argc,argv) int argc; char **argv; {
 		if(!argv[1][2]){
 			argc--;
 			argv++;
-		} else if(!argv[1][3] && index("CFKSTWX", argv[1][2])) {
+		} else if(!argv[1][3] && index("ABCEHKPRSTVW", argv[1][2])) {
 			argv[1]++;
 			argv[1][0] = '-';
 		} else	argv[1] += 2;
@@ -415,17 +459,31 @@ prscore(argc,argv) int argc; char **argv; {
 		playerct = --argc;
 		players = ++argv;
 	}
-	if(outflg) putchar('\n');
+	if(outflg) (void) putchar('\n');
 
 	t1 = tt_head = newttentry();
 	for(rank = 1; ; rank++) {
+#ifdef TOS
+	  char k1[2], k2[2];
+	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
+#else
 	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
+#endif
 		t1->date, &t1->uid,
 		&t1->level, &t1->maxlvl,
 		&t1->hp, &t1->maxhp, &t1->points,
-		&t1->plchar, &t1->sex, t1->name, t1->death) != 11)
+#ifdef TOS
+		k1, k2,
+#else
+		&t1->plchar, &t1->sex,
+#endif
+		t1->name, t1->death) != 11)
 			t1->points = 0;
 	  if(t1->points == 0) break;
+#ifdef TOS
+	  t1->plchar=k1[0];
+	  t1->sex=k2[0];
+#endif
 #ifdef PERS_IS_UID
 	  if(!playerct && t1->uid == uid)
 		flg++;
@@ -445,13 +503,13 @@ prscore(argc,argv) int argc; char **argv; {
 	(void) fclose(rfile);
 	if(!flg) {
 	    if(outflg) {
-		printf("Cannot find any entries for ");
-		if(playerct < 1) printf("you.\n");
+		Printf("Cannot find any entries for ");
+		if(playerct < 1) Printf("you.\n");
 		else {
-		  if(playerct > 1) printf("any of ");
+		  if(playerct > 1) Printf("any of ");
 		  for(i=0; i<playerct; i++)
-			printf("%s%s", players[i], (i<playerct-1)?", ":".\n");
-		  printf("Call is: %s -s [playernames]\n", hname);
+			Printf("%s%s", players[i], (i<playerct-1)?", ":".\n");
+		  Printf("Call is: %s -s [-role] [maxrank] [playernames]\n", hname);
 		}
 	    }
 	    return;
@@ -484,7 +542,7 @@ prscore(argc,argv) int argc; char **argv; {
 				break;
 			}
 		}
-		free((char *) t1);
+		free((genericptr_t) t1);
 	}
 #ifdef nonsense
 	totchars[totcharct] = 0;
@@ -495,10 +553,98 @@ prscore(argc,argv) int argc; char **argv; {
 	   .hacklog or something in his home directory. */
 	flags.beginner = (total_score < 6000);
 	for(i=0; i<6; i++)
-	    if(!index(totchars, "CFKSTWX"[i])) {
+	    if(!index(totchars, "ABCEHKPRSTVW"[i])) {
 		flags.beginner = 1;
-		if(!pl_character[0]) pl_character[0] = "CFKSTWX"[i];
+		if(!pl_character[0]) pl_character[0] = "ABCEHKPRSTVW"[i];
 		break;
 	}
 #endif /* nonsense /**/
+}
+
+static int
+classmon(plch, fem)
+char plch;
+boolean fem;
+{
+	switch (plch) {
+		case 'A': return PM_ARCHEOLOGIST;
+		case 'B': return PM_BARBARIAN;
+		case 'C': return (fem ? PM_CAVEWOMAN : PM_CAVEMAN);
+		case 'E': return PM_ELF;
+		case 'H': return PM_HEALER;
+		case 'F':	/* accept old Fighter class */
+		case 'K': return PM_KNIGHT;
+		case 'P': return (fem ? PM_PRIESTESS : PM_PRIEST);
+		case 'R': return PM_ROGUE;
+		case 'N':	/* accept old Ninja class */
+		case 'S': return PM_SAMURAI;
+		case 'T': return PM_TOURIST;
+		case 'V': return PM_VALKYRIE;
+		case 'W': return PM_WIZARD;
+		default: impossible("What weird class is this? (%c)", plch);
+			return PM_HUMAN_ZOMBIE;
+	}
+}
+
+/*
+ * Get a random player name and class from the high score list,
+ * and attach them to an object (for statues or morgue corpses).
+ */
+struct obj *
+tt_oname(otmp)
+struct obj *otmp;
+{
+	int rank;
+	register int i;
+	register struct toptenentry *tt;
+	char *recfile = RECORD;
+	FILE *rfile;
+
+	if (!otmp) return((struct obj *) 0);
+
+	if(!(rfile = fopen(recfile,"r")))
+		panic("Cannot open record file!");
+
+	tt = newttentry();
+	rank = rnd(10);
+pickentry:
+	for(i = rank; i; i--) {
+#ifdef TOS
+	  char k1[2], k2[2];
+	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
+#else
+	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %c%c %[^,],%[^\n]",
+#endif
+		tt->date, &tt->uid,
+		&tt->level, &tt->maxlvl,
+		&tt->hp, &tt->maxhp, &tt->points,
+#ifdef TOS
+		k1, k2,
+#else
+		&tt->plchar, &tt->sex,
+#endif
+		tt->name, tt->death) != 11)
+			tt->points = 0;
+	  if(tt->points == 0) break;
+#ifdef TOS
+	  tt->plchar=k1[0];
+	  tt->sex=k2[0];
+#endif
+	}
+	(void) fclose(rfile);
+
+	if(tt->points == 0) {
+		if(rank > 1) {
+			rank = 1;
+			goto pickentry;
+		}
+		free((genericptr_t) tt);
+		return((struct obj *) 0);
+	} else {
+		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
+		otmp->owt = mons[otmp->corpsenm].cwt;
+		otmp = oname(otmp, tt->name, 0);
+		free((genericptr_t) tt);
+		return otmp;
+	}
 }

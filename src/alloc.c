@@ -1,50 +1,41 @@
-/*	SCCS Id: @(#)alloc.c	1.4	87/08/08
-/* alloc.c - version 1.0.2 */
-#ifdef LINT
+/*	SCCS Id: @(#)alloc.c	3.0	88/07/21
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
+/* since this file is also used in auxiliary programs, don't include all the 
+ * function declarations for all of nethack
+ */
+#define EXTERN_H
+#include "config.h"
+
+#ifdef LINT
 /*
    a ridiculous definition, suppressing
 	"possible pointer alignment problem" for (long *) malloc()
-	"enlarg defined but never used"
-	"ftell defined (in <stdio.h>) but never used"
    from lint
 */
-#include <stdio.h>
 long *
-alloc(n) unsigned n; {
+alloc(n) unsigned int n; {
 long dummy = ftell(stderr);
 	if(n) dummy = 0;	/* make sure arg is used */
 	return(&dummy);
 }
 
 #else
-
-extern char *malloc();
-extern char *realloc();
+#ifndef __TURBOC__
+extern void panic P((char *,...));
 
 long *
 alloc(lth)
-register unsigned lth;
+register unsigned int lth;
 {
-	register char *ptr;
+	register genericptr_t ptr;
 
 	if(!(ptr = malloc(lth)))
 		panic("Cannot get %d bytes", lth);
 	return((long *) ptr);
 }
-
-#ifndef DGK
-long *
-enlarge(ptr,lth)
-register char *ptr;
-register unsigned lth;
-{
-	register char *nptr;
-
-	if(!(nptr = realloc(ptr,lth)))
-		panic("Cannot reallocate %d bytes", lth);
-	return((long *) nptr);
-}
 #endif
+
 
 #endif /* LINT /**/

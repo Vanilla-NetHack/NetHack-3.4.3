@@ -1,0 +1,211 @@
+.TH LEV_COMP 6 "5 JULY 1989"
+.UC 4
+.SH NAME
+lev_comp \- NetHack special levels compiler
+.SH SYNOPSIS
+.B lev_comp
+[
+.I files
+]
+.SH DESCRIPTION
+.PP
+.I Lev_comp
+is a special level compiler for NetHack version 3.0 and higher.
+It takes description files as arguments and produces level files that can be
+loaded by NetHack at runtime.
+If no arguments are given, it reads standard input.
+.PP
+The purpose of this tool is to provide NetHack administrators and implementors
+with a convenient way for adding special levels to the game,
+or modifying existing ones,
+without having to recompile the entire world.
+At this time, the special levels code is not fully implemented,
+as the decision to load the special levels is hard-coded in the game.
+In a future release, it is expected to be a run-time decision.
+.SH GRAMMAR
+.PP
+.LP
+.nf
+.ta +8n +8n +8n +8n
+
+file		: /* nothing */
+		| levels
+
+levels		: level
+		| levels level
+
+level		: maze_level
+
+maze_level	: maze_definition regions
+
+maze_definition	: "MAZE" ':' filename
+
+filename	: STRING
+
+regions		: region
+		| regions region
+
+region		: map_definition reg_initialization map_details
+
+map_definition	: map_geometry map
+
+map_geometry	: "GEOMETRY" ':' hjustif ',' vjustif
+
+hjustif		: "left" | "center" | "right"
+
+vjustif		: "top" | "center" | "bottom"
+
+map		: "MAP\\n" map_lines "ENDMAP"
+
+map_lines	: map_line
+		| map_lines map_line
+
+map_line	: map_chars '\\n'
+
+map_chars	: map_char
+		| map_chars map_char
+
+map_char	: '-' | '|' | '{' | '}' | '+' | 'S'
+		| 'K' | '\\' | '#' | '.' | ' '
+
+reg_initialization : /* nothing */
+		   | reg_initialization init_reg
+
+init_reg	: "RANDOM_OBJECTS" ':' object_list
+		| "RANDOM_PLACES" ':' place_list
+		| "RANDOM_MONSTERS" ':' monster_list
+
+object_list	: object
+		| object_list ',' object
+
+place_list	: place
+		| place_list ',' place
+
+monster_list	: monster
+		| monster_list ',' monster
+
+map_details	: /* nothing */
+		: map_details map_detail
+
+map_detail	: monster_detail
+		| object_detail
+		| door_detail
+		| trap_detail
+		| drawbridge_detail
+		| region_detail
+		| altar_detail
+		| mazewalk_detail
+		| ladder_detail
+		| diggable_detail
+
+monster_detail	: "MONSTER" ':' monster_c ',' m_name ',' coordinate
+
+object_detail	: "OBJECT" ':' object_c ',' o_name ',' coordinate
+
+door_detail	: "DOOR" ':' door_state ',' coordinate
+
+trap_detail	: "TRAP" ':' trap_name ',' coordinate
+
+drawbridge_detail : "DRAWBRIDGE" ':' coordinate ',' direction ',' open
+
+mazewalk_detail	: "MAZEWALK" ':' coordinate ',' direction
+
+ladder_detail	: "LADDER" ':' coordinate ',' up_or_down
+
+diggable_detail	: "NON_DIGGABLE" ':' rectangle
+
+altar_detail	: "ALTAR" ':' coordinate ',' alignment ',' altar_type
+
+region_detail	: "REGION" ':' rectangle ',' light_state ',' room_type
+
+monster_c	: CHAR
+		| "random"
+		| m_register
+
+object_c	: CHAR
+		| "random"
+		| o_register
+
+m_name		: STRING
+		| "random"
+
+o_name		: STRING
+		| "random"
+
+trap_name	: STRING
+		| "random"
+
+light_state	: "lit" | "unlit"
+		| "random"
+
+room_type	: STRING
+		| "random"
+
+coordinate	: place
+		| p_register
+		| "random"
+
+door_state	: "open" | "closed" | "locked" | "broken" | "nodoor"
+		| "random"
+
+open_or_closed	: "open" | "closed"
+
+alignment	: "law" | "neutral" | "chaos"
+		| a_register
+		| "random"
+
+altar_type	: "shrine" | "altar"
+		| "random"
+
+p_register	: "place" '[' INTEGER ']'
+
+o_register	: "object" '[' INTEGER ']'
+
+m_register	: "monster" '[' INTEGER ']'
+
+a_register	: "altar" '[' { 0 | 1 | 2 } ']'
+
+place		: '(' INTEGER ',' INTEGER ')'
+
+rectangle	: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
+.fi
+.PP
+.I NOTE:
+.br
+Lines beginning with '#' are considered comments.
+
+.SH EXAMPLE
+.PP
+Here is an example of a description file (a very simple one):
+.LP
+.nf
+.ta +8n +8n +8n
+MAZE : "fortress"
+GEOMETRY : center , center
+MAP
+}}}}}}}}}}}}}
+}}}|-----|}}}
+}}}|.....|}}}
+}|--.....--|}
+}|.........|}
+}|--.....--|}
+}}}|.....|}}}
+}}}|-----|}}}
+}}}}}}}}}}}}}
+ENDMAP
+MONSTER: '@',"wizard of yendor", (6,4)
+# a random dragon somewhere
+MONSTER: 'D', random, random
+# a random trap in the EAST part
+TRAP: random, (10,4)
+.fi
+.PP
+This example will produce a file named "fortress" that can be integrated into
+one of the numerous mazes of the game...
+
+.SH AUTHOR
+.PP
+Jean-christophe Collet.
+.SH BUGS
+.PP
+Probably infinite.

@@ -1,13 +1,20 @@
-/*	SCCS Id: @(#)prisym.c	2.3	88/03/29
+/*	SCCS Id: @(#)prisym.c	3.0	88/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
-#include <stdio.h>
 #include "hack.h"
 
-extern xchar scrlx, scrhx, scrly, scrhy; /* corners from pri.c */
+#ifdef WORM
+#include "wseg.h"
+#include "lev.h"
 
+static void pwseg P((struct wseg *));
+#endif
+
+void
 atl(x,y,ch)
-register x,y;
+register int x, y;
+char ch;
 {
 	register struct rm *crm = &levl[x][y];
 
@@ -16,13 +23,20 @@ register x,y;
 		return;
 	}
 	if(crm->seen && crm->scrsym == ch) return;
-	crm->scrsym = ch;
+	/* crm->scrsym = (uchar) ch; */
+	/* wrong if characters are signed but uchar is larger than char,
+	 * and ch, when passed, was greater than 127.
+	 * We probably should _really_ go around changing atl to take a
+	 * uchar for its third argument...
+	 */
+	crm->scrsym = (uchar)((unsigned char) ch);
 	crm->new = 1;
 	on_scr(x,y);
 }
 
+void
 on_scr(x,y)
-register x,y;
+register int x, y;
 {
 	if(x < scrlx) scrlx = x;
 	if(x > scrhx) scrhx = x;
@@ -35,27 +49,46 @@ register x,y;
 	(-1,-1)- close (undo last symbol)
 	(-1,let)-open: initialize symbol
 	(-2,let)-change let
+	(-3,let)-set color
 */
 
-tmp_at(x,y) int x,y; {
+void
+tmp_at(x, y)
+int x, y;
+{
+#ifdef LINT	/* static schar prevx, prevy; static char let; */
+schar prevx=0, prevy=0;
+uchar let;
+uchar col;
+#else
 static schar prevx, prevy;
-static char let;
-	if((int)x == -2){	/* change let call */
+static uchar let;
+static uchar col;
+#endif
+
+	switch ((int)x) {
+	    case -2:		/* change let call */
 		let = y;
 		return;
-	}
-	if((int)x == -1 && (int)y >= 0){	/* open or close call */
-		let = y;
-		prevx = -1;
+	    case -1:		/* open or close call */
+		if ((int)y >= 0) {
+		    let = y;
+		    prevx = -1;
+		    col = AT_ZAP;
+		    return;
+		}
+		break;
+	    case -3:		/* set color call */
+		col = y;
 		return;
 	}
 	if(prevx >= 0 && cansee(prevx,prevy)) {
 		delay_output();
 		prl(prevx, prevy);	/* in case there was a monster */
-		at(prevx, prevy, levl[prevx][prevy].scrsym);
+		at(prevx, prevy, levl[prevx][prevy].scrsym, AT_APP);
 	}
 	if(x >= 0){	/* normal call */
-		if(cansee(x,y)) at(x,y,let);
+		if(cansee(x,y)) at(x,y,let,col);
 		prevx = x;
 		prevy = y;
 	} else {	/* close call */
@@ -65,15 +98,34 @@ static char let;
 }
 
 /* like the previous, but the symbols are first erased on completion */
-Tmp_at(x,y) int x,y; {
-static char let;
+void
+Tmp_at2(x, y)
+int x, y;
+{
+#ifdef LINT	/* static char let; static xchar cnt; static coord tc[COLNO]; */
+uchar let;
+xchar cnt;
+coord tc[COLNO];	/* but watch reflecting beams! */
+# ifdef MSDOSCOLOR
+uchar col;
+# endif
+#else
+static uchar let;
 static xchar cnt;
-static coord tc[COLNO];		/* but watch reflecting beams! */
-register xx,yy;
-	if((int)x == -1) {
+static coord tc[COLNO];	/* but watch reflecting beams! */
+# ifdef MSDOSCOLOR
+static uchar col;
+# endif
+#endif
+register int xx,yy;
+	switch((int)x) {
+	    case -1:
 		if(y > 0) {	/* open call */
 			let = y;
 			cnt = 0;
+#ifdef MSDOSCOLOR
+			col = AT_ZAP;
+#endif
 			return;
 		}
 		/* close call (do not distinguish y==0 and y==-1) */
@@ -81,42 +133,57 @@ register xx,yy;
 			xx = tc[cnt].x;
 			yy = tc[cnt].y;
 			prl(xx, yy);
-			at(xx, yy, levl[xx][yy].scrsym);
+			at(xx, yy, levl[xx][yy].scrsym, AT_APP);
 		}
 		cnt = let = 0;	/* superfluous */
 		return;
-	}
-	if((int)x == -2) {	/* change let call */
+	    case -2:		/* change let call */
 		let = y;
 		return;
+#ifdef MSDOSCOLOR
+	    case -3:		/* set color call */
+		col = y;
+		return;
+#endif
 	}
 	/* normal call */
 	if(cansee(x,y)) {
 		if(cnt) delay_output();
-		at(x,y,let);
+#ifdef MSDOSCOLOR
+		at(x,y,let,col);
+#else
+		at(x,y,let,AT_ZAP);
+#endif
 		tc[cnt].x = x;
 		tc[cnt].y = y;
-		if(++cnt >= COLNO) panic("Tmp_at overflow?");
+		if(++cnt >= COLNO) panic("Tmp_at2 overflow?");
 		levl[x][y].new = 0;	/* prevent pline-nscr erasing --- */
 	}
 }
 
-curs_on_u(){
+void
+curs_on_u()
+{
 	curs(u.ux, u.uy+2);
 }
 
+void
 pru()
 {
 	if(u.udispl && (Invisible || u.udisx != u.ux || u.udisy != u.uy))
 		/* if(! levl[u.udisx][u.udisy].new) */
 			if(!vism_at(u.udisx, u.udisy))
 				newsym(u.udisx, u.udisy);
-	if(Invisible) {
+	if(Invisible
+#ifdef POLYSELF
+			|| u.uundetected
+#endif
+					) {
 		u.udispl = 0;
 		prl(u.ux,u.uy);
 	} else
 	if(!u.udispl || u.udisx != u.ux || u.udisy != u.uy) {
-		atl(u.ux, u.uy, u.usym);
+		atl(u.ux, u.uy, (char) u.usym);
 		u.udispl = 1;
 		u.udisx = u.ux;
 		u.udisy = u.uy;
@@ -124,51 +191,55 @@ pru()
 	levl[u.ux][u.uy].seen = 1;
 }
 
-#ifndef NOWORM
-#include	"wseg.h"
-extern struct wseg *m_atseg;
-#endif
-
 /* print a position that is visible for @ */
+void
 prl(x,y)
 {
 	register struct rm *room;
-	register struct monst *mtmp;
+	register struct monst *mtmp = (struct monst *)0;
 	register struct obj *otmp;
 	register struct trap *ttmp;
 
-	if(x == u.ux && y == u.uy && (!Invisible)) {
+	if(x == u.ux && y == u.uy && !Invisible
+#ifdef POLYSELF
+						&& !u.uundetected
+#endif
+								) {
 		pru();
 		return;
 	}
 	if(!isok(x,y)) return;
 	room = &levl[x][y];
 	if((!room->typ) ||
-	   (IS_ROCK(room->typ) && levl[u.ux][u.uy].typ == CORR))
+	   (IS_ROCK(room->typ) && levl[u.ux][u.uy].typ == CORR &&
+				  !levl[u.ux][u.uy].lit))
+	    /* the only lit corridor squares should be the entrances to
+	     * outside castle areas */
 		return;
-	if((mtmp = m_at(x,y)) && !mtmp->mhide &&
+	if(room->mmask) mtmp = m_at(x,y);
+	if(mtmp && !mtmp->mhide &&
 		(!mtmp->minvis || See_invisible)) {
-#ifndef NOWORM
+#ifdef WORM
 		if(m_atseg)
 			pwseg(m_atseg);
 		else
 #endif
 		pmon(mtmp);
 	}
-	else if((otmp = o_at(x,y)) && room->typ != POOL)
+	else if(room->omask && !is_pool(x,y)) {
+		otmp = o_at(x,y);
 		atl(x,y,Hallucination ? rndobjsym() : otmp->olet);
-#ifdef SPIDERS
-	else if((!mtmp || mtmp->data == PM_SPIDER) &&
+	}
+	else if(room->gmask && !is_pool(x,y))
+		atl(x,y,Hallucination ? rndobjsym() : GOLD_SYM);
+	else if((!mtmp || mtmp->data == &mons[PM_GIANT_SPIDER]) &&
 		  (ttmp = t_at(x,y)) && ttmp->ttyp == WEB)
-		atl(x,y,WEB_SYM);
-#endif
+		atl(x,y,(char)WEB_SYM);
 	else if(mtmp && (!mtmp->minvis || See_invisible)) {
 		/* must be a hiding monster, but not hiding right now */
 		/* assume for the moment that long worms do not hide */
 		pmon(mtmp);
 	}
-	else if(g_at(x,y) && room->typ != POOL)
-		atl(x,y,Hallucination ? rndobjsym() : GOLD_SYM);
 	else if(!room->seen || room->scrsym == STONE_SYM) {
 		room->new = room->seen = 1;
 		newsym(x,y);
@@ -177,60 +248,108 @@ prl(x,y)
 	room->seen = 1;
 }
 
-char
+uchar
 news0(x,y)
 register xchar x,y;
 {
 	register struct obj *otmp;
 	register struct trap *ttmp;
 	struct rm *room;
-	register char tmp;
+	register uchar tmp;	/* don't compare char with uchar -- OIS */
+	register int croom;
 
 	room = &levl[x][y];
+	/* note: a zero scrsym means to ignore the presence of objects */
 	if(!room->seen) tmp = STONE_SYM;
-	else if(room->typ == POOL) tmp = POOL_SYM;
-	else if(!Blind && (otmp = o_at(x,y)))
+	else if(room->typ == POOL || room->typ == MOAT) tmp = POOL_SYM;
+	else if(room->omask && !Blind && room->scrsym) {
+		otmp = o_at(x,y);
 		tmp = Hallucination ? rndobjsym() : otmp->olet;
-	else if(!Blind && g_at(x,y))
+	}
+	else if(room->gmask && !Blind && room->scrsym) 
 		tmp = Hallucination ? rndobjsym() : GOLD_SYM;
 	else if(x == xupstair && y == yupstair) tmp = UP_SYM;
 	else if(x == xdnstair && y == ydnstair) tmp = DN_SYM;
-#ifdef SPIDERS
+#ifdef STRONGHOLD
+	else if(x == xupladder && y == yupladder) tmp = UPLADDER_SYM;
+	else if(x == xdnladder && y == ydnladder) tmp = DNLADDER_SYM;
+#endif
 	else if((ttmp = t_at(x,y)) && ttmp->ttyp == WEB) tmp = WEB_SYM;
 	else if(ttmp && ttmp->tseen) tmp = TRAP_SYM;
-#else
-	else if((ttmp = t_at(x,y)) && ttmp->tseen) tmp = TRAP_SYM;
-#endif
 	else switch(room->typ) {
 	case SCORR:
-	case SDOOR:
-		tmp = room->scrsym;	/* %% wrong after killing mimic ! */
+		tmp = STONE_SYM;
 		break;
-	case HWALL:
-		tmp = room->scrsym;	/* OK for corners only */
-		if (!IS_CORNER(tmp))
+	case SDOOR:
+		croom = inroom(x,y);
+		if(croom == -1) {
+#ifdef STRONGHOLD
+			if(IS_WALL(levl[x-1][y].typ)) tmp = HWALL_SYM;
+			else tmp = VWALL_SYM;
+			break;
+#else
+			impossible("door %d %d not in room",x,y);
+#endif
+		}
+		if(rooms[croom].lx-1 == x || rooms[croom].hx+1 == x)
+			tmp = VWALL_SYM;
+		else	/* SDOORs aren't created on corners */
 			tmp = HWALL_SYM;
+  		break;
+	case HWALL:
+#ifdef STRONGHOLD
+		if (is_maze_lev && is_drawbridge_wall(x,y) >= 0) tmp = DB_HWALL_SYM;
+		else
+#endif
+		tmp = HWALL_SYM;
 		break;
 	case VWALL:
+#ifdef STRONGHOLD
+		if (is_maze_lev && is_drawbridge_wall(x,y) >= 0) tmp = DB_VWALL_SYM;
+		else
+#endif
 		tmp = VWALL_SYM;
 		break;
-	case LDOOR:
+	case TLCORNER:
+		tmp = TLCORN_SYM;
+		break;
+	case TRCORNER:
+		tmp = TRCORN_SYM;
+		break;
+	case BLCORNER:
+		tmp = BLCORN_SYM;
+		break;
+	case BRCORNER:
+		tmp = BRCORN_SYM;
+		break;
 	case DOOR:
 		tmp = DOOR_SYM;
 		break;
 	case CORR:
 		tmp = CORR_SYM;
 		break;
+#ifdef STRONGHOLD
+	case DRAWBRIDGE_UP:
+		if((room->drawbridgemask & DB_UNDER) == DB_MOAT) tmp = POOL_SYM;
+		else tmp = ROOM_SYM;
+		break;
+	case DRAWBRIDGE_DOWN:
+#endif /* STRONGHOLD /**/
 	case ROOM:
 		if(room->lit || cansee(x,y) || Blind) tmp = ROOM_SYM;
 		else tmp = STONE_SYM;
 		break;
+#ifdef POLYSELF
+	case STONE:
+		tmp = STONE_SYM;
+		break;
+#endif
 #ifdef FOUNTAINS
 	case FOUNTAIN:
 		tmp = FOUNTAIN_SYM;
 		break;
 #endif
-#ifdef NEWCLASS
+#ifdef THRONES
 	case THRONE:
 		tmp = THRONE_SYM;
 		break;
@@ -240,6 +359,26 @@ register xchar x,y;
 		tmp = SINK_SYM;
 		break;
 #endif
+#ifdef ALTARS
+	case ALTAR:
+		tmp = ALTAR_SYM;
+		break;
+#endif
+	case CROSSWALL:
+		tmp = CRWALL_SYM;
+		break;
+	case TUWALL:
+		tmp = TUWALL_SYM;
+		break;
+	case TDWALL:
+		tmp = TDWALL_SYM;
+		break;
+	case TLWALL:
+		tmp = TLWALL_SYM;
+		break;
+	case TRWALL:
+		tmp = TRWALL_SYM;
+		break;
 /*
 	case POOL:
 		tmp = POOL_SYM;
@@ -251,19 +390,21 @@ register xchar x,y;
 	return(tmp);
 }
 
+void
 newsym(x,y)
-register x,y;
+register int x, y;
 {
-	atl(x,y,news0(x,y));
+	atl(x,y,(char)news0(x,y));
 }
 
 /* used with wand of digging (or pick-axe): fill scrsym and force display */
 /* also when a POOL evaporates */
-mnewsym(x,y)
-register x,y;
+void
+mnewsym(x, y)
+register int x, y;
 {
 	register struct rm *room;
-	char newscrsym;
+	uchar newscrsym;	/* OIS */
 
 	if(!vism_at(x,y)) {
 		room = &levl[x][y];
@@ -275,23 +416,24 @@ register x,y;
 	}
 }
 
+void
 nosee(x,y)
-register x,y;
+register int x, y;
 {
 	register struct rm *room;
 
 	if(!isok(x,y)) return;
 	room = &levl[x][y];
 	if(room->scrsym == ROOM_SYM && !room->lit && !Blind) {
-		room->scrsym = ' ';
+		room->scrsym = STONE_SYM;	/* was ' ' -- OIS */
 		room->new = 1;
 		on_scr(x,y);
 	}
 }
 
-#ifndef QUEST
+void
 prl1(x,y)
-register x,y;
+register int x, y;
 {
 	if(u.dx) {
 		if(u.dy) {
@@ -312,8 +454,9 @@ register x,y;
 	}
 }
 
+void
 nose1(x,y)
-register x,y;
+register int x, y;
 {
 	if(u.dx) {
 		if(u.dy) {
@@ -333,23 +476,27 @@ register x,y;
 		nosee(x+1,y);
 	}
 }
-#endif /* QUEST /**/
 
+int
 vism_at(x,y)
-register x,y;
+register int x, y;
 {
-	register struct monst *mtmp;
-
 	if(x == u.ux && y == u.uy && !Invisible) return(1);
 
-	if(mtmp = m_at(x,y)) return((Blind && Telepat) || canseemon(mtmp));
-
+	if(levl[x][y].mmask)
+		if (Blind && Telepat || canseemon(m_at(x,y)))
+		    return(1);
+		else return ((HTelepat & WORN_HELMET) &&
+			     (dist(x, y) <= (BOLT_LIM * BOLT_LIM)));
 	return(0);
 }
 
 #ifdef NEWSCR
-pobj(obj) register struct obj *obj; {
-register int show = (!obj->oinvis || See_invisible) &&
+void
+pobj(obj)
+register struct obj *obj;
+{
+	register int show = (!obj->oinvis || See_invisible) &&
 		cansee(obj->ox,obj->oy);
 	if(obj->odispl){
 		if(obj->odx != obj->ox || obj->ody != obj->oy || !show)
@@ -367,7 +514,10 @@ register int show = (!obj->oinvis || See_invisible) &&
 }
 #endif /* NEWSCR /**/
 
-unpobj(obj) register struct obj *obj; {
+void
+unpobj(obj)
+register struct obj *obj;
+{
 /* 	if(obj->odispl){
 		if(!vism_at(obj->odx, obj->ody))
 			newsym(obj->odx, obj->ody);
@@ -377,3 +527,15 @@ unpobj(obj) register struct obj *obj; {
 	if(!vism_at(obj->ox,obj->oy))
 		newsym(obj->ox,obj->oy);
 }
+
+#ifdef WORM
+static void
+pwseg(wtmp)
+register struct wseg *wtmp;
+{
+	if(!wtmp->wdispl){
+		atl(wtmp->wx, wtmp->wy, S_WORM_TAIL);
+		wtmp->wdispl = 1;
+	}
+}
+#endif

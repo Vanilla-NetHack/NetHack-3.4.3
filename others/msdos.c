@@ -1,60 +1,39 @@
-/*	SCCS Id: @(#)msdos.c	2.3	87/12/16
+/*	SCCS Id: @(#)msdos.c	3.0	88/11/20
+/* NetHack may be freely redistributed.  See license for details. */
 /* An assortment of MSDOS functions.
  */
 
-#include <stdio.h>
-#include "hack.h"
-
 #ifdef MSDOS
-# include <dos.h>
+#include <dos.h>
+#include "hack.h"
+static char DOSgetch();
+#ifdef DGK
+static char BIOSgetch();
+#endif
+static unsigned int ioctl();
 
 void
 flushout()
 {
 	(void) fflush(stdout);
+	return;
 }
 
-getuid() {
-	return 1;
-}
-
-char *
-getlogin() {
-	return ((char *) NULL);
-}
-# ifdef REDO
-tgetch() {
-	char ch, popch();
-	static char DOSgetch(), BIOSgetch();
-
-	if (!(ch = popch())) {
-#  ifdef DGK
-		/* BIOSgetch can use the numeric key pad on IBM compatibles. */
-		if (flags.IBMBIOS)
-			ch = BIOSgetch();
-		else
-#  endif
-			ch = DOSgetch();
-	}
-	return ((ch == '\r') ? '\n' : ch);
-}
-# else /* REDO /**/
+int
 tgetch() {
 	char ch;
-	static char DOSgetch(), BIOSgetch();
 
-#  ifdef DGK
+#ifdef DGK
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
 	if (flags.IBMBIOS)
 		ch = BIOSgetch();
 	else
-#  endif
+#endif
 		ch = DOSgetch();
 	return ((ch == '\r') ? '\n' : ch);
 }
-# endif /* REDO /**/
 
-# define DIRECT_INPUT	0x7
+#define DIRECT_INPUT	0x7
 static char
 DOSgetch() {
 	union REGS regs;
@@ -69,31 +48,28 @@ DOSgetch() {
 	return (regs.h.al);
 }
 
+#include <ctype.h>
+#include <fcntl.h>
+#include <process.h>
 
-# ifdef DGK
-#  include <ctype.h>
-#  include <fcntl.h>
+static char *COMSPEC = "COMSPEC";
+#define getcomspec() getenv(COMSPEC)
 
-#  define Sprintf (void) sprintf
-#  define WARN 1
-#  define NOWARN 0
-
-static char *
-getcomspec(warn) {
-	return getenv("COMSPEC");
-}
-
-#  ifdef SHELL
-#   include <process.h>
+#ifdef SHELL
+int
 dosh() {
 	extern char orgdir[];
 	char *comspec;
 
 	if (comspec = getcomspec()) {
+#ifdef DGK
 		settty("To return to NetHack, type \"exit\" at the DOS prompt.\n");
+#else
+		settty((char *)0);
+#endif /* DGK */
 		chdirx(orgdir, 0);
 		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
-			printf("\nCan't spawn %s !\n", comspec);
+			Printf("\nCan't spawn %s !\n", comspec);
 			flags.toplin = 0;
 			more();
 		}
@@ -101,20 +77,22 @@ dosh() {
 		start_screen();
 		docrt();
 	} else
-		pline("No COMSPEC !?  Can't exec COMMAND.COM");
-	return(0);
+		pline("Cannot exec COMMAND.COM");
+	return 0;
 }
-#  endif /* SHELL */
+#endif /* SHELL */
 
+#ifdef DGK
 /* Normal characters are output when the shift key is not pushed.
  * Shift characters are output when either shift key is pushed.
  */
-#  define KEYPADHI	83
-#  define KEYPADLOW	71
-#  define iskeypad(x)	(KEYPADLOW <= (x) && (x) <= KEYPADHI)
-static struct {
+#define KEYPADHI	83
+#define KEYPADLOW	71
+#define PADKEYS		(KEYPADHI - KEYPADLOW + 1)
+#define iskeypad(x)	(KEYPADLOW <= (x) && (x) <= KEYPADHI)
+static const struct pad {
 	char normal, shift;
-	} keypad[KEYPADHI - KEYPADLOW + 1] = {
+	} keypad[PADKEYS] = {
 			{'y', 'Y'},		/* 7 */
 			{'k', 'K'},		/* 8 */
 			{'u', 'U'},		/* 9 */
@@ -128,17 +106,34 @@ static struct {
 			{'n', 'N'},		/* 3 */
 			{'i', 'I'},		/* Ins */
 			{'.', ':'}		/* Del */
+	}, numpad[PADKEYS] = {
+			{'7', '7'},		/* 7 */
+			{'8', '8'},		/* 8 */
+			{'9', '9'},		/* 9 */
+			{'m', CTRL('P')},	/* - */
+			{'4', '4'},		/* 4 */
+			{'g', 'G'},		/* 5 */
+			{'6', '6'},		/* 6 */
+			{'p', 'P'},		/* + */
+			{'1', '1'},		/* 1 */
+			{'2', '2'},		/* 2 */
+			{'3', '3'},		/* 3 */
+			{'i', 'I'},		/* Ins */
+			{'.', ':'}		/* Del */
 };
 
 /* BIOSgetch gets keys directly with a BIOS call.
  */
-#  define SHIFT		(0x1 | 0x2)
-#  define KEYBRD_BIOS	0x16
+#define SHIFT		(0x1 | 0x2)
+#define CTRL		0x4
+/* #define ALT		0x8 */
+#define KEYBRD_BIOS	0x16
 
 static char
 BIOSgetch() {
 	unsigned char scan, shift, ch;
 	union REGS regs;
+	struct pad (*kpad)[PADKEYS];
 
 	/* Get scan code.
 	 */
@@ -155,35 +150,28 @@ BIOSgetch() {
 
 	/* If scan code is for the keypad, translate it.
 	 */
+	kpad = flags.num_pad ? numpad : keypad;
 	if (iskeypad(scan)) {
-		if (shift & SHIFT)
-			ch = keypad[scan - KEYPADLOW].shift;
-		else
-			ch = keypad[scan - KEYPADLOW].normal;
+		if (shift & SHIFT) {
+			flags.mv = flags.run = 1;
+			/* necessary if number_pad is on */
+			ch = (*kpad)[scan - KEYPADLOW].shift;
+		} else
+			ch = (*kpad)[scan - KEYPADLOW].normal;
 	}
 	return ch;
 }
 
-/* construct the string  file.level */
-void
-name_file(file, level)
-char *file;
-int level;
-{
-	char *tf;
-	
-	if (tf = rindex(file, '.'))
-		Sprintf(tf+1, "%d", level);
-}
+#define FINDFIRST	0x4E00
+#define FINDNEXT	0x4F00
+#define GETDTA		0x2F00
+#define SETFILETIME	0x5701
+#define GETSWITCHAR	0x3700
+#define FREESPACE	0x36
 
-
-#  define FINDFIRST	0x4E00
-#  define FINDNEXT	0x4F00
-#  define GETDTA	0x2F00
-#  define SETFILETIME	0x5701
-#  define GETSWITCHAR	0x3700
-#  define FREESPACE	0x36
-
+#ifdef __TURBOC__
+#define switchar()	(char)getswitchar()
+#else
 static char
 switchar()
 {
@@ -193,6 +181,7 @@ switchar()
 	intdos(&regs, &regs);
 	return regs.h.dl;
 }
+#endif
 
 long
 freediskspace(path)
@@ -214,7 +203,7 @@ char *path;
 
 /* Functions to get filenames using wildcards
  */
-static
+static int
 findfirst(path)
 char *path;
 {
@@ -229,7 +218,7 @@ char *path;
 	return !regs.x.cflag;
 }
 
-static
+static int
 findnext() {
 	union REGS regs;
 
@@ -238,7 +227,6 @@ findnext() {
 	return !regs.x.cflag;
 }
 
-#ifndef __TURBOC__
 /* Get disk transfer area, Turbo C already has getdta */
 static char *
 getdta() {
@@ -248,11 +236,14 @@ getdta() {
 
 	regs.x.ax = GETDTA;
 	intdosx(&regs, &regs, &sregs);
+#ifdef MK_FP
+	ret = MK_FP(sregs.es, regs.x.bx);
+#else
 	FP_OFF(ret) = regs.x.bx;
 	FP_SEG(ret) = sregs.es;
+#endif
 	return ret;
 }
-#endif
 
 long
 filesize(file)
@@ -271,7 +262,7 @@ void
 eraseall(path, files)
 char *path, *files;
 {
-	char	*dta, buf[PATHLEN];
+	char *dta, buf[PATHLEN];
 
 	dta = getdta();
 	Sprintf(buf, "%s%s", path, files);
@@ -280,6 +271,7 @@ char *path, *files;
 			Sprintf(buf, "%s%s", path, dta + 30);
 			(void) unlink(buf);
 		} while (findnext());
+	return;
 }
 
 /* Rewritten for version 3.3 to be faster
@@ -303,7 +295,7 @@ copybones(mode) {
 	Sprintf(from, "%s%s", frompath, allbones);
 	if (findfirst(from))
 		do {
-			strcpy(last, dta + 30);
+			Strcpy(last, dta + 30);
 		} while (findnext());
 
 	topath = (mode == TOPERM) ? permbones : levels;
@@ -342,29 +334,31 @@ copybones(mode) {
 	if (mode == TOPERM) {
 		msmsg("Bones will be left in `%s'\n",
 			*levels ? levels : hackdir);
-		return;
 	} else {
 		/* Remove all bones files on the RAMdisk */
 		eraseall(levels, allbones);
 		playwoRAMdisk();
 	}
+	return;
 }
 
+void
 playwoRAMdisk() {
-	msmsg("Do you wish to play without a RAMdisk (y/n) ? ");
+	msmsg("Do you wish to play without a RAMdisk? ");
 
 	/* Set ramdisk false *before* exit'ing (because msexit calls
 	 * copybones)
 	 */
 	ramdisk = FALSE;
-	if (getchar() != 'y') {
-		settty("Be seeing you ...\n");
+	if (yn() != 'y') {
+		settty("Be seeing you...\n");
 		exit(0);
 	}
 	set_lock_and_bones();
 	return;
 }
 
+int
 saveDiskPrompt(start) {
 	extern saveprompt;
 	char buf[BUFSIZ], *bp;
@@ -404,26 +398,26 @@ saveDiskPrompt(start) {
 }
 
 /* Return 1 if the record file was found */
-static
+static boolean
 record_exists() {
 	int fd;
 
 	if ((fd = open(RECORD, 0)) >= 0) {
-		close(fd);
+		(void) close(fd);
 		return TRUE;
 	}
 	return FALSE;
 }
 
 /* Return 1 if the comspec was found */
-static
+static boolean
 comspec_exists() {
 	int fd;
 	char *comspec;
 
 	if (comspec = getcomspec())
 		if ((fd = open(comspec, 0)) >= 0) {
-			close(fd);
+			(void) close(fd);
 			return TRUE;
 		}
 	return FALSE;
@@ -433,7 +427,7 @@ comspec_exists() {
  */
 void
 gameDiskPrompt() {
-	extern saveprompt;
+	extern int saveprompt;
 
 	if (saveprompt) {
 		if (record_exists() && comspec_exists())
@@ -450,20 +444,30 @@ gameDiskPrompt() {
 		msmsg("\n\nWARNING: can't find record file `%s'!\n", RECORD);
 	msmsg("If the GAME disk is not in, put it in now.\n");
 	getreturn("to continue");
+	return;
 }
+#endif /* DGK */
 
 /* Read configuration */
 void
 read_config_file() {
-	char	tmp_ramdisk[PATHLEN], tmp_levels[PATHLEN];
-	char	buf[BUFSZ], *bufp;
-	FILE	*fp, *fopenp();
-	extern	char plname[];
+#ifdef DGK
+	char	tmp_ramdisk[PATHLEN];
 	extern	int saveprompt;
+	FILE	*fopenp();
+#else
+#define fopenp fopen
+#endif
+	char	tmp_levels[PATHLEN];
+	char	buf[BUFSZ], *bufp;
+	FILE	*fp;
+	extern	char plname[];
 
+#ifdef DGK
 	tmp_ramdisk[0] = 0;
+#endif
 	tmp_levels[0] = 0;
-	if ((fp = fopenp(configfile, "r")) == NULL) {
+	if ((fp = fopenp(configfile, "r")) == (FILE *)0) {
 		msmsg("Warning: no configuration file!\n");
 		getreturn("to continue");
 		return;
@@ -497,8 +501,10 @@ read_config_file() {
 		if (!strncmp(buf, "HACKDIR", 4)) {
 			strncpy(hackdir, bufp, PATHLEN);
 		
+#ifdef DGK
 		} else if (!strncmp(buf, "RAMDISK", 3)) {
 			strncpy(tmp_ramdisk, bufp, PATHLEN);
+#endif
 
 		} else if (!strncmp(buf, "LEVELS", 4)) {
 			strncpy(tmp_levels, bufp, PATHLEN);
@@ -509,36 +515,37 @@ read_config_file() {
 				plnamesuffix();	/* set the character class */
 
 		} else if (!strncmp(buf, "SAVE", 4)) {
+#ifdef DGK
 			char *ptr;
 			if (ptr = index(bufp, ';')) {
 				*ptr = '\0';
 				if (*(ptr+1) == 'n' || *(ptr+1) == 'N')
 					saveprompt = FALSE;
 			}
+#endif /* DGK */
 			(void) strncpy(SAVEF, bufp, PATHLEN);
 			append_slash(SAVEF);
-#ifdef GRAPHICS
 		} else if (!strncmp(buf, "GRAPHICS", 4)) {
-			char translate[17];
-			short i;
+			unsigned int translate[MAXPCHARS];
+			int i;
 
-		     if ((i = sscanf(bufp, "%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u",
+		     if ((i = sscanf(bufp,
+		 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
 				&translate[6], &translate[7], &translate[8],
 				&translate[9], &translate[10], &translate[11],
 				&translate[12], &translate[13], &translate[14],
-				&translate[15], &translate[16])) < 0) {
+				&translate[15], &translate[16], &translate[17],
+				&translate[18], &translate[19], &translate[20],
+				&translate[21], &translate[22], &translate[23],
+				&translate[24], &translate[25], &translate[26],
+				&translate[27], &translate[28], &translate[29],
+				&translate[30], &translate[31])) < 0) {
 					msmsg ("Syntax error in GRAPHICS\n");
 					getreturn("to continue");
 			}
-			translate[i] = '\0';
-#endif /* GRAPHICS /**/
-/*
- * You could have problems here if you configure FOUNTAINS, SPIDERS or NEWCLASS
- * in or out and forget to change the tail entries in your graphics string.
- */
-#define SETPCHAR(f, n)	showsyms.f = (strlen(translate) > n) ? translate[n] : defsyms.f
+#define SETPCHAR(f, n)	showsyms.f = (i > n) ? translate[n] : defsyms.f
 			SETPCHAR(stone, 0);
 			SETPCHAR(vwall, 1);
 			SETPCHAR(hwall, 2);
@@ -546,21 +553,40 @@ read_config_file() {
 			SETPCHAR(trcorn, 4);
 			SETPCHAR(blcorn, 5);
 			SETPCHAR(brcorn, 6);
-			SETPCHAR(door, 7);
-			SETPCHAR(room, 8);
-			SETPCHAR(corr, 9);
-			SETPCHAR(upstair, 10);
-			SETPCHAR(dnstair, 11);
-			SETPCHAR(trap, 12);
+			SETPCHAR(crwall, 7);
+			SETPCHAR(tuwall, 8);
+			SETPCHAR(tdwall, 9);
+			SETPCHAR(tlwall, 10);
+			SETPCHAR(trwall, 11);
+			SETPCHAR(vbeam, 12);
+			SETPCHAR(hbeam, 13);
+			SETPCHAR(lslant, 14);
+			SETPCHAR(rslant, 15);
+			SETPCHAR(door, 16);
+			SETPCHAR(room, 17);
+			SETPCHAR(corr, 18);
+			SETPCHAR(upstair, 19);
+			SETPCHAR(dnstair, 20);
+			SETPCHAR(trap, 21);
+			SETPCHAR(web, 22);
+			SETPCHAR(pool, 23);
 #ifdef FOUNTAINS
-			SETPCHAR(pool, 13);
-			SETPCHAR(fountain, 14);
+			SETPCHAR(fountain, 24);
 #endif
-#ifdef NEWCLASS
-			SETPCHAR(throne, 15);
+#ifdef SINKS
+			SETPCHAR(sink, 25);
 #endif
-#ifdef SPIDERS
-			SETPCHAR(web, 16);
+#ifdef THRONES
+			SETPCHAR(throne, 26);
+#endif
+#ifdef ALTARS
+			SETPCHAR(altar, 27);
+#endif
+#ifdef STRONGHOLD
+			SETPCHAR(upladder, 28);
+			SETPCHAR(dnladder, 29);
+			SETPCHAR(dbvwall, 30);
+			SETPCHAR(dbhwall, 31);
 #endif
 #undef SETPCHAR
 		} else {
@@ -568,33 +594,39 @@ read_config_file() {
 			getreturn("to continue");
 		}
 	}
-	fclose(fp);
+	(void) fclose(fp);
 
-	strcpy(permbones, tmp_levels);
+#ifdef DGK
+	Strcpy(permbones, tmp_levels);
 	if (tmp_ramdisk[0]) {
-		strcpy(levels, tmp_ramdisk);
-		if (strcmpi(permbones, levels))		/* if not identical */
+		Strcpy(levels, tmp_ramdisk);
+		if (strcmp(permbones, levels))		/* if not identical */
 			ramdisk = TRUE;
 	} else
-		strcpy(levels, tmp_levels);
-	strcpy(bones, levels);
+#endif /* DGK */
+		Strcpy(levels, tmp_levels);
+	Strcpy(bones, levels);
+	return;
 }
 
+#ifdef DGK
 /* Set names for bones[] and lock[]
  */
 void
 set_lock_and_bones() {
 	if (!ramdisk) {
-		strcpy(levels, permbones);
-		strcpy(bones, permbones);
+		Strcpy(levels, permbones);
+		Strcpy(bones, permbones);
 	}
 	append_slash(permbones);
 	append_slash(levels);
 	append_slash(bones);
-	strcat(bones, allbones);
-	strcpy(lock, levels);
-	strcat(lock, alllevels);
+	Strcat(bones, allbones);
+	Strcpy(lock, levels);
+	Strcat(lock, alllevels);
+	return;
 }
+#endif /* DGK */
 
 /* Add a backslash to any name not ending in /, \ or :   There must
  * be room for the \
@@ -612,18 +644,16 @@ char *name;
 		*++ptr = '\\';
 		*++ptr = '\0';
 	}
+	return;
 }
-
 
 void
 getreturn(str)
 char *str;
 {
-	int ch;
-
 	msmsg("Hit <RETURN> %s.", str);
-	while ((ch = getchar()) != '\n')
-		;
+	while (Getchar() != '\n') ;
+	return;
 }
 
 void
@@ -631,12 +661,14 @@ msmsg(fmt, a1, a2, a3)
 char *fmt;
 long a1, a2, a3;
 {
-	printf(fmt, a1, a2, a3);
+	Printf(fmt, a1, a2, a3);
 	flushout();
+	return;
 }
 
 /* Chdrive() changes the default drive.
  */
+#ifndef __TURBOC__
 #define SELECTDISK	0x0E
 void
 chdrive(str)
@@ -652,7 +684,18 @@ char *str;
 		inregs.h.dl = drive - 'A';
 		intdos(&inregs, &inregs);
 	}
+	return;
 }
+#else
+void
+chdrive(str)
+char *str;
+{
+	if (str[1] == ':')
+		(void)setdisk((int)(toupper(str[0]) - 'A'));
+	return;
+}
+#endif
 
 /* Use the IOCTL DOS function call to change stdin and stdout to raw
  * mode.  For stdin, this prevents MSDOS from trapping ^P, thus
@@ -660,38 +703,45 @@ char *str;
  * Thanks to Mark Zbikowski (markz@microsoft.UUCP).
  */
 
-#  define DEVICE	0x80
-#  define RAW		0x20
-#  define IOCTL		0x44
-#  define STDIN		fileno(stdin)
-#  define STDOUT	fileno(stdout)
-#  define GETBITS	0
-#  define SETBITS	1
+#define DEVICE		0x80
+#define RAW		0x20
+#define IOCTL		0x44
+#define STDIN		fileno(stdin)
+#define STDOUT		fileno(stdout)
+#define GETBITS		0
+#define SETBITS		1
 
-static unsigned	old_stdin, old_stdout, ioctl();
+static unsigned	int old_stdin, old_stdout;
 
+void
 disable_ctrlP() {
-	if (!flags.rawio)
-		return;
+#ifdef DGK
+	if (!flags.rawio) return;
+#endif
 	old_stdin = ioctl(STDIN, GETBITS, 0);
 	old_stdout = ioctl(STDOUT, GETBITS, 0);
 	if (old_stdin & DEVICE)
 		ioctl(STDIN, SETBITS, old_stdin | RAW);
 	if (old_stdout & DEVICE)
 		ioctl(STDOUT, SETBITS, old_stdout | RAW);
+	return;
 }
 
+void
 enable_ctrlP() {
-	if (!flags.rawio)
-		return;
+#ifdef DGK
+	if (!flags.rawio) return;
+#endif
 	if (old_stdin)
 		(void) ioctl(STDIN, SETBITS, old_stdin);
 	if (old_stdout)
 		(void) ioctl(STDOUT, SETBITS, old_stdout);
+	return;
 }
 
-static unsigned
+static unsigned int
 ioctl(handle, mode, setvalue)
+int handle, mode;
 unsigned setvalue;
 {
 	union REGS regs;
@@ -705,6 +755,7 @@ unsigned setvalue;
 	return (regs.x.dx);
 }
 
+#ifdef DGK
 /* Follow the PATH, trying to fopen the file.
  */
 #define PATHSEP	';'
@@ -713,12 +764,12 @@ FILE *
 fopenp(name, mode)
 char *name, *mode;
 {
-	char buf[BUFSIZ], *bp, *pp, *getenv(), lastch;
+	char buf[BUFSIZ], *bp, *pp, lastch;
 	FILE *fp;
 
 	/* Try the default directory first.  Then look along PATH.
 	 */
-	strcpy(buf, name);
+	Strcpy(buf, name);
 	if (fp = fopen(buf, mode))
 		return fp;
 	else {
@@ -729,39 +780,38 @@ char *name, *mode;
 				lastch = *bp++ = *pp++;
 			if (lastch != '\\' && lastch != '/')
 				*bp++ = '\\';
-			strcpy(bp, name);
+			Strcpy(bp, name);
 			if (fp = fopen(buf, mode))
 				return fp;
 			if (*pp)
 				pp++;
 		}
 	}
-	return NULL;
+	return (FILE *)0;
 }
-# endif /* DGK */
+#endif /* DGK */
 
 /* Chdir back to original directory
  */
-# undef exit
+#undef exit
+void exit(int);
 void
 msexit(code)
 {
-# ifdef CHDIR
+#ifdef CHDIR
 	extern char orgdir[];
-# endif
+#endif
 
-# ifdef DGK
 	flushout();
 	enable_ctrlP();		/* in case this wasn't done */
-	if (ramdisk)
-		copybones(TOPERM);
-# endif
-# ifdef CHDIR
+#ifdef DGK
+	if (ramdisk) copybones(TOPERM);
+#endif
+#ifdef CHDIR
 	chdir(orgdir);		/* chdir, not chdirx */
-#  ifdef DGK
 	chdrive(orgdir);
-#  endif
-# endif
+#endif
 	exit(code);
+	return;
 }
 #endif /* MSDOS */

@@ -1,30 +1,55 @@
-/*	SCCS Id: @(#)steal.c	2.3	88/01/21
+/*	SCCS Id: @(#)steal.c	3.0	88/07/06
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-long		/* actually returns something that fits in an int */
-somegold(){
-	return( (u.ugold < 100) ? u.ugold :
-		(u.ugold > 10000) ? rnd(10000) : rnd((int) u.ugold) );
+static char *
+equipname(otmp)
+
+	register struct obj *otmp;
+{
+
+	return (
+#ifdef SHIRT
+		(otmp == uarmu) ? "shirt" :
+#endif
+		(otmp == uarmf) ? "boots" :
+		(otmp == uarms) ? "shield" :
+		(otmp == uarmg) ? "gloves" :
+		(otmp == uarmc) ? "cloak" :
+		(otmp == uarmh) ? "helmet" : "armor");
 }
 
-stealgold(mtmp)  register struct monst *mtmp; {
-register struct gold *gold = g_at(u.ux, u.uy);
-register long tmp;
+long		/* actually returns something that fits in an int */
+somegold(){
+#ifdef LINT	/* long conv. ok */
+	return(0L);
+#else
+	return (long)( (u.ugold < 100) ? u.ugold :
+		(u.ugold > 10000) ? rnd(10000) : rnd((int) u.ugold) );
+#endif
+}
+
+void
+stealgold(mtmp)
+register struct monst *mtmp;
+{
+	register struct gold *gold = g_at(u.ux, u.uy);
+	register long tmp;
 	if(gold && ( !u.ugold || gold->amount > u.ugold || !rn2(5))) {
 		mtmp->mgold += gold->amount;
 		freegold(gold);
 		if(Invisible) newsym(u.ux, u.uy);
-		pline("%s quickly snatches some gold from between your feet!",
-			Monnam(mtmp));
+		pline("%s quickly snatches some gold from between your %s!",
+			Monnam(mtmp), makeplural(body_part(FOOT)));
 		if(!u.ugold || !rn2(5)) {
 			rloc(mtmp);
 			mtmp->mflee = 1;
 		}
 	} else if(u.ugold) {
 		u.ugold -= (tmp = somegold());
-		pline("Your purse feels lighter.");
+		Your("purse feels lighter.");
 		mtmp->mgold += tmp;
 		rloc(mtmp);
 		mtmp->mflee = 1;
@@ -33,8 +58,10 @@ register long tmp;
 }
 
 /* steal armor after he finishes taking it off */
-unsigned stealoid;		/* object to be stolen */
-unsigned stealmid;		/* monster doing the stealing */
+unsigned int stealoid;		/* object to be stolen */
+unsigned int stealmid;		/* monster doing the stealing */
+
+static int
 stealarm(){
 	register struct monst *mtmp;
 	register struct obj *otmp;
@@ -43,31 +70,34 @@ stealarm(){
 	  if(otmp->o_id == stealoid) {
 	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	      if(mtmp->m_id == stealmid) {
-		if(dist(mtmp->mx,mtmp->my) < 3) {
 		  freeinv(otmp);
 		  pline("%s steals %s!", Monnam(mtmp), doname(otmp));
 		  mpickobj(mtmp,otmp);
 		  mtmp->mflee = 1;
 		  rloc(mtmp);
-		}
 		break;
 	      }
 	    break;
 	  }
-	stealoid = 0;
+	return stealoid = 0;
 }
 
-/* returns 1 when something was stolen */
-/* (or at least, when N should flee now) */
-/* avoid stealing the object stealoid */
+/* Returns 1 when something was stolen (or at least, when N should flee now)
+ * Avoid stealing the object stealoid
+ */
+int
 steal(mtmp)
 struct monst *mtmp;
 {
 	register struct obj *otmp;
-	register tmp;
-	register named = 0;
+	register int tmp;
+	register int named = 0;
+
+	/* the following is true if successful on first of two attacks. */
+	if(dist(mtmp->mx, mtmp->my) > 3) return(0);
 
 	if(!invent){
+	    /* Not even a thousand men in armor can strip a naked man. */
 	    if(Blind)
 	      pline("Somebody tries to rob you, but finds nothing to steal.");
 	    else
@@ -75,23 +105,49 @@ struct monst *mtmp;
 		Monnam(mtmp));
 	    return(1);	/* let her flee */
 	}
+
+	if(Adornment & LEFT_RING) {
+	    otmp = uleft;
+	    goto gotobj;
+	} else if(Adornment & RIGHT_RING) {
+	    otmp = uright;
+	    goto gotobj;
+	}
+
 	tmp = 0;
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarm2)
-		tmp += ((otmp->owornmask & (W_ARMOR | W_RING)) ? 5 : 1);
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarmc)
+	    tmp += ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
 	tmp = rn2(tmp);
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarm2)
-		if((tmp -= ((otmp->owornmask & (W_ARMOR | W_RING)) ? 5 : 1))
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarmc)
+  	    if((tmp -= ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1))
 			< 0) break;
 	if(!otmp) {
 		impossible("Steal fails!");
 		return(0);
 	}
-	if(otmp->o_id == stealoid)
-		return(0);
-	if((otmp->owornmask & (W_ARMOR | W_RING))){
+	/* can't steal armor while wearing cloak - so steal the cloak. */
+	if(otmp == uarm && uarmc) otmp = uarmc;
+#ifdef SHIRT
+	else if(otmp == uarmu && uarmc) otmp = uarmc;
+	else if(otmp == uarmu && uarm) otmp = uarm;
+#endif
+gotobj:
+	if(otmp->o_id == stealoid) return(0);
+
+#ifdef WALKIES
+	if(otmp->otyp == LEASH && otmp->leashmon) o_unleash(otmp);
+#endif
+
+	if((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL))){
 		switch(otmp->olet) {
+		case TOOL_SYM:
+			Blindf_off(otmp);
+			break;
+		case AMULET_SYM:
+			Amulet_off();
+			break;
 		case RING_SYM:
-			ringoff(otmp);
+			Ring_gone(otmp);
 			break;
 		case ARMOR_SYM:
 			if(multi < 0 || otmp == uarms){
@@ -104,29 +160,26 @@ struct monst *mtmp;
 			if(flags.female)
 			    pline("%s charms you.  You gladly %s your %s.",
 				  Monnam(mtmp),
-				  curssv ? "hand over"
-				         : "let her take",
-#ifdef SHIRT
-				  (otmp == uarmu) ? "shirt" :
-#endif
-				  (otmp == uarmg) ? "gloves" :
-				  (otmp == uarmh) ? "helmet" : "armor");
+				  curssv ? "let her take" : "hand over",
+				  equipname(otmp));
 			else
-				pline("%s seduces you and %s off your %s.",
-				Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
-				curssv	? "helps you to take"
-					: "you start taking",
-#ifdef SHIRT
-				(otmp == uarmu) ? "shirt" :
-#endif
-				(otmp == uarmg) ? "gloves" :
-				(otmp == uarmh) ? "helmet" : "armor");
+			    pline("%s seduces you and %s off your %s.",
+				  Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
+				  curssv ? "helps you to take" : "you start taking",
+				  equipname(otmp));
 			named++;
-			(void) armoroff(otmp);
+			/* the following is to set multi for later on */
+			(void) nomul(-objects[otmp->otyp].oc_delay);
+
+			if (otmp == uarm)  (void) Armor_off();
+			else if (otmp == uarmc) (void) Cloak_off();
+			else if (otmp == uarmf) (void) Boots_off();
+			else if (otmp == uarmg) (void) Gloves_off();
+			else if (otmp == uarmh) (void) Helmet_off();
+			else if (otmp == uarms) (void) Shield_off();
+			else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
 			otmp->cursed = curssv;
 			if(multi < 0){
-				extern char *nomovemsg;
-				extern int (*afternmv)();
 				/*
 				multi = 0;
 				nomovemsg = 0;
@@ -143,22 +196,17 @@ struct monst *mtmp;
 			impossible("Tried to steal a strange worn thing.");
 		}
 	}
-	else if(otmp == uwep) setuwep((struct obj *) 0);
+	else if(otmp == uwep) uwepgone();
 
-	if(Punished && otmp == uball){
-		Punished = 0;
-		freeobj(uchain);
-		free((char *) uchain);
-		uchain = (struct obj *) 0;
-		uball->spe = 0;
-		uball = (struct obj *) 0;	/* superfluous */
-	}
+	if(otmp == uball) unpunish();
+
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
 	mpickobj(mtmp,otmp);
 	return((multi < 0) ? 0 : 1);
 }
 
+void
 mpickobj(mtmp,otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
@@ -167,28 +215,29 @@ register struct obj *otmp;
 	mtmp->minvent = otmp;
 }
 
+void
 stealamulet(mtmp)
 register struct monst *mtmp;
 {
 	register struct obj *otmp;
 
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
-	    if(otmp->olet == AMULET_SYM) {
+	    if(otmp->otyp == AMULET_OF_YENDOR) {
 		/* might be an imitation one */
-		if(otmp == uwep) setuwep((struct obj *) 0);
+		setnotworn(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
-		return(1);
+		rloc(mtmp);
 	    }
 	}
-	return(0);
 }
 
 /* release the objects the killed animal has stolen */
+void
 relobj(mtmp,show)
 register struct monst *mtmp;
-register show;
+register int show;
 {
 	register struct obj *otmp, *otmp2;
 
@@ -197,13 +246,15 @@ register show;
 		otmp->oy = mtmp->my;
 		otmp2 = otmp->nobj;
 		otmp->nobj = fobj;
+		if (flooreffects(otmp,mtmp->mx,mtmp->my)) continue;
 		fobj = otmp;
+		levl[otmp->ox][otmp->oy].omask = 1;
 		stackobj(fobj);
 		if(show & cansee(mtmp->mx,mtmp->my))
 			atl(otmp->ox,otmp->oy,Hallucination?rndobjsym() : otmp->olet);
 	}
 	mtmp->minvent = (struct obj *) 0;
-	if(mtmp->mgold || mtmp->data->mlet == 'L') {
+	if(mtmp->mgold || mtmp->data->mlet == S_LEPRECHAUN) {
 		register long tmp;
 
 		tmp = (mtmp->mgold > 10000) ? 10000 : mtmp->mgold;

@@ -1,49 +1,46 @@
-/*	SCCS Id: @(#)unixmain.c	2.3	88/01/21
+/*	SCCS Id: @(#)unixmain.c	3.0	89/01/13
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* NetHack may be freely redistributed.  See license for details. */
 /* main.c - (Unix) version */
 
-#include <stdio.h>
 #include <signal.h>
+#include <pwd.h>
+
 #include "hack.h"
 
-#ifdef QUEST
-#define	gamename	"NetQuest"
-#else
-#define	gamename	"NetHack"
-#endif
-
-extern char *getlogin(), *getenv();
-extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
-
-int (*afternmv)();
-int (*occupation)();
-
-int done1();
-int hangup();
-
-int hackpid;				/* current pid */
-int locknum;				/* max num of players */
+int hackpid = 0;				/* current pid */
+int locknum = 0;				/* max num of players */
 #ifdef DEF_PAGER
-char *catmore;				/* default pager */
+char *catmore = 0;				/* default pager */
 #endif
 char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
-char *hname;		/* name of the game (argv[0] of call) */
+char *hname = 0;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 
-extern char *nomovemsg;
-extern long wailmsg;
+int (*occupation)() = DUMMY;
+int (*afternmv)() = DUMMY;
+#ifdef CHDIR
+static void chdirx();
+#endif /* CHDIR */
+static void whoami(), newgame();
 
 main(argc,argv)
 int argc;
 char *argv[];
 {
+	struct passwd *pw;
+	extern struct passwd *getpwuid();
+	extern int x_maze_max, y_maze_max;
 	register int fd;
 #ifdef CHDIR
 	register char *dir;
 #endif
-
+#ifdef COMPRESS
+	char	cmd[80], old[80];
+#endif
 	hname = argv[0];
 	hackpid = getpid();
+	(void) umask(0);
 
 #ifdef CHDIR			/* otherwise no chdir() */
 	/*
@@ -69,13 +66,10 @@ char *argv[];
 		    error("Flag -d must be followed by a directory name.");
 	}
 #endif /* CHDIR /**/
-#ifdef GRAPHICS
 	/* Set the default values of the presentation characters */
-	memcpy((char *) &showsyms, (char *) &defsyms, sizeof(struct symbols));
-#endif
-#ifdef HACKOPTIONS
+	(void) memcpy((char *) &showsyms, 
+		(char *) &defsyms, sizeof(struct symbols));
 	initoptions();
-#endif
 	whoami();
 	/*
 	 * Now we know the directory containing 'record' and
@@ -97,11 +91,10 @@ char *argv[];
 	setbuf(stdout,obuf);
 	setrandom();
 	startup();
-	init_corpses();	/* initialize optional corpse names */
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
-	(void) signal(SIGHUP, hangup);
+	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
 
 	/*
 	 * Find the creation date of this game,
@@ -123,15 +116,20 @@ char *argv[];
 		argv++;
 		argc--;
 		switch(argv[0][1]){
-#ifdef WIZARD
+#if defined(WIZARD) || defined(EXPLORE_MODE)
 		case 'D':
-			if(!strcmp(getlogin(), WIZARD))
+		case 'X':
+			pw = getpwuid(getuid());
+# ifdef WIZARD
+			if(!strcmp(pw->pw_name, WIZARD))
 				wizard = TRUE;
-			else {
-				settty("Sorry, you can't operate in debug mode.\n");
-				clearlocks();
-				exit(0);
-			}
+# endif
+# if defined(WIZARD) && defined(EXPLORE_MODE)
+			else
+# endif
+# ifdef EXPLORE_MODE
+				discover = TRUE;
+# endif
 			break;
 #endif
 #ifdef NEWS
@@ -147,14 +145,14 @@ char *argv[];
 			  argv++;
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
-				printf("Player name expected after -u\n");
+				Printf("Player name expected after -u\n");
 			break;
 		default:
 			/* allow -T for Tourist, etc. */
 			(void) strncpy(pl_character, argv[0]+1,
 				sizeof(pl_character)-1);
 
-			/* printf("Unknown option: %s\n", *argv); */
+			/* Printf("Unknown option: %s\n", *argv); */
 		}
 	}
 
@@ -172,7 +170,7 @@ char *argv[];
 	getmailstatus();
 #endif
 #ifdef WIZARD
-	if(wizard) (void) strcpy(plname, "wizard"); else
+	if(wizard) Strcpy(plname, "wizard"); else
 #endif
 	if(!*plname || !strncmp(plname, "player", 4)
 		    || !strncmp(plname, "games", 4))
@@ -190,77 +188,87 @@ char *argv[];
 		(void) signal(SIGQUIT,SIG_IGN);
 		(void) signal(SIGINT,SIG_IGN);
 		if(!locknum)
-			(void) strcpy(lock,plname);
+			Strcpy(lock,plname);
 		getlock();	/* sets lock if locknum != 0 */
 #ifdef WIZARD
-	} else {
-		register char *sfoo;
-		extern char genocided[], fut_geno[];
-		(void) strcpy(lock,plname);
-		if(sfoo = getenv("MAGIC"))
-			while(*sfoo) {
-				switch(*sfoo++) {
-				case 'n': (void) srand(*sfoo++);
-					break;
-				}
-			}
-		if(sfoo = getenv("GENOCIDED")){
-			if(*sfoo == '!'){
-				extern struct permonst mons[CMNUM+2];
-				register struct permonst *pm = mons;
-				register char *gp = genocided;
-
-				while(pm < mons+CMNUM+2){
-					if(!index(sfoo, pm->mlet))
-						*gp++ = pm->mlet;
-					pm++;
-				}
-				*gp = 0;
-			} else
-				(void) strcpy(genocided, sfoo);
-			(void) strcpy(fut_geno, genocided);
-		}
-	}
+	} else
+		Strcpy(lock,plname);
 #endif /* WIZARD /**/
 	setftty();
-	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
+
+	/* 
+	 * Initialisation of the boundaries of the mazes
+	 * Both boundaries have to be even.
+	 */
+	 
+	x_maze_max = COLNO-1;
+	if (x_maze_max % 2) 
+		x_maze_max--;
+	y_maze_max = ROWNO-1;
+	if (y_maze_max % 2) 
+		y_maze_max--;
+
+	/* initialize static monster strength array */
+	init_monstr();
+
+	Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 	regularize(SAVEF+5);		/* avoid . or / in name */
+#ifdef COMPRESS
+	Strcpy(old,SAVEF);
+	Strcat(SAVEF,".Z");
+	if((fd = open(SAVEF,0)) >= 0) {
+ 	    (void) close(fd);
+	    Strcpy(cmd, COMPRESS);
+	    Strcat(cmd, " -d ");	/* uncompress */
+# ifdef COMPRESS_OPTIONS
+	    Strcat(cmd, COMPRESS_OPTIONS);
+	    Strcat(cmd, " ");
+# endif
+	    Strcat(cmd,SAVEF);
+	    (void) system(cmd);
+	}
+	Strcpy(SAVEF,old);
+#endif
 	if((fd = open(SAVEF,0)) >= 0 &&
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
-		(void) signal(SIGINT,done1);
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 		pline("Restoring old save file...");
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
-		pline("Hello %s%s, welcome to %s!", 
-			(Badged) ? "Officer " : "", plname, gamename);
+		pline("Hello %s, welcome to NetHack!", plname);
+		/* get shopkeeper set properly if restore is in shop */
+		(void) inshop();
+#ifdef EXPLORE_MODE
+		if (discover) {
+			You("are in non-scoring discovery mode.");
+			pline("Do you want to keep the save file? ");
+			if(yn() == 'n')
+				(void) unlink(SAVEF);
+		}
+#endif
 		flags.move = 0;
 	} else {
 not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to %s!", plname, gamename);
-#ifdef WIZARD
-		if (wizard && dlevel == 1)
-# ifdef STOOGES
-pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
-			u.wiz_level, u.medusa_level, u.stooge_level);
-# else
-	            pline ("The wiz is at %d, and the medusa at %d",
-			   u.wiz_level, u.medusa_level);
-# endif
+		pline("Hello %s, welcome to NetHack!", plname);
+#ifdef EXPLORE_MODE
+		if (discover)
+			You("are in non-scoring discovery mode.");
 #endif
+		flags.move = 0;
+		set_wear();
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
-		flags.move = 1;
 	}
 
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
-		pline("You are lucky! Full moon tonight.");
+		You("are lucky!  Full moon tonight.");
 		if(!u.uluck) change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful! New moon tonight.");
+		pline("Be careful!  New moon tonight.");
 	}
 
 	initrack();
@@ -268,11 +276,13 @@ pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
 	for(;;) {
 		if(flags.move) {	/* actual time passed */
 
+#ifdef SOUNDS
+			dosounds();
+#endif
 			settrack();
 
 			if(moves%2 == 0 ||
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
-				extern struct monst *makemon();
 				movemon();
 #ifdef HARD
 				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
@@ -284,39 +294,20 @@ pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
 			if(Glib) glibr();
 			timeout();
 			++moves;
-#ifdef PRAYERS
+#ifdef THEOLOGY
 			if (u.ublesscnt)  u.ublesscnt--;
 #endif
 			if(flags.time) flags.botl = 1;
-#ifdef KAA
+#ifdef POLYSELF
 			if(u.mtimedone)
 			    if(u.mh < 1) rehumanize();
 			else
 #endif
 			    if(u.uhp < 1) {
-				pline("You die...");
+				You("die...");
 				done("died");
 			    }
-			if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50){
-			    wailmsg = moves;
-#ifdef KAA
-			    if(index("WEV", pl_character[0])) {
-				if (u.uhp == 1)
-				pline("%s is about to die.", pl_character);
-				else
-				pline("%s, your life force is running out.",
-					pl_character);
-			    } else {
-#endif
-				if(u.uhp == 1)
-				pline("You hear the wailing of the Banshee...");
-				else
-				pline("You hear the howling of the CwnAnnwn...");
-#ifdef KAA
-			    }
-#endif
-			}
-#ifdef KAA
+#ifdef POLYSELF
 			if (u.mtimedone) {
 			    if (u.mh < u.mhmax) {
 				if (Regeneration || !(moves%20)) {
@@ -328,45 +319,54 @@ pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
 #endif
 			if(u.uhp < u.uhpmax) {
 				if(u.ulevel > 9) {
-					if(HRegeneration || !(moves%3)) {
-					    flags.botl = 1;
-					    u.uhp += rnd((int) u.ulevel-9);
-					    if(u.uhp > u.uhpmax)
-						u.uhp = u.uhpmax;
-					}
+				    int heal;
+
+				    if(HRegeneration || !(moves%3)) {
+					flags.botl = 1;
+					if (ACURR(A_CON) <= 12) heal = 1;
+					else heal = rnd((int) ACURR(A_CON)-12);
+					if (heal > u.ulevel-9) heal = u.ulevel-9;
+					u.uhp += heal;
+					if(u.uhp > u.uhpmax)
+					    u.uhp = u.uhpmax;
+				    }
 				} else if(HRegeneration ||
-					(!(moves%(22-u.ulevel*2)))) {
+				      (!(moves%((MAXULEV+12)/(u.ulevel+2)+1)))) {
 					flags.botl = 1;
 					u.uhp++;
 				}
 			}
 #ifdef SPELLS
-			if ((u.uen<u.uenmax) && (!(moves%(21-u.ulevel/2)))) {
-				u.uen += rn2(u.ulevel/4 + 1) + 1;
+			if ((u.uen<u.uenmax) && (!(moves%(19-ACURR(A_INT)/2)))) {
+				u.uen += rn2((int)ACURR(A_WIS)/5 + 1) + 1;
 				if (u.uen > u.uenmax)  u.uen = u.uenmax;
 				flags.botl = 1;
 			}
 #endif
 			if(Teleportation && !rn2(85)) tele();
-#if defined(KAA) && defined(BVH)
+#ifdef POLYSELF
 			if(Polymorph && !rn2(100)) polyself();
+			if(u.ulycn >= 0 && !rn2(80 - (20 * night())))
+				you_were();
 #endif
-			if(Searching && multi >= 0) (void) dosearch();
+			if(Searching && multi >= 0) (void) dosearch0(1);
+			hatch_eggs();
 			gethungry();
 			invault();
 			amulet();
 #ifdef HARD
-			if (!rn2(50+(u.ulevel*3))) u_wipe_engr(rnd(3));
+			if (!rn2(40+(int)(ACURR(A_DEX)*3))) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
-				u.udg_cnt--;
-				if(u.udg_cnt <= 0) {
+				if(u.udg_cnt) u.udg_cnt--;
+				if(!u.udg_cnt) {
 
 					intervene();
 					u.udg_cnt = rn1(200, 50);
 				}
 			}
 #endif
+			restore_attrib();
 		}
 		if(multi < 0) {
 			if(!++multi){
@@ -379,34 +379,34 @@ pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
 		}
 
 		find_ac();
-#ifndef QUEST
 		if(!flags.mv || Blind)
-#endif
 		{
 			seeobjs();
 			seemons();
+			seeglds();
 			nscr();
 		}
-#ifdef DGK
-		if(flags.time) flags.botl = 1;
-#endif
 		if(flags.botl || flags.botlx) bot();
 
 		flags.move = 1;
 
 		if(multi >= 0 && occupation) {
 
-			if (monster_nearby())
+			if(monster_nearby())
 				stop_occupation();
 			else if ((*occupation)() == 0)
 				occupation = 0;
 			continue;
 		}
 
-		if(multi > 0) {
-#ifdef QUEST
-			if(flags.run >= 4) finddir();
+		if((u.uhave_amulet || Clairvoyant) && 
+#ifdef ENDGAME
+			dlevel != ENDLEVEL &&
 #endif
+			!(moves%15) && !rn2(2)) do_vicinity_map();
+
+		u.umoved = FALSE;
+		if(multi > 0) {
 			lookaround();
 			if(!multi) {	/* lookaround may clear multi */
 				flags.move = 0;
@@ -424,35 +424,37 @@ pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
 #ifdef MAIL
 			ckmailstatus();
 #endif
-			rhack((char *) 0);
+			rhack(NULL);
 		}
 		if(multi && multi%7 == 0)
 			(void) fflush(stdout);
 	}
 }
 
+void
 glo(foo)
-register foo;
+register int foo;
 {
 	/* construct the string  xlock.n  */
 	register char *tf;
 
 	tf = lock;
 	while(*tf && *tf != '.') tf++;
-	(void) sprintf(tf, ".%d", foo);
+	Sprintf(tf, ".%d", foo);
 }
 
 /*
  * plname is filled either by an option (-u Player  or  -uPlayer) or
- * explicitly (-w implies wizard) or by askname.
+ * explicitly (by being the wizard) or by askname.
  * It may still contain a suffix denoting pl_character.
  */
+void
 askname(){
 register int c,ct;
-	printf("\nWho are you? ");
+	Printf("\nWho are you? ");
 	(void) fflush(stdout);
 	ct = 0;
-	while((c = getchar()) != '\n'){
+	while((c = Getchar()) != '\n'){
 		if(c == EOF) error("End of input\n");
 		/* some people get confused when their erase char is not ^H */
 		if(c == '\010') {
@@ -468,15 +470,16 @@ register int c,ct;
 }
 
 /*VARARGS1*/
+void
 impossible(s,x1,x2)
-register char *s;
+register char *s, *x1, *x2;
 {
 	pline(s,x1,x2);
 	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR
-static
+static void
 chdirx(dir, wr)
 char *dir;
 boolean wr;
@@ -488,8 +491,8 @@ boolean wr;
 	       && strcmp(dir, HACKDIR)		/* and not the default? */
 #  endif
 		) {
-		(void) setuid(getuid());		/* Ron Wessels */
 		(void) setgid(getgid());
+		(void) setuid(getuid());		/* Ron Wessels */
 	}
 # endif
 
@@ -507,12 +510,12 @@ boolean wr;
 	/* perhaps we should also test whether . is writable */
 	/* unfortunately the access systemcall is worthless */
 	if(wr) {
-	    register fd;
+	    register int fd;
 
 	    if(dir == NULL)
 		dir = ".";
 	    if((fd = open(RECORD, 2)) < 0) {
-		printf("Warning: cannot write %s/%s", dir, RECORD);
+		Printf("Warning: cannot write %s/%s", dir, RECORD);
 		getret();
 	    } else
 		(void) close(fd);
@@ -520,12 +523,11 @@ boolean wr;
 }
 #endif /* CHDIR /**/
 
+void
 stop_occupation()
 {
-	extern void pushch();
-
 	if(occupation) {
-		pline("You stop %s.", occtxt);
+		You("stop %s.", occtxt);
 		occupation = 0;
 #ifdef REDO
 		multi = 0;
@@ -534,9 +536,10 @@ stop_occupation()
 	}
 }
 
+static void
 whoami() {
 	/*
-	 * Who am i? Algorithm: 1. Use name as specified in HACKOPTIONS
+	 * Who am i? Algorithm: 1. Use name as specified in NETHACKOPTIONS
 	 *			2. Use $USER or $LOGNAME	(if 1. fails)
 	 *			3. Use getlogin()		(if 2. fails)
 	 * The resulting name is overridden by command line options.
@@ -548,9 +551,6 @@ whoami() {
 	 */
 	register char *s;
 
-#ifndef DGKMOD
-	initoptions();
-#endif
 	if(!*plname && (s = getenv("USER")))
 		(void) strncpy(plname, s, sizeof(plname)-1);
 	if(!*plname && (s = getenv("LOGNAME")))
@@ -559,33 +559,33 @@ whoami() {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 }
 
+static void
 newgame() {
-	extern struct monst *makedog();
-
 	fobj = fcobj = invent = 0;
 	fmon = fallen_down = 0;
 	ftrap = 0;
 	fgold = 0;
 	flags.ident = 1;
+
 	init_objects();
 	u_init();
 
-	(void) signal(SIGINT,done1);
+	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+
 	mklev();
 	u.ux = xupstair;
 	u.uy = yupstair;
 	(void) inshop();
+
 	setsee();
 	flags.botlx = 1;
-	{
-		register struct monst *mtmp;
 
-		/* Move the monster from under you or else
-		 * makedog() will fail when it calls makemon().
-		 * 			- ucsfcgl!kneller
-		 */
-		if (mtmp = m_at(u.ux, u.uy))  mnexto(mtmp);
-	}
+	/* Move the monster from under you or else
+	 * makedog() will fail when it calls makemon().
+	 * 			- ucsfcgl!kneller
+	 */
+	if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
+
 	(void) makedog();
 	seemons();
 #ifdef NEWS
@@ -593,15 +593,6 @@ newgame() {
 		/* after reading news we did docrt() already */
 #endif
 		docrt();
-	return(0);
-}
 
-#ifdef GENIX
-jhndist(x1,y1,x2,y2)
-{
-	int x,y;
-	x=x1-x2;
-	y=y1-y2;
-	return (x*x + y*y);
+	return;
 }
-#endif

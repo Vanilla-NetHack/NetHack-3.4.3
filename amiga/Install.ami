@@ -1,0 +1,132 @@
+
+Compilation and installation instructions for NetHack on the Amiga
+==================================================================
+						   by Olaf Seibert
+To Play Only:
+------------
+
+	1.  Need one megabyte.
+	2.  Wait for the binary distribution on comp.binaries.amiga.
+
+To Build:
+--------
+
+Requirements:
+
+	1a. Harddisk with 3M of free space; or
+	1b. Two floppy drives and enough memory for an >= 1M ramdisk
+	    and make/cpp/compiler/assembler resident; or
+	1c. Three floppy drives and enough memory for a +- 200K ramdisk
+	    and make/cpp/compiler/assembler resident.
+
+	2.  With 1b and 1c you also need at least 4 empty floppies.
+
+and Optionally
+
+	1.  A CPP that handles #if defined(SYMBOL). A Decus CPP,
+	    available on a Fish disk, will do fine;
+	2.  Same as 1, modified to write all #define-s at the end
+	    of the output file
+	3.  A modified Make (originally from net.sources, also from a Fish
+	    disk), modified to search several directories when trying to
+	    apply a default rule, and to allow colons (:) in target names.
+	4.  A file zapper, to learn that stupid Manx 3.6 compiler that if it
+	    doesn't know signed, const, and volatile, it shouldn't look for
+	    them. Patch those 'keywords' to someting like __gned, __nst, and
+	    __latile.
+	5.  Rez (by Jim Goodnow) is highly recommended.
+
+
+First, read the Unix installation instructions; the organization on the
+Amiga is similar, with the differences stated below:
+
+For floppy users (as I am), source is split over two diskettes, SRC1 and
+SRC2. The first contains roughly [a-l]*.c, the second [m-z]*.c. Include
+files are in the Assigned directory INCLUDE:, on SRC1:include. You may want
+to rename hack.h to _hack.h, see below. Amiga specific files are in AMIGA:,
+in SRC1:amiga. The modified stdio.h and friends also go there. There must
+also be an AUXIL: somewhere.
+
+On a harddisk, you can either Assign SRC1: and SRC2: to the same directory,
+or change the makefile slightly.
+
+Set up the compiler environment such that it will look for #include files
+first in AMIGA: and INCLUDE:, and only last in the default include file
+directory. For convenience, you may copy time.h and ctype.h to AMIGA:, to
+save a few disk swaps. It is expected that time_t is defined in time.h; if
+it is not, change system.h. You don't want to define Bitfield in config.h
+to use real bitfields; the Manx compiler is too buggy in that area. [It
+evaluates the lhs of bitfield op= expr twice, including side-effects, and
+if the lhs is too complicated, it messes up a few registers as well; as in
+push d1; do something else with d1; pop it back in d0; use d1 instead of
+d0]. You also don't want COMPRESS, but do want ZEROCOMP. Of course, since I
+wrote that part.
+
+This is the initialization script file that I use:
+
+	rez cpp dme cc -l as -n make
+	assign amiga: src1:amiga include: src1:include	; assumes ARP.
+	set INCLUDE=!include:!amiga:!SYS:include CLIB=SYS2:lib
+	copy c:delete ram:c
+	copy c:setdate ram:c
+	ares delete remove		; assumes ARP.
+	type <nil: to ram:c/dme 	; to defeat Ash/Shell-Seg
+	type <nil: to ram:c/cc		;   in combination with Rez.
+	type <nil: to ram:c/as
+	type <nil: to ram:c/make
+
+If you put everything in the right place, CD to the place where you want
+the object files to appear (i.e. the RAM disk or your fast harddisk), and
+type Make, assuming you first put the Amiga makefile there. The process
+will then do about the following:
+
+- Make makedefs, which makes a few header files
+- Pre-CPP include:_hack.h to include:hack.h, which also leaves a copy in
+  the current directory. The idea of this is, that we pre-include
+  everything that hack.h includes. You need the modified CPP for that,
+  since we don't want to loose all #defines in the process.
+- Then the amiga specific files are compiled. One of them makes use of a
+  precompiled set of all Amiga header files. You can easily leave out this
+  compiler option.
+- The other files are compiled, using a separate CPP.
+- Finally, things are linked, to an executable of about 650K including
+  wack symbols. Doing this in the 1M ram disk is tricky but possible.
+  Use a second CLI/Shell to delete object files during the second linking
+  pass.
+
+If everything works the first time, this process takes no less than three
+hours, using setup 1b and a 2.5M Amiga 1000 with 68000.
+
+If you have a different setup than I have, you might change the appropriate
+things appropriately :-)
+
+I haven't provided a makefile for the auxiliary files, see Makefile.auxil
+and the directory listing below for that.
+
+     hack (dir)
+       8				   2088
+  castle			      1945
+  cmdhelp			      3035
+  data				     11612
+  endgame			       987
+  hack.font			       264
+  help				      5799
+  hh				      2606
+  history			      1503
+  license			      4417
+  NetHack			    654324  #
+  NetHack.cnf			      1990  #
+  opthelp			      3549
+  oracles			      3370
+  perm					 0
+  record			       197  #
+  rumors			     16899
+  tower1			       369
+  tower2			       337
+  tower3			       371
+
+# These sizes may vary
+
+Happy NetHacking!
+
+-Olaf Seibert

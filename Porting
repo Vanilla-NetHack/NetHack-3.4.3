@@ -1,0 +1,144 @@
+  NetHack Porting Guidelines		v 3.0			89-05-05
+
+
+     1.0	Introduction
+
+	This document goes through the steps required to port NetHack to a
+new machine.  The basic steps in porting the program are:
+
+	1.  Get the code onto your machine.  The current directory setup
+	    consists of one directory each for general and UNIX source
+	    files (src), include files (include), auxiliary files (auxil),
+	    files specific to the Amiga (amiga), and files specific to
+	    other OSs like MSDOS and TOS (other).  A full list of the
+	    files may be found in the top-level file "Files".
+
+	2.  Modify the appropriate include files to customize NetHack to
+	    your system.
+
+	3.  Add, if required, a OS specific copy of "main.c", "tty.c" and
+	    "unix.c".
+
+	4.  Possibly add a OS specific library (see "msdos.c" and "tos.c"
+	    as examples) and a OS specific "*conf.h" file (see unixconf.h,
+	    pcconf.h, tosconf.h, etc. as examples).
+
+	5.  Modify the top level makefile and the "src" makefile if required.
+	    Then run an initial compile.  You are bound to get some errors.
+	    You should be able to fix them in a fairly simple fashion.  If
+	    things seem to be getting too complex, take a step back, and
+	    possibly send me some mail.  I might be able to help.
+
+	6.  Mail all of your fixes to me in a contextual form so that I can
+	    easily integrate them into the code.
+
+	One general rule of thumb exists.  Always add code.  Don't delete
+somebody else's code for yours - it won't work on his machine if you do.
+Always add your OS specific code inside #ifdef / #else / #endif constructs
+so that it will be able to be folded back into the original code easily.
+
+
+     2.0	Include Files
+
+     2.1	config.h
+
+	The file "config.h" is a master configuration file that determines
+the basic features of the game, as well as many of the security options.
+It is intended that end users configure the game by editing "config.h" and
+an appropriate "*conf.h" file, so any #defines for individual preferences
+should be added to those files.  OS-specific #defines that are not intended
+to be changed should also go in "*conf.h"; try to find the most appropriate
+place for other #defines.
+
+	The following sections may require modification:
+
+     -	Section 1:	OS selection.
+			You may have to put a #define for your OS here.
+			If your OS is yet another UNIX variant, put the
+			#define in unixconf.h instead.
+
+     -	Section 2:	Global parameters and filenames.
+			You will have to customize the game to the
+			setup on your system.
+
+     -	Section 3:	Type definitions.
+			These will have to be matched to your compiler.
+
+     2.2	global.h
+
+	This file defines things specific to NetHack that should not
+require modification by an end user.  For a new port, you may have to add
+automatic inclusion of another auxiliary config file (*conf.h) which you
+wrote for your system.
+
+     2.3	extern.h
+
+	If you create any new source modules or new functions in old modules,
+you must enter the names of the new external references (the functions defined
+there for external use) in this file.
+
+     2.4	system.h
+
+	This file contains references for all hooks into the OS (via the
+standard "C" libraries).  Depending on what your standard library looks like,
+you may have to put new entries into this file.
+
+
+     3.0	Source files
+
+	The first step in getting the game up is to get the "makedefs"
+program running.  This program is used to create the appropriate configuration
+specific files for the game.
+
+	Once "makedefs" has been built, the rest of the game can be compiled.
+You will probably have to create an OS specific module to handle things you
+want to use, like a mouse or a ram-disk.
+
+	Please note that the dependancies in the "src" makefile for the
+"makedefs" program are deliberately wrong.  Don't try to fix them, you'll
+just create a dependancy loop as "makedefs" is considered to be dependant
+on some of the header files it creates when "make" searches back through
+other header files it includes.
+
+     3.1	Makefile
+
+	This distribution provides makefiles for several kinds of systems.
+There are joint makefiles for the various varieties of UNIX, makefiles for
+MSDOS, and a makefile for Amigas.  You may have to create a new makefile for
+your specific machine.  If possible, however, add to one of those provided.
+
+     3.2	termcap.c
+
+	If your system doesn't run off of a termcaps or terminfo database, you
+will have to put the appropriate terminal control strings into termcap.c.  This
+has already been done for DOS, and these mods can be used as an example.
+
+     3.3	main.c
+
+	You may need to create a new "main.c" module.  If you do, call it
+[OS]main.c where the [OS] is replaced with the name of the OS you are porting
+to.  This file contains the mainline module, which reads options from the
+command line and processes them.  It also contains the master game turn loop
+and various functions associated with game startup.
+
+     3.4	tty.c
+
+	You may need to create a new "tty.c" module.  If you do, call it
+[OS]tty.c where the [OS] is replaced with the name of the OS you are porting
+to.  This file contains the terminal/console interface routines, and is used
+for raw io, etc.  If your system isn't Unix, you will most certainly have to
+re-write it.
+
+     3.5	unix.c
+
+	You may need to create a new "unix.c" module.  If you do, call it
+[OS]unix.c where the [OS] is replaced with the name of the OS you are porting
+to.  This file contains some OS dependancies concerning time and filename
+creation.
+
+
+	The object of the NetHack development project is to get the game
+working on as many different types of hardware and under as many different
+operating systems as is practical.  Any assistance will be appreciated.
+
+						Mike Stephenson

@@ -1,858 +1,1143 @@
-.ds h0 "A Guide to the Mazes of Menace
+.ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
-.ds vr "Nethack Version 2.0
+.ds vr "NetHack Version 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "September 25, 1987
+.ds f2 "July 19, 1989
 .mt
 A Guide to the Mazes of Menace
 .au
 Eric S. Raymond
+(Extensively edited and expanded for 3.0 by Mike Threepoint)
 .ai
 Thyrsus Enterprises
 Malvern, PA 19355
 .hn 1
 Introduction
 .pg
-You have just finished your years as a student at the
-local adventurer's guild.   After much practice and sweat you
-have finally completed your training and are ready to embark
-upon a  perilous adventure.  As a test of your skills, the
-local guildmasters have sent you into the Dungeons of Doom.
-Your task is to return with the Amulet of Yendor.  Your
-reward for the completion of this task will be a  full
-membership in the local guild.  In addition, you are allowed
-to keep all the loot you bring back from the dungeons.
+You have just finished your years as a student at the local adventurer's
+guild.  After much practice and sweat you have finally completed your
+training and are ready to embark upon a perilous adventure.  To prove
+your worthiness, the local guildmasters have sent you into the Mazes of
+Menace.  Your quest is to return with the Amulet of Yendor.  According
+to legend, the gods will grant immortality to the one who recovers this
+artifact; true or not, its recovery will bring honor and full guild
+membership (not to mention the attentions of certain wealthy wizards).
 .pg
-You have abilities and strengths for dealing with the
-hazards of adventure that will vary depending on your background
-and training. Here is a summary of the character classes:
+Your abilities and strengths for dealing with the hazards of adventure
+will vary with your background and training.
 .pg
-\fICavemen\fR and \fICavewomen\fR start with exceptional strength and
-neolithic weapons.
-.pg
-\fITourists\fR start out with lots of gold (suitable for shopping with)
-and an expensive camera. Most monsters don't like being photographed.
-.pg
-\fIWizards\fR start out with a fair selection of magical goodies and
-a particular affinity for things thaumaturgical.
-.pg
-\fIArcheologists\fR understand dungeons pretty well. This makes them
-able to move quickly and sneak up on dungeon nasties. They start equipped
+\fIArcheologists\fP understand dungeons pretty well; this enables them
+to move quickly and sneak up on dungeon nasties.  They start equipped
 with proper tools for a scientific expedition.
 .pg
-\fIElves\fR are agile and quick and have keen senses; very little of
-what goes on around an Elf will escape him or her. The quality of Elven
-craftsmanship often gives them an advantage in weapons and armor.
-.pg
-\fIValkyries\fR are hardy warrior women. Their upbringing in the harsh
-Northlands makes them strong and inures them to extremes of cold, and instills
-stealth and cunning in them.
-.pg
-\fIHealers\fR are wise in the apothecary and medical arts. They know the
-herbs and simples that can restore vitality and ease pain and neutralize
-poisons, and they can divine a being's state of health or sickness.
-.pg
-\fIKnights\fR are distinguished from the common run of fighter by their
-devotion to the ideal of chivalry and the surpassing excellence of their
-armor.
-.pg
-\fIBarbarians\fR are warriors out of the hinterland, hardened to battle.
+\fIBarbarians\fP are warriors out of the hinterland, hardened to battle.
 They begin their quests with naught but uncommon strength, a trusty hauberk,
 and a great two-handed sword.
 .pg
-\fISamurai\fR are the elite warriors of feudal Nippon. They are lightly
-armored and quick, and wear the \fIdai-sho\fR, two swords of the deadliest
-sharpness.
+\fICavemen\fP and \fICavewomen\fP start with exceptional strength and
+neolithic weapons.
 .pg
-\fINinja\fR are the spy-assassins of Japan. They are quick and stealthy,
-though not as strong as fighters. Their characteristic weapon is the deadly
-\fIshuriken\fR or throwing-star.
+\fIElves\fP are agile, quick, and sensitive; very little of what goes
+on will escape an Elf.  The quality of Elven craftsmanship often gives
+them an advantage in arms and armor.
 .pg
-\fIPriests\fR and \fIPriestesses\fR are clerics militant, armed and
-armored to advance the cause of righteousness but also equipped with some
-skills in arts thaumaturgic. Their ability to commune with deities via prayer
-occasionally extricates them from peril -- but can also put them in it.
+\fIHealers\fP are wise in medicine and the apothecary.  They know the
+herbs and simples that can restore vitality, ease pain, anestheticize,
+and neutralize
+poisons; and with their instruments, they can divine a being's state
+of health or sickness.  Their medical practice earns them quite reasonable
+amounts of money, which they enter the dungeon with.
 .pg
-You set out on your way to the dungeons and after
-several days of uneventful travel, you see the ancient ruins
-that mark the entrance to the Mazes of Menace.  It is late
-at night,  so you make camp at the entrance and spend the
-night sleeping under the open skies.   In the morning you
-gather your weapons and devices, eat what is almost
-your last food, and enter the dungeons.
+\fIKnights\fP are distinguished from the common skirmisher by their
+devotion to the ideals of chivalry and by the surpassing excellence of
+their armor.
+.pg
+\fIPriests\fP and \fIPriestesses\fP are clerics militant, crusaders
+advancing the cause of righteousness with arms, armor, and arts
+thaumaturgic.  Their ability to commune with deities via prayer
+occasionally extricates them from peril\(embut can also put them in it.
+.pg
+\fIRogues\fP are agile and stealthy thieves, who carry daggers, lock
+picks, and poisons to put on darts.
+.pg
+\fISamurai\fP are the elite warriors of feudal Nippon.  They are lightly
+armored and quick, and wear the \fIdai-sho\fP, two swords of the deadliest
+keenness.
+.pg
+\fITourists\fP start out with lots of gold (suitable for shopping with),
+a credit card, lots of food, some maps, and an expensive camera.  Most
+monsters don't like being photographed.
+.pg
+\fIValkyries\fP are hardy warrior women.  Their upbringing in the harsh
+Northlands makes them strong and inures them to extremes of cold, and instills
+in them stealth and cunning.
+.pg
+\fIWizards\fP start out with a fair selection of magical goodies and
+a particular affinity for dweomercraft.
+.pg
+You set out for the dungeon and after several days of uneventful
+travel, you see the ancient ruins that mark the entrance to the Mazes
+of Menace.  It is late at night, so you make camp at the entrance and
+spend the night sleeping under the open skies.  In the morning, you
+gather your gear, eat what may be your last meal outside, and enter
+the dungeon.
+
 .hn 1
 What is going on here?
 .pg
-You have just begun a game of nethack.  Your goal is to
-grab as much treasure as you can, find the Amulet of Yendor,
-and get out of the Mazes of Menace alive.  On the screen, a
-map of where you have been and what you have seen on the
-current dungeon level is kept.  As you explore more of the
-level, it appears on the screen in front of you.
+You have just begun a game of NetHack.  Your goal is to grab as much
+treasure as you can, retrieve the Amulet of Yendor, and escape the
+Mazes of Menace alive.  On the screen is kept a map of where you have
+been and what you have seen on the current dungeon level; as you
+explore more of the level, it appears on the screen in front of you.
 .pg
-Nethack differs from most computer fantasy games (other
-than its ancestors hack and rogue and its cousin larn) in that
-it is screen oriented.  Commands are all one or two keystrokes
-(as opposed to sentences in some losing parser's notion
-of English) and the results of your commands are displayed
-graphically on the screen rather than being explained in
-words (a minimum screen size of 24 lines by  80  columns is
-required; if the screen is larger, only a 24x80 section
-will be used for the map).
+When NetHack's ancestor \fIrogue\fP first appeared, its screen
+orientation was almost unique among computer fantasy games.  Since
+then, screen orientation has become the norm rather than the
+exception; NetHack continues this fine tradition.  Unlike text
+adventure games that input commands in pseudo-English sentences and
+explain the results in words, NetHack commands are all one or two
+keystrokes and the results are displayed graphically on the screen.  A
+minimum screen size of 24 lines by 80 columns is required; if the
+screen is larger, only a 21x80 section will be used for the map.
 .pg
-Another major difference between nethack and other computer
-fantasy games is that once you have solved all the
-puzzles in a standard fantasy game, it has lost most of its
-excitement and it ceases to be fun.  Nethack, on the other
-hand, generates a new dungeon every time you play it and
-even the authors still find it an entertaining and exciting game.
+NetHack generates a new dungeon every time you play it; even the
+authors still find it an entertaining and exciting game despite
+having won several times.
+
 .hn 1
 What do all those things on the screen mean?
 .pg
-In order to understand what is going on in nethack you
-have to first get some grasp of what nethack is doing with the
-screen.  The nethack screen is intended to replace the  "You
-can see ..." descriptions of text fantasy games.  Figure
-1 is a sample of what a nethack screen might look like.
+In order to understand what is going on in NetHack, first you must
+understand what NetHack is doing with the screen.  The NetHack screen
+replaces the ``You see...'' descriptions of text adventure games.
+Figure 1 is a sample of what a NetHack screen might look like.
 .hn 2
-The bottom line
+The bottom lines
 .pg
-At the bottom line of the screen are a  few pieces of
-cryptic information describing your current status.  Here is
-an explanation of what these things mean:
-.lp Level
-This number indicates how deep you have gone in the
-dungeon.   It starts at one and goes up as you go
-deeper into the dungeon.
-.lp Gold
-The number of gold pieces you have managed to find
-and keep with you so far.
-.lp Hp
-Your current and maximum health points.   Health
-points indicate how much damage you can take before
-you die.  The more you get hit in a fight, the lower
-they get.   You can regain health points by resting.
-The number in parentheses is the maximum number your
-health points can reach.
-.sd
-____________________________________________________________
+The bottom two lines of the screen contain several cryptic pieces of
+information describing your current status.  If either status line
+becomes longer than the width of the screen, you might not see all of
+it.  Here are explanations of what the various status items mean
+(though your configuration may not have all the status items listed
+below):
+
+.TS S
+center tab(~);
+a.
+_
+The bat bites!
 
     ------------
     |..........+
-    |..@....]..|
-    |....B.....|
+    |..<..d..$.|
+    |...@B.....|
     |..........|
     -----+------
 
 
 
-Lev 1  Gp 0  Hp 12(12) Ep 3(3)  Ac 8  Str 16(16)  Exp: 1/0
-____________________________________________________________
-.ed
+Player the Rambler         St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15  Neutral
+Level:1 G:0  HP:9(12) Pw:3(3) AC:10 Xp:2/19 T:257 Weak
+_
+.TE
 .ce 1
 Figure 1
 
-.lp Ep
-Energy points. This tells you the level of mystic energy
-you have available for spell casting. When you type `x' to
+.lp Rank\ \ 
+Your character's name and professional ranking (based on the
+experience level, above).
+.lp Strength
+A measure of your character's strength, one of your six basic
+attributes.  Your attributes can range from 3 to 18 inclusive
+(occasionally you may get super-strengths of the form 18/xx).  The
+higher your strength, the stronger you are.  Strength affects how
+successfully you perform physical tasks and how much damage you do in
+combat.
+.lp Dexterity
+Dexterity affects your chances to hit in combat, to avoid traps, and
+do other tasks requring agility or manipulation of objects.
+.lp Constitution
+Constitution affects your ability to withstand injury and other
+strains on your stamina.
+.lp Intelligence
+Intelligence affects your ability to cast spells.
+.lp Wisdom
+Wisdom comes from your religious affairs.  It affects your magical energy.
+.lp Charisma
+Charisma affects how certain creatures react toward you.  In
+particular, it can affect the prices shopkeepers offer you.
+.lp Alignment
+\fBLawful\fP, \fBNeutral\fP, or \fBChaotic\fP.  Basically, Lawful is
+good and Chaotic is evil.  Your alignment influences how other
+monsters react toward you.
+.lp Level\ 
+How deep you have gone into the dungeon.  It starts at one and
+increases as you go deeper into the dungeon.  The Amulet of Yendor is
+reputed to be somewhere beneath the twentieth level.
+.lp Gold\ \ 
+The number of gold pieces you have.
+.lp "Hit Points
+Your current and maximum hit points.  Hit points indicate how much
+damage you can take before you die.  The more you get hit in a fight,
+the lower they get.  You can regain hit points by resting.  The number
+in parentheses is the maximum number your hit points can reach.
+.lp Power
+Spell points.  This tells you how much mystic energy (\fImana\fP)
+you have available for spell casting.  When you type `+' to
 list your spells, each will have a spell point cost beside
-it in parentheses. You will not see this if your site's version
-of the game has been configured to omit spells.
-.lp Ac
-Your current armor protection.  This number indicates
-how effective your armor is in stopping blows from
-unfriendly creatures.  The lower this number is, the
-more effective the armor.
-.lp Str
-Your current strength and maximum ever strength.
-This can be any integer less than or equal to 18, or
-greater than or equal to three (occasionally you
-may get super-strengths of the form 18/xx). The higher the
-number,  the stronger you are. The number in the
-parentheses is the maximum strength you have attained
-so far this game.
-.lp Exp
-These two numbers give your current experience level
-and experience points.   As you do things, you gain
-experience points.   At certain experience point
-totals,  you gain an experience level.   The more
-experienced you are, the better you are able to fight
-and to withstand magical attacks.
+it in parentheses.  You will not see this if your dungeon
+has been set up without spells.
+.lp "Armor Class
+A measure of how effectively your armor stops blows from unfriendly
+creatures.  The lower this number is, the more effective the armor; it
+is quite possible to have negative armor class. 
+.lp Experience
+Your current experience level and experience points.  As you
+adventure, you gain experience points.  At certain experience point
+totals, you gain an experience level.  The more experienced you are,
+the better you fight and withstand magical attacks.  Many dungeons
+show only your experience level here.
+.lp Time\ \ 
+The number of turns elapsed so far, displayed if you have the
+.op time
+option set.
+.lp "Hunger status
+Your current hunger status, ranging from \fBSatiated\fP down to
+\fBFainting\fP.  If your hunger status is normal, it is not displayed.
+.pg
+Additional status flags may appear after the hunger status:  \fBConf\fP
+when you're confused, \fBSick\fP when sick, \fBBlind\fP when you can't
+see, \fBStun\fP when stunned, and \fBHallu\fP when hallucinating.
 .hn 2
 The top line
 .pg
-The top line of the screen is reserved for printing
-messages that describe things that are impossible to
-represent visually.  If you see a  "--More--"  on the top
-line,  this means that nethack wants to print another message
-on the screen, but it wants to make certain that you have
-read the one that is there first.  To read the next message,
-just type a space.
+The top line of the screen is reserved for messages that describe
+things that are impossible to represent visually.  If you see a
+``\fB--More--\fP'' on the top line, this means that NetHack has
+another message to display on the screen, but it wants to make certain
+that you've read the one that is there first.  To read the next message,
+just press the space bar.
 .hn 2
 The rest of the screen
 .pg
-The rest of the screen is the map of the level as you
-have explored it so far.   Each symbol on the screen
-represents something.  Here is a list of what the various
+The rest of the screen is the map of the level as you have explored it
+so far.  Each symbol on the screen represents something.  You can set
+the
+.op graphics
+option to change some of the symbols the game uses; otherwise, the
+game will use default symbols.  Here is a list of what the default
 symbols mean:
-.lp "- and |
-These form the walls of a room (or maze).
+.lp "- and | 
+These form the walls of a room.
 .lp .
-this is the floor of a room.
+This is the floor of a room.
 .lp #
-this is a corridor.
+This is a corridor, or possibly a kitchen sink or drawbridge (if your
+dungeon has sinks or drawbridges).
 .lp >
-this is the staircase to the next level.
+This is the staircase to the next level.
 .lp <
-the staircase to the previous level.
-.lp `
-A large boulder.
+The staircase to the previous level.
 .lp @
 You (usually) or another human.
-.lp ^
-A trap.
 .lp )
 A weapon of some sort.
-.lp (
-Some other useful object (key, rope, dynamite, camera...)
 .lp [
-A suit of armor.
+A suit or piece of armor.
 .lp %
 A piece of food (not necessarily healthy...).
+.lp ?
+A scroll.
 .lp /
 A wand.
 .lp =
 A ring.
-.lp ?
-A scroll.
 .lp !
-A magic potion.
-.lp +
-A spellbook containing a spell you can learn; (but usually a doorway).
-.lp }
-A pool of water
-.lp {
-A fountain (your dungeon may not have these).
-.lp "\\\\
-An opulent throne (You may not have this either).
+A potion.
+.lp (
+Some other useful object (pick-axe, key, lamp...).
 .lp $
-A pile or pot of gold.
-.lp a-zA-Z
-The uppercase letters represent the various inhabitants
-of the Mazes of Menace.  Watch out, they can be nasty
-and vicious.  Sometimes, however, they can be helpful.
+A pile of gold.
+.lp *
+A gem or rock (possibly valuable, possibly worthless).
+.lp +
+A doorway, or a spell book containing a spell you can learn (if your
+dungeon has spell books).
+.lp ^
+A trap (once you detect it).
+.lp """
+An amulet, or a spider web.
+.lp 0
+An iron ball.
+.lp _
+An altar (if your dungeon has altars), or an iron chain.
+.lp }
+A pool of water or moat.
+.lp {
+A fountain (your dungeon may not have fountains).
+.lp "\\\\
+An opulent throne (your dungeon may not have thrones either).
+.lp `
+A boulder or statue.
+.lp "a-zA-Z and other symbols
+Letters and certain other symbols represent the various inhabitants
+of the Mazes of Menace.  Watch out, they can be nasty and vicious.
+Sometimes, however, they can be helpful.
+
 .hn 1
 Commands
 .pg
-Commands are given to nethack by typing one or two characters.
-Most commands can be preceded by a count to repeat
-them (e.g. typing "10s" will do ten searches).  Commands for
-which counts make no sense have the count ignored.  To cancel
-a count or a prefix, type <ESCAPE>.  The list of commands is rather long,
-but it can be read at any time during
-the game with the "?" command.  Here it is for reference,
-with a short explanation of each command.
+Commands are given to NetHack by typing one or two characters; NetHack
+then asks questions to find out what it needs to know to do your
+bidding.  
+.pg
+For example, a common question, in the form ``What do you want to
+use?\ [a-zA-Z\ ?*]'', asks you to choose an object you are carrying.
+Here, ``a-zA-Z'' are the inventory letters of your possible choices.
+Typing `?' gives you an inventory list of these items, so you can see
+what each letter refers to.  In this example, there is also a `*'
+indicating that you may choose an object not on the list, if you
+wanted to use something unexpected.  Typing a `*' lists your entire
+inventory, so you can see the inventory letters of every object you're
+carrying.  Finally, if you change your mind and decide you don't want
+to do this command after all, you can press the ESC key to abort the
+command.
+.pg
+You can put a number before most commands to repeat them that many
+times; for example, ``10s'' will search ten times.  If you have the
+.op number_pad
+option set, you must type `n' to prefix a count, so the example above
+would be typed ``n10s'' instead.  Commands for which counts make no
+sense ignore them.  In addition, movement commands can be prefixed for
+greater control (see below).  To cancel a count or a prefix, press the
+ESC key.
+.pg
+The list of commands is rather long, but it can be read at any time
+during the game through the `?' command, which accesses a menu of
+helpful texts.  Here are the commands for your reference:
 .lp ?
-help: print a help list.
-.lp Q
-Quit the game.
-.lp S
-Save the game.
-.lp !
-Escape to a shell.
-.lp ^Z
-Suspend the game (UNIX versions with job control only).
-.lp <
-up: go up the staircase (if you are standing on it).
-.lp >
-down: go down (just like up).
-.lp [kjhlyubn]
-go one step in the direction indicated.
-.sd
-    k: north (i.e., to the top of the screen),
-    j: south, h: west, l: east, y: ne, u: nw, b: se, n: sw.
-.ed
-.lp KJHLYUBN
-Go in that direction until you hit a wall or run into something.
-.lp m[kjhlyubn]
-prefix: move without picking up any objects.
-.lp M[kjhlyubn]
-prefix: move far, no pickup.
-.lp g[kjhlyubn]
-prefix: move until something interesting is found.
-.lp G[kjhlyubn]
-as previous, but forking of corridors is not considered interesting.
-.lp i
-print your inventory.
-.lp I
-print selected parts of your inventory, like in
-.sd
-    I* - all gems in inventory;
-    IU - all unpaid items;
-    IX - all used up items that are on your shopping bill;
-    I$ - count your money.
-.ed
-.lp s
-search for secret doors and traps around you.
-.lp ^
-ask for the type of a trap you found earlier.
-.lp )
-ask for current wielded weapon.
-.lp [
-ask for current armor.
-.lp =
-ask for current rings.
-.lp $
-count how many gold pieces you are carrying.
-.lp .
-rest, do nothing.
-.lp ,
-pick up some things.
-.lp :
-look at what is here.
-.lp ^T
-teleport.
-.lp ^R
-redraw the screen.
-.lp ^P
-repeat last message (subsequent ^P's repeat earlier messages).
+help menu:  display one of several help texts available.
 .lp /
-(followed by any symbol) tell what this symbol
-represents.If you see fancy graphics on your screen
-it may ask you to specify a location rather than
-taking a symbol argument.
-.lp "\\\\
-tell what has been discovered.
+tell what a symbol represents.  You may choose to specify a location
+or type a symbol to define.
+.lp &
+tell what a command does.
+.lp <
+go up a staircase to the previous level (if you are on the stairs).
+.lp >
+go down a staircase to the next level (if you are on the stairs).
+.lp [yuhjklbn]
+go one step in the direction indicated (see Figure 2).  If there is
+a monster there, you will fight the monster instead.  Only these
+one-step movement commands cause you to fight monsters; the others
+(below) are ``safe.''
+.sd
+.TS S
+center;
+c c.
+y  k  u	7  8  9
+  \\\\\\\\ | /	    \\\\\\\\ | /
+h- . -l	4- . -6
+  / | \\\\\\\\	    / | \\\\\\\\
+b  j  n	1  2  3
+	(if \fBnumber_pad\fP is set)
+.TE
+.ed
+.ce 1
+Figure 2
+
+.lp [YUHJKLBN]
+Go in that direction until you hit a wall or run into something.
+.lp m[yuhjklbn]
+prefix:  move without picking up any objects.
+.lp M[yuhjklbn]
+prefix:  move far, no pickup.
+.lp "g[yuhjklbn] or <CONTROL->[yuhjklbn]
+prefix:  move until something interesting is found.
+.lp G[yuhjklbn]
+prefix:  same as `g', but forking of corridors is not considered interesting.
+.lp .
+rest, do nothing for one turn.
+.lp a
+apply (use) a tool (pick-axe, key, lamp...).
+.lp A
+remove all armor.  Use `T' (take off) to take off only one piece of armor.
+.lp ^A
+redo the previous command.
+.lp c
+close a door.
+.lp C
+Call (name) an individual monster.
+.lp ^C
+panic button.  Quit the game.
+.lp d
+drop something.  Ex. ``d7a'' means drop seven items of object \fIa\fP.
+.lp D
+Drop several things.  In answer to the question
+``What kinds of things do you want to drop? [!%= au]''
+you should type zero or more object symbols possibly followed by 
+`a' and/or `u'.
+.sd
+.si
+Da  - drop all objects, without asking for confirmation.
+Du  - drop only unpaid objects (when in a shop).
+D%u - drop only unpaid food.
+.ei
+.ed
+.lp ^D
+kick something (usually a door).
 .lp e
 eat food.
-.lp w
-wield weapon. w- means: wield nothing, use bare hands.
-.lp q
-drink (quaff) a potion.
-.lp r
-read a scroll.
-.lp T
-Takeoff armor.
-.Lp R
-Remove Ring.
-.lp W
-Wear armor.
+.lp E
+Engrave a message on the floor.
+Engraving the word ``Elbereth'' will cause most monsters to not attack
+you hand-to-hand (but if you attack, you will rub it out); this is
+often useful to give yourself a breather.  (This feature may be compiled out
+of the game, so your version might not necessarily have it.)
+.sd
+.si
+E- - write in the dust with your fingers.  
+.ei
+.ed
+.lp i
+list your inventory (everything you're carrying).
+.lp I
+list selected parts of your inventory.
+.sd
+.si
+I* - list all gems in inventory;
+Iu - list all unpaid items;
+Ix - list all used up items that are on your shopping bill;
+I$ - count your money.
+.ei
+.ed
+.lp o
+open a door.
+.lp O
+set options.  You will be asked to enter an option line.  If you enter
+a blank line, the current options are reported.  Entering `?' will
+get you explanations of the various options.  Otherwise, you should
+enter a list of options separated by commas.  The available options
+are listed later in this Guidebook.  Options are usually set before
+the game, not with the `O' command; see the section on options below.
+.lp p
+pay your shopping bill.
 .lp P
 Put on a ring.
-.lp X
-transcribe (learn) a spell.
-.lp x
-print a list of know spells.
+.lp ^P
+repeat previous message (subsequent ^P's repeat earlier messages).
+.lp q
+quaff (drink) a potion.
+.lp Q
+Quit the game.
+.lp r
+read a scroll or spell book.
+.lp R
+Remove a ring.
+.lp ^R
+redraw the screen.
+.lp s
+search for secret doors and traps around you.  It usually takes several
+tries to find something.
+.lp S
+Save the game.  The game will be restored automatically the next time
+you play.
+.lp t
+throw an object or shoot a projectile.
+.lp T
+Take off armor.
+.lp ^T
+teleport, if you have the ability.
+.lp v
+display version number.
+.lp V
+display the game history.
+.lp w
+wield weapon.  w- means wield nothing, use your bare hands.
+.lp W
+Wear armor.
 .lp z
 zap a wand.
 .lp Z
-zap a spell; same as the `# cast' extended command
-.lp t
-throw an object or shoot an arrow.
-.lp p
-pay your shopping bill.
-.lp d
-drop something. d7a: drop seven items of object a.
-.lp D
-Drop several things.
-In answer to the question "What kinds of things do you
-want to drop? [!%= au]" you should give zero or more
-object symbols possibly followed by 'a' and/or 'u'.
-'a' means: drop all such objects, without asking for confirmation.
-'u' means: drop only unpaid objects (when in a shop).
-.lp a
-apply - Generic command for using a key to lock
-or unlock a door, using a camera, using a rope, etc.
-.lp c
-call: name a certain object or class of objects.
-.lp C
-Call: Name an individual monster.
-.lp E
-Engrave: Write a message in the dust on the floor.
-E- means: use fingers for writing.
-.lp O
-Set options. You will be asked to enter an option line.
-If this is empty, the current options are reported.
-Otherwise it should be a list of options separated
-by commas. Possible boolean options are: oneline, time,
-news, tombstone, rest_on_space, fixinvlet, beginner,
-male, female. They can be negated by prefixing them with
-'!' or "no". A string option is name; it supplies the
-answer to the question"Who are you?"; it may have a
-suffix. A compound option is endgame; it is followed by a
-description of what parts of the list of topscorers
-should be printed when the game is finished. There is
-also a graphics option that sets the characters used for
-screen displays. Usually one will not want to use the 'O'
-command, but instead put a HACKOPTIONS="...." line in
-one's environment.
-.lp v
-print version number.
-.lp V
-display the game history (about one page).
+Zap (cast) a spell.
+.lp ^Z
+suspend the game
+.ux " versions with job control only)." (
+.lp :
+look at what is here.
+.lp ,
+pick up some things.
+.lp @
+toggle the
+.op pickup
+option on and off.
+.lp ^
+ask for the type of a trap you found earlier.
+.lp )
+tell what weapon you are wielding.
+.lp [
+tell what armor you are wearing.
+.lp =
+tell what rings you are wearing.
+.lp """
+tell what amulet you are wearing.
+.lp (
+tell what tools you are using.
+.lp $
+count your gold pieces.
+.lp +
+list the spells you know.
+.lp "\\\\
+show what types of objects have been discovered.
+.lp !
+escape to a shell.
+.lp #
+perform an extended command.  As you can see, the authors of NetHack
+used up all the letters, so this is a way to introduce the less useful
+commands.  You may obtain a list of them by entering `?'.  What
+extended commands are available depend on what features the game was
+compiled with.  Most extended commands are used only under limited
+circumstances.
 .pg
-You can put a number before most commands to repeat them that many times,
-as in "20s" or "40.".
+If the
+.op number_pad
+option is on, some additional letter commands are available:
+.lp j
+jump to another location.  Same as ``#jump''.
+.lp k
+kick something (usually a door).  Same as `^D'.
+.lp l
+loot a box on the floor.  Same as ``#loot''.
+.lp N
+name an object or type of object.  Same as ``#name''.
+.lp u
+untrap a trapped object or door.  Same as ``#untrap''.
+
 .hn 1
-Rooms
+Rooms and corridors
 .pg
-Rooms in the dungeons are either lit or dark.   If you
-walk into a lit room, the entire room will be drawn on the
-screen as soon as you enter.  If you walk into a dark room,
-it will only be displayed as you explore it.  Upon leaving a
-room, all monsters inside the room are erased from the
-screen.   In the darkness you can only see one space in all
-directions around you.  A corridor is always dark.
+Rooms in the dungeon are either lit or dark.  If you walk into a lit
+room, the entire room will be drawn on the screen.  If you walk into a
+dark room, only the areas you can see will be displayed.  In darkness,
+you can only see one space in all directions.  Corridors are always
+dark, but remain on the map as you explore them.
+.hn 2
+Doorways (`+')
+.pg
+Doorways connect rooms and corridors.  Some doorways have no doors;
+you can walk right through.  Others have doors in them, which may be
+open, closed, or locked.  To open a closed door, use the `o' (open)
+command; to close it again, use the `c' (close) command.
+.pg
+You can get through a locked door by using a tool to pick the lock
+with the `a' (apply) command, or by kicking it open with the `^D'
+command.
+.pg
+Secret doors [and corridors] are hidden.  You can find them with the
+`s' (search) command.
+.hn 2
+Traps (`^')
+.pg
+There are traps throughout the dungeon to snare the unwary delver.
+For example, you may suddenly fall into a pit and be stuck for a few
+turns.  Traps don't appear on your map until you trigger one by moving
+onto it, or you discover it with the `s' (search) command.  Monsters
+can fall prey to traps, too.
+
 .hn 1
+Monsters
+.pg
+Monsters you cannot see are not displayed on the screen.  Beware!
+You may suddenly come upon one in a dark place.  Some magic items can
+help you locate them before they locate you, which some monsters do
+very well.
+.hn 2
 Fighting
 .pg
-If you see a monster and you wish to fight it,  just
-attempt to run into it.  Many times a monster you find will
-mind its own business unless you attack it.  It is often the
-case that discretion is the better part of valor.
+If you see a monster and you wish to fight it, just attempt to walk
+into it.  Many monsters you find will mind their own business unless
+you attack them.  Some of them are very dangerous when angered.
+Remember:  Discretion is the better part of valor.
+.hn 2
+Your pet
+.pg
+You start the game with a little dog or cat, which follows you about
+the dungeon and fights monsters with you.  Like you, your pet needs
+food to survive.  It usually feeds itself on fresh carrion and other
+meats.  If you're worried about it or want to train it, you can feed
+it, too, by throwing it food.
+.pg
+Your pet also gains experience from killing monsters, and can grow
+over time, gaining hit points and doing more damage.  Initially, your
+pet may even be better at killing things than you, which makes pets
+useful for low-level characters.
+.pg
+Your pet will follow you up and down staircases, if it is next to you
+when you move.  Otherwise, your pet will be stranded, and may become
+wild.
+.hn 2
+Ghost levels
+.pg
+You may encounter the shades and corpses of other adventurers (or even
+former incarnations of yourself!) and their personal effects.  Ghosts
+are hard to kill, but easy to avoid, since they're slow and do little
+damage.  You can plunder the deceased adventurer's possessions;
+however, they are likely to be cursed.  Beware of whatever killed the
+former player.
+
 .hn 1
-Objects you can find
+Objects 
 .pg
-When you find something in the dungeon, it is common to
-want to pick the object up.  This is accomplished in nethack
-by walking over the object (unless you use the  "m"  prefix,
-see above).   If you are carrying too many things, the program
-will tell you and it won't pick up the object,  otherwise
-it will add it to your pack and tell you what you just picked up.
+When you find something in the dungeon, it is common to want to pick
+it up.  In NetHack, this is accomplished automatically by walking over
+the object (unless you turn off the
+.op pickup
+option (see below), or move with the `m' prefix (see above)), or
+manually by using the `,' command.  If you're carrying too many
+things, NetHack will tell you so and won't pick up anything more.
+Otherwise, it will add the object(s) to your pack and tell you what you
+just picked up.
 .pg
-Many of the commands that operate on objects must
-prompt you to find out which object you want to use.  If you
-change your mind and don't want to do that command after
-all, just type an <ESCAPE> and the command will be aborted.
+When you pick up an object, it is assigned an inventory letter.  Many
+commands that operate on objects must ask you to find out which object
+you want to use.  When NetHack asks you to choose a particular object
+you are carrying, you are usually presented with a list of inventory
+letters to choose from (see Commands, above).
 .pg
-Some objects, like armor and weapons, are easily differentiated.
-Others,  like scrolls and potions, are given
-labels which vary according to type.  During a game, any two
-of the same kind of object with the same label are the same
-type.  However, the labels will vary from game to game.
+Some objects, such as weapons, are easily differentiated.  Others, like
+scrolls and potions, are given descriptions which vary according to
+type.  During a game, any two objects with the same description are
+the same type.  However, the descriptions will vary from game to game.
 .pg
-When you use one of these labeled objects,  if its
-effect is obvious, nethack will remember what it is for you.
-If its effect isn't extremely obvious you will be asked
-what you want to scribble on it so you will recognize it
-later, or you can use the "call" command (see above).
+When you use one of these objects, if its effect is obvious, NetHack
+will remember what it is for you.  If its effect isn't extremely
+obvious, you will be asked what you want to call this type of object
+so you will recognize it later.  You can also use the ``#name''
+command for the same purpose at any time, to name all objects of a
+particular type or just an individual object.
 .hn 2
-Weapons
+Curses and blessings
 .pg
-Some weapons, like arrows, come in bunches,  but most
-come one at a  time.   In order to use a weapon, you must
-wield it.  To fire an arrow out of a  bow,  you must first
-wield the bow, then throw the arrow.  You can only wield one
-weapon at a time, but you can't change weapons if the one
-you are currently wielding is cursed.  The commands to use
-weapons are "w" (wield) and "t" (throw).
+Any object that you find may be cursed, even if the object is
+otherwise helpful.  The most common effect of a curse is being stuck
+with (and to) the item.  Cursed weapons weld themselves to your hand
+when wielded, so you cannot unwield them.  Any cursed item you wear
+is not removable by ordinary means.  In addition, cursed arms and armor
+usually, but not always, bear negative enchantments that make them
+less effective in combat.  Other cursed objects may act poorly or
+detrimentally in other ways.
+.pg
+Objects can also become blessed.  Blessed items usually work better or
+more beneficially than normal uncursed items.  For example, a blessed
+weapon will do more damage against demons.
+.pg
+There are magical means of bestowing or removing curses upon objects,
+so even if you are stuck with one, you can still have the curse
+lifted and the item removed.  Priests and Priestesses have an innate
+sensitivity to curses and blessings, so they can more easily avoid
+cursed objects than other character classes.
+.pg
+An item with unknown curse status, and an item which you know to be uncursed,
+will be distinguished in your inventory by the presence of the word ``uncursed''
+in the description of the latter.  The exception is if this description
+isn't needed; you can look at the inventory description and know
+that you have discovered whether it's cursed.  This applies to items which
+have ``plusses,'' and items with charges.
 .hn 2
-Armor
+Weapons (`)')
 .pg
-There are various sorts of armor lying around in the
-dungeon.   Some of it is enchanted, some is cursed, and some
-is just normal.  Different armor types have different armor
-protection.   The higher the armor protection, the more protection
-the armor affords against the blows of monsters.
-Here is a partial list of the various armor types and the level of
-armor protection each will give.
-.sd
-	plate mail               3
-	splint mail              4
-	banded mail		 4
-	chain mail		 5
-	scale mail		 6
-	ring mail		 7
-	studded leather armor    7
-	leather armor	         8
-	elven cloak		 9
-.ed
+Given a chance, almost all monsters in the Mazes of Menace will
+gratuitously kill you.  You need weapons for self-defense (killing
+them first).  Without a weapon, you do only 1-2 hit points of damage
+(plus bonuses, if any).
 .pg
-If a piece of armor is enchanted, its armor protection will
-be higher than normal.  If a suit of armor is cursed, its
-armor protection will be lower, and you will not be able to
-remove it.  However, not all armor with a protection that is
-lower than normal is cursed and some enchanted armor is also
-"cursed" preventing removal.
+There are wielded weapons, like maces and swords, and thrown weapons,
+like arrows.  To hit monsters with a weapon, you must wield it and
+attack them, or throw it at them.  To shoot an arrow out of a bow, you
+must first wield the bow, then throw the arrow.  Crossbows shoot
+crossbow bolts.  Slings hurl rocks and (other) gems.  You can wield
+only one weapon at a time, but you can change weapons unless you're
+wielding a cursed one.
 .pg
-The commands to use weapons are  "W"  (wear)  and  "T"
-(take off).
+Enchanted weapons have a ``plus'' (which can also be a minus)
+that adds to your chance
+to hit and the damage you do to a monster.  The only way to find out
+if a weapon is enchanted is to have it magically identified somehow.
+.pg
+Those of you in the audience who are AD&D players, be aware that each
+weapon which exists in AD&D does the same damage to monsters in
+NetHack.  Some of the more obscure weapons (such as the \fIaklys\fP,
+\fIlucern hammer\fP, and \fIbec-de-corbin\fP) are defined in an
+appendix to \fIUnearthed Arcana\fP, an AD&D supplement.
+.pg
+The commands to use weapons are `w' (wield) and `t' (throw).
 .hn 2
-Scrolls
+Armor (`[')
 .pg
-Scrolls come with titles in an unknown tongue.
-After you read a scroll, it disappears from your pack.  The
-command to use a scroll is "r" (read).
+Lots of unfriendly things lurk about; you need armor to protect
+yourself from their blows.  Some types of armor offer better
+protection than others.  Your armor class is a measure of this
+protection.  Armor class (AC) is measured as in AD&D, with 10 being
+the equivalent of no armor, and lower numbers meaning better armor.
+Each suit of armor which exists in AD&D gives the same protection in
+NetHack.  Here is an (incomplete) list of the armor classes provided by
+various suits of armor:
+
+.TS S
+center;
+a n.
+plate mail	3
+bronze plate mail	4
+splint mail	4
+banded mail	4
+elven mithril-coat	5
+chain mail	5
+scale mail	6
+ring mail	7
+studded leather armor	7
+leather armor	8
+no armor	10
+.TE
+.pg
+You can also wear other pieces of armor (ex. helmets, boots, shields, cloaks)
+to lower your armor class even further, but you can only wear one item
+of each category (one suit of armor, one cloak, one helmet, one
+shield, and so on).
+.pg
+If a piece of armor is enchanted, its armor protection will be better
+(or worse) than normal, and its ``plus'' (or minus) will subtract from
+your armor class.  For example, a +1 chain mail would give you
+better protection than normal chain mail, lowering your armor class one
+unit further to 4.  When you put on a piece of armor, you immediately
+find out the armor class and any ``plusses'' it provides.  Cursed
+pieces of armor usually have negative enchantments (minuses) in
+addition to being unremovable.
+.pg
+The commands to use armor are `W' (wear) and `T' (take off).
 .hn 2
-Potions
+Food (`%')
 .pg
-Potions are labeled by the color of the liquid inside
-the flask.  They disappear after being quaffed.  The command
-to use a scroll is "q" (quaff).
+Food is necessary to survive.  If you go too long without eating you
+will faint, and eventually die of starvation.  Unprotected food does
+not stay fresh indefinitely; after a while it will spoil, and be
+unhealthy to eat.  Food stored in ice boxes or tins (``cans'' to you
+Americans) will usually stay fresh, but ice boxes are heavy, and tins
+take a while to open.
+.pg
+When you kill monsters, they usually leave corpses which are also
+``food.''  Many, but not all, of these are edible; some also give you
+special powers when you eat them.  A good rule of thumb is ``you are
+what you eat.''
+.pg
+You can name one food item after something you like to eat with the
+.op fruit
+option.
+.pg
+The command to eat food is `e'.
 .hn 2
-Staves and Wands
+Scrolls (`?')
 .pg
-Staves and wands do the same kinds of things.   Staves
-are identified by a type of wood; wands by a type of metal
-or bone.  They are generally things you want to do to something
-over a long distance, so you must point them at what
-you wish to affect to use them.   Some staves are not
-affected by the direction they are pointed, though.   Staves
-come with multiple magic charges, the number being random,
-and when they are used up, the staff is just a piece of wood
-or metal.
+Scrolls are labeled with various titles, probably chosen by ancient wizards
+for their amusement value (i.e. ``READ ME,'' or ``HOLY BIBLE'' backwards).
+Scrolls disappear after you read them (except for blank ones, without
+magic spells on them).
 .pg
-The command to use a wand or staff is "z" (zap)
+One of the most useful of these is the \fIscroll of identify\fP, which
+can be used to determine what another object is, whether it is cursed or
+blessed, and how many uses it has left.  Some objects of subtle
+enchantment are difficult to identify without these.
+.pg
+If you receive mail while you are playing (on
+.ux
+versions compiled with this feature), a mail daemon may run up and
+deliver it to you as a \fIscroll of mail\fP.  To use this feature,
+you must let NetHack know where to look for new mail by setting the
+``MAIL'' environment variable to the file name of your mailbox.  You
+may also want to set the ``MAILREADER'' environment variable to the
+file name of your favorite reader, so NetHack can shell to it when you
+read the scroll.
+.pg
+The command to read a scroll is `r'.
 .hn 2
-Rings
+Potions (`!')
 .pg
-Rings are very useful items, since they are relatively
-permanent magic,  unlike the usually fleeting effects of
-potions, scrolls, and staves.  Of course, both good and bad rings are
-more powerful.   Most rings also cause you to use up
-food more rapidly, the rate varying with the type of ring.
-Rings are differentiated by their stone settings.  Some rings are
-cursed, preventing removal.  This can happen to helpful and
-harmful rings alike.
+Potions are distinguished by the color of the liquid inside the flask.
+They disappear after you quaff them.
 .pg
-The commands to use rings are "P" (put on) and "R" (remove).
+Clear potions are potions of water.  Sometimes these are
+blessed or cursed, resulting in holy or unholy water.  Holy water is
+the bane of the undead, so potions of holy water are good thing to
+throw (`t') at them.  It also is very useful when you dip (``#dip'') other
+objects in it.
+.pg
+The command to drink a potion is `q' (quaff).
 .hn 2
-Spellbooks
+Wands (`/')
 .pg
-Spellbooks are tomes of mighty magic. When read with the `transcribe' command
-X, they plant the knowledge of a spell in your head and disappear \- unless
-the attempt backfires. Reading a spellbook can be harmful to your health if
-it is cursed or the mystic runes are at too high a level for your thaumaturgic
-skills!
+Magic wands have multiple magical charges.  Some wands are
+directional\(emyou must give a direction to zap them in.  You can also
+zap them at yourself (just give a `.' or `s' for the direction), but
+it is often unwise.  Other wands are nondirectional\(emthey don't ask
+for directions.  The number of charges in a wand is random, and
+decreases by one whenever you use it.
 .pg
-Casting spells can also backfire.  If you attempt to cast a spell well above
-your level, or cast it at a time when your luck is particularly bad, you can
-end up wasting both the energy and the time required in casting.
-.pg
-The `x' command lists your current spells, each preceded by the spell points
-they require. to cast a spell, type `Z' and answer the questions.
+The command to use a wand is `z' (zap).
 .hn 2
-Food
+Rings (`=')
 .pg
-Food is necessary to keep you going.   If you go too
-long without eating you will faint, and eventually die of
-starvation.  The command to use food is "e" (eat).
+Rings are very useful items, since they are relatively permanent
+magic, unlike the usually fleeting effects of potions, scrolls, and
+wands.
+.pg
+Putting on a ring activates its magic.  You can wear only two
+rings, one on each ring finger.
+.pg
+Most rings also cause you to grow hungry more rapidly, the rate
+varying with the type of ring.  
+.pg
+The commands to use rings are `P' (put on) and `R' (remove).
 .hn 2
+Spell books (`+')
+.pg
+Spell books are tomes of mighty magic.  When studied with the `r' (read)
+command, they bestow the knowledge of a spell\(emunless the attempt
+backfires.  Successful or not, books of magic disappear after they are
+studied.  Reading a cursed spell book, or one with mystic runes beyond
+your ken can be harmful to your health!
+.pg
+A spell can also backfire when you cast it.  If you attempt to cast a
+spell well above your experience level, or cast it at a time when your
+luck is particularly bad, you can end up wasting both the energy and
+the time required in casting.
+.pg
+Casting a spell calls forth magical energies and focuses them with
+your naked mind.  Releasing the magical energy releases some of your
+memory of the spell with it.  Each time you cast a spell, your
+familiarity with it will dwindle, until you eventually forget the
+details completely and must relearn it.
+.pg
+The command to read a spell book is the same as for scrolls, `r'
+(read).  The `+' command lists your current spells and the number of
+spell points they require.  The `Z' command casts a spell.
+.hn 2
+Tools (`(')
+.pg
+Tools are miscellaneous objects with various purposes.  Some tools,
+like wands, have a limited number of uses.  For example, lamps burn
+out after a while.  Other tools are containers, which objects can
+be placed into or taken out of.
+.pg
+The command to use tools is `a' (apply).
+.hn 3
+Chests and boxes
+.pg
+You may encounter chests or boxes in your travels.  These can be
+opened with the ``#loot'' extended command when they are on the floor,
+or with the `a' (apply) command when you are carrying one.  However,
+chests are often locked, and require you to either use a key to unlock
+it, a tool to pick the lock, or to break it open with brute force.
+Chests are unwieldy objects, and must be set down to be unlocked (by
+kicking them,
+using a key or lock picking tool with the `a' (apply) command, or
+by using a weapon to force the lock with the ``#force'' extended command).
+.pg
+Some chests are trapped, causing nasty things to happen when you
+unlock or open them.  You can check for and try to deactivate traps
+with the ``#untrap'' extended command.
+.hn 2
+Amulets (`"')
+.pg
+Amulets are very similar to rings, and often more powerful.  Like
+rings, amulets have various magical properties, some beneficial,
+some harmful, which are activated by putting them on.
+.pg
+The commands to use amulets are the same as for rings, `P' (put on)
+and `R' (remove).
+.hn 2
+Gems (`*')
+.pg
+Some gems are valuable, and can be sold for a lot of gold pieces.
+Valuable gems increase your score if you bring them with you when you
+exit.  Other small rocks are also categorized as gems, but they are
+much less valuable.
+.hn 2
+Large rocks (`\`')
+.pg
+Statues and boulders are not particularly useful, and are generally
+heavy.
+.hn 2
+Gold (`$')
+.pg
+Gold adds to your score, and you can buy things in shops with it.
+Your version of NetHack may display how much gold you have on the
+status line.  If not, you can just hit `$' to count it.
+
+.hn 1
 Options
 .pg
-Due to variations in personal tastes and conceptions of
-the way nethack should do things, there are a set of options
-you can set that cause nethack to behave in various different
-ways.
+Due to variations in personal tastes and conceptions of how NetHack
+should do things, there are options you can set to change how NetHack
+behaves.
 .hn 2
 Setting the options
 .pg
-There are two ways to set the options.   The first is
-with the  "O"  command of nethack;  the second is with the
-"HACKOPTIONS" environment variable.
+There are two ways to set the options.  The first is with the `O'
+command in NetHack; the second is with the ``NETHACKOPTIONS''
+environment variable.
 .hn 2
-Using the `O' command
+Using the NETHACKOPTIONS environment variable
 .pg
-When you type "O" in nethack, it queries you for an option string which
-is parsed as though it were a HACKOPTIONS value.
-.hn 2
-Using the HACKOPTIONS variable
+The NETHACKOPTIONS variable is a comma-separated list of initial
+values for the various options.  Some can only be turned on or off.
+You turn one of these on by adding the name of the option to the list,
+and turn it off by typing a `!' or ``no'' before the name.  Others take a 
+character string as a value.  You can set string options by typing
+the option name, a colon, and then the value of the string.  The value
+is terminated by the next comma or the end of string.
 .pg
-The HACKOPTIONS variable is a string containing a  comma-separated list of
-initial values for the various options. Boolean variables can be turned on by
-listing their name or turned off by putting a `!' or "no" in front of the name.
-You can set string variables by following the variable name with a colon
-(this character was chosen over = to avoid conflict with the ring symbol)
-and the value of the string. The value is terminated by the next comma or
-the end of string.
-.pg
-Thus to set up an environment variable so that `female' is on, `pickup' is
-off, and the name is set to "Blue Meanie", you would enter
-the command
+For example, to set up an environment variable so that ``female'' is on,
+``pickup'' is off, the name is set to ``Blue Meanie'', and the fruit
+is set to ``papaya'', you would enter the command
 .sd
-% setenv HACKOPTIONS "female,!pickup,name:Blue Meanie"
+% \fBsetenv NETHACKOPTIONS "female,!pickup,name:Blue Meanie,fruit:papaya"\fP
 .ed
-in csh, or
+in \fIcsh\fP, or
 .sd
-$ HACKOPTIONS="female,!pickup,name:Blue Meanie"
-$ export HACKOPTIONS
+$ \fBNETHACKOPTIONS="female,!pickup,name:Blue Meanie,fruit:papaya"\fP
+$ \fBexport NETHACKOPTIONS\fP
 .ed
-in sh or ksh.
+in \fIsh\fP or \fIksh\fP.
 .hn 2
 Customization options
 .pg
-Here is a list of the options and an explanation of
-what each one is for.   The default value for each is
-enclosed in square brackets.  For character string options,
-input over fifty characters will be ignored.
-.pg
-Note: some of the options listed may be inactive if the game has been
-subsetted.
-.lp standout
-(default on) use standout where appropriate in display lists.
-.lp null\ \ \ \ 
-(default off) don't send padding nulls to the tty.
-.lp tombstone
-(default on) display tombstone graphic on death.
-.lp news\ \ \ \ 
-(default on) read hack news if present.
-.lp conf\ \ \ \ 
-(default on) have user confirm attacks on dogs and shopkeepers.
-.lp silent
-(default on) suppress terminal beeps.
-.lp pick\ \ \ \ 
-(default on) pick up things you move onto by default.
-.lp IBMB\ \ \ \ 
-(default off, PC-HACK only) for machines with an IBM-PC compatible BIOS ROM.
-.lp DECR\ \ \ \ 
-(default off, PC-HACK only) for machines with DEC Rainbow compatible BIOS ROMs.
-.lp rawi\ \ \ \ 
-(default off) force raw (not cbreak mode) input.
-.lp sort\ \ \ \ 
-(default on) sort the pack contents by type when displaying inventory.
-.lp packorder
-(default `)[%?+/=!(*0  )') specify order to list object types in. The value of
-this option should be a string containing the symbols for the various object
-types.
+Here are explanations of the various options do.  Character strings
+longer than fifty characters are truncated.  Some of the options
+listed may be inactive in your dungeon.
+.lp catname
+name your starting cat (ex. ``catname:Morris'').
+Cannot be set with the `O' command.
+.lp confirm\ 
+(default on) have user confirm attacks on pets, shopkeepers, and other
+peaceable creatures.
+.lp DEC_Rainbow
+(default off, PC NetHack only) send escape codes to use the
+line-drawing alternate character set on DEC Rainbow machines.
 .lp dogname
-give your (first) dog a name (eg. dogname:Fang).
-.lp time\ \ \ \ 
-(default off) show game time in turns on bottom line.
-.lp restonspace
-(default off) make spacebar a synonym for `.'.
-.lp fixinv
-(default on) an object's inventory letter sticks to it until it's dropped.
-If this is off, everything after a dropped object shifts letters.
-.lp male\ \ \ \ 
-(default on, most hackers are male) sets the player-character's sex.
-.lp female
-(default off) sets the player-character's sex (equal-opportunity feature :-)).
-.lp name\ \ \ \ 
-(defaults to player's username) Set the player-character's name.
-.lp graphics
-(default ` |-++++.:<>^{}\\"') set the graphics symbols for screen displays.
-The graphics option (if used) should be last, followed by a string of up to ",
-17 chars to be used instead of the default map-drawing chars. Replacing for
-any of these chars causes it to be replaced in the dungeon level displays,
-except that the five instances of + are used for top left, top right, bottom
-left, bottom right and door squares respectively. The last four characters
-are required only if the corresponding options are configured in.
+name your starting dog (ex. ``dogname:Fang'').
+Cannot be set with the `O' command.
 .lp endgame
-Endgame is followed by a description of what parts of the scorelist
-you want to see. You might for example say:
-.sd
-`endgame:own scores/5 top scores/4 around my score'.
-.ed
-In the PC-HACK version, options may be set in a configuration file on disk
-as well as from the hack options.
-.hn 2
+control what parts of the score list you are shown at the end (ex.
+``endgame:5 top scores/4 around my score/own scores'').  Only the first
+letter of each category (`t', `a', or `o') is necessary.
+.lp female
+(default off) set your sex.
+Cannot be set with the `O' command.
+.lp fixinvlet
+(default on) an object's inventory letter sticks to it when it's dropped.
+If this is off, dropping an object shifts all the remaining inventory letters.
+.lp fruit\ \ \ 
+(default ``slime mold'') name a fruit after something you enjoy eating
+(ex. ``fruit:mango'').  Basically a nostalgic whimsy that NetHack uses
+from time to time.  You should set this to something you find more
+appetizing than slime mold.  Apples, oranges, pears, bananas, and melons
+already exist in NetHack, so don't use those.
+.lp graphics
+(default `` |--------|||-\\/+.#<>^"}{#\\_<>##'')
+set the graphics symbols for screen displays.  The 
+.op graphics
+option (if used) should come last, followed by a string of up to 32
+characters to be used instead of the default map-drawing characters.
+The dungeon map will use the characters you specify instead of the
+default symbols.
+
+Note that this option string is now escape-processed in conventional C
+fashion.  This means that `\\' is a prefix to take the following
+character literally, and not as a special prefix.  Your graphics
+strings for NetHack 2.2 and older versions may contain a `\\'; it must
+be doubled for the same effect now.  The special escape form `\\m'
+switches on the meta bit in the following character, and the `^'
+prefix causes the following character to be treated as a control
+character (so any `^' in your old graphics strings should be changed
+to `\\^' now).
+
+Alternate line-drawing character sets can be used on terminals that
+support them.  A graphics string of 
+``\ \\mx\\mq\\ml\\mk\\mm\\mj\\mn\\mv\\mw\\mu\\mt\\mx\\mq\\\\/+\\m~\\ma'' 
+will take advantage of the ANSI line-drawing character set (available
+on some VT100 and higher terminals) if it is loaded as the alternate
+set.  If it doesn't work, your terminal may not support alternate
+character sets, or the termcap entry for your terminal doesn't have
+the appropriate escape sequences.  For the record, the sequences to
+add to the termcap entry are ``:as=^O:ae=^N:ti=\\E)0:''.
+
+The order of the symbols is:  solid rock, vertical wall, horizontal
+wall, upper left corner, upper right corner, lower left corner, lower
+right corner, cross wall, upward T wall, downward T wall, leftward T
+wall, rightward T wall, vertical beam, horizontal beam, left slant,
+right slant, door, floor of a room, corridor, stairs up, stairs down,
+trap, web, pool or moat, fountain, kitchen sink, throne, altar, ladder
+up, ladder down, vertical drawbridge, horizontal drawbridge.  You
+might want to use `+' for the corners and T walls for a more esthetic,
+boxier display.  Note that in the next release, new symbols may be
+added, or the present ones rearranged.
+
+Cannot be set with the `O' command.
+.lp IBM_BIOS
+(default off, PC NetHack only) use BIOS calls to update the screen
+display quickly and to read the keyboard (allowing the use of arrow
+keys to move) on machines with an IBM PC compatible BIOS ROM.
+.lp ignintr
+(default off) ignore interrupt signals, including breaks.
+.lp male\ \ \ \ 
+(default on, most hackers are male) set your sex.
+Cannot be set with the `O' command.
+.lp name\ \ \ \ 
+(defaults to your user name) set your character's name.  You can also
+set your character class by appending a dash and the first letter of
+the character class (that is, by suffixing one of
+.op "-A -B -C -E -H -K -P -R -S -T -V -W" ).
+Cannot be set with the `O' command.
+.lp news\ \ \ \ 
+(default on) read the NetHack news file, if present.
+Since the news is shown at the beginning of the game, there's no point
+in setting this with the `O' command.
+.lp number_pad
+(default off) use the number keys to move instead of [yuhjklbn].
+.lp null\ \ \ \ 
+(default off) send padding nulls to the terminal.
+.lp packorder
+(default ``\\")[%?+/=!(*'0_'') specify the order to list object types
+in.  The value of this option should be a string containing the
+symbols for the various object types.
+.lp pickup\ \ 
+(default on) pick up things you move onto by default.
+.lp rawio\ \ \ 
+(default off) force raw (non-cbreak) mode for faster output and more
+bulletproof input (MS-DOS sometimes treats ^P as a printer toggle
+without it).  Note: DEC Rainbows hang if this is turned on.
+Cannot be set with the `O' command.
+.lp rest_on_space
+(default off) make the space bar a synonym for the `.' (rest) command.
+.lp safe_pet
+(default on) prevent you from (knowingly) attacking your pets.
+.lp silent\ \ 
+(default on) suppress terminal beeps.
+.lp sortpack
+(default on) sort the pack contents by type when displaying inventory.
+.lp standout
+(default off) boldface objects, monsters, zaps, and ``\fB--More--\fP''.
+.lp time\ \ \ \ 
+(default off) show the elapsed game time in turns on bottom line.
+.lp tombstone
+(default on) draw a tombstone graphic upon your death.
+.lp verbose
+(default on) provide more commentary during the game.
+.pg
+In the PC NetHack version, options may be set in a configuration file
+on disk as well as from NETHACKOPTIONS.
+
+.hn 1
 Scoring
 .pg
-Nethack usually maintains a list of the top scoring people
-or scores on your machine.  Depending on how it is set
-up, it can post either the top scores or the top players.
-In the latter case,  each account on the machine can post
-only one non-winning score on this list.   If you score
-higher than someone else on this list, or better your previous
-score on the list, you will be inserted in the proper
-place under your current name.  How many scores are kept can
-also be set up by whoever installs it on your machine.
+NetHack maintains a list of the top scores or scorers on your machine,
+depending on how it is set up.  In the latter case, each account on
+the machine can post only one non-winning score on this list.  If
+you score higher than someone else on this list, or better your
+previous score, you will be inserted in the proper place under your
+current name.  How many scores are kept can also be set up when
+NetHack is compiled.
 .pg
-If you quit the game, you get out with all of your gold
-intact.   If,  however,  you get killed in the Dungeons of
-Doom, your body is forwarded to your next-of-kin, along with
-90%  of your gold; ten percent of your gold is kept by the
-Dungeons' wizard as a fee.  This should make you consider
-whether you want to take one last hit at that monster and
-possibly live, or quit and thus stop with whatever you have.
-If you quit, you do get all your gold, but if you swing and
-live, you might find more.
+Your score is chiefly based upon how much experience you gained, how
+much loot you accumulated, how deep you explored, and how the game
+ended.  If you quit the game, you escape with all of your gold intact.
+If, however, you get killed in the Mazes of Menace, the guild will
+only hear about 90% of your gold when your corpse is discovered
+(adventurers have been known to collect finder's fees).  So, consider
+whether you want to take one last hit at that monster and possibly
+live, or quit and stop with whatever you have.  If you quit, you keep
+all your gold, but if you swing and live, you might find more.
 .pg
-If you just want to see what the current top players/
-games list is, you can type
-.sd
-% nethack -s
-.ed
+If you just want to see what the current top players/games list is, you
+can type \fBnethack -s all\fP.
+
+.hn 1
+Explore mode
+.pg
+NetHack is an intricate and difficult game.  Novices might falter
+in fear, aware of their ignorance of the means to survive.  Well, fear
+not.  Your dungeon may come equipped with an "explore" or "discovery"
+mode, that enables you to keep old save files and cheat death, at the
+paltry cost of not getting on the high score list.
+.pg
+There are two ways of enabling explore mode.  One is to start the game
+with the
+.op -X
+switch.  The other is to answer yes to the question ``Do you want to
+create a non-scoring, restartable save file?'' upon saving the game.
+The other benefits of explore mode are left for the trepid reader to
+discover.
 
 .hn
 Credits
 .pg
-The original hack game was modeled on the Berkeley UNIX `rogue' game.
-Large portions of this paper were shamelessly cribbed from \fUA Guide to the
-Dungeons of Doom\fR, by Michael C. Toy and Kenneth C. R. C. Arnold.
+The original \fIhack\fP game was modeled on the Berkeley 
+.ux
+\fIrogue\fP game.  Large portions of this paper were shamelessly
+cribbed from \fIA Guide to the Dungeons of Doom\fP, by Michael C. Toy
+and Kenneth C. R. C. Arnold.  Small portions were adapted from
+\fIFurther Exploration of the Dungeons of Doom\fP, by Ken Arromdee.
 .pg
-NetHack is the product of literally dozens of people's work. A list of
-\fIsome\fR of those who made major additions to the game appears below:
-.lp "Jay Fenlason
-wrote the original release of "Hack", with help	from Kenny Woodland, Mike
-Thome and Jon Payne.
-.lp "Andries Brouwer
-did a major re-write on the program and	publshed (at least) two versions to
-the Usenet.
-.lp "Don G. Kneller
-ported the 1.0.3 version of Hack to the PC, creating PC-Hack.
+NetHack is the product of literally dozens of people's work.  A list of
+\fIsome\fP of those who made major additions to the game appears below:
+.pg
+\fBJay Fenlason\fP wrote the original release of Hack, with help from
+Kenny Woodland, Mike Thome and Jon Payne.
+.pg
+\fBAndries Brouwer\fP did a major re-write, transforming Hack into a
+very different game, and published (at least) three versions (1.0.1,
+1.0.2, and 1.0.3) for
+.ux
+machines to the Usenet.
+.pg
+\fBDon G. Kneller\fP ported Hack 1.0.3 to Microsoft C and MS-DOS,
+producing PC HACK, of which at least seven versions are recorded (from
+1.01e and 1.03g up to 3.6).
+.pg
+\fBR. Black\fP ported PC HACK to Lattice C and the Atari 520/1040ST,
+producing ST Hack 1.03.
+.pg
+\fBMike Stephenson\fP merged these various versions back together,
+incorporating many of the added features, and produced NetHack 1.4.
+He later coordinated a cast of thousands throughout the Usenet in
+adding and debugging features, and released NetHack versions 2.2, 2.3,
+and 3.0.
+.pg
+\fBOlaf Siebert\fP ported NetHack 2.3 and 3.0 to the Amiga.
 .pg
 The following folks didn't actually re-write the game, or port it to
 a new machine, but have made significant contributions to the playability of
 the game:
-.lp "ins_akaa@jhunix.UUCP (Ken Arromdee)
-New character classes. New weapons code. Armor weights implemented. New tools
-code. Polymorph Self code. Bug fixes.
-.lp "srt@ucla-cs (Scott R. Turner)
-Rockmole & Keystone Kops code. Squeaky Board & Magic traps. Fountain code.
-More bug fixes.
-.lp "gil@cornell.UUCP (Gil Neiger)
-Magic Marker code. Fountain code enhancements. Enhancements to dozens of
-routines. More bug fixes (esp. in hack.zap.c).
-.lp "ericb@hplsla.UUCP (Eric Backus)
-The #dip mods to fountain code. Yet more bug fixes.
-.lp "mike@genat.UUCP (Mike Stephenson)
-New character classes and traps. Throne Rooms. Spellbooks and spellcasting.
-Praying. Endgame enhancements. Nethack release and coordination.
-.lp "eric@snark (Eric S. Raymond)
-The GRAPHICS option. Changes to make character classes more individual and
-mythohistorically authentic. Better random-number generation. The blindfold
-tool. The 'Z' spellcasting command synonym. General cleanup of much grotty
-code, removal of magic numbers. More bug fixes. This Guide you're reading.
-.pg
-You too can enhance this game and join the hallowed ranks of the
-net.benefactors. Happy hacking!
-.hu
-Appendix A: Weapon Types in Hack
-.pg
-This material is adapted from a digest of email replies to Carole Chang
-(carole@uhcc.uhccux.ha). Major sources were:
+
 .sd
-	Paul Anderson		pha@net1.ucsd.edu
-	Vernon Lee		scorpion@rice.edu
-	Bryan Ewbank		ihlph!bdewbank
+.TS S
+center;
+c c c.
+Tom Almy	Eric Hendrickson	Izchak Miller
+Ken Arromdee	Bruce Holloway	Gil Neiger
+Eric Backus	Richard P. Hughey	Eric S. Raymond
+John S. Bien	Greg Laskin	John Rupley
+Ralf Brown	Steve Linhart	Kevin Sweet
+Jean-Christophe Collet	Roland McGrath	Scott R. Turner
+Steve Creps	Bruce Mewborne	Janet Walz
+.TE
 .ed
-Some terminological corrections (notably the correct set of distinctions for
-the great mace/morningstar/flail controversy) were made by your editor
-(eric@snark), and a good bit of historical context added.
 
-.hn 2
-Polearms
-.pg
-The following weapons are all "pole arms", meaning that they are
-wooden shafts (5-9' long) capped with a particular weapon-head. We
-list these first as they are most likely to mystify a novice hacker.
-.lp glaive
-a short polearm with a straight blade at the end of the shaft. Rare in Europe;
-more popular in non-Western cultures under other names, as in the Zulu war
-assegai and Japanese ashigaru's pike.
-.lp halberd
-a long (typically 6' or more) polearm ending with a single axe-head, backed by a
-spike and tipped by a spear-head. An extremely popular weapon in Europe from
-the Dark Ages to as late as 1650. You can see them in pictures of royal or elite
-Spanish, English, and French troops or the Vatican's Swiss Guards.
-.lp bill-guisarme
-a polearm, ends in a spear-head with a spike on one side and a hook on the
-other.
-.lp fauchard
-a polearm topped by a curved sickle-blade.
-.lp bec-de-corbin
-(literally "crow's-beak") a polearm ending in a stout spear-point, with a
-small axe-head on one side and a beak-shaped spike on the other. This weapon
-was designed to act like a can-opener for infantry fighting plate-armored
-knights.
-.lp guisarme
-a polearm, ends with a sharpened pruning hook.
-.lp spetum
-a polearm, ends with a spear-blade that has a smaller blade jutting
-at an angle from either side; the idea was to catch an opponent's
-weapon between two blades and disarm him with a twist of the shaft.
-Compare the japanese \fIsai\fR.
-.lp partisan
-a polearm, has a spear-head with a small axe-head to either side. Peasant
-levies often carried these; hence our modern usage of `partisans' to
-describe guerilla or irregular troops.
-.lp lucern hammer
-a polearm, ends in a forward-pointing and one or more curved, downward-pointing
-(i.e.perpendicular) spikes. Named after the Swiss city and canton of Lucerne.
-.lp voulge
-a polearm, with a straight single-edged blade depending from one side of the
-shaft's end.  
-.lp ranseur
-a polearm, ends with a broad spear-head with a flat base, and a broader
-"hilt" (often a straight piece with sharpened ends) behind it. As with the
-spetum, the idea was to catch weapons between the blade and "hilt".
-
-
-.hn 2
-Blade weapons
-.pg
-Blades were, in most pre-gunpowder martial cultures, the preferred weapon for
-one-on-one combat. Nethack includes several kinds:
-.lp dagger
-broadly speaking, could describe any blade less than about two feet long. But
-`dagger' tends to suggest a hilted, double-edged weapon.
-.lp short swords
-are 2-3' long and used for stabbing. The Roman legionary's \fIgladius\fR and
-the American frontiersman's Bowie knife were both short swords.
-.lp broad swords
-are 3-4' long; they have sharpened edged for chopping and cleaving.
-.lp long swords
-are also 3-4' long; they are narrower with sharpened tips for stabbing and
-slashing.
-.lp two-handed swords
-are 5-6' long, with long handles because they require both hands to use.
-.lp bastard sword
-a cleaving weapon 4-5' long, which can be wielded with one or (more 
-effectively) two hands.
-.lp scimitar
-a type of curved, single-edged blade popular since ancient times in the
-Near East, designed for slashing and drawing strokes. Recent European weapons
-modeled on it include the sabre and cutlass.
-.lp katana
-the long, slender, sabre-like swords of the Japanese samurai, often considered
-the finest blade weapons ever made. Japanese forging techniques produced
-what was in effect a micro-layered composite of high and low carbon steels,
-giving the blade its unique razor-sharpness and flexibility.
-
-.hn 2
-Missile weapons
-.pg
-These are all weapons meant to transfer kinetic energy to a target via a rigid
-thrown projectile.
-.lp bow
-in nethack, probably represents the 'self bow', a smaller single-piece or
-composite bow firing short feather-quilled arrows (rather than the classic
-Robin Hood longbow with its yard-long shafts).
-.lp crossbow
-a mechanically-cranked bow firing stubby conical-profile bolts, sometimes
-finned. Had a lower rate of fire than the self- or long-bow but fearsome
-penetrating power.
-.lp javelin
-a lightweight, flexible throwing spear.
-.lp dart
-not the three-inch, needle-pointed pub dart associated with ale and tweed
-caps; rather, its progenitor, a shorter javelin-like projectile that was
-mostly soft-iron head. Barrages of these were thrown as first volleys in
-infantry skirmishes to foul the opponents' shields.
-.lp shuriken
-a flat, spiked wheel designed to be thrown with a wrist-flick so the blades
-spin like a buzz-saw in flight. Also called a `throwing star' or (in India)
-the `chakram'.
-
-.hn 2
-Miscellaneous strange weapons
-.lp bardiche
-(literally, "bearded axe") a short shaft (5') with an enormous long axe-head,
-connected at at least two places. Basically a huge axe (or a short voulge).
-.lp morning-star
-usually a spiked ball attached by a chain to a truncheon-like handle. The
-term is sometimes used to describe maces with spiked heads.
-.lp flail
-several chains, possibly spiked and possibly with small balls on the ends,
-stapled to a truncheon. 
-.lp crysknife
-a fantasy weapon adapted from Frank Herbert's "Dune" books. On Herbert's
-Arrakis, the fierce Fremen made their personal weapons from the scimitar
-teeth of the \fIshai hulud\fR, the great sandworms of the Dune deserts.
-.lp aklys
-a long thong with a weight at the end. Holding the
-other end of the thong, you throw the weight; the thong entangles
-the target, and the weight whaps it.
+.\"Microsoft and MS-DOS are registered trademarks of Microsoft Corporation.
+.\"Lattice is a trademark of Lattice, Inc.
+.\"Atari and 1040ST are trademarks of Atari, Inc.
+.\"AMIGA is a trademark of Commodore-Amiga, Inc.
+.sm "Brand and product names are trademarks or registered trademarks \
+of their respective holders."

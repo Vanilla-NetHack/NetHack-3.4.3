@@ -1,0 +1,87 @@
+
+Boolean options available in all versions (with default values in []):
+
+confirm		ask before hitting tame or peaceful monsters  [TRUE]
+(fe)male	sex of the player (may only be set on startup)  [MALE]
+fixinv		try to retain the same letter for the same object  [TRUE]
+ignintr		ignore interrupt signal, including breaks  [FALSE]
+number_pad	use the number keys to move instead of yuhjklbn  [FALSE]
+pickup		automatically pick up objects you move over  [TRUE]
+rest_on_space	count the space bar as a rest character  [FALSE]
+safe_pet	prevent you from (knowingly) attacking your pet(s)  [TRUE]
+silent		don't use your terminal's bell sound  [TRUE]
+sortpack	group similar kinds of objects in inventory  [TRUE]
+time		display elapsed game time, in moves  [FALSE]
+tombstone	print tombstone when you die  [TRUE]
+verbose		print more commentary during the game  [TRUE]
+
+There are further Boolean options that exist in some versions of NetHack 3.0.
+(You can tell which options exist in your version by checking the short
+option help, which is reached by 'O?'.)
+
+
+ 
+Boolean option if NEWS was set at compile time:
+news		print any news from game administrator on startup  [TRUE]
+
+Boolean options if you are using MS-DOS and DGK was set at compile time:
+IBM_BIOS	allow the use of IBM ROM BIOS calls  [FALSE]
+rawio		allow the use of raw I/O (may only be set on startup)  [FALSE]
+DEC_Rainbow	you are on a DEC Rainbow and want to use its graphics  [FALSE]
+		(if DECRAINBOW was also set at compile time)
+
+Boolean options if DGK was not set at compile time:
+null		allow nulls to be sent to your terminal  [TRUE]
+standout	use standout mode for --More-- on messages  [FALSE]
+
+Any Boolean option can be negated by prefixing it with a '!' or 'no'.
+
+
+
+
+
+
+
+ 
+Compound options are written as option_name:option_value.
+Compound options which can be set during the game are:
+
+packorder	a list of default symbols for kinds of objects that gives the
+		order in which your pack will be displayed
+		If you specify only some kinds of items, the others from the
+		default order will be appended to the end.  [")[%?+!=/(*`0_]
+endgame		the parts of the score list you wish to see when the game ends
+		You choose a combination of top scores, scores around that of
+		the ending game, and all of your own scores.
+		[!own/5 top/4 around]
+fruit		the name of a fruit you enjoy eating
+		(basically a whimsy which NetHack uses from time to time)
+		[slime mold]
+
+Compound options which may be set only on startup are:
+
+name		the name of your character
+		[obtained by asking the system or the player]
+dogname		the name of your first dog  [NONE]
+catname		the name of your first cat  [NONE]
+ 
+graphics	a list of symbols to be used in place of the default ones for
+		drawing the dungeon
+		The symbols are subjected to a fair amount of processing, so
+		that you can use C-style escapes such as \n or \081 as well as
+		indicate control characters by ^x or meta characters by \Mx.
+		As usual, \ can force the next character to be taken literally.
+		Since many of the default symbols are overloaded, they are
+		given here by name instead of symbol, with some added notes.
+		[stone                               (solid rock, normally ' ')
+		vwall hwall tlcorn trcorn blcorn brcorn       (room boundaries)
+		crwall tuwall tdwall tlwall trwall  (wallified maze characters)
+		vbeam hbeam lslant rslant			    (zap beams)
+		door room corr upstair dnstair trap web pool
+		fountain sink throne altar
+		upladder dnladder vdbridge hdbridge]
+
+Some sample options lists are
+!pickup,!tombstone,name:Gandalf,endgame:own/3 top/2 around
+female,nonews,dogname:Rover,graphics: |--------|||-\\/+.#<>\^\"}{#\\_<>##
+rest_on_space,!verbose

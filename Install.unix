@@ -1,0 +1,67 @@
+Instructions for installing NetHack 3.0 on a UNIX system
+========================================================
+
+1.  Make sure all the NetHack files are in the appropriate directory structure.
+    You should have a main directory with subdirectories src, include, auxil,
+    amiga, and others.  If you do not follow this structure, the Makefiles
+    will not function properly.  All the UNIX .c files and the source Makefile
+    belong in src; all the .h files belong in include; other assorted files
+    belong in auxil.  The UNIX version does not use any files from amiga or
+    others, except possibly for random.c from others, as explained in step 6.
+    (A more detailed explanation of the directory structure may be found in
+    Files, which should be in the top directory.)
+
+2.  Your Makefiles may still have tags on the end of them.  Makefile.top should
+    become Makefile in the top directory, Makefile.src Makefile in the src
+    subdirectory, and Makefile.auxil Makefile in the auxil subdirectory.
+
+3.  Go to the include subdirectory and edit config.h according to the comments
+    to match your system and desired set of features.  Similarly edit
+    unixconf.h.
+
+4.  If you want to, look through system.h.  This file attempts to match the
+    types for system calls and library routines with various flavors of
+    operating systems.  Leaving this file alone is unlikely to cause worse
+    problems than lint errors, but it's worth checking if you get compile
+    errors, especially if you have an unusual system.
+
+5.  Go to the src subdirectory and look at the top of topten.c.  You may want
+    to change the definitions of PERSMAX and PERS_IS_UID here to get different
+    behavior from the high score list.
+
+6.  Edit the top section of the src Makefile.  (If you are doing a full
+    recompile, or if you got your files from someplace besides the official
+    distribution, type 'touch makedefs.c' to make sure certain files (onames.h,
+    pm.h) get remade instead of relying on the potentially troublesome
+    timestamps.)  If you elected to use the provided (BSD) random routines,
+    move or link random.c into the src subdirectory from others.  Then type
+    'make' in src and go get a cup of coffee or take a nap.  You should now
+    have created the game executable.
+
+7.  Go back to the main directory and edit that Makefile, explaining where you
+    want everything to be installed.  The Makefile assumes you want to run
+    NetHack setuid 'games' to cut down on possible tampering; it's fairly
+    straightforward to comment out the appropriate chmod if you don't want that,
+    or to change any of the rest of the procedure.  Also edit auxil/nethack.sh
+    at this point.  Type 'make spec_levs' from the main directory to set up
+    files for some of the special levels.  Then become root if necessary and
+    type 'make install'.  Everything should now be set.
+
+Notes:
+
+1.  No, your old save files and bones files will not work with NetHack 3.0.
+    Don't bother trying to keep them.  The old score list will work fine; the
+    only problem is that you may have trouble beating your old scores in this
+    version.
+
+2.  If you insisted on doing the final installation by hand, you probably
+    forgot to make a save directory.  If you don't go back and do this, you
+    won't be able to save games.
+
+3.  To install an update of this version of NetHack after changing something,
+    type 'make update' from the main directory.  If you created the new
+    version yourself, it should be safe to use 'make update' as long as you
+    did not add, delete, or reorder monsters or objects and you did not change
+    the format of saved level files.  If you did any of these things, you
+    should also remove any saved games and bones levels.  (Trying to use such
+    files often produces amusing but useless confusions on the game's part.)

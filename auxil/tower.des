@@ -1,0 +1,145 @@
+#	SCCS Id: @(#)tower.des	3.0	89/07/02
+#	Copyright (c) 1989 by Jean-Christophe Collet
+# NetHack may be freely redistributed.  See license for details.
+#
+# Upper stage of Vlad's tower
+MAZE:"tower1"
+GEOMETRY:center,center
+MAP
+.................
+...---.---.---...
+...|.|.|.|.|.|...
+.---S---S---S---.
+.|.......+.+...|.
+.---+-----.-----.
+...|...\.|.+.|...
+.---+-----.-----.
+.|.......+.+...|.
+.---S---S---S---.
+...|.|.|.|.|.|...
+...---.---.---...
+.................
+ENDMAP
+MAZEWALK:(16,06),east
+LADDER:(12,06),down
+REGION:(02,04,08,04),unlit,"ordinary"
+REGION:(04,06,08,06),unlit,"ordinary"
+REGION:(02,08,08,08),unlit,"ordinary"
+REGION:(12,04,14,04),unlit,"ordinary"
+REGION:(12,08,14,08),unlit,"ordinary"
+REGION:(10,04,10,08),unlit,"ordinary"
+# The lord and his court
+MONSTER:'V',"Vlad the Impaler",(07,06)
+MONSTER:'V',random,(04,10)
+MONSTER:'V',random,(08,10)
+MONSTER:'V',random,(12,10)
+MONSTER:'V',random,(04,02)
+MONSTER:'V',random,(08,02)
+MONSTER:'V',random,(12,02)
+# The doors
+DOOR:closed,(04,03)
+DOOR:closed,(08,03)
+DOOR:closed,(12,03)
+DOOR:closed,(04,09)
+DOOR:closed,(08,09)
+DOOR:closed,(12,09)
+DOOR:locked,(04,05)
+DOOR:locked,(04,07)
+# treasures
+OBJECT:'(',"chest",(08,06)
+OBJECT:'(',"chest",(04,10)
+OBJECT:'(',"chest",(08,10)
+OBJECT:'(',"chest",(12,10)
+OBJECT:'(',"chest",(04,02)
+OBJECT:'(',"chest",(08,02)
+OBJECT:'(',"chest",(12,02)
+# We have to protect the tower against outside attacks
+NON_DIGGABLE:(00,00,16,12)
+
+
+# Intermediate stage of Vlad's tower
+MAZE:"tower2"
+GEOMETRY:center,center
+MAP
+.................
+...---.---.---...
+...|.|.|.|.|.|...
+.---S---S---S---.
+.|.S.........S.|.
+.---.------+----.
+...|......|..|...
+.--------.------.
+.|.S......+..S.|.
+.---S---S---S---.
+...|.|.|.|.|.|...
+...---.---.---...
+.................
+ENDMAP
+# Random places are the 10 niches
+RANDOM_PLACES:(04,02),(08,02),(12,02),(02,04),(14,04),
+	      (02,08),(14,08),(04,10),(08,10),(12,10)
+MAZEWALK:(16,06),east
+LADDER:(12,06),up
+LADDER:(04,08),down
+REGION:(11,07,12,07),unlit,"ordinary"
+REGION:(11,09,12,09),unlit,"ordinary"
+MONSTER:'&',random,place[0]
+MONSTER:'&',random,place[1]
+MONSTER:'d',"hell hound pup",place[2]
+MONSTER:'d',"hell hound pup",place[3]
+MONSTER:'d',"winter wolf",place[4]
+OBJECT:'"',"amulet of life saving",place[5]
+OBJECT:'"',"amulet of strangulation",place[6]
+OBJECT:'[',"water walking boots",place[7]
+OBJECT:'[',"crystal plate mail",place[8]
+OBJECT:'+',"invisibility",place[9]
+# Walls in the tower are non diggable
+NON_DIGGABLE:(00,00,16,12)
+
+
+# Bottom most stage of Vlad's tower
+MAZE:"tower3"
+GEOMETRY:center,center
+MAP
+.................
+...---.---.---...
+...|.|.|.|.|.|...
+.---S---S---S---.
+.|.S.........S.|.
+.---.........---.
+...|.........+...
+.---.........---.
+.|.S.........S.|.
+.---S---S---S---.
+...|.|.|.|.|.|...
+...---.---.---...
+.................
+ENDMAP
+# Random places are the 10 niches
+RANDOM_PLACES:(04,02),(08,02),(12,02),(02,04),(14,04),
+	      (02,08),(14,08),(04,10),(08,10),(12,10)
+MAZEWALK:(16,06),east
+REGION:(04,04,12,08),unlit,"ordinary"
+LADDER:(04,08),up
+# Entry door is, of course, locked
+DOOR:locked,(13,06)
+# Let's put a dragon behind the door, just for the fun...
+MONSTER:'D',random,(12,06)
+MONSTER:random,random,(11,05)
+MONSTER:random,random,(11,07)
+MONSTER:random,random,random
+MONSTER:random,random,random
+MONSTER:random,random,random
+MONSTER:random,random,random
+MONSTER:random,random,random
+MONSTER:random,random,random
+OBJECT:')',"long sword",place[0]
+TRAP:random,place[0]
+OBJECT:'(',"lock pick",place[1]
+TRAP:random,place[1]
+OBJECT:'[',"elven cloak",place[2]
+TRAP:random,place[2]
+OBJECT:'(',"blindfold",place[3]
+TRAP:random,place[3]
+# Walls in the tower are non diggable
+NON_DIGGABLE:(00,00,16,12)

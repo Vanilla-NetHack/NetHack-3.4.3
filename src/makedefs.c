@@ -1,35 +1,73 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* makedefs.c - NetHack version 2.3 */
+/* NetHack may be freely redistributed.  See license for details. */
+/* makedefs.c - NetHack version 3.0 */
 
-static	char	SCCS_Id[] = "@(#)makedefs.c	2.3\t88/02/18";
+#define MAKEDEFS_C
 
-#include	<stdio.h>
+#define EXTERN_H
 #include	"config.h"
+#include	"permonst.h"
+#include	"objclass.h"
+#ifdef NULL
+#undef NULL
+#endif /* NULL */
+#define NULL	((genericptr_t)0)
+
+#ifndef LINT
+static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/01/10";
+#endif
 
 #ifdef MSDOS
-#undef	exit
-#define freopen _freopen
-#define	alloc	malloc
-#define RDMODE	"r"
-#define WRMODE	"w"
+# define freopen _freopen
+# undef	exit
+extern void exit P((int));
+# define RDMODE	"r"
+# define WRMODE	"w"
 #else
-#define RDMODE	"r+"
-#define WRMODE	"w+"
+# define RDMODE  "r+"
+# define WRMODE  "w+"
+#endif
+#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
+void rename();
+#endif
+#ifdef AMIGA
+# undef freopen
+# undef printf
+# undef puts
+# undef fflush
+# define fflush FFLUSH
+# undef fputs
+# undef fprintf
 #endif
 
 /* construct definitions of object constants */
-#define	OBJ_FILE	"objects.h"
-#define	ONAME_FILE	"onames.h"
-#define	TRAP_FILE	"trap.h"
-#define	DATE_FILE	"date.h"
-#define	RUMOR_FILE	"rumors"
-#define	DATA_FILE	"data"
 
-char	inline[256], outline[256];
+#ifdef AMIGA
+# define MONST_FILE	 "include:pm.h"
+# define ONAME_FILE	 "include:onames.h"
+# define TRAP_FILE	 "include:trap.h"
+# define DATE_FILE	 "include:date.h"
+# define DATA_FILE	 "auxil:data"
+# define RUMOR_FILE	 "auxil:rumors"
+#else
+# define MONST_FILE	 "../include/pm.h"
+# define ONAME_FILE	 "../include/onames.h"
+# define TRAP_FILE	 "../include/trap.h"
+# define DATE_FILE	 "../include/date.h"
+# define DATA_FILE	 "../auxil/data"
+# define RUMOR_FILE	 "../auxil/rumors"
+#endif
 
+char	in_line[256];
+extern char *gets P((char *));
+void do_objs(), do_traps(), do_data(), do_date(), do_permonst(), do_rumors();
+char *limit P((char *,boolean));
+FILE *_freopen();
+
+int
 main(argc, argv)
-	int	argc;
-	char	*argv[];
+int	argc;
+char	*argv[];
 {
 	char	*option;
 
@@ -43,654 +81,371 @@ main(argc, argv)
 		case 't':
 		case 'T':	do_traps();
 				break;
+
+		case 'd':
+		case 'D':	do_data();
+				break;
+
+		case 'v':
+		case 'V':	do_date();
+				break;
+
+		case 'p':
+		case 'P':	do_permonst();
+				break;
+
 		case 'r':
 		case 'R':	do_rumors();
 				break;
 
-		case 'd':	do_data();
-				break;
-
-		case 'D':	do_date();
-				break;
 		default:
-				fprintf(stderr, "Unknown option '%c'.\n", option[1]);
+				(void) fprintf(stderr, "Unknown option '%c'.\n", option[1]);
+				(void) fflush(stderr);
 				exit(1);
 	    }
 	    exit(0);
-	} else	fprintf(stderr, "Bad arg count (%d).\n", argc-1);
+	} else	(void) fprintf(stderr, "Bad arg count (%d).\n", argc-1);
+	(void) fflush(stderr);
 	exit(1);
+/*NOTREACHED*/
+#ifdef MSDOS
+	return 0;
+#endif
 }
 
+void
 do_traps() {
-int	ntrap, getpid();
-char	tmpfile[30];
-FILE	*freopen();
+	int	ntrap;
+	char	tempfile[30];
 
-	sprintf(tmpfile, "makedefs.%d", getpid());
-	if(freopen(tmpfile, WRMODE, stdout) == NULL) {
-
-		perror(tmpfile);
+	Sprintf(tempfile, "makedefs.%d", getpid());
+	if(freopen(tempfile, WRMODE, stdout) == (FILE *)0) {
+		perror(tempfile);
 		exit(1);
 	}
-	if(freopen(TRAP_FILE, RDMODE, stdin) == NULL) {
 
+	if(freopen(TRAP_FILE, RDMODE, stdin) == (FILE *)0) {
 		perror(TRAP_FILE);
 		exit(1);
 	}
 
-	while(gets(inline) != NULL) {
-
-	    puts(inline);
-	    if(!strncmp(inline, "/* DO NOT REMOVE THIS LINE */", 29)) break;
+	while(gets(in_line) != NULL) {
+	    (void) puts(in_line);
+	    if(!strncmp(in_line, "/* DO NOT REMOVE THIS LINE */", 29)) break;
 	}
 	ntrap = 10;
-	printf("\n");
-#ifdef NEWTRAPS
-	printf("#define\tMGTRP\t\t%d\n", ntrap++);
-	printf("#define\tSQBRD\t\t%d\n", ntrap++);
-#endif
-#ifdef SPIDERS
-	printf("#define\tWEB\t\t%d\n", ntrap++);
-#endif
-#ifdef NEWCLASS
-	printf("#define\tSPIKED_PIT\t%d\n", ntrap++);
-	printf("#define\tLEVEL_TELEP\t%d\n", ntrap++);
-#endif
+	Printf("\n");
+	Printf("#define\tMGTRP\t\t%d\n", ntrap++);
+	Printf("#define\tSQBRD\t\t%d\n", ntrap++);
+	Printf("#define\tWEB\t\t%d\n", ntrap++);
+	Printf("#define\tSPIKED_PIT\t%d\n", ntrap++);
+	Printf("#define\tLEVEL_TELEP\t%d\n", ntrap++);
 #ifdef SPELLS
-	printf("#define\tANTI_MAGIC\t%d\n", ntrap++);
+	Printf("#define\tANTI_MAGIC\t%d\n", ntrap++);
 #endif
-#ifdef KAA
-	printf("#define\tRUST_TRAP\t%d\n", ntrap++);
-# ifdef RPH
-	printf("#define\tPOLY_TRAP\t%d\n", ntrap++);
-# endif
+	Printf("#define\tRUST_TRAP\t%d\n", ntrap++);
+#ifdef POLYSELF
+	Printf("#define\tPOLY_TRAP\t%d\n", ntrap++);
 #endif
-#ifdef SAC
-	printf("#define\tLANDMINE\t%d\n", ntrap++);
-#endif /* SAC */
-	printf("\n#define\tTRAPNUM\t%d\n", ntrap);
-	fclose(stdin);
-	fclose(stdout);
+	Printf("#define\tLANDMINE\t%d\n", ntrap++);
+	Printf("\n#define\tTRAPNUM\t%d\n", ntrap);
+	Printf("\n#endif /* TRAP_H /**/\n");
+	(void) fclose(stdin);
+	(void) fclose(stdout);
 #ifdef MSDOS
 	remove(TRAP_FILE);
 #endif
-	rename(tmpfile, TRAP_FILE);
+	rename(tempfile, TRAP_FILE);
+	return;
 }
 
 
-struct	hline {
-	struct	hline	*next;
-	char	*line;
-}	*f_line;
-
+void
 do_rumors(){
-struct	hline	*c_line;
-char	infile[30];
-FILE	*freopen();
+	char	infile[30];
+	FILE	*freopen();
+	long	true_rumor_size;
 
-	if(freopen(RUMOR_FILE, WRMODE, stdout) == NULL) {
-
+	if(freopen(RUMOR_FILE, WRMODE, stdout) == (FILE *)0) {
 		perror(RUMOR_FILE);
 		exit(1);
 	}
-#ifdef MSDOS
-	sprintf(infile, "%s.bas", RUMOR_FILE);
-#else
-	sprintf(infile, "%s.base", RUMOR_FILE);
-#endif
-	if(freopen(infile, RDMODE, stdin) == NULL) {
 
+	Sprintf(infile, "%s.tru", RUMOR_FILE);
+	if(freopen(infile, RDMODE, stdin) == (FILE *)0) {
 		perror(infile);
 		exit(1);
 	}
 
-	while(gets(inline) != NULL)	puts(inline);
+	/* get size of true rumors file */
+	(void) fseek(stdin, 0L, 2);
+	true_rumor_size = ftell(stdin);
+	(void) fwrite((genericptr_t)&true_rumor_size,sizeof(long),1,stdout);
+	(void) fseek(stdin, 0L, 0);
 
-#ifdef KAA
-	sprintf(infile, "%s.kaa", RUMOR_FILE);
-	if(freopen(infile, RDMODE, stdin) == NULL)	perror(infile);
+	/* copy true rumors */
+	while(gets(in_line) != NULL)	 (void) puts(in_line);
 
-	while(gets(inline) != NULL)	puts(inline);
-#endif
-
-#ifdef NEWCLASS
-	sprintf(infile, "%s.mrx", RUMOR_FILE);
-	if(freopen(infile, RDMODE, stdin) == NULL)	perror(infile);
-
-	while(gets(inline) != NULL)	puts(inline);
-#endif
-	fclose(stdin);
-	fclose(stdout);
-}
-
-do_date(){
-int	getpid();
-long	clock, time();
-char	tmpfile[30], cbuf[30], *c, *ctime();
-FILE	*freopen();
-
-	sprintf(tmpfile, "makedefs.%d", getpid());
-	if(freopen(tmpfile, WRMODE, stdout) == NULL) {
-
-		perror(tmpfile);
+	Sprintf(infile, "%s.fal", RUMOR_FILE);
+	if(freopen(infile, RDMODE, stdin) == (FILE *)0) {
+		perror(infile);
 		exit(1);
 	}
-	if(freopen(DATE_FILE, RDMODE, stdin) == NULL) {
 
+	/* copy false rumors */
+	while(gets(in_line) != NULL)	 (void) puts(in_line);
+
+	(void) fclose(stdin);
+	(void) fclose(stdout);
+	return;
+}
+
+#ifdef SYSV
+extern long time();
+#endif
+
+void
+do_date(){
+	long	clock;
+	char	cbuf[30], *c;
+
+	if(freopen(DATE_FILE, WRMODE, stdout) == (FILE *)0) {
 		perror(DATE_FILE);
 		exit(1);
 	}
+	Printf("/*\tSCCS Id: @(#)date.h\t3.0\t88/11/20 */\n\n");
 
-	while(gets(inline) != NULL) {
-
-	    if(!strncmp(inline, "char datestring[] = ", 20)) break;
-	    puts(inline);
-	}
-	time(&clock);
-	strcpy(cbuf, ctime(&clock));
+	(void) time(&clock);
+	Strcpy(cbuf, ctime(&clock));
 	for(c = cbuf; *c != '\n'; c++);	*c = 0; /* strip off the '\n' */
-	printf("char datestring[] = %c%s%c;\n", '"', cbuf, '"');
+	Printf("const char datestring[] = \"%s\";\n", cbuf);
 
-	fclose(stdin);
-	fclose(stdout);
-#ifdef MSDOS
-	remove(DATE_FILE);
-#endif
-	rename(tmpfile, DATE_FILE);
+	(void) fclose(stdout);
+	return;
 }
 
+void
 do_data(){
-int	getpid();
-char	tmpfile[30];
-FILE	*freopen();
+	char	tempfile[30];
 
-	sprintf(tmpfile, "%s.base", DATA_FILE);
-	if(freopen(tmpfile, RDMODE, stdin) == NULL) {
-
-		perror(tmpfile);
+	Sprintf(tempfile, "%s.base", DATA_FILE);
+	if(freopen(tempfile, RDMODE, stdin) == (FILE *)0) {
+		perror(tempfile);
 		exit(1);
 	}
-	if(freopen(DATA_FILE, WRMODE, stdout) == NULL) {
 
+	if(freopen(DATA_FILE, WRMODE, stdout) == (FILE *)0) {
 		perror(DATA_FILE);
 		exit(1);
 	}
 
-	while(gets(inline) != NULL) {
-#ifdef KOPS
-	    if(!strcmp(inline, "K	a kobold"))
-		printf("K\ta Keystone Kop\n");
-	    else
-#endif
-#ifdef KAA
-	    if(!strcmp(inline, "Q	a quasit"))
-		printf("Q\ta quantum mechanic\n");
-	    else
-#endif
-#ifdef ROCKMOLE
-	    if(!strcmp(inline, "r	a giant rat"))
-		printf("r\ta rockmole\n");
-	    else
-#endif
-#ifdef SPIDERS
-	    if(!strcmp(inline, "s	a scorpion"))
-		printf("s\ta giant spider\n");
-	    else if (!strcmp(inline, "\"	an amulet"))
-		printf("\"\tan amulet (or a web)\n");
-	    else
-#endif
+	while(gets(in_line) != NULL) {
 #ifdef  SINKS
-	    if (!strcmp(inline, "#	a corridor"))
-		printf("#\ta corridor (or a kitchen sink)\n");
+	    if(!strcmp(in_line, "#\ta corridor"))
+		Printf("#\ta corridor (or a kitchen sink)\n");
+	    else
+#endif
+#ifdef	ALTARS
+	    if(!strcmp(in_line, "_\tan iron chain"))
+		Printf("_\tan iron chain (or an altar)\n");
 	    else
 #endif
 #ifdef	SPELLS
-	    if (!strcmp(inline, "+	a door"))
-		printf("+\ta door (or a spell book)\n");
+	    if(!strcmp(in_line, "+\ta door"))
+		Printf("+\ta door (or a spell book)\n");
 	    else
 #endif
 #ifdef	FOUNTAINS
-	    if(!strcmp(inline, "}	water filled area")) {
-		puts(inline);
-		printf("{\ta fountain\n");
+	    if(!strcmp(in_line, "}\twater filled area")) {
+		(void) puts(in_line);
+		Printf("{\ta fountain\n");
 	    } else
 #endif
-#ifdef NEWCLASS
-	    if(!strcmp(inline, "^	a trap")) {
-		puts(inline);
-		printf("\\\tan opulent throne.\n");
+#ifdef	THRONES
+	    if(!strcmp(in_line, "^\ta trap")) {
+		(void) puts(in_line);
+		Printf("\\\tan opulent throne\n");
 	    } else
 #endif
-		puts(inline);
+	    if(!strcmp(in_line, ";\ta giant eel")) {
+		(void) puts(in_line);
+#ifdef	WORM
+		Printf("~\tthe tail of a long worm\n");
+#endif
+#ifdef	GOLEMS
+Printf("'\ta golem\n");
+Printf("\t\tThese creatures, not quite living but not  really  nonliving\n");
+Printf("\t\teither,   are   created from inanimate materials by powerful\n");
+Printf("\t\tmages or priests.\n");
+#endif
+	    } else
+	      (void) puts(in_line);
 	}
-#ifdef SAC
-	printf("3\ta soldier;\n");
-	printf("\tThe soldiers  of Yendor are  well-trained in the art of war,\n");
-	printf("\tmany  trained by  the wizard himself.  Some say the soldiers\n");
-	printf("\tare explorers  who were  unfortunate enough  to be captured,\n");
-	printf("\tand  put under the wizard's spell.  Those who have  survived\n");
-	printf("\tencounters  with  soldiers   say  they  travel  together  in\n");
-	printf("\tplatoons,  and are fierce fighters.  Because of the  load of\n");
-	printf("\ttheir  combat gear,  however,  one can usually run away from\n");
-	printf("\tthem, and doing so is considered a wise thing.\n");
-#endif
-#ifdef RPH
-	printf("8\tthe medusa;\n");
-	printf("\tThis hideous  creature from  ancient Greek myth was the doom\n");
-	printf("\tof many a valiant adventurer.  It is said that one gaze from\n");
-	printf("\tits eyes  could turn a man to stone.  One bite from the nest\n");
-	printf("\tof  snakes which  crown its head could  cause instant death.\n");
-	printf("\tThe only  way to kill this  monstrosity is to turn its  gaze\n");
-	printf("\tback upon itself.\n"); 
-#endif
-#ifdef KAA
-	printf("9\ta giant;\n");
-	printf("\tGiants have always walked the earth, though they are rare in\n");
-	printf("\tthese times.  They range in size from  little over nine feet\n");
-	printf("\tto a towering twenty feet or more.  The larger ones use huge\n");
-	printf("\tboulders as weapons, hurling them over large distances.  All\n");
-	printf("\ttypes of giants share a love for men  -  roasted, boiled, or\n");
-	printf("\tfried.  Their table manners are legendary.\n");
-#endif
-	fclose(stdin);
-	fclose(stdout);
+	(void) fclose(stdin);
+	(void) fclose(stdout);
+	return;
 }
 
-#define	LINSZ	1000
-#define	STRSZ	40
+void
+do_permonst() {
 
-int	fd;
-struct	objdef {
+	int	i;
+	char	*c;
 
-	struct	objdef	*next;
-	char	string[STRSZ];
-}	*more, *current;
-
-do_objs(){
-register int index = 0;
-register int propct = 0;
-#ifdef SPELLS
-register int nspell = 0;
-#endif
-FILE	*freopen();
-register char *sp;
-char	*limit();
-int skip;
-
-	fd = open(OBJ_FILE, 0);
-	if(fd < 0) {
-		perror(OBJ_FILE);
+	if(freopen(MONST_FILE, WRMODE, stdout) == (FILE *)0) {
+		perror(MONST_FILE);
 		exit(1);
 	}
+	Printf("/*\tSCCS Id: @(#)pm.h\t3.0\t88/11/20 */\n\n");
+	Printf("#ifndef PM_H\n#define PM_H\n");
 
-	if(freopen(ONAME_FILE, WRMODE, stdout) == NULL) {
-		perror(ONAME_FILE);
-		exit(1);
-	}
-
-	current = 0; newobj();
-	skipuntil("objects[] = {");
-
-	while(getentry(&skip)) {
-		if(!*(current->string)){
-			if (skip) index++;
-			continue;
+	for(i = 0; mons[i].mlet; i++) {
+		Printf("\n#define\tPM_");
+		for(c = mons[i].mname; *c; c++) {
+		    if((*c >= 'a') && (*c <= 'z')) *c -= (char)('a' - 'A');
+		    else if(*c == ' ' || *c == '-')	*c = '_';
 		}
-		for(sp = current->string; *sp; sp++)
-			if(*sp == ' ' || *sp == '\t' || *sp == '-')
-				*sp = '_';
-
-		/* Do not process duplicates caused by #ifdef/#else pairs. */
-		/* M. Stephenson					   */
-		if (! duplicate()) {
-
-		    if(!strncmp(current->string, "RIN_", 4))
-			    propct = specprop(current->string+4, propct);
-		    for(sp = current->string; *sp; sp++) capitalize(sp);
-		    /* avoid trouble with stupid C preprocessors */
-		    if(!strncmp(current->string, "WORTHLESS_PIECE_OF_", 19))
-			printf("/* #define\t%s\t%d */\n", current->string, index++);
-		    else  {
-#ifdef SPELLS
-			if(!strncmp(current->string, "SPE_", 4))  nspell++;
-			printf("#define\t%s\t%d\n", limit(current->string), index++);
-#else
-			if(strncmp(current->string, "SPE_", 4))
-			    printf("#define\t%s\t%d\n", limit(current->string), index++);
-#endif
-		    }
-		    newobj();
-		}
+		Printf("%s\t%d", mons[i].mname, i);
 	}
-	printf("\n#define	CORPSE		DEAD_HUMAN\n");
-#ifdef KOPS
-	printf("#define	DEAD_KOP		DEAD_KOBOLD\n");
-#endif
-#ifdef SPIDERS
-	printf("#define	DEAD_GIANT_SPIDER	DEAD_GIANT_SCORPION\n");
-#endif
-#ifdef ROCKMOLE
-	printf("#define	DEAD_ROCKMOLE		DEAD_GIANT_RAT\n");
-#endif
-#ifndef KAA
-	printf("#define DEAD_QUASIT		DEAD_QUANTUM_MECHANIC\n");
-	printf("#define DEAD_VIOLET_FUNGI	DEAD_VIOLET_FUNGUS\n");
-#endif
-	printf("#define	LAST_GEM	(JADE+1)\n");
-	printf("#define	LAST_RING	%d\n", propct);
-#ifdef SPELLS
-	printf("#define MAXSPELL	%d\n", nspell+1);
-#endif
-	printf("#define	NROFOBJECTS	%d\n", index-1);
-	exit(0);
+	Printf("\n\n#define\tNUMMONS\t%d\n", i);
+	Printf("\n#endif /* PM_H /**/\n");
+	(void) fclose(stdout);
+	return;
 }
 
 static	char	temp[32];
 
 char *
-limit(name)	/* limit a name to 30 characters length */
-	char	*name;
+limit(name,pref)	/* limit a name to 30 characters length */
+char	*name;
+boolean	pref;
 {
-	strncpy(temp, name, 30);
-	temp[30] = 0;
-	return(temp);
+	(void) strncpy(temp, name, pref ? 26 : 30);
+	temp[pref ? 26 : 30] = 0;
+	return temp;
 }
 
-newobj()
-{
-	extern	long	*alloc();
+void
+do_objs() {
 
-	more = current;
-	current = (struct objdef *)alloc(sizeof(struct objdef));
-	current->next = more;
-}
+	register int i = 0, sum = 0;
+	register char *c;
+#ifdef SPELLS
+	register int nspell = 0;
+#endif
+	register boolean prefix = 0;
+	register char let = '\0';
+	boolean	sumerr = FALSE;
 
-struct inherent {
-
-	char	*attrib,
-		*monsters;
-}	abilities[] = { "Regeneration", "TVi",
-			"See_invisible", "I",
-			"Poison_resistance", "abcghikqsuvxyADFQSVWXZ&",
-			"Fire_resistance", "gD&",
-			"Cold_resistance", "gFY",
-			"Shock_resistance", "g;",
-			"Teleportation", "LNt",
-			"Teleport_control", "t",
-			"", "" };
-
-specprop(name, count)
-
-	char	*name;
-	int	count;
-{
-	int	i;
-	char	*tname, *limit();
-
-	tname = limit(name);
-	capitalize(tname);
-	for(i = 0; strlen(abilities[i].attrib); i++)
-	    if(!strcmp(abilities[i].attrib, tname)) {
-
-		printf("#define\tH%s\tu.uprops[%d].p_flgs\n", tname, count);
-		printf("#define\t%s\t((H%s) || index(\"%s\", u.usym))\n",
-			tname, tname, abilities[i].monsters);
-		return(++count);
-	    }
-
-	printf("#define\t%s\tu.uprops[%d].p_flgs\n", tname, count);
-	return(++count);
-}
-
-char line[LINSZ], *lp = line, *lp0 = line, *lpe = line;
-int xeof;
-
-readline(){
-register int n = read(fd, lp0, (line+LINSZ)-lp0);
-	if(n < 0){
-		printf("Input error.\n");
+	if(freopen(ONAME_FILE, WRMODE, stdout) == (FILE *)0) {
+		perror(ONAME_FILE);
 		exit(1);
 	}
-	if(n == 0) xeof++;
-	lpe = lp0+n;
-}
+	Printf("/*\tSCCS Id: @(#)onames.h\t3.0\t89/01/10 */\n\n");
+	Printf("#ifndef ONAMES_H\n#define ONAMES_H\n\n");
 
-char
-nextchar(){
-	if(lp == lpe){
-		readline();
-		lp = lp0;
-	}
-	return((lp == lpe) ? 0 : *lp++);
-}
+	for(i = 0; !i || objects[i].oc_olet != ILLOBJ_SYM; i++) {
+		if (!(c = objects[i].oc_name)) continue;
 
-skipuntil(s) char *s; {
-register char *sp0, *sp1;
-loop:
-	while(*s != nextchar())
-		if(xeof) {
-			printf("Cannot skipuntil %s\n", s);
-			exit(1);
-		}
-	if(strlen(s) > lpe-lp+1){
-		register char *lp1, *lp2;
-		lp2 = lp;
-		lp1 = lp = lp0;
-		while(lp2 != lpe) *lp1++ = *lp2++;
-		lp2 = lp0;	/* save value */
-		lp0 = lp1;
-		readline();
-		lp0 = lp2;
-		if(strlen(s) > lpe-lp+1) {
-			printf("error in skipuntil");
-			exit(1);
-		}
-	}
-	sp0 = s+1;
-	sp1 = lp;
-	while(*sp0 && *sp0 == *sp1) sp0++, sp1++;
-	if(!*sp0){
-		lp = sp1;
-		return(1);
-	}
-	goto loop;
-}
-
-getentry(skip) int *skip; {
-int inbraces = 0, inparens = 0, stringseen = 0, commaseen = 0;
-int prefix = 0;
-char ch;
-#define	NSZ	10
-char identif[NSZ], *ip;
-	current->string[0] = current->string[4] = 0;
-	/* read until {...} or XXX(...) followed by ,
-	   skip comment and #define lines
-	   deliver 0 on failure
-	 */
-	while(1) {
-		ch = nextchar();
-	swi:
-		if(letter(ch)){
-			ip = identif;
-			do {
-				if(ip < identif+NSZ-1) *ip++ = ch;
-				ch = nextchar();
-			} while(letter(ch) || digit(ch));
-			*ip = 0;
-			while(ch == ' ' || ch == '\t') ch = nextchar();
-			if(ch == '(' && !inparens && !stringseen)
-				if(!strcmp(identif, "WAND") ||
-				   !strcmp(identif, "RING") ||
-				   !strcmp(identif, "POTION") ||
-				   !strcmp(identif, "SPELL") ||
-				   !strcmp(identif, "SCROLL"))
-				(void) strncpy(current->string, identif, 3),
-				current->string[3] = '_',
-				prefix = 4;
-		}
-		switch(ch) {
-		case '/':
-			/* watch for comment */
-			if((ch = nextchar()) == '*')
-				skipuntil("*/");
-			goto swi;
-		case '{':
-			inbraces++;
-			continue;
-		case '(':
-			inparens++;
-			continue;
-		case '}':
-			inbraces--;
-			if(inbraces < 0) return(0);
-			continue;
-		case ')':
-			inparens--;
-			if(inparens < 0) {
-				printf("too many ) ?");
-				exit(1);
+		/* make sure probabilities add up to 1000 */
+		if(objects[i].oc_olet != let) {
+			if (sum && sum != 1000) {
+			    (void) fprintf(stderr, "prob error for %c (%d%%)", let, sum);
+			    (void) fflush(stderr);
+			    sumerr = TRUE;
 			}
-			continue;
-		case '\n':
-			/* watch for #define at begin of line */
-			if((ch = nextchar()) == '#'){
-				register char pch;
-				/* skip until '\n' not preceded by '\\' */
-				do {
-					pch = ch;
-					ch = nextchar();
-				} while(ch != '\n' || pch == '\\');
-				continue;
-			}
-			goto swi;
-		case ',':
-			if(!inparens && !inbraces){
-			    if(prefix && !current->string[prefix]) {
-#ifndef SPELLS
-				*skip = strncmp(current->string, "SPE_", 4);
-#else
-				*skip = 1;
+			let = objects[i].oc_olet;
+			sum = 0;
+		}
+
+		for(; *c; c++) {
+		    if((*c >= 'a') && (*c <= 'z')) *c -= (char)('a' - 'A');
+		    else if(*c == ' ' || *c == '-')	*c = '_';
+		}
+
+		switch (let) {
+		    case WAND_SYM:
+			Printf("#define\tWAN_"); prefix = 1; break;
+		    case RING_SYM:
+			Printf("#define\tRIN_"); prefix = 1; break;
+		    case POTION_SYM:
+			Printf("#define\tPOT_"); prefix = 1; break;
+#ifdef SPELLS
+		    case SPBOOK_SYM:
+			Printf("#define\tSPE_"); prefix = 1; nspell++; break;
 #endif
-				current->string[0] = 0;
-			    }
-			    if(stringseen) return(1);
-			    printf("unexpected ,\n");
-			    exit(1);
+		    case SCROLL_SYM:
+			Printf("#define\tSCR_"); prefix = 1; break;
+		    case GEM_SYM:
+			/* avoid trouble with stupid C preprocessors */
+			if(objects[i].oc_material == GLASS) {
+			    Printf("/* #define\t%s\t%d */\n", objects[i].oc_name, i);
+			    continue;
 			}
-			commaseen++;
-			continue;
-		case '\'':
-			if((ch = nextchar()) == '\\') ch = nextchar();
-			if(nextchar() != '\''){
-				printf("strange character denotation?\n");
-				exit(1);
-			}
-			continue;
-		case '"':
-			{
-				register char *sp = current->string + prefix;
-				register char pch;
-				register int store = (inbraces || inparens)
-					&& !stringseen++ && !commaseen;
-				do {
-					pch = ch;
-					ch = nextchar();
-					if(store && sp < current->string+STRSZ)
-						*sp++ = ch;
-				} while(ch != '"' || pch == '\\');
-				if(store) *--sp = 0;
-				continue;
-			}
+		    default:
+			Printf("#define\t");
 		}
+		Printf("%s\t%d\n", limit(objects[i].oc_name, prefix), i);
+		prefix = 0;
+
+		sum += objects[i].oc_prob;
 	}
-}
-
-duplicate() {
-
-	char	s[STRSZ];
-	register char	*c;
-	register struct	objdef	*testobj;
-
-	strcpy (s, current->string);
-	for(c = s; *c != 0; c++) capitalize(c);
-
-	for(testobj = more; testobj != 0; testobj = testobj->next)
-		if(! strcmp(s, testobj->string)) return(1);
-
-	return(0);
-}
-
-capitalize(sp) register char *sp; {
-	if('a' <= *sp && *sp <= 'z') *sp += 'A'-'a';
-}
-
-letter(ch) register char ch; {
-	return( ('a' <= ch && ch <= 'z') ||
-		('A' <= ch && ch <= 'Z') );
-}
-
-digit(ch) register char ch; {
-	return( '0' <= ch && ch <= '9' );
-}
-
-/* a copy of the panic code from hack.pri.c, edited for standalone use */
-
-boolean	panicking = 0;
-
-panic(str,a1,a2,a3,a4,a5,a6)
-char *str;
-{
-	if(panicking++) exit(1);    /* avoid loops - this should never happen*/
-	fputs(" ERROR:  ", stdout);
-	printf(str,a1,a2,a3,a4,a5,a6);
-#ifdef DEBUG
-# ifdef UNIX
-	if(!fork())
-		abort();	/* generate core dump */
-# endif
+	Printf("#define\tLAST_GEM\t(JADE+1)\n");
+#ifdef SPELLS
+	Printf("#define\tMAXSPELL\t%d\n", nspell+1);
 #endif
-	exit(1);
+	Printf("#define\tNROFOBJECTS\t%d\n", i-1);
+	Printf("\n#endif /* ONAMES_H /**/\n");
+	(void) fclose(stdout);
+	if (sumerr) exit(1);
+	return;
 }
 
-#if defined(SYSV) || defined(GENIX)
+#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
+void
 rename(oldname, newname)
-	char	*oldname, *newname;
+char	*oldname, *newname;
 {
 	if (strcmp(oldname, newname)) {
-
-		unlink(newname);
-		link(oldname, newname);
-		unlink(oldname);
+		(void) unlink(newname);
+		(void) link(oldname, newname);
+		(void) unlink(oldname);
 	}
+	return;
 }
 #endif
 
 #ifdef MSDOS
+# ifndef AMIGA
 /* Get around bug in freopen when opening for writing	*/
 /* Supplied by Nathan Glasser (nathan@mit-eddie)	*/
 #undef freopen
-FILE *_freopen(fname, fmode, fp)
+FILE *
+_freopen(fname, fmode, fp)
 char *fname, *fmode;
 FILE *fp;
 {
     if (!strncmp(fmode,"w",1))
     {
-        FILE *tmpfp;
+	FILE *tmpfp;
 
-        if ((tmpfp = fopen(fname,fmode)) == NULL)
-            return(NULL);
-        if (dup2(fileno(tmpfp),fileno(fp)) < 0)
-            return(NULL);
-        fclose(tmpfp);
-        return(fp);
+	if ((tmpfp = fopen(fname,fmode)) == (FILE *)0)
+	    return (FILE *)0;
+	if (dup2(fileno(tmpfp),fileno(fp)) < 0)
+	    return (FILE *)0;
+	(void) fclose(tmpfp);
+	return fp;
     }
     else
-        return(freopen(fname,fmode,fp));
+	return freopen(fname,fmode,fp);
 }
+# endif /* AMIGA */
 
-# ifdef __TURBOC__
-int getpid() {
-	return(1);
+# if defined(__TURBOC__) || defined(AMIGA)
+int
+getpid()
+{
+	return 1;
 }
 # endif
-#endif
+#endif /* MSDOS */

@@ -1,0 +1,145 @@
+#	SCCS Id: @(#)endgame.des	3.0	89/07/02
+#	Copyright (c) 1989 by Jean-Christophe Collet
+# NetHack may be freely redistributed.  See license for details.
+#
+# This is the ENDGAME level
+# It's made of 3 shrines and a fighting area
+# Players are supposed to sacrifice the Amulet of Yendor on the appropriate
+# shrine. But to get to the shrines, they must cross the fighting area...
+
+# First shrine
+MAZE:"endgame"
+GEOMETRY:left,top
+MAP
+}}}}}}
+}}..}}
+}}....
+}}..}}
+}}}}}}
+ENDMAP
+ALTAR:(02,02),align[0],shrine
+MAZEWALK:(05,02),east
+
+# Second Shrine
+GEOMETRY:left,center
+MAP
+}}}}}}
+}}..}}
+}}....
+}}..}}
+}}}}}}
+ENDMAP
+ALTAR:(02,02),align[1],shrine
+MAZEWALK:(05,02),east
+
+# Third Shrine
+GEOMETRY:left,bottom
+MAP
+}}}}}}
+}}..}}
+}}....
+}}..}}
+}}}}}}
+ENDMAP
+ALTAR:(02,02),align[2],shrine
+MAZEWALK:(05,02),east
+
+# Note that the shrine alignments are random...
+
+# The fighting area : 7 rooms.
+# Each room contains a specific class of monsters.
+# Maybe this a little bit too hard (We have to test it in real game)
+
+GEOMETRY:center,center
+MAP
+.-----------------------------.
+.|........S.........|........S.
+.|........|.........|........|.
+.|........|.........|........|.
+.|........|.........|........|.
+.-S--------.........-S--------.
+.|........|.........|........|.
+.|........|.........|........|.
+.|........|}}}}.}}}}|........|.
+.|........|.........|........|.
+.|........|.........|........|.
+.--------S-.........--------S-.
+.|........|.........|........|.
+.|........|.........|........|.
+.|........|.........|........|.
+.S........|.........S........|.
+.-----------------------------.
+ENDMAP
+MAZEWALK:(30,08),east
+MAZEWALK:(00,08),west
+# Non diggable walls
+NON_DIGGABLE:(00,00,30,16)
+# Doors
+DOOR:closed,(10,01)
+DOOR:closed,(29,01)
+DOOR:locked,(02,05)
+DOOR:locked,(21,05)
+DOOR:locked,(09,11)
+DOOR:closed,(28,11)
+DOOR:locked,(01,15)
+DOOR:locked,(20,15)
+# Rooms
+REGION:(02,01,09,04),lit,"ordinary"
+REGION:(21,01,28,04),lit,"ordinary"
+REGION:(02,06,09,10),lit,"ordinary"
+REGION:(21,06,28,10),lit,"ordinary"
+REGION:(02,12,09,15),lit,"ordinary"
+REGION:(21,12,28,15),lit,"ordinary"
+REGION:(11,01,19,15),unlit,"ordinary"
+# Rust monsters in the first room
+MONSTER:'R',random,(22,01)
+MONSTER:'R',random,(27,01)
+MONSTER:'R',random,(24,03)
+MONSTER:'R',random,(22,04)
+MONSTER:'R',random,(27,04)
+# Liches in the second one
+MONSTER:'l',random,(22,06)
+MONSTER:'l',random,(27,06)
+MONSTER:'l',random,(22,08)
+MONSTER:'l',random,(27,08)
+MONSTER:'l',random,(22,10)
+MONSTER:'l',random,(27,10)
+# Nagas in the 3rd one
+MONSTER:'n',random,(22,12)
+MONSTER:'n',random,(27,12)
+MONSTER:'n',random,(24,14)
+MONSTER:'n',random,(22,15)
+MONSTER:'n',random,(27,15)
+# Dragons in the central one
+MONSTER:'D',random,(12,02)
+MONSTER:'D',random,(18,02)
+MONSTER:'D',random,(13,03)
+MONSTER:'D',random,(17,04)
+MONSTER:'D',random,(13,06)
+MONSTER:'D',random,(17,06)
+MONSTER:'D',random,(12,07)
+MONSTER:'D',random,(18,07)
+# with krakens in the trenches
+MONSTER:';',"kraken",(12,08)
+MONSTER:';',"kraken",(14,08)
+MONSTER:';',"kraken",(16,08)
+MONSTER:';',"kraken",(18,08)
+# Giants in the 5th one
+MONSTER:'H',random,(03,01)
+MONSTER:'H',random,(07,01)
+MONSTER:'H',random,(05,03)
+MONSTER:'H',random,(03,04)
+MONSTER:'H',random,(07,04)
+# Ogres in the 6th one
+MONSTER:'O',random,(03,06)
+MONSTER:'O',random,(07,06)
+MONSTER:'O',random,(03,08)
+MONSTER:'O',random,(07,08)
+MONSTER:'O',random,(03,10)
+MONSTER:'O',random,(07,10)
+# Trolls in the last one
+MONSTER:'T',random,(03,12)
+MONSTER:'T',random,(07,12)
+MONSTER:'T',random,(05,14)
+MONSTER:'T',random,(03,15)
+MONSTER:'T',random,(07,15)

@@ -1,49 +1,70 @@
-/*	SCCS Id: @(#)pcmain.c	2.3	87/12/12
+/*	SCCS Id: @(#)pcmain.c	3.0	88/11/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* main.c - (PC) version */
+/* NetHack may be freely redistributed.  See license for details. */
+/* main.c - (PC, TOS and AMIGA) version */
 
-#include <stdio.h>
+#ifndef TOS
 #include <signal.h>
+#else
+#define msmsg	cprintf
+#endif
 #include "hack.h"
 
-#ifdef QUEST
-#define	gamename	"PC NetQuest"
-#else
-#define	gamename	"PC NetHack"
-#endif
+char orgdir[PATHLEN];
 
-char orgdir[PATHLEN], *getcwd();
-
-extern struct permonst mons[CMNUM+2];
-extern char genocided[], fut_geno[];
-extern char *getlogin(), *getenv();
+extern struct permonst mons[NUMMONS];
 extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
 
-int (*afternmv)(), done1(), (*occupation)();
+int (*afternmv)(), (*occupation)();
+static void moveloop();	/* a helper function for MSC optimizer */
+
+#if defined(DGK) && !defined(TOS)
+struct finfo	zfinfo = ZFINFO;
+int i;
+#endif /* DGK && !TOS */
 
 char SAVEF[FILENAME];
-char *hname = gamename;
+char *hname = "NetHack";	/* used for syntax messages */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 int hackpid;		/* not used anymore, but kept in for save files */
 
 extern char *nomovemsg;
 extern long wailmsg;
+#ifdef __TURBOC__	/* tell Turbo C to make a bigger stack */
+extern unsigned _stklen = 0x2000;	/* 8K */
+extern unsigned char _osmajor;
+#endif
 
+#ifdef TOS
+#define OMASK	0x8000
+#else
+#define OMASK	0
+#endif
+
+int
 main(argc,argv)
 int argc;
 char *argv[];
 {
+	extern int x_maze_max, y_maze_max;
 	register int fd;
 	register char *dir;
-	extern struct monst *makedog();
-#ifdef MSDOS
-	static void moveloop();	/* a helper function for MSC optimizer */
 
+#ifdef AMIGA
+	/*
+	 *  Make sure screen IO is initialized before anything happens.
+	 */
+	gettty();
+	startup();
+#else /* AMIGA */
 	/* Save current directory and make sure it gets restored when
 	 * the game is exited.
 	 */
 	int (*funcp)();
 
+# ifdef __TURBOC__
+	if (_osmajor >= 3) hname = argv[0];	/* DOS 3.0+ */
+# endif
 	if (getcwd(orgdir, sizeof orgdir) == NULL) {
 		xputs("NetHack: current directory path too long\n");
 		_exit(1);
@@ -51,26 +72,32 @@ char *argv[];
 	funcp = exit;	/* Kludge to get around LINT_ARGS of signal.
 			 * This will produce a compiler warning, but that's OK.
 			 */
-	signal(SIGINT, funcp);	/* restore original directory */
-#endif
+# ifndef TOS
+	signal(SIGINT, (SIG_RET_TYPE) funcp);	/* restore original directory */
+# endif
+#endif /* AMIGA */
 
-#ifdef GRAPHICS
 	/* Set the default values of the presentation characters */
-	memcpy((char *) &showsyms, (char *) &defsyms, sizeof(struct symbols));
-#endif
-#ifdef DGK
-	if ((dir = getenv("HACKDIR")) != (char *) NULL) {
-		(void) strcpy(hackdir, dir);
+	memcpy((genericptr_t) &showsyms, (genericptr_t) &defsyms, sizeof(struct symbols));
+	if ((dir = getenv("HACKDIR")) != NULL) {
+		Strcpy(hackdir, dir);
+#ifdef CHDIR
 		chdirx (dir, 1);
+#endif
 	}
-	zero_finfo();
+#if defined(DGK) && !defined(TOS)
+	/* zero "fileinfo" array to prevent crashes on level change */
+	for (i = 0 ; i <= MAXLEVEL + 1; i++)
+		fileinfo[i] = zfinfo;
+#endif /* DGK && !TOS */
 	initoptions();
 	if (!hackdir[0])
-		(void) strcpy(hackdir, orgdir);
-	dir = hackdir;
+		Strcpy(hackdir, orgdir);
+#ifdef TOS
+	if(argc > 1 && !strncmp(argv[1], "-D", 2)) {
 #else
-	dir = getenv("HACKDIR");
 	if(argc > 1 && !strncmp(argv[1], "-d", 2)) {
+#endif
 		argc--;
 		argv++;
 		dir = argv[0]+2;
@@ -82,37 +109,46 @@ char *argv[];
 		}
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
+		Strcpy(hackdir, dir);
 	}
-#endif /* DGK */
 
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
 	 */
+#ifdef TOS
+	if(argc > 1 && !strncmp(argv[1], "-S", 2)) {
+#else
 	if(argc > 1 && !strncmp(argv[1], "-s", 2)) {
-		chdirx(dir,0);
+#endif
+#ifdef CHDIR
+		chdirx(hackdir,0);
+#endif
 		prscore(argc, argv);
 		exit(0);
 	}
 
+#ifndef AMIGA
 	/*
 	 * It seems he really wants to play.
 	 * Remember tty modes, to be restored on exit.
 	 */
 	gettty();
 	setbuf(stdout,obuf);
-	setrandom();
 	startup();
-	init_corpses();	/* initialize optional corpse names */
+#endif
+	setrandom();
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
-
+#ifndef TOS
 	/*
 	 * We cannot do chdir earlier, otherwise gethdate will fail.
 	 */
-	chdirx(dir,1);
-
+#ifdef CHDIR
+	chdirx(hackdir,1);
+#endif
+#endif
 	/*
 	 * Process options.
 	 */
@@ -120,22 +156,32 @@ char *argv[];
 		argv++;
 		argc--;
 		switch(argv[0][1]){
-#ifdef WIZARD
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+#ifndef TOS
 		case 'D':
-# ifdef MSDOS
-			wizard = TRUE;
-# else
-			if(!strcmp(getlogin(), WIZARD))
+#endif	/* TOS */
+		case 'X':
+# ifdef WIZARD
+			/* Must have "name" set correctly by NETHACK.CNF,
+			 * NETHACKOPTIONS, or -U
+			 * before this flag to enter wizard mode. */
+			if(!strcmp(plname, WIZARD))
 				wizard = TRUE;
-			else {
-				settty("Sorry, you can't operate in debug mode.\n");
-				clearlocks();
-				exit(0);
-			}
+# endif
+# if defined(WIZARD) && defined(EXPLORE_MODE)
+			else
+# endif
+# ifdef EXPLORE_MODE
+				discover = TRUE;
 # endif
 			break;
 #endif
-		case 'u':
+#ifdef NEWS
+		case 'N':
+			flags.nonews = TRUE;
+			break;
+#endif
+		case 'U':
 			if(argv[0][2])
 			  (void) strncpy(plname, argv[0]+2, sizeof(plname)-1);
 			else if(argc > 1) {
@@ -143,7 +189,7 @@ char *argv[];
 			  argv++;
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
-				printf("Player name expected after -u\n");
+				Printf("Player name expected after -U\n");
 			break;
 #ifdef DGK
 		/* Person does not want to use a ram disk
@@ -152,12 +198,12 @@ char *argv[];
 			ramdisk = FALSE;
 			break;
 #endif
-		default:
+		case 'C':   /* character role is next character */
 			/* allow -T for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+1,
+			(void) strncpy(pl_character, argv[0]+2,
 				sizeof(pl_character)-1);
-
-			/* printf("Unknown option: %s\n", *argv); */
+		default:
+			Printf("Unknown option: %s\n", *argv);
 		}
 	}
 
@@ -167,7 +213,7 @@ char *argv[];
 #endif
 #ifdef WIZARD
 	if (wizard)
-		(void) strcpy(plname, "wizard");
+		Strcpy(plname, "wizard");
 	else
 #endif
 	if (!*plname)
@@ -175,66 +221,57 @@ char *argv[];
 	plnamesuffix();		/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
-#ifdef WIZARD
-	if(wizard) {
-		register char *sfoo;
-# ifndef DGK
-		/* lock is set in read_config_file */
-		(void) strcpy(lock,plname);
-# endif
-		if(sfoo = getenv("MAGIC"))
-			while(*sfoo) {
-				switch(*sfoo++) {
-				case 'n': (void) srand(*sfoo++);
-					break;
-				}
-			}
-		if(sfoo = getenv("GENOCIDED")){
-			if(*sfoo == '!'){
-				register struct permonst *pm = mons;
-				register char *gp = genocided;
-
-				while(pm < mons+CMNUM+2){
-					if(!index(sfoo, pm->mlet))
-						*gp++ = pm->mlet;
-					pm++;
-				}
-				*gp = 0;
-			} else
-				(void) strcpy(genocided, sfoo);
-			(void) strcpy(fut_geno, genocided);
-		}
-	}
-#endif /* WIZARD */
+#ifndef DGK
+	Strcpy(lock,plname);
+	Strcat(lock,".99");
+#endif
 	start_screen();
-#ifdef DGK
-	strncat(SAVEF, plname, 8);
-	strcat(SAVEF, ".sav");
+
+	/*
+	 * Initialisation of the boundaries of the mazes
+	 * Both boundaries have to be even.
+	 */
+
+	x_maze_max = COLNO-1;
+	if (x_maze_max % 2)
+		x_maze_max--;
+	y_maze_max = ROWNO-1;
+	if (y_maze_max % 2)
+		y_maze_max--;
+
+	/* initialize static monster strength array */
+	init_monstr();
+
+#ifdef AMIGA
+	(void) strncat(SAVEF, plname, 31-4);
+#else
+	(void) strncat(SAVEF, plname, 8);
+#endif
+	Strcat(SAVEF, ".sav");
 	cls();
-	if (saveDiskPrompt(1) && ((fd = open(SAVEF, 0)) >= 0) &&
-	   (uptodate(fd) || !unlink(SAVEF))) {
-#else 
-	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
-	regularize(SAVEF+5);		/* avoid . or / in name */
-	if((fd = open(SAVEF,0)) >= 0 &&
-	   (uptodate(fd) || unlink(SAVEF) == 666)) {
+	if (
+#ifdef DGK
+	    saveDiskPrompt(1) &&
 #endif /* DGK */
-		(void) signal(SIGINT,done1);
+	    ((fd = open(SAVEF, OMASK)) >= 0) &&
+	    (uptodate(fd) || !unlink(SAVEF))) {
+#ifndef TOS
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#endif
 		pline("Restoring old save file...");
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
-		pline("Hello %s%s, welcome to %s!", 
-			(Badged) ? "Officer " : "", plname, hname);
-#ifdef WIZARD
-		if (wizard && dlevel == 1)
-# ifdef STOOGES
-pline ("The wiz is at %d, the medusa is at %d, and the stooges are at %d",
-			u.wiz_level, u.medusa_level, u.stooge_level);
-# else
-	            pline ("The wiz is at %d, and the medusa at %d",
-			   u.wiz_level, u.medusa_level);
-# endif
+		pline("Hello %s, welcome to NetHack!", plname);
+		/* get shopkeeper set properly if restore is in shop */
+		(void) inshop();
+#ifdef EXPLORE_MODE
+		if (discover) {
+			You("are in non-scoring discovery mode.");
+			pline("Do you want to keep the save file? ");
+			if(yn() == 'n')
+				(void) unlink(SAVEF);
+		}
 #endif
 		flags.move = 0;
 	} else {
@@ -249,8 +286,9 @@ not_recovered:
 		flags.ident = 1;
 		init_objects();
 		u_init();
-
-		(void) signal(SIGINT,done1);
+#ifndef TOS
+		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+#endif
 		mklev();
 		u.ux = xupstair;
 		u.uy = yupstair;
@@ -260,39 +298,37 @@ not_recovered:
 		/* Fix bug with dog not being made because a monster
 		 * was on the level 1 staircase
 		 */
-		{
-			struct monst *mtmp;
-
-			if (mtmp = m_at(u.ux, u.uy))
-				mnexto(mtmp);
-		}
-		makedog();
-		{ register struct monst *mtmp;
-		  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
-		}
+		if(levl[u.ux][u.uy].mmask) mnexto(m_at(u.ux, u.uy));
+		(void) makedog();
 		seemons();
-		docrt();
+#ifdef NEWS
+		if(flags.nonews || !readnews())
+			/* after reading news we did docrt() already */
+#endif
+			docrt();
 
 		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to %s!", plname, hname);
-
+		pline("Hello %s, welcome to NetHack!", plname);
+		set_wear();
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
-		flags.move = 1;
+		flags.move = 0;
 	}
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
-		pline("You are lucky! Full moon tonight.");
+		You("are lucky!  Full moon tonight.");
 		if(!u.uluck) change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
-		pline("Be careful! New moon tonight.");
+		pline("Be careful!  New moon tonight.");
 	}
 
 	initrack();
+#ifndef TOS
 	(void) signal(SIGINT, SIG_IGN);
-#ifdef MSDOS
+#endif
 	/* Help for Microsoft optimizer.  Otherwise main is too large -dgk*/
 	moveloop();
+	return 0;
 }
 
 static void
@@ -300,15 +336,17 @@ moveloop()
 {
 	char ch;
 	int abort;
-#endif /* MSDOS */
+
 	for(;;) {
 		if(flags.move) {	/* actual time passed */
 
+#ifdef SOUNDS
+			dosounds();
+#endif
 			settrack();
 
 			if(moves%2 == 0 ||
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
-				extern struct monst *makemon();
 				movemon();
 #ifdef HARD
 				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
@@ -320,41 +358,19 @@ moveloop()
 			if(Glib) glibr();
 			timeout();
 			++moves;
-#ifdef PRAYERS
+#ifdef THEOLOGY
 			if (u.ublesscnt)  u.ublesscnt--;
 #endif
-#ifndef DGK
-			if(flags.time) flags.botl = 1;
-#endif
-#ifdef KAA
+#ifdef POLYSELF
 			if(u.mtimedone)
 			    if(u.mh < 1) rehumanize();
 			else
 #endif
 			    if(u.uhp < 1) {
-				pline("You die...");
+				You("die...");
 				done("died");
 			    }
-			if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50){
-			    wailmsg = moves;
-#ifdef KAA
-				if(index("WEV", pl_character[0])) {
-					if (u.uhp == 1)
-					   pline("%s is about to die.", pl_character);
-					else
-					   pline("%s, your life force is running out.",
-						pl_character);
-				} else {
-#endif
-			    if(u.uhp == 1)
-			    pline("You hear the wailing of the Banshee...");
-			    else
-			    pline("You hear the howling of the CwnAnnwn...");
-#ifdef KAA
-				}
-#endif
-			}
-#ifdef KAA
+#ifdef POLYSELF
 			if (u.mtimedone) {
 			    if (u.mh < u.mhmax) {
 				if (Regeneration || !(moves%20)) {
@@ -366,35 +382,44 @@ moveloop()
 #endif
 			if(u.uhp < u.uhpmax) {
 				if(u.ulevel > 9) {
-					if(HRegeneration || !(moves%3)) {
-					    flags.botl = 1;
-					    u.uhp += rnd((int) u.ulevel-9);
-					    if(u.uhp > u.uhpmax)
-						u.uhp = u.uhpmax;
-					}
+				    int heal;
+
+				    if(HRegeneration || !(moves%3)) {
+					flags.botl = 1;
+					if (ACURR(A_CON) <= 12) heal = 1;
+					else heal = rnd((int) ACURR(A_CON)-12);
+					if (heal > u.ulevel-9) heal = u.ulevel-9;
+					u.uhp += heal;
+					if(u.uhp > u.uhpmax)
+					    u.uhp = u.uhpmax;
+				    }
 				} else if(HRegeneration ||
-					(!(moves%(22-u.ulevel*2)))) {
+					(!(moves%((MAXULEV+12)/(u.ulevel+2)+1)))) {
 					flags.botl = 1;
 					u.uhp++;
 				}
 			}
 #ifdef SPELLS
-			if ((u.uen<u.uenmax) && (!(moves%(21-u.ulevel/2)))) {
-				u.uen += rn2(u.ulevel/4 + 1) + 1;
+			if ((u.uen<u.uenmax) && (!(moves%(19-ACURR(A_INT)/2)))) {
+				u.uen += rn2((int)ACURR(A_WIS)/5 + 1) + 1;
 				if (u.uen > u.uenmax)  u.uen = u.uenmax;
 				flags.botl = 1;
 			}
 #endif
 			if(Teleportation && !rn2(85)) tele();
-#if defined(KAA) && defined(BVH)
-			if(Polymorph && !rn2(100)) polyself();
+#ifdef POLYSELF
+			if(Polymorph && !rn2(100))
+				polyself();
+			if(u.ulycn >= 0 && !rn2(80 - (20 * night())))
+				you_were();
 #endif
-			if(Searching && multi >= 0) (void) dosearch();
+			if(Searching && multi >= 0) (void) dosearch0(1);
 			gethungry();
+			hatch_eggs();
 			invault();
 			amulet();
 #ifdef HARD
-			if (!rn2(50+(u.ulevel*3))) u_wipe_engr(rnd(3));
+			if (!rn2(40+(int)(ACURR(A_DEX)*3))) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
 				u.udg_cnt--;
@@ -405,6 +430,7 @@ moveloop()
 				}
 			}
 #endif
+			restore_attrib();
 		}
 		if(multi < 0) {
 			if(!++multi){
@@ -417,51 +443,46 @@ moveloop()
 		}
 
 		find_ac();
-#ifndef QUEST
 		if(!flags.mv || Blind)
-#endif
 		{
 			seeobjs();
 			seemons();
+			seeglds();
 			nscr();
 		}
-#ifdef DGK
 		if(flags.time) flags.botl = 1;
-#endif
+
 		if(flags.botl || flags.botlx) bot();
 
 		flags.move = 1;
 
 		if(multi >= 0 && occupation) {
-#ifdef DGK
 			abort = 0;
 			if (kbhit()) {
-				if ((ch = getchar()) == ABORT)
+				if ((ch = Getchar()) == ABORT)
 					abort++;
-# ifdef REDO
+#ifdef REDO
 				else
 					pushch(ch);
-# endif
+#endif /* REDO */
 			}
-			if (abort || monster_nearby())
+			if(abort || monster_nearby())
 				stop_occupation();
 			else if ((*occupation)() == 0)
 				occupation = 0;
 			if (!(++occtime % 7))
 				(void) fflush(stdout);
-#else
-			if (monster_nearby())
-				stop_occupation();
-			else if ((*occupation)() == 0)
-				occupation = 0;
-#endif
 			continue;
 		}
 
-		if(multi > 0) {
-#ifdef QUEST
-			if(flags.run >= 4) finddir();
+		if((u.uhave_amulet || Clairvoyant) && 
+#ifdef ENDGAME
+			dlevel != ENDLEVEL &&
 #endif
+			!(moves%15) && !rn2(2)) do_vicinity_map();
+
+		u.umoved = FALSE;
+		if(multi > 0) {
 			lookaround();
 			if(!multi) {	/* lookaround may clear multi */
 				flags.move = 0;
@@ -476,66 +497,64 @@ moveloop()
 				rhack(save_cm);
 			}
 		} else if(multi == 0) {
-			rhack((char *) 0);
+#ifdef MAIL
+			ckmailstatus();
+#endif
+			rhack(NULL);
 		}
 		if(multi && multi%7 == 0)
 			(void) fflush(stdout);
 	}
 }
 
-#ifndef DGK
-/* This function is unnecessary and incompatible with the #define
- * of glo(x) in config.h -dgk
- */
-glo(foo)
-register foo;
-{
-	/* construct the string  xlock.n  */
-	register char *tf;
-
-	tf = lock;
-	while(*tf && *tf != '.') tf++;
-	(void) sprintf(tf, ".%d", foo);
-}
-#endif
-
 /*
- * plname is filled either by an option (-u Player  or  -uPlayer) or
- * explicitly (-w implies wizard) or by askname.
+ * plname is filled either by an option (-U Player  or  -UPlayer) or
+ * explicitly (by being the wizard) or by askname.
  * It may still contain a suffix denoting pl_character.
  */
-askname(){
-register int c,ct;
-	printf("\nWho are you? ");
+void
+askname() {
+	register int c, ct;
+
+	Printf("\nWho are you? ");
 	(void) fflush(stdout);
 	ct = 0;
-	while((c = getchar()) != '\n'){
-#ifdef MSDOS
-		msmsg("%c", c);
-#endif
+	while((c = Getchar()) != '\n') {
 		if(c == EOF) error("End of input\n");
 		/* some people get confused when their erase char is not ^H */
-		if(c == '\010') {
-			if(ct) ct--;
+		if(c == '\b') {
+			if(ct) {
+				ct--;
+#ifdef MSDOS
+				msmsg("\b \b");
+#endif
+			}
 			continue;
 		}
 		if(c != '-')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
-		if(ct < sizeof(plname)-1) plname[ct++] = c;
+		if(ct < sizeof(plname)-1) {
+#ifdef MSDOS
+			msmsg("%c", c);
+#endif
+			plname[ct++] = c;
+	}
 	}
 	plname[ct] = 0;
 	if(ct == 0) askname();
 }
 
 /*VARARGS1*/
+void
 impossible(s,x1,x2)
-register char *s;
+	register char *s, *x1, *x2;
 {
 	pline(s,x1,x2);
 	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR
+void
 chdirx(dir, wr)
 char *dir;
 boolean wr;
@@ -545,9 +564,9 @@ boolean wr;
 		error("Cannot chdir to %s.", dir);
 	}
 
-#ifdef DGK
 	/* Change the default drive as well.
 	 */
+#ifndef AMIGA
 	chdrive(dir);
 #endif
 
@@ -555,20 +574,24 @@ boolean wr;
 	/* perhaps we should also test whether . is writable */
 	/* unfortunately the access systemcall is worthless */
 	if(wr) {
-	    register fd;
+	    register int fd;
 
 	    if(dir == NULL)
+#ifdef AMIGA
+		dir = "";
+#else
 		dir = ".";
+#endif
 	    if((fd = open(RECORD, 2)) < 0) {
 #ifdef DGK
 		char tmp[PATHLEN];
 
-		strcpy(tmp, dir);
+		Strcpy(tmp, dir);
 		append_slash(tmp);
 		msmsg("Warning: cannot write %s%s\n", tmp, RECORD);
 		getreturn("to continue");
 #else
-		printf("Warning: cannot write %s/%s", dir, RECORD);
+		Printf("Warning: cannot write %s/%s", dir, RECORD);
 		getret();
 #endif
 	    } else
@@ -577,27 +600,15 @@ boolean wr;
 }
 #endif /* CHDIR /**/
 
+void
 stop_occupation()
 {
-	extern void pushch();
-
 	if(occupation) {
-		pline("You stop %s.", occtxt);
+		You("stop %s.", occtxt);
 		occupation = 0;
 #ifdef REDO
 		multi = 0;
-		pushch(0);		
+		pushch(0);
 #endif
 	}
 }
-
-#ifdef DGK
-struct finfo	zfinfo = ZFINFO;
-
-zero_finfo() {	/* zero "fileinfo" array to prevent crashes on level change */
-	int i;
-
-	for (i = 0 ; i <= MAXLEVEL; i++)
-		fileinfo[i] = zfinfo;
-}
-#endif
