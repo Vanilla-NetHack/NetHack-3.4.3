@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h	3.2	96/06/16	*/
+/*	SCCS Id: @(#)objclass.h 3.3	96/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,7 +20,7 @@ struct objclass {
 	Bitfield(oc_pre_discovered,1);	/* Already known at start of game; */
 					/* won't be listed as a discovery. */
 	Bitfield(oc_magic,1);	/* inherently magical object */
-	Bitfield(oc_charged,1);	/* may have +n or (n) charges */
+	Bitfield(oc_charged,1); /* may have +n or (n) charges */
 	Bitfield(oc_unique,1);	/* special one-of-a-kind object */
 	Bitfield(oc_nowish,1);	/* cannot wish for this object */
 
@@ -38,26 +38,7 @@ struct objclass {
 #define SLASH		2	/* (latter includes iron ball & chain) */
 #define WHACK		0
 
-	Bitfield(oc_subtyp,3);
-#define oc_armcat	oc_subtyp   /* for armor */
-#define oc_weptool	oc_subtyp   /* for tools, must be one of below */
-#define oc_wepcat	oc_subtyp   /* for weapons, tools, gems */
-
-#define ARM_SHIELD	1	/* needed for special wear function */
-#define ARM_HELM	2
-#define ARM_GLOVES	3
-#define ARM_BOOTS	4
-#define ARM_CLOAK	5
-#define ARM_SHIRT	6
-#define ARM_SUIT	0
-
-#define WEP_BOW		1
-#define WEP_AMMO	2
-#define WEP_MISSILE	3
-#define WEP_SPEAR	4	/* not used at present */
-#define WEP_POLEARM	5	/* not used at present */
-#define WEP_BLADE	6
-#define WEP_SWORD	7
+	/*Bitfield(oc_subtyp,3);*/	/* Now too big for a bitfield... see below */
 
 	Bitfield(oc_material,5);
 #define LIQUID		1	/* currently only for venom */
@@ -85,8 +66,27 @@ struct objclass {
 #define is_organic(otmp)	(objects[otmp->otyp].oc_material <= WOOD)
 #define is_metallic(otmp)	(objects[otmp->otyp].oc_material >= IRON && \
 				 objects[otmp->otyp].oc_material <= MITHRIL)
-#define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER)
+
+/* primary damage: fire/rust/--- */
+/* is_flammable() in mkobj.c */
 #define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == IRON)
+
+/* secondary damage: rot/acid/acid */
+#define is_rottable(otmp) is_flammable(otmp) /* we might want to change this */
+#define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER || objects[otmp->otyp].oc_material == IRON)
+
+#define is_damageable(otmp) (is_rustprone(otmp) || is_flammable(otmp) || is_corrodeable(otmp))
+
+	schar	oc_subtyp;
+#define oc_skill	oc_subtyp   /* Skills of weapons, spellbooks, tools, gems */
+#define oc_armcat	oc_subtyp   /* for armor */
+#define ARM_SHIELD	1	/* needed for special wear function */
+#define ARM_HELM	2
+#define ARM_GLOVES	3
+#define ARM_BOOTS	4
+#define ARM_CLOAK	5
+#define ARM_SHIRT	6
+#define ARM_SUIT	0
 
 	uchar	oc_oprop;		/* property (invis, &c.) conveyed */
 	char	oc_class;		/* object class */
@@ -102,10 +102,6 @@ struct objclass {
 	schar	oc_wsdam, oc_wldam;	/* max small/large monster damage */
 	schar	oc_oc1, oc_oc2;
 #define oc_hitbon	oc_oc1		/* weapons: "to hit" bonus */
-#define w_propellor	oc_oc2		/* weapons: negative value = bow */
-#define WP_BOW		1
-#define WP_SLING	2
-#define WP_CROSSBOW	3
 
 #define a_ac		oc_oc1	/* armor class, used in ARM_BONUS in do.c */
 #define a_can		oc_oc2		/* armor: used in mhitu.c */
@@ -144,13 +140,14 @@ extern NEARDATA struct objdescr obj_descr[];
 #define BALL_CLASS	15
 #define CHAIN_CLASS	16
 #define VENOM_CLASS	17
-#define MAXOCLASSES     18
+#define MAXOCLASSES	18
 
-#define ALLOW_COUNT	(MAXOCLASSES+1)	/* Can be used in the object class */
-#define ALL_CLASSES	(MAXOCLASSES+2)	/* input to getobj().		   */
-#define ALLOW_NONE	(MAXOCLASSES+3)	/*				   */
+#define ALLOW_COUNT	(MAXOCLASSES+1) /* Can be used in the object class */
+#define ALL_CLASSES	(MAXOCLASSES+2) /* input to getobj().		   */
+#define ALLOW_NONE	(MAXOCLASSES+3) /*				   */
 
-#define BURNING_OIL	(MAXOCLASSES+1)	/* Can be used as input to explode. */
+#define BURNING_OIL	(MAXOCLASSES+1) /* Can be used as input to explode. */
+#define MON_EXPLODE	(MAXOCLASSES+2) /* Exploding monster (e.g. gas spore) */
 
 #if 0	/* moved to decl.h so that makedefs.c won't see them */
 extern const char def_oc_syms[MAXOCLASSES];	/* default class symbols */
@@ -159,7 +156,7 @@ extern uchar oc_syms[MAXOCLASSES];		/* current class symbols */
 
 /* Default definitions of all object-symbols (must match classes above). */
 
-#define ILLOBJ_SYM	']'	/* should be same as S_MIMIC_DEF      */
+#define ILLOBJ_SYM	']'	/* also used for mimics */
 #define WEAPON_SYM	')'
 #define ARMOR_SYM	'['
 #define RING_SYM	'='

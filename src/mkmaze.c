@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmaze.c	3.2	95/09/06	*/
+/*	SCCS Id: @(#)mkmaze.c	3.3	99/04/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,22 +11,22 @@ extern char *lev_message;
 extern lev_region *lregions;
 extern int num_lregions;
 
-static boolean FDECL(iswall,(int,int));
-static boolean FDECL(iswall_or_stone,(int,int));
-static boolean FDECL(is_solid,(int,int));
-static int FDECL(extend_spine, (int [3][3], int, int, int));
-static boolean FDECL(okay,(int,int,int));
-static void FDECL(maze0xy,(coord *));
-static boolean FDECL(put_lregion_here,(XCHAR_P,XCHAR_P,XCHAR_P,
+STATIC_DCL boolean FDECL(iswall,(int,int));
+STATIC_DCL boolean FDECL(iswall_or_stone,(int,int));
+STATIC_DCL boolean FDECL(is_solid,(int,int));
+STATIC_DCL int FDECL(extend_spine, (int [3][3], int, int, int));
+STATIC_DCL boolean FDECL(okay,(int,int,int));
+STATIC_DCL void FDECL(maze0xy,(coord *));
+STATIC_DCL boolean FDECL(put_lregion_here,(XCHAR_P,XCHAR_P,XCHAR_P,
 	XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P,BOOLEAN_P,d_level *));
-static void NDECL(fixup_special);
-static void FDECL(move, (int *,int *,int));
-static void NDECL(setup_waterlevel);
-static void NDECL(unsetup_waterlevel);
+STATIC_DCL void NDECL(fixup_special);
+STATIC_DCL void FDECL(move, (int *,int *,int));
+STATIC_DCL void NDECL(setup_waterlevel);
+STATIC_DCL void NDECL(unsetup_waterlevel);
 
 #define OUT_OF_BOUNDS(x,y) ((x)<=0 || (y)<0 || (x)>COLNO-1 || (y)>ROWNO-1)
 
-static boolean
+STATIC_OVL boolean
 iswall(x,y)
 int x,y;
 {
@@ -35,7 +35,7 @@ int x,y;
 		|| levl[x][y].typ == SDOOR);
 }
 
-static boolean
+STATIC_OVL boolean
 iswall_or_stone(x,y)
     int x,y;
 {
@@ -49,7 +49,7 @@ iswall_or_stone(x,y)
 }
 
 /* return TRUE if out of bounds, wall or rock */
-static boolean
+STATIC_OVL boolean
 is_solid(x,y)
     int x, y;
 {
@@ -75,7 +75,7 @@ is_solid(x,y)
  *		W x W		This would extend a spine from x down.
  *		. W W
  */
-static int
+STATIC_OVL int
 extend_spine(locale, wall_there, dx, dy)
     int locale[3][3];
     int wall_there, dx, dy;
@@ -191,7 +191,7 @@ int x1, y1, x2, y2;
 	    }
 }
 
-static boolean
+STATIC_OVL boolean
 okay(x,y,dir)
 int x,y;
 register int dir;
@@ -203,7 +203,7 @@ register int dir;
 	return(TRUE);
 }
 
-static void
+STATIC_OVL void
 maze0xy(cc)	/* find random starting point for maze generation */
 	coord	*cc;
 {
@@ -279,7 +279,7 @@ place_lregion(lx, ly, hx, hy, nlx, nly, nhx, nhy, rtype, lev)
     impossible("Couldn't place lregion type %d!", rtype);
 }
 
-static boolean
+STATIC_OVL boolean
 put_lregion_here(x,y,nlx,nly,nhx,nhy,rtype,oneshot,lev)
 xchar x, y;
 xchar nlx, nly, nhx, nhy;
@@ -324,7 +324,7 @@ d_level *lev;
 static boolean was_waterlevel; /* ugh... this shouldn't be needed */
 
 /* this is special stuff that the level compiler cannot (yet) handle */
-static void
+STATIC_OVL void
 fixup_special()
 {
     register lev_region *r = lregions;
@@ -399,6 +399,10 @@ fixup_special()
 	place_lregion(0,0,0,0,0,0,0,0,LR_BRANCH,(d_level *)0);
     }
 
+	/* KMH -- Sokoban levels */
+	if(In_sokoban(&u.uz))
+		sokoban_detect();
+
     /* Still need to add some stuff to level file */
     if (Is_medusa_level(&u.uz)) {
 	struct obj *otmp;
@@ -407,7 +411,7 @@ fixup_special()
 	croom = &rooms[0]; /* only one room on the medusa level */
 	for (tryct = rnd(4); tryct; tryct--) {
 	    x = somex(croom); y = somey(croom);
-	    if (goodpos(x, y, (struct monst *)0, (struct permonst *)0)) {
+	    if (goodpos(x, y, (struct monst *)0)) {
 		otmp = mk_tt_object(STATUE, x, y);
 		while (otmp && (poly_when_stoned(&mons[otmp->corpsenm]) ||
 				pm_resistance(&mons[otmp->corpsenm],MR_STONE))) {
@@ -437,20 +441,20 @@ fixup_special()
 	/* using an unfilled morgue for rm id */
 	croom = search_special(MORGUE);
 	/* avoid inappropriate morgue-related messages */
-	level.flags.graveyard = level.flags.has_morgue = FALSE;
+	level.flags.graveyard = level.flags.has_morgue = 0;
 	croom->rtype = OROOM;	/* perhaps it should be set to VAULT? */
 	/* stock the main vault */
 	for(x = croom->lx; x <= croom->hx; x++)
 	    for(y = croom->ly; y <= croom->hy; y++) {
-		mkgold((long) rn1(300, 600), x, y);
+		(void) mkgold((long) rn1(300, 600), x, y);
 		if (!rn2(3) && !is_pool(x,y))
 		    (void)maketrap(x, y, rn2(3) ? LANDMINE : SPIKED_PIT);
 	    }
-    } else if (Role_is('P') && In_quest(&u.uz)) {
+    } else if (Role_if(PM_PRIEST) && In_quest(&u.uz)) {
 	/* less chance for undead corpses (lured from lower morgues) */
-	level.flags.graveyard = TRUE;
+	level.flags.graveyard = 1;
     } else if (Is_stronghold(&u.uz)) {
-	level.flags.graveyard = TRUE;
+	level.flags.graveyard = 1;
     } else if(Is_sanctum(&u.uz)) {
 	croom = search_special(TEMPLE);
 
@@ -609,7 +613,7 @@ register const char *s;
 	}
 	for(x = rn1(6,7); x; x--) {
 		mazexy(&mm);
-		mkgold(0L,mm.x,mm.y);
+		(void) mkgold(0L,mm.x,mm.y);
 	}
 	for(x = rn1(6,7); x; x--)
 		mktrap(0,1,(struct mkroom *) 0, (coord*) 0);
@@ -704,7 +708,7 @@ int x,y;
 }
 #endif /* MICRO */
 
-static void
+STATIC_OVL void
 move(x,y,dir)
 register int *x, *y;
 register int dir;
@@ -901,9 +905,9 @@ static int xmin, ymin, xmax, ymax;	/* level boundaries */
 #define bxmax (xmax - 1)
 #define bymax (ymax - 1)
 
-static void NDECL(set_wportal);
-static void FDECL(mk_bubble, (int,int,int));
-static void FDECL(mv_bubble, (struct bubble *,int,int,BOOLEAN_P));
+STATIC_DCL void NDECL(set_wportal);
+STATIC_DCL void FDECL(mk_bubble, (int,int,int));
+STATIC_DCL void FDECL(mv_bubble, (struct bubble *,int,int,BOOLEAN_P));
 
 void
 movebubbles()
@@ -1035,7 +1039,7 @@ water_friction()
 	register int x, y, dx, dy;
 	register boolean eff = FALSE;
 
-	if (is_swimmer(uasmon) && rn2(4))
+	if (Swimming && rn2(4))
 		return;		/* natural swimmers have advantage */
 
 	if (u.dx && !rn2(!u.dy ? 3 : 6)) {	/* 1/3 chance or half that */
@@ -1119,7 +1123,7 @@ register int fd;
 	was_waterlevel = TRUE;
 }
 
-static void
+STATIC_OVL void
 set_wportal()
 {
 	/* there better be only one magic portal on water level... */
@@ -1128,7 +1132,7 @@ set_wportal()
 	impossible("set_wportal(): no portal!");
 }
 
-static void
+STATIC_OVL void
 setup_waterlevel()
 {
 	register int x, y;
@@ -1157,7 +1161,7 @@ setup_waterlevel()
 			mk_bubble(x,y,rn2(7));
 }
 
-static void
+STATIC_OVL void
 unsetup_waterlevel()
 {
 	register struct bubble *b, *bb;
@@ -1171,7 +1175,7 @@ unsetup_waterlevel()
 	bbubbles = ebubbles = (struct bubble *)0;
 }
 
-static void
+STATIC_OVL void
 mk_bubble(x,y,n)
 register int x, y, n;
 {
@@ -1228,7 +1232,7 @@ register int x, y, n;
  * in the immediate neighborhood of one, he/she may get sucked inside.
  * This property also makes leaving a bubble slightly difficult.
  */
-static void
+STATIC_OVL void
 mv_bubble(b,dx,dy,ini)
 register struct bubble *b;
 register int dx, dy;

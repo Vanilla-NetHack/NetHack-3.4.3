@@ -1,27 +1,28 @@
-                Instructions for installing NetHack 3.2
+                Instructions for installing NetHack 3.3
                            on a UNIX system
                 =======================================
 
 0.  Read this entire file before starting, and come back to the Notes
     below if you have any problems.  If you are trying to use X11,
-    also read all of win/X11/Install.X11.  For help in controlling
+    also read all of win/X11/Install.X11, or read win/Qt/Install.Qt
+    if you are using Qt or KDE under X11.  For help in controlling
     and running the game after it is installed, see the '?' command
     within the game and doc/Guidebook (non-installers want to know
     about those things too).
 
 1.  Make sure all the NetHack files are in the appropriate directory
-    structure.  You should have a main directory with subdirectories dat,
-    doc, include, src, util, sys/share, sys/unix, win/tty, and win/X11.
-    You may have other subdirectories under sys and win, but they will not
-    affect compilation for a UNIX system.  If you do not follow this
-    structure, the Makefiles will not function properly.  The .c files for
-    the main program belong in src, those for utility programs in util, and
-    UNIX-specific ones in sys/unix.  All the .h files belong in include, the
-    documentation in doc, and assorted data files in dat.  Some UNIX
-    versions may also be interested in sys/share's random.c or its lex/yacc
-    output, as explained in note 11.  (A more detailed explanation of the
-    directory structure may be found in Files, which should be in the top
-    directory.)
+    structure.  You should have a main directory with subdirectories
+    dat, doc, include, src, util, sys/share, sys/unix, win/tty, win/X11,
+    and win/Qt.  You may have other subdirectories under sys and win,
+    but they will not affect compilation for a UNIX system.  If you do
+    not follow this structure, the Makefiles will not function properly.
+    The .c files for the main program belong in src, those for utility
+    programs in util, and UNIX-specific ones in sys/unix.  All the .h
+    files belong in include, the documentation in doc, and assorted
+    data files in dat.  Some UNIX versions may also be interested in
+    sys/share's random.c or its lex/yacc output, as explained in note 11.
+    (A more detailed explanation of the directory structure may be found
+    in Files, which should be in the top directory.)
 
 2.  Your Makefiles may still be in sys/unix with tags on the end of them.
     If so, run setup.sh in that directory to distribute the Makefiles to
@@ -58,8 +59,7 @@
     Make sure that you follow the comments about setting GAMEDIR -- the
     installation process will wipe out the contents of the directory you
     point it at, under the assumption that it's debris from an old version
-    of NetHack, which will cause the new version to crash mysteriously while
-    running.  If this is not the case, you'll want to install somewhere
+    of NetHack.  If this is not the case, you'll want to install somewhere
     else, or comment out the rm under the install target.
 
     The Makefile assumes you want to run NetHack setuid 'games' to cut down
@@ -77,10 +77,15 @@
     files the main executable will use.  Then become root if necessary and
     type 'make install'.  Everything should now be set.
 
+8.  Read doc/recover.man or doc/recover.txt, and think about whether and
+    how you want to install the recover program.  If you decide to install
+    it, type 'make recover' in the util directory and then install recover
+    by hand in your desired manner.
+
 Notes:
 
 1.  Save files and bones files from previous versions will not work with
-    NetHack 3.2.  Don't bother trying to keep them.
+    NetHack 3.3.  Don't bother trying to keep them.
 
 2.  To install an update of this version of NetHack after changing something,
     type 'make update' from the main directory.  If you created the new
@@ -102,7 +107,7 @@ Notes:
     zapping, etc., it is likely that you have linked the source to the wrong
     library or mistakenly defined/undefined TERMINFO.  A number of systems,
     such as Xenix, support both the termcap and terminfo terminal capability
-    libraries.  In such cases, the TERMINFO definition in config.h and the
+    libraries.  In such cases, the TERMINFO definition in unixconf.h and the
     WINTTYLIB definition in the source Makefile must correspond.
 
     If your terminal library does not provide suitable delays, NetHack will
@@ -208,20 +213,22 @@ Notes:
     not allowed", you might want to re-install using the setgid option instead
     (see Note 7 above, and the setgid comment in the toplevel Makefile).
 
-13. If you are using Solaris 2.x (aka SunOS 5.x) you must take
-    special care when configuring config.h and unixconf.h.  Solaris is
-    basically a SVR4 system, not a BSD system.  Therefore, you configure
-    config.h and unixconf.h as per a SVR4 system:
+13. If you are using Solaris 2.x (aka SunOS 5.x) you shouldn't have to
+    do any system configuration -- this is the default.  In case it is
+    messed up, follow these instructions.
 
-	config.h: UNIX, TERMINFO, TTY_GRAPHICS
-	unixconf.h: SYSV, SVR4, POSIX_JOB_CONTROL, POSIX_TYPES
+    Solaris is basically a SVR4 system, not a BSD system.  Therefore, you
+    configure config.h and unixconf.h as per a SVR4 system:
 
-    X11_GRAPHICS does work.  Do not define OPENWINBUG.
-    You may safely define NETWORK, TEXTCOLOR if desired.
-    Other #defines in these files may be defined too, as needed.  Just make
-    sure that the set mentioned here are not misdefined, or your compile
-    will fail (do _not_ define BSD or SUNOS4).  Unless you are using gzip
-    you will probably want to define COMPRESS to be "/usr/bin/compress".
+	config.h: UNIX, TTY_GRAPHICS
+	unixconf.h: SYSV, SVR4, TERMINFO, POSIX_JOB_CONTROL, POSIX_TYPES
+
+    X11_GRAPHICS does work.  Do not define OPENWINBUG.  You may safely define
+    NETWORK, TEXTCOLOR if desired.  Other #defines in these files may be
+    defined too, as needed.  Just make sure that the set mentioned here are
+    not misdefined, or your compile will fail (do _not_ define BSD or SUNOS4).
+    Unless you are using gzip you will probably want to define COMPRESS to
+    be "/usr/bin/compress".
 
     When compiling, make sure that you use the ANSI C SVR4 compatible
     compiler, /usr/bin/cc, or gcc, but _not_ ucbcc.  The lattermost will

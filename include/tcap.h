@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)termcap.h	3.2	92/10/21	*/
+/*	SCCS Id: @(#)tcap.h	3.3	92/10/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* common #defines for print.c and termcap.c */
+/* not named termcap.h because it may conflict with a system header */
 
-#ifndef TERMCAP_H
-#define TERMCAP_H
+#ifndef TCAP_H
+#define TCAP_H
 
 #ifndef MICRO
 # define TERMLIB	/* include termcap code */
@@ -53,4 +53,4 @@ extern NEARDATA char *hilites[CLR_MAX];
 # endif
 #endif
 
-#endif /* TERMCAP_H */
+#endif /* TCAP_H */

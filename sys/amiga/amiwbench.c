@@ -336,13 +336,26 @@ void ami_wbench_args(){
 	    score(p);
 	    /* NOTREACHED */
 	default:
-	    p--;
-	    if(index(classes,toupper(*p))){
-		char *t=pl_character;
-		int cnt=sizeof(pl_character)-1;
-		while(cnt && *p && !isspace(*p))*t++=*p++,cnt--;
-		*t=0;
-		break;
+	    {
+	    	char *q = p-1;
+	    	int i;
+
+
+	    	while (*p && !isspace(*p)) p++;
+	    	if (*p) *p++ = '\0';
+	    	if ((i = str2role(q) >= 0) {
+	    		flags.initrole = i;
+	    		break;
+	    	} else if ((i = str2race(q) >= 0) {
+	    		flags.initrace = i;
+	    		break;
+	    	} else if ((i = str2gend(q) >= 0) {
+	    		flags.initgend = i;
+	    		break;
+	    	} else if ((i = str2align(q) >= 0) {
+	    		flags.initalign = i;
+	    		break;
+	    	}
 	    }
 	    raw_printf("Unknown switch: %s\n",p);
 	    /* FALL THROUGH */

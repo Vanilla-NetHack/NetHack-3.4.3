@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artilist.h	3.2	96/05/19	*/
+/*	SCCS Id: @(#)artilist.h 3.3	99/03/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -35,7 +35,7 @@ A("",				STRANGE_OBJECT,
 
 A("Excalibur",			LONG_SWORD,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_SEEK|SPFX_DEFN|SPFX_INTEL|SPFX_SEARCH),0,0,
-	PHYS(5,10),	DRLI(0,0),	NO_CARY,	0, A_LAWFUL,	'K' ),
+	PHYS(5,10),	DRLI(0,0),	NO_CARY,	0, A_LAWFUL, PM_KNIGHT),
 /*
  *	Stormbringer only has a 2 because it can drain a level,
  *	providing 8 more.
@@ -45,15 +45,15 @@ A("Stormbringer",		RUNESWORD,
 	DRLI(5,2),	DRLI(0,0),	NO_CARY,	0, A_CHAOTIC,	 0  ),
 /*
  *	Mjollnir will return to the hand of the wielder when thrown
- *	if the wielder is wearing Gauntlets of Power.
+ *	if the wielder is a Valkyrie wearing Gauntlets of Power.
  */
 A("Mjollnir",			WAR_HAMMER,		/* Mjo:llnir */
 	(SPFX_RESTR|SPFX_ATTK),  0, 0,
-	ELEC(5,24),	NO_DFNS,	NO_CARY,	0, A_NEUTRAL,	'V' ),
+	ELEC(5,24),	NO_DFNS,	NO_CARY,	0, A_NEUTRAL, PM_VALKYRIE),
 
 A("Cleaver",			BATTLE_AXE,
 	SPFX_RESTR, 0, 0,
-	PHYS(3,6),	NO_DFNS,	NO_CARY,	0, A_NEUTRAL,	'B' ),
+	PHYS(3,6),	NO_DFNS,	NO_CARY,	0, A_NEUTRAL, PM_BARBARIAN),
 
 A("Grimtooth",			ORCISH_DAGGER,
 	SPFX_RESTR, 0, 0,
@@ -63,7 +63,7 @@ A("Grimtooth",			ORCISH_DAGGER,
  */
 A("Orcrist",			ELVEN_BROADSWORD,
 	SPFX_DFLAG2, 0, M2_ORC,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	'E' ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	 0	),
 
 A("Sting",			ELVEN_DAGGER,
 	(SPFX_WARN|SPFX_DFLAG2), 0, M2_ORC,
@@ -74,19 +74,19 @@ A("Sting",			ELVEN_DAGGER,
  */
 A("Magicbane",			ATHAME,
 	(SPFX_RESTR|SPFX_ATTK|SPFX_DEFN), 0, 0,
-	STUN(3,4),	DFNS(AD_MAGM),	NO_CARY,	0, A_NEUTRAL,	'W' ),
+	STUN(3,4),	DFNS(AD_MAGM),	NO_CARY,	0, A_NEUTRAL, PM_WIZARD),
 
 A("Frost Brand",		LONG_SWORD,
 	(SPFX_RESTR|SPFX_ATTK|SPFX_DEFN), 0, 0,
-	COLD(5,0),	COLD(0,0),	NO_CARY,	0, A_NEUTRAL,	 0  ),
+	COLD(5,0),	COLD(0,0),	NO_CARY,	0, A_NONE,	 0  ),
 
 A("Fire Brand",			LONG_SWORD,
 	(SPFX_RESTR|SPFX_ATTK|SPFX_DEFN), 0, 0,
-	FIRE(5,0),	FIRE(0,0),	NO_CARY,	0, A_NEUTRAL,	 0  ),
+	FIRE(5,0),	FIRE(0,0),	NO_CARY,	0, A_NONE,	 0  ),
 
 A("Dragonbane",			BROADSWORD,
 	(SPFX_RESTR|SPFX_DCLAS), 0, S_DRAGON,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_NEUTRAL,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_NONE,	 0  ),
 
 A("Demonbane",			LONG_SWORD,
 	(SPFX_RESTR|SPFX_DFLAG2), 0, M2_DEMON,
@@ -94,7 +94,7 @@ A("Demonbane",			LONG_SWORD,
 
 A("Werebane",			SILVER_SABER,
 	(SPFX_RESTR|SPFX_DFLAG2), 0, M2_WERE,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_NONE,	 0  ),
 
 A("Grayswandir",		SILVER_SABER,
 	(SPFX_RESTR|SPFX_HALRES), 0, 0,
@@ -106,11 +106,11 @@ A("Giantslayer",		LONG_SWORD,
 
 A("Ogresmasher",		WAR_HAMMER,
 	(SPFX_RESTR|SPFX_DCLAS), 0, S_OGRE,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_NONE,	 0  ),
 
 A("Trollsbane",			MORNING_STAR,
 	(SPFX_RESTR|SPFX_DCLAS), 0, S_TROLL,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_CHAOTIC,	 0  ),
+	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_NONE,	 0  ),
 /*
  *	Two problems:  1) doesn't let trolls regenerate heads,
  *	2) doesn't give unusual message for 2-headed monsters (but
@@ -129,7 +129,7 @@ A("Vorpal Blade",		LONG_SWORD,
  */
 A("Snickersnee",		KATANA,
 	SPFX_RESTR, 0, 0,
-	PHYS(0,8),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	'S' ),
+	PHYS(0,8),	NO_DFNS,	NO_CARY,	0, A_LAWFUL, PM_SAMURAI),
 
 A("Sunsword",			LONG_SWORD,
 	(SPFX_RESTR|SPFX_DFLAG2), 0, M2_UNDEAD,
@@ -142,68 +142,80 @@ A("Sunsword",			LONG_SWORD,
 A("The Orb of Detection",	CRYSTAL_BALL,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL), (SPFX_ESP|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
-	INVIS,		A_LAWFUL,	'A' ),
+	INVIS,		A_LAWFUL, PM_ARCHEOLOGIST),
 
 A("The Heart of Ahriman",	LUCKSTONE,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL), SPFX_STLTH, 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
-	LEVITATION,	A_NEUTRAL,	'B' ),
+	LEVITATION,	A_NEUTRAL, PM_BARBARIAN),
 
 A("The Sceptre of Might",	MACE,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_DALIGN), 0, 0,
 	PHYS(5,0),	NO_DFNS,	CARY(AD_MAGM),
-	CONFLICT,	A_LAWFUL,	'C' ),
+	CONFLICT,	A_LAWFUL, PM_CAVEMAN),
 
+#if 0	/* OBSOLETE */
 A("The Palantir of Westernesse",	CRYSTAL_BALL,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL),
 		(SPFX_ESP|SPFX_REGEN|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
-	TAMING,		A_CHAOTIC,	'E' ),
+	TAMING,		A_CHAOTIC, PM_ELF),
+#endif
 
 A("The Staff of Aesculapius",	QUARTERSTAFF,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_ATTK|SPFX_INTEL|SPFX_DRLI|SPFX_REGEN), 0,0,
 	DRLI(0,0),	DRLI(0,0),	NO_CARY,
-	HEALING,	A_NEUTRAL,	'H' ),
+	HEALING,	A_NEUTRAL, PM_HEALER),
 
-A("The Magic Mirror of Merlin",	MIRROR,
+A("The Magic Mirror of Merlin", MIRROR,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEAK), SPFX_ESP, 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
-	0,		A_LAWFUL,	'K' ),
+	0,		A_LAWFUL, PM_KNIGHT),
+
+A("The Eyes of the Overworld",	LENSES,
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_XRAY), 0, 0,
+	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
+	ENLIGHTENING,	A_NEUTRAL,	 PM_MONK),
 
 A("The Mitre of Holiness",	HELM_OF_BRILLIANCE,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_DFLAG2|SPFX_INTEL), 0, M2_UNDEAD,
 	NO_ATTK,	NO_DFNS,	CARY(AD_FIRE),
-	ENERGY_BOOST,	A_LAWFUL,	'P' ),
+	ENERGY_BOOST,	A_LAWFUL, PM_PRIEST),
+
+A("The Longbow of Artemis", BOW,
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_REFLECT), SPFX_ESP, 0,
+	PHYS(5,0),	NO_DFNS,	NO_CARY,
+	CREATE_AMMO, A_CHAOTIC, PM_RANGER),
 
 A("The Master Key of Thievery", SKELETON_KEY,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEAK),
 		(SPFX_WARN|SPFX_TCTRL|SPFX_HPHDAM), 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
-	UNTRAP,		A_CHAOTIC,	'R' ),
+	UNTRAP,		A_CHAOTIC, PM_ROGUE),
 
 A("The Tsurugi of Muramasa",	TSURUGI,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_BEHEAD|SPFX_LUCK), 0, 0,
 	PHYS(0,8),	NO_DFNS,	NO_CARY,
-	0,		A_LAWFUL,	'S' ),
+	0,		A_LAWFUL, PM_SAMURAI),
 
 #ifdef TOURIST
 A("The Platinum Yendorian Express Card", CREDIT_CARD,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_DEFN),
 		(SPFX_ESP|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
-	CHARGE_OBJ,	A_NEUTRAL,	'T' ),
+	CHARGE_OBJ,	A_NEUTRAL, PM_TOURIST),
 #endif
 
 A("The Orb of Fate",		CRYSTAL_BALL,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_LUCK),
 		(SPFX_WARN|SPFX_HSPDAM|SPFX_HPHDAM), 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
-	LEV_TELE,	A_NEUTRAL,	'V' ),
+	LEV_TELE,	A_NEUTRAL, PM_VALKYRIE),
 
 A("The Eye of the Aethiopica",	AMULET_OF_ESP,
 	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL), (SPFX_EREGEN|SPFX_HSPDAM), 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
-	CREATE_PORTAL,	A_NEUTRAL,	'W' ),
+	CREATE_PORTAL,	A_NEUTRAL, PM_WIZARD),
 
 /*
  *  terminator; otyp must be zero

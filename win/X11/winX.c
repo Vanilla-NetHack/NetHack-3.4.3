@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.c	3.2	96/04/05	*/
+/*	SCCS Id: @(#)winX.c	3.3	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -40,6 +40,10 @@
 #  undef SYSV
 # endif
 # undef PRESERVE_NO_SYSV
+#endif
+
+#ifdef SHORT_FILENAMES
+#undef SHORT_FILENAMES	/* hack.h will reset via global.h if necessary */
 #endif
 
 #include "hack.h"
@@ -855,6 +859,7 @@ static XtActionsRec actions[] = {
     {"ec_key",		ec_key},	/* action for extended commands */
     {"ec_delete",	ec_delete},	/* action for ext-com menu delete */
     {"ps_key",		ps_key},	/* action for player selection */
+    {"race_key",	race_key},	/* action for race selection */
     {"X11_hangup",	X11_hangup},	/* action for delete of top-level */
     {"input",		map_input},	/* action for key input */
     {"scroll",		nh_keyscroll},	/* action for scrolling by keys */
@@ -910,10 +915,21 @@ char** argv;
     int i;
     Cardinal num_args;
     Arg args[4];
+    uid_t savuid;
 
     /* Init windows to nothing. */
     for (i = 0; i < MAX_WINDOWS; i++)
 	window_list[i].type = NHW_NONE;
+
+    /*
+     * setuid hack: make sure that if nethack is setuid, to use real uid
+     * when opening X11 connections, in case the user is using xauth, since
+     * the "games" or whatever user probably doesn't have permission to open
+     * a window on the user's display.  This code is harmless if the binary
+     * is not installed setuid.  See include/system.h on compilation failures.
+     */
+    savuid = geteuid();
+    (void) seteuid(getuid());
 
     XSetIOErrorHandler((XIOErrorHandler) hangup);
 
@@ -962,6 +978,7 @@ char** argv;
 		if (icon_pixmap != None) {
 		    XWMHints hints;
 
+		    (void) memset((genericptr_t)&hints, 0, sizeof(XWMHints));
 		    hints.flags = IconPixmapHint;
 		    hints.icon_pixmap = icon_pixmap;
 		    XSetWMHints(XtDisplay(toplevel),
@@ -970,6 +987,9 @@ char** argv;
 		break;
 	    }
     }
+
+    /* end of setuid hack: reset uid back to the "games" uid */
+    (void) seteuid(savuid);
 
     x_inited = TRUE;	/* X is now initialized */
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmisc.c	3.2	93/02/04	*/
+/*	SCCS Id: @(#)winmisc.c	3.3	93/02/04	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -33,7 +33,6 @@
 #include "func_tab.h"
 #include "winX.h"
 
-extern const char *roles[];	/* from u_init.c */
 
 static Widget extended_command_popup;
 static Widget extended_command_form;
@@ -57,6 +56,10 @@ static const char extended_command_translations[] =
 static const char player_select_translations[] =
     "#override\n\
      <Key>: ps_key()";
+
+static const char race_select_translations[] =
+    "#override\n\
+     <Key>: race_key()";
 
 
 static void NDECL(ec_dismiss);
@@ -107,6 +110,7 @@ ps_key(w, event, params, num_params)
     String *params;
     Cardinal *num_params;
 {
+#if 0 /* uses obsolete pl_classes; for now, don't accept key accelerators.. */
     char ch, *mark;
 
     ch = key_event_to_char((XKeyEvent *) event);
@@ -121,6 +125,37 @@ ps_key(w, event, params, num_params)
     }
     ps_selected = mark - pl_classes;
     exit_x_event = TRUE;
+#else
+    X11_nhbell();		/* just beep */
+#endif
+}
+
+/* ARGSUSED */
+void
+race_key(w, event, params, num_params)
+    Widget w;
+    XEvent *event;
+    String *params;
+    Cardinal *num_params;
+{
+#if 0 /* uses obsolete pl_races; for now, don't accept key accelerators.. */
+    char ch, *mark;
+
+    ch = key_event_to_char((XKeyEvent *) event);
+    if (ch == '\0') {	/* don't accept nul char/modifier event */
+	/* don't beep */
+	return;
+    }
+    mark = index(pl_races, highc(ch));
+    if (!mark) {
+	X11_nhbell();		/* no such class */
+	return;
+    }
+    ps_selected = mark - pl_races;
+    exit_x_event = TRUE;
+#else
+    X11_nhbell();		/* just beep */
+#endif
 }
 
 
@@ -128,63 +163,94 @@ ps_key(w, event, params, num_params)
 void
 X11_player_selection()
 {
-    char buf[QBUFSZ];
-    char pc;
-    int num_roles;
+    int num_roles, num_races, i;
     Widget popup, player_form;
+    const char **role_names = 0, **race_names = 0;
 
-    if ((pc = highc(pl_character[0])) != 0) {
-	if (index(pl_classes, pc)) goto got_suffix;
-	pl_character[0] = pc = 0;
+    if (flags.initrole < 0) {
+	/* select a role */
+	for (num_roles = 0; roles[num_roles].name.m; num_roles++)
+	    ;	/* do nothing */
+	role_names = (const char **)alloc(sizeof(char *) * num_roles);
+	for (i = 0; i < num_roles; i++)
+	    role_names[i] = roles[i].name.m;	/* ??? chose female name? */
+	popup = make_menu("player_selection", "Choose a Role",
+		    player_select_translations,
+		    "quit", ps_quit,
+		    "random", ps_random,
+		    num_roles, role_names, (Widget **)0, ps_select, &player_form);
+
+	ps_selected = 0;
+	positionpopup(popup, FALSE);
+	nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
+
+	/* The callbacks will enable the event loop exit. */
+	(void) x_event(EXIT_ON_EXIT);
+
+	nh_XtPopdown(popup);
+	XtDestroyWidget(popup);
+
+	if (ps_selected == PS_QUIT) {
+	    clearlocks();
+	    X11_exit_nhwindows((char *)0);
+	    terminate(0);
+	} else if (ps_selected == PS_RANDOM) {
+	    flags.initrole = randrole();
+	} else if (ps_selected < 0 || ps_selected >= num_roles) {
+	    panic("player_selection: bad select value %d\n", ps_selected);
+	} else {
+	    flags.initrole = ps_selected;
+	}
     }
 
-    for (num_roles = 0; roles[num_roles]; num_roles++)
-	;	/* do nothing */
+    if (!validrace(flags.initrole, flags.initrace)) {
+	/* select a race */
+	for (num_races = 0; races[num_races].noun; num_races++)
+	    ;	/* do nothing */
+	race_names = (const char **)alloc(sizeof(char *) * num_races);
+	for (i = 0; i < num_races; i++)
+	    race_names[i] = races[i].noun;
 
-    popup = make_menu("player_selection", "Choose a Role",
-		player_select_translations,
-		"quit", ps_quit,
-		"random", ps_random,
-		num_roles, roles, (Widget **)0, ps_select, &player_form);
+	popup = make_menu("race_selection", "Choose a Race",
+		    race_select_translations,
+		    "quit", ps_quit,
+		    "random", ps_random,
+		    num_races, race_names, (Widget **)0,
+		    ps_select, &player_form);
 
-    ps_selected = 0;
-    positionpopup(popup, FALSE);
-    nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
+	ps_selected = 0;
+	positionpopup(popup, FALSE);
+	nh_XtPopup(popup, (int)XtGrabExclusive, player_form);
 
-    /* The callbacks will enable the event loop exit. */
-    (void) x_event(EXIT_ON_EXIT);
+	/* The callbacks will enable the event loop exit. */
+	(void) x_event(EXIT_ON_EXIT);
 
-    nh_XtPopdown(popup);
-    XtDestroyWidget(popup);
+	nh_XtPopdown(popup);
+	XtDestroyWidget(popup);
 
-    if (ps_selected == PS_QUIT) {
-	clearlocks();
-	X11_exit_nhwindows((char *)0);
-	terminate(0);
+	if (ps_selected == PS_QUIT) {
+	    clearlocks();
+	    X11_exit_nhwindows((char *)0);
+	    terminate(0);
+	} else if (ps_selected == PS_RANDOM) {
+	    flags.initrace = randrace(flags.initrole);
+	} else if (ps_selected < 0 || ps_selected >= num_races) {
+	    panic("player_selection: bad select value %d\n", ps_selected);
+	} else {
+	    flags.initrace = ps_selected;
+	}
     }
 
-    if (ps_selected == PS_RANDOM) {
-	winid tmpwin;
+    /* gender and alignment selection goes here... */
+    if (!validgend(flags.initrole, flags.initrace, flags.initgend))
+	flags.initgend = randgend(flags.initrole, flags.initrace);
+    if (!validalign(flags.initrole, flags.initrace, flags.initalign))
+	flags.initalign = randalign(flags.initrole, flags.initrace);
 
-	ps_selected = rn2(strlen(pl_classes));
-	pc = pl_classes[ps_selected];
-	Sprintf(buf, "This game you will be %s.", an(roles[ps_selected]));
-
-	tmpwin = X11_create_nhwindow(NHW_TEXT);
-	X11_putstr(tmpwin, 0, "");
-	X11_putstr(tmpwin, 0, buf);
-	X11_putstr(tmpwin, 0, "");
-	X11_display_nhwindow(tmpwin, TRUE);
-	X11_destroy_nhwindow(tmpwin);
-
-    } else if (ps_selected < 0 || ps_selected >= num_roles) {
-	panic("player_selection: bad select value %d\n", ps_selected);
-    } else {
-	pc = pl_classes[ps_selected];
-    }
-
-got_suffix:
-    pl_character[0] = pc;
+    if (role_names != 0)
+	free((genericptr_t)role_names);
+    if (race_names != 0)
+	free((genericptr_t)race_names);
 }
 
 

@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)Window.h	3.2	92/03/07	*/
+/*	SCCS Id: @(#)xwindow.h	3.3	92/03/07	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifndef _Window_h
-#define _Window_h
+#ifndef _xwindow_h
+#define _xwindow_h
 
 /****************************************************************
  *
@@ -43,14 +43,14 @@
  bright_green	     Color		Pixel		"green"
  yellow		     Color		Pixel		"yellow"
  bright_blue	     Color		Pixel		"royal blue"
- bright_magenta	     Color		Pixel		"violet"
+ bright_magenta      Color		Pixel		"violet"
  bright_cyan	     Color		Pixel		"cyan"
  white		     Color		Pixel		"white"
 
  font		     Font		XFontStruct*	XtDefaultFont
- exposeCallback	     Callback		Callback	NULL
+ exposeCallback      Callback		Callback	NULL
  callback	     Callback		Callback	NULL
- resizeCallback	     Callback		Callback	NULL
+ resizeCallback      Callback		Callback	NULL
 */
 
 /* define any special resource names here that are not in <X11/StringDefs.h> */
@@ -92,4 +92,4 @@ typedef struct _WindowRec	*WindowWidget;
 
 extern WidgetClass windowWidgetClass;
 
-#endif /* _Window_h */
+#endif /* _xwindow_h */

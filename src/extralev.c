@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)extralev.c	3.2	94/06/08	*/
+/*	SCCS Id: @(#)extralev.c	3.3	1999/11/26	*/
 /*	Copyright 1988, 1989 by Ken Arromdee				*/
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,11 +23,11 @@ struct rogueroom {
 #define RIGHT 8
 
 static NEARDATA struct rogueroom r[3][3];
-static void FDECL(roguejoin,(int,int,int,int,int));
-static void FDECL(roguecorr,(int,int,int));
-static void FDECL(miniwalk,(int,int));
+STATIC_DCL void FDECL(roguejoin,(int,int,int,int,int));
+STATIC_DCL void FDECL(roguecorr,(int,int,int));
+STATIC_DCL void FDECL(miniwalk,(int,int));
 
-static
+STATIC_OVL
 void
 roguejoin(x1,y1,x2,y2, horiz)
 int x1,y1,x2,y2;
@@ -59,7 +59,7 @@ int horiz;
 	}
 }
 
-static
+STATIC_OVL
 void
 roguecorr(x, y, dir)
 int x,y,dir;
@@ -142,9 +142,9 @@ int x,y,dir;
 		return;
 	} else impossible("corridor in direction %d?",dir);
 }
-			
+
 /* Modified walkfrom() from mkmaze.c */
-static
+STATIC_OVL
 void
 miniwalk(x, y)
 int x,y;
@@ -298,8 +298,8 @@ makerogueghost()
 	x = somex(croom); y = somey(croom);
 	if (!(ghost = makemon(&mons[PM_GHOST], x, y, NO_MM_FLAGS)))
 		return;
-	ghost->msleep = 1;
-	Strcpy((char *)ghost->mextra, roguename());
+	ghost->msleeping = 1;
+	ghost = christen_monst(ghost, roguename());
 
 	if (rn2(4)) {
 		ghostobj = mksobj_at(FOOD_RATION,x,y,FALSE);
@@ -341,6 +341,6 @@ makerogueghost()
 		ghostobj->known = TRUE;
 	}
 }
-#endif /* REINCARNATION /**/
+#endif /* REINCARNATION */
 
 /*extralev.c*/

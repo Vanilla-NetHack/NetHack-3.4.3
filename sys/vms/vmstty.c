@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmstty.c	3.2	95/07/09	*/
+/*	SCCS Id: @(#)vmstty.c	3.3	1995/07/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (VMS) version */
@@ -6,7 +6,7 @@
 #define NEED_VARARGS
 #include "hack.h"
 #include "wintty.h"
-#include "termcap.h"
+#include "tcap.h"
 
 #include <descrip.h>
 #include <iodef.h>

@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)vidvga.c   3.2     96/02/16			    */
+/*   SCCS Id: @(#)vidvga.c   3.3     96/02/16			    */
 /*   Copyright (c) NetHack PC Development Team 1995                 */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*
@@ -1185,9 +1185,14 @@ vga_DrawCursor()
 	unsigned char first,second;
 /*	char on[2] =  {0xFF,0xFF}; */
 /*	char off[2] = {0x00,0x00}; */
+#ifdef REINCARNATION
 	boolean isrogue = Is_rogue_level(&u.uz);
 	boolean singlebyte = (isrogue || iflags.over_view
 			      || iflags.traditional_view || !inmap);
+#else
+	boolean singlebyte = (iflags.over_view
+			      || iflags.traditional_view || !inmap);
+#endif
 	int curtyp;
 
 	if (!cursor_type && inmap) return;	/* CURSOR_INVIS - nothing to do */
@@ -1385,9 +1390,14 @@ vga_HideCursor()
 	int i,pixx,pixy,x,y;
 	char __far *tmp1;
 	char __far *tmp2;
+#ifdef REINCARNATION
 	boolean isrogue = Is_rogue_level(&u.uz);
 	boolean singlebyte = (isrogue || iflags.over_view
 			      || iflags.traditional_view || !inmap);
+#else
+	boolean singlebyte = (iflags.over_view
+			      || iflags.traditional_view || !inmap);
+#endif
 	int curtyp;
 	
 	if (inmap && !cursor_type) return;	/* CURSOR_INVIS - nothing to do */

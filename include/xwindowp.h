@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)WindowP.h	3.2	92/03/07	*/
+/*	SCCS Id: @(#)xwindowp.h 3.3	92/03/07	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifndef _WindowP_h
-#define _WindowP_h
+#ifndef _xwindowp_h
+#define _xwindowp_h
 
-#include "Window.h"
+#include "xwindow.h"
 
 #ifndef SYSV
 #define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
@@ -56,7 +56,7 @@ typedef struct {
     Pixel	   bright_magenta;
     Pixel	   bright_cyan;
     Pixel	   white;
-    XFontStruct	   *font;
+    XFontStruct    *font;
     XtCallbackList expose_callback;
     XtCallbackList input_callback;
     XtCallbackList resize_callback;
@@ -69,4 +69,4 @@ typedef struct _WindowRec {
     WindowPart	window;
 } WindowRec;
 
-#endif /* _WindowP_h */
+#endif /* _xwindowp_h */

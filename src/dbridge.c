@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dbridge.c	3.2	96/05/18	*/
+/*	SCCS Id: @(#)dbridge.c	3.3	97/05/25	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,22 +13,22 @@
 #include "hack.h"
 
 #ifdef OVLB
-static void FDECL(get_wall_for_db, (int *, int *));
-static struct entity *FDECL(e_at, (int, int));
-static void FDECL(m_to_e, (struct monst *, int, int, struct entity *));
-static void FDECL(u_to_e, (struct entity *));
-static void FDECL(set_entity, (int, int, struct entity *));
-static const char *FDECL(e_nam, (struct entity *));
+STATIC_DCL void FDECL(get_wall_for_db, (int *, int *));
+STATIC_DCL struct entity *FDECL(e_at, (int, int));
+STATIC_DCL void FDECL(m_to_e, (struct monst *, int, int, struct entity *));
+STATIC_DCL void FDECL(u_to_e, (struct entity *));
+STATIC_DCL void FDECL(set_entity, (int, int, struct entity *));
+STATIC_DCL const char *FDECL(e_nam, (struct entity *));
 #ifdef D_DEBUG
 static const char *FDECL(Enam, (struct entity *)); /* unused */
 #endif
-static const char *FDECL(E_phrase, (struct entity *, const char *));
-static boolean FDECL(e_survives_at, (struct entity *, int, int));
-static void FDECL(e_died, (struct entity *, int, int));
-static boolean FDECL(automiss, (struct entity *));
-static boolean FDECL(e_missed, (struct entity *, BOOLEAN_P));
-static boolean FDECL(e_jumps, (struct entity *));
-static void FDECL(do_entity, (struct entity *));
+STATIC_DCL const char *FDECL(E_phrase, (struct entity *, const char *));
+STATIC_DCL boolean FDECL(e_survives_at, (struct entity *, int, int));
+STATIC_DCL void FDECL(e_died, (struct entity *, int, int));
+STATIC_DCL boolean FDECL(automiss, (struct entity *));
+STATIC_DCL boolean FDECL(e_missed, (struct entity *, BOOLEAN_P));
+STATIC_DCL boolean FDECL(e_jumps, (struct entity *));
+STATIC_DCL void FDECL(do_entity, (struct entity *));
 #endif /* OVLB */
 
 #ifdef OVL0
@@ -147,7 +147,7 @@ int *x,*y;
 /*
  * Find the drawbridge wall associated with a drawbridge.
  */
-static void
+STATIC_OVL void
 get_wall_for_db(x,y)
 int *x,*y;
 {
@@ -225,13 +225,13 @@ struct entity {
 
 static NEARDATA struct entity occupants[ENTITIES];
 
-static
+STATIC_OVL
 struct entity *
 e_at(x, y)
 int x, y;
 {
 	int entitycnt;
-	
+
 	for (entitycnt = 0; entitycnt < ENTITIES; entitycnt++)
 		if ((occupants[entitycnt].edata) &&
 		    (occupants[entitycnt].ex == x) &&
@@ -245,7 +245,7 @@ int x, y;
 	       (struct entity *)0 : &(occupants[entitycnt]));
 }
 
-static void
+STATIC_OVL void
 m_to_e(mtmp, x, y, etmp)
 struct monst *mtmp;
 int x, y;
@@ -263,17 +263,17 @@ struct entity *etmp;
 		etmp->edata = (struct permonst *)0;
 }
 
-static void
+STATIC_OVL void
 u_to_e(etmp)
 struct entity *etmp;
 {
 	etmp->emon = &youmonst;
 	etmp->ex = u.ux;
 	etmp->ey = u.uy;
-	etmp->edata = uasmon;
+	etmp->edata = youmonst.data;
 }
 
-static void
+STATIC_OVL void
 set_entity(x, y, etmp)
 int x, y;
 struct entity *etmp;
@@ -296,7 +296,7 @@ struct entity *etmp;
 
 /* #define e_strg(etmp, func) (is_u(etmp)? (char *)0 : func(etmp->emon)) */
 
-static const char *
+STATIC_OVL const char *
 e_nam(etmp)
 struct entity *etmp;
 {
@@ -321,7 +321,7 @@ struct entity *etmp;
  * verb, where necessary.
  */
 
-static const char *
+STATIC_OVL const char *
 E_phrase(etmp, verb)
 struct entity *etmp;
 const char *verb;
@@ -367,7 +367,7 @@ const char *verb;
  * Simple-minded "can it be here?" routine
  */
 
-static boolean
+STATIC_OVL boolean
 e_survives_at(etmp, x, y)
 struct entity *etmp;
 int x, y;
@@ -376,19 +376,21 @@ int x, y;
 		return(TRUE);
 	if (is_pool(x, y))
 		return (boolean)((is_u(etmp) &&
-				(Wwalking || Amphibious || Levitation)) ||
+				(Wwalking || Amphibious || Swimming ||
+				Flying || Levitation)) ||
 			is_swimmer(etmp->edata) || is_flyer(etmp->edata) ||
 			is_floater(etmp->edata));
 	/* must force call to lava_effects in e_died if is_u */
 	if (is_lava(x, y))
-		return (boolean)((is_u(etmp) && Levitation) ||
+		return (boolean)((is_u(etmp) && (Levitation || Flying)) ||
 			    likes_lava(etmp->edata) || is_flyer(etmp->edata));
 	if (is_db_wall(x, y))
-		return((boolean)(passes_walls(etmp->edata)));
+		return((boolean)(is_u(etmp) ? Passes_walls :
+			passes_walls(etmp->edata)));
 	return(TRUE);
 }
 
-static void
+STATIC_OVL void
 e_died(etmp, dest, how)
 struct entity *etmp;
 int dest, how;
@@ -438,19 +440,19 @@ int dest, how;
  * These are never directly affected by a bridge or portcullis.
  */
 
-static boolean
+STATIC_OVL boolean
 automiss(etmp)
 struct entity *etmp;
 {
-	return (boolean)(passes_walls(etmp->edata) ||
-			 noncorporeal(etmp->edata));
+	return (boolean)((is_u(etmp) ? Passes_walls :
+			passes_walls(etmp->edata)) || noncorporeal(etmp->edata));
 }
 
 /*
  * Does falling drawbridge or portcullis miss etmp?
  */
 
-static boolean
+STATIC_OVL boolean
 e_missed(etmp, chunks)
 struct entity *etmp;
 boolean chunks;
@@ -466,7 +468,7 @@ boolean chunks;
 
 	if (is_flyer(etmp->edata) &&
 	    (is_u(etmp)? !Sleeping :
-	     (etmp->emon->mcanmove && !etmp->emon->msleep)))
+	     (etmp->emon->mcanmove && !etmp->emon->msleeping)))
 						 /* flying requires mobility */
 		misses = 5;	/* out of 8 */
 	else if (is_floater(etmp->edata) ||
@@ -491,14 +493,14 @@ boolean chunks;
  * Can etmp jump from death?
  */
 
-static boolean
+STATIC_OVL boolean
 e_jumps(etmp)
 struct entity *etmp;
 {
 	int tmp = 4;		/* out of 10 */
 
 	if (is_u(etmp)? (Sleeping || Fumbling) :
-		        (!etmp->emon->mcanmove || etmp->emon->msleep ||
+		        (!etmp->emon->mcanmove || etmp->emon->msleeping ||
 			 !etmp->edata->mmove   || etmp->emon->wormno))
 		return(FALSE);
 
@@ -510,14 +512,14 @@ struct entity *etmp;
 
 	if (is_db_wall(etmp->ex, etmp->ey))
 		tmp -= 2;			    /* less room to maneuver */
-	
+
 #ifdef D_DEBUG
 	pline("%s to jump (%d chances in 10)", E_phrase(etmp, "try"), tmp);
 #endif
 	return((boolean)((tmp >= rnd(10))? TRUE : FALSE));
 }
 
-static void
+STATIC_OVL void
 do_entity(etmp)
 struct entity *etmp;
 {
@@ -659,6 +661,7 @@ struct entity *etmp;
 		if (!is_u(etmp)) {
 			remove_monster(etmp->ex, etmp->ey);
 			place_monster(etmp->emon, newx, newy);
+			update_monster_region(etmp->emon);
 		} else {
 			u.ux = newx;
 			u.uy = newy;

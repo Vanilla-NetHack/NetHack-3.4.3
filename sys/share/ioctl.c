@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ioctl.c	3.2	90/22/02
+/*	SCCS Id: @(#)ioctl.c	3.3	90/22/02 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -65,7 +65,7 @@ struct termio termio;
 
 #if defined(TIOCGWINSZ) && (defined(BSD) || defined(ULTRIX) || defined(AIX_31) || defined(_BULL_SOURCE) || defined(SVR4))
 #define USE_WIN_IOCTL
-#include "termcap.h"	/* for LI and CO */
+#include "tcap.h"	/* for LI and CO */
 #endif
 
 #ifdef _M_UNIX

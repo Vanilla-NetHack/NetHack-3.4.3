@@ -284,7 +284,7 @@ int select_menu(windid window, int how, menu_item **selected)
 		   being selected and should not be in the list.  If no items
 		   were selected, then selected is NULL'ed out.  How is the
 		   mode of the menu.  Three valid values are PICK_NONE,
-		   PICK_ONE, and PICK_N, meaning: nothing is selectable,
+		   PICK_ONE, and PICK_ANY, meaning: nothing is selectable,
 		   only one thing is selectable, and any number valid items
 		   may selected.  If how is PICK_NONE, this function should
 		   never return anything but 0 or -1.
@@ -449,8 +449,8 @@ and may be replaced completely by other window ports.
 
 VII.  Implementation and Multi-window support
 
-NetHack 3.2 supports multiple window systems in the same binary.  When
-writing a new window-port, you need to follow the following guidelines:
+NetHack 3.2 and higher support multiple window systems in the same binary.
+When writing a new window-port, you need to follow the following guidelines:
 
 1) Pick a unique prefix to identify your window-port.  For example, the tty
    window port uses "tty"; the X11 window-port uses "X11".

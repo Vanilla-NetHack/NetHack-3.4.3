@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)worn.c	3.2	96/08/03	*/
+/*	SCCS Id: @(#)worn.c	3.3	1999/07/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-static void FDECL(m_lose_armor, (struct monst *,struct obj *));
-static void FDECL(m_dowear_type, (struct monst *,long,BOOLEAN_P));
+STATIC_DCL void FDECL(m_lose_armor, (struct monst *,struct obj *));
+STATIC_DCL void FDECL(m_dowear_type, (struct monst *,long,BOOLEAN_P));
 
 const struct worn {
 	long w_mask;
@@ -23,6 +23,8 @@ const struct worn {
 	{ W_RINGL, &uleft },
 	{ W_RINGR, &uright },
 	{ W_WEP, &uwep },
+	{ W_SWAPWEP, &uswapwep },
+	{ W_QUIVER, &uquiver },
 	{ W_AMUL, &uamul },
 	{ W_TOOL, &ublindf },
 	{ W_BALL, &uball },
@@ -30,15 +32,16 @@ const struct worn {
 	{ 0, 0 }
 };
 
-/* this only allows for one blocking item per property;
-   to be general, we'd need a separate uprops[].i_blocked
-   field rather than just a single bit in uprops[].p_flgs */
-#define w_blocks(otmp)	\
-		((otmp->otyp == MUMMY_WRAPPING) ? INVIS :	\
-		 (otmp->otyp == CORNUTHAUM && !Role_is('W')) ? CLAIRVOYANT : 0)
+/* This only allows for one blocking item per property */
+#define w_blocks(o,m) \
+		((o->otyp == MUMMY_WRAPPING && ((m) & W_ARMC)) ? INVIS : \
+		 (o->otyp == CORNUTHAUM && ((m) & W_ARMH) && \
+			!Role_if(PM_WIZARD)) ? CLAIRVOYANT : 0)
 		/* note: monsters don't have clairvoyance, so your role
 		   has no significant effect on their use of w_blocks() */
 
+
+/* Updated to use the extrinsic and blocked fields. */
 void
 setworn(obj, mask)
 register struct obj *obj;
@@ -59,26 +62,38 @@ long mask;
 			impossible("Setworn: mask = %ld.", wp->w_mask);
 		if(oobj) {
 		    oobj->owornmask &= ~wp->w_mask;
-		    /* leave as "x = x <op> y", here and below, for broken
-		     * compilers */
-		    p = objects[oobj->otyp].oc_oprop;
-		    u.uprops[p].p_flgs = u.uprops[p].p_flgs & ~wp->w_mask;
-		    if (oobj->oartifact) set_artifact_intrinsic(oobj, 0, mask);
-		    if ((p = w_blocks(oobj)) != 0)
-			u.uprops[p].p_flgs &= ~I_BLOCKED;
+		    if (wp->w_mask & ~(W_SWAPWEP|W_QUIVER)) {
+			/* leave as "x = x <op> y", here and below, for broken
+			 * compilers */
+			p = objects[oobj->otyp].oc_oprop;
+			u.uprops[p].extrinsic =
+					u.uprops[p].extrinsic & ~wp->w_mask;
+			if ((p = w_blocks(oobj,mask)) != 0)
+			    u.uprops[p].blocked &= ~wp->w_mask;
+			if (oobj->oartifact)
+			    set_artifact_intrinsic(oobj, 0, mask);
+		    }
 		}
 		*(wp->w_obj) = obj;
 		if(obj) {
 		    obj->owornmask |= wp->w_mask;
-		/* prevent getting intrinsics from wielding potions, etc... */
-		/* wp_mask should be same as mask at this point */
-		    if(obj->oclass == WEAPON_CLASS || mask != W_WEP) {
-			p = objects[obj->otyp].oc_oprop;
-			u.uprops[p].p_flgs = u.uprops[p].p_flgs | wp->w_mask;
+		    /* Prevent getting/blocking intrinsics from wielding
+		     * potions, through the quiver, etc.
+		     * Allow weapon-tools, too.
+		     * wp_mask should be same as mask at this point.
+		     */
+		    if (wp->w_mask & ~(W_SWAPWEP|W_QUIVER)) {
+			if (obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
+					    mask != W_WEP) {
+			    p = objects[obj->otyp].oc_oprop;
+			    u.uprops[p].extrinsic =
+					u.uprops[p].extrinsic | wp->w_mask;
+			    if ((p = w_blocks(obj, mask)) != 0)
+				u.uprops[p].blocked |= wp->w_mask;
+			}
+			if (obj->oartifact)
+			    set_artifact_intrinsic(obj, 1, mask);
 		    }
-		    if (obj->oartifact) set_artifact_intrinsic(obj, 1, mask);
-		    if ((p = w_blocks(obj)) != 0)
-			u.uprops[p].p_flgs |= I_BLOCKED;
 		}
 	    }
 	}
@@ -86,6 +101,7 @@ long mask;
 }
 
 /* called e.g. when obj is destroyed */
+/* Updated to use the extrinsic and blocked fields. */
 void
 setnotworn(obj)
 register struct obj *obj;
@@ -98,12 +114,12 @@ register struct obj *obj;
 		if(obj == *(wp->w_obj)) {
 			*(wp->w_obj) = 0;
 			p = objects[obj->otyp].oc_oprop;
-			u.uprops[p].p_flgs = u.uprops[p].p_flgs & ~wp->w_mask;
+			u.uprops[p].extrinsic = u.uprops[p].extrinsic & ~wp->w_mask;
 			obj->owornmask &= ~wp->w_mask;
 			if (obj->oartifact)
 			    set_artifact_intrinsic(obj, 0, wp->w_mask);
-			if ((p = w_blocks(obj)) != 0)
-			    u.uprops[p].p_flgs &= ~I_BLOCKED;
+			if ((p = w_blocks(obj,wp->w_mask)) != 0)
+			    u.uprops[p].blocked &= ~wp->w_mask;
 		}
 	update_inventory();
 }
@@ -120,6 +136,41 @@ struct monst *mon;
 	}
 }
 
+void
+mon_adjust_speed(mon, adjust)
+struct monst *mon;
+int adjust;	/* positive => increase speed, negative => decrease */
+{
+    struct obj *otmp;
+
+    switch (adjust) {
+     case  2:
+	mon->permspeed = MFAST;
+	break;
+     case  1:
+	if (mon->permspeed == MSLOW) mon->permspeed = 0;
+	else mon->permspeed = MFAST;
+	break;
+     case  0:			/* just check for worn speed boots */
+	break;
+     case -1:
+	if (mon->permspeed == MFAST) mon->permspeed = 0;
+	else mon->permspeed = MSLOW;
+	break;
+     case -2:
+	mon->permspeed = MSLOW;
+	break;
+    }
+
+    for (otmp = mon->minvent; otmp; otmp = otmp->nobj)
+	if (otmp->owornmask && objects[otmp->otyp].oc_oprop == FAST)
+	    break;
+    if (otmp)		/* speed boots */
+	mon->mspeed = MFAST;
+    else
+	mon->mspeed = mon->permspeed;
+}
+
 /* armor put on or taken off; might be magical variety */
 void
 update_mon_intrinsics(mon, obj, on)
@@ -127,27 +178,98 @@ struct monst *mon;
 struct obj *obj;
 boolean on;
 {
-	int unseen = !canseemon(mon);
+    int unseen;
+    uchar mask;
+    struct obj *otmp;
+    int which = (int) objects[obj->otyp].oc_oprop;
 
-	switch (objects[obj->otyp].oc_oprop) {
+    if (!which) return;
+
+    unseen = !canseemon(mon);
+    if (on) {
+	switch (which) {
 	 case INVIS:
-	    mon->minvis = on ? !mon->invis_blkd : mon->perminvis;
+	    mon->minvis = !mon->invis_blkd;
+	    break;
+	 case FAST:
+	    mon_adjust_speed(mon, 0);
+	    break;
+	/* properties handled elsewhere */
+	 case ANTIMAGIC:
+	 case REFLECTING:
+	    break;
+	/* properties which have no effect for monsters */
+	 case CLAIRVOYANT:
+	 case STEALTH:
+	 case TELEPAT:
+	    break;
+	/* properties which should have an effect but aren't implemented */
+	 case LEVITATION:
+	 case WWALKING:
+	    break;
+	/* properties which maybe should have an effect but don't */
+	 case DISPLACED:
+	 case FUMBLING:
+	 case JUMPING:
+	 case PROTECTION:
+	    break;
+	 default:
+	    if (which <= 8) {	/* 1 thru 8 correspond to MR_xxx mask values */
+		/* FIRE,COLD,SLEEP,DISINT,SHOCK,POISON,ACID,STONE */
+		mask = (uchar) (1 << (which - 1));
+		mon->mintrinsics |= (unsigned short) mask;
+	    }
+	    break;
+	}
+    } else {	    /* off */
+	switch (which) {
+	 case INVIS:
+	    mon->minvis = mon->perminvis;
+	    break;
+	 case FAST:
+	    mon_adjust_speed(mon, 0);
+	    break;
+	 case FIRE_RES:
+	 case COLD_RES:
+	 case SLEEP_RES:
+	 case DISINT_RES:
+	 case SHOCK_RES:
+	 case POISON_RES:
+	 case ACID_RES:
+	 case STONE_RES:
+	    mask = (uchar) (1 << (which - 1));
+	    /* If the monster doesn't have this resistance intrinsically,
+	       check whether any other worn item confers it.  Note that
+	       we don't currently check for anything conferred via simply
+	       carrying an object. */
+	    if (!(mon->data->mresists & mask)) {
+		for (otmp = mon->minvent; otmp; otmp = otmp->nobj)
+		    if (otmp->owornmask &&
+			    (int) objects[otmp->otyp].oc_oprop == which)
+			break;
+		if (!otmp)
+		    mon->mintrinsics &= ~((unsigned short) mask);
+	    }
 	    break;
 	 default:
 	    break;
 	}
-	switch (w_blocks(obj)) {
-	 case INVIS:
-	    mon->invis_blkd = on ? 1 : 0;
-	    mon->minvis = on ? 0 : mon->perminvis;
-	    break;
-	 default:
-	    break;
-	}
+    }
+    /* obj->owornmask has been cleared by this point, so we can't use it.
+       However, since monsters don't wield armor, we don't have to guard
+       against that and can get away with a blanket worn-mask value. */
+    switch (w_blocks(obj,~0L)) {
+     case INVIS:
+	mon->invis_blkd = on ? 1 : 0;
+	mon->minvis = on ? 0 : mon->perminvis;
+	break;
+     default:
+	break;
+    }
 
-	/* if couldn't see it but now can, or vice versa, update display */
-	if (unseen ^ !canseemon(mon))
-	    newsym(mon->mx, mon->my);
+    /* if couldn't see it but now can, or vice versa, update display */
+    if (unseen ^ !canseemon(mon))
+	newsym(mon->mx, mon->my);
 }
 
 int
@@ -204,7 +326,7 @@ boolean creation;
 #endif
 	/* treating small as a special case allows
 	   hobbits, gnomes, and kobolds to wear cloaks */
-	if (!cantweararm(mon->data) || mon->data->msize != MZ_SMALL)
+	if (!cantweararm(mon->data) || mon->data->msize == MZ_SMALL)
 	    m_dowear_type(mon, W_ARMC, creation);
 	m_dowear_type(mon, W_ARMH, creation);
 	if (!MON_WEP(mon) || !bimanual(MON_WEP(mon)))
@@ -216,7 +338,7 @@ boolean creation;
 	    m_dowear_type(mon, W_ARM, creation);
 }
 
-static void
+STATIC_OVL void
 m_dowear_type(mon, flag, creation)
 struct monst *mon;
 long flag;
@@ -326,7 +448,7 @@ long flag;
 }
 
 /* remove an item of armor and then drop it */
-static void
+STATIC_OVL void
 m_lose_armor(mon, obj)
 struct monst *mon;
 struct obj *obj;
@@ -385,7 +507,7 @@ struct monst *mon;
 	    if ((otmp = which_armor(mon, W_ARM)) != 0) {
 		if (vis)
 		    pline("%s armor falls around %s!",
-			         s_suffix(Monnam(mon)), pronoun);
+				 s_suffix(Monnam(mon)), pronoun);
 		else
 		    You_hear("a thud.");
 		m_lose_armor(mon, otmp);
@@ -394,7 +516,7 @@ struct monst *mon;
 		if (vis)
 		    if (is_whirly(mon->data))
 			pline("%s cloak falls, unsupported!",
-			             s_suffix(Monnam(mon)));
+				     s_suffix(Monnam(mon)));
 		    else
 			pline("%s shrinks out of %s cloak!", Monnam(mon),
 								ppronoun);
@@ -444,7 +566,7 @@ struct monst *mon;
 		if (vis) {
 		    if (is_whirly(mon->data))
 			pline("%s boots fall away!",
-			               s_suffix(Monnam(mon)));
+				       s_suffix(Monnam(mon)));
 		    else pline("%s boots %s off %s feet!",
 			s_suffix(Monnam(mon)),
 			verysmall(mdat) ? "slide" : "are pushed", ppronoun);
@@ -452,6 +574,31 @@ struct monst *mon;
 		m_lose_armor(mon, otmp);
 	    }
 	}
+#ifdef STEED
+	if (!can_saddle(mon)) {
+	    if ((otmp = which_armor(mon, W_SADDLE)) != 0) {
+		m_lose_armor(mon, otmp);
+		if (vis)
+		    pline("%s saddle falls off.", s_suffix(Monnam(mon)));
+	    }
+	    if (mon == u.usteed)
+		goto noride;
+	} else if (mon == u.usteed && !can_ride(mon)) {
+	noride:
+	    You("can no longer ride %s.", mon_nam(mon));
+	    if (touch_petrifies(u.usteed->data) &&
+			!Stone_resistance && rnl(3)) {
+		char buf[BUFSZ];
+
+		You("touch %s.", mon_nam(u.usteed));
+		Sprintf(buf, "falling off %s",
+				an(u.usteed->data->mname));
+		instapetrify(buf);
+	    }
+	    dismount_steed(DISMOUNT_FELL);
+	}
+#endif
+	return;
 }
 
 /*worn.c*/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcsys.c	3.2	96/10/21
+/*	SCCS Id: @(#)pcsys.c	3.3	1999/12/10
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -35,6 +35,7 @@ void FDECL(nethack_exit,(int));
 #endif
 static void NDECL(msexit);
 
+
 #ifdef MOVERLAY
 extern void __far __cdecl _movepause( void );
 extern void __far __cdecl _moveresume( void );
@@ -44,9 +45,9 @@ extern unsigned short __far __cdecl _movefpaused;
 #define     __MOVE_PAUSE_CACHE	  4   /* Represents the cache memory */
 #endif /* MOVERLAY */
 
-static boolean NDECL(record_exists);
+STATIC_DCL boolean NDECL(record_exists);
 #ifndef TOS
-static boolean NDECL(comspec_exists);
+STATIC_DCL boolean NDECL(comspec_exists);
 #endif
 
 #ifdef WIN32CON
@@ -78,11 +79,16 @@ dosh()
 	extern char orgdir[];
 	char *comspec;
 	int spawnstat;
-
+#if defined(MSDOS) && defined(NO_TERMS)
+	int grmode;
+#endif
 	if (comspec = getcomspec()) {
 #  ifndef TOS	/* TOS has a variety of shells */
 		suspend_nhwindows("To return to NetHack, enter \"exit\" at the system prompt.\n");
 #  else
+#   if defined(MSDOS) && defined(NO_TERMS)
+		grmode = iflags.grmode;
+#   endif
 		suspend_nhwindows((char *)0);
 #  endif /* TOS */
 		chdirx(orgdir, 0);
@@ -112,6 +118,9 @@ dosh()
 #  endif
 		chdirx(hackdir, 0);
 		get_scr_size(); /* maybe the screen mode changed (TH) */
+#  if defined(MSDOS) && defined(NO_TERMS)
+		if (grmode) gr_init();
+#  endif
 		resume_nhwindows();
 	} else
 		pline("Can't find %s.",COMSPEC);
@@ -291,7 +300,7 @@ int start;
 # endif /* MFLOPPY */
 
 /* Return 1 if the record file was found */
-static boolean
+STATIC_OVL boolean
 record_exists()
 {
 	FILE *fp;
@@ -308,7 +317,7 @@ record_exists()
 #define comspec_exists() 1
 # else
 /* Return 1 if the comspec was found */
-static boolean
+STATIC_OVL boolean
 comspec_exists()
 {
 	int fd;
@@ -382,40 +391,19 @@ const char *str;
 	return;
 }
 
-#ifndef WIN32
 void
 msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
 	VA_INIT(fmt, const char *);
 # if defined(MSDOS)
-	if (iflags.grmode) {
-		char buf[BUFSZ];
-
-		Vsprintf(buf,fmt, VA_ARGS);
-		xputs(buf);
-	} else
+	if (iflags.grmode)
+		gr_finish();
 # endif
-	{
-	  Vprintf(fmt, VA_ARGS);
-	  flushout();
-	}
+	Vprintf(fmt, VA_ARGS);
+	flushout();
 	VA_END();
 	return;
 }
-#else
-void
-msmsg VA_DECL(const char *, fmt)
-	VA_START(fmt);
-	VA_INIT(fmt, const char *);
-	{
-	    char buf[BUFSZ];
-
-	    Vsprintf(buf,fmt, VA_ARGS);
-	    xputs(buf);
-	}
-}
-#endif
-
 
 /*
  * Follow the PATH, trying to fopen the file.
@@ -472,6 +460,10 @@ void nethack_exit(code)
 int code;
 {
 	msexit();
+#ifdef MTHREAD_VIEW
+	if (iflags.mthreaded) nh_thread_exit(code);  /* no return from this */
+	else
+#endif
 	exit(code);
 }
 
@@ -519,4 +511,25 @@ static void msexit()
 #endif
 	return;
 }
+#ifdef WIN32
+/*
+ * This is a kludge.  Just before the release of 3.3.0 the latest
+ * version of a popular MAPI mail product was found to exhibit
+ * a strange result where the current directory was changed out
+ * from under NetHack resulting in a failure of all subsequent
+ * file operations in NetHack.  This routine is called prior
+ * to all file open/renames/deletes in file.c.
+ *
+ * A more elegant solution will be sought after 3.3.0 is released.
+ */
+void dircheck()
+{
+	char dirbuf[BUFSZ];
+	dirbuf[0] = '\0';
+	if (getcwd(dirbuf, sizeof dirbuf) != (char *)0)
+		/* pline("%s,%s",dirbuf,hackdir); */
+		if (strcmp(dirbuf,hackdir) != 0)
+			chdir(hackdir);		/* chdir, not chdirx */
+}
+#endif
 #endif /* MICRO || WIN32 || OS2 */

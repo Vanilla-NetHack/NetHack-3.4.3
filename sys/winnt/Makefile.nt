@@ -1,10 +1,14 @@
-#       SCCS Id: @(#)Makefile.nt       3.2     96/10/30
-#       Copyright (c) NetHack PC Development Team 1993, 1994, 1995, 1996
+#       SCCS Id: @(#)Makefile.nt       3.3     99/10/09
+#       Copyright (c) NetHack PC Development Team 1993, 1994, 1995, 1996,1999
 #
-#       NetHack 3.2 Makefile for MS Visual C++ V4.x and MS NMAKE
+#       NetHack 3.2 Makefile for MS Visual C++ V4.x and above and MS NMAKE
 #  
 #       Win32 Compilers Tested:
 #                              - Microsoft 32 bit Visual C++ V4.x
+#                              - Microsoft 32 bit Visual C++ V6.0 SP3
+#
+#	This is used for building a TTY version of NetHack using WIN32 Console
+#	I/O routines only.
 #
 #       In addition to your C compiler,
 #
@@ -31,7 +35,7 @@ APPVER=4.0
 #  to compilation.
 
 GAME    = NetHack                # Game Name
-GAMEDIR = \games\nethackn      # Game directory
+GAMEDIR = \games\nethackntty      # Game directory
 
 #
 #  Source directories.    Makedefs hardcodes these, don't change them.
@@ -115,8 +119,8 @@ RANDOM	= $(OBJ)\random.o
 #  debug capability in the object files, or in the NetHack executable.
 #  Comment them if you want debug capability.
 
-cdebug =
-linkdebug =
+#cdebug =
+#linkdebug =
 
 #
 # Compiler and Linker flags
@@ -131,22 +135,18 @@ PRECOMPHEAD = N			# set to Y if you want to use precomp. headers
 # Nothing below this line should have to be changed.
 #
 
-RESFILE = $(GAME).res
-
-#Do not uncomment these for 3.2.1
-#TILEUTIL  = $(UTIL)\tile2bmp.exe
-#TILEBMP   = $(OBJ)\nhtiles.bmp
+#Do not uncomment these for 3.3.0
 #TILEGAME  = $(OBJ)\tile.o
 #TILEDEF   = -DTILES
 #TILEHDR   =
 #SOUND = $(OBJ)\ntsound.o
 
-SOUND =
-TILEUTIL  =
-TILEBMP   =
-TILEGAME  =
-TILEDEF   =   
-TILEHDR   =
+#SOUND =
+#TILEUTIL  =
+#TILEBMP   =
+#TILEGAME  =
+#TILEDEF   =   
+#TILEHDR   =
 
 USE_DLB = Y
 
@@ -156,12 +156,20 @@ DLBFLG = -DDLB
 DLBFLG =
 ! ENDIF
 
+# You can actually build a set of tiles with this makefile
+# even though they are not used. 
+# Use 'nmake o\nhtiles.bmp'
+#
+TILEUTIL  = $(UTIL)\tile2bmp.exe
+TILEBMP   = $(OBJ)\nhtiles.bmp
+
 #
 # - Util builds
 #
 
-CFLAGSU	= -c $(cflags) $(cvars) -I$(INCL) -nologo $(cdebug) $(TILEDEF) $(DLBFLG)
-LFLAGSU	= $(linkdebug) $(conflags)
+CFLAGSU	= -c $(cflags) $(cvarsmt) -I$(INCL) -nologo $(cdebug) \
+		$(TILEDEF) $(DLBFLG)
+LFLAGSU	= $(linkdebug) $(conflags) $(conlibsmt)
 
 #
 # - Game build
@@ -169,9 +177,9 @@ LFLAGSU	= $(linkdebug) $(conflags)
 #
 
 CFLAGSG	= $(CFLAGSU)
-#LFLAGSG	= $(guiflags) $(linkdebug) -IGNORE:505 $(guilibs)
-LFLAGSG	= $(conflags) $(linkdebug) -IGNORE:505 $(conlibs)
-
+NHLFLAGS = /NODEFAULTLIB /INCREMENTAL:NO /PDB:"$(GAME).PDB" /RELEASE /NOLOGO
+#LFLAGSG = $(guiflags) $(linkdebug) -IGNORE:505 $(guilibsmt) comctl32.lib
+LFLAGSG	= $(NHLFLAGS) /MACHINE:$(CPU) /MAP:"$(GAME).MAP" $(linkdebug) -IGNORE:505 $(conlibsmt) 
 
 GAMEFILE = $(GAMEDIR)\$(GAME).exe # whole thing
 
@@ -268,14 +276,6 @@ default : $(GAMEFILE)
 	@$(cc) $(CFLAGSG) $(PCHUSE) -Fo$@  $<
 
 #
-# Rules for files in win\win32
-#
-
-{$(WIN32)}.c{$(OBJ)}.o:
-	@$(cc) $(CFLAGSG) $(PCHUSE) -Fo$@  $<
-
-
-#
 # NETHACK OBJECTS
 # 
 # This section creates shorthand macros for many objects
@@ -292,8 +292,6 @@ DEFFILE = $(NTSYS)\$(GAME).def
 O  = $(OBJ)^\
 
 U  = $(UTIL)^\
-
-W  = $(WIN32)^\
 
 #
 # Utility Objects.
@@ -317,16 +315,16 @@ DGNCOMPOBJS    = $(O)dgn_yacc.o	$(O)dgn_$(LEX).o $(O)dgn_main.o \
 RECOVOBJS      = $(O)recover.o
 
 #
-# Leave these commented for 3.2.1
+# These are not invoked during a normal game build in 3.3.0
 #
-#TEXT_IO        = $(O)tiletext.o	$(O)tiletxt.o	$(O)drawing.o \
-#		 $(O)decl.o	$(O)monst.o	$(O)objects.o
-#
-#GIFREADERS     = $(O)gifread.o	$(O)alloc.o $(O)panic.o
-#
-#PPMWRITERS     = $(O)ppmwrite.o $(O)alloc.o $(O)panic.o
-#
-#TILEFILES      = $(WSHR)\monsters.txt $(WSHR)\objects.txt $(WSHR)\other.txt
+TEXT_IO        = $(O)tiletext.o	$(O)tiletxt.o	$(O)drawing.o \
+		 $(O)decl.o	$(O)monst.o	$(O)objects.o
+
+GIFREADERS     = $(O)gifread.o	$(O)alloc.o $(O)panic.o
+
+PPMWRITERS     = $(O)ppmwrite.o $(O)alloc.o $(O)panic.o
+
+TILEFILES      = $(WSHR)\monsters.txt $(WSHR)\objects.txt $(WSHR)\other.txt
 
 #
 #  Object files for the game itself.
@@ -349,10 +347,13 @@ VOBJ14 = $(O)mplayer.o  $(O)mthrowu.o  $(O)muse.o     $(O)music.o
 VOBJ15 = $(O)o_init.o   $(O)objects.o  $(O)objnam.o   $(O)options.o
 VOBJ16 = $(O)pickup.o   $(O)pline.o    $(O)polyself.o $(O)potion.o
 VOBJ17 = $(O)quest.o    $(O)questpgr.o $(O)pager.o    $(O)pray.o
-VOBJ18 = $(O)priest.o   $(O)read.o     $(O)rect.o     $(O)restore.o
-VOBJ19 = $(O)rip.o      $(O)rnd.o      $(O)rumors.o   $(O)save.o
+VOBJ18 = $(O)priest.o   $(O)read.o     $(O)rect.o     $(O)region.o \
+	$(O)restore.o
+VOBJ19 = $(O)rip.o      $(O)rnd.o      $(O)role.o     $(O)rumors.o \
+	$(O)save.o
 VOBJ20 = $(O)shk.o      $(O)shknam.o   $(O)sit.o      $(O)sp_lev.o
-VOBJ21 = $(O)spell.o    $(O)steal.o    $(O)timeout.o  $(O)sounds.o
+VOBJ21 = $(O)spell.o    $(O)steal.o    $(O)steed.o    $(O)timeout.o \
+	$(O)sounds.o
 VOBJ22 = $(O)topten.o   $(O)track.o    $(O)trap.o     $(O)u_init.o
 VOBJ23 = $(O)uhitm.o    $(O)vault.o    $(O)vision.o   $(O)vis_tab.o
 VOBJ24 = $(O)weapon.o   $(O)were.o     $(O)wield.o    $(O)windows.o
@@ -363,10 +364,8 @@ DLBOBJ = $(O)dlb.o
 
 TTYOBJ = $(O)topl.o     $(O)getline.o  $(O)wintty.o
 
-#WOBJ   = $(O)nhprocs.o  $(O)winmain.o  $(O)win32msg.o
-WOBJ   =
-
-SOBJ   = $(O)winnt.o    $(O)sys.o      $(O)nttty.o    $(O)unix.o     $(SOUND)
+SOBJ   = $(O)winnt.o    $(O)sys.o      $(O)nttty.o    $(O)unix.o  \
+	   $(SOUND) 	$(O)mapimail.o $(O)nhlan.o
 
 OBJS   = $(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) \
          $(VOBJ06) $(VOBJ07) $(VOBJ08) $(VOBJ09) $(VOBJ10) \
@@ -404,7 +403,7 @@ HACK_H      = $(CONFIG_H) $(INCL)\dungeon.h $(INCL)\align.h $(INCL)\monsym.h \
               $(INCL)\wintype.h $(INCL)\engrave.h $(INCL)\rect.h \
               $(INCL)\winprocs.h $(INCL)\trampoli.h \
               $(INCL)\align.h 
-TILE_H      = $(INCL)\tile.h $(TILEHDR)
+TILE_H      = ..\win\share\tile.h
 ALIGN_H     = $(INCL)\align.h
 ARTIFACT_H  = $(INCL)\artifact.h
 ARTILIST_H  = $(INCL)\artilist.h
@@ -422,14 +421,16 @@ LEV_COMP_H  = $(INCL)\lev_comp.h
 MAIL_H      = $(INCL)\mail.h
 MFNDPOS_H   = $(INCL)\mfndpos.h
 MONSYM_H    = $(INCL)\monsym.h
+NHLAN_H     = $(INCL)\nhlan.h
 OBJ_H       = $(INCL)\obj.h
 OBJCLASS_H  = $(INCL)\objclass.h
 OBJECTS_H   = $(INCL)\objects.h
 PROP_H      = $(INCL)\prop.h
 QTEXT_H     = $(INCL)\qtext.h
 QUEST_H     = $(INCL)\quest.h
+SKILLS_H    = $(INCL)\skills.h
 SP_LEV_H    = $(INCL)\sp_lev.h
-TERMCAP_H   = $(INCL)\termcap.h
+TERMCAP_H   = $(INCL)\tcap.h
 VAULT_H     = $(INCL)\vault.h
 VIS_TAB_H   = $(INCL)\vis_tab.h
 WINTTY_H    = $(INCL)\wintty.h
@@ -454,7 +455,7 @@ GAMEFILE = $(GAMEDIR)\$(GAME).exe
 #  The main target.
 #
 
-$(GAME): pchmsg $(O)obj.tag $(U)utility.tag $(TILEBMP) envchk $(GAMEFILE)
+$(GAME): pchmsg $(O)obj.tag $(U)utility.tag envchk $(GAMEFILE)
 	@echo $(GAME) is up to date.
 
 #
@@ -480,9 +481,11 @@ install.tag: 	$(DAT)\data	$(DAT)\rumors	 $(DAT)\dungeon \
 	if exist $(DOC)\guidebook.txt copy $(DOC)\guidebook.txt $(GAMEDIR)\Guidebook.txt
 	if exist $(DOC)\nethack.txt copy $(DOC)\nethack.txt $(GAMEDIR)\NetHack.txt
 	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)\recover.txt
-	copy $(NTSYS)\winnt.cnf   $(GAMEDIR)\NetHack.cnf
+	@if exist $(SRC)\$(GAME).PDB copy $(SRC)\$(GAME).pdb $(GAMEDIR)\$(GAME).pdb
+	@if exist $(SRC)\$(GAME).PDB echo NOTE: You may want to remove $(GAMEDIR)\$(GAME).pdb to conserve space
+	copy $(NTSYS)\winnt.cnf   $(GAMEDIR)\defaults.nh
 	copy $(U)recover.exe  $(GAMEDIR)
-! IF ("$(TILEBMP)"!="")
+! IF ("$(TILEDEF)"!="")
         if exist $(TILEBMP) copy $(TILEBMP) $(GAMEDIR)
 ! ENDIF
 	echo install done > $@
@@ -501,10 +504,10 @@ $(DAT)\sp_lev.tag: $(U)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des   \
 	$(DAT)\medusa.des  $(DAT)\oracle.des   $(DAT)\tower.des  \
 	$(DAT)\yendor.des  $(DAT)\arch.des     $(DAT)\barb.des   \
-	$(DAT)\caveman.des $(DAT)\elf.des      $(DAT)\healer.des \
-	$(DAT)\knight.des  $(DAT)\priest.des   $(DAT)\rogue.des  \
-	$(DAT)\samurai.des $(DAT)\tourist.des  $(DAT)\valkyrie.des \
-	$(DAT)\wizard.des
+	$(DAT)\caveman.des $(DAT)\healer.des   $(DAT)\knight.des \
+	$(DAT)\monk.des    $(DAT)\priest.des   $(DAT)\ranger.des \
+	$(DAT)\rogue.des   $(DAT)\samurai.des  $(DAT)\sokoban.des \
+	$(DAT)\tourist.des $(DAT)\valkyrie.des $(DAT)\wizard.des
 	cd $(DAT)
 	$(U)lev_comp bigroom.des
 	$(U)lev_comp castle.des
@@ -514,15 +517,17 @@ $(DAT)\sp_lev.tag: $(U)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(U)lev_comp mines.des
 	$(U)lev_comp medusa.des
 	$(U)lev_comp oracle.des
+	$(U)lev_comp sokoban.des
 	$(U)lev_comp tower.des
 	$(U)lev_comp yendor.des
 	$(U)lev_comp arch.des
 	$(U)lev_comp barb.des
 	$(U)lev_comp caveman.des
-	$(U)lev_comp elf.des
 	$(U)lev_comp healer.des
 	$(U)lev_comp knight.des
+	$(U)lev_comp monk.des
 	$(U)lev_comp priest.des
+	$(U)lev_comp ranger.des
 	$(U)lev_comp rogue.des
 	$(U)lev_comp samurai.des
 	$(U)lev_comp tourist.des
@@ -570,23 +575,15 @@ tileutil: $(U)gif2txt.exe $(U)txt2ppm.exe
 #  The main target.
 #
 
-$(GAMEFILE) :  $(RESFILE) $(ALLOBJ)
+$(GAMEFILE) :  $(ALLOBJ)
 	@echo Linking....
 	$(link) $(LFLAGSG) -out:$@ @<<$(GAME).lnk
 		$(ALLOBJ:^	=^
 		) 
 		$(PCHOBJ)
-		$(RESFILE)
-		$(conlibs)
 <<
 	@if exist install.tag del install.tag
 	@if exist $(GAMEDIR)\$(GAME).bak del $(GAMEDIR)\$(GAME).bak
-
-$(GAME).res : $(GAME).rc $(GAME)_.ico $(WIN32API_H) $(INCL)\nhwin32.h
-	rc -r $(GAME).rc
-
-$(GAME).rc : $(WIN32)\nhwin32.rc
-	@copy $(WIN32)\nhwin32.rc $@
 
 $(GAME)_.ico : $(NTSYS)\$(GAME).ico
 	@copy $(NTSYS)\$(GAME).ico $@
@@ -596,12 +593,12 @@ $(GAME)_.ico : $(NTSYS)\$(GAME).ico
 #
 
 $(U)makedefs.exe:	$(MAKEOBJS)
-	$(link) $(LFLAGSU) -out:$@ $(MAKEOBJS) $(conlibs)
+	$(link) $(LFLAGSU) -out:$@ $(MAKEOBJS)
 
 $(O)makedefs.o:  $(CONFIG_H)	$(PERMONST_H)   $(OBJCLASS_H) \
 		 $(MONSYM_H)    $(QTEXT_H)	$(PATCHLEVEL_H) \
 		 $(U)makedefs.c
-	@$(cc) $(CFLAGSU) $(NTSUB) -Fo$@ $(U)makedefs.c
+	$(cc) $(CFLAGSU) $(NTSUB) -Fo$@ $(U)makedefs.c
 
 #
 #  date.h should be remade every time any of the source or include
@@ -639,7 +636,6 @@ $(U)lev_comp.exe:  $(SPLEVOBJS)
  		$(SPLEVOBJS:^	=^
 		)
 		$(PCHOBJ)
-		$(conlibs)
 <<
 
 $(O)lev_yacc.o:  $(HACK_H)   $(SP_LEV_H) $(INCL)\lev_comp.h $(U)lev_yacc.c
@@ -665,7 +661,7 @@ $(U)lev_yacc.c $(INCL)\lev_comp.h : $(U)lev_comp.y
 !	ELSE
 	   @echo $(U)lev_comp.y has changed.
 	   @echo To update $(U)lev_yacc.c and $(INCL)\lev_comp.h run $(YACC).
-	   @echo ------
+	   @echo ---
 	   @echo For now, we will copy the prebuilt lev_yacc.c and 
 	   @echo lev_comp.h from $(SYS) into $(UTIL) and use them.
 	   @copy $(SYS)\lev_yacc.c $(U)lev_yacc.c >nul
@@ -683,7 +679,7 @@ $(U)lev_$(LEX).c:  $(U)lev_comp.l
 	   chdir $(SRC)
 !	ELSE
 	   @echo $(U)lev_comp.l has changed. To update $@ run $(LEX).
-	   @echo -----
+	   @echo ---
 	   @echo For now, we will copy the prebuilt lev_lex.c 
 	   @echo from $(SYS) into $(UTIL) and use it.
 	   @copy $(SYS)\lev_lex.c $@ >nul
@@ -700,7 +696,6 @@ $(U)dgn_comp.exe: $(DGNCOMPOBJS)
 		$(DGNCOMPOBJS:^	=^
 		)
 		$(PCHOBJ)
-		$(conlibs)
 <<
 
 $(O)dgn_yacc.o:	$(HACK_H)   $(DGN_FILE_H) $(INCL)\dgn_comp.h $(U)dgn_yacc.c
@@ -725,7 +720,7 @@ $(U)dgn_yacc.c $(INCL)\dgn_comp.h : $(U)dgn_comp.y
 !	ELSE
 	   @echo $(U)dgn_comp.y has changed. To update dgn_yacc.c and 
 	   @echo $(INCL)\dgn_comp.h run $(YACC).
-	   @echo ----
+	   @echo ---
 	   @echo For now, we will copy the prebuilt $(U)dgn_yacc.c and 
 	   @echo dgn_comp.h from $(SYS) into $(UTIL) and use them.
 	   @copy $(SYS)\dgn_yacc.c $(U)dgn_yacc.c >nul
@@ -763,9 +758,9 @@ envchk:
 	   @echo CL=$(CL)
 !	ENDIF
 !	IF "$(TILEGAME)"!=""
-	   @echo -------------------------------------------
+	   @echo ----
 	   @echo NOTE: This build will include tile support.
-	   @echo -------------------------------------------
+	   @echo ----
 !	ENDIF
 
 #
@@ -776,30 +771,15 @@ envchk:
 # Header files NOT distributed in ..\include
 #
 
-$(INCL)\tile.h: $(WSHR)\tile.h
-	copy $(WSHR)\tile.h $@
-
-$(INCL)\nhwin32.h: $(WIN32)\nhwin32.h
-	copy $(WIN32)\nhwin32.h $@
-
 $(INCL)\win32api.h: $(NTSYS)\win32api.h
 	copy $(NTSYS)\win32api.h $@
-
-#$(INCL)\ntwarn.h: $(NTSYS)\ntwarn.h
-#	copy $(NTSYS)\ntwarn.h $@
-
-#$(INCL)\pctiles.h: $(NTSYS)\pctiles.h
-#	copy $(NTSYS)\pctiles.h $@
-
-#$(INCL)\pcvideo.h: $(NTSYS)\pcvideo.h
-#	copy $(NTSYS)\pcvideo.h $@
 
 #
 #  Recover Utility
 #
 
 $(U)recover.exe: $(RECOVOBJS)
-	$(link) $(LFLAGSU) -out:$@ $(RECOVOBJS) $(conlibs)
+	$(link) $(LFLAGSU) -out:$@ $(RECOVOBJS)
 
 #
 #  Tile Mapping
@@ -810,7 +790,7 @@ $(SRC)\tile.c: $(U)tilemap.exe
 	@$(U)tilemap
 
 $(U)tilemap.exe: $(O)tilemap.o
-	$(link) $(LFLAGSU) -out:$@ $(O)tilemap.o $(conlibs)
+	$(link) $(LFLAGSU) -out:$@ $(O)tilemap.o
 
 $(O)tilemap.o:  $(WSHR)\tilemap.c $(HACK_H)
 	@$(cc) $(CFLAGSU) $(NTSUB) -Fo$@ $(WSHR)\tilemap.c
@@ -832,7 +812,6 @@ $(U)gif2txt.exe: $(GIFREADERS) $(TEXT_IO)
 		$(TEXT_IO:^	=^
 		)
 		$(PCHOBJ)
-		$(conlibs)
 <<
 
 $(U)txt2ppm.exe: $(PPMWRITERS) $(TEXT_IO)
@@ -843,14 +822,11 @@ $(U)txt2ppm.exe: $(PPMWRITERS) $(TEXT_IO)
 		$(TEXT_IO:^	=^
 		)
 		$(PCHOBJ)
-		$(conlibs)
 <<
 
 #
 #  Required for tile support
 #
-
-! IF ("$(TILEBMP)"!="")
 
 $(TILEBMP): $(TILEUTIL) $(TILEFILES)
 	@echo Creating binary tile files (this may take some time)
@@ -863,13 +839,11 @@ $(U)tile2bmp.exe: $(O)tile2bmp.o $(TEXT_IO)
 		$(TEXT_IO:^  =^
 		)
 		$(PCHOBJ)
-		$(conlibs)
 <<
 
 $(O)tile2bmp.o:  $(WIN32)\tile2bmp.c $(HACK_H) $(TILE_H) $(WIN32API_H)
-	@$(cc) $(CFLAGSG) $(NTSUB) /DPACKED_FILE /Fo$@ $(WIN32)\tile2bmp.c
+	@$(cc) $(CFLAGSG) -I$(WSHR) $(NTSUB) /DPACKED_FILE /Fo$@ $(WIN32)\tile2bmp.c
 
-! ENDIF
 #
 # DLB stuff
 #
@@ -901,7 +875,6 @@ $(U)dlb_main.exe: $(DLBOBJ) $(O)dlb.o
 		$(O)dlb.o
 		$(O)alloc.o
 		$(O)panic.o
-		$(conlibs)
 <<
 
 $(O)dlb.o:	$(O)dlb_main.o $(O)alloc.o $(O)panic.o $(DLB_H)
@@ -926,10 +899,10 @@ spotless: clean
 	if exist $(U)*.map         del $(U)*.map
 	if exist $(DAT)\data       del $(DAT)\data
 	if exist $(DAT)\rumors     del $(DAT)\rumors
-	if exist $(DAT)\?-fill?.lev	del $(DAT)\?-fill?.lev
-	if exist $(DAT)\?-goal.lev	del $(DAT)\?-goal.lev
-	if exist $(DAT)\?-locate.lev	del $(DAT)\?-locate.lev
-	if exist $(DAT)\?-start.lev	del $(DAT)\?-start.lev
+	if exist $(DAT)\???-fil?.lev	del $(DAT)\???-fil?.lev
+	if exist $(DAT)\???-goal.lev	del $(DAT)\???-goal.lev
+	if exist $(DAT)\???-loca.lev	del $(DAT)\???-loca.lev
+	if exist $(DAT)\???-strt.lev	del $(DAT)\???-strt.lev
 	if exist $(DAT)\air.lev		del $(DAT)\air.lev
 	if exist $(DAT)\asmodeus.lev	del $(DAT)\asmodeus.lev
 	if exist $(DAT)\astral.lev	del $(DAT)\astral.lev
@@ -953,6 +926,7 @@ spotless: clean
 	if exist $(DAT)\rumors		del $(DAT)\rumors
 	if exist $(DAT)\quest.dat	del $(DAT)\quest.dat
 	if exist $(DAT)\sanctum.lev	del $(DAT)\sanctum.lev
+	if exist $(DAT)\soko?-?.lev	del $(DAT)\soko?-?.lev
 	if exist $(DAT)\tower?.lev	del $(DAT)\tower?.lev
 	if exist $(DAT)\valley.lev	del $(DAT)\valley.lev
 	if exist $(DAT)\water.lev	del $(DAT)\water.lev
@@ -970,7 +944,7 @@ clean:
 	if exist $(U)dgn_comp.exe  del $(U)dgn_comp.exe
 	if exist $(SRC)\*.lnk      del $(SRC)\*.lnk
 	if exist $(SRC)\*.map      del $(SRC)\*.map
-! IF ("$(TILEBMP)"!="")
+! IF ("$(TILEDEF)"!="")
 	if exist $(TILEBMP)        del $(TILEBMP)
 ! ENDIF
 
@@ -1022,7 +996,7 @@ $(DAT)\dungeon: $(U)utility.tag  $(DAT)\dungeon.def
 $(O)panic.o:   $(U)panic.c $(CONFIG_H)
 	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@ $(U)panic.c
 
-$(O)recover.o: $(CONFIG_H) $(U)recover.c
+$(O)recover.o: $(CONFIG_H) $(U)recover.c $(INCL)\win32api.h
 	@$(cc) $(CFLAGSU) $(NTSUB) -Fo$@ $(U)recover.c
 
 #
@@ -1032,14 +1006,14 @@ $(O)recover.o: $(CONFIG_H) $(U)recover.c
 $(O)tiletxt.o:  $(WSHR)\tilemap.c $(HACK_H)
 	@$(cc) $(CFLAGSG) $(NTSUB) /DTILETEXT -Fo$@ $(WSHR)\tilemap.c
 
-$(O)gifread.o:  $(WSHR)\gifread.c  $(CONFIG_H) $(INCL)\tile.h
-	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@ $(WSHR)\gifread.c
+$(O)gifread.o:  $(WSHR)\gifread.c  $(CONFIG_H) $(TILE_H)
+	@$(cc) $(CFLAGSG) -I$(WSHR) $(NTSUB) -Fo$@ $(WSHR)\gifread.c
 
-$(O)ppmwrite.o: $(WSHR)\ppmwrite.c $(CONFIG_H) $(INCL)\tile.h
-	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@ $(WSHR)\ppmwrite.c
+$(O)ppmwrite.o: $(WSHR)\ppmwrite.c $(CONFIG_H) $(TILE_H)
+	@$(cc) $(CFLAGSG) -I$(WSHR) $(NTSUB) -Fo$@ $(WSHR)\ppmwrite.c
 
-$(O)tiletext.o:  $(WSHR)\tiletext.c  $(CONFIG_H) $(INCL)\tile.h
-	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@ $(WSHR)\tiletext.c
+$(O)tiletext.o:  $(WSHR)\tiletext.c  $(CONFIG_H) $(TILE_H)
+	@$(cc) $(CFLAGSG) -I$(WSHR) $(NTSUB) -Fo$@ $(WSHR)\tiletext.c
 
 #
 #  from win\tty
@@ -1056,20 +1030,6 @@ $(O)termcap.o:  $(PCH) $(TTY)\termcap.c  $(HACK_H) $(WINTTY_H) $(TERMCAP_H)
 
 $(O)topl.o:     $(PCH) $(TTY)\topl.c     $(HACK_H) $(TERMCAP_H) $(WINTTY_H)
 	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@  $(TTY)\topl.c
-
-#
-#  from win\win32
-#
-
-$(O)nhprocs.o:  $(PCH) $(WIN32)\nhprocs.c  $(HACK_H) $(WIN32_H) \
-		$(FUNC_TAB_H) $(WIN32API_H)
-	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@  $(WIN32)\nhprocs.c
-
-$(O)winmain.o:  $(PCH) $(WIN32)\winmain.c  $(HACK_H) $(WIN32_H) $(WIN32API_H)
-	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@  $(WIN32)\winmain.c
-
-$(O)win32msg.o:  $(PCH) $(WIN32)\win32msg.c  $(HACK_H) $(WIN32_H) $(WIN32API_H)
-	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@  $(WIN32)\win32msg.c
 
 #
 # from sys\share
@@ -1090,19 +1050,25 @@ $(O)sys.o:    $(PCH) $(HACK_H) $(SYS)\pcsys.c
 $(O)random.o: $(PCH) $(HACK_H) $(SYS)\random.c
 	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@ $(SYS)\random.c
 
+$(O)nhlan.o:	$(PCH) $(HACK_H) $(NHLAN_H) $(SYS)\nhlan.c
+	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@ $(SYS)\nhlan.c
+
 #
 # from sys\winnt
 #
 
 $(O)nttty.o:    $(NTSYS)\nttty.c   $(HACK_H) $(WINTTY_H) \
                 $(TILE_H) $(WIN32API_H)
-	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@  $(NTSYS)\nttty.c
+	@$(cc) $(CFLAGSG) -I$(WSHR) $(NTSUB) -Fo$@  $(NTSYS)\nttty.c
 
 $(O)winnt.o:   $(NTSYS)\winnt.c   $(HACK_H) $(WIN32API_H)
 	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@  $(NTSYS)\winnt.c
 
 $(O)ntsound.o: $(PCH) $(NTSYS)\ntsound.c   $(HACK_H)
 	@$(cc) $(CFLAGSG) $(PCHUSE) $(NTSUB) -Fo$@ $(NTSYS)\ntsound.c
+
+$(O)mapimail.o: $(PCH) $(NTSYS)\mapimail.c   $(HACK_H) $(NHLAN_H)
+	@$(cc) $(CFLAGSG) -DMAPI_VERBOSE $(PCHUSE) $(NTSUB) -Fo$@ $(NTSYS)\mapimail.c
 
 #
 # from src
@@ -1147,9 +1113,11 @@ $(O)hacklib.o:  $(PCH) $(SRC)\hacklib.c  $(HACK_H)
 $(O)invent.o:   $(PCH) $(SRC)\invent.c   $(HACK_H) $(ARTIFACT_H)
 $(O)lock.o:     $(PCH) $(SRC)\lock.c     $(HACK_H)
 $(O)mail.o:     $(PCH) $(SRC)\mail.c     $(HACK_H) $(MAIL_H)
-$(O)makemon.o:  $(PCH) $(SRC)\makemon.c  $(HACK_H) $(EPRI_H) $(EMIN_H)
+$(O)makemon.o:  $(PCH) $(SRC)\makemon.c  $(HACK_H) $(EPRI_H) $(EMIN_H) \
+		$(EDOG_H)
 $(O)mcastu.o:   $(PCH) $(SRC)\mcastu.c   $(HACK_H)
 $(O)mhitm.o:    $(PCH) $(SRC)\mhitm.c    $(HACK_H) $(ARTIFACT_H) $(EDOG_H)
+$(O)mhitu.o:    $(PCH) $(SRC)\mhitu.c    $(HACK_H) $(ARTIFACT_H) $(EDOG_H)
 $(O)minion.o:   $(PCH) $(SRC)\minion.c   $(HACK_H) $(EMIN_H) $(EPRI_H)
 $(O)mklev.o:    $(PCH) $(SRC)\mklev.c    $(HACK_H)
 $(O)mkmap.o:    $(PCH) $(SRC)\mkmap.c    $(HACK_H) $(SP_LEV_H)
@@ -1170,7 +1138,7 @@ $(O)muse.o:     $(PCH) $(SRC)\muse.c     $(HACK_H)
 $(O)music.o:    $(PCH) $(SRC)\music.c    $(HACK_H)
 $(O)o_init.o:   $(PCH) $(SRC)\o_init.c   $(HACK_H)
 $(O)objects.o:  $(SRC)\objects.c  $(CONFIG_H) $(OBJ_H) $(OBJCLASS_H) \
-                 $(PROP_H) $(COLOR_H)
+                 $(PROP_H) $(SKILLS_H) $(COLOR_H)
 	@$(cc) $(CFLAGSG) $(NTSUB) -Fo$@ $(SRC)\objects.c
 $(O)objnam.o:   $(PCH) $(SRC)\objnam.c   $(HACK_H)
 $(O)options.o:         $(SRC)\options.c  $(HACK_H) $(TERMCAP_H)
@@ -1189,9 +1157,11 @@ $(O)quest.o:    $(PCH) $(SRC)\quest.c    $(HACK_H) $(QUEST_H) $(QTEXT_H)
 $(O)questpgr.o: $(PCH) $(SRC)\questpgr.c $(HACK_H) $(QTEXT_H)
 $(O)read.o:     $(PCH) $(SRC)\read.c     $(HACK_H)
 $(O)rect.o:     $(PCH) $(SRC)\rect.c     $(HACK_H)
+$(O)region.o:   $(PCH) $(SRC)\region.c   $(HACK_H)
 $(O)restore.o:  $(PCH) $(SRC)\restore.c  $(HACK_H) $(LEV_H) $(TERMCAP_H) $(QUEST_H)
 $(O)rip.o:      $(PCH) $(SRC)\rip.c      $(HACK_H)
 $(O)rnd.o:      $(PCH) $(SRC)\rnd.c      $(HACK_H)
+$(O)role.o:     $(PCH) $(SRC)\role.c     $(HACK_H)
 $(O)rumors.o:   $(PCH) $(SRC)\rumors.c   $(HACK_H)
 $(O)save.o:     $(PCH) $(SRC)\save.c     $(HACK_H) $(LEV_H) $(QUEST_H)
 $(O)shk.o:      $(PCH) $(SRC)\shk.c      $(HACK_H) $(ESHK_H)
@@ -1201,6 +1171,7 @@ $(O)sounds.o:   $(PCH) $(SRC)\sounds.c   $(HACK_H) $(EDOG_H)
 $(O)sp_lev.o:   $(PCH) $(SRC)\sp_lev.c   $(HACK_H) $(SP_LEV_H)
 $(O)spell.o:    $(PCH) $(SRC)\spell.c    $(HACK_H)
 $(O)steal.o:    $(PCH) $(SRC)\steal.c    $(HACK_H)
+$(O)steed.o:    $(PCH) $(SRC)\steed.c    $(HACK_H)
 $(O)teleport.o: $(PCH) $(SRC)\teleport.c $(HACK_H)
 $(O)tile.o:     $(PCH) $(SRC)\tile.c     $(HACK_H)
 $(O)timeout.o:  $(PCH) $(SRC)\timeout.c  $(HACK_H)

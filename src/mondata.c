@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)mondata.c	3.3	99/09/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -98,7 +98,11 @@ struct monst *mon;
 	boolean is_you = (mon == &youmonst);
 	struct obj *o;
 
-	if (is_you ? Blind : (mon->mblinded || !mon->mcansee || !haseyes(ptr)))
+	if (is_you ? (Blind || u.usleep) :
+		(mon->mblinded || !mon->mcansee || !haseyes(ptr) ||
+		    /* BUG: temporary sleep sets mfrozen, but since
+			    paralysis does too, we can't check it */
+		    mon->msleeping))
 	    return TRUE;
 	/* AD_BLND => yellow light, dust vortex, ki-rin (?), Archon */
 	if (dmgtype(ptr, AD_BLND) && !attacktype(ptr, AT_SPIT))
@@ -119,22 +123,24 @@ struct monst *mon;
 
 boolean
 ranged_attk(ptr)	/* returns TRUE if monster can attack at range */
-	register struct permonst *ptr;
+struct permonst *ptr;
 {
-	register int	i, j;
-	register int atk_mask = (1<<AT_BREA) | (1<<AT_SPIT) | (1<<AT_GAZE);
+	register int i, atyp;
+	long atk_mask = (1L << AT_BREA) | (1L << AT_SPIT) | (1L << AT_GAZE);
 
 	/* was: (attacktype(ptr, AT_BREA) || attacktype(ptr, AT_WEAP) ||
 		attacktype(ptr, AT_SPIT) || attacktype(ptr, AT_GAZE) ||
 		attacktype(ptr, AT_MAGC));
 	   but that's too slow -dlc
 	 */
-	for(i = 0; i < NATTK; i++) {
-	    if((j=ptr->mattk[i].aatyp) >= AT_WEAP || (atk_mask & (1<<j)))
-		return TRUE;
+	for (i = 0; i < NATTK; i++) {
+	    atyp = ptr->mattk[i].aatyp;
+	    if (atyp >= AT_WEAP) return TRUE;
+	 /* assert(atyp < 32); */
+	    if ((atk_mask & (1L << atyp)) != 0L) return TRUE;
 	}
 
-	return(FALSE);
+	return FALSE;
 }
 
 boolean
@@ -175,11 +181,10 @@ boolean
 breakarm(ptr)	/* creature will break out of armor */
 	register struct permonst *ptr;
 {
-	return((boolean)((bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr))
-	                || ptr == &mons[PM_MARILITH]) && !sliparm(ptr)));
-	/* Marilith is about the only case of a monster which is otherwise
-	 * humanoid but cannot wear armor (too many arms).
-	 */
+	return ((bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr)) ||
+		/* special cases of humanoids that cannot wear body armor */
+		ptr == &mons[PM_MARILITH] || ptr == &mons[PM_WINGED_GARGOYLE])
+	      && !sliparm(ptr));
 }
 #endif /* OVLB */
 #ifdef OVL1
@@ -240,8 +245,6 @@ monsndx(ptr)		/* return an index into the mons array */
 {
 	register int	i;
 
-	if (ptr == &playermon) return PM_PLAYERMON;
-
 	i = (int)(ptr - &mons[0]);
 	if (i < LOW_PM || i >= NUMMONS) {
 		/* ought to switch this to use `fmt_ptr' */
@@ -275,23 +278,29 @@ const char *in_str;
 	 */
 	register int i;
 	register int mntmp = NON_PM;
-	register char *s, *str;
+	register char *s, *str, *term;
 	char buf[BUFSZ];
 	int len, slen;
 
 	str = strcpy(buf, in_str);
+
 	if (!strncmp(str, "a ", 2)) str += 2;
 	else if (!strncmp(str, "an ", 3)) str += 3;
+
+	slen = strlen(str);
+	term = str + slen;
 
 	if ((s = strstri(str, "vortices")) != 0)
 	    Strcpy(s+4, "ex");
 	/* be careful with "ies"; "priest", "zombies" */
-	else if ((s = strstri(str, "jellies")) != 0 ||
-		 (s = strstri(str, "mummies")) != 0)
-	    Strcpy(s+4, "y");
+	else if (slen > 3 && !strcmpi(term-3, "ies") &&
+		    (slen < 7 || strcmpi(term-7, "zombies")))
+	    Strcpy(term-3, "y");
 	/* luckily no monster names end in fe or ve with ves plurals */
-	else if ((s = strstri(str, "ves")) != 0)
-	    Strcpy(s, "f");
+	else if (slen > 3 && !strcmpi(term-3, "ves"))
+	    Strcpy(term-3, "f");
+
+	slen = strlen(str); /* length possibly needs recomputing */
 
     {
 	static const struct alt_spl { const char* name; short pm_val; }
@@ -311,8 +320,11 @@ const char *in_str;
 		{ "grey elf",		PM_GREY_ELF },
 		{ "gray elf",		PM_GREY_ELF },
 		{ "elf lord",		PM_ELF_LORD },
+#if 0	/* OBSOLETE */
 		{ "high elf",		PM_HIGH_ELF },
+#endif
 		{ "olog hai",		PM_OLOG_HAI },
+		{ "arch lich",		PM_ARCH_LICH },
 	    /* Some irregular plurals */
 		{ "incubi",		PM_INCUBUS },
 		{ "succubi",		PM_SUCCUBUS },
@@ -322,10 +334,11 @@ const char *in_str;
 		{ "lurkers above",	PM_LURKER_ABOVE },
 		{ "cavemen",		PM_CAVEMAN },
 		{ "cavewomen",		PM_CAVEWOMAN },
-		{ "zruties",		PM_ZRUTY },
 		{ "djinn",		PM_DJINNI },
 		{ "mumakil",		PM_MUMAK },
 		{ "erinyes",		PM_ERINYS },
+	    /* falsely caught by -ves check above */
+		{ "master of thief",	PM_MASTER_OF_THIEVES },
 	    /* end of list */
 		{ 0, 0 }
 	};
@@ -336,7 +349,6 @@ const char *in_str;
 		return namep->pm_val;
     }
 
-	slen = strlen(str);
 	for (len = 0, i = LOW_PM; i < NUMMONS; i++) {
 	    register int m_i_len = strlen(mons[i].mname);
 	    if (m_i_len > len && !strncmpi(mons[i].mname, str, m_i_len)) {
@@ -400,35 +412,13 @@ register struct monst *mtmp;
 		|| (mtmp->iswiz && !mon_has_amulet(mtmp))));
 }
 
-struct permonst *
-player_mon()
-{
-	switch (u.role) {
-		case 'A': return &mons[PM_ARCHEOLOGIST];
-		case 'B': return &mons[PM_BARBARIAN];
-		case 'C': if (flags.female) return &mons[PM_CAVEWOMAN];
-			else return &mons[PM_CAVEMAN];
-		case 'E': return &mons[PM_ELF];
-		case 'H': return &mons[PM_HEALER];
-		case 'K': return &mons[PM_KNIGHT];
-		case 'P': if (flags.female) return &mons[PM_PRIESTESS];
-			else return &mons[PM_PRIEST];
-		case 'R': return &mons[PM_ROGUE];
-		case 'S': return &mons[PM_SAMURAI];
-#ifdef TOURIST
-		case 'T': return &mons[PM_TOURIST];
-#endif
-		case 'V': return &mons[PM_VALKYRIE];
-		case 'W': return &mons[PM_WIZARD];
-		default: impossible("what are you?");
-			return &mons[PM_HUMAN];
-	}
-}
-
 static const short grownups[][2] = {
+	{PM_CHICKATRICE, PM_COCKATRICE},
 	{PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
 	{PM_HELL_HOUND_PUP, PM_HELL_HOUND},
+	{PM_WINTER_WOLF_CUB, PM_WINTER_WOLF},
 	{PM_KITTEN, PM_HOUSECAT}, {PM_HOUSECAT, PM_LARGE_CAT},
+	{PM_PONY, PM_HORSE}, {PM_HORSE, PM_WARHORSE},
 	{PM_KOBOLD, PM_LARGE_KOBOLD}, {PM_LARGE_KOBOLD, PM_KOBOLD_LORD},
 	{PM_GNOME, PM_GNOME_LORD}, {PM_GNOME_LORD, PM_GNOME_KING},
 	{PM_DWARF, PM_DWARF_LORD}, {PM_DWARF_LORD, PM_DWARF_KING},
@@ -437,8 +427,13 @@ static const short grownups[][2] = {
 	{PM_GREEN_ELF, PM_ELF_LORD}, {PM_GREY_ELF, PM_ELF_LORD},
 	{PM_ELF_LORD, PM_ELVENKING},
 	{PM_LICH, PM_DEMILICH}, {PM_DEMILICH, PM_MASTER_LICH},
+	{PM_MASTER_LICH, PM_ARCH_LICH},
 	{PM_VAMPIRE, PM_VAMPIRE_LORD}, {PM_BAT, PM_GIANT_BAT},
 	{PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
+	{PM_BABY_SILVER_DRAGON, PM_SILVER_DRAGON},        
+#if 0	/* DEFERRED */
+	{PM_BABY_SHIMMERING_DRAGON, PM_SHIMMERING_DRAGON},
+#endif
 	{PM_BABY_RED_DRAGON, PM_RED_DRAGON},
 	{PM_BABY_WHITE_DRAGON, PM_WHITE_DRAGON},
 	{PM_BABY_ORANGE_DRAGON, PM_ORANGE_DRAGON},

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rect.h	3.2	90/02/22	*/
+/*	SCCS Id: @(#)rect.h	3.3	90/02/22	*/
 /* Copyright (c) 1990 by Jean-Christophe Collet			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,8 +6,8 @@
 #define RECT_H
 
 typedef struct {
-	xchar lx,ly;
-	xchar hx,hy;
+	xchar lx, ly;
+	xchar hx, hy;
 } NhRect;
 
 #endif /* RECT_H */

@@ -1,3 +1,6 @@
+/*	SCCS Id: @(#)tiletext.c	3.3	1999/10/24	*/
+/* NetHack may be freely redistributed.  See license for details. */
+
 #include "config.h"
 #include "tile.h"
 
@@ -10,6 +13,8 @@ static short color_index[MAXCOLORMAPSIZE];
 static int num_colors;
 static char charcolors[MAXCOLORMAPSIZE];
 
+static int placeholder_init = 0;
+static pixel placeholder[TILE_Y][TILE_X];
 static FILE *tile_file;
 static int tile_set, tile_set_indx;
 #if (TILE_X==8)
@@ -21,8 +26,8 @@ static char *text_sets[] = { "monsters.txt", "objects.txt", "other.txt" };
 extern const char *FDECL(tilename, (int, int));
 static void FDECL(read_text_colormap, (FILE *));
 static boolean FDECL(write_text_colormap, (FILE *));
-static boolean FDECL(read_txttile, (FILE *, pixel(*)[]));
-static void FDECL(write_txttile, (FILE *, pixel(*)[]));
+static boolean FDECL(read_txttile, (FILE *, pixel(*)[TILE_X]));
+static void FDECL(write_txttile, (FILE *, pixel(*)[TILE_X]));
 
 /* Ugh.  DICE doesn't like %[A-Z], so we have to spell it out... */
 #define FORMAT_STRING \
@@ -82,14 +87,21 @@ read_txttile(txtfile, pixels)
 FILE *txtfile;
 pixel (*pixels)[TILE_X];
 {
-	int i, j, k;
-	char buf[BUFSZ];
+	int ph, i, j, k;
+	char buf[BUFSZ], ttype[BUFSZ];
 	const char *p;
 	char c[2];
 
-	if (fscanf(txtfile, "# tile %d (%[^)])", &i, buf) <= 0)
+	if (fscanf(txtfile, "# %s %d (%[^)])", ttype, &i, buf) <= 0)
 		return FALSE;
 	
+	ph = strcmp(ttype, "placeholder") == 0;
+
+	if (!ph && strcmp(ttype,"tile") != 0)
+		Fprintf(stderr,
+			"Keyword \"%s\" unexpected for entry %d\n",
+			ttype, i);
+
 	if (tile_set != 0) {
 	    /* check tile name, but not relative number, which will
 	     * change when tiles are added
@@ -103,7 +115,7 @@ pixel (*pixels)[TILE_X];
 	    }
 	}
 	tile_set_indx++;
-
+		
 	/* look for non-whitespace at each stage */
 	if (fscanf(txtfile, "%1s", c) < 0) {
 		Fprintf(stderr, "unexpected EOF\n");
@@ -130,6 +142,10 @@ pixel (*pixels)[TILE_X];
 			}
 		}
 	}
+	if ( ph ) {
+	    /* remember it for later */
+	    memcpy( placeholder, pixels, sizeof(placeholder) );
+	}
 	if (fscanf(txtfile, "%1s ", c) < 0) {
 		Fprintf(stderr, "unexpected EOF\n");
 		return FALSE;
@@ -155,16 +171,22 @@ FILE *txtfile;
 pixel (*pixels)[TILE_X];
 {
 	const char *p;
+	const char *type;
 	int i, j, k;
 
+	if ( memcmp(placeholder, pixels, sizeof(placeholder)) == 0 )
+	    type = "placeholder";
+	else
+	    type = "tile";
+
 	if (tile_set == 0)
-		Fprintf(txtfile, "# tile %d (unknown)\n", tile_set_indx);
+		Fprintf(txtfile, "# %s %d (unknown)\n", type, tile_set_indx);
 	else {
 		p = tilename(tile_set, tile_set_indx);
 		if (p)
-		    Fprintf(txtfile, "# tile %d (%s)\n", tile_set_indx, p);
+		    Fprintf(txtfile, "# %s %d (%s)\n", type, tile_set_indx, p);
 		else
-		    Fprintf(txtfile, "# tile %d (null)\n", tile_set_indx);
+		    Fprintf(txtfile, "# %s %d (null)\n", type, tile_set_indx);
 	}
 	tile_set_indx++;
 
@@ -259,6 +281,13 @@ const char *type;
 	tile_set_indx = 0;
 
 	if (!strcmp(type, RDTMODE)) {
+		/* Fill placeholder with noise */
+		if ( !placeholder_init ) {
+		    placeholder_init++;
+		    for ( i=0; i<sizeof(placeholder); i++ )
+			((char*)placeholder)[i]=i%256;
+		}
+
 		read_text_colormap(tile_file);
 		if (!colorsinmainmap)
 			init_colormap();

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixconf.h	3.2	95/03/12	*/
+/*	SCCS Id: @(#)unixconf.h 3.3	99/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,60 +19,70 @@
  */
 
 /* define exactly one of the following four choices */
-#define BSD	1	/* define for 4.n BSD  */
-			/* also for relatives like SunOS, Linux and DG/UX */
-/* #define ULTRIX	/* define for Ultrix v3.0 or higher (but not lower) */
+/* #define BSD 1 */	/* define for 4.n BSD  */
+			/* also for relatives like SunOS 4.x, DG/UX, and */
+			/* older versions of Linux */
+/* #define ULTRIX */	/* define for Ultrix v3.0 or higher (but not lower) */
 			/* Use BSD for < v3.0 */
 			/* "ULTRIX" not to be confused with "ultrix" */
-/* #define SYSV		/* define for System V */
-/* #define HPUX		/* Hewlett-Packard's Unix, version 6.5 or higher */
+#define SYSV		/* define for System V, Solaris 2.x, newer versions */
+			/* of Linux */
+/* #define HPUX */	/* Hewlett-Packard's Unix, version 6.5 or higher */
 			/* use SYSV for < v6.5 */
 
 
 /* define any of the following that are appropriate */
-/* #define SVR4		/* use in addition to SYSV for System V Release 4 */
+#define SVR4		/* use in addition to SYSV for System V Release 4 */
+			/* including Solaris 2+ */
 #define NETWORK		/* if running on a networked system */
 			/* e.g. Suns sharing a playground through NFS */
-#define SUNOS4	/* SunOS 4.x */
-/* #define LINUX	/* Another Unix clone */
-/* #define GENIX	/* Yet Another Unix Clone */
-/* #define HISX		/* Bull Unix for XPS Machines */
-/* #define BOS		/* Bull Open Software - Unix for DPX/2 Machines */
-/* #define UNIXPC	/* use in addition to SYSV for AT&T 7300/3B1 */
-/* #define AIX_31	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
+/* #define SUNOS4 */	/* SunOS 4.x */
+/* #define LINUX */	/* Another Unix clone */
+/* #define GENIX */	/* Yet Another Unix Clone */
+/* #define HISX */	/* Bull Unix for XPS Machines */
+/* #define BOS */	/* Bull Open Software - Unix for DPX/2 Machines */
+/* #define UNIXPC */	/* use in addition to SYSV for AT&T 7300/3B1 */
+/* #define AIX_31 */	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
 			 * job control (note that AIX is SYSV otherwise)
 			 * Also define this for AIX 3.2 */
-/* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
+#define TERMINFO	/* uses terminfo rather than termcap */
+			/* Should be defined for most SYSV, SVR4 (including
+			 * Solaris 2+), HPUX, and Linux systems.  In
+			 * particular, it should NOT be defined for the UNIXPC
+			 * unless you remove the use of the shared library in
+			 * the Makefile */
+#define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
 			/* and/or ANSI color support on termcap systems */
 			/* and/or X11 color */
-/* #define POSIX_JOB_CONTROL	/* use System V / POSIX job control
-			 * (e.g., VSUSP) */
-/* #define POSIX_TYPES	/* use POSIX types for system calls and termios */
-			/* define for many recent OS releases, including
+#define POSIX_JOB_CONTROL /* use System V / Solaris 2.x / POSIX job control */
+			/* (e.g., VSUSP) */
+#define POSIX_TYPES	/* use POSIX types for system calls and termios */
+			/* Define for many recent OS releases, including
 			 * those with specific defines (since types are
 			 * changing toward the standard from earlier chaos).
-			 * for example, platforms using the GNU libraries
+			 * For example, platforms using the GNU libraries,
+			 * Linux, Solaris 2.x
 			 */
 
-/* #define OPENWINBUG	/* avoid a problem using OpenWindows 3.0 for X11
-			   on SunOS 4.1.x, x>= 2.  Do not define for other
-			   X11 implementations. */
-/* #define PYRAMID_BUG	/* avoid a bug on the Pyramid */
-/* #define BSD_43_BUG	/* for real 4.3BSD cc's without schain botch fix */
-/* #define MICROPORT_BUG /* problems with large arrays in structs */
-/* #define MICROPORT_286_BUG /* Changes needed in termcap.c to get it to
-			   run with Microport Sys V/AT version 2.4.
-			   By Jay Maynard */
-/* #define AIXPS_2BUG	/* avoid a problem with little_to_big() optimization */
+/* #define OPENWINBUG */	/* avoid a problem using OpenWindows 3.0 for
+				   X11 on SunOS 4.1.x, x>= 2.  Do not define
+				   for other X11 implementations. */
+/* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
+/* #define BSD_43_BUG */	/* for real 4.3BSD cc's without schain botch fix */
+/* #define MICROPORT_BUG */	/* problems with large arrays in structs */
+/* #define MICROPORT_286_BUG */ /* changes needed in termcap.c to get it to
+				   run with Microport Sys V/AT version 2.4.
+				   By Jay Maynard */
+/* #define AIXPS_2BUG */	/* avoid a problem with little_to_big() optimization */
 
-/* #define RANDOM	/* if neither random/srandom nor lrand48/srand48
-			   is available from your system */
+/* #define RANDOM */		/* if neither random/srandom nor lrand48/srand48
+				   is available from your system */
 
 /* see sys/unix/snd86.shr for more information on these */
-/* #define UNIX386MUSIC	/* Play real music through speaker on systems with
-			   music driver installed */
-/* #define VPIX_MUSIC	/* Play real music through speaker on systems with
-			   built-in VPIX support */
+/* #define UNIX386MUSIC */	/* play real music through speaker on systems
+				   with music driver installed */
+/* #define VPIX_MUSIC */	/* play real music through speaker on systems
+				   with built-in VPIX support */
 
 
 /*
@@ -83,8 +93,8 @@
  *		Ralf Brown, 7/26/89 (from v2.3 hack of 10/10/88)
  */
 
-/* #define NO_FILE_LINKS	/* if no hard links */
-/* #define LOCKDIR "/usr/games/lib/nethackdir"	/* where to put locks */
+/* #define NO_FILE_LINKS */	/* if no hard links */
+/* #define LOCKDIR "/usr/games/lib/nethackdir" */	/* where to put locks */
 
 
 /*
@@ -114,7 +124,7 @@
  * "extra output" method is used, but not all systems provide access to
  * a fine-grained timer.
  */
-/* #define TIMED_DELAY		/* usleep() */
+/* #define TIMED_DELAY */	/* usleep() */
 #endif
 
 /*
@@ -137,16 +147,16 @@
  *		dl2n+@andrew.cmu.edu (dec 19 1989)
  */
 
-/* #define AMS			/* use Andrew message system for mail */
+/* #define AMS */		/* use Andrew message system for mail */
 
-/* NO_MAILREADER is for kerberos authentcating filesystems where it is
+/* NO_MAILREADER is for kerberos authenticating filesystems where it is
  * essentially impossible to securely exec child processes, like mail
  * readers, when the game is running under a special token.
  *
- *             dan
+ *	       dan
  */
 
-/* #define NO_MAILREADER	/* have mail daemon just tell player of mail */
+/* #define NO_MAILREADER */	/* have mail daemon just tell player of mail */
 
 #ifdef	MAIL
 # if defined(BSD) || defined(ULTRIX)
@@ -182,7 +192,7 @@
  * You can also include any other strange options your compress needs.
  * If you have a normal compress, just leave it commented out.
  */
-/* #define COMPRESS_OPTIONS	"-q"	/* */
+/* #define COMPRESS_OPTIONS "-q" */
 #endif
 
 #define FCMASK	0660	/* file creation mask */

@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.2	96/05/10
+#	SCCS Id: @(#)Makefile.utl	3.3	1999/09/22
 
 #  Copy this file to [.util]Makefile. and then edit it as needed.
 #  Settings for CC and CFLAGS ought to match the ones used in [.src]Makefile.
@@ -75,6 +75,10 @@ LEXOUT	= lexyy		# flex
 
 # linker options file
 LIBOPT	= $(SRC)crtl.opt;
+
+# timestamps for primary header files, matching src/Makefile
+CONFIG_H = $(SRC)config.h-t
+HACK_H   = $(SRC)hack.h-t
 
 # utility .c files
 MAKESRC    = makedefs.c
@@ -185,7 +189,7 @@ lev_lex.obj  : $(INC)hack.h $(INC)lev_comp.h $(INC)sp_lev.h lev_lex.c
 	@ if f$search("lev_lex.h").nes."" then	$(MOVE) lev_lex.h stdio.h
 	$(CC) $(CFLAGS) lev_lex.c
 	@ if f$search("stdio.h").nes."" then  $(MOVE) stdio.h lev_lex.h
-lev_main.obj : $(INC)hack.h $(INC)sp_lev.h $(INC)termcap.h $(INC)date.h lev_main.c
+lev_main.obj : $(INC)hack.h $(INC)sp_lev.h $(INC)tcap.h $(INC)date.h lev_main.c
 	$(CC) $(CFLAGS) lev_main.c
 panic.obj    : $(INC)config.h
 	$(CC) $(CFLAGS) panic.c
@@ -326,9 +330,13 @@ $(SRC)dlb.obj : $(SRC)dlb.c $(INC)hack.h $(INC)dlb.h
       @ $(CD) $(UTL)
 
 # make sure hack.h dependencies get transitive information
-$(INC)hack.h : $(INC)config.h
+$(HACK_H) : $(CONFIG_H)
 	$(CD) $(SRC)
-	$(MAKE)$(MAKEFLAGS) $(INC)hack.h
+	$(MAKE)$(MAKEFLAGS) $(HACK_H)
+      @ $(CD) $(UTL)
+$(CONFIG_H) : $(INC)config.h
+	$(CD) $(SRC)
+	$(MAKE)$(MAKEFLAGS) $(CONFIG_H)
       @ $(CD) $(UTL)
 
 # VMS specific dependencies

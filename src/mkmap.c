@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmap.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)mkmap.c	3.3	96/05/23	*/
 /* Copyright (c) J. C. Collet, M. Stephenson and D. Cohrs, 1992   */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,22 +8,22 @@
 #define HEIGHT	(ROWNO - 1)
 #define WIDTH	(COLNO - 2)
 
-static void FDECL(init_map,(SCHAR_P));
-static void FDECL(init_fill,(SCHAR_P,SCHAR_P));
-static schar FDECL(get_map,(int,int,SCHAR_P));
-static void FDECL(pass_one,(SCHAR_P,SCHAR_P));
-static void FDECL(pass_two,(SCHAR_P,SCHAR_P));
-static void FDECL(pass_three,(SCHAR_P,SCHAR_P));
-static void NDECL(wallify_map);
-static void FDECL(join_map,(SCHAR_P,SCHAR_P));
-static void FDECL(finish_map,(SCHAR_P,SCHAR_P,XCHAR_P,XCHAR_P));
+STATIC_DCL void FDECL(init_map,(SCHAR_P));
+STATIC_DCL void FDECL(init_fill,(SCHAR_P,SCHAR_P));
+STATIC_DCL schar FDECL(get_map,(int,int,SCHAR_P));
+STATIC_DCL void FDECL(pass_one,(SCHAR_P,SCHAR_P));
+STATIC_DCL void FDECL(pass_two,(SCHAR_P,SCHAR_P));
+STATIC_DCL void FDECL(pass_three,(SCHAR_P,SCHAR_P));
+STATIC_DCL void NDECL(wallify_map);
+STATIC_DCL void FDECL(join_map,(SCHAR_P,SCHAR_P));
+STATIC_DCL void FDECL(finish_map,(SCHAR_P,SCHAR_P,XCHAR_P,XCHAR_P));
 void FDECL(mkmap, (lev_init *));
 
 char *new_locations;
 int min_rx, max_rx, min_ry, max_ry; /* rectangle bounds for regions */
 static int n_loc_filled;
 
-static void
+STATIC_OVL void
 init_map(bg_typ)
 	schar	bg_typ;
 {
@@ -34,7 +34,7 @@ init_map(bg_typ)
 		levl[i][j].typ = bg_typ;
 }
 
-static void
+STATIC_OVL void
 init_fill(bg_typ, fg_typ)
 	schar	bg_typ, fg_typ;
 {
@@ -53,7 +53,7 @@ init_fill(bg_typ, fg_typ)
 	}
 }
 
-static schar
+STATIC_OVL schar
 get_map(col,row, bg_typ)
 	int col,row;
 	schar	bg_typ;
@@ -68,7 +68,7 @@ static int dirs[16] = {
      0, -1 /**/,              0, 1 /**/,
      1, -1 /**/,  1, 0 /**/,  1, 1};
 
-static void
+STATIC_OVL void
 pass_one(bg_typ, fg_typ)
 	schar	bg_typ, fg_typ;
 {
@@ -102,7 +102,7 @@ pass_one(bg_typ, fg_typ)
 
 #define new_loc(i,j)	*(new_locations+ ((j)*(WIDTH+1)) + (i))
 
-static void
+STATIC_OVL void
 pass_two(bg_typ, fg_typ)
 	schar	bg_typ, fg_typ;
 {
@@ -126,7 +126,7 @@ pass_two(bg_typ, fg_typ)
 		levl[i][j].typ = new_loc(i,j);
 }
 
-static void
+STATIC_OVL void
 pass_three(bg_typ, fg_typ)
 	schar	bg_typ, fg_typ;
 {
@@ -243,7 +243,7 @@ flood_fill_rm(sx, sy, rmno, lit, anyroom)
  *	If we have drawn a map without walls, this allows us to
  *	auto-magically wallify it.  Taken from lev_main.c.
  */
-static void
+STATIC_OVL void
 wallify_map()
 {
 
@@ -261,7 +261,7 @@ wallify_map()
 	    }
 }
 
-static void
+STATIC_OVL void
 join_map(bg_typ, fg_typ)
 	schar	bg_typ, fg_typ;
 {
@@ -332,7 +332,7 @@ joinm:
     }
 }
 
-static void
+STATIC_OVL void
 finish_map(fg_typ, bg_typ, lit, walled)
 	schar	fg_typ, bg_typ;
 	boolean	lit, walled;
@@ -351,6 +351,11 @@ finish_map(fg_typ, bg_typ, lit, walled)
 	    for(i = 0; i < nroom; i++)
 		rooms[i].rlit = 1;
 	}
+	/* light lava even if everything's otherwise unlit */
+	for(i=1; i<COLNO; i++)
+	    for(j=0; j<ROWNO; j++)
+		if (levl[i][j].typ == LAVAPOOL)
+		    levl[i][j].lit = TRUE;
 }
 
 #define N_P1_ITER	1	/* tune map generation via this value */

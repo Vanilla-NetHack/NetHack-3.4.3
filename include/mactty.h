@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mactty.h	3.2	93/03/01	*/
+/*	SCCS Id: @(#)mactty.h	3.3	93/03/01	*/
 /* Copyright (c) Jon W{tte 1993.					*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -42,36 +42,53 @@
 #ifndef _H_tty_public
 # define _H_tty_public
 
-#include <Windows.h>
-#include <QDOffscreen.h>
-#include <Fonts.h>
-#include <Memory.h>
-#include <OSUtils.h>
-#include <Errors.h>
-#include <GestaltEqu.h>
-#include <Palettes.h>
-#include <Desk.h>
-#include <DiskInit.h>
-#include <OSEvents.h>
-
+/*
+ * Error code returned when it's probably our fault, or
+ * bad parameters.
+ */
+#define general_failure 1
 
 /*
- * If you export this library to Pascal, which doesn't have vsprintf
- * to rely on, you will need to change this define to 0
+ * Base resource id's for window types
  */
-#define PRINTF_TTY 1
+#define WIN_BASE_RES 128
+#define WIN_BASE_KIND 128
+
 /*
- * If you want the functions getchar_tty and gets_tty, you have to define
- * this. Currently not supported.
+ * Commonly used characters
  */
-#define TTY_INPUT 0
+#define CHAR_ENTER ((char)3)
+#define CHAR_BELL ((char)7)
+#define CHAR_BS ((char)8)
+#define CHAR_LF ((char)10)
+#define CHAR_CR ((char)13)
+#define CHAR_ESC ((char)27)
+#define CHAR_BLANK ((char)32)
+#define CHAR_DELETE ((char)127)
+
+typedef struct NhWindow1 {
+	WindowPtr		its_window ;
+//	short			kind ;
+
+	short			font_number ;
+	short			font_size ;
+	short			char_width ;
+	short			row_height ;
+	short			ascent_height ;
+	
+	short			x_size;
+	short			y_size;
+	short			x_curs;
+	short			y_curs;
+} NhWindow1;
+
 /*
  * If you want some fancy operations that not a normal TTY device normally
  * supports, use EXTENDED_SUPPORT. For frames, area erases and area scrolls,
  * plus bitmap graphics - RESOLUTION DEPENDENT, be sure to call
  * get_tty_metrics and use those limits.
  */
-#define EXTENDED_SUPPORT 1
+#define EXTENDED_SUPPORT 0
 /*
  * if you print a lot of single characters, accumulating each one in a
  * clipping region will take too much time. Instead, define this, which
@@ -162,35 +179,6 @@ typedef enum tty_attrib {
 # define TA_NONBLOCKING_IO 64L
 
 /*
- * A callback function for command keys entered when locked in an input loop.
- * Calling convention:
- * pascal void callback_function ( EventRecord * event , WindowPtr window ) ;
- */
-	TTY_COMMAND_KEY_CALLBACK ,
-/*
- * This function is called to allocate memory for the window. Note that
- * create_tty doesn't create any memory (except that created by GetNewWindow)
- * but init_tty_name and init_tty_number do allocate memory.
- * Calling convention:
- * pascal short allocate_memory ( WindowPtr window , void * * to_alloc ,
- *     long size ) ;
- * should return 0 for success, and error code for fail.
- */
-	TTY_ALLOCATE_MEMORY_FUNCTION ,
-/*
- * This is the counterpart to the allocate function, called to free memory.
- * Calling convention:
- * pascal short free_memory ( WindowPtr window , void * to_free ) ;
- * should return 0 for success, and error code for fail.
- */
-	TTY_FREE_MEMORY_FUNCTION ,
-/*
- * Use this function to beep, for instance for too large buffer or for
- * printing a bell character in non-RAW mode.
- * pascal void ( * tty_beep ) ( WindowPtr window ) ;
- */
- 	TTY_BEEP_FUNCTION ,
-/*
  * Use this macro to cast a function pointer to a tty attribute; this will help
  * portability to systems where a function pointer doesn't fit in a long
  */
@@ -220,23 +208,21 @@ typedef enum tty_attrib {
  * crash. Not passing in_color means everything's rendered in
  * black & white.
  */
-extern pascal short create_tty ( WindowPtr * window , short resource_id ,
+extern short create_tty ( WindowPtr * window , short resource_id ,
 	Boolean in_color ) ;
 
 /*
  * Use init_tty_name or init_tty_number to initialize a window
  * once allocated by create_tty. Size parameters are in characters.
  */
-extern pascal short init_tty_name ( WindowPtr window ,
-	unsigned char * font_name , short font_size , short x_size ,
-	short y_size ) ;
-extern pascal short init_tty_number ( WindowPtr window , short font_number ,
+
+extern short init_tty_number ( WindowPtr window , short font_number ,
 	short font_size , short x_size , short y_size ) ;
 
 /*
  * Close and deallocate a window and its data
  */
-extern pascal short destroy_tty ( WindowPtr window ) ;
+extern short destroy_tty ( WindowPtr window ) ;
 
 /*
  * Change the font and font size used in the window for drawing after
@@ -244,16 +230,13 @@ extern pascal short destroy_tty ( WindowPtr window ) ;
  * force_tty_coordinate_system_recalc() - else it may look strange if
  * the new font doesn't match the old one.
  */
-extern pascal short set_tty_font_name ( WindowPtr window ,
-	unsigned char * name ) ;
-extern pascal short set_tty_font_number ( WindowPtr window , short number ) ;
-extern pascal short set_tty_font_size ( WindowPtr window , short size ) ;
-extern pascal short force_tty_coordinate_system_recalc ( WindowPtr window ) ;
+extern short set_tty_font_name (winid window_type , char * name ) ;
+extern short force_tty_coordinate_system_recalc ( WindowPtr window ) ;
 
 /*
  * Getting some metrics about the tty and its drawing.
  */
-extern pascal short get_tty_metrics ( WindowPtr window , short * x_size ,
+extern short get_tty_metrics ( WindowPtr window , short * x_size ,
 	short * y_size , short * x_size_pixels , short * y_size_pixels ,
 	short * font_number , short * font_size ,
 	short * char_width , short * row_height ) ;
@@ -261,47 +244,33 @@ extern pascal short get_tty_metrics ( WindowPtr window , short * x_size ,
 /*
  * The basic move cursor function. 0,0 is topleft.
  */
-extern pascal short move_tty_cursor ( WindowPtr window , short x_pos ,
+extern short move_tty_cursor ( WindowPtr window , short x_pos ,
 	short y_pos ) ;
-
-/*
- * Return the location of the tty cursor
- */
-extern pascal short get_tty_cursor ( WindowPtr window , short * x_pos ,
-	short * y_pos ) ;
 
 /*
  * Flush all changes done to a tty to the screen (see TA_ALWAYS_UPDATE above)
  */
-extern pascal short update_tty ( WindowPtr window ) ;
+extern short update_tty ( WindowPtr window ) ;
 
 /*
  * Add a character to the tty and update the cursor position
  */
-extern pascal short add_tty_char ( WindowPtr window , short character ) ;
+extern short add_tty_char ( WindowPtr window , short character ) ;
 
 /*
  * Add a string of characters to the tty and update the cursor
  * position. The string is 0-terminated!
  */
-extern pascal short add_tty_string ( WindowPtr window , const char * string ) ;
-
-#if PRINTF_TTY
-/*
- * The cool, standard C printf function, here for convenience. Requires
- * vsprintf in the libraries. Change the PRINTF_TTY define to remove it.
- */
-extern short printf_tty ( WindowPtr window , const char * format , ... ) ;
-#endif
+extern short add_tty_string ( WindowPtr window , const char * string ) ;
 
 /*
  * Change or read an attribute of the tty. Note that some attribute changes
  * may clear the screen. See the above enum and defines for values.
  * Attributes can be both function pointers and special flag values.
  */
-extern pascal short get_tty_attrib ( WindowPtr window , tty_attrib attrib ,
+extern short get_tty_attrib ( WindowPtr window , tty_attrib attrib ,
 	long * value ) ;
-extern pascal short set_tty_attrib ( WindowPtr window , tty_attrib attrib ,
+extern short set_tty_attrib ( WindowPtr window , tty_attrib attrib ,
 	long value ) ;
 
 /*
@@ -310,7 +279,7 @@ extern pascal short set_tty_attrib ( WindowPtr window , tty_attrib attrib ,
  * directly, regardless of the wait-update setting. Does updates before
  * scrolling.
  */
-extern pascal short scroll_tty ( WindowPtr window , short delta_x ,
+extern short scroll_tty ( WindowPtr window , short delta_x ,
 	short delta_y ) ;
 
 /*
@@ -318,47 +287,31 @@ extern pascal short scroll_tty ( WindowPtr window , short delta_x ,
  * values (font etc) Is always carried out directly on-screen, regardless of
  * the wait-for-update setting. Clears update area.
  */
-extern pascal short clear_tty ( WindowPtr window ) ;
+extern short clear_tty ( WindowPtr window ) ;
 
 /*
- * We changed our mind about the size we want to draw in - in characters.
- * You need to change the window size separately with SizeWindow.
+ * Call this routine with a window (always _mt_window) and a time (usually
+ * from most recent event) to determine if cursor in window should be blinked
  */
-extern pascal short resize_tty_area ( WindowPtr window , short x_size ,
-	short y_size ) ;
-
-/*
- * Call this function after calling WaitNextEvent in your program. It will
- * return 0 if this was an event handled by the tty window, and you can go
- * right back to calling WaitNextEvent. Non-0 means you handle the event.
- */
-extern pascal short handle_tty_event ( WindowPtr window ,
-	EventRecord * event ) ;
+extern short blink_cursor ( WindowPtr window , long when ) ;
 
 /*
  * For screen dumps, open the printer port and call this function. Can be used
  * for clipboard as well (only for a PICT, though; this library doesn't concern
  * itself with characters, just bitmaps)
  */
-extern pascal short image_tty ( WindowPtr window ) ;
-
-#if TTY_INPUT
-/*
- * Enter an internal event loop to read a character, that is returned in the
- * character parameter. Note that several callback attributes may be called
- * here to handle events the tty cannot handle itself. To handle command keys,
- * you can install a command key handler. Note that if input isn't raw, you
- * will not get any input until return is pressed.
- */
-extern pascal short getchar_tty ( WindowPtr window , short * character ) ;
+extern short image_tty ( EventRecord *theEvent, WindowPtr window ) ;
 
 /*
- * Read an entire string, bounded by the length specified.
+ * For erasing just an area of characters
  */
-extern pascal short gets_tty ( WindowPtr window , char * buffer ,
-	short buffer_length ) ;
+extern short clear_tty_window ( WindowPtr window , short from_row ,
+	short from_col , short to_row , short to_col ) ;
 
-#endif /* TTY_INPUT */
+/*
+ * Now in macsnd.c, which seemed like a good place
+ */
+extern void tty_nhbell ();
 
 #if EXTENDED_SUPPORT
 
@@ -368,14 +321,8 @@ extern pascal short gets_tty ( WindowPtr window , char * buffer ,
  * insert, and you can never be sure which of row and col operations come first
  * if you specify both...
  */
-extern pascal short mangle_tty_rows_columns ( WindowPtr window ,
+extern short mangle_tty_rows_columns ( WindowPtr window ,
 	short from_row , short num_rows , short from_col , short num_cols ) ;
-
-/*
- * For erasing just an area of characters
- */
-extern pascal short clear_tty_window ( WindowPtr window , short from_row ,
-	short from_col , short to_row , short to_col ) ;
 
 /*
  * For framing an area without using grahpics characters.
@@ -383,19 +330,19 @@ extern pascal short clear_tty_window ( WindowPtr window , short from_row ,
  * draw in them. frame_fatness should typically be 1-5, and may be clipped
  * if it is too large.
  */
-extern pascal short frame_tty_window ( WindowPtr window , short from_row ,
+extern short frame_tty_window ( WindowPtr window , short from_row ,
 	short from_col , short to_row , short to_col , short frame_fatness ) ;
 
 /*
  * For inverting specific characters after the fact. May look funny in color.
  */
-extern pascal short invert_tty_window ( WindowPtr window , short from_row ,
+extern short invert_tty_window ( WindowPtr window , short from_row ,
 	short from_col , short to_row , short to_col ) ;
 
 /*
  * For drawing lines on the tty - VERY DEVICE DEPENDENT. Use get_tty_metrics.
  */
-extern pascal short draw_tty_line ( WindowPtr window , short from_x ,
+extern short draw_tty_line ( WindowPtr window , short from_x ,
 	short from_y , short to_x , short to_y ) ;
 
 #endif /* EXTENDED_SUPPORT */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)music.c	3.2	96/01/15	*/
+/*	SCCS Id: @(#)music.c	3.3	1999/08/19	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -28,23 +28,23 @@
 
 #include "hack.h"
 
-static void FDECL(awaken_monsters,(int));
-static void FDECL(put_monsters_to_sleep,(int));
-static void FDECL(charm_snakes,(int));
-static void FDECL(calm_nymphs,(int));
-static void FDECL(charm_monsters,(int));
-static void FDECL(do_earthquake,(int));
-static int FDECL(do_improvisation,(struct obj *));
+STATIC_DCL void FDECL(awaken_monsters,(int));
+STATIC_DCL void FDECL(put_monsters_to_sleep,(int));
+STATIC_DCL void FDECL(charm_snakes,(int));
+STATIC_DCL void FDECL(calm_nymphs,(int));
+STATIC_DCL void FDECL(charm_monsters,(int));
+STATIC_DCL void FDECL(do_earthquake,(int));
+STATIC_DCL int FDECL(do_improvisation,(struct obj *));
 
 #ifdef UNIX386MUSIC
-static int NDECL(atconsole);
-static void FDECL(speaker,(struct obj *,char *));
+STATIC_DCL int NDECL(atconsole);
+STATIC_DCL void FDECL(speaker,(struct obj *,char *));
 #endif
 #ifdef VPIX_MUSIC
 extern int sco_flag_console;	/* will need changing if not _M_UNIX */
-static void NDECL(playinit);
-static void FDECL(playstring, (char *,size_t));
-static void FDECL(speaker,(struct obj *,char *));
+STATIC_DCL void NDECL(playinit);
+STATIC_DCL void FDECL(playstring, (char *,size_t));
+STATIC_DCL void FDECL(speaker,(struct obj *,char *));
 #endif
 #ifdef PCMUSIC
 void FDECL( pc_speaker, ( struct obj *, char * ) );
@@ -57,7 +57,7 @@ void FDECL( amii_speaker, ( struct obj *, char *, int ) );
  * Wake every monster in range...
  */
 
-static void
+STATIC_OVL void
 awaken_monsters(distance)
 int distance;
 {
@@ -67,7 +67,7 @@ int distance;
 	while(mtmp) {
 		distm = distu(mtmp->mx, mtmp->my);
 		if (distm < distance) {
-		    mtmp->msleep = 0;
+		    mtmp->msleeping = 0;
 		    mtmp->mcanmove = 1;
 		    mtmp->mfrozen = 0;
 		    /* May scare some monsters */
@@ -83,7 +83,7 @@ int distance;
  * Make monsters fall asleep.  Note that they may resist the spell.
  */
 
-static void
+STATIC_OVL void
 put_monsters_to_sleep(distance)
 int distance;
 {
@@ -92,7 +92,7 @@ int distance;
 	while(mtmp) {
 		if (distu(mtmp->mx, mtmp->my) < distance &&
 			sleep_monst(mtmp, d(10,10), WAND_CLASS)) {
-		    mtmp->msleep = 1;  /* 10d10 turns + wake_nearby to rouse */
+		    mtmp->msleeping = 1; /* 10d10 turns + wake_nearby to rouse */
 		    slept_monst(mtmp);
 		}
 		mtmp = mtmp->nmon;
@@ -103,7 +103,7 @@ int distance;
  * Charm snakes in range.  Note that the snakes are NOT tamed.
  */
 
-static void
+STATIC_OVL void
 charm_snakes(distance)
 int distance;
 {
@@ -136,7 +136,7 @@ int distance;
  * Calm nymphs in range.
  */
 
-static void
+STATIC_OVL void
 calm_nymphs(distance)
 int distance;
 {
@@ -145,7 +145,7 @@ int distance;
 	while (mtmp) {
 	    if (mtmp->data->mlet == S_NYMPH && mtmp->mcanmove &&
 		    distu(mtmp->mx, mtmp->my) < distance) {
-		mtmp->msleep = 0;
+		mtmp->msleeping = 0;
 		mtmp->mpeaceful = 1;
 		if (canseemon(mtmp))
 		    pline(
@@ -165,7 +165,7 @@ awaken_soldiers()
 
 	while(mtmp) {
 	    if (is_mercenary(mtmp->data) && mtmp->data != &mons[PM_GUARD]) {
-		mtmp->mpeaceful = mtmp->msleep = mtmp->mfrozen = 0;
+		mtmp->mpeaceful = mtmp->msleeping = mtmp->mfrozen = 0;
 		mtmp->mcanmove = 1;
 		if (canseemon(mtmp))
 		    pline("%s is now ready for battle!", Monnam(mtmp));
@@ -178,7 +178,7 @@ awaken_soldiers()
 
 /* Charm monsters in range.  Note that they may resist the spell. */
 
-static void
+STATIC_OVL void
 charm_monsters(distance)
 int distance;
 {
@@ -198,7 +198,7 @@ int distance;
  * That is:  create random chasms (pits).
  */
 
-static void
+STATIC_OVL void
 do_earthquake(force)
 int force;
 {
@@ -249,6 +249,10 @@ int force;
 			if (cansee(x,y))
 				pline_The("altar falls into a chasm.");
 			goto do_pit;
+		  case GRAVE :
+			if (cansee(x,y))
+				pline("The headstone topples into a chasm.");
+			goto do_pit;
 		  case THRONE :
 			if (cansee(x,y))
 				pline_The("throne falls into a chasm.");
@@ -298,8 +302,8 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 				}
 			}
 		    } else if (x == u.ux && y == u.uy) {
-			    if (Levitation || is_flyer(uasmon) ||
-						is_clinger(uasmon)) {
+			    if (Levitation || Flying ||
+						is_clinger(youmonst.data)) {
 				    pline("A chasm opens up under you!");
 				    You("don't fall in!");
 			    } else {
@@ -329,7 +333,7 @@ do_pit:		    chasm = maketrap(x,y,PIT);
  * The player is trying to extract something from his/her instrument.
  */
 
-static int
+STATIC_OVL int
 do_improvisation(instr)
 struct obj *instr;
 {
@@ -590,7 +594,7 @@ struct obj *instr;
  * Play audible music on the machine's speaker if appropriate.
  */
 
-static int
+STATIC_OVL int
 atconsole()
 {
     /*
@@ -608,7 +612,7 @@ atconsole()
      return(!strcmp(termtype, "AT386") || !strcmp(termtype, "xterm"));
 }
 
-static void
+STATIC_OVL void
 speaker(instr, buf)
 struct obj *instr;
 char	*buf;
@@ -662,7 +666,7 @@ char	*buf;
 
 #define noDEBUG
 
-static void tone(hz, ticks)
+STATIC_OVL void tone(hz, ticks)
 /* emit tone of frequency hz for given number of ticks */
 unsigned int hz, ticks;
 {
@@ -673,7 +677,7 @@ unsigned int hz, ticks;
     nap(ticks * 10);
 }
 
-static void rest(ticks)
+STATIC_OVL void rest(ticks)
 /* rest for given number of ticks */
 int	ticks;
 {
@@ -687,7 +691,7 @@ int	ticks;
 #include "interp.c"	/* from snd86unx.shr */
 
 
-static void
+STATIC_OVL void
 speaker(instr, buf)
 struct obj *instr;
 char	*buf;

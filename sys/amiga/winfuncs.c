@@ -1931,6 +1931,7 @@ if(u.uz.dlevel != x){
 #define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
 #define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
 #define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define invis_color(n) color = NO_COLOR
 #define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :          \
 		/* If no color, try to hilite pets; black  */ \
 		/* should be HI                */ \
@@ -1942,6 +1943,7 @@ if(u.uz.dlevel != x){
 #define cmap_color(n)
 #define obj_color(n)
 #define mon_color(n)
+#define invis_color(n)
 #define pet_color(n)
 
 #endif
@@ -1965,9 +1967,18 @@ if(u.uz.dlevel != x){
 	} else if( ( offset = (glyph - GLYPH_OBJ_OFF) ) >= 0 ) {    /* object */
 	    ch = oc_syms[objects[offset].oc_class];
 	    obj_color(offset);
+	} else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) { /* a ridden monster */
+	    ch = (uchar) monsyms[mons[offset].mlet];
+	    mon_color(offset);
 	} else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {  /* a corpse */
 	    ch = oc_syms[objects[CORPSE].oc_class];
 	    mon_color(offset);
+	} else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) { /* a detected monster */
+	    ch = (uchar) monsyms[mons[offset].mlet];
+	    mon_color(offset);
+	} else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {	/* invisible */
+	    ch = DEF_INVISIBLE;
+	    invis_color(offset);
 	} else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {   /* a pet */
 	    ch = (uchar) monsyms[mons[offset].mlet];
 	    pet_color(offset);

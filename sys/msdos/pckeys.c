@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pckeys.c	 3.2	 96/05/11		  */
+/*	SCCS Id: @(#)pckeys.c	 3.3	 96/05/11		  */
 /* Copyright (c) NetHack PC Development Team 1996                 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,7 +55,11 @@ unsigned char shift;
 		break;
 	case 0x3E:	/* F4 = toggle overview mode */
 		if (iflags.tile_view && 
-		    !opening_dialog && !Is_rogue_level(&u.uz)) {
+		    !opening_dialog
+#ifdef REINCARNATION
+				&& !Is_rogue_level(&u.uz)
+#endif
+							) {
 			iflags.traditional_view = FALSE;
 			vga_overview(iflags.over_view ? FALSE : TRUE);
 			vga_refresh();
@@ -63,7 +67,11 @@ unsigned char shift;
 		break;
 	case 0x3F:	/* F5 = toggle traditional mode */
 		if (iflags.tile_view &&
-		    !opening_dialog && !Is_rogue_level(&u.uz)) {
+		    !opening_dialog
+#ifdef REINCARNATION
+				&& !Is_rogue_level(&u.uz)
+#endif
+							) {
 			iflags.over_view = FALSE;
 			vga_traditional(iflags.traditional_view ? FALSE : TRUE);
 			vga_refresh();

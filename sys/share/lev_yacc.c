@@ -8,7 +8,7 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #define yyerrok (yyerrflag=0)
 #define YYRECOVERING (yyerrflag!=0)
 #define YYPREFIX "yy"
-/*	SCCS Id: @(#)lev_yacc.c	3.2	96/05/16	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.3	96/05/16	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1389,7 +1389,7 @@ case 67:
 			else if (tmproom[nrooms]->rtype == OROOM)
 			    yyerror("Only typed rooms can have a chance!");
 			else if (yyvsp[0].i < 1 || yyvsp[0].i > 99)
-			    yyerror("The chance is supposed to be precentile.");
+			    yyerror("The chance is supposed to be percentile.");
 			else
 			    tmproom[nrooms]->chance = yyvsp[0].i;
 		   }

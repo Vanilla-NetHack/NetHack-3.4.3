@@ -3,23 +3,17 @@
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 #include "hack.h"
+#include "mttypriv.h"
+#include "mactty.h"
 #include "macwin.h"
 #include "wintty.h"
-#include "mactty.h"
 
 #include <stdarg.h>
-#include <Menus.h>
-
-
-
-#define POWER_LIMIT 22
-#define SECONDARY_POWER_LIMIT 16
-#define CHANNEL_LIMIT 14
-#define SECONDARY_CHANNEL_LIMIT 12
+#include <Palettes.h>
 
 #define MT_WINDOW 135
 #define MT_WIDTH 80
-static short MT_HEIGHT = 24;
+#define MT_HEIGHT 24
 
 
 /*
@@ -30,640 +24,540 @@ static short MT_HEIGHT = 24;
  */
 
 
-static void _mt_set_colors ( long * colors ) ;
+static void _mt_set_colors (long *colors);
+
+static long _mt_attrs [5] [2] = {
+	{ 0x000000, 0xffffff }, /* Normal */
+	{ 0xff8080, 0xffffff }, /* Underline */
+	{ 0x40c020, 0xe0e0e0 }, /* Bold */
+	{ 0x003030, 0xff0060 }, /* Blink */
+	{ 0xff8888, 0x000000 }, /* Inverse */
+};
 
 
-static long _mt_attrs [ 5 ] [ 2 ] = {
-	{ 0x202020 , 0xffffff } , /* Normal */
-	{ 0xff8080 , 0xffffff } , /* Underline */
-	{ 0x40c020 , 0xe0e0e0 } , /* Bold */
-	{ 0x003030 , 0xff0060 } , /* Blink */
-	{ 0xff8888 , 0x000000 } , /* Inverse */
-} ;
+static char _attrs_inverse [5] = {
+	0, 0, 0, 0, 0 ,
+};
 
 
-static char _attrs_inverse [ 5 ] = {
-	0 , 0 , 0 , 0 , 0 ,
-} ;
+/* see color.h */
 
+static long _mt_colors [CLR_MAX] [2] = {
+	{ 0x000000, 0x808080 }, /* Black */
+	{ 0x880000, 0xffffff }, /* Red */
+	{ 0x008800, 0xffffff }, /* Green */
+	{ 0x553300, 0xffffff }, /* Brown */
+	{ 0x000088, 0xffffff }, /* Blue */
+	{ 0x880088, 0xffffff }, /* Magenta */
+	{ 0x008888, 0xffffff }, /* Cyan */
+	{ 0x888888, 0xffffff }, /* Gray */
+	{ 0x000000, 0xffffff }, /* No Color */
+	{ 0xff4400, 0xffffff }, /* Orange */
+	{ 0x00ff00, 0xffffff }, /* Bright Green */
+	{ 0xffff00, 0x606060 }, /* Yellow */
+	{ 0x0033ff, 0xffffff }, /* Bright Blue */
+	{ 0xff00ff, 0xffffff }, /* Bright Magenta */
+	{ 0x00ffff, 0xffffff }, /* Bright Cyan */
+	{ 0xffffff, 0x505050 }, /* White */
+};
 
-#if 0
-#define CLR_BLACK	0
-#define CLR_RED		1
-#define CLR_GREEN	2
-#define CLR_BROWN	3	/* on IBM, low-intensity yellow is brown */
-#define CLR_BLUE	4
-#define CLR_MAGENTA 	5
-#define CLR_CYAN	6
-#define CLR_GRAY	7	/* low-intensity white */
-#define NO_COLOR	8
-#define CLR_ORANGE	9
-#define CLR_BRIGHT_GREEN 10
-#define CLR_YELLOW	11
-#define CLR_BRIGHT_BLUE	12
-#define CLR_BRIGHT_MAGENTA 13
-#define CLR_BRIGHT_CYAN	14
-#define CLR_WHITE	15
-#define CLR_MAX	16
-#endif
-
-static long _mt_colors [ 16 ] [ 2 ] = {
-	{ 0x000000 , 0xaaaaaa } , /* Black */
-	{ 0x880000 , 0xffffff } , /* Red */
-	{ 0x008800 , 0xffffff } , /* Green */
-	{ 0x553300 , 0xffffff } , /* Brown */
-	{ 0x000088 , 0xffffff } , /* Blue */
-	{ 0x770077 , 0xffffff } , /* Magenta */
-	{ 0x007777 , 0xffffff } , /* Cyan */
-	{ 0x888888 , 0xffffff } , /* Gray */
-	{ 0x222222 , 0xffffff } , /* No Color */
-	{ 0xeeee00 , 0x606060 } , /* Orange */
-	{ 0x00ff00 , 0x606060 } , /* Bright Green */
-	{ 0xeeee00 , 0x606060 } , /* Yellow */
-	{ 0x0000ff , 0x606060 } , /* Bright Blue */
-	{ 0xee00ee , 0x606060 } , /* Bright Magenta */
-	{ 0x00eeee , 0x606060 } , /* Bright Cyan */
-	{ 0x000000 , 0xffffff } , /* White */
-} ;
-
-static char _colors_inverse [ CLR_MAX ] = {
-	1 , 0 , 0 , 0 ,
-	0 , 0 , 0 , 0 ,
-	0 , 0 , 0 , 0 ,
-	0 , 0 , 0 , 0 ,
-} ;
+static char _colors_inverse [CLR_MAX] = {
+	1, 0, 0, 0 ,
+	0, 0, 0, 0 ,
+	0, 0, 0, 0 ,
+	0, 0, 0, 0 ,
+};
 
 
 #ifdef CHANGE_COLOR
 
+#define POWER_LIMIT 22
+#define SECONDARY_POWER_LIMIT 16
+#define CHANNEL_LIMIT 14
+#define SECONDARY_CHANNEL_LIMIT 12
+
 void
-tty_change_color ( int color , long rgb , int reverse ) {
-long inverse = 0 , the_rgb = rgb ;
-int total_power = 0 , max_channel = 0 ;
-int cnt = 3 ;
+tty_change_color (int color, long rgb, int reverse) {
+long inverse, working_rgb = rgb;
+int total_power = 0, max_channel = 0;
+int cnt = 3;
 
-	the_rgb >>= 4 ;
-	while ( cnt -- > 0 ) {
-		total_power += the_rgb & 0xf ;
-		max_channel = max ( max_channel , the_rgb & 0xf ) ;
-		the_rgb >>= 8 ;
+	working_rgb >>= 4;
+	while (cnt -- > 0) {
+		total_power += working_rgb & 0xf;
+		max_channel = max (max_channel, working_rgb & 0xf);
+		working_rgb >>= 8;
 	}
 
-	if ( total_power >= POWER_LIMIT ||
-		( total_power >= SECONDARY_POWER_LIMIT &&
-			max_channel >= SECONDARY_CHANNEL_LIMIT ) ||
-		max_channel >= CHANNEL_LIMIT ) {
-		inverse = 0x000000 ;
-	} else {
-		inverse = 0xffffff ;
+	if (total_power >= POWER_LIMIT ||
+		(total_power >= SECONDARY_POWER_LIMIT &&
+			max_channel >= SECONDARY_CHANNEL_LIMIT) ||
+			max_channel >= CHANNEL_LIMIT)
+		inverse = 0x000000;
+	else
+		inverse = 0xffffff;
+
+	if (reverse) {
+		working_rgb = rgb;
+		rgb = inverse;
+		inverse = working_rgb;
 	}
 
-	if ( reverse ) {
-	long rev = rgb ;
-
-		rgb = inverse ;
-		inverse = rev ;
-	}
-
-	if ( color >= CLR_MAX ) {
-		if ( color - CLR_MAX >= 5 ) {
-			impossible ( "Changing too many colors" ) ;
-			return ;
+	if (color >= CLR_MAX) {
+		if (color - CLR_MAX >= 5)
+			impossible ("Changing too many colors");
+		else {
+			_mt_attrs [color - CLR_MAX] [0] = rgb;
+			_mt_attrs [color - CLR_MAX] [1] = inverse;
+			_attrs_inverse [color - CLR_MAX] = reverse;
 		}
-		_mt_attrs [ color - CLR_MAX ] [ 0 ] = rgb ;
-		_mt_attrs [ color - CLR_MAX ] [ 1 ] = inverse ;
-		_attrs_inverse [ color - CLR_MAX ] = reverse ;
-	} else if ( color >= 0 ) {
-		_mt_colors [ color ] [ 0 ] = rgb ;
-		_mt_colors [ color ] [ 1 ] = inverse ;
-		_colors_inverse [ color ] = reverse ;
+	} else if (color >= 0) {
+		_mt_colors [color] [0] = rgb;
+		_mt_colors [color] [1] = inverse;
+		_colors_inverse [color] = reverse;
+	} else
+		impossible ("Changing negative color");
+}
+
+void tty_change_background (int white_or_black) {
+	register int i;
+	
+	for (i = 0; i < CLR_MAX; i++) {
+		if (white_or_black)
+			_mt_colors [i] [1] = 0xffffff;	/* white */
+		else
+			_mt_colors [i] [1] = 0x000000;	/* black */
+	}
+	
+	/* special cases */
+	if (white_or_black) {
+		_mt_colors [CLR_BLACK] [1] = 0x808080;	/* differentiate black from no color */
+		_mt_colors [CLR_WHITE] [1] = 0x505050;	/* highlight white with grey background */
+		_mt_colors [CLR_YELLOW] [1] = 0x606060;	/* highlight yellow with grey background */
+		_mt_colors [CLR_BLUE] [0] = 0x000088;	/* make pure blue */
+		_mt_colors [NO_COLOR] [0] = 0x000000; /* make no_color black on white */
+		_mt_attrs [0] [0] = 0x000000;		/* "normal" is black on white */
+		_mt_attrs [0] [1] = 0xffffff;
 	} else {
-		impossible ( "Changing negative color" ) ;
+		_mt_colors [NO_COLOR] [0] = 0xffffff; /* make no_color white on black */
+		_mt_colors [CLR_BLACK] [1] = 0x808080;	/* differentiate black from no color */
+		_mt_colors [CLR_BLUE] [0] = 0x222288;	/* lighten blue - it's too dark on black */
+		_mt_attrs [0] [0] = 0xffffff;		/* "normal" is white on black */
+		_mt_attrs [0] [1] = 0x000000;
 	}
 }
 
-
-static char color_buf [ 5 * ( CLR_MAX + 5 ) + 1 ] ;
-
 char *
-tty_get_color_string ( void ) {
-char tmp [ 10 ] ;
-int count ;
+tty_get_color_string (void) {
+char *ptr;
+int count;
+static char color_buf [5 * (CLR_MAX + 5) + 1];
 
-	color_buf [ 0 ] = 0 ;
+	color_buf [0] = 0;
+	ptr = color_buf;
 
-	for ( count = 0 ; count < CLR_MAX ; count ++ ) {
-	int flag = _colors_inverse [ count ] ? 1 : 0 ;
+	for (count = 0; count < CLR_MAX; count ++) {
+	int flag = _colors_inverse [count] ? 1 : 0;
 
-		sprintf ( tmp , "%s%s%x%x%x" , count ? "/" : "" ,
+		sprintf (ptr, "%s%s%x%x%x", count ? "/" : "" ,
 			flag ? "-" : "" ,
-			( _mt_colors [ count ] [ flag ] >> 20 ) & 0xf ,
-			( _mt_colors [ count ] [ flag ] >> 12 ) & 0xf ,
-			( _mt_colors [ count ] [ flag ] >> 4 ) & 0xf ) ;
-		strcat ( color_buf , tmp ) ;
+			(_mt_colors [count] [flag] >> 20) & 0xf ,
+			(_mt_colors [count] [flag] >> 12) & 0xf ,
+			(_mt_colors [count] [flag] >> 4) & 0xf);
+		ptr += strlen (ptr);
 	}
-	for ( count = 0 ; count < 5 ; count ++ ) {
-	int flag = _colors_inverse [ count ] ? 1 : 0 ;
+	for (count = 0; count < 5; count ++) {
+	int flag = _attrs_inverse [count] ? 1 : 0;
 
-		sprintf ( tmp , "/%s%x%x%x" ,
+		sprintf (ptr, "/%s%x%x%x" ,
 			flag ? "-" : "" ,
-			( _mt_attrs [ count ] [ flag ] >> 20 ) & 0xf ,
-			( _mt_attrs [ count ] [ flag ] >> 12 ) & 0xf ,
-			( _mt_attrs [ count ] [ flag ] >> 4 ) & 0xf ) ;
-		strcat ( color_buf , tmp ) ;
+			(_mt_attrs [count] [flag] >> 20) & 0xf ,
+			(_mt_attrs [count] [flag] >> 12) & 0xf ,
+			(_mt_attrs [count] [flag] >> 4) & 0xf);
+		ptr += strlen (ptr);
 	}
 
-	return color_buf ;
+	return color_buf;
 }
 #endif
 
 
 extern struct DisplayDesc *ttyDisplay;	/* the tty display descriptor */
 
-char kill_char = 27 ;
-char erase_char = 8 ;
+char kill_char = CHAR_ESC;
+char erase_char = CHAR_BS;
 
-WindowPtr _mt_window = (WindowPtr) 0 ;
-static Boolean _mt_in_color = 0 ;
-
+WindowPtr _mt_window = (WindowPtr) 0;
+static Boolean _mt_in_color = 0;
+extern short win_fonts [NHW_TEXT + 1];
 
 static void
-_mt_init_stuff ( void )
-{
-long resp , flag ;
-short num_cols , num_rows , win_width , win_height , font_num , font_size ;
-short char_width , row_height ;
-short hor , vert ;
+_mt_init_stuff (void) {
+long resp, flag;
+short num_cols, num_rows, win_width, win_height, font_num, font_size;
+short char_width, row_height;
+short hor, vert;
 
-#if 1
-	if ( !strcmp(windowprocs.name, mac_procs.name) ) {
-		dprintf ( "Mac Windows" ) ;
-		MT_HEIGHT -= 1 ;
-	} else {
-		dprintf ( "TTY Windows" ) ;
-	}
-#else
+	LI = MT_HEIGHT;
+	CO = MT_WIDTH;
+
 	if (!strcmp(windowprocs.name, "mac")) {
-		MT_HEIGHT -= 1;	/* the message box is in a separate window */
+		dprintf ("Mac Windows");
+		LI -= 1;
+	} else {
+		dprintf ("TTY Windows");
 	}
-#endif
-
-	LI = MT_HEIGHT ;
-	CO = MT_WIDTH ;
-
+	
 	/*
 	 * If there is at least one screen CAPABLE of color, and if
 	 * 32-bit QD is there, we use color. 32-bit QD is needed for the
 	 * offscreen GWorld
 	 */
-	if ( ! Gestalt ( gestaltQuickdrawVersion , & resp ) && resp > 0x1ff ) {
-	GDHandle gdh ;
+	if (!Gestalt (gestaltQuickdrawVersion, &resp) && resp > 0x1ff) {
+	GDHandle gdh;
 
-		gdh = GetDeviceList ( ) ;
-		while ( gdh ) {
-			if ( TestDeviceAttribute ( gdh , screenDevice ) ) {
-				if ( HasDepth ( gdh , 8 , 1 , 1 ) ||
-					HasDepth ( gdh , 12 , 1 , 1 ) || /* Intuition tells me this may happen
-														on color LCDs */
-					HasDepth ( gdh , 16 , 1 , 1 ) ||
-					HasDepth ( gdh , 4 , 1 , 1 ) || /* why here!? */
-					HasDepth ( gdh , 32 , 1 , 1 ) ) {
-
-					_mt_in_color = 1 ;
-					break ;
+		gdh = GetDeviceList ();
+		while (gdh) {
+			if (TestDeviceAttribute (gdh, screenDevice)) {
+				if (HasDepth (gdh, 4, 1, 1) ||
+					HasDepth (gdh, 8, 1, 1) ||
+					HasDepth (gdh, 16, 1, 1) ||
+					HasDepth (gdh, 32, 1, 1)) {
+					_mt_in_color = 1;
+					break;
 				}
 			}
-			gdh = GetNextDevice ( gdh ) ;
+			gdh = GetNextDevice (gdh);
 		}
 	}
 
-	mustwork ( create_tty ( & _mt_window , MT_WINDOW , _mt_in_color ) ) ;
-	( ( WindowPeek ) _mt_window ) -> windowKind = ( WIN_BASE_KIND + NHW_MAP ) ;
-	SelectWindow ( _mt_window ) ;
-	SetPort ( _mt_window ) ;
-	SetOrigin ( -3 , -3 ) ;
-	font_num = 0 ;
-	font_size = ( iflags.large_font && ! small_screen ) ? 12 : 9 ;
-	GetFNum ( "\pHackFont" , & font_num ) ;
-	if ( font_num != 0 ) {
-		mustwork ( init_tty_number ( _mt_window , font_num , font_size ,
-			MT_WIDTH , MT_HEIGHT + 1 ) ) ;
-	} else {
-		mustwork ( init_tty_name ( _mt_window , "\pMonaco" , font_size ,
-			MT_WIDTH , MT_HEIGHT + 1 ) ) ;
-	}
-
-	mustwork ( get_tty_metrics ( _mt_window , & num_cols , & num_rows , & win_width ,
-		& win_height , & font_num , & font_size , & char_width , & row_height ) ) ;
-
-	SizeWindow ( _mt_window , win_width + 6 , win_height + 6 , 1 ) ;
-	dprintf ( "Checking for TTY window position" ) ;
-	if ( RetrievePosition ( kMapWindow , & vert , & hor ) ) {
-		dprintf ( "Moving window to (%d,%d)" , hor , vert ) ;
-		MoveWindow ( _mt_window , hor , vert , 1 ) ;
-	}
-	ShowWindow ( _mt_window ) ;
-	SetPort ( _mt_window ) ;
-
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , & flag ) ) ;
+	mustwork (create_tty (&_mt_window, WIN_BASE_KIND + NHW_MAP, _mt_in_color));
+	((WindowPeek) _mt_window)->windowKind = (WIN_BASE_KIND + NHW_MAP);
+	SelectWindow (_mt_window);
+	SetPort (_mt_window);
+	SetOrigin (-1, -1);
 	
+	font_size = (iflags.large_font && !small_screen) ? 12 : 9;
+	mustwork (init_tty_number (_mt_window, win_fonts [NHW_MAP], font_size, CO, LI));
+
+	mustwork (get_tty_metrics (_mt_window, &num_cols, &num_rows, &win_width ,
+		&win_height, &font_num, &font_size, &char_width, &row_height));
+
+	SizeWindow (_mt_window, win_width + 2, win_height + 2, 1);
+	if (RetrievePosition (kMapWindow, &vert, &hor)) {
+		dprintf ("Moving window to (%d,%d)", hor, vert);
+		MoveWindow (_mt_window, hor, vert, 1);
+	}
+	ShowWindow (_mt_window);
+
 	/* Start in raw, always flushing mode */
-
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, &flag));
 	flag |= TA_ALWAYS_REFRESH | TA_WRAP_AROUND;
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
-	
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
 	flag |= TA_BLINKING_CURSOR;
-
 #ifdef applec
-	flag &= ~ TA_CR_ADD_NL ;
+	flag &= ~ TA_CR_ADD_NL;
 #else
-	flag &= ~ TA_NL_ADD_CR ;
+	flag &= ~ TA_NL_ADD_CR;
 #endif
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FOREGROUND, _mt_colors [NO_COLOR] [0]));
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_BACKGROUND, _mt_colors [NO_COLOR] [1]));
 
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
-
-	InitRes ( ) ;
-}
-
-
-static void
-_mt_handle_event ( EventRecord * event ) {
-Rect r ;
-int code ;
-WindowPtr window ;
-
-	if ( event -> what == mouseDown ) {
-		r = ( * GetGrayRgn ( ) ) -> rgnBBox ;
-		InsetRect ( & r , 3 , 3 ) ;
-
-		code = FindWindow ( event -> where , & window ) ;
-		switch ( code ) {
-			case inDrag :
-				DragWindow ( window , event -> where , & r ) ;
-				if ( window == _mt_window ) {
-					SaveWindowPos ( window ) ;
-				}
-				break ;
-			case inSysWindow :
-				SystemClick ( event , window ) ;
-				break ;
-			case inMenuBar :
-				UpdateMenus ( ) ;
-				DoMenu ( MenuSelect ( event -> where ) ) ;
-				break ;
-			default :
-				/* Do nothing */
-				;
-		}
-	} else if ( event -> what == diskEvt ) {
-		if ( event -> message & 0xffff0000 != 0L ) {
-		Point p = { 100 , 100 } ;
-
-			( void ) itworked ( DIBadMount ( p , event -> message ) ) ;
-		}
-	}
+	InitMenuRes ();
 }
 
 
 int
-tgetch ( void ) {
-EventRecord event ;
-long sleepTime = 0 ;
-int ret ;
-int key ;
+tgetch (void) {
+EventRecord event;
+long sleepTime = 0;
+int ret = 0;
+int key;
 
-	while ( 1 ) {
-		update_tty ( _mt_window ) ;
-		ret = GetFromKeyQueue ( ) ;
-		if ( ret ) {
-			return ret ;
-		}
-		WaitNextEvent ( -1 , & event , sleepTime , 0 ) ;
-		SetPort ( _mt_window ) ;
-		if ( handle_tty_event ( _mt_window , & event ) ) {
-			_mt_handle_event ( & event ) ;
-		}
-		if ( event . what == keyDown || event . what == autoKey ) {
-			if ( ! ( event . modifiers & cmdKey ) ) {
-				key = event . message & 0xff;
-				if(key == '\r') key = '\n';
-				return ( key ) ;
-			} else {
-				DoMenu ( MenuKey ( event . message & 0xff ) ) ;
-			}
-		} else if ( ! sleepTime ) {
-			Point p = event . where ;
-			GlobalToLocal ( & p ) ;
-			if ( PtInRect ( p , & ( _mt_window -> portRect ) ) ) {
-				ObscureCursor ( ) ;
-			} else {
-				InitCursor ( ) ;
-			}
-		}
-		if ( event . what == nullEvent ) {
-			sleepTime = GetCaretTime ( ) ;
+	for (;!ret;) {
+		WaitNextEvent (-1, &event, sleepTime, 0);
+		HandleEvent (&event);
+		blink_cursor (_mt_window, event.when);
+		if (event.what == nullEvent) {
+			sleepTime = GetCaretTime ();
 		} else {
-			sleepTime = 0 ;
+			sleepTime = 0;
 		}
+		ret = GetFromKeyQueue ();
+		if (ret == CHAR_CR) ret = CHAR_LF;
 	}
+	return ret;
 }
 
 
 void
-getreturn ( char * str ) {
-	FlushEvents ( -1 , 0 ) ;
-	printf_tty ( _mt_window , "Press space %s" , str ) ;
-	( void ) tgetch ( ) ;
+getreturn (char *str) {
+	FlushEvents (-1, 0);
+	msmsg ("Press space %s", str);
+	(void) tgetch ();
 }
 
 
 int
-has_color ( int color ) {
+has_color (int color) {
 #if defined(applec)
 # pragma unused(color)
 #endif
 Rect r;
-Point p = { 0 , 0 } ;
-GDHandle gh ;
+Point p = {0, 0};
+GDHandle gh;
 
-	if ( ! _mt_in_color ) {
-		return 0 ;
+	if (!_mt_in_color) {
+		return 0;
 	}
 
-	r = _mt_window -> portRect ;
-	SetPort ( _mt_window ) ;
-	GlobalToLocal ( & p ) ;
-	OffsetRect ( & r , p . h , p . v ) ;
+	r = _mt_window->portRect;
+	SetPort (_mt_window);
+	GlobalToLocal (&p);
+	OffsetRect (&r, p.h, p.v);
 
-	gh = GetMaxDevice ( & r ) ;
-	if ( ! gh ) {
-		return 0 ;
+	gh = GetMaxDevice (&r);
+	if (!gh) {
+		return 0;
 	}
 
-	return ( * ( ( * gh ) -> gdPMap ) ) -> pixelSize > 4 ; /* > 4 bpp */
+	return (*((*gh)->gdPMap))->pixelSize > 4; /* > 4 bpp */
 }
 
 
 void
-tty_delay_output ( void ) {
-EventRecord event ;
-long toWhen = TickCount ( ) + 3 ;
+tty_delay_output (void) {
+EventRecord event;
+long toWhen = TickCount () + 3;
 
-	while ( TickCount ( ) < toWhen ) {
-		WaitNextEvent ( updateMask , & event , 3L , 0 ) ;
-		if ( event . what == updateEvt ) {
-			if ( ! handle_tty_event ( _mt_window , & event ) ) {
-				_mt_handle_event ( & event ) ;
-			}
+	while (TickCount () < toWhen) {
+		WaitNextEvent (updateMask, &event, 3L, 0);
+		if (event.what == updateEvt) {
+			HandleEvent (&event);
+			blink_cursor (_mt_window, event.when);
 		}
 	}
 }
 
 
 void
-tty_nhbell ( void ) {
-	SysBeep ( 20 ) ;
+cmov (int x, int y) {
+	move_tty_cursor (_mt_window, x, y);
+	ttyDisplay->cury = y;
+	ttyDisplay->curx = x;
 }
 
 
 void
-cmov ( int x , int y ) {
-	move_tty_cursor ( _mt_window , x , y ) ;
-	ttyDisplay -> cury = y ;
-	ttyDisplay -> curx = x ;
-}
-
-
-void
-nocmov ( int x , int y ) {
-	cmov ( x , y ) ;
+nocmov (int x, int y) {
+	cmov (x, y);
 }
 
 
 static void
-_mt_set_colors ( long * colors ) {
-short err ;
+_mt_set_colors (long *colors) {
+short err;
 
-	if ( ! _mt_in_color ) {
-		return ;
+	if (!_mt_in_color) {
+		return;
 	}
-	err = set_tty_attrib ( _mt_window , TTY_ATTRIB_FOREGROUND , colors [ 0 ] ) ;
-	err = set_tty_attrib ( _mt_window , TTY_ATTRIB_BACKGROUND , colors [ 1 ] ) ;
+	err = set_tty_attrib (_mt_window, TTY_ATTRIB_FOREGROUND, colors [0]);
+	err = set_tty_attrib (_mt_window, TTY_ATTRIB_BACKGROUND, colors [1]);
 }
 
 
 void
-term_end_attr ( int attr ) {
+term_end_attr (int attr) {
 #if defined(applec)
-# pragma unused ( attr )
+# pragma unused (attr)
 #endif
-	_mt_set_colors ( _mt_attrs [ 0 ] ) ;
+	_mt_set_colors (_mt_attrs [0]);
 }
 
 
 void
-term_start_attr ( int attr ) {
-	switch ( attr ) {
+term_start_attr (int attr) {
+	switch (attr) {
 		case ATR_ULINE:
-			_mt_set_colors ( _mt_attrs [ 1 ] ) ;
-			break ;
+			_mt_set_colors (_mt_attrs [1]);
+			break;
 		case ATR_BOLD:
-			_mt_set_colors ( _mt_attrs [ 2 ] ) ;
-			break ;
+			_mt_set_colors (_mt_attrs [2]);
+			break;
 		case ATR_BLINK:
-			_mt_set_colors ( _mt_attrs [ 3 ] ) ;
-			break ;
+			_mt_set_colors (_mt_attrs [3]);
+			break;
 		case ATR_INVERSE:
-			_mt_set_colors ( _mt_attrs [ 4 ] ) ;
-			break ;
+			_mt_set_colors (_mt_attrs [4]);
+			break;
 		default:
-			_mt_set_colors ( _mt_attrs [ 0 ] ) ;
-			break ;
+			_mt_set_colors (_mt_attrs [0]);
+			break;
 	}
 }
 
 
 void
-standoutend ( void ) {
-	term_end_attr ( ATR_INVERSE ) ;
+standoutend (void) {
+	term_end_attr (ATR_INVERSE);
 }
 
 
 void
-standoutbeg ( void ) {
-	term_start_attr ( ATR_INVERSE ) ;
+standoutbeg (void) {
+	term_start_attr (ATR_INVERSE);
 }
 
 
 void
-xputs ( const char * str ) {
-short err ;
-
-	err = add_tty_string ( _mt_window , str ) ;
+term_end_color (void) {
+	_mt_set_colors (_mt_colors [NO_COLOR]);
 }
 
 
 void
-term_end_color ( void ) {
-	_mt_set_colors ( _mt_colors [ NO_COLOR ] ) ;
+cl_end (void) {
+	_mt_set_colors (_mt_attrs [0]);
+	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury ,
+		CO - 1, ttyDisplay->cury);
 }
 
 
 void
-cl_end ( void ) {
-short err ;
-
-	_mt_set_colors ( _mt_attrs [ 0 ] ) ;
-	err = clear_tty_window ( _mt_window , ttyDisplay -> curx , ttyDisplay -> cury ,
-		MT_WIDTH - 1 , ttyDisplay -> cury ) ;
+clear_screen (void) {
+	_mt_set_colors (_mt_attrs [0]);
+	clear_tty (_mt_window);
 }
 
 
 void
-clear_screen ( void ) {
-short err ;
-
-	_mt_set_colors ( _mt_attrs [ 0 ] ) ;
-	err = clear_tty ( _mt_window ) ;
+cl_eos (void) {
+	_mt_set_colors (_mt_attrs [0]);
+	clear_tty_window (_mt_window, ttyDisplay->curx, ttyDisplay->cury, CO - 1 ,
+		LI - 1);
 }
 
 
 void
-cl_eos ( void ) {
-short err ;
-
-	cl_end ( ) ;
-	_mt_set_colors ( _mt_attrs [ 0 ] ) ;
-	err = clear_tty_window ( _mt_window , 0 , ttyDisplay -> cury + 1 , MT_WIDTH - 1 ,
-		MT_HEIGHT - 1 ) ;
+home (void) {
+	cmov (0,0);
 }
 
 
 void
-home ( void ) {
-short err ;
+backsp (void) {
+char eraser [] = { CHAR_BS, CHAR_BLANK, CHAR_BS, 0 };
+short err;
 
-	err = move_tty_cursor ( _mt_window , 0 , 0 ) ;
-	ttyDisplay -> curx = 0 ;
-	ttyDisplay -> cury = 0 ;
+	err = add_tty_string (_mt_window, eraser);
+	err = update_tty (_mt_window);
 }
 
 
 void
-backsp ( void ) {
-short err ;
+msmsg (const char *str, ...) {
+va_list args;
+char buf [1000];
 
-	err = add_tty_char ( _mt_window , 8 ) ;
-	err = add_tty_char ( _mt_window , 32 ) ;
-	err = add_tty_char ( _mt_window , 8 ) ;
-	err = update_tty ( _mt_window ) ;
+	va_start (args, str);
+	vsprintf (buf, str, args);
+	va_end (args);
+
+	xputs (buf);
 }
 
 
 void
-msmsg ( const char * str , ... ) {
-va_list args ;
-char * buf = (char *) alloc ( 1000 ) ;
-
-	va_start ( args , str ) ;
-	vsprintf ( buf , str , args ) ;
-	va_end ( args ) ;
-
-	xputs ( buf ) ;
-	free ( buf ) ;
+term_end_raw_bold (void) {
+	term_end_attr (ATR_INVERSE);
 }
 
 
 void
-term_end_raw_bold ( void ) {
-	standoutend ( ) ;
+term_start_raw_bold (void) {
+	term_start_attr (ATR_INVERSE);
 }
 
 
 void
-term_start_raw_bold ( void ) {
-	standoutbeg ( ) ;
-}
-
-
-void
-term_start_color ( int color ) {
-	if ( color >= 0 && color < CLR_MAX ) {
-		_mt_set_colors ( _mt_colors [ color ] ) ;
+term_start_color (int color) {
+	if (color >= 0 && color < CLR_MAX) {
+		_mt_set_colors (_mt_colors [color]);
 	}
 }
 
 
 void
-setftty ( void ) {
-long flag ;
+setftty (void) {
+long flag;
 
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , & flag ) ) ;
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, &flag));
 /* Buffered output in the game */
-	flag &= ~ TA_ALWAYS_REFRESH ;
-	flag |= TA_INHIBIT_VERT_SCROLL ; /* don't scroll */
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
+	flag &= ~ TA_ALWAYS_REFRESH;
+	flag |= TA_INHIBIT_VERT_SCROLL; /* don't scroll */
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
 
 #ifdef applec
-	flag &= ~ TA_CR_ADD_NL ;
+	flag &= ~ TA_CR_ADD_NL;
 #else
-	flag &= ~ TA_NL_ADD_CR ;
+	flag &= ~ TA_NL_ADD_CR;
 #endif
 
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
 
-	iflags . cbreak = 1 ;
+	iflags.cbreak = 1;
 }
 
 
 void
-tty_startup ( int * width , int * height  ) {
-	_mt_init_stuff ( ) ;
-	* width = MT_WIDTH ;
-	* height = MT_HEIGHT ;
+tty_startup (int *width, int *height ) {
+	_mt_init_stuff ();
+	*width = CO;
+	*height = LI;
 }
 
 
 void
-gettty ( void ) {
+gettty (void) {
 }
 
 
 void
-settty ( const char * str ) {
-long flag ;
+settty (const char *str) {
+long flag;
 
-	update_tty ( _mt_window ) ;
+	update_tty (_mt_window);
 
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , & flag ) ) ;
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, &flag));
 /* Buffered output in the game, raw in "raw" mode */
-	flag &= ~ TA_INHIBIT_VERT_SCROLL ; /* scroll */
-	flag |= TA_ALWAYS_REFRESH ;
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_FLAGS , flag ) ) ;
+	flag &= ~ TA_INHIBIT_VERT_SCROLL; /* scroll */
+	flag |= TA_ALWAYS_REFRESH;
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_FLAGS, flag));
 
-	mustwork ( get_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , & flag ) ) ;
+	mustwork (get_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, &flag));
 
 #ifdef applec
-	flag |= TA_CR_ADD_NL ;
+	flag |= TA_CR_ADD_NL;
 #else
-	flag |= TA_NL_ADD_CR ;
+	flag |= TA_NL_ADD_CR;
 #endif
 
-	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
+	mustwork (set_tty_attrib (_mt_window, TTY_ATTRIB_CURSOR, flag));
 
-	tty_raw_print ( "\n" ) ;
-	if ( str ) {
-		tty_raw_print ( str ) ;
+	tty_raw_print ("\n");
+	if (str) {
+		tty_raw_print (str);
 	}
 }
 
 
 void
-tty_number_pad ( int arg ) {
+tty_number_pad (int arg) {
 #if defined(applec)
 # pragma unused(arg)
 #endif
@@ -671,39 +565,45 @@ tty_number_pad ( int arg ) {
 
 
 void
-tty_start_screen ( void ) {
-	iflags . cbreak = 1 ;
+tty_start_screen (void) {
+	iflags.cbreak = 1;
 }
 
 
 void
-tty_end_screen ( void ) {
+tty_end_screen (void) {
+}
+
+
+void
+xputs (const char *str) {
+	add_tty_string (_mt_window, str);
 }
 
 
 int
-term_puts ( const char * str ) {
-	xputs ( str ) ;
-	return strlen ( str ) ;
+term_puts (const char *str) {
+	xputs (str);
+	return strlen (str);
 }
 
 
 int
-term_putc ( int c ) {
-short err ;
+term_putc (int c) {
+short err;
 
-	err = add_tty_char ( _mt_window , c ) ;
-	return err ? EOF : c ;
+	err = add_tty_char (_mt_window, c);
+	return err ? EOF : c;
 }
 
 
 int
-term_flush ( void * desc ) {
-	if ( desc == stdout || desc == stderr ) {
-		update_tty ( _mt_window ) ;
+term_flush (void *desc) {
+	if (desc == stdout || desc == stderr) {
+		update_tty (_mt_window);
 	} else {
-		impossible ( "Substituted flush for file" ) ;
-		return fflush ( desc ) ;
+		impossible ("Substituted flush for file");
+		return fflush (desc);
 	}
-	return 0 ;
+	return 0;
 }

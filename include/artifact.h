@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artifact.h	3.2	95/05/31	*/
+/*	SCCS Id: @(#)artifact.h 3.3	95/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,8 +31,10 @@
 #define SPFX_DFLAG1 0x0400000L	/* attack bonus on monsters w/ mflags1 flag */
 #define SPFX_DFLAG2 0x0800000L	/* attack bonus on monsters w/ mflags2 flag */
 #define SPFX_DALIGN 0x1000000L	/* attack bonus on non-aligned monsters  */
-
 #define SPFX_DBONUS 0x1F00000L	/* attack bonus mask */
+#define SPFX_XRAY   0x2000000L	/* gives X-RAY vision to player */
+#define SPFX_REFLECT 0x4000000L /* Reflection */
+
 
 struct artifact {
 	short	    otyp;
@@ -43,7 +45,7 @@ struct artifact {
 	struct attack attk, defn, cary;
 	uchar	    inv_prop;	/* property obtained by invoking artifact */
 	aligntyp    alignment;	/* alignment of bequeathing gods */
-	char	    class;	/* character class associated with */
+	short	    role;	/* character role associated with */
 };
 
 /* invoked properties with special powers */
@@ -54,5 +56,7 @@ struct artifact {
 #define CHARGE_OBJ	(LAST_PROP+5)
 #define LEV_TELE	(LAST_PROP+6)
 #define CREATE_PORTAL	(LAST_PROP+7)
+#define ENLIGHTENING	(LAST_PROP+8)
+#define CREATE_AMMO	(LAST_PROP+9)
 
 #endif /* ARTIFACT_H */

@@ -6,13 +6,14 @@ b j n   1 2 3           g<dir>:   run in direction <dir> until something
       numberpad                     interesting is seen
                         G<dir>,   same, except a branching corridor isn't
  <  up                  ^<dir>:     considered interesting
- >  down                m<dir>:   move without picking up objects
+ >  down                m<dir>:   move without picking up objects/fighting
+                        F<dir>:   fight even if you don't sense a monster
                 If the number_pad option is set, the number keys move instead.
 
 General commands:
 ?       help    display one of several informative texts
-Q       quit    end the game
-S       save    save the game (to be continued later)
+#quit   quit    end the game without saving current game
+S       save    save the game (to be continued later) and exit
 !       sh      escape to some SHELL (if allowed)
 ^Z      suspend suspend the game (independent of your current suspend char)
 O       options set options
@@ -37,6 +38,8 @@ d       drop    drop an object.  d7a:  drop seven items of object 'a'
 D       Drop    drop selected types of objects
 e       eat     eat something
 E       engrave write a message in the dust on the floor  (E-  use fingers)
+f       fire    fire ammunition from quiver
+F       fight   followed by direction, fight a monster
 i       invent  list your inventory (all objects you are carrying)
 I       Invent  list selected parts of your inventory
                 Iu: list unpaid objects
@@ -46,22 +49,24 @@ o       open    open a door
 p       pay     pay your bill (in a shop)
 P       puton   put on an accessory (ring, amulet, etc)
 q       quaff   drink a potion
-r       read    read a scroll or spell book
+Q       quiver  select ammunition for quiver
+r       read    read a scroll or spellbook
 R       remove  remove an accessory (ring, amulet, etc)
 s       search  search for secret doors, hidden traps and monsters
 t       throw   throw or shoot a weapon
 T       takeoff take off some armor
 w       wield   wield a weapon  (w-  wield nothing)
 W       wear    put on some armor
-x       spells  list the spells you know
+x       xchange swap wielded and secondary weapons
 z       zap     zap a wand
 Z       Zap     cast a spell
 <       up      go up the stairs
 >       down    go down the stairs
 ^       trap_id identify a previously found trap
-),[,=,",(               ask for current items of specified symbol in use
+),[,=,",(       ask for current items of specified symbol in use
+*               ask for combination of ),[,=,",( all at once
 $       gold    count your gold
-+       spells  list the spells you know
++       spells  list the spells you know; also rearrange them if desired
 .       rest    wait a moment
 ,       pickup  pick up all you can carry
 @               toggle "pickup" (auto pickup) option on and off
@@ -83,9 +88,11 @@ M-m     monster use a monster's special ability
 M-n     name    name an item or type of object
 M-o     offer   offer a sacrifice to the gods
 M-p     pray    pray to the gods for help
+M-q     quit    stop playing
 M-r     rub     rub a lamp
 M-s     sit     sit down
 M-t     turn    turn undead
+(none)  twoweapon toggle two-weapon combat
 M-u     untrap  untrap something
 M-v     version print compile time options for this version
 M-w     wipe    wipe off your face

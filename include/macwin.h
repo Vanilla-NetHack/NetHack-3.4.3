@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macwin.h	3.2	96/01/15	*/
+/*	SCCS Id: @(#)macwin.h	3.3	96/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,7 +21,7 @@ typedef UserItemProcPtr UserItemUPP;
 
 typedef pascal void (*ControlActionProcPtr)(ControlHandle theControl, short partCode);
 typedef ControlActionProcPtr ControlActionUPP;
-#define NewControlActionProc(p)	(ControlActionUPP)(p)
+#define NewControlActionProc(p) (ControlActionUPP)(p)
 
 typedef ModalFilterProcPtr ModalFilterUPP;
 #define DisposeRoutineDescriptor(p)
@@ -38,16 +38,6 @@ typedef ModalFilterProcPtr ModalFilterUPP;
  */
 #define NUM_MACWINDOWS 15
 #define TEXT_BLOCK 512L
-#define WIN_BASE_RES 128
-#define WIN_BASE_KIND 128
-#define NUM_MENU_ITEMS 52			/* a-zA-z */
-#define CHAR_ENTER ((char)3)
-#define CHAR_BS ((char)8)
-#define CHAR_LF ((char)10)
-#define CHAR_CR ((char)13)
-#define CHAR_ESC ((char)27)
-#define CHAR_BLANK ((char)32)
-#define CHAR_DELETE ((char)127)
 
 /* Window constants */
 #define kMapWindow 0
@@ -65,33 +55,43 @@ typedef ModalFilterProcPtr ModalFilterUPP;
  */
 #define MIN_RIGHT 350
 
+typedef struct {
+	anything id;
+	char accelerator;
+	char groupAcc;
+	short line;
+} MacMHMenuItem;
 
 typedef struct NhWindow {
-	WindowPtr		theWindow ;
-	short			kind ;
-	void			( * keyFunc ) ( EventRecord * , WindowPtr ) ;
-	void			( * clickFunc ) ( EventRecord * , WindowPtr ) ;
-	void			( * updateFunc ) ( EventRecord * , WindowPtr ) ;
-	void			( * cursorFunc ) ( EventRecord * , WindowPtr , RgnHandle ) ;
+	WindowPtr		its_window ;
+/*	short			kind ;*/
+
+	short			font_number ;
+	short			font_size ;
+	short			char_width ;
+	short			row_height ;
+	short			ascent_height ;
+	
+	short			x_size;
+	short			y_size;
+	short			x_curs;
+	short			y_curs;
+	
+	short		last_more_lin ; /* Used by message window */
+	short		save_lin ;		/* Used by message window */
+
+	short			miSize;		/* size of menu items arrays */
+	short			miLen;		/* number of menu items in array */
+	MacMHMenuItem	**menuInfo;		/* Used by menus (array handle) */
+	char		menuChar;		/* next menu accelerator to use */
+	short			**menuSelected;	/* list of selected elements from list */
+	short			miSelLen;	/* number of items selected */
+	short			how;		/* menu mode */
+
+	char			drawn ;
 	Handle			windowText ;
 	long			windowTextLen ;
-	Point			cursor ;		/* In CHARS / LINES */
-	short			leading ;
-	short			charHeight ;
-	short			charWidth ;
-	short			fontNum ;
-	short			fontSize ;
-	short			last_more_lin ;	/* Used by message window */
-	short			save_lin ;		/* Used by message window */
-	short			lin ;			/* Used by menus */
-	short			wid ;			/* Used by menus */
-	char			itemChars [ NUM_MENU_ITEMS ] ;
-	Boolean			itemSelected [ NUM_MENU_ITEMS ] ;
-	anything		itemIdentifiers [ NUM_MENU_ITEMS ] ;
-	short			how;			/* menu mode */
-	char			menuChar;		/* next menu accelerator to use */
-	char			clear ;
-	short			scrollPos ;
+	short		scrollPos ;
 	ControlHandle	scrollBar ;
 } NhWindow ;
 
@@ -100,95 +100,15 @@ extern NhWindow *GetNhWin(WindowPtr mac_win);
 
 #define NUM_STAT_ROWS 2
 #define NUM_ROWS 22
-#define NUM_COLS 81 /* We shouldn't use column 0 */
-
-typedef struct MapData {
-	char		map [ NUM_ROWS ] [ NUM_COLS ] ;
-} MapData ;
-
-typedef struct StatusData {
-	char		map [ NUM_STAT_ROWS ] [ NUM_COLS ] ;
-} StatusData ;
+#define NUM_COLS 80 /* We shouldn't use column 0 */
+#define QUEUE_LEN 24
 
 extern NhWindow * theWindows ;
 
 extern struct window_procs mac_procs ;
 
-extern short text_wind_font;
-#define set_text_wind_font(fnt) (text_wind_font = fnt)
-#define mono_font()	set_text_wind_font(monaco)
-#define normal_font()	set_text_wind_font(geneva)
-
-
 #define NHW_BASE 0
 extern winid BASE_WINDOW , WIN_MAP , WIN_MESSAGE , WIN_INVEN , WIN_STATUS ;
-
-/* askname dialog defines (shared between macmain.c and macmenu.c) */
-enum
-{
-	dlog_start = 6000,
-	dlogAskName = dlog_start,
-	dlog_limit
-};
-
-/* askname dialog item list */
-enum
-{
-	bttnANPlay = 1,
-	bttnANQuit,
-	uitmANOutlineDefault,
-	uitmANRole,
-	uitmANSex,
-	uitmANMode,
-	stxtANRole,
-	stxtANSex,
-	stxtANMode,
-	stxtANWho,
-	etxtANWho
-};
-
-typedef struct asknameRec
-{
-	short		anMenu[3];
-	unsigned char	anWho[32];	/* player name Pascal string */
-} asknameRec, *asknamePtr;
-
-/* askname menus */
-enum
-{
-	anRole,
-	anSex,
-	anMode
-};
-
-enum
-{
-	/* role */
-	askn_role_start,	/* 0 */
-	asknArcheologist = askn_role_start,
-	asknBarbarian,
-	asknCaveman,		/* Cavewoman */
-	asknElf,
-	asknHealer,
-	asknKnight,
-	asknPriest,		/* Priestess */
-	asknRogue,
-	asknSamurai,
-	asknTourist,
-	asknValkyrie,		/* female only */
-	asknWizard,
-	askn_role_end,
-
-	/* sex */
-	asknMale = 0,
-	asknFemale,
-
-	/* mode */
-	asknRegular = 0,
-	asknExplore,
-	asknDebug,
-	asknQuit		/* special token */
-};
 
 
 /*
@@ -221,43 +141,24 @@ extern void popattempt( void );
 
 /* ### macfile.c ### */
 
-#if 0
-/* these declarations are in extern.h because they are used by the main code. */
-extern int maccreat(const char *,long);
-extern int macopen(const char *,int,long);
-extern int macclose(int);
-extern int macread(int,void *,unsigned);
-extern int macwrite(int,void *,unsigned);
-extern long macseek(int,long,short);
-#endif /* 0 */
 /* extern char *macgets(int fd, char *ptr, unsigned len); unused */
 extern void FDECL(C2P,(const char *c, unsigned char *p));
 extern void FDECL(P2C,(const unsigned char *p, char *c));
 
 /* ### macmenu.c ### */
 
-extern void	DialogAskName(asknameRec *);
 extern void DoMenuEvt ( long ) ;
 extern void InitMenuRes(void);
 extern void AdjustMenus(short);
 
 /* ### macmain.c ### */
 
-#ifdef MAC68K
-/* extern void UnloadAllSegments( void );	declared in extern.h */
-extern void InitSegMgmt( void * );		/* called from macwin.c */
-#endif
-extern void NDECL ( finder_file_request ) ;
-
-/* ### mactty.c ### */
-
-extern pascal short tty_environment_changed(WindowPtr);
+extern void FDECL ( process_openfile, (short src_vol, long src_dir, Str255 fName, OSType ftype));
 
 /* ### macwin.c ### */
 
 extern void AddToKeyQueue(int, Boolean);
-extern void SetFrameItem ( DialogPtr , short , short ) ;
-extern void FlashButton ( DialogPtr , short ) ;
+extern int GetFromKeyQueue ( void ) ;
 void trans_num_keys ( EventRecord * ) ;
 extern void NDECL ( InitMac ) ;
 int FDECL ( try_key_queue , ( char * ) ) ;
@@ -266,25 +167,14 @@ void FDECL ( leave_topl_mode , ( char * ) ) ;
 void FDECL ( topl_set_resp , ( char * , char ) ) ;
 Boolean FDECL ( topl_key , ( unsigned char ) ) ;
 Boolean FDECL ( topl_ext_key , ( unsigned char ) ) ;
-void NDECL(InitRes);
-extern void UpdateMenus ( void ) ;
-extern void DoMenu ( long ) ;
-extern int GetFromKeyQueue ( void ) ;
-E void NDECL(port_help);
 extern void WindowGoAway(EventRecord *, WindowPtr);
-extern void DimMenuBar ( void ) ;
-extern void UndimMenuBar ( void ) ;
 E void FDECL(HandleEvent, (EventRecord *));	/* used in mmodal.c */
+extern void NDECL(port_help);
 
-extern short frame_corner ;
-extern winid inSelect ;
+#define DimMenuBar() AdjustMenus(1)
+#define UndimMenuBar() AdjustMenus(0)
+
 extern Boolean small_screen ;
-
-/* ### mmodal.c ### */
-
-E DialogPtr FDECL(mv_get_new_dialog, (short));
-E void		FDECL(mv_close_dialog, (DialogPtr));
-E void		FDECL(mv_modal_dialog, (ModalFilterProcPtr, short *));
 
 /* ### mstring.c ### */
 
@@ -292,8 +182,6 @@ E void		FDECL(mv_modal_dialog, (ModalFilterProcPtr, short *));
 extern char *PtoCstr(unsigned char *);
 extern unsigned char *CtoPstr(char *);
 #endif
-
-
 
 E void FDECL(mac_init_nhwindows, (int *, char **));
 E void NDECL(mac_player_selection);

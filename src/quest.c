@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)quest.c	3.2	96/08/13	*/
+/*	SCCS Id: @(#)quest.c	3.3	98/11/04	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,17 +12,19 @@
 #define Not_firsttime	(on_level(&u.uz0, &u.uz))
 #define Qstat(x)	(quest_status.x)
 
-static void NDECL(on_start);
-static void NDECL(on_locate);
-static void NDECL(on_goal);
-static boolean NDECL(not_capable);
-static boolean FDECL(is_pure, (BOOLEAN_P));
-static void FDECL(expulsion, (BOOLEAN_P));
-static void NDECL(chat_with_leader);
-static void NDECL(chat_with_nemesis);
-static void NDECL(chat_with_guardian);
+STATIC_DCL void NDECL(on_start);
+STATIC_DCL void NDECL(on_locate);
+STATIC_DCL void NDECL(on_goal);
+STATIC_DCL boolean NDECL(not_capable);
+STATIC_DCL boolean FDECL(is_pure, (BOOLEAN_P));
+STATIC_DCL void FDECL(expulsion, (BOOLEAN_P));
+STATIC_DCL void NDECL(chat_with_leader);
+STATIC_DCL void NDECL(chat_with_nemesis);
+STATIC_DCL void NDECL(chat_with_guardian);
+STATIC_DCL void FDECL(prisoner_speaks, (struct monst *));
 
-static void
+
+STATIC_OVL void
 on_start()
 {
   if(!Qstat(first_start)) {
@@ -34,7 +36,7 @@ on_start()
   }
 }
 
-static void
+STATIC_OVL void
 on_locate()
 {
   if(!Qstat(first_locate)) {
@@ -44,7 +46,7 @@ on_locate()
 	qt_pager(QT_NEXTLOCATE);
 }
 
-static void
+STATIC_OVL void
 on_goal()
 {
   if (Qstat(killed_nemesis)) {
@@ -56,37 +58,6 @@ on_goal()
     qt_pager(QT_NEXTGOAL);
     if(Qstat(made_goal) < 7) Qstat(made_goal)++;
   }
-}
-
-void
-quest_init()
-{
-/*
- *	Special setup modifications here:
- *
- *	Unfortunately, this is going to have to be done
- *	on each newgame or restore, because you lose the permonst mods
- *	across a save/restore :-)
- *
- *	1 - The Rogue Leader is the Tourist Nemesis.
- *	2 - Priests start with a random alignment - convert the leader and
- *	    guardians here.
- *	3 - Elves can have one of two different leaders, but can't work it
- *	    out here because it requires hacking the level file data (see
- *	    sp_lev.c).
- */
-#ifdef TOURIST
-    if (Role_is('T')) {
-	mons[PM_MASTER_OF_THIEVES].msound = MS_NEMESIS;
-	mons[PM_MASTER_OF_THIEVES].mflags2 &= ~(M2_PEACEFUL);
-	mons[PM_MASTER_OF_THIEVES].mflags2 |= (M2_NASTY|M2_STALK|M2_HOSTILE);
-	mons[PM_MASTER_OF_THIEVES].mflags3 = M3_WANTSARTI | M3_WAITFORU;
-    } else
-#endif
-    if (Role_is('P')) {
-	mons[PM_ARCH_PRIEST].maligntyp = u.ualignbase[1]*3;
-	mons[PM_ACOLYTE].maligntyp = u.ualignbase[1]*3;
-    }
 }
 
 void
@@ -128,13 +99,13 @@ ok_to_quest()
 			&& is_pure(FALSE));
 }
 
-static boolean
+STATIC_OVL boolean
 not_capable()
 {
 	return((boolean)(u.ulevel < MIN_QUEST_LEVEL));
 }
 
-static boolean
+STATIC_OVL boolean
 is_pure(talk)
 boolean talk;
 {
@@ -166,7 +137,7 @@ boolean talk;
  * This assumes that the hero is currently _in_ the quest dungeon and that
  * there is a single branch to and from it.
  */
-static void
+STATIC_OVL void
 expulsion(seal)
 boolean seal;
 {
@@ -193,7 +164,40 @@ boolean seal;
     }
 }
 
-static void
+/* Either you've returned to quest leader while carrying the quest
+   artifact or you've just thrown it to/at him or her.  If quest
+   completion text hasn't been given yet, give it now.  Otherwise
+   give another message about the character keeping the artifact
+   and using the magic portal to return to the dungeon. */
+void
+finish_quest(obj)
+struct obj *obj;	/* quest artifact; possibly null if carrying Amulet */
+{
+	struct obj *otmp;
+
+	if (u.uhave.amulet) {	/* unlikely but not impossible */
+	    qt_pager(QT_HASAMULET);
+	    /* leader IDs the real amulet but ignores any fakes */
+	    if ((otmp = carrying(AMULET_OF_YENDOR)) != 0)
+		fully_identify_obj(otmp);
+	} else {
+	    qt_pager(!Qstat(got_thanks) ? QT_OFFEREDIT : QT_OFFEREDIT2);
+	    /* should have obtained bell during quest;
+	       if not, suggest returning for it now */
+	    if ((otmp = carrying(BELL_OF_OPENING)) == 0)
+		com_pager(5);
+	}
+	Qstat(got_thanks) = TRUE;
+
+	if (obj) {
+	    u.uevent.qcompleted = 1;	/* you did it! */
+	    /* behave as if leader imparts sufficient info about the
+	       quest artifact */
+	    fully_identify_obj(obj);
+	}
+}
+
+STATIC_OVL void
 chat_with_leader()
 {
 /*	Rule 0:	Cheater checks.					*/
@@ -205,7 +209,7 @@ chat_with_leader()
  */
 	if(Qstat(got_thanks)) {
 /*	Rule 1:	You've gone back with/without the amulet.	*/
-	    if(u.uhave.amulet)	qt_pager(QT_HASAMULET);
+	    if(u.uhave.amulet)	finish_quest((struct obj *)0);
 
 /*	Rule 2:	You've gone back before going for the amulet.	*/
 	    else		qt_pager(QT_POSTHANKS);
@@ -213,16 +217,19 @@ chat_with_leader()
 
 /*	Rule 3: You've got the artifact and are back to return it. */
 	  else if(u.uhave.questart) {
-	    if(u.uhave.amulet)	qt_pager(QT_HASAMULET);
-	    else		qt_pager(QT_OFFEREDIT);
-	    Qstat(got_thanks) = TRUE;
-	    u.uevent.qcompleted = 1;	/* you did it! */
+	    struct obj *otmp;
+
+	    for (otmp = invent; otmp; otmp = otmp->nobj)
+		if (is_quest_artifact(otmp)) break;
+
+	    finish_quest(otmp);
 
 /*	Rule 4: You haven't got the artifact yet.	*/
-	} else if(Qstat(got_quest)) qt_pager(rn1(10, QT_ENCOURAGE));
+	} else if(Qstat(got_quest)) {
+	    qt_pager(rn1(10, QT_ENCOURAGE));
 
 /*	Rule 5: You aren't yet acceptable - or are you? */
-	else {
+	} else {
 	  if(!Qstat(met_leader)) {
 	    qt_pager(QT_FIRSTLEADER);
 	    Qstat(met_leader) = TRUE;
@@ -273,7 +280,7 @@ leader_speaks(mtmp)
 	} else chat_with_leader();
 }
 
-static void
+STATIC_OVL void
 chat_with_nemesis()
 {
 /*	The nemesis will do most of the talking, but... */
@@ -286,8 +293,8 @@ nemesis_speaks()
 {
 	if(!Qstat(in_battle)) {
 	  if(u.uhave.questart) qt_pager(QT_NEMWANTSIT);
-	  else if(!Qstat(made_goal)) qt_pager(QT_FIRSTNEMESIS);
-	  else if(Qstat(made_goal) < 3) qt_pager(QT_NEXTNEMESIS);
+	  else if(Qstat(made_goal) == 1) qt_pager(QT_FIRSTNEMESIS);
+	  else if(Qstat(made_goal) < 4) qt_pager(QT_NEXTNEMESIS);
 	  else if(Qstat(made_goal) < 7) qt_pager(QT_OTHERNEMESIS);
 	  else if(!rn2(5))	qt_pager(rn1(10, QT_DISCOURAGE));
 	  if(Qstat(made_goal) < 7) Qstat(made_goal)++;
@@ -296,11 +303,32 @@ nemesis_speaks()
 	  if(!rn2(5))	qt_pager(rn1(10, QT_DISCOURAGE));
 }
 
-static void
+STATIC_OVL void
 chat_with_guardian()
 {
 /*	These guys/gals really don't have much to say... */
 	qt_pager(rn1(5, QT_GUARDTALK));
+}
+
+STATIC_OVL void
+prisoner_speaks (mtmp)
+	register struct monst *mtmp;
+{
+	if (mtmp->data == &mons[PM_PRISONER] &&
+			(mtmp->mstrategy & STRAT_WAITMASK)) {
+	    /* Awaken the prisoner */
+	    if (canseemon(mtmp))
+	    	pline("%s speaks:", Monnam(mtmp));
+	    verbalize("I'm finally free!");
+	    mtmp->mstrategy &= ~STRAT_WAITMASK;
+
+	    /* Your god is happy... */
+	    adjalign(3);
+
+		/* ...But the guards are not */
+	    (void) angry_guards(FALSE);
+	}
+	return;
 }
 
 void
@@ -323,6 +351,7 @@ quest_talk(mtmp)
     switch(mtmp->data->msound) {
 	    case MS_LEADER:	leader_speaks(mtmp); break;
 	    case MS_NEMESIS:	nemesis_speaks(); break;
+	    case MS_DJINNI:	prisoner_speaks(mtmp); break;
 	    default:		break;
 	}
 }
@@ -332,8 +361,8 @@ quest_stat_check(mtmp)
 	struct monst *mtmp;
 {
     if(mtmp->data->msound == MS_NEMESIS)
-	Qstat(in_battle) =
-	    (mtmp->mcanmove && !mtmp->msleep && monnear(mtmp, u.ux, u.uy));
+	Qstat(in_battle) = (mtmp->mcanmove && !mtmp->msleeping &&
+			    monnear(mtmp, u.ux, u.uy));
 }
 
 /*quest.c*/

@@ -617,6 +617,8 @@ LEV_COMP(6)                   1996                    LEV_COMP(6)
      'P'     a pool
      'L'     lava
      'W'     water (yes, different from a pool)
+     'T'     a tree
+     'F'     iron bars
      '#'     a corridor
      '.'     a normal room location (unlit unless lit in a REGION declaration)
      ' '     stone
@@ -649,8 +651,6 @@ EXAMPLE
      CONTAINER: '(', "sack", place[2]
      OBJECT: '*', "diamond", contained
      OBJECT[50%]: '*', "ruby", contained
-     # a random dragon somewhere
-     MONSTER: 'D', random, random
 
 
 
@@ -665,6 +665,8 @@ LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
+     # a random dragon somewhere
+     MONSTER: 'D', random, random
      # 3 out of 4 chance for a random trap in the EAST end
      TRAP[75%]: random, (6,4)
      # an electric eel below the SOUTH end
@@ -695,8 +697,6 @@ SEE ALSO
 BUGS
      Probably infinite.  Most importantly, still needs additional
      bounds checking.
-
-
 
 
 

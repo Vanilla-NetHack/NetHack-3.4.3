@@ -1,4 +1,4 @@
-  NetHack Porting Guidelines		v 3.2			93-01-08
+  NetHack Porting Guidelines		v 3.3			99-11-29
 
 
      1.0	Introduction
@@ -130,7 +130,7 @@ guide its dungeon creation.
 
 	This distribution provides makefiles for several kinds of systems.
 There are joint makefiles for the various varieties of UNIX, makefiles for
-MSDOS, a makefile for Amigas, and so on.  You may have to create a new
+MSDOS, a makefile for NT, and so on.  You may have to create a new
 makefile for your specific machine.  You may even have to translate some
 makefiles into a form more congenial to your system.  If possible, however,
 add to one of those provided.

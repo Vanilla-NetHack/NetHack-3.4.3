@@ -157,7 +157,7 @@ FBLIB	= #lib lib:compat.lib
 # If you're compiling this on a 1.3 system, you'll have to uncomment the
 # following (for use with the ifchange script below).  Also useful instead of
 # "protect ifchange +s"
-#EXECUTE = execute
+EXECUTE = execute
 
 # Headers we depend on
 AMDEP = $(AMI)winproto.h $(AMI)winext.h $(AMI)windefs.h $(I)winami.h
@@ -371,15 +371,15 @@ COMMOBJ = \
 	$(O)o_init.o	$(O)objects.o	$(O)objnam.o	$(O)options.o	\
 	$(O)pager.o	$(O)pickup.o	$(O)pline.o	$(O)polyself.o	\
 	$(O)potion.o	$(O)pray.o	$(O)priest.o	$(O)quest.o	\
-	$(O)questpgr.o	$(O)read.o	$(O)rect.o	$(O)restore.o	\
-	$(O)rnd.o	$(O)rumors.o	$(O)save.o	$(O)shk.o	\
-	$(O)shknam.o	$(O)sit.o	$(O)sounds.o	$(O)sp_lev.o	\
-	$(O)spell.o	$(O)steal.o	$(O)teleport.o	$(O)timeout.o	\
-	$(O)topten.o	$(O)track.o	$(O)trap.o	$(O)u_init.o	\
-	$(O)uhitm.o	$(O)vault.o	$(O)version.o	$(O)vision.o	\
-	$(O)weapon.o	$(O)were.o	$(O)wield.o	$(O)windows.o	\
-	$(O)wizard.o	$(O)worm.o	$(O)worn.o	$(O)write.o	\
-	$(O)zap.o
+	$(O)questpgr.o	$(O)read.o	$(O)rect.o	$(O)region.o	\
+	$(O)restore.o	$(O)rnd.o	$(O)role.o	$(O)rumors.o	\
+	$(O)save.o		$(O)shk.o	$(O)shknam.o	$(O)sit.o	\
+	$(O)sounds.o	$(O)sp_lev.o	$(O)spell.o	$(O)steal.o	\
+	$(O)steed.o	$(O)teleport.o	$(O)timeout.o	$(O)topten.o	\
+	$(O)track.o	$(O)trap.o		$(O)u_init.o	$(O)uhitm.o	\
+	$(O)vault.o	$(O)version.o	$(O)vision.o	$(O)weapon.o	\
+	$(O)were.o	$(O)wield.o	$(O)windows.o	$(O)wizard.o	\
+	$(O)worm.o	$(O)worn.o	$(O)write.o	$(O)zap.o
 
 MAKEDEFOBJ = \
 	$(O)monstr.o
@@ -415,56 +415,60 @@ HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(AMIGAOBJ2) $(SHAREOBJ) $(MAKEDEFOBJ) $(TTYOBJ)
 ###
 
 # quest files
-ADFILES1= $(SLIB)A-filla.lev $(SLIB)A-fillb.lev $(SLIB)A-locate.lev \
-	$(SLIB)A-start.lev
-ADFILES= $(SLIB)A-goal.lev $(ADFILES1)
+ADFILES1= $(SLIB)Arc-fila.lev $(SLIB)Arc-filb.lev $(SLIB)Arc-loca.lev \
+	$(SLIB)Arc-strt.lev
+ADFILES= $(SLIB)Arc-goal.lev $(ADFILES1)
 
-BDFILES1= $(SLIB)B-filla.lev $(SLIB)B-fillb.lev $(SLIB)B-locate.lev \
-	$(SLIB)B-start.lev
-BDFILES= $(SLIB)B-goal.lev $(BDFILES1)
+BDFILES1= $(SLIB)Bar-fila.lev $(SLIB)Bar-filb.lev $(SLIB)Bar-loca.lev \
+	$(SLIB)Bar-strt.lev
+BDFILES= $(SLIB)Bar-goal.lev $(BDFILES1)
 
-CDFILES1= $(SLIB)C-filla.lev $(SLIB)C-fillb.lev $(SLIB)C-locate.lev \
-	$(SLIB)C-start.lev
-CDFILES= $(SLIB)C-goal.lev $(CDFILES1)
+CDFILES1= $(SLIB)Cav-fila.lev $(SLIB)Cav-filb.lev $(SLIB)Cav-loca.lev \
+	$(SLIB)Cav-strt.lev
+CDFILES= $(SLIB)Cav-goal.lev $(CDFILES1)
 
-EDFILES1= $(SLIB)E-filla.lev $(SLIB)E-fillb.lev $(SLIB)E-locate.lev \
-	$(SLIB)E-start.lev
-EDFILES= $(SLIB)E-goal.lev $(EDFILES1)
-
-HDFILES1= $(SLIB)H-filla.lev $(SLIB)H-fillb.lev $(SLIB)H-locate.lev \
-	$(SLIB)H-start.lev
+HDFILES1= $(SLIB)Hea-fila.lev $(SLIB)Hea-filb.lev $(SLIB)Hea-loca.lev \
+	$(SLIB)Hea-strt.lev
 HDFILES= $(SLIB)H-goal.lev $(HDFILES1)
 
-KDFILES1= $(SLIB)K-filla.lev $(SLIB)K-fillb.lev $(SLIB)K-locate.lev \
-	$(SLIB)K-start.lev
-KDFILES= $(SLIB)K-goal.lev $(KDFILES1)
+KDFILES1= $(SLIB)Kni-fila.lev $(SLIB)Kni-filb.lev $(SLIB)Kni-loca.lev \
+	$(SLIB)Kni-strt.lev
+KDFILES= $(SLIB)Kni-goal.lev $(KDFILES1)
 
-PDFILES1= $(SLIB)P-filla.lev $(SLIB)P-fillb.lev $(SLIB)P-locate.lev \
-	$(SLIB)P-start.lev
-PDFILES= $(SLIB)P-goal.lev $(PDFILES1)
+MDFILES1= $(SLIB)Mon-fila.lev $(SLIB)Mon-filb.lev $(SLIB)Mon-loca.lev \
+	$(SLIB)Mon-strt.lev
+MDFILES= $(SLIB)Mon-goal.lev $(MDFILES1)
 
-RDFILES1= $(SLIB)R-filla.lev $(SLIB)R-fillb.lev $(SLIB)R-locate.lev \
-	$(SLIB)R-start.lev
-RDFILES= $(SLIB)R-goal.lev $(RDFILES1)
+PDFILES1= $(SLIB)Pri-fila.lev $(SLIB)Pri-filb.lev $(SLIB)Pri-loca.lev \
+	$(SLIB)Pri-strt.lev
+PDFILES= $(SLIB)Pri-goal.lev $(PDFILES1)
 
-SDFILES1= $(SLIB)S-filla.lev $(SLIB)S-fillb.lev $(SLIB)S-locate.lev \
-	$(SLIB)S-start.lev
-SDFILES= $(SLIB)S-goal.lev $(SDFILES1)
+RDFILES1= $(SLIB)Rog-fila.lev $(SLIB)Rog-filb.lev $(SLIB)Rog-loca.lev \
+	$(SLIB)Rog-strt.lev
+RDFILES= $(SLIB)Rog-goal.lev $(RDFILES1)
 
-TDFILES1= $(SLIB)T-filla.lev $(SLIB)T-fillb.lev $(SLIB)T-locate.lev \
-	$(SLIB)T-start.lev
-TDFILES= $(SLIB)T-goal.lev $(TDFILES1)
+RANFILES1= $(SLIB)Ran-fila.lev $(SLIB)Ran-filb.lev $(SLIB)Ran-loca.lev \
+	$(SLIB)Ran-strt.lev
+RANFILES= $(SLIB)Ran-goal.lev $(RANFILES1)
 
-VDFILES1= $(SLIB)V-filla.lev $(SLIB)V-fillb.lev $(SLIB)V-locate.lev \
-	$(SLIB)V-start.lev
-VDFILES= $(SLIB)V-goal.lev $(VDFILES1)
+SDFILES1= $(SLIB)Sam-fila.lev $(SLIB)Sam-filb.lev $(SLIB)Sam-loca.lev \
+	$(SLIB)Sam-strt.lev
+SDFILES= $(SLIB)Sam-goal.lev $(SDFILES1)
 
-WDFILES1= $(SLIB)W-filla.lev $(SLIB)W-fillb.lev $(SLIB)W-locate.lev \
-	$(SLIB)W-start.lev
-WDFILES= $(SLIB)W-goal.lev $(WDFILES1)
+TDFILES1= $(SLIB)Tou-fila.lev $(SLIB)Tou-filb.lev $(SLIB)Tou-loca.lev \
+	$(SLIB)Tou-strt.lev
+TDFILES= $(SLIB)Tou-goal.lev $(TDFILES1)
 
-XDFILES=	$(ADFILES) $(BDFILES) $(CDFILES) $(EDFILES) $(HDFILES) \
-		$(KDFILES) $(PDFILES) $(RDFILES) $(SDFILES) $(TDFILES) \
+VDFILES1= $(SLIB)Val-fila.lev $(SLIB)Val-filb.lev $(SLIB)Val-loca.lev \
+	$(SLIB)Val-strt.lev
+VDFILES= $(SLIB)Val-goal.lev $(VDFILES1)
+
+WDFILES1= $(SLIB)Wiz-fila.lev $(SLIB)Wiz-filb.lev $(SLIB)Wiz-loca.lev \
+	$(SLIB)Wiz-strt.lev
+WDFILES= $(SLIB)Wiz-goal.lev $(WDFILES1)
+
+XDFILES=	$(ADFILES) $(BDFILES) $(CDFILES) $(HDFILES) $(KDFILES) \
+		$(MDFILES) $(PDFILES) $(RDFILES) $(RANFILES) $(SDFILES) $(TDFILES) \
 		$(VDFILES) $(WDFILES)
 
 SOUNDFILES= \
@@ -494,9 +498,12 @@ INSTDUNGEONFILES1= \
 	$(SLIB)medusa-2.lev	$(SLIB)minend-1.lev	$(SLIB)minend-2.lev \
 	$(SLIB)minetn-1.lev	$(SLIB)minetn-2.lev	$(SLIB)minefill.lev \
 	$(SLIB)options		$(SLIB)oracle.lev	$(SLIB)orcus.lev \
-	$(SLIB)sanctum.lev	$(SLIB)tower1.lev	$(SLIB)tower2.lev \
-	$(SLIB)tower3.lev	$(SLIB)valley.lev	$(SLIB)water.lev \
-	$(SLIB)wizard1.lev	$(SLIB)wizard2.lev	$(SLIB)wizard3.lev \
+	$(SLIB)sanctum.lev	$(SLIB)soko1-1.lev	$(SLIB)soko1-2.lev \
+	$(SLIB)soko2-1.lev	$(SLIB)soko2-2.lev	$(SLIB)soko3-1.lev \
+	$(SLIB)soko3-2.lev	$(SLIB)soko4-1.lev	$(SLIB)soko4-2.lev \
+	$(SLIB)tower1.lev	$(SLIB)tower2.lev	$(SLIB)tower3.lev \
+	$(SLIB)valley.lev	$(SLIB)water.lev	$(SLIB)wizard1.lev \
+	$(SLIB)wizard2.lev	$(SLIB)wizard3.lev \
 	$(XDFILES)
 
 INSTDUNGEONFILES= $(NETHACK)NetHack.cnf $(INSTDUNGEONFILES1)
@@ -608,14 +615,18 @@ spotless:  clean
 #	-delete $(SLIB)wizard3.lev $(DAT)dungeon.pdf $(SLIB)valley.lev
 #	-delete $(SLIB)minefill.lev
 #	-delete $(SLIB)minetn-1 $(SLIB)minetn-2 $(SLIB)minend-1 $(SLIB)minend-2
+#	-delete	$(SLIB)soko1-1.lev $(SLIB)soko1-2.lev $(SLIB)soko2-1.lev
+#	-delete $(SLIB)soko2-2.lev $(SLIB)soko3-1.lev $(SLIB)soko3-2.lev
+#	-delete $(SLIB)soko4-1.lev $(SLIB)soko4-2.lev
 #	-delete $(ADFILES)
 #	-delete $(BDFILES)
 #	-delete $(CDFILES)
-#	-delete $(EDFILES)
 #	-delete $(HDFILES)
 #	-delete $(KDFILES)
+#	-delete $(MDFILES)
 #	-delete $(PDFILES)
 #	-delete $(RDFILES)
+#	-delete $(RANFILES)
 #	-delete $(SDFILES)
 #	-delete $(TDFILES)
 #	-delete $(VDFILES)
@@ -1098,75 +1109,90 @@ $(SLIB)medusa-2.lev:	$(DAT)medusa.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)medusa.des
 #none
 
-$(ADFILES1):	$(SLIB)A-goal.lev
+SOKOBAN1= $(SLIB)soko1-1.lev $(SLIB)soko1-2.lev $(SLIB)soko2-1.lev \
+	$(SLIB)soko2-2.lev $(SLIB)soko3-1.lev $(SLIB)soko3-2.lev \
+	$(SLIB)soko4-1.lev
+$(SOKOBAN1): $(SLIB)soko4-2.lev
 
-$(SLIB)A-goal.lev:	$(DAT)Arch.des $(SBIN)lev_comp
+$(SLIB)soko4-2.lev: $(DAT)sokoban.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)sokoban.des
+#none
+
+$(ADFILES1):	$(SLIB)Arc-goal.lev
+
+$(SLIB)Arc-goal.lev:	$(DAT)Arch.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Arch.des
 #none
 
-$(BDFILES1):	$(SLIB)B-goal.lev
+$(BDFILES1):	$(SLIB)Bar-goal.lev
 
-$(SLIB)B-goal.lev:	$(DAT)Barb.des $(SBIN)lev_comp
+$(SLIB)Bar-goal.lev:	$(DAT)Barb.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Barb.des
 #none
 
-$(CDFILES1):	$(SLIB)C-goal.lev
+$(CDFILES1):	$(SLIB)Cav-goal.lev
 
-$(SLIB)C-goal.lev:	$(DAT)Caveman.des $(SBIN)lev_comp
+$(SLIB)Cav-goal.lev:	$(DAT)Caveman.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Caveman.des
 #none
 
-$(EDFILES1):	$(SLIB)E-goal.lev
+$(HDFILES1):	$(SLIB)Hea-goal.lev
 
-$(SLIB)E-goal.lev:	$(DAT)Elf.des $(SBIN)lev_comp
-#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Elf.des
-#none
-
-$(HDFILES1):	$(SLIB)H-goal.lev
-
-$(SLIB)H-goal.lev:	$(DAT)Healer.des $(SBIN)lev_comp
+$(SLIB)Hea-goal.lev:	$(DAT)Healer.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Healer.des
 #none
 
-$(KDFILES1):	$(SLIB)K-goal.lev
+$(KDFILES1):	$(SLIB)Kni-goal.lev
 
-$(SLIB)K-goal.lev:	$(DAT)Knight.des $(SBIN)lev_comp
+$(SLIB)Kni-goal.lev:	$(DAT)Knight.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Knight.des
 #none
 
-$(PDFILES1):	$(SLIB)P-goal.lev
+$(MDFILES1):	$(SLIB)Mon-goal.lev
 
-$(SLIB)P-goal.lev:	$(DAT)Priest.des $(SBIN)lev_comp
+$(SLIB)Mon-goal.lev:	$(DAT)Monk.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Monk.des
+#none
+
+$(PDFILES1):	$(SLIB)Pri-goal.lev
+
+$(SLIB)Pri-goal.lev:	$(DAT)Priest.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Priest.des
 #none
 
-$(RDFILES1):	$(SLIB)R-goal.lev
+$(RDFILES1):	$(SLIB)Rog-goal.lev
 
-$(SLIB)R-goal.lev:	$(DAT)Rogue.des $(SBIN)lev_comp
+$(SLIB)Rog-goal.lev:	$(DAT)Rogue.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Rogue.des
 #none
 
-$(SDFILES1):	$(SLIB)S-goal.lev
+$(RANFILES1):	$(SLIB)Ran-goal.lev
 
-$(SLIB)S-goal.lev:	$(DAT)Samurai.des $(SBIN)lev_comp
+$(SLIB)Ran-goal.lev:	$(DAT)Ranger.des $(SBIN)lev_comp
+#SFD_INSTEAD $(SBIN)lev_comp $(DAT)Ranger.des
+#none
+
+$(SDFILES1):	$(SLIB)Sam-goal.lev
+
+$(SLIB)Sam-goal.lev:	$(DAT)Samurai.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Samurai.des
 #none
 
-$(TDFILES1):	$(SLIB)T-goal.lev
+$(TDFILES1):	$(SLIB)Tou-goal.lev
 
-$(SLIB)T-goal.lev:	$(DAT)Tourist.des $(SBIN)lev_comp
+$(SLIB)Tou-goal.lev:	$(DAT)Tourist.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Tourist.des
 #none
 
-$(VDFILES1):	$(SLIB)V-goal.lev
+$(VDFILES1):	$(SLIB)Val-goal.lev
 
-$(SLIB)V-goal.lev:	$(DAT)Valkyrie.des $(SBIN)lev_comp
+$(SLIB)Val-goal.lev:	$(DAT)Valkyrie.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Valkyrie.des
 #none
 
-$(WDFILES1):	$(SLIB)W-goal.lev
+$(WDFILES1):	$(SLIB)Wiz-goal.lev
 
-$(SLIB)W-goal.lev:	$(DAT)Wizard.des $(SBIN)lev_comp
+$(SLIB)Wiz-goal.lev:	$(DAT)Wizard.des $(SBIN)lev_comp
 #SFD_INSTEAD $(SBIN)lev_comp $(DAT)Wizard.des
 #none
 
@@ -1344,7 +1370,7 @@ $(O)dokick.o:  $(NHS)dokick.c $(HDEP) $(I)eshk.h
 
 $(O)dothrow.o:  $(NHS)dothrow.c $(HDEP)
 
-$(O)drawing.o:  $(NHS)drawing.c $(HDEP) $(I)termcap.h
+$(O)drawing.o:  $(NHS)drawing.c $(HDEP) $(I)tcap.h
 
 $(O)dungeon.o:  $(NHS)dungeon.c $(HDEP) $(I)dgn_file.h $(I)dlb.h
 
@@ -1376,7 +1402,7 @@ $(O)lock.o:  $(NHS)lock.c $(HDEP)
 
 $(O)mail.o:  $(NHS)mail.c $(HDEP) $(I)mail.h
 
-$(O)makemon.o:  $(NHS)makemon.c $(HDEP) $(I)epri.h $(I)emin.h
+$(O)makemon.o:  $(NHS)makemon.c $(HDEP) $(I)epri.h $(I)emin.h $(I)edog.h
 
 $(O)mcastu.o:  $(NHS)mcastu.c $(HDEP)
 
@@ -1420,13 +1446,13 @@ $(O)music.o:  $(NHS)music.c $(HDEP) #interp.c
 $(O)o_init.o:  $(NHS)o_init.c $(HDEP) $(I)lev.h
 
 $(O)objects.o:  $(NHS)objects.c $(I)config.h $(I)obj.h $(I)objclass.h \
-		$(I)prop.h $(I)color.h
+		$(I)prop.h $(I)skills.h $(I)color.h
 #SFD_INSTEAD #none
 	$(CC) $(CFLAGS) $(INCLSPEC)$(NHS) $(OBJSPEC)$@ $(NHS)objects.c
 
 $(O)objnam.o:  $(NHS)objnam.c $(HDEP)
 
-$(O)options.o:  $(NHS)options.c $(HDEP) $(I)termcap.h $(I)config.h \
+$(O)options.o:  $(NHS)options.c $(HDEP) $(I)tcap.h $(I)config.h \
 		$(I)objclass.h $(I)flag.h
 
 $(O)pager.o:  $(NHS)pager.c $(HDEP) $(I)dlb.h
@@ -1452,9 +1478,13 @@ $(O)read.o:  $(NHS)read.c $(HDEP)
 
 $(O)rect.o:	$(NHS)rect.c $(HDEP)
 
-$(O)restore.o:  $(NHS)restore.c $(HDEP) $(I)lev.h $(I)termcap.h $(I)quest.h
+$(O)region.o:	$(NHS)region.c $(HDEP)
+
+$(O)restore.o:  $(NHS)restore.c $(HDEP) $(I)lev.h $(I)tcap.h $(I)quest.h
 
 $(O)rnd.o:  $(NHS)rnd.c $(HDEP)
+
+$(O)role.o:	$(NHS)role.c $(HDEP)
 
 $(O)rumors.o:  $(NHS)rumors.c $(HDEP) $(I)dlb.h
 
@@ -1475,6 +1505,8 @@ $(O)sp_lev.o:  $(NHS)sp_lev.c $(HDEP) $(I)sp_lev.h $(I)rect.h $(I)dlb.h
 $(O)spell.o:  $(NHS)spell.c $(HDEP)
 
 $(O)steal.o:  $(NHS)steal.c $(HDEP)
+
+$(O)steed.o:	$(NHS)steed.c $(HDEP)
 
 $(O)teleport.o:	$(NHS)teleport.c $(HDEP)
 
@@ -1520,11 +1552,11 @@ $(O)zap.o:  $(NHS)zap.c $(HDEP)
 
 $(O)getline.o:	$(TTY)getline.c $(HDEP) $(I)wintty.h
 
-$(O)termcap.o:	$(TTY)termcap.c $(HDEP) $(I)wintty.h $(I)termcap.h
+$(O)termcap.o:	$(TTY)termcap.c $(HDEP) $(I)wintty.h $(I)tcap.h
 
-$(O)topl.o:	$(TTY)topl.c $(HDEP) $(I)wintty.h $(I)termcap.h
+$(O)topl.o:	$(TTY)topl.c $(HDEP) $(I)wintty.h $(I)tcap.h
 
-$(O)wintty.o:	$(TTY)wintty.c $(HDEP) $(I)wintty.h $(I)termcap.h \
+$(O)wintty.o:	$(TTY)wintty.c $(HDEP) $(I)wintty.h $(I)tcap.h \
 		$(I)patchlevel.h
 
 $(O)amitty.o:	$(AMI)amitty.c $(HDEP)
@@ -1532,7 +1564,7 @@ $(O)amitty.o:	$(AMI)amitty.c $(HDEP)
 $(O)rip.o:	$(NHS)rip.c $(HDEP)
 
 
-$(I)config.h:  $(I)tradstdc.h $(I)global.h
+$(I)config.h:  $(I)config1.h $(I)tradstdc.h $(I)global.h
 	-setdate $(I)config.h
 	-wait 2
 
@@ -1549,7 +1581,7 @@ $(I)global.h:  $(I)coord.h $(I)pcconf.h $(I)amiconf.h
 $(I)hack.h:  $(I)config.h $(I)trap.h $(I)decl.h $(I)dungeon.h $(I)monsym.h \
 		$(I)mkroom.h $(I)objclass.h $(I)flag.h $(I)rm.h $(I)vision.h \
 		$(I)display.h $(I)wintype.h $(I)engrave.h $(I)rect.h \
-		$(I)trampoli.h
+		$(I)region.h $(I)trampoli.h
 	-setdate $(I)hack.h
 	-wait 2
 
@@ -1557,7 +1589,7 @@ $(I)permonst.h:  $(I)monattk.h $(I)monflag.h $(I)align.h
 	-setdate $(I)permonst.h
 	-wait 2
 
-$(I)you.h:  $(I)align.h $(I)attrib.h $(I)monst.h $(I)youprop.h
+$(I)you.h:  $(I)align.h $(I)attrib.h $(I)monst.h $(I)youprop.h $(I)skills.h
 	-setdate $(I)you.h
 	-wait 2
 

@@ -13,6 +13,7 @@
 #include <resources.h>
 #include <memory.h>
 #include <ToolUtils.h>
+#include "dlb.h"
 
 /*
  * We should get the default dirID and volRefNum (from name) from prefs and
@@ -28,13 +29,6 @@
 
 #define APP_NAME_RES_ID		(-16396)
 
-
-static short FDECL(IsHandleFile,(int));
-static int FDECL(OpenHandleFile,(const unsigned char *, long));
-static int FDECL(CloseHandleFile,(int));
-static int FDECL(ReadHandleFile,(int, void *, unsigned));
-static long FDECL(SetHandleFilePos,(int, short, long));
-
 typedef struct handlefile {
 	long		type ;  /* Resource type */
 	short		id ;	/* Resource id */
@@ -43,16 +37,27 @@ typedef struct handlefile {
 	Handle		data ;  /* The resource, purgeable */
 } HandleFile ;
 
+static  HandleFile *FDECL(IsHandleFile,(int));
+static int FDECL(OpenHandleFile,(const unsigned char *, long));
+static int FDECL(CloseHandleFile,(int));
+static int FDECL(ReadHandleFile,(int, void *, unsigned));
+static long FDECL(SetHandleFilePos,(int, short, long));
+
 HandleFile theHandleFiles [ MAX_HF ] ;
-MacDirs theDirs ;		/* also referenced in files.c */
+MacDirs theDirs ;		/* also referenced in macwin.c */
 
 
-static short
-IsHandleFile ( int fd )
+static HandleFile *
+IsHandleFile(int fd)
 {
-	return (fd >= FIRST_HF) && 
-		   (fd < FIRST_HF + MAX_HF) && 
-		   (theHandleFiles[ fd - FIRST_HF ].data) ;
+	HandleFile *hfp = NULL;
+
+	if (fd >= FIRST_HF && fd < FIRST_HF+MAX_HF) {
+		/* in valid range, check for data */
+		hfp = &theHandleFiles[fd-FIRST_HF];
+		if (!hfp->data) hfp = NULL;
+	}
+	return hfp;
 }
 
 
@@ -83,7 +88,6 @@ OpenHandleFile ( const unsigned char * name , long fileType )
 	GetResInfo ( h, & theHandleFiles[i].id, ( void* ) & theHandleFiles[i].type, s ) ;
 	theHandleFiles[i].mark = 0L ;
 
-	HPurge( h ) ;
 	return(i + FIRST_HF);
 }
 
@@ -115,15 +119,11 @@ ReadHandleFile ( int fd , void * ptr , unsigned len )
 	if ( len > maxBytes ) len = maxBytes ;
 	
 	h = theHandleFiles[fd].data ;
-	LoadResource ( h ) ;
-	if ( ! itworked(ResError()) ) return (-1);
 	
 	HLock(h);
 	BlockMove ( *h + theHandleFiles[fd].mark , ptr , len );
 	HUnlock(h);
 	theHandleFiles[fd].mark += len ;
-
-/*	comment("ReadHandleFile ",len); */
 	
 	return(len);
 }
@@ -140,20 +140,21 @@ SetHandleFilePos ( int fd , short whence , long pos )
 	
 	curpos = theHandleFiles [ fd ].mark;
 	switch ( whence ) {
-	case SEEK_CUR : 
-		curpos += pos ;
-		break ;
-	case SEEK_END : 
-		curpos = theHandleFiles[fd].size  - pos ;
-		break ;
-	default : /* set */
-		curpos = pos ;
-		break ;
+		case SEEK_CUR : 
+			curpos += pos ;
+			break ;
+		case SEEK_END : 
+			curpos = theHandleFiles[fd].size  - pos ;
+			break ;
+		default : /* set */
+			curpos = pos ;
+			break ;
 	}
 
-	if ( curpos < 0 ) curpos = 0 ;
-	
-	if ( curpos > theHandleFiles [ fd ].size ) curpos = theHandleFiles [ fd ].size ;
+	if ( curpos < 0 )
+		curpos = 0 ;
+	else if ( curpos > theHandleFiles [ fd ].size )
+		curpos = theHandleFiles [ fd ].size ;
 	
 	theHandleFiles [ fd ].mark = curpos;
 	
@@ -185,15 +186,16 @@ P2C ( const unsigned char * p , char * c )
 
 
 static void
-replace_resource(Handle new_res, ResType its_type, short its_id,
-				 Str255 its_name) {
+replace_resource(Handle new_res, ResType its_type, short its_id, Str255 its_name)
+{
 	Handle old_res;
+
 	SetResLoad(false);
 	old_res = Get1Resource(its_type, its_id);
 	SetResLoad(true);
 	if (old_res) {
-		RmveResource(old_res);
-		DisposHandle(old_res);
+		RemoveResource(old_res);
+		DisposeHandle(old_res);
 	}
 
 	AddResource(new_res, its_type, its_id, its_name);
@@ -361,15 +363,15 @@ macseek ( int fd , long where , short whence )
 	}
 
 	switch ( whence ) {
-	default :
-		posMode = fsFromStart ;
-		break ;
-	case SEEK_CUR :
-		posMode = fsFromMark ;
-		break ;
-	case SEEK_END :
-		posMode = fsFromLEOF ;
-		break ;
+		default :
+			posMode = fsFromStart ;
+			break ;
+		case SEEK_CUR :
+			posMode = fsFromMark ;
+			break ;
+		case SEEK_END :
+			posMode = fsFromLEOF ;
+			break ;
 	}
 
 	if ( itworked( SetFPos ( fd , posMode, where ) )  &&
@@ -378,3 +380,94 @@ macseek ( int fd , long where , short whence )
 	   
 	return(-1);
 }
+
+/* ---------------------------------------------------------------------- */
+
+boolean rsrc_dlb_init(void)
+{
+	return TRUE;
+}
+
+void rsrc_dlb_cleanup(void)
+{
+}
+
+boolean rsrc_dlb_fopen(dlb *dp, const char *name, const char *mode)
+{
+	Str255 pname;
+	
+	C2P(name, pname);
+	dp->fd = OpenHandleFile(pname, 'File');	/* automatically read-only */
+	return dp->fd >= 0;
+}
+
+int rsrc_dlb_fclose(dlb *dp)
+{
+	return CloseHandleFile(dp->fd);
+}
+
+int rsrc_dlb_fread(char *buf, int size, int quan, dlb *dp)
+{
+	int nread;
+
+	if (size < 0 || quan < 0) return 0;
+	nread = ReadHandleFile(dp->fd, buf, (unsigned)size * (unsigned)quan);
+	
+	return nread/size;	/* # of whole pieces (== quan in normal case) */
+}
+
+int rsrc_dlb_fseek(dlb *dp, long pos, int whence)
+{
+	return SetHandleFilePos(dp->fd, whence, pos);
+}
+
+char *rsrc_dlb_fgets(char *buf, int len, dlb *dp)
+{
+	HandleFile *hfp = IsHandleFile(dp->fd);
+	char *p;
+	long mark;
+	int bytesLeft, n = 0;
+
+	if (hfp && hfp->mark < hfp->size) {
+		bytesLeft = hfp->size - hfp->mark;
+		if (bytesLeft < len)
+			len = bytesLeft;
+
+		HLock(hfp->data);
+		for (n = 0, p = *hfp->data+hfp->mark; n < len; n++, p++) {
+			buf[n] = *p;
+			if (*p == '\r') buf[n] = '\n';
+			if (buf[n] == '\n') {
+				n++;		/* we want the return in the buffer */
+				break;
+			}
+		}
+		HUnlock(hfp->data);
+
+		hfp->mark += n;
+	}
+
+	return n ? buf : NULL;
+}
+
+int rsrc_dlb_fgetc(dlb *dp)
+{
+	HandleFile *hfp = IsHandleFile(dp->fd);
+	int ret;
+	long mark;
+
+	if (!hfp || hfp->size <= hfp->mark) return EOF;
+
+	ret = *(unsigned char *)(*hfp->data + hfp->mark);
+	hfp->mark++;
+	return ret;
+}
+
+long rsrc_dlb_ftell(dlb *dp)
+{
+	HandleFile *hfp = IsHandleFile(dp->fd);
+
+	if (!hfp) return 0;
+	return hfp->mark;
+}
+

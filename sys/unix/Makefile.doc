@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.doc	3.2	96/03/23
+#	SCCS Id: @(#)Makefile.doc	3.3	96/03/23
 
 GUIDEBOOK = Guidebook		# regular ASCII file
 #GUIDEBOOK = Guidebook.ps	# PostScript file

@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)write.c	3.2	96/05/05	*/
+/*	SCCS Id: @(#)write.c	3.3	96/05/05	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-static int FDECL(cost,(struct obj *));
+STATIC_DCL int FDECL(cost,(struct obj *));
 
 /*
  * returns basecost of a scroll or a spellbook
  */
-static int
+STATIC_OVL int
 cost(otmp)
 register struct obj *otmp;
 {
@@ -28,6 +28,7 @@ register struct obj *otmp;
 	case SCR_MAGIC_MAPPING:
 	case SCR_AMNESIA:
 	case SCR_FIRE:
+	case SCR_EARTH:
 		return(8);
 /*		break; */
 	case SCR_DESTROY_ARMOR:
@@ -48,6 +49,7 @@ register struct obj *otmp;
 		return(16);
 /*		break; */
 	case SCR_SCARE_MONSTER:
+	case SCR_STINKING_CLOUD:
 	case SCR_TAMING:
 	case SCR_TELEPORTATION:
 		return(20);
@@ -78,7 +80,7 @@ register struct obj *pen;
 	boolean by_descr = FALSE;
 	const char *typeword;
 
-	if (nohands(uasmon)) {
+	if (nohands(youmonst.data)) {
 	    You("need hands to be able to write!");
 	    return 0;
 	} else if (Glib) {
@@ -153,6 +155,9 @@ found:
 		return 1;
 	}
 
+	/* KMH, conduct */
+	u.uconduct.literate++;
+
 	new_obj = mksobj(i, FALSE, FALSE);
 	new_obj->bknown = (paper->bknown && pen->bknown);
 
@@ -192,7 +197,7 @@ found:
 	/* can't write if we don't know it - unless we're lucky */
 	if(!(objects[new_obj->otyp].oc_name_known) &&
 	   !(objects[new_obj->otyp].oc_uname) &&
-	   (rnl(Role_is('W') ? 3 : 15))) {
+	   (rnl(Role_if(PM_WIZARD) ? 3 : 15))) {
 		You("%s to write that!", by_descr ? "fail" : "don't know how");
 		/* scrolls disappear, spellbooks don't */
 		if (paper->oclass == SPBOOK_CLASS)

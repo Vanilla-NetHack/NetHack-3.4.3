@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_comp.c	3.2	96/06/22	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.3	96/06/22	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -543,7 +543,7 @@ check_dungeon()
  *	- A level must have a unique level name.
  *	- If chained, the level used as reference for the chain
  *	  must be in this dungeon, must be previously defined, and
- *	  the level chained from must be "non-probabalistic" (ie.
+ *	  the level chained from must be "non-probabilistic" (ie.
  *	  have a 100% chance of existing).
  */
 
@@ -567,8 +567,9 @@ check_level()
 		yyerror("Invaild level chain reference.");
 		return(0);
 	} else if(tmplevel[i].chain != -1) {	/* there is a chain */
-	    if(tmplevel[tmpbranch[i].chain].chance != 100) {
-		yyerror("Level cannot chain from a probabalistic level.");
+	    /* KMH -- tmplevel[tmpbranch[i].chain].chance was in error */
+	    if(tmplevel[tmplevel[i].chain].chance != 100) {
+		yyerror("Level cannot chain from a probabilistic level.");
 		return(0);
 	    } else if(tmplevel[i].chain == n_levs) {
 		yyerror("A level cannot chain to itself!");
@@ -584,7 +585,7 @@ check_level()
  *	  (ie. You can only have one entry point to each dungeon).
  *	- If chained, the level used as reference for the chain
  *	  must be in this dungeon, must be previously defined, and
- *	  the level chained from must be "non-probabalistic" (ie.
+ *	  the level chained from must be "non-probabilistic" (ie.
  *	  have a 100% chance of existing).
  */
 
@@ -612,7 +613,7 @@ check_branch()
 	} else if(tmpbranch[i].chain != -1) {	/* it is chained */
 
 	    if(tmplevel[tmpbranch[i].chain].chance != 100) {
-		yyerror("Branch cannot chain from a probabalistic level.");
+		yyerror("Branch cannot chain from a probabilistic level.");
 		return(0);
 	    }
 	}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)were.c	3.2	96/08/09	*/
+/*	SCCS Id: @(#)were.c	3.3	97/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -38,9 +38,9 @@ register struct monst *mon;
 #endif /* OVL0 */
 #ifdef OVLB
 
-static int FDECL(counter_were,(int));
+STATIC_DCL int FDECL(counter_were,(int));
 
-static int
+STATIC_OVL int
 counter_were(pm)
 int pm;
 {
@@ -67,16 +67,15 @@ register struct monst *mon;
 	    return;
 	}
 
-	if(canseemon(mon))
+	if(canseemon(mon) && !Hallucination)
 	    pline("%s changes into a %s.", Monnam(mon),
-			Hallucination ? rndmonnam() :
 			is_human(&mons[pm]) ? "human" :
 			mons[pm].mname+4);
 
 	set_mon_data(mon, &mons[pm], 0);
-	if (mon->msleep || !mon->mcanmove) {
+	if (mon->msleeping || !mon->mcanmove) {
 	    /* transformation wakens and/or revitalizes */
-	    mon->msleep = 0;
+	    mon->msleeping = 0;
 	    mon->mfrozen = 0;	/* not asleep or paralyzed */
 	    mon->mcanmove = 1;
 	}
@@ -129,8 +128,8 @@ you_were()
 {
 	char qbuf[QBUFSZ];
 
-	if(u.umonnum == u.ulycn) return;
-	if(Polymorph_control) {
+	if (Unchanging || (u.umonnum == u.ulycn)) return;
+	if (Polymorph_control) {
 	    /* `+4' => skip "were" prefix to get name of beast */
 	    Sprintf(qbuf, "Do you want to change into %s? ",
 		    an(mons[u.ulycn].mname+4));
@@ -147,7 +146,7 @@ boolean purify;
 	    You_feel("purified.");
 	    u.ulycn = NON_PM;	/* cure lycanthropy */
 	}
-	if (is_were(uasmon) &&
+	if (!Unchanging && is_were(youmonst.data) &&
 		(!Polymorph_control || yn("Remain in beast form?") == 'n'))
 	    rehumanize();
 }

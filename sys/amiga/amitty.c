@@ -9,7 +9,7 @@
  */
 
 #include "hack.h"
-#include "termcap.h"
+#include "tcap.h"
 #include <stdio.h>
 
 #ifdef _DCC

@@ -1,4 +1,4 @@
-.TH NETHACK 6 "10 March 1996"
+.TH NETHACK 6 "17 November 1999"
 .UC 4
 .SH NAME
 nethack \- Exploring The Mazes of Menace
@@ -12,7 +12,12 @@ nethack \- Exploring The Mazes of Menace
 .B \-n
 ]
 [
-.B \-[ABCEHKPRSTVW@]
+.B \-p
+.I profession (role)
+]
+[
+.B \-r
+.I race
 ]
 [
 .B \-[DX]
@@ -38,7 +43,12 @@ nethack \- Exploring The Mazes of Menace
 .B \-v
 ]
 [
-.B \-[ABCEHKPRSTVW]
+.B \-p
+.I profession (role)
+]
+[
+.B \-r
+.I race
 ]
 [
 .I playernames
@@ -90,11 +100,21 @@ run-time options described there,
 and are provided purely for convenience on systems
 supporting multiple types of terminals.)
 .PP
+Because the option list can be very long (particularly when specifying
+graphics characters), options may also be included in a configuration
+file.
+The default is located in your home directory and
+named .nethackrc on Unix systems.  On other systems, the default may be
+different, usually NetHack.cnf.  On DOS the name is defaults.nh, while
+on the Macintosh or BeOS, it is NetHack Defaults.
+The configuration file's location may be specified by setting NETHACKOPTIONS
+to a string consisting of an @ character followed by the filename.
+.PP
 The
 .B \-u
 .I playername
 option supplies the answer to the question "Who are you?".
-It overrides any name from NETHACKOPTIONS, HACKOPTIONS, USER, LOGNAME,
+It overrides any name from the options or configuration file, USER, LOGNAME,
 or getlogin(), which will otherwise be tried in order.
 If none of these provides a useful name, the player will be asked for one.
 Player names (in conjunction with uids) are used to identify save files,
@@ -103,15 +123,26 @@ Conversely, you must use the appropriate player name to restore a saved game.
 .PP
 A
 .I playername
-suffix or a separate option consisting of one of
-.B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
-can be used to determine the character role.
-Likewise,
-.B "\-@"
-can be used to explicitly request that a random role be chosen.
-It may need to be quoted with a backslash (-\\@) if @
+suffix or a separate option,
+.B \-p
+.I profession
+can be used to determine the character role.  You can specify either the
+male or female name for the character role, or the first three characters
+of the role as an abbreviation.
+.B "\-p \@"
+has been retained to explicitly request that a random role be chosen.
+It may need to be quoted with a backslash (\\@) if @
 is the "kill" character (see "stty") for the terminal, in order
 to prevent the current input line from being cleared.
+.PP
+Likewise,
+.B \-r
+.I race
+can be used to explicitly request that a race be chosen.
+.PP
+.PP
+Leaving out either of these will result in you being prompted during
+the game startup for the information.
 .PP
 The
 .B \-s
@@ -122,10 +153,10 @@ reports on all versions present in the score file.
 The
 .B \-s
 may also be followed by arguments
-.B "\-A \-B \-C \-E \-H \-K \-P \-R \-S \-T \-V \-W"
-to print the
-scores of Archeologists, Barbarians, Cave(wo)men, Elves, Healers, Knights,
-Priest(esse)s, Rogues, Samurai, Tourists, Valkyries, or Wizards.
+.B \-p
+and
+.B \-r
+to print the scores of particular roles and races only.
 It may also be followed by one or more player names to print the scores of the
 players mentioned, by 'all' to print out all scores, or by a number to print
 that many top scores.

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.2	96/05/14	*/
+/*	SCCS Id: @(#)mkobj.c	3.3	1999/02/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,14 +9,15 @@
 STATIC_DCL void FDECL(mkbox_cnts,(struct obj *));
 STATIC_DCL void FDECL(obj_timer_checks,(struct obj *, XCHAR_P, XCHAR_P, int));
 #ifdef OVL1
-static void FDECL(container_weight, (struct obj *));
+STATIC_DCL void FDECL(container_weight, (struct obj *));
+STATIC_DCL struct obj *FDECL(save_mtraits, (struct obj *, struct monst *));
 #ifdef WIZARD
-static const char *FDECL(where_name, (int));
-static void FDECL(check_contained, (struct obj *,const char *));
+STATIC_DCL const char *FDECL(where_name, (int));
+STATIC_DCL void FDECL(check_contained, (struct obj *,const char *));
 #endif
 #endif /* OVL1 */
 
-/*#define DEBUG_EFFECTS		/* show some messages for debugging */
+/*#define DEBUG_EFFECTS*/	/* show some messages for debugging */
 
 struct icp {
     int  iprob;		/* probability of an item type */
@@ -328,9 +329,12 @@ boolean artif;
 		otmp->dknown = 0;
 	if (!objects[otmp->otyp].oc_uses_known)
 		otmp->known = 1;
+#ifdef INVISIBLE_OBJECTS
+	otmp->oinvis = !rn2(1250);
+#endif
 	if (init) switch (let) {
 	case WEAPON_CLASS:
-		otmp->quan = (otmp->otyp <= SHURIKEN) ? (long) rn1(6,6) : 1L;
+		otmp->quan = is_multigen(otmp) ? (long) rn1(6,6) : 1L;
 		if(!rn2(11)) {
 			otmp->spe = rne(3);
 			otmp->blessed = rn2(2);
@@ -338,6 +342,8 @@ boolean artif;
 			curse(otmp);
 			otmp->spe = -rne(3);
 		} else	blessorcurse(otmp, 10);
+		if (is_poisonable(otmp) && !rn2(100))
+			otmp->opoisoned = 1;
 
 		if (artif && !rn2(20))
 		    otmp = mk_artifact(otmp, (aligntyp)A_NONE);
@@ -386,12 +392,13 @@ boolean artif;
 		otmp->spe = current_fruit;
 		break;
 	    }
-	    if (otmp->otyp == CORPSE) break;
+	    if (otmp->otyp == CORPSE || otmp->otyp == MEAT_RING) break;
 	    /* fall into next case */
 
 	case GEM_CLASS:
 		if (otmp->otyp == LOADSTONE) curse(otmp);
 		else if (otmp->otyp == ROCK) otmp->quan = (long) rn1(6,6);
+		else if (otmp->otyp == KELP_FROND) otmp->quan = (long) rnd(4);
 		else if (otmp->otyp != LUCKSTONE && !rn2(6)) otmp->quan = 2L;
 		else otmp->quan = 1L;
 		break;
@@ -424,6 +431,10 @@ boolean artif;
 		case OILSKIN_SACK:
 		case BAG_OF_HOLDING:	mkbox_cnts(otmp);
 					break;
+#ifdef TOURIST
+		case EXPENSIVE_CAMERA:
+#endif
+		case TINNING_KIT:
 		case MAGIC_MARKER:	otmp->spe = rn1(70,30);
 					break;
 		case CAN_OF_GREASE:	otmp->spe = rnd(25);
@@ -489,8 +500,10 @@ boolean artif;
 			otmp->blessed = rn2(2);
 			otmp->spe = rne(3);
 		} else	blessorcurse(otmp, 10);
+		if (artif && !rn2(40))                
+		    otmp = mk_artifact(otmp, (aligntyp)A_NONE);
 		/* simulate lacquered armor for samurai */
-		if (Role_is('S') && otmp->otyp == SPLINT_MAIL &&
+		if (Role_if(PM_SAMURAI) && otmp->otyp == SPLINT_MAIL &&
 		    (moves <= 1 || In_quest(&u.uz))) {
 #ifdef UNIXPC
 			/* optimizer bitfield bug */
@@ -567,8 +580,8 @@ start_corpse_timeout(body)
 #define TROLL_REVIVE_CHANCE 37	/* 1/37 chance for 50 turns ~ 75% chance */
 #define ROT_AGE (250L)	/* age when corpses rot away */
 
-	/* lizards don't rot or revive */
-	if (body->corpsenm == PM_LIZARD) return;
+	/* lizards and lichen don't rot or revive */
+	if (body->corpsenm == PM_LIZARD || body->corpsenm == PM_LICHEN) return;
 
 	action = ROT_CORPSE;		/* default action: rot away */
 	when = ROT_AGE;			/* rot away when this old */
@@ -608,6 +621,8 @@ register struct obj *otmp;
 	    set_moreluck();
 	else if (otmp->otyp == BAG_OF_HOLDING)
 	    otmp->owt = weight(otmp);
+	else if (otmp->otyp == FIGURINE && otmp->timed)
+		(void) stop_timer(FIG_TRANSFORM, (genericptr_t) otmp);
 	return;
 }
 
@@ -634,7 +649,13 @@ register struct obj *otmp;
 	    set_moreluck();
 	else if (otmp->otyp == BAG_OF_HOLDING)
 	    otmp->owt = weight(otmp);
-	return;
+	else if (otmp->otyp == FIGURINE) {
+		if (otmp->corpsenm != NON_PM
+	    	    && !dead_species(otmp->corpsenm,TRUE)
+		    && (carried(otmp) || mcarried(otmp)))
+			attach_fig_transform_timeout(otmp);
+	}
+ 	return;
 }
 
 void
@@ -647,6 +668,9 @@ register struct obj *otmp;
 	    set_moreluck();
 	else if (otmp->otyp == BAG_OF_HOLDING)
 		otmp->owt = weight(otmp);
+	else if (otmp->otyp == FIGURINE && otmp->timed)
+		(void) stop_timer(FIG_TRANSFORM, (genericptr_t) otmp);
+	return;
 }
 
 #endif /* OVLB */
@@ -741,10 +765,17 @@ register struct obj *obj;
 	return(wt ? wt*(int)obj->quan : ((int)obj->quan + 1)>>1);
 }
 
+static int treefruits[] = {APPLE,ORANGE,PEAR,BANANA,EUCALYPTUS_LEAF};
+
+struct obj *
+rnd_treefruit_at(x,y)
+{
+	return mksobj_at(treefruits[rn2(SIZE(treefruits)-1)],x,y,TRUE);
+}
 #endif /* OVL0 */
 #ifdef OVLB
 
-void
+struct obj *
 mkgold(amount, x, y)
 long amount;
 int x, y;
@@ -759,6 +790,7 @@ int x, y;
 	gold->quan = amount;
     }
     gold->owt = weight(gold);
+    return (gold);
 }
 
 #endif /* OVLB */
@@ -766,6 +798,7 @@ int x, y;
 
 /* return TRUE if the corpse has special timing */
 #define special_corpse(num)  (((num) == PM_LIZARD)		\
+				|| ((num) == PM_LICHEN)		\
 				|| (is_rider(&mons[num]))	\
 				|| (mons[num].mlet == S_TROLL))
 
@@ -792,7 +825,6 @@ boolean init;
 	    impossible("making corpstat type %d", objtype);
 	otmp = mksobj_at(objtype, x, y, init);
 	if (otmp) {
-#ifdef OEXTRA
 	    if (mtmp) {
 		struct obj *otmp2;
 
@@ -801,8 +833,6 @@ boolean init;
 		otmp2 = save_mtraits(otmp, mtmp);
 		if (otmp2) otmp = otmp2;
 	    }
-#endif /* OEXTRA */
-
 	    /* use the corpse or statue produced by mksobj() as-is
 	       unless `ptr' is non-null */
 	    if (ptr) {
@@ -821,8 +851,7 @@ boolean init;
 	return(otmp);
 }
 
-#ifdef OEXTRA
-struct obj *
+static struct obj *
 save_mtraits(obj, mtmp)
 struct obj *obj;
 struct monst *mtmp;
@@ -832,32 +861,47 @@ struct monst *mtmp;
 
 	lth = sizeof(struct monst) + mtmp->mxlth + mtmp->mnamelth;
 	namelth = obj->onamelth ? strlen(ONAME(obj)) + 1 : 0;
-	otmp = replobj(obj, lth, (genericptr_t) mtmp, namelth, ONAME(obj));
+	otmp = realloc_obj(obj, lth, (genericptr_t) mtmp, namelth, ONAME(obj));
 	if (otmp && otmp->oxlth) {
 		struct monst *mtmp2 = (struct monst *)otmp->oextra;
-		mtmp2->mnum = otmp->corpsenm;
-		otmp->mtraits = 1;		/* mark it */
+		if (mtmp->data) mtmp2->mnum = monsndx(mtmp->data);
+		/* invalidate pointers and m_id */
+		mtmp2->m_id     = 0;
+		mtmp2->nmon     = (struct monst *)0;
+		mtmp2->data     = (struct permonst *)0;
+		mtmp2->minvent  = (struct obj *)0;
+		otmp->oattached = OATTACHED_MONST;	/* mark it */
 	}
 	return otmp;
 }
 
-/* returns a pointer to the monst structure within the obj.
- * Do not use the return value in any monst chains directly!
+/* returns a pointer to a new monst structure based on
+ * the one contained within the obj.
  */
 struct monst *
-get_mtraits(obj)
+get_mtraits(obj, copyof)
 struct obj *obj;
+boolean copyof;
 {
 	struct monst *mtmp = (struct monst *)0;
+	struct monst *mnew = (struct monst *)0;
 
-	if (obj->oxlth && obj->mtraits == 1) {
+	if (obj->oxlth && obj->oattached == OATTACHED_MONST)
 		mtmp = (struct monst *)obj->oextra;
-		/* save_mtraits() validated mtmp->mnum */
-		mtmp->data = &mons[mtmp->mnum];
+	if (mtmp) {
+	    if (copyof) {
+		int lth = mtmp->mxlth + mtmp->mnamelth;
+		mnew = newmonst(lth);
+		lth += sizeof(struct monst);
+		(void) memcpy((genericptr_t)mnew,
+				(genericptr_t)mtmp, lth);
+	    } else {
+	      /* Never insert this returned pointer into mon chains! */
+	    	mnew = mtmp;
+	    }
 	}
-	return mtmp;
+	return mnew;
 }
-#endif /* OEXTRA */
 
 #endif /* OVL1 */
 #ifdef OVLB
@@ -1003,7 +1047,7 @@ struct obj *otmp;
     return retval;
 }
 
-static void
+STATIC_OVL void
 obj_timer_checks(otmp, x, y, force)
 struct obj *otmp;
 xchar x, y;
@@ -1259,7 +1303,7 @@ add_to_buried(obj)
 }
 
 /* Recalculate the weight of this container and all of _its_ containers. */
-static void
+STATIC_OVL void
 container_weight(container)
     struct obj *container;
 {
@@ -1404,7 +1448,7 @@ static const char *obj_state_names[NOBJ_STATES] = {
 	"minvent",	"migrating",	"buried",	"onbill"
 };
 
-static const char *
+STATIC_OVL const char *
 where_name(where)
     int where;
 {
@@ -1412,7 +1456,7 @@ where_name(where)
 }
 
 /* obj sanity check: check objs contained by container */
-static void
+STATIC_OVL void
 check_contained(container, mesg)
     struct obj *container;
     const char *mesg;

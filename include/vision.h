@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)vision.h	3.2	95/01/26	*/
-/* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990.	*/
+/*	SCCS Id: @(#)vision.h	3.3	95/01/26	*/
+/* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990. */
 /* NetHack may be freely redistributed.  See license for details.	*/
 
 #ifndef VISION_H
@@ -12,8 +12,8 @@ extern char *viz_rmin;			/* min could see indices */
 extern char *viz_rmax;			/* max could see indices */
 #endif
 #define COULD_SEE 0x1
-#define IN_SIGHT 0x2
-#define TEMP_LIT 0x4
+#define IN_SIGHT  0x2
+#define TEMP_LIT  0x4
 
 /*
  * Light source sources
@@ -36,16 +36,16 @@ extern char *viz_rmax;			/* max could see indices */
  *
  *  m_cansee()	- Returns true if the monster can see the given location.
  *
- *  m_canseeu()	- Returns true if the monster could see the hero.  Assumes
+ *  m_canseeu() - Returns true if the monster could see the hero.  Assumes
  *		  that if the hero has a clear line of sight to the monster's
  *		  location and the hero is visible, then monster can see the
  *		  hero.
  */
 #define m_cansee(mtmp,x2,y2)	clear_path((mtmp)->mx,(mtmp)->my,(x2),(y2))
 
-#define m_canseeu(m)		((!Invis || perceives((m)->data)) && \
-				  !(Underwater || u.uburied || (m)->mburied) ? \
-				     couldsee((m)->mx,(m)->my) : 0)
+#define m_canseeu(m)	((!Invis || perceives((m)->data)) && \
+			  !(Underwater || u.uburied || (m)->mburied) ? \
+			     couldsee((m)->mx,(m)->my) : 0)
 
 /*
  *  Circle information

@@ -1,5 +1,5 @@
 #	Makefile for NetHack's utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.2	96/05/09
+#	SCCS Id: @(#)Makefile.utl	3.3	97/04/19
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -24,6 +24,9 @@
 #	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
 #
 # CC = gcc -ansi
+#
+#	For HP/UX 10.20 with GCC:
+# CC = gcc -D_POSIX_SOURCE
 #
 # if your make doesn't define a default SHELL properly, you may need
 #    the line below (Atari users will need a bourne work-alike)
@@ -70,10 +73,13 @@
 # CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
 # LFLAGS = -b i486-linuxaout -L/usr/X11/lib
 
-# flags for BeBox using the command line
+# flags for BeOS using the command line
 # remember to uncomment flex and bison below
+#   BeOS on a Mac/BeBox:
 #CC = mwcc
 #CFLAGS = -I../include
+#   BeOS on Intel:
+# the default values are fine
 
 # flags for debugging:
 # CFLAGS = -g -I../include
@@ -100,37 +106,53 @@ LEXYYC = lex.yy.c
 # LEXYYC = lexyy.c
 
 
+
+# ----------------------------------------
+#
 # Nothing below this line should have to be changed.
+
+# timestamps for primary header files, matching src/Makefile
+CONFIG_H = ../src/config.h-t
+HACK_H	 = ../src/hack.h-t
 
 # utility .c files
 MAKESRC = makedefs.c
-SPLEVSRC = lev_yacc.c lev_lex.c lev_main.c panic.c
+SPLEVSRC = lev_yacc.c lev_lex.c lev_main.c
 DGNCOMPSRC = dgn_yacc.c dgn_lex.c dgn_main.c
 RECOVSRC = recover.c
 DLBSRC = dlb_main.c
-UTILSRCS = $(MAKESRC) $(SPLEVSRC) $(DGNCOMPSRC) $(RECOVSRC) $(DLBSRC)
+UTILSRCS = $(MAKESRC) panic.c $(SPLEVSRC) $(DGNCOMPSRC) $(RECOVSRC) $(DLBSRC)
+
+# files that define all monsters and objects
+CMONOBJ = ../src/monst.c ../src/objects.c
+OMONOBJ = ../src/monst.o ../src/objects.o
+# files that provide access to NetHack's names
+CNAMING = ../src/drawing.c ../src/decl.c $(CMONOBJ)
+ONAMING = ../src/drawing.o ../src/decl.o $(OMONOBJ)
+# dynamic memory allocation
+CALLOC = ../src/alloc.c panic.c
+OALLOC = ../src/alloc.o panic.o
 
 # object files for makedefs
-MAKEOBJS = makedefs.o ../src/monst.o ../src/objects.o
-
-# object files that provide access to NetHack's names
-NAMEOBJS = ../src/drawing.o ../src/decl.o ../src/monst.o ../src/objects.o
+MAKEOBJS = makedefs.o $(OMONOBJ)
 
 # object files for special levels compiler
-SPLEVOBJS = lev_yacc.o lev_lex.o lev_main.o panic.o \
-	../src/alloc.o $(NAMEOBJS)
+SPLEVOBJS = lev_yacc.o lev_lex.o lev_main.o $(OALLOC) $(ONAMING)
 
 # object files for dungeon compiler
-DGNCOMPOBJS = dgn_yacc.o dgn_lex.o dgn_main.o panic.o ../src/alloc.o
+DGNCOMPOBJS = dgn_yacc.o dgn_lex.o dgn_main.o $(OALLOC)
 
 # object files for recovery utility
 RECOVOBJS = recover.o
+
+# object files for the data librarian
+DLBOBJS = dlb_main.o ../src/dlb.o $(OALLOC)
 
 # flags for creating distribution versions of sys/share/*_lex.c, using
 # a more portable flex skeleton, which is not included in the distribution.
 # hopefully keeping this out of the section to be edited will keep too
 # many people from being confused by it...
-# FLEXDIST = -L # -S../sys/share/flexhack.skel
+# FLEXDIST = -L -S../sys/share/flexhack.skl
 FLEXDIST =
 #
 # flags for creating distribution versions of sys/share/*_yacc.c, without
@@ -144,11 +166,11 @@ YACCDIST =
 makedefs:	$(MAKEOBJS)
 	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
 
-makedefs.o: makedefs.c  ../include/config.h ../include/permonst.h \
+makedefs.o: makedefs.c $(CONFIG_H) ../include/permonst.h \
 		../include/objclass.h ../include/monsym.h \
 		../include/artilist.h ../include/dungeon.h ../include/obj.h \
 		../include/monst.h ../include/you.h ../include/flag.h \
-		../include/patchlevel.h ../include/qtext.h
+		../include/dlb.h ../include/patchlevel.h ../include/qtext.h
 
 ../include/onames.h: makedefs
 	./makedefs -o
@@ -162,7 +184,7 @@ makedefs.o: makedefs.c  ../include/config.h ../include/permonst.h \
 	./makedefs -z
 
 lintdefs:
-	@lint -axbh -I../include -DLINT $(MAKESRC) ../src/monst.c ../src/objects.c | sed '/_flsbuf/d'
+	@lint -axbh -I../include -DLINT $(MAKESRC) $(CMONOBJ) | sed '/_flsbuf/d'
 
 
 # we defer this makedefs call to the src Makefile, since it knows all about
@@ -170,21 +192,23 @@ lintdefs:
 ../include/date.h::
 	@( cd ../src ; $(MAKE) ../include/date.h )
 
+# support code used by several of the utility programs (but not makedefs)
+panic.o:     panic.c $(CONFIG_H)
+
 
 #	dependencies for lev_comp
 #
 lev_comp:  $(SPLEVOBJS)
 	$(CC) $(LFLAGS) -o lev_comp $(SPLEVOBJS)
 
-lev_yacc.o:  ../include/hack.h ../include/sp_lev.h
-lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h \
+lev_yacc.o:  lev_yacc.c $(HACK_H) ../include/sp_lev.h
+lev_main.o:  lev_main.c $(HACK_H) ../include/sp_lev.h ../include/tcap.h \
 		../include/date.h
-panic.o:     ../include/config.h
 
 # see lev_comp.l for WEIRD_LEX discussion
 # egrep will return failure if it doesn't find anything, but we know there
 # is one "_cplusplus" inside a comment
-lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h lev_lex.c
+lev_lex.o:   lev_lex.c $(HACK_H) ../include/lev_comp.h ../include/sp_lev.h
 	@echo $(CC) -c $(CFLAGS) lev_lex.c
 	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus lev_lex.c` lev_lex.c
 
@@ -202,7 +226,7 @@ lev_lex.c: lev_comp.l
 # with all of extern.h's functions to complain about, we drown in
 # 'defined but not used' without -u
 lintlev:
-	@lint -axhu -I../include -DLINT $(SPLEVSRC) ../src/alloc.c ../src/monst.c ../src/objects.c | sed '/_flsbuf/d'
+	@lint -axhu -I../include -DLINT $(SPLEVSRC) $(CALLOC) $(CNAMING) | sed '/_flsbuf/d'
 
 
 #	dependencies for dgn_comp
@@ -210,11 +234,11 @@ lintlev:
 dgn_comp:  $(DGNCOMPOBJS)
 	$(CC) $(LFLAGS) -o dgn_comp $(DGNCOMPOBJS)
 
-dgn_yacc.o:  ../include/config.h ../include/dgn_file.h ../include/date.h
-dgn_main.o:  ../include/config.h
+dgn_yacc.o:  dgn_yacc.c $(CONFIG_H) ../include/dgn_file.h ../include/date.h
+dgn_main.o:  dgn_main.c $(CONFIG_H) ../include/dlb.h
 
 # see dgn_comp.l for WEIRD_LEX discussion
-dgn_lex.o:   ../include/config.h ../include/dgn_comp.h ../include/dgn_file.h dgn_lex.c
+dgn_lex.o:   dgn_lex.c $(CONFIG.H) ../include/dgn_comp.h ../include/dgn_file.h
 	@echo $(CC) -c $(CFLAGS) dgn_lex.c
 	@$(CC) -c $(CFLAGS) -DWEIRD_LEX=`egrep -c _cplusplus dgn_lex.c` dgn_lex.c
 
@@ -233,7 +257,7 @@ dgn_lex.c: dgn_comp.l
 # with all of extern.h's functions to complain about, we drown in
 # 'defined but not used' without -u
 lintdgn:
-	@lint -axhu -I../include -DLINT $(DGNCOMPSRC) panic.c ../src/alloc.c | sed '/_flsbuf/d'
+	@lint -axhu -I../include -DLINT $(DGNCOMPSRC) $(CALLOC) | sed '/_flsbuf/d'
 
 
 #	dependencies for recover
@@ -241,22 +265,24 @@ lintdgn:
 recover: $(RECOVOBJS)
 	$(CC) $(LFLAGS) -o recover $(RECOVOBJS)
 
-recover.o: ../include/config.h
+recover.o: recover.c $(CONFIG_H) ../include/date.h
 
 
 #	dependencies for dlb
 #
-dlb:	dlb_main.o ../src/dlb.o ../src/alloc.o panic.o
-	$(CC) $(LFLAGS) -o dlb dlb_main.o ../src/dlb.o ../src/alloc.o panic.o
+dlb:	$(DLBOBJS)
+	$(CC) $(LFLAGS) -o dlb $(DLBOBJS)
 
-dlb_main.o: dlb_main.c ../include/config.h ../include/dlb.h
+dlb_main.o: dlb_main.c $(CONFIG_H) ../include/dlb.h ../include/date.h
 	$(CC) $(CFLAGS) -c dlb_main.c
+
+
 
 #	dependencies for tile utilities
 #
-TEXT_IO = tiletext.o tiletxt.o $(NAMEOBJS)
-GIFREADERS = gifread.o ../src/alloc.o panic.o
-PPMWRITERS = ppmwrite.o ../src/alloc.o panic.o
+TEXT_IO = tiletext.o tiletxt.o $(ONAMING)
+GIFREADERS = gifread.o $(OALLOC)
+PPMWRITERS = ppmwrite.o $(OALLOC)
 
 tileutils: tilemap gif2txt txt2ppm tile2x11
 
@@ -268,25 +294,25 @@ txt2ppm: $(PPMWRITERS) $(TEXT_IO)
 tile2x11: tile2x11.o $(TEXT_IO)
 	$(CC) $(LFLAGS) -o tile2x11 tile2x11.o $(TEXT_IO)
 
-tilemap: ../win/share/tilemap.c ../include/hack.h
+tilemap: ../win/share/tilemap.c $(HACK_H)
 	$(CC) $(CFLAGS) $(LFLAGS) -o tilemap ../win/share/tilemap.c
 ../src/tile.c: tilemap
 	./tilemap
 
 ../include/tile.h: ../win/share/tile.h
 	cp ../win/share/tile.h ../include/tile.h
-tiletext.o: ../win/share/tiletext.c ../include/config.h ../include/tile.h
+tiletext.o: ../win/share/tiletext.c $(CONFIG_H) ../include/tile.h
 	$(CC) $(CFLAGS) -c ../win/share/tiletext.c
-tiletxt.o: ../win/share/tilemap.c ../include/hack.h
+tiletxt.o: ../win/share/tilemap.c $(HACK_H)
 	$(CC) $(CFLAGS) -c -DTILETEXT ../win/share/tilemap.c
 	mv tilemap.o tiletxt.o
 
-gifread.o: ../win/share/gifread.c ../include/config.h ../include/tile.h
+gifread.o: ../win/share/gifread.c $(CONFIG_H) ../include/tile.h
 	$(CC) $(CFLAGS) -c ../win/share/gifread.c
-ppmwrite.o: ../win/share/ppmwrite.c ../include/config.h ../include/tile.h
+ppmwrite.o: ../win/share/ppmwrite.c $(CONFIG_H) ../include/tile.h
 	$(CC) $(CFLAGS) -c ../win/share/ppmwrite.c
 
-tile2x11.o: ../win/X11/tile2x11.c ../include/hack.h ../include/tile.h \
+tile2x11.o: ../win/X11/tile2x11.c $(HACK_H) ../include/tile.h \
 						../include/tile2x11.h
 	$(CC) $(CFLAGS) -c ../win/X11/tile2x11.c
 
@@ -304,22 +330,24 @@ tile2x11.o: ../win/X11/tile2x11.c ../include/hack.h ../include/tile.h \
 
 # make sure object files from src are available when needed
 #
-../src/alloc.o: ../src/alloc.c ../include/config.h
+../src/alloc.o: ../src/alloc.c $(CONFIG_H)
 	@( cd ../src ; $(MAKE) alloc.o )
-../src/drawing.o: ../src/drawing.c ../include/config.h
+../src/drawing.o: ../src/drawing.c $(CONFIG_H)
 	@( cd ../src ; $(MAKE) drawing.o )
-../src/decl.o: ../src/decl.c ../include/config.h
+../src/decl.o: ../src/decl.c $(CONFIG_H)
 	@( cd ../src ; $(MAKE) decl.o )
-../src/monst.o: ../src/monst.c ../include/config.h
+../src/monst.o: ../src/monst.c $(CONFIG_H)
 	@( cd ../src ; $(MAKE) monst.o )
-../src/objects.o: ../src/objects.c ../include/config.h
+../src/objects.o: ../src/objects.c $(CONFIG_H)
 	@( cd ../src ; $(MAKE) objects.o )
-../src/dlb.o:	../src/dlb.c ../include/hack.h ../include/dlb.h
+../src/dlb.o: ../src/dlb.c $(HACK_H) ../include/dlb.h
 	@( cd ../src ; $(MAKE) dlb.o )
 
 # make sure hack.h dependencies get transitive information
-../include/hack.h: ../include/config.h
-	@( cd ../src ; $(MAKE) ../include/hack.h )
+$(HACK_H): $(CONFIG_H)
+	@( cd ../src ; $(MAKE) $(HACK_H) )
+$(CONFIG_H): ../include/config.h
+	@( cd ../src ; $(MAKE) $(CONFIG_H) )
 
 tags: $(UTILSRCS)
 	@ctags -tw $(UTILSRCS)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rumors.c	3.2	96/04/20	*/
+/*	SCCS Id: @(#)rumors.c	3.3	96/04/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -28,9 +28,8 @@
  * and placed there by 'makedefs'.
  */
 
-static void FDECL(init_rumors, (dlb *));
-static void FDECL(init_oracles, (dlb *));
-static void FDECL(outoracle, (BOOLEAN_P));
+STATIC_DCL void FDECL(init_rumors, (dlb *));
+STATIC_DCL void FDECL(init_oracles, (dlb *));
 
 static long true_rumor_start,  true_rumor_size,  true_rumor_end,
 	    false_rumor_start, false_rumor_size, false_rumor_end;
@@ -38,7 +37,7 @@ static int oracle_flg = 0;  /* -1=>don't use, 0=>need init, 1=>init done */
 static unsigned oracle_cnt = 0;
 static long *oracle_loc = 0;
 
-static void
+STATIC_OVL void
 init_rumors(fp)
 dlb *fp;
 {
@@ -121,37 +120,46 @@ char *rumor_buf;
 }
 
 void
-outrumor(truth, cookie)
+outrumor(truth, mechanism)
 int truth; /* 1=true, -1=false, 0=either */
-boolean cookie;
+int mechanism;
 {
 	static const char fortune_msg[] =
 		"This cookie has a scrap of paper inside.";
 	const char *line;
 	char buf[BUFSZ];
+	boolean reading = (mechanism == BY_COOKIE ||
+			   mechanism == BY_PAPER);
 
-	if (cookie && Blind) {
-		pline(fortune_msg);
+	if (reading && Blind) {
+		if (mechanism == BY_COOKIE)
+			pline(fortune_msg);
 		pline("What a pity that you cannot read it!");
 		return;
 	}
 	line = getrumor(truth, buf);
 	if (!*line)
 		line = "NetHack rumors file closed for renovation.";
-	if (cookie) {
-		pline(fortune_msg);
-		pline("It reads:");
-		pline("%s", line);
-	} else {	/* if the Oracle is the only alternative */
+	switch (mechanism) {
+	    case BY_ORACLE:
+	 	/* Oracle delivers the rumor */
 		pline("True to her word, the Oracle %ssays: ",
-		(!rn2(4) ? "offhandedly " : (!rn2(3) ? "casually " :
-		(rn2(2) ? "nonchalantly " : ""))));
+		  (!rn2(4) ? "offhandedly " : (!rn2(3) ? "casually " :
+		  (rn2(2) ? "nonchalantly " : ""))));
 		verbalize("%s", line);
 		exercise(A_WIS, TRUE);
+		return;
+	    case BY_COOKIE:
+		pline(fortune_msg);
+		/* FALLTHRU */
+	    case BY_PAPER:
+		pline("It reads:");
+		break;
 	}
+	pline("%s", line);
 }
 
-static void
+STATIC_OVL void
 init_oracles(fp)
 dlb *fp;
 {
@@ -202,9 +210,10 @@ int fd;
 	}
 }
 
-static void
-outoracle(special)
+void
+outoracle(special, delphi)
 boolean special;
+boolean delphi;
 {
 	char	line[COLNO];
 	char	*endp;
@@ -233,9 +242,12 @@ boolean special;
 		if (!special) oracle_loc[oracle_idx] = oracle_loc[--oracle_cnt];
 
 		tmpwin = create_nhwindow(NHW_TEXT);
-		putstr(tmpwin, 0, special ?
-		      "The Oracle scornfully takes all your money and says:" :
-		      "The Oracle meditates for a moment and then intones:");
+		if (delphi)
+		    putstr(tmpwin, 0, special ?
+		          "The Oracle scornfully takes all your money and says:" :
+		          "The Oracle meditates for a moment and then intones:");
+		else
+		    putstr(tmpwin, 0, "The message reads:");
 		putstr(tmpwin, 0, "");
 
 		while(dlb_fgets(line, COLNO, oracles) && strcmp(line,"---\n")) {
@@ -302,14 +314,14 @@ register struct monst *oracl;
 	flags.botl = 1;
 	add_xpts = 0;	/* first oracle of each type gives experience points */
 	if (u_pay == minor_cost) {
-		outrumor(1, FALSE);
+		outrumor(1, BY_ORACLE);
 		if (!u.uevent.minor_oracle)
 		    add_xpts = u_pay / (u.uevent.major_oracle ? 25 : 10);
 		    /* 5 pts if very 1st, or 2 pts if major already done */
 		u.uevent.minor_oracle = TRUE;
 	} else {
 		boolean cheapskate = u_pay < major_cost;
-		outoracle(cheapskate);
+		outoracle(cheapskate, TRUE);
 		if (!cheapskate && !u.uevent.major_oracle)
 		    add_xpts = u_pay / (u.uevent.minor_oracle ? 25 : 10);
 		    /* ~100 pts if very 1st, ~40 pts if minor already done */

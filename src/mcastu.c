@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mcastu.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)mcastu.c	3.3	97/11/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,24 +10,30 @@ STATIC_DCL void FDECL(cursetxt,(struct monst *));
 
 extern const char *flash_types[];	/* from zap.c */
 
+/* feedback when frustrated monster couldn't cast a spell */
 STATIC_OVL
 void
 cursetxt(mtmp)
-	register struct monst *mtmp;
+struct monst *mtmp;
 {
-	if(canseemon(mtmp)) {
+	if (canseemon(mtmp)) {
+	    const char *point_msg;  /* spellcasting monsters are impolite */
+
 	    if ((Invis && !perceives(mtmp->data) &&
-				(mtmp->mux != u.ux || mtmp->muy != u.uy))
-			|| u.usym == S_MIMIC_DEF || u.uundetected)
-		pline("%s points and curses in your general direction.",
-				Monnam(mtmp));
+			(mtmp->mux != u.ux || mtmp->muy != u.uy)) ||
+		    (youmonst.m_ap_type == M_AP_OBJECT &&
+			youmonst.mappearance == STRANGE_OBJECT) ||
+		    u.uundetected)
+		point_msg = "and curses in your general direction";
 	    else if (Displaced && (mtmp->mux != u.ux || mtmp->muy != u.uy))
-		pline("%s points and curses at your displaced image.",
-				Monnam(mtmp));
+		point_msg = "and curses at your displaced image";
 	    else
-		pline("%s points at you, then curses.", Monnam(mtmp));
-	} else if((!(moves%4) || !rn2(4)) && flags.soundok)
-		Norep("You hear a mumbled curse.");
+		point_msg = "at you, then curses";
+
+	    pline("%s points %s.", Monnam(mtmp), point_msg);
+	} else if ((!(moves % 4) || !rn2(4))) {
+	    if (flags.soundok) Norep("You hear a mumbled curse.");
+	}
 }
 
 #endif /* OVL0 */
@@ -69,6 +75,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			pline("But you resist the effects.");
 			dmg = 0;
 		}
+		burn_away_slime();
 		break;
 	    case AD_COLD:
 		pline("You're covered in frost.");
@@ -99,7 +106,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 				  ? (mtmp->female ? "she" : "he")
 				  : "it"
 			     );
-			if (nonliving(uasmon) || is_demon(uasmon))
+			if (nonliving(youmonst.data) || is_demon(youmonst.data))
 			    You("seem no deader than before.");
 			else if (!Antimagic && rn2(ml) > 12) {
 
@@ -147,7 +154,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			if (Antimagic) {
 				shieldeff(u.ux, u.uy);
 				pline("A field of force surrounds you!");
-			} else if(!destroy_arm(some_armor()))
+			} else if(!destroy_arm(some_armor(&youmonst)))
 				Your("skin itches.");
 			dmg = 0;
 			break;
@@ -176,7 +183,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    break;
 			} /* else fall into the next case */
 		    case 3:		/* stun */
-			if(Antimagic) {
+			if (Antimagic || Free_action) {
 			    shieldeff(u.ux, u.uy);
 			    if(!Stunned)
 				You_feel("momentarily disoriented.");
@@ -193,8 +200,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			dmg = 0;
 			break;
 		    case 2:		/* haste self */
-			if(mtmp->mspeed == MSLOW)	mtmp->mspeed = 0;
-			else				mtmp->mspeed = MFAST;
+			mon_adjust_speed(mtmp, 1);
 			dmg = 0;
 			break;
 		    case 1:		/* cure self */
@@ -217,9 +223,8 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			break;
 		}
 		break;
-		
-	    case AD_CLRC:	/* clerical spell */
 
+	    case AD_CLRC:	/* clerical spell */
 		mtmp->mspec_used = 10 - mtmp->m_lev;
 		if (mtmp->mspec_used < 2) mtmp->mspec_used = 2;
 		switch(rn2((int)mtmp->m_lev)) {
@@ -256,11 +261,11 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			for (i = 0; i <= (int) mtmp->m_lev; i++)
 			   if ((pm = mkclass(let,0)) &&
 			(mtmp2 = makemon(pm, u.ux, u.uy, NO_MM_FLAGS))) {
-				mtmp2->msleep = mtmp2->mpeaceful =
+				mtmp2->msleeping = mtmp2->mpeaceful =
 					mtmp2->mtame = 0;
 				set_malign(mtmp2);
 			    }
-			}			
+			}
 			dmg = 0;
 			break;
 		    case 6:
@@ -285,7 +290,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			}
 			break;
 		    case 3:		/* hold */
-			if(Antimagic) {
+			if (Antimagic || Free_action) {
 			    shieldeff(u.ux, u.uy);
 			    if(multi >= 0)
 				You("stiffen briefly.");

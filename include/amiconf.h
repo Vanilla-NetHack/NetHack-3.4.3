@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)amiconf.h	3.2	95/09/03	*/
+/*	SCCS Id: @(#)amiconf.h	3.3	95/09/03	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1990, 1991, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,7 +21,7 @@
 #ifdef AZTEC_50
 #include <stdlib.h>
 # define AZTEC_C_WORKAROUND /* Bug which turns up in sounds.c. Bummer... */
-# define NO_SIGNAL	/* 5.0 signal handling doesn't like SIGINT...   */
+# define NO_SIGNAL	/* 5.0 signal handling doesn't like SIGINT... */
 #endif
 
 #ifdef _DCC
@@ -39,7 +39,7 @@ typedef long off_t;
 #define DLBFILE2	"NetHack:nhsdat"	/* sound library */
 #define FILENAME_CMP	stricmp			/* case insensitive */
 
-#ifndef	__SASC_60
+#ifndef __SASC_60
 # define O_BINARY	0
 #endif
 
@@ -50,7 +50,7 @@ typedef long off_t;
 # endif
 #endif
 
-#define MFLOPPY         /* You'll probably want this; provides assistance
+#define MFLOPPY		/* You'll probably want this; provides assistance
 			 * for typical personal computer configurations
 			 */
 #define RANDOM
@@ -78,9 +78,9 @@ extern char **ami_argv;
 #include "pcconf.h"	/* remainder of stuff is almost same as the PC */
 #endif
 
-#define remove(x)       unlink(x)
+#define remove(x)	unlink(x)
 
-/* DICE wants rewind() to return void.  We want it to return int. */
+/* DICE wants rewind() to return void.	We want it to return int. */
 #ifdef _DCC
 # define rewind(f)	fseek(f, 0, 0)
 #endif

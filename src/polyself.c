@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	3.2	96/07/19	*/
+/*	SCCS Id: @(#)polyself.c	3.3	1999/08/16	*/
 /*	Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,69 +13,69 @@
 #include "hack.h"
 
 #ifdef OVLB
-static void FDECL(polyman, (const char *,const char *));
-static void NDECL(break_armor);
-static void FDECL(drop_weapon,(int));
-static void NDECL(skinback);
-static void NDECL(uunstick);
-static int FDECL(armor_to_dragon,(int));
+STATIC_DCL void FDECL(polyman, (const char *,const char *));
+STATIC_DCL void NDECL(break_armor);
+STATIC_DCL void FDECL(drop_weapon,(int));
+STATIC_DCL void NDECL(skinback);
+STATIC_DCL void NDECL(uunstick);
+STATIC_DCL int FDECL(armor_to_dragon,(int));
+STATIC_DCL void NDECL(newman);
 
-/* update the "uasmon" structure */
+/* update the youmonst.data structure pointer */
 void
 set_uasmon()
 {
-	if (u.umonnum >= LOW_PM) {
-	    uasmon = &mons[u.umonnum];
-	} else {
-	    uasmon = &playermon;
-#if 0
-	    /* We do not currently use uasmon or playermon to check the below
-	     * attributes of the player, and it is generally pointless to do
-	     * so.  Furthermore, we do not call set_uasmon() often enough to
-	     * use uasmon or playermon for this purpose; for instance, we do
-	     * not call it every time we wear armor.
-	     */
-	    playermon.mlevel = u.ulevel;
-	    playermon.ac = u.uac;
-	    playermon.mr = (u.ulevel > 8) ? 5 * (u.ulevel - 7) : u.ulevel;
-#endif
-	}
-	set_mon_data(&youmonst, uasmon, 0);
-	return;
+	set_mon_data(&youmonst, &mons[u.umonnum], 0);
 }
 
 /* make a (new) human out of the player */
-static void
+STATIC_OVL void
 polyman(fmt, arg)
 const char *fmt, *arg;
 {
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow,
-		was_mimicking_gold = (u.usym == 0);
+	boolean sticky = sticks(youmonst.data) && u.ustuck && !u.uswallow,
+		was_mimicking_gold = (youmonst.m_ap_type == M_AP_OBJECT
+				      && youmonst.mappearance == GOLD_PIECE);
+	boolean was_blind = !!Blind;
 
-	if (u.umonnum != PM_PLAYERMON) {
+	if (Upolyd) {
 		u.acurr = u.macurr;	/* restore old attribs */
 		u.amax = u.mamax;
-		u.umonnum = PM_PLAYERMON;
+		u.umonnum = u.umonster;
 		flags.female = u.mfemale;
 	}
-	u.usym = S_HUMAN;
 	set_uasmon();
 
 	u.mh = u.mhmax = 0;
 	u.mtimedone = 0;
 	skinback();
 	u.uundetected = 0;
-	newsym(u.ux,u.uy);
 
 	if (sticky) uunstick();
 	find_ac();
 	if (was_mimicking_gold) {
 	    if (multi < 0) unmul("");
+	} else {
+	    /*
+	     * Clear any in-progress imitations -- the case where not a
+	     * mimic is handled above.
+	     *
+	     * Except, this is not complete if the hero ever gets the
+	     * chance to imitate anything, then s/he may be mimicing
+	     * gold, but not the way its done for eating a mimic.
+	     */
+	    youmonst.m_ap_type = M_AP_NOTHING;
 	}
+	newsym(u.ux,u.uy);
 
 	You(fmt, arg);
 	/* check whether player foolishly genocided self while poly'd */
-	if (mvitals[u.umonster].mvflags & G_GENOD) {
+	if ((mvitals[urole.malenum].mvflags & G_GENOD) ||
+			(urole.femalenum != NON_PM &&
+			(mvitals[urole.femalenum].mvflags & G_GENOD)) ||
+			(mvitals[urace.malenum].mvflags & G_GENOD) ||
+			(urace.femalenum != NON_PM &&
+			(mvitals[urace.femalenum].mvflags & G_GENOD))) {
 	    /* intervening activity might have clobbered genocide info */
 	    if (!killer || !strstri(killer, "genocid")) {
 		killer_format = KILLED_BY;
@@ -83,27 +83,45 @@ const char *fmt, *arg;
 	    }
 	    done(GENOCIDED);
 	}
+	if (was_blind && !Blind) {	/* reverting from eyeless */
+	    Blinded = 1L;
+	    make_blinded(0L, TRUE);	/* remove blindness */
+	}
 
 	if(!Levitation && !u.ustuck &&
 	   (is_pool(u.ux,u.uy) || is_lava(u.ux,u.uy)))
 		spoteffects();
+
+	see_monsters();
 }
 
 void
 change_sex()
 {
+	/* setting u.umonster for caveman/cavewoman or priest/priestess
+	   swap unintentionally makes `Upolyd' appear to be true */
+	boolean already_polyd = (boolean) Upolyd;
+
 	flags.female = !flags.female;
-	max_rank_sz();
-	if (Role_is('P')) {
-		Strcpy(pl_character+6, flags.female ? "ess" : "");
-		u.umonster = flags.female ? PM_PRIESTESS : PM_PRIEST;
-	} else if (Role_is('C')) {
-		Strcpy(pl_character+4, flags.female ? "woman" : "man");
-		u.umonster = flags.female ? PM_CAVEWOMAN : PM_CAVEMAN;
+	if (already_polyd)	/* poly'd: also change saved sex */
+		u.mfemale = !u.mfemale;
+	max_rank_sz();		/* [this appears to be superfluous] */
+	if (flags.female && urole.name.f)
+	    Strcpy(pl_character, urole.name.f);
+	else
+	    Strcpy(pl_character, urole.name.m);
+	u.umonster = (flags.female && urole.femalenum != NON_PM) ?
+			urole.femalenum : urole.malenum;
+	if (!already_polyd) {
+	    u.umonnum = u.umonster;
+	} else if (u.umonnum == PM_SUCCUBUS || u.umonnum == PM_INCUBUS) {
+	    /* change monster type to match new sex */
+	    u.umonnum = (u.umonnum == PM_SUCCUBUS) ? PM_INCUBUS : PM_SUCCUBUS;
+	    set_uasmon();
 	}
 }
 
-void
+STATIC_OVL void
 newman()
 {
 	int tmp, tmp2;
@@ -115,6 +133,7 @@ newman()
 	u.ulevel = u.ulevel + rn1(5, -2);
 	if (u.ulevel > 127 || u.ulevel < 1) u.ulevel = 1;
 	if (u.ulevel > MAXULEV) u.ulevel = MAXULEV;
+	if (u.ulevelmax < u.ulevel) u.ulevelmax = u.ulevel;
 
 	adjabil(tmp2, (int)u.ulevel);
 	reset_rndmonst(NON_PM);	/* new monster generation criteria */
@@ -166,8 +185,10 @@ newman()
 		}
 	}
 	polyman("feel like a new %s!",
-		Role_is('E') ? "elf" : flags.female ? "woman" : "man");
+		(flags.female && urace.individual.f) ? urace.individual.f :
+		(urace.individual.m) ? urace.individual.m : urace.noun);
 	flags.botl = 1;
+	see_monsters();
 	(void) encumber_msg();
 }
 
@@ -181,9 +202,8 @@ polyself()
 	boolean draconian = (uarm &&
 				uarm->otyp >= GRAY_DRAGON_SCALE_MAIL &&
 				uarm->otyp <= YELLOW_DRAGON_SCALES);
-
-	boolean iswere = (u.ulycn >= LOW_PM || is_were(uasmon));
-	boolean isvamp = (u.usym == S_VAMPIRE || u.umonnum == PM_VAMPIRE_BAT);
+	boolean iswere = (u.ulycn >= LOW_PM || is_were(youmonst.data));
+	boolean isvamp = (youmonst.data->mlet == S_VAMPIRE || u.umonnum == PM_VAMPIRE_BAT);
 
 	if(!Polymorph_control && !draconian && !iswere && !isvamp) {
 	    if (rn2(20) > ACURR(A_CON)) {
@@ -193,7 +213,7 @@ polyself()
 		return;
 	    }
 	}
-	old_light = (u.umonnum >= LOW_PM) ? emits_light(uasmon) : 0;
+	old_light = Upolyd ? emits_light(youmonst.data) : 0;
 
 	if (Polymorph_control) {
 		do {
@@ -205,9 +225,7 @@ polyself()
 			/* Note:  humans are illegal as monsters, but an
 			 * illegal monster forces newman(), which is what we
 			 * want if they specified a human.... */
-			else if (!polyok(&mons[mntmp]) &&
-			    (Role_is('E') ? !is_elf(&mons[mntmp])
-					  : !is_human(&mons[mntmp])))
+			else if (!polyok(&mons[mntmp]) && !your_race(&mons[mntmp]))
 				You("cannot polymorph into that.");
 			else break;
 		} while(++tries < 5);
@@ -230,12 +248,12 @@ polyself()
 				uskin->owornmask |= I_SPECIAL;
 			}
 		} else if (iswere) {
-			if (is_were(uasmon))
+			if (is_were(youmonst.data))
 				mntmp = PM_HUMAN; /* Illegal; force newman() */
 			else
 				mntmp = u.ulycn;
 		} else {
-			if (u.usym == S_VAMPIRE)
+			if (youmonst.data->mlet == S_VAMPIRE)
 				mntmp = PM_VAMPIRE_BAT;
 			else
 				mntmp = PM_VAMPIRE;
@@ -263,7 +281,7 @@ polyself()
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 
  made_change:
-	new_light = (u.umonnum >= LOW_PM) ? emits_light(uasmon) : 0;
+	new_light = Upolyd ? emits_light(youmonst.data) : 0;
 	if (old_light != new_light) {
 	    if (old_light)
 		del_light_source(LS_MONSTER, (genericptr_t)&youmonst);
@@ -279,9 +297,9 @@ int
 polymon(mntmp)	/* returns 1 if polymorph successful */
 int	mntmp;
 {
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
-	boolean dochange = FALSE;
-	int	tmp;
+	boolean sticky = sticks(youmonst.data) && u.ustuck && !u.uswallow,
+		was_blind = !!Blind, dochange = FALSE;
+	int mlvl;
 
 	if (mvitals[mntmp].mvflags & G_GENOD) {	/* allow G_EXTINCT */
 		You_feel("rather %s-ish.",mons[mntmp].mname);
@@ -289,7 +307,10 @@ int	mntmp;
 		return(0);
 	}
 
-	if (u.umonnum == PM_PLAYERMON) {
+	/* KMH, conduct */
+	u.uconduct.polyselfs++;
+
+	if (!Upolyd) {
 		/* Human to monster; save human stats */
 		u.macurr = u.acurr;
 		u.mamax = u.amax;
@@ -303,6 +324,11 @@ int	mntmp;
 		flags.female = u.mfemale;
 	}
 
+	if (youmonst.m_ap_type == M_AP_OBJECT &&
+		youmonst.mappearance == GOLD_PIECE) {
+	    /* stop mimicking gold immediately */
+	    if (multi < 0) unmul("");
+	}
 	if (is_male(&mons[mntmp])) {
 		if(flags.female) dochange = TRUE;
 	} else if (is_female(&mons[mntmp])) {
@@ -329,150 +355,167 @@ int	mntmp;
 		Stoned = 0;
 	}
 
+	u.mtimedone = rn1(500, 500);
 	u.umonnum = mntmp;
-	u.usym = mons[mntmp].mlet;
 	set_uasmon();
 
 	/* New stats for monster, to last only as long as polymorphed.
 	 * Currently only strength gets changed.
 	 */
-	if(strongmonst(&mons[mntmp])) ABASE(A_STR) = AMAX(A_STR) = 118;
+	if(strongmonst(&mons[mntmp])) ABASE(A_STR) = AMAX(A_STR) = STR18(100);
 
-	if (resists_ston(&youmonst) && Stoned) { /* parnes@eniac.seas.upenn.edu */
+	if (Stone_resistance && Stoned) { /* parnes@eniac.seas.upenn.edu */
 		Stoned = 0;
 		You("no longer seem to be petrifying.");
 	}
-	if (u.usym == S_FUNGUS && Sick) {
+	if (Sick_resistance && Sick) {
 		make_sick(0L, (char *) 0, FALSE, SICK_ALL);
 		You("no longer feel sick.");
 	}
-	if (nohands(uasmon)) Glib = 0;
+	if (nohands(youmonst.data)) Glib = 0;
 
-	if (u.usym == S_DRAGON && mntmp >= PM_GRAY_DRAGON)
-		u.mhmax = 8 * mons[mntmp].mlevel;
-	else if (is_golem(uasmon)) u.mhmax = golemhp(mntmp);
-	else {
-		/*
-		tmp = adj_lev(&mons[mntmp]);
-		 * We can't do this, since there's no such thing as an
-		 * "experience level of you as a monster" for a polymorphed
-		 * character.
-		 */
-		tmp = mons[mntmp].mlevel;
-		if (!tmp) u.mhmax = rnd(4);
-		else u.mhmax = d(tmp, 8);
+	/*
+	mlvl = adj_lev(&mons[mntmp]);
+	 * We can't do the above, since there's no such thing as an
+	 * "experience level of you as a monster" for a polymorphed character.
+	 */
+	mlvl = (int)mons[mntmp].mlevel;
+	if (youmonst.data->mlet == S_DRAGON && mntmp >= PM_GRAY_DRAGON) {
+		u.mhmax = In_endgame(&u.uz) ? (8*mlvl) : (4*mlvl + d(mlvl,4));
+	} else if (is_golem(youmonst.data)) {
+		u.mhmax = golemhp(mntmp);
+	} else {
+		if (!mlvl) u.mhmax = rnd(4);
+		else u.mhmax = d(mlvl, 8);
+		if (is_home_elemental(&mons[mntmp])) u.mhmax *= 3;
 	}
 	u.mh = u.mhmax;
 
-	u.mtimedone = rn1(500, 500);
-	if (u.ulevel < mons[mntmp].mlevel)
+	if (u.ulevel < mlvl) {
 	/* Low level characters can't become high level monsters for long */
 #ifdef DUMB
-		{
 		/* DRS/NS 2.2.6 messes up -- Peter Kendell */
-			int	mtd = u.mtimedone,
-				ulv = u.ulevel,
-				mlv = mons[mntmp].mlevel;
+		int mtd = u.mtimedone, ulv = u.ulevel;
 
-			u.mtimedone = mtd * ulv / mlv;
-		}
+		u.mtimedone = mtd * ulv / mlvl;
 #else
-		u.mtimedone = u.mtimedone * u.ulevel / mons[mntmp].mlevel;
+		u.mtimedone = u.mtimedone * u.ulevel / mlvl;
 #endif
+	}
 
 	if (uskin && mntmp != armor_to_dragon(uskin->otyp))
 		skinback();
 	break_armor();
 	drop_weapon(1);
-	if (hides_under(uasmon))
+	if (hides_under(youmonst.data))
 		u.uundetected = OBJ_AT(u.ux, u.uy);
-	else if (uasmon->mlet == S_EEL)
+	else if (youmonst.data->mlet == S_EEL)
 		u.uundetected = is_pool(u.ux, u.uy);
 	else
 		u.uundetected = 0;
+
+	if (was_blind && !Blind) {	/* previous form was eyeless */
+	    Blinded = 1L;
+	    make_blinded(0L, TRUE);	/* remove blindness */
+	}
 	newsym(u.ux,u.uy);		/* Change symbol */
 
-	if (!sticky && !u.uswallow && u.ustuck && sticks(uasmon)) u.ustuck = 0;
-	else if (sticky && !sticks(uasmon)) uunstick();
+	if (!sticky && !u.uswallow && u.ustuck && sticks(youmonst.data)) u.ustuck = 0;
+	else if (sticky && !sticks(youmonst.data)) uunstick();
+#ifdef STEED
+	if (u.usteed) {
+	    if (touch_petrifies(u.usteed->data) &&
+	    		!Stone_resistance && rnl(3)) {
+	    	char buf[BUFSZ];
+
+	    	pline("No longer petrifying-resistant, you touch %s.",
+	    			mon_nam(u.usteed));
+	    	Sprintf(buf, "riding %s", an(u.usteed->data->mname));
+	    	instapetrify(buf);
+ 	    }
+	    if (!can_ride(u.usteed)) dismount_steed(DISMOUNT_POLY);
+	}
+#endif
 
 	if (flags.verbose) {
 	    static const char use_thec[] = "Use the command #%s to %s.";
 	    static const char monsterc[] = "monster";
-	    if (can_breathe(uasmon))
+	    if (can_breathe(youmonst.data))
 		pline(use_thec,monsterc,"use your breath weapon");
-	    if (attacktype(uasmon, AT_SPIT))
+	    if (attacktype(youmonst.data, AT_SPIT))
 		pline(use_thec,monsterc,"spit venom");
-	    if (u.usym == S_NYMPH)
+	    if (youmonst.data->mlet == S_NYMPH)
 		pline(use_thec,monsterc,"remove an iron ball");
-	    if (u.usym == S_UMBER)
+	    if (youmonst.data->mlet == S_UMBER)
 		pline(use_thec,monsterc,"confuse monsters");
-	    if (is_hider(uasmon))
+	    if (is_hider(youmonst.data))
 		pline(use_thec,monsterc,"hide");
-	    if (is_were(uasmon))
+	    if (is_were(youmonst.data))
 		pline(use_thec,monsterc,"summon help");
-	    if (webmaker(uasmon))
+	    if (webmaker(youmonst.data))
 		pline(use_thec,monsterc,"spin a web");
 	    if (u.umonnum == PM_GREMLIN)
 		pline(use_thec,monsterc,"multiply in a fountain");
-	    if (u.usym == S_UNICORN)
+	    if (is_unicorn(youmonst.data))
 		pline(use_thec,monsterc,"use your horn");
-	    if (u.umonnum == PM_MIND_FLAYER)
+	    if (is_mind_flayer(youmonst.data))
 		pline(use_thec,monsterc,"emit a mental blast");
-	    if (uasmon->msound == MS_SHRIEK) /* worthless, actually */
+	    if (youmonst.data->msound == MS_SHRIEK) /* worthless, actually */
 		pline(use_thec,monsterc,"shriek");
-	    if (lays_eggs(uasmon) && flags.female)
+	    if (lays_eggs(youmonst.data) && flags.female)
 		pline(use_thec,"sit","lay an egg");
 	}
 	/* you now know what an egg of your type looks like */
-	if (lays_eggs(uasmon)) {
+	if (lays_eggs(youmonst.data)) {
 	    learn_egg_type(u.umonnum);
 	    /* make queen bees recognize killer bee eggs */
 	    learn_egg_type(egg_type_from_parent(u.umonnum, TRUE));
 	}
 	find_ac();
-	if((!Levitation && !u.ustuck && !is_flyer(uasmon) &&
+	if((!Levitation && !u.ustuck && !Flying &&
 	    (is_pool(u.ux,u.uy) || is_lava(u.ux,u.uy))) ||
-	   (Underwater && !is_swimmer(uasmon)))
+	   (Underwater && !Swimming))
 	    spoteffects();
-	if (passes_walls(uasmon) && u.utrap && u.utraptype == TT_INFLOOR) {
+	if (Passes_walls && u.utrap && u.utraptype == TT_INFLOOR) {
 	    u.utrap = 0;
 	    pline_The("rock seems to no longer trap you.");
-	} else if (likes_lava(uasmon) && u.utrap && u.utraptype == TT_LAVA) {
+	} else if (likes_lava(youmonst.data) && u.utrap && u.utraptype == TT_LAVA) {
 	    u.utrap = 0;
 	    pline_The("lava now feels soothing.");
 	}
-	if (amorphous(uasmon) || is_whirly(uasmon) || unsolid(uasmon)) {
+	if (amorphous(youmonst.data) || is_whirly(youmonst.data) || unsolid(youmonst.data)) {
 	    if (Punished) {
 		You("slip out of the iron chain.");
 		unpunish();
 	    }
 	}
 	if (u.utrap && (u.utraptype == TT_WEB || u.utraptype == TT_BEARTRAP) &&
-		(amorphous(uasmon) || is_whirly(uasmon) || unsolid(uasmon) ||
-		  (uasmon->msize <= MZ_SMALL && u.utraptype == TT_BEARTRAP))) {
+		(amorphous(youmonst.data) || is_whirly(youmonst.data) || unsolid(youmonst.data) ||
+		  (youmonst.data->msize <= MZ_SMALL && u.utraptype == TT_BEARTRAP))) {
 	    You("are no longer stuck in the %s.",
 		    u.utraptype == TT_WEB ? "web" : "bear trap");
 	    /* probably should burn webs too if PM_FIRE_ELEMENTAL */
 	    u.utrap = 0;
 	}
-	if (uasmon->mlet == S_SPIDER && u.utrap && u.utraptype == TT_WEB) {
+	if (youmonst.data->mlet == S_SPIDER && u.utrap && u.utraptype == TT_WEB) {
 	    You("orient yourself on the web.");
 	    u.utrap = 0;
 	}
 	flags.botl = 1;
 	vision_full_recalc = 1;
+	see_monsters();
 	exercise(A_CON, FALSE);
 	exercise(A_WIS, TRUE);
 	(void) encumber_msg();
 	return(1);
 }
 
-static void
+STATIC_OVL void
 break_armor()
 {
     register struct obj *otmp;
 
-    if (breakarm(uasmon)) {
+    if (breakarm(youmonst.data)) {
 	if ((otmp = uarm) != 0) {
 		if (donning(otmp)) cancel_don();
 		You("break out of your armor!");
@@ -497,7 +540,7 @@ break_armor()
 		useup(uarmu);
 	}
 #endif
-    } else if (sliparm(uasmon)) {
+    } else if (sliparm(youmonst.data)) {
 	if ((otmp = uarm) != 0) {
 		if (donning(otmp)) cancel_don();
 		Your("armor falls around you!");
@@ -505,7 +548,7 @@ break_armor()
 		dropx(otmp);
 	}
 	if ((otmp = uarmc) != 0) {
-		if (is_whirly(uasmon))
+		if (is_whirly(youmonst.data))
 			Your("cloak falls, unsupported!");
 		else You("shrink out of your cloak!");
 		(void) Cloak_off();
@@ -513,7 +556,7 @@ break_armor()
 	}
 #ifdef TOURIST
 	if ((otmp = uarmu) != 0) {
-		if (is_whirly(uasmon))
+		if (is_whirly(youmonst.data))
 			You("seep right through your shirt!");
 		else You("become much too small for your shirt!");
 		setworn((struct obj *)0, otmp->owornmask & W_ARMU);
@@ -521,7 +564,7 @@ break_armor()
 	}
 #endif
     }
-    if (nohands(uasmon) || verysmall(uasmon)) {
+    if (nohands(youmonst.data) || verysmall(youmonst.data)) {
 	if ((otmp = uarmg) != 0) {
 	    if (donning(otmp)) cancel_don();
 	    /* Drop weapon along with gloves */
@@ -542,21 +585,21 @@ break_armor()
 	    dropx(otmp);
 	}
     }
-    if (nohands(uasmon) || verysmall(uasmon) || slithy(uasmon) ||
-		u.usym == S_CENTAUR) {
+    if (nohands(youmonst.data) || verysmall(youmonst.data) ||
+		slithy(youmonst.data) || youmonst.data->mlet == S_CENTAUR) {
 	if ((otmp = uarmf) != 0) {
 	    if (donning(otmp)) cancel_don();
-	    if (is_whirly(uasmon))
+	    if (is_whirly(youmonst.data))
 		Your("boots fall away!");
 	    else Your("boots %s off your feet!",
-			verysmall(uasmon) ? "slide" : "are pushed");
+			verysmall(youmonst.data) ? "slide" : "are pushed");
 	    (void) Boots_off();
 	    dropx(otmp);
 	}
     }
 }
 
-static void
+STATIC_OVL void
 drop_weapon(alone)
 int alone;
 {
@@ -566,13 +609,15 @@ int alone;
 	 * future it might not be so if there are monsters which cannot
 	 * wear gloves but can wield weapons
 	 */
-	if (!alone || cantwield(uasmon)) {
+	if (!alone || cantwield(youmonst.data)) {
 	    struct obj *wep = uwep;
 
-	    if (alone) You("find you must drop your weapon!");
+	    if (alone) You("find you must drop your weapon%s!",
+			   	u.twoweap ? "s" : "");
 	    uwepgone();
 	    if (!wep->cursed || wep->otyp != LOADSTONE)
 		dropx(otmp);
+		untwoweapon();
 	}
     }
 }
@@ -580,16 +625,21 @@ int alone;
 void
 rehumanize()
 {
-	const char *uform = Role_is('E') ? "elven" : "human";
+	/* You can't revert back while unchanging */
+	if (Unchanging && (u.mh < 1)) {
+		killer_format = NO_KILLER_PREFIX;
+		killer = "killed while stuck in creature form";
+		done(DIED);
+	}
 
-	if (emits_light(uasmon))
+	if (emits_light(youmonst.data))
 	    del_light_source(LS_MONSTER, (genericptr_t)&youmonst);
-	polyman("return to %s form!", uform);
+	polyman("return to %s form!", urace.adj);
 
 	if (u.uhp < 1) {
 	    char kbuf[256];
 
-	    Sprintf(kbuf, "reverting to unhealthy %s form", uform);
+	    Sprintf(kbuf, "reverting to unhealthy %s form", urace.adj);
 	    killer_format = KILLED_BY;
 	    killer = kbuf;
 	    done(DIED);
@@ -603,20 +653,26 @@ rehumanize()
 }
 
 int
-dobreathe() {
+dobreathe()
+{
 	if (Strangled) {
 	    You_cant("breathe.  Sorry.");
 	    return(0);
 	}
+	if (u.uen < 15) {
+	    You("don't have enough energy to breathe!");
+	    return(0);
+	}
+	u.uen -= 15;
+	flags.botl = 1;
+
 	if (!getdir((char *)0)) return(0);
-	if (rn2(4))
-	    You("produce a loud and noxious belch.");
 	else {
 	    register struct attack *mattk;
 	    register int i;
 
 	    for(i = 0; i < NATTK; i++) {
-		mattk = &(uasmon->mattk[i]);
+		mattk = &(youmonst.data->mattk[i]);
 		if(mattk->aatyp == AT_BREA) break;
 	    }
 	    buzz((int) (20 + mattk->adtyp-1), (int)mattk->damn,
@@ -626,7 +682,8 @@ dobreathe() {
 }
 
 int
-dospit() {
+dospit()
+{
 	struct obj *otmp;
 
 	if (!getdir((char *)0)) return(0);
@@ -638,7 +695,8 @@ dospit() {
 }
 
 int
-doremove() {
+doremove()
+{
 	if (!Punished) {
 		You("are not chained to anything!");
 		return(0);
@@ -752,9 +810,16 @@ dospinweb()
 int
 dosummon()
 {
+	if (u.uen < 10) {
+	    You("lack the energy to send forth a call for help!");
+	    return(0);
+	}
+	u.uen -= 10;
+	flags.botl = 1;
+
 	You("call upon your brethren for help!");
 	exercise(A_WIS, TRUE);
-	if (!were_summon(uasmon,TRUE))
+	if (!were_summon(youmonst.data,TRUE))
 		pline("But none arrive.");
 	return(1);
 }
@@ -770,6 +835,13 @@ doconfuse()
 		You_cant("see anything to gaze at.");
 		return 0;
 	}
+	if (u.uen < 15) {
+	    You("lack the energy to use your special gaze!");
+	    return(0);
+	}
+	u.uen -= 15;
+	flags.botl = 1;
+
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 	    if (canseemon(mtmp)) {
 		looked++;
@@ -783,11 +855,7 @@ doconfuse()
 		    continue;
 		} else if (flags.safe_dog && !Confusion && !Hallucination
 		  && mtmp->mtame) {
-		    if (mtmp->mnamelth)
-			You("avoid gazing at %s.", NAME(mtmp));
-		    else
-			You("avoid gazing at your %s.",
-						mtmp->data->mname);
+		    You("avoid gazing at %s.", y_monnam(mtmp));
 		} else {
 		    if (flags.confirm && mtmp->mpeaceful && !Confusion
 							&& !Hallucination) {
@@ -795,7 +863,7 @@ doconfuse()
 			if (yn(qbuf) != 'y') continue;
 			setmangry(mtmp);
 		    }
-		    if (!mtmp->mcanmove || mtmp->mstun || mtmp->msleep ||
+		    if (!mtmp->mcanmove || mtmp->mstun || mtmp->msleeping ||
 				    !mtmp->mcansee || !haseyes(mtmp->data)) {
 			looked--;
 			continue;
@@ -809,17 +877,22 @@ doconfuse()
 			mtmp->mconf = 1;
 		    }
 		    if ((mtmp->data==&mons[PM_FLOATING_EYE]) && !mtmp->mcan) {
-			You("are frozen by %s gaze!",
-			                 s_suffix(mon_nam(mtmp)));
-			nomul((u.ulevel > 6 || rn2(4)) ?
-				-d((int)mtmp->m_lev+1,
-					(int)mtmp->data->mattk[0].damd)
-				: -200);
-			return 1;
+			if (!Free_action) {
+			    You("are frozen by %s gaze!",
+					     s_suffix(mon_nam(mtmp)));
+			    nomul((u.ulevel > 6 || rn2(4)) ?
+				    -d((int)mtmp->m_lev+1,
+					    (int)mtmp->data->mattk[0].damd)
+				    : -200);
+			    return 1;
+			} else
+			    You("stiffen momentarily under %s gaze.",
+				    s_suffix(mon_nam(mtmp)));
 		    }
 		    if ((mtmp->data == &mons[PM_MEDUSA]) && !mtmp->mcan) {
 			pline(
-			 "Gazing at the awake Medusa is not a very good idea.");
+			 "Gazing at the awake %s is not a very good idea.",
+			    l_monnam(mtmp));
 			/* as if gazing at a sleeping anything is fruitful... */
 			You("turn to stone...");
 			killer_format = KILLED_BY;
@@ -837,15 +910,18 @@ doconfuse()
 int
 dohide()
 {
-	if (u.uundetected || u.usym == S_MIMIC_DEF) {
+	boolean ismimic = youmonst.data->mlet == S_MIMIC;
+
+	if (u.uundetected || (ismimic && youmonst.m_ap_type != M_AP_NOTHING)) {
 		You("are already hiding.");
 		return(0);
 	}
-	if (u.usym == S_MIMIC) {
-		u.usym = S_MIMIC_DEF;
-	} else {
+	if (ismimic) {
+		/* should bring up a dialog "what would you like to imitate?" */
+		youmonst.m_ap_type = M_AP_OBJECT;
+		youmonst.mappearance = STRANGE_OBJECT;
+	} else
 		u.uundetected = 1;
-	}
 	newsym(u.ux,u.uy);
 	return(1);
 }
@@ -855,8 +931,14 @@ domindblast()
 {
 	struct monst *mtmp, *nmon;
 
+	if (u.uen < 10) {
+	    You("concentrate but lack the energy to maintain doing so.");
+	    return(0);
+	}
+	u.uen -= 10;
+	flags.botl = 1;
+
 	You("concentrate.");
-	if (rn2(3)) return 0;
 	pline("A wave of psychic energy pours out.");
 	for(mtmp=fmon; mtmp; mtmp = nmon) {
 		int u_sen;
@@ -880,14 +962,14 @@ domindblast()
 	return 1;
 }
 
-static void
+STATIC_OVL void
 uunstick()
 {
 	pline("%s is no longer in your clutches.", Monnam(u.ustuck));
 	u.ustuck = 0;
 }
 
-static void
+STATIC_OVL void
 skinback()
 {
 	if (uskin) {
@@ -901,8 +983,10 @@ skinback()
 
 #endif /* OVLB */
 #ifdef OVL1
+
 const char *
-body_part(part)
+mbodypart(mon, part)
+struct monst *mon;
 int part;
 {
 	static NEARDATA const char
@@ -917,8 +1001,8 @@ int part;
 	*animal_parts[] = { "forelimb", "eye", "face", "foreclaw", "claw tip",
 		"rear claw", "foreclaw", "clawed", "head", "rear limb",
 		"light headed", "neck", "spine", "rear claw tip", "fur" },
-	*horse_parts[] = { "forelimb", "eye", "face", "forehoof", "hoof tip",
-		"rear hoof", "foreclaw", "hooved", "head", "rear limb",
+	*horse_parts[] = { "foreleg", "eye", "face", "forehoof", "hoof tip",
+		"rear hoof", "foreclaw", "hooved", "head", "rear leg",
 		"light headed", "neck", "backbone", "rear hoof tip", "mane" },
 	*sphere_parts[] = { "appendage", "optic nerve", "body", "tentacle",
 		"tentacle tip", "lower appendage", "tentacle", "tentacled",
@@ -944,26 +1028,46 @@ int part;
 		S_ORC, S_GIANT,		/* quest nemeses */
 		'\0'		/* string terminator; assert( S_xxx != 0 ); */
 	};
+	struct permonst *mptr = mon->data;
 
 	if (part == HAND || part == HANDED) {	/* some special cases */
-	    if (u.usym == S_DOG || u.usym == S_FELINE || u.usym == S_YETI)
+	    if (mptr->mlet == S_DOG || mptr->mlet == S_FELINE ||
+		    mptr->mlet == S_YETI)
 		return part == HAND ? "paw" : "pawed";
-	    if (humanoid(uasmon) && attacktype(uasmon, AT_CLAW) &&
-		  !index(not_claws, u.usym) && u.umonnum != PM_STONE_GOLEM
-		  && u.umonnum != PM_INCUBUS && u.umonnum != PM_SUCCUBUS)
+	    if (humanoid(mptr) && attacktype(mptr, AT_CLAW) &&
+		    !index(not_claws, mptr->mlet) &&
+		    mptr != &mons[PM_STONE_GOLEM] &&
+		    mptr != &mons[PM_INCUBUS] && mptr != &mons[PM_SUCCUBUS])
 		return part == HAND ? "claw" : "clawed";
 	}
-	if (humanoid(uasmon) && (part==ARM || part==FINGER || part==FINGERTIP
-		|| part==HAND || part==HANDED)) return humanoid_parts[part];
-	if (u.usym==S_CENTAUR || u.usym==S_UNICORN) return horse_parts[part];
-	if (slithy(uasmon)) return snake_parts[part];
-	if (u.usym==S_EYE) return sphere_parts[part];
-	if (u.usym==S_JELLY || u.usym==S_PUDDING || u.usym==S_BLOB)
-		return jelly_parts[part];
-	if (u.usym==S_VORTEX || u.usym==S_ELEMENTAL) return vortex_parts[part];
-	if (u.usym==S_FUNGUS) return fungus_parts[part];
-	if (humanoid(uasmon)) return humanoid_parts[part];
+	if (humanoid(mptr) &&
+		(part == ARM || part == FINGER || part == FINGERTIP ||
+		    part == HAND || part == HANDED))
+	    return humanoid_parts[part];
+	if (mptr->mlet == S_CENTAUR || mptr->mlet == S_UNICORN ||
+		(mptr == &mons[PM_ROTHE] && part != HAIR))
+	    return horse_parts[part];
+	if (slithy(mptr))
+	    return snake_parts[part];
+	if (mptr->mlet == S_EYE)
+	    return sphere_parts[part];
+	if (mptr->mlet == S_JELLY || mptr->mlet == S_PUDDING ||
+		mptr->mlet == S_BLOB)
+	    return jelly_parts[part];
+	if (mptr->mlet == S_VORTEX || mptr->mlet == S_ELEMENTAL)
+	    return vortex_parts[part];
+	if (mptr->mlet == S_FUNGUS)
+	    return fungus_parts[part];
+	if (humanoid(mptr))
+	    return humanoid_parts[part];
 	return animal_parts[part];
+}
+
+const char *
+body_part(part)
+int part;
+{
+	return mbodypart(&youmonst, part);
 }
 
 #endif /* OVL1 */
@@ -987,7 +1091,7 @@ poly_gender()
  *	- Shopkeeper messages (since referred to as "creature" and not "sir"
  *	  or "lady" when polymorphed)
  */
-	if (!humanoid(uasmon)) return 2;
+	if (!humanoid(youmonst.data)) return 2;
 	return flags.female;
 }
 
@@ -1022,7 +1126,7 @@ int damtype, dam;
 	}
 }
 
-static int
+STATIC_OVL int
 armor_to_dragon(atyp)
 int atyp;
 {
@@ -1030,6 +1134,14 @@ int atyp;
 	    case GRAY_DRAGON_SCALE_MAIL:
 	    case GRAY_DRAGON_SCALES:
 		return PM_GRAY_DRAGON;
+	    case SILVER_DRAGON_SCALE_MAIL:
+	    case SILVER_DRAGON_SCALES:
+		return PM_SILVER_DRAGON;
+#if 0	/* DEFERRED */
+	    case SHIMMERING_DRAGON_SCALE_MAIL:
+	    case SHIMMERING_DRAGON_SCALES:
+		return PM_SHIMMERING_DRAGON;
+#endif
 	    case RED_DRAGON_SCALE_MAIL:
 	    case RED_DRAGON_SCALES:
 		return PM_RED_DRAGON;

@@ -1,6 +1,8 @@
 Boolean options available in all versions (with default values in []):
 
 autopickup     automatically pick up objects you move over        [TRUE]
+autoquiver     when firing with an empty quiver, select some
+               suitable inventory weapon to fill the quiver       [FALSE]
 confirm        ask before hitting tame or peaceful monsters       [TRUE]
 DECgraphics    use DEC/VT line-drawing characters for the dungeon [FALSE]
 (fe)male       sex of the player (may only be set on startup)     [MALE]
@@ -16,6 +18,8 @@ null           allow nulls to be sent to your terminal            [TRUE]
                delay code) if moving objects seem to teleport across rooms
 number_pad     use the number keys to move instead of yuhjklbn    [FALSE]
 perm_invent    keep inventory in a permanent window               [FALSE]
+pushweapon     when wielding a new weapon, put your previously
+               wielded weapon into the secondary weapon slot      [FALSE]
 rest_on_space  count the space bar as a rest character            [FALSE]
 safe_pet       prevent you from (knowingly) attacking your pet(s) [TRUE]
 silent         don't use your terminal's bell sound               [TRUE]
@@ -28,7 +32,7 @@ verbose        print more commentary during the game              [TRUE]
 
 
 There are further boolean options that exist in some versions of NetHack
-3.2.  (You can learn which options exist in your version by checking your
+3.3.  (You can learn which options exist in your version by checking your
 current option setting, which is reached via the 'O' cmd.)
 
 Boolean option if INSURANCE was set at compile time:
@@ -80,6 +84,9 @@ packorder     a list of default symbols for kinds of objects that gives the
               order in which your pack will be displayed  [")[%?+!=/(*`0_]
               (If you specify only some kinds of items, the others from the
               default order will be appended to the end.)
+pickup_burden when you pick up an item that exceeds this encumberance
+              level (Unburdened, Burdened, streSsed, straiNed, overTaxed,
+              or overLoaded), you will be asked if you want to continue. [B]
 pickup_types  a list of default symbols for kinds of objects to autopickup
               when that option is on  [all]
 scores        the parts of the score list you wish to see when the game ends
@@ -88,6 +95,8 @@ scores        the parts of the score list you wish to see when the game ends
 
 Compound options which may be set only on startup are:
 
+align      Your starting alignment (align:lawful, align:neutral,
+           or align:chaotic).  You may specify just the first letter.  [RANDOM]
 catname    the name of your first cat  [NONE]
 dogname    the name of your first dog  [NONE]
 dungeon    a list of symbols to be used in place of the default ones for
@@ -103,8 +112,9 @@ dungeon    a list of symbols to be used in place of the default ones for
            crwall tuwall tdwall tlwall trwall (wallified maze characters)
            nodoor vodoor hodoor      (no, vertical, horizontal open door)
            vcdoor hcdoor               (vertical, horizontal closed door)
-           room darkcorr litcorr upstair dnstair upladder dnladder
-           altar throne sink fountain pool ice lava
+           ironbars tree room darkcorr litcorr
+           upstair dnstair upladder dnladder
+           altar grave throne sink fountain pool ice lava
            vodbridge hodbridge     (vertical, horizontal open drawbridge)
            vcdbridge hcdbridge   (vertical, horizontal closed drawbridge)
            air cloud water
@@ -121,6 +131,11 @@ effects    like dungeon, but for special effects symbols
            exml exmm exmr                   (explosion matrix middle row)
            exbl exbm exbr                   (explosion matrix bottom row)
            default:  |-\\/*!)(0#@*/-\\||\\-//-\\|\ |\\-/
+gender     Your starting gender (gender:male or gender:female).
+           You may specify just the first letter.  Although you can
+           still denote your gender using the "male" and "female"
+           options, the "gender" option will take precedence.  [RANDOM]
+horsename  the name of your first horse  [NONE]
 menu_*     create single character accelerators for menu commands.  Below
            is a list of all commands.  Each is followed by a list of window-
            ports that implement them:  'x' is X11, 't' is tty.
@@ -145,6 +160,14 @@ objects    like dungeon, but for object symbols
            default:  ])[="(%!?+/$*`0_.
 pettype    your preferred type of pet (cat or dog), if your character
            class uses both types  [RANDOM]
+race       Your starting race (e.g., race:Human, race:Elf).  [RANDOM]
+role       Your starting role (e.g., role:Barbarian, role:Valk).
+           Although you can specify just the first letter(s), it will
+           choose only the first role it finds that matches; thus, it
+           is recommended that you spell out as much of the role name
+           as possible.  You can also still denote your role by
+           appending it to the "name" option (e.g., name:Vic-V), but the
+           "role" option will take precedence.  [RANDOM]
 traps      like dungeon, but for trap symbols
            arrow_trap dart_trap falling_rock_trap squeaky_board
            bear_trap land_mine rolling_boulder_trap sleeping_gas_trap

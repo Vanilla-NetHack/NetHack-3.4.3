@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topl.c	3.2	96/10/24	*/
+/*	SCCS Id: @(#)topl.c	3.3	96/10/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,7 +6,7 @@
 
 #ifdef TTY_GRAPHICS
 
-#include "termcap.h"
+#include "tcap.h"
 #include "wintty.h"
 #include <ctype.h>
 
@@ -17,7 +17,7 @@
 STATIC_DCL void FDECL(redotoplin, (const char*));
 STATIC_DCL void FDECL(topl_putsym, (CHAR_P));
 STATIC_DCL void NDECL(remember_topl);
-static void FDECL(removetopl, (int));
+STATIC_DCL void FDECL(removetopl, (int));
 
 #ifdef OVLB
 
@@ -89,7 +89,6 @@ const char *s;
     register struct WinDesc *cw = wins[WIN_MESSAGE];
 
     tty_curs(BASE_WINDOW,cw->curx+1,cw->cury);
-    if(cw->curx + (int)strlen(s) >= CO) topl_putsym('\n');
     putsyms(s);
     cl_end();
     ttyDisplay->toplin = 1;
@@ -222,7 +221,7 @@ putsyms(str)
 	topl_putsym(*str++);
 }
 
-static void
+STATIC_OVL void
 removetopl(n)
 register int n;
 {

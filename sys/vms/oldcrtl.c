@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)oldcrtl.c	3.2	95/06/01	*/
+/*	SCCS Id: @(#)oldcrtl.c	3.3	1995/06/01	*/
 /*	 Pat Rankin  May'90					  */
-/* VMS NetHack support, not needed for vms 4.6,4.7,5.x,or 6.x	  */
+/* VMS NetHack support, not needed for vms 4.6,4.7,5.x,or later   */
 
 #ifdef VERYOLD_VMS
 /*

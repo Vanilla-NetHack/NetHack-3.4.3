@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)video.c   3.2     95/08/05			    */
+/*   SCCS Id: @(#)video.c   3.3     95/08/05			    */
 /*   Copyright (c) NetHack PC Development Team 1993, 1994	    */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*								    */
@@ -37,24 +37,24 @@
  *
  * Assumptions (94/04/23):
  *
- *   - Supported NetHack.cnf file video options:
+ *   - Supported defaults.nh file video options:
  *
- *          If OPTIONS=video:autodetect is defined in NetHack.cnf then 
+ *          If OPTIONS=video:autodetect is defined in defaults.nh then 
  *          check for a VGA video adapter.  If one is detected, then 
  *          use the VGA code, otherwise resort to using the 'standard' 
  *          video BIOS routines.
  *
- *          If OPTIONS=video:vga is defined in NetHack.cnf, then use 
+ *          If OPTIONS=video:vga is defined in defaults.nh, then use 
  *          the VGA code.
  *
- *          If OPTIONS=video:default is defined in NetHack.cnf use the
+ *          If OPTIONS=video:default is defined in defaults.nh use the
  *          'standard' video BIOS routines (in the overlaid version), 
  *          or DJGPPFAST routines (under djgpp). This is equivalent to 
  *          having no OPTIONS=video:xxxx entry at all.
  *
  * Notes (94/04/23):
  *
- *   - The handler for NetHack.cnf file entry: 
+ *   - The handler for defaults.nh file entry: 
  * 
  *           OPTIONS=video:xxxxx 
  *
@@ -805,7 +805,7 @@ int assign_videoshades(char *choiceptr)
 }
 
 /*
- * Process NetHack.cnf OPTIONS=videocolors:xxx
+ * Process defaults.nh OPTIONS=videocolors:xxx
  * Left to right assignments for:
  *	red green brown blue magenta cyan orange br.green yellow
  *	br.blue br.mag br.cyan
@@ -817,7 +817,7 @@ int assign_videocolors(char *colorvals)
 	int i,icolor;
 	uchar *tmpcolor;
 
-	init_ttycolor();	/* in case nethack.cnf entry wasn't complete */
+	init_ttycolor();	/* in case defaults.nh entry wasn't complete */
 	i = strlen(colorvals);
 	tmpcolor = (uchar *)alloc(i);
 	(void)convert_uchars(colorvals,tmpcolor,i);
@@ -874,7 +874,7 @@ convert_uchars(bufp,list,size)
 # endif /* TEXTCOLOR */
 
 /*
- * Process NetHack.cnf OPTIONS=video:xxxx
+ * Process defaults.nh OPTIONS=video:xxxx
  *
  *    where (current) legitimate values are:
  *

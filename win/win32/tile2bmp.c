@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)tile2bmp.c	3.2	95/09/06	*/
+/*	SCCS Id: @(#)tile2bmp.c	3.3	1999/08/29	*/
 /*   Copyright (c) NetHack PC Development Team 1995                 */
 /*   NetHack may be freely redistributed.  See license for details. */
 
 /*
  * Edit History:
  *
- *	Initial Creation			M.Allison	94/01/11
+ *	Initial Creation			M.Allison   94/01/11
  *
  */
 
@@ -13,33 +13,87 @@
 
 #include "hack.h"
 #include "tile.h"
+#ifndef __DJGPP__
 #include "win32api.h"
-/* #include "pctiles.h" */
+#endif
 
 /* #define COLORS_IN_USE MAXCOLORMAPSIZE       /* 256 colors */
 #define COLORS_IN_USE 16                       /* 16 colors */
 
+#define BITCOUNT 8
 
 extern char *FDECL(tilename, (int, int));
 
-#if COLORS_IN_USE==16
+#if BITCOUNT==4
 #define MAX_X 320		/* 2 per byte, 4 bits per pixel */
 #else
-#define MAX_X 640
+#define MAX_X 640		/* 1 per byte, 8 bits per pixel */
 #endif	
 #define MAX_Y 480
+
+/* GCC fix by Paolo Bonzini 1999/03/28 */
+#ifdef __GNUC__
+#define PACK		__attribute__((packed))
+#else
+#define PACK
+#endif 
+
+#if defined(__DJGPP__)
+typedef struct tagBMIH {
+        unsigned long   biSize;
+        long       	biWidth;
+        long       	biHeight;
+        unsigned short  biPlanes;
+        unsigned short  biBitCount;
+        unsigned long   biCompression;
+        unsigned long   biSizeImage;
+        long       	biXPelsPerMeter;
+        long       	biYPelsPerMeter;
+        unsigned long   biClrUsed;
+        unsigned long   biClrImportant;
+} PACK BITMAPINFOHEADER;
+
+typedef struct tagBMFH {
+        unsigned short bfType;
+        unsigned long  bfSize;
+        unsigned short bfReserved1;
+        unsigned short bfReserved2;
+        unsigned long  bfOffBits;
+} PACK BITMAPFILEHEADER;
+
+typedef struct tagRGBQ {
+        unsigned char    rgbBlue;
+        unsigned char    rgbGreen;
+        unsigned char    rgbRed;
+        unsigned char    rgbReserved;
+} PACK RGBQUAD;
+#define UINT unsigned int
+#define DWORD unsigned long
+#define LONG long
+#define WORD unsigned short
+#define BI_RGB        0L
+#define BI_RLE8       1L
+#define BI_RLE4       2L
+#define BI_BITFIELDS  3L
+#endif /* defined(__DJGPP__) */
 
 #pragma pack(1)
 struct tagBMP{
     BITMAPFILEHEADER bmfh;
     BITMAPINFOHEADER bmih;
-    RGBQUAD          bmaColors[COLORS_IN_USE];
+#if BITCOUNT==4
+#define RGBQUAD_COUNT 16
+    RGBQUAD          bmaColors[RGBQUAD_COUNT];
+#else
+#define RGBQUAD_COUNT 16
+    RGBQUAD          bmaColors[RGBQUAD_COUNT];
+#endif
 #if COLORS_IN_USE==16
     uchar            packtile[MAX_Y][MAX_X];
 #else
     uchar            packtile[TILE_Y][TILE_X];
 #endif
-} bmp;
+} PACK bmp;
 #pragma pack()
 
 #define BMPFILESIZE (sizeof(struct tagBMP))
@@ -121,11 +175,15 @@ char *argv[];
 		    }
 		    initflag = 1;
 		}
-				
+/*		printf("Colormap initialized\n"); */
 		while (read_text_tile(tilepixels)) {
 			build_bmptile(tilepixels);
 			tilecount++;
+#if BITCOUNT==4
 			xoffset += (TILE_X / 2);
+#else
+			xoffset += TILE_X;
+#endif
 			if (xoffset >= MAX_X) {
 				yoffset += TILE_Y;
 				xoffset = 0;
@@ -154,7 +212,7 @@ BITMAPFILEHEADER *pbmfh;
 	pbmfh->bfReserved1 = (UINT)0;
 	pbmfh->bfReserved2 = (UINT)0;
 	pbmfh->bfOffBits = sizeof(bmp.bmfh) + sizeof(bmp.bmih) +
-			   (COLORS_IN_USE * sizeof(RGBQUAD));
+			   (RGBQUAD_COUNT * sizeof(RGBQUAD));
 }
 
 static void
@@ -162,14 +220,14 @@ build_bmih(pbmih)
 BITMAPINFOHEADER *pbmih;
 {
 	pbmih->biSize = (DWORD) sizeof(bmp.bmih);
-#if COLORS_IN_USE==16
+#if BITCOUNT==4
 	pbmih->biWidth = (LONG) MAX_X * 2;
 #else
 	pbmih->biWidth = (LONG) MAX_X;
 #endif
 	pbmih->biHeight = (LONG) MAX_Y;
 	pbmih->biPlanes = (WORD) 1;
-#if COLORS_IN_USE==16
+#if BITCOUNT==4
 	pbmih->biBitCount = (WORD) 4;
 #else
 	pbmih->biBitCount = (WORD) 8;
@@ -178,7 +236,7 @@ BITMAPINFOHEADER *pbmih;
 	pbmih->biSizeImage = (DWORD)0;
 	pbmih->biXPelsPerMeter = (LONG)0;
 	pbmih->biYPelsPerMeter = (LONG)0;
-	pbmih->biClrUsed = (DWORD)0;
+	pbmih->biClrUsed = (DWORD)RGBQUAD_COUNT;
 	pbmih->biClrImportant = (DWORD)0;
 }
 
@@ -190,27 +248,25 @@ pixel (*pixels)[TILE_X];
 	int x,y;
 
 	for (cur_y = 0; cur_y < TILE_Y; cur_y++) {
-		for (cur_x = 0; cur_x < TILE_X; cur_x++) {
-		    for (cur_color = 0; cur_color < num_colors; cur_color++) {
-				if (ColorMap[CM_RED][cur_color] ==
-						pixels[cur_y][cur_x].r &&
-				    ColorMap[CM_GREEN][cur_color] ==
-						pixels[cur_y][cur_x].g &&
-				    ColorMap[CM_BLUE][cur_color] ==
-						pixels[cur_y][cur_x].b)
-					break;
-		    }
-		    if (cur_color >= num_colors)
-				Fprintf(stderr, "color not in colormap!\n");
-		    y = (MAX_Y - 1) - (cur_y + yoffset);
-#if COLORS_IN_USE==16
-		    x = (cur_x / 2) + xoffset;
-		    bmp.packtile[y][x] =
-			   cur_x%2 ? (uchar)(bmp.packtile[y][x] | cur_color) :
-			             (uchar)(cur_color<<4);
+	 for (cur_x = 0; cur_x < TILE_X; cur_x++) {
+	  for (cur_color = 0; cur_color < num_colors; cur_color++) {
+	   if (ColorMap[CM_RED][cur_color] == pixels[cur_y][cur_x].r &&
+	      ColorMap[CM_GREEN][cur_color]== pixels[cur_y][cur_x].g &&
+	      ColorMap[CM_BLUE][cur_color] == pixels[cur_y][cur_x].b)
+		break;
+	  }
+	  if (cur_color >= num_colors)
+		Fprintf(stderr, "color not in colormap!\n");
+	  y = (MAX_Y - 1) - (cur_y + yoffset);
+#if BITCOUNT==4
+	  x = (cur_x / 2) + xoffset;
+	  bmp.packtile[y][x] = cur_x%2 ?
+		(uchar)(bmp.packtile[y][x] | cur_color) :
+		(uchar)(cur_color<<4);
 #else
-		    bmp.packtile[y][x] =cur_color;
+	  x = cur_x + xoffset;
+	  bmp.packtile[y][x] = (uchar)cur_color;
 #endif
-		}
+	 }
 	}
 }

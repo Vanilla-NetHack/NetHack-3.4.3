@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)win32api.h	 3.2	 96/02/15		  */
+/*	SCCS Id: @(#)win32api.h	 3.3	 96/02/15		  */
 /* Copyright (c) NetHack PC Development Team 1996                 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,7 +15,10 @@
 # pragma pack(8)
 # endif
 
+#define WIN32_LEAN_AND_MEAN
+
 #include <windows.h>
+#include <commctrl.h>
 
 # if defined(_MSC_VER)
 # pragma pack()

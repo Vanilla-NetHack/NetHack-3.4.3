@@ -1,17 +1,17 @@
-	SCCS Id: @(#)Install.dos	 3.2		96/02/23
+	SCCS Id: @(#)Install.dos	 3.3		1999/12/04
 
-	Copyright (c) NetHack PC Development Team 1990, 1994, 1995, 1996.
+	   Copyright (c) NetHack PC Development Team 1990-1999.
        NetHack may be freely redistributed.  See license for details.
        ==============================================================
               Instructions for compiling and installing
-		     NetHack 3.2 on a DOS system
+		     NetHack 3.3 on a DOS system
          ======================================================
-                  (or, How to make PC NetHack 3.2)
-		  Last revision: February 23, 1996
+                  (or, How to make PC NetHack 3.3)
+		  Last revision: December  4, 1999
 
-Credit for a runnable full PC NetHack 3.2 goes to the PC Development team
-of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill
-Dyer, Timo Hakulinen, Yamamoto Keizo, Mike Threepoint, Mike Stephenson,
+Credit for a runnable full PC NetHack 3.3 goes to the PC Development team
+of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill Dyer, 
+Timo Hakulinen, Yamamoto Keizo, Mike Threepoint, Mike Stephenson, 
 Stephen White, Ken Washikita and Janet Walz.  The present port is based
 on the work of Pierre Martineau, Stephen Spackman, Steve Creps, Mike
 Threepoint, Mike Stephenson, Norm Meluch and Don Kneller.
@@ -26,7 +26,7 @@ I.  Dispelling the Myths:
     following compilers:
 
     Microsoft C 7.0 and Microsoft Visual C++ Professional (MSVC) 1.0 or later
-    djgpp V2.0 Beta3 or later
+    djgpp V2.0 or later
 
     For specific details concerning each compiler, please see the
     corresponding appendix.
@@ -110,7 +110,7 @@ II. To compile your copy of NetHack on a DOS machine:
                   MS-Windows.
 
        termcap.uu Optional.  Termcap support is no longer required for
-                  for building NetHack, though you can if you want to.
+                  building NetHack, though you can if you want to.
                   The file termcap.uu is the fixed version
                   of the Fred Fish termcap library.  If you have modified
                   pcconf.h to define TERMLIB as well as commented out
@@ -151,11 +151,7 @@ II. To compile your copy of NetHack on a DOS machine:
 
     The appropriate and necessary Makefile movements will be accomplished
     for you, as well as verifying a few files and fixing a few file names
-    on FAT systems with long file name support.  In addition, when used
-    with the MSC option, certain compiler options will be set in the
-    special CL environment variable, which the compiler will use.
-    Make sure that you either run setup.bat each time you start compiling
-    or copy the line that starts "SET CL" into your autoexec.bat file.
+    on FAT systems with long file name support.
 
 5.  Now go to the include subdirectory to check a couple of the header
     files there.  Things *should* work as they are, but since you have
@@ -227,20 +223,18 @@ II. To compile your copy of NetHack on a DOS machine:
     makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
     lest potentially troublesome timestamps fool your make utility.
 
-    a) For Microsoft C 7.0 or greater, and Microsoft Visual C++
-
-       Choose an overlay schema by setting SCHEMA to 1, 2, or 3.  If you
-       select overlay schema 3, you must get the file MOVEINIT.C and MOVEAPI.H
-       from your Microsoft C distribution, and copy it into the src directory.
-       Then apply the patch MOVEINIT.PAT to the file.
-
-    b) For Borland C++ 3.1,
+    a) For Borland C++ 3.1,
 
        Choose an overlay schema by setting SCHEMA to 1 or 2.  If you change
        the overlay schema, you will need to recompile all the object modules
        from scratch since the overlay schema is information is used during
        compile time for Borland C++, unlike Microsoft C which does it during
        link time.
+
+    b) For Microsoft C 7.0 or greater, and Microsoft Visual C++
+
+       The only overlay schema available is Schema3 so you don't have to 
+       choose one.  The Makefile is set up for it already.
 
     If you elected to add graphical tile support, set TILESUPPORT to Y.
 
@@ -268,7 +262,7 @@ II. To compile your copy of NetHack on a DOS machine:
 
     Depending on your particular machine and compiler, you can either
     grab a cup of coffee or go home for the day.  Your computer will be
-    occupied for a long time.  If all goes well, you will get an
+    occupied for quite some time.  If all goes well, you will get an
     NetHack executable.
 
 9.  If you chose DLB support (recommended), make sure that the file nhdat 
@@ -285,22 +279,31 @@ II. To compile your copy of NetHack on a DOS machine:
     directory.  Copy them from src to the game directory yourself if
     necessary.
 
-    Make sure the files NetHack.cnf and termcap made it to your game
-    directory.  If not, go to sys\share and copy NetHack.cnf and
-    termcap to your game directory.  Edit NetHack.cnf to reflect your
-    particular setup and personal preferences, by following the comments.
+    Make sure the files defaults.nh and termcap made it to your game
+    directory.  If not, go to sys\share and copy NetHack.cnf to
+    your game directory as defaults.nh.  The name in previous versions was
+    nethack.cnf, but the CNF extension conflicted with the MS Windows
+    speed-dialer, making the file hidden on many machines.
+
+    If you changed your build settings to include TERMCAP support, copy
+    termcap to your game directory.  
+
+    Edit defaults.nh to reflect your particular setup and personal 
+    preferences, by following the comments.
 
     Also, make sure the file msdoshlp.txt made it to your game directory.
     If it didn't, move it from sys\msdos to your game directory
     yourself.
 
-10. In your game directory, review the settings in nethack.cnf and adjust
+10. In your game directory, review the settings in defaults.nh and adjust
     them according to your style of play.  Some new options that you might
     be interested in are "menustyle" (for tailoring new object selection
     interface), and "video" (for turning on graphical tiles).
 
     On Borland C++, the soundcard:autodetect option enables pc speaker
-    sound in NetHack if you compiled with PCMUSIC set in pcconf.h.
+    sound in NetHack if you compiled with PCMUSIC set in pcconf.h. It
+    is rumored that this also works with djgpp, but the PCMUSIC setting
+    in pcconf.h must be uncommented manually.
 
 11. Play NetHack.  If it works, you're done!
 
@@ -325,7 +328,7 @@ Appendix A - Building the "official binaries"
     Make sure the following files have been converted from the
     unix style "^J" end of line, to the msdos style "^M^J":
       license, help, hh, termcap, history, cmdhelp wizhelp and
-      nethack.cnf.
+      defaults.nh.
 
     Uudecode nhico.uu nhpif.uu.
 
@@ -374,8 +377,8 @@ Appendix C - DJGPP Compiler (gcc ported to msdos)
     NetHack without spending money on a compiler.  DJGPP is available free
     from many archive sites.
     At the time of this release, the URL
-        http://www.delorie.com/djgpp/getting.html
-    had information on how to obtain djgpp.
+	http://www.delorie.com/djgpp/zip-picker.html/
+    had information on how to obtain djgpp and what pieces to get.
 
     Setting up DJGPP is more than adequately explained in the documentation
     that comes with it.  Be sure to pick up the yacc and flex built with
@@ -481,8 +484,7 @@ Appendix F - Additional Notes
     space.  Make sure you have about a meg of free disk wherever you have
     defined your temporary storage.
 
-4)  If you have comments or suggestions, feel free to drop any one of
-    us a line c/o nethack-bugs@linc.cis.upenn.edu.  From compuserve,
-    try INTERNET:nethack-bugs@linc.cis.upenn.edu.  Compuserve users can
-    also reach Paul Winner by sending compuserve mail to 73207,226.  The
-    NetHack binaries and sources can be found in the GAMERS forum.
+4)  If you discover a bug and wish to report it please send mail to:
+        nethack-bugs@nethack.org 
+    If you have comments or suggestions, feel free to drop us a line c/o
+        DevTeam@nethack.org

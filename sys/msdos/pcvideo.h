@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)pcvideo.h   3.2     94/06/07                      */
+/*   SCCS Id: @(#)pcvideo.h   3.3     94/06/07                      */
 /*   Copyright (c) NetHack PC Development Team 1993, 1994           */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*                                                                  */
@@ -131,7 +131,7 @@ struct overview_planar_cell_struct {
  * Do not change the values below.
  * These are the color mappings defined by the particular video 
  * hardware/mode.  You can rearrange the NetHack color mappings at
- * run-time via the NetHack.cnf "videocolors" and "videoshades"
+ * run-time via the defaults.nh "videocolors" and "videoshades"
  * settings.
  *
  */

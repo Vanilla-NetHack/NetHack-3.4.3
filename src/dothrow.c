@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.2	96/10/28	*/
+/*	SCCS Id: @(#)dothrow.c	3.3	1999/12/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,13 +6,16 @@
 
 #include "hack.h"
 
-static int FDECL(gem_accept, (struct monst *, struct obj *));
-static int FDECL(throw_gold, (struct obj *));
-static void FDECL(check_shop_obj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P));
-static boolean FDECL(breaktest, (struct obj *));
-static void FDECL(breakobj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P,BOOLEAN_P));
-static void FDECL(breakmsg, (struct obj *,BOOLEAN_P));
-static boolean FDECL(toss_up,(struct obj *, BOOLEAN_P));
+STATIC_DCL int FDECL(throw_obj, (struct obj *,int));
+STATIC_DCL void NDECL(autoquiver);
+STATIC_DCL int FDECL(gem_accept, (struct monst *, struct obj *));
+STATIC_DCL int FDECL(throw_gold, (struct obj *));
+STATIC_DCL void FDECL(check_shop_obj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P));
+STATIC_DCL void FDECL(breakobj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P,BOOLEAN_P));
+STATIC_DCL void FDECL(breakmsg, (struct obj *,BOOLEAN_P));
+STATIC_DCL boolean FDECL(toss_up,(struct obj *, BOOLEAN_P));
+STATIC_DCL boolean FDECL(throwing_weapon, (struct obj *));
+STATIC_DCL void FDECL(sho_obj_return_to_u, (struct obj *obj));
 
 
 static NEARDATA const char toss_objs[] =
@@ -23,18 +26,19 @@ static NEARDATA const char bullets[] =
 
 extern boolean notonhead;	/* for long worms */
 
-int
-dothrow()
+
+/* Throw the selected object, asking for direction */
+STATIC_OVL int
+throw_obj(obj, shotlimit)
+struct obj *obj;
+int shotlimit;
 {
-	register struct obj *obj;
+	struct obj *otmp;
+	int multishot = 1;
+	schar skill;
 
-	if(check_capacity((char *)0)) return(0);
-	obj = getobj(uwep && uwep->otyp==SLING ? bullets : toss_objs, "throw");
-	/* it is also possible to throw food */
-	/* (or jewels, or iron balls... ) */
-
-	if (!obj) return(0);
-	if (!getdir((char *)0)) {       /* ask "in what direction?" */
+	/* ask "in what direction?" */
+	if (!getdir((char *)0)) {
 		if (obj->oclass == GOLD_CLASS) {
 		    u.ugold += obj->quan;
 		    flags.botl = 1;
@@ -42,7 +46,6 @@ dothrow()
 		}
 		return(0);
 	}
-
 
 	if(obj->oclass == GOLD_CLASS) return(throw_gold(obj));
 
@@ -53,8 +56,8 @@ dothrow()
 		The(xname(obj)));
 		return(0);
 	}
-	if ((obj->oartifact == ART_MJOLLNIR && ACURR(A_STR) < 125)
-	   || (obj->otyp == BOULDER && !throws_rocks(uasmon))) {
+	if ((obj->oartifact == ART_MJOLLNIR && ACURR(A_STR) < STR19(25))
+	   || (obj->otyp == BOULDER && !throws_rocks(youmonst.data))) {
 		pline("It's too heavy.");
 		return(1);
 	}
@@ -64,25 +67,199 @@ dothrow()
 	}
 	u_wipe_engr(2);
 
-	if(obj == uwep) {
+	/* Multishot calculations
+	 * Avoid sling ammunition, to avoid throwing all of the hero's
+	 * gemstones at unicorns, all luckstones, etc.
+	 */
+	skill = objects[obj->otyp].oc_skill;
+	if (((ammo_and_launcher(obj, uwep) && skill != -P_SLING) ||
+			skill == P_DAGGER || skill == P_DART ||
+			skill == P_SHURIKEN) && !Confusion) {
+	    /* Bonus if the player is proficient in this weapon... */
+	    switch (P_SKILL(weapon_type(obj))) {
+	    default:	break; /* No bonus */
+	    case P_SKILLED:	multishot++; break;
+	    case P_EXPERT:	multishot += 2; break;
+	    }
+	    /* ...or is using a special weapon for their role... */
+	    switch (Role_switch) {
+	    case PM_RANGER:
+		multishot++;
+		break;
+	    case PM_ROGUE:
+		if (skill == P_DAGGER) multishot++;
+		break;
+	    case PM_SAMURAI:
+		if (obj->otyp == YA && uwep && uwep->otyp == YUMI) multishot++;
+		break;
+	    default:
+		break;	/* No bonus */
+	    }
+	    /* ...or using their race's special bow */
+	    switch (Race_switch) {
+	    case PM_ELF:
+		if (obj->otyp == ELVEN_ARROW && uwep &&
+				uwep->otyp == ELVEN_BOW) multishot++;
+		break;
+	    default:
+		break;	/* No bonus */
+	    }
+	}
+
+	if (obj->quan < multishot) multishot = (int)obj->quan;
+	multishot = rnd(multishot);
+	if (shotlimit > 0 && multishot > shotlimit) multishot = shotlimit;
+
+	while (obj && multishot-- > 0) {
+		/* Split this object off from its slot */
+		otmp = (struct obj *)0;
+		if (obj == uquiver) {
+			if(obj->quan > 1L)
+				setuqwep(otmp = splitobj(obj, 1L));
+			else {
+				setuqwep((struct obj *)0);
+				if (uquiver) return(1);
+			}
+		} else if (obj == uswapwep) {
+			if(obj->quan > 1L)
+				setuswapwep(otmp = splitobj(obj, 1L));
+			else {
+				setuswapwep((struct obj *)0);
+				if (uswapwep) return(1);
+			}
+		} else if (obj == uwep) {
 	    if(welded(obj)) {
 		weldmsg(obj);
 		return(1);
 	    }
 	    if(obj->quan > 1L)
-		setworn(splitobj(obj, 1L), W_WEP);
+				setworn(otmp = splitobj(obj, 1L), W_WEP);
 		/* not setuwep; do not change unweapon */
 	    else {
 		setuwep((struct obj *)0);
 		if (uwep) return(1); /* unwielded, died, rewielded */
 	    }
-	}
-	else if(obj->quan > 1L)
-		(void) splitobj(obj, 1L);
+		} else if(obj->quan > 1L)
+			otmp = splitobj(obj, 1L);
 	freeinv(obj);
 	throwit(obj);
+		obj = otmp;
+	}	/* while (multishot) */
 	return(1);
 }
+
+
+int
+dothrow()
+{
+	register struct obj *obj;
+	int shotlimit;
+
+	/*
+	 * Since some characters shoot multiple missiles at one time,
+	 * allow user to specify a count prefix for 'f' or 't' to limit
+	 * number of items thrown (to avoid possibly hitting something
+	 * behind target after killing it, or perhaps to conserve ammo).
+	 *
+	 * Prior to 3.3.0, command ``3t'' meant ``t(shoot) t(shoot) t(shoot)''
+	 * and took 3 turns.  Now it means ``t(shoot at most 3 missiles)''.
+	 */
+	/* kludge to work around parse()'s pre-decrement of `multi' */
+	shotlimit = (multi || save_cm) ? multi + 1 : 0;
+	multi = 0;		/* reset; it's been used up */
+
+	if(check_capacity((char *)0)) return(0);
+	obj = getobj(uwep && uwep->otyp==SLING ? bullets : toss_objs, "throw");
+	/* it is also possible to throw food */
+	/* (or jewels, or iron balls... ) */
+
+	if (!obj) return(0);
+	return throw_obj(obj, shotlimit);
+}
+
+
+/* KMH -- Automatically fill quiver */
+/* Suggested by Jeffrey Bay <jbay@convex.hp.com> */
+static void
+autoquiver ()
+{
+	register struct obj *otmp, *oammo = 0, *omissile = 0, *omisc = 0;
+
+
+	if (uquiver)
+		return;
+
+	/* Scan through the inventory */
+	for (otmp = invent; otmp; otmp = otmp->nobj) {
+		if (otmp->owornmask)
+			/* Skip it */;
+		else if (is_ammo(otmp)) {
+			if (ammo_and_launcher(otmp, uwep))
+				/* Ammo matched with launcher (bow and arrow, crossbow and bolt) */
+				oammo = otmp;
+			else
+				/* Mismatched ammo (no better than an ordinary weapon) */
+				omisc = otmp;
+		} else if (is_missile(otmp))
+			/* Missile (dart, shuriken, etc.) */
+			omissile = otmp;
+		else if (otmp->oclass == WEAPON_CLASS)
+			/* Ordinary weapon */
+			omisc = otmp;
+	}
+
+	/* Pick the best choice */
+	if (oammo)
+		setuqwep(oammo);
+	else if (omissile)
+		setuqwep(omissile);
+	else if (omisc)
+		setuqwep(omisc);
+
+	return;
+}
+
+
+/* Throw from the quiver */
+int
+dofire()
+{
+	int shotlimit;
+
+	if(check_capacity((char *)0)) return(0);
+	if (!uquiver) {
+		if (!flags.autoquiver) {
+			/* Don't automatically fill the quiver */
+			You("have no ammunition readied!");
+			return(dothrow());
+		}
+		autoquiver();
+		if (!uquiver) {
+			You("have nothing appropriate for your quiver!");
+			return(dothrow());
+		} else {
+			You("fill your quiver:");
+			prinv((char *)0, uquiver, 0L);
+		}
+	}
+
+	/*
+	 * Since some characters shoot multiple missiles at one time,
+	 * allow user to specify a count prefix for 'f' or 't' to limit
+	 * number of items thrown (to avoid possibly hitting something
+	 * behind target after killing it, or perhaps to conserve ammo).
+	 *
+	 * The number specified can never increase the number of missiles.
+	 * Using ``5f'' when the shooting skill (plus RNG) dictates launch
+	 * of 3 projectiles will result in 3 being shot, not 5.
+	 */
+	/* kludge to work around parse()'s pre-decrement of `multi' */
+	shotlimit = (multi || save_cm) ? multi + 1 : 0;
+	multi = 0;		/* reset; it's been used up */
+
+	return throw_obj(uquiver, shotlimit);
+}
+
 
 /*
  * Object hits floor at hero's feet.  Called from drop() and throwit().
@@ -116,8 +293,9 @@ register struct obj *obj;
  * kick or throw.
  */
 void
-hurtle(dx, dy, range)
+hurtle(dx, dy, range, verbos)
     int dx, dy, range;
+    boolean verbos;
 {
     register struct monst *mon;
     struct obj *obj;
@@ -146,7 +324,8 @@ hurtle(dx, dy, range)
     if(!range || (!dx && !dy) || u.ustuck) return; /* paranoia */
 
     nomul(-range);
-    You("%s in the opposite direction.", range > 1 ? "hurtle" : "float");
+    if (verbos)
+	You("%s in the opposite direction.", range > 1 ? "hurtle" : "float");
     while(range--) {
 	nx = u.ux + dx;
 	ny = u.uy + dy;
@@ -191,7 +370,7 @@ hurtle(dx, dy, range)
     }
 }
 
-static void
+STATIC_OVL void
 check_shop_obj(obj, x, y, broken)
 register struct obj *obj;
 register xchar x, y;
@@ -232,7 +411,7 @@ register boolean broken;
  *
  * Returns FALSE if the object is gone.
  */
-static boolean
+STATIC_OVL boolean
 toss_up(obj, hitsroof)
 struct obj *obj;
 boolean hitsroof;
@@ -257,7 +436,7 @@ boolean hitsroof;
     /* object now hits you */
 
     if (obj->oclass == POTION_CLASS) {
-	potionhit(&youmonst, obj);
+	potionhit(&youmonst, obj, TRUE);
     } else if (breaktest(obj)) {
 	int otyp = obj->otyp, ocorpsenm = obj->corpsenm;
 	int blindinc;
@@ -267,9 +446,9 @@ boolean hitsroof;
 	obj = 0;	/* it's now gone */
 	switch (otyp) {
 	case EGG:
-		if (ocorpsenm == PM_COCKATRICE &&
-		    !uarmh && !resists_ston(&youmonst) &&
-		    !(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM)))
+		if (touch_petrifies(&mons[ocorpsenm]) &&
+		    !uarmh && !Stone_resistance &&
+		    !(poly_when_stoned(youmonst.data) && polymon(PM_STONE_GOLEM)))
 		goto petrify;
 	case CREAM_PIE:
 	case BLINDING_VENOM:
@@ -295,7 +474,7 @@ boolean hitsroof;
 	    dmg = (int) obj->owt / 100;
 	    if (dmg < 1) dmg = 1;
 	    else if (dmg > 6) dmg = 6;
-	    if (uasmon == &mons[PM_SHADE] &&
+	    if (youmonst.data == &mons[PM_SHADE] &&
 		    objects[obj->otyp].oc_material != SILVER)
 		dmg = 0;
 	}
@@ -307,11 +486,11 @@ boolean hitsroof;
 	    if (less_damage && dmg < (Upolyd ? u.mh : u.uhp))
 		pline("Fortunately, you are wearing a hard helmet.");
 	    else if (flags.verbose &&
-		    !(obj->otyp == CORPSE && obj->corpsenm == PM_COCKATRICE))
+		    !(obj->otyp == CORPSE && touch_petrifies(&mons[obj->corpsenm])))
 		Your("%s does not protect you.", xname(uarmh));
-	} else if (obj->otyp == CORPSE && obj->corpsenm == PM_COCKATRICE) {
-	    if (!resists_ston(&youmonst) &&
-		    !(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM))) {
+	} else if (obj->otyp == CORPSE && touch_petrifies(&mons[obj->corpsenm])) {
+	    if (!Stone_resistance &&
+		    !(poly_when_stoned(youmonst.data) && polymon(PM_STONE_GOLEM))) {
  petrify:
 		killer_format = KILLED_BY;
 		killer = "elementary physics";	/* "what goes up..." */
@@ -327,6 +506,37 @@ boolean hitsroof;
     return TRUE;
 }
 
+/* return true for weapon meant to be thrown; excludes ammo */
+STATIC_OVL boolean
+throwing_weapon(obj)
+struct obj *obj;
+{
+	return (is_missile(obj) || is_spear(obj) ||
+			/* daggers and knife (excludes scalpel) */
+			(is_blade(obj) && (objects[obj->otyp].oc_dir & PIERCE)) ||
+			/* special cases [might want to add AXE] */
+			obj->otyp == WAR_HAMMER || obj->otyp == AKLYS);
+}
+
+/* the currently thrown object is returning to you (not for boomerangs) */
+STATIC_OVL void
+sho_obj_return_to_u(obj)
+struct obj *obj;
+{
+    /* might already be our location (bounced off a wall) */
+    if (bhitpos.x != u.ux || bhitpos.y != u.uy) {
+	int x = bhitpos.x - u.dx, y = bhitpos.y - u.dy;
+
+	tmp_at(DISP_FLASH, obj_to_glyph(obj));
+	while(x != u.ux || y != u.uy) {
+	    tmp_at(x, y);
+	    delay_output();
+	    x -= u.dx; y -= u.dy;
+	}
+	tmp_at(DISP_END, 0);
+    }
+}
+
 void
 throwit(obj)
 register struct obj *obj;
@@ -338,20 +548,11 @@ register struct obj *obj;
 
 	if ((obj->cursed || obj->greased) && (u.dx || u.dy) && !rn2(7)) {
 	    boolean slipok = TRUE;
-	    if ((obj->oclass == WEAPON_CLASS || obj->oclass == GEM_CLASS)
-		&& uwep && (objects[obj->otyp].w_propellor > 0) &&
-		(objects[obj->otyp].w_propellor ==
-					     -objects[uwep->otyp].w_propellor))
+	    if (ammo_and_launcher(obj, uwep))
 		pline("%s misfires!", The(xname(obj)));
 	    else {
 		/* only slip if it's greased or meant to be thrown */
-		if (obj->greased ||
-		    (obj->oclass == WEAPON_CLASS && /* => oc_wepcat valid */
-			(objects[obj->otyp].oc_wepcat == WEP_MISSILE ||
-			 objects[obj->otyp].oc_wepcat == WEP_SPEAR ||
-			 (objects[obj->otyp].oc_wepcat == WEP_BLADE &&
-				(objects[obj->otyp].oc_dir & PIERCE)) ||
-			 obj->otyp == WAR_HAMMER || obj->otyp == AKLYS)))
+		if (obj->greased || throwing_weapon(obj))
 		    /* BUG: this message is grammatically incorrect if obj has
 		       a plural name; greased gloves or boots for instance. */
 		    pline("%s slips as you throw it!", The(xname(obj)));
@@ -370,7 +571,7 @@ register struct obj *obj;
 		bhitpos.x = mon->mx;
 		bhitpos.y = mon->my;
 	} else if(u.dz) {
-	    if (u.dz < 0 && Role_is('V') &&
+	    if (u.dz < 0 && Role_if(PM_VALKYRIE) &&
 		    obj->oartifact == ART_MJOLLNIR && !impaired) {
 		pline("%s hits the %s and returns to your hand!",
 		      The(xname(obj)), ceiling(u.ux,u.uy));
@@ -386,7 +587,8 @@ register struct obj *obj;
 	    return;
 
 	} else if(obj->otyp == BOOMERANG && !Underwater) {
-		if(Is_airlevel(&u.uz) || Levitation) hurtle(-u.dx, -u.dy, 1);
+		if(Is_airlevel(&u.uz) || Levitation)
+		    hurtle(-u.dx, -u.dy, 1, TRUE);
 		mon = boomhit(u.dx, u.dy);
 		if(mon == &youmonst) {		/* the thing was caught */
 			exercise(A_DEX, TRUE);
@@ -411,10 +613,8 @@ register struct obj *obj;
 		}
 		if (range < 1) range = 1;
 
-		if ((obj->oclass == WEAPON_CLASS || obj->oclass == GEM_CLASS)
-			&& objects[obj->otyp].w_propellor) {
-		    if (uwep && objects[obj->otyp].w_propellor ==
-					-objects[uwep->otyp].w_propellor)
+		if (is_ammo(obj)) {
+		    if (ammo_and_launcher(obj, uwep))
 			range++;
 		    else
 			range /= 2;
@@ -437,28 +637,33 @@ register struct obj *obj;
 
 		if (Underwater) range = 1;
 
-		mon = bhit(u.dx,u.dy,range,THROWN_WEAPON,
-			   (int (*)()) 0,(int (*)()) 0,obj);
+		mon = bhit(u.dx, u.dy, range, THROWN_WEAPON,
+			   (int FDECL((*),(MONST_P,OBJ_P)))0,
+			   (int FDECL((*),(OBJ_P,OBJ_P)))0,
+			   obj);
 
 		/* have to do this after bhit() so u.ux & u.uy are correct */
 		if(Is_airlevel(&u.uz) || Levitation)
-		    hurtle(-u.dx, -u.dy, urange);
+		    hurtle(-u.dx, -u.dy, urange, TRUE);
 	}
-	if(mon) {
-		if (mon->isshk) {
-		    if (obj->where == OBJ_MINVENT && obj->ocarry == mon)
-			return;		/* alert shk caught it */
-		    if (!inside_shop(u.ux, u.uy) ||
-		     !index(in_rooms(mon->mx, mon->my, SHOPBASE), *u.ushops)) {
-			wakeup(mon);
-			hot_pursuit(mon);
-		    }
-		} else if (!mon->meating || obj->oclass != FOOD_CLASS)
-		    wakeup(mon);	/* awake monster if sleeping */
 
+	if (mon) {
+		boolean obj_gone;
+
+		if (mon->isshk &&
+			obj->where == OBJ_MINVENT && obj->ocarry == mon)
+		    return;		/* alert shk caught it */
 		(void) snuff_candle(obj);
 		notonhead = (bhitpos.x != mon->mx || bhitpos.y != mon->my);
-		if (thitmonst(mon, obj)) return;
+		obj_gone = thitmonst(mon, obj);
+
+		/* [perhaps this should be moved into thitmonst or hmon] */
+		if (mon->isshk &&
+			(!inside_shop(u.ux, u.uy) ||
+			 !index(in_rooms(mon->mx, mon->my, SHOPBASE), *u.ushops)))
+		    hot_pursuit(mon);
+
+		if (obj_gone) return;
 	}
 
 	if (u.uswallow) {
@@ -466,24 +671,10 @@ register struct obj *obj;
 		if (obj != uball) mpickobj(u.ustuck,obj);
 	} else {
 		/* the code following might become part of dropy() */
-		int obj_glyph = obj_to_glyph(obj);
-
 		if (obj->oartifact == ART_MJOLLNIR &&
-			Role_is('V') && rn2(100)) {
+			Role_if(PM_VALKYRIE) && rn2(100)) {
 		    /* we must be wearing Gauntlets of Power to get here */
-
-		    /* might already be our location (bounced off a wall) */
-		    if (bhitpos.x != u.ux || bhitpos.y != u.uy) {
-			int x = bhitpos.x - u.dx, y = bhitpos.y - u.dy;
-
-			tmp_at(DISP_FLASH, obj_glyph);
-			while(x != u.ux || y != u.uy) {
-			    tmp_at(x, y);
-			    delay_output();
-			    x -= u.dx; y -= u.dy;
-			}
-			tmp_at(DISP_END, 0);
-		    }
+		    sho_obj_return_to_u(obj);	    /* display its flight */
 
 		    if (!impaired && rn2(100)) {
 			pline("%s returns to your hand!", The(xname(obj)));
@@ -512,7 +703,7 @@ register struct obj *obj;
 
 		if (!IS_SOFT(levl[bhitpos.x][bhitpos.y].typ) &&
 			breaktest(obj)) {
-		    tmp_at(DISP_FLASH, obj_glyph);
+		    tmp_at(DISP_FLASH, obj_to_glyph(obj));
 		    tmp_at(bhitpos.x, bhitpos.y);
 		    delay_output();
 		    tmp_at(DISP_END, 0);
@@ -521,9 +712,11 @@ register struct obj *obj;
 		    return;
 		}
 		if(flooreffects(obj,bhitpos.x,bhitpos.y,"fall")) return;
-		if(obj->otyp == CRYSKNIFE)
+		if (obj->otyp == CRYSKNIFE && (!obj->oerodeproof || !rn2(10))) {
 		    obj->otyp = WORM_TOOTH;
-		if (mon && mon->isshk && obj->otyp == PICK_AXE) {
+		    obj->oerodeproof = 0;
+		}
+		if (mon && mon->isshk && is_pick(obj)) {
 		    if (cansee(bhitpos.x, bhitpos.y))
 			pline("%s snatches up %s.",
 			      Monnam(mon), the(xname(obj)));
@@ -561,9 +754,9 @@ boolean mon_notices;
 	/* size of target affects the chance of hitting */
 	tmp += (mon->data->msize - MZ_MEDIUM);		/* -2..+5 */
 	/* sleeping target is more likely to be hit */
-	if (mon->msleep) {
+	if (mon->msleeping) {
 	    tmp += 2;
-	    if (mon_notices) mon->msleep = 0;
+	    if (mon_notices) mon->msleeping = 0;
 	}
 	/* ditto for immobilized target */
 	if (!mon->mcanmove || !mon->data->mmove) {
@@ -589,6 +782,20 @@ boolean mon_notices;
 	}
 	return tmp;
 }
+
+/* thrown object misses target monster */
+STATIC_OVL void
+tmiss(obj, mon)
+struct obj *obj;
+struct monst *mon;
+{
+    miss(xname(obj), mon);
+    if (!rn2(3)) wakeup(mon);
+    return;
+}
+
+#define quest_arti_hits_leader(obj,mon)	\
+  (obj->oartifact && is_quest_artifact(obj) && (mon->data->msound == MS_LEADER))
 
 /*
  * Object thrown by player arrives at monster's location.
@@ -616,7 +823,8 @@ register struct obj   *obj;
 	 * Certain items which don't in themselves do damage ignore tmp.
 	 * Distance and monster size affect chance to hit.
 	 */
-	tmp = -1 + Luck + find_mac(mon) + maybe_polyd(uasmon->mlevel, u.ulevel);
+	tmp = -1 + Luck + find_mac(mon) + u.uhitinc +
+			maybe_polyd(youmonst.data->mlevel, u.ulevel);
 	if (ACURR(A_DEX) < 4) tmp -= 3;
 	else if (ACURR(A_DEX) < 6) tmp -= 2;
 	else if (ACURR(A_DEX) < 8) tmp -= 1;
@@ -628,7 +836,7 @@ register struct obj   *obj;
 	tmp += disttmp;
 
 	/* gloves are a hinderance to proper use of bows */
-	if (uarmg && uwep && -objects[uwep->otyp].w_propellor == WP_BOW) {
+	if (uarmg && uwep && objects[uwep->otyp].oc_skill == P_BOW) {
 	    switch (uarmg->otyp) {
 	    case GAUNTLETS_OF_POWER:    /* metal */
 		tmp -= 2;
@@ -646,13 +854,14 @@ register struct obj   *obj;
 	}
 
 	tmp += omon_adj(mon, obj, TRUE);
-	if (is_orc(mon->data) && maybe_polyd(is_elf(uasmon), Role_is('E')))
+	if (is_orc(mon->data) && maybe_polyd(is_elf(youmonst.data),
+			Race_if(PM_ELF)))
 	    tmp++;
 	if (guaranteed_hit) {
 	    tmp += 1000; /* Guaranteed hit */
 	}
 
-	if (obj->oclass == GEM_CLASS && mon->data->mlet == S_UNICORN) {
+	if (obj->oclass == GEM_CLASS && is_unicorn(mon->data)) {
 	    if (mon->mtame) {
 		pline("%s catches and drops %s.", Monnam(mon), the(xname(obj)));
 		return 0;
@@ -664,34 +873,61 @@ register struct obj   *obj;
 
 	/* don't make game unwinnable if naive player throws artifact
 	   at leader.... */
-	if (mon->data->msound == MS_LEADER && is_quest_artifact(obj)) {
-	    if (mon->mcanmove)
-		pline("%s ignores %s.", Monnam(mon), the(xname(obj)));
+	if (quest_arti_hits_leader(obj, mon)) {
+	    /* not wakeup(), which angers non-tame monsters */
+	    mon->msleeping = 0;
+	    mon->mstrategy &= ~STRAT_WAITMASK;
+
+	    if (mon->mcanmove) {
+		pline("%s catches %s.", Monnam(mon), the(xname(obj)));
+		if (mon->mpeaceful) {
+		    boolean next2u = monnear(mon, u.ux, u.uy);
+
+		    finish_quest(obj);	/* acknowledge quest completion */
+		    pline("%s %s %s back to you.", Monnam(mon),
+			  (next2u ? "hands" : "tosses"), the(xname(obj)));
+		    if (!next2u) sho_obj_return_to_u(obj);
+		    obj = addinv(obj);	/* back into your inventory */
+		    (void) encumber_msg();
+		} else {
+		    /* angry leader caught it and isn't returning it */
+		    mpickobj(mon, obj);
+		}
+		return 1;		/* caller doesn't need to place it */
+	    }
 	    return(0);
 	}
 
 	if (obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
 		obj->oclass == GEM_CLASS) {
-	    if (objects[otyp].oc_wepcat == WEP_AMMO) {
-		if (!uwep || objects[otyp].w_propellor !=
-				-objects[uwep->otyp].w_propellor) {
+	    if (is_ammo(obj)) {
+		if (!ammo_and_launcher(obj, uwep)) {
 		    tmp -= 4;
 		} else {
-		    tmp += uwep->spe - uwep->oeroded;
+		    tmp += uwep->spe - greatest_erosion(uwep);
+		    tmp += weapon_hit_bonus(uwep);
 		    /*
 		     * Elves and Samurais are highly trained w/bows,
 		     * especially their own special types of bow.
 		     * Polymorphing won't make you a bow expert.
 		     */
-		    if ((Role_is('E') || Role_is('S')) &&
-				-objects[uwep->otyp].w_propellor == WP_BOW) {
+		    if ((Race_if(PM_ELF) || Role_if(PM_SAMURAI)) &&
+				objects[uwep->otyp].oc_skill == P_BOW) {
 			tmp++;
-			if (Role_is('E') && uwep->otyp == ELVEN_BOW) tmp++;
-			else if (Role_is('S') && uwep->otyp == YUMI) tmp++;
+			if (is_elf(youmonst.data) && uwep->otyp == ELVEN_BOW) tmp++;
+			else if (Role_if(PM_SAMURAI) && uwep->otyp == YUMI) tmp++;
 		    }
 		}
-	    } else if (otyp == BOOMERANG) {
-		tmp += 4;
+	    } else {
+		if (otyp == BOOMERANG)		/* arbitrary */
+		    tmp += 4;
+		else if (throwing_weapon(obj))	/* meant to be thrown */
+		    tmp += 2;
+		else				/* not meant to be thrown */
+		    tmp -= 2;
+		/* we know we're dealing with a weapon or weptool handled
+		   by WEAPON_SKILLS once ammo objects have been excluded */
+		tmp += weapon_hit_bonus(obj);
 	    }
 
 	    if (tmp >= rnd(20)) {
@@ -701,16 +937,16 @@ register struct obj   *obj;
 		exercise(A_DEX, TRUE);
 		/* projectiles other than magic stones
 		   sometimes disappear when thrown */
-		if ((otyp < BOOMERANG ||
-			(obj->oclass == GEM_CLASS && !objects[otyp].oc_magic))
-		    && rn2(3)) {
+		if (objects[otyp].oc_skill < P_NONE &&
+				objects[otyp].oc_skill > -P_BOOMERANG &&
+				!objects[otyp].oc_magic && rn2(3)) {
 		    if (*u.ushops)
 			check_shop_obj(obj, bhitpos.x,bhitpos.y, TRUE);
 		    obfree(obj, (struct obj *)0);
 		    return 1;
 		}
 	    } else {
-		miss(xname(obj), mon);
+		tmiss(obj, mon);
 	    }
 
 	} else if (otyp == HEAVY_IRON_BALL) {
@@ -724,7 +960,7 @@ register struct obj   *obj;
 			return 1;	/* already did placebc() */
 		}
 	    } else {
-		miss(xname(obj), mon);
+		tmiss(obj, mon);
 	    }
 
 	} else if (otyp == BOULDER) {
@@ -733,7 +969,7 @@ register struct obj   *obj;
 		exercise(A_DEX, TRUE);
 		(void) hmon(mon,obj,1);
 	    } else {
-		miss(xname(obj), mon);
+		tmiss(obj, mon);
 	    }
 
 	} else if ((otyp == EGG || otyp == CREAM_PIE ||
@@ -744,26 +980,26 @@ register struct obj   *obj;
 
 	} else if (obj->oclass == POTION_CLASS &&
 		(guaranteed_hit || ACURR(A_DEX) > rnd(25))) {
-	    potionhit(mon, obj);
+	    potionhit(mon, obj, TRUE);
 	    return 1;
 
 	} else if (obj->oclass == FOOD_CLASS &&
 		   is_domestic(mon->data) && tamedog(mon,obj)) {
 	    return 1;		/* food is gone */
+	} else if (guaranteed_hit) {
+	    /* this assumes that guaranteed_hit is due to swallowing */
+	    pline("%s vanishes into %s %s.",
+		The(xname(obj)), s_suffix(mon_nam(mon)),
+		is_animal(u.ustuck->data) ? "entrails" : "currents");
+	    wakeup(mon);
 	} else {
-	    if (guaranteed_hit)
-		/* this assumes that guaranteed_hit is due to swallowing */
-		pline("%s vanishes into %s %s.",
-			The(xname(obj)), s_suffix(mon_nam(mon)),
-			is_animal(u.ustuck->data) ? "entrails" : "currents");
-	    else
-		    pline("%s misses %s.", The(xname(obj)), mon_nam(mon));
+	    tmiss(obj, mon);
 	}
 
 	return 0;
 }
 
-static int
+STATIC_OVL int
 gem_accept(mon, obj)
 register struct monst *mon;
 register struct obj *obj;
@@ -780,8 +1016,6 @@ register struct obj *obj;
 
 	Strcpy(buf,Monnam(mon));
 	mon->mpeaceful = 1;
-	/* undo throwit() -> wakeup() -> setmangry() -> adjalign(-1) */
-	if (is_gem && is_buddy) adjalign(1);
 
 	/* object properly identified */
 	if(obj->dknown && objects[obj->otyp].oc_name_known) {
@@ -905,7 +1139,7 @@ xchar x, y;		/* object location (ox, oy may not be right) */
  * This routine assumes the cause is the hero if heros_fault is TRUE.
  *
  */
-static void
+STATIC_OVL void
 breakobj(obj, x, y, heros_fault, from_invent)
 struct obj *obj;
 xchar x, y;		/* object location (ox, oy may not be right) */
@@ -918,26 +1152,20 @@ boolean from_invent;
 			    change_luck(-2);
 			break;
 		case POT_WATER:		/* really, all potions */
-			if (obj->oclass == POTION_CLASS) {
-			    if (obj->otyp == POT_OIL && obj->lamplit)
-				splatter_burning_oil(x,y);
-			    else if (distu(x,y) <= 2) {
-				/* [what about "familiar odor" when known?] */
-				if (obj->otyp != POT_WATER)
-				    You("smell a peculiar odor...");
-				potionbreathe(obj);
-			    }
-			    /* monster breathing isn't handled... [yet?] */
+			if (obj->otyp == POT_OIL && obj->lamplit) {
+			    splatter_burning_oil(x,y);
+			} else if (distu(x,y) <= 2) {
+			    /* [what about "familiar odor" when known?] */
+			    if (obj->otyp != POT_WATER)
+				You("smell a peculiar odor...");
+			    potionbreathe(obj);
 			}
+			/* monster breathing isn't handled... [yet?] */
 			break;
 		case EGG:
-			if (heros_fault) {
-			    if (obj->spe && obj->corpsenm >= LOW_PM)
-				if (obj->quan < 5)
-				    change_luck((schar) -(obj->quan));
-				else
-				    change_luck(-5);
-			}
+			/* breaking your own eggs is bad luck */
+			if (heros_fault && obj->spe && obj->corpsenm >= LOW_PM)
+			    change_luck((schar) -min(obj->quan, 5L));
 			break;
 	}
 	if (heros_fault) {
@@ -972,11 +1200,11 @@ boolean from_invent;
  * Check to see if obj is going to break, but don't actually break it.
  * Return 0 if the object isn't going to break, 1 if it is.
  */
-static boolean
+boolean
 breaktest(obj)
 struct obj *obj;
 {
-	if (obj_resists(obj, 1, 100)) return 0;
+	if (obj_resists(obj, 1, 99)) return 0;
 	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
 		case MIRROR:
 		case CRYSTAL_BALL:
@@ -994,7 +1222,7 @@ struct obj *obj;
 	}
 }
 
-static void
+STATIC_OVL void
 breakmsg(obj, in_view)
 struct obj *obj;
 boolean in_view;
@@ -1032,7 +1260,7 @@ boolean in_view;
 /*
  *  Note that the gold object is *not* attached to the fobj chain.
  */
-static int
+STATIC_OVL int
 throw_gold(obj)
 struct obj *obj;
 {
@@ -1071,7 +1299,9 @@ struct obj *obj;
 			bhitpos.y = u.uy;
 		} else {
 			mon = bhit(u.dx, u.dy, range, THROWN_WEAPON,
-				       (int (*)()) 0, (int (*)()) 0, obj);
+				   (int FDECL((*),(MONST_P,OBJ_P)))0,
+				   (int FDECL((*),(OBJ_P,OBJ_P)))0,
+				   obj);
 			if(mon) {
 			    if (ghitm(mon, obj))	/* was it caught? */
 				return 1;

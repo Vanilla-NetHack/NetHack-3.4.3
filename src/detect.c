@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.2	96/10/21	*/
+/*	SCCS Id: @(#)detect.c	3.3	1999/12/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,11 +12,11 @@
 
 extern boolean known;	/* from read.c */
 
-static void FDECL(do_dknown_of, (struct obj *));
-static boolean FDECL(check_map_spot, (int,int,CHAR_P));
-static boolean FDECL(clear_stale_map, (CHAR_P));
-static void FDECL(sense_trap, (struct trap *,XCHAR_P,XCHAR_P,int));
-static void FDECL(show_map_spot, (int,int));
+STATIC_DCL void FDECL(do_dknown_of, (struct obj *));
+STATIC_DCL boolean FDECL(check_map_spot, (int,int,CHAR_P));
+STATIC_DCL boolean FDECL(clear_stale_map, (CHAR_P));
+STATIC_DCL void FDECL(sense_trap, (struct trap *,XCHAR_P,XCHAR_P,int));
+STATIC_DCL void FDECL(show_map_spot, (int,int));
 STATIC_PTR void FDECL(findone,(int,int,genericptr_t));
 STATIC_PTR void FDECL(openone,(int,int,genericptr_t));
 
@@ -40,7 +40,7 @@ char oclass;
     return (struct obj *) 0;
 }
 
-static void
+STATIC_OVL void
 do_dknown_of(obj)
 struct obj *obj;
 {
@@ -54,7 +54,7 @@ struct obj *obj;
 }
 
 /* Check whether the location has an outdated object displayed on it. */
-static boolean
+STATIC_OVL boolean
 check_map_spot(x, y, oclass)
 int x, y;
 register char oclass;
@@ -94,7 +94,7 @@ register char oclass;
    reappear after the detection has completed.  Return true if noticeable
    change occurs.
  */
-static boolean
+STATIC_OVL boolean
 clear_stale_map(oclass)
 register char oclass;
 {
@@ -454,8 +454,8 @@ int mclass;			/* monster class, 0 for all */
 	    if (mtmp->mx > 0)
 		show_glyph(mtmp->mx,mtmp->my,mon_to_glyph(mtmp));
 	    if (otmp && otmp->cursed &&
-		(mtmp->msleep || !mtmp->mcanmove)) {
-		mtmp->msleep = mtmp->mfrozen = 0;
+		(mtmp->msleeping || !mtmp->mcanmove)) {
+		mtmp->msleeping = mtmp->mfrozen = 0;
 		mtmp->mcanmove = 1;
 		woken = TRUE;
 	    }
@@ -472,7 +472,7 @@ int mclass;			/* monster class, 0 for all */
     return 0;
 }
 
-static void
+STATIC_OVL void
 sense_trap(trap, x, y, src_cursed)
 struct trap *trap;
 xchar x, y;
@@ -730,7 +730,7 @@ struct obj *obj;
     return;
 }
 
-static void
+STATIC_OVL void
 show_map_spot(x, y)
 register int x, y;
 {
@@ -739,8 +739,7 @@ register int x, y;
     if (Confusion && rn2(7)) return;
     lev = &levl[x][y];
 
-    if (IS_WALL(lev->typ) || lev->typ == SDOOR)
-	lev->seenv = SVALL;		/* we know they are walls */
+    lev->seenv = SVALL;
 
     /* Secret corridors are found, but not secret doors. */
     if (lev->typ == SCORR) {
@@ -937,6 +936,21 @@ openit()	/* returns number of things found and opened */
 	return(num);
 }
 
+void
+find_trap(trap)
+struct trap *trap;
+{
+    int tt = what_trap(trap->ttyp);
+
+    You("find %s.", an(defsyms[trap_to_defsym(tt)].explanation));
+    trap->tseen = 1;
+    exercise(A_WIS, TRUE);
+    if (Blind)
+	feel_location(trap->tx, trap->ty);
+    else
+	newsym(trap->tx, trap->ty);
+}
+
 int
 dosearch0(aflag)
 register int aflag;
@@ -984,13 +998,25 @@ register int aflag;
 			newsym(x,y);
 		    } else {
 		/* Be careful not to find anything in an SCORR or SDOOR */
-			if(!aflag && (mtmp = m_at(x, y))) {
+			if((mtmp = m_at(x, y)) && !aflag) {
 			    if(mtmp->m_ap_type) {
 				seemimic(mtmp);
-				exercise(A_WIS, TRUE);
-				if (!canspotmon(mtmp))
-				    You_feel("an invisible monster!");
-				else
+		find:		exercise(A_WIS, TRUE);
+				if (!canspotmon(mtmp)) {
+				    if (glyph_is_invisible(levl[x][y].glyph)) {
+					/* found invisible monster in a square
+					 * which already has an 'I' in it.
+					 * Logically, this should still take
+					 * time and lead to a return(1), but if
+					 * we did that the player would keep
+					 * finding the same monster every turn.
+					 */
+					continue;
+				    } else {
+					You_feel("an unseen monster!");
+					map_invisible(x, y);
+				    }
+				} else
 				    You("find %s.", a_monnam(mtmp));
 				return(1);
 			    }
@@ -998,13 +1024,19 @@ register int aflag;
 			(is_hider(mtmp->data) || mtmp->data->mlet == S_EEL)) {
 				mtmp->mundetected = 0;
 				newsym(x,y);
-				exercise(A_WIS, TRUE);
-				if (!canspotmon(mtmp))
-				    You_feel("an invisible monster!");
-				else
-				    You("find %s.", a_monnam(mtmp));
-				return(1);
+				goto find;
 			    }
+			    if (!canspotmon(mtmp))
+				goto find;
+			}
+
+			/* see if an invisible monster has moved--if Blind,
+			 * feel_location() already did it
+			 */
+			if (!aflag && !mtmp && !Blind &&
+				    glyph_is_invisible(levl[x][y].glyph)) {
+			    unmap_object(x,y);
+			    newsym(x,y);
 			}
 
 			if ((trap = t_at(x,y)) && !trap->tseen && !rnl(8)) {
@@ -1015,16 +1047,7 @@ register int aflag;
 				    exercise(A_WIS, TRUE);
 				return(1);
 			    } else {
-				You("find %s.", an(defsyms[
-				    trap_to_defsym(Hallucination ?
-						rn1(TRAPNUM-3, 2) :
-						trap->ttyp)].explanation));
-				trap->tseen = 1;
-				exercise(A_WIS, TRUE);
-				if(Blind)
-				    feel_location(x,y);
-				else
-				    newsym(x,y);
+				find_trap(trap);
 			    }
 			}
 		    }
@@ -1039,5 +1062,35 @@ dosearch()
 {
 	return(dosearch0(0));
 }
+
+/* Pre-map the sokoban levels */
+void
+sokoban_detect()
+{
+	register int x, y;
+	register struct trap *ttmp;
+	register struct obj *obj;
+
+
+	/* Map the background and boulders */
+	for (x = 1; x < COLNO; x++)
+	    for (y = 0; y < ROWNO; y++) {
+	    	levl[x][y].seenv = SVALL;
+	    	levl[x][y].waslit = TRUE;
+	    	map_background(x, y, 1);
+	    	for (obj = level.objects[x][y]; obj; obj = obj->nexthere)
+	    	    if (obj->otyp == BOULDER)
+	    	    	map_object(obj, 1);
+	    }
+
+	/* Map the traps */
+	for (ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
+	    ttmp->tseen = 1;
+	    map_trap(ttmp, 1);
+	}
+
+	return;
+}
+
 
 /*detect.c*/

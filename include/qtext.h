@@ -1,12 +1,13 @@
-/*	SCCS Id: @(#)qtext.h	3.2	92/01/22	*/
+/*	SCCS Id: @(#)qtext.h	3.3	97/02/02	*/
 /* Copyright (c) Mike Stephenson 1991.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef QTEXT_H
 #define QTEXT_H
 
-#define N_HDR	13		/* number of classes + 1 */
-#define COMMON_ID	'-'	/* common message id value */
+#define N_HDR	16		/* Maximum number of categories */
+				/* (i.e., num roles + 1) */
+#define LEN_HDR 3		/* Maximum length of a category name */
 
 struct qtmsg {
 	int	msgnum;
@@ -15,7 +16,7 @@ struct qtmsg {
 		size;
 };
 
-#ifdef MAKEDEFS_C
+#ifdef MAKEDEFS_C	/***** MAKEDEFS *****/
 
 #define N_MSG	100		/* arbitrary */
 
@@ -26,7 +27,7 @@ struct msghdr {
 
 struct	qthdr {
 	int	n_hdr;
-	char	id[N_HDR];
+	char	id[N_HDR][LEN_HDR];
 	long	offset[N_HDR];
 };
 
@@ -36,18 +37,22 @@ struct	qthdr {
 #define END_NOT_IN_MSG	"End record encountered before message - line %d\n"
 #define UNREC_CREC	"Unrecognized Control record at line %d\n"
 #define OUT_OF_HEADERS	"Too many message types (line %d)\nAdjust N_HDR in qtext.h and recompile.\n"
-#define OUT_OF_MESSAGES	"Too many messages in class (line %d)\nAdjust N_MSG in qtext.h and recompile.\n"
+#define OUT_OF_MESSAGES "Too many messages in class (line %d)\nAdjust N_MSG in qtext.h and recompile.\n"
 
-#else	/* !MAKEDEFS_C */
+
+#else	/***** !MAKEDEFS *****/
 
 struct	qtlists {
 	struct	qtmsg	*common,
-			*chclass;
+#if 0	/* UNUSED but available */
+			*chrace,
+#endif
+			*chrole;
 };
 
 
 /*
- *	Quest message defines.  Used in quest.c to trigger off "realistic"
+ *	Quest message defines.	Used in quest.c to trigger off "realistic"
  *	dialogue to the player.
  */
 #define QT_FIRSTTIME	 1
@@ -72,9 +77,9 @@ struct	qtlists {
 #define QT_FIRSTGOAL	40
 #define QT_NEXTGOAL	41
 
-#define QT_FIRSTNEMESIS	50
+#define QT_FIRSTNEMESIS 50
 #define QT_NEXTNEMESIS	51
-#define QT_OTHERNEMESIS	52
+#define QT_OTHERNEMESIS 52
 #define QT_NEMWANTSIT	53	/* you somehow got the artifact */
 
 #define QT_DISCOURAGE	60	/* 1-10 random maledictive messages */
@@ -83,6 +88,7 @@ struct	qtlists {
 
 #define QT_KILLEDNEM	80
 #define QT_OFFEREDIT	81
+#define QT_OFFEREDIT2	82
 
 #define QT_POSTHANKS	90
 #define QT_HASAMULET	91
@@ -90,12 +96,14 @@ struct	qtlists {
 /*
  *	Message defines for common text used in maledictions.
  */
+#define COMMON_ID	"-"	/* Common message id value */
+
 #define QT_ANGELIC	10
 #define QTN_ANGELIC	10
 
 #define QT_DEMONIC	30
 #define QTN_DEMONIC	20
 
-#endif	/* MAKEDEFS_C */
+#endif	/***** !MAKEDEFS *****/
 
 #endif /* QTEXT_H */

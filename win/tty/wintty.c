@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.2	96/08/18	*/
+/*	SCCS Id: @(#)wintty.c	3.3	1999/10/28	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -27,7 +27,7 @@ extern void msmsg(const char *,...);
 
 
 #ifndef NO_TERMS
-#include "termcap.h"
+#include "tcap.h"
 #endif
 
 #include "wintty.h"
@@ -40,7 +40,6 @@ extern void msmsg(const char *,...);
 
 #define DEBUG
 
-extern const char *roles[];	/* from u_init.c */
 extern char mapped_menu_cmds[]; /* from options.c */
 
 /* Interface definition, for windows.c */
@@ -88,6 +87,10 @@ struct window_procs tty_procs = {
     tty_delay_output,
 #ifdef CHANGE_COLOR	/* the Mac uses a palette device */
     tty_change_color,
+#ifdef MAC
+    tty_change_background,
+    set_tty_font_name,
+#endif
     tty_get_color_string,
 #endif
 
@@ -134,23 +137,23 @@ boolean GFlag = FALSE;
 static char to_continue[] = "to continue";
 #define getret() getreturn(to_continue)
 #else
-static void NDECL(getret);
+STATIC_DCL void NDECL(getret);
 #endif
-static void FDECL(erase_menu_or_text, (winid, struct WinDesc *, BOOLEAN_P));
-static void FDECL(free_window_info, (struct WinDesc *, BOOLEAN_P));
-static void FDECL(dmore,(struct WinDesc *, const char *));
-static void FDECL(set_item_state, (winid, int, tty_menu_item *));
-static void FDECL(set_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
-static void FDECL(unset_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
-static void FDECL(invert_all_on_page, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
-static void FDECL(invert_all, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
-static void FDECL(process_menu_window, (winid,struct WinDesc *));
-static void FDECL(process_text_window, (winid,struct WinDesc *));
-static tty_menu_item *FDECL(reverse, (tty_menu_item *));
-static const char * FDECL(compress_str, (const char *));
-static void FDECL(tty_putsym, (winid, int, int, CHAR_P));
+STATIC_DCL void FDECL(erase_menu_or_text, (winid, struct WinDesc *, BOOLEAN_P));
+STATIC_DCL void FDECL(free_window_info, (struct WinDesc *, BOOLEAN_P));
+STATIC_DCL void FDECL(dmore,(struct WinDesc *, const char *));
+STATIC_DCL void FDECL(set_item_state, (winid, int, tty_menu_item *));
+STATIC_DCL void FDECL(set_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
+STATIC_DCL void FDECL(unset_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
+STATIC_DCL void FDECL(invert_all_on_page, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
+STATIC_DCL void FDECL(invert_all, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
+STATIC_DCL void FDECL(process_menu_window, (winid,struct WinDesc *));
+STATIC_DCL void FDECL(process_text_window, (winid,struct WinDesc *));
+STATIC_DCL tty_menu_item *FDECL(reverse, (tty_menu_item *));
+STATIC_DCL const char * FDECL(compress_str, (const char *));
+STATIC_DCL void FDECL(tty_putsym, (winid, int, int, CHAR_P));
 static char *FDECL(copy_of, (const char *));
-static void FDECL(bail, (const char *));	/* __attribute__((noreturn)) */
+STATIC_DCL void FDECL(bail, (const char *));	/* __attribute__((noreturn)) */
 
 /*
  * A string containing all the default commands -- to add to a list
@@ -172,7 +175,7 @@ static const char default_menu_cmds[] = {
 
 
 /* clean up and quit */
-static void
+STATIC_OVL void
 bail(mesg)
 const char *mesg;
 {
@@ -183,7 +186,7 @@ const char *mesg;
 }
 
 #if defined(SIGWINCH) && defined(CLIPPING)
-static void
+STATIC_OVL void
 winch()
 {
     int oldLI = LI, oldCO = CO, i;
@@ -270,6 +273,7 @@ char** argv;
     ttyDisplay->cols = wid;
     ttyDisplay->curx = ttyDisplay->cury = 0;
     ttyDisplay->inmore = ttyDisplay->inread = ttyDisplay->intr = 0;
+    ttyDisplay->dismiss_more = 0;
 #ifdef TEXTCOLOR
     ttyDisplay->color = NO_COLOR;
 #endif
@@ -301,117 +305,232 @@ char** argv;
 void
 tty_player_selection()
 {
-    char pbuf[QBUFSZ];
-    char pick, pc;
-    int i, echoline;
+	int i, j, k, n;
+	char pick4u = 'n', thisch, lastch = 0;
+	char pbuf[QBUFSZ];
+	winid win;
+	anything any;
+	menu_item *selected = 0;
 
-    if ((pc = highc(pl_character[0])) != 0) {
-	if(index(pl_classes, pc) != (char*) 0)
-	    goto got_suffix;
-	tty_putstr(BASE_WINDOW, 0, "");
-	Sprintf(pbuf, "Unknown role: %c", pc);
-	tty_putstr(BASE_WINDOW, 0, pbuf);
-	pl_character[0] = pc = 0;
-    }
+	/* Select a role, if necessary */
+	if (flags.initrole < 0) {
+	    const char *prompt = "Shall I pick a character for you? [ynq] ";
+	    int echoline;
 
-#define PICK_PROMPT "Shall I pick a character for you? [Y, N, or Q(quit)] "
-    tty_putstr(BASE_WINDOW, 0, "");
-    echoline = wins[BASE_WINDOW]->cury;
-    tty_putstr(BASE_WINDOW, 0, PICK_PROMPT);
-
-    while(!index("yYnNqQ", (pick = readchar())) && !index(quitchars, pick))
-	tty_nhbell();
-
-    pick = index(quitchars, pick) ? 'Y' : highc(pick);
-
-    if ((int)strlen(PICK_PROMPT) + 1 < CO) {
-	tty_putsym(BASE_WINDOW, (int)strlen(PICK_PROMPT)+1, echoline, pick);
-	tty_putstr(BASE_WINDOW, 0, "");	/* move back down line after echo */
-    } else {
-	/* otherwise it's hard to tell where to echo, and things are
-	 * wrapping a bit messily anyway, so (try to) make sure the next
-	 * question shows up well and doesn't get wrapped at the bottom of
-	 * the window
-	 */
-	tty_clear_nhwindow(BASE_WINDOW);
-    }
-
-    if (pick == 'Q') {
-	bail((char *)0);
-	/*NOTREACHED*/
-    }
-
-    if (pick == 'Y') {
-	goto beginner;
-    }
-
-    tty_putstr(BASE_WINDOW, 0, "");
-    tty_putstr(BASE_WINDOW, 0, "What kind of character are you:");
-    tty_putstr(BASE_WINDOW, 0, "");
-    Sprintf(pbuf, "        %s, ", An(roles[0]));
-    for(i = 1; roles[i]; i++) {
-	Strcat(pbuf, an(roles[i]));
-	if (roles[i+1]) {
-	    Strcat(pbuf, ", ");
-	    if ((int)strlen(pbuf) + (int)strlen(roles[i+1]) + 8 > CO) {
-		/* 8 for ", or an " */
-		tty_putstr(BASE_WINDOW, 0, pbuf);
-		Strcpy(pbuf, "        ");
-	    }
-	    if (!roles[i+2]) Strcat(pbuf, "or ");
-	}
-    }
-    Strcat(pbuf ,"?");
-    tty_putstr(BASE_WINDOW, 0, pbuf);
-    Strcpy(pbuf, "        [");
-    for(i = 0; roles[i]; i++)
-	Sprintf(eos(pbuf), "%c,", pl_classes[i]);
-    Strcat(pbuf, " or Q] ");
-    echoline = wins[BASE_WINDOW]->cury;
-    tty_putstr(BASE_WINDOW, 0, pbuf);
-
-    while ((pc = readchar()) != 0) {
-	if ((pc = highc(pc)) == 'Q') {
-	    bail((char *)0);
-	    /*NOTREACHED*/
-	}
-	if(index(pl_classes, pc) != (char *) 0) {
-	    if ((int)strlen(pbuf) + 1 < CO) {
-		tty_putsym(BASE_WINDOW, (int)strlen(pbuf)+1, echoline, pc);
+	    /* Should we randomly pick for the player? */
+	    tty_putstr(BASE_WINDOW, 0, "");
+	    echoline = wins[BASE_WINDOW]->cury;
+	    tty_putstr(BASE_WINDOW, 0, prompt);
+	    do {
+		pick4u = lowc(readchar());
+		if (index(quitchars, pick4u)) pick4u = 'y';
+	    } while(!index(ynqchars, pick4u));
+	    if ((int)strlen(prompt) + 1 < CO) {
+		/* Echo choice and move back down line */
+		tty_putsym(BASE_WINDOW, (int)strlen(prompt)+1, echoline, pick4u);
 		tty_putstr(BASE_WINDOW, 0, "");
+	    } else
+		/* Otherwise it's hard to tell where to echo, and things are
+		 * wrapping a bit messily anyway, so (try to) make sure the next
+		 * question shows up well and doesn't get wrapped at the
+		 * bottom of the window.
+		 */
+		tty_clear_nhwindow(BASE_WINDOW);
+
+	    /* Process the choice */
+	    switch (pick4u) {
+	    case 'y':
+		/* Pick a random role */
+		flags.initrole = randrole();
+		break;
+
+	    case 'n':
+		/* Prompt for a role */
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		any.a_void = 0;         /* zero out all bits */
+		for (i = 0; roles[i].name.m; i++) {
+		    any.a_int = i+1;	/* must be non-zero */
+		    thisch = lowc(roles[i].name.m[0]);
+		    if (thisch == lastch) thisch = highc(thisch);
+		    add_menu(win, NO_GLYPH, &any, thisch,
+			    0, ATR_NONE, an(roles[i].name.m), MENU_UNSELECTED);
+		    lastch = thisch;
+		}
+		any.a_int = randrole()+1;	/* must be non-zero */
+		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				"Random", MENU_UNSELECTED);
+		any.a_int = i+1;	/* must be non-zero */
+		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				"Quit", MENU_UNSELECTED);
+		end_menu(win, "Pick a role");
+		n = select_menu(win, PICK_ONE, &selected);
+		destroy_nhwindow(win);
+
+		/* Process the choice */
+		if (n != 1 || selected[0].item.a_int == any.a_int)
+		    goto give_up;		/* Selected quit */
+
+		flags.initrole = selected[0].item.a_int - 1;
+		free((genericptr_t) selected),	selected = 0;
+		break;
+
+	    default:
+	    case 'q':
+give_up:	/* Quit */
+		if (selected) free((genericptr_t) selected);
+		bail((char *)0);
+		/*NOTREACHED*/
+		return;
 	    }
-	    tty_display_nhwindow(BASE_WINDOW, TRUE);
-	    break;
 	}
-	if(pc == '\n') {
-	    pc = 0;
-	    break;
+
+	/* Select a race */
+	if (!validrace(flags.initrole, flags.initrace))
+	    i = j = k = randrace(flags.initrole);
+	else
+	    i = j = k = flags.initrace;
+	/* Count the number of valid races */
+	n = 0;
+	do {
+	    if (validrace(flags.initrole, i)) n++;
+	    else if ((i == k) && (!races[++k].noun)) k = 0;
+	    if (!races[++i].noun) i = 0;
+	} while (i != j);
+	/* Permit the user to pick, if there is more than one */
+	if (!validrace(flags.initrole, flags.initrace)) {
+	    if (pick4u == 'n' && n > 1) {
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		any.a_void = 0;         /* zero out all bits */
+		for (i = 0; races[i].noun; i++)
+		    if (validrace(flags.initrole, i)) {
+			any.a_int = i+1;	/* must be non-zero */
+			add_menu(win, NO_GLYPH, &any, races[i].noun[0],
+				0, ATR_NONE, races[i].noun, MENU_UNSELECTED);
+		    }
+		any.a_int = randrace(flags.initrole)+1;
+		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				"Random", MENU_UNSELECTED);
+		any.a_int = i+1;	/* must be non-zero */
+		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				"Quit", MENU_UNSELECTED);
+		Sprintf(pbuf, "Pick the race of your %s",
+				roles[flags.initrole].name.m);
+		end_menu(win, pbuf);
+		n = select_menu(win, PICK_ONE, &selected);
+		destroy_nhwindow(win);
+		if (n != 1 || selected[0].item.a_int == any.a_int)
+		    goto give_up;		/* Selected quit */
+
+		k = selected[0].item.a_int - 1;
+		free((genericptr_t) selected),	selected = 0;
+	    }
 	}
-	tty_nhbell();
-    }
+	flags.initrace = k;
 
-beginner:
-    if(!pc) {
-	i = rn2((int)strlen(pl_classes));
-	pc = pl_classes[i];
-	tty_putstr(BASE_WINDOW, 0, "");
-	Sprintf(pbuf, "This game you will be %s.", an(roles[i]));
-	tty_putstr(BASE_WINDOW, 0, pbuf);
-	tty_putstr(BASE_WINDOW, 0, "");
-	tty_display_nhwindow(BASE_WINDOW, TRUE);
-	getret();
-    }
-got_suffix:
+	/* Select a gender */
+	if (!validgend(flags.initrole, flags.initrace, flags.initgend))
+	    /* Pick a random valid gender */
+	    i = j = k = randgend(flags.initrole, flags.initrace);
+	else
+	    i = j = k = flags.initgend;
+	/* Count the number of valid genders */
+	n = 0;
+	do {
+	    if (validgend(flags.initrole, flags.initrace, i)) n++;
+	    else if ((i == k) && (++k >= ROLE_GENDERS)) k = 0;
+	    if (++i >= ROLE_GENDERS) i = 0;
+	} while (i != j);
+	/* Permit the user to pick, if there is more than one */
+	if (!validgend(flags.initrole, flags.initrace, flags.initgend)) {
+	    if (pick4u == 'n' && n > 1) {
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		any.a_void = 0;         /* zero out all bits */
+		for (i = 0; i < ROLE_GENDERS; i++)
+		    if (validgend(flags.initrole, flags.initrace, i)) {
+			any.a_int = i+1;	/* must be non-zero */
+			add_menu(win, NO_GLYPH, &any, genders[i].adj[0],
+				0, ATR_NONE, genders[i].adj, MENU_UNSELECTED);
+		    }
+		any.a_int = randgend(flags.initrole, flags.initrace)+1;
+		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				"Random", MENU_UNSELECTED);
+		any.a_int = i+1;	/* must be non-zero */
+		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				"Quit", MENU_UNSELECTED);
+		Sprintf(pbuf, "Pick the gender of your %s %s",
+				races[flags.initrace].adj,
+				roles[flags.initrole].name.m);
+		end_menu(win, pbuf);
+		n = select_menu(win, PICK_ONE, &selected);
+		destroy_nhwindow(win);
+		if (n != 1 || selected[0].item.a_int == any.a_int)
+		    goto give_up;		/* Selected quit */
 
-    tty_clear_nhwindow(BASE_WINDOW);
-    pl_character[0] = pc;
-    return;
+		k = selected[0].item.a_int - 1;
+		free((genericptr_t) selected),	selected = 0;
+	    }
+	}
+	flags.initgend = k;
+
+	/* Select an alignment */
+	if (!validalign(flags.initrole, flags.initrace, flags.initalign))
+	    /* Pick a random valid alignment */
+	    i = j = k = randalign(flags.initrole, flags.initrace);
+	else
+	    i = j = k = flags.initalign;
+	/* Count the number of valid alignments */
+	n = 0;
+	do {
+	    if (validalign(flags.initrole, flags.initrace, i)) n++;
+	    else if ((i == k) && (++k >= ROLE_ALIGNS)) k = 0;
+	    if (++i >= ROLE_ALIGNS) i = 0;
+	} while (i != j);
+	/* Permit the user to pick, if there is more than one */
+	if (!validalign(flags.initrole, flags.initrace, flags.initalign)) {
+	    if (pick4u == 'n' && n > 1) {
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		any.a_void = 0;         /* zero out all bits */
+		for (i = 0; i < ROLE_ALIGNS; i++)
+		    if (validalign(flags.initrole, flags.initrace, i)) {
+			any.a_int = i+1;	/* must be non-zero */
+			add_menu(win, NO_GLYPH, &any, aligns[i].adj[0],
+				 0, ATR_NONE, aligns[i].adj, MENU_UNSELECTED);
+		    }
+		any.a_int = randalign(flags.initrole, flags.initrace)+1;
+		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
+				"Random", MENU_UNSELECTED);
+		any.a_int = i+1;	/* must be non-zero */
+		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
+				"Quit", MENU_UNSELECTED);
+		Sprintf(pbuf, "Pick the alignment of your %s %s %s",
+				genders[flags.initgend].adj,
+				races[flags.initrace].adj,
+				(flags.initgend && roles[flags.initrole].name.f) ?
+				roles[flags.initrole].name.f :
+				roles[flags.initrole].name.m);
+		end_menu(win, pbuf);
+		n = select_menu(win, PICK_ONE, &selected);
+		destroy_nhwindow(win);
+		if (n != 1 || selected[0].item.a_int == any.a_int)
+		    goto give_up;		/* Selected quit */
+
+		k = selected[0].item.a_int - 1;
+		free((genericptr_t) selected),	selected = 0;
+	    }
+	}
+	flags.initalign = k;
+	/* Success! */
+	tty_display_nhwindow(BASE_WINDOW, FALSE);
 }
 
 /*
  * plname is filled either by an option (-u Player  or  -uPlayer) or
  * explicitly (by being the wizard) or by askname.
- * It may still contain a suffix denoting pl_character.
+ * It may still contain a suffix denoting the role, etc.
  * Always called after init_nhwindows() and before display_gamewindows().
  */
 void
@@ -431,7 +550,7 @@ tty_askname()
 	}
 	tty_putstr(BASE_WINDOW, 0, who_are_you);
 	tty_curs(BASE_WINDOW, (int)(sizeof who_are_you),
-	         wins[BASE_WINDOW]->cury - 1);
+		 wins[BASE_WINDOW]->cury - 1);
 	ct = 0;
 	while((c = tty_nhgetch()) != '\n') {
 		if(c == EOF) error("End of input\n");
@@ -492,7 +611,7 @@ tty_get_nh_event()
 }
 
 #ifndef MICRO
-static void
+STATIC_OVL void
 getret()
 {
 	xputs("\n");
@@ -656,7 +775,7 @@ tty_create_nhwindow(type)
     return newid;
 }
 
-static void
+STATIC_OVL void
 erase_menu_or_text(window, cw, clear)
     winid window;
     struct WinDesc *cw;
@@ -674,7 +793,7 @@ erase_menu_or_text(window, cw, clear)
 	docorner((int)cw->offx, cw->maxrow+1);
 }
 
-static void
+STATIC_OVL void
 free_window_info(cw, free_data)
     struct WinDesc *cw;
     boolean free_data;
@@ -761,7 +880,7 @@ tty_clear_nhwindow(window)
     cw->curx = cw->cury = 0;
 }
 
-static void
+STATIC_OVL void
 dmore(cw, s)
     register struct WinDesc *cw;
     const char *s;			/* valid responses */
@@ -781,7 +900,7 @@ dmore(cw, s)
     xwaitforspace(s);
 }
 
-static void
+STATIC_OVL void
 set_item_state(window, lineno, item)
     winid window;
     int lineno;
@@ -795,7 +914,7 @@ set_item_state(window, lineno, item)
     term_end_attr(item->attr);
 }
 
-static void
+STATIC_OVL void
 set_all_on_page(window, page_start, page_end)
     winid window;
     tty_menu_item *page_start, *page_end;
@@ -810,7 +929,7 @@ set_all_on_page(window, page_start, page_end)
 	}
 }
 
-static void
+STATIC_OVL void
 unset_all_on_page(window, page_start, page_end)
     winid window;
     tty_menu_item *page_start, *page_end;
@@ -826,7 +945,7 @@ unset_all_on_page(window, page_start, page_end)
 	}
 }
 
-static void
+STATIC_OVL void
 invert_all_on_page(window, page_start, page_end, acc)
     winid window;
     tty_menu_item *page_start, *page_end;
@@ -850,7 +969,7 @@ invert_all_on_page(window, page_start, page_end, acc)
  * Invert all entries that match the give group accelerator (or all if
  * zero).
  */
-static void
+STATIC_OVL void
 invert_all(window, page_start, page_end, acc)
     winid window;
     tty_menu_item *page_start, *page_end;
@@ -880,7 +999,7 @@ invert_all(window, page_start, page_end, acc)
     }
 }
 
-static void
+STATIC_OVL void
 process_menu_window(window, cw)
 winid window;
 struct WinDesc *cw;
@@ -1165,7 +1284,7 @@ struct WinDesc *cw;
     cw->morestr = msave;
 }
 
-static void
+STATIC_OVL void
 process_text_window(window, cw)
 winid window;
 struct WinDesc *cw;
@@ -1293,9 +1412,12 @@ tty_dismiss_nhwindow(window)
 	panic(winpanicstr,  window);
 
     switch(cw->type) {
+    case NHW_MESSAGE:
+	if (ttyDisplay->toplin)
+	    tty_display_nhwindow(WIN_MESSAGE, TRUE);
+	/*FALLTHRU*/
     case NHW_STATUS:
     case NHW_BASE:
-    case NHW_MESSAGE:
     case NHW_MAP:
 	/*
 	 * these should only get dismissed when the game is going away
@@ -1420,7 +1542,7 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
     ttyDisplay->cury = y;
 }
 
-static void
+STATIC_OVL void
 tty_putsym(window, x, y, ch)
     winid window;
     int x, y;
@@ -1449,7 +1571,7 @@ tty_putsym(window, x, y, ch)
 }
 
 
-static const char*
+STATIC_OVL const char*
 compress_str(str)
 const char *str;
 {
@@ -1717,7 +1839,7 @@ tty_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
     register struct WinDesc *cw = 0;
     tty_menu_item *item;
     const char *newstr;
-    char buf[QBUFSZ];
+    char buf[4+BUFSZ];
 
     if (str == (const char*) 0)
 	return;
@@ -1728,7 +1850,15 @@ tty_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
 
     cw->nitems++;
     if (identifier->a_void) {
-	Sprintf(buf, "%c - %s", ch ? ch : '?', str);
+	int len = strlen(str);
+	if (len >= BUFSZ) {
+	    /* We *think* everything's coming in off at most BUFSZ bufs... */
+	    impossible("Menu item too long (%d).", len);
+	    len = BUFSZ - 1;
+	}
+	Sprintf(buf, "%c - ", ch ? ch : '?');
+	(void) strncpy(buf+4, str, len);
+	buf[4+len] = '\0';
 	newstr = buf;
     } else
 	newstr = str;
@@ -1747,7 +1877,7 @@ tty_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
 }
 
 /* Invert the given list, can handle NULL as an input. */
-static tty_menu_item *
+STATIC_OVL tty_menu_item *
 reverse(curr)
     tty_menu_item *curr;
 {
@@ -2119,6 +2249,7 @@ tty_print_glyph(window, x, y, glyph)
 {
     uchar   ch;
     register int offset;
+    boolean is_reverse = FALSE;
 #ifdef TEXTCOLOR
     int	    color;
 
@@ -2126,19 +2257,33 @@ tty_print_glyph(window, x, y, glyph)
 #define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
 #define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
 #define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define invis_color(n) color = NO_COLOR
 #define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :	      \
 				/* If no color, try to hilite pets; black  */ \
 				/* should be HI				   */ \
 				((iflags.hilite_pet && has_color(CLR_BLACK)) ?     \
 							CLR_BLACK : NO_COLOR)
+# if defined(REINCARNATION) && defined(ASCIIGRAPH)
+#  define ROGUE_COLOR
+# endif
 
-# else /* no text color */
+#else	/* no text color */
 
 #define zap_color(n)
 #define cmap_color(n)
 #define obj_color(n)
 #define mon_color(n)
+#define invis_color(n)
 #define pet_color(c)
+#endif
+
+#ifdef ROGUE_COLOR
+# if defined(USE_TILES) && defined(MSDOS)
+#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && !iflags.grmode && \
+	Is_rogue_level(&u.uz))
+# else
+#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && Is_rogue_level(&u.uz))
+# endif
 #endif
 
 #ifdef CLIPPING
@@ -2156,26 +2301,107 @@ tty_print_glyph(window, x, y, glyph)
     if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {		/* swallow */
 	/* see swallow_to_glyph() in display.c */
 	ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
-	mon_color(offset >> 3);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
+	    color = NO_COLOR;
+	else
+#endif
+	    mon_color(offset >> 3);
     } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {	/* zap beam */
 	/* see zapdir_to_glyph() in display.c */
 	ch = showsyms[S_vbeam + (offset & 0x3)];
-	zap_color((offset >> 2));
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
+	    color = NO_COLOR;
+	else
+#endif
+	    zap_color((offset >> 2));
     } else if ((offset = (glyph - GLYPH_CMAP_OFF)) >= 0) {	/* cmap */
 	ch = showsyms[offset];
-	cmap_color(offset);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
+	    if (offset >= S_vwall && offset <= S_hcdoor)
+		color = CLR_BROWN;
+	    else if (offset >= S_arrow_trap && offset <= S_polymorph_trap)
+		color = CLR_MAGENTA;
+	    else if (offset == S_corr || offset == S_litcorr)
+		color = CLR_GRAY;
+	    else if (offset >= S_room && offset <= S_water)
+		color = CLR_GREEN;
+	    else
+		color = NO_COLOR;
+	} else
+#endif
+	    cmap_color(offset);
     } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
 	ch = oc_syms[(int)objects[offset].oc_class];
-	obj_color(offset);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
+	    switch(objects[offset].oc_class) {
+		case GOLD_CLASS: color = CLR_YELLOW; break;
+		case FOOD_CLASS: color = CLR_RED; break;
+		default: color = CLR_BRIGHT_BLUE; break;
+	    }
+	} else
+#endif
+	    obj_color(offset);
+    } else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) {	/* mon ridden */
+	ch = monsyms[(int)mons[offset].mlet];
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS)
+	    /* This currently implies that the hero is here -- monsters */
+	    /* don't ride (yet...).  Should we set it to yellow like in */
+	    /* the monster case below?  There is no equivalent in rogue. */
+	    color = NO_COLOR;	/* no need to check iflags.use_color */
+	else
+#endif
+	    mon_color(offset);
     } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
 	ch = oc_syms[(int)objects[CORPSE].oc_class];
-	mon_color(offset);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
+	    color = CLR_RED;
+	else
+#endif
+	    mon_color(offset);
+    } else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) {	/* mon detect */
+	ch = monsyms[(int)mons[offset].mlet];
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS)
+	    color = NO_COLOR;	/* no need to check iflags.use_color */
+	else
+#endif
+	    mon_color(offset);
+	/* Disabled for now; anyone want to get reverse video to work? */
+	/* is_reverse = TRUE; */
+    } else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {	/* invisible */
+	ch = DEF_INVISIBLE;
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS)
+	    color = NO_COLOR;	/* no need to check iflags.use_color */
+	else
+#endif
+	    invis_color(offset);
     } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
 	ch = monsyms[(int)mons[offset].mlet];
-	pet_color(offset);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS)
+	    color = NO_COLOR;	/* no need to check iflags.use_color */
+	else
+#endif
+	    pet_color(offset);
     } else {							/* a monster */
 	ch = monsyms[(int)mons[glyph].mlet];
-	mon_color(glyph);
+#ifdef ROGUE_COLOR
+	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
+	    if (x == u.ux && y == u.uy)
+		/* actually player should be yellow-on-gray if in a corridor */
+		color = CLR_YELLOW;
+	    else
+		color = NO_COLOR;
+	} else
+#endif
+	    mon_color(glyph);
     }
 
     /* Move the cursor. */
@@ -2189,9 +2415,13 @@ tty_print_glyph(window, x, y, glyph)
 #endif
 
 #ifdef TEXTCOLOR
-    /* Turn off color if no color defined, or rogue level. */
+    /* Turn off color if no color defined, or rogue level w/o PC graphics. */
 # ifdef REINCARNATION
+#  ifdef ASCIIGRAPH
+    if (!has_color(color) || (Is_rogue_level(&u.uz) && !HAS_ROGUE_IBM_GRAPHICS))
+#  else
     if (!has_color(color) || Is_rogue_level(&u.uz))
+#  endif
 # else
     if (!has_color(color))
 # endif
@@ -2210,7 +2440,12 @@ tty_print_glyph(window, x, y, glyph)
       xputg(glyph,(int)ch);
     else
 #endif
-      g_putch((int)ch);		/* print the character */
+    if (is_reverse) { /* not currently working */
+	term_start_attr(ATR_INVERSE);
+	g_putch((int)ch);		/* print the character */
+	term_end_attr(ATR_INVERSE);
+    } else
+	g_putch((int)ch);		/* print the character */
     wins[window]->curx++;	/* one character over */
     ttyDisplay->curx++;		/* the real cursor moved too */
 }
@@ -2293,7 +2528,11 @@ int
 tty_nh_poskey(x, y, mod)
     int *x, *y, *mod;
 {
+# if defined(WIN32CON)
+    return ntposkey(x, y, mod);
+# else
     return tty_nhgetch();
+# endif
 }
 
 void

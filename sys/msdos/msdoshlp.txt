@@ -1,7 +1,7 @@
-            MSDOS specific help file for NetHack 3.2.1
-		  (Last Revision: May 20, 1996)
+            MSDOS specific help file for NetHack 3.3.0
+		  (Last Revision: December 4, 1999)
 
-Copyright (c) NetHack PC Development Team 1993, 1994, 1995, 1996.
+Copyright (c) NetHack PC Development Team 1993-1999.
 NetHack may be freely distributed.  See license for details.
 
 New players should be sure to read GuideBoo.txt which contains essential
@@ -9,19 +9,16 @@ information about playing NetHack.  It can be found in the same
 directory as your NetHack executable.
 
 The MSDOS port of NetHack supports some additional or enhanced commands
-as well as some NetHack.cnf file options specific to configuration choices 
+as well as some defaults.nh file options specific to configuration choices 
 used during the building of PC NetHack.  Listed below are those commands
-and NetHack.cnf file options.
+and defaults.nh file options.
 
-Recognized MSDOS specific NetHack.cnf entries are outlined below.
+Recognized MSDOS specific defaults.nh entries are outlined below.
 
 Boolean Options:
 
         IBMgraphics             Use IBM extended characters for the dungeon
                                 Default: [FALSE]
-
-Boolean options if DGK was set at compile time:
-
         BIOS                    Allow the use of IBM ROM BIOS calls
                                 Default: [FALSE]
         rawio                   Allow the use of raw I/O (may only be set
@@ -40,10 +37,10 @@ OPTIONS=!color
 		for monochromes has failed.  The color support
 		stuff is active in video.c, but may be (will have
 		to be) overridden by adding an OPTIONS=nocolor to
-		NetHack.cnf.
+		defaults.nh.
 
 OPTIONS=VIDEO
-		(NetHack.cnf only)
+		(defaults.nh only)
 
 		ie: OPTIONS=video:autodetect
 
@@ -63,7 +60,7 @@ OPTIONS=VIDEO
                            the specified video hardware is not present.	
 
 OPTIONS=VIDEOSHADES
-		(NetHack.cnf only)
+		(defaults.nh only)
 		Players may wish to add this option because one of their
 		shades of gray is difficult to read on their video
 		display hardware.  Allows a level of intensity to be
@@ -98,7 +95,7 @@ OPTIONS=VIDEOSHADES
 		3.1.2, it was mapped to dark (as above).
 
 OPTIONS=VIDEOCOLORS
-		(NetHack.cnf only)
+		(defaults.nh only)
 		This option is only provided because some people on
 		r.g.r.n mentioned how they liked to modify the color
 		values from the default ANSI.SYS behaviour, and were
@@ -162,7 +159,7 @@ F5	toggle tiled display on/off.  (Switches between tiled and traditional
 
 While playing NetHack under MSDOS you can press the ALT key in combination 
 with another key to execute an extended command as an alternative method
-to pressing the # key combination:
+to pressing a # key sequence:
 
 Alt-a    adjust         - adjust inventory letters.
 Alt-c    chat           - talk to someone or something.
@@ -176,6 +173,7 @@ Alt-m    monster        - use a monster's special ability.
 Alt-n    name           - name an item or type of object.
 Alt-o    offer          - offer a sacrifice to the gods.
 Alt-p    pray           - pray to the gods for help.
+Alt-q    quit           - quit the game. (Same as #quit)
 Alt-r    rub            - rub a lamp.
 Alt-s    sit            - sit down.
 Alt-t    turn           - turn undead.

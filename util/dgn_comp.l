@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_lex.c	3.2	96/03/02	*/
+/*	SCCS Id: @(#)dgn_lex.c	3.3	96/03/02	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson	     */
 /* NetHack may be freely redistributed.  See license for details. */

@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.src	3.2	96/10/26
+#	SCCS Id: @(#)Makefile.src	3.3	97/04/17
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -21,7 +21,7 @@
 #	'Sysatt'	-- AT&T UNIXPC, 7300, 3B1
 #	'SysV-AT'	-- Microport 286 UNIX (put -DDUMB in CFLAGS)
 #	'Systos'	-- Atari
-#	'SysBe'		-- BeBox
+#	'SysBe'		-- BeOS
 SYSTEM = Sysunix
 
 #
@@ -46,7 +46,7 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 #	../sys/share/pctty.c ../sys/share/pcunix.c
 # SYSOBJ = tos.o pcmain.o pcsys.o pctty.o pcunix.o
 #
-# for BeBox
+# for BeOS
 #SYSSRC = ../sys/be/bemain.c ../sys/share/unixtty.c ../sys/share/ioctl.c
 #SYSOBJ = bemain.o unixtty.o ioctl.o
 
@@ -65,6 +65,9 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 #	If you are using GCC 2.2.2 or higher on a DPX/2, just use:
 #
 # CC = gcc -ansi
+#
+#	For HP/UX 10.20 with GCC:
+# CC = gcc -D_POSIX_SOURCE
 #
 # if you're debugging and want gcc to check as much as possible, use:
 # CC = gcc -W -Wimplicit -Wreturn-type -Wunused -Wformat -Wswitch -Wshadow -Wcast-qual -Wwrite-strings -DGCC_WARN
@@ -115,11 +118,16 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 # CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
 # LFLAGS = -b i486-linuxaout -L/usr/X11/lib
 
-# flags for BeBox
+# flags for BeOS
+#   on a Mac/BeBox:
 #CC = mwcc
 #CFLAGS = -r -I../include
 #LD = mwld
 #LFLAGS = -map nethack.xMAP
+#   on Intel:
+#CFLAGS = -O -I../include
+#LD = gcc
+#LFLAGS = -Xlinker -soname=_APP_
 
 # flags for debugging:
 # CFLAGS = -g -I../include
@@ -127,6 +135,11 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 CFLAGS = -O -I../include
 LFLAGS = 
 
+# Only used for Qt interface (other interfaces are standard C)
+CXXFLAGS = -g $(CFLAGS) -I. -I$(QTDIR)/include
+# Qt is C++, so define the compiler and linker thus required:
+#CXX=g++
+#LD=g++
 
 # Set the WINSRC, WINOBJ, and WINLIB lines to correspond to your desired
 # combination of windowing systems.  Also set windowing systems in config.h.
@@ -137,13 +150,19 @@ WINTTYSRC = ../win/tty/getline.c ../win/tty/termcap.c ../win/tty/topl.c \
 WINTTYOBJ = getline.o termcap.o topl.o wintty.o
 #
 # files for an X11 port
-# (weird format for tile.c is for "make depend"'s benefit)
+# (tile.c is a generated source file)
 WINX11SRC = ../win/X11/Window.c ../win/X11/dialogs.c ../win/X11/winX.c \
 	../win/X11/winmap.c  ../win/X11/winmenu.c ../win/X11/winmesg.c \
 	../win/X11/winmisc.c ../win/X11/winstat.c ../win/X11/wintext.c \
-	../win/X11/winval.c ../src/./tile.c
+	../win/X11/winval.c tile.c
 WINX11OBJ = Window.o dialogs.o winX.o winmap.o winmenu.o winmesg.o \
 	winmisc.o winstat.o wintext.o winval.o tile.o
+#
+# Files for a Qt port
+#
+WINQTSRC = ../win/Qt/qt_win.cpp ../win/Qt/qt_clust.cpp
+WINQTOBJ = qt_win.o qt_clust.o tile.o
+
 #
 # 
 WINSRC = $(WINTTYSRC)
@@ -153,7 +172,7 @@ WINOBJ = $(WINTTYOBJ)
 # on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
 # Sysatt uses shared library in lieu of this option
 # Systos needs -lcurses16 if you use -mshort
-# AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in config.h
+# AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in unixconf.h
 # and -ltermcap otherwise
 # Linux uses -ltermcap or -lncurses
 # Be uses -ltermcap
@@ -172,7 +191,14 @@ WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11
 # WINX11LIB = -lXaw -lXmu -lXext -lXt -lXpm -lX11 -lm
 # WINX11LIB = -lXaw -lXmu -lXpm -lXext -lXt -lX11 -lSM -lICE -lm # BSD/OS 2.0
 #
+# libraries for Qt
+WINQTLIB = -L$(QTDIR)/lib -lqt
 #
+# libraries for KDE (with Qt)
+WINKDELIB = -lkdecore -lkdeui -lXext
+#
+#
+
 WINLIB = $(WINTTYLIB)
 
 # any other strange libraries your system needs (for Sysunix only -- the more
@@ -208,6 +234,8 @@ GAME     = nethack
 RANDOBJ =
 
 
+# used by `make depend' to reconstruct this Makefile; you shouldn't need this
+AWK	= nawk
 
 # ----------------------------------------
 #
@@ -217,6 +245,10 @@ RANDOBJ =
 # {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
 
 MAKEDEFS = ../util/makedefs
+
+# timestamp files to reduce `make' overhead and shorten .o dependency lists
+CONFIG_H = ../src/config.h-t
+HACK_H	= ../src/hack.h-t
 
 # all .c that are part of the main NetHack program and are not operating- or
 # windowing-system specific
@@ -229,10 +261,10 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
-	   priest.c quest.c questpgr.c read.c rect.c restore.c rip.c rnd.c \
-	   rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c spell.c \
-	   steal.c teleport.c timeout.c topten.c track.c trap.c u_init.c \
-	   uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
+	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c rip.c \
+	   rnd.c role.c rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c \
+	   spell.c steal.c steed.c teleport.c timeout.c topten.c track.c trap.c \
+	   u_init.c uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
 	   windows.c wizard.c worm.c worn.c write.c zap.c
 
 # all operating-system-dependent .c (for dependencies and such)
@@ -243,6 +275,8 @@ SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 
 # all windowing-system-dependent .c (for dependencies and such)
 WINCSRC = $(WINTTYSRC) $(WINX11SRC)
+# all windowing-system-dependent .cpp (for dependencies and such)
+WINCXXSRC = $(WINQTSRC)
 
 # .c files for this version (for date.h)
 VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) monstr.c vis_tab.c
@@ -255,13 +289,13 @@ CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) monstr.c vis_tab.c
 # cause dependency loops if run through "make depend"
 # and dgn_comp.h, dgn_file.h, lev_comp.h, special level & dungeon files.
 #
-HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h \
-	color.h config.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h \
+HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h color.h \
+	config.h config1.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h \
 	edog.h emin.h engrave.h epri.h eshk.h extern.h flag.h func_tab.h \
 	global.h hack.h lev.h macconf.h mfndpos.h micro.h mkroom.h \
 	monattk.h mondata.h monflag.h monst.h monsym.h obj.h objclass.h \
-	os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h rm.h \
-	sp_lev.h spell.h system.h termcap.h timeout.h tosconf.h tradstdc.h \
+	os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h region.h rm.h \
+	sp_lev.h spell.h system.h tcap.h timeout.h tosconf.h tradstdc.h \
 	trampoli.h trap.h unixconf.h vault.h vision.h vmsconf.h wintty.h \
 	winX.h winprocs.h wintype.h you.h youprop.h
 
@@ -280,10 +314,10 @@ HOBJ = $(FIRSTOBJ) allmain.o alloc.o apply.o artifact.o attrib.o ball.o \
 	mkmaze.o mkobj.o mkroom.o mon.o mondata.o monmove.o monstr.o \
 	mplayer.o mthrowu.o muse.o music.o o_init.o objnam.o options.o \
 	pager.o pickup.o pline.o polyself.o potion.o pray.o priest.o \
-	quest.o questpgr.o read.o rect.o restore.o rip.o rnd.o rumors.o \
-	save.o shk.o shknam.o sit.o sounds.o sp_lev.o spell.o steal.o \
-	teleport.o timeout.o topten.o track.o trap.o u_init.o uhitm.o \
-	vault.o vision.o vis_tab.o weapon.o were.o wield.o windows.o \
+	quest.o questpgr.o read.o rect.o region.o restore.o rip.o rnd.o \
+	role.o rumors.o save.o shk.o shknam.o sit.o sounds.o sp_lev.o spell.o \
+	steal.o steed.o teleport.o timeout.o topten.o track.o trap.o u_init.o \
+	uhitm.o vault.o vision.o vis_tab.o weapon.o were.o wield.o windows.o \
 	wizard.o worm.o worn.o write.o zap.o \
 	$(RANDOBJ) $(SYSOBJ) $(WINOBJ) version.o
 # the .o files from the HACKCSRC, SYSSRC, and WINSRC lists
@@ -358,7 +392,14 @@ objects.o:
 	$(CC) $(CFLAGS) -c objects.c
 	@rm -f $(MAKEDEFS)
 
-$(MAKEDEFS): ../util/makedefs.c  ../include/config.h ../include/permonst.h \
+# Qt windowport meta-object-compiler output
+qt_kde0.moc: ../include/qt_kde0.h
+	moc $< >$@
+
+qt_win.moc: ../include/qt_win.h
+	moc $< >$@
+
+$(MAKEDEFS): ../util/makedefs.c  $(CONFIG_H) ../include/permonst.h \
 		../include/objclass.h ../include/monsym.h \
 		../include/artilist.h ../include/dungeon.h ../include/obj.h \
 		../include/monst.h ../include/you.h ../include/flag.h \
@@ -375,7 +416,7 @@ monstr.c: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../include/vis_tab.h )
 vis_tab.c: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../src/vis_tab.c )
-../src/./tile.c: ../win/share/tilemap.c ../include/hack.h
+tile.c: ../win/share/tilemap.c $(HACK_H)
 	@( cd ../util ; $(MAKE) ../src/tile.c )
 
 #	date.h should be remade any time any of the source or include code
@@ -386,7 +427,7 @@ vis_tab.c: $(MAKEDEFS)
 #
 #	hack.h depends on makedefs' output, so we know makedefs will be
 #	up to date before being executed
-../include/date.h:	$(VERSOURCES) ../include/hack.h
+../include/date.h:	$(VERSOURCES) $(HACK_H)
 	../util/makedefs -v
 
 
@@ -406,7 +447,7 @@ tags: $(CSOURCES)
 	@( cd ../util ; $(MAKE) tags )
 
 clean:
-	-rm -f *.o
+	-rm -f *.o $(HACK_H) $(CONFIG_H)
 
 spotless: clean
 	-rm -f a.out core $(GAME) Sys*
@@ -414,69 +455,9 @@ spotless: clean
 	-rm -f monstr.c ../include/vis_tab.h vis_tab.c tile.c
 
 
-depend:
-# For the moment we are lazy and disregard /usr/include files because
-# the sources contain them conditionally. Perhaps we should use cpp.
-#		( /bin/grep '^#[ 	]*include' $$i | sed -n \
-#			-e 's,<\(.*\)>,"/usr/include/\1",' \
-#
-# extern.h is ignored, even though its declared function types may affect the
-# compilation of all the .c files, since extern.h changes every time the
-# type of an external function does, and we would spend all our time recompiling
-# if we did not ignore it.  the risk is minimal, as lint should pick up any
-# calls to the modified function that were not modified accordingly.
-#
-# patchlev.h is the name MS-DOS uses to refer to patchlevel.h after it gets
-# through truncating the name, but it does not really exist
-#
-# theory of operation:
-#	for each file
-#		for each include line
-#			pick out filename from within ""
-#			delete unwanted names
-#			prepend ../include/
-#			squirrel away in hold space
-#		at end of file
-#			pick up hold space
-#			change newlines to spaces
-#			prepend file:
-#			change .c to .o
-#			add command if necessary
-#
-	for i in ${SYSCSRC} ${WINCSRC}; do \
-		( echo '#include ""' | cat - $$i | \
-		/bin/grep '^#[ 	]*include[ 	]*"' | sed -n \
-			-e 's/[^"]*"\([^"]*\)".*/\1/' \
-			-e 's/patchlev.h//' \
-			-e 's/.*\.h/..\/include\/&/' \
-			-e H \
-			-e '$$g' -e '$$s/\n/ /g' \
-			-e '$$s;.*;'$$i': '$$i'&;' \
-			-e '$$s;\.\./[^/]*/[^/]*/\([^.]*\)\.c;\1.o;' \
-			-e '$$s;.*;&\
-		$$(CC) $$(CFLAGS) -c '$$i';p' \
-			>> makedep); done
-	for i in ${HACKCSRC}; do \
-		( /bin/grep '^#[ 	]*include[ 	]*"' $$i | sed -n \
-			-e 's/[^"]*"\([^"]*\)".*/\1/' \
-			-e 's/patchlev.h//' \
-			-e 's/.*\.h/..\/include\/&/' \
-			-e H \
-			-e '$$g' -e '$$s/\n/ /g' \
-			-e '$$s/.*/'$$i': &/' \
-			-e '$$s/\.c:/.o:/p' \
-			>> makedep); done
-	for i in ${HACKINCL}; do \
-	    ( /bin/grep '^#[ 	]*include[ 	]*"' ../include/$$i | sed -n \
-			-e 's/[^"]*"\([^"]*\)".*/\1/' \
-			-e 's/extern.h//' \
-			-e 's/.*\.h/..\/include\/&/' \
-			-e H \
-			-e '$$g' -e '$$s/\n/ /g' \
-			-e '$$s/.*/..\/include\/'$$i': &\
-		touch ..\/include\/'$$i/p \
-			>> makedep); done
-	@echo '/^# DO NOT DELETE THIS LINE/+2,$$d' >eddep
+depend: ../sys/unix/depend.awk $(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(HACKCSRC)
+	$(AWK) -f ../sys/unix/depend.awk ../include/*.h $(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(HACKCSRC) >makedep
+	@echo '/^# DO NOT DELETE THIS LINE OR CHANGE ANYTHING BEYOND IT/+2,$$d' >eddep
 	@echo '$$r makedep' >>eddep
 	@echo 'w' >>eddep
 	@cp Makefile Makefile.bak
@@ -488,240 +469,209 @@ depend:
 	- diff Makefile.bak Makefile
 	@rm -f Makefile.bak
 
-# DO NOT DELETE THIS LINE
+# DO NOT DELETE THIS LINE OR CHANGE ANYTHING BEYOND IT
 
-tos.o: ../sys/atari/tos.c  ../include/hack.h ../include/termcap.h
+# config.h timestamp
+$(CONFIG_H): ../include/config.h ../include/config1.h ../include/tradstdc.h \
+		../include/global.h ../include/coord.h ../include/vmsconf.h \
+		../include/system.h ../include/unixconf.h ../include/os2conf.h \
+		../include/micro.h ../include/pcconf.h ../include/tosconf.h \
+		../include/amiconf.h ../include/macconf.h ../include/beconf.h \
+		../include/ntconf.h ../include/nhlan.h
+	touch $(CONFIG_H)
+# hack.h timestamp
+$(HACK_H): ../include/hack.h $(CONFIG_H) ../include/align.h \
+		../include/dungeon.h ../include/monsym.h ../include/mkroom.h \
+		../include/objclass.h ../include/youprop.h ../include/prop.h \
+		../include/permonst.h ../include/monattk.h \
+		../include/monflag.h ../include/mondata.h ../include/pm.h \
+		../include/wintype.h ../include/decl.h ../include/quest.h \
+		../include/spell.h ../include/color.h ../include/obj.h \
+		../include/you.h ../include/attrib.h ../include/monst.h \
+		../include/skills.h ../include/onames.h ../include/timeout.h \
+		../include/trap.h ../include/flag.h ../include/rm.h \
+		../include/vision.h ../include/display.h ../include/engrave.h \
+		../include/rect.h ../include/region.h ../include/winprocs.h \
+		../include/wintty.h ../include/trampoli.h
+	touch $(HACK_H)
+#
+tos.o: ../sys/atari/tos.c $(HACK_H) ../include/tcap.h
 	$(CC) $(CFLAGS) -c ../sys/atari/tos.c
-pcmain.o: ../sys/share/pcmain.c  ../include/hack.h ../include/dlb.h \
-		# ../include/win32api.h
+pcmain.o: ../sys/share/pcmain.c $(HACK_H) ../include/dlb.h \
+		#../include/win32api.h
 	$(CC) $(CFLAGS) -c ../sys/share/pcmain.c
-pcsys.o: ../sys/share/pcsys.c  ../include/hack.h ../include/wintty.h
+pcsys.o: ../sys/share/pcsys.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/share/pcsys.c
-pctty.o: ../sys/share/pctty.c  ../include/hack.h ../include/wintty.h
+pctty.o: ../sys/share/pctty.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/share/pctty.c
-pcunix.o: ../sys/share/pcunix.c  ../include/hack.h
+pcunix.o: ../sys/share/pcunix.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/share/pcunix.c
-random.o: ../sys/share/random.c  ../include/hack.h
+random.o: ../sys/share/random.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/share/random.c
-ioctl.o: ../sys/share/ioctl.c  ../include/hack.h ../include/termcap.h
+ioctl.o: ../sys/share/ioctl.c $(HACK_H) ../include/tcap.h
 	$(CC) $(CFLAGS) -c ../sys/share/ioctl.c
-unixtty.o: ../sys/share/unixtty.c  ../include/hack.h
+unixtty.o: ../sys/share/unixtty.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/share/unixtty.c
-unixmain.o: ../sys/unix/unixmain.c  ../include/hack.h ../include/dlb.h
+unixmain.o: ../sys/unix/unixmain.c $(HACK_H) ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixmain.c
-unixunix.o: ../sys/unix/unixunix.c  ../include/hack.h
+unixunix.o: ../sys/unix/unixunix.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/unix/unixunix.c
-bemain.o: ../sys/be/bemain.c  ../include/hack.h ../include/dlb.h
+bemain.o: ../sys/be/bemain.c $(HACK_H) ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/be/bemain.c
-getline.o: ../win/tty/getline.c  ../include/hack.h ../include/wintty.h \
-		../include/func_tab.h
+getline.o: ../win/tty/getline.c $(HACK_H) ../include/func_tab.h
 	$(CC) $(CFLAGS) -c ../win/tty/getline.c
-termcap.o: ../win/tty/termcap.c  ../include/hack.h ../include/wintty.h \
-		../include/termcap.h
+termcap.o: ../win/tty/termcap.c $(HACK_H) ../include/tcap.h
 	$(CC) $(CFLAGS) -c ../win/tty/termcap.c
-topl.o: ../win/tty/topl.c  ../include/hack.h ../include/termcap.h \
-		../include/wintty.h
+topl.o: ../win/tty/topl.c $(HACK_H) ../include/tcap.h
 	$(CC) $(CFLAGS) -c ../win/tty/topl.c
-wintty.o: ../win/tty/wintty.c  ../include/hack.h ../include/dlb.h  \
-		../include/patchlevel.h ../include/termcap.h ../include/wintty.h
+wintty.o: ../win/tty/wintty.c $(HACK_H) ../include/dlb.h \
+		../include/patchlevel.h ../include/tcap.h
 	$(CC) $(CFLAGS) -c ../win/tty/wintty.c
-Window.o: ../win/X11/Window.c  ../include/WindowP.h ../include/config.h
+Window.o: ../win/X11/Window.c ../include/xwindowp.h ../include/xwindow.h \
+		$(CONFIG_H)
 	$(CC) $(CFLAGS) -c ../win/X11/Window.c
-dialogs.o: ../win/X11/dialogs.c  ../include/config.h
+dialogs.o: ../win/X11/dialogs.c $(CONFIG_H)
 	$(CC) $(CFLAGS) -c ../win/X11/dialogs.c
-winX.o: ../win/X11/winX.c  ../include/hack.h ../include/winX.h \
-		../include/dlb.h  ../include/patchlevel.h ../win/X11/nh72icon \
+winX.o: ../win/X11/winX.c $(HACK_H) ../include/winX.h ../include/dlb.h \
+		../include/patchlevel.h ../win/X11/nh72icon \
 		../win/X11/nh56icon ../win/X11/nh32icon
 	$(CC) $(CFLAGS) -c ../win/X11/winX.c
-winmap.o: ../win/X11/winmap.c  ../include/Window.h ../include/hack.h \
-		../include/dlb.h ../include/winX.h ../include/tile2x11.h
+winmap.o: ../win/X11/winmap.c ../include/xwindow.h $(HACK_H) ../include/dlb.h \
+		../include/winX.h ../include/tile2x11.h
 	$(CC) $(CFLAGS) -c ../win/X11/winmap.c
-winmenu.o: ../win/X11/winmenu.c  ../include/hack.h ../include/winX.h
+winmenu.o: ../win/X11/winmenu.c $(HACK_H) ../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winmenu.c
-winmesg.o: ../win/X11/winmesg.c  ../include/Window.h ../include/hack.h \
-		../include/winX.h
+winmesg.o: ../win/X11/winmesg.c ../include/xwindow.h $(HACK_H) ../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winmesg.c
-winmisc.o: ../win/X11/winmisc.c  ../include/hack.h ../include/func_tab.h \
+winmisc.o: ../win/X11/winmisc.c $(HACK_H) ../include/func_tab.h \
 		../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winmisc.c
-winstat.o: ../win/X11/winstat.c  ../include/hack.h ../include/winX.h
+winstat.o: ../win/X11/winstat.c $(HACK_H) ../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winstat.c
-wintext.o: ../win/X11/wintext.c  ../include/hack.h ../include/winX.h \
-		../include/Window.h
+wintext.o: ../win/X11/wintext.c $(HACK_H) ../include/winX.h ../include/xwindow.h
 	$(CC) $(CFLAGS) -c ../win/X11/wintext.c
-winval.o: ../win/X11/winval.c  ../include/hack.h ../include/winX.h
+winval.o: ../win/X11/winval.c $(HACK_H) ../include/winX.h
 	$(CC) $(CFLAGS) -c ../win/X11/winval.c
-tile.o: ../src/./tile.c  ../include/hack.h
-	$(CC) $(CFLAGS) -c ../src/./tile.c
-allmain.o:  ../include/hack.h
-alloc.o:  ../include/config.h
-apply.o:  ../include/hack.h ../include/edog.h
-artifact.o:  ../include/hack.h ../include/artifact.h ../include/artilist.h
-attrib.o:  ../include/hack.h ../include/artifact.h
-ball.o:  ../include/hack.h
-bones.o:  ../include/hack.h ../include/lev.h
-botl.o:  ../include/hack.h
-cmd.o:  ../include/hack.h ../include/func_tab.h
-dbridge.o:  ../include/hack.h
-decl.o:  ../include/hack.h ../include/quest.h
-detect.o:  ../include/hack.h ../include/artifact.h
-dig.o:  ../include/hack.h ../include/edog.h
-display.o:  ../include/hack.h
-dlb.o:  ../include/config.h ../include/dlb.h
-do.o:  ../include/hack.h ../include/lev.h
-do_name.o:  ../include/hack.h
-do_wear.o:  ../include/hack.h
-dog.o:  ../include/hack.h ../include/edog.h
-dogmove.o:  ../include/hack.h ../include/mfndpos.h ../include/edog.h
-dokick.o:  ../include/hack.h ../include/eshk.h
-dothrow.o:  ../include/hack.h
-drawing.o:  ../include/hack.h ../include/termcap.h
-dungeon.o:  ../include/hack.h ../include/dgn_file.h ../include/dlb.h
-eat.o:  ../include/hack.h
-end.o:  ../include/hack.h ../include/eshk.h ../include/dlb.h
-engrave.o:  ../include/hack.h ../include/lev.h
-exper.o:  ../include/hack.h
-explode.o:  ../include/hack.h
-extralev.o:  ../include/hack.h
-files.o:  ../include/hack.h ../include/dlb.h
-fountain.o:  ../include/hack.h
-hack.o:  ../include/hack.h
-hacklib.o:  ../include/hack.h
-invent.o:  ../include/hack.h ../include/artifact.h
-light.o:  ../include/hack.h ../include/lev.h
-lock.o:  ../include/hack.h
-mail.o:  ../include/hack.h ../include/mail.h
-makemon.o:  ../include/hack.h ../include/epri.h ../include/emin.h
-mcastu.o:  ../include/hack.h
-mhitm.o:  ../include/hack.h ../include/artifact.h ../include/edog.h
-mhitu.o:  ../include/hack.h ../include/artifact.h ../include/edog.h
-minion.o:  ../include/hack.h ../include/emin.h ../include/epri.h
-mklev.o:  ../include/hack.h
-mkmap.o:  ../include/hack.h ../include/sp_lev.h
-mkmaze.o:  ../include/hack.h ../include/sp_lev.h ../include/lev.h
-mkobj.o:  ../include/hack.h ../include/artifact.h ../include/prop.h
-mkroom.o:  ../include/hack.h
-mon.o:  ../include/hack.h ../include/mfndpos.h ../include/edog.h
-mondata.o:  ../include/hack.h ../include/eshk.h ../include/epri.h
-monmove.o:  ../include/hack.h ../include/mfndpos.h ../include/artifact.h
-monst.o:  ../include/config.h ../include/permonst.h ../include/monsym.h \
-	../include/eshk.h ../include/vault.h ../include/epri.h \
-	../include/color.h
-mplayer.o:  ../include/hack.h
-mthrowu.o:  ../include/hack.h
-muse.o:  ../include/hack.h ../include/edog.h
-music.o:  ../include/hack.h # interp.c
-o_init.o:  ../include/hack.h ../include/lev.h
-objects.o:  ../include/config.h ../include/obj.h ../include/objclass.h \
-	../include/prop.h ../include/color.h objects.c
-objnam.o:  ../include/hack.h
-options.o:  ../include/config.h ../include/objclass.h ../include/flag.h \
-	../include/hack.h ../include/termcap.h
-pager.o:  ../include/hack.h ../include/dlb.h
-pickup.o:  ../include/hack.h
-pline.o:  ../include/hack.h ../include/epri.h
-polyself.o:  ../include/hack.h
-potion.o:  ../include/hack.h
-pray.o:  ../include/hack.h ../include/epri.h
-priest.o:  ../include/hack.h ../include/mfndpos.h ../include/eshk.h \
-	../include/epri.h ../include/emin.h
-quest.o:  ../include/hack.h ../include/quest.h ../include/qtext.h
-questpgr.o:  ../include/hack.h ../include/dlb.h ../include/qtext.h
-read.o:  ../include/hack.h
-rect.o:  ../include/hack.h
-restore.o:  ../include/hack.h ../include/lev.h ../include/termcap.h \
-	../include/quest.h
-rip.o:  ../include/hack.h
-rnd.o:  ../include/hack.h
-rumors.o:  ../include/hack.h ../include/lev.h ../include/dlb.h
-save.o:  ../include/hack.h ../include/lev.h ../include/quest.h
-shk.o:  ../include/hack.h ../include/eshk.h
-shknam.o:  ../include/hack.h ../include/eshk.h
-sit.o:  ../include/hack.h ../include/artifact.h
-sounds.o:  ../include/hack.h ../include/edog.h
-sp_lev.o:  ../include/hack.h ../include/dlb.h ../include/sp_lev.h \
-	../include/rect.h
-spell.o:  ../include/hack.h
-steal.o:  ../include/hack.h
-teleport.o:  ../include/hack.h
-timeout.o:  ../include/hack.h ../include/lev.h
-topten.o:  ../include/hack.h ../include/dlb.h  ../include/patchlevel.h
-track.o:  ../include/hack.h
-trap.o:  ../include/hack.h
-u_init.o:  ../include/hack.h
-uhitm.o:  ../include/hack.h
-vault.o:  ../include/hack.h ../include/vault.h
-version.o:  ../include/hack.h ../include/date.h  ../include/patchlevel.h
-vision.o:  ../include/hack.h ../include/vis_tab.h
-weapon.o:  ../include/hack.h
-were.o:  ../include/hack.h
-wield.o:  ../include/hack.h
-windows.o:  ../include/hack.h ../include/wintty.h
-wizard.o:  ../include/hack.h ../include/qtext.h
-worm.o:  ../include/hack.h ../include/lev.h
-worn.o:  ../include/hack.h
-write.o:  ../include/hack.h
-zap.o:  ../include/hack.h
-../include/amiconf.h:  ../include/micro.h ../include/pcconf.h
-	touch ../include/amiconf.h
-../include/config.h:  ../include/tradstdc.h ../include/global.h
-	touch ../include/config.h
-../include/decl.h:  ../include/quest.h ../include/spell.h ../include/color.h \
-		../include/obj.h ../include/you.h ../include/onames.h \
-		../include/pm.h
-	touch ../include/decl.h
-../include/display.h:  ../include/vision.h ../include/mondata.h
-	touch ../include/display.h
-../include/dungeon.h:  ../include/align.h
-	touch ../include/dungeon.h
-../include/emin.h:  ../include/align.h
-	touch ../include/emin.h
-../include/epri.h:  ../include/dungeon.h
-	touch ../include/epri.h
-../include/eshk.h:  ../include/dungeon.h
-	touch ../include/eshk.h
-../include/global.h:  ../include/coord.h ../include/vmsconf.h \
-		../include/unixconf.h ../include/os2conf.h \
-		../include/pcconf.h ../include/tosconf.h ../include/amiconf.h \
-		../include/macconf.h ../include/beconf.h ../include/ntconf.h
-	touch ../include/global.h
-../include/hack.h:  ../include/config.h ../include/dungeon.h \
-		../include/monsym.h ../include/mkroom.h ../include/objclass.h \
-		../include/youprop.h ../include/wintype.h ../include/decl.h \
-		../include/timeout.h ../include/trap.h ../include/flag.h \
-		../include/rm.h ../include/vision.h ../include/display.h \
-		../include/engrave.h ../include/rect.h  ../include/winprocs.h \
-		../include/wintty.h ../include/trampoli.h 
-	touch ../include/hack.h
-../include/macconf.h:  ../include/system.h
-	touch ../include/macconf.h
-../include/mondata.h:  ../include/align.h
-	touch ../include/mondata.h
-../include/monst.h:  ../include/align.h
-	touch ../include/monst.h
-../include/os2conf.h:  ../include/micro.h ../include/system.h
-	touch ../include/os2conf.h
-../include/pcconf.h:  ../include/micro.h ../include/system.h
-	touch ../include/pcconf.h
-../include/permonst.h:  ../include/monattk.h ../include/monflag.h \
-		../include/align.h
-	touch ../include/permonst.h
-../include/rm.h:  ../include/align.h
-	touch ../include/rm.h
-../include/tosconf.h:  ../include/micro.h ../include/pcconf.h
-	touch ../include/tosconf.h
-../include/unixconf.h:  ../include/system.h
-	touch ../include/unixconf.h
-../include/vault.h:  ../include/dungeon.h
-	touch ../include/vault.h
-../include/vmsconf.h:  ../include/system.h
-	touch ../include/vmsconf.h
-../include/you.h:  ../include/align.h ../include/attrib.h ../include/monst.h \
-		../include/prop.h
-	touch ../include/you.h
-../include/youprop.h:  ../include/prop.h ../include/permonst.h \
-		../include/mondata.h ../include/pm.h
-	touch ../include/youprop.h
+tile.o: tile.c $(HACK_H)
+qt_win.o: ../win/Qt/qt_win.cpp $(HACK_H) ../include/func_tab.h \
+		../include/dlb.h ../include/patchlevel.h ../include/qt_win.h \
+		../include/qt_clust.h ../include/qt_kde0.h \
+		../include/qt_xpms.h qt_win.moc qt_kde0.moc
+	$(CXX) $(CXXFLAGS) -c ../win/Qt/qt_win.cpp
+qt_clust.o: ../win/Qt/qt_clust.cpp ../include/qt_clust.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt/qt_clust.cpp
+allmain.o: allmain.c $(HACK_H)
+alloc.o: alloc.c $(CONFIG_H)
+apply.o: apply.c $(HACK_H) ../include/edog.h
+artifact.o: artifact.c $(HACK_H) ../include/artifact.h ../include/artilist.h
+attrib.o: attrib.c $(HACK_H) ../include/artifact.h
+ball.o: ball.c $(HACK_H)
+bones.o: bones.c $(HACK_H) ../include/lev.h
+botl.o: botl.c $(HACK_H)
+cmd.o: cmd.c $(HACK_H) ../include/func_tab.h
+dbridge.o: dbridge.c $(HACK_H)
+decl.o: decl.c $(HACK_H)
+detect.o: detect.c $(HACK_H) ../include/artifact.h
+dig.o: dig.c $(HACK_H) ../include/edog.h
+display.o: display.c $(HACK_H)
+dlb.o: dlb.c $(CONFIG_H) ../include/dlb.h
+do.o: do.c $(HACK_H) ../include/lev.h
+do_name.o: do_name.c $(HACK_H)
+do_wear.o: do_wear.c $(HACK_H)
+dog.o: dog.c $(HACK_H) ../include/edog.h
+dogmove.o: dogmove.c $(HACK_H) ../include/mfndpos.h ../include/edog.h
+dokick.o: dokick.c $(HACK_H) ../include/eshk.h
+dothrow.o: dothrow.c $(HACK_H)
+drawing.o: drawing.c $(HACK_H) ../include/tcap.h
+dungeon.o: dungeon.c $(HACK_H) ../include/dgn_file.h ../include/dlb.h
+eat.o: eat.c $(HACK_H)
+end.o: end.c $(HACK_H) ../include/eshk.h ../include/dlb.h
+engrave.o: engrave.c $(HACK_H) ../include/lev.h
+exper.o: exper.c $(HACK_H)
+explode.o: explode.c $(HACK_H)
+extralev.o: extralev.c $(HACK_H)
+files.o: files.c $(HACK_H) ../include/dlb.h
+fountain.o: fountain.c $(HACK_H)
+hack.o: hack.c $(HACK_H)
+hacklib.o: hacklib.c $(HACK_H)
+invent.o: invent.c $(HACK_H) ../include/artifact.h
+light.o: light.c $(HACK_H) ../include/lev.h
+lock.o: lock.c $(HACK_H)
+mail.o: mail.c $(HACK_H) ../include/mail.h
+makemon.o: makemon.c $(HACK_H) ../include/epri.h ../include/emin.h \
+		../include/edog.h
+mcastu.o: mcastu.c $(HACK_H)
+mhitm.o: mhitm.c $(HACK_H) ../include/artifact.h ../include/edog.h
+mhitu.o: mhitu.c $(HACK_H) ../include/artifact.h ../include/edog.h
+minion.o: minion.c $(HACK_H) ../include/emin.h ../include/epri.h
+mklev.o: mklev.c $(HACK_H)
+mkmap.o: mkmap.c $(HACK_H) ../include/sp_lev.h
+mkmaze.o: mkmaze.c $(HACK_H) ../include/sp_lev.h ../include/lev.h
+mkobj.o: mkobj.c $(HACK_H) ../include/artifact.h
+mkroom.o: mkroom.c $(HACK_H)
+mon.o: mon.c $(HACK_H) ../include/mfndpos.h ../include/edog.h
+mondata.o: mondata.c $(HACK_H) ../include/eshk.h ../include/epri.h
+monmove.o: monmove.c $(HACK_H) ../include/mfndpos.h ../include/artifact.h
+monst.o: monst.c $(CONFIG_H) ../include/permonst.h ../include/align.h \
+		../include/monattk.h ../include/monflag.h ../include/monsym.h \
+		../include/dungeon.h ../include/eshk.h ../include/vault.h \
+		../include/epri.h ../include/color.h
+mplayer.o: mplayer.c $(HACK_H)
+mthrowu.o: mthrowu.c $(HACK_H)
+muse.o: muse.c $(HACK_H) ../include/edog.h
+music.o: music.c $(HACK_H) #interp.c
+o_init.o: o_init.c $(HACK_H) ../include/lev.h
+objects.o: objects.c $(CONFIG_H) ../include/obj.h ../include/objclass.h \
+		../include/prop.h ../include/skills.h ../include/color.h
+objnam.o: objnam.c $(HACK_H)
+options.o: options.c $(CONFIG_H) ../include/objclass.h ../include/flag.h \
+		$(HACK_H) ../include/tcap.h
+pager.o: pager.c $(HACK_H) ../include/dlb.h
+pickup.o: pickup.c $(HACK_H)
+pline.o: pline.c $(HACK_H) ../include/epri.h
+polyself.o: polyself.c $(HACK_H)
+potion.o: potion.c $(HACK_H)
+pray.o: pray.c $(HACK_H) ../include/epri.h
+priest.o: priest.c $(HACK_H) ../include/mfndpos.h ../include/eshk.h \
+		../include/epri.h ../include/emin.h
+quest.o: quest.c $(HACK_H) ../include/qtext.h
+questpgr.o: questpgr.c $(HACK_H) ../include/dlb.h ../include/qtext.h
+read.o: read.c $(HACK_H)
+rect.o: rect.c $(HACK_H)
+region.o: region.c $(HACK_H)
+restore.o: restore.c $(HACK_H) ../include/lev.h ../include/tcap.h
+rip.o: rip.c $(HACK_H)
+rnd.o: rnd.c $(HACK_H)
+role.o: role.c $(HACK_H)
+rumors.o: rumors.c $(HACK_H) ../include/lev.h ../include/dlb.h
+save.o: save.c $(HACK_H) ../include/lev.h
+shk.o: shk.c $(HACK_H) ../include/eshk.h
+shknam.o: shknam.c $(HACK_H) ../include/eshk.h
+sit.o: sit.c $(HACK_H) ../include/artifact.h
+sounds.o: sounds.c $(HACK_H) ../include/edog.h
+sp_lev.o: sp_lev.c $(HACK_H) ../include/dlb.h ../include/sp_lev.h
+spell.o: spell.c $(HACK_H)
+steal.o: steal.c $(HACK_H)
+steed.o: steed.c $(HACK_H)
+teleport.o: teleport.c $(HACK_H)
+timeout.o: timeout.c $(HACK_H) ../include/lev.h
+topten.o: topten.c $(HACK_H) ../include/dlb.h ../include/patchlevel.h
+track.o: track.c $(HACK_H)
+trap.o: trap.c $(HACK_H)
+u_init.o: u_init.c $(HACK_H)
+uhitm.o: uhitm.c $(HACK_H)
+vault.o: vault.c $(HACK_H) ../include/vault.h
+version.o: version.c $(HACK_H) ../include/date.h ../include/patchlevel.h
+vision.o: vision.c $(HACK_H) ../include/vis_tab.h
+weapon.o: weapon.c $(HACK_H)
+were.o: were.c $(HACK_H)
+wield.o: wield.c $(HACK_H)
+windows.o: windows.c $(HACK_H)
+wizard.o: wizard.c $(HACK_H) ../include/qtext.h
+worm.o: worm.c $(HACK_H) ../include/lev.h
+worn.o: worn.c $(HACK_H)
+write.o: write.c $(HACK_H)
+zap.o: zap.c $(HACK_H)
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above

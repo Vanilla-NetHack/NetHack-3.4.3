@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)recover.c	3.2	96/06/22	*/
+/*	SCCS Id: @(#)recover.c	3.3	99/10/23	*/
 /*	Copyright (c) Janet Walz, 1992.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,6 +10,9 @@
 #include "config.h"
 #if !defined(O_WRONLY) && !defined(LSC) && !defined(AZTEC_C)
 #include <fcntl.h>
+#endif
+#ifdef WIN32
+#include "win32api.h"
 #endif
 
 #ifdef VMS
@@ -32,8 +35,16 @@ void FDECL(copy_bytes, (int,int));
 # ifdef VMS
 #define SAVESIZE	(PL_NSIZ + 22)	/* [.save]<uid>player.e;1 */
 # else
+#  ifdef WIN32
+#define SAVESIZE	(PL_NSIZ + 40)  /* username-player.NetHack-saved-game */
+#  else
 #define SAVESIZE	FILENAME	/* from macconf.h or pcconf.h */
+#  endif
 # endif
+#endif
+
+#if defined(EXEPATH)
+char *FDECL(exepath, (char *));
 #endif
 
 #ifdef __BORLANDC__
@@ -53,10 +64,22 @@ char *argv[];
 	char *startdir = (char *)0;
 #endif
 
+
+	if (!dir) dir = getenv("NETHACKDIR");
+	if (!dir) dir = getenv("HACKDIR");
+#if defined(EXEPATH)
+	if (!dir) dir = exepath(argv[0]);
+#endif
 	if (argc == 1 || (argc == 2 && !strcmp(argv[1], "-"))) {
-		Fprintf(stderr,
-			"Usage: %s [-d directory] base1 base2 ...\n", argv[0]);
-		exit(EXIT_FAILURE);
+	    Fprintf(stderr,
+		"Usage: %s [ -d directory ] base1 [ base2 ... ]\n", argv[0]);
+#if defined(WIN32) || defined(MSDOS)
+	    if (dir) {
+	    	Fprintf(stderr, "\t(Unless you override it with -d, recover will look \n");
+	    	Fprintf(stderr, "\t in the %s directory on your system)\n", dir);
+	    }
+#endif
+	    exit(EXIT_FAILURE);
 	}
 
 	argno = 1;
@@ -75,9 +98,6 @@ char *argv[];
 		}
 		argno++;
 	}
-
-	if (!dir) dir = getenv("NETHACKDIR");
-	if (!dir) dir = getenv("HACKDIR");
 #if defined(SECURE) && !defined(VMS)
 	if (dir
 # ifdef HACKDIR
@@ -138,7 +158,7 @@ int lev;
 	int fd;
 
 	set_levelfile_name(lev);
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32) || defined(MSDOS)
 	fd = open(lock, O_RDONLY | O_BINARY);
 #else
 	fd = open(lock, O_RDONLY, 0);
@@ -151,7 +171,7 @@ create_savefile()
 {
 	int fd;
 
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32) || defined(MSDOS)
 	fd = open(savename, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
 #else
 	fd = creat(savename, FCMASK);
@@ -298,6 +318,36 @@ char *basename;
 #endif
 	return(0);
 }
+
+#ifdef EXEPATH
+# ifdef __DJGPP__
+#define PATH_SEPARATOR '/'
+# else
+#define PATH_SEPARATOR '\\'
+# endif
+
+#define EXEPATHBUFSZ 256
+char exepathbuf[EXEPATHBUFSZ];
+
+char *exepath(str)
+char *str;
+{
+	char *tmp, *tmp2;
+	int bsize;
+
+	if (!str) return (char *)0;
+	bsize = EXEPATHBUFSZ;
+	tmp = exepathbuf;
+# ifndef WIN32
+	strcpy (tmp, str);
+# else
+	*(tmp + GetModuleFileName((HANDLE)0, tmp, bsize)) = '\0';
+# endif
+	tmp2 = strrchr(tmp, PATH_SEPARATOR);
+	if (tmp2) *tmp2 = '\0';
+	return tmp;
+}
+#endif /* EXEPATH */
 
 #ifdef AMIGA
 #include "date.h"

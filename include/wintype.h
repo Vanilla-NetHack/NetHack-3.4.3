@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)wintype.h	3.2	96/02/18	*/
+/*	SCCS Id: @(#)wintype.h	3.3	96/02/18	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef WINTYPE_H
 #define WINTYPE_H
 
-typedef int winid;              /* a window identifier */
+typedef int winid;		/* a window identifier */
 
 /* generic parameter - must not be any larger than a pointer */
 typedef union any {
@@ -15,7 +15,7 @@ typedef union any {
     char a_char;
     /* add types as needed */
 } anything;
-#define ANY_P union any	/* avoid typedef in prototypes */
+#define ANY_P union any /* avoid typedef in prototypes */
 			/* (buggy old Ultrix compiler) */
 
 /* menu return list */
@@ -48,7 +48,7 @@ typedef struct mi {
 
 /* nh_poskey() modifier types */
 #define CLICK_1     1
-#define CLICK_2	    2
+#define CLICK_2     2
 
 /* invalid winid */
 #define WIN_ERR ((winid) -1)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.2	96/07/06	*/
+/*	SCCS Id: @(#)bones.c	3.3	97/10/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,12 +10,12 @@ extern char bones[];	/* from files.c */
 extern long bytes_counted;
 #endif
 
-static boolean FDECL(no_bones_level, (d_level *));
-static void FDECL(goodfruit, (int));
-static void FDECL(resetobjs,(struct obj *,BOOLEAN_P));
-static void FDECL(drop_upon_death, (struct monst *, struct obj *));
+STATIC_DCL boolean FDECL(no_bones_level, (d_level *));
+STATIC_DCL void FDECL(goodfruit, (int));
+STATIC_DCL void FDECL(resetobjs,(struct obj *,BOOLEAN_P));
+STATIC_DCL void FDECL(drop_upon_death, (struct monst *, struct obj *));
 
-static boolean
+STATIC_OVL boolean
 no_bones_level(lev)
 d_level *lev;
 {
@@ -34,7 +34,7 @@ d_level *lev;
 		);
 }
 
-static void
+STATIC_OVL void
 goodfruit(id)
 int id;
 {
@@ -48,7 +48,7 @@ int id;
 	}
 }
 
-static void
+STATIC_OVL void
 resetobjs(ochain,restore)
 struct obj *ochain;
 boolean restore;
@@ -111,7 +111,7 @@ boolean restore;
 	}
 }
 
-static void
+STATIC_OVL void
 drop_upon_death(mtmp, cont)
 struct monst *mtmp;
 struct obj *cont;
@@ -140,7 +140,7 @@ struct obj *cont;
 		long ugold = u.ugold;
 		if (mtmp) mtmp->mgold = ugold;
 		else if (cont) add_to_container(cont, mkgoldobj(ugold));
-		else mkgold(ugold, u.ux, u.uy);
+		else (void)mkgold(ugold, u.ux, u.uy);
 		u.ugold = ugold;	/* undo mkgoldobj()'s removal */
 	}
 }
@@ -201,6 +201,7 @@ savebones()
 	}
 
  make_bones:
+	dmonsfree();
 	unleash_all();
 	/* in case these characters are not in their home bases */
 	mtmp2 = fmon;
@@ -212,6 +213,16 @@ savebones()
 			|| mtmp->data == &mons[PM_VLAD_THE_IMPALER])
 		    mongone(mtmp);
 	}
+#ifdef STEED
+	if (u.usteed) {
+	    coord cc;
+
+	    /* Move the steed to an adjacent square */
+	    if (enexto(&cc, u.ux, u.uy, u.usteed->data))
+	    	rloc_to(u.usteed, cc.x, cc.y);
+	    u.usteed = 0;
+	}
+#endif
 
 	/* mark all fruits as nonexistent; when we come to them we'll mark
 	 * them as existing (using goodfruit())
@@ -226,13 +237,12 @@ savebones()
 		struct obj *otmp;
 
 		/* embed your possessions in your statue */
-		otmp = mk_named_object(STATUE, Upolyd ? uasmon : player_mon(),
+		otmp = mk_named_object(STATUE, &mons[u.umonnum],
 				       u.ux, u.uy, plname);
-		if (!otmp) {
-			drop_upon_death((struct monst *)0, (struct obj *)0);
-			return;
-		}
-		drop_upon_death(mtmp = (struct monst *)0, otmp);
+
+		drop_upon_death((struct monst *)0, otmp);
+		if (!otmp) return;	/* couldn't make statue */
+		mtmp = (struct monst *)0;
 	} else if (u.ugrave_arise < LOW_PM) {
 		/* drop everything */
 		drop_upon_death((struct monst *)0, (struct obj *)0);
@@ -244,6 +254,9 @@ savebones()
 		in_mklev = FALSE;
 		if (!mtmp) return;
 		Strcpy((char *) mtmp->mextra, plname);
+		/* Leave a headstone */
+		if (levl[u.ux][u.uy].typ == ROOM && !t_at(u.ux, u.uy))
+		    levl[u.ux][u.uy].typ = GRAVE;
 	} else {
 		/* give your possessions to the monster you become */
 		in_mklev = TRUE;
@@ -264,7 +277,8 @@ savebones()
 	if (mtmp) {
 		mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
 		mtmp->mhp = mtmp->mhpmax = u.uhpmax;
-		mtmp->msleep = 1;
+		mtmp->female = flags.female;
+		mtmp->msleeping = 1;
 	}
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		resetobjs(mtmp->minvent,FALSE);
@@ -278,6 +292,9 @@ savebones()
 	}
 	resetobjs(fobj,FALSE);
 	resetobjs(level.buriedobjlist, FALSE);
+
+	/* Hero is no longer on the map. */
+	u.ux = u.uy = 0;
 
 	/* Clear all memory from the level. */
 	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++) {
@@ -329,6 +346,7 @@ savebones()
 	bwrite(fd, (genericptr_t) &c, sizeof c);
 	bwrite(fd, (genericptr_t) bonesid, (unsigned) c);	/* DD.nnn */
 	savefruitchn(fd, WRITE_SAVE | FREE_SAVE);
+	update_mlstmv();	/* update monsters for eventual restoration */
 	savelev(fd, ledger_no(&u.uz), WRITE_SAVE | FREE_SAVE);
 	bclose(fd);
 	commit_bonesfile(&u.uz);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.2	96/11/17	*/
+/*	SCCS Id: @(#)wizard.c	3.3	99/03/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,13 +12,13 @@
 
 #ifdef OVLB
 
-static short FDECL(which_arti, (int));
-static boolean FDECL(mon_has_arti, (struct monst *,SHORT_P));
-static struct monst *FDECL(other_mon_has_arti, (struct monst *,SHORT_P));
-static struct obj *FDECL(on_ground, (SHORT_P));
-static boolean FDECL(you_have, (int));
-static long FDECL(target_on, (int,struct monst *));
-static long FDECL(strategy, (struct monst *));
+STATIC_DCL short FDECL(which_arti, (int));
+STATIC_DCL boolean FDECL(mon_has_arti, (struct monst *,SHORT_P));
+STATIC_DCL struct monst *FDECL(other_mon_has_arti, (struct monst *,SHORT_P));
+STATIC_DCL struct obj *FDECL(on_ground, (SHORT_P));
+STATIC_DCL boolean FDECL(you_have, (int));
+STATIC_DCL long FDECL(target_on, (int,struct monst *));
+STATIC_DCL long FDECL(strategy, (struct monst *));
 
 static NEARDATA const int nasties[] = {
 	PM_COCKATRICE, PM_ETTIN, PM_STALKER, PM_MINOTAUR, PM_RED_DRAGON,
@@ -26,9 +26,10 @@ static NEARDATA const int nasties[] = {
 	PM_ROCK_TROLL, PM_XAN, PM_GREMLIN, PM_UMBER_HULK, PM_VAMPIRE_LORD,
 	PM_XORN, PM_ZRUTY, PM_ELF_LORD, PM_ELVENKING, PM_YELLOW_DRAGON,
 	PM_LEOCROTTA, PM_BALUCHITHERIUM, PM_CARNIVOROUS_APE, PM_FIRE_GIANT,
-	PM_COUATL, PM_CAPTAIN, PM_WINGED_GARGOYLE, PM_MIND_FLAYER,
-	PM_FIRE_ELEMENTAL, PM_JABBERWOCK, PM_MASTER_LICH, PM_OGRE_KING,
-	PM_OLOG_HAI, PM_IRON_GOLEM, PM_OCHRE_JELLY
+	PM_COUATL, PM_CAPTAIN, PM_WINGED_GARGOYLE, PM_MASTER_MIND_FLAYER,
+	PM_FIRE_ELEMENTAL, PM_JABBERWOCK, PM_ARCH_LICH, PM_OGRE_KING,
+	PM_OLOG_HAI, PM_IRON_GOLEM, PM_OCHRE_JELLY, PM_GREEN_SLIME,
+	PM_DISENCHANTER
 	};
 
 static NEARDATA const unsigned wizapp[] = {
@@ -78,8 +79,8 @@ amulet()
 		return;
 	/* find Wizard, and wake him if necessary */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(mtmp->iswiz && mtmp->msleep && !rn2(40)) {
-		mtmp->msleep = 0;
+	    if (mtmp->iswiz && mtmp->msleeping && !rn2(40)) {
+		mtmp->msleeping = 0;
 		if (distu(mtmp->mx,mtmp->my) > 2)
 		    You(
     "get the creepy feeling that somebody noticed your taking the Amulet."
@@ -128,7 +129,7 @@ register struct monst *mtmp;
 
 #define M_Wants(mask)	(mtmp->data->mflags3 & (mask))
 
-static short
+STATIC_OVL short
 which_arti(mask)
 	register int mask;
 {
@@ -147,7 +148,7 @@ which_arti(mask)
  *	since bell, book, candle, and amulet are all objects, not really
  *	artifacts right now.	[MRS]
  */
-static boolean
+STATIC_OVL boolean
 mon_has_arti(mtmp, otyp)
 	register struct monst *mtmp;
 	register short	otyp;
@@ -165,7 +166,7 @@ mon_has_arti(mtmp, otyp)
 
 }
 
-static struct monst *
+STATIC_OVL struct monst *
 other_mon_has_arti(mtmp, otyp)
 	register struct monst *mtmp;
 	register short	otyp;
@@ -179,7 +180,7 @@ other_mon_has_arti(mtmp, otyp)
 	return((struct monst *)0);
 }
 
-static struct obj *
+STATIC_OVL struct obj *
 on_ground(otyp)
 	register short	otyp;
 {
@@ -194,7 +195,7 @@ on_ground(otyp)
 	return((struct obj *)0);
 }
 
-static boolean
+STATIC_OVL boolean
 you_have(mask)
 	register int mask;
 {
@@ -209,7 +210,7 @@ you_have(mask)
 	return(0);
 }
 
-static long
+STATIC_OVL long
 target_on(mask, mtmp)
 	register int mask;
 	register struct monst *mtmp;
@@ -232,7 +233,7 @@ target_on(mask, mtmp)
 	return(STRAT_NONE);
 }
 
-static long
+STATIC_OVL long
 strategy(mtmp)
 	register struct monst *mtmp;
 {
@@ -365,7 +366,7 @@ aggravate()
 	register struct monst *mtmp;
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
-		mtmp->msleep = 0;
+		mtmp->msleeping = 0;
 		if(!mtmp->mcanmove && !rn2(5)) {
 			mtmp->mfrozen = 0;
 			mtmp->mcanmove = 1;
@@ -380,7 +381,7 @@ clonewiz()
 
 	if ((mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR],
 				u.ux, u.uy, NO_MM_FLAGS)) != 0) {
-	    mtmp2->msleep = mtmp2->mtame = mtmp2->mpeaceful = 0;
+	    mtmp2->msleeping = mtmp2->mtame = mtmp2->mpeaceful = 0;
 	    if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
 		add_to_minv(mtmp2, mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE));
 	    }
@@ -388,6 +389,15 @@ clonewiz()
 	    mtmp2->mappearance = wizapp[rn2(SIZE(wizapp))];
 	    newsym(mtmp2->mx,mtmp2->my);
 	}
+}
+
+/* also used by newcham() */
+int
+pick_nasty()
+{
+    /* To do?  Possibly should filter for appropriate forms when
+       in the elemental planes or surrounded by water or lava. */
+    return nasties[rn2(SIZE(nasties))];
 }
 
 /* create some nasty monsters, aligned or neutral with the caster */
@@ -406,9 +416,9 @@ nasty(mcast)
 
 	for(i = rnd(tmp); i > 0; --i)
 	    for(j=0; j<20; j++) {
-		if((mtmp = makemon(&mons[nasties[rn2(SIZE(nasties))]],
-				   u.ux, u.uy, NO_MM_FLAGS))) {
-		    mtmp->msleep = mtmp->mpeaceful = mtmp->mtame = 0;
+		if ((mtmp = makemon(&mons[pick_nasty()],
+				    u.ux, u.uy, NO_MM_FLAGS)) != 0) {
+		    mtmp->msleeping = mtmp->mpeaceful = mtmp->mtame = 0;
 		    set_malign(mtmp);
 		} else /* GENOD? */
 		    mtmp = makemon((struct permonst *)0,
@@ -432,8 +442,7 @@ resurrect()
 	if (!flags.no_of_wizards) {
 	    /* make a new Wizard */
 	    verb = "kill";
-	    mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR],
-				u.ux, u.uy, NO_MM_FLAGS);
+	    mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy, MM_NOWAIT);
 	} else {
 	    /* look for a migrating Wizard */
 	    verb = "elude";
@@ -446,11 +455,11 @@ resurrect()
 		    mon_catchup_elapsed_time(mtmp, elapsed);
 		    if (elapsed >= LARGEST_INT) elapsed = LARGEST_INT - 1;
 		    elapsed /= 50L;
-		    if (mtmp->msleep && rn2((int)elapsed + 1))
-			mtmp->msleep = 0;
+		    if (mtmp->msleeping && rn2((int)elapsed + 1))
+			mtmp->msleeping = 0;
 		    if (mtmp->mfrozen == 1) /* would unfreeze on next move */
 			mtmp->mfrozen = 0,  mtmp->mcanmove = 1;
-		    if (mtmp->mcanmove && !mtmp->msleep) {
+		    if (mtmp->mcanmove && !mtmp->msleeping) {
 			*mmtmp = mtmp->nmon;
 			mon_arrive(mtmp, TRUE);
 			/* note: there might be a second Wizard; if so,
@@ -463,7 +472,7 @@ resurrect()
 	}
 
 	if (mtmp) {
-		mtmp->msleep = mtmp->mtame = mtmp->mpeaceful = 0;
+		mtmp->msleeping = mtmp->mtame = mtmp->mpeaceful = 0;
 		set_malign(mtmp);
 		pline("A voice booms out...");
 		verbalize("So thou thought thou couldst %s me, fool.", verb);

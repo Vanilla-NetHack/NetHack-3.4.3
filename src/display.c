@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.2	96/05/19	*/
+/*	SCCS Id: @(#)display.c	3.3	97/01/24	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -31,7 +31,7 @@
  * Display rules:
  *
  *	If the location is in sight, display in order:
- *		visible monsters
+ *		visible (or sensed) monsters
  *		visible objects
  *		known traps
  *		background
@@ -55,6 +55,7 @@
  * map_background
  * map_object
  * map_trap
+ * map_invisible
  * unmap_object
  *
  * If you absolutely must override the in-sight/out-of-sight rules, there
@@ -80,10 +81,11 @@
  *
  * see_monsters
  * see_objects
+ * see_traps
  *
  * These are only used when something affects all of the monsters or
- * objects.  For objects, the only thing is hallucination.  For monsters,
- * there are hallucination and changing from/to blindness, etc.
+ * objects or traps.  For objects and traps, the only thing is hallucination.
+ * For monsters, there are hallucination and changing from/to blindness, etc.
  *
  *
  * tmp_at
@@ -114,19 +116,20 @@
  *		     vertical.
  */
 #include "hack.h"
+#include "region.h"
 
-static void FDECL(display_monster,(XCHAR_P,XCHAR_P,struct monst *,int,XCHAR_P));
-static int FDECL(swallow_to_glyph, (int, int));
+STATIC_DCL void FDECL(display_monster,(XCHAR_P,XCHAR_P,struct monst *,int,XCHAR_P));
+STATIC_DCL int FDECL(swallow_to_glyph, (int, int));
 
-static int FDECL(check_pos, (int, int, int));
-static boolean FDECL(more_than_one, (int, int, int, int, int));
-static int FDECL(set_twall, (int,int, int,int, int,int, int,int));
-static int FDECL(set_wall, (int, int, int));
-static int FDECL(set_corn, (int,int, int,int, int,int, int,int));
-static int FDECL(set_crosswall, (int, int));
-static void FDECL(set_seenv, (struct rm *, int, int, int, int));
-static void FDECL(t_warn, (struct rm *));
-static int FDECL(wall_angle, (struct rm *));
+STATIC_DCL int FDECL(check_pos, (int, int, int));
+STATIC_DCL boolean FDECL(more_than_one, (int, int, int, int, int));
+STATIC_DCL int FDECL(set_twall, (int,int, int,int, int,int, int,int));
+STATIC_DCL int FDECL(set_wall, (int, int, int));
+STATIC_DCL int FDECL(set_corn, (int,int, int,int, int,int, int,int));
+STATIC_DCL int FDECL(set_crosswall, (int, int));
+STATIC_DCL void FDECL(set_seenv, (struct rm *, int, int, int, int));
+STATIC_DCL void FDECL(t_warn, (struct rm *));
+STATIC_DCL int FDECL(wall_angle, (struct rm *));
 
 #ifdef INVISIBLE_OBJECTS
 /*
@@ -162,6 +165,9 @@ vobj_at(x,y)
  * rid of 3 routines that don't do very much anyway.  And then stop
  * having to create fake objects and traps.  However, I am reluctant to
  * make this change.
+ */
+/* FIXME: some of these use xchars for x and y, and some use ints.  Make
+ * this consistent.
  */
 
 /*
@@ -221,12 +227,31 @@ map_object(obj, show)
 }
 
 /*
+ * map_invisible()
+ *
+ * Make the hero remember that a square contains an invisible monster.
+ * This is a special case in that the square will continue to be displayed
+ * this way even when the hero is close enough to see it.  To get rid of
+ * this and display the square's actual contents, use unmap_object() followed
+ * by newsym() if necessary.
+ */
+void
+map_invisible(x, y)
+register xchar x, y;
+{
+    if (level.flags.hero_memory)
+	levl[x][y].glyph = GLYPH_INVISIBLE;
+    show_glyph(x, y, GLYPH_INVISIBLE);
+}
+
+/*
  * unmap_object()
  *
- * Remove something from the map when detection reveals that it isn't
- * there any more.  Replace it with background or known trap, but not
- * with any other remembered object.  No need to update the display;
- * a full update is imminent.
+ * Remove something from the map when the hero realizes it's not there any
+ * more.  Replace it with background or known trap, but not with any other
+ * If this is used for detection, a full screen update is imminent anyway;
+ * if this is used to get rid of an invisible monster notation, we might have
+ * to call newsym().
  */
 void
 unmap_object(x, y)
@@ -291,7 +316,7 @@ void map_location(x,y,show)
  * a worm tail.
  *
  */
-static void
+STATIC_OVL void
 display_monster(x, y, mon, in_sight, worm_tail)
     register xchar x, y;	/* display position */
     register struct monst *mon;	/* monster to display */
@@ -354,17 +379,25 @@ display_monster(x, y, mon, in_sight, worm_tail)
 
     /* If the mimic is unsucessfully mimicing something, display the monster */
     if (!mon_mimic || sensed) {
-	if (mon->mtame && !Hallucination) {
+	int num;
+
+	if (Detect_monsters) {
 	    if (worm_tail)
-		show_glyph(x,y, petnum_to_glyph(PM_LONG_WORM_TAIL));
+		num = detected_monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
 	    else
-		show_glyph(x,y, pet_to_glyph(mon));
+		num = detected_mon_to_glyph(mon);
+	} else if (mon->mtame && !Hallucination) {
+	    if (worm_tail)
+		num = petnum_to_glyph(PM_LONG_WORM_TAIL);
+	    else
+		num = pet_to_glyph(mon);
 	} else {
 	    if (worm_tail)
-		show_glyph(x,y, monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL)));
+		num = monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
 	    else
-		show_glyph(x,y, mon_to_glyph(mon));
+		num = mon_to_glyph(mon);
 	}
+	show_glyph(x,y,num);
     }
 }
 
@@ -374,6 +407,9 @@ display_monster(x, y, mon, in_sight, worm_tail)
  * Feel the given location.  This assumes that the hero is blind and that
  * the given position is either the hero's or one of the eight squares
  * adjacent to the hero (except for a boulder push).
+ * If an invisible monster has gone away, that will be discovered.  If an
+ * invisible monster has appeared, this will _not_ be discovered since
+ * searching only finds one monster per turn so we must check that separately.
  */
 void
 feel_location(x, y)
@@ -382,6 +418,13 @@ feel_location(x, y)
     struct rm *lev = &(levl[x][y]);
     struct obj *boulder;
     register struct monst *mon;
+
+    /* If the hero's memory of an invisible monster is accurate, we want to keep
+     * him from detecting the same monster over and over again on each turn.
+     * We must return (so we don't erase the monster).  (We must also, in the
+     * search function, be sure to skip over previously detected 'I's.)
+     */
+    if (glyph_is_invisible(levl[x][y].glyph) && m_at(x,y)) return;
 
     /* The hero can't feel non pool locations while under water. */
     if (Underwater && !Is_waterlevel(&u.uz) && ! is_pool(x,y))
@@ -520,6 +563,7 @@ newsym(x,y)
 
     /* Can physically see the location. */
     if (cansee(x,y)) {
+        NhRegion* reg = visible_region_at(x,y);
 	/*
 	 * Don't use templit here:  E.g.
 	 *
@@ -534,6 +578,10 @@ newsym(x,y)
 	 */
 	lev->waslit = (lev->lit!=0);	/* remember lit condition */
 
+	if (reg != NULL && ACCESSIBLE(lev->typ)) {
+	    show_region(reg,x,y);
+	    return;
+	}
 	if (x == u.ux && y == u.uy) {
 	    if (canseeself()) {
 		_map_location(x,y,0);	/* map *under* self */
@@ -550,8 +598,11 @@ newsym(x,y)
 			? (!mon->minvis || See_invisible)
 			: (mon_visible(mon)) || sensemon(mon))))) {
 		_map_location(x,y,0);	/* map under the monster */
+		/* also gets rid of any invisibility glyph */
 		display_monster(x,y,mon,see_it,worm_tail);
 	    }
+	    else if (glyph_is_invisible(levl[x][y].glyph))
+		map_invisible(x, y);
 	    else
 		_map_location(x,y,1);	/* map the location */
 	}
@@ -564,9 +615,12 @@ newsym(x,y)
 
 	    if (canseeself()) display_self();
 	}
-	else if ((mon = m_at(x,y)) && sensemon(mon) &&
-				!((x != mon->mx)  || (y != mon->my))) {
+	else if ((mon = m_at(x,y)) &&
+		(sensemon(mon) ||
+		    (see_with_infrared(mon) && mon_visible(mon))) &&
+		!((x != mon->mx) || (y != mon->my))) {
 	    /* Monsters are printed every time. */
+	    /* This also gets rid of any invisibility glyph */
 	    display_monster(x,y,mon,0,0);
 	}
 	/*
@@ -697,10 +751,9 @@ tmp_at(x, y)
 		saved[sidx++].y = y;
 	    }
 
-	    else {	/* DISP_FLASH/MISC */
+	    else {	/* DISP_FLASH/ALWAYS */
 		if (sx >= 0)		/* not first call */
 		    newsym(sx,sy);	/* update the old position */
-
 		sx = x;		/* save previous pos for next call */
 		sy = y;
 	    }
@@ -854,6 +907,7 @@ under_ground(mode)
  * Loop through all of the monsters and update them.  Called when:
  *	+ going blind & telepathic
  *	+ regaining sight & telepathic
+ *      + getting and losing infravision 
  *	+ hallucinating
  *	+ doing a full screen redraw
  *	+ see invisible times out or a ring of see invisible is taken off
@@ -904,6 +958,22 @@ see_objects()
     register struct obj *obj;
     for(obj = fobj; obj; obj = obj->nobj)
 	if (vobj_at(obj->ox,obj->oy) == obj) newsym(obj->ox, obj->oy);
+}
+
+/*
+ * Update hallucinated traps.
+ */
+void
+see_traps()
+{
+    struct trap *trap;
+    int glyph;
+
+    for (trap = ftrap; trap; trap = trap->ntrap) {
+	glyph = glyph_at(trap->tx, trap->ty);
+	if (glyph_is_trap(glyph))
+	    newsym(trap->tx, trap->ty);
+    }
 }
 
 /*
@@ -1012,8 +1082,14 @@ show_glyph(x,y,glyph)
 	    text = "cmap_index";	offset = glyph - GLYPH_CMAP_OFF;
 	} else if (glyph >= GLYPH_OBJ_OFF) {		/* object */
 	    text = "object";		offset = glyph - GLYPH_OBJ_OFF;
+	} else if (glyph >= GLYPH_RIDDEN_OFF) {		/* ridden mon */
+	    text = "ridden mon";	offset = glyph - GLYPH_RIDDEN_OFF;
 	} else if (glyph >= GLYPH_BODY_OFF) {		/* a corpse */
 	    text = "corpse";		offset = glyph - GLYPH_BODY_OFF;
+	} else if (glyph >= GLYPH_DETECT_OFF) {		/* detected mon */
+	    text = "detected mon";	offset = glyph - GLYPH_DETECT_OFF;
+	} else if (glyph >= GLYPH_INVIS_OFF) {		/* invisible mon */
+	    text = "invisible mon";	offset = glyph - GLYPH_INVIS_OFF;
 	} else if (glyph >= GLYPH_PET_OFF) {		/* a pet */
 	    text = "pet";		offset = glyph - GLYPH_PET_OFF;
 	} else {					/* a monster */
@@ -1156,7 +1232,9 @@ back_to_glyph(x,y)
 
     switch (ptr->typ) {
 	case SCORR:
-	case STONE:		idx = S_stone;	  break;
+	case STONE:
+	    idx = level.flags.arboreal ? S_tree : S_stone;
+	    break;
 	case ROOM:		idx = S_room;	  break;
 	case CORR:
 	    idx = (ptr->waslit || flags.lit_corridor) ? S_litcorr : S_corr;
@@ -1186,6 +1264,8 @@ back_to_glyph(x,y)
 	    } else
 		idx = S_ndoor;
 	    break;
+	case IRONBARS:	idx = S_bars;     break;
+	case TREE:		idx = S_tree;     break;
 	case POOL:
 	case MOAT:		idx = S_pool;	  break;
 	case STAIRS:
@@ -1197,6 +1277,7 @@ back_to_glyph(x,y)
 	case FOUNTAIN:		idx = S_fountain; break;
 	case SINK:		idx = S_sink;     break;
 	case ALTAR:		idx = S_altar;    break;
+	case GRAVE:		idx = S_grave;    break;
 	case THRONE:		idx = S_throne;   break;
 	case LAVAPOOL:		idx = S_lava;	  break;
 	case ICE:		idx = S_ice;      break;
@@ -1239,7 +1320,7 @@ back_to_glyph(x,y)
  * If you don't want a patchwork monster while hallucinating, decide on
  * a random monster in swallowed() and don't use what_mon() here.
  */
-static int
+STATIC_OVL int
 swallow_to_glyph(mnum, loc)
     int mnum;
     int loc;
@@ -1298,7 +1379,7 @@ glyph_at(x, y)
 /* ------------------------------------------------------------------------- */
 /* Wall Angle -------------------------------------------------------------- */
 
-/*#define WA_VERBOSE	/* give (x,y) locations for all "bad" spots */
+/*#define WA_VERBOSE*/	/* give (x,y) locations for all "bad" spots */
 
 #ifdef WA_VERBOSE
 
@@ -1343,7 +1424,7 @@ error4(x, y, a, b, c, dd)
  *
  * Things that are ambigious: lava
  */
-static int
+STATIC_OVL int
 check_pos(x, y, which)
     int x, y, which;
 {
@@ -1356,7 +1437,7 @@ check_pos(x, y, which)
 
 /* Return TRUE if more than one is non-zero. */
 /*ARGSUSED*/
-static boolean
+STATIC_OVL boolean
 more_than_one(x, y, a, b, c)
     int x, y, a, b, c;
 {
@@ -1370,7 +1451,7 @@ more_than_one(x, y, a, b, c)
 }
 
 /* Return the wall mode for a T wall. */
-static int
+STATIC_OVL int
 set_twall(x0,y0, x1,y1, x2,y2, x3,y3)
 int x0,y0, x1,y1, x2,y2, x3,y3;
 {
@@ -1388,7 +1469,7 @@ int x0,y0, x1,y1, x2,y2, x3,y3;
 }
 
 /* Return wall mode for a horizontal or vertical wall. */
-static int
+STATIC_OVL int
 set_wall(x, y, horiz)
     int x, y, horiz;
 {
@@ -1411,7 +1492,7 @@ set_wall(x, y, horiz)
 
 
 /* Return a wall mode for a corner wall. (x4,y4) is the "inner" position. */
-static int
+STATIC_OVL int
 set_corn(x1,y1, x2,y2, x3,y3, x4,y4)
 	int x1, y1, x2, y2, x3, y3, x4, y4;
 {
@@ -1440,7 +1521,7 @@ set_corn(x1,y1, x2,y2, x3,y3, x4,y4)
 }
 
 /* Return mode for a crosswall. */
-static int
+STATIC_OVL int
 set_crosswall(x, y)
     int x, y;
 {
@@ -1558,7 +1639,7 @@ unsigned char seenv_matrix[3][3] = { {SV2,   SV1, SV0},
 #define sign(z) ((z) < 0 ? -1 : ((z) > 0 ? 1 : 0))
 
 /* Set the seen vector of lev as if seen from (x0,y0) to (x,y). */
-static void
+STATIC_OVL void
 set_seenv(lev, x0, y0, x, y)
     struct rm *lev;
     int x0, y0, x, y;	/* from, to */
@@ -1625,7 +1706,7 @@ static const int cross_matrix[4][6] = {
 
 
 /* Print out a T wall warning and all interesting info. */
-static void
+STATIC_OVL void
 t_warn(lev)
     struct rm *lev;
 {
@@ -1654,7 +1735,7 @@ t_warn(lev)
  * draw diagrams.  See rm.h for more details on the wall modes and
  * seen vector (SV).
  */
-static int
+STATIC_OVL int
 wall_angle(lev)
     struct rm *lev;
 {

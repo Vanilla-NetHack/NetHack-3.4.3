@@ -11,7 +11,7 @@ File
 	---
 	"Save Game"	"S"
 	---
-	"Quit"		?"[1][Really quit?][ Yes | No ]":%A"Qy":!
+	"Quit"		?"[1][Really quit?][ Yes | No ]":%A"#quit y":!
 Edit
 	"Copy"		%C
 	"Paste"		%P
@@ -26,12 +26,15 @@ Inventory
 	"Wear armor"	"W"
 	"Take off armor" "T"
 	"Wield weapon"	"w"
+	"Exchange weapons"	"x"
+	"Ready ammo in quiver"	"Q"
 	---
 	"Eat"		"e"
 	"Quaff potion"	"q"
 	---
 	"Drop"		"d"
 	"Throw"		"t"
+	"Fire"		"f"
 Move
 	"North"	"k"	4800
 	"South"	"j"	5000
@@ -44,7 +47,7 @@ Move
 	"Close door" "c"
 Misc
 	"Help"	"?"	6200
-	"List known spells" "x"
+	"List known spells" "+"
 	"Cast spell" "Z"
 	---
 	"Abort" 001b	6100

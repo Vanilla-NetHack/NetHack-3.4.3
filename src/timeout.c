@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.2	96/06/02	*/
+/*	SCCS Id: @(#)timeout.c	3.3	1999/02/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,9 +8,10 @@
 STATIC_DCL void NDECL(stoned_dialogue);
 STATIC_DCL void NDECL(vomiting_dialogue);
 STATIC_DCL void NDECL(choke_dialogue);
+STATIC_DCL void NDECL(slime_dialogue);
 STATIC_DCL void NDECL(slip_or_trip);
-static void FDECL(see_lamp_flicker, (struct obj *, const char *));
-static void FDECL(lantern_message, (struct obj *));
+STATIC_DCL void FDECL(see_lamp_flicker, (struct obj *, const char *));
+STATIC_DCL void FDECL(lantern_message, (struct obj *));
 
 #ifdef OVLB
 
@@ -31,7 +32,7 @@ stoned_dialogue()
 	if(i > 0 && i <= SIZE(stoned_texts))
 		pline(stoned_texts[SIZE(stoned_texts) - i]);
 	if(i == 5)
-		Fast &= ~(TIMEOUT|INTRINSIC);
+		HFast = 0L;
 	if(i == 3)
 		nomul(-3);
 	exercise(A_DEX, FALSE);
@@ -39,11 +40,11 @@ stoned_dialogue()
 
 /* He is getting sicker and sicker prior to vomiting */
 static NEARDATA const char *vomiting_texts[] = {
-	"You are feeling mildly nauseous.",	/* 14 */
-	"You feel slightly confused.",		/* 11 */
-	"You can't seem to think straight.",	/* 8 */
-	"You feel incredibly sick.",		/* 5 */
-	"You suddenly vomit!"			/* 2 */
+	"are feeling mildly nauseous.",		/* 14 */
+	"feel slightly confused.",		/* 11 */
+	"can't seem to think straight.",	/* 8 */
+	"feel incredibly sick.",		/* 5 */
+	"suddenly vomit!"			/* 2 */
 };
 
 STATIC_OVL void
@@ -53,7 +54,7 @@ vomiting_dialogue()
 
 	if ((((Vomiting & TIMEOUT) % 3L) == 2) && (i >= 0)
 	    && (i < SIZE(vomiting_texts)))
-		pline(vomiting_texts[SIZE(vomiting_texts) - i - 1]);
+		You(vomiting_texts[SIZE(vomiting_texts) - i - 1]);
 
 	switch ((int) i) {
 	case 0:
@@ -100,6 +101,38 @@ choke_dialogue()
 	exercise(A_STR, FALSE);
 }
 
+static NEARDATA const char *slime_texts[] = {
+	"You are turning a little green.",           /* 5 */
+	"Your limbs are getting oozy.",              /* 4 */
+	"Your skin begins to peel away.",            /* 3 */
+	"You are turning into a green slime.",       /* 2 */
+	"You have become a green slime."             /* 1 */
+};
+
+STATIC_OVL void
+slime_dialogue()
+{
+	register long i = (Slimed & TIMEOUT) / 2L;
+
+	if (((Slimed & TIMEOUT) % 2L) && i >= 0
+	    && i < SIZE(slime_texts))
+	    pline(slime_texts[SIZE(slime_texts) - i - 1]);
+	if(i == 4)
+	    HFast = 0;
+	exercise(A_DEX, FALSE);
+}
+
+void
+burn_away_slime()
+{
+	if (Slimed) {
+	    pline_The("slime that covers you is burned away!");
+	    Slimed = 0L;
+	}
+	return;
+}
+
+
 #endif /* OVLB */
 #ifdef OVL0
 
@@ -129,19 +162,50 @@ nh_timeout()
 	}
 	if(u.uinvulnerable) return; /* things past this point could kill you */
 	if(Stoned) stoned_dialogue();
+	if(Slimed) slime_dialogue();
 	if(Vomiting) vomiting_dialogue();
 	if(Strangled) choke_dialogue();
-	if(u.mtimedone) if(!--u.mtimedone) rehumanize();
+	if(u.mtimedone && !--u.mtimedone) {
+		if (Unchanging)
+			u.mtimedone = rnd(100*youmonst.data->mlevel + 1);
+		else
+			rehumanize();
+	}
 	if(u.ucreamed) u.ucreamed--;
 
+	/* Dissipate spell-based protection. */
+	if (u.usptime) {
+	    if (--u.usptime == 0 && u.uspellprot) {
+		u.usptime = u.uspmtime;
+		u.uspellprot--;
+		find_ac();
+		if (!Blind)
+		    Norep("The %s haze around you %s.", hcolor(golden),
+			  u.uspellprot ? "becomes less dense" : "disappears");
+	    }
+	}
+
+#ifdef STEED
+	if (u.ugallop) {
+	    if (--u.ugallop == 0L && u.usteed)
+	    	pline("%s stops galloping.", Monnam(u.usteed));
+	}
+#endif
+
 	for(upp = u.uprops; upp < u.uprops+SIZE(u.uprops); upp++)
-	    if((upp->p_flgs & TIMEOUT) && !(--upp->p_flgs & TIMEOUT)) {
+	    if((upp->intrinsic & TIMEOUT) && !(--upp->intrinsic & TIMEOUT)) {
 		switch(upp - u.uprops){
 		case STONED:
 			if (!killer) {
-				killer_format = KILLED_BY_AN;
-				killer = "cockatrice";
+				killer_format = KILLED_BY;
+				killer = "petrification";
 			} done(STONING);
+			break;
+		case SLIMED:
+			if (!killer) {
+				killer_format = KILLED_BY;
+				killer = "turning into green slime";
+			} done(TURNED_SLIME);
 			break;
 		case VOMITING:
 			make_vomiting(0L, TRUE);
@@ -168,9 +232,7 @@ nh_timeout()
 			done(POISONING);
 			break;
 		case FAST:
-			if (Fast & ~INTRINSIC) /* boot speed */
-				;
-			else
+			if (!Very_fast)
 				You_feel("yourself slowing down%s.",
 							Fast ? " a bit" : "");
 			break;
@@ -191,7 +253,7 @@ nh_timeout()
 			break;
 		case INVIS:
 			newsym(u.ux,u.uy);
-			if (!Invis && !(HInvis & I_BLOCKED) &&
+			if (!Invis && !BInvis &&
 			    !See_invisible && !Blind) {
 				You("are no longer invisible.");
 				stop_occupation();
@@ -214,16 +276,16 @@ nh_timeout()
 			break;
 		case SLEEPING:
 			if (unconscious() || Sleep_resistance)
-				Sleeping += rnd(100);
-			else {
+				HSleeping += rnd(100);
+			else if (ESleeping) {
 				You("fall asleep.");
 				sleeptime = rnd(20);
 				fall_asleep(-sleeptime, TRUE);
-				Sleeping = sleeptime + rnd(100);
+				HSleeping = sleeptime + rnd(100);
 			}
 			break;
 		case LEVITATION:
-			(void) float_down(I_SPECIAL|TIMEOUT);
+			(void) float_down(I_SPECIAL|TIMEOUT, 0L);
 			break;
 		case STRANGLED:
 			killer_format = KILLED_BY;
@@ -248,9 +310,12 @@ nh_timeout()
 			}
 			/* from outside means slippery ice; don't reset
 			   counter if that's the only fumble reason */
-			Fumbling &= ~FROMOUTSIDE;
+			HFumbling &= ~FROMOUTSIDE;
 			if (Fumbling)
-			    Fumbling += rnd(20);
+			    HFumbling += rnd(20);
+			break;
+		case DETECT_MONSTERS:
+			see_monsters();
 			break;
 		}
 	}
@@ -317,7 +382,8 @@ long timeout;
 	struct monst *mon, *mon2;
 	coord cc;
 	xchar x, y;
-	boolean yours, silent, canseeit = FALSE;
+	boolean yours, silent, knows_egg = FALSE;
+	boolean cansee_hatchspot = FALSE;
 	int i, mnum, hatchcount = 0;
 
 	egg = (struct obj *) arg;
@@ -332,7 +398,7 @@ long timeout;
 	/* only can hatch when in INVENT, FLOOR, MINVENT */
 	if (get_obj_location(egg, &x, &y, 0)) {
 	    hatchcount = rnd((int)egg->quan);
-	    canseeit = cansee(x, y) && !silent;
+	    cansee_hatchspot = cansee(x, y) && !silent;
 	    if (!(mons[mnum].geno & G_UNIQ) &&
 		   !(mvitals[mnum].mvflags & (G_GENOD | G_EXTINCT))) {
 		for (i = hatchcount; i > 0; i--) {
@@ -383,7 +449,7 @@ long timeout;
 	    + Or just kill any egg which gets sent to another level.
 	      Falling is the usual reason such transportation occurs.
 	    */
-	    canseeit = FALSE;
+	    cansee_hatchspot = FALSE;
 	    mon = ???
 	    }
 #endif
@@ -392,14 +458,20 @@ long timeout;
 	    char monnambuf[BUFSZ], carriedby[BUFSZ];
 	    boolean siblings = (hatchcount > 1), redraw = FALSE;
 
-	    if (canseeit) {
+	    if (cansee_hatchspot) {
 		Sprintf(monnambuf, "%s%s",
 			siblings ? "some " : "",
 			siblings ? makeplural(m_monnam(mon)) : a_monnam(mon));
-		learn_egg_type(mnum);
+		/* we don't learn the egg type here because learning
+		   an egg type requires either seeing the egg hatch
+		   or being familiar with the egg already,
+		   as well as being able to see the resulting
+		   monster, checked below
+		*/
 	    }
 	    switch (egg->where) {
 		case OBJ_INVENT:
+		    knows_egg = TRUE; /* true even if you are blind */
 		    if (Blind)
 			You_feel("%s %s from your pack!", something,
 			    locomotion(mon->data, "drop"));
@@ -416,18 +488,23 @@ long timeout;
 		    break;
 
 		case OBJ_FLOOR:
-		    if (canseeit) {
+		    if (cansee_hatchspot) {
+			knows_egg = TRUE;
 			You("see %s hatch.", monnambuf);
 			redraw = TRUE;	/* update egg's map location */
 		    }
 		    break;
 
 		case OBJ_MINVENT:
-		    if (canseeit) {
+		    if (cansee_hatchspot) {
 			/* egg carring monster might be invisible */
-			if (canseemon(egg->ocarry))
+			if (canseemon(egg->ocarry)) {
 			    Sprintf(carriedby, "%s pack",
 				     s_suffix(a_monnam(egg->ocarry)));
+			    knows_egg = TRUE;
+			}
+			else if (is_pool(mon->mx, mon->my))
+			    Strcpy(carriedby, "empty water");
 			else
 			    Strcpy(carriedby, "thin air");
 			You("see %s %s out of %s!", monnambuf,
@@ -442,6 +519,10 @@ long timeout;
 		    impossible("egg hatched where? (%d)", (int)egg->where);
 		    break;
 	    }
+
+	    if (cansee_hatchspot && knows_egg)
+		learn_egg_type(mnum);
+
 	    if (egg->quan > 0) {
 		/* still some eggs left */
 		attach_egg_hatch_timeout(egg);
@@ -470,6 +551,25 @@ int mnum;
 	mvitals[mnum].mvflags |= MV_KNOWS_EGG;
 	/* we might have just learned about other eggs being carried */
 	update_inventory();
+}
+
+/* Attach a fig_transform timeout to the given figurine. */
+void
+attach_fig_transform_timeout(figurine)
+struct obj *figurine;
+{
+	int i;
+
+	/* stop previous timer, if any */
+	(void) stop_timer(FIG_TRANSFORM, (genericptr_t) figurine);
+
+	/*
+	 * Decide when to transform the figurine.
+	 */
+	i = rnd(9000) + 200;
+	/* figurine will transform */
+	(void) start_timer((long)i, TIMER_OBJECT,
+				FIG_TRANSFORM, (genericptr_t)figurine);
 }
 
 /* give a fumble message */
@@ -523,7 +623,7 @@ slip_or_trip()
 }
 
 /* Print a lamp flicker message with tailer. */
-static void
+STATIC_OVL void
 see_lamp_flicker(obj, tailer)
 struct obj *obj;
 const char *tailer;
@@ -540,7 +640,7 @@ const char *tailer;
 }
 
 /* Print a dimming message for brass lanterns. */
-static void
+STATIC_OVL void
 lantern_message(obj)
 struct obj *obj;
 {
@@ -911,6 +1011,7 @@ begin_burn(obj, already_lit)
 		    turns = obj->age - 15L;
 		else
 		    turns = obj->age;
+		radius = candle_light_range(obj);
 		break;
 
 	    default:
@@ -1082,15 +1183,15 @@ typedef struct fe {
 } timer_element;
 
 #ifdef WIZARD
-static const char *FDECL(kind_name, (SHORT_P));
-static void FDECL(print_queue, (winid, timer_element *));
+STATIC_DCL const char *FDECL(kind_name, (SHORT_P));
+STATIC_DCL void FDECL(print_queue, (winid, timer_element *));
 #endif
-static void FDECL(insert_timer, (timer_element *));
-static timer_element *FDECL(remove_timer, (timer_element **, SHORT_P,
+STATIC_DCL void FDECL(insert_timer, (timer_element *));
+STATIC_DCL timer_element *FDECL(remove_timer, (timer_element **, SHORT_P,
 								genericptr_t));
-static boolean FDECL(mon_is_local, (struct monst *));
-static boolean FDECL(timer_is_local, (timer_element *));
-static int FDECL(maybe_write_timer, (int, int, BOOLEAN_P));
+STATIC_DCL boolean FDECL(mon_is_local, (struct monst *));
+STATIC_DCL boolean FDECL(timer_is_local, (timer_element *));
+STATIC_DCL int FDECL(maybe_write_timer, (int, int, BOOLEAN_P));
 
 /* ordered timer list */
 static timer_element *timer_base;		/* "active" */
@@ -1115,14 +1216,15 @@ static ttable timeout_funcs[NUM_TIME_FUNCS] = {
     TTAB(rot_corpse,	"rot_corpse"),
     TTAB(revive_mon,	"revive_mon"),
     TTAB(burn_object,	"burn_object"),
-    TTAB(hatch_egg,	"hatch_egg")
+    TTAB(hatch_egg,	"hatch_egg"),
+    TTAB(fig_transform,	"fig_transform")
 };
 #undef TTAB
 
 
 #if defined(WIZARD)
 
-static const char *
+STATIC_OVL const char *
 kind_name(kind)
     short kind;
 {
@@ -1135,7 +1237,7 @@ kind_name(kind)
     return "unknown";
 }
 
-static void
+STATIC_OVL void
 print_queue(win, base)
     winid win;
     timer_element *base;
@@ -1357,7 +1459,7 @@ obj_stop_timers(obj)
 
 
 /* Insert timer into the global queue */
-static void
+STATIC_OVL void
 insert_timer(gnu)
     timer_element *gnu;
 {
@@ -1374,7 +1476,7 @@ insert_timer(gnu)
 }
 
 
-static timer_element *
+STATIC_OVL timer_element *
 remove_timer(base, func_index, arg)
 timer_element **base;
 short func_index;
@@ -1396,7 +1498,7 @@ genericptr_t arg;
 }
 
 
-static void
+STATIC_OVL void
 write_timer(fd, timer)
     int fd;
     timer_element *timer;
@@ -1470,7 +1572,7 @@ obj_is_local(obj)
  * Return TRUE if the given monster will stay on the level when the
  * level is saved.
  */
-static boolean
+STATIC_OVL boolean
 mon_is_local(mon)
 struct monst *mon;
 {
@@ -1489,7 +1591,7 @@ struct monst *mon;
  * Return TRUE if the timer is attached to something that will stay on the
  * level when the level is saved.
  */
-static boolean
+STATIC_OVL boolean
 timer_is_local(timer)
     timer_element *timer;
 {
@@ -1508,7 +1610,7 @@ timer_is_local(timer)
  * Part of the save routine.  Count up the number of timers that would
  * be written.  If write_it is true, actually write the timer.
  */
-static int
+STATIC_OVL int
 maybe_write_timer(fd, range, write_it)
     int fd, range;
     boolean write_it;

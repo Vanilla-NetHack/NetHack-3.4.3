@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.h	3.2	96/02/18	*/
+/*	SCCS Id: @(#)wintty.h	3.3	96/02/18	*/
 /* Copyright (c) David Cohrs, 1991,1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -104,7 +104,7 @@ E void NDECL(tty_shutdown);
  * be smart and use the prototype, or some such strangeness.  So we have to
  * define UNWIDENDED_PROTOTYPES (in tradstdc.h), which makes CHAR_P below a
  * char.  But the tputs termcap call was compiled as if xputc's argument
- * actually would be expanded.  So here, we have to make an exception. */
+ * actually would be expanded.	So here, we have to make an exception. */
 E void FDECL(xputc, (int));
 #else
 E void FDECL(xputc, (CHAR_P));
@@ -209,6 +209,10 @@ E void FDECL(tty_number_pad, (int));
 E void NDECL(tty_delay_output);
 #ifdef CHANGE_COLOR
 E void FDECL(tty_change_color,(int color,long rgb,int reverse));
+#ifdef MAC
+E void FDECL(tty_change_background,(int white_or_black));
+E short FDECL(set_tty_font_name, (winid, char *));
+#endif
 E char * NDECL(tty_get_color_string);
 #endif
 
@@ -236,7 +240,7 @@ E int FDECL(term_puts, (const char *str));
 #   undef putchar
 #   undef putc
 #   undef puts
-#   define putchar(x) xputc(x)  /* these are in video.c, nttty.c */
+#   define putchar(x) xputc(x)	/* these are in video.c, nttty.c */
 #   define putc(x) xputc(x)
 #   define puts(x) xputs(x)
 #  endif/*SCREEN_BIOS || SCREEN_DJGPPFAST || WIN32CON */

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Wizard.des	3.2	92/07/11
+#	SCCS Id: @(#)Wizard.des	3.3	92/07/11
 #	Copyright (c) 1992 by David Cohrs
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -7,7 +7,7 @@
 #	Here you meet your (besieged) class leader, the Wizard of Balance
 #	and receive your quest assignment.
 #
-MAZE: "W-start",' '
+MAZE: "Wiz-strt",' '
 FLAGS: noteleport,hardfloor
 GEOMETRY:center,center
 MAP
@@ -101,7 +101,7 @@ MONSTER: 'B',random,(10,19),hostile
 #	further towards your assigned quest.
 #
 
-MAZE: "W-locate",' '
+MAZE: "Wiz-loca",' '
 FLAGS: hardfloor
 GEOMETRY:center,center
 MAP
@@ -225,7 +225,7 @@ MONSTER:'i',random,random,hostile
 #	been assigned to retrieve.
 #
 
-MAZE: "W-goal", ' '
+MAZE: "Wiz-goal", ' '
 GEOMETRY:center,center
 MAP
                                                                             
@@ -359,7 +359,7 @@ MONSTER:'G',"gnomish wizard",(38,06),peaceful
 #	and goal levels.
 #
 
-LEVEL: "W-filla"
+LEVEL: "Wiz-fila"
 #
 ROOM: "ordinary" , random, random, random, random
 STAIR: random, up
@@ -398,7 +398,7 @@ MONSTER: 'B', "vampire bat", random
 
 RANDOM_CORRIDORS
 
-LEVEL: "W-fillb"
+LEVEL: "Wiz-filb"
 #
 ROOM: "ordinary" , random, random, random, random
 STAIR: random, up

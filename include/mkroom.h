@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.h	3.2	92/11/14	*/
+/*	SCCS Id: @(#)mkroom.h	3.3	92/11/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,11 +9,11 @@
 
 struct mkroom {
 	schar lx,hx,ly,hy;	/* usually xchar, but hx may be -1 */
-	schar rtype;		/* Type of room (zoo, throne, etc...) */
+	schar rtype;		/* type of room (zoo, throne, etc...) */
 	schar rlit;		/* is the room lit ? */
-	schar doorct;		/* Door count */
-	schar fdoor;		/* Index for the first door of the room */
-	schar nsubrooms;	/* Number of subrooms */
+	schar doorct;		/* door count */
+	schar fdoor;		/* index for the first door of the room */
+	schar nsubrooms;	/* number of subrooms */
 	boolean irregular;	/* true if room is non-rectangular */
 	struct mkroom *sbrooms[MAX_SUBROOMS];  /* Subrooms pointers */
 	struct monst *resident; /* priest/shopkeeper/guard for this room */
@@ -58,19 +58,22 @@ extern NEARDATA coord doors[DOORMAX];
 #define ZOO		 8	/* floor covered with treasure and monsters */
 #define DELPHI		 9	/* contains Oracle and peripherals */
 #define TEMPLE		10	/* contains a shrine */
-#define SHOPBASE	11	/* everything above this is a shop */
-#define ARMORSHOP	12	/* specific shop defines for level compiler */
-#define SCROLLSHOP	13
-#define POTIONSHOP	14
-#define WEAPONSHOP	15
-#define FOODSHOP	16
-#define RINGSHOP	17
-#define WANDSHOP	18
-#define TOOLSHOP	19
-#define BOOKSHOP	20
-#define UNIQUESHOP	21	/* shops here & above not randomly gen'd. */
-#define CANDLESHOP	21
-#define MAXRTYPE	21	/* maximum valid room type */
+#define LEPREHALL	11	/* leprechaun hall (Tom Proudfoot) */
+#define COCKNEST	12	/* cockatrice nest (Tom Proudfoot) */
+#define ANTHOLE		13	/* ants (Tom Proudfoot) */
+#define SHOPBASE	14	/* everything above this is a shop */
+#define ARMORSHOP	15	/* specific shop defines for level compiler */
+#define SCROLLSHOP	16
+#define POTIONSHOP	17
+#define WEAPONSHOP	18
+#define FOODSHOP	19
+#define RINGSHOP	20
+#define WANDSHOP	21
+#define TOOLSHOP	22
+#define BOOKSHOP	23
+#define UNIQUESHOP	24	/* shops here & above not randomly gen'd. */
+#define CANDLESHOP	24
+#define MAXRTYPE	24	/* maximum valid room type */
 
 /* Special type for search_special() */
 #define ANY_TYPE	(-1)

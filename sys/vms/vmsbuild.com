@@ -1,5 +1,5 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.2.*			[pr]
-$	version_number = "3.2.2"
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.3.*			[pr]
+$	version_number = "3.3.0"
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
@@ -262,8 +262,9 @@ $ c_list = "hack,hacklib,invent,light,lock,mail,makemon,mcastu,mhitm,mhitu" -
 	+ ",mplayer,mthrowu,muse,music,o_init,objnam,options,pager,pickup"
 $ gosub compile_list
 $ c_list = "pline,polyself,potion,pray,priest,quest,questpgr,read" -
-	+ ",rect,restore,rip,rnd,rumors,save,shk,shknam,sit,sounds" -
-	+ ",sp_lev,spell,steal,teleport,timeout,topten,track,trap,u_init"
+	+ ",rect,region,restore,rip,rnd,role,rumors,save,shk,shknam,sit" -
+	+ ",sounds,sp_lev,spell,steal,steed,teleport,timeout,topten,track" -
+	+ ",trap,u_init"
 $ gosub compile_list
 $ c_list = "uhitm,vault,vision,vis_tab,weapon,were,wield,windows" -
 	+ ",wizard,worm,worn,write,zap"

@@ -1,9 +1,9 @@
-        Welcome to NetHack!                ( description of version 3.2 )
+        Welcome to NetHack!                ( description of version 3.3 )
 
         NetHack is a Dungeons and Dragons like game where you (the adventurer)
 descend into the depths of the dungeon in search of the Amulet of Yendor,
 reputed to be hidden somewhere below the twentieth level.  You begin your
-adventure with a dog or cat that can help you in many ways, and can be trained
+adventure with a pet that can help you in many ways, and can be trained
 to do all sorts of things.  On the way you will find useful (or useless)
 items, quite possibly with magic properties, and assorted monsters.  You can
 attack a monster by trying to move onto the space a monster is on (but often
@@ -15,12 +15,12 @@ on.
 
         NetHack uses the following symbols:
 
-        - and |  The walls of a room, possibly also open doors.
+        - and |  The walls of a room, possibly also open doors or a grave.
         .        The floor of a room or a doorway.
-        #        A corridor, a kitchen sink (if your dungeon has sinks), or
-                 a drawbridge.
-        >        A way to the next level.
-        <        A way to the previous level.
+        #        A corridor, or iron bars, or a tree, or possibly a kitchen
+                 sink (if your dungeon has sinks), or a drawbridge.
+        >        Stairs down: a way to the next level.
+        <        Stairs up: a way to the previous level.
         @        You (usually), or another human.
         )        A weapon of some sort.
         [        A suit or piece of armor.
@@ -32,14 +32,14 @@ on.
         (        Some other useful object (pick-axe, key, lamp...)
         $        A pile of gold.
         *        A gem or rock (possibly valuable, possibly worthless).
-        +        A closed door, or a spell book containing a spell
+        +        A closed door, or a spellbook containing a spell
                  you can learn.
         ^        A trap (once you detect it).
         "        An amulet, or a spider web.
         0        An iron ball.
         _        An altar, or an iron chain.
-        }        A pool of water or moat or a pool of lava.
         {        A fountain.
+        }        A pool of water or moat or a pool of lava.
         \        An opulent throne.
         `        A boulder or statue.
         A to Z, a to z, and several others:  Monsters.
@@ -96,6 +96,9 @@ Commands:
         e       Eat food.
         E       Engrave a message on the floor.
                 E- - write in the dust with your fingers.
+        f       Fire ammunition from quiver.
+        F       Followed by direction, fight a monster (even if you don't
+                sense it).
         i       Display your inventory.
         I       Display selected parts of your inventory, as in
                 I* - list all gems in inventory.
@@ -103,8 +106,9 @@ Commands:
                 Ix - list all used up items that are on your shopping bill.
                 I$ - count your money.
         o       Open a door.
-        O       Set or display current options.  Descriptions of possible
-                options and their formats can be obtained by entering "?".
+        O       Review current options and possibly change them.
+                A menu displaying the option settings will be displayed
+                and most can be changed by simply selecting their entry.
                 Options are usually set before the game with a NETHACKOPTIONS
                 environment variable, or via the nethack.cnf file, not with
                 the 'O' command.
@@ -112,8 +116,8 @@ Commands:
         P       Put on an accessory (ring, amulet, etc).
         ^P      Repeat last message (subsequent ^P's repeat earlier messages).
         q       Drink (quaff) a potion.
-        Q       Quit the game.
-        r       Read a scroll or spell book.
+        Q       Select ammunition for quiver.
+        r       Read a scroll or spellbook.
         R       Remove an accessory (ring, amulet, etc).
         ^R      Redraw the screen.
         s       Search for secret doors and traps around you.
@@ -126,7 +130,7 @@ Commands:
                 history of the game.
         w       Wield weapon.  w- means wield nothing, use bare hands.
         W       Wear armor.
-        x       List the spells you know (same as '+').
+        x       Swap wielded and secondary weapons.
         X       Switch the game to explore (discovery) mode.
         z       Zap a wand.
         Z       Cast a spell.
@@ -141,8 +145,9 @@ Commands:
         =       Tell what rings you are wearing.
         "       Tell what amulet you are wearing.
         (       Tell what tools you are using.
+        *       Tell what equipment you are using; combines the preceding five.
         $       Count your gold pieces.
-        +       List the spells you know (same as 'x').
+        +       List the spells you know; also rearrange them if desired.
         \       Show what types of objects have been discovered.
         !       Escape to a shell, if supported in your version and OS.
         #       Introduces one of the "extended" commands.  To get a list of

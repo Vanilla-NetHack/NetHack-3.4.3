@@ -1,0 +1,357 @@
+#	SCCS Id: @(#)Ranger.des	3.3	1999/11/26
+#	Copyright (c) 1989 by Jean-Christophe Collet
+#	Copyright (c) 1991 by M. Stephenson
+# NetHack may be freely redistributed.  See license for details.
+#
+#	The "start" level for the quest.
+#
+#	Here you meet your (besieged) class leader, Orion,
+#	and receive your quest assignment.
+#
+MAZE: "Ran-strt",' '
+FLAGS: noteleport,hardfloor
+GEOMETRY:center,center
+MAP
+.................................... . .....................................
+................................... ... ....................................
+.................................... . .....................................
+................................... ... ....................................
+.................................... . .....................................
+..............................}}}}}}}.}}}}}}}...............................
+............................}}}|----...----|}}}.............................
+...........................}}|--...........--|}}............................
+.................... . . . }|-...............-|} . . . .....................
+................... . . . .}|.................|}. . . . ....................
+............................................................................
+................... . . . .}|.................|}. . . . ....................
+.................... . . . }|-...............-|} . . . .....................
+...........................}}|--...........--|}}............................
+............................}}}|----...----|}}}.............................
+..............................}}}}}}}.}}}}}}}...............................
+.................................... . .....................................
+................................... ... ....................................
+.................................... . .....................................
+................................... ... ....................................
+ENDMAP
+# Dungeon Description
+REGION:(00,00,75,19),lit,"ordinary"
+# Stairs
+STAIR:(40,13),down
+# Portal arrival point
+BRANCH:(00,14,00,14),(0,0,0,0)
+# Altar
+ALTAR:(37,10),chaos,altar
+# Orion
+MONSTER:'@',"Orion",(37,10)
+# The treasure of Orion
+OBJECT:'(',"chest",(37,10)
+# elf guards for the audience chamber
+MONSTER:'@',"hunter",(38,09)
+MONSTER:'@',"hunter",(38,10)
+MONSTER:'@',"hunter",(38,11)
+MONSTER:'@',"hunter",(36,09)
+MONSTER:'@',"hunter",(36,10)
+MONSTER:'@',"hunter",(36,11)
+MONSTER:'@',"hunter",(37,09)
+MONSTER:'@',"hunter",(37,11)
+# Non diggable walls
+NON_DIGGABLE:(00,00,75,19)
+# traps
+# One pit at each cardinal point.
+TRAP:"pit",(37,05)
+TRAP:"pit",(46,10)
+TRAP:"pit",(37,15)
+TRAP:"pit",(28,10)
+TRAP:random,random
+TRAP:random,random
+# Monsters on siege duty.
+MONSTER: 'C',"forest centaur",(35,04),hostile
+MONSTER: 'C',"forest centaur",(36,03),hostile
+MONSTER: 'C',"forest centaur",(48,09),hostile
+MONSTER: 'C',"forest centaur",(35,16),hostile
+MONSTER: 'C',"forest centaur",(36,17),hostile
+MONSTER: 'C',"forest centaur",(26,09),hostile
+MONSTER: 'C',"forest centaur",(37,03),hostile
+MONSTER: 'C',"forest centaur",(38,03),hostile
+MONSTER: 'C',"forest centaur",(39,04),hostile
+MONSTER: 'C',"forest centaur",(48,10),hostile
+MONSTER: 'C',"forest centaur",(48,11),hostile
+MONSTER: 'C',"plains centaur",(37,17),hostile
+MONSTER: 'C',"plains centaur",(38,17),hostile
+MONSTER: 'C',"plains centaur",(39,16),hostile
+MONSTER: 'C',"plains centaur",(26,10),hostile
+MONSTER: 'C',"plains centaur",(26,11),hostile
+
+#
+#	The "locate" level for the quest.
+#
+#	Here you have to infiltrate the Cave of Scorpius to go
+#	further towards your assigned quest.
+#
+
+MAZE: "Ran-loca",' '
+FLAGS: hardfloor
+GEOMETRY:center,center
+MAP
+                                                                            
+ ..       ....            ......            ...        .......         ..   
+  ..     ......S...     ..........         .....       ........       ....  
+   ..    .. ...   .    ......... ..          .           .....       ....   
+    ..  ..        .      .....    ..         .             ..       .....   
+     ....         .         ..     ..        S               ..        ..   
+    ....          S        ..       ..      ....               ..      ..   
+    .....        ...      ..         ..    ........              ..    ..   
+   ......      ......   ...           ..  ............           ...  ...   
+    ....      .. ....   ....       ........................S....S......     
+       ..    ..   ..     ...     ........................         ..        
+        ..  ..          ..       ........................          ..       
+  ....   ....          ..         ........................         ..       
+ ......   ..          ..    ...    ....................           ..        
+  ....   ....        ..    .....    ............                 ..         
+   ..   ..  ..      ..       ...  .S    ............          ....     ...  
+   .. ..     ..............    ....      ............      ....  ..   ..... 
+    ...                   ..            ..     ....    .....      ..   .... 
+                           ..............         ......           .....    
+                                                                            
+ENDMAP
+# Dungeon Description
+REGION:(00,00,75,19),unlit,"ordinary"
+# Doors
+DOOR:closed,(15,02)
+DOOR:closed,(18,06)
+DOOR:closed,(35,15)
+DOOR:closed,(45,05)
+DOOR:closed,(59,09)
+DOOR:closed,(64,09)
+# Stairs
+STAIR:(01,01),up
+STAIR:(45,01),down
+# Non diggable walls
+NON_DIGGABLE:(00,00,75,19)
+# Objects
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+# Random traps
+TRAP:"pit",(13,10)
+TRAP:"spiked pit",(45,03)
+TRAP:"board",(41,16)
+TRAP:"magic",(60,09)
+TRAP:random,random
+TRAP:random,random
+# Random monsters.
+MONSTER:'C',"forest centaur",(40,10),hostile
+MONSTER:'C',"forest centaur",(41,10),hostile
+MONSTER:'C',"forest centaur",(42,10),hostile
+MONSTER:'C',"forest centaur",(43,10),hostile
+MONSTER:'C',"mountain centaur",(44,10),hostile
+MONSTER:'C',"mountain centaur",(45,10),hostile
+MONSTER:'C',"mountain centaur",(40,11),hostile
+MONSTER:'C',"mountain centaur",(41,11),hostile
+MONSTER:'C',"mountain centaur",(42,11),hostile
+MONSTER:'C',"mountain centaur",(43,11),hostile
+MONSTER:'C',"mountain centaur",(44,11),hostile
+MONSTER:'C',"mountain centaur",(45,11),hostile
+MONSTER:'C',"mountain centaur",(41,12),hostile
+MONSTER:'C',"mountain centaur",(42,12),hostile
+MONSTER:'C',"mountain centaur",(43,12),hostile
+MONSTER:'C',"mountain centaur",(44,12),hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',random,random,hostile
+MONSTER:'C',random,random,hostile
+MONSTER:'s',"scorpion",(42,13),hostile
+MONSTER:'s',"scorpion",(43,13),hostile
+MONSTER:'s',"scorpion",(44,13),hostile
+MONSTER:'s',"scorpion",random,hostile
+
+WALLIFY
+
+#
+#	The "goal" level for the quest.
+#
+#	Here you meet Scorpius, your nemesis monster.  You have to
+#	defeat Scorpius in combat to gain the artifact you have
+#	been assigned to retrieve.
+#
+
+MAZE: "Ran-goal", ' '
+GEOMETRY:center,center
+MAP
+                                                                            
+  ...                                                                  ...  
+ .......................................................................... 
+  ...                                +                                 ...  
+   .     ............     .......    .                   .......        .   
+   .  .............................  .       ........   .........S..    .   
+   .   ............    .  ......     .       .      .    .......   ..   .   
+   .     .........     .   ....      +       . ...  .               ..  .   
+   .        S          .         .........   .S.    .S...............   .   
+   .  ...   .     ...  .         .........          .                   .   
+   . ........    .....S.+.......+....\....+........+.                   .   
+   .  ...         ...    S       .........           ..      .....      .   
+   .                    ..       .........            ..      ......    .   
+   .      .......     ...            +       ....    ....    .......... .   
+   . ..............  ..              .      ......  ..  .............   .   
+   .     .............               .     ..........          ......   .   
+  ...                                +                                 ...  
+ .......................................................................... 
+  ...                                                                  ...  
+                                                                            
+ENDMAP
+# Dungeon Description
+REGION:(00,00,75,19),lit,"ordinary"
+# Stairs
+STAIR:(19,10),up
+# Non diggable walls
+NON_DIGGABLE:(00,00,75,19)
+# Objects
+OBJECT:')',"bow",(37,10),blessed,0,"The Longbow of Artemis"
+OBJECT:'(',"chest",(37,10)
+OBJECT:random,random,(36,09)
+OBJECT:random,random,(36,10)
+OBJECT:random,random,(36,11)
+OBJECT:random,random,(37,09)
+OBJECT:random,random,(37,11)
+OBJECT:random,random,(38,09)
+OBJECT:random,random,(38,10)
+OBJECT:random,random,(38,11)
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+OBJECT:random,random,random
+# Random traps
+TRAP:random,random
+TRAP:random,random
+TRAP:random,random
+TRAP:random,random
+TRAP:random,random
+TRAP:random,random
+# doors
+DOOR:locked,(12,08)
+DOOR:closed,(22,10)
+DOOR:locked,(24,10)
+DOOR:closed,(25,11)
+DOOR:closed,(32,10)
+DOOR:closed,(37,03)
+DOOR:closed,(37,07)
+DOOR:closed,(37,13)
+DOOR:closed,(37,16)
+DOOR:closed,(42,10)
+DOOR:locked,(46,08)
+DOOR:closed,(51,10)
+DOOR:locked,(53,08)
+DOOR:closed,(65,05)
+# Random monsters.
+MONSTER:'s',"Scorpius",(37,10),hostile
+MONSTER:'C',"forest centaur",(36,09),hostile
+MONSTER:'C',"forest centaur",(36,10),hostile
+MONSTER:'C',"forest centaur",(36,11),hostile
+MONSTER:'C',"forest centaur",(37,09),hostile
+MONSTER:'C',"forest centaur",(37,11),hostile
+MONSTER:'C',"forest centaur",(38,09),hostile
+MONSTER:'C',"mountain centaur",(38,10),hostile
+MONSTER:'C',"mountain centaur",(38,11),hostile
+MONSTER:'C',"mountain centaur",(02,02),hostile
+MONSTER:'C',"mountain centaur",(71,02),hostile
+MONSTER:'C',"mountain centaur",(02,16),hostile
+MONSTER:'C',"mountain centaur",(71,16),hostile
+MONSTER:'C',"forest centaur",random,hostile
+MONSTER:'C',"forest centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',"mountain centaur",random,hostile
+MONSTER:'C',random,random,hostile
+MONSTER:'C',random,random,hostile
+MONSTER:'s',"scorpion",(03,02),hostile
+MONSTER:'s',"scorpion",(72,02),hostile
+MONSTER:'s',"scorpion",(03,17),hostile
+MONSTER:'s',"scorpion",(72,17),hostile
+MONSTER:'s',"scorpion",(41,10),hostile
+MONSTER:'s',"scorpion",(33,09),hostile
+MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',"scorpion",random,hostile
+MONSTER:'s',random,random,hostile
+
+WALLIFY
+
+#
+#	The "fill" levels for the quest.
+#
+#	These levels are used to fill out any levels not occupied by specific
+#	levels as defined above. "fila" is the upper filler, between the
+#	start and locate levels, and "filb" the lower between the locate
+#	and goal levels.
+#
+
+MAZE: "Ran-fila" , ' '
+INIT_MAP: '.' , ' ', true, true, random, true
+NOMAP
+#
+STAIR: random, up
+STAIR: random, down
+#
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+#
+TRAP: random, random
+TRAP: random, random
+TRAP: random, random
+TRAP: random, random
+#
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', "forest centaur", random, hostile
+MONSTER: 'C', "forest centaur", random, hostile
+MONSTER: 'C', "forest centaur", random, hostile
+MONSTER: 'C', random, random, hostile
+MONSTER: 's', "scorpion", random, hostile
+
+MAZE: "Ran-filb" , ' '
+INIT_MAP: '.' , ' ', true, true, random, true
+NOMAP
+#
+STAIR: random, up
+STAIR: random, down
+#
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+OBJECT: random, random, random
+#
+TRAP: random, random
+TRAP: random, random
+TRAP: random, random
+TRAP: random, random
+#
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', "mountain centaur", random, hostile
+MONSTER: 'C', random, random, hostile
+MONSTER: 's', "scorpion", random, hostile
+MONSTER: 's', "scorpion", random, hostile
+

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	3.2	95/12/21	*/
+/*	SCCS Id: @(#)dogmove.c	3.3	97/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,15 +7,17 @@
 #include "mfndpos.h"
 #include "edog.h"
 
+extern boolean notonhead;
+
 #ifdef OVL0
 
-static boolean FDECL(dog_hunger,(struct monst *,struct edog *));
-static int FDECL(dog_invent,(struct monst *,struct edog *,int));
-static int FDECL(dog_goal,(struct monst *,struct edog *,int,int,int));
+STATIC_DCL boolean FDECL(dog_hunger,(struct monst *,struct edog *));
+STATIC_DCL int FDECL(dog_invent,(struct monst *,struct edog *,int));
+STATIC_DCL int FDECL(dog_goal,(struct monst *,struct edog *,int,int,int));
 
-static struct obj *FDECL(DROPPABLES, (struct monst *));
+STATIC_DCL struct obj *FDECL(DROPPABLES, (struct monst *));
 
-static struct obj *
+STATIC_OVL struct obj *
 DROPPABLES(mon)
 register struct monst *mon;
 {
@@ -28,7 +30,7 @@ register struct monst *mon;
 	if (!tunnels(mon->data) || !needspick(mon->data))
 		item1 = TRUE;
 	for(obj = mon->minvent; obj; obj = obj->nobj) {
-		if (!item1 && obj->otyp == PICK_AXE) {
+		if (!item1 && is_pick(obj)) {
 			item1 = TRUE;
 			continue;
 		}
@@ -96,8 +98,10 @@ struct obj *obj;
 		nutrit = eaten_stat(nutrit, obj);
 	    }
 	} else if (obj->oclass == GOLD_CLASS) {
-	    mtmp->meating = ((int)obj->quan/2000) + 1;
-	    nutrit = ((int)obj->quan/20);
+	    mtmp->meating = (int)(obj->quan/2000) + 1;
+	    if (mtmp->meating < 0) mtmp->meating = 1;
+	    nutrit = (int)(obj->quan/20);
+	    if (nutrit < 0) nutrit = 0;
 	} else {
 	    /* Unusual pet such as gelatinous cube eating odd stuff.
 	     * meating made consistent with wild monsters in mon.c.
@@ -122,8 +126,8 @@ boolean devour;
 	boolean poly = FALSE, grow = FALSE, heal = FALSE;
 	int nutrit;
 
-	if(edog->hungrytime < moves)
-	    edog->hungrytime = moves;
+	if(edog->hungrytime < monstermoves)
+	    edog->hungrytime = monstermoves;
 	nutrit = dog_nutrition(mtmp, obj);
 	poly = polyfodder(obj);
 	grow = mlevelgain(obj);
@@ -140,6 +144,10 @@ boolean devour;
 	    newsym(x, y);
 	    newsym(mtmp->mx, mtmp->my);
 	}
+	if (is_pool(x, y) && !Underwater) {
+	    /* Don't print obj */
+	    /* TODO: Reveal presence of sea monster (especially sharks) */
+	} else
 	/* hack: observe the action if either new or old location is in view */
 	if (cansee(x, y) || cansee(mtmp->mx, mtmp->my))
 	    pline("%s %s %s.", Monnam(mtmp),
@@ -153,9 +161,17 @@ boolean devour;
 	    edog->apport = 0;
 #else
 	    edog->apport += (int)(200L/
-		((long)edog->dropdist + moves - edog->droptime));
+		((long)edog->dropdist + monstermoves - edog->droptime));
 #endif
-	if (obj == uball) {
+	if (mtmp->data == &mons[PM_RUST_MONSTER] && obj->oerodeproof) {
+	    /* The object's rustproofing is gone now */
+	    obj->oerodeproof = 0;
+	    mtmp->mstun = 1;
+	    if (canseemon(mtmp) && flags.verbose) {
+		pline("%s spits %s out in disgust!",
+		      Monnam(mtmp), distant_name(obj,doname));
+	    }
+	} else if (obj == uball) {
 	    unpunish();
 	    delobj(obj);
 	} else if (obj == uchain)
@@ -167,8 +183,15 @@ boolean devour;
 
 	if (poly) {
 	    char oldpet[BUFSZ];
+#ifdef STEED
+	    long mw = mtmp->misc_worn_check;
 
+	    mtmp->misc_worn_check &= ~W_SADDLE;
+#endif
 	    Strcpy(oldpet, Monnam(mtmp));
+#ifdef STEED
+	    mtmp->misc_worn_check = mw;
+#endif
 	    if (newcham(mtmp, (struct permonst *)0) &&
 			cansee(mtmp->mx, mtmp->my)) {
 		uchar save_mnamelth = mtmp->mnamelth;
@@ -189,14 +212,14 @@ boolean devour;
 #ifdef OVL0
 
 /* hunger effects -- returns TRUE on starvation */
-static boolean
+STATIC_OVL boolean
 dog_hunger(mtmp, edog)
 register struct monst *mtmp;
 register struct edog *edog;
 {
-	if (moves > edog->hungrytime + 500) {
+	if (monstermoves > edog->hungrytime + 500) {
 	    if (!carnivorous(mtmp->data) && !herbivorous(mtmp->data)) {
-		edog->hungrytime = moves + 500;
+		edog->hungrytime = monstermoves + 500;
 		/* but not too high; it might polymorph */
 	    } else if (!mtmp->mconf) {
 		mtmp->mconf = 1;
@@ -208,15 +231,9 @@ register struct edog *edog;
 		    pline("%s is confused from hunger.", Monnam(mtmp));
 		else if (couldsee(mtmp->mx, mtmp->my))
 		    beg(mtmp);
-		else {
-		    char buf[BUFSZ];
-
-		    Strcpy(buf, "the ");
-		    You_feel("worried about %s.", mtmp->mnamelth ?
-			NAME(mtmp) : strcat(buf, Hallucination
-			? rndmonnam() : mtmp->data->mname));
-		}
-	    } else if (moves > edog->hungrytime + 750 || mtmp->mhp < 1) {
+		else
+		    You_feel("worried about %s.", y_monnam(mtmp));
+	    } else if (monstermoves > edog->hungrytime + 750 || mtmp->mhp < 1) {
 	    dog_died:
 		if (mtmp->mleashed)
 		    Your("leash goes slack.");
@@ -236,7 +253,7 @@ register struct edog *edog;
 /* do something with object (drop, pick up, eat) at current position
  * returns 1 if object eaten (since that counts as dog's move), 2 if died
  */
-static int
+STATIC_OVL int
 dog_invent(mtmp, edog, udist)
 register struct monst *mtmp;
 register struct edog *edog;
@@ -245,20 +262,21 @@ int udist;
 	register int omx, omy;
 	struct obj *obj;
 
-	if (mtmp->msleep || !mtmp->mcanmove) return(0);
+	if (mtmp->msleeping || !mtmp->mcanmove) return(0);
 
 	omx = mtmp->mx;
 	omy = mtmp->my;
 
 	/* if we are carrying sth then we drop it (perhaps near @) */
 	/* Note: if apport == 1 then our behaviour is independent of udist */
+	/* Use udist+1 so steed won't cause divide by zero */
 	if(DROPPABLES(mtmp) || mtmp->mgold) {
-	    if (!rn2(udist) || !rn2(edog->apport))
+	    if (!rn2(udist+1) || !rn2(edog->apport))
 		if(rn2(10) < edog->apport){
 		    relobj(mtmp, (int)mtmp->minvis, TRUE);
 		    if(edog->apport > 1) edog->apport--;
 		    edog->dropdist = udist;		/* hpscdi!jon */
-		    edog->droptime = moves;
+		    edog->droptime = monstermoves;
 		}
 	} else {
 	    if((obj=level.objects[omx][omy]) && !index(nofetch,obj->oclass)
@@ -291,7 +309,7 @@ int udist;
 /* set dog's goal -- gtyp, gx, gy
  * returns -1/0/1 (dog's desire to approach player) or -2 (abort move)
  */
-static int
+STATIC_OVL int
 dog_goal(mtmp, edog, after, udist, whappr)
 register struct monst *mtmp;
 struct edog *edog;
@@ -302,6 +320,13 @@ int after, udist, whappr;
 	register struct obj *obj;
 	xchar otyp;
 	int appr;
+
+
+#ifdef STEED
+	/* Steeds don't move on their own will */
+	if (mtmp == u.usteed)
+		return (-2);
+#endif
 
 	omx = mtmp->mx;
 	omy = mtmp->my;
@@ -358,7 +383,7 @@ int after, udist, whappr;
 
 	/* follow player if appropriate */
 	if (gtyp == UNDEF ||
-	    (gtyp != DOGFOOD && gtyp != APPORT && moves < edog->hungrytime)) {
+	    (gtyp != DOGFOOD && gtyp != APPORT && monstermoves < edog->hungrytime)) {
 		gx = u.ux;
 		gy = u.uy;
 		if (after && udist <= 4 && gx == u.ux && gy == u.uy)
@@ -459,6 +484,12 @@ register int after;	/* this is extra fast monster movement */
 	if (has_edog && dog_hunger(mtmp, edog)) return(2);	/* starved */
 
 	udist = distu(omx,omy);
+#ifdef STEED
+	/* Let steeds eat */
+	if (mtmp == u.usteed)
+		udist = 1;
+	else
+#endif
 	/* maybe we tamed him while being swallowed --jgm */
 	if (!udist) return(0);
 
@@ -472,7 +503,7 @@ register int after;	/* this is extra fast monster movement */
 	    if (j == 2) return 2;		/* died */
 	    else if (j == 1) goto newdogpos;	/* eating something */
 
-	    whappr = (moves - edog->whistletime < 5);
+	    whappr = (monstermoves - edog->whistletime < 5);
 	} else
 	    whappr = 0;
 
@@ -558,20 +589,23 @@ register int after;	/* this is extra fast monster movement */
 			  || mtmp2->data->msound == MS_GUARDIAN
 			  || mtmp2->data->msound == MS_LEADER) &&
 			 mtmp2->mpeaceful && !Conflict) ||
-			   (mtmp2->data->mlet == S_COCKATRICE &&
+			   (touch_petrifies(mtmp2->data) &&
 				!resists_ston(mtmp)))
 			continue;
 
 		    if (after) return(0); /* hit only once each move */
 
+		    notonhead = 0;
 		    mstatus = mattackm(mtmp, mtmp2);
 
 		    /* aggressor (pet) died */
 		    if (mstatus & MM_AGR_DIED) return 2;
 
 		    if ((mstatus & MM_HIT) && !(mstatus & MM_DEF_DIED) &&
-			rn2(4) && mtmp2->mlstmv != monstermoves &&
-			!onscary(mtmp->mx, mtmp->my, mtmp2)) {
+			    rn2(4) && mtmp2->mlstmv != monstermoves &&
+			    !onscary(mtmp->mx, mtmp->my, mtmp2) &&
+			    /* monnear check needed: long worms hit on tail */
+			    monnear(mtmp2, mtmp->mx, mtmp->my)) {
 			mstatus = mattackm(mtmp2, mtmp);  /* return attack */
 			if (mstatus & MM_DEF_DIED) return 2;
 		    }
@@ -605,7 +639,7 @@ register int after;	/* this is extra fast monster movement */
 		for (obj = level.objects[nx][ny]; obj; obj = obj->nexthere) {
 		    if (obj->cursed) cursemsg[i] = TRUE;
 		    else if ((otyp = dogfood(mtmp, obj)) < MANFOOD &&
-			     (otyp < ACCFOOD || edog->hungrytime <= moves)) {
+			     (otyp < ACCFOOD || edog->hungrytime <= monstermoves)) {
 			/* Note: our dog likes the food so much that he
 			 * might eat it even when it conceals a cursed object */
 			nix = nx;
@@ -652,6 +686,8 @@ newdogpos:
 			(void) mattacku(mtmp);
 			return(0);
 		}
+		if (!m_in_out_region(mtmp, nix, niy))
+		    return 1;
 		/* insert a worm_move() if worms ever begin to eat things */
 		remove_monster(omx, omy);
 		place_monster(mtmp, nix, niy);
@@ -677,20 +713,22 @@ newdogpos:
 		ny = sgn(omy - u.uy);
 		cc.x = u.ux + nx;
 		cc.y = u.uy + ny;
-		if (goodpos(cc.x, cc.y, mtmp, mtmp->data)) goto dognext;
+		if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
 
 		i  = xytod(nx, ny);
 		for (j = (i + 7)%8; j < (i + 1)%8; j++) {
 			dtoxy(&cc, j);
-			if (goodpos(cc.x, cc.y, mtmp, mtmp->data)) goto dognext;
+			if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
 		}
 		for (j = (i + 6)%8; j < (i + 2)%8; j++) {
 			dtoxy(&cc, j);
-			if (goodpos(cc.x, cc.y, mtmp, mtmp->data)) goto dognext;
+			if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
 		}
 		cc.x = mtmp->mx;
 		cc.y = mtmp->my;
 dognext:
+		if (!m_in_out_region(mtmp, nix, niy))
+		  return 1;
 		remove_monster(mtmp->mx, mtmp->my);
 		place_monster(mtmp, cc.x, cc.y);
 		newsym(cc.x,cc.y);
@@ -708,7 +746,7 @@ wantdoor(x, y, distance)
 int x, y;
 genericptr_t distance;
 {
-    register ndist;
+    int ndist;
 
     if (*(int*)distance > (ndist = distu(x, y))) {
 	gx = x;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcconf.h	3.2	95/10/11	*/
+/*	SCCS Id: @(#)pcconf.h	3.3	95/10/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,6 +17,7 @@
  *     _MSC_VER is defined automatically by Microsoft C.
  *     __BORLANDC__ is defined automatically by Borland C.
  *     __SC__ is defined automatically by Symantec C.
+ *	Note: 3.3.0 was not verified with Symantec C.
  */
 
 /*
@@ -30,32 +31,27 @@
 
 /*#define OVERLAY	/* Manual overlay definition (MSC 6.0ax only) */
 
-
 # ifndef __GO32__
-#  define MFLOPPY	/* Support for floppy drives and ramdisks by dgk */
+#define MFLOPPY		/* Support for floppy drives and ramdisks by dgk */
 # endif
 
 # define SHELL		/* via exec of COMMAND.COM */
 
-/*
- * Music option
- */
-
 # ifdef __BORLANDC__
-#define PCMUSIC		/* enable very basic pc speaker music notes */
+#define PCMUSIC		/* Music option, enable very basic pc speaker music notes */
 # endif
 
 /*
  * Screen control options
  *
  * You may uncomment:
- *                     ANSI_DEFAULT
- *                or   TERMLIB
- *                or   ANSI_DEFAULT and TERMLIB
- *                or   NO_TERMS
+ *		       ANSI_DEFAULT
+ *		  or   TERMLIB
+ *		  or   ANSI_DEFAULT and TERMLIB
+ *		  or   NO_TERMS
  */
 
-/* # define TERMLIB        /* enable use of termcap file /etc/termcap */
+/* # define TERMLIB	   /* enable use of termcap file /etc/termcap */
 			/* or ./termcap for MSDOS (SAC) */
 			/* compile and link in Fred Fish's termcap library, */
 			/* enclosed in TERMCAP.ARC, to use this */
@@ -67,7 +63,7 @@
 
 # ifdef NO_TERMS	/* if NO_TERMS select one screen package below */
 #define SCREEN_BIOS		/* Use bios calls for all screen control */
-/* #define SCREEN_DJGPPFAST	/* Use djgpp fast screen routines       */
+/* #define SCREEN_DJGPPFAST	/* Use djgpp fast screen routines	*/
 # endif
 
 
@@ -81,12 +77,20 @@
  * You may uncomment any/all of the options below.
  *
  */
-# if (defined(SCREEN_BIOS) || defined(SCREEN_DJGPPFAST)) && !defined(PC9800)
+# ifndef SUPPRESS_GRAPHICS
+#  if (defined(SCREEN_BIOS) || defined(SCREEN_DJGPPFAST)) && !defined(PC9800)
 #   ifdef USE_TILES
-#define SCREEN_VGA	/* Include VGA    graphics routines in the build */
+#define SCREEN_VGA	/* Include VGA	  graphics routines in the build */
 #   endif
+#  endif
+# else
+# undef NO_TERMS
+# undef SCREEN_BIOS
+# undef SCREEN_DJGPPFAST
+# undef SCREEN_VGA
+# undef TERMLIB
+# define ANSI_DEFAULT
 # endif
-
 
 # define RANDOM		/* have Berkeley random(3) */
 
@@ -94,6 +98,10 @@
 			/* in the MSDOS version.  (For AMIGA MAIL see  */
 			/* amiconf.h).	In the future this will be the */
 			/* hook for mail reader implementation.        */
+
+/*# define PC_LOCKING	/* Allow confirmation before overwriting game  */
+			/* that is in progress or aborted when another */
+			/* game is started with the same player name.  */
 
 /* The following is needed for prototypes of certain functions */
 
@@ -128,13 +136,10 @@
 
 #define TIMED_DELAY	/* enable the `timed_delay' run-time option */
 
-#ifdef PCMUSIC
+# ifdef PCMUSIC
 #define TIMED_DELAY	/* need it anyway */
-#endif
-
-
+# endif
 #endif /* MSDOS configuration stuff */
-
 
 #define PATHLEN		64	/* maximum pathlength */
 #define FILENAME	80	/* maximum filename length (conservative) */
@@ -142,12 +147,20 @@
 #include "micro.h"		/* contains necessary externs for [os_name].c */
 #endif
 
-/*
+/* ===================================================
  *  The remaining code shouldn't need modification.
  */
 
 #ifndef SYSTEM_H
 #include "system.h"
+#endif
+
+#ifdef __GO32__
+#include <unistd.h> /* close(), etc. */
+/* setmode is in io.h but lock() in io.h interferes with lock[] in decl.h */
+extern int FDECL(setmode, (int,int));
+#include <pc.h> /* kbhit() */
+#define PC_LOCKING
 #endif
 
 # ifdef MSDOS
@@ -156,30 +169,38 @@
 #  endif
 # endif
 
-# if defined(_MSC_VER) && (_MSC_VER >= 700)
-#  ifndef MOVERLAY
+# if defined(_MSC_VER) && defined(MSDOS)
+#  if (_MSC_VER >= 700) && !defined(FUNCTION_LEVEL_LINKING)
+#   ifndef MOVERLAY
 #define MOVERLAY	/* Microsoft's MOVE overlay system (MSC >= 7.0) */
+#   endif
 #  endif
+#define PC_LOCKING
 # endif
 
+/* Borland Stuff */
+# if defined(__BORLANDC__)
+#  if defined(__OVERLAY__) && !defined(VROOMM)
 /* __OVERLAY__ is automatically defined by Borland C if overlay option is on */
-# if defined(__BORLANDC__) && defined(__OVERLAY__)
-#  ifndef VROOMM
 #define VROOMM		/* Borland's VROOMM overlay system */
 #  endif
+#  if !defined(STKSIZ)
+#define STKSIZ	5*1024	/* Use a default of 5K stack for Borland C	*/
+			/* This macro is used in any file that contains */
+			/* a main() function.				*/
+#  endif
+#define PC_LOCKING
 # endif
 
-# if defined (__BORLANDC__) && !defined(STKSIZ)
-#define STKSIZ	5*1024	/* Use a default of 5K stack for Borland C	*/
-			/* This macro is used in any file that contains	*/
-			/* a main() function.				*/
-# endif
+#ifdef PC_LOCKING
+#define HLOCK "NHPERM"
+#endif
 
 #ifndef index
 # define index	strchr
 #endif
 #ifndef rindex
-# define rindex	strrchr
+# define rindex strrchr
 #endif
 
 #ifndef AMIGA
@@ -188,19 +209,19 @@
 
 #ifdef RANDOM
 /* Use the high quality random number routines. */
-# define Rand()	random()
+# define Rand() random()
 #else
-# define Rand()	rand()
+# define Rand() rand()
 #endif
 
 #ifndef TOS
-# define FCMASK	0660	/* file creation mask */
+# define FCMASK 0660	/* file creation mask */
 #endif
 
 #include <fcntl.h>
 
 #ifndef REDO
-# undef	Getchar
+# undef Getchar
 # define Getchar nhgetch
 #endif
 
@@ -213,13 +234,22 @@
 /* Sanity check, do not modify these blocks. */
 
 /* OVERLAY must be defined with MOVERLAY or VROOMM */
-#if defined(MOVERLAY) || defined(VROOMM)
+#if (defined(MOVERLAY) || defined(VROOMM))
 # ifndef OVERLAY
 #  define OVERLAY
 # endif
 #endif
 
-#if defined(OVERLAY) && !defined(MOVERLAY) && !defined(VROOMM)
+#if defined(FUNCTION_LEVEL_LINKING)
+#define OVERLAY
+#define OVL0
+#define OVL1
+#define OVL2
+#define OVL3
+#define OVLB
+#endif
+
+#if defined(OVERLAY) && !defined(MOVERLAY) && !defined(VROOMM) && !defined(FUNCTION_LEVEL_LINKING)
 #define USE_TRAMPOLI
 #endif
 
@@ -248,10 +278,10 @@
 #    if defined(_MSC_VER) || defined(__SC__)
 #    pragma message("           Forcing undef of SCREEN_DJGPPFAST")
 #    endif
-#undef SCREEN_DJGPPFAST	  /* Can't use djgpp fast with other compilers anyway */
+#undef SCREEN_DJGPPFAST   /* Can't use djgpp fast with other compilers anyway */
 #   endif
 #  else
-/* djgpp C compiler     */
+/* djgpp C compiler	*/
 #   if defined(SCREEN_BIOS)
 #undef SCREEN_BIOS
 #   endif
@@ -278,7 +308,7 @@
 #endif			/* End of sanity check block */
 
 #if defined(MSDOS) && defined(DLB)
-#define FILENAME_CMP  stricmp                 /* case insensitive */
+#define FILENAME_CMP  stricmp		      /* case insensitive */
 #endif
 
 #ifdef MSC7_WARN	/* define with cl /DMSC7_WARN	*/

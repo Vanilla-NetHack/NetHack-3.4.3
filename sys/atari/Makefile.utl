@@ -162,7 +162,7 @@ lev_comp:  $(SPLEVOBJS)
 	$(CC) $(LFLAGS) -o lev_comp $(SPLEVOBJS)
 
 lev_yacc.o:  ../include/hack.h ../include/sp_lev.h
-lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/termcap.h \
+lev_main.o:  ../include/hack.h ../include/sp_lev.h ../include/tcap.h \
 		../include/date.h
 panic.o:     ../include/config.h
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	 3.2	 94/02/19		          */
+/*	SCCS Id: @(#)msdos.c	 3.3	 94/02/19		          */
 /* Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1994 */
 /* NetHack may be freely redistributed.  See license for details.         */
 

@@ -448,15 +448,19 @@ amii_player_selection()
     register struct IntuiMessage *imsg;
     register int aredone = 0;
     register struct Gadget *gd;
-    static int once=0;
+    static int once = 0;
     long class, code;
 
     amii_clear_nhwindow( WIN_BASE );
+    if (validrole(flags.initrole))
+    	return;
+#if 0	/* OBSOLETE */
     if( *pl_character ){
 	pl_character[ 0 ] = toupper( pl_character[ 0 ] );
 	if( index( pl_classes, pl_character[ 0 ] ) )
 	    return;
     }
+#endif
 
     if( !once ){
 	if( bigscreen ){
@@ -512,10 +516,13 @@ amii_player_selection()
 		}
 		else if( code == ' ' || code == '\n' || code == '\r' )
 		{
+		    flags.initrole = randrole();
+#if 0	/* OBSOLETE */
 #ifdef  TOURIST
 		    strcpy( pl_character, roles[ rnd( 11 ) ] );
 #else
 		    strcpy( pl_character, roles[ rnd( 10 ) ] );
+#endif
 #endif
 		    aredone = 1;
 		    amii_clear_nhwindow( WIN_BASE );
@@ -538,10 +545,13 @@ amii_player_selection()
 		switch( gd->GadgetID )
 		{
 		case 1: /* Random Character */
+		    flags.initrole = randrole();
+#if 0	/* OBSOLETE */
 #ifdef  TOURIST
 		    strcpy( pl_character, roles[ rnd( 11 ) ] );
 #else
 		    strcpy( pl_character, roles[ rnd( 10 ) ] );
+#endif
 #endif
 		    amii_clear_nhwindow( WIN_BASE );
 		    CloseShWindow( cwin );

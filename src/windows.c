@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)windows.c	3.2	96/05/19	*/
+/*	SCCS Id: @(#)windows.c	3.3	96/05/19	*/
 /* Copyright (c) D. Cohrs, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,6 +11,9 @@
 /* and must get the order of include files right.  Don't bother */
 extern struct window_procs X11_procs;
 extern void NDECL(win_X11_init);
+#endif
+#ifdef QT_GRAPHICS
+extern struct window_procs Qt_procs;
 #endif
 #ifdef MAC
 extern struct window_procs mac_procs;
@@ -26,10 +29,9 @@ extern void NDECL(ami_wininit_data);
 #endif
 #ifdef WIN32_GRAPHICS
 extern struct window_procs win32_procs;
-extern void NDECL(win_win32_init);
 #endif
 
-static void FDECL(def_raw_print, (const char *s));
+STATIC_DCL void FDECL(def_raw_print, (const char *s));
 
 NEARDATA struct window_procs windowprocs;
 
@@ -44,6 +46,9 @@ struct win_choices {
 #ifdef X11_GRAPHICS
     { &X11_procs, win_X11_init },
 #endif
+#ifdef QT_GRAPHICS
+    { &Qt_procs, 0 },
+#endif
 #ifdef MAC
     { &mac_procs, 0 },
 #endif
@@ -55,12 +60,12 @@ struct win_choices {
     { &amiv_procs, ami_wininit_data },		/* Tile version of the game */
 #endif
 #ifdef WIN32_GRAPHICS
-    { &win32_procs, win_win32_init },
+    { &win32_procs, 0 },
 #endif
     { 0, 0 }		/* must be last */
 };
 
-static
+STATIC_OVL
 void
 def_raw_print(s)
 const char *s;

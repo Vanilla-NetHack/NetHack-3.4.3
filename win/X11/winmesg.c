@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmesg.c	3.2	96/04/05	*/
+/*	SCCS Id: @(#)winmesg.c	3.3	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,7 +30,7 @@
 # undef PRESERVE_NO_SYSV
 #endif
 
-#include "Window.h"	/* Window widget declarations */
+#include "xwindow.h"	/* Window widget declarations */
 
 #include "hack.h"
 #include "winX.h"

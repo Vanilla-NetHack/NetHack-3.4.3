@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.h	3.2	94/04/21	*/
+/*	SCCS Id: @(#)timeout.h	3.3	1999/02/13	*/
 /* Copyright 1994, Dean Luick					  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -27,6 +27,7 @@ typedef void FDECL((*timeout_proc), (genericptr_t, long));
 #define REVIVE_MON	2
 #define BURN_OBJECT	3
 #define HATCH_EGG	4
-#define NUM_TIME_FUNCS	5
+#define FIG_TRANSFORM	5
+#define NUM_TIME_FUNCS	6
 
 #endif /* TIMEOUT_H */

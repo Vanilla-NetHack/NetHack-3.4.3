@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.2	96/06/28	*/
+/*	SCCS Id: @(#)do.c	3.3	1999/11/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,7 @@ extern int errno;
 
 #ifdef SINKS
 # ifdef OVLB
-static void FDECL(trycall, (struct obj *));
+STATIC_DCL void FDECL(trycall, (struct obj *));
 # endif /* OVLB */
 STATIC_DCL void FDECL(dosinkring, (struct obj *));
 #endif /* SINKS */
@@ -31,10 +31,11 @@ STATIC_PTR int FDECL(drop, (struct obj *));
 STATIC_PTR int NDECL(wipeoff);
 
 #ifdef OVL0
-static int FDECL(menu_drop, (int));
+STATIC_DCL int FDECL(menu_drop, (int));
 #endif
 #ifdef OVL2
-static int NDECL(currentlevel_rewrite);
+STATIC_DCL int NDECL(currentlevel_rewrite);
+STATIC_DCL void NDECL(final_level);
 /* static boolean FDECL(badspot, (XCHAR_P,XCHAR_P)); */
 #endif
 
@@ -118,6 +119,7 @@ boolean pushing;
 		} else if (lava && distu(rx,ry) <= 2) {
 		    You("are hit by molten lava%c",
 			Fire_resistance ? '.' : '!');
+			burn_away_slime();
 		    losehp(d((Fire_resistance ? 1 : 3), 6),
 			   "molten lava", KILLED_BY);
 		} else if (!fills_up && flags.verbose &&
@@ -169,7 +171,7 @@ const char *verb;
 				return FALSE;	/* still alive */
 			} else mtmp->mtrapped = 0;
 		    } else {
-			if (!passes_walls(uasmon) && !throws_rocks(uasmon)) {
+			if (!Passes_walls && !throws_rocks(youmonst.data)) {
 			    losehp(rnd(15), "squished under a boulder",
 				   NO_KILLER_PREFIX);
 			    return FALSE;	/* player remains trapped */
@@ -209,6 +211,10 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 	register struct obj *obj;
 {
 	if (Blind) return;
+
+	/* KMH, conduct */
+	u.uconduct.gnostic++;
+
 	if (obj->blessed || obj->cursed) {
 		pline("There is %s flash as %s hit%s the altar.",
 			an(hcolor(obj->blessed ? amber : Black)),
@@ -223,7 +229,7 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 }
 
 #ifdef SINKS
-static
+STATIC_OVL
 void
 trycall(obj)
 register struct obj *obj;
@@ -242,16 +248,16 @@ register struct obj *obj;
 	register boolean ideed = TRUE;
 
 	You("drop %s down the drain.", doname(obj));
-#ifndef NO_SIGNAL
 	obj->in_use = TRUE;	/* block free identification via interrupt */
-#endif
 	switch(obj->otyp) {	/* effects that can be noticed without eyes */
 	    case RIN_SEARCHING:
 		You("thought your %s got lost in the sink, but there it is!",
 			xname(obj));
-#ifndef NO_SIGNAL
+		goto giveback;
+	    case RIN_SLOW_DIGESTION:
+		pline_The("ring is regurgitated!");
+giveback:
 		obj->in_use = FALSE;
-#endif
 		dropx(obj);
 		trycall(obj);
 		return;
@@ -270,9 +276,20 @@ register struct obj *obj;
 	    case RIN_CONFLICT:
 		You_hear("loud noises coming from the drain.");
 		break;
+	    case RIN_SUSTAIN_ABILITY:	/* KMH */
+		pline_The("water flow seems fixed.");
+		break;
 	    case RIN_GAIN_STRENGTH:
 		pline_The("water flow seems %ser now.",
 			(obj->spe<0) ? "weak" : "strong");
+		break;
+	    case RIN_GAIN_CONSTITUTION:
+		pline("The water flow seems %ser now.",
+			(obj->spe<0) ? "less" : "great");
+		break;
+	    case RIN_INCREASE_ACCURACY:	/* KMH */
+		pline_The("water flow %s the drain.",
+			(obj->spe<0) ? "misses" : "hits");
 		break;
 	    case RIN_INCREASE_DAMAGE:
 		pline_The("water's force seems %ser now.",
@@ -282,7 +299,8 @@ register struct obj *obj;
 		ideed = FALSE;
 		for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp2) {
 		    otmp2 = otmp->nexthere;
-		    if(otmp != uball && otmp != uchain) {
+		    if (otmp != uball && otmp != uchain &&
+			    !obj_resists(otmp, 1, 99)) {
 			if (!Blind) {
 			    pline("Suddenly, %s vanishes from the sink!",
 							doname(otmp));
@@ -291,6 +309,10 @@ register struct obj *obj;
 			delobj(otmp);
 		    }
 		}
+		break;
+	    case MEAT_RING:
+		/* Not the same as aggravate monster; besides, it's obvious. */
+		pline("Several flies buzz around the sink.");
 		break;
 	    default:
 		ideed = FALSE;
@@ -307,6 +329,9 @@ register struct obj *obj;
 		    break;
 		case RIN_INVISIBILITY:
 		    You("don't see anything happen to the sink.");
+		    break;
+		case RIN_FREE_ACTION:
+		    You("see the ring slide right down the drain!");
 		    break;
 		case RIN_SEE_INVISIBLE:
 		    You("see some air in the sink.");
@@ -350,12 +375,9 @@ register struct obj *obj;
 	    You_hear("the ring bouncing down the drainpipe.");
 	if (!rn2(20)) {
 		pline_The("sink backs up, leaving %s.", doname(obj));
-#ifndef NO_SIGNAL
 		obj->in_use = FALSE;
-#endif
 		dropx(obj);
-	}
-	else
+	} else
 		useup(obj);
 }
 #endif
@@ -399,6 +421,14 @@ register const char *word;
 					body_part(HAND));
 		return(FALSE);
 	}
+#ifdef STEED
+	if (obj->owornmask & W_SADDLE) {
+		if (*word)
+			You("cannot %s %s you are sitting on.", word,
+				something);
+		return (FALSE);
+	}
+#endif
 	return(TRUE);
 }
 
@@ -418,6 +448,12 @@ register struct obj *obj;
 		setuwep((struct obj *)0);
 		if(uwep) return 0; /* lifesaved and rewielded */
 	}
+	if(obj == uquiver) {
+		setuqwep((struct obj *)0);
+	}
+	if (obj == uswapwep) {
+		setuswapwep((struct obj *)0);
+	}
 
 	if (u.uswallow) {
 		/* barrier between you and the floor */
@@ -428,7 +464,8 @@ register struct obj *obj;
 				"stomach" : "interior");
 	} else {
 #ifdef SINKS
-	    if((obj->oclass == RING_CLASS) && IS_SINK(levl[u.ux][u.uy].typ)) {
+	    if((obj->oclass == RING_CLASS || obj->otyp == MEAT_RING) &&
+			IS_SINK(levl[u.ux][u.uy].typ)) {
 		dosinkring(obj);
 		return(1);
 	    }
@@ -449,6 +486,7 @@ register struct obj *obj;
 }
 
 /* Called in several places - should not produce texts */
+/* ship_object() _can_ produce texts--is that comment still correct? */
 void
 dropx(obj)
 register struct obj *obj;
@@ -464,8 +502,11 @@ dropy(obj)
 register struct obj *obj;
 {
 	if (!u.uswallow && flooreffects(obj,u.ux,u.uy,"drop")) return;
-	if(obj->otyp == CRYSKNIFE)
+	/* KMH -- Fixed crysknives have only 10% chance of reverting */
+	if (obj->otyp == CRYSKNIFE && (!obj->oerodeproof || !rn2(10))) {
 		obj->otyp = WORM_TOOTH;
+		obj->oerodeproof = 0;
+	}
 	/* uswallow check done by GAN 01/29/87 */
 	if(u.uswallow) {
 		if (obj != uball) {		/* mon doesn't pick up ball */
@@ -502,7 +543,7 @@ doddrop()
 }
 
 /* Drop things from the hero's inventory, using a menu. */
-static int
+STATIC_OVL int
 menu_drop(retry)
 int retry;
 {
@@ -567,6 +608,8 @@ int retry;
 		    otmp2 = splitobj(otmp, cnt);
 		    /* assume other worn items aren't mergable */
 		    if (otmp == uwep) setuwep(otmp2);
+			if (otmp == uquiver) setuqwep(otmp2);
+			if (otmp == uswapwep) setuswapwep(otmp2);
 		}
 		n_dropped += drop(otmp);
 	    }
@@ -599,14 +642,14 @@ dodown()
 		ladder_down = (u.ux == xdnladder && u.uy == ydnladder);
 
 	if (Levitation) {
-	    if ((HLevitation & (I_SPECIAL|W_ARTI)) != 0) {
+	    if ((HLevitation & I_SPECIAL) || (ELevitation & W_ARTI)) {
 		/* end controlled levitation */
-		if (float_down(I_SPECIAL|W_ARTI|TIMEOUT))
-		    return 1;	/* came down, so moved */
+			if (float_down(I_SPECIAL|TIMEOUT, W_ARTI))
+			    return (1);   /* came down, so moved */
 	    }
 	    floating_above(stairs_down ? "stairs" : ladder_down ?
 			   "ladder" : surface(u.ux, u.uy));
-	    return 0;	/* didn't move */
+	    return (0);   /* didn't move */
 	}
 	if (!stairs_down && !ladder_down) {
 		if (!(trap = t_at(u.ux,u.uy)) ||
@@ -635,7 +678,7 @@ dodown()
 	}
 
 	if (trap)
-	    You("%s %s.", locomotion(uasmon, "jump"),
+	    You("%s %s.", locomotion(youmonst.data, "jump"),
 		trap->ttyp == HOLE ? "down the hole" : "through the trap door");
 
 	if (trap && Is_stronghold(&u.uz)) {
@@ -677,7 +720,7 @@ doup()
 		You("are held back by your pet!");
 		return(0);
 	}
-	if (levl[u.ux][u.uy].typ == LADDER) at_ladder = TRUE;
+	at_ladder = (boolean) (levl[u.ux][u.uy].typ == LADDER);
 	prev_level(TRUE);
 	at_ladder = FALSE;
 	return(1);
@@ -686,7 +729,7 @@ doup()
 d_level save_dlevel = {0, 0};
 
 /* check that we can write out the current level */
-static int
+STATIC_OVL int
 currentlevel_rewrite()
 {
 	register int fd;
@@ -765,6 +808,7 @@ boolean at_stairs, falling, portal;
 		was_in_W_tower = In_W_tower(u.ux, u.uy, &u.uz),
 		familiar = FALSE;
 	boolean new = FALSE;	/* made a new level? */
+	struct monst *mtmp;
 
 	if (dunlev(newlevel) > dunlevs_in_dungeon(newlevel))
 		newlevel->dlevel = dunlevs_in_dungeon(newlevel);
@@ -856,7 +900,10 @@ boolean at_stairs, falling, portal;
 	 * to avoid dangling timers and light sources.
 	 */
 	cant_go_back = (newdungeon && In_endgame(newlevel));
-	if (!cant_go_back) bufon(fd);		/* use buffered output */
+	if (!cant_go_back) {
+	    update_mlstmv();	/* current monsters are becoming inactive */
+	    bufon(fd);		/* use buffered output */
+	}
 	savelev(fd, ledger_no(&u.uz),
 		cant_go_back ? FREE_SAVE : (WRITE_SAVE | FREE_SAVE));
 	bclose(fd);
@@ -919,6 +966,7 @@ boolean at_stairs, falling, portal;
 		if (ttrap->ttyp == MAGIC_PORTAL) break;
 
 	    if (!ttrap) panic("goto_level: no corresponding portal!");
+	    seetrap(ttrap);
 	    u_on_newpos(ttrap->tx, ttrap->ty);
 	} else if (at_stairs && !In_endgame(&u.uz)) {
 	    if (up) {
@@ -951,7 +999,10 @@ boolean at_stairs, falling, portal;
 		    if (newdungeon) u_on_sstairs();
 		    else u_on_upstairs();
 		}
-		if (u.dz &&
+		if (u.dz && Flying)
+		    You("fly down along the %s.",
+			at_ladder ? "ladder" : "stairs");
+		else if (u.dz &&
 		    (near_capacity() > UNENCUMBERED || Punished || Fumbling)) {
 		    You("fall down the %s.", at_ladder ? "ladder" : "stairs");
 		    if (Punished) {
@@ -959,6 +1010,10 @@ boolean at_stairs, falling, portal;
 			if (carried(uball)) {
 			    if (uwep == uball)
 				setuwep((struct obj *)0);
+			    if (uswapwep == uball)
+				setuswapwep((struct obj *)0);
+			    if (uquiver == uball)
+				setuqwep((struct obj *)0);
 			    freeinv(uball);
 			}
 		    }
@@ -1005,10 +1060,29 @@ boolean at_stairs, falling, portal;
 
 	initrack();
 
-	if(MON_AT(u.ux, u.uy)) mnexto(m_at(u.ux, u.uy));
-	if(MON_AT(u.ux, u.uy)) {
+	if ((mtmp = m_at(u.ux, u.uy)) != 0
+#ifdef STEED
+		&& mtmp != u.usteed
+#endif
+		) {
+	    /* There's a monster at your target destination; it might be one
+	       which accompanied you--see mon_arrive(dogmove.c)--or perhaps
+	       it was already here.  Randomly move you to an adjacent spot
+	       or else the monster to any nearby location.  Prior to 3.3.0
+	       the latter was done unconditionally. */
+	    coord cc;
+
+	    if (!rn2(2) &&
+		    enexto(&cc, u.ux, u.uy, youmonst.data) &&
+		    distu(cc.x, cc.y) <= 2)
+		u_on_newpos(cc.x, cc.y);	/*[maybe give message here?]*/
+	    else
+		mnexto(mtmp);
+
+	    if ((mtmp = m_at(u.ux, u.uy)) != 0) {
 		impossible("mnexto failed (do.c)?");
-		rloc(m_at(u.ux, u.uy));
+		rloc(mtmp);
+	    }
 	}
 
 	/* initial movement of bubbles just before vision_recalc */
@@ -1025,6 +1099,7 @@ boolean at_stairs, falling, portal;
 	/* Reset the screen. */
 	vision_reset();		/* reset the blockages */
 	docrt();		/* does a full vision recalc */
+	flush_screen(1);
 
 	/*
 	 *  Move all plines beyond the screen reset.
@@ -1083,7 +1158,7 @@ boolean at_stairs, falling, portal;
 		!(u.uevent.qexpelled || u.uevent.qcompleted || leaderless())) {
 
 		if (u.uevent.qcalled) {
-			com_pager(Role_is('R') ? 4 : 3);
+			com_pager(Role_if(PM_ROGUE) ? 4 : 3);
 		} else {
 			com_pager(2);
 			u.uevent.qcalled = TRUE;
@@ -1092,78 +1167,16 @@ boolean at_stairs, falling, portal;
 
 	/* once Croesus is dead, his alarm doesn't work any more */
 	if (Is_knox(&u.uz) && (new || !mvitals[PM_CROESUS].died)) {
-		register struct monst *mtmp;
-
 		You("penetrated a high security area!");
 		pline("An alarm sounds!");
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		    if(mtmp->msleep) mtmp->msleep = 0;
+		    if (mtmp->msleeping) mtmp->msleeping = 0;
 	}
 
-	if(on_level(&u.uz, &astral_level)) {
-		register struct monst *mtmp;
-
-		/* reset monster hostility relative to player */
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		    reset_hostility(mtmp);
-
-		/* create some player-monsters */
-		create_mplayers(rn1(4, 3), TRUE);
-
-		/* create a guardian angel next to player, if worthy */
-		if (Conflict) {
-		    coord mm;
-		    int i = rnd(4);
-	pline("A voice booms: \"Thy desire for conflict shall be fulfilled!\"");
-		    while(i--) {
-			mm.x = u.ux;
-			mm.y = u.uy;
-			if(enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL]))
-			    (void) mk_roamer(&mons[PM_ANGEL], u.ualign.type,
-						mm.x, mm.y, FALSE);
-		    }
-
-		} else if(u.ualign.record > 8 /* fervent */) {
-		    coord mm;
-
-		pline("A voice whispers: \"Thou hast been worthy of me!\"");
-		    mm.x = u.ux;
-		    mm.y = u.uy;
-		    if (enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL])) {
-			if ((mtmp = mk_roamer(&mons[PM_ANGEL], u.ualign.type,
-					   mm.x, mm.y, TRUE)) != 0) {
-			    register struct obj *otmp;
-
-			    if (!Blind)
-				pline("An angel appears near you.");
-			    else
-			You_feel("the presence of a friendly angel near you.");
-			    /* guardian angel -- the one case mtame doesn't
-			     * imply an edog structure, so we don't want to
-			     * call tamedog().
-			     */
-			    mtmp->mtame = 10;
-			    /* make him strong enough vs. endgame foes */
-			    mtmp->m_lev = rn1(8,15);
-			    mtmp->mhp = mtmp->mhpmax =
-					d((int)mtmp->m_lev,10) + 30 + rnd(30);
-			    if ((otmp = select_hwep(mtmp)) == 0) {
-				otmp = mksobj(SILVER_SABER, FALSE, FALSE);
-				mpickobj(mtmp, otmp);
-			    }
-			    bless(otmp);
-			    if (otmp->spe < 4) otmp->spe += rnd(4);
-			    if ((otmp = which_armor(mtmp, W_ARMS)) == 0
-			      || otmp->otyp != SHIELD_OF_REFLECTION) {
-				(void) mongets(mtmp, AMULET_OF_REFLECTION);
-				m_dowear(mtmp, TRUE);
-			    }
-			}
-		    }
-		}
-	}
-
-	onquest();
+	if (on_level(&u.uz, &astral_level))
+	    final_level();
+	else
+	    onquest();
 	assign_level(&u.uz0, &u.uz); /* reset u.uz0 */
 
 #ifdef INSURANCE
@@ -1171,6 +1184,69 @@ boolean at_stairs, falling, portal;
 #endif
 
 	pickup(1);
+}
+
+STATIC_OVL void
+final_level()
+{
+	struct monst *mtmp;
+	struct obj *otmp;
+	coord mm;
+	int i;
+
+	/* reset monster hostility relative to player */
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    reset_hostility(mtmp);
+
+	/* create some player-monsters */
+	create_mplayers(rn1(4, 3), TRUE);
+
+	/* create a guardian angel next to player, if worthy */
+	if (Conflict) {
+	    pline(
+	     "A voice booms: \"Thy desire for conflict shall be fulfilled!\"");
+	    for (i = rnd(4); i > 0; --i) {
+		mm.x = u.ux;
+		mm.y = u.uy;
+		if (enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL]))
+		    (void) mk_roamer(&mons[PM_ANGEL], u.ualign.type,
+				     mm.x, mm.y, FALSE);
+	    }
+
+	} else if (u.ualign.record > 8) {	/* fervent */
+	    pline("A voice whispers: \"Thou hast been worthy of me!\"");
+	    mm.x = u.ux;
+	    mm.y = u.uy;
+	    if (enexto(&mm, mm.x, mm.y, &mons[PM_ANGEL])) {
+		if ((mtmp = mk_roamer(&mons[PM_ANGEL], u.ualign.type,
+				      mm.x, mm.y, TRUE)) != 0) {
+		    if (!Blind)
+			pline("An angel appears near you.");
+		    else
+			You_feel("the presence of a friendly angel near you.");
+		    /* guardian angel -- the one case mtame doesn't
+		     * imply an edog structure, so we don't want to
+		     * call tamedog().
+		     */
+		    mtmp->mtame = 10;
+		    /* make him strong enough vs. endgame foes */
+		    mtmp->m_lev = rn1(8,15);
+		    mtmp->mhp = mtmp->mhpmax =
+					d((int)mtmp->m_lev,10) + 30 + rnd(30);
+		    if ((otmp = select_hwep(mtmp)) == 0) {
+			otmp = mksobj(SILVER_SABER, FALSE, FALSE);
+			mpickobj(mtmp, otmp);
+		    }
+		    bless(otmp);
+		    if (otmp->spe < 4) otmp->spe += rnd(4);
+		    if ((otmp = which_armor(mtmp, W_ARMS)) == 0 ||
+			    otmp->otyp != SHIELD_OF_REFLECTION) {
+			(void) mongets(mtmp, AMULET_OF_REFLECTION);
+			m_dowear(mtmp, TRUE);
+		    }
+		}
+	    }
+	}
 }
 
 static char *dfr_pre_msg = 0,	/* pline() before level change */
@@ -1199,9 +1275,6 @@ const char *pre_msg, *post_msg;
 	    dfr_pre_msg = strcpy((char *)alloc(strlen(pre_msg) + 1), pre_msg);
 	if (post_msg)
 	    dfr_post_msg = strcpy((char *)alloc(strlen(post_msg)+1), post_msg);
-
-	/* we don't actually have to wait unless this is a monster's move */
-	if (!flags.mon_moving) deferred_goto();
 }
 
 /* handle something like portal ejection */
@@ -1362,15 +1435,20 @@ set_wounded_legs(side, timex)
 register long side;
 register int timex;
 {
+	/* KMH -- STEED
+	 * If you are riding, your steed gets the wounded legs instead.
+	 * You still call this function, but don't lose hp.
+	 * Caller is also responsible for adjusting messages.
+	 */
+
 	if(!Wounded_legs) {
 		ATEMP(A_DEX)--;
 		flags.botl = 1;
 	}
 
-	if(!Wounded_legs || (Wounded_legs & TIMEOUT))
-		Wounded_legs |= side + timex;
-	else
-		Wounded_legs |= side;
+	if(!Wounded_legs || (HWounded_legs & TIMEOUT))
+		HWounded_legs = timex;
+	EWounded_legs = side;
 	(void)encumber_msg();
 }
 
@@ -1383,14 +1461,20 @@ heal_legs()
 			flags.botl = 1;
 		}
 
-		if((Wounded_legs & BOTH_SIDES) == BOTH_SIDES) {
+#ifdef STEED
+		if (!u.usteed)
+#endif
+		{
+			/* KMH, intrinsics patch */
+			if((EWounded_legs & BOTH_SIDES) == BOTH_SIDES) {
 			Your("%s feel somewhat better.",
 				makeplural(body_part(LEG)));
 		} else {
 			Your("%s feels somewhat better.",
 				body_part(LEG));
 		}
-		Wounded_legs = 0;
+		}
+		HWounded_legs = EWounded_legs = 0;
 	}
 	(void)encumber_msg();
 }

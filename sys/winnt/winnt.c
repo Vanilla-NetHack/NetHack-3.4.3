@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)winnt.c	 3.2	 95/09/06		  */
+/*	SCCS Id: @(#)winnt.c	 3.3	 97/04/12		  */
 /* Copyright (c) NetHack PC Development Team 1993, 1994 */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
- *  Windows NT system functions.
+ *  WIN32 system functions.
  *
  *  Initial Creation: Michael Allison - January 31/93
  *
@@ -24,6 +24,7 @@
  *
  * GetDiskFreeSpace
  * GetVolumeInformation
+ * GetUserName
  * FindFirstFile
  * FindNextFile
  * FindClose
@@ -137,10 +138,8 @@ max_filename()
 	
 	status = GetVolumeInformation((LPTSTR)0,(LPTSTR)0, 0
 			,(LPDWORD)0,&maxflen,(LPDWORD)0,(LPTSTR)0,0);
-	if (status)
-	{
-	   return maxflen;
-	}
+	if (status) return maxflen;
+	else return 0;
 }
 
 int
@@ -150,10 +149,10 @@ def_kbhit()
 }
 
 /* 
- * Windows NT version >= 3.5 supports long file names,
- * even on FAT volumes, so no need for nt_regularize.  Windows NT
- * 3.1 could not do long file names except on NTFS, so nt_regularize
- * was required.
+ * Windows NT version >= 3.5x and above supports long file names,
+ * even on FAT volumes (VFAT), so no need for nt_regularize.
+ * Windows NT 3.1 could not do long file names except on NTFS,
+ * so nt_regularize was required.
  */
 
 void
@@ -165,22 +164,32 @@ register char *s;
 	for (lp = s; *lp; lp++)
 	    if ( *lp == '?' || *lp == '"' || *lp == '\\' ||
 		 *lp == '/' || *lp == '>' || *lp == '<'  ||
-		 *lp == '*' || *lp == '|' || *lp == ':' || (*lp > 127))
+		 *lp == '*' || *lp == '|' || *lp == ':'  || (*lp > 127))
 			*lp = '_';
 }
 
-
-char *getusername()
+/*
+ * This is used in nhlan.c to implement some of the LAN_FEATURES.
+ */
+char *get_username(lan_username_size)
+int *lan_username_size;
 {
-	static char nbuf[30];
-	int i = sizeof(nbuf);
+	static char username_buffer[BUFSZ];
+	unsigned int status;
+	int i = 0;
 
-	if (GetUserName(nbuf, &i)) {
-		pline("User name is %s",nbuf);
-		return nbuf;
+	i = BUFSZ - 1;
+	/* i gets updated with actual size */
+	status = GetUserName(username_buffer, &i);		
+	if (status) {
+		if (lan_username_size) *lan_username_size = i;
+		username_buffer[i] = 0;
+		return username_buffer;
 	}
+	if (lan_username_size) *lan_username_size = 0;
 	return (char *)0;
 }
+
 # if 0
 char *getxxx()
 {
@@ -191,6 +200,28 @@ GetModuleFileName(hInst, szFullPath, sizeof(szFullPath));
 return &szFullPath[0];
 }
 # endif
+
+
+/* fatal error */
+/*VARARGS1*/
+
+void
+error VA_DECL(const char *,s)
+	VA_START(s);
+	VA_INIT(s, const char *);
+	/* error() may get called before tty is initialized */
+	if (iflags.window_inited) end_screen();
+	putchar('\n');
+	Vprintf(s,VA_ARGS);
+	putchar('\n');
+	VA_END();
+	exit(EXIT_FAILURE);
+}
+
+void Delay(int ms)
+{
+	(void)Sleep(ms);
+}
 #endif /* WIN32 */
 
 /*winnt.c*/

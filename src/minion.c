@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)minion.c	3.2	95/12/20	*/
+/*	SCCS Id: @(#)minion.c	3.3	1999/02/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -75,11 +75,11 @@ boolean talk;
 	    mnum = ndemon(A_NONE);
 	    break;
     }
-    if (mons[mnum].pxlth == 0) {
+    if (mnum == NON_PM) {
+	mon = 0;
+    } else if (mons[mnum].pxlth == 0) {
 	struct permonst *pm = &mons[mnum];
-	pm->pxlth = sizeof(struct emin);
-	mon = makemon(pm, u.ux, u.uy, NO_MM_FLAGS);
-	pm->pxlth = 0;
+	mon = makemon(pm, u.ux, u.uy, MM_EMIN);
 	if (mon) {
 	    mon->isminion = TRUE;
 	    EMIN(mon)->min_align = alignment;
@@ -125,7 +125,7 @@ register struct monst *mtmp;
 	    if (!Blind) pline("%s appears before you.", Amonnam(mtmp));
 	    newsym(mtmp->mx,mtmp->my);
 	}
-	if (u.usym == S_DEMON) {	/* Won't blackmail their own. */
+	if (youmonst.data->mlet == S_DEMON) {	/* Won't blackmail their own. */
 	    pline("%s says, \"Good hunting, %s.\" and vanishes.",
 		  Amonnam(mtmp), flags.female ? "Sister" : "Brother");
 	    rloc(mtmp);
@@ -238,7 +238,7 @@ lminion()
 		return(monsndx(ptr));
 	}
 
-	return(0);
+	return NON_PM;
 }
 
 int
@@ -255,7 +255,7 @@ aligntyp atyp;
 		return(monsndx(ptr));
 	}
 
-	return(0);
+	return NON_PM;
 }
 
 /*minion.c*/

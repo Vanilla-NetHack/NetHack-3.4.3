@@ -19,7 +19,7 @@ free from MIT (like X11).  Unfortunately, the companies that resell X11
 (value subtracted er, added software; yea, yea, that's the ticket) usually
 discourage its use by either omitting the set or putting it on the
 "unsupported" portion of their tape.  If you do not have the Athena
-widgets, you may obtain them via anonymous ftp from export.lcs.mit.edu.
+widgets, you may obtain them via anonymous ftp from ftp.x.org.
 
 
 To use this code, define X11_GRAPHICS in include/config.h.  (You can comment
@@ -50,8 +50,8 @@ high-resolution screens using the following command:
         pnmdepth 255 | ppmquant 100 | ppmtoxpm >x11tiles_big.xpm
 To use XPM, you must have the free XPM libraries installed in your system.
 Official xpm releases can be found by ftp on:
-    export.lcs.mit.edu (18.30.0.238) contrib     (Boston, USA)
-    avahi.inria.fr     (192.5.60.47) pub         (Sophia Antipolis, France)
+    ftp.x.org       (198.4.202.8)  contrib/libraries     (Boston, USA)
+    avahi.inria.fr  (138.96.12.1)  pub/xpm     (Sophia Antipolis, France)
 If you do choose to define USE_XPM, be sure to add "-lXpm" to WINX11LIB
 in src/Makefile.
 
@@ -91,13 +91,6 @@ X11.  Adding the "xset" command to the nethack.sh is also an alternative,
 though it may clutter your X11 font search path after playing several games,
 so this method is not recommended.  See the note below for the alternative
 installation procedure for Sun's OpenWindows.
-
-
-If you are using Xauthority security, installing NetHack setuid may cause
-problems since the alternate id will probably not have permission to open
-your display.  NetHack will be just as happy setgid, but you will have to
-change the file permissions in the top Makefile before 'make install' to
-do that.
 
 
 If your X11 include files and libraries are not installed in a standard

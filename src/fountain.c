@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fountain.c	3.2	95/11/04	*/
+/*	SCCS Id: @(#)fountain.c	3.3	1999/08/16	*/
 /*	Copyright Scott R. Turner, srt@ucla, 10/27/86 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,11 +6,11 @@
 
 #include "hack.h"
 
-static void NDECL(dowatersnakes);
-static void NDECL(dowaterdemon);
-static void NDECL(dowaternymph);
+STATIC_DCL void NDECL(dowatersnakes);
+STATIC_DCL void NDECL(dowaterdemon);
+STATIC_DCL void NDECL(dowaternymph);
 STATIC_PTR void FDECL(gush, (int,int,genericptr_t));
-static void NDECL(dofindgem);
+STATIC_DCL void NDECL(dofindgem);
 
 void
 floating_above(what)
@@ -19,7 +19,7 @@ const char *what;
     You("are floating high above the %s.", what);
 }
 
-static void
+STATIC_OVL void
 dowatersnakes() /* Fountain of snakes! */
 {
     register int num = rn1(5,2);
@@ -39,7 +39,7 @@ dowatersnakes() /* Fountain of snakes! */
 	pline_The("fountain bubbles furiously for a moment, then calms.");
 }
 
-static
+STATIC_OVL
 void
 dowaterdemon() /* Water demon */
 {
@@ -63,7 +63,7 @@ dowaterdemon() /* Water demon */
 	}
 }
 
-static void
+STATIC_OVL void
 dowaternymph() /* Water Nymph */
 {
 	register struct monst *mtmp;
@@ -74,7 +74,7 @@ dowaternymph() /* Water Nymph */
 		   You("attract %s!", a_monnam(mtmp));
 		else
 		   You_hear("a seductive voice.");
-		mtmp->msleep = 0;
+		mtmp->msleeping = 0;
 		if (t_at(mtmp->mx, mtmp->my))
 		    (void) mintrap(mtmp);
 	} else
@@ -120,6 +120,7 @@ genericptr_t poolcnt;
 
 	/* Put a pool at x, y */
 	levl[x][y].typ = POOL;
+	/* No kelp! */
 	del_engr_at(x, y);
 	water_damage(level.objects[x][y], FALSE, TRUE);
 
@@ -129,7 +130,7 @@ genericptr_t poolcnt;
 		newsym(x,y);
 }
 
-static void
+STATIC_OVL void
 dofindgem() /* Find a gem in the sparkling waters. */
 {
 	if (!Blind) You("spot a gem in the sparkling waters!");
@@ -360,8 +361,9 @@ register struct obj *obj;
 	  pline("From the murky depths, a hand reaches up to bless the sword.");
 			pline("As the hand retreats, the fountain disappears!");
 			obj = oname(obj, artiname(ART_EXCALIBUR));
+			discover_artifact(ART_EXCALIBUR);
 			bless(obj);
-			obj->oeroded = 0;
+			obj->oeroded = obj->oeroded2 = 0;
 			obj->oerodeproof = TRUE;
 			exercise(A_WIS, TRUE);
 		}
@@ -371,6 +373,12 @@ register struct obj *obj;
 		level.flags.nfountains--;
 		return;
 	} else (void) get_wet(obj);
+
+	/* Acid and water don't mix */
+	if (obj->otyp == POT_ACID) {
+	    useup(obj);
+	    return;
+	}
 
 	switch (rnd(30)) {
 		case 16: /* Curse the item */
@@ -425,7 +433,7 @@ register struct obj *obj;
 		 * surface.  After all, there will have been more people going
 		 * by.	Just like a shopping mall!  Chris Woodbury  */
 
-		    mkgold((long)
+		    (void) mkgold((long)
 			(rnd((dunlevs_in_dungeon(&u.uz)-dunlev(&u.uz)+1)*2)+5),
 			u.ux, u.uy);
 		    if (!Blind)
@@ -511,7 +519,7 @@ drinksink()
 		case 7: pline_The("water moves as though of its own will!");
 			if ((mvitals[PM_WATER_ELEMENTAL].mvflags & G_GONE)
 			    || !makemon(&mons[PM_WATER_ELEMENTAL],
-			 		u.ux, u.uy, NO_MM_FLAGS))
+					u.ux, u.uy, NO_MM_FLAGS))
 				pline("But it quiets down.");
 			break;
 		case 8: pline("Yuk, this water tastes awful.");
@@ -523,8 +531,10 @@ drinksink()
 			vomit();
 			break;
 		case 10: pline("This water contains toxic wastes!");
-			You("undergo a freakish metamorphosis!");
-			polyself();
+			if (!Unchanging) {
+				You("undergo a freakish metamorphosis!");
+				polyself();
+			}
 			break;
 		/* more odd messages --JJB */
 		case 11: You_hear("clanking from the pipes...");

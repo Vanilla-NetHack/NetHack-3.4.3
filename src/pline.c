@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pline.c	3.2	96/07/15	*/
+/*	SCCS Id: @(#)pline.c	3.3	1999/11/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -82,13 +82,22 @@ static char *you_buf = 0;
 static int you_buf_siz = 0;
 
 static char *
-You_buf(siz) int siz; {
+You_buf(siz)
+int siz;
+{
 	if (siz > you_buf_siz) {
-		if (you_buf_siz > 0) free((genericptr_t) you_buf);
+		if (you_buf) free((genericptr_t) you_buf);
 		you_buf_siz = siz + 10;
 		you_buf = (char *) alloc((unsigned) you_buf_siz);
 	}
 	return you_buf;
+}
+
+void
+free_youbuf()
+{
+	if (you_buf) free((genericptr_t) you_buf),  you_buf = (char *)0;
+	you_buf_siz = 0;
 }
 
 /* `prefix' must be a string literal, not a pointer */
@@ -225,7 +234,7 @@ impossible VA_DECL(const char *, s)
 	VA_START(s);
 	VA_INIT(s, const char *);
 	vpline(s,VA_ARGS);
-	pline("Program in disorder - perhaps you'd better Quit.");
+	pline("Program in disorder - perhaps you'd better #quit.");
 	VA_END();
 }
 
@@ -271,7 +280,7 @@ register struct monst *mtmp;
 	if (mtmp->mblinded || !mtmp->mcansee)
 				  Strcat(info, ", blind");
 	if (mtmp->mstun)	  Strcat(info, ", stunned");
-	if (mtmp->msleep)	  Strcat(info, ", asleep");
+	if (mtmp->msleeping)	  Strcat(info, ", asleep");
 #if 0	/* unfortunately mfrozen covers temporary sleep and being busy
 	   (donning armor, for instance) as well as paralysis */
 	else if (mtmp->mfrozen)	  Strcat(info, ", paralyzed");
@@ -291,11 +300,14 @@ register struct monst *mtmp;
 	if (mtmp->mundetected)	  Strcat(info, ", concealed");
 	if (mtmp->minvis)	  Strcat(info, ", invisible");
 	if (mtmp == u.ustuck)	  Strcat(info,
-			(Upolyd && sticks(uasmon)) ? ", held by you" :
+			(sticks(youmonst.data)) ? ", held by you" :
 				u.uswallow ? (is_animal(u.ustuck->data) ?
 				", swallowed you" :
 				", engulfed you") :
 				", holding you");
+#ifdef STEED
+	if (mtmp == u.usteed)	  Strcat(info, ", carrying you");
+#endif
 
 	Strcpy(monnambuf, mon_nam(mtmp));
 	/* avoid "Status of the invisible newt ..., invisible" */
@@ -339,12 +351,15 @@ ustatusline()
 	    Strcat(info, ", blind");
 	    if (u.ucreamed) {
 		if ((long)u.ucreamed < Blinded || Blindfolded
-						|| !haseyes(uasmon))
+						|| !haseyes(youmonst.data))
 		    Strcat(info, ", cover");
 		Strcat(info, "ed by sticky goop");
 	    }	/* note: "goop" == "glop"; variation is intentional */
 	}
 	if (Stunned)		Strcat(info, ", stunned");
+#ifdef STEED
+	if (!u.usteed)
+#endif
 	if (Wounded_legs) {
 	    const char *what = body_part(LEG);
 	    if ((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
@@ -354,11 +369,12 @@ ustatusline()
 	if (Glib)		Sprintf(eos(info), ", slippery %s",
 					makeplural(body_part(HAND)));
 	if (u.utrap)		Strcat(info, ", trapped");
-	if (Fast)		Strcat(info, ", fast");
+	if (Fast)		Strcat(info, (Fast & ~INTRINSIC) ?
+						", very fast" : ", fast");
 	if (u.uundetected)	Strcat(info, ", concealed");
 	if (Invis)		Strcat(info, ", invisible");
 	if (u.ustuck) {
-	    if (Upolyd && sticks(uasmon))
+	    if (sticks(youmonst.data))
 		Strcat(info, ", holding ");
 	    else
 		Strcat(info, ", held by ");
@@ -381,6 +397,14 @@ ustatusline()
 		Upolyd ? u.mhmax : u.uhpmax,
 		u.uac,
 		info);
+}
+
+void self_invis_message()
+{
+	pline("%s %s.",
+	    Hallucination ? "Far out, man!  You" : "Gee!  All of a sudden, you",
+	    See_invisible ? "can see right through yourself" :
+		"can't see yourself");
 }
 
 #endif /* OVLB */

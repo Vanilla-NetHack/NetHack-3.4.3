@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmap.c	3.2	96/04/05	*/
+/*	SCCS Id: @(#)winmap.c	3.3	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -34,7 +34,7 @@
 # undef PRESERVE_NO_SYSV
 #endif
 
-#include "Window.h"	/* map widget declarations */
+#include "xwindow.h"	/* map widget declarations */
 
 #include "hack.h"
 #include "dlb.h"
@@ -50,9 +50,9 @@ extern short glyph2tile[];
 extern int total_tiles_used;
 
 /* Define these if you really want a lot of junk on your screen. */
-/* #define VERBOSE		/* print various info & events as they happen */
-/* #define VERBOSE_UPDATE	/* print screen update bounds */
-/* #define VERBOSE_INPUT	/* print input events */
+/* #define VERBOSE */		/* print various info & events as they happen */
+/* #define VERBOSE_UPDATE */	/* print screen update bounds */
+/* #define VERBOSE_INPUT */	/* print input events */
 
 
 #define USE_WHITE	/* almost always use white as a tile cursor border */
@@ -110,6 +110,7 @@ X11_print_glyph(window, x, y, glyph)
 #define cmap_color(n) color = defsyms[n].color
 #define obj_color(n)  color = objects[n].oc_color
 #define mon_color(n)  color = mons[n].mcolor
+#define invis_color(n) color = NO_COLOR
 #define pet_color(n)  color = mons[n].mcolor
 
 # else /* no text color */
@@ -118,6 +119,7 @@ X11_print_glyph(window, x, y, glyph)
 #define cmap_color(n)
 #define obj_color(n)
 #define mon_color(n)
+#define invis_color(n)
 #define pet_color(n)
 #endif
 
@@ -141,9 +143,19 @@ X11_print_glyph(window, x, y, glyph)
 	} else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
 	    ch = oc_syms[(int) objects[offset].oc_class];
 	    obj_color(offset);
+	} else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) {/* ridden mon */
+	    ch = monsyms[(int) mons[offset].mlet];
+	    mon_color(offset);
 	} else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
 	    ch = oc_syms[(int) objects[CORPSE].oc_class];
 	    mon_color(offset);
+	} else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) {
+	    /* monster detection; should really be inverse */
+	    ch = monsyms[(int) mons[offset].mlet];
+	    mon_color(offset);
+	} else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {	/* invisible */
+	    ch = DEF_INVISIBLE;
+	    invis_color(offset);
 	} else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
 	    ch = monsyms[(int) mons[offset].mlet];
 	    pet_color(offset);

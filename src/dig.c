@@ -1,23 +1,25 @@
-/*	SCCS Id: @(#)dig.c	3.2	96/07/28	*/
+/*	SCCS Id: @(#)dig.c	3.3	1999/12/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "edog.h"
-/* #define DEBUG	/* turn on for diagnostics */
+/* #define DEBUG */	/* turn on for diagnostics */
 
 #ifdef OVLB
 
 static NEARDATA boolean did_dig_msg;
 
-static boolean NDECL(rm_waslit);
-static void FDECL(mkcavepos, (XCHAR_P,XCHAR_P,int,BOOLEAN_P,BOOLEAN_P));
-static void FDECL(mkcavearea, (BOOLEAN_P));
-static int FDECL(dig_typ, (XCHAR_P,XCHAR_P));
+STATIC_DCL boolean NDECL(rm_waslit);
+STATIC_DCL void FDECL(mkcavepos, (XCHAR_P,XCHAR_P,int,BOOLEAN_P,BOOLEAN_P));
+STATIC_DCL void FDECL(mkcavearea, (BOOLEAN_P));
+STATIC_DCL int FDECL(dig_typ, (XCHAR_P,XCHAR_P));
 STATIC_DCL int NDECL(dig);
 STATIC_DCL schar FDECL(fillholetyp, (int, int));
+STATIC_DCL void NDECL(dig_up_grave);
 
-static boolean
+
+STATIC_OVL boolean
 rm_waslit()
 {
     register xchar x, y;
@@ -34,7 +36,7 @@ rm_waslit()
  * boulders in the name of a nice effect.  Vision will get fixed up again
  * immediately after the effect is complete.
  */
-static void
+STATIC_OVL void
 mkcavepos(x, y, dist, waslit, rockit)
     xchar x,y;
     int dist;
@@ -73,7 +75,7 @@ mkcavepos(x, y, dist, waslit, rockit)
     else newsym(x,y);
 }
 
-static void
+STATIC_OVL void
 mkcavearea(rockit)
 register boolean rockit;
 {
@@ -121,13 +123,15 @@ register boolean rockit;
 
 /* When digging into location <x,y>, what are you actually digging into? */
 /* result: 1=>statue, 2=>boulder, 3=>door, 0=>other; used as array index */
-static int
+/* KMH -- Added 4=>tree */
+STATIC_OVL int
 dig_typ(x, y)
 xchar x, y;
 {
 	return (sobj_at(STATUE, x, y) ? 1 :
 		sobj_at(BOULDER, x, y) ? 2 :
-		closed_door(x, y) ? 3 : 0);
+		closed_door(x, y) ? 3 :
+		IS_TREE(levl[x][y].typ) ? 4: 0);
 }
 
 #define BY_YOU		(&youmonst)
@@ -188,7 +192,7 @@ dig()
 	lev = &levl[dpx][dpy];
 	/* perhaps a nymph stole your pick-axe while you were busy digging */
 	/* or perhaps you teleported away */
-	if (u.uswallow || !uwep || uwep->otyp != PICK_AXE ||
+	if (u.uswallow || !uwep || !is_pick(uwep) ||
 	    !on_level(&digging.level, &u.uz) ||
 	    ((digging.down ? (dpx != u.ux || dpy != u.uy)
 			   : (distu(dpx,dpy) > 2))))
@@ -199,6 +203,10 @@ dig()
 	} else { /* !digging.down */
 	    if (IS_ROCK(lev->typ) && !may_dig(dpx,dpy) && !dig_typ(dpx, dpy)) {
 		pline("This wall is too hard to dig into.");
+		return(0);
+	    }
+	    if (IS_TREE(lev->typ) && !may_dig(dpx,dpy) && dig_typ(dpx, dpy) == 4) {
+		pline("This tree seems to be petrified.");
 		return(0);
 	    }
 	}
@@ -224,7 +232,9 @@ dig()
 	}
 
 	digging.effort += 10 + rn2(5) + abon() +
-			   uwep->spe - uwep->oeroded + u.udaminc;
+			   uwep->spe - greatest_erosion(uwep) + u.udaminc;
+	if (Race_if(PM_DWARF))
+	    digging.effort *= 2;
 	if (digging.down) {
 		register struct trap *ttmp;
 
@@ -268,7 +278,8 @@ dig()
 		} else if ((obj = sobj_at(BOULDER, dpx, dpy)) != 0) {
 			fracture_rock(obj);
 			digtxt = "The boulder falls apart.";
-		} else if (lev->typ == STONE || lev->typ == SCORR) {
+		} else if (lev->typ == STONE || lev->typ == SCORR ||
+				IS_TREE(lev->typ)) {
 			if(Is_earthlevel(&u.uz)) {
 			    if(uwep->blessed && !rn2(3)) {
 				mkcavearea(FALSE);
@@ -279,8 +290,13 @@ dig()
 				goto cleanup;
 			    }
 			}
-			lev->typ = CORR;
-			digtxt = "You succeed in cutting away some rock.";
+			if (IS_TREE(lev->typ)) {
+			    digtxt = "You cut down the tree.";
+			    lev->typ = ROOM;
+			} else {
+			    digtxt = "You succeed in cutting away some rock.";
+			    lev->typ = CORR;
+			}
 		} else if(IS_WALL(lev->typ)) {
 			if(shopedge) {
 			    add_damage(dpx, dpy, 10L * ACURRSTR);
@@ -344,8 +360,8 @@ cleanup:
 		digging.level.dlevel = -1;
 		return(0);
 	} else {		/* not enough effort has been spent yet */
-		static const char *d_target[4] = {
-					"rock", "statue", "boulder", "door"
+		static const char *d_target[5] = {
+					"rock", "statue", "boulder", "door", "tree"
 		};
 		int dig_target = dig_typ(dpx, dpy);
 
@@ -424,7 +440,7 @@ int ttyp;
 	boolean madeby_u = (madeby == BY_YOU);
 	boolean madeby_obj = (madeby == BY_OBJECT);
 	boolean at_u = (x == u.ux) && (y == u.uy);
-	boolean wont_fall = Levitation || is_flyer(uasmon);
+	boolean wont_fall = Levitation || Flying;
 
 	/* these furniture checks were in dighole(), but wand
 	   breaking bypasses that routine and calls us directly */
@@ -524,13 +540,15 @@ int ttyp;
 		    newlevel.dnum = u.uz.dnum;
 		    newlevel.dlevel = u.uz.dlevel + 1;
 		    goto_level(&newlevel, FALSE, TRUE, FALSE);
+		    /* messages for arriving in special rooms, landing on stuff */
+		    spoteffects();
 		}
 	    } else {
 		if (shopdoor && madeby_u) pay_for_damage("ruin");
 		if (newobjs)
 		    impact_drop((struct obj *)0, x, y, 0);
 		if (mtmp) {
-
+		     /*[don't we need special sokoban handling here?]*/
 		    if (is_flyer(mtmp->data) || is_floater(mtmp->data) ||
 		        mtmp->data == &mons[PM_WUMPUS] ||
 			(mtmp->wormno && count_wsegs(mtmp) > 5) ||
@@ -538,7 +556,7 @@ int ttyp;
 		    if (mtmp == u.ustuck)	/* probably a vortex */
 			    return;		/* temporary? kludge */
 
-		    if (teleport_pet(mtmp)) {
+		    if (teleport_pet(mtmp, FALSE)) {
 			d_level tolevel;
 
 			if (Is_stronghold(&u.uz)) {
@@ -610,6 +628,10 @@ boolean pit_only;
 		delobj(boulder_here);
 		return TRUE;
 
+	} else if (IS_GRAVE(lev->typ)) {        
+	    digactualhole(u.ux, u.uy, BY_YOU, PIT);
+	    dig_up_grave();
+	    return TRUE;
 	} else if (lev->typ == DRAWBRIDGE_UP) {
 		/* must be floor or ice, other cases handled above */
 		/* dig "pit" and let fluid flow in (if possible) */
@@ -635,7 +657,7 @@ boolean pit_only;
 
 		pline("As you dig, the hole fills with %s!",
 		      typ == LAVAPOOL ? "lava" : "water");
-		if (!Levitation && !is_flyer(uasmon)) {
+		if (!Levitation && !Flying) {
 		    if (typ == LAVAPOOL)
 			(void) lava_effects();
 		    else if (!Wwalking)
@@ -668,6 +690,52 @@ boolean pit_only;
 	}
 
 	return FALSE;
+}
+
+STATIC_OVL void
+dig_up_grave()
+{
+	struct obj *otmp;
+
+
+	/* Grave-robbing is frowned upon... */
+	exercise(A_WIS, FALSE);
+	if (Role_if(PM_ARCHEOLOGIST)) {
+	    adjalign(-sgn(u.ualign.type)*3);
+	    You_feel("like a despicable grave-robber!");
+	} else if (Role_if(PM_SAMURAI)) {
+	    adjalign(-sgn(u.ualign.type));
+	    You("disturb the honorable dead!");
+	} else if ((u.ualign.type == A_LAWFUL) && (u.ualign.record > -10)) {
+	    adjalign(-sgn(u.ualign.type));
+	    You("have violated the sanctity of this grave!");
+	}
+
+	switch (rn2(5)) {
+	case 0:
+	case 1:
+	    You("unearth a corpse.");
+	    if (!!(otmp = mk_tt_object(CORPSE, u.ux, u.uy)))
+	    	otmp->age -= 100;		/* this is an *OLD* corpse */;
+	    break;
+	case 2:
+	    if (!Blind) pline(Hallucination ? "Dude!  The living dead!" :
+ 			"The grave's owner is very upset!");
+ 	    (void) makemon(mkclass(S_ZOMBIE,0), u.ux, u.uy, NO_MM_FLAGS);
+	    break;
+	case 3:
+	    if (!Blind) pline(Hallucination ? "I want my mummy!" :
+ 			"You've disturbed a tomb!");
+ 	    (void) makemon(mkclass(S_MUMMY,0), u.ux, u.uy, NO_MM_FLAGS);
+	    break;
+	default:
+	    /* No corpse */
+	    pline("The grave seems unused.  Strange....");
+	    break;
+	}
+	levl[u.ux][u.uy].typ = ROOM;
+	newsym(u.ux,u.uy);
+	return;
 }
 
 int
@@ -723,7 +791,7 @@ struct obj *obj;
 
 		dam = rnd(2) + dbon() + obj->spe;
 		if (dam <= 0) dam = 1;
-		You("hit yourself with your pick-axe.");
+		You("hit yourself with %s.", yname(uwep));
 		/* self_pronoun() won't work twice in a sentence */
 		Strcpy(buf, self_pronoun("killed %sself with %%s pick-axe",
 			"him"));
@@ -761,11 +829,12 @@ struct obj *obj;
 			    You("swing your %s through thin air.",
 				aobjnam(obj, (char *)0));
 		} else {
-			static const char *d_action[4] = {
+			static const char *d_action[5] = {
 						"digging",
 						"chipping the statue",
 						"hitting the boulder",
-						"chopping at the door"
+						"chopping at the door",
+						"cutting the tree"
 			};
 			if (digging.pos.x != rx || digging.pos.y != ry ||
 			    !on_level(&digging.level, &u.uz) || digging.down) {
@@ -819,11 +888,14 @@ mdig_tunnel(mtmp)
 register struct monst *mtmp;
 {
 	register struct rm *here;
-	int pile;
+	int pile = rnd(12);
 
 	here = &levl[mtmp->mx][mtmp->my];
 	if (here->typ == SDOOR)
 	    cvt_sdoor_to_door(here);	/* ->typ = DOOR */
+	if (IS_TREE(here->typ))
+		/* KMH -- Trees shouldn't create piles */
+		pile = 0;
 
 	/* Eats away door if present & closed or locked */
 	if (closed_door(mtmp->mx, mtmp->my)) {
@@ -856,6 +928,7 @@ register struct monst *mtmp;
 	}
 
 	if (IS_WALL(here->typ)) {
+	    /* KMH -- Okay on arboreal levels (room walls are still stone) */
 	    if (flags.soundok && flags.verbose && !rn2(5))
 		You_hear("crashing rock.");
 	    if (*in_rooms(mtmp->mx, mtmp->my, SHOPBASE))
@@ -869,10 +942,10 @@ register struct monst *mtmp;
 		here->doormask = D_NODOOR;
 	    }
 	} else
-	    here->typ = CORR;
+	    /* KMH -- Added support for trees */
+	    here->typ = level.flags.arboreal ? ROOM : CORR;
 
-	pile = rnd(12);
-	if (pile < 5)	/* leave behind some rocks? */
+	if (pile && pile < 5)   /* leave behind some rocks? */
 	    (void) mksobj_at((pile == 1) ? BOULDER : ROCK,
 			     mtmp->mx, mtmp->my, TRUE);
 	newsym(mtmp->mx, mtmp->my);
@@ -916,7 +989,7 @@ zap_dig()
 	} /* swallowed */
 
 	if (u.dz) {
-	    if (!Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
+	    if (!Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz) && !Underwater) {
 		if (u.dz < 0 || On_stairs(u.ux, u.uy)) {
 		    if (On_stairs(u.ux, u.uy))
 			pline_The("beam bounces off the %s and hits the %s.",
@@ -1116,8 +1189,8 @@ int x, y;
  * and every time we are called we increment the count and reschedule another
  * timeout.  Eventually the object rots away.
  *
- * This is used by buried objects.  This has a different entry in the
- * table than rot_corpse() because the rot stops when unearthed.
+ * This is used by buried objects other than corpses.  When a container rots
+ * away, any contents become newly buried objects.
  */
 /* ARGSUSED */
 void
@@ -1127,13 +1200,21 @@ long timeout;	/* unused */
 {
 	struct obj *obj = (struct obj *) arg;
 
+	while (Has_contents(obj)) {
+	    /* We don't need to place contained object on the floor
+	       first, but we do need to update its map coordinates. */
+	    obj->cobj->ox = obj->ox,  obj->cobj->oy = obj->oy;
+	    /* Everything which can be held in a container can also be
+	       buried, so bury_an_obj's use of obj_extract_self insures
+	       that Has_contents(obj) will eventually become false. */
+	    (void)bury_an_obj(obj->cobj);
+	}
 	obj_extract_self(obj);
 	obfree(obj, (struct obj *) 0);
 }
 
 /*
- * See rot_organic above.  This needs to be different from rot_organic,
- * even though they act the same.
+ * Called when a corpse has rotted completely away.
  */
 void
 rot_corpse(arg, timeout)
@@ -1156,6 +1237,17 @@ long timeout;	/* unused */
 	    if (obj == uwep) {
 		uwepgone();	/* now bare handed */
 		stop_occupation();
+	    } else if (obj == uswapwep) {
+		uswapwepgone();
+		stop_occupation();
+	    } else if (obj == uquiver) {
+		uqwepgone();
+		stop_occupation();
+	    }
+	} else if (obj->where == OBJ_MINVENT && obj->owornmask) {
+	    if (obj == MON_WEP(obj->ocarry)) {
+		obj->owornmask &= ~W_WEP;
+		MON_NOWEP(obj->ocarry);
 	    }
 	}
 	rot_organic(arg, timeout);
@@ -1192,7 +1284,7 @@ bury_you()
 #ifdef DEBUG
 	pline("bury_you");
 #endif
-    if (!Levitation && !is_flyer(uasmon)) {
+    if (!Levitation && !Flying) {
 	if(u.uswallow)
 	    You_feel("a sensation like falling into a trap!");
 	else
@@ -1224,23 +1316,23 @@ escape_tomb()
 #ifdef DEBUG
 	pline("escape_tomb");
 #endif
-	if ((Teleportation || can_teleport(uasmon)) &&
+	if ((Teleportation || can_teleport(youmonst.data)) &&
 	    (Teleport_control || rn2(3) < Luck+2)) {
 		You("attempt a teleport spell.");
 		(void) dotele();	/* calls unearth_you() */
 	} else if(u.uburied) { /* still buried after 'port attempt */
 		boolean good;
 
-		if(amorphous(uasmon) || passes_walls(uasmon) ||
-		   noncorporeal(uasmon) || unsolid(uasmon) ||
-		   (tunnels(uasmon) && !needspick(uasmon))) {
+		if(amorphous(youmonst.data) || Passes_walls ||
+		   noncorporeal(youmonst.data) || unsolid(youmonst.data) ||
+		   (tunnels(youmonst.data) && !needspick(youmonst.data))) {
 
 		    You("%s up through the floor.",
-			(tunnels(uasmon) && !needspick(uasmon)) ?
-			 "try to tunnel" : (amorphous(uasmon)) ?
+			(tunnels(youmonst.data) && !needspick(youmonst.data)) ?
+			 "try to tunnel" : (amorphous(youmonst.data)) ?
 			 "ooze" : "phase");
 
-		    if(tunnels(uasmon) && !needspick(uasmon))
+		    if(tunnels(youmonst.data) && !needspick(youmonst.data))
 			good = dighole(TRUE);
 		    else good = TRUE;
 		    if(good) unearth_you();

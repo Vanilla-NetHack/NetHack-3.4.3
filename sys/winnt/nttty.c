@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)nttty.c	3.2	96/10/21
+/*	SCCS Id: @(#)nttty.c	3.3	96/10/21
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -28,6 +28,7 @@ void FDECL(nocmov, (int, int));
  * GetStdHandle
  * SetConsoleCursorPosition
  * SetConsoleTextAttribute
+ * SetConsoleCtrlHandler
  * PeekConsoleInput
  * ReadConsoleInput
  * WriteConsole
@@ -50,7 +51,8 @@ INPUT_RECORD ir;
  * from the command line. 
  */
 int GUILaunched;
-
+static BOOL FDECL(CtrlHandler, (DWORD));
+ 
 # ifdef TEXTCOLOR
 int ttycolors[CLR_MAX];
 static void NDECL(init_ttycolor);
@@ -58,6 +60,11 @@ static void NDECL(init_ttycolor);
 
 static char nullstr[] = "";
 char erase_char,kill_char;
+
+#define LEFTBUTTON  FROM_LEFT_1ST_BUTTON_PRESSED
+#define RIGHTBUTTON RIGHTMOST_BUTTON_PRESSED
+#define MIDBUTTON   FROM_LEFT_2ND_BUTTON_PRESSED
+#define MOUSEMASK (LEFTBUTTON | RIGHTBUTTON | MIDBUTTON)
 
 /*
  * Called after returning from ! or ^Z
@@ -87,6 +94,87 @@ void
 setftty()
 {
 	start_screen();
+}
+
+static BOOL CtrlHandler(ctrltype)
+DWORD ctrltype;
+{
+	switch(ctrltype) {
+	/*	case CTRL_C_EVENT: */
+		case CTRL_BREAK_EVENT:
+			clear_screen();
+		case CTRL_CLOSE_EVENT:
+		case CTRL_LOGOFF_EVENT:
+		case CTRL_SHUTDOWN_EVENT:
+#ifndef NOSAVEONHANGUP
+			if (program_state.something_worth_saving) {
+				program_state.exiting++;
+				(void) dosave0();
+			}
+#endif
+			clearlocks();
+			terminate(EXIT_FAILURE);
+		default:
+			return FALSE;
+	}
+}
+
+/* called by init_tty in wintty.c for WIN32CON port only */
+void
+nttty_open()
+{
+        HANDLE hStdOut;
+        long cmode;
+        long mask;
+        
+	/* Initialize the function pointer that points to
+         * the kbhit() equivalent, in this TTY case nttty_kbhit()
+         */
+
+	nt_kbhit = nttty_kbhit;
+
+        /* The following 6 lines of code were suggested by 
+         * Bob Landau of Microsoft WIN32 Developer support,
+         * as the only current means of determining whether
+         * we were launched from the command prompt, or from
+         * the NT program manager. M. Allison
+         */
+        hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
+        GetConsoleScreenBufferInfo( hStdOut, &csbi);
+        GUILaunched = ((csbi.dwCursorPosition.X == 0) &&
+                           (csbi.dwCursorPosition.Y == 0));
+        if ((csbi.dwSize.X <= 0) || (csbi.dwSize.Y <= 0))
+            GUILaunched = 0;
+	hConIn = GetStdHandle(STD_INPUT_HANDLE);
+	hConOut = GetStdHandle(STD_OUTPUT_HANDLE);
+#if 0
+        /* Obtain handles for the standard Console I/O devices */
+	hConIn = CreateFile("CONIN$",
+			GENERIC_READ |GENERIC_WRITE,
+			FILE_SHARE_READ |FILE_SHARE_WRITE,
+			0, OPEN_EXISTING, 0, 0);					
+	hConOut = CreateFile("CONOUT$",
+			GENERIC_READ |GENERIC_WRITE,
+			FILE_SHARE_READ |FILE_SHARE_WRITE,
+			0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);					        
+#endif       
+	GetConsoleMode(hConIn,&cmode);
+#ifndef NO_MOUSE_ALLOWED
+	mask = ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT |
+	       ENABLE_ECHO_INPUT | ENABLE_WINDOW_INPUT;   
+#else
+	mask = ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT |
+	       ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT | ENABLE_WINDOW_INPUT;   
+#endif
+	/* Turn OFF the settings specified in the mask */
+	cmode &= ~mask;
+	cmode |= ENABLE_MOUSE_INPUT;
+	SetConsoleMode(hConIn,cmode);
+	if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE)CtrlHandler, TRUE)) {
+		/* Unable to set control handler */
+		cmode = 0; 	/* just to have a statement to break on for debugger */
+	}
+	get_scr_size();
 }
 
 /*
@@ -152,68 +240,127 @@ static const char scanmap[] = { 	/* ... */
 	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
 };
 
+static const char *extendedlist = "acdefijlmnopqrstuvw?";
+
 #define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
 
-int
-tgetch()
+int process_keystroke(ir, valid)
+INPUT_RECORD *ir;
+boolean *valid;
 {
-	int valid = 0;
 	int metaflags = 0;
-	int count;
-	unsigned short int scan;
 	unsigned char ch;
+	unsigned short int scan;
 	unsigned long shiftstate;
 	int altseq;
 	const struct pad *kpad;
 
 	shiftstate = 0L;
+	ch    = ir->Event.KeyEvent.uChar.AsciiChar;
+	scan  = ir->Event.KeyEvent.wVirtualScanCode;
+	shiftstate = ir->Event.KeyEvent.dwControlKeyState;
+	altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED) && (ch || inmap(scan)));
+	if (ch || (iskeypad(scan)) || altseq)
+			*valid = 1;
+	/* if (!valid) return 0; */
+    	/*
+	 * shiftstate can be checked to see if various special
+         * keys were pressed at the same time as the key.
+         * Currently we are using the ALT & SHIFT & CONTROLS.
+         *
+         *           RIGHT_ALT_PRESSED, LEFT_ALT_PRESSED,
+         *           RIGHT_CTRL_PRESSED, LEFT_CTRL_PRESSED,
+         *           SHIFT_PRESSED,NUMLOCK_ON, SCROLLLOCK_ON,
+         *           CAPSLOCK_ON, ENHANCED_KEY
+         *
+         * are all valid bit masks to use on shiftstate.
+         * eg. (shiftstate & LEFT_CTRL_PRESSED) is true if the
+         *      left control key was pressed with the keystroke.
+         */
+        if (iskeypad(scan)) {
+            kpad = iflags.num_pad ? numpad : keypad;
+            if (shiftstate & SHIFT_PRESSED) {
+                ch = kpad[scan - KEYPADLO].shift;
+            }
+            else if (shiftstate & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
+                ch = kpad[scan - KEYPADLO].cntrl;
+            }
+            else {
+                ch = kpad[scan - KEYPADLO].normal;
+            }
+        }
+        else if (altseq) { /* ALT sequence */
+            altseq = 0;
+            if (!ch && inmap(scan)) ch = scanmap[scan - SCANLO];
+            if (index(extendedlist, tolower(ch)) != 0) ch = M(tolower(ch));
+                else if (scan == (SCANLO + SIZE(scanmap)) - 1) ch = M('?');
+        }
+        return (ch == '\r') ? '\n' : ch;
+}
+
+int
+tgetch()
+{
+	int count;
+	int valid = 0;
+	int ch;
 	valid = 0;
 	while (!valid)
 	{
 	   ReadConsoleInput(hConIn,&ir,1,&count);
-	   if ((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) {
+	   if ((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown)
+		ch = process_keystroke(&ir, &valid);
+	}
+	return ch;
+}
+
+int
+ntposkey(x, y, mod)
+int *x, *y, *mod;
+{
+	int count;
+	unsigned short int scan;
+	unsigned char ch;
+	unsigned long shiftstate;
+	int altseq;
+	int done = 0;
+	int valid = 0;
+	while (!done)
+	{
+	    count = 0;
+	    ReadConsoleInput(hConIn,&ir,1,&count);
+	    if (count > 0) {
 		ch    = ir.Event.KeyEvent.uChar.AsciiChar;
 		scan  = ir.Event.KeyEvent.wVirtualScanCode;
 		shiftstate = ir.Event.KeyEvent.dwControlKeyState;
-		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) && inmap(scan);
-		if (ch || (iskeypad(scan)) || altseq)
-			valid = 1;
-	   }
+		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED) && (ch || inmap(scan)));
+		if (((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) &&
+		     (ch || (iskeypad(scan)) || altseq)) {
+			return process_keystroke(&ir, &valid);
+		} else if ((ir.EventType == MOUSE_EVENT &&
+		  (ir.Event.MouseEvent.dwButtonState & MOUSEMASK))) {
+#if 0
+		  	*x = ir.Event.MouseEvent.dwMousePosition.X - csbi.srWindow.Left;
+		  	*y = ir.Event.MouseEvent.dwMousePosition.Y - csbi.srWindow.Top;
+#endif
+		  	*x = ir.Event.MouseEvent.dwMousePosition.X + 1;
+		  	*y = ir.Event.MouseEvent.dwMousePosition.Y - 1;
+
+		  	if (ir.Event.MouseEvent.dwButtonState & LEFTBUTTON)
+		  	       		*mod = CLICK_1;
+		  	else if (ir.Event.MouseEvent.dwButtonState & RIGHTBUTTON)
+					*mod = CLICK_2;
+#if 0	/* middle button */			       
+			else if (ir.Event.MouseEvent.dwButtonState & MIDBUTTON)
+			      		*mod = CLICK_3;
+#endif 
+			       return 0;
+		  
+		}
+	    }
 	}
-	if (valid) {
-    	    /*
-	    * shiftstate can be checked to see if various special
-            * keys were pressed at the same time as the key.
-            * Currently we are using the ALT & SHIFT & CONTROLS.
-            *
-            *           RIGHT_ALT_PRESSED, LEFT_ALT_PRESSED,
-            *           RIGHT_CTRL_PRESSED, LEFT_CTRL_PRESSED,
-            *           SHIFT_PRESSED,NUMLOCK_ON, SCROLLLOCK_ON,
-            *           CAPSLOCK_ON, ENHANCED_KEY
-            *
-            * are all valid bit masks to use on shiftstate.
-            * eg. (shiftstate & LEFT_CTRL_PRESSED) is true if the
-            *      left control key was pressed with the keystroke.
-            */
-            if (iskeypad(scan)) {
-                kpad = iflags.num_pad ? numpad : keypad;
-                if (shiftstate & SHIFT_PRESSED) {
-                    ch = kpad[scan - KEYPADLO].shift;
-                }
-                else if (shiftstate & (LEFT_CTRL_PRESSED | RIGHT_CTRL_PRESSED)) {
-                    ch = kpad[scan - KEYPADLO].cntrl;
-                }
-                else {
-                    ch = kpad[scan - KEYPADLO].normal;
-                }
-            }
-            else if (shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) { /* ALT sequence */
-                    if (inmap(scan))
-                        ch = scanmap[scan - SCANLO];
-                    ch = (isprint(ch) ? M(ch) : ch);
-            }
-            return (ch == '\r') ? '\n' : ch;
-	}
+	/* Not Reached */
+	return 32;
 }
 
 int
@@ -226,7 +373,6 @@ nttty_kbhit()
 	unsigned char ch;
 	unsigned long shiftstate;
 	int altseq;
-        
 	done = 0;
 	retval = 0;
 	while (!done)
@@ -237,12 +383,19 @@ nttty_kbhit()
 		ch    = ir.Event.KeyEvent.uChar.AsciiChar;
 		scan  = ir.Event.KeyEvent.wVirtualScanCode;
 		shiftstate = ir.Event.KeyEvent.dwControlKeyState;
-		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED)) && inmap(scan);
+		altseq=(shiftstate & (LEFT_ALT_PRESSED|RIGHT_ALT_PRESSED) && (ch || inmap(scan)));
 		if (((ir.EventType == KEY_EVENT) && ir.Event.KeyEvent.bKeyDown) &&
 		     (ch || (iskeypad(scan)) || altseq)) {
 			done = 1;	    /* Stop looking         */
 			retval = 1;         /* Found what we sought */
 		}
+		
+		 else if ((ir.EventType == MOUSE_EVENT &&
+		  (ir.Event.MouseEvent.dwButtonState & MOUSEMASK))) {
+			done = 1;
+			retval = 1;
+		}
+
 		else /* Discard it, its an insignificant event */
 			ReadConsoleInput(hConIn,&ir,1,&count);
 		} else  /* There are no events in console event queue */ {
@@ -251,53 +404,6 @@ nttty_kbhit()
 	    }
 	}
 	return retval;
-}
-
-/* called by init_tty in wintty.c for WIN32CON port only */
-void
-nttty_open()
-{
-        HANDLE hStdOut;
-        long cmode;
-        long mask;
-        
-	/* Initialize the function pointer that points to
-         * the kbhit() equivalent, in this TTY case nttty_kbhit()
-         */
-
-	nt_kbhit = nttty_kbhit;
-
-        /* The following 6 lines of code were suggested by 
-         * Bob Landau of Microsoft WIN32 Developer support,
-         * as the only current means of determining whether
-         * we were launched from the command prompt, or from
-         * the NT program manager. M. Allison
-         */
-        hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
-        GetConsoleScreenBufferInfo( hStdOut, &csbi);
-        GUILaunched = ((csbi.dwCursorPosition.X == 0) &&
-                           (csbi.dwCursorPosition.Y == 0));
-        if ((csbi.dwSize.X <= 0) || (csbi.dwSize.Y <= 0))
-            GUILaunched = 0;
-
-
-        /* Obtain handles for the standard Console I/O devices */
-	hConIn = CreateFile("CONIN$",
-			GENERIC_READ |GENERIC_WRITE,
-			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			0, OPEN_EXISTING, 0, 0);					
-	GetConsoleMode(hConIn,&cmode);
-	mask = ENABLE_PROCESSED_INPUT | ENABLE_LINE_INPUT |
-	       ENABLE_MOUSE_INPUT | ENABLE_ECHO_INPUT | ENABLE_WINDOW_INPUT;   
-	cmode &= ~mask;
-	SetConsoleMode(hConIn,cmode);
-	
-	hConOut = CreateFile("CONOUT$",
-			GENERIC_READ |GENERIC_WRITE,
-			FILE_SHARE_READ |FILE_SHARE_WRITE,
-			0, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL,0);					        
-        
-	get_scr_size();
 }
 
 void
@@ -313,23 +419,6 @@ get_scr_size()
 		LI = 25;
 		CO = 80;
 	}
-}
-
-
-/* fatal error */
-/*VARARGS1*/
-
-void
-error VA_DECL(const char *,s)
-	VA_START(s);
-	VA_INIT(s, const char *);
-	/* error() may get called before tty is initialized */
-	if (iflags.window_inited) end_screen();
-	putchar('\n');
-	Vprintf(s,VA_ARGS);
-	putchar('\n');
-	VA_END();
-	exit(EXIT_FAILURE);
 }
 
 

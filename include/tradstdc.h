@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tradstdc.h	3.2	93/05/30	*/
+/*	SCCS Id: @(#)tradstdc.h 3.3	93/05/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -46,16 +46,16 @@
  * USE_STDARG means use the ANSI <stdarg.h> facilities (only ANSI compilers
  * should do this, and only if the library supports it).
  * USE_VARARGS means use the <varargs.h> facilities.  Again, this should only
- * be done if the library supports it.  ANSI is *not* required for this.
+ * be done if the library supports it.	ANSI is *not* required for this.
  * Otherwise, the kludgy old methods are used.
  * The defaults are USE_STDARG for ANSI compilers, and USE_OLDARGS for
  * others.
  */
 
-/* #define USE_VARARGS		/* use <varargs.h> instead of <stdarg.h> */
-/* #define USE_OLDARGS		/* don't use any variable argument facilites */
+/* #define USE_VARARGS */	/* use <varargs.h> instead of <stdarg.h> */
+/* #define USE_OLDARGS */	/* don't use any variable argument facilites */
 
-#if defined(apollo)             /* Apollos have stdarg(3) but not stdarg.h */
+#if defined(apollo)		/* Apollos have stdarg(3) but not stdarg.h */
 # define USE_VARARGS
 #endif
 
@@ -84,7 +84,7 @@
 #include <varargs.h>
 #  define VA_DECL(typ1,var1)	(va_alist) va_dcl {\
 		va_list the_args; typ1 var1;
-#  define VA_DECL2(typ1,var1,typ2,var2)	(va_alist) va_dcl {\
+#  define VA_DECL2(typ1,var1,typ2,var2) (va_alist) va_dcl {\
 		va_list the_args; typ1 var1; typ2 var2;
 #  define VA_ARGS		the_args
 #  define VA_START(x)		va_start(the_args)
@@ -119,7 +119,7 @@
  * trampoli.* mechanism conflicts with the ANSI <<f(void)>> syntax.
  */
 
-# define NDECL(f)	f(void)	/* overridden later if USE_TRAMPOLI set */
+# define NDECL(f)	f(void) /* overridden later if USE_TRAMPOLI set */
 
 # define FDECL(f,p)	f p
 

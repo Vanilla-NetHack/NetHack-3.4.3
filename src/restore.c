@@ -1,10 +1,10 @@
-/*	SCCS Id: @(#)restore.c	3.2	96/10/21	*/
+/*	SCCS Id: @(#)restore.c	3.3	1999/11/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "lev.h"
-#include "termcap.h" /* for TERMLIB and ASCIIGRAPH */
+#include "tcap.h" /* for TERMLIB and ASCIIGRAPH */
 
 #ifdef MICRO
 extern int dotcnt;	/* shared with save */
@@ -17,20 +17,17 @@ extern void FDECL(substitute_tiles, (d_level *));       /* from tile.c */
 #ifdef ZEROCOMP
 static int NDECL(mgetc);
 #endif
-static void NDECL(find_lev_obj);
-#ifndef NO_SIGNAL
-static void NDECL(inven_inuse);
-#endif
-static void FDECL(restlevchn, (int));
-static void FDECL(restdamage, (int,BOOLEAN_P));
-static struct obj *FDECL(restobjchn, (int,BOOLEAN_P,BOOLEAN_P));
-static struct monst *FDECL(restmonchn, (int,BOOLEAN_P));
-static struct fruit *FDECL(loadfruitchn, (int));
-static void FDECL(freefruitchn, (struct fruit *));
-static void FDECL(ghostfruit, (struct obj *));
-static boolean FDECL(restgamestate, (int, unsigned int *));
-static void FDECL(restlevelstate, (unsigned int));
-static int FDECL(restlevelfile, (int,XCHAR_P));
+STATIC_DCL void NDECL(find_lev_obj);
+STATIC_DCL void FDECL(restlevchn, (int));
+STATIC_DCL void FDECL(restdamage, (int,BOOLEAN_P));
+STATIC_DCL struct obj *FDECL(restobjchn, (int,BOOLEAN_P,BOOLEAN_P));
+STATIC_DCL struct monst *FDECL(restmonchn, (int,BOOLEAN_P));
+STATIC_DCL struct fruit *FDECL(loadfruitchn, (int));
+STATIC_DCL void FDECL(freefruitchn, (struct fruit *));
+STATIC_DCL void FDECL(ghostfruit, (struct obj *));
+STATIC_DCL boolean FDECL(restgamestate, (int, unsigned int *, unsigned int *));
+STATIC_DCL void FDECL(restlevelstate, (unsigned int, unsigned int));
+STATIC_DCL int FDECL(restlevelfile, (int,XCHAR_P));
 
 /*
  * Save a mapping of IDs from ghost levels to the current level.  This
@@ -45,8 +42,8 @@ struct bucket {
     } map[N_PER_BUCKET];
 };
 
-static void NDECL(clear_id_mapping);
-static void FDECL(add_id_mapping, (unsigned, unsigned));
+STATIC_DCL void NDECL(clear_id_mapping);
+STATIC_DCL void FDECL(add_id_mapping, (unsigned, unsigned));
 
 static int n_ids_mapped = 0;
 static struct bucket *id_map = 0;
@@ -66,7 +63,7 @@ static NEARDATA long omoves;
 #define Is_IceBox(o) ((o)->otyp == ICE_BOX ? TRUE : FALSE)
 
 /* Recalculate level.objects[x][y], since this info was not saved. */
-static void
+STATIC_OVL void
 find_lev_obj()
 {
 	register struct obj *fobjtmp = (struct obj *)0;
@@ -96,26 +93,25 @@ find_lev_obj()
 	}
 }
 
-#ifndef NO_SIGNAL
-static void
-inven_inuse()
 /* Things that were marked "in_use" when the game was saved (ex. via the
  * infamous "HUP" cheat) get used up here.
  */
+void
+inven_inuse(quietly)
+boolean quietly;
 {
 	register struct obj *otmp, *otmp2;
 
-	for(otmp = invent; otmp; otmp = otmp2) {
-		otmp2 = otmp->nobj;
-		if(otmp->in_use) {
-			pline("Finishing off %s...", xname(otmp));
-			useup(otmp);
-		}
+	for (otmp = invent; otmp; otmp = otmp2) {
+	    otmp2 = otmp->nobj;
+	    if (otmp->in_use) {
+		if (!quietly) pline("Finishing off %s...", xname(otmp));
+		useup(otmp);
+	    }
 	}
 }
-#endif
 
-static void
+STATIC_OVL void
 restlevchn(fd)
 register int fd;
 {
@@ -138,7 +134,7 @@ register int fd;
 	}
 }
 
-static void
+STATIC_OVL void
 restdamage(fd, ghostly)
 int fd;
 boolean ghostly;
@@ -181,7 +177,7 @@ boolean ghostly;
 	free((genericptr_t)tmp_dam);
 }
 
-static struct obj *
+STATIC_OVL struct obj *
 restobjchn(fd, ghostly, frozen)
 register int fd;
 boolean ghostly, frozen;
@@ -234,7 +230,7 @@ boolean ghostly, frozen;
 	return(first);
 }
 
-static struct monst *
+STATIC_OVL struct monst *
 restmonchn(fd, ghostly)
 register int fd;
 boolean ghostly;
@@ -296,7 +292,7 @@ boolean ghostly;
 	return(first);
 }
 
-static struct fruit *
+STATIC_OVL struct fruit *
 loadfruitchn(fd)
 int fd;
 {
@@ -313,7 +309,7 @@ int fd;
 	return flist;
 }
 
-static void
+STATIC_OVL void
 freefruitchn(flist)
 register struct fruit *flist;
 {
@@ -326,7 +322,7 @@ register struct fruit *flist;
 	}
 }
 
-static void
+STATIC_OVL void
 ghostfruit(otmp)
 register struct obj *otmp;
 {
@@ -339,44 +335,38 @@ register struct obj *otmp;
 	else otmp->spe = fruitadd(oldf->fname);
 }
 
-static
+STATIC_OVL
 boolean
-restgamestate(fd, mid)
+restgamestate(fd, mid, steedid)
 register int fd;
-unsigned int *mid;
+unsigned int *mid, *steedid;	/* STEED */
 {
 	struct obj *otmp;
-	int tmp;		/* not a register ! */
+	int uid;
 
-	restore_timers(fd, RANGE_GLOBAL, FALSE, 0L);
-	restore_light_sources(fd);
-	invent = restobjchn(fd, FALSE, FALSE);
-	migrating_objs = restobjchn(fd, FALSE, FALSE);
-	migrating_mons = restmonchn(fd, FALSE);
-	mread(fd, (genericptr_t) mvitals, sizeof(mvitals));
-
-	mread(fd, (genericptr_t) &tmp, sizeof tmp);
+	mread(fd, (genericptr_t) &uid, sizeof uid);
+	if (uid != getuid()) {		/* strange ... */
+	    /* for wizard mode, issue a reminder; for others, treat it
+	       as an attempt to cheat and refuse to restore this file */
+	    pline("Saved game was not yours.");
 #ifdef WIZARD
-	if(!wizard)
+	    if (!wizard)
 #endif
-	    if(tmp != getuid()) {		/* strange ... */
-		pline("Saved game was not yours.");
-		return(FALSE);
-	    }
+		return FALSE;
+	}
 
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
+	role_init();	/* Reset the initial role, race, gender, and alignment */
 #ifdef AMII_GRAPHICS
 	amii_setpens(amii_numcolors);	/* use colors from save file */
 #endif
 	mread(fd, (genericptr_t) &u, sizeof(struct you));
+	set_uasmon();
 #ifdef CLIPPING
-	/* pline() (hence You()) will call flush_screen() if u.ux is set,
-	 * which will be confused if clipping is not set up.
-	 * this is the equivalent of the newgame() call for restores.
-	 */
 	cliparound(u.ux, u.uy);
 #endif
 	if(u.uhp <= 0) {
+	    u.ux = u.uy = 0;	/* affects pline() [hence You()] */
 	    You("were not healthy enough to survive restoration.");
 	    /* wiz1_level.dlevel is used by mklev.c to see if lots of stuff is
 	     * uninitialized, so we only have to set it and not the other stuff.
@@ -387,7 +377,15 @@ unsigned int *mid;
 	    return(FALSE);
 	}
 
-	/* don't do this earlier to avoid complicating abort above */
+	/* this stuff comes after potential aborted restore attempts */
+	restore_timers(fd, RANGE_GLOBAL, FALSE, 0L);
+	restore_light_sources(fd);
+	invent = restobjchn(fd, FALSE, FALSE);
+	migrating_objs = restobjchn(fd, FALSE, FALSE);
+	migrating_mons = restmonchn(fd, FALSE);
+	mread(fd, (genericptr_t) mvitals, sizeof(mvitals));
+
+	/* this comes after inventory has been loaded */
 	for(otmp = invent; otmp; otmp = otmp->nobj)
 		if(otmp->owornmask)
 			setworn(otmp, otmp->owornmask);
@@ -398,7 +396,7 @@ unsigned int *mid;
 	otmp = uwep;	/* `uwep' usually init'd by setworn() in loop above */
 	uwep = 0;	/* clear it and have setuwep() reinit */
 	setuwep(otmp);	/* (don't need any null check here) */
-	if (!uwep || uwep->otyp == PICK_AXE)
+	if (!uwep || uwep->otyp == PICK_AXE || uwep->otyp == GRAPPLING_HOOK)
 	    unweapon = TRUE;
 
 	restore_dungeon(fd);
@@ -412,6 +410,10 @@ unsigned int *mid;
 	restore_oracles(fd);
 	if(u.ustuck)
 		mread(fd, (genericptr_t) mid, sizeof (*mid));
+#ifdef STEED
+	if(u.usteed)
+		mread(fd, (genericptr_t) steedid, sizeof (*steedid));
+#endif
 	mread(fd, (genericptr_t) pl_character, sizeof pl_character);
 
 	mread(fd, (genericptr_t) pl_fruit, sizeof pl_fruit);
@@ -430,9 +432,9 @@ unsigned int *mid;
 /* update game state pointers to those valid for the current level (so we
  * don't dereference a wild u.ustuck when saving the game state, for instance)
  */
-static void
-restlevelstate(mid)
-unsigned int mid;
+STATIC_OVL void
+restlevelstate(mid, steedid)
+unsigned int mid, steedid;	/* STEED */
 {
 	register struct monst *mtmp;
 
@@ -442,10 +444,19 @@ unsigned int mid;
 		if (!mtmp) panic("Cannot find the monster ustuck.");
 		u.ustuck = mtmp;
 	}
+#ifdef STEED
+	if (u.usteed) {
+		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			if (mtmp->m_id == steedid) break;
+		if (!mtmp) panic("Cannot find the monster usteed.");
+		u.usteed = mtmp;
+		remove_monster(mtmp->mx, mtmp->my);
+	}
+#endif
 }
 
 /*ARGSUSED*/	/* fd used in MFLOPPY only */
-static int
+STATIC_OVL int
 restlevelfile(fd, ltmp)
 register int fd;
 xchar ltmp;
@@ -507,22 +518,22 @@ int
 dorecover(fd)
 register int fd;
 {
-	unsigned int mid = 0;		/* not a register */
+	unsigned int mid = 0, steedid = 0;	/* not a register */
 	xchar ltmp;
 	int rtmp;
 	struct obj *otmp;
 
 	restoring = TRUE;
 	getlev(fd, 0, (xchar)0, FALSE);
-	if (!restgamestate(fd, &mid)) {
+	if (!restgamestate(fd, &mid, &steedid)) {
 		display_nhwindow(WIN_MESSAGE, TRUE);
+		savelev(-1, 0, FREE_SAVE);	/* discard current level */
 		(void) close(fd);
 		(void) delete_savefile();
 		restoring = FALSE;
 		return(0);
 	}
-	restlevelstate(mid);
-	quest_init();
+	restlevelstate(mid, steedid);
 #ifdef INSURANCE
 	savestateinlock();
 #endif
@@ -548,7 +559,8 @@ register int fd;
 		flags.explore ? " while in explore mode" : "");
 	curs(WIN_MAP, 1, 1);
 	dotcnt = 0;
-	putstr(WIN_MAP, 0, "Restoring:");
+	if (strncmpi("X11", windowprocs.name, 3))
+    	  putstr(WIN_MAP, 0, "Restoring:");
 #endif
 	while(1) {
 #ifdef ZEROCOMP
@@ -584,24 +596,23 @@ register int fd;
 #ifdef USE_TILES
 	substitute_tiles(&u.uz);
 #endif
-	restlevelstate(mid);
+	restlevelstate(mid, steedid);
 #ifdef MFLOPPY
 	gameDiskPrompt();
 #endif
 	max_rank_sz(); /* to recompute mrank_sz (botl.c) */
-	set_uasmon();
 	/* take care of iron ball & chain */
 	for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if(otmp->owornmask)
 			setworn(otmp, otmp->owornmask);
-#ifndef NO_SIGNAL
+
 	/* in_use processing must be after:
 	 *    + The inventory has been read so that freeinv() works.
 	 *    + The current level has been restored so billing information
 	 *	is available.
 	 */
-	inven_inuse();
-#endif
+	inven_inuse(FALSE);
+
 	load_qtlist();	/* re-load the quest text info */
 	reset_attribute_clock();
 	/* Set up the vision internals, after levl[] data is loaded */
@@ -614,6 +625,9 @@ register int fd;
 	restoring = FALSE;
 	clear_nhwindow(WIN_MESSAGE);
 	program_state.something_worth_saving++;	/* useful data now exists */
+
+	/* Success! */
+	welcome(FALSE);
 	return(1);
 }
 
@@ -713,6 +727,8 @@ boolean ghostly;
 	mread(fd, (genericptr_t)&updest, sizeof(dest_area));
 	mread(fd, (genericptr_t)&dndest, sizeof(dest_area));
 	mread(fd, (genericptr_t)&level.flags, sizeof(level.flags));
+	mread(fd, (genericptr_t)doors, sizeof(doors));
+	rest_rooms(fd);		/* No joke :-) */
 
 	restore_timers(fd, RANGE_LEVEL, ghostly, monstermoves - omoves);
 	restore_light_sources(fd);
@@ -720,9 +736,9 @@ boolean ghostly;
 
 	/* regenerate animals while on another level */
 	if (u.uz.dlevel) {
-	  register struct monst *mtmp2;
+	    register struct monst *mtmp2;
 
-	  for(mtmp = fmon; mtmp; mtmp = mtmp2) {
+	    for (mtmp = fmon; mtmp; mtmp = mtmp2) {
 		mtmp2 = mtmp->nmon;
 		if (ghostly) {
 			/* reset peaceful/malign relative to new character */
@@ -733,19 +749,10 @@ boolean ghostly;
 		} else if (monstermoves > omoves)
 			mon_catchup_elapsed_time(mtmp, monstermoves - omoves);
 
-		/* restore shape changers - Maarten Jan Huisjes */
-		if (mtmp->data == &mons[PM_CHAMELEON]
-		    && !Protection_from_shape_changers
-		    && !mtmp->cham)
-			mtmp->cham = 1;
-		else if(Protection_from_shape_changers) {
-			if (mtmp->cham) {
-				mtmp->cham = 0;
-				(void) newcham(mtmp, &mons[PM_CHAMELEON]);
-			} else if(is_were(mtmp->data) && !is_human(mtmp->data))
-				new_were(mtmp);
-		}
-	  }
+		/* update shape-changers in case protection against
+		   them is different now than when the level was saved */
+		restore_cham(mtmp);
+	    }
 	}
 
 	rest_worm(fd);	/* restore worm information */
@@ -764,8 +771,6 @@ boolean ghostly;
 	level.buriedobjlist = restobjchn(fd, ghostly, FALSE);
 	billobjs = restobjchn(fd, ghostly, FALSE);
 	rest_engravings(fd);
-	rest_rooms(fd);		/* No joke :-) */
-	mread(fd, (genericptr_t)doors, sizeof(doors));
 
 	/* reset level.monsters for new level */
 	for (x = 0; x < COLNO; x++)
@@ -779,6 +784,7 @@ boolean ghostly;
 	}
 	restdamage(fd, ghostly);
 
+	rest_regions(fd);
 	if (ghostly) {
 	    /* Now get rid of all the temp fruits... */
 	    freefruitchn(oldfruit),  oldfruit = 0;
@@ -840,7 +846,7 @@ boolean ghostly;
 
 
 /* Clear all structures for object and monster ID mapping. */
-static void
+STATIC_OVL void
 clear_id_mapping()
 {
     struct bucket *curr;
@@ -853,7 +859,7 @@ clear_id_mapping()
 }
 
 /* Add a mapping to the ID map. */
-static void
+STATIC_OVL void
 add_id_mapping(gid, nid)
     unsigned gid, nid;
 {

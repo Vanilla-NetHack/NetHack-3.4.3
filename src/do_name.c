@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.2	96/10/28	*/
+/*	SCCS Id: @(#)do_name.c	3.3	1999/10/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,17 +6,51 @@
 
 #ifdef OVLB
 
-static void FDECL(do_oname, (struct obj *));
+STATIC_DCL void FDECL(do_oname, (struct obj *));
+static void FDECL(getpos_help, (BOOLEAN_P,const char *));
 
-void
-getpos(cc,force,goal)
-coord	*cc;
+extern const char what_is_an_unknown_object[];		/* from pager.c */
+
+/* the response for '?' help request in getpos() */
+static void
+getpos_help(force, goal)
 boolean force;
 const char *goal;
 {
+    char sbuf[BUFSZ];
+    boolean doing_what_is;
+    winid tmpwin = create_nhwindow(NHW_MENU);
+
+    Sprintf(sbuf, "Use [%s] to move the cursor to %s.",
+	    iflags.num_pad ? "2468" : "hjkl", goal);
+    putstr(tmpwin, 0, sbuf);
+    putstr(tmpwin, 0, "Use [HJKL] to move the cursor 8 units at a time.");
+    putstr(tmpwin, 0, "Or enter a background symbol (ex. <).");
+    /* disgusting hack; the alternate selection characters work for any
+       getpos call, but they only matter for dowhatis (and doquickwhatis) */
+    doing_what_is = (goal == what_is_an_unknown_object);
+    Sprintf(sbuf, "Type a .%s when you are at the right place.",
+            doing_what_is ? " or , or ; or :" : "");
+    putstr(tmpwin, 0, sbuf);
+    if (!force)
+	putstr(tmpwin, 0, "Type Space or Escape when you're done.");
+    putstr(tmpwin, 0, "");
+    display_nhwindow(tmpwin, TRUE);
+    destroy_nhwindow(tmpwin);
+}
+
+int
+getpos(cc, force, goal)
+coord *cc;
+boolean force;
+const char *goal;
+{
+    int result = 0;
     int cx, cy, i, c;
     int sidx, tx, ty;
     boolean msg_given = TRUE;	/* clear message window by default */
+    static const char *pick_chars = ".,;:";
+    const char *cp;
     const char *sdp;
     if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
 
@@ -34,10 +68,12 @@ const char *goal;
 #ifdef MAC
     lock_mouse_cursor(TRUE);
 #endif
-    while ((c = nh_poskey(&tx, &ty, &sidx)) != '.') {
+    for (;;) {
+	c = nh_poskey(&tx, &ty, &sidx);
 	if (c == '\033') {
 	    cx = cy = -10;
 	    msg_given = TRUE;	/* force clear */
+	    result = -1;
 	    break;
 	}
 	if(c == 0) {
@@ -46,38 +82,47 @@ const char *goal;
 	    cy = ty;
 	    break;
 	}
-	for(i=0; i<8; i++)
+	if ((cp = index(pick_chars, c)) != 0) {
+	    /* '.' => 0, ',' => 1, ';' => 2, ':' => 3 */
+	    result = cp - pick_chars;
+	    break;
+	}
+	for (i = 0; i < 8; i++) {
+	    int dx, dy;
+
 	    if (sdp[i] == c) {
-		if (1 <= cx + xdir[i] && cx + xdir[i] < COLNO)
-		    cx += xdir[i];
-		if (0 <= cy + ydir[i] && cy + ydir[i] < ROWNO)
-		    cy += ydir[i];
-		goto nxtc;
-	    } else if (sdp[i] == lowc((char)c)) {
-		cx += xdir[i]*8;
-		cy += ydir[i]*8;
-		if(cx < 1) cx = 1;
-		if(cx > COLNO-1) cx = COLNO-1;
-		if(cy < 0) cy = 0;
-		if(cy > ROWNO-1) cy = ROWNO-1;
-		goto nxtc;
+		/* a normal movement letter or digit */
+		dx = xdir[i];
+		dy = ydir[i];
+	    } else if (sdir[i] == lowc((char)c)) {
+		/* a shifted movement letter */
+		dx = 8 * xdir[i];
+		dy = 8 * ydir[i];
+	    } else
+		continue;
+
+	    /* truncate at map edge; diagonal moves complicate this... */
+	    if (cx + dx < 1) {
+		dy -= sgn(dy) * (1 - (cx + dx));
+		dx = 1 - cx;		/* so that (cx+dx == 1) */
+	    } else if (cx + dx > COLNO-1) {
+		dy += sgn(dy) * ((COLNO-1) - (cx + dx));
+		dx = (COLNO-1) - cx;
 	    }
+	    if (cy + dy < 0) {
+		dx -= sgn(dx) * (0 - (cy + dy));
+		dy = 0 - cy;		/* so that (cy+dy == 0) */
+	    } else if (cy + dy > ROWNO-1) {
+		dx += sgn(dx) * ((ROWNO-1) - (cy + dy));
+		dy = (ROWNO-1) - cy;
+	    }
+	    cx += dx;
+	    cy += dy;
+	    goto nxtc;
+	}
 
 	if(c == '?'){
-	    char sbuf[80];
-	    winid tmpwin = create_nhwindow(NHW_MENU);
-	    Sprintf(sbuf, "Use [%s] to move the cursor to %s.",
-		  iflags.num_pad ? "2468" : "hjkl", goal);
-	    putstr(tmpwin, 0, sbuf);
-	    putstr(tmpwin, 0,
-		   "Use [HJKL] to move the cursor 8 units at a time.");
-	    putstr(tmpwin, 0, "Or enter a background symbol (ex. <).");
-	    putstr(tmpwin, 0, "Type a . when you are at the right place.");
-	    if(!force)
-		putstr(tmpwin, 0, "Type Space or Escape when you're done.");
-	    putstr(tmpwin, 0, "");
-	    display_nhwindow(tmpwin, TRUE);
-	    destroy_nhwindow(tmpwin);
+	    getpos_help(force, goal);
 	} else {
 	    if (!index(quitchars, c)) {
 		char matching[MAXPCHARS];
@@ -125,6 +170,7 @@ const char *goal;
 	    msg_given = FALSE;	/* suppress clear */
 	    cx = -1;
 	    cy = 0;
+	    result = 0;	/* not -1 */
 	    break;
 	}
     nxtc:	;
@@ -140,7 +186,7 @@ const char *goal;
     if (msg_given) clear_nhwindow(WIN_MESSAGE);
     cc->x = cx;
     cc->y = cy;
-    return;
+    return result;
 }
 
 struct monst *
@@ -148,7 +194,7 @@ christen_monst(mtmp, name)
 struct monst *mtmp;
 const char *name;
 {
-	int lth, i;
+	int lth;
 	struct monst *mtmp2;
 	char buf[PL_PSIZ];
 
@@ -166,8 +212,8 @@ const char *name;
 	}
 	mtmp2 = newmonst(mtmp->mxlth + lth);
 	*mtmp2 = *mtmp;
-	for(i=0; i<mtmp->mxlth; i++)
-		((char *) mtmp2->mextra)[i] = ((char *) mtmp->mextra)[i];
+	(void) memcpy((genericptr_t)mtmp2->mextra,
+		      (genericptr_t)mtmp->mextra, mtmp->mxlth);
 	mtmp2->mnamelth = lth;
 	if (lth) Strcpy(NAME(mtmp2), name);
 	replmon(mtmp,mtmp2);
@@ -189,21 +235,31 @@ do_mname()
 	}
 	cc.x = u.ux;
 	cc.y = u.uy;
-	getpos(&cc, FALSE, "the monster you want to name");
-	cx = cc.x;
+	if (getpos(&cc, FALSE, "the monster you want to name") < 0 ||
+			(cx = cc.x) < 0)
+		return 0;
 	cy = cc.y;
-	if(cx < 0) return(0);
+
 	if (cx == u.ux && cy == u.uy) {
+#ifdef STEED
+	    if (u.usteed && canspotmon(u.usteed))
+		mtmp = u.usteed;
+	    else {
+#endif
 		pline("This %s creature is called %s and cannot be renamed.",
 		ACURR(A_CHA) > 14 ?
 		(flags.female ? "beautiful" : "handsome") :
 		"ugly",
 		plname);
 		return(0);
-	}
-	mtmp = m_at(cx, cy);
+#ifdef STEED
+	    }
+#endif
+	} else
+	    mtmp = m_at(cx, cy);
+
 	if (!mtmp || (!sensemon(mtmp) &&
-			(!cansee(cx,cy) || mtmp->mundetected
+			(!(cansee(cx,cy) || see_with_infrared(mtmp)) || mtmp->mundetected
 			|| mtmp->m_ap_type == M_AP_FURNITURE
 			|| mtmp->m_ap_type == M_AP_OBJECT
 			|| (mtmp->minvis && !See_invisible)))) {
@@ -232,7 +288,7 @@ do_mname()
  * when there might be pointers around in unknown places. For now: only
  * when obj is in the inventory.
  */
-static
+STATIC_OVL
 void
 do_oname(obj)
 register struct obj *obj;
@@ -274,7 +330,7 @@ register struct obj *obj;
  * Allocate a new and possibly larger storage space for an obj.
  */
 struct obj *
-replobj(obj, oextra_size, oextra_src, oname_size, name)
+realloc_obj(obj, oextra_size, oextra_src, oname_size, name)
 struct obj *obj;
 int oextra_size;		/* storage to allocate for oextra            */
 genericptr_t oextra_src;
@@ -288,12 +344,12 @@ const char *name;
 	if (oextra_size) {
 	    if (oextra_src)
 		(void) memcpy((genericptr_t)otmp->oextra, oextra_src,
-								oextra_size);
+							oextra_size);
 	} else {
-	    otmp->mtraits = 0;
+	    otmp->oattached = OATTACHED_NOTHING;
 	}
 	otmp->oxlth = oextra_size;
-	
+
 	otmp->onamelth = oname_size;
 	otmp->timed = 0;	/* not timed, yet */
 	otmp->lamplit = 0;	/* ditto */
@@ -312,38 +368,8 @@ const char *name;
 		setworn(otmp, otmp->owornmask);
 	}
 
-	/*
-	 * Finish inserting otmp right after obj in whatever chain
-	 * it is on.  Then extract obj from the chain(s).  Don't use
-	 * obj_extract_self(), we are doing an in-place swap, not
-	 * actually moving something.
-	 */
-	switch (obj->where) {
-	    case OBJ_FREE:
-		/* do nothing */
-		break;
-	    case OBJ_INVENT:
-		obj->nobj = otmp;
-		extract_nobj(obj, &invent);
-		break;
-	    case OBJ_CONTAINED:
-		obj->nobj = otmp;
-		extract_nobj(obj, &obj->ocontainer);
-		break;
-	    case OBJ_MINVENT:
-		obj->nobj = otmp;
-		extract_nobj(obj, &obj->ocarry->minvent);
-		break;
-	    case OBJ_FLOOR:
-		obj->nobj = otmp;
-		obj->nexthere = otmp;
-		extract_nobj(obj, &fobj);
-		extract_nexthere(obj, &level.objects[obj->ox][obj->oy]);
-		break;
-	    default:
-		panic("oname: obj position");
-		break;
-	}
+	/* replace obj with otmp */
+	replace_object(obj, otmp);
 
 	/* fix ocontainer pointers */
 	if (Has_contents(obj)) {
@@ -357,7 +383,14 @@ const char *name;
 	if (obj->timed) obj_move_timers(obj, otmp);
 	if (obj->lamplit) obj_move_light_source(obj, otmp);
 
-	/* obfree(obj, otmp);	/* now unnecessary: no pointers on bill */
+	/* objects possibly being manipulated by multi-turn occupations
+	   which have been interrupted but might be subsequently resumed */
+	if (obj->oclass == FOOD_CLASS)
+	    food_substitution(obj, otmp);	/* eat food or open tin */
+	else if (obj->oclass == SPBOOK_CLASS)
+	    book_substitution(obj, otmp);	/* read spellbook */
+
+	/* obfree(obj, otmp);	now unnecessary: no pointers on bill */
 	dealloc_obj(obj);	/* let us hope nobody else saved a pointer */
 	return otmp;
 }
@@ -387,7 +420,7 @@ const char *name;
 		/* no need to replace entire object */
 		if (lth) Strcpy(ONAME(obj), name);
 	} else {
-		obj = replobj(obj, obj->oxlth,
+		obj = realloc_obj(obj, obj->oxlth,
 			      (genericptr_t)obj->oextra, lth, name);
 	}
 	if (lth) artifact_exists(obj, name, TRUE);
@@ -451,9 +484,7 @@ register struct obj *obj;
 	otemp = *obj;
 	otemp.quan = 1L;
 	otemp.onamelth = 0;
-#ifdef OEXTRA
 	otemp.oxlth = 0;
-#endif
 	if (objects[otemp.otyp].oc_class == POTION_CLASS && otemp.corpsenm)
 	    /* kludge, meaning it's sink water */
 	    Sprintf(qbuf,"Call a stream of %s fluid:",
@@ -479,7 +510,7 @@ register struct obj *obj;
 	    }
 	} else {
 	    *str1 = strcpy((char *) alloc((unsigned)strlen(buf)+1), buf);
-	    discover_object(obj->otyp, FALSE); /* possibly add to disco[] */
+	    discover_object(obj->otyp, FALSE, TRUE); /* possibly add to disco[] */
 	}
 }
 
@@ -496,6 +527,13 @@ static const char *ghostnames[] = {
 	"Stephan", "Lance Braccus", "Shadowhawk"
 };
 
+/* ghost names formerly set by x_monnam(), now by makemon() instead */
+const char *
+rndghostname()
+{
+    return rn2(7) ? ghostnames[rn2(SIZE(ghostnames))] : (const char *)plname;
+}
+
 /* Monster naming functions:
  * x_monnam is the generic monster-naming function.
  *		  seen	      unseen	   detected		  named
@@ -506,6 +544,7 @@ static const char *ghostnames[] = {
  * Amonnam:	A newt		It	An invisible orc	Fido
  * a_monnam:	a newt		it	an invisible orc	Fido
  * m_monnam:	newt		xan	orc			Fido
+ * y_monnam:	your newt     your xan	your invisible orc	Fido
  */
 
 char *
@@ -518,6 +557,7 @@ register struct monst *mtmp;
  * 2: "a" in front of everything except "it".
  * 3: no article at all.
  * 4: no article; "it" and invisible suppressed.
+ * 5: "your" instead of an article; include "invisible" even when unseen
  */
 int article, called;
 const char *adjective;
@@ -529,20 +569,30 @@ const char *adjective;
 #endif
 	struct permonst *mdat = mtmp->data;
 	char *name = 0;
-	int force_the = 0, trunam = (article == 4);
+	int force_the = 0, trunam = (article == 4), use_your = (article == 5);
 
 	buf[0] = '\0';
+	if (use_your && !mtmp->mtame)
+	    use_your = 0,  article = 0;
 	if (mtmp->ispriest || mtmp->isminion) {
 	    char priestnambuf[BUFSZ];
+	    long save_prop = EHalluc_resistance;
 
+	    /* when true name is wanted, explicitly block Hallucination */
+	    if (trunam) EHalluc_resistance = 1L;
 	    name = priestname(mtmp, priestnambuf);
+	    EHalluc_resistance = save_prop;
 	    if ((trunam || article == 3) && !strncmp(name, "the ", 4))
 		name += 4;
 	    return strcpy(buf, name);
 	}
-	if (!trunam && !canspotmon(mtmp) &&
+	if (!trunam && !use_your && !canspotmon(mtmp) &&
+#ifdef STEED
+		(mtmp != u.usteed) &&
+#endif
 		!(u.uswallow && mtmp == u.ustuck) && !killer) {
-	    if (!(cansee(bhitpos.x, bhitpos.y) && mon_visible(mtmp))) {
+	    if (!mon_visible(mtmp) || (!cansee(bhitpos.x,bhitpos.y) &&
+!see_with_infrared(mtmp))) {
 		Strcpy(buf, "it");
 		return  buf;
 	    }
@@ -559,6 +609,11 @@ const char *adjective;
 		Strcat(buf, " ");
 	    } else if (mtmp->mnamelth) {
 		name = NAME(mtmp);
+		if (mdat == &mons[PM_GHOST]) {
+		    called = 0;
+		    Sprintf(buf, "%s ghost", s_suffix(name));
+		    goto bot_nam;
+		}
 	    }
 	}
 
@@ -569,10 +624,17 @@ const char *adjective;
 		    ((article == 1 || ((!name || called) && article == 0)) &&
 			(Hallucination || !type_is_pname(mdat))))
 		Strcat(buf, "the ");
+	    else if (use_your && !name)
+		Strcat(buf, "your ");
 	    if (adjective)
 		Strcat(strcat(buf, adjective), " ");
 	    if (mtmp->minvis && !Blind)
 		Strcat(buf, "invisible ");
+#ifdef STEED
+	    if ((mtmp->misc_worn_check & W_SADDLE) &&
+			!Blind && (!name || called) && mtmp != u.usteed)
+		Strcat(buf, "saddled ");
+#endif
 	}
 
 	if (name && !called) {
@@ -582,20 +644,10 @@ const char *adjective;
 
 	if (Hallucination && !trunam) {
 	    Strcat(buf, rndmonnam());
-	} else if (mdat == &mons[PM_GHOST]) {
-	    register const char *gn = (const char *) mtmp->mextra;
-	    if (!*gn) {
-		/* ghost doesn't have a name yet; give it one now
-		   (might also want to look in scorefile) */
-		gn = rn2(5) ? ghostnames[rn2(SIZE(ghostnames))] :
-			      (const char *)plname;
-		Strcpy((char *) mtmp->mextra, gn);
-	    }
-	    Sprintf(buf, "%s ghost", s_suffix((char *) mtmp->mextra));
 	} else if (is_mplayer(mdat) && !In_endgame(&u.uz)) {
 	    char pbuf[BUFSZ];
 	    Strcpy(pbuf, rank_of((int)mtmp->m_lev,
-				 highc(mdat->mname[0]),
+				 monsndx(mdat),
 				 (boolean)mtmp->female));
 	    Strcat(buf, lcase(pbuf));
 	} else {
@@ -658,6 +710,14 @@ struct monst *mtmp;
 	return result;
 }
 
+/* pet name: "your little dog" */
+char *
+y_monnam(mtmp)
+struct monst *mtmp;
+{
+	return x_monnam(mtmp, 5, (char *)0, 0);
+}
+
 #endif /* OVL0 */
 #ifdef OVLB
 
@@ -693,7 +753,7 @@ static const char *bogusmons[] = {
 	"jumbo shrimp", "giant pigmy", "gnu", "killer penguin",
 	"giant cockroach", "giant slug", "maggot", "pterodactyl",
 	"tyrannosaurus rex", "basilisk", "beholder", "nightmare",
-	"efreeti", "marid", "rot grub", "bookworm", "doppelganger",
+	"efreeti", "marid", "rot grub", "bookworm", "master lichen",
 	"shadow", "hologram", "jester", "attorney", "sleazoid",
 	"killer tomato", "amazon", "robot", "battlemech",
 	"rhinovirus", "harpy", "lion-dog", "rat-ant",
@@ -720,6 +780,7 @@ static const char *bogusmons[] = {
 	"Totoro",				/* Tonari no Totoro */
 	"ohmu",					/* Nausicaa */
 	"youma",				/* Sailor Moon */
+	"nyaasu",				/* Pokemon (Meowth) */
 	"Godzilla", "King Kong",		/* monster movies */
 	"earthquake beast",			/* old L of SH */
 	"Invid",				/* Robotech */
@@ -734,7 +795,12 @@ static const char *bogusmons[] = {
 	"Audrey II",				/* Little Shop of Horrors */
 	"witch doctor", "one-eyed one-horned flying purple people eater",
 						/* 50's rock 'n' roll */
-	"Barney the dinosaur"			/* saccharine kiddy TV */
+	"Barney the dinosaur",			/* saccharine kiddy TV */
+	"Morgoth",				/* Angband */
+	"Vorlon",				/* Babylon 5 */
+	"questing beast",		/* King Arthur */
+	"Predator",				/* Movie */
+	"mother-in-law"				/* common pest */
 };
 
 const char *
@@ -817,6 +883,33 @@ const char *colorpref;
 {
 	return (Hallucination || !colorpref) ?
 		hcolors[rn2(SIZE(hcolors))] : colorpref;
+}
+
+/* Aliases for road-runner nemesis
+ * See also http://www.geocities.com/EnchantedForest/1141/latin.html
+ */
+static const char *coynames[] = {
+	"Carnivorous Vulgaris","Road-Runnerus Digestus",
+	"Eatibus Anythingus"  ,"Famishus-Famishus",
+	"Eatibus Almost Anythingus","Eatius Birdius",
+	"Famishius Fantasticus","Eternalii Famishiis",
+	"Famishus Vulgarus","Famishius Vulgaris Ingeniusi",
+	"Eatius-Slobbius","Hardheadipus Oedipus",
+	"Carnivorous Slobbius","Hard-Headipus Ravenus",
+	"Evereadii Eatibus","Apetitius Giganticus",
+	"Hungrii Flea-Bagius","Overconfidentii Vulgaris",
+	"Caninus Nervous Rex","Grotesques Appetitus",
+	"Nemesis Riduclii","Canis latrans"
+};
+	
+char *coyotename(buf)
+char *buf;
+{
+	if (buf)
+		Sprintf(buf,
+			"coyote - %s",
+			coynames[rn2(SIZE(coynames)-1)]);
+	return buf;
 }
 #endif /* OVL2 */
 

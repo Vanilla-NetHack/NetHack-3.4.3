@@ -10,15 +10,15 @@ static struct IntuiText nam = \
   {1,0,JAM2,0,0,0L,(UBYTE*)str,0L}  /* 0,1 == C_BLACK,C_WHITE */
 
     /* Commands */
-    TEXT(T_HELP,  "?   Display help menu");
-    TEXT(T_amp,   "&   Explain a command");
-    TEXT(T_O,     "O   Set options");
-    TEXT(T_SHELL, "!   AmigaDos commands");
-    TEXT(T_v,     "v   Version number");
-    TEXT(T_CR,    "^R  Redraw screen");
-    TEXT(T_CP,    "^P  Repeat last message");
-    TEXT(T_Q,     "Q   Quit game");
-    TEXT(T_S,     "S   Save the game");
+    TEXT(T_HELP,  "?     Display help menu");
+    TEXT(T_amp,   "&     Explain a command");
+    TEXT(T_O,     "O     Set options");
+    TEXT(T_SHELL, "!     AmigaDos commands");
+    TEXT(T_v,     "v     Version number");
+    TEXT(T_CR,    "^R    Redraw screen");
+    TEXT(T_CP,    "^P    Repeat last message");
+    TEXT(T_Q,     "#quit Quit game");
+    TEXT(T_S,     "S     Save the game");
 
     /* Inventory */
     TEXT(T_i,     "i   Inventory");

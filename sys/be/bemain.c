@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bemain.c	3.2	96/10/25	*/
+/*	SCCS Id: @(#)bemain.c	3.3	98/07/15	*/
 /* Copyright (c) Dean Luick, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 
 static void whoami(void);
 static void process_options(int argc, char **argv);
-static void chdirx(const char *dir, boolean wr);
+static void chdirx(const char *dir);
 static void getlock(void);
 
 #ifdef __begui__
@@ -28,7 +28,7 @@ int MAIN(int argc, char **argv)
 	if (!dir) dir = getenv("HACKDIR");
 
 	choose_windows(DEFAULT_WINDOW_SYS);
-	chdirx(dir,1);
+	chdirx(dir);
 	initoptions();
 
 	init_nhwindows(&argc, argv);
@@ -37,7 +37,6 @@ int MAIN(int argc, char **argv)
 	/*
 	 * It seems you really want to play.
 	 */
-	setrandom();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	process_options(argc, argv);	/* command line options */
 
@@ -99,7 +98,6 @@ int MAIN(int argc, char **argv)
 #ifdef WIZARD
 		if(!wizard && remember_wiz_mode) wizard = TRUE;
 #endif
-		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
 		if (discover)
 			You("are in non-scoring discovery mode.");
@@ -117,8 +115,6 @@ int MAIN(int argc, char **argv)
 not_recovered:
 		player_selection();
 		newgame();
-		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to NetHack!", plname);
 		if (discover)
 			You("are in non-scoring discovery mode.");
 
@@ -131,43 +127,42 @@ not_recovered:
 	return 0;
 }
 
-static void
-whoami(void)
+static void whoami(void)
 {
-        /*
-         * Who am i? Algorithm: 1. Use name as specified in NETHACKOPTIONS
-         *                      2. Use $USER or $LOGNAME        (if 1. fails)
-         * The resulting name is overridden by command line options.
-         * If everything fails, or if the resulting name is some generic
-         * account like "games", "play", "player", "hack" then eventually
-         * we'll ask him.
-         */
-        char *s;
+	/*
+	 * Who am i? Algorithm: 1. Use name as specified in NETHACKOPTIONS
+	 *                      2. Use $USER or $LOGNAME        (if 1. fails)
+	 * The resulting name is overridden by command line options.
+	 * If everything fails, or if the resulting name is some generic
+	 * account like "games", "play", "player", "hack" then eventually
+	 * we'll ask him.
+	 */
+	char *s;
 
-        if (*plname) return;
-        if (s = getenv("USER")) {
+	if (*plname) return;
+	if (s = getenv("USER")) {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 		return;
 	}
-        if (s = getenv("LOGNAME")) {
+	if (s = getenv("LOGNAME")) {
 		(void) strncpy(plname, s, sizeof(plname)-1);
 		return;
 	}
 }
 
 /* normalize file name - we don't like .'s, /'s, spaces */
-void
-regularize(char *s)
+void regularize(char *s)
 {
 	register char *lp;
 
-	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
+	while((lp=strchr(s, '.')) || (lp=strchr(s, '/')) || (lp=strchr(s,' ')))
 		*lp = '_';
 }
 
-static void
-process_options(int argc, char **argv)
+static void process_options(int argc, char **argv)
 {
+	int i;
+
 	while (argc > 1 && argv[1][0] == '-') {
 		argv++;
 		argc--;
@@ -196,18 +191,36 @@ process_options(int argc, char **argv)
 			} else
 				raw_print("Player name expected after -u");
 			break;
+		case 'p': /* profession (role) */
+			if (argv[0][2]) {
+			    if ((i = str2role(&argv[0][2])) >= 0)
+			    	flags.initrole = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2role(argv[0])) >= 0)
+			    	flags.initrole = i;
+			}
+			break;
+		case 'r': /* race */
+			if (argv[0][2]) {
+			    if ((i = str2race(&argv[0][2])) >= 0)
+			    	flags.initrace = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2race(argv[0])) >= 0)
+			    	flags.initrace = i;
+			}
+			break;
 		default:
-			/* allow -T for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+1,
-				sizeof(pl_character)-1);
-
-			/* raw_printf("Unknown option: %s", *argv); */
+			raw_printf("Unknown option: %s", *argv);
+			break;
 		}
 	}
 }
 
-static void
-chdirx(const char *dir, boolean wr)
+static void chdirx(const char *dir)
 {
 	if (!dir) dir = HACKDIR;
 
@@ -216,13 +229,10 @@ chdirx(const char *dir, boolean wr)
 
 	/* Warn the player if we can't write the record file */
 	/* perhaps we should also test whether . is writable */
-	/* unfortunately the access system-call is worthless */
-	if (wr) check_recordfile(dir);
+	check_recordfile(dir);
 }
 
-
-void
-getlock(void)
+void getlock(void)
 {
 	int fd;
 

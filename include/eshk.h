@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)eshk.h	3.2	93/01/06	*/
+/*	SCCS Id: @(#)eshk.h	3.3	97/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,10 +15,6 @@ struct bill_x {
 	long price;		/* price per unit */
 	long bquan;		/* amount used up */
 };
-
-#ifndef DUNGEON_H
-#include "dungeon.h"
-#endif
 
 struct eshk {
 	long robbed;		/* amount stolen by most recent customer */
@@ -37,7 +33,7 @@ struct eshk {
 	struct bill_x bill[BILLSZ];
 	struct bill_x *bill_p;
 	int visitct;		/* nr of visits by most recent customer */
-	char customer[PL_NSIZ];	/* most recent customer */
+	char customer[PL_NSIZ]; /* most recent customer */
 	char shknam[PL_NSIZ];
 };
 

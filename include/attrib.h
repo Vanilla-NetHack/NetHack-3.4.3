@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)attrib.h	3.2	90/22/02	*/
+/*	SCCS Id: @(#)attrib.h	3.3	90/22/02	*/
 /* Copyright 1988, Mike Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,7 @@
 #define ACURR(x)	(acurr(x))
 #define ACURRSTR	(acurrstr())
 /* should be: */
-/* #define ACURR(x) (ABON(x) + ATEMP(x) + (u.umonnum == -1) ? ABASE(x) : MBASE(x)) */
+/* #define ACURR(x) (ABON(x) + ATEMP(x) + (Upolyd  ? MBASE(x) : ABASE(x)) */
 #define MCURR(x)	(u.macurr.a[x])
 #define AMAX(x)		(u.amax.a[x])
 #define MMAX(x)		(u.mamax.a[x])
@@ -30,13 +30,15 @@
 #define ATEMP(x)	(u.atemp.a[x])
 #define ATIME(x)	(u.atime.a[x])
 
+/* KMH -- Conveniences when dealing with strength constants */
+#define STR18(x)	(18+(x))	/* 18/xx */
+#define STR19(x)	(100+(x))	/* For 19 and above */
+
 struct	attribs {
 	schar	a[A_MAX];
 };
 
-extern struct attribs attrmax, attrmin;
-
-#define ATTRMAX(x) (attrmax.a[x])
-#define ATTRMIN(x) (attrmin.a[x])
+#define ATTRMAX(x) (urace.attrmax[x])
+#define ATTRMIN(x) (urace.attrmin[x])
 
 #endif /* ATTRIB_H */

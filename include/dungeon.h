@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.h	3.2	95/12/08	*/
+/*	SCCS Id: @(#)dungeon.h	3.3	99/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,15 +8,11 @@
 typedef struct d_flags {	/* dungeon/level type flags */
 	Bitfield(town, 1);	/* is this a town? (levels only) */
 	Bitfield(hellish, 1);	/* is this part of hell? */
-	Bitfield(maze_like, 1);	/* is this a maze? */
+	Bitfield(maze_like, 1); /* is this a maze? */
 	Bitfield(rogue_like, 1); /* is this an old-fashioned presentation? */
 	Bitfield(align, 3);	/* dungeon alignment. */
 	Bitfield(unused, 1);	/* etc... */
 } d_flags;
-
-#ifndef ALIGN_H
-#include "align.h"
-#endif
 
 typedef struct d_level {	/* basic dungeon level element */
 	xchar	dnum;		/* dungeon number */
@@ -24,17 +20,17 @@ typedef struct d_level {	/* basic dungeon level element */
 } d_level;
 
 typedef struct s_level {	/* special dungeon level element */
-	struct	s_level	*next;
-	d_level	dlevel;		/* dungeon & level numbers */
+	struct	s_level *next;
+	d_level dlevel;		/* dungeon & level numbers */
 	char	proto[15];	/* name of prototype file (eg. "tower") */
-	char    boneid;		/* character to id level in bones files */
+	char	boneid;		/* character to id level in bones files */
 	uchar	rndlevs;	/* no. of randomly available similar levels */
-	d_flags	flags;		/* type flags */
+	d_flags flags;		/* type flags */
 } s_level;
 
 typedef struct stairway {	/* basic stairway identifier */
 	xchar	sx, sy;		/* x / y location of the stair */
-	d_level	tolev;		/* where does it go */
+	d_level tolev;		/* where does it go */
 	char	up;		/* what type of stairway (up/down) */
 } stairway;
 
@@ -58,7 +54,7 @@ typedef struct dungeon {	/* basic dungeon identifier */
 	char	dname[24];	/* name of the dungeon (eg. "Hell") */
 	char	proto[15];	/* name of prototype file (eg. "tower") */
 	char	boneid;		/* character to id dungeon in bones files */
-	d_flags	flags;		/* dungeon flags */
+	d_flags flags;		/* dungeon flags */
 	xchar	entry_lev;	/* entry level */
 	xchar	num_dunlevs;	/* number of levels in this dungeon */
 	xchar	dunlev_ureached; /* how deep you have been in this dungeon */
@@ -125,8 +121,10 @@ typedef struct branch {
 #define Is_nemesis(x)		(on_level(x, &nemesis_level))
 #define Is_knox(x)		(on_level(x, &knox_level))
 
+#define In_sokoban(x)		((x)->dnum == sokoban_dnum)
 #define Inhell			In_hell(&u.uz)	/* now gehennom */
 #define In_endgame(x)		((x)->dnum == astral_level.dnum)
+
 #define within_bounded_area(X,Y,LX,LY,HX,HY) \
 		((X) >= (LX) && (X) <= (HX) && (Y) >= (LY) && (Y) <= (HY))
 
@@ -157,10 +155,10 @@ struct linfo {
  */
 
 #ifdef MFLOPPY
-# define FROMPERM        1      /* for ramdisk use */
-# define TOPERM          2      /* for ramdisk use */
-# define ACTIVE          1
-# define SWAPPED         2
+# define FROMPERM	 1	/* for ramdisk use */
+# define TOPERM		 2	/* for ramdisk use */
+# define ACTIVE		 1
+# define SWAPPED	 2
 	int	where;
 	long	time;
 	long	size;

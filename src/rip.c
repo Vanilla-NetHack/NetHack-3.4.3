@@ -1,15 +1,38 @@
-/*	SCCS Id: @(#)rip.c	3.2	95/05/01	*/
+/*	SCCS Id: @(#)rip.c	3.3	97/11/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-static void FDECL(center, (int, char *));
+STATIC_DCL void FDECL(center, (int, char *));
 
 extern const char *killed_by_prefix[];
 
-#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac) || defined(__BEOS__)
+#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac) || defined(__BEOS__) || defined(WIN32_GRAPHICS)
 
+#ifndef NH320_DEDICATION
+/* A normal tombstone for end of game display. */
+static const char *rip_txt[] = {
+"                       ----------",
+"                      /          \\",
+"                     /    REST    \\",
+"                    /      IN      \\",
+"                   /     PEACE      \\",
+"                  /                  \\",
+"                  |                  |", /* Name of player */
+"                  |                  |", /* Amount of $ */
+"                  |                  |", /* Type of death */
+"                  |                  |", /* . */
+"                  |                  |", /* . */
+"                  |                  |", /* . */
+"                  |       1001       |", /* Real year of death */
+"                 *|     *  *  *      | *",
+"        _________)/\\\\_//(\\/(/\\)/\\//\\/|_)_______",
+0
+};
+#define STONE_LINE_CENT 28	/* char[] element of center of stone face */
+#else	/* NH320_DEDICATION */
+/* NetHack 3.2.x displayed a dual tombstone as a tribute to Izchak. */
 static const char *rip_txt[] = {
 "              ----------                      ----------",
 "             /          \\                    /          \\",
@@ -28,8 +51,8 @@ static const char *rip_txt[] = {
 " _____)/\\|\\__//(\\/(/\\)/\\//\\/|_)________)/|\\\\_/_/(\\/(/\\)/\\/\\/|_)____",
 0
 };
-
 #define STONE_LINE_CENT 19	/* char[] element of center of stone face */
+#endif	/* NH320_DEDICATION */
 #define STONE_LINE_LEN 16	/* # chars that fit on one line
 				 * (note 1 ' ' border)
 				 */
@@ -38,9 +61,9 @@ static const char *rip_txt[] = {
 #define DEATH_LINE 8		/* *char[] line # for death description */
 #define YEAR_LINE 12		/* *char[] line # for year */
 
-char **rip;
+static char **rip;
 
-static void
+STATIC_OVL void
 center(line, text)
 int line;
 char *text;
@@ -131,6 +154,7 @@ int how;
 		free((genericptr_t)rip[x]);
 	}
 	free((genericptr_t)rip);
+	rip = 0;
 }
 
 #endif

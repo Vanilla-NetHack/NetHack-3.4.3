@@ -1,63 +1,61 @@
 This file is sys/be/README.  It is for those intending to compile
-NetHack 3.2.2 on a BeBox running BeOS 1.1d8.
+NetHack 3.3 on a BeOS 4.5 system.
 
-BeBox NetHack currently only supports the TTY windowing system.  In
+BeOS NetHack currently only supports the TTY windowing system.  In
 order to compile it, it would benefit you greatly to think of your Be
-system as a unix variant.  It is possible to compile using the
-Metrowerks IDE -- the Mac port of Nethack uses the Metrowerks compiler.
+system as a UNIX variant.  It is possible to compile using BeIDE.
 However, there are four executables and several steps involved in making
-NetHack.  Unless you are extremely familiar with the build sequence, I
-suggest you avoid it for now.  Let the Unix Makefiles take care of all
-that for you.
+NetHack.  Unless you are extremely familiar with the build sequence and
+are willing to modify the code somewhat, I suggest you avoid it for now.
+Let the UNIX Makefiles take care of all that for you.
 
-Suggestions:
-+ Set your tty window to be at least 80x24.  NetHack
-+ Change the font to Courier New (or Courier New Bold) and set the font
-  size to be larger.  The font size will not change for Kate.
 
 Known problems:
 + No special characters for walls.  None of the fonts available for use
   in a tty window has the graphics characters needed to improve the look.
   If such a font existed, then all you need to do is set the dungeon,
   object, and/or monter mappings in your defaults file.
-+ NetHack is supposed to recognize that the background of the window is
-  white and change itself accordingly.  It doesn't and makes the assumption
-  that the background is black.  This is annoying, but playable.
-  It may be that the correct code sequence is being executed -- its hard
-  to tell in that particular file.  A couple of combinations have been
-  tried, with no success.
 + The arrow keys don't work.
 
 
 
 Build instructions.  From a freshly unpacked source tree:
 
-1. Copy the Makfiles in sys/unix to their proper spots.  You can
-   use setup.sh or copy them by hand.  It may be helpful to read
+1. Copy the Makfiles in sys/unix to their proper spots.  You may
+   use setup.sh or copy them by hand.  Using setup.sh to create
+   links instead of copying the Makefiles will work, but BeOS will
+   not let you edit a link.   It may be helpful to read
    sys/unix/Install.unx.
 
 2. Edit src/Makefile:
 	o Change System to SysBe.
-	o Comment out the Unix versions of SYSSRC and SYSOBJ variables.
-	o Uncomment the Be versions of SYSRC and SYSOBJ.
-	o Uncomment the BeBox versions CC, CFLAGS, LD, and LFLAGS.
+	o Comment out the UNIX versions of SYSSRC and SYSOBJ variables.
+	o Uncomment the BeOS versions of SYSRC and SYSOBJ.
+	o Uncomment the BeOS versions of CC, CFLAGS, LD, and LFLAGS.  The
+	  flags are different for Intel vs BeBox/Mac.
+	o Uncomment one of the Intel or BeBox/Mac BeOS versions of CC, CFLAGS,
+	  LD, and LFLAGS.
 	o Comment out the default CFLAGS and LFLAGS.
 	o Change WINTTYLIB to be -ltermcap.
 
 3. Edit util/Makefile:
-	o Uncomment the BeBox versions of CC and CFLAGS.
-	o Comment out the default CFLAGS and LFLAGS.
+	o If on a BeBox/Mac:
+	  - Uncomment the BeOS versions of CC and CFLAGS
+	  - Comment out the default CFLAGS and LFLAGS.
+	o If on Intel:
+	  - the default values of CFLAGS and LFLAGS work fine
 	o Change YACC and LEX to be bison -y and flex respectively.
 
 4. Edit include/config.h to change HACKDIR to be the location of your
-   install directory.  You may want to uncomment the DLB define.
+   install directory.
 
 5. Edit top level Makefile and change GAMEDIR to match HACKDIR in
    include/config.h.  Make sure the path to GAMEDIR exists.  Change
    SHELLDIR to a "throw away" directory, like /tmp.  We don't use the
-   shell.
+   shell.  Change CHOWN and CHGRP commands to "true", there really
+   aren't groups on the BeOS.
 
-6. Type make install at the top level.
+6. Type "make install" at the top level.
 
 
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	3.2	96/07/15	*/
+/*	SCCS Id: @(#)sit.c	3.3	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,6 +23,14 @@ dosit()
 	static const char *sit_message = "sit on the %s.";
 	register struct trap *trap;
 	register int typ = levl[u.ux][u.uy].typ;
+
+
+#ifdef STEED
+	if (u.usteed) {
+	    You("are already sitting on %s.", mon_nam(u.usteed));
+	    return (0);
+	}
+#endif
 
 	if(!can_reach_floor())	{
 	    if (Levitation)
@@ -79,19 +87,23 @@ dosit()
 
 	    You("sit in the water.");
 	    if (!rn2(10) && uarm)
-		(void) rust_dmg(uarm, "armor", 1, TRUE);
+		(void) rust_dmg(uarm, "armor", 1, TRUE, &youmonst);
 	    if (!rn2(10) && uarmf && uarmf->otyp != WATER_WALKING_BOOTS)
-		(void) rust_dmg(uarm, "armor", 1, TRUE);
+		(void) rust_dmg(uarm, "armor", 1, TRUE, &youmonst);
 #ifdef SINKS
 	} else if(IS_SINK(typ)) {
 
 	    You(sit_message, defsyms[S_sink].explanation);
-	    Your("%s gets wet.", humanoid(uasmon) ? "rump" : "underside");
+	    Your("%s gets wet.", humanoid(youmonst.data) ? "rump" : "underside");
 #endif
 	} else if(IS_ALTAR(typ)) {
 
 	    You(sit_message, defsyms[S_altar].explanation);
 	    altar_wrath(u.ux, u.uy);
+
+	} else if(typ == GRAVE) {
+
+	    You(sit_message, defsyms[S_grave].explanation);
 
 	} else if(typ == STAIRS) {
 
@@ -105,7 +117,8 @@ dosit()
 
 	    /* must be WWalking */
 	    You(sit_message, "lava");
-	    if (likes_lava(uasmon)) {
+	    burn_away_slime();
+	    if (likes_lava(youmonst.data)) {
 		pline_The("lava feels warm.");
 		return 1;
 	    }
@@ -237,7 +250,7 @@ dosit()
 		if(Invisible) newsym(u.ux,u.uy);
 	    }
 
-	} else if (lays_eggs(uasmon)) {
+	} else if (lays_eggs(youmonst.data)) {
 		struct obj *uegg;
 
 		if (!flags.female) {
@@ -329,7 +342,7 @@ attrcurse()			/* remove a random INTRINSIC ability */
 		}
 	case 4 : if (HTelepat & INTRINSIC) {
 			HTelepat &= ~INTRINSIC;
-			if (Blind && !Telepat)
+			if (Blind && !Blind_telepat)
 			    see_monsters();	/* Can't sense mons anymore! */
 			Your("senses fail!");
 			break;
@@ -350,23 +363,23 @@ attrcurse()			/* remove a random INTRINSIC ability */
 						: "thought you saw something");
 			break;
 		}
-	case 8 : if (Fast & INTRINSIC) {
-			Fast &= ~INTRINSIC;
+	case 8 : if (HFast & INTRINSIC) {
+			HFast &= ~INTRINSIC;
 			You_feel("slower.");
 			break;
 		}
-	case 9 : if (Stealth & INTRINSIC) {
-			Stealth &= ~INTRINSIC;
+	case 9 : if (HStealth & INTRINSIC) {
+			HStealth &= ~INTRINSIC;
 			You_feel("clumsy.");
 			break;
 		}
-	case 10: if (Protection & INTRINSIC) {
-			Protection &= ~INTRINSIC;
+	case 10: if (HProtection & INTRINSIC) {
+			HProtection &= ~INTRINSIC;
 			You_feel("vulnerable.");
 			break;
 		}
-	case 11: if (Aggravate_monster & INTRINSIC) {
-			Aggravate_monster &= ~INTRINSIC;
+	case 11: if (HAggravate_monster & INTRINSIC) {
+			HAggravate_monster &= ~INTRINSIC;
 			You_feel("less attractive.");
 			break;
 		}

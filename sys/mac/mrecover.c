@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mrecover.c	3.2		96/07/24	  */
+/*	SCCS Id: @(#)mrecover.c	3.3		96/07/24	  */
 /*      Copyright (c) David Hairston, 1993.                       */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -49,8 +49,8 @@
 #include <SysEqu.h>
 #endif
 #include <Menus.h>
-
-#include <Desk.h>
+#include <Devices.h>
+#include <Events.h>
 #include <DiskInit.h>
 #include <Notification.h>
 #include <Packages.h>
@@ -216,6 +216,7 @@ short			vRefNum;				/* SFGetFile working directory/volume refnum */
 long			dirID;					/* directory i.d. */
 NMUPP			nmCompletionUPP;		/* UPP for nmCompletion */
 FileFilterUPP	basenameFileFilterUPP;	/* UPP for basenameFileFilter */
+UserItemUPP		drawThermoUPP;			/* UPP for progress callback */
 
 #define MAX_RECOVER_COUNT	256
 
@@ -242,7 +243,7 @@ static	void note(short, short, unsigned char *);
 static	void adjustGUI(void);
 static	void adjustMemory(void);
 static	void optionMemStats(void);
-static	void MenuEvent(long);
+static	void RecoverMenuEvent(long);
 static	void eventLoop(void);
 static	void cooldown(void);
 
@@ -287,6 +288,7 @@ main()
 	InitCursor();
 	nmCompletionUPP = NewNMProc(nmCompletion);
 	basenameFileFilterUPP = NewFileFilterProc(basenameFileFilter);
+	drawThermoUPP = NewUserItemProc(drawThermo);
 
 	/* get system environment, notification requires 6.0 or better */
 	(void) SysEnvirons(curSysEnvVers, &sysEnv);
@@ -303,6 +305,7 @@ main()
 	/* normally these routines are never reached from here */
 	cooldown();
 	ExitToShell();
+	return 0;
 }
 
 static void
@@ -710,7 +713,7 @@ optionMemStats()
 }
 
 static void
-MenuEvent(long menuEntry)
+RecoverMenuEvent(long menuEntry)
 {
 	short menuID = HiWord(menuEntry);
 	short menuItem = LoWord(menuEntry);
@@ -828,7 +831,7 @@ eventLoop()
 				switch(FindWindow( wnEvt . where , &whichWindow))
 				{
 				case inMenuBar:
-					MenuEvent(MenuSelect( wnEvt . where ));
+					RecoverMenuEvent(MenuSelect( wnEvt . where ));
 					break;
 
 				case inSysWindow:
@@ -871,7 +874,7 @@ eventLoop()
 						}
 					}
 					else
-						MenuEvent(MenuKey(key));
+						RecoverMenuEvent(MenuKey(key));
 				}
 			}
 			break;
@@ -934,7 +937,7 @@ itemizeThermo(short itemMode)
 	switch(itemMode)
 	{
 	case initItem:
-		SetDItem(DLGTHM, uitmThermo, iTyp, (Handle) drawThermo, &iRct);
+		SetDItem(DLGTHM, uitmThermo, iTyp, (Handle) drawThermoUPP, &iRct);
 		break;
 
 	case invalItem:

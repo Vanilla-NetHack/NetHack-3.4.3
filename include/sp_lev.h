@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.h	3.2	96/05/08	*/
+/*	SCCS Id: @(#)sp_lev.h	3.3	96/05/08	*/
 /* Copyright (c) 1989 by Jean-Christophe Collet			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,21 +6,22 @@
 #define SP_LEV_H
 
     /* wall directions */
-#define W_NORTH     1
-#define W_SOUTH     2
-#define W_EAST	    4
-#define W_WEST	    8
-#define W_ANY	    (W_NORTH|W_SOUTH|W_EAST|W_WEST)
+#define W_NORTH		1
+#define W_SOUTH		2
+#define W_EAST		4
+#define W_WEST		8
+#define W_ANY		(W_NORTH|W_SOUTH|W_EAST|W_WEST)
 
     /* MAP limits */
-#define MAP_X_LIM  76
-#define MAP_Y_LIM  21
+#define MAP_X_LIM	76
+#define MAP_Y_LIM	21
 
     /* Per level flags */
-#define NOTELEPORT   1
-#define HARDFLOOR    2
-#define NOMMAP	     4
-#define SHORTSIGHTED 8
+#define NOTELEPORT	1
+#define HARDFLOOR	2
+#define NOMMAP		4
+#define SHORTSIGHTED	8
+#define ARBOREAL	16
 
     /* special level types */
 #define SP_LEV_ROOMS	1
@@ -36,10 +37,10 @@ typedef union str_or_len {
 } Str_or_Len;
 
 typedef struct {
-	boolean	init_present, padding;
+	boolean init_present, padding;
 	char	fg, bg;
-	boolean	smoothed, joined;
-	xchar   lit, walled;
+	boolean smoothed, joined;
+	xchar	lit, walled;
 } lev_init;
 
 typedef struct {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.2	96/05/25	*/
+/*	SCCS Id: @(#)topten.c	3.3	1999/11/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -32,6 +32,7 @@ static long final_fpos;
 #define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
 #define NAMSZ	10
 #define DTHSZ	60
+#define ROLESZ   3
 #define PERSMAX	 3		/* entries per name/uid per char. allowed */
 #define POINTSMIN	1	/* must be > 0 */
 #define ENTRYMAX	100	/* must be >= 10 */
@@ -50,39 +51,40 @@ struct toptenentry {
 	int ver_major, ver_minor, patchlevel;
 	long deathdate, birthdate;
 	int uid;
-	char plchar;
-	char sex;
+	char plrole[ROLESZ+1];
+	char plrace[ROLESZ+1];
+	char plgend[ROLESZ+1];
+	char plalign[ROLESZ+1];
 	char name[NAMSZ+1];
 	char death[DTHSZ+1];
 } *tt_head;
 
-static void FDECL(topten_print, (const char *));
-static void FDECL(topten_print_bold, (const char *));
-static xchar FDECL(observable_depth, (d_level *));
-static void NDECL(outheader);
-static void FDECL(outentry, (int,struct toptenentry *,BOOLEAN_P));
-static void FDECL(readentry, (FILE *,struct toptenentry *));
-static void FDECL(writeentry, (FILE *,struct toptenentry *));
-static void FDECL(free_ttlist, (struct toptenentry *));
-static int FDECL(classmon, (CHAR_P,BOOLEAN_P));
-static int FDECL(score_wanted,
+STATIC_DCL void FDECL(topten_print, (const char *));
+STATIC_DCL void FDECL(topten_print_bold, (const char *));
+STATIC_DCL xchar FDECL(observable_depth, (d_level *));
+STATIC_DCL void NDECL(outheader);
+STATIC_DCL void FDECL(outentry, (int,struct toptenentry *,BOOLEAN_P));
+STATIC_DCL void FDECL(readentry, (FILE *,struct toptenentry *));
+STATIC_DCL void FDECL(writeentry, (FILE *,struct toptenentry *));
+STATIC_DCL void FDECL(free_ttlist, (struct toptenentry *));
+STATIC_DCL int FDECL(classmon, (char *,BOOLEAN_P));
+STATIC_DCL int FDECL(score_wanted,
 		(BOOLEAN_P, int,struct toptenentry *,int,const char **,int));
 #ifdef NO_SCAN_BRACK
-static void FDECL(nsb_mung_line,(char*));
-static void FDECL(nsb_unmung_line,(char*));
+STATIC_DCL void FDECL(nsb_mung_line,(char*));
+STATIC_DCL void FDECL(nsb_unmung_line,(char*));
 #endif
 
 /* must fit with end.c; used in rip.c */
 NEARDATA const char *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
-	"", "dissolved in ", "crushed to death by ", "petrified by ", "",
-	"", "",
-	"", "", ""
+	"", "dissolved in ", "crushed to death by ", "petrified by ",
+	"", "", "", "", "", "", ""
 };
 
 static winid toptenwin = WIN_ERR;
 
-static void
+STATIC_OVL void
 topten_print(x)
 const char *x;
 {
@@ -92,7 +94,7 @@ const char *x;
 	    putstr(toptenwin, ATR_NONE, x);
 }
 
-static void
+STATIC_OVL void
 topten_print_bold(x)
 const char *x;
 {
@@ -102,7 +104,7 @@ const char *x;
 	    putstr(toptenwin, ATR_BOLD, x);
 }
 
-static xchar
+STATIC_OVL xchar
 observable_depth(lev)
 d_level *lev;
 {
@@ -120,32 +122,55 @@ d_level *lev;
 	    return depth(lev);
 }
 
-static void
+STATIC_OVL void
 readentry(rfile,tt)
 FILE *rfile;
 struct toptenentry *tt;
 {
-#ifdef NO_SCAN_BRACK
-	static char *fmt = "%d %d %d %ld %d %d %d %d %d %d %ld %ld %d%*c%c%c %s %s%*c";
+#ifdef NO_SCAN_BRACK /* Version_ Pts DgnLevs_ Hp___ Died__Born id */
+	static const char *fmt = "%d %d %d %ld %d %d %d %d %d %d %ld %ld %d%*c";
+	static const char *fmt32 = "%c%c %s %s%*c";
+	static const char *fmt33 = "%s %s %s %s %s %s%*c";
 #else
-	static char *fmt = "%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d %c%c %[^,],%[^\n]%*c";
+	static const char *fmt = "%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d ";
+	static const char *fmt32 = "%c%c %[^,],%[^\n]%*c";
+	static const char *fmt33 = "%s %s %s %s %[^,],%[^\n]%*c";
 #endif
 
 #ifdef UPDATE_RECORD_IN_PLACE
 	/* note: fscanf() below must read the record's terminating newline */
 	final_fpos = tt->fpos = ftell(rfile);
 #endif
-#define TTFIELDS 17
+#define TTFIELDS 13
 	if(fscanf(rfile, fmt,
 			&tt->ver_major, &tt->ver_minor, &tt->patchlevel,
 			&tt->points, &tt->deathdnum, &tt->deathlev,
 			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->deaths,
 			&tt->deathdate, &tt->birthdate,
-			&tt->uid, &tt->plchar, &tt->sex,
-			tt->name, tt->death) != TTFIELDS)
+			&tt->uid) != TTFIELDS)
 #undef TTFIELDS
 		tt->points = 0;
 	else {
+		/* Check for backwards compatibility */
+		if (tt->ver_major < 3 ||
+				(tt->ver_major == 3 && tt->ver_minor < 3)) {
+			int i;
+
+		    if (fscanf(rfile, fmt32,
+		    		tt->plrole, tt->plgend,
+		    		tt->name, tt->death) != 4)
+		    	tt->points = 0;
+		    tt->plrole[1] = 0;
+		    if ((i = str2role(tt->plrole)) >= 0)
+		    	(void) strncpy(tt->plrole, roles[i].filecode, ROLESZ);
+		    tt->plrole[ROLESZ] = 0;
+		    Strcpy(tt->plrace, "?");
+		    Strcpy(tt->plgend, (tt->plgend[0] == 'M') ? "Mal" : "Fem");
+		    Strcpy(tt->plalign, "?");
+		} else if (fscanf(rfile, fmt33,
+				tt->plrole, tt->plrace, tt->plgend,
+				tt->plalign, tt->name, tt->death) != 6)
+			tt->points = 0;
 #ifdef NO_SCAN_BRACK
 		if(tt->points > 0) {
 			nsb_unmung_line(tt->name);
@@ -161,7 +186,7 @@ struct toptenentry *tt;
 	}
 }
 
-static void
+STATIC_OVL void
 writeentry(rfile,tt)
 FILE *rfile;
 struct toptenentry *tt;
@@ -169,23 +194,40 @@ struct toptenentry *tt;
 #ifdef NO_SCAN_BRACK
 	nsb_mung_line(tt->name);
 	nsb_mung_line(tt->death);
-	(void) fprintf(rfile,"%d %d %d %ld %d %d %d %d %d %d %ld %ld %d %c%c %s %s\n",
+	                   /* Version_ Pts DgnLevs_ Hp___ Died__Born id */
+	(void) fprintf(rfile,"%d %d %d %ld %d %d %d %d %d %d %ld %ld %d ",
 #else
-	(void) fprintf(rfile,"%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d %c%c %s,%s\n",
+	(void) fprintf(rfile,"%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d ",
 #endif
 		tt->ver_major, tt->ver_minor, tt->patchlevel,
 		tt->points, tt->deathdnum, tt->deathlev,
 		tt->maxlvl, tt->hp, tt->maxhp, tt->deaths,
-		tt->deathdate, tt->birthdate,
-		tt->uid, tt->plchar, tt->sex,
-		onlyspace(tt->name) ? "_" : tt->name, tt->death);
+		tt->deathdate, tt->birthdate, tt->uid);
+	if (tt->ver_major < 3 ||
+			(tt->ver_major == 3 && tt->ver_minor < 3))
+#ifdef NO_SCAN_BRACK
+		(void) fprintf(rfile,"%c%c %s %s\n",
+#else
+		(void) fprintf(rfile,"%c%c %s,%s\n",
+#endif
+			tt->plrole[0], tt->plgend[0],
+			onlyspace(tt->name) ? "_" : tt->name, tt->death);
+	else
+#ifdef NO_SCAN_BRACK
+		(void) fprintf(rfile,"%s %s %s %s %s %s\n",
+#else
+		(void) fprintf(rfile,"%s %s %s %s %s,%s\n",
+#endif
+			tt->plrole, tt->plrace, tt->plgend, tt->plalign,
+			onlyspace(tt->name) ? "_" : tt->name, tt->death);
+
 #ifdef NO_SCAN_BRACK
 	nsb_unmung_line(tt->name);
 	nsb_unmung_line(tt->death);
 #endif
 }
 
-static void
+STATIC_OVL void
 free_ttlist(tt)
 struct toptenentry *tt;
 {
@@ -227,7 +269,7 @@ int how;
 	    toptenwin = create_nhwindow(NHW_TEXT);
 	}
 
-#if defined(UNIX) || defined(VMS)
+#if defined(UNIX) || defined(VMS) || defined(__EMX__)
 #define HUP	if (!program_state.done_hup)
 #else
 #define HUP
@@ -256,8 +298,14 @@ int how;
 	t0->maxhp = u.uhpmax;
 	t0->deaths = u.umortality;
 	t0->uid = uid;
-	t0->plchar = pl_character[0];
-	t0->sex = (flags.female ? 'F' : 'M');
+	(void) strncpy(t0->plrole, urole.filecode, ROLESZ);
+	t0->plrole[ROLESZ] = '\0';
+	(void) strncpy(t0->plrace, urace.filecode, ROLESZ);
+	t0->plrace[ROLESZ] = '\0';
+	(void) strncpy(t0->plgend, genders[flags.female].filecode, ROLESZ);
+	t0->plgend[ROLESZ] = '\0';
+	(void) strncpy(t0->plalign, aligns[1-u.ualign.type].filecode, ROLESZ);
+	t0->plalign[ROLESZ] = '\0';
 	(void) strncpy(t0->name, plname, NAMSZ);
 	t0->name[NAMSZ] = '\0';
 	t0->death[0] = '\0';
@@ -356,7 +404,8 @@ int how;
 #else
 		strncmp(t1->name, t0->name, NAMSZ) == 0 &&
 #endif
-		t1->plchar == t0->plchar && --occ_cnt <= 0) {
+		!strncmp(t1->plrole, t0->plrole, ROLESZ) &&
+		--occ_cnt <= 0) {
 		    if(rank0 < 0) {
 			rank0 = 0;
 			rank1 = rank;
@@ -457,7 +506,8 @@ int how;
 	    t1->ver_major = t1->ver_minor = t1->patchlevel = 0;
 	    t1->uid = t1->deathdnum = t1->deathlev = 0;
 	    t1->maxlvl = t1->hp = t1->maxhp = t1->deaths = 0;
-	    t1->plchar = t1->sex = '-';
+	    t1->plrole[0] = t1->plrace[0] = t1->plgend[0] = t1->plalign[0] = '-';
+	    t1->plrole[1] = t1->plrace[1] = t1->plgend[1] = t1->plalign[1] = 0;
 	    t1->birthdate = t1->deathdate = yyyymmdd((time_t)0L);
 	    Strcpy(t1->name, "@");
 	    Strcpy(t1->death, "<eod>\n");
@@ -480,7 +530,7 @@ int how;
 	}
 }
 
-static void
+STATIC_OVL void
 outheader()
 {
 	char linebuf[BUFSZ];
@@ -494,7 +544,7 @@ outheader()
 }
 
 /* so>0: standout line; so=0: ordinary line */
-static void
+STATIC_OVL void
 outentry(rank, t1, so)
 struct toptenentry *t1;
 int rank;
@@ -511,7 +561,14 @@ boolean so;
 	else Strcat(linebuf, "   ");
 
 	Sprintf(eos(linebuf), " %10ld  %.10s", t1->points, t1->name);
-	Sprintf(eos(linebuf), "-%c ", t1->plchar);
+	Sprintf(eos(linebuf), "-%s", t1->plrole);
+	if (t1->plrace[0] != '?')
+		Sprintf(eos(linebuf), "-%s", t1->plrace);
+	Sprintf(eos(linebuf), "-%s", t1->plgend);
+	if (t1->plalign[0] != '?')
+		Sprintf(eos(linebuf), "-%s ", t1->plalign);
+	else
+		Strcat(linebuf, " ");
 	if (!strncmp("escaped", t1->death, 7)) {
 	    Sprintf(eos(linebuf), "escaped the dungeon %s[max level %d]",
 		    !strncmp(" (", t1->death + 7, 2) ? t1->death + 7 + 2 : "",
@@ -522,7 +579,7 @@ boolean so;
 	    second_line = FALSE;
 	} else if (!strncmp("ascended", t1->death, 8)) {
 	    Sprintf(eos(linebuf), "ascended to demigod%s-hood",
-		    (t1->sex == 'F') ? "dess" : "");
+		    (t1->plgend[0] == 'F') ? "dess" : "");
 	    second_line = FALSE;
 	} else {
 	    if (!strncmp(t1->death, "quit", 4)) {
@@ -533,7 +590,7 @@ boolean so;
 		second_line = FALSE;
 	    } else if (!strncmp(t1->death, "choked", 6)) {
 		Sprintf(eos(linebuf), "choked on h%s food",
-			(t1->sex == 'F') ? "er" : "is");
+			(t1->plgend[0] == 'F') ? "er" : "is");
 	    } else if (!strncmp(t1->death, "poisoned", 8)) {
 		Strcat(linebuf, "was poisoned");
 	    } else if (!strncmp(t1->death, "crushed", 7)) {
@@ -625,7 +682,7 @@ boolean so;
 	    topten_print(linebuf);
 }
 
-static int
+STATIC_OVL int
 score_wanted(current_ver, rank, t1, playerct, players, uid)
 boolean current_ver;
 int rank;
@@ -650,7 +707,7 @@ int uid;
 		if (strcmp(players[i], "all") == 0 ||
 		    strncmp(t1->name, players[i], NAMSZ) == 0 ||
 		    (players[i][0] == '-' &&
-		     players[i][1] == t1->plchar &&
+		     players[i][1] == t1->plrole[0] &&
 		     players[i][2] == 0) ||
 		    (digit(players[i][0]) && rank <= atoi(players[i])))
 		return 1;
@@ -711,12 +768,14 @@ char **argv;
 	if (!argv[1][2]){	/* plain "-s" */
 		argc--;
 		argv++;
+#if 0 /* uses obsolete pl_classes[] */
 	} else if (!argv[1][3] && index(pl_classes, argv[1][2])) {
 		/* may get this case instead of next accidentally,
 		 * but neither is listed in the documentation, so
 		 * anything useful that happens is a bonus anyway */
 		argv[1]++;
 		argv[1][0] = '-';
+#endif
 	} else	argv[1] += 2;
 
 	if (argc > 1 && !strcmp(argv[1], "-v")) {
@@ -794,33 +853,25 @@ char **argv;
 #endif
 }
 
-static int
+STATIC_OVL int
 classmon(plch, fem)
-char plch;
-boolean fem;
+	char *plch;
+	boolean fem;
 {
-	switch (plch) {
-		case 'A': return PM_ARCHEOLOGIST;
-		case 'B': return PM_BARBARIAN;
-		case 'C': return (fem ? PM_CAVEWOMAN : PM_CAVEMAN);
-		case 'E': return PM_ELF;
-		case 'H': return PM_HEALER;
-		case 'F':	/* accept old Fighter class */
-		case 'K': return PM_KNIGHT;
-		case 'P': return (fem ? PM_PRIESTESS : PM_PRIEST);
-		case 'R': return PM_ROGUE;
-		case 'N':	/* accept old Ninja class */
-		case 'S': return PM_SAMURAI;
-#ifdef TOURIST
-		case 'T': return PM_TOURIST;
-#else
-		case 'T': return PM_HUMAN;
-#endif
-		case 'V': return PM_VALKYRIE;
-		case 'W': return PM_WIZARD;
-		default: impossible("What weird class is this? (%c)", plch);
-			return PM_HUMAN_ZOMBIE;
-	}
+	int i;
+
+	/* Look for this role in the role table */
+	for (i = 0; roles[i].name.m; i++)
+	    if (!strncmp(plch, roles[i].filecode, ROLESZ)) {
+	    	if (fem && roles[i].femalenum != NON_PM)
+	    		return (roles[i].femalenum);
+	    	else if (roles[i].malenum != NON_PM)
+	    		return (roles[i].malenum);
+	    	else
+	    		return (PM_HUMAN);
+	    }
+	impossible("What weird role is this? (%s)", plch);
+	return (PM_HUMAN_MUMMY);
 }
 
 /*
@@ -863,7 +914,7 @@ pickentry:
 	} else {
 		/* reset timer in case corpse started out as lizard or troll */
 		if (otmp->otyp == CORPSE) obj_stop_timers(otmp);
-		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
+		otmp->corpsenm = classmon(tt->plrole, (tt->plgend[0] == 'F'));
 		otmp->owt = weight(otmp);
 		otmp = oname(otmp, tt->name);
 		if (otmp->otyp == CORPSE) start_corpse_timeout(otmp);
@@ -877,14 +928,14 @@ pickentry:
 /* Lattice scanf isn't up to reading the scorefile.  What */
 /* follows deals with that; I admit it's ugly. (KL) */
 /* Now generally available (KL) */
-static void
+STATIC_OVL void
 nsb_mung_line(p)
 	char *p;
 {
 	while ((p = index(p, ' ')) != 0) *p = '|';
 }
 
-static void
+STATIC_OVL void
 nsb_unmung_line(p)
 	char *p;
 {

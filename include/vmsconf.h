@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsconf.h	3.2	96/10/20	*/
+/*	SCCS Id: @(#)vmsconf.h	3.3	98/07/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,7 +16,7 @@
  *   extra room for patching longer values into an existing executable.
  */
 #define Local_WIZARD	"NHWIZARD\0\0\0\0"
-#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-2-2.PLAY]\0\0\0\0\0\0\0\0"
+#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-3-0.PLAY]\0\0\0\0\0\0\0\0"
 
 /*
  * This section cleans up the stuff done in config.h so that it
@@ -48,7 +48,7 @@
 #undef RECORD
 #define RECORD	"record;1"	/* scoreboard file (retains high scores) */
 #undef LOGFILE
-#define LOGFILE	"logfile;0"	/* optional file (records all games) */
+#define LOGFILE "logfile;0"	/* optional file (records all games) */
 
 #define HLOCK	"perm;1"	/* an empty file used for locking purposes */
 
@@ -66,7 +66,7 @@
  * of file protection fixups (protection of bones files and ownership of
  * save files).
  */
-/* #define SECURE /**/
+/* #define SECURE */
 
 /*
  * Put the readonly data files into a single container rather than into
@@ -83,7 +83,7 @@
  * color escape sequences, as do some 3rd party terminals and many micro
  * computers.
  */
-/* #define TEXTCOLOR /**/
+/* #define TEXTCOLOR */
 
 /*
  * If you define USE_QIO_INPUT, then you'll get raw characters from the
@@ -134,6 +134,7 @@
 
 #define FCMASK	0660	/* file creation mask */
 
+
 /*
  * The remainder of the file should not need to be changed.
  */
@@ -146,7 +147,7 @@
 	 * avoid enabling it because that requires compiling and linking
 	 * src/hacklib into util/dlb_main.
 	 */
-/* # define FILENAME_CMP	strcmpi	/* case insensitive */
+/* # define FILENAME_CMP strcmpi */	/* case insensitive */
 #endif
 
 #if defined(VAXC) && !defined(ANCIENT_VAXC)
@@ -159,7 +160,7 @@
 #endif
 
 #ifdef __DECC
-# define STRICT_REF_DEF	/* used in lev_main.c */
+# define STRICT_REF_DEF /* used in lev_main.c */
 #endif
 #ifdef STRICT_REF_DEF
 # define DEFINE_OSPEED
@@ -226,7 +227,9 @@ typedef __gid_t gid_t;
 #endif
 
 #ifndef __GNUC__
+# ifndef bcopy
 #define bcopy(s,d,n)	memcpy((d),(s),(n))	/* vaxcrtl */
+# endif
 #endif
 #define abort()		vms_abort()		/* vmsmisc.c */
 #define creat(f,m)	vms_creat(f,m)		/* vmsfiles.c */
@@ -240,7 +243,7 @@ typedef __gid_t gid_t;
 #else
 #define unlink(f0)	remove(f0)		/* vaxcrtl, decc$shr */
 #endif
-#define C$$TRANSLATE(n)	c__translate(n)		/* vmsfiles.c */
+#define C$$TRANSLATE(n) c__translate(n)		/* vmsfiles.c */
 
 /* VMS global names are case insensitive... */
 #define An vms_an

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.2	96/06/26	*/
+/*	SCCS Id: @(#)mthrowu.c	3.3	1999/08/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,8 @@
 STATIC_DCL int FDECL(drop_throw,(struct obj *,BOOLEAN_P,int,int));
 
 #define URETREATING(x,y) (distmin(u.ux,u.uy,x,y) > distmin(u.ux0,u.uy0,x,y))
+
+#define POLE_LIM 5	/* How far monsters can use pole-weapons */
 
 #ifndef OVLB
 
@@ -30,6 +32,7 @@ STATIC_OVL NEARDATA const char *breathwep[] = {
 				"strange breath #9"
 };
 
+
 int
 thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	register int tlev, dam;
@@ -49,12 +52,12 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 		else You("are hit by %s!", onm);
 
 		if (obj && objects[obj->otyp].oc_material == SILVER
-				&& hates_silver(uasmon)) {
+				&& hates_silver(youmonst.data)) {
 			dam += rnd(20);
 			pline_The("silver sears your flesh!");
 			exercise(A_CON, FALSE);
 		}
-		if (is_acid && resists_acid(&youmonst))
+		if (is_acid && Acid_resistance)
 			pline("It doesn't seem to hurt you.");
 		else {
 			if (is_acid) pline("It burns!");
@@ -86,9 +89,7 @@ int x,y;
 	if (obj->otyp == CREAM_PIE || obj->oclass == VENOM_CLASS ||
 		    (ohit && obj->otyp == EGG))
 		create = 0;
-	else if (ohit &&
-		 ((obj->otyp >= ARROW && obj->otyp <= SHURIKEN) ||
-		  obj->otyp == ROCK))
+	else if (ohit && (is_multigen(obj) || obj->otyp == ROCK))
 		create = !rn2(3);
 	else create = 1;
 
@@ -143,16 +144,16 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 	    }
 	} else if (otmp->oclass == POTION_CLASS) {
 	    if (ismimic) seemimic(mtmp);
-	    mtmp->msleep = 0;
+	    mtmp->msleeping = 0;
 	    if (vis) otmp->dknown = 1;
-	    potionhit(mtmp, otmp);
+	    potionhit(mtmp, otmp, FALSE);
 	    return 1;
 	} else {
 	    damage = dmgval(otmp, mtmp);
 	    if (otmp->otyp == ACID_VENOM && resists_acid(mtmp))
 		damage = 0;
 	    if (ismimic) seemimic(mtmp);
-	    mtmp->msleep = 0;
+	    mtmp->msleeping = 0;
 	    if (vis) hit(distant_name(otmp,xname), mtmp, exclam(damage));
 	    else if (verbose) pline("It is hit%s", exclam(damage));
 
@@ -258,9 +259,7 @@ m_throw(mon, x, y, dx, dy, range, obj)
 
 	if (singleobj->cursed && (dx || dy) && !rn2(7)) {
 	    if(canseemon(mon) && flags.verbose) {
-		if((singleobj->oclass == WEAPON_CLASS ||
-						singleobj->oclass == GEM_CLASS)
-		   && objects[singleobj->otyp].w_propellor)
+		if(is_ammo(singleobj))
 		    pline("%s misfires!", Monnam(mon));
 		else
 		    pline("%s slips as %s throws it!",
@@ -293,8 +292,8 @@ m_throw(mon, x, y, dx, dy, range, obj)
 		    if (multi) nomul(0);
 
 		    if (singleobj->oclass == GEM_CLASS &&
-			    singleobj->otyp <= LAST_GEM+6 /* 6 glass colors */
-			    && u.usym == S_UNICORN) {
+			    singleobj->otyp <= LAST_GEM+9 /* 9 glass colors */
+			    && is_unicorn(youmonst.data)) {
 			if (singleobj->otyp > LAST_GEM) {
 			    You("catch the %s.", xname(singleobj));
 			    You("are not interested in %s junk.",
@@ -312,11 +311,19 @@ m_throw(mon, x, y, dx, dy, range, obj)
 		    }
 		    if (singleobj->oclass == POTION_CLASS) {
 			if (!Blind) singleobj->dknown = 1;
-			potionhit(&youmonst, singleobj);
+			potionhit(&youmonst, singleobj, FALSE);
 			break;
 		    }
 		    switch(singleobj->otyp) {
 			int dam, hitv;
+			case EGG:
+			    if (!touch_petrifies(&mons[singleobj->corpsenm])) {
+				impossible("monster throwing egg type %d",
+					singleobj->corpsenm);
+				hitu = 0;
+				break;
+			    }
+			    /* fall through */
 			case CREAM_PIE:
 			case BLINDING_VENOM:
 			    hitu = thitu(8, 0, singleobj, xname(singleobj));
@@ -326,15 +333,14 @@ m_throw(mon, x, y, dx, dy, range, obj)
 			    hitv = 3 - distmin(u.ux,u.uy, mon->mx,mon->my);
 			    if (hitv < -4) hitv = -4;
 			    if (is_elf(mon->data) &&
-				objects[singleobj->otyp].w_propellor
-							    == WP_BOW) {
+				objects[singleobj->otyp].oc_skill == P_BOW) {
 				hitv++;
 				if (MON_WEP(mon) &&
 				    MON_WEP(mon)->otyp == ELVEN_BOW)
 				    hitv++;
 				if(singleobj->otyp == ELVEN_ARROW) dam++;
 			    }
-			    if (bigmonst(uasmon)) hitv++;
+			    if (bigmonst(youmonst.data)) hitv++;
 			    hitv += 8+singleobj->spe;
 
 			    if (dam < 1) dam = 1;
@@ -354,11 +360,16 @@ m_throw(mon, x, y, dx, dy, range, obj)
 					    something,
 					    body_part(FACE));
 			} else {	/* venom in the eyes */
-			    if(Blindfolded) /* nothing */ ;
+			    if(ublindf) /* nothing */ ;
 			    else if(!Blind) pline_The("venom blinds you.");
-			    else	Your("%s sting.",
-				    makeplural(body_part(EYE)));
+			    else Your("%s sting.", makeplural(body_part(EYE)));
 			}
+		    }
+		    if (hitu && singleobj->otyp == EGG) {
+			if (!Stone_resistance
+				&& !(poly_when_stoned(youmonst.data) &&
+				    polymon(PM_STONE_GOLEM)))
+			    Stoned = 5;
 		    }
 		    stop_occupation();
 		    if (hitu || !range) {
@@ -384,8 +395,8 @@ m_throw(mon, x, y, dx, dy, range, obj)
 	tmp_at(bhitpos.x, bhitpos.y);
 	delay_output();
 	tmp_at(DISP_END, 0);
-	/* blindfold keeps substances out of your eyes */
-	if (blindinc && !Blindfolded) {
+	/* blindfolds, towels, & lenses keep substances out of your eyes */
+	if (blindinc && !ublindf) {
 		u.ucreamed += blindinc;
 		make_blinded(Blinded + blindinc,FALSE);
 	}
@@ -422,15 +433,25 @@ register struct monst *mtmp;
 {
 	struct obj *otmp;
 	register xchar x, y;
+	boolean ispole;
+	schar skill;
+	int multishot = 1;
 
-	if(lined_up(mtmp)) {
+
+	/* Rearranged beginning so monsters can use polearms not in a line */
 	    if (mtmp->weapon_check == NEED_WEAPON || !MON_WEP(mtmp)) {
 		mtmp->weapon_check = NEED_RANGED_WEAPON;
 		/* mon_wield_item resets weapon_check as appropriate */
 		if(mon_wield_item(mtmp) != 0) return;
 	    }
+
+	/* Pick a weapon */
 	    otmp = select_rwep(mtmp);
-	    if (otmp) {
+	if (!otmp) return;
+	ispole = is_pole(otmp);
+	skill = objects[otmp->otyp].oc_skill;
+
+	if(ispole || lined_up(mtmp)) {
 		/* If you are coming toward the monster, the monster
 		 * should try to soften you up with missiles.  If you are
 		 * going away, you are probably hurt or running.  Give
@@ -438,7 +459,7 @@ register struct monst *mtmp;
 		 */
 		x = mtmp->mx;
 		y = mtmp->my;
-		if(!URETREATING(x,y) ||
+		if(ispole || !URETREATING(x,y) ||
 		   !rn2(BOLT_LIM-distmin(x,y,mtmp->mux,mtmp->muy)))
 		{
 		    const char *verb = "throws";
@@ -446,19 +467,71 @@ register struct monst *mtmp;
 		    if (otmp->otyp == ARROW
 			|| otmp->otyp == ELVEN_ARROW
 			|| otmp->otyp == ORCISH_ARROW
+			|| otmp->otyp == YA
 			|| otmp->otyp == CROSSBOW_BOLT) verb = "shoots";
+			if (ispole) {
+				if (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
+						POLE_LIM && couldsee(mtmp->mx, mtmp->my))
+					verb = "thrusts";
+				else return; /* Out of range, or intervening wall */
+			}
+
 		    if (canseemon(mtmp)) {
 			pline("%s %s %s!", Monnam(mtmp), verb,
 			      obj_is_pname(otmp) ?
 			      the(singular(otmp, xname)) :
 			      an(singular(otmp, xname)));
 		    }
-		    m_throw(mtmp, mtmp->mx, mtmp->my, sgn(tbx), sgn(tby),
-			distmin(mtmp->mx,mtmp->my,mtmp->mux,mtmp->muy), otmp);
+
+			/* Use a pole */
+			if (ispole) {
+				int dam = dmgval(otmp, &youmonst);
+				int hitv = 3 - distmin(u.ux,u.uy, mtmp->mx,mtmp->my);
+
+				if (hitv < -4) hitv = -4;
+				if (bigmonst(youmonst.data)) hitv++;
+				hitv += 8 + otmp->spe;
+				if (dam < 1) dam = 1;
+				(void) thitu(hitv, dam, otmp, xname(otmp));
+
+				return;
+			}
+
+		    /* Multishot calculations */
+		    if (((ammo_and_launcher(otmp, MON_WEP(mtmp)) && skill != -P_SLING) ||
+				skill == P_DAGGER || skill == P_DART ||
+				skill == P_SHURIKEN) && !mtmp->mconf) {
+			/* Assumes lords are skilled, princes are expert */
+			if (is_lord(mtmp->data)) multishot++;
+			if (is_prince(mtmp->data)) multishot += 2;
+
+			switch (monsndx(mtmp->data)) {
+			case PM_RANGER:
+			    multishot++;
+			    break;
+			case PM_ROGUE:
+			    if (skill == P_DAGGER) multishot++;
+			    break;
+			case PM_SAMURAI:
+			    if (otmp->otyp == YA && MON_WEP(mtmp) &&
+			    		MON_WEP(mtmp)->otyp == YUMI) multishot++;
+			    break;
+			default:
+			    if (is_elf(mtmp->data) && otmp->otyp == ELVEN_ARROW &&
+					MON_WEP(mtmp) && MON_WEP(mtmp)->otyp == ELVEN_BOW)
+				multishot++;
+			    break;
+			}
+		    }
+		    if (otmp->quan < multishot) multishot = (int)otmp->quan;
+		    if (multishot < 1) multishot = 1;
+		    else multishot = rnd(multishot);
+		    while (multishot-- > 0)
+			m_throw(mtmp, mtmp->mx, mtmp->my, sgn(tbx), sgn(tby),
+					distmin(mtmp->mx,mtmp->my,mtmp->mux,mtmp->muy), otmp);
 		    nomul(0);
 		    return;
 		}
-	    }
 	}
 }
 
@@ -475,7 +548,7 @@ register struct attack *mattk;
 	if(mtmp->mcan) {
 
 	    if(flags.soundok)
-		pline("A dry rattle comes from %s throat",
+		pline("A dry rattle comes from %s throat.",
 		                      s_suffix(mon_nam(mtmp)));
 	    return 0;
 	}

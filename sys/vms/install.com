@@ -27,13 +27,14 @@ $	spec_files = "AIR.LEV,ASMODEUS.LEV,ASTRAL.LEV,BAALZ.LEV,BIGRM-%.LEV," -
 		   + "CASTLE.LEV,EARTH.LEV,FAKEWIZ%.LEV,FIRE.LEV," -
 		   + "JUIBLEX.LEV,KNOX.LEV,MEDUSA-%.LEV,MINEFILL.LEV," -
 		   + "MINETN-%.LEV,MINEND-%.LEV,ORACLE.LEV,ORCUS.LEV," -
-		   + "SANCTUM.LEV,TOWER%.LEV,VALLEY.LEV,WATER.LEV,WIZARD%.LEV"
+		   + "SANCTUM.LEV,SOKO%-%.LEV,TOWER%.LEV,VALLEY.LEV," -
+		   + "WATER.LEV,WIZARD%.LEV"
 $	spec_input = "bigroom.des castle.des endgame.des " -
 		   + "gehennom.des knox.des medusa.des mines.des " -
-		   + "oracle.des tower.des yendor.des"
-$	qstl_files = "%-GOAL.LEV,%-FILL%.LEV,%-LOCATE.LEV,%-START.LEV"
-$	qstl_input = "Arch.des Barb.des Caveman.des Elf.des " -
-		   + "Healer.des Knight.des Priest.des Rogue.des " -
+		   + "oracle.des sokoban.des tower.des yendor.des"
+$	qstl_files = "%%%-GOAL.LEV,%%%-FIL%.LEV,%%%-LOCA.LEV,%%%-STRT.LEV"
+$	qstl_input = "Arch.des Barb.des Caveman.des Healer.des " -
+		   + "Knight.des Monk.des Priest.des Ranger.des Rogue.des " -
 		   + "Samurai.des Tourist.des Wizard.des Valkyrie.des"
 $	dngn_files = "DUNGEON."
 $	dngn_input = "dungeon.pdf"
@@ -114,7 +115,7 @@ $! strip device, directory, and version from name
 $	f = f$parse(f,,,"NAME") + f$parse(f,,,"TYPE")
 $! strip trailing dot, if present, and change case
 $	f = f$edit(f + "#" - ".#" - "#","LOWERCASE")
-$	if f$extract(1,1,f).eqs."-" then -
+$	if f$extract(3,1,f).eqs."-" then -	!"xyz-foo.lev" -> "Xyz-foo.lev"
 		f = f$edit(f$extract(0,1,f),"UPCASE") + f$extract(1,255,f)
 $	write pfile$ f
 $	if wild then  goto floop
@@ -177,10 +178,12 @@ $! copy over the remaining game files, then make them readonly
 $make_readonly_files:
 $	milestone "(readonly files)"
 $ if f$search("[.dat]''data_libry'").nes.""
-$ then	xtrn_files = data_libry + "," + xtrn_files
-$ else	xtrn_files = dlb_files				!everything
+$ then	call copyfiles 'f$string(data_libry+","+xtrn_files)' [.dat] "r"
+$ else	!'dlb_files' is too long for a single command
+$	k = 200 + f$locate(",",f$extract(200,999,dlb_files))
+$	call copyfiles 'f$extract(0,k,dlb_files)' [.dat] "r"
+$	call copyfiles 'f$extract(k+1,999,dlb_files)' [.dat] "r"
 $ endif
-$ call copyfiles 'xtrn_files' [.dat] "r"
 $ if p3.nes."" then  exit
 $!
 $make_executable:
@@ -233,7 +236,7 @@ $ set file/Owner='gameuic'/Prot=(s:'p3',o:'p3') 'p2'
 $endsubroutine !copy_file
 $
 $!
-$! copy a comma-separated list of wildcarded files, one file at a file
+$! copy a comma-separated list of wildcarded files, one file at a time
 $copyfiles: subroutine
 $ i = 0
 $lloop:

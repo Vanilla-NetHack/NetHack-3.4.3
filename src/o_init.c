@@ -1,20 +1,20 @@
-/*	SCCS Id: @(#)o_init.c	3.2	96/08/11	*/
+/*	SCCS Id: @(#)o_init.c	3.3	1999/12/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "lev.h"	/* save & restore info */
 
-static void NDECL(setgemprobs);
-static void FDECL(shuffle,(int,int,BOOLEAN_P));
-static void NDECL(shuffle_all);
-static boolean FDECL(interesting_to_discover,(int));
+STATIC_DCL void FDECL(setgemprobs, (d_level*));
+STATIC_DCL void FDECL(shuffle,(int,int,BOOLEAN_P));
+STATIC_DCL void NDECL(shuffle_all);
+STATIC_DCL boolean FDECL(interesting_to_discover,(int));
 
 
 static NEARDATA short disco[NUM_OBJECTS] = DUMMY;
 
 #ifdef USE_TILES
-static void NDECL(shuffle_tiles);
+STATIC_DCL void NDECL(shuffle_tiles);
 extern short glyph2tile[];	/* from tile.c */
 
 /* Shuffle tile assignments to match descriptions, so a red potion isn't
@@ -26,7 +26,7 @@ extern short glyph2tile[];	/* from tile.c */
  * is restored.  So might as well do that the first time instead of writing
  * another routine.
  */
-static void
+STATIC_OVL void
 shuffle_tiles()
 {
 	int i;
@@ -41,13 +41,17 @@ shuffle_tiles()
 }
 #endif	/* USE_TILES */
 
-static void
-setgemprobs()
+STATIC_OVL void
+setgemprobs(dlev)
+d_level *dlev;
 {
-	register int j, first;
-	int lev = (ledger_no(&u.uz) > maxledgerno())
-				? maxledgerno() : ledger_no(&u.uz);
+	int j, first, lev;
 
+	if (dlev)
+	    lev = (ledger_no(dlev) > maxledgerno())
+				? maxledgerno() : ledger_no(dlev);
+	else
+	    lev = 0;
 	first = bases[GEM_CLASS];
 
 	for(j = 0; j < 9-lev/3; j++)
@@ -60,11 +64,11 @@ setgemprobs()
 		wait_synch();
 	    }
 	for (j = first; j <= LAST_GEM; j++)
-		objects[j].oc_prob = (184+j-first)/(LAST_GEM+1-first);
+		objects[j].oc_prob = (171+j-first)/(LAST_GEM+1-first);
 }
 
 /* shuffle descriptions on objects o_low to o_high */
-static void
+STATIC_OVL void
 shuffle(o_low, o_high, domaterial)
 	int o_low, o_high;
 	boolean domaterial;
@@ -135,7 +139,7 @@ register char oclass;
 		bases[(int)oclass] = first;
 
 		if (oclass == GEM_CLASS) {
-			setgemprobs();
+			setgemprobs((d_level *)0);
 
 			if (rn2(2)) { /* change turquoise from green to blue? */
 			    COPY_OBJ_DESCR(objects[TURQUOISE],objects[SAPPHIRE]);
@@ -175,7 +179,7 @@ register char oclass;
 #endif
 }
 
-static void
+STATIC_OVL void
 shuffle_all()
 {
 	int first, last, oclass;
@@ -242,7 +246,7 @@ find_skates()
 void
 oinit()			/* level dependent initialization */
 {
-	setgemprobs();
+	setgemprobs(&u.uz);
 }
 
 void
@@ -297,9 +301,10 @@ register int fd;
 }
 
 void
-discover_object(oindx, mark_as_known)
+discover_object(oindx, mark_as_known, credit_hero)
 register int oindx;
 boolean mark_as_known;
+boolean credit_hero;
 {
     if (!objects[oindx].oc_name_known) {
 	register int dindx, acls = objects[oindx].oc_class;
@@ -314,7 +319,7 @@ boolean mark_as_known;
 
 	if (mark_as_known) {
 	    objects[oindx].oc_name_known = 1;
-	    exercise(A_WIS, TRUE);
+	    if (credit_hero) exercise(A_WIS, TRUE);
 	}
 	if (moves > 1L) update_inventory();
     }
@@ -345,14 +350,22 @@ register int oindx;
     }
 }
 
-static boolean
+STATIC_OVL boolean
 interesting_to_discover(i)
 register int i;
 {
-    if (objects[i].oc_pre_discovered) return FALSE;
+	/* Pre-discovered objects are now printed with a '*' */
     return((boolean)(objects[i].oc_uname != (char *)0 ||
 	    (objects[i].oc_name_known && OBJ_DESCR(objects[i]) != (char *)0)));
 }
+
+/* items that should stand out once they're known */
+static short uniq_objs[] = {
+	AMULET_OF_YENDOR,
+	SPE_BOOK_OF_THE_DEAD,
+	CANDELABRUM_OF_INVOCATION,
+	BELL_OF_OPENING,
+};
 
 int
 dodiscovered()				/* free after Robert Viduya */
@@ -361,10 +374,24 @@ dodiscovered()				/* free after Robert Viduya */
     int	ct = 0;
     char *s, oclass, prev_class, classes[MAXOCLASSES];
     winid tmpwin;
+	char buf[BUFSZ];
 
     tmpwin = create_nhwindow(NHW_MENU);
     putstr(tmpwin, 0, "Discoveries");
     putstr(tmpwin, 0, "");
+
+    /* gather "unique objects" into a pseudo-class; note that they'll
+       also be displayed individually within their regular class */
+    for (i = dis = 0; i < SIZE(uniq_objs); i++)
+	if (objects[uniq_objs[i]].oc_name_known) {
+	    if (!dis++)
+		putstr(tmpwin, ATR_INVERSE, "Unique Items");
+		Sprintf(buf, "  %s", OBJ_NAME(objects[uniq_objs[i]]));
+	    putstr(tmpwin, 0, buf);
+	    ++ct;
+	}
+    /* display any known artifacts as another pseudo-class */
+    ct += disp_artifact_discoveries(tmpwin);
 
     /* several classes are omitted from packorder; one is of interest here */
     Strcpy(classes, flags.inv_order);
@@ -385,7 +412,9 @@ dodiscovered()				/* free after Robert Viduya */
 		    putstr(tmpwin, ATR_INVERSE, let_to_name(oclass, FALSE));
 		    prev_class = oclass;
 		}
-		putstr(tmpwin, 0, typename(dis));
+		Sprintf(buf, "%s %s",(objects[dis].oc_pre_discovered ? "*" : " "),
+				obj_typename(dis));
+		putstr(tmpwin, 0, buf);
 	    }
 	}
     }

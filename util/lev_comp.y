@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_yacc.c	3.2	96/05/16	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.3	96/05/16	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -577,7 +577,7 @@ room_chance	: CHANCE_ID ':' INTEGER
 			else if (tmproom[nrooms]->rtype == OROOM)
 			    yyerror("Only typed rooms can have a chance!");
 			else if ($3 < 1 || $3 > 99)
-			    yyerror("The chance is supposed to be precentile.");
+			    yyerror("The chance is supposed to be percentile.");
 			else
 			    tmproom[nrooms]->chance = $3;
 		   }

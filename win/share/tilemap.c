@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tilemap.c	3.2	96/03/15	*/
+/*	SCCS Id: @(#)tilemap.c	3.3	1999/03/28	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -34,17 +34,18 @@ struct conditionals {
 #ifndef CHARON /* not supported yet */
 	{ MON_GLYPH, PM_HELL_HOUND, "Cerberus" },
 #endif
-
-	/* not supported yet */
-	{ MON_GLYPH, PM_FREEZING_SPHERE, "beholder" },
-
+	/* commented out in monst.c at present */
+	{ MON_GLYPH, PM_SHOCKING_SPHERE, "beholder" },
+	{ MON_GLYPH, PM_BABY_SILVER_DRAGON, "baby shimmering dragon" },
+	{ MON_GLYPH, PM_SILVER_DRAGON, "shimmering dragon" },
+	{ MON_GLYPH, PM_JABBERWOCK, "vorpal jabberwock" },
 #ifndef KOPS
 	{ MON_GLYPH, PM_JABBERWOCK, "Keystone Kop" },
 	{ MON_GLYPH, PM_JABBERWOCK, "Kop Sergeant" },
 	{ MON_GLYPH, PM_JABBERWOCK, "Kop Lieutenant" },
 	{ MON_GLYPH, PM_JABBERWOCK, "Kop Kaptain" },
 #endif
-
+	{ MON_GLYPH, PM_VAMPIRE_LORD, "vampire mage" },
 #ifndef CHARON /* not supported yet */
 	{ MON_GLYPH, PM_CROESUS, "Charon" },
 #endif
@@ -53,24 +54,39 @@ struct conditionals {
 #endif
 #ifndef TOURIST
 	{ MON_GLYPH, PM_SAMURAI, "tourist" },
+#endif
+	/* commented out in monst.c at present */
+	{ MON_GLYPH, PM_SHAMAN_KARNOV, "Earendil" },
+	{ MON_GLYPH, PM_SHAMAN_KARNOV, "Elwing" },
+#ifndef TOURIST
 	{ MON_GLYPH, PM_LORD_SATO, "Twoflower" },
+#endif
+	/* commented out in monst.c at present */
+	{ MON_GLYPH, PM_CHROMATIC_DRAGON, "Goblin King" },
+	{ MON_GLYPH, PM_NEANDERTHAL, "High-elf" },
+#ifndef TOURIST
 	{ MON_GLYPH, PM_ROSHI, "guide" },
 #endif
-
 #ifndef KOPS
 	{ OBJ_GLYPH, CLUB, "rubber hose" },
 #endif
+	/* objects commented out in objects.c at present */
+	{ OBJ_GLYPH, SILVER_DRAGON_SCALE_MAIL, "shimmering dragon scale mail" },
+	{ OBJ_GLYPH, SILVER_DRAGON_SCALES, "shimmering dragon scales" },
 #ifndef TOURIST
 	{ OBJ_GLYPH, LEATHER_JACKET, "Hawaiian shirt" },
 	{ OBJ_GLYPH, LEATHER_JACKET, "T-shirt" },
 	{ OBJ_GLYPH, LOCK_PICK, "credit card" },
 	{ OBJ_GLYPH, MAGIC_LAMP, "expensive camera" },
 #endif
+#ifndef STEED
+	{ OBJ_GLYPH, TOWEL, "saddle" },
+#endif
 	/* allow slime mold to look like slice of pizza, since we
 	 * don't know what a slime mold should look like when renamed anyway
 	 */
 #ifndef MAIL
-	{ OBJ_GLYPH, SCR_CHARGING+6, "mail" },
+	{ OBJ_GLYPH, SCR_CHARGING+6, "stamped / mail" },
 #endif
 	{ 0, 0, 0}
 };
@@ -94,7 +110,9 @@ struct substitute {
 	{ GLYPH_CMAP_OFF + S_vwall, GLYPH_CMAP_OFF + S_trwall,
 					"gehennom walls", "In_hell(plev)" },
 	{ GLYPH_CMAP_OFF + S_vwall, GLYPH_CMAP_OFF + S_trwall,
-					"knox walls", "Is_knox(plev)" }
+					"knox walls", "Is_knox(plev)" },
+	{ GLYPH_CMAP_OFF + S_vwall, GLYPH_CMAP_OFF + S_trwall,
+					"sokoban walls", "In_sokoban(plev)" }
 };
 
 
@@ -131,11 +149,25 @@ int set, entry;
 			tilenum++;
 		}
 	}
+	if (set == MON_GLYPH && tilenum == entry)
+		return "invisible monster";
 
 	tilenum = 0;	/* set-relative number */
 	for (i = 0; i < NUM_OBJECTS; i++) {
-		if (set == OBJ_GLYPH && tilenum == entry)
-			return obj_descr[i].oc_name;
+		/* prefer to give the description - that's all the tile's
+		 * appearance should reveal */
+		if (set == OBJ_GLYPH && tilenum == entry) {
+			if ( !obj_descr[i].oc_descr )
+			    return obj_descr[i].oc_name;
+			if ( !obj_descr[i].oc_name )
+			    return obj_descr[i].oc_descr;
+
+			Sprintf(buf, "%s / %s",
+				obj_descr[i].oc_descr,
+				obj_descr[i].oc_name);
+			return buf;
+		}
+
 		tilenum++;
 		while (conditionals[condnum].sequence == OBJ_GLYPH &&
 			conditionals[condnum].predecessor == i) {
@@ -220,6 +252,9 @@ int set, entry;
 short tilemap[MAX_GLYPH];
 int lastmontile, lastobjtile, lastothtile;
 
+/* Number of tiles for invisible monsters */
+#define NUM_INVIS_TILES 1
+
 /*
  * set up array to map glyph numbers to tile numbers
  *
@@ -239,8 +274,8 @@ init_tilemap()
 		tilemap[i] = -1;
 	}
 
-	corpsetile = NUMMONS + CORPSE;
-	swallowbase = NUMMONS + NUM_OBJECTS + S_sw_tl;
+	corpsetile = NUMMONS + NUM_INVIS_TILES + CORPSE;
+	swallowbase= NUMMONS + NUM_INVIS_TILES + NUM_OBJECTS + S_sw_tl;
 
 	/* add number compiled out */
 	for (i = 0; conditionals[i].sequence; i++) {
@@ -265,6 +300,8 @@ init_tilemap()
 	for (i = 0; i < NUMMONS; i++) {
 		tilemap[GLYPH_MON_OFF+i] = tilenum;
 		tilemap[GLYPH_PET_OFF+i] = tilenum;
+		tilemap[GLYPH_DETECT_OFF+i] = tilenum;
+		tilemap[GLYPH_RIDDEN_OFF+i] = tilenum;
 		tilemap[GLYPH_BODY_OFF+i] = corpsetile;
 		j = GLYPH_SWALLOW_OFF + 8*i;
 		tilemap[j] = swallowbase;
@@ -282,6 +319,7 @@ init_tilemap()
 			tilenum++;
 		}
 	}
+	tilemap[GLYPH_INVISIBLE] = tilenum++;
 	lastmontile = tilenum - 1;
 
 	for (i = 0; i < NUM_OBJECTS; i++) {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)explode.c	3.3	97/06/14	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,16 +41,21 @@ char olet;
 	boolean shopdamage = FALSE;
 
 	if (olet == WAND_CLASS)		/* retributive strike */
-		switch (u.role) {
-			case 'P':
-			case 'W': damu /= 5;
+		switch (Role_switch) {
+			case PM_PRIEST:
+			case PM_MONK:
+			case PM_WIZARD: damu /= 5;
 				  break;
-			case 'H':
-			case 'K': damu /= 2;
+			case PM_HEALER:
+			case PM_KNIGHT: damu /= 2;
 				  break;
 			default:  break;
 		}
 
+	if (olet == MON_EXPLODE) {
+	    str = killer;
+	    adtyp = AD_PHYS;
+	} else
 	switch (abs(type) % 10) {
 		case 0: str = "magical blast";
 			adtyp = AD_MAGM;
@@ -63,11 +68,18 @@ char olet;
 		case 2: str = "ball of cold";
 			adtyp = AD_COLD;
 			break;
-		case 4: str = "disintegration field";
+		case 4: str =  (olet == WAND_CLASS) ? "death field" :
+							"disintegration field";
 			adtyp = AD_DISN;
 			break;
 		case 5: str = "ball lightning";
 			adtyp = AD_ELEC;
+			break;
+		case 6: str = "poison gas cloud";
+			adtyp = AD_DRST;
+			break;
+		case 7: str = "splash of acid";
+			adtyp = AD_ACID;
 			break;
 		default: impossible("explosion base type %d?", type); return;
 	}
@@ -82,6 +94,9 @@ char olet;
 
 		if (i+x-1 == u.ux && j+y-1 == u.uy) {
 		    switch(adtyp) {
+			case AD_PHYS:                        
+				explmask[i][j] = 0;
+				break;
 			case AD_MAGM:
 				explmask[i][j] = !!Antimagic;
 				break;
@@ -92,10 +107,18 @@ char olet;
 				explmask[i][j] = !!Cold_resistance;
 				break;
 			case AD_DISN:
-				explmask[i][j] = !!Disint_resistance;
+				explmask[i][j] = (olet == WAND_CLASS) ?
+						!!(nonliving(youmonst.data) || is_demon(youmonst.data)) :
+						!!Disint_resistance;
 				break;
 			case AD_ELEC:
 				explmask[i][j] = !!Shock_resistance;
+				break;
+			case AD_DRST:
+				explmask[i][j] = !!Poison_resistance;
+				break;
+			case AD_ACID:
+				explmask[i][j] = !!Acid_resistance;
 				break;
 			default:
 				impossible("explosion type %d?", adtyp);
@@ -103,8 +126,16 @@ char olet;
 		    }
 		}
 		/* can be both you and mtmp if you're swallowed */
-		if ((mtmp = m_at(i+x-1, j+y-1)) != 0) {
-		    switch(adtyp) {
+		mtmp = m_at(i+x-1, j+y-1);
+#ifdef STEED
+		if (!mtmp && i+x-1 == u.ux && j+y-1 == u.uy)
+			mtmp = u.usteed;
+#endif
+		if (mtmp) {
+		    if (mtmp->mhp < 1) explmask[i][j] = 2;
+		    else switch(adtyp) {
+			case AD_PHYS:                        
+				break;
 			case AD_MAGM:
 				explmask[i][j] |= resists_magm(mtmp);
 				break;
@@ -115,15 +146,29 @@ char olet;
 				explmask[i][j] |= resists_cold(mtmp);
 				break;
 			case AD_DISN:
-				explmask[i][j] |= resists_disint(mtmp);
+				explmask[i][j] |= (olet == WAND_CLASS) ?
+					(nonliving(mtmp->data) || is_demon(mtmp->data)) :
+					resists_disint(mtmp);
 				break;
 			case AD_ELEC:
 				explmask[i][j] |= resists_elec(mtmp);
+				break;
+			case AD_DRST:
+				explmask[i][j] |= resists_poison(mtmp);
+				break;
+			case AD_ACID:
+				explmask[i][j] |= resists_acid(mtmp);
 				break;
 			default:
 				impossible("explosion type %d?", adtyp);
 				break;
 		    }
+		}
+		if (mtmp && cansee(i,j) && !canspotmon(mtmp))
+		    map_invisible(i, j);
+		else if (!mtmp && glyph_is_invisible(levl[i][j].glyph)) {
+		    unmap_object(i, j);
+		    newsym(i, j);
 		}
 
 		if (cansee(i+x-1, j+y-1)) visible = TRUE;
@@ -178,10 +223,15 @@ char olet;
 		if (i+x-1 == u.ux && j+y-1 == u.uy)
 			uhurt = (explmask[i][j] == 1) ? 1 : 2;
 		idamres = idamnonres = 0;
-		(void)zap_over_floor((xchar)(i+x-1), (xchar)(j+y-1),
-				     type, &shopdamage);
+		if (type >= 0)
+		    (void)zap_over_floor((xchar)(i+x-1), (xchar)(j+y-1),
+		    		type, &shopdamage);
 
 		mtmp = m_at(i+x-1, j+y-1);
+#ifdef STEED
+		if (!mtmp && i+x-1 == u.ux && j+y-1 == u.uy)
+			mtmp = u.usteed;
+#endif
 		if (!mtmp) continue;
 		if (u.uswallow && mtmp == u.ustuck) {
 			if (is_animal(u.ustuck->data))
@@ -189,16 +239,22 @@ char olet;
 				      Monnam(u.ustuck),
 				      (adtyp == AD_FIRE) ? "heartburn" :
 				      (adtyp == AD_COLD) ? "chilly" :
-				      (adtyp == AD_DISN) ? "perforated" :
+				      (adtyp == AD_DISN) ? ((olet == WAND_CLASS) ?
+				       "irradiated by pure energy" : "perforated") :
 				      (adtyp == AD_ELEC) ? "shocked" :
+				      (adtyp == AD_DRST) ? "poisoned" :
+				      (adtyp == AD_ACID) ? "an upset stomach" :
 				       "fried");
 			else
 				pline("%s gets slightly %s!",
 				      Monnam(u.ustuck),
 				      (adtyp == AD_FIRE) ? "toasted" :
 				      (adtyp == AD_COLD) ? "chilly" :
-				      (adtyp == AD_DISN) ? "perforated" :
+				      (adtyp == AD_DISN) ? ((olet == WAND_CLASS) ?
+				       "overwhelmed by pure energy" : "perforated") :
 				      (adtyp == AD_ELEC) ? "shocked" :
+				      (adtyp == AD_DRST) ? "intoxicated" :
+				      (adtyp == AD_ACID) ? "burned" :
 				       "fried");
 		} else
 		pline("%s is caught in the %s!",
@@ -221,9 +277,9 @@ char olet;
 			int mdam = dam;
 
 			if (resist(mtmp, olet, 0, FALSE)) {
-				pline("%s resists the magical blast!",
-					cansee(i+x-1,j+y-1) ? Monnam(mtmp)
-					: "It");
+				pline("%s resists the %s!",
+					cansee(i+x-1,j+y-1) ? Monnam(mtmp) : "It",
+					str);
 				mdam = dam/2;
 			}
 			if (mtmp == u.ustuck)
@@ -236,8 +292,9 @@ char olet;
 			mtmp->mhp -= (idamres + idamnonres);
 		}
 		if (mtmp->mhp <= 0) {
-			if (type >= 0) killed(mtmp);
-			else mondied(mtmp);
+			/* KMH -- Don't blame the player for pets killing gas spores */
+			if (!flags.mon_moving) killed(mtmp);
+			else monkilled(mtmp, "", (int)adtyp);
 		}
 	}
 
@@ -245,10 +302,16 @@ char olet;
 
 	/* Do your injury last */
 	if (uhurt) {
-		if (type >= 0 && flags.verbose && olet != SCROLL_CLASS)
+		if ((type >= 0 || adtyp == AD_PHYS) &&	/* gas spores */
+				flags.verbose && olet != SCROLL_CLASS)
 			You("are caught in the %s!", str);
 		/* do property damage first, in case we end up leaving bones */
-		if (adtyp == AD_FIRE) (void) burnarmor();
+		if (adtyp == AD_FIRE) burn_away_slime();
+		if (Invulnerable) {
+		    damu = 0;
+		    pline("You are unharmed!");
+		}
+		if (adtyp == AD_FIRE) (void) burnarmor(&youmonst);
 		destroy_item(SCROLL_CLASS, (int) adtyp);
 		destroy_item(SPBOOK_CLASS, (int) adtyp);
 		destroy_item(POTION_CLASS, (int) adtyp);
@@ -261,7 +324,11 @@ char olet;
 		if (u.uhp <= 0) {
 			char buf[BUFSZ];
 
-			if (type >= 0 && olet != SCROLL_CLASS) {
+			if (olet == MON_EXPLODE) {
+			    /* killer handled by caller */
+			    Strcpy(buf, str);
+			    killer_format = KILLED_BY_AN;
+			} else if (type >= 0 && olet != SCROLL_CLASS) {
 			    killer_format = NO_KILLER_PREFIX;
 			    Sprintf(buf, "caught %sself in %s own %s.",
 				    him[flags.female], his[flags.female], str);
@@ -309,10 +376,11 @@ struct scatter_chain {
  */
 
 void
-scatter(sx,sy,blastforce,scflags)
+scatter(sx,sy,blastforce,scflags, obj)
 int sx,sy;				/* location of objects to scatter */
 int blastforce;				/* force behind the scattering	*/
 unsigned int scflags;
+struct obj *obj;			/* only scatter this obj        */
 {
 	register struct obj *otmp;
 	register int tmp;
@@ -320,14 +388,31 @@ unsigned int scflags;
 	uchar typ;
 	long qtmp;
 	boolean used_up;
+	boolean split_up = FALSE;
+	boolean individual_object = obj ? TRUE : FALSE;
 	struct monst *mtmp;
 	struct scatter_chain *stmp, *stmp2 = 0;
 	struct scatter_chain *schain = (struct scatter_chain *)0;
 
-	while ((otmp = level.objects[sx][sy]) != 0) {
+	while ((otmp = individual_object ? obj : level.objects[sx][sy]) != 0) {
 	    if (otmp->quan > 1L) {
-		qtmp = (long)rnd((int)otmp->quan - 1);
+		qtmp = otmp->quan - 1;
+		if (qtmp > LARGEST_INT) qtmp = LARGEST_INT;
+		qtmp = (long)rnd((int)qtmp);
 		(void) splitobj(otmp, qtmp);
+		if (qtmp < otmp->quan)
+			split_up = TRUE;
+		else
+			split_up = FALSE;
+	    }
+	    if (individual_object) {
+		if (split_up) {
+			if (otmp->where == OBJ_FLOOR)
+				obj = otmp->nexthere;
+			else
+				obj = otmp->nobj;
+		} else
+			obj = (struct obj *)0;
 	    }
 	    obj_extract_self(otmp);
 	    used_up = FALSE;
@@ -410,7 +495,7 @@ unsigned int scflags;
 
 				    if (multi) nomul(0);
 				    hitvalu = 8 + stmp->obj->spe;
-				    if (bigmonst(uasmon)) hitvalu++;
+				    if (bigmonst(youmonst.data)) hitvalu++;
 				    /* could just use doname all the time,
 				     * except thitu adds "an" to the front
 				     */

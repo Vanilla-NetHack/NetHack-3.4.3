@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)data.base	3.2	96/10/17
+#	SCCS Id: @(#)data.base	3.3	1999/11/28
 #	Copyright (c) 1994, 1995, 1996 by the NetHack Development Team
 #	Copyright (c) 1994 by Boudewijn Wayers
 #	NetHack may be freely redistributed.  See license for details.
@@ -8,7 +8,7 @@
 # Any other line not starting with whitespace is a creature or an item.
 #
 # Each entry should be comprised of:
-# the thing/person being described on a line by itself;
+# the thing/person being described on a line by itself, in lowercase;
 # on each succeeding line a <TAB> description.
 #
 # If the first character of a key field is "~", then anything which matches
@@ -30,8 +30,14 @@ amaterasu omikami
 	and said to be his favourite offspring, she was born from
 	his left eye.
 	    [ Encyclopedia of Gods, by Michael Jordan ]
+amber*
+	"Tree sap," Wu explained, "often flows over insects and traps
+	them.  The insects are then perfectly preserved within the
+	fossil.  One finds all kinds of insects in amber - including
+	biting insects that have sucked blood from larger animals."
+		[ Jurassic Park, by Michael Crichton ]
 *amnesia
-Maud
+maud
 	Get thee hence, nor come again,
 	Mix not memory with doubt,
 	Pass, thou deathlike type of pain,
@@ -50,7 +56,7 @@ Maud
 	If ever I should forget,
 	May God make me more wretched
 	Than ever I have been yet!
-		[ Maud, And Other Poems by Alfred Lord Tennyson ]
+		[ Maud, And Other Poems by Alfred, Lord Tennyson ]
 angel*
 	He answered and said unto them, he that soweth the good seed
 	is the Son of man; the field is the world, and the good seed
@@ -100,6 +106,7 @@ anu
 	the father of all gods, and the ruler of heaven and destiny.
 	Anu features strongly in the _atiku_ festival in
 	Babylon, Uruk and other cities.
+~* cape
 *ape
 	The most highly evolved of all the primates, as shown by
 	all their anatomical characters and particularly the
@@ -116,13 +123,37 @@ anu
 	Earth shake when they walked.  Apes should _rule_ the Earth.
 		[ Battle for the Planet of the Apes,
 			by David Gerrold ]
+apple
+	NEWTONIAN, adj.  Pertaining to a philosophy of the universe
+	invented by Newton, who discovered that an apple will fall
+	to the ground, but was unable to say why.  His successors
+	and disciples have advanced so far as to be able to say
+	when.
+		[ The Devil's Dictionary, by Ambrose Bierce ]
 archon
 	Archons are the predominant inhabitants of the heavens.
 	However unusual their appearance, they are not generally
 	evil.  They are beings at peace with themselves and their
 	surroundings.
+*arrow
+	I shot an arrow into the air,
+	It fell to earth, I knew not where;
+	For, so swiftly it flew, the sight
+	Could not follow it in its flight.
+
+	I breathed a song into the air,
+	It fell to earth, I knew not where;
+	For who has sight so keen and strong
+	That it can follow the flight of song?
+
+	Long, long afterward, in an oak
+	I found the arrow still unbroke;
+	And the song, from beginning to end,
+	I found again in the heart of a friend.
+		[ The Arrow and the Song,
+		  by Henry Wadsworth Longfellow ]
 ashikaga takauji
-	Ashikaga Takajui was a daimyo of the Minamoto clan who
+	Ashikaga Takauji was a daimyo of the Minamoto clan who
 	joined forces with the Go-Daigo to defeat the Hojo armies.
 	Later when Go-Daigo attempted to reduce the powers of the
 	samurai clans he rebelled against him.  He defeated Go-
@@ -182,7 +213,27 @@ titanothere
 	early Tertiary were also large perissodactyls, _Brontotherium_
 	of the Oligocene being 8 feet high at the shoulder.
 		[Prehistoric Animals, by Barry Cox ]
+banana
+	He took another step and she cocked her right wrist in
+	viciously.  She heard the spring click.  Weight slapped into
+	her hand.
+	"Here!" she shrieked hysterically, and brought her arm up in
+	a hard sweep, meaning to gut him, leaving him to blunder
+	around the room with his intestines hanging out in steaming
+	loops.  Instead he roared laughter, hands on his hips,
+	flaming face cocked back, squeezing and contorting with great
+	good humor.
+	"Oh, my dear!" he cried, and went off into another gale of
+	laughter.
+	She looked stupidly down at her hand.  It held a firm yellow
+	banana with a blue and white Chiquita sticker on it.  She
+	dropped it, horrified, to the carpet, where it became a
+	sickly yellow grin, miming Flagg's own.
+	"You'll tell," he whispered.  "Oh yes indeed you will."
+	And Dayna knew he was right.
+		[ The Stand, by Stephen King ]
 barbarian
+human barbarian
 	They dressed alike -- in buckskin boots, leathern breeks and
 	deerskin shirts, with broad girdles that held axes and short
 	swords; and they were all gaunt and scarred and hard-eyed;
@@ -262,6 +313,42 @@ book of the dead
 	Because it is Saint Peter's holy day.
 	(Enter all the Friars to sing the dirge)
 		[ Doctor Faustus and Other Plays, by Christopher Marlowe ]
+boulder
+	For I had felt too much and reasoned too little, hearing what
+	I was ready to hear, not what had been said.  There had been
+	nothing at all about raising the stone with my bare hands;
+	only that I must do it alone.
+	I worked the lever well under, and stretched my back; the end
+	of the stone rose up, and I kicked the fulcrum under.  Then,
+	when I was going to bear down, I remembered there was
+	something to get out from below; when I let go of the lever,
+	the stone would fall again.  I sat down to think, on the root
+	of the oak tree; and, seeing it stand about the ground, I saw
+	my way.  It was lucky I had brought a longer lever.  It would
+	just reach to wedge under the oak root.
+	Bearing it down so far would have been easy for a heavy man,
+	but was a hard fight for me.  But this time I meant to do it
+	if it killed me, because I knew it could be done.  Twice I
+	got it nearly there, and twice the weight bore it up again;
+	but when I flung myself on it the third time, I heard in my
+	ears the sea-sound of Poseidon.  Then I knew this time I
+	would do it; and so I did.
+		[ The King Must Die, by Mary Renault ]
+*bow
+	"Stand to it, my hearts of gold," said the old bowman as he
+	passed from knot to knot.  "By my hilt! we are in luck this
+	journey.  Bear in mind the old saying of the Company."
+	"What is that, Aylward?" cried several, leaning on their bows
+	and laughing at him.
+	"'Tis the master-bowyer's rede: 'Every bow well bent.  Every
+	shaft well sent.  Every stave well nocked.  Every string well
+	locked.'  There, with that jingle in his head, a bracer on
+	his left hand, a shooting glove on his right, and a
+	farthing's-worth of wax in his girdle, what more doth a
+	bowman need?"
+	"It would not be amiss," said Hordle John, "if under his
+	girdle he had four farthings'-worth of wine."
+		[ The White Company, by Sir Arthur Conan Doyle ]
 brigit
 	Brigit (Brigid, Bride, Banfile), which means the Exalted One,
 	was the Celtic (continental European and Irish) fertility
@@ -274,7 +361,8 @@ brigit
 	actually existed, but in Irish mythology she became the
 	midwife to the Virgin Mary.
 		[ Encyclopedia of Gods, by Michael Jordan ]
-broadsword
+~stormbringer
+*broadsword
 	Bring me my broadsword
 	And clear understanding.
 	Bring me my cross of gold,
@@ -285,6 +373,16 @@ bugbear
 	larger and more hairy.  They are aggressive carnivores and
 	sometimes kill just for the treasure their victims may be
 	carrying.
+bugle
+	'I read you by your bugle horn
+	And by your palfrey good,
+	I read you for a Ranger sworn
+	To keep the King's green-wood.'
+	'A Ranger, Lady, winds his horn,
+	And 'tis at peep of light;
+	His blast is heard at merry morn,
+	And mine at dead of night.'
+		[ Brignall Banks, by Sir Walter Scott ]
 *camaxtli
 	A classical Mesoamerican Aztec god, also known as Mixcoatl-
 	Camaxtli (the Cloud Serpent), Camaxtli is the god of war.  He
@@ -293,6 +391,25 @@ bugbear
 	sun god Tezcatlipoca transformed himself into Mixcoatl-Camaxtli
 	to make fire by twirling the sacred fire sticks.
 		[ Encyclopedia of Gods, by Michael Jordan ]
+candy bar
+	Only once a year, on his birthday, did Charlie Bucket ever
+	get to taste a bit of chocolate.  The whole family saved up
+	their money for that special occasion, and when the great
+	day arrived, Charlie was always presented with one small
+	chocolate bar to eat all by himself.  And each time he
+	received it, on those marvelous birthday mornings, he would
+	place it carefully in a small wooden box that he owned, and
+	treasure it as though it were a bar of solid gold; and for
+	the next few days, he would allow himself only to look at it,
+	but never to touch it.  Then at last, when he could stand it
+	no longer, he would peel back a tiny bit of the paper
+	wrapping at one corner to expose a tiny bit of chocolate, and
+	then he would take a tiny nibble - just enough to allow the
+	lovely sweet taste to spread out slowly over his tongue.  The
+	next day, he would take another tiny nibble, and so on, and
+	so on.  And in this way, Charlie would make his ten-cent bar
+	of birthday chocolate last him for more than a month.
+		[ Charlie and the Chocolate Factory, by Roald Dahl ]
 s*d*g*r* cat
 	Imagine a sealed container, so perfectly constructed that no
 	physical influence can pass either inwards or outwards across its
@@ -308,7 +425,8 @@ s*d*g*r* cat
 	protected) observer inside the container, the cat's state-vector
 	would have collapsed much earlier, and the outside observer's
 	linear combination has no relevance.
-	        [ The Emperor's New Mind, by Roger Penrose ]
+		[ The Emperor's New Mind, by Roger Penrose ]
+~idefix
 *cat
 kitten
 	Well-known quadruped domestic animal from the family of
@@ -333,6 +451,18 @@ kitten
 	clefts of the mountains, myths associating them especially
 	with the hills of Thessaly and the range of Erymanthos.
 		     [ Mythology of all races, Vol. 1, pp. 270-271 ]
+centipede
+	I observed here, what I had often seen before, that certain
+	districts abound in centipedes.  Here they have light
+	reddish bodies and blue legs; great myriapedes are seen
+	crawling every where.  Although they do no harm, they excite
+	in man a feeling of loathing.  Perhaps our appearance
+	produces a similar feeling in the elephant and other large
+	animals.  Where they have been much disturbed, they
+	certainly look upon us with great distrust, as the horrid
+	biped that ruins their peace.
+		[ Travels and Researches in South Africa,
+			by Dr. David Livingstone ]
 cerberus
 kerberos
 	Cerberus, (or Kerberos in Greek), was the three-headed dog
@@ -362,13 +492,42 @@ charo*n
 	man, advanced in age, was called Charon.  The deceased's next-
 	of-kin would place a coin under his tongue, to pay the ferry-
 	man.
+chest
+large box
+	Dantes rapidly cleared away the earth around the chest.  Soon
+	the center lock appeared, then the handles at each end, all
+	delicately wrought in the manner of that period when art made
+	precious even the basest of metals.  He took the chest by the
+	two handles and tried to lift it, but it was impossible.  He
+	tried to open it; it was locked.  He inserted the sharp end
+	of his pickaxe between the chest and the lid and pushed down
+	on the handle.  The lid creaked, then flew open.
+	Dantes was seized with a sort of giddy fever.  He cocked his
+	gun and placed it beside him.  The he closed his eyes like a
+	child, opened them and stood dumbfounded.
+	The chest was divided into three compartments.  In the first
+	were shining gold coins.  In the second, unpolished gold
+	ingots packed in orderly stacks.  From the third compartment,
+	which was half full, Dantes picked up handfuls of diamonds,
+	pearls and rubies.  As they fell through his fingers in a
+	glittering cascade, they gave forth the sound of hail beating
+	against the windowpanes.
+		[ The Count of Monte Cristo, by Alexandre Dumas ]
 chih*sung*tzu
 	A Chinese rain god.
 chromatic dragon
 tiamat
 	Tiamat is said to be the mother of evil dragonkind.  She is
 	extremely vain.
-cockatrice
+cloud*
+	I wandered lonely as a cloud
+	That floats on high o'er vales and hills,
+	When all at once I saw a crowd,
+	A host, of golden daffodils;
+	Beside the lake, beneath the trees,
+	Fluttering and dancing in the breeze.
+		[ I Wandered Lonely as a Cloud, by William Wordsworth ]
+c*ckatrice
 	Once in a great while, when the positions of the stars are
 	just right, a seven-year-old rooster will lay an egg.  Then,
 	along will come a snake, to coil around the egg, or a toad,
@@ -402,7 +561,7 @@ cornuthaum
 	like the headgear worn by ladies of that time, except that
 	the ladies were accustomed to have a bit of veil floating
 	from the top of it.
-                        [ The Once and Future King, by T.H. White ]
+			[ The Once and Future King, by T.H. White ]
 
 		"A wizard!" Dooley exclaimed, astounded.
 		"At your service, sirs," said the wizard.  "How
@@ -411,7 +570,7 @@ cornuthaum
 	pretty much that, tall and cone-shaped with stars and crescent
 	moons all over it.  All in all, it couldn't have been more
 	wizardish.
-                        [ The Elfin Ship, James P. Blaylock ]
+			[ The Elfin Ship, James P. Blaylock ]
 couatl
 	A mythical feathered serpent.  The couatl are very rare.
 cram*
@@ -449,6 +608,13 @@ crom
 
 	[ Conan the Avenger by Robert E. Howard, Bjorn Nyberg, and
 	  L. Sprague de Camp ]
+crossbow*
+	"God save thee, ancient Mariner!
+	From the fiends, that plague thee thus! -
+	Why look'st thou so?" - With my cross-bow
+	I shot the Albatross.
+		[ The Rime of the Ancient Mariner, by Samuel Taylor
+		  Coleridge ]
 cyclops
 	And after he had milked his cattle swiftly,
 	he again took hold of two of my men
@@ -481,6 +647,18 @@ cyclops
 	the red wine squirted from his throat;
 	the drunk vomited lumps of human flesh.
 		[ The Odyssey, (chapter Epsilon), by Homer ]
+~sting
+*dagger
+	Is this a dagger which I see before me,
+	The handle toward my hand? Come, let me clutch thee.
+	I have thee not, and yet I see thee still.
+	Art thou not, fatal vision, sensible
+	To feeling as to sight? or art thou but
+	A dagger of the mind, a false creation,
+	Proceeding from the heat-oppressed brain?
+	I see thee yet, in form as palpable
+	As this which now I draw.
+		[Macbeth, by William Shakespeare ]
 dark one
 	... But he ruled rather by force and fear, if they might
 	avail; and those who perceived his shadow spreading over the
@@ -507,6 +685,9 @@ djinn*
 	in a flask or lamp.  Once in a while, such a tool is found by
 	a lucky rogue, and some djinn are known to be so grateful
 	when released that they might grant their rescuer a wish.
+~hachi
+~idefix
+~slasher
 *dog
 pup*
 	A domestic animal, the _tame dog_ (_Canis familiaris_), of
@@ -526,6 +707,14 @@ pup*
 	breathing nostrils, but also with the thrashings of its tail,
 	the most deadly part of its serpent-like body.
 	[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+*drum*
+	Many travelers have seen the drums of the great apes, and
+	some have heard the sounds of their beating and the noise of
+	the wild, weird revelry of these first lords of the jungle,
+	but Tarzan, Lord Greystoke, is, doubtless, the only human
+	being who ever joined in the fierce, mad, intoxicating revel
+	of the Dum-Dum.
+		[ Tarzan of the Apes, by Edgar Rice Burroughs ]
 dwarf*
 	Dwarfs have faces like men (ugly men, with wrinkled, leathery
 	skins), but are generally either flat-footed, duck-footed, or
@@ -576,6 +765,14 @@ giant eel
 	rather than dead creatures and are not habitual eaters of
 	carrion.
 	    [ Freshwater Fishes of Canada, by Scott and Crossman ]
+egg
+	But I asked why not keep it and let the hen sit on it till it
+	hatched, and then we could see what would come out of it.
+	"Nothing good, I'm certain of that," Mom said.  "It would
+	probably be something horrible.  But just remember, if it's a
+	crocodile or a dragon or something like that, I won't have it
+	in my house for one minute."
+		[ The Enormous Egg, by Oliver Butterworth ]
 elbereth
 	... Even as they stepped over the threshold a single clear
 	voice rose in song.
@@ -612,6 +809,11 @@ electric eel
 ~elf ??m*
 *elf*
 elvenking
+elven archeologist
+elven cave*man
+elven healer
+elven samurai
+elven wizard
 	The Elves sat round the fire upon the grass or upon the sawn
 	rings of old trunks.  Some went to and fro bearing cups and
 	pouring drinks; others brought food on heaped plates and
@@ -631,6 +833,36 @@ elvenking
 	apples like that, I would call myself a gardener.  But it was
 	the singing that went to my heart, if you know what I mean."
 	   [ The Fellowship of the Ring, by J.R.R. Tolkien ]
+elven cloak
+	The Elves next unwrapped and gave to each of the Company the
+	clothes they had brought.  For each they had provided a hood
+	and cloak, made according to his size, of the light but warm
+	silken stuff that the Galadrim wove.  It was hard to say of
+	what colour they were: grey with the hue of twilight under
+	the trees they seemed to be; and yet if they were moved, or
+	set in another light, they were green as shadowed leaves, or
+	brown as fallow fields by night, dusk-silver as water under
+	the stars.
+		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
+emerald
+	'Put off that mask of burning gold
+	With emerald eyes.'
+	'O no, my dear, you make so bold
+	To find if hearts be wild and wise,
+	And yet not cold.'
+
+	'I would but find what's there to find,
+	Love or deceit.'
+	'It was the mask engaged your mind,
+	And after set your heart to beat,
+	Not what's behind.'
+
+	'But lest you are my enemy,
+	I must enquire.'
+	'O no, my dear, let all that be;
+	What matter, so there is but fire
+	In you, in me?'
+		[ The Mask, by W.B. Yeats ]
 erinys
 erinyes
 	These female-seeming devils named after the Furies of mythology
@@ -653,6 +885,18 @@ excalibur
 	wearing several rings that bore jewels sparkling with the
 	blue-green color of the ocean.
 		[ Knight Life, by Peter David ]
+expensive camera
+	There was a time when Rincewind had quite liked the iconoscope.
+	He believed, against all experience, that the world was
+	fundamentally understandable, and that if he could only equip
+	himself with the right mental toolbox he could take the back off
+	and see how it worked.  He was, of course, dead wrong.  The
+	iconoscope didn't take pictures by letting light fall onto
+	specially treated paper, as he had surmised, but by the far
+	simpler method of imprisoning a small demon with a good eye for
+	colour and a speedy hand with a paintbrush.  He had been very
+	upset to find that out.
+		[ The Light Fantastic, by Terry Pratchett ]
 eye of the aethiopica
 	This is a powerful amulet of ESP.  In addition to its standard
 	powers, it regenerates the energy of anyone who carries
@@ -662,6 +906,25 @@ eye of the aethiopica
 	the power to instantly open a portal to any other area of the
 	dungeon, allowing its invoker to travel quickly between
 	areas.
+eyes of the overworld
+	... and finally there is "the Eyes of the Overworld".  This
+	obscure artifact pushes the wearer's view sense into the
+	"overworld" -- another name for a segment of the Astral Plane.
+	Usually, there is nothing to be seen.  However, the wearer
+	is also able to look back and see the area around herself,
+	much like looking on a map.  Why anyone would want to ...
+figurine*
+	Then it appeared in Paris at just about the time that Paris
+	was full of Carlists who had to get out of Spain.  One of
+	them must have brought it with him, but, whoever he was, it's
+	likely he knew nothing about its real value.  It had been --
+	no doubt as a precaution during the Carlist trouble in Spain
+	-- painted or enameled over to look like nothing more than a
+	fairly interesting black statuette.  And in that disguise,
+	sir, it was, you might say, kicked around Paris for seventy
+	years by private owners and dealers too stupid to see what
+	it was under the skin.
+		[ The Maltese Falcon, by Dashiell Hammett ]
 floating eye
 	Floating eyes, not surprisingly, are large, floating eyeballs
 	which drift about the dungeon.  Though not dangerous in and
@@ -683,7 +946,7 @@ flesh golem
 	How can I describe my emotions at this catastrophe, or how
 	delineate the wretch whom with such infinite pains and care I
 	had endeavoured to form?  His limbs were in proportion, and I
-	had selected his features as beautiful.  Beautiful!--Great God! 
+	had selected his features as beautiful.  Beautiful!--Great God!
 	His yellow skin scarcely covered the work of muscles and
 	arteries beneath; his hair was of a lustrous black, and
 	flowing; his teeth of a pearly whiteness; but these luxuriances
@@ -692,6 +955,12 @@ flesh golem
 	which they were set, his shrivelled complexion and straight
 	black lips.
 		[ Frankenstein, by Mary Wollstonecraft Shelley ]
+*flute
+	With this thou canst do mighty deeds
+	And change men's passions for thy needs:
+	A man's despair with joy allay,
+	Turn bachelors old to lovers gay.
+		[ The Magic Flute, by Wolfgang Amadeus Mozart ]
 fog cloud
 	The fog comes
 	on little cat feet.
@@ -701,6 +970,18 @@ fog cloud
 	on silent haunches
 	and then moves on.
 	     [ Fog, by Carl Sandburg ]
+fox
+	One hot summer's day a Fox was strolling through an orchard
+	till he came to a bunch of Grapes just ripening on a vine
+	which had been trained over a lofty branch. "Just the thing
+	to quench my thirst," quoth he. Drawing back a few paces, he
+	took a run and a jump, and just missed the bunch. Turning
+	round again with a One, Two, Three, he jumped up, but with
+	no greater success. Again and again he tried after the
+	tempting morsel, but at last had to give it up, and walked
+	away with his nose in the air, saying: "I am sure they are
+	sour."
+		[ Aesop's Fables ]
 *fung*
 	Fungi, division of simple plants that lack chlorophyll, true
 	stems, roots, and leaves.  Unlike algae, fungi cannot
@@ -738,11 +1019,32 @@ fog cloud
 	his most ancient adversary, the gargoyles.
 	[ Excerpt from the opening narration to the movie
 		_Gargoyles_, written by Stephen and Elinor Karpf ]
+*garlic
+	1 November - All day long we have travelled, and at a good
+	speed.  The horses seem to know that they are being kindly
+	treated, for they go willingly their full stage at best
+	speed.  We have now had so many changes and find the same
+	thing so constantly that we are encouraged to think that the
+	journey will be an easy one.  Dr. Van Helsing is laconic, he
+	tells the farmers that he is hurrying to Bistritz, and pays
+	them well to make the exchange of horses.  We get hot soup,
+	or coffee, or tea, and off we go.  It is a lovely country.
+	Full of beauties of all imaginable kinds, and the people are
+	brave, and strong, and simple, and seem full of nice
+	qualities.  They are very, very superstitious.  In the first
+	house where we stopped, when the woman who served us saw the
+	scar on my forehead, she crossed herself and put out two
+	fingers towards me, to keep off the evil eye.  I believe they
+	went to the trouble of putting an extra amount of garlic into
+	our food, and I can't abide garlic.  Ever since then I have
+	taken care not to take off my hat or veil, and so have
+	escaped their suspicions.
+		[ Dracula, by Bram Stoker ]
 geryon
 	Geryon is an arch-devil sometimes called the Wild Beast,
 	attacking with his claws and poison sting.  His ranking in
 	Hell is rumored to be quite low.
-ghost
+*ghost
 	And now the souls of the dead who had gone below came swarming
 	up from Erebus -- fresh brides, unmarried youths, old men
 	with life's long suffering behind them, tender young girls
@@ -753,6 +1055,23 @@ ghost
 	trench, there came a moaning that was horrible to hear.
 	Panic drained the blood from my cheeks.
 	     [ The Odyssey, (chapter Lambda), by Homer ]
+ghoul
+	The forces of the gloom know each other, and are strangely
+	balanced by each other.  Teeth and claws fear what they cannot
+	grasp.  Blood-drinking bestiality, voracious appetites, hunger
+	in search of prey, the armed instincts of nails and jaws which
+	have for source and aim the belly, glare and smell out
+	uneasily the impassive spectral forms straying beneath a
+	shroud, erect in its vague and shuddering robe, and which seem
+	to them to live with a dead and terrible life.  These
+	brutalities, which are only matter, entertain a confused fear
+	of having to deal with the immense obscurity condensed into an
+	unknown being.  A black figure barring the way stops the wild
+	beast short.  That which emerges from the cemetery intimidates
+	and disconcerts that which emerges from the cave; the
+	ferocious fear the sinister; wolves recoil when they encounter
+	a ghoul.
+		[ Les Miserables, by Victor Hugo ]
 *giant
 giant humanoid
 	Giants have always walked the earth, though they are rare in
@@ -820,6 +1139,10 @@ zorkmid
 	left of it was a small clay image, which you can still see in
 	the Old Synagogue." ...
 	    [ The Golem, by Gustav Meyrink ]
+*grease
+	ANOINT, v.t.  To grease a king or other great functionary
+	already sufficiently slippery.
+		[ The Devil's Dictionary, by Ambrose Bierce ]
 gremlin
 	The gremlin is a highly intelligent and completely evil
 	creature.  It lives to torment other creatures and will go
@@ -850,6 +1173,20 @@ hachi
 	every afternoon to wait for his master.  When Hachi died a
 	statue was erected on the station platform in his honor.  It
 	is said to bring you luck if you touch his statue.
+*harp
+	After breakfast was over, the ogre called out: "Wife, wife,
+	bring me my golden harp."  So she brought it and put it on
+	the table before him.  Then he said: "Sing!" and the golden
+	harp sang most beautifully.  And it went on singing till the
+	ogre fell asleep, and commenced to snore like thunder.
+	Then Jack lifted up the copper-lid very quietly and got down
+	like a mouse and crept on hands and knees till he came to the
+	table, when up he crawled, caught hold of the golden harp and
+	dashed with it towards the door.  But the harp called out
+	quite loud: "Master!  Master!" and the ogre woke up just in
+	time to see Jack running off with his harp.
+		[ Jack and the Beanstalk, from English Fairy Tales,
+		  by Joseph Jacobs ]
 heart of ahriman
 	The other three drew in their breath sharply, and the dark,
 	powerful man who stood at the head of the sarcophagus whispered:
@@ -947,35 +1284,61 @@ hom*nculus
 	and mine to you, across the leagues between at the speed of
 	thought.'"
 		[ Conan the Rebel, by Poul Anderson]
+~unicorn horn
+*horn
+	Roland hath set the Olifant to his mouth,
+	He grasps it well, and with great virtue sounds.
+	High are those peaks, afar it rings and loud,
+	Thirty great leagues they hear its echoes mount.
+	So Charles heard, and all his comrades round;
+	Then said that King: "Battle they do, our counts!"
+	And Guenelun answered, contrarious:
+	"That were a lie, in any other mouth."
+		[ The Song of Roland ]
 horned devil
 	Horned devils lack any real special abilities, though they
 	are quite difficult to kill.
+~horsem*
+*horse
+	King Richard III: A horse! a horse! my kingdom for a horse!
+	Catesby: Withdraw, my lord; I'll help you to a horse.
+	King Richard III: Slave, I have set my life upon a cast,
+	                  And I will stand the hazard of the die:
+	                  I think there be six Richmonds in the field;
+	                  Five have I slain to-day instead of him.
+	                  A horse! a horse! my kingdom for a horse!
+		[ King Richard III, by William Shakespeare ]
 *horsem*
+rider*
 death
 famine
 pestilence
 war
 hunger
-	[Pestilence:] And I saw when the Lamb opened one of the seals, and I heard, as
-	it were the noise of thunder, one of the four beasts saying, Come and see.  And
-	I saw, and behold a white horse: and he that sat on him had a bow; and a crown
-	was given unto him: and he went forth conquering, and to conquer.
+	[Pestilence:] And I saw when the Lamb opened one of the seals,
+	and I heard, as it were the noise of thunder, one of the four
+	beasts saying, Come and see.  And I saw, and behold a white
+	horse: and he that sat on him had a bow; and a crown was given
+	unto him: and he went forth conquering, and to conquer.
 
-	[War:] And when he had opened the second seal, I heard the second beast say,
-	Come and see.  And there went out another horse that was red: and power was
-	given to him that sat thereon to take peace from the earth, and that they
-	should kill one another: and there was given unto him a great sword.
+	[War:] And when he had opened the second seal, I heard the
+	second beast say, Come and see.  And there went out another
+	horse that was red: and power was given to him that sat thereon
+	to take peace from the earth, and that they should kill one
+	another: and there was given unto him a great sword.
 
-	[Famine:] And when he had opened the third seal, I heard the third beast say,
-	Come and see.  And I beheld, and lo a black horse; and he that sat on him had
-	a pair of balances in his hand.  And I heard a voice in the midst of the four
-	beasts say, A measure of wheat for a penny, and three measures of barley for a
-	penny; and see thou hurt not the oil and the wine.
+	[Famine:] And when he had opened the third seal, I heard the
+	third beast say, Come and see.  And I beheld, and lo a black
+	horse; and he that sat on him had a pair of balances in his
+	hand.  And I heard a voice in the midst of the four beasts say,
+	A measure of wheat for a penny, and three measures of barley
+	for a penny; and see thou hurt not the oil and the wine.
 
-	[Death:] And when he had opened the fourth seal, I heard the voice of the
-	fourth beast say, Come and see.  And I looked, and behold a pale horse: and his
-	name that sat on him was Death, and Hell followed with him.  And power was
-	given unto them over the fourth part of the earth, to kill with sword, and with
+	[Death:] And when he had opened the fourth seal, I heard the
+	voice of the fourth beast say, Come and see.  And I looked, and
+	behold a pale horse: and his name that sat on him was Death,
+	and Hell followed with him.  And power was given unto them over
+	the fourth part of the earth, to kill with sword, and with
 	hunger, and with death, and with the beasts of the earth.
 	     [ Revelations of John, 6:1-8 ]
 huan*ti
@@ -990,7 +1353,7 @@ minion of huhetotl
 	(classical Mesoamerican) god of fire.  He is generally
 	associated with paternalism and one of the group classed
 	as the Xiuhtecuhtli complex.  He is known to send his
-	minions to reek havoc upon ordinary humans.
+	minions to wreak havoc upon ordinary humans.
 	     [ after the Encyclopedia of Gods, by Michael Jordan ]
 humanoid
 	Humanoids are all approximately the size of a human, and may
@@ -999,6 +1362,11 @@ humanoid
 	hostile, they may even band together to raid and pillage
 	human settlements.
 human
+human archeologist
+human cave*man
+human healer
+human samurai
+human wizard
 acolyte
 apprentice
 archeologist
@@ -1053,6 +1421,19 @@ succubus
 	same demon, one who lies with a human for its own purposes,
 	usually to the detriment of the mortals who are unwise in
 	their dealings with them.
+*iron ball
+*iron chain
+	"You are fettered, " said Scrooge, trembling.  "Tell me why?"
+	"I wear the chain I forged in life," replied the Ghost.  "I
+	made it link by link, and yard by yard; I girded it on of my
+	own free will, and of my own free will I wore it.  Is its
+	pattern strange to you?"
+	Scrooge trembled more and more.
+	"Or would you know," pursued the Ghost, "the weight and
+	length of the strong coil you bear yourself?  It was full as
+	heavy and as long as this, seven Christmas Eves ago.  You
+	have laboured on it, since.  It is a ponderous chain!"
+		[ A Christmas Carol, by Charles Dickens ]
 ishtar
 	Ishtar (the star of heaven) is the Mesopotamian goddess of
 	fertility and war.  She is usually depicted with wings and
@@ -1130,6 +1511,17 @@ jackal
 	Jackal goes around behaving the way he does "because he is
 	Jackal".
 		[ Funk & Wagnalls Standard Dictionary of Folklore ]
+jade*
+	Nothing grew among the ruins of the city.  The streets were
+	broken and the walls of the houses had fallen, but there were
+	no weeds flowering in the cracks and it seemed that the city
+	had but recently been brought down by an earthquake.  Only
+	one thing still stood intact, towering over the ruins.  It
+	was a gigantic statue of white, gray and green jade - the
+	statue of a naked youth with a face of almost feminine beauty
+	that turned sightless eyes toward the north.
+	"The eyes!" Duke Avan Astran said.  "They're gone!"
+		[ The Jade Man's Eyes, by Michael Moorcock ]
 jaguar
 	Large, flesh-eating animal of the cat family, of Central and
 	South America.  This feline predator (_Panthera onca_) is
@@ -1197,7 +1589,25 @@ king arthur
 	bishop to impart to him what had passed.
 	   [ Van Gouden Tijden Zingen de Harpen, by Vladimir Hulpach,
 		Emanuel Frynta, and Vackav Cibula ]
+knife
+stiletto
+	Possibly perceiving an expression of dubiosity on their
+	faces, the globetrotter went on adhering to his adventures.
+
+	-- And I seen a man killed in Trieste by an Italian chap.
+	Knife in his back.  Knife like that.
+
+	Whilst speaking he produced a dangerous looking clasp knife,
+	quite in keeping with his character, and held it in the
+	striking position.
+
+	-- In a knockingshop it was count of a tryon between two
+	smugglers.  Fellow hid behind a door, come up behind him.
+	Like that.  Prepare to meet your God, says he.  Chuck!  It
+	went into his back up to the butt.
+		[ Ulysses, by James Joyce ]
 knight
+human knight
 	Here lies the noble fearless knight,
 	Whose valour rose to such a height;
 	When Death at last had struck him down,
@@ -1243,26 +1653,100 @@ kraken
 	   [ The Fellowship of the Ring, by J.R.R. Tolkien ]
 *lady
 offler
-	    Blind Io took up the dice-box, which was a skull whose various orifices had
-	been stoppered with rubies, and with several of his eyes on the Lady he rolled
-	three fives.  She smiled.  This was the nature of the Lady's eyes:  they were
-	bright green, lacking iris or pupil, and they glowed from within.
-	    The room was silent as she scrabbled in her box of pieces and, from the
-	very bottom, produced a couple that she set down on the board with two de-
-	cisive clicks.  The rest of the players, as one God, craned forward to peer at
-	them.
-	    "A wenegade wiffard and fome fort of clerk," said Offler the Crocodile
-	God, hindered as usual by his tusks.  "Well, weally!"  With one claw he pushed
-	a pile of bone-white tokens into the centre of the table.
-	    The Lady nodded slightly.  She picked up the dice-cup and held it as
-	steady as a rock, yet all the Gods could hear the three cubes rattling about
-	inside.  And then she sent them bouncing across the table.
-	    A six.  A three.  A five.
-	    Something was happening to the five, however.  Battered by the chance col-
-	lision of several billion molecules, the die flipped onto a point, spun gently
-	and came down a seven.  Blind Io picked up the cube and counted the sides.
-	    "Come _on_," he said wearily, "Play fair."
+	Blind Io took up the dice-box, which was a skull whose various
+	orifices had been stoppered with rubies, and with several of
+	his eyes on the Lady he rolled three fives.  She smiled.  This
+	was the nature of the Lady's eyes:  they were bright green,
+	lacking iris or pupil, and they glowed from within.
+
+	The room was silent as she scrabbled in her box of pieces and,
+	from the very bottom, produced a couple that she set down on
+	the board with two decisive clicks.  The rest of the players,
+	as one God, craned forward to peer at them.
+
+	"A wenegade wiffard and fome fort of clerk," said Offler the
+	Crocodile God, hindered as usual by his tusks.  "Well,
+	weally!"  With one claw he pushed a pile of bone-white tokens
+	into the centre of the table.
+
+	The Lady nodded slightly.  She picked up the dice-cup and held
+	it as steady as a rock, yet all the Gods could hear the three
+	cubes rattling about inside.  And then she sent them bouncing
+	across the table.
+
+	A six.  A three.  A five.
+
+	Something was happening to the five, however.  Battered by the
+	chance collision of several billion molecules, the die flipped
+	onto a point, spun gently and came down a seven.  Blind Io
+	picked up the cube and counted the sides.
+
+	"Come _on_," he said wearily, "Play fair."
 		[ The Colour of Magic, by Terry Pratchett]
+*lamp
+	When he came to himself he told his mother what had passed,
+	and showed her the lamp and the fruits he had gathered in the
+	garden, which were in reality precious stones.  He then asked
+	for some food.
+
+	"Alas! child," she said, "I have nothing in the house, but I
+	have spun a little cotton and will go and sell it."
+
+	Aladdin bade her keep her cotton, for he would sell the lamp
+	instead.  As it was very dirty she began to rub it, that it
+	might fetch a higher price.  Instantly a hideous genie
+	appeared, and asked what she would have.  She fainted away,
+	but Aladdin, snatching the lamp, said boldly:
+	"Fetch me something to eat!"
+		[ Aladdin, from The Arabian Nights, by Andrew Lang ]
+lance
+	- they come together with great random, and a spear is brast,
+	and one party brake his shield and the other one goes down,
+	horse and man, over his horse-tail and brake his neck, and
+	then the next candidate comes randoming in, and brast his
+	spear, and the other man brast his shield, and down he goes,
+	horse and man, over his horse-tail, and brake his neck, and
+	then there's another elected, and another and another and
+	still another, till the material is all used up; and when you
+	come to figure up results, you can't tell one fight from
+	another, nor who whipped; and as a picture of living, raging,
+	roaring battle, sho! why it's pale and noiseless - just
+	ghosts scuffling in a fog.  Dear me, what would this barren
+	vocabulary get out of the mightiest spectacle? - the burning
+	of Rome in Nero's time, for instance?  Why, it would merely
+	say 'Town burned down; no insurance; boy brast a window,
+	fireman brake his neck!'  Why, that ain't a picture!
+		[ A Connecticut Yankee in King Arthur's Court, by Mark
+		  Twain ]
+leash
+	They had splendid heads, fine shoulders, strong legs, and
+	straight tails.  The spots on their bodies were jet-black and
+	mostly the size of a two-shilling piece; they had smaller
+	spots on their heads, legs, and tails.  Their noses and eye-
+	rims were black.  Missis had a most winning expression.
+	Pongo, though a dog born to command, had a twinkle in his
+	eye.  They walked side by side with great dignity, only
+	putting the Dearlys on the leash to lead them over crossings.
+		[ The Hundred and One Dalmatians, by Dodie Smith ]
+lembas*
+	In the morning, as they were beginning to pack their slender
+	goods, Elves that could speak their tongue came to them and
+	brought them many gifts of food and clothing for their
+	journey.  The food was mostly in the form of very thin cakes,
+	made of a meal that was baked a light brown on the outside,
+	and inside was the colour of cream.  Gimli took up one of the
+	cakes and looked at it with a doubtful eye.
+	'Cram,' he said under his breath, as he broke off a crisp
+	corner and nibbled at it.  His expression quickly changed,
+	and he ate all the rest of the cake with relish.
+	'No more, no more!' cried the Elves laughing.  'You have
+	eaten enough already for a long day's march.'
+	'I thought it was only a kind of cram, such as the Dalemen
+	make for journeys in the wild,' said the Dwarf.
+	'So it is,' they answered.  'But we call it lembas or
+	waybread, and it is more strengthening than any foods made by
+	Men, and it is more pleasant than cram, by all accounts.'
+		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
 lemure
 	The lowliest of the inhabitants of hell.
 leocrotta
@@ -1294,13 +1778,32 @@ leprechaun
 		[ A Field Guide to the Little People
 			       by Nancy Arrowsmith & George Moorse ]
 *lich
-	Once in a great while, an evil master wizard or priest will
-	manage through use of great magics to extend his or her life
-	far beyond the normal span of a human.  The usual effect of
-	this is to transform the human, over time, into an undead of
-	great magical power.  A Lich hates life in any form; even a
-	touch from one of these creatures will cause a numbing cold
-	in the victim.  They all possess the capability to use magic.
+	But on its heels ere the sunset faded, there came a second
+	apparition, striding with incredible strides and halting when
+	it loomed almost upon me in the red twilight-the monstrous mummy
+	of some ancient king still crowned with untarnished gold but
+	turning to my gaze a visage that more than time or the worm had
+	wasted. Broken swathings flapped about the skeleton legs, and
+	above the crown that was set with sapphires and orange rubies, a
+	black something swayed and nodded horribly; but, for an instant,
+	I did not dream what it was.  Then, in its middle, two oblique
+	and scarlet eyes opened and glowed like hellish coals, and two
+	ophidian fangs glittered in an ape-like mouth.  A squat, furless,
+	shapeless head on a neck of disproportionate extent leaned
+	unspeakably down and whispered in the mummy's ear. Then, with
+	one stride, the titanic lich took half the distance between us,
+	and from out the folds of the tattered sere-cloth a gaunt arm
+	arose, and fleshless, taloned fingers laden with glowering gems,
+	reached out and fumbled for my throat . . .
+		[ The Abominations of Yondo, Clark Ashton Smith, 1926 ]
+lichen
+	The chamber was of unhewn rock, round, as near as might
+	be, eighteen or twenty feet across, and gay with rich
+	variety of fern and moss and lichen.  The fern was in
+	its winter still, or coiling for the spring-tide; but
+	moss was in abundant life, some feathering, and some
+	gobleted, and some with fringe of red to it.
+		[ Lorna Doone, by R.D. Blackmore ]
 ~* of light
 * light
 	Strange creatures formed from energy rather than matter,
@@ -1334,6 +1837,21 @@ loki
 	Midgard, the mistress of the netherworld, Hel, and the wolf
 	Fenrir, who will devour the sun at Ragnarok.
 # long worm -- see "worm"
+looking glass
+mirror
+	But as Snow White grew, she became more and more beautiful,
+	and by the time she was seven years old she was as beautiful
+	as the day and more beautiful than the queen herself.  One
+	day when the queen said to her mirror:
+
+		"Mirror, Mirror, here I stand.
+		Who is the fairest in the land?" -
+
+	the mirror replied:
+
+		"You, O Queen, are the fairest here,
+		But Snow White is a thousand times more fair."
+		[ Snow White, by Jakob and Wilhelm Grimm ]
 lord carnarvon
 	Lord Carnarvon was a personality who could have been produced
 	nowhere but in England, a mixture of sportsman and collector,
@@ -1371,7 +1889,9 @@ lurker*
 	surrounding walls and ceilings of the dungeon due to the
 	stone-like coloring of their skin.
 lycanthrope
-*were*
+were*
+human were*
+*were
 	In 1573, the Parliament of Dole published a decree, permitting
 	the inhabitants of the Franche-Comte to pursue and kill a
 	were-wolf or loup-garou, which infested that province,
@@ -1389,6 +1909,13 @@ lycanthrope
 	pig, which was not restrained by any feeling of piety from
 	eating infants on a fast day.
 		[ The History of Vampires, by Dudley Wright ]
+lynx
+	To dream of seeing a lynx, enemies are undermining your
+	business and disrupting your home affairs.  For a woman,
+	this dream indicates that she has a wary woman rivaling her
+	in the affections of her lover. If she kills the lynx, she
+	will overcome her rival.
+		[ 10,000 Dreams Interpreted, by Gustavus Hindman Miller ]
 magic mirror of merlin
 	This powerful mirror was created by Merlin, the druid, in ages
 	past, when trees sang and rocks danced.  It protects all who
@@ -1485,6 +2012,17 @@ medusa
 	cut off her head and gave it to Minerva, who fixed it in the
 	middle of her Aegis.
 		[ Bulfinch's Mythology, by Thomas Bulfinch ]
+melon
+	"What is it, Umbopa, son of a fool?" I shouted in Zulu.
+	"It is food and water, Macumazahn," and again he waved the
+	green thing.
+	Then I saw what he had got.  It was a melon.  We had hit upon
+	a patch of wild melons, thousands of them, and dead ripe.
+	"Melons!" I yelled to Good, who was next me; and in another
+	second he had his false teeth fixed in one.
+	I think we ate about six each before we had done, and, poor
+	fruit as they were, I doubt if I ever thought anything nicer.
+		[ King Solomon's Mines, by H. Rider Haggard ]
 *mimic
 	The ancestors of the modern day chameleon, these creatures can
 	assume the form of anything in their surroundings.  They may
@@ -1492,7 +2030,7 @@ medusa
 	chameleon though, which assumes the shape of another creature
 	and goes in hunt of food, the mimic waits patiently for its
 	meals to come in search of it.
-mind flayer
+*mind flayer
 	This creature has a humanoid body, tentacles around its
 	covered mouth, and three long fingers on each hand.  Mind
 	flayers are telepathic, and love to devour intelligent beings,
@@ -1533,7 +2071,7 @@ mit*ra*
 	Its beauty was like to that of common silver, but the beauty
 	of _mithril_ did not tarnish or grow dim.
 		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
-mitre of holiness
+*mitre of holiness
 	This helm of brilliance performs all of the normal functions
 	of a helm of brilliance, but also has the ability to protect
 	anyone who carries it from fire.  When invoked, it boosts
@@ -1755,6 +2293,26 @@ ogre*
 	orcs or goblins, but only when they anticipate a good meaty
 	meal.
 		[ het Boek van de Regels; Het Oog des Meesters ]
+oilskin cloak
+	During our watches below we overhauled our clothes, and made
+	and mended everything for bad weather.  Each of us had made
+	for himself a suit of oil-cloth or tarpaulin, and these we
+	got out, and gave thorough coatings of oil or tar, and hung
+	upon the stays to dry.  Our stout boots, too, we covered
+	over with a thick mixture of melted grease and tar.  Thus we
+	took advantage of the warm sun and fine weather of the
+	Pacific to prepare for its other face.
+		[ Two Years Before the Mast, by Richard Henry Dana ]
+oilskin sack
+	Summer passed all too quickly.  On the last day of camp, Mr.
+	Brickle called his counselors together and paid them what he
+	owed them.  Louis received one hundred dollars - the first
+	money he had ever earned.  He had no wallet and no pockets,
+	so Mr. Brickle placed the money in a waterproof bag that had
+	a drawstring.  He hung this moneybag around Louis' neck,
+	along with the trumpet, the slate, the chalk pencil, and the
+	lifesaving medal.
+		[ The Trumpet of the Swan, by E.B. White ]
 olog-hai
 	But at the end of the Third Age a troll-race not before seen
 	appeared in southern Mirkwood and in the mountain borders of
@@ -1769,7 +2327,17 @@ olog-hai
 	Twilight they could endure the Sun....  They spoke little,
 	and the only tongue they knew was the Black Speech of Barad-dur.
 		[ The Return of the King, by J.R.R. Tolkien ]
-*ooze
+*omelet*
+	Hold the panhandle with your left hand, thumb on top, and
+	immediately start sliding the pan back and forth rapidly over
+	the heat.  At the same time, fork in right hand, its flat
+	side against the bottom of the pan, stir the eggs quickly to
+	spread them continuously all over the bottom of the pan as
+	they thicken.
+		[ Mastering the Art of French Cooking, by Julia Child,
+		  Louisette Bertholle, and Simone Beck ]
+ooze
+* ooze
 *pudding
 	These giant amoeboid creatures look like nothing more than
 	puddles of slime, but they both live and move, feeding on
@@ -1787,7 +2355,20 @@ p*thia
 	seekers for Truth were delivered by a priestess who went into
 	a trance before she spoke.
 		[ Mythology, by Edith Hamilton ]
-orb of detection
+orange
+pear
+	What was the fruit like?  Unfortunately, no one can describe
+	a taste.  All I can say is that, compared with those fruits,
+	the freshest grapefruit you've ever eaten was dull, and the
+	juiciest orange was dry, and the most melting pear was hard
+	and woody, and the sweetest wild strawberry was sour.  And
+	there were no seeds or stones, and no wasps.  If you had once
+	eaten that fruit, all the nicest things in this world would
+	taste like medicines after it.  But I can't describe it.  You
+	can't find out what it is like unless you can get to that
+	country and taste it for yourself.
+		[ The Last Battle, by C.S. Lewis ]
+*orb of detection
 	This Orb is a crystal ball of exceptional powers.  When
 	carried, it grants ESP, limits damage done by spells, and
 	protects the carrier from magic missiles.  When invoked it
@@ -1834,6 +2415,26 @@ uruk*hai
 	hunting for them.  There is nothing a horde of orcs cannot
 	use.
 		[ het Boek van de Regels; Het Oog des Meesters ]
+orion
+	Orion was the son of Neptune. He was a handsome giant and a
+	mighty hunter. His father gave him the power of wading
+	through the depths of the sea, or, as others say, of
+	walking on its surface.
+
+	He dwelt as a hunter with Diana (Artemis), with whom he
+	was a favourite, and it is even said she was about to marry
+	him. Her brother was highly displeased and often chid her,
+	but to no purpose. One day, observing Orion wading through
+	the sea with his head just above the water, Apollo pointed
+	it out to his sister and maintained that she could not hit
+	that black thing on the sea. The archer-goddess discharged
+	a shaft with fatal aim. The waves rolled the dead body of
+	Orion to the land, and bewailing her fatal error with many
+	tears, Diana placed him among the stars, where he appears
+	as a giant, with a girdle, sword, lion's skin, and
+	club. Sirius, his dog, follows him, and the Pleiads fly
+	before him.
+		[ Bulfinch's Mythology, by Thomas Bulfinch ]
 osaku
 	The osaku is a small tool for picking locks.
 owlbear
@@ -1843,12 +2444,22 @@ owlbear
 	the name might already suggest, owlbears are a cross between
 	a giant owl and a bear.  They are covered with fur and
 	feathers.
-palantir of westernesse
+*palantir of westernesse
 	The elves of long ago created this powerful crystal ball.
 	When carried, it grants ESP, regeneration, and reduces all
 	damage caused by spells to one-half of what it would have
 	normally been.  When invoked, it tames creatures in its
 	vicinity.
+panther
+	And lo! almost where the ascent began,
+	A panther light and swift exceedingly,
+	Which with a spotted skin was covered o'er!
+
+	And never moved she from before my face,
+	Nay, rather did impede so much my way,
+	That many times I to return had turned.
+		[ Dante's Inferno, as translated
+			by Henry Wadsworth Longfellow ]
 *piercer
 	Ye Piercer doth look like unto a stalactyte, and hangeth
 	from the roofs of caves and caverns.  Unto the height of a
@@ -1889,6 +2500,19 @@ poseido*n
 	powerful ruler, every inch a king.
 		[ The Encyclopedia of Myths and Legends of All
 		  Nations, by Herbert Robinson and Knox Wilson ]
+*potion*
+	POTABLE, n.  Suitable for drinking.  Water is said to be
+	potable; indeed, some declare it our natural beverage,
+	although even they find it palatable only when suffering
+	from the recurrent disorder known as thirst, for which it
+	is a medicine.  Upon nothing has so great and diligent
+	ingenuity been brought to bear in all ages and in all
+	countries, except the most uncivilized, as upon the
+	invention of substitutes for water.  To hold that this
+	general aversion to that liquid has no basis in the
+	preservative instinct of the race is to be unscientific --
+	and without science we are as the snakes and toads.
+		[ The Devil's Dictionary, by Ambrose Bierce ]
 ptah
 	Known under various names (Nu, Neph, Cenubis, Amen-Kneph,
 	Khery-Bakef), Ptah is the creator god and god of craftsmen.
@@ -1932,12 +2556,65 @@ quetzalcoatl
 	he had to leave his empire. ...  But all the legends of
 	Quetzalcoatl unanimously agree that he promised to come again.
 		[ Gods, Graves, and Scholars, by C. W. Ceram ]
+raijin
 raiden
 	The god of thunder.
 rat
 * rat
 	Rats are long-tailed rodents.  They are aggressive,
 	omnivorous, and adaptable, often carrying diseases.
+
+	"The rat," said O'Brien, still addressing his invisible
+	audience, "although a rodent, is carnivorous.  You are aware
+	of that.  You will have heard of the things that happen in
+	the poor quarters of this town.  In some streets a woman dare
+	not leave her baby alone in the house, even for five minutes.
+	The rats are certain to attack it.  Within quite a small time
+	they will strip it to the bones.  They also attack sick or
+	dying people.  They show astonishing intelligence in knowing
+	when a human being is helpless."
+		[ 1984, by George Orwell ]
+raven
+	But the raven, sitting lonely on the placid bust, spoke only
+	That one word, as if his soul in that one word he did outpour.
+	Nothing further then he uttered -- not a feather then he fluttered--
+	Till I scarcely more than muttered, 'other friends have flown before--
+	On the morrow *he* will leave me, as my hopes have flown before.'
+		Then the bird said, 'Nevermore.'
+				[ The Raven - Edgar Allan Poe ]
+*ring
+ring of *
+	Three Rings for the Elven-kings under the sky,
+	Seven for the Dwarf-lords in their halls of stone,
+	Nine for Mortal Men doomed to die,
+	One for the Dark Lord on his dark throne,
+	In the Land of Mordor where the Shadows lie.
+	One Ring to rule them all, One Ring to find them,
+	One Ring to bring them all and in the darkness bind them
+	In the Land of Mordor where the Shadows lie.
+		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
+rock
+	Bilbo saw that the moment had come when he must do something.
+	He could not get up at the brutes and he had nothing to shoot
+	with; but looking about he saw that in this place there were
+	many stones lying in what appeared to be a now dry little
+	watercourse.  Bilbo was a pretty fair shot with a stone, and
+	it did not take him long to find a nice smooth egg-shaped one
+	that fitted his hand cosily.  As a boy he used to practise
+	throwing stones at things, until rabbits and squirrels, and
+	even birds, got out of his way as quick as lightning if they
+	saw him stoop; and even grownup he had still spent a deal of
+	his time at quoits, dart-throwing, shooting at the wand,
+	bowls, ninepins and other quiet games of the aiming and
+	throwing sort - indeed he could do lots of things, besides
+	blowing smoke-rings, asking riddles and cooking, that I
+	haven't time to tell you about.  There is no time now.  While
+	he was picking up stones, the spider had reached Bombur, and
+	soon he would have been dead.  At that moment Bilbo threw.
+	The stone struck the spider plunk on the head, and it dropped
+	senseless off the tree, flop to the ground, with all its legs
+	curled up.
+		[ The Hobbit, by J.R.R. Tolkien ]
 rock mole
 	A rock mole is a member of the rodent family.  They get their
 	name from their ability to tunnel through rock in the same
@@ -1946,6 +2623,7 @@ rock mole
 	is still unknown how they convert some of these things into
 	something of nutritional value.
 rogue
+human rogue
 	I understand the business, I hear it: to have an open ear, a
 	quick eye, and a nimble hand, is necessary for a cut-purse; a
 	good nose is requisite also, to smell out work for the other
@@ -1956,15 +2634,46 @@ rogue
 	withal, I would not do't:  I hold it the more knavery to
 	conceal it; and therein am I constant to my profession.
 		[ Autolycus the Rogue, from The Winter's Tale by
-                          William Shakespeare ]
+			William Shakespeare ]
 rothe
 	The rothe (pronounced roth-AY) is a musk ox-like creature with
 	an aversion to light.  It prefers to live underground near
 	lichen and moss.
+*royal jelly
+	"'Royal Jelly,'" he read aloud, "'must be a substance of
+	tremendous nourishing power, for on this diet alone, the
+	honey-bee larva increases in weight fifteen hundred times in
+	five days!'"
+
+	"How much?"
+
+	"Fifteen hundred times, Mabel.  And you know what that means
+	if you put it in terms of a human being?  It means," he said,
+	lowering his voice, leaning forward, fixing her with those
+	small pale eyes, "it means that in five days a baby weighing
+	seven and a half pounds to start off with would increase in
+	weight to five tons!"
+		[ Royal Jelly, by Roald Dahl ]
 rust monster
 	These strange creatures live on a diet of metals.  They can
 	turn a suit of armour into so much useless rusted scrap in no
 	time at all.
+*saber
+*sabre
+	Flashed all their sabres bare,
+	Flashed as they turned in air,
+	Sab'ring the gunners there,
+	Charging an army, while
+	All the world wondered:
+	Plunged in the battery smoke,
+	Right through the line they broke;
+	Cossack and Russian
+	Reeled from the sabre-stroke
+	Shattered and sundered.
+	Then they rode back, but not--
+	Not the six hundred.
+		[ The Charge of the Light Brigade,
+		  by Alfred, Lord Tennyson ]
 sake
 	Japanese rice wine.
 salamander
@@ -1975,12 +2684,44 @@ salamander
 	salamander, in fact, comes from a Greek word meaning "fire
 	animal".
 		[ Salamanders, by Cherie Winner ]
+sandestin
+	Ildefonse left the terrace and almost immediately sounds
+	of contention came from the direction of the work-room.
+	Ildefonse presently returned to the terrace, followed by
+	Osherl and a second sandestin using the guise of a gaunt blue
+	bird-like creature, some six feet in height.
+
+	Ildefonse spoke in scathing tones:  "Behold these two
+	creatures!  They can roam the chronoplex as easily as you
+	or I can walk around the table; yet neither has the wit to
+	announce his presence upon arrival.  I found Osherl asleep
+	in his fulgurite and Sarsem perched in the rafters."
+		[...]
+	"No matter," said Rhialto.  "He has brought Sarsem, and this
+	was his requirement.  In the main, Osherl, you have done well!"
+
+	"And my indenture point?"
+
+	"Much depends upon Sarsem's testimony.  Sarsem, will you sit?"
+
+	"In this guise, I find it more convenient to stand."
+
+	"Then why not alter to human form and join us in comfort at
+	the table?"
+
+	"That is a good idea."  Sarsem became a naked young epicene
+	in an integument of lavender scales with puffs of purple hair
+	like pom-poms growing down his back.  He seated himself at
+	the table but declined refreshment.  "This human semblance,
+	though typical, is after all, only a guise.  If I were to put
+	such things inside myself, I might well become uneasy."
+		[ Rhialto the Marvellous, by Jack Vance ]
 sasquatch
 	An ape-like humanoid native to densely forested mountains,
 	the sasquatch is also known as "bigfoot".  Normally benign
 	and rarely seen, this creature is reputed to be a relative
 	of the ferocious yeti.
-sceptre of might
+*sceptre of might
 	This mace was created aeons ago in some unknown cave,
 	and has been passed down from generation to generation of
 	cave dwellers.  It is a very mighty mace indeed, and in
@@ -2044,31 +2785,47 @@ slime mold
 	mass of protoplasm called a plasmodium, which creeps about
 	and feeds by amoeboid movement.
 		[ The Concise Columbia Encyclopedia ]
+sling
+	And it came to pass, when the Philistine arose, and came and
+	drew nigh to meet David, that David hasted, and ran toward
+	the army to meet the Philistine.
+	And David put his hand in his bag, and took thence a stone,
+	and slang it, and smote the Philistine in his forehead, that
+	the stone sunk into his forehead; and he fell upon his face
+	to the earth.
+	So David prevailed over the Philistine with a sling and with
+	a stone, and smote the Philistine, and slew him; but there
+	was no sword in the hand of David.
+		[ 1 Samuel 17:48-50 ]
 *snake
 serpent
 water moccasin
 python
 pit viper
 cobra
-	Now the serpent was more subtle than any beast of the field which the Lord God
-	had made.  And he said unto the woman, Yea, hath God said, Ye shall not eat of
-	every tree of the garden?  And the woman said unto the serpent, We may eat of
-	the fruit of the trees of the garden:  but of the fruit of the tree which is
-	in the midst of the garden, God hath said, Ye shall not eat of it, neither
-	shall ye touch it, lest ye die.  And the serpent said unto the woman, Ye shall
-	not surely die:  for God doth know that in the day ye eat thereof, then your
-	eyes shall be opened, and ye shall be as gods, knowing good and evil.  And
-	when the woman saw that the tree was good for food, and that it was pleasant
-	to the eyes, and a tree to be desired to make one wise, she took of the fruit
-	thereof, and did eat, and gave also unto her husband with her; and he did eat.
+	Now the serpent was more subtle than any beast of the field
+	which the Lord God had made.  And he said unto the woman, Yea,
+	hath God said, Ye shall not eat of every tree of the garden?
+	And the woman said unto the serpent, We may eat of the fruit of
+	the trees of the garden:  but of the fruit of the tree which is
+	in the midst of the garden, God hath said, Ye shall not eat of
+	it, neither shall ye touch it, lest ye die.  And the serpent
+	said unto the woman, Ye shall not surely die:  for God doth
+	know that in the day ye eat thereof, then your eyes shall be
+	opened, and ye shall be as gods, knowing good and evil.  And
+	when the woman saw that the tree was good for food, and that it
+	was pleasant to the eyes, and a tree to be desired to make one
+	wise, she took of the fruit thereof, and did eat, and gave also
+	unto her husband with her; and he did eat.
 
-	And the Lord God said unto the woman, What is this that thou hast done?  And
-	the woman said, The serpent beguiled me, and I did eat.  And the Lord God said
-	unto the serpent, Because thou hast done this, thou art cursed above all cat-
-	tle, and above every beast of the field; upon thy belly shalt thou go, and
-	dust shalt thou eat all the days of thy life:  And I will put enmity between
-	thee and the woman, and between thy seed and her seed; it shall bruise thy
-	head, and thou shalt bruise his heel.
+	And the Lord God said unto the woman, What is this that thou
+	hast done?  And the woman said, The serpent beguiled me, and I
+	did eat.  And the Lord God said unto the serpent, Because thou
+	hast done this, thou art cursed above all cattle, and above
+	every beast of the field; upon thy belly shalt thou go, and
+	dust shalt thou eat all the days of thy life:  And I will put
+	enmity between thee and the woman, and between thy seed and her
+	seed; it shall bruise thy head, and thou shalt bruise his heel.
 		[ Genesis 3:1-6,13-15 ]
 snickersnee
 	Ah, never shall I forget the cry,
@@ -2077,6 +2834,12 @@ snickersnee
 	    I drew my Snickersnee!
 	--Koko, Lord high executioner of Titipu
 		[ The Mikado, by Sir W.S. Gilbert ]
+sokoban
+	Sokoban (Japanese for "warehouse person") is a puzzle-type
+	game where the player must push around treasure to a goal
+	area.  It apparently won first prize in a Japanese programming
+	contest.
+		[ Xsokoban web site ]
 *soldier
 sergeant
 lieutenant
@@ -2092,26 +2855,79 @@ captain
 solonor thelandira
 	The elven god of hunting and wilderness skills.  His
 	followers honor him by excelling at archery.
+*spellbook*
+	The Book of Three lay closed on the table.  Taran had never
+	been allowed to read the volume for himself; now he was sure
+	it held more than Dallben chose to tell him.  In the sun-
+	filled room, with Dallben still meditating and showing no
+	sign of stopping, Taran rose and moved through the shimmering
+	beams.  From the forest came the monotonous tick of a beetle.
+	His hands reached for the cover.  Taran gasped in pain and
+	snatched them away.  They smarted as if each of his fingers
+	had been stung by hornets.  He jumped back, stumbled against
+	the bench, and dropped to the floor, where he put his fingers
+	woefully into his mouth.
+	Dallben's eyes blinked open.  He peered at Taran and yawned
+	slowly.  "You had better see Coll about a lotion for those
+	hands," he advised.  "Otherwise, I shouldn't be surprised if
+	they blistered."
+		[ The Book of Three, by Lloyd Alexander ]
 *spider
-	Eight legged creature capable of spinning webs to trap pray.
-staff of aesculapius
+	Eight legged creature capable of spinning webs to trap prey.
+
+	"You mean you eat flies?" gasped Wilbur.
+	"Certainly.  Flies, bugs, grasshoppers, choice beetles,
+	moths, butterflies, tasty cockroaches, gnats, midges, daddy
+	longlegs, centipedes, mosquitoes, crickets - anything that is
+	careless enough to get caught in my web.  I have to live,
+	don't I?"
+	"Why, yes, of course," said Wilbur.
+		[ Charlotte's Web, by E.B. White ]
+~*aesculapius
+*staff
+	So they stood, each in his place, neither moving a finger's
+	breadth back, for one good hour, and many blows were given
+	and received by each in that time, till here and there were
+	sore bones and bumps, yet neither thought of crying "Enough,"
+	or seemed likely to fall from off the bridge.  Now and then
+	they stopped to rest, and each thought that he never had seen
+	in all his life before such a hand at quarterstaff.  At last
+	Robin gave the stranger a blow upon the ribs that made his
+	jacket smoke like a damp straw thatch in the sun.  So shrewd
+	was the stroke that the stranger came within a hair's breadth
+	of falling off the bridge; but he regained himself right
+	quickly, and, by a dexterous blow, gave Robin a crack on the
+	crown that caused the blood to flow.  Then Robin grew mad
+	with anger, and smote with all his might at the other; but
+	the stranger warded the blow, and once again thwacked Robin,
+	and this time so fairly that he fell heels over head into the
+	water, as the queen pin falls in a game of bowls.
+		[ The Merry Adventures of Robin Hood, by Howard Pyle ]
+*staff of aesculapius
 	This staff is considered sacred to all healers, as it truly
 	holds the powers of life and death.  When wielded, it
 	protects its user from all life draining attacks, and
 	additionally gives the wielder the power of regeneration.
 	When invoked it performs healing magic.
+~statue trap
 statue*
-	Then it appeared in Paris at just about the time that Paris
-	was full of Carlists who had to get out of Spain.  One of
-	them must have brought it with him, but, whoever he was, it's
-	likely he knew nothing about its real value.  It had been --
-	no doubt as a precaution during the Carlist trouble in Spain
-	-- painted or enameled over to look like nothing more than a
-	fairly interesting black statuette.  And in that disguise,
-	sir, it was, you might say, kicked around Paris for seventy
-	years by private owners and dealers too stupid to see what
-	it was under the skin.
-		[ The Maltese Falcon, by Dashiell Hammett ]
+	Then at last he began to wonder why the lion was standing so
+	still - for it hadn't moved one inch since he first set eyes
+	on it.  Edmund now ventured a little nearer, still keeping in
+	the shadow of the arch as much as he could.  He now saw from
+	the way the lion was standing that it couldn't have been
+	looking at him at all.  ("But supposing it turns its head?"
+	thought Edmund.)  In fact it was staring at something else -
+	namely a little dwarf who stood with his back to it about
+	four feet away.  "Aha!" thought Edmund.  "When it springs at
+	the dwarf then will be my chance to escape."  But still the
+	lion never moved, nor did the dwarf.  And now at last Edmund
+	remembered what the others had said about the White Witch
+	turning people into stone.  Perhaps this was only a stone
+	lion.  And as soon as he had thought of that he noticed that
+	the lion's back and the top of its head were covered with
+	snow.  Of course it must be only a statue!
+		[ The Lion, the Witch and the Wardrobe by C.S. Lewis ]
 sting
 	There was the usual dim grey light of the forest-day about
 	him when he came to his senses.  The spider lay dead beside
@@ -2125,6 +2941,23 @@ sting
 	"I will give you a name," he said to it, "and I shall call
 	you Sting."
 		[ The Hobbit, by J.R.R. Tolkien ]
+stormbringer
+	There were sounds in the distance, incongruent with the
+	sounds of even this nameless, timeless sea: thin sounds,
+	agonized and terrible, for all that they remained remote -
+	yet the ship followed them, as if drawn by them; they grew
+	louder - pain and despair were there, but terror was
+	predominant.
+	Elric had heard such sounds echoing from his cousin Yyrkoon's
+	sardonically named 'Pleasure Chambers' in the days before he
+	had fled the responsibilities of ruling all that remained of
+	the old Melnibonean Empire.  These were the voices of men
+	whose very souls were under siege; men to whom death meant
+	not mere extinction, but a continuation of existence, forever
+	in thrall to some cruel and supernatural master.  He had
+	heard men cry so when his salvation and his nemesis, his
+	great black battle-blade Stormbringer, drank their souls.
+		[ The Lands Beyond the World, by Michael Moorcock ]
 susano*o
 	The Shinto chthonic and weather god and brother of the sun
 	goddess Amaterasu, he was born from the nose of the
@@ -2169,12 +3002,50 @@ thoth*amon
 	overthrow the Great One.
 		[ Conan the Conqueror, by Robert E. Howard ]
 tiger
+	Tyger! Tyger! burning bright
+	In the forests of the night,
+	What immortal hand or eye
+	Could frame thy fearful symmetry?
+		[ The Tyger, by William Blake ]
+
 	1.  A well-known tropical predator (_Felis tigris_): a
 	feline.  It has a yellowish skin with darker spots or
 	stripes.  2.  Figurative: _a paper tiger_, something that is
 	meant to scare, but has no really scaring effect whatsoever,
 	(after a statement by Mao Ze Dong, August 1946).
 		[ Van Dale's Groot Woordenboek der Nederlandse Taal ]
+tin
+tin of *
+tinning kit
+	"You know salmon, Sarge," said Nobby.
+	"It is a fish of which I am aware, yes."
+	"You know they sell kind of slices of it in tins..."
+	"So I am given to understand, yes."
+	"Weell...how come all the tins are the same size?  Salmon
+	gets thinner at both ends."
+	"Interesting point, Nobby.  I think-"
+		[ Soul Music, by Terry Pratchett ]
+tin opener
+	Less than thirty Cat tribes now survived, roaming the cargo
+	decks on their hind legs in a desperate search for food.
+	But the food had gone.
+	The supplies were finished.
+	Weak and ailing, they prayed at the supply hold's silver
+	mountains: huge towering acres of metal rocks which, in their
+	pagan way, the mutant Cats believed watched over them.
+	Amid the wailing and the screeching one Cat stood up and held
+	aloft the sacred icon.  The icon which had been passed down
+	as holy, and one day would make its use known.
+	It was a piece of V-shaped metal with a revolving handle on
+	its head.
+	He took down a silver rock from the silver mountain, while
+	the other Cats cowered and screamed at the blasphemy.
+	He placed the icon on the rim of the rock, and turned the
+	handle.
+	And the handle turned.
+	And the rock opened.
+	And inside the rock was Alphabetti spaghetti in tomato sauce.
+		[ Red Dwarf, by Rob Grant and Doug Naylor ]
 titan
 	Gaea, mother earth, arose from the Chaos and gave birth to
 	Uranus, heaven, who became her consort.  Uranus hated all
@@ -2188,6 +3059,8 @@ titan
 	Mount Olympus.
 		[ Greek Mythology, by Richard Patrick ]
 tourist
+elven tourist
+human tourist
 	The road from Ankh-Morpork to Chrim is high, white and
 	winding, a thirty-league stretch of potholes and half-buried
 	rocks that spirals around mountains and dips into cool green
@@ -2206,12 +3079,47 @@ tourist
 	Twoflower was a tourist, the first ever seen on the discworld.
 	Tourist, Rincewind had decided, meant "idiot".
 		[ The Colour of Magic, by Terry Pratchett ]
+towel
+	The Hitchhiker's Guide to the Galaxy has a few things to say
+	on the subject of towels.
+	A towel, it says, is about the most massively useful thing
+	an interstellar hitchhiker can have.  Partly it has great
+	practical value.  You can wrap it around you for warmth as
+	you bound across the cold moons of Jaglan Beta; you can lie
+	on it on the brilliant marble-sanded beaches of Santraginus
+	V, inhaling the heady sea vapors; you can sleep under it
+	beneath the stars which shine so redly on the desert world of
+	Kakrafoon; use it to sail a miniraft down down the slow heavy
+	River Moth; wet it for use in hand-to-hand combat; wrap it
+	round your head to ward off noxious fumes or avoid the gaze
+	of the Ravenous Bugblatter Beast of Traal (a mind-bogglingly
+	stupid animal, it assumes that if you can't see it, it can't
+	see you - daft as a brush, but very very ravenous); you can
+	wave your towel in emergencies as a distress signal, and of
+	course dry yourself off with it if it still seems to be clean
+	enough.
+		[ The Hitchhiker's Guide to the Galaxy,
+		  by Douglas Adams ]
 trapper
 	The trapper is a creature which has evolved a chameleon-like
 	ability to blend into the dungeon surroundings.  It captures
 	its prey by remaining very still and blending into the
 	surrounding dungeon features, until an unsuspecting creature
 	passes by.  It wraps itself around its prey and digests it.
+tree
+	I think that I shall never see
+	A poem lovely as a tree.
+	A tree whose hungry mouth is prest
+	Against the earth's sweet flowing breast;
+	A tree that looks at God all day,
+	And lifts her leafy arms to pray;
+	A tree that may in Summer wear
+	A nest of robins in her hair;
+	Upon whose bosom snow has lain;
+	Who intimately lives with rain.
+	Poems are made by fools like me,
+	But only God can make a tree.
+		[ Trees - Joyce Kilmer ]
 tripe ration
 	If you start from scratch, cooking tripe is a long-drawn-out
 	affair.  Fresh whole tripe calls for a minimum of 12 hours of
@@ -2239,12 +3147,13 @@ tripe ration
 	He clambered back on his feet and grinned at them.  The
 	waning faggot cast red light over his fangs.
 		[ Three Hearts and Three Lions, by Poul Anderson ]
-tsurugi of muramasa
+*tsurugi of muramasa
 	This most ancient of swords has been passed down through the
 	leadership of the Samurai legions for hundreds of years.  It
 	is said to grant luck to its wielder, but its main power is
 	terrible to behold.  It has the capability to cut in half any
 	creature it is wielded against, instantly killing them.
+~*muramasa
 tsurugi
 	The tsurugi, also known as the long samurai sword, is an
 	extremely sharp, two-handed blade favored by the samurai.
@@ -2303,30 +3212,34 @@ tyr
 	legs all end in great claws.
 *unicorn
 unicorn horn
-	Men have always sought the elusive unicorn, for the single twisted horn which
-	projected from its forehead was thought to be a powerful talisman.  It was
-	said that the unicorn had simply to dip the tip of its horn in a muddy pool
-	for the water to become pure.  Men also believed that to drink from this horn
-	was a protection against all sickness, and that if the horn was ground to a
-	powder it would act as an antidote to all poisons.  Less than 200 years ago in
-	France, the horn of a unicorn was used in a ceremony to test the royal food
-	for poison.
+	Men have always sought the elusive unicorn, for the single
+	twisted horn which projected from its forehead was thought to
+	be a powerful talisman.  It was said that the unicorn had
+	simply to dip the tip of its horn in a muddy pool for the water
+	to become pure.  Men also believed that to drink from this horn
+	was a protection against all sickness, and that if the horn was
+	ground to a powder it would act as an antidote to all poisons.
+	Less than 200 years ago in France, the horn of a unicorn was
+	used in a ceremony to test the royal food for poison.
 
-	Although only the size of a small horse, the unicorn is a very fierce beast,
-	capable of killing an elephant with a single thrust from its horn.  Its fleet-
-	ness of foot also makes this solitary creature difficult to capture.  However,
-	it can be tamed and captured by a maiden.  Made gentle by the sight of a vir-
-	gin, the unicorn can be lured to lay its head in her lap, and in this docile
-	mood, the maiden may secure it with a golden rope.
+	Although only the size of a small horse, the unicorn is a very
+	fierce beast, capable of killing an elephant with a single
+	thrust from its horn.  Its fleetness of foot also makes this
+	solitary creature difficult to capture.  However, it can be
+	tamed and captured by a maiden.  Made gentle by the sight of a
+	virgin, the unicorn can be lured to lay its head in her lap, and
+	in this docile mood, the maiden may secure it with a golden rope.
 		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
 
-	Martin took a small sip of beer.  "Almost ready," he said.  "You hold your
-	beer awfully well."
-	Tlingel laughed.  "A unicorn's horn is a detoxicant.  Its possession is a
-	universal remedy.  I wait until I reach the warm glow stage, then I use my
-	horn to burn off any excess and keep me right there."
+	Martin took a small sip of beer.  "Almost ready," he said.
+	"You hold your beer awfully well."
+	Tlingel laughed.  "A unicorn's horn is a detoxicant.  Its
+	possession is a universal remedy.  I wait until I reach the
+	warm glow stage, then I use my horn to burn off any excess and
+	keep me right there."
 		[Unicorn Variations by Roger Zelazny]
 valkyrie
+human valkyrie
 	The Valkyries were the thirteen choosers of the slain, the
 	beautiful warrior-maids of Odin who rode through the air and
 	over the sea.  They watched the progress of the battle and
@@ -2374,6 +3287,25 @@ vrock
 wakizashi
 	The samurai warrior traditionally wears two swords; the
 	wakizashi is the shorter of the two.  See also katana.
+~grayswandir
+*wand*
+	'I did not give you leave to go,' said Gandalf sternly, 'I
+	have not finished.  You have become a fool, Saruman, and yet
+	pitiable.  You might still have turned away from folly and
+	evil, and have been of service.  But you choose to stay and
+	gnaw the ends of your old plots.  Stay then!  But I warn you,
+	you will not easily come out again.  Not unless the dark
+	hands of the East stretch out to take you.  Saruman!' he
+	cried, and his voice grew in power and authority.  'Behold, I
+	am not Gandalf the Grey, whom you betrayed.  I am Gandalf the
+	White, who has returned from death.  You have no colour now,
+	and I cast you from the order and from the Council.'
+	He raised his hand, and spoke slowly in a clear cold voice.
+	'Saruman, your staff is broken.'  There was a crack, and the
+	staff split asunder in Saruman's hand, and the head of it
+	fell down at Gandalf's feet.  'Go!' said Gandalf.  With a cry
+	Saruman fell back and crawled away.
+		[ The Two Towers, by J.R.R. Tolkien ]
 warg
 	Suddenly Aragorn leapt to his feet.  "How the wind howls!"
 	he cried.  "It is howling with wolf-voices.  The Wargs have
@@ -2392,6 +3324,22 @@ warg
 	"True!" said Aragorn, loosening his sword in its sheath.  "But
 	where the warg howls, there also the orc prowls."
 		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
+~mjollnir
+war*hammer
+	They had come together at the ford of the Trident while the
+	battle crashed around them, Robert with his warhammer and his
+	great antlered helm, the Targaryen prince armored all in
+	black.  On his breastplate was the three-headed dragon of his
+	House, wrought all in rubies that flashed like fire in the
+	sunlight.  The waters of the Trident ran red around the
+	hooves of their destriers as they circled and clashed, again
+	and again, until at last a crushing blow from Robert's hammer
+	stove in the dragon and the chest behind it.  When Ned had
+	finally come on the scene, Rhaegar lay dead in the stream,
+	while men of both armies scrambled in the swirling waters for
+	rubies knocked free of his armor.
+		[ A Game of Thrones, by George R.R. Martin ]
+# werecritter -- see "lycanthrope"
 *wight
 	When he came to himself again, for a moment he could recall
 	nothing except a sense of dread.  Then suddenly he knew that
@@ -2421,11 +3369,26 @@ wizard of yendor
 	disturbs this mighty sorcerer!
 wolf
 *wolf
+*wolf cub
 	The ancestors of the modern day domestic dog, wolves are
 	powerful muscular animals with bushy tails.  Intelligent,
 	social animals, wolves live in family groups or packs made
 	up of multiple family units.  These packs cooperate in hunting
 	down prey.
+woodchuck
+	The Usenet Oracle requires an answer to this question!
+
+	> How much wood could a woodchuck chuck if a woodchuck could
+	> chuck wood?
+
+	"Oh, heck!  I'll handle *this* one!"  The Oracle spun the terminal
+	back toward himself, unlocked the ZOT-guard lock, and slid the
+	glass guard away from the ZOT key.  "Ummmm....could you turn around
+	for a minute?  ZOTs are too graphic for the uninitiated.  Even *I*
+	get a little squeamish sometimes..."  The neophyte turned around,
+	and heard the Oracle slam his finger on a computer key, followed
+	by a loud ZZZZOTTTTT and the smell of ozone.
+		[ Excerpted from Internet Oracularity 576.6 ]
 *worm
 long worm tail
 worm tooth
@@ -2494,7 +3457,7 @@ yeti
 	An ape-like humanoid native to inaccessible mountain tops,
 	the yeti is also known as "the abominable snowman".  Whether
 	or not the title "man" is appropriate remains unknown.
-yugake
+*yugake
 	Japanese leather archery gloves.  Gloves made for use while
 	practicing had thumbs reinforced with horn.  Those worn into
 	battle had thumbs reinforced with a double layer of leather.

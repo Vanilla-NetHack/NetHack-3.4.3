@@ -1,18 +1,18 @@
-#	SCCS Id: @(#)Makefile.GCC	      3.2     96/10/25
+#	SCCS Id: @(#)Makefile.GCC	      3.3     1999/11/06
 #	Copyright (c) NetHack PC Development Team 1996.
-#	PC NetHack 3.2 Utilities Makefile for djgpp V2
+#	PC NetHack 3.3 Makefile for djgpp V2
 #
 #	Gnu gcc compiler for msdos (djgpp)
 #	Requires Gnu Make utility (V3.73 or greater) supplied with djgpp V2
 #
-#	For questions or comments: nethack-bugs@linc.cis.upenn.edu
+#	For questions or comments: devteam@nethack.org
 #
 #	In addition to your C compiler,
 #
-#  if you want to change   you will need a
-#  files with suffix   workalike for
-#	  .y	     yacc
-#	  .l	     lex
+#       if you want to change     you will need a
+#       files with suffix         workalike for
+#	  .y	                     yacc
+#	  .l	                     lex
 #
 #	Note that flex (lex) and bison (yacc) are included with the
 #	djgpp distribution and work quite well.	 This makefile assumes
@@ -93,6 +93,19 @@ LEXYYC = lexyy.c
 
 USE_DLB = Y
 
+# djgpp ships with an ls.exe command so changing this should
+# not be necessary
+
+LS = ls -1		# ls.exe from djgpp distribution
+#LS = dir /l/b		# DOS command
+
+# To build a binary without any graphics
+# suitable for blind players,
+# set SUPPRESS_GRAPHICS to Y
+# (Note: binary will require ANSI.SYS driver or equivalent loaded)
+# SUPPRESS_GRAPHICS = Y
+SUPPRESS_GRAPHICS = 
+
 #############################################################################
 #
 # nothing below this line should have to be changed
@@ -107,12 +120,22 @@ else
 DLBFLG =
 endif
 
-LS = ls -1		# ls.exe from djgpp distribution
-#LS = dir /l/b		# DOS command
-
 #
 #  Flags.
 #
+ifeq ($(SUPPRESS_GRAPHICS),Y)
+TERMLIB =
+# Build NetHack suitable for blind players
+
+# Debugging
+#CFLAGS = -pg -c -I../include $(DLBFLG) -DSUPPRESS_GRAPHICS
+#LFLAGS = -pg
+
+CFLAGS = -c -O -I../include $(DLBFLG) -DSUPPRESS_GRAPHICS
+LFLAGS =
+
+else
+
 # Debugging
 #CFLAGS = -pg -c -I../include $(DLBFLG) -DUSE_TILES
 #LFLAGS = -pg
@@ -120,6 +143,7 @@ LS = ls -1		# ls.exe from djgpp distribution
 #    Normal
 CFLAGS = -c -O -I../include $(DLBFLG) -DUSE_TILES
 LFLAGS =
+endif
 
 #
 #  Utility Objects.
@@ -147,6 +171,22 @@ RECOVOBJS   = recover.o
 
 #  Tile related object files.
 
+ifeq ($(SUPPRESS_GRAPHICS),Y)
+TILOBJ       =
+TEXTIO       =
+TEXTIO2      =
+PLANAR_TIB   =
+OVERVIEW_TIB =
+TILEUTIL     = 
+TILEFILES    = 
+TILEFILES2   = 
+GIFREADERS   = 
+GIFREAD2     = 
+PPMWRITERS   = 
+PPMWRIT2     = 
+
+else
+
 TILOBJ      = tile.o pctiles.o $(VGAOBJ)
 
 TEXTIO      = tiletext.o tiletxt.o drawing.o decl.o monst.o objects.o stubvid.o
@@ -171,6 +211,8 @@ GIFREAD2    = gifread2.o alloc.o panic.o
 PPMWRITERS  = ppmwrite.o alloc.o panic.o
 
 PPMWRIT2    = ppmwrit2.o alloc.o panic.o
+endif
+
 
 DLBOBJ = dlb.o
 
@@ -190,14 +232,15 @@ VOBJ11 = monst.o    monstr.o   mplayer.o  mthrowu.o  muse.o
 VOBJ12 = music.o    o_init.o   objects.o  objnam.o   options.o
 VOBJ13 = pickup.o   pline.o    polyself.o potion.o   quest.o
 VOBJ14 = questpgr.o pager.o    pray.o	  priest.o   read.o
-VOBJ15 = rect.o	    restore.o  rip.o	  rnd.o	     rumors.o
-VOBJ16 = save.o	    shk.o      shknam.o	  sit.o	     sounds.o
-VOBJ17 = sp_lev.o   spell.o    steal.o	  termcap.o  timeout.o
-VOBJ18 = topl.o	    topten.o   track.o	  trap.o     u_init.o
-VOBJ19 = uhitm.o    vault.o    vision.o	  vis_tab.o  weapon.o
-VOBJ20 = were.o	    wield.o    windows.o  wintty.o   wizard.o
-VOBJ21 = worm.o	    worn.o     write.o	  zap.o	     light.o
-VOBJ22 = dlb.o      dig.o      teleport.o
+VOBJ15 = rect.o	    restore.o  rip.o	  rnd.o	     role.o
+VOBJ16 = rumors.o   save.o	   shk.o      shknam.o	 sit.o
+VOBJ17 = sounds.o   sp_lev.o   spell.o    steal.o	 steed.o
+VOBJ18 = termcap.o  timeout.o  topl.o	  topten.o   track.o
+VOBJ19 = trap.o     u_init.o   uhitm.o    vault.o    vision.o
+VOBJ20 = vis_tab.o  weapon.o   were.o	  wield.o    windows.o
+VOBJ21 = wintty.o   wizard.o   worm.o	  worn.o     write.o
+VOBJ22 = zap.o	    light.o    dlb.o      dig.o      teleport.o
+VOBJ23 = region.o
 
 SOBJ   = msdos.o    sound.o    sys.o	  tty.o	     unix.o    video.o \
 	vidtxt.o    pckeys.o
@@ -208,7 +251,7 @@ VOBJ   = $(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) \
 	$(VOBJ06) $(VOBJ07) $(VOBJ08) $(VOBJ09) $(VOBJ10) \
 	$(VOBJ11) $(VOBJ12) $(VOBJ13) $(VOBJ14) $(VOBJ15) \
 	$(VOBJ16) $(VOBJ17) $(VOBJ18) $(VOBJ19) $(VOBJ20) \
-	$(VOBJ21) $(VOBJ22)
+	$(VOBJ21) $(VOBJ22) $(VOBJ23)
 
 ALLOBJ = $(VOBJ) $(SOBJ) $(TILOBJ) $(VVOBJ)
 
@@ -225,7 +268,9 @@ MONDATA_H  = $(INCL)\align.h	$(INCL)\mondata.h
 MONST_H	   = $(INCL)\align.h	$(INCL)\monst.h
 PERMONST_H = $(INCL)\monattk.h	$(INCL)\monflag.h   $(INCL)\align.h   \
 	    $(INCL)\permonst.h
+REGION_H   = $(INCL)\region.h
 RM_H	   = $(INCL)\align.h	$(INCL)\rm.h
+SKILLS_H   = $(INCL)\skills.h
 SP_LEV_H   = $(INCL)\align.h	$(INCL)\sp_lev.h
 VAULT_H	   = $(DUNGEON_H)	$(INCL)\vault.h
 YOUPROP_H  = $(PERMONST_H)	$(MONDATA_H)	    $(INCL)\prop.h    \
@@ -235,7 +280,8 @@ YOU_H	   = $(MONST_H)		$(YOUPROP_H)	    $(INCL)\align.h   \
 DISPLAY_H  = $(MONDATA_H)	$(INCL)\vision.h    $(INCL)\display.h
 PCCONF_H   = $(INCL)\micro.h	$(INCL)\system.h    $(INCL)\pcconf.h \
 	    $(INCL)\pcvideo.h
-CONFIG_H   = $(GLOBAL_H)	$(INCL)\tradstdc.h  $(INCL)\config.h
+CONFIG_H   = $(GLOBAL_H)	$(INCL)\tradstdc.h  $(INCL)\config1.h \
+	    $(INCL)\config.h
 DECL_H	   = $(YOU_H)		$(INCL)\spell.h	    $(INCL)\color.h   \
 	     $(INCL)\obj.h	$(INCL)\onames.h    $(INCL)\pm.h      \
 	      $(INCL)\decl.h
@@ -245,9 +291,14 @@ HACK_H	   = $(CONFIG_H)	$(DUNGEON_H)	    $(DECL_H)	      \
 	      $(INCL)\objclass.h $(INCL)\trap.h	     $(INCL)\flag.h    \
 	      $(RM_H)		 $(INCL)\vision.h    $(INCL)\wintype.h \
 	      $(INCL)\engrave.h	 $(INCL)\rect.h	  \
-	       $(INCL)\trampoli.h $(INCL)\hack.h
+	       $(INCL)\trampoli.h $(INCL)\hack.h $(REGION_H)
 DLB_H      = $(INCL)\dlb.h
+
+ifeq ($(SUPPRESS_GRAPHICS),Y)
+TILE_H     =
+else
 TILE_H	   = $(INCL)\tile.h $(INCL)\pctiles.h
+endif
 
 ifeq ($(USE_DLB),Y)
 DLB = dlb
@@ -309,8 +360,9 @@ endif
 ifdef TERMLIB
 	copy $(SSHR)\termcap	  $(GAMEDIR)
 endif
-	copy *.tib                $(GAMEDIR)
-	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)
+	if exist *.tib copy *.tib                $(GAMEDIR)
+	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)\defaults.nh
+	copy $(MSYS)\NHAccess.nh  $(GAMEDIR)
 	copy recover.exe          $(GAMEDIR)
 	copy $(DOC)\guidebo*.txt   $(GAMEDIR)
 	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)
@@ -354,6 +406,7 @@ $(GAME).lnk: $(ALLOBJ)
 	@echo $(VOBJ20) >> $@
 	@echo $(VOBJ21) >> $@
 	@echo $(VOBJ22) >> $@
+	@echo $(VOBJ23) >> $@
 	@echo $(SOBJ)   >> $@
 	@echo $(TILOBJ) >> $@
 	@echo $(VVOBJ)  >> $@
@@ -617,6 +670,9 @@ recover.o:   $(CONFIG_H) recover.c
 #
 #  Header file moves required for tile support
 #
+ifeq ($(SUPPRESS_GRAPHICS),Y)
+
+else
 
 $(INCL)\tile.h: $(WSHR)\tile.h
 	copy $(WSHR)\tile.h $@
@@ -747,6 +803,8 @@ viewtib.c: $(MSYS)\viewtib.c
 
 viewtib.o: viewtib.c
 
+endif
+
 #
 #  Other Util Dependencies.
 #
@@ -783,8 +841,7 @@ panic.o:   $(CONFIG_H)	  panic.c
 DATABASE = $(DAT)\data.bas
 
 
-dat.tag: $(DAT)\data	     $(DAT)\rumors	 $(DAT)\dungeon \
-	$(DAT)\oracles	    $(DAT)\quest.dat	sp_lev.tag	$(DAT)\nhdat
+dat.tag: $(DAT)\nhdat
 	@echo dat done >dat.tag
 
 $(DAT)\data:	 utility.tag	$(DATABASE)
@@ -800,13 +857,13 @@ $(DAT)\oracles:	     utility.tag    $(DAT)\oracles.txt
 	makedefs -h
 
 sp_lev.tag: utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
-	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des	 \
-	$(DAT)\medusa.des	 $(DAT)\oracle.des   $(DAT)\tower.des  \
-	$(DAT)\yendor.des	 $(DAT)\arch.des     $(DAT)\barb.des   \
-	$(DAT)\caveman.des $(DAT)\elf.des	     $(DAT)\healer.des \
-	$(DAT)\knight.des	 $(DAT)\priest.des   $(DAT)\rogue.des  \
-	$(DAT)\samurai.des $(DAT)\tourist.des  $(DAT)\valkyrie.des \
-	$(DAT)\wizard.des
+	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des \
+	$(DAT)\medusa.des  $(DAT)\oracle.des   $(DAT)\tower.des \
+	$(DAT)\yendor.des  $(DAT)\arch.des     $(DAT)\barb.des \
+	$(DAT)\caveman.des   $(DAT)\healer.des   $(DAT)\knight.des \
+	$(DAT)\monk.des      $(DAT)\priest.des   $(DAT)\ranger.des \
+	$(DAT)\rogue.des     $(DAT)\samurai.des  $(DAT)\tourist.des \
+	$(DAT)\valkyrie.des  $(DAT)\wizard.des
 	copy $(SRC)\lev_comp.exe $(DAT)\lev_comp.exe
 	cd $(DAT)
 	lev_comp bigroom.des
@@ -817,15 +874,17 @@ sp_lev.tag: utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	lev_comp mines.des
 	lev_comp medusa.des
 	lev_comp oracle.des
+	lev_comp sokoban.des
 	lev_comp tower.des
 	lev_comp yendor.des
 	lev_comp arch.des
 	lev_comp barb.des
 	lev_comp caveman.des
-	lev_comp elf.des
 	lev_comp healer.des
 	lev_comp knight.des
+	lev_comp monk.des
 	lev_comp priest.des
+	lev_comp ranger.des
 	lev_comp rogue.des
 	lev_comp samurai.des
 	lev_comp tourist.des
@@ -845,7 +904,9 @@ $(DAT)\dungeon:	  utility.tag  $(DAT)\dungeon.def
 #
 #note that dir below assumes bin/dir.exe from djgpp distribution
 #
-$(DAT)\nhdat:	dlb_main.exe
+$(DAT)\nhdat:	dlb_main.exe $(DAT)\data $(DAT)\rumors $(DAT)\dungeon \
+	    $(DAT)\oracles $(DAT)\quest.dat sp_lev.tag
+	@echo dat done >dat.tag
 	@cd $(DAT)
 	@copy $(MSYS)\msdoshlp.txt .
 	@echo data >dlb.lst
@@ -946,7 +1007,7 @@ topl.o : $(CONFIG_H) $(WIN)\topl.c
 	copy $(WIN)\topl.c .
 	$(CC) $(CFLAGS) -o$@ topl.c
 
-wintty.o : $(CONFIG_H) $(WIN)\wintty.c
+wintty.o : $(HACK_H) $(WIN)\wintty.c
 	copy $(WIN)\wintty.c .
 	$(CC) $(CFLAGS) -o$@ wintty.c
 
@@ -973,7 +1034,7 @@ dog.o:	    $(HACK_H) $(INCL)\edog.h
 dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
 dokick.o:   $(HACK_H) $(ESHK_H)
 dothrow.o:  $(HACK_H)
-drawing.o:  $(HACK_H) $(INCL)\termcap.h
+drawing.o:  $(HACK_H) $(INCL)\tcap.h
 dungeon.o:  $(HACK_H) $(INCL)\dgn_file.h
 eat.o:	    $(HACK_H)
 end.o:	    $(HACK_H) $(ESHK_H)
@@ -989,7 +1050,7 @@ invent.o:    $(HACK_H) $(INCL)\artifact.h
 light.o:     $(HACK_H) $(INCL)\lev.h
 lock.o:	     $(HACK_H)
 mail.o:	     $(HACK_H) $(INCL)\mail.h
-makemon.o:   $(HACK_H) $(EPRI_H) $(EMIN_H)
+makemon.o:   $(HACK_H) $(EPRI_H) $(EMIN_H) $(INCL)\edog.h
 mcastu.o:    $(HACK_H)
 mhitm.o:     $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
 mhitu.o:     $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
@@ -1010,10 +1071,10 @@ muse.o:	     $(HACK_H)
 music.o:     $(HACK_H)
 o_init.o:    $(HACK_H)
 objects.o:   $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h \
-	       $(INCL)\prop.h $(INCL)\color.h
+	       $(INCL)\prop.h $(SKILLS_H) $(INCL)\color.h
 objnam.o:    $(HACK_H)
 options.o:   $(CONFIG_H) $(HACK_H) $(INCL)\objclass.h $(INCL)\flag.h \
-	      $(INCL)\termcap.h
+	      $(INCL)\tcap.h
 pager.o:     $(HACK_H)
 pickup.o:    $(HACK_H)
 pline.o:     $(HACK_H) $(EPRI_H)
@@ -1025,9 +1086,11 @@ quest.o:     $(HACK_H) $(INCL)\quest.h $(INCL)\qtext.h
 questpgr.o:  $(HACK_H) $(INCL)\qtext.h
 read.o:	     $(HACK_H)
 rect.o:	     $(HACK_H)
-restore.o:   $(HACK_H) $(INCL)\lev.h $(INCL)\termcap.h $(INCL)\quest.h
+region.o:    $(HACK_H)
+restore.o:   $(HACK_H) $(INCL)\lev.h $(INCL)\tcap.h $(INCL)\quest.h
 rip.o:	     $(HACK_H)
 rnd.o:	     $(HACK_H)
+role.o:	     $(HACK_H)
 rumors.o:    $(HACK_H)
 save.o:	     $(HACK_H) $(INCL)\lev.h $(INCL)\quest.h
 shk.o:	     $(HACK_H) $(ESHK_H)
@@ -1037,6 +1100,7 @@ sounds.o:    $(HACK_H) $(INCL)\edog.h
 sp_lev.o:    $(HACK_H) $(INCL)\sp_lev.h $(INCL)\align.h $(INCL)\rect.h
 spell.o:     $(HACK_H)
 steal.o:     $(HACK_H)
+steed.o:     $(HACK_H)
 teleport.o:  $(HACK_H)
 tile.o:	     $(HACK_H) $(TILE_H)
 timeout.o:   $(HACK_H)

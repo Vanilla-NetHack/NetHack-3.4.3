@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winami.h	3.2	93/01/17	*/
+/*	SCCS Id: @(#)winami.h	3.3	93/01/17	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1991. */
 /* Copyright (c) Gregg Wonderly, Naperville, Illinois, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -28,9 +28,9 @@ struct amii_menu
 {
     amii_menu_item *items;	/* Starting pointer for item list. */
     amii_menu_item *last;	/* End pointer for item list. */
-    const char     *query;	/* Query string */
+    const char	   *query;	/* Query string */
     int		    count;	/* Number of strings. */
-    char            chr;	/* Character to assign for accelerator */
+    char	    chr;	/* Character to assign for accelerator */
 };
 
 /* descriptor for Amiga Intuition-based windows.  If we decide to cope with

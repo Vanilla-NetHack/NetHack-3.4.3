@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)getline.c	3.2	96/01/27	*/
+/*	SCCS Id: @(#)getline.c	3.3	96/01/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,13 +12,12 @@
 #ifdef OVL1
 char morc = 0;	/* tell the outside world what char you chose */
 #endif /* OVL1 */
-#ifdef OVL2
-static boolean FDECL(ext_cmd_getlin_hook, (char *));
-#endif /* OVL2 */
+STATIC_DCL boolean FDECL(ext_cmd_getlin_hook, (char *));
 
 typedef boolean FDECL((*getlin_hook_proc), (char *));
 
 STATIC_DCL void FDECL(hooked_tty_getlin, (const char*,char*,getlin_hook_proc));
+extern int NDECL(extcmd_via_menu);	/* cmd.c */
 
 extern char erase_char, kill_char;	/* from appropriate tty.c file */
 
@@ -54,6 +53,7 @@ getlin_hook_proc hook;
 	ttyDisplay->toplin = 3; /* special prompt state */
 	ttyDisplay->inread++;
 	pline("%s ", query);
+	*obufp = 0;
 	for(;;) {
 		(void) fflush(stdout);
 		Sprintf(toplines, "%s ", query);
@@ -159,7 +159,7 @@ register const char *s;	/* chars allowed besides return */
  *	+ we don't change the characters that are already in base
  *	+ base has enough room to hold our string
  */
-static boolean
+STATIC_OVL boolean
 ext_cmd_getlin_hook(base)
 	char *base;
 {
@@ -191,13 +191,28 @@ tty_get_ext_cmd()
 	int i;
 	char buf[BUFSZ];
 
+	if (iflags.extmenu) return extcmd_via_menu();
 	/* maybe a runtime option? */
 	/* hooked_tty_getlin("#", buf, flags.cmd_comp ? ext_cmd_getlin_hook : (getlin_hook_proc) 0); */
+#ifdef REDO
+	hooked_tty_getlin("#", buf, in_doagain ? (getlin_hook_proc)0
+		: ext_cmd_getlin_hook);
+#else
 	hooked_tty_getlin("#", buf, ext_cmd_getlin_hook);
+#endif
 	if (buf[0] == 0 || buf[0] == '\033') return -1;
 
 	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
 		if (!strcmpi(buf, extcmdlist[i].ef_txt)) break;
+
+#ifdef REDO
+	if (!in_doagain) {
+	    int j;
+	    for (j = 0; buf[j]; j++)
+		savech(buf[j]);
+	    savech('\n');
+	}
+#endif
 
 	if (extcmdlist[i].ef_txt == (char *)0) {
 		pline("%s: unknown extended command.", buf);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macmenu.c	3.2	96/11/24	*/
+/*	SCCS Id: @(#)macmenu.c	3.3	99/11/24	*/
 /*      Copyright (c) Macintosh NetHack Port Team, 1993.          */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,6 @@
  * provides control key functionality for classic keyboards
  * provides key equivalent references and logical menu groups
  * supports various menu highlighting modes
- * does not (yet) provide balloon help support (maybe never will!)
 \****************************************/
 
 /****************************************\
@@ -23,37 +22,18 @@
 
 /******** Application Defines ********/
 #include "hack.h"
+#include "mactty.h"
+#include "macpopup.h"
 #include "macwin.h"
 #include "patchlevel.h"
 
 /******** Toolbox Defines ********/
-/* #include <Controls.h> */
-#include <Desk.h>
-/* #include <Dialogs.h> */
-/* #include <Memory.h> */
 #include <Menus.h>
-/* #include <Quickdraw.h> */
+#include <Devices.h>
 #include <Resources.h>
-/* #include <SegLoad.h> */
-#include <TextEdit.h>
 #include <ToolUtils.h>
-#include <Packages.h>
-/* #include <Windows.h> */
-
-/* Think/MPW incompatibility from Think.h/Script.h */
-#if !defined(__THINK__) && !defined(__SCRIPT__)
-#define GetMBarHeight()		(* (short *) 0x0BAA)
-#endif
-
-/* Think/MPW incompatibility from LoMem.h/SysEqu.h */
-#if !defined(__LOMEM__) && !defined(__SYSEQU__)
-enum { WindowList = 0x9D6 };
-#endif
-
-/* Think has separated out c2pstr and other pascal odditites */
-#if defined(THINK_C)
-#include <pascal.h>
-#endif
+#include <Sound.h>
+#include <LowMem.h>		// for LMGetWindowList
 
 /******** Local Defines ********/
 
@@ -110,35 +90,14 @@ enum
 	menuFilePlayMode,
 	menuFileEnterExplore,
 	____File___2,
-	menuFileOptionEdit,
-	____File___3,
 	menuFileSave,
-	____File___4,
+	____File___3,
 	menuFileQuit,
 
 	/* standard minimum Edit menu items */
 
 	/* Wizard */
 	menuWizardAttributes = 1
-};
-
-/* symbols here correspond to arrays in DialogAskName */
-/* eventually this data will become a 'STR#' resource */
-static unsigned char	uitmChar[3][16] = {{"ABCEHKPRSTVW"}, {"MF"}, {" XD"}};
-
-	/* arrays here correspond to symbols in drawANUserItem */
-	/* eventually this data will be moved to 'STR#' resources */
-static unsigned char * nhRole [ askn_role_end ] = {
-	{"\pArcheologist"}, {"\pBarbarian"},
-	{"\pCaveman"}, {"\pElf"}, {"\pHealer"}, {"\pKnight"},
-	{"\pPriest"}, {"\pRogue"}, {"\pSamurai"}, {"\pTourist"},
-	{"\pValkyrie"}, {"\pWizard"}
-};
-static unsigned char * nhSex [ 2 ] = {
-	{"\pMale"}, {"\pFemale"}
-};
-static unsigned char * nhMode [ 3 ] = {
-	{"\pRegular"}, {"\pExplore"}, {"\pDebug"}
 };
 
 
@@ -215,10 +174,6 @@ enum
 /* menu 'STR#' comment char */
 #define mstrEndChar		0xA5		/* '\245' or option-* or "bullet" */
 
-/* max key queue (from macwin.c) */
-#define QUEUE_LEN		keyQueueLen
-extern const int keyQueueLen ;
-
 /* 'ALRT' */
 enum
 {
@@ -233,15 +188,6 @@ enum
 {
 	bttnMenuAlertNo = 1,
 	bttnMenuAlertYes
-};
-
-/* askname menus */
-enum
-{
-	menuANRole,
-	menuANSex,
-	menuANMode,
-	menuAN_total
 };
 
 
@@ -273,7 +219,578 @@ static	void askSave(void);
 static	void askQuit(void);
 
 
-/******** Routines ********/
+/*** Askname dialog box ***/
+
+#define RSRC_ASK			6000	/* Askname dialog and item list */
+#define RSRC_ASK_PLAY			1	/*	Play button */
+#define RSRC_ASK_QUIT			2	/*	Quit button */
+#define RSRC_ASK_DEFAULT		3	/*	Default ring */
+#define RSRC_ASK_ROLE			4	/*	Role popup menu */
+#define RSRC_ASK_RACE			5	/*	Race popup menu */
+#define RSRC_ASK_GEND			6	/*	Gender popup menu */
+#define RSRC_ASK_ALIGN			7	/*	Alignment popup menu */
+#define RSRC_ASK_MODE			8	/*	Mode popup menu */
+#define RSRC_ASK_NAME			9	/*	Name text field */
+#define RSRC_ASK_MAX			10	/*	Maximum enabled item */
+
+#define KEY_MASK	0xff00
+#define KEY_RETURN	0x2400
+#define KEY_ENTER	0x4c00
+#define KEY_ESCAPE	0x3500
+#define CH_MASK		0x00ff
+#define CH_RETURN	0x000d
+#define CH_ENTER	0x0003
+#define CH_ESCAPE	0x001b
+
+static void ask_restring(const char *cstr, unsigned char *pstr);
+static void ask_enable(WindowPtr wind, short item, int enable);
+static pascal void ask_redraw(WindowPtr wind, DialogItemIndex item);
+static pascal Boolean ask_filter(WindowPtr wind, EventRecord *event, DialogItemIndex *item);
+#define noresource(t,n)	{SysBeep(3); ExitToShell();}
+#define fatal(s)	{SysBeep(3); ExitToShell();}
+
+static MenuHandle askmenu[RSRC_ASK_MAX];
+static int askselect[RSRC_ASK_MAX];
+#define currrole	askselect[RSRC_ASK_ROLE]
+#define currrace	askselect[RSRC_ASK_RACE]
+#define currgend	askselect[RSRC_ASK_GEND]
+#define curralign	askselect[RSRC_ASK_ALIGN]
+#define currmode	askselect[RSRC_ASK_MODE]
+
+static RGBColor
+	blackcolor = {0x0000, 0x0000, 0x0000},
+	indentcolor = {0x4000, 0x4000, 0x4000},
+	darkcolor = {0x8000, 0x8000, 0x8000},
+	backcolor = {0xdddd, 0xdddd, 0xdddd},
+	lightcolor = {0xffff, 0xffff, 0xffff},
+	whitecolor = {0xffff, 0xffff, 0xffff};
+
+
+/* Convert a mixed-case C string to a Capitalized Pascal string */
+static void
+ask_restring (const char *cstr, unsigned char *pstr)
+{
+	int i;
+
+
+	for (i = 0; *cstr && (i < 255); i++)
+	    pstr[i+1] = *cstr++;
+	pstr[0] = i;
+	if ((pstr[1] >= 'a') && (pstr[1] <= 'z'))
+	    pstr[1] += 'A' - 'a';
+	return;
+}
+
+
+/* Enable the dialog item with the given index */
+static void
+ask_enable (WindowPtr wind, short item, int enable)
+{
+	short type;
+	Handle handle;
+	Rect rect;
+
+
+	/* Enable or disable the appropriate item */
+	GetDItem(wind, item, &type, &handle, &rect);
+	if (enable)	type &= ~itemDisable;
+	else		type |= itemDisable;
+	HiliteControl((ControlHandle)handle, enable ? 0 : 255);
+	SetDItem(wind, item, type, handle, &rect);
+	return;
+}
+
+
+static pascal void
+ask_redraw (WindowPtr wind, DialogItemIndex item)
+{
+	short type;
+	Handle handle;
+	Rect rect;
+	static char	*modechar = " XD";
+
+
+	/* Which item shall we redraw? */
+	GetDItem(wind, item, &type, &handle, &rect);
+	switch (item) {
+		case RSRC_ASK_DEFAULT:
+			PenSize(3, 3);
+			FrameRoundRect(&rect, 16, 16);
+			break;
+
+		case RSRC_ASK_ROLE:
+		case RSRC_ASK_RACE:
+		case RSRC_ASK_GEND:
+		case RSRC_ASK_ALIGN:
+		case RSRC_ASK_MODE:
+			if (macFlags.color) {
+				RGBForeColor(&blackcolor);
+				RGBBackColor(&backcolor);
+			}
+			PenNormal();
+			TextMode(srcOr);
+			EraseRect(&rect);
+
+			/* Draw the frame and drop shadow */
+			rect.right--;
+			rect.bottom--;
+			FrameRect(&rect);
+			MoveTo(rect.right, rect.top+1);
+			LineTo(rect.right, rect.bottom);
+			LineTo(rect.left+1, rect.bottom);
+
+			/* Draw the menu character */
+			MoveTo(rect.left+4, rect.top+12);
+			switch (item) {
+			case RSRC_ASK_ROLE:
+				DrawText(roles[askselect[item]].filecode, 0, 3);
+				break;
+			case RSRC_ASK_RACE:
+				DrawText(races[askselect[item]].filecode, 0, 3);
+				break;
+			case RSRC_ASK_GEND:
+				DrawText(genders[askselect[item]].filecode, 0, 3);
+				break;
+			case RSRC_ASK_ALIGN:
+				DrawText(aligns[askselect[item]].filecode, 0, 3);
+				break;
+			case RSRC_ASK_MODE:
+				DrawChar(modechar[askselect[item]]);
+				break;
+			}
+
+			/* Draw the popup symbol */
+			MoveTo(rect.right - 16, rect.top + 5);
+			LineTo(rect.right -  6, rect.top + 5);
+			LineTo(rect.right - 11, rect.top + 10);
+			LineTo(rect.right - 15, rect.top + 6);
+			LineTo(rect.right -  8, rect.top + 6);
+			LineTo(rect.right - 11, rect.top + 9);
+			LineTo(rect.right - 13, rect.top + 7);
+			LineTo(rect.right - 10, rect.top + 7);
+			LineTo(rect.right - 11, rect.top + 8);
+
+			/* Draw the shadow */
+			InsetRect(&rect, 1, 1);
+			if (macFlags.color) {
+				RGBColor color;
+
+
+				/* Save the foreground color */
+				GetForeColor(&color);
+
+				/* Draw the top and left */
+				RGBForeColor(&lightcolor);
+				MoveTo(rect.left, rect.bottom-1);
+				LineTo(rect.left, rect.top);
+				LineTo(rect.right-1, rect.top);
+
+				/* Draw the bottom and right */
+				RGBForeColor(&darkcolor);
+				MoveTo(rect.right-1, rect.top+1);
+				LineTo(rect.right-1, rect.bottom-1);
+				LineTo(rect.left+1, rect.bottom-1);
+
+				/* Restore the foreground color */
+				RGBForeColor(&color);
+			}
+			break;
+
+		case RSRC_ASK_NAME:
+			PenNormal();
+			if (macFlags.color) {
+				RGBForeColor(&whitecolor);
+				RGBBackColor(&whitecolor);
+				TextMode(srcOr);
+			} else {
+				PenMode(notPatCopy);
+				TextMode(srcBic);
+			}
+			InsetRect(&rect, -1, -1);
+			FrameRect(&rect);
+			InsetRect(&rect, -1, -1);
+			FrameRect(&rect);
+			InsetRect(&rect, -2, -2);
+			if (macFlags.color) {
+				/* Draw the top and left */
+				RGBForeColor(&darkcolor);
+				MoveTo(rect.left, rect.bottom-1);
+				LineTo(rect.left, rect.top);
+				LineTo(rect.right-1, rect.top);
+
+				/* Draw the bottom and right */
+				RGBForeColor(&lightcolor);
+				MoveTo(rect.right-1, rect.top+1);
+				LineTo(rect.right-1, rect.bottom-1);
+				LineTo(rect.left+1, rect.bottom-1);
+
+				/* Restore the colors */
+				RGBForeColor(&blackcolor);
+				RGBBackColor(&backcolor);
+			}
+			break;
+	}
+	return;
+}
+
+
+static pascal Boolean
+ask_filter (WindowPtr wind, EventRecord *event, DialogItemIndex *item)
+{
+	short ch, key;
+
+
+	switch (event->what) {
+		case keyDown:
+		case autoKey:
+			ch = event->message & CH_MASK;
+			key = event->message & KEY_MASK;
+			/* Handle equivalents for OK */
+			if ((ch == CH_RETURN) || (key == KEY_RETURN) ||
+				(ch == CH_ENTER) || (key == KEY_ENTER)) {
+				if ((*((DialogRecord *)wind)->textH)->teLength) {
+					FlashButton(wind, RSRC_ASK_PLAY);
+					*item = RSRC_ASK_PLAY;
+				} else
+					*item = 0;
+				return (TRUE);
+			}
+			/* Handle equivalents for Cancel and Quit */
+			if ((ch == CH_ESCAPE) || (key == KEY_ESCAPE) ||
+				((event->modifiers & cmdKey) && (ch == 'q')) ||
+				((event->modifiers & cmdKey) && (ch == '.'))) {
+				FlashButton(wind, RSRC_ASK_QUIT);
+				*item = RSRC_ASK_QUIT;
+				return (TRUE);
+			}
+			return (FALSE);
+		case updateEvt:
+			ask_redraw(wind, RSRC_ASK_NAME);
+			return (FALSE);
+		default:
+			return (FALSE);
+	}
+}
+
+
+void mac_askname ()
+{
+	GrafPtr oldport;
+	WindowPtr askdialog;
+	short i, j, item, type;
+	Handle handle;
+	Rect rect;
+	Str255 str;
+	Point pt;
+	UserItemUPP redraw = NewUserItemProc(ask_redraw);
+	ModalFilterUPP filter = NewModalFilterProc(ask_filter);
+
+
+	/* Create the dialog */
+	if (!(askdialog = GetNewDialog(RSRC_ASK, NULL, (WindowPtr)-1)))
+	    noresource('DLOG', RSRC_ASK);
+	GetPort(&oldport);
+	SetPort(askdialog);
+
+	/* Initialize the name text item */
+	ask_restring(plname, str);
+	if (plname[0]) {
+	    GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+	    SetIText(handle, str);
+	}
+#if 0
+	{
+	Str32 pName;
+		pName [0] = 0;
+		if (plname && plname [0]) {
+			strcpy ((char *) pName, plname);
+			c2pstr ((char *) pName);
+		} else {
+			Handle h;
+			h = GetResource ('STR ', -16096);
+			if (((Handle) 0 != h) && (GetHandleSize (h) > 0)) {
+				DetachResource (h);
+				HLock (h);
+				if (**h > 31) {
+					**h = 31;
+				}
+				BlockMove (*h, pName , **h + 1);
+				DisposeHandle (h);
+			}
+		}
+		if (pName [0]) {
+			GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+			SetIText(handle, pName);
+			if (pName [0] > 2 && pName [pName [0] - 1] == '-') {
+			    short role = (*pANR).anMenu[anRole];
+			    char suffix = (char) pName[pName[0]],
+				*sfxindx = strchr(pl_classes, suffix);
+
+			    if (sfxindx)
+				role = (short) (sfxindx - pl_classes);
+			    else if (suffix == '@')
+				role = (short) rn2((int) strlen(pl_classes));
+			    (*pANR).anMenu[anRole] = role;
+			}
+		}
+	}
+#endif
+	SelIText(askdialog, RSRC_ASK_NAME, 0, 32767);
+
+	/* Initialize the role popup menu */
+	if (!(askmenu[RSRC_ASK_ROLE] = NewMenu(RSRC_ASK_ROLE, "\p")))
+	    fatal("\pCannot create role menu");
+	for (i = 0; roles[i].name.m; i++) {
+	    ask_restring(roles[i].name.m, str);
+	    AppendMenu(askmenu[RSRC_ASK_ROLE], str);
+	}
+	InsertMenu(askmenu[RSRC_ASK_ROLE], hierMenu);
+	if (flags.initrole >= 0)
+	    currrole = flags.initrole;
+	/* Check for backward compatibility */
+	else if ((currrole = str2role(pl_character)) < 0)
+	    currrole = randrole();
+
+	/* Initialize the race popup menu */
+	if (!(askmenu[RSRC_ASK_RACE] = NewMenu(RSRC_ASK_RACE, "\p")))
+	    fatal("\pCannot create race menu");
+	for (i = 0; races[i].noun; i++) {
+	    ask_restring(races[i].noun, str);
+	    AppendMenu(askmenu[RSRC_ASK_RACE], str);
+	}
+	InsertMenu(askmenu[RSRC_ASK_RACE], hierMenu);
+	if (flags.initrace >= 0)
+	    currrace = flags.initrace;
+	else
+	    currrace = randrace(currrole);
+
+	/* Initialize the gender popup menu */
+	if (!(askmenu[RSRC_ASK_GEND] = NewMenu(RSRC_ASK_GEND, "\p")))
+	    fatal("\pCannot create gender menu");
+	for (i = 0; i < ROLE_GENDERS; i++) {
+	    ask_restring(genders[i].adj, str);
+	    AppendMenu(askmenu[RSRC_ASK_GEND], str);
+	}
+	InsertMenu(askmenu[RSRC_ASK_GEND], hierMenu);
+	if (flags.initgend >= 0)
+	    currgend = flags.initgend;
+	else if (flags.female)
+	    currgend = 1;
+	else
+	    currgend = randgend(currrole, currrace);
+
+	/* Initialize the alignment popup menu */
+	if (!(askmenu[RSRC_ASK_ALIGN] = NewMenu(RSRC_ASK_ALIGN, "\p")))
+	    fatal("\pCannot create alignment menu");
+	for (i = 0; i < ROLE_ALIGNS; i++) {
+	    ask_restring(aligns[i].adj, str);
+	    AppendMenu(askmenu[RSRC_ASK_ALIGN], str);
+	}
+	InsertMenu(askmenu[RSRC_ASK_ALIGN], hierMenu);
+	if (flags.initalign >= 0)
+	    curralign = flags.initalign;
+	else
+	    curralign = randalign(currrole, currrace);
+
+	/* Initialize the mode popup menu */
+	if (!(askmenu[RSRC_ASK_MODE] = NewMenu(RSRC_ASK_MODE, "\p")))
+	    fatal("\pCannot create mode menu");
+	AppendMenu(askmenu[RSRC_ASK_MODE], "\pNormal");
+	AppendMenu(askmenu[RSRC_ASK_MODE], "\pExplore");
+#ifdef WIZARD
+	AppendMenu(askmenu[RSRC_ASK_MODE], "\pDebug");
+#endif
+	InsertMenu(askmenu[RSRC_ASK_MODE], hierMenu);
+	currmode = 0;
+
+	/* Set the redraw procedures */
+	for (item = RSRC_ASK_DEFAULT; item <= RSRC_ASK_MODE; item++) {
+	    GetDItem(askdialog, item, &type, &handle, &rect);
+	    SetDItem(askdialog, item, type, (Handle)redraw, &rect);
+	}
+
+	/* Handle dialog events */
+	do {
+	    /* Adjust the Play button */
+	    ask_enable(askdialog, RSRC_ASK_PLAY,
+				(*((DialogRecord *)askdialog)->textH)->teLength);
+
+	    /* Adjust the race popup menu */
+	    i = j = currrace;
+	    do {
+	    	if (validrace(currrole, j)) {
+	    		EnableItem(askmenu[RSRC_ASK_RACE], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_RACE], j+1,
+	    				currrace == j);
+	    	} else {
+	    		DisableItem(askmenu[RSRC_ASK_RACE], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_RACE], j+1, FALSE);
+	    		if ((currrace == j) && !races[++currrace].noun)
+	    			currrace = 0;
+	    	}
+	    	if (!races[++j].noun) j = 0;
+	    } while (i != j);
+	    if (currrace != i) {
+	    	GetDItem(askdialog, RSRC_ASK_RACE, &type, &handle, &rect);
+	    	InvalRect(&rect);
+	    }
+
+	    /* Adjust the gender popup menu */
+	    i = j = currgend;
+	    do {
+	    	if (validgend(currrole, currrace, j)) {
+	    		EnableItem(askmenu[RSRC_ASK_GEND], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_GEND], j+1,
+	    				currgend == j);
+	    	} else {
+	    		DisableItem(askmenu[RSRC_ASK_GEND], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_GEND], j+1, FALSE);
+	    		if ((currgend == j) && (++currgend >= ROLE_GENDERS))
+	    			currgend = 0;
+	    	}
+	    	if (++j >= ROLE_GENDERS) j = 0;
+	    } while (i != j);
+	    if (currgend != i) {
+	    	GetDItem(askdialog, RSRC_ASK_GEND, &type, &handle, &rect);
+	    	InvalRect(&rect);
+	    }
+
+	    /* Adjust the alignment popup menu */
+	    i = j = curralign;
+	    do {
+	    	if (validalign(currrole, currrace, j)) {
+	    		EnableItem(askmenu[RSRC_ASK_ALIGN], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_ALIGN], j+1,
+	    				curralign == j);
+	    	} else {
+	    		DisableItem(askmenu[RSRC_ASK_ALIGN], j+1);
+	    		CheckItem(askmenu[RSRC_ASK_ALIGN], j+1, FALSE);
+	    		if ((curralign == j) && (++curralign >= ROLE_ALIGNS))
+	    			curralign = 0;
+	    	}
+	    	if (++j >= ROLE_ALIGNS) j = 0;
+	    } while (i != j);
+	    if (curralign != i) {
+	    	GetDItem(askdialog, RSRC_ASK_ALIGN, &type, &handle, &rect);
+	    	InvalRect(&rect);
+	    }
+
+	    /* Adjust the role popup menu */
+	    for (i = 0; roles[i].name.m; i++) {
+	    	ask_restring((currgend && roles[i].name.f) ?
+	    			roles[i].name.f : roles[i].name.m, str);
+	    	SetItem(askmenu[RSRC_ASK_ROLE], i+1, str);
+	    	CheckItem(askmenu[RSRC_ASK_ROLE], i+1, currrole == i);
+	    }
+
+	    /* Adjust the mode popup menu */
+	    CheckItem(askmenu[RSRC_ASK_MODE], 1, currmode == 0);
+	    CheckItem(askmenu[RSRC_ASK_MODE], 2, currmode == 1);
+#ifdef WIZARD
+	    CheckItem(askmenu[RSRC_ASK_MODE], 3, currmode == 2);
+#endif
+
+	    /* Wait for an action on an item */
+	    ModalDialog(filter, &item);
+	    switch (item) {
+	    case RSRC_ASK_PLAY:
+	    	break;
+	    case RSRC_ASK_QUIT:
+	    	currmode = -1;
+	    	break;
+	    case RSRC_ASK_ROLE:
+	    case RSRC_ASK_RACE:
+	    case RSRC_ASK_ALIGN:
+	    case RSRC_ASK_GEND:
+	    case RSRC_ASK_MODE:
+	    	GetDItem(askdialog, item, &type, &handle, &rect);
+	    	pt = *(Point *)&rect;
+	    	LocalToGlobal(&pt);
+	    	if (!!(i = PopUpMenuSelect(askmenu[item], pt.v, pt.h,
+	    			askselect[item] + 1)))
+	    		askselect[item] = LoWord(i) - 1;
+	    	InvalRect(&rect);
+	    	break;
+	    case RSRC_ASK_NAME:
+#if 0
+	    /* limit the data here to 25 chars */
+	    {
+	    	short beepTEDelete = 1;
+
+	    	while ((**dRec.textH).teLength > 25)
+	    	{
+	    		if (beepTEDelete++ <= 3)
+	    			SysBeep(3);
+	    		TEKey('\b', dRec.textH);
+	    	}
+	    }
+
+	    /* special case filter (that doesn't plug all the holes!) */
+	    if (((**dRec.textH).teLength == 1) && (**((**dRec.textH).hText) < 32))
+	    	TEKey('\b', dRec.textH);
+#endif
+	    	break;
+	    }
+	} while ((item != RSRC_ASK_PLAY) && (item != RSRC_ASK_QUIT));
+
+	/* Process the name */
+	GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+	GetIText(handle, str);
+	if (str[0] > PL_NSIZ-1) str[0] = PL_NSIZ-1;
+	BlockMove(&str[1], plname, str[0]);
+	plname[str[0]] = '\0';
+
+	/* Destroy the dialog */
+	for (i = RSRC_ASK_ROLE; i <= RSRC_ASK_MODE; i++) {
+	    DeleteMenu(i);
+	    DisposeMenu(askmenu[i]);
+	}
+	SetPort(oldport);
+	DisposeDialog(askdialog);
+	DisposeRoutineDescriptor(filter);
+	DisposeRoutineDescriptor(redraw);
+
+	/* Process the mode */
+#ifdef WIZARD
+	wizard =
+#endif
+	discover = 0;
+	switch (currmode) {
+	case 0:		/* Normal */
+	    break;
+	case 1:		/* Explore */
+	    discover = 1;
+	    break;
+#ifdef WIZARD
+	case 2:		/* Debug */
+	    wizard = 1;
+	    strcpy(plname, WIZARD);
+	    break;
+#endif
+	default:	/* Quit */
+	    ExitToShell();
+	}
+
+	/* Process the role */
+	strcpy(pl_character, roles[currrole].name.m);
+	flags.initrole = currrole;
+
+	/* Process the race */
+	flags.initrace = currrace;
+
+	/* Process the gender */
+	flags.female = flags.initgend = currgend;
+
+	/* Process the alignment */
+	flags.initalign = curralign;
+
+	return;
+}
+
+
+
+/*** Menu bar routines ***/
+
 static void
 alignAD(Rect *pRct, short vExempt)
 {
@@ -319,330 +836,16 @@ menuError(short menuErr)
 	ExitToShell();
 }
 
-static pascal void
-drawANUserItem(WindowPtr wPtr, short uItm)
-{
-	asknameRec	*pANR;
-	short		iTyp;
-	Handle		iHnd;
-	Rect		iRct;
-	short		whichUserItem;
-
-	pANR = (asknameRec *) GetWRefCon(wPtr);
-	GetDItem((DialogPtr) wPtr, uItm, &iTyp, &iHnd, &iRct);
-
-	switch (uItm)
-	{
-	case uitmANOutlineDefault:
-		PenSize(3, 3);
-		FrameRoundRect(&iRct, 16, 16);
-		break;
-
-	case uitmANRole:
-	case uitmANSex:
-	case uitmANMode:
-		whichUserItem = uItm - uitmANRole;
-
-		PenNormal();
-		EraseRect(&iRct);
-
-		/* drop shadow */
-		iRct.right--;
-		iRct.bottom--;
-		MoveTo(iRct.right, (iRct.top + 1));
-		LineTo(iRct.right, iRct.bottom);
-		LineTo((iRct.left + 1), iRct.bottom);
-
-		/* frame */
-		FrameRect(&iRct);
-
-		/* menu character */
-		MoveTo((iRct.left + 2), (iRct.top + 12));
-		DrawChar(uitmChar[whichUserItem][(*pANR).anMenu[whichUserItem]]);
-
-		/* popup symbol */
-		MoveTo((iRct.left + 18), (iRct.top + 6));
-		LineTo((iRct.left + 28), (iRct.top + 6));
-		LineTo((iRct.left + 23), (iRct.top + 11));
-		LineTo((iRct.left + 19), (iRct.top + 7));
-		LineTo((iRct.left + 26), (iRct.top + 7));
-		LineTo((iRct.left + 23), (iRct.top + 10));
-		LineTo((iRct.left + 21), (iRct.top + 8));
-		LineTo((iRct.left + 24), (iRct.top + 8));
-		LineTo((iRct.left + 23), (iRct.top + 9));
-		break;
-	}
-}
-
-/* this routine manages the extended askname dialog */
-void
-DialogAskName(asknameRec *pANR)
-{
-	GrafPtr			pOldPort;
-	DialogTHndl		dTHnd;
-	Handle			dIHnd;
-	DialogRecord	dRec;
-	short			i, iHit, iTyp;
-	Handle			iHnd;
-	Rect			iRct, iRct2;
-	MenuHandle		mhndAskName[menuAN_total];
-	short			mbarHgt = GetMBarHeight();
-	short			ndxItem, menuEntry;
-	Point			pt;
-	UserItemUPP		myUserItemProc = NewUserItemProc(drawANUserItem);
-
-	if (! (dTHnd = (DialogTHndl) GetResource('DLOG', dlogAskName)))
-		menuError(errGetANDlogTemplate);
-	alignAD((Rect *) *dTHnd, mbarHgt);
-
-	if (! (dIHnd = GetResource('DITL', dlogAskName)))
-		menuError(errGetANDlogItems);
-
-	GetPort(&pOldPort);
-	/* to do: check if theWorld.hasColorQD ... */
-	(void) GetNewDialog(dlogAskName, (Ptr) &dRec, (WindowPtr) 0L);
-	if (ResError() || MemError())
-		menuError(errGetANDialog);
-
-	SetWRefCon((WindowPtr) &dRec, (long) pANR);
-	for (i = 0; i < menuAN_total; i++) {
-		if (! (mhndAskName[i] = NewMenu((dlogAskName + i), "\pPopup")))
-			menuError(errANNewMenu);
-	}
-
-	/* role menu */
-	for (i = 0; i < askn_role_end; i++)
-		AppendMenu(mhndAskName[menuANRole], * (Str255 *) nhRole[i]);
-
-	/* sex menu */
-	for (i = 0; i < 2; i++)
-		AppendMenu(mhndAskName[menuANSex], * (Str255 *) nhSex[i]);
-
-	/* mode menu */
-	for (i = 0; i < 3; i++)
-		AppendMenu(mhndAskName[menuANMode], * (Str255 *) nhMode[i]);
-
-	/* insert the popup menus */
-	for (i = 0; i < menuAN_total; i++)
-		InsertMenu(mhndAskName[i], hierMenu);
-
-	for (i = uitmANOutlineDefault; i <= uitmANMode; i++)
-	{
-		GetDItem((DialogPtr)&dRec, i, &iTyp, &iHnd, &iRct);
-		SetDItem((DialogPtr)&dRec, i, iTyp, (Handle) myUserItemProc, &iRct);
-	}
-	{
-	short kind ; Handle item ; Rect area ;
-	Str32 pName ;
-		pName [ 0 ] = 0 ;
-		if ( plname && plname [ 0 ] ) {
-			strcpy ( ( char * ) pName , plname ) ;
-			c2pstr ( ( char * ) pName ) ;
-		} else {
-			Handle h ;
-			h = GetResource ( 'STR ' , -16096 ) ;
-			if ( ( (Handle) 0 != h ) && ( GetHandleSize ( h ) > 0 ) ) {
-				DetachResource ( h ) ;
-				HLock ( h ) ;
-				if ( * * h > 31 ) {
-					* * h = 31 ;
-				}
-				BlockMove ( * h , pName , * * h + 1 )  ;
-				DisposeHandle ( h ) ;
-			}
-		}
-		if ( pName [ 0 ] ) {
-			GetDItem ( ( WindowPtr ) & dRec , etxtANWho , & kind , & item , & area ) ;
-			SetIText ( item , pName ) ;
-			if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-			    short role = (*pANR).anMenu[anRole];
-			    char suffix = (char) pName[pName[0]],
-			    	*choices = (char *) uitmChar[0],
-				*sfxindx = strchr(choices, suffix);
-
-			    if (sfxindx)
-				role = (short) (sfxindx - choices);
-			    else if (suffix == '@')
-				role = (short) rn2((int) strlen(choices));
-			    (*pANR).anMenu[anRole] = role;
-			}
-		}
-	}
-	SelIText ( ( WindowPtr ) & dRec , etxtANWho , 0 , 32767 ) ;
-
-	SetPort((GrafPtr) &dRec);
-	ShowWindow((WindowPtr) &dRec);
-	SelectWindow((WindowPtr) &dRec);
-
-	iHit = bttnANQuit + 1;
-	while (iHit > bttnANQuit)
-	{
-		/* adjust the askname menus */
-		{
-			static short	checkFeatures = 1;
-			static short	currRole = -1, currSex = -1;
-			unsigned char	anCavePerson[2][16] = {{"\pCaveman"}, {"\pCavewoman"}};
-			unsigned char	anCleric[2][16] = {{"\pPriest"}, {"\pPriestess"}};
-
-			if (checkFeatures)
-			{
-				checkFeatures = 0;
-
-#ifndef TOURIST
-				DisableItem(mhndAskName[menuANRole], (asknTourist + 1));
-#endif
-#ifndef WIZARD
-				DisableItem(mhndAskName[menuANMode], (asknDebug + 1));
-#endif
-			}
-
-			/* check role 1st, valkyrie forces female */
-			if (currRole != (*pANR).anMenu[anRole])
-			{
-				currRole = (*pANR).anMenu[anRole];
-
-				if ((*pANR).anMenu[anRole] == asknValkyrie)
-				{
-					(*pANR).anMenu[anSex] = asknFemale;
-
-					GetDItem((DialogPtr) &dRec, uitmANSex, &iTyp, &iHnd, &iRct);
-					InvalRect(&iRct);
-
-					/* disable male sex option */
-					DisableItem(mhndAskName[menuANSex], (asknMale + 1));
-				}
-				else
-					/* enable male sex option */
-					EnableItem(mhndAskName[menuANSex], (asknMale + 1));
-			}
-
-			if (currSex != (*pANR).anMenu[anSex])
-			{
-				currSex = (*pANR).anMenu[anSex];
-
-				SetItem(mhndAskName[menuANRole], (asknCaveman + 1),
-						* (Str255 *) anCavePerson[currSex]);
-				SetItem(mhndAskName[menuANRole], (asknPriest + 1),
-						* (Str255 *) anCleric[currSex]);
-			}
-		}
-
-		ModalDialog((ModalFilterUPP) 0L, &iHit);
-
-		switch (iHit)
-		{
-		case bttnANPlay:		/* done!  let's play */
-			break;
-
-		case bttnANQuit:
-			(*pANR).anMenu[anMode] = asknQuit;
-			break;
-
-		case uitmANRole:
-		case uitmANSex:
-		case uitmANMode:
-			ndxItem = iHit - uitmANRole;
-
-			/* invert the popup title */
-			GetDItem((DialogPtr) &dRec, (iHit + 3), &iTyp, &iHnd, &iRct2);
-			InvertRect(&iRct2);
-
-			/* get the menu item */
-			GetDItem((DialogPtr) &dRec, iHit, &iTyp, &iHnd, &iRct);
-			pt = * (Point *) &iRct;
-			LocalToGlobal(&pt);
-			if (menuEntry = PopUpMenuSelect(mhndAskName[ndxItem],
-							pt.v, pt.h, ((*pANR).anMenu[ndxItem] + 1)))
-				/* set last item selected */
-				(*pANR).anMenu[ndxItem] = LoWord(menuEntry) - 1;
-
-			InvertRect(&iRct2);
-			InvalRect(&iRct);
-			break;
-
-		case etxtANWho:
-			/* limit the data here to 25 chars */
-			{
-				short beepTEDelete = 1;
-
-				while ((**dRec.textH).teLength > 25)
-				{
-					if (beepTEDelete++ <= 3)
-						SysBeep(3);
-					TEKey('\b', dRec.textH);
-				}
-			}
-
-			/* special case filter (that doesn't plug all the holes!) */
-			if (((**dRec.textH).teLength == 1) && (**((**dRec.textH).hText) < 32))
-				TEKey('\b', dRec.textH);
-
-			/* if no name then disable the play button */
-			GetDItem((DialogPtr) &dRec, bttnANPlay, &iTyp, &iHnd, &iRct);
-			if ((**dRec.textH).teLength > 0)
-				iTyp &= ~itemDisable;
-			else
-				iTyp |= itemDisable;
-			HiliteControl((ControlHandle) iHnd, ((iTyp & itemDisable) ? 255 : 0));
-			SetDItem((DialogPtr) &dRec, bttnANPlay, iTyp, iHnd, &iRct);
-			break;
-		}
-	}
-
-	if ((*pANR).anMenu[anMode] != asknQuit) {
-/*
- * This is a good example of how NOT to get text from a dialog
- *
- *		HLock((Handle) (**dRec.textH).hText);
- *		BlockMove(*((**dRec.textH).hText), &((*pANR).anWho[1]), (**dRec.textH).teLength);
- *		(*pANR).anWho[0] = (**dRec.textH).teLength;
- *		HUnlock((Handle) (**dRec.textH).hText);
- */
-		short kind ; Rect outline ; Handle item ;
-		Str32 pName ;
-
-		GetDItem ( ( WindowPtr ) & dRec , etxtANWho , & kind , & item , & outline ) ;
- 		GetIText ( item , ( * pANR ) . anWho ) ;
-		BlockMove ( pANR -> anWho , pName , pANR -> anWho [ 0 ] + 1 ) ;
-		if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-		    short role = (*pANR).anMenu[anRole];
-		    char suffix = (char) pName[pName[0]],
-			*choices = (char *) uitmChar[0],
-			*sfxindx = strchr(choices, suffix);
-
-		    if (sfxindx)
-			role = (short) (sfxindx - choices);
-		    else if (suffix == '@')
-			role = (short) rn2((int) strlen(choices));
-		    (*pANR).anMenu[anRole] = role;
-		}
-	}
-
-	/* cleanup (in reverse order) and leave */
-	for (i = 0; i < menuAN_total; i++)
-	{
-		DeleteMenu(dlogAskName + i);
-		DisposeMenu(mhndAskName[i]);
-	}
-	CloseDialog((DialogPtr)&dRec);
-	DisposHandle(dRec.items);
-	ReleaseResource(dIHnd);
-	ReleaseResource((Handle) dTHnd);
-	SetPort(pOldPort);
-	DisposeRoutineDescriptor(myUserItemProc);
-}
-
 void
 InitMenuRes()
 {
-static Boolean was_inited = 0 ;
-short			i, j;
-menuListHandle	mlHnd;
-MenuHandle		mHnd;
+	static Boolean was_inited = 0 ;
+	short			i, j;
+	menuListHandle	mlHnd;
+	MenuHandle		mHnd;
 
-	if ( was_inited ) {
-		return ;
-	}
+	if (was_inited)
+		return;
 	was_inited = 1 ;
 
 	mustGetMenuAlerts();
@@ -659,7 +862,6 @@ MenuHandle		mHnd;
 			if (! (mHnd = (MenuHandle) GetMenu((**mlHnd).mref[j].mresID))) {
 			Str31 d ;
 				NumToString ( (**mlHnd).mref[j].mresID , d ) ;
-//				DebugStr ( d ) ;
 				menuError(errGetMenu);
 			}
 
@@ -668,28 +870,28 @@ MenuHandle		mHnd;
 
 			/* expand apple menu */
 			if ((i == listMenubar) && (j == menuApple)) {
-				AddResMenu(mHnd, 'DRVR');
+				AppendResMenu(mHnd, 'DRVR');
 			}
 
 			InsertMenu(mHnd, ((i == listSubmenu) ? hierMenu : 0));
 		}
 	}
-
 	DrawMenuBar();
+	return;
 }
 
 void
 AdjustMenus(short dimMenubar)
 {
-short		newMenubar = mbarRegular;
-WindowPeek	peekWindow = (WindowPeek) FrontWindow();
-short		i;
+	short		newMenubar = mbarRegular;
+	WindowPeek	peekWindow = (WindowPeek) FrontWindow();
+	short		i;
 
-/*
- *	if ( windowprocs != mac_procs ) {
- *		return ;
- *	}
- */
+	/*
+	 *	if ( windowprocs != mac_procs ) {
+	 *		return ;
+	 *	}
+	 */
 	/* determine the new menubar state */
 	if (dimMenubar) {
 		newMenubar = mbarDim;
@@ -717,7 +919,7 @@ short		i;
 		{
 			kAdjustWizardMenu = 0;
 
-			SetItem(MHND_FILE, menuFilePlayMode, "\pDebug");
+			SetMenuItemText(MHND_FILE, menuFilePlayMode, "\pDebug");
 		}
 	}
 #endif
@@ -730,10 +932,10 @@ short		i;
 		{
 			kAdjustWizardMenu = 0;
 
-			SetItem(MHND_FILE, menuFilePlayMode, "\pExplore");
+			SetMenuItemText(MHND_FILE, menuFilePlayMode, "\pExplore");
 
 			for (i = CountMItems(MHND_WIZ); i > menuWizardAttributes; i--)
-				DelMenuItem(MHND_WIZ, i);
+				DeleteMenuItem(MHND_WIZ, i);
 		}
 	}
 
@@ -818,7 +1020,7 @@ DoMenuEvt(long menuEntry)
 		{
 			unsigned char daName[32];
 
-			GetItem(MHND_APPLE, menuItem, * (Str255 *) daName);
+			GetMenuItemText(MHND_APPLE, menuItem, * (Str255 *) daName);
 			(void) OpenDeskAcc(daName);
 		}
 		break;
@@ -853,10 +1055,6 @@ DoMenuEvt(long menuEntry)
 
 		case menuFileEnterExplore:
 			AddToKeyQueue ( 'X' , 1 ) ;
-			break;
-
-		case menuFileOptionEdit:
-			optionEditor();
 			break;
 
 		case menuFileSave:
@@ -897,7 +1095,7 @@ aboutNetHack() {
 	if (theMenubar >= mbarRegular) {
 		(void) doversion();				/* is this necessary? */
 	} else {
-	unsigned char aboutStr[32] = "\pNetHack 3.1.";
+		unsigned char aboutStr[32] = "\pNetHack 3.3.";
 
 		if (PATCHLEVEL > 10) {
 			aboutStr[++aboutStr[0]] = '0'+PATCHLEVEL/10;
@@ -905,16 +1103,16 @@ aboutNetHack() {
 
 		aboutStr[++aboutStr[0]] = '0' + (PATCHLEVEL % 10);
 
-		ParamText(aboutStr, "\p\rnethack-bugs@linc.cis.upenn.edu", "\p", "\p");
+		ParamText(aboutStr, "\p\rdevteam@www.nethack.org", "\p", "\p");
 		(void) Alert(alrtMenuNote, (ModalFilterUPP) 0L);
-		ResetAlrtStage();
+		ResetAlertStage();
 	}
 }
 
 static void
 openMap()
 {
-	WindowPeek	peekWindow = *(WindowPeek*) WindowList;
+	WindowPeek	peekWindow = *(WindowPeek*) LMGetWindowList();
 
 	while (peekWindow && (peekWindow->windowKind != WKND_MAP))
 		peekWindow = peekWindow->nextWindow;
@@ -941,25 +1139,19 @@ closeFrontWindow()
 		WindowGoAway((EventRecord *) 0L, (WindowPtr) peekWindow);
 }
 
-static void
-optionEditor()
-{
-	ParamText("\pSorry, not yet implemented!  Use Options on the Help menu.", "\p", "\p", "\p");
-	(void) Alert(alrtMenuNote, (ModalFilterUPP) 0L);
-	ResetAlrtStage();
-}
 
 static void
-askSave() {
-Boolean doSave = 1 ;
-Boolean doYes = 0 ;
+askSave()
+{
+	Boolean doSave = 1 ;
+	Boolean doYes = 0 ;
 
 	if (theMenubar < mbarRegular) {
 	short	itemHit;
 
 		ParamText("\pReally Save?", "\p", "\p", "\p");
 		itemHit = Alert(alrtMenu_NY, (ModalFilterUPP) 0L);
-		ResetAlrtStage();
+		ResetAlertStage();
 
 		if (itemHit != bttnMenuAlertYes) {
 			doSave = 0 ;
@@ -976,9 +1168,11 @@ Boolean doYes = 0 ;
 }
 
 static void
-askQuit() {
-Boolean doQuit = 1 ;
-Boolean doYes = 0 ;
+askQuit()
+{
+	Boolean doQuit = 1 ;
+	Boolean doYes = 0 ;
+	char *quitinput = "#quit";
 
 	if (theMenubar < mbarRegular) {
 	short	itemHit;
@@ -994,9 +1188,12 @@ Boolean doYes = 0 ;
 		}
 	}
 	if ( doQuit ) {
-		AddToKeyQueue ( 'Q' , 1 ) ;
+		/* KMH -- Ugly kludge */
+		while (*quitinput)
+			AddToKeyQueue(*quitinput++, 1);
 		if ( doYes ) {
 			AddToKeyQueue ( 'y' , 1 ) ;
 		}
 	}
 }
+

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)permonst.h	3.2	94/11/05	*/
+/*	SCCS Id: @(#)permonst.h 3.3	99/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -32,11 +32,11 @@ struct attack {
 
 #define WT_HUMAN	1450
 
-#include "monattk.h"
-#include "monflag.h"
 #ifndef ALIGN_H
 #include "align.h"
 #endif
+#include "monattk.h"
+#include "monflag.h"
 
 struct permonst {
 	const char	*mname;			/* full name */
@@ -57,7 +57,7 @@ struct permonst {
 	uchar		mconveys;		/* conveyed by eating */
 	unsigned long	mflags1,		/* boolean bitflags */
 			mflags2;		/* more boolean bitflags */
-	uchar		mflags3;		/* yet more boolean bitflags */
+	unsigned short	mflags3;		/* yet more boolean bitflags */
 # ifdef TEXTCOLOR
 	uchar		mcolor;			/* color to use */
 # endif
@@ -65,8 +65,12 @@ struct permonst {
 
 extern NEARDATA struct permonst
 		mons[];		/* the master list of monster types */
-extern NEARDATA struct permonst playermon, *uasmon;
-						/* you in the same terms */
+
+#define VERY_SLOW 3
+#define SLOW_SPEED 9
+#define NORMAL_SPEED 12 /* movement rates */
+#define FAST_SPEED 15
+#define VERY_FAST 24
 
 #define NON_PM		PM_PLAYERMON		/* "not a monster" */
 #define LOW_PM		(NON_PM+1)		/* first monster in mons[] */

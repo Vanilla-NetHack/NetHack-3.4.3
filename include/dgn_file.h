@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dgn_file.h	3.2	93/01/17	*/
+/*	SCCS Id: @(#)dgn_file.h 3.3	93/01/17	*/
 /* Copyright (c) 1989 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,10 +55,10 @@ struct tmpbranch {
 /*
  *	Flags that map into the dungeon flags bitfields.
  */
-#define TOWN		  1	/* levels only */
-#define HELLISH		  2
-#define MAZELIKE	  4
-#define ROGUELIKE	  8
+#define TOWN	    1	/* levels only */
+#define HELLISH     2
+#define MAZELIKE    4
+#define ROGUELIKE   8
 
 #define D_ALIGN_NONE	0
 #define D_ALIGN_CHAOTIC	(AM_CHAOTIC << 4)
@@ -71,6 +71,6 @@ struct tmpbranch {
  *	Max number of prototype levels and branches.
  */
 #define LEV_LIMIT	50
-#define BRANCH_LIMIT	20
+#define BRANCH_LIMIT	32
 
 #endif /* DGN_FILE_H */

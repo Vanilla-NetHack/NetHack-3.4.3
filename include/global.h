@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)global.h	3.2	96/06/22	*/
+/*	SCCS Id: @(#)global.h	3.3	99/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,20 +14,20 @@
  * Files expected to exist in the playground directory.
  */
 
-#define RECORD		"record"  /* a file containing list of topscorers */
-#define HELP		"help"	  /* a file containing command descriptions */
-#define SHELP		"hh"		/* abbreviated form of the same */
-#define DEBUGHELP	"wizhelp"	/* a file containing debug mode cmds */
-#define RUMORFILE	"rumors"	/* a file with fortune cookies */
-#define ORACLEFILE	"oracles"	/* a file with oracular information */
-#define DATAFILE	"data"	/* a file giving the meaning of symbols used */
-#define CMDHELPFILE	"cmdhelp"	/* file telling what commands do */
-#define HISTORY		"history"	/* a file giving nethack's history */
-#define LICENSE		"license"	/* file with license information */
-#define OPTIONFILE	"opthelp"	/* a file explaining runtime options */
-#define OPTIONS_USED	"options"	/* compile-time options, for #version */
+#define RECORD	      "record"	/* file containing list of topscorers */
+#define HELP	      "help"	/* file containing command descriptions */
+#define SHELP	      "hh"	/* abbreviated form of the same */
+#define DEBUGHELP     "wizhelp" /* file containing debug mode cmds */
+#define RUMORFILE     "rumors"	/* file with fortune cookies */
+#define ORACLEFILE    "oracles" /* file with oracular information */
+#define DATAFILE      "data"	/* file giving the meaning of symbols used */
+#define CMDHELPFILE   "cmdhelp" /* file telling what commands do */
+#define HISTORY       "history" /* file giving nethack's history */
+#define LICENSE       "license" /* file with license information */
+#define OPTIONFILE    "opthelp" /* file explaining runtime options */
+#define OPTIONS_USED  "options" /* compile-time options, for #version */
 
-#define LEV_EXT	".lev"		/* extension for special level files */
+#define LEV_EXT ".lev"		/* extension for special level files */
 
 
 /* Assorted definitions that may depend on selections in config.h. */
@@ -52,7 +52,9 @@
  * since otherwise comparisons with signed quantities are done incorrectly
  */
 typedef schar	xchar;
+#ifndef SKIP_BOOLEAN
 typedef xchar	boolean;		/* 0 or 1 */
+#endif
 
 #ifndef TRUE		/* defined in some systems' native include files */
 #define TRUE	((boolean)1)
@@ -73,7 +75,7 @@ typedef xchar	boolean;		/* 0 or 1 */
 # define ZEROCOMP	/* zero-run compression of everything - Olaf Seibert */
 #endif
 
-/* #define SPECIALIZATION	/* do "specialized" version of new topology */
+/* #define SPECIALIZATION */	/* do "specialized" version of new topology */
 
 
 #ifdef BITFIELDS
@@ -88,7 +90,9 @@ typedef xchar	boolean;		/* 0 or 1 */
 # define UCHAR_P uchar
 # define XCHAR_P xchar
 # define SHORT_P short
+#ifndef SKIP_BOOLEAN
 # define BOOLEAN_P boolean
+#endif
 # define ALIGNTYP_P aligntyp
 #else
 # ifdef WIDENED_PROTOTYPES
@@ -116,7 +120,7 @@ typedef xchar	boolean;		/* 0 or 1 */
 #define MONST_P struct monst*
 #endif
 
-#define SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
+#define SIZE(x) (int)(sizeof(x) / sizeof(x[0]))
 
 
 /* A limit for some NetHack int variables.  It need not, and for comparable
@@ -131,48 +135,46 @@ typedef xchar	boolean;		/* 0 or 1 */
 #define Getchar pgetchar
 #endif
 
+
+#include "coord.h"
 /*
  * Automatic inclusions for the subsidiary files.
  * Please don't change the order.  It does matter.
  */
 
-#ifndef COORD_H
-#include "coord.h"
-#endif
-
-#if defined(VMS) && !defined(VMSCONF_H)
+#ifdef VMS
 #include "vmsconf.h"
 #endif
 
-#if defined(UNIX) && !defined(UNIXCONF_H)
+#ifdef UNIX
 #include "unixconf.h"
 #endif
 
-#if defined(OS2) && !defined(OS2CONF_H)
+#ifdef OS2
 #include "os2conf.h"
 #endif
 
-#if defined(MSDOS) && !defined(PCCONF_H)
+#ifdef MSDOS
 #include "pcconf.h"
 #endif
 
-#if defined(TOS) && !defined(TOSCONF_H)
+#ifdef TOS
 #include "tosconf.h"
 #endif
 
-#if defined(AMIGA) && !defined(AMICONF_H)
+#ifdef AMIGA
 #include "amiconf.h"
 #endif
 
-#if defined(MAC) && !defined(MACCONF_H)
+#ifdef MAC
 #include "macconf.h"
 #endif
 
-#if defined(__BEOS__) && !defined(BECONF_H)
+#ifdef __BEOS__
 #include "beconf.h"
 #endif
 
-#if defined(WIN32) && !defined(NTCONF_H)
+#ifdef WIN32
 #include "ntconf.h"
 #endif
 
@@ -223,10 +225,6 @@ typedef xchar	boolean;		/* 0 or 1 */
 #endif
 #endif
 
-/*
- * This must follow the include of macconf.h because EXIT_SUCCESS is defined
- * in one of the header files and we get a duplicate define.
- */
 #ifdef VMS
 /* vms_exit() (sys/vms/vmsmisc.c) expects the non-VMS EXIT_xxx values below.
  * these definitions allow all systems to be treated uniformly, provided
@@ -248,10 +246,20 @@ typedef xchar	boolean;		/* 0 or 1 */
 # define EXIT_FAILURE 1
 #endif
 
-#if defined(X11_GRAPHICS) || defined(AMII_GRAPHICS)
+#if defined(X11_GRAPHICS) || defined(AMII_GRAPHICS) || defined(QT_GRAPHICS)
 # ifndef USE_TILES
 #  define USE_TILES		/* glyph2tile[] will be available */
 # endif
+#endif
+
+
+#define Sprintf  (void) sprintf
+#define Strcat   (void) strcat
+#define Strcpy   (void) strcpy
+#ifdef NEED_VARARGS
+#define Vprintf  (void) vprintf
+#define Vfprintf (void) vfprintf
+#define Vsprintf (void) vsprintf
 #endif
 
 
@@ -301,13 +309,13 @@ struct version_info {
 #define QBUFSZ		128	/* for building question text */
 
 #define PL_NSIZ		32	/* name of player, ghost, shopkeeper */
-#define PL_CSIZ		20	/* sizeof pl_character */
+#define PL_CSIZ		32	/* sizeof pl_character */
 #define PL_FSIZ		32	/* fruit name */
 #define PL_PSIZ		63	/* player-given names for pets, other
 				 * monsters, objects */
 
-#define MAXDUNGEON	10	/* current maximum number of dungeons */
-#define MAXLEVEL	30	/* max number of levels in one dungeon */
+#define MAXDUNGEON	16	/* current maximum number of dungeons */
+#define MAXLEVEL	32	/* max number of levels in one dungeon */
 #define MAXSTAIRS	1	/* max # of special stairways in a dungeon */
 #define ALIGNWEIGHT	4	/* generation weight of alignment */
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintext.c	3.2	96/04/05	*/
+/*	SCCS Id: @(#)wintext.c	3.3	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,7 +30,7 @@
 
 #include "hack.h"
 #include "winX.h"
-#include "Window.h"
+#include "xwindow.h"
 
 #ifdef GRAPHIC_TOMBSTONE
 #include <X11/xpm.h>

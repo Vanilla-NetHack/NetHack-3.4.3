@@ -1,5 +1,9 @@
-# NetHack.cnf file for Windows NT
+# Defaults.nh file for Windows NT
 # A '#' at the beginning of a line means the rest of the line is a comment.
+#
+# NetHack 3.3.0 uses Defaults.nh instead of NetHack.cnf
+# because the latter file extension conflicted with the Windows 
+# speed-dial application.
 #
 # To change the configuration, comment out the unwanted lines, and
 # uncomment the configuration you want.
@@ -23,6 +27,8 @@ OPTIONS=IBMgraphics
 #
 OPTIONS=time,rest_on_space,noautopickup,number_pad
 
+# Uncomment this line to prevent the mail daemon from delivering mail to you
+#OPTIONS=!mail
 
 # *** HARD DISK CONFIGURATION ***
 #
@@ -51,9 +57,10 @@ SAVE=;n
 #
 # An example using the IBM graphics character set:
 #DUNGEON=  032 179 196 218 191 192 217 197 193 194 \
-#	   180 195 249 239 239 254 254 249 177 177 \
-#	   060 062 060 062 220 190 035 244 247 249 \
-#	   247 042 042 186 205 046 035 247
+#	   180 195 249 239 239 254 254 240 241 249 \
+#	   177 177 060 062 060 062 220 124 190 035 \
+#	   244 247 249 247 042 042 186 205 046 035 \
+#	   247
 #
 #TRAPS=    094 094 094 094 094 094 094 094 094 094 \
 #	   094 094 094 094 232 232 232 157 094 094 \
@@ -66,9 +73,10 @@ SAVE=;n
 #
 # Some alternatives:
 #DUNGEON=  032 186 205 201 187 200 188 206 202 203 \
-#	   185 204 249 239 239 254 254 249 177 177 \
-#	   060 062 060 062 095 092 035 244 247 249 \
-#	   247 042 042 179 196 046 035 247
+#	   185 204 249 239 239 254 254 240 241 249 \
+#	   177 177 060 062 060 062 095 124 092 035 \
+#	   244 247 249 247 042 042 179 196 046 035 \
+#	   247
 #
 #TRAPS=    094 094 094 094 094 094 094 094 094 094 \
 #	   094 094 094 094 094 034 094 094 094 094 \

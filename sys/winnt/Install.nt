@@ -1,18 +1,16 @@
-         Copyright (c) NetHack Development Team 1990,91,92,93,94,95,1996
+         Copyright (c) NetHack Development Team 1990-1999
          NetHack may be freely redistributed.  See license for details.
          ==============================================================
                     Instructions for compiling and installing
-                 NetHack 3.2 on a Windows NT or Windows 95 system
+             NetHack 3.3 on a Windows NT, 2000, or Windows 9x system
          ==============================================================
-         (or, How to make NetHack 3.2.2 for the WIN32 Console subsystem)
-		      Last revision: October 30, 1996
+         (or, How to make NetHack 3.3.0 for the WIN32 Console subsystem)
+		      Last revision: December 4, 1999
 
 Credit for PC versions of NetHack 3.2 goes to the PC Development team
 of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill
 Dyer, Timo Hakulinen, Yamamoto Keizo, Mike Threepoint, Mike Stephenson,
-Stephen White, Ken Washikita and Janet Walz.  The present ports are based
-on the previous work of Pierre Martineau, Stephen Spackman, Steve Creps,
-Mike Threepoint, Mike Stephenson, Norm Meluch and Don Kneller.
+Stephen White, Ken Washikita and Janet Walz.
 
 Credit for the porting of NetHack to the Win32 Console Subsystem goes to 
 the NT Porting Team started by Michael Allison.
@@ -29,7 +27,7 @@ I.  Dispelling the Myths:
     We have provided a Makefile for building NetHack using the
     following compiler:
 
-        Microsoft Visual C++ V4.x
+        Microsoft Visual C++ V6.0 SP3
 
     The Makefile was created for use with MS NMAKE which is provided with 
     the Microsoft compiler.
@@ -61,7 +59,7 @@ Setting Up
     they are not necessary for building the TTY version for the Win32 
     console subsystem.  You can delete them to save space.  Your distribution 
     may contain a directory win\win32.  This window port variant was a
-    recent addition and was not ready for the 3.2.2 release.  You may 
+    recent addition and was not ready for the 3.3.0 release.  You may 
     ignore it (or contribute to it).
 
     Required Directories for a Win32 Console NetHack:
@@ -108,17 +106,7 @@ Setting Up
 
     You may include all or as few of the special game features as you wish.
 
-    Also check ntconf.h, which should not need much editing. It is there that
-    you may choose to enable color text character support by leaving
-    TERMCOLOR uncommented, or disable color support by commenting out 
-    TERMCOLOR.
-
-5.  If you want to change the high score list behavior, examine the top of
-    topten.c, in the src directory.  You may want to change the definitions of
-    PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN to 51 and ENTRYMAX to
-    50 to keep the size of the score list down.
-
-6.  Go to the src directory and edit the top of your Makefile.
+5.  Go to the src directory and edit the top of your Makefile.
     Change the setting of (GAMEDIR) to reflect the directory where
     you want NetHack to be installed.  
 
@@ -139,7 +127,7 @@ Setting Up
 
 Compiling
 
-7.  Now that everything is set up, and with your current directory set
+6.  Now that everything is set up, and with your current directory set
     to src, run "nmake install".
 
     If you get any errors along the way  then something has not been set 
@@ -154,18 +142,19 @@ Compiling
 
 Running NetHack
 
-8.  Make sure all of the support files -- Guidebook.txt, license, logfile,
-    NetHack.cnf, NetHack.exe, nhdat, record, and recover.exe -- were copied 
-    to the game directory.  If not, move them there yourself.  NetHack.cnf 
-    is distributed as sys/winnt/winnt.cnf.
+7.  Make sure all of the support files -- Guidebook.txt, license, logfile,
+    Defaults.nh, NetHack.exe, nhdat, record, and recover.exe 
+    -- were copied to the game directory.  If not, move them there yourself.  
+    Defaults.nh is distributed as sys/winnt/winnt.cnf, but
+    the Makefile should take care of moving it and renaming it correctly.
 
-    Edit NetHack.cnf to reflect your particular setup and personal 
+    Edit Defaults.nh to reflect your particular setup and personal 
     preferences, by following the comments.  With this release, HACKDIR
     defaults to the same directory as that where the NetHack.exe executable
-    resides.  You only need to set HACKDIR in NetHack.cnf if, for some 
-    reason, you wish to override that.
+    resides.  You only need to set HACKDIR in Defaults.nh if, 
+    for some reason, you wish to override that.
   
-9a. Running from the command prompt:
+8a. Running from the command prompt:
 
     If you add the directory containing the NetHack executable
     to your PATH, you can just type "nethack" or "nethack -umike"
@@ -174,19 +163,18 @@ Running NetHack
     drive and directory your NetHack executable resides in) each time.
 
 
-9b. Running from a Windows shortcut (win95 or NT4.x) or from the 
-    Program Manager (NT3.x):
+8b. Running from a Windows shortcut (win95 or NT4.x)
 
     If you will be running it by launching it from program manager
     or from a shortcut, just use the following information when 
     setting up the icon or shortcut.
 
-         Description      :  NetHack 3.2.2 
+         Description      :  NetHack 3.3.0 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
 
    (changing the directory to the appropriate one of course)
 
-10. Play NetHack.  If it works, you're done!
+9. Play NetHack.  If it works, you're done!
 
 Notes:
 
@@ -203,5 +191,8 @@ Notes:
 2)  The executable produced by this port is a 32-bit, flat-address space, 
     non-overlayed .exe file, which should run on any true Win32 environment. 
 
-3)  If you have comments or suggestions, feel free to drop any one of
-    us a line c/o nethack-bugs@linc.cis.upenn.edu.
+3)  If you encounter a bug and wish to report it, please send e-mail to:
+        nethack-bugs@nethack.org
+
+    If you have any comments or suggestions, feel free to drop us a line c/o:
+        DevTeam@nethack.org

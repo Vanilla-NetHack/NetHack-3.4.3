@@ -1,7 +1,7 @@
 
 
 
-NETHACK(6)                    1996                     NETHACK(6)
+NETHACK(6)                    1999                     NETHACK(6)
 
 
 
@@ -9,10 +9,10 @@ NAME
      nethack - Exploring The Mazes of Menace
 
 SYNOPSIS
-     nethack [ -d directory ] [ -n ] [ -[ABCEHKPRSTVW@] ] [ -[DX]
-     ] [ -u playername ] [ -dec ] [ -ibm ]
-     nethack [ -d directory ] -s [ -v ]  [  -[ABCEHKPRSTVW]  ]  [
-     playernames ]
+     nethack [ -d directory ] [ -n ] [ -p profession (role)  ]  [
+     -r race ] [ -[DX] ] [ -u playername ] [ -dec ] [ -ibm ]
+     nethack [ -d directory ] -s [ -v ] [ -p profession (role)  ]
+     [ -r race ] [ playernames ]
 
 DESCRIPTION
      NetHack is a display oriented Dungeons & Dragons(tm) -  like
@@ -50,48 +50,65 @@ DESCRIPTION
      vided  purely for convenience on systems supporting multiple
      types of terminals.)
 
+     Because the option list can be very long (particularly  when
+     specifying   graphics   characters),  options  may  also  be
+     included in a configuration file.  The default is located in
+     your  home  directory  and named .nethackrc on Unix systems.
+     On other systems, the  default  may  be  different,  usually
+     NetHack.cnf.   On  DOS the name is defaults.nh, while on the
+     Macintosh  or   BeOS,   it   is   NetHack   Defaults.    The
+
+
+
+November                 Last change: 17                        1
+
+
+
+
+
+
+NETHACK(6)                    1999                     NETHACK(6)
+
+
+
+     configuration  file's  location  may be specified by setting
+     NETHACKOPTIONS to a string consisting of an @ character fol-
+     lowed by the filename.
+
      The -u playername option supplies the answer to the question
-     "Who  are you?".  It overrides any name from NETHACKOPTIONS,
-     HACKOPTIONS, USER, LOGNAME, or getlogin(), which will other-
-     wise  be tried in order.  If none of these provides a useful
-     name, the player will be asked for one.   Player  names  (in
-     conjunction  with  uids) are used to identify save files, so
-     you can have several  saved  games  under  different  names.
-
-
-
-March                    Last change: 10                        1
-
-
-
-
-
-
-NETHACK(6)                    1996                     NETHACK(6)
-
-
-
+     "Who  are  you?".  It overrides any name from the options or
+     configuration file, USER, LOGNAME, or getlogin(), which will
+     otherwise  be  tried  in order.  If none of these provides a
+     useful name, the player will be asked for one.  Player names
+     (in  conjunction with uids) are used to identify save files,
+     so you can have several saved games under  different  names.
      Conversely,  you  must  use  the  appropriate player name to
      restore a saved game.
 
-     A playername suffix or a separate option consisting  of  one
-     of -A -B -C -E -H -K -P -R -S -T -V -W can be used to deter-
-     mine the character role.  Likewise, -@ can be used to expli-
-     citly  request that a random role be chosen.  It may need to
-     be quoted with a backslash (-\@) if @ is the "kill"  charac-
-     ter  (see  "stty") for the terminal, in order to prevent the
-     current input line from being cleared.
+     A playername suffix or a separate option, -p profession  can
+     be  used  to  determine the character role.  You can specify
+     either the male or female name for the  character  role,  or
+     the  first  three characters of the role as an abbreviation.
+     -p @ has been retained to explicitly request that  a  random
+     role  be  chosen.  It may need to be quoted with a backslash
+     (\@) if @ is the "kill" character (see "stty") for the  ter-
+     minal, in order to prevent the current input line from being
+     cleared.
+
+     Likewise, -r race can be used to explicitly request  that  a
+     race be chosen.
+
+     Leaving out  either  of  these  will  result  in  you  being
+     prompted during the game startup for the information.
 
      The -s option alone will print out the list of  your  scores
      on the current version.  An immediately following -v reports
      on all versions present in the score file.  The -s may  also
-     be followed by arguments -A -B -C -E -H -K -P -R -S -T -V -W
-     to  print   the   scores   of   Archeologists,   Barbarians,
-     Cave(wo)men, Elves, Healers, Knights, Priest(esse)s, Rogues,
-     Samurai, Tourists, Valkyries, or Wizards.  It  may  also  be
-     followed  by one or more player names to print the scores of
-     the players mentioned, by 'all' to print out all scores,  or
-     by a number to print that many top scores.
+     be  followed  by  arguments -p and -r to print the scores of
+     particular roles and races only.  It may also be followed by
+     one  or more player names to print the scores of the players
+     mentioned, by 'all' to print out all scores, or by a  number
+     to print that many top scores.
 
      The -n option suppresses printing of any news from the  game
      administrator.
@@ -106,6 +123,20 @@ NETHACK(6)                    1996                     NETHACK(6)
      the  directory  specified  by  the game administrator during
      compilation   (usually   /usr/games/lib/nethackdir).    This
      option  is  usually  only  useful to the game administrator.
+
+
+
+November                 Last change: 17                        2
+
+
+
+
+
+
+NETHACK(6)                    1999                     NETHACK(6)
+
+
+
      The playground must contain several auxiliary files such  as
      help files, the list of top scorers, and a subdirectory save
      where games are saved.
@@ -123,20 +154,6 @@ AUTHORS
      with the help of many strange  people  who  reside  in  that
      place  between  the  worlds,  the  Usenet Zone.  A number of
      these miscreants are immortalized in the historical roll  of
-
-
-
-March                    Last change: 10                        2
-
-
-
-
-
-
-NETHACK(6)                    1996                     NETHACK(6)
-
-
-
      dishonor and various other places.
 
      The resulting mess is now  called  NetHack,  to  denote  its
@@ -172,6 +189,20 @@ FILES
 
 ENVIRONMENT
      USER or LOGNAME      Your login name.
+
+
+
+November                 Last change: 17                        3
+
+
+
+
+
+
+NETHACK(6)                    1999                     NETHACK(6)
+
+
+
      HOME                 Your home directory.
      SHELL                Your shell.
      TERM                 The type of your terminal.
@@ -187,21 +218,6 @@ ENVIRONMENT
 
 SEE ALSO
      dgn_comp(6), lev_comp(6), recover(6)
-
-
-
-
-
-March                    Last change: 10                        3
-
-
-
-
-
-
-NETHACK(6)                    1996                     NETHACK(6)
-
-
 
 BUGS
      Probably infinite.
@@ -242,23 +258,7 @@ BUGS
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-March                    Last change: 10                        4
+November                 Last change: 17                        4
 
 
 

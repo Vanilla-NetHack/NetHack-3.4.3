@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsfiles.c	3.2	95/11/08	*/
+/*	SCCS Id: @(#)vmsfiles.c 3.3	1999/08/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -257,7 +257,7 @@ int c__translate(code)
 #undef CASE1
 #undef CASE2
 
-static char basename[NAM$C_MAXRSS+1];
+static char base_name[NAM$C_MAXRSS+1];
 
 /* return a copy of the 'base' portion of a filename */
 char *
@@ -281,7 +281,7 @@ const char *name;
     len = (name_p && name_p > name) ? name_p - name : strlen(name);
 
     /* return a lowercase copy of the name in a private static buffer */
-    base = strncpy(basename, name, len);
+    base = strncpy(base_name, name, len);
     base[len] = '\0';
     /* we don't use lcase() so that utilities won't need hacklib.c */
     for (base_p = base; base_p < &base[len]; base_p++)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.2	96/07/15	*/
+/*	SCCS Id: @(#)allmain.c	3.3	1999/11/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,7 +11,7 @@
 #endif
 
 #ifdef POSITIONBAR
-STATIC_DCL void NDECL(do_postionbar);
+STATIC_DCL void NDECL(do_positionbar);
 #endif
 
 #ifdef OVL0
@@ -23,8 +23,8 @@ moveloop()
 	char ch;
 	int abort_lev;
 #endif
-	int moverate = 0;
-	boolean didmove = 0;
+	int moveamt = 0, wtcap = 0, change = 0;
+	boolean didmove = FALSE, monscanmove = FALSE;
 
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
@@ -62,63 +62,87 @@ moveloop()
 #ifdef CLIPPING
 		cliparound(u.ux, u.uy);
 #endif
-#if defined(MAC68K) && defined(MAC_MPW32) && !defined(MODEL_FAR)
-		UnloadAllSegments();  /* Marks non-resident segments as purgeable */
-#endif
 		get_nh_event();
 #ifdef POSITIONBAR
 		do_positionbar();
 #endif
 
 		didmove = flags.move;
-		if(flags.move) {	/* actual time passed */
-		    int oldmtimedone;
-		    int wtcap;
+		if(didmove) {
+		    /* actual time passed */
+		    if (youmonst.movement >= NORMAL_SPEED) {
+			youmonst.movement -= NORMAL_SPEED;
+			++moves;
+		    }
 
 		    if (u.utotype) deferred_goto();
 		    wtcap = encumber_msg();
-		    oldmtimedone = u.mtimedone;
 		    dosounds();
 
-		    if(moverate <= 0) {
-			/* calculate how much time passed. */
-			int moveamt = 0;
-			if(Fast & ~INTRINSIC) moveamt = 6;
-			else if(Fast) moveamt = 8;
-			else moveamt = 12;
+		    flags.mon_moving = TRUE;
+		    do {
+			monscanmove = movemon();
+			if (youmonst.movement > NORMAL_SPEED)
+			    break;	/* it's now your turn */
+		    } while (monscanmove);
+		    flags.mon_moving = FALSE;
 
-			switch(wtcap) {
-			case UNENCUMBERED: break;
-			case SLT_ENCUMBER: moveamt = (moveamt * 4) / 3; break;
-			case MOD_ENCUMBER: moveamt *= 2; break;
-			case HVY_ENCUMBER: moveamt *= 4; break;
-			default: moveamt *= 12; break;
-			}
-			moverate += moveamt;
-			settrack();
-		    }
+		    if (!monscanmove && youmonst.movement < NORMAL_SPEED) {
+			/* both you and the monsters are out of steam this round */
+			struct monst *mtmp;
+			mcalcdistress();	/* adjust monsters' trap, blind, etc */
 
-		    if(moverate > 0) {
-			flags.mon_moving = TRUE;
-			movemon();
-			flags.mon_moving = FALSE;
-			/* a monster may have levteleported player -dlc */
-			if (u.utotype) deferred_goto();
+			/* reallocate movement rations to monsters */
+			for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			    mcalcmove(mtmp);
+
 			if(!rn2(u.uevent.udemigod ? 25 :
-				(depth(&u.uz) >
-				 depth(&stronghold_level))
-				? 50 : 70))
-			    (void) makemon((struct permonst *)0, 0, 0,
-						NO_MM_FLAGS);
-			++monstermoves;
-			moverate -= 12;
-		    }
+				(depth(&u.uz) > depth(&stronghold_level)) ? 50 : 70))
+			    (void) makemon((struct permonst *)0, 0, 0, NO_MM_FLAGS);
+
+			/* calculate how much time passed. */
+#ifdef STEED
+		      if (u.usteed && flags.mv) {
+			/* your speed doesn't augment steed's speed */
+			moveamt = u.usteed->movement;
+		      } else {
+#endif
+			moveamt = youmonst.data->mmove;
+
+			if (Very_fast) {	/* speed boots or potion */
+			    /* average movement is 1.67 times normal */
+			    moveamt += NORMAL_SPEED / 2;
+			    if (rn2(3) == 0) moveamt += NORMAL_SPEED / 2;
+			} else if (Fast) {
+			    /* average movement is 1.33 times normal */
+			    if (rn2(3) != 0) moveamt += NORMAL_SPEED / 2;
+			}
+#ifdef STEED
+		      }
+#endif
+			switch (wtcap) {
+			case UNENCUMBERED: break;
+			case SLT_ENCUMBER: moveamt -= (moveamt / 4); break;
+			case MOD_ENCUMBER: moveamt -= (moveamt / 2); break;
+			case HVY_ENCUMBER: moveamt -= ((moveamt * 3) / 4); break;
+			case EXT_ENCUMBER: moveamt -= ((moveamt * 7) / 8); break;
+			default: break;
+			}
+
+			youmonst.movement += moveamt;
+			if (youmonst.movement < 0) youmonst.movement = 0;
+			settrack();
+
+			monstermoves++;
+		    }			
+
 		    if(Glib) glibr();
 		    nh_timeout();
-		    ++moves;
+		    run_regions();
+
 		    if (u.ublesscnt)  u.ublesscnt--;
 		    if(flags.time && !flags.run)
-			flags.botl = 1;
+			    flags.botl = 1;
 
 		    /* One possible result of prayer is healing.  Whether or
 		     * not you get healed depends on your current hit points.
@@ -130,34 +154,32 @@ moveloop()
 		    if (u.uinvulnerable) {
 			/* for the moment at least, you're in tiptop shape */
 			wtcap = UNENCUMBERED;
-			moverate = 0;
 		    } else if (Upolyd && u.mh < u.mhmax) {
-			if (u.mh < 1) {
-			    rehumanize();
-			    moverate = 0;
-			} else if (Regeneration ||
-				 (wtcap < MOD_ENCUMBER && !(moves%20))) {
+			if (u.mh < 1)
+			   rehumanize();
+			else if (Regeneration ||
+				    (wtcap < MOD_ENCUMBER && !(moves%20))) {
 			    flags.botl = 1;
 			    u.mh++;
 			}
-		    } else if (u.uhp < u.uhpmax) {
-			if(u.ulevel > 9) {
-			    int heal;
+		    } else if (u.uhp < u.uhpmax &&
+			 (wtcap < MOD_ENCUMBER || !flags.mv || Regeneration)) {
+			if (u.ulevel > 9 && !(moves % 3)) {
+			    int heal, Con = (int) ACURR(A_CON);
 
-			    if(HRegeneration ||
-			       (!(moves%3) &&
-				(wtcap < MOD_ENCUMBER || !flags.mv))) {
-				flags.botl = 1;
-				if (ACURR(A_CON) <= 12) heal = 1;
-				else heal = rnd((int) ACURR(A_CON)-12);
+			    if (Con <= 12) {
+				heal = 1;
+			    } else {
+				heal = rnd(Con);
 				if (heal > u.ulevel-9) heal = u.ulevel-9;
-				u.uhp += heal;
-				if(u.uhp > u.uhpmax)
-				    u.uhp = u.uhpmax;
 			    }
-			} else if(HRegeneration ||
-				  ((wtcap < MOD_ENCUMBER || !flags.mv) &&
-				   (!(moves%((MAXULEV+12)/(u.ulevel+2)+1))))) {
+			    flags.botl = 1;
+			    u.uhp += heal;
+			    if(u.uhp > u.uhpmax)
+				u.uhp = u.uhpmax;
+			} else if (Regeneration ||
+			     (u.ulevel <= 9 &&
+			      !(moves % ((MAXULEV+12) / (u.ulevel+2) + 1)))) {
 			    flags.botl = 1;
 			    u.uhp++;
 			}
@@ -180,10 +202,9 @@ moveloop()
 		    if ((u.uen < u.uenmax) &&
 			((wtcap < MOD_ENCUMBER &&
 			  (!(moves%((MAXULEV + 8 - u.ulevel) *
-				    (Role_is('W') ? 3 : 4) / 6))))
+				    (Role_if(PM_WIZARD) ? 3 : 4) / 6))))
 			 || Energy_regeneration)) {
-			u.uen +=
-			    rn1((int)(ACURR(A_WIS) + ACURR(A_INT)) / 10 + 1,1);
+			u.uen += rn1((int)(ACURR(A_WIS) + ACURR(A_INT)) / 15 + 1,1);
 			if (u.uen > u.uenmax)  u.uen = u.uenmax;
 			flags.botl = 1;
 		    }
@@ -196,37 +217,33 @@ moveloop()
 			    tele();
 #ifdef REDO
 			    if (u.ux != old_ux || u.uy != old_uy) {
-				/* clear doagain keystrokes */
+			    	/* clear doagain keystrokes */
 				pushch(0);
 				savech(0);
 			    }
 #endif
 			}
-			if(Polymorph && !rn2(100)) {
+			if(Polymorph && !rn2(100))
+			    change = 1;
+			else if (u.ulycn >= LOW_PM && !rn2(80 - (20 * night())))
+			    change = 2;
+			if (change && !Unchanging) {
 			    if (multi >= 0) {
 				if (occupation)
 				    stop_occupation();
 				else
 				    nomul(0);
+				if (change == 1) polyself();
+				else you_were();
+				change = 0;
 			    }
-			    polyself();
-			    moverate = 0;
-			} else if (u.ulycn >= LOW_PM &&
-				   !rn2(80 - (20 * night()))) {
-			    if (multi >= 0) {
-				if (occupation)
-				    stop_occupation();
-				else
-				    nomul(0);
-			    }
-			    you_were();
-			    moverate = 0;
 			}
 		    }
 
 		    if(Searching && multi >= 0) (void) dosearch0(1);
 		    do_storms();
 		    gethungry();
+		    age_spells();
 		    exerchk();
 		    invault();
 		    if (u.uhave.amulet) amulet();
@@ -243,31 +260,27 @@ moveloop()
 		    /* underwater and waterlevel vision are done here */
 		    if (Is_waterlevel(&u.uz))
 			movebubbles();
-		    else if (Underwater) under_water(0);
+		    else if (Underwater)
+		    	under_water(0);
 		    /* vision while buried done here */
 		    else if (u.uburied) under_ground(0);
-
-		    if ((oldmtimedone && !u.mtimedone) ||
-			(!oldmtimedone && u.mtimedone)) moverate = 0;
 		}
 		if(multi < 0) {
-			if (++multi == 0)	/* finished yet? */
-				unmul((char *)0);
+		    if (++multi == 0)	/* finished yet? */
+			unmul((char *)0);
 		}
 
 		find_ac();
 		if(!flags.mv || Blind) {
 		    /* redo monsters if hallu or wearing a helm of telepathy */
-		    if (Hallucination ||
-			(HTelepat & (WORN_HELMET|WORN_AMUL|W_ART)))
+		    if (Hallucination) {	/* update screen randomly */
 			see_monsters();
-
-		    /* redo objects if hallucinating */
-		    if (Hallucination) see_objects();
-
-		    /* update swallowed display */
-		    if (Hallucination && u.uswallow) swallowed(0);
-
+			see_objects();
+			see_traps();
+			if (u.uswallow) swallowed(0);
+		    } else if (Unblind_telepat) {
+			see_monsters();
+		    }
 		    if (vision_full_recalc) vision_recalc(0);	/* vision! */
 		}
 		if(flags.botl || flags.botlx) bot();
@@ -276,37 +289,37 @@ moveloop()
 
 		if(multi >= 0 && occupation) {
 #ifdef MICRO
-			abort_lev = 0;
-			if (kbhit()) {
-				if ((ch = Getchar()) == ABORT)
-					abort_lev++;
+		    abort_lev = 0;
+		    if (kbhit()) {
+			if ((ch = Getchar()) == ABORT)
+			    abort_lev++;
 # ifdef REDO
-				else
-					pushch(ch);
+			else
+			    pushch(ch);
 # endif /* REDO */
-			}
-			if (!abort_lev && (*occupation)() == 0)
+		    }
+		    if (!abort_lev && (*occupation)() == 0)
 #else
-			if ((*occupation)() == 0)
+		    if ((*occupation)() == 0)
 #endif
-				occupation = 0;
-			if(
+			occupation = 0;
+		    if(
 #ifdef MICRO
 			   abort_lev ||
 #endif
 			   monster_nearby()) {
-				stop_occupation();
-				reset_eat();
-			}
+			stop_occupation();
+			reset_eat();
+		    }
 #ifdef MICRO
-			if (!(++occtime % 7))
-				display_nhwindow(WIN_MAP, FALSE);
+		    if (!(++occtime % 7))
+			display_nhwindow(WIN_MAP, FALSE);
 #endif
-			continue;
+		    continue;
 		}
 
 		if ((u.uhave.amulet || Clairvoyant) &&
-		    !(In_endgame(&u.uz) || (HClairvoyant & I_BLOCKED)) &&
+		    !In_endgame(&u.uz) && !BClairvoyant &&
 		    !(moves % 15) && !rn2(2))
 			do_vicinity_map();
 
@@ -333,31 +346,37 @@ moveloop()
 #endif
 
 		u.umoved = FALSE;
-		if(!didmove || moverate <= 0) {
-		    if(multi > 0) {
-			lookaround();
-			if(!multi)	/* lookaround may clear multi */
-				flags.move = 0;
-			else if(flags.mv) {
-				if(multi < COLNO && !--multi)
-					flags.mv = flags.run = 0;
-				domove();
-			} else {
-				--multi;
-				rhack(save_cm);
-			}
-		    } else if(multi == 0) {
-#ifdef MAIL
-			ckmailstatus();
-#endif
-			rhack((char *)0);
+
+		if (multi > 0) {
+		    lookaround();
+		    if (!multi) {
+			/* lookaround may clear multi */
+			flags.move = 0;
+			continue;
 		    }
-		    /* !flags.move here: multiple movement command stopped */
-		    if (flags.time && (!flags.move || !flags.mv)) flags.botl=1;
+		    if (flags.mv) {
+			if(multi < COLNO && !--multi)
+			    flags.mv = flags.run = 0;
+			domove();
+		    } else {
+			--multi;
+			rhack(save_cm);
+		    }
+		} else if (multi == 0) {
+#ifdef MAIL
+		    ckmailstatus();
+#endif
+		    rhack((char *)0);
 		}
+		if (u.utotype)		/* change dungeon level */
+		    deferred_goto();	/* after rhack() */
+		/* !flags.move here: multiple movement command stopped */
+		else if (flags.time && (!flags.move || !flags.mv))
+		    flags.botl = 1;
+
 		if (vision_full_recalc) vision_recalc(0);	/* vision! */
-		if(multi && multi%7 == 0)
-			display_nhwindow(WIN_MAP, FALSE);
+		if (multi && multi%7 == 0)
+		    display_nhwindow(WIN_MAP, FALSE);
 	}
 }
 
@@ -421,18 +440,14 @@ newgame()
 	gameDiskPrompt();
 #endif
 
-	fobj = invent = level.buriedobjlist = migrating_objs = (struct obj *)0;
-	fmon = migrating_mons = (struct monst *)0;
-	ftrap = 0;
 	flags.ident = 1;
-
-	if(wiz1_level.dlevel == 0) init_dungeons();
 
 	for (i = 0; i < NUMMONS; i++)
 		mvitals[i].mvflags = mons[i].geno & G_NOCORPSE;
 
 	init_objects();		/* must be before u_init() */
 	u_init();
+	init_dungeons();	/* must be after u_init() */
 	init_artifacts();	/* must be after u_init() */
 
 #ifndef NO_SIGNAL
@@ -442,19 +457,12 @@ newgame()
 	if(iflags.news) display_file(NEWS, FALSE);
 #endif
 	load_qtlist();	/* load up the quest text info */
-	quest_init();
+/*	quest_init();*/	/* Now part of role_init() */
 
 	mklev();
 	u_on_upstairs();
-#ifdef CLIPPING
-	/* pline() (hence You()) will call flush_screen() if u.ux is set,
-	 * which will be confused if clipping is not set up.
-	 * this is the equivalent of the restgamestate() call for new games.
-	 */
-	cliparound(u.ux, u.uy);
-#endif
-	check_special_room(FALSE);
 	vision_reset();		/* set up internals for level (after mklev) */
+	check_special_room(FALSE);
 
 	flags.botlx = 1;
 
@@ -466,7 +474,7 @@ newgame()
 	(void) makedog();
 	docrt();
 
-	if(flags.legacy && moves == 1) {
+	if (flags.legacy) {
 		flush_screen(1);
 		com_pager(1);
 	}
@@ -475,10 +483,44 @@ newgame()
 	save_currentstate();
 #endif
 	program_state.something_worth_saving++;	/* useful data now exists */
+
+	/* Success! */
+	welcome(TRUE);
 	return;
 }
 
+/* show "welcome [back] to nethack" message at program startup */
+void
+welcome(new_game)
+boolean new_game;	/* false => restoring an old game */
+{
+    char buf[BUFSZ];
+    boolean currentgend = Upolyd ? u.mfemale : flags.female;
+
+    /*
+     * The "welcome back" message always describes your innate form
+     * even when polymorphed or wearing a helm of opposite alignment.
+     * Alignment is shown unconditionally for new games; for restores
+     * it's only shown if it has changed from its original value.
+     * Sex is shown for new games except when it is redundant; for
+     * restores it's only shown if different from its original value.
+     */
+    *buf = '\0';
+    if (new_game || u.ualignbase[1] != u.ualignbase[0])
+	Sprintf(eos(buf), " %s", align_str(u.ualignbase[1]));
+    if (!urole.name.f &&
+	    (new_game ? (urole.allow & ROLE_GENDMASK) == (ROLE_MALE|ROLE_FEMALE) :
+	     currentgend != flags.initgend))
+	Sprintf(eos(buf), " %s", genders[currentgend].adj);
+
+    pline(new_game ? "%s %s, welcome to NetHack!  You are a%s %s %s."
+		   : "%s %s, the%s %s %s, welcome back to NetHack!",
+	  Hello(), plname, buf, urace.adj,
+	  (currentgend && urole.name.f) ? urole.name.f : urole.name.m);
+}
+
 #ifdef POSITIONBAR
+STATIC_DCL void
 do_positionbar()
 {
 	static char pbar[COLNO];

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monsym.h	3.2	92/10/18	*/
+/*	SCCS Id: @(#)monsym.h	3.3	92/10/18	*/
 /*	Monster symbols and creation information rev 1.0	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -44,7 +44,6 @@
 #define S_FUNGUS	32
 #define S_GNOME		33
 #define S_GIANT		34
-#define S_STALKER	35
 #define S_JABBERWOCK	36
 #define S_KOP		37
 #define S_LICH		38
@@ -117,7 +116,6 @@ extern uchar monsyms[MAXMCLASSES];		/* current class symbols */
 #define DEF_FUNGUS	'F'
 #define DEF_GNOME	'G'
 #define DEF_GIANT	'H'
-#define DEF_STALKER	'I'
 #define DEF_JABBERWOCK	'J'
 #define DEF_KOP		'K'
 #define DEF_LICH	'L'
@@ -142,6 +140,7 @@ extern uchar monsyms[MAXMCLASSES];		/* current class symbols */
 #define DEF_EEL		';'
 #define DEF_LIZARD	':'
 
+#define DEF_INVISIBLE	'I'
 #define DEF_WORM_TAIL	'~'
 #define DEF_MIMIC_DEF	']'
 

@@ -59,7 +59,8 @@ NetHack*message*translations:	<KeyPress>: input()
 ! It is not guaranteed that the window manager will honor the icon selection.
 !NetHack*icon: nh56
 !
-! If True, a popup for y/n questions is _not_ used.
+! If True, a popup for single character prompts such as y/n questions is _not_
+! used.
 !NetHack*slow: True
 !
 ! The number of lines the message window will show without scrolling.
@@ -117,6 +118,18 @@ NetHack*player_selection*quit.foreground:	blue
 NetHack*player_selection*Command.borderColor:	red
 NetHack*player_selection*Command.foreground:	red
 NetHack*player_selection*quit.accelerators: #override\n\
+				<Key>Escape:	set() notify() unset()
+
+NetHack*race_selection*random.borderColor:	blue
+NetHack*race_selection*random.borderWidth:	2
+NetHack*race_selection*random.foreground:	blue
+NetHack*race_selection*random.accelerators: #override\n\
+				<Key>Return:	set() notify() unset()
+NetHack*race_selection*quit.borderColor:	blue
+NetHack*race_selection*quit.foreground:		blue
+NetHack*race_selection*Command.borderColor:	red
+NetHack*race_selection*Command.foreground:	red
+NetHack*race_selection*quit.accelerators: #override\n\
 				<Key>Escape:	set() notify() unset()
 
 NetHack*extended_commands*dismiss.borderColor:	blue

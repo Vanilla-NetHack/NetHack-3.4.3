@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Tourist.des	3.2	92/09/26
+#	SCCS Id: @(#)Tourist.des	3.3	92/09/26
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1991,92 by M. Stephenson, P. Winner
 # NetHack may be freely redistributed.  See license for details.
@@ -8,7 +8,7 @@
 #	Here you meet your (besieged) class leader, Twoflower
 #	and receive your quest assignment.
 #
-MAZE: "T-start",' '
+MAZE: "Tou-strt",' '
 FLAGS: noteleport,hardfloor
 GEOMETRY:center,center
 MAP
@@ -136,7 +136,7 @@ TRAP:random,random
 #	further towards your assigned quest.
 #
 
-MAZE: "T-locate",' '
+MAZE: "Tou-loca",' '
 FLAGS: hardfloor
 GEOMETRY:center,center
 MAP
@@ -297,7 +297,7 @@ MONSTER:'s',random,random
 #	been assigned to retrieve.
 #
 
-MAZE: "T-goal", ' '
+MAZE: "Tou-goal", ' '
 GEOMETRY:center,center
 MAP
 ----------------------------------------------------------------------------
@@ -458,7 +458,7 @@ WALLIFY
 #	levels as defined above.
 #
 
-MAZE: "T-filla" , ' '
+MAZE: "Tou-fila" , ' '
 INIT_MAP: '.' , ' ', true, true, random, true
 NOMAP
 #
@@ -486,7 +486,7 @@ MONSTER: '@', "soldier", random, hostile
 MONSTER: 'H', random, random, hostile
 MONSTER: 'C', random, random, hostile
 
-MAZE: "T-fillb" , ' '
+MAZE: "Tou-filb" , ' '
 INIT_MAP: '.' , ' ', true, true, random, true
 NOMAP
 #

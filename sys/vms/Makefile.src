@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for building nethack itself.
-#	SCCS Id: @(#)Makefile.src	3.2	96/10/20
+#	SCCS Id: @(#)Makefile.src	3.3	1999/08/29
 
 #  Copy this file to [.src]Makefile. and then edit it as needed.
 #  If you changed CC or CFLAGS, make similar changes in [.util]Makefile.
@@ -91,10 +91,14 @@ RANDOBJ = random.obj
 # and config.h
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
-VERSION  =3.2
-PATCHLVL =2
+VERSION  =3.3
+PATCHLVL =0
 
 MAKEDEFS = $(UTL)makedefs.exe;
+
+# timestamp files to reduce `make' overhead and shorten .obj dependency lists
+CONFIG_H = $(SRC)config.h-t
+HACK_H	= $(SRC)hack.h-t
 
 # all .c that are part of the main NetHack program and are not operating- or
 # windowing-system specific
@@ -107,9 +111,9 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
-	   priest.c quest.c questpgr.c read.c rect.c restore.c rip.c rnd.c \
-	   rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c spell.c \
-	   steal.c teleport.c timeout.c topten.c track.c trap.c u_init.c \
+	   priest.c quest.c questpgr.c read.c rect.c region.c restore.c rip.c rnd.c \
+	   role.c rumors.c save.c shk.c shknam.c sit.c sounds.c sp_lev.c spell.c \
+	   steal.c steed.c teleport.c timeout.c topten.c track.c trap.c u_init.c \
 	   uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
 	   windows.c wizard.c worm.c worn.c write.c zap.c
 
@@ -121,14 +125,14 @@ VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(RANDSRC) monstr.c vis_tab.c
 # and dgn_comp.h, dgn_file.h, lev_comp.h, special level & dungeon files.
 #
 HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h color.h \
-	   config.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h edog.h \
-	   emin.h engrave.h epri.h eshk.h extern.h flag.h func_tab.h \
-	   global.h hack.h lev.h macconf.h mfndpos.h micro.h mkroom.h \
-	   monattk.h mondata.h monflag.h monst.h monsym.h obj.h objclass.h \
-	   os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h rm.h \
-	   sp_lev.h spell.h system.h termcap.h timeout.h tosconf.h tradstdc.h \
-	   trampoli.h trap.h unixconf.h vault.h vision.h vmsconf.h wintty.h \
-	   winX.h winprocs.h wintype.h you.h youprop.h
+	   config.h config1.h coord.h decl.h def_os2.h display.h dlb.h \
+	   dungeon.h edog.h emin.h engrave.h epri.h eshk.h extern.h flag.h \
+	   func_tab.h global.h hack.h lev.h macconf.h mfndpos.h micro.h \
+	   mkroom.h monattk.h mondata.h monflag.h monst.h monsym.h obj.h \
+	   objclass.h os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h \
+	   region.h rm.h sp_lev.h spell.h system.h tcap.h timeout.h tosconf.h \
+	   tradstdc.h trampoli.h trap.h unixconf.h vault.h vision.h vmsconf.h \
+	   wintty.h winX.h winprocs.h wintype.h you.h youprop.h
 
 #HSOURCES = $(HACKINCL) date.h onames.h pm.h vis_tab.h\
 #		lev_comp.h dgn_comp.h dgn_file.h
@@ -149,9 +153,10 @@ HOBJ3 = light.obj,lock.obj,mail.obj,makemon.obj,mcastu.obj,mhitm.obj, \
 HOBJ4 = mthrowu.obj,muse.obj,music.obj,o_init.obj,objnam.obj, \
 	options.obj,pager.obj,pickup.obj,pline.obj,polyself.obj, \
 	potion.obj,pray.obj,priest.obj,quest.obj,questpgr.obj,read.obj
-HOBJ5 = rect.obj,restore.obj,rip.obj,rnd.obj,rumors.obj,save.obj, \
-	shk.obj,shknam.obj,sit.obj,sounds.obj,sp_lev.obj,spell.obj, \
-	steal.obj,teleport.obj,timeout.obj,topten.obj,track.obj,trap.obj
+HOBJ5 = rect.obj,region.obj,restore.obj,rip.obj,rnd.obj,role.obj, \
+	rumors.obj,save.obj,shk.obj,shknam.obj,sit.obj,sounds.obj,sp_lev.obj, \
+	spell.obj,steal.obj,steed.obj,teleport.obj,timeout.obj,topten.obj, \
+	track.obj,trap.obj
 HOBJ6 = u_init.obj,uhitm.obj,vault.obj,vision.obj,vis_tab.obj,weapon.obj, \
 	were.obj,wield.obj,windows.obj,wizard.obj,worm.obj,worn.obj, \
 	write.obj,zap.obj,version.obj
@@ -217,7 +222,7 @@ objects.obj :
      @- if f$search("$(MAKEDEFS)").nes."" then delete $(MAKEDEFS)
 
 $(MAKEDEFS) :	$(FIRSTOBJ) $(UTL)makedefs.c \
-		$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
+		$(CONFIG_H) $(INC)permonst.h $(INC)objclass.h \
 		$(INC)monsym.h $(INC)artilist.h $(INC)dungeon.h \
 		$(INC)obj.h $(INC)monst.h $(INC)you.h $(INC)flag.h \
 		$(INC)dlb.h $(INC)patchlevel.h $(INC)qtext.h  $(LIBOPT)
@@ -243,69 +248,32 @@ vis_tab.c : $(MAKEDEFS)
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(SRC)vis_tab.c
       @ $(CD) $(SRC)
-tile.c : $(WINSHR)tilemap.c $(INC)hack.h
+$(SRC)tile.c : $(WINSHR)tilemap.c $(HACK_H)
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(SRC)tile.c
       @ $(CD) $(SRC)
 
 #	date.h should be remade any time any of the source or include code
 #	is modified.  Unfortunately, this would make the contents of this
-#	file far more complex.	Since "hack.h" depends on most of the include
+#	file far more complex.  Since "hack.h" depends on most of the include
 #	files, we kludge around this by making date.h dependent on hack.h,
 #	even though it doesn't include this file.
 #
 #	hack.h depends on makedefs' output, so we know makedefs will be
 #	up to date before being executed; kill old date.h to force update
-$(INC)date.h :	$(VERSOURCES) $(INC)hack.h
+$(INC)date.h :	$(VERSOURCES) $(HACK_H)
      @- if f$search("$(INC)date.h").nes."" then  delete $(INC)date.h;*
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(INC)date.h
       @ $(CD) $(SRC)
 
-#
-vmsmain.obj :	$(VMS)vmsmain.c $(INC)hack.h $(INC)dlb.h
-vmstty.obj :	$(VMS)vmstty.c $(INC)hack.h $(INC)wintty.h $(INC)termcap.h
-vmsunix.obj :	$(VMS)vmsunix.c $(INC)hack.h $(INC)date.h
-vmsmisc.obj :	$(VMS)vmsmisc.c $(VMS)oldcrtl.c
-vmsfiles.obj :	$(VMS)vmsfiles.c $(INC)config.h
-vmsmail.obj :	$(VMS)vmsmail.c $(INC)config.h $(INC)mail.h \
-		$(INC)wintype.h $(INC)winprocs.h
-
-random.obj :	random.c $(INC)hack.h
-random.c :	$(SYSSHR)random.c
-	copy $(SYSSHR)random.c random.c
-tclib.obj :	tclib.c $(INC)config.h
-tclib.c :	$(SYSSHR)tclib.c
-	copy $(SYSSHR)tclib.c tclib.c
-
-#
-#	The following are rules for window dependencies.  The ones used
-#	depend on which window system you are using.
-#
-getline.obj :	$(TTY)getline.c $(INC)hack.h $(INC)wintty.h $(INC)func_tab.h
-termcap.obj :	$(TTY)termcap.c $(INC)hack.h $(INC)wintty.h $(INC)termcap.h
-topl.obj :	$(TTY)topl.c $(INC)hack.h $(INC)termcap.h $(INC)wintty.h
-wintty.obj :	$(TTY)wintty.c $(INC)hack.h $(INC)dlb.h \
-		$(INC)patchlevel.h $(INC)termcap.h $(INC)wintty.h
-Window.obj :	$(X11)Window.c $(INC)WindowP.h $(INC)config.h
-dialogs.obj :	$(X11)dialogs.c $(INC)config.h
-winX.obj :	$(X11)winX.c $(INC)hack.h $(INC)winX.h $(INC)dlb.h \
-		$(INC)patchlevel.h $(X11)nh72icon $(X11)nh56icon $(X11)nh32icon
-winmap.obj :	$(X11)winmap.c $(INC)Window.h $(INC)hack.h $(INC)dlb.h \
-		$(INC)winX.h $(INC)tile2x11.h
-winmenu.obj :	$(X11)winmenu.c $(INC)hack.h $(INC)winX.h
-winmesg.obj :	$(X11)winmesg.c $(INC)hack.h $(INC)winX.h
-winmisc.obj :	$(X11)winmisc.c $(INC)hack.h $(INC)func_tab.h $(INC)winX.h
-winstat.obj :	$(X11)winstat.c $(INC)hack.h $(INC)winX.h
-wintext.obj :	$(X11)wintext.c $(INC)hack.h $(INC)winX.h $(INC)Window.h
-winval.obj :	$(X11)winval.c $(INC)config.h $(INC)winX.h
-tile.obj :	tile.c $(INC)hack.h
-
+#	special targets
 clean :
       - if f$search("*.*;-1")	  .nes."" then	purge
       - if f$search("$(INC)*.*;-1").nes."" then	purge $(INC) /Exclude=*conf*.h
       - if f$search("*.obj")	  .nes."" then	delete *.obj;
-      - if f$search("nethack.opt").nes."" then	delete nethack.opt;
+      - if f$search("*.h-t").nes."" then	delete *.h-t;	!$(HACK_H),$(CONFIG_H)
+      - if f$search("*.opt").nes."" then	delete *.opt;	!nethack.opt,$(LIBOPT)
 
 spotless :	clean
       - if f$search("$(LIBOPT)").nes."" then  delete $(LIBOPT)
@@ -318,168 +286,173 @@ spotless :	clean
       - if f$search("random.c")	.nes."" then  delete random.c;
       - if f$search("nethack.olb").nes."" then  delete nethack.olb;
 
-
-# semi-automatically generated dependencies
-
-allmain.obj :	$(INC)hack.h
-alloc.obj :	$(INC)config.h
-apply.obj :	$(INC)hack.h $(INC)edog.h
-artifact.obj :	$(INC)hack.h $(INC)artifact.h $(INC)artilist.h
-attrib.obj :	$(INC)hack.h $(INC)artifact.h
-ball.obj :	$(INC)hack.h
-bones.obj :	$(INC)hack.h $(INC)lev.h
-botl.obj :	$(INC)hack.h
-cmd.obj :	$(INC)hack.h $(INC)func_tab.h
-dbridge.obj :	$(INC)hack.h
-decl.obj :	$(INC)hack.h $(INC)quest.h
-detect.obj :	$(INC)hack.h $(INC)artifact.h
-dig.obj :	$(INC)hack.h $(INC)edog.h
-display.obj :	$(INC)hack.h
-dlb.obj :	$(INC)config.h $(INC)dlb.h
-do.obj :	$(INC)hack.h $(INC)lev.h
-do_name.obj :	$(INC)hack.h
-do_wear.obj :	$(INC)hack.h
-dog.obj :	$(INC)hack.h $(INC)edog.h
-dogmove.obj :	$(INC)hack.h $(INC)mfndpos.h $(INC)edog.h
-dokick.obj :	$(INC)hack.h $(INC)eshk.h
-dothrow.obj :	$(INC)hack.h
-drawing.obj :	$(INC)hack.h $(INC)termcap.h
-dungeon.obj :	$(INC)hack.h $(INC)dgn_file.h $(INC)dlb.h
-eat.obj :	$(INC)hack.h
-end.obj :	$(INC)hack.h $(INC)eshk.h
-engrave.obj :	$(INC)hack.h $(INC)lev.h
-exper.obj :	$(INC)hack.h
-explode.obj :	$(INC)hack.h
-extralev.obj :	$(INC)hack.h
-files.obj :	$(INC)hack.h $(INC)dlb.h
-fountain.obj :	$(INC)hack.h
-hack.obj :	$(INC)hack.h
-hacklib.obj :	$(INC)hack.h
-invent.obj :	$(INC)hack.h $(INC)artifact.h
-light.obj :	$(INC)hack.h $(INC)lev.h
-lock.obj :	$(INC)hack.h
-mail.obj :	$(INC)hack.h $(INC)mail.h
-makemon.obj :	$(INC)hack.h $(INC)epri.h $(INC)emin.h
-mcastu.obj :	$(INC)hack.h
-mhitm.obj :	$(INC)hack.h $(INC)artifact.h $(INC)edog.h
-mhitu.obj :	$(INC)hack.h $(INC)artifact.h $(INC)edog.h
-minion.obj :	$(INC)hack.h $(INC)emin.h $(INC)epri.h
-mklev.obj :	$(INC)hack.h
-mkmap.obj :	$(INC)hack.h $(INC)sp_lev.h
-mkmaze.obj :	$(INC)hack.h $(INC)sp_lev.h $(INC)lev.h
-mkobj.obj :	$(INC)hack.h $(INC)artifact.h $(INC)prop.h
-mkroom.obj :	$(INC)hack.h
-mon.obj :	$(INC)hack.h $(INC)mfndpos.h $(INC)edog.h
-mondata.obj :	$(INC)hack.h $(INC)eshk.h $(INC)epri.h
-monmove.obj :	$(INC)hack.h $(INC)mfndpos.h $(INC)artifact.h
-monst.obj :	$(INC)config.h $(INC)permonst.h $(INC)monsym.h $(INC)eshk.h \
-		$(INC)vault.h $(INC)epri.h $(INC)color.h
-mplayer.obj :	$(INC)hack.h
-mthrowu.obj :	$(INC)hack.h
-muse.obj :	$(INC)hack.h $(INC)edog.h
-music.obj :	$(INC)hack.h # interp.c
-o_init.obj :	$(INC)hack.h $(INC)lev.h
-objects.obj :	$(INC)config.h $(INC)obj.h $(INC)objclass.h $(INC)prop.h \
-		$(INC)color.h objects.c
-objnam.obj :	$(INC)hack.h
-options.obj :	$(INC)config.h $(INC)objclass.h $(INC)flag.h \
-		$(INC)hack.h $(INC)termcap.h
-pager.obj :	$(INC)hack.h $(INC)dlb.h
-pickup.obj :	$(INC)hack.h
-pline.obj :	$(INC)hack.h $(INC)epri.h
-polyself.obj :	$(INC)hack.h
-potion.obj :	$(INC)hack.h
-pray.obj :	$(INC)hack.h $(INC)epri.h
-priest.obj :	$(INC)hack.h $(INC)mfndpos.h $(INC)eshk.h $(INC)epri.h \
-		$(INC)emin.h
-quest.obj :	$(INC)hack.h $(INC)quest.h $(INC)qtext.h
-questpgr.obj :	$(INC)hack.h $(INC)dlb.h $(INC)qtext.h
-read.obj :	$(INC)hack.h
-rect.obj :	$(INC)hack.h
-restore.obj :	$(INC)hack.h $(INC)lev.h $(INC)termcap.h $(INC)quest.h
-rip.obj :	$(INC)hack.h
-rnd.obj :	$(INC)hack.h
-rumors.obj :	$(INC)hack.h $(INC)lev.h $(INC)dlb.h
-save.obj :	$(INC)hack.h $(INC)lev.h $(INC)quest.h
-shk.obj :	$(INC)hack.h $(INC)eshk.h
-shknam.obj :	$(INC)hack.h $(INC)eshk.h
-sit.obj :	$(INC)hack.h $(INC)artifact.h
-sounds.obj :	$(INC)hack.h $(INC)edog.h
-sp_lev.obj :	$(INC)hack.h $(INC)dlb.h $(INC)sp_lev.h $(INC)rect.h
-spell.obj :	$(INC)hack.h
-steal.obj :	$(INC)hack.h
-teleport.obj :	$(INC)hack.h
-timeout.obj :	$(INC)hack.h $(INC)lev.h
-topten.obj :	$(INC)hack.h $(INC)dlb.h $(INC)patchlevel.h
-track.obj :	$(INC)hack.h
-trap.obj :	$(INC)hack.h
-u_init.obj :	$(INC)hack.h
-uhitm.obj :	$(INC)hack.h
-vault.obj :	$(INC)hack.h $(INC)vault.h
-version.obj :	$(INC)hack.h $(INC)date.h  $(INC)patchlevel.h
-vision.obj :	$(INC)hack.h $(INC)vis_tab.h
-weapon.obj :	$(INC)hack.h
-were.obj :	$(INC)hack.h
-wield.obj :	$(INC)hack.h
-windows.obj :	$(INC)hack.h $(INC)wintty.h
-wizard.obj :	$(INC)hack.h $(INC)qtext.h
-worm.obj :	$(INC)hack.h $(INC)lev.h
-worn.obj :	$(INC)hack.h
-write.obj :	$(INC)hack.h
-zap.obj :	$(INC)hack.h
-$(INC)amiconf.h :  $(INC)micro.h $(INC)pcconf.h
-			$(TOUCH) $(INC)amiconf.h
-$(INC)config.h :  $(INC)tradstdc.h $(INC)global.h
-			$(TOUCH) $(INC)config.h
-$(INC)decl.h :	$(INC)quest.h $(INC)spell.h $(INC)color.h $(INC)obj.h \
-		$(INC)you.h $(INC)onames.h $(INC)pm.h
-			$(TOUCH) $(INC)decl.h
-$(INC)display.h :  $(INC)vision.h $(INC)mondata.h
-			$(TOUCH) $(INC)display.h
-$(INC)dungeon.h :  $(INC)align.h
-			$(TOUCH) $(INC)dungeon.h
-$(INC)emin.h :	$(INC)align.h
-			$(TOUCH) $(INC)emin.h
-$(INC)epri.h :	$(INC)dungeon.h
-			$(TOUCH) $(INC)epri.h
-$(INC)eshk.h :	$(INC)dungeon.h
-			$(TOUCH) $(INC)eshk.h
-# ignore the non-VMS configuration headers
-#$(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h $(INC)unixconf.h \
-#		   $(INC)os2conf.h $(INC)pcconf.h $(INC)tosconf.h \
-#		   $(INC)amiconf.h $(INC)macconf.h $(INC)beconf.h $(INC)ntconf.h
-$(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h
-			$(TOUCH) $(INC)global.h
-$(INC)hack.h :	$(INC)config.h $(INC)dungeon.h $(INC)monsym.h $(INC)mkroom.h \
-		$(INC)objclass.h $(INC)youprop.h $(INC)wintype.h \
-		$(INC)decl.h $(INC)timeout.h $(INC)trap.h $(INC)flag.h \
-		$(INC)rm.h $(INC)vision.h $(INC)display.h $(INC)engrave.h \
-		$(INC)rect.h $(INC)winprocs.h $(INC)wintty.h $(INC)trampoli.h
-			$(TOUCH) $(INC)hack.h
-$(INC)macconf.h :  $(INC)system.h
-			$(TOUCH) $(INC)macconf.h
-$(INC)mondata.h :  $(INC)align.h
-			$(TOUCH) $(INC)mondata.h
-$(INC)monst.h :  $(INC)align.h
-			$(TOUCH) $(INC)monst.h
-$(INC)os2conf.h :  $(INC)micro.h $(INC)system.h
-			$(TOUCH) $(INC)os2conf.h
-$(INC)pcconf.h :  $(INC)micro.h $(INC)system.h
-			$(TOUCH) $(INC)pcconf.h
-$(INC)permonst.h :  $(INC)monattk.h $(INC)monflag.h $(INC)align.h
-			$(TOUCH) $(INC)permonst.h
-$(INC)rm.h :  $(INC)align.h
-			$(TOUCH) $(INC)rm.h
-$(INC)tosconf.h :  $(INC)micro.h $(INC)pcconf.h
-			$(TOUCH) $(INC)tosconf.h
-$(INC)unixconf.h :  $(INC)system.h
-			$(TOUCH) $(INC)unixconf.h
-$(INC)vault.h :  $(INC)dungeon.h
-			$(TOUCH) $(INC)vault.h
-$(INC)vmsconf.h :  $(INC)system.h
-			$(TOUCH) $(INC)vmsconf.h
-$(INC)you.h :  $(INC)align.h $(INC)attrib.h $(INC)monst.h $(INC)prop.h
-			$(TOUCH) $(INC)you.h
-$(INC)youprop.h :  $(INC)prop.h $(INC)permonst.h $(INC)mondata.h $(INC)pm.h
-			$(TOUCH) $(INC)youprop.h
+#	dependencies (mostly cloned from sys/unix/Makefile.src)
+# config.h timestamp
+$(CONFIG_H) : $(INC)config.h $(INC)config1.h $(INC)tradstdc.h $(INC)global.h \
+		$(INC)coord.h $(INC)vmsconf.h $(INC)system.h \
+		$(INC)unixconf.h $(INC)os2conf.h $(INC)micro.h \
+		$(INC)pcconf.h $(INC)tosconf.h $(INC)amiconf.h \
+		$(INC)macconf.h $(INC)beconf.h $(INC)ntconf.h \
+		$(INC)nhlan.h
+	$(TOUCH) $(CONFIG_H)
+# hack.h timestamp
+$(HACK_H) : $(INC)hack.h $(CONFIG_H) $(INC)dungeon.h \
+		$(INC)align.h $(INC)monsym.h $(INC)mkroom.h \
+		$(INC)objclass.h $(INC)youprop.h $(INC)prop.h \
+		$(INC)permonst.h $(INC)monattk.h \
+		$(INC)monflag.h $(INC)mondata.h $(INC)pm.h \
+		$(INC)wintype.h $(INC)decl.h $(INC)quest.h \
+		$(INC)spell.h $(INC)color.h $(INC)obj.h \
+		$(INC)you.h $(INC)attrib.h $(INC)monst.h $(INC)skills.h \
+		$(INC)onames.h $(INC)timeout.h $(INC)trap.h \
+		$(INC)flag.h $(INC)rm.h $(INC)vision.h \
+		$(INC)display.h $(INC)engrave.h $(INC)rect.h $(inc)region.h \
+		$(INC)winprocs.h $(INC)wintty.h $(INC)trampoli.h
+	$(TOUCH) $(HACK_H)
+#	VMS-specific code
+vmsmain.obj :	$(VMS)vmsmain.c $(HACK_H) $(INC)dlb.h
+vmstty.obj :	$(VMS)vmstty.c $(HACK_H) $(INC)wintty.h $(INC)tcap.h
+vmsunix.obj :	$(VMS)vmsunix.c $(HACK_H) $(INC)date.h
+vmsmisc.obj :	$(VMS)vmsmisc.c $(VMS)oldcrtl.c
+vmsfiles.obj :	$(VMS)vmsfiles.c $(CONFIG_H)
+vmsmail.obj :	$(VMS)vmsmail.c $(CONFIG_H) $(INC)mail.h \
+		$(INC)wintype.h $(INC)winprocs.h
+#	conditionally used code -- VMS always wants these
+random.obj :	random.c $(HACK_H)
+random.c :	$(SYSSHR)random.c
+	copy $(SYSSHR)random.c random.c
+tclib.obj :	tclib.c $(CONFIG_H)
+tclib.c :	$(SYSSHR)tclib.c
+	copy $(SYSSHR)tclib.c tclib.c
+#	user interface code -- VMS uses tty (1st 4) only
+getline.obj :	$(TTY)getline.c $(HACK_H) $(INC)wintty.h $(INC)func_tab.h
+termcap.obj :	$(TTY)termcap.c $(HACK_H) $(INC)wintty.h $(INC)tcap.h
+topl.obj :	$(TTY)topl.c $(HACK_H) $(INC)tcap.h $(INC)wintty.h
+wintty.obj :	$(TTY)wintty.c $(HACK_H) $(INC)dlb.h \
+		$(INC)patchlevel.h $(INC)tcap.h $(INC)wintty.h
+Window.obj :	$(X11)Window.c $(INC)xwindowp.h $(INC)xwindow.h $(CONFIG_H)
+dialogs.obj :	$(X11)dialogs.c $(CONFIG_H)
+winX.obj :	$(X11)winX.c $(HACK_H) $(INC)winX.h $(INC)dlb.h \
+		$(INC)patchlevel.h $(X11)nh72icon $(X11)nh56icon $(X11)nh32icon
+winmap.obj :	$(X11)winmap.c $(INC)xwindow.h $(HACK_H) $(INC)dlb.h \
+		$(INC)winX.h $(INC)tile2x11.h
+winmenu.obj :	$(X11)winmenu.c $(HACK_H) $(INC)winX.h
+winmesg.obj :	$(X11)winmesg.c $(INC)xwindow.h $(HACK_H) $(INC)winX.h
+winmisc.obj :	$(X11)winmisc.c $(HACK_H) $(INC)func_tab.h $(INC)winX.h
+winstat.obj :	$(X11)winstat.c $(HACK_H) $(INC)winX.h
+wintext.obj :	$(X11)wintext.c $(HACK_H) $(INC)winX.h $(INC)xwindow.h
+winval.obj :	$(X11)winval.c $(CONFIG_H) $(INC)winX.h
+tile.obj :	$(SRC)tile.c $(HACK_H)
+#	general code
+allmain.obj :	allmain.c $(HACK_H)
+alloc.obj :	alloc.c $(CONFIG_H)
+apply.obj :	apply.c $(HACK_H) $(INC)edog.h
+artifact.obj :	artifact.c $(HACK_H) $(INC)artifact.h $(INC)artilist.h
+attrib.obj :	attrib.c $(HACK_H) $(INC)artifact.h
+ball.obj :	ball.c $(HACK_H)
+bones.obj :	bones.c $(HACK_H) $(INC)lev.h
+botl.obj :	botl.c $(HACK_H)
+cmd.obj :	cmd.c $(HACK_H) $(INC)func_tab.h
+dbridge.obj :	dbridge.c $(HACK_H)
+decl.obj :	decl.c $(HACK_H)
+detect.obj :	detect.c $(HACK_H) $(INC)artifact.h
+dig.obj :	dig.c $(HACK_H) $(INC)edog.h
+display.obj :	display.c $(HACK_H)
+dlb.obj :	dlb.c $(CONFIG_H) $(INC)dlb.h
+do.obj :	do.c $(HACK_H) $(INC)lev.h
+do_name.obj :	do_name.c $(HACK_H)
+do_wear.obj :	do_wear.c $(HACK_H)
+dog.obj :	dog.c $(HACK_H) $(INC)edog.h
+dogmove.obj :	dogmove.c $(HACK_H) $(INC)mfndpos.h $(INC)edog.h
+dokick.obj :	dokick.c $(HACK_H) $(INC)eshk.h
+dothrow.obj :	dothrow.c $(HACK_H)
+drawing.obj :	drawing.c $(HACK_H) $(INC)tcap.h
+dungeon.obj :	dungeon.c $(HACK_H) $(INC)dgn_file.h $(INC)dlb.h
+eat.obj :	eat.c $(HACK_H)
+end.obj :	end.c $(HACK_H) $(INC)eshk.h $(INC)dlb.h
+engrave.obj :	engrave.c $(HACK_H) $(INC)lev.h
+exper.obj :	exper.c $(HACK_H)
+explode.obj :	explode.c $(HACK_H)
+extralev.obj :	extralev.c $(HACK_H)
+files.obj :	files.c $(HACK_H) $(INC)dlb.h
+fountain.obj :	fountain.c $(HACK_H)
+hack.obj :	hack.c $(HACK_H)
+hacklib.obj :	hacklib.c $(HACK_H)
+invent.obj :	invent.c $(HACK_H) $(INC)artifact.h
+light.obj :	light.c $(HACK_H) $(INC)lev.h
+lock.obj :	lock.c $(HACK_H)
+mail.obj :	mail.c $(HACK_H) $(INC)mail.h
+makemon.obj :	makemon.c $(HACK_H) $(INC)epri.h $(INC)emin.h $(INC)edog.h
+mcastu.obj :	mcastu.c $(HACK_H)
+mhitm.obj :	mhitm.c $(HACK_H) $(INC)artifact.h $(INC)edog.h
+mhitu.obj :	mhitu.c $(HACK_H) $(INC)artifact.h $(INC)edog.h
+minion.obj :	minion.c $(HACK_H) $(INC)emin.h $(INC)epri.h
+mklev.obj :	mklev.c $(HACK_H)
+mkmap.obj :	mkmap.c $(HACK_H) $(INC)sp_lev.h
+mkmaze.obj :	mkmaze.c $(HACK_H) $(INC)sp_lev.h $(INC)lev.h
+mkobj.obj :	mkobj.c $(HACK_H) $(INC)artifact.h
+mkroom.obj :	mkroom.c $(HACK_H)
+mon.obj :	mon.c $(HACK_H) $(INC)mfndpos.h $(INC)edog.h
+mondata.obj :	mondata.c $(HACK_H) $(INC)eshk.h $(INC)epri.h
+monmove.obj :	monmove.c $(HACK_H) $(INC)mfndpos.h $(INC)artifact.h
+monst.obj :	monst.c $(CONFIG_H) $(INC)permonst.h $(INC)monattk.h \
+		$(INC)monflag.h $(INC)align.h $(INC)monsym.h \
+		$(INC)dungeon.h $(INC)eshk.h $(INC)vault.h \
+		$(INC)epri.h $(INC)color.h
+mplayer.obj :	mplayer.c $(HACK_H)
+mthrowu.obj :	mthrowu.c $(HACK_H)
+muse.obj :	muse.c $(HACK_H) $(INC)edog.h
+music.obj :	music.c $(HACK_H) #interp.c
+o_init.obj :	o_init.c $(HACK_H) $(INC)lev.h
+objects.obj :	objects.c $(CONFIG_H) $(INC)obj.h $(INC)objclass.h \
+		$(INC)prop.h $(INC)skills.h $(INC)color.h
+objnam.obj :	objnam.c $(HACK_H)
+options.obj :	options.c $(CONFIG_H) $(INC)objclass.h $(INC)flag.h \
+		$(HACK_H) $(INC)tcap.h
+pager.obj :	pager.c $(HACK_H) $(INC)dlb.h
+pickup.obj :	pickup.c $(HACK_H)
+pline.obj :	pline.c $(HACK_H) $(INC)epri.h
+polyself.obj :	polyself.c $(HACK_H)
+potion.obj :	potion.c $(HACK_H)
+pray.obj :	pray.c $(HACK_H) $(INC)epri.h
+priest.obj :	priest.c $(HACK_H) $(INC)mfndpos.h $(INC)eshk.h \
+		$(INC)epri.h $(INC)emin.h
+quest.obj :	quest.c $(HACK_H) $(INC)qtext.h
+questpgr.obj :	questpgr.c $(HACK_H) $(INC)dlb.h $(INC)qtext.h
+read.obj :	read.c $(HACK_H)
+rect.obj :	rect.c $(HACK_H)
+region.obj :	region.c $(HACK_H)
+restore.obj :	restore.c $(HACK_H) $(INC)lev.h $(INC)tcap.h
+rip.obj :	rip.c $(HACK_H)
+rnd.obj :	rnd.c $(HACK_H)
+role.obj :	role.c $(HACK_H)
+rumors.obj :	rumors.c $(HACK_H) $(INC)lev.h $(INC)dlb.h
+save.obj :	save.c $(HACK_H) $(INC)lev.h
+shk.obj :	shk.c $(HACK_H) $(INC)eshk.h
+shknam.obj :	shknam.c $(HACK_H) $(INC)eshk.h
+sit.obj :	sit.c $(HACK_H) $(INC)artifact.h
+sounds.obj :	sounds.c $(HACK_H) $(INC)edog.h
+sp_lev.obj :	sp_lev.c $(HACK_H) $(INC)dlb.h $(INC)sp_lev.h
+spell.obj :	spell.c $(HACK_H)
+steal.obj :	steal.c $(HACK_H)
+steed.obj :	steed.c $(HACK_H)
+teleport.obj :	teleport.c $(HACK_H)
+timeout.obj :	timeout.c $(HACK_H) $(INC)lev.h
+topten.obj :	topten.c $(HACK_H) $(INC)dlb.h $(INC)patchlevel.h
+track.obj :	track.c $(HACK_H)
+trap.obj :	trap.c $(HACK_H)
+u_init.obj :	u_init.c $(HACK_H)
+uhitm.obj :	uhitm.c $(HACK_H)
+vault.obj :	vault.c $(HACK_H) $(INC)vault.h
+version.obj :	version.c $(HACK_H) $(INC)date.h $(INC)patchlevel.h
+vision.obj :	vision.c $(HACK_H) $(INC)vis_tab.h
+weapon.obj :	weapon.c $(HACK_H)
+were.obj :	were.c $(HACK_H)
+wield.obj :	wield.c $(HACK_H)
+windows.obj :	windows.c $(HACK_H) $(INC)wintty.h
+wizard.obj :	wizard.c $(HACK_H) $(INC)qtext.h
+worm.obj :	worm.c $(HACK_H) $(INC)lev.h
+worn.obj :	worn.c $(HACK_H)
+write.obj :	write.c $(HACK_H)
+zap.obj :	zap.c $(HACK_H)
 # eof

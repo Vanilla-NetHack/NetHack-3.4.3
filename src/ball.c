@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ball.c	3.2	95/05/31	*/
+/*	SCCS Id: @(#)ball.c	3.3	97/04/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,8 +6,8 @@
 
 #include "hack.h"
 
-static int NDECL(bc_order);
-static void NDECL(litter);
+STATIC_DCL int NDECL(bc_order);
+STATIC_DCL void NDECL(litter);
 
 void
 ballfall()
@@ -20,6 +20,10 @@ ballfall()
 		pline("Startled, you drop the iron ball.");
 		if (uwep == uball)
 			setuwep((struct obj *)0);
+		if (uswapwep == uball)
+			setuswapwep((struct obj *)0);
+		if (uquiver == uball)
+			setuqwep((struct obj *)0);;
 		if (uwep != uball)
 			freeinv(uball);
 	}
@@ -141,7 +145,7 @@ unplacebc()
  *  Return the stacking of the hero's ball & chain.  This assumes that the
  *  hero is being punished.
  */
-static int
+STATIC_OVL int
 bc_order()
 {
     struct obj *obj;
@@ -416,18 +420,7 @@ boolean *cause_delay;
 		    int tmp;
 
 		    tmp = -2 + Luck + find_mac(victim);
-
-		    if (victim->msleep) {
-			victim->msleep = 0;
-			tmp += 2;
-		    }
-		    if (!victim->mcanmove) {
-			tmp += 4;
-			if (!rn2(10)) {
-			    victim->mcanmove = 1;
-			    victim->mfrozen = 0;
-			}
-		    }
+		    tmp += omon_adj(victim, uball, TRUE);
 		    if (tmp >= rnd(20))
 			(void) hmon(victim,uball,1);
 		    else
@@ -501,12 +494,17 @@ xchar x, y;
 	    case TT_BEARTRAP: {
 		register long side = rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
 		pline(pullmsg, "bear trap");
-		Your("%s %s is severely damaged.",
+		set_wounded_legs(side, rn1(1000, 500));
+#ifdef STEED
+		if (!u.usteed)
+#endif
+		{
+		    Your("%s %s is severely damaged.",
 					(side == LEFT_SIDE) ? "left" : "right",
 					body_part(LEG));
-		set_wounded_legs(side, rn1(1000, 500));
-		losehp(2, "leg damage from being pulled out of a bear trap",
+		    losehp(2, "leg damage from being pulled out of a bear trap",
 					KILLED_BY);
+		}
 		break;
 	      }
 	    }
@@ -548,7 +546,7 @@ xchar x, y;
 }
 
 
-static void
+STATIC_OVL void
 litter()
 {
 	struct obj *otmp = invent, *nextobj;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)steal.c	3.2	96/04/08	*/
+/*	SCCS Id: @(#)steal.c	3.3	1999/02/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,10 +7,9 @@
 STATIC_PTR int NDECL(stealarm);
 
 #ifdef OVLB
-static const char * FDECL(equipname, (struct obj *));
-static void FDECL(lose_worn_item, (struct obj *));
+STATIC_DCL const char *FDECL(equipname, (struct obj *));
 
-static const char *
+STATIC_OVL const char *
 equipname(otmp)
 register struct obj *otmp;
 {
@@ -96,9 +95,10 @@ botm:   stealoid = 0;
 	return 0;
 }
 
-/* an object you're wearing has been stolen */
-static void
-lose_worn_item(obj)
+/* An object you're wearing has been taken off my a monster (theft or
+   seduction).  Also used if a worn item gets transformed (stone to flesh). */
+void
+remove_worn_item(obj)
 struct obj *obj;
 {
 	if (donning(obj))
@@ -108,12 +108,13 @@ struct obj *obj;
 
 	switch (obj->oclass) {
 	 case TOOL_CLASS:
-	    Blindf_off(obj);
+	    if (obj == ublindf) Blindf_off(obj);
 	    break;
 	 case AMULET_CLASS:
 	    Amulet_off();
 	    break;
 	 case RING_CLASS:
+	 case FOOD_CLASS: /* meat ring */
 	    Ring_gone(obj);
 	    break;
 	 case ARMOR_CLASS:
@@ -148,31 +149,41 @@ struct monst *mtmp;
 	if(!monnear(mtmp, u.ux, u.uy)) return(0);
 
 	if (!invent || (inv_cnt() == 1 && uskin)) {
+nothing_to_steal:
 	    /* Not even a thousand men in armor can strip a naked man. */
 	    if(Blind)
 	      pline("Somebody tries to rob you, but finds nothing to steal.");
 	    else
-	      pline("%s tries to rob you, but she finds nothing to steal!",
+	      pline("%s tries to rob you, but there is nothing to steal!",
 		Monnam(mtmp));
 	    return(1);	/* let her flee */
 	}
 
-	if(Adornment & LEFT_RING) {
+	if (Adornment & LEFT_RING) {
 	    otmp = uleft;
 	    goto gotobj;
-	} else if(Adornment & RIGHT_RING) {
+	} else if (Adornment & RIGHT_RING) {
 	    otmp = uright;
 	    goto gotobj;
 	}
 
 	tmp = 0;
 	for(otmp = invent; otmp; otmp = otmp->nobj)
-	    if ((!uarm || otmp != uarmc) && otmp != uskin)
+	    if ((!uarm || otmp != uarmc) && otmp != uskin
+#ifdef INVISIBLE_OBJECTS
+				&& (!otmp->oinvis || perceives(mtmp->data))
+#endif
+				)
 		tmp += ((otmp->owornmask &
 			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
+	if (!tmp) goto nothing_to_steal;
 	tmp = rn2(tmp);
 	for(otmp = invent; otmp; otmp = otmp->nobj)
-	    if ((!uarm || otmp != uarmc) && otmp != uskin)
+	    if ((!uarm || otmp != uarmc) && otmp != uskin
+#ifdef INVISIBLE_OBJECTS
+				&& (!otmp->oinvis || perceives(mtmp->data))
+#endif
+	    		)
 		if((tmp -= ((otmp->owornmask &
 			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1)) < 0)
 			break;
@@ -199,21 +210,24 @@ gotobj:
 		case TOOL_CLASS:
 		case AMULET_CLASS:
 		case RING_CLASS:
-			lose_worn_item(otmp);
+		case FOOD_CLASS: /* meat ring */
+			remove_worn_item(otmp);
 			break;
 		case ARMOR_CLASS:
 			/* Stop putting on armor which has been stolen. */
-			if (donning(otmp)) {
-			    lose_worn_item(otmp);
+			if (donning(otmp) || is_animal(mtmp->data)) {
+			    remove_worn_item(otmp);
 			    break;
-			}
-		    {	int curssv = otmp->cursed;
+			} else {
+			int curssv = otmp->cursed;
+
 			otmp->cursed = 0;
 			stop_occupation();
 			if(flags.female)
 			    pline("%s charms you.  You gladly %s your %s.",
 				  Blind ? "She" : Monnam(mtmp),
-				  curssv ? "let her take" : "hand over",
+				  curssv ? "let her take" :
+	(objects[otmp->otyp].oc_delay > 1) ? "start removing" : "hand over",
 				  equipname(otmp));
 			else
 			    pline("%s seduces you and %s off your %s.",
@@ -224,7 +238,7 @@ gotobj:
 			named++;
 			/* the following is to set multi for later on */
 			nomul(-objects[otmp->otyp].oc_delay);
-			lose_worn_item(otmp);
+			remove_worn_item(otmp);
 			otmp->cursed = curssv;
 			if(multi < 0){
 				/*
@@ -237,20 +251,22 @@ gotobj:
 				afternmv = stealarm;
 				return(0);
 			}
-			break;
 		    }
+			break;
 		default:
 			impossible("Tried to steal a strange worn thing.");
 		}
 	}
-	else if(otmp == uwep) uwepgone();
+	else if (otmp == uwep) uwepgone();
+	else if (otmp == uquiver) uqwepgone();
+	else if (otmp == uswapwep) uswapwepgone();
 
 	if(otmp == uball) unpunish();
 
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
 	mpickobj(mtmp,otmp);
-	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE &&
+	if (otmp->otyp == CORPSE && touch_petrifies(&mons[otmp->corpsenm]) &&
 		!(mtmp->misc_worn_check & W_ARMG)) {
 	    minstapetrify(mtmp, TRUE);
 	    return -1;
@@ -283,6 +299,8 @@ register struct obj *otmp;
 		      otmp->quan == 1L ? "es" : "");
 	    snuff_otmp = TRUE;
 	}
+	/* Must do carrying effects on object prior to add_to_minv() */
+	carry_obj_effects(otmp);
 	/* add_to_minv() might free otmp [if merged with something else],
 	   so we have to call it after doing the object checks */
 	add_to_minv(mtmp, otmp);
@@ -326,7 +344,7 @@ register struct monst *mtmp;
 		/* might be an imitation one */
 snatch_it:
 		if (otmp->owornmask)
-		    lose_worn_item(otmp);
+		    remove_worn_item(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
@@ -392,7 +410,7 @@ boolean is_pet;		/* If true, pet should keep wielded/worn items */
 
 	if (mtmp->mgold) {
 		register long g = mtmp->mgold;
-		mkgold(g, omx, omy);
+		(void) mkgold(g, omx, omy);
 		if (is_pet && cansee(omx, omy) && flags.verbose)
 			pline("%s drops %ld gold piece%s.", Monnam(mtmp),
 				g, plur(g));

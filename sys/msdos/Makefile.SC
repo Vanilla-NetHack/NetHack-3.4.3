@@ -1,8 +1,10 @@
-#	SCCS Id :  @(#)Makefile.SC	      3.2     96/10/14
+#	SCCS Id :  @(#)Makefile.SC	      3.3     96/10/14
 #	Copyright (c) NetHack Development Team 1996.
 #
 #	Symantec C compiler V7.2
 #	Written for Symantec SMAKE utility
+#
+#	NOTE: This Makefile has not been tested for NetHack 3.3.0
 #
 #	For questions or comments :  nethack-bugs@linc.cis.upenn.edu
 #
@@ -188,14 +190,15 @@ VOBJ11 = monst.o    monstr.o   mplayer.o  mthrowu.o  muse.o
 VOBJ12 = music.o    o_init.o   objects.o  objnam.o   options.o
 VOBJ13 = pickup.o   pline.o    polyself.o potion.o   quest.o
 VOBJ14 = questpgr.o pager.o    pray.o	  priest.o   read.o
-VOBJ15 = rect.o	    restore.o  rip.o	  rnd.o	     rumors.o
-VOBJ16 = save.o	    shk.o      shknam.o	  sit.o	     sounds.o
-VOBJ17 = sp_lev.o   spell.o    steal.o	  termcap.o  timeout.o
-VOBJ18 = topl.o	    topten.o   track.o	  trap.o     u_init.o
-VOBJ19 = uhitm.o    vault.o    vision.o	  vis_tab.o  weapon.o
-VOBJ20 = were.o	    wield.o    windows.o  wintty.o   wizard.o
-VOBJ21 = worm.o	    worn.o     write.o	  zap.o	     light.o
-VOBJ22 = dlb.o      dig.o      teleport.o random.o
+VOBJ15 = rect.o	    restore.o  rip.o	  rnd.o	     role.o
+VOBJ16 = rumors.o   save.o	   shk.o      shknam.o	 sit.o
+VOBJ17 = sounds.o   sp_lev.o   spell.o    steal.o	 steed.o
+VOBJ18 = termcap.o  timeout.o  topl.o	  topten.o   track.o
+VOBJ19 = trap.o     u_init.o   uhitm.o    vault.o    vision.o
+VOBJ20 = vis_tab.o  weapon.o   were.o	  wield.o    windows.o
+VOBJ21 = wintty.o   wizard.o   worm.o	  worn.o     write.o
+VOBJ22 = zap.o	    light.o    dlb.o      dig.o      teleport.o
+VOBJ23 = random.o
 
 SOBJ   = msdos.o    sound.o    sys.o	  tty.o	     unix.o    video.o \
 	vidtxt.o    pckeys.o
@@ -206,7 +209,7 @@ VOBJ   = $(VOBJ01) $(VOBJ02) $(VOBJ03) $(VOBJ04) $(VOBJ05) \
 	$(VOBJ06) $(VOBJ07) $(VOBJ08) $(VOBJ09) $(VOBJ10) \
 	$(VOBJ11) $(VOBJ12) $(VOBJ13) $(VOBJ14) $(VOBJ15) \
 	$(VOBJ16) $(VOBJ17) $(VOBJ18) $(VOBJ19) $(VOBJ20) \
-	$(VOBJ21) $(VOBJ22)
+	$(VOBJ21) $(VOBJ22) $(VOBJ23)
 
 #ALLOBJ = $(VOBJ) $(SOBJ) $(TILOBJ) $(VVOBJ)
 ALLOBJ = $(VOBJ) $(SOBJ) $(VVOBJ)
@@ -233,7 +236,8 @@ YOU_H	   = $(MONST_H)		$(YOUPROP_H)	    $(INCL)\align.h   \
 	     $(INCL)\attrib.h	$(INCL)\you.h
 DISPLAY_H  = $(MONDATA_H)	$(INCL)\vision.h    $(INCL)\display.h
 PCCONF_H   = $(INCL)\micro.h	$(INCL)\system.h    $(INCL)\pcconf.h
-CONFIG_H   = $(GLOBAL_H)	$(INCL)\tradstdc.h  $(INCL)\config.h
+CONFIG_H   = $(GLOBAL_H)	$(INCL)\tradstdc.h  $(INCL)\config1.h \
+	    $(INCL)\config.h
 DECL_H	   = $(YOU_H)		$(INCL)\spell.h	    $(INCL)\color.h   \
 	     $(INCL)\obj.h	$(INCL)\onames.h    $(INCL)\pm.h      \
 	      $(INCL)\decl.h
@@ -300,7 +304,7 @@ install.tag :  dat.tag $(GAMEFILE)
 !ENDIF
 	copy $(SSHR)\termcap	  $(GAMEDIR)
 	copy *.tib                $(GAMEDIR)
-	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)
+	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)\defaults.nh
 	copy $(UTIL)\recover.exe  $(GAMEDIR)
 	copy $(DOC)\guideb*.txt   $(GAMEDIR)
 	echo install done > install.tag
@@ -687,10 +691,10 @@ sp_lev.tag :  utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des	 \
 	$(DAT)\medusa.des	 $(DAT)\oracle.des   $(DAT)\tower.des  \
 	$(DAT)\yendor.des	 $(DAT)\arch.des     $(DAT)\barb.des   \
-	$(DAT)\caveman.des $(DAT)\elf.des	     $(DAT)\healer.des \
-	$(DAT)\knight.des	 $(DAT)\priest.des   $(DAT)\rogue.des  \
-	$(DAT)\samurai.des $(DAT)\tourist.des  $(DAT)\valkyrie.des \
-	$(DAT)\wizard.des
+	$(DAT)\caveman.des   $(DAT)\healer.des   $(DAT)\knight.des \
+	$(DAT)\monk.des      $(DAT)\priest.des   $(DAT)\ranger.des \
+	$(DAT)\rogue.des     $(DAT)\samurai.des  $(DAT)\tourist.des \
+	$(DAT)\valkyrie.des  $(DAT)\wizard.des
 	cd $(DAT)
 	$(UTIL)\lev_comp bigroom.des
 	$(UTIL)\lev_comp castle.des
@@ -700,15 +704,17 @@ sp_lev.tag :  utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(UTIL)\lev_comp mines.des
 	$(UTIL)\lev_comp medusa.des
 	$(UTIL)\lev_comp oracle.des
+	$(UTIL)\lev_comp sokoban.des
 	$(UTIL)\lev_comp tower.des
 	$(UTIL)\lev_comp yendor.des
 	$(UTIL)\lev_comp arch.des
 	$(UTIL)\lev_comp barb.des
 	$(UTIL)\lev_comp caveman.des
-	$(UTIL)\lev_comp elf.des
 	$(UTIL)\lev_comp healer.des
 	$(UTIL)\lev_comp knight.des
+	$(UTIL)\lev_comp monk.des
 	$(UTIL)\lev_comp priest.des
+	$(UTIL)\lev_comp ranger.des
 	$(UTIL)\lev_comp rogue.des
 	$(UTIL)\lev_comp samurai.des
 	$(UTIL)\lev_comp tourist.des
@@ -835,7 +841,7 @@ dog.o : 	    $(HACK_H) $(INCL)\edog.h
 dogmove.o :   $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
 dokick.o :    $(HACK_H) $(ESHK_H)
 dothrow.o :   $(HACK_H)
-drawing.o :   $(HACK_H) $(INCL)\termcap.h
+drawing.o :   $(HACK_H) $(INCL)\tcap.h
 dungeon.o :   $(HACK_H) $(INCL)\dgn_file.h
 eat.o : 	    $(HACK_H)
 end.o : 	    $(HACK_H) $(ESHK_H)
@@ -875,7 +881,7 @@ objects.o :    $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h \
 	       $(INCL)\prop.h $(INCL)\color.h
 objnam.o :     $(HACK_H)
 options.o :    $(CONFIG_H) $(HACK_H) $(INCL)\objclass.h $(INCL)\flag.h \
-	      $(INCL)\termcap.h
+	      $(INCL)\tcap.h
 pager.o :      $(HACK_H)
 pickup.o :     $(HACK_H)
 pline.o :      $(HACK_H) $(EPRI_H)
@@ -886,10 +892,12 @@ priest.o :     $(HACK_H) $(INCL)\mfndpos.h $(ESHK_H) $(EPRI_H) $(EMIN_H)
 quest.o :      $(HACK_H) $(INCL)\quest.h $(INCL)\qtext.h
 questpgr.o :   $(HACK_H) $(INCL)\qtext.h
 read.o : 	     $(HACK_H)
+region.o :     $(HACK_H)
 rect.o : 	     $(HACK_H)
-restore.o :    $(HACK_H) $(INCL)\lev.h $(INCL)\termcap.h $(INCL)\quest.h
+restore.o :    $(HACK_H) $(INCL)\lev.h $(INCL)\tcap.h $(INCL)\quest.h
 rip.o : 	     $(HACK_H)
 rnd.o : 	     $(HACK_H)
+role.o :       $(HACK_H)
 rumors.o :     $(HACK_H)
 save.o : 	     $(HACK_H) $(INCL)\lev.h $(INCL)\quest.h
 shk.o : 	     $(HACK_H) $(ESHK_H)
@@ -899,6 +907,7 @@ sounds.o :     $(HACK_H) $(INCL)\edog.h
 sp_lev.o :     $(HACK_H) $(INCL)\sp_lev.h $(INCL)\align.h $(INCL)\rect.h
 spell.o :      $(HACK_H)
 steal.o :      $(HACK_H)
+steed.o :      $(HACK_H)
 teleport.o :   $(HACK_H)
 timeout.o :    $(HACK_H)
 topten.o :     $(HACK_H)

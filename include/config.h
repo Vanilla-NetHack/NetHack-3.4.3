@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.2	96/01/15	*/
+/*	SCCS Id: @(#)config.h	3.3	1999/08/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
 
 
 /*
- * Section 1:	OS selection.
+ * Section 1:	Operating and window systems selection.
  *		Select the version of the OS you are using.
  *		For "UNIX" select BSD, ULTRIX, SYSV, or HPUX in unixconf.h.
  *		A "VMS" option is not needed since the VMS C-compilers
@@ -16,208 +16,41 @@
 
 #define UNIX		/* delete if no fork(), exec() available */
 
-/*
- * MS DOS - compilers
- *
- * Microsoft C auto-defines MSDOS,
- * Borland C   auto-defines __MSDOS__,
- * DJGPP       auto-defines MSDOS.
- */
+/* #define MSDOS */	/* in case it's not auto-detected */
 
-/* #define MSDOS	/* use if not defined by compiler or cases below */
+/* #define OS2 */	/* define for OS/2 */
 
-#ifdef __MSDOS__	/* for Borland C */
-# ifndef MSDOS
-# define MSDOS
-# endif
-#endif
+/* #define TOS */	/* define for Atari ST/TT */
 
-#ifdef __TURBOC__
-# define __MSC		/* increase Borland C compatibility in libraries */
-#endif
-
-#ifdef MSDOS
-# undef UNIX
-#endif
-
-/*
- * Mac Stuff.
- */
-#ifdef applec		/*	MPW auto-defined symbol */
-# define MAC
-# undef UNIX
-#endif
-
-#ifdef THINK_C		/* Think C auto-defined symbol */
-# define MAC
-# define NEED_VARARGS
-# undef UNIX
-#endif
-
-#ifdef __MWERKS__	/* defined by Metrowerks compiler */
-# ifndef __BEOS__	/* BeOS */
-#  define MAC
-# endif
-# define NEED_VARARGS
-# define USE_STDARG
-# undef UNIX
-#endif
-
-
-/*
- * Amiga setup.
- */
-#ifdef AZTEC_C	/* Manx auto-defines this */
-# ifdef MCH_AMIGA	/* Manx auto-defines this for AMIGA */
-#  ifndef AMIGA
-#define AMIGA		/* define for Commodore-Amiga */
-#  endif		/* (SAS/C auto-defines AMIGA) */
-#define AZTEC_50	/* define for version 5.0 of manx */
-# endif
-#endif
-#ifdef __SASC_60
-# define NEARDATA __near /* put some data close */
-#else
-# ifdef _DCC
-# define NEARDATA __near /* put some data close */
-# else
-# define NEARDATA
-# endif
-#endif
-#ifdef AMIGA
-# define NEED_VARARGS
-# undef	UNIX
-# define DLB
-# define HACKDIR "NetHack:"
-# define NO_MACRO_CPATH
-#endif
-
-/*
- * Atari auto-detection
- */
-
-#ifdef atarist
-# undef UNIX
-# define TOS
-#else
-# ifdef __MINT__
-#  undef UNIX
-#  define TOS
-# endif
-#endif
-
-/*
- * Windows NT Autodetection
- */
-
-#ifdef WIN32
-# undef UNIX
-# undef MSDOS
-# define STRNCMPI
-#endif
-
-/*
- * and other systems...
- */
-
-/* #define OS2		/* define for OS/2 */
-
-/* #define TOS		/* define for Atari ST/TT */
-
-/* #define STUPID	/* avoid some complicated expressions if
+/* #define STUPID */	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
-/* #define TERMINFO	/* uses terminfo rather than termcap */
-			/* should be defined for HPUX and most, but not all,
-			   SYSV */
-			/* in particular, it should NOT be defined for the
-			 * UNIXPC unless you remove the use of the shared
-			 * library in the makefile */
-/* #define MINIMAL_TERM	/* if a terminal handles highlighting or tabs poorly,
+/* #define MINIMAL_TERM */
+			/* if a terminal handles highlighting or tabs poorly,
 			   try this define, used in pager.c and termcap.c */
-/* #define ULTRIX_CC20	/* define only if using cc v2.0 on a DECstation */
-/* #define ULTRIX_PROTO	/* define for Ultrix 4.0 (or higher) on a DECstation;
+/* #define ULTRIX_CC20 */
+			/* define only if using cc v2.0 on a DECstation */
+/* #define ULTRIX_PROTO */
+			/* define for Ultrix 4.0 (or higher) on a DECstation;
 			 * if you get compiler errors, don't define this. */
 			/* Hint: if you're not developing code, don't define
 			   ULTRIX_PROTO. */
 
-#ifdef VMS	/* really old compilers need special handling, detected here */
-# undef UNIX
-# ifdef __DECC
-#  ifndef __DECC_VER	/* buggy early versions want widened prototypes	*/
-#   define NOTSTDC	/* except when typedefs are involved		*/
-#   define USE_VARARGS
-#  else
-#   define NHSTDC
-#   define USE_STDARG
-#   define POSIX_TYPES
-#   define _DECC_V4_SOURCE	/* avoid some incompatible V5.x changes */
-#  endif
-#  undef __HIDE_FORBIDDEN_NAMES	/* need non-ANSI library support functions */
-# else
-#  ifdef VAXC	/* must use CC/DEFINE=ANCIENT_VAXC for vaxc v2.2 or older */
-#   ifdef ANCIENT_VAXC	/* vaxc v2.2 and earlier [lots of warnings to come] */
-#    define KR1ED	/* simulate defined() */
-#    define USE_VARARGS
-#   else		/* vaxc v2.3,2.4,or 3.x, or decc in vaxc mode */
-#     if defined(USE_PROTOTYPES) /* this breaks 2.2 (*forces* use of ANCIENT)*/
-#      define __STDC__ 0 /* vaxc is not yet ANSI compliant, but close enough */
-#      define signed	/* well, almost close enough */
-#include <stddef.h>
-#      define UNWIDENED_PROTOTYPES
-#     endif
-#     define USE_STDARG
-#   endif
-#  endif /*VAXC*/
-# endif /*__DECC*/
-# ifdef VERYOLD_VMS	/* v4.5 or earlier; no longer available for testing */
-#  define USE_OLDARGS	/* <varargs.h> is there, vprintf & vsprintf aren't */
-#  ifdef USE_VARARGS
-#   undef USE_VARARGS
-#  endif
-#  ifdef USE_STDARG
-#   undef USE_STDARG
-#  endif
-# endif
-#endif /*VMS*/
+#include "config1.h"	/* should auto-detect MSDOS, MAC, AMIGA, and WIN32 */
 
-#ifdef vax
-/* just in case someone thinks a DECstation is a vax. It's not, it's a mips */
-# ifdef ULTRIX_PROTO
-#  undef ULTRIX_PROTO
-# endif
-# ifdef ULTRIX_CC20
-#  undef ULTRIX_CC20
-# endif
-#endif
-
-#ifdef KR1ED		/* For compilers which cannot handle defined() */
-#define defined(x) (-x-1 != -1)
-/* Because:
- * #define FOO => FOO={} => defined( ) => (-1 != - - 1) => 1
- * #define FOO 1 or on command-line -DFOO
- *      => defined(1) => (-1 != - 1 - 1) => 1
- * if FOO isn't defined, FOO=0. But some compilers default to 0 instead of 1
- * for -DFOO, oh well.
- *      => defined(0) => (-1 != - 0 - 1) => 0
- *
- * But:
- * defined("") => (-1 != - "" - 1)
- *   [which is an unavoidable catastrophe.]
- */
-#endif
 
 /* Windowing systems...
  * Define all of those you want supported in your binary.
  * Some combinations make no sense.  See the installation document.
  */
 #define TTY_GRAPHICS	/* good old tty based graphics */
-/* #define X11_GRAPHICS	/* X11 interface */
+/* #define X11_GRAPHICS */ /* X11 interface */
+/* #define QT_GRAPHICS */	/* Qt interface */
 
 /*
  * Define the default window system.  This should be one that is compiled
  * into your system (see defines above).  Known window systems are:
  *
- *	tty, X11, mac, amii, win32
+ *	tty, X11, mac, amii, Qt
  */
 
 /* MAC also means MAC windows */
@@ -233,14 +66,17 @@
 # define DEFAULT_WINDOW_SYS "amii"	/* "amii", "amitile" or "tty" */
 #endif
 
-/* Windows NT supports TTY_GRAPHICS */
-#ifdef WIN32
-#  define DEFAULT_WINDOW_SYS "tty"
-#endif
-
 #ifdef __BEOS__
 /* leave at tty graphics for now */
 /* # define DEFAULT_WINDOW_SYS "be" */
+#endif
+
+#ifdef QT_GRAPHICS
+# define USE_XPM		/* Use XPM format for images (required) */
+# define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
+# ifndef DEFAULT_WINDOW_SYS
+#  define DEFAULT_WINDOW_SYS "Qt"
+# endif
 #endif
 
 #ifndef DEFAULT_WINDOW_SYS
@@ -256,11 +92,12 @@
  * would allow:
  *  xpmtoppm <x11tiles.xpm | pnmscale 1.25 | ppmquant 90 >x11tiles_big.xpm
  */
-/* # define USE_XPM		/* Disable if you do not have the XPM library */
+/* # define USE_XPM */		/* Disable if you do not have the XPM library */
 # ifdef USE_XPM
 #  define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.xpm) */
 # endif
 #endif
+
 
 /*
  * Section 2:	Some global parameters and filenames.
@@ -296,13 +133,13 @@
 
 #ifdef UNIX
 /* path and file name extension for compression program */
-# define COMPRESS "/usr/ucb/compress"	     /* Lempel-Ziv compression */
-# define COMPRESS_EXTENSION ".Z"	     /* compress's extension */
-
+#define COMPRESS "/usr/bin/compress"	/* Lempel-Ziv compression */
+#define COMPRESS_EXTENSION ".Z"		/* compress's extension */
 /* An example of one alternative you might want to use: */
-/* # define COMPRESS "/usr/local/bin/gzip"   /* FSF gzip compression */
-/* # define COMPRESS_EXTENSION ".gz"	     /* normal gzip extension */
+/* #define COMPRESS "/usr/local/bin/gzip" */	/* FSF gzip compression */
+/* #define COMPRESS_EXTENSION ".gz" */		/* normal gzip extension */
 #endif
+
 #ifndef COMPRESS
 # define INTERNAL_COMP	/* control use of NetHack's compression routines */
 #endif
@@ -312,7 +149,7 @@
  *	a tar-like file, thus making a neater installation.  See *conf.h
  *	for detailed configuration.
  */
-/* #define DLB		/* not supported on all platforms */
+/* #define DLB */	/* not supported on all platforms */
 
 /*
  *	Defining INSURANCE slows down level changes, but allows games that
@@ -337,11 +174,11 @@
 /*
  * Some system administrators are stupid enough to make Hack suid root
  * or suid daemon, where daemon has other powers besides that of reading or
- * writing Hack files.  In such cases one should be careful with chdir's
+ * writing Hack files.	In such cases one should be careful with chdir's
  * since the user might create files in a directory of his choice.
  * Of course SECURE is meaningful only if HACKDIR is defined.
  */
-/* #define SECURE	/* do setuid(getuid()) after chdir() */
+/* #define SECURE */	/* do setuid(getuid()) after chdir() */
 
 /*
  * If it is desirable to limit the number of people that can play Hack
@@ -363,14 +200,14 @@
  * 'void' type (and thus would give all sorts of compile errors without
  * this definition).
  */
-/* #define NOVOID			/* define if no "void" data type. */
+/* #define NOVOID */			/* define if no "void" data type. */
 
 /*
  * Uncomment the following line if your compiler falsely claims to be
  * a standard C compiler (i.e., defines __STDC__ without cause).
  * Examples are Apollo's cc (in some versions) and possibly SCO UNIX's rcc.
  */
-/* #define NOTSTDC			/* define for lying compilers */
+/* #define NOTSTDC */			/* define for lying compilers */
 
 #include "tradstdc.h"
 
@@ -379,7 +216,7 @@
  *
  *	typedef char	schar;
  *
- *      will do when you have signed characters; otherwise use
+ *	will do when you have signed characters; otherwise use
  *
  *	typedef short int schar;
  */
@@ -412,7 +249,7 @@ typedef unsigned char	uchar;
  */
 #define BITFIELDS	/* Good bitfield handling */
 
-/* #define STRNCMPI /* compiler/library has the strncmpi function */
+/* #define STRNCMPI */	/* compiler/library has the strncmpi function */
 
 /*
  * There are various choices for the NetHack vision system.  There is a
@@ -427,7 +264,7 @@ typedef unsigned char	uchar;
  * functions that have been macroized.
  */
 
-/*#define VISION_TABLES	/* use vision tables generated at compile time */
+/* #define VISION_TABLES */ /* use vision tables generated at compile time */
 #ifndef VISION_TABLES
 # ifndef NO_MACRO_CPATH
 #  define MACRO_CPATH	/* use clear_path macros instead of functions */
@@ -443,7 +280,6 @@ typedef unsigned char	uchar;
  */
 
 /* dungeon features */
-#define WEAPON_SKILLS	/* Weapon skills - Stephen White */
 #define SINKS		/* Kitchen sinks - Janet Walz */
 /* dungeon levels */
 #define WALLIFIED_MAZE	/* Fancy mazes - Jean-Christophe Collet */
@@ -451,6 +287,7 @@ typedef unsigned char	uchar;
 /* monsters & objects */
 #define KOPS		/* Keystone Kops by Scott R. Turner */
 #define SEDUCE		/* Succubi/incubi seduction, by KAA, suggested by IM */
+#define STEED		/* Riding steeds */
 #define TOURIST		/* Tourist players with cameras and Hawaiian shirts */
 /* difficulty */
 #define ELBERETH	/* Engraving the E-word repels monsters */
@@ -461,11 +298,11 @@ typedef unsigned char	uchar;
 #endif
 
 #ifdef REDO
-# define DOAGAIN '\001'	/* ^A, the "redo" key used in cmd.c and getline.c */
+# define DOAGAIN '\001' /* ^A, the "redo" key used in cmd.c and getline.c */
 #endif
 
 #define EXP_ON_BOTL	/* Show experience on bottom line */
-/* #define SCORE_ON_BOTL	/* added by Gary Erickson (erickson@ucivax) */
+/* #define SCORE_ON_BOTL */	/* added by Gary Erickson (erickson@ucivax) */
 
 #include "global.h"	/* Define everything else according to choices above */
 

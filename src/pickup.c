@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.2	96/07/19	*/
+/*	SCCS Id: @(#)pickup.c	3.3	1999/11/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,26 +8,26 @@
 
 #include "hack.h"
 
-static void FDECL(simple_look, (struct obj *,BOOLEAN_P));
-static boolean FDECL(query_classes, (char *,boolean *,boolean *,
+STATIC_DCL void FDECL(simple_look, (struct obj *,BOOLEAN_P));
+STATIC_DCL boolean FDECL(query_classes, (char *,boolean *,boolean *,
 		const char *,struct obj *,BOOLEAN_P,BOOLEAN_P,int *));
-static void FDECL(check_here, (BOOLEAN_P));
-static boolean FDECL(n_or_more, (struct obj *));
-static boolean FDECL(all_but_uchain, (struct obj *));
+STATIC_DCL void FDECL(check_here, (BOOLEAN_P));
+STATIC_DCL boolean FDECL(n_or_more, (struct obj *));
+STATIC_DCL boolean FDECL(all_but_uchain, (struct obj *));
 #if 0 /* not used */
-static boolean FDECL(allow_cat_no_uchain, (struct obj *));
+STATIC_DCL boolean FDECL(allow_cat_no_uchain, (struct obj *));
 #endif
-static int FDECL(autopick, (struct obj*, int, menu_item **));
-static int FDECL(count_categories, (struct obj *,int));
-static long FDECL(carry_count,
+STATIC_DCL int FDECL(autopick, (struct obj*, int, menu_item **));
+STATIC_DCL int FDECL(count_categories, (struct obj *,int));
+STATIC_DCL long FDECL(carry_count,
 		      (struct obj *,struct obj *,long,BOOLEAN_P,int *,int *));
-static int FDECL(lift_object, (struct obj *,struct obj *,long *,BOOLEAN_P));
-static boolean FDECL(mbag_explodes, (struct obj *,int));
+STATIC_DCL int FDECL(lift_object, (struct obj *,struct obj *,long *,BOOLEAN_P));
+STATIC_DCL boolean FDECL(mbag_explodes, (struct obj *,int));
 STATIC_PTR int FDECL(in_container,(struct obj *));
 STATIC_PTR int FDECL(ck_bag,(struct obj *));
 STATIC_PTR int FDECL(out_container,(struct obj *));
-static int FDECL(menu_loot, (int, struct obj *, BOOLEAN_P));
-static int FDECL(in_or_out_menu, (const char *,struct obj *));
+STATIC_DCL int FDECL(menu_loot, (int, struct obj *, BOOLEAN_P));
+STATIC_DCL int FDECL(in_or_out_menu, (const char *,struct obj *));
 
 /* define for query_objlist() and autopickup() */
 #define FOLLOW(curr, flags) \
@@ -52,7 +52,7 @@ static const char overloadmsg[] = "You have extreme difficulty lifting";
 /* BUG: this lets you look at cockatrice corpses while blind without
    touching them */
 /* much simpler version of the look-here code; used by query_classes() */
-static void
+STATIC_OVL void
 simple_look(otmp, here)
 struct obj *otmp;	/* list of objects */
 boolean here;		/* flag for type of obj list linkage */
@@ -112,7 +112,7 @@ boolean FDECL((*filter),(OBJ_P));
  *	"?/a" or "a?/" or "/a?",&c picks all '?' even though no '/'
  *	    (ie, treated as if it had just been "?a").
  */
-static boolean
+STATIC_OVL boolean
 query_classes(oclasses, one_at_a_time, everything, action, objs,
 	      here, incl_gold, menu_on_demand)
 char oclasses[];
@@ -206,7 +206,7 @@ ask_again:
 }
 
 /* look at the objects at our location, unless there are too many of them */
-static void
+STATIC_OVL void
 check_here(picked_some)
 boolean picked_some;
 {
@@ -223,13 +223,7 @@ boolean picked_some;
 	if (ct) {
 	    if (flags.run) nomul(0);
 	    flush_screen(1);
-	    if (ct < 5) {
-		(void) dolook();
-	    } else {
-		read_engr_at(u.ux,u.uy);
-		pline("There are several %sobjects here.",
-		      picked_some ? "more " : "");
-	    }
+	    (void) look_here(ct, picked_some);
 	} else {
 	    read_engr_at(u.ux,u.uy);
 	}
@@ -239,7 +233,7 @@ boolean picked_some;
 static long val_for_n_or_more;
 
 /* query_objlist callback: return TRUE if obj's count is >= reference value */
-static boolean
+STATIC_OVL boolean
 n_or_more(obj)
 struct obj *obj;
 {
@@ -264,7 +258,7 @@ int c;
 }
 
 /* query_objlist callback: return TRUE if not uchain */
-static boolean
+STATIC_OVL boolean
 all_but_uchain(obj)
 struct obj *obj;
 {
@@ -293,7 +287,7 @@ struct obj *obj;
 
 #if 0 /* not used */
 /* query_objlist callback: return TRUE if valid category (class), no uchain */
-static boolean
+STATIC_OVL boolean
 allow_cat_no_uchain(obj)
 struct obj *obj;
 {
@@ -311,7 +305,8 @@ boolean
 is_worn_by_type(otmp)
 register struct obj *otmp;
 {
-	return((boolean)(!!(otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)))
+	return((boolean)(!!(otmp->owornmask &
+			(W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP | W_SWAPWEP | W_QUIVER)))
 	        && (index(valid_menu_classes, otmp->oclass) != (char *)0));
 }
 
@@ -356,6 +351,14 @@ int what;		/* should be a long */
 	 */
 	if ((multi && !flags.run) || (autopickup && !flags.pickup)) {
 	    check_here(FALSE);
+	    return;
+	}
+
+	if (notake(youmonst.data)) {
+	    if (!autopickup)
+		You("are physically incapable of picking anything up.");
+	    else
+		check_here(FALSE);
 	    return;
 	}
 
@@ -428,7 +431,8 @@ menu_pickup:
 	    } else if (ct >= 2) {
 		int via_menu = 0;
 
-		pline("There are several objects here.");
+		pline("There are %s objects here.",
+		      (ct <= 10) ? "several" : "many");
 		if (!query_classes(oclasses, &selective, &all_of_a_type,
 				   "pick up", level.objects[u.ux][u.uy],
 				   TRUE, FALSE, &via_menu)) {
@@ -495,7 +499,7 @@ end_query:
  * picked is zero, the pickup list is left alone.  The caller of this
  * function must free the pickup list.
  */
-static int
+STATIC_OVL int
 autopick(olist, follow, pick_list)
 struct obj *olist;	/* the object list */
 int follow;		/* how to follow the object list */
@@ -658,7 +662,7 @@ int how;			/* type of query */
 	if (ccount == 1 && !do_unpaid && !(qflags & BILLED_TYPES)) {
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if ((qflags & WORN_TYPES) &&
-		    !(curr->owornmask & (W_ARMOR|W_RING|W_AMUL|W_TOOL|W_WEP)))
+		    !(curr->owornmask & (W_ARMOR|W_RING|W_AMUL|W_TOOL|W_WEP|W_SWAPWEP|W_QUIVER)))
 		    continue;
 		break;
 	    }
@@ -692,7 +696,8 @@ int how;			/* type of query */
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if (curr->oclass == *pack) {
 		   if ((qflags & WORN_TYPES) &&
-	!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)))
+		   		!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL |
+		    	W_WEP | W_SWAPWEP | W_QUIVER)))
 			 continue;
 		   if (!collected_type_name) {
 			any.a_void = 0;
@@ -744,7 +749,7 @@ int how;			/* type of query */
 	return n;
 }
 
-static int
+STATIC_OVL int
 count_categories(olist, qflags)
 struct obj *olist;
 int qflags;
@@ -760,7 +765,8 @@ int qflags;
 	    for (curr = olist; curr; curr = FOLLOW(curr, qflags)) {
 		if (curr->oclass == *pack) {
 		   if ((qflags & WORN_TYPES) &&
-	!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)))
+		    	!(curr->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL |
+		    	W_WEP | W_SWAPWEP | W_QUIVER)))
 			 continue;
 		   if (!counted_category) {
 			ccount++;
@@ -774,7 +780,7 @@ int qflags;
 }
 
 /* could we carry `obj'? if not, could we carry some of it/them? */
-static
+STATIC_OVL
 long carry_count(obj, container, count, telekinesis, wt_before, wt_after)
 struct obj *obj, *container;	/* object to pick up, bag it's coming out of */
 long count;
@@ -904,7 +910,7 @@ int *wt_before, *wt_after;
 }
 
 /* determine whether character is able and player is willing to carry `obj' */
-static
+STATIC_OVL
 int lift_object(obj, container, cnt_p, telekinesis)
 struct obj *obj, *container;	/* object to pick up, bag it's coming out of */
 long *cnt_p;
@@ -912,8 +918,14 @@ boolean telekinesis;
 {
     int result, old_wt, new_wt, prev_encumbr, next_encumbr;
 
+
+    if (obj->otyp == BOULDER && In_sokoban(&u.uz)) {
+	You("cannot get your %s around this %s.",
+			body_part(HAND), xname(obj));
+	return -1;
+    }
     if (obj->otyp == LOADSTONE ||
-	    (obj->otyp == BOULDER && throws_rocks(uasmon)))
+	    (obj->otyp == BOULDER && throws_rocks(youmonst.data)))
 	return 1;		/* lift regardless of current situation */
 
     *cnt_p = carry_count(obj, container, *cnt_p, telekinesis, &old_wt, &new_wt);
@@ -926,7 +938,8 @@ boolean telekinesis;
     } else {
 	result = 1;
 	prev_encumbr = near_capacity();
-	if (prev_encumbr < MOD_ENCUMBER) prev_encumbr = MOD_ENCUMBER;
+	if (prev_encumbr < flags.pickup_burden)
+		prev_encumbr = flags.pickup_burden;
 	next_encumbr = calc_capacity(new_wt - old_wt);
 	if (next_encumbr > prev_encumbr) {
 	    if (telekinesis) {
@@ -937,8 +950,9 @@ boolean telekinesis;
 
 		obj->quan = *cnt_p;
 		Sprintf(qbuf, "%s %s.  Continue?",
-			next_encumbr==HVY_ENCUMBER ? nearloadmsg : overloadmsg,
-			doname(obj));
+			(next_encumbr > HVY_ENCUMBER) ? overloadmsg :
+			(next_encumbr > MOD_ENCUMBER) ? nearloadmsg :
+			moderateloadmsg, doname(obj));
 		obj->quan = savequan;
 		switch (ynq(qbuf)) {
 		case 'q':  result = -1; break;
@@ -966,6 +980,8 @@ long count;
 boolean telekinesis;	/* not picking it up directly by hand */
 {
 	int res, nearload;
+	const char *where = (obj->ox == u.ux && obj->oy == u.uy) ?
+			    "here" : "there";
 
 	if (obj->quan < count) {
 	    impossible("pickup_object: count %ld > quan %ld?",
@@ -975,7 +991,11 @@ boolean telekinesis;	/* not picking it up directly by hand */
 
 	/* In case of auto-pickup, where we haven't had a chance
 	   to look at it yet; affects docall(SCR_SCARE_MONSTER). */
-	if (!Blind) obj->dknown = 1;
+	if (!Blind)
+#ifdef INVISIBLE_OBJECTS
+		if (!obj->oinvis || See_invisible)
+#endif
+		obj->dknown = 1;
 
 	if (obj == uchain) {    /* do not pick up attached chain */
 	    return 0;
@@ -987,14 +1007,15 @@ boolean telekinesis;	/* not picking it up directly by hand */
 	    long gold_capacity = GOLD_CAPACITY(iw, u.ugold);
 
 	    if (gold_capacity <= 0L) {
-       pline("There %s %ld gold piece%s here, but you cannot carry any more.",
-			(obj->quan == 1L) ? "is" : "are",
-			obj->quan, plur(obj->quan));
+		pline(
+	       "There %s %ld gold piece%s %s, but you cannot carry any more.",
+		      (obj->quan == 1L) ? "is" : "are",
+		      obj->quan, plur(obj->quan), where);
 		return 0;
 	    } else if (gold_capacity < count) {
-		You("can only %s %s of the %ld gold pieces lying here.",
+		You("can only %s %s of the %ld gold pieces lying %s.",
 		    telekinesis ? "acquire" : "carry",
-		    gold_capacity == 1L ? "one" : "some", obj->quan);
+		    gold_capacity == 1L ? "one" : "some", obj->quan, where);
 		pline("%s %ld gold piece%s.",
 		    nearloadmsg, gold_capacity, plur(gold_capacity));
 		u.ugold += gold_capacity;
@@ -1019,13 +1040,17 @@ boolean telekinesis;	/* not picking it up directly by hand */
 	    if (flags.run) nomul(0);
 	    return 1;
 	} else if (obj->otyp == CORPSE) {
-	    if (obj->corpsenm == PM_COCKATRICE && !uarmg
-			&& !resists_ston(&youmonst) && !telekinesis) {
-		if (poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM))
+		if ( (touch_petrifies(&mons[obj->corpsenm])) && !uarmg
+				&& !Stone_resistance && !telekinesis) {
+		if (poly_when_stoned(youmonst.data) && polymon(PM_STONE_GOLEM))
 		    display_nhwindow(WIN_MESSAGE, FALSE);
 		else {
-		  pline("Touching the cockatrice corpse is a fatal mistake.");
-		    instapetrify("cockatrice corpse");
+			char kbuf[BUFSZ];
+
+			pline("Touching %s corpse is a fatal mistake.",
+					an(mons[obj->corpsenm].mname));
+			Sprintf(kbuf, "%s corpse", an(mons[obj->corpsenm].mname));
+			instapetrify(kbuf);
 		    return -1;
 		}
 	    } else if (is_rider(&mons[obj->corpsenm])) {
@@ -1046,7 +1071,7 @@ boolean telekinesis;	/* not picking it up directly by hand */
 		if (!(objects[SCR_SCARE_MONSTER].oc_name_known) &&
 				    !(objects[SCR_SCARE_MONSTER].oc_uname))
 		    docall(obj);
-		useupf(obj);
+		useupf(obj, obj->quan);
 		return 1;	/* tried to pick something up and failed, but
 				   don't want to terminate pickup loop yet   */
 	    }
@@ -1140,6 +1165,11 @@ doloot()	/* loot a container on the floor. */
 		/* "Can't do that while carrying so much stuff." */
 		return 0;
 	} else if (!can_reach_floor()) {
+#ifdef STEED
+		if (u.usteed && P_SKILL(P_RIDING) < P_BASIC)
+			You("aren't skilled enough to reach from %s.", mon_nam(u.usteed));
+		else
+#endif
 		You("cannot reach the %s.", surface(u.ux, u.uy));
 		return(0);
 	} else if (is_pool(u.ux, u.uy) || is_lava(u.ux, u.uy)) {
@@ -1147,7 +1177,7 @@ doloot()	/* loot a container on the floor. */
 		You("cannot loot things that are deep in the %s.",
 		    is_lava(u.ux, u.uy) ? "lava" : "water");
 		return(0);
-	} else if (nolimbs(uasmon)) {
+	} else if (nolimbs(youmonst.data)) {
 		pline("Without limbs, you cannot loot anything.");
 		return(0);
 	}
@@ -1226,6 +1256,8 @@ verbalize("Thank you for your contribution to reduce the debt.");
 			pline("Ok, now there is loot here.");
 		    }
 		}
+	    } else if (levl[u.ux][u.uy].typ == GRAVE) {
+		You("need to dig up a grave in order to properly loot it...");
 	    } else {
 		You("don't find anything here to loot.");
 	    }
@@ -1237,7 +1269,7 @@ verbalize("Thank you for your contribution to reduce the debt.");
  * Decide whether an object being placed into a magic bag will cause
  * it to explode.  If the object is a bag itself, check recursively.
  */
-static boolean
+STATIC_OVL boolean
 mbag_explodes(obj, depthin)
     struct obj *obj;
     int depthin;
@@ -1312,10 +1344,17 @@ register struct obj *obj;
 		}
 		setuwep((struct obj *) 0);
 		if (uwep) return 0;	/* unwielded, died, rewielded */
+	} else if (obj == uswapwep) {
+		setuswapwep((struct obj *) 0);
+		if (uswapwep) return 0;     /* unwielded, died, rewielded */
+	} else if (obj == uquiver) {
+		setuqwep((struct obj *) 0);
+		if (uquiver) return 0;     /* unwielded, died, rewielded */
 	}
 
-	/* boxes can't fit into any container */
-	if (obj->otyp == ICE_BOX || Is_box(obj)) {
+	/* boxes, boulders, and big statues can't fit into any container */
+	if (obj->otyp == ICE_BOX || Is_box(obj) || obj->otyp == BOULDER ||
+		(obj->otyp == STATUE && bigmonst(&mons[obj->corpsenm]))) {
 		/*
 		 *  xname() uses a static result array.  Save obj's name
 		 *  before current_container's name is computed.  Don't
@@ -1380,7 +1419,7 @@ register struct obj *obj;
 		if (!floor_container)
 			useup(current_container);
 		else if (obj_here(current_container, u.ux, u.uy))
-			useupf(current_container);
+			useupf(current_container, obj->quan);
 		else
 			panic("in_container:  bag not found.");
 
@@ -1441,6 +1480,8 @@ register struct obj *obj;
 	}
 	/* simulated point of time */
 
+	if (is_pick(obj) && !obj->unpaid && *u.ushops && shop_keeper(*u.ushops))
+		verbalize("You sneaky cad! Get out of here with that pick!");
 	if(!obj->unpaid && !carried(current_container) &&
 	     costly_spot(current_container->ox, current_container->oy)) {
 
@@ -1594,12 +1635,14 @@ ask_again2:
 		    container_contents(current_container, FALSE, FALSE);
 		    goto ask_again2;
 		case 'y':
-		    if (query_classes(select, &one_by_one, &allflag, "take out",
-				      current_container->cobj,
+		    if (query_classes(select, &one_by_one, &allflag,
+				      "take out", current_container->cobj,
 				      FALSE, FALSE, &menu_on_request)) {
 			if (askchain((struct obj **)&current_container->cobj,
-				     (one_by_one ? (char *)0 : select), allflag,
-				     out_container, (int (*)())0, 0, "nodot"))
+				     (one_by_one ? (char *)0 : select),
+				     allflag, out_container,
+				     (int FDECL((*),(OBJ_P)))0,
+				     0, "nodot"))
 			    used = 1;
 		    } else if (menu_on_request < 0) {
 			used |= menu_loot(menu_on_request,
@@ -1671,7 +1714,7 @@ ask_again2:
 }
 
 /* Loot a container (take things out, put things in), using a menu. */
-static int
+STATIC_OVL int
 menu_loot(retry, container, put_in)
 int retry;
 struct obj *container;
@@ -1681,8 +1724,10 @@ boolean put_in;
     boolean all_categories = TRUE, loot_everything = FALSE;
     char buf[BUFSZ];
     const char *takeout = "Take out", *putin = "Put in";
+    struct obj *otmp, *otmp2;
     menu_item *pick_list;
     int mflags, res;
+    long count;
 
     if (retry) {
 	all_categories = (retry == -2);
@@ -1705,8 +1750,6 @@ boolean put_in;
     }
 
     if (loot_everything) {
-	struct obj *otmp, *otmp2;
-
 	for (otmp = container->cobj; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nobj;
 	    res = out_container(otmp);
@@ -1722,12 +1765,14 @@ boolean put_in;
 	if (n) {
 		n_looted = n;
 		for (i = 0; i < n; i++) {
-		    if (pick_list[i].item.a_obj->quan != pick_list[i].count) {
-			(void) splitobj(pick_list[i].item.a_obj,
-					pick_list[i].count);
+		    otmp = pick_list[i].item.a_obj;
+		    count = pick_list[i].count;
+		    if (count > 0 && count < otmp->quan) {
+			otmp2 = splitobj(otmp, count);
+			/* special split case also handled by askchain() */
+			if (otmp == uwep) setuwep(otmp2);
 		    }
-		    res = put_in ? in_container(pick_list[i].item.a_obj) :
-				   out_container(pick_list[i].item.a_obj);
+		    res = put_in ? in_container(otmp) : out_container(otmp);
 		    if (res < 0)
 			break;
 		}
@@ -1737,7 +1782,7 @@ boolean put_in;
     return n_looted;
 }
 
-static int
+STATIC_OVL int
 in_or_out_menu(prompt, obj)
 const char *prompt;
 struct obj *obj;
@@ -1752,10 +1797,10 @@ struct obj *obj;
     win = create_nhwindow(NHW_MENU);
     start_menu(win);
     any.a_int = 1;
-    Sprintf(buf,"Take something out of %s", the(xname(obj)));
+    Sprintf(buf,"Take %s out of %s", something, the(xname(obj)));
     add_menu(win, NO_GLYPH, &any, 'a', 0, ATR_NONE, buf, MENU_UNSELECTED);
     any.a_int = 2;
-    Sprintf(buf,"Put something into %s",the(xname(obj)));
+    Sprintf(buf,"Put %s into %s", something, the(xname(obj)));
     add_menu(win, NO_GLYPH, &any, 'b', 0, ATR_NONE, buf, MENU_UNSELECTED);
     any.a_int = 3;
     add_menu(win, NO_GLYPH, &any, 'c', 0, ATR_NONE,

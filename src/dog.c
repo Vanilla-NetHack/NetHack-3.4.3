@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.2	96/10/20	*/
+/*	SCCS Id: @(#)dog.c	3.3	1999/10/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
 
 #ifdef OVLB
 
-static int NDECL(pet_type);
+STATIC_DCL int NDECL(pet_type);
 
 void
 initedog(mtmp)
@@ -22,41 +22,32 @@ register struct monst *mtmp;
 	EDOG(mtmp)->dropdist = 10000;
 	EDOG(mtmp)->apport = 10;
 	EDOG(mtmp)->whistletime = 0;
-	EDOG(mtmp)->hungrytime = 1000 + moves;
+	EDOG(mtmp)->hungrytime = 1000 + monstermoves;
 	EDOG(mtmp)->ogoal.x = -1;	/* force error if used before set */
 	EDOG(mtmp)->ogoal.y = -1;
+	EDOG(mtmp)->abuse = 0;
+	EDOG(mtmp)->revivals = 0;
+	EDOG(mtmp)->killed_by_u = 0;
 }
 
-static int
+STATIC_OVL int
 pet_type()
 {
-	register int pettype;
-
-	switch (u.role) {
-		/* some character classes have restricted ideas of pets */
-		case 'C':
-		case 'S':
-			pettype = PM_LITTLE_DOG;
-			break;
-		case 'W':
-			pettype = PM_KITTEN;
-			break;
-		/* otherwise, see if the player has a preference */
-		default:
-			if (preferred_pet == 'c')
-				pettype = PM_KITTEN;
-			else if (preferred_pet == 'd')
-				pettype = PM_LITTLE_DOG;
-			else	pettype = rn2(2) ? PM_KITTEN : PM_LITTLE_DOG;
-			break;
-	}
-	return pettype;
+	if (urole.petnum != NON_PM)
+	    return (urole.petnum);
+	else if (preferred_pet == 'c')
+	    return (PM_KITTEN);
+	else if (preferred_pet == 'd')
+	    return (PM_LITTLE_DOG);
+	else
+	    return (rn2(2) ? PM_KITTEN : PM_LITTLE_DOG);
 }
 
-void
-make_familiar(otmp,x,y)
+struct monst *
+make_familiar(otmp,x,y,quietly)
 register struct obj *otmp;
 xchar x, y;
+boolean quietly;
 {
 	struct permonst *pm;
 	struct monst *mtmp = 0;
@@ -70,24 +61,24 @@ xchar x, y;
 	    } else {
 		pm = rndmonst();
 		if (!pm) {
+		  if (!quietly)
 		    pline("There seems to be nothing available for a familiar.");
-		    break;
+		  break;
 		}
 	    }
 
-	    pm->pxlth += sizeof (struct edog);
-	    mtmp = makemon(pm, x, y, NO_MM_FLAGS);
-	    pm->pxlth -= sizeof (struct edog);
+	    mtmp = makemon(pm, x, y, MM_EDOG);
 	    if (otmp && !mtmp) { /* monster was genocided or square occupied */
-		pline_The("figurine writhes and then shatters into pieces!");
+	 	if (!quietly)
+		   pline_The("figurine writhes and then shatters into pieces!");
 		break;
 	    }
 	} while (!mtmp && --trycnt > 0);
 
-	if (!mtmp) return;
+	if (!mtmp) return (struct monst *)0;
 
 	initedog(mtmp);
-	mtmp->msleep = 0;
+	mtmp->msleeping = 0;
 	if (otmp) { /* figurine; resulting monster might not become a pet */
 	    chance = rn2(10);	/* 0==tame, 1==peaceful, 2==hostile */
 	    if (chance > 2) chance = otmp->blessed ? 0 : !otmp->cursed ? 1 : 2;
@@ -95,7 +86,8 @@ xchar x, y;
 	    if (chance > 0) {
 		mtmp->mtame = 0;	/* not tame after all */
 		if (chance == 2) { /* hostile (cursed figurine) */
-		    You("get a bad feeling about this.");
+		    if (!quietly)
+		       You("get a bad feeling about this.");
 		    mtmp->mpeaceful = 0;
 		}
 	    }
@@ -111,12 +103,16 @@ xchar x, y;
 		mtmp->weapon_check = NEED_HTH_WEAPON;
 		(void) mon_wield_item(mtmp);
 	}
+	return mtmp;
 }
 
 struct monst *
 makedog()
 {
 	register struct monst *mtmp;
+#ifdef STEED
+	register struct obj *otmp;
+#endif
 	const char *petname;
 	int   pettype;
 	static int petname_used = 0;
@@ -124,27 +120,52 @@ makedog()
 	pettype = pet_type();
 	if (pettype == PM_LITTLE_DOG)
 		petname = dogname;
+	else if (pettype == PM_PONY)
+		petname = horsename;
 	else
 		petname = catname;
 
 	/* default pet names */
 	if (!*petname) {
-	    if(Role_is('C')) petname = "Slasher";   /* The Warrior */
-	    if(Role_is('S')) petname = "Hachi";     /* Shibuya Station */
-	    if(Role_is('B')) petname = "Idefix";    /* Obelix */
+	    if(Role_if(PM_CAVEMAN)) petname = "Slasher";   /* The Warrior */
+	    if(Role_if(PM_SAMURAI)) petname = "Hachi";     /* Shibuya Station */
+	    if(Role_if(PM_BARBARIAN)) petname = "Idefix";  /* Obelix */
+	    if(Role_if(PM_RANGER)) petname = "Sirius";     /* Orion's dog */
 	}
 
-	mons[pettype].pxlth = sizeof(struct edog);
-	mtmp = makemon(&mons[pettype], u.ux, u.uy, NO_MM_FLAGS);
-	mons[pettype].pxlth = 0;
+	mtmp = makemon(&mons[pettype], u.ux, u.uy, MM_EDOG);
 
 	if(!mtmp) return((struct monst *) 0); /* pets were genocided */
+
+#ifdef STEED
+	/* Horses already wear a saddle */
+	if (pettype == PM_PONY && !!(otmp = mksobj(SADDLE, TRUE, FALSE))) {
+	    mpickobj(mtmp, otmp);
+	    mtmp->misc_worn_check |= W_SADDLE;
+	    otmp->owornmask = W_SADDLE;
+	    otmp->leashmon = mtmp->m_id;
+	    update_mon_intrinsics(mtmp, otmp, TRUE);
+	}
+#endif
 
 	if (!petname_used++ && *petname)
 		mtmp = christen_monst(mtmp, petname);
 
 	initedog(mtmp);
 	return(mtmp);
+}
+
+/* record `last move time' for all monsters prior to level save so that
+   mon_arrive() can catch up for lost time when they're restored later */
+void
+update_mlstmv()
+{
+	struct monst *mon;
+
+	/* monst->mlstmv used to be updated every time `monst' actually moved,
+	   but that is no longer the case so we just do a blanket assignment */
+	for (mon = fmon; mon; mon = mon->nmon)
+	    mon->mlstmv = monstermoves;
 }
 
 void
@@ -189,10 +210,11 @@ boolean with_you;
 	/* baby long worms have no tail so don't use is_longworm() */
 	if ((mtmp->data == &mons[PM_LONG_WORM]) &&
 #ifdef DCC30_BUG
-	    (mtmp->wormno = get_wormno(), mtmp->wormno != 0)) {
+	    (mtmp->wormno = get_wormno(), mtmp->wormno != 0))
 #else
-	    (mtmp->wormno = get_wormno()) != 0) {
+	    (mtmp->wormno = get_wormno()) != 0)
 #endif
+	{
 	    initworm(mtmp, num_segs);
 	    /* tail segs are not yet initialized or displayed */
 	} else mtmp->wormno = 0;
@@ -210,8 +232,21 @@ boolean with_you;
 	mtmp->mtrack[0].x = mtmp->mtrack[0].y = 0;
 	mtmp->mtrack[1].x = mtmp->mtrack[1].y = 0;
 
+#ifdef STEED
+	if (mtmp == u.usteed)
+	    return;	/* don't place steed on the map */
+#endif
 	if (with_you) {
-	    mnexto(mtmp);
+	    /* When a monster accompanies you, sometimes it will arrive
+	       at your intended destination and you'll end up next to
+	       that spot.  This code doesn't control the final outcome;
+	       goto_level(do.c) decides who ends up at your target spot
+	       when there is a monster there too. */
+	    if (!MON_AT(u.ux, u.uy) &&
+		    !rn2(mtmp->mtame ? 10 : mtmp->mpeaceful ? 5 : 2))
+		rloc_to(mtmp, u.ux, u.uy);
+	    else
+		mnexto(mtmp);
 	    return;
 	}
 	/*
@@ -359,6 +394,17 @@ long nmv;		/* number of moves */
 	    else if (mtmp->mtame > rn2(wilder)) mtmp->mtame = 0;  /* untame */
 	    else mtmp->mtame = mtmp->mpeaceful = 0;		/* hostile! */
 	}
+	/* check to see if it would have died as a pet; if so, go wild instead
+	 * of dying the next time we call dog_move()
+	 */
+	if (mtmp->mtame && !mtmp->isminion &&
+			(carnivorous(mtmp->data) || herbivorous(mtmp->data))) {
+	    struct edog *edog = EDOG(mtmp);
+
+	    if ((monstermoves > edog->hungrytime + 500 && mtmp->mhp < 3) ||
+		    (monstermoves > edog->hungrytime + 750))
+		mtmp->mtame = mtmp->mpeaceful = 0;
+	}
 
 	/* recover lost hit points */
 	if (!regenerates(mtmp->data)) imv /= 20;
@@ -384,11 +430,14 @@ boolean pets_only;	/* true for ascension or final escape */
 	    mtmp2 = mtmp->nmon;
 	    if (pets_only && !mtmp->mtame) continue;
 	    if (((monnear(mtmp, u.ux, u.uy) && levl_follower(mtmp)) ||
+#ifdef STEED
+			(mtmp == u.usteed) ||
+#endif
 		/* the wiz will level t-port from anywhere to chase
 		   the amulet; if you don't have it, will chase you
 		   only if in range. -3. */
 			(u.uhave.amulet && mtmp->iswiz))
-			&& !mtmp->msleep && mtmp->mcanmove) {
+			&& !mtmp->msleeping && mtmp->mcanmove) {
 		stay_behind = FALSE;
 		if (mtmp->mtame && mtmp->meating) {
 			if (canseemon(mtmp))
@@ -400,7 +449,11 @@ boolean pets_only;	/* true for ascension or final escape */
 				Monnam(mtmp));
 			stay_behind = TRUE;
 		}
-		if (stay_behind) {
+		if (stay_behind
+#ifdef STEED
+				&& mtmp != u.usteed
+#endif
+				) {
 			if (mtmp->mleashed) {
 				pline("%s leash suddenly comes loose.",
 					humanoid(mtmp->data)
@@ -432,6 +485,7 @@ boolean pets_only;	/* true for ascension or final escape */
 		newsym(mtmp->mx,mtmp->my);
 		mtmp->mx = mtmp->my = 0; /* avoid mnexto()/MON_AT() problem */
 		mtmp->wormno = num_segs;
+		mtmp->mlstmv = monstermoves;
 		mtmp->nmon = mydogs;
 		mydogs = mtmp;
 	    } else if (mtmp->iswiz) {
@@ -529,23 +583,32 @@ register struct obj *obj;
 	switch(obj->oclass) {
 	case FOOD_CLASS:
 	    if (obj->otyp == CORPSE &&
-		((obj->corpsenm == PM_COCKATRICE && !resists_ston(mon))
+		((touch_petrifies(&mons[obj->corpsenm]) && !resists_ston(mon))
 		 || is_rider(fptr)))
 		    return TABU;
+
+	    /* Ghouls only eat old corpses... yum! */
+	    if (mon->data == &mons[PM_GHOUL])
+	    	return (obj->otyp == CORPSE && obj->age+50 <= monstermoves) ?
+	       			DOGFOOD : TABU;
 
 	    if (!carni && !herbi)
 		    return (obj->cursed ? UNDEF : APPORT);
 
 	    switch (obj->otyp) {
 		case TRIPE_RATION:
+		case MEATBALL:
+		case MEAT_RING:
+		case MEAT_STICK:
 		    return (carni ? DOGFOOD : MANFOOD);
 		case EGG:
-		    if (obj->corpsenm == PM_COCKATRICE && !resists_ston(mon))
+		    if (touch_petrifies(&mons[obj->corpsenm]) && !resists_ston(mon))
 			return POISON;
 		    return (carni ? CADAVER : MANFOOD);
 		case CORPSE:
 		   if ((peek_at_iced_corpse_age(obj)+50 <= monstermoves
 					    && obj->corpsenm != PM_LIZARD
+					    && obj->corpsenm != PM_LICHEN
 					    && mon->data->mlet != S_FUNGUS) ||
 			(acidic(&mons[obj->corpsenm]) && !resists_acid(mon)) ||
 			(poisonous(&mons[obj->corpsenm]) &&
@@ -573,15 +636,18 @@ register struct obj *obj;
 			    (herbi ? ACCFOOD : MANFOOD));
 	    }
 	default:
+	    if (obj->otyp == AMULET_OF_STRANGULATION ||
+	    		obj->otyp == RIN_SLOW_DIGESTION)
+	    	return (TABU);
 	    if (hates_silver(mon->data) &&
 		objects[obj->otyp].oc_material == SILVER)
 		return(TABU);
 	    if (mon->data == &mons[PM_GELATINOUS_CUBE] && is_organic(obj))
 		return(ACCFOOD);
 	    if (metallivorous(mon->data) && is_metallic(obj))
-		/* Ferrous based metals are preferred. */
-		return(objects[obj->otyp].oc_material == IRON ? DOGFOOD :
-		       ACCFOOD);
+		/* Non-rustproofed ferrous based metals are preferred. */
+		return(objects[obj->otyp].oc_material == IRON &&
+		       !obj->oerodeproof ? DOGFOOD : ACCFOOD);
 	    if(!obj->cursed && obj->oclass != BALL_CLASS &&
 						obj->oclass != CHAIN_CLASS)
 		return(APPORT);
@@ -621,7 +687,7 @@ register struct obj *obj;
 	if (mtmp == u.ustuck) {
 	    if (u.uswallow)
 		expels(mtmp, mtmp->data, TRUE);
-	    else if (!(Upolyd && sticks(uasmon)))
+	    else if (!(Upolyd && sticks(youmonst.data)))
 		unstuck(mtmp);
 	}
 
@@ -631,7 +697,7 @@ register struct obj *obj;
 
 	    if (mtmp->mcanmove && !mtmp->mconf && !mtmp->meating &&
 		((tasty = dogfood(mtmp, obj)) == DOGFOOD ||
-		 (tasty <= ACCFOOD && EDOG(mtmp)->hungrytime <= moves))) {
+		 (tasty <= ACCFOOD && EDOG(mtmp)->hungrytime <= monstermoves))) {
 		/* pet will "catch" and eat this thrown food */
 		if (canseemon(mtmp)) {
 		    boolean big_corpse = (obj->otyp == CORPSE &&
@@ -657,7 +723,7 @@ register struct obj *obj;
 	    /* monsters with conflicting structures cannot be tamed */
 	    mtmp->isshk || mtmp->isgd || mtmp->ispriest || mtmp->isminion ||
 	    is_covetous(mtmp->data) || is_human(mtmp->data) ||
-	    (is_demon(mtmp->data) && !is_demon(uasmon)) ||
+	    (is_demon(mtmp->data) && !is_demon(youmonst.data)) ||
 	    (obj && dogfood(mtmp, obj) >= MANFOOD)) return (struct monst *)0;
 
 	/* make a new monster which has the pet extension */
@@ -686,6 +752,51 @@ register struct obj *obj;
 	return(mtmp2);
 }
 
+/*
+ * Called during pet revival or pet life-saving.
+ * If you killed the pet, it revives wild.
+ * If you abused the pet a lot while alive, it revives wild.
+ * If you abused the pet at all while alive, it revives untame.
+ * If the pet wasn't abused and was very tame, it might revive tame.
+ */
+void
+wary_dog(mtmp, quietly)
+struct monst *mtmp;
+boolean quietly;
+{
+    if (!mtmp->mtame) return;
+    mtmp->mpeaceful = 0;
+    if ((EDOG(mtmp)->killed_by_u == 1) || (EDOG(mtmp)->abuse > 2)) {
+	mtmp->mtame = 0;
+	if (EDOG(mtmp)->abuse >= 0 && EDOG(mtmp)->abuse < 10)
+		if (!rn2(EDOG(mtmp)->abuse + 1)) mtmp->mpeaceful = 1;
+	if(!quietly && cansee(mtmp->mx, mtmp->my)) {
+	    if (haseyes(youmonst.data)) {
+		if (haseyes(mtmp->data))
+			pline("%s %s to look you in the %s.",
+				Monnam(mtmp),
+				mtmp->mpeaceful ? "seems unable" :
+					    "refuses",
+				body_part(EYE));
+		else 
+			pline("%s avoids your gaze.",
+				Monnam(mtmp));
+	    }
+	}
+    } else {
+    	/* chance it goes wild anyway - Pet Semetary */
+    	if (!rn2(mtmp->mtame)) {
+    		mtmp->mtame = 0;
+    	}
+    }
+    /* if its still a pet, start a clean pet-slate now */
+    if (mtmp->mtame) {
+	EDOG(mtmp)->revivals++;
+    	EDOG(mtmp)->killed_by_u = 0;
+    	EDOG(mtmp)->abuse = 0;
+    }
+}
+
 void
 abuse_dog(mtmp)
 struct monst *mtmp;
@@ -695,9 +806,12 @@ struct monst *mtmp;
 	if (Aggravate_monster || Conflict) mtmp->mtame /=2;
 	else mtmp->mtame--;
 
+	if (mtmp->mtame) 
+		EDOG(mtmp)->abuse++;
+
 	if (mtmp->mtame && rn2(mtmp->mtame)) yelp(mtmp);
 	else growl(mtmp);	/* give them a moment's worry */
-
+	
 	if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
 }
 

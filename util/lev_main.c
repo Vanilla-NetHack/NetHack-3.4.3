@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.2	96/06/22	*/
+/*	SCCS Id: @(#)lev_main.c	3.3	96/06/22	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,7 +11,7 @@
 #include "date.h"
 #include "sp_lev.h"
 #ifdef STRICT_REF_DEF
-#include "termcap.h"
+#include "tcap.h"
 #endif
 
 #ifdef MAC
@@ -212,10 +212,11 @@ char **argv;
 				":dat:Arch.des",
 				":dat:Barb.des",
 				":dat:Caveman.des",
-				":dat:Elf.des",
 				":dat:Healer.des",
 				":dat:Knight.des",
+				":dat:Monk.des",
 				":dat:Priest.des",
+				":dat:Ranger.des",
 				":dat:Rogue.des",
 				":dat:Samurai.des",
 				":dat:Tourist.des",
@@ -229,6 +230,7 @@ char **argv;
 				":dat:medusa.des",
 				":dat:mines.des",
 				":dat:oracle.des",
+				":dat:sokoban.des",
 				":dat:tower.des",
 				":dat:yendor.des"
 				};
@@ -462,6 +464,8 @@ char c;
 		  case 'L'  : return(LAVAPOOL);
 		  case 'I'  : return(ICE);
 		  case 'W'  : return(WATER);
+		  case 'T'	: return (TREE);
+		  case 'F'	: return (IRONBARS);	/* Fe = iron */
 	    }
 	return(INVALID_TYPE);
 }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.2	96/05/31	*/
+/*	SCCS Id: @(#)shknam.c	3.3	97/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,9 +12,9 @@ extern const struct shclass shtypes[];
 
 #else
 
-static void FDECL(mkshobj_at, (const struct shclass *,int,int));
-static void FDECL(nameshk, (struct monst *,const char **));
-static int  FDECL(shkinit, (const struct shclass *,struct mkroom *));
+STATIC_DCL void FDECL(mkshobj_at, (const struct shclass *,int,int));
+STATIC_DCL void FDECL(nameshk, (struct monst *,const char **));
+STATIC_DCL int  FDECL(shkinit, (const struct shclass *,struct mkroom *));
 
 static const char *shkliquors[] = {
     /* Ukraine */
@@ -119,7 +119,7 @@ static const char *shktools[] = {
 #endif
 #ifdef MAC
     "Nhoj-lee", "Evad\'kh", "Ettaw-noj", "Tsew-mot", "Ydna-s",
-    "Yao-hang", "Tonbar",
+    "Yao-hang", "Tonbar", "Kivenhoug",
 #endif
 #ifdef AMIGA
     "Falo", "Nosid-da\'r", "Ekim-p", "Rebrol-nek", "Noslo", "Yl-rednow",
@@ -190,7 +190,8 @@ const struct shclass shtypes[] = {
 	{"antique weapons outlet", WEAPON_CLASS, 5, D_SHOP,
 	    {{90, WEAPON_CLASS}, {10, ARMOR_CLASS}, {0, 0}}, shkweapons},
 	{"delicatessen", FOOD_CLASS, 5, D_SHOP,
-	    {{95, FOOD_CLASS}, {5, POTION_CLASS}, {0, 0}}, shkfoods},
+	    {{83, FOOD_CLASS}, {5, -POT_FRUIT_JUICE}, {4, -POT_BOOZE},
+	     {5, -POT_WATER}, {3, -ICE_BOX}}, shkfoods},
 	{"jewelers", RING_CLASS, 3, D_SHOP,
 	    {{85, RING_CLASS}, {10, GEM_CLASS}, {5, AMULET_CLASS}, {0, 0}},
 	    shkrings},
@@ -236,7 +237,7 @@ init_shop_selection()
 }
 #endif /*0*/
 
-static void
+STATIC_OVL void
 mkshobj_at(shp, sx, sy)
 /* make an object of the appropriate type for a shop square */
 const struct shclass *shp;
@@ -260,7 +261,7 @@ int sx, sy;
 }
 
 /* extract a shopkeeper name for the given shop type */
-static void
+STATIC_OVL void
 nameshk(shk, nlp)
 struct monst *shk;
 const char *nlp[];
@@ -322,7 +323,7 @@ const char *nlp[];
 	ESHK(shk)->shknam[PL_NSIZ-1] = 0;
 }
 
-static int
+STATIC_OVL int
 shkinit(shp, sroom)	/* create a new shopkeeper in the given room */
 const struct shclass	*shp;
 struct mkroom	*sroom;
@@ -381,9 +382,9 @@ struct mkroom	*sroom;
 	/* now initialize the shopkeeper monster structure */
 	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy, NO_MM_FLAGS)))
 		return(-1);
-	shk->isshk = shk->mpeaceful = TRUE;
+	shk->isshk = shk->mpeaceful = 1;
 	set_malign(shk);
-	shk->msleep = FALSE;
+	shk->msleeping = 0;
 	shk->mtrapseen = ~0;	/* we know all the traps already */
 	ESHK(shk)->shoproom = (sroom - rooms) + ROOMOFFSET;
 	sroom->resident = shk;

@@ -1,243 +1,248 @@
-# SCCS Id: @(#)schema2.BC	3.2	 96/03/21
-# Copyright (c) Yitzhak Sapir, 1996
-#
-# NetHack Overlay Schema
-# Small Root footprint, with extended memory available for caching.
-# Almost everything is overlaid.
-#
-#
+/* SCCS Id: @(#)schema2.BC	3.3	 99/10/28 */
+/* Copyright (c) Yitzhak Sapir, 1999 */
+/*  */
+/*  NetHack Overlay Schema */
+/*  Small Root footprint, with extended memory available for caching. */
+/*  Almost everything is overlaid. */
+/*  */
 
-allmain_0   = -zAOVLY -zCOVL1
-allmain_1   = -zAOVLY -zCOVL2
-allmain_b   = -zAOVLY -zCOVL3
-alloc_o     = -zCalloc_o
-apply_0     = -zAOVLY -zCOVL4
-apply_1     = -zAOVLY -zCOVL5
-apply_b     = -zAOVLY -zCOVL6
-artifact_0  = -zAOVLY -zCOVL7
-artifact_1  = -zAOVLY -zCOVL8
-artifact_b  = -zAOVLY -zCOVL9
-attrib_0    = -zAOVLY -zCOVL10
-attrib_1    = -zAOVLY -zCOVL11
-attrib_2    = -zAOVLY -zCOVL12
-attrib_b    = -zAOVLY -zCOVL13
-ball_o      = -zAOVLY -zCOVL14
-bones_o     = -zAOVLY -zCOVL15
-botl_0      = -zAOVLY -zCOVL16
-botl_1      = -zAOVLY -zCOVL17
-botl_b      = -zAOVLY -zCOVL18
-cmd_0       = -zAOVLY -zCOVL19
-cmd_1       = -zAOVLY -zCOVL20
-cmd_b       = -zAOVLY -zCOVL21
-dbridge_0   = -zAOVLY -zCOVL22
-dbridge_1   = -zAOVLY -zCOVL23
-dbridge_b   = -zAOVLY -zCOVL24
-decl_o      = -zAOVLY -zCOVL25
-detect_o    = -zAOVLY -zCOVL26
-dig_o       = -zAOVLY -zCOVL27
-display_o   = -zAOVLY -zCOVL28
-dlb_o       = -zAOVLY -zCOVL29
-do_0        = -zAOVLY -zCOVL30
-do_1        = -zAOVLY -zCOVL31
-do_2        = -zAOVLY -zCOVL32
-do_3        = -zAOVLY -zCOVL33
-do_b        = -zAOVLY -zCOVL34
-do_name_0   = -zAOVLY -zCOVL35
-do_name_2   = -zAOVLY -zCOVL36
-do_name_b   = -zAOVLY -zCOVL37
-do_wear_0   = -zAOVLY -zCOVL38
-do_wear_1   = -zAOVLY -zCOVL39
-do_wear_2   = -zAOVLY -zCOVL40
-do_wear_b   = -zAOVLY -zCOVL41
-dog_1       = -zAOVLY -zCOVL42
-dog_2       = -zAOVLY -zCOVL43
-dog_b       = -zAOVLY -zCOVL44
-dogmove_0   = -zAOVLY -zCOVL45
-dogmove_b   = -zAOVLY -zCOVL46
-dokick_o    = -zAOVLY -zCOVL47
-dothrow_o   = -zAOVLY -zCOVL48
-drawing_o   = -zAOVLY -zCOVL49
-dungeon_0   = -zAOVLY -zCOVL50
-dungeon_1   = -zAOVLY -zCOVL51
-eat_0       = -zAOVLY -zCOVL52
-eat_1       = -zAOVLY -zCOVL53
-eat_b       = -zAOVLY -zCOVL54
-end_o       = -zAOVLY -zCOVL55
-engrave_0   = -zAOVLY -zCOVL56
-engrave_1   = -zAOVLY -zCOVL57
-engrave_2   = -zAOVLY -zCOVL58
-engrave_b   = -zAOVLY -zCOVL59
-exper_o     = -zAOVLY -zCOVL60
-explode_0   = -zAOVLY -zCOVL61
-explode_1   = -zAOVLY -zCOVL62
-extralev_o  = -zAOVLY -zCOVL63
-files_o     = -zAOVLY -zCOVL64
-fountain_o  = -zAOVLY -zCOVL65
-getline_1   = -zAOVLY -zCOVL66
-getline_2   = -zAOVLY -zCOVL67
-hack_1      = -zAOVLY -zCOVL68
-hack_2      = -zAOVLY -zCOVL69
-hack_3      = -zChack_3
-hack_b      = -zAOVLY -zCOVL70
-hacklib_0   = -zAOVLY -zCOVL71
-hacklib_1   = -zAOVLY -zCOVL72
-hacklib_2   = -zAOVLY -zCOVL73
-hacklib_b   = -zAOVLY -zCOVL74
-invent_0    = -zAOVLY -zCOVL75
-invent_1    = -zAOVLY -zCOVL76
-invent_2    = -zAOVLY -zCOVL77
-invent_3    = -zAOVLY -zCOVL78
-invent_b    = -zAOVLY -zCOVL79
-light_3     = -zAOVLY -zCOVL80
-lock_0      = -zAOVLY -zCOVL81
-lock_b      = -zAOVLY -zCOVL82
-mail_0      = -zAOVLY -zCOVL82
-mail_b      = -zAOVLY -zCOVL83
-makemon_0   = -zAOVLY -zCOVL84
-makemon_1   = -zAOVLY -zCOVL85
-makemon_2   = -zAOVLY -zCOVL86
-makemon_b   = -zAOVLY -zCOVL87
-mcastu_0    = -zAOVLY -zCOVL88
-mcastu_b    = -zAOVLY -zCOVL89
-mhitm_0     = -zAOVLY -zCOVL90
-mhitm_b     = -zAOVLY -zCOVL91
-mhitu_0     = -zAOVLY -zCOVL92
-mhitu_1     = -zAOVLY -zCOVL93
-mhitu_b     = -zAOVLY -zCOVL94
-minion_o    = -zAOVLY -zCOVL95
-mklev_o     = -zAOVLY -zCOVL96
-mkmap_o     = -zAOVLY -zCOVL97
-mkmaze_o    = -zAOVLY -zCOVL98
-mkobj_0     = -zAOVLY -zCOVL99
-mkobj_1     = -zAOVLY -zCOVL100
-mkobj_b     = -zAOVLY -zCOVL101
-mkroom_0    = -zAOVLY -zCOVL102
-mkroom_b    = -zAOVLY -zCOVL103
-mon_0       = -zAOVLY -zCOVL104
-mon_1       = -zAOVLY -zCOVL105
-mon_2       = -zAOVLY -zCOVL106
-mon_b       = -zAOVLY -zCOVL107
-mondata_0   = -zAOVLY -zCOVL108
-mondata_1   = -zAOVLY -zCOVL109
-mondata_2   = -zAOVLY -zCOVL110
-mondata_b   = -zAOVLY -zCOVL111
-monmove_0   = -zAOVLY -zCOVL112
-monmove_1   = -zAOVLY -zCOVL113
-monmove_2   = -zAOVLY -zCOVL114
-monmove_b   = -zAOVLY -zCOVL115
-monst_o     = -zAOVLY -zCOVL116
-monstr_o    = -zAOVLY -zCOVL117
-mplayer_o   = -zAOVLY -zCOVL118
-msdos_0     = -zAOVLY -zCOVL119
-msdos_b     = -zAOVLY -zCOVL120
-mthrowu_0   = -zAOVLY -zCOVL121
-mthrowu_1   = -zAOVLY -zCOVL122
-mthrowu_b   = -zAOVLY -zCOVL123
-muse_o      = -zAOVLY -zCOVL124
-music_o     = -zAOVLY -zCOVL125
-o_init_o    = -zAOVLY -zCOVL126
-objects_o   = -zAOVLY -zCOVL127
-objnam_0    = -zAOVLY -zCOVL128
-objnam_1    = -zAOVLY -zCOVL129
-objnam_b    = -zAOVLY -zCOVL130
-options_o   = -zAOVLY -zCOVL131
-pager_o     = -zAOVLY -zCOVL132
-pcmain_0    = -zCpcmain_0
-pcmain_1    = -zAOVLY -zCOVL133
-pcmain_b    = -zAOVLY -zCOVL134
-pctiles_0   = -zCpctiles_0
-pctiles_b   = -zCpctiles_b
-pcunix_b    = -zAOVLY -zCOVL135
-pickup_o    = -zAOVLY -zCOVL136
-pline_b     = -zAOVLY -zCOVL137
-polyself_0  = -zAOVLY -zCOVL138
-polyself_1  = -zAOVLY -zCOVL139
-polyself_b  = -zAOVLY -zCOVL140
-potion_b    = -zAOVLY -zCOVL141
-pray_o      = -zAOVLY -zCOVL142
-priest_0    = -zAOVLY -zCOVL143
-priest_b    = -zAOVLY -zCOVL144
-quest_o     = -zAOVLY -zCOVL145
-questpgr_o  = -zAOVLY -zCOVL146
-random_o    = -zAOVLY -zCOVL147
-read_b      = -zAOVLY -zCOVL148
-rect_o      = -zAOVLY -zCOVL149
-restore_o   = -zAOVLY -zCOVL150
-rip_o       = -zAOVLY -zCOVL151
-rnd_0       = -zAOVLY -zCOVL152
-rnd_1       = -zAOVLY -zCOVL153
-rnd_b       = -zAOVLY -zCOVL154
-rumors_o    = -zAOVLY -zCOVL155
-save_o      = -zAOVLY -zCOVL156
-shk_0       = -zAOVLY -zCOVL157
-shk_1       = -zAOVLY -zCOVL158
-shk_2       = -zAOVLY -zCOVL159
-shk_3       = -zAOVLY -zCOVL160
-shk_b       = -zAOVLY -zCOVL161
-shknam_0    = -zAOVLY -zCOVL162
-shknam_b    = -zAOVLY -zCOVL163
-sit_o       = -zAOVLY -zCOVL164
-sound_o     = -zCsound_o
-sounds_0    = -zAOVLY -zCOVL165
-sounds_b    = -zAOVLY -zCOVL166
-sp_lev_o    = -zAOVLY -zCOVL167
-spell_o     = -zAOVLY -zCOVL168
-steal_0     = -zAOVLY -zCOVL169
-steal_1     = -zAOVLY -zCOVL170
-steal_b     = -zAOVLY -zCOVL171
-sys_o       = -zAOVLY -zCOVL172
-teleport_o  = -zAOVLY -zCOVL173
-termcap_0   = -zAOVLY -zCOVL174
-termcap_1   = -zAOVLY -zCOVL175
-termcap_b   = -zAOVLY -zCOVL176
-tile_o      = -zCtile_o
-timeout_0   = -zAOVLY -zCOVL177
-timeout_1   = -zAOVLY -zCOVL178
-timeout_b   = -zAOVLY -zCOVL179
-topl_1      = -zAOVLY -zCOVL180
-topl_2      = -zAOVLY -zCOVL181
-topl_b      = -zAOVLY -zCOVL182
-topten_o    = -zAOVLY -zCOVL183
-track_0     = -zAOVLY -zCOVL184
-track_1     = -zAOVLY -zCOVL185
-track_b     = -zAOVLY -zCOVL186
-trap_0      = -zAOVLY -zCOVL187
-trap_1      = -zAOVLY -zCOVL188
-trap_2      = -zAOVLY -zCOVL189
-trap_3      = -zAOVLY -zCOVL190
-trap_b      = -zAOVLY -zCOVL191
-tty_o       = -zAOVLY -zCOVL192
-u_init_o    = -zAOVLY -zCOVL193
-uhitm_o     = -zAOVLY -zCOVL194
-vault_0     = -zAOVLY -zCOVL195
-vault_b     = -zAOVLY -zCOVL196
-version_o   = -zAOVLY -zCOVL197
-video_0     = -zCvideo_0
-video_1     = -zCvideo_1
-video_b     = -zCvideo_b
-vidtxt_0    = -zCvidtxt_0
-vidtxt_b    = -zCvidtxt_b
-vidvga_0    = -zCvidvga_0
-vidvga_1    = -zCvidvga_1
-vidvga_2    = -zAOVLY -zCOVL198
-vidvga_b    = -zCvidvga_b
-vis_tab_o   = -zAOVLY -zCOVL199
-vision_o    = -zAOVLY -zCOVL200
-weapon_0    = -zAOVLY -zCOVL201
-weapon_1    = -zAOVLY -zCOVL202
-weapon_b    = -zAOVLY -zCOVL203
-were_0      = -zAOVLY -zCOVL204
-were_b      = -zAOVLY -zCOVL205
-wield_o     = -zAOVLY -zCOVL206
-windows_o   = -zAOVLY -zCOVL207
-wintty_o    = -zAOVLY -zCOVL208
-wizard_0    = -zAOVLY -zCOVL209
-wizard_b    = -zAOVLY -zCOVL210
-worm_o      = -zAOVLY -zCOVL211
-worn_o      = -zAOVLY -zCOVL212
-write_o     = -zAOVLY -zCOVL213
-zap_0       = -zAOVLY -zCOVL214
-zap_1       = -zAOVLY -zCOVL215
-zap_2       = -zAOVLY -zCOVL216
-zap_3       = -zAOVLY -zCOVL217
-zap_b       = -zAOVLY -zCOVL218
+
+-zCallmain_0 -zAOVLY -zCOVL1
+-zCallmain_1 -zAOVLY -zCOVL2
+-zCallmain_b -zAOVLY -zCOVL3
+-zCalloc_o
+-zCapply_0 -zAOVLY -zCOVL4
+-zCapply_1 -zAOVLY -zCOVL5
+-zCapply_b -zAOVLY -zCOVL6
+-zCartifact_0 -zAOVLY -zCOVL7
+-zCartifact_1 -zAOVLY -zCOVL8
+-zCartifact_b -zAOVLY -zCOVL9
+-zCattrib_0 -zAOVLY -zCOVL10
+-zCattrib_1 -zAOVLY -zCOVL11
+-zCattrib_2 -zAOVLY -zCOVL12
+-zCattrib_b -zAOVLY -zCOVL13
+-zCball_o -zAOVLY -zCOVL14
+-zCbones_o -zAOVLY -zCOVL15
+-zCbotl_0 -zAOVLY -zCOVL16
+-zCbotl_1 -zAOVLY -zCOVL17
+-zCbotl_b -zAOVLY -zCOVL18
+-zCcmd_0 -zAOVLY -zCOVL19
+-zCcmd_1 -zAOVLY -zCOVL20
+-zCcmd_b -zAOVLY -zCOVL21
+-zCdbridge_0 -zAOVLY -zCOVL22
+-zCdbridge_1 -zAOVLY -zCOVL23
+-zCdbridge_b -zAOVLY -zCOVL24
+-zCdecl_o -zAOVLY -zCOVL25
+-zCdetect_o -zAOVLY -zCOVL26
+-zCdig_o -zAOVLY -zCOVL27
+-zCdisplay_o -zAOVLY -zCOVL28
+-zCdlb_o -zAOVLY -zCOVL29
+-zCdo_0 -zAOVLY -zCOVL30
+-zCdo_1 -zAOVLY -zCOVL31
+-zCdo_2 -zAOVLY -zCOVL32
+-zCdo_3 -zAOVLY -zCOVL33
+-zCdo_b -zAOVLY -zCOVL34
+-zCdo_name_0 -zAOVLY -zCOVL35
+-zCdo_name_2 -zAOVLY -zCOVL36
+-zCdo_name_b -zAOVLY -zCOVL37
+-zCdo_wear_0 -zAOVLY -zCOVL38
+-zCdo_wear_1 -zAOVLY -zCOVL39
+-zCdo_wear_2 -zAOVLY -zCOVL40
+-zCdo_wear_b -zAOVLY -zCOVL41
+-zCdog_1 -zAOVLY -zCOVL42
+-zCdog_2 -zAOVLY -zCOVL43
+-zCdog_b -zAOVLY -zCOVL44
+-zCdogmove_0 -zAOVLY -zCOVL45
+-zCdogmove_b -zAOVLY -zCOVL46
+-zCdokick_o -zAOVLY -zCOVL47
+-zCdothrow_o -zAOVLY -zCOVL48
+-zCdrawing_o -zAOVLY -zCOVL49
+-zCdungeon_0 -zAOVLY -zCOVL50
+-zCdungeon_1 -zAOVLY -zCOVL51
+-zCeat_0 -zAOVLY -zCOVL52
+-zCeat_1 -zAOVLY -zCOVL53
+-zCeat_b -zAOVLY -zCOVL54
+-zCend_o -zAOVLY -zCOVL55
+-zCengrave_0 -zAOVLY -zCOVL56
+-zCengrave_1 -zAOVLY -zCOVL57
+-zCengrave_2 -zAOVLY -zCOVL58
+-zCengrave_b -zAOVLY -zCOVL59
+-zCexper_o -zAOVLY -zCOVL60
+-zCexplode_0 -zAOVLY -zCOVL61
+-zCexplode_1 -zAOVLY -zCOVL62
+-zCextralev_o -zAOVLY -zCOVL63
+-zCfiles_o -zAOVLY -zCOVL64
+-zCfountain_o -zAOVLY -zCOVL65
+-zCgetline_1 -zAOVLY -zCOVL66
+-zCgetline_2 -zAOVLY -zCOVL67
+-zChack_1 -zAOVLY -zCOVL68
+-zChack_2 -zAOVLY -zCOVL69
+-zChack_3
+-zChack_b -zAOVLY -zCOVL70
+-zChacklib_0 -zAOVLY -zCOVL71
+-zChacklib_1 -zAOVLY -zCOVL72
+-zChacklib_2 -zAOVLY -zCOVL73
+-zChacklib_b -zAOVLY -zCOVL74
+-zCinvent_0 -zAOVLY -zCOVL75
+-zCinvent_1 -zAOVLY -zCOVL76
+-zCinvent_2 -zAOVLY -zCOVL77
+-zCinvent_3 -zAOVLY -zCOVL78
+-zCinvent_b -zAOVLY -zCOVL79
+-zClight_3 -zAOVLY -zCOVL80
+-zClock_0 -zAOVLY -zCOVL81
+-zClock_b -zAOVLY -zCOVL82
+-zCmail_0 -zAOVLY -zCOVL82
+-zCmail_b -zAOVLY -zCOVL83
+-zCmakemon_0 -zAOVLY -zCOVL84
+-zCmakemon_1 -zAOVLY -zCOVL85
+-zCmakemon_2 -zAOVLY -zCOVL86
+-zCmakemon_b -zAOVLY -zCOVL87
+-zCmcastu_0 -zAOVLY -zCOVL88
+-zCmcastu_b -zAOVLY -zCOVL89
+-zCmhitm_0 -zAOVLY -zCOVL90
+-zCmhitm_b -zAOVLY -zCOVL91
+-zCmhitu_0 -zAOVLY -zCOVL92
+-zCmhitu_1 -zAOVLY -zCOVL93
+-zCmhitu_b -zAOVLY -zCOVL94
+-zCminion_o -zAOVLY -zCOVL95
+-zCmklev_o -zAOVLY -zCOVL96
+-zCmkmap_o -zAOVLY -zCOVL97
+-zCmkmaze_o -zAOVLY -zCOVL98
+-zCmkobj_0 -zAOVLY -zCOVL99
+-zCmkobj_1 -zAOVLY -zCOVL100
+-zCmkobj_b -zAOVLY -zCOVL101
+-zCmkroom_0 -zAOVLY -zCOVL102
+-zCmkroom_b -zAOVLY -zCOVL103
+-zCmon_0 -zAOVLY -zCOVL104
+-zCmon_1 -zAOVLY -zCOVL105
+-zCmon_2 -zAOVLY -zCOVL106
+-zCmon_b -zAOVLY -zCOVL107
+-zCmondata_0 -zAOVLY -zCOVL108
+-zCmondata_1 -zAOVLY -zCOVL109
+-zCmondata_2 -zAOVLY -zCOVL110
+-zCmondata_b -zAOVLY -zCOVL111
+-zCmonmove_0 -zAOVLY -zCOVL112
+-zCmonmove_1 -zAOVLY -zCOVL113
+-zCmonmove_2 -zAOVLY -zCOVL114
+-zCmonmove_b -zAOVLY -zCOVL115
+-zCmonst_o -zAOVLY -zCOVL116
+-zCmonstr_o -zAOVLY -zCOVL117
+-zCmplayer_o -zAOVLY -zCOVL118
+-zCmsdos_0 -zAOVLY -zCOVL119
+-zCmsdos_b -zAOVLY -zCOVL120
+-zCmthrowu_0 -zAOVLY -zCOVL121
+-zCmthrowu_1 -zAOVLY -zCOVL122
+-zCmthrowu_b -zAOVLY -zCOVL123
+-zCmuse_o -zAOVLY -zCOVL124
+-zCmusic_o -zAOVLY -zCOVL125
+-zCo_init_o -zAOVLY -zCOVL126
+-zCobjects_o -zAOVLY -zCOVL127
+-zCobjnam_0 -zAOVLY -zCOVL128
+-zCobjnam_1 -zAOVLY -zCOVL129
+-zCobjnam_b -zAOVLY -zCOVL130
+-zCoptions_o -zAOVLY -zCOVL131
+-zCovlinit_o
+-zCpager_o -zAOVLY -zCOVL132
+-zCpckeys_o -zAOVLY -zCOVL119
+-zCpcmain_0
+-zCpcmain_1 -zAOVLY -zCOVL133
+-zCpcmain_b -zAOVLY -zCOVL134
+-zCpctiles_0
+-zCpctiles_b
+-zCpcunix_b -zAOVLY -zCOVL135
+-zCpickup_o -zAOVLY -zCOVL136
+-zCpline_b -zAOVLY -zCOVL137
+-zCpolyself_0 -zAOVLY -zCOVL138
+-zCpolyself_1 -zAOVLY -zCOVL139
+-zCpolyself_b -zAOVLY -zCOVL140
+-zCpotion_b -zAOVLY -zCOVL141
+-zCpray_o -zAOVLY -zCOVL142
+-zCpriest_0 -zAOVLY -zCOVL143
+-zCpriest_b -zAOVLY -zCOVL144
+-zCquest_o -zAOVLY -zCOVL145
+-zCquestpgr_o -zAOVLY -zCOVL146
+-zCrandom_o -zAOVLY -zCOVL147
+-zCread_b -zAOVLY -zCOVL148
+-zCrect_o -zAOVLY -zCOVL149
+-zCregion_o -zAOVLY -zCOVL150
+-zCrestore_o -zAOVLY -zCOVL151
+-zCrip_o -zAOVLY -zCOVL152
+-zCrnd_0 -zAOVLY -zCOVL153
+-zCrnd_1 -zAOVLY -zCOVL154
+-zCrnd_b -zAOVLY -zCOVL155
+-zCrole_o -zAOVLY -zCOVL133
+-zCrumors_o -zAOVLY -zCOVL156
+-zCsave_o -zAOVLY -zCOVL157
+-zCshk_0 -zAOVLY -zCOVL158
+-zCshk_1 -zAOVLY -zCOVL159
+-zCshk_2 -zAOVLY -zCOVL160
+-zCshk_3 -zAOVLY -zCOVL161
+-zCshk_b -zAOVLY -zCOVL162
+-zCshknam_0 -zAOVLY -zCOVL163
+-zCshknam_b -zAOVLY -zCOVL164
+-zCsit_o -zAOVLY -zCOVL165
+-zCsound_o
+-zCsounds_0 -zAOVLY -zCOVL166
+-zCsounds_b -zAOVLY -zCOVL167
+-zCsp_lev_o -zAOVLY -zCOVL168
+-zCspell_o -zAOVLY -zCOVL169
+-zCsteal_0 -zAOVLY -zCOVL170
+-zCsteal_1 -zAOVLY -zCOVL171
+-zCsteal_b -zAOVLY -zCOVL172
+-zCsteed_o -zAOVLY -zCOVL173
+-zCsys_o -zAOVLY -zCOVL174
+-zCteleport_o -zAOVLY -zCOVL175
+-zCtermcap_0 -zAOVLY -zCOVL176
+-zCtermcap_1 -zAOVLY -zCOVL177
+-zCtermcap_b -zAOVLY -zCOVL178
+-zCtile_o
+-zCtimeout_0 -zAOVLY -zCOVL179
+-zCtimeout_1 -zAOVLY -zCOVL180
+-zCtimeout_b -zAOVLY -zCOVL181
+-zCtopl_1 -zAOVLY -zCOVL182
+-zCtopl_2 -zAOVLY -zCOVL183
+-zCtopl_b -zAOVLY -zCOVL184
+-zCtopten_o -zAOVLY -zCOVL185
+-zCtrack_0 -zAOVLY -zCOVL186
+-zCtrack_1 -zAOVLY -zCOVL187
+-zCtrack_b -zAOVLY -zCOVL188
+-zCtrap_0 -zAOVLY -zCOVL189
+-zCtrap_1 -zAOVLY -zCOVL190
+-zCtrap_2 -zAOVLY -zCOVL191
+-zCtrap_3 -zAOVLY -zCOVL192
+-zCtrap_b -zAOVLY -zCOVL193
+-zCtty_o -zAOVLY -zCOVL194
+-zCu_init_o -zAOVLY -zCOVL195
+-zCuhitm_o -zAOVLY -zCOVL196
+-zCvault_0 -zAOVLY -zCOVL197
+-zCvault_b -zAOVLY -zCOVL198
+-zCversion_o -zAOVLY -zCOVL199
+-zCvideo_0
+-zCvideo_1
+-zCvideo_b
+-zCvidtxt_0
+-zCvidtxt_b
+-zCvidvga_0
+-zCvidvga_1
+-zCvidvga_2 -zAOVLY -zCOVL200
+-zCvidvga_b
+-zCvis_tab_o -zAOVLY -zCOVL201
+-zCvision_o -zAOVLY -zCOVL202
+-zCweapon_0 -zAOVLY -zCOVL203
+-zCweapon_1 -zAOVLY -zCOVL204
+-zCweapon_b -zAOVLY -zCOVL205
+-zCwere_0 -zAOVLY -zCOVL206
+-zCwere_b -zAOVLY -zCOVL207
+-zCwield_o -zAOVLY -zCOVL208
+-zCwindows_o -zAOVLY -zCOVL209
+-zCwintty_o -zAOVLY -zCOVL210
+-zCwizard_0 -zAOVLY -zCOVL211
+-zCwizard_b -zAOVLY -zCOVL212
+-zCworm_o -zAOVLY -zCOVL213
+-zCworn_o -zAOVLY -zCOVL173
+-zCwrite_o -zAOVLY -zCOVL214
+-zCzap_0 -zAOVLY -zCOVL215
+-zCzap_1 -zAOVLY -zCOVL216
+-zCzap_2 -zAOVLY -zCOVL217
+-zCzap_3 -zAOVLY -zCOVL218
+-zCzap_b -zAOVLY -zCOVL219

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)os2.c	3.2	96/02/29 */
+/*	SCCS Id: @(#)os2.c	3.3	96/02/29 */
 /*	Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993, 1996. */
 /*	NetHack may be freely redistributed.  See license for details. */
 
@@ -11,9 +11,20 @@
 
 #ifdef OS2
 
-#include "termcap.h"
+#include "tcap.h"
 
 /* OS/2 system definitions */
+
+#ifdef __EMX__
+#undef CLR_BLACK
+#undef CLR_WHITE
+#undef CLR_BLUE
+#undef CLR_RED
+#undef CLR_GREEN
+#undef CLR_CYAN
+#undef CLR_YELLOW
+#undef CLR_BROWN
+#endif
 
 #include "def_os2.h"
 
@@ -341,4 +352,10 @@ int x,y;
 	(void) VioSetCurPos(x, y, VideoHandle);
 }
 
+
+char* get_username(lan_username_size)
+int *lan_username_size;
+{
+  return (char*)0;
+}
 #endif /* OS2 */

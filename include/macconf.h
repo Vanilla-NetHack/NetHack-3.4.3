@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macconf.h	3.2	94/12/15	*/
+/*	SCCS Id: @(#)macconf.h	3.3	99/10/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,7 @@
 #  endif
 
 #  ifndef __powerc
-#   define MAC68K			/* 68K mac (non-powerpc) */
+#   define MAC68K		/* 68K mac (non-powerpc) */
 #  endif
 
 #  define RANDOM
@@ -36,9 +36,12 @@
 #  define TEXTCOLOR		/* For Mac TTY interface */
 #  define CHANGE_COLOR
 
-#include "system.h"
+/* Use these two includes instead of system.h. */
+#include <string.h>
+#include <stdlib.h>
 
-typedef long off_t ;
+/* Uncomment this line if your headers don't already define off_t */
+/*typedef long off_t;*/
 
 /*
  * Try and keep the number of files here to an ABSOLUTE minimum !
@@ -53,6 +56,7 @@ typedef long off_t ;
 #include <controls.h>
 #include <dialogs.h>
 #include <fonts.h>
+#include <TextUtils.h>
 
 /*
  * Turn off the Macsbug calls for the production version.
@@ -75,9 +79,7 @@ typedef long off_t ;
 #  define rindex strrchr
 
 #  define Rand random
-#  define error progerror
-extern void progerror(const char *,...);	/* why not just error ??? */
-
+extern void error(const char *,...);
 
 # if !defined(O_WRONLY)
 #  ifdef __MWERKS__
@@ -139,6 +141,8 @@ typedef struct macflags {
 	Bitfield ( alias , 1 ) ;
 	Bitfield ( standardFile , 1 ) ;
 	Bitfield ( hasDebugger , 1 ) ;
+	Bitfield ( hasAE , 1 ) ;
+	Bitfield ( gotOpen, 1 );
 } MacFlags ;
 
 extern MacDirs theDirs ;		/* used in files.c */

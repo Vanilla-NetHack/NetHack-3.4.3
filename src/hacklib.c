@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hacklib.c	3.2	96/05/05	*/
+/*	SCCS Id: @(#)hacklib.c	3.3	99/04/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Robert Patrick Rankin, 1991		  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -32,6 +32,7 @@ NetHack, except that rounddiv may call panic().
 	boolean		pmatch		(const char *, const char *)
 	int		strncmpi	(const char *, const char *, int)
 	char *		strstri		(const char *, const char *)
+	boolean		fuzzymatch	(const char *,const char *,const char *,boolean)
 	void		setrandom	(void)
 	int		getyear		(void)
 	char *		yymmdd		(time_t)
@@ -231,7 +232,7 @@ sitoa(n)		/* make a signed digit string from a number */
 {
     Static char buf[13];
 
-    (void) sprintf(buf, (n < 0) ? "%d" : "+%d", n);
+    Sprintf(buf, (n < 0) ? "%d" : "+%d", n);
     return buf;
 }
 
@@ -294,10 +295,10 @@ boolean
 online2(x0, y0, x1, y1) /* are two points lined up (on a straight line)? */
     int x0, y0, x1, y1;
 {
-    register dx = x0 - x1, dy = y0 - y1;
-  /*  If either delta is zero then they're on an orthogonal line,
-   :  else if the deltas are equal (signs ignored) they're on a diagonal.
-   */
+    int dx = x0 - x1, dy = y0 - y1;
+    /*  If either delta is zero then they're on an orthogonal line,
+     *  else if the deltas are equal (signs ignored) they're on a diagonal.
+     */
     return((boolean)(!dy || !dx || (dy == dx) || (dy + dx == 0)));	/* (dy == -dx) */
 }
 
@@ -388,9 +389,35 @@ strstri(str, sub)	/* case insensitive substring search */
     return (char *) 0;	/* not found */
 }
 #endif	/* STRSTRI */
-#endif /* OVLB */
 
+/* compare two strings for equality, ignoring the presence of specified
+   characters (typically whitespace) and possibly ignoring case */
+boolean
+fuzzymatch(s1, s2, ignore_chars, caseblind)
+    const char *s1, *s2;
+    const char *ignore_chars;
+    boolean caseblind;
+{
+    register char c1, c2;
+
+    do {
+	while ((c1 = *s1++) != '\0' && index(ignore_chars, c1) != 0) continue;
+	while ((c2 = *s2++) != '\0' && index(ignore_chars, c2) != 0) continue;
+	if (!c1 || !c2) break;	/* stop when end of either string is reached */
+
+	if (caseblind) {
+	    c1 = lowc(c1);
+	    c2 = lowc(c2);
+	}
+    } while (c1 == c2);
+
+    /* match occurs only when the end of both strings has been reached */
+    return (boolean)(!c1 && !c2);
+}
+
+#endif /* OVLB */
 #ifdef OVL2
+
 /*
  * Time routines
  *

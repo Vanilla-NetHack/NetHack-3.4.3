@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monst.h	3.2	96/02/11	*/
+/*	SCCS Id: @(#)monst.h	3.3	99/01/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -26,7 +26,7 @@
  *
  * MINV_NOLET  If set, don't display inventory letters on monster's inventory.
  * MINV_ALL    If set, display all items in monster's inventory, otherwise
- *             just display wielded weapons and worn items.
+ *	       just display wielded weapons and worn items.
  */
 #define MINV_NOLET 0x01
 #define MINV_ALL   0x02
@@ -40,6 +40,7 @@ struct monst {
 	struct permonst *data;
 	unsigned m_id;
 	short mnum;		/* permanent monster index number */
+	short movement;		/* movement points (derived from permonst definition and added effects */
 	uchar m_lev;		/* adjusted difficulty level of monster */
 	aligntyp malign;	/* alignment of this monster, relative to the
 				   player (positive = good to kill) */
@@ -62,19 +63,27 @@ struct monst {
 
 	Bitfield(female,1);	/* is female */
 	Bitfield(minvis,1);	/* currently invisible */
-	Bitfield(invis_blkd,1);	/* invisibility blocked */
+	Bitfield(invis_blkd,1); /* invisibility blocked */
 	Bitfield(perminvis,1);	/* intrinsic minvis value */
-	Bitfield(cham,1);	/* shape-changer */
+	Bitfield(cham,3);	/* shape-changer */
+/* note: lychanthropes are handled elsewhere */
+#define CHAM_ORDINARY		0	/* not a shapechanger */
+#define CHAM_CHAMELEON		1	/* animal */
+#define CHAM_DOPPELGANGER	2	/* demi-human */
+#define CHAM_SANDESTIN		3	/* demon */
+#define CHAM_MAX_INDX		CHAM_SANDESTIN
 	Bitfield(mundetected,1);	/* not seen in present hiding place */
 				/* implies one of M1_CONCEAL or M1_HIDE,
 				 * but not mimic (that is, snake, spider,
-				 * trapper, piercer)
+				 * trapper, piercer, eel)
 				 */
+
 	Bitfield(mcan,1);	/* has been cancelled */
 	Bitfield(mburied,1);	/* has been buried */
-
 	Bitfield(mspeed,2);	/* current speed */
 	Bitfield(permspeed,2);	/* intrinsic mspeed value */
+	Bitfield(mrevived,1);	/* has been revived from the dead */
+	Bitfield(not_used,1);	/*** available ***/
 
 	Bitfield(mflee,1);	/* fleeing */
 	Bitfield(mfleetim,7);	/* timeout for mflee */
@@ -85,7 +94,7 @@ struct monst {
 	Bitfield(mcanmove,1);	/* paralysis, similar to mblinded */
 	Bitfield(mfrozen,7);
 
-	Bitfield(msleep,1);	/* sleeping */
+	Bitfield(msleeping,1);	/* asleep until woken */
 	Bitfield(mstun,1);	/* stunned (off balance) */
 	Bitfield(mconf,1);	/* confused */
 	Bitfield(mpeaceful,1);	/* does not attack unprovoked */
@@ -110,7 +119,7 @@ struct monst {
 #define STRAT_MONSTR	0x02000000L
 #define STRAT_PLAYER	0x01000000L
 #define STRAT_NONE	0x00000000L
-#define STRAT_STRATMASK	0x0f000000L
+#define STRAT_STRATMASK 0x0f000000L
 #define STRAT_XMASK	0x00ff0000L
 #define STRAT_YMASK	0x0000ff00L
 #define STRAT_GOAL	0x000000ffL
@@ -118,7 +127,7 @@ struct monst {
 #define STRAT_GOALY(s)	((xchar)((s & STRAT_YMASK) >> 8))
 
 	long mtrapseen;		/* bitmap of traps we've been trapped in */
-	long mlstmv;		/* prevent two moves at once */
+	long mlstmv;		/* for catching up with lost time */
 	long mgold;
 	struct obj *minvent;
 
@@ -131,7 +140,7 @@ struct monst {
 	/* in order to prevent alignment problems mextra should
 	   be (or follow) a long int */
 	int meating;		/* monster is eating timeout */
-	long mextra[1];	/* monster dependent info */
+	long mextra[1]; /* monster dependent info */
 };
 
 /*

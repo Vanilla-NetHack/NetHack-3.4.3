@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mail.c	3.2	96/05/25	*/
+/*	SCCS Id: @(#)mail.c	3.3	1999/08/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,6 +6,7 @@
 
 #ifdef MAIL
 #include "mail.h"
+
 /*
  * Notify user when new mail has arrived.  Idea by Merlyn Leroy.
  *
@@ -30,16 +31,16 @@
  *			 random intervals.
  */
 
-static boolean FDECL(md_start,(coord *));
-static boolean FDECL(md_stop,(coord *, coord *));
-static boolean FDECL(md_rush,(struct monst *,int,int));
-static void FDECL(newmail, (struct mail_info *));
+STATIC_DCL boolean FDECL(md_start,(coord *));
+STATIC_DCL boolean FDECL(md_stop,(coord *, coord *));
+STATIC_DCL boolean FDECL(md_rush,(struct monst *,int,int));
+STATIC_DCL void FDECL(newmail, (struct mail_info *));
 
 extern char *viz_rmin, *viz_rmax;	/* line-of-sight limits (vision.c) */
 
 #ifdef OVL0
 
-# if !defined(UNIX) && !defined(VMS)
+# if !defined(UNIX) && !defined(VMS) && !defined(LAN_MAIL)
 int mustgetmail = -1;
 # endif
 
@@ -65,14 +66,18 @@ static char *mailbox = (char *)0;
 static long laststattime;
 
 # ifdef AMS				/* Just a placeholder for AMS */
-#   define MAILPATH "/dev/null"
+#  define MAILPATH "/dev/null"
 # else
-#  if defined(BSD) || defined(ULTRIX)
-#   define MAILPATH "/usr/spool/mail/"
-#  endif
-#  if defined(SYSV) || defined(HPUX)
-#   define MAILPATH "/usr/mail/"
-#  endif
+#  ifdef LINUX
+#   define MAILPATH "/var/spool/mail"
+#  else
+#   if defined(BSD) || defined(ULTRIX)
+#    define MAILPATH "/usr/spool/mail/"
+#   endif
+#   if defined(SYSV) || defined(HPUX)
+#    define MAILPATH "/usr/mail/"
+#   endif
+#  endif /* LINUX */
 # endif /* AMS */
 
 void
@@ -117,7 +122,7 @@ getmailstatus()
  * Pick coordinates for a starting position for the mail daemon.  Called
  * from newmail() and newphone().
  */
-static boolean
+STATIC_OVL boolean
 md_start(startp)
     coord *startp;
 {
@@ -131,7 +136,7 @@ md_start(startp)
      * If blind and not telepathic, then it doesn't matter what we pick ---
      * the hero is not going to see it anyway.  So pick a nearby position.
      */
-    if (Blind && !Telepat) {
+    if (Blind && !Blind_telepat) {
 	if (!enexto(startp, u.ux, u.uy, (struct permonst *) 0))
 	    return FALSE;	/* no good posiitons */
 	return TRUE;
@@ -218,7 +223,7 @@ retry:
  * enexto().  Use enexto() as a last resort because enexto() chooses
  * its point randomly, which is not what we want.
  */
-static boolean
+STATIC_OVL boolean
 md_stop(stopp, startp)
     coord *stopp;	/* stopping position (we fill it in) */
     coord *startp;	/* starting positon (read only) */
@@ -262,7 +267,7 @@ static NEARDATA const char *mail_text[] = {
  * FALSE if the md gets stuck in a position where there is a monster.  Return
  * TRUE otherwise.
  */
-static boolean
+STATIC_OVL boolean
 md_rush(md,tx,ty)
     struct monst *md;
     register int tx, ty;		/* destination of mail daemon */
@@ -358,7 +363,7 @@ md_rush(md,tx,ty)
 
 /* Deliver a scroll of mail. */
 /*ARGSUSED*/
-static void
+STATIC_OVL void
 newmail(info)
 struct mail_info *info;
 {
@@ -375,7 +380,7 @@ struct mail_info *info;
     if (!md_rush(md, stop.x, stop.y)) goto go_back;
 
     message_seen = TRUE;
-    verbalize("Hello, %s!  %s.", plname, info->display_txt);
+    verbalize("%s, %s!  %s.", Hello(), plname, info->display_txt);
 
     if (info->message_typ) {
 	struct obj *obj = mksobj(SCR_MAIL, FALSE, FALSE);
@@ -407,7 +412,7 @@ give_up:
 	pline("Hark!  \"%s.\"", info->display_txt);
 }
 
-# if !defined(UNIX) && !defined(VMS)
+# if !defined(UNIX) && !defined(VMS) && !defined(LAN_MAIL)
 
 void
 ckmailstatus()
@@ -432,23 +437,24 @@ void
 readmail(otmp)
 struct obj *otmp;
 {
-	char *junk[]={
-	"Please disregard previous letter.",
-	"Welcome to NetHack 3.2.3!",
+    static char *junk[] = {
+    "Please disregard previous letter.",
+    "Welcome to NetHack.",
 #ifdef AMIGA
-	"Only Amiga makes it possible.",
-	"CATS have all the answers.",
+    "Only Amiga makes it possible.",
+    "CATS have all the answers.",
 #endif
-	"Report bugs to <nethack-bugs@nethack.org>"
-	};
+    "Report bugs to <devteam@nethack.org>."
+    };
 
-    if (Blind)
+    if (Blind) {
 	pline("Unfortunately you cannot see what it says.");
-    else
+    } else
 	pline("It reads:  \"%s\"", junk[rn2(SIZE(junk))]);
+
 }
 
-# endif /* !UNIX && !VMS */
+# endif /* !UNIX && !VMS && !LAN_MAIL */
 
 # ifdef UNIX
 
@@ -518,14 +524,16 @@ struct obj *otmp;
 
 # ifdef VMS
 
+extern NDECL(struct mail_info *parse_next_broadcast);
+
 volatile int broadcasts = 0;
 
 void
 ckmailstatus()
 {
-    struct mail_info *brdcst, *parse_next_broadcast();
+    struct mail_info *brdcst;
 
-    if(u.uswallow || !flags.biff) return;
+    if (u.uswallow || !flags.biff) return;
 
     while (broadcasts > 0) {	/* process all trapped broadcasts [until] */
 	broadcasts--;
@@ -567,6 +575,45 @@ struct obj *otmp;
 }
 
 # endif /* VMS */
+
+# ifdef LAN_MAIL
+
+void
+ckmailstatus()
+{
+	static int laststattime = 0;
+	
+	if(u.uswallow || !flags.biff
+#  ifdef MAILCKFREQ
+		    || moves < laststattime + MAILCKFREQ
+#  endif
+							)
+		return;
+
+	laststattime = moves;
+	if (lan_mail_check()) {
+		    static struct mail_info deliver = {
+#  ifndef NO_MAILREADER
+			MSG_MAIL, "I have some mail for you",
+#  else
+			/* suppress creation and delivery of scroll of mail */
+			MSG_OTHER, "You have some mail in the outside world",
+#  endif
+			0, 0
+		    };
+		    newmail(&deliver);
+	}
+}
+
+/*ARGSUSED*/
+void
+readmail(otmp)
+struct obj *otmp;
+{
+	lan_mail_read(otmp);
+}
+
+# endif /* LAN_MAIL */
 
 #endif /* OVL0 */
 

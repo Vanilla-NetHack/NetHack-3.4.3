@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monflag.h	3.2	96/05/04	*/
+/*	SCCS Id: @(#)monflag.h	3.3	96/05/04	*/
 /* Copyright (c) 1989 Mike Threepoint				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -50,14 +50,14 @@
 #define MS_BOAST	39	/* giants */
 
 
-#define MR_FIRE         0x01    /* resists fire */
-#define MR_COLD         0x02    /* resists cold */
-#define MR_SLEEP        0x04    /* resists sleep */
-#define MR_DISINT       0x08    /* resists disintegration */
-#define MR_ELEC         0x10    /* resists electricity */
-#define MR_POISON       0x20    /* resists poison */
-#define MR_ACID         0x40    /* resists acid */
-#define MR_STONE        0x80    /* resists petrification */
+#define MR_FIRE		0x01	/* resists fire */
+#define MR_COLD		0x02	/* resists cold */
+#define MR_SLEEP	0x04	/* resists sleep */
+#define MR_DISINT	0x08	/* resists disintegration */
+#define MR_ELEC		0x10	/* resists electricity */
+#define MR_POISON	0x20	/* resists poison */
+#define MR_ACID		0x40	/* resists acid */
+#define MR_STONE	0x80	/* resists petrification */
 /* other resistances: magic, sickness */
 /* other conveyances: teleport, teleport control, telepathy */
 
@@ -82,6 +82,7 @@
 #define M1_HIDE		0x00000100L	/* mimics, blends in with ceiling */
 #define M1_AMPHIBIOUS	0x00000200L	/* can survive underwater */
 #define M1_BREATHLESS	0x00000400L	/* doesn't need to breathe */
+#define M1_NOTAKE	0x00000800L	/* cannot pick up objects */
 #define M1_NOEYES	0x00001000L	/* no eyes to gaze into or blind */
 #define M1_NOHANDS	0x00002000L	/* no hands to handle things */
 #define M1_NOLIMBS	0x00006000L	/* no arms/legs to kick/wear on */
@@ -111,16 +112,17 @@
 #define M2_NOPOLY	0x00000001L	/* players mayn't poly into one */
 #define M2_UNDEAD	0x00000002L	/* is walking dead */
 #define M2_WERE		0x00000004L	/* is a lycanthrope */
-#define M2_ELF		0x00000008L	/* is an elf */
-#define M2_DWARF	0x00000010L	/* is a dwarf */
-#define M2_GIANT	0x00000020L	/* is a giant */
-#define M2_ORC		0x00000040L	/* is an orc */
-#define M2_HUMAN	0x00000080L	/* is a human */
+#define M2_HUMAN	0x00000008L	/* is a human */
+#define M2_ELF		0x00000010L	/* is an elf */
+#define M2_DWARF	0x00000020L	/* is a dwarf */
+#define M2_GNOME	0x00000040L	/* is a gnome */
+#define M2_ORC		0x00000080L	/* is an orc */
 #define M2_DEMON	0x00000100L	/* is a demon */
 #define M2_MERC		0x00000200L	/* is a guard or soldier */
 #define M2_LORD		0x00000400L	/* is a lord to its kind */
 #define M2_PRINCE	0x00000800L	/* is an overlord to its kind */
 #define M2_MINION	0x00001000L	/* is a minion of a deity */
+#define M2_GIANT	0x00002000L	/* is a giant */
 #define M2_MALE		0x00010000L	/* always male */
 #define M2_FEMALE	0x00020000L	/* always female */
 #define M2_NEUTER	0x00040000L	/* neither male nor female */
@@ -142,17 +144,21 @@
 #define M2_MAGIC	0x80000000L	/* picks up magic items */
 #endif
 
-#define M3_WANTSAMUL	0x01		/* would like to steal the amulet */
-#define M3_WANTSBELL	0x02		/* wants the bell */
-#define M3_WANTSBOOK	0x04		/* wants the book */
-#define M3_WANTSCAND	0x08		/* wants the candelabrum */
-#define M3_WANTSARTI	0x10		/* wants the quest artifact */
-#define M3_WANTSALL	0x1f		/* wants any major artifact */
-#define M3_WAITFORU	0x40		/* waits to see you or get attacked */
-#define M3_CLOSE	0x80		/* lets you close unless attacked */
+#define M3_WANTSAMUL	0x0001		/* would like to steal the amulet */
+#define M3_WANTSBELL	0x0002		/* wants the bell */
+#define M3_WANTSBOOK	0x0004		/* wants the book */
+#define M3_WANTSCAND	0x0008		/* wants the candelabrum */
+#define M3_WANTSARTI	0x0010		/* wants the quest artifact */
+#define M3_WANTSALL	0x001f		/* wants any major artifact */
+#define M3_WAITFORU	0x0040		/* waits to see you or get attacked */
+#define M3_CLOSE	0x0080		/* lets you close unless attacked */
 
-#define M3_COVETOUS	0x1f		/* wants something */
-#define M3_WAITMASK	0xc0		/* waiting... */
+#define M3_COVETOUS	0x001f		/* wants something */
+#define M3_WAITMASK	0x00c0		/* waiting... */
+
+/* Infravision is currently implemented for players only */
+#define M3_INFRAVISION	0x0100		/* has infravision */
+#define M3_INFRAVISIBLE 0x0200		/* visible by infravision */
 
 #define MZ_TINY		0		/* < 2' */
 #define MZ_SMALL	1		/* 2-4' */
@@ -161,6 +167,15 @@
 #define MZ_LARGE	3		/* 7-12' */
 #define MZ_HUGE		4		/* 12-25' */
 #define MZ_GIGANTIC	7		/* off the scale */
+
+
+/* Monster races -- must stay within ROLE_RACEMASK */
+/* Eventually this may become its own field */
+#define MH_HUMAN	M2_HUMAN
+#define MH_ELF		M2_ELF
+#define MH_DWARF	M2_DWARF
+#define MH_GNOME	M2_GNOME
+#define MH_ORC		M2_ORC
 
 
 /* for mons[].geno (constant during game) */
@@ -176,7 +191,7 @@
 
 /* for mvitals[].mvflags (variant during game), along with G_NOCORPSE */
 #define G_KNOWN		0x0004		/* have been encountered */
-#define G_GONE		0x0003
+#define G_GONE		(G_GENOD|G_EXTINCT)
 #define G_GENOD		0x0002		/* have been genocided */
 #define G_EXTINCT	0x0001		/* have been extinguished as
 					   population control */

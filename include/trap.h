@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.h	3.2	92/09/28	*/
+/*	SCCS Id: @(#)trap.h	3.3	92/09/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,7 +16,7 @@ struct trap {
 	Bitfield(tseen,1);
 	Bitfield(once,1);
 	Bitfield(madeby_u,1); /* So monsters may take offence when you trap
-				 them.  Recognizing who made the trap isn't
+				 them.	Recognizing who made the trap isn't
 				 completely unreasonable, everybody has
 				 their own style.  This flag is also needed
 				 when you untrap a monster.  It would be too
@@ -34,6 +34,16 @@ extern struct trap *ftrap;
 #define newtrap()	(struct trap *) alloc(sizeof(struct trap))
 #define dealloc_trap(trap) free((genericptr_t) (trap))
 
+/* reasons for statue animation */
+#define ANIMATE_NORMAL	0
+#define ANIMATE_SHATTER 1
+#define ANIMATE_SPELL	2
+
+/* reasons for animate_statue's failure */
+#define AS_OK		 0	/* didn't fail */
+#define AS_NO_MON	 1	/* makemon failed */
+#define AS_MON_IS_UNIQUE 2	/* statue monster is unique */
+
 /* Note: if adding/removing a trap, adjust trap_engravings[] in mklev.c */
 
 /* unconditional traps */
@@ -50,16 +60,16 @@ extern struct trap *ftrap;
 #define FIRE_TRAP	10
 #define PIT		11
 #define SPIKED_PIT	12
-#define HOLE            13
+#define HOLE		13
 #define TRAPDOOR	14
 #define TELEP_TRAP	15
 #define LEVEL_TELEP	16
-#define MAGIC_PORTAL    17
+#define MAGIC_PORTAL	17
 #define WEB		18
 #define STATUE_TRAP	19
 #define MAGIC_TRAP	20
 #define ANTI_MAGIC	21
 #define POLY_TRAP	22
-#define TRAPNUM	23
+#define TRAPNUM 23
 
 #endif /* TRAP_H */

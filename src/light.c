@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)light.c	3.2	96/03/07	*/
+/*	SCCS Id: @(#)light.c	3.3	97/04/10	*/
 /* Copyright (c) Dean Luick, 1994					*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -55,9 +55,9 @@ typedef struct ls_t {
 
 static light_source *light_base = 0;
 
-static struct monst *FDECL(find_mid, (unsigned));
-static void FDECL(write_ls, (int, light_source *));
-static int FDECL(maybe_write_ls, (int, int, BOOLEAN_P));
+struct monst *FDECL(find_mid, (unsigned));
+STATIC_DCL void FDECL(write_ls, (int, light_source *));
+STATIC_DCL int FDECL(maybe_write_ls, (int, int, BOOLEAN_P));
 
 /* imported from vision.c, for small circles */
 extern char circle_data[];
@@ -215,7 +215,7 @@ do_light_sources(cs_rows)
 /* (mon->mx == 0) implies migrating */
 #define mon_is_local(mon)	((mon)->mx > 0)
 
-static struct monst *
+struct monst *
 find_mid(nid)
 unsigned nid;
 {
@@ -341,7 +341,7 @@ relink_light_sources(ghostly)
  * sources that would be written.  If write_it is true, actually write
  * the light source out.
  */
-static int
+STATIC_OVL int
 maybe_write_ls(fd, range, write_it)
     int fd, range;
     boolean write_it;
@@ -378,7 +378,7 @@ maybe_write_ls(fd, range, write_it)
 }
 
 /* Write a light source structure to disk. */
-static void
+STATIC_OVL void
 write_ls(fd, ls)
     int fd;
     light_source *ls;
@@ -510,11 +510,77 @@ obj_split_light_source(src, dest)
 	     */
 	    new_ls = (light_source *) alloc(sizeof(light_source));
 	    *new_ls = *ls;
+	    if (Is_candle(src)) {
+		/* split candles may emit less light than original group */
+		ls->range = candle_light_range(src);
+		new_ls->range = candle_light_range(dest);
+		vision_full_recalc = 1;	/* in case range changed */
+	    }
 	    new_ls->id = (genericptr_t) dest;
 	    new_ls->next = light_base;
 	    light_base = new_ls;
 	    dest->lamplit = 1;		/* now an active light source */
 	}
+}
+
+/* light source `src' has been folded into light source `dest';
+   used for merging lit candles and adding candle(s) to lit candelabrum */
+void
+obj_merge_light_sources(src, dest)
+struct obj *src, *dest;
+{
+    light_source *ls;
+
+    /* src == dest implies adding to candelabrum */
+    if (src != dest) end_burn(src, TRUE);		/* extinguish candles */
+
+    for (ls = light_base; ls; ls = ls->next)
+	if (ls->type == LS_OBJECT && ls->id == (genericptr_t) dest) {
+	    ls->range = candle_light_range(dest);
+	    vision_full_recalc = 1;	/* in case range changed */
+	    break;
+	}
+}
+
+/* Candlelight is proportional to the number of candles;
+   minimum range is 2 rather than 1 for playability. */
+int
+candle_light_range(obj)
+struct obj *obj;
+{
+    int radius;
+
+    if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
+	/*
+	 *	The special candelabrum emits more light than the
+	 *	corresponding number of candles would.
+	 *	 1..3 candles, range 2 (minimum range);
+	 *	 4..6 candles, range 3 (normal lamp range);
+	 *	    7 candles, range 4 (bright).
+	 */
+	radius = (obj->spe < 4) ? 2 : (obj->spe < 7) ? 3 : 4;
+    } else if (Is_candle(obj)) {
+	/*
+	 *	Range is incremented by powers of 7 so that it will take
+	 *	wizard mode quantities of candles to get more light than
+	 *	from a lamp, without imposing an arbitrary limit.
+	 *	 1..6   candles, range 2;
+	 *	 7..48  candles, range 3;
+	 *	49..342 candles, range 4; &c.
+	 */
+	long n = obj->quan;
+
+	radius = 1;	/* always incremented at least once */
+	do {
+	    radius++;
+	    n /= 7L;
+	} while (n > 0L);
+    } else {
+	/* we're only called for lit candelabrum or candles */
+     /* impossible("candlelight for %d?", obj->otyp); */
+	radius = 3;		/* lamp's value */
+    }
+    return radius;
 }
 
 #ifdef WIZARD

@@ -1,10 +1,10 @@
 @echo off
-REM    SCCS Id: @(#)setup.bat   96/02/21
-REM    Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1996
+REM    SCCS Id: @(#)setup.bat   97/09/28
+REM    Copyright (c) NetHack PC Development Team 1990 - 1997
 REM    NetHack may be freely redistributed.  See license for details.
 
 echo.
-echo   Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1996
+echo   Copyright (c) NetHack PC Development Team 1990 - 1997
 echo   NetHack may be freely redistributed.  See license for details.
 echo.
 REM setup batch file for msdos, see Install.dos for details.
@@ -13,13 +13,12 @@ if not %1.==. goto ok_parm
 goto err_set
 
 :ok_parm
-if "%1"=="CL"   goto ok_cl
-if "%1"=="cl"   goto ok_cl
 echo Checking to see if directories are set up properly ...
 if not exist ..\..\include\hack.h  goto err_dir
 if not exist ..\..\src\hack.c      goto err_dir
 if not exist ..\..\dat\wizard.des  goto err_dir
 if not exist ..\..\util\makedefs.c goto err_dir
+if not exist ..\..\win\tty\wintty.c goto err_dir
 if not exist ..\share\lev_yacc.c   goto err_dir
 echo Directories OK.
 
@@ -31,11 +30,15 @@ goto err_long
 echo Changing some long-named distribution file names:
 echo "Copying ..\..\dat\data.base -> ..\..\dat\data.bas"
 copy ..\..\dat\data.base ..\..\dat\data.bas
+if exist ..\..\dat\data.old del /Q ..\..\dat\data.old
+ren ..\..\dat\data.base data.old
 goto long1ok
 :long1b
 echo Changing some long-named distribution file names:
 echo "Copying ..\..\dat\data~1.bas -> ..\..\dat\data.bas"
 copy ..\..\dat\data~1.bas ..\..\dat\data.bas
+if exist ..\..\dat\data.old del /Q ..\..\dat\data.old
+ren ..\..\dat\data~1.bas data.old
 :long1ok
 
 if exist ..\..\include\patchlev.h goto long2ok
@@ -45,10 +48,14 @@ goto err_long
 :long2a
 echo "Copying ..\..\include\patchlevel.h -> ..\..\include\patchlev.h"
 copy ..\..\include\patchlevel.h ..\..\include\patchlev.h
+if exist ..\..\include\patchlev.old del /Q ..\..\include\patchlev.old
+ren ..\..\include\patchlevel.h patchlev.old
 goto long2ok
 :long2b
 echo "Copying ..\..\include\patchl~1.h -> ..\..\include\patchlev.h"
 copy ..\..\include\patchl~1.h ..\..\include\patchlev.h
+if exist ..\..\include\patchlev.old del /Q ..\..\include\patchlev.old
+ren ..\..\include\patchl~1.h patchlev.old
 :long2ok
 
 REM Missing guidebook is not fatal to the build process
@@ -59,10 +66,14 @@ goto warn3long
 :long3a
 echo "Copying ..\..\doc\guidebook.txt -> ..\..\doc\guideboo.txt"
 copy ..\..\doc\guidebook.txt ..\..\doc\guideboo.txt
+if exist ..\..\doc\guideboo.old del /Q ..\..\doc\guideboo.old
+ren ..\..\doc\guidebook.txt guideboo.old
 goto long3ok
 :long3b
 echo "Copying ..\..\doc\guideb~1.txt -> ..\..\doc\guideboo.txt"
 copy ..\..\doc\guideb~1.txt ..\..\doc\guideboo.txt
+if exist ..\..\doc\guideboo.old del /Q ..\..\doc\guideboo.old
+ren ..\..\doc\guideb~1.txt guideboo.old
 goto long3ok
 :warn3long
 echo "Warning - There is no NetHack Guidebook (..\..\doc\guideboo.txt)"
@@ -92,8 +103,6 @@ copy Makefile.MSC ..\..\src\makefile
 echo Copying overlay schemas to ..\..\src
 copy schema*.MSC ..\..\src\schema*.DEF
 :ok_cl
-echo Setting the CL Environment variable for the Microsoft Compiler.
-set  CL= /AL /G2 /Oo /Gs /Gt16 /Zp1 /W0 /I..\include /nologo /DMOVERLAY
 goto done
 
 :ok_bc

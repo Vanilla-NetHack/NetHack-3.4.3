@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmenu.c	3.2	96/08/15	*/
+/*	SCCS Id: @(#)winmenu.c	3.3	96/08/15	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
  *
  *	+ Global functions: start_menu, add_menu, end_menu, select_menu
  */
-/*#define USE_FWF		/* use FWF's list widget */
+/*#define USE_FWF*/		/* use FWF's list widget */
 
 #ifndef SYSV
 #define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
@@ -612,7 +612,8 @@ X11_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
     item->pick_count = -1L;
 
     if (identifier->a_void) {
-	char buf[QBUFSZ];
+	char buf[4+BUFSZ];
+	int len = strlen(str);
 
 	if (!ch) {
 	    /* Supply a keyboard accelerator.  Only the first 52 get one. */
@@ -626,7 +627,14 @@ X11_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
 	    }
 	}
 
-	Sprintf(buf, "%c - %s", ch ? ch : ' ', str);
+	if (len >= BUFSZ) {
+	    /* We *think* everything's coming in off at most BUFSZ bufs... */
+	    impossible("Menu item too long (%d).", len);
+	    len = BUFSZ - 1;
+	}
+	Sprintf(buf, "%c - ", ch ? ch : ' ');
+	(void) strncpy(buf+4, str, len);
+	buf[4+len] = '\0';
 	item->str = copy_of(buf);
     } else {
 	/* no keyboard accelerator */

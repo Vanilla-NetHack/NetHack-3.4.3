@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.c	3.2	96/07/20	*/
+/*	SCCS Id: @(#)termcap.c	3.3	96/07/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 
 #include "wintty.h"
 
-#include "termcap.h"
+#include "tcap.h"
 
 
 #ifdef MICROPORT_286_BUG
@@ -35,14 +35,15 @@ static void NDECL(kill_hilite);
 #endif
 
 #ifdef OVLB
-	/* (see termcap.h) -- CM, ND, CD, HI,HE, US,UE, ul_hack */
+	/* (see tcap.h) -- CM, ND, CD, HI,HE, US,UE, ul_hack */
 struct tc_lcl_data tc_lcl_data = { 0, 0, 0, 0,0, 0,0, FALSE };
 #endif /* OVLB */
 
 STATIC_VAR char *HO, *CL, *CE, *UP, *XD, *BC, *SO, *SE, *TI, *TE;
 STATIC_VAR char *VS, *VE;
+STATIC_VAR char *ME;
+STATIC_VAR char *MR;
 #if 0
-STATIC_VAR char *MR, *ME;
 STATIC_VAR char *MB, *MH;
 STATIC_VAR char *MD;     /* may already be in use below */
 #endif
@@ -156,11 +157,8 @@ int *wid, *hgt;
 #  endif
 		HI = SO = "\033[1m";
 		US = "\033[4m";
-#  if 0
 		MR = "\033[7m";
-		ME = "\033[0m";
-#  endif
-		TI = HE = SE = UE = "\033[0m";
+		TI = HE = ME = SE = UE = "\033[0m";
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
@@ -283,27 +281,28 @@ int *wid, *hgt;
 # endif
 	KS = Tgetstr("ks");	/* keypad start (special mode) */
 	KE = Tgetstr("ke");	/* keypad end (ordinary mode [ie, digits]) */
-# if 0
 	MR = Tgetstr("mr");	/* reverse */
+# if 0
 	MB = Tgetstr("mb");	/* blink */
 	MD = Tgetstr("md");	/* boldface */
 	MH = Tgetstr("mh");	/* dim */
-	ME = Tgetstr("me");
 # endif
+	ME = Tgetstr("me");	/* turn off all attributes */
+	if (!ME || (SE == nullstr)) ME = SE;	/* default to SE value */
 
 	/* Get rid of padding numbers for HI and HE.  Hope they
-	 * aren't really needed!!!  HI and HE are ouputted to the
+	 * aren't really needed!!!  HI and HE are outputted to the
 	 * pager as a string - so how can you send it NULs???
 	 *  -jsb
 	 */
-	    HI = (char *) alloc((unsigned)(strlen(SO)+1));
-	    HE = (char *) alloc((unsigned)(strlen(SE)+1));
-	    i = 0;
-	    while (digit(SO[i])) i++;
-	    Strcpy(HI, &SO[i]);
-	    i = 0;
-	    while (digit(SE[i])) i++;
-	    Strcpy(HE, &SE[i]);
+	HI = (char *) alloc((unsigned)(strlen(SO)+1));
+	HE = (char *) alloc((unsigned)(strlen(ME)+1));
+	i = 0;
+	while (digit(SO[i])) i++;
+	Strcpy(HI, &SO[i]);
+	i = 0;
+	while (digit(ME[i])) i++;
+	Strcpy(HE, &ME[i]);
 	AS = Tgetstr("as");
 	AE = Tgetstr("ae");
 	CD = Tgetstr("cd");
@@ -693,6 +692,9 @@ static const short tmspc10[] = {		/* from termcap */
 void
 tty_delay_output()
 {
+#if defined(MICRO)
+	register int i;
+#endif
 #ifdef TIMED_DELAY
 	if (flags.nap) {
 		(void) fflush(stdout);
@@ -702,7 +704,6 @@ tty_delay_output()
 #endif
 #if defined(MICRO)
 	/* simulate the delay with "cursor here" */
-	register int i;
 	for (i = 0; i < 3; i++) {
 		cmov(ttyDisplay->curx, ttyDisplay->cury);
 		(void) fflush(stdout);
@@ -827,7 +828,9 @@ init_hilite()
 		hilites[c] = HI;
 	hilites[CLR_GRAY] = hilites[NO_COLOR] = (char *)0;
 
-	if (tgetnum("Co") < 8 || (setf = tgetstr("Sf", (char **)0)) == (char *)0)
+	if (tgetnum("Co") < 8
+	    || ((setf = tgetstr("Sf", (char **)0)) == (char *)0
+		&& (setf = tgetstr("AF", (char **)0)) == (char *)0))
 		return;
 
 	for (c = 0; c < CLR_MAX / 2; c++) {
@@ -1021,8 +1024,9 @@ int n;
 		    if(US) return US;
 	    case ATR_BOLD:
 	    case ATR_BLINK:
-	    case ATR_INVERSE:
 		    return HI;
+	    case ATR_INVERSE:
+		    return MR;
     }
     return nulstr;
 }
@@ -1036,8 +1040,9 @@ int n;
 		    if(UE) return UE;
 	    case ATR_BOLD:
 	    case ATR_BLINK:
-	    case ATR_INVERSE:
 		    return HE;
+	    case ATR_INVERSE:
+		    return ME;
     }
     return nulstr;
 }

@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)dlb_main.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)dlb_main.c 3.3	98/08/16	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* data librarian */
+/* data librarian; only useful if you are making the library version, DLBLIB */
 
 #include "config.h"
 #include "dlb.h"
@@ -16,13 +16,14 @@
 static void FDECL(xexit, (int));
 
 #ifdef DLB
+#ifdef DLBLIB
 
 #define DLB_DIRECTORY "Directory"	/* name of lib directory */
 #define LIBLISTFILE "dlb.lst"		/* default list file */
 
 /* library functions (from dlb.c) */
 extern boolean FDECL(open_library,(const char *,library *));
-extern FDECL(close_library,(library *));
+extern void FDECL(close_library,(library *));
 
 char *FDECL(eos, (char *));	/* also used by dlb.c */
 FILE *FDECL(fopen_datafile, (const char *,const char *));
@@ -35,6 +36,7 @@ extern int FDECL(vms_open, (const char *,int,unsigned int));
 static void FDECL(Write, (int,char *,long));
 static void NDECL(usage);
 static void NDECL(verbose_help);
+static void FDECL(write_dlb_directory, (int,int,libdir *,long,long,long));
 
 static char default_progname[] = "dlb";
 static char *progname = default_progname;
@@ -51,7 +53,7 @@ static char origdir[255]="";
 #define O_BINARY 0
 #endif
 
-#define MAX_DLB_FILES 150	/* max # of files we'll handle */
+#define MAX_DLB_FILES 200	/* max # of files we'll handle */
 #define DLB_VERS 1		/* version of dlb file we will write */
 
 /*
@@ -138,6 +140,39 @@ Write(out,buf,len)
     }
 }
 
+
+char *
+eos(s)
+    char *s;
+{
+    while (*s) s++;
+    return s;
+}
+
+
+#ifdef VMS	/* essential to have punctuation, to avoid logical names */
+static FILE *
+vms_fopen(filename, mode)
+const char *filename, *mode;
+{
+    char tmp[BUFSIZ];
+
+    if (!index(filename, '.') && !index(filename, ';'))
+	filename = strcat(strcpy(tmp, filename), ";0");
+    return fopen(filename, mode, "mbc=16");
+}
+#define fopen vms_fopen
+#endif	/* VMS */
+
+/* open_library(dlb.c) needs this (which normally comes from src/files.c) */
+FILE *
+fopen_datafile(filename, mode)
+const char *filename, *mode;
+{
+    return fopen(filename, mode);
+}
+
+#endif	/* DLBLIB */
 #endif	/* DLB */
 
 int
@@ -146,6 +181,7 @@ main(argc, argv)
     char **argv;
 {
 #ifdef DLB
+#ifdef DLBLIB
     int i, r;
     int ap=2;				/* argument pointer */
     int cp;				/* command pointer */
@@ -313,7 +349,8 @@ main(argc, argv)
 	libdir ld[MAX_DLB_FILES];
 	char buf[BUFSIZ];
 	int fd, out, nfiles = 0;
-	long dir_size, slen, flen;
+	long dir_size, slen, flen, fsiz;
+	boolean rewrite_directory = FALSE;
 
 	/*
 	 * Get names from either/both an argv list and a file
@@ -380,7 +417,7 @@ main(argc, argv)
 	}
 
 	/* open output file */
-	out = open(library_file, O_WRONLY|O_TRUNC|O_BINARY|O_CREAT, FCMASK);
+	out = open(library_file, O_RDWR|O_TRUNC|O_BINARY|O_CREAT, FCMASK);
 	if (out < 0) {
 	    printf("Can't open %s for output\n", library_file);
 	    xexit(EXIT_FAILURE);
@@ -392,27 +429,9 @@ main(argc, argv)
 		   + slen+strlen(DLB_DIRECTORY); /* file names */
 
 	/* write directory */
-	sprintf(buf,"%3ld %8ld %8ld %8ld %8ld\n",
-		(long) DLB_VERS,	/* version of dlb file */
-		(long) nfiles+1,	/* # of entries (includes directory) */
-					/* string length + room for nulls */
-		(long) slen+strlen(DLB_DIRECTORY)+nfiles+1,
-		(long) dir_size,	/* start of first file */
-		(long) flen+dir_size);	/* total file size */
-	Write(out, buf, strlen(buf));
+	write_dlb_directory(out, nfiles, ld, slen, dir_size, flen);
 
-	/* write each file entry */
-#define ENTRY_FORMAT "%c%s %8ld\n"
-	sprintf(buf, ENTRY_FORMAT, ENC_NORMAL, DLB_DIRECTORY, (long) 0);
-	Write(out, buf, strlen(buf));
-	for (i = 0; i < nfiles; i++) {
-	    sprintf(buf, ENTRY_FORMAT,
-		    ENC_NORMAL,			/* encoding */
-		    ld[i].fname,		/* name */
-		    ld[i].foffset + dir_size);	/* offset */
-	    Write(out, buf, strlen(buf));
-	}
-
+	flen = 0L;
 	/* write each file */
 	for (i = 0; i < nfiles; i++) {
 	    fd = open(ld[i].fname, O_RDONLY|O_BINARY, 0);
@@ -420,9 +439,9 @@ main(argc, argv)
 		printf("Can't open input file '%s'\n", ld[i].fname);
 		xexit(EXIT_FAILURE);
 	    }
-
 	    if (verbose) printf("%s\n",ld[i].fname);
 
+	    fsiz = 0L;
 	    while ((r = read(fd, buf, sizeof buf)) != 0) {
 		if (r == -1) {
 		    printf("Read Error in '%s'\n", ld[i].fname);
@@ -432,21 +451,73 @@ main(argc, argv)
 		    printf("Write Error in '%s'\n", ld[i].fname);
 		    xexit(EXIT_FAILURE);
 		}
+		fsiz += r;
 	    }
 	    (void) close(fd);
-	    free((genericptr_t) ld[i].fname),  ld[i].fname = 0;
+	    if (fsiz != ld[i].fsize) rewrite_directory = TRUE;
+	    /* in case directory rewrite is needed */
+	    ld[i].fsize = fsiz;
+	    ld[i].foffset = flen;
+	    flen += fsiz;
 	}
+
+	if (rewrite_directory) {
+	    if (verbose) printf("(rewriting dlb directory info)\n");
+	    (void) lseek(out, 0, SEEK_SET);	/* rewind */
+	    write_dlb_directory(out, nfiles, ld, slen, dir_size, flen);
+	}
+
+	for (i = 0; i < nfiles; i++)
+	    free((genericptr_t) ld[i].fname),  ld[i].fname = 0;
 
 	(void) close(out);
 	xexit(EXIT_SUCCESS);
 	}
     }
+#endif	/* DLBLIB */
 #endif	/* DLB */
 
     xexit(EXIT_SUCCESS);
     /*NOTREACHED*/
     return 0;
 }
+
+#ifdef DLB
+#ifdef DLBLIB
+
+static void
+write_dlb_directory(out, nfiles, ld, slen, dir_size, flen)
+int out, nfiles;
+libdir *ld;
+long slen, dir_size, flen;
+{
+    char buf[BUFSIZ];
+    int i;
+
+    sprintf(buf,"%3ld %8ld %8ld %8ld %8ld\n",
+	    (long) DLB_VERS,	    /* version of dlb file */
+	    (long) nfiles+1,	    /* # of entries (includes directory) */
+				    /* string length + room for nulls */
+	    (long) slen+strlen(DLB_DIRECTORY)+nfiles+1,
+	    (long) dir_size,	    /* start of first file */
+	    (long) flen+dir_size);  /* total file size */
+    Write(out, buf, strlen(buf));
+
+    /* write each file entry */
+#define ENTRY_FORMAT "%c%s %8ld\n"
+    sprintf(buf, ENTRY_FORMAT, ENC_NORMAL, DLB_DIRECTORY, (long) 0);
+    Write(out, buf, strlen(buf));
+    for (i = 0; i < nfiles; i++) {
+	sprintf(buf, ENTRY_FORMAT,
+		ENC_NORMAL,		    /* encoding */
+		ld[i].fname,		    /* name */
+		ld[i].foffset + dir_size);  /* offset */
+	Write(out, buf, strlen(buf));
+    }
+}
+
+#endif	/* DLBLIB */
+#endif	/* DLB */
 
 static void
 xexit(retcd)
@@ -460,41 +531,6 @@ xexit(retcd)
     exit(retcd);
 }
 
-
-#ifdef DLB
-
-char *
-eos(s)
-    char *s;
-{
-    while (*s) s++;
-    return s;
-}
-
-
-#ifdef VMS	/* essential to have punctuation, to avoid logical names */
-static FILE *
-vms_fopen(filename, mode)
-const char *filename, *mode;
-{
-    char tmp[BUFSIZ];
-
-    if (!index(filename, '.') && !index(filename, ';'))
-	filename = strcat(strcpy(tmp, filename), ";0");
-    return fopen(filename, mode, "mbc=16");
-}
-#define fopen vms_fopen
-#endif	/* VMS */
-
-/* open_library(dlb.c) needs this (which normally comes from src/files.c) */
-FILE *
-fopen_datafile(filename, mode)
-const char *filename, *mode;
-{
-    return fopen(filename, mode);
-}
-
-#endif	/* DLB */
 
 #ifdef AMIGA
 #include "date.h"

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.c	3.2	96/06/05	*/
+/*	SCCS Id: @(#)vault.c	3.3	96/06/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,13 +9,13 @@ STATIC_DCL struct monst *NDECL(findgd);
 
 #ifdef OVLB
 
-static boolean FDECL(clear_fcorr, (struct monst *,BOOLEAN_P));
-static void FDECL(restfakecorr,(struct monst *));
-static boolean FDECL(in_fcorridor, (struct monst *,int,int));
-static void FDECL(move_gold,(struct obj *,int));
-static void FDECL(wallify_vault,(struct monst *));
+STATIC_DCL boolean FDECL(clear_fcorr, (struct monst *,BOOLEAN_P));
+STATIC_DCL void FDECL(restfakecorr,(struct monst *));
+STATIC_DCL boolean FDECL(in_fcorridor, (struct monst *,int,int));
+STATIC_DCL void FDECL(move_gold,(struct obj *,int));
+STATIC_DCL void FDECL(wallify_vault,(struct monst *));
 
-static boolean
+STATIC_OVL boolean
 clear_fcorr(grd, forceshow)
 register struct monst *grd;
 register boolean forceshow;
@@ -54,7 +54,7 @@ register boolean forceshow;
 	return(TRUE);
 }
 
-static void
+STATIC_OVL void
 restfakecorr(grd)
 register struct monst *grd;
 {
@@ -80,7 +80,7 @@ register struct monst *grd;
 	return(dispose);
 }
 
-static boolean
+STATIC_OVL boolean
 in_fcorridor(grd, x, y)
 register struct monst *grd;
 int x, y;
@@ -235,7 +235,7 @@ fnd:
 	reset_faint();			/* if fainted - wake up */
 	pline("Suddenly one of the Vault's guards enters!");
 	newsym(guard->mx,guard->my);
-	if (Strangled || uasmon->msound == MS_SILENT) {
+	if (Strangled || youmonst.data->msound == MS_SILENT) {
 	    verbalize("I'll be back when you're ready to speak to me!");
 	    mongone(guard);
 	    return;
@@ -315,7 +315,7 @@ fnd:
 #endif /* OVL0 */
 #ifdef OVLB
 
-static void
+STATIC_OVL void
 move_gold(gold, vroom)
 struct obj *gold;
 int vroom;
@@ -331,7 +331,7 @@ int vroom;
 	newsym(nx,ny);
 }
 
-static void
+STATIC_OVL void
 wallify_vault(grd)
 struct monst *grd;
 {
@@ -727,7 +727,7 @@ paygd()
 	    gy = rooms[EGD(grd)->vroom].ly + rn2(2);
 	    Sprintf(buf,
 		"To Croesus: here's the gold recovered from %s the %s.",
-		plname, player_mon()->mname);
+		plname, mons[u.umonster].mname);
 	    make_engr_at(gx, gy, buf, 0L, ENGRAVE);
 	}
 	place_object(gold = mkgoldobj(u.ugold), gx, gy);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.2	96/04/21	*/
+/*	SCCS Id: @(#)engrave.c	3.3	1999/08/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,6 +25,14 @@ static const char *random_mesg[] = {
 	"See you next Wednesday", /* Thriller */
 	"notary sojak", /* Smokey Stover */
 	"For a good time call 8?7-5309",
+	"Please don't feed the animals.", /* Various zoos around the world */
+	"Madam, in Eden, I'm Adam.", /* A palindrome */
+	"Two thumbs up!", /* Siskel & Ebert */
+	"Hello, World!", /* The First C Program */
+#ifdef MAIL
+	"You've got mail!", /* AOL */
+#endif
+	"As if!", /* Clueless */
 };
 
 char *
@@ -81,8 +89,7 @@ unsigned seed;		/* for semi-controlled randomization */
 		} else {
 		    /* predictable; caller can reproduce the same sequence by
 		       supplying the same arguments later, or a pseudo-random
-		       sequence by varying any of them (but see the "pick one"
-		       comment below for a caveat about "the same sequence") */
+		       sequence by varying any of them */
 		    nxt = seed % lth;
 		    seed *= 31,  seed %= (BUFSZ-1);
 		    use_rubout = seed & 3;
@@ -103,12 +110,13 @@ unsigned seed;		/* for semi-controlled randomization */
 			if (*s == rubouts[i].wipefrom) {
 			    /*
 			     * Pick one of the substitutes at random.
-			     * For the `seed' pseudo-random case, this can
-			     * produce minor variations each time when/if the
-			     * caller tries to regenerate the scrambled text.
-			     * That's deemed acceptable for intended usage....
 			     */
-			    j = rn2(strlen(rubouts[i].wipeto));
+			    if (!seed)
+				j = rn2(strlen(rubouts[i].wipeto));
+			    else {
+				seed *= 31,  seed %= (BUFSZ-1);
+				j = seed % (strlen(rubouts[i].wipeto));
+			    }
 			    *s = rubouts[i].wipeto[j];
 			    break;
 			}
@@ -126,6 +134,10 @@ boolean
 can_reach_floor()
 {
 	return (boolean)(!u.uswallow &&
+#ifdef STEED
+			/* Restricted/unskilled riders can't reach the floor */
+			!(u.usteed && P_SKILL(P_RIDING) < P_BASIC) &&
+#endif
 			 (!Levitation ||
 			  Is_airlevel(&u.uz) || Is_waterlevel(&u.uz)));
 }
@@ -457,7 +469,7 @@ doengrave()
 		You_cant("write in thin air!");
 		return(0);
 	}
-	if (cantwield(uasmon)) {
+	if (cantwield(youmonst.data)) {
 		You_cant("even hold anything!");
 		return(0);
 	}
@@ -564,6 +576,7 @@ doengrave()
 		    case WAN_SECRET_DOOR_DETECTION:
 		    case WAN_CREATE_MONSTER:
 		    case WAN_WISHING:
+		    case WAN_ENLIGHTENMENT:
 			zapnodir(otmp);
 			break;
 
@@ -827,7 +840,7 @@ doengrave()
 		}
 	    }
 
-	    if (c == 'n' || Blind)
+	    if (c == 'n' || Blind) {
 
 		if( (oep->engr_type == DUST) || (oep->engr_type == BLOOD) ||
 		    (oep->engr_type == MARK) ) {
@@ -855,6 +868,7 @@ doengrave()
 				You("will overwrite the current message.");
 			    eow = TRUE;
 			}
+	}
 	}
 
 	eloc = surface(u.ux,u.uy);
@@ -1021,6 +1035,8 @@ doengrave()
 	    make_blinded((long)rnd(50),FALSE);
 	}
 
+	u.uconduct.literate++;
+
 	return(1);
 }
 
@@ -1105,7 +1121,7 @@ struct engr *ep;
 	    tx = rn1(COLNO-3,2);
 	    ty = rn2(ROWNO);
 	} while (engr_at(tx, ty) ||
-		!goodpos(tx, ty, (struct monst *)0, (struct permonst *)0));
+		!goodpos(tx, ty, (struct monst *)0));
 
 	ep->engr_x = tx;
 	ep->engr_y = ty;

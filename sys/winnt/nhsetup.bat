@@ -16,6 +16,22 @@ echo Directories look ok.
 echo "Copying Makefile.NT to ..\..\src\Makefile"
 copy makefile.NT ..\..\src\Makefile >nul
 echo Makefile copied ok.
+if not exist ..\..\win\win32\NetHack.dsp goto nowin32
+echo "Copying Visual C project files to top level directory"
+copy ..\..\win\win32\NetHack.rc ..\..
+copy ..\..\win\win32\resource.h ..\..
+copy ..\..\win\win32\NetHack.dsw ..\..
+copy ..\..\win\win32\NetHack.clw ..\..
+copy ..\..\win\win32\makedefs.dsp ..\..
+copy ..\..\win\win32\NetHack.dsp ..\..
+copy ..\..\win\win32\tile2bmp.dsp ..\..
+copy ..\..\win\win32\dgncomp.dsp ..\..
+copy ..\..\win\win32\levcomp.dsp ..\..
+copy ..\..\win\win32\dlb_main.dsp ..\..
+copy ..\..\win\win32\tilemap.dsp ..\..
+copy ..\..\win\win32\recover.dsp ..\..
+
+:nowin32
 
 if exist .\nethack.ico goto hasicon
 if exist .\nhico.uu uudecode nhico.uu >nul

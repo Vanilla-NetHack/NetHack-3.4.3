@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)quest.h	3.2	92/11/15	*/
+/*	SCCS Id: @(#)quest.h	3.3	92/11/15	*/
 /* Copyright (c) Mike Stephenson 1991.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -27,10 +27,10 @@ struct q_score {			/* Quest "scorecard" */
 	Bitfield(got_thanks,1);		/* final message from leader */
 };
 
-#define MAX_QUEST_TRIES	 7	/* exceed this and you "fail" */
-#define MIN_QUEST_ALIGN	20	/* at least this align.record to start */
+#define MAX_QUEST_TRIES  7	/* exceed this and you "fail" */
+#define MIN_QUEST_ALIGN 20	/* at least this align.record to start */
   /* note: align 20 matches "pious" as reported by enlightenment (cmd.c) */
-#define MIN_QUEST_LEVEL	14	/* at least this u.ulevel to start */
-  /* note: exp.lev. 14 is threshold level for 5th rank (class title, botl.c) */
+#define MIN_QUEST_LEVEL 14	/* at least this u.ulevel to start */
+  /* note: exp.lev. 14 is threshold level for 5th rank (class title, role.c) */
 
 #endif /* QUEST_H */

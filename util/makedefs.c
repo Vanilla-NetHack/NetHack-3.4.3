@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makedefs.c	3.2	96/10/29	*/
+/*	SCCS Id: @(#)makedefs.c	3.3	1999/08/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) M. Stephenson, 1990, 1991.			  */
 /* Copyright (c) Dean Luick, 1990.				  */
@@ -49,7 +49,7 @@
 #endif
 
 #if defined(UNIX) && !defined(LINT) && !defined(GCC_WARN)
-static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.2\t95/06/10";
+static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.3\t1999/08/16";
 #endif
 
 	/* names of files to be generated */
@@ -155,6 +155,7 @@ extern void NDECL(monst_init);		/* monst.c */
 extern void NDECL(objects_init);	/* objects.c */
 
 static void NDECL(make_version);
+static char *FDECL(version_string, (char *));
 static char *FDECL(version_id_string, (char *,const char *));
 static char *FDECL(xcrypt, (const char *));
 static int FDECL(check_control, (char *));
@@ -166,11 +167,10 @@ static int FDECL(mstrength,(struct permonst *));
 
 static boolean FDECL(qt_comment, (char *));
 static boolean FDECL(qt_control, (char *));
-static int FDECL(get_hdr, (CHAR_P));
-static boolean FDECL(known_id, (CHAR_P));
-static boolean FDECL(new_id, (CHAR_P));
-static boolean FDECL(known_msg, (CHAR_P,char *));
-static void FDECL(new_msg, (char *));
+static int FDECL(get_hdr, (char *));
+static boolean FDECL(new_id, (char *));
+static boolean FDECL(known_msg, (int,int));
+static void FDECL(new_msg, (char *,int,int));
 static void FDECL(do_qt_control, (char *));
 static void FDECL(do_qt_text, (char *));
 static void NDECL(adjust_qt_hdrs);
@@ -438,6 +438,9 @@ make_version()
 #ifdef TOURIST
 			| (1L << 10)
 #endif
+#ifdef STEED
+			| (1L << 11)
+#endif
 		/* flag bits and/or other global variables (15..26) */
 #ifdef TEXTCOLOR
 			| (1L << 17)
@@ -453,9 +456,6 @@ make_version()
 #endif
 #ifdef SCORE_ON_BOTL
 			| (1L << 21)
-#endif
-#ifdef WEAPON_SKILLS
-			| (1L << 22)
 #endif
 #ifdef TIMED_DELAY
 			| (1L << 23)
@@ -488,36 +488,36 @@ make_version()
 	return;
 }
 
-/* this code used to be in src/version.c */
+static char *
+version_string(outbuf)
+char *outbuf;
+{
+    Sprintf(outbuf, "%d.%d.%d", VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
+#ifdef BETA
+    Sprintf(eos(outbuf), "-%d", EDITLEVEL);
+#endif
+    return outbuf;
+}
+
 static char *
 version_id_string(outbuf, build_date)
 char *outbuf;
 const char *build_date;
 {
-	Sprintf(outbuf,
-#ifdef BETA
-# ifdef PORT_SUB_ID
-		"%s NetHack %s Beta Version %d.%d.%d-%d - last build %s.",
-# else
-		"%s NetHack Beta Version %d.%d.%d-%d - last build %s.",
-# endif
-#else
-# ifdef PORT_SUB_ID
-		"%s NetHack %s Version %d.%d.%d - last build %s.",
-# else
-		"%s NetHack Version %d.%d.%d - last build %s.",
-# endif
-#endif
-		PORT_ID,
+    char subbuf[64], versbuf[64];
+
+    subbuf[0] = '\0';
 #ifdef PORT_SUB_ID
-		PORT_SUB_ID,
+    subbuf[0] = ' ';
+    Strcpy(&subbuf[1], PORT_SUB_ID);
 #endif
-		VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
 #ifdef BETA
-		EDITLEVEL,
+    Strcat(subbuf, " Beta");
 #endif
-		build_date);
-	return outbuf;
+
+    Sprintf(outbuf, "%s NetHack%s Version %s - last build %s.",
+	    PORT_ID, subbuf, version_string(versbuf), build_date);
+    return outbuf;
 }
 
 void
@@ -536,7 +536,7 @@ do_date()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.2\t96/05/17 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.3\t1996/05/17 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 
 #ifdef KR1ED
@@ -546,8 +546,8 @@ do_date()
 	(void) time((time_t *)&clocktim);
 	Strcpy(cbuf, ctime((time_t *)&clocktim));
 #endif
-	for (c = cbuf; *c != '\n'; c++) continue;
-	*c = 0;	/* strip off the '\n' */
+	for (c = cbuf; *c; c++) if (*c == '\n') break;
+	*c = '\0';	/* strip off the '\n' */
 	Fprintf(ofp,"#define BUILD_DATE \"%s\"\n", cbuf);
 	Fprintf(ofp,"#define BUILD_TIME (%ldL)\n", clocktim);
 	Fprintf(ofp,"\n");
@@ -565,6 +565,7 @@ do_date()
 	Fprintf(ofp,"#define VERSION_SANITY2 0x%08lx%s\n",
 		version.struct_sizes, ul_sfx);
 	Fprintf(ofp,"\n");
+	Fprintf(ofp,"#define VERSION_STRING \"%s\"\n", version_string(buf));
 	Fprintf(ofp,"#define VERSION_ID \\\n \"%s\"\n",
 		version_id_string(buf, cbuf));
 	Fprintf(ofp,"\n");
@@ -647,6 +648,9 @@ static const char *build_opts[] = {
 #ifdef REINCARNATION
 		"rogue level",
 #endif
+#ifdef STEED
+		"saddles and riding",
+#endif
 #ifdef SCORE_ON_BOTL
 		"score on status line",
 #endif
@@ -706,9 +710,6 @@ static const char *build_opts[] = {
 #endif
 #ifdef WALLIFIED_MAZE
 		"walled mazes",
-#endif
-#ifdef WEAPON_SKILLS
-		"weapon proficiency",
 #endif
 #ifdef ZEROCOMP
 		"zero-compressed save files",
@@ -1070,6 +1071,17 @@ do_oracles()
 		if (!(ok = (fpos = ftell(ofp)) >= 0)) break;
 		if (!(ok = (fseek(ofp, fpos, SEEK_SET) >= 0))) break;
 		if (!(ok = (fscanf(ofp, "%5lx", &offset) == 1))) break;
+#ifdef MAC
+# ifdef __MWERKS__
+		/*
+		MetroWerks CodeWarrior Pro 1's (AKA CW12) version of MSL
+		(ANSI C Libraries) needs this rewind or else the fprintf
+		stops working.  This may also be true for CW11, but has
+		never been checked.
+		*/
+		rewind(ofp);
+# endif
+#endif
 		if (!(ok = (fseek(ofp, fpos, SEEK_SET) >= 0))) break;
 		if (!(ok = (fprintf(ofp, "%05lx\n", offset + txt_offset) >= 0)))
 		    break;
@@ -1267,7 +1279,7 @@ do_monstr()
     }
     Fprintf(ofp,Dont_Edit_Code);
     Fprintf(ofp,"#include \"config.h\"\n");
-    Fprintf(ofp,"\nint monstr[] = {\n");
+    Fprintf(ofp,"\nconst int monstr[] = {\n");
     for (ptr = &mons[0], j = 0; ptr->mlet; ptr++) {
 
 	SpinCursor(3);
@@ -1305,7 +1317,7 @@ do_permonst()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.2\t94/09/10 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.3\t1994/09/10 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef PM_H\n#define PM_H\n");
 
@@ -1345,7 +1357,6 @@ static boolean	in_msg;
 
 static boolean
 qt_comment(s)
-
 	char *s;
 {
 	if(s[0] == '#') return(TRUE);
@@ -1354,77 +1365,63 @@ qt_comment(s)
 
 static boolean
 qt_control(s)
-
 	char *s;
 {
 	return((boolean)(s[0] == '%' && (s[1] == 'C' || s[1] == 'E')));
 }
 
 static int
-get_hdr(c)
-
-	char c;
+get_hdr (code)
+	char *code;
 {
 	int	i;
 
 	for(i = 0; i < qt_hdr.n_hdr; i++)
-	    if(c == qt_hdr.id[i]) return (++i);
+	    if(!strncmp(code, qt_hdr.id[i], LEN_HDR)) return (++i);
 
 	return(0);
 }
 
 static boolean
-known_id(c)
-
-	char c;
-{
-	return((boolean)(get_hdr(c) > 0));
-}
-
-static boolean
-new_id(c)
-
-	char c;
+new_id (code)
+	char *code;
 {
 	if(qt_hdr.n_hdr >= N_HDR) {
-
 	    Fprintf(stderr, OUT_OF_HEADERS, qt_line);
 	    return(FALSE);
 	}
 
-	qt_hdr.id[qt_hdr.n_hdr] = c;
+	strncpy(&qt_hdr.id[qt_hdr.n_hdr][0], code, LEN_HDR);
 	msg_hdr[qt_hdr.n_hdr].n_msg = 0;
 	qt_hdr.offset[qt_hdr.n_hdr++] = 0L;
 	return(TRUE);
 }
 
 static boolean
-known_msg(c, s)
-
-	char c, *s;
+known_msg(num, id)
+	int num, id;
 {
-	int i = get_hdr(c) - 1,
-	    j, n = atoi(s);
+	int i;
 
-	for(j = 0; j < msg_hdr[i].n_msg; j++)
-	    if(msg_hdr[i].qt_msg[j].msgnum == n) return(TRUE);
+	for(i = 0; i < msg_hdr[num].n_msg; i++)
+	    if(msg_hdr[num].qt_msg[i].msgnum == id) return(TRUE);
 
 	return(FALSE);
 }
 
 
 static void
-new_msg(s)
-char *s;
+new_msg(s, num, id)
+	char *s;
+	int num, id;
 {
 	struct	qtmsg	*qt_msg;
-	int	i = get_hdr(s[4]) - 1;
 
-	if(msg_hdr[i].n_msg >= N_MSG) {
+	if(msg_hdr[num].n_msg >= N_MSG) {
 		Fprintf(stderr, OUT_OF_MESSAGES, qt_line);
 	} else {
-		qt_msg = &(msg_hdr[i].qt_msg[msg_hdr[i].n_msg++]);
-		qt_msg->msgnum = atoi(s+5);
+		qt_msg = &(msg_hdr[num].qt_msg[msg_hdr[num].n_msg++]);
+		qt_msg->msgnum = id;
 		qt_msg->delivery = s[2];
 		qt_msg->offset = qt_msg->size = 0L;
 
@@ -1434,9 +1431,11 @@ char *s;
 
 static void
 do_qt_control(s)
-
 	char *s;
 {
+	char code[BUFSZ];
+	int num, id = 0;
+
 	switch(s[1]) {
 
 	    case 'C':	if(in_msg) {
@@ -1444,11 +1443,17 @@ do_qt_control(s)
 			    break;
 			} else {
 			    in_msg = TRUE;
-			    if(!known_id(s[4]))
-				if(!new_id(s[4])) break;
-			    if(known_msg(s[4],&s[5]))
-				Fprintf(stderr, DUP_MSG, qt_line);
-			    else new_msg(s);
+			    if (sscanf(&s[4], "%s %5d", code, &id) != 2) {
+			    	Fprintf(stderr, UNREC_CREC, qt_line);
+			    	break;
+			    }
+			    num = get_hdr(code);
+			    if (!num && !new_id(code))
+			    	break;
+			    num = get_hdr(code)-1;
+			    if(known_msg(num, id))
+			    	Fprintf(stderr, DUP_MSG, qt_line);
+			    else new_msg(s, num, id);
 			}
 			break;
 
@@ -1465,22 +1470,20 @@ do_qt_control(s)
 
 static void
 do_qt_text(s)
-
 	char *s;
 {
 	curr_msg->size += strlen(s);
+	return;
 }
 
 static void
-adjust_qt_hdrs() {
-
+adjust_qt_hdrs()
+{
 	int	i, j;
-	long	count = 0L,
-		hdr_offset = sizeof(int) +
-			     (sizeof(char) + sizeof(long)) * qt_hdr.n_hdr;
+	long count = 0L, hdr_offset = sizeof(int) +
+			(sizeof(char)*LEN_HDR + sizeof(long)) * qt_hdr.n_hdr;
 
 	for(i = 0; i < qt_hdr.n_hdr; i++) {
-
 	    qt_hdr.offset[i] = hdr_offset;
 	    hdr_offset += sizeof(int) + sizeof(struct qtmsg) * msg_hdr[i].n_msg;
 	}
@@ -1491,11 +1494,12 @@ adjust_qt_hdrs() {
 		msg_hdr[i].qt_msg[j].offset = hdr_offset + count;
 		count += msg_hdr[i].qt_msg[j].size;
 	    }
+	return;
 }
 
 static void
-put_qt_hdrs() {
-
+put_qt_hdrs()
+{
 	int	i;
 
 	/*
@@ -1505,7 +1509,7 @@ put_qt_hdrs() {
 	Fprintf(stderr, "%ld: header info.\n", ftell(ofp));
 #endif
 	(void) fwrite((genericptr_t)&(qt_hdr.n_hdr), sizeof(int), 1, ofp);
-	(void) fwrite((genericptr_t)&(qt_hdr.id[0]), sizeof(char),
+	(void) fwrite((genericptr_t)&(qt_hdr.id[0][0]), sizeof(char)*LEN_HDR,
 							qt_hdr.n_hdr, ofp);
 	(void) fwrite((genericptr_t)&(qt_hdr.offset[0]), sizeof(long),
 							qt_hdr.n_hdr, ofp);
@@ -1626,7 +1630,7 @@ do_objs()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.2\t94/09/10 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.3\t1994/09/10 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef ONAMES_H\n#define ONAMES_H\n\n");
 

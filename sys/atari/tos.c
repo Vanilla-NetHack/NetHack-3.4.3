@@ -7,7 +7,7 @@
 
 #define NEED_VARARGS
 #include "hack.h"
-#include "termcap.h"
+#include "tcap.h"
 
 #ifdef TOS
 

@@ -36,68 +36,69 @@ static void VDECL(vprogerror,(const char *line, va_list the_args));
 static Str255 gActivities[stackDepth] = {"","","",""};
 static short gTopactivity = 1;
 
-void  comment( char *s, long n )
+#if 0	/* Apparently unused */
+void comment(char *s, long n)
 {
-  Str255 paserr;
-  short itemHit;
-  
-  sprintf((char *)paserr, "%s - %d",s,n);
-  ParamText(c2pstr((char *)paserr),(StringPtr)"",(StringPtr)"",(StringPtr)"");
-  itemHit = Alert(128, (ModalFilterUPP)nil);
+	Str255 paserr;
+	short itemHit;
+	
+	sprintf((char *)paserr, "%s - %d",s,n);
+	ParamText(c2pstr((char *)paserr),(StringPtr)"",(StringPtr)"",(StringPtr)"");
+	itemHit = Alert(128, (ModalFilterUPP)nil);
 }
+#endif	/* Apparently unused */
 
-void showerror( char * errdesc, const char * errcomment )
+void showerror(char * errdesc, const char * errcomment)
 {
-   	short		itemHit;
+	short		itemHit;
 	Str255		paserr,
 				pascomment;
 				
 	SetCursor(&qd.arrow);
-	if (errcomment == nil)  pascomment[0] = '\0';
-	  else strcpy((char *)pascomment,(char *)errcomment);
+	if (errcomment == nil) pascomment[0] = '\0';
+	else strcpy((char *)pascomment,(char *)errcomment);
 	strcpy((char *)paserr,(char *)errdesc);
 	ParamText(c2pstr((char *)paserr),c2pstr((char *)pascomment),gActivities[gTopactivity],(StringPtr)"");
 	itemHit = Alert(errAlertID, (ModalFilterUPP)nil);
 }
 
 
-Boolean itworked( short errcode )
+Boolean itworked(short errcode)
 /* Return TRUE if it worked, do an error message and return false if it didn't. Error
    strings for native C errors are in STR#1999, Mac errs in STR 2000-errcode, e.g
    2108 for not enough memory */
 
 {
-  if (errcode != 0) {
-    short		 itemHit;
-	Str255 		 errdesc;
-	StringHandle strh;
+	if (errcode != 0) {
+		short		 itemHit;
+		Str255 		 errdesc;
+		StringHandle strh;
 	
-	errdesc[0] = '\0';
-	if (errcode > 0) GetIndString(errdesc,stdIOErrID,errcode);  /* STDIO file rres, etc */
-	else {
-	   strh = GetString(2000-errcode);
-	   if (strh != (StringHandle) nil) {
-	      memcpy(errdesc,*strh,256);
-		  ReleaseResource((Handle)strh);
-	   }
+		errdesc[0] = '\0';
+		if (errcode > 0) GetIndString(errdesc,stdIOErrID,errcode);  /* STDIO file rres, etc */
+		else {
+			strh = GetString(2000-errcode);
+			if (strh != (StringHandle) nil) {
+				memcpy(errdesc,*strh,256);
+				ReleaseResource((Handle)strh);
+			}
+		}
+		if (errdesc[0] == '\0') {  /* No description found, just give the number */
+			sprintf((char *)errdesc,"a %d error occurred",errcode);
+			(void)c2pstr((char *)errdesc);
+		}
+		SetCursor(&qd.arrow);
+		ParamText(errdesc,(StringPtr)"",gActivities[gTopactivity],(StringPtr)"");
+		itemHit = Alert(errAlertID, (ModalFilterUPP)nil);
 	}
-	if (errdesc[0] == '\0') {  /* No description found, just give the number */
-	   sprintf((char *)errdesc,"a %d error occurred",errcode);
-	   (void)c2pstr((char *)errdesc);
-	}
-	SetCursor(&qd.arrow);
-	ParamText(errdesc,(StringPtr)"",gActivities[gTopactivity],(StringPtr)"");
-	itemHit = Alert(errAlertID, (ModalFilterUPP)nil);
-
-  }
-  return(errcode==0);
+	return(errcode==0);
 }
 
-void mustwork( short errcode )
+void mustwork(short errcode)
 /* For cases where we can't recover from the error by any means */
 {
-  if (itworked(errcode)) ;
-  	 else ExitToShell();
+	if (itworked(errcode)) ;
+	else ExitToShell();
 }
 
 
@@ -109,7 +110,7 @@ static void vprogerror();
 # endif
 
 /* Macro substitute for error() */
-void progerror VA_DECL(const char *, line)
+void error VA_DECL(const char *, line)
 	VA_START(line);
 	VA_INIT(line, char *);
 	vprogerror(line, VA_ARGS);
@@ -127,40 +128,40 @@ vprogerror(line, the_args) const char *line; va_list the_args; {
 #else  /* USE_STDARG | USE_VARARG */
 
 void
-progerror VA_DECL(const char *, line)
+error VA_DECL(const char *, line)
 #endif
 /* Do NOT use VA_START and VA_END in here... see above */
 
 	if(!index(line, '%'))
-	    showerror("of an internal error",line);
+		showerror("of an internal error",line);
 	else {
-	    char pbuf[BUFSZ];
-	    Vsprintf(pbuf,line,VA_ARGS);
-	    showerror("of an internal error",pbuf);
+		char pbuf[BUFSZ];
+		Vsprintf(pbuf,line,VA_ARGS);
+		showerror("of an internal error",pbuf);
 	}
 }
 
-void attemptingto( char * activity )
+void attemptingto(char * activity)
 /* Say what we are trying to do for subsequent error-handling: will appear as x in an
    alert in the form "Could not x because y" */
 {
-   strcpy((char *)gActivities[gTopactivity],activity);
-   activity = (char *)c2pstr((char *)gActivities[gTopactivity]);
+	strcpy((char *)gActivities[gTopactivity],activity);
+	activity = (char *)c2pstr((char *)gActivities[gTopactivity]);
 }
 
-void pushattemptingto( char * activity )
+void pushattemptingto(char * activity)
 /* Push a new description onto stack so we can pop later to previous state */
 {
-  if (gTopactivity < stackDepth) {
-    gTopactivity++;
-    attemptingto(activity);
-  }
-  else progerror("activity stack overflow");
+	if (gTopactivity < stackDepth) {
+		gTopactivity++;
+		attemptingto(activity);
+	}
+	else error("activity stack overflow");
 }
 
-void popattempt( void )
+void popattempt(void)
 /* Pop to previous state */
 {
-  if (gTopactivity > 1) --gTopactivity;
-				   else progerror("activity stack underflow");
+	if (gTopactivity > 1) --gTopactivity;
+	else error("activity stack underflow");
 }

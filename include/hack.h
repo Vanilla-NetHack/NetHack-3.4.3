@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.h	3.2	96/05/09	*/
+/*	SCCS Id: @(#)hack.h	3.3	1999/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,7 +18,7 @@
 #define NOTELL		0
 #define ON		1
 #define OFF		0
-#define BOLT_LIM    8	/* from this distance ranged attacks will be made */
+#define BOLT_LIM	8 /* from this distance ranged attacks will be made */
 #define MAX_CARR_CAP	1000	/* so that boulders can be heavier */
 #define DUMMY { 0 }
 
@@ -30,9 +30,26 @@
 #define EXT_ENCUMBER	4
 #define OVERLOADED	5
 
+/* Macros for how a rumor was delivered in outrumor() */
+#define BY_ORACLE	0
+#define BY_COOKIE	1
+#define BY_PAPER	2
+#define BY_OTHER	9
+
+#ifdef STEED
+/* Macros for why you are no longer riding */
+#define DISMOUNT_GENERIC	0
+#define DISMOUNT_FELL		1
+#define DISMOUNT_THROWN		2
+#define DISMOUNT_POLY		3
+#define DISMOUNT_ENGULFED	4
+#define DISMOUNT_BYCHOICE	5
+#endif
+
 /*
  * This is the way the game ends.  If these are rearranged, the arrays
- * in end.c and topten.c will need to be changed.
+ * in end.c and topten.c will need to be changed.  Some parts of the
+ * code assume that PANIC separates the deaths from the non-deaths.
  */
 #define DIED		 0
 #define CHOKING		 1
@@ -43,40 +60,25 @@
 #define DISSOLVED	 6
 #define CRUSHING	 7
 #define STONING		 8
-#define GENOCIDED	 9
-#define PANICKED	10
-#define TRICKED		11
-#define QUIT		12
-#define ESCAPED		13
-#define ASCENDED	14
+#define TURNED_SLIME	 9
+#define GENOCIDED	10
+#define PANICKED	11
+#define TRICKED		12
+#define QUIT		13
+#define ESCAPED		14
+#define ASCENDED	15
 
-#ifndef DUNGEON_H	/* includes align.h */
+#include "align.h"
 #include "dungeon.h"
-#endif
-
-#ifndef MONSYM_H
 #include "monsym.h"
-#endif
-#ifndef MKROOM_H
 #include "mkroom.h"
-#endif
-#ifndef OBJCLASS_H
 #include "objclass.h"
-#endif
-#ifndef YOUPROP_H
 #include "youprop.h"
-#endif
-#ifndef WINTYPE_H
 #include "wintype.h"
-#endif
-#ifndef DECL_H
 #include "decl.h"
-#endif
-#ifndef TIMEOUT_H
 #include "timeout.h"
-#endif
 
-NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground */
+NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 
 /* types of calls to bhit() */
 #define ZAPPED_WAND	0
@@ -85,54 +87,27 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #define FLASHED_LIGHT	3
 #define INVIS_BEAM	4
 
-#ifndef TRAP_H
 #include "trap.h"
-#endif
-#ifndef FLAG_H
 #include "flag.h"
-#endif
-
-#ifndef RM_H
 #include "rm.h"
-#endif
-
-#ifndef VISION_H
 #include "vision.h"
-#endif
-
-#ifndef DISPLAY_H
 #include "display.h"
-#endif
-
-#ifndef ENGRAVE_H
 #include "engrave.h"
-#endif
-
-#ifndef RECT_H
 #include "rect.h"
-#endif
+#include "region.h"
 
 #ifdef USE_TRAMPOLI /* This doesn't belong here, but we have little choice */
 #undef NDECL
 #define NDECL(f) f()
 #endif
 
-#ifndef EXTERN_H
 #include "extern.h"
-#endif
-
-#ifndef WINPROCS_H
 #include "winprocs.h"
-#endif
 
 #ifdef USE_TRAMPOLI
 #include "wintty.h"
 #undef WINTTY_H
-
-#ifndef TRAMPOLI_H
 #include "trampoli.h"
-#endif
-
 #undef EXTERN_H
 #include "extern.h"
 #endif /* USE_TRAMPOLI */
@@ -140,8 +115,12 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #define NO_SPELL	0
 
 /* flags to control makemon() */
-#define NO_MM_FLAGS       0x00  /* use this rather than plain 0 */
-#define NO_MINVENT        0x01  /* suppress minvent when creating mon */
+#define NO_MM_FLAGS	  0x00	/* use this rather than plain 0 */
+#define NO_MINVENT	  0x01	/* suppress minvent when creating mon */
+#define MM_NOWAIT	  0x02	/* don't set STRAT_WAITMASK flags */
+#define MM_EDOG		  0x04	/* add edog structure */
+#define MM_EMIN		  0x08	/* add emin structure */
+#define MM_ANGRY	  0x10  /* monster is created angry */
 
 /* flags to control query_objlist() */
 #define BY_NEXTHERE	  0x1	/* follow objlist by nexthere field */
@@ -169,12 +148,12 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #define ynNaq(query) yn_function(query,ynNaqchars, 'y')
 
 /* Macros for scatter */
-#define VIS_EFFECTS  0x1	/* Display visual effects             */
-#define MAY_HITMON   0x2	/* Objects may hit monsters           */
-#define MAY_HITYOU   0x4	/* Objects may hit you                */
-#define MAY_HIT      0x6	/* Objects may hit you and monsters   */
-#define MAY_DESTROY  0x8	/* Objects may be destroyed at random */
-#define MAY_FRACTURE 0x10	/* Boulders & statues may fracture    */
+#define VIS_EFFECTS	0x01	/* display visual effects */
+#define MAY_HITMON	0x02	/* objects may hit monsters */
+#define MAY_HITYOU	0x04	/* objects may hit you */
+#define MAY_HIT		(MAY_HITMON|MAY_HITYOU)
+#define MAY_DESTROY	0x08	/* objects may be destroyed at random */
+#define MAY_FRACTURE	0x10	/* boulders & statues may fracture */
 
 /* Macros for launching objects */
 #define ROLL	1
@@ -188,7 +167,16 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #define MENU_FULL	 3
 
 #define MENU_SELECTED	TRUE
-#define MENU_UNSELECTED	FALSE
+#define MENU_UNSELECTED FALSE
+
+#define FEATURE_NOTICE_VER(major,minor,patch) (((unsigned long)major << 24) | \
+	((unsigned long)minor << 16) | \
+	((unsigned long)patch << 8) | \
+	((unsigned long)0))
+
+#define FEATURE_NOTICE_VER_MAJ	  (flags.suppress_alert >> 24)
+#define FEATURE_NOTICE_VER_MIN	  (((unsigned long)(0x0000000000FF0000L & flags.suppress_alert)) >> 16)
+#define FEATURE_NOTICE_VER_PATCH  (((unsigned long)(0x000000000000FF00L & flags.suppress_alert)) >>  8)
 
 #ifndef max
 #define max(a,b) ((a) > (b) ? (a) : (b))
@@ -196,12 +184,12 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #ifndef min
 #define min(x,y) ((x) < (y) ? (x) : (y))
 #endif
-#define plur(x)	(((x) == 1) ? "" : "s")
+#define plur(x) (((x) == 1) ? "" : "s")
 
 #define ARM_BONUS(obj)	(objects[(obj)->otyp].a_ac + (obj)->spe \
-			 - min((int)(obj)->oeroded,objects[(obj)->otyp].a_ac))
+			 - min((int)greatest_erosion(obj),objects[(obj)->otyp].a_ac))
 
-#define makeknown(x)	discover_object((x),TRUE)
+#define makeknown(x)	discover_object((x),TRUE,TRUE)
 #define distu(xx,yy)	dist2((int)(xx),(int)(yy),(int)u.ux,(int)u.uy)
 #define onlineu(xx,yy)	online2((int)(xx),(int)(yy),(int)u.ux,(int)u.uy)
 
@@ -231,11 +219,11 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 # define STATIC_VAR static
 
 /* If not compiling an overlay, compile everything. */
-# define OVL0	/* Highest priority */
+# define OVL0	/* highest priority */
 # define OVL1
 # define OVL2
-# define OVL3	/* Lowest specified priority */
-# define OVLB	/* The base overlay segment */
+# define OVL3	/* lowest specified priority */
+# define OVLB	/* the base overlay segment */
 #endif	/* OVERLAY && (OVL0 || OVL1 || OVL2 || OVL3 || OVLB) */
 
 /* Macro for a few items that are only static if we're not overlaid.... */

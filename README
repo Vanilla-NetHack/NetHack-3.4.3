@@ -1,41 +1,19 @@
+                NetHack 3.3 -- General information
 
-                NetHack 3.2 -- General information
-
-NetHack 3.2 is a new enhancement to the dungeon exploration game NetHack.
+NetHack 3.3 is a new enhancement to the dungeon exploration game NetHack.
 It is a distant descendent of Rogue and Hack, and a direct descendent of
-NetHack 3.1 and 3.0.
+NetHack 3.2.
 
-NetHack 3.2 is the product of two years of very intensive effort by the
-NetHack Development Team and its porting sub-teams.  Many parts of 3.1 were
-re-written for NetHack 3.2, and many new features were added.
+Here is a brief overview of new additions and changes in the game.
+To give more would be cheating, wouldn't it?
 
-The new additions and changes in the game include:
+o Many, many bug fixes and minor tweaks
+o Incorporate the wizard patch by Larry Stewart Zebra and Warwick Allison
+o Split the character's race from his/her/its role in life
+o Add elf, dwarf, orc, and gnome races
+o Add new Ranger role
 
-Warwick Allison has introduced enhancements the game's display code to
-support a more graphical appearance with the X11, MS-DOS and Amiga display
-system.  The display can now use a "tile" based system which is better at
-displaying uniquely identifiable information about the player's surroundings.
 
-The spell casting system has been dramatically changed.  The source of these
-changes was the code developed by Stephen White, who wrote the NH++ patch kit.
-These changes have been re-integrated into NetHack with appropriate
-modifications required to balance them for the 3.2 release.
-
-We have also added a weapons proficiency system to allow for "learning"
-how to use weapons effectively and reflecting that proficiency in combat.
-Also based on code by Stephen White.
-
-Many inventory and item choice interfaces are now menu oriented with an
-option to toggle back and forth to the original (3.1) interface.
-
-These are some of the most prominent global changes, but there are many
-other changes in the game, and they are no less dramatic.
-
-This version of the game is special in one way.  During the development of
-3.2 (at that point in time it might have actually become 3.1.4), one of the
-members of the Development Team, Izchak Miller, passed away.  This version
-of the game is dedicated to the memory of Izchak Miller, and his invaluable
-contributions to the evolution of NetHack over the past 10 years.
 
                         - - - - - - - - - - -
 
@@ -65,7 +43,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     l.  A 'sys/be' subdirectory, which contains files specific to Be OS.
     m.  A 'sys/mac' subdirectory, which contains files specific to MacOS.
     n.  A 'sys/mac/old' subdirectory which contains files used by
-        untested compilers.
+        compilers that haven't been tested/used in a while.
     o.  A 'sys/msdos' subdirectory, which contains files specific to MS-DOS.
     p.  A 'sys/msdos/old' subsubdirectory, which contains files for old
         MS-DOS compilers (no longer officially supported).
@@ -77,10 +55,11 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         are windowing-system specific (but not operating-system specific).
     v.  A 'win/share' subdirectory, which contains files shared by some
         windowing systems.
-    w.  A 'win/tty' subdirectory, which contains files specific to ttys.
-    x.  A 'win/win32' subdirectory, which contains files specific to the
+    w.  A 'win/Qt' subdirectory, which contains files specific to Qt.
+    x.  A 'win/X11' subdirectory, which contains files specific to X11.
+    y.  A 'win/tty' subdirectory, which contains files specific to ttys.
+    z.  A 'win/win32' subdirectory, which contains files specific to the
         Windows NT Win32 API.
-    y.  A 'win/X11' subdirectory, which contains files specific to X11.
 
     The names of these directories should not be changed unless you are
     ready to go through the makefiles and the makedefs program and change
@@ -93,15 +72,13 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 
 4.  Before you do anything else, please read carefully the file called
     "license" in the 'dat' subdirectory.  It is expected that you comply
-    with the terms of that license, and we are very serious about it.  In
-    particular, you are prohibited by the terms of the license from using
-    NetHack 3.2 for gainful purposes.
+    with the terms of that license, and we are very serious about it.
 
 5.  If everything is in order, you can now turn to trying to get the program
     to compile and run on your particular system.  It is worth mentioning
-    that the default configuration is BSD/Sun/SunOS4.x (simply because
+    that the default configuration is SysV/Sun/Solaris2.x (simply because
     the code was housed on such a system).  It is also worth mentioning
-    here that NetHack 3.2 is a huge program.  If you intend to run it on a
+    here that NetHack 3.3 is a huge program.  If you intend to run it on a
     small machine, you'll have to make hard choices among the options
     available in config.h.
 
@@ -111,81 +88,88 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     for particular windowing environments.  Reading them, and the man pages,
     should answer most of your questions.
 
-    At the time of this release, NetHack 3.2 is known to run/compile on:
+    At the time of this release, NetHack 3.3 is known to run/compile on:
 
-        AT&T 3B1 running System V (3.51)
-        Data General AViiON systems running DG/UX
-        DEC vaxen running Ultrix
-        Decstations running Ultrix 4.x
-        HP 9000s700 running HP-UX 9.x and 10.x
-        IBM PC/RT and RS/6000 running AIX 3.x
-        NeXT running Mach (using BSD configuration)
-        Sun-4s running SunOS 4.x
-        Sun-4s running Solaris 2.x (aka SunOS 5.x)
-        SGI Iris running IRIX
-        386/486/Pentium boxes running Linux/BSDI
-
-        Apple Macintosh running MacOS
-        Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
-        Commodore Amiga running AmigaDOS 1.3 or greater with SAS/C 6.55
-                (but see Install.ami about DICE and Manx)
+        Apple Macintosh running MacOS 7.5 or higher, LinuxPPC, BeOS 4.0
         DEC Alpha/VMS (aka OpenVMS AXP), running V1.x through V7.0
         DEC VAX/VMS, running V4.6 through V7.0
-        IBM PC compatibles running MS-DOS with MicroSoft C, Borland C++ 3.1, or
+        HP 9000s700 running HP-UX 10.x, 11.x
+        IBM PC compatibles running MS-DOS with Microsoft C, Borland C++ 3.1, or
                 DJGPP.  It is recommended to have at least an 80386 processor.
-        Intel (80386 or greater) and DEC Alpha desktop machines
+        IBM PS/2 and AT compatibles running OS/2 - 2.0 and up with GCC emx
+        Intel 80386 or greater (or clone) and DEC Alpha desktop machines
                 running Windows NT
-        Intel (80386 or greater) running Windows 95
+        Intel 80386 or greater (or clone) boxes running Linux, BSDI, or
+		Windows 95,98
+	Intel Pentium or better (or clone) running BeOS 4.5
+        Sun SPARC based machine running SunOS 4.x, Solaris 2.x, or Solaris 7
 
     Previous versions of NetHack were tested on the following systems,
-    and we expect that NetHack 3.2 will work on them as well:
+    and we expect that NetHack 3.3 will work on them as well:
 
+        Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
+        AT&T 3B1 running System V (3.51)
         AT&T 3B2/600 & 3B2/622 running System V R3.2.1
         AT&T 3B2/1000 Model 80 running System V R3.2.2
         AT&T 3B4000 running System V
         AT&T 6386 running System V R3.2
-        DEC vaxen running BSD
-        Decstations running Ultrix 3.1
+        Commodore Amiga running AmigaDOS 1.3 or greater with SAS/C 6.55
+                (but see Install.ami about DICE and Manx)
+        Data General AViiON systems running DG/UX
+        DEC vaxen running BSD, Ultrix
+        Decstations running Ultrix 3.1, 4.x
         Encore Multimax running UMAX 4.2
         Gould NP1 running UTX 3/2
         HP 9000s300 running HP-UX
+        HP 9000s700 running HP-UX 9.x
+        IBM PC/RT and RS/6000 running AIX 3.x
+        IBM PS/2 and AT compatibles running OS/2 1.1 - 2.0 (and probably
+           Warp) with Microsoft 6.0, and OS/2 2.0 and up with IBM CSet++ 2.0.
+        Intel 80386 or greater (or clone) running 386BSD
         Mips M2000 running RiscOS 4.1
+        NeXT running Mach (using BSD configuration)
         Pyramid 9820x running OSx 4.4c
+        SGI Iris running IRIX
         Stardent Vistra 800 running SysV R4.0
         Stride 460 running UniStride 2.1
         Sun-3s, -4s, and -386is running SunOS 3.x
         Sun-3s and -386is running SunOS 4.x
         Valid Logic Systems SCALD-System
-        286 box running Microport SysV/AT (not extensively tested)
-        386/486/Pentium boxes running 386BSD
-        IBM PS/2 and AT compatibles running OS/2 1.1 - 2.0 (and probably
-           Warp) with Microsoft 6.0, and OS/2 2.0 and up with GCC emx or
-           IBM CSet++ 2.0.
 
     Unless otherwise mentioned, the compiler used was the OS-vendor's
     C compiler.
 
+    The Atari and Amiga ports have fallen into the unsupported category
+    due to a lack of people with machines and time.
+
+    Support for Intel 80286 machines and DOS "real mode" versions has been
+    suspended.  Builds have not been attempted in quite a while.  The
+    overlay mechanism is still present in the code if someone wishes to
+    attempt to make it work.
+
                         - - - - - - - - - - -
 
 If you have problems building the game, or you find bugs in it, the
-development team may be reached as
+development team may be reached at
 
                     nethack-bugs@nethack.org
 
 Please be sure to include your machine type, OS, and patchlevel.
+Alternatively, please fill out the bug report form on our web
+page at www.nethack.org.
 
 Patches especially should be directed to this address.  If you've changed
 something to get NetHack to run on your system, it's likely that others have
 done it by making slightly different modifications.  By routing your patches
 through the development team, we should be able to avoid making everyone else
 choose among variant patches claiming to do the same thing, to keep most of
-the copies of 3.2 synchronized by means of official patches, and to maintain
+the copies of 3.3 synchronized by means of official patches, and to maintain
 the painfully-created file organization.  (This process has been working since
 the time when everyone just posted their own patches to 2.3.  At that time,
 there were no archived bug-fixes to give to people who got 2.3 after its initial
 release, so the same bugs kept being discovered by new batches of people.)
 We have been successful in preventing this from happening since the 3.0
-release.  Please cooperate to keep this from happening to 3.2.
+release.  Please cooperate to keep this from happening to 3.3.
 
 It is inevitable that we will reject some proposed additions of new features
 either because they do not fit our conception of the game, or because they
@@ -194,7 +178,7 @@ you are free, of course, to post the patches to the net yourself and let the
 marketplace decide their worth.
 
 All of this amounts to the following:  If you decide to apply a free-lanced
-patch to your 3.2 code, you are on your own.  In our own patches, we will
+patch to your 3.3 code, you are on your own.  In our own patches, we will
 assume that your code is synchronized with ours.
 
                   -- Good luck, and happy Hacking --

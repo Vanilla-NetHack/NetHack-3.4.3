@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)decl.c	3.2	95/08/13	*/
+/*	SCCS Id: @(#)decl.c	3.3	99/05/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -51,6 +51,7 @@ const char *nomovemsg = 0;
 const char nul[40] = DUMMY;			/* contains zeros */
 NEARDATA char plname[PL_NSIZ] = DUMMY;		/* player name */
 NEARDATA char pl_character[PL_CSIZ] = DUMMY;
+NEARDATA char pl_race = '\0';
 
 NEARDATA char pl_fruit[PL_FSIZ] = DUMMY;
 NEARDATA int current_fruit = 0;
@@ -112,6 +113,8 @@ NEARDATA boolean mrg_to_wielded = FALSE;
 			 /* weapon picked is merged with wielded one */
 NEARDATA struct obj *current_wand = 0;	/* wand currently zapped/applied */
 
+NEARDATA boolean in_steed_dismounting = FALSE;
+
 NEARDATA coord bhitpos = DUMMY;
 NEARDATA coord doors[DOORMAX] = {DUMMY};
 
@@ -128,6 +131,8 @@ NEARDATA struct you u = DUMMY;
 
 NEARDATA struct obj *invent = (struct obj *)0,
 	*uwep = (struct obj *)0, *uarm = (struct obj *)0,
+	*uswapwep = (struct obj *)0,
+	*uquiver = (struct obj *)0, /* quiver */
 #ifdef TOURIST
 	*uarmu = (struct obj *)0, /* under-wear, so to speak */
 #endif
@@ -185,6 +190,7 @@ const char *his[3] = { "his", "her", "its" };
 /* originally from dog.c */
 NEARDATA char dogname[PL_PSIZ] = DUMMY;
 NEARDATA char catname[PL_PSIZ] = DUMMY;
+NEARDATA char horsename[PL_PSIZ] = DUMMY;
 char preferred_pet;	/* '\0', 'c', 'd' */
 /* monsters that went down/up together with @ */
 NEARDATA struct monst *mydogs = (struct monst *)0;
@@ -216,12 +222,6 @@ NEARDATA winid WIN_MAP = WIN_ERR, WIN_INVEN = WIN_ERR;
 char toplines[BUFSZ];
 /* Windowing stuff that's really tty oriented, but present for all ports */
 struct tc_gbl_data tc_gbl_data = { 0,0, 0,0 };	/* AS,AE, LI,CO */
-
-#ifdef TOURIST
-const char *pl_classes = "ABCEHKPRSTVW";
-#else
-const char *pl_classes = "ABCEHKPRSVW";
-#endif
 
 /* dummy routine used to force linkage */
 void

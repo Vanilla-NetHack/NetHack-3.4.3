@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trampoli.h	3.2	95/06/01	*/
+/*	SCCS Id: @(#)trampoli.h 3.3	95/06/01	*/
 /* Copyright (c) 1989, by Norm Meluch and Stephen Spackman	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 #ifdef USE_TRAMPOLI
 
 /* ### apply.c ### */
-#define dig()     dig_()
+#define dig()	  dig_()
 #define doapply() doapply_()
 #define dojump()  dojump_()
 #define dorub()   dorub_()
@@ -19,21 +19,21 @@
 
 
 /* ### cmd.c ### */
-#define doextcmd()         doextcmd_()
-#define doextlist()        doextlist_()
-#define domonability()     domonability_()
+#define doextcmd()	   doextcmd_()
+#define doextlist()	   doextlist_()
+#define domonability()	   domonability_()
 #define enter_explore_mode() enter_explore_mode_()
 #define doprev_message() doprev_message_()
 #define timed_occupation() timed_occupation_()
 #define wiz_attributes()   wiz_attributes_()
 #ifdef WIZARD
-#define wiz_detect()       wiz_detect_()
-#define wiz_genesis()      wiz_genesis_()
-#define wiz_identify()     wiz_identify_()
+#define wiz_detect()	   wiz_detect_()
+#define wiz_genesis()	   wiz_genesis_()
+#define wiz_identify()	   wiz_identify_()
 #define wiz_level_tele()   wiz_level_tele_()
-#define wiz_map()          wiz_map_()
-#define wiz_where()        wiz_where_()
-#define wiz_wish()         wiz_wish_()
+#define wiz_map()	   wiz_map_()
+#define wiz_where()	   wiz_where_()
+#define wiz_wish()	   wiz_wish_()
 #endif
 
 /* ### display.c ### */
@@ -44,7 +44,7 @@
 #define dodown()   dodown_()
 #define dodrop()   dodrop_()
 #define donull()   donull_()
-#define doup()     doup_()
+#define doup()	   doup_()
 #define dowipe()   dowipe_()
 #define drop(x)    drop_(x)
 #define wipeoff()  wipeoff_()
@@ -98,7 +98,7 @@
 #define done1(sig)  done1_(sig)
 #define done2()     done2_()
 #define done_intr(sig) done_intr_(sig)
-#if defined(UNIX) || defined (VMS)
+#if defined(UNIX) || defined (VMS) || defined(__EMX__)
 #define done_hangup(sig) done_hangup_(sig)
 #endif
 
@@ -152,7 +152,7 @@
 
 /* ### mondata.c ### */
 /* See comment in trampoli.c before uncommenting canseemon. */
-/* #define canseemon(x)	canseemon_(x) */
+/* #define canseemon(x) canseemon_(x) */
 
 
 /* ### muse.c ### */
@@ -169,7 +169,7 @@
 
 
 /* ### options.c ### */
-#define doset()          doset_()
+#define doset()		 doset_()
 #define dotogglepickup() dotogglepickup_()
 
 
@@ -186,13 +186,13 @@
 
 /* ### pcsys.c ### */
 #ifdef SHELL
-#define dosh()       dosh_()
+#define dosh()	     dosh_()
 #endif /* SHELL */
 
 
 /* ### pickup.c ### */
-#define ck_bag(x)        ck_bag_(x)
-#define doloot()         doloot_()
+#define ck_bag(x)	 ck_bag_(x)
+#define doloot()	 doloot_()
 #define in_container(x)  in_container_(x)
 #define out_container(x) out_container_(x)
 
@@ -220,7 +220,7 @@
 
 /* ### save.c ### */
 #define dosave() dosave_()
-#if defined(UNIX) || defined (VMS)
+#if defined(UNIX) || defined (VMS) || defined(__EMX__)
 #define hangup(sig) hangup_(sig)
 #endif
 

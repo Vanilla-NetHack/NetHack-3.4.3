@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	3.2	96/05/26	*/
+/*	SCCS Id: @(#)options.c	3.3	1999/12/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,7 +11,7 @@ NEARDATA struct instance_flags iflags;	/* provide linkage */
 #define static
 #else
 #include "hack.h"
-#include "termcap.h"
+#include "tcap.h"
 #include <ctype.h>
 #endif
 
@@ -40,6 +40,7 @@ static struct Bool_Opt
 	{"asksavedisk", (boolean *)0, FALSE},
 #endif
 	{"autopickup", &flags.pickup, TRUE},
+	{"autoquiver", &flags.autoquiver, FALSE},
 #if defined(MICRO) && !defined(AMIGA)
 	{"BIOS", &iflags.BIOS, FALSE},
 #else
@@ -64,6 +65,9 @@ static struct Bool_Opt
 	{"DECgraphics", &iflags.DECgraphics, FALSE},
 #else
 	{"DECgraphics", (boolean *)0, FALSE},
+#endif
+#ifdef TTY_GRAPHICS
+	{"extmenu", &iflags.extmenu, FALSE},
 #endif
 #ifdef OPT_DISPMAP
 	{"fast_map", &flags.fast_map, TRUE},
@@ -120,15 +124,17 @@ static struct Bool_Opt
 #endif
 	{"perm_invent", &flags.perm_invent, FALSE},
 #ifdef MAC
-	{"popup_dialog", &flags.popup_dialog, FALSE},
+	{"popup_dialog", &iflags.popup_dialog, FALSE},
 #else
 	{"popup_dialog", (boolean *)0, FALSE},
 #endif
+	{"prayconfirm", &flags.prayconfirm, TRUE},
 #if defined(MSDOS) && defined(USE_TILES)
 	{"preload_tiles", &iflags.preload_tiles, TRUE},
 #else
 	{"preload_tiles", (boolean *)0, FALSE},
 #endif
+	{"pushweapon", &flags.pushweapon, FALSE},
 #if defined(MICRO) && !defined(AMIGA)
 	{"rawio", &iflags.rawio, FALSE},
 #else
@@ -178,6 +184,10 @@ static struct Comp_Opt
 			 * typing when game maintains information in
 			 * a different format */
 } compopt[] = {
+	{ "align",    "your starting alignment (lawful, neutral, or chaotic)", 8 },
+#ifdef MAC
+	{ "background", "the color of the background (black or white),", 6 },
+#endif
 	{ "catname",  "the name of your (first) cat (e.g., catname:Tabby)",
 						PL_PSIZ },
 	{ "disclose", "the kinds of information to disclose at end of game",
@@ -188,7 +198,15 @@ static struct Comp_Opt
 						MAXDCHARS+1 },
 	{ "effects",  "the symbols to use in drawing special effects",
 						MAXECHARS+1 },
+#ifdef MAC
+	{ "fontmap", "the font to use in the map window,", 40 },
+	{ "fontmessage", "the font to use in the message window,", 40 },
+	{ "fonttext", "the font to use in text windows,", 40 },
+#endif
 	{ "fruit",    "the name of a fruit you enjoy eating", PL_FSIZ },
+	{ "gender",   "your starting gender (male or female)", 8 },
+	{ "horsename", "the name of your (first) horse (e.g., horsename:Trigger)",
+						PL_PSIZ },
 	{ "menustyle", "user interface for object selection", MENUTYPELEN },
 	{ "menu_deselect_all", "deselect all items in a menu", 4},
 	{ "menu_deselect_page", "deselect all items on this page of a menu", 4},
@@ -215,13 +233,20 @@ static struct Comp_Opt
 # endif
 #endif
 	{ "pettype",  "your preferred initial pet type", 4 },
+	{ "pickup_burden",  "maximum burden picked up before prompt", 20 },
 	{ "pickup_types", "types of objects to pick up automatically",
 						MAXOCLASSES },
+	{ "race",     "your starting race (e.g., Human, Elf)", PL_CSIZ },
+	{ "role",     "your starting role (e.g., Barbarian, Valkyrie)", PL_CSIZ },
 	{ "scores",   "the parts of the score list you wish to see", 32 },
 #ifdef MSDOS
 	{ "soundcard", "type of sound card to use", 20 },
 #endif
+	{ "suppress_alert", "suppress alert of new features for version specified and prior", 6},
 	{ "traps",    "the symbols to use in drawing traps", MAXTCHARS+1 },
+#ifdef MAC
+	{"use_stone", "use stone background patterns", 8},
+#endif
 #ifdef MSDOS
 	{ "video",    "method of video updating", 20 },
 #endif
@@ -248,8 +273,6 @@ extern boolean colors_changed;	/* in tos.c */
 extern char *shade[3];		  /* in sys/msdos/video.c */
 extern char ttycolors[CLR_MAX];	/* in sys/msdos/video.c */
 #endif
-
-extern const char *roles[];	/* from u_init.c */
 
 static char def_inv_order[MAXOCLASSES] = {
 	GOLD_CLASS, AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS,
@@ -315,24 +338,24 @@ static short n_menu_mapped = 0;
 
 static boolean initial, from_file;
 
-static void FDECL(doset_add_menu, (winid,const char *,const char *,int));
-static boolean FDECL(match_optname, (const char *,const char *,int,BOOLEAN_P));
-static void FDECL(nmcpy, (char *, const char *, int));
-static void FDECL(escapes, (const char *, char *));
-static int FDECL(boolopt_only_initial, (int));
-static void FDECL(rejectoption, (const char *));
-static void FDECL(badoption, (const char *));
-static char *FDECL(string_for_opt, (char *,BOOLEAN_P));
-static char *FDECL(string_for_env_opt, (const char *, char *,BOOLEAN_P));
-static void FDECL(bad_negation, (const char *,BOOLEAN_P));
-static int FDECL(change_inv_order, (char *));
-static void FDECL(oc_to_str, (char *, char *));
-static void FDECL(graphics_opts, (char *,const char *,int,int));
+STATIC_DCL void FDECL(doset_add_menu, (winid,const char *,const char *,int));
+STATIC_DCL void FDECL(nmcpy, (char *, const char *, int));
+STATIC_DCL void FDECL(escapes, (const char *, char *));
+STATIC_DCL int FDECL(boolopt_only_initial, (int));
+STATIC_DCL void FDECL(rejectoption, (const char *));
+STATIC_DCL void FDECL(badoption, (const char *));
+STATIC_DCL char *FDECL(string_for_opt, (char *,BOOLEAN_P));
+STATIC_DCL char *FDECL(string_for_env_opt, (const char *, char *,BOOLEAN_P));
+STATIC_DCL void FDECL(bad_negation, (const char *,BOOLEAN_P));
+STATIC_DCL int FDECL(change_inv_order, (char *));
+STATIC_DCL void FDECL(oc_to_str, (char *, char *));
+STATIC_DCL void FDECL(graphics_opts, (char *,const char *,int,int));
+STATIC_DCL int FDECL(feature_alert_opts, (char *, const char *));
 
 /* check whether a user-supplied option string is a proper leading
    substring of a particular option name; option string might have
-   a colon and arbitrary value appended to it */
-static boolean
+   a colon or equals sign and arbitrary value appended to it */
+boolean
 match_optname(user_string, opt_name, min_length, val_allowed)
 const char *user_string, *opt_name;
 int min_length;
@@ -341,8 +364,11 @@ boolean val_allowed;
 	int len = (int)strlen(user_string);
 
 	if (val_allowed) {
-	    const char *p = index(user_string, ':');
+	    const char *p = index(user_string, ':'),
+		       *q = index(user_string, '=');
 
+	    if (!p || (q && q < p)) p = q;
+	    while(p && p > user_string && isspace(*(p-1))) p--;
 	    if (p) len = (int)(p - user_string);
 	}
 
@@ -355,6 +381,9 @@ initoptions()
 	char *opts;
 	int i;
 
+	/* initialize the random number generator */
+	setrandom();
+
 	for (i = 0; boolopt[i].name; i++) {
 		if (boolopt[i].addr)
 			*(boolopt[i].addr) = boolopt[i].initvalue;
@@ -363,6 +392,12 @@ initoptions()
 	flags.end_top = 3;
 	flags.end_around = 2;
 	iflags.msg_history = 20;
+
+	/* Use negative indices to indicate not yet selected */
+	flags.initrole = -1;
+	flags.initrace = -1;
+	flags.initgend = -1;
+	flags.initalign = -1;
 
 	/* Set the default monster and object class symbols.  Don't use */
 	/* memcpy() --- sizeof char != sizeof uchar on some machines.	*/
@@ -375,6 +410,7 @@ initoptions()
 	(void)memcpy((genericptr_t)flags.inv_order,
 		     (genericptr_t)def_inv_order, sizeof flags.inv_order);
 	flags.pickup_types[0] = '\0';
+	flags.pickup_burden = MOD_ENCUMBER;
 
 	switch_graphics(ASCII_GRAPHICS);	/* set default characters */
 #if defined(UNIX) && defined(TTY_GRAPHICS)
@@ -411,6 +447,7 @@ initoptions()
 	/* since this is done before init_objects(), do partial init here */
 	objects[SLIME_MOLD].oc_name_idx = SLIME_MOLD;
 	nmcpy(pl_fruit, OBJ_NAME(objects[SLIME_MOLD]), PL_FSIZ);
+#ifndef MAC
 	opts = getenv("NETHACKOPTIONS");
 	if (!opts) opts = getenv("HACKOPTIONS");
 	if (opts) {
@@ -422,9 +459,9 @@ initoptions()
 			read_config_file((char *)0);
 			parseoptions(opts, TRUE, FALSE);
 		}
-	} else {
+	} else
+#endif
 		read_config_file((char *)0);
-	}
 #ifdef AMIGA
 	ami_wbench_init();	/* must be here or can't set fruit */
 #endif
@@ -435,13 +472,10 @@ initoptions()
 	/* result in the player's preferred fruit [better than "\033"].	*/
 	obj_descr[SLIME_MOLD].oc_name = "fruit";
 
-	if (flags.female)  {	/* should have been set in NETHACKOPTIONS */
-		roles[2] = "Cavewoman";
-		roles[6] = "Priestess";
-	}
+	return;
 }
 
-static void
+STATIC_OVL void
 nmcpy(dest, src, maxlen)
 	char	*dest;
 	const char *src;
@@ -463,7 +497,7 @@ nmcpy(dest, src, maxlen)
  * previous forms or by a character has the effect of 'meta'-ing the value (so
  * that the alternate character set will be enabled).
  */
-static void
+STATIC_OVL void
 escapes(cp, tp)
 const char	*cp;
 char *tp;
@@ -520,7 +554,7 @@ char *tp;
 }
 
 /* some boolean options can only be set on start-up */
-static int
+STATIC_OVL int
 boolopt_only_initial(i)
 int i;
 {
@@ -536,7 +570,7 @@ int i;
 	);
 }
 
-static void
+STATIC_OVL void
 rejectoption(optname)
 const char *optname;
 {
@@ -554,7 +588,7 @@ const char *optname;
 #endif
 }
 
-static void
+STATIC_OVL void
 badoption(opts)
 const char *opts;
 {
@@ -578,14 +612,17 @@ const char *opts;
 	wait_synch();
 }
 
-static char *
+STATIC_OVL char *
 string_for_opt(opts, val_optional)
 char *opts;
 boolean val_optional;
 {
-	register char *colon;
+	char *colon, *equals;
 
 	colon = index(opts, ':');
+	equals = index(opts, '=');
+	if (!colon || (equals && equals < colon)) colon = equals;
+
 	if (!colon || !*++colon) {
 		if (!val_optional) badoption(opts);
 		return (char *)0;
@@ -593,7 +630,7 @@ boolean val_optional;
 	return colon;
 }
 
-static char *
+STATIC_OVL char *
 string_for_env_opt(optname, opts, val_optional)
 const char *optname;
 char *opts;
@@ -606,7 +643,7 @@ boolean val_optional;
 	return string_for_opt(opts, val_optional);
 }
 
-static void
+STATIC_OVL void
 bad_negation(optname, with_parameter)
 const char *optname;
 boolean with_parameter;
@@ -625,7 +662,7 @@ boolean with_parameter;
  * This routine returns 1 unless there is a duplicate or bad char in
  * the string.
  */
-static int
+STATIC_OVL int
 change_inv_order(op)
 char *op;
 {
@@ -659,7 +696,7 @@ char *op;
     return 1;
 }
 
-static void
+STATIC_OVL void
 graphics_opts(opts, optype, maxlen, offset)
 register char *opts;
 const char *optype;
@@ -678,6 +715,39 @@ int maxlen, offset;
 	for (i = 0; i < length; i++)
 		translate[i] = (uchar) opts[i];
 	assign_graphics(translate, length, maxlen, offset);
+}
+
+STATIC_OVL int
+feature_alert_opts(op, optn)
+char *op;
+const char *optn;
+{
+	char buf[BUFSZ];
+	boolean rejectver = FALSE;
+	unsigned long fnv = get_feature_notice_ver(op);		/* version.c */
+	if (fnv == 0L) return 0;
+	if (fnv > get_current_feature_ver())
+		rejectver = TRUE;
+	else
+		flags.suppress_alert = fnv;
+	if (rejectver) {
+		if (!initial)
+			You_cant("disable new feature alerts for future versions.");
+		else {
+			Sprintf(buf,
+				"\n%s=%s Invalid reference to a future version ignored",
+				optn, op);
+			badoption(buf);
+		}
+		return 0;
+	}
+	if (!initial) {
+		Sprintf(buf, "%lu.%lu.%lu", FEATURE_NOTICE_VER_MAJ,
+			FEATURE_NOTICE_VER_MIN, FEATURE_NOTICE_VER_PATCH);
+		pline("Feature change alerts disabled for NetHack %s features and prior.",
+			buf);
+	}
+	return 1;
 }
 
 void
@@ -721,7 +791,7 @@ boolean tinitial, tfrom_file;
 		if(!initial && flags.female == negated)
 			pline("That is not anatomically possible.");
 		else
-			flags.female = !negated;
+			flags.initgend = flags.female = !negated;
 		return;
 	}
 
@@ -729,7 +799,7 @@ boolean tinitial, tfrom_file;
 		if(!initial && flags.female != negated)
 			pline("That is not anatomically possible.");
 		else
-			flags.female = negated;
+			flags.initgend = flags.female = negated;
 		return;
 	}
 
@@ -782,6 +852,14 @@ boolean tinitial, tfrom_file;
 		return;
 	}
 
+	fullname = "horsename";
+	if (match_optname(opts, fullname, 5, TRUE)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			nmcpy(horsename, op, PL_PSIZ);
+		return;
+	}
+
 	fullname = "msghistory";
 	if (match_optname(opts, fullname, 3, TRUE)) {
 		op = string_for_env_opt(fullname, opts, negated);
@@ -792,6 +870,47 @@ boolean tinitial, tfrom_file;
 	}
 
 #ifdef CHANGE_COLOR
+#ifdef MAC
+	fullname = "use_stone";
+	if (match_optname(opts, fullname, 6, TRUE)) {
+		op = string_for_env_opt(fullname, opts, negated);
+		if ((negated && !op) || (!negated && op)) {
+			iflags.use_stone = negated ? 0 : atoi(op);
+		} else if (negated) bad_negation(fullname, TRUE);
+		return;
+	}
+
+	fullname = "background";
+	if (match_optname(opts, fullname, 5,TRUE))
+	{
+		if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+		{
+			if (!strncmpi (op, "white", 5))
+				change_background (1);
+			else if (!strncmpi (op, "black", 5))
+				change_background (0);
+		}
+		return;
+	}
+	
+	fullname = "font";
+	if (!strncmpi(opts, fullname, 4))
+	{	int wintype = -1;
+	
+		opts += 4;
+		if (!strncmpi (opts, "map", 3))
+			wintype = NHW_MAP;
+		else if (!strncmpi (opts, "message", 7))
+			wintype = NHW_MESSAGE;
+		else if (!strncmpi (opts, "text", 4))
+			wintype = NHW_TEXT;
+				
+		if (wintype > 0 && (op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+		{	set_font_name (wintype, op);
+		}
+		return;
+	}
+#endif
 	if (match_optname(opts, "palette", 3, TRUE)
 # ifdef MAC
 					|| match_optname(opts, "hicolor", 3, TRUE)
@@ -996,6 +1115,53 @@ goodfruit:
 		return;
 	}
 
+	/* role:string or character:string */
+	fullname = "role";
+	if (match_optname(opts, fullname, 4, TRUE) ||
+	    match_optname(opts, (fullname = "character"), 4, TRUE)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			if ((flags.initrole = str2role(op)) < 0)
+				badoption(opts);
+			else  /* Backwards compatibility */
+				nmcpy(pl_character, op, PL_NSIZ);
+		return;
+	}
+
+	/* race:string */
+	fullname = "race";
+	if (match_optname(opts, fullname, 4, TRUE)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			if ((flags.initrace = str2race(op)) < 0)
+				badoption(opts);
+			else /* Backwards compatibility */
+				pl_race = *op;
+		return;
+	}
+
+	/* gender:string */
+	fullname = "gender";
+	if (match_optname(opts, fullname, 4, TRUE)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			if ((flags.initgend = str2gend(op)) < 0)
+				badoption(opts);
+			else
+				flags.female = flags.initgend;
+		return;
+	}
+
+	/* align:string */
+	fullname = "align";
+	if (match_optname(opts, fullname, 4, TRUE)) {
+		if (negated) bad_negation(fullname, FALSE);
+		else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
+			if ((flags.initalign = str2align(op)) < 0)
+				badoption(opts);
+		return;
+	}
+
 	/* the order to list the pack */
 	fullname = "packorder";
 	if (match_optname(opts, fullname, 4, TRUE)) {
@@ -1009,8 +1175,48 @@ goodfruit:
 		return;
 	}
 
+	/* maximum burden picked up before prompt (Warren Cheung) */
+	fullname = "pickup_burden";
+	if (match_optname(opts, fullname, 8, TRUE)) {
+		if (negated) {
+			bad_negation(fullname, FALSE);
+			return;
+		} else if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0) {
+		    switch (tolower(*op)) {
+				/* Unencumbered */
+				case 'u':
+					flags.pickup_burden = UNENCUMBERED;
+					break;
+				/* Burdened (slight encumberance) */
+				case 'b':
+					flags.pickup_burden = SLT_ENCUMBER;
+					break;
+				/* streSsed (moderate encumberance) */
+				case 's':
+					flags.pickup_burden = MOD_ENCUMBER;
+					break;
+				/* straiNed (heavy encumberance) */
+				case 'n':
+					flags.pickup_burden = HVY_ENCUMBER;
+					break;
+				/* OverTaxed (extreme encumberance) */
+				case 'o':
+				case 't':
+					flags.pickup_burden = EXT_ENCUMBER;
+					break;
+				/* overLoaded */
+				case 'l':
+					flags.pickup_burden = OVERLOADED;
+					break;
+				default:
+				badoption(opts);
+		    }
+		}
+		return;
+	}
+
 	/* types of objects to pick up automatically */
-	if (match_optname(opts, "pickup_types", 4, TRUE)) {
+	if (match_optname(opts, "pickup_types", 8, TRUE)) {
 		char ocl[MAXOCLASSES + 1], tbuf[MAXOCLASSES + 1],
 		     qbuf[QBUFSZ], abuf[BUFSZ];
 		int oc_sym;
@@ -1140,6 +1346,14 @@ goodfruit:
 	    return;
 	}
 
+	fullname = "suppress_alert";
+	if (match_optname(opts, fullname, 4, TRUE)) {
+		op = string_for_opt(opts, negated);
+		if (negated) bad_negation(fullname, FALSE);
+		else if (op) (void) feature_alert_opts(op,fullname);
+		return;
+	}
+	
 #ifdef VIDEOSHADES
 	/* videocolors:string */
 	fullname = "videocolors";
@@ -1356,7 +1570,12 @@ goodfruit:
 			else if ((boolopt[i].addr) == &flags.invlet_constant) {
 			    if (flags.invlet_constant) reassign();
 			}
-
+#ifdef LAN_MAIL
+			else if ((boolopt[i].addr) == &flags.biff) {
+			    if (flags.biff) lan_mail_init();
+			    else lan_mail_finish();
+			}
+#endif
 			else if ((boolopt[i].addr) == &iflags.num_pad)
 			    number_pad(iflags.num_pad ? 1 : 0);
 
@@ -1396,15 +1615,22 @@ goodfruit:
 	badoption(opts);
 }
 
+
 static NEARDATA const char *menutype[] = {
 	"traditional", "combination", "partial", "full"
 };
+
+static NEARDATA const char *burdentype[] = {
+	"unencumbered", "burdened", "stressed",
+	"strained", "overtaxed", "overloaded"
+};
+
 
 /*
  * Convert the given string of object classes to a string of default object
  * symbols.
  */
-static void
+STATIC_OVL void
 oc_to_str(src,dest)
     char *src, *dest;
 {
@@ -1461,7 +1687,7 @@ map_menu_cmd(ch)
 # define OPTIONS_HEADING "NETHACKOPTIONS"
 #endif
 
-static void
+STATIC_OVL void
 doset_add_menu(win, option, value, indexoffset)
     winid win;			/* window to add to */
     const char *option;		/* option name */
@@ -1491,7 +1717,7 @@ doset_add_menu(win, option, value, indexoffset)
     }
 
     /* "    " replaces "a - " -- assumes menus follow that style */
-    Sprintf(buf, "%s%-13s [%s]", (any.a_int ? "" : "    "), option, value);
+    Sprintf(buf, "%s%-14s [%s]", (any.a_int ? "" : "    "), option, value);
     add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, MENU_UNSELECTED);
 }
 
@@ -1542,8 +1768,17 @@ doset()
 		 MENU_UNSELECTED);
 	/* non-modifiable compounds; deliberately put `name' first */
 	doset_add_menu(tmpwin, "name", plname, 0);
+	doset_add_menu(tmpwin, "role", (flags.initrole < 0) ? "(none)" :
+			roles[flags.initrole].name.m, 0);
+	doset_add_menu(tmpwin, "race", (flags.initrace < 0) ? "(none)" :
+			races[flags.initrace].noun, 0);
+	doset_add_menu(tmpwin, "gender", (flags.initgend < 0) ? "(none)" :
+			genders[flags.initgend].adj, 0);
+	doset_add_menu(tmpwin, "align", (flags.initalign < 0) ? "(none)" :
+			aligns[flags.initalign].adj, 0);
 	doset_add_menu(tmpwin, "catname", catname[0] ? catname : "(null)", 0);
 	doset_add_menu(tmpwin, "dogname", dogname[0] ? dogname : "(null)", 0);
+	doset_add_menu(tmpwin, "horsename", horsename[0] ? horsename : "(null)", 0);
 	Sprintf(buf, "%u", iflags.msg_history);
 	doset_add_menu(tmpwin, "msghistory", buf, 0);
 	doset_add_menu(tmpwin, "pettype",
@@ -1561,6 +1796,7 @@ doset()
 	doset_add_menu(tmpwin, "videocolors", buf, 0);
 #endif /* VIDEOSHADES */
 	doset_add_menu(tmpwin, "windowtype", windowprocs.name, 0);
+
 	/* modifiable compounds */
 	doset_add_menu(tmpwin, "disclose",
 		       flags.end_disclose[0] ? flags.end_disclose : "all",
@@ -1574,11 +1810,17 @@ doset()
 	doset_add_menu(tmpwin, "palette", get_color_string(), boolcount);
 #endif
 	oc_to_str(flags.pickup_types, ocl);
+	doset_add_menu(tmpwin, "pickup_burden", burdentype[flags.pickup_burden],
+			boolcount);
 	doset_add_menu(tmpwin, "pickup_types", ocl[0] ? ocl : "all",
 		       boolcount);
 	Sprintf(buf, "%d top/%d around%s", flags.end_top, flags.end_around,
 		flags.end_own ? "/own" : "");
 	doset_add_menu(tmpwin, "scores", buf, boolcount);
+	Sprintf(buf, "%lu.%lu.%lu", FEATURE_NOTICE_VER_MAJ, FEATURE_NOTICE_VER_MIN,
+			FEATURE_NOTICE_VER_PATCH);
+	doset_add_menu(tmpwin, "suppress_alert", (flags.suppress_alert == 0L) ?
+				"(null)" : buf, boolcount);
 	end_menu(tmpwin, "Set what options?");
 
 	need_redraw = FALSE;
@@ -1600,7 +1842,7 @@ doset()
 		    /* compound option */
 		    opt_indx -= boolcount;
 
-		    /* Special handling of menustyle and pickup_types. */
+		    /* Special handling of menustyle, pickup_burden, and pickup_types. */
 		    if (!strcmp("menustyle", compopt[opt_indx].name)) {
 			const char *style_name;
 			menu_item *style_pick = (menu_item *)0;
@@ -1619,6 +1861,22 @@ doset()
 			    flags.menu_style = style_pick->item.a_int - 1;
 			    free((genericptr_t)style_pick);
 			}
+			} else if (!strcmp("pickup_burden", compopt[opt_indx].name)) {
+				const char *burden_name, *burden_letters = "ubsntl";
+				menu_item *burden_pick = (menu_item *)0;
+
+				start_menu(tmpwin);
+				for (i = 0; i < SIZE(burdentype); i++) {
+				    burden_name = burdentype[i];
+					any.a_int = i + 1;
+				    add_menu(tmpwin, NO_GLYPH, &any, burden_letters[i], 0,
+				             ATR_NONE, burden_name, MENU_UNSELECTED);
+				}
+				end_menu(tmpwin, "Select encumberence level:");
+				if (select_menu(tmpwin, PICK_ONE, &burden_pick) > 0) {
+				    flags.pickup_burden = burden_pick->item.a_int - 1;
+				    free((genericptr_t)burden_pick);
+				}
 		    } else if (!strcmp("pickup_types", compopt[opt_indx].name)) {
 			/* parseoptions will prompt for the list of types */
 			parseoptions(strcpy(buf, "pickup_types"), FALSE, FALSE);
@@ -1666,13 +1924,13 @@ static const char *opt_intro[] = {
 #define CONFIG_SLOT 3	/* fill in next value at run-time */
 	(char *)0,
 #if !defined(MICRO) && !defined(MAC)
-	"or use `NETHACKOPTIONS=\"<options>\"' in your environment;",
-# ifdef VMS
-	"-- for example, $ DEFINE NETHACKOPTIONS \"noautopickup,fruit:kumquat\"",
-# endif
+	"or use `NETHACKOPTIONS=\"<options>\"' in your environment",
 #endif
-	"or press \"O\" while playing, and type your <options> at the prompt.",
-	"In all cases, <options> is a list of options separated by commas.",
+	"(<options> is a list of options separated by commas)",
+#ifdef VMS
+	"-- for example, $ DEFINE NETHACKOPTIONS \"noautopickup,fruit:kumquat\"",
+#endif
+	"or press \"O\" while playing and use the menu.",
 	"",
  "Boolean options (which can be negated by prefixing them with '!' or \"no\"):",
 	(char *)0
@@ -1680,8 +1938,8 @@ static const char *opt_intro[] = {
 
 static const char *opt_epilog[] = {
 	"",
- "Some of the options can be set only before the game is started.  You will",
-	"be so informed, if you attempt to set them while in the game.",
+ "Some of the options can be set only before the game is started; those",
+	"items will not be selectable in the 'O' command's menu.",
 	(char *)0
 };
 
@@ -1694,19 +1952,23 @@ option_help()
 
     datawin = create_nhwindow(NHW_TEXT);
 #ifdef AMIGA
-    if(FromWBench){
-	Sprintf(buf,"Set options as OPTIONS= in %s or in icon;",configfile);
-    } else
+    if (FromWBench)
+	Sprintf(buf, "Set options as OPTIONS= in %s or in icon", configfile);
+    else
 #endif
-	Sprintf(buf, "Set options as OPTIONS=<options> in %s;", configfile);
+	Sprintf(buf, "Set options as OPTIONS=<options> in %s", configfile);
     opt_intro[CONFIG_SLOT] = (const char *) buf;
     for (i = 0; opt_intro[i]; i++)
 	putstr(datawin, 0, opt_intro[i]);
 
     /* Boolean options */
     for (i = 0; boolopt[i].name; i++) {
-	if (boolopt[i].addr)
+	if (boolopt[i].addr) {
+#ifdef WIZARD
+	    if (boolopt[i].addr == &iflags.sanity_check && !wizard) continue;
+#endif
 	    next_opt(datawin, boolopt[i].name);
+	}
     }
     next_opt(datawin, "");
 
@@ -1736,18 +1998,20 @@ next_opt(datawin, str)
 winid datawin;
 const char *str;
 {
-	static char buf[121];
+	static char *buf = 0;
 	int i;
 	char *s;
 
+	if (!buf) buf = (char *)alloc(BUFSZ);
+
 	if (!*str) {
-		for (s = buf; *s; s++);	/* find end of string */
+		s = eos(buf);
 		if (s > &buf[1] && s[-2] == ',')
-			s[-2] = 0;	/* strip last ", " */
-		i = 121;
-	}
-	else
+		    Strcpy(s - 2, ".");	/* replace last ", " */
+		i = COLNO;	/* (greater than COLNO - 2) */
+	} else {
 		i = strlen(buf) + strlen(str) + 2;
+	}
 
 	if (i > COLNO - 2) { /* rule of thumb */
 		putstr(datawin, 0, buf);
@@ -1756,9 +2020,10 @@ const char *str;
 	if (*str) {
 		Strcat(buf, str);
 		Strcat(buf, ", ");
-	}
-	else
+	} else {
 		putstr(datawin, 0, str);
+		free(buf),  buf = 0;
+	}
 	return;
 }
 
@@ -1788,7 +2053,7 @@ char *str;
 		 * to tell the difference)
 		 */
 
-		boolean found = FALSE;
+		boolean found = FALSE, numeric = FALSE;
 
 		for (i = bases[FOOD_CLASS]; objects[i].oc_class == FOOD_CLASS;
 						i++) {
@@ -1797,13 +2062,26 @@ char *str;
 				break;
 			}
 		}
-		if (found ||
+		{
+		    char *c;
+
+		    c = pl_fruit;
+
+		    for(c = pl_fruit; *c >= '0' && *c <= '9'; c++)
+			;
+		    if (isspace(*c) || *c == 0) numeric = TRUE;
+		}
+		if (found || numeric ||
+		    !strncmp(str, "cursed ", 7) ||
+		    !strncmp(str, "uncursed ", 9) ||
+		    !strncmp(str, "blessed ", 8) ||
+		    !strncmp(str, "partly eaten ", 13) ||
 		    (!strncmp(str, "tin of ", 7) &&
 			(!strcmp(str+7, "spinach") ||
 			 name_to_mon(str+7) >= LOW_PM)) ||
 		    !strcmp(str, "empty tin") ||
-		    ((!strncmp(eos(str)-6," corpse",7) ||
-			    !strncmp(eos(str)-3, " egg",4)) &&
+		    ((!strncmp(eos(str)-7," corpse",7) ||
+			    !strncmp(eos(str)-4, " egg",4)) &&
 			name_to_mon(str) >= LOW_PM))
 			{
 				Strcpy(buf, pl_fruit);

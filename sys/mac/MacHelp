@@ -1,11 +1,15 @@
-            Macintosh-specific help file for NetHack 3.2
+            Macintosh-specific help file for NetHack 3.3
 
 The following are options, features, or concerns specific to the
-Macintosh port of NetHack 3.2.  Bug reports, suggestions, comments,
+Macintosh port of NetHack 3.3.  Bug reports, suggestions, comments,
 and so on, should be addressed to:
 
-	To: nethack-bugs@linc.cis.upenn.edu
-	Subject: Mac NetHack 3.2
+	To: devteam@nethack.org
+	Subject: Mac NetHack 3.3
+
+or you can use our on-line bug reporting form at
+
+	http://www.nethack.org
 
 Please include your machine-type, system software version and other
 relevant information (i.e. system extensions, monitor, accelerators
@@ -13,13 +17,11 @@ and so on).
 
 
 === Configuration of a playground
-    NetHack 3.2 is packaged in a Dungeon Folder which includes:
+    NetHack 3.3 is packaged in a Dungeon Folder which includes:
         NetHack - the application file itself.
         NetHack Defaults - text file for default option settings.
-        Miscellaneous text files - Record and logfile.  logfile
-            will be created if it doesn't exist.
-        Various special level files (with a ".lev" suffix).
-        Various help and other utility NetHack documents.
+	license - licensing terms for nethack.
+	Guidebook - description of the game in long format.
         Recover - the application to restore save files from crashed games.
 
     During play another file type appears:
@@ -73,7 +75,7 @@ and so on).
         after the Dungeon Map window is created.
 
     Default options may be set by editing the NetHack Defaults text
-        file (possibly using TeachText or your favorite editor).
+        file (possibly using SimpleText or your favorite editor).
         Unix(tm)-style notation is used, as in:
     OPTIONS=name:Arnold,time,!tombstone
 

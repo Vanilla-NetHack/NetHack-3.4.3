@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	3.2	95/07/26	*/
+/*	SCCS Id: @(#)pcmain.c	3.3	97/01/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -50,7 +50,7 @@ extern int bigscreen;
 void NDECL( preserve_icon );
 #endif
 
-static void FDECL(process_options,(int argc,char **argv));
+STATIC_DCL void FDECL(process_options,(int argc,char **argv));
 STATIC_DCL void NDECL(nhusage);
 
 #if defined(MICRO) || defined(WIN32) || defined(OS2)
@@ -69,11 +69,6 @@ int FDECL(main, (int,char **));
 
 extern void FDECL(pcmain, (int,char **));
 
-#ifdef OVLB
-const char *classes = "ABCEHKPRSTVW";
-#else
-extern const char *classes;
-#endif
 
 #ifdef __BORLANDC__
 void NDECL( startup );
@@ -91,6 +86,9 @@ int argc;
 char *argv[];
 {
      pcmain(argc,argv);
+#ifdef LAN_FEATURES
+     init_lan_features();
+#endif
      moveloop();
      nethack_exit(EXIT_SUCCESS);
      /*NOTREACHED*/
@@ -121,9 +119,7 @@ char *argv[];
 #endif
 		hname = "NetHack";      /* used for syntax messages */
 
-#ifndef WIN32_GRAPHICS
 	choose_windows(DEFAULT_WINDOW_SYS);
-#endif
 
 #if !defined(AMIGA) && !defined(GNUDOS)
 	/* Save current directory and make sure it gets restored when
@@ -162,9 +158,7 @@ char *argv[];
 	ami_argset(&argc, argv);
 	ami_wininit_data();
 #endif
-
 	initoptions();
-
 #ifdef AMIGA
 	ami_mkargline(&argc, &argv);
 #endif
@@ -221,8 +215,6 @@ char *argv[];
 	/*
 	 * It seems you really want to play.
 	 */
-	setrandom();
-
 #ifdef TOS
 	if (comp_times((long)time(&clock_time)))
 		error("Your clock is incorrectly set!");
@@ -238,8 +230,13 @@ char *argv[];
 	chdirx(hackdir,1);
 #endif
 
+#ifdef MSDOS
+	process_options(argc, argv);
+	init_nhwindows(&argc,argv);
+#else
 	init_nhwindows(&argc,argv);
 	process_options(argc, argv);
+#endif
 
 #ifdef MFLOPPY
 	set_lock_and_bones();
@@ -247,25 +244,54 @@ char *argv[];
 	copybones(FROMPERM);
 # endif
 #endif
-#ifdef WIZARD
-	if (wizard)
-		Strcpy(plname, "wizard");
-	else
-#endif
+
 	if (!*plname)
 		askname();
 	plnamesuffix(); 	/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
-#ifndef MFLOPPY
+#ifdef WIZARD
+	if (wizard) {
+# ifdef KR1ED
+		if(!strcmp(plname, WIZARD_NAME))
+# else
+		if(!strcmp(plname, WIZARD))
+# endif
+			Strcpy(plname, "wizard");
+		else {
+			wizard = FALSE;
+			discover = TRUE;
+		}
+	}
+#endif /* WIZARD */
+#if defined(PC_LOCKING)
+	/* 3.3.0 added this to support detection of multiple games
+	 * under the same plname on the same machine in a windowed
+	 * or multitasking environment.
+	 *
+	 * That allows user confirmation prior to overwriting the
+	 * level files of a game in progress.
+	 *
+	 * Also prevents an aborted game's level files from being
+	 * overwritten without confirmation when a user starts up
+	 * another game with the same player name.
+	 */
+# if defined(WIN32)
+	/* Obtain the name of the logged on user and incorporate
+	 * it into the name. */
+	Sprintf(lock, "%s-%s",get_username(0),plname);
+# else
+	Strcpy(lock,plname);
+	regularize(lock);
+# endif
+	getlock();
+#else   /* PC_LOCKING */
 	Strcpy(lock,plname);
 	Strcat(lock,".99");
 	regularize(lock);	/* is this necessary? */
-#endif
+#endif	/* PC_LOCKING */
 
-	/* Set up level 0 file to keep the game state.	This will have to
-	 * be expanded to something like the UNIX/VMS getlock() to allow
-	 * networked PCs in any case.
+	/* Set up level 0 file to keep the game state.
 	 */
 	fd = create_levelfile(0);
 	if (fd < 0) {
@@ -325,7 +351,6 @@ char *argv[];
 #ifdef WIZARD
 		if(!wizard && remember_wiz_mode) wizard = TRUE;
 #endif
-		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
 		if (discover)
 			You("are in non-scoring discovery mode.");
@@ -345,8 +370,6 @@ char *argv[];
 not_recovered:
 		player_selection();
 		newgame();
-		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to NetHack!", plname);
 		if (discover)
 			You("are in non-scoring discovery mode.");
 
@@ -371,6 +394,9 @@ process_options(argc, argv)
 int argc;
 char *argv[];
 {
+	int i;
+
+
 	/*
 	 * Process options.
 	 */
@@ -379,20 +405,15 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 		case 'D':
-# ifdef WIZARD
-			/* Must have "name" set correctly by NETHACK.CNF,
-			 * NETHACKOPTIONS, or -u
-			 * before this flag to enter wizard mode. */
-#  ifdef KR1ED
-			if(!strcmp(plname, WIZARD_NAME)) {
-#  else
-			if(!strcmp(plname, WIZARD)) {
-#  endif
-				wizard = TRUE;
-				break;
-			}
-			/* otherwise fall thru to discover */
-# endif
+#ifdef WIZARD
+			/* If they don't have a valid wizard name, it'll be
+			 * changed to discover later.  Cannot check for
+			 * validity of the name right now--it might have a
+			 * character class suffix, for instance.
+			 */
+			wizard = TRUE;
+			break;
+#endif
 		case 'X':
 			discover = TRUE;
 			break;
@@ -423,11 +444,33 @@ char *argv[];
 				switch_graphics(DEC_GRAPHICS);
 			break;
 #endif
+		case 'p': /* profession (role) */
+			if (argv[0][2]) {
+			    if ((i = str2role(&argv[0][2])) >= 0)
+			    	flags.initrole = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2role(argv[0])) >= 0)
+			    	flags.initrole = i;
+			}
+			break;
+		case 'r': /* race */
+			if (argv[0][2]) {
+			    if ((i = str2race(&argv[0][2])) >= 0)
+			    	flags.initrace = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2race(argv[0])) >= 0)
+			    	flags.initrace = i;
+			}
+			break;
 #ifdef MFLOPPY
 # ifndef AMIGA
 		/* Player doesn't want to use a RAM disk
 		 */
-		case 'r':
+		case 'R':
 			ramdisk = FALSE;
 			break;
 # endif
@@ -442,12 +485,11 @@ char *argv[];
 			break;
 #endif
 		default:
-			if (index(classes, toupper(argv[0][1]))) {
-				/* allow -T for Tourist, etc. */
-				(void) strncpy(pl_character, argv[0]+1,
-					       sizeof(pl_character)-1);
+			if ((i = str2role(&argv[0][1])) >= 0) {
+			    flags.initrole = i;
 				break;
 			} else raw_printf("\nUnknown switch: %s", argv[0]);
+			/* FALL THROUGH */
 		case '?':
 			nhusage();
 			nethack_exit(EXIT_SUCCESS);
@@ -455,21 +497,24 @@ char *argv[];
 	}
 }
 
-static void 
+STATIC_OVL void 
 nhusage()
 {
 	char buf1[BUFSZ];
 
+	/* -role still works for those cases which aren't already taken, but
+	 * is deprecated and will not be listed here.
+	 */
 	(void) Sprintf(buf1,
-	       "\nUsage: %s [-d dir] -s [-[%s]] [maxrank] [name]...\n       or",
-		hname, classes);
+"\nUsage: %s [-d dir] -s [-r role] [-p profession] [maxrank] [name]...\n       or",
+		hname);
 	if (!iflags.window_inited)
 		raw_printf(buf1);
 	else
 		(void)	printf(buf1);
-
-	(void) Sprintf(buf1,"\n       %s [-d dir] [-u name] [-[%s]] [-[DX]]",
-		hname, classes);
+	(void) Sprintf(buf1,
+	 "\n       %s [-d dir] [-u name] [-r role] [-p profession] [-[DX]]",
+		hname);
 #ifdef NEWS
 	Strcat(buf1," [-n]");
 #endif
@@ -478,7 +523,7 @@ nhusage()
 #endif
 #ifdef MFLOPPY
 # ifndef AMIGA
-	Strcat(buf1," [-r]");
+	Strcat(buf1," [-R]");
 # endif
 #endif
 #ifdef AMIGA
@@ -532,12 +577,14 @@ port_help()
 #endif /* PORT_HELP */
 
 #ifdef EXEPATH
-
-#ifdef __DJGPP__
+# ifdef __DJGPP__
 #define PATH_SEPARATOR '/'
-#else
+# else
 #define PATH_SEPARATOR '\\'
-#endif
+# endif
+
+#define EXEPATHBUFSZ 256
+char exepathbuf[EXEPATHBUFSZ];
 
 char *exepath(str)
 char *str;
@@ -546,17 +593,13 @@ char *str;
 	int bsize;
 
 	if (!str) return (char *)0;
-#ifndef WIN32
-	bsize = strlen(str) + 1;
-#else
-	bsize = 256;
-#endif
-	tmp = (char *)alloc(bsize);
-#ifndef WIN32
-	strcpy (tmp, str);
-#else
+	bsize = EXEPATHBUFSZ;
+	tmp = exepathbuf;
+# ifndef WIN32
+	Strcpy (tmp, str);
+# else
 	*(tmp + GetModuleFileName((HANDLE)0, tmp, bsize)) = '\0';
-#endif
+# endif
 	tmp2 = strrchr(tmp, PATH_SEPARATOR);
 	if (tmp2) *tmp2 = '\0';
 	return tmp;

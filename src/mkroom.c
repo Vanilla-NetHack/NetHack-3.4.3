@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.c	3.2	96/05/19	*/
+/*	SCCS Id: @(#)mkroom.c	3.3	97/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,15 +16,16 @@
 #include "hack.h"
 
 #ifdef OVLB
-static boolean FDECL(isbig, (struct mkroom *));
-static struct mkroom * FDECL(pick_room,(BOOLEAN_P));
-static void NDECL(mkshop), FDECL(mkzoo,(int)), NDECL(mkswamp);
-static void NDECL(mktemple);
-static coord * FDECL(shrine_pos, (int));
-static struct permonst * NDECL(morguemon);
-static struct permonst * NDECL(squadmon);
-static void FDECL(save_room, (int,struct mkroom *));
-static void FDECL(rest_room, (int,struct mkroom *));
+STATIC_DCL boolean FDECL(isbig, (struct mkroom *));
+STATIC_DCL struct mkroom * FDECL(pick_room,(BOOLEAN_P));
+STATIC_DCL void NDECL(mkshop), FDECL(mkzoo,(int)), NDECL(mkswamp);
+STATIC_DCL void NDECL(mktemple);
+STATIC_DCL coord * FDECL(shrine_pos, (int));
+STATIC_DCL struct permonst * NDECL(morguemon);
+STATIC_DCL struct permonst * NDECL(antholemon);
+STATIC_DCL struct permonst * NDECL(squadmon);
+STATIC_DCL void FDECL(save_room, (int,struct mkroom *));
+STATIC_DCL void FDECL(rest_room, (int,struct mkroom *));
 #endif /* OVLB */
 
 #define sq(x) ((x)*(x))
@@ -33,7 +34,7 @@ extern const struct shclass shtypes[];	/* defined in shknam.c */
 
 #ifdef OVLB
 
-static boolean
+STATIC_OVL boolean
 isbig(sroom)
 register struct mkroom *sroom;
 {
@@ -57,11 +58,14 @@ int	roomtype;
 	case BARRACKS:	mkzoo(BARRACKS); break;
 	case SWAMP:	mkswamp(); break;
 	case TEMPLE:	mktemple(); break;
+	case LEPREHALL:	mkzoo(LEPREHALL); break;
+	case COCKNEST:	mkzoo(COCKNEST); break;
+	case ANTHOLE:	mkzoo(ANTHOLE); break;
 	default:	impossible("Tried to make a room of type %d.", roomtype);
     }
 }
 
-static void
+STATIC_OVL void
 mkshop()
 {
 	register struct mkroom *sroom;
@@ -71,6 +75,7 @@ mkshop()
 
 	/* first determine shoptype */
 	if(wizard){
+#ifndef MAC
 		ep = getenv("SHOPTYPE");
 		if(ep){
 			if(*ep == 'z' || *ep == 'Z'){
@@ -93,6 +98,18 @@ mkshop()
 				mkzoo(BARRACKS);
 				return;
 			}
+			if(*ep == 'a' || *ep == 'A'){
+				mkzoo(ANTHOLE);
+				return;
+			}
+			if(*ep == 'c' || *ep == 'C'){
+				mkzoo(COCKNEST);
+				return;
+			}
+			if(*ep == 'l' || *ep == 'L'){
+				mkzoo(LEPREHALL);
+				return;
+			}
 			if(*ep == '_'){
 				mktemple();
 				return;
@@ -109,6 +126,7 @@ mkshop()
 			else
 				i = -1;
 		}
+#endif
 	}
 gottype:
 #endif
@@ -162,7 +180,7 @@ gottype:
 	stock_room(i, sroom);
 }
 
-static struct mkroom *
+STATIC_OVL struct mkroom *
 pick_room(strict)
 register boolean strict;
 /* pick an unused room, preferably with only one door */
@@ -191,7 +209,7 @@ register boolean strict;
 	return (struct mkroom *)0;
 }
 
-static void
+STATIC_OVL void
 mkzoo(type)
 int type;
 {
@@ -247,6 +265,7 @@ struct mkroom *sroom;
 		}
 		break;
 	    case ZOO:
+	    case LEPREHALL:
 		goldlim = 500 * level_difficulty();
 		break;
 	}
@@ -275,10 +294,13 @@ struct mkroom *sroom;
 		    (type == BEEHIVE) ?
 			(sx == tx && sy == ty ? &mons[PM_QUEEN_BEE] :
 			 &mons[PM_KILLER_BEE]) :
+		    (type == LEPREHALL) ? &mons[PM_LEPRECHAUN] :
+		    (type == COCKNEST) ? &mons[PM_COCKATRICE] :
+		    (type == ANTHOLE) ? antholemon() :
 		    (struct permonst *) 0,
 		   sx, sy, NO_MM_FLAGS);
 		if(mon) {
-			mon->msleep = 1;
+			mon->msleeping = 1;
 			if (type==COURT && mon->mpeaceful) {
 				mon->mpeaceful = 0;
 				set_malign(mon);
@@ -286,6 +308,7 @@ struct mkroom *sroom;
 		}
 		switch(type) {
 		    case ZOO:
+		    case LEPREHALL:
 			if(sroom->doorct)
 			{
 			    int distval = dist2(sx,sy,doors[sh].x,doors[sh].y);
@@ -295,7 +318,7 @@ struct mkroom *sroom;
 			    i = goldlim;
 			if(i >= goldlim) i = 5*level_difficulty();
 			goldlim -= i;
-			mkgold((long) rn1(i, 10), sx, sy);
+			(void) mkgold((long) rn1(i, 10), sx, sy);
 			break;
 		    case MORGUE:
 			if(!rn2(5))
@@ -303,6 +326,8 @@ struct mkroom *sroom;
 			if(!rn2(10))	/* lots of treasure buried with dead */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
 					     sx, sy, TRUE);
+			if (!rn2(5) && levl[sx][sy].typ == ROOM)
+			    levl[sx][sy].typ = GRAVE;
 			break;
 		    case BEEHIVE:
 			if(!rn2(3))
@@ -313,6 +338,19 @@ struct mkroom *sroom;
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
 					     sx, sy, TRUE);
 			break;
+		    case COCKNEST:
+			if(!rn2(3)) {
+			    struct obj *sobj = mk_tt_object(STATUE, sx, sy);
+
+			    if (sobj)
+			    	for (i = rn2(5); i; i--)
+			    	    add_to_container(sobj, mkobj(RANDOM_CLASS, FALSE));
+			}
+			break;
+		    case ANTHOLE:
+			if(!rn2(3))
+			    (void) mkobj_at(FOOD_CLASS, sx, sy, TRUE);
+			break;
 		}
 	    }
 	switch (type) {
@@ -321,7 +359,7 @@ struct mkroom *sroom;
 		  struct obj *chest;
 		  levl[tx][ty].typ = THRONE;
 		  (void) somexy(sroom, &mm);
-		  mkgold((long) rn1(50 * level_difficulty(),10), mm.x, mm.y);
+		  (void) mkgold((long) rn1(50 * level_difficulty(),10), mm.x, mm.y);
 		  chest = mksobj_at(CHEST, mm.x, mm.y, TRUE); /* the royal coffers */
 		  chest->spe = 2; /* so it can be found later */
 		  level.flags.has_court = 1;
@@ -368,7 +406,7 @@ int mm_flags;
 	level.flags.graveyard = TRUE;	/* reduced chance for undead corpse */
 }
 
-static struct permonst *
+STATIC_OVL struct permonst *
 morguemon()
 {
 	register int i = rn2(100), hd = rn2(level_difficulty());
@@ -383,7 +421,22 @@ morguemon()
 			: (i < 40) ? &mons[PM_WRAITH] : mkclass(S_ZOMBIE,0));
 }
 
-static void
+STATIC_OVL struct permonst *
+antholemon()
+{
+	int mtyp;
+
+	/* Same monsters within a level, different ones between levels */
+	switch ((level_difficulty() + ((long)u.ubirthday)) % 3) {
+	default:	mtyp = PM_GIANT_ANT; break;
+	case 0:		mtyp = PM_SOLDIER_ANT; break;
+	case 1:		mtyp = PM_FIRE_ANT; break;
+	}
+	return ((mvitals[mtyp].mvflags & G_GONE) ?
+			(struct permonst *)0 : &mons[mtyp]);
+}
+
+STATIC_OVL void
 mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 {
 	register struct mkroom *sroom;
@@ -419,7 +472,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 	}
 }
 
-static coord *
+STATIC_OVL coord *
 shrine_pos(roomno)
 int roomno;
 {
@@ -431,7 +484,7 @@ int roomno;
 	return(&buf);
 }
 
-static void
+STATIC_OVL void
 mktemple()
 {
 	register struct mkroom *sroom;
@@ -622,7 +675,7 @@ static struct {
     {PM_SOLDIER, 80}, {PM_SERGEANT, 15}, {PM_LIEUTENANT, 4}, {PM_CAPTAIN, 1}
 };
 
-static struct permonst *
+STATIC_OVL struct permonst *
 squadmon()		/* return soldier types. */
 {
 	int sel_prob, i, cpro, mndx;
@@ -648,7 +701,7 @@ gotone:
  * (if any).
  */
 
-static void
+STATIC_OVL void
 save_room(fd, r)
 int	fd;
 struct mkroom *r;
@@ -680,7 +733,7 @@ int fd;
 	    save_room(fd, &rooms[i]);
 }
 
-static void
+STATIC_OVL void
 rest_room(fd, r)
 int fd;
 struct mkroom *r;

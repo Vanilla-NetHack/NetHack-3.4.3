@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixmain.c	3.2	94/11/07	*/
+/*	SCCS Id: @(#)unixmain.c	3.3	97/01/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -91,9 +91,9 @@ char *argv[];
 
 	    /*
 	     * Now we know the directory containing 'record' and
-	     * may do a prscore().
+	     * may do a prscore().  Exclude `-style' - it's a Qt option.
 	     */
-	    if (!strncmp(argv[1], "-s", 2)) {
+	    if (!strncmp(argv[1], "-s", 2) && strncmp(argv[1], "-style", 6)) {
 #ifdef CHDIR
 		chdirx(dir,0);
 #endif
@@ -130,7 +130,6 @@ char *argv[];
 	/*
 	 * It seems you really want to play.
 	 */
-	setrandom();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
 #ifdef SIGXCPU
@@ -182,7 +181,7 @@ char *argv[];
 		Sprintf(lock, "%d%s", (int)getuid(), plname);
 		getlock();
 	}
-#endif /* WIZARD /**/
+#endif /* WIZARD */
 
 	dlb_init();	/* must be before newgame() */
 
@@ -227,7 +226,6 @@ char *argv[];
 #ifdef WIZARD
 		if(!wizard && remember_wiz_mode) wizard = TRUE;
 #endif
-		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
 		wd_message();
 
@@ -244,8 +242,6 @@ char *argv[];
 not_recovered:
 		player_selection();
 		newgame();
-		/* give welcome message before pickup messages */
-		pline("Hello %s, welcome to NetHack!", plname);
 		wd_message();
 
 		flags.move = 0;
@@ -264,6 +260,9 @@ process_options(argc, argv)
 int argc;
 char *argv[];
 {
+	int i;
+
+
 	/*
 	 * Process options.
 	 */
@@ -330,12 +329,34 @@ char *argv[];
 			if (!strncmpi(argv[0]+1, "DEC", 3))
 				switch_graphics(DEC_GRAPHICS);
 			break;
+		case 'p': /* profession (role) */
+			if (argv[0][2]) {
+			    if ((i = str2role(&argv[0][2])) >= 0)
+			    	flags.initrole = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2role(argv[0])) >= 0)
+			    	flags.initrole = i;
+			}
+			break;
+		case 'r': /* race */
+			if (argv[0][2]) {
+			    if ((i = str2race(&argv[0][2])) >= 0)
+			    	flags.initrace = i;
+			} else if (argc > 1) {
+				argc--;
+				argv++;
+			    if ((i = str2race(argv[0])) >= 0)
+			    	flags.initrace = i;
+			}
+			break;
 		default:
-			/* allow -T for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+1,
-				sizeof(pl_character)-1);
-
-			/* raw_printf("Unknown option: %s", *argv); */
+			if ((i = str2role(&argv[0][1])) >= 0) {
+			    flags.initrole = i;
+				break;
+			}
+			/* else raw_printf("Unknown option: %s", *argv); */
 		}
 	}
 
@@ -380,7 +401,7 @@ boolean wr;
 	/* unfortunately the access system-call is worthless */
 	if (wr) check_recordfile(dir);
 }
-#endif /* CHDIR /**/
+#endif /* CHDIR */
 
 static boolean
 whoami() {

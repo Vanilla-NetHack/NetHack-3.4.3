@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.h	3.2	96/08/18	*/
+/*	SCCS Id: @(#)winX.h	3.3	96/08/18	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,12 +39,12 @@ struct text_buffer {
  * Information specific to a map window.
  */
 struct text_map_info_t {
-    unsigned char   text[ROWNO][COLNO];	/* Actual displayed screen. */
+    unsigned char   text[ROWNO][COLNO]; /* Actual displayed screen. */
 #ifdef TEXTCOLOR
     unsigned char   colors[ROWNO][COLNO];	/* Color of each character. */
     GC		    color_gcs[CLR_MAX],		/* GC for each color */
 		    inv_color_gcs[CLR_MAX];	/* GC for each inverse color */
-#define copy_gc	    color_gcs[NO_COLOR]
+#define copy_gc     color_gcs[NO_COLOR]
 #define inv_copy_gc inv_color_gcs[NO_COLOR]
 #else
     GC		    copy_gc,			/* Drawing GC */
@@ -95,11 +95,11 @@ struct mesg_info_t {
     struct line_element *last_pause_head;/* pointer to head of previous */
 				/* turn					*/
     GC		gc;		/* GC for text drawing */
-    int         char_width,     /* Saved font information so we can  */
-		char_height,    /*   calculate the correct placement */
-		char_ascent,    /*   of changes.                     */
+    int		char_width,	/* Saved font information so we can  */
+		char_height,	/*   calculate the correct placement */
+		char_ascent,	/*   of changes.		     */
 		char_lbearing;
-    Dimension	viewport_width,	/* Saved viewport size, so we can adjust */
+    Dimension	viewport_width, /* Saved viewport size, so we can adjust */
 		viewport_height;/*   the slider on a resize.		 */
     Boolean	dirty;		/* Lines have been added to the window. */
 };
@@ -129,7 +129,7 @@ typedef struct x11_mi {
 struct menu {
     x11_menu_item *base;	/* Starting pointer for item list. */
     x11_menu_item *last;	/* End pointer for item list. */
-    const char    *query;	/* Query string. */
+    const char	  *query;	/* Query string. */
     const char	  *gacc;	/* Group accelerators. */
     int		  count;	/* Number of strings. */
     String	  *list_pointer;/* String list. */
@@ -147,7 +147,7 @@ struct menu_info_t {
     Dimension line_height;	/* Total height of a line of text. */
     Dimension internal_height;	/* Internal height between widget & border */
     Dimension internal_width;	/* Internal width between widget & border */
-    short how;			/* Menu mode PICK_NONE, PICK_ONE, PICK_N */
+    short how;			/* Menu mode PICK_NONE, PICK_ONE, PICK_ANY */
     boolean valid_widgets;	/* TRUE if widgets have been created. */
     boolean is_menu;		/* Has been confirmed to being a menu window. */
     boolean is_active;		/* TRUE when waiting for user input. */
@@ -166,7 +166,7 @@ struct text_info_t {
     int		extra_width,	/* Sum of left and right border widths. */
 		extra_height;	/* Sum of top and bottom border widths. */
     boolean	blocked;	/*  */
-    boolean	destroy_on_ack;	/* Destroy this window when acknowleged. */
+    boolean	destroy_on_ack; /* Destroy this window when acknowleged. */
 #ifdef GRAPHIC_TOMBSTONE
     boolean	is_rip;		/* This window needs a tombstone. */
 #endif
@@ -177,16 +177,16 @@ struct text_info_t {
  * Basic window structure.
  */
 struct xwindow {
-    int	      type;		/* type of nethack window */
+    int       type;		/* type of nethack window */
     Widget    popup;		/* direct parent of widget w or viewport */
     Widget    w;		/* the widget that does things */
     Dimension pixel_width;	/* window size, in pixels */
     Dimension pixel_height;
-    int	      prevx, cursx;	/* Cursor position, only used by    */
+    int       prevx, cursx;	/* Cursor position, only used by    */
     int       prevy, cursy;	/*   map and "plain" status windows.*/
 
     union {
-	struct map_info_t    *Map_info;	    /* map window info */
+	struct map_info_t    *Map_info;     /* map window info */
 	struct mesg_info_t   *Mesg_info;    /* message window info */
 	struct status_info_t *Status_info;  /* status window info */
 	struct menu_info_t   *Menu_info;    /* menu window info */
@@ -225,7 +225,7 @@ struct xwindow {
 
 /* Window variables (winX.c). */
 E struct xwindow window_list[MAX_WINDOWS];
-E XtAppContext   app_context;		/* context of application */
+E XtAppContext	 app_context;		/* context of application */
 E Widget	 toplevel;		/* toplevel widget */
 E Atom		 wm_delete_window;	/* delete window protocol */
 E boolean	 exit_x_event;		/* exit condition for event loop */
@@ -311,6 +311,7 @@ E void FDECL(destroy_menu_window,(struct xwindow*));
 
 /* ### winmisc.c ### */
 E void FDECL(ps_key,(Widget, XEvent*, String*, Cardinal*)); /* player selection action */
+E void FDECL(race_key,(Widget, XEvent*, String*, Cardinal*)); /* race selection action */
 E void FDECL(ec_delete, (Widget, XEvent*, String*, Cardinal*));
 E void FDECL(ec_key,(Widget, XEvent*, String*, Cardinal*)); /* extended command action */
 
@@ -333,7 +334,7 @@ E void FDECL(display_text_window,(struct xwindow*, BOOLEAN_P));
 E void FDECL(create_text_window,(struct xwindow*));
 E void FDECL(destroy_text_window,(struct xwindow*));
 E void FDECL(clear_text_window,(struct xwindow*));
-E void FDECL(append_text_buffer,(struct text_buffer*, const char*, BOOLEAN_P));	/* text buffer routines */
+E void FDECL(append_text_buffer,(struct text_buffer*, const char*, BOOLEAN_P)); /* text buffer routines */
 E void FDECL(init_text_buffer,(struct text_buffer*));
 E void FDECL(clear_text_buffer,(struct text_buffer*));
 E void FDECL(free_text_buffer,(struct text_buffer*));
@@ -344,14 +345,14 @@ E void FDECL(calculate_rip_text, (int));
 
 /* ### winval.c ### */
 E Widget FDECL(create_value,(Widget, const char*));
-E void   FDECL(set_name,(Widget, char*));
-E void   FDECL(set_name_width,(Widget, int));
-E int    FDECL(get_name_width,(Widget));
-E void   FDECL(set_value,(Widget, const char*));
-E void   FDECL(set_value_width,(Widget, int));
-E int    FDECL(get_value_width,(Widget));
-E void   FDECL(hilight_value,(Widget));
-E void   FDECL(swap_fg_bg,(Widget));
+E void	 FDECL(set_name,(Widget, char*));
+E void	 FDECL(set_name_width,(Widget, int));
+E int	 FDECL(get_name_width,(Widget));
+E void	 FDECL(set_value,(Widget, const char*));
+E void	 FDECL(set_value_width,(Widget, int));
+E int	 FDECL(get_value_width,(Widget));
+E void	 FDECL(hilight_value,(Widget));
+E void	 FDECL(swap_fg_bg,(Widget));
 
 /* external declarations */
 E void FDECL(X11_init_nhwindows, (int *, char **));

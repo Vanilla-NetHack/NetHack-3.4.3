@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dgn_main.c 3.2	94/09/23	*/
+/*	SCCS Id: @(#)dgn_main.c 3.3	94/09/23	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet	*/
 /*	Copyright (c) 1990 by M. Stephenson		*/
 /* NetHack may be freely redistributed.  See license for details. */

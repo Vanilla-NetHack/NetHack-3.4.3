@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - data files: special levels and other data.
-#	SCCS Id: @(#)Makefile.dat	3.2	96/03/23
+#	SCCS Id: @(#)Makefile.dat	3.3	1999/03/19
 
 #  Copy this file to [.dat]Makefile.; no editing needed.
 
@@ -27,10 +27,11 @@ VARDAT	= data.;,rumors.;,quest.dat;,oracles.;,options.;
 DUNGEON = dungeon.;
 X11TILES= x11tiles.;
 # note: the level lists need to be space separated
-QUESTLEVS = Arch.des Barb.des Caveman.des Elf.des Healer.des Knight.des \
-	Priest.des Rogue.des Samurai.des Tourist.des Valkyrie.des Wizard.des
+QUESTLEVS = Arch.des Barb.des Caveman.des Healer.des Knight.des \
+	Monk.des Priest.des Ranger.des Rogue.des Samurai.des Tourist.des \
+	Valkyrie.des Wizard.des
 SPECLEVS  = bigroom.des castle.des endgame.des gehennom.des knox.des \
-	medusa.des mines.des oracle.des tower.des yendor.des
+	medusa.des mines.des oracle.des sokoban.des tower.des yendor.des
 
 all :	$(VARDAT) $(DUNGEON) $(MARKERS) $(DLB)
       @ $(ECHO) "data files are up to date."

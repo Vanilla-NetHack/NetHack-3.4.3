@@ -1,4 +1,4 @@
-Building a PPC NetHack 3.2 with the Metrowerks DR7 and DR8 compilers
+Building a PPC NetHack 3.3 with the Metrowerks compilers
 
 
 You must be familiar with the Metrowerks compiler and know how to construct
@@ -34,7 +34,8 @@ default).  Later you may wish to only run a few of them.  The options are
 				-q creates :lib:quest.dat
 
 
-4. Copy the following files.  You may want to change News or NHDeflts.
+4. If you are _not_ using DLB, follow these directions.  As of v3.3, DLB is ON
+for the Mac.  Copy the following files.  You may want to change News or NHDeflts.
 
 		a. copy ':sys:mac:MacHelp' to ':lib:MacHelp'
 		b. copy ':sys:mac:News' to ':lib:News'
@@ -59,9 +60,12 @@ default).  Later you may wish to only run a few of them.  The options are
 8. Build NetHack.
 		Move NetHack in the lib directory.
 
+
 ------------------------
 
-Project Contents
+
+Building NetHack with MetroWerks IDE 1.x (DR7-DR10, DR11 was never used)
+
 
 To build NetHack, you will need to create four projects at the top level of
 the NetHack directory tree.  These four projects are MakeDefs.u, DgnComp.u,
@@ -100,6 +104,47 @@ projects can use the default preferences:
 The SIOUX library may be replaced with console.stubs.c for the NetHack
 project.
 
+NOTE: As NetHack 3.3, you must turn off OLDROUTINENAMES -- so you can't use
+the default pre-compiled header.  You should either remove it from the
+preferences or insert another precompiled header that has this define off.
+
+
+------------------------
+
+
+Building NetHack with MetroWerks IDE 2.0.
+
+This is for building a PowerPC version only.  This doesn't take advantage
+of the IDE's subprojects.  These will be investigated later.
+
+
+MakeDefs.u, DgnComp.u, LevComp.u:  Select ANSI C Console PPC.
+	Settings:
+		PPC Target
+			+ Change File Name to MakeDefs, DgnComp, or LevComp respectively.
+		C/C++ Language
+			+ Turn off ANSI strict, ANSI Keywords Only, Expand Trigraphs
+		PPC Processor
+			+ Turn on global optimization (at least to level 1)
+
+NetHack.u: Basic ToolBox PPC
+		PPC Target
+			+ Change File Name to NetHack.  Other settings
+				creator:			nh31
+				preferred heap size:2500
+				minimum heap size:	2000
+				stack size:			128		[PPC only]
+		C/C++ Language
+			+ Options ANSI strict, ANSI Keywords Only, Expand Trigraphs
+			  are already turned off, so you don't have to do anything.
+		PPC Processor
+			+ Turn on global optimization (at least to level 1)
+
+
+------------------------
+
+
+Project Contents:
 
 MakeDefs.u should contain the following source files:
 
@@ -141,19 +186,20 @@ LevComp.u should contain the following source files:
 		panic.c
 	
 
-
 NetHack.u should contain the following source files:
 
 	src
 		*.c			[can do an add all]
 	sys:mac
-		*.c	except mrecover.c and mhdump.c
+		*.c	except mrecover.c
 		NetHack.rsrc
 		Sound.rsrc	[if you wish to have a few, crude sounds]
+		Files.r		[if you use DLB (on by default)]
 	sys:share
 		random.c
 	win:tty
 		*.c			[can do an add all - termcap.c is not needed, but will compile to nothing]
 
-	Note: src:monstr.c and src:vis_tab.c are created MakeDefs -m and -s
+	Note: src:monstr.c and src:vis_tab.c are created by MakeDefs -m and -s
 	respectively.
+

@@ -763,7 +763,7 @@ long rc;
 # endif
     if( fault == 1 )
     {
-/*  __emit(0x4afc);     /* illegal instruction */
+/*  __emit(0x4afc); */    /* illegal instruction */
     __emit(0x40fc);     /* divide by */
     __emit(0x0000);     /*  #0  */
       /* NOTE: don't move amii_cleanup() above here - */

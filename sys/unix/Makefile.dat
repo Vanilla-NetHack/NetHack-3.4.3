@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.dat	3.2	92/09/18
+#	SCCS Id: @(#)Makefile.dat	3.3	92/09/18
 
 VARDAT = data rumors quest.dat oracles options
 
@@ -48,7 +48,7 @@ options:	../util/makedefs
 
 spec_levs: ../util/lev_comp \
 	bigroom.des castle.des endgame.des gehennom.des knox.des medusa.des \
-	mines.des oracle.des tower.des yendor.des
+	mines.des oracle.des sokoban.des tower.des yendor.des
 	../util/lev_comp bigroom.des
 	../util/lev_comp castle.des
 	../util/lev_comp endgame.des
@@ -57,20 +57,23 @@ spec_levs: ../util/lev_comp \
 	../util/lev_comp medusa.des
 	../util/lev_comp mines.des
 	../util/lev_comp oracle.des
+	../util/lev_comp sokoban.des
 	../util/lev_comp tower.des
 	../util/lev_comp yendor.des
 	touch spec_levs
 
 quest_levs: ../util/lev_comp \
-	Arch.des Barb.des Caveman.des Elf.des Healer.des Knight.des \
-	Priest.des Rogue.des Samurai.des Tourist.des Valkyrie.des Wizard.des
+	Arch.des Barb.des Caveman.des Healer.des Knight.des Monk.des \
+	Priest.des Ranger.des Rogue.des Samurai.des Tourist.des Valkyrie.des \
+	Wizard.des
 	../util/lev_comp Arch.des
 	../util/lev_comp Barb.des
 	../util/lev_comp Caveman.des
-	../util/lev_comp Elf.des
 	../util/lev_comp Healer.des
 	../util/lev_comp Knight.des
+	../util/lev_comp Monk.des
 	../util/lev_comp Priest.des
+	../util/lev_comp Ranger.des
 	../util/lev_comp Rogue.des
 	../util/lev_comp Samurai.des
 	../util/lev_comp Tourist.des

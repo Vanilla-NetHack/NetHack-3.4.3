@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worm.c	3.2	95/01/28	*/
+/*	SCCS Id: @(#)worm.c	3.3	95/01/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,10 +14,10 @@ struct wseg {
     xchar  wx, wy;	/* the segment's position */
 };
 
-static void FDECL(toss_wsegs, (struct wseg *,BOOLEAN_P));
-static void FDECL(shrink_worm, (int));
-static void FDECL(random_dir, (XCHAR_P,XCHAR_P,xchar *,xchar *));
-static struct wseg *FDECL(create_worm_tail, (int));
+STATIC_DCL void FDECL(toss_wsegs, (struct wseg *,BOOLEAN_P));
+STATIC_DCL void FDECL(shrink_worm, (int));
+STATIC_DCL void FDECL(random_dir, (XCHAR_P,XCHAR_P,xchar *,xchar *));
+STATIC_DCL struct wseg *FDECL(create_worm_tail, (int));
 
 /*  Description of long worm implementation.
  *
@@ -115,7 +115,7 @@ initworm(worm, wseg_count)
     register struct wseg *seg, *new_tail = create_worm_tail(wseg_count);
     register int wnum = worm->wormno;
 
-/*  if (!wnum) return; /* bullet proofing */
+/*  if (!wnum) return;  bullet proofing */
 
     if (new_tail) {
 	wtails[wnum] = new_tail;
@@ -137,7 +137,7 @@ initworm(worm, wseg_count)
  *  Get rid of all worm segments on and following the given pointer curr.
  *  The display may or may not need to be updated as we free the segments.
  */
-static
+STATIC_OVL
 void
 toss_wsegs(curr, display_update)
     register struct wseg *curr;
@@ -170,7 +170,7 @@ toss_wsegs(curr, display_update)
  *
  *  Remove the tail segment of the worm (the starting segment of the list).
  */
-static
+STATIC_OVL
 void
 shrink_worm(wnum)
     int wnum;	/* worm number */
@@ -200,7 +200,7 @@ worm_move(worm)
     register int	 wnum = worm->wormno;	/* worm number */
 
 
-/*  if (!wnum) return; /* bullet proofing */
+/*  if (!wnum) return;  bullet proofing */
 
     /*
      *  Place a segment at the old worm head.  The head has already moved.
@@ -265,7 +265,7 @@ wormgone(worm)
 {
     register int wnum = worm->wormno;
 
-/*  if (!wnum) return; /* bullet proofing */
+/*  if (!wnum) return;  bullet proofing */
 
     worm->wormno = 0;
 
@@ -291,7 +291,7 @@ wormhitu(worm)
     register int wnum = worm->wormno;
     register struct wseg *seg;
 
-/*  if (!wnum) return; /* bullet proofing */
+/*  if (!wnum) return;  bullet proofing */
 
 /*  This does not work right now because mattacku() thinks that the head is
  *  out of range of the player.  We might try to kludge, and bring the head
@@ -442,7 +442,7 @@ see_wsegs(worm)
 {
     struct wseg *curr = wtails[worm->wormno];
 
-/*  if (!mtmp->wormno) return; /* bullet proofing */
+/*  if (!mtmp->wormno) return;  bullet proofing */
 
     while (curr != wheads[worm->wormno]) {
 	newsym(curr->wx,curr->wy);
@@ -542,7 +542,7 @@ place_wsegs(worm)
 {
     struct wseg *curr = wtails[worm->wormno];
 
-/*  if (!mtmp->wormno) return; /* bullet proofing */
+/*  if (!mtmp->wormno) return;  bullet proofing */
 
     while (curr != wheads[worm->wormno]) {
 	place_worm_seg(worm,curr->wx,curr->wy);
@@ -564,7 +564,7 @@ remove_worm(worm)
 {
     register struct wseg *curr = wtails[worm->wormno];
 
-/*  if (!mtmp->wormno) return; /* bullet proofing */
+/*  if (!mtmp->wormno) return;  bullet proofing */
 
     while (curr) {
 	remove_monster(curr->wx, curr->wy);
@@ -592,7 +592,7 @@ place_worm_tail_randomly(worm, x, y)
     struct wseg *new_tail;
     register xchar ox = x, oy = y;
 
-/*  if (!wnum) return; /* bullet proofing */
+/*  if (!wnum) return;  bullet proofing */
 
     if (wnum && (!wtails[wnum] || !wheads[wnum]) ) {
 	impossible("place_worm_tail_randomly: wormno is set without a tail!");
@@ -613,7 +613,7 @@ place_worm_tail_randomly(worm, x, y)
 
 	do {
 	    random_dir(ox, oy, &nx, &ny);
-	} while (!goodpos(nx, ny, worm, worm->data) && (tryct++ < 50));
+	} while (!goodpos(nx, ny, worm) && (tryct++ < 50));
 
 	if (tryct < 50)  {
 	    place_worm_seg(worm, nx, ny);
@@ -638,7 +638,7 @@ place_worm_tail_randomly(worm, x, y)
  * This function, and the loop it serves, could be eliminated by coding
  * enexto() with a search radius.
  */
-static
+STATIC_OVL
 void
 random_dir(x, y, nx, ny)
     register xchar   x,   y;
@@ -681,7 +681,7 @@ count_wsegs(mtmp)
     register int i=0;
     register struct wseg *curr = (wtails[mtmp->wormno])->nseg;
 
-/*  if (!mtmp->wormno) return 0; /* bullet proofing */
+/*  if (!mtmp->wormno) return 0;  bullet proofing */
 
     while (curr) {
 	i++;
@@ -695,7 +695,7 @@ count_wsegs(mtmp)
  *
  *  will create a worm tail chain of (num_segs + 1) and return a pointer to it.
  */
-static
+STATIC_OVL
 struct wseg *
 create_worm_tail(num_segs)
     int num_segs;
@@ -732,7 +732,7 @@ boolean
 worm_known(worm)
 struct monst *worm;
 {
-    struct wseg *curr = (wtails[worm->wormno])->nseg;
+    struct wseg *curr = wtails[worm->wormno];
 
     while (curr) {
 	if(cansee(curr->wx,curr->wy)) return TRUE;

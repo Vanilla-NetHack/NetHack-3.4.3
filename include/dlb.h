@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dlb.h	3.2	94/12/30	*/
+/*	SCCS Id: @(#)dlb.h	3.3	97/07/29	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,8 +8,16 @@
 
 #ifdef DLB
 
+/* implementations */
+#ifdef MAC
+# define DLBRSRC	/* use Mac resources */
+#else
+# define DLBLIB		/* use a set of external files */
+#endif
+
+#ifdef DLBLIB
 /* directory structure in memory */
-typedef struct {
+typedef struct dlb_directory {
     char *fname;	/* file name as seen from calling code */
     long foffset;	/* offset in lib file to start of this file */
     long fsize;		/* file size */
@@ -17,7 +25,7 @@ typedef struct {
 } libdir;
 
 /* information about each open library */
-typedef struct {
+typedef struct dlb_library {
     FILE *fdata;	/* opened data file */
     long fmark;		/* current file mark */
     libdir *dir;	/* directory of library file */
@@ -27,32 +35,64 @@ typedef struct {
     long strsize;	/* dlb file string size */
 } library;
 
-typedef struct {
-    FILE *fp;		/* pointer to an external file, use if non-null */
-    library *lib;	/* pointer to library structure */
-    long start;		/* offset of start of file */
-    long size;		/* size of file */
-    long mark;		/* current file marker */
-} dlb;
-
-boolean NDECL(dlb_init);
-void NDECL(dlb_cleanup);
-
-dlb *FDECL(dlb_fopen,(const char *, const char *));
-int FDECL(dlb_fclose,(dlb *));
-int FDECL(dlb_fread,(char *, int, int, dlb *));
-int FDECL(dlb_fseek,(dlb *, long, int));
-char *FDECL(dlb_fgets,(char *, int, dlb *));
-int FDECL(dlb_fgetc,(dlb *));
-long FDECL(dlb_ftell,(dlb *));
-
-/* data librarian definitions */
+/* library definitions */
 # ifndef DLBFILE
 #  define DLBFILE	"nhdat"			/* name of library */
 # endif
 # ifndef FILENAME_CMP
 #  define FILENAME_CMP	strcmp			/* case sensitive */
 # endif
+
+#endif /* DLBLIB */
+
+
+typedef struct dlb_handle {
+    FILE *fp;		/* pointer to an external file, use if non-null */
+#ifdef DLBLIB
+    library *lib;	/* pointer to library structure */
+    long start;		/* offset of start of file */
+    long size;		/* size of file */
+    long mark;		/* current file marker */
+#endif
+#ifdef DLBRSRC
+    int fd;		/* HandleFile file descriptor */
+#endif
+} dlb;
+
+#if defined(ULTRIX_PROTO) && !defined(__STDC__)
+ /* buggy old Ultrix compiler wants this for the (*dlb_fread_proc)
+    and (*dlb_fgets_proc) prototypes in struct dlb_procs (dlb.c);
+    we'll use it in all the declarations for consistency */
+#define DLB_P struct dlb_handle *
+#else
+#define DLB_P dlb *
+#endif
+
+boolean NDECL(dlb_init);
+void NDECL(dlb_cleanup);
+
+dlb *FDECL(dlb_fopen, (const char *,const char *));
+int FDECL(dlb_fclose, (DLB_P));
+int FDECL(dlb_fread, (char *,int,int,DLB_P));
+int FDECL(dlb_fseek, (DLB_P,long,int));
+char *FDECL(dlb_fgets, (char *,int,DLB_P));
+int FDECL(dlb_fgetc, (DLB_P));
+long FDECL(dlb_ftell, (DLB_P));
+
+
+/* Resource DLB entry points */
+#ifdef DLBRSRC
+	boolean rsrc_dlb_init(void);
+	void rsrc_dlb_cleanup(void);
+	boolean rsrc_dlb_fopen(dlb *dp, const char *name, const char *mode);
+	int rsrc_dlb_fclose(dlb *dp);
+	int rsrc_dlb_fread(char *buf, int size, int quan, dlb *dp);
+	int rsrc_dlb_fseek(dlb *dp, long pos, int whence);
+	char *rsrc_dlb_fgets(char *buf, int len, dlb *dp);
+	int rsrc_dlb_fgetc(dlb *dp);
+	long rsrc_dlb_ftell(dlb *dp);
+#endif
+
 
 #else /* DLB */
 

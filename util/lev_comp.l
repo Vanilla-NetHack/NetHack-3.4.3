@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.2	96/05/16	*/
+/*	SCCS Id: @(#)lev_lex.c	3.3	96/05/16	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -99,7 +99,7 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 %}
 %e 1500
 %p 5000
-%n 600
+%n 700
 %s MAPC
 %%
 <MAPC>ENDMAP	{
@@ -110,7 +110,7 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 		  map_cnt = 0;
 		  return MAP_ID;
 		}
-<MAPC>[-|}{+ABCISHKPLW\\#. ]*\n	{
+<MAPC>[-|}{+ABCISHKPLWTF\\#. ]*\n	{
 		  line_number++;
 		  (void) strncpy(map + map_cnt, yytext, yyleng);
 		  map_cnt += yyleng;
@@ -213,6 +213,7 @@ contained	{ return CONTAINED; }
 noteleport	{ yylval.i=NOTELEPORT; return FLAG_TYPE; }
 hardfloor	{ yylval.i=HARDFLOOR; return FLAG_TYPE; }
 nommap		{ yylval.i=NOMMAP; return FLAG_TYPE; }
+arboreal	{ yylval.i=ARBOREAL; return FLAG_TYPE; }	/* KMH */
 shortsighted	{ yylval.i=SHORTSIGHTED; return FLAG_TYPE; }
 \[\ *[0-9]+\%\ *\] { yylval.i = atoi(yytext + 1); return PERCENT; }
 [+\-]?[0-9]+	{ yylval.i=atoi(yytext); return INTEGER; }

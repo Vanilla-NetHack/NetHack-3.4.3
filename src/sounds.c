@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sounds.c	3.2	96/05/04	*/
+/*	SCCS Id: @(#)sounds.c	3.3	97/05/25	*/
 /*	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -68,7 +68,7 @@ dosounds()
 		"Queen Beruthiel's cats!",
 	};
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if ((mtmp->msleep ||
+	    if ((mtmp->msleeping ||
 			is_lord(mtmp->data) || is_prince(mtmp->data)) &&
 		!is_animal(mtmp->data) &&
 		mon_in_room(mtmp, COURT)) {
@@ -188,7 +188,7 @@ dosounds()
 #endif
 		mon_in_room(mtmp, BARRACKS) &&
 		/* sleeping implies not-yet-disturbed (usually) */
-		(mtmp->msleep || ++count > 5)) {
+		(mtmp->msleeping || ++count > 5)) {
 		You_hear(barracks_msg[rn2(3)+hallu]);
 		return;
 	    }
@@ -200,8 +200,8 @@ dosounds()
 		"Doctor Doolittle!",
 	};
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if ((mtmp->msleep || is_animal(mtmp->data)) &&
-		mon_in_room(mtmp, ZOO)) {
+	    if ((mtmp->msleeping || is_animal(mtmp->data)) &&
+		    mon_in_room(mtmp, ZOO)) {
 		You_hear(zoo_msg[rn2(2)+hallu]);
 		return;
 	    }
@@ -300,7 +300,8 @@ register struct monst *mtmp;
 {
     register const char *growl_verb = 0;
 
-    if (mtmp->msleep || !mtmp->mcanmove || !mtmp->data->msound) return;
+    if (mtmp->msleeping || !mtmp->mcanmove || !mtmp->data->msound)
+	return;
 
     /* presumably nearness and soundok checks have already been made */
     if (Hallucination)
@@ -321,7 +322,8 @@ register struct monst *mtmp;
 {
     register const char *yelp_verb = 0;
 
-    if (mtmp->msleep || !mtmp->mcanmove || !mtmp->data->msound) return;
+    if (mtmp->msleeping || !mtmp->mcanmove || !mtmp->data->msound)
+	return;
 
     /* presumably nearness and soundok checks have already been made */
     if (Hallucination)
@@ -361,7 +363,8 @@ register struct monst *mtmp;
 {
     register const char *whimper_verb = 0;
 
-    if (mtmp->msleep || !mtmp->mcanmove || !mtmp->data->msound) return;
+    if (mtmp->msleeping || !mtmp->mcanmove || !mtmp->data->msound)
+	return;
 
     /* presumably nearness and soundok checks have already been made */
     if (Hallucination)
@@ -390,13 +393,18 @@ void
 beg(mtmp)
 register struct monst *mtmp;
 {
-    if (mtmp->msleep || !mtmp->mcanmove ||
-	!(carnivorous(mtmp->data) || herbivorous(mtmp->data))) return;
+    if (mtmp->msleeping || !mtmp->mcanmove ||
+	    !(carnivorous(mtmp->data) || herbivorous(mtmp->data)))
+	return;
+
     /* presumably nearness and soundok checks have already been made */
     if (mtmp->data->msound != MS_SILENT && mtmp->data->msound <= MS_ANIMAL)
 	(void) domonnoise(mtmp);
-    else if (mtmp->data->msound >= MS_HUMANOID)
+    else if (mtmp->data->msound >= MS_HUMANOID) {
+	if (!canspotmon(mtmp))
+	    map_invisible(mtmp->mx, mtmp->my);
 	verbalize("I'm hungry.");
+    }
 }
 
 static int
@@ -425,7 +433,10 @@ register struct monst *mtmp;
 	    shk_chat(mtmp);
 	    break;
 	case MS_VAMPIRE:
-	    /* [bug: vampire case missing here] */
+	    if (mtmp->mpeaceful)
+	    	verbl_msg = "I only drink... potions.";
+	    else
+	    	verbl_msg = "I vant to suck your blood!";
 	    break;
 	case MS_WERE:
 	    if (flags.moonphase == FULL_MOON && (night() ^ !rn2(13))) {
@@ -438,7 +449,7 @@ register struct monst *mtmp;
 		     "whispers inaudibly.  All you can make out is \"moon\".";
 	    break;
 	case MS_SILENT:
-	    break;
+	    return 0;
 	case MS_BARK:
 	    if (flags.moonphase == FULL_MOON && night()) {
 		pline_msg = "howls.";
@@ -478,7 +489,10 @@ register struct monst *mtmp;
 	    pline_msg = "squeaks.";
 	    break;
 	case MS_SQAWK:
-	    pline_msg = "squawks.";
+	    if (mtmp->data == &mons[PM_RAVEN] && !mtmp->mpeaceful)
+	    	verbl_msg = "Nevermore!";
+	    else
+	    	pline_msg = "squawks.";
 	    break;
 	case MS_HISS:
 	    if (!mtmp->mpeaceful)
@@ -532,9 +546,14 @@ register struct monst *mtmp;
 	    pline_msg = "mumbles incomprehensibly.";
 	    break;
 	case MS_DJINNI:
-	    if (mtmp->mtame) verbl_msg = "Thank you for freeing me!";
-	    else if (mtmp->mpeaceful) verbl_msg = "I'm free!";
-	    else verbl_msg = "This will teach you not to disturb me!";
+	    if (mtmp->mtame) {
+		verbl_msg = "Sorry, I'm all out of wishes.";
+	    } else if (mtmp->mpeaceful) {
+		if (ptr == &mons[PM_WATER_DEMON])
+		    pline_msg = "gurgles.";
+		else
+		    verbl_msg = "I'm free!";
+	    } else verbl_msg = "This will teach you not to disturb me!";
 	    break;
 	case MS_BOAST:	/* giants */
 	    if (!mtmp->mpeaceful) {
@@ -556,9 +575,7 @@ register struct monst *mtmp;
 		if (In_endgame(&u.uz) && is_mplayer(ptr)) {
 		    mplayer_talk(mtmp);
 		    break;
-		} else {
-		    return 0;	/* no sound */
-		}
+		} else return 0;	/* no sound */
 	    }
 	    /* Generic peaceful humanoid behaviour. */
 	    if (mtmp->mflee)
@@ -657,7 +674,7 @@ register struct monst *mtmp;
 	    if (uwep && (uwep->oclass == WEAPON_CLASS || is_weptool(uwep)))
 		verbl_msg = "Put that weapon away before you hurt someone!";
 	    else if (uarmc || uarm || uarmh || uarms || uarmg || uarmf)
-		verbl_msg = Role_is('H') ?
+		verbl_msg = Role_if(PM_HEALER) ?
 			  "Doc, I can't help you unless you cooperate." :
 			  "Please undress so I can examine you.";
 #ifdef TOURIST
@@ -688,12 +705,14 @@ register struct monst *mtmp;
 	    }
 	    break;
 	case MS_RIDER:
-	    if (ptr == &mons[PM_DEATH] && mtmp->mpeaceful)
-		pline_msg = "is busy reading a copy of Sandman #9.";
+	    if (ptr == &mons[PM_DEATH] && !rn2(10))
+		pline_msg = "is busy reading a copy of Sandman #8.";
 	    else verbl_msg = "Who do you think you are, War?";
 	    break;
     }
 
+    if (!canspotmon(mtmp))
+	map_invisible(mtmp->mx, mtmp->my);
     if (pline_msg) pline("%s %s", Monnam(mtmp), pline_msg);
     else if (verbl_msg) verbalize(verbl_msg);
     return(1);
@@ -718,8 +737,8 @@ dochat()
     register int tx,ty;
     struct obj *otmp;
 
-    if (uasmon->msound == MS_SILENT) {
-	pline("As %s, you cannot speak.", an(uasmon->mname));
+    if (youmonst.data->msound == MS_SILENT) {
+	pline("As %s, you cannot speak.", an(youmonst.data->mname));
 	return(0);
     }
     if (Strangled) {
@@ -770,19 +789,24 @@ dochat()
 
     tx = u.ux+u.dx; ty = u.uy+u.dy;
     mtmp = m_at(tx, ty);
-    if ((Blind && !Telepat) || !mtmp || mtmp->mundetected ||
+
+    if (!mtmp || mtmp->mundetected ||
 		mtmp->m_ap_type == M_AP_FURNITURE ||
-		mtmp->m_ap_type == M_AP_OBJECT) {
-	pline("I see nobody there.");
+		mtmp->m_ap_type == M_AP_OBJECT)
 	return(0);
-    }
+
     /* sleeping monsters won't talk, except priests (who wake up) */
-    if ((!mtmp->mcanmove || mtmp->msleep) && !mtmp->ispriest) {
-	pline("%s seems not to notice you.", Monnam(mtmp));
+    if ((!mtmp->mcanmove || mtmp->msleeping) && !mtmp->ispriest) {
+	/* If it is unseen, the player can't tell the difference between
+	   not noticing him and just not existing, so skip the message. */
+	if (canspotmon(mtmp))
+	    pline("%s seems not to notice you.", Monnam(mtmp));
 	return(0);
     }
 
     if (mtmp->mtame && mtmp->meating) {
+	if (!canspotmon(mtmp))
+	    map_invisible(mtmp->mx, mtmp->my);
 	pline("%s is eating noisily.", Monnam(mtmp));
 	return (0);
     }

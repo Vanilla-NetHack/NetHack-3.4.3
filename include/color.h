@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)color.h	3.2	92/02/02	*/
+/*	SCCS Id: @(#)color.h	3.3	92/02/02	*/
 /* Copyright (c) Steve Linhart, Eric Raymond, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 /*
  * The color scheme used is tailored for an IBM PC.  It consists of the
  * standard 8 colors, folowed by their bright counterparts.  There are
- * exceptions, these are listed below.  Bright black doesn't mean very
+ * exceptions, these are listed below.	Bright black doesn't mean very
  * much, so it is used as the "default" foreground color of the screen.
  */
 #define CLR_BLACK		0

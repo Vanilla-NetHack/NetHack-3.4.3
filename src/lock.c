@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.2	96/05/31	*/
+/*	SCCS Id: @(#)lock.c	3.3	96/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,9 +16,9 @@ STATIC_VAR NEARDATA struct xlock_s {
 
 #ifdef OVLB
 
-static const char *NDECL(lock_action);
-static boolean FDECL(obstructed,(int,int));
-static void FDECL(chest_shatter_msg, (struct obj *));
+STATIC_DCL const char *NDECL(lock_action);
+STATIC_DCL boolean FDECL(obstructed,(int,int));
+STATIC_DCL void FDECL(chest_shatter_msg, (struct obj *));
 
 boolean
 picking_lock(x, y)
@@ -42,7 +42,7 @@ int x, y;
 }
 
 /* produce an occupation string appropriate for the current activity */
-static const char *
+STATIC_OVL const char *
 lock_action()
 {
 	/* "unlocking"+2 == "locking" */
@@ -97,7 +97,7 @@ picklock()	/* try to open/close a lock */
 	    }
 	}
 
-	if (xlock.usedtime++ >= 50 || nohands(uasmon)) {
+	if (xlock.usedtime++ >= 50 || nohands(youmonst.data)) {
 	    You("give up your attempt at %s.", lock_action());
 	    exercise(A_DEX, TRUE);	/* even if you don't succeed */
 	    return((xlock.usedtime = 0));
@@ -136,7 +136,7 @@ forcelock()	/* try to force a locked chest */
 	if((xlock.box->ox != u.ux) || (xlock.box->oy != u.uy))
 		return((xlock.usedtime = 0));		/* you or it moved */
 
-	if (xlock.usedtime++ >= 50 || !uwep || nohands(uasmon)) {
+	if (xlock.usedtime++ >= 50 || !uwep || nohands(youmonst.data)) {
 	    You("give up your attempt to force the lock.");
 	    if(xlock.usedtime >= 50)		/* you made the effort */
 	      exercise((xlock.picktyp) ? A_DEX : A_STR, TRUE);
@@ -145,7 +145,7 @@ forcelock()	/* try to force a locked chest */
 
 	if(xlock.picktyp) {	/* blade */
 
-	    if(rn2(1000-(int)uwep->spe) > (992-(int)uwep->oeroded*10) &&
+	    if(rn2(1000-(int)uwep->spe) > (992-greatest_erosion(uwep)*10) &&
 	       !uwep->cursed && !obj_resists(uwep, 0, 99)) {
 		/* for a +0 weapon, probability that it survives an unsuccessful
 		 * attempt to force the lock is (.992)^50 = .67
@@ -237,7 +237,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	if (xlock.usedtime && picktyp == xlock.picktyp) {
 	    static char no_longer[] = "Unfortunately, you can no longer %s %s.";
 
-	    if (nohands(uasmon)) {
+	    if (nohands(youmonst.data)) {
 		const char *what = (picktyp == LOCK_PICK) ? "pick" : "key";
 #ifdef TOURIST
 		if (picktyp == CREDIT_CARD) what = "card";
@@ -257,7 +257,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	    }
 	}
 
-	if(nohands(uasmon)) {
+	if(nohands(youmonst.data)) {
 		You_cant("hold %s -- you have no hands!", doname(pick));
 		return(0);
 	}
@@ -328,11 +328,11 @@ pick_lock(pick) /* pick a lock with a given object */
 		    switch(picktyp) {
 #ifdef TOURIST
 			case CREDIT_CARD:
-			    ch = ACURR(A_DEX) + 20*Role_is('R');
+			    ch = ACURR(A_DEX) + 20*Role_if(PM_ROGUE);
 			    break;
 #endif
 			case LOCK_PICK:
-			    ch = 4*ACURR(A_DEX) + 25*Role_is('R');
+			    ch = 4*ACURR(A_DEX) + 25*Role_if(PM_ROGUE);
 			    break;
 			case SKELETON_KEY:
 			    ch = 75 + ACURR(A_DEX);
@@ -404,11 +404,11 @@ pick_lock(pick) /* pick a lock with a given object */
 		    switch(picktyp) {
 #ifdef TOURIST
 			case CREDIT_CARD:
-			    ch = 2*ACURR(A_DEX) + 20*Role_is('R');
+			    ch = 2*ACURR(A_DEX) + 20*Role_if(PM_ROGUE);
 			    break;
 #endif
 			case LOCK_PICK:
-			    ch = 3*ACURR(A_DEX) + 30*Role_is('R');
+			    ch = 3*ACURR(A_DEX) + 30*Role_if(PM_ROGUE);
 			    break;
 			case SKELETON_KEY:
 			    ch = 70 + ACURR(A_DEX);
@@ -437,11 +437,9 @@ doforce()		/* try to force a chest with your weapon */
 	if(!uwep ||	/* proper type test */
 	   (uwep->oclass != WEAPON_CLASS && !is_weptool(uwep) &&
 	    uwep->oclass != ROCK_CLASS) ||
-	   (uwep->oclass != ROCK_CLASS &&
-	    (objects[uwep->otyp].oc_wepcat == WEP_BOW ||
-	     objects[uwep->otyp].oc_wepcat == WEP_AMMO ||
-	     objects[uwep->otyp].oc_wepcat == WEP_MISSILE))
-	   || (uwep->otyp > QUARTERSTAFF && uwep->otyp < BULLWHIP)
+	   (objects[uwep->otyp].oc_skill < P_DAGGER) ||
+	   (objects[uwep->otyp].oc_skill > P_LANCE) ||
+	   uwep->otyp == FLAIL || uwep->otyp == AKLYS
 #ifdef KOPS
 	   || uwep->otyp == RUBBER_HOSE
 #endif
@@ -496,6 +494,11 @@ doopen()		/* try to open a door */
 	register struct rm *door;
 	struct monst *mtmp;
 
+	if (nohands(youmonst.data)) {
+	    You_cant("open anything -- you have no hands!");
+	    return 0;
+	}
+
 	if (u.utrap && u.utraptype == TT_PIT) {
 	    You_cant("reach over the edge of the pit.");
 	    return 0;
@@ -543,7 +546,7 @@ doopen()		/* try to open a door */
 	    return(0);
 	}
 
-	if(verysmall(uasmon)) {
+	if(verysmall(youmonst.data)) {
 	    pline("You're too small to pull the door open.");
 	    return(0);
 	}
@@ -570,7 +573,7 @@ doopen()		/* try to open a door */
 	return(1);
 }
 
-static
+STATIC_OVL
 boolean
 obstructed(x,y)
 register int x, y;
@@ -596,6 +599,11 @@ doclose()		/* try to close a door */
 	register int x, y;
 	register struct rm *door;
 	struct monst *mtmp;
+
+	if (nohands(youmonst.data)) {
+	    You_cant("close anything -- you have no hands!");
+	    return 0;
+	}
 
 	if (u.utrap && u.utraptype == TT_PIT) {
 	    You_cant("reach over the edge of the pit.");
@@ -650,11 +658,19 @@ doclose()		/* try to close a door */
 	}
 
 	if(door->doormask == D_ISOPEN) {
-	    if(verysmall(uasmon)) {
+	    if(verysmall(youmonst.data)
+#ifdef STEED
+		&& !u.usteed
+#endif
+		) {
 		 pline("You're too small to push the door closed.");
 		 return(0);
 	    }
-	    if (rn2(25) < (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3) {
+	    if (
+#ifdef STEED
+		 u.usteed ||
+#endif
+		rn2(25) < (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3) {
 		pline_The("door closes.");
 		door->doormask = D_CLOSED;
 		if (Blind)
@@ -847,7 +863,7 @@ int x, y;
 	return res;
 }
 
-static void
+STATIC_OVL void
 chest_shatter_msg(otmp)
 struct obj *otmp;
 {
