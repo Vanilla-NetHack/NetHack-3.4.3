@@ -438,10 +438,10 @@ read_config_file()
 			append_slash(SAVEF);
 
 		} else if (!strncmp(buf, "GRAPHICS", 4)) {
-			unsigned int translate[MAXPCHARS];
-			int i;
+			unsigned int translate[MAXPCHARS+1];
+			int lth;
 
-		     if ((i = sscanf(bufp,
+		     if ((lth = sscanf(bufp,
 		     "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
@@ -457,50 +457,7 @@ read_config_file()
 					cprintf("Syntax error in GRAPHICS\n");
 					getreturn("to continue");
 			}
-#define SETPCHAR(f, n)	showsyms.f = (i > n) ? translate[n] : defsyms.f
-			SETPCHAR(stone, 0);
-			SETPCHAR(vwall, 1);
-			SETPCHAR(hwall, 2);
-			SETPCHAR(tlcorn, 3);
-			SETPCHAR(trcorn, 4);
-			SETPCHAR(blcorn, 5);
-			SETPCHAR(brcorn, 6);
-			SETPCHAR(crwall, 7);
-			SETPCHAR(tuwall, 8);
-			SETPCHAR(tdwall, 9);
-			SETPCHAR(tlwall, 10);
-			SETPCHAR(trwall, 11);
-			SETPCHAR(vbeam, 12);
-			SETPCHAR(hbeam, 13);
-			SETPCHAR(lslant, 14);
-			SETPCHAR(rslant, 15);
-			SETPCHAR(door, 16);
-			SETPCHAR(room, 17);
-			SETPCHAR(corr, 18);
-			SETPCHAR(upstair, 19);
-			SETPCHAR(dnstair, 20);
-			SETPCHAR(trap, 21);
-			SETPCHAR(web, 22);
-			SETPCHAR(pool, 23);
-#ifdef FOUNTAINS
-			SETPCHAR(fountain, 24);
-#endif
-#ifdef SINKS
-			SETPCHAR(sink, 25);
-#endif
-#ifdef THRONES
-			SETPCHAR(throne, 26);
-#endif
-#ifdef ALTARS
-			SETPCHAR(altar, 27);
-#endif
-#ifdef STRONGHOLD
-			SETPCHAR(upladder, 28);
-			SETPCHAR(dnladder, 29);
-			SETPCHAR(dbvwall, 30);
-			SETPCHAR(dbhwall, 31);
-#endif
-#undef SETPCHAR
+			assign_graphics(translate, lth);
 		} else {
 			cprintf("Bad option line: '%s'\n", buf);
 			getreturn("to continue");

@@ -3,9 +3,15 @@
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define LEV_LEX_C
+
 #include "hack.h"
 #include "lev_comp.h"
 #include "sp_lev.h"
+
+#ifdef MSDOS
+#undef exit
+#endif
 
 int line_number = 1;
 
@@ -23,9 +29,9 @@ int line_number = 1;
 MAZE		return MAZE_ID;
 LEVEL		return LEVEL_ID;
 GEOMETRY	return GEOMETRY_ID;
-^MAP$		{ BEGIN MAPC; }
+^MAP\n		{ BEGIN MAPC; }
 <MAPC>[-|}{+SK\\#. ]*\n	{ line_number++; yymore(); }	
-<MAPC>ENDMAP$	{ BEGIN 0;
+<MAPC>ENDMAP\n	{ BEGIN 0;
 		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
 		  yylval.map = (char *) alloc(strlen(yytext)+1);
 		  strcpy(yylval.map, yytext+1);

@@ -219,14 +219,14 @@ register int fd;
 	mread(fd, (genericptr_t) bases, sizeof bases);
 	mread(fd, (genericptr_t) disco, sizeof disco);
 	mread(fd, (genericptr_t) objects, sizeof(struct objclass) * TOTAL_OBJS);
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(M_XENIX)
 	differ = (genericptr_t)&objects[0] - (genericptr_t)then;
 #else
 	differ = (long)&objects[0] - (long)then;
 #endif
 	for(i=0; i < TOTAL_OBJS; i++) {
 		if (objects[i].oc_name) {
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(M_XENIX)
 			objects[i].oc_name += differ;
 #else
 			objects[i].oc_name =
@@ -234,7 +234,7 @@ register int fd;
 #endif
 		}
 		if (objects[i].oc_descr) {
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(M_XENIX)
 			objects[i].oc_descr += differ;
 #else
 			objects[i].oc_descr =

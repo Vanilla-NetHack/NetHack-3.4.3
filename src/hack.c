@@ -78,7 +78,6 @@ moverock() {
 	register struct obj *otmp;
 	register struct trap *ttmp;
 	register struct	monst *mtmp;
-	xchar oldrx, oldry;
 
 #ifdef POLYSELF
 	if (passes_walls(uasmon)) return 0;
@@ -150,12 +149,7 @@ moverock() {
 				delobj(otmp);
 				continue;
 			}
-			oldrx = otmp->ox;
-			oldry = otmp->oy;
-			otmp->ox = rx;
-			otmp->oy = ry;
-			set_omask(oldrx, oldry);
-			levl[rx][ry].omask = 1;
+			move_object(otmp, rx, ry);
 			/* pobj(otmp); */
 			if(cansee(rx,ry)) atl(rx,ry,otmp->olet);
 			newsym(u.ux+u.dx, u.uy+u.dy);
@@ -208,17 +202,12 @@ movobj(obj, ox, oy)
 register struct obj *obj;
 register xchar ox, oy;
 {
-	register xchar ox2 = obj->ox, oy2= obj->oy;
-
 	/* Some dirty programming to get display right */
 	freeobj(obj);
 	unpobj(obj);
 	obj->nobj = fobj;
 	fobj = obj;
-	obj->ox = ox;
-	obj->oy = oy;
-	set_omask(ox2,oy2);
-	levl[ox][oy].omask = 1;
+	move_object(obj, ox, oy);
 }
 
 #ifdef SINKS
@@ -234,7 +223,7 @@ dosinkfall() {
 # endif
 		You("crash to the floor!");
 		losehp((rn1(10, 20 - (int)ACURR(A_CON))),"fall onto a sink");
-		if(levl[u.ux][u.uy].omask)
+		if(OBJ_AT(u.ux, u.uy))
 		for(obj=fobj; obj; obj=obj->nobj)
 		    if(obj->ox == u.ux && obj->oy == u.uy &&
 		       obj->olet == WEAPON_SYM) {
@@ -304,7 +293,7 @@ void
 domove() {
 	register struct monst *mtmp = (struct monst *)0;
 	register struct rm *tmpr,*ust;
-	register xchar x,y,xx,yy;
+	register xchar x,y;
 	struct trap *trap;
 
 	u_wipe_engr(rnd(5));
@@ -315,12 +304,15 @@ domove() {
 		return;
 	}
 	if(u.uswallow) {
+		register xchar xx,yy;
+
 		u.dx = u.dy = 0;
 		xx = u.ux;
 		yy = u.uy;
 		x = u.ux = u.ustuck->mx;
 		y = u.uy = u.ustuck->my;
-		if(xx != u.ustuck->mx || yy != u.ustuck->my) newsym(xx,yy);
+		if(xx != x || yy != y) newsym(xx,yy);
+		mtmp = u.ustuck;
 	} else {
 		x = u.ux + u.dx;
 		y = u.uy + u.dy;
@@ -369,31 +361,33 @@ domove() {
 #endif
 			}
 		}
+		if (levl[x][y].mmask) {
+			mtmp = m_at(x,y);
+			/* Don't attack if you're running */
+			if (flags.run && !mtmp->mimic &&
+				    (Blind ? Telepat :
+					    (!mtmp->minvis || See_invisible))) {
+				nomul(0);
+				flags.move = 0;
+				return;
+			}
+		}
 	}
 
 	u.ux0 = u.ux;
 	u.uy0 = u.uy;
-	/* attack monster */
 	tmpr = &levl[x][y];
-	if (tmpr->mmask) {
-		mtmp = m_at(x,y);
-		/* Don't attack if you're running */
-		if (flags.run && !mtmp->mimic &&
-		    (Blind ? Telepat : (!mtmp->minvis || See_invisible))) {
-			nomul(0);
-			flags.move = 0;
-			return;
-		}
-	}
-	if(mtmp || u.uswallow) {
+
+	/* attack monster */
+	if(mtmp) {
 		nomul(0);
 		gethungry();
 		if(multi < 0) return;	/* we just fainted */
 
 		/* try to attack; note that it might evade */
-		if(attack(u.uswallow ? u.ustuck : mtmp))
-			return;
+		if(attack(mtmp)) return;
 	}
+
 	/* not attacking an animal, so we try to move */
 #ifdef POLYSELF
 	if(!uasmon->mmove) {
@@ -449,7 +443,11 @@ domove() {
 #endif
 	ust = &levl[u.ux][u.uy];
 	if(bad_rock(x,y) ||
-	   (u.dx && u.dy && (IS_DOOR(tmpr->typ) || IS_DOOR(ust->typ)))){
+	   (u.dx && u.dy
+#ifdef POLYSELF
+			&& !passes_walls(uasmon)
+#endif
+			&& (IS_DOOR(tmpr->typ) || IS_DOOR(ust->typ)))){
 		flags.move = 0;
 		nomul(0);
 		return;
@@ -492,9 +490,7 @@ domove() {
 
 		movobj(uball, uchain->ox, uchain->oy);
 		unpobj(uball);		/* BAH %% */
-		uchain->ox = u.ux;
-		uchain->oy = u.uy;
-		ust->omask = 1;
+		place_object(uchain, u.ux, u.uy);
 		nomul(-2);
 		nomovemsg = "";
 	nodrag:	;
@@ -571,7 +567,7 @@ domove() {
 	}
 #ifdef POLYSELF
 	if (hides_under(uasmon))
-	    u.uundetected = (levl[u.ux][u.uy].omask || levl[u.ux][u.uy].gmask);
+	    u.uundetected = (OBJ_AT(u.ux, u.uy) || levl[u.ux][u.uy].gmask);
 	else if (u.dx || u.dy) { /* i.e. piercer */
 	    if (u.usym == S_MIMIC_DEF)
 		u.usym = S_MIMIC;
@@ -648,7 +644,7 @@ spoteffects()
 			dosinkfall();
 #endif
 		if(!flags.nopick &&
-		   (levl[u.ux][u.uy].omask || levl[u.ux][u.uy].gmask))
+		   (OBJ_AT(u.ux, u.uy) || levl[u.ux][u.uy].gmask))
 			pickup(1);
 		else read_engr_at(u.ux,u.uy);
 		if(trap = t_at(u.ux,u.uy))
@@ -669,7 +665,7 @@ dopickup() {
 			  Blind ? "feel" : "see");
 		return(1);
 	}
-	if(levl[u.ux][u.uy].omask == 0 && levl[u.ux][u.uy].gmask == 0) {
+	if(!OBJ_AT(u.ux, u.uy) && levl[u.ux][u.uy].gmask == 0) {
 		pline("There is nothing here to pick up.");
 		return(0);
 	}
@@ -696,7 +692,7 @@ lookaround() {
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(x == u.ux && y == u.uy) continue;
 		if(levl[x][y].mmask && (mtmp = m_at(x,y)) && !mtmp->mimic &&
-		    (!mtmp->minvis || See_invisible || Telepat) && !mtmp->mundetected) {
+		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
 			if((flags.run != 1 && !mtmp->mtame) || (x == u.ux+u.dx && y == u.uy+u.dy))
 				goto stop;
 		} else mtmp = 0;
@@ -800,7 +796,7 @@ monster_nearby() {
 		   !mtmp->mtame && !mtmp->mpeaceful &&
 		   !noattacks(mtmp->data) &&
 		   !mtmp->mfroz && !mtmp->msleep &&  /* aplvax!jcn */
-		   (!mtmp->minvis || See_invisible || Telepat) &&
+		   (!mtmp->minvis || See_invisible) &&
 		   !onscary(u.ux, u.uy, mtmp))
 			return(1);
 	}

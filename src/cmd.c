@@ -559,12 +559,11 @@ const struct func_tab cmdlist[]={
 	{0,0,0}
 };
 #undef M
-#undef C
 
 const struct ext_func_tab extcmdlist[] = {
 	"chat", "talk to someone", dotalk,	/* converse? */
 	"dip", "dip an object into something", dodip,
-	"force", "force the lock on a chest", doforce,
+	"force", "force a lock", doforce,
 	"jump", "jump to a location", dojump,
 	"loot", "loot a box on the floor", doloot,
 #ifdef POLYSELF
@@ -578,18 +577,31 @@ const struct ext_func_tab extcmdlist[] = {
 	"rub", "rub a lamp", dorub,
 	"sit", "sit down", dosit,
 	"turn", "turn undead", doturn,
-	"untrap", "untrap a trapped object", dountrap,
-	"wipe", "wipe your face off", dowipe,
+	"untrap", "untrap something", dountrap,
+	"wipe", "wipe off your face", dowipe,
 	"?", "get this list of extended commands", doextlist,
 	NULL, NULL, donull
 };
 
-char
+#ifdef STUPID_CPP
+static char
 unctrl(sym)
 char sym;
 {
-    return (sym >= ('A' & 037) && sym <= ('Z' & 037)) ? sym + 0140 : sym;
+	return (sym >= C('a') && sym <= C('z')) ? sym + 0140 : sym;
 }
+
+static char
+unmeta(sym)
+char sym;
+{
+	return (sym & 0x7f);
+}
+#else
+#define unctrl(c)	((c) <= C('z') ? (0x60 | (c)) : (c))
+#define unmeta(c)	(0x7f & (c))
+#endif
+
 
 void
 rhack(cmd)
@@ -631,7 +643,7 @@ register char *cmd;
 		domove();
 		return;
 	}
-	if(!flags.num_pad && movecmd(lowc(*cmd))) {
+	if(movecmd(flags.num_pad ? unmeta(*cmd) : lowc(*cmd))) {
 		flags.run = 1;
 	rush:
 		if(firsttime){

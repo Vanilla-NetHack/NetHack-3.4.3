@@ -5,7 +5,7 @@
 #include "hack.h"
 
 static const char crispy[] = "The flames of Hell burn you to a crisp.";
-static void set_armor_intrinsic P((struct obj *,boolean));
+static void set_armor_intrinsic P((struct obj *,long,BOOLEAN_P));
 
 const struct worn {
 	long w_mask;
@@ -49,7 +49,7 @@ long mask;
 		    u.uprops[objects[oobj->otyp].oc_oprop].p_flgs = 
 			    u.uprops[objects[oobj->otyp].oc_oprop].p_flgs & 
 				~wp->w_mask;
-		    set_armor_intrinsic(oobj, 0);
+		    set_armor_intrinsic(oobj, wp->w_mask, 0);
 		}
 		*(wp->w_obj) = obj;
 		if(obj) {
@@ -57,7 +57,7 @@ long mask;
 		    u.uprops[objects[obj->otyp].oc_oprop].p_flgs = 
 			    u.uprops[objects[obj->otyp].oc_oprop].p_flgs | 
 				wp->w_mask;
-		    set_armor_intrinsic(obj, 1);
+		    set_armor_intrinsic(obj, wp->w_mask, 1);
 		}
 	}
 	/* A kludge to solve the problem of someone gaining fire resistance
@@ -98,7 +98,7 @@ register struct obj *obj;
 				u.uprops[objects[obj->otyp].oc_oprop].p_flgs & 
 					~wp->w_mask;
 			obj->owornmask &= ~wp->w_mask;
-			set_armor_intrinsic(obj, 0);
+			set_armor_intrinsic(obj, wp->w_mask, 0);
 		}
 	/* See comments above in setworn().  The major difference is the
 	 * need to check AMULET_SYM so if someone goes to Hell without
@@ -129,8 +129,9 @@ register struct obj *obj;
 }
 
 static void
-set_armor_intrinsic(obj,on)
+set_armor_intrinsic(obj,maskbit,on)
 register struct obj *obj;
+long maskbit;	/* people can do funny things like wield armor */
 boolean on;
 {
 	long *mask;
@@ -162,6 +163,6 @@ boolean on;
 		default:
 			return;
 	}
-	if (on) *mask |= WORN_ARMOR;
-	else *mask &= ~WORN_ARMOR;
+	if (on) *mask |= maskbit;
+	else *mask &= ~maskbit;
 }

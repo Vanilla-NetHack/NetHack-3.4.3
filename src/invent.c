@@ -201,26 +201,20 @@ register struct obj *obj;
 {
 	register struct obj *otmp;
 	register int found = 0;
-	register struct rm *lev = &levl[obj->ox][obj->oy];
-
-  	lev->omask = 0;
 
 	if(obj == fobj) {
 		fobj = fobj->nobj;
 		found = 1;
 	}
-	for(otmp = fobj; otmp; otmp = otmp->nobj) {
+	for(otmp = fobj; otmp; otmp = otmp->nobj)
  	    if (otmp->nobj == obj) {
 		otmp->nobj = obj->nobj;
 		found = 1;
 	    }
-	    if (otmp->ox == obj->ox && otmp->oy == obj->oy) {
-		lev->omask = 1;
-	    }
-	}
   	if (!found) panic("error in freeobj");
+	remove_object(obj);
 #ifdef POLYSELF
-	if (!levl[u.ux][u.uy].omask && !levl[u.ux][u.uy].gmask) {
+	if (!OBJ_AT(u.ux, u.uy) && !levl[u.ux][u.uy].gmask) {
 		u.uundetected = 0;
 		if (!Invisible) pru();
 	}
@@ -244,7 +238,7 @@ register struct gold *gold;
 	}
 	free((genericptr_t) gold);
 #ifdef POLYSELF
-	if (!levl[u.ux][u.uy].omask && !levl[u.ux][u.uy].gmask) {
+	if (!OBJ_AT(u.ux, u.uy) && !levl[u.ux][u.uy].gmask) {
 		u.uundetected = 0;
 		if (!Invisible) pru();
 	}
@@ -294,7 +288,7 @@ register int n, x, y;
 {
 	register struct obj *otmp;
 
-	if(levl[x][y].omask)
+	if(OBJ_AT(x, y))
 	    for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if(otmp->ox == x && otmp->oy == y && otmp->otyp == n)
 		    return(otmp);
@@ -895,7 +889,7 @@ dotypeinv()				/* free after Robert Viduya */
     	char stuff[BUFSZ];
     	register int stct;
     	register struct obj *otmp;
-    	boolean billx = inshop() && doinvbill(0);
+    	boolean billx = in_shop(u.ux, u.uy) && doinvbill(0);
     	boolean unpd = FALSE;
 
 	if (!invent && !u.ugold && !billx) {
@@ -1139,7 +1133,7 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 		return( (obj->corpsenm == otmp->corpsenm) &&
 			(!ONAME(obj) || !strcmp(ONAME(obj), ONAME(otmp))) );
 
-	else if(obj->known == otmp->known) {
+	else if(obj->known == otmp->known || !uses_known(otmp)) {
 		return(objects[obj->otyp].oc_merge);
 	} else return(FALSE);
 }

@@ -11,7 +11,7 @@
 |	a wall
 +	a door
 .	the floor of a room
-	a dark part of a room
+ 	a dark part of a room (or a ghost)
 #	a corridor
 <	a way to the previous level
 >	a way to the next level

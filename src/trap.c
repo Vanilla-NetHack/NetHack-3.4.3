@@ -31,7 +31,7 @@ boolean print;
 		case 0:
 		case 2: vulnerable = is_flammable(otmp); break;
 		case 1: vulnerable = is_rustprone(otmp); break;
-		case 3: vulnerable = (otmp->otyp == BRONZE_PLATE_MAIL); break;
+		case 3: vulnerable = is_corrodeable(otmp); break;
 	}
 
 	if (!print && (!vulnerable || otmp->rustfree || otmp->spe < -2))
@@ -78,7 +78,7 @@ register int x, y, typ;
 		break;
 	    case STATUE_TRAP:	    /* create a "living" statue */
 		ttmp->pm = rndmonnum();
-		(void) mkstatue(&mons[ttmp->pm], x, y);
+		(void) mkcorpstat(STATUE, &mons[ttmp->pm], x, y);
 		break;
 	    default:
 		ttmp->pm = -1;
@@ -201,7 +201,7 @@ register struct trap *trap;
 		    pline("A bear trap closes on your %s!",
 			body_part(FOOT));
 #ifdef POLYSELF
-		    if(u.umonnum == PM_OWLBEAR)
+		    if(u.umonnum == PM_OWLBEAR || u.umonnum == PM_BUGBEAR)
 			You("howl in anger!");
 #endif
 		    break;
@@ -305,7 +305,6 @@ register struct trap *trap;
 		    break;
 		case TELEP_TRAP:
 		    if(trap->once) {
-			deltrap(trap);
 #ifdef ENDGAME
 			if(dlevel == ENDLEVEL) {
 			    You("feel a wrenching sensation.");
@@ -316,6 +315,7 @@ register struct trap *trap;
 			    shieldeff(u.ux, u.uy);
 			    You("feel a wrenching sensation.");
 			} else {
+			    deltrap(trap);
 			    newsym(u.ux, u.uy);
 			    vtele();
 			}
@@ -625,7 +625,7 @@ register struct monst *mtmp;
 	/* A bug fix for dumb messages by ab@unido.
 	 */
 	    int in_sight = cansee(mtmp->mx,mtmp->my)
-			   && (!mtmp->minvis || See_invisible || Telepat);
+			   && (!mtmp->minvis || See_invisible);
 
 	    if(mtmp->mtrapseen & (1 << tt)) {
 		/* he has been in such a trap - perhaps he escapes */
@@ -639,7 +639,8 @@ register struct monst *mtmp;
 				  pline("%s is caught in a bear trap!",
 					Monnam(mtmp));
 				else
-				    if(mtmp->data == &mons[PM_OWLBEAR]
+				    if((mtmp->data == &mons[PM_OWLBEAR]
+					|| mtmp->data == &mons[PM_BUGBEAR])
 					&& flags.soundok)
 			    You("hear the roaring of an angry bear!");
 				mtmp->mtrapped = 1;
@@ -894,7 +895,7 @@ float_down() {
 		default:
 			dotrap(trap);
 	}
-	if(!flags.nopick && (levl[u.ux][u.uy].omask || levl[u.ux][u.uy].gmask))
+	if(!flags.nopick && (OBJ_AT(u.ux, u.uy) || levl[u.ux][u.uy].gmask))
 	    pickup(1);
 	return 0;
 }
@@ -962,7 +963,7 @@ register int nux,nuy;
 	u.uy = nuy;
 #ifdef POLYSELF
 	if (hides_under(uasmon))
-		u.uundetected = (levl[nux][nuy].omask || levl[nux][nuy].gmask);
+		u.uundetected = (OBJ_AT(nux, nuy) || levl[nux][nuy].gmask);
 	else 
 		u.uundetected = 0;
 	if (u.usym == S_MIMIC_DEF) u.usym = S_MIMIC;
@@ -1071,9 +1072,8 @@ int attach;
 		impossible("Where are your chain and ball??");
 		return;
 	}
-	uball->ox = uchain->ox = u.ux;
-	uball->oy = uchain->oy = u.uy;
-	levl[u.ux][u.uy].omask = 1;
+	place_object(uball, u.ux, u.uy);
+	place_object(uchain, u.ux, u.uy);
 	if(attach){
 		uchain->nobj = fobj;
 		fobj = uchain;
@@ -1170,6 +1170,9 @@ register boolean pet_by_u = next_to_u();
 		dlevel = 0;
 		killer = "long fall";
 		done(DIED);
+#ifdef WIZARD
+		return;  
+#endif
 #ifdef WALKIES
 	    } else {
 		You("shudder for a moment...");
@@ -1252,12 +1255,10 @@ domagictrap() {
 	     case 19:
 		    /* tame nearby monsters */
 		   {   register int i,j;
-		       register boolean confused = (Confusion != 0);
-		       register int bd = confused ? 5 : 1;
 
 		       /* below pline added by GAN 10/30/86 */
 		       adjattrib(A_CHA,1,FALSE);
-		       for(i = -bd; i <= bd; i++) for(j = -bd; j <= bd; j++)
+		       for(i = -1; i <= 1; i++) for(j = -1; j <= 1; j++)
 		       if(levl[u.ux+i][u.uy+j].mmask)
 			   (void) tamedog(m_at(u.ux+i, u.uy+j), (struct obj *)0);
 		       break;
@@ -1266,27 +1267,16 @@ domagictrap() {
 	     case 20:
 		    /* uncurse stuff */
 		   {  register struct obj *obj;
-		      register boolean confused = (Confusion != 0);
 
 			/* below plines added by GAN 10/30/86 */
-			if (confused)
-			    if (Hallucination)
-				You("feel the power of the Force against you!");
-			    else
-				You("feel like you need some help.");
+			if (Hallucination)
+			    You("feel in touch with the Universal Oneness.");
 			else
-			    if (Hallucination)
-				You("feel in touch with the Universal Oneness.");
-			    else
-				You("feel like someone is helping you.");
-		       for(obj = invent; obj ; obj = obj->nobj)
-			       if(obj->owornmask)
-				    if(confused)
-					curse(obj);
-				    else
+			    You("feel like someone is helping you.");
+			for(obj = invent; obj ; obj = obj->nobj)
+			       if(obj->owornmask || obj->otyp == LOADSTONE)
 					obj->cursed = 0;
-		       if(Punished && !confused)
-			    unpunish();
+		       if(Punished) unpunish();
 		       break;
 		   }
 	     default: break;
@@ -1375,7 +1365,7 @@ dountrap() {	/* disarm a trapped object */
 	y = u.uy + u.dy;
 
 	if(!u.dx && !u.dy) {
-	    if(levl[x][y].omask)
+	    if(OBJ_AT(x, y))
 		for(otmp = fobj; otmp; otmp = otmp->nobj)
 		    if((otmp->ox == x) && (otmp->oy == y))
 			if(Is_box(otmp)) {
@@ -1660,12 +1650,10 @@ int d_override;
 		}
 	}
 	if (obj && (!strike || d_override)) {
-		obj->ox = mon->mx;
-		obj->oy = mon->my;
+		place_object(obj, mon->mx, mon->my);
 		obj->nobj = fobj;
 		fobj = obj;
 		stackobj(fobj);
-		levl[obj->ox][obj->oy].omask = 1;
 	} else if (obj) free ((genericptr_t)obj);
 
 	return trapkilled;

@@ -79,7 +79,7 @@ Z	Zap (cast) a spell (only if defined)
 !	Do a shell escape (only if defined)
 \	Show what object types have been discovered
 .	Rest one move while doing nothing
- 	Rest one move while doing nothing (if option restonspace set)
+ 	Rest one move while doing nothing (if rest_on_space option is on)
 :	Look at what is on the floor
 @	Toggle the pickup option on/off
 )	Show the weapon currently wielded
@@ -90,3 +90,17 @@ Z	Zap (cast) a spell (only if defined)
 $	Count your gold
 +	List known spells (only if defined)
 #	Perform an extended command
+M-c	Talk to someone
+M-d	Dip an object into something
+M-f	Force a lock
+M-j	Jump to another location
+M-l	Loot a box on the floor
+M-m	Use a monster's special ability (only if defined)
+M-N	Name an item or type of object
+M-o	Offer a sacrifice to the gods (only if defined)
+M-p	Pray to the gods for help (only if defined)
+M-r	Rub a lamp
+M-s	Sit down
+M-t	Turn undead
+M-u	Untrap something (usually a trapped object)
+M-w	Wipe off your face

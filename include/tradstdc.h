@@ -19,19 +19,19 @@
 
 /* Used for robust ANSI parameter forward declarations:
  * int sprintf P((char *, const char *, ...));
+ *
+ * P() is used to surround parameter list for functions with a fixed number
+ * of arguments; V() is used for varying numbers of arguments.  Separate
+ * macros are needed because ANSI will mix old-style declarations with
+ * prototypes, except in the case of varargs.
  */
 
-/* However, if you do use a prototype in declaring a function but define
- * the function in an old-style manner, the compiler might (justifiably) barf.
- * Since we have to define functions in the old-style manner to accommodate
- * traditional compilers, we don't want to use prototypes if the ANSI-standard
- * compiler barfs on these.
- */
-#ifdef __GNUC__ /* add other compilers as the need arises */
-# define P(s)		()
-#else
 # define P(s)		s
-#endif
+# ifdef MSDOS
+#  define V(s)		s
+# else
+#  define V(s)		()
+# endif
 
 # ifdef __TURBOC__	/* Cover for stupid Turbo C */
 #  define genericptr_t	void *
@@ -47,6 +47,7 @@ typedef void *		genericptr_t;
 #else /* __STDC__ */	/* a "traditional" C  compiler */
 
 # define P(s)		()
+# define V(s)		()
 
 # ifndef genericptr_t
 #  ifdef AMIGA

@@ -260,7 +260,7 @@ register struct obj *obj;
 		case CARROT:
 		    return (herbi ? DOGFOOD : MANFOOD);
 		default:
-#ifdef SLIME_MOLD
+#ifdef TUTTI_FRUTTI
 		    return (obj->otyp > SLIME_MOLD ?
 #else
 		    return (obj->otyp > CLOVE_OF_GARLIC ?
@@ -308,8 +308,8 @@ register struct obj *obj;
 	mtmp->mflee = 0;
 	mtmp->mfleetim = 0;
 	if(mtmp->mtame || mtmp->mfroz ||
-#ifdef WORM
-	   mtmp->wormno ||
+#ifdef MEDUSA
+	   mtmp->data == &mons[PM_MEDUSA] ||
 #endif
 	   mtmp->isshk || mtmp->isgd ||
 #if defined(ALTARS) && defined(THEOLOGY)
@@ -321,8 +321,6 @@ register struct obj *obj;
 	   is_human(mtmp->data) || is_demon(mtmp->data))
 #endif
 		return(0);
-	/* no tame long worms so they don't try to follow you down stairs
-	   or get in your way */
 	if(obj) {
 		if(dogfood(mtmp, obj) >= MANFOOD) return(0);
 		if(cansee(mtmp->mx,mtmp->my))

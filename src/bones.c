@@ -133,8 +133,7 @@ savebones(){
 	/* drop everything; the corpse's possessions are usually cursed */
 	otmp = invent;
 	while(otmp) {
-		otmp->ox = u.ux;
-		otmp->oy = u.uy;
+		place_object(otmp, u.ux, u.uy);
 		otmp->owornmask = 0;
 #ifdef TUTTI_FRUTTI
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
@@ -144,17 +143,18 @@ savebones(){
 			otmp->nobj = fobj;
 			fobj = invent;
 			invent = 0;	/* superfluous */
-			levl[u.ux][u.uy].omask = 1;
 			break;
 		}
 		otmp = otmp->nobj;
 	}
+	in_mklev = TRUE;
+	/* tricks makemon() into allowing monster creation on your square */
 	if (u.ugrave_arise == -1) {
-		if(!(mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy))) return;
+		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy);
+		in_mklev = FALSE;
+		if (!mtmp) return;
 		Strcpy((char *) mtmp->mextra, plname);
 	} else {
-		in_mklev = TRUE;
-	/* tricks makemon() into allowing monster creation on your square */
 		mons[u.ugrave_arise].pxlth += strlen(plname);
 		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy);
 		mons[u.ugrave_arise].pxlth -= strlen(plname);
@@ -279,6 +279,10 @@ getbones() {
 	register int fd;
 	register int ok;
 
+#ifdef EXPLORE_MODE
+	if(discover)		/* save bones files for real games */
+		return(0);
+#endif
 	/* wizard check added by GAN 02/05/87 */
 	if(rn2(3)	/* only once in three times do we find bones */
 #ifdef WIZARD

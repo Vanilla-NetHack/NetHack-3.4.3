@@ -1,7 +1,15 @@
-#	SCCS Id: @(#)Makefile.os2	3.0	89/08/10
+#	SCCS Id: @(#)Makefile.os2	3.0	89/08/19
 #	PC NetHack 3.0 Makefile for Microsoft(tm) C 5.1 and OS/2
 #
-#	NDMAKE ver 4.3+ is required, MS-MAKE does *not* work
+#	NDMAKE ver 4.3+ is required, MS-MAKE does not work
+#	without (probably large) modifications -- Timo Hakulinen
+#
+#	Copy pctty.c, pcunix.c, pcmain.c, msdos.c and this file
+#	(+ termcap sources if used) into $(SRC) directory, then
+#	compile and link in real mode inside $(SRC).
+#
+#	To use CodeView define OS2_CODEVIEW in pcconf.h and set
+#	HACKDIR (+ TERM and TERMCAP if used) in OS/2 config.sys.
 #
 # Large memory model
 CC	= cl
@@ -50,9 +58,12 @@ TARG	= pc
 # Optional high-quality BSD random number generation routines (see pcconf.h).
 # Set to nothing if not used.
 RANDOM = o\random.o
+#RANDOM=
 
-# Termcap objs
-TERMOBJS= o\tgetent.o o\tgetflag.o o\tgetnum.o o\tgetstr.o o\tgoto.o o\tputs.o o\isdigit.o o\fgetlr.o
+# Termcap objs. Set to nothing if TERMLIB not defined in pcconf.h. In that
+# case a dummy termlib.lib is created.
+#TERMOBJS= o\tgetent.o o\tgetflag.o o\tgetnum.o o\tgetstr.o o\tgoto.o o\tputs.o o\isdigit.o o\fgetlr.o
+TERMOBJS=
 
 # For NDMAKE, to handle the .o suffix.
 .SUFFIXES: .exe .o .c .y .l
@@ -111,8 +122,7 @@ HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 $(GAMEDIR)\$(GAME).exe: o $(HOBJ) $(OS2DEFS) $(TERMLIB)
 	$(LINK) $(HOBJ),$(GAMEDIR)\$(GAME),$(GAME),$(PLIBS) $(TERMLIB),$(OS2DEFS) $(LFLAGS) ;
 
-# NDMAKE automatically generates LINK response files, so you can
-# uncomment the second line if you are using NDMAKE.
+# NDMAKE automatically generates LINK and LIB response files
 
 $(GAME): $(GAMEDIR)\$(GAME).exe
 $(GAME).exe: $(GAMEDIR)\$(GAME).exe
@@ -186,7 +196,7 @@ o\unix.o:   $(HACK_H) $(TARG)unix.c
 # Secondary targets
 #
 
-auxil:	spec_levs
+auxil:	spec_levs data rumors
 	xcopy $(AUX)\*. $(GAMEDIR)
 
 spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
@@ -211,16 +221,23 @@ $(GAMEDIR)\record:
 	echo foo> $(GAMEDIR)\record
 
 clean:
-	del o\*.obj
+	del o\*.o
 	rmdir o
 
 spotless: clean
 	del $(INCL)\date.h
 	del $(INCL)\onames.h
 	del $(INCL)\pm.h
-	touch $(INCL)\date.h $(INCL)\onames.h $(INCL)\pm.h
 	del makedefs.exe
-	if exist lev_comp.exe del lev_comp.exe
+	del lev_comp.exe
+	del $(TERMLIB)
+	del *.def
+	del *.map
+	del $(AUX)\data
+	del $(AUX)\rumors
+	del castle
+	del endgame
+	del tower?
 
 #
 # Other dependencies

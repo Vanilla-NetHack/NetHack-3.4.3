@@ -20,4 +20,13 @@
  *  fix various minor bugs, and do further code cleaning
  */
 
-#define PATCHLEVEL	2
+/*
+ *  Patch 3, September 6, 1989
+ *  extend prototypes to ANSI compilers in addition to the previous MSDOS ones
+ *  move object-on-floor references into functions in preparation for planned
+ *	data structures to allow faster access and better colors
+ *  fix some more bugs, and extend the portability of things added in earlier
+ *	patches
+ */
+
+#define PATCHLEVEL	3

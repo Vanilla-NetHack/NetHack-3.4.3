@@ -16,6 +16,9 @@ struct ltchars ltchars, ltchars0;
 #else
 #include	<termio.h>	/* also includes part of <sgtty.h> */
 struct termio termio;
+#ifdef AMIX
+#include <sys/ioctl.h>
+#endif /* AMIX */
 #endif
 
 void
@@ -26,7 +29,7 @@ getioctls() {
 #else
 	(void) ioctl(fileno(stdin), (int) TCGETA, &termio);
 #endif
-#ifdef TIOCGWINSZ
+#if defined(TIOCGWINSZ) && (defined(BSD) || defined(ULTRIX))
 	{
 		/*
 		 * ttysize is found on Suns and BSD
@@ -34,15 +37,17 @@ getioctls() {
 		 */
 		struct winsize ttsz;
 
-		(void) ioctl(fileno(stdin), (int) TIOCGWINSZ, (char *) &ttsz);
-		/*
-		 * Use the kernel's values for lines and columns if it has
-		 * any idea.
-		 */
-		if (ttsz.ws_row)
-			LI = ttsz.ws_row;
-		if (ttsz.ws_col)
-			CO = ttsz.ws_col;
+		if (ioctl(fileno(stdin), (int)TIOCGWINSZ, (char *)&ttsz) != -1)
+		  {
+		    /*
+		     * Use the kernel's values for lines and columns if it has
+		     * any idea.
+		     */
+		    if (ttsz.ws_row)
+		      LI = ttsz.ws_row;
+		    if (ttsz.ws_col)
+		      CO = ttsz.ws_col;
+		  }
 	}
 #endif
 }

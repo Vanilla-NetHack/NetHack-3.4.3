@@ -250,8 +250,6 @@ register int trouble;
 			    what = rightglow;
 		    } else if (uamul && uamul->cursed) /* amulet */
 			    otmp = uamul;
-		    else if (ublindf && ublindf->cursed) /* blindfold */
-			    otmp = ublindf;
 		    else if (welded(uwep)) otmp = uwep;
 		    else {
 			    for(otmp=invent; otmp; otmp=otmp->nobj)
@@ -378,14 +376,9 @@ angrygods() {
 			    else {
 				if (Reflecting & W_AMUL) {
 				    pline("It reflects from your medallion.");
-#if defined(EXPLORE_MODE) || defined(WIZARD)
 				    makeknown(AMULET_OF_REFLECTION);
-#endif
 				} else {
 				    pline("It reflects from your shield.");
-	/* No ifdef here since they could survive with an amulet of
-	 * life saving which wasn't possible above.
-	 */
 				    makeknown(SHIELD_OF_REFLECTION);
 				}
 			    }
@@ -713,13 +706,13 @@ dosacrifice()
    Sacrificing a food ration got you max luck instantly, making the
    gods as easy to please as an angry dog!
 
-   Now only accepts corpses, based on their level (presumably, how hard
-   they were to kill).  Human sacrifice, as well as sacrificing unicorns
-   of your alignment, is strongly discouraged.  (We can't tell whether a dog
-   corpse was tame, so you can still sacrifice it.)
+   Now only accepts corpses, based on the games evaluation of their
+   toughness.  Human sacrifice, as well as sacrificing unicorns of
+   your alignment, is strongly discouraged.  (We can't tell whether
+   a pet corpse was tame, so you can still sacrifice it.)
  */
 
-#define MAXVALUE 17	/* Highest corpse value */
+#define MAXVALUE 33	/* Highest corpse value (approx.) */
 
 	if (otmp->otyp == CORPSE) {
 	    register struct permonst *mtmp = &mons[otmp->corpsenm];
@@ -990,7 +983,7 @@ dosacrifice()
 #if defined(ALTARS) && defined(NAMED_ITEMS)
 		/* The player can gain an artifact */
 		if(!rn2(10)) {
-			otmp = mk_aligned_artifact((int)(levl[u.ux][u.uy].altarmask & ~A_SHRINE) - 1);
+			otmp = mk_aligned_artifact((unsigned)(levl[u.ux][u.uy].altarmask & ~A_SHRINE));
 			if(otmp) {
 			    dropy(otmp);
 			    pline("An object appears at your %s!",
@@ -1001,7 +994,9 @@ dosacrifice()
 #endif
 		change_luck((value * LUCKMAX) / (MAXVALUE * 2));
 		if (u.uluck != saved_luck) {
-		    You(Hallucination ?
+		    if (Blind)
+			You("think you stepped on something.");
+		    else You(Hallucination ?
 		"see crabgrass at your %s.  A funny thing in a dungeon." :
 		"glimpse a four-leaf clover at your %s.",
 			makeplural(body_part(FOOT)));

@@ -53,7 +53,7 @@ int mustgetmail = -1;
 
 # ifdef UNIX
 static struct stat omstat,nmstat;
-static char *mailbox;
+static char *mailbox = NULL;
 static long laststattime;
 
 #  ifdef BSD
@@ -65,7 +65,7 @@ static long laststattime;
 
 void
 getmailstatus() {
-	if(!(mailbox = getenv("MAIL"))) {
+	if(!mailbox && !(mailbox = getenv("MAIL"))) {
 #  ifdef MAILPATH
 		mailbox = (char *) alloc(sizeof(MAILPATH)+8);
 		Strcpy(mailbox, MAILPATH);
@@ -180,7 +180,6 @@ newmail() {
 		makeknown(SCR_MAIL);
 		stackobj(fobj);		
 		verbalize("Oops!");
-		more();
 	} else {
 		/* set known and do prinv() */
 		(void) identify(addinv(mksobj(SCR_MAIL,FALSE)));

@@ -75,12 +75,10 @@ int x,y;
 		create = !rn2(3);
 	else create = 1;
 	if (create && !flooreffects(obj,x,y)) {
-		obj->ox = x;
-		obj->oy = y;
+		place_object(obj, x, y);
 		obj->nobj = fobj;
 		fobj = obj;
 		stackobj(fobj);
-		levl[x][y].omask = 1;
 	} else free((genericptr_t)obj);
 }
 
@@ -111,13 +109,17 @@ m_throw(x, y, dx, dy, range, obj)
 		tmp_at(-3, (int)AT_OBJ);
 	}
 	while(range-- > 0) { /* Actually the loop is always exited by break */
+		boolean vis;
+
 		bhitpos.x += dx;
 		bhitpos.y += dy;
+		vis = cansee(bhitpos.x, bhitpos.y);
 		if(levl[bhitpos.x][bhitpos.y].mmask) {
 		    mtmp = m_at(bhitpos.x,bhitpos.y);
 
 		    if(mtmp->data->ac + 8 + obj->spe <= rnd(20)) {
-			miss(distant_name(singleobj,xname), mtmp);
+			if (!vis) pline("It is missed.");
+			else miss(distant_name(singleobj,xname), mtmp);
 			if (!range) { /* Last position; object drops */
 			    drop_throw(singleobj, 0, mtmp->mx, mtmp->my);
 			    break;
@@ -127,35 +129,41 @@ m_throw(x, y, dx, dy, range, obj)
 			if (damage < 1) damage = 1;
 			if (obj->otyp==ACID_VENOM && resists_acid(mtmp->data))
 			    damage = 0;
-			hit(distant_name(singleobj,xname), mtmp,exclam(damage));
+			if (!vis) pline("It is hit%s", exclam(damage));
+			else hit(distant_name(singleobj,xname),
+							mtmp,exclam(damage));
 			if (obj->opoisoned) {
-			    if (resists_poison(mtmp->data))
-				kludge("The poison doesn't seem to affect %s.",
+			    if (resists_poison(mtmp->data)) {
+				if (vis)
+				  pline("The poison doesn't seem to affect %s.",
 								mon_nam(mtmp));
-			    else {
+			    } else {
 				if (rn2(30)) damage += rnd(6);
 				else {
-				    pline("The poison was deadly...");
+				    if (vis)
+					pline("The poison was deadly...");
 				    damage = mtmp->mhp;
 				}
 			    }
 			}
 			if (obj->otyp==ACID_VENOM && cansee(mtmp->mx,mtmp->my)){
 			    if (resists_acid(mtmp->data)) {
-				pline("%s is unaffected.", Monnam(mtmp));
+				pline("%s is unaffected.", vis ? Monnam(mtmp)
+					: "It");
 				damage = 0;
-			    } else pline("The acid burns %s!", mon_nam(mtmp));
+			    } else if (vis)
+				pline("The acid burns %s!", mon_nam(mtmp));
+			    else pline("It is burned!");
 			}
 			mtmp->mhp -= damage;
 			if(mtmp->mhp < 1) {
-			    if (cansee(mtmp->mx, mtmp->my))
-				pline("%s is killed!", Monnam(mtmp));
+			    pline("%s is killed!", vis ? Monnam(mtmp) : "It");
 			    mondied(mtmp);
 			}
 
 			if((obj->otyp == CREAM_PIE) ||
 			   (obj->otyp == BLINDING_VENOM)) {
-			    if (cansee(mtmp->mx, mtmp->my))
+			    if (vis)
 				pline("%s is blinded by the %s.",
 				      Monnam(mtmp), xname(singleobj));
 			    if(mtmp->msleep) mtmp->msleep = 0;
@@ -277,6 +285,21 @@ register struct monst *mtmp;
 		if(!URETREATING(x,y) ||
 		   !rn2(BOLT_LIM-movedist(x,mtmp->mux,y,mtmp->muy)))
 		{
+		    int savequan = otmp->quan;
+		    char *verb = "throws";
+
+		    if (otmp->otyp == ARROW
+#ifdef TOLKIEN
+			|| otmp->otyp == ELVEN_ARROW
+			|| otmp->otyp == ORCISH_ARROW
+#endif
+			|| otmp->otyp == CROSSBOW_BOLT) verb = "shoots";
+		    otmp->quan = 1;
+		    if (canseemon(mtmp))
+			pline("%s %s a%s %s!", Monnam(mtmp), verb,
+				index(vowels,*(xname(otmp))) ? "n" : "",
+				xname(otmp));
+		    otmp->quan = savequan;
 		    m_throw(mtmp->mx, mtmp->my, sgn(tbx), sgn(tby), 
 			movedist(mtmp->mx,mtmp->mux,mtmp->my,mtmp->muy), otmp);
 		    if (!otmp->quan) m_useup(mtmp, otmp);
@@ -308,7 +331,8 @@ register struct monst *mtmp;
 		 * attack...
 		 */
 		if(!rn2(BOLT_LIM-movedist(mtmp->mx,mtmp->mux,mtmp->my,mtmp->muy))) {
-
+		    if (canseemon(mtmp))
+			pline("%s spits venom!", Monnam(mtmp));
 		    m_throw(mtmp->mx, mtmp->my, sgn(tbx), sgn(tby), 
 			movedist(mtmp->mx,mtmp->mux,mtmp->my,mtmp->muy), otmp);
 		    nomul(0);

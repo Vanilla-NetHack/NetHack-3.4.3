@@ -158,7 +158,9 @@ register int aflag;
 				    return(1);
 				}
 				trap->tseen = 1;
-				if(!vism_at(x,y)) atl(x,y,(char) TRAP_SYM);
+				if(!vism_at(x,y))
+					atl(x,y,(char) ((trap->ttyp==WEB)
+						? WEB_SYM : TRAP_SYM));
 			    }
 		    }
 		}

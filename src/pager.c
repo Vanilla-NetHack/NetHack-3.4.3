@@ -20,9 +20,8 @@
 static char hc = 0;
 
 static void page_more();
-
-const char nonlets[] = { S_EEL, S_CHAMELEON, S_DEMON, S_GHOST, S_HUMAN,
-	S_GOLEM, 0 };
+static boolean clear_help P((CHAR_P));
+static boolean valid_help P((CHAR_P));
 
 int
 dowhatis()
@@ -155,7 +154,7 @@ dowhatis()
 					  (type == A_NEUTRAL) ? "(neutral)" :
 					  "(lawful)");
 			    } else
-			    if (q == CHAIN_SYM && levl[cc.x][cc.y].omask)
+			    if (q == CHAIN_SYM && OBJ_AT(cc.x, cc.y))
 				    pline("(chain)");
 			    else
 #endif
@@ -176,7 +175,7 @@ dowhatis()
 			    }
 #ifdef SPELLS
 			    else
-			    if (q == SPBOOK_SYM && levl[cc.x][cc.y].omask)
+			    if (q == SPBOOK_SYM && OBJ_AT(cc.x, cc.y))
 				    pline("(spellbook)");
 #endif
 #ifdef STRONGHOLD
@@ -203,16 +202,14 @@ dowhatis()
 				u.mtimedone ? mons[u.umonnum].mname :
 #endif
 				pl_character, plname);
-			} else if((q >= 'A' && q <= 'z') || index(nonlets,q)) {
-			    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-				if(mtmp->mx == cc.x && mtmp->my == cc.y) {
-				    pline("(%s%s)",
-					mtmp->mtame ? "tame " :
-					  mtmp->mpeaceful ? "peaceful " : "",
-					strncmp(lmonnam(mtmp), "the ", 4)
-					  ? lmonnam(mtmp) : lmonnam(mtmp)+4);
-				    break;
-				}
+			} else if(levl[cc.x][cc.y].mmask) {
+			    mtmp = m_at(cc.x,cc.y);
+			    if (q == mtmp->data->mlet)
+				pline("(%s%s)",
+				    mtmp->mtame ? "tame " :
+				      mtmp->mpeaceful ? "peaceful " : "",
+				    strncmp(lmonnam(mtmp), "the ", 4)
+				      ? lmonnam(mtmp) : lmonnam(mtmp)+4);
 			}
 			if(ep[-1] == ';') {
 				pline("More info? ");
@@ -241,7 +238,7 @@ dowhatdoes()
 {
 	FILE *fp;
 	char bufr[BUFSZ+6];
-	register char *buf = &bufr[6], *ep, q, ctrl;
+	register char *buf = &bufr[6], *ep, q, ctrl, meta;
 #ifdef OS2_CODEVIEW
 	char tmp[PATHLEN];
 
@@ -264,22 +261,26 @@ dowhatdoes()
 #ifdef UNIX
 	intron();
 #endif
-	if (q == '\033') ctrl = '[';
-	else if (q != unctrl(q)) ctrl = q - 1 + 'A';
-	else ctrl = 0;
+	ctrl = ((q <= '\033') ? (q - 1 + 'A') : 0);
+	meta = ((0x80 & q) ? (0x7f & q) : 0);
 	while(fgets(buf,BUFSZ,fp))
-	    if ((!ctrl && *buf==q) || (ctrl && *buf=='^' && *(buf+1)==ctrl)) {
+	    if ((ctrl && *buf=='^' && *(buf+1)==ctrl) ||
+		(meta && *buf=='M' && *(buf+1)=='-' && *(buf+2)==meta) ||
+		*buf==q) {
 		ep = index(buf, '\n');
 		if(ep) *ep = 0;
-		if(!ctrl && buf[1] == '\t'){
+		if (ctrl && buf[2] == '\t'){
+			buf = bufr + 1;
+			(void) strncpy(buf, "^?      ", 8);
+			buf[1] = ctrl;
+		} else if (meta && buf[3] == '\t'){
+			buf = bufr + 2;
+			(void) strncpy(buf, "M-?     ", 8);
+			buf[2] = meta;
+		} else if(buf[1] == '\t'){
 			buf = bufr;
 			buf[0] = q;
 			(void) strncpy(buf+1, "       ", 7);
-		} else if (ctrl && buf[2] == '\t'){
-			buf = bufr + 1;
-			buf[0] = '^';
-			buf[1] = ctrl;
-			(void) strncpy(buf+2, "      ", 6);
 		}
 		pline(buf);
 		(void) fclose(fp);
@@ -539,7 +540,11 @@ char *text;
 		    curx = curx + strlen(tl->line_text);
 		    curline++;
 		}
-		if(hmenu) hc = lowc(readchar()); /* help menu display */
+		if(hmenu) {	/* help menu display */
+			do 
+				hc = lowc(readchar());
+			while (!valid_help(hc));
+		}
 #if defined(MSDOS) && !defined(AMIGA)
 		cmov (lth, curline);
 #else
@@ -547,9 +552,11 @@ char *text;
 #endif
 		cl_end ();
 		if (!hmenu) cmore (text);
-		home ();
-		cl_end ();
-		docorner (lth, curline-1);
+		if (!hmenu || clear_help(hc)) {
+		    home ();
+		    cl_end ();
+		    docorner (lth, curline-1);
+		}
 	    } else {					/* feed to pager */
 		set_pager(0);
 		for (tl = texthead; tl; tl = tl->next_line) {
@@ -622,21 +629,40 @@ help_menu() {
 	cornline(-1,"");
 }
 
+static boolean
+clear_help(c)
+char c;
+{
+	/* those valid_help characters which do not correspond to help routines
+	 * that redraw the whole screen on their own.  if we always clear the
+	 * help menu, we end up restoring the part of the maze underneath the
+	 * help menu when the last page of a long help file is displayed with
+	 * an external pager.
+	 */
+	return(index(quitchars,c) || c == 'd' || c == 'e'
+#ifdef WIZARD
+		|| c == 'j'
+#endif
+		);
+}
+
+static boolean
+valid_help(c)
+char c;
+{
+#ifdef WIZARD
+	return ((c >= 'a' && c <= (wizard ? 'j' : 'i')) || index(quitchars,c));
+#else
+	return ((c >= 'a' && c <= 'i') || index(quitchars,c));
+#endif
+}
+
 int
 dohelp()
 {
-	char c;
-
-	do {
-	    help_menu();
-	    c = hc;
-#ifdef WIZARD
-	} while ((c < 'a' || c > (wizard ? 'j' : 'i')) && !index(quitchars,c));
-#else
-	} while ((c < 'a' || c > 'i') && !index(quitchars,c));
-#endif
-	if (!index(quitchars, c)) {
-		switch(c) {
+	help_menu();
+	if (!index(quitchars, hc)) {
+		switch(hc) {
 			case 'a':  (void) page_file(HELP, FALSE);  break;
 			case 'b':  (void) page_file(SHELP, FALSE);  break;
 			case 'c':  (void) dohistory();  break;
@@ -768,7 +794,15 @@ register int f = fork();
 #ifdef WIZARD
 	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
 #endif
-	if(wt) getret();
+	if(wt) {
+		boolean so;
+
+		cmov(1, LI);	/* get prompt in reasonable place */
+		so = flags.standout;
+		flags.standout = 1;
+		more();
+		flags.standout = so;
+	}
 	docrt();
 	return(0);
 }

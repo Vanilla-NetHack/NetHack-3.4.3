@@ -33,7 +33,7 @@ register int x;
 
 int
 rnl(x)		/* 0 <= rnl(x) < x; somtimes subtracting Luck */
-register x;	/* good luck approaches 0, bad luck approaches (x-1) */
+register int x;	/* good luck approaches 0, bad luck approaches (x-1) */
 {
 	register int i = RND(x);
 

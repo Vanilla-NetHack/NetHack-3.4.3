@@ -220,7 +220,7 @@ register int lvl, sx, sy, align;
 		    (void) mongets(priest, rn2(2) ? CLOAK_OF_PROTECTION
 						  : CLOAK_OF_MAGIC_RESISTANCE);
 #ifdef NAMED_ITEMS
-		    otmp = mk_aligned_artifact(EPRI(priest)->shralign);
+		    otmp = mk_aligned_artifact((unsigned)EPRI(priest)->shralign + 1);
 		    if(otmp) {
 			otmp->spe = rnd(4);
 			mpickobj(priest, otmp);
@@ -358,7 +358,6 @@ intemple() {
 
 		    if(!(mtmp = makemon(&mons[PM_GHOST],u.ux,u.uy))) return;
 		    pline("An enormous ghost appears next to you!");
-		    mnexto(mtmp);
 		    mtmp->mpeaceful = 0;
 		    if(flags.verbose)
 		        You("are frightened to death, and unable to move.");

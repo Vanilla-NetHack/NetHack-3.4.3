@@ -96,7 +96,8 @@ register struct monst *mtmp;
 		if (!(Blind ? Telepat : (HTelepat & WORN_HELMET))) {
 		    register struct obj *obj;
 
-		    if(levl[mtmp->mx][mtmp->my].omask == 1) {
+		    if(Blind) pline("Wait!  There's a hidden monster there!");
+		    else if(OBJ_AT(mtmp->mx, mtmp->my)) {
 			if(obj = o_at(mtmp->mx,mtmp->my))
 				pline("Wait!  There's %s hiding under %s!",
 					defmonnam(mtmp), doname(obj));
@@ -284,7 +285,7 @@ struct monst *mon;
 int tmp;
 {
 	static int malive;
-	boolean mhit = !((tmp <= rnd(20)) && !u.uswallow);
+	boolean mhit = (tmp > rnd(20) || u.uswallow);
 
 	malive = known_hitum(mon, mhit);
 	(void) passive(mon, mhit, malive, FALSE);
@@ -460,6 +461,7 @@ register int thrown;
 			if(mon->msleep) mon->msleep = 0;
 			setmangry(mon);
 			mon->mcansee = 0;
+			tmp = rnd(25) + 20;
 			if((mon->mblinded + tmp) > 127) mon->mblinded = 127;
 			else mon->mblinded += tmp;
 			hittxt = TRUE;
@@ -628,6 +630,8 @@ register struct attack *mattk;
 		mdef->mstun = 1;
 		/* fall through to next case */
 	    case AD_WERE:	    /* no effect on monsters */
+	    case AD_HEAL:
+	    case AD_LEGS:
 	    case AD_PHYS:
 		if(mattk->aatyp == AT_WEAP) {
 			if(uwep) tmp = 0;
@@ -709,17 +713,21 @@ register struct attack *mattk;
 				if (!stolen && otmp==stealoid) {
 					if(isize < 52) {
 						otmp = addinv(otmp);
-						isize++;
+						/* might not increase isize */
+						isize = inv_cnt();
 					} else dropy(otmp);
 					stealoid = otmp;
 					stolen = TRUE;
 				} else {
 					if(isize < 52) {
 						otmp = addinv(otmp);
-						isize++;
-					} else dropy(otmp);
-					You("steal: ");
-					prinv(otmp);
+						isize = inv_cnt();
+						You("steal: ");
+						prinv(otmp);
+					} else {
+						dropy(otmp);
+						You("steal %s.", doname(otmp));
+					}
 				}
 			}
 			if (!stolen)
@@ -727,7 +735,7 @@ register struct attack *mattk;
 			else {
 				kludge("%s finishes taking off his suit.",
 							Monnam(mdef));
-				You("steal a %s.", xname(stealoid));
+				You("steal %s!", doname(stealoid));
 # ifdef ARMY
 				mdef->data = &mons[PM_UNARMORED_SOLDIER];
 # endif
@@ -735,10 +743,14 @@ register struct attack *mattk;
 		   } else {
 		   	   otmp = mdef->minvent;
 			   mdef->minvent = otmp->nobj;
-			   if(isize < 52) otmp = addinv(otmp);
-			   else dropy(otmp);
-			   You("steal: ");
-			   prinv(otmp);
+			   if(isize < 52) {
+				otmp = addinv(otmp);
+				You("steal: ");
+				prinv(otmp);
+			   } else {
+				dropy(otmp);
+				You("steal %s.", doname(otmp));
+			   }
 		   }
 		}
 		tmp = 0;
@@ -789,7 +801,7 @@ register struct attack *mattk;
 			kludge("%s suddenly seems weaker!", Monnam(mdef));
 			mdef->mhpmax -= xtmp;
 			if ((mdef->mhp -= xtmp) <= 0 || !mdef->m_lev--) {
-				kludge("%s dies.", Monnam(mdef));
+				kludge("%s dies!", Monnam(mdef));
 				xkilled(mdef,0);
 				return(2);
 			}
@@ -836,6 +848,12 @@ register struct attack *mattk;
 	    case AD_STCK:
 		if (!sticks(mdef->data))
 		    u.ustuck = mdef; /* it's now stuck to you */
+		break;
+	    case AD_PLYS:
+		if (!mdef->mfroz && !rn2(3) && tmp < mdef->mhp) {
+		    if (!Blind) pline("%s is frozen by you!", Monnam(mdef));
+		    mdef->mfroz = 1;
+		}
 		break;
 	    default:	tmp = 0;
 			break;
@@ -1059,7 +1077,7 @@ use_weapon:
 	 * attack.  Is this really desirable?
 	 */
 			if(uwep) tmp += hitval(uwep, mon->data);
-			dhit = !((tmp <= rnd(20)) && !u.uswallow);
+			dhit = (tmp > rnd(20) || u.uswallow);
 			/* Enemy dead, before any special abilities used */
 			if (!known_hitum(mon,dhit)) return 0;
 			/* Do not print "You hit" message, since known_hitum

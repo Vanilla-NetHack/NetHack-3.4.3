@@ -452,11 +452,11 @@ register int fd;
 void
 bwrite(fd, loc, num)
 register int fd;
-register genericptr_t loc;
+genericptr_t loc;
 register unsigned num;
 {
       bwritefd = fd;
-      for (; num; num--, ((char *)loc)++) {
+      for (; num; num--, (*(char **)&loc)++) {
 	      if (*((char *)loc) == RLESC) { /* One more char in run */
 		  if (++outrunlength == 0xFF) {
 		      flushoutrun(outrunlength);
@@ -685,7 +685,6 @@ copyfile(from, to)
 char *from, *to;
 {
 #ifdef TOS
-	extern int _copyfile();
 
 	if (_copyfile(from, to))
 		panic("Can't copy %s to %s\n", from, to);

@@ -15,10 +15,10 @@ static const struct artifact artilist[] = {
 
 { LONG_SWORD,	 "Excalibur",	(SPFX_NOGEN | SPFX_SEEK | SPFX_DEFN |
 								SPFX_SEARCH), 0,
-  { 0, AD_PHYS, 5, 10 }, { 0, AD_DRLI, 0, 0} },
+  { 0, AD_PHYS, 5, 10 }, { 0, AD_DRLI, 0, 0}, A_LAW },
 
 { KATANA,	 "Snickersnee",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 0, 8 }, NO_ATTK },
+  { 0, AD_PHYS, 0, 8 }, NO_ATTK, A_LAW },
 
 /*	Ah, never shall I forget the cry, 
  *		or the shriek that shrieked he,
@@ -30,58 +30,71 @@ static const struct artifact artilist[] = {
  */
 
 { AXE,		 "Cleaver",	SPFX_RESTR, 0,
-  { 0, AD_PHYS, 3, 12 }, NO_ATTK },
+  { 0, AD_PHYS, 3, 12 }, NO_ATTK, A_CHAOS },
+
+#ifdef TOLKIEN
+{ ORCISH_DAGGER, "Grimtooth",	SPFX_RESTR, 0,
+  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS },
+#else
+{ DAGGER,	 "Grimtooth",	SPFX_RESTR, 0,
+  { 0, AD_PHYS, 2, 6 }, NO_ATTK, A_CHAOS },
+#endif
 
 /*  Special purpose swords - various types */
 
 { TWO_HANDED_SWORD, "Orcrist",	SPFX_DCLAS, S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
 #ifdef TOLKIEN
 { ELVEN_DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DCLAS), S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 #else
 { DAGGER,	 "Sting",	(SPFX_WARN | SPFX_DCLAS), S_ORC,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 #endif
 
 { LONG_SWORD,	 "Frost Brand", (SPFX_RESTR | SPFX_ATTK | SPFX_DEFN), 0,
-  { 0, AD_COLD, 5, 0 }, { 0, AD_COLD, 0, 0 } },
+  { 0, AD_COLD, 5, 0 }, { 0, AD_COLD, 0, 0 }, A_NEUTRAL },
 
 { LONG_SWORD,	 "Fire Brand",	(SPFX_RESTR | SPFX_ATTK | SPFX_DEFN), 0,
-  { 0, AD_FIRE, 5, 0 }, { 0, AD_FIRE, 0, 0 } },
+  { 0, AD_FIRE, 5, 0 }, { 0, AD_FIRE, 0, 0 }, A_NEUTRAL },
 
 /* Stormbringer only has a 2 because it can drain a level, providing 8 more */
 { BROADSWORD,	 "Stormbringer", (SPFX_RESTR | SPFX_ATTK | SPFX_DEFN |
 								SPFX_DRLI), 0,
-  { 0, AD_DRLI, 5, 2 }, { 0, AD_DRLI, 0, 0 } },
+  { 0, AD_DRLI, 5, 2 }, { 0, AD_DRLI, 0, 0 }, A_CHAOS },
 
 { LONG_SWORD,	 "Sunsword",	(SPFX_RESTR | SPFX_DCLAS), 0, /* undead */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
 { BROADSWORD,	 "Dragonbane",	(SPFX_RESTR | SPFX_DCLAS), S_DRAGON,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL },
 
 { LONG_SWORD,	 "Demonbane",	(SPFX_RESTR | SPFX_DCLAS), 0, /* demons */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
+/* A silver weapon would be appropriate, if we had one. */
 { LONG_SWORD,	 "Werebane",	(SPFX_RESTR | SPFX_DCLAS), 0, /* weres */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
 { LONG_SWORD,	 "Giantslayer", (SPFX_RESTR | SPFX_DCLAS), 0, /* giants */
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_NEUTRAL },
 
-{ LUCERN_HAMMER, "Ogresmasher",	(SPFX_RESTR | SPFX_DCLAS),  S_OGRE,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+/* Another interesting weapon would be the dwarven hammer or axe with the
+ * boomerang-like power of returning to the wielder's hand, if the code
+ * were written to add such an ability.
+ */
+{ WAR_HAMMER, "Ogresmasher",	(SPFX_RESTR | SPFX_DCLAS),  S_OGRE,
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
-{ LUCERN_HAMMER, "Thunderfist",	(SPFX_RESTR | SPFX_ATTK),  0,
-  { 0, AD_ELEC, 5, 24 }, NO_ATTK },
+{ WAR_HAMMER, "Mjollnir",	(SPFX_RESTR | SPFX_ATTK),  0,
+  { 0, AD_ELEC, 5, 24 }, NO_ATTK, A_LAW }, /* Mjo:llnir */
 
 { MORNING_STAR,	 "Trollsbane", (SPFX_RESTR | SPFX_DCLAS), S_TROLL,
-  { 0, AD_PHYS, 5, 0 }, NO_ATTK },
+  { 0, AD_PHYS, 5, 0 }, NO_ATTK, A_LAW },
 
 /*	ARRAY TERMINATOR	*/
-{ 0,  "", 0, 0, NO_ATTK, NO_ATTK }
+{ 0,  "", 0, 0, NO_ATTK, NO_ATTK, 0 }
 };
 
 void
@@ -157,7 +170,7 @@ register char	*name;
 # if defined(THEOLOGY) && defined(ALTARS)
 struct obj *
 mk_aligned_artifact(align)
-int align;
+unsigned align;
 {
 	register struct artifact *artif;
 	register struct obj *otmp;

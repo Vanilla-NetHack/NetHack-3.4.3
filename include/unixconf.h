@@ -156,9 +156,5 @@
 #  define HI_ZAP	BLUE	/* blue zaps! */
 #endif
 
-#ifndef EXTERN_H
-#include "extern.h"
 #endif
-
-#endif /* UNIXCONF_H /* */
 #endif /* UNIX /* */

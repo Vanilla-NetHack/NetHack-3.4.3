@@ -90,7 +90,7 @@ register struct monst *mtmp;
 		obj->owt = weight(obj);
 		break;
 	    case PM_STONE_GOLEM:
-		obj = mkstatue(mdat, x, y);
+		obj = mkcorpstat(STATUE, mdat, x, y);
 		break;
 	    case PM_WOOD_GOLEM:
 		pieces = d(2,4);
@@ -106,7 +106,7 @@ register struct monst *mtmp;
 	    default:
 		if (mdat->geno & G_NOCORPSE)
 			return (struct obj *)0;
-		else obj = mkcorpse_at(mdat, x, y);
+		else obj = mkcorpstat(CORPSE, mdat, x, y);
 		break;
 	}
 	/* All special cases should precede the G_NOCORPSE check */
@@ -275,7 +275,7 @@ meatgold(mtmp)
 	register struct obj *otmp;
 
 	/* Eats gold if it is there */
-	while(gold = g_at(mtmp->mx, mtmp->my)){
+	if(gold = g_at(mtmp->mx, mtmp->my)){
 		if (cansee(mtmp->mx, mtmp->my) && flags.verbose)
 			pline("%s eats some gold!", Monnam(mtmp));
 		mtmp->meating = (int)((gold->amount + 500L)/1000L);
@@ -287,7 +287,8 @@ meatgold(mtmp)
 	/* Eats topmost metal object if it is there */
 	for (otmp = fobj; otmp; otmp = otmp->nobj)
 	    if (otmp->ox == mtmp->mx && otmp->oy == mtmp->my &&
-		objects[otmp->otyp].oc_material == METAL) {
+		objects[otmp->otyp].oc_material > WOOD &&
+		objects[otmp->otyp].oc_material < MINERAL) {
 		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s eats %s!", Monnam(mtmp),
 				distant_name(otmp,doname));
@@ -299,15 +300,18 @@ meatgold(mtmp)
 			mtmp->mhp += objects[otmp->otyp].oc_weight;
 			if (mtmp->mhp > mtmp->mhpmax) mtmp->mhp = mtmp->mhpmax;
 		    }
-		    if((uball && otmp == uball) ||
-		       (uchain && otmp == uchain)) unpunish();
-		    freeobj(otmp);
+		    if(otmp == uball) {
+			unpunish();
+			freeobj(otmp);
+		    } else if(otmp == uchain)
+			unpunish();	/* frees uchain */
+		    else
+			freeobj(otmp);
 		    /* Left behind a pile? */
 		    if(rnd(25) < 3) (void) mksobj_at(ROCK, mtmp->mx, mtmp->my);
 		    newsym(mtmp->mx, mtmp->my);
 		    break;
 	    }
-	set_omask(mtmp->mx, mtmp->my);
 }
 
 void
@@ -317,7 +321,7 @@ meatobj(mtmp)		/* for gelatinous cubes */
 	register struct obj *otmp, *otmp2;
 
 	/* Eats organic, glass, or wood objects if there */
-	/* Engulfs anything else, metal and rock */
+	/* Engulfs others, except huge rocks and metal attached to player */
 	for (otmp = fobj; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nobj;
 	    if (otmp->ox == mtmp->mx && otmp->oy == mtmp->my) {
@@ -333,7 +337,8 @@ meatobj(mtmp)		/* for gelatinous cubes */
 			if (mtmp->mhp > mtmp->mhpmax) mtmp->mhp = mtmp->mhpmax;
 		    }
 		    delobj(otmp);		/* munch */
-		} else if (otmp->olet != ROCK_SYM && otmp->olet != BALL_SYM) {
+		} else if (otmp->olet != ROCK_SYM &&
+					otmp != uball && otmp != uchain) {
 		    if (cansee(mtmp->mx, mtmp->my) && flags.verbose)
 			pline("%s engulfs %s.", Monnam(mtmp),
 				distant_name(otmp,doname));
@@ -344,7 +349,6 @@ meatobj(mtmp)		/* for gelatinous cubes */
 	    /* Engulf & devour is instant, so don't set meating */
 	    newsym(mtmp->mx, mtmp->my);
 	}
-	set_omask(mtmp->mx, mtmp->my);
 }
 
 void
@@ -353,7 +357,7 @@ mpickgold(mtmp)
 {
 	register struct gold *gold;
 
-	while(gold = g_at(mtmp->mx, mtmp->my)){
+	if(gold = g_at(mtmp->mx, mtmp->my)){
 		mtmp->mgold += gold->amount;
 		if (cansee(mtmp->mx, mtmp->my) && flags.verbose)
 			pline("%s picks up some gold.", Monnam(mtmp));
@@ -361,7 +365,6 @@ mpickgold(mtmp)
 		if(levl[mtmp->mx][mtmp->my].scrsym == GOLD_SYM)
 			newsym(mtmp->mx, mtmp->my);
 	}
-	set_omask(mtmp->mx, mtmp->my);
 }
 
 /* Now includes giants which pick up enormous rocks.  KAA */
@@ -385,7 +388,6 @@ mpickgems(mtmp)
 		newsym(mtmp->mx, mtmp->my);
 		return;	/* pick only one object */
 	      }
-	set_omask(mtmp->mx, mtmp->my);
 }
 
 int
@@ -474,7 +476,6 @@ mpickstuff(mtmp, str)
 		mpickobj(mtmp, otmp);
 		if(index(str, (char) levl[mtmp->mx][mtmp->my].scrsym))
 			newsym(mtmp->mx, mtmp->my);
-		set_omask(mtmp->mx, mtmp->my);
 		return;			/* pick only one object */
 	    }
 }
@@ -771,6 +772,7 @@ register struct monst *mtmp;
 			u.ux = mtmp->mx;
 			u.uy = mtmp->my;
 			u.uswallow = 0;
+			u.uswldtim = 0;
 			setsee();
 			docrt();
 		}
@@ -1059,15 +1061,27 @@ newcham(mtmp, mdat)	/* make a chameleon look like a new monster */
 	mtmp->minvis = !!(mdat->mlet == S_STALKER);
 	mtmp->mhide = !!hides_under(mdat);
 	if (!mtmp->mhide) mtmp->mundetected = 0;
-	if (u.ustuck == mtmp
+	if (u.ustuck == mtmp) {
+		if(u.uswallow) {
+			if(!attacktype(mdat,AT_ENGL)) {
+				/* cf. digging out of monster with wand */
+				You("break out of %s's stomach!",
+					mon_nam(mtmp));
+				mtmp->mhp = 1;	/* almost dead */
+				regurgitates(mtmp);
+			}
+		} else {
+			if(!sticks(mdat)
 #ifdef POLYSELF
-			&& !sticks(uasmon)
+				&& !sticks(uasmon)
 #endif
-			&& !sticks(mdat))
-		u.ustuck = 0;
+				)
+				unstuck(mtmp);
+		}
+	}
+
 #ifdef WORM
 	if(mdat == &mons[PM_LONG_WORM] && getwn(mtmp)) initworm(mtmp);
-			/* perhaps we should clear mtmp->mtame here? */
 #endif
 	unpmon(mtmp);	/* necessary for 'I' and to force pmon */
 	pmon(mtmp);

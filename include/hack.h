@@ -75,6 +75,10 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #include	"rm.h"
 #endif
 
+#ifndef EXTERN_H
+#include	"extern.h"
+#endif
+
 #ifdef STRONGHOLD
 # define Inhell		(dlevel > stronghold_level && dlevel <= MAXLEVEL)
 #else

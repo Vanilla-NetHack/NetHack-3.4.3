@@ -182,7 +182,7 @@ struct trobj Wizard[] = {
 #else
 #  define W_MULTEND	5
 #endif
-	{ DAGGER, 0, WEAPON_SYM, 1, 1, 1 },	/* for dealing with ghosts */
+	{ ATHAME, 1, WEAPON_SYM, 1, 1, 1 },	/* for dealing with ghosts */
 	{ CLOAK_OF_MAGIC_RESISTANCE, 0, ARMOR_SYM, 1, 1, UNDEF_BLESS },
 	{ UNDEF_TYP, UNDEF_SPE, WAND_SYM, 1, 1, UNDEF_BLESS },
 	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 1, UNDEF_BLESS },
@@ -498,7 +498,7 @@ got_suffix:
 		ini_inv(Wishing);
 #endif
 	find_ac();			/* get initial ac value */
-	init_attr((pick != 'y') ? 69 : 72);	/* init attribute values */
+	init_attr((pick != 'Y') ? 69 : 72);	/* init attribute values */
 	max_rank_sz();			/* set max str size for class ranks */
 /*
  *	Do we really need this?
@@ -507,6 +507,7 @@ got_suffix:
 	    if(!rn2(20)) {
 		register int xd = rn2(7) - 2;	/* biased variation */
 		adjattrib(i, xd, TRUE);
+		if (ABASE(i) < AMAX(i)) AMAX(i) = ABASE(i);
 	    }
 
 	/* make sure he can carry all he has - especially for T's */

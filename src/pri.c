@@ -10,9 +10,9 @@
 #include "epri.h"
 #endif
 
-static void hilite P((uchar, uchar));
+static void hilite P((UCHAR_P, UCHAR_P));
 static void cornbot P((int));
-static boolean ismnst P((char));
+static boolean ismnst P((CHAR_P));
 #if !defined(DECRAINBOW) && !defined(UNIX)
 #  define g_putch  (void) putchar
 #endif
@@ -134,7 +134,7 @@ uchar ch,typ;
 		 * will still hilite the doorway symbol.  -3.
 		 */
 		if (!vism_at(x,y) &&
-		    (!levl[x][y].omask && !levl[x][y].gmask || is_pool(x,y)))
+		    (!OBJ_AT(x, y) && !levl[x][y].gmask || is_pool(x,y)))
 		    typ = AT_MAP;
 
 	y += 2;

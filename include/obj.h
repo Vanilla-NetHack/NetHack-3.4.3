@@ -45,6 +45,17 @@ struct obj {
 	Bitfield(onamelth,6);
 	long age;		/* creation date */
 	long owornmask;
+
+/* note that TIMEOUT in you.h is defined as 07777L; no bits for items that
+ * confer properties may overlap that mask, or timeout.c will happily rearrange
+ * the bits behind the back of the property code
+ * shirts, balls, and chains are currently safe
+ */
+#define	W_BALL	02000L
+#define	W_CHAIN	04000L
+#define	W_RINGL	010000L	/* make W_RINGL = RING_LEFT (see uprop) */
+#define	W_RINGR	020000L
+#define	W_RING	(W_RINGL | W_RINGR)
 #define	W_ARM	040000L
 #define	W_ARMC	0100000L
 #define	W_ARMH	0200000L
@@ -53,18 +64,13 @@ struct obj {
 #define	W_ARMF	02000000L
 #define	W_AMUL	04000000L
 #define	W_TOOL	010000000L	/* wearing another tool (see uprop) */
+#define	W_WEP	020000000L
 #ifdef SHIRT
-#define	W_ARMU	020000000L
+#define	W_ARMU	01000L
 #define	W_ARMOR	(W_ARM | W_ARMC | W_ARMH | W_ARMS | W_ARMG | W_ARMF | W_ARMU)
 #else
 #define	W_ARMOR	(W_ARM | W_ARMC | W_ARMH | W_ARMS | W_ARMG | W_ARMF)
 #endif
-#define	W_RINGL	010000L	/* make W_RINGL = RING_LEFT (see uprop) */
-#define	W_RINGR	020000L
-#define	W_RING	(W_RINGL | W_RINGR)
-#define	W_WEP	01000L
-#define	W_BALL	02000L
-#define	W_CHAIN	04000L
 	long oextra[1];		/* used for name of ordinary objects - length
 				   is flexible; amount for tmp gold objects */
 };
@@ -75,13 +81,19 @@ extern struct obj *fobj;
 #define	ONAME(otmp)	((char *) otmp->oextra)
 #define	OGOLD(otmp)	(otmp->oextra[0])
 
-# ifndef STUPID_CPP	/* otherwise these macros are functions in lock.c */
+# ifndef STUPID_CPP	/* otherwise these macros are functions */
+/* #define OBJ_AT(x,y)	(levl[x][y].omask) */
+
 #define Is_container(otmp)	(otmp->otyp >= ICE_BOX && otmp->otyp <= BAG_OF_TRICKS)
 #define Is_box(otmp)	(otmp->otyp == LARGE_BOX || otmp->otyp == CHEST)
 #define Is_mbag(otmp)	(otmp->otyp == BAG_OF_HOLDING || otmp->otyp == BAG_OF_TRICKS)
 
 #define is_sword(otmp)	(otmp->otyp >= SHORT_SWORD && otmp->otyp <= KATANA)
 #define bimanual(otmp)	(otmp->olet == WEAPON_SYM && objects[otmp->otyp].oc_bimanual)
+
+#define is_flammable(otmp)	(objects[otmp->otyp].oc_material == WOOD || objects[otmp->otyp].oc_material == 0)
+#define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == METAL)
+#define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER)
 # endif /* STUPID_CPP */
 
 #endif /* OBJ_H /**/

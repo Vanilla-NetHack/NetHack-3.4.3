@@ -18,6 +18,7 @@
 E long *alloc P((unsigned int));
 #endif
 
+#if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
 /* ### apply.c ### */
 
 E int doapply();
@@ -32,9 +33,9 @@ E void m_unleash P((struct monst *));
 E void unleash_all();
 E boolean next_to_u();
 E struct obj *get_mleash P((struct monst *));
-E void check_leash P((xchar,xchar));
+E void check_leash P((XCHAR_P,XCHAR_P));
 #endif
-E boolean um_dist P((xchar,xchar,xchar));
+E boolean um_dist P((XCHAR_P,XCHAR_P,XCHAR_P));
 
 /* ### artifact.c ### */
 
@@ -44,7 +45,7 @@ E boolean is_artifact P((struct obj *));
 E boolean spec_ability P((struct obj *,unsigned));
 E int restr_name P((struct obj *,char *));
 # if defined(THEOLOGY) && defined(ALTARS)
-E struct obj *mk_aligned_artifact P((int));
+E struct obj *mk_aligned_artifact P((unsigned));
 # endif
 E int defends P((int,struct obj *));
 E int spec_abon P((struct obj *,struct permonst *));
@@ -53,16 +54,14 @@ E int spec_dbon P((struct obj *,struct permonst *,int));
 
 /* ### attrib.c ### */
 
-E void adjattrib P((int,int,boolean));
-E void change_luck P((schar));
-E int stone_luck P((boolean));
+E void adjattrib P((int,int,BOOLEAN_P));
+E void change_luck P((SCHAR_P));
+E int stone_luck P((BOOLEAN_P));
 E void gainstr P((struct obj *,int));
 E void losestr P((int));
 E void restore_attrib();
 E void init_attr P((int));
-#ifdef POLYSELF
 E void redist_attr();
-#endif
 E void adjabil P((int));
 E int newhp();
 E schar acurr();
@@ -80,17 +79,16 @@ E void reset_occupations ();
 E void set_occupation P((int(*)(),char *,int));
 #ifdef REDO
 E char pgetchar();
-E void pushch P((char));
-E void savech P((char));
+E void pushch P((CHAR_P));
+E void savech P((CHAR_P));
 #endif
-E char unctrl P((char));
 E void rhack P((char *));
-E char lowc P((char));
+E char lowc P((CHAR_P));
 E void enlightenment();
-E int xytod P((schar,schar));
+E int xytod P((SCHAR_P,SCHAR_P));
 E void dtoxy P((coord *,int));
-E int movecmd P((char));
-E int getdir P((boolean));
+E int movecmd P((CHAR_P));
+E int getdir P((BOOLEAN_P));
 E void confdir();
 E int isok P((int,int));
 E int doextlist();
@@ -103,7 +101,7 @@ E void initsym P((int,int));
 E int is_drawbridge_wall P((int, int));
 E boolean is_db_wall P((int, int));
 E boolean find_drawbridge P((int *, int*));
-E boolean create_drawbridge P((int, int, int, boolean));
+E boolean create_drawbridge P((int, int, int, BOOLEAN_P));
 E void open_drawbridge P((int, int));
 E void close_drawbridge P((int, int));
 E void destroy_drawbridge P((int, int));
@@ -131,7 +129,7 @@ E void dropy P((struct obj *));
 E int doddrop();
 E int dodown();
 E int doup();
-E void goto_level P((int,boolean));
+E void goto_level P((int,BOOLEAN_P));
 E int donull();
 E int dowipe();
 E struct obj *splitobj P((struct obj *,int));
@@ -193,7 +191,7 @@ E void corrode_armor();
 E void reset_remarm();
 E int doddoremarm();
 E int destroy_arm P((struct obj *));
-E void adj_abon P((struct obj *,schar));
+E void adj_abon P((struct obj *,SCHAR_P));
 
 /* ### dog.c ### */
 
@@ -204,7 +202,7 @@ E void losedogs();
 E void keepdogs();
 E void fall_down P((struct monst *,int));
 E int dogfood P((struct monst *,struct obj *));
-E int inroom P((xchar,xchar));
+E int inroom P((XCHAR_P,XCHAR_P));
 E int tamedog P((struct monst *,struct obj *));
 
 /* ### dogmove.c ### */
@@ -214,7 +212,7 @@ E int dog_move P((struct monst *,int));
 /* ### dokick.c ### */
 
 E boolean ghitm P((struct monst *,long));
-E boolean bad_kick_throw_pos P((xchar,xchar));
+E boolean bad_kick_throw_pos P((XCHAR_P,XCHAR_P));
 E struct monst *ghit P((int,int,int));
 E int dokick();
 
@@ -223,7 +221,7 @@ E int dokick();
 E int dothrow();
 E int throwit P((struct obj *));
 E int thitmonst P((struct monst *,struct obj *));
-E int breaks P((struct obj *,boolean));
+E int breaks P((struct obj *,BOOLEAN_P));
 
 /* ### eat.c ### */
 
@@ -233,16 +231,16 @@ E int doeat();
 E void gethungry();
 E void morehungry P((int));
 E void lesshungry P((int));
-E void newuhs P((boolean));
+E void newuhs P((BOOLEAN_P));
 E void vomit();
-E struct obj *floorfood P((char *,int));
+E struct obj *floorfood P((char *,BOOLEAN_P));
 
 /* ### end.c ### */
 
 E int done1();
 E int done2();
 E void done_in_by P((struct monst *));
-E void panic P((char *,...));
+E void panic V((char *,...));
 E void done P((int));
 E void clearlocks();
 #ifdef NOSAVEONHANGUP
@@ -252,10 +250,10 @@ E void hangup();
 /* ### engrave.c ### */
 
 #ifdef ELBERETH
-E int sengr_at P((char *,xchar,xchar));
+E int sengr_at P((char *,XCHAR_P,XCHAR_P));
 #endif
 E void u_wipe_engr P((int));
-E void wipe_engr_at P((xchar,xchar,xchar));
+E void wipe_engr_at P((XCHAR_P,XCHAR_P,XCHAR_P));
 E void read_engr_at P((int,int));
 E void make_engr_at P((int,int,char *));
 E int freehand();
@@ -308,14 +306,14 @@ E void get_ext_cmd P((char *));
 
 E void unsee();
 E void seeoff P((int));
-E void movobj P((struct obj *,xchar,xchar));
-E boolean may_dig P((xchar,xchar));
+E void movobj P((struct obj *,XCHAR_P,XCHAR_P));
+E boolean may_dig P((XCHAR_P,XCHAR_P));
 E void domove();
 E void spoteffects();
 E int dopickup();
 E void lookaround();
 E int monster_nearby();
-E int cansee P((xchar,xchar));
+E int cansee P((XCHAR_P,XCHAR_P));
 E int sgn P((int));
 E void getcorners
 	P((xchar *,xchar *,xchar *,xchar *,xchar *,xchar *,xchar *,xchar *));
@@ -365,9 +363,9 @@ E int doprarm();
 E int doprring();
 E int dopramulet();
 E int doprtool();
-E int digit P((char));
+E int digit P((CHAR_P));
 E void useupf P((struct obj *));
-E char *let_to_name P((char));
+E char *let_to_name P((CHAR_P));
 E void reassign();
 
 /* ### ioctl.c ### */
@@ -403,13 +401,13 @@ E void readmail();
 /* ### makemon.c ### */
 
 E struct monst *makemon P((struct permonst *,int,int));
-E void enexto P((coord *,xchar,xchar,struct permonst *));
+E void enexto P((coord *,XCHAR_P,XCHAR_P,struct permonst *));
 E int goodpos P((int,int, struct permonst *));
 E void rloc P((struct monst *));
 E struct monst *mkmon_at P((char *,int,int));
 E void init_monstr();
 E struct permonst *rndmonst();
-E struct permonst *mkclass P((char));
+E struct permonst *mkclass P((CHAR_P));
 E int adj_lev P((struct permonst *));
 E struct permonst *grow_up P((struct monst *));
 E int mongets P((struct monst *,int));
@@ -439,6 +437,7 @@ E int noattacks P((struct permonst *));
 #ifdef POLYSELF
 E struct monst *cloneu();
 #endif
+E void regurgitates P((struct monst *));
 E int mattacku P((struct monst *));
 E void mdamageu P((struct monst *,int));
 E int could_seduce P((struct monst *,struct monst *,struct attack *));
@@ -454,7 +453,7 @@ E int somey P((struct mkroom *));
 E boolean place_oracle P((struct mkroom *,int *,int *,int *));
 #endif
 E void mklev();
-E int okdoor P((xchar,xchar));
+E int okdoor P((XCHAR_P,XCHAR_P));
 E void dodoor P((int,int,struct mkroom *));
 E void mktrap P((int,int,struct mkroom *));
 E void mkfount P((int,struct mkroom *));
@@ -462,7 +461,7 @@ E void mkfount P((int,struct mkroom *));
 /* ### mkmaze.c ### */
 
 #if defined(WALLIFIED_MAZE) || defined(STRONGHOLD)
-E void wallification P((int,int,int,int,boolean));
+E void wallification P((int,int,int,int,BOOLEAN_P));
 #endif
 E void walkfrom P((int,int));
 E void makemaz();
@@ -472,27 +471,29 @@ E void bound_digging();
 
 /* ### mkobj.c ### */
 
-E struct obj *mkobj_at P((char,int,int));
+E struct obj *mkobj_at P((CHAR_P,int,int));
 E struct obj *mksobj_at P((int,int,int));
-E struct obj *mkobj P((char,boolean));
+E struct obj *mkobj P((CHAR_P,BOOLEAN_P));
 E int rndmonnum();
-E struct obj *mksobj P((int,boolean));
+E struct obj *mksobj P((int,BOOLEAN_P));
 E int letter P((int));
 E int weight P((struct obj *));
 E void mkgold P((long,int,int));
-E struct obj *mkcorpse_at P((struct permonst *,int,int));
-E struct obj *mk_tt_corpse P((int,int));
-E struct obj *mkstatue P((struct permonst *,int,int));
-E struct obj *mk_named_object P((int, struct permonst *,int,int,char *,int));
-#ifdef MEDUSA
-E struct obj *mk_tt_statue P((int,int));
-#endif
+E struct obj *mkcorpstat P((int,struct permonst *,int,int));
+E struct obj *mk_tt_object P((int,int,int));
+E struct obj *mk_named_object P((int,struct permonst *,int,int,char *,int));
 E void bless P((struct obj *));
 E void curse P((struct obj *));
 E void blessorcurse P((struct obj *,int));
+#ifdef STUPID_CPP
 E boolean is_flammable P((struct obj *));
 E boolean is_rustprone P((struct obj *));
-E void set_omask P((xchar,xchar));
+E boolean is_corrodeable P((struct obj *));
+#endif
+E boolean OBJ_AT P((int,int));
+E void place_object P((struct obj *,int,int));
+E void move_object P((struct obj *,int,int));
+E void remove_object P((struct obj *));
 
 /* ### mkroom.c ### */
 
@@ -527,12 +528,12 @@ E void monfree P((struct monst *));
 E void unstuck P((struct monst *));
 E void killed P((struct monst *));
 E void xkilled P((struct monst *,int));
-E void kludge P((char *,char *,...));
+E void kludge V((char *,char *,...));
 E void rescham();
 E void restartcham();
 E int newcham P((struct monst *,struct permonst *));
 E void mnexto P((struct monst *));
-E void mnearto P((struct monst *, xchar, xchar, boolean));
+E void mnearto P((struct monst *, XCHAR_P, XCHAR_P, BOOLEAN_P));
 E void setmangry P((struct monst *));
 E int disturb P((struct monst *));
 E void mondied P((struct monst *));
@@ -599,7 +600,7 @@ E void read_config_file();
 E void set_lock_and_bones();
 E void append_slash P((char *));
 E void getreturn P((char *));
-E void msmsg P((char *,...));
+E void msmsg V((char *,...));
 E void chdrive P((char *));
 # ifndef TOS
 E void disable_ctrlP();
@@ -614,7 +615,7 @@ E void get_scr_size();
 # endif
 #endif /* MSDOS */
 #ifdef TOS
-E int _copyfile P((int, int));
+E int _copyfile P((char *, char *));
 E int kbhit();
 #endif /* TOS */
 
@@ -624,7 +625,7 @@ E int thitu P((int,int,char *));
 E int thrwmu P((struct monst *));
 E int spitmu P((struct monst *));
 E int breamu P((struct monst *,struct attack *));
-E boolean linedup P((xchar,xchar,xchar,xchar));
+E boolean linedup P((XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
 E boolean lined_up P((struct monst *));
 E struct obj *m_carrying P((struct monst *,int));
 E void m_useup P((struct monst *,struct obj *));
@@ -637,7 +638,7 @@ E int do_play_instrument P((struct obj *));
 
 /* ### o_init.c ### */
 
-E int letindex P((char));
+E int letindex P((CHAR_P));
 E void init_objects();
 E void oinit();
 E void savenames P((int));
@@ -661,7 +662,8 @@ E boolean uses_known P((struct obj *));
 /* ### options.c ### */
 
 E void initoptions();
-E void parseoptions P((char *,boolean));
+E void assign_graphics P((unsigned int *, int));
+E void parseoptions P((char *,BOOLEAN_P));
 E int doset();
 E int dotogglepickup();
 E void option_help();
@@ -682,7 +684,7 @@ E int page_line P((char *));
 E void cornline P((int,char *));
 E int dohelp();
 E int dohistory();
-E int page_file P((char *,boolean));
+E int page_file P((char *,BOOLEAN_P));
 #ifdef UNIX
 #ifdef SHELL
 E int dosh();
@@ -696,9 +698,9 @@ E int child P((int));
 E int (*occupation)();
 E int (*afternmv)();
 E void askname();
-E void impossible P((char *,...));
+E void impossible V((char *,...));
 #ifdef CHDIR
-E void chdirx P((char *,boolean));
+E void chdirx P((char *,BOOLEAN_P));
 #endif /* CHDIR */
 E void stop_occupation();
 #endif /* MSDOS */
@@ -708,7 +710,7 @@ E void stop_occupation();
 #ifdef MSDOS
 E void gettty();
 E void settty P((char *));
-E void error P((char *,...));
+E void error V((char *,...));
 #endif /* MSDOS */
 
 /* ### pcunix.c ### */
@@ -739,6 +741,7 @@ E void dec_cwt P((struct obj *, struct obj *));
 
 /* ### polyself.c ### */
 
+E void newman();
 #ifdef POLYSELF
 E void polyself();
 E int polymon P((int));
@@ -761,15 +764,15 @@ E void ugolemeffects P((int, int));
 
 /* ### potion.c ### */
 
-E void make_confused P((long,boolean));
-E void make_stunned P((long,boolean));
-E void make_blinded P((long,boolean));
-E void make_sick P((long,boolean));
-E void make_hallucinated P((long,boolean));
+E void make_confused P((long,BOOLEAN_P));
+E void make_stunned P((long,BOOLEAN_P));
+E void make_blinded P((long,BOOLEAN_P));
+E void make_sick P((long,BOOLEAN_P));
+E void make_hallucinated P((long,BOOLEAN_P));
 E int dodrink();
 E int dopotion P((struct obj *));
 E int peffects P((struct obj *));
-E void healup P((int,int,boolean,boolean));
+E void healup P((int,int,BOOLEAN_P,BOOLEAN_P));
 E void strange_feeling P((struct obj *,char *));
 E void potionhit P((struct monst *,struct obj *));
 E void potionbreathe P((struct obj *));
@@ -789,7 +792,7 @@ E char *u_gname();
 E int doturn();
 #ifdef ALTARS
 E char *a_gname();
-E char *a_gname_at P((xchar,xchar));
+E char *a_gname_at P((XCHAR_P,XCHAR_P));
 # ifdef THEOLOGY
 E void altar_wrath P((int,int));
 # endif
@@ -799,9 +802,9 @@ E void altar_wrath P((int,int));
 
 E void swallowed();
 E void setclipped();
-E void at P((xchar,xchar,uchar,uchar));
+E void at P((XCHAR_P,XCHAR_P,UCHAR_P,UCHAR_P));
 E void prme();
-E void shieldeff P((xchar,xchar));
+E void shieldeff P((XCHAR_P,XCHAR_P));
 E int doredraw();
 E void docrt();
 E void docorner P((int,int));
@@ -822,8 +825,8 @@ E const char *hcolor();
 
 /* ### priest.c ### */
 
-E int move_special P((struct monst *,schar,schar,boolean,boolean,
-			xchar,xchar,xchar,xchar));
+E int move_special P((struct monst *,SCHAR_P,SCHAR_P,BOOLEAN_P,BOOLEAN_P,
+			XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
 #if defined(ALTARS) && defined(THEOLOGY)
 E struct mkroom *in_temple P((int,int));
 E int pri_move P((struct monst *));
@@ -839,14 +842,14 @@ E void angry_priest();
 
 /* ### prisym.c ### */
 
-E void atl P((int,int,char));
+E void atl P((int,int,CHAR_P));
 E void on_scr P((int,int));
 E void tmp_at P((int,int));
 E void Tmp_at2 P((int,int));
 E void curs_on_u();
 E void pru();
 E void prl P((int,int));
-E uchar news0 P((xchar,xchar));
+E uchar news0 P((XCHAR_P,XCHAR_P));
 E void newsym P((int,int));
 E void mnewsym P((int,int));
 E void nosee P((int,int));
@@ -862,7 +865,7 @@ E void unpobj P((struct obj *));
 
 E int doread();
 E int seffects P((struct obj *));
-E void litroom P((boolean));
+E void litroom P((BOOLEAN_P));
 E void do_genocide P((int));
 E void do_mapping();
 E void do_vicinity_map();
@@ -878,7 +881,7 @@ E boolean create_particular();
 /* ### restore.c ### */
 
 E int dorecover P((int));
-E void getlev P((int,int,xchar,boolean));
+E void getlev P((int,int,XCHAR_P,BOOLEAN_P));
 #ifdef ZEROCOMP
 E void minit();
 E int mread P((int,genericptr_t,unsigned int));
@@ -904,7 +907,7 @@ E int rnz P((int));
 
 /* ### rumors.c ### */
 
-E void outrumor P((int,boolean));
+E void outrumor P((int,BOOLEAN_P));
 #ifdef ORACLE
 E int doconsult P((struct monst *));
 #endif
@@ -917,10 +920,10 @@ E int hangup();
 #endif /* NOSAVEONHANGUP */
 E int dosave0();
 #if defined(DGK) && !defined(OLD_TOS)
-E boolean savelev P((int,xchar,int));
+E boolean savelev P((int,XCHAR_P,int));
 E boolean swapin_file P((int));
 #else /* DGK && !OLD_TOS */
-E void savelev P((int, xchar));
+E void savelev P((int, XCHAR_P));
 #endif /* DGK && !OLD_TOS */
 #ifdef ZEROCOMP
 E void bflush P((int));
@@ -952,13 +955,13 @@ E void home_shk P((struct monst *));
 E void make_happy_shk P((struct monst *));
 E boolean paybill();
 E void pay_for_door P((int,int,char *));
-E void addtobill P((struct obj *,boolean));
+E void addtobill P((struct obj *,BOOLEAN_P));
 E void splitbill P((struct obj *,struct obj *));
 E void subfrombill P((struct obj *));
 E int doinvbill P((int));
 E int shkcatch P((struct obj *));
 E int shk_move P((struct monst *));
-E int online P((xchar,xchar));
+E int online P((XCHAR_P,XCHAR_P));
 E boolean is_fshk P((struct monst *));
 E void shopdig P((int));
 E boolean in_shop P((int,int));
@@ -1002,7 +1005,7 @@ E int dotalk();
 #ifdef SPELLS
 E int study_book P((struct obj *));
 E int docast();
-E int spelleffects P((int, boolean));
+E int spelleffects P((int, BOOLEAN_P));
 E void losespells();
 E int dovspell();
 #endif /* SPELLS */
@@ -1023,7 +1026,7 @@ E void start_screen();
 E void end_screen();
 E void curs P((int,int));
 E void cmov P((int,int));
-E void xputc P((char));
+E void xputc P((CHAR_P));
 E void xputs P((char *));
 E void cl_end();
 E void clear_screen();
@@ -1057,13 +1060,13 @@ E void addtopl P((char *));
 E void more();
 E void cmore P((char *));
 E void clrlin();
-E void pline P((const char *,...));
-E void Norep P((const char *,...));
-E void You P((const char *,...));
-E void Your P((const char *,...));
-E void putsym P((char));
+E void pline V((const char *,...));
+E void Norep V((const char *,...));
+E void You V((const char *,...));
+E void Your V((const char *,...));
+E void putsym P((CHAR_P));
 E void putstr P((char *));
-E char yn_function P((char *,char));
+E char yn_function P((char *,CHAR_P));
 
 /* ### topten.c ### */
 
@@ -1080,7 +1083,7 @@ E coord *gettrack P((int,int));
 
 /* ### trap.c ### */
 
-E boolean rust_dmg P((struct obj *,char *,int,boolean));
+E boolean rust_dmg P((struct obj *,char *,int,BOOLEAN_P));
 E struct trap *maketrap P((int,int,int));
 E int teleok P((int,int));
 E void dotrap P((struct trap *));
@@ -1120,7 +1123,7 @@ E boolean attack P((struct monst *));
 E boolean hmon P((struct monst *,struct obj *,int));
 E int damageum P((struct monst *, struct attack *));
 E void missum P((struct monst *, struct attack *));
-E int passive P((struct monst *,boolean,int,boolean));
+E int passive P((struct monst *,BOOLEAN_P,int,BOOLEAN_P));
 E void stumble_onto_mimic P((struct monst *));
 
 /* ### unixmain.c ### */
@@ -1130,7 +1133,7 @@ E int (*occupation)();
 E int (*afternmv)();
 E void glo P((int));
 E void askname();
-E void impossible P((char *,...));
+E void impossible V((char *,...));
 E void stop_occupation();
 #endif /* UNIX */
 
@@ -1142,7 +1145,7 @@ E void settty P((char *));
 E void setftty();
 E void intron();
 E void introff();
-E void error P((char *, char *, char *));
+E void error V((char *,...));
 #endif /* UNIX */
 
 /* ### unixunix.c ### */
@@ -1187,7 +1190,7 @@ E int dbon();
 
 E void were_change P((struct monst *));
 E void new_were P((struct monst *));
-E boolean were_summon P((struct permonst *,boolean));
+E boolean were_summon P((struct permonst *,BOOLEAN_P));
 #ifdef POLYSELF
 E void you_were();
 #endif /* POLYSELF */
@@ -1200,7 +1203,7 @@ E int dowield();
 E void corrode_weapon();
 E int chwepon P((struct obj *,int));
 E int welded P((struct obj *));
-E void weldmsg P((struct obj *,boolean));
+E void weldmsg P((struct obj *,BOOLEAN_P));
 
 /* ### wizard.c ### */
 
@@ -1227,7 +1230,7 @@ E void worm_nomove P((struct monst *));
 E void wormdead P((struct monst *));
 E void wormhit P((struct monst *));
 E void wormsee P((unsigned int));
-E void cutworm P((struct monst *,xchar,xchar,unsigned));
+E void cutworm P((struct monst *,XCHAR_P,XCHAR_P,unsigned));
 #endif /* WORM */
 
 /* ### worn.c ### */
@@ -1241,7 +1244,7 @@ E void dowrite P((struct obj *));
 
 /* ### zap.c ### */
 
-E struct monst *revive P((struct obj *,boolean));
+E struct monst *revive P((struct obj *,BOOLEAN_P));
 E int zappable P((struct obj *));
 E void zapnodir P((struct obj *));
 E int dozap();
@@ -1250,16 +1253,18 @@ E void weffects P((struct obj *));
 E char *exclam P((int));
 E void hit P((char *,struct monst *,char *));
 E void miss P((char *,struct monst *));
-E struct monst *bhit P((int,int,int,char,int(*)(),int(*)(),struct obj *));
+E struct monst *bhit P((int,int,int,CHAR_P,int(*)(),int(*)(),struct obj *));
 E struct monst *boomhit P((int,int));
-E void buzz P((int,int,xchar,xchar,int,int));
+E void buzz P((int,int,XCHAR_P,XCHAR_P,int,int));
 E void rloco P((struct obj *));
 E void fracture_rock P((struct obj *));
 E boolean break_statue P((struct obj *));
 E void destroy_item P((int,int));
 E int destroy_mitem P((struct monst *,int,int));
-E int resist P((struct monst *,char,int,int));
+E int resist P((struct monst *,CHAR_P,int,int));
 E void makewish();
+
+#endif /* !MAKEDEFS_C && !LEV_LEX_C */
 
 #undef E
 

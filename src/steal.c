@@ -242,13 +242,11 @@ register int show;
 	register struct obj *otmp, *otmp2;
 
 	for(otmp = mtmp->minvent; otmp; otmp = otmp2){
-		otmp->ox = mtmp->mx;
-		otmp->oy = mtmp->my;
+		place_object(otmp, mtmp->mx, mtmp->my);
 		otmp2 = otmp->nobj;
 		otmp->nobj = fobj;
 		if (flooreffects(otmp,mtmp->mx,mtmp->my)) continue;
 		fobj = otmp;
-		levl[otmp->ox][otmp->oy].omask = 1;
 		stackobj(fobj);
 		if(show & cansee(mtmp->mx,mtmp->my))
 			atl(otmp->ox,otmp->oy,Hallucination?rndobjsym() : otmp->olet);

@@ -53,7 +53,7 @@ struct {
 	"trapdoor",	TRAPDOOR,
 	"teleport",	TELEP_TRAP,
 	"pit",		PIT,
-	"sleeping gas",	SLP_GAS_TRAP,
+	"sleep gas",	SLP_GAS_TRAP,
 	"magic",	MGTRP,
 	"board",	SQBRD,
 	"web",		WEB,

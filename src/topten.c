@@ -11,10 +11,6 @@
 #include <fcntl.h>	/* Ralf Brown */
 #endif
 
-static char *itoa P((int)), *ordin P((int));
-static void outheader();
-static int outentry P((int,struct toptenentry *,int));
-
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
 #define	NAMSZ	10
 #define	DTHSZ	60
@@ -35,6 +31,10 @@ struct toptenentry {
 	char death[DTHSZ+1];
 	char date[7];		/* yymmdd */
 } *tt_head;
+
+static char *itoa P((int)), *ordin P((int));
+static void outheader();
+static int outentry P((int,struct toptenentry *,int));
 
 void
 topten(){
@@ -339,7 +339,9 @@ register int rank, so;
 	      t1->maxlvl);
 #ifdef ENDGAME
 	} else if(!strncmp("ascended", t1->death, 8)) {
-	   Strcat(linebuf, "ascended to demigod-hood");
+	   Strcat(linebuf, "ascended to demigod");
+	   if (t1->sex == 'F') Strcat(linebuf, "dess");
+	   Strcat(linebuf, "-hood");
 #endif
 	} else {
 	  if(!strncmp(t1->death,"quit",4)) {
@@ -376,7 +378,8 @@ register int rank, so;
 	if(iskilled) Sprintf(eos(linebuf), " by %s%s",
 	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4)
 	   || !strncmp(t1->death, "Mr. ", 4) || !strncmp(t1->death, "Ms. ", 4)
-	   || !strncmp(eos(t1->death)-5, "ation", 5)
+	   || !strcmp(t1->death, "contaminated water")
+	   || (!strncmp(eos(t1->death)-4,"tion",4) && *(eos(t1->death)-5)!='o')
 	   ) ? "" :
 	  index(vowels,*t1->death) ? "an " : "a ",
 	  t1->death);
@@ -689,8 +692,10 @@ pickentry:
 		return((struct obj *) 0);
 	} else {
 		otmp->corpsenm = classmon(tt->plchar, (tt->sex == 'F'));
-		otmp->owt = mons[otmp->corpsenm].cwt;
+		otmp->owt = weight(otmp);
+		/* Note: oname() is safe since otmp is first in chain */
 		otmp = oname(otmp, tt->name, 0);
+		fobj = otmp;
 		free((genericptr_t) tt);
 		return otmp;
 	}

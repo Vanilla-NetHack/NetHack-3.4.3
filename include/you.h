@@ -34,7 +34,7 @@ struct prop {
 #define	WORN_AMUL	W_AMUL	/* 04000000L */
 #define	WORN_BLINDF	W_TOOL	/* 010000000L */
 #ifdef SHIRT
-#define	WORN_SHIRT	W_ARMU	/* 020000000L */
+#define	WORN_SHIRT	W_ARMU	/* 01000L */
 #endif
 #define	INTRINSIC	040000000L
 

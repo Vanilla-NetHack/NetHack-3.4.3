@@ -19,7 +19,7 @@ struct objclass objects[] = {
 		ILLOBJ_SYM, 0, 0, 0, 0, 0, 0, 0 },
 /* amulets ... - THE Amulet comes last because it is special */
 #define AMULET(name,desc,power,prob,weight)	{ name, desc, NULL,\
-		0,0,0,METAL, power, AMULET_SYM, prob, 0, weight, 100, 0, 0, 0 }
+		0,0,0,METAL, power, AMULET_SYM, prob, 0, weight, 150, 0, 0, 0 }
 
 	AMULET("amulet of esp", 	  "circular",	TELEPAT,    190, 2),
 	AMULET("amulet of life saving",   "spherical",	LIFESAVED,   90, 2),
@@ -86,10 +86,6 @@ struct objclass objects[] = {
 	FOOD("tin",		    75, 0, 1, METAL, 0),
 #undef FOOD
 
-/* weapons ... - ROCK come several at a time */
-/* weapons ... - (DART-1) are shot using idem+(BOW-ARROW) */
-/* weapons AXE, SWORD, KATANA, THSWORD are good for worm-cutting */
-/* weapons (PICK-)AXE, DAGGER, CRYSKNIFE are good for tin-opening */
 #define WEAPON(name,app,kn,mg,bi,prob,wt,cost,sdam,ldam,metal) { name, app, \
 	NULL, kn,mg,bi,metal, 0, WEAPON_SYM, prob, 0, wt, cost, sdam, ldam, 0 }
 #define PROJECTILE(name,app,kn,bi,prob,wt,cost,sdam,ldam,metal,prop) { name, \
@@ -118,34 +114,35 @@ PROJECTILE("crossbow bolt",	NULL,		1, 0, 60, 0,  2, 4, 6,
 		   METAL, WP_CROSSBOW),
 
 WEAPON("dart",		NULL,		1, 1, 0, 60, 0,  2, 3, 2, METAL),
-WEAPON("shuriken",	"throwing star",0, 1, 0, 30, 0,  2, 8, 6, METAL),
-WEAPON("boomerang",	NULL,		1, 1, 0, 15, 3, 50, 9, 9, WOOD),
+WEAPON("shuriken",	"throwing star",0, 1, 0, 30, 0,  5, 8, 6, METAL),
+WEAPON("boomerang",	NULL,		1, 1, 0, 15, 3, 20, 9, 9, WOOD),
 
 /* spears */
 #ifdef TOLKIEN
-WEAPON("spear", 	NULL,		1, 1, 0, 55, 3,  8, 6, 8, METAL),
-WEAPON("elven spear",	"runed spear",	0, 1, 0, 10, 3,  8, 7, 8, METAL),
-WEAPON("orcish spear",	"black spear",	0, 1, 0, 13, 3,  8, 5, 8, METAL),
-WEAPON("dwarvish spear","shiny spear",	0, 1, 0, 12, 3,  8, 8, 8, METAL),
+WEAPON("spear", 	NULL,		1, 1, 0, 55, 3,  5, 6, 8, METAL),
+WEAPON("elven spear",	"runed spear",	0, 1, 0, 10, 3,  5, 7, 8, METAL),
+WEAPON("orcish spear",	"black spear",	0, 1, 0, 13, 3,  5, 5, 8, METAL),
+WEAPON("dwarvish spear","shiny spear",	0, 1, 0, 12, 3,  5, 8, 8, METAL),
 #else
-WEAPON("spear", 	NULL,		1, 1, 0, 90, 3,  8, 6, 8, METAL),
+WEAPON("spear", 	NULL,		1, 1, 0, 90, 3,  5, 6, 8, METAL),
 #endif
-WEAPON("javelin",	"throwing spear",0,1, 0, 10, 3,  8, 6, 6, METAL),
-WEAPON("trident",	NULL,		1, 0, 0,  8, 4,  6, 6, 4, METAL),
+WEAPON("javelin",	"throwing spear",0,1, 0, 10, 3,  5, 6, 6, METAL),
+WEAPON("trident",	NULL,		1, 0, 0,  8, 4, 15, 6, 4, METAL),
 						/* +1 small, +2d4 large */
-WEAPON("lance", 	NULL,		1, 0, 0,  8, 4, 20, 6, 8, METAL),
+WEAPON("lance", 	NULL,		1, 0, 0,  8, 4, 10, 6, 8, METAL),
 
 /* blades */
 #ifdef TOLKIEN
-WEAPON("dagger",	NULL,		1, 1, 0, 25, 2, 20, 4, 3, METAL),
-WEAPON("elven dagger",	"large runed knife", 0, 1, 0,  8, 2, 20, 5, 3, METAL),
-WEAPON("orcish dagger", "large black knife", 0, 1, 0, 10, 2, 20, 3, 3, METAL),
+WEAPON("dagger",	NULL,		1, 1, 0, 25, 2,  4, 4, 3, METAL),
+WEAPON("elven dagger",	"large runed knife", 0, 1, 0,  8, 2, 4, 5, 3, METAL),
+WEAPON("orcish dagger", "large black knife", 0, 1, 0, 10, 2, 4, 3, 3, METAL),
 #else
-WEAPON("dagger",	NULL,		1, 1, 0, 43, 2, 20, 4, 3, METAL),
+WEAPON("dagger",	NULL,		1, 1, 0, 43, 2,  4, 4, 3, METAL),
 #endif
-WEAPON("scalpel",	NULL,		1, 1, 0,  0, 1, 20, 4, 3, METAL),
-WEAPON("knife", 	NULL,		1, 1, 0, 25, 2, 15, 3, 3, METAL),
-WEAPON("axe",		NULL,		1, 0, 0, 50, 3, 50, 6, 4, METAL),
+WEAPON("athame",	NULL,		1, 1, 0,  0, 2,  4, 4, 3, METAL),
+WEAPON("scalpel",	NULL,		1, 1, 0,  0, 1,  4, 4, 3, METAL),
+WEAPON("knife", 	NULL,		1, 1, 0, 25, 2,  4, 3, 3, METAL),
+WEAPON("axe",		NULL,		1, 0, 0, 50, 3,  8, 6, 4, METAL),
 #ifdef WORM
 WEAPON("worm tooth",	NULL,		1, 0, 0,  0, 3,  2, 2, 2, METAL),
 WEAPON("crysknife",	NULL,		1, 0, 0,  0, 3,100,10,10, METAL),
@@ -153,90 +150,96 @@ WEAPON("crysknife",	NULL,		1, 0, 0,  0, 3,100,10,10, METAL),
 
 /* swords */
 #ifdef TOLKIEN
-WEAPON("short sword",		NULL,	1, 0, 0,  6, 3, 80, 6, 8, METAL),
+WEAPON("short sword",		NULL,	1, 0, 0,  6, 3, 10, 6, 8, METAL),
 WEAPON("elven short sword",	"short runed sword",
-					0, 0, 0,  2, 3, 80, 8, 8, METAL),
+					0, 0, 0,  2, 3, 10, 8, 8, METAL),
 WEAPON("orcish short sword",	"short black sword",
-					0, 0, 0,  3, 3, 80, 5, 8, METAL),
+					0, 0, 0,  3, 3, 10, 5, 8, METAL),
 WEAPON("dwarvish short sword",	"short shiny sword",
-					0, 0, 0,  2, 3, 80, 7, 8, METAL),
+					0, 0, 0,  2, 3, 10, 7, 8, METAL),
 #else
-WEAPON("short sword",		NULL,	1, 0, 0, 13, 3, 80, 6, 8, METAL),
+WEAPON("short sword",		NULL,	1, 0, 0, 13, 3, 10, 6, 8, METAL),
 #endif
-WEAPON("scimitar", "curved sword",	0, 0, 0,  6, 4, 80, 8, 8, METAL),
+WEAPON("scimitar", "curved sword",	0, 0, 0,  6, 4, 15, 8, 8, METAL),
 #ifdef TOLKIEN
-WEAPON("broadsword", "wide sword",	0, 0, 0,  8, 4, 80, 4, 6, METAL),
+WEAPON("broadsword", "wide sword",	0, 0, 0,  8, 4, 10, 4, 6, METAL),
 						/* +d4 small, +1 large */
 WEAPON("elven broadsword",	"wide runed sword",
-					0, 0, 0,  4, 4, 80, 6, 6, METAL),
+					0, 0, 0,  4, 4, 10, 6, 6, METAL),
 						/* +d4 small, +1 large */
 #else
-WEAPON("broadsword", "wide sword",	0, 0, 0, 12, 4, 80, 4, 6, METAL),
+WEAPON("broadsword", "wide sword",	0, 0, 0, 12, 4, 10, 4, 6, METAL),
 						/* +d4 small, +1 large */
 #endif
-WEAPON("long sword",		NULL,	1, 0, 0, 60, 4, 80, 8, 12, METAL),
+WEAPON("long sword",		NULL,	1, 0, 0, 60, 4, 15, 8, 12, METAL),
 #ifdef TOLKIEN
-WEAPON("two-handed sword",	NULL,	1, 0, 1, 25, 5, 80,12,	6, METAL),
+WEAPON("two-handed sword",	NULL,	1, 0, 1, 25, 5, 50,12,	6, METAL),
 						/* +2d6 large */
 WEAPON("dwarvish mattock",	"huge shiny sword",
-					0, 0, 1, 15, 6, 80,12,	8, METAL),
+					0, 0, 1, 15, 6, 50,12,	8, METAL),
 						/* +2d6 large */
 #else
-WEAPON("two-handed sword",	NULL,	1, 0, 1, 40, 5, 80,12,	6, METAL),
+WEAPON("two-handed sword",	NULL,	1, 0, 1, 40, 5, 50,12,	6, METAL),
 						/* +2d6 large */
 #endif
 WEAPON("katana", "samurai sword",	0, 0, 0,  6, 4,100,10, 12, METAL),
 
 /* blunt */
-WEAPON("mace",		NULL,		1, 0, 0, 55, 4, 150, 6, 6, METAL),
+WEAPON("mace",		NULL,		1, 0, 0, 40, 4,  8, 6, 6, METAL),
 						/* +1 small */
-WEAPON("morning star",	NULL,		1, 0, 0, 12, 4, 120, 4, 6, METAL),
+WEAPON("morning star",	NULL,		1, 0, 0, 12, 4, 10, 4, 6, METAL),
 						/* +d4 small, +1 large */
-WEAPON("club",		NULL,		1, 0, 0, 10, 3, 100, 6, 3, WOOD),
+WEAPON("war hammer",	NULL,		1, 0, 0, 15, 3,  5, 4, 4, METAL),
+						/* +1 small */
+WEAPON("club",		NULL,		1, 0, 0, 10, 3,  4, 6, 3, WOOD),
 #ifdef KOPS
-WEAPON("rubber hose",	NULL,		1, 0, 0,  0, 2, 100, 6, 3, 0),
+WEAPON("rubber hose",	NULL,		1, 0, 0,  0, 2,  4, 6, 3, 0),
 #endif
-WEAPON("quarterstaff",	"staff",	0, 0, 1, 10, 3, 150, 6, 6, WOOD),
-
+WEAPON("quarterstaff",	"staff",	0, 0, 1, 10, 3,  8, 6, 6, WOOD),
 /* two-piece */
-WEAPON("aklys", "thonged club", 	0, 0, 0,  8, 3, 30, 6, 3, METAL),
-WEAPON("flail", 	NULL,		1, 0, 0, 40, 3, 30, 6, 4, METAL),
+WEAPON("aklys", 	"thonged club", 0, 0, 0,  8, 3,  4, 6, 3, METAL),
+WEAPON("flail", 	NULL,		1, 0, 0, 40, 3,  4, 6, 4, METAL),
 						/* +1 small, +1d4 large */
 /* whip */
-WEAPON("bullwhip",	NULL,		1, 0, 0,  5, 2, 20, 2, 1, 0),
+WEAPON("bullwhip",	NULL,		1, 0, 0,  5, 2,  4, 2, 1, 0),
 
 /* polearms */
-WEAPON("bardiche", "large poleaxe",	0, 0, 1,  8, 3, 70, 4, 4, METAL),
-						/* +1d4 small, +2d4 large */
-WEAPON("bec de corbin","beaked poleaxe",0, 0, 1,  8, 3, 16, 8, 6, METAL),
-WEAPON("bill-guisarme","hooked polearm",0, 0, 1,  8, 3, 60, 4,10, METAL),
-						/* +1d4 small */
-WEAPON("fauchard",	"sickle",	0, 0, 1, 11, 3, 30, 6, 8, METAL),
-WEAPON("glaive",	"pike", 	0, 0, 1, 15, 3, 60, 6,10, METAL),
-WEAPON("guisarme",	"pruning hook", 0, 0, 1, 11, 3, 50, 4, 8, METAL),
-						/* +1d4 small */
-WEAPON("halberd",	"long poleaxe", 0, 0, 1, 16, 3, 90,10, 6, METAL),
-						/* +1d6 large */
-WEAPON("lucern hammer", "hammerhead polearm", 0, 0, 1, 10, 3, 70, 4, 6, METAL),
-						/* +1d4 small */
-WEAPON("partisan", "vulgar polearm",	0, 0, 1, 10, 3,100, 6, 6, METAL),
+/* spear-type */
+WEAPON("partisan", "vulgar polearm",	0, 0, 1, 10, 3, 10, 6, 6, METAL),
 						/* +1 large */
-WEAPON("ranseur", "hilted polearm",	0, 0, 1, 10, 3, 40, 4, 4, METAL),
+WEAPON("ranseur", "hilted polearm",	0, 0, 1, 10, 3,  6, 4, 4, METAL),
 						/* +d4 both */
-WEAPON("spetum", "forked polearm",	0, 0, 1, 10, 3, 30, 6, 6, METAL),
+WEAPON("spetum", "forked polearm",	0, 0, 1, 10, 3,  5, 6, 6, METAL),
 						/* +1 small, +d6 large */
-WEAPON("voulge", "poleaxe",		0, 0, 1,  8, 3, 20, 4, 4, METAL),
+WEAPON("glaive", "single-edged polearm", 0, 0, 1, 15, 3, 6, 6,10, METAL),
+/* axe-type */
+WEAPON("halberd", "angled poleaxe",	0, 0, 1, 16, 3, 10,10, 6, METAL),
+						/* +1d6 large */
+WEAPON("bardiche", "long poleaxe",	0, 0, 1,  8, 3,  7, 4, 4, METAL),
+						/* +1d4 small, +2d4 large */
+WEAPON("voulge", "pole cleaver",	0, 0, 1,  8, 3,  5, 4, 4, METAL),
 						/* +d4 both */
+/* curved/hooked */
+WEAPON("fauchard",	"pole sickle",	0, 0, 1, 11, 3,  5, 6, 8, METAL),
+WEAPON("guisarme",	"pruning hook", 0, 0, 1, 11, 3,  5, 4, 8, METAL),
+						/* +1d4 small */
+WEAPON("bill-guisarme","hooked polearm",0, 0, 1,  8, 3,  7, 4,10, METAL),
+						/* +1d4 small */
+/* other */
+WEAPON("lucern hammer", "pronged polearm", 0, 0, 1, 10, 3,  7, 4, 6, METAL),
+						/* +1d4 small */
+WEAPON("bec de corbin","beaked polearm",0, 0, 1,  8, 3,  8, 8, 6, METAL),
+
 /* bows */
 #ifdef TOLKIEN
-BOW("bow",	  NULL, 	1, 0, 24, 3, 120, 4, 6, 0, WP_BOW),
-BOW("elven bow",  "runed bow",	0, 0, 12, 3, 120, 5, 6, 0, WP_BOW),
-BOW("orcish bow", "black bow",	0, 0, 12, 3, 120, 3, 6, 0, WP_BOW),
+BOW("bow",	  NULL, 	1, 0, 24, 3, 120, 30, 6, 0, WP_BOW),
+BOW("elven bow",  "runed bow",	0, 0, 12, 3, 120, 35, 6, 0, WP_BOW),
+BOW("orcish bow", "black bow",	0, 0, 12, 3, 120, 25, 6, 0, WP_BOW),
 #else
-BOW("bow",	  NULL, 	1, 0, 48, 3, 120, 4, 6, 0, WP_BOW),
+BOW("bow",	  NULL, 	1, 0, 48, 3, 120, 30, 6, 0, WP_BOW),
 #endif
-BOW("sling", 	  NULL,	    	1, 0, 40, 2,  20, 6, 6, 0, WP_SLING),
-BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 4, 6, 0, WP_CROSSBOW),
+BOW("sling", 	  NULL,	    	1, 0, 40, 2,  20,  4, 6, 0, WP_SLING),
+BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 35, 6, 0, WP_CROSSBOW),
 #undef WEAPON
 #undef PROJECTILE
 #undef BOW
@@ -255,7 +258,7 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 4, 6, 0, WP_CROSSBOW),
 	TOOL("blindfold",	NULL,		1, 0, 105,  2,	20, 0),
 #endif
 	TOOL("tinning kit",	NULL,		1, 0,  15, 10,	30, METAL),
-	TOOL("lock pick",	NULL,		1, 0,  55,  2,	20, METAL),
+	TOOL("lock pick",	NULL,		1, 0,  55,  2,	10, METAL),
 	TOOL("credit card",	NULL,		1, 0,	5,  1,	10, 0),
 #ifdef WALKIES
 	TOOL("key",		NULL,		1, 0, 100,  1,	10, METAL),
@@ -265,7 +268,7 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 4, 6, 0, WP_CROSSBOW),
 	TOOL("skeleton key",	"key",		0, 0,  60,  1,	10, METAL),
 	TOOL("expensive camera", NULL,		1, 0,	5,  3, 200, 0),
 	TOOL("magic marker",	NULL,		1, 1,  15,  1,	50, 0),
-	TOOL("stethoscope",	NULL,		1, 0,  15,  2,	80, 0),
+	TOOL("stethoscope",	NULL,		1, 0,  15,  2,	75, 0),
 	TOOL("tin opener",	NULL,		1, 0,  25,  1,	30, METAL),
 #ifdef WALKIES
 	TOOL("lamp",		NULL,		1, 1,  90, 10,	50, 0),
@@ -274,13 +277,13 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 4, 6, 0, WP_CROSSBOW),
 #endif
 	TOOL("magic lamp",	"lamp", 	0, 1,  20, 10,	50, 0),
 	TOOL("crystal ball",	NULL,		1, 1,  35, 15,	60, GLASS),
-	TOOL("figurine",	NULL,		1, 0,  35,  5,	80, MINERAL),
-	TOOL("ice box", 	NULL,		1, 0,	5, 40, 400, 0),
-	TOOL("large box",	NULL,		1, 0,  40, 40, 400, WOOD),
-	TOOL("chest",		NULL,		1, 0,  35, 40, 500, WOOD),
-	TOOL("sack",		"bag",		0, 0,  40,  3, 200, 0),
-	TOOL("bag of holding",	"bag",		0, 0,  20,  3, 250, 0),
-	TOOL("bag of tricks",	"bag",		0, 1,  20,  3, 250, 0),
+	TOOL("figurine",	NULL,		1, 0,  35,  5,  80, MINERAL),
+	TOOL("ice box", 	NULL,		1, 0,	5, 40,  30, 0),
+	TOOL("large box",	NULL,		1, 0,  40, 40,  20, WOOD),
+	TOOL("chest",		NULL,		1, 0,  35, 40,  20, WOOD),
+	TOOL("sack",		"bag",		0, 0,  40,  3,  20, 0),
+	TOOL("bag of holding",	"bag",		0, 0,  20,  3, 100, 0),
+	TOOL("bag of tricks",	"bag",		0, 1,  20,  3, 100, 0),
 #ifndef MUSIC
 	TOOL("whistle", 	NULL,		1, 0, 120,  2,	10, METAL),
 	TOOL("magic whistle",	"whistle",	0, 0,  50,  2,	10, METAL),
@@ -323,160 +326,161 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 4, 6, 0, WP_CROSSBOW),
 	name, desc, NULL, kn,0,blk,metal, power, ARMOR_SYM, prob,\
 	delay, weight, cost, ac, can, 0 }
 #ifdef TOLKIEN
-ARMOR("elven leather helm", "leather hat", 0, 0, 0,  6, 1, 2,  10, 9, 0, 0),
+ARMOR("elven leather helm", "leather hat", 0, 0, 0,  6, 1, 2,   8, 9, 0, 0),
 ARMOR("orcish helm", "black cap",	   0, 0, 0,  6, 1, 3,  10, 9, 0, METAL),
-ARMOR("dwarvish iron helm", "hard hat",    0, 0, 0,  6, 1, 3,  10, 8, 0, METAL),
+ARMOR("dwarvish iron helm", "hard hat",    0, 0, 0,  6, 1, 3,  20, 8, 0, METAL),
 #else
 ARMOR("orcish helm", "black cap",	   0, 0, 0, 18, 1, 3,  10, 9, 0, METAL),
 #endif
-ARMOR("fedora", NULL,			   1, 0, 0,  0, 1, 1,  10, 9, 0, 0),
+ARMOR("fedora", NULL,			   1, 0, 0,  0, 1, 1,   8, 9, 0, 0),
 ARMOR("helmet", "rusty pot",		   0, 0, 0, 12, 1, 2,  10, 9, 0, METAL),
-ARMOR("helm of brilliance", "plumed hat",	   0, 0, 0,  6, 1, 2,  15, 9, 0, METAL),
+ARMOR("helm of brilliance", "plumed hat",
+					   0, 0, 0,  6, 1, 2,  50, 9, 0, METAL),
 ARMOR("helm of opposite alignment", "crested helmet",
-					   0, 0, 0,  6, 1, 2,  15, 9, 0, METAL),
+					   0, 0, 0,  6, 1, 2,  50, 9, 0, METAL),
 ARMOR("helm of telepathy", "visored helmet",
-				0, 0, TELEPAT, 2, 1, 2, 15, 9, 0, METAL),
+					   0, 0, TELEPAT, 2, 1, 2, 50, 9, 0, METAL),
 
-/* non-metal and (METAL | 1) armors do not rust */
+/* non-METAL armors do not rust */
 ARMOR("dragon scale mail", NULL,  1, 1, 0,  0, 5, 5,1000, 1, 0, 0),
-ARMOR("plate mail", NULL,	  1, 1, 0, 44, 5, 9, 400, 3, 2, METAL),
-ARMOR("crystal plate mail", NULL, 1, 1, 0, 10, 5, 9, 820, 3, 2, 0),
+ARMOR("plate mail", NULL,	  1, 1, 0, 44, 5, 9, 600, 3, 2, METAL),
+ARMOR("crystal plate mail", NULL, 1, 1, 0, 10, 5, 9, 820, 3, 2, GLASS),
 #ifdef SHIRT
-ARMOR("bronze plate mail", NULL,  1, 1, 0, 25, 5, 9, 600, 4, 0, (METAL | 1)),
+ARMOR("bronze plate mail", NULL,  1, 1, 0, 25, 5, 9, 400, 4, 0, COPPER),
 #else
-ARMOR("bronze plate mail", NULL,  1, 1, 0, 35, 5, 9, 600, 4, 0, (METAL | 1)),
+ARMOR("bronze plate mail", NULL,  1, 1, 0, 35, 5, 9, 400, 4, 0, COPPER),
 #endif
 ARMOR("splint mail", NULL,	1, 1, 0, 66, 5, 8,  80, 4, 1, METAL),
 ARMOR("banded mail", NULL,	1, 1, 0, 76, 5, 8,  90, 4, 0, METAL),
 #ifdef TOLKIEN
-ARMOR("dwarvish mithril-coat", NULL, 1, 0, 0, 10, 1, 2, 160, 4, 3, (METAL | 1)),
-ARMOR("elven mithril-coat", NULL, 1, 0, 0, 15, 1, 2, 160, 5, 3, (METAL | 1)),
+ARMOR("dwarvish mithril-coat", NULL, 1, 0, 0, 10, 1, 2, 240, 4, 3, MITHRIL),
+ARMOR("elven mithril-coat", NULL, 1, 0, 0, 15, 1, 2, 240, 5, 3, MITHRIL),
 ARMOR("chain mail", NULL,	1, 0, 0, 76, 5, 6,  75, 5, 1, METAL),
 ARMOR("orcish chain mail", "black chain mail",
 					0, 0, 0, 20, 5, 6,  75, 5, 1, METAL),
 #else
-ARMOR("dwarvish mithril-coat", NULL, 1, 0, 0, 25, 1, 2, 160, 4, 3, (METAL | 1)),
+ARMOR("dwarvish mithril-coat", NULL, 1, 0, 0, 25, 1, 2, 240, 4, 3, MITHRIL),
 ARMOR("chain mail", NULL,	1, 0, 0, 96, 5, 6,  75, 5, 1, METAL),
 #endif
-ARMOR("scale mail", NULL,	1, 0, 0, 76, 5, 5,  45, 6, 0, METAL),
+ARMOR("scale mail", NULL,	1, 0, 0, 76, 5, 5, 120, 6, 0, METAL),
 ARMOR("studded leather armor", NULL,
-					1, 0, 0, 76, 3, 3,  15, 7, 1, 0),
+					1, 0, 0, 76, 3, 3,  20, 7, 1, 0),
 #ifdef TOLKIEN
-ARMOR("ring mail", NULL,	1, 0, 0, 76, 5, 4,  30, 7, 0, METAL),
+ARMOR("ring mail", NULL,	1, 0, 0, 76, 5, 4, 100, 7, 0, METAL),
 ARMOR("orcish ring mail", "black ring mail",
-					0, 0, 0, 20, 5, 5,  75, 8, 1, METAL),
+					0, 0, 0, 20, 5, 5,  80, 8, 1, METAL),
 #else
-ARMOR("ring mail", NULL,	1, 0, 0, 96, 5, 4,  30, 7, 0, METAL),
+ARMOR("ring mail", NULL,	1, 0, 0, 96, 5, 4, 100, 7, 0, METAL),
 #endif
 ARMOR("leather armor", NULL,	1, 0, 0, 97, 3, 2,   5, 8, 0, 0),
 
 /*  'cope' is not a spelling mistake... leave it be */
 ARMOR("mummy wrapping", NULL,
-				1, 0, 0,	     0, 0, 2,  5, 10, 2, 0),
+				1, 0, 0,	     0, 0, 2,  2, 10, 2, 0),
 #ifdef TOLKIEN
 ARMOR("elven cloak", "ornamental cope",
-				0, 0, STEALTH,	    12, 0, 2, 35,  9, 3, 0),
+				0, 0, STEALTH,	    12, 0, 2, 60,  9, 3, 0),
 ARMOR("orcish cloak", "black mantelet",
-				0, 0, 0,	    12, 0, 2, 35, 10, 3, 0),
+				0, 0, 0,	    12, 0, 2, 40, 10, 3, 0),
 ARMOR("dwarvish cloak", "colorful hooded cloak",
-				0, 0, 0,	    12, 0, 2, 35, 10, 3, 0),
+				0, 0, 0,	    12, 0, 2, 50, 10, 3, 0),
 #else
 ARMOR("elven cloak", "ornamental cope",
-				0, 0, STEALTH,	    36, 0, 2, 35,  9, 3, 0),
+				0, 0, STEALTH,	    36, 0, 2, 60,  9, 3, 0),
 #endif
 ARMOR("cloak of protection", "tattered cape",
-				0, 0, PROTECTION,   12, 0, 2, 15,  7, 3, 0),
+				0, 0, PROTECTION,   12, 0, 2, 50,  7, 3, 0),
 ARMOR("cloak of invisibility", "opera hood",
-				0, 0, INVIS,	    12, 0, 2, 35,  9, 3, 0),
+				0, 0, INVIS,	    12, 0, 2, 60,  9, 3, 0),
 ARMOR("cloak of magic resistance", "faded pall",
-				0, 0, ANTIMAGIC,     2, 0, 2, 25,  9, 3, 0),
+				0, 0, ANTIMAGIC,     2, 0, 2, 60,  9, 3, 0),
 ARMOR("cloak of displacement", "piece of cloth",
-				0, 0, DISPLACED,    12, 0, 2, 15,  9, 3, 0),
+				0, 0, DISPLACED,    12, 0, 2, 50,  9, 3, 0),
 
 #ifdef TOLKIEN
 ARMOR("small shield", NULL,
-				1, 0, 0,	   6, 0, 2, 10,  9, 0, METAL),
+				1, 0, 0,	   6, 0, 2,  3,  9, 0, METAL),
 ARMOR("elven shield", "blue and green shield",
-				0, 0, 0,	   2, 0, 2, 15,  8, 0, METAL),
+				0, 0, 0,	   2, 0, 2,  3,  8, 0, METAL),
 ARMOR("Uruk-hai shield", "white-handed shield",
-				0, 0, 0,	   2, 0, 4, 10,  9, 0, METAL),
+				0, 0, 0,	   2, 0, 4,  3,  9, 0, METAL),
 ARMOR("orcish shield", "red-eyed shield",
-				0, 0, 0,	   2, 0, 3, 10,  9, 0, METAL),
+				0, 0, 0,	   2, 0, 3,  3,  9, 0, METAL),
 ARMOR("large shield", NULL,
-				1, 1, 0,	   7, 0, 4, 15,  8, 0, METAL),
+				1, 1, 0,	   7, 0, 4,  7,  8, 0, METAL),
 ARMOR("dwarvish roundshield", "large round shield",
-				0, 0, 0,	   4, 0, 4, 15,  8, 0, METAL),
+				0, 0, 0,	   4, 0, 4,  7,  8, 0, METAL),
 #else
 ARMOR("small shield", NULL,
-				1, 0, 0,	  12, 0, 2, 10,  9, 0, METAL),
+				1, 0, 0,	  12, 0, 2,  3,  9, 0, METAL),
 ARMOR("large shield", NULL,
-				1, 1, 0,	  11, 0, 4, 15,  8, 0, METAL),
+				1, 1, 0,	  11, 0, 4,  7,  8, 0, METAL),
 #endif
 ARMOR("shield of reflection", "polished silver shield",
-				0, 0, REFLECTING,  3, 0, 3, 50, 8, 0, (METAL | 1)),
+				0, 0, REFLECTING,  3, 0, 3, 50, 8, 0, SILVER),
 
 #ifdef SHIRT
 ARMOR("Hawaiian shirt", NULL,	1, 0, 0, 10, 0, 2, 5, 10, 0, 0),
 #endif
 
 ARMOR("leather gloves", "old gloves",
-				0, 0, 0,	   16, 1, 2, 10, 9, 0, 0),
+				0, 0, 0,	   16, 1, 2, 8, 9, 0, 0),
 ARMOR("gauntlets of fumbling", "padded gloves",
-				0, 0, FUMBLING,    8, 1, 2, 10, 9, 0, 0),
+				0, 0, FUMBLING,    8, 1, 2, 50, 9, 0, 0),
 ARMOR("gauntlets of power", "riding gloves",
-				0, 0, 0,	   8, 1, 2, 10, 9, 0, METAL),
+				0, 0, 0,	   8, 1, 2, 50, 9, 0, METAL),
 ARMOR("gauntlets of dexterity", "fencing gloves",
-				0, 0, 0,	   8, 1, 2, 10, 9, 0, 0),
+				0, 0, 0,	   8, 1, 2, 50, 9, 0, 0),
 
 ARMOR("low boots", "walking shoes",
-				0, 0, 0,	   25, 2, 3, 20, 9, 0, 0),
+				0, 0, 0,	   25, 2, 3,  8, 9, 0, 0),
 ARMOR("iron shoes", "hard shoes",
-				0, 0, 0,	    7, 2, 5, 20, 8, 0, METAL),
+				0, 0, 0,	    7, 2, 5, 16, 8, 0, METAL),
 ARMOR("high boots", "jackboots",
-				0, 0, 0,	   15, 2, 4, 50, 8, 0, 0),
+				0, 0, 0,	   15, 2, 4, 12, 8, 0, 0),
 ARMOR("speed boots", "combat boots",
-				0, 0, FAST,	   12, 2, 4, 30, 9, 0, 0),
+				0, 0, FAST,	   12, 2, 4, 50, 9, 0, 0),
 ARMOR("water walking boots", "jungle boots",
-				0, 0, WWALKING,    12, 2, 4, 30, 9, 0, 0),
+				0, 0, WWALKING,    12, 2, 4, 50, 9, 0, 0),
 ARMOR("jumping boots", "hiking boots",
-				0, 0, JUMPING,	   12, 2, 4, 30, 9, 0, 0),
+				0, 0, JUMPING,	   12, 2, 4, 50, 9, 0, 0),
 ARMOR("elven boots", "mud boots",
 				0, 0, STEALTH,	   12, 2, 3,  8, 9, 0, 0),
 ARMOR("fumble boots", "riding boots",
-				0, 0, FUMBLING,    12, 2, 4, 15, 9, 0, 0),
+				0, 0, FUMBLING,    12, 2, 4, 30, 9, 0, 0),
 ARMOR("levitation boots", "snow boots",
-				0, 0, LEVITATION,  12, 2, 4, 15, 9, 0, 0),
+				0, 0, LEVITATION,  12, 2, 4, 30, 9, 0, 0),
 #undef ARMOR
 
-#define POTION(name,color,power,prob)	{ name, color, NULL, 0,1,0,0, power,\
-		POTION_SYM, prob, 0, 2, 100, 0, 0, 0 }
+#define POTION(name,color,power,prob,cost)	{ name, color, NULL, \
+		0,1,0,0, power, POTION_SYM, prob, 0, 2, cost, 0, 0, 0 }
 
 #ifdef SPELLS
-	POTION("fruit juice",		"smoky",	0,	45),
-	POTION("booze", 		"bubbly",	0,	45),
-	POTION("gain energy",		"ebony", 	0,	45),
+	POTION("fruit juice",		"smoky",	0,	45, 50),
+	POTION("booze", 		"bubbly",	0,	45, 50),
+	POTION("gain energy",		"ebony", 	0,	45, 150),
 #else
-	POTION("fruit juice",		"smoky",	0,	70),
-	POTION("booze", 		"bubbly",	0,	65),
+	POTION("fruit juice",		"smoky",	0,	70, 50),
+	POTION("booze", 		"bubbly",	0,	65, 50),
 #endif
-	POTION("gain ability",		"swirly",	0,	45),
-	POTION("restore ability",	"pink",		0,	45),
-	POTION("sickness",		"ruby",		SICK,	45),
-	POTION("confusion",		"orange",	CONFUSION, 45),
-	POTION("blindness",		"yellow",	BLINDED, 45),
-	POTION("paralysis",		"emerald", 	0,	45),
-	POTION("speed", 		"dark green", 	FAST,	45),
-	POTION("levitation",		"cyan",		LEVITATION, 45),
-	POTION("hallucination", 	"brilliant blue", HALLUC, 45),
-	POTION("invisibility",		"sky blue",	INVIS,	45),
-	POTION("see invisible", 	"magenta",	SEE_INVIS, 45),
-	POTION("healing",		"purple", 	0,	65),
-	POTION("extra healing", 	"purple-red",	0,	50),
-	POTION("gain level",		"puce",	0,	20),
-	POTION("enlightenment",		"brown",	0,	20),
-	POTION("monster detection",	"white",	0,	45),
-	POTION("object detection",	"glowing",	0,	45),
-	POTION("water", 		"clear",	0,	125),
+	POTION("gain ability",		"swirly",	0,	45, 300),
+	POTION("restore ability",	"pink",		0,	45, 100),
+	POTION("sickness",		"ruby",		SICK,	45, 50),
+	POTION("confusion",		"orange",	CONFUSION, 45, 100),
+	POTION("blindness",		"yellow",	BLINDED, 45, 150),
+	POTION("paralysis",		"emerald", 	0,	45, 300),
+	POTION("speed", 		"dark green", 	FAST,	45, 200),
+	POTION("levitation",		"cyan",		LEVITATION, 45, 200),
+	POTION("hallucination", 	"brilliant blue", HALLUC, 45, 100),
+	POTION("invisibility",		"sky blue",	INVIS,	45, 150),
+	POTION("see invisible", 	"magenta",	SEE_INVIS, 45, 50),
+	POTION("healing",		"purple", 	0,	65, 100),
+	POTION("extra healing", 	"purple-red",	0,	50, 100),
+	POTION("gain level",		"puce",		0,	20, 300),
+	POTION("enlightenment",		"brown",	0,	20, 200),
+	POTION("monster detection",	"white",	0,	45, 150),
+	POTION("object detection",	"glowing",	0,	45, 150),
+	POTION("water", 		"clear",	0,	125, 100),
 #undef POTION
 
 #define SCROLL(name,text,prob,cost) { name, text, NULL, 0,1,0,0, 0,\
@@ -488,22 +492,22 @@ ARMOR("levitation boots", "snow boots",
 	SCROLL("destroy armor", 	"JUYED AWK YACC",   45, 100),
 	SCROLL("confuse monster",	"NR 9", 	    53, 100),
 	SCROLL("scare monster", 	"XIXAXA XOXAXA XUXAXA", 35, 100),
-	SCROLL("blank paper",		"READ ME",	    28,  80),
+	SCROLL("blank paper",		"READ ME",	    28,  60),
 	SCROLL("remove curse",		"PRATYAVAYAH",	    65,  80),
 	SCROLL("enchant weapon",	"DAIYEN FOOELS",    85,  60),
-	SCROLL("create monster",	"LEP GEX VEN ZEA",  45, 100),
+	SCROLL("create monster",	"LEP GEX VEN ZEA",  45, 200),
 	SCROLL("taming",		"PRIRUTSENIE",	    15, 200),
-	SCROLL("genocide",		"ELBIB YLOH",	    15, 200),
+	SCROLL("genocide",		"ELBIB YLOH",	    15, 300),
 	SCROLL("light", 		"VERR YED HORRE",   95,  50),
 	SCROLL("teleportation", 	"VENZAR BORGAVVE",  55, 100),
 	SCROLL("gold detection",	"THARR",	    33, 100),
 	SCROLL("food detection",	"YUM YUM",	    25, 100),
 	SCROLL("identify",		"KERNOD WEL",	    185, 20),
 	SCROLL("magic mapping", 	"ELAM EBOW",	    45, 100),
-	SCROLL("amnesia",		"DUAM XNAHT",	    35, 100),
+	SCROLL("amnesia",		"DUAM XNAHT",	    35, 200),
 	SCROLL("fire",			"ANDOVA BEGARIN",   48, 100),
-	SCROLL("punishment",		"VE FORBRYDERNE",   15, 200),
-	SCROLL("charging",		"HACKEM MUCHE",     15, 200),
+	SCROLL("punishment",		"VE FORBRYDERNE",   15, 300),
+	SCROLL("charging",		"HACKEM MUCHE",     15, 300),
 	SCROLL(NULL,			"VELOX NEB",	     0, 100),
 	SCROLL(NULL,			"FOOBIE BLETCH",     0, 100),
 	SCROLL(NULL,			"TEMOV",	     0, 100),
@@ -521,15 +525,15 @@ ARMOR("levitation boots", "snow boots",
 	WAND("nothing", 	"ebony",	25, 100, IMMEDIATE, WOOD),
 	WAND("make invisible",	"marble",	45, 150, IMMEDIATE, MINERAL),
 	WAND("slow monster",	"tin",		55, 150, IMMEDIATE, METAL),
-	WAND("speed monster",	"brass",	55, 150, IMMEDIATE, METAL),
-	WAND("undead turning",	"copper",	55, 150, IMMEDIATE, METAL),
-	WAND("polymorph",	"silver",	45, 200, IMMEDIATE, METAL),
-	WAND("cancellation",	"platinum",	45, 200, IMMEDIATE, METAL),
+	WAND("speed monster",	"brass",	55, 150, IMMEDIATE, COPPER),
+	WAND("undead turning",	"copper",	55, 150, IMMEDIATE, COPPER),
+	WAND("polymorph",	"silver",	45, 200, IMMEDIATE, SILVER),
+	WAND("cancellation",	"platinum",	45, 200, IMMEDIATE, PLATINUM),
 	WAND("teleportation",	"iridium", 	45, 200, IMMEDIATE, METAL),
 #ifdef PROBING
-	WAND("probing", 	"uranium",	30, 150, IMMEDIATE, METAL),
 	WAND("opening", 	"zinc",		25, 150, IMMEDIATE, METAL),
 	WAND("locking", 	"aluminum",	25, 150, IMMEDIATE, METAL),
+	WAND("probing", 	"uranium",	30, 150, IMMEDIATE, METAL),
 #else
 	WAND("opening", 	"zinc",		40, 150, IMMEDIATE, METAL),
 	WAND("locking", 	"aluminum",	40, 150, IMMEDIATE, METAL),
@@ -594,35 +598,35 @@ ARMOR("levitation boots", "snow boots",
 #undef SPELL
 #endif /* SPELLS /**/
 
-#define RING(name,stone,power,spec,metal) { name, stone, NULL, 0,0,spec,metal,\
-		power, RING_SYM, 0, 0, 1, 100, spec, 0, 0 }
+#define RING(name,stone,power,cost,spec,metal) { name, stone, NULL, \
+		0,0,spec,metal, power, RING_SYM, 0, 0, 1, cost, spec, 0, 0 }
 
-	RING("adornment",	"wooden",	ADORNED,	1, WOOD),
-	RING("gain strength",	"granite",	0,		1, MINERAL),
-	RING("increase damage", "hematite",	0,		1, MINERAL),
-	RING("protection",	"black onyx",	PROTECTION,	1, MINERAL),
-	RING("regeneration",	"moonstone",	REGENERATION,	0, MINERAL),
-	RING("searching",	"tiger eye",	SEARCHING,	0, MINERAL),
-	RING("stealth", 	"jade",		STEALTH,	0, MINERAL),
-	RING("levitation",	"agate",	LEVITATION,	0, MINERAL),
-	RING("hunger",		"topaz",	HUNGER, 	0, MINERAL),
-	RING("aggravate monster", "sapphire",	AGGRAVATE_MONSTER, 0, METAL),
-	RING("conflict",	"ruby", 	CONFLICT,	0, METAL),
-	RING("warning", 	"diamond", 	WARNING,	0, METAL),
-	RING("poison resistance", "pearl",	POISON_RES,	0, METAL),
-	RING("fire resistance", "iron",		FIRE_RES,	0, METAL),
-	RING("cold resistance", "brass",	COLD_RES,	0, METAL),
-	RING("shock resistance", "copper",	SHOCK_RES,	0, METAL),
-	RING("teleportation",	"silver",	TELEPORT,	0, METAL),
-	RING("teleport control", "gold",	TELEPORT_CONTROL, 0, METAL),
+	RING("adornment",	"wooden",	ADORNED,	100, 1, WOOD),
+	RING("gain strength",	"granite",	0,		150, 1, MINERAL),
+	RING("increase damage", "hematite",	0,		150, 1, MINERAL),
+	RING("protection",	"black onyx",	PROTECTION,	100, 1, MINERAL),
+	RING("regeneration",	"moonstone",	REGENERATION,	200, 0, MINERAL),
+	RING("searching",	"tiger eye",	SEARCHING,	200, 0, MINERAL),
+	RING("stealth", 	"jade",		STEALTH,	100, 0, MINERAL),
+	RING("levitation",	"agate",	LEVITATION,	200, 0, MINERAL),
+	RING("hunger",		"topaz",	HUNGER, 	100, 0, MINERAL),
+	RING("aggravate monster", "sapphire",	AGGRAVATE_MONSTER, 150, 0, METAL),
+	RING("conflict",	"ruby", 	CONFLICT,	300, 0, METAL),
+	RING("warning", 	"diamond", 	WARNING,	100, 0, METAL),
+	RING("poison resistance", "pearl",	POISON_RES,	150, 0, METAL),
+	RING("fire resistance", "iron",		FIRE_RES,	200, 0, METAL),
+	RING("cold resistance", "brass",	COLD_RES,	150, 0, COPPER),
+	RING("shock resistance", "copper",	SHOCK_RES,	150, 0, COPPER),
+	RING("teleportation",	"silver",	TELEPORT,	200, 0, SILVER),
+	RING("teleport control", "gold",	TELEPORT_CONTROL, 300, 0, GOLD),
 #ifdef POLYSELF
-	RING("polymorph",	"ivory",	POLYMORPH,	0, 0),
-	RING("polymorph control","blackened",	POLYMORPH_CONTROL, 0, METAL),
+	RING("polymorph",	"ivory",	POLYMORPH,	300, 0, 0),
+	RING("polymorph control","blackened",	POLYMORPH_CONTROL, 300, 0, METAL),
 #endif
-	RING("invisibility",	"wire",	INVIS,		0, METAL),
-	RING("see invisible",	"engagement",	SEE_INVIS,	0, METAL),
+	RING("invisibility",	"wire",		INVIS,		150, 0, METAL),
+	RING("see invisible",	"engagement",	SEE_INVIS,	150, 0, METAL),
 	RING("protection from shape changers", "shining",
-					PROT_FROM_SHAPE_CHANGERS, 0, METAL),
+					PROT_FROM_SHAPE_CHANGERS, 100, 0, METAL),
 #undef RING
 
 /* gems ************************************************************/

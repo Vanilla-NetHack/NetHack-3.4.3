@@ -8,13 +8,18 @@
 #    the dependencies for monst1.o and monst2.o. If they ever change
 #    the loader, this kludge might break.
 #
-# MODEL = -mshort for 16 bit integers; then use -lcurses16 for TERMCAP
-# (I haven't tried this yet, and am not confident of its success.)
-#
 CC	= d:\gnu\bin\gcc.ttp
 LD	= d:\gnu\bin\gcc-ld.ttp
-MODEL	= 
-TERMCAP = -lcurses
+YACC	= d:\gnu\bin\bison.ttp -y
+LEX	= d:\gnu\bin\flex.ttp
+#
+# for 32 bit integers (slow, but type mismatches are no problem)
+# MODEL	=
+# TERMCAP = -lcurses
+#
+# for 16 bit integers (faster, but more finicky)
+MODEL	= -mshort
+TERMCAP = -lcurses16
 
 # Directories (makedefs hardcodes these, don't change them)
 INCL	= ..\include
@@ -89,7 +94,7 @@ $(GAMEDIR)\$(GAME).ttp: $(GAME).ttp
 
 $(GAME): $(GAMEDIR)\$(GAME).ttp
 
-all:	$(GAME) auxil
+all:	$(GAME) lev_comp.ttp auxil
 	@echo Done.
 
 makedefs.ttp:	$(MAKEOBJS)
@@ -105,11 +110,22 @@ lev_lex.o:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
 lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
 
 # If you have yacc or lex programs, and make any changes,
-# add some .y.c and .l.c rules to your Make.ini.
-
+# you'll need rules like these. The names of the output
+# files (e.g. lex,yy.c) vary widely among different ST implementations
+# of YACC and LEX.
+#
+# Also: for some reason the supplied lev_lex.c causes the GCC to abort
+# on my machine (maybe not enough memory?) when compiled with -mshort.
+# With MODEL=-mshort, I had to delete lev_lex.c and use these rules.
+#
 lev_comp.c:  lev_comp.y
-lev_lex.c:  lev_comp.l
+	$(YACC) -d lev_comp.y
+	mv y,tab.c lev_comp.c
+	mv y,tab.h ..\include\lev_comp.h
 
+lev_lex.c:  lev_comp.l
+	$(LEX) lev_comp.l
+	mv lex,yy.c lev_lex.c
 #
 #	The following include files depend on makedefs to be created.
 #
@@ -151,6 +167,12 @@ unix.o:   $(HACK_H) $(PC)unix.c
 rip.o:   $(HACK_H) 
 	$(CC) -c $(CFLAGS) -fwritable-strings rip.c
 #
+# GCC 1.35 + bones.c + -mshort + -O == incorrect code. Don't ask me why.
+# So we just omit the -O on bones.c
+#
+bones.o: $(HACK_H)
+	$(CC) -c $(MODEL) -I$(INCL) bones.c
+#
 # Secondary targets
 #
 
@@ -159,10 +181,10 @@ auxil:	spec_levs
 	cp *. $(GAMEDIR)
 
 spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
-	lev_comp $(AUX)\castle.des
-	lev_comp $(AUX)\endgame.des
-	lev_comp $(AUX)\tower.des
 	cd $(AUX)
+	..\src\lev_comp castle.des
+	..\src\lev_comp endgame.des
+	..\src\lev_comp tower.des
 	cp castle $(GAMEDIR)
 	rm castle
 	cp endgame $(GAMEDIR)
@@ -193,7 +215,7 @@ alloc.o:  $(CONFIG_H)
 apply.o:  $(HACK_H) $(INCL)\edog.h
 artifact.o:  $(HACK_H) $(INCL)\artifact.h
 attrib.o:  $(HACK_H)
-bones.o:  $(HACK_H)
+#bones.o:  $(HACK_H)
 cmd.o:  $(HACK_H) $(INCL)\func_tab.h
 dbridge.o: $(HACK_H)
 decl.o:  $(HACK_H)

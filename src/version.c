@@ -5,7 +5,11 @@
 #include	"hack.h"
 #include	"date.h"
 #ifndef BETA
-#include	"patchlevel.h"
+#ifdef MSDOS
+# include	"patchlev.h"
+#else
+# include	"patchlevel.h"
+#endif
 #endif
 
 int

@@ -22,28 +22,31 @@ register struct monst *mon;
 	    } else if(!rn2(30)) new_were(mon);
 }
 
+static int
+counter_were(pm)
+int pm;
+{
+	switch(pm) {
+	    case PM_WEREWOLF:	return(PM_WOLFWERE);
+	    case PM_WOLFWERE:	return(PM_WEREWOLF);
+	    case PM_WEREJACKAL:	return(PM_JACKALWERE);
+	    case PM_JACKALWERE:	return(PM_WEREJACKAL);
+	    case PM_WERERAT:	return(PM_RATWERE);
+	    case PM_RATWERE:	return(PM_WERERAT);
+	    default:		return(0);
+	}
+}
+
 void
 new_were(mon)
 register struct monst *mon;
 {
-	int pm;
+	register int pm;
 
-	switch((pm = monsndx(mon->data))) {
-
-	    case PM_WEREWOLF:	pm = PM_WOLFWERE;
-				break;
-	    case PM_WOLFWERE:	pm = PM_WEREWOLF;
-				break;
-	    case PM_WEREJACKAL:	pm = PM_JACKALWERE;
-				break;
-	    case PM_JACKALWERE:	pm = PM_WEREJACKAL;
-				break;
-	    case PM_WERERAT:	pm = PM_RATWERE;
-				break;
-	    case PM_RATWERE:	pm = PM_WERERAT;
-				break;
-	    default:	impossible("unknown lycanthrope %s.", mon->data->mname);
-			return;
+	pm = counter_were(monsndx(mon->data));
+	if(!pm) {
+	    impossible("unknown lycanthrope %s.", mon->data->mname);
+	    return;
 	}
 
 	if(canseemon(mon))

@@ -99,7 +99,7 @@ boolean ghostly;
 	off_t differ;
 
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(M_XENIX)
 	differ = (genericptr_t)(&mons[0]) - (genericptr_t)(monbegin);
 #else
 	differ = (long)(&mons[0]) - (long)(monbegin);
@@ -118,13 +118,15 @@ boolean ghostly;
 		mread(fd, (genericptr_t) mtmp, (unsigned) xl + sizeof(struct monst));
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
-#ifndef MSDOS
-		/*ANSI type for differ is ptrdiff_t - long may be wrong*/
-		/*for segmented architecture - may be better to cast pointers*/
-		/*to (struct permonst *) rather than (genericptr_t)*/
-		/*this code handles save file -  so any bug should glow*/
-		/*probably best not to keep lint from complaining*/
-/*#ifdef LINT	/*possible compiler/hardware dependency - */
+#if !defined(MSDOS) && !defined(M_XENIX)
+		/* ANSI type for differ is ptrdiff_t --
+		 * long may be wrong for segmented architecture --
+		 * may be better to cast pointers to (struct permonst *)
+		 * rather than (genericptr_t)
+		 * this code handles save file -- so any bug should glow
+		 * probably best not to keep lint from complaining
+		 */
+/*#ifdef LINT	/* possible compiler/hardware dependency - */
 /*		if (differ) mtmp->data = NULL;*/
 /*#else*/
 		mtmp->data = (struct permonst *)
@@ -731,7 +733,7 @@ minit()
 int
 mread(fd, buf, len)
 int fd;
-register genericptr_t buf;
+genericptr_t buf;
 register unsigned len;
 {
     /*register int readlen = 0;*/
@@ -739,11 +741,11 @@ register unsigned len;
     while (len--) {
       if (inrunlength > 0) {
 	  inrunlength--;
-	  *((char *)buf)++ = '\0';
+	  *(*((char **)&buf))++ = '\0';
       } else {
 	  register short ch = mgetc();
 	  if (ch < 0) return -1; /*readlen;*/
-	  if ((*((char *)buf)++ = ch) == RLESC) {
+	  if ((*(*(char **)&buf)++ = ch) == RLESC) {
 	      inrunlength = mgetc();
 	  }
       }

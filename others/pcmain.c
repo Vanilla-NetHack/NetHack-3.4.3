@@ -34,8 +34,11 @@ extern unsigned _stklen = 0x2000;	/* 8K */
 extern unsigned char _osmajor;
 #endif
 
-#if defined(TOS) && defined(__GNUC__)
+#ifdef TOS
+boolean run_from_desktop = TRUE;	/* should we pause before exiting?? */
+# ifdef __GNUC__
 long _stksize = 16*1024;
+# endif
 #endif
 
 #ifdef OLD_TOS
@@ -52,19 +55,9 @@ char *argv[];
 	extern int x_maze_max, y_maze_max;
 	register int fd;
 	register char *dir;
-
-#ifdef AMIGA
-	/*
-	 *  Make sure screen IO is initialized before anything happens.
-	 */
-	gettty();
-	startup();
-#else /* AMIGA */
-	/* Save current directory and make sure it gets restored when
-	 * the game is exited.
-	 */
+#ifndef AMIGA
 	int (*funcp)();
-
+#endif
 #if defined(TOS) && defined(__GNUC__)
 	extern int _unixmode;
 	_unixmode = 0;
@@ -73,10 +66,32 @@ char *argv[];
 # ifdef __TURBOC__
 	if (_osmajor >= 3) hname = argv[0];	/* DOS 3.0+ */
 # endif
-	if (getcwd(orgdir, sizeof orgdir) == NULL) {
-		xputs("NetHack: current directory path too long\n");
-		return 1;
+# ifdef TOS
+	if (*argv[0]) {			/* only a CLI can give us argv[0] */
+		hname = argv[0];
+		run_from_desktop = FALSE;
 	}
+# endif
+
+	/*
+	 *  Initialize screen I/O before anything is displayed.
+	 *
+	 *  startup() must be called before initoptions()
+	 *  due to ordering of graphics settings, and before
+	 *  any calls to error() due to use of termcap strings.
+	 */
+	gettty();
+#ifndef AMIGA
+	setbuf(stdout,obuf);
+#endif
+	startup();
+
+#ifndef AMIGA
+	/* Save current directory and make sure it gets restored when
+	 * the game is exited.
+	 */
+	if (getcwd(orgdir, sizeof orgdir) == NULL)
+		error("NetHack: current directory path too long");
 	funcp = exit;	/* Kludge to get around LINT_ARGS of signal.
 			 * This will produce a compiler warning, but that's OK.
 			 */
@@ -85,9 +100,6 @@ char *argv[];
 # endif
 #endif /* AMIGA */
 
-	/* Set the default values of the presentation characters */
-	(void) memcpy((genericptr_t) &showsyms,
-		(genericptr_t) &defsyms, sizeof(struct symbols));
 	if ((dir = getenv("HACKDIR")) != NULL) {
 		Strcpy(hackdir, dir);
 #ifdef CHDIR
@@ -100,6 +112,7 @@ char *argv[];
 		fileinfo[i] = zfinfo;
 	}
 #endif /* DGK && !OLD_TOS */
+
 	initoptions();
 	if (!hackdir[0])
 		Strcpy(hackdir, orgdir);
@@ -119,11 +132,8 @@ char *argv[];
 			argv++;
 			dir = argv[0];
 		}
-		if(!*dir) {
-		    /* can't use error() until termcap read in */
-		    xputs("Flag -d must be followed by a directory name.\n");
-		    return 1;
-		}
+		if(!*dir)
+		    error("Flag -d must be followed by a directory name.");
 		Strcpy(hackdir, dir);
 	    }
 
@@ -144,15 +154,6 @@ char *argv[];
 	    }
 	}
 
-#ifndef AMIGA
-	/*
-	 * It seems he really wants to play.
-	 * Remember tty modes, to be restored on exit.
-	 */
-	gettty();
-	setbuf(stdout,obuf);
-	startup();
-#endif
 	setrandom();
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */

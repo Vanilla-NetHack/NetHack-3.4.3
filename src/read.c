@@ -601,7 +601,7 @@ register struct obj	*sobj;
 			Your("mind releases itself from mundane concerns.");
 		else if (!strncmp(plname, "Maud", 4))
 			pline("As your mind turns inward on itself, you forget everything else.");
-		else if (flags.female)
+		else if (rn2(2))
 			pline("Who was that Maud person anyway?");
 		else
 			pline("Thinking of Maud you forget everything else.");

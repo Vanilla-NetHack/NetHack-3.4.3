@@ -39,6 +39,7 @@ register struct obj *scroll;
 	case SCR_ENCHANT_ARMOR:
 	case SCR_REMOVE_CURSE:
 	case SCR_ENCHANT_WEAPON:
+	case SCR_CHARGING:
 		return(16);
 /*		break; */
 	case SCR_SCARE_MONSTER:

@@ -461,6 +461,7 @@ doeat() {
 				tmp = 1;
 				break;
 			case DAGGER:
+			case ATHAME:
 #ifdef WORM
 			case CRYSKNIFE:
 #endif
@@ -541,7 +542,7 @@ doeat() {
 #endif
 			if(rn2(2)
 #ifdef POLYSELF
-				&& u.usym == S_HUMAN
+				&& !carnivorous(uasmon)
 #endif
 							){
 				You("vomit.");
@@ -567,6 +568,21 @@ doeat() {
 				    "Mmm!  Your favorite!" :
 				    "Yum!  Your fave fruit!");
 			else
+#endif
+#ifdef UNIX
+			if (otmp->otyp == APPLE || otmp->otyp == PEAR) {
+			    if (!Hallucination)
+				pline("Core dumped.");
+			    else {
+	/* This is based on an old Usenet joke, a fake a.out manual page */
+				int x = rnd(100);
+				if (x <= 75)
+				    pline("Segmentation fault -- core dumped.");
+				else if (x <= 99)
+				    pline("Bus error -- core dumped.");
+				else pline("Yo' mama -- core dumped.");
+			    }
+			} else
 #endif
 			{
 			    int oldquan = otmp->quan;
@@ -751,6 +767,7 @@ newuhs(incr) boolean incr; {
 			flags.botl = 1;
 			bot();
 			You("die from starvation.");
+			killer = "starvation";
 			done(STARVING);
 		}
 	}
@@ -795,17 +812,16 @@ newuhs(incr) boolean incr; {
 struct obj *
 floorfood(verb,corpseonly)
 char *verb;
-int corpseonly;
+boolean corpseonly;
 {
 	register struct obj *otmp;
 
 	/* Is there some food (probably a heavy corpse) here on the ground? */
 	if(!Levitation && !u.uswallow) {
-	if(levl[u.ux][u.uy].omask)
+	if(OBJ_AT(u.ux, u.uy))
 	    for(otmp = fobj; otmp; otmp = otmp->nobj) {
 		if(otmp->ox == u.ux && otmp->oy == u.uy &&
-		   (otmp->otyp==CORPSE ||
-		   (!corpseonly && otmp->olet == FOOD_SYM))) {
+		   (corpseonly ? otmp->otyp==CORPSE : otmp->olet==FOOD_SYM)) {
 			pline("There %s %s here; %s %s? ",
 				(otmp->quan == 1) ? "is" : "are",
 				doname(otmp), verb,

@@ -237,7 +237,7 @@ int type;
 			break;
 		    case MORGUE:
 			if(!rn2(5))
-			    (void) mk_tt_corpse(sx, sy);
+			    (void) mk_tt_object(CORPSE, sx, sy);
 			if(!rn2(10))	/* lots of treasure buried with dead */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST, sx, sy);
 			break;
@@ -295,7 +295,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 		sroom->rtype = SWAMP;
 		for(sx = sroom->lx; sx <= sroom->hx; sx++)
 		for(sy = sroom->ly; sy <= sroom->hy; sy++)
-		if(levl[sx][sy].omask == 0 && levl[sx][sy].gmask == 0 &&
+		if(!OBJ_AT(sx, sy) && levl[sx][sy].gmask == 0 &&
 		   levl[sx][sy].mmask == 0 &&
 		   !t_at(sx,sy) && !nexttodoor(sx,sy)) {
 		    if((sx+sy)%2) {
@@ -333,11 +333,11 @@ mkdelphi()
 
 	yy -= dy;
 	if(ACCESSIBLE(levl[xx-1][yy].typ))
-		(void) mkstatue(&mons[PM_FOREST_CENTAUR], xx-1, yy);
+		(void) mkcorpstat(STATUE, &mons[PM_FOREST_CENTAUR], xx-1, yy);
 	if(ACCESSIBLE(levl[xx][yy].typ))
-		(void) mkstatue(&mons[PM_MOUNTAIN_CENTAUR], xx, yy);
+		(void) mkcorpstat(STATUE, &mons[PM_MOUNTAIN_CENTAUR], xx, yy);
 	if(ACCESSIBLE(levl[xx+1][yy].typ))
-		(void) mkstatue(&mons[PM_PLAINS_CENTAUR], xx+1, yy);
+		(void) mkcorpstat(STATUE, &mons[PM_PLAINS_CENTAUR], xx+1, yy);
 # ifdef FOUNTAINS
 	mkfount(0,sroom);
 # endif

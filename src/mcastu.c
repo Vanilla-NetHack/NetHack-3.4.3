@@ -166,7 +166,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 		    case 5:		/* make invisible if not */
 		    case 4:
 			if(!mtmp->minvis) {
-			    if(canseemon(mtmp) && !See_invisible && !Telepat)
+			    if(canseemon(mtmp) && !See_invisible)
 				pline("%s suddenly disappears!",
 				      Monnam(mtmp));
 			    mtmp->minvis = 1;

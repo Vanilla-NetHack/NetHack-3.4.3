@@ -1,5 +1,5 @@
-Instructions for installing NetHack 3.0 on an MS-DOS system
-===========================================================
+Instructions for installing NetHack 3.0 on an MS-DOS or TOS system
+==================================================================
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories src, include, auxil,
@@ -15,15 +15,17 @@ Instructions for installing NetHack 3.0 on an MS-DOS system
     have to run a program such as Rahul Dhesi's 'flip' to convert them.
 
 2.  Move everything from the others directory to your src directory; you'll
-    be needing it, especially pc*.c.  PC NetHack needs msdos.c, ST NetHack
-    needs tos.c.
+    be needing it, especially pc*.c.  PC NetHack needs msdos.c, as does
+    ST NetHack.
 
 3.  You should have several Makefiles in your src directory now.  If you are
     using Microsoft C, rename Makefile.pc to Makefile; if Turbo C, rename
     Makefile.tcc to Makefile, and also rename Maketcc.ini to Make.ini.
     NDMake can find Make.ini anywhere on your PATH, so you may relocate it
-    if you wish.  If you are using another compiler, you will have to adapt
-    one of the Makefiles and the Make.ini file to your needs.  Good luck.
+    if you wish.  If you're using the GCC on an Atari ST system, rename
+    Makefile.st to Makefile.  If you are using another compiler, you will
+    have to adapt one of the Makefiles (and the Make.ini file, if you're
+    using NDMake) to your needs.  Good luck.
 
     As for the other Makefiles, I would delete them to make space, but you may
     want to keep them around for comparison in case something goes wrong.  Two
@@ -32,8 +34,14 @@ Instructions for installing NetHack 3.0 on an MS-DOS system
 
 4.  Go to the include subdirectory and edit config.h according to the comments
     to match your system and desired set of features.  Similarly edit
-    pcconf.h.
+    pcconf.h.  For Atari ST users, edit tosconf.h.  If you're an ST owner
+    using something other than the GCC, it's possible that you might
+    want to define the symbol OLD_TOS and use oldtos.c instead of msdos.c.
+    This is *not* guaranteed to work, so be prepared to make some changes
+    either way.
 
+    (ST owners can also skip this section, since the complete game will fit
+     in <1 megabyte, and nothing you do is likely to make it work on a 520).
     The base size of the executable, with no extra features, will be around
     520K in size.  Anything over 540K is likely not to work.  With MicroSoft
     C, here is an incomplete list of the costs of various additional features
@@ -97,6 +105,10 @@ Instructions for installing NetHack 3.0 on an MS-DOS system
     occupied for a long time.  If all goes well, you will get an executable.
     If you tried to compile in too many features, you probably will not get
     a working one, and have to start over.
+
+    TOS users: if you're short on memory (and GCC users will be short on
+    memory if they only have 2 megabytes) you might want to type
+    'make -n all >script' and then use the Gulam command 'source script'.
 
 8.  Edit NetHack.cnf to reflect your particular setup, following the comments.
     Then move the file to your game directory, along with the termcap file.

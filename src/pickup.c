@@ -270,9 +270,9 @@ int all;
 			    if(obj->spe) obj->spe = 0;
 		    break;
 		}
+		addtobill(obj, TRUE);       /* sets obj->unpaid if necessary */
 		freeobj(obj);
 		if(Invisible) newsym(u.ux,u.uy);
-		addtobill(obj, TRUE);       /* sets obj->unpaid if necessary */
 		if(wt > -5) You("have a little trouble lifting");
 		{ int pickquan = obj->quan;
 		  int mergquan;
@@ -287,7 +287,6 @@ int all;
 		}
 	    }
 	}
-	set_omask(u.ux, u.uy);
 }
 
 int
@@ -300,7 +299,7 @@ doloot() {	/* loot a container on the floor. */
 		pline("You cannot reach the floor.");
 		return(0);
 	}
-	if(levl[u.ux][u.uy].omask)
+	if(OBJ_AT(u.ux, u.uy))
 	for(cobj = fobj; cobj; cobj = cobj->nobj) {
 
 	    if(cobj->ox == u.ux && cobj->oy == u.uy)
@@ -466,11 +465,13 @@ get_all_from_box() {
 
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
 	    cobj = otmp;
-	    if(Is_container(otmp))
+	    if(Is_container(otmp)) {
+		current_container = otmp;
 		for(ootmp=fcobj,nxobj=(fcobj ? fcobj->nobj : 0); ootmp;
 			    ootmp=nxobj,nxobj=(ootmp ? ootmp->nobj : 0) )
 		    if(ootmp->cobj == cobj)
 			(void)out_container(ootmp);
+	    }
 	}
 	return;
 }

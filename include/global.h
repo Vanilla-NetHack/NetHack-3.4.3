@@ -64,6 +64,30 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #define	Bitfield(x,n)	uchar x
 #endif
 
+/*
+ * According to ANSI, prototypes for old-style declarations must widen the
+ * arguments to int.  However, the MSDOS compilers accept shorter arguments
+ * (char, short, etc.) in prototypes and do typechecking with them.  Therefore
+ * this mess to allow the better typechecking while also allowing some
+ * prototypes for the ANSI compilers so people quit trying to fix the prototypes
+ * to match the standard and thus lose the typechecking.
+ */
+#if defined(MSDOS) && !(defined(AMIGA) || defined(TOS))
+# define CHAR_P char
+# define SCHAR_P schar
+# define UCHAR_P uchar
+# define XCHAR_P xchar
+# define BOOLEAN_P boolean
+#else
+# ifdef __STDC__
+#  define CHAR_P int
+#  define SCHAR_P int
+#  define UCHAR_P int
+#  define XCHAR_P int
+#  define BOOLEAN_P int
+# endif
+#endif
+
 
 #define	SIZE(x)	(int)(sizeof(x) / sizeof(x[0]))
 

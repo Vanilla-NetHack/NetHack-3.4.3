@@ -131,7 +131,7 @@ timeout()
 			/* call this only when a move took place.  */
 			/* otherwise handle fumbling msgs locally. */
 			if (!Levitation && u.umoved) {
-			    if (levl[u.ux][u.uy].omask)
+			    if (OBJ_AT(u.ux, u.uy))
 				You("trip over something.");
 			    else
 				switch (rn2(4)) {

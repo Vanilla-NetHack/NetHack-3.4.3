@@ -146,9 +146,11 @@ fnd:
 
 int
 gd_move(){
-	register int x, y, dx, dy, gx, gy, nx, ny, typ, i;
-	register struct fakecorridor *fcp;
+	int x, y, nx, ny;
+	int dx, dy, gx, gy, typ, i;
+	struct fakecorridor *fcp;
 	register struct rm *crm;
+
 	if(!guard || gdlevel != dlevel){
 		impossible("Where is the guard?");
 		return(2);	/* died */

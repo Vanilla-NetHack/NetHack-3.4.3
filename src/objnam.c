@@ -6,6 +6,7 @@
 #include <ctype.h>	/* for isalpha() */
 
 #define	PREFIX	30
+#define SCHAR_MAX 127
 
 /*	We want the player to be able to learn what key goes in what lock.  */
 const char *keystr[N_LOX] = { "round", "square", "triangular", "oval",
@@ -830,16 +831,16 @@ register char *bp;
 #ifdef TUTTI_FRUTTI
 	struct fruit *f;
 	int ftype = current_fruit;
-#endif
-	char let;
-	char *un, *dn, *an;
-	char *name=0;
 	char fruitbuf[BUFSZ];
 	/* We want to check for fruits last so that, for example, someone
 	 * who names their fruit "katana" and wishes for a katana gets a real
 	 * one.  But, we have to keep around the old buf since in the meantime
 	 * we have deleted "empty", "+6", etc...
 	 */
+#endif
+	char let;
+	char *un, *dn, *an;
+	char *name=0;
 #ifdef WIZARD
 	int fake=0;
 #endif
@@ -886,7 +887,9 @@ register char *bp;
 		} else break;
 	}
 	if(!cnt) cnt = 1;		/* %% what with "gems" etc. ? */
+#ifdef TUTTI_FRUTTI
 	Strcpy(fruitbuf, bp);
+#endif
 	if(!strncmp(bp, "empty ", 6)) {
 		contents = EMPTY;
 		bp += 6;
@@ -922,6 +925,18 @@ register char *bp;
 			}
 		}
 	}
+/*
+   otmp->spe is type schar; so we don't want spe to be any bigger or smaller.
+   also, spe should always be positive  -- some cheaters may try to confuse
+   atoi()
+*/
+	if (spe < 0) {
+		spesgn = -1;	/* cheaters get what they deserve */
+		spe = abs(spe);
+	}
+	if (spe > SCHAR_MAX)
+		spe = SCHAR_MAX;
+
 	/* now we have the actual name, as delivered by xname, say
 		green potions called whisky
 		scrolls labeled "QWERTY"
@@ -1288,7 +1303,7 @@ typfnd:
 		if (spe > otmp->spe) spe = otmp->spe;
 	}
 
-	if (spesgn == -1) spe = -spe;
+	if (spesgn == -1 && spe > 0) spe = -spe;
 
 	/* set otmp->spe.  This may, or may not, use spe... */
 	switch (typ) {
@@ -1322,10 +1337,24 @@ typfnd:
 			break;
 		case WAN_WISHING:
 #ifdef WIZARD
-			if (!wizard)
+			if (!wizard) {
 #endif
-				otmp->spe = (rn2(10) ? -1 : 0); break;
+				otmp->spe = (rn2(10) ? -1 : 0);
+				break;
+#ifdef WIZARD
+			}
+			/* fall through (twice), if wizard */
+#endif
+		case MAGIC_LAMP:
+#ifdef WIZARD
+			if (!wizard) {
+#endif
+				otmp->spe = 0;
+				break;
+#ifdef WIZARD
+			}
 			/* fall through, if wizard */
+#endif
 		default: otmp->spe = spe;
 	}
 
@@ -1338,12 +1367,8 @@ typfnd:
 				otmp->corpsenm = mntmp;
 			break;
 		case FIGURINE:
-			if (!is_dlord(&mons[mntmp]) && !is_dprince(&mons[mntmp])
-					&& !is_human(&mons[mntmp])
-#ifdef WORM
-					&& mntmp != PM_LONG_WORM
-#endif
-					)
+			if (!(mons[mntmp].geno & G_UNIQ)
+			    && !is_human(&mons[mntmp]))
 				otmp->corpsenm = mntmp;
 			break;
 		case EGG: if (lays_eggs(&mons[mntmp]) || mntmp==PM_KILLER_BEE)

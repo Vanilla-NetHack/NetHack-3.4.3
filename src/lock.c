@@ -130,9 +130,7 @@ forcelock() {	/* try to force a locked chest */
 			otmp->nobj = xlock.box->nobj;
 			xlock.box->nobj = otmp;
 			otmp->cobj = (struct obj *)0;
-			otmp->ox = u.ux;
-			otmp->oy = u.uy;
-			levl[u.ux][u.uy].omask = 1;
+			place_object(otmp, u.ux, u.uy);
 			stackobj(otmp);
 		    }
 		} else probj = otmp;
@@ -184,7 +182,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) { /* pick the lock on a container */
 	    c = 'n';			/* in case there are no boxes here */
-	    if(levl[x][y].omask)
+	    if(OBJ_AT(x, y))
 	    for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if((otmp->ox == x) && (otmp->oy == y))
 		    if(Is_box(otmp) &&
@@ -331,7 +329,7 @@ doforce() {		/* try to force a chest with your weapon */
 
 	/* A lock is made only for the honest man, the thief will break it. */
 	xlock.box = (struct obj *)0;
-	if(levl[u.ux][u.uy].omask)
+	if(OBJ_AT(u.ux, u.uy))
 	for(otmp = fobj; otmp; otmp = otmp->nobj)
 	    if((otmp->ox == u.ux) && (otmp->oy == u.uy))
 		if(Is_box(otmp)) {
@@ -438,7 +436,7 @@ register int x, y;
 			"Some creature" : Monnam(m_at(x,y)));
 		return(TRUE);
 	}
-	if (levl[x][y].omask || levl[x][y].gmask) {
+	if (OBJ_AT(x, y) || levl[x][y].gmask) {
 obj:
 		pline("Something's in the way.");
 		return(TRUE);
@@ -555,9 +553,6 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 	register struct rm *door = &levl[x][y];
 	boolean res = 1;
 
-	if(obstructed(x,y))
-		return 0;
-
 	if(door->typ == SDOOR) {
 	    if(otmp->otyp == WAN_OPENING
 #ifdef SPELLS
@@ -595,6 +590,7 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 #ifdef SPELLS
 	    case SPE_WIZARD_LOCK:
 #endif
+		if(obstructed(x,y)) return 0;
 		if (cansee(x,y))
 		switch (door->doormask & ~D_TRAPPED) {
 			case D_CLOSED:

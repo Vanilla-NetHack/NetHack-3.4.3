@@ -128,8 +128,6 @@ study_book(spellbook)
 register struct obj *spellbook;
 {
 	register int	 booktype = spellbook->otyp;
-	register boolean oops	  = !spellbook->blessed && (spellbook->cursed ||
-rn2(20) > (ACURR(A_INT) + 4 + (int)(u.ulevel/2) - 2*objects[booktype].spl_lev));
 
 	if (delay && spellbook == book)
 		You("continue your efforts to memorize the spell.");
@@ -194,7 +192,10 @@ rn2(20) > (ACURR(A_INT) + 4 + (int)(u.ulevel/2) - 2*objects[booktype].spl_lev));
 		return(0);
 	}
 
-		if (oops) {
+		if(!spellbook->blessed &&
+			(spellbook->cursed ||
+			    rn2(20) > (ACURR(A_INT) + 4 + (int)(u.ulevel/2)
+					- 2*objects[booktype].spl_lev))) {
 			cursed_book(objects[booktype].spl_lev);
 			nomul(delay);			/* study time */
 			delay = 0;

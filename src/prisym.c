@@ -218,7 +218,7 @@ prl(x,y)
 		return;
 	if(room->mmask) mtmp = m_at(x,y);
 	if(mtmp && !mtmp->mhide &&
-		(!mtmp->minvis || See_invisible || Telepat)) {
+		(!mtmp->minvis || See_invisible)) {
 #ifdef WORM
 		if(m_atseg)
 			pwseg(m_atseg);
@@ -226,7 +226,7 @@ prl(x,y)
 #endif
 		pmon(mtmp);
 	}
-	else if(room->omask && !is_pool(x,y)) {
+	else if(OBJ_AT(x, y) && !is_pool(x,y)) {
 		otmp = o_at(x,y);
 		atl(x,y,Hallucination ? rndobjsym() : otmp->olet);
 	}
@@ -235,7 +235,7 @@ prl(x,y)
 	else if((!mtmp || mtmp->data == &mons[PM_GIANT_SPIDER]) &&
 		  (ttmp = t_at(x,y)) && ttmp->ttyp == WEB)
 		atl(x,y,(char)WEB_SYM);
-	else if(mtmp && (!mtmp->minvis || See_invisible || Telepat)) {
+	else if(mtmp && (!mtmp->minvis || See_invisible)) {
 		/* must be a hiding monster, but not hiding right now */
 		/* assume for the moment that long worms do not hide */
 		pmon(mtmp);
@@ -262,7 +262,7 @@ register xchar x,y;
 	/* note: a zero scrsym means to ignore the presence of objects */
 	if(!room->seen) tmp = STONE_SYM;
 	else if(room->typ == POOL || room->typ == MOAT) tmp = POOL_SYM;
-	else if(room->omask && !Blind && room->scrsym) {
+	else if(OBJ_AT(x, y) && !Blind && room->scrsym) {
 		otmp = o_at(x,y);
 		tmp = Hallucination ? rndobjsym() : otmp->olet;
 	}

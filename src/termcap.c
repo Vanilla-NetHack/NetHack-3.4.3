@@ -63,17 +63,62 @@ void
 startup()
 {
 #ifdef TERMLIB
-	register char *term;
+	register char *term = getenv("TERM");
 	register char *tptr;
 	char *tbufptr, *pc;
 #endif
 	register int i;
 
-#ifdef TERMLIB
-	if(!(term = getenv("TERM")))
+	/* Set the default map symbols */
+	(void) memcpy((genericptr_t) &showsyms, 
+		(genericptr_t) &defsyms, sizeof(struct symbols));
+
+#if !defined(AMIGA) && !defined(TOS)
+# if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
+#  define IBMXASCII
+# endif
 #endif
-#if defined(TOS) && defined(__GNUC__)	/* library has a default */
-		term = "st52";
+
+#ifdef IBMXASCII
+	/*
+	 * If we're on an IBM box, default to the nice IBM Extended ASCII
+	 * line-drawing characters (codepage 437).
+	 *
+	 * OS/2 defaults to a multilingual character set (codepage 850,
+	 * corresponding to the ISO 8859 character set.  We should probably
+	 * do a VioSetCp() call to set the codepage to 437.
+	 *
+	 * Someday we should do a full terminfo(4) check for ACS forms
+	 * characters.
+	 */
+# if !defined(MSDOS) || defined(DECRAINBOW) || defined(OS2)
+	if (strncmp("AT", term, 2) == 0)
+# endif
+	{
+	    showsyms.vwall = 0xb3;	/* meta-3, vertical rule */
+	    showsyms.hwall = 0xc4;	/* meta-D, horizontal rule */
+	    showsyms.tlcorn = 0xda;	/* meta-Z, top left corner */
+	    showsyms.trcorn = 0xbf;	/* meta-?, top right corner */
+	    showsyms.blcorn = 0xc0;	/* meta-@, bottom left */
+	    showsyms.brcorn = 0xd9;	/* meta-Y, bottom right */
+	    showsyms.crwall = 0xc5;	/* meta-E, cross */
+	    showsyms.tuwall = 0xc1;	/* meta-A, T up */
+	    showsyms.tdwall = 0xc2;	/* meta-B, T down */
+	    showsyms.tlwall = 0xb4;	/* meta-4, T left */
+	    showsyms.trwall = 0xc3;	/* meta-C, T right */
+	    showsyms.vbeam = 0xb3;	/* meta-3, vertical rule */
+	    showsyms.hbeam = 0xc4;	/* meta-D, horizontal rule */
+	    showsyms.room = 0xfa;	/* meta-z, centered dot */
+	    showsyms.pool = 0xf7;	/* meta-w, approx. equals */
+	}
+#endif /* IBMXASCII */
+#undef IBMXASCII
+
+#ifdef TERMLIB
+	if(!term)
+#endif
+#if defined(TOS) && defined(__GNUC__) && defined(TERMLIB)
+		term = "st52";		/* library has a default */
 #else
 # ifdef ANSI_DEFAULT
 #  ifdef TOS
@@ -568,6 +613,7 @@ init_hilite()
 {
 	int erret;
 	char *setf, *scratch;
+	register int c;
 	extern int setupterm();
 	extern char *tparm(), *tigetstr();
 

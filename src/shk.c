@@ -704,10 +704,8 @@ paybill(){
 			}
 
 			if (invent) {
-			    levl[ox][oy].omask = 1;
 			    for(otmp = invent; otmp; otmp = otmp->nobj) {
-				otmp->ox = ox;
-				otmp->oy = oy;
+				place_object(otmp, ox, oy);
 				otmp->age = 0;
 			    }
 
@@ -1298,12 +1296,12 @@ register int x, y;
 
 void
 pay_for_door(x,y,dmgstr)
-register int x, y;
-register char *dmgstr;
+int x, y;
+char *dmgstr;
 {
-	register struct monst *mtmp;
-	register int roomno = inroom(x, y);
-	register int damage = (ACURR(A_STR) > 18) ? 400 : 20 * ACURR(A_STR);
+	struct monst *mtmp;
+	int roomno = inroom(x, y);
+	register int damage;
 
 	/* make sure this function is not used in the wrong place */
 	if(!(IS_DOOR(levl[x][y].typ) && in_shop(x, y))) return;
@@ -1351,10 +1349,9 @@ register char *dmgstr;
 	shopkeeper->my = y;
 	pmon(shopkeeper);
 
-	if(um_dist(x, y, 1)) goto chase;
+	damage = (ACURR(A_STR) > 18) ? 400 : 20 * ACURR(A_STR);
 
-	if(u.ugold < (long) damage || !rn2(50)) {
-chase:
+	if(um_dist(x, y, 1) || u.ugold < (long) damage || !rn2(50)) {
 		if(um_dist(x, y, 1))
 		    pline("%s shouts: \"Who dared %s my door?\"",
 				shkname(shopkeeper), dmgstr);

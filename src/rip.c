@@ -48,8 +48,8 @@ outrip(){
 	center(7, buf);
 	Sprintf(buf, "killed by%s",
 		!strncmp(killer, "the ", 4) ? "" :
-		!strcmp(killer, "starvation") ? "" :
- 		!strcmp(killer, "strangulation") ? "" :
+		(!strcmp(eos(killer)-4, "tion") && *(eos(killer)-5)!='o') ? "" :
+		!strcmp(killer, "contaminated water") ? "" :
 		!strncmp(killer, "Mr.", 3) ? "" :
 		!strncmp(killer, "Ms.", 3) ? "" :
 		index(vowels, *killer) ? " an" : " a");

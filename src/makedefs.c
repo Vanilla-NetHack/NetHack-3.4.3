@@ -63,7 +63,7 @@ void rename();
 char	in_line[256];
 extern char *gets P((char *));
 void do_objs(), do_traps(), do_data(), do_date(), do_permonst(), do_rumors();
-char *limit P((char *,boolean));
+char *limit P((char *,BOOLEAN_P));
 FILE *_freopen();
 
 int

@@ -318,13 +318,11 @@ register struct obj *obj;
 	if(u.uswallow)
 		mpickobj(u.ustuck,obj);
 	else  {
-		obj->ox = u.ux;
-		obj->oy = u.uy;
 		obj->nobj = fobj;
 		fobj = obj;
-		levl[u.ux][u.uy].omask = 1;
+		place_object(obj, u.ux, u.uy);
 		if(Invisible) newsym(u.ux,u.uy);
-		subfrombill(obj);
+		if(obj != uball) subfrombill(obj);
 		stackobj(obj);
 	}
 }
@@ -360,12 +358,12 @@ dodown()
 		return(1);
 	}
 	if(Levitation) {
-#ifdef STRONGHOLD
 		pline("You're floating high above the %s.",
-		      levl[u.ux][u.uy].typ == STAIRS ? "stairs" : "ladder");
-#else
-		pline("You're floating high above the stairs.");
+			levl[u.ux][u.uy].typ == STAIRS ? "stairs" :
+#ifdef STRONGHOLD
+			levl[u.ux][u.uy].typ == LADDER ? "ladder" :
 #endif
+			"trapdoor");
 		return(0);
 	}
 
@@ -726,7 +724,7 @@ register boolean at_stairs;
 	setsee();
 	seeobjs();	/* make old cadavers disappear - riv05!a3 */
 	docrt();
-	if(!flags.nopick && (levl[u.ux][u.uy].omask || levl[u.ux][u.uy].gmask))
+	if(!flags.nopick && (OBJ_AT(u.ux, u.uy) || levl[u.ux][u.uy].gmask))
 	    pickup(1);
 	else read_engr_at(u.ux,u.uy);
 #ifdef HARD

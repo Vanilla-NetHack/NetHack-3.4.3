@@ -375,7 +375,6 @@ init_attr(np)
 	}
 }
 
-#ifdef POLYSELF
 void
 redist_attr() {
 
@@ -393,7 +392,6 @@ redist_attr() {
 	    if (ABASE(i) < attrmin.a[i]) ABASE(i) = attrmin.a[i];
 	}
 }
-#endif
 
 void
 adjabil(flag)

@@ -85,10 +85,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 	IBM PC compatibles running MicroSoft C or Turbo C under MS-DOS
 	Commodore Amiga (probably -- there have been some changes since
 		the Amiga port was done, but we believe it should still work)
-
-    There are also many hooks for an Atari TOS port, but we have not had a
-    chance to test the 3.0 code on an Atari.  Undoubtedly, some tweaks will 
-    have to be made.
+	Atari 1040ST under TOS
 
 			- - - - - - - - - - -
 

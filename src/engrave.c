@@ -4,8 +4,6 @@
 
 #include	"hack.h"
 
-static void del_engr P((struct engr *));
-
 struct engr {
 	struct engr *nxt_engr;
 	char *engr_txt;
@@ -19,6 +17,8 @@ struct engr {
 #define MARK	4
 #define POLY	5	/* temporary type - for polymorphing engraving */
 } *head_engr;
+
+static void del_engr P((struct engr *));
 
 /* random engravings */
 const char *random_engr[] =
@@ -443,7 +443,7 @@ register struct obj *otmp;
 			nomovemsg = "You finish writing.";
 			if(type != MARK)
 			nomovemsg = "You finish engraving.";
-			if(otmp->olet != WAND_SYM)  {
+			if(otmp->olet != WAND_SYM && otmp->otyp != ATHAME)  {
 				if(otmp->olet == WEAPON_SYM)
 					Your("%s dull.",
 					       aobjnam(otmp, "get"));

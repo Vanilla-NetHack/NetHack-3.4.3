@@ -109,9 +109,15 @@ E int system P((const char *));
 E char *memcpy();
 #endif
 #ifdef MSDOS
+# if defined(TOS) && defined(__GNUC__)
+E int memcmp P((const char *,const char *,size_t));
+E char *memcpy P((char *,const char *,size_t));
+E char *memset P((char*,int,size_t));
+# else
 E int memcmp P((char *,char *,unsigned int));
 E char *memcpy P((char *,char *,unsigned int));
 E char *memset P((char*,int,int));
+# endif /* TOS */
 #endif
 
 #if defined(BSD) && defined(ultrix)	/* i.e., old versions of Ultrix */

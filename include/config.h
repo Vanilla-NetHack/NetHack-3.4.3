@@ -19,7 +19,7 @@
 #else
 /* #define MSDOS	/* define for MS-DOS and most other micros */
 /* #define AMIGA	/* define for Commodore-Amiga */
-/* #define TOS		/* for Atari 520/1040 */
+/* #define TOS		/* define for Atari 1040ST */
 
 /* #define STUPID	/* avoid some complicated expressions if
 			   your C compiler chokes on them */

@@ -66,9 +66,16 @@ char *argv[];
 		    error("Flag -d must be followed by a directory name.");
 	}
 #endif /* CHDIR /**/
-	/* Set the default values of the presentation characters */
-	(void) memcpy((genericptr_t) &showsyms,
-		(genericptr_t) &defsyms, sizeof(struct symbols));
+
+	/*
+	 *  Remember tty modes, to be restored on exit.
+	 *
+	 *  Note that getty() must be called before startup() due to ordering
+	 *  of LI/CO settings, and startup() must be called before initoptions()
+	 *  due to ordering of graphics settings.
+	 */
+	gettty();
+	startup();
 	initoptions();
 	whoami();
 	/*
@@ -80,17 +87,16 @@ char *argv[];
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
+		getret();
+		settty(NULL);
 		exit(0);
 	}
 
 	/*
 	 * It seems he really wants to play.
-	 * Remember tty modes, to be restored on exit.
 	 */
-	gettty();
 	setbuf(stdout,obuf);
 	setrandom();
-	startup();
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */

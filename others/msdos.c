@@ -9,12 +9,9 @@
 #  include <osbind.h>
 # else
 #  ifdef __TURBOC__	/* avoid incompatible redeclaration */
-#   define getdate quux
-#  endif
-#  include <dos.h>
-#  ifdef __TURBOC__
 #   undef getdate
 #  endif
+#  include <dos.h>
 # endif
 #ifdef OS2
 # include "def_os2.h"    /* OS2 definitions (Timo Hakulinen) */
@@ -101,13 +98,13 @@ dosh() {
 
 	if (comspec = getcomspec()) {
 #ifdef DGK
-		settty("To return to NetHack, type \"exit\" at the DOS prompt.\n");
+		settty("To return to NetHack, enter \"exit\" at the DOS prompt.\n");
 #else
 		settty((char *)0);
 #endif /* DGK */
 		chdirx(orgdir, 0);
 		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
-			Printf("\nCan't spawn %s !\n", comspec);
+			Printf("\nCan't spawn \"%s\"!\n", comspec);
 			flags.toplin = 0;
 			more();
 		}
@@ -117,13 +114,13 @@ dosh() {
 		docrt();
 	} else
 #ifdef OS2
-		pline("Cannot exec CMD.EXE");
+		pline("Can't execute CMD.EXE");
 #else
-#ifdef TOS
-		pline("Cannot find SHELL");
-#else
-		pline("Cannot exec COMMAND.COM");
-#endif
+# ifdef TOS
+		pline("Can't find SHELL");
+# else
+		pline("Can't execute COMMAND.COM");
+# endif
 #endif /* OS2 */
 	return 0;
 }
@@ -134,15 +131,16 @@ dosh() {
  * Shift characters are output when either shift key is pushed.
  */
 #ifdef TOS
-#define KEYPADHI	113
-#define KEYPADLOW	103
+#define KEYPADLO	0x67
+#define KEYPADHI	0x71
 #else
-#define KEYPADHI	83
-#define KEYPADLOW	71
+#define KEYPADLO	0x47
+#define KEYPADHI	0x53
 #endif
 
-#define PADKEYS		(KEYPADHI - KEYPADLOW + 1)
-#define iskeypad(x)	(KEYPADLOW <= (x) && (x) <= KEYPADHI)
+#define PADKEYS 	(KEYPADHI - KEYPADLO + 1)
+#define iskeypad(x)	(KEYPADLO <= (x) && (x) <= KEYPADHI)
+
 static const struct pad {
 	char normal, shift;
 	} keypad[PADKEYS] = {
@@ -150,7 +148,7 @@ static const struct pad {
 			{'k', 'K'},		/* 8 */
 			{'u', 'U'},		/* 9 */
 #ifndef TOS
-			{'m', CTRL('P')},	/* - */
+			{'m', C('p')},		/* - */
 #endif
 			{'h', 'H'},		/* 4 */
 #ifdef TOS
@@ -168,35 +166,55 @@ static const struct pad {
 			{'i', 'I'},		/* Ins */
 			{'.', ':'}		/* Del */
 	}, numpad[PADKEYS] = {
-			{'7', '7'},		/* 7 */
-			{'8', '8'},		/* 8 */
-			{'9', '9'},		/* 9 */
+			{'7', M('7')},		/* 7 */
+			{'8', M('8')},		/* 8 */
+			{'9', M('9')},		/* 9 */
 #ifndef TOS
-			{'m', CTRL('P')},	/* - */
+			{'m', C('p')},		/* - */
 #endif
-			{'4', '4'},		/* 4 */
+			{'4', M('4')},		/* 4 */
 #ifdef TOS
 			{'.', '.'},		/* 5 */
 #else
 			{'g', 'G'},		/* 5 */
 #endif
-			{'6', '6'},		/* 6 */
+			{'6', M('6')},		/* 6 */
 #ifndef TOS
 			{'p', 'P'},		/* + */
 #endif
-			{'1', '1'},		/* 1 */
-			{'2', '2'},		/* 2 */
-			{'3', '3'},		/* 3 */
+			{'1', M('1')},		/* 1 */
+			{'2', M('2')},		/* 2 */
+			{'3', M('3')},		/* 3 */
 			{'i', 'I'},		/* Ins */
 			{'.', ':'}		/* Del */
 };
 
+/*
+ * INT 16h function 00h does not return a letter if Alt is pressed,
+ * but it does return the letter's scan code.  So, in order to convent
+ * Alt-letter to a letter with the meta bit set, we use a scan code
+ * table to translate the scan codes into letters, then set the
+ * "meta" bit for them.  -3.
+ */
+#ifdef MSDOS
+#define SCANLO		0x10
+#define SCANHI		0x32
+#define SCANKEYS	(SCANHI - SCANLO + 1)
+#define inmap(x)	(SCANLO <= (x) && (x) <= SCANHI)
+
+static const char scanmap[SCANKEYS] = { 	/* ... */
+	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
+	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
+	0, '\\', 'z','x','c','v','b','N','m' 	/* ... */
+};
+#endif
+
 /* BIOSgetch gets keys directly with a BIOS call.
  */
 #define SHIFT		(0x1 | 0x2)
-/* #define CTRL		0x4 */
-/* #define ALT		0x8 */
-#ifndef OS2
+#define CTRL		0x4
+#define ALT		0x8
+#if !defined(OS2) && !defined(TOS)
 #define KEYBRD_BIOS	0x16
 #endif
 
@@ -215,63 +233,69 @@ BIOSgetch() {
 	scan = CharData.chScan;
 	shift = CharData.fsState;
 #else /* OS2 */
-#ifdef TOS
+# ifdef TOS
 	long  x;
-#else
+# else
 	union REGS regs;
-#endif
+# endif
 
 	/* Get scan code.
 	 */
-#ifdef TOS
+# ifdef TOS
 	x = Crawcin();
 	ch = x & 0x0ff;
 	scan = (x & 0x00ff0000L) >> 16;
-#else
+# else
 	regs.h.ah = 0;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	ch = regs.h.al;
 	scan = regs.h.ah;
-#endif
+# endif
 	/* Get shift status.
 	 */
-#ifdef TOS
+# ifdef TOS
 	shift = Kbshift(-1);
-#else
+# else
 	regs.h.ah = 2;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	shift = regs.h.al;
-#endif
+# endif
 #endif /* OS2 */
 
 	/* If scan code is for the keypad, translate it.
 	 */
-	kpad = flags.num_pad ? numpad : keypad;
 	if (iskeypad(scan)) {
+		kpad = flags.num_pad ? numpad : keypad;
 		if (shift & SHIFT) {
 			/* if number_pad is on, this makes little difference */
-			ch = (*kpad)[scan - KEYPADLOW].shift;
+			ch = (*kpad)[scan - KEYPADLO].shift;
 		} else
-			ch = (*kpad)[scan - KEYPADLOW].normal;
+			ch = (*kpad)[scan - KEYPADLO].normal;
+	}
+	if (shift & ALT) {
+		if (!ch && inmap(scan))
+		    ch = scanmap[scan - SCANLO];
+		return (isprint(ch) ? M(ch) : ch);
 	}
 	return ch;
 }
 
 #ifndef TOS
 
-#ifndef OS2
+# ifndef OS2
 #define FINDFIRST	0x4E00
 #define FINDNEXT	0x4F00
 #define GETDTA		0x2F00
 #define SETFILETIME	0x5701
 #define GETSWITCHAR	0x3700
-#define FREESPACE	0x36
-#endif
+#define FREESPACE	0x3600
+#define FATINFO 	0x1B00
+# endif
 
-#ifdef __TURBOC__
+# ifdef __TURBOC__
 #define switchar()	(char)getswitchar()
-#else
-#ifndef OS2
+# else
+#  ifndef OS2
 static char
 switchar()
 {
@@ -281,14 +305,14 @@ switchar()
 	intdos(&regs, &regs);
 	return regs.h.dl;
 }
-#endif /* OS2 */
-#endif
+#  endif /* OS2 */
+# endif
 
 long
 freediskspace(path)
 char *path;
 {
-#ifdef OS2
+# ifdef OS2
 	struct {
 		ULONG  idFileSystem;
 		ULONG  cSectorUnit;
@@ -308,10 +332,10 @@ char *path;
 	else
 		return ((long) FSInfoBuf.cSectorUnit * FSInfoBuf.cUnitAvail *
 			       FSInfoBuf.cbSector);
-#else
+# else
 	union REGS regs;
 
-	regs.h.ah = FREESPACE;
+	regs.x.ax = FREESPACE;
 	if (path[0] && path[1] == ':')
 		regs.h.dl = (toupper(path[0]) - 'A') + 1;
 	else
@@ -321,13 +345,13 @@ char *path;
 		return -1L;		/* bad drive number */
 	else
 		return ((long) regs.x.bx * regs.x.cx * regs.x.ax);
-#endif /* OS2 */
+# endif /* OS2 */
 }
 
-#ifdef OS2
+# ifdef OS2
 FILEFINDBUF ResultBuf;
 HDIR DirHandle;
-#endif
+# endif
 
 /* Functions to get filenames using wildcards
  */
@@ -335,13 +359,13 @@ static int
 findfirst(path)
 char *path;
 {
-#ifdef OS2
+# ifdef OS2
 	USHORT res, SearchCount = 1;
 
 	DirHandle = 1;
 	res = DosFindFirst((PSZ)path,&DirHandle,0,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount,0L);
 	return(!res);
-#else
+# else
 	union REGS regs;
 	struct SREGS sregs;
 
@@ -351,26 +375,26 @@ char *path;
 	sregs.ds = FP_SEG(path);
 	intdosx(&regs, &regs, &sregs);
 	return !regs.x.cflag;
-#endif /* OS2 */
+# endif /* OS2 */
 }
 
 static int
 findnext() {
-#ifdef OS2
+# ifdef OS2
 	USHORT res, SearchCount = 1;
 
 	res = DosFindNext(DirHandle,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount);
 	return(!res);
-#else
+# else
 	union REGS regs;
 
 	regs.x.ax = FINDNEXT;
 	intdos(&regs, &regs);
 	return !regs.x.cflag;
-#endif /* OS2 */
+# endif /* OS2 */
 }
 
-#ifndef OS2
+# ifndef OS2
 /* Get disk transfer area, Turbo C already has getdta */
 static char *
 getdta() {
@@ -380,15 +404,15 @@ getdta() {
 
 	regs.x.ax = GETDTA;
 	intdosx(&regs, &regs, &sregs);
-#ifdef MK_FP
+#  ifdef MK_FP
 	ret = MK_FP(sregs.es, regs.x.bx);
-#else
+#  else
 	FP_OFF(ret) = regs.x.bx;
 	FP_SEG(ret) = sregs.es;
-#endif
+#  endif
 	return ret;
 }
-#endif  /* OS2 */
+# endif  /* OS2 */
 
 #else /* TOS */
 
@@ -488,9 +512,6 @@ copybones(mode) {
 	long fs;
 	extern saveprompt;
 
-#ifdef TOS
-	extern int _copyfile();
-#endif
 	if (!ramdisk)
 		return;
 
@@ -562,12 +583,14 @@ error_copying:
 	/* Last file didn't get there.
 	 */
 	Sprintf(to, "%s%s", topath, allbones);
-	msmsg("Cannot copy `%s' to `%s' -- %s\n", from, to,
-		(status < 0) ? "can't spawn COMSPEC !" :
-		(freediskspace(topath) < filesize(from)) ?
+	msmsg("Can't copy \"%s\" to \"%s\" -- ", from, to);
+	if (status < 0)
+	    msmsg("can't spawn \"%s\"!", comspec);
+	else
+	    msmsg((freediskspace(topath) < filesize(from)) ?
 			"insufficient disk space." : "bad path(s)?");
 	if (mode == TOPERM) {
-		msmsg("Bones will be left in `%s'\n",
+		msmsg("Bones will be left in \"%s\"\n",
 			*levels ? levels : hackdir);
 	} else {
 		/* Remove all bones files on the RAMdisk */
@@ -577,11 +600,35 @@ error_copying:
 	return;
 }
 
+#if 0 /* defined(MSDOS) && !defined(TOS) && !defined(OS2) */
+boolean
+removeable_drive(drive)
+char drive;
+/* check whether current drive is a fixed disk,
+   so we don't ask the player to insert one */
+{
+	union REGS regs;
+	char *fat_id;
+
+	regs.x.ax = FATINFO;
+	intdos(&regs, &regs);
+	/* also returns size info, as
+	   AL (sectors/cluster) * CX (bytes/sector) * DX (clusters/disk) */
+# ifdef MK_FP
+	fat_id = MK_FP(sregs.ds, regs.x.bx);
+# else
+	FP_OFF(fat_id) = regs.x.bx;
+	FP_SEG(fat_id) = sregs.ds;
+# endif
+	return (*fat_id != 0xF8);
+}
+#endif
+
 void
 playwoRAMdisk() {
 	msmsg("Do you wish to play without a RAMdisk? ");
 
-	/* Set ramdisk false *before* exit'ing (because msexit calls
+	/* Set ramdisk false *before* exit-ing (because msexit calls
 	 * copybones)
 	 */
 	ramdisk = FALSE;
@@ -608,9 +655,9 @@ saveDiskPrompt(start) {
 		remember_topl();
 		home();
 		cl_end();
-		msmsg("If save file is on a SAVE disk, put that disk in now.\n");
+		msmsg("If save file is on a save disk, insert that disk now.\n");
 		cl_end();
-		msmsg("File name (default `%s'%s) ? ", SAVEF,
+		msmsg("File name (default \"%s\"%s) ? ", SAVEF,
 			start ? "" : ", <Esc> cancels save");
 		getlin(buf);
 		home();
@@ -680,16 +727,16 @@ gameDiskPrompt() {
 		if (record_exists() && comspec_exists())
 			return;
 		(void) putchar('\n');
-		getreturn("when the GAME disk has been put in");
+		getreturn("when the game disk has been inserted");
 	}
 	if (comspec_exists() && record_exists())
 		return;
 
 	if (!comspec_exists())
-		msmsg("\n\nWARNING: can't find comspec `%s'!\n", getcomspec());
-	if (!record_exists())
-		msmsg("\n\nWARNING: can't find record file `%s'!\n", RECORD);
-	msmsg("If the GAME disk is not in, put it in now.\n");
+		msmsg("\n\nWARNING: can't find command processor \"%s\"!\n", getcomspec());
+        if (!record_exists())
+		msmsg("\n\nWARNING: can't find record file \"%s\"!\n", RECORD);
+	msmsg("If the game disk is not in, insert it now.\n");
 	getreturn("to continue");
 	return;
 }
@@ -735,7 +782,7 @@ read_config_file() {
 
 		/* find the '=' */
 		if (!(bufp = strchr(buf, '='))) {
-			msmsg("Bad option line: '%s'\n", buf);
+			msmsg("Bad option line: \"%s\"\n", buf);
 			getreturn("to continue");
 			continue;
 		}
@@ -773,10 +820,10 @@ read_config_file() {
 			(void) strncpy(SAVEF, bufp, PATHLEN);
 			append_slash(SAVEF);
 		} else if (!strncmp(buf, "GRAPHICS", 4)) {
-			unsigned int translate[MAXPCHARS];
-			int i;
+			unsigned int translate[MAXPCHARS+1];
+			int lth;
 
-		     if ((i = sscanf(bufp,
+		     if ((lth = sscanf(bufp,
 		 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
@@ -788,56 +835,13 @@ read_config_file() {
 				&translate[21], &translate[22], &translate[23],
 				&translate[24], &translate[25], &translate[26],
 				&translate[27], &translate[28], &translate[29],
-				&translate[30], &translate[31])) < 0) {
+				&translate[30], &translate[31])) <= 0) {
 					msmsg ("Syntax error in GRAPHICS\n");
 					getreturn("to continue");
 			}
-#define SETPCHAR(f, n)	showsyms.f = (i > n) ? translate[n] : defsyms.f
-			SETPCHAR(stone, 0);
-			SETPCHAR(vwall, 1);
-			SETPCHAR(hwall, 2);
-			SETPCHAR(tlcorn, 3);
-			SETPCHAR(trcorn, 4);
-			SETPCHAR(blcorn, 5);
-			SETPCHAR(brcorn, 6);
-			SETPCHAR(crwall, 7);
-			SETPCHAR(tuwall, 8);
-			SETPCHAR(tdwall, 9);
-			SETPCHAR(tlwall, 10);
-			SETPCHAR(trwall, 11);
-			SETPCHAR(vbeam, 12);
-			SETPCHAR(hbeam, 13);
-			SETPCHAR(lslant, 14);
-			SETPCHAR(rslant, 15);
-			SETPCHAR(door, 16);
-			SETPCHAR(room, 17);
-			SETPCHAR(corr, 18);
-			SETPCHAR(upstair, 19);
-			SETPCHAR(dnstair, 20);
-			SETPCHAR(trap, 21);
-			SETPCHAR(web, 22);
-			SETPCHAR(pool, 23);
-#ifdef FOUNTAINS
-			SETPCHAR(fountain, 24);
-#endif
-#ifdef SINKS
-			SETPCHAR(sink, 25);
-#endif
-#ifdef THRONES
-			SETPCHAR(throne, 26);
-#endif
-#ifdef ALTARS
-			SETPCHAR(altar, 27);
-#endif
-#ifdef STRONGHOLD
-			SETPCHAR(upladder, 28);
-			SETPCHAR(dnladder, 29);
-			SETPCHAR(dbvwall, 30);
-			SETPCHAR(dbhwall, 31);
-#endif
-#undef SETPCHAR
+			assign_graphics(translate, lth);
 		} else {
-			msmsg("Bad option line: '%s'\n", buf);
+			msmsg("Bad option line: \"%s\"\n", buf);
 			getreturn("to continue");
 		}
 	}
@@ -898,7 +902,11 @@ void
 getreturn(str)
 char *str;
 {
-	msmsg("Hit <RETURN> %s.", str);
+#ifdef TOS
+	msmsg("Hit <Return> %s.", str);
+#else
+	msmsg("Hit <Enter> %s.", str);
+#endif
 	while (Getchar() != '\n') ;
 	return;
 }
@@ -988,7 +996,7 @@ disable_ctrlP() {
 	if (!flags.rawio) return;
 #endif
 #ifdef OS2
-	KbdInfo.cb = 10;
+	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFF7; /* ASCII off */
 	KbdInfo.fsMask |= 0x0004; /* BINARY on */
@@ -1015,7 +1023,7 @@ enable_ctrlP() {
 	if (!flags.rawio) return;
 #endif
 #ifdef OS2
-	KbdInfo.cb = 10;
+	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFFB; /* BINARY off */
 	KbdInfo.fsMask |= 0x0008; /* ASCII on */
@@ -1098,6 +1106,10 @@ char *name, *mode;
 /* Chdir back to original directory
  */
 #undef exit
+#ifdef TOS
+extern boolean run_from_desktop;	/* set in pcmain.c */
+#endif
+
 void exit(int);
 void
 msexit(code)
@@ -1118,7 +1130,8 @@ msexit(code)
 	chdrive(orgdir);
 #endif
 #ifdef TOS
-	getreturn("to continue"); /* so the user can read the score list */
+	if (run_from_desktop)
+	    getreturn("to continue"); /* so the user can read the score list */
 #endif
 	exit(code);
 	return;
@@ -1139,6 +1152,7 @@ get_scr_size()
 	CO = ModeInfo.col;
 	LI = ModeInfo.row;
 #  else
+#   ifndef TOS
 	union REGS regs;
 
 	if (!flags.IBMBIOS) {		/* assume standard screen size */
@@ -1171,6 +1185,7 @@ get_scr_size()
 
 	LI = regs.h.dl + 1;
 	CO = regs.h.ah;
+#   endif /* TOS */
 #  endif
 }
 # endif
@@ -1181,6 +1196,7 @@ get_scr_size()
 
 int
 _copyfile(from, to)
+char *from, *to;
 {
 	int fromfd, tofd, r;
 	char *buf;

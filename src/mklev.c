@@ -790,7 +790,7 @@ makelevel() {
 		for (tryct = rn1(1,3); tryct; tryct--) {
 			x = somex(croom); y = somey(croom);
 			if (goodpos(x,y,(struct permonst *)0))
-				(void) mk_tt_statue(x, y);
+				(void) mk_tt_object(STATUE, x, y);
 		}
 	}
 #endif
@@ -920,10 +920,11 @@ skip0:
 #ifdef MEDUSA
 		if(!rn2(dlevel == medusa_level ? 1 : 20)) {
 			if (!rn2(dlevel == medusa_level ? 2 : 50))
-				(void) mk_tt_statue(somex(croom), somey(croom));
+				(void) mk_tt_object(STATUE,
+						somex(croom), somey(croom));
 			else {
 				struct obj *otmp =
-					mkstatue((struct permonst *)0,
+					mkcorpstat(STATUE, (struct permonst *)0,
 						somex(croom), somey(croom));
 				if (dlevel == medusa_level && otmp) 
 					otmp->spe = 0;
@@ -932,7 +933,7 @@ skip0:
 		}
 #else
 		if(!rn2(20))
-				(void) mkstatue((struct permonst *)0,
+				(void) mkcorpstat(STATUE, (struct permonst *)0,
 						somex(croom), somey(croom));
 #endif
 

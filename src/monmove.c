@@ -118,14 +118,59 @@ struct monst *mtmp;
 		    sobj_at(SCR_SCARE_MONSTER, x, y) != (struct obj *)0);
 }
 
+static void
+distfleeck(mtmp,inrange,nearby,scared)
+register struct monst *mtmp;
+int *inrange, *nearby, *scared;
+{
+	int seescaryx, seescaryy;
+
+	*inrange = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
+							(BOLT_LIM * BOLT_LIM));
+	*nearby = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) < 3);
+
+	/* Note: if your image is displaced, the monster sees the Elbereth
+	 * at your displaced position, thus never attacking your displaced
+	 * position, but possibly attacking you by accident.  If you are
+	 * invisible, it sees the Elbereth at your real position, thus never
+	 * running into you by accident but possibly attacking the spot
+	 * where it guesses you are.
+	 */
+	if (Invis && !perceives(mtmp->data)) {
+		seescaryx = mtmp->mux;
+		seescaryy = mtmp->muy;
+	} else {
+		seescaryx = u.ux;
+		seescaryy = u.uy;
+	}
+	*scared = (*nearby && onscary(seescaryx, seescaryy, mtmp));
+
+	if(*scared && !mtmp->mflee) {
+#ifdef POLYSELF
+		if (!sticks(uasmon))
+#endif
+			unstuck(mtmp);	/* monster lets go when fleeing */
+		mtmp->mflee = 1;
+#ifdef STUPID
+		if (rn2(7))
+		    mtmp->mfleetim = rnd(10);
+		else
+		    mtmp->mfleetim = rnd(100);
+#else
+		mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
+#endif
+	}
+
+}
+
 /* returns 1 if monster died moving, 0 otherwise */
 int
 dochug(mtmp)
-	register struct monst *mtmp;
+register struct monst *mtmp;
 {
 	register struct permonst *mdat = mtmp->data;
-	register int tmp=0, inrange, nearby, scared, seescaryx,
-		seescaryy;
+	register int tmp=0;
+	int inrange, nearby, scared;
 
 /*	Pre-movement adjustments	*/
 
@@ -179,40 +224,8 @@ dochug(mtmp)
 	if(mtmp->iswiz)
 		(void) wiz_get_amulet(mtmp);
 
-	inrange = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
-							(BOLT_LIM * BOLT_LIM));
-	nearby = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) < 3);
-	/* Note: if your image is displaced, the monster sees the Elbereth
-	 * at your displaced position, thus never attacking your displaced
-	 * position, but possibly attacking you by accident.  If you are
-	 * invisible, it sees the Elbereth at your real position, thus never
-	 * running into you by accident but possibly attacking the spot
-	 * where it guesses you are.
-	 */
-	if (Invis && !perceives(mdat)) {
-		seescaryx = mtmp->mux;
-		seescaryy = mtmp->muy;
-	} else {
-		seescaryx = u.ux;
-		seescaryy = u.uy;
-	}
-	scared = (nearby && onscary(seescaryx, seescaryy, mtmp));
-
-	if(scared && !mtmp->mflee) {
-#ifdef POLYSELF
-		if (!sticks(uasmon))
-#endif
-			unstuck(mtmp);	/* monster lets go when fleeing */
-		mtmp->mflee = 1;
-#ifdef STUPID
-		if (rn2(7))
-		    mtmp->mfleetim = rnd(10);
-		else
-		    mtmp->mfleetim = rnd(100);
-#else
-		mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
-#endif
-	}
+	/* check distance and scariness of attacks */
+	distfleeck(mtmp,&inrange,&nearby,&scared);
 
 #ifdef HARD	/* Demonic Blackmail!!! */
 	if(nearby && is_demon(mdat) && mtmp->mpeaceful && !mtmp->mtame) {
@@ -245,8 +258,8 @@ dochug(mtmp)
 	   (!mtmp->mcansee && !rn2(4)) || mtmp->mpeaceful) {
 
 		tmp = m_move(mtmp, 0);
-		nearby = (dist(mtmp->mx, mtmp->my) < 3);	/* recalc */
-		scared = (nearby && onscary(seescaryx, seescaryy, mtmp));
+		distfleeck(mtmp,&inrange,&nearby,&scared);	/* recalc */
+
 		switch (tmp) {
 
 		    case 0:	/* no movement, but it can still attack you */
@@ -264,20 +277,6 @@ dochug(mtmp)
  		    case 2:	/* monster died */
  			return(1);
  		}
-
-		inrange = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
-							(BOLT_LIM * BOLT_LIM));
-		if(scared && !mtmp->mflee) {
-			mtmp->mflee = 1;
-#ifdef STUPID
-			if (rn2(7))
-			    mtmp->mfleetim = rnd(10);
-			else
-			    mtmp->mfleetim = rnd(100);
-#else
-			mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
-#endif
-		}
 	}
 
 /*	Now, attack the player if possible - one attack set per monst	*/
@@ -340,7 +339,7 @@ register int after;
 	    if(i == 1) return(0);	/* still in trap, so didn't move */
 	}
 	if(mtmp->mhide &&
-	   (levl[mtmp->mx][mtmp->my].omask || levl[mtmp->mx][mtmp->my].gmask) &&
+	   (OBJ_AT(mtmp->mx, mtmp->my) || levl[mtmp->mx][mtmp->my].gmask) &&
 	   rn2(10))
 	    return(0);		/* do not leave hiding place */
 	if(mtmp->meating) {
@@ -662,7 +661,7 @@ postmov:
 		if(ptr == &mons[PM_ROCK_MOLE]) meatgold(mtmp);
 		if(likegold && (!abstain || !rn2(10))) mpickgold(mtmp);
 	    }
-	    if(levl[mtmp->mx][mtmp->my].omask == 1) {
+	    if(OBJ_AT(mtmp->mx, mtmp->my)) {
 		/* Maybe a rock mole just ate some metal object */
 		if(ptr == &mons[PM_ROCK_MOLE]) meatgold(mtmp);
 		/* Maybe a cube ate just about anything */
@@ -675,7 +674,7 @@ postmov:
 		    if(likerock || likegems) mpickgems(mtmp);
 		}
 	    }
-	    if(mtmp->mhide) mtmp->mundetected = (levl[mtmp->mx][mtmp->my].omask
+	    if(mtmp->mhide) mtmp->mundetected = (OBJ_AT(mtmp->mx, mtmp->my)
 					|| levl[mtmp->mx][mtmp->my].gmask);
 
 	    /* set also in domove(), hack.c */

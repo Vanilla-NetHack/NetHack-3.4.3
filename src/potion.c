@@ -130,13 +130,10 @@ boolean talk;
 static void
 ghost_from_bottle()
 {
-	register struct monst *mtmp;
-
-	if(!(mtmp = makemon(&mons[PM_GHOST],u.ux,u.uy))){
+	if(!makemon(&mons[PM_GHOST], u.ux, u.uy)){
 		pline("This bottle turns out to be empty.");
 		return;
 	}
-	mnexto(mtmp);
 	pline("As you open the bottle, an enormous ghost emerges!");
 	if(flags.verbose)
 	    You("are frightened to death, and unable to move.");
@@ -876,6 +873,7 @@ dodip()
 			    obj->spe > -6 && !rn2(10)) {
 				Your("%s somewhat.", aobjnam(obj,"rust"));
 				obj->spe--;
+				goto poof;
 			} else if (obj->olet == POTION_SYM) {
 				Your("%s.", aobjnam(obj,"dilute"));
 				if (obj->spe == -1) {
@@ -883,10 +881,19 @@ dodip()
 					obj->blessed = obj->cursed = 0;
 					obj->otyp = POT_WATER;
 				} else obj->spe--;
+				goto poof;
 			} else if (obj->olet == SCROLL_SYM &&
+#ifdef MAIL
+				   obj->otyp != SCR_MAIL &&
+#endif
 				   obj->otyp != SCR_BLANK_PAPER) {
-				if (!Blind) pline("The scroll fades.");
+				if (!Blind) {
+					if (obj->quan == 1)
+						pline("The scroll fades.");
+					else pline("The scrolls fade.");
+				}
 				obj->otyp = SCR_BLANK_PAPER;
+				goto poof;
 			} else
 				Your("%s wet.", aobjnam(obj,"get"));
 		}
@@ -979,31 +986,31 @@ register struct obj *obj;
 		return;
 	}
 
-	mnexto(mtmp);
-	if (!Blind)
+	if (!Blind) {
 		pline("In a cloud of smoke, %s emerges!", defmonnam(mtmp));
-	else	You("smell acrid fumes.");
-	if (!Blind)
 		pline("%s speaks.", Monnam(mtmp));
-	else	pline("Something speaks.");
+	} else {
+		You("smell acrid fumes.");
+		pline("Something speaks.");
+	}
 
 	switch (obj->blessed ? 0 : obj->cursed ? 4 : rn2(5)) {
-	case 0 : pline("\"I am in your debt.  I will grant one wish!\"");
+	case 0 : verbalize("I am in your debt.  I will grant one wish!");
 		makewish();
 		mongone(mtmp);
 		break;
-	case 1 : pline("\"Thank you for freeing me!\"");
+	case 1 : verbalize("Thank you for freeing me!");
 		(void) tamedog(mtmp, (struct obj *)0);
 		break;
-	case 2 : pline("\"You freed me!\"");
+	case 2 : verbalize("You freed me!");
 		mtmp->mpeaceful = 1;
 		break;
-	case 3 : pline("\"It is about time!\"");
+	case 3 : verbalize("It is about time!");
 		pline("The %s vanishes.",
 			Hallucination ? rndmonnam() : "djinni");
 		mongone(mtmp);
 		break;
-	default: pline("\"You disturbed me, fool!\"");
+	default: verbalize("You disturbed me, fool!");
 		break;
 	}
 }

@@ -81,11 +81,9 @@ int x,y;
 	 * Yes, this is a horrible kludge...
 	 */
 	otmp = mkobj(let,TRUE);
-	otmp->ox = x;
-	otmp->oy = y;
 	otmp->nobj = fobj;
 	fobj = otmp;
-	levl[x][y].omask = 1;
+	place_object(otmp, x, y);
 	mksx = mksy = 0;
 	return(otmp);
 }
@@ -98,10 +96,8 @@ int otyp,x,y;
 
 	mksx = x; mksy = y;
 	otmp = mksobj(otyp,TRUE);
-	otmp->ox = x;
-	otmp->oy = y;
 	otmp->nobj = fobj;
-	levl[x][y].omask = 1;
+	place_object(otmp, x, y);
 	mksx = mksy = 0;
 	return((fobj = otmp));
 }
@@ -244,7 +240,7 @@ boolean artif;
 		break;
 	case FOOD_SYM:
 		if(otmp->otyp == CORPSE) {
-		    /* overridden by mkcorpse_at() */
+		    /* overridden by mkcorpstat() */
 		    do otmp->corpsenm = rndmonnum();
 		    while (mons[otmp->corpsenm].geno & G_NOCORPSE);
 		    break;
@@ -306,9 +302,14 @@ boolean artif;
 					break;
 		case BAG_OF_TRICKS:	otmp->spe = rnd(20);
 					break;
-		case FIGURINE:		otmp->corpsenm = rndmonnum();
+		case FIGURINE:	{	int tryct = 0;
+					do
+					    otmp->corpsenm = rndmonnum();
+					while(is_human(&mons[otmp->corpsenm])
+						&& tryct++ < 30);
 					blessorcurse(otmp, 4);
 					break;
+				}
 #ifdef MUSIC
 		case MAGIC_FLUTE:
 		case MAGIC_HARP:
@@ -392,9 +393,8 @@ boolean artif;
 		    case STATUE:
 			/* contains book? */
 			otmp->spe = (rn2(dlevel/2 + 10) > 10);
-			/* overridden by mkstatue() */
+			/* overridden by mkcorpstat() */
 			otmp->corpsenm = rndmonnum();
-			otmp->owt = mons[otmp->corpsenm].cwt;
 		}
 		break;
 	default:
@@ -498,49 +498,35 @@ int x, y;
 }
 
 struct obj *
-mkcorpse_at(ptr, x, y)
-register struct permonst *ptr;
-int	x, y;
-{
-	register struct obj *otmp;
-
-	otmp = mksobj_at(CORPSE, x, y);
-	if(otmp)  {
-		otmp->corpsenm = monsndx(ptr);
-		otmp->owt = ptr->cwt;
-	}
-	return(otmp);
-}
-
-struct obj *
-mk_tt_corpse(x, y)
-register int x, y;
-{
-	register struct obj *otmp;
-
-	if((otmp = mksobj(CORPSE,FALSE))) {
-		otmp->ox = x;
-		otmp->oy = y;
-		if(otmp = tt_oname(otmp)) {
-			otmp->nobj = fobj;
-			fobj = otmp;
-			levl[x][y].omask = 1;
-		}
-	}
-	return(otmp);
-}
-
-struct obj *
-mkstatue(ptr, x, y)
+mkcorpstat(objtype, ptr, x, y)
+int objtype;	/* CORPSE or STATUE */
 register struct permonst *ptr;
 int x, y;
 {
 	register struct obj *otmp;
 
-	if((otmp = mksobj_at(STATUE, x, y))) {
+	if(objtype != CORPSE && objtype != STATUE)
+		impossible("making corpstate type %d", objtype);
+	otmp = mksobj_at(objtype, x, y);
+	if(otmp)  {
+		if(ptr)	otmp->corpsenm = monsndx(ptr);
+		else	otmp->corpsenm = rndmonnum();
+		otmp->owt = weight(otmp);
+	}
+	return(otmp);
+}
 
-	    if(ptr)	otmp->corpsenm = monsndx(ptr);
-	    else	otmp->corpsenm = rndmonnum();
+struct obj *
+mk_tt_object(objtype, x, y)
+int objtype; /* CORPSE or STATUE */
+register int x, y;
+{
+	register struct obj *otmp;
+
+	if(otmp = mksobj_at(objtype,x,y)) {
+		if((otmp = tt_oname(otmp)) && objtype == STATUE)
+			/* player statues never contain books */
+			otmp->spe = 0;
 	}
 	return(otmp);
 }
@@ -554,56 +540,17 @@ char * nm;
 register int lth;
 {
 	struct obj *otmp;
-	register struct obj *obj2;
 
-	if (lth == 0) {
-		switch(objtype) {
-			case STATUE: return (mkstatue(ptr, x, y));
-			case CORPSE: return (mkcorpse_at(ptr, x, y));
-			default: impossible("making named type %d", objtype);
-				return mksobj_at(objtype, x, y);
-		}
-	}
-
-	if((otmp = mksobj(objtype,FALSE))) {
-		obj2 = newobj(lth);
-		*obj2 = *otmp;
-		obj2->corpsenm = monsndx(ptr);
-		obj2->owt = ptr->cwt;
-		obj2->onamelth = lth;
-		Strcpy (ONAME(obj2), nm);
-		free( (genericptr_t)otmp);
-		obj2->ox = x;
-		obj2->oy = y;
-		obj2->nobj = fobj;
-		fobj = obj2;
-		levl[x][y].omask = 1;
-		return(obj2);
-	} else  return((struct obj *)0);
-}
-
-#ifdef MEDUSA
-struct obj *
-mk_tt_statue(x, y)
-register int x, y;
-{
-	register struct obj *otmp;
-
-	if((otmp = mksobj(STATUE,FALSE))) {
-		otmp->ox = x;
-		otmp->oy = y;
-		if(otmp = tt_oname(otmp)) {
-			otmp->nobj = fobj;
-			fobj = otmp;
-			levl[x][y].omask = 1;
-			otmp->spe = 0;
-			/* player statues never contain books */
-		}
+	otmp = mkcorpstat(objtype,ptr,x,y);
+	if (lth > 0) {
+		/* Note: oname() is safe since otmp is first in chain */
+		otmp = oname(otmp, nm, FALSE);
+		fobj = otmp;
 	}
 	return(otmp);
 }
-#endif
 
+#ifdef STUPID_CPP
 boolean
 is_flammable(otmp)
 register struct obj *otmp;
@@ -620,10 +567,60 @@ register struct obj *otmp;
 	return(objects[otmp->otyp].oc_material == METAL);
 }
 
-void
-set_omask(x, y)
-register xchar x, y;
+boolean
+is_corrodeable(otmp)
+register struct obj *otmp;
 {
-	levl[x][y].gmask = (g_at(x, y) != (struct gold *)0);
-	levl[x][y].omask = (o_at(x, y) != (struct obj *)0);
+	return(objects[otmp->otyp].oc_material == COPPER);
+}
+#endif
+
+/*
+ * These functions encapsulate operations on the omask bit.  Someday soon they
+ * will turn into list-manipulation functions.
+ */
+boolean
+OBJ_AT(x, y)
+int x, y;
+{
+	return levl[x][y].omask;
+}
+
+void
+place_object(obj, x, y)
+struct obj *obj;
+register int x, y;
+{
+	obj->ox = x;
+	obj->oy = y;
+	levl[x][y].omask = 1;
+}
+
+void
+move_object(obj, x, y)
+struct obj *obj;
+register int x, y;
+{
+	register int oldx = obj->ox, oldy = obj->oy;
+
+	obj->ox = x;
+	obj->oy = y;
+	levl[x][y].omask = 1;
+	levl[oldx][oldy].omask = (o_at(oldx, oldy) != (struct obj *)0);
+}
+
+void
+remove_object(obj)
+struct obj *obj;
+{
+	register int oldx = obj->ox, oldy = obj->oy;
+
+/*
+ * This cannot be used since it screws up unpobj().  It's only necessary so
+ * that o_at() doesn't mistakenly find the object, but this is called only
+ * in situations with the object already removed from the chain anyway.
+	obj->ox = 0;
+	obj->oy = 0;
+ */
+	levl[oldx][oldy].omask = (o_at(oldx, oldy) != (struct obj *)0);
 }

@@ -247,7 +247,7 @@ long allowflags;
 		/* dog eschews cursed objects */
 		/* but likes dog food */
 		obj = fobj;
-		if(levl[nx][ny].omask) 
+		if(OBJ_AT(nx, ny)) 
 		  while(obj){
 		    if(obj->ox != nx || obj->oy != ny)
 			goto nextobj;

@@ -18,10 +18,15 @@ struct objclass {
 #define oc_bulky	oc_bool	/* for armor */
 #define oc_charged	oc_bool	/* for rings & tools: allow +n or (n) */
 	Bitfield(oc_material,4);
-#define GLASS	1
-#define WOOD	2
-#define METAL	4
-#define MINERAL	8
+#define GLASS		1
+#define WOOD		2
+#define COPPER		3 /* Cu */
+#define METAL		4 /* Fe */
+#define SILVER		5 /* Ag */
+#define GOLD		6 /* Au */
+#define PLATINUM	7 /* Pt */
+#define MITHRIL		8
+#define MINERAL		15
 	uchar oc_oprop; 	/* property (invis, &c.) conveyed */
 	char oc_olet;
 	int oc_prob;		/* probability for mkobj() */

@@ -84,9 +84,10 @@ register struct obj *otemp;
 {
 	if (!flags.verbose || Blind || otemp->olet != WEAPON_SYM) return;
 	pline("%s %s %s %s.", Monnam(mtmp),
-	      (otemp->otyp == SPEAR ||
-	       otemp->otyp == LANCE ||
-	       otemp->otyp == GLAIVE ||
+	      ((otemp->otyp >= SPEAR &&
+	        otemp->otyp <= LANCE) ||
+	       (otemp->otyp >= PARTISAN &&
+	        otemp->otyp <= SPETUM) ||
 	       otemp->otyp == TRIDENT) ? "thrusts" : "swings",
 	      is_female(mtmp) ? "her" :
 	      is_human(mtmp->data) ? "his" : "its",
@@ -145,17 +146,13 @@ wildmiss(mtmp)		/* monster attacked your displaced image */
 		Monnam(mtmp));
 }
 
-static void
+void
 regurgitates(mtmp)
 register struct monst *mtmp;
 {
-	u.ux = mtmp->mx;
-	u.uy = mtmp->my;
-	u.uswallow = 0;
-	u.ustuck = 0;
+	unstuck(mtmp);
 	mnexto(mtmp);
-	setsee();
-	docrt();
+	pru();
 	spoteffects();
 	/* to cover for a case where mtmp is not in a next square */
 	if(um_dist(mtmp->mx,mtmp->my,1))
@@ -246,7 +243,7 @@ doattack:
 		     pline("Wait, %s!  There's a %s named %s hiding under %s!",
 			mtmp->mnamelth ? NAME(mtmp) : mtmp->data->mname,
 			uasmon->mname, plname,
-			levl[u.ux][u.uy].omask ? doname(o_at(u.ux,u.uy)) :
+			OBJ_AT(u.ux, u.uy) ? doname(o_at(u.ux,u.uy)) :
 			"some gold");
 		    prme();
 		}
@@ -467,7 +464,7 @@ hitmu(mtmp, mattk)
 	    if(!(Blind ? Telepat : (HTelepat & WORN_HELMET))) {
 		register struct obj *obj;
 
-		if(levl[mtmp->mx][mtmp->my].omask == 1) {
+		if(OBJ_AT(mtmp->mx, mtmp->my)) {
 		    if(obj = o_at(mtmp->mx,mtmp->my))
 			pline("%s was hidden under %s!",
 				  Xmonnam(mtmp), doname(obj));
@@ -816,7 +813,7 @@ dopois:
 		 * is, no matter what covers it.
 		 */
 		getbronze = (mdat == &mons[PM_BLACK_PUDDING] &&
-			     uarm && uarm->otyp == BRONZE_PLATE_MAIL);
+			     uarm && is_corrodeable(uarm));
 		while (1) {
 		    switch(rn2(5)) {
 		    case 0:
@@ -1520,7 +1517,7 @@ register struct monst *mon;
 #endif
 				break;
 			case 4: You("feel exhausted.");
-				losehp(5+rnd(10), "bout of exhaustion");
+				losehp(5+rnd(10), "exhaustion");
 				break;
 		}
 	} else {

@@ -5,26 +5,134 @@
 #include "hack.h"
 
 #ifdef POLYSELF
-
 static void break_armor(), drop_weapon();
 static void skinback();
 static void uunstick();
+static boolean sticky;
+#endif
 
+void
+newman()
+{
+	int tmp, tmp2;
+	char buf[BUFSZ];
+
+	if (!rn2(10)) {
+		flags.female = !flags.female;
+		max_rank_sz();
+		if (pl_character[0]=='P')
+			Strcpy(pl_character+6, flags.female?"ess":"");
+		if (pl_character[0]=='C')
+			Strcpy(pl_character+5, flags.female ? "woman" : "man");
+	}
+#ifdef POLYSELF
+	if (u.umonnum != -1) {
+		u.acurr = u.macurr;	/* restore old attribs */
+		u.amax = u.mamax;
+	}
+	u.usym = S_HUMAN;
+	u.umonnum = -1;
+	if (u.uundetected) u.uundetected = 0;
+	prme();
+	u.mtimedone = u.mh = u.mhmax = 0;
+#endif
+	tmp = u.uhpmax;
+	tmp2 = u.ulevel;
+	u.ulevel = u.ulevel-2+rn2(5);
+	if (u.ulevel > 127 || u.ulevel == 0) u.ulevel = 1;
+	if (u.ulevel > MAXULEV) u.ulevel = MAXULEV;
+
+	for(tmp = u.ulevel; tmp != tmp2; tmp += (tmp2 < u.ulevel) ? -1 : 1)
+		adjabil((tmp2 > u.ulevel) ? -1 : 1);
+	tmp = u.uhpmax;
+
+	/* random experience points for the new experience level */
+	u.uexp = rndexp();
+#ifndef LINT
+	u.uhpmax = (u.uhpmax-10)*(long)u.ulevel/tmp2 + 19 - rn2(19);
+#endif
+/* If it was u.uhpmax*u.ulevel/tmp+9-rn2(19), then a 1st level character
+   with 16 hp who polymorphed into a 3rd level one would have an average
+   of 48 hp.  */
+#ifndef LINT
+	u.uhp = u.uhp * (long)u.uhpmax/tmp;
+#endif
+#ifdef SPELLS
+	tmp = u.uenmax;
+#  ifndef LINT
+	u.uenmax = u.uenmax * (long)u.ulevel/tmp2 + 9 - rn2(19);
+#  endif
+	if (u.uenmax < 0) u.uenmax = 0;
+#  ifndef LINT
+	u.uen = (tmp ? u.uen * (long)u.uenmax / tmp : u.uenmax);
+#  endif
+#endif
+	redist_attr();
+	u.uhunger = rn1(500,500);
+	Sick = 0;
+	Stoned = 0;
+	if (u.uhp <= 0 || u.uhpmax <= 0) {
+#ifdef POLYSELF
+		if(Polymorph_control) {
+		    if (u.uhp <= 0) u.uhp = 1;
+		    if (u.uhpmax <= 0) u.uhpmax = 1;
+		} else {
+#endif
+		    Your("new form doesn't seem healthy enough to survive.");
+		    killer="unsuccessful polymorph";
+		    done(DIED);
+#ifdef POLYSELF
+		}
+#endif
+	}
+#ifdef POLYSELF
+	set_uasmon();
+#endif
+	You("feel like a new %sman!", flags.female ? "wo" : "");
+#ifdef WIZARD
+	if(!wizard) {
+#endif
+newname:	more();
+		do {
+		    pline("What is your new name? ");
+		    getlin(buf);
+		} while (buf[0]=='\033' || buf[0]==0);
+		if (!strcmp(plname,buf)) {
+		    pline("That is the same as your old name!");
+		    goto newname;
+		}
+		(void)strncpy(plname, buf, sizeof(plname)-1);
+		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
+		regularize(SAVEF+5);		/* avoid . or / in name */
+#ifdef WIZARD
+	}
+#endif
+	flags.botl = 1;
+#ifdef POLYSELF
+	skinback();
+	find_ac();
+	if (sticky) uunstick();
+#endif
+}
+
+#ifdef POLYSELF
 void
 polyself()
 {
 	char buf[BUFSZ];
-	int tmp, tmp2, mntmp = -1;
+	int mntmp = -1;
 	int tries=0;
 	boolean draconian = (uarm && uarm->otyp==DRAGON_SCALE_MAIL &&
 		uarm->corpsenm >= PM_GREY_DRAGON &&
 		uarm->corpsenm <= PM_YELLOW_DRAGON);
+	boolean iswere = (u.ulycn > -1 || is_were(uasmon));
+	boolean isvamp = (u.usym == S_VAMPIRE || u.umonnum == PM_VAMPIRE_BAT);
 	/* We have to calculate sticky in multiple places since we might go
 	 * through any one of them without going through the others.
 	 */
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
+	sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
 
-	if(!Polymorph_control && !draconian) {
+	if(!Polymorph_control && !draconian && !iswere && !isvamp) {
 	    if (rn2(20) > ACURR(A_CON)) {
 		You("shudder for a moment.");
 		losehp(rn2(30),"system shock");
@@ -44,8 +152,29 @@ polyself()
 			else break;
 		} while(++tries < 5);
 		if (tries==5) pline(thats_enough_tries);
-	} else if (draconian)
-		mntmp = uarm->corpsenm;
+	} else if (draconian || iswere || isvamp) {
+		/* special changes that don't require polyok() */
+		if (draconian) {
+			mntmp = uarm->corpsenm;
+			if (!(mons[mntmp].geno & G_GENOD)) {
+				You("merge with your scaly armor.");
+				uskin = uarm;
+				uarm = (struct obj *)0;
+			}
+		} else if (iswere) {
+			if (is_were(uasmon))
+				mntmp = PM_HUMAN; /* Illegal; force newman() */
+			else
+				mntmp = u.ulycn;
+		} else {
+			if (u.usym == S_VAMPIRE)
+				mntmp = PM_VAMPIRE_BAT;
+			else
+				mntmp = PM_VAMPIRE;
+		}
+		if (polymon(mntmp))
+			return;
+	}
 
 	if (mntmp < 0) {
 		tries = 0;
@@ -55,106 +184,12 @@ polyself()
 		} while(!polyok(&mons[mntmp]) && tries++ < 200);
 	}
 
-	if (draconian && mntmp==uarm->corpsenm) {
-		if (!(mons[uarm->corpsenm].geno & G_GENOD)) {
-			You("merge with your scaly armor.");
-			uskin = uarm;
-			uarm = (struct obj *)0;
-		}
-	}
-	/* The below polyok() should never fail unless just about everything
-	 * was genocided...
+	/* The below polyok() fails either if everything is genocided, or if
+	 * we deliberately chose something illegal to force newman().
 	 */
-	if (!polyok(&mons[mntmp]) || !rn2(5)) {
-		if (!rn2(10)) {
-			flags.female = !flags.female;
-			max_rank_sz();
-			if (pl_character[0]=='P')
-				Strcpy(pl_character+6, flags.female?"ess":"");
-			if (pl_character[0]=='C')
-				Strcpy(pl_character+5,
-				flags.female ? "woman" : "man");
-		}
-		if (u.umonnum != -1) {
-			u.acurr = u.macurr;	/* restore old attribs */
-			u.amax = u.mamax;
-		}
-	    tmp = u.uhpmax;
-	    tmp2 = u.ulevel;
-	    u.usym = S_HUMAN;
-	    u.umonnum = -1;
-	    if (u.uundetected) u.uundetected = 0;
-	    prme();
-	    u.mtimedone = u.mh = u.mhmax = 0;
-	    u.ulevel = u.ulevel-2+rn2(5);
-	    if (u.ulevel > 127 || u.ulevel == 0) u.ulevel = 1;
-	    if (u.ulevel > MAXULEV) u.ulevel = MAXULEV;
-
-	    for(tmp = u.ulevel; tmp != tmp2; tmp += (tmp2 < u.ulevel) ? -1 : 1)
-		adjabil((tmp2 > u.ulevel) ? -1 : 1);
-	    tmp = u.uhpmax;
-
-	    /* random experience points for the new experience level */
-	    u.uexp = rndexp();
-#ifndef LINT
-	    u.uhpmax = (u.uhpmax-10)*(long)u.ulevel/tmp2 + 19 - rn2(19);
-#endif
-/* If it was u.uhpmax*u.ulevel/tmp+9-rn2(19), then a 1st level character
-   with 16 hp who polymorphed into a 3rd level one would have an average
-   of 48 hp.  */
-#ifndef LINT
-	    u.uhp = u.uhp * (long)u.uhpmax/tmp;
-#endif
-#ifdef SPELLS
-	    tmp = u.uenmax;
-#ifndef LINT
-	    u.uenmax = u.uenmax * (long)u.ulevel/tmp2 + 9 - rn2(19);
-#endif
-	    if (u.uenmax < 0) u.uenmax = 0;
-#ifndef LINT
-	    u.uen = (tmp ? u.uen * (long)u.uenmax / tmp : u.uenmax);
-#endif
-#endif
-	    (void)redist_attr();
-	    u.uhunger = rn1(500,500);
-	    Sick = 0;
-	    Stoned = 0;
-	    if (u.uhp <= 0 || u.uhpmax <= 0) {
-
-		if(Polymorph_control) {
-		    if (u.uhp <= 0) u.uhp = 1;
-		    if (u.uhpmax <= 0) u.uhpmax = 1;
-		} else {
-		    Your("new form doesn't seem healthy enough to survive.");
-		    killer="unsuccessful polymorph";
-		    done(DIED);
-		}
-	    }
-	    set_uasmon();
-	    You("feel like a new %sman!", flags.female ? "wo" : "");
-#ifdef WIZARD
-	    if(!wizard) {
-#endif
-newname:	more();
-		do {
-		    pline("What is your new name? ");
-		    getlin(buf);
-		} while (buf[0]=='\033' || buf[0]==0);
-		if (!strcmp(plname,buf)) {
-		    pline("That is the same as your old name!");
-		    goto newname;
-		}
-		(void)strncpy(plname, buf, sizeof(plname)-1);
-		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
-		regularize(SAVEF+5);		/* avoid . or / in name */
-#ifdef WIZARD
-	    }
-#endif
-	    flags.botl = 1;
-	    skinback();
-	    find_ac();
-	    if (sticky) uunstick();
-	} else if(!polymon(mntmp)) return;
+	if (!polyok(&mons[mntmp]) || !rn2(5))
+		newman();
+	else if(!polymon(mntmp)) return;
 
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 	if (Inhell && !Fire_resistance) {
@@ -169,7 +204,7 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 	int	mntmp;
 {
 	int	tmp;
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
+	sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
 
 	if (mons[mntmp].geno & G_GENOD) {
 		You("feel rather %s-ish.",mons[mntmp].mname);
@@ -228,7 +263,7 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 	break_armor();
 	drop_weapon(1);
 	if (u.uundetected && !hides_under(uasmon)) u.uundetected = 0;
-	else if (hides_under(uasmon) && (levl[u.ux][u.uy].omask ||
+	else if (hides_under(uasmon) && (OBJ_AT(u.ux, u.uy) ||
 			levl[u.ux][u.uy].gmask))
 		u.uundetected = 1;
 	prme();
@@ -347,7 +382,7 @@ int alone;
 void
 rehumanize()
 {
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
+	sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
 
 	u.mh = u.mhmax = u.mtimedone = 0;
  	u.acurr = u.macurr;		/* restore old strength */
@@ -423,13 +458,7 @@ dospinweb() {
 	if (u.uswallow) {
 		You("release web fluid inside %s.", mon_nam(u.ustuck));
 		pline("%s regurgitates you!", Monnam(u.ustuck));
-		u.ux = u.ustuck->mx;
-		u.uy = u.ustuck->my;
-		mnexto(u.ustuck);
-		u.uswallow = 0;
-		u.ustuck = 0;
-		setsee();
-		docrt();
+		regurgitates(u.ustuck);
 		return(1);
 	}
 	if (u.utrap) {
@@ -507,7 +536,7 @@ doconfuse()
 		looked = 1;
 		if (Invis && !perceives(mtmp->data))
 		    pline("%s seems not to notice your gaze.", Monnam(mtmp));
-		else if (mtmp->minvis && !See_invisible && !Telepat)
+		else if (mtmp->minvis && !See_invisible)
 		    You("can't see where to gaze at %s.", Monnam(mtmp));
 		else if (mtmp->mimic)
 		    continue;

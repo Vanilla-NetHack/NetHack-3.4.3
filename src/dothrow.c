@@ -160,12 +160,12 @@ register struct obj *obj;
 		if(obj->otyp == CRYSKNIFE)
 			obj->otyp = WORM_TOOTH;
 #endif
-		obj->ox = bhitpos.x;
-		obj->oy = bhitpos.y;
 		obj->nobj = fobj;
 		fobj = obj;
-		levl[bhitpos.x][bhitpos.y].omask = 1;
-		if(obj->unpaid && costly_spot(bhitpos.x, bhitpos.y))
+		place_object(obj, bhitpos.x, bhitpos.y);
+		if(obj != uball && costly_spot(bhitpos.x, bhitpos.y) &&
+		   !(mon && mon->isshk && bhitpos.x == mon->mx &&
+		     bhitpos.y == mon->my && !(obj->unpaid)))
 			subfrombill(obj);
 		stackobj(obj);
 		if(obj == uball &&

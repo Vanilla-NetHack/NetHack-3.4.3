@@ -482,10 +482,7 @@ dig() {
 		register char *digtxt;
 		register struct obj *obj;
 
-		if(obj = sobj_at(BOULDER, dpx, dpy)) {
-			fracture_rock(obj);
-			digtxt = "The boulder falls apart.";
-		} else if(obj = sobj_at(STATUE, dpx, dpy)) {
+		if(obj = sobj_at(STATUE, dpx, dpy)) {
 			if (break_statue(obj))
 				digtxt = "The statue shatters.";
 			else
@@ -493,6 +490,9 @@ dig() {
 				 * printed a message and updated the screen
 				 */
 				digtxt = NULL;
+		} else if(obj = sobj_at(BOULDER, dpx, dpy)) {
+			fracture_rock(obj);
+			digtxt = "The boulder falls apart.";
 		} else if(!lev->typ || lev->typ == SCORR) {
 			lev->typ = CORR;
 			digtxt = "You succeeded in cutting away some rock.";
@@ -585,7 +585,7 @@ dighole()
 		if(Invisible) newsym(ttmp->tx,ttmp->ty);
 		pline("You've made a hole in the floor.");
 		if(!u.ustuck && !Levitation) {			/* KAA */
-			if(inshop())
+			if(in_shop(u.ux, u.uy))
 				shopdig(1);
 #ifdef WALKIES
 			if(!next_to_u())
@@ -704,19 +704,19 @@ struct obj *obj;
 				dig_level = dlevel;
 				dig_effort = 0;
 			    	You("start %s.",
-				   isclosedoor ? "chopping at the door" :
 				   sobj_at(STATUE, rx, ry) ?
 						"chipping the statue" :
 				   sobj_at(BOULDER, rx, ry) ?
 						"hitting the boulder" :
+				   isclosedoor ? "chopping at the door" :
 						"digging");
 			} else
 				You("continue %s.",
-				   isclosedoor ? "chopping at the door" :
 				   sobj_at(STATUE, rx, ry) ?
 						"chipping the statue" :
 				   sobj_at(BOULDER, rx, ry) ?
 						"hitting the boulder" :
+				   isclosedoor ? "chopping at the door" :
 						"digging");
 			did_dig_msg = FALSE;
 			set_occupation(dig, "digging", 0);
@@ -732,7 +732,7 @@ struct obj *obj;
 			dig_level = dlevel;
 			dig_effort = 0;
 			You("start digging in the floor.");
-			if(inshop())
+			if(in_shop(u.ux, u.uy))
 				shopdig(0);
 		} else
 			You("continue digging in the floor.");
@@ -1031,6 +1031,7 @@ dorub()
 
 	if(!obj || (obj != uwep && !wield_tool(obj))) return 0;
 
+	/* now uwep is obj */
 	if (uwep->otyp == MAGIC_LAMP) {
 	    if (uwep->spe > 0 && !rn2(3)) {
 		uwep->spe = 0;

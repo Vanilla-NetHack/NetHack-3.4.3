@@ -146,13 +146,13 @@ register unsigned int tmp;
 
 void
 cutworm(mtmp, x, y, weptyp)
-register struct monst *mtmp;
-register xchar x,y;
-register unsigned weptyp;		/* uwep->otyp or 0 */
+struct monst *mtmp;
+xchar x,y;
+unsigned weptyp;		/* uwep->otyp or 0 */
 {
 	register struct wseg *wtmp, *wtmp2;
-	register struct monst *mtmp2;
-	register int tmp, tmp2;
+	struct monst *mtmp2;
+	int tmp, tmp2;
 
 	if(mtmp->mx == x && mtmp->my == y) return;	/* hit headon */
 

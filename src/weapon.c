@@ -38,6 +38,8 @@ struct	permonst *ptr;
 	    case ORCISH_DAGGER:
 #endif
 	    case DAGGER:
+	    case SCALPEL:
+	    case ATHAME:
 	    case SHURIKEN:		tmp += 2; break;
 #ifdef WORM
 	    case CRYSKNIFE:		tmp += 3; break;
@@ -83,7 +85,7 @@ struct	permonst *ptr;
 #ifdef TOLKIEN
 		case ELVEN_BROADSWORD:
 #endif
-		case BROADSWORD:	tmp += 1; break;
+		case BROADSWORD:	tmp++; break;
 
 		case FLAIL:
 		case RANSEUR:
@@ -107,9 +109,10 @@ struct	permonst *ptr;
 	    switch (otmp->otyp) {
 		case CROSSBOW_BOLT:
 		case MACE:
+		case WAR_HAMMER:
 		case FLAIL:
 		case SPETUM:
-		case TRIDENT:		tmp += 1; break;
+		case TRIDENT:		tmp++; break;
 
 		case BARDICHE:
 		case BILL_GUISARME:
@@ -225,10 +228,10 @@ register struct monst *mtmp;
 #endif
 		  break;
 		case WP_SLING:
-		  no_propellor = (m_carrying(mtmp, SLING) != 0);
+		  no_propellor = !(m_carrying(mtmp, SLING));
 		  break;
 		case WP_CROSSBOW:
-		  no_propellor = (m_carrying(mtmp, CROSSBOW) != 0);
+		  no_propellor = !(m_carrying(mtmp, CROSSBOW));
 		}
 	      }
 	    if (!no_propellor) {
@@ -268,8 +271,8 @@ static const int hwep[][2] =
 #ifdef KOPS
 	  {RUBBER_HOSE,0},
 #endif /* KOPS */
-	  {ELVEN_DAGGER,0}, {DAGGER,0}, {ORCISH_DAGGER,0}, {SCALPEL,0},
-	  {KNIFE,0},
+	  {WAR_HAMMER,0}, {ELVEN_DAGGER,0}, {DAGGER,0}, {ORCISH_DAGGER,0},
+	  {ATHAME,0}, {SCALPEL,0}, {KNIFE,0},
 #ifdef WORM
 	  {WORM_TOOTH,0},
 #endif
@@ -291,7 +294,7 @@ static const int hwep[][2] =
 #ifdef KOPS
 	  {RUBBER_HOSE,0},
 #endif /* KOPS */
-	  {DAGGER,0}, {SCALPEL,0}, {KNIFE,0},
+	  {WAR_HAMMER,0}, {DAGGER,0}, {ATHAME,0}, {SCALPEL,0}, {KNIFE,0},
 #ifdef WORM
 	  {WORM_TOOTH,0},
 #endif

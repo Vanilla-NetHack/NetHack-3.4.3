@@ -15,8 +15,9 @@ extern int ramdisk;
 extern int count_only;
 #endif
 
-#define CTRL(ch) (ch & 0x37)
-#define ABORT CTRL('A')
+#define C(c)  (0x1f & (c))
+#define M(c)  (0x80 | (c))
+#define ABORT C('a')
 #define COUNT 0x1
 #define WRITE 0x2
 

@@ -263,7 +263,7 @@ register int ddx, ddy, range;
 		}
 		/* stop on a zorkmid */
 		if(levl[bhitpos.x][bhitpos.y].gmask ||
-		     	    levl[bhitpos.x][bhitpos.y].omask) {
+		     	    OBJ_AT(bhitpos.x, bhitpos.y)) {
 			tmp_at(-1, -1); /* close call */
 			return (struct monst *)0;
 		}
@@ -281,13 +281,13 @@ register int ddx, ddy, range;
 #ifdef KICK
 static int
 kick_object(x, y)
-register int x, y;
+int x, y;
 {
-	register int range, odx, ody, cnt = 0;
+	int range, odx, ody, cnt = 0;
 	register struct monst *mon;
-	register struct gold *gold;
+	struct gold *gold;
 	register struct obj *otmp, *obj;
-	register boolean costly = FALSE;
+	boolean costly = FALSE;
 
 	/* if a pile, the "top" object gets kicked */
 	for (otmp = fobj; otmp; otmp = otmp->nobj)
@@ -321,19 +321,38 @@ register int x, y;
 		long zm;
 		gold = g_at(x, y);
 		zm = gold->amount;
+		if(IS_ROCK(levl[x][y].typ)) {
+			if ((!martial() && rn2(20) > ACURR(A_DEX))
+#ifdef POLYSELF
+				|| IS_ROCK(levl[u.ux][u.uy].typ)
+#endif
+								) {
+				pline("%s doesn't come loose.",
+					Blind ? "It" : "The gold");
+				return(!rn2(3) || martial());
+			}
+			pline("%s comes loose.", Blind ? "It" : "The gold");
+			freegold(gold);
+			newsym(x, y);
+			mkgold(zm, u.ux, u.uy);
+			if (Invisible
+#ifdef POLYSELF
+					&& !u.uundetected
+#endif
+						) newsym(u.ux, u.uy);
+			return(1);
+		}
 		if(range < 2 || zm > 300L) /* arbitrary */
 		    return(0);
-		else {
-		    freegold(gold);
-		    if(!levl[x][y].mmask) newsym(x, y);
-		    if(mon = ghit(u.dx, u.dy, range)) {
+		freegold(gold);
+		newsym(x, y);
+		if(mon = ghit(u.dx, u.dy, range)) {
 			setmangry(mon); /* not a means for payment to shk */
 			if(ghitm(mon, zm)) /* was it caught? */
 			    return(1);
-		    }
-		    mkgold(zm, bhitpos.x, bhitpos.y);
-		    if(cansee(bhitpos.x, bhitpos.y)) prl(bhitpos.x,bhitpos.y);
 		}
+		mkgold(zm, bhitpos.x, bhitpos.y);
+		if(cansee(bhitpos.x, bhitpos.y)) prl(bhitpos.x,bhitpos.y);
 		return(1);
 	}
 
@@ -378,9 +397,36 @@ gotcha:
 		    You("smash the %s!", xname(obj));
 		    if(costly) addtobill(obj, FALSE);
 		    potionbreathe(obj);
-		    delobj(obj);	/* takes care of omask */
+		    delobj(obj);
 		    return(1);
 		}
+	}
+
+	if(IS_ROCK(levl[x][y].typ)) {
+		if ((!martial() && rn2(20) > ACURR(A_DEX))
+#ifdef POLYSELF
+				|| IS_ROCK(levl[u.ux][u.uy].typ)
+#endif
+								) {
+			if (Blind) pline("It doesn't come loose.");
+			else pline("The %s do%sn't come loose.",
+				distant_name(obj, xname),
+				(obj->quan==1) ? "es" : "");
+			return(!rn2(3) || martial());
+		}
+		if (Blind) pline("It comes loose.");
+		else pline("The %s come%s loose.", distant_name(obj, xname),
+			(obj->quan==1) ? "s" : "");
+		move_object(obj, u.ux, u.uy);
+		newsym(x, y);
+		stackobj(obj);
+		if (Invisible
+#ifdef POLYSELF
+				&& !u.uundetected
+#endif
+						) newsym(u.ux, u.uy);
+		if (costly && !costly_spot(u.ux, u.uy)) addtobill(obj, FALSE);
+		return(1);
 	}
 
 	/* too heavy to move. make sure not to call bhit  */
@@ -393,17 +439,12 @@ gotcha:
 	    return(0);
 	}
 
-	if(cnt > 1) {
-		/* Needed to fool bhit's display-cleanup to show */
-		/* immediately the next object in the pile.  We  */
-		/* know here that the object will move, so there */
-		/* is no need to worry about omask.		 */
-		obj->ox = u.ux;
-		obj->oy = u.uy;
-	} else {
-		levl[x][y].omask = 0;
-		if(!levl[x][y].gmask) newsym(x, y);
-	}
+	/* Needed to fool bhit's display-cleanup to show immediately	*/
+	/* the next object in the pile.  We know here that the object	*/
+	/* will move, so there is no need to worry about the location,	*/
+	/* which merely needs to be something other than ox, oy.	*/
+	move_object(obj, u.ux, u.uy);
+	if(cnt == 1 && !levl[x][y].mmask) newsym(x, y);
 
 	mon = bhit(u.dx, u.dy, range, obj->olet,
 			(int (*)()) 0, (int (*)()) 0, obj);
@@ -417,9 +458,7 @@ gotcha:
 		if(thitmonst(mon, obj)) return(1);
 	}
 	if(costly && !costly_spot(bhitpos.x,bhitpos.y)) addtobill(obj, FALSE);
-	obj->ox = bhitpos.x;
-	obj->oy = bhitpos.y;
-	levl[obj->ox][obj->oy].omask = 1;
+	move_object(obj, bhitpos.x, bhitpos.y);
 	stackobj(obj);
 	if(!levl[obj->ox][obj->oy].mmask) newsym(obj->ox, obj->oy);
 	return(1);
@@ -498,7 +537,7 @@ dokick() {		/* try to kick the door down - noisy! */
 		return(1);
 	}
 
-	if((maploc->omask || maploc->gmask) && !Levitation) {
+	if((OBJ_AT(x, y) || maploc->gmask) && !Levitation) {
 		if(kick_object(x, y)) return(1);
 		else goto ouch;
 	}

@@ -336,7 +336,8 @@ die:
 	if(!done_stopprint)
 	    Printf("Goodbye %s the %s...\n\n", buf2,
 #ifdef ENDGAME
-		   how != ASCENDED ? pl_character : "Demigod");
+		   how != ASCENDED ? pl_character : 
+		   flags.female ? "Demigoddess" : "Demigod");
 #else
 		   pl_character);
 #endif
@@ -354,7 +355,11 @@ die:
 	  if(how == ASCENDED) u.urexp *= 2;
 #endif
 	}
-	if(how == ESCAPED) {
+	if(how == ESCAPED
+#ifdef ENDGAME
+			|| how == ASCENDED
+#endif
+					) {
 		register struct monst *mtmp;
 		register struct obj *otmp;
 		long i;
@@ -372,11 +377,23 @@ die:
 				mtmp = mtmp->nmon;
 			}
 			if(!done_stopprint)
+#ifdef ENDGAME
+		    Printf("\n%s with %ld points,\n",
+			how==ASCENDED ? "went to your reward"
+				: "escaped from the dungeon",
+#else
 		    Printf("\nescaped from the dungeon with %ld points,\n",
+#endif
 			u.urexp);
 		} else
 		if(!done_stopprint)
+#ifdef ENDGAME
+		  Printf("You %s with %ld points,\n",
+			how==ASCENDED ? "went to your reward"
+				: "escaped from the dungeon",
+#else
 		  Printf("You escaped from the dungeon with %ld points,\n",
+#endif
 		    u.urexp);
 		get_all_from_box(); /* don't forget things in boxes and bags */
 		for(otmp = invent; otmp; otmp = otmp->nobj) {
@@ -425,7 +442,7 @@ die:
   Printf("You were level %u with a maximum of %d hit points when you %s.\n",
 	    u.ulevel, u.uhpmax, ends[how]);
 	if(how == ESCAPED && !done_stopprint){
-		getret();	/* all those pieces of coloured glass ... */
+		getret();	/* all those pieces of colored glass ... */
 		cls();
 	}
 #if (defined(WIZARD) || defined(EXPLORE_MODE)) && !defined(LOGFILE)

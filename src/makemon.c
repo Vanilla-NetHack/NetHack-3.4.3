@@ -542,7 +542,7 @@ register int	x, y;
 		    (ptr == &mons[PM_GIANT_EEL])) && rn2(5))
 			mtmp->msleep = 1;
 	} else {
-		if(x == u.ux && y == u.uy && ptr->mlet != S_GHOST) {
+		if(x == u.ux && y == u.uy) {
 			mnexto(mtmp);
 			if (ptr->mlet == S_MIMIC) {
 				set_mimic_sym(mtmp);
@@ -1079,7 +1079,7 @@ register struct monst *mtmp;
 	roomno = inroom(mtmp->mx, mtmp->my);
 	if (levl[mtmp->mx][mtmp->my].gmask)
 		sym = GOLD_SYM;
-	else if (levl[mtmp->mx][mtmp->my].omask)
+	else if (OBJ_AT(mtmp->mx, mtmp->my))
 		sym = o_at(mtmp->mx,mtmp->my)->olet;
 	else if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ) ||
 		 IS_WALL(levl[mtmp->mx][mtmp->my].typ))

@@ -33,7 +33,7 @@ const char *fl[]= {
 
 	"blast of missiles",	/* Dragon breath equivalents 20-29*/
 	"blast of fire",
-	"blast of sleeping gas",
+	"blast of sleep gas",
 	"blast of frost",
 	"blast of disintegration",
 	"blast of lightning",
@@ -582,7 +582,7 @@ zapyourself(obj)
 #ifdef POLYSELF
 		    polyself();
 #else
-		    You("shudder for a moment.");
+		    newman();
 #endif
 		    break;
 		case WAN_CANCELLATION:
@@ -723,7 +723,7 @@ register struct	obj	*obj;
 				(void)close_drawbridge(u.ux, u.uy);
 		    else
 #endif
-		    if (levl[u.ux][u.uy].omask) {
+		    if (OBJ_AT(u.ux, u.uy)) {
 			register struct obj *otmp,*otmp2;
 
 			/* changed by GAN to hit all objects there */
@@ -781,11 +781,9 @@ register struct	obj	*obj;
 			if(u.uswallow) {
 				register struct monst *mtmp = u.ustuck;
 
-				You("pierce %s's stomach wall!",
-					mon_nam(mtmp));
+				You("pierce %s's stomach wall!", mon_nam(mtmp));
 				mtmp->mhp = 1;	/* almost dead */
-				unstuck(mtmp);
-				mnexto(mtmp);
+				regurgitates(mtmp);
 				break;
 			}
 			if(u.dz) {
@@ -982,7 +980,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 			range -= 3;
 		}
 		/* modified by GAN to hit all objects */
-		if(fhito && levl[bhitpos.x][bhitpos.y].omask){
+		if(fhito && OBJ_AT(bhitpos.x, bhitpos.y)){
 		    int hitanything = 0;
 		    otmp = fobj;
 		    /* Fix for polymorph bug, Tim Wright */
@@ -1198,7 +1196,7 @@ int x, y;
 	register struct obj *obj, *obj2;
 	register int scrquan, i, cnt = 0;
 
-	if(levl[x][y].omask)
+	if(OBJ_AT(x, y))
 	for(obj = fobj; obj; obj = obj2) {
 	    obj2 = obj->nobj;
 	    /* Bug fix - KAA */
@@ -1392,7 +1390,7 @@ register int dx,dy;
 			   break;
 			}
 		}
-		if(levl[sx][sy].omask && abstype == 1)
+		if(OBJ_AT(sx, sy) && abstype == 1)
 			if(burn_floor_scrolls(sx,sy) && cansee(sx,sy))  {
 			    mnewsym(sx,sy);
 			    if(!Blind)
@@ -1616,12 +1614,9 @@ register struct obj *obj;
 		tx = rn1(COLNO-3,2);
 		ty = rn2(ROWNO);
 	} while(!goodpos(tx,ty,(struct permonst *)0));
-	obj->ox = tx;
-	obj->oy = ty;
-	set_omask(otx,oty);
+	move_object(obj, tx, ty);
 	if(cansee(otx,oty))
 		newsym(otx,oty);
-	levl[tx][ty].omask = 1;
 	if(cansee(tx,ty))
 		newsym(tx,ty);
 }

@@ -15,7 +15,7 @@ static void mrustm P((struct monst *, struct monst *, struct obj *));
 static int hitmm P((struct monst *,struct monst *,struct attack *));
 static int gazemm P((struct monst *,struct monst *,struct attack *));
 static int gulpmm P((struct monst *,struct monst *,struct attack *));
-static int explmm P((struct monst *,struct attack *));
+static int explmm P((struct monst *,struct monst *,struct attack *));
 static int mdamagem P((struct monst *,struct monst *,struct attack *));
 static void mswingsm P((struct monst *, struct monst *, struct obj *));
 
@@ -153,7 +153,7 @@ mattackm(magr, mdef)
 
 		case AT_EXPL:	/* automatic hit if next to */
 			strike = -1;
-			sum[i] = explmm(magr, mattk);
+			sum[i] = explmm(magr, mdef, mattk);
 			break;
 
 		case AT_ENGL:
@@ -284,25 +284,19 @@ gulpmm(magr, mdef, mattk)
 }
 
 static int
-explmm(magr, mattk)
-	register struct monst *magr;
+explmm(magr, mdef, mattk)
+	register struct monst *magr, *mdef;
 	register struct	attack *mattk;
 {
-	register struct monst *mon;
 
 	if(cansee(magr->mx, magr->my))
 		pline("%s explodes!", Monnam(magr));
 	else	noises(magr, mattk);
 
-	for(mon = fmon; mon; mon = mon->nmon)
-	    if(mon != magr) {
-		if(dist2(mon->mx, mon->my, magr->mx, magr->my) < 3)
-		    (void) mdamagem(magr, mon, mattk);
-	    }
+	(void) mdamagem(magr, mdef, mattk);
 
-	if(dist2(magr->mx, magr->my, u.ux, u.uy) < 3)
-		(void) mdamageu(magr, d((int)mattk->damn, (int)mattk->damd));
-
+	if(magr->mtame)
+		You("have a sad feeling for a moment, then it passes.");
 	mondead(magr);
 	return(2);
 }
@@ -325,6 +319,10 @@ mdamagem(magr, mdef, mattk)
 		if (magr->mcan) break;
 		if(vis) pline("%s staggers for a moment.", Monnam(mdef));
 		mdef->mstun = 1;
+		/* fall through */
+	    case AD_WERE:
+	    case AD_HEAL:
+	    case AD_LEGS:
 	    case AD_PHYS:
 		if (mattk->aatyp == AT_KICK && thick_skinned(mdef->data))
 			tmp = 0;
@@ -657,9 +655,10 @@ register struct obj *otemp;
 	Strcpy(buf, mon_nam(mdef));
 	if (!flags.verbose || Blind || otemp->olet != WEAPON_SYM) return;
 	pline("%s %s %s %s at %s.", Monnam(magr),
-	      (otemp->otyp == SPEAR ||
-	       otemp->otyp == LANCE ||
-	       otemp->otyp == GLAIVE ||
+	      ((otemp->otyp >= SPEAR &&
+	        otemp->otyp <= LANCE) ||
+	       (otemp->otyp >= PARTISAN &&
+	        otemp->otyp <= SPETUM) ||
 	       otemp->otyp == TRIDENT) ? "thrusts" : "swings",
 	      is_female(magr) ? "her" :
 	      is_human(magr->data) ? "his" : "its",

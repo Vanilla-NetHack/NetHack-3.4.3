@@ -131,14 +131,62 @@ char	*cp, *tp;
 }
 
 void
+assign_graphics(graph_ints,glth)
+register unsigned int *graph_ints;
+register int glth;
+{
+#define SETPCHAR(f, n)	showsyms.f = (glth > n) ? graph_ints[n] : defsyms.f
+	SETPCHAR(stone, 0);
+	SETPCHAR(vwall, 1);
+	SETPCHAR(hwall, 2);
+	SETPCHAR(tlcorn, 3);
+	SETPCHAR(trcorn, 4);
+	SETPCHAR(blcorn, 5);
+	SETPCHAR(brcorn, 6);
+	SETPCHAR(crwall, 7);
+	SETPCHAR(tuwall, 8);
+	SETPCHAR(tdwall, 9);
+	SETPCHAR(tlwall, 10);
+	SETPCHAR(trwall, 11);
+	SETPCHAR(vbeam, 12);
+	SETPCHAR(hbeam, 13);
+	SETPCHAR(lslant, 14);
+	SETPCHAR(rslant, 15);
+	SETPCHAR(door, 16);
+	SETPCHAR(room, 17);
+	SETPCHAR(corr, 18);
+	SETPCHAR(upstair, 19);
+	SETPCHAR(dnstair, 20);
+	SETPCHAR(trap, 21);
+	SETPCHAR(web, 22);
+	SETPCHAR(pool, 23);
+#ifdef FOUNTAINS
+	SETPCHAR(fountain, 24);
+#endif
+#ifdef SINKS
+	SETPCHAR(sink, 25);
+#endif
+#ifdef THRONES
+	SETPCHAR(throne, 26);
+#endif
+#ifdef ALTARS
+	SETPCHAR(altar, 27);
+#endif
+#ifdef STRONGHOLD
+	SETPCHAR(upladder, 28);
+	SETPCHAR(dnladder, 29);
+	SETPCHAR(dbvwall, 30);
+	SETPCHAR(dbhwall, 31);
+#endif
+#undef SETPCHAR
+}
+
+void
 parseoptions(opts, from_env)
 register char *opts;
 boolean from_env;
 {
 	register char *op;
-/*
-	register char *op2;
-*/
 	unsigned num;
 	boolean negated;
 
@@ -146,13 +194,7 @@ boolean from_env;
 		*op++ = 0;
 		parseoptions(op, from_env);
 	}
-/*
-	if(op = index(opts, ' ')) {
-		op2 = op;
-		while(*op++)
-			if(*op != ' ') *op2++ = *op;
-	}
-*/
+
 	if(!*opts) return;
 	negated = FALSE;
 	while((*opts == '!') || !strncmp(opts, "no", 2)) {
@@ -213,7 +255,7 @@ boolean from_env;
 		return;
 	}
 
-	if (!strncmp(opts, "numb", 4)) {
+	if (!strncmp(opts, "num", 3)) {
 		flags.num_pad = !negated;
 		return;
 	}
@@ -327,6 +369,9 @@ boolean from_env;
 
 	/* graphics:string */
 	if (!strncmp(opts, "gr", 2)) {
+		unsigned int translate[MAXPCHARS+1];
+		int i, lth;
+
 		if(!from_env) {
 #ifdef MSDOS
 		  pline("\"graphics\" settable only from %s.", configfile);
@@ -341,50 +386,13 @@ boolean from_env;
 		else
 		    opts = op + 1;
 		escapes(opts, opts);
-#define SETPCHAR(f, n)	showsyms.f = (strlen(opts) > n) ? opts[n] : defsyms.f
-		SETPCHAR(stone, 0);
-		SETPCHAR(vwall, 1);
-		SETPCHAR(hwall, 2);
-		SETPCHAR(tlcorn, 3);
-		SETPCHAR(trcorn, 4);
-		SETPCHAR(blcorn, 5);
-		SETPCHAR(brcorn, 6);
-		SETPCHAR(crwall, 7);
-		SETPCHAR(tuwall, 8);
-		SETPCHAR(tdwall, 9);
-		SETPCHAR(tlwall, 10);
-		SETPCHAR(trwall, 11);
-		SETPCHAR(vbeam, 12);
-		SETPCHAR(hbeam, 13);
-		SETPCHAR(lslant, 14);
-		SETPCHAR(rslant, 15);
-		SETPCHAR(door, 16);
-		SETPCHAR(room, 17);
-		SETPCHAR(corr, 18);
-		SETPCHAR(upstair, 19);
-		SETPCHAR(dnstair, 20);
-		SETPCHAR(trap, 21);
-		SETPCHAR(web, 22);
-		SETPCHAR(pool, 23);
-#ifdef FOUNTAINS
-		SETPCHAR(fountain, 24);
-#endif
-#ifdef SINKS
-		SETPCHAR(sink, 25);
-#endif
-#ifdef THRONES
-		SETPCHAR(throne, 26);
-#endif
-#ifdef ALTARS
-		SETPCHAR(altar, 27);
-#endif
-#ifdef STRONGHOLD
-		SETPCHAR(upladder, 28);
-		SETPCHAR(dnladder, 29);
-		SETPCHAR(dbvwall, 30);
-		SETPCHAR(dbhwall, 31);
-#endif
-#undef SETPCHAR
+
+		lth = strlen(opts);
+		if(lth > MAXPCHARS) lth = MAXPCHARS;
+		/* match the form obtained from PC configuration files */
+		for(i = 0; i < lth; i++)
+			translate[i] = opts[i];
+		assign_graphics(translate,lth);
 		return;
 	}
 
@@ -398,25 +406,26 @@ boolean from_env;
 			if(digit(*op)) {
 				num = atoi(op);
 				while(digit(*op)) op++;
-			} else
-			if(*op == '!') {
+			} else if(*op == '!') {
 				negated = !negated;
 				op++;
 			}
+			while(*op == ' ') op++;
+
 			switch(*op) {
-			case 't':
-				flags.end_top = num;
-				break;
-			case 'a':
-				flags.end_around = num;
-				break;
-			case 'o':
-				flags.end_own = !negated;
-				break;
-			default:
-				goto bad;
+				case 't':
+					flags.end_top = num;
+					break;
+				case 'a':
+					flags.end_around = num;
+					break;
+				case 'o':
+					flags.end_own = !negated;
+					break;
+				default:
+					goto bad;
 			}
-			while(letter(*++op)) ;
+			while(letter(*++op) || *op == ' ') ;
 			if(*op == '/') op++;
 		}
 		return;

@@ -72,12 +72,12 @@ struct permonst mons[] = {
 	  M2_WANDER | M2_NOLIMBS | M2_AMORPHOUS },
 	{ "gelatinous cube", S_BLOB, 6, 6, 8, 0, 0, (G_GENO | 2),
 	  { { AT_TUCH, AD_PLYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 100, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS |
+	  30, 300, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS |
 	  M1_FIRE_RES | M1_COLD_RES | M1_ELEC_RES | M1_SLEE_RES,
 	  M2_WANDER | M2_HOSTILE | M2_NOLIMBS | M2_OMNIVORE },
 	{ "quivering blob", S_BLOB, 5, 1, 8, 0, 0, (G_GENO | 2),
 	  { { AT_TUCH, AD_PHYS, 1, 8 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 100, 0, MS_SILENT, M1_NOEYES | M1_NOHANDS | M1_POIS_RES,
+	  20, 200, 0, MS_SILENT, M1_NOEYES | M1_NOHANDS | M1_POIS_RES,
 	  M2_WANDER | M2_HOSTILE | M2_NOLIMBS },
 /*	cockatrice	*/
 	{ "cockatrice", S_COCKATRICE, 5, 6, 6, 30, 0, (G_GENO | 5),
@@ -897,7 +897,7 @@ struct permonst _mons2[] = {
 	  { { AT_WEAP, AD_SLEE, 1, 8 }, { AT_CLAW, AD_DREN, 0, 0 },
 	    NO_ATTK, NO_ATTK, NO_ATTK },
 	  35, 200, 0, MS_SILENT, M1_HUMANOID | M1_POIS | M1_COLLECT,
-	  M2_HOSTILE | M2_HUMAN },
+	  M2_HOSTILE },
 /*	Rust Monster	*/
 	{ "rust monster", S_RUSTMONST, 5, 18, 2, 0, 0, (G_GENO | 2),
 	  { { AT_TUCH, AD_RUST, 0, 0 }, { AT_TUCH, AD_RUST, 0, 0 }, NO_ATTK,

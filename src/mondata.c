@@ -96,9 +96,9 @@ boolean
 canseemon(mtmp)
 	register struct monst *mtmp;
 {
-	return((!mtmp->minvis || See_invisible || Telepat)
+	return((!mtmp->minvis || See_invisible)
 		&& (!mtmp->mhide ||
-		    (levl[mtmp->mx][mtmp->my].omask == 0 &&
+		    (!OBJ_AT(mtmp->mx, mtmp->my) &&
 		     levl[mtmp->mx][mtmp->my].gmask == 0))
 		&& cansee(mtmp->mx, mtmp->my));
 }
@@ -305,20 +305,20 @@ const int grownups[][2] = { {PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
 int little_to_big(montype)
 int montype;
 {
-	register int *i;
+	register int i;
 	
-	for(i=grownups[0]; *i >= 0; i++)
-		if(montype == *i) return *(i+1);
+	for(i=0; grownups[i][0] >= 0; i++)
+		if(montype == grownups[i][0]) return grownups[i][1];
 	return montype;
 }
 
 int big_to_little(montype)
 int montype;
 {
-	register int *i;
+	register int i;
 	
-	for(i=grownups[0]; *i >= 0; i++)
-		if(montype == *(i+1)) return *i;
+	for(i=0; grownups[i][0] >= 0; i++)
+		if(montype == grownups[i][1]) return grownups[i][0];
 	return montype;
 }
 
