@@ -499,8 +499,13 @@ register struct monst *mtmp;
 	 * and human weights (weight of a human=45).  Limits for corpseless
 	 * monsters are arbitrary.
 	 */
-	maxload = (mtmp->data->cwt ? mtmp->data->cwt : mtmp->data->mlevel*6)
-		* MAX_CARR_CAP / 45;
+	if (!mtmp->data->cwt)
+		maxload = MAX_CARR_CAP * (mtmp->data->mlevel * 6) / 45;
+	else if (!strongmonst(mtmp->data)
+		|| (strongmonst(mtmp->data) && (mtmp->data->cwt > 45)))
+		maxload = MAX_CARR_CAP * mtmp->data->cwt / 45;
+	else	maxload = MAX_CARR_CAP;	/* strong monsters w/ cwt <= 45 */
+
 	if (!strongmonst(mtmp->data)) maxload /= 2;
 
 	return maxload;

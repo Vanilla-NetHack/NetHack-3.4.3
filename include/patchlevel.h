@@ -97,4 +97,11 @@
  *  and a number of simple fixes and consistency extensions
  */
 
-#define PATCHLEVEL	8
+/*
+ *  Patch 9, June 26, 1990
+ *  clear up some confusing documentation
+ *  smooth some more rough edges in various ports
+ *  and fix a couple more bugs
+ */
+
+#define PATCHLEVEL	9

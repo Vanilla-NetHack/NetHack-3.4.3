@@ -16,6 +16,7 @@ struct egd {
 	xchar ogx, ogy;		/* guard's last position */
 	xchar gdlevel;		/* level guard was created on */
 	xchar warncnt;		/* number of warnings to follow */
+	int vroom;		/* room number of the vault */
 	unsigned gddone:1;
 	struct fakecorridor fakecorr[FCSIZ];
 };

@@ -194,7 +194,12 @@ panic VA_DECL(const char *, str)
 	(void) puts(" Suddenly, the dungeon collapses.");
 #if defined(WIZARD) && !defined(MSDOS)
 	if(!wizard) {
-	    pline("Report error to %s and it may be possible to rebuild.",WIZARD);
+	    pline("Report error to %s and it may be possible to rebuild.",
+# ifdef WIZARD_NAME	/*(KR1ED)*/
+		WIZARD_NAME);
+# else
+		WIZARD);
+# endif
 	    more();
 	}
 #ifdef VMS
@@ -641,10 +646,23 @@ clearlocks(){
 #  if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP,SIG_IGN);
 #  endif
+#  ifdef MACOS
+	Str255 fileName;
+	int oldVolume;
+	struct term_info *t;
+	extern WindowPtr HackWindow;
+
+	t = (term_info *)GetWRefCon(HackWindow);
+	(void)GetVol(&fileName, &oldVolume);
+	(void)SetVol(0L, t->system.sysVRefNum);
+#  endif
 	for(x = maxdlevel; x >= 0; x--) {
 		glo(x);
 		(void) unlink(lock);	/* not all levels need be present */
 	}
+#  ifdef MACOS
+	(void)SetVol(0L, oldVolume);
+#  endif
 # endif
 #endif
 }

@@ -201,9 +201,11 @@ register struct monst *mtmp;
 		    (void)mongets(mtmp, IRON_SHOES);
 		    if (rn2(4) == 0) {
 			(void)mongets(mtmp, SHORT_SWORD);
-			(void)mongets(mtmp,
-			    (rn2(3) == 0) ? AXE : TWO_HANDED_SWORD);
-			(void)mongets(mtmp, LARGE_SHIELD);
+			if (rn2(2)) (void)mongets(mtmp, TWO_HANDED_SWORD);
+			else {
+				(void)mongets(mtmp, AXE);
+				(void)mongets(mtmp, LARGE_SHIELD);
+			}
 			if (rn2(3) == 0)
 			    (void)mongets(mtmp, DWARVISH_MITHRIL_COAT);
 		    } else {
@@ -716,7 +718,8 @@ struct permonst *mdat;
 	if (x == u.ux && y == u.uy) return 0;
 	if (mdat) {
 	    if (IS_POOL(levl[x][y].typ))
-		if (mdat == &playermon && HLevitation)	return 1;
+		if (mdat == &playermon && (HLevitation || Wwalking))
+			return 1;
 		else	return (is_flyer(mdat) || is_swimmer(mdat));
 	    if (passes_walls(mdat)) return 1;
 	}

@@ -14,8 +14,12 @@ char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 int hackpid = 0;				/* current pid */
 int locknum = 0;				/* max num of players */
 
-static void whoami();
-static void byebye();
+static void NDECL(whoami);
+static void NDECL(byebye);
+#ifndef SAVE_ON_FATAL_ERROR
+static long FDECL(vms_handler,(long [],long []));
+#include <ssdef.h>      /* system service status codes */
+#endif
 
 int
 main(argc,argv)
@@ -99,6 +103,10 @@ char *argv[];
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
+#ifndef SAVE_ON_FATAL_ERROR
+	/* used to clear hangup stuff while still giving standard traceback */
+	VAXC$ESTABLISH(vms_handler);
+#endif
 	(void) signal(SIGHUP, (SIG_RET_TYPE) hangup);
 
 	/*
@@ -403,3 +411,25 @@ byebye()
     (void) chdir(getenv("PATH"));
 #endif
 }
+
+#ifndef SAVE_ON_FATAL_ERROR
+/* Condition handler to prevent byebye's hangup simulation
+   from saving the game after a fatal error has occurred.  */
+static long
+vms_handler(sigargs, mechargs)
+long sigargs[], mechargs[];     /* [0] is argc, [1..argc] are the real args */
+{
+    extern boolean hu;          /* src/save.c */
+    long condition = sigargs[1];
+
+    if (condition == SS$_ACCVIO         /* access violation */
+     || condition >= SS$_ASTFLT && condition <= SS$_TBIT
+     || condition >= SS$_ARTRES && condition <= SS$_INHCHME) {
+	if (wizard)
+	    abort();    /* enter the debugger */
+	else
+	    hu = TRUE;  /* pretend that hangup has already been attempted */
+    }
+    return SS$_RESIGNAL;
+}
+#endif

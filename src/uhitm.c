@@ -748,7 +748,6 @@ register struct attack *mattk;
 	    case AD_SITM:
 		if(mdef->minvent) {
 		    struct obj *otmp, *addinv(), *stealoid;
-		    int isize = inv_cnt();
 
 		    stealoid = (struct obj *)0;
 		    if(is_mercenary(pd) && could_seduce(&youmonst,mdef,mattk)){
@@ -764,23 +763,22 @@ register struct attack *mattk;
 			while(mdef->minvent) {
 				otmp = mdef->minvent;
 				mdef->minvent = otmp->nobj;
+				/* set dknown to insure proper merge */
+				if (!Blind) otmp->dknown = 1;
 				if (!stolen && otmp==stealoid) {
-					if(isize < 52) {
-						otmp = addinv(otmp);
-						/* might not increase isize */
-						isize = inv_cnt();
-					} else dropy(otmp);
+					otmp = addinv(otmp);
+					if(inv_cnt() > 52)
+						dropx(otmp);
 					stealoid = otmp;
 					stolen = TRUE;
 				} else {
-					if(isize < 52) {
-						otmp = addinv(otmp);
-						isize = inv_cnt();
+					otmp = addinv(otmp);
+					if(inv_cnt() > 52) {
+						dropx(otmp);
+						You("steal %s.", doname(otmp));
+					} else {
 						You("steal: ");
 						prinv(otmp);
-					} else {
-						dropy(otmp);
-						You("steal %s.", doname(otmp));
 					}
 				}
 			}
@@ -795,16 +793,17 @@ register struct attack *mattk;
 # endif
 			}
 		   } else {
-		   	   otmp = mdef->minvent;
-			   mdef->minvent = otmp->nobj;
-			   if(isize < 52) {
-				otmp = addinv(otmp);
+			otmp = mdef->minvent;
+			mdef->minvent = otmp->nobj;
+			if (!Blind) otmp->dknown = 1;
+			otmp = addinv(otmp);
+			if(inv_cnt() > 52) {
+				dropx(otmp);
+				You("steal %s.", doname(otmp));
+			} else {
 				You("steal: ");
 				prinv(otmp);
-			   } else {
-				dropy(otmp);
-				You("steal %s.", doname(otmp));
-			   }
+			}
 		   }
 		}
 		tmp = 0;

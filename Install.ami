@@ -222,9 +222,9 @@ SECTION III - Lattice Compilation Instructions
     wish to utilize it.
 
     Due to a problem with versions 5.04 and 5.05, you must make one change:
-    edit the file Others:lev_lex.c.  At (or near) line 1002 is the definition
+    edit the file Others:lev_lex.c.  At (or near) line 1003 is the definition
     for the function yyunput.  Delete the word "register" from this line.
-    Note that if you neglect to do this, you will get an Error 72 at line 318
+    Note that if you neglect to do this, you will get an Error 72 at line 319
     of file lev_comp.l (this is the correct message - lev_lex.c is flex output).
     Save the changed file.  Later compiler versions may or may not need this
     fix.

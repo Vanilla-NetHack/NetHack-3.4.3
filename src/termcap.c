@@ -196,7 +196,7 @@ startup()
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
-#   if !defined(MSDOS) || defined(TERMLIB)
+#   if !defined(MSDOS) || (defined(TERMLIB) && defined(AMIGA))
 		AS = "\016";
 		AE = "\017";
 #   endif
@@ -336,6 +336,10 @@ startup()
 	free((genericptr_t)tptr);
 # ifdef TEXTCOLOR
 	init_hilite();
+#  if defined(TOS) && defined(__GNUC__)
+	if (!strcmp(term, "builtin"))
+		HE="\033q\033b3\033c0";	/* to turn off colors, too */
+#  endif
 # endif
 #endif /* TERMLIB */
 }
@@ -769,7 +773,6 @@ init_hilite()
 {
 #  ifdef TOS
 	int c;
-	static char unhilite[] = "\033q\033b3\033c0";
 #  else
 	int backg = BLACK, foreg = WHITE, len;
 	register int c, color;
@@ -789,7 +792,6 @@ init_hilite()
 	hilites[ORANGE_COLORED] = "\033b3\033c1";
 	hilites[YELLOW] = "\033b1\033c3";
 	hilites[WHITE] = "\033b0\033c3";
-	HE = unhilite;	/* to turn off the color stuff too */
 #  else /* TOS */
 	/* find the background color, HI[len] == 'm' */
 	len = strlen(HI) - 1;

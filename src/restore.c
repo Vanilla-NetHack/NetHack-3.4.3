@@ -269,6 +269,9 @@ register int fd;
 #ifdef TEXTCOLOR
 	flags.use_color = oldflags.use_color;
 #endif
+	/* these come from the current environment; ignore saved values */
+	flags.echo = oldflags.echo;
+	flags.cbreak = oldflags.cbreak;
 
 	mread(fd, (genericptr_t) &dlevel, sizeof dlevel);
 	mread(fd, (genericptr_t) &maxdlevel, sizeof maxdlevel);
@@ -882,6 +885,15 @@ boolean ghostly;
 		}
 	}
 #endif
+	if(ghostly && lev > medusa_level && lev < stronghold_level &&
+						xdnstair == 0) {
+		coord cc;
+
+		mazexy(&cc);
+		xdnstair = cc.x;
+		ydnstair = cc.y;
+		levl[cc.x][cc.y].typ = STAIRS;
+	}
 }
 
 #ifdef ZEROCOMP

@@ -1122,7 +1122,9 @@ weight_cap() {
 		if (u.usym==S_NYMPH) carrcap = MAX_CARR_CAP;
 		else if (!uasmon->cwt)
 			carrcap = (carrcap * uasmon->mlevel * 6)/45;
-		else carrcap = (carrcap * uasmon->cwt / 45);
+		else if (!strongmonst(uasmon)
+			|| (strongmonst(uasmon) && (uasmon->cwt > 45)))
+			carrcap = (carrcap * uasmon->cwt / 45);
 	}
 #endif
 	if(Levitation) 			/* pugh@cornell */

@@ -168,6 +168,7 @@ fnd:
 	EGD(guard)->ogx = x;
 	EGD(guard)->ogy = y;
 	EGD(guard)->gdlevel = dlevel;
+	EGD(guard)->vroom = inroom(x, y);
 	EGD(guard)->warncnt = 0;
 
 	if(!cansee(guard->mx, guard->my)) {
@@ -466,13 +467,11 @@ cleanup:
 void
 paygd() {
 
-	struct monst *guard;
-	register int i;
+	register struct monst *grd = findgd();
 	int gx,gy;
 	char buf[BUFSZ];
 
-	guard = findgd();
-	if (!u.ugold || !guard) return;
+	if (!u.ugold || !grd) return;
 
 	if (u.uinvault) {
 	    Your("%ld zorkmid%s goes into the Magic Memory Vault.",
@@ -480,21 +479,15 @@ paygd() {
 	    mkgold(u.ugold, u.ux, u.uy);
 	    u.ugold = 0L;
 	} else {
-	    if(guard->mpeaceful) { /* he has no "right" to your gold */
-		mongone(guard);
+	    if(grd->mpeaceful) { /* he has no "right" to your gold */
+		mongone(grd);
 		return;
 	    }
-	    mnexto(guard);
-	    pmon(guard);
-	    pline("%s remits your gold to the vault.", Monnam(guard));
-	    for(i=0; i<=nroom; i++)
-		if (rooms[i].rtype==VAULT) break;
-	    if (i > nroom) {
-		impossible("no vault?");
-		return;
-	    }
-	    gx = rooms[i].lx + rn2(2);
-	    gy = rooms[i].ly + rn2(2);
+	    mnexto(grd);
+	    pmon(grd);
+	    pline("%s remits your gold to the vault.", Monnam(grd));
+	    gx = rooms[EGD(grd)->vroom].lx + rn2(2);
+	    gy = rooms[EGD(grd)->vroom].ly + rn2(2);
 	    mkgold(u.ugold, gx, gy);
 	    u.ugold = 0L;
 	    Sprintf(buf,
@@ -502,7 +495,7 @@ paygd() {
 		player_mon()->mname, plname);
 	    make_engr_at(gx, gy, buf);
 	}
-	mongone(guard);
+	mongone(grd);
 }
 
 #ifdef SOUNDS

@@ -21,7 +21,7 @@
 
 extern short ospeed;
 char erase_char, intr_char, kill_char;
-static boolean settty_needed = FALSE;
+static boolean settty_needed = FALSE,  bombing = FALSE;
 #ifndef MAIL
 static	    /* else global ('extern' in mail.c) */
 #endif
@@ -109,8 +109,10 @@ setctty(){
 
 static void
 resettty(){			/* atexit() routine */
-    if (settty_needed)
+    if (settty_needed) {
+	bombing = TRUE;     /* don't clear screen; preserve traceback info */
 	settty((char *)NULL);
+    }
     (void) SYS$DASSGN(tt_chan),  tt_chan = 0;
 }
 
@@ -167,10 +169,11 @@ void
 settty(s)
 char *s;
 {
-	clear_screen();
-	end_screen();
-	if(s) Printf(s);
-	(void) fflush(stdout);
+	if (!bombing) {
+	    end_screen();
+	    if(s) Printf(s);
+	    (void) fflush(stdout);
+	}
 #ifdef MAIL	/* this is essential, or lib$spawn & lib$attach will fail */
 	SMG$DISABLE_BROADCAST_TRAPPING(&pasteboard_id);
 #endif

@@ -117,7 +117,7 @@ char *argv[];
 	strcat(origicon,".info");
 
 	argline[0]='\0';
-	for(x=0;p=dobj->do_ToolTypes[x];x++){
+	if(dobj->do_ToolTypes)for(x=0;p=dobj->do_ToolTypes[x];x++){
 		lp=index(p,'=');
 		if(!lp++){
 			if((strncmp(p,"SCORES",6)==0) ||

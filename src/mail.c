@@ -227,10 +227,11 @@ boolean away;
 
 static void
 newmail() {
+	struct obj *obj;
 	/* deliver a scroll of mail */
 	register boolean invload =
 		((inv_weight() + (int)objects[SCR_MAIL].oc_weight) > 0 ||
-			 inv_cnt() >= 52 || Fumbling);
+			 Fumbling);
 	register struct monst *md = makemon(&mons[PM_MAIL_DAEMON], u.ux, u.uy);
 
 	if(!md)	return;
@@ -251,15 +252,20 @@ newmail() {
 	if(dist(md->mx,md->my) > 2)
 		verbalize("Catch!");
 	more();
-	if(invload) {
-		struct obj *obj = mksobj_at(SCR_MAIL,u.ux,u.uy);
-		obj->known = obj->dknown = TRUE;
-		makeknown(SCR_MAIL);
+	obj = mksobj(SCR_MAIL, FALSE);
+	obj->known = obj->dknown = TRUE;
+	makeknown(SCR_MAIL);
+	if (!invload) obj = addinv(obj);
+	if(invload || inv_cnt() > 52) {
+		if (invload) dropy(obj);
+		else dropx(obj);
 		stackobj(fobj);		
 		verbalize("Oops!");
 	} else {
-		/* set known and do prinv() */
-		(void) identify(addinv(mksobj(SCR_MAIL,FALSE)));
+		int savequan = obj->quan;
+		obj->quan = 1;
+		prinv(obj);
+		obj->quan = savequan;
 	}
 # endif /* NO_MAILREADER */
 

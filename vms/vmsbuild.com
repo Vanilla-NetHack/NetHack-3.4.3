@@ -1,4 +1,4 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.0 patchlevel 8	[pr]
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.0 patchlevel 9	[pr]
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.src] if starting from [.vms]
@@ -121,7 +121,7 @@ $     if c_opt.eq.15 then  goto special !"SPECIAL" requested, skip main build
 $ cc makedefs.c
 $ link makedefs.obj,monst.obj,objects.obj,vmsmisc.obj,-
 	'vaxcrtl''gnulib',sys$input:/Opt
-identification="makedefs 3.0.8"
+identification="makedefs 3.0.9"
 $ milestone "makedefs"
 $! create some build-time files
 $ makedefs -p	!pm.h
@@ -172,7 +172,7 @@ $ milestone "<linking...>"
 $ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain,allmain,vmsunix,vmstty,decl),-
 	sys$disk:[]monst.obj,objects.obj,-	!(data-only modules, like decl)
 	sys$input:/Opt,'vaxcrtl''gnulib'
-identification="NetHack 3.0.8"
+identification="NetHack 3.0.9"
 $ milestone "NetHack"
 $     if c_opt.eq.10 then  goto done	!"LINK" only
 $special:
@@ -188,7 +188,7 @@ $ cc panic.c
 $ link lev_comp.obj,lev_lex.obj,lev_main.obj,-
 	monst.obj,objects.obj,alloc.obj,panic.obj,vmsmisc.obj,-
 	'vaxcrtl''gnulib',sys$input:/Opt
-identification="lev_comp 3.0.8"
+identification="lev_comp 3.0.9"
 $ milestone "lev_comp"
 $!
 $done:

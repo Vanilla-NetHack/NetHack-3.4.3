@@ -70,7 +70,9 @@ SAVE=;n
 #
 # If you merely set the IBMgraphics option as above, NetHack will use IBM
 # extended ASCII for dungeon characters.  If you don't like the selections,
-# you can make up your own via the graphics option (and not set IBMgraphics).
+# you can make up your own via the graphics option, but you should still set
+# IBMgraphics if you are using IBM graphics characters to get the correct
+# processing.
 #
 # An example using the IBM graphics character set:
 #	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
@@ -86,6 +88,6 @@ SAVE=;n
 # (aka ANSI ruling character set '0') for dungeon characters.  If you don't
 # like the selections, you can make up your own via the graphics option,
 # adding 128 to the value of any line-drawing character you want to use.
-# (In such a case, do not set DECgraphics.)
+# (But you should still set DECgraphics to get the correct processing.)
 #
 #GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 254 241 248 043 254 225

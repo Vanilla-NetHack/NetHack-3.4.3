@@ -1116,7 +1116,6 @@ short	prompt;
 #define	MORE_INFO_BUTTON	2
 
 	DialogPtr	theDialog;
-	DialogRecord	space;
 	Rect	rect;
 	Handle	theControl;
 	short	type,itemHit;
@@ -1131,7 +1130,7 @@ short	prompt;
 	}
 
 	GetPort(&oldPort);
-	theDialog = GetNewDialog(129, &space,(WindowPtr)-1);
+	theDialog = GetNewDialog(129, (Ptr)NULL,(WindowPtr)-1);
 	if (!prompt) {
 		HideDItem(theDialog, OK_BUTTON);
 		HideDItem(theDialog, MORE_INFO_BUTTON);

@@ -1182,6 +1182,8 @@ pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 		return;
 	}
 	if(can = mksobj(TIN,FALSE)) {
+	    int savequan;
+
 	    can->corpsenm = corpse->corpsenm;
 	    can->quan = 1; /*Defeat the occasional creation of pairs of tins */
 	    can->owt = weight(can);
@@ -1190,10 +1192,20 @@ pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 	    can->cursed = obj->cursed;
 	    can->blessed = obj->blessed;
 	    can = addinv(can);
-	    You("now have %s.", doname(can));
+	    savequan = can->quan;
+	    can->quan = 1;
+	    if (inv_cnt() <= 52) {
+		prinv(can);
+		can->quan = savequan;
+	    } else {
+		pline("You make, but cannot pick up, %s.", doname(can));
+		/* can->quan = savequan; */
+		/* unnecessary since savequan = quan = 1 here */
+		dropx(can);
+	    }
 	    if (carried(corpse)) useup(corpse);
 	    else useupf(corpse);
-	} else pline("Tinning failed.");
+	} else impossible("Tinning failed.");
 }
 
 int

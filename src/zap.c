@@ -1730,7 +1730,11 @@ register int dx,dy;
 					destroy_item(POTION_SYM, AD_COLD);
 				    break;
 				case 4:		/* death */
-				    if(type == -24) { /* disintegration */
+				    if(type == -24
+#ifdef POLYSELF
+					|| type == 24
+#endif
+						) { /* disintegration */
 					if (Disint_resistance) {
 					    You("are not disintegrated.");
 					    break;
@@ -2169,7 +2173,6 @@ makewish()
 	char buf[BUFSZ];
 	register struct obj *otmp;
 	unsigned wishquan, mergquan;
-	register boolean dropit = (inv_cnt() >= 52);
 	int tries = 0;
 
 retry:
@@ -2188,12 +2191,13 @@ retry:
 		return; /* for safety; should never happen */
 	}
 	if (otmp != &zeroobj) {
-	    if(dropit) {
+	    if (!Blind) otmp->dknown = 1; /* needed for merge to work */
+	    wishquan = otmp->quan;
+	    otmp = addinv(otmp);
+	    if(inv_cnt() > 52) {
 	        pline("Oops!  The %s to the floor!", aobjnam(otmp, "drop"));
-	        dropy(otmp);
+	        dropx(otmp);
 	    } else {
-	    	wishquan = otmp->quan;
-	    	otmp = addinv(otmp);
 	    	mergquan = otmp->quan;
 	    	otmp->quan = wishquan; /* to fool prinv() */
 	    	prinv(otmp);

@@ -431,7 +431,7 @@ P       Put on a ring.
 
 ^P      Repeat previous message (subsequent ^P's repeat earlier messages).
 
-q       uaff (drink) a potion.
+q       Quaff (drink) a potion.
 
 Q       Quit the game.
 
@@ -986,7 +986,10 @@ graphics
 
         The DECgraphics and IBMgraphics options use predefined selections  of
         graphics  symbols,  so you need not go to the trouble of setting up a
-        full graphics string for these common cases.
+        full graphics string  for these common cases.  These two options also
+	set up proper handling  of graphics characters for such terminals, so
+	you  should  specify  them  as appropriate  even if  you override the
+	selections with your own graphics string.
 
         Note that this option string is now escape-processed in  conventional
         C  fashion.    This  means that `\' is a prefix to take the following

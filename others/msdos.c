@@ -1411,6 +1411,8 @@ void set_colors()
 	char *s;
 	static char newhe[] = "\033q\033b\017\033c0";
 
+	if (!flags.IBMBIOS)
+		return;
 	init_aline();
 	numcolors = 1 << (((unsigned char *) _a_line)[1]);
 	if (numcolors == 2) {			/* mono */

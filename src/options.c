@@ -687,7 +687,6 @@ doset()
 	unsigned num;
 	char *op;
 	char tmp_name[256];
-	DialogRecord	dlgR;
 	DialogPtr optionDlg;
 	DialogTHndl	th, centreDlgBox();
 	boolean done = FALSE;
@@ -713,7 +712,7 @@ doset()
 	
 	th = centreDlgBox(130, FALSE);
 
-	optionDlg = GetNewDialog(130, (Ptr)&dlgR, (WindowPtr)-1);
+	optionDlg = GetNewDialog(130, (Ptr)NULL, (WindowPtr)-1);
 /* set initial values of text items */
 	ITEMTEXT(PLAYER_NAME,plname);
 	if(*dogname) ITEMTEXT(DOG_NAME,dogname);

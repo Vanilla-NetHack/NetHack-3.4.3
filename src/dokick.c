@@ -374,13 +374,13 @@ int x, y;
 		if (!kickobj->olocked && (!rn2(3) ||
 					(martial() && !rn2(2)))) {
 		    pline("The lid slams open, then falls shut.");
-		    if(otrp) chest_trap(kickobj, LEG);
+		    if(otrp) (void) chest_trap(kickobj, LEG);
 		    return(1);
 		} else if (kickobj->olocked && 
 				(!rn2(5) || (martial() && !rn2(2)))) {
 		    You("break open the lock!");
 		    kickobj->olocked = 0;
-	            if(otrp) chest_trap(kickobj, LEG);
+	            if(otrp) (void) chest_trap(kickobj, LEG);
 		    return(1);
 		}
 		/* let it fall through to the next cases... */

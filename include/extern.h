@@ -1325,7 +1325,7 @@ E void NDECL(drown);
 E void FDECL(drain_en, (int));
 #endif
 E int NDECL(dountrap);
-E void FDECL(chest_trap, (struct obj *,int));
+E boolean FDECL(chest_trap, (struct obj *,int));
 E void NDECL(wake_nearby);
 E void FDECL(deltrap, (struct trap *));
 E struct trap *FDECL(t_at, (int,int));

@@ -1586,7 +1586,7 @@ dountrap() {	/* disarm a trapped object */
 								: u.ulevel;
 			    if(confused || Fumbling || rnd(75+dlevel/2) > ch) {
 				You("set it off!");
-				chest_trap(otmp, FINGER);
+				(void) chest_trap(otmp, FINGER);
 			    } else {
 				You("disarm it!");
 				otmp->otrapped = 0;
@@ -1649,7 +1649,7 @@ dountrap() {	/* disarm a trapped object */
 }
 
 /* only called when the player is doing something to the chest directly */
-void
+boolean
 chest_trap(obj, bodypart)
 register struct obj *obj;
 register int bodypart;
@@ -1657,7 +1657,7 @@ register int bodypart;
 	register struct obj *otmp,*otmp2;
 	char	buf[80];
 
-	if(Luck > -13 && rn2(13+Luck) > 7) return;
+	if(Luck > -13 && rn2(13+Luck) > 7) return FALSE;
 
 	otmp = obj;
 	switch(rn2(20) ? ((Luck >= 13) ? 0 : rn2(13-Luck)) : rn2(26)) {
@@ -1678,7 +1678,7 @@ register int bodypart;
 
 			losehp(d(6,6), buf, KILLED_BY_AN);
 			wake_nearby();
-			return;
+			return TRUE;
 		case 20:
 		case 19:
 		case 18:
@@ -1746,6 +1746,8 @@ register int bodypart;
 	}
 	bot(); 			/* to get immediate botl re-display */
 	otmp->otrapped = 0;		/* these traps are one-shot things */
+
+	return FALSE;
 }
 
 #endif /* OVLB */

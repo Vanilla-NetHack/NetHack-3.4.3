@@ -1127,7 +1127,8 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		kludge("%s engulfs you!", Monnam(mtmp));
 		stop_occupation();
 		if (u.utrap) {
-			You("are released from the trap!");
+			You("are released from the %s!",
+				u.utraptype==TT_WEB ? "web" : "trap");
 			u.utrap = 0;
 		}
 #ifdef WALKIES

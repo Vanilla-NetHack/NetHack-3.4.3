@@ -254,7 +254,7 @@ E int FDECL(vprintf, (const char *, va_list));
 # define Vsprintf (void) vsprintf
 #endif
 
-#ifdef TOS
+#ifdef MSDOS
 E int FDECL(tgetent, (const char *,const char *));
 E int FDECL(tgetnum, (const char *));
 E int FDECL(tgetflag, (const char *));

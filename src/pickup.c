@@ -325,14 +325,16 @@ register struct obj *otmp;
 int
 doloot() {	/* loot a container on the floor. */
 
-	register struct obj *cobj;
+	register struct obj *cobj, *nobj;
 	register int c;
 
 	if (Levitation) {
 		You("cannot reach the floor.");
 		return(0);
 	}
-	for(cobj = level.objects[u.ux][u.uy]; cobj; cobj = cobj->nexthere) {
+	for(cobj = level.objects[u.ux][u.uy]; cobj; cobj = nobj) {
+	        nobj = cobj->nexthere;
+
 		if(Is_container(cobj)) {
 
 		    pline("There is %s here, loot it? ", doname(cobj));
@@ -355,7 +357,8 @@ doloot() {	/* loot a container on the floor. */
 		    }
 
 		    You("carefully open the %s...", xname(cobj));
-		    if(cobj->otrapped) chest_trap(cobj, FINGER);
+		    if(cobj->otrapped && chest_trap(cobj, FINGER)) /* don't use obj if obj dies */
+		      continue;
 		    if(multi < 0) return 0; /* a paralysis trap */
 
 		    use_container(cobj, 0);

@@ -157,7 +157,7 @@ Watte and Tom West helped polish this port in later versions.)
     int yymorfg;                            int yymorfg;
     extern char *yysptr, yysbuf[];          extern char *yysptr, *yysbuf;
     int yytchar;                            int yytchar;
-    File *yyin ={stdin}, *yyout ={stdout};  File *yyin =stdin, *yyout =stdout;
+    FILE *yyin ={stdin}, *yyout ={stdout};  FILE *yyin =stdin, *yyout =stdout;
     {... near the end ...}
     {... If you're using LSC or THINKC4 comment out: ...}
     {... #define NLSTATE yyprevious=YYNEWLINE ...}

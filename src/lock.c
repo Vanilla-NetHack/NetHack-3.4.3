@@ -76,7 +76,8 @@ picklock() {	/* try to open/close a lock */
 		  (!xlock.box->olocked) ? "lock" :
 		  (xlock.picktyp == LOCK_PICK) ? "pick" : "open" );
 	    xlock.box->olocked = !xlock.box->olocked;
-	    if(xlock.box->otrapped)	chest_trap(xlock.box, FINGER);
+	    if(xlock.box->otrapped)	
+		(void) chest_trap(xlock.box, FINGER);
 	}
 	return((xlock.usedtime = 0));
 }
