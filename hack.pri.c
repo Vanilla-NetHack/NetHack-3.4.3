@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.pri.c - version 1.0.2 */
+/* hack.pri.c - version 1.0.3 */
 
 #include "hack.h"
 #include <stdio.h>
@@ -172,7 +172,7 @@ char ch;
 }
 
 prme(){
-	if(!Invis) at(u.ux,u.uy,u.usym);
+	if(!Invisible) at(u.ux,u.uy,u.usym);
 }
 
 doredraw()
@@ -185,26 +185,26 @@ docrt()
 {
 	register x,y;
 	register struct rm *room;
+	register struct monst *mtmp;
 
 	if(u.uswallow) {
 		swallowed();
 		return;
 	}
 	cls();
-	if(!Invis){
+
+/* Some ridiculous code to get display of @ and monsters (almost) right */
+	if(!Invisible) {
 		levl[(u.udisx = u.ux)][(u.udisy = u.uy)].scrsym = u.usym;
 		levl[u.udisx][u.udisy].seen = 1;
 		u.udispl = 1;
 	} else	u.udispl = 0;
 
-#ifdef RIDICULOUS_CODE
-	/* %% - is this really necessary? - it causes bugs when Blind */
-	/* declare mtmp */
+	seemons();	/* reset old positions */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		if(mtmp->mdispl && !(room = &levl[mtmp->mx][mtmp->my])->new &&
-		   !room->seen)
-			mtmp->mdispl = 0;
-#endif RIDICULOUS_CODE
+		mtmp->mdispl = 0;
+	seemons();	/* force new positions to be shown */
+/* This nonsense should disappear soon --------------------------------- */
 
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
@@ -223,10 +223,19 @@ docrt()
 docorner(xmin,ymax) register xmin,ymax; {
 	register x,y;
 	register struct rm *room;
+	register struct monst *mtmp;
+
 	if(u.uswallow) {	/* Can be done more efficiently */
 		swallowed();
 		return;
 	}
+
+	seemons();	/* reset old positions */
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if(mtmp->mx >= xmin && mtmp->my < ymax)
+		mtmp->mdispl = 0;
+	seemons();	/* force new positions to be shown */
+
 	for(y = 0; y < ymax; y++) {
 		if(y > ROWNO && CD) break;
 		curs(xmin,y+2);
@@ -257,11 +266,11 @@ curs_on_u(){
 
 pru()
 {
-	if(u.udispl && (Invis || u.udisx != u.ux || u.udisy != u.uy))
+	if(u.udispl && (Invisible || u.udisx != u.ux || u.udisy != u.uy))
 		/* if(! levl[u.udisx][u.udisy].new) */
 			if(!vism_at(u.udisx, u.udisy))
 				newsym(u.udisx, u.udisy);
-	if(Invis) {
+	if(Invisible) {
 		u.udispl = 0;
 		prl(u.ux,u.uy);
 	} else
@@ -286,7 +295,7 @@ prl(x,y)
 	register struct monst *mtmp;
 	register struct obj *otmp;
 
-	if(x == u.ux && y == u.uy && !Invis) {
+	if(x == u.ux && y == u.uy && (!Invisible)) {
 		pru();
 		return;
 	}
@@ -382,14 +391,10 @@ register x,y;
 mnewsym(x,y)
 register x,y;
 {
-	register struct monst *mtmp = m_at(x,y);
 	register struct rm *room;
 	char newscrsym;
 
-	if(x == u.ux && y == u.uy && !Invis)
-		return;
-	if(!mtmp || (mtmp->minvis && !See_invisible) ||
-		    (mtmp->mhide && o_at(x,y))){
+	if(!vism_at(x,y)) {
 		room = &levl[x][y];
 		newscrsym = news0(x,y);
 		if(room->scrsym != newscrsym) {
@@ -459,13 +464,16 @@ register x,y;
 }
 #endif QUEST
 
-vism_at(x,y) register x,y; {
-register struct monst *mtmp;
-register int csi = (See_invisible != 0);
-	return((x == u.ux && y == u.uy && (!Invis || csi)) ? 1 :
-		((mtmp = m_at(x,y)) && (!mtmp->minvis || csi) &&
-			(!mtmp->mhide || !o_at(mtmp->mx,mtmp->my)))
-		? cansee(x,y) : 0);
+vism_at(x,y)
+register x,y;
+{
+	register struct monst *mtmp;
+
+	return((x == u.ux && y == u.uy && !Invisible)
+			? 1 :
+	       (mtmp = m_at(x,y))
+			? ((Blind && Telepat) || canseemon(mtmp)) :
+		0);
 }
 
 #ifdef NEWSCR

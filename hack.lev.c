@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.lev.c - version 1.0.2 */
+/* hack.lev.c - version 1.0.3 */
 
 #include "hack.h"
 #include "def.mkroom.h"
@@ -8,6 +8,7 @@ extern struct monst *restmonchn();
 extern struct obj *restobjchn();
 extern struct obj *billobjs;
 extern char *itoa();
+extern char SAVEF[];
 extern int hackpid;
 extern xchar dlevel;
 extern char nul[];
@@ -18,8 +19,7 @@ extern struct wseg *wsegs[32], *wheads[32];
 extern long wgrowtime[32];
 #endif NOWORM
 
-#define	MAXLEVEL	40
-boolean level_exists[MAXLEVEL];
+boolean level_exists[MAXLEVEL+1];
 
 savelev(fd,lev)
 int fd;
@@ -31,7 +31,7 @@ xchar lev;
 #endif NOWORM
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
-	if(lev >= 0 && lev < MAXLEVEL)
+	if(lev >= 0 && lev <= MAXLEVEL)
 		level_exists[lev] = TRUE;
 
 	bwrite(fd,(char *) &hackpid,sizeof(hackpid));
@@ -259,11 +259,17 @@ register fd;
 register char *buf;
 register unsigned len;
 {
-register int rlen;
+	register int rlen;
+	extern boolean restoring;
+
 	rlen = read(fd, buf, (int) len);
 	if(rlen != len){
-		pline("Read %d instead of %u bytes\n", rlen, len);
-		panic("Cannot read %u bytes from file #%d\n", len, fd);
+		pline("Read %d instead of %u bytes.\n", rlen, len);
+		if(restoring) {
+			(void) unlink(SAVEF);
+			error("Error restoring old game.");
+		}
+		panic("Error reading level file.");
 	}
 }
 

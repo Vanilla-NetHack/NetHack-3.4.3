@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.unix.c - version 1.0.2 */
+/* hack.unix.c - version 1.0.3 */
 
 /* This file collects some Unix dependencies; hack.pager.c contains some more */
 
@@ -12,6 +12,8 @@
  *	- determination of what files are "very old"
  */
 
+#include <stdio.h>
+#include <errno.h>
 #include "hack.h"	/* mainly for index() which depends on BSD */
 
 #include	<sys/types.h>		/* for time_t and stat */
@@ -58,19 +60,13 @@ getdate()
 	return(datestr);
 }
 
-static int day_in_year[] = {		/* days in year for each month	*/
-	-1, 30, 58, 89, 119, 150, 180, 211, 241, 272, 303, 333
-};					/* note: Jan. 1 will equal zero	*/
-
 phase_of_the_moon()			/* 0-7, with 0: new, 4: full */
 {					/* moon period: 29.5306 days */
 					/* year: 365.2422 days */
 	register struct tm *lt = getlt();
 	register int epact, diy, golden;
 
-	diy = lt->tm_mday + day_in_year[lt->tm_mon];
-	if ((lt->tm_mon > 1) && (lt->tm_year % 4 == 0))
-		diy++;
+	diy = lt->tm_yday;
 	golden = (lt->tm_year % 19) + 1;
 	epact = (11 * golden + 18) % 30;
 	if ((epact == 25 && golden > 11) || epact == 24)
@@ -94,10 +90,46 @@ midnight()
 struct stat buf, hbuf;
 
 gethdate(name) char *name; {
-register char *np;
-	if(stat(name, &hbuf))
-		error("Cannot get status of %s.",
-			(np = index(name, '/')) ? np+1 : name);
+/* old version - for people short of space */
+/*
+/* register char *np;
+/*	if(stat(name, &hbuf))
+/*		error("Cannot get status of %s.",
+/*			(np = rindex(name, '/')) ? np+1 : name);
+/*
+/* version using PATH from: seismo!gregc@ucsf-cgl.ARPA (Greg Couch) */
+
+
+/*
+ * The problem with   #include	<sys/param.h>   is that this include file
+ * does not exist on all systems, and moreover, that it sometimes includes
+ * <sys/types.h> again, so that the compiler sees these typedefs twice.
+ */
+#define		MAXPATHLEN	1024
+
+register char *np, *path;
+char filename[MAXPATHLEN+1];
+	if (index(name, '/') != NULL || (path = getenv("PATH")) == NULL)
+		path = "";
+
+	for (;;) {
+		if ((np = index(path, ':')) == NULL)
+			np = path + strlen(path);	/* point to end str */
+		if (np - path <= 1)			/* %% */
+			(void) strcpy(filename, name);
+		else {
+			(void) strncpy(filename, path, np - path);
+			filename[np - path] = '/';
+			(void) strcpy(filename + (np - path) + 1, name);
+		}
+		if (stat(filename, &hbuf) == 0)
+			return;
+		if (*np == '\0')
+			break;
+		path = np + 1;
+	}
+	error("Cannot get status of %s.",
+		(np = rindex(name, '/')) ? np+1 : name);
 }
 
 uptodate(fd) {
@@ -105,14 +137,14 @@ uptodate(fd) {
 		pline("Cannot get status of saved level? ");
 		return(0);
 	}
-	if(buf.st_ctime < hbuf.st_ctime) {
+	if(buf.st_mtime < hbuf.st_mtime) {
 		pline("Saved level is out of date. ");
 		return(0);
 	}
  return(1);
 }
 
-/* see whether we should throw away all xlock files */
+/* see whether we should throw away this xlock file */
 veryold(fd) {
 	register int i;
 	time_t date;
@@ -120,9 +152,23 @@ veryold(fd) {
 	if(fstat(fd, &buf)) return(0);			/* cannot get status */
 	if(buf.st_size != sizeof(int)) return(0);	/* not an xlock file */
 	(void) time(&date);
-	if(date - buf.st_ctime < 3L*24L*60L*60L) return(0);	/* recent */
+	if(date - buf.st_mtime < 3L*24L*60L*60L) {	/* recent */
+		extern int errno;
+		int lockedpid;	/* should be the same size as hackpid */
+
+		if(read(fd, (char *)&lockedpid, sizeof(lockedpid)) !=
+			sizeof(lockedpid))
+			/* strange ... */
+			return(0);
+
+		/* From: Rick Adams <seismo!rick>
+		/* This will work on 4.1cbsd, 4.2bsd and system 3? & 5.
+		/* It will do nothing on V7 or 4.1bsd. */
+		if(!(kill(lockedpid, 0) == -1 && errno == ESRCH))
+			return(0);
+	}
 	(void) close(fd);
-	for(i=1; i<30; i++) {				/* try to remove all */
+	for(i = 1; i <= MAXLEVEL; i++) {		/* try to remove all */
 		glo(i);
 		(void) unlink(lock);
 	}
@@ -130,7 +176,76 @@ veryold(fd) {
 	if(unlink(lock)) return(0);			/* cannot remove it */
 	return(1);					/* success! */
 }
-	
+
+getlock()
+{
+	extern int errno, hackpid, locknum;
+	register int i = 0, fd;
+
+	(void) fflush(stdout);
+
+	/* we ignore QUIT and INT at this point */
+	if (link(HLOCK, LLOCK) == -1) {
+		register int errnosv = errno;
+
+		perror(HLOCK);
+		printf("Cannot link %s to %s\n", LLOCK, HLOCK);
+		switch(errnosv) {
+		case ENOENT:
+		    printf("Perhaps there is no (empty) file %s ?\n", HLOCK);
+		    break;
+		case EACCES:
+		    printf("It seems you don't have write permission here.\n");
+		    break;
+		case EEXIST:
+		    printf("(Try again or rm %s.)\n", LLOCK);
+		    break;
+		default:
+		    printf("I don't know what is wrong.");
+		}
+		getret();
+		error("");
+		/*NOTREACHED*/
+	}
+
+	regularize(lock);
+	glo(0);
+	if(locknum > 25) locknum = 25;
+
+	do {
+		if(locknum) lock[0] = 'a' + i++;
+
+		if((fd = open(lock, 0)) == -1) {
+			if(errno == ENOENT) goto gotlock;    /* no such file */
+			perror(lock);
+			(void) unlink(LLOCK);
+			error("Cannot open %s", lock);
+		}
+
+		if(veryold(fd))	/* if true, this closes fd and unlinks lock */
+			goto gotlock;
+		(void) close(fd);
+	} while(i < locknum);
+
+	(void) unlink(LLOCK);
+	error(locknum ? "Too many hacks running now."
+		      : "There is a game in progress under your name.");
+gotlock:
+	fd = creat(lock, FMASK);
+	if(unlink(LLOCK) == -1)
+		error("Cannot unlink %s.", LLOCK);
+	if(fd == -1) {
+		error("cannot creat lock file.");
+	} else {
+		if(write(fd, (char *) &hackpid, sizeof(hackpid))
+		    != sizeof(hackpid)){
+			error("cannot write lock");
+		}
+		if(close(fd) == -1) {
+			error("cannot close lock");
+		}
+	}
+}	
 
 #ifdef MAIL
 
@@ -177,7 +292,7 @@ getmailstatus() {
 		pline("Cannot get status of MAIL=%s .", mailbox);
 		mailbox = 0;
 #else
-		omstat.st_ctime = 0;
+		omstat.st_mtime = 0;
 #endif PERMANENT_MAILBOX
 	}
 }
@@ -195,9 +310,9 @@ ckmailstatus() {
 		pline("Cannot get status of MAIL=%s anymore.", mailbox);
 		mailbox = 0;
 #else
-		nmstat.st_ctime = 0;
+		nmstat.st_mtime = 0;
 #endif PERMANENT_MAILBOX
-	} else if(nmstat.st_ctime > omstat.st_ctime) {
+	} else if(nmstat.st_mtime > omstat.st_mtime) {
 		if(nmstat.st_size)
 			newmail();
 		getmailstatus();	/* might be too late ... */
@@ -304,3 +419,12 @@ readmail() {
 	getmailstatus();
 }
 #endif MAIL
+
+regularize(s)	/* normalize file name - we don't like ..'s or /'s */
+register char *s;
+{
+	register char *lp;
+
+	while((lp = index(s, '.')) || (lp = index(s, '/')))
+		*lp = '_';
+}

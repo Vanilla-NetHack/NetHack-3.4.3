@@ -1,15 +1,68 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.tty.c - version 1.0.2 */
+/* hack.tty.c - version 1.0.3 */
+/* With thanks to the people who sent code for SYSV - hpscdi!jon,
+   arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
 
 #include	"hack.h"
 #include	<stdio.h>
-#include	<sgtty.h>
-#include	<ctype.h>	/* for isprint() */
 
-struct sgttyb inittyb, curttyb;
+/*
+ * The distinctions here are not BSD - rest but rather USG - rest, as
+ * BSD still has the old sgttyb structure, but SYSV has termio. Thus:
+ */
+#ifdef BSD
+#define	V7
+#else
+#define USG
+#endif BSD
+
+/*
+ * Some systems may have getchar() return EOF for various reasons, and
+ * we should not quit before seeing at least NR_OF_EOFS consecutive EOFs.
+ */
+#ifndef BSD
+#define	NR_OF_EOFS	20
+#endif BSD
+
+
+#ifdef USG
+
+#include	<termio.h>
+#define termstruct	termio
+#define kill_sym	c_cc[VKILL]
+#define erase_sym	c_cc[VERASE]
+#define EXTABS		TAB3
+#define tabflgs		c_oflag
+#define echoflgs	c_lflag
+#define cbrkflgs	c_lflag
+#define CBRKMASK	ICANON
+#define CBRKON		! /* reverse condition */
+#define OSPEED(x)	((x).c_cflag & CBAUD)
+#define GTTY(x)		(ioctl(0, TCGETA, x))
+#define STTY(x)		(ioctl(0, TCSETA, x))	/* TCSETAF? TCSETAW? */
+
+#else	/* V7 */
+
+#include	<sgtty.h>
+#define termstruct	sgttyb
+#define	kill_sym	sg_kill
+#define	erase_sym	sg_erase
+#define EXTABS		XTABS
+#define tabflgs		sg_flags
+#define echoflgs	sg_flags
+#define cbrkflgs	sg_flags
+#define CBRKMASK	CBREAK
+#define CBRKON		/* empty */
+#define OSPEED(x)	(x).sg_ospeed
+#define GTTY(x)		(gtty(0, x))
+#define STTY(x)		(stty(0, x))
+
+#endif USG
+
 extern short ospeed;
-char erase_char, kill_char;
+static char erase_char, kill_char;
 static boolean settty_needed = FALSE;
+struct termstruct inittyb, curttyb;
 
 /*
  * Get initial state of terminal, set ospeed (for termcap routines)
@@ -17,20 +70,69 @@ static boolean settty_needed = FALSE;
  * Called by startup() in termcap.c and after returning from ! or ^Z
  */
 gettty(){
-	(void) gtty(0, &inittyb);
-	(void) gtty(0, &curttyb);
-	ospeed = inittyb.sg_ospeed;
-	erase_char = inittyb.sg_erase;
-	kill_char = inittyb.sg_kill;
+	if(GTTY(&inittyb) < 0)
+		perror("Hack (gettty)");
+	curttyb = inittyb;
+	ospeed = OSPEED(inittyb);
+	erase_char = inittyb.erase_sym;
+	kill_char = inittyb.kill_sym;
 	getioctls();
 
 	/* do not expand tabs - they might be needed inside a cm sequence */
-	if(curttyb.sg_flags & XTABS) {
-		curttyb.sg_flags &= ~XTABS;
+	if(curttyb.tabflgs & EXTABS) {
+		curttyb.tabflgs &= ~EXTABS;
 		setctty();
 	}
 	settty_needed = TRUE;
 }
+
+/* reset terminal to original state */
+settty(s) char *s; {
+	clear_screen();
+	end_screen();
+	if(s) printf(s);
+	(void) fflush(stdout);
+	if(STTY(&inittyb) < 0)
+		perror("Hack (settty)");
+	flags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
+	flags.cbreak = (CBRKON(inittyb.cbrkflgs & CBRKMASK)) ? ON : OFF;
+	setioctls();
+}
+
+setctty(){
+	if(STTY(&curttyb) < 0)
+		perror("Hack (setctty)");
+}
+
+
+setftty(){
+register int ef = 0;			/* desired value of flags & ECHO */
+register int cf = CBRKON(CBRKMASK);	/* desired value of flags & CBREAK */
+register int change = 0;
+	flags.cbreak = ON;
+	flags.echo = OFF;
+	/* Should use (ECHO|CRMOD) here instead of ECHO */
+	if((curttyb.echoflgs & ECHO) != ef){
+		curttyb.echoflgs &= ~ECHO;
+/*		curttyb.echoflgs |= ef;					*/
+		change++;
+	}
+	if((curttyb.cbrkflgs & CBRKMASK) != cf){
+		curttyb.cbrkflgs &= ~CBRKMASK;
+		curttyb.cbrkflgs |= cf;
+#ifdef USG
+		/* be satisfied with one character; no timeout */
+		curttyb.c_cc[VMIN] = 1;		/* was VEOF */
+		curttyb.c_cc[VTIME] = 0;	/* was VEOL */
+#endif USG
+		change++;
+	}
+	if(change){
+		setctty();
+	}
+	start_screen();
+}
+
 
 /* fatal error */
 /*VARARGS1*/
@@ -40,51 +142,6 @@ error(s,x,y) char *s; {
 	printf(s,x,y);
 	putchar('\n');
 	exit(1);
-}
-
-/* reset terminal to original state */
-settty(s) char *s; {
-	clear_screen();
-	end_screen();
-	if(s) printf(s);
-	(void) fflush(stdout);
-	if(stty(0, &inittyb) == -1)
-		puts("Cannot change tty");
-	flags.echo = (inittyb.sg_flags & ECHO) ? ON : OFF;
-	flags.cbreak = (inittyb.sg_flags & CBREAK) ? ON : OFF;
-	setioctls();
-}
-
-setctty(){
-	if(stty(0, &curttyb) == -1) puts("Cannot change tty");
-}
-
-
-setftty(){
-	flags.cbreak = ON;
-	flags.echo = OFF;
-	setxtty();
-}
-
-setxtty(){
-register int ef = (flags.echo == ON) ? ECHO : 0;
-register int cf = (flags.cbreak == ON) ? CBREAK : 0;
-register int change = 0;
-	/* Should use (ECHO|CRMOD) here instead of ECHO */
-	if((curttyb.sg_flags & ECHO) != ef){
-		curttyb.sg_flags &= ~ECHO;
-		curttyb.sg_flags |= ef;
-		change++;
-	}
-	if((curttyb.sg_flags & CBREAK) != cf){
-		curttyb.sg_flags &= ~CBREAK;
-		curttyb.sg_flags |= cf;
-		change++;
-	}
-	if(change){
-		setctty();
-	}
-	start_screen();
 }
 
 /*
@@ -119,33 +176,30 @@ register char *bufp;
 		} else if(c == '\n') {
 			*bufp = 0;
 			return;
-		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
-			while(bufp != obufp) {
-				bufp--;
-				putstr("\b \b");
-			}
-		} else if(isprint(c)) {
+		} else if(' ' <= c && c < '\177') {
+				/* avoid isprint() - some people don't have it
+				   ' ' is not always a printing char */
 			*bufp = c;
 			bufp[1] = 0;
 			putstr(bufp);
 			if(bufp-obufp < BUFSZ-1 && bufp-obufp < COLNO)
 				bufp++;
+		} else if(c == kill_char || c == '\177') { /* Robert Viduya */
+				/* this test last - @ might be the kill_char */
+			while(bufp != obufp) {
+				bufp--;
+				putstr("\b \b");
+			}
 		} else
 			bell();
 	}
 }
 
 getret() {
-	xgetret("");
+	cgetret("");
 }
 
 cgetret(s)
-register char *s;
-{
-	xgetret(s);
-}
-
-xgetret(s)
 register char *s;
 {
 	putsym('\n');
@@ -166,19 +220,16 @@ register char *s;	/* chars allowed besides space or return */
 {
 register int c;
 
-	(void) fflush(stdout);
 	morc = 0;
 
-	while((c = getchar()) != '\n') {
-	    if(c == EOF)
-		end_of_input();
+	while((c = readchar()) != '\n') {
 	    if(flags.cbreak) {
 		if(c == ' ') break;
 		if(s && index(s,c)) {
 			morc = c;
 			break;
 		}
-		bell();		/* useless if !cbreak */
+		bell();
 	    }
 	}
 }
@@ -190,18 +241,15 @@ parse()
 	register foo;
 
 	flags.move = 1;
-	if(!Invis) curs_on_u(); else home();
-	(void) fflush(stdout);
-	while((foo = getchar()) >= '0' && foo <= '9')
-		multi += 10*multi+foo-'0';
+	if(!Invisible) curs_on_u(); else home();
+	while((foo = readchar()) >= '0' && foo <= '9')
+		multi = 10*multi+foo-'0';
 	if(multi) {
 		multi--;
 		save_cm = inline;
 	}
 	inline[0] = foo;
 	inline[1] = 0;
-	if(foo == EOF)
-		end_of_input();
 	if(foo == 'f' || foo == 'F'){
 		inline[1] = getchar();
 #ifdef QUEST
@@ -220,10 +268,28 @@ parse()
 char
 readchar() {
 	register int sym;
+
 	(void) fflush(stdout);
 	if((sym = getchar()) == EOF)
+#ifdef NR_OF_EOFS
+	{ /*
+	   * Some SYSV systems seem to return EOFs for various reasons
+	   * (?like when one hits break or for interrupted systemcalls?),
+	   * and we must see several before we quit.
+	   */
+		register int cnt = NR_OF_EOFS;
+		while (cnt--) {
+		    clearerr(stdin);	/* omit if clearerr is undefined */
+		    if((sym = getchar()) != EOF) goto noteof;
+		}
 		end_of_input();
-	if(flags.toplin == 1) flags.toplin = 2;
+	     noteof:	;
+	}
+#else
+		end_of_input();
+#endif NR_OF_EOFS
+	if(flags.toplin == 1)
+		flags.toplin = 2;
 	return((char) sym);
 }
 
@@ -233,4 +299,3 @@ end_of_input()
 	clearlocks();
 	exit(0);
 }
-

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkobj.c - version 1.0.2 */
+/* hack.mkobj.c - version 1.0.3 */
 
 #include "hack.h"
 

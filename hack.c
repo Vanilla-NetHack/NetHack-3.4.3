@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.c - version 1.0.2 */
+/* hack.c - version 1.0.3 */
 
 #include "hack.h"
 #include <stdio.h>
@@ -83,8 +83,8 @@ domove()
 	struct trap *trap;
 	register struct obj *otmp;
 
-	if(!u.uswallow)
-		wipe_engr_at(u.ux, u.uy, rnd(5));
+	u_wipe_engr(rnd(5));
+
 	if(inv_weight() > 0){
 		pline("You collapse under your load.");
 		nomul(0);
@@ -192,7 +192,7 @@ domove()
 			otmp->oy = ry;
 			/* pobj(otmp); */
 			if(cansee(rx,ry)) atl(rx,ry,otmp->olet);
-			if(Invis) newsym(u.ux+u.dx, u.uy+u.dy);
+			if(Invisible) newsym(u.ux+u.dx, u.uy+u.dy);
 
 			{ static long lastmovetime;
 			/* note: this var contains garbage initially and
@@ -257,13 +257,9 @@ domove()
 			nomul(0);
 	}
 
-	if(tmpr->typ == POOL && !Levitation) {
-		pline("You fall into a pool!");
-		pline("You can't swim!");
-		pline("You drown ...");
-		killer = "pool of water";
-		done("drowned");
-	}
+	if(tmpr->typ == POOL && !Levitation)
+		drown();	/* not necessarily fatal */
+
 /*
 	if(u.udispl) {
 		u.udispl = 0;
@@ -349,7 +345,7 @@ pickup(all)
 		flags.botl = 1;
 		freegold(gold);
 		if(flags.run) nomul(0);
-		if(Invis) newsym(u.ux,u.uy);
+		if(Invisible) newsym(u.ux,u.uy);
 	}
 
 	/* check for more than one object */
@@ -357,7 +353,9 @@ pickup(all)
 		register int ct = 0;
 
 		for(obj = fobj; obj; obj = obj->nobj)
-			if(obj->ox == u.ux && obj->oy == u.uy) ct++;
+			if(obj->ox == u.ux && obj->oy == u.uy)
+				if(!Punished || obj != uchain)
+					ct++;
 		if(ct < 2)
 			all++;
 		else
@@ -368,6 +366,10 @@ pickup(all)
 	    obj2 = obj->nobj;	/* perhaps obj will be picked up */
 	    if(obj->ox == u.ux && obj->oy == u.uy) {
 		if(flags.run) nomul(0);
+
+		/* do not pick up uchain */
+		if(Punished && obj == uchain)
+			continue;
 
 		if(!all) {
 			char c;
@@ -399,10 +401,6 @@ pickup(all)
 		    continue;
 		  }
 		}
-
-		/* do not pick up uchain */
-		if(Punished && obj == uchain)
-			continue;
 
 		wt = inv_weight() + obj->owt;
 		if(wt > 0) {
@@ -447,7 +445,7 @@ pickup(all)
 		}
 		if(wt > -5) pline("You have a little trouble lifting");
 		freeobj(obj);
-		if(Invis) newsym(u.ux,u.uy);
+		if(Invisible) newsym(u.ux,u.uy);
 		addtobill(obj);       /* sets obj->unpaid if necessary */
 		{ int pickquan = obj->quan;
 		  int mergquan;
@@ -516,7 +514,7 @@ register struct monst *mtmp;
 			break;
 		case '^':
 			if(flags.run == 1) goto corr;	/* if you must */
-			if(x == u.ux+u.dx && y == u.uy+u.dx) goto stop;
+			if(x == u.ux+u.dx && y == u.uy+u.dy) goto stop;
 			break;
 		default:	/* e.g. objects or trap or stairs */
 			if(flags.run == 1) goto corr;
@@ -569,6 +567,7 @@ register struct monst *mtmp;
 		if(x == u.ux && y == u.uy) continue;
 		if((mtmp = m_at(x,y)) && !mtmp->mimic && !mtmp->mtame &&
 			!mtmp->mpeaceful && !index("Ea", mtmp->data->mlet) &&
+			!mtmp->mfroz && !mtmp->msleep &&  /* aplvax!jcn */
 			(!mtmp->minvis || See_invisible))
 			return(1);
 	}
@@ -627,12 +626,6 @@ cansee(x,y) xchar x,y; {
 
 sgn(a) register int a; {
 	return((a > 0) ? 1 : (a == 0) ? 0 : -1);
-}
-
-pow(num) /* returns 2 to the num */
-register unsigned num;
-{
-	return(1 << num);
 }
 
 #ifdef QUEST
@@ -756,6 +749,7 @@ register struct monst *mtmp;
 losexp()	/* hit by V or W */
 {
 	register num;
+	extern long newuexp();
 
 	if(u.ulevel > 1)
 		pline("Goodbye level %u.", u.ulevel--);
@@ -764,17 +758,22 @@ losexp()	/* hit by V or W */
 	num = rnd(10);
 	u.uhp -= num;
 	u.uhpmax -= num;
-	u.uexp = 10*pow(u.ulevel-1);
+	u.uexp = newuexp();
 	flags.botl = 1;
 }
 
 inv_weight(){
 register struct obj *otmp = invent;
 register int wt = (u.ugold + 500)/1000;
-register int carrcap = 5*(((u.ustr > 18) ? 20 : u.ustr) + u.ulevel);
-	if(carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
-	if(Wounded_legs & LEFT_SIDE) carrcap -= 10;
-	if(Wounded_legs & RIGHT_SIDE) carrcap -= 10;
+register int carrcap;
+	if(Levitation)			/* pugh@cornell */
+		carrcap = MAX_CARR_CAP;
+	else {
+		carrcap = 5*(((u.ustr > 18) ? 20 : u.ustr) + u.ulevel);
+		if(carrcap > MAX_CARR_CAP) carrcap = MAX_CARR_CAP;
+		if(Wounded_legs & LEFT_SIDE) carrcap -= 10;
+		if(Wounded_legs & RIGHT_SIDE) carrcap -= 10;
+	}
 	while(otmp){
 		wt += otmp->owt;
 		otmp = otmp->nobj;
@@ -790,4 +789,10 @@ register int ct = 0;
 		otmp = otmp->nobj;
 	}
 	return(ct);
+}
+
+long
+newuexp()
+{
+	return(10*(1L << (u.ulevel-1)));
 }

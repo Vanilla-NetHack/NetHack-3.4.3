@@ -1,9 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.rumors.c - version 1.0.2 */
+/* hack.rumors.c - version 1.0.3 */
 
 #include	<stdio.h>
-#include	"config.h"
-#define	CHARSZ	8	/* number of bits in a char */
+#include	"hack.h"		/* for RUMORFILE and BSD (index) */
+#define	CHARSZ	8			/* number of bits in a char */
 extern long *alloc();
 extern char *index();
 int n_rumors = 0;

@@ -1,9 +1,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.main.c - version 1.0.2 */
+/* hack.main.c - version 1.0.3 */
 
 #include <stdio.h>
 #include <signal.h>
-#include <errno.h>
 #include "hack.h"
 
 #ifdef QUEST
@@ -22,14 +21,12 @@ char *occtxt;			/* defined when occupation != NULL */
 int done1();
 int hangup();
 
-char safelock[] = "safelock";
 int hackpid;				/* current pid */
-xchar locknum;				/* max num of players */
+int locknum;				/* max num of players */
 #ifdef DEF_PAGER
 char *catmore;				/* default pager */
 #endif DEF_PAGER
 char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
-char perm[] = "perm";
 char *hname;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 
@@ -205,7 +202,7 @@ char *argv[];
 		(void) signal(SIGINT,SIG_IGN);
 		if(!locknum)
 			(void) strcpy(lock,plname);
-		lockcheck();	/* sets lock if locknum != 0 */
+		getlock();	/* sets lock if locknum != 0 */
 #ifdef WIZARD
 	} else {
 		register char *sfoo;
@@ -238,6 +235,7 @@ char *argv[];
 #endif WIZARD
 	setftty();
 	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
+	regularize(SAVEF+5);		/* avoid . or / in name */
 	if((fd = open(SAVEF,0)) >= 0 &&
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
 		(void) signal(SIGINT,done1);
@@ -399,53 +397,6 @@ not_recovered:
 	}
 }
 
-lockcheck()
-{
-	extern int errno;
-	register int i = 0, fd;
-
-	/* we ignore QUIT and INT at this point */
-	if (link(perm, safelock) == -1) {
-		perror("safelock");
-		error("Cannot link safelock. (Try again or rm safelock.)");
-	}
-
-	if(locknum > 25) locknum = 25;
-
-	do {
-		if(locknum) lock[0] = 'a' + i++;
-
-		if((fd = open(lock, 0)) == -1) {
-			if(errno == ENOENT) goto gotlock;    /* no such file */
-			(void) unlink(safelock);
-			perror(lock);
-			error("Cannot open %s", lock);
-		}
-		if(veryold(fd))		/* this closes fd and unlinks lock */
-			goto gotlock;
-		(void) close(fd);
-	} while(i < locknum);
-
-	(void) unlink(safelock);
-	error(locknum ? "Too many hacks running now."
-		      : "There is a game in progress under your name.");
-gotlock:
-	fd = creat(lock, FMASK);
-	if(unlink(safelock) == -1)
-		error("Cannot unlink safelock.");
-	if(fd == -1) {
-		error("cannot creat lock file.");
-	} else {
-		if(write(fd, (char *) &hackpid, sizeof(hackpid))
-		    != sizeof(hackpid)){
-			error("cannot write lock");
-		}
-		if(close(fd) == -1) {
-			error("cannot close lock");
-		}
-	}
-}
-
 glo(foo)
 register foo;
 {
@@ -453,11 +404,8 @@ register foo;
 	register char *tf;
 
 	tf = lock;
-	while(*tf && *tf!='.') tf++;
-	if(foo)
-		(void) sprintf(tf, ".%d", foo);
-	else
-		*tf = 0;
+	while(*tf && *tf != '.') tf++;
+	(void) sprintf(tf, ".%d", foo);
 }
 
 /*
@@ -490,7 +438,7 @@ impossible(s,x1,x2)
 register char *s;
 {
 	pline(s,x1,x2);
-	pline("Program in disorder - perhaps you'd better Quit");
+	pline("Program in disorder - perhaps you'd better Quit.");
 }
 
 #ifdef CHDIR

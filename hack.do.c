@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do.c - version 1.0.2 */
+/* hack.do.c - version 1.0.3 */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
 
@@ -10,6 +10,7 @@ extern boolean hmon();
 extern boolean level_exists[];
 extern struct monst youmonst;
 extern char *Doname();
+extern char *nomovemsg;
 
 dodrop() {
 	return(drop(getobj("0$#", "drop")));
@@ -27,7 +28,7 @@ drop(obj) register struct obj *obj; {
 			mkgold(amount, u.ux, u.uy);
 			pline("You dropped %ld gold piece%s.",
 				amount, plur(amount));
-			if(Invis) newsym(u.ux, u.uy);
+			if(Invisible) newsym(u.ux, u.uy);
 		}
 		free((char *) obj);
 		return(1);
@@ -65,7 +66,7 @@ register struct obj *obj;
 	obj->oy = u.uy;
 	obj->nobj = fobj;
 	fobj = obj;
-	if(Invis) newsym(u.ux,u.uy);
+	if(Invisible) newsym(u.ux,u.uy);
 	subfrombill(obj);
 	stackobj(obj);
 }
@@ -104,7 +105,7 @@ doup()
 		pline("You are being held, and cannot go up.");
 		return(1);
 	}
-	if(inv_weight() + 5 > 0) {
+	if(!Levitation && inv_weight() + 5 > 0) {
 		pline("Your load is too heavy to climb the stairs.");
 		return(1);
 	}
@@ -121,6 +122,7 @@ register boolean at_stairs;
 	register boolean up = (newlevel < dlevel);
 
 	if(newlevel <= 0) done("escaped");    /* in fact < 0 is impossible */
+	if(newlevel > MAXLEVEL) newlevel = MAXLEVEL;	/* strange ... */
 	if(newlevel == dlevel) return;	      /* this can happen */
 
 	glo(dlevel);
@@ -163,7 +165,7 @@ register boolean at_stairs;
 		extern int hackpid;
 
 		if((fd = open(lock,0)) < 0) {
-			pline("Cannot open %s", lock);
+			pline("Cannot open %s .", lock);
 			pline("Probably someone removed it.");
 			done("tricked");
 		}
@@ -179,19 +181,19 @@ register boolean at_stairs;
 		    u.ux = xupstair;	/* this will confuse the player! */
 		    u.uy = yupstair;
 		}
-		if(Punished){
-			pline("With great effort you climb the stairs");
+		if(Punished && !Levitation){
+			pline("With great effort you climb the stairs.");
 			placebc(1);
 		}
 	    } else {
 		u.ux = xupstair;
 		u.uy = yupstair;
 		if(inv_weight() + 5 > 0 || Punished){
-			pline("You fall down the stairs.");
+			pline("You fall down the stairs.");	/* %% */
 			losehp(rnd(3), "fall");
 			if(Punished) {
 			    if(uwep != uball && rn2(3)){
-				pline("... and are hit by the iron ball");
+				pline("... and are hit by the iron ball.");
 				losehp(rnd(20), "iron ball");
 			    }
 			    placebc(1);
@@ -237,6 +239,12 @@ donull() {
 	return(1);	/* Do nothing, but let other things happen */
 }
 
+dopray() {
+	nomovemsg = "You finished your prayer.";
+	nomul(-3);
+	return(1);
+}
+
 struct monst *bhit(), *boomhit();
 dothrow()
 {
@@ -249,12 +257,15 @@ dothrow()
 	if(!obj || !getdir(1))	       /* ask "in what direction?" */
 		return(0);
 	if(obj->owornmask & (W_ARMOR | W_RING)){
-		pline("You can't throw something you are wearing");
+		pline("You can't throw something you are wearing.");
 		return(0);
 	}
+
+	u_wipe_engr(2);
+
 	if(obj == uwep){
 		if(obj->cursed){
-			pline("Your weapon is welded to your hand");
+			pline("Your weapon is welded to your hand.");
 			return(1);
 		}
 		if(obj->quan > 1)
@@ -372,6 +383,8 @@ dothrow()
 			 } else { /* value unknown to @ */
 			    u.uluck++;
 			valuable:
+			    if(u.uluck > LUCKMAX)	/* dan@ut-ngp */
+				u.uluck = LUCKMAX;
 			    pline("%s graciously accepts your gift.",
 				Monnam(mon));
 			    mpickobj(mon, obj);
@@ -404,7 +417,7 @@ dothrow()
 			    pline("The ball pulls you out of the bear trap.");
 			    pline("Your %s leg is severely damaged.",
 				(side == LEFT_SIDE) ? "left" : "right");
-			    Wounded_legs |= side + rnd(1000);
+			    set_wounded_legs(side, 500+rn2(1000));
 			    losehp(2, "thrown ball");
 			}
 			u.utrap = 0;
@@ -449,4 +462,25 @@ register int exp, rexp;
 	if(exp) flags.botl = 1;
 	if(u.urexp >= ((pl_character[0] == 'W') ? 1000 : 2000))
 		flags.beginner = 0;
+}
+
+set_wounded_legs(side, timex)
+register long side;
+register int timex;
+{
+	if(!Wounded_legs || (Wounded_legs & TIMEOUT))
+		Wounded_legs |= side + timex;
+	else
+		Wounded_legs |= side;
+}
+
+heal_legs()
+{
+	if(Wounded_legs) {
+		if((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
+			pline("Your legs feel somewhat better.");
+		else
+			pline("Your leg feels somewhat better.");
+		Wounded_legs = 0;
+	}
 }

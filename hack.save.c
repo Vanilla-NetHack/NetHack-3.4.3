@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.save.c - version 1.0.2 */
+/* hack.save.c - version 1.0.3 */
 
 #include "hack.h"
 extern char genocided[60];	/* defined in Decl.c */
@@ -38,8 +38,11 @@ dosave0(hu) int hu; {
 	(void) signal(SIGINT, SIG_IGN);
 	if((fd = creat(SAVEF, FMASK)) < 0) {
 		if(!hu) pline("Cannot open save file. (Continue or Quit)");
+		(void) unlink(SAVEF);		/* ab@unido */
 		return(0);
 	}
+	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
+		u.uluck--;			/* and unido!ab */
 	savelev(fd,dlevel);
 	saveobjchn(fd, invent);
 	saveobjchn(fd, fcobj);
@@ -77,10 +80,10 @@ dosave0(hu) int hu; {
 		(void) unlink(lock);
 	}
 	(void) close(fd);
-	{ register char *lp = index(lock, '.');
-	  if(lp) *lp = 0;
-	  (void) unlink(lock);
-	}
+	glo(dlevel);
+	(void) unlink(lock);	/* get rid of current level --jgm */
+	glo(0);
+	(void) unlink(lock);
 	return(1);
 }
 
@@ -91,7 +94,9 @@ register fd;
 	int tmp;		/* not a register ! */
 	unsigned mid;		/* idem */
 	struct obj *otmp;
+	extern boolean restoring;
 
+	restoring = TRUE;
 	getlev(fd, 0, 0);
 	invent = restobjchn(fd);
 	for(otmp = invent; otmp; otmp = otmp->nobj)
@@ -104,6 +109,7 @@ register fd;
 		(void) close(fd);
 		(void) unlink(SAVEF);
 		puts("Saved game was not yours.");
+		restoring = FALSE;
 		return(0);
 	}
 	mread(fd, (char *) &flags, sizeof(struct flag));
@@ -159,6 +165,7 @@ register fd;
 	setsee();  /* only to recompute seelx etc. - these weren't saved */
 #endif QUEST
 	docrt();
+	restoring = FALSE;
 	return(1);
 }
 
@@ -180,6 +187,7 @@ register fd;
 		if(!first) first = otmp;
 		else otmp2->nobj = otmp;
 		mread(fd, (char *) otmp, (unsigned) xl + sizeof(struct obj));
+		if(!otmp->o_id) otmp->o_id = flags.ident++;
 		otmp2 = otmp;
 	}
 	if(first && otmp2->nobj){
@@ -214,6 +222,8 @@ register fd;
 		if(!first) first = mtmp;
 		else mtmp2->nmon = mtmp;
 		mread(fd, (char *) mtmp, (unsigned) xl + sizeof(struct monst));
+		if(!mtmp->m_id)
+			mtmp->m_id = flags.ident++;
 		mtmp->data = (struct permonst *)
 			((char *) mtmp->data + differ);
 		if(mtmp->minvent)

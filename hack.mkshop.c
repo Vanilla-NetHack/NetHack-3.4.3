@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkshop.c - version 1.0.2 */
+/* hack.mkshop.c - version 1.0.3 */
 
 #ifndef QUEST
 #include "hack.h"
@@ -87,7 +87,7 @@ gottype:
 		extern int doorindex;
 
 		pline("Where is shopdoor?");
-		pline("Room at (%d,%d),(%d,%d)", sroom->lx, sroom->ly,
+		pline("Room at (%d,%d),(%d,%d).", sroom->lx, sroom->ly,
 			sroom->hx, sroom->hy);
 		pline("doormax=%d doorct=%d fdoor=%d",
 			doorindex, sroom->doorct, sh);

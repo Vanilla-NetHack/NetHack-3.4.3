@@ -1,4 +1,4 @@
-	Welcome to HACK!		   ( description of version 1.0.2 )
+	Welcome to HACK!		   ( description of version 1.0.3 )
 
 	Hack is a Dungeons and Dragons like game where you (the adventurer)
 descend into the depths of the dungeon in search of the Amulet of Yendor
@@ -75,6 +75,7 @@ Commands:
 	^P	repeat last message
 		(subsequent ^P's repeat earlier messages).
 	/	(followed by any symbol): tell what this symbol represents.
+	\	tell what has been discovered.
 	e	eat food.
 	w	wield weapon. w- means: wield nothing, use bare hands.
 	q	drink (quaff) a potion.
@@ -104,14 +105,14 @@ Commands:
 		If this is empty, the current options are reported.
 		Otherwise it should be a list of options separated by commas.
 		Possible boolean options are: oneline, time, news, tombstone,
-		rest_on_space, beginner, male, female.
+		rest_on_space, fixinvlet, beginner, male, female.
 		They can be negated by prefixing them with '!' or "no".
 		A string option is name; it supplies the answer to the question
 		"Who are you?"; it may have a suffix.
 		A compound option is endgame; it is followed by a description
 		of what parts of the list of topscorers should be printed
 		when the game is finished.
-	        Usually one will not want to use the 'O' command, but instead
+		Usually one will not want to use the 'O' command, but instead
 		put a HACKOPTIONS="...." line in one's environment.
 	v	print version number.
 
@@ -122,8 +123,8 @@ Commands:
 	(It is expected that this information will go away in future versions.)
 	You see on what dungeon level you are, how many hit points you have
 	now (and will have when fully recovered), what your armor class is
-        (the lower the better), your strength, experience level and the
-        state of your stomach.
+	(the lower the better), your strength, experience level and the
+	state of your stomach.
 
 	Have Fun, and Good Hacking!
 

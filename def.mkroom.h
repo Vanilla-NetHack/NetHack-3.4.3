@@ -1,8 +1,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.mkroom.h - version 1.0.2 */
+/* def.mkroom.h - version 1.0.3 */
 
 struct mkroom {
-	xchar lx,hx,ly,hy;
+	schar lx,hx,ly,hy;	/* usually xchar, but hx may be -1 */
 	schar rtype,rlit,doorct,fdoor;
 };
 
@@ -12,7 +12,7 @@ extern struct mkroom rooms[MAXNROFROOMS+1];
 #define	DOORMAX	100
 extern coord doors[DOORMAX];
 
-/* values values of rtype */
+/* various values of rtype */
 /* 0: ordinary room; 8-15: various shops */
 /* Note: some code assumes that >= 8 means shop, so be careful when adding
    new roomtypes */

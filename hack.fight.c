@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.fight.c - version 1.0.2 */
+/* hack.fight.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct permonst li_dog, dog, la_dog;
@@ -133,11 +133,12 @@ register struct obj *obj;
 register thrown;
 {
 	register tmp;
+	boolean hittxt = FALSE;
 
 	if(!obj){
 		tmp = rnd(2);	/* attack with bare hands */
 		if(mon->data->mlet == 'c' && !uarmg){
-			pline("You hit the cockatrice with your bare hands");
+			pline("You hit the cockatrice with your bare hands.");
 			pline("You turn to stone ...");
 			done_in_by(mon);
 		}
@@ -177,10 +178,11 @@ register thrown;
 			obfree(obj, (struct obj *) 0);
 			return(TRUE);
 		case DEAD_COCKATRICE:
-			pline("You hit %s with the cockatrice corpse",
+			pline("You hit %s with the cockatrice corpse.",
 				monnam(mon));
 			if(mon->data->mlet == 'c') {
 				tmp = 1;
+				hittxt = TRUE;
 				break;
 			}
 			pline("%s is turned to stone!", Monnam(mon));
@@ -220,15 +222,18 @@ register thrown;
 		mon->mfleetim += 10*rnd(tmp);
 	}
 
-	if(thrown) {	/* this assumes that we cannot throw plural things */
-		hit( xname(obj)		/* or: objects[obj->otyp].oc_name */,
-			mon, exclam(tmp) );
-		return(TRUE);
+	if(!hittxt) {
+		if(thrown)
+			/* this assumes that we cannot throw plural things */
+			hit( xname(obj)  /* or: objects[obj->otyp].oc_name */,
+				mon, exclam(tmp) );
+		else if(Blind)
+			pline("You hit it.");
+		else
+			pline("You hit %s%s", monnam(mon), exclam(tmp));
 	}
-	if(Blind) pline("You hit it.");
-	else pline("You hit %s%s", monnam(mon), exclam(tmp));
 
-	if(u.umconf) {
+	if(u.umconf && !thrown) {
 		if(!Blind) {
 			pline("Your hands stop glowing blue.");
 			if(!mon->mfroz && !mon->msleep)
@@ -249,6 +254,8 @@ register struct monst *mtmp;
 	boolean malive = TRUE;
 	register struct permonst *mdat;
 	mdat = mtmp->data;
+
+	u_wipe_engr(3);   /* andrew@orca: prevent unlimited pick-axe attacks */
 
 	if(mdat->mlet == 'L' && !mtmp->mfroz && !mtmp->msleep &&
 	   !mtmp->mconf && mtmp->mcansee && !rn2(7) &&
@@ -337,14 +344,14 @@ register struct monst *mtmp;
 			if(!rn2(6)) corrode_weapon();
 		}
 	}
-	if(malive && !Blind && !mtmp->minvis && mdat->mlet == 'E'
+	if(malive && mdat->mlet == 'E' && canseemon(mtmp)
 	   && !mtmp->mcan && rn2(3)) {
 	    if(mtmp->mcansee) {
 	      pline("You are frozen by the floating eye's gaze!");
 	      nomul((u.ulevel > 6 || rn2(4)) ? rn1(20,-21) : -200);
 	    } else {
 	      pline("The blinded floating eye cannot defend itself.");
-	      if(!rn2(500)) u.uluck--;
+	      if(!rn2(500)) if((int)u.uluck > LUCKMIN) u.uluck--;
 	    }
 	}
 	return(TRUE);

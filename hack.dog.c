@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.dog.c - version 1.0.2 */
+/* hack.dog.c - version 1.0.3 */
 
 #include	"hack.h"
 #include	"hack.mfndpos.h"
@@ -34,6 +34,7 @@ initedog(mtmp) register struct monst *mtmp; {
 /* attach the monsters that went down (or up) together with @ */
 struct monst *mydogs = 0;
 struct monst *fallen_down = 0;	/* monsters that fell through a trapdoor */
+	/* they will appear on the next level @ goes to, even if he goes up! */
 
 losedogs(){
 register struct monst *mtmp;
@@ -54,7 +55,8 @@ register struct monst *mtmp;
 keepdogs(){
 register struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(dist(mtmp->mx,mtmp->my) < 3 && follower(mtmp)) {
+	    if(dist(mtmp->mx,mtmp->my) < 3 && follower(mtmp)
+		&& !mtmp->msleep && !mtmp->mfroz) {
 		relmon(mtmp);
 		mtmp->nmon = mydogs;
 		mydogs = mtmp;
@@ -128,20 +130,23 @@ int info[9];
 		if(mtmp->mhp > mtmp->mhpmax)
 			mtmp->mhp = mtmp->mhpmax;
 		if(cansee(omx,omy))
-			pline("%s is confused from hunger", Monnam(mtmp));
+			pline("%s is confused from hunger.", Monnam(mtmp));
 		else	pline("You feel worried about %s.", monnam(mtmp));
 	} else
 	if(moves > edog->hungrytime + 750 || mtmp->mhp < 1){
 		if(cansee(omx,omy))
-			pline("%s dies from hunger", Monnam(mtmp));
+			pline("%s dies from hunger.", Monnam(mtmp));
 		else
-		pline("You have a sad feeling for a moment, then it passes");
+		pline("You have a sad feeling for a moment, then it passes.");
 		mondied(mtmp);
 		return(2);
 	}
 	dogroom = inroom(omx,omy);
 	uroom = inroom(u.ux,u.uy);
 	udist = dist(omx,omy);
+
+	/* maybe we tamed him while being swallowed --jgm */
+	if(!udist) return(0);
 
 	/* if we are carrying sth then we drop it (perhaps near @) */
 	/* Note: if apport == 1 then our behaviour is independent of udist */
@@ -150,6 +155,8 @@ int info[9];
 		if(rn2(10) < edog->apport){
 			relobj(mtmp, (int) mtmp->minvis);
 			if(edog->apport > 1) edog->apport--;
+			edog->dropdist = udist;		/* hpscdi!jon */
+			edog->droptime = moves;
 		}
 	} else {
 		if(obj = o_at(omx,omy)) if(!index("0_", obj->olet)){
@@ -301,8 +308,10 @@ int info[9];
 		     eatobj:
 			edog->eattime =
 			    moves + obj->quan * objects[obj->otyp].oc_delay;
-			edog->hungrytime =
-			    moves + 5*obj->quan * objects[obj->otyp].nutrition;
+			if(edog->hungrytime < moves)
+			    edog->hungrytime = moves;
+			edog->hungrytime +=
+			    5*obj->quan * objects[obj->otyp].nutrition;
 			mtmp->mconf = 0;
 			if(cansee(nix,niy))
 			    pline("%s ate %s.", Monnam(mtmp), doname(obj));
@@ -384,7 +393,7 @@ register struct obj *obj;
 #ifndef NOWORM
 		mtmp->wormno ||
 #endif NOWORM
-		mtmp->isshk || mtmp->isgd)
+		mtmp->isshk || mtmp->isgd || index(" &@12", mtmp->data->mlet))
 		return(0); /* no tame long worms? */
 	if(obj) {
 		if(dogfood(obj) >= MANFOOD) return(0);

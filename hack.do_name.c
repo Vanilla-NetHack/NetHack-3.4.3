@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do_name.c - version 1.0.2 */
+/* hack.do_name.c - version 1.0.3 */
 
 #include "hack.h"
 #include <stdio.h>
@@ -28,7 +28,7 @@ coord cc;
 			pline("Use [hjkl] to move the cursor to %s.", goal);
 			pline("Type a . when you are at the right place.");
 		} else {
-			pline("unknown direction: '%s' (%s)",
+			pline("Unknown direction: '%s' (%s).",
 				visctrl(c),
 				force ? "use hjkl or ." : "aborted");
 			if(force) goto nxtc;
@@ -178,8 +178,9 @@ register struct obj *obj;
 }
 
 char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
-	"adri", "andries", "david", "dirk", "emile", "fred", "hether", "jay",
-	"jon", "kenny", "maud", "michiel", "mike", "robert", "ron",
+	"adri", "andries", "andreas", "bert", "david", "dirk", "emile",
+	"frans", "fred", "greg", "hether", "jay", "john", "jon", "kay",
+	"kenny", "maud", "michiel", "mike", "peter", "robert", "ron",
 	"tom", "wilmar"
 };
 

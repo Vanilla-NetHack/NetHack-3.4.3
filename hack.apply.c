@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.apply.c - version 1.0.2 */
+/* hack.apply.c - version 1.0.3 */
 
 #include	"hack.h"
 #include	"def.edog.h"
@@ -25,7 +25,9 @@ doapply() {
 	case ICE_BOX:
 		use_ice_box(obj); break;
 	case PICK_AXE:
-		res = use_pick_axe(obj); break;
+		res = use_pick_axe(obj);
+		break;
+
 	case MAGIC_WHISTLE:
 		if(pl_character[0] == 'W' || u.ulevel > 9) {
 			use_magic_whistle(obj);
@@ -33,9 +35,23 @@ doapply() {
 		}
 		/* fall into next case */
 	case WHISTLE:
-		use_whistle(obj); break;
+		use_whistle(obj);
+		break;
+
+	case CAN_OPENER:
+		if(!carrying(TIN)) {
+			pline("You have no can to open.");
+			goto xit;
+		}
+		pline("You cannot open a tin without eating its contents.");
+		pline("In order to eat, use the 'e' command.");
+		if(obj != uwep)
+    pline("Opening the tin will be much easier if you wield the can-opener.");
+		goto xit;
+
 	default:
 		pline("Sorry, I don't know how to use that.");
+	xit:
 		nomul(0);
 		return(0);
 	}
@@ -69,8 +85,8 @@ register struct monst *mtmp;
 		if(mtmp->mcansee || mtmp->mblinded){
 			register int tmp = dist(mtmp->mx,mtmp->my);
 			register int tmp2;
-			/* if(cansee(mtmp->mx,mtmp->my)) */
-			  pline("%s is blinded by the flash!",Monnam(mtmp));
+			if(cansee(mtmp->mx,mtmp->my))
+			  pline("%s is blinded by the flash!", Monnam(mtmp));
 			setmangry(mtmp);
 			if(tmp < 9 && !mtmp->isshk && rn2(4)) {
 				mtmp->mflee = 1;
@@ -290,6 +306,11 @@ dig() {
  return(1);
 }
 
+/* When will hole be finished? Very rough indication used by shopkeeper. */
+holetime() {
+	return( (occupation == dig) ? (250 - dig_effort)/20 : -1);
+}
+
 dighole()
 {
 	register struct trap *ttmp = t_at(u.ux, u.uy);
@@ -304,6 +325,8 @@ dighole()
 		ttmp->tseen = 1;
 		pline("You've made a hole in the floor.");
 		if(!u.ustuck) {
+			if(inshop())
+				shopdig(1);
 			pline("You fall through ...");
 			if(u.utraptype == TT_PIT) {
 				u.utrap = 0;
@@ -326,6 +349,12 @@ struct obj *obj;
 	register int rx, ry, res = 0;
 
 	if(obj != uwep) {
+		if(uwep && uwep->cursed) {
+			/* Andreas Bormann - ihnp4!decvax!mcvax!unido!ab */
+			pline("Since your weapon is welded to your hand,");
+			pline("you cannot use that pick-axe.");
+			return(0);
+		}
 		pline("You now wield %s.", doname(obj));
 		setuwep(obj);
 		res = 1;
@@ -394,6 +423,8 @@ struct obj *obj;
 			dig_level = dlevel;
 			dig_effort = 0;
 			pline("You start digging in the floor.");
+			if(inshop())
+				shopdig(0);
 		} else
 			pline("You continue digging in the floor.");
 		occupation = dig;

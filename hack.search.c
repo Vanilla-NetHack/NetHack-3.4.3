@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.search.c - version 1.0.2 */
+/* hack.search.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -54,6 +54,9 @@ dosearch()
 	register struct trap *trap;
 	register struct monst *mtmp;
 
+	if(u.uswallow)
+		pline("What are you looking for? The exit?");
+	else
 	for(x = u.ux-1; x < u.ux+2; x++)
 	for(y = u.uy-1; y < u.uy+2; y++) if(x != u.ux || y != u.uy) {
 		if(levl[x][y].typ == SDOOR) {
@@ -93,8 +96,7 @@ dosearch()
 	return(1);
 }
 
-/* ARGSUSED */
-doidtrap(str) /* register */ char *str; {
+doidtrap() {
 register struct trap *trap;
 register int x,y;
 	if(!getdir(1)) return(0);

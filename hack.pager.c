@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.pager.c - version 1.0.2 */
+/* hack.pager.c - version 1.0.3 */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /* Also readmail() and doshell(), and generally the things that
@@ -38,12 +38,15 @@ dowhatis()
 				buf[0] = q;
 				(void) strncpy(buf+1, "       ", 7);
 			}
-			pline(bufr);
+			pline(buf);
 			if(ep[-1] == ';') {
 				pline("More info? ");
-				if(readchar() == 'y')
+				if(readchar() == 'y') {
 					page_more(fp,1); /* does fclose() */
+					return(0);
+				}
 			}
+			(void) fclose(fp); 	/* kopper@psuvax1 */
 			return(0);
 		    }
 		pline("I've never heard of such things.");
@@ -224,6 +227,9 @@ char *text;
 	if(mode == 2) {
 	    register int curline, lth;
 
+	    if(flags.toplin == 1) more();	/* ab@unido */
+	    remember_topl();
+
 	    lth = CO - maxlen - 2;		   /* Use full screen width */
 	    if (linect < LI && lth >= 10) {		     /* in a corner */
 		home ();
@@ -294,7 +300,7 @@ boolean silent;
 		return(0);
 	}
 	if(child(1)){
-		external char *catmore;
+		extern char *catmore;
 
 		/* Now that child() does a setuid(getuid()) and a chdir(),
 		   we may not be able to open file fnam anymore, so make
@@ -344,11 +350,24 @@ register char *str;
 }
 #endif SHELL
 
+#ifdef NOWAITINCLUDE
+union wait {		/* used only for the cast  (union wait *) 0  */
+	int w_status;
+	struct {
+		unsigned short w_Termsig:7;
+		unsigned short w_Coredump:1;
+		unsigned short w_Retcode:8;
+	} w_T;
+};
+
+#else
+
 #ifdef BSD
 #include	<sys/wait.h>
 #else
 #include	<wait.h>
 #endif BSD
+#endif NOWAITINCLUDE
 
 child(wt) {
 register int f = fork();

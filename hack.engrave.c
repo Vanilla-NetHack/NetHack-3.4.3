@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.engrave.c - version 1.0.2 */
+/* hack.engrave.c - version 1.0.3 */
 
 #include	"hack.h"
 
@@ -45,6 +45,13 @@ register int n;
 		}
 	}
 	return(0);
+}
+
+u_wipe_engr(cnt)
+register int cnt;
+{
+	if(!u.uswallow && !Levitation)
+		wipe_engr_at(u.ux, u.uy, cnt);
 }
 
 wipe_engr_at(x,y,cnt) register xchar x,y,cnt; {
@@ -131,21 +138,36 @@ register struct obj *otmp;
 	/* one may write with finger, weapon or wand */
 	otmp = getobj("#-)/", "write with");
 	if(!otmp) return(0);
-	if(otmp == &zeroobj) {
-		if(uwep) {
-			pline("You are now empty-handed.");
-			setuwep((struct obj *) 0);
-		}
-		type = DUST;
-	} else if(otmp->otyp == WAN_FIRE && otmp->spe) {
+
+	if(otmp == &zeroobj)
+		otmp = 0;
+	if(otmp->otyp == WAN_FIRE && otmp->spe) {
 		type = BURN;
 		otmp->spe--;
 	} else {
+		/* first wield otmp */
 		if(otmp != uwep) {
-			pline("You now wield %s.", doname(otmp));
-			setuwep(otmp);
+			if(uwep && uwep->cursed) {
+			    /* Andreas Bormann */
+			    pline("Since your weapon is welded to your hand,");
+			    pline("you use the %s.", aobjnam(uwep, (char *) 0));
+			    otmp = uwep;
+			} else {
+			    if(!otmp)
+				pline("You are now empty-handed.");
+			    else if(otmp->cursed)
+				pline("The %s %s to your hand!",
+				    aobjnam(otmp, "weld"),
+				    (otmp->quan == 1) ? "itself" : "themselves");
+			    else
+				pline("You now wield %s.", doname(otmp));
+			    setuwep(otmp);
+			}
 		}
 
+		if(!otmp)
+			type = DUST;
+		else
 		if(otmp->otyp == DAGGER || otmp->otyp == TWO_HANDED_SWORD ||
 		otmp->otyp == CRYSKNIFE ||
 		otmp->otyp == LONG_SWORD || otmp->otyp == AXE) {
@@ -194,7 +216,7 @@ register struct obj *otmp;
 			nomovemsg = "You finished writing.";
 		}
 		break;
-	case ENGRAVE:
+	case ENGRAVE:		/* here otmp != 0 */
 		{	int len2 = (otmp->spe + 3) * 2 + 1;
 
 			pline("Your %s dull.", aobjnam(otmp, "get"));

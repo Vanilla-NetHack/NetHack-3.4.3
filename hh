@@ -18,8 +18,10 @@ O	set	set options
 v	version	print version number
 ^R	redraw	redraw the screen (^R denotes the symbol CTRL/R)
 ^P	print	repeat last message  (subsequent ^P's repeat earlier messages)
+#		introduces a long command; not really implemented
 
 Game commands:
+^T	teleport teleport
 a	apply, use  use something (a key, camera, etc.)
 c	call	give a name to a class of objects
 d	drop	drop an object. d7a: drop seven items of object a.

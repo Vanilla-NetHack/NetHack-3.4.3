@@ -1,10 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.potion.c - version 1.0.2 */
+/* hack.potion.c - version 1.0.3 */
 
 #include "hack.h"
 extern int float_down();
 extern char *nomovemsg;
 extern struct monst youmonst;
+extern struct monst *makemon();
 
 dodrink() {
 	register struct obj *otmp,*objs;
@@ -13,6 +14,10 @@ dodrink() {
 
 	otmp = getobj("!", "drink");
 	if(!otmp) return(0);
+	if(!strcmp(objects[otmp->otyp].oc_descr, "smoky") && !rn2(13)) {
+		ghost_from_bottle();
+		goto use_it;
+	}
 	switch(otmp->otyp){
 	case POT_RESTORE_STRENGTH:
 		unkn++;
@@ -35,7 +40,7 @@ dodrink() {
 		}
 		break;
 	case POT_INVISIBILITY:
-		if(Invis)
+		if(Invis || See_invisible)
 		  nothing++;
 		else {
 		  if(!Blind)
@@ -106,7 +111,7 @@ dodrink() {
 		if(Poison_resistance)
     pline("(But in fact it was biologically contaminated orange juice.)");
 		losestr(rn1(4,3));
-		losehp(rnd(10), "poison potion");
+		losehp(rnd(10), "contaminated potion");
 		break;
 	case POT_CONFUSION:
 		if(!Confusion)
@@ -125,11 +130,7 @@ dodrink() {
 		break;
 	case POT_SPEED:
 		if(Wounded_legs) {
-			if((Wounded_legs & BOTH_SIDES) == BOTH_SIDES)
-				pline("Your legs feel somewhat better.");
-			else
-				pline("Your leg feels somewhat better.");
-			Wounded_legs = 0;
+			heal_legs();
 			unkn++;
 			break;
 		}
@@ -182,6 +183,7 @@ dodrink() {
 		} else if(!objects[otmp->otyp].oc_uname)
 			docall(otmp);
 	}
+use_it:
 	useup(otmp);
 	return(1);
 }
@@ -194,8 +196,12 @@ pluslvl()
 	num = rnd(10);
 	u.uhpmax += num;
 	u.uhp += num;
-	u.uexp = (10*pow(u.ulevel-1))+1;
-	pline("Welcome to experience level %u.", ++u.ulevel);
+	if(u.ulevel < 14) {
+		extern long newuexp();
+
+		u.uexp = newuexp()+1;
+		pline("Welcome to experience level %u.", ++u.ulevel);
+	}
 	flags.botl = 1;
 }
 
@@ -231,6 +237,7 @@ register struct obj *obj;
 		losehp(rnd(2), "thrown potion");
 	} else {
 		uclose = (dist(mon->mx,mon->my) < 3);
+		/* perhaps 'E' and 'a' have no head? */
 		pline("The %s crashes on %s's head and breaks into shivers.",
 			botlnam, monnam(mon));
 		if(rn2(5) && mon->mhp > 1)
@@ -358,8 +365,22 @@ dodip(){
 	   obj->otyp == CROSSBOW_BOLT) {
 		if(potion->otyp == POT_SICKNESS) {
 			useup(potion);
-			obj->spe++;	/* %% */
+			if(obj->spe < 7) obj->spe++;	/* %% */
 		}
 	}
 	return(1);
+}
+
+ghost_from_bottle(){
+	extern struct permonst pm_ghost;
+	register struct monst *mtmp;
+
+	if(!(mtmp = makemon(PM_GHOST,u.ux,u.uy))){
+		pline("This bottle turns out to be empty.");
+		return;
+	}
+	mnexto(mtmp);
+	pline("As you open the bottle, an enormous ghost emerges!");
+	pline("You are frightened to death, and unable to move.");
+	nomul(-3);
 }

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.shk.c - version 1.0.2 */
+/* hack.shk.c - version 1.0.3 */
 
 #include "hack.h"
 #ifdef QUEST
@@ -32,7 +32,7 @@ char *shkname(){ return(""); }
 #define	ANGRY(mon)	!NOTANGRY(mon)
 
 extern char plname[], *xname();
-extern struct obj *o_on();
+extern struct obj *o_on(), *bp_to_obj();
 
 /* Descriptor of current shopkeeper. Note that the bill need not be
    per-shopkeeper, since it is valid only when in a shop. */
@@ -184,9 +184,12 @@ register roomno = inroom(u.ux,u.uy);
 	    if(!shopkeeper) {
 		rooms[roomno].rtype = 0;
 		u.uinshop = 0;
+	    } else if(inroom(shopkeeper->mx, shopkeeper->my) != roomno) {
+		u.uinshop = 0;
 	    } else if(!u.uinshop){
 		if(!ESHK(shopkeeper)->visitct ||
 		    strncmp(ESHK(shopkeeper)->customer, plname, PL_NSIZ)){
+
 		    /* He seems to be new here */
 		    ESHK(shopkeeper)->visitct = 0;
 		    ESHK(shopkeeper)->following = 0;
@@ -233,7 +236,8 @@ register struct monst *mtmp;
 		if(ANGRY(shopkeeper) &&
 		   strncmp(ESHK(shopkeeper)->customer,plname,PL_NSIZ))
 			NOTANGRY(shopkeeper) = 1;
-		billobjs = 0;
+		/* billobjs = 0; -- this is wrong if we save in a shop */
+		/* (and it is harmless to have too many things in billobjs) */
 		return;
 	}
 	shopkeeper = 0;
@@ -378,7 +382,8 @@ int pass, tmp;
 				pline(" you give him all your money.");
 			}
 			pay(ltmp, shkp);
-			if(rn2(3)){
+			if(strncmp(ESHK(shkp)->customer, plname, PL_NSIZ)
+			   || rn2(3)){
 				pline("%s calms down.", Monnam(shkp));
 				NOTANGRY(shkp) = 1;
 			} else	pline("%s is as angry as ever.",
@@ -419,19 +424,8 @@ register struct obj *obj;
 long ltmp;
 
 	/* find the object on one of the lists */
-	if(bp->useup)
-		obj = o_on(bp->bo_id, billobjs);
-	else if(!(obj = o_on(bp->bo_id, invent)) &&
-		!(obj = o_on(bp->bo_id, fobj)) &&
-		!(obj = o_on(bp->bo_id, fcobj))) {
-		    register struct monst *mtmp;
-		    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-			if(obj = o_on(bp->bo_id, mtmp->minvent))
-			    break;
-		    for(mtmp = fallen_down; mtmp; mtmp = mtmp->nmon)
-			if(obj = o_on(bp->bo_id, mtmp->minvent))
-			    break;
-		}
+	obj = bp_to_obj(bp);
+
 	if(!obj) {
 		impossible("Shopkeeper administration out of order.");
 		setpaid();	/* be nice to the player */
@@ -461,7 +455,7 @@ long ltmp;
 		else {
 			while(otmp && otmp->nobj != obj) otmp = otmp->nobj;
 			if(otmp) otmp->nobj = obj->nobj;
-			else pline("Error in shopkeeper administration");
+			else pline("Error in shopkeeper administration.");
 		}
  free((char *) obj);
 	}
@@ -470,7 +464,7 @@ long ltmp;
 
 /* routine called after dying (or quitting) with nonempty bill */
 paybill(){
-	if(shopkeeper && ESHK(shopkeeper)->billct){
+	if(shlevel == dlevel && shopkeeper && ESHK(shopkeeper)->billct){
 		addupbill();
 		if(total > u.ugold){
 			shopkeeper->mgold += u.ugold;
@@ -487,13 +481,38 @@ paybill(){
 	}
 }
 
+/* find obj on one of the lists */
+struct obj *
+bp_to_obj(bp)
+register struct bill_x *bp;
+{
+	register struct obj *obj;
+	register struct monst *mtmp;
+	register unsigned id = bp->bo_id;
+
+	if(bp->useup)
+		obj = o_on(id, billobjs);
+	else if(!(obj = o_on(id, invent)) &&
+		!(obj = o_on(id, fobj)) &&
+		!(obj = o_on(id, fcobj))) {
+		    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			if(obj = o_on(id, mtmp->minvent))
+			    break;
+		    for(mtmp = fallen_down; mtmp; mtmp = mtmp->nmon)
+			if(obj = o_on(id, mtmp->minvent))
+			    break;
+		}
+	return(obj);
+}
+
 /* called in hack.c when we pickup an object */
 addtobill(obj) register struct obj *obj; {
 register struct bill_x *bp;
-	if(!inshop() || (u.ux == ESHK(shopkeeper)->shk.x && u.uy == ESHK(shopkeeper)->shk.y) ||
-		(u.ux == ESHK(shopkeeper)->shd.x && u.uy == ESHK(shopkeeper)->shd.y) ||
+	if(!inshop() ||
+	(u.ux == ESHK(shopkeeper)->shk.x && u.uy == ESHK(shopkeeper)->shk.y) ||
+	(u.ux == ESHK(shopkeeper)->shd.x && u.uy == ESHK(shopkeeper)->shd.y) ||
 		onbill(obj) /* perhaps we threw it away earlier */
-	) return;
+	  ) return;
 	if(ESHK(shopkeeper)->billct == BILLSZ){
 		pline("You got that for free!");
 		return;
@@ -603,7 +622,7 @@ pline("Thank you for your contribution to restock this recently plundered shop."
 doinvbill(mode)
 int mode;		/* 0: deliver count 1: paged */
 {
-	register unsigned tmp;
+	register struct bill_x *bp;
 	register struct obj *obj;
 	long totused, thisused;
 	char buf[BUFSZ];
@@ -612,8 +631,9 @@ int mode;		/* 0: deliver count 1: paged */
 	    register int cnt = 0;
 
 	    if(shopkeeper)
-		for(tmp = 0; tmp < ESHK(shopkeeper)->billct; tmp++)
-		    if(bill[tmp].useup)
+		for(bp = bill; bp - bill < ESHK(shopkeeper)->billct; bp++)
+		    if(bp->useup ||
+		      ((obj = bp_to_obj(bp)) && obj->quan < bp->bquan))
 			cnt++;
 	    return(cnt);
 	}
@@ -628,25 +648,29 @@ int mode;		/* 0: deliver count 1: paged */
 	    goto quit;
 
 	totused = 0;
-	for(tmp = 0; tmp < ESHK(shopkeeper)->billct; tmp++)
-	    if(bill[tmp].useup) {
-		register int cnt;
+	for(bp = bill; bp - bill < ESHK(shopkeeper)->billct; bp++) {
+	    obj = bp_to_obj(bp);
+	    if(!obj) {
+		impossible("Bad shopkeeper administration.");
+		goto quit;
+	    }
+	    if(bp->useup || bp->bquan > obj->quan) {
+		register int cnt, oquan, uquan;
 
-		for(obj = billobjs; obj; obj = obj->nobj)
-			if(obj->o_id == bill[tmp].bo_id) break;
-		if(!obj) {
-			impossible("Bad shopkeeper administration.");
-			goto quit;
-		}
-		thisused = bill[tmp].price * bill[tmp].bquan;
+		oquan = obj->quan;
+		uquan = (bp->useup ? bp->bquan : bp->bquan - oquan);
+		thisused = bp->price * uquan;
 		totused += thisused;
+		obj->quan = uquan;		/* cheat doname */
 		(void) sprintf(buf, "x -  %s", doname(obj));
+		obj->quan = oquan;		/* restore value */
 		for(cnt = 0; buf[cnt]; cnt++);
 		while(cnt < 50)
 			buf[cnt++] = ' ';
 		(void) sprintf(&buf[cnt], " %5ld zorkmids", thisused);
 		if(page_line(buf))
 			goto quit;
+	    }
 	}
 	(void) sprintf(buf, "Total:%50ld zorkmids", totused);
 	if(page_line("") || page_line(buf))
@@ -660,7 +684,7 @@ quit:
 
 static
 getprice(obj) register struct obj *obj; {
-register int tmp,ac;
+register int tmp, ac;
 	switch(obj->olet){
 	case AMULET_SYM:
 		tmp = 10*rnd(500);
@@ -691,8 +715,10 @@ register int tmp,ac;
 		tmp = 10*rnd(20);
 		break;
 	case ARMOR_SYM:
-		ac = 10 - obj->spe;
-		tmp = 100 + (10-ac)*(10-ac)*rnd(20-ac);
+		ac = ARM_BONUS(obj);
+		if(ac <= -10)		/* probably impossible */
+			ac = -9;
+		tmp = 100 + ac*ac*rnd(10+ac);
 		break;
 	case WEAPON_SYM:
 		if(obj->otyp < BOOMERANG)
@@ -754,6 +780,7 @@ register struct monst *shkp;
 	register xchar gx,gy,omx,omy,nx,ny,nix,niy;
 	register schar appr,i;
 	register int udist;
+	int z;
 	schar shkroom,chi,chcnt,cnt;
 	boolean uondoor, satdoor, avoid, badinv;
 	coord poss[9];
@@ -794,7 +821,7 @@ register struct monst *shkp;
 	gx = ESHK(shkp)->shk.x;
 	gy = ESHK(shkp)->shk.y;
 	satdoor = (gx == omx && gy == omy);
-	if(ESHK(shkp)->following){
+	if(ESHK(shkp)->following || ((z = holetime()) >= 0 && z*z <= udist)){
 		gx = u.ux;
 		gy = u.uy;
 		if(shkroom < 0 || shkroom != inroom(u.ux,u.uy))
@@ -918,4 +945,29 @@ register struct monst *mtmp;
 {
 	return( mtmp->mtame || index("1TVWZi&, ", mtmp->data->mlet) ||
 		(mtmp->isshk && ESHK(mtmp)->following) );
+}
+
+/* He is digging in the shop. */
+shopdig(fall)
+register int fall;
+{
+    if(!fall) {
+	if(u.utraptype == TT_PIT)
+	    pline("\"Be careful, sir, or you might fall through the floor.\"");
+	else
+	    pline("\"Please, do not damage the floor here.\"");
+    } else if(dist(shopkeeper->mx, shopkeeper->my) < 3) {
+	register struct obj *obj, *obj2;
+
+	pline("%s grabs your backpack!", shkname(shopkeeper));
+	for(obj = invent; obj; obj = obj2) {
+		obj2 = obj->nobj;
+		if(obj->owornmask) continue;
+		freeinv(obj);
+		obj->nobj = shopkeeper->minvent;
+		shopkeeper->minvent = obj;
+		if(obj->unpaid)
+			subfrombill(obj);
+	}
+    }
 }

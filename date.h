@@ -1,2 +1,2 @@
 
-char datestring[] = "Sun Apr 14 1985";
+char datestring[] = "Tue Jul 23 1985";

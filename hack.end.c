@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.end.c - version 1.0.2 */
+/* hack.end.c - version 1.0.3 */
 
 #include "hack.h"
 #include <stdio.h>
@@ -67,6 +67,7 @@ register char *st1;
 #ifdef WIZARD
 	if(wizard && *st1 == 'd'){
 		u.uswldtim = 0;
+		if(u.uhpmax < 0) u.uhpmax = 100;	/* arbitrary */
 		u.uhp = u.uhpmax;
 		pline("For some reason you are still alive.");
 		flags.move = 0;
@@ -91,8 +92,10 @@ register char *st1;
 	clearlocks();
 	if(flags.toplin == 1) more();
 	if(index("bcds", *st1)){
-		if(dlevel > 0 && dlevel < 30) /* soon superfluous */
-			savebones();
+#ifdef WIZARD
+	    if(!wizard)
+#endif WIZARD
+		savebones();
 		if(!flags.notombstone)
 			outrip();
 	}
@@ -393,8 +396,13 @@ char linebuf[BUFSZ];
 	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
 	      t1->maxlvl);
 	} else {
-	  if(!strncmp(t1->death,"quit",4))
-	    Sprintf(eos(linebuf), "quit"), quit = TRUE;
+	  if(!strncmp(t1->death,"quit",4)) {
+	    quit = TRUE;
+	    if(t1->maxhp < 3*t1->hp && t1->maxlvl < 4)
+	  	Sprintf(eos(linebuf), "cravenly gave up");
+	    else
+		Sprintf(eos(linebuf), "quit");
+	  }
 	  else if(!strcmp(t1->death,"choked"))
 	    Sprintf(eos(linebuf), "choked on %s food",
 		(t1->sex == 'F') ? "her" : "his");
@@ -456,12 +464,10 @@ register int d = n%10;
 clearlocks(){
 register x;
 	(void) signal(SIGHUP,SIG_IGN);
-	for(x = 1; x <= maxdlevel; x++) {
+	for(x = maxdlevel; x >= 0; x--) {
 		glo(x);
 		(void) unlink(lock);	/* not all levels need be present */
 	}
-	glo(0);
-	(void) unlink(lock);
 }
 
 #ifdef NOSAVEONHANGUP
@@ -495,7 +501,6 @@ charcat(s,c) register char *s, c; {
  */
 prscore(argc,argv) int argc; char **argv; {
 	extern char *hname;
-	char *player0;
 	char **players;
 	int playerct;
 	int rank;
@@ -510,6 +515,11 @@ prscore(argc,argv) int argc; char **argv; {
 	int totcharct = 0;
 #endif nonsense
 	int outflg = (argc >= -1);
+#ifdef PERS_IS_UID
+	int uid = -1;
+#else
+	char *player0;
+#endif PERS_IS_UID
 
 	if(!(rfile = fopen(recfile,"r"))){
 		puts("Cannot open record file!");
@@ -526,11 +536,16 @@ prscore(argc,argv) int argc; char **argv; {
 		} else	argv[1] += 2;
 	}
 	if(argc <= 1){
+#ifdef PERS_IS_UID
+		uid = getuid();
+		playerct = 0;
+#else
 		player0 = plname;
 		if(!*player0)
 			player0 = "hackplayer";
 		playerct = 1;
 		players = &player0;
+#endif PERS_IS_UID
 	} else {
 		playerct = --argc;
 		players = ++argv;
@@ -546,6 +561,11 @@ prscore(argc,argv) int argc; char **argv; {
 		&t1->plchar, &t1->sex, t1->name, t1->death) != 11)
 			t1->points = 0;
 	  if(t1->points == 0) break;
+#ifdef PERS_IS_UID
+	  if(!playerct && t1->uid == uid)
+		flg++;
+	  else
+#endif PERS_IS_UID
 	  for(i = 0; i < playerct; i++){
 		if(strcmp(players[i], "all") == 0 ||
 		   strncmp(t1->name, players[i], NAMSZ) == 0 ||
@@ -561,10 +581,13 @@ prscore(argc,argv) int argc; char **argv; {
 	if(!flg) {
 	    if(outflg) {
 		printf("Cannot find any entries for ");
-		if(playerct > 1) printf("any of ");
-		for(i=0; i<playerct; i++)
+		if(playerct < 1) printf("you.\n");
+		else {
+		  if(playerct > 1) printf("any of ");
+		  for(i=0; i<playerct; i++)
 			printf("%s%s", players[i], (i<playerct-1)?", ":".\n");
-		printf("Call is: %s -s [playernames]\n", hname);
+		  printf("Call is: %s -s [playernames]\n", hname);
+		}
 	    }
 	    return;
 	}
@@ -573,6 +596,11 @@ prscore(argc,argv) int argc; char **argv; {
 	t1 = tt_head;
 	for(rank = 1; t1->points != 0; rank++, t1 = t2) {
 		t2 = t1->tt_next;
+#ifdef PERS_IS_UID
+		if(!playerct && t1->uid == uid)
+			goto outwithit;
+		else
+#endif PERS_IS_UID
 		for(i = 0; i < playerct; i++){
 			if(strcmp(players[i], "all") == 0 ||
 			   strncmp(t1->name, players[i], NAMSZ) == 0 ||
@@ -580,6 +608,7 @@ prscore(argc,argv) int argc; char **argv; {
 			   players[i][1] == t1->plchar &&
 			   players[i][2] == 0) ||
 			  (digit(players[i][0]) && rank <= atoi(players[i]))){
+			outwithit:
 				if(outflg)
 				    (void) outentry(rank, t1, 0);
 #ifdef nonsense

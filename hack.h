@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.h - version 1.0.2 */
+/* hack.h - version 1.0.3 */
 
 #include "config.h"
 
@@ -39,9 +39,6 @@ extern long *alloc();
 extern xchar xdnstair, ydnstair, xupstair, yupstair; /* stairs up and down. */
 
 extern xchar dlevel;
-#ifdef WIZARD
-extern boolean wizard;
-#endif WIZARD
 #define	newstring(x)	(char *) alloc((unsigned)(x))
 #include "hack.onames.h"
 
@@ -76,10 +73,12 @@ struct you {
 	xchar udisx, udisy;	/* last display pos */
 	char usym;		/* usually '@' */
 	schar uluck;
+#define	LUCKMAX		10	/* on moonlit nights 11 */
+#define	LUCKMIN		(-10)
 	int last_str_turn:3;	/* 0: none, 1: half turn, 2: full turn */
 				/* +: turn right, -: turn left */
 	unsigned udispl:1;	/* @ on display */
-	unsigned ulevel:5;
+	unsigned ulevel:4;	/* 1 - 14 */
 #ifdef QUEST
 	unsigned uhorizon:7;
 #endif QUEST
@@ -99,6 +98,7 @@ struct you {
 #define	Confusion	u.uprops[CONFUSION].p_flgs
 #define	INVIS		(LAST_RING+3)		/* not a ring */
 #define	Invis		u.uprops[INVIS].p_flgs
+#define Invisible	(Invis && !See_invisible)
 #define	GLIB		(LAST_RING+4)		/* not a ring */
 #define	Glib		u.uprops[GLIB].p_flgs
 #define	PUNISHED	(LAST_RING+5)		/* not a ring */
@@ -109,10 +109,12 @@ struct you {
 #define	Blind		u.uprops[BLIND].p_flgs
 #define	WOUNDED_LEGS	(LAST_RING+8)		/* not a ring */
 #define Wounded_legs	u.uprops[WOUNDED_LEGS].p_flgs
+#define STONED		(LAST_RING+9)		/* not a ring */
+#define Stoned		u.uprops[STONED].p_flgs
 #define PROP(x) (x-RIN_ADORNMENT)       /* convert ring to index in uprops */
 	unsigned umconf:1;
 	char *usick_cause;
-	struct prop uprops[LAST_RING+9];
+	struct prop uprops[LAST_RING+10];
 
 	unsigned uswallow:1;		/* set if swallowed by a monster */
 	unsigned uswldtim:4;		/* time you have been swallowed */
@@ -157,4 +159,5 @@ extern char lock[];
 
 #define	PL_CSIZ		20	/* sizeof pl_character */
 #define	MAX_CARR_CAP	120	/* so that boulders can be heavier */
+#define	MAXLEVEL	40
 #define	FAR	(COLNO+2)	/* position outside screen */

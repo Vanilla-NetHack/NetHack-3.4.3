@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.eat.c - version 1.0.2 */
+/* hack.eat.c - version 1.0.3 */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
@@ -7,7 +7,7 @@ extern char *nomovemsg;
 extern int (*afternmv)();
 extern int (*occupation)();
 extern char *occtxt;
-extern struct obj *splitobj();
+extern struct obj *splitobj(), *addinv();
 
 /* hunger texts used on bottom line (each 8 chars long) */
 #define	SATIATED	0
@@ -104,8 +104,8 @@ doeat(){
 				if(otmp->quan != 1)
 					(void) splitobj(otmp, 1);
 				freeobj(otmp);
-				otmp->nobj = invent;
-				invent = otmp;
+				otmp = addinv(otmp);
+				addtobill(otmp);
 				goto gotit;
 			}
 		}
@@ -130,7 +130,7 @@ gotit:
 			default:
 				goto no_opener;
 			}
-			pline("Using your %s you try to open the tin",
+			pline("Using your %s you try to open the tin.",
 				aobjnam(uwep, (char *) 0));
 		} else {
 		no_opener:
@@ -204,6 +204,10 @@ gotit:
 			if(rn2(2)){
 				pline("You vomit.");
 				morehungry(20);
+				if(Sick) {
+					Sick = 0;	/* David Neves */
+					pline("What a relief!");
+				}
 			} else	lesshungry(ftmp->nutrition);
 			break;
 		default:
@@ -234,8 +238,11 @@ gotit:
 				if(u.ustrmax < 118) u.ustrmax++;
 				if(u.ustr < u.ustrmax) u.ustr++;
 				u.uhp += rnd(20);
-				if(u.uhp > u.uhpmax) u.uhp = u.uhpmax;
-				Wounded_legs = 0;
+				if(u.uhp > u.uhpmax) {
+					if(!rn2(17)) u.uhpmax++;
+					u.uhp = u.uhpmax;
+				}
+				heal_legs();
 			}
  break;
 		}
@@ -254,9 +261,17 @@ eatx:
 /* called in hack.main.c */
 gethungry(){
 	--u.uhunger;
-	if((Regeneration || Hunger) && moves%2) u.uhunger--;
-	if(uleft && moves%20) u.uhunger--;
-	if(uright && moves%20) u.uhunger--;
+	if(moves % 2) {
+		if(Regeneration) u.uhunger--;
+		if(Hunger) u.uhunger--;
+		/* a3:  if(Hunger & LEFT_RING) u.uhunger--;
+			if(Hunger & RIGHT_RING) u.uhunger--;
+		   etc. */
+	}
+	if(moves % 20 == 0) {			/* jimt@asgb */
+		if(uleft) u.uhunger--;
+		if(uright) u.uhunger--;
+	}
 	newuhs(TRUE);
 }
 
@@ -347,7 +362,7 @@ register struct obj *otmp;
 eatcorpse(otmp) register struct obj *otmp; {
 register char let = CORPSE_I_TO_C(otmp->otyp);
 register tp = 0;
-	if(moves > otmp->age + 50 + rn2(100)) {
+	if(let != 'a' && moves > otmp->age + 50 + rn2(100)) {
 		tp++;
 		pline("Ulch -- that meat was tainted!");
 		pline("You get very sick.");
@@ -387,9 +402,14 @@ register tp = 0;
 		Aggravate_monster |= INTRINSIC;
 		break;
 	case 'I':
-		See_invisible |= INTRINSIC;
-		if(!Invis) newsym(u.ux, u.uy);
-		Invis += 50;
+		if(!Invis) {
+			Invis = 50+rn2(100);
+			if(!See_invisible)
+				newsym(u.ux, u.uy);
+		} else {
+			Invis |= INTRINSIC;
+			See_invisible |= INTRINSIC;
+		}
 		/* fall into next case */
 	case 'y':
 #ifdef QUEST
@@ -417,6 +437,14 @@ register tp = 0;
 		pline("You turn to stone.");
 		killer = "dead cockatrice";
 		done("died");
+		/* NOTREACHED */
+	case 'a':
+	  if(Stoned) {
+	      pline("What a pity - you just destroyed a future piece of art!");
+	      tp++;
+	      Stoned = 0;
+	  }
+	  break;
 	case 'M':
 	  pline("You cannot resist the temptation to mimic a treasure chest.");
 	  tp++;

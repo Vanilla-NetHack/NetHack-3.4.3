@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.zap.c - version 1.0.2 */
+/* hack.zap.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -126,7 +126,7 @@ dozap()
 	obj = getobj("/", "zap");
 	if(!obj) return(0);
 	if(obj->spe < 0 || (obj->spe == 0 && rn2(121))) {
-		pline("Nothing Happens");
+		pline("Nothing Happens.");
 		return(1);
 	}
 	if(obj->spe == 0)
@@ -201,6 +201,10 @@ dozap()
 				pline("You loosen a rock from the ceiling.");
 				pline("It falls on your head!");
 				losehp(1, "falling rock");
+				mksobj_at(ROCK, u.ux, u.uy);
+				fobj->quan = 1;
+				stackobj(fobj);
+				if(Invisible) newsym(u.ux, u.uy);
 			    } else {
 				dighole();
 			    }
@@ -483,6 +487,8 @@ register int dx,dy;
 					if(Fire_resistance)
 						pline("You don't feel hot!");
 					else dam = d(6,6);
+					if(!rn2(3))
+						burn_scrolls();
 					break;
 				case 2:
 					nomul(-rnd(25)); /* sleep ray */
@@ -612,4 +618,25 @@ register struct obj *obj;			   /* no texts here! */
 	obj->olet = WEAPON_SYM;
 	if(cansee(obj->ox,obj->oy))
 		prl(obj->ox,obj->oy);
+}
+
+burn_scrolls()
+{
+	register struct obj *obj, *obj2;
+	register int cnt = 0;
+
+	for(obj = invent; obj; obj = obj2) {
+		obj2 = obj->nobj;
+		if(obj->olet == SCROLL_SYM) {
+			cnt++;
+			useup(obj);
+		}
+	}
+	if(cnt > 1) {
+		pline("Your scrolls catch fire!");
+		losehp(cnt, "burning scrolls");
+	} else if(cnt) {
+		pline("Your scroll catches fire!");
+		losehp(1, "burning scroll");
+	}
 }

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.steal.c - version 1.0.2 */
+/* hack.steal.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -15,7 +15,7 @@ register long tmp;
 	if(gold && ( !u.ugold || gold->amount > u.ugold || !rn2(5))) {
 		mtmp->mgold += gold->amount;
 		freegold(gold);
-		if(Invis) newsym(u.ux, u.uy);
+		if(Invisible) newsym(u.ux, u.uy);
 		pline("%s quickly snatches some gold from between your feet!",
 			Monnam(mtmp));
 		if(!u.ugold || !rn2(5)) {

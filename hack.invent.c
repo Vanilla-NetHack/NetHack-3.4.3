@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.invent.c - version 1.0.2 */
+/* hack.invent.c - version 1.0.3 */
 
 #include	"hack.h"
 #include	<stdio.h>
@@ -8,25 +8,87 @@ extern struct obj zeroobj;
 extern char morc;
 extern char quitchars[];
 char *xprname();
+
 #ifndef NOWORM
 #include	"def.wseg.h"
-
 extern struct wseg *wsegs[32];
 #endif NOWORM
 
+#define	NOINVSYM	'#'
+
+static int lastinvnr = 51;	/* 0 ... 51 */
+static
+assigninvlet(otmp)
+register struct obj *otmp;
+{
+	boolean inuse[52];
+	register int i;
+	register struct obj *obj;
+
+	for(i = 0; i < 52; i++) inuse[i] = FALSE;
+	for(obj = invent; obj; obj = obj->nobj) if(obj != otmp) {
+		i = obj->invlet;
+		if('a' <= i && i <= 'z') inuse[i - 'a'] = TRUE; else
+		if('A' <= i && i <= 'Z') inuse[i - 'A' + 26] = TRUE;
+		if(i == otmp->invlet) otmp->invlet = 0;
+	}
+	if((i = otmp->invlet) &&
+	    (('a' <= i && i <= 'z') || ('A' <= i && i <= 'Z')))
+		return;
+	for(i = lastinvnr+1; i != lastinvnr; i++) {
+		if(i == 52) { i = -1; continue; }
+		if(!inuse[i]) break;
+	}
+	otmp->invlet = (inuse[i] ? NOINVSYM :
+			(i < 26) ? ('a'+i) : ('A'+i-26));
+	lastinvnr = i;
+}
+
 struct obj *
-addinv(obj) register struct obj *obj; {
+addinv(obj)
+register struct obj *obj;
+{
 	register struct obj *otmp;
-	for(otmp = invent; otmp; otmp = otmp->nobj) {
-		if(merged(otmp, obj, 0)) return(otmp);
+
+	/* merge or attach to end of chain */
+	if(!invent) {
+		invent = obj;
+		otmp = 0;
+	} else
+	for(otmp = invent; /* otmp */; otmp = otmp->nobj) {
+		if(merged(otmp, obj, 0))
+			return(otmp);
 		if(!otmp->nobj) {
 			otmp->nobj = obj;
-			obj->nobj = 0;
-			return(obj);
+			break;
 		}
 	}
-	invent = obj;
 	obj->nobj = 0;
+
+	if(flags.invlet_constant) {
+		assigninvlet(obj);
+		/*
+		 * The ordering of the chain is nowhere significant
+		 * so in case you prefer some other order than the
+		 * historical one, change the code below.
+		 */
+		if(otmp) {	/* find proper place in chain */
+			otmp->nobj = 0;
+			if((invent->invlet ^ 040) > (obj->invlet ^ 040)) {
+				obj->nobj = invent;
+				invent = obj;
+			} else
+			for(otmp = invent; ; otmp = otmp->nobj) {
+			    if(!otmp->nobj ||
+				(otmp->nobj->invlet ^ 040) > (obj->invlet ^ 040)){
+				obj->nobj = otmp->nobj;
+				otmp->nobj = obj;
+				break;
+			    }
+			}
+		}
+	}
+
 	return(obj);
 }
 
@@ -43,9 +105,13 @@ register struct obj *obj;
 	}
 }
 
-freeinv(obj) register struct obj *obj; {
+freeinv(obj)
+register struct obj *obj;
+{
 	register struct obj *otmp;
-	if(obj == invent) invent = invent->nobj;
+
+	if(obj == invent)
+		invent = invent->nobj;
 	else {
 		for(otmp = invent; otmp->nobj != obj; otmp = otmp->nobj)
 			if(!otmp->nobj) panic("freeinv");
@@ -217,11 +283,12 @@ register long q;
 	return(otmp);
 }
 
-/* getobj returns:
-	struct obj *xxx:	object to do something with.
-	0			error return: no object.
-	&zeroobj		explicitly no object (as in w-).
-*/
+/*
+ * getobj returns:
+ *	struct obj *xxx:	object to do something with.
+ *	(struct obj *) 0	error return: no object.
+ *	&zeroobj		explicitly no object (as in w-).
+ */
 struct obj *
 getobj(let,word)
 register char *let,*word;
@@ -245,24 +312,25 @@ register char *let,*word;
 	if(*let == '-') let++, allownone = TRUE;
 	if(allownone) *bp++ = '-';
 	if(allowgold) *bp++ = '$';
-	if(bp[-1] == '-') *bp++ = ' ';
+	if(bp > buf && bp[-1] == '-') *bp++ = ' ';
 
 	ilet = 'a';
 	for(otmp = invent; otmp; otmp = otmp->nobj){
-		if(!*let || index(let, otmp->olet)) {
-			bp[foo++] = ilet;
-			/* ugly check: remove inappropriate things */
-			if((!strcmp(word, "take off") &&
-			    !(otmp->owornmask & (W_ARMOR - W_ARM2)))
-			|| (!strcmp(word, "wear") &&
-			    (otmp->owornmask & (W_ARMOR | W_RING)))
-			|| (!strcmp(word, "wield") &&
-			    (otmp->owornmask & W_WEP))) {
-				foo--;
-				foox++;
-			}
+	    if(!*let || index(let, otmp->olet)) {
+		bp[foo++] = flags.invlet_constant ? otmp->invlet : ilet;
+
+		/* ugly check: remove inappropriate things */
+		if((!strcmp(word, "take off") &&
+		    !(otmp->owornmask & (W_ARMOR - W_ARM2)))
+		|| (!strcmp(word, "wear") &&
+   (otmp->owornmask & (W_ARMOR | W_RING)))
+		|| (!strcmp(word, "wield") &&
+		    (otmp->owornmask & W_WEP))) {
+			foo--;
+			foox++;
 		}
-		if(ilet == 'z') ilet = 'A'; else ilet++;
+	    }
+	    if(ilet == 'z') ilet = 'A'; else ilet++;
 	}
 	bp[foo] = 0;
 	if(foo == 0 && bp > buf && bp[-1] == ' ') *--bp = 0;
@@ -330,9 +398,15 @@ register char *let,*word;
 			if(!(ilet = morc)) continue;
 			/* ... */
 		}
-		if(ilet >= 'A' && ilet <= 'Z') ilet += 'z'-'A'+1;
-		ilet -= 'a';
-		for(otmp = invent; otmp && ilet; ilet--, otmp = otmp->nobj) ;
+		if(flags.invlet_constant) {
+			for(otmp = invent; otmp; otmp = otmp->nobj)
+				if(otmp->invlet == ilet) break;
+		} else {
+			if(ilet >= 'A' && ilet <= 'Z') ilet += 'z'-'A'+1;
+			ilet -= 'a';
+			for(otmp = invent; otmp && ilet;
+					ilet--, otmp = otmp->nobj) ;
+		}
 		if(!otmp) {
 			pline("You don't have that object.");
 			continue;
@@ -481,15 +555,18 @@ ret:
 	return(cnt);
 }
 
-obj_to_let(obj)
+obj_to_let(obj)	/* should of course only be called for things in invent */
 register struct obj *obj;
 {
 	register struct obj *otmp;
-	register char ilet = 'a';
+	register char ilet;
 
+	if(flags.invlet_constant)
+		return(obj->invlet);
+	ilet = 'a';
 	for(otmp = invent; otmp && otmp != obj; otmp = otmp->nobj)
 		if(++ilet > 'z') ilet = 'A';
-	return(otmp ? ilet : 0);
+	return(otmp ? ilet : NOINVSYM);
 }
 
 prinv(obj)
@@ -505,7 +582,9 @@ register char let;
 {
 	static char li[BUFSZ];
 
-	(void) sprintf(li, "%c - %s.", let, doname(obj));
+	(void) sprintf(li, "%c - %s.",
+		flags.invlet_constant ? obj->invlet : let,
+		doname(obj));
 	return(li);
 }
 
@@ -535,11 +614,12 @@ register char *lets;
 	cornline(0, (char *) 0);
 	ilet = 'a';
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
+	    if(flags.invlet_constant) ilet = otmp->invlet;
 	    if(!lets || !*lets || index(lets, ilet)) {
-		cornline(1, xprname(otmp, ilet));
-		any[ct++] = ilet;
+		    cornline(1, xprname(otmp, ilet));
+		    any[ct++] = ilet;
 	    }
-	    if(++ilet > 'z') ilet = 'A';
+	    if(!flags.invlet_constant) if(++ilet > 'z') ilet = 'A';
 	}
 	any[ct] = 0;
 	cornline(2, any);
@@ -602,12 +682,10 @@ dotypeinv ()				/* free after Robert Viduya */
 	stct = 0;
 	ilet = 'a';
 	for (otmp = invent; otmp; otmp = otmp -> nobj) {
+	    if(flags.invlet_constant) ilet = otmp->invlet;
 	    if (c == otmp -> olet || (c == 'u' && otmp -> unpaid))
 		stuff[stct++] = ilet;
-	    if (ilet == 'z')
-		ilet = 'A';
-	    else
-		ilet++;
+	    if(!flags.invlet_constant) if(++ilet > 'z') ilet = 'A';
 	}
 	stuff[stct] = '\0';
 	if(stct == 0)
@@ -626,15 +704,22 @@ dolook() {
     int	ct = 0;
 
     if(!u.uswallow) {
+	if(Blind) {
+	    pline("You try to feel what is lying here on the floor.");
+	    if(Levitation) {				/* ab@unido */
+		pline("You cannot reach the floor!");
+		return(1);
+	    }
+	}
 	otmp0 = o_at(u.ux, u.uy);
 	gold = g_at(u.ux, u.uy);
     }
+
     if(u.uswallow || (!otmp0 && !gold)) {
 	pline("You %s no objects here.", verb);
 	return(!!Blind);
     }
 
-    if(Blind) pline("You try to feel what is lying here on the floor.");
     cornline(0, "Things that are here:");
     for(otmp = otmp0; otmp; otmp = otmp->nobj) {
 	if(otmp->ox == u.ux && otmp->oy == u.uy) {
@@ -679,12 +764,14 @@ register struct obj *otmp = fobj;
 
 /* merge obj with otmp and delete obj if types agree */
 merged(otmp,obj,lose) register struct obj *otmp, *obj; {
-	if(otmp->otyp == obj->otyp &&
-	  obj->unpaid == otmp->unpaid && obj->spe == otmp->spe &&
-	  obj->known == otmp->known && obj->dknown == otmp->dknown &&
+	if(obj->otyp == otmp->otyp &&
+	  obj->unpaid == otmp->unpaid &&
+	  obj->spe == otmp->spe &&
+	  obj->dknown == otmp->dknown &&
 	  obj->cursed == otmp->cursed &&
-	  ((obj->olet == WEAPON_SYM && obj->otyp < BOOMERANG)
-	  || index("%?!*",otmp->olet))){
+	  (index("%*?!", obj->olet) ||
+	    (obj->known == otmp->known &&
+		(obj->olet == WEAPON_SYM && obj->otyp < BOOMERANG)))) {
 		otmp->quan += obj->quan;
 		otmp->owt += obj->owt;
 		if(lose) freeobj(obj);

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.trap.c - version 1.0.2 */
+/* hack.trap.c - version 1.0.3 */
 
 #include	"hack.h"
 
@@ -79,7 +79,11 @@ dotrap(trap) register struct trap *trap; {
 			if(!xdnstair) {
 pline("A trap door in the ceiling opens and a rock falls on your head!");
 if(uarmh) pline("Fortunately, you are wearing a helmet!");
-			losehp(uarmh ? 2 : d(2,10),"falling rock");
+			    losehp(uarmh ? 2 : d(2,10),"falling rock");
+			    mksobj_at(ROCK, u.ux, u.uy);
+			    fobj->quan = 1;
+			    stackobj(fobj);
+			    if(Invisible) newsym(u.ux, u.uy);
 			} else {
 			    register int newlevel = dlevel + 1;
 				while(!rn2(4) && newlevel < 29)
@@ -162,7 +166,8 @@ mintrap(mtmp) register struct monst *mtmp; {
 			}
 			break;
 		case PIT:
-			if(!index("Eyw", mtmp->data->mlet)) {
+			/* there should be a mtmp/data -> floating */
+			if(!index("EywBfk'& ", mtmp->data->mlet)) { /* ab */
 				mtmp->mtrapped = 1;
 				if(in_sight)
 				  pline("%s falls in a pit!", Monnam(mtmp));
@@ -313,6 +318,8 @@ register int nux,nuy;
 		docrt();
 	}
 	nomul(0);
+	if(levl[nux][nuy].typ == POOL && !Levitation)
+		drown();
 	(void) inshop();
 	pickup(1);
 	if(!Blind) read_engr_at(u.ux,u.uy);
@@ -372,8 +379,6 @@ unplacebc(){
 	unpobj(uchain);
 }
 
-#define MAXLEVEL	40
-
 level_tele() {
 register int newlevel;
 	if(Teleport_control) {
@@ -382,7 +387,7 @@ register int newlevel;
 	    do {
 	      pline("To what level do you want to teleport? [type a number] ");
 	      getlin(buf);
-	    } while(!digit(buf[0]));
+	    } while(!digit(buf[0]) && (buf[0] != '-' || !digit(buf[1])));
 	    newlevel = atoi(buf);
 	} else {
 	    newlevel  = 5 + rn2(20);	/* 5 - 24 */
@@ -390,7 +395,7 @@ register int newlevel;
 		if(!xdnstair) newlevel--; else newlevel++;
 	}
 	if(newlevel >= 30) {
-	    if(newlevel >= MAXLEVEL) newlevel = MAXLEVEL-1;
+	    if(newlevel > MAXLEVEL) newlevel = MAXLEVEL;
 	    pline("You arrive at the center of the earth ...");
 	    pline("Unfortunately it is here that hell is located.");
 	    if(Fire_resistance) {
@@ -415,7 +420,28 @@ register int newlevel;
 	    killer = "fall";
 	    done("died");
 	}
-	if(newlevel == 0)
-	    done("escaped");
-	goto_level(newlevel, FALSE);
+
+	goto_level(newlevel, FALSE); /* calls done("escaped") if newlevel==0 */
+}
+
+drown()
+{
+	pline("You fall into a pool!");
+	pline("You can't swim!");
+	if(rn2(3) < u.uluck+2) {
+		/* most scrolls become unreadable */
+		register struct obj *obj;
+
+		for(obj = invent; obj; obj = obj->nobj)
+			if(obj->olet == SCROLL_SYM && rn2(12) > u.uluck)
+				obj->otyp = SCR_BLANK_PAPER;
+		/* we should perhaps merge these scrolls ? */
+
+		pline("You attempt a teleport spell.");	/* utcsri!carroll */
+		(void) dotele();
+		if(levl[u.ux][u.uy].typ != POOL) return;
+	}
+	pline("You drown ...");
+	killer = "pool of water";
+	done("drowned");
 }

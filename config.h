@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* config.h - version 1.0.2 */
+/* config.h - version 1.0.3 */
 
 #ifndef CONFIG	/* make sure the compiler doesnt see the typedefs twice */
 
@@ -24,6 +24,8 @@
 
 /* #define STUPID */	/* avoid some complicated expressions if
 			   your C compiler chokes on them */
+/* #define PYRAMID_BUG */	/* avoid a bug on the Pyramid */
+/* #define NOWAITINCLUDE */	/* neither <wait.h> nor <sys/wait.h> exists */
 
 #define WIZARD  "aeb"	/* the person allowed to use the -D option */
 #define RECORD	"record"/* the file containing the list of topscorers */
@@ -33,6 +35,8 @@
 #define	RUMORFILE	"rumors"	/* a file with fortune cookies */
 #define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
 #define	FMASK	0660	/* file creation mask */
+#define	HLOCK	"perm"	/* an empty file used for locking purposes */
+#define LLOCK	"safelock"	/* link to previous */
 
 #ifdef UNIX
 /*

@@ -52,7 +52,7 @@ How to install hack:
    If your C compiler doesnt allow initialization of bit fields
    change Bitfield. When config.h looks reasonable, say 'make'.
    (Perhaps you have to change TERMLIB in the makefile.)
-1. If it didnt exist already, introduce a loginnname `play' .
+1. If it didnt exist already, introduce a loginname `play' .
 2. The program  hack  resides in a directory so that it is executable
    for everybody and is suid play:
 	---s--s--x  1 play	206848 Apr  3 00:17 hack

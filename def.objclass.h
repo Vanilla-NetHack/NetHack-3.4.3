@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.objclass.h - version 1.0.2 */
+/* def.objclass.h - version 1.0.3 */
 
 /* definition of a class of objects */
 
@@ -16,7 +16,8 @@ struct objclass {
 	schar oc_oc1, oc_oc2;
 	int oc_oi;
 #define	nutrition	oc_oi	/* for foods */
-#define	a_ac		oc_oc1	/* for armors */
+#define	a_ac		oc_oc1	/* for armors - only used in ARM_BONUS */
+#define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
 #define	a_can		oc_oc2	/* for armors */
 #define bits		oc_oc1	/* for wands and rings */
 				/* wands */

@@ -1,15 +1,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.Decl.c - version 1.0.2 */
+/* hack.Decl.c - version 1.0.3 */
 
 #include	"hack.h"
 char nul[40];			/* contains zeros */
 char plname[PL_NSIZ];		/* player name */
-char lock[32] = "1lock";	/* long enough for login name */
+char lock[PL_NSIZ+4] = "1lock";	/* long enough for login name .99 */
 
-boolean in_mklev;
-#ifdef WIZARD
-boolean wizard;			/* TRUE when called as  hack -w */
-#endif WIZARD
+boolean in_mklev, restoring;
 
 struct rm levl[COLNO][ROWNO];	/* level map */
 #ifndef QUEST

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mon.c - version 1.0.2 */
+/* hack.mon.c - version 1.0.3 */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
@@ -128,6 +128,7 @@ char *name;
 		u.uhp = -1;
 	}
  if(u.uhp < 1) done_in_by(mtmp);
+	/* flags.botlx = 1;		/* should we show status line ? */
 }
 
 dochugw(mtmp) register struct monst *mtmp; {
@@ -151,7 +152,7 @@ dochug(mtmp)
 register struct monst *mtmp;
 {
 	register struct permonst *mdat;
-	register tmp;
+	register tmp, nearby, scared;
 
 	if(mtmp->cham && !rn2(6))
 		(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
@@ -191,11 +192,26 @@ register struct monst *mtmp;
 		return(0);
 	}
 	if(mdat->mmove < rnd(6)) return(0);
-	if(mtmp->mflee ||
+
+	/* fleeing monsters might regain courage */
+	if(mtmp->mflee && !mtmp->mfleetim
+	    && mtmp->mhp == mtmp->mhpmax && !rn2(25))
+		mtmp->mflee = 0;
+
+	nearby = (dist(mtmp->mx, mtmp->my) < 3);
+	scared = (nearby && (sengr_at("Elbereth", u.ux, u.uy) ||
+			sobj_at(SCR_SCARE_MONSTER, u.ux, u.uy)));
+	if(scared && !mtmp->mflee) {
+		mtmp->mflee = 1;
+		mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
+	}
+
+	if(!nearby ||
+		mtmp->mflee ||
 		mtmp->mconf ||
+		(mtmp->minvis && !rn2(3)) ||
 		(index("BIuy", mdat->mlet) && !rn2(4)) ||
 		(mdat->mlet == 'L' && !u.ugold && (mtmp->mgold || rn2(2))) ||
-		dist(mtmp->mx,mtmp->my) > 2 ||
 		(!mtmp->mcansee && !rn2(4)) ||
 		mtmp->mpeaceful
 	   ) {
@@ -204,10 +220,8 @@ register struct monst *mtmp;
 			return(tmp == 2);
 	}
 
-	if(!index("Ea", mdat->mlet) && dist(mtmp->mx, mtmp->my) < 3 &&
-	 !mtmp->mpeaceful && u.uhp > 0 &&
-	 !sengr_at("Elbereth", u.ux, u.uy) &&
-	 !sobj_at(SCR_SCARE_MONSTER, u.ux, u.uy)) {
+	if(!index("Ea", mdat->mlet) && nearby &&
+	 !mtmp->mpeaceful && u.uhp > 0 && !scared) {
 		if(mhitu(mtmp))
 			return(1);	/* monster died (e.g. 'y' or 'F') */
 	}
@@ -229,6 +243,8 @@ register struct monst *mtmp;
 	coord poss[9];
 	int info[9];
 
+	if(mtmp->mfroz || mtmp->msleep)
+		return(0);
 	if(mtmp->mtrapped) {
 		i = mintrap(mtmp);
 		if(i == 2) return(2);	/* he died */
@@ -236,6 +252,11 @@ register struct monst *mtmp;
 	}
 	if(mtmp->mhide && o_at(mtmp->mx,mtmp->my) && rn2(10))
 		return(0);		/* do not leave hiding place */
+
+#ifndef NOWORM
+	if(mtmp->wormno)
+		goto not_special;
+#endif NOWORM
 
 	/* my dog gets a special treatment */
 	if(mtmp->mtame) {
@@ -281,6 +302,7 @@ register struct monst *mtmp;
 		if(rn2(3)) mtmp->mcan = 1;
 		Confusion += d(3,4);		/* timeout */
 	}
+not_special:
 	if(!mtmp->mflee && u.uswallow && u.ustuck != mtmp) return(1);
 	appr = 1;
 	if(mtmp->mflee) appr = -1;
@@ -577,6 +599,7 @@ register struct monst *mtmp, *mtmp2;
 	monfree(mtmp);
 	mtmp2->nmon = fmon;
 	fmon = mtmp2;
+	if(u.ustuck == mtmp) u.ustuck = mtmp2;
 	if(mtmp2->isshk) replshk(mtmp,mtmp2);
 	if(mtmp2->isgd) replgd(mtmp,mtmp2);
 }
@@ -631,8 +654,10 @@ register struct monst *mtmp;
 #ifdef lint
 #define	NEW_SCORING
 #endif lint
-register int tmp,tmp2,nk,x,y;
-register struct permonst *mdat = mtmp->data;
+	register int tmp,tmp2,nk,x,y;
+	register struct permonst *mdat = mtmp->data;
+	extern long newuexp();
+
 	if(mtmp->cham) mdat = PM_CHAMELEON;
 	if(Blind) pline("You destroy it!");
 	else {
@@ -660,6 +685,7 @@ register struct permonst *mdat = mtmp->data;
 	if(mdat->mlet == '@') Telepat = 0, u.uluck -= 2;
 	if(mtmp->mpeaceful || mtmp->mtame) u.uluck--;
 	if(mdat->mlet == 'u') u.uluck -= 5;
+	if((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
 
 	/* give experience points */
 	tmp = 1 + mdat->mlevel * mdat->mlevel;
@@ -692,7 +718,7 @@ register struct permonst *mdat = mtmp->data;
 
 	more_experienced(tmp,0);
 	flags.botl = 1;
-	while(u.ulevel < 14 && u.uexp >= 10*pow(u.ulevel-1)){
+	while(u.ulevel < 14 && u.uexp >= newuexp()){
 		pline("Welcome to experience level %u.", ++u.ulevel);
 		tmp = rnd(10);
 		if(tmp < 3) tmp = rnd(10);
@@ -717,13 +743,14 @@ register struct permonst *mdat = mtmp->data;
 		stackobj(fobj);
 	} else
 #endif	NOWORM
-	if(!letter(tmp) || !rn2(3)) tmp = 0;
+	if(!letter(tmp) || (!index("mw", tmp) && !rn2(3))) tmp = 0;
 
 	if(ACCESSIBLE(levl[x][y].typ))	/* might be mimic in wall or dead eel*/
 	    if(x != u.ux || y != u.uy)	/* might be here after swallowed */
 		if(index("NTVm&",mdat->mlet) || rn2(5)) {
 		register struct obj *obj2 = mkobj_at(tmp,x,y);
-		if(cansee(x,y)) atl(x,y,obj2->olet);
+		if(cansee(x,y))
+			atl(x,y,obj2->olet);
 		stackobj(obj2);
 	}
 }

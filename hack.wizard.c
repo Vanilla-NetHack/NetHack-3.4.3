@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wizard.c - version 1.0.2 */
+/* hack.wizard.c - version 1.0.3 */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
 
@@ -21,7 +21,7 @@ amulet(){
 		return;
 	/* find wizard, and wake him if necessary */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(mtmp->data->mlet == '2' && mtmp->msleep && !rn2(40))
+	    if(mtmp->data->mlet == '1' && mtmp->msleep && !rn2(40))
 		for(otmp = invent; otmp; otmp = otmp->nobj)
 		    if(otmp->olet == AMULET_SYM && !otmp->spe) {
 			mtmp->msleep = 0;

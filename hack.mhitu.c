@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mhitu.c - version 1.0.2 */
+/* hack.mhitu.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct monst *makemon();
@@ -26,7 +26,7 @@ register struct monst *mtmp;
 					Monnam(u.ustuck));
 				pline("And the same fate befalls you.");
 				done_in_by(mtmp);
-				/* notreached: return(1); */
+				/* "notreached": not return(1); */
 			}
 			return(0);
 		}
@@ -49,6 +49,9 @@ register struct monst *mtmp;
 		if(u.uhp < 1) done_in_by(mtmp);
 		return(0);
 	}
+
+	if(mdat->mlet == 'c' && Stoned)
+		return(0);
 
 	/* make eels visible the moment they hit/miss us */
 	if(mdat->mlet == ';' && mtmp->minvis && cansee(mtmp->mx,mtmp->my)){
@@ -100,8 +103,12 @@ register struct monst *mtmp;
 		break;
 	case 'A':
 		if(ctmp && rn2(2)) {
+		    if(Poison_resistance)
+			pline("The sting doesn't seem to affect you.");
+		    else {
 			pline("You feel weaker!");
 			losestr(1);
+		    }
 		}
 		break;
 	case 'C':
@@ -112,8 +119,9 @@ register struct monst *mtmp;
 			pline("You hear %s's hissing!", monnam(mtmp));
 			if(ctmp || !rn2(20) || (flags.moonphase == NEW_MOON
 			    && !carrying(DEAD_LIZARD))) {
-				pline("You get turned to stone!");
-				done_in_by(mtmp);
+				Stoned = 5;
+				/* pline("You get turned to stone!"); */
+				/* done_in_by(mtmp); */
 			}
 		}
 		break;
@@ -151,7 +159,7 @@ register struct monst *mtmp;
 		mondead(mtmp);
 		return(1);
 	case 'g':
-		if(ctmp && multi >= 0 && !rn2(6)) {
+		if(ctmp && multi >= 0 && !rn2(3)) {
 			kludge("You are frozen by %ss juices","the cube'");
 			nomul(-rnd(10));
 		}
@@ -205,7 +213,7 @@ register struct monst *mtmp;
 		break;
 	case 'o':
 		tmp = hitu(mtmp,rnd(6));
-		if(hitu(mtmp,rnd(6)) && ctmp &&
+		if(hitu(mtmp,rnd(6)) && tmp &&	/* hits with both paws */
 		    !u.ustuck && rn2(2)) {
 			u.ustuck = mtmp;
 			kludge("%s has grabbed you!","The owlbear");
@@ -288,7 +296,7 @@ register struct monst *mtmp;
 		{ register long side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
 		  pline("%s pricks in your %s leg!",
 			Monnam(mtmp), (side == RIGHT_SIDE) ? "right" : "left");
-		  Wounded_legs |= side + rnd(5);
+		  set_wounded_legs(side, rnd(50));
 		  losehp_m(2, mtmp);
 		  break;
 		}
@@ -315,6 +323,7 @@ register dam;
 {
 	register tmp, res;
 
+	nomul(0);
 	if(u.uswallow) return(0);
 
 	if(mtmp->mhide && mtmp->mundetected) {
@@ -337,7 +346,7 @@ register dam;
 	}
 	tmp += mtmp->data->mlevel;
 	if(multi < 0) tmp += 4;
-	if(Invis || !mtmp->mcansee) tmp -= 2;
+	if((Invis && mtmp->data->mlet != 'I') || !mtmp->mcansee) tmp -= 2;
 	if(mtmp->mtrapped) tmp -= 2;
 	if(tmp <= rnd(20)) {
 		if(Blind) pline("It misses.");

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.read.c - version 1.0.2 */
+/* hack.read.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -189,7 +189,7 @@ doread() {
 		else do {
 	    pline("What monster do you want to genocide (Type the letter)? ");
 			getlin(buf);
-		} while(strlen(buf) != 1 || !letter(*buf));
+		} while(strlen(buf) != 1 || !monstersym(*buf));
 		if(!index(fut_geno, *buf))
 			charcat(fut_geno, *buf);
 		if(!index(genocided, *buf))
@@ -464,7 +464,7 @@ register boolean on;
 			return;
 		}
 		if(!xdnstair){
-			pline("Nothing Happens");
+			pline("Nothing Happens.");
 			return;
 		}
 #ifdef QUEST
@@ -515,4 +515,25 @@ do_it:
 		}
 	if(!on) seehx = 0;
 #endif	QUEST
+}
+
+/* Test whether we may genocide all monsters with symbol  ch  */
+monstersym(ch)				/* arnold@ucsfcgl */
+register char ch;
+{
+	register struct permonst *mp;
+	extern struct permonst pm_eel;
+
+	/*
+	 * can't genocide certain monsters
+	 */
+	if (index("12 &:", ch))
+		return FALSE;
+
+	if (ch == pm_eel.mlet)
+		return TRUE;
+	for (mp = mons; mp < &mons[CMNUM+2]; mp++)
+		if (mp->mlet == ch)
+			return TRUE;
+	return FALSE;
 }

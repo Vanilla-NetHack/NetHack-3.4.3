@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.o_init.c - version 1.0.2 */
+/* hack.o_init.c - version 1.0.3 */
 
 #include	"config.h"		/* for typedefs */
 #include	"def.objects.h"
@@ -32,19 +32,10 @@ register char let, *tmp;
 		if((!i && let != ILLOBJ_SYM) || bases[i] != 0)
 			error("initialization error");
 		bases[i] = first;
-	check:
-		if(let == GEM_SYM) {
-			extern xchar dlevel;
-			for(j=0; j < 9-dlevel/3; j++)
-				objects[first+j].oc_prob = 0;
-			first += j;
-			if(first >= last || first >= LAST_GEM)
-	printf("Not enough gems? - first=%d last=%d j=%d LAST_GEM=%d\n",
-				first, last, j, LAST_GEM);
-			for(j = first; j < LAST_GEM; j++)
-			    objects[j].oc_prob = (20+j-first)/(LAST_GEM-first);
-		}
 
+		if(let == GEM_SYM)
+			setgemprobs();
+	check:
 		sum = 0;
 		for(j = first; j < last; j++) sum += objects[j].oc_prob;
 		if(sum == 0) {
@@ -78,6 +69,30 @@ register int prob = rn2(100);
 	if(objects[i].oc_olet != let || !objects[i].oc_name)
 		panic("probtype(%c) error, i=%d", let, i);
 	return(i);
+}
+
+setgemprobs()
+{
+	register int j,first;
+	extern xchar dlevel;
+
+	first = bases[letindex(GEM_SYM)];
+
+	for(j = 0; j < 9-dlevel/3; j++)
+		objects[first+j].oc_prob = 0;
+	first += j;
+	if(first >= LAST_GEM || first >= SIZE(objects) ||
+	    objects[first].oc_olet != GEM_SYM ||
+	    objects[first].oc_name == NULL)
+		printf("Not enough gems? - first=%d j=%d LAST_GEM=%d\n",
+			first, j, LAST_GEM);
+	for(j = first; j < LAST_GEM; j++)
+		objects[j].oc_prob = (20+j-first)/(LAST_GEM-first);
+}
+
+oinit()			/* level dependent initialization */
+{
+	setgemprobs();
 }
 
 extern long *alloc();

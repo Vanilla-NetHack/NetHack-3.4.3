@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.options.c - version 1.0.2 */
+/* hack.options.c - version 1.0.3 */
 
 #include "config.h"
 #include "hack.h"
@@ -13,6 +13,7 @@ initoptions()
 	flags.time = flags.nonews = flags.notombstone = flags.end_own =
 	flags.standout = flags.nonull = FALSE;
 	flags.no_rest_on_space = TRUE;
+	flags.invlet_constant = TRUE;
 	flags.end_top = 5;
 	flags.end_around = 4;
 	flags.female = FALSE;			/* players are usually male */
@@ -73,6 +74,14 @@ boolean from_env;
 
 	if(!strncmp(opts,"restonspace",4)) {
 		flags.no_rest_on_space = negated;
+		return;
+	}
+
+	if(!strncmp(opts,"fixinv",4)) {
+		if(from_env)
+			flags.invlet_constant = !negated;
+		else
+			pline("The fixinvlet option must be in HACKOPTIONS.");
 		return;
 	}
 

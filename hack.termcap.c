@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.termcap.c - version 1.0.2 - added VS,VE,SG,TI,TO (Robert Viduya) */
+/* hack.termcap.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "config.h"	/* for ROWNO and COLNO */
@@ -30,13 +30,13 @@ startup()
 	tbufptr = tbuf;
 	if(!(term = getenv("TERM")))
 		error("Can't get TERM.");
-	if(!strcmp(term, "5620"))
+	if(!strncmp(term, "5620", 4))
 		flags.nonull = 1;	/* this should be a termcap flag */
-	if(tgetent(tptr,term) < 1)
+	if(tgetent(tptr, term) < 1)
 		error("Unknown terminal type: %s.", term);
-	if(pc = tgetstr("pc",&tbufptr))
+	if(pc = tgetstr("pc", &tbufptr))
 		PC = *pc;
-	if(!(BC = tgetstr("bc",&tbufptr))) {	
+	if(!(BC = tgetstr("bc", &tbufptr))) {	
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
 		BC = tbufptr;
@@ -48,28 +48,30 @@ startup()
 	LI = tgetnum("li");
 	if(CO < COLNO || LI < ROWNO+2)
 		setclipped();
-	if(!(CL = tgetstr("cl",&tbufptr)) ||
-	   !(ND = tgetstr("nd", &tbufptr)) ||
-	    tgetflag("os"))
-		error("Hack needs CL, ND, and no OS.");
-	CE = tgetstr("ce",&tbufptr);
-	UP = tgetstr("up",&tbufptr);
+	if(!(CL = tgetstr("cl", &tbufptr)))
+		error("Hack needs CL.");
+	ND = tgetstr("nd", &tbufptr);
+	if(tgetflag("os"))
+		error("Hack can't have OS.");
+	CE = tgetstr("ce", &tbufptr);
+	UP = tgetstr("up", &tbufptr);
 	/* It seems that xd is no longer supported, and we should use
 	   a linefeed instead; unfortunately this requires resetting
 	   CRMOD, and many output routines will have to be modified
 	   slightly. Let's leave that till the next release. */
-	XD = tgetstr("xd",&tbufptr);
-	if(!(CM = tgetstr("cm",&tbufptr))) {
+	XD = tgetstr("xd", &tbufptr);
+/* not: 		XD = tgetstr("do", &tbufptr); */
+	if(!(CM = tgetstr("cm", &tbufptr))) {
 		if(!UP && !HO)
 			error("Hack needs CM or UP or HO.");
 		printf("Playing hack on terminals without cm is suspect...\n");
 		getret();
 	}
-	SO = tgetstr("so",&tbufptr);
-	SE = tgetstr("se",&tbufptr);
+	SO = tgetstr("so", &tbufptr);
+	SE = tgetstr("se", &tbufptr);
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
 	if(!SO || !SE || (SG > 0)) SO = SE = 0;
-	CD = tgetstr("cd",&tbufptr);
+	CD = tgetstr("cd", &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);
@@ -90,26 +92,30 @@ end_screen()
 /* Cursor movements */
 extern xchar curx, cury;
 
-curs(x,y)
-register int x,y;	/* not xchar: perhaps xchar is unsigned and
+curs(x, y)
+register int x, y;	/* not xchar: perhaps xchar is unsigned and
 			   curx-x would be unsigned as well */
 {
 
 	if (y == cury && x == curx)
 		return;
+	if(!ND && (curx != x || x <= 3)) {	/* Extremely primitive */
+		cmov(x, y);			/* bunker!wtm */
+		return;
+	}
 	if(abs(cury-y) <= 3 && abs(curx-x) <= 3)
-		nocmov(x,y);
+		nocmov(x, y);
 	else if((x <= 3 && abs(cury-y)<= 3) || (!CM && x<abs(curx-x))) {
 		(void) putchar('\r');
 		curx = 1;
-		nocmov(x,y);
+		nocmov(x, y);
 	} else if(!CM) {
-		nocmov(x,y);
+		nocmov(x, y);
 	} else
-		cmov(x,y);
+		cmov(x, y);
 }
 
-nocmov(x,y)
+nocmov(x, y)
 {
 	if (cury > y) {
 		if(UP) {
@@ -118,10 +124,10 @@ nocmov(x,y)
 				cury--;
 			}
 		} else if(CM) {
-			cmov(x,y);
+			cmov(x, y);
 		} else if(HO) {
 			home();
-			curs(x,y);
+			curs(x, y);
 		} /* else impossible("..."); */
 	} else if (cury < y) {
 		if(XD) {
@@ -130,7 +136,7 @@ nocmov(x,y)
 				cury++;
 			}
 		} else if(CM) {
-			cmov(x,y);
+			cmov(x, y);
 		} else {
 			while(cury < y) {
 				xputc('\n');
@@ -140,6 +146,8 @@ nocmov(x,y)
 		}
 	}
 	if (curx < x) {		/* Go to the right. */
+		if(!ND) cmov(x, y); else	/* bah */
+			/* should instead print what is there already */
 		while (curx < x) {
 			xputs(ND);
 			curx++;
@@ -152,16 +160,16 @@ nocmov(x,y)
 	}
 }
 
-cmov(x,y)
-register x,y;
+cmov(x, y)
+register x, y;
 {
-	xputs(tgoto(CM,x-1,y-1));
+	xputs(tgoto(CM, x-1, y-1));
 	cury = y;
 	curx = x;
 }
 
 xputc(c) char c; {
-	(void) fputc(c,stdout);
+	(void) fputc(c, stdout);
 }
 
 xputs(s) char *s; {
@@ -180,7 +188,7 @@ cl_end() {
 			xputc(' ');
 			curx++;
 		}
-		curs(cx,cy);
+		curs(cx, cy);
 	}
 }
 
@@ -194,9 +202,9 @@ home()
 	if(HO)
 		xputs(HO);
 	else if(CM)
-		xputs(tgoto(CM,0,0));
+		xputs(tgoto(CM, 0, 0));
 	else
-		curs(1,1);	/* using UP ... */
+		curs(1, 1);	/* using UP ... */
 	curx = cury = 1;
 }
 
@@ -232,13 +240,18 @@ delay_output() {
 	   then this looks terrible. */
 	if(!flags.nonull)
 		tputs("50", 1, xputc);
+
+		/* cbosgd!cbcephus!pds for SYS V R2 */
+		/* is this terminfo, or what? */
+		/* tputs("$<50>", 1, xputc); */
+
 	else if(ospeed > 0 || ospeed < SIZE(tmspc10)) if(CM) {
 		/* delay by sending cm(here) an appropriate number of times */
 		register int cmlen = strlen(tgoto(CM, curx-1, cury-1));
 		register int i = 500 + tmspc10[ospeed]/2;
 
 		while(i > 0) {
-			cmov(curx,cury);
+			cmov(curx, cury);
 			i -= cmlen*tmspc10[ospeed];
 		}
 	}
@@ -258,6 +271,6 @@ cl_eos()			/* free after Robert Viduya */
 			cury++;
 		}
 		cl_end();
-		curs(cx,cy);
+		curs(cx, cy);
 	}
 }

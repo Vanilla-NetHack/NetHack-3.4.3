@@ -1,4 +1,4 @@
-	Hack & Quest data file - version 1.0.2
+	Hack & Quest data file - version 1.0.3
 @	human (or you)
 -	a wall
 |	a wall
@@ -11,7 +11,7 @@
 >	the staircase to the next level
 ^	a trap
 $	a pile, pot or chest of gold
-%%	a piece of food
+%%      a piece of food
 !	a potion
 *	a gem
 ?	a scroll
@@ -26,6 +26,7 @@ _	an iron chain
 "	an amulet
 ,	a trapper
 :	a chameleon
+;	a giant eel
 '	a lurker above
 &	a demon
 A	a giant ant
@@ -218,9 +219,9 @@ u	a unicorn;
 	                    [From: Mythical Beasts by Deirdre Headon
 	                                 (The Leprechaun Library). ]
 v	a violet fungi
-w	a long worm
-~	the tail of a long worm
+w	a long worm;
 	From its teeth the crysknife can be manufactured.
+~	the tail of a long worm
 x	a xan;
 	The xan were animals sent to prick the legs of the Lords of Xibalba.
 y	a yellow light

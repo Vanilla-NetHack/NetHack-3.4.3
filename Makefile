@@ -36,6 +36,8 @@ SOURCES = $(CSOURCES) $(HSOURCES)
 
 AUX = data help hh rumors hack.6 hack.sh
 
+DISTR = $(SOURCES) $(AUX) READ_ME Makefile date.h hack.onames.h
+
 HOBJ = hack.Decl.o hack.apply.o hack.bones.o hack.o hack.cmd.o hack.do.o\
 	hack.do_name.o hack.do_wear.o hack.dog.o hack.eat.o hack.end.o\
 	hack.engrave.o hack.fight.o hack.invent.o hack.ioctl.o\
@@ -54,6 +56,9 @@ HOBJ = hack.Decl.o hack.apply.o hack.bones.o hack.o hack.cmd.o hack.do.o\
 $(GAME):	$(HOBJ) Makefile
 	@echo "Loading ..."
 	@ld -X -o $(GAME) /lib/crt0.o $(HOBJ) $(TERMLIB) -lc
+
+all:	$(GAME) lint
+	@echo "Done."
 
 makedefs:	makedefs.c
 	cc -o makedefs makedefs.c
@@ -81,8 +86,7 @@ distribution: Makefile
 		; do \
 		cmp -s $$i $D/$$i || \
 		( echo cp $$i $D ; cp $$i $D ) ; done
-# the distribution directory also contains the empty files
-# perm and record, and the informative files Porting and Bugs.
+# the distribution directory also contains the empty files perm and record.
 
 
 install:
@@ -90,6 +94,10 @@ install:
 	cp $(GAME) $(GAMEDIR)/$(GAME)
 	chmod 04511 $(GAMEDIR)/$(GAME)
 	rm -f $(GAMEDIR)/bones*
+#	cp hack.6 /usr/man/man6
+
+clean:
+	rm -f *.o
 
 
 depend:
@@ -158,7 +166,7 @@ hack.potion.o:  hack.h
 hack.pri.o:  hack.h def.wseg.h
 hack.read.o:  hack.h
 hack.rip.o:  hack.h
-hack.rumors.o:  config.h
+hack.rumors.o:  hack.h
 hack.save.o:  hack.h
 hack.search.o:  hack.h
 hack.shk.o:  hack.h hack.mfndpos.h def.mkroom.h def.eshk.h

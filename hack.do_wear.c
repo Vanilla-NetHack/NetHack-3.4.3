@@ -1,10 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do_wear.c - version 1.0.2 */
+/* hack.do_wear.c - version 1.0.3 */
 
 #include "hack.h"
 #include <stdio.h>
 extern char *nomovemsg;
 extern char quitchars[];
+extern char *Doname();
 
 off_msg(otmp) register struct obj *otmp; {
 	pline("You were wearing %s.", doname(otmp));
@@ -26,6 +27,10 @@ doremarm() {
 		pline("You can't take that off.");
 		return(0);
 	}
+	if( otmp == uarmg && uwep && uwep->cursed ) {	/* myers@uwmacc */
+ pline("You seem not able to take off the gloves while holding your weapon.");
+		return(0);
+	}
 	(void) armoroff(otmp);
 	return(1);
 }
@@ -42,7 +47,7 @@ doremring() {
 	if(uleft && uright) while(1) {
 		char answer;
 
-		pline("What ring, Right or Left? ");
+		pline("What ring, Right or Left? [ rl?]");
 		if(index(quitchars, (answer = readchar())))
 			return(0);
 		switch(answer) {
@@ -52,6 +57,9 @@ doremring() {
 		case 'r':
 		case 'R':
 			return(dorr(uright));
+		case '?':
+			(void) doprring();
+			/* might look at morc here %% */
 		}
 	}
 	/* NOTREACHED */
@@ -139,6 +147,10 @@ doweararm() {
 		}
 		if(!err) mask = W_ARM;
 	}
+	if(otmp == uwep && uwep->cursed) {
+		if(!err++)
+			pline("%s is welded to your hand.", Doname(uwep));
+	}
 	if(err) return(0);
 	setworn(otmp, mask);
 	if(otmp == uwep)
@@ -169,6 +181,10 @@ dowearring() {
 	}
 	if(otmp == uleft || otmp == uright) {
 		pline("You are already wearing that.");
+		return(0);
+	}
+	if(otmp == uwep && uwep->cursed) {
+		pline("%s is welded to your hand.", Doname(uwep));
 		return(0);
 	}
 	if(uleft) mask = RIGHT_RING;
@@ -227,6 +243,14 @@ register long mask;
 		impossible("Strange... I didnt know you had that ring.");
 	u.uprops[PROP(obj->otyp)].p_flgs &= ~mask;
 	switch(obj->otyp) {
+	case RIN_FIRE_RESISTANCE:
+		/* Bad luck if the player is in hell... --jgm */
+		if (!Fire_resistance && dlevel >= 30) {
+			pline("The flames of Hell burn you to a crisp.");
+			killer = "stupidity in hell";
+			done("burned");
+		}
+		break;
 	case RIN_LEVITATION:
 		if(!Levitation) {	/* no longer floating */
 			float_down();
@@ -247,7 +271,6 @@ register long mask;
 
 find_ac(){
 register int uac = 10;
-#define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
 	if(uarm) uac -= ARM_BONUS(uarm);
 	if(uarm2) uac -= ARM_BONUS(uarm2);
 	if(uarmh) uac -= ARM_BONUS(uarmh);

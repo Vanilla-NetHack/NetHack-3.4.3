@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wield.c - version 1.0.2 */
+/* hack.wield.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct obj zeroobj;
@@ -35,8 +35,10 @@ dowield()
 	else {
 		setuwep(wep);
 		res++;
-		if(uwep->cursed) pline("The %s itself to your hand!",
-			aobjnam(uwep, "weld"));
+		if(uwep->cursed)
+		    pline("The %s %s to your hand!",
+			aobjnam(uwep, "weld"),
+			(uwep->quan == 1) ? "itself" : "themselves"); /* a3 */
 		else prinv(uwep);
 	}
  return(res);
@@ -82,7 +84,9 @@ register char *time;
 	if(amount > 0 && uwep->spe > 5 && rn2(3)) {
 	    pline("Your %s violently green for a while and then evaporate%s.",
 		aobjnam(uwep, "glow"), plur(uwep->quan));
-	    useup(uwep);
+	    while(uwep)		/* let all of them disappear */
+				/* note: uwep->quan = 1 is nogood if unpaid */
+	        useup(uwep);
 	    return(1);
 	}
 	if(!rn2(6)) amount *= 2;

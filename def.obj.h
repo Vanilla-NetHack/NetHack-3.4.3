@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.obj.h - version 1.0.2 */
+/* def.obj.h - version 1.0.3 */
 
 struct obj {
 	struct obj *nobj;
@@ -14,6 +14,7 @@ struct obj {
 				   number of charges for wand ( >= -1 )
 				   special for uball and amulet %% BAH */
 	char olet;
+	char invlet;
 	Bitfield(oinvis,1);	/* not yet implemented */
 	Bitfield(odispl,1);
 	Bitfield(known,1);	/* exact nature known */

@@ -1,5 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mklev.c - version 1.0.2 */
+/* hack.mklev.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -46,6 +46,8 @@ makelevel()
 
 	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++)
 		levl[x][y] = zerorm;
+
+	oinit();	/* assign level dependent obj probabilities */
 
 	if(dlevel >= rn1(3, 26)) {	/* there might be several mazes */
 		makemaz();
@@ -306,7 +308,7 @@ gotit:
 	return(ff);
 }
 
-/* if allowable, create a door at [x,y] */
+/* see whether it is allowable to create a door at [x,y] */
 okdoor(x,y)
 register x,y;
 {
@@ -341,9 +343,11 @@ register type;
 	register struct mkroom *broom;
 	register tmp;
 
+	if(!IS_WALL(levl[x][y].typ))	/* avoid SDOORs with '+' as scrsym */
+		type = DOOR;
 	levl[x][y].typ = type;
 	if(type == DOOR)
-		levl[x][y].scrsym ='+';
+		levl[x][y].scrsym = '+';
 	aroom->doorct++;
 	broom = aroom+1;
 	if(broom->hx < 0) tmp = doorindex; else
@@ -377,7 +381,7 @@ chk:
 			if(levl[x][y].typ) {
 #ifdef WIZARD
 			    if(wizard && !secret)
-				pline("Strange area [%d,%d] in maker()",x,y);
+				pline("Strange area [%d,%d] in maker().",x,y);
 #endif WIZARD
 				if(!rn2(3)) return(0);
 				if(x < lowx)
@@ -598,7 +602,7 @@ register a,b;
 
 make_niches()
 {
-	register int ct = rn2(nroom/2 + 1)+1;
+	register int ct = rnd(nroom/2 + 1);
 	while(ct--) makeniche(FALSE);
 }
 
@@ -638,17 +642,17 @@ boolean with_trap;
 		if(with_trap) {
 		    ttmp = maketrap(xx, yy+dy, TELEP_TRAP);
 		    ttmp->once = 1;
-		    make_engr_at(xx,yy-dy,"ad ae?ar um");
+		    make_engr_at(xx, yy-dy, "ad ae?ar um");
 		}
-		dosdoor(xx,yy,aroom,SDOOR);
+		dosdoor(xx, yy, aroom, SDOOR);
 	    } else {
 		rm->typ = CORR;
 		rm->scrsym = CORR_SYM;
 		if(rn2(7))
-		    dosdoor(xx,yy,aroom,rn2(5) ? SDOOR : DOOR);
+		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
-		    mksobj_at(SCR_TELEPORTATION,xx,yy+dy);
-		    if(!rn2(3)) (void) mkobj_at(0,xx,yy+dy);
+		    mksobj_at(SCR_TELEPORTATION, xx, yy+dy);
+		    if(!rn2(3)) (void) mkobj_at(0, xx, yy+dy);
 		}
 	    }
 	    return;
