@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)patchlevel.h	3.2	96/11/19	*/
+/*	SCCS Id: @(#)patchlevel.h	3.2	99/12/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.2.2 */
+/* NetHack 3.2.3 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	2
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	2
+#define PATCHLEVEL	3
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
@@ -16,7 +16,7 @@
 #define EDITLEVEL	0
 
 #define COPYRIGHT_BANNER_A \
-"NetHack, Copyright 1985-1996"
+"NetHack, Copyright 1985-1999"
 
 #define COPYRIGHT_BANNER_B \
 "         By Stichting Mathematisch Centrum and M. Stephenson."
@@ -24,7 +24,7 @@
 #define COPYRIGHT_BANNER_C \
 "         See license for details."
 
-#if 0
+#if 1
 /*
  * If two successive patchlevels have compatible data files (fat chance),
  * defining this with the value of the older one will allow its bones and
@@ -38,7 +38,21 @@
 #endif
 
 /*****************************************************************************/
-/* Version 3.2.2 */
+/* Version 3.2.3 */
+
+/*  Patch 3, December 10, 1999
+ *  Released simultaneously with 3.3.0 for the benefit of
+ *  ports and platforms that were unable to get working
+ *  versions of 3.3.0 ready prior to the year 2000. It
+ *  consisted of just a few bug fixes and offered no new
+ *  functionality changes over 3.2.2.
+ *  
+ *  Y2K fix: use 4 digit year values for the dates in the score file
+ *  updated COPYRIGHT_BANNER_A to reflect year of release
+ *  Fatal Mac bug removed
+ *  DOS Makefile problem removed
+ *  several bugs that could potentially trigger crashes removed
+ */
 
 /*  Patch 2, December 10, 1996
  *  fix the `recover' utility

@@ -1793,6 +1793,9 @@ boolean *lostsome;
 {
 	int invc = inv_cnt();
 
+	/* [TODO: drop u.ugold separately or insert it into inventory chain] */
+	if (invc == 0) return FALSE;	/* nothing to drop */
+
 	while (near_capacity() > (Punished ? UNENCUMBERED : SLT_ENCUMBER)) {
 		register struct obj *obj, *otmp = (struct obj *)0;
 		register int i = rn2(invc);

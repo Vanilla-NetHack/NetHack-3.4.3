@@ -35,6 +35,7 @@ NetHack, except that rounddiv may call panic().
 	void		setrandom	(void)
 	int		getyear		(void)
 	char *		yymmdd		(time_t)
+	long		yyyymmdd	(time_t)
 	int		phase_of_the_moon	(void)
 	boolean		friday_13th	(void)
 	int		night		(void)
@@ -395,7 +396,7 @@ strstri(str, sub)	/* case insensitive substring search */
  *
  * The time is used for:
  *	- seed for rand()
- *	- year on tombstone and yymmdd in record file
+ *	- year on tombstone and yyyymmdd in record file
  *	- phase of the moon (various monsters react to NEW_MOON or FULL_MOON)
  *	- night and midnight (the undead are dangerous at midnight)
  *	- determination of what files are "very old"
@@ -457,11 +458,12 @@ getyear()
 	return(1900 + getlt()->tm_year);
 }
 
+/* This routine is no longer used since in 2000 it will yield "100mmdd". */
 char *
 yymmdd(date)
 time_t date;
 {
-	Static char datestr[7];
+	Static char datestr[10];
 	struct tm *lt;
 
 	if (date == 0)
@@ -476,6 +478,35 @@ time_t date;
 	Sprintf(datestr, "%02d%02d%02d",
 		lt->tm_year, lt->tm_mon + 1, lt->tm_mday);
 	return(datestr);
+}
+
+long
+yyyymmdd(date)
+time_t date;
+{
+	long datenum;
+	struct tm *lt;
+
+	if (date == 0)
+		lt = getlt();
+	else
+#if (defined(ULTRIX) && !(defined(ULTRIX_PROTO) || defined(NHSTDC))) || defined(BSD)
+		lt = localtime((long *)(&date));
+#else
+		lt = localtime(&date);
+#endif
+
+	/* just in case somebody's localtime supplies (year % 100)
+	   rather than the expected (year - 1900) */
+	if (lt->tm_year < 70)
+	    datenum = (long)lt->tm_year + 2000L;
+	else
+	    datenum = (long)lt->tm_year + 1900L;
+	/* yyyy --> yyyymm */
+	datenum = datenum * 100L + (long)(lt->tm_mon + 1);
+	/* yyyymm --> yyyymmdd */
+	datenum = datenum * 100L + (long)lt->tm_mday;
+	return datenum;
 }
 
 /*

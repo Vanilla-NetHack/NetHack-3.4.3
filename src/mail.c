@@ -434,14 +434,17 @@ struct obj *otmp;
 {
 	char *junk[]={
 	"Please disregard previous letter.",
-	"Welcome to NetHack 3.2.2!",
+	"Welcome to NetHack 3.2.3!",
 #ifdef AMIGA
 	"Only Amiga makes it possible.",
 	"CATS have all the answers.",
 #endif
-	"Report bugs to nethack-bugs@linc.cis.upenn.edu"
+	"Report bugs to <nethack-bugs@nethack.org>"
 	};
 
+    if (Blind)
+	pline("Unfortunately you cannot see what it says.");
+    else
 	pline("It reads:  \"%s\"", junk[rn2(SIZE(junk))]);
 }
 

@@ -919,6 +919,8 @@ movebubbles()
 	if (!wportal) set_wportal();
 
 	vision_recalc(2);
+	/* keep attached ball&chain separate from bubble objects */
+	if (Punished) unplacebc();
 
 	/*
 	 * Pick up everything inside of a bubble then fill all bubble
@@ -1021,6 +1023,8 @@ movebubbles()
 			    FALSE);
 	}
 
+	/* put attached ball&chain back */
+	if (Punished) placebc();
 	vision_full_recalc = 1;
 }
 
@@ -1321,7 +1325,6 @@ register boolean ini;
 		    if (MON_AT(cons->x, cons->y)) {
 				mnexto(m_at(cons->x,cons->y));
 			}
-		    if (Punished) placebc();	/* do this for now */
 		    break;
 		}
 

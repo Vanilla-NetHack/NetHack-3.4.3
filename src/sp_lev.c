@@ -739,6 +739,7 @@ struct mkroom	*croom;
     schar x, y;
     char class;
     aligntyp amask;
+    coord cc;
     struct permonst *pm;
 
     if (rn2(100) < m->chance) {
@@ -785,7 +786,9 @@ struct mkroom	*croom;
 	    else
 		get_location(&x, &y, DRY|WET);
 	}
-
+	/* try to find a close place if someone else is already there */
+	if (MON_AT(x,y) && enexto(&cc, x, y, pm))
+	    x = cc.x,  y = cc.y;
 
 	if(m->align != -12)
 	    mtmp = mk_roamer(pm, Amask2align(amask), x, y, m->peaceful);
@@ -1058,6 +1061,7 @@ create_altar(a, croom)
 	schar		sproom,x,y;
 	aligntyp	amask;
 	boolean		croom_is_temple = TRUE;
+	int oldtyp; 
 
 	x = a->x; y = a->y;
 
@@ -1072,6 +1076,11 @@ create_altar(a, croom)
 	    else
 		croom_is_temple = FALSE;
 	}
+
+	/* check for existing features */
+	oldtyp = levl[x][y].typ;
+	if (oldtyp == STAIRS || oldtyp == LADDER)
+	    return;
 
 	a->x = x;
 	a->y = y;
@@ -1091,6 +1100,11 @@ create_altar(a, croom)
 	levl[x][y].altarmask = amask;
 
 	if (a->shrine == -11) a->shrine = rn2(1);  /* handle random case */
+
+	if (oldtyp == FOUNTAIN)
+	    level.flags.nfountains--;
+	else if (oldtyp == SINK)
+	    level.flags.nsinks--;
 
 	if (!croom_is_temple || !a->shrine) return;
 
@@ -1150,6 +1164,13 @@ int		typ;
 	} else {
 	    get_location(&x, &y, DRY);
 	}
+	/* Don't cover up an existing feature (particularly randomly
+	   placed stairs).  However, if the _same_ feature is already
+	   here, it came from the map drawing and we still need to
+	   update the special counters. */
+	if (IS_FURNITURE(levl[x][y].typ) && levl[x][y].typ != typ)
+	    return;
+
 	levl[x][y].typ = typ;
 	if (typ == FOUNTAIN)
 	    level.flags.nfountains++;

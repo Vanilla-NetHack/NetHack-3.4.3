@@ -754,7 +754,7 @@ viewtib.o: viewtib.c
 alloc.o: $(CONFIG_H)	 alloc.c
 	$(CC) $(CFLAGS) -oalloc.o alloc.c
 
-drawing.o: $(CONFIG_H) drawing.c pcvideo.h
+drawing.o: $(CONFIG_H) drawing.c $(INCL)\pcvideo.h
 	$(CC) $(CFLAGS) -odrawing.o drawing.c
 
 decl.o: $(CONFIG_H) decl.c

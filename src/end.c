@@ -535,9 +535,12 @@ die:
 
 	/* clean up unneeded windows */
 	if (have_windows) {
+	    wait_synch();
+	    display_nhwindow(WIN_MESSAGE, TRUE);
 	    destroy_nhwindow(WIN_MAP);
 	    destroy_nhwindow(WIN_STATUS);
 	    destroy_nhwindow(WIN_MESSAGE);
+	    WIN_MESSAGE = WIN_STATUS = WIN_MAP = WIN_ERR;
 
 	    if(!done_stopprint || flags.tombstone)
 		endwin = create_nhwindow(NHW_TEXT);

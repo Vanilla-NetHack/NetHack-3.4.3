@@ -244,6 +244,8 @@ int force;
 			goto do_pit;
 #endif
 		  case ALTAR :
+			if (Is_astralevel(&u.uz) || Is_sanctum(&u.uz)) break;
+
 			if (cansee(x,y))
 				pline_The("altar falls into a chasm.");
 			goto do_pit;

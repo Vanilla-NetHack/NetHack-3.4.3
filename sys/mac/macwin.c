@@ -2389,6 +2389,10 @@ mac_get_nh_event( void )
 {
 	EventRecord anEvent ;
 
+	/* KMH -- Don't proceed if the window system isn't set up */
+	if (!iflags.window_inited)
+		return;
+
 	if ( ( inSelect == WIN_ERR && iflags . window_inited && ! in_topl_mode ( ) )
 		 == mBarDimmed )
 		if ( mBarDimmed ) {

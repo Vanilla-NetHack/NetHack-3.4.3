@@ -248,7 +248,8 @@ register int trouble;
 		    break;
 	    case TROUBLE_STUCK_IN_WALL:
 		    Your("surroundings change.");
-		    tele();
+		    /* no control, but works on no-teleport levels */
+		    (void) safe_teleds();
 		    break;
 	    case TROUBLE_CURSED_LEVITATION:
 		    if (uarmf && uarmf->otyp==LEVITATION_BOOTS

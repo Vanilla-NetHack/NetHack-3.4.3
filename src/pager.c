@@ -507,7 +507,7 @@ do_look(quick)
 
 	/* Finally, print out our explanation. */
 	if (found) {
-	    pline(out_str);
+	    pline("%s", out_str);
 	    /* check the data file for information about this thing */
 	    if (found == 1 && !quick && flags.help) {
 		char temp_buf[BUFSZ];

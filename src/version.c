@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	3.2	96/06/22	*/
+/*	SCCS Id: @(#)version.c	3.2	99/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -82,16 +82,24 @@ uptodate(fd, name)
 int fd;
 const char *name;
 {
-	struct version_info vers_info;
-	boolean verbose = name ? TRUE : FALSE;
+    int rlen;
+    struct version_info vers_info;
+    boolean verbose = name ? TRUE : FALSE;
 
-	(void) read(fd, (genericptr_t) &vers_info, sizeof vers_info);
-	minit();	/* ZEROCOMP */
-	if (!check_version(&vers_info, name, verbose)) {
-		if (verbose) wait_synch();
-		return FALSE;
+    rlen = read(fd, (genericptr_t) &vers_info, sizeof vers_info);
+    minit();		/* ZEROCOMP */
+    if (rlen == 0) {
+	if (verbose) {
+	    pline("File \"%s\" is empty?", name);
+	    wait_synch();
 	}
-	return TRUE;
+	return FALSE;
+    }
+    if (!check_version(&vers_info, name, verbose)) {
+	if (verbose) wait_synch();
+	return FALSE;
+    }
+    return TRUE;
 }
 
 void
