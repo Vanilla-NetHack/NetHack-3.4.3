@@ -646,8 +646,8 @@ int gr_set_flag;
  * to the ISO 8859 character set.  We should probably do a VioSetCp() call to
  * set the codepage to 437.
  */
-	    flags.IBMgraphics = TRUE;
-	    flags.DECgraphics = FALSE;
+	    iflags.IBMgraphics = TRUE;
+	    iflags.DECgraphics = FALSE;
 	    assign_graphics(ibm_graphics, SIZE(ibm_graphics), MAXPCHARS, 0);
 #ifdef PC9800
 	    if (ibmgraphics_mode_callback) (*ibmgraphics_mode_callback)();
@@ -659,8 +659,8 @@ int gr_set_flag;
 /*
  * Use the VT100 line drawing character set.
  */
-	    flags.DECgraphics = TRUE;
-	    flags.IBMgraphics = FALSE;
+	    iflags.DECgraphics = TRUE;
+	    iflags.IBMgraphics = FALSE;
 	    assign_graphics(dec_graphics, SIZE(dec_graphics), MAXPCHARS, 0);
 	    if (decgraphics_mode_callback) (*decgraphics_mode_callback)();
 	    break;
@@ -757,9 +757,9 @@ boolean is_rlevel;
  */
 
 # ifdef ASCIIGRAPH
-	if (!flags.IBMgraphics
+	if (!iflags.IBMgraphics
 #  if defined(USE_TILES) && defined(MSDOS)
-		|| flags.grmode
+		|| iflags.grmode
 #  endif
 				) {
 # endif
@@ -813,9 +813,9 @@ boolean is_rlevel;
 
 	for (i = 0; i < MAXOCLASSES; i++) {
 #ifdef ASCIIGRAPH
-	    if (flags.IBMgraphics
+	    if (iflags.IBMgraphics
 # if defined(USE_TILES) && defined(MSDOS)
-		&& !flags.grmode
+		&& !iflags.grmode
 # endif
 		)
 		oc_syms[i] = IBM_r_oc_syms[i];
@@ -823,7 +823,9 @@ boolean is_rlevel;
 #endif /* ASCIIGRAPH */
 		oc_syms[i] = r_oc_syms[i];
 	}
-
+#if defined(MSDOS)
+	if (iflags.grmode) tileview(FALSE);
+#endif
     } else {
 	(void) memcpy((genericptr_t)showsyms,
 		      (genericptr_t)save_showsyms, sizeof showsyms);
@@ -831,6 +833,9 @@ boolean is_rlevel;
 		      (genericptr_t)save_oc_syms, sizeof oc_syms);
 	(void) memcpy((genericptr_t)monsyms,
 		      (genericptr_t)save_monsyms, sizeof monsyms);
+#if defined(MSDOS)
+	if (iflags.grmode) tileview(TRUE);
+#endif
     }
 }
 #endif /* REINCARNATION */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worn.c	3.2	96/03/28	*/
+/*	SCCS Id: @(#)worn.c	3.2	96/08/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -241,9 +241,11 @@ boolean creation;
 			continue;
 		    best = obj;
 		    goto outer_break; /* no such thing as better amulets */
+#ifdef TOURIST
 		case W_ARMU:
 		    if (!is_shirt(obj)) continue;
 		    break;
+#endif
 		case W_ARMC:
 		    if (!is_cloak(obj)) continue;
 		    break;
@@ -276,9 +278,16 @@ boolean creation;
 outer_break:
 	if (!best || best == old) return;
 
-	if ((flag == W_ARMU || flag == W_ARM) &&
-		(mon->misc_worn_check & W_ARMC))
+	/* if wearing a cloak, account for the time spent removing
+	   and re-wearing it when putting on a suit or shirt */
+	if ((flag == W_ARM
+#ifdef TOURIST
+	  || flag == W_ARMU
+#endif
+			  ) && (mon->misc_worn_check & W_ARMC))
 	    m_delay += 2;
+	/* when upgrading a piece of armor, account for time spent
+	   taking off current one */
 	if (old)
 	    m_delay += objects[old->otyp].oc_delay;
 

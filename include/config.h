@@ -55,7 +55,7 @@
 #endif
 
 #ifdef __MWERKS__	/* defined by Metrowerks compiler */
-# ifndef __beos__	/* BeOS */
+# ifndef __BEOS__	/* BeOS */
 #  define MAC
 # endif
 # define NEED_VARARGS
@@ -113,6 +113,7 @@
 #ifdef WIN32
 # undef UNIX
 # undef MSDOS
+# define STRNCMPI
 #endif
 
 /*
@@ -237,7 +238,7 @@
 #  define DEFAULT_WINDOW_SYS "tty"
 #endif
 
-#ifdef __beos__
+#ifdef __BEOS__
 /* leave at tty graphics for now */
 /* # define DEFAULT_WINDOW_SYS "be" */
 #endif

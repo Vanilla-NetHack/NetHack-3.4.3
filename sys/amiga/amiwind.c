@@ -271,13 +271,13 @@ register struct IntuiMessage *message;
     if (length == 1) {   /* Plain ASCII character */
 	length = buffer[0];
 	/*
-	 *  If flags.num_pad is set, movement is by 4286.
+	 *  If iflags.num_pad is set, movement is by 4286.
 	 *  If not set, translate 4286 into hjkl.
 	 *  This way, the numeric pad can /always/ be used
 	 *  for moving, though best results are when it is off.
 	 */
 arrow:
-	if (!flags.num_pad && numeric_pad && length >= '1' && length <= '9') {
+	if (!iflags.num_pad && numeric_pad && length >= '1' && length <= '9') {
 	    length -= '1';
 	    if (control) {
 		length = ctrl_numpad[length];

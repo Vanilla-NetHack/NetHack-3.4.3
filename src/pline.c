@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pline.c	3.2	96/02/01	*/
+/*	SCCS Id: @(#)pline.c	3.2	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -52,7 +52,7 @@ pline VA_DECL(const char *, line)
 	    Vsprintf(pbuf,line,VA_ARGS);
 	    line = pbuf;
 	}
-	if (!flags.window_inited) {
+	if (!iflags.window_inited) {
 	    raw_print(line);
 	    return;
 	}
@@ -291,7 +291,7 @@ register struct monst *mtmp;
 	if (mtmp->mundetected)	  Strcat(info, ", concealed");
 	if (mtmp->minvis)	  Strcat(info, ", invisible");
 	if (mtmp == u.ustuck)	  Strcat(info,
-			(u.mtimedone && sticks(uasmon)) ? ", held by you" :
+			(Upolyd && sticks(uasmon)) ? ", held by you" :
 				u.uswallow ? (is_animal(u.ustuck->data) ?
 				", swallowed you" :
 				", engulfed you") :
@@ -358,7 +358,7 @@ ustatusline()
 	if (u.uundetected)	Strcat(info, ", concealed");
 	if (Invis)		Strcat(info, ", invisible");
 	if (u.ustuck) {
-	    if (u.mtimedone && sticks(uasmon))
+	    if (Upolyd && sticks(uasmon))
 		Strcat(info, ", holding ");
 	    else
 		Strcat(info, ", held by ");
@@ -376,9 +376,9 @@ ustatusline()
 		    (u.ualign.record == 0) ? "nominally " :
 					    "insufficiently ",
 		align_str(u.ualign.type),
-		u.mtimedone ? mons[u.umonnum].mlevel : u.ulevel,
-		u.mtimedone ? u.mh : u.uhp,
-		u.mtimedone ? u.mhmax : u.uhpmax,
+		Upolyd ? mons[u.umonnum].mlevel : u.ulevel,
+		Upolyd ? u.mh : u.uhp,
+		Upolyd ? u.mhmax : u.uhpmax,
 		u.uac,
 		info);
 }

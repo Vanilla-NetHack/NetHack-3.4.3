@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)data.base	3.2	96/05/13
+#	SCCS Id: @(#)data.base	3.2	96/10/17
 #	Copyright (c) 1994, 1995, 1996 by the NetHack Development Team
 #	Copyright (c) 1994 by Boudewijn Wayers
 #	NetHack may be freely redistributed.  See license for details.
@@ -274,6 +274,12 @@ brigit
 	actually existed, but in Irish mythology she became the
 	midwife to the Virgin Mary.
 		[ Encyclopedia of Gods, by Michael Jordan ]
+broadsword
+	Bring me my broadsword
+	And clear understanding.
+	Bring me my cross of gold,
+	As a talisman.
+		[ "Broadsword" (refrain) by Ian Anderson ]
 bugbear
 	Bugbears are relatives of goblins, although they tend to be
 	larger and more hairy.  They are aggressive carnivores and
@@ -1295,6 +1301,7 @@ leprechaun
 	great magical power.  A Lich hates life in any form; even a
 	touch from one of these creatures will cause a numbing cold
 	in the victim.  They all possess the capability to use magic.
+~* of light
 * light
 	Strange creatures formed from energy rather than matter,
 	lights are given to self-destructive behavior when battling
@@ -1809,7 +1816,8 @@ orcus
 	stinger.  He is most feared, though, for his powerful magic
 	abilities.  His wand causes death to those he chooses.
 ~orc ??m*
-*orc*
+orc*
+* orc
 uruk*hai
 	Orcs, bipeds with a humanoid appearance, are related to the
 	goblins, but much bigger and more dangerous.  The average orc

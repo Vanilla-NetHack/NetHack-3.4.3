@@ -2,17 +2,7 @@
                                on an OS/2 system
              =====================================================
                                 Timo Hakulinen
-                        Last revision: 29 February 1996
-
-NOTE:  All instructions given in this file for building NetHack 3.2 for
-OS/2 should be considered tentative.  They are in fact virtually unchanged
-from the notes for NetHack 3.1.  This is due to the fact that, unfortunately,
-the DevTeam currently has no access to a machine running OS/2 and, thus,
-no way of verifying the correct procedures.  If you build NetHack using the
-included makefile, please send the changes you had to make, if any, to
-nethack-bugs@linc.cis.upenn.edu.  Also, please report any information given
-in this file which you find incorrect or inaccurate.  If nothing needs to
-be changed (unlikely), it would be nice to know that too.
+                        Last revision: 29 October 1996
 
 0.  Read this entire file before starting, and come back to the Notes below if
     you have any problems.
@@ -53,10 +43,11 @@ be changed (unlikely), it would be nice to know that too.
 
     compiler:                           runs in:            compiles for:
 
-    Microsoft C 5.1                     DOS / OS/2 1.0-2.x  OS/2 1.x
+    Microsoft C 5.1                     DOS / OS/2 1.0-Warp OS/2 1.x
     Microsoft 6.0A (see note 5)         - " -               - " -
-    IBM C Set/2 1.00, Toolkit/2 2.00    OS/2 2.x            OS/2 2.x
-    GCC emx 0.8f (see note 6)           OS/2 2.x            OS/2 2.x
+    IBM C Set/2 1.00, Toolkit/2 2.00    OS/2 2.x, Warp      OS/2 2.x, Warp
+    IBM CSet++ 2.00                     OS/2 2.x, Warp      OS/2 2.x, Warp
+    GCC emx 0.8f (see note 6)           OS/2 2.x, Warp      OS/2 2.x, Warp
 
     Note that code compiled for OS/2 versions 1.0-1.3 runs unmodified in OS/2
     versions 2.0 and up.  In principle it should be possible to cross compile

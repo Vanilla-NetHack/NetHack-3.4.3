@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.h	3.2	96/05/12	*/
+/*	SCCS Id: @(#)winX.h	3.2	96/08/18	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -118,11 +118,12 @@ struct status_info_t {
 typedef struct x11_mi {
     struct x11_mi *next;
     anything identifier;	/* Opaque type to identify this selection */
+    long pick_count;		/* specific selection count; -1 if none */
+    char *str;			/* The text of the item. */
+    int  attr;			/* Attribute for the line. */
     boolean selected;		/* Been selected? */
     char selector;		/* Char used to select this entry. */
     char gselector;		/* Group selector. */
-    int  attr;			/* Attribute for the line. */
-    char *str;			/* The text of the item. */
 } x11_menu_item;
 
 struct menu {
@@ -142,6 +143,7 @@ struct menu_info_t {
     struct menu new_menu;	/* New menu being built. */
 
     XFontStruct *fs;		/* Font for the window. */
+    long menu_count;		/* number entered by user */
     Dimension line_height;	/* Total height of a line of text. */
     Dimension internal_height;	/* Internal height between widget & border */
     Dimension internal_width;	/* Internal width between widget & border */
@@ -151,6 +153,7 @@ struct menu_info_t {
     boolean is_active;		/* TRUE when waiting for user input. */
     boolean is_up;		/* TRUE when window is popped-up. */
     boolean cancelled;	/* Menu has been explicitly cancelled. */
+    boolean counting;	/* true when menu_count has a valid value */
 };
 
 /*

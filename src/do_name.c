@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.2	96/05/05	*/
+/*	SCCS Id: @(#)do_name.c	3.2	96/10/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -18,7 +18,7 @@ const char *goal;
     int sidx, tx, ty;
     boolean msg_given = TRUE;	/* clear message window by default */
     const char *sdp;
-    if(flags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
+    if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
 
     if (flags.verbose) {
 	pline("(For instructions type a ?)");
@@ -67,7 +67,7 @@ const char *goal;
 	    char sbuf[80];
 	    winid tmpwin = create_nhwindow(NHW_MENU);
 	    Sprintf(sbuf, "Use [%s] to move the cursor to %s.",
-		  flags.num_pad ? "2468" : "hjkl", goal);
+		  iflags.num_pad ? "2468" : "hjkl", goal);
 	    putstr(tmpwin, 0, sbuf);
 	    putstr(tmpwin, 0,
 		   "Use [HJKL] to move the cursor 8 units at a time.");
@@ -116,7 +116,7 @@ const char *goal;
 		    pline("Unknown direction: '%s' (%s).",
 			  visctrl((char)c),
 			  !force ? "aborted" :
-			  flags.num_pad ? "use 2468 or ." : "use hjkl or .");
+			  iflags.num_pad ? "use 2468 or ." : "use hjkl or .");
 		    msg_given = TRUE;
 		} /* k => matching */
 	    } /* !quitchars */
@@ -210,14 +210,18 @@ do_mname()
 		pline("I see no monster there.");
 		return(0);
 	}
-	Sprintf(qbuf, "What do you want to call %s?", x_monnam(mtmp, 0,
-		(char *)0, 1));
+	/* special case similar to the one in lookat() */
+	if (mtmp->data != &mons[PM_HIGH_PRIEST])
+	    Strcpy(buf, x_monnam(mtmp, 0, (char *)0, 1));
+	else
+	    Sprintf(buf, "the high priest%s", mtmp->female ? "ess" : "");
+	Sprintf(qbuf, "What do you want to call %s?", buf);
 	getlin(qbuf,buf);
 	if(!*buf || *buf == '\033') return(0);
 	/* strip leading and trailing spaces; unnames monster if all spaces */
 	(void)mungspaces(buf);
 
-	if (type_is_pname(mtmp->data))
+	if (mtmp->iswiz || type_is_pname(mtmp->data))
 	    pline("%s doesn't like being called names!", Monnam(mtmp));
 	else (void) christen_monst(mtmp, buf);
 	return(0);
@@ -297,7 +301,7 @@ const char *name;
 	   precedes this `if' statement, a gcc bug will miscompile the
 	   test on vax (`insv' instruction used to store bitfield does
 	   not set condition codes, but optimizer behaves as if it did).
-	   gcc-2.8.0 should finally fix this.... */
+	   gcc-2.7.2.1 finally fixed this. */
 	if (oname_size) {
 	    if (name)
 		Strcpy(ONAME(otmp), name);
@@ -450,12 +454,12 @@ register struct obj *obj;
 #ifdef OEXTRA
 	otemp.oxlth = 0;
 #endif
-	if (objects[otemp.otyp].oc_class == POTION_CLASS && otemp.corpsenm) {
-		/* kludge, meaning it's sink water */
-		Sprintf(qbuf,"Call a stream of %s fluid:",
-				OBJ_DESCR(objects[otemp.otyp]));
-	} else
-		Sprintf(qbuf, "Call %s:", an(xname(&otemp)));
+	if (objects[otemp.otyp].oc_class == POTION_CLASS && otemp.corpsenm)
+	    /* kludge, meaning it's sink water */
+	    Sprintf(qbuf,"Call a stream of %s fluid:",
+		    OBJ_DESCR(objects[otemp.otyp]));
+	else
+	    Sprintf(qbuf, "Call %s:", an(xname(&otemp)));
 	getlin(qbuf, buf);
 	if(!*buf || *buf == '\033')
 		return;
@@ -467,11 +471,15 @@ register struct obj *obj;
 	/* strip leading and trailing spaces; uncalls item if all spaces */
 	(void)mungspaces(buf);
 	if (!*buf) {
-		if (*str1)	/* had name, so possibly remove from disco[] */
-			undiscover_object(obj->otyp),  *str1 = (char *)0;
+	    if (*str1) {	/* had name, so possibly remove from disco[] */
+		/* strip name first, for the update_inventory() call
+		   from undiscover_object() */
+		*str1 = (char *)0;
+		undiscover_object(obj->otyp);
+	    }
 	} else {
-		*str1 = strcpy((char *) alloc((unsigned)strlen(buf)+1), buf);
-		discover_object(obj->otyp, FALSE); /* possibly add to disco[] */
+	    *str1 = strcpy((char *) alloc((unsigned)strlen(buf)+1), buf);
+	    discover_object(obj->otyp, FALSE); /* possibly add to disco[] */
 	}
 }
 
@@ -525,7 +533,9 @@ const char *adjective;
 
 	buf[0] = '\0';
 	if (mtmp->ispriest || mtmp->isminion) {
-	    name = priestname(mtmp);
+	    char priestnambuf[BUFSZ];
+
+	    name = priestname(mtmp, priestnambuf);
 	    if ((trunam || article == 3) && !strncmp(name, "the ", 4))
 		name += 4;
 	    return strcpy(buf, name);

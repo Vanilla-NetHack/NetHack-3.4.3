@@ -46,13 +46,6 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		free((genericptr_t)ptr)
 
-#ifdef MICRO
-# undef exit
-# if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
-
 extern void FDECL(yyerror, (const char *));
 extern void FDECL(yywarning, (const char *));
 extern int NDECL(yylex);

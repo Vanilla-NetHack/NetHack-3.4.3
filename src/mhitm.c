@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.2	96/04/29	*/
+/*	SCCS Id: @(#)mhitm.c	3.2	96/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,6 +15,7 @@ static NEARDATA struct obj *otmp;
 static const char brief_feeling[] =
 	"have a %s feeling for a moment, then it passes.";
 
+static char *FDECL(mon_nam_too, (char *,struct monst *,struct monst *));
 static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
 static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
 static int FDECL(gazemm, (struct monst *,struct monst *,struct attack *));
@@ -31,6 +32,23 @@ static int FDECL(passivemm, (struct monst *, struct monst *, BOOLEAN_P, int));
  * instead of a global variable.
  */
 static int dieroll;
+
+/* returns mon_nam(mon) relative to other_mon; normal name unless they're
+   the same, in which case the reference is to {him|her|it} self */
+static char *
+mon_nam_too(outbuf, mon, other_mon)
+char *outbuf;
+struct monst *mon, *other_mon;
+{
+	Strcpy(outbuf, mon_nam(mon));
+	if (mon == other_mon)
+	    switch (pronoun_gender(mon)) {
+	    case 0:	Strcpy(outbuf, "himself");  break;
+	    case 1:	Strcpy(outbuf, "herself");  break;
+	    default:	Strcpy(outbuf, "itself"); break;
+	    }
+	return outbuf;
+}
 
 static void
 noises(magr, mattk)
@@ -55,7 +73,7 @@ missmm(magr, mdef, mattk)
 	struct attack *mattk;
 {
 	const char *fmt;
-	char buf[BUFSZ];
+	char buf[BUFSZ], mdef_name[BUFSZ];
 
 	if (vis) {
 		if (mdef->m_ap_type) seemimic(mdef);
@@ -63,7 +81,7 @@ missmm(magr, mdef, mattk)
 		fmt = (could_seduce(magr,mdef,mattk) && !magr->mcan) ?
 			"%s pretends to be friendly to" : "%s misses";
 		Sprintf(buf, fmt, Monnam(magr));
-		pline("%s %s.", buf, mon_nam(mdef));
+		pline("%s %s.", buf, mon_nam_too(mdef_name, mdef, magr));
 	} else  noises(magr, mattk);
 }
 
@@ -303,7 +321,7 @@ hitmm(magr, mdef, mattk)
 {
 	if(vis){
 		int compat;
-		char buf[BUFSZ];
+		char buf[BUFSZ], mdef_name[BUFSZ];
 
 		if(mdef->m_ap_type) seemimic(mdef);
 		if(magr->m_ap_type) seemimic(magr);
@@ -343,7 +361,7 @@ hitmm(magr, mdef, mattk)
 				Sprintf(buf,"%s hits", magr_name);
 		    }
 		}
-		pline("%s %s.", buf, mon_nam(mdef));
+		pline("%s %s.", buf, mon_nam_too(mdef_name, mdef, magr));
 	} else  noises(magr, mattk);
 	return(mdamagem(magr, mdef, mattk));
 }

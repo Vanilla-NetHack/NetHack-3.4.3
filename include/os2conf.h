@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)os2conf.h	3.2	96/02/29	*/
+/*	SCCS Id: @(#)os2conf.h	3.2	96/10/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,6 +15,8 @@
 /* #define OS2_MSC		/* Microsoft C 5.1 and 6.0 */
 /* #define OS2_GCC		/* GCC emx 0.8f */
 /* #define OS2_CSET2		/* IBM C Set/2 (courtesy Jeff Urlwin) */
+/* #define OS2_CSET2_VER_1	/* CSet/2 version selection */
+/* #define OS2_CSET2_VER_2	/* - " - */
 
 /*
  * System configuration.
@@ -86,8 +88,6 @@
 #define FCMASK	(S_IREAD | S_IWRITE)
 
 #include <fcntl.h>
-
-#define exit	msexit		/* do chdir first */
 
 #ifndef REDO
 # undef	Getchar

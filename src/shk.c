@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.2	96/03/09	*/
+/*	SCCS Id: @(#)shk.c	3.2	96/07/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -620,9 +620,9 @@ register struct obj *obj, *merge;
 	register struct bill_x *bpm;
 	register struct monst *shkp;
 
-	if(obj->oclass == FOOD_CLASS) food_disappears(obj);
-
-	if (obj->cobj) delete_contents(obj);
+	if (obj->otyp == LEASH && obj->leashmon) o_unleash(obj);
+	if (obj->oclass == FOOD_CLASS) food_disappears(obj);
+	if (Has_contents(obj)) delete_contents(obj);
 
 	shkp = shop_keeper(*u.ushops);
 
@@ -830,17 +830,17 @@ register struct monst *shkp;
 register xchar ox,oy;
 {
 	xchar sx, sy;
+	struct eshk *eshkp = ESHK(shkp);
 
-	if(index(in_rooms(ox, oy, SHOPBASE), ESHK(shkp)->shoproom) &&
-	    !ANGRY(shkp)) {
-		ESHK(shkp)->robbed += (addupbill(shkp) +
-				       ESHK(shkp)->debit + ESHK(shkp)->loan);
-		ESHK(shkp)->robbed -= ESHK(shkp)->credit;
-		if(ESHK(shkp)->robbed < 0L)
-		    ESHK(shkp)->robbed = 0L;
-		ESHK(shkp)->credit = 0L;
-		setpaid(shkp);
+	/* all pending shop transactions are now "past due" */
+	if (eshkp->billct || eshkp->debit || eshkp->loan || eshkp->credit) {
+	    eshkp->robbed += (addupbill(shkp) + eshkp->debit + eshkp->loan);
+	    eshkp->robbed -= eshkp->credit;
+	    if (eshkp->robbed < 0L) eshkp->robbed = 0L;
+	    /* billct, debit, loan, and credit will be cleared by setpaid */
+	    setpaid(shkp);
 	}
+
 	/* If you just used a wand of teleportation to send the shk away, you
 	   might not be able to see her any more.  Monnam would yield "it",
 	   which makes this message look pretty silly, so temporarily restore

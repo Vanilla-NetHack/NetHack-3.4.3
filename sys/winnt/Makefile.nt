@@ -1,10 +1,10 @@
-#       SCCS Id: @(#)Makefile.nt       3.2     96/03/15
+#       SCCS Id: @(#)Makefile.nt       3.2     96/10/30
 #       Copyright (c) NetHack PC Development Team 1993, 1994, 1995, 1996
 #
-#       NetHack 3.2 Makefile for MS Visual C++ V4.0 and MS NMAKE
+#       NetHack 3.2 Makefile for MS Visual C++ V4.x and MS NMAKE
 #  
 #       Win32 Compilers Tested:
-#                              - Microsoft 32 bit Visual C++ V4.0
+#                              - Microsoft 32 bit Visual C++ V4.x
 #
 #       In addition to your C compiler,
 #
@@ -20,16 +20,18 @@
 #       Michael Allison
 #
 #----------------------------------------------------------------------
-# Do not delete the following include.
+# Do not delete the following 3 lines.
 #
-!include <ntwin32.mak>
+TARGETOS=BOTH
+APPVER=4.0
+!include <win32.mak>
 
 #
 #  Set the gamedir according to your preference.  It must be present prior
 #  to compilation.
 
 GAME    = NetHack                # Game Name
-GAMEDIR = c:\games\nethackn      # Game directory
+GAMEDIR = \games\nethackn      # Game directory
 
 #
 #  Source directories.    Makedefs hardcodes these, don't change them.
@@ -433,14 +435,9 @@ VIS_TAB_H   = $(INCL)\vis_tab.h
 WINTTY_H    = $(INCL)\wintty.h
 WIN32API_H  = $(INCL)\win32api.h
 WIN32_H     = $(INCL)\nhwin32.h
+PATCHLEVEL_H   = $(INCL)\patchlevel.h
 
-#
-# In the unix distribution this file is patchlevel.h, make it 8.3 here
-# to avoid an nmake warning under dos.
-#
-
-PATCHLEVEL_H   = $(INCL)\patchlev.h
-
+DATABASE = $(DAT)\data.base
 
 #
 #  The name of the game.
@@ -448,11 +445,6 @@ PATCHLEVEL_H   = $(INCL)\patchlev.h
 
 GAMEFILE = $(GAMEDIR)\$(GAME).exe
 
-#
-# make data.base an 8.3 filename to prevent an nmake warning
-#
-
-DATABASE = $(DAT)\data.bas
 
 #######################################################################
 #
@@ -673,13 +665,13 @@ $(U)lev_yacc.c $(INCL)\lev_comp.h : $(U)lev_comp.y
 !	ELSE
 	   @echo $(U)lev_comp.y has changed.
 	   @echo To update $(U)lev_yacc.c and $(INCL)\lev_comp.h run $(YACC).
-	   @echo.
+	   @echo ------
 	   @echo For now, we will copy the prebuilt lev_yacc.c and 
 	   @echo lev_comp.h from $(SYS) into $(UTIL) and use them.
 	   @copy $(SYS)\lev_yacc.c $(U)lev_yacc.c >nul
 	   @copy $(SYS)\lev_comp.h $(INCL)\lev_comp.h >nul
-	   @echo.>>$(U)\lev_yacc.c
-	   @echo.>>$(INCL)\lev_comp.h
+	   @echo /**/ >>$(U)lev_yacc.c
+	   @echo /**/ >>$(INCL)\lev_comp.h
 !	ENDIF
 
 $(U)lev_$(LEX).c:  $(U)lev_comp.l
@@ -691,11 +683,11 @@ $(U)lev_$(LEX).c:  $(U)lev_comp.l
 	   chdir $(SRC)
 !	ELSE
 	   @echo $(U)lev_comp.l has changed. To update $@ run $(LEX).
-	   @echo.
+	   @echo -----
 	   @echo For now, we will copy the prebuilt lev_lex.c 
 	   @echo from $(SYS) into $(UTIL) and use it.
 	   @copy $(SYS)\lev_lex.c $@ >nul
-	   @echo.>>$@
+	   @echo /**/ >>$@
 !	ENDIF
 
 #
@@ -733,13 +725,13 @@ $(U)dgn_yacc.c $(INCL)\dgn_comp.h : $(U)dgn_comp.y
 !	ELSE
 	   @echo $(U)dgn_comp.y has changed. To update dgn_yacc.c and 
 	   @echo $(INCL)\dgn_comp.h run $(YACC).
-	   @echo.
+	   @echo ----
 	   @echo For now, we will copy the prebuilt $(U)dgn_yacc.c and 
 	   @echo dgn_comp.h from $(SYS) into $(UTIL) and use them.
 	   @copy $(SYS)\dgn_yacc.c $(U)dgn_yacc.c >nul
 	   @copy $(SYS)\dgn_comp.h $(INCL)\dgn_comp.h >nul
-	   @echo.>>$(U)\dgn_yacc.c
-	   @echo.>>$(INCL)\dgn_comp.h
+	   @echo /**/ >>$(U)dgn_yacc.c
+	   @echo /**/ >>$(INCL)\dgn_comp.h
 !	ENDIF
 
 $(U)dgn_$(LEX).c:  $(U)dgn_comp.l
@@ -751,11 +743,11 @@ $(U)dgn_$(LEX).c:  $(U)dgn_comp.l
 	   chdir $(SRC)
 !	ELSE
 	   @echo $(U)dgn_comp.l has changed. To update $@ run $(LEX).
-	   @echo.
+	   @echo ---
 	   @echo For now, we will copy the prebuilt dgn_lex.c 
 	   @echo from $(SYS) into $(UTIL) and use it.
 	   @copy $(SYS)\dgn_lex.c $@ >nul
-	   @echo.>>$@
+	   @echo /**/ >>$@
 !	ENDIF
 
 
@@ -771,9 +763,9 @@ envchk:
 	   @echo CL=$(CL)
 !	ENDIF
 !	IF "$(TILEGAME)"!=""
-	   @echo.
+	   @echo -------------------------------------------
 	   @echo NOTE: This build will include tile support.
-	   @echo.
+	   @echo -------------------------------------------
 !	ENDIF
 
 #
@@ -995,7 +987,7 @@ pch.c:
 	@echo fakefile(int argc, char *argv[]) >>pch.c
 	@echo { >>pch.c
 	@echo } >>pch.c
-	@echo. >>pch.c
+	@echo /**/ >>pch.c
 
 hack.pch: $(HACK_H) pch.c
 	@echo Generating new precompiled header: hack.pch
@@ -1234,4 +1226,3 @@ $(O)write.o:    $(PCH) $(SRC)\write.c    $(HACK_H)
 $(O)zap.o:      $(PCH) $(SRC)\zap.c      $(HACK_H)
 
 # end of file
-

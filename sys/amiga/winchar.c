@@ -889,8 +889,8 @@ amiv_start_glyphout(window)
     /*
      * Set the mode, and be done with it
      */
-    usecolor = flags.use_color;
-    flags.use_color = FALSE;
+    usecolor = iflags.use_color;
+    iflags.use_color = FALSE;
     cw->wflags |= FLMAP_INGLYPH;
 }
 
@@ -917,7 +917,7 @@ amii_end_glyphout(window)
     /*
      * Clean up whatever is left in the buffer
      */
-    flags.use_color = usecolor;
+    iflags.use_color = usecolor;
 
     /*
      * Reset internal data structs
@@ -1181,8 +1181,8 @@ amii_start_glyphout(window)
     /*
      * Set the mode, and be done with it
      */
-    usecolor = flags.use_color;
-    flags.use_color = FALSE;
+    usecolor = iflags.use_color;
+    iflags.use_color = FALSE;
     cw->wflags |= FLMAP_INGLYPH;
 }
 #endif /* !TESTING */
@@ -1211,7 +1211,7 @@ amii_end_glyphout(window)
     /*
      * Clean up whatever is left in the buffer
      */
-    flags.use_color = usecolor;
+    iflags.use_color = usecolor;
 
     /*
      * Reset internal data structs

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macmenu.c	3.1	           93/04/29       */
+/*	SCCS Id: @(#)macmenu.c	3.2	96/11/24	*/
 /*      Copyright (c) Macintosh NetHack Port Team, 1993.          */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -455,8 +455,16 @@ DialogAskName(asknameRec *pANR)
 			GetDItem ( ( WindowPtr ) & dRec , etxtANWho , & kind , & item , & area ) ;
 			SetIText ( item , pName ) ;
 			if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-				(*pANR).anMenu[anRole] = ( strchr ( (char *) uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
-					(char *) uitmChar [ 0 ] ) ;
+			    short role = (*pANR).anMenu[anRole];
+			    char suffix = (char) pName[pName[0]],
+			    	*choices = (char *) uitmChar[0],
+				*sfxindx = strchr(choices, suffix);
+
+			    if (sfxindx)
+				role = (short) (sfxindx - choices);
+			    else if (suffix == '@')
+				role = (short) rn2((int) strlen(choices));
+			    (*pANR).anMenu[anRole] = role;
 			}
 		}
 	}
@@ -597,8 +605,16 @@ DialogAskName(asknameRec *pANR)
  		GetIText ( item , ( * pANR ) . anWho ) ;
 		BlockMove ( pANR -> anWho , pName , pANR -> anWho [ 0 ] + 1 ) ;
 		if ( pName [ 0 ] > 2 && pName [ pName [ 0 ] - 1 ] == '-' ) {
-			(*pANR).anMenu[anRole] = ( strchr ( (char *) uitmChar [ 0 ] , pName [ pName [ 0 ] ] ) -
-				(char *) uitmChar [ 0 ] ) ;
+		    short role = (*pANR).anMenu[anRole];
+		    char suffix = (char) pName[pName[0]],
+			*choices = (char *) uitmChar[0],
+			*sfxindx = strchr(choices, suffix);
+
+		    if (sfxindx)
+			role = (short) (sfxindx - choices);
+		    else if (suffix == '@')
+			role = (short) rn2((int) strlen(choices));
+		    (*pANR).anMenu[anRole] = role;
 		}
 	}
 

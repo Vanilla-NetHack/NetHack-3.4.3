@@ -206,7 +206,7 @@ init_nhwindows(int* argcp, char** argv)
 		   should be interpreted, and *argcp and *argv should
 		   be changed to remove those arguments.
 		-- When the message window is created, the variable
-		   flags.window_inited needs to be set to TRUE.  Otherwise
+		   iflags.window_inited needs to be set to TRUE.  Otherwise
 		   all plines() will be done via raw_print().
 		** Why not have init_nhwindows() create all of the "standard"
 		** windows?  Or at least all but WIN_INFO?	-dean
@@ -386,7 +386,7 @@ pline(str, ...)
 		   requires the variable "char toplines[]" be defined; Every
 		   putstr() on WIN_MESSAGE must copy str to toplines[] for use
 		   by Norep() and pline().  If the window system is not active
-		   (!flags.window_inited) pline() uses raw_print().
+		   (!iflags.window_inited) pline() uses raw_print().
 
 
 V.  Game startup

@@ -290,7 +290,7 @@ amii_create_nhwindow(type)
     int maph;
 
     maph = ( 22 * mxsize ) + HackScreen->WBorTop +
-			HackScreen->WBorBottom + TextsFont->tf_YSize + 1 + 1;
+			HackScreen->WBorBottom + HackFont->tf_YSize + 1 + 1;
     if( WIN_STATUS != WIN_ERR && amii_wins[ WIN_STATUS ] )
 	stwin = amii_wins[ WIN_STATUS ]->win;
 
@@ -650,14 +650,14 @@ amii_create_nhwindow(type)
 	case NHW_MESSAGE:
 	    SetMenuStrip(w, HackMenu);
 	    if( WINVERS_AMIV )
-		if(flags.msg_history<20)flags.msg_history=20;
+		if(iflags.msg_history<20)iflags.msg_history=20;
 	    else
-		if(flags.msg_history<40)flags.msg_history=40;
+		if(iflags.msg_history<40)iflags.msg_history=40;
 
-	    if(flags.msg_history>400)flags.msg_history=400;
-	    flags.window_inited=TRUE;
-	    wd->data = (char **)alloc( flags.msg_history*sizeof( char * ) );
-	    memset( wd->data, 0, flags.msg_history * sizeof( char * ) );
+	    if(iflags.msg_history>400)iflags.msg_history=400;
+	    iflags.window_inited=TRUE;
+	    wd->data = (char **)alloc( iflags.msg_history*sizeof( char * ) );
+	    memset( wd->data, 0, iflags.msg_history * sizeof( char * ) );
 	    wd->maxrow = wd->maxcol = 0;
 	    /* Indicate that we have not positioned the cursor yet */
 	    wd->curx = -1;
@@ -1685,7 +1685,7 @@ cursor_off( window )
 
     if( window == WIN_ERR || ( cw = amii_wins[window] ) == NULL )
     {
-	flags.window_inited=0;
+	iflags.window_inited=0;
 	panic(winpanicstr,window, "cursor_off");
     }
 
@@ -1749,7 +1749,7 @@ cursor_on( window )
     if( window == WIN_ERR || ( cw = amii_wins[window] ) == NULL )
     {
 	/* tty does this differently - is this OK? */
-	flags.window_inited=0;
+	iflags.window_inited=0;
 	panic(winpanicstr,window, "cursor_on");
     }
 
@@ -1927,14 +1927,14 @@ if(u.uz.dlevel != x){
     else		/* AMII, or Rogue level in either version */
     {
 #ifdef TEXTCOLOR
-#define zap_color(n)  color = flags.use_color ? zapcolors[n] : NO_COLOR
-#define cmap_color(n) color = flags.use_color ? defsyms[n].color : NO_COLOR
-#define obj_color(n)  color = flags.use_color ? objects[n].oc_color : NO_COLOR
-#define mon_color(n)  color = flags.use_color ? mons[n].mcolor : NO_COLOR
-#define pet_color(n)  color = flags.use_color ? mons[n].mcolor :          \
+#define zap_color(n)  color = iflags.use_color ? zapcolors[n] : NO_COLOR
+#define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
+#define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
+#define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :          \
 		/* If no color, try to hilite pets; black  */ \
 		/* should be HI                */ \
-		    ((flags.hilite_pet) ? CLR_BLACK : NO_COLOR)
+		    ((iflags.hilite_pet) ? CLR_BLACK : NO_COLOR)
 
 # else /* no text color */
 

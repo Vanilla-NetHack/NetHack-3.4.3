@@ -243,7 +243,7 @@ short hor , vert ;
 	SetPort ( _mt_window ) ;
 	SetOrigin ( -3 , -3 ) ;
 	font_num = 0 ;
-	font_size = ( flags.large_font && ! small_screen ) ? 12 : 9 ;
+	font_size = ( iflags.large_font && ! small_screen ) ? 12 : 9 ;
 	GetFNum ( "\pHackFont" , & font_num ) ;
 	if ( font_num != 0 ) {
 		mustwork ( init_tty_number ( _mt_window , font_num , font_size ,
@@ -616,7 +616,7 @@ long flag ;
 
 	mustwork ( set_tty_attrib ( _mt_window , TTY_ATTRIB_CURSOR , flag ) ) ;
 
-	flags . cbreak = 1 ;
+	iflags . cbreak = 1 ;
 }
 
 
@@ -672,7 +672,7 @@ tty_number_pad ( int arg ) {
 
 void
 tty_start_screen ( void ) {
-	flags . cbreak = 1 ;
+	iflags . cbreak = 1 ;
 }
 
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monmove.c	3.2	96/02/10	*/
+/*	SCCS Id: @(#)monmove.c	3.2	96/07/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1006,6 +1006,9 @@ postmov:
 			    /* newsym(mtmp->mx, mtmp->my); */ /* done below */
 			    unblock_point(mtmp->mx,mtmp->my); /* vision */
 			}
+			/* if it's a shop door, schedule repair */
+			if (*in_rooms(mtmp->mx, mtmp->my, SHOPBASE))
+			    add_damage(mtmp->mx, mtmp->my, 0L);
 		    }
 		}
 

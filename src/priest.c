@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.2	96/05/03	*/
+/*	SCCS Id: @(#)priest.c	3.2	96/08/04	*/
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989.		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -250,11 +250,10 @@ boolean sanctum;   /* is it the seat of the high priest? */
  *	- minions do not have ispriest but have isminion and emin
  */
 char *
-priestname(mon)
+priestname(mon, pname)
 register struct monst *mon;
+char *pname;		/* caller-supplied output buffer */
 {
-	static NEARDATA char pname[PL_NSIZ];
-
 	Strcpy(pname, "the ");
 	if (mon->minvis) Strcat(pname, "invisible ");
 	if (mon->ispriest || mon->data == &mons[PM_ALIGNED_PRIEST] ||

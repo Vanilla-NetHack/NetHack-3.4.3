@@ -7,6 +7,7 @@
 #include "objclass.h"
 #include "flag.h"
 NEARDATA struct flag flags;	/* provide linkage */
+NEARDATA struct instance_flags iflags;	/* provide linkage */
 #define static
 #else
 #include "hack.h"
@@ -40,7 +41,7 @@ static struct Bool_Opt
 #endif
 	{"autopickup", &flags.pickup, TRUE},
 #if defined(MICRO) && !defined(AMIGA)
-	{"BIOS", &flags.BIOS, FALSE},
+	{"BIOS", &iflags.BIOS, FALSE},
 #else
 	{"BIOS", (boolean *)0, FALSE},
 #endif
@@ -51,16 +52,16 @@ static struct Bool_Opt
 #endif
 #ifdef TEXTCOLOR
 # ifdef MICRO
-	{"color", &flags.use_color, TRUE},
+	{"color", &iflags.use_color, TRUE},
 # else	/* systems that support multiple terminals, many monochrome */
-	{"color", &flags.use_color, FALSE},
+	{"color", &iflags.use_color, FALSE},
 # endif
 #else
 	{"color", (boolean *)0, FALSE},
 #endif
 	{"confirm",&flags.confirm, TRUE},
 #ifdef TERMLIB
-	{"DECgraphics", &flags.DECgraphics, FALSE},
+	{"DECgraphics", &iflags.DECgraphics, FALSE},
 #else
 	{"DECgraphics", (boolean *)0, FALSE},
 #endif
@@ -78,25 +79,25 @@ static struct Bool_Opt
 #endif
 	{"help", &flags.help, TRUE},
 #ifdef TEXTCOLOR
-	{"hilite_pet", &flags.hilite_pet, FALSE},
+	{"hilite_pet", &iflags.hilite_pet, FALSE},
 #else
 	{"hilite_pet", (boolean *)0, FALSE},
 #endif
 #ifdef ASCIIGRAPH
-	{"IBMgraphics", &flags.IBMgraphics, FALSE},
+	{"IBMgraphics", &iflags.IBMgraphics, FALSE},
 #else
 	{"IBMgraphics", (boolean *)0, FALSE},
 #endif
 	{"ignintr", &flags.ignintr, FALSE},
 #ifdef MAC_GRAPHICS_ENV
-	{"large_font", &flags.large_font, FALSE},
+	{"large_font", &iflags.large_font, FALSE},
 #else
 	{"large_font", (boolean *)0, FALSE},
 #endif
 	{"legacy",&flags.legacy, TRUE},
 	{"lit_corridor", &flags.lit_corridor, FALSE},
 #ifdef MAC_GRAPHICS_ENV
-	{"Macgraphics", &flags.MACgraphics, TRUE},
+	{"Macgraphics", &iflags.MACgraphics, TRUE},
 #else
 	{"Macgraphics", (boolean *)0, FALSE},
 #endif
@@ -106,12 +107,12 @@ static struct Bool_Opt
 	{"mail", (boolean *)0, TRUE},
 #endif
 #ifdef NEWS
-	{"news", &flags.news, TRUE},
+	{"news", &iflags.news, TRUE},
 #else
 	{"news", (boolean *)0, FALSE},
 #endif
 	{"null", &flags.null, TRUE},
-	{"number_pad", &flags.num_pad, FALSE},
+	{"number_pad", &iflags.num_pad, FALSE},
 #ifdef MAC
 	{"page_wait", &flags.page_wait, TRUE},
 #else
@@ -124,19 +125,19 @@ static struct Bool_Opt
 	{"popup_dialog", (boolean *)0, FALSE},
 #endif
 #if defined(MSDOS) && defined(USE_TILES)
-	{"preload_tiles", &flags.preload_tiles, TRUE},
+	{"preload_tiles", &iflags.preload_tiles, TRUE},
 #else
 	{"preload_tiles", (boolean *)0, FALSE},
 #endif
 #if defined(MICRO) && !defined(AMIGA)
-	{"rawio", &flags.rawio, FALSE},
+	{"rawio", &iflags.rawio, FALSE},
 #else
 	{"rawio", (boolean *)0, FALSE},
 #endif
 	{"rest_on_space", &flags.rest_on_space, FALSE},
 	{"safe_pet", &flags.safe_dog, TRUE},
 #ifdef WIZARD
-	{"sanity_check", &flags.sanity_check, FALSE},
+	{"sanity_check", &iflags.sanity_check, FALSE},
 #else
 	{"sanity_check", (boolean *)0, FALSE},
 #endif
@@ -361,7 +362,7 @@ initoptions()
 	flags.end_own = FALSE;
 	flags.end_top = 3;
 	flags.end_around = 2;
-	flags.msg_history = 20;
+	iflags.msg_history = 20;
 
 	/* Set the default monster and object class symbols.  Don't use */
 	/* memcpy() --- sizeof char != sizeof uchar on some machines.	*/
@@ -388,7 +389,7 @@ initoptions()
 	if (!strncmp(getenv("TERM"), "AT", 2)) {
 		switch_graphics(IBM_GRAPHICS);
 # ifdef TEXTCOLOR
-		flags.use_color = TRUE;
+		iflags.use_color = TRUE;
 # endif
 	}
 #endif /* UNIX && TTY_GRAPHICS */
@@ -526,11 +527,11 @@ int i;
 	return (boolopt[i].addr == &flags.female
 	     || boolopt[i].addr == &flags.legacy
 #if defined(MICRO) && !defined(AMIGA)
-	     || boolopt[i].addr == &flags.rawio
-	     || boolopt[i].addr == &flags.BIOS
+	     || boolopt[i].addr == &iflags.rawio
+	     || boolopt[i].addr == &iflags.BIOS
 #endif
 #if defined(MSDOS) && defined(USE_TILES)
-	     || boolopt[i].addr == &flags.preload_tiles
+	     || boolopt[i].addr == &iflags.preload_tiles
 #endif
 	);
 }
@@ -735,7 +736,7 @@ boolean tinitial, tfrom_file;
 #if defined(MICRO) && !defined(AMIGA)
 	/* included for compatibility with old NetHack.cnf files */
 	if (match_optname(opts, "IBM_", 4, FALSE)) {
-		flags.BIOS = !negated;
+		iflags.BIOS = !negated;
 		return;
 	}
 #endif /* MICRO */
@@ -785,7 +786,7 @@ boolean tinitial, tfrom_file;
 	if (match_optname(opts, fullname, 3, TRUE)) {
 		op = string_for_env_opt(fullname, opts, negated);
 		if ((negated && !op) || (!negated && op)) {
-			flags.msg_history = negated ? 0 : atoi(op);
+			iflags.msg_history = negated ? 0 : atoi(op);
 		} else if (negated) bad_negation(fullname, TRUE);
 		return;
 	}
@@ -1303,13 +1304,13 @@ goodfruit:
 #if defined(TERMLIB) || defined(ASCIIGRAPH) || defined(MAC_GRAPHICS_ENV)
 			if (FALSE
 # ifdef TERMLIB
-				 || (boolopt[i].addr) == &flags.DECgraphics
+				 || (boolopt[i].addr) == &iflags.DECgraphics
 # endif
 # ifdef ASCIIGRAPH
-				 || (boolopt[i].addr) == &flags.IBMgraphics
+				 || (boolopt[i].addr) == &iflags.IBMgraphics
 # endif
 # ifdef MAC_GRAPHICS_ENV
-				 || (boolopt[i].addr) == &flags.MACgraphics
+				 || (boolopt[i].addr) == &iflags.MACgraphics
 # endif
 				) {
 # ifdef REINCARNATION
@@ -1318,18 +1319,18 @@ goodfruit:
 # endif
 			    need_redraw = TRUE;
 # ifdef TERMLIB
-			    if ((boolopt[i].addr) == &flags.DECgraphics)
-				switch_graphics(flags.DECgraphics ?
+			    if ((boolopt[i].addr) == &iflags.DECgraphics)
+				switch_graphics(iflags.DECgraphics ?
 						DEC_GRAPHICS : ASCII_GRAPHICS);
 # endif
 # ifdef ASCIIGRAPH
-			    if ((boolopt[i].addr) == &flags.IBMgraphics)
-				switch_graphics(flags.IBMgraphics ?
+			    if ((boolopt[i].addr) == &iflags.IBMgraphics)
+				switch_graphics(iflags.IBMgraphics ?
 						IBM_GRAPHICS : ASCII_GRAPHICS);
 # endif
 # ifdef MAC_GRAPHICS_ENV
-			    if ((boolopt[i].addr) == &flags.MACgraphics)
-				switch_graphics(flags.MACgraphics ?
+			    if ((boolopt[i].addr) == &iflags.MACgraphics)
+				switch_graphics(iflags.MACgraphics ?
 						MAC_GRAPHICS : ASCII_GRAPHICS);
 # endif
 # ifdef REINCARNATION
@@ -1356,8 +1357,8 @@ goodfruit:
 			    if (flags.invlet_constant) reassign();
 			}
 
-			else if ((boolopt[i].addr) == &flags.num_pad)
-			    number_pad(flags.num_pad ? 1 : 0);
+			else if ((boolopt[i].addr) == &iflags.num_pad)
+			    number_pad(iflags.num_pad ? 1 : 0);
 
 			else if ((boolopt[i].addr) == &flags.lit_corridor) {
 			    /*
@@ -1372,12 +1373,12 @@ goodfruit:
 			}
 
 #ifdef TEXTCOLOR
-			else if ((boolopt[i].addr) == &flags.use_color
-			      || (boolopt[i].addr) == &flags.hilite_pet) {
+			else if ((boolopt[i].addr) == &iflags.use_color
+			      || (boolopt[i].addr) == &iflags.hilite_pet) {
 			    need_redraw = TRUE;
 # ifdef TOS
-			    if ((boolopt[i].addr) == &flags.use_color
-				&& flags.BIOS) {
+			    if ((boolopt[i].addr) == &iflags.use_color
+				&& iflags.BIOS) {
 				if (colors_changed)
 				    restore_colors();
 				else
@@ -1522,7 +1523,7 @@ doset()
 			(boolopt_only_initial(i) ^ pass)) {
 		    if (bool_p == &flags.female) continue;  /* already done */
 #ifdef WIZARD
-		    if (bool_p == &flags.sanity_check && !wizard) continue;
+		    if (bool_p == &iflags.sanity_check && !wizard) continue;
 #endif
 		    any.a_int = (pass == 0) ? 0 : i + 1;
 		    Sprintf(buf, "%s%-13s [%s]", pass == 0 ? "    " : "",
@@ -1543,7 +1544,7 @@ doset()
 	doset_add_menu(tmpwin, "name", plname, 0);
 	doset_add_menu(tmpwin, "catname", catname[0] ? catname : "(null)", 0);
 	doset_add_menu(tmpwin, "dogname", dogname[0] ? dogname : "(null)", 0);
-	Sprintf(buf, "%u", flags.msg_history);
+	Sprintf(buf, "%u", iflags.msg_history);
 	doset_add_menu(tmpwin, "msghistory", buf, 0);
 	doset_add_menu(tmpwin, "pettype",
 			(preferred_pet == 'c') ? "cat" :

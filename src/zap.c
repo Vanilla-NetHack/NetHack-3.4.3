@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)zap.c	3.2	96/05/02	*/
+/*	SCCS Id: @(#)zap.c	3.2	96/11/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,7 @@ STATIC_DCL void FDECL(costly_cancel, (struct obj *));
 STATIC_DCL void FDECL(polyuse, (struct obj*, int, int));
 STATIC_DCL void FDECL(create_polymon, (struct obj *));
 STATIC_DCL boolean FDECL(zap_updown, (struct obj *));
-STATIC_DCL int FDECL(zhitm, (struct monst *,int,int));
+STATIC_DCL int FDECL(zhitm, (struct monst *,int,int,struct obj **));
 STATIC_DCL void FDECL(zhitu, (int,int,const char *,XCHAR_P,XCHAR_P));
 STATIC_DCL void FDECL(revive_egg, (struct obj *));
 
@@ -668,6 +668,7 @@ polyuse(objhdr, mat, minwt)
 
     for(otmp = objhdr; minwt > 0 && otmp; otmp = otmp2) {
 	otmp2 = otmp->nexthere;
+	if (otmp == uball || otmp == uchain) continue;
 	if (((int) objects[otmp->otyp].oc_material == mat) ==
 		(rn2(minwt + 1) != 0)) {
 	    /* appropriately add damage to bill */
@@ -980,9 +981,13 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 		else if (obj->otyp == STATUE)
 			(void) break_statue(obj);
 		else {
-			(void)breaks(obj, obj->ox, obj->oy);
+			if (!flags.mon_moving)
+			    (void)hero_breaks(obj, obj->ox, obj->oy, FALSE);
+			else
+			    (void)breaks(obj, obj->ox, obj->oy);
 			res = 0;
 		}
+		/* BUG[?]: shouldn't this depend upon you seeing it happen? */
 		makeknown(otmp->otyp);
 		break;
 	case WAN_DIGGING:
@@ -1049,20 +1054,29 @@ bhitpile(obj,fhito,tx,ty)
     int tx, ty;
 {
     int hitanything = 0;
-    register struct obj *otmp, *next_obj = (struct obj *)0;
+    register struct obj *otmp, *next_obj;
 
     /* modified by GAN to hit all objects */
     /* pre-reverse the polymorph pile,  -dave- 3/90 */
     poly_zapped = -1;
-    if(obj->otyp == SPE_POLYMORPH || obj->otyp == WAN_POLYMORPH) {
-	otmp = level.objects[tx][ty];
-	level.objects[tx][ty] = next_obj;
-	while(otmp) {
+    if (obj->otyp == SPE_POLYMORPH || obj->otyp == WAN_POLYMORPH) {
+	next_obj = level.objects[tx][ty];
+	level.objects[tx][ty] = 0;
+	while ((otmp = next_obj) != 0) {
 	    next_obj = otmp->nexthere;
 	    otmp->nexthere = level.objects[tx][ty];
 	    level.objects[tx][ty] = otmp;
-	    otmp = next_obj;
 	}
+    } else if (obj->otyp == SPE_FORCE_BOLT || obj->otyp == WAN_STRIKING) {
+	struct trap *t = t_at(tx, ty);
+
+	/* We can't settle for the default calling sequence of
+	   bhito(otmp) -> break_statue(otmp) -> activate_statue_trap(ox,oy)
+	   because that last call might end up operating on our `next_obj'
+	   (below), rather than on the current object, if it happens to
+	   encounter a statue which mustn't become animated. */
+	if (t && t->ttyp == STATUE_TRAP)
+	    (void) activate_statue_trap(t, tx, ty, TRUE);
     }
     for(otmp = level.objects[tx][ty]; otmp; otmp = next_obj) {
 	/* Fix for polymorph bug, Tim Wright */
@@ -1898,14 +1912,16 @@ int dx, dy;
 }
 
 STATIC_OVL int
-zhitm(mon, type, nd)			/* returns damage to mon */
+zhitm(mon, type, nd, ootmp)			/* returns damage to mon */
 register struct monst *mon;
 register int type, nd;
+struct obj **ootmp;	/* to return worn armor for caller to disintegrate */
 {
 	register int tmp = 0;
 	register int abstype = abs(type) % 10;
 	boolean sho_shieldeff = FALSE;
 
+	*ootmp = (struct obj *)0;
 	switch(abstype) {
 	case ZT_MAGIC_MISSILE:
 		if (resists_magm(mon)) {
@@ -1950,13 +1966,31 @@ register int type, nd;
 		    }
 		    type = -1; /* so they don't get saving throws */
 		} else {
+		    struct obj *otmp2;
+
 		    if (resists_disint(mon)) {
 			sho_shieldeff = TRUE;
-			break;
+		    } else if (mon->misc_worn_check & W_ARMS) {
+			/* destroy shield; victim survives */
+			*ootmp = which_armor(mon, W_ARMS);
+		    } else if (mon->misc_worn_check & W_ARM) {
+			/* destroy body armor, also cloak if present */
+			*ootmp = which_armor(mon, W_ARM);
+			if ((otmp2 = which_armor(mon, W_ARMC)) != 0)
+			    m_useup(mon, otmp2);
 		    } else {
+			/* no body armor, victim dies; destroy cloak
+			   and shirt now in case target gets life-saved */
 			tmp = MAGIC_COOKIE;
-			break;
+			if ((otmp2 = which_armor(mon, W_ARMC)) != 0)
+			    m_useup(mon, otmp2);
+#ifdef TOURIST
+			if ((otmp2 = which_armor(mon, W_ARMU)) != 0)
+			    m_useup(mon, otmp2);
+#endif
 		    }
+		    type = -1;	/* no saving throw wanted */
+		    break;	/* not ordinary damage */
 		}
 		tmp = mon->mhp+1;
 		break;
@@ -1994,9 +2028,9 @@ register int type, nd;
 	if (sho_shieldeff) shieldeff(mon->mx, mon->my);
 	if ((type >= 10 && type <= 19) && (Role_is('K') && u.uhave.questart))
 	    tmp *= 2;
-	if (type >= 0)
-	    if (resist(mon, (type < ZT_SPELL(0)) ? WAND_CLASS : '\0',
-		       0, NOTELL)) tmp /= 2;
+	if (tmp > 0 && type >= 0 &&
+		resist(mon, type < ZT_SPELL(0) ? WAND_CLASS : '\0', 0, NOTELL))
+	    tmp /= 2;
 	mon->mhp -= tmp;
 	return(tmp);
 }
@@ -2203,13 +2237,14 @@ register int dx,dy;
     coord save_bhitpos;
     boolean shopdamage = FALSE;
     register const char *fltxt;
+    struct obj *otmp;
 
     fltxt = flash_types[(type <= -30) ? abstype : abs(type)];
     if(u.uswallow) {
 	register int tmp;
 
 	if(type < 0) return;
-	tmp = zhitm(u.ustuck, type, nd);
+	tmp = zhitm(u.ustuck, type, nd, &otmp);
 	if(!u.ustuck)	u.uswallow = 0;
 	else	pline("%s rips into %s%s",
 		      The(fltxt), mon_nam(u.ustuck), exclam(tmp));
@@ -2258,39 +2293,47 @@ register int dx,dy;
 		    dy = -dy;
 		} else {
 		    boolean mon_could_move = mon->mcanmove;
-		    int tmp = zhitm(mon, type, nd);
+		    int tmp = zhitm(mon, type, nd, &otmp);
 
-		    if (is_rider(mon->data) && type == ZT_BREATH(ZT_DEATH)) {
+		    if (is_rider(mon->data) && abs(type) == ZT_BREATH(ZT_DEATH)) {
 			if (canseemon(mon)) {
-			    hit(fltxt, mon, exclam(tmp));
+			    hit(fltxt, mon, ".");
 			    pline("%s disintegrates.", Monnam(mon));
 			    pline("%s body reintegrates before your %s!",
-			         s_suffix(Monnam(mon)),
-			         makeplural(body_part(EYE)));
-		            pline("%s resurrects!", Monnam(mon));
+				  s_suffix(Monnam(mon)),
+				  makeplural(body_part(EYE)));
+			    pline("%s resurrects!", Monnam(mon));
 			}
-		        mon->mhp = mon->mhpmax;
+			mon->mhp = mon->mhpmax;
 			break; /* Out of while loop */
 		    }
-		    if(mon->data == &mons[PM_DEATH] && abstype == ZT_DEATH) {
-		        if(cansee(mon->mx,mon->my)) {
-			    hit(fltxt, mon, exclam(tmp));
-		            pline("Death absorbs the deadly %s!",
-				        type == ZT_BREATH(ZT_DEATH) ?
-				        "blast" : "ray");
-		            pline("It seems even stronger than before.");
-		        }
-		        break; /* Out of while loop */
+		    if (mon->data == &mons[PM_DEATH] && abstype == ZT_DEATH) {
+			if (canseemon(mon)) {
+			    hit(fltxt, mon, ".");
+			    pline("%s absorbs the deadly %s!", Monnam(mon),
+				  type == ZT_BREATH(ZT_DEATH) ?
+					"blast" : "ray");
+			    pline("It seems even stronger than before.");
+			}
+			break; /* Out of while loop */
 		    }
 
 		    if (tmp == MAGIC_COOKIE) { /* disintegration */
-			struct obj *otmp, *otmp2;
-			pline("%s is disintegrated!", Monnam(mon));
+			struct obj *otmp2, *m_amulet = mlifesaver(mon);
+
+			if (canseemon(mon)) {
+			    if (!m_amulet)
+				pline("%s is disintegrated!", Monnam(mon));
+			    else
+				hit(fltxt, mon, "!");
+			}
 			mon->mgold = 0L;
 
+/* note: worn amulet of life saving must be preserved in order to operate */
 #define oresist_disintegration(obj) \
 		(objects[obj->otyp].oc_oprop == DISINT_RES || \
-		 obj_resists(obj, 5, 50) || is_quest_artifact(obj))
+		 obj_resists(obj, 5, 50) || is_quest_artifact(obj) || \
+		 obj == m_amulet)
 
 			for (otmp = mon->minvent; otmp; otmp = otmp2) {
 			    otmp2 = otmp->nobj;
@@ -2310,8 +2353,17 @@ register int dx,dy;
 			else
 			    killed(mon);
 		    } else {
-			hit(fltxt, mon, exclam(tmp));
-
+			if (!otmp) {
+			    /* normal non-fatal hit */
+			    hit(fltxt, mon, exclam(tmp));
+			} else {
+			    /* some armor was destroyed; no damage done */
+			    if (canseemon(mon))
+				pline("%s %s is disintegrated!",
+				      s_suffix(Monnam(mon)),
+				      distant_name(otmp, xname));
+			    m_useup(mon, otmp);
+			}
 			if (mon_could_move && !mon->mcanmove)	/* ZT_SLEEP */
 			    slept_monst(mon);
 		    }
@@ -2647,20 +2699,19 @@ register struct obj *obj;		   /* no texts here! */
 	    newsym(obj->ox,obj->oy);
 }
 
+/* handle statue hit by striking/force bolt/pick-axe */
 boolean
 break_statue(obj)
 register struct obj *obj;
 {
-	struct trap *trap;
+	/* [obj is assumed to be on floor, so no get_obj_location() needed] */
+	struct trap *trap = t_at(obj->ox, obj->oy);
 	struct obj *item;
 
-	if((trap = t_at(obj->ox,obj->oy)) && trap->ttyp == STATUE_TRAP)
-	    if(makemon(&mons[obj->corpsenm], obj->ox, obj->oy, NO_MM_FLAGS)) {
-		pline("Instead of shattering, the statue suddenly comes alive!");
-		delobj(obj);
-		deltrap(trap);
-		return FALSE;
-	    }
+	if (trap && trap->ttyp == STATUE_TRAP &&
+		activate_statue_trap(trap, obj->ox, obj->oy, TRUE))
+	    return FALSE;
+	/* drop any objects contained inside the statue */
 	while ((item = obj->cobj) != 0) {
 	    obj_extract_self(item);
 	    place_object(item, obj->ox, obj->oy);

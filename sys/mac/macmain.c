@@ -105,9 +105,9 @@ main ( void )
 		boolean remember_wiz_mode = wizard;
 #endif
 #ifdef NEWS
-		if(flags.news) {
+		if(iflags.news) {
 			display_file(NEWS, FALSE);
-			flags.news = FALSE;	/* in case dorecover() fails */
+			iflags.news = FALSE;	/* in case dorecover() fails */
 		}
 #endif
 		pline("Restoring save file...");
@@ -338,7 +338,7 @@ process_options(void)
 			break;
 #ifdef NEWS
 		case 'n':
-			flags.news = FALSE;
+			iflags.news = FALSE;
 			break;
 #endif
 		case 'u':

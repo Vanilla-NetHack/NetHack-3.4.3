@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.2	96/05/10	*/
+/*	SCCS Id: @(#)lev_main.c	3.2	96/06/22	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -54,13 +54,6 @@
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
 #define Write(fd, item, size)	(void) write(fd, (genericptr_t)(item), size)
-
-#ifdef MICRO
-# undef exit
-# if !defined(AMIGA) && !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
 
 #ifdef __BORLANDC__
 extern unsigned _stklen = STKSIZ;
@@ -941,12 +934,12 @@ long flgs;
 {
 	char c;
 	uchar len;
-	static unsigned long version_info[4] = {
+	static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
 			VERSION_SANITY1, VERSION_SANITY2
 	};
 
-	Write(fd, version_info, sizeof version_info);
+	Write(fd, &version_data, sizeof version_data);
 	c = typ;
 	Write(fd, &c, sizeof(c));	/* 1 byte header */
 	Write(fd, init, sizeof(lev_init));

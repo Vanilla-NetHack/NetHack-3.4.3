@@ -13,9 +13,6 @@
 #include <string.h>
 #endif
 
-#ifdef MICRO
-# undef exit
-#endif
 static void FDECL(xexit, (int));
 
 #ifdef DLB

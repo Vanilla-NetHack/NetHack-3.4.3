@@ -1,8 +1,5 @@
 This file is sys/be/README.  It is for those intending to compile
-NetHack 3.2.1 on a BeBox running BeOS 1.1d7.  An actual game
-has never been run due to the (current) lack of an uncrippled
-linker.
-
+NetHack 3.2.2 on a BeBox running BeOS 1.1d8.
 
 BeBox NetHack currently only supports the TTY windowing system.  In
 order to compile it, it would benefit you greatly to think of your Be
@@ -13,11 +10,31 @@ NetHack.  Unless you are extremely familiar with the build sequence, I
 suggest you avoid it for now.  Let the Unix Makefiles take care of all
 that for you.
 
+Suggestions:
++ Set your tty window to be at least 80x24.  NetHack
++ Change the font to Courier New (or Courier New Bold) and set the font
+  size to be larger.  The font size will not change for Kate.
 
-From a freshly unpacked source tree:
+Known problems:
++ No special characters for walls.  None of the fonts available for use
+  in a tty window has the graphics characters needed to improve the look.
+  If such a font existed, then all you need to do is set the dungeon,
+  object, and/or monter mappings in your defaults file.
++ NetHack is supposed to recognize that the background of the window is
+  white and change itself accordingly.  It doesn't and makes the assumption
+  that the background is black.  This is annoying, but playable.
+  It may be that the correct code sequence is being executed -- its hard
+  to tell in that particular file.  A couple of combinations have been
+  tried, with no success.
++ The arrow keys don't work.
 
-1. Copy the Makfiles in sys/unix to their proper spots.  If you
-   don't know what they are, read sys/unix/Install.unx.
+
+
+Build instructions.  From a freshly unpacked source tree:
+
+1. Copy the Makfiles in sys/unix to their proper spots.  You can
+   use setup.sh or copy them by hand.  It may be helpful to read
+   sys/unix/Install.unx.
 
 2. Edit src/Makefile:
 	o Change System to SysBe.
@@ -35,12 +52,14 @@ From a freshly unpacked source tree:
 4. Edit include/config.h to change HACKDIR to be the location of your
    install directory.  You may want to uncomment the DLB define.
 
-5. Edit Makefile and change GAMEDIR to match HACKDIR in include/config.h.
-   Make sure the path to GAMEDIR exists.
+5. Edit top level Makefile and change GAMEDIR to match HACKDIR in
+   include/config.h.  Make sure the path to GAMEDIR exists.  Change
+   SHELLDIR to a "throw away" directory, like /tmp.  We don't use the
+   shell.
 
 6. Type make install at the top level.
 
 
 
-It is quite likely that some necessary steps needed to make the
-game have been omitted.  Feel free to ad-lib as necessary.
+It is possible that some necessary steps needed to make the game have been
+omitted.  Feel free to ad-lib as necessary.

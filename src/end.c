@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.2	96/05/25	*/
+/*	SCCS Id: @(#)end.c	3.2	96/08/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,6 +22,11 @@ static void NDECL(list_genocided);
 static void FDECL(done_hangup, (int));
 #endif
 
+#if defined(__BEOS__) || defined(MICRO) || defined(WIN32) || defined(OS2) 
+extern void FDECL(nethack_exit,(int));
+#else
+#define nethack_exit exit
+#endif
 
 #define done_stopprint program_state.stopprint
 
@@ -191,10 +196,13 @@ register struct monst *mtmp;
 			(mtmp->female ? "Ms." : "Mr."), shkname(mtmp));
 		killer_format = KILLED_BY;
 	} else if (mtmp->ispriest || mtmp->isminion) {
-		killer = priestname(mtmp);
+		char priestnambuf[BUFSZ];
+
+		killer = priestname(mtmp, priestnambuf);
 		if (!strncmp(killer, "the ", 4)) Strcat(buf, killer+4);
 		else Strcat(buf, killer);
 	} else Strcat(buf, mtmp->data->mname);
+
 	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
 	if (mtmp->data->mlet == S_WRAITH)
@@ -222,11 +230,11 @@ panic VA_DECL(const char *, str)
 	if (program_state.panicking++)
 	    NH_abort();	/* avoid loops - this should never happen*/
 
-	if (flags.window_inited) {
+	if (iflags.window_inited) {
 	    raw_print("\r\nOops...");
 	    wait_synch();	/* make sure all pending output gets flushed */
 	    exit_nhwindows((char *)0);
-	    flags.window_inited = 0; /* they're gone; force raw_print()ing */
+	    iflags.window_inited = 0; /* they're gone; force raw_print()ing */
 	}
 
 	raw_print(!program_state.something_worth_saving ?
@@ -387,7 +395,7 @@ int how;
 	boolean taken;
 	char kilbuf[BUFSZ], pbuf[BUFSZ];
 	winid endwin = WIN_ERR;
-	boolean bones_ok, have_windows = flags.window_inited;
+	boolean bones_ok, have_windows = iflags.window_inited;
 
 	/* kilbuf: used to copy killer in case it comes from something like
 	 *	xname(), which would otherwise get overwritten when we call
@@ -474,7 +482,8 @@ die:
 		killer_format = NO_KILLER_PREFIX;
 		if (u.uhp < 1) {
 			how = DIED;
-/* note that killer is pointing at kilbuf */
+			u.umortality++;	/* skipped above when how==QUIT */
+			/* note that killer is pointing at kilbuf */
 			Strcpy(kilbuf, "quit while already on Charon's boat");
 		}
 	}
@@ -719,11 +728,6 @@ void
 terminate(status)
 int status;
 {
-#ifdef __beos__
-	extern void nethack_exit(int);
-#else
-#	define nethack_exit exit
-#endif
 
 #ifdef MAC
 	getreturn("to exit");

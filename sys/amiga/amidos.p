@@ -31,13 +31,9 @@ void FDECL(getreturn, (const char *));
 #ifndef msmsg
 void FDECL(msmsg, ( const char *, ... ));
 #endif
-#if 0
-FILE *FDECL(fopenp, (const char * , const char *));
-#endif
 #if !defined(__SASC_60) && !defined(_DCC)
 int FDECL(chdir, (char *));
 #endif
-void FDECL(msexit, (int ));
 #ifndef	strcmpi
 int FDECL(strcmpi, (char * , char *));
 #endif

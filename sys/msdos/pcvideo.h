@@ -273,6 +273,7 @@ E void FDECL(vga_xputg, (int, int));
 E void FDECL(vga_userpan, (BOOLEAN_P));
 E void FDECL(vga_overview, (BOOLEAN_P));
 E void FDECL(vga_traditional, (BOOLEAN_P));
+E void NDECL(vga_refresh);
 #  endif /* SCREEN_VGA */
 # endif /* NO_TERMS   */
 

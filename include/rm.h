@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.2	93/02/21	*/
+/*	SCCS Id: @(#)rm.h	3.2	96/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -363,7 +363,6 @@ struct rm {
  *		5 top left & bottom right (1/2 rock)
  *		6 bottom left & top right (1/2 rock)
  */
-#define SDOOR_BITS D_CLOSED		/* sdoor bottom 3 bits are these */
 
 #define WM_W_LEFT 1			/* vertical or horizontal wall */
 #define WM_W_RIGHT 2

@@ -55,14 +55,20 @@ BPTR s_LoadSeg(char *);
 void s_UnLoadSeg(void);
 void append_slash(char *);
 
+/*DCF - GetWBIcon() needs these to be available in both WB and CLI modes */
+int amibbs=0;           /* BBS mode flag */
+char *bbsuid=NULL;      /* Unique user identifier for bbs mode. */
+
 #ifdef CLI
 char *cnfsavedir="NetHack:save";    /* unless overridden in cnf file */
 char argline[255];  /* no overflow - bigger than ADOS will pass */
-int amibbs=0;				/* BBS mode flag */
 
 void WaitEOG(GPTR);
 char *eos(char *);
 void condaddslash(char *);
+
+/*DCF - Copies NewGame.info to new game. */
+void CopyGameIcon(char *desticon);
 
 # ifdef SPLIT
 int running_split=0;        /* if 0, using normal LoadSeg/UnLoadSeg */
@@ -147,6 +153,9 @@ main( argc, argv )
     if (argc>1 && argv[1][0]==':'){
 	amibbs=1;
 	sprintf(newcmdline,":%08x %08x ;%s ",Input(),Output(),&argv[1][1]);
+
+	/* DCF - Set BBS mode user identifier */
+	bbsuid = &argv[1][1];
 	argv++;argc--;
     }
 
@@ -192,11 +201,42 @@ main( argc, argv )
 #ifdef TESTCMDLINE
 __builtin_printf("sending '%s'\n",argline);
 #else
+	/* DCF - If the user provided a name, try to get the icon for this
+	 * game.  If there is no icon, try to find the NewGame.info
+	 * icon and copy it to match the appropriate name.
+	 */
 	strcpy(namebuf,cnfsavedir);
 	append_slash(namebuf);
-	if(!name)name="NewGame.info";
-	strcat(namebuf,name);
+
+	/* DAN - In BBS mode, prepend the bbsuid on the front of the player
+	 * name.  This will make the icon match the format used by the
+	 * Nethack executable when saving the game.
+	 */
+
+	if ((amibbs) && (bbsuid))
+	{
+	    strcat(namebuf,bbsuid);
+	    strcat(namebuf,"_");
+	}
+
+	if(!name)
+	    strcat(namebuf,"NewGame");
+	else
+	    strcat(namebuf,name);
+
+	strcat(namebuf,".info");
+
 	lc=Lock(namebuf,ACCESS_READ);
+
+	if (!lc) /* && name) */
+	{
+	    /* If no icon found, this is probably a new game.  Build a new
+	     * icon for the game based on the NewGame.info. */
+
+	    CopyGameIcon(namebuf); /* copies the NewGame.info to namebuf */
+	    lc = Lock(namebuf,ACCESS_READ);
+	}
+
 	if(!lc){
 	    dirname="NetHack:";
 	    strcpy(namebuf,dirname);
@@ -1335,6 +1375,9 @@ GPTR GetWBIcon( lock, dir, finfo )
     register char *t;
     register GPTR gptr;
 
+    /* DCF */
+    char *bbsptr=NULL;
+
     if( ( gptr = AllocGITEM( ) ) == NULL )
 	goto noitems;
 
@@ -1354,7 +1397,28 @@ GPTR GetWBIcon( lock, dir, finfo )
     }
 
     gptr->name = xmalloc(strlen(finfo->fib_FileName)+1+9);
-    sprintf(gptr->name,"%s_%08x",finfo->fib_FileName,FindTask(0));
+
+    /* DCF - This is wrong:
+     * sprintf(gptr->name,"%s_%08x",finfo->fib_FileName,FindTask(0));
+     *
+     * We don't want to append the taskID, we want to append the
+     * unique user identifier passed to the cmd line in BBS mode.
+     * if one is not available, (i.e. we are not in BBS mode),
+     * then only use the player name (or "NewGame" if not given)
+     * with no additions.
+     */
+
+    if(amibbs)
+    {
+	/* BBS names are of the form <bbsuid>_<playerName> */
+	/* e.g.: SYSOP_SuperHacker */
+
+	bbsptr = strstr(finfo->fib_FileName,"_");
+	++bbsptr;
+	strcpy(gptr->name,bbsptr);
+    }
+    else
+	strcpy(gptr->name,finfo->fib_FileName);
 
     /* If removed .info, put it back */
 
@@ -1994,3 +2058,61 @@ diskobj_filter( dobj )
     }
 #endif
 }
+
+/* DCF - This copies the NewGame.info file to the specified filename.
+ *       Used to make an icon for a new game.
+ */
+
+#ifdef CLI
+void CopyGameIcon(char *desticon)
+{
+    BPTR in,out;
+    char *filen=NULL;
+    struct FileInfoBlock *fib=NULL;
+    UBYTE *buf=NULL;
+
+    in = Open("Nethack:NewGame.info", MODE_OLDFILE);
+    if (!in)
+    {
+	filen = xmalloc(strlen(cnfsavedir)+15);
+	if (filen)
+	{
+	    strcat(filen,"/NewGame.info");
+	    /* Try the save dir. */
+	    in = Open(filen,MODE_OLDFILE);
+	    free(filen);
+	    if (!in)
+	    {
+		return; /* failed.  Oh well. */
+	    }
+	}
+	else
+	    return; /* No memory */
+    }
+
+    out = Open(desticon,MODE_NEWFILE);
+    if (!out)
+    {
+	/* Should print error: can't copy icon */
+	Close(in);
+	in = NULL;
+	return;
+    }
+    else
+    {
+	/* Copy the file. */
+	fib = (struct FileInfoBlock *) AllocDosObject(DOS_FIB,TAG_DONE);
+	ExamineFH(in,fib);
+	buf = xmalloc (fib->fib_Size);
+	FRead(in,buf,fib->fib_Size,1);
+	Close(in);
+	FWrite(out,buf,fib->fib_Size,1);
+	free(buf);
+	Close(out);
+	FreeDosObject(DOS_FIB,fib);
+    }
+}
+
+#endif /* CLI */
+
+

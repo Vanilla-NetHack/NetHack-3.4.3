@@ -10,12 +10,6 @@
 #define NEED_VARARGS
 #include "config.h"
 
-#ifdef MICRO
-#undef exit
-# if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
 #ifdef AZTEC
 #define abort() exit()
 #endif

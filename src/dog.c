@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.2	96/02/11	*/
+/*	SCCS Id: @(#)dog.c	3.2	96/10/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -99,6 +99,9 @@ xchar x, y;
 		    mtmp->mpeaceful = 0;
 		}
 	    }
+	    /* if figurine has been named, give same name to the monster */
+	    if (otmp->onamelth)
+		mtmp = christen_monst(mtmp, ONAME(otmp));
 	}
 	set_malign(mtmp); /* more alignment changes */
 	newsym(mtmp->mx, mtmp->my);
@@ -198,6 +201,15 @@ boolean with_you;
 	   _after_ the current level has been fully set up; see dochug() */
 	mtmp->mstrategy |= STRAT_ARRIVE;
 
+	/* make sure mnexto(rloc_to(set_apparxy())) doesn't use stale data */
+	mtmp->mux = u.ux,  mtmp->muy = u.uy;
+	xyloc	= mtmp->mtrack[0].x;
+	xyflags = mtmp->mtrack[0].y;
+	xlocale = mtmp->mtrack[1].x;
+	ylocale = mtmp->mtrack[1].y;
+	mtmp->mtrack[0].x = mtmp->mtrack[0].y = 0;
+	mtmp->mtrack[1].x = mtmp->mtrack[1].y = 0;
+
 	if (with_you) {
 	    mnexto(mtmp);
 	    return;
@@ -207,14 +219,6 @@ boolean with_you;
 	 * Its coordinate fields were overloaded for use as flags that
 	 * specify its final destination.
 	 */
-
-	xyloc	= mtmp->mtrack[0].x;
-	xyflags = mtmp->mtrack[0].y;
-	xlocale = mtmp->mtrack[1].x;
-	ylocale = mtmp->mtrack[1].y;
-	mtmp->mtrack[0].x = mtmp->mtrack[0].y = 0;
-	mtmp->mtrack[1].x = mtmp->mtrack[1].y = 0;
-	mtmp->mux = u.ux,  mtmp->muy = u.uy;	/* not really req'd */
 
 	if (mtmp->mlstmv < monstermoves - 1L) {
 	    /* heal monster for time spent in limbo */
@@ -246,14 +250,24 @@ boolean with_you;
 	 case MIGR_SSTAIRS:	xlocale = sstairs.sx,  ylocale = sstairs.sy;
 		break;
 	 case MIGR_PORTAL:
+		if (In_endgame(&u.uz)) {
+		    /* there is no arrival portal for endgame levels */
+		    /* BUG[?]: for simplicity, this code relies on the fact
+		       that we know that the current endgame levels always
+		       build upwards and never have any exclusion subregion
+		       inside their TELEPORT_REGION settings. */
+		    xlocale = rn1(updest.hx - updest.lx + 1, updest.lx);
+		    ylocale = rn1(updest.hy - updest.ly + 1, updest.ly);
+		    break;
+		}
+		/* find the arrival portal */
 		for (t = ftrap; t; t = t->ntrap)
 		    if (t->ttyp == MAGIC_PORTAL) break;
 		if (t) {
 		    xlocale = t->tx,  ylocale = t->ty;
 		    break;
 		} else {
-		    if (!In_endgame(&u.uz))
-			impossible("mon_arrive: no corresponding portal?");
+		    impossible("mon_arrive: no corresponding portal?");
 		} /*FALLTHRU*/
 	 default:
 	 case MIGR_RANDOM:	xlocale = ylocale = 0;

@@ -102,7 +102,7 @@ boolean filestyle;
 		if (tilefile == (FILE *)0) return 1;
 	}
 #ifdef TILES_IN_RAM
-    if (flags.preload_tiles) {
+    if (iflags.preload_tiles) {
 	if (filestyle) {
 	    struct overview_planar_cell_struct *gp;
 	    long ram_needed = sizeof(struct overview_planar_cell_struct) *

@@ -2771,7 +2771,9 @@ void menu_info()
     /* The character class of the player */
 
     itext[ 0 ].IText = ToolsEntry( gptr, "CHARACTER" );
-    if( itext[ i ].IText == NULL || *itext[ 0 ].IText == 0 )
+
+    /* DCF - Changed "itext[ i ].IText == NULL" to "itext[ 0 ].Itext == NULL" */
+    if( itext[ 0 ].IText == NULL || *itext[ 0 ].IText == 0 )
     {
 	itext[ 0 ].IText = players[ 0 ];
 	SetToolLine( gptr, "CHARACTER", "" );

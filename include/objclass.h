@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h	3.2	95/08/13	*/
+/*	SCCS Id: @(#)objclass.h	3.2	96/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -35,7 +35,7 @@ struct objclass {
 #define RAY		3	/*		     zap beams */
 
 #define PIERCE		1	/* for weapons & tools used as weapons */
-#define SLASH		2
+#define SLASH		2	/* (latter includes iron ball & chain) */
 #define WHACK		0
 
 	Bitfield(oc_subtyp,3);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.2	96/05/17	*/
+/*	SCCS Id: @(#)dothrow.c	3.2	96/10/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -66,7 +66,7 @@ dothrow()
 
 	if(obj == uwep) {
 	    if(welded(obj)) {
-		weldmsg(obj, FALSE);
+		weldmsg(obj);
 		return(1);
 	    }
 	    if(obj->quan > 1L)
@@ -237,7 +237,6 @@ toss_up(obj, hitsroof)
 struct obj *obj;
 boolean hitsroof;
 {
-    int do_death = 0;
     const char *almost;
     /* note: obj->quan == 1 */
 
@@ -257,57 +256,73 @@ boolean hitsroof;
 
     /* object now hits you */
 
-    if (obj->oclass != POTION_CLASS	/* potions have hit handling below */
-		&& breaktest(obj)) {
-	int otyp = obj->otyp;
+    if (obj->oclass == POTION_CLASS) {
+	potionhit(&youmonst, obj);
+    } else if (breaktest(obj)) {
+	int otyp = obj->otyp, ocorpsenm = obj->corpsenm;
 	int blindinc;
 
 	breakmsg(obj, !Blind);
 	breakobj(obj, u.ux, u.uy, TRUE, TRUE);
-	/* obj is now gone */
+	obj = 0;	/* it's now gone */
 	switch (otyp) {
-		case EGG:
-		case CREAM_PIE:
-		case BLINDING_VENOM:
-			pline("You've got it all over your face!");
-			blindinc = rnd(25);
-			if (blindinc && !Blindfolded) {
-				if (otyp != BLINDING_VENOM)
-					u.ucreamed += blindinc;
-				else if (!Blind)
-					pline("It blinds you!");
-				make_blinded(Blinded + blindinc, FALSE);
-			}
-			break;
+	case EGG:
+		if (ocorpsenm == PM_COCKATRICE &&
+		    !uarmh && !resists_ston(&youmonst) &&
+		    !(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM)))
+		goto petrify;
+	case CREAM_PIE:
+	case BLINDING_VENOM:
+		pline("You've got it all over your face!");
+		blindinc = rnd(25);
+		if (blindinc && !Blindfolded) {
+		    if (otyp != BLINDING_VENOM)
+			u.ucreamed += blindinc;
+		    else if (!Blind)
+			pline("It blinds you!");
+		    make_blinded(Blinded + blindinc, FALSE);
+		}
+		break;
+	default:
+		break;
 	}
 	return FALSE;
-    }
-    if(obj->oclass == POTION_CLASS)
-	  potionhit(&youmonst, obj);
-    else {
-	  int dmg = rnd((int)(obj->owt));
+    } else {		/* neither potion nor other breaking object */
+	boolean less_damage = uarmh && is_metallic(uarmh);
+	int dmg = dmgval(obj, &youmonst);
 
-	  if (uarmh) {
-	      if(is_metallic(uarmh)) {
-		  pline("Fortunately, you are wearing a hard helmet.");
-		  dmg = 1;
-	      } else if (flags.verbose)
-		  Your("%s does not protect you.", xname(uarmh));
-	  } else if (obj->otyp == CORPSE &&
-			  obj->corpsenm == PM_COCKATRICE) {
-	      if (!resists_ston(&youmonst) &&
-		  !(poly_when_stoned(uasmon) &&
-				  polymon(PM_STONE_GOLEM))) {
-		  killer = doname(obj);
-		  You("turn to stone.");
-		  do_death = STONING;
-	      }
-    }
-    hitfloor(obj);
-    if (do_death == STONING)
-	      done(STONING);
-	  else
-	      losehp(dmg, "falling object", KILLED_BY_AN);
+	if (!dmg) {	/* probably wasn't a weapon; base damage on weight */
+	    dmg = (int) obj->owt / 100;
+	    if (dmg < 1) dmg = 1;
+	    else if (dmg > 6) dmg = 6;
+	    if (uasmon == &mons[PM_SHADE] &&
+		    objects[obj->otyp].oc_material != SILVER)
+		dmg = 0;
+	}
+	if (dmg > 1 && less_damage) dmg = 1;
+	if (dmg > 0) dmg += u.udaminc;
+	if (dmg < 0) dmg = 0;	/* beware negative rings of increase damage */
+
+	if (uarmh) {
+	    if (less_damage && dmg < (Upolyd ? u.mh : u.uhp))
+		pline("Fortunately, you are wearing a hard helmet.");
+	    else if (flags.verbose &&
+		    !(obj->otyp == CORPSE && obj->corpsenm == PM_COCKATRICE))
+		Your("%s does not protect you.", xname(uarmh));
+	} else if (obj->otyp == CORPSE && obj->corpsenm == PM_COCKATRICE) {
+	    if (!resists_ston(&youmonst) &&
+		    !(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM))) {
+ petrify:
+		killer_format = KILLED_BY;
+		killer = "elementary physics";	/* "what goes up..." */
+		You("turn to stone.");
+		if (obj) dropy(obj);	/* bypass most of hitfloor() */
+		done(STONING);
+		return obj ? TRUE : FALSE;
+	    }
+	}
+	hitfloor(obj);
+	losehp(dmg, "falling object", KILLED_BY_AN);
     }
     return TRUE;
 }
@@ -330,12 +345,15 @@ register struct obj *obj;
 		pline("%s misfires!", The(xname(obj)));
 	    else {
 		/* only slip if it's greased or meant to be thrown */
-		if(obj->greased ||
-		    objects[obj->otyp].oc_wepcat == WEP_MISSILE ||
-		    objects[obj->otyp].oc_wepcat == WEP_SPEAR ||
-		    (objects[obj->otyp].oc_wepcat == WEP_BLADE &&
-		     (objects[obj->otyp].oc_dir & PIERCE)) ||
-		    obj->otyp == WAR_HAMMER || obj->otyp == AKLYS)
+		if (obj->greased ||
+		    (obj->oclass == WEAPON_CLASS && /* => oc_wepcat valid */
+			(objects[obj->otyp].oc_wepcat == WEP_MISSILE ||
+			 objects[obj->otyp].oc_wepcat == WEP_SPEAR ||
+			 (objects[obj->otyp].oc_wepcat == WEP_BLADE &&
+				(objects[obj->otyp].oc_dir & PIERCE)) ||
+			 obj->otyp == WAR_HAMMER || obj->otyp == AKLYS)))
+		    /* BUG: this message is grammatically incorrect if obj has
+		       a plural name; greased gloves or boots for instance. */
 		    pline("%s slips as you throw it!", The(xname(obj)));
 		else slipok = FALSE;
 	    }
@@ -378,7 +396,15 @@ register struct obj *obj;
 		}
 	} else {
 		urange = (int)(ACURRSTR)/2;
-		range = urange - (int)(obj->owt/40);
+		/* balls are easy to throw or at least roll */
+		/* also, this insures the maximum range of a ball is greater
+		 * than 1, so the effects from throwing attached balls are
+		 * actually possible
+		 */
+		if (obj->otyp == HEAVY_IRON_BALL)
+			range = urange - (int)(obj->owt/100);
+		else
+			range = urange - (int)(obj->owt/40);
 		if (obj == uball) {
 			if (u.ustuck) range = 1;
 			else if (range >= 5) range = 5;
@@ -710,14 +736,14 @@ register struct obj   *obj;
 		miss(xname(obj), mon);
 	    }
 
-	} else if ((otyp == EGG || otyp == CREAM_PIE
-		   || otyp == BLINDING_VENOM || otyp == ACID_VENOM)
-		   && ACURR(A_DEX) >= rnd(15)) {
+	} else if ((otyp == EGG || otyp == CREAM_PIE ||
+		    otyp == BLINDING_VENOM || otyp == ACID_VENOM) &&
+		(guaranteed_hit || ACURR(A_DEX) > rnd(25))) {
 	    (void) hmon(mon, obj, 1);
 	    return 1;	/* hmon used it up */
 
-	} else if (obj->oclass == POTION_CLASS && ((ACURR(A_DEX) >= rnd(15))
-	    || guaranteed_hit)) {
+	} else if (obj->oclass == POTION_CLASS &&
+		(guaranteed_hit || ACURR(A_DEX) > rnd(25))) {
 	    potionhit(mon, obj);
 	    return 1;
 

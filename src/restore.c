@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.2	96/05/26	*/
+/*	SCCS Id: @(#)restore.c	3.2	96/10/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -347,7 +347,6 @@ unsigned int *mid;
 {
 	struct obj *otmp;
 	int tmp;		/* not a register ! */
-	struct flag oldflags;
 
 	restore_timers(fd, RANGE_GLOBAL, FALSE, 0L);
 	restore_light_sources(fd);
@@ -365,51 +364,7 @@ unsigned int *mid;
 		return(FALSE);
 	    }
 
-	oldflags = flags;
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
-	/* Some config file and command line OPTIONS take precedence over
-	 * those in save file.
-	 */
-#ifdef TERMLIB
-	flags.DECgraphics = oldflags.DECgraphics;
-#endif
-#ifdef ASCIIGRAPH
-	flags.IBMgraphics = oldflags.IBMgraphics;
-#endif
-#ifdef MICRO
-	flags.rawio = oldflags.rawio;
-	flags.BIOS = oldflags.BIOS;
-#endif
-#ifdef TEXTCOLOR
-	flags.use_color = oldflags.use_color;
-	flags.hilite_pet = oldflags.hilite_pet;
-#endif
-#ifdef WIZARD
-	flags.sanity_check = oldflags.sanity_check;
-#endif
-#ifdef MAC_GRAPHICS_ENV
-	flags.MACgraphics = oldflags.MACgraphics;
-	flags.large_font = oldflags.large_font;
-#endif
-#ifdef MSDOS
-	flags.hasvga = oldflags.hasvga;
-	flags.usevga = oldflags.usevga;
-	flags.hasvesa = oldflags.hasvesa;
-	flags.usevesa = oldflags.usevesa;
-	flags.has8514 = oldflags.has8514;
-	flags.use8514 = oldflags.use8514;
-	flags.grmode  = oldflags.grmode;
-	flags.preload_tiles = oldflags.preload_tiles;
-#endif
-	/* these come from the current environment; ignore saved values */
-	flags.window_inited = oldflags.window_inited;
-	flags.msg_history = oldflags.msg_history;
-	flags.num_pad = oldflags.num_pad;
-	flags.echo = oldflags.echo;
-	flags.cbreak = oldflags.cbreak;
-#ifdef NEWS
-	flags.news = oldflags.news;
-#endif
 #ifdef AMII_GRAPHICS
 	amii_setpens(amii_numcolors);	/* use colors from save file */
 #endif
@@ -436,6 +391,15 @@ unsigned int *mid;
 	for(otmp = invent; otmp; otmp = otmp->nobj)
 		if(otmp->owornmask)
 			setworn(otmp, otmp->owornmask);
+	/* reset weapon so that player will get a reminder about "bashing"
+	   during next fight when bare-handed or wielding an unconventional
+	   item; for pick-axe, we aren't able to distinguish between having
+	   applied or wielded it, so be conservative and assume the former */
+	otmp = uwep;	/* `uwep' usually init'd by setworn() in loop above */
+	uwep = 0;	/* clear it and have setuwep() reinit */
+	setuwep(otmp);	/* (don't need any null check here) */
+	if (!uwep || uwep->otyp == PICK_AXE)
+	    unweapon = TRUE;
 
 	restore_dungeon(fd);
 	restlevchn(fd);

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)objnam.c	3.2	96/05/05	*/
+/*	SCCS Id: @(#)objnam.c	3.2	96/11/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-/* "an uncursed partly eaten guardian naga hatchling corpse" */
-#define PREFIX	50
+/* "an uncursed greased partly eaten guardian naga hatchling [corpse]" */
+#define PREFIX	80	/* (56) */
 #define SCHAR_LIM 127
 
 STATIC_DCL char *FDECL(strprepend,(char *,const char *));
@@ -56,10 +56,12 @@ STATIC_DCL const char *FDECL(Japanese_item_name,(int i));
 STATIC_OVL char *
 strprepend(s,pref)
 register char *s;
-register const char *pref; {
-register int i = strlen(pref);
+register const char *pref;
+{
+	register int i = (int)strlen(pref);
+
 	if(i > PREFIX) {
-		pline("WARNING: prefix too short.");
+		impossible("PREFIX too short (for %d).", i);
 		return(s);
 	}
 	s -= i;
@@ -841,14 +843,38 @@ register const char *verb;
 	return(bp);
 }
 
+/* capitalized variant of doname() */
 char *
 Doname2(obj)
 register struct obj *obj;
 {
 	register char *s = doname(obj);
 
-	if('a' <= *s && *s <= 'z') *s -= ('a' - 'A');
+	*s = highc(*s);
 	return(s);
+}
+
+/* returns "your xname(obj)" or "Foobar's xname(obj)" or "the xname(obj)" */
+char *
+yname(obj)
+struct obj *obj;
+{
+	static char outbuf[BUFSZ];
+	char *s = shk_your(outbuf, obj);	/* assert( s == outbuf ); */
+	int space_left = sizeof outbuf - strlen(s) - sizeof " ";
+
+	return strncat(strcat(s, " "), xname(obj), space_left);
+}
+
+/* capitalized variant of yname() */
+char *
+Yname2(obj)
+struct obj *obj;
+{
+	char *s = yname(obj);
+
+	*s = highc(*s);
+	return s;
 }
 
 static const char *wrp[] = {

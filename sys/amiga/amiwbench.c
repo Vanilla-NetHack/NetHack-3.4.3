@@ -291,7 +291,7 @@ void ami_wbench_args(){
 	case ' ':
 	case '-':   break;
 #ifdef NEWS
-	case 'n':   flags.news = FALSE;
+	case 'n':   iflags.news = FALSE;
 #endif
 	case 'D':
 # ifdef WIZARD
@@ -604,7 +604,7 @@ score(scorearg)
 	}
 	prscore(ac+1,av);
 	free( av );
-	exit(0);        /* #defined to msexit() */
+	nethack_exit(0);
 }
 
 static

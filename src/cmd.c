@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.2	96/05/14	*/
+/*	SCCS Id: @(#)cmd.c	3.2	96/08/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -664,6 +664,14 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 		Strcpy(buf, an(mons[u.ulycn].mname));
 		you_are(buf);
 	}
+	if (Upolyd) {
+	    if (u.ulycn >= LOW_PM) Strcpy(buf, "in beast form");
+	    else Sprintf(buf, "polymorphed into %s", an(uasmon->mname));
+#ifdef WIZARD
+	    if (wizard) Sprintf(eos(buf), " (%d)", u.mtimedone);
+#endif
+	    you_are(buf);
+	}
 	if (Luck) {
 	    ltmp = abs((int)Luck);
 	    Sprintf(buf, "%s%slucky",
@@ -759,18 +767,6 @@ wiz_attributes()
 #endif /* OVLB */
 #ifdef OVL1
 
-#ifdef WEAPON_SKILLS
-STATIC_PTR int NDECL(obsolete_qualifications);
-
-/* 3.2.0's "#qualifications" was eliminated in 3.2.1; remove this for 3.3 */
-STATIC_PTR int
-obsolete_qualifications()
-{
-	pline("`#qualifications' is obsolete.  Use `#enhance'.");
-	return 0;
-}
-#endif /* WEAPON_SKILLS */
-
 #ifndef M
 # ifndef NHSTDC
 #  define M(c)		(0x80 | (c))
@@ -850,9 +846,6 @@ static const struct func_tab cmdlist[] = {
 	{M('p'), TRUE, dopray},
 	{'q', FALSE, dodrink},
 	{'Q', TRUE, done2},
-#ifdef WEAPON_SKILLS
-	{M('Q'), TRUE, obsolete_qualifications},
-#endif /* WEAPON_SKILLS */
 	{'r', FALSE, doread},
 	{'R', FALSE, doremring},
 	{M('r'), FALSE, dorub},
@@ -920,10 +913,6 @@ struct ext_func_tab extcmdlist[] = {
 	{"name", "name an item or type of object", ddocall, TRUE},
 	{"offer", "offer a sacrifice to the gods", dosacrifice, FALSE},
 	{"pray", "pray to the gods for help", dopray, TRUE},
-#ifdef WEAPON_SKILLS
-	{"qualifications", "(obsolete; use #enhance)", obsolete_qualifications,
-							TRUE},
-#endif /* WEAPON_SKILLS */
 	{"rub", "rub a lamp", dorub, FALSE},
 	{"sit", "sit down", dosit, FALSE},
 	{"turn", "turn undead", doturn, TRUE},
@@ -1223,14 +1212,14 @@ register char *cmd;
 		    } else
 			prefix_seen = TRUE;
 		    break;
-	 case '5':  if (!flags.num_pad) break;	/* else FALLTHRU */
+	 case '5':  if (!iflags.num_pad) break;	/* else FALLTHRU */
 	 case 'G':  if (movecmd(lowc(cmd[1]))) {
 			flags.run = 3;
 			do_rush = TRUE;
 		    } else
 			prefix_seen = TRUE;
 		    break;
-	 case '-':  if (!flags.num_pad) break;	/* else FALLTHRU */
+	 case '-':  if (!iflags.num_pad) break;	/* else FALLTHRU */
 	 case 'm':  if (movecmd(cmd[1]) || u.dz) {
 			flags.run = 0;
 			flags.nopick = 1;
@@ -1246,14 +1235,14 @@ register char *cmd;
 		    } else
 			prefix_seen = TRUE;
 		    break;
-	 case '0':  if (!flags.num_pad) break;
+	 case '0':  if (!iflags.num_pad) break;
 		    (void)ddoinv(); /* a convenience borrowed from the PC */
 		    flags.move = FALSE;
 		    multi = 0;
 		    return;
 	 default:   if (movecmd(*cmd)) {	/* ordinary movement */
 			do_walk = TRUE;
-		    } else if (movecmd(flags.num_pad ?
+		    } else if (movecmd(iflags.num_pad ?
 				       unmeta(*cmd) : lowc(*cmd))) {
 			flags.run = 1;
 			do_rush = TRUE;
@@ -1363,7 +1352,7 @@ char sym;
 {
 	register const char *dp;
 	register const char *sdp;
-	if(flags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
+	if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
 
 	u.dz = 0;
 	if(!(dp = index(sdp, sym))) return 0;
@@ -1455,9 +1444,9 @@ click_to_cmd(x, y, mod)
 
     x = xytod(x, y);
     if(mod == CLICK_1) {
-	return (flags.num_pad ? ndir[x] : sdir[x]);
+	return (iflags.num_pad ? ndir[x] : sdir[x]);
     } else {
-	return (flags.num_pad ? M(ndir[x]) :
+	return (iflags.num_pad ? M(ndir[x]) :
 		(sdir[x] - 'a' + 'A')); /* run command */
     }
 }
@@ -1477,7 +1466,7 @@ parse()
 	flags.move = 1;
 	flush_screen(1); /* Flush screen buffer. Put the cursor on the hero. */
 
-	if (!flags.num_pad || (foo = readchar()) == 'n')
+	if (!iflags.num_pad || (foo = readchar()) == 'n')
 	    for (;;) {
 		foo = readchar();
 		if (foo >= '0' && foo <= '9') {
@@ -1515,7 +1504,7 @@ parse()
 	}
 	in_line[0] = foo;
 	in_line[1] = '\0';
-	if (foo == 'g' || foo == 'G' || (flags.num_pad && foo == '5') ||
+	if (foo == 'g' || foo == 'G' || (iflags.num_pad && foo == '5') ||
 	    foo == 'm' || foo == 'M') {
 	    foo = readchar();
 #ifdef REDO

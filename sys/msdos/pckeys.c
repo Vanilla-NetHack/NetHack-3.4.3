@@ -16,10 +16,7 @@
 boolean FDECL(pckeys, (unsigned char, unsigned char));
 
 extern struct WinDesc *wins[MAXWIN];	/* from wintty.c */
-extern boolean tiles_on;		/* from video.c */
-extern boolean traditional;		/* from video.c */
 extern boolean inmap;			/* from video.c */
-extern boolean overview;
 
 #define SHIFT		(0x1 | 0x2)
 #define CTRL		0x4
@@ -48,24 +45,28 @@ unsigned char shift;
 		break;
 #  endif
 	case 0x74:	/* Control-right_arrow = scroll horizontal to right */
-		if ((shift & CTRL) && tiles_on && !opening_dialog)
+		if ((shift & CTRL) && iflags.tile_view && !opening_dialog)
 			vga_userpan(1);
 		break;
 
 	case 0x73:	/* Control-left_arrow = scroll horizontal to left */
-		if ((shift & CTRL) && tiles_on && !opening_dialog)
+		if ((shift & CTRL) && iflags.tile_view && !opening_dialog)
 			vga_userpan(0);
 		break;
 	case 0x3E:	/* F4 = toggle overview mode */
-		if (tiles_on && !opening_dialog) {
-			traditional = FALSE;
-			vga_overview(overview ? 0 : 1);
+		if (iflags.tile_view && 
+		    !opening_dialog && !Is_rogue_level(&u.uz)) {
+			iflags.traditional_view = FALSE;
+			vga_overview(iflags.over_view ? FALSE : TRUE);
+			vga_refresh();
 		}
 		break;
 	case 0x3F:	/* F5 = toggle traditional mode */
-		if (tiles_on && !opening_dialog) {
-			overview = FALSE;
-			vga_traditional(traditional ? 0 : 1);
+		if (iflags.tile_view &&
+		    !opening_dialog && !Is_rogue_level(&u.uz)) {
+			iflags.over_view = FALSE;
+			vga_traditional(iflags.traditional_view ? FALSE : TRUE);
+			vga_refresh();
 		}
 		break;
 	default:

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)botl.c	3.2	95/05/31	*/
+/*	SCCS Id: @(#)botl.c	3.2	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -324,7 +324,7 @@ bot1()
 	newbot1[10] = 0;
 	Sprintf(nb = eos(newbot1)," the ");
 
-	if (u.mtimedone) {
+	if (Upolyd) {
 		char mbot[BUFSZ];
 		int k = 0;
 
@@ -374,8 +374,8 @@ bot2()
 	int hp, hpmax;
 	int cap = near_capacity();
 
-	hp = u.mtimedone ? u.mh : u.uhp;
-	hpmax = u.mtimedone ? u.mhmax : u.uhpmax;
+	hp = Upolyd ? u.mh : u.uhp;
+	hpmax = Upolyd ? u.mhmax : u.uhpmax;
 
 	if(hp < 0) hp = 0;
 /* TODO:	Add in dungeon name */
@@ -392,7 +392,7 @@ bot2()
 		"%c:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d", oc_syms[GOLD_CLASS],
 		u.ugold, hp, hpmax, u.uen, u.uenmax, u.uac);
 
-	if (u.mtimedone)
+	if (Upolyd)
 		Sprintf(nb = eos(nb), " HD:%d", mons[u.umonnum].mlevel);
 #ifdef EXP_ON_BOTL
 	else if(flags.showexp)

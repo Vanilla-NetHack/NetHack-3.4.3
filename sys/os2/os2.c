@@ -28,7 +28,7 @@ tgetch()
 	char ch;
 
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
-	if (flags.BIOS)
+	if (iflags.BIOS)
 		ch = BIOSgetch();
 	else
 		ch = DOSgetch();
@@ -46,7 +46,7 @@ tgetch()
 
 /*
  * Keypad keys are translated to the normal values below.
- * When flags.BIOS is active, shifted keypad keys are translated to the
+ * When iflags.BIOS is active, shifted keypad keys are translated to the
  *    shift values below.
  */
 static const struct pad {
@@ -124,7 +124,7 @@ BIOSgetch()
 
 	/* Translate keypad keys */
 	if (iskeypad(scan)) {
-		kpad = flags.num_pad ? numpad : keypad;
+		kpad = iflags.num_pad ? numpad : keypad;
 		if (shift & SHIFT_KEY)
 			ch = kpad[scan - KEYPADLO].shift;
 		else if (shift & CTRL_KEY)
@@ -294,7 +294,7 @@ disable_ctrlP()
 	KBDINFO KbdInfo;
 	HKBD KbdHandle = 0;
 
-	if (!flags.rawio) return;
+	if (!iflags.rawio) return;
 	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFF7; /* ASCII off */
@@ -308,7 +308,7 @@ enable_ctrlP()
 	KBDINFO KbdInfo;
 	HKBD KbdHandle = 0;
 
-	if (!flags.rawio) return;
+	if (!iflags.rawio) return;
 	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFFB; /* BINARY off */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)system.h	3.2	96/03/18	*/
+/*	SCCS Id: @(#)system.h	3.2	96/10/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -50,7 +50,7 @@ typedef long	off_t;
  * impossible to get right automatically.
  * This is the type of signal handling functions.
  */
-#if defined(_MSC_VER) || defined(__TURBOC__) || defined(__SC__) || defined(WIN32)
+#if !defined(OS2) && (defined(_MSC_VER) || defined(__TURBOC__) || defined(__SC__) || defined(WIN32))
 # define SIG_RET_TYPE void (__cdecl *)(int)
 #endif
 #ifndef SIG_RET_TYPE
@@ -94,6 +94,17 @@ E void srand48();
 # ifndef MICRO
 E void FDECL(exit, (int));
 # endif /* MICRO */
+/* compensate for some CSet/2 bogosities */
+# if defined(OS2_CSET2) && defined(OS2_CSET2_VER_2)
+#  define open    _open
+#  define close   _close
+#  define read    _read
+#  define write   _write
+#  define lseek   _lseek
+#  define chdir   _chdir
+#  define getcwd  _getcwd
+#  define setmode _setmode
+# endif /* OS2_CSET2 && OS2_CSET2_VER_2 */
 /* If flex thinks that we're not __STDC__ it declares free() to return
    int and we die.  We must use __STDC__ instead of NHSTDC because
    the former is naturally what flex tests for. */
@@ -159,7 +170,11 @@ E int FDECL(write, (int,genericptr_t,unsigned));
 # endif /* ULTRIX */
 
 # ifdef OS2_CSET2	/* IBM CSet/2 */
+#  ifdef OS2_CSET2_VER_1
 E int FDECL(unlink, (char *));
+#  else
+E int FDECL(unlink, (const char *)); /* prototype is ok in ver >= 2 */
+#  endif
 # else
 #  ifndef __SC__
 E int FDECL(unlink, (const char *));

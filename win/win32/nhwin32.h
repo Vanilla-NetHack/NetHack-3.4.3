@@ -69,14 +69,14 @@ struct win32_menuitem {
 };
 
 #ifdef TEXTCOLOR
-#define zap_color(n)  color = flags.use_color ? zapcolors[n] : NO_COLOR
-#define cmap_color(n) color = flags.use_color ? defsyms[n].color : NO_COLOR
-#define obj_color(n)  color = flags.use_color ? objects[n].oc_color : NO_COLOR
-#define mon_color(n)  color = flags.use_color ? mons[n].mcolor : NO_COLOR
-#define pet_color(n)  color = flags.use_color ? mons[n].mcolor :	      \
+#define zap_color(n)  color = iflags.use_color ? zapcolors[n] : NO_COLOR
+#define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
+#define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
+#define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :	      \
 				/* If no color, try to hilite pets; black  */ \
 				/* should be HI				   */ \
-				((flags.hilite_pet && has_color(CLR_BLACK)) ? \
+				((iflags.hilite_pet && has_color(CLR_BLACK)) ? \
 							CLR_BLACK : NO_COLOR)
 # else /* no text color */
 #define zap_color(n)

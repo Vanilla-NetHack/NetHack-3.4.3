@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.2	96/05/18	*/
+/*	SCCS Id: @(#)trap.c	3.2	96/10/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -299,24 +299,37 @@ boolean td;	/* td == TRUE : trapdoor or hole */
 }
 
 /* you've either stepped onto a statue trap's location
-   or you've triggered a statue trap by searching next to it */
-void
-activate_statue_trap(trap, x, y)
+   or you've triggered a statue trap by searching next to it
+   or by trying to break it with a wand or pick-axe */
+struct monst *
+activate_statue_trap(trap, x, y, shatter)
 struct trap *trap;
 xchar x, y;
+boolean shatter;
 {
-	struct monst *mtmp;
-	struct obj *otmp = sobj_at(STATUE, x, y);
+	struct monst *mtmp = 0;
+	struct permonst *mptr = 0;
+	struct obj *item, *otmp = sobj_at(STATUE, x, y);
 
+	/* Guard against someone wishing for a statue of a unique monster
+	   (which is allowed in normal play) and then tossing it onto the
+	   [detected or guessed] location of a statue trap.  Normally the
+	   uppermost statue is the one which would be activated. */
+	while (otmp) {
+	    mptr = &mons[otmp->corpsenm];
+	    if (!(mptr->geno & G_UNIQ)) break;	/* not unique => use it */
+	    while ((otmp = otmp->nexthere) != 0)
+		if (otmp->otyp == STATUE) break;
+	}
 	deltrap(trap);
-	if (otmp && (mtmp = makemon(&mons[otmp->corpsenm],
-					x, y, NO_MINVENT)) != 0) {
-	    struct obj *obj;
-
-	    while(otmp->cobj) {
-		obj = otmp->cobj;
-		obj_extract_self(obj);
-		add_to_minv(mtmp, obj);
+	if (otmp && (mtmp = makemon(mptr, x, y, NO_MINVENT)) != 0) {
+	    /* if statue has been named, give same name to the monster */
+	    if (otmp->onamelth)
+		mtmp = christen_monst(mtmp, ONAME(otmp));
+	    /* transfer any statue contents to monster's inventory */
+	    while ((item = otmp->cobj) != 0) {
+		obj_extract_self(item);
+		add_to_minv(mtmp, item);
 	    }
 	    m_dowear(mtmp, TRUE);
 	    delobj(otmp);
@@ -325,6 +338,8 @@ xchar x, y;
 	    else mtmp->mundetected = FALSE;
 	    if (x == u.ux && y == u.uy)
 		pline_The("statue comes to life!");
+	    else if (shatter)
+		pline("Instead of shattering, the statue suddenly comes alive!");
 	    else
 		You("find %s posing as a statue.", a_monnam(mtmp));
 	    /* avoid hiding under nothing */
@@ -334,6 +349,7 @@ xchar x, y;
 	}
 	if (Blind) feel_location(x, y);
 	else newsym(x, y);
+	return mtmp;
 }
 
 void
@@ -654,7 +670,7 @@ two_hand:		    erode_weapon(FALSE);
 		break;
 
 	    case STATUE_TRAP:
-		activate_statue_trap(trap, u.ux, u.uy);
+		(void) activate_statue_trap(trap, u.ux, u.uy, FALSE);
 		break;
 
 	    case MAGIC_TRAP:	    /* A magic trap. */
@@ -1002,26 +1018,28 @@ register struct monst *mtmp;
 	struct permonst *mptr = mtmp->data;
 	struct obj *otmp;
 
-	if(!trap) {
-		mtmp->mtrapped = 0;	/* perhaps teleported? */
-	} else if (mtmp->mtrapped) {	/* was in trap */
-		if(!rn2(40)) {
-			if (sobj_at(BOULDER, mtmp->mx, mtmp->my) &&
-			    ((trap->ttyp == PIT) ||
-			     (trap->ttyp == SPIKED_PIT))) {
-				if (!rn2(2)) {
-					mtmp->mtrapped = 0;
-					fill_pit(mtmp->mx, mtmp->my);
-				}
-			} else
-				mtmp->mtrapped = 0;
-		} else if (trap->ttyp == BEAR_TRAP && metallivorous(mptr)) {
-			if (canseemon(mtmp))
-			    pline("%s eats a bear trap!", Monnam(mtmp));
-			deltrap(trap);
-			mtmp->meating = 5;
+	if (!trap) {
+	    mtmp->mtrapped = 0;	/* perhaps teleported? */
+	} else if (mtmp->mtrapped) {	/* is currently in the trap */
+	    if (!rn2(40)) {
+		if (sobj_at(BOULDER, mtmp->mx, mtmp->my) &&
+			(trap->ttyp == PIT || trap->ttyp == SPIKED_PIT)) {
+		    if (!rn2(2)) {
 			mtmp->mtrapped = 0;
+			if (canseemon(mtmp))
+			    pline("%s pulls free...", Monnam(mtmp));
+			fill_pit(mtmp->mx, mtmp->my);
+		    }
+		} else {
+		    mtmp->mtrapped = 0;
 		}
+	    } else if (trap->ttyp == BEAR_TRAP && metallivorous(mptr)) {
+		if (canseemon(mtmp))
+		    pline("%s eats a bear trap!", Monnam(mtmp));
+		deltrap(trap);
+		mtmp->meating = 5;
+		mtmp->mtrapped = 0;
+	    }
 	} else {
 	    register int tt = trap->ttyp;
 	    boolean in_sight, tear_web, see_it;
@@ -1343,23 +1361,25 @@ register struct monst *mtmp;
 		    break;
 
 		case ROLLING_BOULDER_TRAP:
-		    newsym(mtmp->mx,mtmp->my);
-		    if (in_sight)
-			pline("Click! %s triggers %s.", Monnam(mtmp),
-				trap->tseen ?
-				"a rolling boulder trap" :
-				something);
-		    if (launch_obj(BOULDER, trap->launch.x, trap->launch.y,
-				   trap->launch2.x, trap->launch2.y, ROLL)) {
-			if (in_sight) trap->tseen = TRUE;
-			else You_hear(Hallucination ?
+		    if (!is_flyer(mptr)) {
+		        newsym(mtmp->mx,mtmp->my);
+			if (in_sight)
+			  pline("Click! %s triggers %s.", Monnam(mtmp),
+				  trap->tseen ?
+				  "a rolling boulder trap" :
+				  something);
+			if (launch_obj(BOULDER, trap->launch.x, trap->launch.y,
+				       trap->launch2.x, trap->launch2.y, ROLL)) {
+			  if (in_sight) trap->tseen = TRUE;
+			  else You_hear(Hallucination ?
 					"someone bowling." :
 					"rumbling in the distance.");
-			if (mtmp->mhp <= 0) trapkilled = TRUE;
-		    } else {
-			deltrap(trap);
-			newsym(mtmp->mx,mtmp->my);
-		    }
+			  if (mtmp->mhp <= 0) trapkilled = TRUE;
+			} else {
+			  deltrap(trap);
+			  newsym(mtmp->mx,mtmp->my);
+			}
+		      }
 		    break;
 
 		default:
@@ -2270,19 +2290,20 @@ struct trap *ttmp;
 		}
 	}
 	You("reach out your %s and grab %s.",
-			makeplural(body_part(ARM)), mon_nam(mtmp));
+	    makeplural(body_part(ARM)), mon_nam(mtmp));
 
 	/* is the monster too heavy? */
 	wt = inv_weight() + mtmp->data->cwt;
 	if (!try_lift(mtmp, ttmp, wt, FALSE)) return 1;
 
 	/* is the monster with inventory too heavy? */
-	for (otmp = mtmp->minvent; otmp; otmp=otmp->nobj)
+	for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj)
 		wt += otmp->owt;
 	if (!try_lift(mtmp, ttmp, wt, TRUE)) return 1;
 
 	You("pull %s out of the pit.", mon_nam(mtmp));
 	mtmp->mtrapped = 0;
+	fill_pit(mtmp->mx, mtmp->my);
 	reward_untrap(ttmp, mtmp);
 	return 1;
 }
@@ -2459,6 +2480,8 @@ boolean disarm;
 	if (get_obj_location(obj, &cc.x, &cc.y, 0))	/* might be carried */
 	    obj->ox = cc.x,  obj->oy = cc.y;
 
+	otmp->otrapped = 0;	/* trap is one-shot; clear flag first in case
+				   chest kills you and ends up in bones file */
 	You(disarm ? "set it off!" : "trigger a trap!");
 	display_nhwindow(WIN_MESSAGE, FALSE);
 	if (Luck > -13 && rn2(13+Luck) > 7) {	/* saved by luck */
@@ -2601,7 +2624,6 @@ boolean disarm;
 	    }
 	    bot();			/* to get immediate botl re-display */
 	}
-	otmp->otrapped = 0;		/* these traps are one-shot things */
 
 	return FALSE;
 }

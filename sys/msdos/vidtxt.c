@@ -46,7 +46,7 @@ txt_get_scr_size()
 {
 	union REGS regs;
 
-	if (!flags.BIOS) {
+	if (!iflags.BIOS) {
 		CO = 80;
 		LI = 24;
 		return;

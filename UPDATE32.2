@@ -1,0 +1,22 @@
+This is a minor bugfix release.  Sorry, no major new functionality this
+time around.
+
+The two bugs found by dozens of people, recover not working and boomerangs
+sometimes causing crashes, are fixed.  A problem with priest names in the
+endgame found by several people is fixed.  Dozens of other mostly minor
+bugs noticed by one person each are fixed, and some minor extensions added.
+
+Several people's problems with curses.h when compiling for UNIX/tty
+should be fixed as well.
+
+Save files are not compatible with earlier versions -- various session-
+specific flags are no longer stored in the save file, instead of trying
+to ignore their saved values when restoring.  NetHack should diagnose
+this instead of crashing mysteriously, however.
+
+In port news, Mac mrecover is updated, although the windowing still needs
+help from a Mac programming expert.  There has been some Amiga work, although
+more people with time are needed there.  None of us have access to an
+Atari any longer, so if anyone wants that port to continue this is a good
+time to make yourself known.  (The UNIX, VMS, MS-DOS, and NT ports are
+reasonably healthy, modulo people getting busy.)

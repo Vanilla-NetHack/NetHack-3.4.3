@@ -129,10 +129,10 @@ vms_getchar()
 	    key = (short)'\n';
 	} else if (kb_buf == ESC || kb_buf == CSI || kb_buf == SS3) {
 	    switch(parse_function_key((int)kb_buf)) {
-	      case SMG$K_TRM_UP:    key = flags.num_pad ? '8' : 'k';  break;
-	      case SMG$K_TRM_DOWN:  key = flags.num_pad ? '2' : 'j';  break;
-	      case SMG$K_TRM_LEFT:  key = flags.num_pad ? '4' : 'h';  break;
-	      case SMG$K_TRM_RIGHT: key = flags.num_pad ? '6' : 'l';  break;
+	      case SMG$K_TRM_UP:    key = iflags.num_pad ? '8' : 'k';  break;
+	      case SMG$K_TRM_DOWN:  key = iflags.num_pad ? '2' : 'j';  break;
+	      case SMG$K_TRM_LEFT:  key = iflags.num_pad ? '4' : 'h';  break;
+	      case SMG$K_TRM_RIGHT: key = iflags.num_pad ? '6' : 'l';  break;
 	      default:		    key = ESC;	break;
 	    }
 	} else {
@@ -151,10 +151,10 @@ vms_getchar()
     if (recurse++ == 0 && kb != 0) {
 	smg$read_keystroke(&kb, &key);
 	switch (key) {
-	  case SMG$K_TRM_UP:	flags.num_pad ? '8' : key = 'k';  break;
-	  case SMG$K_TRM_DOWN:	flags.num_pad ? '2' : key = 'j';  break;
-	  case SMG$K_TRM_LEFT:	flags.num_pad ? '4' : key = 'h';  break;
-	  case SMG$K_TRM_RIGHT: flags.num_pad ? '6' : key = 'l';  break;
+	  case SMG$K_TRM_UP:	iflags.num_pad ? '8' : key = 'k';  break;
+	  case SMG$K_TRM_DOWN:	iflags.num_pad ? '2' : key = 'j';  break;
+	  case SMG$K_TRM_LEFT:	iflags.num_pad ? '4' : key = 'h';  break;
+	  case SMG$K_TRM_RIGHT: iflags.num_pad ? '6' : key = 'l';  break;
 	  case '\r':		key = '\n'; break;
 	  default:		if (key > 255)	key = ESC;
 				break;
@@ -325,7 +325,7 @@ gettty()
     unsigned long status, zero = 0;
 
     if (tt_chan == 0) {		/* do this stuff once only */
-	flags.cbreak = OFF,  flags.echo = ON;	/* until setup is complete */
+	iflags.cbreak = OFF,  iflags.echo = ON;	/* until setup is complete */
 	status = sys$assign(&tty_dsc, &tt_chan, 0, 0);
 	if (!vms_ok(status)) {
 	    raw_print(""),  err++;
@@ -378,8 +378,8 @@ const char *s;
 #endif	/* 0 (!USE_QIO_INPUT) */
 	if (ctrl_mask)
 	    (void) lib$enable_ctrl(&ctrl_mask, 0);
-	flags.echo = ON;
-	flags.cbreak = OFF;
+	iflags.echo = ON;
+	iflags.cbreak = OFF;
 	/* reset original tab, form-feed, broadcast settings */
 	sg.sm.tt_char  = tt_char_restore;
 	sg.sm.tt2_char = tt2_char_restore;
@@ -413,8 +413,8 @@ setftty()
 	    init_broadcast_trapping();
 	}
 	enable_broadcast_trapping();	/* no-op if !defined(MAIL) */
-	flags.cbreak = (kb != 0) ? ON : OFF;
-	flags.echo   = (kb != 0) ? OFF : ON;
+	iflags.cbreak = (kb != 0) ? ON : OFF;
+	iflags.echo   = (kb != 0) ? OFF : ON;
 	/* disable tab & form-feed expansion; prepare for broadcast trapping */
 	sg.sm.tt_char  = tt_char_active;
 	sg.sm.tt2_char = tt2_char_active;

@@ -125,7 +125,7 @@ dosave0()
 	if (!saveDiskPrompt(0)) return 0;
 #endif
 
-	HUP if (flags.window_inited) {
+	HUP if (iflags.window_inited) {
 	    uncompress(SAVEF);
 	    fd = open_savefile();
 	    if (fd > 0) {
@@ -152,7 +152,7 @@ dosave0()
 		change_luck(-1);		/* and unido!ab */
 	if(flags.friday13)
 		change_luck(1);
-	if(flags.window_inited)
+	if(iflags.window_inited)
 	    clear_nhwindow(WIN_MESSAGE);
 
 #ifdef MICRO

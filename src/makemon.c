@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.2	95/08/12	*/
+/*	SCCS Id: @(#)makemon.c	3.2	96/07/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -879,12 +879,11 @@ register int	mmflags;
 	if (allow_minvent) {
 	    if(is_armed(ptr))
 		m_initweap(mtmp);	/* equip with weapons / armor */
-	    m_initinv(mtmp);    /* add on a few special items incl. more armor */
+	    m_initinv(mtmp);  /* add on a few special items incl. more armor */
 	    m_dowear(mtmp, TRUE);
-	} else if (mtmp->minvent) {	/* sanity check */
-	    impossible("makemon: non-null minvent despite NO_MINVENT flag.");
-	    discard_minvent(mtmp);
-	    mtmp->minvent = (struct obj *)0;	/* caller expects this */
+	} else {
+	    /* no initial inventory is allowed */
+	    if (mtmp->minvent) discard_minvent(mtmp);
 	}
 	if (ptr->mflags3 & M3_WAITMASK) {
 		if (ptr->mflags3 & M3_WAITFORU)

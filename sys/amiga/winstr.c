@@ -31,7 +31,7 @@ amii_putstr(window,attr,str)
 
     if( window == WIN_ERR || ( cw = amii_wins[window] ) == NULL )
     {
-	flags.window_inited=0;
+	iflags.window_inited=0;
 	panic(winpanicstr,window, "putstr");
     }
 
@@ -90,15 +90,15 @@ amii_putstr(window,attr,str)
 	}
 
 	/* If used all of history lines, move them down */
-	if( cw->maxrow >= flags.msg_history )
+	if( cw->maxrow >= iflags.msg_history )
 	{
 	    if( cw->data[ 0 ] )
 		free( cw->data[ 0 ] );
 	    memcpy( cw->data, &cw->data[ 1 ],
-		( flags.msg_history - 1 ) * sizeof( char * ) );
-	    cw->data[ flags.msg_history - 1 ] =
+		( iflags.msg_history - 1 ) * sizeof( char * ) );
+	    cw->data[ iflags.msg_history - 1 ] =
 			    (char *) alloc( strlen( toplines ) + 5 );
-	    strcpy( cw->data[ i = flags.msg_history - 1 ] +
+	    strcpy( cw->data[ i = iflags.msg_history - 1 ] +
 				SOFF + (scrollmsg!=0), toplines );
 	}
 	else

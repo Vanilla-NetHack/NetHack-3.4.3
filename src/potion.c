@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	3.2	96/03/06	*/
+/*	SCCS Id: @(#)potion.c	3.2	96/08/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -387,28 +387,25 @@ peffects(otmp)
 			if (u.ulycn >= LOW_PM) {
 			    Your("affinity to %s disappears!",
 				 makeplural(mons[u.ulycn].mname));
-			    if (uasmon == &mons[u.ulycn] && !Polymorph_control)
-				rehumanize();
-			    u.ulycn = NON_PM;
+			    if (uasmon == &mons[u.ulycn])
+				you_unwere(FALSE);
+			    u.ulycn = NON_PM;	/* cure lycanthropy */
 			}
 			losehp(d(2,6), "potion of holy water", KILLED_BY_AN);
 		    } else if(otmp->cursed) {
 			You_feel("quite proud of yourself.");
 			healup(d(2,6),0,0,0);
+			if (u.ulycn >= LOW_PM && !Upolyd) you_were();
 			exercise(A_CON, TRUE);
 		    }
-		} else
+		} else {
 		    if(otmp->blessed) {
 			You_feel("full of awe.");
 			make_sick(0L, (char *) 0, TRUE, SICK_ALL);
 			exercise(A_WIS, TRUE);
 			exercise(A_CON, TRUE);
-			if (u.ulycn >= LOW_PM) {
-			    You_feel("purified.");
-			    if (uasmon == &mons[u.ulycn] && !Polymorph_control)
-				rehumanize();
-			    u.ulycn = NON_PM;
-			}
+			if (u.ulycn >= LOW_PM)
+			    you_unwere(TRUE);	/* "Purified" */
 			/* make_confused(0L,TRUE); */
 		    } else {
 			if(u.ualign.type == A_LAWFUL) {
@@ -417,8 +414,10 @@ peffects(otmp)
 				KILLED_BY_AN);
 			} else
 			    You_feel("full of dread.");
+			if (u.ulycn >= LOW_PM && !Upolyd) you_were();
 			exercise(A_CON, FALSE);
 		    }
+		}
 		break;
 	case POT_BOOZE:
 		unkn++;
@@ -428,8 +427,7 @@ peffects(otmp)
 		if (!otmp->blessed)
 		    make_confused(itimeout_incr(HConfusion, d(3,8)), FALSE);
 		/* the whiskey makes us feel better */
-		if (u.uhp < u.uhpmax && !otmp->odiluted)
-			losehp(-1, "", 0); /* can't kill you */
+		if (!otmp->odiluted) healup(1, 0, FALSE, FALSE);
 		u.uhunger += 10 * (2 + bcsign(otmp));
 		newuhs(FALSE);
 		exercise(A_WIS, FALSE);
@@ -738,7 +736,7 @@ healup(nhp, nxtra, curesick, cureblind)
 	register boolean curesick, cureblind;
 {
 	if (nhp) {
-		if (u.mtimedone) {
+		if (Upolyd) {
 			u.mh += nhp;
 			if (u.mh > u.mhmax) u.mh = (u.mhmax += nxtra);
 		} else {
@@ -873,26 +871,31 @@ register struct obj *obj;
 		}
 		break;
 	case POT_WATER:
-		if (is_undead(mon->data) || is_demon(mon->data)) {
-			if (obj->blessed) {
-				pline("%s shrieks in pain!", Monnam(mon));
-				mon->mhp -= d(2,6);
-				if (mon->mhp <1) killed(mon);
-			} else if (obj->cursed) {
-				if (canseemon(mon))
-				    pline("%s looks healthier.", Monnam(mon));
-				mon->mhp += d(2,6);
-				if (mon->mhp > mon->mhpmax)
-					mon->mhp = mon->mhpmax;
-			}
+		if (is_undead(mon->data) || is_demon(mon->data) ||
+			is_were(mon->data)) {
+		    if (obj->blessed) {
+			pline("%s shrieks in pain!", Monnam(mon));
+			mon->mhp -= d(2,6);
+			if (mon->mhp < 1) killed(mon);
+			else if (is_were(mon->data) && !is_human(mon->data))
+			    new_were(mon);	/* revert to human */
+		    } else if (obj->cursed) {
+			if (canseemon(mon))
+			    pline("%s looks healthier.", Monnam(mon));
+			mon->mhp += d(2,6);
+			if (mon->mhp > mon->mhpmax) mon->mhp = mon->mhpmax;
+			if (is_were(mon->data) && is_human(mon->data) &&
+				!Protection_from_shape_changers)
+			    new_were(mon);	/* transform into beast */
+		    }
 		} else if(mon->data == &mons[PM_GREMLIN]) {
-			struct monst *mtmp2 = clone_mon(mon);
+		    struct monst *mtmp2 = clone_mon(mon);
 
-			if (mtmp2) {
-				mtmp2->mhpmax = (mon->mhpmax /= 2);
-				if (canseemon(mon))
-					pline("%s multiplies.", Monnam(mon));
-			}
+		    if (mtmp2) {
+			mtmp2->mhpmax = (mon->mhpmax /= 2);
+			if (canseemon(mon))
+			    pline("%s multiplies.", Monnam(mon));
+		    }
 		}
 		break;
 	case POT_OIL:
@@ -955,15 +958,21 @@ register struct obj *obj;
 		}
 		break;
 	case POT_EXTRA_HEALING:
+		if (Upolyd && u.mh < u.mhmax) u.mh++, flags.botl = 1;
 		if (u.uhp < u.uhpmax) u.uhp++, flags.botl = 1;
 		/*FALL THROUGH*/
 	case POT_HEALING:
+		if (Upolyd && u.mh < u.mhmax) u.mh++, flags.botl = 1;
 		if (u.uhp < u.uhpmax) u.uhp++, flags.botl = 1;
 		exercise(A_CON, TRUE);
 		break;
 	case POT_SICKNESS:
 		if (!Role_is('H')) {
-			if(u.uhp <= 5) u.uhp = 1; else u.uhp -= 5;
+			if (Upolyd) {
+			    if (u.mh <= 5) u.mh = 1; else u.mh -= 5;
+			} else {
+			    if (u.uhp <= 5) u.uhp = 1; else u.uhp -= 5;
+			}
 			flags.botl = 1;
 			exercise(A_CON, FALSE);
 		}
@@ -1007,6 +1016,13 @@ register struct obj *obj;
 			mtmp->mhpmax = (u.mhmax /= 2);
 			You("multiply.");
 		    }
+		} else if (u.ulycn >= LOW_PM) {
+		    /* vapor from [un]holy water will trigger
+		       transformation but won't cure lycanthropy */
+		    if (obj->blessed && uasmon == &mons[u.ulycn])
+			you_unwere(FALSE);
+		    else if (obj->cursed && !Upolyd)
+			you_were();
 		}
 /*
 	case POT_GAIN_LEVEL:
@@ -1121,25 +1137,30 @@ get_wet(obj)
 register struct obj *obj;
 /* returns TRUE if something happened (potion should be used up) */
 {
-	if(snuff_lit(obj)) return(TRUE);
+	char Your_buf[BUFSZ];
+
+	if (snuff_lit(obj)) return(TRUE);
 
 	if (obj->greased) {
 		grease_protect(obj,(char *)0,FALSE);
 		return(FALSE);
 	}
+	(void) Shk_Your(Your_buf, obj);
+	/* (Rusting and diluting unpaid shop goods ought to be charged for.) */
 	switch (obj->oclass) {
 	    case WEAPON_CLASS:
 		if (!obj->oerodeproof && is_rustprone(obj) &&
 		    (obj->oeroded < MAX_ERODE) && !rn2(10)) {
-			Your("%s some%s.", aobjnam(obj, "rust"),
-			     obj->oeroded ? " more" : "what");
+			pline("%s %s some%s.",
+			      Your_buf, aobjnam(obj, "rust"),
+			      obj->oeroded ? " more" : "what");
 			obj->oeroded++;
 			return TRUE;
 		} else break;
 	    case POTION_CLASS:
 		if (obj->otyp == POT_WATER) return FALSE;
-		Your("%s%s.", aobjnam(obj,"dilute"),
-			obj->odiluted ? " further" : "");
+		pline("%s %s%s.", Your_buf, aobjnam(obj,"dilute"),
+		      obj->odiluted ? " further" : "");
 		if (obj->odiluted) {
 			obj->odiluted = 0;
 #ifdef UNIXPC
@@ -1194,7 +1215,7 @@ register struct obj *obj;
 			return TRUE;
 		}
 	}
-	Your("%s wet.", aobjnam(obj,"get"));
+	pline("%s %s wet.", Your_buf, aobjnam(obj,"get"));
 	return FALSE;
 }
 
@@ -1206,7 +1227,7 @@ dodip()
 	uchar here;
 	char allowall[2];
 	short mixture;
-	char qbuf[QBUFSZ];
+	char qbuf[QBUFSZ], Your_buf[BUFSZ];
 
 	allowall[0] = ALL_CLASSES; allowall[1] = '\0';
 	if(!(obj = getobj(allowall, "dip")))
@@ -1238,10 +1259,13 @@ dodip()
 		return 0;
 	}
 	if(potion->otyp == POT_WATER) {
+		boolean useeit = !Blind;
+		if (useeit) (void) Shk_Your(Your_buf, obj);
 		if (potion->blessed) {
 			if (obj->cursed) {
-				if (!Blind)
-				    Your("%s %s.",
+				if (useeit)
+				    pline("%s %s %s.",
+					  Your_buf,
 					  aobjnam(obj, "softly glow"),
 					  hcolor(amber));
 				uncurse(obj);
@@ -1253,9 +1277,10 @@ dodip()
 				useup(potion);
 				return(1);
 			} else if(!obj->blessed) {
-				if (!Blind) {
+				if (useeit) {
 				    tmp = hcolor(light_blue);
-				    Your("%s with a%s %s aura.",
+				    pline("%s %s with a%s %s aura.",
+					  Your_buf,
 					  aobjnam(obj, "softly glow"),
 					  index(vowels, *tmp) ? "n" : "", tmp);
 				}
@@ -1265,16 +1290,19 @@ dodip()
 			}
 		} else if (potion->cursed) {
 			if (obj->blessed) {
-				if (!Blind)
-				    Your("%s %s.", aobjnam(obj, "glow"),
-				     hcolor((const char *)"brown"));
+				if (useeit)
+				    pline("%s %s %s.",
+					  Your_buf,
+					  aobjnam(obj, "glow"),
+					  hcolor((const char *)"brown"));
 				unbless(obj);
 				obj->bknown=1;
 				goto poof;
 			} else if(!obj->cursed) {
-				if (!Blind) {
+				if (useeit) {
 				    tmp = hcolor(Black);
-				    Your("%s with a%s %s aura.",
+				    pline("%s %s with a%s %s aura.",
+					  Your_buf,
 					  aobjnam(obj, "glow"),
 					  index(vowels, *tmp) ? "n" : "", tmp);
 				}
@@ -1361,54 +1389,68 @@ dodip()
 		goto poof;
 	    }
 	}
-	if((obj->oclass == WEAPON_CLASS) && (potion->otyp == POT_OIL)) {
+
+	if (potion->otyp == POT_OIL &&
+		(obj->oclass == WEAPON_CLASS || is_weptool(obj))) {
+	    boolean wisx = FALSE;
 	    if (potion->lamplit) {	/* burning */
-		if (obj->oerodeproof) {
-		    Your("%s burns for a moment.", xname(obj));
+		int omat = objects[obj->otyp].oc_material;
+		if (obj->oerodeproof || obj_resists(obj, 5, 95) ||
+			/* `METAL' should not be confused with is_metallic() */
+			omat == METAL || omat == MITHRIL || omat == BONE) {
+		    pline("%s seem%s to burn for a moment.",
+			  Yname2(obj),
+			  (obj->quan > 1L) ? "" : "s");
 		} else {
-		    pline_The("burning oil %s your %s",
+		    if (omat == PLASTIC) obj->oeroded = MAX_ERODE;
+		    pline_The("burning oil %s %s.",
 			    obj->oeroded == MAX_ERODE ? "destroys" : "damages",
-			    xname(obj));
+			    yname(obj));
 		    if (obj->oeroded == MAX_ERODE) {
 			obj_extract_self(obj);
 			obfree(obj, (struct obj *)0);
 			obj = (struct obj *) 0;
-		    } else
+		    } else {
+			/* should check for and do something about
+			   damaging unpaid shop goods here */
 			obj->oeroded++;
+		    }
 		}
-		exercise(A_WIS, FALSE);
+	    } else if (potion->cursed || !is_metallic(obj) ||
+		    /* arrows,&c are classed as metallic due to arrowhead
+		       material, but dipping in oil shouldn't repair them */
+		    objects[obj->otyp].oc_wepcat == WEP_AMMO) {
+		pline_The("potion spills and covers your %s with oil.",
+			  makeplural(body_part(FINGER)));
+		incr_itimeout(&Glib, d(2,10));
 	    } else if (!obj->oeroded) {
-		Your("%s do%s not need oiling.", xname(obj),
-		    (obj->quan > 1L) ? "" : "es");
-		exercise(A_WIS, FALSE);
+		/* uses up potion, doesn't set obj->greased */
+		pline("%s gleam%s with an oily sheen.",
+		      Yname2(obj),
+		      (obj->quan > 1L) ? "" : "s");
 	    } else {
-		if (potion->cursed) {
-		    pline_The("oil spills and covers your %s.",
-					makeplural(body_part(FINGER)));
-		    exercise(A_WIS, FALSE);
-		    incr_itimeout(&Glib, rnd(10));
-		} else {
-		    Your("%s %s less rusty.", xname(obj),
-			(obj->quan > 1L) ? "are" : "is");
-		    obj->oeroded--;
-		    exercise(A_WIS, TRUE);
-		}
+		pline("%s %s less %s.",
+		      Yname2(obj),
+		      (obj->quan > 1L) ? "are" : "is",
+		      is_corrodeable(obj) ? "corroded" : "rusty");
+		obj->oeroded--;
+		wisx = TRUE;
 	    }
+	    exercise(A_WIS, wisx);
 	    makeknown(potion->otyp);
 	    useup(potion);
-	    return TRUE;
+	    return 1;
 	}
 
 	/* Allow filling of MAGIC_LAMPs to prevent identification by player */
 	if ((obj->otyp == OIL_LAMP || obj->otyp == MAGIC_LAMP) &&
 	   (potion->otyp == POT_OIL)) {
-
 	    /* Turn off engine before fueling, turn off fuel too :-)  */
 	    if (obj->lamplit || potion->lamplit) {
 		useup(potion);
 		explode(u.ux, u.uy, 11, d(6,6), 0);
 		exercise(A_WIS, FALSE);
-		return TRUE;
+		return 1;
 	    }
 	    /* Adding oil to an empty magic lamp renders it into an oil lamp */
 	    if ((obj->otyp == MAGIC_LAMP) && obj->spe == 0) {
@@ -1416,9 +1458,9 @@ dodip()
 		obj->age = 0;
 	    }
 	    if (obj->age > 1000L) {
-		Your("%s is full.", xname(obj));
+		pline("%s is full.", Yname2(obj));
 	    } else {
-		You("fill your %s with oil.", xname(obj));
+		You("fill %s with oil.", yname(obj));
 		check_unpaid(potion);	/* surcharge for using unpaid item */
 		obj->age += 2*potion->age;	/* burns more efficiently */
 		if (obj->age > 1500L) obj->age = 1500L;
@@ -1427,7 +1469,7 @@ dodip()
 	    }
 	    obj->spe = 1;
 	    update_inventory();
-	    return TRUE;
+	    return 1;
 	}
 
 	if ((obj->otyp == UNICORN_HORN || obj->otyp == AMETHYST) &&

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	3.2	96/03/07	*/
+/*	SCCS Id: @(#)mon.c	3.2	96/07/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,6 +41,7 @@ static void NDECL(warn_effects);
 #ifdef OVLB
 static struct obj *FDECL(make_corpse,(struct monst *));
 static void FDECL(m_detach, (struct monst *,struct permonst *));
+static void FDECL(lifesaved_monster, (struct monst *));
 
 /* convert the monster index of an undead to its living counterpart */
 int
@@ -985,16 +986,27 @@ struct permonst *mptr;	/* reflects mtmp->data _prior_ to mtmp's death */
 	if(mtmp->wormno) wormgone(mtmp);
 }
 
-static void FDECL(lifesaved_monster, (struct monst *));
+/* find the worn amulet of life saving which will save a monster */
+struct obj *
+mlifesaver(mon)
+struct monst *mon;
+{
+	if (!nonliving(mon->data)) {
+	    struct obj *otmp = which_armor(mon, W_AMUL);
+
+	    if (otmp && otmp->otyp == AMULET_OF_LIFE_SAVING)
+		return otmp;
+	}
+	return (struct obj *)0;
+}
 
 static void
 lifesaved_monster(mtmp)
 struct monst *mtmp;
 {
-	struct obj *lifesave;
+	struct obj *lifesave = mlifesaver(mtmp);
 
-	if (!nonliving(mtmp->data) && (lifesave = which_armor(mtmp, W_AMUL))
-			&& lifesave->otyp == AMULET_OF_LIFE_SAVING) {
+	if (lifesave) {
 		/* not canseemon; amulets are on the head, so you don't want */
 		/* to show this for a long worm with only a tail visible. */
 		/* Nor do you check invisibility, because glowing and disinte- */

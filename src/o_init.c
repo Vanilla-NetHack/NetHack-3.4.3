@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)o_init.c	3.2	94/07/10	*/
+/*	SCCS Id: @(#)o_init.c	3.2	96/08/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -316,6 +316,7 @@ boolean mark_as_known;
 	    objects[oindx].oc_name_known = 1;
 	    exercise(A_WIS, TRUE);
 	}
+	if (moves > 1L) update_inventory();
     }
 }
 
@@ -340,6 +341,7 @@ register int oindx;
 	/* clear last slot */
 	if (found) disco[dindx-1] = 0;
 	else impossible("named object not in disco");
+	update_inventory();
     }
 }
 

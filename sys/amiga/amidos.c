@@ -458,7 +458,7 @@ const char *dir;
  */
 #undef exit
 void
-msexit(code)
+nethack_exit(code)
 {
 #ifdef CHDIR
     extern char orgdir[];

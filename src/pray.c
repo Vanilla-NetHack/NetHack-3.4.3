@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pray.c	3.2	96/05/24	*/
+/*	SCCS Id: @(#)pray.c	3.2	96/08/09	*/
 /* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -136,7 +136,8 @@ in_trouble()
 	if(u.utrap && u.utraptype == TT_LAVA) return(TROUBLE_LAVA);
 	if(Sick) return(TROUBLE_SICK);
 	if(u.uhs >= WEAK) return(TROUBLE_STARVING);
-	if(u.uhp < 5 || (u.uhp*7 < u.uhpmax)) return(TROUBLE_HIT);
+	if ((Upolyd && (u.mh <= 5 || u.mh*7 <= u.mhmax)) ||
+	    (u.uhp <= 5 || u.uhp*7 <= u.uhpmax)) return(TROUBLE_HIT);
 	if(u.ulycn >= LOW_PM) return(TROUBLE_LYCANTHROPE);
 	if(near_capacity() >= EXT_ENCUMBER && AMAX(A_STR)-ABASE(A_STR) > 3)
 		return(TROUBLE_COLLAPSING);
@@ -234,6 +235,7 @@ register int trouble;
 		    break;
 	    case TROUBLE_HIT:
 		    You_feel("much better.");
+		    if (Upolyd) u.mh = u.mhmax += rnd(5);
 		    if (u.uhpmax < u.ulevel * 5 + 11)
 			u.uhp = u.uhpmax += rnd(5);
 		    else
@@ -265,10 +267,7 @@ register int trouble;
 		    otmp = ublindf;
 		    goto decurse;
 	    case TROUBLE_LYCANTHROPE:
-		    You_feel("purified.");
-		    if(uasmon == &mons[u.ulycn] && !Polymorph_control)
-			rehumanize();
-		    u.ulycn = NON_PM;	/* now remove the curse */
+		    you_unwere(TRUE);
 		    break;
 	    case TROUBLE_PUNISHED:
 		    Your("chain disappears.");
@@ -637,10 +636,11 @@ pleased(g_align)
 	    if (!Blind)
 		You("are surrounded by %s glow.",
 		    an(hcolor(golden)));
+	    if (Upolyd) u.mh = u.mhmax += 5;
 	    u.uhp = u.uhpmax += 5;
 	    ABASE(A_STR) = AMAX(A_STR);
-	    if (u.uhunger < 900)	init_uhunger();
-	    if (u.uluck < 0)	u.uluck = 0;
+	    if (u.uhunger < 900) init_uhunger();
+	    if (u.uluck < 0) u.uluck = 0;
 	    make_blinded(0L,TRUE);
 	    flags.botl = 1;
 	    break;
@@ -926,9 +926,9 @@ dosacrifice()
 
     if (In_endgame(&u.uz)) {
 	if (!(otmp = getobj(sacrifice_types, "sacrifice"))) return 0;
-    } else
+    } else {
 	if (!(otmp = floorfood("sacrifice", 1))) return 0;
-
+    }
     /*
       Was based on nutritional value and aging behavior (< 50 moves).
       Sacrificing a food ration got you max luck instantly, making the
@@ -945,6 +945,9 @@ dosacrifice()
     if (otmp->otyp == CORPSE) {
 	register struct permonst *ptr = &mons[otmp->corpsenm];
 	extern int monstr[];
+
+	/* you're handling this corpse, even if it was killed upon the altar */
+	feel_cockatrice(otmp, TRUE);
 
 	if (otmp->corpsenm == PM_ACID_BLOB
 	   || (monstermoves <= peek_at_iced_corpse_age(otmp) + 50))

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.2	96/05/12	*/
+/*	SCCS Id: @(#)invent.c	3.2	96/07/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,7 +23,6 @@ static void NDECL(dounpaid);
 static struct obj *FDECL(find_unpaid,(struct obj *,struct obj **));
 static void FDECL(fully_identify_obj, (struct obj *));
 static void FDECL(menu_identify, (int));
-static void FDECL(feel_cockatrice, (struct obj *));
 #endif /* OVLB */
 STATIC_DCL char FDECL(obj_to_let,(struct obj *));
 
@@ -109,18 +108,39 @@ reorder_invent()
 #undef inv_rank
 
 /* scan a list of objects to see whether another object will merge with
-   one of them; used in pickup.c */
+   one of them; used in pickup.c when all 52 inventory slots are in use,
+   to figure out whether another object could still be picked up */
 struct obj *
 merge_choice(objlist, obj)
 struct obj *objlist, *obj;
 {
+	struct monst *shkp;
+	int save_nocharge;
+
 	if (obj->otyp == SCR_SCARE_MONSTER)	/* punt on these */
 	    return (struct obj *)0;
+	/* if this is an item on the shop floor, the attributes it will
+	   have when carried are different from what they are now; prevent
+	   that from eliciting an incorrect result from mergable() */
+	save_nocharge = obj->no_charge;
+	if (objlist == invent && obj->where == OBJ_FLOOR &&
+		(shkp = shop_keeper(inside_shop(obj->ox, obj->oy))) != 0) {
+	    if (obj->no_charge) obj->no_charge = 0;
+	    /* A billable object won't have its `unpaid' bit set, so would
+	       erroneously seem to be a candidate to merge with a similar
+	       ordinary object.  That's no good, because once it's really
+	       picked up, it won't merge after all.  It might merge with
+	       another unpaid object, but we can't check that here (depends
+	       too much upon shk's bill) and if it doesn't merge it would
+	       end up in the '#' overflow inventory slot, so reject it now. */
+	    else if (inhishop(shkp)) return (struct obj *)0;
+	}
 	while (objlist) {
-	    if (mergable(objlist, obj)) return objlist;
+	    if (mergable(objlist, obj)) break;
 	    objlist = objlist->nobj;
 	}
-	return (struct obj *)0;
+	obj->no_charge = save_nocharge;
+	return objlist;
 }
 
 /* merge obj with otmp and delete obj if types agree */
@@ -371,7 +391,8 @@ void
 delobj(obj)
 register struct obj *obj;
 {
-	if(obj->otyp == LEASH && obj->leashmon != 0) o_unleash(obj);
+	boolean update_map;
+
 	if (obj->otyp == AMULET_OF_YENDOR ||
 			obj->otyp == CANDELABRUM_OF_INVOCATION ||
 			obj->otyp == BELL_OF_OPENING ||
@@ -383,8 +404,9 @@ register struct obj *obj;
 		 */
 		return;
 	}
+	update_map = (obj->where == OBJ_FLOOR);
 	obj_extract_self(obj);
-	newsym(obj->ox,obj->oy);
+	if (update_map) newsym(obj->ox, obj->oy);
 	obfree(obj, (struct obj *) 0);	/* frees contents also */
 }
 
@@ -1676,7 +1698,7 @@ dolook()
 	    /* only one object */
 	    if (dfeature) pline(fbuf);
 	    You("%s here %s.", verb, doname(otmp0));
-	    feel_cockatrice(otmp0);
+	    feel_cockatrice(otmp0, FALSE);
 	} else {
 	    display_nhwindow(WIN_MESSAGE, FALSE);
 	    tmpwin = create_nhwindow(NHW_MENU);
@@ -1687,7 +1709,7 @@ dolook()
 	    putstr(tmpwin, 0, "Things that are here:");
 	    for(otmp = otmp0; otmp; otmp = otmp->nexthere) {
 		putstr(tmpwin, 0, doname(otmp));
-		feel_cockatrice(otmp);
+		feel_cockatrice(otmp, FALSE);
 	    }
 	    display_nhwindow(tmpwin, TRUE);
 	    destroy_nhwindow(tmpwin);
@@ -1695,12 +1717,14 @@ dolook()
 	return(!!Blind);
 }
 
-static void
-feel_cockatrice(otmp)
+void
+feel_cockatrice(otmp, force_touch)
 struct obj *otmp;
+boolean force_touch;
 {
-	if(Blind  && !uarmg && !resists_ston(&youmonst) &&
-	    (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
+	if ((Blind || force_touch) &&
+		!uarmg && !resists_ston(&youmonst) &&
+		(otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
 	    if(poly_when_stoned(uasmon))
 		You("touched the cockatrice corpse with your bare %s.",
 			makeplural(body_part(HAND)));

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)attrib.c	3.2	96/03/28	*/
+/*	SCCS Id: @(#)attrib.c	3.2	96/06/16	*/
 /*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -657,6 +657,15 @@ int oldlevel, newlevel;
 		}
 	    }
 	}
+
+#ifdef WEAPON_SKILLS
+	if (oldlevel > 0) {
+	    if (newlevel > oldlevel)
+		add_weapon_skill(newlevel - oldlevel);
+	    else
+		lose_weapon_skill(oldlevel - newlevel);
+	}
+#endif /* WEAPON_SKILLS */
 }
 
 int

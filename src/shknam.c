@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)shknam.c	3.2	96/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -436,8 +436,7 @@ register struct mkroom *sroom;
 	    newsym(sx,sy);
     }
     if(levl[sx][sy].typ == SDOOR) {
-	    levl[sx][sy].typ = DOOR;
-	    levl[sx][sy].doormask = exposed_sdoor_mask(&levl[sx][sy]);
+	    cvt_sdoor_to_door(&levl[sx][sy]);	/* .typ = DOOR */
 	    newsym(sx,sy);
     }
     if(levl[sx][sy].doormask & D_TRAPPED)

@@ -1,11 +1,10 @@
-/*	SCCS Id: @(#)mrecover.c	3.1	           93/04/15       */
+/*	SCCS Id: @(#)mrecover.c	3.2		96/07/24	  */
 /*      Copyright (c) David Hairston, 1993.                       */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* Macintosh Recovery Application */
 
 /* based on code in util/recover.c.  the significant differences are:
- * - define MAC is implicit so config.h is not included (95% laziness).
  * - GUI vs. CLI.  the vast majority of code here supports the GUI.
  * - Mac toolbox equivalents are used in place of ANSI functions.
  * - void restore_savefile(void) is event driven.
@@ -37,29 +36,22 @@
  */
 
 
+#include "config.h"
+
 /**** Toolbox defines ****/
 
 /* MPW C headers (99.44% pure) */
-#include <Types.h>
 #include <Errors.h>
-#include <Memory.h>
 #include <OSUtils.h>
 #include <Resources.h>
 #include <Files.h>
 #ifdef applec
 #include <SysEqu.h>
 #endif
-#include <SegLoad.h>
-
-#include <Quickdraw.h>
-#include <Fonts.h>
-#include <Windows.h>
 #include <Menus.h>
-#include <Dialogs.h>
 
 #include <Desk.h>
 #include <DiskInit.h>
-#include <Events.h>
 #include <Notification.h>
 #include <Packages.h>
 #include <Script.h>
@@ -225,11 +217,6 @@ long			dirID;					/* directory i.d. */
 NMUPP			nmCompletionUPP;		/* UPP for nmCompletion */
 FileFilterUPP	basenameFileFilterUPP;	/* UPP for basenameFileFilter */
 
-#define CREATOR		'nh31'				/* NetHack signature */
-#define SAVETYPE	'SAVE'				/* save file type */
-#define FILENAME	256					/* macconf.h */
-typedef signed char	schar;				/* config.h */
-typedef schar		xchar;				/* global.h */
 #define MAX_RECOVER_COUNT	256
 
 #define APP_NAME_RES_ID		(-16396)	/* macfile.h */
@@ -1229,7 +1216,7 @@ create_savefile(unsigned char *savename)
 		*savename = nameLen;
 	}
 
-	if (HCreate(vRefNum, dirID, savename, CREATOR, SAVETYPE)
+	if (HCreate(vRefNum, dirID, savename, MAC_CREATOR, SAVE_TYPE)
 		|| HOpen(vRefNum, dirID, savename, fsRdWrPerm, &fRefNum))
 	{
 		endRecover();
@@ -1274,6 +1261,7 @@ restore_savefile()
 	static int	savelev;
 	long		saveTemp, lev;
 	xchar		levc;
+	struct version_info version_data;
 
 	/* level 0 file contains:
 	 *	pid of creating process (ignored here)
@@ -1302,6 +1290,9 @@ restore_savefile()
 
 		if (in.Recover)
 			(void) read_levelfile(gameRefNum, (Ptr) savename, sizeof(savename));
+		if (in.Recover)
+			(void) read_levelfile(gameRefNum,
+				    (Ptr) &version_data, sizeof version_data);
 
 		/* save file should contain:
 		 *	current level (including pets)
@@ -1314,6 +1305,9 @@ restore_savefile()
 		if (in.Recover)
 			levRefNum = open_levelfile(savelev);
 
+		if (in.Recover)
+			(void) write_savefile(saveRefNum,
+				    (Ptr) &version_data, sizeof version_data);
 		if (in.Recover)
 			copy_bytes(levRefNum, saveRefNum);
 

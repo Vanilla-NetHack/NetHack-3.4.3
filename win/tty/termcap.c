@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.c	3.2	95/06/01	*/
+/*	SCCS Id: @(#)termcap.c	3.2	96/07/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -388,7 +388,7 @@ tty_decgraphics_termcap_fixup()
 	 * Do not select NA ASCII as the primary font since people may
 	 * reasonably be using the UK character set.
 	 */
-	if (flags.DECgraphics) xputs("\033)0");
+	if (iflags.DECgraphics) xputs("\033)0");
 #ifdef PC9800
 	init_hilite();
 #endif
@@ -426,23 +426,23 @@ tty_start_screen()
 	xputs(TI);
 	xputs(VS);
 #ifdef PC9800
-    if (!flags.IBMgraphics && !flags.DECgraphics)
+    if (!iflags.IBMgraphics && !iflags.DECgraphics)
 	    tty_ascgraphics_hilite_fixup();
     /* set up callback in case option is not set yet but toggled later */
     ascgraphics_mode_callback = tty_ascgraphics_hilite_fixup;
 # ifdef ASCIIGRAPH
-    if (flags.IBMgraphics) init_hilite();
+    if (iflags.IBMgraphics) init_hilite();
     /* set up callback in case option is not set yet but toggled later */
     ibmgraphics_mode_callback = init_hilite;
 # endif
 #endif /* PC9800 */
 
 #ifdef TERMLIB
-	if (flags.DECgraphics) tty_decgraphics_termcap_fixup();
+	if (iflags.DECgraphics) tty_decgraphics_termcap_fixup();
 	/* set up callback in case option is not set yet but toggled later */
 	decgraphics_mode_callback = tty_decgraphics_termcap_fixup;
 #endif
-	if (flags.num_pad) tty_number_pad(1);	/* make keypad send digits */
+	if (iflags.num_pad) tty_number_pad(1);	/* make keypad send digits */
 }
 
 void
@@ -777,6 +777,16 @@ cl_eos()			/* free after Robert Viduya */
  * In any case, treat black specially so we don't try to display black
  * characters on the assumed black background.
  */
+
+	/* `curses' is aptly named; various versions don't like these
+	    macros used elsewhere within nethack; fortunately they're
+	    not needed beyond this point, so we don't need to worry
+	    about reconstructing them after the header file inclusion. */
+#undef delay_output
+#undef TRUE
+#undef FALSE
+#define m_move curses_m_move	/* Some curses.h decl m_move(), not used here */
+
 #include <curses.h>
 
 #  ifdef COLOR_BLACK	/* trust include file */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)mthrowu.c	3.2	96/06/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -37,7 +37,7 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	register const char *name;
 {
 	const char *onm = (obj && obj_is_pname(obj)) ? the(name) :
-		(obj->quan > 1) ? name : an(name);
+			    (obj && obj->quan > 1) ? name : an(name);
 	boolean is_acid = (obj && obj->otyp == ACID_VENOM);
 
 	if(u.uac + tlev <= rnd(20)) {
@@ -290,63 +290,81 @@ m_throw(mon, x, y, dx, dy, range, obj)
 		    if (ohitmon(mtmp, singleobj, range, TRUE))
 			break;
 		} else if (bhitpos.x == u.ux && bhitpos.y == u.uy) {
-			if (multi) nomul(0);
+		    if (multi) nomul(0);
 
-			if (singleobj->oclass == POTION_CLASS) {
-			    if (!Blind) singleobj->dknown = 1;
-			    potionhit(&youmonst, singleobj);
-			    break;
+		    if (singleobj->oclass == GEM_CLASS &&
+			    singleobj->otyp <= LAST_GEM+6 /* 6 glass colors */
+			    && u.usym == S_UNICORN) {
+			if (singleobj->otyp > LAST_GEM) {
+			    You("catch the %s.", xname(singleobj));
+			    You("are not interested in %s junk.",
+				s_suffix(mon_nam(mon)));
+			    makeknown(singleobj->otyp);
+			    dropy(singleobj);
+			} else {
+			    You("accept %s gift in the spirit in which it was intended.",
+				s_suffix(mon_nam(mon)));
+			    (void)hold_another_object(singleobj,
+				"You catch, but drop, %s.", xname(singleobj),
+				"You catch:");
 			}
-			switch(singleobj->otyp) {
-			    int dam, hitv;
-			    case CREAM_PIE:
-			    case BLINDING_VENOM:
-				hitu = thitu(8, 0, singleobj, xname(singleobj));
-				break;
-			    default:
-				dam = dmgval(singleobj, &youmonst);
-				hitv = 3 - distmin(u.ux,u.uy, mon->mx,mon->my);
-				if (hitv < -4) hitv = -4;
-				if (is_elf(mon->data) &&
-				    objects[singleobj->otyp].w_propellor
-								== WP_BOW) {
+			break;
+		    }
+		    if (singleobj->oclass == POTION_CLASS) {
+			if (!Blind) singleobj->dknown = 1;
+			potionhit(&youmonst, singleobj);
+			break;
+		    }
+		    switch(singleobj->otyp) {
+			int dam, hitv;
+			case CREAM_PIE:
+			case BLINDING_VENOM:
+			    hitu = thitu(8, 0, singleobj, xname(singleobj));
+			    break;
+			default:
+			    dam = dmgval(singleobj, &youmonst);
+			    hitv = 3 - distmin(u.ux,u.uy, mon->mx,mon->my);
+			    if (hitv < -4) hitv = -4;
+			    if (is_elf(mon->data) &&
+				objects[singleobj->otyp].w_propellor
+							    == WP_BOW) {
+				hitv++;
+				if (MON_WEP(mon) &&
+				    MON_WEP(mon)->otyp == ELVEN_BOW)
 				    hitv++;
-				    if (MON_WEP(mon) &&
-					MON_WEP(mon)->otyp == ELVEN_BOW)
-					hitv++;
-				    if(singleobj->otyp == ELVEN_ARROW) dam++;
-				}
-				if (bigmonst(uasmon)) hitv++;
-				hitv += 8+singleobj->spe;
-
-				if (dam < 1) dam = 1;
-				hitu = thitu(hitv, dam,
-					singleobj, xname(singleobj));
-			}
-			if (hitu && singleobj->opoisoned) {
-			    char *singlename = xname(singleobj);
-			    poisoned(singlename, A_STR, singlename, 10);
-			}
-			if(hitu && (singleobj->otyp == CREAM_PIE ||
-				     singleobj->otyp == BLINDING_VENOM)) {
-			    blindinc = rnd(25);
-			    if(singleobj->otyp == CREAM_PIE) {
-				if(!Blind) pline("Yecch!  You've been creamed.");
-				else	pline("There's %s sticky all over your %s.",
-						something,
-						body_part(FACE));
-			    } else {	/* venom in the eyes */
-				if(Blindfolded) /* nothing */ ;
-				else if(!Blind) pline_The("venom blinds you.");
-				else	Your("%s sting.",
-					makeplural(body_part(EYE)));
+				if(singleobj->otyp == ELVEN_ARROW) dam++;
 			    }
+			    if (bigmonst(uasmon)) hitv++;
+			    hitv += 8+singleobj->spe;
+
+			    if (dam < 1) dam = 1;
+			    hitu = thitu(hitv, dam,
+				    singleobj, xname(singleobj));
+		    }
+		    if (hitu && singleobj->opoisoned) {
+			char *singlename = xname(singleobj);
+			poisoned(singlename, A_STR, singlename, 10);
+		    }
+		    if(hitu && (singleobj->otyp == CREAM_PIE ||
+				 singleobj->otyp == BLINDING_VENOM)) {
+			blindinc = rnd(25);
+			if(singleobj->otyp == CREAM_PIE) {
+			    if(!Blind) pline("Yecch!  You've been creamed.");
+			    else	pline("There's %s sticky all over your %s.",
+					    something,
+					    body_part(FACE));
+			} else {	/* venom in the eyes */
+			    if(Blindfolded) /* nothing */ ;
+			    else if(!Blind) pline_The("venom blinds you.");
+			    else	Your("%s sting.",
+				    makeplural(body_part(EYE)));
 			}
-			stop_occupation();
-			if (hitu || !range) {
-			    (void) drop_throw(singleobj, hitu, u.ux, u.uy);
-			    break;
-			}
+		    }
+		    stop_occupation();
+		    if (hitu || !range) {
+			(void) drop_throw(singleobj, hitu, u.ux, u.uy);
+			break;
+		    }
 		} else if (!range	/* reached end of path */
 			/* missile hits edge of screen */
 			|| !isok(bhitpos.x+dx,bhitpos.y+dy)

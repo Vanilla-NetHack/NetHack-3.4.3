@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dig.c	3.2	96/04/21	*/
+/*	SCCS Id: @(#)dig.c	3.2	96/07/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -139,7 +139,7 @@ dig_check(madeby, verbose, x, y)
 	boolean		verbose;
 	int		x, y;
 {
-	struct trap *ttmp;
+	struct trap *ttmp = t_at(x, y);
 
 	if (On_stairs(x, y)) {
 	    if (x == xdnladder || x == xupladder) {
@@ -159,17 +159,20 @@ dig_check(madeby, verbose, x, y)
 	} else if (Is_waterlevel(&u.uz)) {
 	    if(verbose) pline_The("water splashes and subsides.");
 	    return(FALSE);
-	} else if ((IS_WALL(levl[x][y].typ)
-		&& (levl[x][y].wall_info & W_NONDIGGABLE) != 0)
-		|| ((ttmp = t_at(x, y)) != 0 &&
-		    (ttmp->ttyp == MAGIC_PORTAL || !Can_dig_down(&u.uz)))) {
+	} else if ((IS_WALL(levl[x][y].typ) &&
+		      (levl[x][y].wall_info & W_NONDIGGABLE) != 0)
+		|| (ttmp &&
+		      (ttmp->ttyp == MAGIC_PORTAL || !Can_dig_down(&u.uz)))) {
 	    if(verbose) pline_The("%s here is too hard to dig in.",
 				  surface(x,y));
 	    return(FALSE);
 	} else if (sobj_at(BOULDER, x, y)) {
 	    if(verbose) pline("There isn't enough room to dig here.");
 	    return(FALSE);
-	} else if (madeby == BY_OBJECT && (is_pool(x,y) || is_lava(x,y))) {
+	} else if (madeby == BY_OBJECT &&
+		    /* the block against existing traps is mainly to
+		       prevent broken wands from turning holes into pits */
+		    (ttmp || is_pool(x,y) || is_lava(x,y))) {
 	    /* digging by player handles pools separately */
 	    return FALSE;
 	}
@@ -293,8 +296,7 @@ dig()
 			}
 			digtxt = "You make an opening in the wall.";
 		} else if(lev->typ == SDOOR) {
-			lev->typ = DOOR;
-			lev->doormask = exposed_sdoor_mask(lev);
+			cvt_sdoor_to_door(lev);	/* ->typ = DOOR */
 			digtxt = "You break through a secret door!";
 			if(!(lev->doormask & D_TRAPPED))
 				lev->doormask = D_BROKEN;
@@ -679,7 +681,7 @@ struct obj *obj;
 	register int rx, ry;
 	int dig_target, res = 0;
 	register const char *sdp;
-	if(flags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
+	if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
 
 	if (obj != uwep) {
 	    if (!wield_tool(obj)) return(0);
@@ -820,10 +822,8 @@ register struct monst *mtmp;
 	int pile;
 
 	here = &levl[mtmp->mx][mtmp->my];
-	if (here->typ == SDOOR) {
-	    here->typ = DOOR;
-	    here->doormask = exposed_sdoor_mask(here);
-	}
+	if (here->typ == SDOOR)
+	    cvt_sdoor_to_door(here);	/* ->typ = DOOR */
 
 	/* Eats away door if present & closed or locked */
 	if (closed_door(mtmp->mx, mtmp->my)) {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)nttty.c	3.2	95/09/06
+/*	SCCS Id: @(#)nttty.c	3.2	96/10/21
 /* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -42,14 +42,14 @@ CONSOLE_SCREEN_BUFFER_INFO csbi;
 COORD ntcoord;
 INPUT_RECORD ir;
 
-/* Flag for whether NetHack was launched via progman, not command line.
+/* Flag for whether NetHack was launched via the GUI, not the command line.
  * The reason we care at all, is so that we can get
- * a final RETURN at the end of the game when launched from progman
+ * a final RETURN at the end of the game when launched from the GUI
  * to prevent the scoreboard (or panic message :-|) from vanishing
  * immediately after it is displayed, yet not bother when started
  * from the command line. 
  */
-int ProgmanLaunched;
+int GUILaunched;
 
 # ifdef TEXTCOLOR
 int ttycolors[CLR_MAX];
@@ -67,7 +67,7 @@ gettty(){
 
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
-	flags.cbreak = TRUE;
+	iflags.cbreak = TRUE;
 #ifdef TEXTCOLOR
 	init_ttycolor();
 #endif
@@ -196,7 +196,7 @@ tgetch()
             *      left control key was pressed with the keystroke.
             */
             if (iskeypad(scan)) {
-                kpad = flags.num_pad ? numpad : keypad;
+                kpad = iflags.num_pad ? numpad : keypad;
                 if (shiftstate & SHIFT_PRESSED) {
                     ch = kpad[scan - KEYPADLO].shift;
                 }
@@ -275,10 +275,10 @@ nttty_open()
          */
         hStdOut = GetStdHandle( STD_OUTPUT_HANDLE );
         GetConsoleScreenBufferInfo( hStdOut, &csbi);
-        ProgmanLaunched = ((csbi.dwCursorPosition.X == 0) &&
+        GUILaunched = ((csbi.dwCursorPosition.X == 0) &&
                            (csbi.dwCursorPosition.Y == 0));
         if ((csbi.dwSize.X <= 0) || (csbi.dwSize.Y <= 0))
-            ProgmanLaunched = 0;
+            GUILaunched = 0;
 
 
         /* Obtain handles for the standard Console I/O devices */
@@ -324,7 +324,7 @@ error VA_DECL(const char *,s)
 	VA_START(s);
 	VA_INIT(s, const char *);
 	/* error() may get called before tty is initialized */
-	if (flags.window_inited) end_screen();
+	if (iflags.window_inited) end_screen();
 	putchar('\n');
 	Vprintf(s,VA_ARGS);
 	putchar('\n');
@@ -351,7 +351,7 @@ int state;
 void
 tty_start_screen()
 {
-	if (flags.num_pad) tty_number_pad(1);	/* make keypad send digits */
+	if (iflags.num_pad) tty_number_pad(1);	/* make keypad send digits */
 }
 
 void

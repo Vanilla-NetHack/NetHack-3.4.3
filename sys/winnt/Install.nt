@@ -4,8 +4,8 @@
                     Instructions for compiling and installing
                  NetHack 3.2 on a Windows NT or Windows 95 system
          ==============================================================
-         (or, How to make NetHack 3.2.1 for the WIN32 Console subsystem)
-		      Last revision: February 23, 1996
+         (or, How to make NetHack 3.2.2 for the WIN32 Console subsystem)
+		      Last revision: October 30, 1996
 
 Credit for PC versions of NetHack 3.2 goes to the PC Development team
 of Paul Winner, Kevin Smolkowski, Michael Allison, Yitzhak Sapir, Bill
@@ -29,7 +29,7 @@ I.  Dispelling the Myths:
     We have provided a Makefile for building NetHack using the
     following compiler:
 
-        Microsoft Visual C++ V4.0
+        Microsoft Visual C++ V4.x
 
     The Makefile was created for use with MS NMAKE which is provided with 
     the Microsoft compiler.
@@ -61,7 +61,7 @@ Setting Up
     they are not necessary for building the TTY version for the Win32 
     console subsystem.  You can delete them to save space.  Your distribution 
     may contain a directory win\win32.  This window port variant was a
-    recent addition and was not ready for the 3.2.1 release.  You may 
+    recent addition and was not ready for the 3.2.2 release.  You may 
     ignore it (or contribute to it).
 
     Required Directories for a Win32 Console NetHack:
@@ -85,8 +85,8 @@ Setting Up
     If you downloaded or ftp'd the sources from a UNIX system, the lines
     will probably end in UNIX-style newlines, instead of the carriage
     return and line feed pairs used by Windows.  Some programs have trouble
-    with them, so you may need to convert them (with a utility like
-    Rahul Dhesi's "flip" for DOS).
+    with them, so you may need to convert them. The compiler should not
+    have any problems with them however.
 
 3.  Go to the sys\winnt directory and run the nhsetup.bat batch file.
     The necessary Makefile movements will be accomplished for you. It
@@ -174,13 +174,14 @@ Running NetHack
     drive and directory your NetHack executable resides in) each time.
 
 
-9b. Running from a Windows shortcut or the Program Manager:
+9b. Running from a Windows shortcut (win95 or NT4.x) or from the 
+    Program Manager (NT3.x):
 
-    If you will be running it by launching it from the Program Manager
+    If you will be running it by launching it from program manager
     or from a shortcut, just use the following information when 
     setting up the icon or shortcut.
 
-         Description      :  NetHack 3.2.1 
+         Description      :  NetHack 3.2.2 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
 
    (changing the directory to the appropriate one of course)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcsys.c	3.2	93/05/24
+/*	SCCS Id: @(#)pcsys.c	3.2	96/10/21
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -27,6 +27,14 @@
 #define filesize filesize_nh
 #endif
 
+
+#if defined(MICRO) || defined(WIN32) || defined(OS2)
+void FDECL(nethack_exit,(int));
+#else
+#define nethack_exit exit
+#endif
+static void NDECL(msexit);
+
 #ifdef MOVERLAY
 extern void __far __cdecl _movepause( void );
 extern void __far __cdecl _moveresume( void );
@@ -42,7 +50,7 @@ static boolean NDECL(comspec_exists);
 #endif
 
 #ifdef WIN32CON
-extern int ProgmanLaunched;    /* from nttty.c */
+extern int GUILaunched;    /* from nttty.c */
 #endif
 
 #ifdef MICRO
@@ -99,7 +107,7 @@ dosh()
 		}
 #  ifdef TOS
 /* Some shells (e.g. Gulam) turn the cursor off when they exit */
-		if (flags.BIOS)
+		if (iflags.BIOS)
 			(void)Cursconf(1, -1);
 #  endif
 		chdirx(hackdir, 0);
@@ -237,7 +245,7 @@ playwoRAMdisk()
 	c = tgetch(); if (c == 'Y') c = 'y';
 	if (c != 'y') {
 		settty("Be seeing you...\n");
-		exit(EXIT_SUCCESS);
+		nethack_exit(EXIT_SUCCESS);
 	}
 	set_lock_and_bones();
 	return;
@@ -380,7 +388,7 @@ msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
 	VA_INIT(fmt, const char *);
 # if defined(MSDOS)
-	if (flags.grmode) {
+	if (iflags.grmode) {
 		char buf[BUFSZ];
 
 		Vsprintf(buf,fmt, VA_ARGS);
@@ -459,20 +467,21 @@ const char *name, *mode;
 	return (FILE *)0;
 }
 
+#if defined(MICRO) || defined(WIN32) || defined(OS2)
+void nethack_exit(code)
+int code;
+{
+	msexit();
+	exit(code);
+}
+
 /* Chdir back to original directory
  */
 #ifdef TOS
 extern boolean run_from_desktop;	/* set in pcmain.c */
 #endif
 
-#undef exit
-#if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-#endif
-
-void
-msexit(code)
-int code;
+static void msexit()
 {
 #ifdef CHDIR
 	extern char orgdir[];
@@ -500,14 +509,14 @@ int code;
 # endif
 #endif
 #ifdef WIN32CON
-	/* Only if we started from Progman, not command prompt,
+	/* Only if we started from the GUI, not the command prompt,
 	 * we need to get one last return, so the score board does
 	 * not vanish instantly after being created.
-	 * ProgmanLaunched is defined and set in nttty.c.
+	 * GUILaunched is defined and set in nttty.c.
 	 */
 
-	if (ProgmanLaunched) getreturn("to end");
+	if (GUILaunched) getreturn("to end");
 #endif
-	exit(code);
 	return;
 }
+#endif /* MICRO || WIN32 || OS2 */

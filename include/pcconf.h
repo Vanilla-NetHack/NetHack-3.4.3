@@ -199,8 +199,6 @@
 
 #include <fcntl.h>
 
-#define exit	msexit		/* do chdir first */
-
 #ifndef REDO
 # undef	Getchar
 # define Getchar nhgetch

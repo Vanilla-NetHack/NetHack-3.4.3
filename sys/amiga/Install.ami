@@ -2,20 +2,16 @@
                    Using and Installing Amiga NetHack 3.2
       (or Everything You Never Wanted to Know Before NetHacking)
 
-	     Last Revision: 2 March 1996 for NetHack 3.2.0
+	     Last Revision: 5 November 1996 for NetHack 3.2.2
 
 
-0. Pre-intro for NetHack 3.2.0
-   Amiga-specific changes for 3.2.0:
-     Tile (graphics images) support.
-     Repackaged support files (see the DLB man page).
-     Improved TTY/BBS mode.
-     New option: altmeta.
-     New option: fast_map.
+0. Pre-intro for NetHack 3.2.2:
+   Amiga-specific changes for 3.2.2:
+     Some (but not all) known bugs fixed (volunteers welcome).
+     Some HackWB bugs fixed - if it works for you, great.  If not,
+      please use HackCli.
+     The bug giving wierd usernames is fixed.
 
-   And the bad news: HackWB is not supported in 3.2.0 - we hope to have it
-   ready for 3.2.1.  Our apologies - please use HackCli to start the game.
-     
    We would like to thank each and every one of the people who took
    the time and effort to report bugs to us.  THANK YOU!
 
@@ -62,8 +58,7 @@ I.C. Credits
 
 II. Using Amiga NetHack 3.2
     The short version: from the WorkBench click on HackWB and from the
-    CLI invoke HackCli.  (For 3.2.0 HackWB is not included - please use
-    HackCli.)
+    CLI invoke HackCli.
 
 II.A. Sources of Information
     Where to go depends on what you want to find out.  If you want to find
@@ -77,8 +72,8 @@ II.A. Sources of Information
     ManPage and in section II.C.
 
 II.B. The Amiga NetHack WorkBench Front End
-    3.2.0 does not include HackWB; it is expected to return in the next
-    patch release.  Please ignore this section until then.
+    3.2.2 once again includes HackWB; it is better than it was, but is still
+    buggy in some cases.
 
     The Amiga NetHack WorkBench Front End, HackWB, looks more or less like a
     WorkBench Drawer - and acts the same way.  Games start with double clicks
@@ -177,10 +172,10 @@ Hard Disk Installation:
     Find the space
     	cd to wherever you want to install NetHack
 	make a new directory to be the main NetHack directory:
-	  makedir NH320
-	  makedir NH320/NetHack
-	  makedir NH320/HackExe
-	  makedir NH320/HackExe2
+	  makedir NH322
+	  makedir NH322/NetHack
+	  makedir NH322/HackExe
+	  makedir NH322/HackExe2
 	In S:User-Startup (under 2.0 or later) or S:Startup-Sequence
 	(under 1.3):
 	  assign NetHack: to the NetHack directory you created above.
@@ -190,10 +185,10 @@ Hard Disk Installation:
 	Cd to the appropriate places then unpack the files:
 	Archive 1 (the one this ReadMe came in), should be unpacked into
 	NetHack:
-	  cd NH320:
+	  cd NH322:
 	  lz x NH32P0-1.lzh
 	Archive 2 unpacks in two sections to two different places.
-	  cd NH320:
+	  cd NH322:
 	  lz x NH32P0-2.lzh HackExe/#?
 	  lz x NH32P0-2.lzh HackExe2/#?
 

@@ -594,7 +594,7 @@ got1 :
 	switch ( type ) {
 		case NHW_MESSAGE :
 			GetFNum ( "\pPSHackFont", & aWin -> fontNum ) ;
-			aWin -> fontSize = flags.large_font ? 12 : 9 ;
+			aWin -> fontSize = iflags.large_font ? 12 : 9 ;
 			break ;
 		default:
 			aWin -> fontNum = text_wind_font ;
@@ -693,7 +693,7 @@ mac_init_nhwindows ( int *argcp, char **argv )
 
 	Rect scr = (*GetGrayRgn())->rgnBBox;
 	small_screen = scr.bottom - scr.top <=	9*40 ||
-				   scr.bottom - scr.top <= 12*40 && flags.large_font;
+				   scr.bottom - scr.top <= 12*40 && iflags.large_font;
 
 	InitRes ( ) ;
 
@@ -711,7 +711,7 @@ mac_init_nhwindows ( int *argcp, char **argv )
 	DimMenuBar ( ) ;
 
 	tty_init_nhwindows(argcp, argv);
-	flags.window_inited = TRUE;
+	iflags.window_inited = TRUE;
 
 	/* Some ugly hacks to make both interfaces happy */
 	mac_create_nhwindow(NHW_BASE);
@@ -849,7 +849,7 @@ mac_clear_nhwindow ( winid win )
 	switch ( ( ( WindowPeek ) theWindow ) -> windowKind - WIN_BASE_KIND ) {
 	case NHW_MESSAGE :
 		l = 0;
-		while (aWin->lin > flags.msg_history) {
+		while (aWin->lin > iflags.msg_history) {
 			const char cr = CHAR_CR;
 			l = Munger(aWin->windowText, l, &cr, 1, nil, 0) + 1;
 			--aWin->lin;
@@ -1302,7 +1302,7 @@ mac_destroy_nhwindow ( winid win )
 	int kind , visible ;
 
 	if ( win < 0 || win >= NUM_MACWINDOWS ) {
-		if ( flags . window_inited )
+		if ( iflags . window_inited )
 			error ( "Invalid window number %d (Max %d) in destroy_nhwindow." ,
 				win , NUM_MACWINDOWS ) ;
 		return ;
@@ -1330,7 +1330,7 @@ mac_destroy_nhwindow ( winid win )
 		return ;
 	}
 	if ( win == WIN_INVEN || win == WIN_MESSAGE ) {
-		if ( flags . window_inited ) {
+		if ( iflags . window_inited ) {
 			if ( flags . tombstone && killer ) {
 				/* Prepare for the coming of the tombstone window. */
 				mono_font ( ) ;
@@ -2089,7 +2089,7 @@ macCursorTerm ( EventRecord * theEvent , WindowPtr theWindow , RgnHandle mouseRg
 	if ( cursor_locked )
 		dir = (char *)0 ;
 	else {
-		dir_bas = flags . num_pad ? (char *) ndir : (char *) sdir ;
+		dir_bas = iflags . num_pad ? (char *) ndir : (char *) sdir ;
 		dir = strchr ( dir_bas , click_to_cmd ( where . h / nhw -> charWidth + 1 ,
 												where . v / nhw -> charHeight ,
 												CLICK_1 ) ) ;
@@ -2355,7 +2355,7 @@ WindowGoAway ( EventRecord * theEvent, WindowPtr theWindow )
 	NhWindow * aWin = GetNhWin(theWindow);
 
 	if ( ! theEvent || TrackGoAway ( theWindow , theEvent -> where ) ) {
-		if ( aWin - theWindows == BASE_WINDOW && ! flags . window_inited ) {
+		if ( aWin - theWindows == BASE_WINDOW && ! iflags . window_inited ) {
 			AddToKeyQueue ( '\033' , 1 ) ;
 			return ;
 		} else {
@@ -2389,7 +2389,7 @@ mac_get_nh_event( void )
 {
 	EventRecord anEvent ;
 
-	if ( ( inSelect == WIN_ERR && flags . window_inited && ! in_topl_mode ( ) )
+	if ( ( inSelect == WIN_ERR && iflags . window_inited && ! in_topl_mode ( ) )
 		 == mBarDimmed )
 		if ( mBarDimmed ) {
 			UndimMenuBar ( ) ;
@@ -2445,7 +2445,7 @@ int ix , ret ;
 int
 mac_nhgetch( void ) {
 int ch ;
-NhWindow * nhw = flags . window_inited ? theWindows + WIN_MAP : (NhWindow *) nil ;
+NhWindow * nhw = iflags . window_inited ? theWindows + WIN_MAP : (NhWindow *) nil ;
 
 	if ( theWindows ) {
 	NhWindow * aWin = theWindows + WIN_MESSAGE ;

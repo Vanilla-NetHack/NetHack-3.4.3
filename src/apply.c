@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	3.2	96/05/18	*/
+/*	SCCS Id: @(#)apply.c	3.2	96/10/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -102,9 +102,10 @@ use_towel(obj)
 			    You("push your blindfold %s.",
 				rn2(2) ? "cock-eyed" : "crooked");
 			} else {
+			    struct obj *saved_ublindf = ublindf;
 			    You("push your blindfold off.");
 			    Blindf_off(ublindf);
-			    dropx(ublindf);
+			    dropx(saved_ublindf);
 			}
 		    }
 		    return 1;
@@ -242,8 +243,7 @@ use_stethoscope(obj)
 	switch(lev->typ) {
 	case SDOOR:
 		You_hear(hollow_str, "door");
-		lev->typ = DOOR;
-		lev->doormask = exposed_sdoor_mask(lev);
+		cvt_sdoor_to_door(lev);		/* ->typ = DOOR */
 		if (Blind) feel_location(rx,ry);
 		else newsym(rx,ry);
 		return res;
@@ -256,7 +256,7 @@ use_stethoscope(obj)
 	}
 
 	if (!its_dead(rx, ry, &res))
-		You_hear("nothing special.");
+	    You("hear nothing special."); 	/* not You_hear()  */
 	return res;
 }
 
@@ -285,12 +285,14 @@ struct obj *obj;
 		for(mtmp = fmon; mtmp; mtmp = nextmon) {
 		    nextmon = mtmp->nmon; /* trap might kill mon */
 		    if (mtmp->mtame) {
+			if (mtmp->mtrapped) {
+			    /* no longer in previous trap (affects mintrap) */
+			    mtmp->mtrapped = 0;
+			    fill_pit(mtmp->mx, mtmp->my);
+			}
 			mnexto(mtmp);
 			if (canspotmon(mtmp)) ++pet_cnt;
-			/* No longer in previous trap.  Necessary since */
-			/* mintrap acts differently for already-trapped mons */
-			mtmp->mtrapped = 0;
-			(void) mintrap(mtmp);
+			if (mintrap(mtmp) == 2) change_luck(-1);
 		    }
 		}
 		if (pet_cnt > 0) makeknown(MAGIC_WHISTLE);
@@ -956,7 +958,6 @@ boolean
 snuff_lit(obj)
 struct obj *obj;
 {
-	char buf[BUFSZ];
 	xchar x, y;
 
 	if (obj->lamplit) {
@@ -964,7 +965,7 @@ struct obj *obj;
 		    obj->otyp == BRASS_LANTERN || obj->otyp == POT_OIL) {
 		(void) get_obj_location(obj, &x, &y, 0);
 		if (obj->where == OBJ_MINVENT ? cansee(x,y) : !Blind)
-		    pline("%s %s goes out!", Shk_Your(buf, obj), xname(obj));
+		    pline("%s goes out!", Yname2(obj));
 		end_burn(obj, TRUE);
 		return TRUE;
 	    }
@@ -988,7 +989,7 @@ struct obj *obj;
 				obj->otyp == BRASS_LANTERN)
 		    pline("%s lamp is now off.", Shk_Your(buf, obj));
 		else
-		    You("snuff out %s %s.", shk_your(buf, obj), xname(obj));
+		    You("snuff out %s.", yname(obj));
 		end_burn(obj, TRUE);
 		return;
 	}
@@ -1011,9 +1012,8 @@ struct obj *obj;
 		    check_unpaid(obj);
 		    pline("%s lamp is now on.", Shk_Your(buf, obj));
 		} else {	/* candle(s) */
-		    pline("%s %s flame%s burn%s%s",
-			Shk_Your(buf, obj),
-			s_suffix(xname(obj)),
+		    pline("%s flame%s burn%s%s",
+			s_suffix(Yname2(obj)),
 			obj->quan > 1L ? "s" : "",
 			obj->quan > 1L ? "" : "s",
 			Blind ? "." : " brightly!");
@@ -1110,7 +1110,12 @@ dojump()
 	coord cc;
 	struct monst *mtmp;
 
-	if (!Jumping) {
+	if (nolimbs(uasmon) || slithy(uasmon)) {
+		/* normally (nolimbs || slithy) implies !Jumping,
+		   but that isn't necessarily the case for knights */
+		You_cant("jump; you have no legs!");
+		return 0;
+	} else if (!Jumping) {
 		You_cant("jump very far.");
 		return 0;
 	} else if (u.uswallow) {
@@ -1130,6 +1135,17 @@ dojump()
 		return 0;
 	} else if (u.uhunger <= 100 || ACURR(A_STR) < 6) {
 		You("lack the strength to jump!");
+		return 0;
+	} else if (Wounded_legs) {
+		/* note: dojump() has similar code */
+		long wl = (Wounded_legs & BOTH_SIDES);
+		const char *bp = body_part(LEG);
+
+		if (wl == BOTH_SIDES) bp = makeplural(bp);
+		Your("%s%s %s in no shape for jumping.",
+		     (wl == LEFT_SIDE) ? "left " :
+			(wl == RIGHT_SIDE) ? "right " : "",
+		     bp, (wl == BOTH_SIDES) ? "are" : "is");
 		return 0;
 	}
 
@@ -1490,9 +1506,8 @@ struct obj *obj;
 		check_unpaid(obj);
 		obj->spe--;
 		if (otmp != &zeroobj) {
-			You("cover %s %s with a thick layer of grease.",
-			    shk_your(buf, otmp),
-			    xname(otmp));
+			You("cover %s with a thick layer of grease.",
+			    yname(otmp));
 			otmp->greased = 1;
 			if (obj->cursed && !nohands(uasmon)) {
 			    Glib += rnd(15);
@@ -1729,6 +1744,11 @@ struct obj *obj;
 #endif /* 0 */
 				    break;
 				default:
+				{
+				    char save_usym = u.usym;
+				    /* kludge for body_part() to work */
+				    u.usym = mtmp->data->mlet;
+				    uasmon = mtmp->data;
 				    /* to floor beneath mon */
 				    You("yank %s from %s %s!",
 					the(xname(otmp)),
@@ -1737,6 +1757,9 @@ struct obj *obj;
 				    if(otmp->otyp == CRYSKNIFE)
 					otmp->otyp = WORM_TOOTH;
 				    place_object(otmp, mtmp->mx, mtmp->my);
+				    set_uasmon();
+				    u.usym = save_usym;
+				}
 			    }
 			} else {
 				pline(msg_slipsfree);
@@ -1771,7 +1794,7 @@ do_break_wand(obj)
     boolean affects_objects;
     char confirm[QBUFSZ], the_wand[BUFSZ];
 
-    Strcat(strcat(shk_your(the_wand, obj), " "), xname(obj));
+    Strcpy(the_wand, yname(obj));
     Sprintf(confirm, "Are you really sure you want to break %s?", the_wand);
     if (yn(confirm) == 'n' ) return 0;
 

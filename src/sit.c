@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	3.2	95/01/31	*/
+/*	SCCS Id: @(#)sit.c	3.2	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,10 @@ dosit()
 	register int typ = levl[u.ux][u.uy].typ;
 
 	if(!can_reach_floor())	{
-	    You("are sitting on air.");
+	    if (Levitation)
+		You("tumble in place.");
+	    else
+		You("are sitting on air.");
 	    return 0;
 	}
 
@@ -140,6 +143,10 @@ dosit()
 			break;
 		    case 4:
 			You_feel("much, much better!");
+			if (Upolyd) {
+			    if (u.mh >= (u.mhmax - 5))  u.mhmax += 4;
+			    u.mh = u.mhmax;
+			}
 			if(u.uhp >= (u.uhpmax - 5))  u.uhpmax += 4;
 			u.uhp = u.uhpmax;
 			make_blinded(0L,TRUE);

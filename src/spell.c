@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)spell.c	3.2	96/05/19	*/
+/*	SCCS Id: @(#)spell.c	3.2	96/08/04	*/
 /*	Copyright (c) M. Stephenson 1988			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -587,19 +587,16 @@ boolean atme;
 		}
 	}
 
-	/* u.uen _will_ reduce once here reached */
-
-	flags.botl = 1;
-
 	chance = percent_success(spell);
-
 	if (confused || (rnd(100) > chance)) {
 		You("fail to cast the spell correctly.");
 		u.uen -= energy / 2;
+		flags.botl = 1;
 		return(1);
 	}
 
 	u.uen -= energy;
+	flags.botl = 1;
 	exercise(A_WIS, TRUE);
 /*	pseudo is a temporary "false" object containing the spell stats. */
 	pseudo = mksobj(spellid(spell), FALSE, FALSE);

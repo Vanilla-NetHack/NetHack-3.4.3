@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)detect.c	3.2	96/10/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -801,18 +801,24 @@ do_vicinity_map()
     }
 }
 
-int
-exposed_sdoor_mask(lev)
+/* convert a secret door into a normal door */
+void
+cvt_sdoor_to_door(lev)
 struct rm *lev;
 {
+	int newmask = lev->doormask & ~WM_MASK;
+
 #ifdef REINCARNATION
 	if (Is_rogue_level(&u.uz))
-		/* rogue didn't have doors, only doorways */
-		return (lev->doormask & ~WM_MASK);
+	    /* rogue didn't have doors, only doorways */
+	    newmask = D_NODOOR;
 	else
 #endif
-		/* newly exposed door is closed */
-		return ((lev->doormask & ~WM_MASK) | SDOOR_BITS);
+	    /* newly exposed door is closed */
+	    if (!(newmask & D_LOCKED)) newmask |= D_CLOSED;
+
+	lev->typ = DOOR;
+	lev->doormask = newmask;
 }
 
 
@@ -825,8 +831,7 @@ genericptr_t num;
 	register struct monst *mtmp;
 
 	if(levl[zx][zy].typ == SDOOR) {
-		levl[zx][zy].typ = DOOR;
-		levl[zx][zy].doormask = exposed_sdoor_mask(&levl[zx][zy]);
+		cvt_sdoor_to_door(&levl[zx][zy]);	/* .typ = DOOR */
 		newsym(zx, zy);
 		(*(int*)num)++;
 	} else if(levl[zx][zy].typ == SCORR) {
@@ -873,10 +878,8 @@ genericptr_t num;
 	}
 	if(levl[zx][zy].typ == SDOOR || (levl[zx][zy].typ == DOOR &&
 		      (levl[zx][zy].doormask & (D_CLOSED|D_LOCKED)))) {
-		if(levl[zx][zy].typ == SDOOR) {
-		    levl[zx][zy].typ = DOOR;
-		    levl[zx][zy].doormask = exposed_sdoor_mask(&levl[zx][zy]);
-		}
+		if(levl[zx][zy].typ == SDOOR)
+		    cvt_sdoor_to_door(&levl[zx][zy]);	/* .typ = DOOR */
 		if(levl[zx][zy].doormask & D_TRAPPED) {
 		    if(distu(zx, zy) < 3) b_trapped("door", 0);
 		    else Norep("You %s an explosion!",
@@ -965,8 +968,7 @@ register int aflag;
 		    if (Blind && !aflag) feel_location(x,y);
 		    if(levl[x][y].typ == SDOOR) {
 			if(rnl(7-fund)) continue;
-			levl[x][y].typ = DOOR;
-			levl[x][y].doormask = exposed_sdoor_mask(&levl[x][y]);
+			cvt_sdoor_to_door(&levl[x][y]);	/* .typ = DOOR */
 			exercise(A_WIS, TRUE);
 			nomul(0);
 			if (Blind && !aflag)
@@ -1009,8 +1011,8 @@ register int aflag;
 			    nomul(0);
 
 			    if (trap->ttyp == STATUE_TRAP) {
-				activate_statue_trap(trap, x, y);
-				if (MON_AT(x, y)) exercise(A_WIS, TRUE);
+				if (activate_statue_trap(trap, x, y, FALSE))
+				    exercise(A_WIS, TRUE);
 				return(1);
 			    } else {
 				You("find %s.", an(defsyms[

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	3.2	96/05/01	*/
+/*	SCCS Id: @(#)mhitu.c	3.2	96/07/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -388,13 +388,12 @@ mattacku(mtmp)
 			"tries to pick you up" : "disturbs you");
 	    else pline("Wait, %s!  That gold is really %s named %s!",
 			m_monnam(mtmp),
-			u.mtimedone ? an(uasmon->mname) :
-			    an(player_mon()->mname),
+			an(Upolyd ? uasmon->mname : player_mon()->mname),
 			plname);
 	    if (multi < 0) {	/* this should always be the case */
 		char buf[BUFSIZ];
 		Sprintf(buf, "You appear to be %s again.",
-			u.mtimedone ? (const char *) an(uasmon->mname) :
+			Upolyd ? (const char *) an(uasmon->mname) :
 			    (const char *) "yourself");
 		unmul(buf);	/* immediately stop mimicking gold */
 	    }
@@ -719,6 +718,8 @@ struct attack *mattk;
 #ifdef TOURIST
 	if (!obj) obj = uarmu;
 #endif
+	if (mattk->adtyp == AD_DRIN) obj = uarmh;
+
 	/* if your cloak/armor is greased, monster slips off */
 	if (obj && (obj->greased || obj->otyp == OILSKIN_CLOAK)) {
 	    pline("%s %s your %s %s!",
@@ -935,6 +936,8 @@ dopois:
 		    You("don't seem harmed.");
 		    break;
 		}
+		if (u_slip_free(mtmp,mattk)) break;
+
 		if (uarmh && rn2(8)) {
 		    Your("helmet blocks the attack to your head.");
 		    break;
@@ -1198,7 +1201,7 @@ do_stone:
 		   && !uarm && !uarmh && !uarms && !uarmg && !uarmc && !uarmf) {
 		    boolean goaway = FALSE;
 		    pline("%s hits!  (I hope you don't mind.)", Monnam(mtmp));
-		    if (u.mtimedone) {
+		    if (Upolyd) {
 			u.mh += rnd(7);
 			if (!rn2(7)) {
 			    /* no upper limit necessary; effect is temporary */
@@ -1693,7 +1696,7 @@ register struct monst *mtmp;
 register int n;
 {
 	flags.botl = 1;
-	if (u.mtimedone) {
+	if (Upolyd) {
 		u.mh -= n;
 		if (u.mh < 1) rehumanize();
 	} else {
@@ -1976,8 +1979,8 @@ register struct monst *mon;
 				break;
 			case 4: You_feel("restored to health!");
 				u.uhp = u.uhpmax;
-				if (u.mtimedone) u.mh = u.mhmax;
-			        exercise(A_STR, TRUE);
+				if (Upolyd) u.mh = u.mhmax;
+				exercise(A_STR, TRUE);
 				flags.botl = 1;
 				break;
 		}
@@ -2111,7 +2114,7 @@ register struct attack *mattk;
 	    default:
 		break;
 	}
-	if (!u.mtimedone) return 1;
+	if (!Upolyd) return 1;
 
 	/* These affect the enemy only if you are still a monster */
 	if (rn2(3)) switch(uasmon->mattk[i].adtyp) {

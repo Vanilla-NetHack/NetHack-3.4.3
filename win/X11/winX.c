@@ -722,7 +722,7 @@ X11_destroy_nhwindow(window)
     if (window == WIN_MESSAGE) {
 	wp->keep_window = TRUE;
 	WIN_MESSAGE = WIN_ERR;
-	flags.window_inited = 0;
+	iflags.window_inited = 0;
     } else if (window == WIN_MAP) {
 	wp->keep_window = TRUE;
 	WIN_MAP = WIN_ERR;
@@ -1879,7 +1879,7 @@ init_standard_windows()
     (void) XtAppSetErrorHandler(app_context, (XtErrorHandler) hangup);
 
     /* We can now print to the message window. */
-    flags.window_inited = 1;
+    iflags.window_inited = 1;
 }
 
 

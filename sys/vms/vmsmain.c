@@ -188,9 +188,9 @@ char *argv[];
 		(void) chmod(SAVEF,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef NEWS
-		if(flags.news) {
+		if(iflags.news) {
 		    display_file(NEWS, FALSE);
-		    flags.news = FALSE; /* in case dorecover() fails */
+		    iflags.news = FALSE; /* in case dorecover() fails */
 		}
 #endif
 		pline("Restoring save file...");
@@ -258,7 +258,7 @@ char *argv[];
 			break;
 #ifdef NEWS
 		case 'n':
-			flags.news = FALSE;
+			iflags.news = FALSE;
 			break;
 #endif
 		case 'u':

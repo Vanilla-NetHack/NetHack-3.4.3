@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_comp.c	3.2	96/05/10	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.2	96/06/22	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -46,13 +46,6 @@ void NDECL(output_dgn);
 #ifndef	LATTICE
 # define    memset(addr,val,len)    setmem(addr,len,val)
 #endif
-#endif
-
-#ifdef MICRO
-# undef exit
-# if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
 #endif
 
 #define ERR		(-1)
@@ -647,7 +640,7 @@ output_dgn()
 {
 	int	nd, cl = 0, nl = 0,
 		    cb = 0, nb = 0;
-	static unsigned long version_info[4] = {
+	static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
 			VERSION_SANITY1, VERSION_SANITY2
 	};
@@ -657,7 +650,7 @@ output_dgn()
 	    exit(EXIT_FAILURE);
 	}
 
-	if (fwrite((char *)version_info, sizeof version_info, 1, yyout) != 1) {
+	if (fwrite((char *)&version_data, sizeof version_data, 1, yyout) != 1) {
 	    yyerror("FATAL - output failure.");
 	    exit(EXIT_FAILURE);
 	}

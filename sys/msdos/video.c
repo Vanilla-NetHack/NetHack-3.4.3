@@ -13,6 +13,8 @@
  */
 
 #include "hack.h"
+
+#ifndef STUBVIDEO
 #include "pcvideo.h"
 #include "pctiles.h"
 
@@ -75,7 +77,7 @@ void
 get_scr_size()
 {
 #  ifdef SCREEN_VGA
-	if (flags.usevga) {
+	if (iflags.usevga) {
 		vga_get_scr_size();
 	} else
 #  endif
@@ -128,7 +130,6 @@ int attrib_text_normal;   /* text mode normal attribute */
 int attrib_gr_normal;	  /* graphics mode normal attribute */
 int attrib_text_intense;  /* text mode intense attribute */
 int attrib_gr_intense;	  /* graphics mode intense attribute */
-boolean tiles_on = FALSE; /* do we have tiles on? */
 boolean traditional = FALSE; /* traditonal TTY character mode */
 boolean inmap = FALSE;	  /* in the map window */
 #  ifdef TEXTCOLOR
@@ -143,7 +144,6 @@ extern int attrib_text_normal;
 extern int attrib_gr_normal;
 extern int attrib_text_intense;
 extern int attrib_gr_intense;
-extern boolean tiles_on;
 extern boolean traditonal;
 extern boolean inmap;
 #  ifdef TEXTCOLOR
@@ -155,10 +155,10 @@ extern char ttycolors[CLR_MAX];	/* also used/set in options.c */
 void
 backsp()
 {
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_backsp();
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_backsp();
 #  endif
 	}
@@ -169,10 +169,10 @@ backsp()
 void
 clear_screen()
 {
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_clear_screen();
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_clear_screen(BACKGROUND_VGA_COLOR);
 #  endif
 	}
@@ -185,10 +185,10 @@ cl_end()	/* clear to end of line */
 
 	col = (int)ttyDisplay->curx;
 	row = (int)ttyDisplay->cury;
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_cl_end(col,row);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_cl_end(col,row);
 #  endif
 	}
@@ -201,10 +201,10 @@ cl_eos()	/* clear to end of screen */
 {
 	int cy = (int)ttyDisplay->cury+1;
 
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_cl_eos();
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_cl_eos(cy);
 #  endif
 	}
@@ -218,10 +218,10 @@ register int col, row;
 {
 	ttyDisplay->cury = (uchar)row;
 	ttyDisplay->curx = (uchar)col;
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_gotoxy(col,row);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_gotoloc(col,row);
 #  endif
 	}
@@ -247,10 +247,10 @@ home()
 {
 	tty_curs(BASE_WINDOW, 1, 0);
 	ttyDisplay->curx = ttyDisplay->cury = (uchar)0;
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_gotoxy(0,0);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_gotoloc(0,0);
 #  endif
 	}
@@ -260,10 +260,10 @@ void
 nocmov(col, row)
 int col,row;
 {
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_gotoxy(col,row);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_gotoloc(col,row);
 #  endif
 	}
@@ -272,14 +272,14 @@ int col,row;
 void
 standoutbeg()
 {
-	g_attribute = flags.grmode ? attrib_gr_intense
+	g_attribute = iflags.grmode ? attrib_gr_intense
 				   : attrib_text_intense;
 }
 
 void
 standoutend()
 {
-	g_attribute = flags.grmode ? attrib_gr_normal
+	g_attribute = iflags.grmode ? attrib_gr_normal
 				   : attrib_text_normal;
 }
 # endif /* OVL0 */
@@ -295,7 +295,7 @@ term_end_attr(int attr)
 		case ATR_BLINK:
 		case ATR_INVERSE:
 		default:
-		g_attribute = flags.grmode ? attrib_gr_normal
+		g_attribute = iflags.grmode ? attrib_gr_normal
 					   : attrib_text_normal;
 	}
 }
@@ -303,7 +303,7 @@ term_end_attr(int attr)
 void
 term_end_color(void)
 {
-	g_attribute = flags.grmode ? attrib_gr_normal
+	g_attribute = iflags.grmode ? attrib_gr_normal
 				   : attrib_text_normal;
 }
 
@@ -323,19 +323,19 @@ term_start_attr(int attr)
 		if (monoflag) {
 			g_attribute = ATTRIB_MONO_UNDERLINE;
 		} else {
-			g_attribute = flags.grmode ? attrib_gr_intense
+			g_attribute = iflags.grmode ? attrib_gr_intense
 						   : attrib_text_intense;
 		}
 		break;
 	case ATR_BOLD:
-		g_attribute = flags.grmode ? attrib_gr_intense
+		g_attribute = iflags.grmode ? attrib_gr_intense
 					   : attrib_text_intense;
 		break;
 	case ATR_BLINK:
 		if (monoflag) {
 			g_attribute = ATTRIB_MONO_BLINK;
 		} else {
-			g_attribute = flags.grmode ? attrib_gr_intense
+			g_attribute = iflags.grmode ? attrib_gr_intense
 						   : attrib_text_intense;
 		}
 		break;
@@ -343,12 +343,12 @@ term_start_attr(int attr)
 		if (monoflag) {
 			g_attribute = ATTRIB_MONO_REVERSE;
 		} else {
-			g_attribute = flags.grmode ? attrib_gr_intense
+			g_attribute = iflags.grmode ? attrib_gr_intense
 						   : attrib_text_intense;
 		}
 		break;
 	default:
-		g_attribute = flags.grmode ? attrib_gr_normal
+		g_attribute = iflags.grmode ? attrib_gr_normal
 					   : attrib_text_normal;
 		break;
     }
@@ -363,7 +363,7 @@ term_start_color(int color)
 			g_attribute = attrib_text_normal;
 	} else {
 		if (color >= 0 && color < CLR_MAX) {
-			if (flags.grmode)
+			if (iflags.grmode)
 				g_attribute = color;
 			else
 				g_attribute = ttycolors[color];
@@ -399,13 +399,13 @@ void
 tty_end_screen()
 {
 
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_clear_screen();
 #  ifdef PC9800
 		fputs("\033[>1l", stdout);
 #  endif
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_tty_end_screen();
 #  endif
 	}
@@ -441,7 +441,7 @@ int *wid, *hgt;
 	g_attribute = attrib_text_normal;	/* Give it a starting value */
 
 #  ifdef SCREEN_VGA
-	if (flags.usevga) {
+	if (iflags.usevga) {
 		vga_tty_startup(wid, hgt);
 	} else
 #  endif
@@ -472,22 +472,22 @@ tty_start_screen()
 #  ifdef PC9800
 	fputs("\033[>1h", stdout);
 #  endif
-	if (flags.num_pad) tty_number_pad(1);	/* make keypad send digits */
+	if (iflags.num_pad) tty_number_pad(1);	/* make keypad send digits */
 }
 
 void
 gr_init(){
-	if (flags.usevga)	{
+	if (iflags.usevga)	{
 # ifdef SCREEN_VGA
 		vga_Init();
 # endif
 # ifdef SCREEN_VESA
-	} else if (flags.usevesa) {
+	} else if (iflags.usevesa) {
 		vesa_Init();
 
 # endif
 # ifdef SCREEN_8514
-	} else if (flags.use8514) {
+	} else if (iflags.use8514) {
 		v8514_Init();
 # endif
 	}
@@ -496,17 +496,17 @@ gr_init(){
 void
 gr_finish()
 {
-	if (flags.grmode) {
-	   if (flags.usevga) {
+	if (iflags.grmode) {
+	   if (iflags.usevga) {
 # ifdef SCREEN_VGA
 		vga_Finish();
 # endif
 # ifdef SCREEN_VESA
-	   } else if (flags.usevesa) {
+	   } else if (iflags.usevesa) {
 		vesa_Finish();
 # endif
 # ifdef SCREEN_8514
-	   } else if (flags.use8514) {
+	   } else if (iflags.use8514) {
 		v8514_Finish();
 # endif
 	   }
@@ -555,10 +555,10 @@ const char *s;
 	col = (int)ttyDisplay->curx;
 	row = (int)ttyDisplay->cury;
 
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_xputs(s,col,row);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_xputs(s,col,row);
 #  endif
 	}
@@ -571,14 +571,14 @@ char ch;
 	int i;
 	char attribute;
 
-	i = flags.grmode ? attrib_gr_normal
+	i = iflags.grmode ? attrib_gr_normal
 			 : attrib_text_normal;
 
 	attribute = (char)((g_attribute == 0) ? i : g_attribute);
-	if (!flags.grmode) {
+	if (!iflags.grmode) {
 		txt_xputc(ch,attribute);
 #  ifdef SCREEN_VGA
-	} else if (flags.usevga) {
+	} else if (iflags.usevga) {
 		vga_xputc(ch,attribute);
 #  endif /*SCREEN_VGA*/
 	}
@@ -589,7 +589,7 @@ xputg(glyphnum,ch)	/* write out a glyph picture at current location */
 int glyphnum;
 int ch;
 {
-	if (!flags.grmode || !tiles_on) {
+	if (!iflags.grmode || !iflags.tile_view) {
 		xputc((char)ch);
 #  ifdef SCREEN_VGA
 	} else {
@@ -603,7 +603,7 @@ void
 video_update_positionbar(posbar)
 char *posbar;
 {
-	if (!flags.grmode) 
+	if (!iflags.grmode) 
 		return;
 #   ifdef SCREEN_VGA
 	else
@@ -639,7 +639,7 @@ int cursor_type  = CURSOR_DEFAULT_STYLE;
 int cursor_color = CURSOR_DEFAULT_COLOR;
 int cursor_flag;
 
-/* The check for flags.grmode is made BEFORE calling these. */
+/* The check for iflags.grmode is made BEFORE calling these. */
 void
 DrawCursor()
 {
@@ -894,58 +894,58 @@ char *sopt;
  *	printf("video is %s",sopt);
  *	getch();
  */
-	flags.grmode  = 0;
-	flags.hasvesa = 0;
-	flags.hasvga  = 0;
-	flags.has8514 = 0;
-	flags.usevesa = 0;
-	flags.usevga  = 0;
-	flags.use8514 = 0;
+	iflags.grmode  = 0;
+	iflags.hasvesa = 0;
+	iflags.hasvga  = 0;
+	iflags.has8514 = 0;
+	iflags.usevesa = 0;
+	iflags.usevga  = 0;
+	iflags.use8514 = 0;
 
 	if (strncmpi(sopt,"def",3) == 0) {              /* default */
 		/* do nothing - default */
 #  ifdef SCREEN_VGA
 	} else if (strncmpi(sopt,"vga",3) == 0) {       /* vga */
-		flags.usevga  = 1;
-		flags.hasvga  = 1;
+		iflags.usevga  = 1;
+		iflags.hasvga  = 1;
 #  endif
 #  ifdef SCREEN_VESA
 	} else if (strncmpi(sopt,"vesa",4) == 0) {      /* vesa */
-		flags.hasvesa = 1;
-		flags.usevesa = 1;
+		iflags.hasvesa = 1;
+		iflags.usevesa = 1;
 #  endif
 #  ifdef SCREEN_8514
 	} else if (strncmpi(sopt,"8514",4) == 0) {      /* 8514/A */
-		flags.use8514 = 1;
-		flags.has8514 = 1;
+		iflags.use8514 = 1;
+		iflags.has8514 = 1;
 #  endif
 	} else if (strncmpi(sopt,"auto",4) == 0) {      /* autodetect */
 #  ifdef SCREEN_VESA
 		if (vesa_detect()) {
-			flags.hasvesa = 1;
+			iflags.hasvesa = 1;
 		}
 #  endif
 #  ifdef SCREEN_8514
 		if (v8514_detect()) {
-			flags.has8514 = 1;
+			iflags.has8514 = 1;
 		}
 #  endif
 #  ifdef SCREEN_VGA
 		if (vga_detect()) {
-			flags.hasvga  = 1;
+			iflags.hasvga  = 1;
 		}
 #  endif
 	/*
 	 * Auto-detect Priorities (arbitrary for now):
 	 *	VESA, 8514, VGA
 	 */
-		if (flags.hasvesa) flags.usevesa = 1;
-		else if (flags.has8514) flags.use8514 = 1;
-		else if (flags.hasvga)	{
-			flags.usevga  = 1;
+		if (iflags.hasvesa) iflags.usevesa = 1;
+		else if (iflags.has8514) iflags.use8514 = 1;
+		else if (iflags.hasvga)	{
+			iflags.usevga  = 1;
 			/* VGA depends on BIOS to enable function keys*/
-			flags.BIOS = 1;
-			flags.rawio = 1;
+			iflags.BIOS = 1;
+			iflags.rawio = 1;
 		}
 	} else {
 		return 0;
@@ -953,5 +953,21 @@ char *sopt;
 	return 1;
 }
 # endif /* OVL1 */
+# ifdef OVL0
 
+void tileview(enable)
+boolean enable;
+{
+#ifdef SCREEN_VGA
+	if (iflags.grmode) vga_traditional(enable ? FALSE : TRUE);
+#endif
+}
+# endif /* OVL0 */
 #endif /* NO_TERMS  */
+#else	/* STUBVIDEO */
+void tileview(enable)
+boolean enable;
+{
+}
+#endif /* STUBVIDEO */
+

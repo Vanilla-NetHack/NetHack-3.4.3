@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)endgame.des	3.2	95/10/11
+#	SCCS Id: @(#)endgame.des	3.2	96/11/09
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992,1993 by Izchak Miller, David Cohrs,
 #                      and Timo Hakulinen
@@ -516,8 +516,9 @@ DOOR:closed,(37,17)
 DOOR:locked,(51,12)
 DOOR:locked,(57,09)
 DOOR:closed,(63,09)
-# Non diggable everywhere
+# Non diggable and phazeable everywhere
 NON_DIGGABLE:(00,00,74,19)
+NON_PASSWALL:(00,00,74,19)
 # Moloch's horde
 # West round room
 MONSTER:'@',"aligned priest",(18,09),noalign,hostile

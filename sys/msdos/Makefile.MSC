@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Makefile.MSC	3.2	96/05/14
+#	SCCS Id: @(#)Makefile.MSC	3.2	96/10/25
 # Copyright (c) NetHack PC Development Team, 1996.
 # NetHack may be freely distributed.  See license for details.
 #
@@ -673,7 +673,7 @@ MAKEOBJS       = $(O)makedefs.o	$(O)monst.o	$(O)objects.o
 
 SPLEVOBJS	=$(O)lev_yacc.o $(O)lev_$(LEX).o $(O)lev_main.o \
 		$(O)alloc.o $(O)decl.o $(O)drawing.o $(O)monst.o \
-		$(O)objects.o $(O)panic.o 
+		$(O)objects.o $(O)panic.o $(O)stubvid.o 
 
 DGNCOMPOBJS	=$(O)dgn_yacc.o $(O)dgn_$(LEX).o $(O)dgn_main.o \
 		$(O)alloc.o $(O)panic.o 
@@ -683,14 +683,14 @@ RECOVOBJS      = $(O)recover.o
 GIFREADERS	=$(O)gifread.o $(O)alloc.o $(O)panic.o 
 
 TEXT_IO	=$(O)tiletext.o $(O)tiletxt.o $(O)drawing.o \
-		$(O)decl.o $(O)monst.o $(O)objects.o 
+		$(O)decl.o $(O)monst.o $(O)objects.o $(O)stubvid.o 
 
 PPMWRITERS     = $(O)ppmwrite.o	$(O)alloc.o	$(O)panic.o
 
 GIFREAD2	=$(O)gifread2.o $(O)alloc.o $(O)panic.o 
 
 TEXT_IO2	=$(O)tiletex2.o $(O)tiletxt2.o $(O)drawing.o \
-		$(O)decl.o $(O)monst.o $(O)objects.o 
+		$(O)decl.o $(O)monst.o $(O)objects.o $(O)stubvid.o 
 
 PPMWRIT2       = $(O)ppmwrit2.o $(O)alloc.o	$(O)panic.o
 
@@ -1330,7 +1330,7 @@ nhdat:	$(U)dlb_main.exe
 $(U)dlb_main.exe: $(DLBOBJS)
 	@$(LINK) $(LFLAGSU) $(DLBOBJS),$@,, $(CLIB) $(BCMDL);
 
-$(O)dlb_main.o: $(U)\dlb_main.c $(INCL)\config.h $(DLB_H)
+$(O)dlb_main.o: $(U)dlb_main.c $(INCL)\config.h $(DLB_H)
 	$(CC) $(CFLAGSU) $(COBJNAM)$@ $(U)dlb_main.c
 
 #
@@ -1576,6 +1576,9 @@ $(O)sound.o: $(PCH0) $(MSYS)\sound.c   $(HACK_H) $(INCL)\portio.h
 
 $(O)pckeys.o: $(PCHO) $(MSYS)\pckeys.c   $(HACK_H) $(PCVIDEO_H)
 	$(CC) $(FLAGUO) $(CCSNAM)$(@F) $(COBJNAM)$@ $(MSYS)\pckeys.c
+
+$(O)stubvid.o : $(MSYS)\video.c $(HACK_H)
+	$(CC) $(FLAGUO) $(CDEFINE)STUBVIDEO $(CCSNAM)$(@F) $(COBJNAM)$@ $(MSYS)\video.c
 
 $(O)video.0: $(PCH0) $(MSYS)\video.c   $(HACK_H) $(WINTTY_H) $(PCVIDEO_H) \
                 $(TILE_H)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monst.c	3.2	96/04/26	*/
+/*	SCCS Id: @(#)monst.c	3.2	96/06/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -2733,14 +2733,17 @@ struct permonst _mons2[] = {
 	M2_NOPOLY|M2_HUMAN|M2_PNAME|M2_STRONG|M2_MALE|M2_STALK|M2_HOSTILE|
 	  M2_NASTY|M2_COLLECT|M2_MAGIC,
 	M3_WANTSARTI|M3_WAITFORU, HI_LORD),
+	/* Multi-headed, possessing the breath attacks of all the other dragons
+	 * (selected at random when attacking).
+	 */
     MON("Chromatic Dragon", S_DRAGON,
 	LVL(16, 10, 0, 30, -14), (G_NOGEN|G_UNIQ),
 	A(ATTK(AT_BREA, AD_RBRE, 6, 8), ATTK(AT_MAGC, AD_SPEL, 0, 0),
 	  ATTK(AT_CLAW, AD_SAMU, 2, 8), ATTK(AT_BITE, AD_PHYS, 4, 8),
 	  ATTK(AT_BITE, AD_PHYS, 4, 8), ATTK(AT_STNG, AD_PHYS, 1, 6)),
 	SIZ(WT_DRAGON, 1700, 0, MS_NEMESIS, MZ_GIGANTIC),
-	MR_FIRE|MR_COLD|MR_ELEC|MR_DISINT|MR_POISON,
-	MR_FIRE|MR_COLD|MR_ELEC|MR_DISINT|MR_POISON,
+	MR_FIRE|MR_COLD|MR_SLEEP|MR_DISINT|MR_ELEC|MR_POISON|MR_ACID|MR_STONE,
+	MR_FIRE|MR_COLD|MR_SLEEP|MR_DISINT|MR_ELEC|MR_POISON|MR_STONE,
 	M1_THICK_HIDE|M1_NOHANDS|M1_CARNIVORE|M1_SEE_INVIS|M1_POIS,
 	M2_NOPOLY|M2_HOSTILE|M2_FEMALE|M2_STALK|M2_STRONG|M2_NASTY|
 	  M2_GREEDY|M2_JEWELS|M2_MAGIC,

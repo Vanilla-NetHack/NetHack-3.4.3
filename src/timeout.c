@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.2	96/04/28	*/
+/*	SCCS Id: @(#)timeout.c	3.2	96/06/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -528,20 +528,13 @@ see_lamp_flicker(obj, tailer)
 struct obj *obj;
 const char *tailer;
 {
-	char buf[BUFSZ];
-
 	switch (obj->where) {
 	    case OBJ_INVENT:
 	    case OBJ_MINVENT:
-		pline("%s %s flickers%s.",
-		    Shk_Your(buf, obj),
-		    xname(obj),
-		    tailer);
+		pline("%s flickers%s.", Yname2(obj), tailer);
 		break;
 	    case OBJ_FLOOR:
-		You("see %s flicker%s.",
-		    an(xname(obj)),
-		    tailer);
+		You("see %s flicker%s.", an(xname(obj)), tailer);
 		break;
 	}
 }

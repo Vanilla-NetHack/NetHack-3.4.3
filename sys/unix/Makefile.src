@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.src	3.2	96/05/08
+#	SCCS Id: @(#)Makefile.src	3.2	96/10/26
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -110,13 +110,14 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 # flags for Linux
 #   compile normally
 # CFLAGS = -O2 -fomit-frame-pointer -I../include -I/usr/X11/include
+# LFLAGS = -L/usr/X11/lib
 #   OR compile backwards compatible a.out format
 # CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
 # LFLAGS = -b i486-linuxaout -L/usr/X11/lib
 
 # flags for BeBox
 #CC = mwcc
-#CFLAGS = -r -D__beos__=1 -I../include
+#CFLAGS = -r -I../include
 #LD = mwld
 #LFLAGS = -map nethack.xMAP
 
@@ -154,12 +155,14 @@ WINOBJ = $(WINTTYOBJ)
 # Systos needs -lcurses16 if you use -mshort
 # AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in config.h
 # and -ltermcap otherwise
-# Be and Linux use -ltermcap
+# Linux uses -ltermcap or -lncurses
+# Be uses -ltermcap
 #
 # libraries for tty ports
 # WINTTYLIB = -ltermcap
 # WINTTYLIB = -lcurses
 # WINTTYLIB = -lcurses16
+# WINTTYLIB = -lncurses
 WINTTYLIB = -ltermlib
 #
 # libraries for X11
@@ -184,7 +187,8 @@ WINLIB = $(WINTTYLIB)
 # LIBS = -lmalloc -linet
 #
 # Linux NetHack uses some bsd style ioctl functions, thus it is necessary to
-# use the bsd libs.
+# use the bsd libs.  (Only if still compiling as BSD in unixconf.h; recent
+# versions compile fine using SYSV without this.)
 # LIBS = -lbsd
 #
 # Solaris 2.x seems to work with the following
@@ -507,7 +511,7 @@ unixmain.o: ../sys/unix/unixmain.c  ../include/hack.h ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixmain.c
 unixunix.o: ../sys/unix/unixunix.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixunix.c
-bemain.o: ../sys/be/bemain.c  ../include/hack.h
+bemain.o: ../sys/be/bemain.c  ../include/hack.h ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/be/bemain.c
 getline.o: ../win/tty/getline.c  ../include/hack.h ../include/wintty.h \
 		../include/func_tab.h

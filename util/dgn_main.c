@@ -11,13 +11,6 @@
 #include "config.h"
 #include "dlb.h"
 
-#ifdef MICRO
-# undef exit
-# if !defined(AMIGA) && !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
-
 #ifdef MAC
 # ifdef applec
 #  define MPWTOOL

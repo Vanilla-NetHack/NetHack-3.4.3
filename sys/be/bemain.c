@@ -1,15 +1,25 @@
-/*	SCCS Id: @(#)bemain.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)bemain.c	3.2	96/10/25	*/
 /* Copyright (c) Dean Luick, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "dlb.h"
+#include <fcntl.h>
 
 static void whoami(void);
 static void process_options(int argc, char **argv);
 static void chdirx(const char *dir, boolean wr);
+static void getlock(void);
+
+#ifdef __begui__
+	#define MAIN nhmain
+	int nhmain(int argc, char **argv);
+#else
+	#define MAIN main
+#endif
 
 
-int main(int argc, char **argv)
+int MAIN(int argc, char **argv)
 {
 	int fd;
 	char *dir;	
@@ -44,11 +54,11 @@ int main(int argc, char **argv)
 						/* again if suffix was whole name */
 						/* accepts any suffix */
 
-	//Sprintf(lock,"%d%s", getuid(), plname) ;
-	//getlock() ;
+	Sprintf(lock,"%d%s", getuid(), plname);
+	getlock();
 
 
-	//dlb_init();			/* must be before newgame() */
+	dlb_init();			/* must be before newgame() */
 
 	/*
 	 * Initialization of the boundaries of the mazes
@@ -77,9 +87,9 @@ int main(int argc, char **argv)
 		boolean remember_wiz_mode = wizard;
 #endif
 #ifdef NEWS
-		if(flags.news) {
+		if(iflags.news) {
 			display_file(NEWS, FALSE);
-			flags.news = FALSE;	/* in case dorecover() fails */
+			iflags.news = FALSE;	/* in case dorecover() fails */
 		}
 #endif
 		pline("Restoring save file...");
@@ -173,7 +183,7 @@ process_options(int argc, char **argv)
 			break;
 #ifdef NEWS
 		case 'n':
-			flags.news = FALSE;
+			iflags.news = FALSE;
 			break;
 #endif
 		case 'u':
@@ -211,13 +221,35 @@ chdirx(const char *dir, boolean wr)
 }
 
 
+void
+getlock(void)
+{
+	int fd;
+
+	regularize(lock);
+	set_levelfile_name(lock, 0);
+	fd = creat(lock, FCMASK);
+	if(fd == -1) {
+		error("cannot creat lock file.");
+	} else {
+		if(write(fd, (genericptr_t) &hackpid, sizeof(hackpid))
+		    != sizeof(hackpid)){
+			error("cannot write lock");
+		}
+		if(close(fd) == -1) {
+			error("cannot close lock");
+		}
+	}
+}
+
+#ifndef __begui__
 /*
- * This is pretty useless now, but will be needed when we add the Be GUI.
- * When that happens, the main nethack code will run in its own thread.
- * If the main code exits we must catch this and kill the GUI threads.
+ * If we are not using the Be GUI, then just exit -- we don't need to
+ * do anything extra.
  */
 void nethack_exit(int status);
 void nethack_exit(int status)
 {
 	exit(status);
 }
+#endif /* !__begui__ */

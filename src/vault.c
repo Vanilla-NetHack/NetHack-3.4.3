@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.c	3.2	95/01/16	*/
+/*	SCCS Id: @(#)vault.c	3.2	96/06/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -558,6 +558,7 @@ letknow:
 			rloc(m_at(m, n));
 		    }
 		    remove_monster(grd->mx, grd->my);
+		    newsym(grd->mx, grd->my);
 		    place_monster(grd, m, n);
 		    mpickgold(grd);	/* does a newsym */
 		}
@@ -566,8 +567,9 @@ letknow:
 				grd->mpeaceful ? " calms down and" : "");
 		if(x != grd->mx || y != grd->my) {
 		    remove_monster(grd->mx, grd->my);
+		    newsym(grd->mx, grd->my);
 		    place_monster(grd, x, y);
-		    newsym(grd->mx,grd->my);
+		    newsym(x, y);
 		}
 		if(!grd->mpeaceful) return(-1);
 		else {

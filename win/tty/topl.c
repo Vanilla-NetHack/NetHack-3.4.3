@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topl.c	3.2	96/02/02	*/
+/*	SCCS Id: @(#)topl.c	3.2	96/10/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -280,14 +280,18 @@ char def;
 	    if (q == '\020') { /* ctrl-P */
 		if(!doprev) (void) tty_doprev_message(); /* need two initially */
 		(void) tty_doprev_message();
-		q = (char)0;
 		doprev = 1;
+		q = '\0';	/* force another loop iteration */
 		continue;
-	    } else if(doprev) {
+	    } else if (doprev) {
+		/* BUG[?]: this probably ought to check whether the
+		   character which has just been read is an acceptable
+		   response; if so, skip the reprompt and use it. */
 		tty_clear_nhwindow(WIN_MESSAGE);
 		cw->maxcol = cw->maxrow;
 		doprev = 0;
 		addtopl(prompt);
+		q = '\0';	/* force another loop iteration */
 		continue;
 	    }
 	    digit_ok = allow_num && digit(q);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wield.c	3.2	96/01/24	*/
+/*	SCCS Id: @(#)wield.c	3.2	96/07/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,11 +12,15 @@
 				|| (optr)->otyp == ELVEN_BROADSWORD\
 				|| (optr)->otyp == ELVEN_BOW)
 
+/* used by erode_weapon() and will_weld() */
+#define erodeable_wep(optr)	((optr)->oclass == WEAPON_CLASS \
+				|| is_weptool(optr) \
+				|| (optr)->otyp == HEAVY_IRON_BALL \
+				|| (optr)->otyp == IRON_CHAIN)
+
 /* used by welded(), and also while wielding */
 #define will_weld(optr)		((optr)->cursed \
-				&& ((optr)->oclass == WEAPON_CLASS \
-				   || is_weptool(optr) \
-				   || (optr)->otyp == HEAVY_IRON_BALL \
+				&& (erodeable_wep(optr) \
 				   || (optr)->otyp == TIN_OPENER))
 
 /* Note: setuwep() with a null obj, and uwepgone(), are NOT the same!
@@ -32,14 +36,16 @@ register struct obj *obj;
 	setworn(obj, W_WEP);
 	/* Note: Explicitly wielding a pick-axe will not give a "bashing"
 	 * message.  Wielding one via 'a'pplying it will.
+	 * 3.2.2:  Wielding arbitrary objects will give bashing message too.
 	 */
-	if (obj)
-		unweapon = ((obj->oclass == WEAPON_CLASS &&
-			     (objects[obj->otyp].oc_wepcat == WEP_BOW ||
-			      objects[obj->otyp].oc_wepcat == WEP_AMMO ||
-			      objects[obj->otyp].oc_wepcat == WEP_MISSILE)) ||
-			    (obj->oclass == TOOL_CLASS && !is_weptool(obj)));
-	else
+	if (obj) {
+		int wepcat = objects[obj->otyp].oc_wepcat;
+		unweapon = (obj->oclass == WEAPON_CLASS) ?
+				(wepcat == WEP_BOW ||
+				 wepcat == WEP_AMMO ||
+				 wepcat == WEP_MISSILE) :
+			   !is_weptool(obj);
+	} else
 		unweapon = TRUE;	/* for "bare hands" message */
 	update_inventory();
 }
@@ -74,7 +80,7 @@ dowield()
 	    You("are already wielding that!");
 	    if (is_weptool(wep)) unweapon = FALSE;	/* [see setuwep()] */
 	} else if (welded(uwep)) {
-	    weldmsg(uwep, TRUE);
+	    weldmsg(uwep);
 	} else if (wep == &zeroobj) {
 	    if (uwep == 0)
 		You("are already empty %s.", body_part(HANDED));
@@ -136,16 +142,18 @@ dowield()
 	return(res);
 }
 
+/* maybe rust weapon, or corrode it if acid damage is called for */
 void
 erode_weapon(acid_dmg)
 boolean acid_dmg;
-/* Rust weapon, or corrode it if acid damage is called for */
 {
-	if(!uwep || uwep->oclass != WEAPON_CLASS) return;	/* %% */
+	if (!uwep || !erodeable_wep(uwep))
+		return;
+
 	if (uwep->greased) {
 		grease_protect(uwep,(char *)0,FALSE);
-	} else if(uwep->oerodeproof ||
-	   (acid_dmg ? !is_corrodeable(uwep) : !is_rustprone(uwep))) {
+	} else if (uwep->oerodeproof ||
+		    (acid_dmg ? !is_corrodeable(uwep) : !is_rustprone(uwep))) {
 		if (flags.verbose || !(uwep->oerodeproof && uwep->rknown))
 		    Your("%s not affected.", aobjnam(uwep, "are"));
 		if (uwep->oerodeproof) uwep->rknown = TRUE;
@@ -154,11 +162,12 @@ boolean acid_dmg;
 		     uwep->oeroded+1 == MAX_ERODE ? " completely" :
 		     uwep->oeroded ? " further" : "");
 		uwep->oeroded++;
-	} else
+	} else {
 		if (flags.verbose)
 		    Your("%s completely %s.",
 			 aobjnam(uwep, Blind ? "feel" : "look"),
 			 acid_dmg ? "corroded" : "rusty");
+	}
 }
 
 int
@@ -252,31 +261,18 @@ register struct obj *obj;
 	return 0;
 }
 
-/* The reason for "specific" is historical; some parts of the code used
- * the object name and others just used "weapon"/"sword".  This function
- * replaced all of those.  Which one we use is really arbitrary.
- */
 void
-weldmsg(obj, specific)
+weldmsg(obj)
 register struct obj *obj;
-boolean specific;
 {
-	char buf[BUFSZ];
+	long savewornmask;
 
-	if (specific) {
-		long savewornmask = obj->owornmask;
-		obj->owornmask &= ~W_WEP;
-		Strcpy(buf, Doname2(obj));
-		obj->owornmask = savewornmask;
-	} else
-		Sprintf(buf, "Your %s%s",
-			is_sword(obj) ? "sword" : "weapon",
-			plur(obj->quan));
-	Strcat(buf, (obj->quan == 1L) ? " is" : " are");
-	Sprintf(eos(buf), " welded to your %s!",
+	savewornmask = obj->owornmask;
+	Your("%s %s welded to your %s!",
+		xname(obj), (obj->quan == 1L) ? "is" : "are",
 		bimanual(obj) ? (const char *)makeplural(body_part(HAND))
 				: body_part(HAND));
-	pline(buf);
+	obj->owornmask = savewornmask;
 }
 
 /*wield.c*/

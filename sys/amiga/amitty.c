@@ -29,7 +29,7 @@ extern long afh_in;
 void settty(const char *s){
 	end_screen();
 	if(s)raw_print(s);
-	flags.cbreak=ON;	/* this is too easy: probably wrong */
+	iflags.cbreak=ON;	/* this is too easy: probably wrong */
 #if 1 /* should be version>=36 */
 /*	if(IsInteractive(afh_in)){ */
 		SetMode(afh_in,0);	/* con mode */
@@ -44,7 +44,7 @@ void gettty(){
 #endif
 }
 void setftty(){
-	flags.cbreak=ON;	/* ditto */
+	iflags.cbreak=ON;	/* ditto */
 }
 char kill_char='X'-'@';
 char erase_char='\b';

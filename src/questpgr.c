@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)questpgr.c	3.2	95/08/04	*/
+/*	SCCS Id: @(#)questpgr.c	3.2	96/08/19	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -29,6 +29,8 @@ static void FDECL(deliver_by_window, (struct qtmsg *,int));
 static char	in_line[80], cvt_buf[64], out_line[128];
 static struct	qtlists	qt_list;
 static dlb	*msg_file;
+/* used by ldrname() and neminame(), then copied into cvt_buf */
+static char	nambuf[sizeof cvt_buf];
 
 #ifdef DEBUG
 static void NDECL(dump_qtlist);
@@ -287,8 +289,11 @@ const char *
 ldrname()	/* return your class leader's name */
 {
 	int i = qt_matrix[class_index()].ldrnum;
-/*	return(mons[qt_matrix[class_index()].ldrnum].mname); */
-	return(mons[i].mname);
+
+	Sprintf(nambuf, "%s%s",
+		type_is_pname(&mons[i]) ? "" : "the ",
+		mons[i].mname);
+	return nambuf;
 }
 
 static const char *
@@ -307,13 +312,20 @@ struct obj *otmp;
 static const char *
 neminame()	/* return your class nemesis' name */
 {
-	return(mons[qt_matrix[class_index()].neminum].mname);
+	int i = qt_matrix[class_index()].neminum;
+
+	Sprintf(nambuf, "%s%s",
+		type_is_pname(&mons[i]) ? "" : "the ",
+		mons[i].mname);
+	return nambuf;
 }
 
 static const char *
 guardname()	/* return your class leader's guard monster name */
 {
-	return(mons[qt_matrix[class_index()].guardnum].mname);
+	int i = qt_matrix[class_index()].guardnum;
+
+	return(mons[i].mname);
 }
 
 static const char *
@@ -326,6 +338,8 @@ boolean
 leaderless()	/* return true iff leader is dead */
 {
 	int i = qt_matrix[class_index()].ldrnum;
+	/* BUG: This doesn't take the possibility of resurrection
+		via wand or spell of undead turning into account. */
 	return (boolean)(mvitals[i].died > 0);
 }
 
@@ -419,26 +433,40 @@ convert_line()
 		case '%':
 			if (*(c+1)) {
 			    convert_arg(*(++c));
-			    switch (*(c+1)) {
+			    switch (*(++c)) {
 
+					/* insert "a"/"an" prefix */
 				case 'A': Strcat(cc, An(cvt_buf));
 				    cc += strlen(cc);
-				    c++;
 				    continue; /* for */
 				case 'a': Strcat(cc, an(cvt_buf));
 				    cc += strlen(cc);
-				    c++;
 				    continue; /* for */
 
+					/* capitalize */
 				case 'C': cvt_buf[0] = highc(cvt_buf[0]);
-				    c++;
 				    break;
 
+					/* pluralize */
 				case 'P': cvt_buf[0] = highc(cvt_buf[0]);
 				case 'p': Strcpy(cvt_buf, makeplural(cvt_buf));
-					    c++; break;
+				    break;
 
-				default: break;
+					/* append possessive suffix */
+				case 'S': cvt_buf[0] = highc(cvt_buf[0]);
+				case 's': Strcpy(cvt_buf, s_suffix(cvt_buf));
+				    break;
+
+					/* strip any "the" prefix */
+				case 't': if (!strncmpi(cvt_buf, "the ", 4)) {
+					Strcat(cc, &cvt_buf[4]);
+					cc += strlen(cc);
+					continue; /* for */
+				    }
+				    break;
+
+				default: --c;	/* undo switch increment */
+				    break;
 			    }
 			    Strcat(cc, cvt_buf);
 			    cc += strlen(cvt_buf);
@@ -450,6 +478,8 @@ convert_line()
 			break;
 	    }
 	}
+	if (cc >= out_line + sizeof out_line)
+	    panic("convert_line: overflow");
 	*cc = 0;
 	return;
 }

@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for building nethack itself.
-#	SCCS Id: @(#)Makefile.src	3.2	96/05/24
+#	SCCS Id: @(#)Makefile.src	3.2	96/10/20
 
 #  Copy this file to [.src]Makefile. and then edit it as needed.
 #  If you changed CC or CFLAGS, make similar changes in [.util]Makefile.
@@ -92,7 +92,7 @@ RANDOBJ = random.obj
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
 VERSION  =3.2
-PATCHLVL =1
+PATCHLVL =2
 
 MAKEDEFS = $(UTL)makedefs.exe;
 

@@ -32,7 +32,7 @@ tgetch()
 	char ch;
 
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
-	if (flags.BIOS)
+	if (iflags.BIOS)
 		ch = BIOSgetch();
 	else
 		ch = DOSgetch();
@@ -50,7 +50,7 @@ tgetch()
 
 /*
  * Keypad keys are translated to the normal values below.
- * When flags.BIOS is active, shifted keypad keys are translated to the
+ * When iflags.BIOS is active, shifted keypad keys are translated to the
  *    shift values below.
  */
 static const struct pad {
@@ -137,7 +137,7 @@ BIOSgetch()
 
 	/* Translate keypad keys */
 	if (iskeypad(scan)) {
-		kpad = flags.num_pad ? numpad : keypad;
+		kpad = iflags.num_pad ? numpad : keypad;
 		if (shift & SHIFT)
 			ch = kpad[scan - KEYPADLO].shift;
 		else if (shift & CTRL)
@@ -299,12 +299,12 @@ set_colors()
 {
 	static char colorHE[] = "\033q\033b0";
 
-	if (!flags.BIOS)
+	if (!iflags.BIOS)
 		return;
 	init_aline();
 	tos_numcolors = 1 << (((unsigned char *) _a_line)[1]);
 	if (tos_numcolors <= 2) {			/* mono */
-		flags.use_color = FALSE;
+		iflags.use_color = FALSE;
 		return;
 	} else {
 		colors_changed = TRUE;

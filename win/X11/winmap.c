@@ -1220,7 +1220,7 @@ map_update(wp, start_row, stop_row, start_col, stop_col, inverted)
 
 		if (glyph_is_pet(glyph)
 #ifdef TEXTCOLOR
-			&& flags.hilite_pet
+			&& iflags.hilite_pet
 #endif
 			) {
 		    /* draw pet annotation (a heart) */
@@ -1263,7 +1263,7 @@ map_update(wp, start_row, stop_row, start_col, stop_col, inverted)
 	struct text_map_info_t *text_map = map_info->mtype.text_map;
 
 #ifdef TEXTCOLOR
-	if (flags.use_color) {
+	if (iflags.use_color) {
 	    register char *c_ptr;
 	    char *t_ptr;
 	    int cur_col, color, win_ystart;

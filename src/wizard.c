@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.2	95/11/18	*/
+/*	SCCS Id: @(#)wizard.c	3.2	96/11/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -440,6 +440,8 @@ resurrect()
 	    mmtmp = &migrating_mons;
 	    while ((mtmp = *mmtmp) != 0) {
 		if (mtmp->iswiz &&
+			/* if he has the Amulet, he won't bring it to you */
+			!mon_has_amulet(mtmp) &&
 			(elapsed = monstermoves - mtmp->mlstmv) > 0L) {
 		    mon_catchup_elapsed_time(mtmp, elapsed);
 		    if (elapsed >= LARGEST_INT) elapsed = LARGEST_INT - 1;

@@ -434,7 +434,7 @@ struct obj *otmp;
 {
 	char *junk[]={
 	"Please disregard previous letter.",
-	"Welcome to NetHack 3.2.1!",
+	"Welcome to NetHack 3.2.2!",
 #ifdef AMIGA
 	"Only Amiga makes it possible.",
 	"CATS have all the answers.",

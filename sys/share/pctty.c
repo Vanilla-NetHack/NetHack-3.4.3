@@ -19,7 +19,7 @@ void
 gettty(){
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
-	flags.cbreak = TRUE;
+	iflags.cbreak = TRUE;
 #if !defined(TOS) 
 	disable_ctrlP();	/* turn off ^P processing */
 #endif
@@ -74,7 +74,7 @@ error VA_DECL(const char *,s)
 	VA_START(s);
 	VA_INIT(s, const char *);
 	/* error() may get called before tty is initialized */
-	if (flags.window_inited) end_screen();
+	if (iflags.window_inited) end_screen();
 	putchar('\n');
 	Vprintf(s,VA_ARGS);
 	putchar('\n');

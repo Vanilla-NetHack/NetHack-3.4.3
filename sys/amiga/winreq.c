@@ -1139,10 +1139,10 @@ amii_get_color_string( )
 {
     int i;
     char s[ 10 ];
-    static char buf[ 100 ];
+    static char buf[ BUFSZ ];
 
     *buf = 0;
-    for( i = 0; i < amii_numcolors; ++i )
+    for( i = 0; i < min(32,amii_numcolors); ++i )
     {
     	sprintf( s, "%s%03lx", i ? "/" : "", (long)flags.amii_curmap[ i ] );
    	strcat( buf, s );

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	3.2	96/05/10	*/
+/*	SCCS Id: @(#)version.c	3.2	96/06/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -48,25 +48,25 @@ long filetime;
 #endif
 
 boolean
-check_version(version_info, filename, complain)
-unsigned long *version_info;
+check_version(version_data, filename, complain)
+struct version_info *version_data;
 const char *filename;
 boolean complain;
 {
 	if (
 #ifdef VERSION_COMPATIBILITY
-	    version_info[0] < VERSION_COMPATIBILITY ||
-	    version_info[0] > VERSION_NUMBER
+	    version_data->incarnation < VERSION_COMPATIBILITY ||
+	    version_data->incarnation > VERSION_NUMBER
 #else
-	    version_info[0] != VERSION_NUMBER
+	    version_data->incarnation != VERSION_NUMBER
 #endif
 	  ) {
 	    if (complain)
 		pline("Version mismatch for file \"%s\".", filename);
 	    return FALSE;
-	} else if (version_info[1] != VERSION_FEATURES ||
-		   version_info[2] != VERSION_SANITY1 ||
-		   version_info[3] != VERSION_SANITY2) {
+	} else if (version_data->feature_set != VERSION_FEATURES ||
+		   version_data->entity_count != VERSION_SANITY1 ||
+		   version_data->struct_sizes != VERSION_SANITY2) {
 	    if (complain)
 		pline("Configuration incompatability for file \"%s\".",
 		      filename);
@@ -82,12 +82,12 @@ uptodate(fd, name)
 int fd;
 const char *name;
 {
-	unsigned long vers_info[4];
+	struct version_info vers_info;
 	boolean verbose = name ? TRUE : FALSE;
 
-	(void) read(fd, (genericptr_t) vers_info, sizeof vers_info);
+	(void) read(fd, (genericptr_t) &vers_info, sizeof vers_info);
 	minit();	/* ZEROCOMP */
-	if (!check_version(vers_info, name, verbose)) {
+	if (!check_version(&vers_info, name, verbose)) {
 		if (verbose) wait_synch();
 		return FALSE;
 	}
@@ -98,14 +98,14 @@ void
 store_version(fd)
 int fd;
 {
-	static unsigned long version_info[4] = {
+	static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
 			VERSION_SANITY1, VERSION_SANITY2
 	};
 
 	bufoff(fd);
 	/* bwrite() before bufon() uses plain write() */
-	bwrite(fd, (genericptr_t)version_info, (unsigned)(sizeof version_info));
+	bwrite(fd,(genericptr_t)&version_data,(unsigned)(sizeof version_data));
 	bufon(fd);
 	return;
 }

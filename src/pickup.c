@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.2	96/05/03	*/
+/*	SCCS Id: @(#)pickup.c	3.2	96/07/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1242,8 +1242,13 @@ mbag_explodes(obj, depthin)
     struct obj *obj;
     int depthin;
 {
+    /* these won't cause an explosion when they're empty */
+    if ((obj->otyp == WAN_CANCELLATION || obj->otyp == BAG_OF_TRICKS) &&
+	    obj->spe <= 0)
+	return FALSE;
+
     /* odds: 1/1, 2/2, 3/4, 4/8, 5/16, 6/32, 7/64, 8/128, 9/128, 10/128,... */
-    if ((Is_mbag(obj) || (obj->otyp == WAN_CANCELLATION && obj->spe > 0)) &&
+    if ((Is_mbag(obj) || obj->otyp == WAN_CANCELLATION) &&
 	(rn2(1 << (depthin > 7 ? 7 : depthin)) <= depthin))
 	return TRUE;
     else if (Has_contents(obj)) {
@@ -1302,7 +1307,7 @@ register struct obj *obj;
 		return 0;
 	} else if (obj == uwep) {
 		if (welded(obj)) {
-			weldmsg(obj, FALSE);
+			weldmsg(obj);
 			return 0;
 		}
 		setuwep((struct obj *) 0);
@@ -1470,7 +1475,7 @@ register int held;
 	struct monst *shkp;
 	boolean one_by_one, allflag, loot_out = FALSE, loot_in = FALSE;
 	char select[MAXOCLASSES+1];
-	char buf[BUFSZ], qbuf[QBUFSZ];
+	char qbuf[QBUFSZ];
 	long loss = 0L;
 	int cnt = 0, used = 0, lcnt = 0,
 	    menu_on_request;
@@ -1562,10 +1567,10 @@ register int held;
 	obj->owt = weight(obj);
 
 	if (!cnt) {
-	    pline("%s %s is empty.", Shk_Your(buf, obj), xname(obj));
+	    pline("%s is empty.", Yname2(obj));
 	} else {
-	    Sprintf(qbuf, "Do you want to take %s out of %s %s?",
-		    something, shk_your(buf, obj), xname(obj));
+	    Sprintf(qbuf, "Do you want to take %s out of %s?",
+		    something, yname(obj));
 	    if (flags.menu_style != MENU_TRADITIONAL) {
 		if (flags.menu_style == MENU_FULL) {
 		    int t = in_or_out_menu("Do what?", current_container);

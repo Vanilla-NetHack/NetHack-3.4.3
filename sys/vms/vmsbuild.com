@@ -1,5 +1,5 @@
 $ ! vms/vmsbuild.com -- compile and link NetHack 3.2.*			[pr]
-$	version_number = "3.2.1"
+$	version_number = "3.2.2"
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]

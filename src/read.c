@@ -1319,7 +1319,10 @@ int how;
 
 		u.uhp = -1;
 		killer_format = KILLED_BY_AN;
-		killer = "genocidal confusion";
+		if (how & PLAYER)
+			killer = "genocidal confusion";
+		else /* selected player deliberately, not confused */
+			killer = "scroll of genocide";
 
 	/* Polymorphed characters will die as soon as they're rehumanized. */
 		if (u.umonnum >= LOW_PM) You_feel("dead inside.");

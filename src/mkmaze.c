@@ -14,7 +14,7 @@ extern int num_lregions;
 static boolean FDECL(iswall,(int,int));
 static boolean FDECL(iswall_or_stone,(int,int));
 static boolean FDECL(is_solid,(int,int));
-static int FDECL(extend_spine, (int locale[3][3], int, int, int));
+static int FDECL(extend_spine, (int [3][3], int, int, int));
 static boolean FDECL(okay,(int,int,int));
 static void FDECL(maze0xy,(coord *));
 static boolean FDECL(put_lregion_here,(XCHAR_P,XCHAR_P,XCHAR_P,

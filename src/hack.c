@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.c	3.2	96/03/09	*/
+/*	SCCS Id: @(#)hack.c	3.2	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -56,23 +56,27 @@ const char *msg;
 STATIC_OVL int
 moverock()
 {
-    register xchar rx, ry;
+    register xchar rx, ry, sx, sy;
     register struct obj *otmp;
     register struct trap *ttmp;
     register struct monst *mtmp;
 
-    while ((otmp = sobj_at(BOULDER, u.ux+u.dx, u.uy+u.dy)) != 0) {
-	rx = u.ux+2*u.dx;
-	ry = u.uy+2*u.dy;
+    sx = u.ux + u.dx,  sy = u.uy + u.dy;	/* boulder starting position */
+    while ((otmp = sobj_at(BOULDER, sx, sy)) != 0) {
+	/* make sure that this boulder is visible as the top object */
+	if (otmp != level.objects[sx][sy]) movobj(otmp, sx, sy);
+
+	rx = u.ux + 2 * u.dx;	/* boulder destination position */
+	ry = u.uy + 2 * u.dy;
 	nomul(0);
 	if (Levitation || Is_airlevel(&u.uz)) {
-	    if (Blind) feel_location(u.ux+u.dx,u.uy+u.dy);
+	    if (Blind) feel_location(sx, sy);
 	    You("don't have enough leverage to push %s.", the(xname(otmp)));
 	    /* Give them a chance to climb over it? */
 	    return -1;
 	}
 	if (verysmall(uasmon)) {
-	    if (Blind) feel_location(u.ux+u.dx,u.uy+u.dy);
+	    if (Blind) feel_location(sx, sy);
 	    pline("You're too small to push that %s.", xname(otmp));
 	    goto cannot_push;
 	}
@@ -96,7 +100,7 @@ moverock()
 		if (canspotmon(mtmp))
 		    pline("There's %s on the other side.", mon_nam(mtmp));
 		else {
-		    if (Blind) feel_location(u.ux+u.dx,u.uy+u.dy);
+		    if (Blind) feel_location(sx, sy);
 		    You_hear("a monster behind %s.", the(xname(otmp)));
 		}
 		if (flags.verbose)
@@ -130,6 +134,7 @@ moverock()
 		    if (!flooreffects(otmp, rx, ry, "fall")) {
 			place_object(otmp, rx, ry);
 		    }
+		    if (mtmp && !Blind) newsym(rx, ry);
 		    continue;
 		case HOLE:
 		case TRAPDOOR:
@@ -197,14 +202,14 @@ moverock()
 	    movobj(otmp, rx, ry);	/* does newsym(rx,ry) */
 	    if (Blind) {
 		feel_location(rx,ry);
-		feel_location(u.ux+u.dx, u.uy+u.dy);
+		feel_location(sx, sy);
 	    } else {
-		newsym(u.ux+u.dx, u.uy+u.dy);
+		newsym(sx, sy);
 	    }
 	} else {
 	nopushmsg:
 	    You("try to move %s, but in vain.", the(xname(otmp)));
-	    if (Blind) feel_location(u.ux+u.dx, u.uy+u.dy);
+	    if (Blind) feel_location(sx, sy);
 	cannot_push:
 	    if (throws_rocks(uasmon)) {
 		pline("However, you can easily %s.",
@@ -212,8 +217,8 @@ moverock()
 		break;
 	    }
 	    if (((!invent || inv_weight() <= -850) &&
-		 (!u.dx || !u.dy || (IS_ROCK(levl[u.ux][u.uy+u.dy].typ)
-				     && IS_ROCK(levl[u.ux+u.dx][u.uy].typ))))
+		 (!u.dx || !u.dy || (IS_ROCK(levl[u.ux][sy].typ)
+				     && IS_ROCK(levl[sx][u.uy].typ))))
 		|| verysmall(uasmon)) {
 		pline("However, you can squeeze yourself into a small opening.");
 		break;
@@ -451,7 +456,7 @@ domove()
 
 	if(((wtcap = near_capacity()) >= OVERLOADED
 	    || (wtcap > SLT_ENCUMBER &&
-		(u.mtimedone ? (u.mh < 5 && u.mh != u.mhmax)
+		(Upolyd ? (u.mh < 5 && u.mh != u.mhmax)
 			: (u.uhp < 10 && u.uhp != u.uhpmax))))
 	   && !Is_airlevel(&u.uz)) {
 	    if(wtcap < OVERLOADED) {
@@ -616,9 +621,11 @@ domove()
 			!is_safepet(mtmp))){
 		gethungry();
 		if(wtcap >= HVY_ENCUMBER && moves%3) {
-		    if(u.uhp > 1)
+		    if (Upolyd && u.mh > 1) {
+			u.mh--;
+		    } else if (!Upolyd && u.uhp > 1) {
 			u.uhp--;
-		    else {
+		    } else {
 			You("pass out from exertion!");
 			exercise(A_CON, FALSE);
 			fall_asleep(-10, FALSE);
@@ -797,7 +804,8 @@ domove()
 	mtmp = m_at(x, y);
 	u.ux += u.dx;
 	u.uy += u.dy;
-	/* if safepet at destination then move the pet to the hero's
+	/*
+	 * If safepet at destination then move the pet to the hero's
 	 * previous location using the same conditions as in attack().
 	 * there are special extenuating circumstances:
 	 * (1) if the pet dies then your god angers,
@@ -805,45 +813,43 @@ domove()
 	 * (3) if the pet was already trapped and you attempt to free it
 	 * not only do you encounter the trap but you may frighten your
 	 * pet causing it to go wild!  moral: don't abuse this privilege.
-	 */
-	/* Ceiling-hiding pets are skipped by this section of code, to
+	 *
+	 * Ceiling-hiding pets are skipped by this section of code, to
 	 * be caught by the normal falling-monster code.
 	 */
 	if (is_safepet(mtmp) && !(is_hider(mtmp->data) && mtmp->mundetected)) {
-		int swap_result;
+	    /* if trapped, there's a chance the pet goes wild */
+	    if (mtmp->mtrapped) {
+		if (!rn2(mtmp->mtame)) {
+		    mtmp->mtame = mtmp->mpeaceful = mtmp->msleep = 0;
+		    growl(mtmp);
+		} else {
+		    yelp(mtmp);
+		}
+	    }
+	    mtmp->mundetected = 0;
+	    if (mtmp->m_ap_type) seemimic(mtmp);
+	    else if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
 
-		/* if trapped, there's a chance the pet goes wild */
-		if (mtmp->mtrapped) {
-		    if (!rn2(mtmp->mtame)) {
-			mtmp->mtame = mtmp->mpeaceful = mtmp->msleep = 0;
-		        growl(mtmp);
-		    } else {
-		        yelp(mtmp);
-		    }
-	        }
-
-		if (mtmp->m_ap_type) seemimic(mtmp);
-		else if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
-
+	    if (mtmp->mtrapped &&
+		    (trap = t_at(mtmp->mx, mtmp->my)) != 0 &&
+		    (trap->ttyp == PIT || trap->ttyp == SPIKED_PIT) &&
+		    sobj_at(BOULDER, trap->tx, trap->ty)) {
+		/* can't swap places with pet pinned in a pit by a boulder */
+		u.ux = u.ux0,  u.uy = u.uy0;	/* didn't move after all */
+	    } else {
 		mtmp->mtrapped = 0;
-		mtmp->mundetected = 0;
 		remove_monster(x, y);
 		place_monster(mtmp, u.ux0, u.uy0);
 
-		/* check first to see if monster drowned.
-		 * then check for traps.
-		 */
-		if (minwater(mtmp)) {
-		    swap_result = 2;
-		} else swap_result = mintrap(mtmp);
-
-		switch (swap_result) {
+		/* check for displacing it into pools and traps */
+		switch (minwater(mtmp) ? 2 : mintrap(mtmp)) {
 		case 0:
 		    You("%s %s.", mtmp->mtame ? "displaced" : "frightened",
-			    mtmp->mnamelth ? NAME(mtmp) : mon_nam(mtmp));
+			mtmp->mnamelth ? NAME(mtmp) : mon_nam(mtmp));
 		    break;
-		case 1:	/* trapped */
-		case 3: /* changed levels */
+		case 1:		/* trapped */
+		case 3:		/* changed levels */
 		    /* there's already been a trap message, reinforce it */
 		    abuse_dog(mtmp);
 		    adjalign(-3);
@@ -862,6 +868,7 @@ domove()
 		    pline("that's strange, unknown mintrap result!");
 		    break;
 		}
+	    }
 	}
 
 	reset_occupations();
@@ -896,7 +903,7 @@ domove()
 	    move_bc(0,bc_control,ballx,bally,chainx,chainy);
 
 	spoteffects();
-	
+
 	/* delay next move because of ball dragging */
 	/* must come after we finished picking up, in spoteffects() */
 	if (cause_delay) {
@@ -1120,7 +1127,7 @@ register boolean newlev;
 	     ptr4 = &u.ushops_entered[0];
 	     *ptr1; ptr1++) {
 		if (!index(u.urooms0, *ptr1))
-			*(ptr2++) = *ptr1;	
+			*(ptr2++) = *ptr1;
 		if (IS_SHOP(*ptr1 - ROOMOFFSET)) {
 			*(ptr3++) = *ptr1;
 			if (!index(u.ushops0, *ptr1))
@@ -1257,8 +1264,7 @@ dopickup()
 	/* uswallow case added by GAN 01/29/87 */
 	if(u.uswallow) {
 		if (is_animal(u.ustuck->data)) {
-		    You("pick up %s tongue.",
-			            s_suffix(mon_nam(u.ustuck)));
+		    You("pick up %s tongue.", s_suffix(mon_nam(u.ustuck)));
 		    pline("But it's kind of slimy, so you drop it.");
 		} else
 		    You("don't %s anything in here to pick up.",
@@ -1473,7 +1479,7 @@ register int n;
 register const char *knam;
 boolean k_format;
 {
-	if (u.mtimedone) {
+	if (Upolyd) {
 		u.mh -= n;
 		if (u.mhmax < u.mh) u.mhmax = u.mh;
 		flags.botl = 1;
@@ -1527,10 +1533,10 @@ weight_cap()
 	register long carrcap;
 
 	carrcap = (((ACURRSTR + ACURR(A_CON))/2)+1)*50;
-	if (u.mtimedone) {
+	if (Upolyd) {
 		/* consistent with can_carry() in mon.c */
 		if (u.usym == S_NYMPH)
-		        carrcap = MAX_CARR_CAP;
+			carrcap = MAX_CARR_CAP;
 		else if (!uasmon->cwt)
 			carrcap = (carrcap * (long)uasmon->msize) / MZ_HUMAN;
 		else if (!strongmonst(uasmon)

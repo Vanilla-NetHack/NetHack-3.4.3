@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.2	96/05/13	*/
+/*	SCCS Id: @(#)u_init.c	3.2	96/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -211,7 +211,7 @@ static struct def_skill Skill_A[] = {
     { P_SLING, P_SKILLED },		{ P_DART, P_BASIC },
     { P_BOOMERANG, P_EXPERT },		{ P_WHIP, P_EXPERT },
     { P_UNICORN_HORN, P_SKILLED },	{ P_TWO_WEAPON_COMBAT, P_BASIC },
-    { P_BARE_HANDED_COMBAT, 4 },
+    { P_BARE_HANDED_COMBAT, P_EXPERT },
     { P_NO_TYPE, 0 }
 };
 
@@ -225,7 +225,8 @@ static struct def_skill Skill_B[] = {
     { P_FLAIL, P_BASIC },               { P_HAMMER, P_EXPERT },
     { P_QUARTERSTAFF, P_BASIC },	{ P_SPEAR, P_SKILLED },
     { P_TRIDENT, P_SKILLED },		{ P_BOW, P_BASIC },
-    { P_TWO_WEAPON_COMBAT, P_BASIC },	{ P_BARE_HANDED_COMBAT, 6 },
+    { P_TWO_WEAPON_COMBAT, P_BASIC },
+    { P_BARE_HANDED_COMBAT, P_GRAND_MASTER },
     { P_NO_TYPE, 0 }
 };
 
@@ -239,7 +240,7 @@ static struct def_skill Skill_C[] = {
     { P_JAVELIN, P_SKILLED },		{ P_TRIDENT, P_SKILLED },
     { P_BOW, P_EXPERT },		{ P_SLING, P_SKILLED },
     { P_BOOMERANG, P_EXPERT },		{ P_UNICORN_HORN, P_BASIC },
-    { P_BARE_HANDED_COMBAT, 6 },
+    { P_BARE_HANDED_COMBAT, P_GRAND_MASTER },
     { P_NO_TYPE, 0 }
 };
 
@@ -251,7 +252,8 @@ static struct def_skill Skill_E[] = {
     { P_SPEAR, P_EXPERT },		{ P_JAVELIN, P_BASIC },
     { P_BOW, P_EXPERT },		{ P_SLING, P_BASIC },
     { P_CROSSBOW, P_BASIC },		{ P_SHURIKEN, P_BASIC },
-    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 3 },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },
+    { P_BARE_HANDED_COMBAT, P_SKILLED },
     { P_NO_TYPE, 0 }
 };
 
@@ -264,7 +266,7 @@ static struct def_skill Skill_H[] = {
     { P_JAVELIN, P_BASIC },		{ P_TRIDENT, P_BASIC },
     { P_SLING, P_SKILLED },		{ P_DART, P_EXPERT },
     { P_SHURIKEN, P_SKILLED },		{ P_UNICORN_HORN, P_EXPERT },
-    { P_BARE_HANDED_COMBAT, 2 },
+    { P_BARE_HANDED_COMBAT, P_BASIC },
     { P_NO_TYPE, 0 }
 };
 
@@ -280,7 +282,8 @@ static struct def_skill Skill_K[] = {
     { P_SPEAR, P_SKILLED },		{ P_JAVELIN, P_SKILLED },
     { P_TRIDENT, P_BASIC },		{ P_LANCE, P_EXPERT },
     { P_BOW, P_BASIC },			{ P_CROSSBOW, P_SKILLED },
-    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 4 },
+    { P_TWO_WEAPON_COMBAT, P_SKILLED },
+    { P_BARE_HANDED_COMBAT, P_EXPERT },
     { P_NO_TYPE, 0 }
 };
 
@@ -294,7 +297,7 @@ static struct def_skill Skill_P[] = {
     { P_SLING, P_BASIC },		{ P_CROSSBOW, P_BASIC },
     { P_DART, P_BASIC },		{ P_SHURIKEN, P_BASIC },
     { P_BOOMERANG, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
-    { P_BARE_HANDED_COMBAT, 2 },
+    { P_MARTIAL_ARTS, P_BASIC },	/* until Monk finally gets added */
     { P_NO_TYPE, 0 }
 };
 
@@ -308,7 +311,8 @@ static struct def_skill Skill_R[] = {
     { P_HAMMER, P_BASIC },		{ P_POLEARMS, P_BASIC },
     { P_SPEAR, P_BASIC },		{ P_CROSSBOW, P_EXPERT },
     { P_DART, P_EXPERT },		{ P_SHURIKEN, P_SKILLED },
-    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_BARE_HANDED_COMBAT, 4 },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },
+    { P_BARE_HANDED_COMBAT, P_EXPERT },
     { P_NO_TYPE, 0 }
 };
 
@@ -321,7 +325,8 @@ static struct def_skill Skill_S[] = {
     { P_POLEARMS, P_SKILLED },		{ P_SPEAR, P_BASIC },
     { P_JAVELIN, P_BASIC },		{ P_LANCE, P_SKILLED },
     { P_BOW, P_EXPERT },		{ P_SHURIKEN, P_EXPERT },
-    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 6 },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },
+    { P_MARTIAL_ARTS, P_GRAND_MASTER },
     { P_NO_TYPE, 0 }
 };
 
@@ -341,7 +346,8 @@ static struct def_skill Skill_T[] = {
     { P_CROSSBOW, P_BASIC },		{ P_DART, P_EXPERT },
     { P_SHURIKEN, P_BASIC },		{ P_BOOMERANG, P_BASIC },
     { P_WHIP, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
-    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 3 },
+    { P_TWO_WEAPON_COMBAT, P_SKILLED },
+    { P_BARE_HANDED_COMBAT, P_SKILLED },
     { P_NO_TYPE, 0 }
 };
 #endif /* TOURIST */
@@ -356,7 +362,7 @@ static struct def_skill Skill_V[] = {
     { P_SPEAR, P_SKILLED },		{ P_JAVELIN, P_BASIC },
     { P_TRIDENT, P_BASIC },		{ P_LANCE, P_SKILLED },
     { P_SLING, P_BASIC },		{ P_TWO_WEAPON_COMBAT, P_SKILLED },
-    { P_BARE_HANDED_COMBAT, 4 },
+    { P_BARE_HANDED_COMBAT, P_EXPERT },
     { P_NO_TYPE, 0 }
 };
 
@@ -368,7 +374,7 @@ static struct def_skill Skill_W[] = {
     { P_SPEAR, P_BASIC },		{ P_JAVELIN, P_BASIC },
     { P_TRIDENT, P_BASIC },		{ P_SLING, P_SKILLED },
     { P_DART, P_EXPERT },		{ P_SHURIKEN, P_BASIC },
-    { P_BARE_HANDED_COMBAT, 2 },
+    { P_BARE_HANDED_COMBAT, P_BASIC },
     { P_NO_TYPE, 0 }
 };
 #endif /* WEAPON_SKILLS */

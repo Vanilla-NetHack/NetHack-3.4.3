@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)yendor.des	3.2	94/08/20
+#	SCCS Id: @(#)yendor.des	3.2	96/10/20
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992 by M. Stephenson and Izchak Miller
 # NetHack may be freely redistributed.  See license for details.
@@ -230,7 +230,7 @@ ENDMAP
 STAIR:levregion(01,00,79,20),(0,0,8,7),up
 STAIR:levregion(01,00,79,20),(0,0,8,7),down
 BRANCH:levregion(01,00,79,20),(0,0,8,7)
-TELEPORT_REGION:levregion(01,00,79,20),(1,1,7,7)
+TELEPORT_REGION:levregion(01,00,79,20),(2,2,6,6)
 PORTAL:(4,4,4,4),(0,0,0,0),"wizard3"
 MAZEWALK:(08,05),east
 REGION:(04,03,06,06),unlit,"ordinary",unfilled,true
@@ -259,7 +259,7 @@ ENDMAP
 STAIR:levregion(01,00,79,20),(0,0,8,7),up
 STAIR:levregion(01,00,79,20),(0,0,8,7),down
 BRANCH:levregion(01,00,79,20),(0,0,8,7)
-TELEPORT_REGION:levregion(01,00,79,20),(1,1,7,7)
+TELEPORT_REGION:levregion(01,00,79,20),(2,2,6,6)
 MAZEWALK:(08,05),east
 REGION:(04,03,06,06),unlit,"ordinary",unfilled,true
 MONSTER:'L',random,(04,04)

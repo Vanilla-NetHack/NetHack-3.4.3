@@ -390,7 +390,7 @@ win32_display_nhwindow(window, blocking)
 winid window;
 boolean blocking;
 {
-	if (window == WIN_MESSAGE) flags.window_inited = TRUE;
+	if (window == WIN_MESSAGE) iflags.window_inited = TRUE;
 	if (blocking && wins[window]->morestr) 
 		win32_putstr(window, 1, wins[window]->morestr);
 

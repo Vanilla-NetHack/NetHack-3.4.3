@@ -1,19 +1,12 @@
-#	SCCS Id: @(#)Makefile.os2	3.2	96/03/12
+#	SCCS Id: @(#)Makefile.os2	3.2	96/10/29
 #	OS/2 NetHack 3.2 Makefile for OS/2 versions 1.x and 2.x
 #	Copyright (C) 1990, 1991, 1992, 1993, 1996 Timo Hakulinen
 #
-#	NOTE:  This makefile for NetHack 3.2 is untested because the
-#	DevTeam currently has no access to a machine running OS/2.  If
-#	you build NetHack using this makefile, please send the changes
-#	you had to make, if any, to nethack-bugs@linc.cis.upenn.edu.
-#	If nothing had to be changed (unlikely), it would be nice to
-#	know that too.
-#
-#	The supported compilers list is from the NetHack 3.1 era.  There
-#	should be newer versions of all these compilers nowadays.
+#	The supported compilers list is mainly from the NetHack 3.1 era.
+#	There should be newer versions of all these compilers nowadays.
 #
 #	Supported compilers: Microsoft C 5.1 and 6.0A, GCC emx 0.8f,
-#	IBM C Set/2 1.00 with Toolkit/2 2.00.
+#	GCC emx 0.9c, IBM C Set/2 1.00 with Toolkit/2 2.00, IBM CSet++ 2.01.
 #
 #	NDMAKE ver 4.5, Microsoft/IBM NMAKE, or Dennis Vadura's DMAKE is
 #	required; old MS-MAKE will not work.  To enable the appropriate
@@ -24,6 +17,9 @@
 #	libraries if cross-compiling in DOS, and to protected mode libraries
 #	for compilation in OS/2.
 #
+#	GNU MAKE for OS/2 seems to be too limited / braindamaged at the
+#	moment for me to bother implementing support for it.  Maybe later.
+#
 #	Copy this file into $(SRC) directory, rename it to "makefile"
 #	(important, many targets rely on it), compile and link inside
 #	$(SRC).  If required, termcap library can be built from termcap
@@ -32,11 +28,15 @@
 #	"MSC" in this makefile refers to Microsoft C 5.1 and 6.0A.
 #	Whenever the distinction is significant, it is indicated.
 #
-#	"GCC" refers to GCC emx 0.8f only.  No other ports of
-#	GCC are supported.
+#	"GCC" refers to GCC emx only.  No other ports of GCC are supported.
+#	Additional credits for honing GCC support for 3.2 go to Ronald
+#	Van Iwaarden (rrt0136@ibm.net) and Stefan Neis (neis@cs.uni-sb.de).
 #
-#	"CSet/2" is the IBM 32 bit C compiler for OS/2 2.0.  CSet/2
+#	"CSet/2" refers to both older CSet/2 ver 1 (IBM 32 bit C compiler for
+#	OS/2 2.0) and newer CSet++ ver 2 (C/C++ compiler).  Original CSet/2
 #	support courtesy Jeff Urlwin (jurlwin@gandalf.umcs.maine.edu).
+#	CSet++ support courtesy Helge Hafting (hhafting@intermec.no) and
+#	Justin Frank (belford-manor@worldnet.att.net).
 #
 #	"OMF" is short for "Object Module Format" and refers to the
 #	standard OS/2 object format, which e.g. link386 uses.  MSC and
@@ -148,7 +148,7 @@ LEXYYC	= lexyy.c
 #	Source tree base directory.
 #
 
-NHSRC	= \nh31
+NHSRC	= \nh32
 
 #
 #	Source directories.  Makedefs hardcodes these, don't change them.
@@ -175,7 +175,7 @@ SSYS	= $(NHSRC)\sys\share	# Shared system files
 
 OBJ	= \tmp\obj		# Object files
 TEMP	= \tmp\bin		# Temporary files during make process
-GAMEDIR = \games\nh31		# Game directory
+GAMEDIR = \games\nh32		# Game directory
 PLIBP	= d:\c6\lib		# Protected mode C libraries
 RLIBP	= d:\c6\lib		# Possible real mode C libraries
 
@@ -187,6 +187,14 @@ TLIBP	= \toolkt20\os2lib	# CSet/2 Toolkit libpath (OS2386.LIB)
 
 GAME	= nethack
 GAMEDES = "NetHack 3.2"
+
+#
+#	Only if you're using CSet/2.  Define the upper line for ver. 1,
+#	the lower one for ver. 2 (= CSet++).
+#
+
+#CSETVER = /DOS2_CSET2_VER_1
+CSETVER = /DOS2_CSET2_VER_2
 
 #
 #	The uppermost two lines for MSC, the middle two for GCC, and
@@ -202,15 +210,17 @@ GAMEDES = "NetHack 3.2"
 #	include file path, debug flags, ANSI conformance.
 #
 #	CSet/2: compile only, compiler id, migration lib, remove stack probes,
-#	force intra 64K alignment for data, force optlink linkage on function
-#	calls, warning level, include file path, debug flags, ANSI conformance.
+#	large 32 bit memory model, fast integer code, optimize (to avoid a
+#	compiler bug - sometimes it *does* work that way around), don't print
+#	IBM logo, force optlink linkage on function calls, warning level,
+#	include file path, debug flags, ANSI conformance.
 #
 
 CFLAGS	= /c /DOS2_MSC /AL /O /Gs /G2 /Gt10 /Zp1 /FPi $(WARN) /I$(INCL) $(BIGC) $(CDFLAGS) $(STDC)
 O	= /Fo
 #CFLAGS	= -c -DOS2_GCC $(GCCO) $(WARN) -I$(INCL) $(CDFLAGS) $(STDC)
 #O	= -o
-#CFLAGS	= /c /DOS2_CSET2 /Sm /Gs /Gt+ /Mp $(WARN) /I$(INCL) $(CDFLAGS) $(STDC)
+#CFLAGS	= /c /DOS2_CSET2 $(CSETVER) /Sm /Gs+ /Gt- /Gi+ /O+ /Q+ /Mp $(WARN) /I$(INCL) $(CDFLAGS) $(STDC)
 #O	= /Fo
 
 #
@@ -263,9 +273,12 @@ CL	=
 #
 #	GCC: likes a big stack.
 #
+#	CSet/2: give it a bit more stack since we can.
+#
 
-LFLAGS	= /noig /nod /stack:8192 /seg:1024 $(LDFLAGS)	# MSC, CSet/2
+LFLAGS	= /noig /nod /stack:8192 /seg:1024 $(LDFLAGS)	# MSC
 #LFLAGS	= /noig /stack:40000				# GCC OMF
+#LFLAGS	= /noig /nod /stack:32768 /seg:1024 $(LDFLAGS)	# CSet/2
 
 #
 #	Prepare for a debugger.
@@ -301,20 +314,27 @@ SYSOBJ	=			# MSC, GCC a.out, CSet/2
 #	MSC: Protected mode C libraries for 8087 emulator,
 #	OS/2 API entry points.
 #
-#	GCC OMF: C standard lib, extra GCC lib, static system lib,
+#	GCC emx 0.8 OMF: C standard lib, extra GCC lib, static system lib,
 #	OS/2 API entry points.
+#
+#	GCC emx 0.9 OMF: C single-threaded libs, Unix system call alias lib,
+#	extra GCC lib, single threaded system lib, OS/2 API entry points.
+#	Note that emx changed library naming convention between 0.8 and 0.9.
 #
 #	GCC a.out: extra GCC lib, C standard lib, extra GCC lib (again),
 #	OS/2 API entry points.
 #
 #	CSet/2: C standard libraries, OS/2 API entry points.
+#	Note that ver 1 needs lib dde4sbm.lib whereas ver 2 doesn't.
 #
 
 #PLIBS	= $(PLIBP)\llibcep $(PLIBP)\doscalls	# MSC 5.1
 PLIBS	= $(PLIBP)\llibcep $(PLIBP)\os2		# MSC 6.0
-#PLIBS	= $(PLIBP)\libc $(PLIBP)\libgcc $(PLIBP)\libsys $(PLIBP)\libos2	# GCC OMF
+#PLIBS	= $(PLIBP)\libc $(PLIBP)\libgcc $(PLIBP)\libsys $(PLIBP)\libos2	# GCC emx 0.8 OMF
+#PLIBS	= $(PLIBP)\st\c $(PLIBP)\st\c_app $(PLIBP)\c_alias $(PLIBP)\gcc $(PLIBP)\st\sys $(PLIBP)\os2	# GCC emx 0.9 OMF
 #PLIBS	= -lgcc -lc -lgcc -los2			# GCC a.out (defining -lgcc twice is required)
-#PLIBS	= $(PLIBP)\dde4sbs.lib $(PLIBP)\dde4sbm.lib $(TLIBP)\os2386.lib # CSet/2
+#PLIBS	= $(PLIBP)\dde4sbs.lib $(PLIBP)\dde4sbm.lib $(TLIBP)\os2386.lib # CSet/2 ver 1
+#PLIBS	= $(PLIBP)\dde4sbs.lib $(TLIBP)\os2386.lib # CSet++ ver 2
 
 #
 #	C libraries used by makedefs, lev_comp and dgn_comp (change if
@@ -724,6 +744,7 @@ $(TEMP)\$(GAME).rsp : $(HOBJ) $(TEMP)\$(GAMEDEF)
 	$(ECHO) $(VOBJ26) +>> $@
 	$(ECHO) $(VOBJ27) +>> $@
 	$(ECHO) $(VOBJ28) +>> $@
+	$(ECHO) $(VOBJ29) +>> $@
 	$(ECHO) $(HHOBJ)>> $@
 	$(ECHO) $(GAMEDIR)\$(GAME).exe>> $@
 	$(ECHO) $(TEMP)\$(GAME)>> $@
@@ -795,7 +816,7 @@ $(TEMP)\dgn_comp.rsp : $(DGNCOMPOBJS) $(TEMP)\$(DGNCDEF)
 	$(ECHO) $(RLIBS)>> $@
 	$(ECHO) $(DGNCMD) $(LFLAGS);>> $@
 
-$(OBJ)\dgn_yacc.o : $(UTIL)\$(CB) $(CONFIG_H) $(INCL)\dgn_file.h
+$(OBJ)\dgn_yacc.o : $(UTIL)\$(CB) $(CONFIG_H) $(INCL)\date.h $(INCL)\dgn_file.h
 	$(UTILCC)
 $(OBJ)\dgn_lex.o  : $(UTIL)\$(CB) $(CONFIG_H) $(INCL)\dgn_comp.h $(INCL)\dgn_file.h
 	$(UTILCC)

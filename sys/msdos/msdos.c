@@ -49,7 +49,7 @@ void FDECL(get_cursor,(int *, int *));
 
 #ifdef OVL0
 
-/* direct bios calls are used only when flags.BIOS is set */
+/* direct bios calls are used only when iflags.BIOS is set */
 
 static char NDECL(DOSgetch);
 static char NDECL(BIOSgetch);
@@ -66,14 +66,14 @@ tgetch()
 
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
 # ifdef SIMULATE_CURSOR
-	if (flags.grmode && cursor_flag) DrawCursor();
+	if (iflags.grmode && cursor_flag) DrawCursor();
 # endif
-	if (flags.BIOS)
+	if (iflags.BIOS)
 		ch = BIOSgetch();
 	else
 		ch = DOSgetch();
 # ifdef SIMULATE_CURSOR
-	if (flags.grmode && cursor_flag) HideCursor();
+	if (iflags.grmode && cursor_flag) HideCursor();
 # endif
 	return ((ch == '\r') ? '\n' : ch);
 }
@@ -96,7 +96,7 @@ tgetch()
 
 /*
  * Keypad keys are translated to the normal values below.
- * When flags.BIOS is active, shifted keypad keys are translated to the
+ * When iflags.BIOS is active, shifted keypad keys are translated to the
  *    shift values below.
  */
 static const struct pad {
@@ -252,7 +252,7 @@ BIOSgetch()
 
 	/* Translate keypad keys */
 	if (iskeypad(scan)) {
-		kpad = flags.num_pad ? numpad : keypad;
+		kpad = iflags.num_pad ? numpad : keypad;
 		if (shift & SHIFT)
 			ch = kpad[scan - KEYPADLO].shift;
 		else if (shift & CTRL)
@@ -309,7 +309,7 @@ DOSgetch()
 		ch = regs.h.al;
 
 		if (iskeypad(ch)) {	/* unshifted keypad keys */
-			kpad = (void *)(flags.num_pad ? numpad : keypad);
+			kpad = (void *)(iflags.num_pad ? numpad : keypad);
 			ch = (*kpad)[ch - KEYPADLO].normal;
 		} else if (inmap(ch)) { /* Alt-letters */
 			ch = scanmap[ch - SCANLO];
@@ -459,7 +459,7 @@ void
 disable_ctrlP()
 {
 
-	if (!flags.rawio) return;
+	if (!iflags.rawio) return;
 
     old_stdin = dos_ioctl(STDIN, GETBITS, 0);
     old_stdout = dos_ioctl(STDOUT, GETBITS, 0);
@@ -473,7 +473,7 @@ disable_ctrlP()
 void
 enable_ctrlP()
 {
-	if (!flags.rawio) return;
+	if (!iflags.rawio) return;
 	if (old_stdin)
         (void) dos_ioctl(STDIN, SETBITS, old_stdin);
 	if (old_stdout)

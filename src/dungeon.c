@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.c	3.2	96/05/10	*/
+/*	SCCS Id: @(#)dungeon.c	3.2	96/06/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -620,7 +620,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	register s_level *x;
 	struct proto_dungeon pd;
 	struct level_map *lev_map;
-	unsigned long vers_info[4];
+	struct version_info vers_info;
 
 	pd.n_levs = pd.n_brs = 0;
 
@@ -629,8 +629,8 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	    panic("Cannot open dungeon description file \"%s\"!", DUNGEON_FILE);
 
 	/* validate the data's version against the program's version */
-	Fread((genericptr_t) vers_info, sizeof vers_info, 1, dgn_file);
-	if (!check_version(vers_info, DUNGEON_FILE, TRUE))
+	Fread((genericptr_t) &vers_info, sizeof vers_info, 1, dgn_file);
+	if (!check_version(&vers_info, DUNGEON_FILE, TRUE))
 	    panic("Dungeon description not valid.");
 
 	/*

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artifact.c	3.2	96/01/15	*/
+/*	SCCS Id: @(#)artifact.c	3.2	96/07/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -504,10 +504,10 @@ struct monst *mtmp;
 	} else if (weap->spfx & SPFX_DFLAG2) {
 	    if (yours) {
 		if ((weap->mtype & M2_HUMAN) != 0 &&
-		    (u.mtimedone ? is_human(uasmon) : human_role()))
+		    (Upolyd ? is_human(uasmon) : human_role()))
 			return 1;
 		if ((weap->mtype & M2_ELF) != 0 &&
-		    (u.mtimedone ? is_elf(uasmon) : Role_is('E')))
+		    (Upolyd ? is_elf(uasmon) : Role_is('E')))
 			return 1;
 	    }
 	    return ((ptr->mflags2 & weap->mtype) != 0L);
@@ -852,7 +852,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 			 * value to the damage so that this reduction in
 			 * damage does not prevent death.
 			 */
-			*dmgptr = u.uhp + FATAL_DAMAGE;
+			*dmgptr = (Upolyd ? u.mh : u.uhp) + FATAL_DAMAGE;
 			pline_The("razor-sharp blade cuts you in half!");
 			otmp->dknown = TRUE;
 			return TRUE;
@@ -881,7 +881,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				pline("%s slices through %s neck.",
 				      artilist[ART_VORPAL_BLADE].name,
 				      s_suffix(mon_nam(mdef)));
-				return ((boolean)(youattack || vis));
+				return TRUE;
 			}
 			*dmgptr = mdef->mhp + FATAL_DAMAGE;
 			pline(behead_msg[rn2(SIZE(behead_msg))],
@@ -901,7 +901,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				      artilist[ART_VORPAL_BLADE].name);
 				return TRUE;
 			}
-			*dmgptr = u.uhp + FATAL_DAMAGE;
+			*dmgptr = (Upolyd ? u.mh : u.uhp) + FATAL_DAMAGE;
 			pline(behead_msg[rn2(SIZE(behead_msg))],
 			      artilist[ART_VORPAL_BLADE].name, "you");
 			otmp->dknown = TRUE;
@@ -1007,11 +1007,15 @@ arti_invoke(obj)
 	  }
 	case HEALING: {
 	    int healamt = (u.uhpmax + 1 - u.uhp) / 2;
+	    if (Upolyd) healamt = (u.mhmax + 1 - u.mh) / 2;
 	    if(healamt || Sick || (Blinded > 1))
 		You_feel("better.");
 	    else
 		goto nothing_special;
-	    if(healamt) u.uhp += healamt;
+	    if (healamt > 0) {
+		if (Upolyd) u.mh += healamt;
+		else u.uhp += healamt;
+	    }
 	    if(Sick) make_sick(0L,(char *)0,FALSE,SICK_ALL);
 	    if(Blinded > 1) make_blinded(0L,FALSE);
 	    flags.botl = 1;

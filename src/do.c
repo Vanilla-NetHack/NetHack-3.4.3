@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.2	96/03/09	*/
+/*	SCCS Id: @(#)do.c	3.2	96/06/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,13 +19,6 @@ const
 #endif
 extern int errno;
 #endif
-
-#ifdef USE_TILES
-# ifdef MSDOS
-extern boolean tiles_on;				/* video.c */
-# endif
-#endif
-
 
 #ifdef SINKS
 # ifdef OVLB
@@ -285,11 +278,25 @@ register struct obj *obj;
 		pline_The("water's force seems %ser now.",
 			(obj->spe<0) ? "small" : "great");
 		break;
+	    case RIN_HUNGER:
+		ideed = FALSE;
+		for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp2) {
+		    otmp2 = otmp->nexthere;
+		    if(otmp != uball && otmp != uchain) {
+			if (!Blind) {
+			    pline("Suddenly, %s vanishes from the sink!",
+							doname(otmp));
+			    ideed = TRUE;
+			}
+			delobj(otmp);
+		    }
+		}
+		break;
 	    default:
 		ideed = FALSE;
 		break;
 	}
-	if(!Blind && !ideed) {
+	if(!Blind && !ideed && obj->otyp != RIN_HUNGER) {
 	    ideed = TRUE;
 	    switch(obj->otyp) {		/* effects that need eyes */
 		case RIN_ADORNMENT:
@@ -306,18 +313,6 @@ register struct obj *obj;
 		    break;
 		case RIN_STEALTH:
 		pline_The("sink seems to blend into the floor for a moment.");
-		    break;
-		case RIN_HUNGER:
-		    ideed = FALSE;
-		    for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp2) {
-			otmp2 = otmp->nexthere;
-			if(otmp != uball && otmp != uchain) {
-			    pline("Suddenly, %s vanishes from the sink!",
-							doname(otmp));
-			    delobj(otmp);
-			    ideed = TRUE;
-			}
-		    }
 		    break;
 		case RIN_FIRE_RESISTANCE:
 		pline_The("hot water faucet flashes brightly for a moment.");
@@ -417,7 +412,7 @@ register struct obj *obj;
 		return(0);
 	if(obj == uwep) {
 		if(welded(uwep)) {
-			weldmsg(obj, FALSE);
+			weldmsg(obj);
 			return(0);
 		}
 		setuwep((struct obj *)0);
@@ -527,7 +522,7 @@ int retry;
 	u_gold->nobj = invent;
 	invent = u_gold;
     }
-    
+
     if (retry) {
 	all_categories = (retry == -2);
     } else if (flags.menu_style == MENU_FULL) {
@@ -876,13 +871,6 @@ boolean at_stairs, falling, portal;
 		assign_rogue_graphics(Is_rogue_level(newlevel));
 #endif
 #ifdef USE_TILES
-# if defined(MSDOS)
-	if (flags.grmode) {
-		if (Is_rogue_level(newlevel) && tiles_on)
-			tiles_on = FALSE;
-		else tiles_on = TRUE;
-	}
-# endif
 	substitute_tiles(newlevel);
 #endif
 	assign_level(&u.uz0, &u.uz);
@@ -919,6 +907,9 @@ boolean at_stairs, falling, portal;
 		getlev(fd, hackpid, new_ledger, FALSE);
 		(void) close(fd);
 	}
+	/* do this prior to level-change pline messages */
+	vision_reset();		/* clear old level's line-of-sight */
+	vision_full_recalc = 0;	/* don't let that reenable vision yet */
 
 	if (portal && !In_endgame(&u.uz)) {
 	    /* find the portal on the new level */

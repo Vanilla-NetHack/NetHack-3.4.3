@@ -8,8 +8,6 @@
 #define BECONF_H
 
 /*
- * This header works for BeOS 1.1d7
- *
  * We must use UNWIDENED_PROTOTYPES because we mix C++ and C.
  */
 

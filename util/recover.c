@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)recover.c	3.2	95/05/19	*/
+/*	SCCS Id: @(#)recover.c	3.2	96/06/22	*/
 /*	Copyright (c) Janet Walz, 1992.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,16 +12,7 @@
 #include <fcntl.h>
 #endif
 
-#ifndef VMS
-# ifdef exit
-#  undef exit
-# endif
-#ifdef MICRO
-# if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
-#else	/* VMS */
+#ifdef VMS
 extern int FDECL(vms_creat, (const char *,unsigned));
 extern int FDECL(vms_open, (const char *,int,unsigned));
 #endif	/* VMS */
@@ -192,7 +183,7 @@ char *basename;
 	int gfd, lfd, sfd;
 	int lev, savelev, hpid;
 	xchar levc;
-	long version_info[3];
+	struct version_info version_data;
 
 	/* level 0 file contains:
 	 *	pid of creating process (ignored here)
@@ -223,8 +214,8 @@ char *basename;
 	}
 	if ((read(gfd, (genericptr_t) savename, sizeof savename)
 		!= sizeof savename) ||
-	    (read(gfd, (genericptr_t) version_info, sizeof version_info)
-		!= sizeof version_info)) {
+	    (read(gfd, (genericptr_t) &version_data, sizeof version_data)
+		!= sizeof version_data)) {
 	    Fprintf(stderr, "Error reading %s -- can't recover.\n", lock);
 	    Close(gfd);
 	    return(-1);
@@ -251,8 +242,8 @@ char *basename;
 	    return(-1);
 	}
 
-	if (write(sfd, (genericptr_t) version_info, sizeof version_info)
-		!= sizeof version_info) {
+	if (write(sfd, (genericptr_t) &version_data, sizeof version_data)
+		!= sizeof version_data) {
 	    Fprintf(stderr, "Error writing %s; recovery failed.\n", savename);
 	    Close(gfd);
 	    Close(sfd);

@@ -28,9 +28,9 @@ assign_soundcard(sopt)
 char *sopt;
 {
 
-	flags.hassound = 0;
+	iflags.hassound = 0;
 #  ifdef PCMUSIC
-	flags.usepcspeaker = 0;
+	iflags.usepcspeaker = 0;
 #  endif
 
 	if (strncmpi(sopt,"def",3) == 0) {              /* default */
@@ -38,7 +38,7 @@ char *sopt;
 	}
 #  ifdef PCMUSIC
 	else if (strncmpi(sopt,"speaker",7) == 0) {	/* pc speaker */
-		flags.usepcspeaker = 1;
+		iflags.usepcspeaker = 1;
 	}
 #  endif
 	else if (strncmpi(sopt,"auto",4) == 0) {	/* autodetect */
@@ -48,7 +48,7 @@ char *sopt;
 	 */
 		if (0) ;
 #  ifdef PCMUSIC
-		else flags.usepcspeaker = 1;
+		else iflags.usepcspeaker = 1;
 #  endif
 	} else {
 		return 0;
@@ -280,7 +280,7 @@ play (char *tune)
 void
 pc_speaker (struct obj *instr, char *tune)
 {
-    if (!flags.usepcspeaker) return;
+    if (!iflags.usepcspeaker) return;
     initspeaker ();
     switch (instr->otyp)
     {

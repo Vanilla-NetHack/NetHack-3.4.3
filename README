@@ -158,11 +158,9 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         Valid Logic Systems SCALD-System
         286 box running Microport SysV/AT (not extensively tested)
         386/486/Pentium boxes running 386BSD
-
-        There is support for NetHack 3.2 on IBM PS/2 and AT compatibles
-                running OS/2 1.1 - 2.0 (and probably Warp) with Microsoft
-                C 5.1 or 6.0, and OS/2 2.0 with GCC emx 0.8f or IBM C Set/2,
-                but this port is currently untested
+        IBM PS/2 and AT compatibles running OS/2 1.1 - 2.0 (and probably
+           Warp) with Microsoft 6.0, and OS/2 2.0 and up with GCC emx or
+           IBM CSet++ 2.0.
 
     Unless otherwise mentioned, the compiler used was the OS-vendor's
     C compiler.

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.c	3.2	96/05/08	*/
+/*	SCCS Id: @(#)sp_lev.c	3.2	96/10/27	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -923,7 +923,7 @@ struct mkroom	*croom;
 	}
 
 	if (o->spe != -127)	/* That means NOT RANDOM! */
-	    otmp->spe = o->spe;
+	    otmp->spe = (schar)o->spe;
 
 	switch (o->curse_state) {
 	      case 1:	bless(otmp); break; /* BLESSED */
@@ -2567,13 +2567,13 @@ const char *name;
 	dlb *fd;
 	boolean result = FALSE;
 	char c;
-	unsigned long vers_info[4];
+	struct version_info vers_info;
 
 	fd = dlb_fopen(name, RDBMODE);
 	if (!fd) return FALSE;
 
-	Fread((genericptr_t) vers_info, sizeof vers_info, 1, fd);
-	if (!check_version(vers_info, name, TRUE))
+	Fread((genericptr_t) &vers_info, sizeof vers_info, 1, fd);
+	if (!check_version(&vers_info, name, TRUE))
 	    goto give_up;
 
 	Fread((genericptr_t) &c, sizeof c, 1, fd); /* c Header */

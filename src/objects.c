@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objects.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)objects.c	3.2	96/06/16	*/
 /* Copyright (c) Mike Threepoint, 1989.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -862,17 +862,20 @@ ROCK("rock", (char *)0,		1,100,  10,  0, 3, 3, 0, 10, 7, MINERAL, CLR_GRAY),
 /* miscellaneous ... */
 /* Note: boulders and rocks are not normally created at random; the
  * probabilities only come into effect when you try to polymorph them.
- * Boulders and statues weigh more than MAX_CARR_CAP.
+ * Boulders weigh more than MAX_CARR_CAP; statues use corpsenm to take
+ * on a specific type and may act as containers (both affect weight).
  */
 OBJECT(OBJ("boulder",(char *)0), BITS(1,0,0,0,0,0,0,0,1,0,0,0,MINERAL), 0,
 		ROCK_CLASS,   100, 0, 6000,  0, 20, 20, 0, 0, 2000, HI_MINERAL),
 OBJECT(OBJ("statue", (char *)0), BITS(1,0,0,1,0,0,0,0,0,0,0,0,MINERAL), 0,
 		ROCK_CLASS,   900, 0, 2500,  0, 20, 20, 0, 0, 2500, CLR_WHITE),
 
-OBJECT(OBJ("heavy iron ball", (char *)0), BITS(1,0,0,0,0,0,0,0,0,0,0,0,IRON), 0,
+OBJECT(OBJ("heavy iron ball", (char *)0), BITS(1,0,0,0,0,0,0,0,0,0,WHACK,0,IRON), 0,
 		BALL_CLASS,  1000, 0,  480, 10, 25, 25, 0, 0,  200, HI_METAL),
-OBJECT(OBJ("iron chain", (char *)0), BITS(1,0,0,0,0,0,0,0,0,0,0,0,IRON), 0,
-		CHAIN_CLASS, 1000, 0,  120,  0,  0,  0, 0, 0,  200, HI_METAL),
+						/* +d4 when "very heavy" */
+OBJECT(OBJ("iron chain", (char *)0), BITS(1,0,0,0,0,0,0,0,0,0,WHACK,0,IRON), 0,
+		CHAIN_CLASS, 1000, 0,  120,  0,  4,  4, 0, 0,  200, HI_METAL),
+						/* +1 both l & s */
 
 OBJECT(OBJ("blinding venom", "splash of venom"),
 		BITS(0,1,0,0,0,0,0,1,0,0,0,0,LIQUID), 0,

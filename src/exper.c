@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)exper.c	3.2	96/01/21	*/
+/*	SCCS Id: @(#)exper.c	3.2	96/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -111,9 +111,6 @@ losexp()		/* hit by drain life attack */
 		/* remove intrinsic abilities */
 		adjabil(u.ulevel + 1, u.ulevel);
 		reset_rndmonst(NON_PM);	/* new monster selection */
-#ifdef WEAPON_SKILLS
-		lose_weapon_skill();
-#endif /* WEAPON_SKILLS */
 	} else
 		u.uhp = -1;
 	num = newhp();
@@ -153,9 +150,6 @@ newexplevel()
 		tmp = enermod(rn1((int)ACURR(A_WIS)/2+1, 2)); /* M. Stephenson */
 		u.uenmax += tmp;
 		u.uen += tmp;
-#ifdef WEAPON_SKILLS
-		add_weapon_skill();
-#endif /* WEAPON_SKILLS */
 		flags.botl = 1;
 	}
 }
@@ -178,9 +172,6 @@ pluslvl()
 		adjabil(u.ulevel - 1, u.ulevel);
 		reset_rndmonst(NON_PM);	/* new monster selection */
 	}
-#ifdef WEAPON_SKILLS
-	add_weapon_skill();
-#endif /* WEAPON_SKILLS */
 	flags.botl = 1;
 }
 

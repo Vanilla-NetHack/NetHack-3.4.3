@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ntconf.h	3.2	94/12/08	*/
+/*	SCCS Id: @(#)ntconf.h	3.2	96/10/14	*/
 /* Copyright (c) NetHack PC Development Team 1993, 1994.  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,13 +13,13 @@
 
 #define PATHLEN		64	/* maximum pathlength */
 #define FILENAME	80	/* maximum filename length (conservative) */
-#define SHORT_FILENAMES
 #define EXEPATH			/* Allow .exe location to be used as HACKDIR */
 /*
  * -----------------------------------------------------------------
  *  The remaining code shouldn't need modification.
  * -----------------------------------------------------------------
  */
+/* #define SHORT_FILENAMES	/* All NT filesystems support long names now */
 
 #define MICRO		/* always define this! */
 #define NO_TERMS
@@ -30,12 +30,16 @@
 #include <process.h>	/* Provides prototypes of exit(), spawn()      */
 #endif
 
+#include <string.h>     /* Provides prototypes of strncmpi(), etc.     */
+#ifdef STRNCMPI
+#define strncmpi(a,b,c) strnicmp(a,b,c)
+#endif
+
 #ifndef SYSTEM_H
 #include "system.h"
 #endif
 #define index	strchr
 #define rindex	strrchr
-
 #include <time.h>
 
 #ifdef RANDOM
@@ -76,10 +80,6 @@
 
 #ifndef alloca
 #define ALLOCA_HACK	/* used in util/panic.c */
-#endif
-
-#ifdef MICRO
-#define exit	msexit		/* do chdir first */
 #endif
 
 #ifndef REDO

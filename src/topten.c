@@ -48,7 +48,7 @@ struct toptenentry {
 	int deathdnum, deathlev;
 	int maxlvl, hp, maxhp, deaths;
 	int ver_major, ver_minor, patchlevel;
-	char deathdate[7], birthdate[7];
+	char deathdate[8], birthdate[8]; /* see readentry about size */
 	int uid;
 	char plchar;
 	char sex;
@@ -125,16 +125,42 @@ readentry(rfile,tt)
 FILE *rfile;
 struct toptenentry *tt;
 {
+#ifdef NO_SCAN_BRACK
+	static char *fmt = "%d %d %d %ld %d %d %d %d %d %d %6s %6s %d%*c%c%c %s %s%*c";
+#else
+	static char *fmt = "%d.%d.%d %ld %d %d %d %d %d %d %6s %6s %d %c%c %[^,],%[^\n]%*c";
+#endif
+
+#ifdef __BEOS__
+	/*
+	Test for a bug in Be's *scanf functions.  This exists in at least
+	versions DR8.2 and earlier.  We should eventually be able to
+	remove this special code..
+
+	The bug is that a read of a sized string field, e.g. %6s, leaves
+	the last character of the string to be read again.  The work-round
+	is to increase the read size by 1.  This means that deathdate and
+	birthdate need a size of 8 (7 chars + 1 NULL) instead of a size
+	7 (6 chars + 1 NULL).
+	*/
+	static boolean tested_scanf_bug = FALSE;
+
+	if (!tested_scanf_bug) {
+		char s1[16], s2[16];
+		
+		tested_scanf_bug  = TRUE;
+		(void) sscanf("123456 789012", "%6s %6s", s1, s2);
+		if (strcmp(s2, "789012") != 0)
+			fmt = "%d.%d.%d %ld %d %d %d %d %d %d %7s %7s %d %c%c %[^,],%[^\n]%*c";
+	}
+#endif /* __BEOS__ */ 
+
 #ifdef UPDATE_RECORD_IN_PLACE
 	/* note: fscanf() below must read the record's terminating newline */
 	final_fpos = tt->fpos = ftell(rfile);
 #endif
 #define TTFIELDS 17
-#ifdef NO_SCAN_BRACK
-	if(fscanf(rfile,"%d %d %d %ld %d %d %d %d %d %d %6s %6s %d%*c%c%c %s %s%*c",
-#else
-	if(fscanf(rfile, "%d.%d.%d %ld %d %d %d %d %d %d %6s %6s %d %c%c %[^,],%[^\n]%*c",
-#endif
+	if(fscanf(rfile, fmt,
 			&tt->ver_major, &tt->ver_minor, &tt->patchlevel,
 			&tt->points, &tt->deathdnum, &tt->deathlev,
 			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->deaths,

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)gehennom.des	3.2	95/04/22
+#	SCCS Id: @(#)gehennom.des	3.2	96/11/09
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992 by M. Stephenson and Izchak Miller
 # NetHack may be freely redistributed.  See license for details.
@@ -579,6 +579,8 @@ ALTAR:(18,08),noalign,sanctum
 REGION:(41,06,48,11),unlit,"morgue",filled,true
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
+# Invisible barrier separating the left & right halves of the level
+NON_PASSWALL:(37,00,39,19)
 # Doors
 DOOR:closed,(40,06)
 DOOR:locked,(62,06)

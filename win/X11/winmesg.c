@@ -90,12 +90,12 @@ create_message_window(wp, create_popup, parent)
     mesg_info->dirty = False;
     mesg_info->viewport_width = mesg_info->viewport_height = 0;
 
-    if (flags.msg_history < appResources.message_lines)
-	flags.msg_history = appResources.message_lines;
-    if (flags.msg_history > MAX_HISTORY)	/* a sanity check */
-	flags.msg_history = MAX_HISTORY;
+    if (iflags.msg_history < appResources.message_lines)
+	iflags.msg_history = appResources.message_lines;
+    if (iflags.msg_history > MAX_HISTORY)	/* a sanity check */
+	iflags.msg_history = MAX_HISTORY;
 
-    set_circle_buf(mesg_info, (int) flags.msg_history);
+    set_circle_buf(mesg_info, (int) iflags.msg_history);
 
     /* Create a popup that becomes the parent. */
     if (create_popup) {
@@ -162,7 +162,7 @@ create_message_window(wp, create_popup, parent)
 
     get_gc(wp->w, mesg_info);
 
-    wp->pixel_height = ((int)flags.msg_history) * mesg_info->char_height;
+    wp->pixel_height = ((int)iflags.msg_history) * mesg_info->char_height;
 
     /* If a variable spaced font, only use 2/3 of the default size */
     if (mesg_info->fs->min_bounds.width != mesg_info->fs->max_bounds.width) {

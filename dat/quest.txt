@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)quest.txt	3.2	95/06/29
+#	SCCS Id: @(#)quest.txt	3.2	96/08/19
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -66,7 +66,7 @@ You are back at %H.
 You have an odd feeling this may be the last time you ever come here.
 %E
 %Cp A 00005
-"Man, the dig this year was a real bust!"
+"Did you see Lash LaRue in 'Song of Old Wyoming' the other night?"
 %E
 %Cp A 00006
 "Hey man, got any potions of hallucination for sale?"
@@ -78,7 +78,7 @@ You have an odd feeling this may be the last time you ever come here.
 "So what species do *you* think we evolved from?"
 %E
 %Cp A 00009
-"So you're %l's prize pupil!  I don't know what he sees in you."
+"So you're %ls prize pupil!  I don't know what he sees in you."
 %E
 %Cc A 00010
 "Finally you have returned, %p.  You were always
@@ -118,9 +118,9 @@ stolen %o.  Without it, the board of directors of
 the university will soon have no choice but to revoke our research grants.
 
 "You must locate the entrance to %i.  Within it,
-you will find the %n.
+you will find %n.
 
-"You must the defeat the %n and return %o
+"You must the defeat %n and return %o
 to me.
 
 "Only in this way will we be able to prevent the budget cuts that could
@@ -129,24 +129,24 @@ close this college.
 "May the wisdom of %d be your guide."
 %E
 %Cp A 00020
-"Beware, for the %n is powerful and cunning."
+"Beware, for %n is powerful and cunning."
 %E
 %Cp A 00021
 "To locate the entrance to %i, you must pass
 many traps."
 %E
 %Cp A 00022
-"%nA may be vulnerable to attacks by magical cold."
+"A %nt may be vulnerable to attacks by magical cold."
 %E
 %Cp A 00023
-"Call upon %d when you encounter the %n."
+"Call upon %d when you encounter %n."
 %E
 %Cp A 00024
-"You must destroy the %n.  It will pursue you otherwise."
+"You must destroy %n.  It will pursue you otherwise."
 %E
 %Cp A 00025
 "%oC is a mighty talisman.  With it you
-can destroy the %n."
+can destroy %n."
 %E
 %Cp A 00026
 "Go forth with the blessings of %d."
@@ -230,13 +230,13 @@ as if you could now take on the Wizard of Yendor himself and win, but
 you know you must return %o to %l.
 %E
 %Cp A 00080
-The body of the %n dissipates in a cloud of noxious fumes.
+The body of %n dissipates in a cloud of noxious fumes.
 %E
 %Cc A 00081
-%l touches %o briefly, gazes into it,
+%lC touches %o briefly, gazes into it,
 then smiles at you and says:
 
-"Well done, %p.  You have defeated the %n and
+"Well done, %p.  You have defeated %n and
 recovered %o.  But I fear that it shall never be safe
 here.
 
@@ -298,7 +298,7 @@ Again, and you think possibly for the last time, you approach
 "The horde is mighty in numbers, but they have little courage."
 %E
 %Cp B 00009
-"%l is a strange one, but he has helped defend us."
+"%lC is a strange one, but he has helped defend us."
 %E
 %Cc B 00010
 "Ah, %p.  You have returned at last.  The world is in dire
@@ -341,7 +341,7 @@ about him.
 "At about the same time, these people you once rode with `liberated' a
 potent magical talisman, %o, from a Turanian caravan.
 
-"%n and his Black Horde swept down upon %i and defeated
+"%nC and his Black Horde swept down upon %i and defeated
 the people there, driving them out into the desert.  He has taken
 %o, and seeks to bend it to his will.  I detected the
 subtle changes in the currents of fate, and joined these people.
@@ -357,7 +357,7 @@ and with %d behind you, you alone can defeat %n.
 then will the world be safe."
 %E
 %Cp B 00020
-"%n is strong in the dark arts, but not immune to cold steel."
+"%nC is strong in the dark arts, but not immune to cold steel."
 %E
 %Cp B 00021
 "Remember that %n is a great sorcerer.  He lived in the time
@@ -380,7 +380,7 @@ guard."
 "If you can lay hands upon %o, carry it for good fortune."
 %E
 %Cp B 00027
-"I cannot stand against %n's sorcery.  But %d will help you."
+"I cannot stand against %ns sorcery.  But %d will help you."
 %E
 %Cp B 00028
 "Do not fear %n.  I know you can defeat him."
@@ -456,7 +456,7 @@ flowing through your hands.  It seems to be in two or more places
 at once, even though you are holding it.
 %E
 %Cp B 00080
-%n falls to the ground, and utters a last curse at you.  Then his
+%nC falls to the ground, and utters a last curse at you.  Then his
 body fades slowly, seemingly dispersing into the air around you.  You
 slowly become aware that the overpowering aura of magic in the air has
 begun to fade.
@@ -509,7 +509,7 @@ speaks of you.
 #
 %Cc C 00001
 You descend through a barely familiar stairwell that you remember
-the %l showing you when you embarked upon your vision quest.
+%l showing you when you embarked upon your vision quest.
 
 You arrive back at %H, but something seems
 wrong here.  The usual smoke and glowing light of the fires of the
@@ -527,7 +527,7 @@ enter %H.
 off our access to the outer world."
 %E
 %Cp C 00006
-"Since the %n sent her minions, we have been constantly fighting."
+"Since %n sent her minions, we have been constantly fighting."
 %E
 %Cp C 00007
 "I have heard your vision quest was successful.  Is this so?"
@@ -536,7 +536,7 @@ off our access to the outer world."
 "So, tell me, %p, how have you fared?"
 %E
 %Cp C 00009
-"The %l grows old.  We know not who will guide us after he ascends."
+"%lC grows old.  We know not who will guide us after he ascends."
 %E
 %Cc C 00010
 "You have returned from your vision quest, %p.  Thank %d.
@@ -566,7 +566,7 @@ the path of the %C over the true path of the %L.
 a difficult quest as that I propose to give you.
 
 "%rA could not possibly survive the rigors demanded to find
-%i, never mind to confront the %n herself.
+%i, never mind to confront %n herself.
 
 "Adventure some more, and you will learn the skills you will require.
 %d decrees it."
@@ -582,43 +582,43 @@ quest."
 great suffering among your people:
 
 "Shortly after you left on your vision quest, the caves were invaded by
-the creatures sent against us by the %n.
+the creatures sent against us by %n.
 
 "She, herself, could not attack us due to her great size, but her minions
 have harassed us ever since.  In the first attacks, many died, and the
-minions of the %n managed to steal %o.
+minions of %n managed to steal %o.
 They took it to %i and there, none of our
 %g warriors have been able to go.
 
 "You must find %i, and within it wrest
-%o from the %n.  She guards it as
+%o from %n.  She guards it as
 jealously as she guards all treasures she attains.  But with it,
 we can make our caves safe once more.
 
 "Please, %p, recover %o for us, and return it here."
 %E
 %Cp C 00020
-"The %n is immune to her own breath weapons.
+"%nC is immune to her own breath weapons.
 You should use magic upon her that she does not use herself."
 %E
 %Cp C 00021
-"When you encounter the %n, call upon %d for assistance."
+"When you encounter %n, call upon %d for assistance."
 %E
 %Cp C 00022
-"There will be nowhere to hide inside the %n's inner sanctum."
+"There will be nowhere to hide inside %ns inner sanctum."
 %E
 %Cp C 00023
-"Your best chance with the %n will be to keep moving."
+"Your best chance with %n will be to keep moving."
 %E
 %Cp C 00024
-"Do not be distracted by the great treasures in the %n's lair.
+"Do not be distracted by the great treasures in %ns lair.
 Concentrate on %o."
 %E
 %Cp C 00025
-"%oC is the only object that the %n truly fears."
+"%oC is the only object that %n truly fears."
 %E
 %Cp C 00026
-"Do not be fooled by the %n's size.  She is fast, and it is
+"Do not be fooled by %ns size.  She is fast, and it is
 rumored that she uses magic."
 %E
 %Cp C 00027
@@ -649,13 +649,13 @@ nevertheless show signs of being scorched by fire.
 Bones litter the floor, and there are objects scattered everywhere.
 The air is close with the stench of sulphurous fumes.
 
-The %n is clearly visible, but she seems to be asleep.
+%nC is clearly visible, but she seems to be asleep.
 %E
 %Cp C 00041
-Once again, you find yourself in the lair of the %n.
+Once again, you find yourself in the lair of %n.
 %E
 %Cc C 00050
-"So, human, you seek to invade the lair of the %n.
+"So, human, you seek to invade the lair of %n.
 Only my meals are allowed down here.  Prepare to be eaten!"
 %E
 %Cp C 00051
@@ -681,13 +681,13 @@ Now I shall kill you."
 "With %o, I am invincible!  You cannot succeed."
 %E
 %Cp C 00064
-"Your mentor, the %l has failed.  You are nothing to fear."
+"Your mentor, %l has failed.  You are nothing to fear."
 %E
 %Cp C 00065
 "You shall die here, %c.  %rA cannot hope to defeat me."
 %E
 %Cp C 00066
-"You, a mere %r challenge the might of the %n?  Hah!"
+"You, a mere %r challenge the might of %n?  Hah!"
 %E
 %Cp C 00067
 "I am the Mother of all Dragons!  You cannot hope to defeat me."
@@ -706,11 +706,11 @@ You suddenly feel full of power, as if nothing could possibly stand
 in your path.
 %E
 %Cp C 00080
-The %n sinks to the ground, her heads flailing about.
+%nC sinks to the ground, her heads flailing about.
 As she dies, a cloud of noxious fumes billows about her.
 %E
 %Cc C 00081
-The %l glimpses %o in your possession.
+%lC glimpses %o in your possession.
 He smiles and says:
 
     You have done it!  We are saved.  But I fear that %o
@@ -757,10 +757,10 @@ are to enter %H.
 "%p!  I have not seen you in many cycles.  How do you fare?"
 %E
 %Cp E 00006
-"The %n continues to threaten the circle.  But we hold fast."
+"%nC continues to threaten the circle.  But we hold fast."
 %E
 %Cp E 00007
-"%l is growing weak.  The magic required to defend the circle drains us."
+"%lC is growing weak.  The magic required to defend the circle drains us."
 %E
 %Cp E 00008
 "Remember %i is hard to enter.  Seek the secret
@@ -804,12 +804,12 @@ we maintain a pure devotion to things %a!
 and why we so desperately need your help:
 
 "A short time ago, the Uruk-hai tribes of the mountains to the east
-invaded and enslaved the Goblin tribes in this area.  The local
-%n is now only a figurehead, and serves the Uruk-hai Overlord.
+invaded and enslaved the goblin tribes in this area.  The local
+%nt is now only a figurehead, and serves the Uruk-hai Overlord.
 
 "During our last gathering of worship here, we were beset by hordes of
 orcs and goblins, as you witnessed.  In the first onslaught a group,
-headed by the %n himself, managed to breach the circle and
+headed by %n himself, managed to breach the circle and
 steal %o.
 
 "Since then, we have been besieged.  We do not know how much longer
@@ -817,7 +817,7 @@ we will be able to maintain our magical barriers.
 
 "If we are to survive, you, %p, must infiltrate
 %i.  There, you will find a pathway down, to the
-underground castle of the %n.  He has always coveted
+underground castle of %n.  He has always coveted
 %o, and will surely keep it on his person,
 until he delivers it to the Uruk-hai Overlord.
 
@@ -828,7 +828,7 @@ the circle of %d be safe."
 "It is rumored that the Uruk-hai have a pact with the Hill Ogres."
 %E
 %Cp E 00021
-"The %n is strong, but not very smart."
+"%nC is strong, but not very smart."
 %E
 %Cp E 00022
 "Use %o, when you find it.  It will help you survive
@@ -838,11 +838,11 @@ to reach us."
 "Remember, let %d be your guide."
 %E
 %Cp E 00024
-"Call upon %d when you face the %n.
+"Call upon %d when you face %n.
 The very act of doing so will infuriate him, and give you advantage."
 %E
 %Cp E 00025
-"Though the %n is as %C as we, he and his kind have always
+"Though %n is as %C as we, he and his kind have always
 hated us."
 %E
 %Cp E 00026
@@ -852,7 +852,7 @@ hated us."
 "To infiltrate %i, you must be very stealthy."
 %E
 %Cp E 00028
-"Remember that the %n is a braggart.  Trust not what he says."
+"Remember that %n is a braggart.  Trust not what he says."
 %E
 %Cp E 00029
 "You can triumph, %p, if you trust in %d."
@@ -875,10 +875,10 @@ finishing off the construction of a subterranean complex.
 Off in the distance, you hear the sounds of a large, raucous gathering.
 %E
 %Cp E 00041
-Once again, you enter the distorted castle of the %n.
+Once again, you enter the distorted castle of %n.
 %E
 %Cc E 00050
-"So, %c.  %l has sent you to recover %o.
+"So, %c.  %lC has sent you to recover %o.
 
 "Well, I shall keep that bauble.  It pleases me.  You, %c, shall die."
 %E
@@ -896,7 +896,7 @@ kill you."
 "Your %d is nothing, %c.  You are mine now!"
 %E
 %Cp E 00061
-"Run away little %c!  You can never hope to defeat the %n!"
+"Run away little %c!  You can never hope to defeat %n!"
 %E
 %Cp E 00062
 "My Uruk-hai servants will rip you to shreds!"
@@ -905,16 +905,16 @@ kill you."
 "I shall display your head as a trophy.  What do you think about that wall?"
 %E
 %Cp E 00064
-"I shall break your %l's circle, and destroy all the %gP!"
+"I shall break your %ls circle, and destroy all the %gP!"
 %E
 %Cp E 00065
 "%d has abandoned you, %c.  You are doomed."
 %E
 %Cp E 00066
-"%rA?  %l sends a mere %r against me?  Hah!"
+"%rA?  %lC sends a mere %r against me?  Hah!"
 %E
 %Cp E 00067
-"%l has failed, %c.  %oC will never leave here."
+"%lC has failed, %c.  %oC will never leave here."
 %E
 %Cp E 00068
 "You really think you can defeat me, eh %c?  You are wrong!"
@@ -931,7 +931,7 @@ You must now return it to %l without delay -- their lives depend
 on your speed.
 %E
 %Cc E 00080
-The %n collapses to the ground, cursing you and %l, then says:
+%nC collapses to the ground, cursing you and %l, then says:
 
     You have defeated me, %r!  But I curse you one final time, with my
     dying breath!  You shall die before you leave my castle!
@@ -941,7 +941,7 @@ The %n collapses to the ground, cursing you and %l, then says:
 
 "Your aura proclaims that you possess %o!
 
-"I fear, now, that the Uruk-hai will select yet another %n.
+"I fear, now, that the Uruk-hai will select yet another %nt.
 This will take some time, but if you can recover the Amulet of Yendor
 for %d before that happens, we will be eternally safe.
 
@@ -976,7 +976,7 @@ No rhizotomists are tending the materia medica gardens, and where are the
 common folk who used to come for the cures?
 
 You know that you must quickly make your way to the collegium, and
-%l's iatreion, and find out what has happened in your
+%ls iatreion, and find out what has happened in your
 absence.
 %E
 %Cp H 00002
@@ -988,7 +988,7 @@ succeed.
 Again, you %x %H in the distance.
 
 The smell of death and disease permeates the air.  You do not have
-to be %Ra to know that the %n is on the verge of victory.
+to be %Ra to know that %n is on the verge of victory.
 %E
 %Cp H 00005
 "Did you read that new treatise on the therapeutic use of leeches?"
@@ -1003,7 +1003,7 @@ to be %Ra to know that the %n is on the verge of victory.
 "I've heard that even %l has not been able to cure Chiron."
 %E
 %Cp H 00009
-"We think the %n has used his alchemists, and %o,
+"We think %n has used his alchemists, and %o,
 to unleash a new disease we call 'the cold' on Gehennom."
 %E
 %Cc H 00010
@@ -1011,7 +1011,7 @@ to unleash a new disease we call 'the cold' on Gehennom."
 
 "It is good to see you again, %p.  I see the concern in your
 eyes, but do not worry for me.  I am not ready for Hades yet.  We have
-exhausted much of our healing powers holding off the %n.
+exhausted much of our healing powers holding off %n.
 I need your fresh strength to carry on our work.
 
 "Come closer and let me lay hands on you, and determine if you have
@@ -1044,19 +1044,19 @@ conscience.
 %E
 %Cc H 00015
 "You have learned much of the remedies that benefit, but you must also
-know which physic for which ail.  That is why %d's teachings are a
+know which physic for which ail.  That is why %ds teachings are a
 part of your training.
 
 "Return to us when you have healed thyself."
 %E
 %Cc H 00016
-For the first time, you sense a smile on %l' face.
+For the first time, you sense a smile on %ls face.
 
     You have indeed learned as much as we can teach you in preparation
     for this task.  Let me tell you what I know of the symptoms and hope
     that you can provide a cure.
 
-    A short while ago, the dreaded %n was fooled by the gods
+    A short while ago, the dreaded %nt was fooled by the gods
     into thinking that he could use %o to find a
     cure for old age.  Think of it, eternal youth!  But his good
     health is accomplished by drawing the health from those around him.
@@ -1066,13 +1066,13 @@ For the first time, you sense a smile on %l' face.
     %o and break the spell.
 
     You must travel into the swamps to %i, and from there
-    follow the trail to the %n's island lair.  Be careful.
+    follow the trail to %ns island lair.  Be careful.
 %E
 %Cp H 00020
 "Remember, %p, to always wash your hands before operating."
 %E
 %Cp H 00021
-"The %n has no real magic of his own.  To this he is vulnerable."
+"%nC has no real magic of his own.  To this he is vulnerable."
 %E
 %Cp H 00022
 "If you have been true to %d, you can draw on the power of
@@ -1095,11 +1095,11 @@ to harm you, it has only healing powers."
 "The plague grows worse as we speak.  Hurry, %p!"
 %E
 %Cp H 00028
-"Many times the %n has caused trouble in these lands.  It is
+"Many times %n has caused trouble in these lands.  It is
 time that he was eradicated like the diseases he has caused."
 %E
 %Cp H 00029
-"With but one eye, the %n should be easy to blind.  Remember this."
+"With but one eye, %n should be easy to blind.  Remember this."
 %E
 %Cc H 00030
 You stand before the entrance to %i.  Strange
@@ -1111,7 +1111,7 @@ The swampy ground around you seems to stink with disease.
 Once again you stand at the entrance to %i.
 %E
 %Cc H 00040
-You stand within sight of the infamous Isle of the %n.  Even
+You stand within sight of the infamous Isle of %n.  Even
 the words of %l had not prepared you for this.
 
 Steeling yourself against the wails of the ill that pierce your ears,
@@ -1119,7 +1119,7 @@ you hurry on your task.  Maybe with %o you can
 heal them on your return, but not now.
 %E
 %Cp H 00041
-Once again, you %x the Isle of the %n in the distance.
+Once again, you %x the Isle of %n in the distance.
 %E
 %Cc H 00050
 "They have made a mistake in sending you, %p.
@@ -1176,14 +1176,14 @@ but at least you hope that %l can put it to good use once
 again.
 %E
 %Cc H 00080
-The battered body of the %n slumps to the ground and gasps
+The battered body of %n slumps to the ground and gasps
 out one last curse:
 
     You have defeated me, %p, but I shall have my revenge.
     How, I shall not say, but this curse shall be like a
     cancer on you.
 
-With that the %n dies.
+With that %n dies.
 %E
 %Cc H 00081
 As soon as %l sees %o he summons his %gP.
@@ -1309,7 +1309,7 @@ We restore Merlin to health."
 "Great treasure, 'tis said, is hoarded in the lair of %n."
 %E
 %Cp K 00024
-"If thou possesseth %o, %p, %n's magic
+"If thou possesseth %o, %p, %ns magic
 shalt therewith be thwarted."
 %E
 %Cp K 00025
@@ -1344,7 +1344,7 @@ The pools on either side of the entrance are fouled with blood, and
 pieces of rusted metal and broken weapons show above the surface.
 %E
 %Cp K 00041
-Again, you stand at the entrance to %n's lair.
+Again, you stand at the entrance to %ns lair.
 %E
 %Cp K 00050
 "Hah!  Another puny %c seeks death.  I shall dine well tonight,
@@ -1441,7 +1441,7 @@ is obviously wrong here.  The doors to %H, which usually
 stand open, are closed.  Strange human shapes shamble around
 outside.
 
-You realize that the %l needs your assistance!
+You realize that %l needs your assistance!
 %E
 %Cp P 00002
 Once again, you stand before %H.
@@ -1457,7 +1457,7 @@ the final time you come here.
 "Ah, %p!  Surely you can help us in our hour of need."
 %E
 %Cp P 00007
-"Greetings, %s.  The %l has great need of your help."
+"Greetings, %s.  %lC has great need of your help."
 %E
 %Cp P 00008
 "Alas, it seems as if even %d has deserted us."
@@ -1509,7 +1509,7 @@ Without it, we could not mount a counter-attack.  Now, there are
 barely enough %gP left to keep the undead at bay.
 
 "We need you to find %i, then, from there, travel
-to %n's lair.  If you can manage to defeat %n and return
+to %ns lair.  If you can manage to defeat %n and return
 %o here, we can then drive off the legions of
 undead that befoul the land.
 
@@ -1552,7 +1552,7 @@ that seem to get thicker closer to the center.  You sense the presence of
 undead in larger numbers than you have ever encountered before.
 
 You remember the descriptions of %i, given to you by
-the %l.  It is ahead that you will find %n's trail.
+%lC.  It is ahead that you will find %ns trail.
 %E
 %Cp P 00031
 Again, you stand before %i.
@@ -1564,10 +1564,10 @@ of tortured souls assault your psyche.
 Ahead, there is a small clearing amidst the bubbling pits of lava...
 %E
 %Cp P 00041
-Again, you have invaded %n's domain.
+Again, you have invaded %ns domain.
 %E
 %Cc P 00050
-"Ah, so the %l has sent another %g to retrieve
+"Ah, so %lC has sent another %g to retrieve
 %o.
 
 "No, I see you are no %g.  Perhaps I shall have some fun today
@@ -1605,7 +1605,7 @@ after all.  Prepare to die, %r!  You shall never regain
 "You cannot defeat %n, you fool.  I shall kill you now."
 %E
 %Cp P 00067
-"Your precious %l will be my next victim."
+"Your precious %lt will be my next victim."
 %E
 %Cp P 00068
 "I feel your powers failing you, %r.  You shall die now."
@@ -1620,11 +1620,11 @@ As you pick up %o, you feel the essence of
 easily defeat his plans.
 
 You sense a message from %d.  Though not verbal, you
-get the impression that you must return to the %l as soon
+get the impression that you must return to %lC as soon
 as possible.
 %E
 %Cc P 00080
-You feel a wrenching shift in the ether as %n's body dissolves
+You feel a wrenching shift in the ether as %ns body dissolves
 into a cloud of noxious gas.
 
 Suddenly, a voice booms out:
@@ -1652,9 +1652,9 @@ of Yendor.
 %E
 %Cc P 00091
 "You have prevailed, %p!  %d is surely with you.  Now,
-you must take the amulet, and sacrifice it on %d's altar on
+you must take the amulet, and sacrifice it on %ds altar on
 the Astral plane.  I suspect that I shall never see you again in this
-life, but I hope to at %d's feet."
+life, but I hope to at %ds feet."
 %E
 #
 #	Rogue (with apologies to all Norsk speakers -dean)
@@ -1662,16 +1662,16 @@ life, but I hope to at %d's feet."
 %Cc R 00001
 Unexpectedly, you find yourself back in Ransmannsby, where you trained to
 be a thief.  Quickly you make the guild sign, hoping that you AND word
-of your arrival reach the %l's den.
+of your arrival reach %ls den.
 %E
 %Cp R 00002
 Once again, you find yourself back in Ransmannsby.  Fond memories are
-replaced by fear, knowing that the %l is waiting for you.
+replaced by fear, knowing that %l is waiting for you.
 %E
 %Cp R 00003
 You rub your hands through your hair, hoping that the little ones on
 the back of your neck stay down, and prepare yourself for your meeting
-with the %l.
+with %l.
 %E
 %Cp R 00005
 "I hear that Lady Tyvefelle's household is lightly guarded."
@@ -1702,7 +1702,7 @@ or you are finally ready to accept my offer.  Let us hope for your sake it
 isn't stupidity that brings you back."
 %E
 %Cp R 00012
-"Did you perhaps mistake me for some other %l?  You must
+"Did you perhaps mistake me for some other %lt?  You must
 think me as stupid as your behavior.  I warn you not to try my patience."
 %E
 %Cc R 00013
@@ -1711,7 +1711,7 @@ around here.  Our friend seems to think that %rp have been put in
 charge.  Wrong.  DEAD WRONG!"
 
 Your sudden shift in surroundings prevents you from hearing the end
-of the %l's curse.
+of %ls curse.
 %E
 %Cc R 00014
 "In the time that you've been gone you've only been able to master the
@@ -1727,11 +1727,11 @@ when you can be trusted to act properly."
 %E
 %Cc R 00016
 "Will everyone not going to retrieve %o from that
-jerk, the %n, take one step backwards.  Good choice,
+jerk, %n, take one step backwards.  Good choice,
 %p, because I was going to send you anyway.  My other %gp
 are too valuable to me.
 
-"Here's the deal.  I want %o, the %n
+"Here's the deal.  I want %o, %n
 has %o.  You are going to get %o
 and bring it back to me.  So simple an assignment even you can understand
 it."
@@ -1774,7 +1774,7 @@ Those damn little hairs tell you that you are nearer to
 %o.
 %E
 %Cp R 00031
-Not wanting to face the %l without having stolen
+Not wanting to face %l without having stolen
 %o, you continue.
 %E
 %Cc R 00040
@@ -1785,7 +1785,7 @@ You feel a great swelling up of courage, sensing the presence of
 The hairs on the back of your neck whisper -- it's fear.
 %E
 %Cc R 00050
-"Ah!  You must be the %l's ... er, `hero'.  A pleasure
+"Ah!  You must be %ls ... er, `hero'.  A pleasure
 to meet you."
 %E
 %Cc R 00051
@@ -1793,12 +1793,12 @@ to meet you."
 %E
 %Cp R 00052
 "Surely, %p, you have learned that you cannot trust any bargains
-that the %l has made.  I can show you how to continue on
+that %l has made.  I can show you how to continue on
 your quest without having to run into him again."
 %E
 %Cp R 00053
 "Please, think for a moment about what you are doing.  Do you truly
-believe that %d would want the %l to have
+believe that %d would want %l to have
 %o?"
 %E
 %Cp R 00060
@@ -1811,7 +1811,7 @@ believe that %d would want the %l to have
 "Grim times are upon us all.  Will you not see reason?"
 %E
 %Cp R 00063
-"I knew the %l, and you're no %l, thankfully."
+"I knew %l, and you're no %lt, thankfully."
 %E
 %Cp R 00064
 "It is a shame that we are not meeting under more pleasant circumstances."
@@ -1821,11 +1821,11 @@ believe that %d would want the %l to have
 is better."
 %E
 %Cp R 00066
-"Stay with me, and I will make you %o's guardian."
+"Stay with me, and I will make you %os guardian."
 %E
 %Cp R 00067
 "When you return, with or without %o,
-the %l will have you killed."
+%l will have you killed."
 %E
 %Cp R 00068
 "Do not be fooled; I am prepared to kill to defend %o."
@@ -1835,8 +1835,8 @@ the %l will have you killed."
 %E
 %Cc R 00070
 "As you pick up %o, the hairs on the back of your
-neck fall out.  At once you realize why the %n was
-willing to die to keep it out of the %l's hands.  Somehow
+neck fall out.  At once you realize why %n was
+willing to die to keep it out of %ls hands.  Somehow
 you know that you must do likewise."
 %E
 %Cc R 00080
@@ -1844,8 +1844,8 @@ you know that you must do likewise."
 to use %o wisely.  For the sake of your guild
 %sp, do what is right."
 
-You sit and wait for death to come for the %n, and then you
-brace yourself for your next meeting with the %l!
+You sit and wait for death to come for %n, and then you
+brace yourself for your next meeting with %l!
 %E
 %Cc R 00081
 "Well, I'll be damned.  You got it.  I am proud of you, a fine %r
@@ -1854,9 +1854,9 @@ you've turned out to be.
 "While you were gone I got to thinking, you and %o
 together could bring me more treasure than either of you apart, so why don't
 you take it with you.  All I ask is a cut of whatever loot you come by.
-That is a better deal than I offered the %n.
+That is a better deal than I offered %n.
 
-"But, you see what happened to the %n when he refused.
+"But, you see what happened to %n when he refused.
 Don't make me find another to send after you this time."
 %E
 %Cc R 00090
@@ -1905,7 +1905,7 @@ the kami of %H before you return again.
 "I fear for The Land of The Gods."
 %E
 %Cp S 00008
-"%n has hired the Ninja -- be careful."
+"%nC has hired the Ninja -- be careful."
 %E
 %Cp S 00009
 "If %o is not returned, we will all be ninja."
@@ -2066,7 +2066,7 @@ You are humbled knowing that you hold one of the artifacts of the
 sun god.
 %E
 %Cc S 00080
-Your healing skills tell you that %n's wounds are mortal.
+Your healing skills tell you that %ns wounds are mortal.
 
 You know that the bushido tells you to finish him and let his kami
 die with honor, but the thought of so many samurai dead due to this
@@ -2095,7 +2095,7 @@ With that, %l bows, and places his sword atop
 %o.
 %E
 %Cp S 00090
-%l bows.  "%p-sama, tell us of your search for the Amulet."
+%lC bows.  "%p-sama, tell us of your search for the Amulet."
 %E
 %Cc S 00091
 "Ah, %p-sama.  You have wasted your efforts returning home.
@@ -2144,7 +2144,7 @@ Things appear to have become so bad that you fear that soon
 %Cc T 00010
 "Is it really you, %p!  I had given up hope for your return.
 As you can %x, we are desperately in need of your talents.  Someone must
-defeat the %n if our town is become what it once was.
+defeat %n if our town is become what it once was.
 
 "Let me see if you are ready to be that someone."
 %E
@@ -2181,7 +2181,7 @@ path can you hope to overcome the obstacles you will face."
 
 "But now your kinfolk and I must ask you to put aside your travels and
 help us in our time of need.  After you left us we elected a new mayor,
-the %n.  He proved to be a most heinous and vile creature.
+%n.  He proved to be a most heinous and vile creature.
 
 "Soon after taking office he absconded with %o
 and fled town, leaving behind his henchmen to rule over us.  In order
@@ -2192,7 +2192,7 @@ and recover %o.
 that all will be lost.  Let us both pray now that %d will guide you
 and keep you safe."
 %Cp T 00020
-"Do not be fooled by the false promises of the %n."
+"Do not be fooled by the false promises of %n."
 %E
 %Cp T 00021
 "To enter %i you must pass many traps."
@@ -2205,10 +2205,10 @@ will be in vain."
 "Do not be afraid to call upon %d if you truly need help."
 %E
 %Cp T 00024
-"If you do not destroy the %n, he will follow you back here!"
+"If you do not destroy %n, he will follow you back here!"
 %E
 %Cp T 00025
-"Take %o from the %n
+"Take %o from %n
 and you may be able to defeat him."
 %E
 %Cp T 00026
@@ -2226,10 +2226,10 @@ and you may be able to defeat him."
 %E
 %Cp T 00030
 Only your faith in %d keeps you from trembling.  You %x
-the handiwork of the %n's henchlings everywhere.
+the handiwork of %ns henchlings everywhere.
 %E
 %Cp T 00031
-You know that this time you must find and destroy the %n.
+You know that this time you must find and destroy %n.
 %E
 %Cp T 00040
 You sense the presence of %o.
@@ -2289,7 +2289,7 @@ grows thin."
 hope to defeat me."
 %E
 %Cp T 00067
-"The %n has never been defeated, NEVER!"
+"%nC has never been defeated, NEVER!"
 %E
 %Cp T 00068
 "Are you truly the best %H has to send against me?
@@ -2350,10 +2350,10 @@ The stench of sulphur is carried through the air, and you %x creatures
 that should not be able to live in this environment moving towards you.
 %E
 %Cp V 00002
-Once again, you are near the abode of the %l.
+Once again, you are near the abode of %l.
 %E
 %Cp V 00003
-Again you materialize near the %l's abode.  You have a nagging feeling
+Again you materialize near %ls abode.  You have a nagging feeling
 that this may be the last time you come here.
 %E
 %Cp V 00005
@@ -2363,7 +2363,7 @@ that this may be the last time you come here.
 "May %d guide your steps, %p."
 %E
 %Cp V 00007
-"The %l weakens.  Without %o, her foresight is dim."
+"%lC weakens.  Without %o, her foresight is dim."
 %E
 %Cp V 00008
 "You must hurry, %p, else Ragnarok may well come."
@@ -2393,7 +2393,7 @@ you shall never succeed in this life, and Valhalla is denied to you."
 %E
 %Cc V 00014
 "I see you and %n fighting, %p.  But you are not prepared and
-shall die at %n's hand if you proceed.  No.  This will not do.
+shall die at %ns hand if you proceed.  No.  This will not do.
 Go back out into the world, and grow more experienced at the ways of
 war.  Only when you have returned %Ra will you be able to defeat
 %n."
@@ -2421,7 +2421,7 @@ to steal %o.  This has upset the balance of the universe, and
 unless %o is returned into my care, %n may start Ragnarok.
 
 "You must find the entrance to %i.  Travel downward
-from there and you will find %n's lair.  Defeat him and
+from there and you will find %ns lair.  Defeat him and
 return %o to me."
 %E
 %Cp V 00020
@@ -2468,13 +2468,13 @@ Once again, you stand before the entrance to %i.
 %Cc V 00040
 Through clouds of sulphurous gasses, you %x a rock palisade
 surrounded with a moat of bubbling lava.  You remember the description
-from something that the %l said.  This is the lair of %n.
+from something that %l said.  This is the lair of %n.
 %E
 %Cp V 00041
-Once again, you stand in sight of %n's lair.
+Once again, you stand in sight of %ns lair.
 %E
 %Cc V 00050
-"So!  The %l has finally sent %ca to challenge me!
+"So!  %lC has finally sent %ca to challenge me!
 
 "I thought that mastering %o would enable me to challenge %d,
 but it has shown me that first I must kill you!
@@ -2500,7 +2500,7 @@ the final battle with %d."
 "With you out of the way, Valhalla will be mine for the taking."
 %E
 %Cp V 00063
-"I killed scores of %d's best when I took %o.
+"I killed scores of %ds best when I took %o.
 Do you really think that one %c can stand against me?"
 %E
 %Cp V 00064
@@ -2525,23 +2525,23 @@ Do you really think that one %c can stand against me?"
 As you pick up %o, your mind is suddenly filled with images,
 and you perceive all of the possibilities of each potential choice you
 could make.  As you begin to control and channel your thoughts, you
-realize that you must return %o to the %l immediately.
+realize that you must return %o to %lC immediately.
 %E
 %Cc V 00080
-A look of surprise and horror appears on %n's face.
+A look of surprise and horror appears on %ns face.
 
     No!!!  %o has lied to me!  I have been misled!
 
 Suddenly, %n grasps his head and screams in agony, then dies.
 %E
 %Cc V 00081
-As you approach, the %l rises and touches %o.
+As you approach, %lC rises and touches %o.
 
 "You may take %o with you, %p.  I have removed from
 it the power to foretell the future, for that power no mortal should
 have.  Its other abilities, however, you have at your disposal.
 
-"You must now begin in %d's name to search for the Amulet of Yendor.
+"You must now begin in %ds name to search for the Amulet of Yendor.
 May your steps be guided by %d, my %S."
 %E
 %Cp V 00090
@@ -2563,7 +2563,7 @@ Amulet interferes with mine.  I hope for your success."
 %Cc W 00001
 You are suddenly in familiar surroundings.  You notice what appears to
 be a large, squat stone structure nearby.  Wait!  That looks like the
-tower of your old master, the %l.
+tower of your old master, %l.
 
 However, things are not the same as when you were last here.  Mists and
 areas of unexplained darkness surround the tower.  There is movement in
@@ -2586,14 +2586,14 @@ You have an odd feeling this may be the last time you ever come here.
 "Ah, the spell to create the magic portal worked.  Outstanding!"
 %E
 %Cp W 00007
-"Hurry!  The %l may not survive that casting of the
+"Hurry!  %lC may not survive that casting of the
 portal spell!!"
 %E
 %Cp W 00008
 "We must strive to return balance to the world, or all is lost."
 %E
 %Cp W 00009
-"I, too, will venture into the world, because the %n is but one of
+"I, too, will venture into the world, because %n is but one of
 many evils to be vanquished."
 %E
 %Cc W 00010
@@ -2623,7 +2623,7 @@ renown as %Ra."
 %Cc W 00015
 "You amaze me, %p!  How many times did I tell you that Balance
 requires care.  One must use the world with care, lest one leave it in ruins
-and simplify the task of the %n.
+and simplify the task of %n.
 
 "You must go back and show your worthiness.  Do not return until you are
 truly ready for this quest.  May %d guide you in this task."
@@ -2634,42 +2634,42 @@ truly ready for this quest.  May %d guide you in this task."
 carefully, for what I tell you now will be of vital importance.
 
 "Since you left us to hone your skills in the world, we unexpectedly came
-under attack by the forces of the %n.  As you know, we thought
-the %n had perished at the end of the last age, but, alas, this was
+under attack by the forces of %n.  As you know, we thought
+%n had perished at the end of the last age, but, alas, this was
 not the case.
 
-"The %n sent an army of abominations against us.  Among them was a
+"%nC sent an army of abominations against us.  Among them was a
 minion, mindless and ensorcelled, and thus, in the confusion, it was able
 to penetrate our defenses.  Alas, this creature has stolen
 %o and I fear it has delivered %o
-to the %n.
+to %n.
 
 "Over the years, I had woven most of my power into this amulet, and thus,
 without it, I have but a shadow of my former power, and I fear that I
 shall soon perish.
 
 "You must travel to %i, and within its dungeons,
-find and overcome the %n, and return %o to me.
+find and overcome %n, and return %o to me.
 
 "Go now, with %d, and return Balance to the world."
 %Cp W 00020
-"Beware, for the %n is immune to most magical attacks."
+"Beware, for %n is immune to most magical attacks."
 %E
 %Cp W 00021
 "To enter %i you must pass many traps."
 %E
 %Cp W 00022
-"The %n may be vulnerable to physical attacks."
+"%nC may be vulnerable to physical attacks."
 %E
 %Cp W 00023
 "%d will come to your aid when you call."
 %E
 %Cp W 00024
-"You must utterly destroy the %n.  He will pursue you otherwise."
+"You must utterly destroy %n.  He will pursue you otherwise."
 %E
 %Cp W 00025
 "%oC is a mighty artifact.  With it you can
-destroy the %n."
+destroy %n."
 %E
 %Cp W 00026
 "Go forth with the blessings of %d."
@@ -2684,7 +2684,7 @@ destroy the %n."
 "You will know when %o is near.  Proceed with care!"
 %E
 %Cp W 00030
-Wisps of fog swirl nearby.  You feel that the %n's lair is close.
+Wisps of fog swirl nearby.  You feel that %ns lair is close.
 %E
 %Cp W 00031
 You believe that you may once again invade %i.
@@ -2696,8 +2696,8 @@ You feel your mentor's presence; perhaps %o is nearby.
 The aura of %o tingles at the edge of your perception.
 %E
 %Cc W 00050
-"Ah, I recognize you, %p.  So, the %l has sent you to steal
-%o from me, hmmm?  Well, the %l is a
+"Ah, I recognize you, %p.  So, %l has sent you to steal
+%o from me, hmmm?  Well, %l is a
 fool to send such a mental weakling against me.
 
 "Your destruction, however, should make for good sport.  In the end, you
@@ -2725,7 +2725,7 @@ your living flesh to my minions."
 "When you are defeated, your torment will last for a thousand years."
 %E
 %Cp W 00062
-"After your downfall, %p, I shall devour the %l
+"After your downfall, %p, I shall devour %l
 for dessert!"
 %E
 %Cp W 00063
@@ -2744,7 +2744,7 @@ for dessert!"
 "A mere %r is nothing compared to my skill!"
 %E
 %Cp W 00068
-"So, you are the best hope of the %l?  How droll."
+"So, you are the best hope of %l?  How droll."
 %E
 %Cp W 00069
 "Feel my power, %c!  My victory is imminent!"
@@ -2754,21 +2754,21 @@ As you touch %o, its comforting power infuses you
 with new energy.  You feel as if you can detect others' thoughts flowing
 through it.  Although you yearn to wear %o
 and attack the Wizard of Yendor, you know you must return it to its
-rightful owner, the %l.
+rightful owner, %l.
 %E
 %Cc W 00080
-The %n croaks out, as his body begins to shrivel up:
+%nC croaks out, as his body begins to shrivel up:
 
     I shall haunt your progress until the end of time.  A thousand
-    curses on you and the %l.
+    curses on you and %l.
 
 Then, the body bursts into a cloud of choking dust, and blows away.
 %E
 %Cc W 00081
-The %l notices %o in your possession,
+%lC notices %o in your possession,
 beams at you and says:
 
-    I knew you could defeat the %n and retrieve
+    I knew you could defeat %n and retrieve
     %o.  We shall never forget this
     brave service.
 
@@ -2954,4 +2954,7 @@ You again sense %l demanding your attendance.
  C suffix:	return capitalized(root);
  p suffix:	return makeplural(root);
  P suffix:	return makeplural(capitalized(root));
+ s suffix:	return s_suffix(root);
+ S suffix:	return s_suffix(capitalized(root));
+ t suffix:	return strip_the_prefix(root);
 %E

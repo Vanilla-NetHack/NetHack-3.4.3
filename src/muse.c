@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)muse.c	3.2	96/04/29	*/
+/*	SCCS Id: @(#)muse.c	3.2	96/06/10	*/
 /*	Copyright (C) 1990 by Ken Arromdee			   */
 /* NetHack may be freely redistributed.  See license for details.  */
 
@@ -317,7 +317,7 @@ struct monst *mtmp;
 	}
 
 	if (levl[x][y].typ == STAIRS && !stuck && !immobile) {
-		if (x == xdnstair && y == ydnstair)
+		if (x == xdnstair && y == ydnstair && !is_floater(mtmp->data))
 			m.has_defense = MUSE_DOWNSTAIRS;
 		if (x == xupstair && y == yupstair && ledger_no(&u.uz) != 1)
 	/* Unfair to let the monsters leave the dungeon with the Amulet */
@@ -326,7 +326,7 @@ struct monst *mtmp;
 	} else if (levl[x][y].typ == LADDER && !stuck && !immobile) {
 		if (x == xupladder && y == yupladder)
 			m.has_defense = MUSE_UP_LADDER;
-		if (x == xdnladder && y == ydnladder)
+		if (x == xdnladder && y == ydnladder && !is_floater(mtmp->data))
 			m.has_defense = MUSE_DN_LADDER;
 	} else if (sstairs.sx && sstairs.sx == x && sstairs.sy == y) {
 		m.has_defense = MUSE_SSTAIRS;
@@ -478,7 +478,7 @@ struct monst *mtmp;
 	case MUSE_UNICORN_HORN:
 		if (vismon) {
 		    if (otmp)
-			pline("%s grasps %s!", Monnam(mtmp), doname(otmp));
+			pline("%s uses a unicorn horn!", Monnam(mtmp));
 		    else
 			pline("The tip of %s's horn glows!", mon_nam(mtmp));
 		}
@@ -1431,16 +1431,16 @@ skipmsg:
 		return 2;
 	case MUSE_POT_INVISIBILITY:
 		mquaffmsg(mtmp, otmp);
-		if (vis) {
+		mon_set_minvis(mtmp);
+		if (vismon && mtmp->minvis) {	/* was seen, now invisible */
 		    if (See_invisible)
-		        pline("%s body takes on a %s transparency.",
+			pline("%s body takes on a %s transparency.",
 			      s_suffix(Monnam(mtmp)),
 			      Hallucination ? "normal" : "strange");
 		    else
-		        pline("Suddenly you cannot see %s.", mon_nam(mtmp));
+			pline("Suddenly you cannot see %s.", mon_nam(mtmp));
+		    if (oseen) makeknown(POT_INVISIBILITY);
 		}
-		if (oseen) makeknown(POT_INVISIBILITY);
-		mon_set_minvis(mtmp);
 		if (otmp->cursed) you_aggravate(mtmp);
 		m_useup(mtmp, otmp);
 		return 2;

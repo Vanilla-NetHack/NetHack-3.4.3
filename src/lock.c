@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.2	96/04/28	*/
+/*	SCCS Id: @(#)lock.c	3.2	96/05/31	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -114,7 +114,7 @@ picklock()	/* try to open/close a lock */
 		    if (*in_rooms(u.ux+u.dx, u.uy+u.dy, SHOPBASE))
 			add_damage(u.ux+u.dx, u.uy+u.dy, 0L);
 		    newsym(u.ux+u.dx, u.uy+u.dy);
-	    } else if(xlock.door->doormask == D_LOCKED)
+	    } else if (xlock.door->doormask & D_LOCKED)
 		xlock.door->doormask = D_CLOSED;
 	    else xlock.door->doormask = D_LOCKED;
 	} else {
@@ -529,15 +529,18 @@ doopen()		/* try to open a door */
 		return(0);
 	}
 
-	if(!(door->doormask & D_CLOSED)) {
-	  switch(door->doormask) {
-	     case D_BROKEN: pline("This door is broken."); break;
-	     case D_NODOOR: pline("This doorway has no door."); break;
-	     case D_ISOPEN: pline("This door is already open."); break;
-	     default:	    pline("This door is locked."); break;
-	  }
-	    if(Blind) feel_location(x,y);
-	  return(0);
+	if (!(door->doormask & D_CLOSED)) {
+	    const char *mesg;
+
+	    switch (door->doormask) {
+	    case D_BROKEN: mesg = " is broken"; break;
+	    case D_NODOOR: mesg = "way has no door"; break;
+	    case D_ISOPEN: mesg = " is already open"; break;
+	    default:	   mesg = " is locked"; break;
+	    }
+	    pline("This door%s.", mesg);
+	    if (Blind) feel_location(x,y);
+	    return(0);
 	}
 
 	if(verysmall(uasmon)) {

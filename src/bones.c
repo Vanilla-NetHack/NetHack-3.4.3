@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.2	95/11/29	*/
+/*	SCCS Id: @(#)bones.c	3.2	96/07/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -273,7 +273,8 @@ savebones()
 		if(mtmp->mtame) mtmp->mtame = mtmp->mpeaceful = 0;
 	}
 	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
-		ttmp->tseen = ttmp->madeby_u = 0;
+		ttmp->madeby_u = 0;
+		ttmp->tseen = (ttmp->ttyp == HOLE);
 	}
 	resetobjs(fobj,FALSE);
 	resetobjs(level.buriedobjlist, FALSE);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)were.c	3.2	96/05/03	*/
+/*	SCCS Id: @(#)were.c	3.2	96/08/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -125,15 +125,31 @@ register boolean yours;
 }
 
 void
-you_were() {
-	char qbuf[80];
+you_were()
+{
+	char qbuf[QBUFSZ];
+
 	if(u.umonnum == u.ulycn) return;
 	if(Polymorph_control) {
-	    Sprintf(qbuf,"Do you want to change into a %s? ",
-					mons[u.ulycn].mname+4);
+	    /* `+4' => skip "were" prefix to get name of beast */
+	    Sprintf(qbuf, "Do you want to change into %s? ",
+		    an(mons[u.ulycn].mname+4));
 	    if(yn(qbuf) == 'n') return;
 	}
 	(void) polymon(u.ulycn);
+}
+
+void
+you_unwere(purify)
+boolean purify;
+{
+	if (purify) {
+	    You_feel("purified.");
+	    u.ulycn = NON_PM;	/* cure lycanthropy */
+	}
+	if (is_were(uasmon) &&
+		(!Polymorph_control || yn("Remain in beast form?") == 'n'))
+	    rehumanize();
 }
 
 #endif /* OVLB */

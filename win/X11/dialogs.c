@@ -290,6 +290,7 @@ positionpopup(w, bottom)
     Dimension width, height, b_width;
     int x, y, max_x, max_y;
     Window root, child;
+    XSizeHints *hints;
     int dummyx, dummyy;
     unsigned int dummymask;
     extern Widget toplevel;
@@ -326,4 +327,14 @@ positionpopup(w, bottom)
     XtSetArg(args[num_args], XtNx, x); num_args++;
     XtSetArg(args[num_args], XtNy, y); num_args++;
     XtSetValues(w, args, num_args);
+
+    /* Some older window managers ignore XtN{x,y}; hint the same values */
+    /* The {x,y} are not used by newer window managers; older ones need them */
+    XtRealizeWidget(w);
+    hints = XAllocSizeHints();
+    hints->flags = USPosition;
+    hints->x = x;
+    hints->y = y;
+    XSetWMNormalHints(XtDisplay(w), XtWindow(w), hints);
+    XFree(hints);
 }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.2	96/03/28	*/
+/*	SCCS Id: @(#)allmain.c	3.2	96/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -131,7 +131,7 @@ moveloop()
 			/* for the moment at least, you're in tiptop shape */
 			wtcap = UNENCUMBERED;
 			moverate = 0;
-		    } else if (u.mtimedone && u.mh < u.mhmax) {
+		    } else if (Upolyd && u.mh < u.mhmax) {
 			if (u.mh < 1) {
 			    rehumanize();
 			    moverate = 0;
@@ -165,7 +165,9 @@ moveloop()
 
 		    if (wtcap > MOD_ENCUMBER && flags.mv) {
 			if(!(wtcap < EXT_ENCUMBER ? moves%30 : moves%10)) {
-			    if(u.uhp > 1) {
+			    if (Upolyd && u.mh > 1) {
+				u.mh--;
+			    } else if (!Upolyd && u.uhp > 1) {
 				u.uhp--;
 			    } else {
 				You("pass out from exertion!");
@@ -326,7 +328,7 @@ moveloop()
 		}
 
 #ifdef WIZARD
-		if (flags.sanity_check)
+		if (iflags.sanity_check)
 		    sanity_check();
 #endif
 
@@ -437,7 +439,7 @@ newgame()
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 #ifdef NEWS
-	if(flags.news) display_file(NEWS, FALSE);
+	if(iflags.news) display_file(NEWS, FALSE);
 #endif
 	load_qtlist();	/* load up the quest text info */
 	quest_init();
@@ -487,7 +489,7 @@ do_positionbar()
 	if (upstair.sx &&
 	   (glyph_to_cmap(level.locations[upstair.sx][upstair.sy].glyph) ==
 	    S_upstair ||
- 	    glyph_to_cmap(level.locations[upstair.sx][upstair.sy].glyph) == 
+ 	    glyph_to_cmap(level.locations[upstair.sx][upstair.sy].glyph) ==
 	    S_upladder)) {
 		*p++ = '<';
 		*p++ = upstair.sx;
@@ -495,7 +497,7 @@ do_positionbar()
 	if (sstairs.sx &&
 	   (glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
 	    S_upstair ||
- 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) == 
+ 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
 	    S_upladder)) {
 		*p++ = '<';
 		*p++ = sstairs.sx;
@@ -513,7 +515,7 @@ do_positionbar()
 	if (sstairs.sx &&
 	   (glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
 	    S_dnstair ||
- 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) == 
+ 	    glyph_to_cmap(level.locations[sstairs.sx][sstairs.sy].glyph) ==
 	    S_dnladder)) {
 		*p++ = '>';
 		*p++ = sstairs.sx;

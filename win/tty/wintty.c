@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.2	96/03/16	*/
+/*	SCCS Id: @(#)wintty.c	3.2	96/08/18	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -123,7 +123,6 @@ static int clipy = 0, clipymax = 0;
 #endif /* CLIPPING */
 
 #if defined(USE_TILES) && defined(MSDOS)
-extern boolean tiles_on;
 extern void FDECL(adjust_cursor_flags, (struct WinDesc *));
 #endif
 
@@ -145,6 +144,8 @@ static void FDECL(set_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
 static void FDECL(unset_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
 static void FDECL(invert_all_on_page, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
 static void FDECL(invert_all, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
+static void FDECL(process_menu_window, (winid,struct WinDesc *));
+static void FDECL(process_text_window, (winid,struct WinDesc *));
 static tty_menu_item *FDECL(reverse, (tty_menu_item *));
 static const char * FDECL(compress_str, (const char *));
 static void FDECL(tty_putsym, (winid, int, int, CHAR_P));
@@ -197,7 +198,7 @@ winch()
 	cw->rows = ttyDisplay->rows;
 	cw->cols = ttyDisplay->cols;
 
-	if(flags.window_inited) {
+	if(iflags.window_inited) {
 	    cw = wins[WIN_MESSAGE];
 	    cw->curx = cw->cury = 0;
 
@@ -444,7 +445,7 @@ tty_askname()
 				backsp();       /* \b is visible on NT */
 # else
 #  if defined(MSDOS)
-				if (flags.grmode) {
+				if (iflags.grmode) {
 					backsp();
 				} else
 
@@ -466,7 +467,7 @@ tty_askname()
 		if (ct < (int)(sizeof plname) - 1) {
 #if defined(MICRO)
 # if defined(MSDOS)
-			if (flags.grmode) {
+			if (iflags.grmode) {
 				(void) putchar(c);
 			} else
 # endif
@@ -498,7 +499,7 @@ getret()
 	if(flags.standout)
 		standoutbeg();
 	xputs("Hit ");
-	xputs(flags.cbreak ? "space" : "return");
+	xputs(iflags.cbreak ? "space" : "return");
 	xputs(" to continue: ");
 	if(flags.standout)
 		standoutend();
@@ -543,7 +544,7 @@ tty_exit_nhwindows(str)
 #ifndef NO_TERMS	/*(until this gets added to the window interface)*/
     tty_shutdown();		/* cleanup termcap/terminfo/whatever */
 #endif
-    flags.window_inited = 0;
+    iflags.window_inited = 0;
 }
 
 winid
@@ -578,16 +579,16 @@ tty_create_nhwindow(type)
 	/* message window, 1 line long, very wide, top of screen */
 	newwin->offx = newwin->offy = 0;
 	/* sanity check */
-	if(flags.msg_history < 20) flags.msg_history = 20;
-	else if(flags.msg_history > 60) flags.msg_history = 60;
-	newwin->maxrow = newwin->rows = flags.msg_history;
+	if(iflags.msg_history < 20) iflags.msg_history = 20;
+	else if(iflags.msg_history > 60) iflags.msg_history = 60;
+	newwin->maxrow = newwin->rows = iflags.msg_history;
 	newwin->maxcol = newwin->cols = 0;
 	break;
     case NHW_STATUS:
 	/* status window, 2 lines long, full width, bottom of screen */
 	newwin->offx = 0;
 #if defined(USE_TILES) && defined(MSDOS)
-	if (flags.grmode) {
+	if (iflags.grmode) {
 		newwin->offy = ttyDisplay->rows-2;
 	} else
 #endif
@@ -879,6 +880,340 @@ invert_all(window, page_start, page_end, acc)
     }
 }
 
+static void
+process_menu_window(window, cw)
+winid window;
+struct WinDesc *cw;
+{
+    tty_menu_item *page_start, *page_end, *curr;
+    long count;
+    int n, curr_page, page_lines;
+    boolean finished, counting, reset_count;
+    char *cp, *rp, resp[QBUFSZ], gacc[QBUFSZ],
+	 *msave, morestr[QBUFSZ];
+
+    curr_page = page_lines = 0;
+    page_start = page_end = 0;
+    msave = cw->morestr;	/* save the morestr */
+    cw->morestr = morestr;
+    counting = FALSE;
+    count = 0L;
+    reset_count = TRUE;
+    finished = FALSE;
+
+    /* collect group accelerators; for PICK_NONE, they're ignored;
+       for PICK_ONE, only those which match exactly one entry will be
+       accepted; for PICK_ANY, those which match any entry are okay */
+    gacc[0] = '\0';
+    if (cw->how != PICK_NONE) {
+	int i, gcnt[128];
+#define GSELIDX(c) (c & 127)	/* guard against `signed char' */
+
+	for (i = 0; i < SIZE(gcnt); i++) gcnt[i] = 0;
+	for (n = 0, curr = cw->mlist; curr; curr = curr->next)
+	    if (curr->gselector) ++n,  ++gcnt[GSELIDX(curr->gselector)];
+
+	if (n > 0)	/* at least one group accelerator found */
+	    for (rp = gacc, curr = cw->mlist; curr; curr = curr->next)
+		if (curr->gselector && !index(gacc, curr->gselector) &&
+			(cw->how == PICK_ANY ||
+			    gcnt[GSELIDX(curr->gselector)] == 1)) {
+		    *rp++ = curr->gselector;
+		    *rp = '\0';	/* re-terminate for index() */
+		}
+    }
+
+    /* loop until finished */
+    while (!finished) {
+	if (reset_count) {
+	    counting = FALSE;
+	    count = 0;
+	} else
+	    reset_count = TRUE;
+
+	if (!page_start) {
+	    /* new page to be displayed */
+	    if (curr_page < 0 || curr_page >= cw->npages)
+		panic("bad menu screen page #%d", curr_page);
+
+	    /* clear screen */
+	    if (!cw->offx) {	/* if not corner, do clearscreen */
+		if(cw->offy) {
+		    tty_curs(window, 1, 0);
+		    cl_eos();
+		} else
+		    clear_screen();
+	    }
+
+	    /* collect accelerators */
+	    page_start = cw->plist[curr_page];
+	    page_end = cw->plist[curr_page + 1];
+	    rp = resp;
+	    for (page_lines = 0, curr = page_start;
+		    curr != page_end;
+		    page_lines++, curr = curr->next) {
+		if (curr->selector)
+		    *rp++ = curr->selector;
+
+		tty_curs(window, 1, page_lines);
+		if (cw->offx) cl_end();
+
+		(void) putchar(' ');
+		++ttyDisplay->curx;
+		/*
+		 * Don't use xputs() because (1) under unix it calls
+		 * tputstr() which will interpret a '*' as some kind
+		 * of padding information and (2) it calls xputc to
+		 * actually output the character.  We're faster doing
+		 * this.
+		 */
+		term_start_attr(curr->attr);
+		for (n = 0, cp = curr->str;
+		      *cp && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
+		      cp++, n++)
+		    if (n == 2 && curr->identifier.a_void != 0 &&
+						    curr->selected) {
+			if (curr->count == -1L)
+			    (void) putchar('+'); /* all selected */
+			else
+			    (void) putchar('#'); /* count selected */
+		    } else
+			(void) putchar(*cp);
+		term_end_attr(curr->attr);
+	    }
+	    *rp = 0;
+
+	    /* corner window - clear extra lines from last page */
+	    if (cw->offx) {
+		for (n = page_lines + 1; n < cw->maxrow; n++) {
+		    tty_curs(window, 1, n);
+		    cl_end();
+		}
+	    }
+
+	    /* set extra chars.. */
+	    Strcat(resp, default_menu_cmds);
+	    Strcat(resp, "0123456789\033\n\r");	/* counts, quit */
+	    Strcat(resp, gacc);			/* group accelerators */
+	    Strcat(resp, mapped_menu_cmds);
+
+	    if (cw->npages > 1)
+		Sprintf(cw->morestr, "(%d of %d)",
+			curr_page + 1, (int) cw->npages);
+	    else
+		Strcpy(cw->morestr, msave);
+
+	    tty_curs(window, 1, page_lines);
+	    cl_end();
+	    dmore(cw, resp);
+	} else {
+	    /* just put the cursor back... */
+	    tty_curs(window, (int) strlen(cw->morestr) + 2, page_lines);
+	    xwaitforspace(resp);
+	}
+
+	morc = map_menu_cmd(morc);
+	switch (morc) {
+	    case '0':
+		/* special case: '0' is also the default ball class */
+		if (!counting && index(gacc, morc)) goto group_accel;
+		/* fall through to count the zero */
+	    case '1': case '2': case '3': case '4':
+	    case '5': case '6': case '7': case '8': case '9':
+		count = (count * 10L) + (long) (morc - '0');
+		/*
+		 * It is debatable whether we should allow 0 to
+		 * start a count.  There is no difference if the
+		 * item is selected.  If not selected, then
+		 * "0b" could mean:
+		 *
+		 *	count starting zero:	"zero b's"
+		 *	ignore starting zero:	"select b"
+		 *
+		 * At present I don't know which is better.
+		 */
+		if (count != 0L) {	/* ignore leading zeros */
+		    counting = TRUE;
+		    reset_count = FALSE;
+		}
+		break;
+	    case '\033':	/* cancel - from counting or loop */
+		if (!counting) {
+		    /* deselect everything */
+		    for (curr = cw->mlist; curr; curr = curr->next) {
+			curr->selected = FALSE;
+			curr->count = -1L;
+		    }
+		    cw->flags |= WIN_CANCELLED;
+		    finished = TRUE;
+		}
+		/* else only stop count */
+		break;
+	    case '\0':		/* finished (commit) */
+	    case '\n':
+	    case '\r':
+		/* only finished if we are actually picking something */
+		if (cw->how != PICK_NONE) {
+		    finished = TRUE;
+		    break;
+		}
+		/* else fall through */
+	    case MENU_NEXT_PAGE:
+		if (curr_page != cw->npages - 1) {
+		    curr_page++;
+		    page_start = 0;
+		} else
+		    finished = TRUE;	/* questionable behavior */
+		break;
+	    case MENU_PREVIOUS_PAGE:
+		if (curr_page != 0) {
+		    --curr_page;
+		    page_start = 0;
+		}
+		break;
+	    case MENU_FIRST_PAGE:
+		if (curr_page != 0) {
+		    page_start = 0;
+		    curr_page = 0;
+		}
+		break;
+	    case MENU_LAST_PAGE:
+		if (curr_page != cw->npages - 1) {
+		    page_start = 0;
+		    curr_page = cw->npages - 1;
+		}
+		break;
+	    case MENU_SELECT_PAGE:
+		if (cw->how == PICK_ANY)
+		    set_all_on_page(window, page_start, page_end);
+		break;
+	    case MENU_UNSELECT_PAGE:
+		unset_all_on_page(window, page_start, page_end);
+		break;
+	    case MENU_INVERT_PAGE:
+		if (cw->how == PICK_ANY)
+		    invert_all_on_page(window, page_start, page_end, 0);
+		break;
+	    case MENU_SELECT_ALL:
+		if (cw->how == PICK_ANY) {
+		    set_all_on_page(window, page_start, page_end);
+		    /* set the rest */
+		    for (curr = cw->mlist; curr; curr = curr->next)
+			if (curr->identifier.a_void && !curr->selected)
+			    curr->selected = TRUE;
+		}
+		break;
+	    case MENU_UNSELECT_ALL:
+		unset_all_on_page(window, page_start, page_end);
+		/* unset the rest */
+		for (curr = cw->mlist; curr; curr = curr->next)
+		    if (curr->identifier.a_void && curr->selected) {
+			curr->selected = FALSE;
+			curr->count = -1;
+		    }
+		break;
+	    case MENU_INVERT_ALL:
+		if (cw->how == PICK_ANY)
+		    invert_all(window, page_start, page_end, 0);
+		break;
+	    default:
+		if (cw->how == PICK_NONE || !index(resp, morc)) {
+		    /* unacceptable input received */
+		    tty_nhbell();
+		    break;
+		} else if (index(gacc, morc)) {
+ group_accel:
+		    /* group accelerator; for the PICK_ONE case, we know that
+		       it matches exactly one item in order to be in gacc[] */
+		    invert_all(window, page_start, page_end, morc);
+		    if (cw->how == PICK_ONE) finished = TRUE;
+		    break;
+		}
+		/* find, toggle, and possibly update */
+		for (n = 0, curr = page_start;
+			curr != page_end;
+			n++, curr = curr->next)
+		    if (morc == curr->selector) {
+			if (curr->selected) {
+			    if (counting && count > 0) {
+				curr->count = count;
+				set_item_state(window, n, curr);
+			    } else { /* change state */
+				curr->selected = FALSE;
+				curr->count = -1L;
+				set_item_state(window, n, curr);
+			    }
+			} else {	/* !selected */
+			    if (counting && count > 0) {
+				curr->count = count;
+				curr->selected = TRUE;
+				set_item_state(window, n, curr);
+			    } else if (!counting) {
+				curr->selected = TRUE;
+				set_item_state(window, n, curr);
+			    }
+			    /* do nothing counting&&count==0 */
+			}
+
+			if (cw->how == PICK_ONE) finished = TRUE;
+			break;	/* from `for' loop */
+		    }
+		break;
+	}
+
+    } /* while */
+    cw->morestr = msave;
+}
+
+static void
+process_text_window(window, cw)
+winid window;
+struct WinDesc *cw;
+{
+    int i, n, attr;
+    register char *cp;
+
+    for (n = 0, i = 0; i < cw->maxrow; i++) {
+	if (!cw->offx && (n + cw->offy == ttyDisplay->rows - 1)) {
+	    tty_curs(window, 1, n);
+	    cl_end();
+	    dmore(cw, quitchars);
+	    if (morc == '\033') {
+		cw->flags |= WIN_CANCELLED;
+		break;
+	    }
+	    if (cw->offy) {
+		tty_curs(window, 1, 0);
+		cl_eos();
+	    } else
+		clear_screen();
+	    n = 0;
+	}
+	tty_curs(window, 1, n++);
+	if (cw->offx) cl_end();
+	if (cw->data[i]) {
+	    attr = cw->data[i][0] - 1;
+	    if (cw->offx) {
+		(void) putchar(' '); ++ttyDisplay->curx;
+	    }
+	    term_start_attr(attr);
+	    for (cp = &cw->data[i][1];
+		    *cp && (int) ++ttyDisplay->curx < (int) ttyDisplay->cols;
+		    cp++)
+		(void) putchar(*cp);
+	    term_end_attr(attr);
+	}
+    }
+    if (i == cw->maxrow) {
+	tty_curs(BASE_WINDOW, (int)cw->offx + 1,
+		 (cw->type == NHW_TEXT) ? (int) ttyDisplay->rows - 1 : n);
+	cl_end();
+	dmore(cw, quitchars);
+	if (morc == '\033')
+	    cw->flags |= WIN_CANCELLED;
+    }
+}
+
 /*ARGSUSED*/
 void
 tty_display_nhwindow(window, blocking)
@@ -886,8 +1221,6 @@ tty_display_nhwindow(window, blocking)
     boolean blocking;	/* with ttys, all windows are blocking */
 {
     register struct WinDesc *cw = 0;
-    int i, n, attr;
-    register char *cp;
 
     if(window == WIN_ERR || (cw = wins[window]) == (struct WinDesc *) 0)
 	panic(winpanicstr,  window);
@@ -906,7 +1239,7 @@ tty_display_nhwindow(window, blocking)
 	    ttyDisplay->toplin = 0;
 	cw->curx = cw->cury = 0;
 	if(!cw->active)
-	    flags.window_inited = TRUE;
+	    iflags.window_inited = TRUE;
 	break;
     case NHW_MAP:
 	end_glyphout();
@@ -920,6 +1253,7 @@ tty_display_nhwindow(window, blocking)
 	break;
     case NHW_TEXT:
 	cw->maxcol = ttyDisplay->cols; /* force full-screen mode */
+	/*FALLTHRU*/
     case NHW_MENU:
 	cw->active = 1;
 	/* avoid converting to uchar before calculations are finished */
@@ -940,323 +1274,10 @@ tty_display_nhwindow(window, blocking)
 	} else
 	    tty_clear_nhwindow(WIN_MESSAGE);
 
-	if (cw->mlist) {
-	    int curr_page, page_lines;
-	    tty_menu_item *page_start, *page_end, *curr;
-	    boolean finished, counting, reset_count;
-	    char *rp, resp[QBUFSZ], gacc[QBUFSZ], *msave, morestr[QBUFSZ];
-	    long count;
-
-	    curr_page = page_lines = 0;
-	    curr_page = 0;
-	    page_start = page_end = 0;
-	    msave = cw->morestr;	/* save the morestr */
-	    cw->morestr = morestr;
-	    counting = FALSE;
-	    count = 0;
-	    reset_count = TRUE;
-	    finished = FALSE;
-
-	    /* collect group accelerators when doing multiple pickups */
-	    gacc[0] = 0;
-	    if (cw->how == PICK_ANY) {
-		for (rp = gacc, curr = cw->mlist; curr; curr = curr->next) {
-		    if (curr->gselector && !index(gacc, curr->gselector)) {
-			*rp++ = curr->gselector;
-			*rp = 0;
-		    }
-		}
-		*rp = 0;
-	    }
-
-	    /* loop until finished */
-	    while (!finished) {
-		if (reset_count) {
-		    counting = FALSE;
-		    count = 0;
-		} else
-		    reset_count = TRUE;
-
-		if (!page_start) {
-		    /* new page to be displayed */
-		    if (curr_page < 0 || curr_page >= cw->npages)
-			panic("bad menu screen page #%d", curr_page);
-
-		    /* clear screen */
-		    if (!cw->offx) {	/* if not corner, do clearscreen */
-			if(cw->offy) {
-			    tty_curs(window, 1, 0);
-			    cl_eos();
-			} else
-			    clear_screen();
-		    }
-
-		    /* collect accelerators */
-		    page_start = cw->plist[curr_page];
-		    page_end = cw->plist[curr_page+1];
-		    rp = resp;
-		    for (page_lines = 0, curr = page_start;
-			    curr != page_end; page_lines++, curr = curr->next) {
-			if (curr->selector)
-			    *rp++ = curr->selector;
-
-			tty_curs(window, 1, page_lines);
-			if(cw->offx) cl_end();
-
-			(void) putchar(' ');
-			++ttyDisplay->curx;
-			/*
-			 * Don't use xputs() because (1) under unix it calls
-			 * tputstr() which will interpret a '*' as some kind
-			 * of padding information and (2) it calls xputc to
-			 * actually output the character.  We're faster doing
-			 * this.
-			 */
-			term_start_attr(curr->attr);
-			for(n = 0, cp = curr->str; *cp &&
-			    (int)++ttyDisplay->curx < (int) ttyDisplay->cols;
-			    cp++, n++)
-			    if (n == 2 && curr->identifier.a_void != 0 &&
-							    curr->selected) {
-				if (curr->count == -1L)
-				    (void) putchar('+'); /* all selected */
-				else
-				    (void) putchar('#'); /* count selected */
-			    } else
-				(void) putchar(*cp);
-			term_end_attr(curr->attr);
-		    }
-		    *rp = 0;
-
-		    /* corner window - clear extra lines from last page */
-		    if (cw->offx) {
-			for (n = page_lines+1; n < cw->maxrow; n++) {
-			    tty_curs(window, 1, n);
-			    cl_end();
-			}
-		    }
-
-		    /* set extra chars.. */
-		    Strcat(resp, default_menu_cmds);
-		    Strcat(resp, "0123456789\033\n\r");	/* counts, quit */
-		    Strcat(resp, gacc);			/* group accelerators */
-		    Strcat(resp, mapped_menu_cmds);
-
-		    if (cw->npages > 1)
-			Sprintf(cw->morestr, "(%d of %d)",
-				curr_page+1, (int) cw->npages);
-		    else
-			Strcpy(cw->morestr, msave);
-
-		    tty_curs(window, 1, page_lines);
-		    cl_end();
-		    dmore(cw, resp);
-		} else {
-		    /* just put the cursor back... */
-		    tty_curs(window, strlen(cw->morestr)+2, page_lines);
-		    xwaitforspace(resp);
-		}
-
-		morc = map_menu_cmd(morc);
-		switch (morc) {
-		    case '0':
-			/* special case: '0' is also the default ball class */
-			if (!counting && index(gacc, morc)) {
-			    invert_all(window, page_start, page_end, morc);
-			    break;
-			}
-			/* fall through to count the zero */
-		    case '1': case '2': case '3': case '4':
-		    case '5': case '6': case '7': case '8': case '9':
-			count = (count * 10L) + (long) (morc - '0');
-			/*
-			 * It is debatable whether we should allow 0 to
-			 * start a count.  There is no difference if the
-			 * item is selected.  If not selected, then
-			 * "0b" could mean:
-			 *
-			 *	count starting zero:	"zero b's"
-			 *	ignore starting zero:	"select b"
-			 *
-			 * At present I don't know which is better.
-			 */
-			if (count != 0L) {	/* ignore leading zeros */
-			    counting = TRUE;
-			    reset_count = FALSE;
-			}
-			break;
-		    case '\033':	/* cancel - from counting or loop */
-			if (!counting) {
-			    /* deselect everything */
-			    for (curr = cw->mlist; curr; curr = curr->next) {
-				curr->selected = FALSE;
-				curr->count = -1;
-			    }
-			    cw->flags |= WIN_CANCELLED;
-			    finished = TRUE;
-			}
-			/* else only stop count */
-			break;
-		    case '\0':		/* finished (commit) */
-		    case '\n':
-		    case '\r':
-			/* only finished if we are actually picking something */
-			if (cw->how != PICK_NONE) {
-			    finished = TRUE;
-			    break;
-			}
-			/* else fall through */
-		    case MENU_NEXT_PAGE:
-			if (curr_page != cw->npages-1) {
-			    curr_page++;
-			    page_start = 0;
-			} else
-			    finished = TRUE;	/* questionable behavior */
-			break;
-		    case MENU_PREVIOUS_PAGE:
-			if (curr_page != 0) {
-			    --curr_page;
-			    page_start = 0;
-			}
-			break;
-		    case MENU_FIRST_PAGE:
-			if (curr_page != 0) {
-			    page_start = 0;
-			    curr_page = 0;
-			}
-			break;
-		    case MENU_LAST_PAGE:
-			if (curr_page != cw->npages-1) {
-			    page_start = 0;
-			    curr_page = cw->npages-1;
-			}
-			break;
-		    case MENU_SELECT_PAGE:
-			if (cw->how != PICK_ONE)
-			    set_all_on_page(window, page_start, page_end);
-			break;
-		    case MENU_UNSELECT_PAGE:
-			if (cw->how != PICK_ONE)
-			    unset_all_on_page(window, page_start, page_end);
-			break;
-		    case MENU_INVERT_PAGE:
-			if (cw->how != PICK_ONE)
-			    invert_all_on_page(window, page_start, page_end, 0);
-			break;
-		    case MENU_SELECT_ALL:
-			if (cw->how == PICK_ONE) break;
-
-			set_all_on_page(window, page_start, page_end);
-			/* set the rest */
-			for (curr = cw->mlist; curr; curr = curr->next)
-			    if (curr->identifier.a_void && !curr->selected)
-				curr->selected = TRUE;
-			break;
-		    case MENU_UNSELECT_ALL:
-			if (cw->how == PICK_ONE) break;
-
-			unset_all_on_page(window, page_start, page_end);
-			/* unset the rest */
-			for (curr = cw->mlist; curr; curr = curr->next)
-			    if (curr->identifier.a_void && curr->selected) {
-				curr->selected = FALSE;
-				curr->count = -1;
-			    }
-			break;
-		    case MENU_INVERT_ALL:
-			if (cw->how == PICK_ONE) break;
-			invert_all(window, page_start, page_end, 0);
-			break;
-		    default:
-			if (cw->how != PICK_NONE && index(resp, morc)) {
-			    int nn;	/* nth row */
-			    tty_menu_item *ncurr;
-
-			    if (index(gacc, morc)) {
-				invert_all(window, page_start, page_end, morc);
-			    } else {
-				/* find, toggle, and possibly update */
-				for (nn = 0, ncurr = page_start;
-						ncurr != page_end;
-						nn++, ncurr = ncurr->next)
-				    if (morc == ncurr->selector) {
-					if (ncurr->selected) {
-					    if (counting && count > 0) {
-						ncurr->count = count;
-						set_item_state(window,nn,ncurr);
-					    } else { /* change state */
-						ncurr->selected = FALSE;
-						ncurr->count = -1L;
-						set_item_state(window,nn,ncurr);
-					    }
-					} else {	/* !selected */
-					    if (counting && count > 0) {
-						ncurr->count = count;
-						ncurr->selected = TRUE;
-						set_item_state(window,nn,ncurr);
-					    } else if (!counting) {
-						ncurr->selected = TRUE;
-						set_item_state(window,nn,ncurr);
-					    }
-					    /* do nothing counting&&count==0 */
-					}
-
-					if (cw->how == PICK_ONE)
-					    finished = TRUE;
-					break;
-				    }
-			    }
-			} else
-			    tty_nhbell();
-			break;
-		}
-
-	    } /* while */
-	    cw->morestr = msave;
-
-	} else {
-
-	    for(n=0, i=0; i<cw->maxrow; i++) {
-		if(!cw->offx && (n+cw->offy == ttyDisplay->rows-1)) {
-		    tty_curs(window, 1, n);
-		    cl_end();
-		    dmore(cw, quitchars);
-		    if(morc == '\033') {
-			cw->flags |= WIN_CANCELLED;
-			break;
-		    }
-		    if(cw->offy) {
-			tty_curs(window, 1, 0);
-			cl_eos();
-		    } else
-			clear_screen();
-		    n = 0;
-		}
-		tty_curs(window, 1, n++);
-		if(cw->offx) cl_end();
-		if(cw->data[i]) {
-		    attr = cw->data[i][0]-1;
-		    if(cw->offx) {
-			(void) putchar(' '); ++ttyDisplay->curx;
-		    }
-		    term_start_attr(attr);
-		    for(cp = &cw->data[i][1]; *cp &&
-			(int)++ttyDisplay->curx < (int) ttyDisplay->cols; cp++)
-			    (void) putchar(*cp);
-		    term_end_attr(attr);
-		}
-	    }
-	    if(i == cw->maxrow) {
-		if(cw->type == NHW_TEXT)
-		    tty_curs(BASE_WINDOW, (int)cw->offx+1, (int)ttyDisplay->rows-1);
-		else
-		    tty_curs(BASE_WINDOW, (int)cw->offx+1, n);
-		cl_end();
-		dmore(cw, quitchars);
-		if (morc == '\033')
-		    cw->flags |= WIN_CANCELLED;
-	    }
-	}
+	if (cw->mlist)
+	    process_menu_window(window, cw);
+	else
+	    process_text_window(window, cw);
 	break;
     }
     cw->active = 1;
@@ -1286,7 +1307,7 @@ tty_dismiss_nhwindow(window)
     case NHW_MENU:
     case NHW_TEXT:
 	if(cw->active) {
-	    if (flags.window_inited) {
+	    if (iflags.window_inited) {
 		/* otherwise dismissing the text endwin after other windows
 		 * are dismissed tries to redraw the map and panics.  since
 		 * the whole reason for dismissing the other windows was to
@@ -1314,7 +1335,7 @@ tty_destroy_nhwindow(window)
     if(cw->active)
 	tty_dismiss_nhwindow(window);
     if(cw->type == NHW_MESSAGE)
-	flags.window_inited = 0;
+	iflags.window_inited = 0;
     if(cw->type == NHW_MAP)
 	clear_screen();
 
@@ -1972,7 +1993,7 @@ docorner(xmin, ymax)
 	if (y<(int) cw->offy || y+clipy > ROWNO)
 		continue; /* only refresh board */
 #if defined(USE_TILES) && defined(MSDOS)
-	if (tiles_on)
+	if (iflags.tile_view)
 		row_refresh((xmin/2)+clipx-((int)cw->offx/2),COLNO-1,y+clipy-(int)cw->offy);
 	else
 #endif
@@ -2015,7 +2036,7 @@ int in_ch;
     register char ch = (char)in_ch;
 
 # if defined(ASCIIGRAPH) && !defined(NO_TERMS)
-    if (flags.IBMgraphics)
+    if (iflags.IBMgraphics)
 	/* IBM-compatible displays don't need other stuff */
 	(void) putchar(ch);
     else if (ch & 0x80) {
@@ -2101,14 +2122,14 @@ tty_print_glyph(window, x, y, glyph)
 #ifdef TEXTCOLOR
     int	    color;
 
-#define zap_color(n)  color = flags.use_color ? zapcolors[n] : NO_COLOR
-#define cmap_color(n) color = flags.use_color ? defsyms[n].color : NO_COLOR
-#define obj_color(n)  color = flags.use_color ? objects[n].oc_color : NO_COLOR
-#define mon_color(n)  color = flags.use_color ? mons[n].mcolor : NO_COLOR
-#define pet_color(n)  color = flags.use_color ? mons[n].mcolor :	      \
+#define zap_color(n)  color = iflags.use_color ? zapcolors[n] : NO_COLOR
+#define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
+#define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
+#define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
+#define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :	      \
 				/* If no color, try to hilite pets; black  */ \
 				/* should be HI				   */ \
-				((flags.hilite_pet && has_color(CLR_BLACK)) ?     \
+				((iflags.hilite_pet && has_color(CLR_BLACK)) ?     \
 							CLR_BLACK : NO_COLOR)
 
 # else /* no text color */
@@ -2185,7 +2206,7 @@ tty_print_glyph(window, x, y, glyph)
     }
 #endif /* TEXTCOLOR */
 #if defined(USE_TILES) && defined(MSDOS)
-    if (flags.grmode && tiles_on)
+    if (iflags.grmode && iflags.tile_view)
       xputg(glyph,(int)ch);
     else
 #endif

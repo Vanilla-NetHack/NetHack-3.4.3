@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)extern.h	3.2	96/05/05	*/
+/*	SCCS Id: @(#)extern.h	3.2	96/10/21	*/
 /* Copyright (c) Steve Creps, 1988.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,7 +14,7 @@ E long *FDECL(alloc, (unsigned int));
 #endif
 E char *FDECL(fmt_ptr, (const genericptr,char *));
 
-/* This next pre-processor directive covers almost the entire file, 
+/* This next pre-processor directive covers almost the entire file,
  * interrupted only occasionally to pick up specific functions as needed. */
 #if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
 
@@ -203,7 +203,7 @@ E const char *FDECL(level_distance, (d_level *));
 E void FDECL(use_crystal_ball, (struct obj *));
 E void NDECL(do_mapping);
 E void NDECL(do_vicinity_map);
-E int FDECL(exposed_sdoor_mask, (struct rm *));
+E void FDECL(cvt_sdoor_to_door, (struct rm *));
 #ifdef USE_TRAMPOLI
 E void FDECL(findone, (int,int,genericptr_t));
 E void FDECL(openone, (int,int,genericptr_t));
@@ -323,7 +323,7 @@ E char *FDECL(self_pronoun, (const char *,const char *));
 #ifdef REINCARNATION
 E const char *NDECL(roguename);
 #endif
-E struct obj *FDECL(replobj, 
+E struct obj *FDECL(replobj,
 		(struct obj *, int, genericptr_t, int, const char *));
 /* ### do_wear.c ### */
 
@@ -715,6 +715,7 @@ E struct obj *FDECL(display_cinventory,(struct obj *));
 E struct obj *FDECL(display_minventory,(struct monst *,int));
 E int NDECL(dotypeinv);
 E int NDECL(dolook);
+E void FDECL(feel_cockatrice, (struct obj *,BOOLEAN_P));
 E void FDECL(stackobj, (struct obj *));
 E int NDECL(doprgold);
 E int NDECL(doprwep);
@@ -730,14 +731,14 @@ E int FDECL(count_unpaid, (struct obj *));
 
 /* ### ioctl.c ### */
 
-#if defined(UNIX) || defined(__beos__)
+#if defined(UNIX) || defined(__BEOS__)
 E void NDECL(getwindowsz);
 E void NDECL(getioctls);
 E void NDECL(setioctls);
 # ifdef SUSPEND
 E int NDECL(dosuspend);
 # endif /* SUSPEND */
-#endif /* UNIX || __beos__ */
+#endif /* UNIX || __BEOS__ */
 
 /* ### light.c ### */
 
@@ -1010,6 +1011,7 @@ E void NDECL(dmonsfree);
 E void FDECL(monfree, (struct monst *));
 E void FDECL(replmon, (struct monst *,struct monst *));
 E void FDECL(relmon, (struct monst *));
+E struct obj *FDECL(mlifesaver, (struct monst *));
 E void FDECL(mondead, (struct monst *));
 E void FDECL(mondied, (struct monst *));
 E void FDECL(mongone, (struct monst *));
@@ -1223,6 +1225,8 @@ E char *FDECL(The, (const char *));
 E char *FDECL(the, (const char *));
 E char *FDECL(aobjnam, (struct obj *,const char *));
 E char *FDECL(Doname2, (struct obj *));
+E char *FDECL(yname, (struct obj *));
+E char *FDECL(Yname2, (struct obj *));
 E char *FDECL(makeplural, (const char *));
 E char *FDECL(makesingular, (const char *));
 E struct obj *FDECL(readobjnam, (char *));
@@ -1276,7 +1280,6 @@ E void FDECL(getreturn, (const char *));
 E void VDECL(msmsg, (const char *,...));
 # endif
 E FILE *FDECL(fopenp, (const char *,const char *));
-E void FDECL(msexit, (int));
 #endif /* MICRO */
 
 /* ### pctty.c ### */
@@ -1403,7 +1406,7 @@ E int FDECL(move_special, (struct monst *,BOOLEAN_P,SCHAR_P,BOOLEAN_P,BOOLEAN_P,
 E char FDECL(temple_occupied, (char *));
 E int FDECL(pri_move, (struct monst *));
 E void FDECL(priestini, (d_level *,struct mkroom *,int,int,BOOLEAN_P));
-E char *FDECL(priestname, (struct monst *));
+E char *FDECL(priestname, (struct monst *,char *));
 E boolean FDECL(p_coaligned, (struct monst *));
 E struct monst *FDECL(findpriest, (CHAR_P));
 E void FDECL(intemple, (int));
@@ -1731,7 +1734,8 @@ E boolean FDECL(rust_dmg, (struct obj *,const char *,int,BOOLEAN_P));
 E void FDECL(grease_protect, (struct obj *,const char *,BOOLEAN_P));
 E struct trap *FDECL(maketrap, (int,int,int));
 E void FDECL(fall_through, (BOOLEAN_P));
-E void FDECL(activate_statue_trap, (struct trap *,XCHAR_P,XCHAR_P));
+E struct monst *FDECL(activate_statue_trap,
+			(struct trap *,XCHAR_P,XCHAR_P,BOOLEAN_P));
 E void FDECL(dotrap, (struct trap *));
 E void FDECL(seetrap, (struct trap *));
 E int FDECL(mintrap, (struct monst *));
@@ -1784,14 +1788,14 @@ E void NDECL(port_help);
 
 /* ### unixtty.c ### */
 
-#if defined(UNIX) || defined(__beos__)
+#if defined(UNIX) || defined(__BEOS__)
 E void NDECL(gettty);
 E void FDECL(settty, (const char *));
 E void NDECL(setftty);
 E void NDECL(intron);
 E void NDECL(introff);
 E void VDECL(error, (const char *,...)) PRINTF_F(1,2);
-#endif /* UNIX || __beos__ */
+#endif /* UNIX || __BEOS__ */
 
 /* ### unixunix.c ### */
 
@@ -1825,7 +1829,8 @@ E int NDECL(doextversion);
 #ifdef MICRO
 E boolean FDECL(comp_times, (long));
 #endif
-E boolean FDECL(check_version, (unsigned long *,const char *,BOOLEAN_P));
+E boolean FDECL(check_version, (struct version_info *,
+				const char *,BOOLEAN_P));
 
 /* ### video.c ### */
 
@@ -1835,6 +1840,7 @@ E int FDECL(assign_video, (char *));
 E void NDECL(gr_init);
 E void NDECL(gr_finish);
 # endif
+E void FDECL(tileview,(BOOLEAN_P));
 #endif
 #ifdef VIDEOSHADES
 E int FDECL(assign_videoshades, (char *));
@@ -1946,8 +1952,8 @@ E int NDECL(dbon);
 E int NDECL(enhance_weapon_skill);
 E void FDECL(unrestrict_weapon_skill, (int));
 E void FDECL(use_skill, (int));
-E void NDECL(add_weapon_skill);
-E void NDECL(lose_weapon_skill);
+E void FDECL(add_weapon_skill, (int));
+E void FDECL(lose_weapon_skill, (int));
 E int FDECL(weapon_type, (struct obj *));
 E int FDECL(weapon_hit_bonus, (struct obj *));
 E int FDECL(weapon_dam_bonus, (struct obj *));
@@ -1960,6 +1966,7 @@ E void FDECL(were_change, (struct monst *));
 E void FDECL(new_were, (struct monst *));
 E boolean FDECL(were_summon, (struct permonst *,BOOLEAN_P));
 E void NDECL(you_were);
+E void FDECL(you_unwere, (BOOLEAN_P));
 
 /* ### wield.c ### */
 
@@ -1969,7 +1976,7 @@ E int NDECL(dowield);
 E void FDECL(erode_weapon, (BOOLEAN_P));
 E int FDECL(chwepon, (struct obj *,int));
 E int FDECL(welded, (struct obj *));
-E void FDECL(weldmsg, (struct obj *,BOOLEAN_P));
+E void FDECL(weldmsg, (struct obj *));
 
 /* ### windows.c ### */
 

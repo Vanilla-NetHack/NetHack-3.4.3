@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)uhitm.c	3.2	96/05/23	*/
+/*	SCCS Id: @(#)uhitm.c	3.2	96/10/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -325,6 +325,7 @@ register int thrown;
 	int type;
 	struct obj *monwep;
 #endif /* WEAPON_SKILLS */
+	char yourbuf[BUFSZ];
 
 	wakeup(mon);
 	if(!obj) {	/* attack with bare hands */
@@ -389,8 +390,9 @@ register int thrown;
 			monwep->owornmask &= ~W_WEP;
 			MON_NOWEP(mon);
 			mon->weapon_check = NEED_WEAPON;
-			pline("%s %s shatters from the force of your blow!",
-			      s_suffix(Monnam(mon)), xname(monwep));
+			pline("%s %s shatter%s from the force of your blow!",
+			      s_suffix(Monnam(mon)), xname(monwep),
+			      (monwep->quan) == 1L ? "s" : "");
 			m_useup(mon, monwep);
 			/* If someone just shattered MY weapon, I'd flee! */
 			if (rn2(4) && !mon->mflee) {
@@ -444,23 +446,30 @@ register int thrown;
 		    }
 		}
 	    } else if(obj->oclass == POTION_CLASS) {
-			if (obj->quan > 1L) setworn(splitobj(obj, 1L), W_WEP);
-			else setuwep((struct obj *)0);
-			freeinv(obj);
-			potionhit(mon,obj);
-			hittxt = TRUE;
-			if (mdat == &mons[PM_SHADE])
-			    tmp = 0;
-			else
-			    tmp = 1;
+		if (obj->quan > 1L)
+		    setworn(splitobj(obj, 1L), W_WEP);
+		else
+		    setuwep((struct obj *)0);
+		freeinv(obj);
+		potionhit(mon, obj);
+		if (mon->mhp <= 0) return FALSE;	/* killed */
+		hittxt = TRUE;
+		/* in case potion effect causes transformation */
+		mdat = mon->data;
+		tmp = (mdat == &mons[PM_SHADE]) ? 0 : 1;
 	    } else {
+		boolean shade_aware = FALSE;
+
 		switch(obj->otyp) {
-		    case HEAVY_IRON_BALL:
-			tmp = rnd(25); break;
-		    case BOULDER:
-			tmp = rnd(20); break;
+		    case BOULDER:		/* 1d20 */
+		    case HEAVY_IRON_BALL:	/* 1d25 */
+		    case IRON_CHAIN:		/* 1d4+1 */
+			tmp = dmgval(obj, mon);
+			shade_aware = TRUE;	/* dmgval handles it */
+			break;
 		    case MIRROR:
-			You("break your mirror.  That's bad luck!");
+			You("break %s mirror.  That's bad luck!",
+			    shk_your(yourbuf, obj));
 			change_luck(-2);
 			useup(obj);
 			obj = (struct obj *) 0;
@@ -469,7 +478,8 @@ register int thrown;
 			break;
 #ifdef TOURIST
 		    case EXPENSIVE_CAMERA:
-	You("succeed in destroying your camera.  Congratulations!");
+			You("succeed in destroying %s camera.  Congratulations!",
+			    shk_your(yourbuf, obj));
 			useup(obj);
 			return(TRUE);
 #endif
@@ -563,12 +573,12 @@ register int thrown;
 		    case CREAM_PIE:
 		    case BLINDING_VENOM:
 			/* note: resists_blnd() does not apply here */
-			if (Blind || !haseyes(mdat))
+			if (Blind || !haseyes(mdat) || u.uswallow) {
 			    pline(obj->otyp==CREAM_PIE ? "Splat!" : "Splash!");
-			else if (obj->otyp == BLINDING_VENOM)
+			} else if (obj->otyp == BLINDING_VENOM) {
 			    pline_The("venom blinds %s%s!", mon_nam(mon),
 					mon->mcansee ? "" : " further");
-			else {
+			} else {
 			    char *whom = mon_nam(mon);
 			    /* note: s_suffix returns a modifiable buffer */
 			    if (haseyes(mdat) && mdat != &mons[PM_FLOATING_EYE])
@@ -577,7 +587,7 @@ register int thrown;
 			}
 			if(mon->msleep) mon->msleep = 0;
 			setmangry(mon);
-			if(haseyes(mon->data)) {
+			if (haseyes(mon->data) && !u.uswallow) {
 			    mon->mcansee = 0;
 			    tmp = rn1(25, 21);
 			    if(((int) mon->mblinded + tmp) > 127)
@@ -612,7 +622,8 @@ register int thrown;
 			else tmp = rnd(tmp);
 			if(tmp > 6) tmp = 6;
 		}
-		if (mdat == &mons[PM_SHADE] && obj &&
+
+		if (!shade_aware && mdat == &mons[PM_SHADE] && obj &&
 				objects[obj->otyp].oc_material != SILVER)
 		    tmp = 0;
 	    }
@@ -652,14 +663,19 @@ register int thrown;
 		tmp += rnd(6);
 	    else poiskilled = TRUE;
 	}
-	if (tmp < 1 && !hittxt) {
+	if (tmp < 1) {
+	    /* make sure that negative damage adjustment can't result
+	       in inadvertently boosting the victim's hit points */
+	    tmp = 0;
 	    if (mdat == &mons[PM_SHADE]) {
-		Your("attack passes harmlessly through %s.",
+		if (!hittxt) {
+		    Your("attack passes harmlessly through %s.",
 			mon_nam(mon));
-		hittxt = TRUE;
-		tmp = 0;
-	    } else
-		tmp = 1;
+		    hittxt = TRUE;
+		}
+	    } else {
+		if (get_dmg_bonus) tmp = 1;
+	    }
 	}
 
 #ifdef WEAPON_SKILLS
@@ -789,6 +805,8 @@ struct attack *mattk;
 #ifdef TOURIST
 	if (!obj) obj = which_armor(mdef, W_ARMU);
 #endif
+	if (mattk->adtyp == AD_DRIN) obj = which_armor(mdef, W_ARMH);
+
 	/* if defender's cloak/armor is greased, attacker slips off */
 	if (obj && (obj->greased || obj->otyp == OILSKIN_CLOAK)) {
 	    You("%s %s %s %s!",
@@ -1086,6 +1104,8 @@ register struct attack *mattk;
 		    tmp = 0;
 		    break;
 		}
+		if (m_slips_free(mdef, mattk)) break;
+
 		if ((mdef->misc_worn_check & W_ARMH) && rn2(8)) {
 		    pline("%s helmet blocks your attack to %s head.",
 			  s_suffix(Monnam(mdef)), his[pronoun_gender(mdef)]);

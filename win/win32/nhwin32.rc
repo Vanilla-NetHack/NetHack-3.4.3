@@ -4,7 +4,7 @@
 
 #include "..\include\win32api.h"
 #include "..\include\nhwin32.h"
-#include "..\include\patchlev.h"
+#include "..\include\patchlevel.h"
 
 NHIcon ICON NetHack_.ico
 

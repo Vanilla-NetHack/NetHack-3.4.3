@@ -131,8 +131,6 @@ extern int attrib_text_normal;	/* text mode normal attribute */
 extern int attrib_gr_normal;	/* graphics mode normal attribute */
 extern int attrib_text_intense;	/* text mode intense attribute */
 extern int attrib_gr_intense;	/* graphics mode intense attribute */
-extern boolean tiles_on;
-extern boolean traditional;
 extern boolean inmap;		/* in the map window */
 
 /*
@@ -154,7 +152,6 @@ STATIC_VAR struct map_struct {
 	map[y][x].ch = S_stone; map[y][x].attr = 0;} }
 # define TOP_MAP_ROW 1
 #  if defined(OVLB)
-boolean overview;
 STATIC_VAR int vgacmap[CLR_MAX] = {0,3,5,9,4,8,12,14,11,2,6,7,1,8,12,13};
 STATIC_VAR int viewport_size = 40;
 STATIC_VAR char masktable[8]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
@@ -184,7 +181,6 @@ int vp2[SCREENPLANES] = {1,2,4,8};
 #  else
 extern int vgacmap[CLR_MAX];
 extern int viewport_size;
-extern boolean overview;
 extern char masktable[8];
 extern char bittable[8];
 extern char defpalette[];
@@ -257,7 +253,7 @@ int colour;
 	}
 	outportb(0x3ce,5);
 	outportb(0x3cf,0);
-	if (tiles_on) vga_clearmap();
+	if (iflags.tile_view) vga_clearmap();
 	vga_gotoloc(0,0);	/* is this needed? */
 }
 
@@ -397,9 +393,9 @@ int ch;
 	map[row - TOP_MAP_ROW][col].ch = ch;
 	attr = (g_attribute == 0) ? attrib_gr_normal : g_attribute;
 	map[row - TOP_MAP_ROW][col].attr = attr;
-	if (traditional) {
+	if (iflags.traditional_view) {
 	    vga_WriteChar((unsigned char)ch,col,row,attr);
-	} else if (!overview) {
+	} else if (!iflags.over_view) {
 	    if ((col >= clipx) && (col <= clipxmax)) {
 		if (!ReadPlanarTileFile(glyph2tile[glyphnum], &planecell))
 			vga_DisplayCell(planecell, 
@@ -448,7 +444,8 @@ int x, y;
 	extern boolean restoring;
 	int oldx = clipx;
 
-	if (!tiles_on || overview || traditional) return;
+	if (!iflags.tile_view || iflags.over_view || iflags.traditional_view)
+		return;
 
 	if (x < clipx + 5) {
 		clipx = max(0, x - (viewport_size / 2));
@@ -500,7 +497,7 @@ boolean clearfirst;
 	for (x = clipx; x <= clipxmax; ++x)
 		for (y = 0; y < ROWNO; ++y) {
 #    endif
-		    if (traditional) {
+		    if (iflags.traditional_view) {
 			if (!(clearfirst && map[y][x].ch == S_stone))
 				vga_WriteChar(
 					(unsigned char)map[y][x].ch,
@@ -508,7 +505,7 @@ boolean clearfirst;
 		    } else {
 		      t = map[y][x].glyph;
 		      if (!(clearfirst && t == cmap_to_glyph(S_stone))) {
-			if (!overview) {
+			if (!iflags.over_view) {
 			  	if (!ReadPlanarTileFile(glyph2tile[t], 
 				    &planecell)) {
 					vga_DisplayCell(planecell,
@@ -540,7 +537,7 @@ boolean left;
 	int x;
 
 /*	pline("Into userpan"); */
-	if (overview || traditional) return;
+	if (iflags.over_view || iflags.traditional_view) return;
 	if (left)
 		x = min(COLNO - 1, clipxmax + 10);
 	else 
@@ -556,19 +553,16 @@ boolean on;
 {
 /*	vga_HideCursor(); */
 	if (on) {
-		overview = TRUE;
+		iflags.over_view = TRUE;
 		clipx = 0;
 		clipxmax = CO - 1;
 	} else {
-		overview = FALSE;
+		iflags.over_view = FALSE;
 		clipx = max(0, (curcol - viewport_size / 2));
 		if (clipx > ((CO - 1) - viewport_size)) 
 			clipx = (CO - 1) - viewport_size;
      		clipxmax = clipx + (viewport_size - 1);
 	}
-	positionbar();
-	vga_redrawmap(1);
-	vga_DrawCursor();
 }
 
 void vga_traditional(on)
@@ -577,16 +571,22 @@ boolean on;
 /*	vga_HideCursor(); */
 	if (on) {
 /*		switch_graphics(ASCII_GRAPHICS); */
-		traditional = TRUE;
+		iflags.traditional_view = TRUE;
 		clipx = 0;
 		clipxmax = CO - 1;
 	} else {
-		traditional = FALSE;
-		clipx = max(0, (curcol - viewport_size / 2));
-		if (clipx > ((CO - 1) - viewport_size)) 
-			clipx = (CO - 1) - viewport_size;
-     		clipxmax = clipx + (viewport_size - 1);
+		iflags.traditional_view = FALSE;
+		if (!iflags.over_view) {
+			clipx = max(0, (curcol - viewport_size / 2));
+			if (clipx > ((CO - 1) - viewport_size)) 
+				clipx = (CO - 1) - viewport_size;
+     			clipxmax = clipx + (viewport_size - 1);
+		}
 	}
+}
+
+void vga_refresh()
+{
 	positionbar();
 	vga_redrawmap(1);
 	vga_DrawCursor();
@@ -687,9 +687,9 @@ void vga_Init(void)
 	raw_printf("Reverting to TTY mode, tile initialization failure (%d).",
 		tilefailure);
 	wait_synch();
-	flags.usevga = 0;
-	tiles_on = FALSE;
-	overview = FALSE;
+	iflags.usevga = 0;
+	iflags.tile_view = FALSE;
+	iflags.over_view = FALSE;
 	CO = 80;
 	LI = 25;
 /*	clear_screen()	/* not vga_clear_screen() */
@@ -697,7 +697,7 @@ void vga_Init(void)
      }
 #   endif
 
-     if (flags.usevga) {
+     if (iflags.usevga) {
 	for (i=0; i < SCREENHEIGHT; ++i) {
 		screentable[i]=MK_PTR(VIDEOSEG, (i * SCREENBYTES));
 	}
@@ -707,8 +707,8 @@ void vga_Init(void)
 /*     vga_NoBorder(BACKGROUND_VGA_COLOR);   /* Not needed after palette mod */
 #   ifdef USE_TILES
      paletteptr = tibheader.palette;
-     tiles_on = TRUE;
-     overview = FALSE;
+     iflags.tile_view = TRUE;
+     iflags.over_view = FALSE;
 #   else
      paletteptr = defpalette;
 #   endif
@@ -733,15 +733,15 @@ void vga_SwitchMode(unsigned int mode)
 	union REGS regs;
 
 	if ((mode == MODE640x480) || (mode == MODETEXT)) {
-		if (flags.usevga && (mode == MODE640x480)) {
-     			flags.grmode = 1;
+		if (iflags.usevga && (mode == MODE640x480)) {
+     			iflags.grmode = 1;
 		} else {
-	        	flags.grmode = 0;
+	        	iflags.grmode = 0;
 		}
 		regs.x.ax = mode;
 		(void) int86(VIDEO_BIOS, &regs, &regs);
 	} else {
-		flags.grmode = 0;	/* force text mode for error msg */
+		iflags.grmode = 0;	/* force text mode for error msg */
 		regs.x.ax = MODETEXT;
 		(void) int86(VIDEO_BIOS, &regs, &regs);
 		g_attribute  = attrib_text_normal;
@@ -762,7 +762,7 @@ void vga_Finish(void)
      vga_SwitchMode(MODETEXT);
      windowprocs.win_cliparound = tty_cliparound;
      g_attribute  = attrib_text_normal;
-     tiles_on = FALSE;
+     iflags.tile_view = FALSE;
 }
 
 #if 0
@@ -1049,7 +1049,7 @@ positionbar()
 	int pixy = (PBAR_ROW * MAX_ROWS_PER_CELL);
 	int tmp;
 
-	if (!flags.grmode || !tiles_on) return;
+	if (!iflags.grmode || !iflags.tile_view) return;
 	if ((clipx < 0)  || (clipxmax <= 0) || (clipx >= clipxmax)) 
 		nowhere = TRUE;
 	if (nowhere) {
@@ -1186,7 +1186,8 @@ vga_DrawCursor()
 /*	char on[2] =  {0xFF,0xFF}; */
 /*	char off[2] = {0x00,0x00}; */
 	boolean isrogue = Is_rogue_level(&u.uz);
-	boolean singlebyte = (isrogue || overview || traditional || !inmap);
+	boolean singlebyte = (isrogue || iflags.over_view
+			      || iflags.traditional_view || !inmap);
 	int curtyp;
 
 	if (!cursor_type && inmap) return;	/* CURSOR_INVIS - nothing to do */
@@ -1385,7 +1386,8 @@ vga_HideCursor()
 	char __far *tmp1;
 	char __far *tmp2;
 	boolean isrogue = Is_rogue_level(&u.uz);
-	boolean singlebyte = (isrogue || overview || traditional || !inmap);
+	boolean singlebyte = (isrogue || iflags.over_view
+			      || iflags.traditional_view || !inmap);
 	int curtyp;
 	
 	if (inmap && !cursor_type) return;	/* CURSOR_INVIS - nothing to do */

@@ -61,13 +61,6 @@ int FDECL(yyoutput, (int));
 void FDECL(init_yyin, (FILE *));
 void FDECL(init_yyout, (FILE *));
 
-#ifdef MICRO
-#undef exit
-# if !defined(MSDOS) && !defined(WIN32)
-extern void FDECL(exit, (int));
-# endif
-#endif
-
 /* this doesn't always get put in dgn_comp.h
  * (esp. when using older versions of bison)
  */

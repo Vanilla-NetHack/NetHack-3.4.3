@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	3.2	95/11/12	*/
+/*	SCCS Id: @(#)polyself.c	3.2	96/07/19	*/
 /*	Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -49,7 +49,8 @@ static void
 polyman(fmt, arg)
 const char *fmt, *arg;
 {
-	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow;
+	boolean sticky = sticks(uasmon) && u.ustuck && !u.uswallow,
+		was_mimicking_gold = (u.usym == 0);
 
 	if (u.umonnum != PM_PLAYERMON) {
 		u.acurr = u.macurr;	/* restore old attribs */
@@ -68,10 +69,20 @@ const char *fmt, *arg;
 
 	if (sticky) uunstick();
 	find_ac();
+	if (was_mimicking_gold) {
+	    if (multi < 0) unmul("");
+	}
 
 	You(fmt, arg);
 	/* check whether player foolishly genocided self while poly'd */
-	if (mvitals[u.umonster].mvflags & G_GENOD) done(GENOCIDED);
+	if (mvitals[u.umonster].mvflags & G_GENOD) {
+	    /* intervening activity might have clobbered genocide info */
+	    if (!killer || !strstri(killer, "genocid")) {
+		killer_format = KILLED_BY;
+		killer = "self-genocide";
+	    }
+	    done(GENOCIDED);
+	}
 
 	if(!Levitation && !u.ustuck &&
 	   (is_pool(u.ux,u.uy) || is_lava(u.ux,u.uy)))
@@ -569,11 +580,20 @@ int alone;
 void
 rehumanize()
 {
+	const char *uform = Role_is('E') ? "elven" : "human";
+
 	if (emits_light(uasmon))
 	    del_light_source(LS_MONSTER, (genericptr_t)&youmonst);
-	polyman("return to %s form!", Role_is('E') ? "elven" : "human");
+	polyman("return to %s form!", uform);
 
-	if (u.uhp < 1)	done(DIED);
+	if (u.uhp < 1) {
+	    char kbuf[256];
+
+	    Sprintf(kbuf, "reverting to unhealthy %s form", uform);
+	    killer_format = KILLED_BY;
+	    killer = kbuf;
+	    done(DIED);
+	}
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 	nomul(0);
 
@@ -797,10 +817,14 @@ doconfuse()
 				: -200);
 			return 1;
 		    }
-		    if ((mtmp->data==&mons[PM_MEDUSA]) && !mtmp->mcan) {
-			pline("Gazing at the awake Medusa is not a very good idea.");
+		    if ((mtmp->data == &mons[PM_MEDUSA]) && !mtmp->mcan) {
+			pline(
+			 "Gazing at the awake Medusa is not a very good idea.");
 			/* as if gazing at a sleeping anything is fruitful... */
 			You("turn to stone...");
+			killer_format = KILLED_BY;
+			killer =
+			 "deliberately gazing at Medusa's hideous countenance";
 			done(STONING);
 		    }
 		}

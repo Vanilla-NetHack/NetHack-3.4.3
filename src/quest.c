@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)quest.c	3.2	96/03/15	*/
+/*	SCCS Id: @(#)quest.c	3.2	96/08/13	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -172,6 +172,7 @@ boolean seal;
 {
     branch *br;
     d_level *dest;
+    struct trap *t;
     int portal_flag;
 
     br = dungeon_branch("The Quest");
@@ -179,8 +180,17 @@ boolean seal;
     portal_flag = u.uevent.qexpelled ? 0 :	/* returned via artifact? */
 		  !seal ? 1 : -1;
     schedule_goto(dest, FALSE, FALSE, portal_flag, (char *)0, (char *)0);
-    if (seal)	/* remove the portal to the quest - sealing it off */
+    if (seal) {	/* remove the portal to the quest - sealing it off */
 	u.uevent.qexpelled = 1;
+	/* Delete the near portal now; the far (main dungeon side)
+	   portal will be deleted as part of arrival on that level.
+	   If monster movement is in progress, any who haven't moved
+	   yet will now miss out on a chance to wander through it... */
+	for (t = ftrap; t; t = t->ntrap)
+	    if (t->ttyp == MAGIC_PORTAL) break;
+	if (t) deltrap(t);	/* (display might be briefly out of sync) */
+	else impossible("quest portal already gone?");
+    }
 }
 
 static void

@@ -53,6 +53,12 @@ void NDECL( preserve_icon );
 static void FDECL(process_options,(int argc,char **argv));
 STATIC_DCL void NDECL(nhusage);
 
+#if defined(MICRO) || defined(WIN32) || defined(OS2)
+extern void FDECL(nethack_exit,(int));
+#else
+#define nethack_exit exit
+#endif
+
 #ifdef EXEPATH
 STATIC_DCL char *FDECL(exepath,(char *));
 #endif
@@ -86,7 +92,7 @@ char *argv[];
 {
      pcmain(argc,argv);
      moveloop();
-     exit(EXIT_SUCCESS);
+     nethack_exit(EXIT_SUCCESS);
      /*NOTREACHED*/
      return 0;
 }
@@ -126,7 +132,7 @@ char *argv[];
 	if (getcwd(orgdir, sizeof orgdir) == (char *)0)
 		error("NetHack: current directory path too long");
 # ifndef NO_SIGNAL
-	signal(SIGINT, (SIG_RET_TYPE) exit);	/* restore original directory */
+	signal(SIGINT, (SIG_RET_TYPE) nethack_exit);	/* restore original directory */
 # endif
 #endif /* !AMIGA && !GNUDOS */
 
@@ -164,7 +170,7 @@ char *argv[];
 #endif
 
 #if defined(TOS) && defined(TEXTCOLOR)
-	if (flags.BIOS && flags.use_color)
+	if (iflags.BIOS && iflags.use_color)
 		set_colors();
 #endif
 	if (!hackdir[0])
@@ -202,12 +208,12 @@ char *argv[];
 			chdirx(hackdir,0);
 #endif
 			prscore(argc, argv);
-			exit(EXIT_SUCCESS);
+			nethack_exit(EXIT_SUCCESS);
 		}
 		/* Don't inialize the window system just to print usage */
 		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "/?", 2)) {
 			nhusage();
-			exit(EXIT_SUCCESS);
+			nethack_exit(EXIT_SUCCESS);
 		}
 	    }
 	}
@@ -306,9 +312,9 @@ char *argv[];
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 #ifdef NEWS
-		if(flags.news){
+		if(iflags.news){
 		    display_file(NEWS, FALSE);
-		    flags.news = FALSE;
+		    iflags.news = FALSE;
 		}
 #endif
 		pline("Restoring save file...");
@@ -392,7 +398,7 @@ char *argv[];
 			break;
 #ifdef NEWS
 		case 'n':
-			flags.news = FALSE;
+			iflags.news = FALSE;
 			break;
 #endif
 		case 'u':
@@ -444,7 +450,7 @@ char *argv[];
 			} else raw_printf("\nUnknown switch: %s", argv[0]);
 		case '?':
 			nhusage();
-			exit(EXIT_SUCCESS);
+			nethack_exit(EXIT_SUCCESS);
 		}
 	}
 }
@@ -457,7 +463,7 @@ nhusage()
 	(void) Sprintf(buf1,
 	       "\nUsage: %s [-d dir] -s [-[%s]] [maxrank] [name]...\n       or",
 		hname, classes);
-	if (!flags.window_inited)
+	if (!iflags.window_inited)
 		raw_printf(buf1);
 	else
 		(void)	printf(buf1);
@@ -478,7 +484,7 @@ nhusage()
 #ifdef AMIGA
 	Strcat(buf1," [-[lL]]");
 #endif
-	if (!flags.window_inited)
+	if (!iflags.window_inited)
 		raw_printf("%s\n",buf1);
 	else
 		(void) printf("%s\n",buf1);

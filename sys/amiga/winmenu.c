@@ -68,7 +68,7 @@ amii_add_menu(window,glyph, id, ch, gch, attr, str, preselected)
 {
     register struct amii_WinDesc *cw;
     amii_menu_item *mip;
-    char buf[ QBUFSZ ];
+    char buf[ BUFSZ ];
 
     if(str == NULL)return;
 

@@ -1,4 +1,4 @@
-#	SCCS Id :  @(#)Makefile.SC	      3.2     96/02/03
+#	SCCS Id :  @(#)Makefile.SC	      3.2     96/10/14
 #	Copyright (c) NetHack Development Team 1996.
 #
 #	Symantec C compiler V7.2
@@ -18,16 +18,13 @@
 # NOTE :  Make sure GAMEDIR exists before make is started.
 
 GAME = nethack
-# The GNU Make has a problem if you include a drive spec below (unfortunately).
 GAMEDIR = c:\games\nethacks
 
 #
-# Directories, gcc likes unix style directory specs
+# Directories, gnu utilities like unix style directory specs
 #
 
-DDAT  = ../dat
 DUTIL = ../util
-DSRC  = ../src
 
 # But we must use dos directory specs to find src files, so....
 

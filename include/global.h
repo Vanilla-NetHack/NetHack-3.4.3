@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)global.h	3.2	96/03/28	*/
+/*	SCCS Id: @(#)global.h	3.2	96/06/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -168,7 +168,7 @@ typedef xchar	boolean;		/* 0 or 1 */
 #include "macconf.h"
 #endif
 
-#if defined(__beos__) && !defined(BECONF_H)
+#if defined(__BEOS__) && !defined(BECONF_H)
 #include "beconf.h"
 #endif
 
@@ -217,8 +217,10 @@ typedef xchar	boolean;		/* 0 or 1 */
 # endif
 #endif
 
-#if defined(MICRO) && !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS)
+#if defined(MICRO)
+#if !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS) && !defined(WIN32)
 #define SHORT_FILENAMES		/* filenames are 8.3 */
+#endif
 #endif
 
 /*
@@ -268,6 +270,15 @@ extern void FDECL(nhfree, (genericptr_t,const char *,int));
 #else	/* !MONITOR_HEAP */
 extern long *FDECL(alloc, (unsigned int));		/* alloc.c */
 #endif
+
+/* Used for consistency checks of various data files; declare it here so
+   that utility programs which include config.h but not hack.h can see it. */
+struct version_info {
+	unsigned long	incarnation;	/* actual version number */
+	unsigned long	feature_set;	/* bitmask of config settings */
+	unsigned long	entity_count;	/* # of monsters and objects */
+	unsigned long	struct_sizes;	/* size of key structs */
+};
 
 
 /*

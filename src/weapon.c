@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)weapon.c	3.2	96/05/12	*/
+/*	SCCS Id: @(#)weapon.c	3.2	96/11/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -129,6 +129,7 @@ struct monst *mon;
 	    if (objects[otyp].oc_wldam)
 		tmp = rnd(objects[otyp].oc_wldam);
 	    switch (otyp) {
+		case IRON_CHAIN:
 		case CROSSBOW_BOLT:
 		case MORNING_STAR:
 		case PARTISAN:
@@ -156,6 +157,7 @@ struct monst *mon;
 	    if (objects[otyp].oc_wsdam)
 		tmp = rnd(objects[otyp].oc_wsdam);
 	    switch (otyp) {
+		case IRON_CHAIN:
 		case CROSSBOW_BOLT:
 		case MACE:
 		case WAR_HAMMER:
@@ -178,8 +180,11 @@ struct monst *mon;
 		case ACID_VENOM:	tmp += rnd(6); break;
 	    }
 	}
-	if (Is_weapon)
+	if (Is_weapon) {
 		tmp += otmp->spe;
+		/* negative enchantment mustn't produce negative damage */
+		if (tmp < 0) tmp = 0;
+	}
 
 	if (objects[otyp].oc_material <= LEATHER && thick_skinned(ptr))
 		/* thick skinned/scaled creatures don't feel it */
@@ -187,8 +192,20 @@ struct monst *mon;
 	if (ptr == &mons[PM_SHADE] && objects[otyp].oc_material != SILVER)
 		tmp = 0;
 
+	/* "very heavy iron ball"; weight increase is in increments of 160 */
+	if (otyp == HEAVY_IRON_BALL && tmp > 0) {
+	    int wt = (int)objects[HEAVY_IRON_BALL].oc_weight;
+
+	    if ((int)otmp->owt > wt) {
+		wt = ((int)otmp->owt - wt) / 160;
+		tmp += rnd(4 * wt);
+		if (tmp > 25) tmp = 25;	/* objects[].oc_wldam */
+	    }
+	}
+
 /*	Put weapon vs. monster type damage bonuses in below:	*/
-	if (Is_weapon || otmp->oclass == GEM_CLASS) {
+	if (Is_weapon || otmp->oclass == GEM_CLASS ||
+		otmp->oclass == BALL_CLASS || otmp->oclass == CHAIN_CLASS) {
 	    int bonus = 0;
 
 	    if (otmp->blessed && (is_undead(ptr) || is_demon(ptr)))
@@ -207,6 +224,11 @@ struct monst *mon;
 	}
 
 	if (tmp > 0) {
+		/* It's debateable whether a rusted blunt instrument
+		   should do less damage than a pristine one, since
+		   it will hit with essentially the same impact, but
+		   there ought to some penalty for using damaged gear
+		   so always subtract erosion even for blunt weapons. */
 		tmp -= otmp->oeroded;
 		if (tmp < 1) tmp = 1;
 	}
@@ -591,11 +613,24 @@ static int
 slots_required(skill)
 int skill;
 {
-    /* The more difficult the training, the more slots it takes. */
-    if (skill <= P_LAST_WEAPON || skill == P_TWO_WEAPON_COMBAT)
-	return P_SKILL(skill);
+    int tmp = P_SKILL(skill);
 
-    return (P_SKILL(skill) > 5) ? 2 : 1;	/* unarmed or martial */
+    /* The more difficult the training, the more slots it takes.
+     *	unskilled -> basic	1
+     *	basic -> skilled	2
+     *	skilled -> expert	3
+     */
+    if (skill <= P_LAST_WEAPON || skill == P_TWO_WEAPON_COMBAT)
+	return tmp;
+
+    /* Fewer slots used up for unarmed or martial.
+     *	unskilled -> basic	1
+     *	basic -> skilled	1
+     *	skilled -> expert	2
+     *	expert -> master	2
+     *	master -> grand master	3
+     */
+    return (tmp + 1) / 2;
 }
 
 /* return true if this skill can be advanced */
@@ -619,7 +654,7 @@ int skill;
     P_SKILL(skill)++;
     u.skill_record[u.skills_advanced++] = skill;
     /* subtly change the adavnce message to indicate no more advancement */
-    You("are now %s skilled in %s.", 
+    You("are now %s skilled in %s.",
     	P_SKILL(skill) >= P_MAX_SKILL(skill) ? "most" : "more",
     	P_NAME(skill));
 }
@@ -636,7 +671,7 @@ int
 enhance_weapon_skill()
 {
     int i, n, len, longest, to_advance;
-    char buf[BUFSIZ], buf2[BUFSIZ];
+    char buf[BUFSZ], buf2[BUFSZ];
     menu_item *selected;
     anything any;
     winid win;
@@ -678,8 +713,12 @@ enhance_weapon_skill()
 	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf2, MENU_UNSELECTED);
     }
 
-    end_menu(win, to_advance ?	"Pick a skill to advance:" :
-				"Current skills:");
+    Strcpy(buf, to_advance ? "Pick a skill to advance:" : "Current skills:");
+#ifdef WIZARD
+    if (wizard) Sprintf(eos(buf), "  (%d slot%s available)",
+			u.weapon_slots, plur(u.weapon_slots));
+#endif
+    end_menu(win, buf);
     n = select_menu(win, to_advance ? PICK_ONE : PICK_NONE, &selected);
     destroy_nhwindow(win);
     if (n > 0) {
@@ -734,13 +773,14 @@ int skill;
 }
 
 void
-add_weapon_skill()
+add_weapon_skill(n)
+int n;	/* number of slots to gain; normally one */
 {
     int i, before, after;
 
     for (i = 0, before = 0; i < P_NUM_SKILLS; i++)
 	if (can_advance(i)) before++;
-    u.weapon_slots++;
+    u.weapon_slots += n;
     for (i = 0, after = 0; i < P_NUM_SKILLS; i++)
 	if (can_advance(i)) after++;
     if (before < after)
@@ -748,25 +788,26 @@ add_weapon_skill()
 }
 
 void
-lose_weapon_skill()
+lose_weapon_skill(n)
+int n;	/* number of slots to lose; normally one */
 {
     int skill;
 
-    /* deduct first from unused slots, then from last placed slot, if any */
-    if (u.weapon_slots) {
-	u.weapon_slots--;
-    } else if (u.skills_advanced) {
-	skill = u.skill_record[--u.skills_advanced];
-	if (P_SKILL(skill) <= P_UNSKILLED)
-	    panic("lose_weapon_skill");
-
-	P_SKILL(skill)--;	/* drop skill one level */
-
-	/* Some skills take more than one slot, refund the rest. */
-	if (skill <= P_LAST_WEAPON || skill == P_TWO_WEAPON_COMBAT)
-	    u.weapon_slots = P_SKILL(skill) - 1;
-	else if (P_SKILL(skill) >= 5)
-	    u.weapon_slots = 1;
+    while (--n >= 0) {
+	/* deduct first from unused slots, then from last placed slot, if any */
+	if (u.weapon_slots) {
+	    u.weapon_slots--;
+	} else if (u.skills_advanced) {
+	    skill = u.skill_record[--u.skills_advanced];
+	    if (P_SKILL(skill) <= P_UNSKILLED)
+		panic("lose_weapon_skill (%d)", skill);
+	    P_SKILL(skill)--;	/* drop skill one level */
+	    /* Lost skill might have taken more than one slot; refund rest. */
+	    u.weapon_slots = slots_required(skill) - 1;
+	    /* It might now be possible to advance some other pending
+	       skill by using the refunded slots, but giving a message
+	       to that affect would seem pretty confusing.... */
+	}
     }
 }
 

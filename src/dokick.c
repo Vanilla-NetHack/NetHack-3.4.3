@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.2	96/05/04	*/
+/*	SCCS Id: @(#)dokick.c	3.2	96/10/12	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,6 +31,9 @@ register boolean clumsy;
 {
 	register int mdx, mdy;
 	register int dmg = ( ACURRSTR + ACURR(A_DEX) + ACURR(A_CON) )/ 15;
+#ifdef WEAPON_SKILLS
+	int kick_skill = P_NO_TYPE;
+#endif
 
 	/* excessive wt affects dex, so it affects dmg */
 	if(clumsy) dmg = dmg/2;
@@ -61,6 +64,9 @@ register boolean clumsy;
 	if (dmg > 0) {
 		/* convert potential damage to actual damage */
 		dmg = rnd(dmg);
+#ifdef WEAPON_SKILLS
+		if (dmg > 1 && martial()) kick_skill = P_MARTIAL_ARTS;
+#endif
 		if (martial()) dmg += rn2(ACURR(A_DEX)/2 + 1);
 	}
 	dmg += u.udaminc;	/* add ring(s) of increase damage */
@@ -84,9 +90,11 @@ register boolean clumsy;
 	(void) passive(mon, TRUE, mon->mhp > 0, TRUE);
 	if (mon->mhp <= 0) killed(mon);
 
+#ifdef WEAPON_SKILLS
 	/* may bring up a dialog, so put this after all messages */
-	if (dmg > 1 && martial_bonus())	/* exercise proficiency */
-	    use_skill(P_MARTIAL_ARTS);
+	if (kick_skill != P_NO_TYPE)	/* exercise proficiency */
+	    use_skill(kick_skill);
+#endif
 }
 
 static void
@@ -178,8 +186,8 @@ doit:
 				(can_teleport(mon->data) ? "teleports" :
 				 is_floater(mon->data) ? "floats" :
 				 is_flyer(mon->data) ? "flutters" :
-				 nolimbs(mon->data) ? "slides" :
-				 "jumps"),
+				 (nolimbs(mon->data) || slithy(mon->data)) ?
+					"slides" : "jumps"),
 				clumsy ? "easily" : "nimbly",
 				clumsy ? "clumsy " : "");
 			(void) passive(mon, FALSE, 1, TRUE);
@@ -301,6 +309,18 @@ xchar x, y;
 	if(Fumbling && !rn2(3)) {
 		Your("clumsy kick missed.");
 		return(1);
+	}
+
+	if(kickobj->otyp == CORPSE && kickobj->corpsenm == PM_COCKATRICE
+		&& !resists_ston(&youmonst) && !uarmf) {
+	    You("kick the cockatrice corpse with your bare %s.",
+		makeplural(body_part(FOOT)));
+	    if (!(poly_when_stoned(uasmon) && polymon(PM_STONE_GOLEM))) {
+		You("turn to stone...");
+		killer_format = KILLED_BY;
+		killer = "kicking a cockatrice corpse without boots";
+		done(STONING);
+	    }
 	}
 
 	/* range < 2 means the object will not move.	*/
@@ -437,22 +457,10 @@ xchar x, y;
 		surface(x,y));
 
 	obj_extract_self(kickobj);
+	(void) snuff_candle(kickobj);
 	newsym(x, y);
 	mon = bhit(u.dx, u.dy, range, KICKED_WEAPON,
 		   (int (*)()) 0, (int (*)()) 0, kickobj);
-
-	/* We check for whether the object falls down the stairs by
-	 * calling ship_object() from bhit().  This is necessary so that if
-	 * the object doesn't fall, we can continue bhit() by moving the
-	 * object the rest of the way.  If it does fall, bhit() returns at
-	 * the fall position (which must have stairs at it).  This is somewhat
-	 * ugly (for instance, we need to duplicate the shop check within
-	 * bhit()), and we really should be checking _whether_ it falls in there
-	 * and only doing the actual fall here, but this would take a lot of
-	 * rewriting.
-	 */
-	if (!mon && down_gate(bhitpos.x, bhitpos.y) != MIGR_NOWHERE)
-		return 1;
 
 	if(mon) {
 	    if (mon->isshk &&
@@ -465,6 +473,11 @@ xchar x, y;
 		thitmonst(mon, kickobj))	/* hit && used up? */
 		return(1);
 	}
+
+	/* the object might have fallen down a hole */
+	if (kickobj->where == OBJ_MIGRATING)
+	    return 1;
+
 	bhitroom = *in_rooms(bhitpos.x, bhitpos.y, SHOPBASE);
 	if (costly && (!costly_spot(bhitpos.x, bhitpos.y) ||
 			*in_rooms(x, y, SHOPBASE) != bhitroom)) {
@@ -513,17 +526,22 @@ dokick()
 	boolean no_kick = FALSE;
 	char buf[BUFSZ];
 
-	if (nolimbs(uasmon)) {
+	if (nolimbs(uasmon) || slithy(uasmon)) {
 		You("have no legs to kick with.");
 		no_kick = TRUE;
 	} else if (verysmall(uasmon)) {
 		You("are too small to do any kicking.");
 		no_kick = TRUE;
 	} else if (Wounded_legs) {
-		Your("%s %s in no shape for kicking.",
-		  ((Wounded_legs & BOTH_SIDES)==BOTH_SIDES)
-		    ? (const char *)makeplural(body_part(LEG)) : body_part(LEG),
-		  ((Wounded_legs & BOTH_SIDES)==BOTH_SIDES) ? "are" : "is");
+		/* note: dojump() has similar code */
+		long wl = (Wounded_legs & BOTH_SIDES);
+		const char *bp = body_part(LEG);
+
+		if (wl == BOTH_SIDES) bp = makeplural(bp);
+		Your("%s%s %s in no shape for kicking.",
+		     (wl == LEFT_SIDE) ? "left " :
+			(wl == RIGHT_SIDE) ? "right " : "",
+		     bp, (wl == BOTH_SIDES) ? "are" : "is");
 		no_kick = TRUE;
 	} else if (near_capacity() > SLT_ENCUMBER) {
 		Your("load is too heavy to balance yourself for a kick.");
@@ -557,6 +575,7 @@ dokick()
 
 	x = u.ux + u.dx;
 	y = u.uy + u.dy;
+
 	avrg_attrib = (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3;
 
 	if(u.uswallow) {
@@ -570,6 +589,22 @@ dokick()
 		default: Your("feeble kick has no effect."); break;
 		}
 		return(1);
+	}
+	if (Levitation) {
+		int xx, yy;
+
+		xx = u.ux - u.dx;
+		yy = u.uy - u.dy;
+		/* doors can be opened while levitating, so they must be
+		 * reachable for bracing purposes
+		 * Possible extension: allow bracing against stuff on the side?
+		 */
+		if (isok(xx,yy) && !IS_ROCK(levl[xx][yy].typ) &&
+			!IS_DOOR(levl[xx][yy].typ) &&
+			(!Is_airlevel(&u.uz) || !OBJ_AT(xx,yy))) {
+		    You("have nothing to brace yourself against.");
+		    return(0);
+		}
 	}
 
 	wake_nearby();
@@ -618,20 +653,26 @@ dokick()
 	if(!IS_DOOR(maploc->typ)) {
 		if(maploc->typ == SDOOR) {
 		    if(!Levitation && rn2(30) < avrg_attrib) {
-			pline("Crash!  You kick open a secret door!");
+			cvt_sdoor_to_door(maploc);	/* ->typ = DOOR */
+			pline("Crash!  %s a secret door!",
+			      /* don't "kick open" when it's locked
+				 unless it also happens to be trapped */
+			(maploc->doormask & (D_LOCKED|D_TRAPPED)) == D_LOCKED ?
+			      "Your kick uncovers" : "You kick open");
 			exercise(A_DEX, TRUE);
-			maploc->typ = DOOR;
-			maploc->doormask = exposed_sdoor_mask(maploc);
 			if(maploc->doormask & D_TRAPPED) {
 			    maploc->doormask = D_NODOOR;
 			    b_trapped("door", FOOT);
-			} else if (maploc->doormask != D_NODOOR)
+			} else if (maploc->doormask != D_NODOOR &&
+				   !(maploc->doormask & D_LOCKED))
 			    maploc->doormask = D_ISOPEN;
 			if (Blind)
 			    feel_location(x,y);	/* we know its gone */
 			else
 			    newsym(x,y);
-			unblock_point(x,y);	/* vision */
+			if (maploc->doormask == D_ISOPEN ||
+			    maploc->doormask == D_NODOOR)
+			    unblock_point(x,y);	/* vision */
 			return(1);
 		    } else goto ouch;
 		}
@@ -641,7 +682,7 @@ dokick()
 			exercise(A_DEX, TRUE);
 			maploc->typ = CORR;
 			if (Blind)
-			    feel_location(x,y);	/* we known its gone */
+			    feel_location(x,y);	/* we known it's gone */
 			else
 			    newsym(x,y);
 			unblock_point(x,y);	/* vision */
@@ -981,22 +1022,19 @@ xchar x, y, dlev;
 		dct += obj->quan;
 	}
 
-	if (dct) {	/* at least one object fell */
+	if (dct && cansee(x,y)) {	/* at least one object fell */
 	    const char *what = (dct == 1L ? "object falls" : "objects fall");
+
 	    if (missile)
 		pline("From the impact, %sother %s.",
-			dct == oct ? "the " : dct == 1L ? "an" : "", what);
+		      dct == oct ? "the " : dct == 1L ? "an" : "", what);
+	    else if (oct == dct)
+		pline("%s adjacent %s %s.",
+		      dct == 1L ? "The" : "All the", what, gate_str);
 	    else
-		if (oct == dct) {
-		    pline("%s adjacent %s %s.",
-			    dct == 1L ? "The" : "All the",
-			    what, gate_str);
-		} else {
-		    pline("%s adjacent %s %s.",
-			    dct == 1L ? "One of the" : "Some of the",
-			    dct == 1L ? "objects falls" : what,
-			    gate_str);
-		}
+		pline("%s adjacent %s %s.",
+		      dct == 1L ? "One of the" : "Some of the",
+		      dct == 1L ? "objects falls" : what, gate_str);
 	}
 
 	if(costly && shkp && price) {
@@ -1067,7 +1105,8 @@ boolean shop_floor_obj;
 	    return FALSE;		/* let caller finish the drop */
 	}
 
-	otransit_msg(otmp, nodrop, n);
+	if (cansee(x, y))
+	    otransit_msg(otmp, nodrop, n);
 
 	if (nodrop) {
 	    if (impact) impact_drop(otmp, x, y, 0);

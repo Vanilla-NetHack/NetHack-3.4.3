@@ -1127,7 +1127,7 @@ dowear()
  * welded to your hand, not armor
 	if(welded(otmp)) {
 		if(!err++)
-			weldmsg(otmp, FALSE);
+			weldmsg(otmp);
 	}
  */
 	if(err) return(0);
@@ -1184,7 +1184,7 @@ doputon()
 		return(0);
 	}
 	if(welded(otmp)) {
-		weldmsg(otmp, TRUE);
+		weldmsg(otmp);
 		return(0);
 	}
 	if(otmp == uwep)

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Makefile.GCC	      3.2     96/03/15
+#	SCCS Id: @(#)Makefile.GCC	      3.2     96/10/25
 #	Copyright (c) NetHack PC Development Team 1996.
 #	PC NetHack 3.2 Utilities Makefile for djgpp V2
 #
@@ -32,6 +32,7 @@ GAMEDIR = \games\nethackd
 DDAT  = ../dat
 DUTIL = ../util
 DSRC  = ../src
+DINCL = ../include
 
 # But we must use dos directory specs to find src files, so....
 
@@ -55,7 +56,6 @@ MAKEBIN  = make
 # if you have a uudecode program, add its name here
 # otherwise leave blank
 UUDECODE =
-
 
 #
 # Special libraries and how to link them in.
@@ -107,6 +107,9 @@ else
 DLBFLG =
 endif
 
+LS = ls -1		# ls.exe from djgpp distribution
+#LS = dir /l/b		# DOS command
+
 #
 #  Flags.
 #
@@ -122,6 +125,8 @@ LFLAGS =
 #  Utility Objects.
 #
 
+VGAOBJ      = vidvga.o
+
 MAKESRC	    = makedefs.c
 
 SPLEVSRC    = lev_yacc.c  lev_$(LEX).c	 lev_main.c  panic.c
@@ -132,20 +137,22 @@ MAKEOBJS    = makedefs.o  monst.o	 objects.o
 
 SPLEVOBJS   = lev_yacc.o  lev_$(LEX).o	lev_main.o  alloc.o	\
 		monst.o	    objects.o	    panic.o  \
-		drawing.o	decl.o
+		drawing.o	decl.o	stubvid.o
 
 DGNCOMPOBJS = dgn_yacc.o  dgn_$(LEX).o	dgn_main.o  alloc.o	 \
 		panic.o
 
 RECOVOBJS   = recover.o
 
+
 #  Tile related object files.
 
-TILOBJ      = tile.o pctiles.o vidvga.o
+TILOBJ      = tile.o pctiles.o $(VGAOBJ)
 
-TEXTIO      = tiletext.o tiletxt.o drawing.o decl.o monst.o objects.o
+TEXTIO      = tiletext.o tiletxt.o drawing.o decl.o monst.o objects.o stubvid.o
 
-TEXTIO2     = tiletex2.o tiletxt2.o drawing.o decl.o monst.o objects.o
+TEXTIO2     = tiletex2.o tiletxt2.o drawing.o decl.o monst.o objects.o stubvid.o
+
 
 PLANAR_TIB  = NetHack1.tib
 
@@ -237,7 +244,7 @@ HACK_H	   = $(CONFIG_H)	$(DUNGEON_H)	    $(DECL_H)	      \
 	       $(DISPLAY_H)	  $(INCL)\monsym.h    $(INCL)\mkroom.h	\
 	      $(INCL)\objclass.h $(INCL)\trap.h	     $(INCL)\flag.h    \
 	      $(RM_H)		 $(INCL)\vision.h    $(INCL)\wintype.h \
-	      $(INCL)\engrave.h	 $(INCL)\rect.h	     $(INCL)\extern.h \
+	      $(INCL)\engrave.h	 $(INCL)\rect.h	  \
 	       $(INCL)\trampoli.h $(INCL)\hack.h
 DLB_H      = $(INCL)\dlb.h
 TILE_H	   = $(INCL)\tile.h $(INCL)\pctiles.h
@@ -250,6 +257,11 @@ DLB =
 DLBOBJS =
 endif
 
+ifdef DJGPP
+DJ1 = $(dir $(DJGPP))
+CWSDPMI = $(subst /,\,$(DJ1))bin\CWSDPMI.*
+endif
+
 #
 #  Make Rules.
 #
@@ -259,7 +271,7 @@ endif
 .c.o:
 	$(CC) $(CFLAGS) -o$@ $<
 
-.phony: dlb
+#.phony: dlb
 
 #
 #  Primary Targets.
@@ -294,13 +306,20 @@ else
 	copy $(MSYS)\msdoshlp.txt $(GAMEDIR)
 	if exist $(GAMEDIR)\makefile. del $(GAMEDIR)\makefile.
 endif
+ifdef TERMLIB
 	copy $(SSHR)\termcap	  $(GAMEDIR)
+endif
 	copy *.tib                $(GAMEDIR)
 	copy $(SSHR)\NetHack.cnf  $(GAMEDIR)
 	copy recover.exe          $(GAMEDIR)
-	copy $(DOC)\guideb*.txt   $(GAMEDIR)
+	copy $(DOC)\guidebo*.txt   $(GAMEDIR)
 	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)
 	if exist $(DOC)\nethack.txt copy $(DOC)\nethack.txt $(GAMEDIR)
+ifdef CWSDPMI
+	if exist $(CWSDPMI) copy $(CWSDPMI) $(GAMEDIR)
+else
+	echo Could not find a copy of CWSDPMI.EXE to put into $(GAMEDIR)
+endif
 	echo install done > install.tag
 
 #  The main target.
@@ -514,6 +533,7 @@ lev_yacc.c: $(SSHR)\lev_yacc.c
 
 $(INCL)\lev_comp.h: $(SSHR)\lev_comp.h
 	copy $(SSHR)\lev_comp.h $@
+	touch $(DINCL)/lev_comp.h
 
 lev_$(LEX).c: $(SSHR)\lev_lex.c
 	copy $(SSHR)\lev_lex.c $@
@@ -573,6 +593,7 @@ dgn_yacc.c: $(SSHR)\dgn_yacc.c
 
 $(INCL)\dgn_comp.h: $(SSHR)\dgn_comp.h
 	copy $(SSHR)\dgn_comp.h $@
+	touch $(DINCL)/dgn_comp.h
 
 dgn_$(LEX).c: $(SSHR)\dgn_lex.c
 	copy $(SSHR)\dgn_lex.c $@
@@ -733,7 +754,7 @@ viewtib.o: viewtib.c
 alloc.o: $(CONFIG_H)	 alloc.c
 	$(CC) $(CFLAGS) -oalloc.o alloc.c
 
-drawing.o: $(CONFIG_H) drawing.c
+drawing.o: $(CONFIG_H) drawing.c pcvideo.h
 	$(CC) $(CFLAGS) -odrawing.o drawing.c
 
 decl.o: $(CONFIG_H) decl.c
@@ -763,7 +784,7 @@ DATABASE = $(DAT)\data.bas
 
 
 dat.tag: $(DAT)\data	     $(DAT)\rumors	 $(DAT)\dungeon \
-	$(DAT)\oracles	    $(DAT)\quest.dat	sp_lev.tag $(DLB)
+	$(DAT)\oracles	    $(DAT)\quest.dat	sp_lev.tag	$(DAT)\nhdat
 	@echo dat done >dat.tag
 
 $(DAT)\data:	 utility.tag	$(DATABASE)
@@ -822,7 +843,9 @@ $(DAT)\dungeon:	  utility.tag  $(DAT)\dungeon.def
 #
 # DLB stuff
 #
-dlb:	dlb_main.exe
+#note that dir below assumes bin/dir.exe from djgpp distribution
+#
+$(DAT)\nhdat:	dlb_main.exe
 	@cd $(DAT)
 	@copy $(MSYS)\msdoshlp.txt .
 	@echo data >dlb.lst
@@ -839,7 +862,7 @@ dlb:	dlb_main.exe
 	@echo wizhelp >>dlb.lst
 	@echo license >>dlb.lst
 	@echo msdoshlp.txt >>dlb.lst
-	@for %%N in (*.lev) do echo %%N >>dlb.lst
+	$(LS) *.lev >>dlb.lst
 	dlb_main cvIf dlb.lst nhdat
 	@cd $(SRC)
 
@@ -905,6 +928,9 @@ vidtxt.o : $(HACK_H)  $(INCL)\pcvideo.h $(INCL)\portio.h $(TILE_H) \
 	copy $(MSYS)\vidtxt.c .
 	$(CC) $(CFLAGS) -o$@ vidtxt.c
 
+stubvid.o : $(HACK_H) $(MSYS)\video.c
+	copy $(MSYS)\video.c .
+	$(CC) $(CFLAGS) -DSTUBVIDEO -o$@ video.c
 
 
 # win/tty

@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)patchlevel.h	3.2	96/05/25	*/
+/*	SCCS Id: @(#)patchlevel.h	3.2	96/11/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.2.1 */
+/* NetHack 3.2.2 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	2
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	1
+#define PATCHLEVEL	2
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
@@ -34,11 +34,31 @@
  * PP = patch level, ee = edit level, L = literal suffix "L",
  * with all four numbers specified as two hexadecimal digits.
  */
-#define VERSION_COMPATIBILITY 0x03020100L
+#define VERSION_COMPATIBILITY 0x03020200L
 #endif
 
 /*****************************************************************************/
-/* Version 3.2.1 */
+/* Version 3.2.2 */
+
+/*  Patch 2, December 10, 1996
+ *  fix the `recover' utility
+ *  fix priest/minion name overflow which could cause Astral Plane crashes
+ *  avoid crash when hit by own thrown boomerang
+ *    "     "    "   worn blindfold pushed off by applying cursed towel
+ *  handle returning live Wizard correctly in deep dungeon levels
+ *  don't occasionally display unseen areas of new levels during level change
+ *  other minor display fixes
+ *  fix several minor reason for death inconsistencies and shop bugs
+ *  high dexterity doesn't guarantee that thrown eggs & potions will hit
+ *
+ *  Selected platform- or configuration-specific changes:
+ *  Mac: update `mrecover'
+ *  MSDOS: don't switch into tiles mode when resuming play on rogue level
+ *  tty: support object class characters for 'I' command in menu mode
+ *  Unix: work around several <curses.h> compilation problems
+ *  X11: as tty above, plus implement tty-style count handling in menus;
+ *	better window placement support for old window managers
+ */
 
 /*  Patch 1, May 28, 1996
  *  eliminate `#qualifications'; fix weapon proficiency handling for missiles

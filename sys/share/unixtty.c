@@ -202,8 +202,8 @@ const char *s;
 	if(s) raw_print(s);
 	if(STTY(&inittyb) < 0 || STTY2(&inittyb2) < 0)
 		perror("NetHack (settty)");
-	flags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
-	flags.cbreak = (CBRKON(inittyb.cbrkflgs & CBRKMASK)) ? ON : OFF;
+	iflags.echo = (inittyb.echoflgs & ECHO) ? ON : OFF;
+	iflags.cbreak = (CBRKON(inittyb.cbrkflgs & CBRKMASK)) ? ON : OFF;
 	curttyb.inputflags |= STRIPHI;
 	setioctls();
 }
@@ -218,8 +218,8 @@ register int cf = 0;
 register int cf = CBRKON(CBRKMASK);	/* desired value of flags & CBREAK */
 #endif
 register int change = 0;
-	flags.cbreak = ON;
-	flags.echo = OFF;
+	iflags.cbreak = ON;
+	iflags.echo = OFF;
 	/* Should use (ECHO|CRMOD) here instead of ECHO */
 	if((curttyb.echoflgs & ECHO) != ef){
 		curttyb.echoflgs &= ~ECHO;
@@ -358,7 +358,7 @@ init_sco_cons()
 		switch_graphics(IBM_GRAPHICS);
 #  ifdef TEXTCOLOR
 		if (has_colors())
-			flags.use_color = TRUE;
+			iflags.use_color = TRUE;
 #  endif
 	}
 # endif
@@ -366,9 +366,9 @@ init_sco_cons()
 #endif	/* _M_UNIX */
 
 
+#ifndef __begui__	/* the Be GUI will define its own error proc */
 /* fatal error */
 /*VARARGS1*/
-
 void
 error VA_DECL(const char *,s)
 	VA_START(s);
@@ -380,3 +380,4 @@ error VA_DECL(const char *,s)
 	VA_END();
 	exit(EXIT_FAILURE);
 }
+#endif /* !__begui__ */
