@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmisc.c	3.3	2000/05/21	*/
+/*	SCCS Id: @(#)winmisc.c	3.4	2000/05/21	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -265,15 +265,21 @@ X11_player_selection()
 	i, availcount, availindex;
     Widget popup, player_form;
     const char **choices;
-    const char *namep;
-    char qbuf[QBUFSZ];
+    char qbuf[QBUFSZ], plbuf[QBUFSZ];
+
+    /* avoid unnecessary prompts further down */
+    rigid_role_checks();
+
+    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
 
     while (flags.initrole < 0) {
-	if (flags.initrole == ROLE_RANDOM) {
+	if (flags.initrole == ROLE_RANDOM || flags.randomall) {
 	    flags.initrole = pick_role(flags.initrace,
-				       flags.initgend, flags.initalign);
+				       flags.initgend, flags.initalign, PICK_RANDOM);
 	    break;
 	}
+
 	/* select a role */
 	for (num_roles = 0; roles[num_roles].name.m; ++num_roles) continue;
 	choices = (const char **)alloc(sizeof(char *) * num_roles);
@@ -295,7 +301,8 @@ X11_player_selection()
 	    else if (flags.initrace >= 0) flags.initrace = -1;
 	    else panic("no available ROLE+race+gender+alignment combinations");
 	}
-	popup = make_menu("player_selection", "Choose a Role",
+	Sprintf(qbuf, "Choose your %s Role", s_suffix(plbuf));
+	popup = make_menu("player_selection", qbuf,
 		    player_select_translations,
 		    "quit", ps_quit,
 		    "random", ps_random,
@@ -325,10 +332,13 @@ X11_player_selection()
 	}
     }
 
+    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+
     while (!validrace(flags.initrole, flags.initrace)) {
-	if (flags.initrace == ROLE_RANDOM) {
+	if (flags.initrace == ROLE_RANDOM || flags.randomall) {
 	    flags.initrace = pick_race(flags.initrole,
-				       flags.initgend, flags.initalign);
+				       flags.initgend, flags.initalign, PICK_RANDOM);
 	    break;
 	}
 	/* select a race */
@@ -355,11 +365,7 @@ X11_player_selection()
 	    flags.initrace = availindex;
 	    free((genericptr_t)choices), choices = 0;
 	} else {
-	    namep = roles[flags.initrole].name.m;
-	    if (flags.initgend >= 0 && flags.female &&
-		    roles[flags.initrole].name.f)
-		namep = roles[flags.initrole].name.f;
-	    Sprintf(qbuf, "Pick your %s race", s_suffix(namep));
+	    Sprintf(qbuf, "Pick your %s race", s_suffix(plbuf));
 	    popup = make_menu("race_selection", qbuf,
 			race_select_translations,
 			"quit", ps_quit,
@@ -392,10 +398,13 @@ X11_player_selection()
 	} /* more than one race choice available */
     }
 
+    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+
     while (!validgend(flags.initrole, flags.initrace, flags.initgend)) {
-	if (flags.initgend == ROLE_RANDOM) {
+	if (flags.initgend == ROLE_RANDOM || flags.randomall) {
 	    flags.initgend = pick_gend(flags.initrole, flags.initrace,
-				       flags.initalign);
+				       flags.initalign, PICK_RANDOM);
 	    break;
 	}
 	/* select a gender */
@@ -421,12 +430,7 @@ X11_player_selection()
 	    flags.initgend = availindex;
 	    free((genericptr_t)choices), choices = 0;
 	} else {
-	    namep = roles[flags.initrole].name.m;
-	    if (flags.initgend >= 0 && flags.female &&
-		    roles[flags.initrole].name.f)
-		namep = roles[flags.initrole].name.f;
-	    Sprintf(qbuf, "Your %s %s gender?",
-		    races[flags.initrace].adj, s_suffix(namep));
+	    Sprintf(qbuf, "Your %s gender?", s_suffix(plbuf));
 	    popup = make_menu("gender_selection", qbuf,
 			gend_select_translations,
 			"quit", ps_quit,
@@ -459,10 +463,13 @@ X11_player_selection()
 	} /* more than one gender choice available */
     }
 
+    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+
     while (!validalign(flags.initrole, flags.initrace, flags.initalign)) {
-	if (flags.initalign == ROLE_RANDOM) {
+	if (flags.initalign == ROLE_RANDOM || flags.randomall) {
 	    flags.initalign = pick_align(flags.initrole, flags.initrace,
-					 flags.initgend);
+					 flags.initgend, PICK_RANDOM);
 	    break;
 	}
 	/* select an alignment */
@@ -487,14 +494,7 @@ X11_player_selection()
 	    flags.initalign = availindex;
 	    free((genericptr_t)choices), choices = 0;
 	} else {
-	    namep = roles[flags.initrole].name.m;
-	    if (flags.initgend >= 0 && flags.female &&
-		    roles[flags.initrole].name.f)
-		namep = roles[flags.initrole].name.f;
-	    Sprintf(qbuf, "%s %s %s alignment?",
-		    genders[flags.initgend].adj,
-		    races[flags.initrace].adj, s_suffix(namep));
-	    qbuf[0] = highc(qbuf[0]);
+	    Sprintf(qbuf, "Your %s alignment?", s_suffix(plbuf));
 	    popup = make_menu("alignment_selection", qbuf,
 			algn_select_translations,
 			"quit", ps_quit,

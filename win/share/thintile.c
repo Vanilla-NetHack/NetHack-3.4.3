@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)thintile.c   3.3     95/11/26                     */
+/*   SCCS Id: @(#)thintile.c   3.4     1995/11/26                     */
 /*   Copyright (c) NetHack Development Team 1995                    */
 /*   NetHack may be freely redistributed.  See license for details. */
 
@@ -29,7 +29,7 @@ static char comment[BUFSZ];
 static void
 copy_colormap()
 {
-	int i, r, g, b;
+	int r, g, b;
 	char c[2];
 
 	while (fscanf(infile, "%[A-Za-z0-9] = (%d, %d, %d) ", c, &r, &g, &b)
@@ -41,13 +41,14 @@ copy_colormap()
 static boolean
 read_txttile()
 {
-	int i, j, k;
+	int i, j;
 	char buf[BUFSZ];
-	const char *p;
+	char buf2[BUFSZ];
+
 	char c[2];
 
 
-	if (fscanf(infile, "# tile %d (%[^)])", &i, buf) <= 0)
+	if (fscanf(infile, "# %s %d (%[^)])", buf2, &i, buf) <= 0)
 		return FALSE;
 	
 	Sprintf(comment,"# tile %d (%s)", i, buf);
@@ -84,8 +85,7 @@ read_txttile()
 static void
 write_thintile()
 {
-	const char *p;
-	int i, j, k;
+	int i, j;
 
 
 	Fprintf(outfile, "%s\n", comment);
@@ -104,8 +104,6 @@ main(argc, argv)
 int argc;
 char *argv[];
 {
-	boolean x;
-	
 	while (filenum < 3) {
 		tilecount_per_file = 0;
 		infile = fopen(tilefiles[filenum], RDTMODE);

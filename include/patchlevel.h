@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)patchlevel.h	3.3	2000/07/22	*/
+/*	SCCS Id: @(#)patchlevel.h	3.4	2002/03/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.3.1 */
+/* NetHack 3.4.0 */
 #define VERSION_MAJOR	3
-#define VERSION_MINOR	3
+#define VERSION_MINOR	4
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	1
+#define PATCHLEVEL	0
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
@@ -16,7 +16,7 @@
 #define EDITLEVEL	0
 
 #define COPYRIGHT_BANNER_A \
-"NetHack, Copyright 1985-2000"
+"NetHack, Copyright 1985-2002"
 
 #define COPYRIGHT_BANNER_B \
 "         By Stichting Mathematisch Centrum and M. Stephenson."
@@ -34,11 +34,41 @@
  * PP = patch level, ee = edit level, L = literal suffix "L",
  * with all four numbers specified as two hexadecimal digits.
  */
-#define VERSION_COMPATIBILITY 0x03030000L
+#define VERSION_COMPATIBILITY 0x03030100L
 #endif
 
 /*****************************************************************************/
-/* Version 3.3.1 */
+/* Version 3.4.0 */
+
+/*
+ *  NetHack 3.4.0, March 20, 2002
+ *
+ *  Hundreds of general bug fixes including some for sliming, zapping, conduct,
+ *	and several more for riding
+ *  Eliminated a few potentially fatal bugs including one for stone-to-flesh,
+ *	trouble-fixing during prayer, riding down stairs while punished,
+ *	polyd player demon summoning, throwing digging tools into shops, and
+ *	a couple from having the vision system enabled at inappropriate times 
+ *  Corrected some incorrect calculations in final scoring
+ *  Enhanced config file processing and alert to duplication of entries
+ *  Player selection prompt enhancements for TTY and X11
+ *  Objects merge in containers
+ *  Wish for "nothing", and genocide "none" to preserve your conduct
+ *  Changes to Wizard quest
+ *  Added the travel command which works by mouse click or '_' command
+ *  Config file BOULDER option to specify the symbol for displaying boulders
+ *  Incorporate modified versions of several 3.3.1 patches that have been
+ *      in circulation in the NetHack community
+ *  New Gnomish Mines levels (courtesy Kelly Bailey)
+ *  Mac: command-key shortcuts in the player selection dialog
+ *  Amiga: screenmode requester, and several amiga specific bug fixes
+ *  Win32 graphical port contributed by Alex Kompel is now included
+ */
+
+/* Version 3.4 */
+
+/*****************************************************************************/
+/* Version 3.3.x */
 
 /*  Patch 1, August 9, 2000
  *  Many, many general fixes, including a number for riding, twoweapon,
@@ -75,10 +105,11 @@
  *  updated COPYRIGHT_BANNER_A to reflect year of release.
  *  Dozens of other bug fixes, and minor improvements.
  */
+
 /* Version 3.3 */
 
 /*****************************************************************************/
-/* Version 3.2.3 */
+/* Version 3.2.x */
 
 /*  Patch 3, December 10, 1999
  *  Released simultaneously with 3.3.0 for the benefit of

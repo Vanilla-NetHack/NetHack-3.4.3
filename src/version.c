@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	3.3	1999/12/01	*/
+/*	SCCS Id: @(#)version.c	3.4	1999/12/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -68,7 +68,7 @@ boolean complain;
 		   version_data->entity_count != VERSION_SANITY1 ||
 		   version_data->struct_sizes != VERSION_SANITY2) {
 	    if (complain)
-		pline("Configuration incompatability for file \"%s\".",
+		pline("Configuration incompatibility for file \"%s\".",
 		      filename);
 	    return FALSE;
 	}

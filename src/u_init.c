@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.3	2000/06/11	*/
+/*	SCCS Id: @(#)u_init.c	3.4	2002/03/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,10 +12,10 @@ struct trobj {
 	Bitfield(trbless,2);
 };
 
-static void FDECL(ini_inv, (struct trobj *));
-static void FDECL(knows_object,(int));
-static void FDECL(knows_class,(CHAR_P));
-static boolean FDECL(restricted_spell_discipline, (int));
+STATIC_DCL void FDECL(ini_inv, (struct trobj *));
+STATIC_DCL void FDECL(knows_object,(int));
+STATIC_DCL void FDECL(knows_class,(CHAR_P));
+STATIC_DCL boolean FDECL(restricted_spell_discipline, (int));
 
 #define UNDEF_TYP	0
 #define UNDEF_SPE	'\177'
@@ -33,6 +33,7 @@ static struct trobj Archeologist[] = {
 	{ FOOD_RATION, 0, FOOD_CLASS, 3, 0 },
 	{ PICK_AXE, UNDEF_SPE, TOOL_CLASS, 1, UNDEF_BLESS },
 	{ TINNING_KIT, UNDEF_SPE, TOOL_CLASS, 1, UNDEF_BLESS },
+	{ TOUCHSTONE, 0, GEM_CLASS, 1, 0 },
 	{ SACK, 0, TOOL_CLASS, 1, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
@@ -69,8 +70,8 @@ static struct trobj Healer[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Knight[] = {
-	{ LONG_SWORD, 0, WEAPON_CLASS, 1, UNDEF_BLESS },
-	{ SPEAR, 2, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ LONG_SWORD, 1, WEAPON_CLASS, 1, UNDEF_BLESS },
+	{ LANCE, 1, WEAPON_CLASS, 1, UNDEF_BLESS },
 	{ RING_MAIL, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ HELMET, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ SMALL_SHIELD, 0, ARMOR_CLASS, 1, UNDEF_BLESS },
@@ -80,7 +81,7 @@ static struct trobj Knight[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 static struct trobj Monk[] = {
-#define M_BOOK          2
+#define M_BOOK		2
 	{ LEATHER_GLOVES, 2, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ ROBE, 1, ARMOR_CLASS, 1, UNDEF_BLESS },
 	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_CLASS, 1, 1 },
@@ -212,6 +213,12 @@ static struct trobj Wishing[] = {
 	{ WAN_WISHING, 3, WAND_CLASS, 1, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
+#ifdef GOLDOBJ
+static struct trobj Money[] = {
+	{ GOLD_PIECE, 0 , GOLD_CLASS, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#endif
 
 /* race-based substitutions for initial inventory;
    the weaker cloak for elven rangers is intentional--they shoot better */
@@ -269,7 +276,7 @@ static struct def_skill Skill_B[] = {
     { P_TWO_HANDED_SWORD, P_EXPERT },	{ P_SCIMITAR, P_SKILLED },
     { P_SABER, P_BASIC },		{ P_CLUB, P_SKILLED },
     { P_MACE, P_SKILLED },		{ P_MORNING_STAR, P_SKILLED },
-    { P_FLAIL, P_BASIC },               { P_HAMMER, P_EXPERT },
+    { P_FLAIL, P_BASIC },		{ P_HAMMER, P_EXPERT },
     { P_QUARTERSTAFF, P_BASIC },	{ P_SPEAR, P_SKILLED },
     { P_TRIDENT, P_SKILLED },		{ P_BOW, P_BASIC },
     { P_ATTACK_SPELL, P_SKILLED },
@@ -382,15 +389,15 @@ static struct def_skill Skill_R[] = {
 
 static struct def_skill Skill_Ran[] = {
     { P_DAGGER, P_EXPERT },		 { P_KNIFE,  P_SKILLED },
-    { P_AXE, P_SKILLED },        { P_PICK_AXE, P_BASIC },
-    { P_SHORT_SWORD, P_BASIC },  { P_MORNING_STAR, P_BASIC },
-    { P_FLAIL, P_SKILLED },      { P_HAMMER, P_BASIC },
+    { P_AXE, P_SKILLED },	 { P_PICK_AXE, P_BASIC },
+    { P_SHORT_SWORD, P_BASIC },	 { P_MORNING_STAR, P_BASIC },
+    { P_FLAIL, P_SKILLED },	 { P_HAMMER, P_BASIC },
     { P_QUARTERSTAFF, P_BASIC }, { P_POLEARMS, P_SKILLED },
-    { P_SPEAR, P_SKILLED },      { P_JAVELIN, P_EXPERT },
-    { P_TRIDENT, P_BASIC },      { P_BOW, P_EXPERT },
-    { P_SLING, P_EXPERT },       { P_CROSSBOW, P_EXPERT },
-    { P_DART, P_EXPERT },        { P_SHURIKEN, P_SKILLED },
-    { P_BOOMERANG, P_EXPERT },   { P_WHIP, P_BASIC },
+    { P_SPEAR, P_SKILLED },	 { P_JAVELIN, P_EXPERT },
+    { P_TRIDENT, P_BASIC },	 { P_BOW, P_EXPERT },
+    { P_SLING, P_EXPERT },	 { P_CROSSBOW, P_EXPERT },
+    { P_DART, P_EXPERT },	 { P_SHURIKEN, P_SKILLED },
+    { P_BOOMERANG, P_EXPERT },	 { P_WHIP, P_BASIC },
     { P_HEALING_SPELL, P_BASIC },
     { P_DIVINATION_SPELL, P_EXPERT },
     { P_ESCAPE_SPELL, P_BASIC },
@@ -485,7 +492,7 @@ static struct def_skill Skill_W[] = {
 };
 
 
-static void
+STATIC_OVL void
 knows_object(obj)
 register int obj;
 {
@@ -496,7 +503,7 @@ register int obj;
 /* Know ordinary (non-magical) objects of a certain class,
  * like all gems except the loadstone and luckstone.
  */
-static void
+STATIC_OVL void
 knows_class(sym)
 register char sym;
 {
@@ -601,8 +608,8 @@ u_init()
 		if(!rn2(10)) ini_inv(Tinopener);
 		else if(!rn2(4)) ini_inv(Lamp);
 		else if(!rn2(10)) ini_inv(Magicmarker);
-		knows_class(GEM_CLASS);
 		knows_object(SACK);
+		knows_object(TOUCHSTONE);
 		skill_init(Skill_A);
 		break;
 	case PM_BARBARIAN:
@@ -622,7 +629,11 @@ u_init()
 		skill_init(Skill_C);
 		break;
 	case PM_HEALER:
+#ifndef GOLDOBJ
 		u.ugold = u.ugold0 = rn1(1000, 1001);
+#else
+		u.umoney0 = rn1(1000, 1001);
+#endif
 		ini_inv(Healer);
 		if(!rn2(25)) ini_inv(Lamp);
 		knows_object(POT_FULL_HEALING);
@@ -664,38 +675,6 @@ u_init()
 		 */
 		break;
 	case PM_RANGER:
-#if 0		/* superseded by inv_subs[] */
-		switch (rn2(100) / 20) {
-		case 0:	/* Special racial bow */
-		case 1:
-		case 2:
-		    switch (Race_switch) {
-		    case PM_ELF:
-			Ranger[RAN_BOW].trotyp = ELVEN_BOW;
-			Ranger[RAN_TWO_ARROWS].trotyp =
-			Ranger[RAN_ZERO_ARROWS].trotyp = ELVEN_ARROW;
-			break;
-		    case PM_GNOME:
-			Ranger[RAN_BOW].trotyp = CROSSBOW;
-			Ranger[RAN_TWO_ARROWS].trotyp =
-			Ranger[RAN_ZERO_ARROWS].trotyp = CROSSBOW_BOLT;
-			break;
-		    case PM_ORC:
-			Ranger[RAN_BOW].trotyp = ORCISH_BOW;
-			Ranger[RAN_TWO_ARROWS].trotyp =
-			Ranger[RAN_ZERO_ARROWS].trotyp = ORCISH_ARROW;
-			break;
-		    default: break;	/* Use default bow + arrow */
-		    }
-		    break;
-		case 3:	/* Missiles */
-		    Ranger[RAN_BOW].trotyp = BOOMERANG;
-		    Ranger[RAN_TWO_ARROWS].trotyp =
-		    Ranger[RAN_ZERO_ARROWS].trotyp = DART;
-		    break;
-		default: break;	/* Use default bow + arrow */
-		}
-#endif	/*0*/
 		Ranger[RAN_TWO_ARROWS].trquan = rn1(10, 50);
 		Ranger[RAN_ZERO_ARROWS].trquan = rn1(10, 30);
 		ini_inv(Ranger);
@@ -703,7 +682,11 @@ u_init()
 		break;
 	case PM_ROGUE:
 		Rogue[R_DAGGERS].trquan = rn1(10, 6);
+#ifndef GOLDOBJ
 		u.ugold = u.ugold0 = 0;
+#else
+		u.umoney0 = 0;
+#endif
 		ini_inv(Rogue);
 		if(!rn2(5)) ini_inv(Blindfold);
 		knows_object(SACK);
@@ -720,7 +703,11 @@ u_init()
 #ifdef TOURIST
 	case PM_TOURIST:
 		Tourist[T_DARTS].trquan = rn1(20, 21);
+#ifndef GOLDOBJ
 		u.ugold = u.ugold0 = rnd(1000);
+#else
+		u.umoney0 = rnd(1000);
+#endif
 		ini_inv(Tourist);
 		if(!rn2(25)) ini_inv(Tinopener);
 		else if(!rn2(25)) ini_inv(Leash);
@@ -730,7 +717,6 @@ u_init()
 		break;
 #endif
 	case PM_VALKYRIE:
-		flags.female = TRUE;
 		ini_inv(Valkyrie);
 		if(!rn2(6)) ini_inv(Lamp);
 		knows_class(WEAPON_CLASS);
@@ -819,11 +805,21 @@ u_init()
 	default:	/* impossible */
 		break;
 	}
-		
+
 	if (discover)
 		ini_inv(Wishing);
 
+#ifdef WIZARD
+	if (wizard)
+		read_wizkit();
+#endif
+
+#ifndef GOLDOBJ
 	u.ugold0 += hidden_gold();	/* in case sack has gold in it */
+#else
+	if (u.umoney0) ini_inv(Money);
+	u.umoney0 += hidden_gold();	/* in case sack has gold in it */
+#endif
 
 	find_ac();			/* get initial ac value */
 	init_attr(75);			/* init attribute values */
@@ -850,7 +846,7 @@ u_init()
 }
 
 /* skills aren't initialized, so we use the role-specific skill lists */
-static boolean
+STATIC_OVL boolean
 restricted_spell_discipline(otyp)
 int otyp;
 {
@@ -883,7 +879,7 @@ int otyp;
     return TRUE;
 }
 
-static void
+STATIC_OVL void
 ini_inv(trop)
 register struct trobj *trop;
 {
@@ -933,7 +929,6 @@ register struct trobj *trop;
 				|| otyp == POT_ACID
 				|| otyp == SCR_AMNESIA
 				|| otyp == SCR_FIRE
-				|| otyp == SCR_STINKING_CLOUD
 				|| otyp == SCR_BLANK_PAPER
 				|| otyp == SPE_BLANK_PAPER
 				|| otyp == RIN_AGGRAVATE_MONSTER
@@ -984,20 +979,32 @@ register struct trobj *trop;
 				nocreate4 = otyp;
 		}
 
-		obj->dknown = obj->bknown = obj->rknown = 1;
-		if (objects[otyp].oc_uses_known) obj->known = 1;
-		obj->cursed = 0;
-		if (obj->opoisoned && u.ualign.type != A_CHAOTIC)
-		    obj->opoisoned = 0;
-		if(obj->oclass == WEAPON_CLASS || obj->oclass == TOOL_CLASS) {
-			obj->quan = (long) trop->trquan;
-			trop->trquan = 1;
+#ifdef GOLDOBJ
+		if (trop->trclass == GOLD_CLASS) {
+			/* no "blessed" or "identified" money */
+			obj->quan = u.umoney0;
+		} else {
+#endif
+			obj->dknown = obj->bknown = obj->rknown = 1;
+			if (objects[otyp].oc_uses_known) obj->known = 1;
+			obj->cursed = 0;
+			if (obj->opoisoned && u.ualign.type != A_CHAOTIC)
+			    obj->opoisoned = 0;
+			if (obj->oclass == WEAPON_CLASS ||
+				obj->oclass == TOOL_CLASS) {
+			    obj->quan = (long) trop->trquan;
+			    trop->trquan = 1;
+			} else if (obj->oclass == GEM_CLASS &&
+				is_graystone(obj) && obj->otyp != FLINT) {
+			    obj->quan = 1L;
+			}
+			if (trop->trspe != UNDEF_SPE)
+			    obj->spe = trop->trspe;
+			if (trop->trbless != UNDEF_BLESS)
+			    obj->blessed = trop->trbless;
+#ifdef GOLDOBJ
 		}
-		if(trop->trspe != UNDEF_SPE)
-			obj->spe = trop->trspe;
-		if(trop->trbless != UNDEF_BLESS)
-			obj->blessed = trop->trbless;
-
+#endif
 		/* defined after setting otyp+quan + blessedness */
 		obj->owt = weight(obj);
 		obj = addinv(obj);
@@ -1009,9 +1016,10 @@ register struct trobj *trop;
 			discover_object(POT_OIL, TRUE, FALSE);
 
 		if(obj->oclass == ARMOR_CLASS){
-			if (is_shield(obj) && !uarms)
+			if (is_shield(obj) && !uarms) {
 				setworn(obj, W_ARMS);
-			else if (is_helmet(obj) && !uarmh)
+				if (uswapwep) setuswapwep((struct obj *) 0);
+			} else if (is_helmet(obj) && !uarmh)
 				setworn(obj, W_ARMH);
 			else if (is_gloves(obj) && !uarmg)
 				setworn(obj, W_ARMG);

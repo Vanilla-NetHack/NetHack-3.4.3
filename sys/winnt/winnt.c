@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winnt.c	 3.3	 97/04/12		  */
+/*	SCCS Id: @(#)winnt.c	 3.4	 1997/04/12		  */
 /* Copyright (c) NetHack PC Development Team 1993, 1994 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,7 +12,9 @@
 #define NEED_VARARGS
 #include "hack.h"
 #include <dos.h>
+#ifndef __BORLANDC__
 #include <direct.h>
+#endif
 #include <ctype.h>
 #include "win32api.h"
 
@@ -159,7 +161,7 @@ void
 nt_regularize(s)	/* normalize file name */
 register char *s;
 {
-	register char *lp;
+	register unsigned char *lp;
 
 	for (lp = s; *lp; lp++)
 	    if ( *lp == '?' || *lp == '"' || *lp == '\\' ||
@@ -174,11 +176,10 @@ register char *s;
 char *get_username(lan_username_size)
 int *lan_username_size;
 {
-	static char username_buffer[BUFSZ];
+	static TCHAR username_buffer[BUFSZ];
 	unsigned int status;
-	int i = 0;
+	DWORD i = BUFSZ - 1;
 
-	i = BUFSZ - 1;
 	/* i gets updated with actual size */
 	status = GetUserName(username_buffer, &i);		
 	if (status) username_buffer[i] = '\0';

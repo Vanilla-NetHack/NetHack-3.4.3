@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.h	3.3	96/08/18	*/
+/*	SCCS Id: @(#)winX.h	3.4	1996/08/18	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -56,6 +56,8 @@ struct tile_map_info_t {
     unsigned short glyphs[ROWNO][COLNO];	/* Saved glyph numbers. */
     GC	white_gc;
     GC	black_gc;
+    unsigned long image_width;			/* dimensions of tile image */
+    unsigned long image_height;
 };
 
 struct map_info_t {
@@ -277,6 +279,7 @@ E void FDECL(positionpopup,(Widget,BOOLEAN_P));
 /* ### winX.c ### */
 E struct xwindow *FDECL(find_widget,(Widget));
 E Boolean FDECL(nhApproxColor,(Screen*, Colormap, char*, XColor*));
+E Dimension FDECL(nhFontHeight,(Widget));
 E char FDECL(key_event_to_char,(XKeyEvent*));
 E void FDECL(msgkey, (Widget, XtPointer, XEvent*));
 E void FDECL(nh_XtPopup, (Widget, int, Widget));

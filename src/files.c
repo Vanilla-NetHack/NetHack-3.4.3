@@ -1,9 +1,13 @@
-/*	SCCS Id: @(#)files.c	3.3	2000/04/27	*/
+/*	SCCS Id: @(#)files.c	3.4	2002/02/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "dlb.h"
+
+#ifdef TTY_GRAPHICS
+#include "wintty.h" /* more() */
+#endif
 
 #include <ctype.h>
 
@@ -71,6 +75,12 @@ char SAVEF[SAVESIZE];	/* holds relative path of save file from playground */
 char SAVEP[SAVESIZE];	/* holds path of directory for save file */
 #endif
 
+#ifdef WIZARD
+#define WIZKIT_MAX 128
+static char wizkit[WIZKIT_MAX];
+STATIC_DCL FILE *NDECL(fopen_wizkit_file);
+#endif
+
 #ifdef AMIGA
 extern char PATH[];	/* see sys/amiga/amidos.c */
 extern char bbs_id[];
@@ -80,6 +90,7 @@ static int lockptr;
 # endif
 
 #include <libraries/dos.h>
+extern void FDECL(amii_set_text_font, ( char *, int ));
 #endif
 
 #if defined(WIN32) || defined(MSDOS)
@@ -91,13 +102,17 @@ static int lockptr;
 #define DeleteFile unlink
 #endif
 
+#ifdef USER_SOUNDS
+extern char *sounddir;
+#endif
+
 extern int n_dgns;		/* from dungeon.c */
 
 STATIC_DCL char *FDECL(set_bonesfile_name, (char *,d_level*));
 STATIC_DCL char *NDECL(set_bonestemp_name);
 #ifdef COMPRESS
-STATIC_DCL void FDECL(redirect, (char *,char *,FILE *,BOOLEAN_P));
-STATIC_DCL void FDECL(docompress_file, (char *,BOOLEAN_P));
+STATIC_DCL void FDECL(redirect, (const char *,const char *,FILE *,BOOLEAN_P));
+STATIC_DCL void FDECL(docompress_file, (const char *,BOOLEAN_P));
 #endif
 STATIC_DCL char *FDECL(make_lockname, (const char *,char *));
 STATIC_DCL FILE *FDECL(fopen_config_file, (const char *));
@@ -148,12 +163,9 @@ boolean use_scoreprefix;
 {
 	FILE *fp;
 
-#ifdef AMIGA
-	fp = fopenp(filename, mode);
-#else
 	filename = fqname(filename,
 				use_scoreprefix ? SCOREPREFIX : DATAPREFIX, 0);
-# ifdef VMS	/* essential to have punctuation, to avoid logical names */
+#ifdef VMS	/* essential to have punctuation, to avoid logical names */
     {
 	char tmp[BUFSIZ];
 
@@ -161,9 +173,8 @@ boolean use_scoreprefix;
 		filename = strcat(strcpy(tmp, filename), ";0");
 	fp = fopen(filename, mode, "mbc=16");
     }
-# else
+#else
 	fp = fopen(filename, mode);
-# endif
 #endif
 	return fp;
 }
@@ -185,9 +196,7 @@ set_lock_and_bones()
 	strncat(levels, bbs_id, PATHLEN);
 #endif
 	append_slash(bones);
-#ifndef AMIGA /* We'll want bones & levels in the user specified directory -jhsa */
 	Strcat(bones, "bonesnn.*");
-#endif
 	Strcpy(lock, levels);
 #ifndef AMIGA
 	Strcat(lock, alllevels);
@@ -322,20 +331,9 @@ d_level *lev;
 {
 	s_level *sptr;
 	char *dptr;
-#ifdef AMIGA
-	char bonetmp[16];
-#endif
 
-#ifdef AMIGA /* We'll want the bones go the user defined Levels directory -jhsa */
-	/* permbones should be subsumed by fqn_prefix[BONESPREFIX] */
-	Sprintf(bonetmp, "bon%c%s", dungeons[lev->dnum].boneid,
-			In_quest(lev) ? urole.filecode : "0");
-	Strcpy(file, permbones);
-	Strcat(file, bonetmp);
-#else
 	Sprintf(file, "bon%c%s", dungeons[lev->dnum].boneid,
 			In_quest(lev) ? urole.filecode : "0");
-#endif
 	dptr = eos(file);
 	if ((sptr = Is_special(lev)) != 0)
 	    Sprintf(dptr, ".%c", sptr->boneid);
@@ -567,31 +565,27 @@ create_savefile()
 	const char *fq_save;
 	int fd;
 
-#ifdef AMIGA
-	fd = ami_wbench_getsave(O_WRONLY | O_CREAT | O_TRUNC);
-#else
 	fq_save = fqname(SAVEF, SAVEPREFIX, 0);
-# ifdef MICRO
+#ifdef MICRO
 	fd = open(fq_save, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
-# else
-#  ifdef MAC
+#else
+# ifdef MAC
 	fd = maccreat(fq_save, SAVE_TYPE);
-#  else
+# else
 	fd = creat(fq_save, FCMASK);
-#  endif
-#  if defined(VMS) && !defined(SECURE)
+# endif
+# if defined(VMS) && !defined(SECURE)
 	/*
 	   Make sure the save file is owned by the current process.  That's
 	   the default for non-privileged users, but for priv'd users the
 	   file will be owned by the directory's owner instead of the user.
 	 */
-#   ifdef getuid	/*(see vmsunix.c)*/
-#    undef getuid
-#   endif
+#  ifdef getuid	/*(see vmsunix.c)*/
+#   undef getuid
+#  endif
 	(void) chown(fq_save, getuid(), getgid());
-#  endif /* VMS && !SECURE */
-# endif	/* MICRO */
-#endif	/* AMIGA */
+# endif /* VMS && !SECURE */
+#endif	/* MICRO */
 
 	return fd;
 }
@@ -604,16 +598,12 @@ open_savefile()
 	const char *fq_save;
 	int fd;
 
-#ifdef AMIGA
-	fd = ami_wbench_getsave(O_RDONLY);
-#else
 	fq_save = fqname(SAVEF, SAVEPREFIX, 0);
-# ifdef MAC
+#ifdef MAC
 	fd = macopen(fq_save, O_RDONLY | O_BINARY, SAVE_TYPE);
-# else
+#else
 	fd = open(fq_save, O_RDONLY | O_BINARY, 0);
-# endif
-#endif /* AMIGA */
+#endif
 	return fd;
 }
 
@@ -622,9 +612,6 @@ open_savefile()
 int
 delete_savefile()
 {
-#ifdef AMIGA
-	ami_wbench_unlink(SAVEF);
-#endif
 	(void) unlink(fqname(SAVEF, SAVEPREFIX, 0));
 	return 0;	/* for restore_saved_game() (ex-xxxmain.c) test */
 }
@@ -639,13 +626,8 @@ restore_saved_game()
 
 	set_savefile_name();
 #ifdef MFLOPPY
-	if (
-# ifdef AMIGA
-	    !(FromWBench || saveDiskPrompt(1))
-# else
-	    !saveDiskPrompt(1)
-# endif
-	  ) return -1;
+	if (!saveDiskPrompt(1))
+	    return -1;
 #endif /* MFLOPPY */
 	fq_save = fqname(SAVEF, SAVEPREFIX, 0);
 
@@ -668,7 +650,7 @@ restore_saved_game()
 
 STATIC_OVL void
 redirect(filename, mode, stream, uncomp)
-char *filename, *mode;
+const char *filename, *mode;
 FILE *stream;
 boolean uncomp;
 {
@@ -688,7 +670,7 @@ boolean uncomp;
  */
 STATIC_OVL void
 docompress_file(filename, uncomp)
-char *filename;
+const char *filename;
 boolean uncomp;
 {
 	char cfn[80];
@@ -699,6 +681,9 @@ boolean uncomp;
 # endif
 	int i = 0;
 	int f;
+# ifdef TTY_GRAPHICS
+	boolean istty = !strncmpi(windowprocs.name, "tty", 3);
+# endif
 
 	Strcpy(cfn, filename);
 # ifdef COMPRESS_EXTENSION
@@ -738,7 +723,24 @@ boolean uncomp;
 	args[++i] = (char *)0;
 
 	f = fork();
+# ifdef TTY_GRAPHICS
+	/* If we don't do this and we are right after a y/n question *and*
+	 * there is an error message from the compression, the 'y' or 'n' can
+	 * end up being displayed after the error message.
+	 */
+	if (istty)
+	    mark_synch();
+# endif
 	if (f == 0) {	/* child */
+# ifdef TTY_GRAPHICS
+		/* any error messages from the compression must come out after
+		 * the first line, because the more() to let the user read
+		 * them will have to clear the first line.  This should be
+		 * invisible if there are no error messages.
+		 */
+		if (istty)
+		    raw_print("");
+# endif
 		/* run compressor without privileges, in case other programs
 		 * have surprises along the line of gzip once taking filenames
 		 * in GZIP.
@@ -789,6 +791,21 @@ boolean uncomp;
 		/* no message needed for compress case; life will go on */
 		(void) unlink(cfn);
 	    }
+#ifdef TTY_GRAPHICS
+	    /* Give them a chance to read any error messages from the
+	     * compression--these would go to stdout or stderr and would get
+	     * overwritten only in tty mode.  It's still ugly, since the
+	     * messages are being written on top of the screen, but at least
+	     * the user can read them.
+	     */
+	    if (istty)
+	    {
+		clear_nhwindow(WIN_MESSAGE);
+		more();
+		/* No way to know if this is feasible */
+		/* doredraw(); */
+	    }
+#endif
 	}
 }
 #endif	/* COMPRESS */
@@ -799,7 +816,7 @@ compress(filename)
 const char *filename;
 {
 #ifndef COMPRESS
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(filename)
 #endif
 #else
@@ -814,7 +831,7 @@ uncompress(filename)
 const char *filename;
 {
 #ifndef COMPRESS
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(filename)
 #endif
 #else
@@ -840,7 +857,7 @@ make_lockname(filename, lockname)
 const char *filename;
 char *lockname;
 {
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(filename,lockname)
 	return (char*)0;
 #else
@@ -877,7 +894,7 @@ const char *filename;
 int whichprefix;
 int retryct;
 {
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(filename, retryct)
 #endif
 	char locknambuf[BUFSZ];
@@ -986,7 +1003,7 @@ int retryct;
 void
 unlock_file(filename)
 const char *filename;
-#if defined(applec)
+#if defined(macintosh) && (defined(__SC__) || defined(__MRC__))
 # pragma unused(filename)
 #endif
 {
@@ -1230,7 +1247,7 @@ char		*buf;
 char		*tmp_ramdisk;
 char		*tmp_levels;
 {
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(tmp_ramdisk,tmp_levels)
 #endif
 	char		*bufp, *altp;
@@ -1288,18 +1305,18 @@ char		*tmp_levels;
 #else /*NOCWD_ASSUMPTIONS*/
 # ifdef MICRO
 	} else if (match_varname(buf, "HACKDIR", 4)) {
-		(void) strncpy(hackdir, bufp, PATHLEN);
+		(void) strncpy(hackdir, bufp, PATHLEN-1);
 #  ifdef MFLOPPY
 	} else if (match_varname(buf, "RAMDISK", 3)) {
 				/* The following ifdef is NOT in the wrong
 				 * place.  For now, we accept and silently
 				 * ignore RAMDISK */
 #   ifndef AMIGA
-		(void) strncpy(tmp_ramdisk, bufp, PATHLEN);
+		(void) strncpy(tmp_ramdisk, bufp, PATHLEN-1);
 #   endif
 #  endif
 	} else if (match_varname(buf, "LEVELS", 4)) {
-		(void) strncpy(tmp_levels, bufp, PATHLEN);
+		(void) strncpy(tmp_levels, bufp, PATHLEN-1);
 
 	} else if (match_varname(buf, "SAVE", 4)) {
 #  ifdef MFLOPPY
@@ -1319,7 +1336,7 @@ char		*tmp_levels;
 		    saveprompt = flags.asksavedisk;
 # endif
 
-		(void) strncpy(SAVEP, bufp, PATHLEN);
+		(void) strncpy(SAVEP, bufp, SAVESIZE-1);
 		append_slash(SAVEP);
 # endif /* MICRO */
 #endif /*NOCWD_ASSUMPTIONS*/
@@ -1336,6 +1353,8 @@ char		*tmp_levels;
 	} else if (match_varname(buf, "CATNAME", 3)) {
 	    (void) strncpy(catname, bufp, PL_PSIZ-1);
 
+	} else if (match_varname(buf, "BOULDER", 3)) {
+	    (void) get_uchars(fp, buf, bufp, &iflags.bouldersym, 1, "BOULDER");
 	} else if (match_varname(buf, "GRAPHICS", 4)) {
 	    len = get_uchars(fp, buf, bufp, translate, MAXPCHARS, "GRAPHICS");
 	    assign_graphics(translate, len, MAXPCHARS, 0);
@@ -1361,10 +1380,13 @@ char		*tmp_levels;
 	    (void) get_uchars(fp, buf, bufp, translate,
 					WARNCOUNT, "WARNINGS");
 	    assign_warnings(translate);
+#ifdef WIZARD
+	} else if (match_varname(buf, "WIZKIT", 6)) {
+	    (void) strncpy(wizkit, bufp, WIZKIT_MAX-1);
+#endif
 #ifdef AMIGA
 	} else if (match_varname(buf, "FONT", 4)) {
 		char *t;
-		extern void amii_set_text_font( char *, int );
 
 		if( t = strchr( buf+5, ':' ) )
 		{
@@ -1373,9 +1395,7 @@ char		*tmp_levels;
 		    *t = ':';
 		}
 	} else if (match_varname(buf, "PATH", 4)) {
-		(void) strncpy(PATH, bufp, PATHLEN);
-#endif
-#ifdef AMIGA
+		(void) strncpy(PATH, bufp, PATHLEN-1);
 	} else if (match_varname(buf, "DEPTH", 5)) {
 		extern int amii_numcolors;
 		int val = atoi( bufp );
@@ -1390,8 +1410,10 @@ char		*tmp_levels;
 		}
 	} else if (match_varname(buf, "SCREENMODE", 10 )) {
 		extern long amii_scrnmode;
-		if( sscanf(bufp, "%x", &amii_scrnmode) != 1 )
-			amii_scrnmode = 0;
+		if (!stricmp(bufp,"req"))
+		    amii_scrnmode = 0xffffffff; /* Requester */
+		else if( sscanf(bufp, "%x", &amii_scrnmode) != 1 )
+		    amii_scrnmode = 0;
 	} else if (match_varname(buf, "MSGPENS", 7)) {
 		extern int amii_msgAPen, amii_msgBPen;
 		char *t = strtok(bufp, ",/");
@@ -1449,6 +1471,34 @@ char		*tmp_levels;
 			sscanf(t, "%hx", &amii_init_map[i]);
 		}
 		amii_setpens( amii_numcolors = i );
+	} else if (match_varname(buf, "FGPENS", 6)) {
+		extern int foreg[ AMII_MAXCOLORS ];
+		int i;
+		char *t;
+
+		for (i = 0, t = strtok(bufp, ",/");
+			i < AMII_MAXCOLORS && t != (char *)0;
+			t = strtok((char *)0, ",/"), ++i)
+		{
+			sscanf(t, "%d", &foreg[i]);
+		}
+	} else if (match_varname(buf, "BGPENS", 6)) {
+		extern int backg[ AMII_MAXCOLORS ];
+		int i;
+		char *t;
+
+		for (i = 0, t = strtok(bufp, ",/");
+			i < AMII_MAXCOLORS && t != (char *)0;
+			t = strtok((char *)0, ",/"), ++i)
+		{
+			sscanf(t, "%d", &backg[i]);
+		}
+#endif
+#ifdef USER_SOUNDS
+	} else if (match_varname(buf, "SOUNDDIR", 8)) {
+		sounddir = (char *)strdup(bufp);
+	} else if (match_varname(buf, "SOUND", 5)) {
+		add_sound_mapping(bufp);
 #endif
 #ifdef QT_GRAPHICS
 	} else if (match_varname(buf, "QT_TILEWIDTH", 12)) {
@@ -1463,11 +1513,23 @@ char		*tmp_levels;
 		extern char *qt_fontsize;
 		if (qt_fontsize == NULL)
 			qt_fontsize=(char *)strdup(bufp);
+	} else if (match_varname(buf, "QT_COMPACT", 10)) {
+		extern int qt_compact_mode;
+		qt_compact_mode = atoi(bufp);
 #endif
 	} else
 		return 0;
 	return 1;
 }
+
+#ifdef USER_SOUNDS
+boolean
+can_read_file(filename)
+const char *filename;
+{
+	return (access(filename, 4) == 0);
+}
+#endif /* USER_SOUNDS */
 
 void
 read_config_file(filename)
@@ -1499,14 +1561,19 @@ const char *filename;
 # endif
 	tmp_levels[0] = 0;
 #endif
+	/* begin detection of duplicate configfile options */
+	set_duplicate_opt_detection(1);
 
 	while (fgets(buf, 4*BUFSZ, fp)) {
 		if (!parse_config_line(fp, buf, tmp_ramdisk, tmp_levels)) {
-			raw_printf("Bad option line:  \"%s\"", buf);
+			raw_printf("Bad option line:  \"%.50s\"", buf);
 			wait_synch();
 		}
 	}
 	(void) fclose(fp);
+	
+	/* turn off detection of duplicate configfile options */
+	set_duplicate_opt_detection(0);
 
 #if defined(MICRO) && !defined(NOCWD_ASSUMPTIONS)
 	/* should be superseded by fqn_prefix[] */
@@ -1527,6 +1594,104 @@ const char *filename;
 	return;
 }
 
+#ifdef WIZARD
+STATIC_OVL FILE *
+fopen_wizkit_file()
+{
+	FILE *fp;
+#if defined(VMS) || defined(UNIX)
+	char	tmp_wizkit[BUFSZ];
+#endif
+	char *envp;
+
+	envp = nh_getenv("WIZKIT");
+	if (envp && *envp) (void) strncpy(wizkit, envp, WIZKIT_MAX - 1);
+	if (!wizkit[0]) return (FILE *)0;
+
+#ifdef UNIX
+	if (access(wizkit, 4) == -1) {
+		/* 4 is R_OK on newer systems */
+		/* nasty sneaky attempt to read file through
+		 * NetHack's setuid permissions -- this is a
+		 * place a file name may be wholly under the player's
+		 * control
+		 */
+		raw_printf("Access to %s denied (%d).",
+				wizkit, errno);
+		wait_synch();
+		/* fall through to standard names */
+	} else
+#endif
+	if ((fp = fopenp(wizkit, "r")) != (FILE *)0) {
+	    return(fp);
+#if defined(UNIX) || defined(VMS)
+	} else {
+	    /* access() above probably caught most problems for UNIX */
+	    raw_printf("Couldn't open requested config file %s (%d).",
+				wizkit, errno);
+	    wait_synch();
+#endif
+	}
+
+#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32)
+	if ((fp = fopenp(fqname(wizkit, CONFIGPREFIX, 0), "r"))
+								!= (FILE *)0)
+		return(fp);
+#else
+# ifdef VMS
+	envp = nh_getenv("HOME");
+	if (envp)
+		Sprintf(tmp_wizkit, "%s%s", envp, wizkit);
+	else
+		Sprintf(tmp_wizkit, "%s%s", "sys$login:", wizkit);
+	if ((fp = fopenp(tmp_wizkit, "r")) != (FILE *)0)
+		return(fp);
+# else	/* should be only UNIX left */
+	envp = nh_getenv("HOME");
+	if (envp)
+		Sprintf(tmp_wizkit, "%s/%s", envp, wizkit);
+	else 	Strcpy(tmp_wizkit, wizkit);
+	if ((fp = fopenp(tmp_wizkit, "r")) != (FILE *)0)
+		return(fp);
+	else if (errno != ENOENT) {
+		/* e.g., problems when setuid NetHack can't search home
+		 * directory restricted to user */
+		raw_printf("Couldn't open default wizkit file %s (%d).",
+					tmp_wizkit, errno);
+		wait_synch();
+	}
+# endif
+#endif
+	return (FILE *)0;
+}
+
+void
+read_wizkit()
+{
+	FILE *fp;
+	char *ep, buf[BUFSZ];
+	struct obj *otmp;
+	if (!wizard || !(fp = fopen_wizkit_file())) return;
+
+	while (fgets(buf, 4*BUFSZ, fp)) {
+		if ((ep = index(buf, '\n'))) *ep = '\0';
+		if (buf[0]) {
+			otmp = readobjnam(buf, (struct obj *)0, FALSE);
+			if (otmp) {
+			    if (otmp != &zeroobj)
+				otmp = addinv(otmp);
+			} else {
+			    raw_printf("Bad wizkit item: \"%.50s\"", buf);
+			    wait_synch();
+			}
+		}
+	}
+	(void) fclose(fp);
+	return;
+}
+
+#endif /*WIZARD*/
+
 /* ----------  END CONFIG FILE HANDLING ----------- */
 
 /* ----------  BEGIN SCOREBOARD CREATION ----------- */
@@ -1536,7 +1701,7 @@ void
 check_recordfile(dir)
 const char *dir;
 {
-#if defined(applec) || defined(__MWERKS__)
+#if (defined(macintosh) && (defined(__SC__) || defined(__MRC__))) || defined(__MWERKS__)
 # pragma unused(dir)
 #endif
 	const char *fq_record;
@@ -1586,7 +1751,7 @@ const char *dir;
 
 	if ((fd = open(fq_record, O_RDWR)) < 0) {
 	    /* try to create empty record */
-# if defined(AZTEC_C) || defined(_DCC)
+# if defined(AZTEC_C) || defined(_DCC) || (defined(__GNUC__) && defined(__AMIGA__))
 	    /* Aztec doesn't use the third argument */
 	    /* DICE doesn't like it */
 	    if ((fd = open(fq_record, O_CREAT|O_RDWR)) < 0) {

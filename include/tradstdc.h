@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tradstdc.h 3.3	93/05/30	*/
+/*	SCCS Id: @(#)tradstdc.h 3.4	1993/05/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -167,7 +167,7 @@
 # define FDECL(f,p)	f()
 # define VDECL(f,p)	f()
 
-# if defined(AMIGA) || defined(HPUX) || defined(POSIX_TYPES) || defined(__DECC)
+# if defined(AMIGA) || defined(HPUX) || defined(POSIX_TYPES) || defined(__DECC) || defined(__BORLANDC__)
 #  define genericptr	void *
 # endif
 # ifndef genericptr
@@ -203,7 +203,7 @@ typedef genericptr genericptr_t;	/* (void *) or (char *) */
 #if defined(AMIGA) && !defined(AZTEC_50)
 #define UNWIDENED_PROTOTYPES
 #endif
-#if defined(applec)
+#if defined(macintosh) && (defined(__SC__) || defined(__MRC__))
 #define UNWIDENED_PROTOTYPES
 #endif
 #if defined(__MWERKS__) && defined(__BEOS__)

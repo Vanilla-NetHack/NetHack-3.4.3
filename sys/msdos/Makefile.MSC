@@ -1,6 +1,6 @@
-#	SCCS Id: @(#)Makefile.MSC	      3.3     2000/08/02
-#	Copyright (c) NetHack PC Development Team 1997, 2000.
-#	PC NetHack 3.3 Makefile for MSC
+#	SCCS Id: @(#)Makefile.MSC	      3.4     2002/03/17
+#	Copyright (c) NetHack PC Development Team 1997 - 2002.
+#	PC NetHack 3.4 Makefile for MSC
 #
 #	For questions or comments: nethack-bugs@nethack.org
 #
@@ -17,7 +17,7 @@
 # NOTE: Make sure GAMEDIR exists before make is started.
 
 GAME = nethack
-GAMEDIR = \games\nethack
+GAMEDIR =..\binary
 
 #
 # Directories
@@ -64,7 +64,7 @@ LEXYYC = lexyy.c
 #
 # Uncomment this line if you want to include support for ALT-numeric
 # sequences, such as ALT-2 for toggling #twoweapon mode.  
-# Note that this code did not get a thorough testing prior to 3.3.1
+# Note that this code did not get a thorough testing prior to 3.4.0
 #NEWALT=/DNEW_ALT
 
 #############################################################################
@@ -205,7 +205,7 @@ VOBJ04 = do_wear.o  dog.o      dogmove.o  dokick.o   dothrow.o
 VOBJ05 = drawing.o  dungeon.o  eat.o	  end.o	     engrave.o
 VOBJ06 = exper.o    explode.o  extralev.o files.o    fountain.o
 VOBJ07 = getline.o  hack.o     hacklib.o  invent.o   lock.o
-VOBJ08 = mail.o	    main.o     makemon.o  mcastu.o   mhitm.o
+VOBJ08 = mail.o	    main.o     makemon.o  mapglyph.o mcastu.o   mhitm.o
 VOBJ09 = mhitu.o    minion.o   mkmap.o	  mklev.o    mkmaze.o
 VOBJ10 = mkobj.o    mkroom.o   mon.o	  mondata.o  monmove.o
 VOBJ11 = monst.o    monstr.o   mplayer.o  mthrowu.o  muse.o
@@ -471,7 +471,7 @@ envchk:
 
 $(GAMEFILE) :  $(LNKOPT) $(ALLOBJ)
 	@echo Linking....
-	$(LINK) $(LFLAGS) /SE:1000 /DYNAMIC:2120 /NOE /ST:6000 @<<$(GAME).lnk
+	$(LINK) $(LFLAGS) /SE:1000 /DYNAMIC:2135 /NOE /ST:6000 @<<$(GAME).lnk
 		$(ALLOBJ:^	=+^
 		)
 		$(GAMEFILE)
@@ -1035,6 +1035,7 @@ lock.o: lock.c $(HACK_H)
 mail.o: mail.c $(HACK_H) $(INCL)\mail.h
 makemon.o: makemon.c $(HACK_H) $(INCL)\epri.h $(INCL)\emin.h \
 		$(INCL)\edog.h
+mapglyph.o: mapglyph.c $(HACK_H)
 mcastu.o: mcastu.c $(HACK_H)
 mhitm.o: mhitm.c $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
 mhitu.o: mhitu.c $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h

@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)vidvga.c   3.3     96/02/16			    */
+/*   SCCS Id: @(#)vidvga.c   3.4     1996/02/16			  */
 /*   Copyright (c) NetHack PC Development Team 1995                 */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*
@@ -108,7 +108,7 @@
 # include <conio.h>
 # endif
 
-/* STATIC_DCL void FDECL(vga_NoBorder, (int)); /* */
+/* STATIC_DCL void FDECL(vga_NoBorder, (int));  */
 void FDECL(vga_gotoloc, (int,int));  /* This should be made a macro */
 void NDECL(vga_backsp);
 #ifdef SCROLLMAP
@@ -116,6 +116,7 @@ STATIC_DCL void FDECL(vga_scrollmap,(BOOLEAN_P));
 #endif
 STATIC_DCL void FDECL(vga_redrawmap,(BOOLEAN_P));
 void FDECL(vga_cliparound,(int, int));
+STATIC_OVL void FDECL(decal_planar,(struct planar_cell_struct *, unsigned));
 
 #ifdef POSITIONBAR
 STATIC_DCL void NDECL(positionbar);
@@ -139,23 +140,25 @@ extern boolean inmap;		/* in the map window */
 
 STATIC_VAR unsigned char __far *font;
 STATIC_VAR char *screentable[SCREENHEIGHT];
-STATIC_VAR char tmp[SCREENWIDTH];
+
 STATIC_VAR char *paletteptr;
 STATIC_VAR struct map_struct {
 	int glyph;
 	int ch;
 	int attr;
+	unsigned special;
 }  map[ROWNO][COLNO];	/* track the glyphs */
 
 # define vga_clearmap() { int x,y; for (y=0; y < ROWNO; ++y) \
 	for (x=0; x < COLNO; ++x) { map[y][x].glyph = cmap_to_glyph(S_stone); \
-	map[y][x].ch = S_stone; map[y][x].attr = 0;} }
+	map[y][x].ch = S_stone; map[y][x].attr = 0; map[y][x].special = 0;} }
 # define TOP_MAP_ROW 1
 #  if defined(OVLB)
 STATIC_VAR int vgacmap[CLR_MAX] = {0,3,5,9,4,8,12,14,11,2,6,7,1,8,12,13};
 STATIC_VAR int viewport_size = 40;
-STATIC_VAR char masktable[8]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01};
-STATIC_VAR char bittable[8]= {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80};
+/* STATIC_VAR char masktable[8]={0x80,0x40,0x20,0x10,0x08,0x04,0x02,0x01}; */
+/* STATIC_VAR char bittable[8]= {0x01,0x02,0x04,0x08,0x10,0x20,0x40,0x80}; */
+#if 0
 STATIC_VAR char defpalette[] = {	/* Default VGA palette         */
 	0x00, 0x00, 0x00,
 	0x00, 0x00, 0xaa,
@@ -174,6 +177,8 @@ STATIC_VAR char defpalette[] = {	/* Default VGA palette         */
 	0xff, 0x00, 0xff,
 	0xff, 0xff, 0xff
 	};
+#endif
+
 #   ifndef ALTERNATE_VIDEO_METHOD
 int vp[SCREENPLANES] = {8,4,2,1};
 #   endif
@@ -195,10 +200,10 @@ STATIC_VAR struct overview_planar_cell_struct *planecell_O;
 
 # if defined(USE_TILES)
 STATIC_VAR struct tibhdr_struct tibheader;
-/* extern FILE *tilefile; /* Not needed in here most likely */
+/* extern FILE *tilefile; */ /* Not needed in here most likely */
 # endif
 
-/* STATIC_VAR int  g_attribute;		/* Current attribute to use */
+/* STATIC_VAR int  g_attribute;	*/	/* Current attribute to use */
 
 #ifdef OVLB
 void
@@ -378,29 +383,34 @@ int attr;
 
 #  if defined(USE_TILES)
 void
-vga_xputg(glyphnum,ch)	/* Place tile represent. a glyph at current location */
+vga_xputg(glyphnum,ch, special)	/* Place tile represent. a glyph at current location */
 int glyphnum;
 int ch;
+unsigned special;	/* special feature: corpse, invis, detected, pet, ridden - hack.h */
 {
 	int col,row;
 	int attr;
+	int ry;
 
 	row = currow;
 	col = curcol;
 	if ((col < 0 || col >= COLNO) ||
 	    (row < TOP_MAP_ROW || row >= (ROWNO + TOP_MAP_ROW))) return;
-	map[row - TOP_MAP_ROW][col].glyph = glyphnum;
-	map[row - TOP_MAP_ROW][col].ch = ch;
+	ry = row - TOP_MAP_ROW;
+	map[ry][col].glyph = glyphnum;
+	map[ry][col].ch = ch;
+	map[ry][col].special = special;
 	attr = (g_attribute == 0) ? attrib_gr_normal : g_attribute;
-	map[row - TOP_MAP_ROW][col].attr = attr;
+	map[ry][col].attr = attr;
 	if (iflags.traditional_view) {
 	    vga_WriteChar((unsigned char)ch,col,row,attr);
 	} else if (!iflags.over_view) {
 	    if ((col >= clipx) && (col <= clipxmax)) {
-		if (!ReadPlanarTileFile(glyph2tile[glyphnum], &planecell))
+		if (!ReadPlanarTileFile(glyph2tile[glyphnum], &planecell)) {
+			if (map[ry][col].special) decal_planar(planecell, special);
 			vga_DisplayCell(planecell, 
 					col - clipx, row);
-		else
+		} else
 			pline("vga_xputg: Error reading tile (%d,%d) from file",
 					glyphnum,glyph2tile[glyphnum]);
 	    }
@@ -469,7 +479,7 @@ boolean clearfirst;
 	int j,x,y,t;
 	char __far *pch;
 	char volatile a;
-
+	
 	if (clearfirst) {
 		/* y here is in pixel rows */
 		outportb(0x3ce,5);
@@ -508,6 +518,8 @@ boolean clearfirst;
 			if (!iflags.over_view) {
 			  	if (!ReadPlanarTileFile(glyph2tile[t], 
 				    &planecell)) {
+				    	if (map[y][x].special)
+						decal_planar(planecell, map[y][x].special);
 					vga_DisplayCell(planecell,
 						x - clipx, y + TOP_MAP_ROW);
 		  	  	} else
@@ -648,7 +660,8 @@ boolean left;
 	for (y = 0; y < ROWNO; ++y) {
 	    for (x = i; x < j; x += 2) {
 		t = map[y][x].glyph;
-		if (!ReadPlanarTileFile(glyph2tile[t], &planecell)) 
+		if (!ReadPlanarTileFile(glyph2tile[t], &planecell))
+			if (map[y][x].special) decal_planar(planecell, map[y][x].special);
 			vga_DisplayCell(planecell, x - clipx, y + TOP_MAP_ROW);
 		else
 			pline("vga_shiftmap: Error reading tile (%d,%d)",
@@ -660,6 +673,18 @@ boolean left;
 # endif /* OVL2 */
 
 # ifdef OVLB
+STATIC_OVL void
+decal_planar(gp, special)
+struct planar_cell_struct *gp;
+unsigned special;
+{
+    if (special & MG_CORPSE) {
+    } else if (special & MG_INVIS)  {
+    } else if (special & MG_DETECT) {
+    } else if (special & MG_PET)    {
+    } else if (special & MG_RIDDEN) {
+    }
+}
 
 /*
  * Open tile files,
@@ -670,7 +695,7 @@ boolean left;
  */
 void vga_Init(void)
 {
-     int i, c;
+     int i;
 
 #   ifdef USE_TILES
      int tilefailure = 0;
@@ -692,7 +717,7 @@ void vga_Init(void)
 	iflags.over_view = FALSE;
 	CO = 80;
 	LI = 25;
-/*	clear_screen()	/* not vga_clear_screen() */
+/*	clear_screen()	*/ /* not vga_clear_screen() */
 	return;
      }
 #   endif
@@ -704,7 +729,7 @@ void vga_Init(void)
      }
      vga_SwitchMode(MODE640x480);
      windowprocs.win_cliparound = vga_cliparound;
-/*     vga_NoBorder(BACKGROUND_VGA_COLOR);   /* Not needed after palette mod */
+/*     vga_NoBorder(BACKGROUND_VGA_COLOR); */  /* Not needed after palette mod */
 #   ifdef USE_TILES
      paletteptr = tibheader.palette;
      iflags.tile_view = TRUE;
@@ -854,7 +879,7 @@ int chr,col,row,colour;
 {
 	int i;
 	int x,pixy;
-	int floc;
+
 	char volatile tc;
 	char __far *cp;
 	unsigned char __far *fp = font;
@@ -864,7 +889,7 @@ int chr,col,row,colour;
 
 	x = min(col,(CO-1));	       /* min() used protection from callers */
 	pixy = min(row,(LI-1)) * 16; /* assumes 8 x 16 char set */
-/*	if (chr < ' ') chr = ' ';    /* assumes ASCII set */
+/*	if (chr < ' ') chr = ' ';  */  /* assumes ASCII set */
 
 	outportb(0x3ce,5);
 	outportb(0x3cf,2);
@@ -1013,7 +1038,7 @@ vga_SetPalette(p)
 	}
 }
 
-/*static unsigned char colorbits[]={0x01,0x02,0x04,0x08}; /* wrong */
+/*static unsigned char colorbits[]={0x01,0x02,0x04,0x08}; */ /* wrong */
 static unsigned char colorbits[]={0x08,0x04,0x02,0x01}; 
 
 #ifdef POSITIONBAR
@@ -1042,7 +1067,7 @@ positionbar()
 	int feature, ucol;
 	int k, y, colour, row;
 	char __far *pch;
-	char bitblock;
+
 	int startk, stopk;
 	char volatile a;
 	boolean nowhere = FALSE;
@@ -1138,7 +1163,7 @@ void
 vga_special(chr,col,color)
 int chr,col,color;
 {
-	int i,y,pixx,pixy;
+	int i,y,pixy;
 	char __far *tmp_d;	/* destination pointer */
 	int vplane;
 	char fnt;

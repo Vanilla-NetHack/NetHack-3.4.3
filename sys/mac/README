@@ -1,3 +1,14 @@
+Jan 2002
+
+The MPW compilers are now supported again.
+
+Support for 68k has been discontinued due to a lack of a debugging
+system for 68k binaries.
+
+Note that the tiled MacOS X port uses the Qt windowport and the UNIX
+build system, not this windowport code.
+
+
 26 Nov, 1999
 
 NetHack 3.3.0 was built with Metrowerk's Pro 4 compiler on a PPC

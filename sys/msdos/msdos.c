@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	 3.3	 2000/07/30		          */
+/*	SCCS Id: @(#)msdos.c	 3.4	 2000/07/30		          */
 /* Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993, 1994 */
 /* NetHack may be freely redistributed.  See license for details.         */
 
@@ -43,7 +43,7 @@
  */
 #define READCHAR    0x00    /* Read Character from Keyboard */
 #define GETKEYFLAGS 0x02    /* Get Keyboard Flags */
-/*#define KEY_DEBUG	    /* print values of unexpected key codes - devel*/
+/*#define KEY_DEBUG	 */   /* print values of unexpected key codes - devel*/
 
 void FDECL(get_cursor,(int *, int *));
 
@@ -53,7 +53,9 @@ void FDECL(get_cursor,(int *, int *));
 
 static char NDECL(DOSgetch);
 static char NDECL(BIOSgetch);
+#ifndef __GO32__
 static char * NDECL(getdta);
+#endif
 static unsigned int FDECL(dos_ioctl, (int,int,unsigned));
 #ifdef USE_TILES
 extern boolean FDECL(pckeys,(unsigned char, unsigned char));	/* pckeys.c */

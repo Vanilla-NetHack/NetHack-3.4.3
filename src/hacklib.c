@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hacklib.c	3.3	99/04/10	*/
+/*	SCCS Id: @(#)hacklib.c	3.4	1999/04/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Robert Patrick Rankin, 1991		  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,6 +15,7 @@ NetHack, except that rounddiv may call panic().
 	char		highc		(char)
 	char		lowc		(char)
 	char *		lcase		(char *)
+	char *		upstart		(char *)
 	char *		mungspaces	(char *)
 	char *		eos		(char *)
 	char *		s_suffix	(const char *)
@@ -89,6 +90,14 @@ lcase(s)		/* convert a string into all lowercase */
 
     for (p = s; *p; p++)
 	if ('A' <= *p && *p <= 'Z') *p |= 040;
+    return s;
+}
+
+char *
+upstart(s)		/* convert first character of a string to uppercase */
+    char *s;
+{
+    if (s) *s = highc(*s);
     return s;
 }
 
@@ -429,7 +438,7 @@ fuzzymatch(s1, s2, ignore_chars, caseblind)
  *	- determination of what files are "very old"
  */
 
-#if defined(AMIGA) && !defined(AZTEC_C) && !defined(__SASC_60) && !defined(_DCC)
+#if defined(AMIGA) && !defined(AZTEC_C) && !defined(__SASC_60) && !defined(_DCC) && !defined(__GNUC__)
 extern struct tm *FDECL(localtime,(time_t *));
 #endif
 static struct tm *NDECL(getlt);
@@ -443,7 +452,7 @@ setrandom()
 #ifdef RANDOM	/* srandom() from sys/share/random.c */
 	srandom((unsigned int) time((time_t *)0));
 #else
-# if defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) /* system srandom() */
+# if defined(__APPLE__) || defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) /* system srandom() */
 #  ifdef BSD
 #   if defined(SUNOS4)
 	(void)

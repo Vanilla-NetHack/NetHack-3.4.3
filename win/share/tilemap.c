@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tilemap.c	3.3	2000/06/04	*/
+/*	SCCS Id: @(#)tilemap.c	3.4	2000/06/04	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -180,7 +180,7 @@ int set, entry;
 	}
 
 	tilenum = 0;	/* set-relative number */
-	for (i = 0; i < MAXPCHARS; i++) {
+	for (i = 0; i < (MAXPCHARS - MAXEXPCHARS); i++) {
 		if (set == OTH_GLYPH && tilenum == entry) {
 			if (*defsyms[i].explanation)
 				return defsyms[i].explanation;
@@ -211,7 +211,22 @@ int set, entry;
 			tilenum++;
 		}
 	}
-	
+	/* explosions */
+	tilenum = MAXPCHARS - MAXEXPCHARS;
+	i = entry - tilenum;
+	if (i < (MAXEXPCHARS * EXPL_MAX)) {
+	    if (set == OTH_GLYPH) {
+		static char *explosion_types[] = { /* hack.h */
+			"dark", "noxious", "muddy", "wet",
+			"magical", "fiery", "frosty"
+		};
+		Sprintf(buf, "explosion %s %d",
+			explosion_types[i / MAXEXPCHARS], i % MAXEXPCHARS);
+		return buf;
+	    }
+	}
+	tilenum += (MAXEXPCHARS * EXPL_MAX);
+
 	i = entry - tilenum;
 	if (i < (NUM_ZAP << 2)) {
 		if (set == OTH_GLYPH) {
@@ -345,7 +360,7 @@ init_tilemap()
 	}
 	lastobjtile = tilenum - 1;
 
-	for (i = 0; i < MAXPCHARS; i++) {
+	for (i = 0; i < (MAXPCHARS - MAXEXPCHARS); i++) {
 		tilemap[GLYPH_CMAP_OFF+i] = tilenum;
 		tilenum++;
 		while (conditionals[condnum].sequence == OTH_GLYPH &&
@@ -355,11 +370,21 @@ init_tilemap()
 		}
 	}
 
+	for (i = 0; i < (MAXEXPCHARS * EXPL_MAX); i++) {
+		tilemap[GLYPH_EXPLODE_OFF+i] = tilenum;
+		tilenum++;
+		while (conditionals[condnum].sequence == OTH_GLYPH &&
+			conditionals[condnum].predecessor == (i + MAXPCHARS)) {
+			condnum++;
+			tilenum++;
+		}
+	}
+
 	for (i = 0; i < NUM_ZAP << 2; i++) {
 		tilemap[GLYPH_ZAP_OFF+i] = tilenum;
 		tilenum++;
 		while (conditionals[condnum].sequence == OTH_GLYPH &&
-			conditionals[condnum].predecessor == (i + MAXPCHARS)) {
+			conditionals[condnum].predecessor == (i + MAXEXPCHARS)) {
 			condnum++;
 			tilenum++;
 		}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)gnmap.c	3.3	2000/07/16	*/
+/*	SCCS Id: @(#)gnmap.c	3.4	2000/07/16	*/
 /* Copyright (C) 1998 by Erik Andersen <andersee@debian.org> */
 /* Copyright (C) 1998 by Anthony Taylor <tonyt@ptialaska.net> */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -180,12 +180,13 @@ ghack_init_map_window ( )
 
   /* Tile the map background with a pretty image */ 
   background = gdk_imlib_load_image((char *) "mapbg.xpm");
-  gdk_imlib_render( background, background->rgb_width,
-	  background->rgb_height);
   if (background == NULL) {
       g_warning("Bummer! Failed to load the map background image (mapbg.xpm)!");
   }
   else {
+    gdk_imlib_render(background, background->rgb_width,
+	  background->rgb_height);
+
     /* Tile the map background */
     for (y = 0; y < height+background->rgb_height; y+=background->rgb_height)
     {
@@ -229,15 +230,16 @@ ghack_init_map_window ( )
 
    /* Set up the pet mark image */
   petmark = gdk_imlib_create_image_from_xpm_data( pet_mark_xpm);
-  gdk_imlib_render( petmark, petmark->rgb_width,
-	  petmark->rgb_height);
   if (petmark == NULL) {
     g_warning("Bummer! Failed to load the pet_mark image!");
   }
   else {
+      gdk_imlib_render(petmark, petmark->rgb_width,
+	  petmark->rgb_height);
+
       /* ghack_map.overlay is an array of canvas images used to
        * overlay tile images...
-      */
+       */
       for (i=0, y = 0; y < height; y+=ghack_glyph_height())
 	{
 	  for (x = 0; x < width; x+=ghack_glyph_width())

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.3	2000/07/20	*/
+/*	SCCS Id: @(#)config.h	3.4	2002/03/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -46,6 +46,7 @@
 /* #define X11_GRAPHICS */	/* X11 interface */
 /* #define QT_GRAPHICS */	/* Qt interface */
 /* #define GNOME_GRAPHICS */	/* Gnome interface */
+/* #define MSWIN_GRAPHICS */	/* Windows NT, CE, Graphics */
 
 /*
  * Define the default window system.  This should be one that is compiled
@@ -82,6 +83,7 @@
 #endif
 
 #ifdef QT_GRAPHICS
+# define USER_SOUNDS		/* Use sounds */
 # define USE_XPM		/* Use XPM format for images (required) */
 # define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
 # ifndef DEFAULT_WINDOW_SYS
@@ -95,6 +97,16 @@
 # ifndef DEFAULT_WINDOW_SYS
 #  define DEFAULT_WINDOW_SYS "Gnome"
 # endif
+#endif
+
+#ifdef MSWIN_GRAPHICS
+# ifdef TTY_GRAPHICS
+# undef TTY_GRAPHICS
+# endif
+# ifndef DEFAULT_WINDOW_SYS
+#  define DEFAULT_WINDOW_SYS "mswin"
+# endif
+# define HACKDIR "\\nethack"
 #endif
 
 #ifndef DEFAULT_WINDOW_SYS
@@ -186,7 +198,11 @@
  * otherwise it will be the current directory.
  */
 # ifndef HACKDIR
-#  define HACKDIR "/usr/games/lib/nethackdir"	/* nethack directory */
+#  ifdef __APPLE__
+#    define HACKDIR "nethackdir"	/* nethack directory */
+#  else
+#    define HACKDIR "/usr/games/lib/nethackdir"
+#  endif
 # endif
 
 /*
@@ -321,6 +337,18 @@ typedef unsigned char	uchar;
 
 #define EXP_ON_BOTL	/* Show experience on bottom line */
 /* #define SCORE_ON_BOTL */	/* added by Gary Erickson (erickson@ucivax) */
+
+/*
+ * Section 5:  EXPERIMENTAL STUFF
+ *
+ * Conditional compilation of new or experimental options are controlled here.
+ * Enable any of these at your own risk -- there are almost certainly
+ * bugs left here.
+ */
+
+/*#define GOLDOBJ */	/* Gold is kept on obj chains - Helge Hafting */
+
+/* End of Section 5 */
 
 #include "global.h"	/* Define everything else according to choices above */
 

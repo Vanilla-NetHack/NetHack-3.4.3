@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)region.c	3.3	1999/12/29	*/
+/*	SCCS Id: @(#)region.c	3.4	1999/12/29	*/
 /* Copyright (c) 1996 by Jean-Christophe Collet	 */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "lev.h"
 
 /*
  * This should really go into the level structure, but
@@ -391,7 +392,7 @@ run_regions()
 	/* Check if any monster is inside region */
 	if (f_indx != NO_CALLBACK) {
 	    for (j = 0; j < regions[i]->n_monst; j++) {
-		struct monst *mtmp = find_mid(regions[i]->monsters[j], FM_EVERYWHERE);
+		struct monst *mtmp = find_mid(regions[i]->monsters[j], FM_FMON);
 
 		if (!mtmp || mtmp->mhp <= 0 ||
 				(*callbacks[f_indx])(regions[i], mtmp)) {
@@ -613,6 +614,8 @@ int mode;
     int i, j;
     unsigned n;
 
+    if (!perform_bwrite(mode)) goto skip_lots;
+
     bwrite(fd, (genericptr_t) &moves, sizeof (moves));	/* timestamp */
     bwrite(fd, (genericptr_t) &n_regions, sizeof (n_regions));
     for (i = 0; i < n_regions; i++) {
@@ -647,6 +650,10 @@ int mode;
 	bwrite(fd, (genericptr_t) &regions[i]->glyph, sizeof (int));
 	bwrite(fd, (genericptr_t) &regions[i]->arg, sizeof (genericptr_t));
     }
+
+skip_lots:
+    if (release_data(mode))
+	clear_regions();
 }
 
 void
@@ -883,6 +890,10 @@ genericptr_t p2;
 	    if (cansee(mtmp->mx, mtmp->my))
 		pline("%s coughs!", Monnam(mtmp));
 	    setmangry(mtmp);
+	    if (haseyes(mtmp->data) && mtmp->mcansee) {
+		mtmp->mblinded = 1;
+		mtmp->mcansee = 0;
+	    }
 	    if (resists_poison(mtmp))
 		return FALSE;
 	    mtmp->mhp -= rnd(dam) + 5;

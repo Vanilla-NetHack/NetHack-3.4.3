@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tileedit.cpp	3.3	1999/11/19	*/
+/*	SCCS Id: @(#)tileedit.cpp	3.4	1999/11/19	*/
 /* Copyright (c) Warwick Allison, 1999. */
 /* NetHack may be freely redistributed.  See license for details. */
 /*
@@ -180,7 +180,7 @@ void TrivialTileEditor::setColor( QRgb rgb )
 {
     pen = rgb;
     for (penpixel = 0;
-	    penpixel<img.numColors()-1 && img.color(penpixel)!=pen.rgb();
+	    penpixel<img.numColors()-1 && (img.color(penpixel)&0xffffff)!=(pen.rgb()&0xffffff);
 	    penpixel++)
 	continue;
 }
@@ -217,6 +217,8 @@ void TrivialTileEditor::paintPoint(QPainter& painter, QPoint p)
 void TrivialTileEditor::mousePressEvent(QMouseEvent* e)
 {
     QPoint p = imagePoint(e->pos());
+    if ( !img.rect().contains(p) )
+	return;
     uchar& pixel = img.scanLine(p.y())[p.x()];
     if ( e->button() == LeftButton ) {
 	pixel = penpixel;
@@ -226,7 +228,8 @@ void TrivialTileEditor::mousePressEvent(QMouseEvent* e)
 	emit pick( img.color(pixel) );
     } else if ( e->button() == MidButton ) {
 	QPainter painter(this);
-	fill(painter,p,pixel);
+	if ( pixel != penpixel )
+	    fill(painter,p,pixel);
     }
 }
 
@@ -253,6 +256,8 @@ void TrivialTileEditor::mouseReleaseEvent(QMouseEvent* e)
 void TrivialTileEditor::mouseMoveEvent(QMouseEvent* e)
 {
     QPoint p = imagePoint(e->pos());
+    if ( !img.rect().contains(p) )
+	return;
     uchar& pixel = img.scanLine(p.y())[p.x()];
     pixel = penpixel;
     QPainter painter(this);

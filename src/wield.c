@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wield.c	3.3	2000/06/04	*/
+/*	SCCS Id: @(#)wield.c	3.4	2001/12/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -50,7 +50,7 @@
  */
 
 
-static int FDECL(ready_weapon, (struct obj *));
+STATIC_DCL int FDECL(ready_weapon, (struct obj *));
 
 /* elven weapons vibrate warningly when enchanted beyond a limit */
 #define is_elven_weapon(optr)	((optr)->otyp == ELVEN_ARROW\
@@ -84,11 +84,6 @@ static int FDECL(ready_weapon, (struct obj *));
  * 5.  Emptying the slot, by passing a null object.  NEVER pass
  *     zeroobj!
  *
- * Note: setuwep() with a null obj, and uwepgone(), are NOT the same!
- * Sometimes unwielding a weapon can kill you, and lifesaving will then
- * put it back into your hand.  If lifesaving is permitted to do this,
- * use setwuep((struct obj *)0); otherwise use uwepgone().
- *
  * If the item is being moved from another slot, it is the caller's
  * responsibility to handle that.  It's also the caller's responsibility
  * to print the appropriate messages.
@@ -97,8 +92,17 @@ void
 setuwep(obj)
 register struct obj *obj;
 {
+	struct obj *olduwep = uwep;
+
 	if (obj == uwep) return; /* necessary to not set unweapon */
+	/* This message isn't printed in the caller because it happens
+	 * *whenever* Sunsword is unwielded, from whatever cause.
+	 */
 	setworn(obj, W_WEP);
+	if (uwep == obj && artifact_light(olduwep) && olduwep->lamplit) {
+	    end_burn(olduwep, FALSE);
+	    if (!Blind) pline("%s glowing.", Tobjnam(olduwep, "stop"));
+	}
 	/* Note: Explicitly wielding a pick-axe will not give a "bashing"
 	 * message.  Wielding one via 'a'pplying it will.
 	 * 3.2.2:  Wielding arbitrary objects will give bashing message too.
@@ -106,14 +110,17 @@ register struct obj *obj;
 	if (obj) {
 		unweapon = (obj->oclass == WEAPON_CLASS) ?
 				is_launcher(obj) || is_ammo(obj) ||
-				is_missile(obj) || is_pole(obj) :
-			   !is_weptool(obj);
+				is_missile(obj) || (is_pole(obj)
+#ifdef STEED
+				&& !u.usteed
+#endif
+				) : !is_weptool(obj);
 	} else
 		unweapon = TRUE;	/* for "bare hands" message */
 	update_inventory();
 }
 
-static int
+STATIC_OVL int
 ready_weapon(wep)
 struct obj *wep;
 {
@@ -174,6 +181,12 @@ struct obj *wep;
 	    /* KMH -- Talking artifacts are finally implemented */
 	    arti_speak(wep);
 
+	    if (artifact_light(wep) && !wep->lamplit) {
+		begin_burn(wep, FALSE);
+		if (!Blind)
+		    pline("%s to glow brilliantly!", Tobjnam(wep, "begin"));
+	    }
+
 #if 0
 	    /* we'll get back to this someday, but it's not balanced yet */
 	    if (Race_if(PM_ELF) && !wep->oartifact &&
@@ -227,7 +240,7 @@ static NEARDATA const char bullets[] =	/* (note: different from dothrow.c) */
 int
 dowield()
 {
-	register struct obj *wep;
+	register struct obj *wep, *oldwep;
 	int result;
 
 	/* May we attempt this? */
@@ -267,9 +280,10 @@ dowield()
 	}
 
 	/* Set your new primary weapon */
-	if (flags.pushweapon && uwep)
-		setuswapwep(uwep);
+	oldwep = uwep;
 	result = ready_weapon(wep);
+	if (flags.pushweapon && oldwep && uwep != oldwep)
+		setuswapwep(oldwep);
 	untwoweapon();
 
 	return (result);
@@ -355,7 +369,7 @@ dowieldquiver()
 	} else if (newquiver == uwep) {
 		/* Prevent accidentally readying the main weapon */
 		pline("%s already being used as a weapon!",
-		      (uwep->quan == 1L) ? "That is" : "They are");
+		      !is_plural(uwep) ? "That is" : "They are");
 		return(0);
 	} else if (newquiver->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL
 #ifdef STEED
@@ -393,23 +407,23 @@ can_twoweapon()
 	struct obj *otmp;
 
 #define NOT_WEAPON(obj) (!is_weptool(obj) && obj->oclass != WEAPON_CLASS)
-	if (Upolyd)
-		You("can only use two weapons in your normal form.");
+	if (!could_twoweap(youmonst.data))
+		You_cant("use two weapons in your current form.");
 	else if (!uwep || !uswapwep)
 		Your("%s%s%s empty.", uwep ? "left " : uswapwep ? "right " : "",
 			body_part(HAND), (!uwep && !uswapwep) ? "s are" : " is");
 	else if (NOT_WEAPON(uwep) || NOT_WEAPON(uswapwep)) {
 		otmp = NOT_WEAPON(uwep) ? uwep : uswapwep;
 		pline("%s %s.", Yname2(otmp),
-		    (otmp->quan) > 1L ? "aren't weapons" : "isn't a weapon");
+		    is_plural(otmp) ? "aren't weapons" : "isn't a weapon");
 	} else if (bimanual(uwep) || bimanual(uswapwep)) {
 		otmp = bimanual(uwep) ? uwep : uswapwep;
 		pline("%s isn't one-handed.", Yname2(otmp));
 	} else if (uarms)
 		You_cant("use two weapons while wearing a shield.");
 	else if (uswapwep->oartifact)
-		pline("%s resists being held second to another weapon!",
-			Yname2(uswapwep));
+		pline("%s %s being held second to another weapon!",
+			Yname2(uswapwep), otense(uswapwep, "resist"));
 	else if (!uarmg && !Stone_resistance && (uswapwep->otyp == CORPSE &&
 		    touch_petrifies(&mons[uswapwep->corpsenm]))) {
 		char kbuf[BUFSZ];
@@ -419,13 +433,14 @@ can_twoweapon()
 		Sprintf(kbuf, "%s corpse", an(mons[uswapwep->corpsenm].mname));
 		instapetrify(kbuf);
 	} else if (Glib || uswapwep->cursed) {
+		char str[BUFSZ];
 		struct obj *obj = uswapwep;
 
-		Your("%s from your %s!",  aobjnam(obj, "slip"),
-				makeplural(body_part(HAND)));
+		/* Avoid trashing makeplural's static buffer */
+		Strcpy(str, makeplural(body_part(HAND)));
+		Your("%s from your %s!",  aobjnam(obj, "slip"), str);
 		if (!Glib)
 			obj->bknown = TRUE;
-		setuswapwep((struct obj *) 0);
 		dropx(obj);
 	} else
 		return (TRUE);
@@ -464,6 +479,10 @@ void
 uwepgone()
 {
 	if (uwep) {
+		if (artifact_light(uwep) && uwep->lamplit) {
+		    end_burn(uwep, FALSE);
+		    if (!Blind) pline("%s glowing.", Tobjnam(uwep, "stop"));
+		}
 		setworn((struct obj *)0, W_WEP);
 		unweapon = TRUE;
 		update_inventory();
@@ -499,31 +518,35 @@ untwoweapon()
 	return;
 }
 
-/* Maybe rust weapon, or corrode it if acid damage is called for */
+/* Maybe rust object, or corrode it if acid damage is called for */
 void
-erode_weapon(target, acid_dmg)
-struct obj *target;
+erode_obj(target, acid_dmg, fade_scrolls)
+struct obj *target;		/* object (e.g. weapon or armor) to erode */
 boolean acid_dmg;
+boolean fade_scrolls;
 {
 	int erosion;
 	struct monst *victim;
 	boolean vismon;
+	boolean visobj;
 
 	if (!target)
 	    return;
-	if (!carried(target) && !mcarried(target))
-	    panic("erode whose weapon? (%d)", (int)target->where);
-	victim = carried(target) ? &youmonst : target->ocarry;
-	vismon = (victim != &youmonst) && canseemon(victim);
+	victim = carried(target) ? &youmonst :
+	    mcarried(target) ? target->ocarry : (struct monst *)0;
+	vismon = victim && (victim != &youmonst) && canseemon(victim);
+	visobj = !victim && cansee(bhitpos.x, bhitpos.y); /* assume thrown */
 
 	erosion = acid_dmg ? target->oeroded2 : target->oeroded;
 
 	if (target->greased) {
-	    grease_protect(target,(char *)0,FALSE,victim);
+	    grease_protect(target,(char *)0,victim);
 	} else if (target->oclass == SCROLL_CLASS) {
+	    if(fade_scrolls && target->otyp != SCR_BLANK_PAPER
 #ifdef MAIL
-	    if(target->otyp != SCR_MAIL)
+	    && target->otyp != SCR_MAIL
 #endif
+					)
 	    {
 		if (!Blind) {
 		    if (victim == &youmonst)
@@ -531,6 +554,8 @@ boolean acid_dmg;
 		    else if (vismon)
 			pline("%s's %s.", Monnam(victim),
 			      aobjnam(target, "fade"));
+		    else if (visobj)
+			pline_The("%s.", aobjnam(target, "fade"));
 		}
 		target->otyp = SCR_BLANK_PAPER;
 		target->spe = 0;
@@ -543,6 +568,7 @@ boolean acid_dmg;
 		else if (vismon)
 		    pline("%s's %s not affected.", Monnam(victim),
 			aobjnam(target, "are"));
+		/* no message if not carried */
 	    }
 	    if (target->oerodeproof) target->rknown = TRUE;
 	} else if (erosion < MAX_ERODE) {
@@ -552,6 +578,11 @@ boolean acid_dmg;
 		    erosion ? " further" : "");
 	    else if (vismon)
 		pline("%s's %s%s!", Monnam(victim),
+		    aobjnam(target, acid_dmg ? "corrode" : "rust"),
+		    erosion+1 == MAX_ERODE ? " completely" :
+		    erosion ? " further" : "");
+	    else if (visobj)
+		pline_The("%s%s!",
 		    aobjnam(target, acid_dmg ? "corrode" : "rust"),
 		    erosion+1 == MAX_ERODE ? " completely" :
 		    erosion ? " further" : "");
@@ -567,6 +598,10 @@ boolean acid_dmg;
 			acid_dmg ? "corroded" : "rusty");
 		else if (vismon)
 		    pline("%s's %s completely %s.", Monnam(victim),
+			aobjnam(target, "look"),
+			acid_dmg ? "corroded" : "rusty");
+		else if (visobj)
+		    pline_The("%s completely %s.",
 			aobjnam(target, "look"),
 			acid_dmg ? "corroded" : "rusty");
 	    }
@@ -615,9 +650,9 @@ register int amount;
 	if(((uwep->spe > 5 && amount >= 0) || (uwep->spe < -5 && amount < 0))
 								&& rn2(3)) {
 	    if (!Blind)
-	    Your("%s %s for a while and then evaporate%s.",
+	    Your("%s %s for a while and then %s.",
 		 aobjnam(uwep, "violently glow"), color,
-		 uwep->quan == 1L ? "s" : "");
+		 otense(uwep, "evaporate"));
 	    else
 		Your("%s.", aobjnam(uwep, "evaporate"));
 
@@ -674,7 +709,7 @@ register struct obj *obj;
 
 	savewornmask = obj->owornmask;
 	Your("%s %s welded to your %s!",
-		xname(obj), (obj->quan == 1L) ? "is" : "are",
+		xname(obj), otense(obj, "are"),
 		bimanual(obj) ? (const char *)makeplural(body_part(HAND))
 				: body_part(HAND));
 	obj->owornmask = savewornmask;

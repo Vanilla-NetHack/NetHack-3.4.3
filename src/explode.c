@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c	3.3	2000/07/07	*/
+/*	SCCS Id: @(#)explode.c	3.4	2000/07/07	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,11 +22,12 @@ static int expl[3][3] = {
  * these disadvantages....
  */
 void
-explode(x, y, type, dam, olet)
+explode(x, y, type, dam, olet, expltype)
 int x, y;
 int type; /* the same as in zap.c */
 int dam;
 char olet;
+int expltype;
 {
 	int i, j, k, damu = dam;
 	boolean starting = 1;
@@ -39,6 +40,7 @@ char olet;
 	int explmask[3][3];
 		/* 0=normal explosion, 1=do shieldeff, 2=do nothing */
 	boolean shopdamage = FALSE;
+	boolean generic = FALSE;
 
 	if (olet == WAND_CLASS)		/* retributive strike */
 		switch (Role_switch) {
@@ -180,7 +182,7 @@ char olet;
 		for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			if (explmask[i][j] == 2) continue;
 			tmp_at(starting ? DISP_BEAM : DISP_CHANGE,
-					    cmap_to_glyph(expl[i][j]));
+				explosion_to_glyph(expltype,expl[i][j]));
 			tmp_at(i+x-1, j+y-1);
 			starting = 0;
 		}
@@ -205,7 +207,8 @@ char olet;
 		    /* Cover last shield glyph with blast symbol. */
 		    for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			if (explmask[i][j] == 1)
-			    show_glyph(i+x-1,j+y-1,cmap_to_glyph(expl[i][j]));
+			    show_glyph(i+x-1,j+y-1,
+					explosion_to_glyph(expltype, expl[i][j]));
 		    }
 
 		} else {		/* delay a little bit. */
@@ -215,7 +218,11 @@ char olet;
 
 		tmp_at(DISP_END, 0); /* clear the explosion */
 	} else {
-		if (flags.soundok) You_hear("a blast.");
+	    if (olet == MON_EXPLODE) {
+		str = "explosion";
+		generic = TRUE;
+	    }
+	    if (flags.soundok) You_hear("a blast.");
 	}
 
     if (dam)
@@ -258,7 +265,7 @@ char olet;
 				      (adtyp == AD_ACID) ? "burned" :
 				       "fried");
 		} else if (cansee(i+x-1, j+y-1))
-		pline("%s is caught in the %s!", Monnam(mtmp), str);
+		    pline("%s is caught in the %s!", Monnam(mtmp), str);
 
 		idamres += destroy_mitem(mtmp, SCROLL_CLASS, (int) adtyp);
 		idamres += destroy_mitem(mtmp, SPBOOK_CLASS, (int) adtyp);
@@ -277,9 +284,9 @@ char olet;
 			int mdam = dam;
 
 			if (resist(mtmp, olet, 0, FALSE)) {
-				if (cansee(i+x-1,j+y-1))
-				    pline("%s resists the %s!", Monnam(mtmp), str);
-				mdam = dam/2;
+			    if (cansee(i+x-1,j+y-1))
+				pline("%s resists the %s!", Monnam(mtmp), str);
+			    mdam = dam/2;
 			}
 			if (mtmp == u.ustuck)
 				mdam *= 2;
@@ -294,7 +301,7 @@ char olet;
 			/* KMH -- Don't blame the player for pets killing gas spores */
 			if (!flags.mon_moving) killed(mtmp);
 			else monkilled(mtmp, "", (int)adtyp);
-		}
+		} else if (!flags.mon_moving) setmangry(mtmp);
 	}
 
 	/* Do your injury last */
@@ -316,18 +323,27 @@ char olet;
 		destroy_item(WAND_CLASS, (int) adtyp);
 
 		ugolemeffects((int) adtyp, damu);
-		if (uhurt == 2) u.uhp -= damu, flags.botl = 1;
+		if (uhurt == 2) {
+		    if (Upolyd)
+		    	u.mh  -= damu;
+		    else
+			u.uhp -= damu;
+		    flags.botl = 1;
+		}
 
-		if (u.uhp <= 0) {
+		if (u.uhp <= 0 || (Upolyd && u.mh <= 0)) {
+		    if (Upolyd) {
+			rehumanize();
+		    } else {
 			if (olet == MON_EXPLODE) {
 			    /* killer handled by caller */
-			    if (str != killer_buf)
+			    if (str != killer_buf && !generic)
 				Strcpy(killer_buf, str);
 			    killer_format = KILLED_BY_AN;
 			} else if (type >= 0 && olet != SCROLL_CLASS) {
 			    killer_format = NO_KILLER_PREFIX;
 			    Sprintf(killer_buf, "caught %sself in %s own %s",
-				    him[flags.female], his[flags.female], str);
+				    uhim(), uhis(), str);
 			} else {
 			    killer_format = KILLED_BY;
 			    Strcpy(killer_buf, str);
@@ -336,6 +352,7 @@ char olet;
 			/* Known BUG: BURNING suppresses corpse in bones data,
 			   but done does not handle killer reason correctly */
 			done((adtyp == AD_FIRE) ? BURNING : DIED);
+		    }
 		}
 		exercise(A_STR, FALSE);
 	}
@@ -345,6 +362,11 @@ char olet;
 			       adtyp == AD_COLD ? "shatter" :
 			       adtyp == AD_DISN ? "disintegrate" : "destroy");
 	}
+
+	/* explosions are noisy */
+	i = dam * dam;
+	if (i < 50) i = 50;	/* in case random damage is very small */
+	wake_nearto(x, y, i);
 }
 #endif /* OVL0 */
 #ifdef OVL1
@@ -394,20 +416,18 @@ struct obj *obj;			/* only scatter this obj        */
 		qtmp = otmp->quan - 1;
 		if (qtmp > LARGEST_INT) qtmp = LARGEST_INT;
 		qtmp = (long)rnd((int)qtmp);
-		(void) splitobj(otmp, qtmp);
-		if (qtmp < otmp->quan)
-			split_up = TRUE;
+		otmp = splitobj(otmp, qtmp);
+		if (rn2(qtmp))
+		    split_up = TRUE;
 		else
-			split_up = FALSE;
-	    }
+		    split_up = FALSE;
+	    } else
+		split_up = FALSE;
 	    if (individual_object) {
-		if (split_up) {
-			if (otmp->where == OBJ_FLOOR)
-				obj = otmp->nexthere;
-			else
-				obj = otmp->nobj;
+ 		if (split_up) {
+		    obj = otmp;
 		} else
-			obj = (struct obj *)0;
+		    obj = (struct obj *)0;
 	    }
 	    obj_extract_self(otmp);
 	    used_up = FALSE;
@@ -417,15 +437,20 @@ struct obj *obj;			/* only scatter this obj        */
 			&& ((otmp->otyp == BOULDER) || (otmp->otyp == STATUE))
 			&& rn2(10)) {
 		if (otmp->otyp == BOULDER) {
-		    pline("%s breaks apart.",The(xname(otmp)));
+		    pline("%s apart.", Tobjnam(otmp, "break"));
 		    fracture_rock(otmp);
 		    place_object(otmp, sx, sy);	/* put fragments on floor */
+		    if ((otmp = sobj_at(BOULDER, sx, sy)) != 0) {
+			/* another boulder here, restack it to the top */
+			obj_extract_self(otmp);
+			place_object(otmp, sx, sy);
+		    }
 		} else {
 		    struct trap *trap;
 
 		    if ((trap = t_at(sx,sy)) && trap->ttyp == STATUE_TRAP)
 			    deltrap(trap);
-		    pline("%s crumbles.",The(xname(otmp)));
+		    pline("%s.", Tobjnam(otmp, "crumble"));
 		    (void) break_statue(otmp);
 		    place_object(otmp, sx, sy);	/* put fragments on floor */
 		}
@@ -543,7 +568,7 @@ splatter_burning_oil(x, y)
 {
 /* ZT_SPELL(ZT_FIRE) = ZT_SPELL(AD_FIRE-1) = 10+(2-1) = 11 */
 #define ZT_SPELL_O_FIRE 11 /* value kludge, see zap.c */
-    explode(x, y, ZT_SPELL_O_FIRE, d(4,4), BURNING_OIL);
+    explode(x, y, ZT_SPELL_O_FIRE, d(4,4), BURNING_OIL, EXPL_FIERY);
 }
 
 #endif /* OVL1 */

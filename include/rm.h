@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rm.h	3.3	1999/12/12	*/
+/*	SCCS Id: @(#)rm.h	3.4	1999/12/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -213,6 +213,7 @@
 #define MAXDCHARS	41	/* maximum of mapped dungeon characters */
 #define MAXTCHARS	22	/* maximum of mapped trap characters */
 #define MAXECHARS	29	/* maximum of mapped effects characters */
+#define MAXEXPCHARS	9	/* number of explosion characters */
 
 struct symdef {
     uchar sym;
@@ -425,6 +426,7 @@ struct rm {
 #define icedpool	flags
 
 #define blessedftn	horizontal  /* a fountain that grants attribs */
+#define disturbed	horizontal  /* a grave that has been disturbed */
 
 struct damage {
 	struct damage *next;

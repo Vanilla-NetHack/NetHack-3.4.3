@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.3	2000/07/27	*/
+/*	SCCS Id: @(#)display.c	3.4	2000/07/27	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -337,6 +337,9 @@ void map_location(x,y,show)
     _map_location(x,y,show);
 }
 
+#define DETECTED 	2
+#define PHYSICALLY_SEEN 1
+#define is_worm_tail(mon)	((mon) && ((x != (mon)->mx)  || (y != (mon)->my)))
 
 /*
  * display_monster()
@@ -350,10 +353,11 @@ void map_location(x,y,show)
  *
  */
 STATIC_OVL void
-display_monster(x, y, mon, in_sight, worm_tail)
+display_monster(x, y, mon, sightflags, worm_tail)
     register xchar x, y;	/* display position */
     register struct monst *mon;	/* monster to display */
-    int in_sight;		/* TRUE if the monster is physically seen */
+    int sightflags;		/* 1 if the monster is physically seen */
+    				/* 2 if detected using Detect_monsters */
     register xchar worm_tail;	/* mon is actually a worm tail */
 {
     register boolean mon_mimic = (mon->m_ap_type != M_AP_NOTHING);
@@ -366,7 +370,7 @@ display_monster(x, y, mon, in_sight, worm_tail)
      * the mimic was mimicing.
      */
 
-    if (mon_mimic && in_sight) {
+    if (mon_mimic && sightflags) {
 	switch (mon->m_ap_type) {
 	    default:
 		impossible("display_monster:  bad m_ap_type value [ = %d ]",
@@ -403,7 +407,7 @@ display_monster(x, y, mon, in_sight, worm_tail)
 	    }
 
 	    case M_AP_MONSTER:
-		show_glyph(x,y, monnum_to_glyph(what_mon(mon->mappearance)));
+		show_glyph(x,y, monnum_to_glyph(what_mon((int)mon->mappearance)));
 		break;
 	}
 	
@@ -413,7 +417,10 @@ display_monster(x, y, mon, in_sight, worm_tail)
     if (!mon_mimic || sensed) {
 	int num;
 
-	if (Detect_monsters) {
+	/* [ALI] Only use detected glyphs when monster wouldn't be
+	 * visible by any other means.
+	 */
+	if (sightflags == DETECTED) {
 	    if (worm_tail)
 		num = detected_monnum_to_glyph(what_mon(PM_LONG_WORM_TAIL));
 	    else
@@ -589,7 +596,9 @@ feel_location(x, y)
     }
     /* draw monster on top if we can sense it */
     if ((x != u.ux || y != u.uy) && (mon = m_at(x,y)) && sensemon(mon))
-	display_monster(x,y,mon,1,((x != mon->mx)  || (y != mon->my)));
+	display_monster(x, y, mon,
+		(tp_sensemon(mon) || MATCH_WARN_OF_MON(mon)) ? PHYSICALLY_SEEN : DETECTED,
+		is_worm_tail(mon));
 }
 
 /*
@@ -653,15 +662,27 @@ newsym(x,y)
 	}
 	else {
 	    mon = m_at(x,y);
-	    worm_tail = mon && ((x != mon->mx)  || (y != mon->my));
-	    if (mon &&
-		 ((see_it = (worm_tail
-			? (!mon->minvis || See_invisible)
-			: (mon_visible(mon)) || sensemon(mon))))) {
+	    worm_tail = is_worm_tail(mon);
+	    see_it = mon && (worm_tail
+		? (!mon->minvis || See_invisible)
+		: (mon_visible(mon)) || tp_sensemon(mon) || MATCH_WARN_OF_MON(mon));
+	    if (mon && (see_it || (!worm_tail && Detect_monsters))) {
+		if (mon->mtrapped) {
+		    struct trap *trap = t_at(x, y);
+		    int tt = trap ? trap->ttyp : NO_TRAP;
+
+		    /* if monster is in a physical trap, you see the trap too */
+		    if (tt == BEAR_TRAP || tt == PIT ||
+			tt == SPIKED_PIT ||tt == WEB) {
+			trap->tseen = TRUE;
+		    }
+		}
 		_map_location(x,y,0);	/* map under the monster */
 		/* also gets rid of any invisibility glyph */
-		display_monster(x,y,mon,see_it,worm_tail);
+		display_monster(x, y, mon, see_it ? PHYSICALLY_SEEN : DETECTED, worm_tail);
 	    }
+	    else if (mon && mon_warning(mon) && !is_worm_tail(mon))
+	        display_warning(mon);
 	    else if (glyph_is_invisible(levl[x][y].glyph))
 		map_invisible(x, y);
 	    else
@@ -677,15 +698,16 @@ newsym(x,y)
 	    if (canseeself()) display_self();
 	}
 	else if ((mon = m_at(x,y))
-		&& (sensemon(mon)
-		    || (see_with_infrared(mon) && mon_visible(mon)))
-		&& !((x != mon->mx) || (y != mon->my))) {
+		&& ((see_it = (tp_sensemon(mon) || MATCH_WARN_OF_MON(mon)
+		    		|| (see_with_infrared(mon) && mon_visible(mon))))
+		    || Detect_monsters)
+		&& !is_worm_tail(mon)) {
 	    /* Monsters are printed every time. */
 	    /* This also gets rid of any invisibility glyph */
-	    display_monster(x,y,mon,0,0);
+	    display_monster(x, y, mon, see_it ? 0 : DETECTED, 0);
 	}
 	else if ((mon = m_at(x,y)) && mon_warning(mon) &&
-		 !((x != mon->mx) || (y != mon->my))) {
+		 !is_worm_tail(mon)) {
 	        display_warning(mon);
 	}		
 
@@ -725,6 +747,7 @@ show_mem:
     }
 }
 
+#undef is_worm_tail
 
 /*
  * shieldeff()
@@ -738,6 +761,7 @@ shieldeff(x,y)
 {
     register int i;
 
+    if (!flags.sparkle) return;
     if (cansee(x,y)) {	/* Don't see anything if can't see the location */
 	for (i = 0; i < SHIELD_COUNT; i++) {
 	    show_glyph(x, y, cmap_to_glyph(shield_static[i]));
@@ -1183,6 +1207,8 @@ show_glyph(x,y,glyph)
 	    text = "swallow border";	offset = glyph - GLYPH_SWALLOW_OFF;
 	} else if (glyph >= GLYPH_ZAP_OFF) {		/* zap beam */
 	    text = "zap beam";		offset = glyph - GLYPH_ZAP_OFF;
+	} else if (glyph >= GLYPH_EXPLODE_OFF) {	/* explosion */
+	    text = "explosion";		offset = glyph - GLYPH_EXPLODE_OFF;
 	} else if (glyph >= GLYPH_CMAP_OFF) {		/* cmap */
 	    text = "cmap_index";	offset = glyph - GLYPH_CMAP_OFF;
 	} else if (glyph >= GLYPH_OBJ_OFF) {		/* object */

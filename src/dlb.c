@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dlb.c	3.3	97/07/29	*/
+/*	SCCS Id: @(#)dlb.c	3.4	1997/07/29	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -349,6 +349,13 @@ lib_dlb_fgets(buf, len, dp)
 	c = *bp;
     }
     *bp = '\0';
+
+#if defined(MSDOS) || defined(WIN32)
+    if ((bp = index(buf, '\r')) != 0) {
+	*bp++ = '\n';
+	*bp = '\0';
+    }
+#endif
 
     return buf;
 }

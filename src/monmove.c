@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monmove.c	3.3	2000/07/24	*/
+/*	SCCS Id: @(#)monmove.c	3.4	2000/08/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -69,6 +69,9 @@ register struct monst *mtmp;
 		  }
 		  stop_occupation();
 		}
+	    } else if (is_digging()) {
+		/* chewing, wand/spell of digging are checked elsewhere */
+		watch_dig(mtmp, digging.pos.x, digging.pos.y, FALSE);
 	    }
 	}
 }
@@ -198,6 +201,41 @@ disturb(mtmp)
 	return(0);
 }
 
+/* monster begins fleeing for the specified time, 0 means untimed flee
+ * if first, only adds fleetime if monster isn't already fleeing
+ * if fleemsg, prints a message about new flight, otherwise, caller should */
+void
+monflee(mtmp, fleetime, first, fleemsg)
+struct monst *mtmp;
+int fleetime;
+boolean first;
+boolean fleemsg;
+{
+	if (u.ustuck == mtmp) {
+	    if (u.uswallow)
+		expels(mtmp, mtmp->data, TRUE);
+	    else if (!sticks(youmonst.data)) {
+		unstuck(mtmp);	/* monster lets go when fleeing */
+		You("get released!");
+	    }
+	}
+
+	if (!first || !mtmp->mflee) {
+	    /* don't lose untimed scare */
+	    if (!fleetime)
+		mtmp->mfleetim = 0;
+	    else if (!mtmp->mflee || mtmp->mfleetim) {
+		fleetime += mtmp->mfleetim;
+		/* ensure monster flees long enough to visibly stop fighting */
+		if (fleetime == 1) fleetime++;
+		mtmp->mfleetim = min(fleetime, 127);
+	    }
+	    if (!mtmp->mflee && fleemsg && canseemon(mtmp))
+		pline("%s turns to flee!", (Monnam(mtmp)));
+	    mtmp->mflee = 1;
+	}
+}
+
 STATIC_OVL void
 distfleeck(mtmp,inrange,nearby,scared)
 register struct monst *mtmp;
@@ -227,18 +265,11 @@ int *inrange, *nearby, *scared;
 			       (!mtmp->mpeaceful &&
 				    in_your_sanctuary(mtmp, 0, 0))));
 
-	if(*scared && !mtmp->mflee) {
-		if (!sticks(youmonst.data))
-			unstuck(mtmp);	/* monster lets go when fleeing */
-		mtmp->mflee = 1;
-#ifdef STUPID
+	if(*scared) {
 		if (rn2(7))
-		    mtmp->mfleetim = rnd(10);
+		    monflee(mtmp, rnd(10), TRUE, TRUE);
 		else
-		    mtmp->mfleetim = rnd(100);
-#else
-		mtmp->mfleetim = rnd(rn2(7) ? 10 : 100);
-#endif
+		    monflee(mtmp, rnd(100), TRUE, TRUE);
 	}
 
 }
@@ -265,6 +296,9 @@ register struct monst *mtmp;
 	register struct permonst *mdat;
 	register int tmp=0;
 	int inrange, nearby, scared;
+#ifdef GOLDOBJ
+        struct obj *ygold = 0, *lepgold = 0;
+#endif
 
 /*	Pre-movement adjustments	*/
 
@@ -314,7 +348,7 @@ register struct monst *mtmp;
 	}
 	if (mdat->msound == MS_SHRIEK && !um_dist(mtmp->mx, mtmp->my, 1))
 	    m_respond(mtmp);
-	if (mdat == &mons[PM_MEDUSA] && cansee(mtmp->mx, mtmp->my))
+	if (mdat == &mons[PM_MEDUSA] && couldsee(mtmp->mx, mtmp->my))
 	    m_respond(mtmp);
 	if (mtmp->mhp <= 0) return(1); /* m_respond gaze can kill medusa */
 
@@ -406,10 +440,13 @@ register struct monst *mtmp;
 				m2->mhp -= rnd(15);
 				if (m2->mhp <= 0)
 				    monkilled(m2, "", AD_DRIN);
+				else
+				    m2->msleeping = 0;
 			}
 		}
 	}
 toofar:
+
 	/* If monster is nearby you, and has to wield a weapon, do so.   This
 	 * costs the monster a move, of course.
 	 */
@@ -432,11 +469,40 @@ toofar:
 
 /*	Now the actual movement phase	*/
 
+#ifndef GOLDOBJ
 	if(!nearby || mtmp->mflee || scared ||
 	   mtmp->mconf || mtmp->mstun || (mtmp->minvis && !rn2(3)) ||
 	   (mdat->mlet == S_LEPRECHAUN && !u.ugold && (mtmp->mgold || rn2(2))) ||
+#else
+        if (mdat->mlet == S_LEPRECHAUN) {
+	    ygold = findgold(invent);
+	    lepgold = findgold(mtmp->minvent);
+	}
+
+	if(!nearby || mtmp->mflee || scared ||
+	   mtmp->mconf || mtmp->mstun || (mtmp->minvis && !rn2(3)) ||
+	   (mdat->mlet == S_LEPRECHAUN && !ygold && (lepgold || rn2(2))) ||
+#endif
 	   (is_wanderer(mdat) && !rn2(4)) || (Conflict && !mtmp->iswiz) ||
 	   (!mtmp->mcansee && !rn2(4)) || mtmp->mpeaceful) {
+		/* Possibly cast an undirected spell if not attacking you */
+		/* note that most of the time castmu() will pick a directed
+		   spell and do nothing, so the monster moves normally */
+		/* arbitrary distance restriction to keep monster far away
+		   from you from having cast dozens of sticks-to-snakes
+		   or similar spells by the time you reach it */
+		if (dist2(mtmp->mx, mtmp->my, u.ux, u.uy) <= 64 && !mtmp->mspec_used) {
+		    struct attack *a;
+
+		    for (a = &mdat->mattk[0]; a < &mdat->mattk[NATTK]; a++) {
+			if (a->aatyp == AT_MAGC && (a->adtyp == AD_SPEL || a->adtyp == AD_CLRC)) {
+			    if (castmu(mtmp, a, FALSE, FALSE)) {
+				tmp = 3;
+				break;
+			    }
+			}
+		    }
+		}
 
 		tmp = m_move(mtmp, 0);
 		distfleeck(mtmp,&inrange,&nearby,&scared);	/* recalc */
@@ -445,6 +511,10 @@ toofar:
 		    case 0:	/* no movement, but it can still attack you */
 		    case 3:	/* absolutely no movement */
 				/* for pets, case 0 and 3 are equivalent */
+			/* vault guard might have vanished */
+			if (mtmp->isgd && (mtmp->mhp < 1 ||
+					    (mtmp->mx == 0 && mtmp->my == 0)))
+			    return 1;	/* behave as if it died */
 			/* During hallucination, monster appearance should
 			 * still change - even if it doesn't move.
 			 */
@@ -526,7 +596,8 @@ register int after;
 	boolean likegold=0, likegems=0, likeobjs=0, likemagic=0, conceals=0;
 	boolean likerock=0, can_tunnel=0;
 	boolean can_open=0, can_unlock=0, doorbuster=0;
-	boolean uses_items=0;
+	boolean uses_items=0, setlikes=0;
+	boolean avoid=FALSE;
 	struct permonst *ptr;
 	struct monst *mtoo;
 	schar mmoved = 0;	/* not strictly nec.: chi >= 0 will do */
@@ -643,6 +714,9 @@ not_special:
 	if (mtmp->mconf || (u.uswallow && mtmp == u.ustuck))
 		appr = 0;
 	else {
+#ifdef GOLDOBJ
+		struct obj *lepgold, *ygold;
+#endif
 		boolean should_see = (couldsee(omx, omy) &&
 				      (levl[gx][gy].lit ||
 				       !levl[omx][omy].lit) &&
@@ -658,7 +732,12 @@ not_special:
 			appr = 0;
 
 		if(monsndx(ptr) == PM_LEPRECHAUN && (appr == 1) &&
+#ifndef GOLDOBJ
 		   (mtmp->mgold > u.ugold))
+#else
+		   ( (lepgold = findgold(mtmp->minvent)) && 
+                   (lepgold->quan > ((ygold = findgold(invent)) ? ygold->quan : 0L)) ))
+#endif
 			appr = -1;
 
 		if (!should_see && can_track(ptr)) {
@@ -699,6 +778,7 @@ not_special:
 		likemagic = (likes_magic(ptr) && pctload < 85);
 		likerock = (throws_rocks(ptr) && pctload < 50 && !In_sokoban(&u.uz));
 		conceals = hides_under(ptr);
+		setlikes = TRUE;
 	    }
 	}
 
@@ -807,7 +887,8 @@ not_special:
 	    flag |= (ALLOW_SANCT | ALLOW_SSM);
 	else flag |= ALLOW_U;
 	if (is_minion(ptr) || is_rider(ptr)) flag |= ALLOW_SANCT;
-	if (is_unicorn(ptr)) flag |= NOTONL;
+	/* unicorn may not be able to avoid hero on a noteleport level */
+	if (is_unicorn(ptr) && !level.flags.noteleport) flag |= NOTONL;
 	if (passes_walls(ptr)) flag |= (ALLOW_WALL | ALLOW_ROCK);
 	if (can_tunnel) flag |= ALLOW_DIG;
 	if (is_human(ptr) || ptr == &mons[PM_MINOTAUR]) flag |= ALLOW_SSM;
@@ -831,8 +912,14 @@ not_special:
 	    /* allow monsters be shortsighted on some levels for balance */
 	    if(!mtmp->mpeaceful && level.flags.shortsighted &&
 	       nidist > (couldsee(nix,niy) ? 144 : 36) && appr == 1) appr = 0;
+	    if (is_unicorn(ptr) && level.flags.noteleport) {
+		/* on noteleport levels, perhaps we cannot avoid hero */
+		for(i = 0; i < cnt; i++)
+		    if(!(info[i] & NOTONL)) avoid=TRUE;
+	    }
 
 	    for(i=0; i < cnt; i++) {
+		if (avoid && (info[i] & NOTONL)) continue;
 		nx = poss[i].x;
 		ny = poss[i].y;
 
@@ -1042,9 +1129,27 @@ postmov:
 		newsym(mtmp->mx,mtmp->my);
 	    }
 	    if(OBJ_AT(mtmp->mx, mtmp->my) && mtmp->mcanmove) {
+		/* recompute the likes tests, in case we polymorphed
+		 * or if the "likegold" case got taken above */
+		if (setlikes) {
+		    register int pctload = (curr_mon_load(mtmp) * 100) /
+			max_mon_load(mtmp);
+
+		    /* look for gold or jewels nearby */
+		    likegold = (likes_gold(ptr) && pctload < 95);
+		    likegems = (likes_gems(ptr) && pctload < 85);
+		    uses_items = (!mindless(ptr) && !is_animal(ptr)
+				  && pctload < 75);
+		    likeobjs = (likes_objs(ptr) && pctload < 75);
+		    likemagic = (likes_magic(ptr) && pctload < 85);
+		    likerock = (throws_rocks(ptr) && pctload < 50 &&
+				!In_sokoban(&u.uz));
+		    conceals = hides_under(ptr);
+		}
+
 		/* Maybe a rock mole just ate some metal object */
 		if (metallivorous(ptr)) {
-		    if (meatgold(mtmp) == 2) return 2;	/* it died */
+		    if (meatmetal(mtmp) == 2) return 2;	/* it died */
 		}
 
 		if(g_at(mtmp->mx,mtmp->my) && likegold) mpickgold(mtmp);
@@ -1114,6 +1219,9 @@ register struct monst *mtmp;
 {
 	boolean notseen, gotu;
 	register int disp, mx = mtmp->mux, my = mtmp->muy;
+#ifdef GOLDOBJ
+	long umoney = money_cnt(invent);
+#endif
 
 	/*
 	 * do cheapest and/or most likely tests first
@@ -1128,8 +1236,21 @@ register struct monst *mtmp;
 
 	notseen = (!mtmp->mcansee || (Invis && !perceives(mtmp->data)));
 	/* add cases as required.  eg. Displacement ... */
-	disp = ((notseen || Underwater) ? 1 :
-		Displaced ? (couldsee(mx, my) ? 2 : 1) : 0);
+	if (notseen || Underwater) {
+	    /* Xorns can smell valuable metal like gold, treat as seen */
+	    if ((mtmp->data == &mons[PM_XORN]) &&
+#ifndef GOLDOBJ
+			u.ugold
+#else
+			umoney
+#endif
+			&& !Underwater)
+		disp = 0;
+	    else
+		disp = 1;
+	} else if (Displaced) {
+	    disp = couldsee(mx, my) ? 2 : 1;
+	} else disp = 0;
 	if (!disp) goto found_you;
 
 	/* without something like the following, invis. and displ.
@@ -1152,7 +1273,8 @@ register struct monst *mtmp;
 		  || ((mx != u.ux || my != u.uy) &&
 		      !passes_walls(mtmp->data) &&
 		      (!ACCESSIBLE(levl[mx][my].typ) ||
-			(closed_door(mx, my) && !can_ooze(mtmp)))));
+		       (closed_door(mx, my) && !can_ooze(mtmp))))
+		  || !couldsee(mx, my));
 	} else {
 found_you:
 	    mx = u.ux;
@@ -1171,15 +1293,22 @@ struct monst *mtmp;
 
 	if (!amorphous(mtmp->data)) return FALSE;
 	if (mtmp == &youmonst) {
+#ifndef GOLDOBJ
 		if (u.ugold > 100L) return FALSE;
+#endif
 		chain = invent;
 	} else {
+#ifndef GOLDOBJ
 		if (mtmp->mgold > 100L) return FALSE;
+#endif
 		chain = mtmp->minvent;
 	}
 	for (obj = chain; obj; obj = obj->nobj) {
 		int typ = obj->otyp;
 
+#ifdef GOLDOBJ
+                if (typ == GOLD_CLASS && obj->quan > 100L) return FALSE;
+#endif
 		if (obj->oclass != GEM_CLASS &&
 		    !(typ >= ARROW && typ <= BOOMERANG) &&
 		    !(typ >= DAGGER && typ <= CRYSKNIFE) &&

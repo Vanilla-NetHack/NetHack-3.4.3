@@ -1,4 +1,4 @@
-; SCCS Id: @(#)schema3.MSC	3.3	 2000/07/31
+; SCCS Id: @(#)schema3.MSC	3.4	 2000/07/31
 ; Copyright (c) NetHack PC Development Team, 2000
 ;
 ; NetHack Overlay Schema
@@ -19,19 +19,20 @@ functions:0 _is_swallow_sym _check_here _check_leash _check_map_spot _check_pos
 functions:0 _monsndx _m_move _lcase _tty_create_nhwindow _tty_delay_output _tty_destroy_nhwindow 
 functions:0 _tty_dismiss_nhwindow _gender _genl_outrip _get_cost _get_free_room_loc _get_level 
 functions:0 _get_location _get_map _get_mleash
+;
 functions:1 _move_update _movebubbles _movecmd _movemon _moverock _movobj _mpickgold
-functions:1 _doaltarobj _doapply _dobreathe _docall _docast 
-functions:1 _display_artifact_score _display_warning _dlb_fgetc _doattributes _dochug _dochugw
-functions:1 _fill_point _fill_room _fill_zoo _fillholetyp _find_ac _find_branch _find_branch_room _find_defensive
+functions:1 _doaltarobj _doapply _dobreathe _docall _docast
 ;
 functions:2 _do_vicinity_map
 functions:3 _pcmain
+functions:4 _spell_let_to_idx _cursed_book _deadbook _learn _getspell _spelltypemnemonic
+functions:5 _dospellmenu _percent_success _throwspell _cast_protection _isqrt
 ;
 functions:6 _a_gname _a_gname_at _a_monnam _abon _abuse_dog _accessible _activate_statue_trap
 functions:7 _add_branch _add_damage _add_debug_extended_commands _add_door _add_id_mapping _add_level
 functions:8 _add_menu_cmd_alias _add_one_tobill _add_rect _add_room _add_subroom _add_to_billobjs _add_to_buried _add_to_container
 functions:9 _add_to_migration _add_to_minv _add_valid_menu_class _add_weapon_skill _addinv _addtobill _addtopl _addupbill
-functions:10 _Adjmonnam 
+functions:10 _Adjmonnam
 functions:11 _align_gname
 functions:12 _altar_wrath _Amonnam _amulet _Amulet_off _Amulet_on _An _an _angry_guards
 functions:13 _angry_priest _angry_shk_exists _any_light_source _aobjnam _append_slash _append_str _Armor_gone _Armor_off
@@ -82,7 +83,7 @@ functions:57 _do_earthquake _do_entity _do_genocide _do_improvisation _do_light_
 functions:57 _vga_xputg _vga_xputs _video_update_positionbar _view_from _view_init _visctrl _vision_init _vision_recalc
 functions:58 _do_oname _do_osshock _do_play_instrument _do_reset_eat _do_room_or_subroom _do_storms _do_takeoff
 functions:60 _doclose _doconfuse _doconsult _docorner _docrt _doddoremarm _doddrop _dodip
-;functions:61 
+functions:61 _adjust_prefix _build_plselection_prompt _duplicate_opt_detection _enter_explore_mode _maybe_wail
 functions:62 _doextcmd _doextlist _doextversion _dofindgem _dofiretrap _doforce _dog_eat _dog_goal
 functions:63 _dog_hunger _dog_invent _dog_move _dog_nutrition _dogfood _dogushforth _dohelp _dohide
 functions:64 _dohistory _doidtrap _doinvbill _doinvoke _dojump _dokick _dolook _doloot
@@ -106,7 +107,7 @@ functions:80 _end_engulf
 functions:82 _exclam _exepath _exerchk _exercise _exerper _exist_artifact _expels _experience
 functions:83 _explmm _explmu _explode _explum _expulsion _ext_cmd_getlin_hook _extend_spine _extract_nexthere
 functions:84 _extract_nobj _fall_asleep _fall_through _feel_cockatrice _feel_location _fightm _filesize_nh _fill_pit
-;functions:85 
+functions:85 _nh_getenv _promptsep _rigid_role_checks _set_duplicate_opt_detection _tool_in_use
 functions:86 _find_drawbridge _find_hell _find_lev_obj _find_level _find_mac _find_mid _find_misc _find_offensive
 functions:87 _find_oid _find_roll_to_hit _find_skates _find_unpaid _finddpos _findfirst_file _findgd _findit
 functions:88 _findnext_file _findone _findpriest _finish_map _finish_paybill _fix_stair_rooms _fix_worst_trouble _fixup_special
@@ -116,7 +117,8 @@ functions:91 _fopenp _forcelock _forget_levels _forget_map _forget_objects _forg
 functions:92 _fprefx _fracture_rock _free_dungeons _free_rooms _free_ttlist _free_window_info _freediskspace _freedynamicdata
 functions:93 _freefruitchn _freehand _freeinv _friday_13th _fruitadd _fry_by_god _fully_identify_obj _g_at
 functions:94 _gainstr _gameDiskPrompt _gazemm _gazemu _gd_move _gd_sound _gem_accept
-;functions:95 
+functions:95 _display_artifact_score _display_warning _dlb_fgetc _doattributes _dochug _dochugw
+functions:96 _fill_point _fill_room _fill_zoo _fillholetyp _find_ac _find_branch _find_branch_room _find_defensive
 functions:96 _get_mon_location _get_mplname _get_obj_location _get_rect _get_rect_ind _get_room_loc _get_scr_size _get_shop_item
 functions:97 _get_uchars _get_unused_cs _get_valuables _get_wall_for_db _get_wet _get_wormno _getbones _getdir
 functions:98 _gethungry 
@@ -143,7 +145,7 @@ functions:119 _itimeout_incr _its_dead _itsstuck _Japanese_item_name _join _join
 functions:119 _sticks _still_chewing _stock_room _stolen_container _stolen_value _stone_luck _stoned_dialogue _stop_occupation
 functions:120 _kick_monster _kick_object _kickdmg _kickstr _kill_egg _kill_eggs _kill_genocided_monsters _killed
 functions:121 _kind_name _known_hitum _kops_gone _l_monnam _lantern_message _launch_obj _lava_effects 
-functions:122 _ldrname _leader_speaks _leaderless _learn _learn_egg_type _ledger_no _ledger_to_dlev _ledger_to_dnum
+functions:122 _ldrname _leader_speaks _leaderless _learn_egg_type _ledger_no _ledger_to_dlev _ledger_to_dnum
 functions:123 _left_side _lesshungry _let_to_name _letter _lev_by_name _level_difficulty _level_distance _level_range
 functions:124 _level_tele _level_tele_trap _levl_follower _lifesaved_monster _lift_object _light_cocktail _light_region _lined_up
 functions:125 _linedup _list_genocided _list_vanquished _litroom _litter _little_to_big _llord _lminion
@@ -225,7 +227,7 @@ functions:201 _save_waterlevel _save_worm _savebones _savech _savedamage _saveDi
 functions:202 _savelev _savelev0 _savelevchn _savelife _savemonchn _savenames _saveobjchn _savestateinlock
 functions:203 _savetrapchn _scatter _schedule_goto _score_wanted _search_door _search_special _searches_for_item _see_lamp_flicker
 functions:204 _see_monsters _see_objects _see_traps _see_wsegs _seemimic _seetrap _seffects _select_hwep
-functions:205 _select_off _select_rwep _self_pronoun _selftouch _sellobj _sellobj_state _sengr_at _sense_trap
+functions:205 _select_off _select_rwep _selftouch _sellobj _sellobj_state _sengr_at _sense_trap
 functions:206 _set_all_on_page _set_apparxy _set_artifact_intrinsic _set_bc _set_bonesfile_name _set_bonestemp_name _set_corn _set_cost
 functions:207 _set_crosswall _set_entity _set_item_state _set_itimeout _set_levelfile_name _set_lit _set_lock_and_bones _set_malign
 functions:208 _set_mimic_blocking _set_mimic_sym _set_mon_data _set_moreluck _set_occupation _set_repo_loc _set_residency _set_savefile_name
@@ -417,9 +419,9 @@ functions:380 _use_saddle _uswapwepgone _uwep_skill_type _validalign _validgend 
 functions:381 _validrole _violated_vegetarian _walk_path _warning_opts _wary_dog _welcome
 functions:382 _write_timer _yyyymmdd _zap_steed
 functions:383 _getprice _getreturn _getrumor _gettrack
-;functions:384 
+functions:384 _ini_inv _knows_object _knows_class _restricted_spell_discipline _ready_weapon
 functions:385 _doname _Doname2
-functions:386 _minwater 
+functions:386 _minliquid 
 functions:387 _missmm 
 functions:388 _missmu 
 functions:389 _missum 

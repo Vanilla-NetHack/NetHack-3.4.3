@@ -1,5 +1,5 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.3.*			[pr]
-$	version_number = "3.3.0"
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.4.*			[pr]
+$	version_number = "3.4.0"
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
@@ -257,9 +257,10 @@ $ c_list = "allmain,apply,artifact,attrib,ball,bones,botl,cmd,dbridge,detect" -
 	+ ",dig,display,do,do_name,do_wear,dog,dogmove,dokick,dothrow,drawing" -
 	+ ",dungeon,eat,end,engrave,exper,explode,extralev,files,fountain"
 $ gosub compile_list
-$ c_list = "hack,hacklib,invent,light,lock,mail,makemon,mcastu,mhitm,mhitu" -
-	+ ",minion,mklev,mkmap,mkmaze,mkobj,mkroom,mon,mondata,monmove,monstr" -
-	+ ",mplayer,mthrowu,muse,music,o_init,objnam,options,pager,pickup"
+$ c_list = "hack,hacklib,invent,light,lock,mail,makemon,mapglyph,mcastu" -
+	+ ",mhitm,mhitu,minion,mklev,mkmap,mkmaze,mkobj,mkroom,mon,mondata" -
+	+ ",monmove,monstr,mplayer,mthrowu,muse,music,o_init,objnam,options" -
+	+ ",pager,pickup"
 $ gosub compile_list
 $ c_list = "pline,polyself,potion,pray,priest,quest,questpgr,read" -
 	+ ",rect,region,restore,rip,rnd,role,rumors,save,shk,shknam,sit" -

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)decl.h	3.3	2000/06/12	*/
+/*	SCCS Id: @(#)decl.h	3.4	2001/12/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -27,7 +27,9 @@ E char SAVEP[];
 E NEARDATA int bases[MAXOCLASSES];
 
 E NEARDATA int multi;
+#if 0
 E NEARDATA int warnlevel;
+#endif
 E NEARDATA int nroom;
 E NEARDATA int nsubroom;
 E NEARDATA int occtime;
@@ -142,7 +144,7 @@ E struct linfo level_info[MAXLINFO];
 E NEARDATA struct sinfo {
 	int gameover;		/* self explanatory? */
 	int stopprint;		/* inhibit further end of game disclosure */
-#if defined(UNIX) || defined(VMS) || defined (__EMX__)
+#if defined(UNIX) || defined(VMS) || defined (__EMX__) || defined(WIN32)
 	int done_hup;		/* SIGHUP or moral equivalent received
 				 * -- no more screen output */
 #endif
@@ -162,6 +164,9 @@ E const char ynqchars[];
 E const char ynaqchars[];
 E const char ynNaqchars[];
 E NEARDATA long yn_number;
+
+E const char disclosure_options[];
+
 E NEARDATA int smeq[];
 E NEARDATA int doorindex;
 E NEARDATA char *save_cm;
@@ -171,6 +176,9 @@ E NEARDATA char *save_cm;
 E NEARDATA int killer_format;
 E const char *killer;
 E const char *delayed_killer;
+#ifdef GOLDOBJ
+E long done_money;
+#endif
 E char killer_buf[BUFSZ];
 E const char *configfile;
 E NEARDATA char plname[PL_NSIZ];
@@ -188,11 +196,14 @@ E const schar xdir[], ydir[], zdir[];
 
 E NEARDATA schar tbx, tby;		/* set in mthrowu.c */
 
+E NEARDATA struct multishot { int n, i; short o; boolean s; } m_shot;
+
 E NEARDATA struct dig_info {		/* apply.c, hack.c */
 	int	effort;
 	d_level level;
 	coord	pos;
-	boolean down, chew;
+	long lastdigtime;
+	boolean down, chew, warned, quiet;
 } digging;
 
 E NEARDATA long moves, monstermoves;
@@ -236,10 +247,6 @@ E NEARDATA struct obj *migrating_objs;
 E NEARDATA struct obj *billobjs;
 E NEARDATA struct obj zeroobj;		/* init'd and defined in decl.c */
 
-E const char *he[3];
-E const char *him[3];
-E const char *his[3];
-
 #include "you.h"
 E NEARDATA struct you u;
 
@@ -274,12 +281,15 @@ E NEARDATA struct c_color_names {
 #define purple		c_color_names.c_purple
 #define White		c_color_names.c_white
 
+/* The names of the colors used for gems, etc. */
+E const char *c_obj_colors[];
+
 E struct c_common_strings {
     const char	*const c_nothing_happens, *const c_thats_enough_tries,
 		*const c_silly_thing_to, *const c_shudder_for_moment,
 		*const c_something, *const c_Something,
 		*const c_You_can_move_again,
-		*const c_Never_mind;
+		*const c_Never_mind, *c_vision_clears;
 } c_common_strings;
 #define nothing_happens    c_common_strings.c_nothing_happens
 #define thats_enough_tries c_common_strings.c_thats_enough_tries
@@ -289,6 +299,7 @@ E struct c_common_strings {
 #define Something	   c_common_strings.c_Something
 #define You_can_move_again c_common_strings.c_You_can_move_again
 #define Never_mind	   c_common_strings.c_Never_mind
+#define vision_clears	   c_common_strings.c_vision_clears
 
 /* material strings */
 E const char *materialnm[];

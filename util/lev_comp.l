@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.3	96/05/16	*/
+/*	SCCS Id: @(#)lev_lex.c	3.4	2000/12/22	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -74,34 +74,6 @@ int line_number = 1, colon_line_number = 1;
 static char map[4096];
 static int map_cnt = 0;
 
-/*
- *	This is a hack required by Michael Hamel to get things
- *	working on the Mac.
- */
-#if defined(applec) && !defined(FLEX_SCANNER) && !defined(FLEXHACK_SCANNER)
-#undef input
-#undef unput
-#define unput(c) { yytchar = (c); if (yytchar == 10) yylineno--; *yysptr++ = yytchar; }
-# ifndef YYNEWLINE
-# define YYNEWLINE 10
-# endif
-
-char
-input()		/* Under MPW \n is chr(13)! Compensate for this. */
-{
-	if (yysptr > yysbuf) return(*--yysptr);
-	else {
-		yytchar = getc(yyin);
-		if (yytchar == '\n') {
-		    yylineno++;
-		    return(YYNEWLINE);
-		}
-		if (yytchar == EOF) return(0);
-		else		    return(yytchar);
-	}
-}
-#endif	/* applec && !FLEX_SCANNER && !FLEXHACK_SCANNER */
-
 %}
 %e 1500
 %p 5000
@@ -116,7 +88,7 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 		  map_cnt = 0;
 		  return MAP_ID;
 		}
-<MAPC>[-|}{+ABCISHKPLWTF\\#. ]*\n	{
+<MAPC>[-|}{+ABCISHKPLWTF\\#. 0123456789]*\n	{
 		  line_number++;
 		  (void) strncpy(map + map_cnt, yytext, yyleng);
 		  map_cnt += yyleng;
@@ -231,6 +203,7 @@ shortsighted	{ yylval.i=SHORTSIGHTED; return FLAG_TYPE; }
 		  return STRING; }
 \n		{ line_number++; }
 [ \t]+		;
+'\\.'		{ yylval.i = yytext[2]; return CHAR; }
 '.'		{ yylval.i = yytext[1]; return CHAR; }
 .		{ return yytext[0]; }
 %%

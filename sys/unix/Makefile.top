@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.top	3.3	95/01/05
+#	SCCS Id: @(#)Makefile.top	3.4	1995/01/05
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -44,7 +44,7 @@ VARDATND =
 # VARDATND = x11tiles pet_mark.xbm
 # VARDATND = x11tiles pet_mark.xbm rip.xpm
 # for Atari/Gem
-# VARDATND = nh16.img title.img GEM_RSC.RSC
+# VARDATND = nh16.img title.img GEM_RSC.RSC rip.img
 # for BeOS
 # VARDATND = beostiles
 # for Gnome
@@ -90,42 +90,45 @@ $(GAME):
 all:	$(GAME) Guidebook $(VARDAT) dungeon spec_levs check-dlb
 	@echo "Done."
 
+# Note: many of the dependencies below are here to allow parallel make
+# to generate valid output
+
 Guidebook:
 	( cd doc ; $(MAKE) Guidebook )
 
 manpages:
 	( cd doc ; $(MAKE) manpages )
 
-data:
+data: $(GAME)
 	( cd dat ; $(MAKE) data )
 
-rumors:
+rumors: $(GAME)
 	( cd dat ; $(MAKE) rumors )
 
-oracles:
+oracles: $(GAME)
 	( cd dat ; $(MAKE) oracles )
 
 #	Note: options should have already been made with make, but...
-options:
+options: $(GAME)
 	( cd dat ; $(MAKE) options )
 
-quest.dat:
+quest.dat: $(GAME)
 	( cd dat ; $(MAKE) quest.dat )
 
-spec_levs:
+spec_levs: dungeon
 	( cd util ; $(MAKE) lev_comp )
 	( cd dat ; $(MAKE) spec_levs )
 	( cd dat ; $(MAKE) quest_levs )
 
-dungeon:
+dungeon: $(GAME)
 	( cd util ; $(MAKE) dgn_comp )
 	( cd dat ; $(MAKE) dungeon )
 
-x11tiles:
+x11tiles: $(GAME)
 	( cd util ; $(MAKE) tile2x11 )
 	( cd dat ; $(MAKE) x11tiles )
 
-beostiles:
+beostiles: $(GAME)
 	( cd util ; $(MAKE) tile2beos )
 	( cd dat ; $(MAKE) beostiles )
 
@@ -138,18 +141,23 @@ rip.xpm:
 mapbg.xpm:
 	(cd dat ; $(MAKE) mapbg.xpm )
 
-nh16.img:
+nhsplash.xpm:
+	( cd dat ; $(MAKE) nhsplash.xpm )
+
+nh16.img: $(GAME)
 	( cd util ; $(MAKE) tile2img.ttp )
 	( cd dat ; $(MAKE) nh16.img )
 
+rip.img:
+	( cd util ; $(MAKE) xpm2img.ttp )
+	( cd dat ; $(MAKE) rip.img )
 GEM_RSC.RSC:
 	( cd dat ; $(MAKE) GEM_RSC.RSC )
 
 title.img:
 	( cd dat ; $(MAKE) title.img )
 
-check-dlb:
-	( cd dat; $(MAKE) options )
+check-dlb: options
 	@if egrep -s librarian dat/options ; then $(MAKE) dlb ; else true ; fi
 
 dlb:

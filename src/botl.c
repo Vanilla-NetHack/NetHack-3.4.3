@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)botl.c	3.3	96/07/15	*/
+/*	SCCS Id: @(#)botl.c	3.4	1996/07/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -147,10 +147,17 @@ long
 botl_score()
 {
     int deepest = deepest_lev_reached(FALSE);
+#ifndef GOLDOBJ
     long ugold = u.ugold + hidden_gold();
 
     if ((ugold -= u.ugold0) < 0L) ugold = 0L;
     return ugold + u.urexp + (long)(50 * (deepest - 1))
+#else
+    long umoney = money_cnt(invent) + hidden_gold();
+
+    if ((umoney -= u.umoney0) < 0L) umoney = 0L;
+    return umoney + u.urexp + (long)(50 * (deepest - 1))
+#endif
 			  + (long)(deepest > 30 ? 10000 :
 				   deepest > 20 ? 1000*(deepest - 20) : 0);
 }
@@ -248,7 +255,12 @@ bot2()
 	(void) describe_level(newbot2);
 	Sprintf(nb = eos(newbot2),
 		"%c:%-2ld HP:%d(%d) Pw:%d(%d) AC:%-2d", oc_syms[GOLD_CLASS],
-		u.ugold, hp, hpmax, u.uen, u.uenmax, u.uac);
+#ifndef GOLDOBJ
+		u.ugold,
+#else
+		money_cnt(invent),
+#endif
+		hp, hpmax, u.uen, u.uenmax, u.uac);
 
 	if (Upolyd)
 		Sprintf(nb = eos(nb), " HD:%d", mons[u.umonnum].mlevel);

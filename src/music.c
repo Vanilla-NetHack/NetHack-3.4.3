@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)music.c	3.3	1999/08/19	*/
+/*	SCCS Id: @(#)music.c	3.4	2001/12/03	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -73,8 +73,8 @@ int distance;
 		    mtmp->mfrozen = 0;
 		    /* May scare some monsters */
 		    if (distm < distance/3 &&
-			    !resist(mtmp, SCROLL_CLASS, 0, NOTELL))
-			mtmp->mflee = 1;
+			    !resist(mtmp, TOOL_CLASS, 0, NOTELL))
+			monflee(mtmp, 0, FALSE, TRUE);
 		}
 	    }
 	    mtmp = mtmp->nmon;
@@ -93,7 +93,7 @@ int distance;
 
 	while(mtmp) {
 		if (!DEADMONSTER(mtmp) && distu(mtmp->mx, mtmp->my) < distance &&
-			sleep_monst(mtmp, d(10,10), WAND_CLASS)) {
+			sleep_monst(mtmp, d(10,10), TOOL_CLASS)) {
 		    mtmp->msleeping = 1; /* 10d10 turns + wake_nearby to rouse */
 		    slept_monst(mtmp);
 		}
@@ -117,6 +117,7 @@ int distance;
 		    distu(mtmp->mx, mtmp->my) < distance) {
 		was_peaceful = mtmp->mpeaceful;
 		mtmp->mpeaceful = 1;
+		mtmp->mavenge = 0;
 		could_see_mon = canseemon(mtmp);
 		mtmp->mundetected = 0;
 		newsym(mtmp->mx, mtmp->my);
@@ -149,6 +150,7 @@ int distance;
 		    distu(mtmp->mx, mtmp->my) < distance) {
 		mtmp->msleeping = 0;
 		mtmp->mpeaceful = 1;
+		mtmp->mavenge = 0;
 		if (canseemon(mtmp))
 		    pline(
 		     "%s listens cheerfully to the music, then seems quieter.",
@@ -179,22 +181,29 @@ awaken_soldiers()
 	}
 }
 
-/* Charm monsters in range.  Note that they may resist the spell. */
+/* Charm monsters in range.  Note that they may resist the spell.
+ * If swallowed, range is reduced to 0.
+ */
 
 STATIC_OVL void
 charm_monsters(distance)
 int distance;
 {
-	register struct monst *mtmp = fmon, *mtmp2;
+	struct monst *mtmp, *mtmp2;
 
-	while(mtmp) {
+	if (u.uswallow) {
+	    if (!resist(u.ustuck, TOOL_CLASS, 0, NOTELL))
+		(void) tamedog(u.ustuck, (struct obj *) 0);
+	} else {
+	    for (mtmp = fmon; mtmp; mtmp = mtmp2) {
 		mtmp2 = mtmp->nmon;
-		if (!DEADMONSTER(mtmp)) {
-			if (distu(mtmp->mx, mtmp->my) <= distance)
-			    if(!resist(mtmp, SCROLL_CLASS, 0, NOTELL))
-				(void) tamedog(mtmp, (struct obj *) 0);
+		if (DEADMONSTER(mtmp)) continue;
+
+		if (distu(mtmp->mx, mtmp->my) <= distance) {
+		    if (!resist(mtmp, TOOL_CLASS, 0, NOTELL))
+			(void) tamedog(mtmp, (struct obj *) 0);
 		}
-		mtmp = mtmp2;
+	    }
 	}
 
 }
@@ -329,6 +338,7 @@ do_pit:		    chasm = maketrap(x,y,PIT);
 		    if (*in_rooms(x, y, SHOPBASE))
 			add_damage(x, y, 0L);
 		    levl[x][y].doormask = D_NODOOR;
+		    unblock_point(x,y);
 		    newsym(x,y);
 		    break;
 	    }
@@ -383,8 +393,7 @@ struct obj *instr;
 	    } /* else FALLTHRU */
 	case WOODEN_FLUTE:		/* May charm snakes */
 	    do_spec &= (rn2(ACURR(A_DEX)) + u.ulevel > 25);
-	    pline("%s %s.", The(xname(instr)),
-		  do_spec ? "trills" : "toots");
+	    pline("%s.", Tobjnam(instr, do_spec ? "trill" : "toot"));
 	    if (do_spec) charm_snakes(u.ulevel * 3);
 	    exercise(A_DEX, TRUE);
 	    break;
@@ -394,14 +403,14 @@ struct obj *instr;
 		check_unpaid(instr);
 		instr->spe--;
 		if (!getdir((char *)0)) {
-		    pline("%s vibrates.", The(xname(instr)));
+		    pline("%s.", Tobjnam(instr, "vibrate"));
 		    break;
 		} else if (!u.dx && !u.dy && !u.dz) {
-		    if ((damage = zapyourself(instr, TRUE)) != 0)
-			losehp(damage,
-			       self_pronoun("using a magical horn on %sself",
-					    "him"),
-			       NO_KILLER_PREFIX);
+		    if ((damage = zapyourself(instr, TRUE)) != 0) {
+			char buf[BUFSZ];
+			Sprintf(buf, "using a magical horn on %sself", uhim());
+			losehp(damage, buf, NO_KILLER_PREFIX);
+		    }
 		} else {
 		    buzz((instr->otyp == FROST_HORN) ? AD_COLD-1 : AD_FIRE-1,
 			 rn1(6,6), u.ux, u.uy, u.dx, u.dy);
@@ -423,8 +432,7 @@ struct obj *instr;
 	    if (do_spec && instr->spe > 0) {
 		check_unpaid(instr);
 		instr->spe--;
-		pline("%s produces very attractive music.",
-		      The(xname(instr)));
+		pline("%s very attractive music.", Tobjnam(instr, "produce"));
 		charm_monsters((u.ulevel - 1) / 3 + 1);
 		exercise(A_DEX, TRUE);
 		break;

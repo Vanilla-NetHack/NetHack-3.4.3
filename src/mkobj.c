@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.3	2000/02/19	*/
+/*	SCCS Id: @(#)mkobj.c	3.4	2001/12/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -78,26 +78,26 @@ const struct icp hellprobs[] = {
 };
 
 struct obj *
-mkobj_at(let,x,y, artif)
+mkobj_at(let, x, y, artif)
 char let;
-int x,y;
+int x, y;
 boolean artif;
 {
-	register struct obj *otmp;
+	struct obj *otmp;
 
-	otmp = mkobj(let,artif);
+	otmp = mkobj(let, artif);
 	place_object(otmp, x, y);
 	return(otmp);
 }
 
 struct obj *
-mksobj_at(otyp,x,y,init)
-int otyp,x,y;
-boolean init;
+mksobj_at(otyp, x, y, init, artif)
+int otyp, x, y;
+boolean init, artif;
 {
-	register struct obj *otmp;
+	struct obj *otmp;
 
-	otmp = mksobj(otyp,init,TRUE);
+	otmp = mksobj(otyp, init, artif);
 	place_object(otmp, x, y);
 	return(otmp);
 }
@@ -107,7 +107,7 @@ mkobj(oclass, artif)
 char oclass;
 boolean artif;
 {
-	register int tprob, i, prob = rnd(1000);
+	int tprob, i, prob = rnd(1000);
 
 	if(oclass == RANDOM_CLASS) {
 		const struct icp *iprobs =
@@ -138,21 +138,21 @@ mkbox_cnts(box)
 struct obj *box;
 {
 	register int n;
-	register struct obj *otmp, *gold = 0;
+	register struct obj *otmp;
 
 	box->cobj = (struct obj *) 0;
 
-	switch(box->otyp) {
-		case ICE_BOX:		n = 20; break;
-		case CHEST:		n = 5; break;
-		case LARGE_BOX:		n = 3; break;
-		case SACK:
-		case OILSKIN_SACK:
+	switch (box->otyp) {
+	case ICE_BOX:		n = 20; break;
+	case CHEST:		n = 5; break;
+	case LARGE_BOX:		n = 3; break;
+	case SACK:
+	case OILSKIN_SACK:
 				/* initial inventory: sack starts out empty */
 				if (moves <= 1 && !in_mklev) { n = 0; break; }
 				/*else FALLTHRU*/
-		case BAG_OF_HOLDING:	n = 1; break;
-		default:		n = 0; break;
+	case BAG_OF_HOLDING:	n = 1; break;
+	default:		n = 0; break;
 	}
 
 	for (n = rn2(n+1); n > 0; n--) {
@@ -178,13 +178,7 @@ struct obj *box;
 		if (otmp->oclass == GOLD_CLASS) {
 		    /* 2.5 x level's usual amount; weight adjusted below */
 		    otmp->quan = (long)(rnd(level_difficulty()+2) * rnd(75));
-		    if (gold) {			/* gold already in this box */
-			gold->quan += otmp->quan;	/* merge */
-			dealloc_obj(otmp);	/* note: not yet in any chain */
-			continue;
-		    } else {
-			gold = otmp;		/* remember this object */
-		    }
+		    otmp->owt = weight(otmp);
 		} else while (otmp->otyp == ROCK) {
 		    otmp->otyp = rnd_class(DILITHIUM_CRYSTAL, LOADSTONE);
 		    if (otmp->quan > 2L) otmp->quan = 1L;
@@ -199,10 +193,8 @@ struct obj *box;
 			    otmp->otyp = rnd_class(WAN_LIGHT, WAN_LIGHTNING);
 		}
 	    }
-	    add_to_container(box, otmp);
+	    (void) add_to_container(box, otmp);
 	}
-	if (gold) gold->owt = weight(gold);	/* quantity was diddled */
-	return;
 }
 
 int
@@ -225,10 +217,10 @@ rndmonnum()	/* select a random, common monster type */
 }
 
 /*
- * Split obj so that it gets size num. The remainder is put in the object
- * structure delivered by this call.  The object is positioned just
- * following the original in the nobj chain (and nexthere chain when on
- * the floor).
+ * Split obj so that it gets size gets reduced by num. The quantity num is
+ * put in the object structure delivered by this call.  The returned object
+ * has its wornmask cleared and is positioned just following the original
+ * in the nobj chain (and nexthere chain when on the floor).
  */
 struct obj *
 splitobj(obj, num)
@@ -237,7 +229,7 @@ long num;
 {
 	struct obj *otmp;
 
-	if (obj->cobj || num <= 0L || obj->quan < num)
+	if (obj->cobj || num <= 0L || obj->quan <= num)
 	    panic("splitobj");	/* can't split containers */
 	otmp = newobj(obj->oxlth + obj->onamelth);
 	*otmp = *obj;		/* copies whole structure */
@@ -245,9 +237,10 @@ long num;
 	if (!otmp->o_id) otmp->o_id = flags.ident++;	/* ident overflowed */
 	otmp->timed = 0;	/* not timed, yet */
 	otmp->lamplit = 0;	/* ditto */
-	obj->quan = num;
+	otmp->owornmask = 0L;	/* new object isn't worn */
+	obj->quan -= num;
 	obj->owt = weight(obj);
-	otmp->quan -= num;
+	otmp->quan = num;
 	otmp->owt = weight(otmp);	/* -= obj->owt ? */
 	obj->nobj = otmp;
 	/* Only set nexthere when on the floor, nexthere is also used */
@@ -452,14 +445,17 @@ boolean artif;
 	    case SLIME_MOLD:
 		otmp->spe = current_fruit;
 		break;
+	    case KELP_FROND:
+		otmp->quan = (long) rnd(2);
+		break;
 	    }
-	    if (otmp->otyp == CORPSE || otmp->otyp == MEAT_RING) break;
+	    if (otmp->otyp == CORPSE || otmp->otyp == MEAT_RING ||
+		otmp->otyp == KELP_FROND) break;
 	    /* fall into next case */
 
 	case GEM_CLASS:
 		if (otmp->otyp == LOADSTONE) curse(otmp);
 		else if (otmp->otyp == ROCK) otmp->quan = (long) rn1(6,6);
-		else if (otmp->otyp == KELP_FROND) otmp->quan = (long) rnd(2);
 		else if (otmp->otyp != LUCKSTONE && !rn2(6)) otmp->quan = 2L;
 		else otmp->quan = 1L;
 		break;
@@ -609,7 +605,8 @@ boolean artif;
 			otmp->corpsenm = rndmonnum();
 			if (!verysmall(&mons[otmp->corpsenm]) &&
 				rn2(level_difficulty()/2 + 10) > 10)
-			    add_to_container(otmp, mkobj(SPBOOK_CLASS,FALSE));
+			    (void) add_to_container(otmp,
+						    mkobj(SPBOOK_CLASS,FALSE));
 		}
 		break;
 	case GOLD_CLASS:
@@ -627,27 +624,32 @@ boolean artif;
 }
 
 /*
- * Start a corpse decay or revive timer.  This assumes that the corpse
- * was just dropped and its age is 0.
+ * Start a corpse decay or revive timer.
+ * This takes the age of the corpse into consideration as of 3.4.0.
  */
 void
 start_corpse_timeout(body)
 	struct obj *body;
 {
-	long when;
+	long when; 		/* rot away when this old */
+	long corpse_age;	/* age of corpse          */
 	int rot_adjust;
 	short action;
 
 #define TAINT_AGE (50L)		/* age when corpses go bad */
 #define TROLL_REVIVE_CHANCE 37	/* 1/37 chance for 50 turns ~ 75% chance */
-#define ROT_AGE (250L)	/* age when corpses rot away */
+#define ROT_AGE (250L)		/* age when corpses rot away */
 
 	/* lizards and lichen don't rot or revive */
 	if (body->corpsenm == PM_LIZARD || body->corpsenm == PM_LICHEN) return;
 
 	action = ROT_CORPSE;		/* default action: rot away */
-	when = ROT_AGE;			/* rot away when this old */
 	rot_adjust = in_mklev ? 25 : 10;	/* give some variation */
+	corpse_age = monstermoves - body->age;
+	if (corpse_age > ROT_AGE)
+		when = rot_adjust;
+	else
+		when = ROT_AGE - corpse_age;
 	when += (long)(rnz(rot_adjust) - rot_adjust);
 
 	if (is_rider(&mons[body->corpsenm])) {
@@ -659,7 +661,7 @@ start_corpse_timeout(body)
 		for (when = 12L; when < 500L; when++)
 		    if (!rn2(3)) break;
 
-	} else if (mons[body->corpsenm].mlet == S_TROLL) {
+	} else if (mons[body->corpsenm].mlet == S_TROLL && !body->norevive) {
 		long age;
 		for (age = 2; age <= TAINT_AGE; age++)
 		    if (!rn2(TROLL_REVIVE_CHANCE)) {	/* troll revives */
@@ -668,7 +670,8 @@ start_corpse_timeout(body)
 			break;
 		    }
 	}
-
+	
+	if (body->norevive) body->norevive = 0;
 	(void) start_timer(when, TIMER_OBJECT, action, (genericptr_t)body);
 }
 
@@ -819,9 +822,15 @@ register struct obj *obj;
 
 		return wt + cwt;
 	}
-	if (obj->otyp == CORPSE && obj->corpsenm >= LOW_PM)
-		return (int)obj->quan * mons[obj->corpsenm].cwt;
-	else if (obj->oclass == GOLD_CLASS)
+	if (obj->otyp == CORPSE && obj->corpsenm >= LOW_PM) {
+		long long_wt = obj->quan * (long) mons[obj->corpsenm].cwt;
+
+		wt = (long_wt > LARGEST_INT) ? LARGEST_INT : (int)long_wt;
+		if (obj->oeaten) wt = eaten_stat(wt, obj);
+		return wt;
+	} else if (obj->oclass == FOOD_CLASS && obj->oeaten) {
+		return eaten_stat((int)obj->quan * wt, obj);
+	} else if (obj->oclass == GOLD_CLASS)
 		return (int)((obj->quan + 50L) / 100L);
 	else if (obj->otyp == HEAVY_IRON_BALL && obj->owt != 0)
 		return((int)(obj->owt));	/* kludge for "very" heavy iron ball */
@@ -832,8 +841,9 @@ static int treefruits[] = {APPLE,ORANGE,PEAR,BANANA,EUCALYPTUS_LEAF};
 
 struct obj *
 rnd_treefruit_at(x,y)
+int x, y;
 {
-	return mksobj_at(treefruits[rn2(SIZE(treefruits)-1)],x,y,TRUE);
+	return mksobj_at(treefruits[rn2(SIZE(treefruits))], x, y, TRUE, FALSE);
 }
 #endif /* OVL0 */
 #ifdef OVLB
@@ -845,11 +855,12 @@ int x, y;
 {
     register struct obj *gold = g_at(x,y);
 
-    if (amount <= 0L) amount = (long)(1 + rnd(level_difficulty()+2) * rnd(30));
+    if (amount <= 0L)
+	amount = (long)(1 + rnd(level_difficulty()+2) * rnd(30));
     if (gold) {
 	gold->quan += amount;
     } else {
-	gold = mksobj_at(GOLD_PIECE,x,y,TRUE);
+	gold = mksobj_at(GOLD_PIECE, x, y, TRUE, FALSE);
 	gold->quan = amount;
     }
     gold->owt = weight(gold);
@@ -886,7 +897,7 @@ boolean init;
 
 	if (objtype != CORPSE && objtype != STATUE)
 	    impossible("making corpstat type %d", objtype);
-	otmp = mksobj_at(objtype, x, y, init);
+	otmp = mksobj_at(objtype, x, y, init, FALSE);
 	if (otmp) {
 	    if (mtmp) {
 		struct obj *otmp2;
@@ -955,8 +966,9 @@ struct monst *mtmp;
 	if (otmp && otmp->oxlth) {
 		struct monst *mtmp2 = (struct monst *)otmp->oextra;
 		if (mtmp->data) mtmp2->mnum = monsndx(mtmp->data);
-		/* invalidate pointers and m_id */
-		mtmp2->m_id     = 0;
+		/* invalidate pointers */
+		/* m_id is needed to know if this is a revived quest leader */
+		/* but m_id must be cleared when loading bones */
 		mtmp2->nmon     = (struct monst *)0;
 		mtmp2->data     = (struct permonst *)0;
 		mtmp2->minvent  = (struct obj *)0;
@@ -1007,7 +1019,7 @@ register int x, y;
 
 	/* player statues never contain books */
 	initialize_it = (objtype != STATUE);
-	if ((otmp = mksobj_at(objtype, x, y, initialize_it)) != 0) {
+	if ((otmp = mksobj_at(objtype, x, y, initialize_it, FALSE)) != 0) {
 	    /* tt_oname will return null if the scoreboard is empty */
 	    if ((otmp2 = tt_oname(otmp)) != 0) otmp = otmp2;
 	}
@@ -1036,8 +1048,19 @@ is_flammable(otmp)
 register struct obj *otmp;
 {
 	int otyp = otmp->otyp;
+	int omat = objects[otyp].oc_material;
 
-	if (objects[otyp].oc_oprop == FIRE_RES) return FALSE;
+	if (objects[otyp].oc_oprop == FIRE_RES || otyp == WAN_FIRE)
+		return FALSE;
+
+	return((boolean)((omat <= WOOD && omat != LIQUID) || omat == PLASTIC));
+}
+
+boolean
+is_rottable(otmp)
+register struct obj *otmp;
+{
+	int otyp = otmp->otyp;
 
 	return((boolean)(objects[otyp].oc_material <= WOOD &&
 			objects[otyp].oc_material != LIQUID));
@@ -1062,6 +1085,7 @@ int x, y;
     if (otmp->where != OBJ_FREE)
 	panic("place_object: obj not free");
 
+    obj_no_longer_held(otmp);
     if (otmp->otyp == BOULDER) block_point(x,y);	/* vision */
 
     /* obj goes under boulders */
@@ -1361,17 +1385,30 @@ add_to_minv(mon, obj)
     return 0;	/* obj on mon's inventory chain */
 }
 
-void
+/*
+ * Add obj to container, make sure obj is "free".  Returns (merged) obj.
+ * The input obj may be deleted in the process.
+ */
+struct obj *
 add_to_container(container, obj)
     struct obj *container, *obj;
 {
+    struct obj *otmp;
+
     if (obj->where != OBJ_FREE)
 	panic("add_to_container: obj not free");
+    if (container->where != OBJ_INVENT && container->where != OBJ_MINVENT)
+	obj_no_longer_held(obj);
+
+    /* merge if possible */
+    for (otmp = container->cobj; otmp; otmp = otmp->nobj)
+	if (merged(&otmp, &obj)) return (otmp);
 
     obj->where = OBJ_CONTAINED;
     obj->ocontainer = container;
     obj->nobj = container->cobj;
     container->cobj = obj;
+    return (obj);
 }
 
 void

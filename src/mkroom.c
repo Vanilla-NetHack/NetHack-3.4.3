@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.c	3.3	97/05/25	*/
+/*	SCCS Id: @(#)mkroom.c	3.4	2001/09/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -325,31 +325,35 @@ struct mkroom *sroom;
 			    (void) mk_tt_object(CORPSE, sx, sy);
 			if(!rn2(10))	/* lots of treasure buried with dead */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
-					     sx, sy, TRUE);
+					     sx, sy, TRUE, FALSE);
 			if (!rn2(5))
 			    make_grave(sx, sy, (char *)0);
 			break;
 		    case BEEHIVE:
 			if(!rn2(3))
-			    (void) mksobj_at(LUMP_OF_ROYAL_JELLY, sx, sy, TRUE);
+			    (void) mksobj_at(LUMP_OF_ROYAL_JELLY,
+					     sx, sy, TRUE, FALSE);
 			break;
 		    case BARRACKS:
 			if(!rn2(20))	/* the payroll and some loot */
 			    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
-					     sx, sy, TRUE);
+					     sx, sy, TRUE, FALSE);
 			break;
 		    case COCKNEST:
 			if(!rn2(3)) {
 			    struct obj *sobj = mk_tt_object(STATUE, sx, sy);
 
-			    if (sobj)
-			    	for (i = rn2(5); i; i--)
-			    	    add_to_container(sobj, mkobj(RANDOM_CLASS, FALSE));
+			    if (sobj) {
+				for (i = rn2(5); i; i--)
+				    (void) add_to_container(sobj,
+						mkobj(RANDOM_CLASS, FALSE));
+				sobj->owt = weight(sobj);
+			    }
 			}
 			break;
 		    case ANTHOLE:
 			if(!rn2(3))
-			    (void) mkobj_at(FOOD_CLASS, sx, sy, TRUE);
+			    (void) mkobj_at(FOOD_CLASS, sx, sy, FALSE);
 			break;
 		}
 	    }
@@ -360,7 +364,8 @@ struct mkroom *sroom;
 		  levl[tx][ty].typ = THRONE;
 		  (void) somexy(sroom, &mm);
 		  (void) mkgold((long) rn1(50 * level_difficulty(),10), mm.x, mm.y);
-		  chest = mksobj_at(CHEST, mm.x, mm.y, TRUE); /* the royal coffers */
+		  /* the royal coffers */
+		  chest = mksobj_at(CHEST, mm.x, mm.y, TRUE, FALSE);
 		  chest->spe = 2; /* so it can be found later */
 		  level.flags.has_court = 1;
 		  break;

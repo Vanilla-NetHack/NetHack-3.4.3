@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objects.c	3.3	2000/02/18	*/
+/*	SCCS Id: @(#)objects.c	3.4	2002/02/13	*/
 /* Copyright (c) Mike Threepoint, 1989.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,12 +13,8 @@ struct monst { struct monst *dummy; };	/* lint: struct obj's union */
 
 #else	/* !OBJECTS_PASS_2_ */
 /* second pass */
-# ifdef TEXTCOLOR
 #include "color.h"
 #  define COLOR_FIELD(X) X,
-# else
-#  define COLOR_FIELD(X) /*empty*/
-# endif
 #endif	/* !OBJECTS_PASS_2_ */
 
 
@@ -135,7 +131,7 @@ WEAPON("silver dagger", (char *)0,
 WEAPON("athame", (char *)0,
 	1, 1, 0,  0, 10,  4,  4,  3, 2, S,   P_DAGGER, IRON, HI_METAL),
 WEAPON("scalpel", (char *)0,
-	1, 1, 0,  0,  5,  4,  3,  3, 2, S,   P_KNIFE, IRON, HI_METAL),
+	1, 1, 0,  0,  5,  6,  3,  3, 2, S,   P_KNIFE, METAL, HI_METAL),
 WEAPON("knife", (char *)0,
 	1, 1, 0, 20,  5,  4,  3,  2, 0, P|S, P_KNIFE, IRON, HI_METAL),
 WEAPON("stiletto", (char *)0,
@@ -263,7 +259,7 @@ BOW("bow", (char *)0,		1, 24, 30, 60, 0, WOOD, P_BOW, HI_WOOD),
 BOW("elven bow", "runed bow",	0, 12, 30, 60, 0, WOOD, P_BOW, HI_WOOD),
 BOW("orcish bow", "crude bow",	0, 12, 30, 60, 0, WOOD, P_BOW, CLR_BLACK),
 BOW("yumi", "long bow",		0,  0, 30, 60, 0, WOOD, P_BOW, HI_WOOD),
-BOW("sling", (char *)0,		1, 40,  3, 20, 0, WOOD, P_SLING, HI_WOOD),
+BOW("sling", (char *)0,		1, 40,  3, 20, 0, LEATHER, P_SLING, HI_LEATHER),
 BOW("crossbow", (char *)0,	1, 45, 50, 40, 0, WOOD, P_CROSSBOW, HI_WOOD),
 
 #undef P
@@ -410,32 +406,34 @@ ARMOR("T-shirt", (char *)0,
 CLOAK("mummy wrapping", (char *)0,
 		1, 0,	0,	    0, 0,  3,  2, 10, 1, CLOTH, CLR_GRAY),
 CLOAK("elven cloak", "faded pall",
-		0, 1,	STEALTH,   10, 0, 10, 60,  9, 3, CLOTH, CLR_BLACK),
+		0, 1,	STEALTH,    8, 0, 10, 60,  9, 3, CLOTH, CLR_BLACK),
 CLOAK("orcish cloak", "coarse mantelet",
-		0, 0,	0,	   10, 0, 10, 40, 10, 2, CLOTH, CLR_BLACK),
+		0, 0,	0,	    8, 0, 10, 40, 10, 2, CLOTH, CLR_BLACK),
 CLOAK("dwarvish cloak", "hooded cloak",
-		0, 0,	0,	   10, 0, 10, 50, 10, 2, CLOTH, HI_CLOTH),
+		0, 0,	0,	    8, 0, 10, 50, 10, 2, CLOTH, HI_CLOTH),
 CLOAK("oilskin cloak", "slippery cloak",
-		0, 0,	0,	   10, 0, 10, 50,  9, 3, CLOTH, HI_CLOTH),
+		0, 0,	0,	    8, 0, 10, 50,  9, 3, CLOTH, HI_CLOTH),
 CLOAK("robe", (char *)0,
-		1, 1,	0,	    0, 0, 15, 50,  8, 3, CLOTH, CLR_RED),
+		1, 1,	0,	    3, 0, 15, 50,  8, 3, CLOTH, CLR_RED),
 CLOAK("alchemy smock", "apron",
 		0, 1,	POISON_RES, 9, 0, 10, 50,  9, 1, CLOTH, CLR_WHITE),
+CLOAK("leather cloak", (char *)0,
+		1, 0,	0,	    8, 0, 15, 40,  9, 1, LEATHER, CLR_BROWN),
 /* With shuffled appearances... */
 CLOAK("cloak of protection", "tattered cape",
-		0, 1,	PROTECTION,10, 0, 10, 50,  7, 3, CLOTH, HI_CLOTH),
+		0, 1,	PROTECTION, 9, 0, 10, 50,  7, 3, CLOTH, HI_CLOTH),
 CLOAK("cloak of invisibility", "opera cloak",
-		0, 1,	INVIS,	   11, 0, 10, 60,  9, 2, CLOTH, CLR_BRIGHT_MAGENTA),
+		0, 1,	INVIS,	   10, 0, 10, 60,  9, 2, CLOTH, CLR_BRIGHT_MAGENTA),
 CLOAK("cloak of magic resistance", "ornamental cope",
 		0, 1,	ANTIMAGIC,  2, 0, 10, 60,  9, 3, CLOTH, CLR_WHITE),
 CLOAK("cloak of displacement", "piece of cloth",
-		0, 1,	DISPLACED, 11, 0, 10, 50,  9, 2, CLOTH, HI_CLOTH),
+		0, 1,	DISPLACED, 10, 0, 10, 50,  9, 2, CLOTH, HI_CLOTH),
 
 /* shields */
 SHIELD("small shield", (char *)0,
 		1, 0, 0, 0,	     6, 0, 30,	3,  9, 0, WOOD, HI_WOOD),
 SHIELD("elven shield", "blue and green shield",
-		0, 0, 0, 0,	     2, 0, 50,	7,  8, 0, IRON, CLR_GREEN),
+		0, 0, 0, 0,	     2, 0, 40,	7,  8, 0, WOOD, CLR_GREEN),
 SHIELD("Uruk-hai shield", "white-handed shield",
 		0, 0, 0, 0,	     2, 0, 50,	7,  9, 0, IRON, HI_METAL),
 SHIELD("orcish shield", "red-eyed shield",
@@ -555,7 +553,7 @@ OBJECT(OBJ("cheap plastic imitation of the Amulet of Yendor",
 	AMULET_CLASS, 0, 0, 20,    0, 0, 0, 0, 0,  1, HI_METAL),
 OBJECT(OBJ("Amulet of Yendor",	/* note: description == name */
 	"Amulet of Yendor"), BITS(0,0,1,0,1,0,1,1,0,0,0,0,MITHRIL), 0,
-	AMULET_CLASS, 0, 0, 20, 3500, 0, 0, 0, 0, 20, HI_METAL),
+	AMULET_CLASS, 0, 0, 20, 30000, 0, 0, 0, 0, 20, HI_METAL),
 #undef AMULET
 
 /* tools ... */
@@ -655,10 +653,10 @@ WEPTOOL("unicorn horn", (char *)0,
 /* two special unique artifact "tools" */
 OBJECT(OBJ("Candelabrum of Invocation", "candelabrum"),
 		BITS(0,0,1,0,1,0,1,1,0,0,0,P_NONE,GOLD), 0,
-		TOOL_CLASS, 0, 0,10, 3000, 0, 0, 0, 0, 200, HI_GOLD),
+		TOOL_CLASS, 0, 0,10, 5000, 0, 0, 0, 0, 200, HI_GOLD),
 OBJECT(OBJ("Bell of Opening", "silver bell"),
 		BITS(0,0,1,0,1,1,1,1,0,0,0,P_NONE,SILVER), 0,
-		TOOL_CLASS, 0, 0,10, 1000, 0, 0, 0, 0, 50, HI_SILVER),
+		TOOL_CLASS, 0, 0,10, 5000, 0, 0, 0, 0, 50, HI_SILVER),
 #undef TOOL
 #undef WEPTOOL
 
@@ -837,7 +835,7 @@ SPELL("freeze sphere",   "hardcover",   P_MATTER_SPELL, 20,  2, 1, 1, NODIR, CLR
 SPELL("blank paper",     "plain",       P_NONE, 18,  0, 0, 0, 0,         HI_PAPER),
 /* a special, one of a kind, spellbook */
 OBJECT(OBJ("Book of the Dead", "papyrus"), BITS(0,0,1,0,1,0,1,1,0,0,0,P_NONE,PAPER), 0,
-	SPBOOK_CLASS, 0, 0,20, 3500, 0, 0, 0, 7, 20, HI_PAPER),
+	SPBOOK_CLASS, 0, 0,20, 10000, 0, 0, 0, 7, 20, HI_PAPER),
 #undef SPELL
 
 /* wands ... */
@@ -875,10 +873,10 @@ WAND((char *)0,        "jeweled",   0, 150, 1, 0,         IRON,     HI_MINERAL),
 #undef WAND
 
 /* coins ... - so far, gold is all there is */
-#define COIN(name,prob,metal) OBJECT( \
+#define COIN(name,prob,metal,worth) OBJECT( \
 		OBJ(name,(char *)0), BITS(0,1,0,0,0,0,0,0,0,0,0,P_NONE,metal), 0, \
-		GOLD_CLASS, prob, 0, 1, 0, 0, 0, 0, 0, 0, HI_GOLD )
-	COIN("gold piece",      1000, GOLD),
+		GOLD_CLASS, prob, 0, 1, worth, 0, 0, 0, 0, 0, HI_GOLD )
+	COIN("gold piece",      1000, GOLD,1),
 #undef COIN
 
 /* gems ... - includes stones and rocks but not boulders */
@@ -925,7 +923,8 @@ GEM("worthless piece of violet glass", "violet", 77, 1, 0, 6, 5, GLASS, CLR_MAGE
 
 ROCK("luckstone", "gray",	0, 10,  10, 60, 3, 3, 1, 10, 7, MINERAL, CLR_GRAY),
 ROCK("loadstone", "gray",	0, 10, 500,  1, 3, 3, 1, 10, 6, MINERAL, CLR_GRAY),
-ROCK("flint", "gray",		0, 18,  10,  1, 6, 6, 0, 10, 7, MINERAL, CLR_GRAY),
+ROCK("touchstone", "gray",	0,  8,  10, 45, 3, 3, 1, 10, 6, MINERAL, CLR_GRAY),
+ROCK("flint", "gray",		0, 10,  10,  1, 6, 6, 0, 10, 7, MINERAL, CLR_GRAY),
 ROCK("rock", (char *)0,		1,100,  10,  0, 3, 3, 0, 10, 7, MINERAL, CLR_GRAY),
 #undef GEM
 #undef ROCK

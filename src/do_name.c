@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.3	2000/06/12	*/
+/*	SCCS Id: @(#)do_name.c	3.4	2002/01/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -155,7 +155,7 @@ const char *goal;
 			    }	/* column */
 			}	/* row */
 		    }		/* pass */
-		    pline("Can't find dungeon feature '%c'", c);
+		    pline("Can't find dungeon feature '%c'.", c);
 		    msg_given = TRUE;
 		    goto nxtc;
 		} else {
@@ -268,10 +268,7 @@ do_mname()
 		return(0);
 	}
 	/* special case similar to the one in lookat() */
-	if (mtmp->data != &mons[PM_HIGH_PRIEST])
-	    Strcpy(buf, x_monnam(mtmp, ARTICLE_THE, (char *)0, 0, TRUE));
-	else
-	    Sprintf(buf, "the high priest%s", mtmp->female ? "ess" : "");
+	(void) distant_monnam(mtmp, ARTICLE_THE, buf);
 	Sprintf(qbuf, "What do you want to call %s?", buf);
 	getlin(qbuf,buf);
 	if(!*buf || *buf == '\033') return(0);
@@ -299,7 +296,7 @@ register struct obj *obj;
 	short objtyp;
 
 	Sprintf(qbuf, "What do you want to name %s %s?",
-		(obj->quan > 1L) ? "these" : "this", xname(obj));
+		is_plural(obj) ? "these" : "this", xname(obj));
 	getlin(qbuf, buf);
 	if(!*buf || *buf == '\033')	return;
 	/* strip leading and trailing spaces; unnames item if all spaces */
@@ -580,6 +577,7 @@ boolean called;
 	struct permonst *mdat = mtmp->data;
 	boolean do_hallu, do_invis, do_it, do_saddle;
 	boolean name_at_start, has_adjectives;
+	char *bp;
 
 	if (program_state.gameover)
 	    suppress |= SUPPRESS_HALLUCINATION;
@@ -600,6 +598,12 @@ boolean called;
 
 	buf[0] = 0;
 
+	/* unseen monsters, etc.  Use "it" */
+	if (do_it) {
+	    Strcpy(buf, "it");
+	    return buf;
+	}
+
 	/* priests and minions: don't even use this function */
 	if (mtmp->ispriest || mtmp->isminion) {
 	    char priestnambuf[BUFSZ];
@@ -616,12 +620,6 @@ boolean called;
 	    if (article == ARTICLE_NONE && !strncmp(name, "the ", 4))
 		name += 4;
 	    return strcpy(buf, name);
-	}
-
-	/* unseen monsters, etc.  Use "it" */
-	if (do_it) {
-	    Strcpy(buf, "it");
-	    return buf;
 	}
 
 	/* Shopkeepers: use shopkeeper name.  For normal shopkeepers, just
@@ -654,7 +652,8 @@ boolean called;
 	if (do_invis)
 	    Strcat(buf, "invisible ");
 #ifdef STEED
-	if (do_saddle && (mtmp->misc_worn_check & W_SADDLE) && !Blind)
+	if (do_saddle && (mtmp->misc_worn_check & W_SADDLE) &&
+	    !Blind && !Hallucination)
 	    Strcat(buf, "saddled ");
 #endif
 	if (buf[0] != 0)
@@ -669,13 +668,25 @@ boolean called;
 	    name_at_start = FALSE;
 	} else if (mtmp->mnamelth) {
 	    char *name = NAME(mtmp);
-	    
+
 	    if (mdat == &mons[PM_GHOST]) {
 		Sprintf(eos(buf), "%s ghost", s_suffix(name));
 		name_at_start = TRUE;
 	    } else if (called) {
 		Sprintf(eos(buf), "%s called %s", mdat->mname, name);
 		name_at_start = (boolean)type_is_pname(mdat);
+	    } else if (is_mplayer(mdat) && (bp = strstri(name, " the ")) != 0) {
+		/* <name> the <adjective> <invisible> <saddled> <rank> */
+		char pbuf[BUFSZ];
+
+		Strcpy(pbuf, name);
+		pbuf[bp - name + 5] = '\0'; /* adjectives right after " the " */
+		if (has_adjectives)
+		    Strcat(pbuf, buf);
+		Strcat(pbuf, bp + 5);	/* append the rest of the name */
+		Strcpy(buf, pbuf);
+		article = ARTICLE_NONE;
+		name_at_start = TRUE;
 	    } else {
 		Strcat(buf, name);
 		name_at_start = TRUE;
@@ -697,6 +708,9 @@ boolean called;
 		article = ARTICLE_THE;
 	    else
 		article = ARTICLE_NONE;
+	} else if (mons[monsndx(mdat)].geno & G_UNIQ &&
+		   article == ARTICLE_A) {
+	    article = ARTICLE_THE;
 	}
 
 	{
@@ -827,6 +841,27 @@ register struct monst *mtmp;
 	return(bp);
 }
 
+/* used for monster ID by the '/', ';', and 'C' commands to block remote
+   identification of the endgame altars via their attending priests */
+char *
+distant_monnam(mon, article, outbuf)
+struct monst *mon;
+int article;	/* only ARTICLE_NONE and ARTICLE_THE are handled here */
+char *outbuf;
+{
+    /* high priest(ess)'s identity is concealed on the Astral Plane,
+       unless you're adjacent (overridden for hallucination which does
+       its own obfuscation) */
+    if (mon->data == &mons[PM_HIGH_PRIEST] && !Hallucination &&
+	    Is_astralevel(&u.uz) && distu(mon->mx, mon->my) > 2) {
+	Strcpy(outbuf, article == ARTICLE_THE ? "the " : "");
+	Strcat(outbuf, mon->female ? "high priestess" : "high priest");
+    } else {
+	Strcpy(outbuf, x_monnam(mon, article, (char *)0, 0, TRUE));
+    }
+    return outbuf;
+}
+
 static const char *bogusmons[] = {
 	"jumbo shrimp", "giant pigmy", "gnu", "killer penguin",
 	"giant cockroach", "giant slug", "maggot", "pterodactyl",
@@ -901,31 +936,6 @@ rndmonnam()
 	return mons[name].mname;
 }
 
-const char *pronoun_pairs[][2] = {
-	{"him", "her"}, {"Him", "Her"}, {"his", "her"}, {"His", "Her"},
-	{"he", "she"}, {"He", "She"},
-	{0, 0}
-};
-
-char *
-self_pronoun(str, pronoun)
-const char *str;
-const char *pronoun;
-{
-	static NEARDATA char buf[BUFSZ];
-	register int i;
-
-	for(i=0; pronoun_pairs[i][0]; i++) {
-		if(!strncmp(pronoun, pronoun_pairs[i][0], 3)) {
-			Sprintf(buf, str, pronoun_pairs[i][flags.female]);
-			return buf;
-		}
-	}
-	impossible("never heard of pronoun %s?", pronoun);
-	Sprintf(buf, str, pronoun_pairs[i][0]);
-	return buf;
-}
-
 #ifdef REINCARNATION
 const char *
 roguename() /* Name of a Rogue player */
@@ -986,14 +996,16 @@ static const char *coynames[] = {
 	"Nemesis Riduclii","Canis latrans"
 };
 	
-char *coyotename(buf)
+char *coyotename(mtmp, buf)
+struct monst *mtmp;
 char *buf;
 {
-	if (buf)
-		Sprintf(buf,
-			"coyote - %s",
-			coynames[rn2(SIZE(coynames)-1)]);
-	return buf;
+    if (mtmp && buf) {
+	Sprintf(buf, "%s - %s",
+	    x_monnam(mtmp, ARTICLE_NONE, (char *)0, 0, TRUE),
+	    mtmp->mcan ? coynames[SIZE(coynames)-1] : coynames[rn2(SIZE(coynames)-1)]);
+    }
+    return buf;
 }
 #endif /* OVL2 */
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objclass.h 3.3	96/06/16	*/
+/*	SCCS Id: @(#)objclass.h 3.4	1996/06/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -68,14 +68,14 @@ struct objclass {
 				 objects[otmp->otyp].oc_material <= MITHRIL)
 
 /* primary damage: fire/rust/--- */
-/* is_flammable() in mkobj.c */
+/* is_flammable(otmp), is_rottable(otmp) in mkobj.c */
 #define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == IRON)
 
 /* secondary damage: rot/acid/acid */
-#define is_rottable(otmp) is_flammable(otmp) /* we might want to change this */
 #define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER || objects[otmp->otyp].oc_material == IRON)
 
-#define is_damageable(otmp) (is_rustprone(otmp) || is_flammable(otmp) || is_corrodeable(otmp))
+#define is_damageable(otmp) (is_rustprone(otmp) || is_flammable(otmp) || \
+				is_rottable || is_corrodeable(otmp))
 
 	schar	oc_subtyp;
 #define oc_skill	oc_subtyp   /* Skills of weapons, spellbooks, tools, gems */
@@ -91,9 +91,8 @@ struct objclass {
 	uchar	oc_oprop;		/* property (invis, &c.) conveyed */
 	char	oc_class;		/* object class */
 	schar	oc_delay;		/* delay when using such an object */
-#ifdef TEXTCOLOR
-	uchar	oc_color;		/* display color of the object */
-#endif /* TEXTCOLOR */
+	uchar	oc_color;		/* color of the object */
+
 	short	oc_prob;		/* probability, used in mkobj() */
 	unsigned short	oc_weight;	/* encumbrance (1 cn = 0.1 lb.) */
 	short	oc_cost;		/* base cost in shops */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)termcap.c	3.3	2000/07/10	*/
+/*	SCCS Id: @(#)termcap.c	3.4	2000/07/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1151,6 +1151,20 @@ int
 has_color(color)
 int color;
 {
+#ifdef X11_GRAPHICS
+	/* XXX has_color() should be added to windowprocs */
+	if (windowprocs.name != NULL &&
+	    !strcmpi(windowprocs.name, "X11")) return TRUE;
+#endif
+#ifdef GEM_GRAPHICS
+	/* XXX has_color() should be added to windowprocs */
+	if (windowprocs.name != NULL &&
+	    !strcmpi(windowprocs.name, "Gem")) return TRUE;
+#endif
+#ifdef AMII_GRAPHICS
+	/* hilites[] not used */
+	return iflags.use_color;
+#endif
 	return hilites[color] != (char *)0;
 }
 

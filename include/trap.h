@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.h	3.3	92/09/28	*/
+/*	SCCS Id: @(#)trap.h	3.4	2000/08/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,6 +6,11 @@
 
 #ifndef TRAP_H
 #define TRAP_H
+
+union vlaunchinfo {
+	short v_launch_otyp;	/* type of object to be triggered */
+	coord v_launch2;	/* secondary launch point (for boulders) */
+};
 
 struct trap {
 	struct trap *ntrap;
@@ -22,12 +27,9 @@ struct trap {
 				 when you untrap a monster.  It would be too
 				 easy to make a monster peaceful if you could
 				 set a trap for it and then untrap it. */
-	union {
-	    short v_launch_otyp;	/* type of object to be triggered */
-	    coord v_launch2;	/* secondary launch point (for boulders) */
-	} v;
-#define launch_otyp	v.v_launch_otyp
-#define launch2		v.v_launch2
+	union vlaunchinfo vl;
+#define launch_otyp	vl.v_launch_otyp
+#define launch2		vl.v_launch2
 };
 
 extern struct trap *ftrap;

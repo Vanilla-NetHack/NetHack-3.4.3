@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rumors.c	3.3	96/04/20	*/
+/*	SCCS Id: @(#)rumors.c	3.4	1996/04/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -146,11 +146,16 @@ int mechanism;
 	boolean reading = (mechanism == BY_COOKIE ||
 			   mechanism == BY_PAPER);
 
-	if (reading && Blind) {
+	if (reading) {
+	    /* deal with various things that prevent reading */
+	    if (is_fainted() && mechanism == BY_COOKIE)
+	    	return;
+	    else if (Blind) {
 		if (mechanism == BY_COOKIE)
 			pline(fortune_msg);
 		pline("What a pity that you cannot read it!");
-		return;
+	    	return;
+	    }
 	}
 	line = getrumor(truth, buf, reading ? FALSE : TRUE);
 	if (!*line)
@@ -282,6 +287,9 @@ int
 doconsult(oracl)
 register struct monst *oracl;
 {
+#ifdef GOLDOBJ
+        long umoney = money_cnt(invent);
+#endif
 	int u_pay, minor_cost = 50, major_cost = 500 + 50 * u.ulevel;
 	int add_xpts;
 	char qbuf[QBUFSZ];
@@ -294,38 +302,59 @@ register struct monst *oracl;
 	} else if (!oracl->mpeaceful) {
 		pline("%s is in no mood for consultations.", Monnam(oracl));
 		return 0;
+#ifndef GOLDOBJ
 	} else if (!u.ugold) {
+#else
+	} else if (!umoney) {
+#endif
 		You("have no money.");
 		return 0;
 	}
 
 	Sprintf(qbuf,
-		"\"Wilt thou settle for a minor consultation?\" (%d zorkmids)",
-		minor_cost);
+		"\"Wilt thou settle for a minor consultation?\" (%d %s)",
+		minor_cost, currency((long)minor_cost));
 	switch (ynq(qbuf)) {
 	    default:
 	    case 'q':
 		return 0;
 	    case 'y':
+#ifndef GOLDOBJ
 		if (u.ugold < (long)minor_cost) {
+#else
+		if (umoney < (long)minor_cost) {
+#endif
 		    You("don't even have enough money for that!");
 		    return 0;
 		}
 		u_pay = minor_cost;
 		break;
 	    case 'n':
+#ifndef GOLDOBJ
 		if (u.ugold <= (long)minor_cost ||	/* don't even ask */
+#else
+		if (umoney <= (long)minor_cost ||	/* don't even ask */
+#endif
 		    (oracle_cnt == 1 || oracle_flg < 0)) return 0;
 		Sprintf(qbuf,
-			"\"Then dost thou desire a major one?\" (%d zorkmids)",
-			major_cost);
+			"\"Then dost thou desire a major one?\" (%d %s)",
+			major_cost, currency((long)major_cost));
 		if (yn(qbuf) != 'y') return 0;
+#ifndef GOLDOBJ
 		u_pay = (u.ugold < (long)major_cost ? (int)u.ugold
 						    : major_cost);
+#else
+		u_pay = (umoney < (long)major_cost ? (int)umoney
+						    : major_cost);
+#endif
 		break;
 	}
+#ifndef GOLDOBJ
 	u.ugold -= (long)u_pay;
 	oracl->mgold += (long)u_pay;
+#else
+        money2mon(oracl, (long)u_pay);
+#endif
 	flags.botl = 1;
 	add_xpts = 0;	/* first oracle of each type gives experience points */
 	if (u_pay == minor_cost) {

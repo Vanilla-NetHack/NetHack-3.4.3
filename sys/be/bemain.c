@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bemain.c	3.3	98/07/15	*/
+/*	SCCS Id: @(#)bemain.c	3.4	1998/07/15	*/
 /* Copyright (c) Dean Luick, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -212,6 +212,9 @@ static void process_options(int argc, char **argv)
 			    if ((i = str2race(argv[0])) >= 0)
 			    	flags.initrace = i;
 			}
+			break;
+		case '@':
+			flags.randomall = 1;
 			break;
 		default:
 			raw_printf("Unknown option: %s", *argv);

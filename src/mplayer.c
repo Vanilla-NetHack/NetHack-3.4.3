@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mplayer.c	3.3	97/02/04	*/
+/*	SCCS Id: @(#)mplayer.c	3.4	1997/02/04	*/
 /*	Copyright (c) Izchak Miller, 1992.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@ STATIC_DCL void FDECL(get_mplname, (struct monst *, char *));
 STATIC_DCL void FDECL(mk_mplayer_armor, (struct monst *, SHORT_P));
 
 /* These are the names of those who
- * contributed to the development of NetHack 3.2/3.3.
+ * contributed to the development of NetHack 3.2/3.3/3.4.
  *
  * Keep in alphabetical order within teams.
  * Same first name is entered once within each team.
@@ -18,17 +18,18 @@ static const char *developers[] = {
 	/* devteam */
 	"Dave", "Dean", "Eric", "Izchak", "Janet", "Jessie",
 	"Ken", "Kevin", "Michael", "Mike", "Pat", "Paul", "Steve", "Timo",
+	"Warwick",
 	/* PC team */
 	"Bill", "Eric", "Keizo", "Ken", "Kevin", "Michael", "Mike", "Paul",
 	"Stephen", "Steve", "Timo", "Yitzhak",
 	/* Amiga team */
-	"Andy", "Gregg", "Keni", "Mike", "Olaf", "Richard",
+	"Andy", "Gregg", "Janne", "Keni", "Mike", "Olaf", "Richard",
 	/* Mac team */
 	"Andy", "Chris", "Dean", "Jon", "Jonathan", "Kevin", "Wang",
 	/* Atari team */
-	"Eric", "Warwick",
+	"Eric", "Marvin", "Warwick",
 	/* NT team */
-	"Michael",
+	"Alex", "Dion", "Michael",
 	/* OS/2 team */
 	"Helge", "Ron", "Timo",
 	/* VMS team */
@@ -255,7 +256,11 @@ register boolean special;
 		    (void)mongets(mtmp, rnd_class(DILITHIUM_CRYSTAL, JADE));
 		/* To get the gold "right" would mean a player can double his */
 		/* gold supply by killing one mplayer.  Not good. */
+#ifndef GOLDOBJ
 		mtmp->mgold = rn2(1000);
+#else
+		mkmonmoney(mtmp, rn2(1000));
+#endif
 		quan = rn2(10);
 		while(quan--)
 		    (void) mpickobj(mtmp, mkobj(RANDOM_CLASS, FALSE));

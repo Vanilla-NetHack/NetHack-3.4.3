@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.3	2000/05/05	*/
+/*	SCCS Id: @(#)allmain.c	3.4	2002/01/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -138,6 +138,7 @@ moveloop()
 		    /* once-per-turn things go here */
 		    /********************************/
 
+		    if (flags.bypasses) clear_bypasses();
 		    if(Glib) glibr();
 		    nh_timeout();
 		    run_regions();
@@ -156,16 +157,22 @@ moveloop()
 		    if (u.uinvulnerable) {
 			/* for the moment at least, you're in tiptop shape */
 			wtcap = UNENCUMBERED;
+		    } else if (Upolyd && youmonst.data->mlet == S_EEL && !is_pool(u.ux,u.uy) && !Is_waterlevel(&u.uz)) {
+			if (u.mh > 1) {
+			    u.mh--;
+			    flags.botl = 1;
+			} else if (u.mh < 1)
+			    rehumanize();
 		    } else if (Upolyd && u.mh < u.mhmax) {
 			if (u.mh < 1)
-			   rehumanize();
+			    rehumanize();
 			else if (Regeneration ||
 				    (wtcap < MOD_ENCUMBER && !(moves%20))) {
 			    flags.botl = 1;
 			    u.mh++;
 			}
 		    } else if (u.uhp < u.uhpmax &&
-			 (wtcap < MOD_ENCUMBER || !flags.mv || Regeneration)) {
+			 (wtcap < MOD_ENCUMBER || !u.umoved || Regeneration)) {
 			if (u.ulevel > 9 && !(moves % 3)) {
 			    int heal, Con = (int) ACURR(A_CON);
 
@@ -187,7 +194,8 @@ moveloop()
 			}
 		    }
 
-		    if (wtcap > MOD_ENCUMBER && flags.mv) {
+		    /* moving around while encumbered is hard work */
+		    if (wtcap > MOD_ENCUMBER && u.umoved) {
 			if(!(wtcap < EXT_ENCUMBER ? moves%30 : moves%10)) {
 			    if (Upolyd && u.mh > 1) {
 				u.mh--;
@@ -235,7 +243,7 @@ moveloop()
 				    stop_occupation();
 				else
 				    nomul(0);
-				if (change == 1) polyself();
+				if (change == 1) polyself(FALSE);
 				else you_were();
 				change = 0;
 			    }
@@ -371,11 +379,12 @@ moveloop()
 	    if (!multi) {
 		/* lookaround may clear multi */
 		flags.move = 0;
+		if (flags.time) flags.botl = 1;
 		continue;
 	    }
 	    if (flags.mv) {
 		if(multi < COLNO && !--multi)
-		    flags.mv = flags.run = 0;
+		    flags.travel = flags.mv = flags.run = 0;
 		domove();
 	    } else {
 		--multi;
@@ -406,8 +415,10 @@ void
 stop_occupation()
 {
 	if(occupation) {
-		You("stop %s.", occtxt);
+		if (!maybe_finished_meal(TRUE))
+		    You("stop %s.", occtxt);
 		occupation = 0;
+		flags.botl = 1; /* in case u.uhs changed */
 /* fainting stops your occupation, there's no reason to sync.
 		sync_hunger();
 */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winstat.c	3.3	96/04/05	*/
+/*	SCCS Id: @(#)winstat.c	3.4	1996/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -111,9 +111,7 @@ create_status_window(wp, create_popup, parent)
     XtSetArg(args[num_args], XtNrightMargin,  &right_margin);  num_args++;
     XtGetValues(wp->w, args, num_args);
 
-    /* font height is ascent + descent */
-    wp->pixel_height = 2 * (fs->ascent + fs->descent) +
-						top_margin + bottom_margin;
+    wp->pixel_height = 2 * nhFontHeight(wp->w) + top_margin + bottom_margin;
     wp->pixel_width  = COLNO * fs->max_bounds.width +
 						left_margin + right_margin;
 
@@ -600,7 +598,11 @@ update_fancy_status(wp)
 
 	    case F_NAME:	val = (long) 0L; break;	/* special */
 	    case F_DLEVEL:	val = (long) 0L; break;	/* special */
+#ifndef GOLDOBJ
 	    case F_GOLD:	val = (long) u.ugold; break;
+#else
+	    case F_GOLD:	val = money_cnt(invent); break;
+#endif
 	    case F_HP:		val = (long) (u.mtimedone ?
 					      (u.mh  > 0 ? u.mh  : 0):
 					      (u.uhp > 0 ? u.uhp : 0)); break;

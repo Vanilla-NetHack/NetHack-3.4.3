@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.c	3.3	1999/10/30	*/
+/*	SCCS Id: @(#)dungeon.c	3.4	1999/10/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -380,7 +380,10 @@ insert_branch(new_branch, extract_first)
     new_branch->next = (branch *) 0;
 
 /* Convert the branch into a unique number so we can sort them. */
-#define branch_val(bp) ((((long)(bp)->end1.dnum * (MAXLEVEL+1) + (long)(bp)->end1.dlevel) * (MAXDUNGEON+1) * (MAXLEVEL+1)) + ((long)(bp)->end2.dnum * (MAXLEVEL+1) + (long)(bp)->end2.dlevel))
+#define branch_val(bp) \
+	((((long)(bp)->end1.dnum * (MAXLEVEL+1) + \
+	  (long)(bp)->end1.dlevel) * (MAXDUNGEON+1) * (MAXLEVEL+1)) + \
+	 ((long)(bp)->end2.dnum * (MAXLEVEL+1) + (long)(bp)->end2.dlevel))
 
     /*
      * Insert the new branch into the correct place in the branch list.
@@ -661,6 +664,11 @@ init_dungeons()		/* initialize the "dungeon" structs */
 
 	/* validate the data's version against the program's version */
 	Fread((genericptr_t) &vers_info, sizeof vers_info, 1, dgn_file);
+	/* we'd better clear the screen now, since when error messages come from
+	 * check_version() they will be printed using pline(), which doesn't
+	 * mix with the raw messages that might be already on the screen
+	 */
+	if (iflags.window_inited) clear_nhwindow(WIN_MAP);
 	if (!check_version(&vers_info, DUNGEON_FILE, TRUE))
 	    panic("Dungeon description not valid.");
 
@@ -734,7 +742,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	    } else if (pd.tmpdungeon[i].entry_lev > 0) {
 		dungeons[i].entry_lev = pd.tmpdungeon[i].entry_lev;
 		if (dungeons[i].entry_lev > dungeons[i].num_dunlevs)
-		    dungeons[i].entry_lev = pd.tmpdungeon[i].entry_lev;
+		    dungeons[i].entry_lev = dungeons[i].num_dunlevs;
 	    } else { /* default */
 		dungeons[i].entry_lev = 1;	/* defaults to top level */
 	    }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.c	3.3	1999/12/21	*/
+/*	SCCS Id: @(#)winX.c	3.4	1999/12/21	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -92,6 +92,7 @@ int updated_inventory;
 /* Interface definition, for windows.c */
 struct window_procs X11_procs = {
     "X11",
+    WC_COLOR|WC_HILITE_PET,
     X11_init_nhwindows,
     X11_player_selection,
     X11_askname,
@@ -144,6 +145,7 @@ struct window_procs X11_procs = {
 #else
     genl_outrip,
 #endif
+    genl_preference_update,
 };
 
 /*
@@ -265,7 +267,7 @@ XColor   *color;	/* the X color structure; changed only if successful */
     long	cdiff = 16777216; /* 2^24; hopefully our map is smaller */
     XColor	tmp;
     static	XColor *table = 0;
-    register	i, j;
+    register int i, j;
     register long tdiff;
 
     /* if the screen doesn't have a big colormap, don't waste our time */
@@ -449,6 +451,38 @@ Cardinal	*num_args;
 		    );
     }
 }
+
+/* [ALI] Utility function to ask Xaw for font height, since the previous
+ * assumption of ascent + descent is not always valid.
+ */
+Dimension
+nhFontHeight(w)
+Widget w;
+#ifdef _XawTextSink_h
+{
+    Widget sink;
+    XawTextPosition pos = 0;
+    int resWidth, resHeight;
+    Arg args[1];
+
+    XtSetArg(args[0], XtNtextSink, &sink);
+    XtGetValues(w, args, 1);
+
+    XawTextSinkFindPosition(sink, pos, 0, 0, 0, &pos, &resWidth, &resHeight);
+    return resHeight;
+}
+#else
+{
+    XFontStruct *fs;
+    Arg args[1];
+
+    XtSetArg(args[0], XtNfont, &fs);
+    XtGetValues(w, args, 1);
+
+    /* Assume font height is ascent + descent. */
+    return = fs->ascent + fs->descent;
+}
+#endif
 
 /* Global Functions ======================================================== */
 void
@@ -870,7 +904,7 @@ static XtActionsRec actions[] = {
 
 static XtResource resources[] = {
     { "slow", "Slow", XtRBoolean, sizeof(Boolean),
-      XtOffset(AppResources *,slow), XtRString, "False" },
+      XtOffset(AppResources *,slow), XtRString, "True" },
     { "autofocus", "AutoFocus", XtRBoolean, sizeof(Boolean),
       XtOffset(AppResources *,autofocus), XtRString, "False" },
     { "message_line", "Message_line", XtRBoolean, sizeof(Boolean),
@@ -1178,12 +1212,20 @@ done_button(w, client_data, call_data)
     XtPointer client_data;
     XtPointer call_data;
 {
+    int len;
     char *s;
     Widget dialog = (Widget) client_data;
 
     s = (char *) GetDialogResponse(dialog);
-    Strcpy(getline_input, s);
+    len = strlen(s);
+
+    /* Truncate input if necessary */
+    if (len >= BUFSZ) len = BUFSZ - 1;
+
+    (void) strncpy(getline_input, s, len);
+    getline_input[len] = '\0';
     XtFree(s);
+
     nh_XtPopdown(XtParent(dialog));
     exit_x_event = TRUE;
 }
@@ -1389,12 +1431,10 @@ X11_display_file(str, complain)
     XtGetValues(dispfile, args, num_args);
 
     /*
-     * Font height is ascent + descent.
-     *
      * The data files are currently set up assuming an 80 char wide window
      * and a fixed width font.  Soo..
      */
-    new_height = num_lines * (fs->ascent + fs->descent) +
+    new_height = num_lines * nhFontHeight(dispfile) +
 						top_margin + bottom_margin;
     new_width  = 80 * fs->max_bounds.width + left_margin + right_margin;
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.3	1999/10/20	*/
+/*	SCCS Id: @(#)dog.c	3.4	2002/03/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,6 +15,7 @@ register struct monst *mtmp;
 {
 	mtmp->mtame = is_domestic(mtmp->data) ? 10 : 5;
 	mtmp->mpeaceful = 1;
+	mtmp->mavenge = 0;
 	set_malign(mtmp); /* recalc alignment now that it's tamed */
 	mtmp->mleashed = 0;
 	mtmp->meating = 0;
@@ -90,6 +91,7 @@ boolean quietly;
 		    if (!quietly)
 		       You("get a bad feeling about this.");
 		    mtmp->mpeaceful = 0;
+		    set_malign(mtmp);
 		}
 	    }
 	    /* if figurine has been named, give same name to the monster */
@@ -117,6 +119,8 @@ makedog()
 	const char *petname;
 	int   pettype;
 	static int petname_used = 0;
+
+	if (preferred_pet == 'n') return((struct monst *) 0);
 
 	pettype = pet_type();
 	if (pettype == PM_LITTLE_DOG)
@@ -410,6 +414,13 @@ long nmv;		/* number of moves */
 		mtmp->mtame = mtmp->mpeaceful = 0;
 	}
 
+	if (!mtmp->mtame && mtmp->mleashed) {
+	    /* leashed monsters should always be with hero, consequently
+	       never losing any time to be accounted for later */
+	    impossible("catching up for leashed monster?");
+	    m_unleash(mtmp, FALSE);
+	}
+
 	/* recover lost hit points */
 	if (!regenerates(mtmp->data)) imv /= 20;
 	if (mtmp->mhp + imv >= mtmp->mhpmax)
@@ -442,7 +453,9 @@ boolean pets_only;	/* true for ascension or final escape */
 		   the amulet; if you don't have it, will chase you
 		   only if in range. -3. */
 			(u.uhave.amulet && mtmp->iswiz))
-			&& !mtmp->msleeping && mtmp->mcanmove) {
+		&& !mtmp->msleeping && mtmp->mcanmove
+		/* monster won't follow if it hasn't noticed you yet */
+		&& !(mtmp->mstrategy & STRAT_WAITFORU)) {
 		stay_behind = FALSE;
 		if (mtmp->mtame && mtmp->meating) {
 			if (canseemon(mtmp))
@@ -453,18 +466,21 @@ boolean pets_only;	/* true for ascension or final escape */
 			    pline("%s seems very disoriented for a moment.",
 				Monnam(mtmp));
 			stay_behind = TRUE;
+		} else if (mtmp->mtame && mtmp->mtrapped) {
+			if (canseemon(mtmp))
+			    pline("%s is still trapped.", Monnam(mtmp));
+			stay_behind = TRUE;
 		}
-		if (stay_behind
 #ifdef STEED
-				&& mtmp != u.usteed
+		if (mtmp == u.usteed) stay_behind = FALSE;
 #endif
-				) {
+		if (stay_behind) {
 			if (mtmp->mleashed) {
 				pline("%s leash suddenly comes loose.",
 					humanoid(mtmp->data)
 					    ? (mtmp->female ? "Her" : "His")
 					    : "Its");
-				m_unleash(mtmp);
+				m_unleash(mtmp, FALSE);
 			}
 			continue;
 		}
@@ -503,7 +519,7 @@ boolean pets_only;	/* true for ascension or final escape */
 		/* this can happen if your quest leader ejects you from the
 		   "home" level while a leashed pet isn't next to you */
 		pline("%s leash goes slack.", s_suffix(Monnam(mtmp)));
-		m_unleash(mtmp);
+		m_unleash(mtmp, FALSE);
 	    }
 	}
 }
@@ -541,14 +557,13 @@ migrate_to_level(mtmp, tolev, xyloc, cc)
 	    obj->no_charge = 0;
 	}
 
+	if (mtmp->mleashed) {
+		mtmp->mtame--;
+		m_unleash(mtmp, TRUE);
+	}
 	relmon(mtmp);
 	mtmp->nmon = migrating_mons;
 	migrating_mons = mtmp;
-	if (mtmp->mleashed)  {
-		m_unleash(mtmp);
-		mtmp->mtame--;
-		pline_The("leash comes off!");
-	}
 	newsym(mtmp->mx,mtmp->my);
 
 	new_lev.dnum = ledger_to_dnum((xchar)tolev);
@@ -648,10 +663,11 @@ register struct obj *obj;
 		return(TABU);
 	    if (mon->data == &mons[PM_GELATINOUS_CUBE] && is_organic(obj))
 		return(ACCFOOD);
-	    if (metallivorous(mon->data) && is_metallic(obj))
+	    if (metallivorous(mon->data) && is_metallic(obj) && (is_rustprone(obj) || mon->data != &mons[PM_RUST_MONSTER])) {
 		/* Non-rustproofed ferrous based metals are preferred. */
-		return(objects[obj->otyp].oc_material == IRON &&
-		       !obj->oerodeproof ? DOGFOOD : ACCFOOD);
+		return((is_rustprone(obj) && !obj->oerodeproof) ? DOGFOOD :
+			ACCFOOD);
+	    }
 	    if(!obj->cursed && obj->oclass != BALL_CLASS &&
 						obj->oclass != CHAIN_CLASS)
 		return(APPORT);
@@ -711,7 +727,7 @@ register struct obj *obj;
 			  Monnam(mtmp), the(xname(obj)),
 			  !big_corpse ? "." : ", or vice versa!");
 		} else if (cansee(mtmp->mx,mtmp->my))
-		    pline("%s stops.", The(xname(obj)));
+		    pline("%s.", Tobjnam(obj, "stop"));
 		/* dog_eat expects a floor object */
 		place_object(obj, mtmp->mx, mtmp->my);
 		(void) dog_eat(mtmp, obj, mtmp->mx, mtmp->my, FALSE);
@@ -729,6 +745,9 @@ register struct obj *obj;
 	    is_covetous(mtmp->data) || is_human(mtmp->data) ||
 	    (is_demon(mtmp->data) && !is_demon(youmonst.data)) ||
 	    (obj && dogfood(mtmp, obj) >= MANFOOD)) return (struct monst *)0;
+
+	if (mtmp->m_id == quest_status.leader_m_id)
+	    return((struct monst *)0);
 
 	/* make a new monster which has the pet extension */
 	mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
@@ -796,6 +815,13 @@ boolean quietly;
     		mtmp->mpeaceful = mtmp->mtame = 0;
     	}
     }
+    if (!mtmp->mtame) {
+	newsym(mtmp->mx, mtmp->my);
+	/* a life-saved monster might be leashed;
+	   don't leave it that way if it's no longer tame */
+	if (mtmp->mleashed) m_unleash(mtmp, TRUE);
+    }
+
     /* if its still a pet, start a clean pet-slate now */
     if (has_edog && mtmp->mtame) {
 	EDOG(mtmp)->revivals++;
@@ -814,12 +840,19 @@ struct monst *mtmp;
 	else mtmp->mtame--;
 
 	if (mtmp->mtame && !mtmp->isminion)
-		EDOG(mtmp)->abuse++;
+	    EDOG(mtmp)->abuse++;
 
-	if (mtmp->mtame && rn2(mtmp->mtame)) yelp(mtmp);
-	else growl(mtmp);	/* give them a moment's worry */
+	if (!mtmp->mtame && mtmp->mleashed)
+	    m_unleash(mtmp, TRUE);
+
+	/* don't make a sound if pet is in the middle of leaving the level */
+	/* newsym isn't necessary in this case either */
+	if (mtmp->mx != 0) {
+	    if (mtmp->mtame && rn2(mtmp->mtame)) yelp(mtmp);
+	    else growl(mtmp);	/* give them a moment's worry */
 	
-	if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
+	    if (!mtmp->mtame) newsym(mtmp->mx, mtmp->my);
+	}
 }
 
 #endif /* OVLB */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.3	2000/01/21	*/
+/*	SCCS Id: @(#)topten.c	3.4	2000/01/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,7 +31,7 @@ static long final_fpos;
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
 #define dealloc_ttentry(ttent) free((genericptr_t) (ttent))
 #define NAMSZ	10
-#define DTHSZ	60
+#define DTHSZ	100
 #define ROLESZ   3
 #define PERSMAX	 3		/* entries per name/uid per char. allowed */
 #define POINTSMIN	1	/* must be > 0 */
@@ -79,7 +79,7 @@ STATIC_DCL void FDECL(nsb_unmung_line,(char*));
 NEARDATA const char *killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
 	"", "dissolved in ", "crushed to death by ", "petrified by ",
-	"turned to slime by ", "", "", "", "", "", ""
+	"turned to slime by ", "killed by ", "", "", "", "", ""
 };
 
 static winid toptenwin = WIN_ERR;
@@ -263,6 +263,13 @@ int how;
 #ifdef _DCC
 	return;
 #endif
+
+/* If we are in the midst of a panic, cut out topten entirely.
+ * topten uses alloc() several times, which will lead to
+ * problems if the panic was the result of an alloc() failure.
+ */
+	if (program_state.panicking)
+		return;
 
 	if (flags.toptenwin) {
 	    toptenwin = create_nhwindow(NHW_TEXT);
@@ -707,7 +714,16 @@ int uid;
 #endif
 
 	for (i = 0; i < playerct; i++) {
-		if (strcmp(players[i], "all") == 0 ||
+	    if (players[i][0] == '-' && index("pr", players[i][1]) &&
+                players[i][2] == 0 && i + 1 < playerct) {
+		char *arg = (char *)players[i + 1];
+		if ((players[i][1] == 'p' &&
+		     str2role(arg) == str2role(t1->plrole)) ||
+		    (players[i][1] == 'r' &&
+		     str2race(arg) == str2race(t1->plrace)))
+		    return 1;
+		i++;
+	    } else if (strcmp(players[i], "all") == 0 ||
 		    strncmp(t1->name, players[i], NAMSZ) == 0 ||
 		    (players[i][0] == '-' &&
 		     players[i][1] == t1->plrole[0] &&
@@ -841,18 +857,28 @@ char **argv;
 		if (playerct > 1) Strcat(pbuf, "any of ");
 		for (i = 0; i < playerct; i++) {
 		    Strcat(pbuf, players[i]);
-		    if (i < playerct-1) Strcat(pbuf, ":");
+		    if (i < playerct-1) {
+			if (players[i][0] == '-' &&
+			    index("pr", players[i][1]) && players[i][2] == 0)
+			    Strcat(pbuf, " ");
+			else Strcat(pbuf, ":");
+		    }
 		}
 	    }
 	    raw_print(pbuf);
-	    raw_printf("Call is: %s -s [-v] [-role] [maxrank] [playernames]",
+	    raw_printf("Usage: %s -s [-v] <playertypes> [maxrank] [playernames]",
+
 			 hname);
+	    raw_printf("Player types are: [-p role] [-r race]");
 	}
 	free_ttlist(tt_head);
 #ifdef	AMIGA
-	display_nhwindow(amii_rawprwin, 1);
-	destroy_nhwindow(amii_rawprwin);
-	amii_rawprwin = WIN_ERR;
+	{
+	    extern winid amii_rawprwin;
+	    display_nhwindow(amii_rawprwin, 1);
+	    destroy_nhwindow(amii_rawprwin);
+	    amii_rawprwin = WIN_ERR;
+	}
 #endif
 }
 

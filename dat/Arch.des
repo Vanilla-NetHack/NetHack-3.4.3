@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Arch.des	3.3	97/01/31
+#	SCCS Id: @(#)Arch.des	3.4	1997/01/31
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
@@ -145,7 +145,7 @@ ENDMAP
 # Dungeon Description
 REGION:(00,00,75,19),lit,"ordinary"
 REGION:(25,04,28,07),lit,"temple"
-REGION:(25,09,28,11),unlit,"ordinary"
+REGION:(25,09,28,11),unlit,"temple"
 REGION:(25,13,28,16),lit,"temple"
 REGION:(30,04,30,16),lit,"ordinary"
 REGION:(32,04,32,16),unlit,"ordinary"
@@ -199,6 +199,11 @@ OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
 OBJECT:random,random,random
+# Treasure?
+ENGRAVING:random,engrave,"X marks the spot."
+ENGRAVING:random,engrave,"X marks the spot."
+ENGRAVING:random,engrave,"X marks the spot."
+ENGRAVING:random,engrave,"X marks the spot."
 # Random traps
 TRAP:"spiked pit",(24,02)
 TRAP:"spiked pit",(37,00)
@@ -255,8 +260,8 @@ MONSTER:'M',random,random
 #
 #	The "goal" level for the quest.
 #
-#	Here you meet Minion of Huhetol your nemesis monster.  You have to
-#	defeat Minion of Huhetol in combat to gain the artifact you have
+#	Here you meet Minion of Huhetotl your nemesis monster.  You have to
+#	defeat Minion of Huhetotl in combat to gain the artifact you have
 #	been assigned to retrieve.
 #
 
@@ -313,7 +318,7 @@ REGION:(52,13,52,15),unlit,"ordinary"
 STAIR:(38,10),up
 # Non diggable walls
 NON_DIGGABLE:(00,00,75,19)
-# The altar of Set.  Unattended.
+# The altar of Huhetotl.  Unattended.
 ALTAR:(50,14),chaos,altar
 # Objects
 OBJECT:'(',"crystal ball",(50,14),blessed,5,"The Orb of Detection"

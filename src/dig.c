@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dig.c	3.3	2000/04/19	*/
+/*	SCCS Id: @(#)dig.c	3.4	2001/09/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -134,6 +134,15 @@ xchar x, y;
 		IS_TREE(levl[x][y].typ) ? 4: 0);
 }
 
+boolean
+is_digging()
+{
+	if (occupation == dig) {
+	    return TRUE;
+	}
+	return FALSE;
+}
+
 #define BY_YOU		(&youmonst)
 #define BY_OBJECT	((struct monst *)0)
 
@@ -211,24 +220,34 @@ dig()
 	    }
 	}
 	if(Fumbling && !rn2(3)) {
-		switch(rn2(3)) {
-		case 0:  if(!welded(uwep)) {
-			     You("fumble and drop your %s.", xname(uwep));
-			     dropx(uwep);
-			     setuwep((struct obj *)0);
-			 } else {
-			     pline("Ouch!  Your %s bounces and hits you!",
-				xname(uwep));
-			     set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
-			 }
-			 break;
-		case 1:  pline("Bang!  You hit with the broad side of %s!",
-			       the(xname(uwep)));
-			 break;
-		default: Your("swing misses its mark.");
-			 break;
+	    switch(rn2(3)) {
+	    case 0:
+		if(!welded(uwep)) {
+		    You("fumble and drop your %s.", xname(uwep));
+		    dropx(uwep);
+		} else {
+#ifdef STEED
+		    if (u.usteed)
+			Your("%s %s and %s %s!",
+			     xname(uwep),
+			     otense(uwep, "bounce"), otense(uwep, "hit"),
+			     mon_nam(u.usteed));
+		    else
+#endif
+			pline("Ouch!  Your %s %s and %s you!",
+			      xname(uwep),
+			      otense(uwep, "bounce"), otense(uwep, "hit"));
+		    set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
 		}
-		return(0);
+		break;
+	    case 1:
+		pline("Bang!  You hit with the broad side of %s!",
+		      the(xname(uwep)));
+		break;
+	    default: Your("swing misses its mark.");
+		break;
+	    }
+	    return(0);
 	}
 
 	digging.effort += 10 + rn2(5) + abon() +
@@ -276,7 +295,14 @@ dig()
 				 */
 				digtxt = (char *)0;
 		} else if ((obj = sobj_at(BOULDER, dpx, dpy)) != 0) {
+			struct obj *bobj;
+
 			fracture_rock(obj);
+			if ((bobj = sobj_at(BOULDER, dpx, dpy)) != 0) {
+			    /* another boulder here, restack it to the top */
+			    obj_extract_self(bobj);
+			    place_object(bobj, dpx, dpy);
+			}
 			digtxt = "The boulder falls apart.";
 		} else if (lev->typ == STONE || lev->typ == SCORR ||
 				IS_TREE(lev->typ)) {
@@ -326,12 +352,13 @@ dig()
 				lev->doormask = D_BROKEN;
 		} else return(0); /* statue or boulder got taken */
 
-		unblock_point(dpx,dpy);	/* vision:  can see through */
+		if(!does_block(dpx,dpy,&levl[dpx][dpy]))
+		    unblock_point(dpx,dpy);	/* vision:  can see through */
 		if(Blind)
 		    feel_location(dpx, dpy);
 		else
 		    newsym(dpx, dpy);
-		if(digtxt) pline(digtxt);	/* after newsym */
+		if(digtxt && !digging.quiet) pline(digtxt); /* after newsym */
 		if(dmgtxt)
 		    pay_for_damage(dmgtxt);
 
@@ -356,6 +383,8 @@ dig()
 			newsym(dpx, dpy);
 		}
 cleanup:
+		digging.lastdigtime = moves;
+		digging.quiet = FALSE;
 		digging.level.dnum = 0;
 		digging.level.dlevel = -1;
 		return(0);
@@ -462,7 +491,12 @@ int ttyp;
 	    ttyp = PIT;
 	}
 
-	Strcpy(surface_type, surface(x,y));	/* maketrap() might change it */
+	/* maketrap() might change it, also, in this situation,
+	   surface() returns an inappropriate string for a grave */
+	if (IS_GRAVE(lev->typ))
+	    Strcpy(surface_type, "grave");
+	else
+	    Strcpy(surface_type, surface(x,y));
 	shopdoor = IS_DOOR(lev->typ) && *in_rooms(x, y, SHOPBASE);
 	oldobjs = level.objects[x][y];
 	ttmp = maketrap(x, y, ttyp);
@@ -746,9 +780,8 @@ struct obj *obj;
 	char dirsyms[12];
 	char qbuf[QBUFSZ];
 	register char *dsp = dirsyms;
-	register struct rm *lev;
 	register int rx, ry;
-	int dig_target, res = 0;
+	int res = 0;
 	register const char *sdp;
 	if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
 
@@ -777,6 +810,22 @@ struct obj *obj;
 	Sprintf(qbuf, "In what direction do you want to dig? [%s]", dirsyms);
 	if(!getdir(qbuf))
 		return(res);
+
+	return(use_pick_axe2(obj));
+}
+
+/* MRKR: use_pick_axe() is split in two to allow autodig to bypass */
+/*       the "In what direction do you want to dig?" query.        */
+/*       use_pick_axe2() uses the existing u.dx, u.dy and u.dz    */
+
+int
+use_pick_axe2(obj) 
+struct obj *obj;
+{
+	register int rx, ry;
+	register struct rm *lev;
+	int dig_target;
+
 	if (u.uswallow && attack(u.ustuck)) {
 		;  /* return(1) */
 	} else if (Underwater) {
@@ -793,10 +842,9 @@ struct obj *obj;
 		dam = rnd(2) + dbon() + obj->spe;
 		if (dam <= 0) dam = 1;
 		You("hit yourself with %s.", yname(uwep));
-		/* self_pronoun() won't work twice in a sentence */
-		Strcpy(buf, self_pronoun("killed %sself with %%s pick-axe",
-			"him"));
-		losehp(dam, self_pronoun(buf, "his"), NO_KILLER_PREFIX);
+		Sprintf(buf, "%s own %s", uhis(),
+				OBJ_NAME(objects[obj->otyp]));
+		losehp(dam, buf, KILLED_BY);
 		flags.botl=1;
 		return(1);
 	} else if(u.dz == 0) {
@@ -820,8 +868,8 @@ struct obj *obj;
 				seetrap(trap);
 				There("is a spider web there!");
 			    }
-			    Your("%s becomes entangled in the web.",
-				aobjnam(obj, (char *)0));
+			    Your("%s entangled in the web.",
+				aobjnam(obj, "become"));
 			    /* you ought to be able to let go; tough luck */
 			    /* (maybe `move_into_trap()' would be better) */
 			    nomul(-d(2,2));
@@ -837,20 +885,32 @@ struct obj *obj;
 						"chopping at the door",
 						"cutting the tree"
 			};
+			did_dig_msg = FALSE;
+			digging.quiet = FALSE;
 			if (digging.pos.x != rx || digging.pos.y != ry ||
 			    !on_level(&digging.level, &u.uz) || digging.down) {
+			    if (flags.autodig && !dig_target && !digging.down &&
+				digging.pos.x == u.ux &&
+				digging.pos.y == u.uy &&
+				(moves <= digging.lastdigtime+2 &&
+				 moves >= digging.lastdigtime)) {
+				/* avoid messages if repeated autodigging */
+				did_dig_msg = TRUE;
+				digging.quiet = TRUE;
+			    }
 			    digging.down = digging.chew = FALSE;
+			    digging.warned = FALSE;
 			    digging.pos.x = rx;
 			    digging.pos.y = ry;
 			    assign_level(&digging.level, &u.uz);
 			    digging.effort = 0;
-			    You("start %s.", d_action[dig_target]);
+			    if (!digging.quiet)
+				You("start %s.", d_action[dig_target]);
 			} else {
 			    You("%s %s.", digging.chew ? "begin" : "continue",
 					d_action[dig_target]);
 			    digging.chew = FALSE;
 			}
-			did_dig_msg = FALSE;
 			set_occupation(dig, "digging", 0);
 		}
 	} else if (Is_airlevel(&u.uz) || Is_waterlevel(&u.uz)) {
@@ -867,6 +927,7 @@ struct obj *obj;
 			!on_level(&digging.level, &u.uz) || !digging.down) {
 		    digging.chew = FALSE;
 		    digging.down = TRUE;
+		    digging.warned = FALSE;
 		    digging.pos.x = u.ux;
 		    digging.pos.y = u.uy;
 		    assign_level(&digging.level, &u.uz);
@@ -879,6 +940,56 @@ struct obj *obj;
 		set_occupation(dig, "digging", 0);
 	}
 	return(1);
+}
+
+/*
+ * Town Watchmen frown on damage to the town walls or fountains.
+ * It's OK to dig holes in the ground, however.
+ * If mtmp is assumed to be a watchman, a watchman is found if mtmp == 0
+ * zap == TRUE if wand/spell of digging, FALSE otherwise (chewing)
+ */
+void
+watch_dig(mtmp, x, y, zap)
+    struct monst *mtmp;
+    xchar x, y;
+    boolean zap;
+{
+	s_level *slev = Is_special(&u.uz);
+	struct rm *lev = &levl[x][y];
+
+	if (slev && slev->flags.town &&
+	    (closed_door(x, y) || lev->typ == SDOOR ||
+	     IS_WALL(lev->typ) || IS_FOUNTAIN(lev->typ))) {
+	    if (!mtmp) {
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+		    if (DEADMONSTER(mtmp)) continue;
+		    if ((mtmp->data == &mons[PM_WATCHMAN] ||
+			 mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
+			mtmp->mcansee && m_canseeu(mtmp) &&
+			couldsee(mtmp->mx, mtmp->my) && mtmp->mpeaceful)
+			break;
+		}
+	    }
+
+	    if (mtmp) {
+		if(zap || digging.warned) {
+		    verbalize("Halt, vandal!  You're under arrest!");
+		    (void) angry_guards(!(flags.soundok));
+		} else {
+		    char *str;
+		    if (IS_DOOR(lev->typ))
+			str = "door";
+		    else if (IS_WALL(lev->typ))
+			str = "wall";
+		    else
+			str = "fountain";
+		    verbalize("Hey, stop damaging that %s!", str);
+		    digging.warned = TRUE;
+		}
+		if (is_digging())
+		    stop_occupation();
+	    }
+	}
 }
 
 #endif /* OVLB */
@@ -949,7 +1060,7 @@ register struct monst *mtmp;
 
 	if (pile && pile < 5)   /* leave behind some rocks? */
 	    (void) mksobj_at((pile == 1) ? BOULDER : ROCK,
-			     mtmp->mx, mtmp->my, TRUE);
+			     mtmp->mx, mtmp->my, TRUE, FALSE);
 	newsym(mtmp->mx, mtmp->my);
 	if (!sobj_at(BOULDER, mtmp->mx, mtmp->my))
 	    unblock_point(mtmp->mx, mtmp->my);	/* vision */
@@ -983,7 +1094,8 @@ zap_dig()
 
 	    if (!is_whirly(mtmp->data)) {
 		if (is_animal(mtmp->data))
-		    You("pierce %s stomach wall!", s_suffix(mon_nam(mtmp)));
+		    You("pierce %s %s wall!",
+			s_suffix(mon_nam(mtmp)), mbodypart(mtmp, STOMACH));
 		mtmp->mhp = 1;		/* almost dead */
 		expels(mtmp, mtmp->data, !is_animal(mtmp->data));
 	    }
@@ -1001,12 +1113,14 @@ zap_dig()
 		    pline("It falls on your %s!", body_part(HEAD));
 		    losehp(rnd((uarmh && is_metallic(uarmh)) ? 2 : 6),
 			   "falling rock", KILLED_BY_AN);
-		    if ((otmp = mksobj_at(ROCK, u.ux, u.uy, FALSE)) != 0) {
+		    otmp = mksobj_at(ROCK, u.ux, u.uy, FALSE, FALSE);
+		    if (otmp) {
 			(void)xname(otmp);	/* set dknown, maybe bknown */
 			stackobj(otmp);
 		    }
 		    if (Invisible) newsym(u.ux, u.uy);
 		} else {
+		    watch_dig((struct monst *)0, u.ux, u.uy, TRUE);
 		    (void) dighole(FALSE);
 		}
 	    }
@@ -1034,6 +1148,7 @@ zap_dig()
 		    room->typ = DOOR;
 		else if (cansee(zx, zy))
 		    pline_The("door is razed!");
+		watch_dig((struct monst *)0, zx, zy, TRUE);
 		room->doormask = D_NODOOR;
 		unblock_point(zx,zy); /* vision */
 		digdepth -= 2;
@@ -1065,6 +1180,7 @@ zap_dig()
 			add_damage(zx, zy, 200L);
 			shopwall = TRUE;
 		    }
+		    watch_dig((struct monst *)0, zx, zy, TRUE);
 		    if (level.flags.is_cavernous_lev) {
 			room->typ = CORR;
 		    } else {
@@ -1232,10 +1348,12 @@ long timeout;	/* unused */
 	    x = obj->ox;
 	    y = obj->oy;
 	} else if (in_invent) {
-	    if (flags.verbose)
-		Your("%s%s rot%s away%c",
-		     obj == uwep ? "wielded " : "", corpse_xname(obj, FALSE),
-		     obj->quan == 1L ? "s" : "", obj == uwep ? '!' : '.');
+	    if (flags.verbose) {
+		char *cname = corpse_xname(obj, FALSE);
+		Your("%s%s %s away%c",
+		     obj == uwep ? "wielded " : nul, cname,
+		     vtense(cname, "rot"), obj == uwep ? '!' : '.');
+	    }
 	    if (obj == uwep) {
 		uwepgone();	/* now bare handed */
 		stop_occupation();
@@ -1248,7 +1366,7 @@ long timeout;	/* unused */
 	    }
 	} else if (obj->where == OBJ_MINVENT && obj->owornmask) {
 	    if (obj == MON_WEP(obj->ocarry)) {
-		obj->owornmask &= ~W_WEP;
+		setmnotwielded(obj->ocarry,obj);
 		MON_NOWEP(obj->ocarry);
 	    }
 	}

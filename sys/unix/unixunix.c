@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixunix.c	3.3	94/11/07	*/
+/*	SCCS Id: @(#)unixunix.c	3.4	1994/11/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,91 +22,7 @@ extern void NDECL(linux_mapon);
 extern void NDECL(linux_mapoff);
 #endif
 
-static struct stat buf, hbuf;
-
-void
-gethdate(name)
-	const char *name;
-{
-/* old version - for people short of space
- *
- *	register char *np;
- *	if(stat(name, &hbuf))
- *		error("Cannot get status of %s.",
- *			(np = rindex(name, '/')) ? np+1 : name);
- */
-/* version using PATH from: seismo!gregc@ucsf-cgl.ARPA (Greg Couch) */
-
-/*
- * The problem with   #include	<sys/param.h>   is that this include file
- * does not exist on all systems, and moreover, that it sometimes includes
- * <sys/types.h> again, so that the compiler sees these typedefs twice.
- */
-#define		MAXPATHLEN	1024
-
-	register const char *np, *path;
-	char filename[MAXPATHLEN+1];
-	int pathlen;
-
-	if (index(name, '/') != (char *)0 ||
-					(path = getenv("PATH")) == (char *)0)
-		path = "";
-
-	for (;;) {
-		if ((np = index(path, ':')) == (char *)0)
-			np = path + strlen(path);	/* point to end str */
-		pathlen = np - path;
-		if (pathlen > MAXPATHLEN)
-			pathlen = MAXPATHLEN;
-		if (pathlen <= 1) {			/* %% */
-			(void) strncpy(filename, name, MAXPATHLEN);
-		} else {
-			(void) strncpy(filename, path, pathlen);
-			filename[pathlen] = '/';
-			(void) strncpy(filename + pathlen + 1, name,
-					(MAXPATHLEN - 1) - pathlen);
-		}
-		filename[MAXPATHLEN] = '\0';
-		if (stat(filename, &hbuf) == 0)
-			return;
-		if (*np == '\0')
-			break;
-		path = np + 1;
-	}
-	if (strlen(name) > BUFSZ/2)
-		name = name + strlen(name) - BUFSZ/2;
-#if defined(BOS) && defined(NHSTDC)
-/*
- *	This one is really **STUPID**.  I don't know why it's happening
- *	as similar constructs work elsewhere, but...
- */
-	if((np = rindex(name, '/')))
-	     error("Cannot get status of %s.", np+1);
-	else error("Cannot get status of %s.", name);
-#else
-	error("Cannot get status of %s.",
-		(np = rindex(name, '/')) ? np+1 : name);
-#endif
-}
-
-#if 0
-int
-uptodate(fd)
-int fd;
-{
-	if(fstat(fd, &buf)) {
-		pline("Cannot get status of saved level? ");
-		wait_synch();
-		return(0);
-	}
-	if(buf.st_mtime < hbuf.st_mtime) {
-		pline("Saved level is out of date. ");
-		wait_synch();
-		return(0);
-	}
-	return(1);
-}
-#endif
+static struct stat buf;
 
 /* see whether we should throw away this xlock file */
 static int
@@ -368,3 +284,52 @@ int wt;
 	return(0);
 }
 #endif
+
+#ifdef GETRES_SUPPORT
+
+extern int FDECL(nh_getresuid, (uid_t *, uid_t *, uid_t *));
+extern uid_t NDECL(nh_getuid);
+extern uid_t NDECL(nh_geteuid);
+extern int FDECL(nh_getresgid, (gid_t *, gid_t *, gid_t *));
+extern gid_t NDECL(nh_getgid);
+extern gid_t NDECL(nh_getegid);
+
+int
+(getresuid)(ruid, euid, suid)
+uid_t *ruid, *euid, *suid;
+{
+    return nh_getresuid(ruid, euid, suid);
+}
+
+uid_t
+(getuid)()
+{
+    return nh_getuid();
+}
+
+uid_t
+(geteuid)()
+{
+    return nh_geteuid();
+}
+
+int
+(getresgid)(rgid, egid, sgid)
+gid_t *rgid, *egid, *sgid;
+{
+    return nh_getresgid(rgid, egid, sgid);
+}
+
+gid_t
+(getgid)()
+{
+    return nh_getgid();
+}
+
+gid_t
+(getegid)()
+{
+    return nh_getegid();
+}
+
+#endif	/* GETRES_SUPPORT */

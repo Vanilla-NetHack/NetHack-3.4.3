@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)gnbind.c	3.3	2000/07/16	*/
+/*	SCCS Id: @(#)gnbind.c	3.4	2000/07/16	*/
 /* Copyright (C) 1998 by Erik Andersen <andersee@debian.org> */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,6 +21,7 @@ extern void tty_raw_print_bold(const char *);
 /* Interface definition, for windows.c */
 struct window_procs Gnome_procs = {
     "Gnome",
+    WC_COLOR|WC_HILITE_PET|WC_INVERSE,
     gnome_init_nhwindows,
     gnome_player_selection,
     gnome_askname,
@@ -69,6 +70,7 @@ struct window_procs Gnome_procs = {
     gnome_start_screen,
     gnome_end_screen,
     gnome_outrip,
+    genl_preference_update,
 };
 
 /*  
@@ -110,49 +112,222 @@ void gnome_init_nhwindows(int* argc, char** argv)
    offers a Quit option, it is its responsibility to clean up and terminate
    the process. You need to fill in pl_character[0].
 */
-void gnome_player_selection()
+void
+gnome_player_selection()
 {
-  int num_roles, availcount, i, nRole;
-  const char** choices;
+    int n, i, sel;
+    const char** choices;
+    int* pickmap;
 
-  /* select a role */
-  for (num_roles = 0; roles[num_roles].name.m; ++num_roles) continue;
-  choices = (const char **)alloc(sizeof(char *) * (num_roles+1));
-  for (;;) {
-    availcount = 0;
-    for (i = 0; i < num_roles; i++) {
-      choices[i] = 0;
-      if (ok_role(i, flags.initrace,
-		  flags.initgend, flags.initalign)) {
-	choices[i] = roles[i].name.m;
-	if (flags.initgend >= 0 && flags.female && roles[i].name.f)
-	  choices[i] = roles[i].name.f;
-	++availcount;
-      }
-    }
-    if (availcount > 0) break;
-    else if (flags.initalign >= 0) flags.initalign = -1;    /* reset */
-    else if (flags.initgend >= 0) flags.initgend = -1;
-    else if (flags.initrace >= 0) flags.initrace = -1;
-    else panic("no available ROLE+race+gender+alignment combinations");
-  }
-  choices[num_roles] = (const char *) 0;
-  nRole=ghack_player_sel_dialog(choices);
+    /* prevent an unnecessary prompt */
+    rigid_role_checks();
+
+    if (!flags.randomall && flags.initrole < 0) {
+
+	/* select a role */
+	for (n = 0; roles[n].name.m; n++) continue;
+	choices = (const char **)alloc(sizeof(char *) * (n+1));
+	pickmap = (int*)alloc(sizeof(int) * (n+1));
+	for (;;) {
+	    for (n = 0, i = 0; roles[i].name.m; i++) {
+		if (ok_role(i, flags.initrace,
+			    flags.initgend, flags.initalign)) {
+		    if (flags.initgend >= 0 && flags.female && roles[i].name.f)
+			choices[n] = roles[i].name.f;
+		    else
+			choices[n] = roles[i].name.m;
+		    pickmap[n++] = i;
+		}
+	    }
+	    if (n > 0) break;
+	    else if (flags.initalign >= 0) flags.initalign = -1;    /* reset */
+	    else if (flags.initgend >= 0) flags.initgend = -1;
+	    else if (flags.initrace >= 0) flags.initrace = -1;
+	    else panic("no available ROLE+race+gender+alignment combinations");
+	}
+	choices[n] = (const char *) 0;
+	if (n > 1)
+	    sel = ghack_player_sel_dialog(choices,
+		_("Player selection"), _("Choose one of the following roles:"));
+	else sel = 0;
+	if (sel >= 0) sel = pickmap[sel];
+	else if (sel == ROLE_NONE) {		/* Quit */
+	    clearlocks();
+	    gnome_exit_nhwindows(0);
+	}
+	free(choices);
+	free(pickmap);
+    } else if (flags.initrole < 0) sel = ROLE_RANDOM;
+    else sel = flags.initrole;
   
-  /* Quit */
-  if ( nRole == -1 )
-    {
-      clearlocks();
-      gnome_exit_nhwindows(0);
+    if (sel == ROLE_RANDOM) {	/* Random role */
+	sel = pick_role(flags.initrace, flags.initgend,
+			  flags.initalign, PICK_RANDOM);
+	if (sel < 0) sel = randrole();
     }
-  /* Random role */
-  if ( nRole == -2)
-    {
-      nRole = rn2(num_roles);
-      pline("This game you will be %s", an(choices[nRole]));
+
+    flags.initrole = sel;
+
+    /* Select a race, if necessary */
+    /* force compatibility with role, try for compatibility with
+     * pre-selected gender/alignment */
+    if (flags.initrace < 0 || !validrace(flags.initrole, flags.initrace)) {
+	if (flags.initrace == ROLE_RANDOM || flags.randomall) {
+	    flags.initrace = pick_race(flags.initrole, flags.initgend,
+				       flags.initalign, PICK_RANDOM);
+	    if (flags.initrace < 0) flags.initrace = randrace(flags.initrole);
+	} else {
+	    /* Count the number of valid races */
+	    n = 0;	/* number valid */
+	    for (i = 0; races[i].noun; i++) {
+		if (ok_race(flags.initrole, i, flags.initgend, flags.initalign))
+		    n++;
+	    }
+	    if (n == 0) {
+		for (i = 0; races[i].noun; i++) {
+		    if (validrace(flags.initrole, i)) n++;
+		}
+	    }
+
+	    choices = (const char **)alloc(sizeof(char *) * (n+1));
+	    pickmap = (int*)alloc(sizeof(int) * (n + 1));
+	    for (n = 0, i = 0; races[i].noun; i++) {
+		if (ok_race(flags.initrole, i, flags.initgend,
+			    flags.initalign)) {
+		    choices[n] = races[i].noun;
+		    pickmap[n++] = i;
+		}
+	    }
+	    choices[n] = (const char *) 0;
+	    /* Permit the user to pick, if there is more than one */
+	    if (n > 1)
+		sel = ghack_player_sel_dialog(choices, _("Race selection"),
+			_("Choose one of the following races:"));
+	    else sel = 0;
+	    if (sel >= 0) sel = pickmap[sel];
+	    else if (sel == ROLE_NONE) { /* Quit */
+		clearlocks();
+		gnome_exit_nhwindows(0);
+	    }
+	    flags.initrace = sel;
+	    free(choices);
+	    free(pickmap);
+	}
+	if (flags.initrace == ROLE_RANDOM) {	/* Random role */
+	    sel = pick_race(flags.initrole, flags.initgend,
+			    flags.initalign, PICK_RANDOM);
+	    if (sel < 0) sel = randrace(flags.initrole);
+	    flags.initrace = sel;
+	}
     }
-  
-  flags.initrole = nRole;
+
+    /* Select a gender, if necessary */
+    /* force compatibility with role/race, try for compatibility with
+     * pre-selected alignment */
+    if (flags.initgend < 0 ||
+	!validgend(flags.initrole, flags.initrace, flags.initgend)) {
+	if (flags.initgend == ROLE_RANDOM || flags.randomall) {
+	    flags.initgend = pick_gend(flags.initrole, flags.initrace,
+				       flags.initalign, PICK_RANDOM);
+	    if (flags.initgend < 0)
+		flags.initgend = randgend(flags.initrole, flags.initrace);
+	} else {
+	    /* Count the number of valid genders */
+	    n = 0;	/* number valid */
+	    for (i = 0; i < ROLE_GENDERS; i++) {
+		if (ok_gend(flags.initrole, flags.initrace, i, flags.initalign))
+		    n++;
+	    }
+	    if (n == 0) {
+		for (i = 0; i < ROLE_GENDERS; i++) {
+		    if (validgend(flags.initrole, flags.initrace, i)) n++;
+		}
+	    }
+
+	    choices = (const char **)alloc(sizeof(char *) * (n+1));
+	    pickmap = (int*)alloc(sizeof(int) * (n + 1));
+	    for (n = 0, i = 0; i < ROLE_GENDERS; i++) {
+		if (ok_gend(flags.initrole, flags.initrace, i,
+				flags.initalign)) {
+		    choices[n] = genders[i].adj;
+		    pickmap[n++] = i;
+		}
+	    }
+	    choices[n] = (const char *) 0;
+	    /* Permit the user to pick, if there is more than one */
+	    if (n > 1)
+		sel = ghack_player_sel_dialog(choices, _("Gender selection"),
+			_("Choose one of the following genders:"));
+	    else sel = 0;
+	    if (sel >= 0) sel = pickmap[sel];
+	    else if (sel == ROLE_NONE) { /* Quit */
+		clearlocks();
+		gnome_exit_nhwindows(0);
+	    }
+	    flags.initgend = sel;
+	    free(choices);
+	    free(pickmap);
+	}
+	if (flags.initgend == ROLE_RANDOM) {	/* Random gender */
+	    sel = pick_gend(flags.initrole, flags.initrace,
+			    flags.initalign, PICK_RANDOM);
+	    if (sel < 0) sel = randgend(flags.initrole, flags.initrace);
+	    flags.initgend = sel;
+	}
+    }
+
+    /* Select an alignment, if necessary */
+    /* force compatibility with role/race/gender */
+    if (flags.initalign < 0 ||
+	!validalign(flags.initrole, flags.initrace, flags.initalign)) {
+	if (flags.initalign == ROLE_RANDOM || flags.randomall) {
+	    flags.initalign = pick_align(flags.initrole, flags.initrace,
+					 flags.initgend, PICK_RANDOM);
+	    if (flags.initalign < 0)
+		flags.initalign = randalign(flags.initrole, flags.initrace);
+	} else {
+	    /* Count the number of valid alignments */
+	    n = 0;	/* number valid */
+	    for (i = 0; i < ROLE_ALIGNS; i++) {
+		if (ok_align(flags.initrole, flags.initrace, flags.initgend, i))
+		    n++;
+	    }
+	    if (n == 0) {
+		for (i = 0; i < ROLE_ALIGNS; i++)
+		    if (validalign(flags.initrole, flags.initrace, i)) n++;
+	    }
+
+	    choices = (const char **)alloc(sizeof(char *) * (n+1));
+	    pickmap = (int*)alloc(sizeof(int) * (n + 1));
+	    for (n = 0, i = 0; i < ROLE_ALIGNS; i++) {
+		if (ok_align(flags.initrole,
+			     flags.initrace, flags.initgend, i)) {
+		    choices[n] = aligns[i].adj;
+		    pickmap[n++] = i;
+		}
+	    }
+	    choices[n] = (const char *) 0;
+	    /* Permit the user to pick, if there is more than one */
+	    if (n > 1)
+		sel = ghack_player_sel_dialog(choices, _("Alignment selection"),
+			_("Choose one of the following alignments:"));
+	    else sel = 0;
+	    if (sel >= 0) sel = pickmap[sel];
+	    else if (sel == ROLE_NONE) { /* Quit */
+		clearlocks();
+		gnome_exit_nhwindows(0);
+	    }
+	    flags.initalign = sel;
+	    free(choices);
+	    free(pickmap);
+	}
+	if (flags.initalign == ROLE_RANDOM) {
+	    sel = pick_align(flags.initrole, flags.initrace,
+			     flags.initgend, PICK_RANDOM);
+	    if (sel < 0) sel = randalign(flags.initrole, flags.initrace);
+	    flags.initalign = sel;
+	}
+    }
 }
 
 
@@ -973,7 +1148,12 @@ void gnome_outrip(winid wid, int how)
     Strcat(ripString, buf);
     
     /* Put $ on stone */
-    Sprintf(buf, "%ld Au\n", u.ugold);
+    Sprintf(buf, "%ld Au\n",
+#ifndef GOLDOBJ
+		u.ugold);
+#else
+		done_money);
+#endif
     Strcat(ripString, buf);
 
     /* Put together death description */
@@ -1001,6 +1181,3 @@ void gnome_outrip(winid wid, int how)
 
     ghack_text_window_rip_string( ripString);
 }
-
-
-

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)attrib.c	3.3	2000/05/17	*/
+/*	SCCS Id: @(#)attrib.c	3.4	2000/05/17	*/
 /*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -155,7 +155,7 @@ adjattrib(ndx, incr, msgflg)
 		  (incr > 1 || incr < -1) ? "very ": "",
 		  (incr > 0) ? plusattr[ndx] : minusattr[ndx]);
 	flags.botl = 1;
-	if (moves > 0 && (ndx == A_STR || ndx == A_CON))
+	if (moves > 1 && (ndx == A_STR || ndx == A_CON))
 		(void)encumber_msg();
 	return TRUE;
 }
@@ -350,7 +350,11 @@ exerper()
 
 		if(Sick || Vomiting)     exercise(A_CON, FALSE);
 		if(Confusion || Hallucination)		exercise(A_WIS, FALSE);
-		if(Wounded_legs || Fumbling || HStun)	exercise(A_DEX, FALSE);
+		if((Wounded_legs 
+#ifdef STEED
+		    && !u.usteed
+#endif
+			    ) || Fumbling || HStun)	exercise(A_DEX, FALSE);
 	}
 }
 

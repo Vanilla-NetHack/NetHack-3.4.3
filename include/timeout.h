@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.h	3.3	1999/02/13	*/
+/*	SCCS Id: @(#)timeout.h	3.4	1999/02/13	*/
 /* Copyright 1994, Dean Luick					  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -29,5 +29,16 @@ typedef void FDECL((*timeout_proc), (genericptr_t, long));
 #define HATCH_EGG	4
 #define FIG_TRANSFORM	5
 #define NUM_TIME_FUNCS	6
+
+/* used in timeout.c */
+typedef struct fe {
+    struct fe *next;		/* next item in chain */
+    long timeout;		/* when we time out */
+    unsigned long tid;		/* timer ID */
+    short kind;			/* kind of use */
+    short func_index;		/* what to call when we time out */
+    genericptr_t arg;		/* pointer to timeout argument */
+    Bitfield (needs_fixup,1);	/* does arg need to be patched? */
+} timer_element;
 
 #endif /* TIMEOUT_H */

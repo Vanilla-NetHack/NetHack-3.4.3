@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makedefs.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)makedefs.c	3.4	2002/03/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) M. Stephenson, 1990, 1991.			  */
 /* Copyright (c) Dean Luick, 1990.				  */
@@ -27,7 +27,7 @@
 #endif
 
 #ifdef MAC
-# ifdef applec	/* Means the MPW compiler, I hope */
+# if defined(__SC__) || defined(__MRC__)	/* MPW compilers */
 #  define MPWTOOL
 #include <CursorCtl.h>
 #include <string.h>
@@ -49,14 +49,16 @@
 #endif
 
 #if defined(UNIX) && !defined(LINT) && !defined(GCC_WARN)
-static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.3\t1999/08/16";
+static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.4\t2002/02/03";
 #endif
 
 	/* names of files to be generated */
 #define DATE_FILE	"date.h"
 #define MONST_FILE	"pm.h"
 #define ONAME_FILE	"onames.h"
+#ifndef OPTIONS_FILE
 #define OPTIONS_FILE	"options"
+#endif
 #define ORACLE_FILE	"oracles"
 #define DATA_FILE	"data"
 #define RUMOR_FILE	"rumors"
@@ -75,29 +77,33 @@ static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.3\t1999/08/16";
 # define DGN_TEMPLATE		"NH:dat/%s"  /* where dungeon.pdf file goes */
 # define DATA_TEMPLATE		"NH:slib/%s"
 # define DATA_IN_TEMPLATE	"NH:dat/%s"
-#else
+#else /* not AMIGA */
 # ifdef MAC
 #   define INCLUDE_TEMPLATE	":include:%s"
 #   define SOURCE_TEMPLATE	":src:%s"
 #   define DGN_TEMPLATE		":dat:%s"  /* where dungeon.pdf file goes */
+#  if __SC__ || __MRC__
+#   define DATA_TEMPLATE	":Dungeon:%s"
+#  else
 #   define DATA_TEMPLATE	":lib:%s"
+#  endif /* __SC__ || __MRC__ */
 #   define DATA_IN_TEMPLATE	":dat:%s"
-# else /* MAC */
+# else /* neither AMIGA nor MAC */
 #  ifdef OS2
 #   define INCLUDE_TEMPLATE	"..\\include\\%s"
 #   define SOURCE_TEMPLATE	"..\\src\\%s"
 #   define DGN_TEMPLATE		"..\\dat\\%s"  /* where dungeon.pdf file goes */
 #   define DATA_TEMPLATE	"..\\dat\\%s"
 #   define DATA_IN_TEMPLATE	"..\\dat\\%s"
-#  else /* OS2 */
+#  else /* not AMIGA, MAC, or OS2 */
 #   define INCLUDE_TEMPLATE	"../include/%s"
 #   define SOURCE_TEMPLATE	"../src/%s"
 #   define DGN_TEMPLATE		"../dat/%s"  /* where dungeon.pdf file goes */
 #   define DATA_TEMPLATE	"../dat/%s"
 #   define DATA_IN_TEMPLATE	"../dat/%s"
-#  endif /* OS2 */
-# endif /* MAC */
-#endif	/* AMIGA */
+#  endif /* else !OS2 */
+# endif /* else !MAC */
+#endif	/* else !AMIGA */
 
 static const char
     *Dont_Edit_Code =
@@ -191,7 +197,7 @@ static char *FDECL(eos, (char *));
 /* input, output, tmp */
 static FILE *ifp, *ofp, *tfp;
 
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(_WIN32)
 extern unsigned _stklen = STKSIZ;
 #endif
 
@@ -441,6 +447,9 @@ make_version()
 #ifdef STEED
 			| (1L << 11)
 #endif
+#ifdef GOLDOBJ
+			| (1L << 12)
+#endif
 		/* flag bits and/or other global variables (15..26) */
 #ifdef TEXTCOLOR
 			| (1L << 17)
@@ -536,7 +545,7 @@ do_date()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.3\t1996/05/17 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)date.h\t3.4\t2002/02/03 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 
 #ifdef KR1ED
@@ -575,7 +584,7 @@ do_date()
 	Fprintf(ofp,"#define AMIGA_VERSION_STRING ");
 	Fprintf(ofp,"\"\\0$VER: NetHack %d.%d.%d (%d.%d.%d)\"\n",
 		VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL,
-		tm->tm_mday, tm->tm_mon+1, tm->tm_year);
+		tm->tm_mday, tm->tm_mon+1, tm->tm_year+1900);
 	}
 #endif
 	Fclose(ofp);
@@ -612,6 +621,9 @@ static const char *build_opts[] = {
 #endif
 #ifdef MFLOPPY
 		"floppy drive support",
+#endif
+#ifdef GOLDOBJ
+		"gold object in inventories",
 #endif
 #ifdef INSURANCE
 		"insurance files for recovering from crashes",
@@ -661,23 +673,19 @@ static const char *build_opts[] = {
 # ifdef MAC
 		"screen control via mactty",
 # endif
-# ifdef SCREEN_8514
-		"screen control via 8514/A graphics",
-# endif
 # ifdef SCREEN_BIOS
 		"screen control via BIOS",
 # endif
 # ifdef SCREEN_DJGPPFAST
 		"screen control via DJGPP fast",
 # endif
-# ifdef SCREEN_VESA
-		"screen control via VESA graphics",
-# endif
 # ifdef SCREEN_VGA
 		"screen control via VGA graphics",
 # endif
-# ifdef WIN32CON
+# ifndef MSWIN_GRAPHICS
+#  ifdef WIN32CON
 		"screen control via WIN32 console I/O",
+#  endif
 # endif
 #endif
 #ifdef SEDUCE
@@ -742,8 +750,8 @@ static const char *window_opts[] = {
 #ifdef GEM_GRAPHICS
 		"Gem",
 #endif
-#ifdef WIN32_GRAPHICS
-		"Win32",
+#ifdef MSWIN_GRAPHICS
+		"mswin",
 #endif
 #ifdef BEOS_GRAPHICS
 		"BeOS InterfaceKit",
@@ -1332,7 +1340,7 @@ do_permonst()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.3\t1994/09/10 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)pm.h\t3.4\t2002/02/03 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef PM_H\n#define PM_H\n");
 
@@ -1645,7 +1653,7 @@ do_objs()
 		perror(filename);
 		exit(EXIT_FAILURE);
 	}
-	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.3\t1994/09/10 */\n\n");
+	Fprintf(ofp,"/*\tSCCS Id: @(#)onames.h\t3.4\t2002/02/03 */\n\n");
 	Fprintf(ofp,Dont_Edit_Code);
 	Fprintf(ofp,"#ifndef ONAMES_H\n#define ONAMES_H\n\n");
 

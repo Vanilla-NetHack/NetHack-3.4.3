@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macmenu.c	3.3	99/11/24	*/
+/*	SCCS Id: @(#)macmenu.c	3.4	1999/11/24	*/
 /*      Copyright (c) Macintosh NetHack Port Team, 1993.          */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -288,11 +288,11 @@ ask_enable (WindowPtr wind, short item, int enable)
 
 
 	/* Enable or disable the appropriate item */
-	GetDItem(wind, item, &type, &handle, &rect);
+	GetDialogItem(wind, item, &type, &handle, &rect);
 	if (enable)	type &= ~itemDisable;
 	else		type |= itemDisable;
 	HiliteControl((ControlHandle)handle, enable ? 0 : 255);
-	SetDItem(wind, item, type, handle, &rect);
+	SetDialogItem(wind, item, type, handle, &rect);
 	return;
 }
 
@@ -303,11 +303,11 @@ ask_redraw (WindowPtr wind, DialogItemIndex item)
 	short type;
 	Handle handle;
 	Rect rect;
-	static char	*modechar = " XD";
+	static char	*modechar = "NED";
 
 
 	/* Which item shall we redraw? */
-	GetDItem(wind, item, &type, &handle, &rect);
+	GetDialogItem(wind, item, &type, &handle, &rect);
 	switch (item) {
 		case RSRC_ASK_DEFAULT:
 			PenSize(3, 3);
@@ -451,6 +451,25 @@ ask_filter (WindowPtr wind, EventRecord *event, DialogItemIndex *item)
 					*item = 0;
 				return (TRUE);
 			}
+			/* Handle equivalents for Normal/Explore/Debug */
+			if ((event->modifiers & cmdKey) && (ch == 'n')) {
+				currmode = 0;
+				ask_redraw(wind, RSRC_ASK_MODE);
+				*item = RSRC_ASK_MODE;
+				return (TRUE);
+			}
+			if ((event->modifiers & cmdKey) && (ch == 'e')) {
+				currmode = 1;
+				ask_redraw(wind, RSRC_ASK_MODE);
+				*item = RSRC_ASK_MODE;
+				return (TRUE);
+			}
+			if ((event->modifiers & cmdKey) && (ch == 'd')) {
+				currmode = 2;
+				ask_redraw(wind, RSRC_ASK_MODE);
+				*item = RSRC_ASK_MODE;
+				return (TRUE);
+			}
 			/* Handle equivalents for Cancel and Quit */
 			if ((ch == CH_ESCAPE) || (key == KEY_ESCAPE) ||
 				((event->modifiers & cmdKey) && (ch == 'q')) ||
@@ -491,8 +510,8 @@ void mac_askname ()
 	/* Initialize the name text item */
 	ask_restring(plname, str);
 	if (plname[0]) {
-	    GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
-	    SetIText(handle, str);
+	    GetDialogItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+	    SetDialogItemText(handle, str);
 	}
 #if 0
 	{
@@ -515,8 +534,8 @@ void mac_askname ()
 			}
 		}
 		if (pName [0]) {
-			GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
-			SetIText(handle, pName);
+			GetDialogItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+			SetDialogItemText(handle, pName);
 			if (pName [0] > 2 && pName [pName [0] - 1] == '-') {
 			    short role = (*pANR).anMenu[anRole];
 			    char suffix = (char) pName[pName[0]],
@@ -531,7 +550,7 @@ void mac_askname ()
 		}
 	}
 #endif
-	SelIText(askdialog, RSRC_ASK_NAME, 0, 32767);
+	SelectDialogItemText(askdialog, RSRC_ASK_NAME, 0, 32767);
 
 	/* Initialize the role popup menu */
 	if (!(askmenu[RSRC_ASK_ROLE] = NewMenu(RSRC_ASK_ROLE, "\p")))
@@ -601,8 +620,8 @@ void mac_askname ()
 
 	/* Set the redraw procedures */
 	for (item = RSRC_ASK_DEFAULT; item <= RSRC_ASK_MODE; item++) {
-	    GetDItem(askdialog, item, &type, &handle, &rect);
-	    SetDItem(askdialog, item, type, (Handle)redraw, &rect);
+	    GetDialogItem(askdialog, item, &type, &handle, &rect);
+	    SetDialogItem(askdialog, item, type, (Handle)redraw, &rect);
 	}
 
 	/* Handle dialog events */
@@ -627,7 +646,7 @@ void mac_askname ()
 	    	if (!races[++j].noun) j = 0;
 	    } while (i != j);
 	    if (currrace != i) {
-	    	GetDItem(askdialog, RSRC_ASK_RACE, &type, &handle, &rect);
+	    	GetDialogItem(askdialog, RSRC_ASK_RACE, &type, &handle, &rect);
 	    	InvalRect(&rect);
 	    }
 
@@ -647,7 +666,7 @@ void mac_askname ()
 	    	if (++j >= ROLE_GENDERS) j = 0;
 	    } while (i != j);
 	    if (currgend != i) {
-	    	GetDItem(askdialog, RSRC_ASK_GEND, &type, &handle, &rect);
+	    	GetDialogItem(askdialog, RSRC_ASK_GEND, &type, &handle, &rect);
 	    	InvalRect(&rect);
 	    }
 
@@ -667,7 +686,7 @@ void mac_askname ()
 	    	if (++j >= ROLE_ALIGNS) j = 0;
 	    } while (i != j);
 	    if (curralign != i) {
-	    	GetDItem(askdialog, RSRC_ASK_ALIGN, &type, &handle, &rect);
+	    	GetDialogItem(askdialog, RSRC_ASK_ALIGN, &type, &handle, &rect);
 	    	InvalRect(&rect);
 	    }
 
@@ -675,7 +694,7 @@ void mac_askname ()
 	    for (i = 0; roles[i].name.m; i++) {
 	    	ask_restring((currgend && roles[i].name.f) ?
 	    			roles[i].name.f : roles[i].name.m, str);
-	    	SetItem(askmenu[RSRC_ASK_ROLE], i+1, str);
+	    	SetMenuItemText(askmenu[RSRC_ASK_ROLE], i+1, str);
 	    	CheckItem(askmenu[RSRC_ASK_ROLE], i+1, currrole == i);
 	    }
 
@@ -699,7 +718,7 @@ void mac_askname ()
 	    case RSRC_ASK_ALIGN:
 	    case RSRC_ASK_GEND:
 	    case RSRC_ASK_MODE:
-	    	GetDItem(askdialog, item, &type, &handle, &rect);
+	    	GetDialogItem(askdialog, item, &type, &handle, &rect);
 	    	pt = *(Point *)&rect;
 	    	LocalToGlobal(&pt);
 	    	if (!!(i = PopUpMenuSelect(askmenu[item], pt.v, pt.h,
@@ -730,8 +749,8 @@ void mac_askname ()
 	} while ((item != RSRC_ASK_PLAY) && (item != RSRC_ASK_QUIT));
 
 	/* Process the name */
-	GetDItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
-	GetIText(handle, str);
+	GetDialogItem(askdialog, RSRC_ASK_NAME, &type, &handle, &rect);
+	GetDialogItemText(handle, str);
 	if (str[0] > PL_NSIZ-1) str[0] = PL_NSIZ-1;
 	BlockMove(&str[1], plname, str[0]);
 	plname[str[0]] = '\0';
@@ -1072,7 +1091,7 @@ aboutNetHack() {
 	if (theMenubar >= mbarRegular) {
 		(void) doversion();				/* is this necessary? */
 	} else {
-		unsigned char aboutStr[32] = "\pNetHack 3.3.";
+		unsigned char aboutStr[32] = "\pNetHack 3.4.";
 
 		if (PATCHLEVEL > 10) {
 			aboutStr[++aboutStr[0]] = '0'+PATCHLEVEL/10;
@@ -1132,7 +1151,7 @@ askQuit()
 
 		ParamText("\pReally Quit?", "\p", "\p", "\p");
 		itemHit = Alert(alrtMenu_NY, (ModalFilterUPP) 0L);
-		ResetAlrtStage();
+		ResetAlertStage();
 
 		if (itemHit != bttnMenuAlertYes) {
 			doQuit = 0;

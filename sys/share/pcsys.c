@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcsys.c	3.3	1999/12/10
+/*	SCCS Id: @(#)pcsys.c	3.4	2002/01/22		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -11,7 +11,7 @@
 
 #include <ctype.h>
 #include <fcntl.h>
-#ifndef MSDOS			/* already done */
+#if !defined(MSDOS) && !defined(WIN_CE) 	/* already done */
 #include <process.h>
 #endif
 #ifdef __GO32__
@@ -45,9 +45,11 @@ extern unsigned short __far __cdecl _movefpaused;
 #define     __MOVE_PAUSE_CACHE	  4   /* Represents the cache memory */
 #endif /* MOVERLAY */
 
+#ifdef MFLOPPY
 STATIC_DCL boolean NDECL(record_exists);
-#ifndef TOS
+# ifndef TOS
 STATIC_DCL boolean NDECL(comspec_exists);
+# endif
 #endif
 
 #ifdef WIN32CON
@@ -78,11 +80,13 @@ dosh()
 {
 	extern char orgdir[];
 	char *comspec;
+# ifndef __GO32__
 	int spawnstat;
+# endif
 #if defined(MSDOS) && defined(NO_TERMS)
-	int grmode;
+	int grmode = iflags.grmode;
 #endif
-	if (comspec = getcomspec()) {
+	if ((comspec = getcomspec())) {
 #  ifndef TOS	/* TOS has a variety of shells */
 		suspend_nhwindows("To return to NetHack, enter \"exit\" at the system prompt.\n");
 #  else
@@ -297,8 +301,6 @@ int start;
 	return 1;
 }
 
-# endif /* MFLOPPY */
-
 /* Return 1 if the record file was found */
 STATIC_OVL boolean
 record_exists()
@@ -312,10 +314,12 @@ record_exists()
 	}
 	return FALSE;
 }
+#endif /* MFLOPPY */
 
 # ifdef TOS
 #define comspec_exists() 1
 # else
+#  ifdef MFLOPPY
 /* Return 1 if the comspec was found */
 STATIC_OVL boolean
 comspec_exists()
@@ -323,14 +327,16 @@ comspec_exists()
 	int fd;
 	char *comspec;
 
-	if (comspec = getcomspec())
+	if ((comspec = getcomspec()))
 		if ((fd = open(comspec, O_RDONLY)) >= 0) {
 			(void) close(fd);
 			return TRUE;
 		}
 	return FALSE;
 }
+#  endif /* MFLOPPY */
 # endif
+
 
 # ifdef MFLOPPY
 /* Prompt for game disk, then check for record file.
@@ -429,7 +435,7 @@ const char *name, *mode;
 	 */
 	(void) strncpy(buf, name, BUFSIZ - 1);
 	buf[BUFSIZ-1] = '\0';
-	if (fp = fopen(buf, mode))
+	if ((fp = fopen(buf, mode)))
 		return fp;
 	else {
 		int ccnt = 0;
@@ -445,8 +451,8 @@ const char *name, *mode;
 				ccnt++;
 			}
 			(void) strncpy(bp, name, (BUFSIZ - ccnt) - 2);
-			bp[BUFSIZ-1] = '\0';
-			if (fp = fopen(buf, mode))
+			bp[BUFSIZ - ccnt - 1] = '\0';
+			if ((fp = fopen(buf, mode)))
 				return fp;
 			if (*pp)
 				pp++;

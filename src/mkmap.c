@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmap.c	3.3	96/05/23	*/
+/*	SCCS Id: @(#)mkmap.c	3.4	1996/05/23	*/
 /* Copyright (c) J. C. Collet, M. Stephenson and D. Cohrs, 1992   */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -348,6 +348,7 @@ finish_map(fg_typ, bg_typ, lit, walled)
 		for(j=0; j<ROWNO; j++)
 		    if((!IS_ROCK(fg_typ) && levl[i][j].typ == fg_typ) ||
 		       (!IS_ROCK(bg_typ) && levl[i][j].typ == bg_typ) ||
+		       (bg_typ == TREE && levl[i][j].typ == bg_typ) ||
 			(walled && IS_WALL(levl[i][j].typ)))
 			levl[i][j].lit = TRUE;
 	    for(i = 0; i < nroom; i++)

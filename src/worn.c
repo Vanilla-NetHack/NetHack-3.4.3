@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)worn.c	3.3	2000/02/19	*/
+/*	SCCS Id: @(#)worn.c	3.4	2002/02/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,6 +6,7 @@
 
 STATIC_DCL void FDECL(m_lose_armor, (struct monst *,struct obj *));
 STATIC_DCL void FDECL(m_dowear_type, (struct monst *,long,BOOLEAN_P));
+STATIC_DCL int FDECL(extra_pref, (struct monst *, struct obj *));
 
 const struct worn {
 	long w_mask;
@@ -114,16 +115,16 @@ register struct obj *obj;
 	if (!obj) return;
 	if (obj == uwep || obj == uswapwep) u.twoweap = 0;
 	for(wp = worn; wp->w_mask; wp++)
-		if(obj == *(wp->w_obj)) {
-			*(wp->w_obj) = 0;
-			p = objects[obj->otyp].oc_oprop;
-			u.uprops[p].extrinsic = u.uprops[p].extrinsic & ~wp->w_mask;
-			obj->owornmask &= ~wp->w_mask;
-			if (obj->oartifact)
-			    set_artifact_intrinsic(obj, 0, wp->w_mask);
-			if ((p = w_blocks(obj,wp->w_mask)) != 0)
-			    u.uprops[p].blocked &= ~wp->w_mask;
-		}
+	    if(obj == *(wp->w_obj)) {
+		*(wp->w_obj) = 0;
+		p = objects[obj->otyp].oc_oprop;
+		u.uprops[p].extrinsic = u.uprops[p].extrinsic & ~wp->w_mask;
+		obj->owornmask &= ~wp->w_mask;
+		if (obj->oartifact)
+		    set_artifact_intrinsic(obj, 0, wp->w_mask);
+		if ((p = w_blocks(obj,wp->w_mask)) != 0)
+		    u.uprops[p].blocked &= ~wp->w_mask;
+	    }
 	update_inventory();
 }
 
@@ -140,15 +141,19 @@ struct monst *mon;
 }
 
 void
-mon_adjust_speed(mon, adjust)
+mon_adjust_speed(mon, adjust, obj)
 struct monst *mon;
 int adjust;	/* positive => increase speed, negative => decrease */
+struct obj *obj;	/* item to make known if effect can be seen */
 {
     struct obj *otmp;
+    boolean give_msg = !in_mklev;
+    unsigned int oldspeed = mon->mspeed;
 
     switch (adjust) {
      case  2:
 	mon->permspeed = MFAST;
+	give_msg = FALSE;	/* special case monster creation */
 	break;
      case  1:
 	if (mon->permspeed == MSLOW) mon->permspeed = 0;
@@ -162,6 +167,7 @@ int adjust;	/* positive => increase speed, negative => decrease */
 	break;
      case -2:
 	mon->permspeed = MSLOW;
+	give_msg = FALSE;	/* (not currently used) */
 	break;
     }
 
@@ -172,6 +178,23 @@ int adjust;	/* positive => increase speed, negative => decrease */
 	mon->mspeed = MFAST;
     else
 	mon->mspeed = mon->permspeed;
+
+    if (give_msg && mon->mspeed != oldspeed && canseemon(mon)) {
+	/* fast to slow (skipping intermediate state) or vice versa */
+	const char *howmuch = (mon->mspeed + oldspeed == MFAST + MSLOW) ?
+				"much " : "";
+
+	if (adjust > 0 || mon->mspeed == MFAST)
+	    pline("%s is suddenly moving %sfaster.", Monnam(mon), howmuch);
+	else
+	    pline("%s seems to be moving %sslower.", Monnam(mon), howmuch);
+
+	/* might discover an object if we see the speed change happen, but
+	   avoid making possibly forgotten book known when casting its spell */
+	if (obj != 0 && obj->dknown &&
+		objects[obj->otyp].oc_class != SPBOOK_CLASS)
+	    makeknown(obj->otyp);
+    }
 }
 
 /* armor put on or taken off; might be magical variety */
@@ -195,7 +218,7 @@ boolean on;
 	    mon->minvis = !mon->invis_blkd;
 	    break;
 	 case FAST:
-	    mon_adjust_speed(mon, 0);
+	    mon_adjust_speed(mon, 0, obj);
 	    break;
 	/* properties handled elsewhere */
 	 case ANTIMAGIC:
@@ -230,7 +253,7 @@ boolean on;
 	    mon->minvis = mon->perminvis;
 	    break;
 	 case FAST:
-	    mon_adjust_speed(mon, 0);
+	    mon_adjust_speed(mon, 0, obj);
 	    break;
 	 case FIRE_RES:
 	 case COLD_RES:
@@ -404,7 +427,8 @@ boolean creation;
 	     * it would forget spe and once again think the object is better
 	     * than what it already has.
 	     */
-	    if (best && (ARM_BONUS(best) >= ARM_BONUS(obj))) continue;
+	    if (best && (ARM_BONUS(best) + extra_pref(mon,best) >= ARM_BONUS(obj) + extra_pref(mon,obj)))
+		continue;
 	    best = obj;
 	}
 outer_break:
@@ -476,18 +500,65 @@ struct obj *obj;
 }
 
 void
-mon_break_armor(mon)
+clear_bypasses()
+{
+	struct obj *otmp, *nobj;
+
+	for (otmp = fobj; otmp; otmp = nobj) {
+	    nobj = otmp->nobj;
+	    if (otmp->bypass) {
+		otmp->bypass = 0;
+#if 0
+		/*  setting otmp->bypass changes mergability.
+		 *  If monster can ever drop anything that
+                 *  can and should merge, this code block
+		 *  should be enabled.
+		 */
+		{
+		    struct obj *obj;
+		    xchar ox, oy;
+		    (void) get_obj_location(otmp, &ox, &oy, 0);
+		    obj_extract_self(otmp);
+		    obj = merge_choice(fobj, otmp);
+		    /* If it can't merge, then place it */
+		    if (!obj || (obj && !merged(&obj, &otmp)))
+		        place_object(otmp, ox, oy);
+		    newsym(ox, oy);
+		}
+#endif
+	    }
+	}
+	flags.bypasses = FALSE;
+}
+
+void
+bypass_obj(obj)
+struct obj *obj;
+{
+	obj->bypass = 1;
+	flags.bypasses = TRUE;
+}
+
+void
+mon_break_armor(mon, polyspot)
 struct monst *mon;
+boolean polyspot;
 {
 	register struct obj *otmp;
 	struct permonst *mdat = mon->data;
 	boolean vis = cansee(mon->mx, mon->my);
-	const char *pronoun = him[pronoun_gender(mon)],
-			*ppronoun = his[pronoun_gender(mon)];
+	const char *pronoun = mhim(mon),
+			*ppronoun = mhis(mon);
 
 	if (breakarm(mdat)) {
 	    if ((otmp = which_armor(mon, W_ARM)) != 0) {
-		if (vis)
+		if ((Is_dragon_scales(otmp) &&
+			mdat == Dragon_scales_to_pm(otmp)) ||
+		    (Is_dragon_mail(otmp) && mdat == Dragon_mail_to_pm(otmp)))
+		    ;	/* no message here;
+			   "the dragon merges with his scaly armor" is odd
+			   and the monster's previous form is already gone */
+		else if (vis)
 		    pline("%s breaks out of %s armor!", Monnam(mon), ppronoun);
 		else
 		    You_hear("a cracking sound.");
@@ -496,11 +567,14 @@ struct monst *mon;
 	    if ((otmp = which_armor(mon, W_ARMC)) != 0) {
 		if (otmp->oartifact) {
 		    if (vis)
-			pline("%s cloak falls off!", s_suffix(Monnam(mon)));
+			pline("%s %s falls off!", s_suffix(Monnam(mon)),
+				cloak_simple_name(otmp));
+		    if (polyspot) bypass_obj(otmp);
 		    m_lose_armor(mon, otmp);
 		} else {
 		    if (vis)
-			pline("%s cloak tears apart!", s_suffix(Monnam(mon)));
+			pline("%s %s tears apart!", s_suffix(Monnam(mon)),
+				cloak_simple_name(otmp));
 		    else
 			You_hear("a ripping sound.");
 		    m_useup(mon, otmp);
@@ -522,17 +596,19 @@ struct monst *mon;
 				 s_suffix(Monnam(mon)), pronoun);
 		else
 		    You_hear("a thud.");
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 	    if ((otmp = which_armor(mon, W_ARMC)) != 0) {
 		if (vis) {
 		    if (is_whirly(mon->data))
-			pline("%s cloak falls, unsupported!",
-				     s_suffix(Monnam(mon)));
+			pline("%s %s falls, unsupported!",
+				     s_suffix(Monnam(mon)), cloak_simple_name(otmp));
 		    else
-			pline("%s shrinks out of %s cloak!", Monnam(mon),
-								ppronoun);
+			pline("%s shrinks out of %s %s!", Monnam(mon),
+						ppronoun, cloak_simple_name(otmp));
 		}
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 #ifdef TOURIST
@@ -545,6 +621,7 @@ struct monst *mon;
 			pline("%s becomes much too small for %s shirt!",
 					Monnam(mon), ppronoun);
 		}
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 #endif
@@ -555,6 +632,7 @@ struct monst *mon;
 		    pline("%s drops %s gloves%s!", Monnam(mon), ppronoun,
 					MON_WEP(mon) ? " and weapon" : "");
 		possibly_unwield(mon);
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 	    if ((otmp = which_armor(mon, W_ARMS)) != 0) {
@@ -563,6 +641,7 @@ struct monst *mon;
 								ppronoun);
 		else
 		    You_hear("a clank.");
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 	    if ((otmp = which_armor(mon, W_ARMH)) != 0) {
@@ -571,6 +650,7 @@ struct monst *mon;
 			  s_suffix(Monnam(mon)), surface(mon->mx, mon->my));
 		else
 		    You_hear("a clank.");
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 	}
@@ -585,12 +665,14 @@ struct monst *mon;
 			s_suffix(Monnam(mon)),
 			verysmall(mdat) ? "slide" : "are pushed", ppronoun);
 		}
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
 	}
 #ifdef STEED
 	if (!can_saddle(mon)) {
 	    if ((otmp = which_armor(mon, W_SADDLE)) != 0) {
+		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 		if (vis)
 		    pline("%s saddle falls off.", s_suffix(Monnam(mon)));
@@ -615,4 +697,18 @@ struct monst *mon;
 	return;
 }
 
+/* bias a monster's preferences towards armor that has special benefits. */
+/* currently only does speed boots, but might be expanded if monsters get to
+   use more armor abilities */
+static int
+extra_pref(mon, obj)
+struct monst *mon;
+struct obj *obj;
+{
+    if (obj) {
+	if (obj->otyp == SPEED_BOOTS && mon->permspeed != MFAST)
+	    return 20;
+    }
+    return 0;
+}
 /*worn.c*/

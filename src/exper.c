@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)exper.c	3.3	2000/07/23	*/
+/*	SCCS Id: @(#)exper.c	3.4	2002/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,7 +39,7 @@ int
 experience(mtmp, nk)	/* return # of exp points for mtmp after nk killed */
 	register struct	monst *mtmp;
 	register int	nk;
-#if defined(applec)
+#if defined(macintosh) && (defined(__SC__) || defined(__MRC__))
 # pragma unused(nk)
 #endif
 {
@@ -139,11 +139,11 @@ const char *drainer;	/* cause of death, if drain should be fatal */
 	else if (u.uhp > u.uhpmax) u.uhp = u.uhpmax;
 
 	if (u.ulevel < urole.xlev)
-	    num = rn1(u.ulevel/2 + urole.enadv.lornd + urace.enadv.lornd,
-			urole.enadv.lofix + urace.enadv.lofix);
+	    num = rn1((int)ACURR(A_WIS)/2 + urole.enadv.lornd + urace.enadv.lornd,
+	    		urole.enadv.lofix + urace.enadv.lofix);
 	else
-	    num = rn1(u.ulevel/2 + urole.enadv.hirnd + urace.enadv.hirnd,
-			urole.enadv.hifix + urace.enadv.hifix);
+	    num = rn1((int)ACURR(A_WIS)/2 + urole.enadv.hirnd + urace.enadv.hirnd,
+	    		urole.enadv.hifix + urace.enadv.hifix);
 	num = enermod(num);		/* M. Stephenson */
 	u.uenmax -= num;
 	if (u.uenmax < 0) u.uenmax = 0;
@@ -179,12 +179,17 @@ boolean incr;	/* true iff via incremental experience growth */
 	num = newhp();
 	u.uhpmax += num;
 	u.uhp += num;
+	if (Upolyd) {
+	    num = rnd(8);
+	    u.mhmax += num;
+	    u.mh += num;
+	}
 	if (u.ulevel < urole.xlev)
 	    num = rn1((int)ACURR(A_WIS)/2 + urole.enadv.lornd + urace.enadv.lornd,
-	    		urole.enadv.lofix + urace.enadv.lofix);
+			urole.enadv.lofix + urace.enadv.lofix);
 	else
 	    num = rn1((int)ACURR(A_WIS)/2 + urole.enadv.hirnd + urace.enadv.hirnd,
-	    		urole.enadv.hifix + urace.enadv.hifix);
+			urole.enadv.hifix + urace.enadv.hifix);
 	num = enermod(num);	/* M. Stephenson */
 	u.uenmax += num;
 	u.uen += num;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)light.c	3.3	97/04/10	*/
+/*	SCCS Id: @(#)light.c	3.4	1997/04/10	*/
 /* Copyright (c) Dean Luick, 1994					*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -39,15 +39,6 @@
  */
 
 #ifdef OVL3
-
-typedef struct ls_t {
-    struct ls_t *next;
-    xchar x, y;		/* source's position */
-    short range;	/* source's current range */
-    short flags;
-    short type;		/* type of light source */
-    genericptr_t id;	/* source's identifier */
-} light_source;
 
 /* flags */
 #define LSF_SHOW	0x1		/* display the light source */
@@ -462,6 +453,12 @@ snuff_light_source(x, y)
 	if (ls->type == LS_OBJECT && ls->x == x && ls->y == y) {
 	    obj = (struct obj *) ls->id;
 	    if (obj_is_burning(obj)) {
+		/* The only way to snuff Sunsword is to unwield it.  Darkness
+		 * scrolls won't affect it.  (If we got here because it was
+		 * dropped or thrown inside a monster, this won't matter anyway
+		 * because it will go out when dropped.)
+		 */
+		if (artifact_light(obj)) continue;
 		end_burn(obj, obj->otyp != MAGIC_LAMP);
 		/*
 		 * The current ls element has just been removed (and
@@ -494,7 +491,8 @@ obj_is_burning(obj)
 		|| obj->otyp == CANDELABRUM_OF_INVOCATION
 		|| obj->otyp == TALLOW_CANDLE
 		|| obj->otyp == WAX_CANDLE
-		|| obj->otyp == POT_OIL));
+		|| obj->otyp == POT_OIL
+		|| artifact_light(obj)));
 }
 
 /* copy the light source(s) attachted to src, and attach it/them to dest */

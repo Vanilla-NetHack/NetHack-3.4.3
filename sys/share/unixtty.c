@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixtty.c	3.3	90/22/02 */
+/*	SCCS Id: @(#)unixtty.c	3.4	1990/22/02 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -35,6 +35,11 @@
 #   define termstruct	termio
 #  endif
 # endif /* POSIX_TYPES */
+# ifdef LINUX
+#  include <sys/ioctl.h>
+#  undef delay_output	/* curses redefines this */
+#  include <curses.h>
+# endif
 # define kill_sym	c_cc[VKILL]
 # define erase_sym	c_cc[VERASE]
 # define intr_sym	c_cc[VINTR]

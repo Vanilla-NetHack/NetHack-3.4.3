@@ -49,6 +49,8 @@ OPTIONS=rawio,BIOS,IBMgraphics
 #OPTIONS=nolegacy,noverbose
 #OPTIONS=menustyle:traditional
 
+# If you wish to change the symbol used to display boulders use:
+OPTIONS=boulder:0
 #
 # General options.  You might also set "silent" so as not to attract
 # the boss's attention.
@@ -58,7 +60,6 @@ OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
 # If you want to get rid of "use #quit to quit..." use:
 #OPTIONS=suppress_alert:3.3.1
 #
-
 #
 #HACKDIR=c:\games\nethack
 # 
@@ -82,21 +83,12 @@ OPTIONS=time,noshowexp,number_pad,lit_corridor,rest_on_space
 # processing.
 #
 # ================================================
-# An example using the IBM graphics character set:
-#DUNGEON=  032 179 196 218 191 192 217 197 193 194 \
-#	   180 195 249 239 239 254 254 240 241 249 \
-#	   177 177 060 062 060 062 220 124 190 035 \
-#	   244 247 249 247 042 042 186 205 046 035 \
-#	   247
-#
-#TRAPS=    094 094 094 094 094 094 094 094 094 094 \
-#	   094 094 094 094 232 232 232 157 094 094 \
-#	   094 094
-#
-#EFFECTS=  179 196 092 047 042 033 041 040	   \
-#	   048 035 064 042			   \
-#	   047 045 092 058 058 092 045 047	   \
-#	   047 045 092 058 032 058 092 045 047
+# The defaults using the IBM graphics character set:
+#DUNGEON = 032 179 196 218 191 192 217 197 193 194 \
+#          180 195 250 254 254 043 043 240 241 250 \
+#          176 177 243 242 060 062 095 124 092 035 \
+#          244 247 250 247 250 250 035 035 032 035 \
+#          247
 #
 # ================================================
 # Some alternatives:

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)system.h	3.3	99/07/02	*/
+/*	SCCS Id: @(#)system.h	3.4	2001/12/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #ifndef SYSTEM_H
 #define SYSTEM_H
 
-#ifndef __GO32__  /* djgpp compiler for msdos */
+#if !defined(__cplusplus) && !defined(__GO32__)
 
 #define E extern
 
@@ -24,7 +24,9 @@
 # if !defined(_SIZE_T) && !defined(__size_t) /* __size_t for CSet/2 */
 #  define _SIZE_T
 #  if !((defined(MSDOS) || defined(OS2)) && defined(_SIZE_T_DEFINED)) /* MSC 5.1 */
+#   if !(defined(__GNUC__) && defined(AMIGA))
 typedef unsigned int	size_t;
+#   endif
 #  endif
 # endif
 #endif	/* MICRO && !TOS */
@@ -44,7 +46,7 @@ typedef unsigned int	size_t;
 typedef long	off_t;
 #endif
 
-#endif /* __GO32__ */
+#endif /* !__cplusplus && !__GO32__ */
 
 /* You may want to change this to fit your system, as this is almost
  * impossible to get right automatically.
@@ -68,7 +70,7 @@ typedef long	off_t;
 # define SIG_RET_TYPE int (*)()
 #endif
 
-#ifndef __GO32__
+#if !defined(__cplusplus) && !defined(__GO32__)
 
 #if defined(BSD) || defined(ULTRIX) || defined(RANDOM)
 # ifdef random
@@ -116,7 +118,7 @@ E void FDECL(free, (genericptr_t));
 #  endif
 # endif
 #if !defined(__SASC_60) && !defined(_DCC) && !defined(__SC__)
-# if defined(AMIGA) && !defined(AZTEC_50)
+# if defined(AMIGA) && !defined(AZTEC_50) && !defined(__GNUC__)
 E int FDECL(perror, (const char *));
 # else
 #  if !(defined(ULTRIX_PROTO) && defined(__GNUC__))
@@ -247,7 +249,10 @@ E int FDECL(atexit, (void (*)(void)));
 E int FDECL(atoi, (const char *));
 E int FDECL(chdir, (const char *));
 E int FDECL(chown, (const char *,unsigned,unsigned));
-# ifndef __DECC_VER	/* suppress for recent DEC C */
+# ifdef __DECC_VER
+E int FDECL(chmod, (const char *,mode_t));
+E mode_t FDECL(umask, (mode_t));
+# else
 E int FDECL(chmod, (const char *,int));
 E int FDECL(umask, (int));
 # endif
@@ -361,7 +366,10 @@ E long NDECL(getpid);
 E pid_t NDECL(getpid);
 E uid_t NDECL(getuid);
 E gid_t NDECL(getgid);
-# else
+#  ifdef VMS
+E pid_t NDECL(getppid);
+#  endif
+# else	/*!POSIX_TYPES*/
 #  ifndef getpid		/* Borland C defines getpid() as a macro */
 E int NDECL(getpid);
 #  endif
@@ -370,14 +378,14 @@ E int NDECL(getppid);
 E unsigned NDECL(getuid);
 E unsigned NDECL(getgid);
 #  endif
-# endif
-# if defined(ULTRIX) && !defined(_UNISTD_H_)
+#  if defined(ULTRIX) && !defined(_UNISTD_H_)
 E unsigned NDECL(getuid);
 E unsigned NDECL(getgid);
 E int FDECL(setgid, (int));
 E int FDECL(setuid, (int));
-# endif
-#endif
+#  endif
+# endif	/*?POSIX_TYPES*/
+#endif	/*?(HPUX && !_POSIX_SOURCE)*/
 
 /* add more architectures as needed */
 #if defined(HPUX)
@@ -538,6 +546,6 @@ E int FDECL(atoi, (const char *));
 
 #undef E
 
-#endif /* __GO32__ */
+#endif /*  !__cplusplus && !__GO32__ */
 
 #endif /* SYSTEM_H */

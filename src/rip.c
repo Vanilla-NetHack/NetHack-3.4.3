@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rip.c	3.3	97/11/08	*/
+/*	SCCS Id: @(#)rip.c	3.4	2001/09/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@ STATIC_DCL void FDECL(center, (int, char *));
 
 extern const char *killed_by_prefix[];
 
-#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(GEM_GRAPHICS)
+#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(GEM_GRAPHICS) || defined(MSWIN_GRAPHICS)
 # define TEXT_TOMBSTONE
 #endif
 #if defined(mac) || defined(__BEOS__) || defined(WIN32_GRAPHICS)
@@ -108,7 +108,11 @@ int how;
 	center(NAME_LINE, buf);
 
 	/* Put $ on stone */
+#ifndef GOLDOBJ
 	Sprintf(buf, "%ld Au", u.ugold);
+#else
+	Sprintf(buf, "%ld Au", done_money);
+#endif
 	buf[STONE_LINE_LEN] = 0; /* It could be a *lot* of gold :-) */
 	center(GOLD_LINE, buf);
 

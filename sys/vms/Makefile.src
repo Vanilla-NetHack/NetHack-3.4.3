@@ -1,7 +1,8 @@
 #	NetHack Makefile (VMS) - for building nethack itself.
-#	SCCS Id: @(#)Makefile.src	3.3	2000/08/05
+#	SCCS Id: @(#)Makefile.src	3.4	2002/03/02
 
 #  Copy this file to [.src]Makefile. and then edit it as needed.
+#  The default configuration is for building with DEC C (aka Compaq C).
 #  If you changed CC or CFLAGS, make similar changes in [.util]Makefile.
 #
 #  Note:  modifying this Makefile will cause crtl.opt to be rebuilt,
@@ -32,16 +33,15 @@ MAKEFILE= $(SRC)Makefile.
 
 # set option flags for C compiler and linker
 #
-#CFLAGS	= /Debug/noOptimize/Include=$(INC)
-CFLAGS	= /Include=$(INC)/noList	# VAXC or GNUC
-#CFLAGS	= /Prefix=All/Incl=$(INC)/noList	# DECC in native mode
+CFLAGS	= /Prefix=All/Incl=$(INC)/noList	# DECC in native mode
+#CFLAGS	= /Include=$(INC)/noList	# VAXC or GNUC
 #LFLAGS	= /Debug/Map/Cross_Ref			# for development
 #LFLAGS	= /noTraceback/noMap			# for installing w/ privs
 LFLAGS	= /noMap
 LINK	= link
 
-LIBS	= sys$share:vaxcrtl.exe/Shareable
-#LIBS	=					# blank for DECC
+LIBS	=					# blank for DECC
+#LIBS	= sys$share:vaxcrtl.exe/Shareable	# VAX C or GNU C
 MORELIBS =
 # GCC needs an extra library
 #MORELIBS = gnu_cc:[000000]gcclib.olb/Library
@@ -91,7 +91,7 @@ RANDOBJ = random.obj
 # and config.h
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
-VERSION  =3.3
+VERSION  =3.4
 PATCHLVL =0
 
 MAKEDEFS = $(UTL)makedefs.exe;
@@ -107,7 +107,7 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   do_name.c do_wear.c dog.c dogmove.c dokick.c dothrow.c drawing.c \
 	   dungeon.c eat.c end.c engrave.c exper.c explode.c extralev.c \
 	   files.c fountain.c hack.c hacklib.c invent.c light.c lock.c mail.c \
-	   makemon.c mcastu.c mhitm.c mhitu.c minion.c mklev.c mkmap.c \
+	   makemon.c mapglyph.c mcastu.c mhitm.c mhitu.c minion.c mklev.c mkmap.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
@@ -117,8 +117,11 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   uhitm.c vault.c version.c vision.c weapon.c were.c wield.c \
 	   windows.c wizard.c worm.c worn.c write.c zap.c
 
+# generated source files (tile.c is handled separately via WINxxxSRC)
+GENCSRC = monstr.c vis_tab.c	#tile.c
+
 # .c files for this version (for date.h)
-VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(RANDSRC) monstr.c vis_tab.c
+VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(RANDSRC) $(GENCSRC)
 
 # all .h files except date.h, onames.h, pm.h, and vis_tab.h which would
 # cause dependency loops if run through "make depend"
@@ -147,10 +150,10 @@ HOBJ1 = allmain.obj,alloc.obj,apply.obj,artifact.obj,attrib.obj, \
 HOBJ2 = dog.obj,dogmove.obj,dokick.obj,dothrow.obj,drawing.obj, \
 	dungeon.obj,eat.obj,end.obj,engrave.obj,exper.obj,explode.obj, \
 	extralev.obj,files.obj,fountain.obj,hack.obj,hacklib.obj,invent.obj
-HOBJ3 = light.obj,lock.obj,mail.obj,makemon.obj,mcastu.obj,mhitm.obj, \
-	mhitu.obj,minion.obj,mklev.obj,mkmap.obj,mkmaze.obj,mkobj.obj, \
-	mkroom.obj,mon.obj,mondata.obj,monmove.obj,monstr.obj,mplayer.obj
-HOBJ4 = mthrowu.obj,muse.obj,music.obj,o_init.obj,objnam.obj, \
+HOBJ3 = light.obj,lock.obj,mail.obj,makemon.obj,mapglyph.obj,mcastu.obj, \
+	mhitm.obj,mhitu.obj,minion.obj,mklev.obj,mkmap.obj,mkmaze.obj, \
+	mkobj.obj,mkroom.obj,mon.obj,mondata.obj,monmove.obj,monstr.obj
+HOBJ4 = mplayer.obj,mthrowu.obj,muse.obj,music.obj,o_init.obj,objnam.obj, \
 	options.obj,pager.obj,pickup.obj,pline.obj,polyself.obj, \
 	potion.obj,pray.obj,priest.obj,quest.obj,questpgr.obj,read.obj
 HOBJ5 = rect.obj,region.obj,restore.obj,rip.obj,rnd.obj,role.obj, \
@@ -312,7 +315,7 @@ $(HACK_H) : $(INC)hack.h $(CONFIG_H) $(INC)align.h \
 #	VMS-specific code
 vmsmain.obj :	$(VMS)vmsmain.c $(HACK_H) $(INC)dlb.h
 vmstty.obj :	$(VMS)vmstty.c $(HACK_H) $(INC)wintty.h $(INC)tcap.h
-vmsunix.obj :	$(VMS)vmsunix.c $(HACK_H) $(INC)date.h
+vmsunix.obj :	$(VMS)vmsunix.c $(HACK_H)
 vmsmisc.obj :	$(VMS)vmsmisc.c $(VMS)oldcrtl.c
 vmsfiles.obj :	$(VMS)vmsfiles.c $(CONFIG_H)
 vmsmail.obj :	$(VMS)vmsmail.c $(CONFIG_H) $(INC)mail.h \
@@ -343,6 +346,8 @@ winstat.obj :	$(X11)winstat.c $(HACK_H) $(INC)winX.h
 wintext.obj :	$(X11)wintext.c $(HACK_H) $(INC)winX.h $(INC)xwindow.h
 winval.obj :	$(X11)winval.c $(CONFIG_H) $(INC)winX.h
 tile.obj :	$(SRC)tile.c $(HACK_H)
+monstr.obj :	monstr.c $(CONFIG_H)
+vis_tab.obj :	vis_tab.c $(CONFIG_H) $(INC)vis_tab.h
 #	general code
 allmain.obj :	allmain.c $(HACK_H)
 alloc.obj :	alloc.c $(CONFIG_H)
@@ -383,6 +388,7 @@ light.obj :	light.c $(HACK_H) $(INC)lev.h
 lock.obj :	lock.c $(HACK_H)
 mail.obj :	mail.c $(HACK_H) $(INC)mail.h
 makemon.obj :	makemon.c $(HACK_H) $(INC)epri.h $(INC)emin.h $(INC)edog.h
+mapglyph.obj :	mapglyph.c $(HACK_H)
 mcastu.obj :	mcastu.c $(HACK_H)
 mhitm.obj :	mhitm.c $(HACK_H) $(INC)artifact.h $(INC)edog.h
 mhitu.obj :	mhitu.c $(HACK_H) $(INC)artifact.h $(INC)edog.h
@@ -411,7 +417,7 @@ options.obj :	options.c $(CONFIG_H) $(INC)objclass.h $(INC)flag.h \
 		$(HACK_H) $(INC)tcap.h
 pager.obj :	pager.c $(HACK_H) $(INC)dlb.h
 pickup.obj :	pickup.c $(HACK_H)
-pline.obj :	pline.c $(HACK_H) $(INC)epri.h
+pline.obj :	pline.c $(HACK_H) $(INC)epri.h $(INC)edog.h
 polyself.obj :	polyself.c $(HACK_H)
 potion.obj :	potion.c $(HACK_H)
 pray.obj :	pray.c $(HACK_H) $(INC)epri.h
@@ -421,7 +427,7 @@ quest.obj :	quest.c $(HACK_H) $(INC)qtext.h
 questpgr.obj :	questpgr.c $(HACK_H) $(INC)dlb.h $(INC)qtext.h
 read.obj :	read.c $(HACK_H)
 rect.obj :	rect.c $(HACK_H)
-region.obj :	region.c $(HACK_H)
+region.obj :	region.c $(HACK_H) $(INC)lev.h
 restore.obj :	restore.c $(HACK_H) $(INC)lev.h $(INC)tcap.h
 rip.obj :	rip.c $(HACK_H)
 rnd.obj :	rnd.c $(HACK_H)

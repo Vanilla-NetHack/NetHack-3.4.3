@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)macwin.c	3.3	96/01/15	*/
+/*	SCCS Id: @(#)macwin.c	3.4	1996/01/15	*/
 /* Copyright (c) Jon W{tte, Hao-Yang Wang, Jonathan Handler 1992. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,31 +8,14 @@
 #include "mactty.h"
 #include "wintty.h"
 
-#if defined(applec)
-#include <sysequ.h>
-#else
 #include <LowMem.h>
-#endif
 #include <AppleEvents.h>
 #include <Gestalt.h>
 #include <TextUtils.h>
 #include <DiskInit.h>
+#include <ControlDefinitions.h>
 
 NhWindow *theWindows = (NhWindow *) 0;
-
-#ifndef USESROUTINEDESCRIPTORS /* not using universal headers */
-  /* Cast everything in terms of the new Low Memory function calls. */
-# if defined(applec)
-#  define LMGetCurStackBase()	(*(long *) CurStackBase)
-#  define LMGetDefltStack()		(*(long *) DefltStack)
-# elif defined(THINK_C)
-#  define LMGetCurStackBase()	CurStackBase
-#  define LMGetDefltStack()		(*(long *) DefltStack)
-# elif defined(__MWERKS__)
-# else
-#  error /* need to define LM functions for this compiler */
-# endif
-#endif /* !USEROUTINEDESCRIPTORS (universal headers) */
 
 /* Borrowed from the Mac tty port */
 extern WindowPtr _mt_window;
@@ -217,7 +200,7 @@ Boolean CheckNhWin (WindowPtr mac_win) {
 
 static pascal OSErr
 AppleEventHandler (const AppleEvent* inAppleEvent, AppleEvent* outAEReply, long inRefCon) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(outAEReply,inRefCon)
 #endif
 	Size     actualSize;
@@ -355,13 +338,13 @@ InitMac(void) {
 	/* set up base fonts for all window types */
 	GetFNum ("\pHackFont", &i);
 	if (i == 0)
-		i = monaco;
+		i = kFontIDMonaco;
 	win_fonts [NHW_BASE] = win_fonts [NHW_MAP] = win_fonts [NHW_STATUS] = i;
 	GetFNum ("\pPSHackFont", &i);
 	if (i == 0)
-		i = geneva;
+		i = kFontIDGeneva;
 	win_fonts [NHW_MESSAGE] = i;
-	win_fonts [NHW_TEXT] = geneva;
+	win_fonts [NHW_TEXT] = kFontIDGeneva;
 	
 	macFlags.hasAE = 0;
 	if(!Gestalt(gestaltAppleEventsAttr, &l) && (l & (1L << gestaltAppleEventsPresent))){
@@ -643,9 +626,12 @@ got1 :
 
 	if (kind == NHW_MESSAGE) {
 		aWin->font_number = win_fonts [NHW_MESSAGE];
-		aWin->font_size = iflags.large_font ? 12 : 9;
+		aWin->font_size = iflags.wc_fontsiz_message? iflags.wc_fontsiz_message :
+			iflags.large_font ? 12 : 9;
 		if (!top_line) {
 			const Rect out_of_scr = {10000, 10000, 10100, 10100};
+			TextFont(aWin->font_number);
+			TextSize(aWin->font_size);
 			TextFace(bold);
 			top_line = TENew(&out_of_scr, &out_of_scr);
 			TEActivate(top_line);
@@ -653,7 +639,7 @@ got1 :
 		}
 	} else {
 		aWin->font_number = win_fonts [NHW_TEXT];
-		aWin->font_size = 9;
+		aWin->font_size = iflags.wc_fontsiz_text ? iflags.wc_fontsiz_text : 9;
 	}
 
 	TextFont (aWin->font_number); 
@@ -685,7 +671,8 @@ mac_init_nhwindows (int *argcp, char **argv) {
 	InitMenuRes ();
 
 	theWindows = (NhWindow *) NewPtrClear (NUM_MACWINDOWS * sizeof (NhWindow));
-	mustwork(MemError());
+	if (MemError())
+		error("mac_init_nhwindows: Couldn't allocate memory for windows.");
 
 	DimMenuBar ();
 
@@ -808,7 +795,7 @@ topl_resp_rect(int resp_idx, Rect *r) {
 void
 enter_topl_mode(char *query) {
 	if (in_topl_mode())
-		Debugger();
+		return;
 
 	putstr(WIN_MESSAGE, ATR_BOLD, query);
 
@@ -832,7 +819,11 @@ leave_topl_mode(char *answer) {
 	NhWindow *aWin = theWindows + WIN_MESSAGE;
 
 	if (!in_topl_mode())
-		Debugger();
+		return;
+
+	/* Cap length of reply */
+	if (ans_len >= BUFSZ)
+		ans_len = BUFSZ-1;
 
 	/* remove unprintables from the answer */
 	for (ap = *(*top_line)->hText + topl_query_len, bp = answer; ans_len > 0; ans_len--, ap++) {
@@ -1147,7 +1138,7 @@ mac_destroy_nhwindow (winid win) {
 		if (iflags.window_inited) {
 			if (flags.tombstone && killer) {
 				/* Prepare for the coming of the tombstone window. */
-				win_fonts [NHW_TEXT] = monaco;
+				win_fonts [NHW_TEXT] = kFontIDMonaco;
 			}
 			return;
 		}
@@ -1160,7 +1151,7 @@ mac_destroy_nhwindow (winid win) {
 	if ((!((WindowPeek) theWindow)->visible || (kind != NHW_MENU && kind != NHW_TEXT))) {
 		DisposeWindow (theWindow);
 		if (aWin->windowText) {
-			DisposHandle (aWin->windowText);
+			DisposeHandle (aWin->windowText);
 		}
 		aWin->its_window = (WindowPtr) 0;
 		aWin->windowText = (Handle) 0;
@@ -1176,7 +1167,7 @@ mac_number_pad (int pad) {
 
 void
 trans_num_keys(EventRecord *theEvent) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(theEvent)
 #endif
 /* KMH -- Removed this translation.
@@ -1208,7 +1199,7 @@ trans_num_keys(EventRecord *theEvent) {
  */
 static void
 GeneralKey (EventRecord *theEvent, WindowPtr theWindow) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(theWindow)
 #endif
 #if 0
@@ -1477,7 +1468,7 @@ macClickTerm (EventRecord *theEvent, WindowPtr theWindow) {
 	where.v = where.v / nhw->row_height;
 	clicked_mod = (theEvent->modifiers & shiftKey) ? CLICK_2 : CLICK_1;
 
-	if (strchr(topl_resp, click_to_cmd(where.h, where.v, clicked_mod)))
+	if (strchr(topl_resp, *click_to_cmd(where.h, where.v, clicked_mod)))
 		nhbell();
 	else {
 		if (cursor_locked)
@@ -1595,8 +1586,6 @@ mac_doprev_message(void) {
 
 static short
 macDoNull (EventRecord *theEvent, WindowPtr theWindow) {
-	if (!theEvent || !theWindow)
-		Debugger ();
 	return 0;
 }
 
@@ -1626,9 +1615,8 @@ macUpdateMessage (EventRecord *theEvent, WindowPtr theWindow) {
 	NhWindow *aWin = GetNhWin (theWindow);
 	int l;
 
-	if (!theEvent) {
-		Debugger ();
-	}
+	if (!theEvent)
+		return 0;
 
 	GetClip(org_clip);
 
@@ -1666,7 +1654,7 @@ macUpdateMessage (EventRecord *theEvent, WindowPtr theWindow) {
 				name = tmp;
 				break;
 		}
-		TextFont(geneva);
+		TextFont(kFontIDGeneva);
 		TextSize(9);
 		GetFontInfo(&font);
 		MoveTo ((frame.left + frame.right - StringWidth(name)) / 2,
@@ -1770,9 +1758,8 @@ GeneralUpdate (EventRecord *theEvent, WindowPtr theWindow) {
 	RgnHandle h;
 	Boolean vis;
 
-	if (!theEvent) {
-		Debugger ();
-	}
+	if (!theEvent)
+		return 0;
 
 	r2.left = r2.right - SBARWIDTH;
 	r2.right += 1;
@@ -1829,7 +1816,7 @@ macCursorTerm (EventRecord *theEvent, WindowPtr theWindow, RgnHandle mouseRgn) {
 
 		GlobalToLocal (&where);
 		dir_bas = iflags.num_pad ? (char *) ndir : (char *) sdir;
-		dir = strchr (dir_bas, click_to_cmd (where.h / nhw->char_width + 1 ,
+		dir = strchr (dir_bas, *click_to_cmd (where.h / nhw->char_width + 1 ,
 							where.v / nhw->row_height, CLICK_1));
 	}
 	ch = GetCursor (dir ? dir - dir_bas + 513 : 512);
@@ -1849,7 +1836,7 @@ macCursorTerm (EventRecord *theEvent, WindowPtr theWindow, RgnHandle mouseRgn) {
 
 static void
 GeneralCursor (EventRecord *theEvent, WindowPtr theWindow, RgnHandle mouseRgn) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(theWindow)
 #endif
 	Rect r = {-1, -1, 2, 2};
@@ -2132,7 +2119,7 @@ mac_delay_output(void) {
 #ifdef CLIPPING
 static void
 mac_cliparound (int x, int y) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(x,y)
 #endif
 	/* TODO */
@@ -2294,7 +2281,7 @@ mac_start_menu (winid win) {
 
 void
 mac_add_menu (winid win, int glyph, const anything *any, CHAR_P menuChar, CHAR_P groupAcc, int attr, const char *inStr, int preselected) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(glyph)
 #endif
 	NhWindow *aWin = &theWindows [win];
@@ -2478,7 +2465,7 @@ mac_unimplemented (void) {
 
 static void
 mac_suspend_nhwindows (const char *foo) {
-#if defined(applec) || defined(__MWERKS__)
+#if defined(__SC__) || defined(__MRC__)
 # pragma unused(foo)
 #endif
 	/*	Can't really do that :-)		*/
@@ -2504,6 +2491,10 @@ try_key_queue (char *bufp) {
 /* Interface definition, for windows.c */
 struct window_procs mac_procs = {
 	"mac",
+	WC_COLOR | WC_HILITE_PET |
+	WC_LARGE_FONT |	/*  obsolete */
+	WC_FONT_MAP | WC_FONT_MENU | WC_FONT_MESSAGE | WC_FONT_STATUS | WC_FONT_TEXT |
+	WC_FONTSIZ_MAP | WC_FONTSIZ_MENU | WC_FONTSIZ_MESSAGE | WC_FONTSIZ_STATUS | WC_FONTSIZ_TEXT,
 	mac_init_nhwindows,
 	mac_unimplemented,	/* see macmenu.c:mac_askname() for player selection */
 	mac_askname,
@@ -2554,6 +2545,7 @@ struct window_procs mac_procs = {
 	0, //    mac_start_screen,
 	0, //    mac_end_screen,
 	genl_outrip,
+	genl_preference_update,
 };
 
 /*macwin.c*/

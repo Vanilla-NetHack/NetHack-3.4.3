@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fountain.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)fountain.c	3.4	2001/09/06	*/
 /*	Copyright Scott R. Turner, srt@ucla, 10/27/86 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,7 +55,7 @@ dowaterdemon() /* Water demon */
 	/* Give those on low levels a (slightly) better chance of survival */
 	    if (rnd(100) > (80 + level_difficulty())) {
 		pline("Grateful for %s release, %s grants you a wish!",
-		      his[pronoun_gender(mtmp)], he[pronoun_gender(mtmp)]);
+		      mhis(mtmp), mhe(mtmp));
 		makewish();
 		mongone(mtmp);
 	    } else if (t_at(mtmp->mx, mtmp->my))
@@ -126,7 +126,7 @@ genericptr_t poolcnt;
 	water_damage(level.objects[x][y], FALSE, TRUE);
 
 	if ((mtmp = m_at(x, y)) != 0)
-		(void) minwater(mtmp);
+		(void) minliquid(mtmp);
 	else
 		newsym(x,y);
 }
@@ -135,8 +135,9 @@ STATIC_OVL void
 dofindgem() /* Find a gem in the sparkling waters. */
 {
 	if (!Blind) You("spot a gem in the sparkling waters!");
+	else You_feel("a gem here!");
 	(void) mksobj_at(rnd_class(DILITHIUM_CRYSTAL, LUCKSTONE-1),
-						u.ux, u.uy, FALSE);
+			 u.ux, u.uy, FALSE, FALSE);
 	levl[u.ux][u.uy].looted |= F_LOOTED;
 	newsym(u.ux, u.uy);
 	exercise(A_WIS, TRUE);			/* a discovery! */
@@ -325,7 +326,7 @@ drinkfountain()
 			pline("This water gives you bad breath!");
 			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			    if(!DEADMONSTER(mtmp))
-				mtmp->mflee = 1;
+				monflee(mtmp, 0, FALSE, FALSE);
 			}
 			break;
 
@@ -380,6 +381,7 @@ register struct obj *obj;
 			obj->oerodeproof = TRUE;
 			exercise(A_WIS, TRUE);
 		}
+		update_inventory();
 		levl[u.ux][u.uy].typ = ROOM;
 		levl[u.ux][u.uy].looted = 0;
 		if(Invisible) newsym(u.ux, u.uy);
@@ -437,12 +439,34 @@ register struct obj *obj;
 			break;
 		case 28: /* Strange feeling */
 			pline("An urge to take a bath overwhelms you.");
+#ifndef GOLDOBJ
 			if (u.ugold > 10) {
 			    u.ugold -= somegold() / 10;
 			    You("lost some of your gold in the fountain!");
 			    levl[u.ux][u.uy].looted &= ~F_LOOTED;
 			    exercise(A_WIS, FALSE);
 			}
+#else
+			{
+			    long money = money_cnt(invent);
+			    struct obj *otmp;
+                            if (money > 10) {
+				/* Amount to loose.  Might get rounded up as fountains don't pay change... */
+			        money = somegold(money) / 10; 
+			        for (otmp = invent; otmp && money > 0; otmp = otmp->nobj) if (otmp->oclass == GOLD_CLASS) {
+				    int denomination = objects[otmp->otyp].oc_cost;
+				    long coin_loss = (money + denomination - 1) / denomination;
+                                    coin_loss = min(coin_loss, otmp->quan);
+				    otmp->quan -= coin_loss;
+				    money -= coin_loss * denomination;				  
+				    if (!otmp->quan) delobj(otmp);
+				}
+			        You("lost some of your money in the fountain!");
+			        levl[u.ux][u.uy].looted &= ~F_LOOTED;
+			        exercise(A_WIS, FALSE);
+                            }
+			}
+#endif
 			break;
 		case 29: /* You see coins */
 
@@ -461,6 +485,7 @@ register struct obj *obj;
 		    newsym(u.ux,u.uy);
 		    break;
 	}
+	update_inventory();
 	dryup(u.ux, u.uy, TRUE);
 }
 
@@ -552,7 +577,7 @@ drinksink()
 		case 10: pline("This water contains toxic wastes!");
 			if (!Unchanging) {
 				You("undergo a freakish metamorphosis!");
-				polyself();
+				polyself(FALSE);
 			}
 			break;
 		/* more odd messages --JJB */

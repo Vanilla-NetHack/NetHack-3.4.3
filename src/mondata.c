@@ -1,10 +1,14 @@
-/*	SCCS Id: @(#)mondata.c	3.3	2000/07/14	*/
+/*	SCCS Id: @(#)mondata.c	3.4	2001/12/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "eshk.h"
 #include "epri.h"
+
+/* fake attack and damage types */
+#define AT_ANY (-1)
+#define AD_ANY (-1)
 
 /*	These routines provide basic data for any type of monster. */
 
@@ -29,17 +33,26 @@ int flag;
 #endif /* OVLB */
 #ifdef OVL0
 
+struct attack *
+attacktype_fordmg(ptr, atyp, dtyp)
+struct permonst *ptr;
+int atyp, dtyp;
+{
+    struct attack *a;
+
+    for (a = &ptr->mattk[0]; a < &ptr->mattk[NATTK]; a++)
+	if (a->aatyp == atyp && (dtyp == AD_ANY || a->adtyp == dtyp))
+	    return a;
+
+    return (struct attack *)0;
+}
+
 boolean
 attacktype(ptr, atyp)
-	register struct	permonst	*ptr;
-	register int atyp;
+struct permonst *ptr;
+int atyp;
 {
-	int	i;
-
-	for(i = 0; i < NATTK; i++)
-	    if(ptr->mattk[i].aatyp == atyp) return(TRUE);
-
-	return(FALSE);
+    return attacktype_fordmg(ptr, atyp, AD_ANY) ? TRUE : FALSE;
 }
 
 #endif /* OVL0 */
@@ -105,9 +118,9 @@ struct monst *mon;
 			    paralysis does too, we can't check it */
 		    mon->msleeping))
 	    return TRUE;
-	/* AD_BLND => yellow light, Archon, !cobra, !raven */
-	if (dmgtype(ptr, AD_BLND) &&
-	    !attacktype(ptr, AT_SPIT) && !attacktype(ptr, AT_CLAW))
+	/* yellow light, Archon; !dust vortex, !cobra, !raven */
+	if (dmgtype_fromattack(ptr, AD_BLND, AT_EXPL) ||
+		dmgtype_fromattack(ptr, AD_BLND, AT_GAZE))
 	    return TRUE;
 	o = is_you ? uwep : MON_WEP(mon);
 	if (o && o->oartifact && defends(AD_BLND, o))
@@ -282,17 +295,26 @@ sticks(ptr)	/* creature sticks other creatures it hits */
 		attacktype(ptr,AT_HUGS)));
 }
 
+struct attack *
+dmgtype_fromattack(ptr, dtyp, atyp)
+struct permonst *ptr;
+int dtyp, atyp;
+{
+    struct attack *a;
+
+    for (a = &ptr->mattk[0]; a < &ptr->mattk[NATTK]; a++)
+	if (a->adtyp == dtyp && (atyp == AT_ANY || a->aatyp == atyp))
+	    return a;
+
+    return (struct attack *)0;
+}
+
 boolean
 dmgtype(ptr, dtyp)
-	register struct	permonst	*ptr;
-	register int dtyp;
+struct permonst *ptr;
+int dtyp;
 {
-	int	i;
-
-	for(i = 0; i < NATTK; i++)
-	    if(ptr->mattk[i].adtyp == dtyp) return TRUE;
-
-	return FALSE;
+    return dmgtype_fromattack(ptr, dtyp, AT_ANY) ? TRUE : FALSE;
 }
 
 /* returns the maximum damage a defender can do to the attacker via
@@ -583,11 +605,13 @@ int montype;
 	return montype;
 }
 
-static const char *levitate[2]	= { "float", "Float" };
-static const char *fly[2]	= { "fly", "Fly" };
-static const char *slither[2]	= { "slither", "Slither" };
-static const char *ooze[2]	= { "ooze", "Ooze" };
-static const char *crawl[2]	= { "crawl", "Crawl" };
+static const char *levitate[4]	= { "float", "Float", "wobble", "Wobble" };
+static const char *flys[4]	= { "fly", "Fly", "flutter", "Flutter" };
+static const char *flyl[4]	= { "fly", "Fly", "stagger", "Stagger" };
+static const char *slither[4]	= { "slither", "Slither", "falter", "Falter" };
+static const char *ooze[4]	= { "ooze", "Ooze", "tremble", "Tremble" };
+static const char *immobile[4]	= { "wiggle", "Wiggle", "pulsate", "Pulsate" };
+static const char *crawl[4]	= { "crawl", "Crawl", "falter", "Falter" };
 
 const char *
 locomotion(ptr, def)
@@ -598,9 +622,31 @@ const char *def;
 
 	return (
 		is_floater(ptr) ? levitate[capitalize] :
-		is_flyer(ptr)   ? fly[capitalize] :
+		(is_flyer(ptr) && ptr->msize <= MZ_SMALL) ? flys[capitalize] :
+		(is_flyer(ptr) && ptr->msize > MZ_SMALL)  ? flyl[capitalize] :
 		slithy(ptr)     ? slither[capitalize] :
 		amorphous(ptr)  ? ooze[capitalize] :
+		!ptr->mmove	? immobile[capitalize] :
+		nolimbs(ptr)    ? crawl[capitalize] :
+		def
+	       );
+
+}
+
+const char *
+stagger(ptr, def)
+const struct permonst *ptr;
+const char *def;
+{
+	int capitalize = 2 + (*def == highc(*def));
+
+	return (
+		is_floater(ptr) ? levitate[capitalize] :
+		(is_flyer(ptr) && ptr->msize <= MZ_SMALL) ? flys[capitalize] :
+		(is_flyer(ptr) && ptr->msize > MZ_SMALL)  ? flyl[capitalize] :
+		slithy(ptr)     ? slither[capitalize] :
+		amorphous(ptr)  ? ooze[capitalize] :
+		!ptr->mmove	? immobile[capitalize] :
 		nolimbs(ptr)    ? crawl[capitalize] :
 		def
 	       );

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixconf.h 3.3	99/07/02	*/
+/*	SCCS Id: @(#)unixconf.h 3.4	1999/07/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -80,7 +80,7 @@
 /* #define RANDOM */		/* if neither random/srandom nor lrand48/srand48
 				   is available from your system */
 
-/* see sys/unix/snd86.shr for more information on these */
+/* see sys/unix/snd86unx.shr for more information on these */
 /* #define UNIX386MUSIC */	/* play real music through speaker on systems
 				   with music driver installed */
 /* #define VPIX_MUSIC */	/* play real music through speaker on systems
@@ -174,7 +174,7 @@
 #define DEF_MAILREADER	"/usr/ucb/Mail"
 #  endif
 #else
-# if defined(SYSV) || defined(DGUX) || defined(HPUX)
+# if (defined(SYSV) || defined(DGUX) || defined(HPUX)) && !defined(LINUX)
 #  if defined(M_XENIX) || defined(__FreeBSD__)
 #define DEF_MAILREADER	"/usr/bin/mail"
 #  else
@@ -297,14 +297,14 @@
 #endif
 
 /* Use the high quality random number routines. */
-#if defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) || defined(RANDOM)
+#if defined(BSD) || defined(ULTRIX) || defined(CYGWIN32) || defined(RANDOM) || defined(__APPLE__)
 #define Rand()	random()
 #else
 #define Rand()	lrand48()
 #endif
 
 #ifdef TIMED_DELAY
-# if defined(SUNOS4) || defined(LINUX)
+# if defined(SUNOS4) || defined(LINUX) || (defined(BSD) && !defined(ULTRIX))
 # define msleep(k) usleep((k)*1000)
 # endif
 # ifdef ULTRIX
@@ -319,6 +319,29 @@
 # define __HC__ hc
 # undef hc
 #endif
+
+#if defined(GNOME_GRAPHICS)
+#if defined(LINUX)
+# include <linux/unistd.h>
+# if defined(__NR_getresuid) && defined(__NR_getresgid)	/* ie., >= v2.1.44 */
+#  define GETRES_SUPPORT
+# endif
+#else
+# if defined(BSD) || defined(SVR4)
+/*
+ * [ALI] We assume that SVR4 means we can safely include syscall.h
+ * (although it's really a BSDism). This is certainly true for Solaris 2.5,
+ * Solaris 7, Solaris 8 and Compaq Tru64 5.1
+ * Later BSD systems will have the getresid system calls.
+ */
+# include <sys/syscall.h>
+# if (defined (SYS_getuid) || defined(SYS_getresuid)) && \
+  (defined(SYS_getgid) || defined(SYS_getresgid))
+#  define GETRES_SUPPORT
+# endif
+# endif	/* BSD || SVR4 */
+#endif /* LINUX */
+#endif	/* GNOME_GRAPHICS */
 
 #endif /* UNIXCONF_H */
 #endif /* UNIX */

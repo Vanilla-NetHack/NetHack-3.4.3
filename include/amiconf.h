@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)amiconf.h	3.3	2000/01/12	*/
+/*	SCCS Id: @(#)amiconf.h	3.4	2000/01/12	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1990, 1991, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,13 +30,23 @@
 # define DCC30_BUG	/* A bitfield bug (from dog.c, others) in DICE 3.0. */
 #endif
 
+#ifndef __GNUC__
 typedef long off_t;
+#endif
 
 #define MICRO		/* must be defined to allow some inclusions */
 
+#define NOCWD_ASSUMPTIONS	/* Allow paths to be specified for HACKDIR,
+				   LEVELDIR, SAVEDIR, BONESDIR, DATADIR,
+				   SCOREDIR, LOCKDIR, and CONFIGDIR. */
+
 /* data librarian defs */
-#define DLBFILE		"NetHack:nhdat"		/* main library */
-#define DLBFILE2	"NetHack:nhsdat"	/* sound library */
+#ifndef NOCWD_ASSUMPTIONS
+# define DLBFILE	"NetHack:nhdat"		/* main library */
+# define DLBFILE2	"NetHack:nhsdat"	/* sound library */
+#else
+# define DLBFILE	"nhdat"			/* main library */
+# define DLBFILE2	"nhsdat"		/* sound library */
 #define FILENAME_CMP	stricmp			/* case insensitive */
 
 #ifndef __SASC_60
@@ -86,7 +96,8 @@ extern void FDECL(ami_argset, (int *, char *[]));
 extern void FDECL(ami_mkargline, (int *, char **[]));
 extern void ami_wininit_data(void);
 
-extern boolean FromWBench;	/* how were we run? */
+#define FromWBench 0 /* A hint for compiler ... */
+/* extern boolean FromWBench;	/* how were we run? */
 extern int ami_argc;
 extern char **ami_argv;
 
@@ -101,7 +112,7 @@ extern char **ami_argv;
 #define remove(x)	unlink(x)
 
 /* DICE wants rewind() to return void.	We want it to return int. */
-#ifdef _DCC
+#if defined(_DCC) || defined(__GNUC__)
 # define rewind(f)	fseek(f, 0, 0)
 #endif
 

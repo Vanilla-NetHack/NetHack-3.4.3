@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winprocs.h 3.3	96/02/18	*/
+/*	SCCS Id: @(#)winprocs.h 3.4	1996/02/18	*/
 /* Copyright (c) David Cohrs, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,7 @@
 
 struct window_procs {
     const char *name;
+    unsigned long wincap;	/* window port capability options supported */
     void FDECL((*win_init_nhwindows), (int *, char **));
     void NDECL((*win_player_selection));
     void NDECL((*win_askname));
@@ -62,6 +63,7 @@ struct window_procs {
     void NDECL((*win_end_screen));
 
     void FDECL((*win_outrip), (winid,int));
+    void FDECL((*win_preference_update), (const char *));
 };
 
 extern NEARDATA struct window_procs windowprocs;
@@ -125,4 +127,82 @@ extern NEARDATA struct window_procs windowprocs;
 #define end_screen (*windowprocs.win_end_screen)
 
 #define outrip (*windowprocs.win_outrip)
+#define preference_update (*windowprocs.win_preference_update)
+
+/*
+ * WINCAP
+ * Window port preference capability bits.
+ * Some day this might be better in its own wincap.h file.
+ */
+#define WC_COLOR	 0x01L		/* 01 Port can display things in color       */
+#define WC_HILITE_PET	 0x02L		/* 02 supports hilite pet                    */
+#define WC_ASCII_MAP	 0x04L		/* 03 supports an ascii map                  */
+#define WC_TILED_MAP	 0x08L		/* 04 supports a tiled map                   */
+#define WC_PRELOAD_TILES 0x10L		/* 05 supports pre-loading tiles             */
+#define WC_TILE_WIDTH	 0x20L		/* 06 prefer this width of tile              */
+#define WC_TILE_HEIGHT	 0x40L		/* 07 prefer this height of tile             */
+#define WC_TILE_FILE	 0x80L		/* 08 alternative tile file name             */
+#define WC_INVERSE	 0x100L		/* 09 Port supports inverse video            */
+#define WC_ALIGN_MESSAGE 0x200L		/* 10 supports message alignmt top|b|l|r     */
+#define WC_ALIGN_STATUS	 0x400L		/* 11 supports status alignmt top|b|l|r      */
+#define WC_VARY_MSGCOUNT 0x800L		/* 12 supports varying message window        */
+#define WC_FONT_MAP	 0x1000L	/* 13 supports specification of map win font */
+#define WC_FONT_MESSAGE	 0x2000L	/* 14 supports specification of msg win font */
+#define WC_FONT_STATUS	 0x4000L	/* 15 supports specification of sts win font */
+#define WC_FONT_MENU	 0x8000L	/* 16 supports specification of mnu win font */
+#define WC_FONT_TEXT	 0x10000L	/* 17 supports specification of txt win font */
+#define WC_FONTSIZ_MAP	 0x20000L	/* 18 supports specification of map win font */
+#define WC_FONTSIZ_MESSAGE 0x40000L	/* 19 supports specification of msg win font */
+#define WC_FONTSIZ_STATUS 0x80000L	/* 20 supports specification of sts win font */
+#define WC_FONTSIZ_MENU	 0x100000L	/* 21 supports specification of mnu win font */
+#define WC_FONTSIZ_TEXT	 0x200000L	/* 22 supports specification of txt win font */
+#define WC_SCROLL_MARGIN 0x400000L	/* 23 supports setting scroll margin for map */
+#define WC_SPLASH_SCREEN 0x800000L	/* 24 supports setting scroll margin for map */
+#define WC_POPUP_DIALOG	 0x1000000L	/* 25 supports queries in pop dialogs        */
+#define WC_LARGE_FONT	 0x2000000L	/* 26 Port supports large font               */
+#define WC_EIGHT_BIT_IN	 0x4000000L	/* 27 8-bit character input                  */
+#define WC_PERM_INVENT	 0x8000000L	/* 28 8-bit character input                  */
+#define WC_MAP_MODE	 0x10000000L	/* 29 map_mode option                        */
+#define WC_WINDOWCOLORS  0x20000000L	/* 30 background color for message window    */
+#define WC_PLAYER_SELECTION  0x40000000L /* 31 background color for message window    */
+					/* 1 free bit */
+
+#define ALIGN_LEFT	1
+#define ALIGN_RIGHT	2
+#define ALIGN_TOP	3
+#define ALIGN_BOTTOM	4
+
+/* player_selection */
+#define VIA_DIALOG	0
+#define VIA_PROMPTS	1
+
+/* map_mode settings - deprecated */
+#define MAP_MODE_TILES		0
+#define MAP_MODE_ASCII4x6	1
+#define MAP_MODE_ASCII6x8	2
+#define MAP_MODE_ASCII8x8	3
+#define MAP_MODE_ASCII16x8	4
+#define MAP_MODE_ASCII7x12	5
+#define MAP_MODE_ASCII8x12	6
+#define MAP_MODE_ASCII16x12	7
+#define MAP_MODE_ASCII12x16	8
+#define MAP_MODE_ASCII10x18	9
+#define MAP_MODE_ASCII_FIT_TO_SCREEN 10
+#define MAP_MODE_TILES_FIT_TO_SCREEN 11
+
+#if 0
+#define WC_SND_SOUND	 0x01L		/* 01 Port has some sound capabilities       */
+#define WC_SND_SPEAKER	 0x02L		/* 02 Sound supported via built-in speaker   */
+#define WC_SND_STEREO	 0x04L		/* 03 Stereo sound supported                 */
+#define WC_SND_RAW	 0x08L		/* 04 Raw sound supported                    */
+#define WC_SND_WAVE	 0x10L		/* 05 Wave support                           */
+#define WC_SND_MIDI	 0x20L		/* 06 Midi support                           */
+					/* 26 free bits */
 #endif
+
+struct wc_Opt {
+	char *wc_name;
+	unsigned long wc_bit;
+};
+
+#endif /* WINPROCS_H */

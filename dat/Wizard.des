@@ -1,10 +1,10 @@
-#	SCCS Id: @(#)Wizard.des	3.3	92/07/11
+#	SCCS Id: @(#)Wizard.des	3.4	1992/07/11
 #	Copyright (c) 1992 by David Cohrs
 # NetHack may be freely redistributed.  See license for details.
 #
 #	The "start" level for the quest.
 #
-#	Here you meet your (besieged) class leader, the Wizard of Balance
+#	Here you meet your (besieged) class leader, Neferet the Green
 #	and receive your quest assignment.
 #
 MAZE: "Wiz-strt",' '
@@ -51,9 +51,9 @@ DOOR:locked,(35,10)
 DOOR:closed,(15,10)
 DOOR:locked,(19,10)
 DOOR:locked,(20,10)
-# Wizard of Balance
-MONSTER:'@',"Wizard of Balance",(23,05)
-# The treasure of Wizard of Balance
+# Neferet the Green, the quest leader
+MONSTER:'@',"Neferet the Green",(23,05)
+# The treasure of the quest leader
 OBJECT:'(',"chest",(24,05)
 # apprentice guards for the audience chamber
 MONSTER:'@',"apprentice",(30,07)
@@ -236,9 +236,9 @@ MAP
             -------|...........-------------------...........|              
             |......S...........|..|..|..|..|..|..|...........|              
             |......|...........|..|..|..|..|..|..|...........|              
-            |......|...........--+--+--+--+--+--+-...........|              
+            |......|...........-F+-F+-F+-F+-F+-F+-...........|              
             --S----|...........S.................+...........|              
-            |......|...........--+--+--+--+--+--+-...........|              
+            |......|...........-F+-F+-F+-F+-F+-F+-...........|              
             |......|...........|..|..|..|..|..|..|...........|              
             |......|...........|..|..|..|..|..|..|...........|              
             -------|...........-------------------...........|              
@@ -349,6 +349,8 @@ MONSTER:'@',"wizard",(32,11),peaceful,asleep,"Newt"
 MONSTER:'@',"Grey-elf",(44,11),peaceful
 MONSTER:'H',"hill giant",(47,11),peaceful,asleep
 MONSTER:'G',"gnomish wizard",(38,06),peaceful
+MONSTER:'@',"prisoner",(35,11),peaceful
+MONSTER:'@',"prisoner",(41,11),peaceful,asleep
 
 #
 #	The "fill" levels for the quest.

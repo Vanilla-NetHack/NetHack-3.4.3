@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mklev.c	3.3	99/04/22	*/
+/*	SCCS Id: @(#)mklev.c	3.4	2001/11/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -34,7 +34,9 @@ STATIC_DCL struct mkroom *FDECL(pos_to_room, (XCHAR_P, XCHAR_P));
 STATIC_DCL boolean FDECL(place_niche,(struct mkroom *,int*,int*,int*));
 STATIC_DCL void FDECL(makeniche,(int));
 STATIC_DCL void NDECL(make_niches);
+
 STATIC_PTR int FDECL(do_comp,(const genericptr,const genericptr));
+
 STATIC_DCL void FDECL(dosdoor,(XCHAR_P,XCHAR_P,struct mkroom *,int));
 STATIC_DCL void FDECL(join,(int,int,BOOLEAN_P));
 STATIC_DCL void FDECL(do_room_or_subroom, (struct mkroom *,int,int,int,int,
@@ -498,8 +500,9 @@ int trap_type;
 		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
 		    if (!level.flags.noteleport)
-			(void) mksobj_at(SCR_TELEPORTATION, xx, yy+dy, TRUE);
-		    if(!rn2(3)) (void) mkobj_at(0, xx, yy+dy, TRUE);
+			(void) mksobj_at(SCR_TELEPORTATION,
+					 xx, yy+dy, TRUE, FALSE);
+		    if (!rn2(3)) (void) mkobj_at(0, xx, yy+dy, TRUE);
 		}
 	    }
 	    return;
@@ -761,8 +764,8 @@ skip0:
 		    x = somex(croom); y = somey(croom);
 		    tmonst = makemon((struct permonst *) 0, x,y,NO_MM_FLAGS);
 		    if (tmonst && tmonst->data == &mons[PM_GIANT_SPIDER] &&
-			!is_pool(x,y))
-			(void) maketrap (x,y,WEB);
+			    !occupied(x, y))
+			(void) maketrap(x, y, WEB);
 		}
 		/* put traps and mimics inside */
 		goldseen = FALSE;
@@ -796,7 +799,7 @@ skip0:
 		 */
 		if(!rn2(nroom * 5 / 2))
 		    (void) mksobj_at((rn2(3)) ? LARGE_BOX : CHEST,
-				     somex(croom), somey(croom), TRUE);
+				     somex(croom), somey(croom), TRUE, FALSE);
 
 		/* maybe make some graffiti */
 		if(!rn2(27 + 3 * abs(depth(&u.uz)))) {
@@ -848,7 +851,7 @@ mineralize()
 	    for (y = 1; y < (ROWNO - 1); y++)
 		if ((levl[x][y].typ == POOL && !rn2(10)) ||
 			(levl[x][y].typ == MOAT && !rn2(30)))
-	    	    (void)mksobj_at(KELP_FROND, x, y, TRUE);
+		    (void) mksobj_at(KELP_FROND, x, y, TRUE, FALSE);
 
 	/* determine if it is even allowed;
 	   almost all special levels are excluded */
@@ -1403,7 +1406,7 @@ struct mkroom *croom;
 	}
 
 	/* Leave a bell, in case we accidentally buried someone alive */
-	if (dobell) (void) mksobj_at(BELL, m.x, m.y, TRUE);
+	if (dobell) (void) mksobj_at(BELL, m.x, m.y, TRUE, FALSE);
 	return;
 }
 

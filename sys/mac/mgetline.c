@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)getline.c	3.1	90/22/02
+/*	SCCS Id: @(#)getline.c	3.1	90/22/02 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,8 @@
 #include "macwin.h"
 #include "macpopup.h"
 #include "func_tab.h"
+
+extern int NDECL(extcmd_via_menu);	/* cmd.c */
 
 typedef Boolean FDECL ((* key_func), (unsigned char));
 
@@ -48,13 +50,7 @@ topl_getlin(const char *query, char *bufp, Boolean ext) {
  */
 void
 mac_getlin(const char *query, char *bufp) {
-
-#if ENABLE_MAC_POPUP
-	if (iflags.popup_dialog)
-		popup_getlin (query, bufp);
-	else
-#endif
-		topl_getlin (query, bufp, false);
+	topl_getlin (query, bufp, false);
 }
 
 
@@ -67,6 +63,7 @@ mac_get_ext_cmd() {
 	char bufp[BUFSZ];
 	int i;
 
+	if (iflags.extmenu) return extcmd_via_menu();
 	topl_getlin("# ", bufp, true);
 	for (i = 0; extcmdlist[i].ef_txt != (char *)0; i++)
 		if (!strcmp(bufp, extcmdlist[i].ef_txt)) break;

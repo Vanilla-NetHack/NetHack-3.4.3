@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config1.h	3.3	1999/12/05	*/
+/*	SCCS Id: @(#)config1.h	3.4	1999/12/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -32,7 +32,7 @@
 /*
  * Mac Stuff.
  */
-#ifdef applec		/*	MPW auto-defined symbol */
+#ifdef macintosh	/*	Auto-defined symbol for MPW compilers (sc and mrc) */
 # define MAC
 #endif
 
@@ -41,7 +41,7 @@
 # define NEED_VARARGS
 #endif
 
-#ifdef __MWERKS__	/* defined by Metrowerks compiler */
+#ifdef __MWERKS__	/* defined by Metrowerks' Codewarrior compiler */
 # ifndef __BEOS__	/* BeOS */
 #  define MAC
 # endif
@@ -108,6 +108,11 @@
 /*
  * Windows NT Autodetection
  */
+#ifdef _WIN32_WCE
+# ifndef WIN32
+# define WIN32
+# endif
+#endif
 
 #ifdef WIN32
 # undef UNIX
@@ -116,6 +121,7 @@
 # define STRNCMPI
 # define USE_STDARG
 # define NEED_VARARGS
+
 #endif
 
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.3	2000/07/27	*/
+/*	SCCS Id: @(#)save.c	3.4	2002/01/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -20,7 +20,7 @@ static int count_only;
 #endif
 
 #ifdef MICRO
-int dotcnt;	/* also used in restore */
+int dotcnt, dotrow;	/* also used in restore */
 #endif
 
 #ifdef ZEROCOMP
@@ -43,14 +43,10 @@ static long nulls[10];
 #define nulls nul
 #endif
 
-#if defined(UNIX) || defined(VMS) || defined(__EMX__)
+#if defined(UNIX) || defined(VMS) || defined(__EMX__) || defined(WIN32)
 #define HUP	if (!program_state.done_hup)
 #else
-# ifdef WIN32
-#define HUP	if (!program_state.exiting)
-# else
 #define HUP
-# endif
 #endif
 
 /* need to preserve these during save to avoid accessing freed memory */
@@ -81,7 +77,7 @@ dosave()
 }
 
 
-#if defined(UNIX) || defined(VMS) || defined (__EMX__)
+#if defined(UNIX) || defined(VMS) || defined (__EMX__) || defined(WIN32)
 /*ARGSUSED*/
 void
 hangup(sig_unused)  /* called as signal() handler, so sent at least one arg */
@@ -94,14 +90,18 @@ int sig_unused;
 	terminate(EXIT_FAILURE);
 #  endif
 # else	/* SAVEONHANGUP */
-	if (!program_state.done_hup++ && program_state.something_worth_saving) {
+	if (!program_state.done_hup++) {
+	    if (program_state.something_worth_saving)
 		(void) dosave0();
 #  ifdef VMS
-		/* don't call exit when already within an exit handler;
-		   that would cancel any other pending user-mode handlers */
-		if (!program_state.exiting)
+	    /* don't call exit when already within an exit handler;
+	       that would cancel any other pending user-mode handlers */
+	    if (!program_state.exiting)
 #  endif
-			terminate(EXIT_FAILURE);
+	    {
+		clearlocks();
+		terminate(EXIT_FAILURE);
+	    }
 	}
 # endif
 	return;
@@ -156,6 +156,9 @@ dosave0()
 		return(0);
 	}
 
+	vision_recalc(2);	/* shut down vision to prevent problems
+				   in the event of an impossible() call */
+	
 	/* undo date-dependent luck adjustments made at startup time */
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
 		change_luck(-1);		/* and unido!ab */
@@ -166,6 +169,7 @@ dosave0()
 
 #ifdef MICRO
 	dotcnt = 0;
+	dotrow = 2;
 	curs(WIN_MAP, 1, 1);
 	if (strncmpi("X11", windowprocs.name, 3))
 	  putstr(WIN_MAP, 0, "Saving:");
@@ -182,9 +186,6 @@ dosave0()
 	    for (ltmp = 1; ltmp <= maxledgerno(); ltmp++)
 		if (ltmp != ledger_no(&u.uz) && level_info[ltmp].where)
 		    needed += level_info[ltmp].size + (sizeof ltmp);
-# ifdef AMIGA
-	    needed += ami_wbench_iconsize(fq_save);
-# endif
 	    fds = freediskspace(fq_save);
 	    if (needed > fds) {
 		HUP {
@@ -216,12 +217,23 @@ dosave0()
 	 */
 	uz_save = u.uz;
 	u.uz.dnum = u.uz.dlevel = 0;
+	/* these pointers are no longer valid, and at least u.usteed
+	 * may mislead place_monster() on other levels
+	 */
+	u.ustuck = (struct monst *)0;
+#ifdef STEED
+	u.usteed = (struct monst *)0;
+#endif
 
 	for(ltmp = (xchar)1; ltmp <= maxledgerno(); ltmp++) {
 		if (ltmp == ledger_no(&uz_save)) continue;
 		if (!(level_info[ltmp].flags & LFILE_EXISTS)) continue;
 #ifdef MICRO
-		curs(WIN_MAP, 1 + dotcnt++, 2);
+		curs(WIN_MAP, 1 + dotcnt++, dotrow);
+		if (dotcnt >= (COLNO - 1)) {
+			dotrow++;
+			dotcnt = 0;
+		}
 		if (strncmpi("X11", windowprocs.name, 3)){
 		  putstr(WIN_MAP, 0, ".");
 		}
@@ -250,9 +262,6 @@ dosave0()
 	delete_levelfile(ledger_no(&u.uz));
 	delete_levelfile(0);
 	compress(fq_save);
-#ifdef AMIGA
-	ami_wbench_iconwrite(fq_save);
-#endif
 	return(1);
 }
 
@@ -831,7 +840,8 @@ register struct obj *otmp;
 	    if (Has_contents(otmp))
 		saveobjchn(fd,otmp->cobj,mode);
 	    if (release_data(mode)) {
-		if(otmp->oclass == FOOD_CLASS) food_disappears(otmp);
+		if (otmp->oclass == FOOD_CLASS) food_disappears(otmp);
+		if (otmp->oclass == SPBOOK_CLASS) book_disappears(otmp);
 		otmp->where = OBJ_FREE;	/* set to free so dealloc will work */
 		otmp->timed = 0;	/* not timed any more */
 		otmp->lamplit = 0;	/* caller handled lights */
@@ -980,6 +990,14 @@ freedynamicdata()
 	freenames();
 	free_waterlevel();
 	free_dungeons();
+
+	/* some pointers in iflags */
+	if (iflags.wc_font_map) free(iflags.wc_font_map);
+	if (iflags.wc_font_message) free(iflags.wc_font_message);
+	if (iflags.wc_font_text) free(iflags.wc_font_text);
+	if (iflags.wc_font_menu) free(iflags.wc_font_menu);
+	if (iflags.wc_font_status) free(iflags.wc_font_status);
+	if (iflags.wc_tile_file) free(iflags.wc_tile_file);
 
 #endif	/* FREE_ALL_MEMORY */
 	return;

@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)pctiles.c   3.3     95/07/31		     */
+/*   SCCS Id: @(#)pctiles.c   3.4     1995/07/31		     */
 /*   Copyright (c) NetHack PC Development Team 1993, 1994           */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*                                                                  */
@@ -90,7 +90,6 @@ OpenTileFile(tilefilename, filestyle)
 char *tilefilename;
 boolean filestyle;
 {
-	FILE *x;
 #ifdef TILES_IN_RAM
 	int k;
 #endif

@@ -932,6 +932,19 @@ static const char *pet_mark_xpm[] = {
 ".... ..."
 };
 /* XPM */
+static const char *pet_mark_small_xpm[] = {
+/* width height ncolors chars_per_pixel */
+"5 5 2 1",
+/* colors */
+". c None",
+"X c #FF0000",
+/* pixels */
+".X.X.",
+"XXXXX",
+".XXX.",
+"..X.."
+};
+/* XPM */
 static const char *satiated_xpm[] = {
 /* width height ncolors chars_per_pixel */
 "40 40 23 1",

@@ -1,16 +1,50 @@
-                NetHack 3.3.1 -- General information
+                NetHack 3.4.0 -- General information
 
-NetHack 3.3.1 is an enhancement to the dungeon exploration game NetHack.
+NetHack 3.4.0 is an enhancement to the dungeon exploration game NetHack.
 It is a distant descendent of Rogue and Hack, and a direct descendent of
-NetHack 3.2 and 3.3.0.  This version is primarily a bug fix release.
+NetHack 3.3.
 
-Here is a brief overview of new additions and changes in the game.
-To give more would be cheating, wouldn't it?
+There are a great number of bug fixes in this release, as well as 
+many changes and surprises beyond what you see listed below.
+Here is a brief overview of some new additions and changes in the game.
 
-o Many, many bug fixes and minor tweaks
-o New warning system that is more pleasant than the old one
-o The Amiga and Atari ports are resurrected
-o The Gnome toolkit interface is now offered as an experimental option
+o Many, many bug fixes and tweaks to the core code and to several ports
+o Enhanced config file processing and player selection prompts for some ports
+o Stamina affects ability to throw heavy things
+o Objects merge in containers
+o Wish for "nothing", and genocide "none" to preserve your conduct
+o Several small refinements to race/role separation
+o Config file BOULDER option to specify the symbol for displaying boulders
+o New travel command which is particularly helpful for mouse navigation on
+  handheld computers
+o more feedback about skill advancement from #enhance command
+o End-of-game disclose options can be individually tuned to your liking
+o Mac: command-key shortcuts in the player selection dialog
+o Amiga: screenmode requester
+o Win32: new graphical interface contributed by Alex Kompel
+
+We've also included variations of enhancements contributed by members 
+of the NetHack community at large. Among them:
+
+o Scott Bigham's new T-shirt messages and his option to turn off 
+  resistance display effects
+o Malcolm Ryan's option for "autodig"
+o Jay Tilton's full-screen message window display via control-P
+o Dylan O'Donnell's patch for optionally starting with no pet
+o Tom Friedetzky's blessed/uncursed/cursed selection patch for menustyle:full
+o Jason Short's additonal lens uses
+o Kelly Bailey's Gnomish Mines changes
+o Ken Arnold's patch to display prices in your inventory
+
+Carried forward
+o The Gnome toolkit interface is still considered an experimental option. 
+  We have not enhanced the port ourselves, and so far we have not received
+  any contributions doing so from the NetHack community.
+
+A fuller list of changes for this release can be found in the file 
+doc/fixes34.0 in the source distribution.  The text in there was written 
+for the development team's own use and is provided "as is", so please do 
+not ask us to further explain the entries in that file.
 
 
                         - - - - - - - - - - -
@@ -35,31 +69,26 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     h.  A 'sys/share/sounds' subsubdirectory, which contains sound files
         shared by some OSs.
     i.  A 'sys/amiga' subdirectory, which contains files specific to AmigaDOS.
-    j.  A 'sys/amiga/splitter' subsubdirectory, which contains files
-        for the Amiga splitter program.
+    j.  A 'sys/amiga/ship' subsubdirectory
     k.  A 'sys/atari' subdirectory, which contains files specific to TOS.
     l.  A 'sys/be' subdirectory, which contains files specific to Be OS.
     m.  A 'sys/mac' subdirectory, which contains files specific to MacOS.
-    n.  A 'sys/mac/old' subdirectory which contains files used by
-        compilers that haven't been tested/used in a while.
-    o.  A 'sys/msdos' subdirectory, which contains files specific to MS-DOS.
-    p.  A 'sys/msdos/old' subsubdirectory, which contains files for old
-        MS-DOS compilers (no longer officially supported).
-    q.  A 'sys/os2' subdirectory, which contains files specific to OS/2.
-    r.  A 'sys/unix' subdirectory, which contains files specific to UNIX.
-    s.  A 'sys/vms' subdirectory, which contains files specific to VMS.
-    t.  A 'sys/winnt' subdirectory, which contains files specific to Windows NT.
-    u.  A 'win' directory, which contains subdirectories for files that
+    n.  A 'sys/msdos' subdirectory, which contains files specific to MS-DOS.
+    o.  A 'sys/os2' subdirectory, which contains files specific to OS/2.
+    p.  A 'sys/unix' subdirectory, which contains files specific to UNIX.
+    q.  A 'sys/vms' subdirectory, which contains files specific to VMS.
+    r.  A 'sys/winnt' subdirectory, which contains files specific to Windows NT.
+    s.  A 'win' directory, which contains subdirectories for files that
         are windowing-system specific (but not operating-system specific).
-    v.  A 'win/share' subdirectory, which contains files shared by some
+    t.  A 'win/share' subdirectory, which contains files shared by some
         windowing systems.
-    w.  A 'win/Qt' subdirectory, which contains files specific to Qt.
-    x.  A 'win/X11' subdirectory, which contains files specific to X11.
-    y.  A 'win/gem' subdirectory, which contains files specific to GEM.
-    z.  A 'win/gnome' subdirectory, which contains files specific to GNOME.
-    A.  A 'win/tty' subdirectory, which contains files specific to ttys.
-    B.  A 'win/win32' subdirectory, which contains files specific to the
-        Windows NT Win32 API.
+    u.  A 'win/Qt' subdirectory, which contains files specific to Qt.
+    v.  A 'win/X11' subdirectory, which contains files specific to X11.
+    w.  A 'win/gem' subdirectory, which contains files specific to GEM.
+    x.  A 'win/gnome' subdirectory, which contains files specific to GNOME.
+    y.  A 'win/tty' subdirectory, which contains files specific to ttys.
+    z.  A 'win/win32' subdirectory, which contains files specific to the
+        Windows Win32 API.
 
     The names of these directories should not be changed unless you are
     ready to go through the makefiles and the makedefs program and change
@@ -78,7 +107,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     to compile and run on your particular system.  It is worth mentioning
     that the default configuration is SysV/Sun/Solaris2.x (simply because
     the code was housed on such a system).  It is also worth mentioning
-    here that NetHack 3.3 is a huge program.  If you intend to run it on a
+    here that NetHack 3.4 is a huge program.  If you intend to run it on a
     small machine, you'll have to make hard choices among the options
     available in config.h.
 
@@ -88,7 +117,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     for particular windowing environments.  Reading them, and the man pages,
     should answer most of your questions.
 
-    At the time of this release, NetHack 3.3 is known to run/compile on:
+    At the time of this release, NetHack 3.4 is known to run/compile on:
 
         Apple Macintosh running MacOS 7.5 or higher, LinuxPPC, BeOS 4.0
         Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
@@ -97,18 +126,15 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         DEC Alpha/VMS (aka OpenVMS AXP), running V1.x through V7.0
         DEC VAX/VMS, running V4.6 through V7.0
         HP 9000s700 running HP-UX 10.x, 11.x
-        IBM PC compatibles running MS-DOS with Microsoft C, Borland C++ 3.1, or
-                DJGPP.  It is recommended to have at least an 80386 processor.
         IBM PS/2 and AT compatibles running OS/2 - 2.0 and up with GCC emx
-        Intel 80386 or greater (or clone) and DEC Alpha desktop machines
-                running Windows NT
+        Intel 80386 or greater (or clone) boxes running MS-DOS with DPMI.
         Intel 80386 or greater (or clone) boxes running Linux, BSDI, or
-		Windows 95,98,2000
+		Windows 95/98/NT/2000
 	Intel Pentium or better (or clone) running BeOS 4.5
         Sun SPARC based machine running SunOS 4.x, Solaris 2.x, or Solaris 7
 
     Previous versions of NetHack were tested on the following systems,
-    and we expect that NetHack 3.3 will work on them as well:
+    and we expect that NetHack 3.4 will work on them as well:
 
         AT&T 3B1 running System V (3.51)
         AT&T 3B2/600 & 3B2/622 running System V R3.2.1
@@ -139,18 +165,20 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     Unless otherwise mentioned, the compiler used was the OS-vendor's
     C compiler.
 
-    The Atari and Amiga ports are struggling to stay supported due to a
-    lack of people with machines and time.
-
     With the demise of Windows NT on the DEC Alpha, no attempt has been
-    made to build NetHack 3.3.1 on that platform.
+    made to build NetHack 3.4.0 on that platform.
+
+    No attempt has been made to build or run NetHack 3.4.0 on Windows Me
+    or Windows XP at this point.  It may work, but then again it may not.
     
     A build for Intel 80286 machines and DOS "real mode" overlaid versions 
-    has been produced for 3.3.1, with a marginal attempt at tuning it for 
-    suitable performance.  If someone has access to real-mode compiler and 
-    lots of spare time on their hands, you may be able to enhance the 
-    performance even further.  We don't know how well it runs on a real
-    80286 since we no longer have access to one.
+    has not been produced for 3.4.0.  Nobody on the porting team has
+    the time or the software to attempt the necessary tuning that will allow 
+    it to achieve the balance of having just the right amount of available 
+    memory, and still have acceptable performance.  The sources necessary 
+    to do so are still included in the source distribution, so if someone 
+    has access to a real-mode compiler and lots of spare time on their hands, 
+    you may be able to get things working. Of course you do so at your own risk.
 
                         - - - - - - - - - - -
 
@@ -178,20 +206,20 @@ o We don't give hints for playing the game.
 o Don't bother to ask when the next version will be out.  You will not get
   a reply.
 Alternatively, you may fill out the bug report form on our web
-page at www.nethack.org.
+page at http://www.nethack.org/.
 
 Patches especially should be directed to this address.  If you've changed
 something to get NetHack to run on your system, it's likely that others have
 done it by making slightly different modifications.  By routing your patches
 through the development team, we should be able to avoid making everyone else
 choose among variant patches claiming to do the same thing, to keep most of
-the copies of 3.3 synchronized by means of official patches, and to maintain
+the copies of 3.4 synchronized by means of official patches, and to maintain
 the painfully-created file organization.  (This process has been working since
 the time when everyone just posted their own patches to 2.3.  At that time,
 there were no archived bug-fixes to give to people who got 2.3 after its initial
 release, so the same bugs kept being discovered by new batches of people.)
 We have been successful in preventing this from happening since the 3.0
-release.  Please cooperate to keep this from happening to 3.3.
+release.  Please cooperate to keep this from happening to 3.4.
 
 It is inevitable that we will reject some proposed additions of new features
 either because they do not fit our conception of the game, or because they
@@ -200,7 +228,7 @@ you are free, of course, to post the patches to the net yourself and let the
 marketplace decide their worth.
 
 All of this amounts to the following:  If you decide to apply a free-lanced
-patch to your 3.3 code, you are on your own.  In our own patches, we will
+patch to your 3.4 code, you are on your own.  In our own patches, we will
 assume that your code is synchronized with ours.
 
                   -- Good luck, and happy Hacking --

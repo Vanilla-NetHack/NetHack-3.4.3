@@ -1,4 +1,4 @@
-NetHack History file for release 3.3
+NetHack History file for release 3.4
 
 Behold, mortal, the origins of NetHack...
 
@@ -100,30 +100,56 @@ Warren Cheung combined SLASH with the Wizard Patch to produce Slash'em, and
 with the help of Kevin Hugo, added more features.  Kevin later joined the
 DevTeam and incorporated the best of these ideas in NetHack 3.3.
 
-The 3.3 development team consisted of Michael Allison, Ken Arromdee,
-David Cohrs, Jessie Collet, Steve Creps, Kevin Darcy, Timo Hakulinen,
-Kevin Hugo, Steve Linhart, Dean Luick, Pat Rankin, Eric Smith, Mike
-Stephenson, Janet Walz, and Paul Winner.
+The final update to 3.2 was the bug fix release 3.2.3, which was released
+simultaneously with 3.3.0 in December 1999 just in time for the Year 2000.
 
-As with version 3.2, various people contributed to the game as a whole as
+The 3.3 development team, consisting of Michael Allison, Ken Arromdee, 
+David Cohrs, Jessie Collet, Steve Creps, Kevin Darcy, Timo Hakulinen, 
+Kevin Hugo, Steve Linhart, Ken Lorber, Dean Luick, Pat Rankin, Eric Smith, 
+Mike Stephenson, Janet Walz, and Paul Winner, released 3.3.0 in 
+December 1999 and 3.3.1 in August of 2000.
+
+Version 3.3 offered many firsts. It was the first version to separate race 
+and profession. The Elf class was removed in preference to an elf race, 
+and the races of dwarves, gnomes, and orcs made their first appearance in 
+the game alongside the familiar human race.  Monk and Ranger roles joined 
+Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues, 
+Samurai, Tourists, Valkyries and of course, Wizards.  It was also the first
+version to allow you to ride a steed, and was the first version to have a
+publicly available web-site listing all the bugs that had been discovered.
+Despite that constantly growing bug list, 3.3 proved stable enough to last
+for more than a year and a half.
+
+
+The 3.4 development team initially consisted of Michael Allison, Ken Arromdee,
+David Cohrs, Jessie Collet, Kevin Hugo, Ken Lorber, Dean Luick, Pat Rankin,
+Mike Stephenson, Janet Walz, and Paul Winner, with Warwick Allison joining
+just before the release of NetHack 3.4.0 in March 2002.
+
+As with version 3.3, various people contributed to the game as a whole as
 well as supporting ports on the different platforms that NetHack runs on:
 
-Pat Rankin maintained 3.3 for VMS.
+Pat Rankin maintained 3.4 for VMS.
 
-Michael Allison ported NetHack 3.3 for the MS-DOS platform.  Paul Winner
-and Yitzhak Sapir provided encouragement.
+Michael Allison maintained NetHack 3.4 for the MS-DOS platform.  
+Paul Winner and Yitzhak Sapir provided encouragement.
 
 Dean Luick, Mark Modrall, and Kevin Hugo maintained and enhanced the
-Macintosh port of 3.3.
+Macintosh port of 3.4.
 
-Michael Allison ported 3.3 for the Microsoft Windows NT platform.
+Michael Allison, David Cohrs, Alex Kompel, Dion Nicolaas, and Yitzhak Sapir 
+maintained and enhanced 3.4 for the Microsoft Windows platform. Alex Kompel 
+contributed a new graphical interface for the Windows port.
 
-Ron Van Iwaarden took over responsibility for the OS/2 port.
+Ron Van Iwaarden maintained 3.4 for OS/2.
 
-The Amiga port of NetHack was resurrected for 3.3.1 by Janne Salmijarvi.
+Janne Salmijarvi and Teemu Suikki maintained and enhanced the 
+Amiga port of 3.4 after Janne Salmijarvi resurrected it for 3.3.1.
 
-The Atari port of NetHack was resurrected for 3.3.1 by Christian "Marvin"
-Bressler.
+Christian `Marvin' Bressler maintained 3.4 for the Atari after he
+resurrected it for 3.3.1.
+
+There is a NetHack web site maintained by Ken Lorber at http://www.nethack.org/.
 
 			   - - - - - - - - - -
 
@@ -132,31 +158,34 @@ particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
 
-    Adam Aronow               Irina Rempt-Drijfhout     Mike Gallop
-    Andy Church               Izchak Miller             Mike Passaretti
-    Andy Swanson              Janet Walz                Mike Stephenson
-    Ari Huttunen              Janne Salmijarvi          Norm Meluch
-    Barton House              Jean-Christophe Collet    Olaf Seibert
-    Benson I. Margulies       Jochen Erwied             Pat Rankin
-    Bill Dyer                 John Kallen               Paul Winner
-    Boudewijn Waijers         John Rupley               Pierre Martineau
-    Bruce Cox                 John S. Bien              Ralf Brown
-    Bruce Holloway            Johnny Lee                Richard Addison
-    Bruce Mewborne            Jon W{tte                 Richard Beigel
-    Carl Schelin              Jonathan Handler          Richard P. Hughey
-    Chris Russo               Joshua Delahunty          Rob Menke
-    David Cohrs               Keizo Yamamoto            Robin Johnson
-    David Damerell            Ken Arromdee              Roland McGrath
-    David Gentzel             Ken Lorber                Ron Van Iwaarden
-    David Hairston            Ken Washikita             Ronnen Miller
-    Dean Luick                Kevin Darcy               Ross Brown
-    Del Lamb                  Kevin Hugo                Sascha Wostmann
-    Deron Meranda             Kevin Sitze               Scott R. Turner
-    Dylan O'Donnell           Kevin Smolkowski          Stephen Spackman
-    Eric Backus               Kevin Sweet               Stephen White
-    Eric Hendrickson          Lars Huttar               Steve Creps
-    Eric R. Smith             Mark Gooderum             Steve Linhart
-    Eric S. Raymond           Mark Modrall              Steve VanDevender
+    Adam Aronow               Helge Hafting             Mike Engber
+    Alex Kompel               Irina Rempt-Drijfhout     Mike Gallop
+    Andreas Dorn              Izchak Miller             Mike Passaretti
+    Andy Church               J. Ali Harlow             Mike Stephenson
+    Andy Swanson              Janet Walz                Norm Meluch
+    Ari Huttunen              Janne Salmijarvi          Olaf Seibert
+    Barton House              Jean-Christophe Collet    Pat Rankin
+    Benson I. Margulies       Jochen Erwied             Paul Winner
+    Bill Dyer                 John Kallen               Pierre Martineau
+    Boudewijn Waijers         John Rupley               Ralf Brown
+    Bruce Cox                 John S. Bien              Richard Addison
+    Bruce Holloway            Johnny Lee                Richard Beigel
+    Bruce Mewborne            Jon W{tte                 Richard P. Hughey
+    Carl Schelin              Jonathan Handler          Rob Menke
+    Chris Russo               Joshua Delahunty          Robin Johnson
+    David Cohrs               Keizo Yamamoto            Roland McGrath
+    David Damerell            Ken Arnold                Ron Van Iwaarden
+    David Gentzel             Ken Arromdee              Ronnen Miller
+    David Hairston            Ken Lorber                Ross Brown
+    Dean Luick                Ken Washikita             Sascha Wostmann
+    Del Lamb                  Kevin Darcy               Scott Bigham
+    Deron Meranda             Kevin Hugo                Scott R. Turner
+    Dion Nicolaas             Kevin Sitze               Stephen Spackman
+    Dylan O'Donnell           Kevin Smolkowski          Stephen White
+    Eric Backus               Kevin Sweet               Steve Creps
+    Eric Hendrickson          Lars Huttar               Steve Linhart
+    Eric R. Smith             Mark Gooderum             Steve VanDevender
+    Eric S. Raymond           Mark Modrall              Teemu Suikki
     Erik Andersen             Marvin Bressler           Tim Lennan
     Frederick Roeber          Matthew Day               Timo Hakulinen
     Gil Neiger                Merlyn LeRoy              Tom Almy
@@ -164,4 +193,4 @@ in this, the list of Dungeoneers:
     Greg Olson                Michael Feir              Warren Cheung
     Gregg Wonderly            Michael Hamel             Warwick Allison
     Hao-yang Wang             Michael Sokolov           Yitzhak Sapir
-    Helge Hafting             Mike Engber
+

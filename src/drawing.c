@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)drawing.c	3.3	1999/12/02	*/
+/*	SCCS Id: @(#)drawing.c	3.4	1999/12/02	*/
 /* Copyright (c) NetHack Development Team 1992.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -269,7 +269,7 @@ const struct symdef defsyms[MAXPCHARS] = {
 	{'"', "web",		C(CLR_GRAY)},	/* web */
 	{'^', "statue trap",	C(CLR_GRAY)},	/* trap */
 /*60*/	{'^', "magic trap",	C(HI_ZAP)},	/* trap */
-	{'^', "anti-magic trap field", C(HI_ZAP)},	/* trap */
+	{'^', "anti-magic field", C(HI_ZAP)},	/* trap */
 	{'^', "polymorph trap",	C(CLR_BRIGHT_GREEN)},	/* trap */
 	{'|', "wall",		C(CLR_GRAY)},	/* vbeam */
 	{'-', "wall",		C(CLR_GRAY)},	/* hbeam */
@@ -741,7 +741,7 @@ static const uchar r_oc_syms[MAXOCLASSES] = {
 static const uchar IBM_r_oc_syms[MAXOCLASSES] = {	/* a la EPYX Rogue */
 /* 0*/	'\0',
 	ILLOBJ_SYM,
-#  if defined(MSDOS) || defined(WIN32) || defined(OS2)
+#  if defined(MSDOS) || defined(OS2) || ( defined(WIN32) && !defined(MSWIN_GRAPHICS) )
 	0x18,			/* weapon: up arrow */
 /*	0x0a, */ ARMOR_SYM,	/* armor:  Vert rect with o */
 /*	0x09, */ RING_SYM,	/* ring:   circle with arrow */
@@ -794,12 +794,12 @@ boolean is_rlevel;
 	/* Use a loop: char != uchar on some machines. */
 	for (i = 0; i < MAXMCLASSES; i++)
 	    monsyms[i] = def_monsyms[i];
-# ifdef ASCIIGRAPH
+# if defined(ASCIIGRAPH) && !defined(MSWIN_GRAPHICS)
 	if (iflags.IBMgraphics
 #  if defined(USE_TILES) && defined(MSDOS)
 		&& !iflags.grmode
 #  endif
-				)
+		)
 	    monsyms[S_HUMAN] = 0x01; /* smiley face */
 # endif
 	for (i = 0; i < MAXPCHARS; i++)
@@ -842,6 +842,7 @@ boolean is_rlevel;
 	    showsyms[S_litcorr] = 0xb2;
 	    showsyms[S_upstair] = 0xf0; /* Greek Xi */
 	    showsyms[S_dnstair] = 0xf0;
+#ifndef MSWIN_GRAPHICS
 	    showsyms[S_arrow_trap] = 0x04; /* diamond (cards) */
 	    showsyms[S_dart_trap] = 0x04;
 	    showsyms[S_falling_rock_trap] = 0x04;
@@ -864,6 +865,7 @@ boolean is_rlevel;
 	    showsyms[S_magic_trap] = 0x04;
 	    showsyms[S_anti_magic_trap] = 0x04;
 	    showsyms[S_polymorph_trap] = 0x04;
+#endif
 	}
 #endif /* ASCIIGRAPH */
 

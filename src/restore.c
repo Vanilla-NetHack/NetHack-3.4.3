@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.3	1999/11/20	*/
+/*	SCCS Id: @(#)restore.c	3.4	1999/11/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,7 @@
 
 #ifdef MICRO
 extern int dotcnt;	/* shared with save */
+extern int dotrow;	/* shared with save */
 #endif
 
 #ifdef USE_TILES
@@ -220,6 +221,7 @@ boolean ghostly, frozen;
 		    for (otmp3 = otmp->cobj; otmp3; otmp3 = otmp3->nobj)
 			otmp3->ocontainer = otmp;
 		}
+		if (otmp->bypass) otmp->bypass = 0;
 
 		otmp2 = otmp;
 	}
@@ -338,9 +340,9 @@ register struct obj *otmp;
 
 STATIC_OVL
 boolean
-restgamestate(fd, mid, steedid)
+restgamestate(fd, stuckid, steedid)
 register int fd;
-unsigned int *mid, *steedid;	/* STEED */
+unsigned int *stuckid, *steedid;	/* STEED */
 {
 	struct obj *otmp;
 	int uid;
@@ -357,6 +359,8 @@ unsigned int *mid, *steedid;	/* STEED */
 	}
 
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
+	flags.bypasses = 0;	/* never use the saved value of bypasses */
+
 	role_init();	/* Reset the initial role, race, gender, and alignment */
 #ifdef AMII_GRAPHICS
 	amii_setpens(amii_numcolors);	/* use colors from save file */
@@ -366,7 +370,7 @@ unsigned int *mid, *steedid;	/* STEED */
 #ifdef CLIPPING
 	cliparound(u.ux, u.uy);
 #endif
-	if(u.uhp <= 0) {
+	if(u.uhp <= 0 && (!Upolyd || u.mh <= 0)) {
 	    u.ux = u.uy = 0;	/* affects pline() [hence You()] */
 	    You("were not healthy enough to survive restoration.");
 	    /* wiz1_level.dlevel is used by mklev.c to see if lots of stuff is
@@ -409,10 +413,10 @@ unsigned int *mid, *steedid;	/* STEED */
 				sizeof(struct spell) * (MAXSPELL + 1));
 	restore_artifacts(fd);
 	restore_oracles(fd);
-	if(u.ustuck)
-		mread(fd, (genericptr_t) mid, sizeof (*mid));
+	if (u.ustuck)
+		mread(fd, (genericptr_t) stuckid, sizeof (*stuckid));
 #ifdef STEED
-	if(u.usteed)
+	if (u.usteed)
 		mread(fd, (genericptr_t) steedid, sizeof (*steedid));
 #endif
 	mread(fd, (genericptr_t) pl_character, sizeof pl_character);
@@ -434,19 +438,19 @@ unsigned int *mid, *steedid;	/* STEED */
  * don't dereference a wild u.ustuck when saving the game state, for instance)
  */
 STATIC_OVL void
-restlevelstate(mid, steedid)
-unsigned int mid, steedid;	/* STEED */
+restlevelstate(stuckid, steedid)
+unsigned int stuckid, steedid;	/* STEED */
 {
 	register struct monst *mtmp;
 
-	if (u.ustuck) {
+	if (stuckid) {
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-			if (mtmp->m_id == mid) break;
+			if (mtmp->m_id == stuckid) break;
 		if (!mtmp) panic("Cannot find the monster ustuck.");
 		u.ustuck = mtmp;
 	}
 #ifdef STEED
-	if (u.usteed) {
+	if (steedid) {
 		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			if (mtmp->m_id == steedid) break;
 		if (!mtmp) panic("Cannot find the monster usteed.");
@@ -461,7 +465,7 @@ STATIC_OVL int
 restlevelfile(fd, ltmp)
 register int fd;
 xchar ltmp;
-#ifdef applec
+#if defined(macintosh) && (defined(__SC__) || defined(__MRC__))
 # pragma unused(fd)
 #endif
 {
@@ -519,14 +523,14 @@ int
 dorecover(fd)
 register int fd;
 {
-	unsigned int mid = 0, steedid = 0;	/* not a register */
+	unsigned int stuckid = 0, steedid = 0;	/* not a register */
 	xchar ltmp;
 	int rtmp;
 	struct obj *otmp;
 
 	restoring = TRUE;
 	getlev(fd, 0, (xchar)0, FALSE);
-	if (!restgamestate(fd, &mid, &steedid)) {
+	if (!restgamestate(fd, &stuckid, &steedid)) {
 		display_nhwindow(WIN_MESSAGE, TRUE);
 		savelev(-1, 0, FREE_SAVE);	/* discard current level */
 		(void) close(fd);
@@ -534,12 +538,22 @@ register int fd;
 		restoring = FALSE;
 		return(0);
 	}
-	restlevelstate(mid, steedid);
+	restlevelstate(stuckid, steedid);
 #ifdef INSURANCE
 	savestateinlock();
 #endif
 	rtmp = restlevelfile(fd, ledger_no(&u.uz));
 	if (rtmp < 2) return(rtmp);  /* dorecover called recursively */
+
+	/* these pointers won't be valid while we're processing the
+	 * other levels, but they'll be reset again by restlevelstate()
+	 * afterwards, and in the meantime at least u.usteed may mislead
+	 * place_monster() on other levels
+	 */
+	u.ustuck = (struct monst *)0;
+#ifdef STEED
+	u.usteed = (struct monst *)0;
+#endif
 
 #ifdef MICRO
 # ifdef AMII_GRAPHICS
@@ -560,6 +574,7 @@ register int fd;
 		flags.explore ? " while in explore mode" : "");
 	curs(WIN_MAP, 1, 1);
 	dotcnt = 0;
+	dotrow = 2;
 	if (strncmpi("X11", windowprocs.name, 3))
     	  putstr(WIN_MAP, 0, "Restoring:");
 #endif
@@ -572,7 +587,11 @@ register int fd;
 			break;
 		getlev(fd, 0, ltmp, FALSE);
 #ifdef MICRO
-		curs(WIN_MAP, 1+dotcnt++, 2);
+		curs(WIN_MAP, 1+dotcnt++, dotrow);
+		if (dotcnt >= (COLNO - 1)) {
+			dotrow++;
+			dotcnt = 0;
+		}
 		if (strncmpi("X11", windowprocs.name, 3)){
 		  putstr(WIN_MAP, 0, ".");
 		}
@@ -599,7 +618,7 @@ register int fd;
 #ifdef USE_TILES
 	substitute_tiles(&u.uz);
 #endif
-	restlevelstate(mid, steedid);
+	restlevelstate(stuckid, steedid);
 #ifdef MFLOPPY
 	gameDiskPrompt();
 #endif
@@ -732,6 +751,10 @@ boolean ghostly;
 	mread(fd, (genericptr_t)&level.flags, sizeof(level.flags));
 	mread(fd, (genericptr_t)doors, sizeof(doors));
 	rest_rooms(fd);		/* No joke :-) */
+	if (nroom)
+	    doorindex = rooms[nroom - 1].fdoor + rooms[nroom - 1].doorct;
+	else
+	    doorindex = 0;
 
 	restore_timers(fd, RANGE_LEVEL, ghostly, monstermoves - omoves);
 	restore_light_sources(fd);
@@ -920,7 +943,12 @@ boolean ghostly;
 {
     struct obj *otmp;
     unsigned oldid, nid;
-    for (otmp = fobj; otmp; otmp = otmp->nobj)
+    for (otmp = fobj; otmp; otmp = otmp->nobj) {
+	if (ghostly && otmp->oattached == OATTACHED_MONST && otmp->oxlth) {
+	    struct monst *mtmp = (struct monst *)otmp->oextra;
+
+	    mtmp->m_id = 0;
+	}
 	if (ghostly && otmp->oattached == OATTACHED_M_ID) {
 	    (void) memcpy((genericptr_t)&oldid, (genericptr_t)otmp->oextra,
 								sizeof(oldid));
@@ -930,6 +958,7 @@ boolean ghostly;
 	    else
 		otmp->oattached = OATTACHED_NOTHING;
 	}
+    }
 }
 
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)os2conf.h	3.3	96/10/29	*/
+/*	SCCS Id: @(#)os2conf.h	3.4	1996/10/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Timo Hakulinen, 1990, 1991, 1992, 1993, 1996. */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -13,7 +13,7 @@
  */
 
 /* #define OS2_MSC		/* Microsoft C 5.1 and 6.0 */
-/* #define OS2_GCC		/* GCC emx 0.8f */
+#define OS2_GCC		/* GCC emx 0.8f */
 /* #define OS2_CSET2		/* IBM C Set/2 (courtesy Jeff Urlwin) */
 /* #define OS2_CSET2_VER_1	/* CSet/2 version selection */
 /* #define OS2_CSET2_VER_2	/* - " - */
@@ -34,7 +34,7 @@
  * reason to touch the defaults, I think.
  */
 
-#define MFLOPPY			/* floppy and ramdisk support */
+/*#define MFLOPPY			/* floppy and ramdisk support */
 #define RANDOM			/* Berkeley random(3) */
 #define SHELL			/* shell escape */
 /* #define TERMLIB		/* use termcap file */

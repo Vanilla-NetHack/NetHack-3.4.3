@@ -1,4 +1,4 @@
-/*   SCCS Id: @(#)pcvideo.h   3.3     94/06/07                      */
+/*   SCCS Id: @(#)pcvideo.h   3.4     1994/06/07                      */
 /*   Copyright (c) NetHack PC Development Team 1993, 1994           */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*                                                                  */
@@ -269,7 +269,7 @@ E void FDECL(vga_WriteChar, (int, int, int, int));
 E void FDECL(vga_WriteStr, (char *, int, int, int, int));
 E void FDECL(vga_xputs, (const char *, int, int));
 E void FDECL(vga_xputc, (CHAR_P, int));
-E void FDECL(vga_xputg, (int, int));
+E void FDECL(vga_xputg, (int, int, unsigned));
 E void FDECL(vga_userpan, (BOOLEAN_P));
 E void FDECL(vga_overview, (BOOLEAN_P));
 E void FDECL(vga_traditional, (BOOLEAN_P));

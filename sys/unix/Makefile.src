@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.src	3.3	97/04/17
+#	SCCS Id: @(#)Makefile.src	3.4	2002/03/02
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -40,8 +40,8 @@ SHELL=/bin/sh
 #
 # for UNIX systems
 SYSSRC = ../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
-	../sys/unix/unixunix.c
-SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
+	../sys/unix/unixunix.c ../sys/unix/unixres.c
+SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o unixres.o
 #
 # for Systos
 # SYSSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
@@ -117,11 +117,11 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 
 # flags for Linux
 #   compile normally
-# CFLAGS = -O2 -fomit-frame-pointer -I../include -I/usr/X11/include
-# LFLAGS = -L/usr/X11/lib
+# CFLAGS = -O2 -fomit-frame-pointer -I../include
+# LFLAGS = -L/usr/X11R6/lib
 #   OR compile backwards compatible a.out format
-# CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
-# LFLAGS = -b i486-linuxaout -L/usr/X11/lib
+# CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include
+# LFLAGS = -b i486-linuxaout -L/usr/X11R6/lib
 
 # flags for BeOS
 #   on a Mac/BeBox:
@@ -175,8 +175,8 @@ WINX11OBJ = Window.o dialogs.o winX.o winmap.o winmenu.o winmesg.o \
 #
 # Files for a Qt port
 #
-WINQTSRC = ../win/Qt/qt_win.cpp ../win/Qt/qt_clust.cpp
-WINQTOBJ = qt_win.o qt_clust.o tile.o
+WINQTSRC = ../win/Qt/qt_win.cpp ../win/Qt/qt_clust.cpp ../win/Qt/qttableview.cpp
+WINQTOBJ = qt_win.o qt_clust.o qttableview.o tile.o
 #
 # Files for a Gnome port
 #
@@ -191,8 +191,8 @@ WINGNOMEOBJ = gnaskstr.o gnbind.o gnglyph.o gnmain.o gnmap.o gnmenu.o \
 #
 # Files for a Gem port
 WINGEMSRC = ../win/gem/wingem.c ../win/gem/wingem1.c ../win/gem/load_img.c \
-	tile.c
-WINGEMOBJ = wingem.o wingem1.o load_img.o tile.o
+	../win/gem/gr_rect.c tile.c
+WINGEMOBJ = wingem.o wingem1.o load_img.o gr_rect.o tile.o
 #
 # Files for a BeOS InterfaceKit port -- not ready for prime time
 WINBESRC =
@@ -212,7 +212,7 @@ WINOBJ = $(WINTTYOBJ)
 # Systos needs -lcurses16 if you use -mshort
 # AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in unixconf.h
 # and -ltermcap otherwise
-# Linux uses -ltermcap or -lncurses
+# Linux uses -lncurses (newer) or -ltermcap (older)
 # Be uses -ltermcap
 #
 # libraries for tty ports
@@ -305,8 +305,9 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 	   botl.c cmd.c dbridge.c decl.c detect.c dig.c display.c dlb.c do.c \
 	   do_name.c do_wear.c dog.c dogmove.c dokick.c dothrow.c drawing.c \
 	   dungeon.c eat.c end.c engrave.c exper.c explode.c extralev.c \
-	   files.c fountain.c hack.c hacklib.c invent.c light.c lock.c mail.c \
-	   makemon.c mcastu.c mhitm.c mhitu.c minion.c mklev.c mkmap.c \
+	   files.c fountain.c hack.c hacklib.c invent.c light.c lock.c \
+	   mail.c makemon.c mapglyph.c mcastu.c mhitm.c mhitu.c minion.c \
+	   mklev.c mkmap.c \
 	   mkmaze.c mkobj.c mkroom.c mon.c mondata.c monmove.c monst.c \
 	   mplayer.c mthrowu.c muse.c music.c o_init.c objects.c objnam.c \
 	   options.c pager.c pickup.c pline.c polyself.c potion.c pray.c \
@@ -320,7 +321,10 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 	../sys/share/pctty.c ../sys/share/pcunix.c ../sys/share/random.c \
 	../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
-	../sys/unix/unixunix.c ../sys/be/bemain.c
+	../sys/unix/unixunix.c ../sys/unix/unixres.c ../sys/be/bemain.c
+
+# generated source files (tile.c is handled separately via WINxxxSRC)
+GENCSRC = monstr.c vis_tab.c	#tile.c
 
 # all windowing-system-dependent .c (for dependencies and such)
 WINCSRC = $(WINTTYSRC) $(WINX11SRC) $(WINGNOMESRC) $(WINGEMSRC)
@@ -328,10 +332,10 @@ WINCSRC = $(WINTTYSRC) $(WINX11SRC) $(WINGNOMESRC) $(WINGEMSRC)
 WINCXXSRC = $(WINQTSRC) $(WINBESRC)
 
 # .c files for this version (for date.h)
-VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) monstr.c vis_tab.c
+VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(GENCSRC)
 
 # .c files for all versions using this Makefile (for lint and tags)
-CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) monstr.c vis_tab.c
+CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) $(GENCSRC)
 
 
 # all .h files except date.h, onames.h, pm.h, and vis_tab.h which would
@@ -358,8 +362,9 @@ HOBJ = $(FIRSTOBJ) allmain.o alloc.o apply.o artifact.o attrib.o ball.o \
 	bones.o botl.o cmd.o dbridge.o decl.o detect.o dig.o display.o dlb.o \
 	do.o do_name.o do_wear.o dog.o dogmove.o dokick.o dothrow.o \
 	drawing.o dungeon.o eat.o end.o engrave.o exper.o explode.o \
-	extralev.o files.o fountain.o hack.o hacklib.o invent.o light.o lock.o \
-	mail.o makemon.o mcastu.o mhitm.o mhitu.o minion.o mklev.o mkmap.o \
+	extralev.o files.o fountain.o hack.o hacklib.o invent.o light.o \
+	lock.o mail.o makemon.o mapglyph.o mcastu.o mhitm.o mhitu.o \
+	minion.o mklev.o mkmap.o \
 	mkmaze.o mkobj.o mkroom.o mon.o mondata.o monmove.o monstr.o \
 	mplayer.o mthrowu.o muse.o music.o o_init.o objnam.o options.o \
 	pager.o pickup.o pline.o polyself.o potion.o pray.o priest.o \
@@ -450,6 +455,9 @@ qt_kde0.moc: ../include/qt_kde0.h
 qt_win.moc: ../include/qt_win.h
 	$(QTDIR)/bin/moc ../include/qt_win.h > qt_win.moc
 
+qttableview.moc: ../include/qttableview.h
+	$(QTDIR)/bin/moc ../include/qttableview.h > qttableview.moc
+
 $(MAKEDEFS): ../util/makedefs.c  $(CONFIG_H) ../include/permonst.h \
 		../include/objclass.h ../include/monsym.h \
 		../include/artilist.h ../include/dungeon.h ../include/obj.h \
@@ -465,8 +473,8 @@ monstr.c: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../src/monstr.c )
 ../include/vis_tab.h: $(MAKEDEFS)
 	@( cd ../util ; $(MAKE) ../include/vis_tab.h )
-vis_tab.c: $(MAKEDEFS)
-	@( cd ../util ; $(MAKE) ../src/vis_tab.c )
+# makedefs -z makes both vis_tab.h and vis_tab.c, but writes the .h first
+vis_tab.c: ../include/vis_tab.h
 tile.c: ../win/share/tilemap.c $(HACK_H)
 	@( cd ../util ; $(MAKE) ../src/tile.c )
 
@@ -510,8 +518,10 @@ spotless: clean
 	-rm -f ../win/gnome/gn_rip.h
 
 
-depend: ../sys/unix/depend.awk $(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(HACKCSRC)
-	$(AWK) -f ../sys/unix/depend.awk ../include/*.h $(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(HACKCSRC) >makedep
+depend: ../sys/unix/depend.awk \
+		$(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(GENCSRC) $(HACKCSRC)
+	$(AWK) -f ../sys/unix/depend.awk ../include/*.h \
+		$(SYSCSRC) $(WINCSRC) $(WINCXXSRC) $(GENCSRC) $(HACKCSRC) >makedep
 	@echo '/^# DO NOT DELETE THIS LINE OR CHANGE ANYTHING BEYOND IT/+2,$$d' >eddep
 	@echo '$$r makedep' >>eddep
 	@echo 'w' >>eddep
@@ -571,6 +581,8 @@ unixmain.o: ../sys/unix/unixmain.c $(HACK_H) ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixmain.c
 unixunix.o: ../sys/unix/unixunix.c $(HACK_H)
 	$(CC) $(CFLAGS) -c ../sys/unix/unixunix.c
+unixres.o: ../sys/unix/unixres.c $(CONFIG_H)
+	$(CC) $(CFLAGS) -c ../sys/unix/unixres.c
 bemain.o: ../sys/be/bemain.c $(HACK_H) ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/be/bemain.c
 getline.o: ../win/tty/getline.c $(HACK_H) ../include/func_tab.h
@@ -614,7 +626,7 @@ gnaskstr.o: ../win/gnome/gnaskstr.c ../win/gnome/gnaskstr.h \
 gnbind.o: ../win/gnome/gnbind.c ../win/gnome/gnbind.h ../win/gnome/gnmain.h \
 		../win/gnome/gnaskstr.h ../win/gnome/gnyesno.h
 	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnbind.c
-gnglyph.o: ../win/gnome/gnglyph.c ../win/gnome/gnglyph.h
+gnglyph.o: ../win/gnome/gnglyph.c ../win/gnome/gnglyph.h ../include/tile2x11.h
 	$(CC) $(CFLAGS) $(GNOMEINC) -c ../win/gnome/gnglyph.c
 gnmain.o: ../win/gnome/gnmain.c ../win/gnome/gnmain.h ../win/gnome/gnsignal.h \
 		../win/gnome/gnbind.h ../win/gnome/gnopts.h $(HACK_H) \
@@ -654,14 +666,20 @@ wingem1.o: ../win/gem/wingem1.c ../include/gem_rsc.h ../include/load_img.h \
 	$(CC) $(CFLAGS) -c ../win/gem/wingem1.c
 load_img.o: ../win/gem/load_img.c ../include/load_img.h
 	$(CC) $(CFLAGS) -c ../win/gem/load_img.c
+gr_rect.o: ../win/gem/gr_rect.c
+	$(CC) $(CFLAGS) -c ../win/gem/gr_rect.c
 tile.o: tile.c $(HACK_H)
 qt_win.o: ../win/Qt/qt_win.cpp $(HACK_H) ../include/func_tab.h \
-		../include/dlb.h ../include/patchlevel.h ../include/qt_win.h \
-		../include/qt_clust.h ../include/qt_kde0.h \
-		../include/qt_xpms.h qt_win.moc qt_kde0.moc
+		../include/dlb.h ../include/patchlevel.h ../include/tile2x11.h \
+		../include/qt_win.h ../include/qt_clust.h ../include/qt_kde0.h \
+		../include/qt_xpms.h qt_win.moc qt_kde0.moc qttableview.moc
 	$(CXX) $(CXXFLAGS) -c ../win/Qt/qt_win.cpp
 qt_clust.o: ../win/Qt/qt_clust.cpp ../include/qt_clust.h
 	$(CXX) $(CXXFLAGS) -c ../win/Qt/qt_clust.cpp
+qttableview.o: ../win/Qt/qttableview.cpp ../include/qttableview.h
+	$(CXX) $(CXXFLAGS) -c ../win/Qt/qttableview.cpp
+monstr.o: monstr.c $(CONFIG_H)
+vis_tab.o: vis_tab.c $(CONFIG_H) ../include/vis_tab.h
 allmain.o: allmain.c $(HACK_H)
 alloc.o: alloc.c $(CONFIG_H)
 apply.o: apply.c $(HACK_H) ../include/edog.h
@@ -702,6 +720,7 @@ lock.o: lock.c $(HACK_H)
 mail.o: mail.c $(HACK_H) ../include/mail.h
 makemon.o: makemon.c $(HACK_H) ../include/epri.h ../include/emin.h \
 		../include/edog.h
+mapglyph.o: mapglyph.c $(HACK_H)
 mcastu.o: mcastu.c $(HACK_H)
 mhitm.o: mhitm.c $(HACK_H) ../include/artifact.h ../include/edog.h
 mhitu.o: mhitu.c $(HACK_H) ../include/artifact.h ../include/edog.h
@@ -730,7 +749,7 @@ options.o: options.c $(CONFIG_H) ../include/objclass.h ../include/flag.h \
 		$(HACK_H) ../include/tcap.h
 pager.o: pager.c $(HACK_H) ../include/dlb.h
 pickup.o: pickup.c $(HACK_H)
-pline.o: pline.c $(HACK_H) ../include/epri.h
+pline.o: pline.c $(HACK_H) ../include/epri.h ../include/edog.h
 polyself.o: polyself.c $(HACK_H)
 potion.o: potion.c $(HACK_H)
 pray.o: pray.c $(HACK_H) ../include/epri.h
@@ -740,7 +759,7 @@ quest.o: quest.c $(HACK_H) ../include/qtext.h
 questpgr.o: questpgr.c $(HACK_H) ../include/dlb.h ../include/qtext.h
 read.o: read.c $(HACK_H)
 rect.o: rect.c $(HACK_H)
-region.o: region.c $(HACK_H)
+region.o: region.c $(HACK_H) ../include/lev.h
 restore.o: restore.c $(HACK_H) ../include/lev.h ../include/tcap.h
 rip.o: rip.c $(HACK_H)
 rnd.o: rnd.c $(HACK_H)

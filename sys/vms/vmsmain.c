@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmain.c	3.3	1997/01/22	*/
+/*	SCCS Id: @(#)vmsmain.c	3.4	2001/07/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
@@ -45,7 +45,6 @@ char *argv[];
 
 	atexit(byebye);
 	hname = argv[0];
-	gethdate(hname);		/* find executable's creation date */
 	hname = vms_basename(hname);	/* name used in 'usage' type messages */
 	hackpid = getpid();
 	(void) umask(0);
@@ -303,6 +302,9 @@ char *argv[];
 			    if ((i = str2race(argv[0])) >= 0)
 			    	flags.initrace = i;
 			}
+			break;
+		case '@':
+			flags.randomall = 1;
 			break;
 		default:
 			if ((i = str2role(&argv[0][1])) >= 0) {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	3.3	1999/10/10	*/
+/*	SCCS Id: @(#)pager.c	3.4	2002/01/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -98,18 +98,23 @@ lookat(x, y, buf, monbuf)
 	bhitpos.x = x;
 	bhitpos.y = y;
 	mtmp = m_at(x,y);
-	if(mtmp != (struct monst *) 0) {
-	    register boolean hp = (mtmp->data == &mons[PM_HIGH_PRIEST]);
+	if (mtmp != (struct monst *) 0) {
+	    char *name, monnambuf[BUFSZ];
+	    boolean accurate = !Hallucination;
+
+	    if (mtmp->data == &mons[PM_COYOTE] && accurate)
+		name = coyotename(mtmp, monnambuf);
+	    else
+		name = distant_monnam(mtmp, ARTICLE_NONE, monnambuf);
 
 	    pm = mtmp->data;
 	    Sprintf(buf, "%s%s%s",
 		    (mtmp->mx != x || mtmp->my != y) ?
-			((mtmp->isshk && !Hallucination)
+			((mtmp->isshk && accurate)
 				? "tail of " : "tail of a ") : "",
-		    (!hp && mtmp->mtame && !Hallucination) ? "tame " :
-		    (!hp && mtmp->mpeaceful && !Hallucination) ?
-		                                          "peaceful " : "",
-		    (hp ? "high priest" : x_monnam(mtmp, ARTICLE_NONE, (char *)0, 0, TRUE)));
+		    (mtmp->mtame && accurate) ? "tame " :
+		    (mtmp->mpeaceful && accurate) ? "peaceful " : "",
+		    name);
 	    if (u.ustuck == mtmp)
 		Strcat(buf, (Upolyd && sticks(youmonst.data)) ?
 			", being held" : ", holding you");
@@ -176,8 +181,13 @@ lookat(x, y, buf, monbuf)
 		    }
 		    if (MATCH_WARN_OF_MON(mtmp)) {
 		    	char wbuf[BUFSZ];
-		    	Sprintf(wbuf, "warned of %s", makeplural(mtmp->data->mname));
-		    	Strcat(monbuf, wbuf);
+			if (Hallucination)
+				Strcat(monbuf, "paranoid delusion");
+			else {
+				Sprintf(wbuf, "warned of %s",
+					makeplural(mtmp->data->mname));
+		    		Strcat(monbuf, wbuf);
+		    	}
 		    	if (ways_seen-- > 1) Strcat(monbuf, ", ");
 		    }
 		}
@@ -485,6 +495,8 @@ do_look(quick)
 		sym = showsyms[trap_to_defsym(glyph_to_trap(glyph))];
 	    } else if (glyph_is_object(glyph)) {
 		sym = oc_syms[(int)objects[glyph_to_obj(glyph)].oc_class];
+		if (sym == '`' && iflags.bouldersym && (int)glyph_to_obj(glyph) == BOULDER)
+			sym = iflags.bouldersym;
 	    } else if (glyph_is_monster(glyph)) {
 		/* takes care of pets, detected, ridden, and regular mons */
 		sym = monsyms[(int)mons[glyph_to_mon(glyph)].mlet];
@@ -606,7 +618,7 @@ do_look(quick)
 	}
 
 	/* Now check for warning symbols */
-	for (i = 0; i < WARNCOUNT; i++) {
+	for (i = 1; i < WARNCOUNT; i++) {
 	    x_str = def_warnsyms[i].explanation;
 	    if (sym == (from_screen ? warnsyms[i] : def_warnsyms[i].sym)) {
 		if (!found) {
@@ -633,6 +645,10 @@ do_look(quick)
 	    }
 	}
 
+	/* handle optional boulder symbol as a special case */ 
+	if (iflags.bouldersym && sym == iflags.bouldersym)
+		found += append_str(out_str, "boulder");
+	
 	/*
 	 * If we are looking at the screen, follow multiple possibilities or
 	 * an ambiguous explanation by something more detailed.
@@ -640,14 +656,12 @@ do_look(quick)
 	if (from_screen) {
 	    if (found > 1 || need_to_look) {
 		char monbuf[BUFSZ];
-		char temp_buf[BUFSZ], coybuf[QBUFSZ];
+		char temp_buf[BUFSZ];
 
 		pm = lookat(cc.x, cc.y, look_buf, monbuf);
 		firstmatch = look_buf;
 		if (*firstmatch) {
-		    Sprintf(temp_buf, " (%s)",
-				(pm == &mons[PM_COYOTE]) ?
-				coyotename(coybuf) : firstmatch);
+		    Sprintf(temp_buf, " (%s)", firstmatch);
 		    (void)strncat(out_str, temp_buf, BUFSZ-strlen(out_str)-1);
 		    found = 1;	/* we have something to look up */
 		}

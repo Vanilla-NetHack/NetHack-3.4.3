@@ -1,15 +1,16 @@
-/*   SCCS Id: @(#)video.c   3.3     95/08/05			    */
-/*   Copyright (c) NetHack PC Development Team 1993, 1994	    */
+/*   SCCS Id: @(#)video.c   3.4     2001/04/07			    */
+/*   Copyright (c) NetHack PC Development Team 1993, 1994, 2001	    */
 /*   NetHack may be freely redistributed.  See license for details. */
 /*								    */
 /*
  * video.c - Hardware video support front-ends
  *
  *Edit History:
- *     Initial Creation 	     M. Allison      93/04/04
- *     Add djgpp support	     K. Smolkowski   93/04/26
- *     Add txt/graphics mode support M. Allison      93/10/30
- *     Add graphics mode cursor sim. M. Allison      94/02/19
+ *     Initial Creation 	     M. Allison      1993/04/04
+ *     Add djgpp support	     K. Smolkowski   1993/04/26
+ *     Add txt/graphics mode support M. Allison      1993/10/30
+ *     Add graphics mode cursor sim. M. Allison      1994/02/19
+ *     Add hooks for decals on vga   M. Allison      2001/04/07
  */
 
 #include "hack.h"
@@ -585,15 +586,16 @@ char ch;
 }
 
 void
-xputg(glyphnum,ch)	/* write out a glyph picture at current location */
+xputg(glyphnum,ch,special)	/* write out a glyph picture at current location */
 int glyphnum;
 int ch;
+unsigned special;
 {
 	if (!iflags.grmode || !iflags.tile_view) {
 		xputc((char)ch);
 #  ifdef SCREEN_VGA
 	} else {
-		vga_xputg(glyphnum, ch);
+		vga_xputg(glyphnum, ch, special);
 #  endif
 	}
 }
@@ -748,7 +750,7 @@ int assign_videoshades(char *choiceptr)
 {
 	char choices[120];
 	char *cptr, *cvalue[3];
-	int i,icolor;
+	int i,icolor = CLR_WHITE;
 
 	strcpy(choices,choiceptr);
 	cvalue[0] = choices;
@@ -895,12 +897,8 @@ char *sopt;
  *	getch();
  */
 	iflags.grmode  = 0;
-	iflags.hasvesa = 0;
 	iflags.hasvga  = 0;
-	iflags.has8514 = 0;
-	iflags.usevesa = 0;
 	iflags.usevga  = 0;
-	iflags.use8514 = 0;
 
 	if (strncmpi(sopt,"def",3) == 0) {              /* default */
 		/* do nothing - default */
@@ -937,11 +935,9 @@ char *sopt;
 #  endif
 	/*
 	 * Auto-detect Priorities (arbitrary for now):
-	 *	VESA, 8514, VGA
+	 *	VGA
 	 */
-		if (iflags.hasvesa) iflags.usevesa = 1;
-		else if (iflags.has8514) iflags.use8514 = 1;
-		else if (iflags.hasvga)	{
+		if (iflags.hasvga)	{
 			iflags.usevga  = 1;
 			/* VGA depends on BIOS to enable function keys*/
 			iflags.BIOS = 1;

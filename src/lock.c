@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.3	2000/02/06	*/
+/*	SCCS Id: @(#)lock.c	3.4	2000/02/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -103,7 +103,7 @@ picklock()	/* try to open/close a lock */
 	    return((xlock.usedtime = 0));
 	}
 
-	if(rn2(100) > xlock.chance) return(1);		/* still busy */
+	if(rn2(100) >= xlock.chance) return(1);		/* still busy */
 
 	You("succeed in %s.", lock_action());
 	if (xlock.door) {
@@ -160,7 +160,7 @@ forcelock()	/* try to force a locked chest */
 	} else			/* blunt */
 	    wake_nearby();	/* due to hammering on the container */
 
-	if(rn2(100) > xlock.chance) return(1);		/* still busy */
+	if(rn2(100) >= xlock.chance) return(1);		/* still busy */
 
 	You("succeed in forcing the lock.");
 	xlock.box->olocked = 0;
@@ -201,7 +201,7 @@ forcelock()	/* try to force a locked chest */
 	    if (costly)
 		loss += stolen_value(xlock.box, u.ux, u.uy,
 					     (boolean)shkp->mpeaceful, TRUE);
-	    if(loss) You("owe %ld zorkmids for objects destroyed.", loss);
+	    if(loss) You("owe %ld %s for objects destroyed.", loss, currency(loss));
 	    delobj(xlock.box);
 	}
 	exercise((xlock.picktyp) ? A_DEX : A_STR, TRUE);
@@ -476,7 +476,7 @@ doforce()		/* try to force a chest with your weapon */
 		else
 		    You("start bashing it with your %s.", xname(uwep));
 		xlock.box = otmp;
-		xlock.chance = objects[otmp->otyp].oc_wldam * 2;
+		xlock.chance = objects[uwep->otyp].oc_wldam * 2;
 		xlock.picktyp = picktyp;
 		xlock.usedtime = 0;
 		break;
@@ -877,8 +877,9 @@ struct obj *otmp;
 	long save_Blinded;
 
 	if (otmp->oclass == POTION_CLASS) {
-		You("%s a flask shatter!", Blind ? "hear" : "see");
-		potionbreathe(otmp);
+		You("%s a %s shatter!", Blind ? "hear" : "see", bottlename());
+		if (!breathless(youmonst.data) || haseyes(youmonst.data))
+			potionbreathe(otmp);
 		return;
 	}
 	/* We have functions for distant and singular names, but not one */

@@ -1,4 +1,4 @@
-                Instructions for installing NetHack 3.3
+                Instructions for installing NetHack 3.4
                            on a UNIX system
                 =======================================
 
@@ -25,8 +25,8 @@
     in Files, which should be in the top directory.)
 
 2.  Your Makefiles may still be in sys/unix with tags on the end of them.
-    If so, run setup.sh in that directory to distribute the Makefiles to
-    places they can do their work.  (If later official patches change
+    If so, run "sh setup.sh" in that directory to distribute the Makefiles
+    to places they can do their work.  (If later official patches change
     these Makefiles, setup.sh should be rerun to make sure you use the
     current copies.)
 
@@ -85,7 +85,7 @@
 Notes:
 
 1.  Save files and bones files from previous versions will not work with
-    NetHack 3.3.  Don't bother trying to keep them.
+    NetHack 3.4.  Don't bother trying to keep them.
 
 2.  To install an update of this version of NetHack after changing something,
     type 'make update' from the main directory.  If you created the new

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.h	3.3	1999/11/30	*/
+/*	SCCS Id: @(#)display.h	3.4	1999/11/30	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -245,6 +245,11 @@
  *		is the dungeon features and other miscellaneous things.
  *		Count: MAXPCHARS
  *
+ * explosions	A set of nine for each of the following seven explosion types:
+ *                   dark, noxious, muddy, wet, magical, fiery, frosty.
+ *              The nine positions represent those surrounding the hero.
+ *		Count: MAXEXPCHARS * EXPL_MAX (EXPL_MAX is defined in hack.h)
+ *
  * zap beam	A set of four (there are four directions) for each beam type.
  *		The beam type is shifted over 2 positions and the direction
  *		is stored in the lower 2 bits.	Count: NUM_ZAP << 2
@@ -268,7 +273,8 @@
 #define GLYPH_RIDDEN_OFF	(NUMMONS	+ GLYPH_BODY_OFF)
 #define GLYPH_OBJ_OFF		(NUMMONS	+ GLYPH_RIDDEN_OFF)
 #define GLYPH_CMAP_OFF		(NUM_OBJECTS	+ GLYPH_OBJ_OFF)
-#define GLYPH_ZAP_OFF		(MAXPCHARS	+ GLYPH_CMAP_OFF)
+#define GLYPH_EXPLODE_OFF	((MAXPCHARS - MAXEXPCHARS) + GLYPH_CMAP_OFF)
+#define GLYPH_ZAP_OFF		((MAXEXPCHARS * EXPL_MAX) + GLYPH_EXPLODE_OFF)
 #define GLYPH_SWALLOW_OFF	((NUM_ZAP << 2) + GLYPH_ZAP_OFF)
 #define GLYPH_WARNING_OFF	((NUMMONS << 3) + GLYPH_SWALLOW_OFF)
 #define MAX_GLYPH		(WARNCOUNT      + GLYPH_WARNING_OFF)
@@ -295,6 +301,9 @@
 	    (int) (obj)->otyp + GLYPH_OBJ_OFF))
 
 #define cmap_to_glyph(cmap_idx) ((int) (cmap_idx)   + GLYPH_CMAP_OFF)
+#define explosion_to_glyph(expltype,idx)	\
+		((((expltype) * MAXEXPCHARS) + ((idx) - S_explode1)) + GLYPH_EXPLODE_OFF)
+
 #define trap_to_glyph(trap)	\
 			cmap_to_glyph(trap_to_defsym(what_trap((trap)->ttyp)))
 

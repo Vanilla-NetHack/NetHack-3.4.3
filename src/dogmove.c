@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	3.3	97/05/25	*/
+/*	SCCS Id: @(#)dogmove.c	3.4	2002/03/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,6 +16,8 @@ STATIC_DCL int FDECL(dog_invent,(struct monst *,struct edog *,int));
 STATIC_DCL int FDECL(dog_goal,(struct monst *,struct edog *,int,int,int));
 
 STATIC_DCL struct obj *FDECL(DROPPABLES, (struct monst *));
+STATIC_DCL boolean FDECL(can_reach_food,(struct monst *,XCHAR_P,XCHAR_P,XCHAR_P,
+    XCHAR_P));
 
 STATIC_OVL struct obj *
 DROPPABLES(mon)
@@ -156,7 +158,7 @@ boolean devour;
 	} else
 	/* hack: observe the action if either new or old location is in view */
 	if (cansee(x, y) || cansee(mtmp->mx, mtmp->my))
-	    pline("%s %s %s.", Monnam(mtmp),
+	    pline("%s %s %s.", noit_Monnam(mtmp),
 		  devour ? "devours" : "eats",
 		  (obj->oclass == FOOD_CLASS) ?
 			singular(obj, doname) : doname(obj));
@@ -182,9 +184,10 @@ boolean devour;
 	    delobj(obj);
 	} else if (obj == uchain)
 	    unpunish();
-	else if (obj->quan > 1L && obj->oclass == FOOD_CLASS)
+	else if (obj->quan > 1L && obj->oclass == FOOD_CLASS) {
 	    obj->quan--;
-	else
+	    obj->owt = weight(obj);
+	} else
 	    delobj(obj);
 
 	if (poly) {
@@ -198,7 +201,7 @@ boolean devour;
 #ifdef STEED
 	    mtmp->misc_worn_check = mw;
 #endif
-	    if (newcham(mtmp, (struct permonst *)0) &&
+	    if (newcham(mtmp, (struct permonst *)0, FALSE) &&
 			cansee(mtmp->mx, mtmp->my)) {
 		uchar save_mnamelth = mtmp->mnamelth;
 		mtmp->mnamelth = 0;
@@ -242,6 +245,7 @@ register struct edog *edog;
 		    beg(mtmp);
 		else
 		    You_feel("worried about %s.", y_monnam(mtmp));
+		stop_occupation();
 	    } else if (monstermoves > edog->hungrytime + 750 || mtmp->mhp < 1) {
 	    dog_died:
 		if (mtmp->mleashed)
@@ -279,7 +283,11 @@ int udist;
 	/* if we are carrying sth then we drop it (perhaps near @) */
 	/* Note: if apport == 1 then our behaviour is independent of udist */
 	/* Use udist+1 so steed won't cause divide by zero */
+#ifndef GOLDOBJ
 	if(DROPPABLES(mtmp) || mtmp->mgold) {
+#else
+	if(DROPPABLES(mtmp)) {
+#endif
 	    if (!rn2(udist+1) || !rn2(edog->apport))
 		if(rn2(10) < edog->apport){
 		    relobj(mtmp, (int)mtmp->minvis, TRUE);
@@ -375,7 +383,8 @@ int after, udist, whappr;
 			continue;
 		    if (cursed_object_at(nx, ny))
 			continue;
-		    if (otyp < MANFOOD) {
+		    if (otyp < MANFOOD &&
+			    can_reach_food(mtmp, mtmp->mx, mtmp->my, nx, ny)) {
 			if (otyp < gtyp || DDIST(nx,ny) < DDIST(gx,gy)) {
 			    gx = nx;
 			    gy = ny;
@@ -556,6 +565,11 @@ register int after;	/* this is extra fast monster movement */
 
 	    }
 	}
+	if (!Conflict && !mtmp->mconf &&
+	    mtmp == u.ustuck && !sticks(youmonst.data)) {
+	    unstuck(mtmp);	/* swallowed case handled above */
+	    You("get released!");
+	}
 	if (!nohands(mtmp->data) && !verysmall(mtmp->data)) {
 		allowflags |= OPENDOOR;
 		if (m_carrying(mtmp, SKELETON_KEY)) allowflags |= BUSTDOOR;
@@ -702,8 +716,8 @@ newdogpos:
 		if (info[chi] & ALLOW_U) {
 			if (mtmp->mleashed) { /* play it safe */
 				pline("%s breaks loose of %s leash!",
-				      Monnam(mtmp), his[pronoun_gender(mtmp)]);
-				m_unleash(mtmp);
+				      Monnam(mtmp), mhis(mtmp));
+				m_unleash(mtmp, FALSE);
 			}
 			(void) mattacku(mtmp);
 			return(0);
@@ -765,6 +779,50 @@ dognext:
 		set_apparxy(mtmp);
 	}
 	return(1);
+}
+
+/* Hack to prevent a dog from being endlessly stuck near a piece of food that
+ * it can't reach, such as caught in a teleport scroll niche.  It recursively
+ * checks to see if the squares inbetween are good.  The checking could be a
+ * little smarter; a full check would probably be useful in m_move() too.
+ * Since the maximum food distance is 5, this should never be more than 5 calls
+ * deep.
+ */
+STATIC_OVL  boolean
+can_reach_food(mon, mx, my, fx, fy)
+struct monst *mon;
+xchar mx, my, fx, fy;
+{
+    int i, j;
+    int dist;
+
+    if (mx == fx && my == fy) return TRUE;
+    if (!isok(mx, my)) return FALSE; /* should not happen */
+    
+    dist = dist2(mx, my, fx, fy);
+    for(i=mx-1; i<=mx+1; i++) {
+	for(j=my-1; j<=my+1; j++) {
+	    if (!isok(i, j))
+		continue;
+	    if (dist2(i, j, fx, fy) >= dist)
+		continue;
+	    if (IS_ROCK(levl[i][j].typ) && !passes_walls(mon->data) &&
+				    (!may_dig(i,j) || !tunnels(mon->data)))
+		continue;
+	    if (IS_DOOR(levl[i][j].typ) &&
+				(levl[i][j].doormask & (D_CLOSED | D_LOCKED)))
+		continue;
+	    if (is_pool(i, j) && !is_swimmer(mon->data))
+		continue;
+	    if (is_lava(i, j) && !likes_lava(mon->data))
+		continue;
+	    if (sobj_at(BOULDER,i,j) && !throws_rocks(mon->data))
+		continue;
+	    if (can_reach_food(mon, i, j, fx, fy))
+		return TRUE;
+	}
+    }
+    return FALSE;
 }
 
 #endif /* OVL0 */

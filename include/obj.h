@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	3.3	1999/12/13	*/
+/*	SCCS Id: @(#)obj.h	3.4	2002/01/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -65,6 +65,7 @@ struct obj {
 #define MAX_ERODE 3
 #define orotten oeroded		/* rotten food */
 #define odiluted oeroded	/* diluted potions */
+#define norevive oeroded2
 	Bitfield(oerodeproof,1); /* erodeproof weapon/armor */
 	Bitfield(olocked,1);	/* object is locked */
 	Bitfield(obroken,1);	/* lock has been broken */
@@ -84,7 +85,8 @@ struct obj {
 #define OATTACHED_UNUSED3 3
 
 	Bitfield(in_use,1);	/* for magic items before useup items */
-	/* 7 free bits */
+	Bitfield(bypass,1);	/* mark this as an object to be skipped by bhito() */
+	/* 6 free bits */
 
 	int	corpsenm;	/* type of corpse is mons[corpsenm] */
 #define leashmon  corpsenm	/* gets m_id of attached pet */
@@ -197,10 +199,40 @@ struct obj {
 #define Is_mbag(otmp)	(otmp->otyp == BAG_OF_HOLDING || \
 			 otmp->otyp == BAG_OF_TRICKS)
 
+/* dragon gear */
+#define Is_dragon_scales(obj)	((obj)->otyp >= GRAY_DRAGON_SCALES && \
+				 (obj)->otyp <= YELLOW_DRAGON_SCALES)
+#define Is_dragon_mail(obj)	((obj)->otyp >= GRAY_DRAGON_SCALE_MAIL && \
+				 (obj)->otyp <= YELLOW_DRAGON_SCALE_MAIL)
+#define Is_dragon_armor(obj)	(Is_dragon_scales(obj) || Is_dragon_mail(obj))
+#define Dragon_scales_to_pm(obj) &mons[PM_GRAY_DRAGON + (obj)->otyp \
+				       - GRAY_DRAGON_SCALES]
+#define Dragon_mail_to_pm(obj)	&mons[PM_GRAY_DRAGON + (obj)->otyp \
+				      - GRAY_DRAGON_SCALE_MAIL]
+#define Dragon_to_scales(pm)	(GRAY_DRAGON_SCALES + (pm - mons))
+
 /* Light sources */
 #define Is_candle(otmp) (otmp->otyp == TALLOW_CANDLE || \
 			 otmp->otyp == WAX_CANDLE)
 #define MAX_OIL_IN_FLASK 400	/* maximum amount of oil in a potion of oil */
+
+/* special stones */
+#define is_graystone(obj)	((obj)->otyp == LUCKSTONE || \
+				 (obj)->otyp == LOADSTONE || \
+				 (obj)->otyp == FLINT     || \
+				 (obj)->otyp == TOUCHSTONE)
+
+/* misc */
+#ifdef KOPS
+#define is_flimsy(otmp)		(objects[(otmp)->otyp].oc_material <= LEATHER || \
+				 (otmp)->otyp == RUBBER_HOSE)
+#else
+#define is_flimsy(otmp)		(objects[(otmp)->otyp].oc_material <= LEATHER)
+#endif
+
+/* helpers, simple enough to be macros */
+#define is_plural(o)	((o)->quan > 1 || \
+			 (o)->oartifact == ART_EYES_OF_THE_OVERWORLD)
 
 /* Flags for get_obj_location(). */
 #define CONTAINED_TOO	0x1

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixmain.c	3.3	97/01/22	*/
+/*	SCCS Id: @(#)unixmain.c	3.4	1997/01/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -55,6 +55,35 @@ char *argv[];
 #endif
 	boolean exact_username;
 
+#if defined(__APPLE__)
+	/* special hack to change working directory to a resource fork when
+	   running from finder --sam */
+#define MAC_PATH_VALUE ".app/Contents/MacOS/"
+	char mac_cwd[1024], *mac_exe = argv[0], *mac_tmp;
+	int arg0_len = strlen(mac_exe), mac_tmp_len, mac_lhs_len=0;
+	getcwd(mac_cwd, 1024);
+	if(mac_exe[0] == '/' && !strcmp(mac_cwd, "/")) {
+	    if((mac_exe = strrchr(mac_exe, '/')))
+		mac_exe++;
+	    else
+		mac_exe = argv[0];
+	    mac_tmp_len = (strlen(mac_exe) * 2) + strlen(MAC_PATH_VALUE);
+	    if(mac_tmp_len <= arg0_len) {
+		mac_tmp = malloc(mac_tmp_len + 1);
+		sprintf(mac_tmp, "%s%s%s", mac_exe, MAC_PATH_VALUE, mac_exe);
+		if(!strcmp(argv[0] + (arg0_len - mac_tmp_len), mac_tmp)) {
+		    mac_lhs_len = (arg0_len - mac_tmp_len) + strlen(mac_exe) + 5;
+		    if(mac_lhs_len > mac_tmp_len - 1)
+			mac_tmp = realloc(mac_tmp, mac_lhs_len);
+		    strncpy(mac_tmp, argv[0], mac_lhs_len);
+		    mac_tmp[mac_lhs_len] = '\0';
+		    chdir(mac_tmp);
+		}
+		free(mac_tmp);
+	    }
+	}
+#endif
+
 	hname = argv[0];
 	hackpid = getpid();
 	(void) umask(0777 & ~FCMASK);
@@ -107,13 +136,6 @@ char *argv[];
 	}
 
 	/*
-	 * Find the creation date of this game,
-	 * so as to avoid restoring outdated savefiles.
-	 */
-	gethdate(hname);
-
-	/*
-	 * We cannot do chdir earlier, otherwise gethdate will fail.
 	 * Change directories before we initialize the window system so
 	 * we can find the tile file.
 	 */
@@ -363,6 +385,9 @@ char *argv[];
 			    	flags.initrace = i;
 			}
 			break;
+		case '@':
+			flags.randomall = 1;
+			break;
 		default:
 			if ((i = str2role(&argv[0][1])) >= 0) {
 			    flags.initrole = i;
@@ -491,4 +516,25 @@ wd_message()
 	if (discover)
 		You("are in non-scoring discovery mode.");
 }
+
+/*
+ * Add a slash to any name not ending in /. There must
+ * be room for the /
+ */
+void
+append_slash(name)
+char *name;
+{
+	char *ptr;
+
+	if (!*name)
+		return;
+	ptr = name + (strlen(name) - 1);
+	if (*ptr != '/') {
+		*++ptr = '/';
+		*++ptr = '\0';
+	}
+	return;
+}
+
 /*unixmain.c*/

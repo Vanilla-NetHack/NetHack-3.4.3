@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.3	2000/05/05	*/
+/*	SCCS Id: @(#)cmd.c	3.4	2002/01/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,6 +13,8 @@
 #if defined(SYSV) || defined(DGUX) || defined(HPUX)
 #define NR_OF_EOFS	20
 #endif
+
+#define CMD_TRAVEL (char)0x90
 
 #ifdef DEBUG
 /*
@@ -105,6 +107,7 @@ STATIC_PTR int NDECL(doprev_message);
 STATIC_PTR int NDECL(timed_occupation);
 STATIC_PTR int NDECL(doextcmd);
 STATIC_PTR int NDECL(domonability);
+STATIC_PTR int NDECL(dotravel);
 # ifdef WIZARD
 STATIC_PTR int NDECL(wiz_wish);
 STATIC_PTR int NDECL(wiz_identify);
@@ -112,11 +115,14 @@ STATIC_PTR int NDECL(wiz_map);
 STATIC_PTR int NDECL(wiz_genesis);
 STATIC_PTR int NDECL(wiz_where);
 STATIC_PTR int NDECL(wiz_detect);
+STATIC_PTR int NDECL(wiz_polyself);
 STATIC_PTR int NDECL(wiz_level_tele);
+STATIC_PTR int NDECL(wiz_level_change);
 STATIC_PTR int NDECL(wiz_show_seenv);
 STATIC_PTR int NDECL(wiz_show_vision);
+STATIC_PTR int NDECL(wiz_mon_polycontrol);
 STATIC_PTR int NDECL(wiz_show_wmodes);
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(_WIN32)
 extern void FDECL(show_borlandc_stats, (winid));
 #endif
 STATIC_DCL void FDECL(count_obj, (struct obj *, long *, long *, BOOLEAN_P, BOOLEAN_P));
@@ -137,6 +143,8 @@ STATIC_DCL void FDECL(enlght_line, (const char *,const char *,const char *));
 static void NDECL(end_of_input);
 #endif
 #endif /* OVLB */
+
+static const char* readchar_queue="";
 
 STATIC_DCL char *NDECL(parse);
 
@@ -297,7 +305,7 @@ doextlist()	/* here after #? - now list all full-word commands */
 	putstr(datawin, 0, "");
 
 	for(efp = extcmdlist; efp->ef_txt; efp++) {
-		Sprintf(buf, "    %-14s  - %s.", efp->ef_txt, efp->ef_desc);
+		Sprintf(buf, "    %-15s - %s.", efp->ef_txt, efp->ef_desc);
 		putstr(datawin, 0, buf);
 	}
 	display_nhwindow(datawin, FALSE);
@@ -433,7 +441,7 @@ domonability()
 	if (can_breathe(youmonst.data)) return dobreathe();
 	else if (attacktype(youmonst.data, AT_SPIT)) return dospit();
 	else if (youmonst.data->mlet == S_NYMPH) return doremove();
-	else if (youmonst.data->mlet == S_UMBER) return doconfuse();
+	else if (attacktype(youmonst.data, AT_GAZE)) return dogaze();
 	else if (is_were(youmonst.data)) return dosummon();
 	else if (webmaker(youmonst.data)) return dospinweb();
 	else if (is_hider(youmonst.data)) return dohide();
@@ -549,6 +557,61 @@ wiz_level_tele()
 }
 
 STATIC_PTR int
+wiz_mon_polycontrol()
+{
+    iflags.mon_polycontrol = !iflags.mon_polycontrol;
+    pline("Monster polymorph control is %s.",
+	  iflags.mon_polycontrol ? "on" : "off");
+    return 0;
+}
+
+STATIC_PTR int
+wiz_level_change()
+{
+    char buf[BUFSZ];
+    int newlevel;
+    int ret;
+
+    getlin("To what experience level do you want to be set?", buf);
+    (void)mungspaces(buf);
+    if (buf[0] == '\033' || buf[0] == '\0') ret = 0;
+    else ret = sscanf(buf, "%d", &newlevel);
+
+    if (ret != 1) {
+	pline(Never_mind);
+	return 0;
+    }
+    if (newlevel == u.ulevel) {
+	You("are already that experienced.");
+    } else if (newlevel < u.ulevel) {
+	if (u.ulevel == 1) {
+	    You("are already as inexperienced as you can get.");
+	    return 0;
+	}
+	if (newlevel < 1) newlevel = 1;
+	while (u.ulevel > newlevel)
+	    losexp((const char *)0);
+    } else {
+	if (u.ulevel >= MAXULEV) {
+	    You("are already as experienced as you can get.");
+	    return 0;
+	}
+	if (newlevel > MAXULEV) newlevel = MAXULEV;
+	while (u.ulevel < newlevel)
+	    pluslvl(FALSE);
+    }
+    u.ulevelmax = u.ulevel;
+    return 0;
+}
+
+STATIC_PTR int
+wiz_polyself()
+{
+        polyself(TRUE);
+        return 0;
+}
+
+STATIC_PTR int
 wiz_show_seenv()
 {
 	winid win;
@@ -639,7 +702,7 @@ wiz_show_wmodes()
 		lev = &levl[x][y];
 		if (x == u.ux && y == u.uy)
 		    row[x] = '@';
-		if (IS_WALL(lev->typ) || lev->typ == SDOOR)
+		else if (IS_WALL(lev->typ) || lev->typ == SDOOR)
 		    row[x] = '0' + (lev->wall_info & WM_MASK);
 		else if (lev->typ == CORR)
 		    row[x] = '#';
@@ -743,6 +806,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	if (Stone_resistance)
 		you_are("petrification resistant");
 	if (Invulnerable) you_are("invulnerable");
+	if (u.uedibility) you_can("recognize detrimental food");
 
 	/*** Troubles ***/
 	if (Halluc_resistance)
@@ -758,6 +822,18 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 			if (u.usick_type & SICK_NONVOMITABLE)
 				you_are("sick from illness");
 		}
+		/* added by JDS */
+		if (u.uhitinc) {
+			Sprintf(buf, "%s%i %s to hit", u.uhitinc > 0 ? "+" : "",
+				u.uhitinc, u.uhitinc > 0 ? "bonus" : "penalty");
+			you_have(buf);
+			
+		}
+		if (u.udaminc) {
+			Sprintf(buf, "%s%i %s to damage", u.udaminc > 0 ? "+" : "",
+				u.udaminc, u.udaminc > 0 ? "bonus" : "penalty");
+			you_have(buf);
+		} /* end JDS portion */
 	}
 	if (Stoned) you_are("turning to stone");
 	if (Slimed) you_are("turning into slime");
@@ -767,10 +843,22 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 		you_have(buf);
 	}
 	if (Fumbling) enl_msg("You fumble", "", "d", "");
-	if (Wounded_legs) {
+	if (Wounded_legs
+#ifdef STEED
+	    && !u.usteed
+#endif
+			  ) {
 		Sprintf(buf, "wounded %s", makeplural(body_part(LEG)));
 		you_have(buf);
 	}
+#if defined(WIZARD) && defined(STEED)
+	if (Wounded_legs && u.usteed && wizard) {
+	    Strcpy(buf, x_monnam(u.usteed, ARTICLE_YOUR, (char *)0, 
+		    SUPPRESS_SADDLE | SUPPRESS_HALLUCINATION, FALSE));
+	    *buf = highc(*buf);
+	    enl_msg(buf, " has", " had", " wounded legs");
+	}
+#endif
 	if (Sleeping) enl_msg("You ", "fall", "fell", " asleep");
 	if (Hunger) enl_msg("You hunger", "", "ed", " rapidly");
 
@@ -790,6 +878,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	if (Clairvoyant) you_are("clairvoyant");
 	if (Infravision) you_have("infravision");
 	if (Detect_monsters) you_are("sensing the presence of monsters");
+	if (u.umconf) you_are("going to confuse monsters");
 
 	/*** Appearance and behavior ***/
 	if (Adornment) you_are("adorned");
@@ -959,6 +1048,7 @@ minimal_enlightenment()
 	anything any;
 	char buf[BUFSZ], buf2[BUFSZ];
 	static char fmtstr[] = "%-15s: %-12s";
+	static char deity_fmtstr[] = "%-17s%s";
 
 	any.a_void = 0;
 	buf[0] = buf2[0] = '\0';
@@ -986,7 +1076,11 @@ minimal_enlightenment()
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, "Current", FALSE);
 	Sprintf(buf, fmtstr, "race", Upolyd ? youmonst.data->mname : urace.noun);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
-	if (!Upolyd) {
+	if (Upolyd) {
+	    Sprintf(buf, fmtstr, "role (base)",
+		(u.mfemale && urole.name.f) ? urole.name.f : urole.name.m);
+	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
+	} else {
 	    Sprintf(buf, fmtstr, "role",
 		(flags.female && urole.name.f) ? urole.name.f : urole.name.m);
 	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
@@ -1006,7 +1100,7 @@ minimal_enlightenment()
 	/* Deity list */
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", FALSE);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD, "Deities", FALSE);
-	Sprintf(buf2, "%-17s%s", align_gname(A_CHAOTIC),
+	Sprintf(buf2, deity_fmtstr, align_gname(A_CHAOTIC),
 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
 		&& u.ualign.type == A_CHAOTIC) ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_CHAOTIC)       ? " (s)" :
@@ -1014,7 +1108,7 @@ minimal_enlightenment()
     	Sprintf(buf, fmtstr, "chaotic deity", buf2);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
-	Sprintf(buf2, "%-17s%s", align_gname(A_NEUTRAL),
+	Sprintf(buf2, deity_fmtstr, align_gname(A_NEUTRAL),
 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type
 		&& u.ualign.type == A_NEUTRAL) ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_NEUTRAL)       ? " (s)" :
@@ -1022,7 +1116,7 @@ minimal_enlightenment()
     	Sprintf(buf, fmtstr, "neutral deity", buf2);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
-	Sprintf(buf2, "%-17s%s", align_gname(A_LAWFUL),
+	Sprintf(buf2, deity_fmtstr, align_gname(A_LAWFUL),
 	    (u.ualignbase[A_ORIGINAL] == u.ualign.type && u.ualign.type == A_LAWFUL)  ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_LAWFUL)        ? " (s)" :
 	    (u.ualign.type   == A_LAWFUL)        ? " (c)" : "");
@@ -1273,6 +1367,7 @@ static const struct func_tab cmdlist[] = {
 	{GOLD_SYM, TRUE, doprgold},
 	{SPBOOK_SYM, TRUE, dovspell},			/* Mike Stephenson */
 	{'#', TRUE, doextcmd},
+	{'_', TRUE, dotravel},
 	{0,0,0,0}
 };
 
@@ -1295,7 +1390,7 @@ struct ext_func_tab extcmdlist[] = {
 #ifdef STEED
 	{"ride", "ride (or stop riding) a monster", doride, FALSE},
 #endif
-	{"rub", "rub a lamp", dorub, FALSE},
+	{"rub", "rub a lamp or a stone", dorub, FALSE},
 	{"sit", "sit down", dosit, FALSE},
 	{"turn", "turn undead", doturn, TRUE},
 	{"twoweapon", "toggle two-weapon combat", dotwoweapon, FALSE},
@@ -1314,6 +1409,9 @@ struct ext_func_tab extcmdlist[] = {
 	{(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
+        {(char *)0, (char *)0, donull, TRUE},
+	{(char *)0, (char *)0, donull, TRUE},
+	{(char *)0, (char *)0, donull, TRUE},
 #ifdef DEBUG
 	{(char *)0, (char *)0, donull, TRUE},
 #endif
@@ -1324,7 +1422,10 @@ struct ext_func_tab extcmdlist[] = {
 
 #if defined(WIZARD)
 static const struct ext_func_tab debug_extcmdlist[] = {
+	{"levelchange", "change experience level", wiz_level_change, TRUE},
 	{"light sources", "show mobile light sources", wiz_light_sources, TRUE},
+	{"monpoly_control", "control monster polymorphs", wiz_mon_polycontrol, TRUE},
+	{"poly", "polymorph self", wiz_polyself, TRUE},
 	{"seenv", "show seen vectors", wiz_show_seenv, TRUE},
 	{"stats", "show memory statistics", wiz_show_stats, TRUE},
 	{"timeout", "look at timeout queue", wiz_timeout_queue, TRUE},
@@ -1531,7 +1632,7 @@ wiz_show_stats()
 	Sprintf(buf, template, "Total", total_mon_count, total_mon_size);
 	putstr(win, 0, buf);
 
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(_WIN32)
 	show_borlandc_stats(win);
 #endif
 
@@ -1589,6 +1690,7 @@ register char *cmd;
 
 	/* handle most movement commands */
 	do_walk = do_rush = prefix_seen = FALSE;
+	flags.travel = 0;
 	switch (*cmd) {
 	 case 'g':  if (movecmd(cmd[1])) {
 			flags.run = 2;
@@ -1635,6 +1737,12 @@ register char *cmd;
 		    flags.move = FALSE;
 		    multi = 0;
 		    return;
+	 case CMD_TRAVEL:
+		    flags.travel = 1;
+		    flags.run = 8;
+		    flags.nopick = 1;
+		    do_rush = TRUE;
+		    break;
 	 default:   if (movecmd(*cmd)) {	/* ordinary movement */
 			do_walk = TRUE;
 		    } else if (movecmd(iflags.num_pad ?
@@ -1768,8 +1876,8 @@ const char *s;
 {
 	char dirsym;
 
-#ifdef REDO	
-	if(in_doagain)
+#ifdef REDO
+	if(in_doagain || *readchar_queue)
 	    dirsym = readchar();
 	else
 #endif
@@ -1817,34 +1925,85 @@ static NEARDATA int last_multi;
 /*
  * convert a MAP window position into a movecmd
  */
-int
+const char *
 click_to_cmd(x, y, mod)
     int x, y, mod;
 {
+    int dir;
+    static char cmd[4];
+    cmd[1]=0;
+
     x -= u.ux;
     y -= u.uy;
-    /* convert without using floating point, allowing sloppy clicking */
-    if(x > 2*abs(y))
-	x = 1, y = 0;
-    else if(y > 2*abs(x))
-	x = 0, y = 1;
-    else if(x < -2*abs(y))
-	x = -1, y = 0;
-    else if(y < -2*abs(x))
-	x = 0, y = -1;
-    else
+
+    if ( abs(x) <= 1 && abs(y) <= 1 ) {
 	x = sgn(x), y = sgn(y);
-
-    if(x == 0 && y == 0)	/* map click on player to "rest" command */
-	return '.';
-
-    x = xytod(x, y);
-    if(mod == CLICK_1) {
-	return (iflags.num_pad ? ndir[x] : sdir[x]);
     } else {
-	return (iflags.num_pad ? M(ndir[x]) :
-		(sdir[x] - 'a' + 'A')); /* run command */
+	u.tx = u.ux+x;
+	u.ty = u.uy+y;
+	cmd[0] = CMD_TRAVEL;
+	return cmd;
     }
+
+    if(x == 0 && y == 0) {
+	/* here */
+	if(IS_FOUNTAIN(levl[u.ux][u.uy].typ) || IS_SINK(levl[u.ux][u.uy].typ)) {
+	    cmd[0]=mod == CLICK_1 ? 'q' : M('d');
+	    return cmd;
+	} else if(IS_THRONE(levl[u.ux][u.uy].typ)) {
+	    cmd[0]=M('s');
+	    return cmd;
+	} else if((u.ux == xupstair && u.uy == yupstair)
+		  || (u.ux == sstairs.sx && u.uy == sstairs.sy && sstairs.up)
+		  || (u.ux == xupladder && u.uy == yupladder)) {
+	    return "<";
+	} else if((u.ux == xdnstair && u.uy == ydnstair)
+		  || (u.ux == sstairs.sx && u.uy == sstairs.sy && !sstairs.up)
+		  || (u.ux == xdnladder && u.uy == ydnladder)) {
+	    return ">";
+	} else if(OBJ_AT(u.ux, u.uy)) {
+	    cmd[0] = Is_container(level.objects[u.ux][u.uy]) ? M('l') : ',';
+	    return cmd;
+	} else {
+	    return "."; /* just rest */
+	}
+    }
+
+    /* directional commands */
+
+    dir = xytod(x, y);
+
+    if (!m_at(u.ux+x, u.uy+y) && !test_move(u.ux, u.uy, x, y, 1)) {
+	cmd[1] = (iflags.num_pad ? ndir[dir] : sdir[dir]);
+	cmd[2] = 0;
+	if (IS_DOOR(levl[u.ux+x][u.uy+y].typ)) {
+	    /* slight assistance to the player: choose kick/open for them */
+	    if (levl[u.ux+x][u.uy+y].doormask & D_LOCKED) {
+		cmd[0] = C('d');
+		return cmd;
+	    }
+	    if (levl[u.ux+x][u.uy+y].doormask & D_CLOSED) {
+		cmd[0] = 'o';
+		return cmd;
+	    }
+	}
+	if (levl[u.ux+x][u.uy+y].typ <= SCORR) {
+	    cmd[0] = 's';
+	    cmd[1] = 0;
+	    return cmd;
+	}
+    }
+
+    /* move, attack, etc. */
+    cmd[1] = 0;
+    if(mod == CLICK_1) {
+	cmd[0] = (iflags.num_pad ? ndir[dir] : sdir[dir]);
+    } else {
+	cmd[0] = (iflags.num_pad ? M(ndir[dir]) :
+		(sdir[dir] - 'a' + 'A')); /* run command */
+    }
+
+    return cmd;
 }
 
 STATIC_OVL char *
@@ -1941,10 +2100,13 @@ readchar()
 	register int sym;
 	int x = u.ux, y = u.uy, mod = 0;
 
+	if ( *readchar_queue )
+	    sym = *readchar_queue++;
+	else
 #ifdef REDO
-	sym = in_doagain ? Getchar() : nh_poskey(&x, &y, &mod);
+	    sym = in_doagain ? Getchar() : nh_poskey(&x, &y, &mod);
 #else
-	sym = Getchar();
+	    sym = Getchar();
 #endif
 
 #ifdef UNIX
@@ -1966,10 +2128,35 @@ readchar()
 	    end_of_input();
 #endif /* UNIX */
 
-	if(sym == 0) /* click event */
-	    sym = click_to_cmd(x, y, mod);
+	if(sym == 0) {
+	    /* click event */
+	    readchar_queue = click_to_cmd(x, y, mod);
+	    sym = *readchar_queue++;
+	}
 	return((char) sym);
 }
+
+STATIC_PTR int
+dotravel()
+{
+	/* Keyboard travel command */
+	static char cmd[2];
+	coord cc;
+	cmd[1]=0;
+	cc.x = u.ux;
+	cc.y = u.uy;
+	pline("Where do you want to travel to?");
+	if (getpos(&cc, TRUE, "the desired destination") < 0) {
+		/* user pressed ESC */
+		return 0;
+	}
+	u.tx = cc.x;
+	u.ty = cc.y;
+	cmd[0] = CMD_TRAVEL;
+	readchar_queue = cmd;
+	return 0;
+}
+
 #endif /* OVL0 */
 
 /*cmd.c*/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mactopl.c	3.1	91/07/23
+/*	SCCS Id: @(#)mactopl.c	3.1	91/07/23 */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -59,12 +59,7 @@ char def;
  *   If resp is NULL, any single character is accepted and returned.
  */
 {
-#if ENABLE_MAC_POPUP
-	if (iflags.popup_dialog)
-		return popup_yn_function(query, resp, def);
-	else
-#endif
 		return topl_yn_function(query, resp, def);
 }
 
-/*topl.c*/
+/* mactopl.c */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)getline.c	3.3	96/01/27	*/
+/*	SCCS Id: @(#)getline.c	3.4	1996/01/27	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -72,12 +72,25 @@ getlin_hook_proc hook;
 		    *bufp = 0;
 		}
 		if(c == '\020') { /* ctrl-P */
-		    if(!doprev)
-			(void) tty_doprev_message(); /* need two initially */
-		    (void) tty_doprev_message();
-		    doprev = 1;
-		    continue;
-		} else if(doprev) {
+		    if (iflags.prevmsg_window) {
+			int sav = ttyDisplay->inread;
+			ttyDisplay->inread = 0;
+			(void) tty_doprev_message();
+			ttyDisplay->inread = sav;
+			tty_clear_nhwindow(WIN_MESSAGE);
+			cw->maxcol = cw->maxrow;
+			addtopl(query);
+			addtopl(" ");
+			*bufp = 0;
+			addtopl(obufp);
+		    } else {
+			if (!doprev)
+			    (void) tty_doprev_message();/* need two initially */
+			(void) tty_doprev_message();
+			doprev = 1;
+			continue;
+		    }
+		} else if (doprev && !iflags.prevmsg_window) {
 		    tty_clear_nhwindow(WIN_MESSAGE);
 		    cw->maxcol = cw->maxrow;
 		    doprev = 0;

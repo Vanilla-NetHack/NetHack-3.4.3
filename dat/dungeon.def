@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)dungeon.def	3.3	96/03/10
+#	SCCS Id: @(#)dungeon.def	3.4	1996/03/10
 #	Copyright (c) 1990-95 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
 #
@@ -70,11 +70,9 @@ LEVEL:		"fakewiz2" "G" @ (-6,4)
 DUNGEON:	"The Gnomish Mines" "M" (8, 2)
 ALIGNMENT:	lawful
 DESCRIPTION:	mazelike
-# LEVEL:	"minetown" "T" @ (3, 2)
-RNDLEVEL:	"minetn" "T" @ (3, 2) 2
+RNDLEVEL:	"minetn" "T" @ (3, 2) 7
 LEVELDESC:	town
-# LEVEL:	"mine_end" "E" @ (-1, 0)
-RNDLEVEL:	"minend" "E" @ (-1, 0) 2
+RNDLEVEL:	"minend" "E" @ (-1, 0) 3
 
 #
 #	The Questdungeon

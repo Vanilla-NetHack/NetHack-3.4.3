@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dgn_main.c 3.3	94/09/23	*/
+/*	SCCS Id: @(#)dgn_main.c 3.4	1994/09/23	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet	*/
 /*	Copyright (c) 1990 by M. Stephenson		*/
 /* NetHack may be freely redistributed.  See license for details. */
@@ -12,7 +12,7 @@
 #include "dlb.h"
 
 #ifdef MAC
-# ifdef applec
+# if defined(__SC__) || defined(__MRC__)
 #  define MPWTOOL
 #include <CursorCtl.h>
 # else
@@ -44,7 +44,7 @@ FILE *FDECL (freopen, (char *,char *,FILE *));
 #endif
 #define Fprintf (void)fprintf
 
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(_WIN32)
 extern unsigned _stklen = STKSIZ;
 #endif
 int

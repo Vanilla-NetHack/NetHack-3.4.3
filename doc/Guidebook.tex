@@ -34,12 +34,12 @@
 
 %.mt
 \title{\LARGE A Guide to the Mazes of Menace:\\
-\Large Guidebook for {\it NetHack\/} 3.3}
+\Large Guidebook for {\it NetHack\/}}
 
 %.au
 \author{Eric S. Raymond\\
-(Extensively edited and expanded for 3.0 by Mike Threepoint)}
-\date{August 2, 2000}
+(Extensively edited and expanded for 3.4)}
+\date{March 20, 2002}
 
 \maketitle
 
@@ -274,6 +274,7 @@ In order to understand what is going on in {\it NetHack}, first you must
 understand what {\it NetHack\/} is doing with the screen.  The {\it NetHack\/}
 screen replaces the ``You see \ldots'' descriptions of text adventure games.
 Figure 1 is a sample of what a {\it NetHack\/} screen might look like.
+The way the screen looks for you depends on your platform.
 
 \vbox{
 \begin{verbatim}
@@ -288,7 +289,7 @@ Figure 1 is a sample of what a {\it NetHack\/} screen might look like.
 
 
 
-        Player the Rambler         St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15  Neutral
+        Player the Rambler     St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15  Neutral
         Dlvl:1  $:0  HP:9(12) Pw:3(3) AC:10 Exp:1/19 T:257 Weak
 \end{verbatim}
 \begin{center}
@@ -315,8 +316,10 @@ experience level, see below).
 %.lp
 \item[\bb{Strength}]
 A measure of your character's strength; one of your six basic
-attributes.  Your attributes can range from 3 to 18 inclusive
-(occasionally you may get super-strengths of the form 18/xx).  The
+attributes.  A human character's attributes can range from 3 to 18 inclusive;
+non-humans may exceed these limits
+(occasionally you may get super-strengths of the form 18/xx, and magic can
+also cause attributes to exceed the normal limits).  The
 higher your strength, the stronger you are.  Strength affects how
 successfully you perform physical tasks, how much damage you do in
 combat, and how much loot you can carry.
@@ -503,6 +506,11 @@ An opulent throne.
 Letters and certain other symbols represent the various inhabitants
 of the Mazes of Menace.  Watch out, they can be nasty and vicious.
 Sometimes, however, they can be helpful.
+%.lp
+\item[\tb{I}]
+This marks the last known location of an invisible or otherwise unseen
+monster.  Note that the monster could have moved.  The `F' and `m' commands
+may be useful here.
 
 \elist
 %.pg
@@ -581,13 +589,14 @@ always gives any additional information available about that name.
 Tell what a command does.
 %.lp
 \item[\tb{<}]
-Go up to the previous level (if you are on the staircase or ladder).
+Go up to the previous level (if you are on a staircase or ladder).
 %.lp
 \item[\tb{>}]
-Go down to the next level (if you are on the staircase or ladder).
+Go down to the next level (if you are on a staircase or ladder).
 %.lp
 \item[\tb{[yuhjklbn]}]
-Go one step in the direction indicated (see Figure 2).  If you can sense
+Go one step in the direction indicated (see Figure 2).  If you sense
+or remember
 a monster there, you will fight the monster instead.  Only these
 one-step movement commands cause you to fight monsters; the others
 (below) are ``safe.''
@@ -626,6 +635,12 @@ Prefix:  Move until something interesting is found.
 \item[\tb{G[yuhjklbn] {\rm or} <CONTROL->[yuhjklbn]}]
 Prefix:  Same as `{\tt g}', but forking of corridors is not considered
 interesting.
+%.lp
+\item[\tb{_}]
+Travel to a map location via a shortest-path algorithm. Stops on most of 
+the same conditions as the `G' command does. For ports with mouse 
+support, the command is also invoked when a mouse-click takes place on a 
+location further than 1 cell away from the current position.
 %.lp
 \item[\tb{.}]
 Rest, do nothing for one turn.
@@ -797,7 +812,7 @@ the various deities in your game.
 Zap a wand.  To aim at yourself, use `{\tt .}' for the direction.
 %.lp
 \item[\tb{Z}]
-Zap (cast) a spell.
+Zap (cast) a spell.  To cast at yourself, use `{\tt .}' for the direction.
 %.lp
 \item[\tb{\^{}Z}]
 Suspend the game (UNIX versions with job control only).
@@ -868,7 +883,8 @@ option is ``on'').
 Talk to someone.
 %.lp
 \item[\tb{\#conduct}]
-List which challenges you have adhered to.
+List which challenges you have adhered to.  See the section below entitled
+``Conduct'' for details.
 %.lp
 \item[\tb{\#dip}]
 Dip an object into something.
@@ -908,7 +924,7 @@ Quit the program without saving your game.
 Ride (or stop riding) a monster.
 %.lp
 \item[\tb{\#rub}]
-Rub a lamp.
+Rub a lamp or a stone.
 %.lp
 \item[\tb{\#sit}]
 Sit down.
@@ -945,9 +961,12 @@ letter of the command.
 In {\it NT, OS/2, {\rm and} PC NetHack},
 the `Alt' key can be used in this fashion.
 \blist{}
+%.lp 
+\item[\tb{M-?}]
+{\tt\#?} (not supported by all platforms)
 %.lp
 \item[\tb{M-2}]
-{\tt\#twoweapon}
+{\tt\#twoweapon} (unless the {\it number\_pad\/} option is enabled)
 %.lp
 \item[\tb{M-a}]
 {\tt\#adjust}
@@ -1011,6 +1030,9 @@ the `Alt' key can be used in this fashion.
 \nd If the {\it number\_pad\/} option is on, some additional letter commands
 are available:
 \blist{}
+%.lp 
+\item[\tb{h}]
+Help menu:  display one of several help texts available, like ``{\tt ?}''.
 %.lp
 \item[\tb{j}]
 Jump to another location.  Same as ``{\tt \#jump}'' or ``{\tt M-j}''.
@@ -1023,7 +1045,7 @@ Loot a box or bag on the floor beneath you, or the saddle
 from a horse standing next to you.  Same as ``{\tt \#loot}'' or ``{\tt M-l}''.
 %.lp
 \item[\tb{N}]
-Name an object or type of object.  Same as ``{\tt \#name}'' or ``{\tt M-N}''.
+Name an object or type of object.  Same as ``{\tt \#name}'' or ``{\tt M-n}''.
 %.lp
 \item[\tb{u}]
 Untrap a trap, door, or chest.  Same as ``{\tt \#untrap}'' or ``{\tt M-u}''.
@@ -1159,6 +1181,16 @@ If you see a monster and you wish to fight it, just attempt to walk
 into it.  Many monsters you find will mind their own business unless
 you attack them.  Some of them are very dangerous when angered.
 Remember:  discretion is the better part of valor.
+
+%.pg
+If you can't see a monster (if it is invisible, or if you are blinded),
+the symbol `I' will be shown when you learn of its presence.
+If you attempt to walk into it, you will try to fight it just like
+a monster that you can see; of course,
+if the monster has moved, you will attack empty air.  If you guess
+that the monster has moved and you don't wish to fight, you can use the `m'
+command to move without fighting; likewise, if you don't remember a monster
+but want to try fighting anyway, you can use the `F' command.
 
 %.hn 2
 \subsection*{Your pet}
@@ -1344,7 +1376,7 @@ exchanges your primary (the one being wielded) and secondary weapons.
 And if you have proficiency in the ``two weapon combat'' skill, you
 may wield both primary and secondary weapons simultaneously; use the
 `{\tt \#twoweapon}' extended command to engage or disengage that.  Only
-some types of characters (barbarians, for instance), have the necessary
+some types of characters (barbarians, for instance) have the necessary
 skill available.  Even with that skill, using two weapons at once incurs
 a penalty in the chance to hit your target compared to using just one
 weapon at a time.
@@ -1357,7 +1389,7 @@ other worn items.
 
 %.pg
 Those of you in the audience who are AD\&D players, be aware that each
-weapon which exists in AD\&D does roughly the same damage to monsters in
+weapon which existed in AD\&D does roughly the same damage to monsters in
 {\it NetHack}.  Some of the more obscure weapons (such as the %
 {\it aklys}, {\it lucern hammer}, and {\it bec-de-corbin\/}) are defined
 in an appendix to {\it Unearthed Arcana}, an AD\&D supplement.
@@ -1392,23 +1424,26 @@ which has {\it NetHack\/} choose another item to automatically fill your
 quiver when the inventory slot used for `{\tt Q}' runs out.
 
 %.pg
-Some characters will throw multiple items in a single action.  Rangers,
-for instance, or anyone who achieves a high level of proficiency in
-the relevant weapon skill (in bow skill if you're wielding one to
-shoot arrows, or in sling skill if you're wielding one to shoot stones).
-There is little you can do
-to control this; if {\it NetHack\/} decides that you'll be shooting 3 arrows
-on the current shot, then three arrows will travel in the direction
-you've indicated, even if the first or second succeeds in killing the
-target.  You can explicitly limit the number of shots by using a numeric
-prefix before the `{\tt t}' or `{\tt f}' command.
+Some characters have the ability to fire a volley of multiple items in a
+single turn.  Knowing how to load several rounds of ammunition at
+once---or hold several missiles in your hand---and still hit a
+target is not an easy task.  Rangers are among those who are adept
+at this task, as are those with a high level of proficiency in the
+relevant weapon skill (in bow skill if you're wielding one to
+shoot arrows, in crossbow skill if you're wielding one to shoot bolts,
+or in sling skill if you're wielding one to shoot stones).
+The number of items that the character has a chance to fire varies from
+turn to turn.  You can explicitly limit the number of shots by using a
+numeric prefix before the `{\tt t}' or `{\tt f}' command.
 For example, ``{\tt 2f}'' (or ``{\tt n2f}'' if using
 {\it number\_pad\/}
 mode) would ensure that at most 2 arrows are shot
-even if {\it NetHack\/} decides that your skill warrants 3.  If you specify
+even if you could have fired 3.  If you specify
 a larger number than would have been shot (``{\tt 4f}'' in this example),
 you'll just end up shooting the same number (3, here) as if no limit
-had been specified.
+had been specified.  Once the volley is in motion, all of the items
+will travel in the same direction; if the first ones kill a monster,
+the others can still continue beyond that spot.
 
 %.hn 3
 \subsection*{Weapon proficiency}
@@ -1663,10 +1698,18 @@ energy and the time required in casting.
 
 %.pg
 Casting a spell calls forth magical energies and focuses them with
-your naked mind.  Releasing the magical energy releases some of your
-memory of the spell with it.  Each time you cast a spell, your
-familiarity with it will dwindle, until you eventually forget the
-details completely and must relearn it.
+your naked mind.  Some of the magical energy released comes from within
+you, and casting several spells in a row may tire you.
+Casting of spells also requires practice.  With practice, your
+skill in each category of spell casting will improve.  Over time, however,
+your memory of each spell will dim, and you will need to relearn it.
+
+%.pg
+Some spells are
+directional---you must give a direction in which to cast them.  You can also
+cast them at yourself (just give a `{\tt .}' or `{\tt s}' for the direction).
+Be warned, however, for this is often unwise.  Other spells are
+nondirectional---they don't require a direction.
 
 %.pg
 Just as weapons are divided into groups in which a character can become
@@ -1682,8 +1725,9 @@ of armor may interfere with that.
 
 %.pg
 The command to read a spellbook is the same as for scrolls, `{\tt r}'
-(read).  The `{\tt +}' command lists your current spells and the number of
-spell points they require.  The `{\tt Z}' (cast) command casts a spell.
+(read).  The `{\tt +}' command lists your current spells, their levels,
+categories, and chances for failure.
+The `{\tt Z}' (cast) command casts a spell.
 
 %.hn 2
 \subsection*{Tools (`{\tt (}')}
@@ -1940,10 +1984,11 @@ and the {\it fruit\/} is set to ``papaya'', you would enter the command
 Any line in the configuration file starting with ``{\tt OPTIONS=}'' may be
 filled out with options in the same syntax as in NETHACKOPTIONS.
 Any line starting with ``{\tt DUNGEON=}'', ``{\tt EFFECTS=}'',
-``{\tt MONSTERS=}'', ``{\tt OBJECTS=}'', or ``{\tt TRAPS=}''
+``{\tt MONSTERS=}'', ``{\tt OBJECTS=}'', ``{\tt TRAPS=}'', 
+or ``{\tt BOULDER=}''
 is taken as defining the corresponding {\it dungeon},
-{\it effects}, {\it monsters}, {\it objects}, or
-{\it traps\/} option in a different syntax,
+{\it effects}, {\it monsters}, {\it objects}, {\it traps\/} or
+{\it boulder\/} option in a different syntax,
 a sequence of decimal numbers giving the character position
 in the current font to be used in displaying each entry.
 Such a sequence can be continued to multiple lines by putting a
@@ -1971,6 +2016,10 @@ or {\tt align:chaotic}).  You may specify just the first letter.
 The default is to randomly pick an appropriate alignment.
 Cannot be set with the `{\tt O}' command.
 %.lp
+\item[\ib{autodig}]
+Automatically dig if you are wielding a digging tool and moving into a place
+that can be dug (default false).
+%.lp
 \item[\ib{autopickup}]
 Automatically pick up things onto which you move (default on).
 %.Ip
@@ -1987,6 +2036,9 @@ false, the `t' (throw) command is executed instead.  (default false)
 Use BIOS calls to update the screen display quickly and to read the keyboard
 (allowing the use of arrow keys to move) on machines with an IBM PC
 compatible BIOS ROM (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
+%.lp
+\item[\ib{boulder}]
+Set the character used to display boulders (default is rock class symbol).
 %.lp
 \item[\ib{catname}]
 Name your starting cat (ex.\ ``{\tt catname:Morris}'').
@@ -2008,10 +2060,6 @@ You may have to turn this off if you have more than 2 GB free space
 on the partition used for your save and level files.
 Only applies when MFLOPPY was defined during compilation.
 %.lp
-\item[\ib{color}]
-Use color for different monsters, objects, and dungeon features
-(default on for microcomputers).
-%.lp
 \item[\ib{confirm}]
 Have user confirm attacks on pets, shopkeepers, and other
 peaceable creatures (default on).
@@ -2025,13 +2073,40 @@ characters for such terminals, so you should specify it when appropriate
 even if you override the selections with your own graphics strings.
 %.lp
 \item[\ib{disclose}]
-Offer to disclose various information when the game ends (default all).
-The possibilities are identifying your inventory (`{\tt i}'),
-disclosing your attributes (`{\tt a}'), summarizing monsters that have been
-vanquished (`{\tt v}'), listing monster species that have been
-genocided (`{\tt g}'), and displaying your conduct (`{\tt c}').
+Controls options for disclosing various information when the game ends (defaults
+to all possibilities being disclosed).
+The possibilities are:
+
+%.sd
+%.si
+{\tt i} --- disclose your inventory.\\
+{\tt a} --- disclose your attributes.\\
+{\tt v} --- summarize monsters that have been vanquished.\\
+{\tt g} --- list monster species that have been genocided.\\
+{\tt c} --- display your conduct.
+%.ei
+%.ed
+
+Each disclosure possibility can optionally be preceded by a prefix which
+let you refine how it behaves. Here are the valid prefixes:
+
+%.sd
+%.si
+{\tt y} --- prompt you and default to yes on the prompt.\\
+{\tt n} --- prompt you and default to no on the prompt.\\
+{\tt +} --- disclose it without prompting.\\
+{\tt -} --- do not disclose it and do not prompt.
+%.ei
+%.ed
+
+(ex.\ ``{\tt disclose:yi na +v -g -c}'')
+The example sets {\it inventory\/} to {\it prompt\/} and default to {\it yes\/}, 
+{\it attributes\/} to {\it prompt\/} and default to {\it no\/}, 
+{\it vanquished\/} to {\it disclose without prompting\/}, 
+{\it genocided\/} to {\it not disclose\/} and not to {\it prompt\/}, and 
+{\it conduct\/} to {\it not disclose\/} and not to {\it prompt\/}.
 Note that the vanquished monsters list includes all monsters killed by
-traps and each other as well as by you.
+traps and each other as well as by you. 
 %.lp
 \item[\ib{dogname}]
 Name your starting dog (ex.\ ``{\tt dogname:Fang}'').
@@ -2095,11 +2170,6 @@ or the present ones rearranged.
 
 Cannot be set with the `{\tt O}' command.
 %.lp
-\item[\ib{eight\_bit\_tty}]
-Pass eight-bit character values (for example, specified with the {\it
-traps \/} option) straight through to your terminal (default off).
-Only applies to the tty port.
-%.lp
 \item[\ib{extmenu}]
 Changes the extended commands interface to pop-up a menu of available commands.
 It is keystroke compatible with the traditional interface except that it does
@@ -2136,11 +2206,6 @@ Turning help off makes just looking at things faster, since you aren't
 interrupted with the ``{\tt More info?}'' prompt, but it also means that you
 might miss some interesting and/or important information.
 %.lp
-\item[\ib{hilite\_pet}]
-Visually distinguish pets from similar animals (default off).
-In text windowing, use text highlighting when color is turned off;
-with X tiles, display a heart symbol near pets.
-%.lp
 \item[\ib{horsename}]
 Name your starting horse (ex.\ ``{\tt horsename:Trigger}'').
 Cannot be set with the `{\tt O}' command.
@@ -2164,7 +2229,7 @@ Show corridor squares seen by night vision or a light source held by your
 character as lit (default off).
 %.lp
 \item[\ib{mail}]
-Enable mail delivery during the game.
+Enable mail delivery during the game (default on).
 %.lp
 \item[\ib{male}]
 An obsolete synonym for ``{\tt gender:male}''.  Cannot be set with the
@@ -2185,47 +2250,47 @@ object classes rather than a character prompt, and then a menu of matching
 objects for selection.
 \item[\ib{menu\_deselect\_all}]
 Menu character accelerator to deselect all items in a menu.
-Implemented by the X11 and tty ports.
+Implemented by the Amiga, Gem, X11 and tty ports.
 Default `-'.
 \item[\ib{menu\_deselect\_page}]
 Menu character accelerator deselect all items on this page of a menu.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+\+'.
 \item[\ib{menu\_first\_page}]
 Menu character accelerator to jump to the first page in a menu.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+^+'.
 \item[\ib{menu\_invert\_all}]
 Menu character accelerator to invert all items in a menu.
-Implemented by the X11 and tty ports.
+Implemented by the Amiga, Gem, X11 and tty ports.
 Default `@'.
 \item[\ib{menu\_invert\_page}]
 Menu character accelerator to invert all items on this page of a menu.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+~+'.
 \item[\ib{menu\_last\_page}]
 Menu character accelerator to jump to the last page in a menu.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+|+'.
 \item[\ib{menu\_next\_page}]
 Menu character accelerator to goto the next menu page.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+>+'.
 \item[\ib{menu\_previous\_page}]
 Menu character accelerator to goto the previous menu page.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `\verb+<+'.
 \item[\ib{menu\_search}]
 Menu character accelerator to search for a menu item.
-Implemented only by the X11 port.
+Implemented by the Amiga, Gem and X11 ports.
 Default `:'.
 \item[\ib{menu\_select\_all}]
 Menu character accelerator to select all items in a menu.
-Implemented by the X11 and tty ports.
+Implemented by the Amiga, Gem, X11 and tty ports.
 Default `.'.
 \item[\ib{menu\_select\_page}]
 Menu character accelerator to select all items on this page of a menu.
-Implemented only by the tty port.
+Implemented by the Amiga, Gem and tty ports.
 Default `,'.
 %.lp
 \item[\ib{monsters}]
@@ -2260,6 +2325,10 @@ Cannot be set with the `{\tt O}' command.
 \item[\ib{msghistory}]
 The number of top line messages to save (and recall with `{\tt \^{}P}')
 (default 20). Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{msg\_window}]
+Use a screen-size window to show the previous messages with `{\tt \^{}P}'
+instead of showing them one at a time.  (Currently implemented for tty only.)
 %.lp
 \item[\ib{name}]
 Set your character's name (defaults to your user name).  You can also
@@ -2303,8 +2372,8 @@ makes sense for windowing system interfaces that implement this feature.
 %.lp
 \item[\ib{pettype}]
 Specify the type of your initial pet, if you are playing a character class
-that uses multiple types of pets.  Possible values are ``{\tt cat}''
-and ``{\tt dog}''.
+that uses multiple types of pets; or choose to have no initial pet at all.
+Possible values are ``{\tt cat}'', ``{\tt dog}'' and ``{\tt none}''.
 Cannot be set with the `{\tt O}' command.
 %.Ip
 \item[\ib{pickup\_burden}]
@@ -2319,12 +2388,6 @@ is on.  Default is all types.
 %.lp
 \item[\ib{prayconfirm}]
 Prompt for confirmation before praying (default on).
-%.lp
-\item[\ib{preload\_tiles}]
-For the protected mode MSDOS version, control whether tiles
-get pre-loaded into RAM at the start of the game.  Doing so
-enhances performance of the tile graphics, but uses more memory. (default on).
-Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{pushweapon}]
 Using the `w' (wield) command when already wielding
@@ -2372,6 +2435,10 @@ Sort the pack contents by type when displaying inventory (default on).
 %.lp
 \item[\ib{standout}]
 Boldface monsters and ``{\tt --More--}'' (default off).
+%.lp
+\item[\ib{sparkle}]
+Display a sparkly effect when a monster (including yourself) is hit by an
+attack to which it is resistant (default on).
 %.lp
 \item[\ib{suppress\_alert}]
 This option may be set to a NetHack version level to suppress
@@ -2439,6 +2506,128 @@ Cannot be set with the `{\tt O}' command.
 \elist
 
 %.hn 2
+\subsection*{Window Port Customization options}
+
+%.pg
+Here are explanations of the various options that are
+used to customize and change the characteristics of the
+windowtype that you have chosen.
+Character strings that are too long may be truncated.
+Not all window ports will adjust for all settings listed
+here.  You can safely add any of these options to your 
+config file, and if the window port is capable of adjusting 
+to suit your preferences, it will attempt to do so. If it
+can't it will silently ignore it.  You can find out if an 
+option is supported by the window port that you are currently
+using by checking to see if it shows up in the Options list.
+Some options are dynamic and can be specified during the game
+with the `{\tt O}' command.
+
+\blist{}
+%.lp
+\item[\ib{align\_message}]
+ Where to align or place the message window (top, bottom, left, or right)
+%.lp
+\item[\ib{align\_status}]
+ Where to align or place the status window (top, bottom, left, or right).
+%.lp
+\item[\ib{ascii\_map}]
+NetHack should display an ascii map if it can.
+%.lp
+\item[\ib{color}]
+NetHack should display color if it can for different monsters, 
+objects, and dungeon features
+%.lp
+\item[\ib{eight\_bit\_tty}]
+Pass eight-bit character values (for example, specified with the {\it
+traps \/} option) straight through to your terminal (default off).
+%.lp
+\item[\ib{font\_map}]
+NetHack should use a font by the chosen name for the map window.
+%.lp
+\item[\ib{font\_menu}]
+NetHack should use a font by the chosen name for menu windows.
+%.lp
+\item[\ib{font\_message}]
+NetHack should use a font by the chosen name for the message window.
+%.lp
+\item[\ib{font\_status}]
+NetHack should use a font by the chosen name for the status window.
+%.lp
+\item[\ib{font\_text}]
+NetHack should use a font by the chosen name for text windows.
+%.lp
+\item[\ib{font\_size\_map}]
+NetHack should use this size font for the map window.
+%.lp
+\item[\ib{font\_size\_menu}]
+NetHack should use this size font for menu windows.
+%.lp
+\item[\ib{font\_size\_message}]
+NetHack should use this size font for the message window.
+%.lp
+\item[\ib{font\_size\_status}]
+NetHack should use this size font for the status window.
+%.lp
+\item[\ib{font\_size\_text}]
+NetHack should use this size font for text windows.
+%.lp
+\item[\ib{hilite\_pet}]
+Visually distinguish pets from similar animals (default off).
+The behavior of this option depends on the type of windowing you use.
+In text windowing, text highlighting or inverse video is often used;
+with tiles, generally displays a heart symbol near pets.
+%.lp
+\item[\ib{large\_font}]
+NetHack should use a large font.
+%.lp
+\item[\ib{map\_mode}]
+NetHack should display the map in the manner specified.
+%.lp
+\item[\ib{player\_selection}]
+NetHack should pop up dialog boxes or use prompts for character selection.
+%.lp
+\item[\ib{popup\_dialog}]
+NetHack should pop up dialog boxes for input.
+%.lp
+\item[\ib{preload\_tiles}]
+NetHack should preload tiles into memory.
+For example, in the protected mode MSDOS version, control whether tiles
+get pre-loaded into RAM at the start of the game.  Doing so
+enhances performance of the tile graphics, but uses more memory. (default on).
+Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{scroll\_margin}]
+NetHack should scroll the display when the hero or cursor
+is this number of cells away from the edge of the window.
+%.lp
+\item[\ib{splash\_screen}]
+NetHack should display an opening splash screen when it starts up (default yes).
+%.lp
+\item[\ib{tiled\_map}]
+NetHack should display a tiled map if it can.
+%.lp
+\item[\ib{tile\_file}]
+Specify the name of an alternative tile file to override the default.
+%.lp
+\item[\ib{tile\_height}]
+Specify the preferred height of each tile in a tile capable port.
+%.lp
+\item[\ib{tile\_width}]
+Specify the preferred width of each tile in a tile capable port
+%.lp
+\item[\ib{use\_inverse}]
+NetHack should display inverse when the game specifies it.
+%.lp
+\item[\ib{vary\_msgcount}]
+NetHack should display this number of messages at a time in the message window.
+%.lp
+\item[\ib{windowcolors}]
+NetHack should display windows with the specified foreground/background 
+colors if it can.
+\elist
+
+%.hn 2
 \subsection*{Configuring NetHack for Play by the Blind}
 
 %.pg
@@ -2476,9 +2665,9 @@ Disable IBMgraphics by commenting out this option.
 \item[\ib{menustyle:traditional}]
 This will assist in the interface to speech synthesizers.
 %.lp
-\item[\ib{!number\_pad}]
+\item[\ib{number\_pad}]
 A lot of speech access programs use the number-pad to review the screen.
-If this is the case, turn off the number\_pad option and use the traditional
+If this is the case, disable the number\_pad option and use the traditional
 Rogue-like commands.
 %.lp
 \item[\ib{Character graphics}]
@@ -2703,49 +2892,85 @@ DevTeam and incorporated the best of these ideas into NetHack 3.3.
 
 %.pg
 \medskip
-The 3.3 development team consisted of {\it Michael Allison}, {\it Ken Arromdee},
-{\it David Cohrs}, {\it Jessie Collet}, {\it Steve Creps}, {\it Kevin Darcy},
-{\it Timo Hakulinen},
-{\it Kevin Hugo}, {\it Steve Linhart}, {\it Dean Luick}, {\it Pat Rankin},
-{\it Eric Smith}, {\it Mike Stephenson}, {\it Janet Walz}, and {\it Paul Winner}.
+The final update to 3.2 was the bug fix release 3.2.3, which was released
+simultaneously with 3.3.0 in December 1999 just in time for the Year 2000.
 
 %.pg
 \medskip
-As with version 3.2, various people contributed to the game as a whole as
+The 3.3 development team, consisting of {\it Michael Allison}, {\it Ken Arromdee}, 
+{\it David Cohrs}, {\it Jessie Collet}, {\it Steve Creps}, {\it Kevin Darcy}, 
+{\it Timo Hakulinen}, {\it Kevin Hugo}, {\it Steve Linhart}, {\it Ken Lorber}, 
+{\it Dean Luick}, {\it Pat Rankin}, {\it Eric Smith}, {\it Mike Stephenson}, 
+{\it Janet Walz}, and {\it Paul Winner}, released 3.3.0 in 
+December 1999 and 3.3.1 in August of 2000.
+
+%.pg
+\medskip
+Version 3.3 offered many firsts. It was the first version to separate race 
+and profession. The Elf class was removed in preference to an elf race, 
+and the races of dwarves, gnomes, and orcs made their first appearance in 
+the game alongside the familiar human race.  Monk and Ranger roles joined 
+Archeologists, Barbarians, Cavemen, Healers, Knights, Priests, Rogues, Samurai, 
+Tourists, Valkyries and of course, Wizards.  It was also the first version
+to allow you to ride a steed, and was the first version to have a publicly 
+available web-site listing all the bugs that had been discovered.  Despite 
+that constantly growing bug list, 3.3 proved stable enough to last for
+more than a year and a half.
+
+%.pg
+\medskip
+The 3.4 development team initially consisted of 
+{\it Michael Allison}, {\it Ken Arromdee},
+{\it David Cohrs}, {\it Jessie Collet}, {\it Kevin Hugo}, {\it Ken Lorber},
+{\it Dean Luick}, {\it Pat Rankin}, {\it Mike Stephenson}, 
+{\it Janet Walz}, and {\it Paul Winner}, with {\it  Warwick Allison} joining 
+just before the release of NetHack 3.4.0 in March 2002.
+
+%.pg
+\medskip
+As with version 3.3, various people contributed to the game as a whole as
 well as supporting ports on the different platforms that {\it NetHack\/}
 runs on:
 
 %.pg
 \medskip
-\nd{\it Pat Rankin} maintained 3.3 for VMS.
+\nd{\it Pat Rankin} maintained 3.4 for VMS.
 
 %.pg
 \medskip
-\nd {\it Michael Allison} maintained NetHack 3.3 for the MS-DOS platform.
+\nd {\it Michael Allison} maintained NetHack 3.4 for the MS-DOS platform.
 {\it Paul Winner} and {\it Yitzhak Sapir} provided encouragement.
 
 %.pg
 \medskip
 \nd {\it Dean Luick}, {\it Mark Modrall}, and {\it Kevin Hugo} maintained and
-enhanced the Macintosh port of 3.3.
+enhanced the Macintosh port of 3.4.
 
 %.pg
 \medskip
-\nd {\it Michael Allison} maintained and enhanced 3.3 for the Microsoft Windows NT platform.
+\nd {\it Michael Allison}, {\it David Cohrs}, {\it Alex Kompel}, {\it Dion Nicolaas}, and 
+{\it Yitzhak Sapir} maintained and enhanced 3.4 for the Microsoft Windows platform.
+{\it Alex Kompel} contributed a new graphical interface for the Windows port.
 
 %.pg
 \medskip
-\nd {\it Ron Van Iwaarden} took over responsibility for the OS/2 port.
+\nd {\it Ron Van Iwaarden} maintained 3.4 for OS/2.
 
 %.pg
 \medskip
-\nd The Amiga port of NetHack was resurrected for 3.3.1 by {\it Janne
-Salmij\"{a}rvi}.
+\nd {\it Janne Salmij\"{a}rvi} and {\it Teemu Suikki} maintained
+and enhanced the Amiga port of 3.4 after {\it Janne Salmij\"{a}rvi} resurrected
+it for 3.3.1.
 
 %.pg
 \medskip
-\nd The Atari port of NetHack was resurrected for 3.3.1 by {\it Christian
-``Marvin'' Bressler}.
+\nd {\it Christian ``Marvin'' Bressler} maintained 3.4 for the Atari after he
+resurrected it for 3.3.1.
+
+%.pg
+\medskip
+\nd There is a NetHack web site maintained by {\it Ken Lorber} at 
+http:{\tt /}{\tt /}www.nethack.org{\tt /}.
 
 %.pg
 \bigskip
@@ -2758,39 +2983,41 @@ in this, the list of Dungeoneers:
 \begin{center}
 \begin{tabular}{lll}
 %TABLE_START
-Adam Aronow & Irina Rempt-Drijfhout & Mike Gallop\\
-Andy Church & Izchak Miller & Mike Passaretti\\
-Andy Swanson & Janet Walz & Mike Stephenson\\
-Ari Huttunen & Janne Salmij\"{a}rvi & Norm Meluch\\
-Barton House & Jean-Christophe Collet & Olaf Seibert\\
-Benson I. Margulies & Jochen Erwied & Pat Rankin\\
-Bill Dyer & John Kallen & Paul Winner\\
-Boudewijn Waijers & John Rupley & Pierre Martineau\\
-Bruce Cox & John S. Bien & Ralf Brown\\
-Bruce Holloway & Johnny Lee & Richard Addison\\
-Bruce Mewborne & Jon W\{tte & Richard Beigel\\
-Carl Schelin & Jonathan Handler & Richard P. Hughey\\
-Chris Russo & Joshua Delahunty & Rob Menke\\
-David Cohrs & Keizo Yamamoto & Robin Johnson\\
-David Damerell & Ken Arromdee & Roland McGrath\\
-David Gentzel & Ken Lorber & Ron Van Iwaarden\\
-David Hairston & Ken Washikita & Ronnen Miller\\
-Dean Luick & Kevin Darcy & Ross Brown\\
-Del Lamb & Kevin Hugo & Sascha Wostmann\\
-Deron Meranda & Kevin Sitze & Scott R. Turner\\
-Dylan O'Donnell & Kevin Smolkowski & Stephen Spackman\\
-Eric Backus & Kevin Sweet & Stephen White\\
-Eric Hendrickson & Lars Huttar & Steve Creps\\
-Eric R. Smith & Mark Gooderum & Steve Linhart\\
-Eric S. Raymond & Mark Modrall & Steve VanDevender\\
+Adam Aronow & Helge Hafting & Mike Engber\\
+Alex Kompel & Irina Rempt-Drijfhout & Mike Gallop\\
+Andreas Dorn & Izchak Miller & Mike Passaretti\\
+Andy Church & J. Ali Harlow & Mike Stephenson\\
+Andy Swanson & Janet Walz & Norm Meluch\\
+Ari Huttunen & Janne Salmij\"{a}rvi & Olaf Seibert\\
+Barton House & Jean-Christophe Collet & Pat Rankin\\
+Benson I. Margulies & Jochen Erwied & Paul Winner\\
+Bill Dyer & John Kallen & Pierre Martineau\\
+Boudewijn Waijers & John Rupley & Ralf Brown\\
+Bruce Cox & John S. Bien & Richard Addison\\
+Bruce Holloway & Johnny Lee & Richard Beigel\\
+Bruce Mewborne & Jon W\{tte & Richard P. Hughey\\
+Carl Schelin & Jonathan Handler & Rob Menke\\
+Chris Russo & Joshua Delahunty & Robin Johnson\\
+David Cohrs & Keizo Yamamoto & Roland McGrath\\
+David Damerell & Ken Arnold & Ron Van Iwaarden\\
+David Gentzel & Ken Arromdee & Ronnen Miller\\
+David Hairston & Ken Lorber & Ross Brown\\
+Dean Luick & Ken Washikita & Sascha Wostmann\\
+Del Lamb & Kevin Darcy & Scott Bigham\\
+Deron Meranda & Kevin Hugo & Scott R. Turner\\
+Dion Nicolaas & Kevin Sitze & Stephen Spackman\\
+Dylan O'Donnell & Kevin Smolkowski & Stephen White\\
+Eric Backus & Kevin Sweet & Steve Creps\\
+Eric Hendrickson & Lars Huttar & Steve Linhart\\
+Eric R. Smith & Mark Gooderum & Steve VanDevender\\
+Eric S. Raymond & Mark Modrall & Teemu Suikki\\
 Erik Andersen & Marvin Bressler & Tim Lennan\\
 Frederick Roeber & Matthew Day & Timo Hakulinen\\
 Gil Neiger & Merlyn LeRoy & Tom Almy\\
 Greg Laskin & Michael Allison & Tom West\\
 Greg Olson & Michael Feir & Warren Cheung\\
 Gregg Wonderly & Michael Hamel & Warwick Allison\\
-Hao-yang Wang & Michael Sokolov & Yitzhak Sapir\\
-Helge Hafting & Mike Engber
+Hao-yang Wang & Michael Sokolov & Yitzhak Sapir
 %TABLE_END  Do not delete this line.
 \end{tabular}
 \end{center}

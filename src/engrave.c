@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.3	1999/08/16	*/
+/*	SCCS Id: @(#)engrave.c	3.4	2001/11/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -153,7 +153,7 @@ register int x, y;
 	if ((x == u.ux) && (y == u.uy) && u.uswallow &&
 		is_animal(u.ustuck->data))
 	    return "maw";
-	else if (IS_AIR(lev->typ))
+	else if (IS_AIR(lev->typ) && Is_airlevel(&u.uz))
 	    return "air";
 	else if (is_pool(x,y))
 	    return "water";
@@ -336,7 +336,7 @@ register int x,y;
 	    	char *et;
 	    	unsigned maxelen = BUFSZ - sizeof("You feel the words: \"\". ");
 	    	if (strlen(ep->engr_txt) > maxelen) {
-	    		strncpy(buf,  ep->engr_txt, maxelen);
+	    		(void) strncpy(buf,  ep->engr_txt, (int)maxelen);
 			buf[maxelen] = '\0';
 			et = buf;
 		} else
@@ -369,7 +369,8 @@ register xchar e_type;
 	ep->engr_y = y;
 	ep->engr_txt = (char *)(ep + 1);
 	Strcpy(ep->engr_txt, s);
-	if(strcmp(s, "Elbereth")) exercise(A_WIS, TRUE);
+	/* engraving Elbereth shows wisdom */
+	if(!strcmp(s, "Elbereth")) exercise(A_WIS, TRUE);
 	ep->engr_time = e_time;
 	ep->engr_type = e_type > 0 ? e_type : rnd(N_ENGRAVE-1);
 	ep->engr_lth = strlen(s) + 1;
@@ -450,15 +451,13 @@ doengrave()
 	char post_engr_text[BUFSZ]; /* Text displayed after engraving prompt */
 	const char *everb;	/* Present tense of engraving type */
 	const char *eloc;	/* Where the engraving is (ie dust/floor/...) */
-	register char *sp;	/* Place holder for space count of engr text */
-	register int len;	/* # of nonspace chars of new engraving text */
-	register int maxelen;	/* Max allowable length of new engraving text */
-	register int spct;	/* # of spaces in new engraving text */
-	register struct engr *oep = engr_at(u.ux,u.uy);
+	char *sp;		/* Place holder for space count of engr text */
+	int len;		/* # of nonspace chars of new engraving text */
+	int maxelen;		/* Max allowable length of engraving text */
+	struct engr *oep = engr_at(u.ux,u.uy);
 				/* The current engraving */
-	register struct obj *otmp; /* Object selected with which to engrave */
+	struct obj *otmp;	/* Object selected with which to engrave */
 	char *writer;
-
 
 	multi = 0;		/* moves consumed */
 	nomovemsg = (char *)0;	/* occupation end message */
@@ -531,10 +530,13 @@ doengrave()
 		return(0);
 	}
 	if (IS_GRAVE(levl[u.ux][u.uy].typ)) {
+	    if (!levl[u.ux][u.uy].disturbed) {
 		You("disturb the undead!");
+		levl[u.ux][u.uy].disturbed = 1;
 		(void) makemon(&mons[PM_GHOUL], u.ux, u.uy, NO_MM_FLAGS);
 		exercise(A_WIS, FALSE);
-		return(0);
+		return(1);
+	    }
 	}
 
 	/* SPFX for items */
@@ -676,7 +678,7 @@ doengrave()
 			    break;
 		    case WAN_CANCELLATION:
 		    case WAN_MAKE_INVISIBLE:
-			if(oep) {
+			if (oep && oep->engr_type != HEADSTONE) {
 			    if (!Blind)
 				pline_The("engraving on the %s vanishes!",
 					surface(u.ux,u.uy));
@@ -684,7 +686,7 @@ doengrave()
 			}
 			break;
 		    case WAN_TELEPORTATION:
-			if (oep) {
+			if (oep && oep->engr_type != HEADSTONE) {
 			    if (!Blind)
 				pline_The("engraving on the %s vanishes!",
 					surface(u.ux,u.uy));
@@ -783,15 +785,16 @@ doengrave()
 				if (!Blind)
 				    You("wipe out the message here.");
 				else
-				    Your("%s gets %s.", xname(otmp),
-					  is_ice(u.ux,u.uy) ?
-					  "frosty" : "dusty");
+				    Your("%s %s %s.", xname(otmp),
+					 otense(otmp, "get"),
+					 is_ice(u.ux,u.uy) ?
+					 "frosty" : "dusty");
 				dengr = TRUE;
 			    } else
 				Your("%s can't wipe out this engraving.",
 				     xname(otmp));
 			else
-			    Your("%s gets %s.", xname(otmp),
+			    Your("%s %s %s.", xname(otmp), otense(otmp, "get"),
 				  is_ice(u.ux,u.uy) ? "frosty" : "dusty");
 			break;
 		    default:
@@ -809,6 +812,18 @@ doengrave()
 	    case ILLOBJ_CLASS:
 		impossible("You're engraving with an illegal object!");
 		break;
+	}
+
+	if (IS_GRAVE(levl[u.ux][u.uy].typ)) {
+	    if (type == ENGRAVE || type == 0)
+		type = HEADSTONE;
+	    else {
+		/* ensures the "cannot wipe out" case */
+		type = DUST;
+		dengr = FALSE;
+		teleengr = FALSE;
+		buf[0] = (char)0;
+	    }
 	}
 
 	/* End of implement setup */
@@ -839,8 +854,9 @@ doengrave()
 	if (zapwand && (otmp->spe < 0)) {
 	    pline("%s %sturns to dust.",
 		  The(xname(otmp)), Blind ? "" : "glows violently, then ");
- You("are not going to get anywhere trying to write in the %s with your dust.",
-		is_ice(u.ux,u.uy) ? "frost" : "dust");
+	    if (!IS_GRAVE(levl[u.ux][u.uy].typ))
+		You("are not going to get anywhere trying to write in the %s with your dust.",
+		    is_ice(u.ux,u.uy) ? "frost" : "dust");
 	    useup(otmp);
 	    ptext = FALSE;
 	}
@@ -860,7 +876,10 @@ doengrave()
 
 	    /* Give player the choice to add to engraving. */
 
-	    if ( (type == oep->engr_type) && (!Blind ||
+	    if (type == HEADSTONE) {
+		/* no choice, only append */
+		c = 'y';
+	    } else if ( (type == oep->engr_type) && (!Blind ||
 		 (oep->engr_type == BURN) || (oep->engr_type == ENGRAVE)) ) {
 		c = yn_function("Do you want to add to the current engraving?",
 				ynqchars, 'y');
@@ -898,7 +917,7 @@ doengrave()
 				You("will overwrite the current message.");
 			    eow = TRUE;
 			}
-	}
+	    }
 	}
 
 	eloc = surface(u.ux,u.uy);
@@ -943,23 +962,15 @@ doengrave()
 	Sprintf(qbuf,"What do you want to %s the %s here?", everb, eloc);
 	getlin(qbuf, ebuf);
 
-	/* Mix up engraving if surface or state of mind is unsound.  */
-	/* Original kludge by stewr 870708.  modified by njm 910722. */
-	for (sp = ebuf; *sp; sp++)
-	    if ( ((type == DUST || type == ENGR_BLOOD) && !rn2(25)) ||
-		 (Blind   && !rn2(9)) || (Confusion     && !rn2(12)) ||
-		 (Stunned && !rn2(4)) || (Hallucination && !rn2(1)) )
-		 *sp = '!' + rn2(93); /* ASCII-code only */
-
 	/* Count the actual # of chars engraved not including spaces */
 	len = strlen(ebuf);
+	for (sp = ebuf; *sp; sp++) if (isspace(*sp)) len -= 1;
 
-	for (sp = ebuf, spct = 0; *sp; sp++) if (isspace(*sp)) spct++;
-
-	if ( (len == spct) || index(ebuf, '\033') ) {
+	if (len == 0 || index(ebuf, '\033')) {
 	    if (zapwand) {
 		if (!Blind)
-		    pline("%s glows, then fades.", The(xname(otmp)));
+		    pline("%s, then %s.",
+			  Tobjnam(otmp, "glow"), otense(otmp, "fade"));
 		return(1);
 	    } else {
 		pline(Never_mind);
@@ -967,11 +978,20 @@ doengrave()
 	    }
 	}
 
-	len -= spct;
-
 	/* A single `x' is the traditional signature of an illiterate person */
 	if (len != 1 || (!index(ebuf, 'x') && !index(ebuf, 'X')))
 	    u.uconduct.literate++;
+
+	/* Mix up engraving if surface or state of mind is unsound.
+	   Note: this won't add or remove any spaces. */
+	for (sp = ebuf; *sp; sp++) {
+	    if (isspace(*sp)) continue;
+	    if (((type == DUST || type == ENGR_BLOOD) && !rn2(25)) ||
+		    (Blind && !rn2(11)) || (Confusion && !rn2(7)) ||
+		    (Stunned && !rn2(4)) || (Hallucination && !rn2(2)))
+		*sp = ' ' + rnd(96 - 2);	/* ASCII '!' thru '~'
+						   (excludes ' ' and DEL) */
+	}
 
 	/* Previous engraving is overwritten */
 	if (eow) {
@@ -1004,12 +1024,19 @@ doengrave()
 			 *	 "ere", then "th".
 			 */
 		    Your("%s dull.", aobjnam(otmp, "get"));
+		    if (otmp->unpaid) {
+			struct monst *shkp = shop_keeper(*u.ushops);
+			if (shkp) {
+			    You("damage it, you pay for it!");
+			    bill_dummy_object(otmp);
+			}
+		    }
 		    if (len > maxelen) {
 			multi = -maxelen;
 			otmp->spe = -3;
-		    } else
-			if (len > 1) otmp->spe -= len >> 1;
-			else otmp->spe -= 1; /* Prevent infinite engraving */
+		    } else if (len > 1)
+			otmp->spe -= len >> 1;
+		    else otmp->spe -= 1; /* Prevent infinite engraving */
 		} else
 		    if ( (otmp->oclass == RING_CLASS) ||
 			 (otmp->oclass == GEM_CLASS) )
@@ -1067,6 +1094,7 @@ doengrave()
 	if (doblind && !resists_blnd(&youmonst)) {
 	    You("are blinded by the flash!");
 	    make_blinded((long)rnd(50),FALSE);
+	    if (!Blind) Your(vision_clears);
 	}
 
 	return(1);

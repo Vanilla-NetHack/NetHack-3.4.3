@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)write.c	3.3	96/05/05	*/
+/*	SCCS Id: @(#)write.c	3.4	2001/11/29	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -85,8 +85,8 @@ register struct obj *pen;
 	    return 0;
 	} else if (Glib) {
 	    dropx(pen);
-	    pline("%s slips from your %s.", The(xname(pen)),
-			makeplural(body_part(FINGER)));
+	    pline("%s from your %s.",
+		  Tobjnam(pen, "slip"), makeplural(body_part(FINGER)));
 	    return 1;
 	}
 
@@ -178,17 +178,18 @@ found:
 	curseval = bcsign(pen) + bcsign(paper);
 	exercise(A_WIS, TRUE);
 	/* dry out marker */
-	if(pen->spe < actualcost)  {
+	if (pen->spe < actualcost) {
+		pen->spe = 0;
 		Your("marker dries out!");
 		/* scrolls disappear, spellbooks don't */
-		if (paper->oclass == SPBOOK_CLASS)
+		if (paper->oclass == SPBOOK_CLASS) {
 			pline_The(
 		       "spellbook is left unfinished and your writing fades.");
-		else {
+			update_inventory();	/* pen charges */
+		} else {
 			pline_The("scroll is now useless and disappears!");
 			useup(paper);
 		}
-		pen->spe = 0;
 		obfree(new_obj, (struct obj *) 0);
 		return(1);
 	}
@@ -200,10 +201,11 @@ found:
 	   (rnl(Role_if(PM_WIZARD) ? 3 : 15))) {
 		You("%s to write that!", by_descr ? "fail" : "don't know how");
 		/* scrolls disappear, spellbooks don't */
-		if (paper->oclass == SPBOOK_CLASS)
+		if (paper->oclass == SPBOOK_CLASS) {
 			You(
        "write in your best handwriting:  \"My Diary\", but it quickly fades.");
-		else {
+			update_inventory();	/* pen charges */
+		} else {
 			if (by_descr) {
 			    Strcpy(namebuf, OBJ_DESCR(objects[new_obj->otyp]));
 			    wipeout_text(namebuf, (6+MAXULEV - u.ulevel)/6, 0);

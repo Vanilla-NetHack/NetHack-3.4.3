@@ -5,10 +5,15 @@ h-.-l   4-.-6           YUHJKLBN: go in specified direction until you
 b j n   1 2 3           g<dir>:   run in direction <dir> until something
       numberpad                     interesting is seen
                         G<dir>,   same, except a branching corridor isn't
- <  up                  ^<dir>:     considered interesting
+ <  up                  ^<dir>:     considered interesting (the ^ in this
+                                    case means the Control key, not a caret)
  >  down                m<dir>:   move without picking up objects/fighting
                         F<dir>:   fight even if you don't sense a monster
                 If the number_pad option is set, the number keys move instead.
+                Depending on the platform, Shift number (on the numberpad),
+                Meta number, or Alt number will invoke the YUHJKLBN commands.
+                Control <dir> may or may not work when number_pad is enabled,
+                depending on the platform's capabilities.
 
 General commands:
 ?       help    display one of several informative texts
@@ -30,6 +35,7 @@ X       explore switch the game to explore (discovery) mode
 Game commands:
 ^D      kick    kick (a door, or something else)
 ^T      'port   teleport (if you can)
+^X      show    show your attributes
 a       apply   apply or use a tool (pick-axe, key, camera, etc.)
 A       armor   take off all armor
 c       close   close a door
@@ -67,6 +73,7 @@ Z       Zap     cast a spell
 *               ask for combination of ),[,=,",( all at once
 $       gold    count your gold
 +       spells  list the spells you know; also rearrange them if desired
+_       travel  move via a shortest-path algorithm to a point on the map 
 .       rest    wait a moment
 ,       pickup  pick up all you can carry
 @               toggle "pickup" (auto pickup) option on and off
@@ -76,7 +83,8 @@ $       gold    count your gold
 Keyboards that have a meta key can also use these extended commands
 via the meta modifier instead of the # prefix:
 
-M-2     twoweapon toggle two-weapon combat
+M-?             Display extended command help (if the platform allows this)
+M-2     twoweapon toggle two-weapon combat (unless number_pad is enabled)
 M-a     adjust  adjust inventory letters
 M-c     chat    talk to someone
 M-d     dip     dip an object into something
@@ -90,7 +98,7 @@ M-n     name    name an item or type of object
 M-o     offer   offer a sacrifice to the gods
 M-p     pray    pray to the gods for help
 M-q     quit    stop playing
-M-r     rub     rub a lamp
+M-r     rub     rub a lamp or a stone
 M-s     sit     sit down
 M-t     turn    turn undead
 M-u     untrap  untrap something
@@ -100,6 +108,7 @@ M-w     wipe    wipe off your face
 If the "number_pad" option is on, these additional variants are available:
 
 n               followed by number of times to repeat the next command
+h       help    display one of several informative texts, like '?'
 j       jump    jump to another location
 k       kick    kick something (usually a door)
 l       loot    loot a box on the floor

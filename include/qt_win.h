@@ -1,8 +1,8 @@
-//	SCCS Id: @(#)qt_win.h	3.3	1999/11/19
+//	SCCS Id: @(#)qt_win.h	3.4	1999/11/19
 // Copyright (c) Warwick Allison, 1999.
 // NetHack may be freely redistributed.  See license for details.
 //
-// Qt Binding for NetHack 3.3
+// Qt Binding for NetHack 3.4
 //
 // Unfortunately, this doesn't use Qt as well as I would like,
 // primarily because NetHack is fundamentally a getkey-type
@@ -21,7 +21,11 @@
 #include <qbuttongroup.h>
 #include <qlabel.h>
 #include <qlineedit.h> 
+#if defined(QWS)
+#include <qpeapplication.h> 
+#else
 #include <qapplication.h> 
+#endif
 #include <qspinbox.h>
 #include <qfile.h> 
 #include <qlistbox.h> 
@@ -32,7 +36,15 @@
 #include <qarray.h>
 #include <qcombobox.h>
 #include <qscrollview.h>
+#if QT_VERSION >= 300
+#include <qttableview.h>
+// Should stop using QTableView
+#define QTableView QtTableView
+#else
 #include <qtableview.h>
+#endif
+#include <qmainwindow.h>
+#include <qwidgetstack.h>
 
 #ifdef KDE
 #include <kapp.h>
@@ -103,6 +115,7 @@ public:
 	bool Full() const;
 
 	void Put(int k, int ascii, int state);
+	void Put(char a);
 	void Put(const char* str);
 	int GetKey();
 	int GetAscii();
@@ -144,6 +157,12 @@ private:
 };
 
 
+class NetHackQtSavedGameSelector : public QDialog {
+public:
+	NetHackQtSavedGameSelector(const char** saved);
+
+	int choose();
+};
 
 class NetHackQtPlayerSelector : private QDialog {
 	Q_OBJECT
@@ -175,6 +194,7 @@ private:
 	NhPSListView* race;
 	QRadioButton **gender;
 	QRadioButton **alignment;
+	bool fully_specified_role;
 };
 
 class NetHackQtStringRequestor : QDialog {
@@ -268,6 +288,8 @@ private:
 	QPixmap pet_annotation;
 	Clusterizer change;
 	QFont *rogue_font;
+	QString messages;
+	QRect messages_rect;
 
 	void Changed(int x,int y);
 
@@ -276,6 +298,7 @@ signals:
 
 private slots:
 	void updateTiles();
+	void moveMessages(int x, int y);
 
 protected:
 	virtual void paintEvent(QPaintEvent*);
@@ -296,6 +319,11 @@ public:
 	virtual void PrintGlyph(int x,int y,int glyph);
 
 	void Scroll(int dx, int dy);
+
+	// For messages
+	void displayMessages(bool block);
+	void putMessage(int attr, const char* text);
+	void clearMessages();
 };
 
 class NetHackQtScrollText;
@@ -312,9 +340,12 @@ public:
 
 	void Scroll(int dx, int dy);
 
+	void setMap(NetHackQtMapWindow*);
+
 private:
 	NetHackQtScrollText* list;
 	bool changed;
+	NetHackQtMapWindow* map;
 
 private slots:
 	void updateFont();
@@ -558,6 +589,7 @@ public:
 
 protected:
 	virtual void paintEvent(QPaintEvent* event);
+	QSize sizeHint() const;
 };
 
 
@@ -580,7 +612,6 @@ public slots:
 
 protected:
 	virtual void done(int);
-	virtual void resizeEvent(QResizeEvent*);
 	virtual void keyPressEvent(QKeyEvent*);
 
 private slots:
@@ -673,6 +704,7 @@ public:
 
 public slots:
 	void doMenuItem(int);
+	void doKeys(const QString&);
 
 protected:
 	virtual void resizeEvent(QResizeEvent*);
@@ -681,6 +713,9 @@ protected:
 
 private slots:
 	void layout();
+	void raiseMap();
+	void raiseMessages();
+	void raiseStatus();
 
 private:
 	void ShowIfReady();
@@ -693,14 +728,16 @@ private:
 	NetHackQtMessageWindow* message;
 	NetHackQtMapWindow* map;
 	NetHackQtStatusWindow* status;
-	NetHackQtInvUsageWindow invusage;
+	NetHackQtInvUsageWindow* invusage;
 
 	NetHackQtKeyBuffer& keysink;
+	QWidgetStack* stack;
 
 	const char* *macro;
 };
 
 class NetHackQtYnDialog : QDialog {
+	Q_OBJECT
 private:
 	const char* question;
 	const char* choices;
@@ -711,6 +748,9 @@ protected:
 	virtual void keyPressEvent(QKeyEvent*);
 	virtual void done(int);
 
+private slots:
+	void doneItem(int);
+
 public:
 	NetHackQtYnDialog(NetHackQtKeyBuffer& keysource,const char*,const char*,char);
 
@@ -719,6 +759,8 @@ public:
 
 #ifdef KDE
 #define NetHackQtBindBase KApplication
+#elif defined(QWS)
+#define NetHackQtBindBase QPEApplication
 #else
 #define NetHackQtBindBase QApplication
 #endif
@@ -733,6 +775,7 @@ private:
 	static NetHackQtKeyBuffer keybuffer;
 	static NetHackQtClickBuffer clickbuffer;
 
+	static QWidget* splash;
 	static NetHackQtMainWindow* main;
 
 public:

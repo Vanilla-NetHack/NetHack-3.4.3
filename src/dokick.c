@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.3	2000/04/21	*/
+/*	SCCS Id: @(#)dokick.c	3.4	2000/04/21	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,8 +22,6 @@ STATIC_DCL void FDECL(otransit_msg, (struct obj *, BOOLEAN_P, long));
 STATIC_DCL void FDECL(drop_to, (coord *,SCHAR_P));
 
 static NEARDATA struct obj *kickobj;
-
-#define IS_SHOP(x)	(rooms[x].rtype >= SHOPBASE)
 
 static const char kick_passes_thru[] = "kick passes harmlessly through";
 
@@ -66,7 +64,8 @@ register boolean clumsy;
 	/* it is unchivalrous to attack the defenseless or from behind */
 	if (Role_if(PM_KNIGHT) &&
 		u.ualign.type == A_LAWFUL && u.ualign.record > -10 &&
-		(!mon->mcanmove || mon->msleeping || mon->mflee)) {
+		(!mon->mcanmove || mon->msleeping ||
+		(mon->mflee && !mon->mavenge))) {
 	    You_feel("like a caitiff!");
 	    adjalign(-1);
 	}
@@ -74,12 +73,10 @@ register boolean clumsy;
 	/* squeeze some guilt feelings... */
 	if(mon->mtame) {
 	    abuse_dog(mon);
-	    mon->mflee = mon->mtame ? 1 : 0;
-#ifdef HISX
-	    mon->mfleetim = mon->mfleetim + (dmg ? rnd(dmg) : 1);
-#else
-	    mon->mfleetim += (dmg ? rnd(dmg) : 1);
-#endif
+	    if (mon->mtame)
+		monflee(mon, (dmg ? rnd(dmg) : 1), FALSE, FALSE);
+	    else
+		mon->mflee = 0;
 	}
 
 	if (dmg > 0) {
@@ -97,19 +94,20 @@ register boolean clumsy;
 	dmg += u.udaminc;	/* add ring(s) of increase damage */
 	if (dmg > 0)
 		mon->mhp -= dmg;
-	if(mon->mhp > 0 && martial() && !bigmonst(mon->data) && !rn2(3)
-			&& mon->mcanmove && mon != u.ustuck) {
+	if (mon->mhp > 0 && martial() && !bigmonst(mon->data) && !rn2(3) &&
+	    mon->mcanmove && mon != u.ustuck && !mon->mtrapped) {
 		/* see if the monster has a place to move into */
 		mdx = mon->mx + u.dx;
 		mdy = mon->my + u.dy;
 		if(goodpos(mdx, mdy, mon)) {
 			pline("%s reels from the blow.", Monnam(mon));
-			if (!m_in_out_region(mon, mdx, mdy)) {
+			if (m_in_out_region(mon, mdx, mdy)) {
 			    remove_monster(mon->mx, mon->my);
 			    newsym(mon->mx, mon->my);
 			    place_monster(mon, mdx, mdy);
 			    newsym(mon->mx, mon->my);
 			    set_apparxy(mon);
+			    (void) mintrap(mon);
 			}
 		}
 	}
@@ -165,6 +163,8 @@ register xchar x, y;
 		    You("kick %s.", mon_nam(mon));
 		    sum = damageum(mon, uattk);
 		    (void)passive(mon, (boolean)(sum > 0), (sum != 2), AT_KICK);
+		    if (sum == 2)
+			break;		/* Defender died */
 		} else {
 		    missum(mon, uattk);
 		    (void)passive(mon, 0, 1, AT_KICK);
@@ -217,7 +217,7 @@ doit:
 			pline("%s %s, %s evading your %skick.", Monnam(mon),
 				(can_teleport(mon->data) ? "teleports" :
 				 is_floater(mon->data) ? "floats" :
-				 is_flyer(mon->data) ? "flutters" :
+				 is_flyer(mon->data) ? "swoops" :
 				 (nolimbs(mon->data) || slithy(mon->data)) ?
 					"slides" : "jumps"),
 				clumsy ? "easily" : "nimbly",
@@ -247,6 +247,9 @@ register struct obj *gold;
 		if (canseemon(mtmp))
 		    pline_The("gold hits %s.", mon_nam(mtmp));
 	} else {
+#ifdef GOLDOBJ
+                long value = gold->quan * objects[gold->otyp].oc_cost;
+#endif
 		mtmp->msleeping = 0;
 		mtmp->meating = 0;
 		if(!rn2(4)) setmangry(mtmp); /* not always pleasing */
@@ -254,25 +257,35 @@ register struct obj *gold;
 		/* greedy monsters catch gold */
 		if (cansee(mtmp->mx, mtmp->my))
 		    pline("%s catches the gold.", Monnam(mtmp));
+#ifndef GOLDOBJ
 		mtmp->mgold += gold->quan;
+#endif
 		if (mtmp->isshk) {
 			long robbed = ESHK(mtmp)->robbed;
 
 			if (robbed) {
+#ifndef GOLDOBJ
 				robbed -= gold->quan;
+#else
+				robbed -= value;
+#endif
 				if (robbed < 0) robbed = 0;
 				pline_The("amount %scovers %s recent losses.",
 				      !robbed ? "" : "partially ",
-				      his[mtmp->female]);
+				      mhis(mtmp));
 				ESHK(mtmp)->robbed = robbed;
 				if(!robbed)
 					make_happy_shk(mtmp, FALSE);
 			} else {
 				if(mtmp->mpeaceful) {
+#ifndef GOLDOBJ
 				    ESHK(mtmp)->credit += gold->quan;
-				    You("have %ld zorkmid%s in credit.",
+#else
+				    ESHK(mtmp)->credit += value;
+#endif
+				    You("have %ld %s in credit.",
 					ESHK(mtmp)->credit,
-					plur(ESHK(mtmp)->credit));
+					currency(ESHK(mtmp)->credit));
 				} else verbalize("Thanks, scum!");
 			}
 		} else if (mtmp->ispriest) {
@@ -293,8 +306,13 @@ register struct obj *gold;
 			   goldreqd = 750L;
 
 			if (goldreqd) {
+#ifndef GOLDOBJ
 			   if (gold->quan > goldreqd +
 				(u.ugold + u.ulevel*rn2(5))/ACURR(A_CHA))
+#else
+			   if (value > goldreqd +
+				(money_cnt(invent) + u.ulevel*rn2(5))/ACURR(A_CHA))
+#endif
 			    mtmp->mpeaceful = TRUE;
 			}
 		     }
@@ -303,7 +321,11 @@ register struct obj *gold;
 		     else verbalize("That's not enough, coward!");
 		 }
 
+#ifndef GOLDOBJ
 		dealloc_obj(gold);
+#else
+                add_to_minv(mtmp, gold);
+#endif
 		return(1);
 	}
 	return(0);
@@ -346,16 +368,16 @@ xchar x, y;
 
 	if(kickobj->otyp == CORPSE && touch_petrifies(&mons[kickobj->corpsenm])
 			&& !Stone_resistance && !uarmf) {
-		char kbuf[BUFSZ];
+	    char kbuf[BUFSZ];
 
-		You("kick the %s corpse with your bare %s.",
-				mons[kickobj->corpsenm].mname, makeplural(body_part(FOOT)));
+	    You("kick the %s with your bare %s.",
+		corpse_xname(kickobj, TRUE), makeplural(body_part(FOOT)));
 	    if (!(poly_when_stoned(youmonst.data) && polymon(PM_STONE_GOLEM))) {
 		You("turn to stone...");
 		killer_format = KILLED_BY;
 		/* KMH -- otmp should be kickobj */
-		Sprintf(kbuf, "kicking a %s corpse without boots",
-			mons[kickobj->corpsenm].mname);
+		Sprintf(kbuf, "kicking %s without boots",
+			an(corpse_xname(kickobj, TRUE)));
 		killer = kbuf;
 		done(STONING);
 	    }
@@ -407,6 +429,13 @@ xchar x, y;
 				result = "cracking";
 			}
 			if (result) {
+				if (otmp->otyp == MIRROR)
+				    change_luck(-2);
+				/* eggs laid by you */
+				/* penalty is -1 per egg, max 5, but it's always
+				   exactly 1 that breaks */
+				if (otmp->otyp == EGG && otmp->spe && otmp->corpsenm >= LOW_PM)
+				    change_luck(-1);
 				You_hear("a muffled %s.",result);
 				if(costly) loss += stolen_value(otmp, x, y,
 					    (boolean)shkp->mpeaceful, TRUE);
@@ -420,11 +449,12 @@ xchar x, y;
 		}
 		if(costly && loss) {
 		    if(!insider) {
-			You("caused %ld zorkmids worth of damage!", loss);
+			You("caused %ld %s worth of damage!",
+			    loss, currency(loss));
 			make_angry_shk(shkp, x, y);
 		    } else {
-			You("owe %s %ld zorkmids for objects destroyed.",
-			    mon_nam(shkp), loss);
+			You("owe %s %ld %s for objects destroyed.",
+			    mon_nam(shkp), loss, currency(loss));
 		    }
 		}
 
@@ -455,15 +485,15 @@ xchar x, y;
 				 || IS_ROCK(levl[u.ux][u.uy].typ)
 				 || closed_door(u.ux, u.uy)) {
 			if (Blind) pline("It doesn't come loose.");
-			else pline("%s do%sn't come loose.",
+			else pline("%s %sn't come loose.",
 				The(distant_name(kickobj, xname)),
-				(kickobj->quan == 1L) ? "es" : "");
+				otense(kickobj, "do"));
 			return(!rn2(3) || martial());
 		}
 		if (Blind) pline("It comes loose.");
-		else pline("%s come%s loose.",
+		else pline("%s %s loose.",
 			   The(distant_name(kickobj, xname)),
-			   (kickobj->quan == 1L) ? "s" : "");
+			   otense(kickobj, "come"));
 		obj_extract_self(kickobj);
 		newsym(x, y);
 		if (costly && (!costly_spot(u.ux, u.uy)
@@ -488,12 +518,11 @@ xchar x, y;
 	    return(!rn2(3) || martial());
 	}
 
-	if (kickobj->quan > 1L && !isgold) (void) splitobj(kickobj, 1L);
+	if (kickobj->quan > 1L && !isgold) kickobj = splitobj(kickobj, 1L);
 
 	if (slide && !Blind)
-	    pline("Whee!  %s slide%s across the %s.", Doname2(kickobj),
-		kickobj->quan > 1L ? "" : "s",
-		surface(x,y));
+	    pline("Whee!  %s %s across the %s.", Doname2(kickobj),
+		  otense(kickobj, "slide"), surface(x,y));
 
 	obj_extract_self(kickobj);
 	(void) snuff_candle(kickobj);
@@ -541,12 +570,12 @@ char *buf;
 
 	if (kickobj) what = distant_name(kickobj,doname);
 	else if (IS_DOOR(maploc->typ)) what = "a door";
+	else if (IS_TREE(maploc->typ)) what = "a tree";
 	else if (IS_STWALL(maploc->typ)) what = "a wall";
 	else if (IS_ROCK(maploc->typ)) what = "a rock";
 	else if (IS_THRONE(maploc->typ)) what = "a throne";
 	else if (IS_FOUNTAIN(maploc->typ)) what = "a fountain";
 	else if (IS_GRAVE(maploc->typ)) what = "a headstone";
-	else if (IS_TREE(maploc->typ)) what = "a tree";
 #ifdef SINKS
 	else if (IS_SINK(maploc->typ)) what = "a sink";
 #endif
@@ -830,10 +859,10 @@ dokick()
 		    if (!rn2(2) && !(maploc->looted & TREE_LOOTED) &&
 			  (treefruit = rnd_treefruit_at(x, y))) {
 			treefruit->quan = (long)(8 - rnl(8));
-			if (treefruit->quan > 1L)
-				pline("Some %s fall from the tree!", xname(treefruit));
+			if (is_plural(treefruit))
+			    pline("Some %s fall from the tree!", xname(treefruit));
 			else
-				pline("%s falls from the tree!", An(xname(treefruit)));
+			    pline("%s falls from the tree!", An(xname(treefruit)));
 			scatter(x,y,2,MAY_HIT,treefruit);
 			exercise(A_DEX, TRUE);
 			exercise(A_WIS, TRUE);	/* discovered a new food source! */
@@ -844,7 +873,7 @@ dokick()
 		    	int cnt = rnl(5);
 		    	coord mm;
 		    	mm.x = x; mm.y = y;
-			pline("You've disturbed the occupants!");
+			pline("You've attracted the tree's former occupants!");
 			while (cnt--)
 			    if (enexto(&mm, mm.x, mm.y, &mons[PM_KILLER_BEE]))
 				(void) makemon(&mons[PM_KILLER_BEE],
@@ -991,7 +1020,10 @@ dumb:
 			mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
 			couldsee(mtmp->mx, mtmp->my) &&
 			mtmp->mpeaceful) {
-			pline("%s yells:", Amonnam(mtmp));
+			if (canspotmon(mtmp))
+			    pline("%s yells:", Amonnam(mtmp));
+			else
+			    You_hear("someone yell:");
 			verbalize("Halt, thief!  You're under arrest!");
 			(void) angry_guards(FALSE);
 			break;
@@ -1007,7 +1039,10 @@ dumb:
 		    if ((mtmp->data == &mons[PM_WATCHMAN] ||
 				mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
 			    mtmp->mpeaceful && couldsee(mtmp->mx, mtmp->my)) {
-			pline("%s yells:", Amonnam(mtmp));
+			if (canspotmon(mtmp))
+			    pline("%s yells:", Amonnam(mtmp));
+			else
+			    You_hear("someone yell:");
 			if(levl[x][y].looted & D_WARNED) {
 			    verbalize("Halt, vandal!  You're under arrest!");
 			    (void) angry_guards(FALSE);
@@ -1150,7 +1185,7 @@ xchar x, y, dlev;
 
 	if(costly && shkp && price) {
 		if(ESHK(shkp)->robbed > robbed) {
-		    You("removed %ld zorkmids worth of goods!", price);
+		    You("removed %ld %s worth of goods!", price, currency(price));
 		    if(cansee(shkp->mx, shkp->my)) {
 			if(ESHK(shkp)->customer[0] == 0)
 			    (void) strncpy(ESHK(shkp)->customer,
@@ -1163,10 +1198,12 @@ xchar x, y, dlev;
 		    (void) angry_guards(FALSE);
 		    return;
 		}
-		if(ESHK(shkp)->debit > debit)
-		    You("owe %s %ld zorkmids for goods lost.",
+		if(ESHK(shkp)->debit > debit) {
+		    long amt = (ESHK(shkp)->debit - debit);
+		    You("owe %s %ld %s for goods lost.",
 			Monnam(shkp),
-			(ESHK(shkp)->debit - debit));
+			amt, currency(amt));
+		}
 	}
 
 }
@@ -1241,6 +1278,33 @@ boolean shop_floor_obj;
 		picked_container(otmp); /* happens to do the right thing */
 	    if(otmp->oclass != GOLD_CLASS)
 		otmp->no_charge = 0;
+	}
+
+	if (otmp == uwep) setuwep((struct obj *)0);
+	if (otmp == uquiver) setuqwep((struct obj *)0);
+	if (otmp == uswapwep) setuswapwep((struct obj *)0);
+
+	/* some things break rather than ship */
+	if (breaktest(otmp)) {
+	    char *result;
+	    if (objects[otmp->otyp].oc_material == GLASS
+#ifdef TOURIST
+		|| otmp->otyp == EXPENSIVE_CAMERA
+#endif
+		) {
+		if (otmp->otyp == MIRROR)
+		    change_luck(-2);
+		result = "crash";
+	    } else {
+		/* penalty for breaking eggs laid by you */
+		if (otmp->otyp == EGG && otmp->spe && otmp->corpsenm >= LOW_PM)
+		    change_luck((schar) -min(otmp->quan, 5L));
+		result = "splat";
+	    }
+	    You_hear("a muffled %s.",result);
+	    obj_extract_self(otmp);
+	    obfree(otmp, (struct obj *) 0);
+	    return TRUE;
 	}
 
 	add_to_migration(otmp);
@@ -1319,19 +1383,18 @@ long num;
 		 xname(otmp));
 
 	if(num) { /* means: other objects are impacted */
-	    Sprintf(eos(obuf), " hit%s %s object%s",
-		      otmp->quan == 1L ? "s" : "",
-		      num == 1L ? "another" : "other",
-		      num > 1L ? "s" : "");
+	    Sprintf(eos(obuf), " %s %s object%s",
+		    otense(otmp, "hit"),
+		    num == 1L ? "another" : "other",
+		    num > 1L ? "s" : "");
 	    if(nodrop)
 		Sprintf(eos(obuf), ".");
 	    else
-		Sprintf(eos(obuf), " and fall%s %s.",
-			otmp->quan == 1L ? "s" : "", gate_str);
+		Sprintf(eos(obuf), " and %s %s.",
+			otense(otmp, "fall"), gate_str);
 	    pline("%s", obuf);
 	} else if(!nodrop)
-	    pline("%s fall%s %s.", obuf,
-		  otmp->quan == 1L ? "s" : "", gate_str);
+	    pline("%s %s %s.", obuf, otense(otmp, "fall"), gate_str);
 }
 
 /* migration destination for objects which fall down to next level */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)windows.c	3.3	96/05/19	*/
+/*	SCCS Id: @(#)windows.c	3.4	1996/05/19	*/
 /* Copyright (c) D. Cohrs, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -37,6 +37,9 @@ extern struct window_procs win32_procs;
 #include "winGnome.h"
 extern struct window_procs Gnome_procs;
 #endif
+#ifdef MSWIN_GRAPHICS
+extern struct window_procs mswin_procs;
+#endif
 
 STATIC_DCL void FDECL(def_raw_print, (const char *s));
 
@@ -74,6 +77,9 @@ struct win_choices {
 #endif
 #ifdef GNOME_GRAPHICS
     { &Gnome_procs, 0 },
+#endif
+#ifdef MSWIN_GRAPHICS
+    { &mswin_procs, 0 },
 #endif
     { 0, 0 }		/* must be last */
 };
@@ -126,4 +132,15 @@ const char *mesg;
     return 0;
 }
 
+/*ARGSUSED*/
+void
+genl_preference_update(pref)
+const char *pref;
+{
+	/* window ports are expected to provide
+	   their own preference update routine
+	   for the preference capabilities that
+	   they support.
+	   Just return in this genl one. */
+}
 /*windows.c*/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.3	2000/08/01	*/
+/*	SCCS Id: @(#)lev_main.c	3.4	2000/08/01	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,6 +6,8 @@
  * This file contains the main function for the parser
  * and some useful functions needed by yacc
  */
+#define SPEC_LEV	/* for MPW */
+/* although, why don't we move those special defines here.. and in dgn_main? */
 
 #include "hack.h"
 #include "date.h"
@@ -15,12 +17,16 @@
 #endif
 
 #ifdef MAC
-# ifdef applec
+# if defined(__SC__) || defined(__MRC__)
 #  define MPWTOOL
 #include <CursorCtl.h>
 # else
 #  define PREFIX ":lib:"	/* place output files here */
 # endif
+#endif
+
+#ifdef WIN_CE
+#define PREFIX "\\nethack\\dat\\"
 #endif
 
 #ifndef MPWTOOL
@@ -47,7 +53,7 @@
 # define OMASK 0644
 #endif
 
-#define NEWLINE	10	/* under Mac MPW C '\n' is 13 so don't use it. */
+#define NEWLINE	'\n'	/* changes to 13 for MPW */
 
 #define ERR		(-1)
 
@@ -55,7 +61,7 @@
 #define Free(ptr)		if(ptr) free((genericptr_t) (ptr))
 #define Write(fd, item, size)	if (write(fd, (genericptr_t)(item), size) != size) return FALSE;
 
-#ifdef __BORLANDC__
+#if defined(__BORLANDC__) && !defined(_WIN32)
 extern unsigned _stklen = STKSIZ;
 #endif
 #define MAX_ERRORS	25
@@ -142,6 +148,9 @@ static struct {
 	{ "zoo",	 ZOO },
 	{ "delphi",	 DELPHI },
 	{ "temple",	 TEMPLE },
+	{ "anthole",	 ANTHOLE },
+	{ "cocknest",	 COCKNEST },
+	{ "leprehall",	 LEPREHALL },
 	{ "shop",	 SHOPBASE },
 	{ "armor shop",	 ARMORSHOP },
 	{ "scroll shop", SCROLLSHOP },
@@ -507,8 +516,13 @@ char *map;
 	int max_hig = 0;
 	char msg[256];
 
-	/* First : find the max width of the map */
+	/* First, strip out digits 0-9 (line numbering) */
+	for (s1 = s2 = map; *s1; s1++)
+	    if (*s1 < '0' || *s1 > '9')
+		*s2++ = *s1;
+	*s2 = '\0';
 
+	/* Second, find the max width of the map */
 	s1 = map;
 	while (s1 && *s1) {
 		s2 = index(s1, NEWLINE);
@@ -523,7 +537,6 @@ char *map;
 	}
 
 	/* Then parse it now */
-
 	while (map && *map) {
 		tmpmap[max_hig] = (char *) alloc(max_len);
 		s1 = index(map, NEWLINE);
@@ -1105,7 +1118,11 @@ specialmaze *maze_level;
 	Strcat(lbuf, filename);
 	Strcat(lbuf, LEV_EXT);
 
+#if defined(MAC) && (defined(__SC__) || defined(__MRC__))
+	fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY);
+#else
 	fout = open(lbuf, O_WRONLY|O_CREAT|O_BINARY, OMASK);
+#endif
 	if (fout < 0) return FALSE;
 
 	if (room_level) {
@@ -1150,8 +1167,19 @@ specialmaze *maze;
 	    Write(fd, &(pt->ysize), sizeof(pt->ysize));
 	    for(j=0;j<pt->ysize;j++) {
 		if(!maze->init_lev.init_present ||
-		   pt->xsize > 1 || pt->ysize > 1)
-		    Write(fd, pt->map[j], pt->xsize * sizeof *pt->map[j]);
+		   pt->xsize > 1 || pt->ysize > 1) {
+#if !defined(_MSC_VER) && !defined(__BORLANDC__)
+			Write(fd, pt->map[j], pt->xsize * sizeof *pt->map[j]);
+#else
+			/*
+			 * On MSVC and Borland C compilers the Write macro above caused:
+			 * warning '!=' : signed/unsigned mismatch
+			 */
+			unsigned reslt, sz = pt->xsize * sizeof *pt->map[j];
+			reslt = write(fd, (genericptr_t)(pt->map[j]), sz);
+			if (reslt != sz) return FALSE;
+#endif
+		}
 		Free(pt->map[j]);
 	    }
 	    Free(pt->map);
@@ -1300,7 +1328,7 @@ specialmaze *maze;
 		    return FALSE;
 
 	    /* The gold piles */
-	    Write(fd, &(pt->ngold), sizeof(pt->naltar));
+	    Write(fd, &(pt->ngold), sizeof(pt->ngold));
 	    for(j=0;j<pt->ngold;j++) {
 		    Write(fd, pt->golds[j], sizeof(gold));
 		    Free(pt->golds[j]);

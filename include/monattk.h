@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monattk.h	3.3	95/01/28	*/
+/*	SCCS Id: @(#)monattk.h	3.4	1995/01/28	*/
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright 1988, M. Stephenson */
 
@@ -75,7 +75,7 @@
 #define AD_FAMN		39	/* for Famine only */
 #define AD_SLIM		40	/* turns you into green slime */
 #define AD_ENCH		41	/* remove enchantment (disenchanter) */
-#define AD_CORRODE	42	/* corrode armor (black pudding) */
+#define AD_CORR		42	/* corrode armor (black pudding) */
 
 #define AD_CLRC		240	/* random clerical spell */
 #define AD_SPEL		241	/* random magic spell */

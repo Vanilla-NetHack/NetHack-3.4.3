@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsconf.h	3.3	98/07/16	*/
+/*	SCCS Id: @(#)vmsconf.h	3.4	2001/12/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -189,6 +189,10 @@ typedef __uid_t uid_t;
 # ifndef __GID_T
 # define __GID_T
 typedef __gid_t gid_t;
+# endif
+# ifndef __MODE_T
+# define __MODE_T
+typedef __mode_t mode_t;
 # endif
 #endif	/* _DECC_V4_SOURCE */
 

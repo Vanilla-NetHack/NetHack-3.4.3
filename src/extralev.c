@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)extralev.c	3.3	1999/11/26	*/
+/*	SCCS Id: @(#)extralev.c	3.4	2001/09/06	*/
 /*	Copyright 1988, 1989 by Ken Arromdee				*/
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -302,42 +302,42 @@ makerogueghost()
 	ghost = christen_monst(ghost, roguename());
 
 	if (rn2(4)) {
-		ghostobj = mksobj_at(FOOD_RATION,x,y,FALSE);
+		ghostobj = mksobj_at(FOOD_RATION, x, y, FALSE, FALSE);
 		ghostobj->quan = (long) rnd(7);
 		ghostobj->owt = weight(ghostobj);
 	}
 	if (rn2(2)) {
-		ghostobj = mksobj_at(MACE,x,y,FALSE);
+		ghostobj = mksobj_at(MACE, x, y, FALSE, FALSE);
 		ghostobj->spe = rnd(3);
 		if (rn2(4)) curse(ghostobj);
 	} else {
-		ghostobj = mksobj_at(TWO_HANDED_SWORD,x,y,FALSE);
+		ghostobj = mksobj_at(TWO_HANDED_SWORD, x, y, FALSE, FALSE);
 		ghostobj->spe = rnd(5) - 2;
 		if (rn2(4)) curse(ghostobj);
 	}
-	ghostobj = mksobj_at(BOW,x,y,FALSE);
+	ghostobj = mksobj_at(BOW, x, y, FALSE, FALSE);
 	ghostobj->spe = 1;
 	if (rn2(4)) curse(ghostobj);
 
-	ghostobj = mksobj_at(ARROW,x,y,FALSE);
+	ghostobj = mksobj_at(ARROW, x, y, FALSE, FALSE);
 	ghostobj->spe = 0;
 	ghostobj->quan = (long) rn1(10,25);
 	ghostobj->owt = weight(ghostobj);
 	if (rn2(4)) curse(ghostobj);
 
 	if (rn2(2)) {
-		ghostobj = mksobj_at(RING_MAIL,x,y,FALSE);
+		ghostobj = mksobj_at(RING_MAIL, x, y, FALSE, FALSE);
 		ghostobj->spe = rn2(3);
 		if (!rn2(3)) ghostobj->oerodeproof = TRUE;
 		if (rn2(4)) curse(ghostobj);
 	} else {
-		ghostobj = mksobj_at(PLATE_MAIL,x,y,FALSE);
+		ghostobj = mksobj_at(PLATE_MAIL, x, y, FALSE, FALSE);
 		ghostobj->spe = rnd(5) - 2;
 		if (!rn2(3)) ghostobj->oerodeproof = TRUE;
 		if (rn2(4)) curse(ghostobj);
 	}
 	if (rn2(2)) {
-		ghostobj = mksobj_at(FAKE_AMULET_OF_YENDOR,x,y,TRUE);
+		ghostobj = mksobj_at(FAKE_AMULET_OF_YENDOR, x, y, TRUE, FALSE);
 		ghostobj->known = TRUE;
 	}
 }

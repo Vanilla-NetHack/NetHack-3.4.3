@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.h	3.3	96/02/18	*/
+/*	SCCS Id: @(#)wintty.h	3.4	1996/02/18	*/
 /* Copyright (c) David Cohrs, 1991,1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -111,7 +111,7 @@ E void FDECL(xputc, (CHAR_P));
 #endif
 E void FDECL(xputs, (const char *));
 #if defined(SCREEN_VGA) || defined(SCREEN_8514)
-E void FDECL(xputg, (int, int));
+E void FDECL(xputg, (int, int, unsigned));
 #endif
 E void NDECL(cl_end);
 E void NDECL(clear_screen);

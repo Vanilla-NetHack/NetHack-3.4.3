@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)minion.c	3.3	2000/06/05	*/
+/*	SCCS Id: @(#)minion.c	3.4	2002/01/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,7 +11,7 @@ msummon(ptr)		/* ptr summons a monster */
 register struct permonst *ptr;
 {
 	register int dtype = NON_PM, cnt = 0;
-	aligntyp atyp = sgn(ptr->maligntyp);
+	aligntyp atyp = (ptr->maligntyp==A_NONE) ? A_NONE : sgn(ptr->maligntyp);
 
 	if (is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 	    dtype = (!rn2(20)) ? dprince(atyp) :
@@ -131,13 +131,17 @@ register struct monst *mtmp;
 	    if (!tele_restrict(mtmp)) rloc(mtmp);
 	    return(1);
 	}
+#ifndef GOLDOBJ
 	demand = (u.ugold * (rnd(80) + 20 * Athome)) /
-		 100 * (1 + (sgn(u.ualign.type) == sgn(mtmp->data->maligntyp)));
+#else
+	demand = (money_cnt(invent) * (rnd(80) + 20 * Athome)) /
+#endif
+	    (100 * (1 + (sgn(u.ualign.type) == sgn(mtmp->data->maligntyp))));
 	if (!demand)		/* you have no gold */
 	    return mtmp->mpeaceful = 0;
 	else {
-	    pline("%s demands %ld zorkmid%s for safe passage.",
-		  Amonnam(mtmp), demand, plur(demand));
+	    pline("%s demands %ld %s for safe passage.",
+		  Amonnam(mtmp), demand, currency(demand));
 
 	    if ((offer = bribe(mtmp)) >= demand) {
 		pline("%s vanishes, laughing about cowardly mortals.",
@@ -162,26 +166,40 @@ struct monst *mtmp;
 {
 	char buf[BUFSZ];
 	long offer;
+#ifdef GOLDOBJ
+	long umoney = money_cnt(invent);
+#endif
 
 	getlin("How much will you offer?", buf);
-	(void) sscanf(buf, "%ld", &offer);
+	if (sscanf(buf, "%ld", &offer) != 1) offer = 0L;
 
 	/*Michael Paddon -- fix for negative offer to monster*/
 	/*JAR880815 - */
 	if (offer < 0L) {
 		You("try to shortchange %s, but fumble.",
 			mon_nam(mtmp));
-		offer = 0L;
+		return 0L;
 	} else if (offer == 0L) {
 		You("refuse.");
+		return 0L;
+#ifndef GOLDOBJ
 	} else if (offer >= u.ugold) {
 		You("give %s all your gold.", mon_nam(mtmp));
 		offer = u.ugold;
-	} else You("give %s %ld zorkmid%s.", mon_nam(mtmp), offer,
-		   plur(offer));
-
+	} else {
+		You("give %s %ld %s.", mon_nam(mtmp), offer, currency(offer));
+	}
 	u.ugold -= offer;
 	mtmp->mgold += offer;
+#else
+	} else if (offer >= umoney) {
+		You("give %s all your gold.", mon_nam(mtmp));
+		offer = umoney;
+	} else {
+		You("give %s %ld %s.", mon_nam(mtmp), offer, currency(offer));
+	}
+	(void) money2mon(mtmp, offer);
+#endif
 	flags.botl = 1;
 	return(offer);
 }

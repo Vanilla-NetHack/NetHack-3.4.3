@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.3	2000/06/27	*/
+/*	SCCS Id: @(#)wintty.c	3.4	2002/02/05	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,6 +45,10 @@ extern char mapped_menu_cmds[]; /* from options.c */
 /* Interface definition, for windows.c */
 struct window_procs tty_procs = {
     "tty",
+#ifdef MSDOS
+    WC_TILED_MAP|WC_ASCII_MAP|
+#endif
+    WC_COLOR|WC_HILITE_PET|WC_INVERSE|WC_EIGHT_BIT_IN,
     tty_init_nhwindows,
     tty_player_selection,
     tty_askname,
@@ -97,7 +101,8 @@ struct window_procs tty_procs = {
     /* other defs that really should go away (they're tty specific) */
     tty_start_screen,
     tty_end_screen,
-    genl_outrip
+    genl_outrip,
+    genl_preference_update,
 };
 
 static int maxwin = 0;			/* number of windows in use */
@@ -308,16 +313,21 @@ tty_player_selection()
 {
 	int i, k, n;
 	char pick4u = 'n', thisch, lastch = 0;
-	char pbuf[QBUFSZ];
+	char pbuf[QBUFSZ], plbuf[QBUFSZ];
 	winid win;
 	anything any;
 	menu_item *selected = 0;
 
+	/* prevent an unnecessary prompt */
+	rigid_role_checks();
+
 	/* Should we randomly pick for the player? */
-	if (flags.initrole == ROLE_NONE || flags.initrace == ROLE_NONE ||
-		flags.initgend == ROLE_NONE || flags.initalign == ROLE_NONE) {
-	    const char *prompt = "Shall I pick a character for you? [ynq] ";
+	if (!flags.randomall &&
+	    (flags.initrole == ROLE_NONE || flags.initrace == ROLE_NONE ||
+	     flags.initgend == ROLE_NONE || flags.initalign == ROLE_NONE)) {
 	    int echoline;
+	    char *prompt = build_plselection_prompt(pbuf, QBUFSZ, flags.initrole,
+				flags.initrace, flags.initgend, flags.initalign);
 
 	    tty_putstr(BASE_WINDOW, 0, "");
 	    echoline = wins[BASE_WINDOW]->cury;
@@ -347,20 +357,26 @@ give_up:	/* Quit */
 	    }
 	}
 
+	(void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
+
 	/* Select a role, if necessary */
 	/* we'll try to be compatible with pre-selected race/gender/alignment,
 	 * but may not succeed */
 	if (flags.initrole < 0) {
+	    char rolenamebuf[QBUFSZ];
 	    /* Process the choice */
-	    if (pick4u == 'y' || flags.initrole == ROLE_RANDOM) {
+	    if (pick4u == 'y' || flags.initrole == ROLE_RANDOM || flags.randomall) {
 		/* Pick a random role */
 		flags.initrole = pick_role(flags.initrace, flags.initgend,
-						flags.initalign);
+						flags.initalign, PICK_RANDOM);
 		if (flags.initrole < 0) {
 		    tty_putstr(BASE_WINDOW, 0, "Incompatible role!");
 		    flags.initrole = randrole();
 		}
-	    } else {
+ 	    } else {
+	    	tty_clear_nhwindow(BASE_WINDOW);
+		tty_putstr(BASE_WINDOW, 0, "Choosing Character's Role");
 		/* Prompt for a role */
 		win = create_nhwindow(NHW_MENU);
 		start_menu(win);
@@ -371,13 +387,26 @@ give_up:	/* Quit */
 			any.a_int = i+1;	/* must be non-zero */
 			thisch = lowc(roles[i].name.m[0]);
 			if (thisch == lastch) thisch = highc(thisch);
+			if (flags.initgend != ROLE_NONE && flags.initgend != ROLE_RANDOM) {
+				if (flags.initgend == 1  && roles[i].name.f)
+					Strcpy(rolenamebuf, roles[i].name.f);
+				else
+					Strcpy(rolenamebuf, roles[i].name.m);
+			} else {
+				if (roles[i].name.f) {
+					Strcpy(rolenamebuf, roles[i].name.m);
+					Strcat(rolenamebuf, "/");
+					Strcat(rolenamebuf, roles[i].name.f);
+				} else 
+					Strcpy(rolenamebuf, roles[i].name.m);
+			}	
 			add_menu(win, NO_GLYPH, &any, thisch,
-			    0, ATR_NONE, an(roles[i].name.m), MENU_UNSELECTED);
+			    0, ATR_NONE, an(rolenamebuf), MENU_UNSELECTED);
 			lastch = thisch;
 		    }
 		}
 		any.a_int = pick_role(flags.initrace, flags.initgend,
-				    flags.initalign)+1;
+				    flags.initalign, PICK_RANDOM)+1;
 		if (any.a_int == 0)	/* must be non-zero */
 		    any.a_int = randrole()+1;
 		add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
@@ -385,7 +414,8 @@ give_up:	/* Quit */
 		any.a_int = i+1;	/* must be non-zero */
 		add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
 				"Quit", MENU_UNSELECTED);
-		end_menu(win, "Pick a role");
+		Sprintf(pbuf, "Pick a role for your %s", plbuf);
+		end_menu(win, pbuf);
 		n = select_menu(win, PICK_ONE, &selected);
 		destroy_nhwindow(win);
 
@@ -396,16 +426,18 @@ give_up:	/* Quit */
 		flags.initrole = selected[0].item.a_int - 1;
 		free((genericptr_t) selected),	selected = 0;
 	    }
+	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
 	}
-
+	
 	/* Select a race, if necessary */
 	/* force compatibility with role, try for compatibility with
 	 * pre-selected gender/alignment */
 	if (flags.initrace < 0 || !validrace(flags.initrole, flags.initrace)) {
 	    /* pre-selected race not valid */
-	    if (pick4u == 'y' || flags.initrace == ROLE_RANDOM) {
+	    if (pick4u == 'y' || flags.initrace == ROLE_RANDOM || flags.randomall) {
 		flags.initrace = pick_race(flags.initrole, flags.initgend,
-							flags.initalign);
+							flags.initalign, PICK_RANDOM);
 		if (flags.initrace < 0) {
 		    tty_putstr(BASE_WINDOW, 0, "Incompatible race!");
 		    flags.initrace = randrace(flags.initrole);
@@ -432,6 +464,8 @@ give_up:	/* Quit */
 
 		/* Permit the user to pick, if there is more than one */
 		if (n > 1) {
+		    tty_clear_nhwindow(BASE_WINDOW);
+		    tty_putstr(BASE_WINDOW, 0, "Choosing Race");
 		    win = create_nhwindow(NHW_MENU);
 		    start_menu(win);
 		    any.a_void = 0;         /* zero out all bits */
@@ -443,7 +477,7 @@ give_up:	/* Quit */
 				0, ATR_NONE, races[i].noun, MENU_UNSELECTED);
 			}
 		    any.a_int = pick_race(flags.initrole, flags.initgend,
-					flags.initalign)+1;
+					flags.initalign, PICK_RANDOM)+1;
 		    if (any.a_int == 0)	/* must be non-zero */
 			any.a_int = randrace(flags.initrole)+1;
 		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
@@ -451,8 +485,7 @@ give_up:	/* Quit */
 		    any.a_int = i+1;	/* must be non-zero */
 		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
 				    "Quit", MENU_UNSELECTED);
-		    Sprintf(pbuf, "Pick the race of your %s",
-				    roles[flags.initrole].name.m);
+		    Sprintf(pbuf, "Pick the race of your %s", plbuf);
 		    end_menu(win, pbuf);
 		    n = select_menu(win, PICK_ONE, &selected);
 		    destroy_nhwindow(win);
@@ -464,6 +497,8 @@ give_up:	/* Quit */
 		}
 		flags.initrace = k;
 	    }
+	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
 	}
 
 	/* Select a gender, if necessary */
@@ -472,9 +507,9 @@ give_up:	/* Quit */
 	if (flags.initgend < 0 || !validgend(flags.initrole, flags.initrace,
 						flags.initgend)) {
 	    /* pre-selected gender not valid */
-	    if (pick4u == 'y' || flags.initgend == ROLE_RANDOM) {
+	    if (pick4u == 'y' || flags.initgend == ROLE_RANDOM || flags.randomall) {
 		flags.initgend = pick_gend(flags.initrole, flags.initrace,
-						flags.initalign);
+						flags.initalign, PICK_RANDOM);
 		if (flags.initgend < 0) {
 		    tty_putstr(BASE_WINDOW, 0, "Incompatible gender!");
 		    flags.initgend = randgend(flags.initrole, flags.initrace);
@@ -501,6 +536,8 @@ give_up:	/* Quit */
 
 		/* Permit the user to pick, if there is more than one */
 		if (n > 1) {
+		    tty_clear_nhwindow(BASE_WINDOW);
+		    tty_putstr(BASE_WINDOW, 0, "Choosing Gender");
 		    win = create_nhwindow(NHW_MENU);
 		    start_menu(win);
 		    any.a_void = 0;         /* zero out all bits */
@@ -512,7 +549,7 @@ give_up:	/* Quit */
 				0, ATR_NONE, genders[i].adj, MENU_UNSELECTED);
 			}
 		    any.a_int = pick_gend(flags.initrole, flags.initrace,
-					    flags.initalign)+1;
+					    flags.initalign, PICK_RANDOM)+1;
 		    if (any.a_int == 0)	/* must be non-zero */
 			any.a_int = randgend(flags.initrole, flags.initrace)+1;
 		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
@@ -520,9 +557,7 @@ give_up:	/* Quit */
 		    any.a_int = i+1;	/* must be non-zero */
 		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
 				    "Quit", MENU_UNSELECTED);
-		    Sprintf(pbuf, "Pick the gender of your %s %s",
-				    races[flags.initrace].adj,
-				    roles[flags.initrole].name.m);
+		    Sprintf(pbuf, "Pick the gender of your %s", plbuf);
 		    end_menu(win, pbuf);
 		    n = select_menu(win, PICK_ONE, &selected);
 		    destroy_nhwindow(win);
@@ -534,6 +569,8 @@ give_up:	/* Quit */
 		}
 		flags.initgend = k;
 	    }
+	    (void)  root_plselection_prompt(plbuf, QBUFSZ - 1,
+			flags.initrole, flags.initrace, flags.initgend, flags.initalign);
 	}
 
 	/* Select an alignment, if necessary */
@@ -541,9 +578,9 @@ give_up:	/* Quit */
 	if (flags.initalign < 0 || !validalign(flags.initrole, flags.initrace,
 							flags.initalign)) {
 	    /* pre-selected alignment not valid */
-	    if (pick4u == 'y' || flags.initalign == ROLE_RANDOM) {
+	    if (pick4u == 'y' || flags.initalign == ROLE_RANDOM || flags.randomall) {
 		flags.initalign = pick_align(flags.initrole, flags.initrace,
-							flags.initgend);
+							flags.initgend, PICK_RANDOM);
 		if (flags.initalign < 0) {
 		    tty_putstr(BASE_WINDOW, 0, "Incompatible alignment!");
 		    flags.initalign = randalign(flags.initrole, flags.initrace);
@@ -570,6 +607,8 @@ give_up:	/* Quit */
 
 		/* Permit the user to pick, if there is more than one */
 		if (n > 1) {
+		    tty_clear_nhwindow(BASE_WINDOW);
+		    tty_putstr(BASE_WINDOW, 0, "Choosing Alignment");
 		    win = create_nhwindow(NHW_MENU);
 		    start_menu(win);
 		    any.a_void = 0;         /* zero out all bits */
@@ -581,7 +620,7 @@ give_up:	/* Quit */
 				 0, ATR_NONE, aligns[i].adj, MENU_UNSELECTED);
 			}
 		    any.a_int = pick_align(flags.initrole, flags.initrace,
-					    flags.initgend)+1;
+					    flags.initgend, PICK_RANDOM)+1;
 		    if (any.a_int == 0)	/* must be non-zero */
 			any.a_int = randalign(flags.initrole, flags.initrace)+1;
 		    add_menu(win, NO_GLYPH, &any , '*', 0, ATR_NONE,
@@ -589,12 +628,7 @@ give_up:	/* Quit */
 		    any.a_int = i+1;	/* must be non-zero */
 		    add_menu(win, NO_GLYPH, &any , 'q', 0, ATR_NONE,
 				    "Quit", MENU_UNSELECTED);
-		    Sprintf(pbuf, "Pick the alignment of your %s %s %s",
-			    genders[flags.initgend].adj,
-			    races[flags.initrace].adj,
-			    (flags.initgend && roles[flags.initrole].name.f) ?
-			    roles[flags.initrole].name.f :
-			    roles[flags.initrole].name.m);
+		    Sprintf(pbuf, "Pick the alignment of your %s", plbuf);
 		    end_menu(win, pbuf);
 		    n = select_menu(win, PICK_ONE, &selected);
 		    destroy_nhwindow(win);
@@ -1209,8 +1243,10 @@ struct WinDesc *cw;
 	    if (cw->npages > 1)
 		Sprintf(cw->morestr, "(%d of %d)",
 			curr_page + 1, (int) cw->npages);
-	    else
+	    else if (msave)
 		Strcpy(cw->morestr, msave);
+	    else
+		Strcpy(cw->morestr, defmorestr);
 
 	    tty_curs(window, 1, page_lines);
 	    cl_end();
@@ -1483,7 +1519,7 @@ tty_display_nhwindow(window, blocking)
 	} else
 	    tty_clear_nhwindow(WIN_MESSAGE);
 
-	if (cw->data)
+	if (cw->data || !cw->maxrow)
 	    process_text_window(window, cw);
 	else
 	    process_menu_window(window, cw);
@@ -1576,7 +1612,7 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
     cw->curx = --x;	/* column 0 is never used */
     cw->cury = y;
 #ifdef DEBUG
-    if(x<0 || y<0 || y >= cw->rows || x >= cw->cols) {
+    if(x<0 || y<0 || y >= cw->rows || x > cw->cols) {
 	const char *s = "[unknown type]";
 	switch(cw->type) {
 	case NHW_MESSAGE: s = "[topl window]"; break;
@@ -1703,7 +1739,9 @@ tty_putstr(window, attr, str)
 	return;
     }
 
-    if(str == (const char*)0 || (cw->flags & WIN_CANCELLED))
+    if(str == (const char*)0 ||
+	( (cw->flags & WIN_CANCELLED) && 
+	  (cw->type != NHW_MESSAGE || !iflags.prevmsg_window) ))
 	return;
     if(cw->type != NHW_MESSAGE)
 	str = compress_str(str);
@@ -1815,7 +1853,7 @@ tty_putstr(window, attr, str)
 	    cw->maxrow = cw->cury;
 	if(n0 > CO) {
 	    /* attempt to break the line */
-	    for(i = CO-1; i && str[i] != ' ';)
+	    for(i = CO-1; i && str[i] != ' ' && str[i] != '\n';)
 		i--;
 	    if(i) {
 		cw->data[cw->cury-1][++i] = '\0';
@@ -1874,6 +1912,8 @@ boolean complain;
 	    } else if(u.ux) docrt();
 	} else {
 	    winid datawin = tty_create_nhwindow(NHW_TEXT);
+	    boolean empty = TRUE;
+
 	    if(complain
 #ifndef NO_TERMS
 		&& nh_CD
@@ -1890,11 +1930,12 @@ boolean complain;
 		if ((cr = index(buf, '\r')) != 0) *cr = 0;
 #endif
 		if (index(buf, '\t') != 0) (void) tabexpand(buf);
+		empty = FALSE;
 		tty_putstr(datawin, 0, buf);
 		if(wins[datawin]->flags & WIN_CANCELLED)
 		    break;
 	    }
-	    tty_display_nhwindow(datawin, FALSE);
+	    if (!empty) tty_display_nhwindow(datawin, FALSE);
 	    tty_destroy_nhwindow(datawin);
 	    (void) dlb_fclose(f);
 	}
@@ -2144,8 +2185,11 @@ const char *mesg;
        response to a prompt, we'll assume that the display is up to date */
     tty_putstr(WIN_MESSAGE, 0, mesg);
     /* if `mesg' didn't wrap (triggering --More--), force --More-- now */
-    if (ttyDisplay->toplin == 1)
+    if (ttyDisplay->toplin == 1) {
 	more();
+	ttyDisplay->toplin = 1; /* more resets this */
+	tty_clear_nhwindow(WIN_MESSAGE);
+    }
     /* normally <ESC> means skip further messages, but in this case
        it means cancel the current prompt; any other messages should
        continue to be output normally */
@@ -2179,7 +2223,7 @@ tty_wait_synch()
 	if(ttyDisplay->inmore) {
 	    addtopl("--More--");
 	    (void) fflush(stdout);
-	} else if(ttyDisplay->inread) {
+	} else if(ttyDisplay->inread > program_state.gameover) {
 	    /* this can only happen if we were reading and got interrupted */
 	    ttyDisplay->toplin = 3;
 	    /* do this twice; 1st time gets the Quit? message again */
@@ -2249,6 +2293,7 @@ end_glyphout()
 #endif
 }
 
+#ifndef WIN32
 void
 g_putch(in_ch)
 int in_ch;
@@ -2280,6 +2325,7 @@ int in_ch;
 
     return;
 }
+#endif /* !WIN32 */
 
 #ifdef CLIPPING
 void
@@ -2331,178 +2377,26 @@ int x, y;
  *  Since this is only called from show_glyph(), it is assumed that the
  *  position and glyph are always correct (checked there)!
  */
+
 void
 tty_print_glyph(window, x, y, glyph)
     winid window;
     xchar x, y;
     int glyph;
 {
-    uchar   ch;
-    register int offset;
-    boolean is_reverse = FALSE;
-#ifdef TEXTCOLOR
+    int ch;
+    boolean reverse_on = FALSE;
     int	    color;
-
-#define zap_color(n)  color = iflags.use_color ? zapcolors[n] : NO_COLOR
-#define cmap_color(n) color = iflags.use_color ? defsyms[n].color : NO_COLOR
-#define obj_color(n)  color = iflags.use_color ? objects[n].oc_color : NO_COLOR
-#define mon_color(n)  color = iflags.use_color ? mons[n].mcolor : NO_COLOR
-#define invis_color(n) color = NO_COLOR
-#define pet_color(n)  color = iflags.use_color ? mons[n].mcolor :	      \
-				/* If no color, try to hilite pets; black  */ \
-				/* should be nh_HI			   */ \
-				((iflags.hilite_pet && has_color(CLR_BLACK)) ?     \
-							CLR_BLACK : NO_COLOR)
-#define warn_color(n) color = iflags.use_color ? def_warnsyms[n].color : NO_COLOR
-# if defined(REINCARNATION) && defined(ASCIIGRAPH)
-#  define ROGUE_COLOR
-# endif
-
-#else	/* no text color */
-
-#define zap_color(n)
-#define cmap_color(n)
-#define obj_color(n)
-#define mon_color(n)
-#define invis_color(n)
-#define pet_color(c)
-#define warn_color(n)
-#endif
-
-#ifdef ROGUE_COLOR
-# if defined(USE_TILES) && defined(MSDOS)
-#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && !iflags.grmode && \
-	Is_rogue_level(&u.uz))
-# else
-#define HAS_ROGUE_IBM_GRAPHICS (iflags.IBMgraphics && Is_rogue_level(&u.uz))
-# endif
-#endif
-
+    unsigned special;
+    
 #ifdef CLIPPING
     if(clipping) {
 	if(x <= clipx || y < clipy || x >= clipxmax || y >= clipymax)
 	    return;
     }
 #endif
-    /*
-     *  Map the glyph back to a character.
-     *
-     *  Warning:  For speed, this makes an assumption on the order of
-     *		  offsets.  The order is set in display.h.
-     */
-    if ((offset = (glyph - GLYPH_WARNING_OFF)) >= 0) {	/* a warning flash */
-    	ch = warnsyms[offset];
-# ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS)
-	    color = NO_COLOR;
-	else
-# endif
-	    warn_color(offset);
-    } else if ((offset = (glyph - GLYPH_SWALLOW_OFF)) >= 0) {	/* swallow */
-	/* see swallow_to_glyph() in display.c */
-	ch = (uchar) showsyms[S_sw_tl + (offset & 0x7)];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
-	    color = NO_COLOR;
-	else
-#endif
-	    mon_color(offset >> 3);
-    } else if ((offset = (glyph - GLYPH_ZAP_OFF)) >= 0) {	/* zap beam */
-	/* see zapdir_to_glyph() in display.c */
-	ch = showsyms[S_vbeam + (offset & 0x3)];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
-	    color = NO_COLOR;
-	else
-#endif
-	    zap_color((offset >> 2));
-    } else if ((offset = (glyph - GLYPH_CMAP_OFF)) >= 0) {	/* cmap */
-	ch = showsyms[offset];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
-	    if (offset >= S_vwall && offset <= S_hcdoor)
-		color = CLR_BROWN;
-	    else if (offset >= S_arrow_trap && offset <= S_polymorph_trap)
-		color = CLR_MAGENTA;
-	    else if (offset == S_corr || offset == S_litcorr)
-		color = CLR_GRAY;
-	    else if (offset >= S_room && offset <= S_water)
-		color = CLR_GREEN;
-	    else
-		color = NO_COLOR;
-	} else
-#endif
-	    cmap_color(offset);
-    } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
-	ch = oc_syms[(int)objects[offset].oc_class];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
-	    switch(objects[offset].oc_class) {
-		case GOLD_CLASS: color = CLR_YELLOW; break;
-		case FOOD_CLASS: color = CLR_RED; break;
-		default: color = CLR_BRIGHT_BLUE; break;
-	    }
-	} else
-#endif
-	    obj_color(offset);
-    } else if ((offset = (glyph - GLYPH_RIDDEN_OFF)) >= 0) {	/* mon ridden */
-	ch = monsyms[(int)mons[offset].mlet];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS)
-	    /* This currently implies that the hero is here -- monsters */
-	    /* don't ride (yet...).  Should we set it to yellow like in */
-	    /* the monster case below?  There is no equivalent in rogue. */
-	    color = NO_COLOR;	/* no need to check iflags.use_color */
-	else
-#endif
-	    mon_color(offset);
-    } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
-	ch = oc_syms[(int)objects[CORPSE].oc_class];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color)
-	    color = CLR_RED;
-	else
-#endif
-	    mon_color(offset);
-    } else if ((offset = (glyph - GLYPH_DETECT_OFF)) >= 0) {	/* mon detect */
-	ch = monsyms[(int)mons[offset].mlet];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS)
-	    color = NO_COLOR;	/* no need to check iflags.use_color */
-	else
-#endif
-	    mon_color(offset);
-	/* Disabled for now; anyone want to get reverse video to work? */
-	/* is_reverse = TRUE; */
-    } else if ((offset = (glyph - GLYPH_INVIS_OFF)) >= 0) {	/* invisible */
-	ch = DEF_INVISIBLE;
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS)
-	    color = NO_COLOR;	/* no need to check iflags.use_color */
-	else
-#endif
-	    invis_color(offset);
-    } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
-	ch = monsyms[(int)mons[offset].mlet];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS)
-	    color = NO_COLOR;	/* no need to check iflags.use_color */
-	else
-#endif
-	    pet_color(offset);
-    } else {							/* a monster */
-	ch = monsyms[(int)mons[glyph].mlet];
-#ifdef ROGUE_COLOR
-	if (HAS_ROGUE_IBM_GRAPHICS && iflags.use_color) {
-	    if (x == u.ux && y == u.uy)
-		/* actually player should be yellow-on-gray if in a corridor */
-		color = CLR_YELLOW;
-	    else
-		color = NO_COLOR;
-	} else
-#endif
-	    mon_color(glyph);
-    }
+    /* map glyph to character and color */
+    mapglyph(glyph, &ch, &color, &special, x, y);
 
     /* Move the cursor. */
     tty_curs(window, x,y);
@@ -2515,18 +2409,6 @@ tty_print_glyph(window, x, y, glyph)
 #endif
 
 #ifdef TEXTCOLOR
-    /* Turn off color if no color defined, or rogue level w/o PC graphics. */
-# ifdef REINCARNATION
-#  ifdef ASCIIGRAPH
-    if (!has_color(color) || (Is_rogue_level(&u.uz) && !HAS_ROGUE_IBM_GRAPHICS))
-#  else
-    if (!has_color(color) || Is_rogue_level(&u.uz))
-#  endif
-# else
-    if (!has_color(color))
-# endif
-	color = NO_COLOR;
-
     if (color != ttyDisplay->color) {
 	if(ttyDisplay->color != NO_COLOR)
 	    term_end_color();
@@ -2535,17 +2417,24 @@ tty_print_glyph(window, x, y, glyph)
 	    term_start_color(color);
     }
 #endif /* TEXTCOLOR */
+
+    /* must be after color check; term_end_color may turn off inverse too */
+    if (((special & MG_PET) && iflags.hilite_pet) ||
+	((special & MG_DETECT) && iflags.use_inverse)) {
+	term_start_attr(ATR_INVERSE);
+	reverse_on = TRUE;
+    }
+
 #if defined(USE_TILES) && defined(MSDOS)
     if (iflags.grmode && iflags.tile_view)
-      xputg(glyph,(int)ch);
+      xputg(glyph,ch,special);
     else
 #endif
-    if (is_reverse) { /* not currently working */
-	term_start_attr(ATR_INVERSE);
-	g_putch((int)ch);		/* print the character */
-	term_end_attr(ATR_INVERSE);
-    } else
-	g_putch((int)ch);		/* print the character */
+	g_putch(ch);		/* print the character */
+
+    if (reverse_on)
+    	term_end_attr(ATR_INVERSE);
+
     wins[window]->curx++;	/* one character over */
     ttyDisplay->curx++;		/* the real cursor moved too */
 }
