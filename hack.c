@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.c version 1.0.1 - many small and unimportant changes */
 
 #include "hack.h"
 #include <stdio.h>
@@ -90,6 +91,26 @@ register char *dp;
 		return(1);
 }
 
+getdir()
+{
+	char buf[2];
+	register x;
+
+	pline("What direction?");
+	buf[0] = readchar();
+	buf[1] = 0;
+	x = movecm(buf);
+	if(x && Confusion) confdir();
+	return(x);
+}
+
+confdir()
+{
+	register x = rn2(8);
+	u.dx = xdir[x];
+	u.dy = ydir[x];
+}
+
 #ifdef QUEST
 finddir(){
 register int i, ui = u.di;
@@ -138,23 +159,28 @@ domove()
 	struct gen *trap;
 	register struct obj *otmp;
 
-	wipe_engr_at(u.ux, u.uy, rnd(5));
+	if(!u.uswallow)
+		wipe_engr_at(u.ux, u.uy, rnd(5));
 	if(inv_weight() > 0){
 		pline("You collapse under your load.");
 		nomul(0);
 		return;
 	}
-	if(Confusion) {
-		do {
-			u.dx = rn1(3,-1);
-			u.dy = rn1(3,-1);
-			tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
-		} while((!u.dx && !u.dy) ||
- !isok(u.ux+u.dx, u.uy+u.dy) || tmpr->typ < DOOR);
-	} else tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
-	if(!isok(u.ux+u.dx, u.uy+u.dy)){
-		nomul(0);
-		return;
+	if(u.uswallow) {
+		u.dx = u.dy = 0;
+		u.ux = u.ustuck->mx;
+		u.uy = u.ustuck->my;
+	} else {
+		if(Confusion) {
+			do {
+				confdir();
+			} while(!isok(u.ux+u.dx, u.uy+u.dy) ||
+	levl[u.ux+u.dx][u.uy+u.dy].typ < DOOR);
+		}
+		if(!isok(u.ux+u.dx, u.uy+u.dy)){
+			nomul(0);
+			return;
+		}
 	}
 
 	ust = &levl[u.ux][u.uy];
@@ -177,7 +203,7 @@ domove()
 			return;
 		}
 	}
-	if((mtmp = m_at(u.ux+u.dx,u.uy+u.dy)) || u.uswallow) {
+	if(u.uswallow || (mtmp = m_at(u.ux+u.dx,u.uy+u.dy))) {
 	/* attack monster */
 		schar tmp;
 		boolean malive = TRUE;
@@ -288,6 +314,7 @@ nomon:
 		}
  return;
 	}
+	tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
 	if((tmpr->typ < DOOR) ||
 	   (u.dx && u.dy && (tmpr->typ == DOOR || ust->typ == DOOR))){
 		flags.move = 0;
@@ -299,7 +326,8 @@ nomon:
 		register struct gen *gtmp;
 		nomul(0);
 		if(isok(rx,ry) && (levl[rx][ry].typ > DOOR ||
-		    (levl[rx][ry].typ == DOOR && (!u.dx || !u.dy)))) {
+		    (levl[rx][ry].typ == DOOR && (!u.dx || !u.dy))) &&
+		    !sobj_at(ENORMOUS_ROCK, rx, ry)) {
 			if(m_at(rx,ry)) {
 			    pline("You hear a monster behind the rock.");
 			    pline("Perhaps that's why you cannot move it.");
@@ -307,7 +335,7 @@ nomon:
 			}
 			if(gtmp = g_at(rx,ry,ftrap))
 #include	"def.trap.h"
-			    switch(gtmp->gflag & ~SEEN) {
+			    switch(gtmp->gflag & TRAPTYPE) {
 			    case PIT:
 				pline("You push the rock into a pit!");
 				deltrap(gtmp);
@@ -325,7 +353,7 @@ nomon:
 			if(cansee(rx,ry)) atl(rx,ry,otmp->olet);
 			if(Invis) newsym(u.ux+u.dx, u.uy+u.dy);
 
-			{ static int lastmovetime;
+			{ static long lastmovetime;
 			/* note: this var contains garbage initially and
 			   after a restore */
 			if(moves > lastmovetime+2 || moves < lastmovetime)
@@ -435,6 +463,19 @@ register int ox, oy;
 	fobj = obj;
 	obj->ox = ox;
 	obj->oy = oy;
+}
+
+dopickup(){
+	if(!g_at(u.ux,u.uy,fgold) && !o_at(u.ux,u.uy)) {
+		pline("There is nothing here to pick up.");
+		return(0);
+	}
+	if(Levitation) {
+		pline("You cannot reach the floor.");
+		return(1);
+	}
+	pickup();
+	return(1);
 }
 
 pickup(){

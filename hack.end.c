@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.end.c version 1.0.1 - added "escaped with amulet" */
 
 #include "hack.h"
 #include <stdio.h>
@@ -79,7 +80,10 @@ register char *st1;
 	clearlocks();
 	if(index("cds", *st1)){
 		savebones();
-		outrip();
+		if(!flags.notombstone)
+			outrip();
+		else
+			more();
 	}
 	settty((char *) 0);	/* does a cls() */
 	if(!done_stopprint)
@@ -98,6 +102,7 @@ register char *st1;
 		register int i;
 		register unsigned worthlessct = 0;
 
+		killer = st1;
 		u.urexp += 50 * maxdlevel;
 		if(mtmp) {
 			if(!done_stopprint) printf("You");
@@ -133,13 +138,15 @@ register char *st1;
 				if(!done_stopprint)
 				  printf("\t%s (worth %d Zorkmids),\n",
 				    doname(otmp), i);
-				if(otmp->spe >= 0) u.urexp *= 2;
+				if(otmp->spe >= 0) {
+					u.urexp *= 2;
+					killer = "escaped (with amulet)";
+				}
 			}
 		}
 		if(worthlessct) if(!done_stopprint)
 		  printf("\t%d worthless piece%s of coloured glass,\n",
 		  worthlessct, plur(worthlessct));
-		killer=st1;
 	} else
 		if(!done_stopprint)
 		  printf("You %s on dungeon level %d with %lu points,\n",
@@ -278,9 +285,14 @@ topten(){
 	    t1->hp, t1->maxhp, t1->points,
 	    t1->plchar,t1->str,t1->death);
 	  if(done_stopprint) continue;
-	  if(rank > 5 && (rank < rank0 - 4 || rank > rank0 + 4))
-	      continue;
-	  if(rank == rank0 - 4 && rank0 > 10) (void) putchar('\n');
+	  if(rank > flags.end_top &&
+	    (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
+	    && (!flags.end_own || strncmp(t1->str, t0->str, NAMSZ)))
+	  	continue;
+	  if(rank == rank0-flags.end_around &&
+	     rank0 > flags.end_top+flags.end_around+1 &&
+	     !flags.end_own)
+		(void) putchar('\n');
 	  if(rank != rank0)
 		(void) outentry(rank, t1, 0);
 	  else if(!rank1)
@@ -318,10 +330,13 @@ char linebuf[BUFSZ];
 	Sprintf(eos(linebuf), " %6ld %8s", t1->points, t1->str);
 	if(t1->plchar == 'X') Sprintf(eos(linebuf), " ");
 	else Sprintf(eos(linebuf), "-%c ", t1->plchar);
-	if(!strcmp("escaped", t1->death))
-	  Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
-	    t1->maxlvl);
-	else {
+	if(!strncmp("escaped", t1->death, 7)) {
+	  if(!strcmp(" (with amulet)", t1->death+7))
+	    Sprintf(eos(linebuf), "escaped the dungeon with amulet");
+	  else
+	    Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
+	      t1->maxlvl);
+	} else {
 	  if(!strncmp(t1->death,"quit",4))
 	    Sprintf(eos(linebuf), "quit"), quit = TRUE;
 	  else if(!strcmp(t1->death,"choked"))

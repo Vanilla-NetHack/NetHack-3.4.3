@@ -1,3 +1,6 @@
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.mhitu.c version 1.0.1 - corrected bug for 'R' (Mike Newton)
+			      - also some separate code for swallowed (a3) */
 #include	"hack.h"
 extern struct monst *makemon();
 
@@ -12,15 +15,48 @@ register struct monst *mtmp;
 	register int tmp, ctmp;
 
 	nomul(0);
-	if(!index("&DuxynNF",mdat->mlet) && !u.uswallow)
+
+	/* If swallowed, can only be affected by hissers and by u.ustuck */
+	if(u.uswallow) {
+		if(mtmp != u.ustuck && mdat->mlet != 'c')
+			return(0);
+		switch(mdat->mlet) {
+		case 'c':
+			if(!rn2(13)) {
+				pline("Outside, you hear %s's hissing!",
+					monnam(mtmp));
+				pline("%s gets turned to stone!",
+					Monnam(u.ustuck));
+				pline("And the same fate befalls you.");
+				done_in_by(mtmp);
+			}
+			break;
+		case ',':
+			youswld(mtmp,4+u.uac,5,"The trapper");
+			break;
+		case '\'':
+			youswld(mtmp,rnd(6),7,"The lurker above");
+			break;
+		case 'P':
+			youswld(mtmp,d(2,4),12,"The purple worm");
+			break;
+		default:
+			pline("The mysterious monster digests you.");
+			u.uhp = 0;
+		}
+		if(u.uhp < 1) done_in_by(mtmp);
+		return(0);
+	}
+	if(!index("&DuxynNF",mdat->mlet))
 		tmp = hitu(mtmp,d(mdat->damn,mdat->damd));
-	else tmp = 0;
+	else
+		tmp = 0;
 
 	ctmp = tmp && !mtmp->mcan &&
 	  (!uarm || objects[uarm->otyp].a_can < rnd(3) || !rn2(50));
 	switch(mdat->mlet) {
 	case '&':
-		if(!mtmp->cham && !mtmp->mcan && !rn2(15)) {
+		if(!mtmp->cham && !mtmp->mcan && !rn2(13)) {
 			(void) makemon(PM_DEMON,u.ux,u.uy);
 		} else {
 			(void) hitu(mtmp,d(2,6));
@@ -31,14 +67,10 @@ register struct monst *mtmp;
 		}
 		break;
 	case ',':
-		if(u.uswallow)
-			youswld(mtmp,4+u.uac,5,"The trapper");
-		else if(tmp) justswld(mtmp,"The trapper");
+		if(tmp) justswld(mtmp,"The trapper");
 		break;
 	case '\'':
-		if(u.uswallow)
-			youswld(mtmp,rnd(6),7,"The lurker above");
-		else if(tmp) justswld(mtmp,"The lurker above");
+		if(tmp) justswld(mtmp,"The lurker above");
 		break;
 	case 'A':
 		if(ctmp && rn2(2)) {
@@ -93,14 +125,15 @@ register struct monst *mtmp;
 		return(1);
 	case 'g':
 		if(ctmp && multi >= 0 && !rn2(6)) {
-kludge("You are frozen by %ss juices","the cube'");
+			kludge("You are frozen by %ss juices","the cube'");
 			nomul(-rnd(10));
 		}
 		break;
 	case 'h':
 		if(ctmp && multi >= 0 && !rn2(5)) {
 			nomul(-rnd(10));
-kludge("You are put to sleep by %ss bite!","the homunculus'");
+			kludge("You are put to sleep by %ss bite!",
+				"the homunculus'");
 		}
 		break;
 	case 'j':
@@ -146,7 +179,7 @@ kludge("You are put to sleep by %ss bite!","the homunculus'");
 	case 'o':
 		tmp = hitu(mtmp,rnd(6));
 		if(hitu(mtmp,rnd(6)) && ctmp &&
-		!u.ustuck && rn2(2)) {
+		    !u.ustuck && rn2(2)) {
 			u.ustuck = mtmp;
 			kludge("%s has grabbed you!","The owlbear");
 			u.uhp -= d(2,8);
@@ -156,11 +189,10 @@ kludge("You are put to sleep by %ss bite!","the homunculus'");
 		}
 		break;
 	case 'P':
-		if(u.uswallow)
-			youswld(mtmp,d(2,4),12,"The purple worm");
-		else if(ctmp && !rn2(4))
+		if(ctmp && !rn2(4))
 			justswld(mtmp,"The purple worm");
-		else (void) hitu(mtmp,d(2,4));
+		else
+			(void) hitu(mtmp,d(2,4));
 		break;
 	case 'Q':
 		(void) hitu(mtmp,rnd(2));
@@ -172,7 +204,7 @@ kludge("You are put to sleep by %ss bite!","the homunculus'");
 			pline("Your helmet rusts!");
 			uarmh->spe--;
 		} else
-		if(ctmp && uarm && !uarmh->rustfree &&
+		if(ctmp && uarm && !uarm->rustfree &&
 		 uarm->otyp < STUDDED_LEATHER_ARMOR &&
 		 (int)uarm->spe >= -1) {
 			pline("Your armor rusts!");
@@ -221,12 +253,12 @@ kludge("You are put to sleep by %ss bite!","the homunculus'");
 #endif NOWORM
 		break;
 	case 'X':
-		(void) hitu(mtmp,rnd(3));
-		(void) hitu(mtmp,rnd(3));
-		(void) hitu(mtmp,rnd(3));
+		(void) hitu(mtmp,rnd(5));
+		(void) hitu(mtmp,rnd(5));
+		(void) hitu(mtmp,rnd(5));
 		break;
 	case 'x':
-		{ register int side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
+		{ register long side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
 		  pline("%s pricks in your %s leg!",
 			Monnam(mtmp), (side == RIGHT_SIDE) ? "right" : "left");
 		  Wounded_legs |= side + rnd(5);

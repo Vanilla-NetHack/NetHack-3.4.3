@@ -1,23 +1,21 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.whatis.c version 1.0.1 - whatis asks for one char only. */
 
 #include	<stdio.h>
 #include "hack.h"
 
-dowhatis(str)
-register char *str;
+dowhatis()
 {
 	FILE *fp;
 	char bufr[BUFSZ];
 	register char *ep, q;
+	extern char readchar();
 
-	pline("Specify what? ");
-	getlin(bufr);
-	str = bufr;
-	while(*str == ' ') str++;
-	q = *str;
-	if(*(str+1)) pline("One character please.");
-	else if(!(fp = fopen("data","r"))) pline("Cannot open data file!");
+	if(!(fp = fopen("data","r")))
+		pline("Cannot open data file!");
 	else {
+		pline("Specify what? ");
+		q = readchar();
 		while(fgets(bufr,BUFSZ,fp))
 			if(*bufr == q) {
 				ep = index(bufr, '\n');
@@ -27,7 +25,7 @@ register char *str;
 				if(ep[-1] == ';') morewhat(fp);
 				goto fnd;
 			}
-		pline("Unknown symbol.");
+		pline("I've never heard of such things.");
 	fnd:
 		(void) fclose(fp);
 	}

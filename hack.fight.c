@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.fight.c version 1.0.1 - corrected symbol of lurker above */
 
 #include	"hack.h"
 extern struct permonst li_dog, dog, la_dog;
@@ -14,6 +15,7 @@ int hit;
 schar tmp;
 boolean vis;
 	if(index("Eauy", pa->mlet)) return(0);
+	if(magr->mfroz) return(0);		/* riv05!a3 */
 	tmp = pd->ac + pa->mlevel;
 	if(mdef->mconf || mdef->mfroz || mdef->msleep){
 		tmp += 4;
@@ -108,6 +110,8 @@ register dam;
 {
 	register tmp;
 
+	if(u.uswallow) return(0);
+
 	if(mtmp->mhide && mtmp->mundetected) {
 		mtmp->mundetected = 0;
 		if(!Blind) {
@@ -160,7 +164,7 @@ char buf[BUFSZ];
 	}
 }
 
-char mlarge[] = "bCDdegIlmnoPSsTUwY~,&";
+char mlarge[] = "bCDdegIlmnoPSsTUwY\',&";
 
 boolean
 hmon(mon,obj,thrown)	/* return TRUE if mon still alive */

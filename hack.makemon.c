@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.makemon.c version 1.0.1 - newly created demons do not sleep */
 
 #ifdef MKLEV
 #include	"mklev.h"
@@ -90,7 +91,7 @@ gotmon:
 	if(ptr->mlet == 'I') mtmp->minvis = 1;
 	if(ptr->mlet == 'L' || ptr->mlet == 'N'
 #ifdef MKLEV
-		|| rn2(5)
+		|| (ptr->mlet != '&' && ptr->mlet != 'w' && rn2(5))
 #endif MKLEV
 	) mtmp->msleep = 1;
 

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.trap.c version 1.0.1 - added dotele(); */
 
 #include	"hack.h"
 #include	"def.trap.h"
@@ -22,10 +23,10 @@ char *traps[] = {
 dotrap(trap) register struct gen *trap; {
 	nomul(0);
 	if(trap->gflag&SEEN && !rn2(5))
-		pline("You escape a%s.",traps[trap->gflag&037]);
+		pline("You escape a%s.",traps[trap->gflag & TRAPTYPE]);
 	else {
 		trap->gflag |= SEEN;
-		switch(trap->gflag & ~SEEN) {
+		switch(trap->gflag & TRAPTYPE) {
 		case SLP_GAS_TRAP:
 			pline("A cloud of gas puts you to sleep!");
 			nomul(-rnd(25));
@@ -85,8 +86,14 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			}
 			break;
 		case TELEP_TRAP:
-			newsym(u.ux,u.uy);
-			tele();
+			if(trap->gflag & ONCE) {
+				deltrap(trap);
+				newsym(u.ux,u.uy);
+				vtele();
+			} else {
+				newsym(u.ux,u.uy);
+				tele();
+			}
 			break;
 		case PIT:
 			if(Levitation) {
@@ -116,7 +123,7 @@ mintrap(mtmp) register struct monst *mtmp; {
 	} else if(wasintrap) {
  if(!rn2(40)) mtmp->mtrapped = 0;
 	} else {
-	    register int tt = (gen->gflag & ~SEEN);
+	    register int tt = (gen->gflag & TRAPTYPE);
 	    int in_sight = cansee(mtmp->mx,mtmp->my);
 	    extern char mlarge[];
 	    if(mtmp->mtrapseen & (1 << tt)) {
@@ -221,7 +228,7 @@ float_down(){
 	register struct gen *trap;
 	pline("You float gently to the ground.");
 	if(trap = g_at(u.ux,u.uy,ftrap))
-		switch(trap->gflag & 037) {
+		switch(trap->gflag & TRAPTYPE) {
 		case PIERC:
 			break;
 		case TRAPDOOR:
@@ -233,20 +240,36 @@ float_down(){
  pickup();
 }
 
-tele()
-{
-extern coord getpos();
-coord cc;
-register int nux,nuy;
+vtele() {
+#define	VAULT	6
+	register struct mkroom *croom;
+	for(croom = &rooms[0]; croom->hx >= 0; croom++)
+	    if(croom->rtype == VAULT) {
+		register x,y;
+
+		x = rn2(2) ? croom->lx : croom->hx;
+		y = rn2(2) ? croom->ly : croom->hy;
+		if(teleok(x,y)) {
+		    teleds(x,y);
+		    return;
+		}
+	    }
+	tele();
+}
+
+tele() {
+	extern coord getpos();
+	coord cc;
+	register int nux,nuy;
+
 	if(Teleport_control) {
 		pline("To what position do you want to be teleported?");
 		cc = getpos(1, "the desired position"); /* 1: force valid */
 		/* possible extensions: introduce a small error if
 		   magic power is low; allow transfer to solid rock */
 		if(teleok(cc.x, cc.y)){
-			nux = cc.x;
-			nuy = cc.y;
-			goto gotpos;
+			teleds(cc.x, cc.y);
+			return;
 		}
  pline("Sorry ...");
 	}
@@ -254,7 +277,12 @@ register int nux,nuy;
 		nux = rnd(COLNO-1);
 		nuy = rn2(ROWNO);
 	} while(!teleok(nux, nuy));
-gotpos:
+	teleds(nux, nuy);
+}
+
+teleds(nux, nuy)
+register int nux,nuy;
+{
 	if(Punished) unplacebc();
 	unsee();
 	u.utrap = 0;
@@ -278,6 +306,27 @@ teleok(x,y) register int x,y; {
 		!sobj_at(ENORMOUS_ROCK,x,y) && !g_at(x,y,ftrap)
 	);
 	/* Note: gold is permitted (because of vaults) */
+}
+
+dotele() {
+	extern char pl_character[];
+
+	if(
+#ifdef WIZARD
+	   !wizard &&
+#endif WIZARD
+		      (!Teleportation || u.ulevel < 6 ||
+			(pl_character[0] != 'W' && u.ulevel < 10))) {
+		pline("You are not able to teleport at will.");
+		return(0);
+	}
+	if(u.uhunger <= 100 || u.ustr < 6) {
+		pline("You miss the strength for a teleport spell.");
+		return(1);
+	}
+	tele();
+	morehungry(100);
+	return(1);
 }
 
 placebc(attach) int attach; {

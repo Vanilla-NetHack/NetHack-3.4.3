@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.dog.c version 1.0.1 - "You feel worried about %s." (Adri Verhoef) */
 
 #include	"hack.h"
 #include	"hack.mfndpos.h"
@@ -132,7 +133,7 @@ int info[9];
 			mtmp->mhp = mtmp->orig_hp;
 		if(cansee(omx,omy))
 			pline("%s is confused from hunger", Monnam(mtmp));
-		else	pline("You feel worried about your %s.", monnam(mtmp));
+		else	pline("You feel worried about %s.", monnam(mtmp));
 	} else
 	if(moves > edog->hungrytime + 750 || mtmp->mhp < 1){
 		if(cansee(omx,omy))
@@ -302,12 +303,13 @@ int info[9];
 			niy = ny;
 			chi = i;
 		     eatobj:
-			edog->eattime = moves + objects[obj->otyp].oc_delay;
+			edog->eattime =
+			    moves + obj->quan * objects[obj->otyp].oc_delay;
 			edog->hungrytime =
-				moves + 5*objects[obj->otyp].nutrition;
+			    moves + 5*obj->quan * objects[obj->otyp].nutrition;
 			mtmp->mconf = 0;
 			if(cansee(nix,niy))
-				pline("%s ate %s.", Monnam(mtmp), doname(obj));
+			    pline("%s ate %s.", Monnam(mtmp), doname(obj));
 			/* perhaps this was a reward */
 			if(otyp != CADAVER)
 			edog->apport += 200/(edog->dropdist+moves-edog->droptime);
@@ -375,7 +377,7 @@ register struct monst *mtmp;
 register struct obj *obj;
 {
 register struct monst *mtmp2;
-	if(mtmp->mtame ||
+	if(mtmp->mtame || mtmp->mfroz ||
 #ifndef NOWORM
 		mtmp->wormno ||
 #endif NOWORM

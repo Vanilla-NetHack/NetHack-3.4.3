@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.main.c version 1.0.1 - some cosmetic changes */
 
 #include <stdio.h>
 #include <signal.h>
@@ -30,9 +31,6 @@ int argc;
 char *argv[];
 {
 	int fd;
-#ifdef NEWS
-	int nonews = 0;
-#endif NEWS
 	char *dir;
 
 	hname = argv[0];
@@ -56,7 +54,7 @@ char *argv[];
 			dir = argv[0];
 		}
 		if(!*dir)
-			error("Flag -d must be followed by a directory name.");
+		    error("Flag -d must be followed by a directory name.");
 	}
 
 	/*
@@ -88,6 +86,7 @@ char *argv[];
 	/*
 	 * Process options.
 	 */
+	initoptions();
 	while(argc > 1 && argv[1][0] == '-'){
 		argv++;
 		argc--;
@@ -101,7 +100,7 @@ char *argv[];
 #endif WIZARD
 #ifdef NEWS
 		case 'n':
-			nonews++;
+			flags.nonews = TRUE;
 			break;
 #endif NEWS
 		case 'u':
@@ -185,7 +184,7 @@ char *argv[];
 		flags.move = 0;
 	} else {
 #ifdef NEWS
-		if(!nonews)
+		if(!flags.nonews)
 			if((fd = open(NEWS,0)) >= 0)
 				outnews(fd);
 #endif NEWS
@@ -228,6 +227,7 @@ char *argv[];
 			if(Glib) glibr();
 			timeout();
 			++moves;
+			if(flags.time) flags.botl = 1;
 			if(u.uhp < 1) {
 				pline("You die...");
 				done("died");
@@ -297,6 +297,8 @@ char *argv[];
 			}
 		} else if(multi == 0)
 			rhack((char *) 0);
+		if(multi && multi%7 == 0)
+			(void) fflush(stdout);
 	}
 }
 
@@ -322,21 +324,21 @@ lockcheck()
 	error("Too many hacks running now.");
 gotlock:
 	fd = creat(lock,FMASK);
+	if(unlink(safelock) == -1) {
+		error("Cannot unlink safelock.");
+	}
 	if(fd == -1) {
 		error("cannot creat lock file.");
 	} else {
 		int pid;
 
 		pid = getpid();
-		if(write(fd, (char *) &pid, 2) != 2){
+		if(write(fd, (char *) &pid, sizeof(pid)) != sizeof(pid)){
 			error("cannot write lock");
 		}
-		if(close(fd) == -1){
+		if(close(fd) == -1) {
 			error("cannot close lock");
 		}
-	}
-	if(unlink(safelock) == -1){
-		error("Cannot unlink safelock");
 	}
 }
 
@@ -370,6 +372,11 @@ register int c,ct;
 	ct = 0;
 	while((c = getchar()) != '\n'){
 		if(c == EOF) error("End of input\n");
+		/* some people get confused when their erase char is not ^H */
+		if(c == '\010') {
+			if(ct) ct--;
+			continue;
+		}
 		if(c != '-')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
 		if(ct < sizeof(plname)-1) plname[ct++] = c;

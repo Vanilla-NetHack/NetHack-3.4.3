@@ -1,4 +1,5 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* config.h version 1.0.1: added definition of HELP */
 
 #ifndef CONFIG	/* make sure the compiler doesnt see the typedefs twice */
 
@@ -10,6 +11,7 @@
 
 #define WIZARD  "play"	/* the person allowed to use the -w option */
 #define	NEWS	"news"	/* the file containing the latest hack news */
+#define	HELP	"help"	/* the file containing a description of the commands */
 #define	FMASK	0660	/* file creation mask */
 
 #define OPTIONS		/* do not delete the 'o' command */

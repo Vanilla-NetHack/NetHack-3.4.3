@@ -563,7 +563,7 @@ int info[9];
 	gx = ESHK->shk.x;
 	gy = ESHK->shk.y;
 	if(ANGRY){
-		int saveBlind = Blind;
+		long saveBlind = Blind;
 		Blind = 0;
 		if(shopkeeper->mcansee && !Invis && cansee(omx,omy)) {
 			gx = u.ux;

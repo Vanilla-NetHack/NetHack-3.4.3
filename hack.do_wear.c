@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.do_wear.c version 1.0.1 - changed an int to long */
 
 #include "hack.h"
 #include <stdio.h>
@@ -211,7 +212,7 @@ dowearring() {
 ringoff(obj)
 register struct obj *obj;
 {
-register unsigned mask;
+register long mask;
 	mask = obj->owornmask & W_RING;
 	setworn((struct obj *) 0, obj->owornmask);
 	if(!(u.uprops[PROP(obj->otyp)].p_flgs & mask)){

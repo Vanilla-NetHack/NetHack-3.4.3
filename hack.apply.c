@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.apply.c version 1.0.1 - "The flash awakens %s" (riv05!a3) */
 
 #include	"hack.h"
 extern struct monst *bchit();
@@ -39,7 +40,7 @@ register struct monst *mtmp;
 	if(mtmp = bchit(u.dx, u.dy, COLNO, '!')) {
 		if(mtmp->msleep){
 			mtmp->msleep = 0;
-			pline("The flash awakens the %s.", monnam(mtmp));
+			pline("The flash awakens %s.", monnam(mtmp));
 		} else
 		if(mtmp->data->mlet != 'y')
 		if(mtmp->mcansee || mtmp->mblinded){

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* savelev.h version 1.0.1 - also save engravings from MKLEV */
 
 #include "hack.h"
 #include <stdio.h>
@@ -37,12 +38,11 @@ savelev(fd){
 	saveobjchn(fd, billobjs);
 /*	if (!ismklev) */
 	   billobjs = 0;
-	bwrite(fd,(char *) nul, sizeof(unsigned));
 #ifndef QUEST
 	bwrite(fd,(char *) rooms,sizeof(rooms));
 	bwrite(fd,(char *) doors,sizeof(doors));
-	save_engravings(fd);
 #endif QUEST
+	save_engravings(fd);
 /* 	if (!ismklev) */
 	   {
 	   fgold = ftrap = 0;

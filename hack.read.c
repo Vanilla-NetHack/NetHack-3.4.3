@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.read.c version 1.0.1 - tiny correction in SCR_MAGIC_MAPPING */
 
 #include "hack.h"
 
@@ -331,7 +332,10 @@ doread() {
 #endif QUEST
 				{
 				  lev->seen = lev->new = 1;
-				  on_scr(zx,zy);
+				  if(lev->scrsym == ' ')
+				    newsym(zx,zy);
+				  else
+				    on_scr(zx,zy);
 				}
 			}
 		break;

@@ -1,6 +1,13 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
-
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.engrave.c version 1.0.1 -
+	corrected bug in rest_engravings(),
+	added make_engr_at() */
+#ifdef MKLEV
+#include	"mklev.h"
+#else
 #include	"hack.h"
+#endif MKLEV
+
 extern char *nomovemsg;
 extern char nul[];
 struct engr {
@@ -26,6 +33,7 @@ register struct engr *ep = head_engr;
  return((struct engr *) 0);
 }
 
+#ifndef MKLEV
 sengr_at(s,x,y) register char *s; register xchar x,y; {
 register struct engr *ep = engr_at(x,y);
 register char *t;
@@ -89,7 +97,32 @@ register struct engr *ep = engr_at(x,y);
 	    pline("You read: \"%s\".", ep->engr_txt);
 	}
 }
+#endif MKLEV
 
+#ifdef MKLEV
+make_engr_at(x,y,s)
+register int x,y;
+register char *s;
+{
+	register struct engr *ep;
+
+	if(ep = engr_at(x,y))
+	    del_engr(ep);
+	ep = (struct engr *)
+	    alloc((unsigned)(sizeof(struct engr) + strlen(s) + 1));
+	ep->nxt_engr = head_engr;
+	head_engr = ep;
+	ep->engr_x = x;
+	ep->engr_y = y;
+	ep->engr_txt = (char *)(ep + 1);
+	(void) strcpy(ep->engr_txt, s);
+	ep->engr_time = 0;
+	ep->engr_type = DUST;
+	ep->engr_lth = strlen(s) + 1;
+}
+#endif MKLEV
+
+#ifndef MKLEV
 doengrave(){
 register int len;
 register char *sp;
@@ -99,6 +132,11 @@ xchar type;
 int spct;		/* number of leading spaces */
 register struct obj *otmp;
 	multi = 0;
+
+	if(u.uswallow) {
+		pline("You're joking. Hahaha!");	/* riv05!a3 */
+		return(0);
+	}
 
 	/* one may write with finger, weapon or wand */
 	otmp = getobj("#-)/", "write with");
@@ -119,6 +157,10 @@ register struct obj *otmp;
 			if(oep && oep->engr_type != DUST) return(1);
 		}
 	} else	type = DUST;
+	if(Levitation && type != BURN){		/* riv05!a3 */
+		pline("You can't reach the floor!");
+		return(1);
+	}
 	if(oep && oep->engr_type == DUST){
 		  pline("You wipe out the message that was written here.");
 		  del_engr(oep);
@@ -199,6 +241,7 @@ register struct obj *otmp;
 
 	return(1);
 }
+#endif MKLEV
 
 save_engravings(fd) int fd; {
 register struct engr *ep = head_engr;
@@ -214,6 +257,7 @@ register struct engr *ep = head_engr;
  bwrite(fd, (char *) nul, sizeof(unsigned));
 }
 
+#ifndef MKLEV
 rest_engravings(fd) int fd; {
 register struct engr *ep;
 unsigned lth;
@@ -224,9 +268,11 @@ unsigned lth;
 		ep = (struct engr *) alloc(sizeof(struct engr) + lth);
 		mread(fd, (char *) ep, sizeof(struct engr) + lth);
 		ep->nxt_engr = head_engr;
+		ep->engr_txt = (char *) (ep + 1);	/* Andreas Bormann */
 		head_engr = ep;
 	}
 }
+#endif MKLEV
 
 del_engr(ep) register struct engr *ep; {
 register struct engr *ept;
@@ -238,7 +284,9 @@ register struct engr *ept;
 				ept->nxt_engr = ep->nxt_engr;
 				goto fnd;
 			}
+#ifndef MKLEV
 		pline("Error in del_engr?"); impossible();
+#endif MKLEV
 	fnd:	;
 	}
  free((char *) ep);

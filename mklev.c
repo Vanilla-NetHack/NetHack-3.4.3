@@ -1,8 +1,14 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* mklev.c version 1.0.1 - new makecorridor() */
+
+#ifndef MKLEV
+#define	MKLEV
+#endif MKLEV
 
 #include <stdio.h>
 #include "mklev.h"
 #include "def.trap.h"
+#include "hack.onames.h"	/* for SCR_TELEPORTATION */
 
 extern char *getlogin();
 extern struct monst *makemon();
@@ -16,7 +22,6 @@ char nul[40];
 boolean wizard;
 #endif WIZARD
 
-
 #define somex() ((rand()%(croom->hx-croom->lx+1))+croom->lx)
 #define somey() ((rand()%(croom->hy-croom->ly+1))+croom->ly)
 
@@ -28,17 +33,17 @@ struct gen *fgold, *ftrap;
 char *fut_geno;		/* monsters that should not be created anymore */
 
 struct mkroom rooms[MAXNROFROOMS+1], *croom, *troom;
+int smeq[MAXNROFROOMS+1];
 coord doors[DOORMAX];
 int doorindex = 0;
 int comp();
 
 xchar dlevel;
-schar nxcor,xx,yy,dx,dy,tx,ty; /* for corridors and other things... */
+schar nxcor;
 boolean goldseen;
 int nroom;
 
 xchar xdnstair,xupstair,ydnstair,yupstair;
-
 
 main(argc,argv)
 char *argv[];
@@ -118,12 +123,8 @@ char *argv[];
 	levl[xupstair][yupstair].typ = STAIRS;
 
 	qsort((char *) rooms, nroom, sizeof(struct mkroom), comp);
-	croom = rooms;
-	troom = croom+1;
-	nxcor = 0;
-	mkpos();
-	do makecor();
-	while (croom->hx > 0 && troom->hx > 0);
+	makecorridors();
+	make_niches();
 
 	/* make a secret treasure vault, not connected to the rest */
 	if(nroom < (2*MAXNROFROOMS/3)) if(!rn2(3)) {
@@ -134,6 +135,8 @@ char *argv[];
 			for(x = troom->lx; x <= troom->hx; x++)
 			for(y = troom->ly; y <= troom->hy; y++)
 				mkgold(rnd(dlevel*100) + 50, x, y);
+			if(!rn2(3))
+				makevtele();
 		}
 	}
 
@@ -195,12 +198,142 @@ register x,y;
  return(ff);
 }
 
-/* when croom and troom exist, find position for a door in croom
-   and direction for a corridor towards position [tx,ty] in the wall
-   of troom */
-mkpos()
+/* if allowable, create a door at [x,y] */
+okdoor(x,y)
+register x,y;
 {
-coord cc,tt;
+	if(levl[x-1][y].typ == DOOR || levl[x+1][y].typ == DOOR ||
+	   levl[x][y+1].typ == DOOR || levl[x][y-1].typ == DOOR ||
+	   levl[x-1][y].typ == SDOOR || levl[x+1][y].typ == SDOOR ||
+	   levl[x][y-1].typ == SDOOR || levl[x][y+1].typ == SDOOR ||
+	   (levl[x][y].typ != HWALL && levl[x][y].typ != VWALL) ||
+	   doorindex >= DOORMAX)
+		return(0);
+	return(1);
+}
+
+dodoor(x,y,aroom)
+register x,y;
+register struct mkroom *aroom;
+{
+	if(doorindex >= DOORMAX) panic("DOORMAX exceeded?");
+	if(!okdoor(x,y) && nxcor) return;
+	dosdoor(x,y,aroom,rn2(8) ? DOOR : SDOOR);
+}
+
+dosdoor(x,y,aroom,type)
+register x,y;
+register struct mkroom *aroom;
+register type;
+{
+	register struct mkroom *broom;
+	register tmp;
+
+	levl[x][y].typ = type;
+	if(type == DOOR)
+		levl[x][y].scrsym ='+';
+	aroom->doorct++;
+	broom = aroom+1;
+	if(broom->hx < 0) tmp = doorindex; else
+	for(tmp = doorindex; tmp > broom->fdoor; tmp--)
+		doors[tmp] = doors[tmp-1];
+	doorindex++;
+	doors[tmp].x = x;
+	doors[tmp].y = y;
+	for( ; broom->hx >= 0; broom++) broom->fdoor++;
+}
+
+/* Only called from makerooms() */
+maker(lowx,ddx,lowy,ddy)
+schar lowx,ddx,lowy,ddy;
+{
+	register x, y, hix = lowx+ddx, hiy = lowy+ddy;
+
+	if(nroom >= MAXNROFROOMS) return(0);
+	if(hix > COLNO-5) hix = COLNO-5;
+	if(hiy > ROWNO-4) hiy = ROWNO-4;
+chk:
+	if(hix <= lowx || hiy <= lowy) return(0);
+
+	/* check area around room (and make room smaller if necessary) */
+	for(x = lowx-4; x <= hix+4; x++)
+		for(y = lowy-3; y <= hiy+3; y++)
+			if(levl[x][y].typ) {
+				if(rn2(3)) return(0);
+				lowx = x+5;
+				lowy = y+4;
+				goto chk;
+			}
+
+	/* on low levels the room is lit (usually) */
+	/* secret vaults are always lit */
+	if((rnd(dlevel) < 10 && rn2(77)) || (ddx == 1 && ddy == 1))
+		for(x = lowx-1; x <= hix+1; x++)
+			for(y = lowy-1; y <= hiy+1; y++)
+				levl[x][y].lit = 1;
+	croom->lx = lowx;
+	croom->hx = hix;
+	croom->ly = lowy;
+	croom->hy = hiy;
+	croom->rtype = croom->doorct = croom->fdoor = 0;
+	for(x = lowx-1; x <= hix+1; x++)
+	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
+		levl[x][y].scrsym = '-';
+		levl[x][y].typ = HWALL;
+	}
+	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
+	    for(y = lowy; y <= hiy; y++) {
+		levl[x][y].scrsym = '|';
+		levl[x][y].typ = VWALL;
+	}
+	for(x = lowx; x <= hix; x++)
+	    for(y = lowy; y <= hiy; y++) {
+		levl[x][y].scrsym = '.';
+		levl[x][y].typ = ROOM;
+	}
+	croom++;
+	croom->hx = -1;
+	smeq[nroom] = nroom;
+	nroom++;
+	return(1);
+}
+
+makecorridors() {
+	register a,b;
+
+	nxcor = 0;
+	for(a = 0; a < nroom-1; a++)
+		join(a, a+1);
+	for(a = 0; a < nroom-2; a++)
+	    if(smeq[a] != smeq[a+2])
+		join(a, a+2);
+	for(a = 0; a < nroom; a++)
+	    for(b = 0; b < nroom; b++)
+		if(smeq[a] != smeq[b])
+		    join(a, b);
+	if(nroom > 2)
+	    for(nxcor = rn2(nroom) + 4; nxcor; nxcor--) {
+		a = rn2(nroom);
+		b = rn2(nroom-2);
+		if(b >= a) b += 2;
+		join(a, b);
+	    }
+}
+
+join(a,b)
+register a,b;
+{
+	coord cc,tt;
+	register tx, ty, xx, yy;
+	register struct rm *crm;
+	register dx, dy, dix, diy, cct;
+
+	croom = &rooms[a];
+	troom = &rooms[b];
+
+	/* find positions cc and tt for doors in croom and troom
+	   and direction for a corridor between them */
+
 	if(troom->hx < 0 || croom->hx < 0 || doorindex >= DOORMAX) return;
 	if(troom->lx > croom->hx) {
 		dx = 1;
@@ -233,83 +366,161 @@ coord cc,tt;
 	}
 	xx = cc.x;
 	yy = cc.y;
-	tx = tt.x;
-	ty = tt.y;
-	if(levl[xx+dx][yy+dy].typ) {
-		if(nxcor) newloc();
-		else {
-			dodoor(xx,yy,croom);
-			xx += dx;
-			yy += dy;
+	tx = tt.x - dx;
+	ty = tt.y - dy;
+	if(nxcor && levl[xx+dx][yy+dy].typ)
+		return;
+	dodoor(xx,yy,croom);
+
+	cct = 0;
+	while(xx != tx || yy != ty) {
+	    xx += dx;
+	    yy += dy;
+
+	    /* loop: dig corridor at [xx,yy] and find new [xx,yy] */
+	    if(cct++ > 500 || (nxcor && !rn2(35)))
+		return;
+
+	    if(xx == COLNO-1 || xx == 0 || yy == 0 || yy == ROWNO-1)
+		return;		/* impossible */
+
+	    crm = &levl[xx][yy];
+	    if(!(crm->typ)) {
+		if(rn2(100)) {
+			crm->typ = CORR;
+			crm->scrsym = CORR_SYM;
+		} else {
+			crm->typ = SCORR;
+			crm->scrsym = ' ';
 		}
+		if(nxcor && !rn2(50)) {
+			mkobj_at(ROCK_SYM, xx, yy);
+		}
+	    } else
+	    if(crm->typ != CORR && crm->typ != SCORR) {
+		/* strange ... */
  return;
-	}
- dodoor(xx,yy,croom);
-}
+	    }
 
-/* if allowable, create a door at [x,y] */
-okdoor(x,y)
-register x,y;
-{
-	if(levl[x-1][y].typ == DOOR || levl[x+1][y].typ == DOOR ||
-	   levl[x][y+1].typ == DOOR || levl[x][y-1].typ == DOOR ||
-	   levl[x-1][y].typ == SDOOR || levl[x+1][y].typ == SDOOR ||
-	   levl[x][y-1].typ == SDOOR || levl[x][y+1].typ == SDOOR ||
-	   (levl[x][y].typ != HWALL && levl[x][y].typ != VWALL) ||
-	   doorindex >= DOORMAX)
-		return(0);
-	return(1);
-}
+	    /* find next corridor position */
+	    dix = abs(xx-tx);
+	    diy = abs(yy-ty);
 
-dodoor(x,y,aroom)
-register x,y;
-register struct mkroom *aroom;
-{
-	register struct mkroom *broom;
-	register tmp;
-	if(doorindex >= DOORMAX) panic("DOORMAX exceeded?");
-	if(!okdoor(x,y) && nxcor) return;
-	if(!rn2(8)) levl[x][y].typ = SDOOR;
-	else {
-		levl[x][y].scrsym ='+';
-		levl[x][y].typ = DOOR;
-	}
-	aroom->doorct++;
-	broom = aroom+1;
-	if(broom->hx < 0) tmp = doorindex; else
-	for(tmp = doorindex; tmp > broom->fdoor; tmp--)
-		doors[tmp] = doors[tmp-1];
-	doorindex++;
-	doors[tmp].x = x;
-	doors[tmp].y = y;
-	for( ; broom->hx >= 0; broom++) broom->fdoor++;
-}
+	    /* do we have to change direction ? */
+	    if(dy && dix > diy) {
+		register ddx = (xx > tx) ? -1 : 1;
 
-newloc()
-{
-	register a,b;
-	register int tryct = 0;
-
-	++croom;
-	++troom;
-	if(nxcor || croom->hx < 0 || troom->hx < 0) {
-		if(nxcor++ > rn1(nroom,4)) {
-			croom = &rooms[nroom];
-			return;
+		crm = &levl[xx+ddx][yy];
+		if(!crm->typ || crm->typ == CORR || crm->typ == SCORR) {
+		    dx = ddx;
+		    dy = 0;
+		    continue;
 		}
-		do {
-			if(++tryct > 100){
-				printf("tryct overflow5\n");
-				croom = &rooms[nroom];
-				return;
-			}
-			a = rn2(nroom);
-			b = rn2(nroom);
-			croom = &rooms[a];
-			troom = &rooms[b];
-		} while(croom == troom || (troom == croom+1 && !rn2(3)));
+	    } else if(dx && diy > dix) {
+		register ddy = (yy > ty) ? -1 : 1;
+
+		crm = &levl[xx][yy+ddy];
+		if(!crm->typ || crm->typ == CORR || crm->typ == SCORR) {
+		    dy = ddy;
+		    dx = 0;
+		    continue;
+		}
+	    }
+
+	    /* continue straight on? */
+	    crm = &levl[xx+dx][yy+dy];
+	    if(!crm->typ || crm->typ == CORR || crm->typ == SCORR)
+		continue;
+
+	    /* no, what must we do now?? */
+	    if(dx) {
+		dx = 0;
+		dy = (ty < yy) ? -1 : 1;
+		crm = &levl[xx+dx][yy+dy];
+		if(!crm->typ || crm->typ == CORR || crm->typ == SCORR)
+		    continue;
+		dy = -dy;
+		continue;
+	    } else {
+		dy = 0;
+		dx = (tx < xx) ? -1 : 1;
+		crm = &levl[xx+dx][yy+dy];
+		if(!crm->typ || crm->typ == CORR || crm->typ == SCORR)
+		    continue;
+		dx = -dx;
+		continue;
+	    }
 	}
- mkpos();
+
+	/* we succeeded in digging the corridor */
+	dodoor(tt.x, tt.y, troom);
+
+	if(smeq[a] < smeq[b])
+		smeq[b] = smeq[a];
+	else
+		smeq[a] = smeq[b];
+}
+
+make_niches()
+{
+	register int ct = rn2(nroom/2 + 1)+1;
+	while(ct--) makeniche(FALSE);
+}
+
+makevtele()
+{
+	makeniche(TRUE);
+}
+
+makeniche(with_trap)
+boolean with_trap;
+{
+	register struct mkroom *aroom;
+	register struct rm *rm;
+	register int vct = 8;
+	coord dd;
+	register dy,xx,yy;
+	register struct gen *gtmp;
+
+	if(doorindex < DOORMAX)
+	  while(vct--) {
+	    aroom = &rooms[rn2(nroom-1)];
+	    if(aroom->rtype != 0) continue;	/* not an ordinary room */
+	    if(rn2(2)) {
+		dy = 1;
+		dd = finddpos(aroom->lx,aroom->hy+1,aroom->hx,aroom->hy+1);
+	    } else {
+		dy = -1;
+		dd = finddpos(aroom->lx,aroom->ly-1,aroom->hx,aroom->ly-1);
+	    }
+	    xx = dd.x;
+	    yy = dd.y;
+	    if((rm = &levl[xx][yy+dy])->typ) continue;
+	    if(with_trap || !rn2(4)) {
+		rm->typ = SCORR;
+		rm->scrsym = ' ';
+		if(with_trap) {
+		    gtmp = newgen();
+		    gtmp->gx = xx;
+		    gtmp->gy = yy+dy;
+		    gtmp->gflag = TELEP_TRAP | ONCE;
+		    gtmp->ngen = ftrap;
+		    ftrap = gtmp;
+		    make_engr_at(xx,yy-dy,"ad ae?ar um");
+		}
+		dosdoor(xx,yy,aroom,SDOOR);
+	    } else {
+		rm->typ = CORR;
+		rm->scrsym = CORR_SYM;
+		if(rn2(7))
+		    dosdoor(xx,yy,aroom,rn2(5) ? SDOOR : DOOR);
+		else {
+		    mksobj_at(SCROLL_SYM,SCR_TELEPORTATION,xx,yy+dy);
+		    if(!rn2(3)) mkobj_at(0,xx,yy+dy);
+		}
+	    }
+	    return;
+	}
 }
 
 /* make a trap somewhere (in croom if mazeflag = 0) */
@@ -371,7 +582,6 @@ register num,mazeflag;
 	gtmp->gflag = kind;
 	do {
 		if(++tryct > 200){
-			printf("tryct overflow7\n");
 			free((char *) gtmp);
 			return;
 		}
@@ -402,132 +612,6 @@ char *str,*arg1,*arg2,*arg3;
 	puts(bufr);
 	(void) fflush(stdout);
 	exit(1);
-}
-
-maker(lowx,ddx,lowy,ddy)
-schar lowx,ddx,lowy,ddy;
-{
-	register x, y, hix = lowx+ddx, hiy = lowy+ddy;
-
-	if(nroom >= MAXNROFROOMS) return(0);
-	if(hix > COLNO-5) hix = COLNO-5;
-	if(hiy > ROWNO-4) hiy = ROWNO-4;
-chk:
-	if(hix <= lowx || hiy <= lowy) return(0);
-
-	/* check area around room (and make room smaller if necessary) */
-	for(x = lowx-4; x <= hix+4; x++)
-		for(y = lowy-3; y <= hiy+3; y++)
-			if(levl[x][y].typ) {
-				if(rn2(3)) return(0);
-				lowx = x+5;
-				lowy = y+4;
-				goto chk;
-			}
-
-	/* on low levels the room is lit (usually) */
-	/* secret vaults are always lit */
-	if((rnd(dlevel) < 10 && rn2(77)) || (ddx == 1 && ddy == 1))
-		for(x = lowx-1; x <= hix+1; x++)
-			for(y = lowy-1; y <= hiy+1; y++)
-				levl[x][y].lit = 1;
-	croom->lx = lowx;
-	croom->hx = hix;
-	croom->ly = lowy;
-	croom->hy = hiy;
-	croom->rtype = croom->doorct = croom->fdoor = 0;
-	for(x = lowx-1; x <= hix+1; x++)
-	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
-		levl[x][y].scrsym = '-';
-		levl[x][y].typ = HWALL;
-	}
-	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
-	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = '|';
-		levl[x][y].typ = VWALL;
-	}
-	for(x = lowx; x <= hix; x++)
-	    for(y = lowy; y <= hiy; y++) {
-		levl[x][y].scrsym = '.';
-		levl[x][y].typ = ROOM;
-	}
-	croom++;
-	croom->hx = -1;
-	nroom++;
-	return(1);
-}
-
-makecor() {
-	register nx, ny;
-	register struct rm *crm;
-	register dix, diy, secondtry = 0;
-
-tryagain:
-	nx = xx + dx;
-	ny = yy + dy;
-
-	if(nxcor && !rn2(35)) {
-		newloc();
-		return;
-	}
-	if(nx == COLNO-1 || nx == 0 || ny == 0 || ny == ROWNO-1) {
-		if(nxcor) {
-			newloc();
-			return;
-		} else {
-			printf("something went wrong. we try again...\n");
-		execl("./mklev",args[0],tfile,tspe,args[3],args[4],args[5],0);
-			panic("cannot execute ./mklev\n");
-		}
-	}
-
-	dix = abs(nx-tx);
-	diy = abs(ny-ty);
-	if(dy && dix > diy) {
-		dy = 0;
-		dx = (nx > tx) ? -1 : 1;
-	} else if(dx && diy > dix) {
-		dx = 0;
-		dy = (ny > ty) ? -1 : 1;
-	}
-
-	crm = &levl[nx][ny];
-	if(!(crm->typ)) {
-		if(rn2(100)) {
-			crm->typ = CORR;
-			crm->scrsym = CORR_SYM;
-		} else {
-			crm->typ = SCORR;
-			crm->scrsym = ' ';
-		}
-		xx = nx;
-		yy = ny;
-		if(nxcor && !rn2(50)) {
-			mkobj_at(ROCK_SYM, nx, ny);
-		}
- return;
-	}
-	if(crm->typ == CORR || crm->typ == SCORR) {
-		xx = nx;
-		yy = ny;
-		return;
-	}
-	if(nx == tx && ny == ty) {
-		dodoor(nx,ny,troom);
-		newloc();
-		return;
-	}
-	if(!secondtry++ && (nx != xx+dx || ny != yy+dy))
-		goto tryagain;
-	if(dx) {
-		if(ty < ny) dy = -1;
-		else dy = levl[nx+dx][ny-1].typ == ROOM?1:-1;
-		dx = 0;
-	} else {
-		if(tx < nx) dx = -1;
-		else dx = levl[nx-1][ny+dy].typ == ROOM?1:-1;
-		dy = 0;
-	}
 }
 
 struct monst *

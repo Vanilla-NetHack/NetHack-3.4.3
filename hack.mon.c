@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.mon.c version 1.0.1 - some unimportant changes */
 
 #include "hack.h"
 #include "hack.mfndpos.h"
@@ -89,6 +90,7 @@ char *name;
 	more();
 	seeoff(1);
 	u.uswallow = 1;
+	u.uswldtim = 0;
 	swallowed();
 }
 
@@ -464,7 +466,7 @@ register struct monst *mtmp;
 		{ register struct gen *gtmp = g_at(nx, ny, ftrap);
 		  register int tt;
 			if(gtmp) {
-				tt = 1 << (gtmp->gflag & ~SEEN);
+				tt = 1 << (gtmp->gflag & TRAPTYPE);
 				if(mon->mtrapseen & tt){
 					if(!(flag & tt)) continue;
 					info[cnt] |= tt;
@@ -518,6 +520,7 @@ register struct monst *mtmp;
 		u.ustuck = 0;
 		if(u.uswallow) {
 			u.uswallow = 0;
+			u.uswldtim = 0;
 			setsee();
 			docrt();
 		}
@@ -713,6 +716,7 @@ register struct permonst *mdat;
 	mtmp->minvis = (mdat->mlet == 'I') ? 1 : 0;
 #ifndef NOWORM
 	if(mdat->mlet == 'w' && getwn(mtmp)) initworm(mtmp);
+			/* perhaps we should clear mtmp->mtame here? */
 #endif NOWORM
 	unpmon(mtmp);	/* necessary for 'I' and to force pmon */
 	pmon(mtmp);

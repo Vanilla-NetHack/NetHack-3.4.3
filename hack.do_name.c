@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.do_name.c version 1.0.1 - correction in call of xname() */
 
 #include "hack.h"
 #include <stdio.h>
@@ -150,10 +151,14 @@ docall(obj)
 register struct obj *obj;
 {
 	char buf[BUFSZ];
+	struct obj otemp;
 	register char **str1;
 	extern char *xname();
-	register char *str = xname(obj);
+	register char *str;
 
+	otemp = *obj;
+	otemp.quan = 1;
+	str = xname(&otemp);
 	pline("Call %s %s: ", index(vowels,*str) ? "an" : "a", str);
 	getlin(buf);
 	clrlin();
@@ -169,7 +174,10 @@ char *
 xmonnam(mtmp, vb) register struct monst *mtmp; int vb; {
 static char buf[BUFSZ];		/* %% */
 extern char *shkname();
-	if(mtmp->mnamelth && !vb) return(NAME(mtmp));
+	if(mtmp->mnamelth && !vb) {
+		(void) strcpy(buf, NAME(mtmp));
+		return(buf);
+	}
 	switch(mtmp->data->mlet) {
 	case ' ':
 		(void) sprintf(buf, "%s's ghost", (char *) mtmp->mextra);

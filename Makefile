@@ -84,10 +84,15 @@ mklv.o_init.o:	hack.o_init.c def.objects.h hack.onames.h
 	ln hack.o_init.c mklv.o_init.c
 	cc -c $(CFLAGS) -DMKLEV mklv.o_init.c
 	rm -f mklv.o_init.c
+mklv.engrave.o: hack.engrave.c mklev.h
+	rm -f mklv.engrave.c
+	ln hack.engrave.c mklv.engrave.c
+	cc -c $(CFLAGS) -DMKLEV mklv.engrave.c
+	rm -f mklv.engrave.c
 mklev.o:
 	cc -c $(CFLAGS) -DMKLEV mklev.c
 MKLOBJ = mklev.o hack.monst.o mklv.o_init.o mklv.mkobj.o mklv.shk.o\
-	mklv.shknam.o mklv.makemon.o mklv.makemaz.o $(GOBJ)
+	mklv.shknam.o mklv.makemon.o mklv.makemaz.o mklv.engrave.o $(GOBJ)
 mklev:	$(MKLOBJ)
 	cc -o mklev $(MKLOBJ)
 
@@ -181,7 +186,7 @@ hack.o:  hack.h def.trap.h
 hack.cmdlist.o:  config.h def.objclass.h def.func_tab.h
 hack.dog.o:  hack.h hack.mfndpos.h def.edog.h
 hack.eat.o:  hack.h
-hack.engrave.o:  hack.h
+hack.engrave.o:  mklev.h hack.h
 hack.fight.o:  hack.h
 hack.invent.o:  hack.h def.wseg.h
 hack.main.o:  hack.h
@@ -210,7 +215,7 @@ hack.worm.o:  hack.h def.wseg.h
 hack.worn.o:  hack.h
 hack.zap.o:  hack.h
 hack.version.o:  date.h
-mklev.o:  mklev.h def.trap.h savelev.h
+mklev.o:  mklev.h def.trap.h hack.onames.h savelev.h
 mklv.shk.o:  mklev.h def.eshk.h
 mklv.shknam.o:  mklev.h
 mklv.makemaz.o:  mklev.h

@@ -3,13 +3,14 @@
 |	a wall
 +	a door
 .	the floor of a room
+ 	a dark part of a room
 #	a corridor
 }	water filled area
  <	the staircase to the previous level
 >	the staircase to the next level
 ^	a trap
 $	a pile, pot or chest of gold
-%	a piece of food
+%%	a piece of food
 !	a potion
 *	a gem
 ?	a scroll
@@ -20,10 +21,11 @@ $	a pile, pot or chest of gold
 (	a useful item (camera, key, rope etc.)
 0	an iron ball
 _	an iron chain
+`	an enormous rock
 "	an amulet
 ,	a trapper
 :	a chameleon
-~	a lurker above
+'	a lurker above
 &	a demon
 A	a giant ant
 B	a giant bat
@@ -45,7 +47,16 @@ C	a centaur;
 	clefts of the mountains, myths associating  them  especially
 	with the hills of Thessaly and the range of Erymanthos.
 	               [Mythology of all races, Vol. 1, pp. 270-271]
-D	a dragon
+D	a dragon;
+	In the West the dragon was the natural  enemy  of  man.  Although
+	preferring to live in bleak and desolate regions, whenever it was
+	seen among men it left in its wake a  trail  of  destruction  and
+	disease. Yet any attempt to slay this beast was a perilous under-
+	taking. For the dragon's assailant had to contend not  only  with
+	clouds  of  sulphurous fumes pouring from its fire-breathing nos-
+	trils, but also with the thrashings of its tail, the most  deadly
+	part of its serpent-like body.
+	[From: Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
 E	a floating eye
 F	a freezing sphere
 G	a gnome
@@ -191,6 +202,7 @@ u	a unicorn;
 	                                 (The Leprechaun Library). ]
 v	a violet fungi
 w	a long worm;
+~	the tail of a long worm
 	From its teeth the crysknife can be manufactured.
 x	a xan;
 	The xan were animals sent to prick the legs of the Lords of Xibalba.

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.monst.c version 1.0.1 - corrected symbol for lurker above */
 
 #include "mklev.h"
 #include "def.eshk.h"
@@ -58,11 +59,11 @@ struct permonst mons[CMNUM+2] = {
 	{ "chameleon",		':',6,5,6,4,2,0 },
 	{ "dragon",		'D',10,9,-1,3,8,0 },
 	{ "ettin",		'e',10,12,3,2,8,0 },
-	{ "lurker above",	'~',10,3,3,0,0,0 },
+	{ "lurker above",	'\'',10,3,3,0,0,0 },
 	{ "nurse",		'n',11,6,0,1,3,0 },
 	{ "trapper",		',',12,3,3,0,0,0 },
 	{ "purple worm",	'P',15,9,6,2,8,0 },
-	{ "demon",		'&',10,9,-4,1,4,0 },
+	{ "demon",		'&',10,12,-4,1,4,0 },
 	{ "minotaur",		'm',15,15,6,4,8,0 },
 	{ "shopkeeper", 	'@', 10, 18, 0, 4, 8, sizeof(struct eshk) }
 };

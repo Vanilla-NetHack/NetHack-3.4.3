@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.h version 1.0.1 - added some flags for HACKOPTIONS */
 
 #include "mklev.h"
 #include "hack.onames.h"
@@ -18,6 +19,12 @@ struct flag {
 				/* 0: top line empty; 2: no --More-- reqd. */
 	unsigned cbreak:1;	/* in cbreak mode, rogue format */
 	unsigned oneline:1;	/* give inventories 1 line at a time */
+	unsigned time:1;	/* display elapsed 'time' */
+	unsigned nonews:1;	/* suppress news printing */
+	unsigned notombstone:1;
+	unsigned end_top, end_around;	/* describe desired score list */
+	unsigned end_own:1;		/* idem (list all own scores) */
+	unsigned no_rest_on_space:1;	/* spaces are ignored */
 	unsigned move:1;
 	unsigned mv:1;
 	unsigned run:3;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */

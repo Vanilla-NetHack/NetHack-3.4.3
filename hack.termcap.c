@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.termcap.c version 1.0.1 - added no-CE fix (Harold Rynes) */
 
 #include <stdio.h>
 #include "config.h"	/* for ROWNO and COLNO */
@@ -38,10 +39,12 @@ startup()
 	if(tgetnum("co") < COLNO || tgetnum("li") < ROWNO+2)
 		error("Screen must be at least %d by %d!",
 			ROWNO+2, COLNO);
-	if(!(CL = tgetstr("cl",&tbufptr)) || !(CE = tgetstr("ce",&tbufptr)) ||
+	if(!(CL = tgetstr("cl",&tbufptr)) ||
 		!(ND = tgetstr("nd", &tbufptr)) ||
 		!(UP = tgetstr("up",&tbufptr)) || tgetflag("os"))
-		error("Hack needs CL, CE, UP, ND, and no OS.");
+		error("Hack needs CL, UP, ND, and no OS.");
+	/* If no CE then use spaces */
+	CE = tgetstr("ce",&tbufptr);
 	if(!(CM = tgetstr("cm",&tbufptr)))
 		printf("Use of hack on terminals without CM is suspect...\n");
 	XD = tgetstr("xd",&tbufptr);
@@ -118,7 +121,17 @@ xputs(s) char *s; {
 }
 
 cl_end() {
-	xputs(CE);
+	if(CE)
+		xputs(CE);
+	else {	/* no-CE fix - Harold Rynes */
+		/* this looks terrible, especially on a slow terminal
+		   but is better than nothing */
+		register i;
+
+		for(i=COLNO - curx; i > 0; --i)
+			xputc(' ');
+		cmov(curx,cury);
+	}
 }
 
 clear_screen() {

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.pri.c version 1.0.1 - tiny change in mnewsym() - added time */
 
 #include "hack.h"
 #include <stdio.h>
@@ -330,12 +331,21 @@ register x,y;
 }
 
 /* used with wand of digging: fill scrsym and force display */
-mnewsym(x,y) register x,y; {
-register struct monst *mtmp = m_at(x,y);
+mnewsym(x,y)
+register x,y;
+{
+	register struct monst *mtmp = m_at(x,y);
+	register struct rm *room;
+	char newscrsym;
+
 	if(!mtmp || (mtmp->minvis && !See_invisible) ||
 		    (mtmp->mhide && o_at(x,y))){
-		levl[x][y].scrsym = news0(x,y);
-		levl[x][y].seen = 0;
+		room = &levl[x][y];
+		newscrsym = news0(x,y);
+		if(room->scrsym != newscrsym) {
+			room->scrsym = newscrsym;
+			room->seen = 0;
+		}
 	}
 }
 
@@ -400,7 +410,7 @@ register x,y;
 
 vism_at(x,y) register x,y; {
 register struct monst *mtmp;
-register int csi = See_invisible;
+register int csi = (See_invisible != 0);
 	return((x == u.ux && y == u.uy && (!Invis || csi)) ? 1 :
 		((mtmp = m_at(x,y)) && (!mtmp->minvis || csi) &&
 			(!mtmp->mhide || !o_at(mtmp->mx,mtmp->my)))
@@ -513,16 +523,31 @@ bot()
 {
 register char *ob = oldbot, *nb = newbot;
 register int i;
+extern char *eos();
 	if(flags.botlx) *ob = 0;
 	flags.botl = flags.botlx = 0;
-	(void) sprintf(newbot, "Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
+	(void) sprintf(newbot,
+		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
 		dlevel, u.ugold, u.uhp, u.uhpmax, u.uac);
 	if(u.ustr>18) {
-		if(u.ustr>117) (void) strcat(newbot,"18/**");
-		else (void) sprintf(newbot + strlen(newbot), "18/%02d",u.ustr-18);
-	} else (void) sprintf(newbot + strlen(newbot), "%-2d   ",u.ustr);
-	(void) sprintf(newbot + strlen(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
+	    if(u.ustr>117)
+		(void) strcat(newbot,"18/**");
+	    else
+		(void) sprintf(eos(newbot), "18/%02d",u.ustr-18);
+	} else
+	    (void) sprintf(eos(newbot), "%-2d   ",u.ustr);
+	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
 	(void) strcat(newbot, hu_stat[u.uhs]);
+	if(flags.time)
+	    (void) sprintf(eos(newbot), "  %ld", moves);
+	if(strlen(newbot) >= COLNO) {
+		register char *bp0, *bp1;
+		bp0 = bp1 = newbot;
+		do {
+			if(*bp0 != ' ' || bp0[1] != ' ' || bp0[2] != ' ')
+				*bp1++ = *bp0;
+		} while(*bp0++);
+	}
 	for(i = 1; i<COLNO; i++) {
 		if(*ob != *nb){
 			curs(i,ROWNO+2);

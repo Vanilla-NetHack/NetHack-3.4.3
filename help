@@ -1,4 +1,4 @@
-	Welcome to HACK!
+	Welcome to HACK!		   ( description of version 1.0.1 )
 
 	Hack is a Dungeons and Dragons like game where you (the adventurer)
 descend into the depths of the dungeon in search of the Amulet of Yendor
@@ -38,6 +38,7 @@ Commands:
 	Hack knows the following commands:
 	?	help: print this list.
 	Q	Quit the game.
+	S	Save the game.
 	<	up: go up the staircase (if you are standing on it).
 	>	down: go down (just like up).
 	kjhlyubn - go one step in the direction indicated.
@@ -59,6 +60,7 @@ Commands:
 	[	ask for current armor.
 	=	ask for current rings.
 	.	rest, do nothing.
+	^T	teleport.
 	^R	redraw the screen.
 	^P	repeat last message
 		(subsequent ^P's repeat earlier messages).
@@ -71,6 +73,7 @@ Commands:
 	R	Remove Ring.
 	W	Wear armor.
 	P	Put on a ring.
+	z	zap a wand.
 	t	throw or shoot a weapon.
 	p	pay your shopping bill.
 	d	drop something. d7a: drop seven items of object a.
@@ -87,19 +90,18 @@ Commands:
 	C	Call: Name an individual monster.
 	E	Engrave: Write a message in the dust on the floor.
 		E- means: use fingers for writing.
-	o	set options. (see below)
+	o	set options. You will be asked to enter an option line.
+		If this is empty, the current options are reported.
+		Otherwise it should be a list of options separated by commas.
+		Possible boolean options are: oneline, time, news, tombstone;
+		they can be negated by prefixing them with '!' or "no".
+		A compound option is endgame; it is followed by a description
+		of what parts of the list of topscorers should be printed
+		when the game is finished.
 	v	print version number.
 
 	You can put a number before a command to repeat it that many times,
 	as in "20s" or "40.".
-
-	Options:
-		To turn an option on, say 'ox', where x is the optionletter.
-	To turn it off, say 'o!x'.  The following options currently exist.
-
-	e	echo		Echo typed characters.
-	o	oneline		Give inventories one line at a time
-				(at the top of your screen).
 
 
 	Have Fun, and Good Hacking!

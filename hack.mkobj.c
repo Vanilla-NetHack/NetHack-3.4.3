@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.mkobj.c version 1.0.1 - mksobj() also in MKLEV */
 
 #ifdef MKLEV
 #include "mklev.h"
@@ -21,7 +22,6 @@ register let,x,y;
 	fobj = otmp;
 }
 
-#ifndef MKLEV
 mksobj_at(let,otyp,x,y)
 register let,otyp,x,y;
 {
@@ -31,7 +31,6 @@ register let,otyp,x,y;
 	otmp->nobj = fobj;
 	fobj = otmp;
 }
-#endif MKLEV
 
 struct obj *
 mkobj(let) {

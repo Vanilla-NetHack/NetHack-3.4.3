@@ -1,7 +1,8 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.search.c version 1.0.1 - small correction in findit() */
 
 #include "hack.h"
-#include	"def.trap.h"
+#include "def.trap.h"
 
 extern struct monst *makemon();
 
@@ -34,7 +35,7 @@ findit()	/* returns number of things found */
 					(void) makemon(PM_PIERC,zx,zy);
 					num++;
 					deltrap(gtmp);
-				} else if(!gtmp->gflag&SEEN) {
+				} else if(!(gtmp->gflag & SEEN)) {
 					gtmp->gflag |= SEEN;
 					if(!vism_at(zx,zy)) atl(zx,zy,'^');
 					num++;
@@ -76,7 +77,7 @@ dosearch()
 			   !(tgen->gflag & SEEN) && !rn2(8)) {
 				nomul(0);
 				pline("You find a%s.",
-					traps[tgen->gflag]);
+					traps[tgen->gflag & TRAPTYPE]);
 				if(tgen->gflag == PIERC) {
 					deltrap(tgen);
 					(void) makemon(PM_PIERC,x,y);
@@ -100,7 +101,7 @@ register int x,y;
 	for(tgen = ftrap; tgen; tgen = tgen->ngen)
 		if(tgen->gx == x && tgen->gy == y &&
 		   (tgen->gflag & SEEN)) {
-			pline("That is a%s.", traps[tgen->gflag & ~SEEN]);
+			pline("That is a%s.", traps[tgen->gflag & TRAPTYPE]);
 			return(0);
 		}
 	pline("I can't see a trap there.");

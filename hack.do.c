@@ -1,4 +1,6 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.do.c version 1.0.1 - check Levitation with POT_PARALYSIS
+			   - added flags.no_rest_on_space */
 
 #include <stdio.h>
 #include <signal.h>
@@ -69,7 +71,10 @@ dodrink() {
 		if(Sick) Sick = 0;
 		break;
 	case POT_PARALYSIS:
-		pline("Your feet are frozen to the floor!");
+		if(Levitation)
+			pline("You are motionlessly suspended.");
+		else
+			pline("Your feet are frozen to the floor!");
 		nomul(-(rn1(10,25)));
 		break;
 	case POT_MONSTER_DETECTION:
@@ -282,8 +287,10 @@ register char *cmd;
 		flags.nopick = 0;
 		cmd = parse();
 	}
-	if(!*cmd || *cmd == 0377)
+	if(!*cmd || *cmd == 0377 || (flags.no_rest_on_space && *cmd == ' ')){
+		flags.move = 0;
 		return;		/* probably we just had an interrupt */
+	}
 	if(movecm(cmd)) {
 	walk:
 		if(multi) flags.mv = 1;
@@ -359,7 +366,7 @@ doredraw()
 dohelp()
 {
 	if(child(1)){
-		execl(catmore,"more","help",(char *)0);
+		execl(catmore,"more",HELP,(char *)0);
 		exit(1);
 	}
  return(0);
@@ -456,8 +463,8 @@ register boolean at_stairs;
 	register fd;
 	register boolean up = (newlevel < dlevel);
 
-	if(newlevel <= 0) done("escaped");	/* in fact < 0 is impossible */
-	if(newlevel == dlevel) return;		/* this cannot happen either */
+	if(newlevel <= 0) done("escaped");    /* in fact < 0 is impossible */
+	if(newlevel == dlevel) return;	      /* this cannot happen either */
 
 	glo(dlevel);
 	fd = creat(lock,FMASK);
@@ -545,6 +552,9 @@ register boolean at_stairs;
 	flags.nscrinh = 0;
 	setsee();
 	docrt();
+	{ register struct monst *mtmp;
+	  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
+	}
 	pickup();
 	read_engr_at(u.ux,u.uy);
 }
@@ -560,8 +570,8 @@ dothrow()
 	register struct monst *mon;
 	register tmp;
 
-	obj = getobj("#)", "throw");	/* it is also possible to throw food */
-					/* (or jewels, or iron balls ... ) */
+	obj = getobj("#)", "throw");   /* it is also possible to throw food */
+				       /* (or jewels, or iron balls ... ) */
 	if(!obj || !getdir())
 		return(0);
 	if(obj->owornmask & (W_ARMOR | W_RING)){
@@ -677,7 +687,7 @@ dothrow()
 			if(u.utraptype == TT_PIT)
 				pline("The ball pulls you out of the pit!");
 			else {
-			    register int side =
+			    register long side =
 				rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
 			    pline("The ball pulls you out of the bear trap.");
 			    pline("Your %s leg is severely damaged.",
@@ -697,15 +707,6 @@ dothrow()
 	}
 	if(cansee(bhitpos.x, bhitpos.y)) prl(bhitpos.x,bhitpos.y);
 	return(1);
-}
-
-getdir()
-{
-char buf[2];
-	pline("What direction?");
-	buf[0] = readchar();
-	buf[1] = 0;
-	return(movecm(buf));
 }
 
 /* split obj so that it gets size num */

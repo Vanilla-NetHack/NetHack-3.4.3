@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.lev.c version 1.0.1 - somewhat more careful monster regeneration */
 
 #include "hack.h"
 #include <signal.h>
@@ -45,17 +46,20 @@ getlev(fd)
 	    extern char genocided[];
 
 	    for(mtmp = fmon; mtmp; mtmp = mtmp2) {
+		long newhp;		/* tmoves may be very large */
+
 		mtmp2 = mtmp->nmon;
 		if(index(genocided, mtmp->data->mlet)) {
 			mondead(mtmp);
 			continue;
 		}
-		if(index("ViT", mtmp->data->mlet))
-			mtmp->mhp += tmoves;
-		else
-			mtmp->mhp += tmoves/20;
-		if(mtmp->mhp > mtmp->orig_hp)
+
+		newhp = mtmp->mhp +
+			(index("ViT", mtmp->data->mlet) ? tmoves : tmoves/20);
+		if(newhp > mtmp->orig_hp)
 			mtmp->mhp = mtmp->orig_hp;
+		else
+			mtmp->mhp = newhp;
 	    }
 	}
 

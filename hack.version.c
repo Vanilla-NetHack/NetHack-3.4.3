@@ -1,9 +1,9 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 
 #include	"date.h"
 
 doversion(){
-	pline("%s 1.0 preliminary version - last edit %s.",
+	pline("%s 1.0.1 - last edit %s.",
 #ifdef QUEST
 		"Quest"
 #else

@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.eat.c version 1.0.1 - added morehungry() and FAINTED */
 
 #include	"hack.h"
 char POISONOUS[] = "ADKSVabhks";
@@ -11,13 +12,17 @@ extern int (*afternmv)();
 #define	HUNGRY		2
 #define	WEAK		3
 #define	FAINTING	4
+#define FAINTED		5
+#define STARVED		6
 
-char *hu_stat[5] = {
+char *hu_stat[] = {
 	"Satiated",
 	"        ",
 	"Hungry  ",
 	"Weak    ",
-	"Fainting"
+	"Fainting",
+	"Fainted ",
+	"Starved "
 };
 
 init_uhunger(){
@@ -76,6 +81,13 @@ doeat(){
 			pline("It is not so easy to open this tin.");
 			if(Glib) {
 				pline("The tin slips out of your hands.");
+				if(otmp->quan > 1) {
+					register struct obj *obj;
+					extern struct obj *splitobj();
+
+					obj = splitobj(otmp, 1);
+					if(otmp == uwep) setuwep(obj);
+				}
 				dropx(otmp);
 				return(1);
 			}
@@ -127,7 +139,7 @@ doeat(){
 			else if(u.uhunger <= 700)
 				pline("That satiated your stomach!");
 			else {
-		pline("You're having a hard time getting all that food down.");
+	pline("You're having a hard time getting all that food down.");
 				multi -= 2;
 			}
 			lesshungry(ftmp->nutrition);
@@ -140,7 +152,7 @@ doeat(){
 			flags.botl = 1;
 			if(rn2(2)){
 				pline("You vomit.");
-				lesshungry(-20);
+				morehungry(20);
 			} else	lesshungry(ftmp->nutrition);
 			break;
 		default:
@@ -177,60 +189,79 @@ eatx:
 	return(1);
 }
 
-lesshungry(num) register num; {
-/* called after eating something (and after drinking fruit juice) */
-	register int newhunger;
-
-	newhunger = u.uhunger + num;
-	if(u.uhunger <= 1000 && newhunger > 1000) {
-		flags.botl = 1;
-		u.uhs = SATIATED;
-	} else if(u.uhunger <= 150 && newhunger > 150) {
-		if(u.uhunger <= 50 && u.ustr < u.ustrmax) losestr(-1);
-		flags.botl = 1;
-		u.uhs = NOT_HUNGRY;
-	} else if(u.uhunger <= 50 && newhunger > 50) {
-		pline("You only feel hungry now.");
-		if(u.ustr < u.ustrmax) losestr(-1);
-		flags.botl = 1;
-		u.uhs = HUNGRY;
-	} else if(u.uhunger <= 0 && newhunger < 50) {
-		pline("You feel weak now.");
-		flags.botl = 1;
-		u.uhs = WEAK;
-	}
-	u.uhunger = newhunger;
-}
-
 /* called in hack.main.c */
 gethungry(){
 	--u.uhunger;
 	if((Regeneration || Hunger) && moves%2) u.uhunger--;
-	if(u.uhunger <= 1000 && u.uhs == SATIATED) {
-		u.uhs = NOT_HUNGRY;
-		flags.botl = 1;
-	} else if(u.uhunger <= 150 && u.uhs == NOT_HUNGRY) {
-		pline("You are beginning to feel hungry.");
-		u.uhs = HUNGRY;
-		flags.botl = 1;
-	} else if(u.uhunger <= 50 && u.uhs == HUNGRY) {
-		pline("You are beginning to feel weak.");
-		u.uhs = WEAK;
-		losestr(1);
-		flags.botl = 1;
-	} else if(u.uhunger < 1 &&
-		(u.uhs == WEAK || rn2(20-u.uhunger/10) >= 19)) {
-		if(multi >= 0)	/* not fainted already */ {
-			pline("You faint from lack of food.");
-			nomul(-10+(u.uhunger/10));
-		}
-		if(u.uhs != FAINTING) {
-			u.uhs = FAINTING;
+	newuhs(TRUE);
+}
+
+/* called after vomiting and after performing feats of magic */
+morehungry(num) register num; {
+	u.uhunger -= num;
+	newuhs(TRUE);
+}
+
+/* called after eating something (and after drinking fruit juice) */
+lesshungry(num) register num; {
+	u.uhunger += num;
+	newuhs(FALSE);
+}
+
+unfaint(){
+	u.uhs = FAINTING;
+	flags.botl = 1;
+}
+
+newuhs(incr) boolean incr; {
+	register int newhs, h = u.uhunger;
+
+	newhs = (h > 1000) ? SATIATED :
+		(h > 150) ? NOT_HUNGRY :
+		(h > 50) ? HUNGRY :
+		(h > 0) ? WEAK : FAINTING;
+
+	if(newhs == FAINTING) {
+		if(u.uhs == FAINTED)
+			newhs = FAINTED;
+		if(u.uhs <= WEAK || rn2(20-u.uhunger/10) >= 19) {
+			if(u.uhs != FAINTED && multi >= 0 /* %% */) {
+				pline("You faint from lack of food.");
+				nomul(-10+(u.uhunger/10));
+				nomovemsg = "You regain consciousness.";
+				afternmv = unfaint;
+				newhs = FAINTED;
+			}
+		} else
+		if(u.uhunger < -(int)(200 + 25*u.ulevel)) {
+			u.uhs = STARVED;
 			flags.botl = 1;
+			bot();
+			pline("You die from starvation.");
+			done("starved");
 		}
-	} else if(u.uhunger < -(int)(200 + 25*u.ulevel)) {
-		pline("You die from starvation.");
-		done("starved");
+	}
+
+	if(newhs != u.uhs) {
+		if(newhs >= WEAK && u.uhs < WEAK)
+			losestr(1);
+		else
+		if(newhs < WEAK && u.uhs >= WEAK && u.ustr < u.ustrmax)
+			losestr(-1);
+		switch(newhs){
+		case HUNGRY:
+			pline((!incr) ? "You only feel hungry now." :
+			      (u.uhunger < 145) ? "You feel hungry." :
+				"You are beginning to feel hungry.");
+			break;
+		case WEAK:
+			pline((!incr) ? "You feel weak now." :
+			      (u.uhunger < 45) ? "You feel weak." :
+				"You are beginning to feel weak.");
+			break;
+		}
+		u.uhs = newhs;
+		flags.botl = 1;
 	}
 }
 

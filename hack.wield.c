@@ -1,4 +1,5 @@
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1984. */
+/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/* hack.wield.c version 1.0.1 - evaporate%s */
 
 #include	"hack.h"
 
@@ -76,8 +77,8 @@ register char *time;
 
 	/* there is a (soft) upper limit to uwep->spe */
 	if(amount > 0 && uwep->spe > 5 && rn2(3)) {
-	    pline("Your %s violently green for a while and then evaporates.",
-		aobjnam(uwep, "glow"));
+	    pline("Your %s violently green for a while and then evaporate%s.",
+		aobjnam(uwep, "glow"), (uwep->quan == 1) ? "s" : "");
 	    useup(uwep);
 	    return(1);
 	}
