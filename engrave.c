@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)engrave.c	1.4	87/08/08
+/*	SCCS Id: @(#)engrave.c	2.0	87/09/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* engrave.c - version 1.0.2 */
 
 #include	"hack.h"
 
@@ -88,6 +87,7 @@ register struct engr *ep = engr_at(x,y);
 register int lth,pos;
 char ch;
 	if(ep){
+	    if(ep->engr_type != BURN) {
 		if(ep->engr_type != DUST) {
 			cnt = rn2(1 + 50/(cnt+1)) ? 0 : 1;
 		}
@@ -105,6 +105,7 @@ char ch;
 		while(ep->engr_txt[0] == ' ')
 			ep->engr_txt++;
 		if(!ep->engr_txt[0]) del_engr(ep);
+	    }
 	}
 }
 
@@ -124,18 +125,18 @@ register int	canfeel;
 	    case BURN:
 		pline("Some text has been burned here in the floor.");
 		canfeel = 1;
+		break;
 #ifdef MARKER
 	    case MARK:
 		if(!Blind) pline("There's some graffiti here on the floor.");
 		canfeel = 0;
 		break;
 #endif
-		break;
 	    default:
 		impossible("Something is written in a very strange way.");
 		canfeel = 1;
 	    }
-	    if (canfeel)
+	    if (canfeel || !Blind)
 		pline("You %s: \"%s\".",
 		      (Blind) ? "feel the words" : "read",  ep->engr_txt);
 	}

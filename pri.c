@@ -1,18 +1,20 @@
-/*	SCCS Id: @(#)pri.c	1.4	87/08/08
+/*	SCCS Id: @(#)pri.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* pri.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
 #ifdef GENIX
 #define	void	int	/* jhn - mod to prevent compiler from bombing */
 #endif
+#ifdef MSDOSCOLOR
+extern int hilite();
+#endif
 
-#define DEBUG
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
 
 extern char *hu_stat[];	/* in eat.c */
 extern char *CD;
+extern struct monst *makemon();
 
 swallowed()
 {
@@ -51,7 +53,7 @@ at(x,y,ch)
 register xchar x,y;
 char ch;
 {
-#ifndef lint
+#ifndef LINT
 	/* if xchar is unsigned, lint will complain about  if(x < 0)  */
 	if(x < 0 || x > COLNO-1 || y < 0 || y > ROWNO-1) {
 		impossible("At gets 0%o at %d %d.", ch, x, y);
@@ -94,7 +96,11 @@ char ch;
 		}
 	} else
 #endif
+#ifdef MSDOSCOLOR
+		hilite(ch);
+#else
 		(void) putchar(ch);
+#endif
 	curx++;
 }
 
@@ -133,7 +139,10 @@ docrt()
 	seemons();	/* force new positions to be shown */
 /* This nonsense should disappear soon --------------------------------- */
 
-#ifdef DGK
+#if defined(DGK) && !defined(MSDOSCOLOR)
+	/* I don't know DEC Rainbows, but if HILITE_COLOR is applicable,
+	 * the !defined(HILITE_COLOR) will have to be compensated for.
+	 * -kjs */
 	/* For DEC Rainbows, we must translate each character to strip
 	 * out the 8th bit if necessary.
 	 */
@@ -258,7 +267,7 @@ register struct obj *obj, *obj2;
 			delobj(obj);
 			if (cansee(obj->ox, obj->oy)) 
 				pline("The troll rises from the dead!");
-			(void) makemon(&mons[38],obj->ox, obj->oy);
+			(void) makemon(PM_TROLL,obj->ox, obj->oy);
 		} else if (obj->age + 250 < moves) delobj(obj);
 	    }
 	}
@@ -272,7 +281,7 @@ register struct obj *obj, *obj2;
 			pline("The dead troll writhes out of your grasp!");
 		    else
 			pline("You feel squirming in your backpack!");
-		    (void)makemon(&mons[38],u.ux,u.uy);
+		    (void)makemon(PM_TROLL,u.ux,u.uy);
 		    useup(obj);
 		} else if (obj->age + 250 < moves) useup(obj);
 	    }
@@ -498,7 +507,7 @@ rndmonsym() {
 }
 
 rndobjsym() {
-	char *rndsym=")[!?%/=*($'";
+	char *rndsym=")[!?%/=*($`";
 	return *(rndsym+rn2(11));
 }
 
@@ -506,7 +515,7 @@ char *hcolors[] = { "ultraviolet","infrared","hot pink", "psychedelic",
 "bluish-orange","reddish-green","dark white","light black","loud",
 "salty","sweet","sour","bitter","luminescent","striped","polka-dotted",
 "square","round","triangular","brilliant","navy blue","cerise",
-"charteruse","copper","sea green","spiral","swirly","blotchy",
+"chartreuse","copper","sea green","spiral","swirly","blotchy",
 "fluorescent green","burnt orange","indigo","amber","tan",
 "sky blue-pink","lemon yellow" };
 
@@ -514,3 +523,48 @@ char *
 hcolor() {
 	return hcolors[rn2(35)];
 }
+
+#ifdef MSDOSCOLOR
+/* what if a level character is the same as an object/monster? */
+
+extern char obj_symbols[];
+
+hilite(let)
+char let;
+{
+	char *isobjct = index(obj_symbols, let);
+	int ismnst();
+
+	if (!HI || !HE) {
+		(void) putchar(let);
+		return;
+	}
+	if (isobjct != NULL || let == GOLD_SYM) {
+	/* is an object */
+		printf("%s%c%s", HI_OBJ, let, HE);
+	} else if (ismnst(let)) {
+	/* is a monster */
+		printf("%s%c%s", HI_MON, let, HE);
+	} else {	
+	/* default */
+		(void) putchar(let);
+	}
+}
+
+int
+ismnst(let)
+char let;
+{
+	register int ct;
+	register struct permonst *ptr;
+
+	for (ct = 0 ; ct < CMNUM + 2 ; ct++) {
+		ptr = &mons[ct];
+		if(ptr->mlet == let) return(1);
+	}
+	if (let == '1') return(1);
+	else if (let == '2') return(1);
+	else if (let == ';') return(1);
+	else return(0);
+}
+#endif

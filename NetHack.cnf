@@ -1,0 +1,58 @@
+# A '#' at the beginning of a line means the rest of the line is a comment.
+
+# This configuration file is set up for three cases, a person with a hard
+# disk as drive C:, 1 person with two floppy disks, and several people
+# with two floppy disks.  The default configuration is the second one.
+# To change configuration, comment out the unwanted configurations, and
+# remove the comment from the configuration you want.
+
+# I use OPTIONS=name:NickD-W, silent, rawio, IBMBIOS
+
+# A hard disk configuration.
+#
+HACKDIR=c:\games\nethack
+SAVE=c:\games\nethack\bones;n
+#RAMDISK=d:
+LEVELS=c:\games\nethack\bones
+OPTIONS=name:Steve,dogname:Bodacious,rest_on_space,time,IBMBIOS,packorder:%/=?!+)[(*0,endgame:10 t / 2 a,rawio,nopickup
+
+# A 2-floppy configuration.
+#
+# HACKDIR=a:\
+# LEVELS=b:\
+# SAVE=b:\
+# OPTIONS=name:Steve-s,rest_on_space,time,IBMBIOS,packorder:%/=?!+)[(*0,endgame:10 t / 2 a,rawio,nopickup
+# RAMDISK=c:
+
+# The 17 GRAPHICS characters (0-16) are:
+# stone, vertical wall, horizontal wall, top left corner, top right corner
+# bottom left corner, bottom right corner, door, floor, corridor, up stairs,
+# down stairs, trap, pool, fountain, throne, web
+# An example using the IBM graphics character set.
+GRAPHICS = 039 179 196 218 191 192 217 206 250 176 060 062 094 247 202 198 157
+
+
+#     Special section for DEC Rainbow owners.
+#
+#  You *must* include the option `DECRainbow' in the OPTIONS line
+#  if you want to use line-drawing charcters.  Also, you must *not*
+#  use the option `rawio' or your system will hang!
+#
+#  You can select the "Rainbow line-drawing character set"
+#  for drawing the dungeon.  For *graphics* characters,
+#  128 has been added to the decimal value of the character.
+#  Adding 128 lets PC HACK know you want it to use the line-drawing
+#  character set.  Non-graphical characters are indicated by
+#  their decimal value.  You can mix both types of characters in
+#  the GRAPHICS line.
+#
+#  A recommended configuration for the Rainbow using the
+#  line-drawing character set, two floppies and no ramdisk is:
+# SAVE=b:\
+# LEVELS=b:\
+# OPTIONS=name:YourName,DECRainbow
+# GRAPHICS = 248 241 236 235 237 234 238 254 225
+# this example lists options 1-9, as in the PC Hack version. You should modify
+# it (if using a DECRainbow) to have options 0-16 for PC Nethack. --sac
+
+

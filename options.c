@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)options.c	1.4	87/08/08
+/*	SCCS Id: @(#)options.c	2.0	87/09/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* options.c - version 1.0.3 */
 
 #include "config.h"
 #include "hack.h"
@@ -175,15 +174,11 @@ boolean from_env;
 		return;
 	}
 
-#ifndef DGK
 	if(!strncmp(opts,"fixinv",4)) {
-		if(from_env)
-			flags.invlet_constant = !negated;
-		else
-			pline("The fixinvlet option must be in HACKOPTIONS.");
+		flags.invlet_constant = !negated;
+		if(!from_env && flags.invlet_constant) reassign ();
 		return;
 	}
-#endif
 
 	if(!strncmp(opts,"male",4)) {
 #ifdef KAA
@@ -224,7 +219,6 @@ boolean from_env;
 #ifdef GRAPHICS
 	/* graphics:string */
 	if(!strncmp(opts,"graphics",4)) {
-		char buf[MAXPCHARS];
 		if(!from_env) {
 #ifdef DGK
 		  pline("'graphics' only settable from %s.", configfile);
@@ -237,7 +231,7 @@ boolean from_env;
 		if(!op)
 		    goto bad;
 		else
-		    opts++;
+		    opts = op + 1;
 /*
  * You could have problems here if you configure FOUNTAINS, SPIDERS or NEWCLASS
  * in or out and forget to change the tail entries in your graphics string.
@@ -316,73 +310,10 @@ boolean from_env;
 bad:
 	if(!from_env) {
 		if(!strncmp(opts, "help", 4)) {
-			pline("%s%s%s",
-#ifdef DGK
-
-"To set options use OPTIONS=<options> in ", configfile,
-" or give the command \"O\" followed by the line <options> while playing.  ",
-"Here <options> is a list of options separated by commas." );
-			pline("%s%s",
-"Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,",
-" and DECRainbow.  These can be negated by prefixing them with '!' or \"no\"." );
-			pline("%s%s%s%s",
-"The compound options are name, as in OPTIONS=name:Merlin-W,",
-#ifdef	DOGNAME
-" dogname, which gives the name of your (first) dog (e.g. dogname:Rover)",
-#endif	/* DOGNAME */
-#ifdef SORTING
-" packorder, which lists the order that items should appear in your pack",
-#ifdef SPELLS
-" (the default is:  packorder:\")[%?+/=!(*0  ), and endgame." );
-#else
-" (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
-#endif /* SPELLS /**/
-#else
-#ifdef GRAPHICS
-"engame, and graphics.", "", "");
-#else
-"and engame.", "", "");
-#endif
-#endif /* SORTING /**/ 	
-			pline("%s%s%s",
-"Endgame is followed by a description of which parts of the scorelist ",
-"you wish to see.  You might for example say: ",
-"\"endgame:own scores/5 top scores/4 around my score\"." );
-
-#else
-
-"To set options use `HACKOPTIONS=\"<options>\"' in your environment, or ",
-"give the command 'O' followed by the line `<options>' while playing. ",
-"Here <options> is a list of <option>s separated by commas." );
-			pline("%s%s%s",
-"Simple (boolean) options are rest_on_space, news, time, ",
-"null, tombstone, (fe)male. ",
-"These can be negated by prefixing them with '!' or \"no\"." );
-			pline("%s%s%s%s",
-"The compound options are name, as in OPTIONS=name:Merlin-W,",
-#ifdef	DOGNAME
-" dogname, which gives the name of your (first) dog (e.g. dogname:Rover)",
-#endif	/* DOGNAME */
-#ifdef SORTING
-" packorder, which lists the order that items should appear in your pack",
-#ifdef SPELLS
-" (the default is:  packorder:\")[%?+/=!(*0  ), and endgame." );
-#else
-" (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
-#endif /* SPELLS /**/
-#else
-"and engame.", "", "");
-#endif /* SORTING /**/ 	
-			pline("%s%s%s",
-"Endgame is followed by a description of what parts of the scorelist",
-"you want to see. You might for example say: ",
-"`endgame:own scores/5 top scores/4 around my score'." );
-
-#endif /* DGK /**/
+			option_help();
 			return;
 		}
-		pline("Bad option: %s.", opts);
-		pline("Type `o help<cr>' for help.");
+		pline("Bad option: %s.  Type `O help<cr>' for help.", opts);
 		return;
 	}
 #ifdef DGK
@@ -476,4 +407,76 @@ nmcpy(dest, source, maxlen)
 		*cd++ = *cs++;
 	}
 	*cd = 0;
+}
+
+#ifdef SORTING
+char	*packorder =
+# ifdef SPELLS
+			"\")[%?+/=!(*0";
+# else
+			"\")[%?/=!(*0";
+# endif
+#endif
+#define Page_line(x)	if(page_line(x)) goto quit
+
+option_help() {
+	char	buf[BUFSZ];
+
+	set_pager(0);
+	(void) sprintf(buf, "        Net%s Options Help:",
+#ifndef QUEST
+			"Hack");
+#else
+			"Quest);
+#endif
+	if(page_line("") || page_line(buf) || page_line(""))	 goto quit;
+
+#ifdef DGK
+	(void) sprintf(buf, "To set options use OPTIONS=<options> in %s", configfile);
+	Page_line(buf);
+#else
+	Page_line("To set options use `HACKOPTIONS=\"<options>\"' in your environment");
+#endif
+
+	Page_line("or give the command \"O\" followed by the line <options> while playing.");
+	Page_line("Here <options> is a list of options separated by commas.");
+	Page_line("");
+
+#ifdef DGK
+	Page_line("Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,")
+	Page_line("and DECRainbow.  These can be negated by prefixing them with '!' or \"no\".");
+#else
+	Page_line("Boolean options are rest_on_space, news, time, null tombstone, and (fe)male,");
+	Page_line("These can be negated by prefixing them with '!' or \"no\".");
+#endif
+	Page_line("");
+
+	Page_line("The compound options are `name', (eg. name:Merlin-W,),");
+#ifdef	DOGNAME
+	Page_line("`dogname', the name of your (first) dog (eg. dogname:Fang,),");
+#endif
+
+#ifdef SORTING
+	Page_line("`packorder'; the order that items should appear in your pack");
+	(void)sprintf(buf, "(the default is:  packorder:%s ), ", packorder);
+	Page_line(buf);
+#endif
+
+#ifdef GRAPHICS
+	Page_line("`endgame', and `graphics'.");
+#else
+	Page_line("and `endgame'.");
+#endif
+	Page_line("");
+
+	Page_line("The `endgame' option is followed by a description of which parts of");
+	Page_line("the scorelist you wish to see.  You might for example say:");
+	Page_line("");
+	Page_line("\"endgame:own scores/5 top scores/4 around my score\".");
+
+	set_pager(1);
+	return;
+quit:
+	set_pager(2);
+	return;
 }

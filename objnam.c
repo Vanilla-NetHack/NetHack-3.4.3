@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)objnam.c	1.3	87/07/14
+/*	SCCS Id: @(#)objnam.c	2.1	87/09/28
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* objnam.c - version 1.0.2 */
 
 #include	"hack.h"
 #define Sprintf (void) sprintf
@@ -530,14 +529,13 @@ sing:
 	}
 
 	p = eos(bp);
-#ifdef KOPS	/* kluge to re-capitalize "dead Kop" */
+#if defined(KOPS) && !defined(KJSMODS)
 	if (!strcmp(p-3, "kop")) {
 		*(p-3) = 'K';
 		an = bp;
 		goto srch;
 	}
 #endif
-
 	for(i = 0; i < sizeof(wrpsym); i++) {
 		register int j = strlen(wrp[i]);
 		if(!strncmp(bp, wrp[i], j)){
@@ -606,19 +604,26 @@ typfnd:
 	  extern struct obj *mksobj();
 	let = objects[typ].oc_olet;
 	otmp = mksobj(typ);
-	if(heavy)
-		otmp->owt += 15;
-	if(cnt > 0 && index("%?!*)", let) &&
-#ifdef KAA
-		(cnt < 4 || (let == WEAPON_SYM && typ <= ROCK && cnt <= 20)))
-#else
-		(cnt < 4 || (let == WEAPON_SYM && typ <= ROCK && cnt < 20)))
-#endif
-		otmp->quan = cnt;
+	if(heavy)	otmp->owt += 15;
 
-	if(spe > 3 && spe > otmp->spe)
+	if(cnt > 0 && index("%?!*)", let) &&
+		(cnt < 4 ||
+#ifdef WIZARD
+		wizard ||
+#endif
+#ifdef KAA
+		(let == WEAPON_SYM && typ <= ROCK && cnt <= 20)
+#else
+		(let == WEAPON_SYM && typ <= ROCK && cnt < 20)
+#endif
+		))		otmp->quan = cnt;
+
+	if(spe > 3 && spe > otmp->spe) {
+#ifdef WIZARD
+	    if(!wizard)
+#endif
 		spe = 0;
-	else if(let == WAND_SYM)
+	} else if(let == WAND_SYM)
 		spe = otmp->spe;
 #ifdef KAA
 	if(let==WEAPON_SYM && blessed) {

@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)unixmain.c	1.4	87/08/08
+/*	SCCS Id: @(#)unixmain.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* main.c - (Unix) version 1.0.3 */
+/* main.c - (Unix) version */
 
 #include <stdio.h>
 #include <signal.h>
@@ -127,8 +127,11 @@ char *argv[];
 		case 'D':
 			if(!strcmp(getlogin(), WIZARD))
 				wizard = TRUE;
-			else
-				printf("Sorry.\n");
+			else {
+				settty("Sorry, you can't operate in debug mode.\n");
+				clearlocks();
+				exit(0);
+			}
 			break;
 #endif
 #ifdef NEWS
@@ -261,7 +264,11 @@ not_recovered:
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
 				extern struct monst *makemon();
 				movemon();
+#ifdef HARD
+				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
+#else
 				if(!rn2(70))
+#endif
 				    (void) makemon((struct permonst *)0, 0, 0);
 			}
 			if(Glib) glibr();
@@ -331,12 +338,15 @@ not_recovered:
 			}
 #endif
 			if(Teleportation && !rn2(85)) tele();
+#if defined(KAA) && defined(BVH)
+			if(Polymorph && !rn2(100)) polyself();
+#endif
 			if(Searching && multi >= 0) (void) dosearch();
 			gethungry();
 			invault();
 			amulet();
 #ifdef HARD
-			if (!rn2(4)) u_wipe_engr(rnd(3));
+			if (!rn2(50+(u.ulevel*3))) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
 				u.udg_cnt--;

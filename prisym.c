@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)prisym.c	1.4	87/08/08
+/*	SCCS Id: @(#)prisym.c	2.0	87/09/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* prisym.c - version 1.0 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -38,7 +37,7 @@ register x,y;
 	(-2,let)-change let
 */
 
-tmp_at(x,y) schar x,y; {
+tmp_at(x,y) int x,y; {
 static schar prevx, prevy;
 static char let;
 	if((int)x == -2){	/* change let call */
@@ -66,7 +65,7 @@ static char let;
 }
 
 /* like the previous, but the symbols are first erased on completion */
-Tmp_at(x,y) schar x,y; {
+Tmp_at(x,y) int x,y; {
 static char let;
 static xchar cnt;
 static coord tc[COLNO];		/* but watch reflecting beams! */
@@ -278,11 +277,7 @@ register x,y;
 
 	if(!isok(x,y)) return;
 	room = &levl[x][y];
-#ifdef DGK
-	if(room->scrsym == symbol.room && !room->lit && !Blind) {
-#else
-	if(room->scrsym == '.' && !room->lit && !Blind) {
-#endif
+	if(room->scrsym == ROOM_SYM && !room->lit && !Blind) {
 		room->scrsym = ' ';
 		room->new = 1;
 		on_scr(x,y);

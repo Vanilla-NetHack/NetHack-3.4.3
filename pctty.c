@@ -1,8 +1,10 @@
-/*	SCCS Id: @(#)pctty.c	1.4	87/08/08
+/*	SCCS Id: @(#)pctty.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* tty.c - (PC) version 1.0.3 */
+/* tty.c - (PC) version */
+
 /* With thanks to the people who sent code for SYSV - hpscdi!jon,
-   arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
+ * arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others.
+ */
 
 #include <stdio.h>
 #include "hack.h"
@@ -182,12 +184,16 @@ parse()
 	inline[1] = 0;
 	if(foo == 'g' || foo == 'G'){
 		inline[1] = getchar();
+#ifdef REDO
 		savech(inline[1]);
+#endif
 		inline[2] = 0;
 	}
 	if(foo == 'm' || foo == 'M'){
 		inline[1] = getchar();
+#ifdef REDO
 		savech(inline[1]);
+#endif
 		inline[2] = 0;
 	}
 	clrlin();

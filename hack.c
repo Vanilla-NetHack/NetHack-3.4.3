@@ -1,10 +1,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
 #ifdef UNIX
-static	char	SCCS_Id[] = "@(#)hack.c	1.4\t87/08/08";
+static	char	SCCS_Id[] = "@(#)hack.c	2.2\t87/12/01";
 #endif
 extern char news0();
 extern char *nomovemsg;
@@ -45,16 +44,17 @@ unsee() {
 }
 
 /* called:
-	in apply.c:  seeoff(0) - when taking a picture of yourself
-	in do.c:     seeoff(0) - blind after drinking potion
-	in do.c:     seeoff(1) - go up or down the stairs
-	in eat.c:    seeoff(0) - blind after eating rotten food
-	in mhitu.c:  seeoff(0) - blinded by a yellow light
-	in mon.c:    seeoff(1) - swallowed
-	in potion.c: seeoff(0) - quaffing or sniffing a potion of blindness
-	in spell.c:  seeoff(0) - due to a cursed spellbook
-	in trap.c:   seeoff(1) - fall through trapdoor
-	in wizard.c: seeoff(0) - hit by a cream pie.
+	in apply.c:  seeoff(0)	- when taking a picture of yourself
+				- when donning a blindfold
+	in do.c:     seeoff(0)	- blind after drinking potion
+	in do.c:     seeoff(1)	- go up or down the stairs
+	in eat.c:    seeoff(0)	- blind after eating rotten food
+	in mhitu.c:  seeoff(0)	- blinded by a yellow light
+	in mon.c:    seeoff(1)	- swallowed
+	in potion.c: seeoff(0)	- quaffing or sniffing a potion of blindness
+	in spell.c:  seeoff(0)	- due to a cursed spellbook
+	in trap.c:   seeoff(1)	- fall through trapdoor
+	in wizard.c: seeoff(0)	- hit by a cream pie.
  */
 seeoff(mode)	/* 1 to redo @, 0 to leave them */
 {	/* 1 means misc movement, 0 means blindness */
@@ -86,7 +86,8 @@ moverock() {
 	register xchar rx, ry;
 	register struct obj *otmp;
 	register struct trap *ttmp;
-	register struct	monst *mtmp, *m_at();
+	register struct	monst *mtmp;
+	struct monst *m_at();
 
 	while(otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy)) {
 		rx = u.ux+2*u.dx;
@@ -169,7 +170,6 @@ domove()
 	register struct monst *mtmp;
 	register struct rm *tmpr,*ust;
 	struct trap *trap;
-	register struct obj *otmp;
 
 	u_wipe_engr(rnd(5));
 
@@ -238,6 +238,11 @@ domove()
 		if(u.utraptype == TT_PIT) {
 			pline("You are still in a pit.");
 			u.utrap--;
+#ifdef SPIDERS
+		} else if (u.utraptype == TT_WEB) {
+		    	pline("You are stuck to the web.");
+			u.utrap--;
+#endif
 		} else {
 			pline("You are caught in a beartrap.");
 			if((u.dx && u.dy) || !rn2(5)) u.utrap--;
@@ -477,12 +482,15 @@ pickup(all)
 			ilets[iletct] = 0;
 
 			if(iletct = 3)    
-			pline("What kinds of thing do you want to pick up? [%s]", ilets);
+			pline("What kinds of thing do you want to pick up? [%s] ", ilets);
 			getlin(buf);
 			if(buf[0] == '\033') {
 				clrlin();
-				return(0);
+				return;
 			}
+#ifdef KJSMODS
+			else if(!buf[0]) strcpy(buf,"A");
+#endif
 		}
 		ip = buf;
 		olets[0] = 0;
@@ -589,7 +597,13 @@ pickup(all)
 			pline("You can only carry %s of the %s lying here.",
 					(qq == 1) ? "one" : "some",
 					doname(obj));
-				(void) splitobj(obj, qq);
+				{
+				register struct obj *obj3;
+
+				obj3 = splitobj(obj, qq);
+				if(obj3->otyp == SCR_SCARE_MONSTER)
+					if(obj3->spe) obj->spe = 0;
+				}
 				/* note: obj2 is set already, so well never
 				 * encounter the other half; if it should be
 				 * otherwise then write
@@ -604,17 +618,21 @@ pickup(all)
 				!invent ? "it is too heavy for you to lift"
 				/* There is no such word as "anymore". KAA */
 					: "you cannot carry any more");
+				if(obj->otyp == SCR_SCARE_MONSTER)
+					if(obj->spe) obj->spe = 0;
 			break;
 		}
 	lift_some:
 		if(inv_cnt() >= 52) {
-		    pline("Your knapsack cannot accomodate any more items.");
+		    pline("Your knapsack cannot accommodate any more items.");
+				if(obj->otyp == SCR_SCARE_MONSTER)
+					if(obj->spe) obj->spe = 0;
 		    break;
 		}
-		if(wt > -5) pline("You have a little trouble lifting");
 		freeobj(obj);
 		if(Invisible) newsym(u.ux,u.uy);
 		addtobill(obj);       /* sets obj->unpaid if necessary */
+		if(wt > -5) pline("You have a little trouble lifting");
 		{ int pickquan = obj->quan;
 		  int mergquan;
 #ifdef KAA
@@ -640,7 +658,7 @@ lookaround(){
 register x,y,i,x0,y0,m0,i0 = 9;
 register int corrct = 0, noturn = 0;
 register struct monst *mtmp;
-#ifdef lint
+#ifdef LINT
 	/* suppress "used before set" message */
 	x0 = y0 = 0;
 #endif
@@ -915,7 +933,7 @@ register char *knam;
 		if (u.mhmax < u.mh) u.mhmax = u.mh;
 		flags.botl = 1;
 		if (u.mh < 1) rehumanize();
-		return(0);
+		return;
 	}
 #endif
 	u.uhp -= n;
@@ -924,7 +942,7 @@ register char *knam;
 	flags.botl = 1;
 	if(u.uhp < 1) {
 		killer = knam;	/* the thing that killed you */
-		pline("you died");
+		pline("You die...");
 		done("died");
 	}
 }

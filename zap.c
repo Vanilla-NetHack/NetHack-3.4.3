@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)zap.c	1.4	87/08/08
+/*	SCCS Id: @(#)zap.c	2.1	87/11/10
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* zap.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -18,7 +17,7 @@ char *fl[]= {
 	"sleep ray",
 	"bolt of cold",
 	"death ray",
-	"magic missle",		/* Spell equivalents of above wands */
+	"magic missile",	/* Spell equivalents of above wands */
 	"fireball",
 	"sleep ray",
 	"cone of cold",
@@ -160,7 +159,7 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 #endif
 		if(obj->spe && obj->olet != AMULET_SYM) {
 			obj->known = 0;
-			obj->spe = 0;
+			obj->spe = (obj->olet == WAND_SYM) ? -1 : 0;
 		}
 		break;
 	case WAN_TELEPORTATION:
@@ -224,7 +223,7 @@ register struct obj *wand;
 			litroom(TRUE);
 			break;
 		case WAN_SECRET_DOOR_DETECTION:
-			if(!findit()) return(1);
+			if(!findit()) return;
 			break;
 		case WAN_CREATE_MONSTER:
 			{ register int cnt = 1;
@@ -274,6 +273,12 @@ dozap()
      }
 #endif
 	weffects(obj);
+#ifdef HARD
+	if (obj->spe < 0) {
+	    pline ("The %s glows violently, then turns to dust.", xname(obj));
+	    useup(obj);
+	}
+#endif
 	return(1);
 }
 
@@ -333,7 +338,7 @@ int	damage = 0;
 #endif
 		    for(otmp = invent; otmp; otmp = otmp->nobj)
 		       if(otmp != uball && otmp->otyp != AMULET_OF_YENDOR)
-			      otmp->spe = 0;
+			    otmp->spe = (obj->olet == WAND_SYM) ? -1 : 0;
 		    if(u.mtimedone) rehumanize();
 		    flags.botl = 1;  /* because of potential AC change */
 		    find_ac();
@@ -378,12 +383,19 @@ int	damage = 0;
 #ifdef SPELLS
 		case SPE_LIGHT:
 		    pline("You've blinded yourself!");
-		    Blind += rnd(100);
+		    Blinded += rnd(100);
 		    break;		
 		case SPE_DIG:
 		case SPE_TURN_UNDEAD:
 		case SPE_DETECT_UNSEEN:
 #endif
+	       case WAN_PROBING:
+#ifdef PROBING
+		    ustatusline();
+#else
+		    pline("Nothing happens.");
+#endif
+		    break;
 		case WAN_DIGGING:
 		case WAN_UNDEAD_TURNING:
 		case WAN_NOTHING:
@@ -427,7 +439,7 @@ weffects(obj)
 #ifdef SPELLS
 		case SPE_DETECT_UNSEEN:
 #endif
-			if(!findit()) return(1);
+			if(!findit()) return;
 			break;
 		case WAN_CREATE_MONSTER:
 			{ register int cnt = 1;
@@ -667,7 +679,7 @@ boomhit(dx,dy) {
 	return(0);
 }
 
-char
+uchar
 dirlet(dx,dy) register dx,dy; {
 	return
 		(dx == dy) ? '\\' : (dx && dy) ? '/' : dx ? HWALL_SYM : VWALL_SYM;
@@ -692,8 +704,9 @@ register int dx,dy;
 
 		if(type < 0) return;
 		tmp = zhit(u.ustuck, type);
-		pline("The %s rips into %s%s",
-			fltxt, monnam(u.ustuck), exclam(tmp));
+		if(!u.ustuck)	u.uswallow = 0;
+		else	pline("The %s rips into %s%s",
+				fltxt, monnam(u.ustuck), exclam(tmp));
 		return;
 	}
 	if(type < 0) pru();

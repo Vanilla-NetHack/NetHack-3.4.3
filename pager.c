@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)pager.c	1.4	87/08/08
+/*	SCCS Id: @(#)pager.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* pager.c - version 1.0.3 */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /* Also readmail() and doshell(), and generally the things that
@@ -29,12 +28,24 @@ dowhatis()
 		pline("Specify what? ");
 		q = readchar();
 #else
-		coord	cc; extern coord getpos();
+		extern getpos();
+		coord	cc;
 		char	r;	
 
-		pline("Please move the cursor to the unknown object.");
-		getpos(&cc, TRUE, "the unknown object");
-		r = levl[cc.x][cc.y].scrsym;
+		pline ("Specify unknown object by cursor ? [ynq] ");
+		while(!index("yYnNqQ", (q = readchar())) &&
+					      !index(quitchars, q))	bell();
+
+		if (q == 'n' || q == 'N') {
+			pline("Specify what? ");
+			r = readchar();
+		} else if (index(quitchars, q))
+			r = q;
+		else {
+			pline("Please move the cursor to the unknown object.");
+			getpos(&cc, TRUE, "the unknown object");
+			r = levl[cc.x][cc.y].scrsym;
+		}
 
 		if (r == showsyms.stone) q = defsyms.stone;
 		else if (r == showsyms.vwall) q = defsyms.vwall;
@@ -63,8 +74,17 @@ dowhatis()
 #endif
 #endif /* GRAPHICS */
 #ifdef DGKMOD
-		if (index(quitchars, q))
+		if (index(quitchars, q)) {
+			(void) fclose(fp); /* sweet@scubed */
 			return(0);
+		}
+#endif
+#ifdef KJSMODS
+		if(q == '%') {
+			pline("%%       a piece of food");
+			(void) fclose(fp);
+			return(0);
+		} 
 #endif
 		if(q != '\t')
 		while(fgets(buf,BUFSZ,fp))
@@ -231,7 +251,7 @@ register char *s;
 			cl_eos();
 		}
 	}
-	puts(s);
+	xputs(s); xputc('\n');
 	cury++;
 	return(0);
 }
@@ -312,7 +332,7 @@ char *text;
 		    if(curline > 1)
 			cl_end ();
 		    putsym(' ');
-		    putstr (tl->line_text);
+		    xputs(tl->line_text);
 		    curline++;
 		}
 		curs (lth, curline);

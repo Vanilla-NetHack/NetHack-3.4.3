@@ -1,13 +1,13 @@
-/*	SCCS Id: @(#)eshk.h	1.3	87/07/14
+/*	SCCS Id: @(#)eshk.h	2.1	87/09/28
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* eshk.h - version 1.0.2 : added 'following' */
 
 #define	BILLSZ	200
+
 struct bill_x {
 	unsigned bo_id;
+	unsigned price;		/* price per unit */
 	Bitfield(useup,1);
 	Bitfield(bquan,7);
-	unsigned price;		/* price per unit */
 };
 
 struct eshk {

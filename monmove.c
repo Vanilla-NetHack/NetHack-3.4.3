@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)monmove.c	1.3	87/07/14
+/*	SCCS Id: @(#)monmove.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* monmove.c - version 1.0 */
 
 #include "hack.h"
 #include "mfndpos.h"
@@ -71,7 +70,8 @@ register struct monst *mtmp;
 	nearby = (dist(mtmp->mx, mtmp->my) < 3);
 	onscary = (sengr_at("Elbereth", u.ux, u.uy) ||
 			sobj_at(SCR_SCARE_MONSTER, u.ux, u.uy));
-	scared = (nearby && onscary && !mtmp->mtame && mtmp->mcansee);
+	scared = (nearby && onscary && !mtmp->mtame && mtmp->mcansee)
+		 && (mdat->mlet != '1');  /* RPH: the wiz is never scared */
 	if(scared && !mtmp->mflee) {
 		mtmp->mflee = 1;
 		mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
@@ -228,6 +228,19 @@ register struct monst *mtmp;
 		if(rn2(3)) mtmp->mcan = 1;
 		HConfusion += d(3,4);		/* timeout */
 	}
+#ifdef RPH
+	if (msym == '8' && canseemon(mtmp)) {
+	    if (mtmp->mcan)
+	        pline ("You notice that %s isn't all that ugly.",monnam(mtmp));
+	    else if (rn2(3)) 
+		pline ("You see the ugly back of %s.", monnam(mtmp));
+  	    else {
+	        pline ("You look upon %s.", monnam(mtmp));
+		pline ("You turn to stone.");
+		done_in_by(mtmp);
+	    }
+	}
+#endif
 not_special:
 	if(!mtmp->mflee && u.uswallow && u.ustuck != mtmp) return(1);
 	appr = 1;
@@ -246,6 +259,9 @@ not_special:
 	   should use mtmp->msmell or sth
 	 */
 	if(msym == '@' ||
+#ifdef RPH
+	  uwep && !strcmp(ONAME(uwep), "Excalibur") ||
+#endif
 	  ('a' <= msym && msym <= 'z')) {
 	extern coord *gettrack();
 	register coord *cp;
@@ -264,7 +280,11 @@ not_special:
 #ifdef ROCKMOLE
 	likegold = (index("LODr", msym) != NULL);
 	likegems = (index("ODu", msym) != NULL);
+# ifdef KJSMODS
+	likeobjs = (mtmp->mhide || (msym == 'r' && dlevel > 3));
+# else
 	likeobjs = (mtmp->mhide || msym == 'r');
+# endif
 #else
 	likegold = (index("LOD", msym) != NULL);
 	likegems = (index("ODu", msym) != NULL);
@@ -319,7 +339,11 @@ not_special:
 	cnt = mfndpos(mtmp,poss,info,
 		msym == 'u' ? NOTONL :
 #ifdef ROCKMOLE
+# ifdef KJSMODS
+		(msym == 'r' && dlevel > 3) ? ALLOW_WALL :
+# else
 		msym == 'r' ? ALLOW_WALL :
+# endif
 #endif
 		(msym == '@' || msym == '1') ? (ALLOW_SSM | ALLOW_TRAPS) :
 		index(UNDEAD, msym) ? NOGARLIC :
@@ -389,7 +413,11 @@ postmov:
 			return(2);
 #ifdef ROCKMOLE
 	       /* Maybe a rock mole just ate something? */
-	       if(msym == 'r' && IS_ROCK(levl[mtmp->mx][mtmp->my].typ) &&
+	       if(msym == 'r'
+# ifdef KJSMODS
+		  && dlevel > 3
+#endif
+		  && IS_ROCK(levl[mtmp->mx][mtmp->my].typ) &&
 		  levl[mtmp->mx][mtmp->my].typ != POOL){
 		   register int pile = rnd(25);
 		   /* Just ate something. */
@@ -406,7 +434,7 @@ postmov:
 			mksobj_at(ROCK, mtmp->mx, mtmp->my);
 		   }
 		  if(cansee(mtmp->mx, mtmp->my))
-		    atl(mtmp->mx,mtmp->my,fobj->olet);
+		    if(fobj)	atl(mtmp->mx,mtmp->my,fobj->olet);
 	       }
 	       /* Maybe a rock mole just ate some gold or armor? */
 	       if(msym == 'r') meatgold(mtmp);

@@ -1,6 +1,6 @@
-/*	SCCS Id: @(#)pcmain.c	1.4	87/08/08
+/*	SCCS Id: @(#)pcmain.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* main.c - (PC) version 1.0.3 */
+/* main.c - (PC) version */
 
 #include <stdio.h>
 #include <signal.h>
@@ -58,6 +58,11 @@ char *argv[];
 	memcpy((char *) &showsyms, (char *) &defsyms, sizeof(struct symbols));
 #endif
 #ifdef DGK
+	if ((dir = getenv("HACKDIR")) != (char *) NULL) {
+		(void) strcpy(hackdir, dir);
+		chdirx (dir, 1);
+	}
+	zero_finfo();
 	initoptions();
 	if (!hackdir[0])
 		(void) strcpy(hackdir, orgdir);
@@ -121,9 +126,11 @@ char *argv[];
 # else
 			if(!strcmp(getlogin(), WIZARD))
 				wizard = TRUE;
-			else
-				printf("Sorry.\n");
-# endif
+			else {
+				settty("Sorry, you can't operate in debug mode.\n");
+				clearlocks();
+				exit(0);
+			}
 			break;
 #endif
 		case 'u':
@@ -202,7 +209,8 @@ char *argv[];
 	strncat(SAVEF, plname, 8);
 	strcat(SAVEF, ".sav");
 	cls();
-	if (saveDiskPrompt(1) && ((fd = open(SAVEF, 0)) >= 0)) {
+	if (saveDiskPrompt(1) && ((fd = open(SAVEF, 0)) >= 0) &&
+	   (uptodate(fd) || !unlink(SAVEF))) {
 #else 
 	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
 	regularize(SAVEF+5);		/* avoid . or / in name */
@@ -289,7 +297,11 @@ moveloop()
 			  (!(Fast & ~INTRINSIC) && (!Fast || rn2(3)))) {
 				extern struct monst *makemon();
 				movemon();
+#ifdef HARD
+				if(!rn2(u.udemigod?25:(dlevel>30)?50:70))
+#else
 				if(!rn2(70))
+#endif
 				    (void) makemon((struct permonst *)0, 0, 0);
 			}
 			if(Glib) glibr();
@@ -361,12 +373,15 @@ moveloop()
 			}
 #endif
 			if(Teleportation && !rn2(85)) tele();
+#if defined(KAA) && defined(BVH)
+			if(Polymorph && !rn2(100)) polyself();
+#endif
 			if(Searching && multi >= 0) (void) dosearch();
 			gethungry();
 			invault();
 			amulet();
 #ifdef HARD
-			if (!rn2(4)) u_wipe_engr(rnd(3));
+			if (!rn2(50+(u.ulevel*3))) u_wipe_engr(rnd(3));
 			if (u.udemigod) {
 
 				u.udg_cnt--;
@@ -410,8 +425,10 @@ moveloop()
 			if (kbhit()) {
 				if ((ch = getchar()) == ABORT)
 					abort++;
+# ifdef REDO
 				else
 					pushch(ch);
+# endif
 			}
 			if (abort || monster_nearby())
 				stop_occupation();
@@ -552,9 +569,20 @@ stop_occupation()
 	if(occupation) {
 		pline("You stop %s.", occtxt);
 		occupation = 0;
-#ifdef DGK
+#ifdef REDO
 		multi = 0;
 		pushch(0);		
 #endif
 	}
 }
+
+#ifdef DGK
+struct finfo	zfinfo = ZFINFO;
+
+zero_finfo() {	/* zero "fileinfo" array to prevent crashes on level change */
+	int i;
+
+	for (i = 0 ; i <= MAXLEVEL; i++)
+		fileinfo[i] = zfinfo;
+}
+#endif

@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)mhitu.c	1.3	87/07/14
+/*	SCCS Id: @(#)mhitu.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mhitu.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct monst *makemon();
+extern struct obj *carrying();
 #ifdef KAA
 extern char pl_character[];
 #endif
@@ -248,7 +248,7 @@ register struct monst *mtmp;
 			if(!rn2(50)) rloc(mtmp);
 		} else {
 #ifdef KAA
-			if (pl_character[0] == 'P' && u.usym == '@') {
+			if (pl_character[0] == 'H' && u.usym == '@') {
 			    if (!(moves % 5))
 				pline("Doc, I can't help you unless you cooperate.");
 			} else {
@@ -309,7 +309,11 @@ register struct monst *mtmp;
 		break;
 	case 's':
 		if(ctmp && !rn2(8)) {
+#ifdef SPIDERS
+			poisoned("giant spider's bite",mdat->mname);
+#else
 			poisoned("scorpion's sting",mdat->mname);
+#endif
 		}
 		(void) hitu(mtmp,rnd(8));
 		(void) hitu(mtmp,rnd(8));
@@ -370,13 +374,25 @@ register struct monst *mtmp;
 		mondead(mtmp);
 		if(!Blind && (u.usym != 'y')) {
 			pline("You are blinded by a blast of light!");
-			Blind = d(4,12);
+			Blinded = d(4,12);
 			seeoff(0);
 		}
 		return(1);
 	case 'Y':
 		(void) hitu(mtmp,rnd(6));
 		break;
+#ifdef RPH
+	case '8':
+		if (canseemon(mtmp) && !mtmp->mcan) {
+
+		        pline ("You look upon %s.", monnam(mtmp));
+			pline ("You turn to stone.");
+			done_in_by(mtmp);
+	    	}
+		(void) hitu(mtmp,d(2,6));
+		(void) hitu(mtmp,d(2,6));
+		break;
+#endif
 	}
 	if(u.uhp < 1) done_in_by(mtmp);
 	return(0);
@@ -450,21 +466,33 @@ register struct monst *mtmp;
 	char	*xmonnam(), *Xmonnam();
 	int	demand, offer;
 
+	if(uwep && !strcmp(ONAME(uwep), "Excalibur")) {
+
+	    pline("%s looks very angry.", Xmonnam(mtmp, 1));
+	    mtmp->mpeaceful = mtmp->mtame = 0;
+	    return(0);
+	}
 	if(!strcmp(mtmp->data->mname, "demon")) {  /* not for regular '&'s */
 
 	    pline("%s mutters something about awful working conditions.",
-		  Xmonnam(mtmp));
+		  Xmonnam(mtmp, 1));
 	    return(0);
 	}
 
+	/* Slight advantage given. */
+	if(!strcmp(mtmp->data->mname, "demon prince") && mtmp->minvis) {
+
+	    if (!Blind) pline("%s appears before you.", Xmonnam(mtmp, 1));
+	    mtmp->minvis = 0;
+	    pmon(mtmp);
+	}
 	if(u.usym == '&') {	/* Won't blackmail their own. */
 
 	    pline("%s says, 'Good hunting %s.' and vanishes",
-		  Xmonnam(mtmp), flags.female ? "Sister" : "Brother");
-	    mondead(mtmp);
+		  Xmonnam(mtmp, 1), flags.female ? "Sister" : "Brother");
+	    rloc(mtmp);
 	    return(1);
 	}
-
 	demand = (u.ugold * (rnd(80) + 20 * Athome)) / 100;
 	if(!demand)  {		/* you have no gold */
 	    mtmp->mpeaceful = 0;
@@ -473,15 +501,15 @@ register struct monst *mtmp;
 	    char buf[80];
 
 	    pline("%s demands %d Zorkmids for safe passage.",
-		  Xmonnam(mtmp), demand);
+		  Xmonnam(mtmp, 1), demand);
 	    pline("how many will you offer him?");
 	    getlin(buf);
 	    sscanf(buf, "%d", &offer);
 
 	    if(offer >= u.ugold) {
-		pline("You give %s all your gold.", xmonnam(mtmp));
+		pline("You give %s all your gold.", xmonnam(mtmp, 0));
 		offer = u.ugold;
-	    } else pline("You give %s %d Zorkmids.", xmonnam(mtmp), offer);
+	    } else pline("You give %s %d Zorkmids.", xmonnam(mtmp, 0), offer);
 	    u.ugold -= offer;
 
 	    if(offer >= demand) {

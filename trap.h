@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.h	1.3	87/07/14
+/*	SCCS Id: @(#)trap.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* trap.h - version 1.0.2 */
 
@@ -37,5 +37,6 @@ struct trap *t_at();
 #define	LEVEL_TELEP	14
 #define	ANTI_MAGIC	15
 #define	RUST_TRAP	16
+#define	POLY_TRAP	17
 
-#define	TRAPNUM	17
+#define	TRAPNUM	18

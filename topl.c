@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)topl.c	1.4	87/08/08
+/*	SCCS Id: @(#)topl.c	2.0	87/09/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* topl.c - version 1.0.2 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -11,7 +10,7 @@
 extern char *eos();
 extern int CO;
 
-char toplines[BUFSZ];
+char toplines[BUFSIZ];
 xchar tlx, tly;			/* set by pline; used by addtopl */
 
 struct topl {

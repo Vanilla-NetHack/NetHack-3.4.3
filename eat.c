@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)eat.c	1.4	87/08/08
+/*	SCCS Id: @(#)eat.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* eat.c - version 1.0.3 */
 
 #include	"hack.h"
 #ifdef KAA
@@ -191,7 +190,7 @@ gotit:
 			HConfusion += d(2,4);
 		} else if(!rn2(4) && !Blind) {
 			pline("Everything suddenly goes dark.");
-			Blind = d(2,10);
+			Blinded = d(2,10);
 			seeoff(0);
 		} else if(!rn2(3)) {
 			if(Blind)
@@ -270,14 +269,14 @@ gotit:
 #endif /* DGKMOD /**/
 			else
 #ifdef QUEST
-			if(otmp->otyp == CARROT && !Blind){
+			if(otmp->otyp == CARROT && !Blind) {
 				u.uhorizon++;
 				setsee();
 				pline("Your vision improves.");
 			} else
 #endif
 #ifdef KAA
-			if(otmp->otyp == CARROT && Blind) Blind=1;
+			if(otmp->otyp == CARROT && Blind) Blinded = 1;
 			else
 #endif
 			if(otmp->otyp == FORTUNE_COOKIE) {
@@ -337,7 +336,7 @@ morehungry(num) register num; {
 /* called after eating something (and after drinking fruit juice) */
 lesshungry(num) register num; {
 	u.uhunger += num;
-	if(u.uhunger >= 2000) choke(FALSE);
+	if(u.uhunger >= 2000) choke((struct objclass *) 0);
 #ifdef DGKMOD
 	else {
 	    /* Have lesshungry() report when you're nearly full so all eating
@@ -484,6 +483,9 @@ register tp = 0;
 		u.uhp = u.uhpmax;
 		flags.botl = 1;
 		/* fall into next case */
+#ifdef SAC
+	case '3':
+#endif
 	case '@':
 		pline("You cannibal! You will be sorry for this!");
 		/* not tp++; */
@@ -523,6 +525,12 @@ register tp = 0;
 	case '9':
 		gainstr(1);
 		break;
+#endif
+#ifdef KJSMODS
+	case 'S':	/* if a snake can kill you with poison, at least
+			 * have the possibility of getting resistance */
+		if ( rn2(5) ) break;
+		/* fall into next case */
 #endif
 	case 'k':
 	case 's':
@@ -565,16 +573,29 @@ register tp = 0;
 	return(tp);
 }
 
-/* added by GAN 01/28/87 */
+/* Created by GAN 01/28/87
+ * Amended by AKP 09/22/87: if not hard, don't choke, just vomit.
+ *
+ * Note that if you have enough food, you can always stop being Sick!
+ * choke() returns if you don't choke, kills you if you do.
+ */
 choke(food)
 register struct objclass *food;
 {
 	/* only happens if you were satiated */
 	if(u.uhs != SATIATED) return;
-
+#ifdef HARD
 	if(food)	killer = food->oc_name;
 	else		killer = "exuberant appetite";
 	pline("You choke over your food.");
 	pline("You die...");
 	done("choked");
+#else
+	pline("You stuff yourself and then vomit voluminously.");
+	morehungry(1000);	/* you just got *very* sick! */
+	if(Sick) {
+		Sick = 0;	/* A good idea from David Neves */
+		pline("What a relief!");
+	}
+#endif
 }

@@ -1,18 +1,18 @@
-/*	SCCS Id: @(#)unixtty.c	1.4	87/08/08
+/*	SCCS Id: @(#)unixtty.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* tty.c - (Unix) version 1.0.3 */
+/* tty.c - (Unix) version */
+
 /* With thanks to the people who sent code for SYSV - hpscdi!jon,
-   arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
+ * arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others.
+ */
 
 #include	<stdio.h>
 #include	"extern.h"
-#include	"flag.h"
+#include	"hack.h"
 #include	"func_tab.h"
 
 #define	ON	1
 #define OFF	0
-#define	BUFSZ	256
-
 
 /*
  * The distinctions here are not BSD - rest but rather USG - rest, as
@@ -47,7 +47,8 @@
 #define CBRKON		! /* reverse condition */
 #define OSPEED(x)	((x).c_cflag & CBAUD)
 #define GTTY(x)		(ioctl(0, TCGETA, x))
-#define STTY(x)		(ioctl(0, TCSETA, x))	/* TCSETAF? TCSETAW? */
+/* STTY now modified to run under Sys V R3.	- may have to be #ifdef'ed */
+#define STTY(x)		(ioctl(0, TCSETAW, x))	/* TCSETAF? TCSETAW? */
 
 #else	/* V7 */
 

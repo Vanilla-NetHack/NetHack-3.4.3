@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)vault.c	1.3	87/07/14
+/*	SCCS Id: @(#)vault.c	2.1	87/10/17
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* vault.c - version 1.0.2 */
 
 #include	"hack.h"
 #ifdef QUEST
@@ -27,7 +26,7 @@ struct egd {
 	struct fakecorridor fakecorr[FCSIZ];
 };
 
-static struct permonst pm_guard =
+struct permonst pm_guard =
 	{ "guard", '@', 12, 12, -1, 40, 4, 10, sizeof(struct egd) };
 
 static struct monst *guard;
@@ -210,7 +209,11 @@ register struct rm *crm;
 	/* in view of the above we must have IS_WALL(typ) or typ == POOL */
 	/* must be a wall here */
 		if(isok(nx+nx-x,ny+ny-y) && typ != POOL &&
+#ifdef RPH
+		    SPACE_POS(levl[nx+nx-x][ny+ny-y].typ)){
+#else
 		    ZAP_POS(levl[nx+nx-x][ny+ny-y].typ)){
+#endif
 			crm->typ = DOOR;
 			goto proceed;
 		}

@@ -1,26 +1,24 @@
-/*	SCCS Id: @(#)sit.c	1.4	87/08/08
+/*	SCCS Id: @(#)sit.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* sit.c - version 1.0 */
 
 #include "hack.h"
 
 #ifdef NEWCLASS
 int	identify();
+extern struct monst *makemon();
+extern struct permonst *courtmon();
 
 dosit() {
 	extern struct obj *readobjnam(), *addinv();
-	register struct	obj	*otmp;
 	struct	 obj	*sobj_at();
 	register int	cnt;
-
-	char	buf[BUFSZ];
 
 	if(Levitation)  {
 
 		pline("You are floating in the air, you can't sit!");
 	} else	if(IS_THRONE(levl[u.ux][u.uy].typ)) {
 
-		pline("As you sit in the opulant throne");
+		pline("As you sit in the opulent throne");
 		if (rnd(6) > 4)  {
 
 			switch (rnd(13))  {
@@ -49,7 +47,7 @@ dosit() {
 				pline("you feel much, much better!");
 				if(u.uhp >= (u.uhpmax - 5))  u.uhpmax += 4;
 				u.uhp = u.uhpmax;
-				if (Blind) Blind = 1;
+				if (Blinded) Blinded = 1;
 				if (Sick)  Sick = 0;
 				heal_legs();
 				flags.botl = 1;
@@ -92,7 +90,7 @@ dosit() {
 				if (u.uluck > 0)  {
 
 				    if(!Blind)	pline("a cloud of darkness falls upon you.");
-				    Blind += rn1(100,250);
+				    Blinded += rn1(100,250);
 				    seeoff(0);
 				} else	    rndcurse();
 				break;

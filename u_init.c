@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)u_init.c	1.4	87/08/08
+/*	SCCS Id: @(#)u_init.c	2.0	87/09/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* u_init.c - version 1.0.3   */
 
 #include <stdio.h>
 #include <signal.h>
@@ -16,12 +15,15 @@
 extern struct obj *addinv();
 extern char *eos();
 extern char plname[];
+#define IS_MAGIC(x)	((x)->olet == WAND_SYM || (x)->olet == POTION_SYM || \
+			 (x)->olet == RING_SYM || (x)->olet == SCROLL_SYM || \
+			 (x)->olet == SPBOOK_SYM)
 
 struct you zerou;
 char pl_character[PL_CSIZ];
 char *(roles[]) = {	/* must all have distinct first letter */
 			/* roles[4] & [7] may be changed for females */
-	"Archeologist", "Tourist", "Fighter", "Knight", "Cave-man",
+	"Archeologist", "Tourist", "Barbarian", "Knight", "Cave-man",
 #ifdef NEWCLASS
 	"Samurai", "Ninja", "Priest",
 #endif
@@ -34,7 +36,7 @@ char *(roles[]) = {	/* must all have distinct first letter */
 char rolesyms[NR_OF_ROLES + 1];		/* filled by u_init() */
 
 struct trobj {
-	uchar trotyp;
+	unsigned short trotyp;
 	schar trspe;
 	char trolet;
 	Bitfield(trquan,6);
@@ -49,18 +51,15 @@ struct trobj Extra_objs[] = {
 #endif
 
 struct trobj Cave_man[] = {
-#ifdef KAA
+#define C_ARROWS	2
 	{ CLUB, 1, WEAPON_SYM, 1, 1 },
-#else
-	{ MACE, 1, WEAPON_SYM, 1, 1 },
-#endif
 	{ BOW, 1, WEAPON_SYM, 1, 1 },
 	{ ARROW, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
 	{ LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0}
 };
 
-struct trobj Fighter[] = {
+struct trobj Barbarian[] = {
 	{ TWO_HANDED_SWORD, 0, WEAPON_SYM, 1, 1 },
 	{ RING_MAIL, 0, ARMOR_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0 }
@@ -78,6 +77,8 @@ struct trobj Knight[] = {
 
 #ifdef KAA
 struct trobj Elf[] = {
+#define E_ARROWS	2
+#define E_ARMOR		3
 	{ SHORT_SWORD, 0, WEAPON_SYM, 1, 1 },
 	{ BOW, 0, WEAPON_SYM, 1, 1 },
 	{ ARROW, 0, WEAPON_SYM, 25, 1 },
@@ -94,8 +95,8 @@ struct trobj Valkyrie[] = {
 
 struct trobj Healer[] = {
 	{ STETHOSCOPE, 0, TOOL_SYM, 1, 0 },
-	{ POT_HEALING, 0, POTION_SYM, 4, 0 },
-	{ POT_EXTRA_HEALING, 0, POTION_SYM, 4, 0 },
+	{ POT_HEALING, 0, POTION_SYM, 4, 1 },
+	{ POT_EXTRA_HEALING, 0, POTION_SYM, 4, 1 },
 	{ APPLE, 0, FOOD_SYM, 5, 0 },
 	{ 0, 0, 0, 0, 0}
 };
@@ -124,12 +125,18 @@ struct trobj Magicmarker[] = {
 
 #ifdef WALKIES
 struct trobj Leash[] = {
-	{ LEASH, 0, CHAIN_SYM, 1, 0 },
+	{ LEASH, 0, TOOL_SYM, 1, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
 #endif
 
+struct trobj Blindfold[] = {
+	{ BLINDFOLD, 0, TOOL_SYM, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+
 struct trobj Tourist[] = {
+#define	T_DARTS		3
 	{ UNDEF_TYP, 0, FOOD_SYM, 10, 1 },
 	{ POT_EXTRA_HEALING, 0, POTION_SYM, 2, 0 },
 	{ EXPENSIVE_CAMERA, 0, TOOL_SYM, 1, 1 },
@@ -138,20 +145,25 @@ struct trobj Tourist[] = {
 };
 
 struct trobj Wizard[] = {
+#define W_MULTSTART	2
+#define W_MULTEND	6
 	{ ELVEN_CLOAK, 0, ARMOR_SYM, 1, 1 },
-	{ UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 0 },
-	{ UNDEF_TYP, UNDEF_SPE, SCROLL_SYM, 3, 0 },
+	{ DAGGER, 0, WEAPON_SYM, 1, 1 },	/* for dealing with ghosts */
+	{ UNDEF_TYP, UNDEF_SPE, WAND_SYM, 2, 1 },
+	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 1 },
+	{ UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 1 },
+	{ UNDEF_TYP, UNDEF_SPE, SCROLL_SYM, 3, 1 },
 #ifdef SPELLS
-	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_SYM, 1, 0 },
+	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_SYM, 3, 1 },
 #endif
 	{ 0, 0, 0, 0, 0 }
 };
 
 #ifdef NEWCLASS
 struct	trobj	Samurai[] = {
+#define S_ARROWS	3
 	{ KATANA, 0, WEAPON_SYM, 1, 1 },
+	{ SHORT_SWORD, 0, WEAPON_SYM, 1, 1 },	/* the wakizashi */
 	{ BOW,    1, WEAPON_SYM, 1, 1 },
 	{ ARROW,  0, WEAPON_SYM, 25, 1 },	/* quan is variable */
 	{ SPLINT_MAIL, 0, ARMOR_SYM, 1, 1},
@@ -159,6 +171,7 @@ struct	trobj	Samurai[] = {
 };
 
 struct	trobj	Ninja[] = {
+#define N_SHURIKEN	1
 	{ KATANA, 0, WEAPON_SYM, 1, 1 },
 	{ SHURIKEN, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
 	{ LEATHER_ARMOR, 1, ARMOR_SYM, 1, 1},
@@ -169,6 +182,7 @@ struct	trobj	Priest[] = {
 	{ CHAIN_MAIL, 0, ARMOR_SYM, 1, 1 },
 	{ SHIELD, 0, ARMOR_SYM, 1, 1 },
 	{ MACE, 1, WEAPON_SYM, 1, 1 },
+	{ POT_HOLY_WATER, 0, POTION_SYM, 4, 1 },
 #ifdef SPELLS
 	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_SYM, 2, 0 },
 #endif
@@ -219,7 +233,7 @@ extern char readchar();
 	printf(" Are you");
 	for(i = 0; i < NR_OF_ROLES; i++) {
 		printf(" %s %s", index("AEIOU",roles[i][0]) ? "an" : "a", roles[i]);
-		if((((i + 1) % 4) == 0) && (i != NR_OF_ROLES -1)) printf(",\n\t");
+		if((((i + 1) % 4) == 0) && (i != NR_OF_ROLES -1)) printf(",\n        ");
 		else if(i < NR_OF_ROLES - 2)	printf(",");
 		if(i == NR_OF_ROLES - 2)	printf(" or");
 	}
@@ -267,30 +281,32 @@ got_suffix:
 	u = zerou;
 	u.usym = '@';
 	u.ulevel = 1;
+	init_uhunger();
+	uarm = uarm2 = uarmh = uarms = uarmg = uwep =
+	uball = uchain = uleft = uright = 0;
+
 #ifdef SPELLS
 	u.uen = u.uenmax = 1;
+	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
 #endif
 #ifdef PRAYERS
 	u.ublesscnt = 300;			/* no prayers just yet */
 	u.ublessed = 0;				/* not worthy yet */
 	u.ugangr   = 0;				/* gods not angry */
 #endif
+#ifdef HARD
+	u.udemigod = u.udg_cnt = 0;		/* not a demi-god yet... */
+#endif
 #ifdef KAA
 	u.mh = u.mhmax = u.umonnum = u.mtimedone = 0;
 #endif
-	init_uhunger();
 #ifdef QUEST
 	u.uhorizon = 6;
-#endif
-	uarm = uarm2 = uarmh = uarms = uarmg = uwep = uball = uchain =
-	uleft = uright = 0;
-#ifdef SPELLS
-	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
 #endif
 	switch(pc) {
 	case 'c':
 	case 'C':
-		Cave_man[2].trquan = 12 + rnd(9)*rnd(9);
+		Cave_man[C_ARROWS].trquan = 12 + rnd(9)*rnd(9);
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 18;
 		ini_inv(Cave_man);
@@ -300,7 +316,7 @@ got_suffix:
 #ifdef KAA
 		objects[POT_EXTRA_HEALING].oc_name_known=1;
 #endif
-		Tourist[3].trquan = 20 + rnd(20);
+		Tourist[T_DARTS].trquan = 20 + rnd(20);
 		u.ugold = u.ugold0 = rnd(1000);
 		u.uhp = u.uhpmax = 10;
 		u.ustr = u.ustrmax = 8;
@@ -315,7 +331,8 @@ got_suffix:
 		break;
 	case 'w':
 	case 'W':
-		for(i=1; i<=4; i++) if(!rn2(5))
+		for(i = W_MULTSTART; i <= W_MULTEND; i++)
+		    if(!rn2(5))
 			Wizard[i].trquan += rn2(3) - 1;
 		u.uhp = u.uhpmax = 15;
 		u.ustr = u.ustrmax = 16;
@@ -326,6 +343,7 @@ got_suffix:
 #ifdef MARKER
 		if(!rn2(5)) ini_inv(Magicmarker);
 #endif
+		if(!rn2(5)) ini_inv(Blindfold);
 		break;
 	case 'a':
 	case 'A':
@@ -342,13 +360,14 @@ got_suffix:
 #ifdef KAA
 	case 'e':
 	case 'E':
-		Elf[2].trquan = 15+rnd(20);
-		Elf[3].trotyp = (rn2(2) ? ELFIN_CHAIN_MAIL : ELVEN_CLOAK);
+		Elf[E_ARROWS].trquan = 15+rnd(20);
+		Elf[E_ARMOR].trotyp = (rn2(2) ? ELFIN_CHAIN_MAIL : ELVEN_CLOAK);
 		Fast = INTRINSIC;
 		HSee_invisible = INTRINSIC;
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 16;
 		ini_inv(Elf);
+		if(!rn2(5)) ini_inv(Blindfold);
 		break;
 	case 'v':
 	case 'V':
@@ -375,11 +394,11 @@ got_suffix:
 		u.ustr = u.ustrmax = 10;
 		ini_inv(Knight);
 		break;
-	case 'f':
-	case 'F':
+	case 'b':
+	case 'B':
 		u.uhp = u.uhpmax = 14;
 		u.ustr = u.ustrmax = 17;
-		ini_inv(Fighter);
+		ini_inv(Barbarian);
 		break;
 #ifdef NEWCLASS
 	case 's':
@@ -387,7 +406,7 @@ got_suffix:
 		Fast = INTRINSIC;
 		u.uhp = u.uhpmax = 16;
 		u.ustr = u.ustrmax = 16;
-		Samurai[2].trquan = 12 + rnd(9)*rnd(9);
+		Samurai[S_ARROWS].trquan = 12 + rnd(9)*rnd(9);
 		ini_inv(Samurai);
 		break;
 	case 'n':
@@ -396,8 +415,9 @@ got_suffix:
 		Stealth = INTRINSIC;
 		u.uhp = u.uhpmax = 15;
 		u.ustr = u.ustrmax = 10;
-		Ninja[1].trquan = 12 + rnd(9)*rnd(9);
+		Ninja[N_SHURIKEN].trquan = 12 + rnd(9)*rnd(9);
 		ini_inv(Ninja);
+		if(!rn2(5)) ini_inv(Blindfold);
 		break;
 	case 'p':
 	case 'P':
@@ -413,6 +433,7 @@ got_suffix:
 # ifdef MARKER
 		if(!rn2(10)) ini_inv(Magicmarker);
 # endif
+		objects[POT_HOLY_WATER].oc_name_known = 1;
 		break;
 #endif /* NEWCLASS /**/
 	default:	/* impossible */
@@ -427,9 +448,8 @@ got_suffix:
 	}
 
 #ifdef WIZARD
-	if(wizard) wiz_inv();
+	wiz_inv();
 #endif
-
 	/* make sure he can carry all he has - especially for T's */
 	while(inv_weight() > 0 && u.ustr < 118)
 		u.ustr++, u.ustrmax++;
@@ -456,6 +476,13 @@ extern struct obj *mkobj();
 				obj->otyp = WAN_DEATH;
 		obj->owt = weight(obj);	/* defined after setting otyp+quan */
 		obj = addinv(obj);
+
+		/*
+		 * if a magic item's 'known' bit is on, set its name known
+		 */
+		if (IS_MAGIC(obj) && obj->known)
+		    objects[obj->otyp].oc_name_known=1;
+
 		if(obj->olet == ARMOR_SYM){
 			switch(obj->otyp){
 			case SHIELD:
@@ -512,13 +539,6 @@ register int type;
 		trop->trquan = 1;
 		ini_inv(trop);
 	}
-	/* give him a wand of wishing by default */
-	trop->trotyp = WAN_WISHING;
-	trop->trolet = WAND_SYM;
-	trop->trspe = 20;
-	trop->trknown = 1;
-	trop->trquan = 1;
-	ini_inv(trop);
 }
 #endif /* WIZARD /**/
 

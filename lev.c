@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)lev.c	1.4	87/08/08
+/*	SCCS Id: @(#)lev.c	2.1	87/10/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* lev.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -175,11 +174,15 @@ register struct monst *mtmp;
 	int monsindex;
 	extern struct permonst li_dog, dog, la_dog;
 #ifdef KAA
+	int mi;
 	extern struct permonst hell_hound;
 # ifdef HARD
 	extern struct permonst d_lord, d_prince;
 # endif
-#endif
+# ifdef KJSMODS
+	extern struct permonst pm_guard, pm_ghost, pm_eel;
+# endif
+#endif /* KAA /**/
 
 	while(mtmp) {
 		mtmp2 = mtmp->nmon;
@@ -188,20 +191,30 @@ register struct monst *mtmp;
 		/* store an index where the pointer used to be */
 		permonstp = mtmp->data;
 		if (permonstp == &li_dog)
-			monsindex = -1;		/* fake index */
+			monsindex = mi = -1;	/* fake index */
 		else if (permonstp == &dog)
-			monsindex = -2;		/* fake index */
+			monsindex = --mi;	/* fake index */
 		else if (permonstp == &la_dog)
-			monsindex = -3;		/* fake index */
+			monsindex = --mi;	/* fake index */
 #ifdef KAA
 		else if (permonstp == &hell_hound)
-			monsindex = -4;
+			monsindex = --mi;	/* fake index */
 # ifdef HARD
 		else if (permonstp == &d_lord)
-			monsindex = -5;
+			monsindex = --mi;	/* fake index */
 
 		else if (permonstp == &d_prince)
-			monsindex = -6;
+			monsindex = --mi;	/* fake index */
+# endif
+# ifdef KJSMODS
+		else if (permonstp == &pm_guard)
+			monsindex = -mi;	/* fake index */
+
+		else if (permonstp == &pm_ghost)
+			monsindex = -mi;	/* fake index */
+
+		else if (permonstp == &pm_eel)
+			monsindex = -mi;	/* fake index */
 # endif
 #endif
 		else			
@@ -411,6 +424,15 @@ xchar lev;
 		if(mtmp->mtame && tmoves > 250) {
 			mtmp->mtame = 0;
 			mtmp->mpeaceful = 0;
+		}
+
+		/* restore shape changers - Maarten Jan Huisjes */
+		if (mtmp->data->mlet == ':' && !Protection_from_shape_changers
+		    && !mtmp->cham) 
+			mtmp->cham = 1;
+		else if(mtmp->cham && Protection_from_shape_changers) {
+			mtmp->cham = 0;
+			(void) newcham(mtmp, PM_CHAMELEON);
 		}
 
 		newhp = mtmp->mhp +

@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)spell.c	1.4	87/08/08
-/* spell.c - version 1.0.1		M. Stephenson 07-04-86 */
+/*	SCCS Id: @(#)spell.c	2.1	87/10/07
+ */
 
 #include "hack.h"
 #ifdef SPELLS
@@ -94,19 +94,29 @@ doxcribe() {
 	} else  {
 		nomul(delay);			/* study time */
 		for(i = 0; i < MAXSPELL; i++)  {
-			if(spl_book[i].sp_id == booktype)  {
-				nomovemsg = "Oh, you already know that one!";
-				useup(book);
-				return(1);
-			} else if (spl_book[i].sp_id == NO_SPELL)  {
-				spl_book[i].sp_id = booktype;
-				spl_book[i].sp_lev = objects[booktype].spl_lev;
-				spl_book[i].sp_flags = objects[booktype].bits;
-				nomovemsg = "You add the spell to your books.";
-				objects[booktype].oc_name_known = 1;
-				useup(book);
-				return(1);
-			}
+		    if(spl_book[i].sp_id == booktype)  {
+#ifdef HARD
+			nomovemsg = "You make that spell more legible.";
+			spl_book[i].sp_uses += rn1(3,8-spl_book[i].sp_lev);
+#else			
+			nomovemsg = "Oh, you already know that one!";
+#endif
+			useup(book);
+			return(1);
+		    } else if (spl_book[i].sp_id == NO_SPELL)  {
+			spl_book[i].sp_id = booktype;
+			spl_book[i].sp_lev = objects[booktype].spl_lev;
+			spl_book[i].sp_flags = objects[booktype].bits;
+#ifdef HARD
+			/* spells have 2 .. 10-level uses. */
+			/* ie 2 or 3 uses w/ most potent */
+			spl_book[i].sp_uses = rn1(3,8-spl_book[i].sp_lev);
+#endif
+			nomovemsg = "You add the spell to your books.";
+			objects[booktype].oc_name_known = 1;
+			useup(book);
+			return(1);
+		    }
 		}
 		impossible("Too many spells in spellbook!");
 	}
@@ -117,28 +127,25 @@ doxcribe() {
 cursed_book(level)
 	register int	level;
 {
-	register int	nobj, cnt, onum;
-	register struct obj	*otmp;
-
 	switch(rn2(level)) {
 	case 0:
-		pline("you feel a wrenching sensation.");
+		pline("You feel a wrenching sensation.");
 		tele();		/* teleport him */
 		break;
 	case 1:
-		pline("you feel threatened.");
+		pline("You feel threatened.");
 		aggravate();
 		break;
 	case 2:
-		if(!Blind)	pline("a cloud of darkness falls upon you.");
-		Blind += rn1(100,250);
+		if(!Blind)	pline("A cloud of darkness falls upon you.");
+		Blinded += rn1(100,250);
 		seeoff(0);
 		break;
 	case 3:
 		if (u.ugold <= 0)  {
-			pline("you feel a strange sensation.");
+			pline("You feel a strange sensation.");
 		} else {
-			pline("you notice you have no gold!");
+			pline("You notice you have no gold!");
 			u.ugold = 0;
 			flags.botl = 1;
 		}
@@ -178,8 +185,33 @@ docast()
 	spell = getspell();
 	if (!spell) return(0);
 	else  {
-
+#ifdef HARD
+		/* note that turning to the page decrements the # of uses,  */
+		/* even if the mage does not have enough food/energy to use */
+		/* the spell */
+		switch (spelluses(spell)) {
+		case 0:
+		    pline ("That page is too faint to read at the moment.");
+		    return(0);
+		case 1:
+		    pline ("You can barely make out the runes on this page.");
+		    break;
+		case 2:
+		    pline ("This spell is starting to look well used.");
+		    break;
+		default:
+		    break;
+		}
+		decrnuses(spell);
+#endif		
 		energy = spellev(spell);
+#ifdef BVH
+		if (has_amulet()) {
+
+		    pline("You feel the amulet draining your energy away.");
+		    energy *= rnd(6);
+		}
+#endif
 		if(energy > u.uen)  {
 			pline("You are too weak to cast that spell.");
 			return(0);
@@ -190,10 +222,11 @@ docast()
 			morehungry(energy * 10);
 			u.uen -= energy;
 		}
+		flags.botl = 1;
 	}
 #ifdef HARD
 	if (confused ||
-	    (rn2(10) + u.ulevel + u.uluck - spellev(spell)) <= 0) {
+	    (rn2(10) + (int)(u.ulevel + u.uluck) - 3*spellev(spell)) < 0) {
 
 		if (Hallucination)
 			pline("Far out... a light show!");
@@ -283,7 +316,6 @@ docast()
 		obfree(pseudo, (struct obj *)0);
 		return(0);
 	}
-	flags.botl = 1;
 	obfree(pseudo, (struct obj *)0);	/* now, get rid of it */
 	return(1);
 }
@@ -402,9 +434,11 @@ spellname(spl)  {
 	return(objects[spl_book[spl-1].sp_id].oc_name);
 }
 
-spellid(spl)  {
+spellid(spl)  {		return(spl_book[spl-1].sp_id);		}
 
-	return(spl_book[spl-1].sp_id);
-}
+#ifdef HARD
+spelluses(spell) {	return(spl_book[spell-1].sp_uses);	}
+decrnuses(spell) {	spl_book[spell-1].sp_uses--;		}
+#endif
 
 #endif /* SPELLS /**/

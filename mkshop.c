@@ -1,32 +1,21 @@
-/*	SCCS Id: @(#)mkshop.c	1.3	87/07/14
+/*	SCCS Id: @(#)mkshop.c	2.1	87/09/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mkshop.c - version 1.0.3 */
 
 #ifndef QUEST
 #include "hack.h"
 #include "mkroom.h"
-#include "eshk.h"
-#define	ESHK	((struct eshk *)(&(shk->mextra[0])))
 extern struct monst *makemon();
 extern struct obj *mkobj_at();
 extern int nroom;
-extern char shtypes[];	/* = "=/+)%?!["; 9 types: 8 specialized, 1 mixed */
-#ifdef SPELLS
-schar shprobs[] = { 3,3,3,5,5,10,10,14,47 };	/* their probabilities */
-#else
-schar shprobs[] = { 3,3,5,5,10,10,14,50 };	/* their probabilities */
-#endif
 
 mkshop(){
 register struct mkroom *sroom;
-register int sh,sx,sy,i = -1;
-register char let;
-int roomno;
-register struct monst *shk;
+int roomno, i = -1;
 #ifdef WIZARD
+extern char *getenv();
+
 	/* first determine shoptype */
 	if(wizard){
-		extern char *getenv();
 		register char *ep = getenv("SHOPTYPE");
 		if(ep){
 			if(*ep == 'z' || *ep == 'Z'){
@@ -51,9 +40,9 @@ register struct monst *shk;
 				mkswamp();
 				return;
 			}
-			for(i=0; shtypes[i]; i++)
-				if(*ep == shtypes[i]) break;
-			goto gottype;
+			for(i=0; shtypes[i].name; i++)
+				if(*ep == shtypes[i].symb) goto gottype;
+			i = -1;
 		}
 	}
 gottype:
@@ -64,7 +53,7 @@ gottype:
 			pline("rooms not closed by -1?");
 			return;
 		}
-		if(sroom->rtype) continue;
+		if(sroom->rtype != OROOM) continue;
 		if(!sroom->rlit || has_dnstairs(sroom) || has_upstairs(sroom))
 			continue;
 		if(
@@ -77,71 +66,23 @@ gottype:
 	if(i < 0) {			/* shoptype not yet determined */
 	    register int j;
 
-	    for(j = rn2(100), i = 0; (j -= shprobs[i])>= 0; i++)
-		if(!shtypes[i]) break;			/* superfluous */
-	    if(isbig(sroom) && i + SHOPBASE == WANDSHOP)
-		i = GENERAL-SHOPBASE;
-	}
-	sroom->rtype = i + SHOPBASE;
-	let = shtypes[i];
-	sh = sroom->fdoor;
-	sx = doors[sh].x;
-	sy = doors[sh].y;
-	if(sx == sroom->lx-1) sx++; else
-	if(sx == sroom->hx+1) sx--; else
-	if(sy == sroom->ly-1) sy++; else
-	if(sy == sroom->hy+1) sy--; else {
-#ifdef WIZARD
-	    /* This is said to happen sometimes, but I've never seen it. */
-	    if(wizard) {
-		register int j = sroom->doorct;
-		extern int doorindex;
+	    /* pick a shop type at random */
+	    for(j = rn2(100), i = 0; j -= shtypes[i].prob; i++)
+		if (j < 0)	break;
 
-		pline("Where is shopdoor?");
-		pline("Room at (%d,%d),(%d,%d).", sroom->lx, sroom->ly,
-			sroom->hx, sroom->hy);
-		pline("doormax=%d doorct=%d fdoor=%d",
-			doorindex, sroom->doorct, sh);
-		while(j--) {
-			pline("door [%d,%d]", doors[sh].x, doors[sh].y);
-			sh++;
-		}
-		more();
-	    }
+	    /* big rooms cannot be wand or book shops,
+	     * - so make them general stores
+	     */
+	    if(isbig(sroom) && (shtypes[i].symb == WAND_SYM
+#ifdef SPELLS
+				|| shtypes[i].symb == SPBOOK_SYM
 #endif
-	    return;
+								)) i = 0;
 	}
-	if(!(shk = makemon(PM_SHK,sx,sy))) return;
-	shk->isshk = shk->mpeaceful = 1;
-	shk->msleep = 0;
-	shk->mtrapseen = ~0;	/* we know all the traps already */
-	ESHK->shoproom = roomno;
-	ESHK->shoplevel = dlevel;
-	ESHK->shd = doors[sh];
-	ESHK->shk.x = sx;
-	ESHK->shk.y = sy;
-	ESHK->robbed = 0;
-	ESHK->visitct = 0;
-	ESHK->following = 0;
-	shk->mgold = 1000 + 30*rnd(100);	/* initial capital */
-	ESHK->billct = 0;
-	findname(ESHK->shknam, let);
-	for(sx = sroom->lx; sx <= sroom->hx; sx++)
-	for(sy = sroom->ly; sy <= sroom->hy; sy++){
-		register struct monst *mtmp;
-		if((sx == sroom->lx && doors[sh].x == sx-1) ||
-		   (sx == sroom->hx && doors[sh].x == sx+1) ||
-		   (sy == sroom->ly && doors[sh].y == sy-1) ||
-		   (sy == sroom->hy && doors[sh].y == sy+1)) continue;
-		if(rn2(100) < dlevel && !m_at(sx,sy) &&
-		   (mtmp = makemon(PM_MIMIC, sx, sy))){
-			mtmp->mimic = 1;
-			mtmp->mappearance =
-			    (let && rn2(10) < dlevel) ? let : ']';
-			continue;
-		}
-		(void) mkobj_at(let, sx, sy);
-	}
+	sroom->rtype = SHOPBASE + i;
+
+	/* stock the room with a shopkeeper and artifacts */
+	stock_room(&(shtypes[i]), sroom);
 }
 
 mkzoo(type)
@@ -163,8 +104,7 @@ int type;
 			sroom = &rooms[0];
 		if(!i-- || sroom->hx < 0)
 			return;
-		if(sroom->rtype)			continue;
-		if(type == MORGUE && sroom->rlit)	continue;
+		if(sroom->rtype != OROOM)	continue;
 		if(has_upstairs(sroom) || (has_dnstairs(sroom) && rn2(3)))
 			continue;
 		if(sroom->doorct == 1 || !rn2(5))
@@ -237,7 +177,7 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 
 	for(i=0; i<5; i++) {		/* 5 tries */
 		sroom = &rooms[rn2(nroom)];
-		if(sroom->hx < 0 || sroom->rtype ||
+		if(sroom->hx < 0 || sroom->rtype != OROOM ||
 		   has_upstairs(sroom) || has_dnstairs(sroom))
 			continue;
 

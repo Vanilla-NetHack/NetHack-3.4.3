@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)alloc.c	1.3	87/07/14
+/*	SCCS Id: @(#)alloc.c	1.4	87/08/08
 /* alloc.c - version 1.0.2 */
 #ifdef LINT
 

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)search.c	1.4	87/08/08
+/*	SCCS Id: @(#)search.c	2.1	87/11/10
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* search.c - version 1.0.3 */
 
 #include "hack.h"
 char *rndmonnam(), *defmonnam();
@@ -55,6 +54,12 @@ dosearch()
 	register xchar x,y;
 	register struct trap *trap;
 	register struct monst *mtmp;
+#ifdef BVH	/* if weapon is Excalibur give the user the sword's
+		 * magic bonus (+ or -) to search for hidden objects.
+		 */
+	int fund = (uwep && !strcmp(ONAME(uwep),"Excalibur")) ?
+			((uwep->spe > 5) ? 5 : uwep->spe) : 0;
+#endif
 
 	if(u.uswallow)
 		pline("What are you looking for? The exit?");
@@ -62,13 +67,13 @@ dosearch()
 	for(x = u.ux-1; x < u.ux+2; x++)
 	for(y = u.uy-1; y < u.uy+2; y++) if(x != u.ux || y != u.uy) {
 		if(levl[x][y].typ == SDOOR) {
-			if(rn2(7)) continue;
+			if(rn2(7-fund)) continue;
 			levl[x][y].typ = DOOR;
 			levl[x][y].seen = 0;	/* force prl */
 			prl(x,y);
 			nomul(0);
 		} else if(levl[x][y].typ == SCORR) {
-			if(rn2(7)) continue;
+			if(rn2(7-fund)) continue;
 			levl[x][y].typ = CORR;
 			levl[x][y].seen = 0;	/* force prl */
 			prl(x,y);

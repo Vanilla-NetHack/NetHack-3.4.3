@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)invent.c	1.3	87/07/14
+/*	SCCS Id: @(#)invent.c	2.1	87/10/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* invent.c - version 1.0.3 */
 
 #include	<stdio.h>
 #include	"hack.h"
@@ -279,7 +278,7 @@ register long q;
 
 	otmp = newobj(0);
 	/* should set o_id etc. but otmp will be freed soon */
-	otmp->olet = '$';
+	otmp->olet = GOLD_SYM;
 	u.ugold -= q;
 	OGOLD(otmp) = q;
 	flags.botl = 1;
@@ -310,11 +309,11 @@ register char *let,*word;
 	long cnt;
 
 	if(*let == '0') let++, allowcnt = 1;
-	if(*let == '$') let++, allowgold = TRUE;
+	if(*let == GOLD_SYM) let++, allowgold = TRUE;
 	if(*let == '#') let++, allowall = TRUE;
 	if(*let == '-') let++, allownone = TRUE;
 	if(allownone) *bp++ = '-';
-	if(allowgold) *bp++ = '$';
+	if(allowgold) *bp++ = GOLD_SYM;
 	if(bp > buf && bp[-1] == '-') *bp++ = ' ';
 
 	ilet = 'a';
@@ -366,18 +365,18 @@ register char *let,*word;
 		return(0);
 	}
 	for(;;) {
-		if(!buf[0])
+		if(!buf[0]) {
 #ifdef REDO
 		    if(!in_doagain)
 #endif
 			pline("What do you want to %s [*]? ", word);
-		else
+		} else {
 #ifdef REDO
 		    if(!in_doagain)
 #endif
 			pline("What do you want to %s [%s or ?*]? ",
 				word, buf);
-
+		}
 		cnt = 0;
 		ilet = readchar();
 		while(digit(ilet) && allowcnt) {
@@ -392,12 +391,14 @@ register char *let,*word;
 			pline("No count allowed with this command.");
 			continue;
 		}
-		if(index(quitchars,ilet))
+		if(index(quitchars,ilet)) {
+			pline("Never mind.");
 			return((struct obj *)0);
+		}
 		if(ilet == '-') {
 			return(allownone ? &zeroobj : (struct obj *) 0);
 		}
-		if(ilet == '$') {
+		if(ilet == GOLD_SYM) {
 			if(!allowgold){
 				pline("You cannot %s gold.", word);
 				continue;
@@ -478,7 +479,7 @@ xchar allowgold = (u.ugold && !strcmp(word, "drop")) ? 1 : 0;	/* BAH */
 		register struct obj *otmp = invent;
 		register int uflg = 0;
 
-		if(allowgold) ilets[iletct++] = '$';
+		if(allowgold) ilets[iletct++] = GOLD_SYM;
 		ilets[iletct] = 0;
 		while(otmp) {
 			if(!index(ilets, otmp->olet)){
@@ -504,7 +505,7 @@ xchar allowgold = (u.ugold && !strcmp(word, "drop")) ? 1 : 0;	/* BAH */
 	olets[0] = 0;
 	while(sym = *ip++){
 		if(sym == ' ') continue;
-		if(sym == '$') {
+		if(sym == GOLD_SYM) {
 			if(allowgold == 1)
 				(*fn)(mkgoldobj(u.ugold));
 			else if(!u.ugold)
@@ -714,7 +715,7 @@ dotypeinv ()				/* free after Robert Viduya */
 	}
 
 	stct = 0;
-	if(u.ugold) stuff[stct++] = '$';
+	if(u.ugold) stuff[stct++] = GOLD_SYM;
 	stuff[stct] = 0;
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
 	    if (!index (stuff, otmp->olet)) {
@@ -738,11 +739,14 @@ dotypeinv ()				/* free after Robert Viduya */
 #ifdef REDO
 	    savech(c);
 #endif
-	    if(index(quitchars,c)) return(0);
+	    if(index(quitchars,c)) {
+	    	    clrlin();
+	    	    return(0);
+	    }
 	} else
 	    c = stuff[0];
 
-	if(c == '$')
+	if(c == GOLD_SYM)
 	    return(doprgold());
 
 	if(c == 'x' || c == 'X') {
@@ -784,7 +788,7 @@ dolook() {
     int fd = 0;
 
 #ifdef KAA
-    if(!Blind) read_engr_at(u.ux, u.uy); /* Eric Backus */
+    read_engr_at(u.ux, u.uy); /* Eric Backus */
 #endif
     if(!u.uswallow) {
 	otmp0 = o_at(u.ux, u.uy);
@@ -813,7 +817,7 @@ dolook() {
     }
     if(u.ux == xdnstair && u.uy == ydnstair)  {
 	fd++;
-	cornline(1, "There is a stairway down here.");
+	pline("There is a stairway down here.");
     }
     if(Blind)  {
 	 pline("You try to feel what is lying here on the floor.");
@@ -834,6 +838,7 @@ dolook() {
 	if(otmp->ox == u.ux && otmp->oy == u.uy) {
 	    ct++;
 	    cornline(1, doname(otmp));
+			
 	    if(Blind && otmp->otyp == DEAD_COCKATRICE && !uarmg) {
 		pline("Touching the dead cockatrice is a fatal mistake ...");
 		pline("You die ...");
@@ -1011,11 +1016,27 @@ char let;
 {
 	char *pos = index(obj_symbols, let);
 	extern char *HI, *HE;
-	/* buffer size is len(HI) + len(HE) + max(len(names[])) + 1 */
-	static char buf[4 + 4 + 15 + 1];
+	/* arbitrary buffer size by Tom May (tom@uw-warp) */
+	static char *buf = NULL;
+
+	if (buf == NULL)
+	    buf = (char *) alloc (strlen(HI) + strlen(HE) + 15 + 1);
 
 	if (pos == NULL) pos = obj_symbols;
-	Sprintf(buf, "%s%s%s", HI, names[pos - obj_symbols], HE);
+	if (HI && HE)
+	    Sprintf(buf, "%s%s%s", HI, names[pos - obj_symbols], HE);
+	else
+	    Sprintf(buf, "%s", names[pos - obj_symbols]);
 	return (buf);
 }
 #endif /* SORTING /**/
+
+reassign ()
+{
+	register int i;
+	register struct obj *obj;
+
+	for(obj = invent, i = 0; obj; obj = obj->nobj, i++)
+		obj->invlet = (i < 26) ? ('a'+i) : ('A'+i-26);
+	lastinvnr = i;
+}

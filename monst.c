@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)monst.c	1.3	87/07/14
+/*	SCCS Id: @(#)monst.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* monst.c - version 1.0.2 */
 
 #include "hack.h"
 #include "eshk.h"
@@ -16,7 +15,6 @@ struct permonst mons[CMNUM+2] = {
 #else
 	{ "kobold",		'K',  1,  6, 7,  0, 1,  4, 0 },
 #endif
-	{ "leprechaun",		'L',  5, 15, 8, 20, 1,  2, 0 },
 #ifndef ROCKMOLE
 	{ "giant rat",		'r',  0, 12, 7,  0, 1,  3, 0 },
 #endif
@@ -24,6 +22,7 @@ struct permonst mons[CMNUM+2] = {
 	{ "floating eye",	'E',  2,  1, 9, 10, 0,  0, 0 },
 	{ "homunculus",		'h',  2,  6, 6, 10, 1,  3, 0 },
 	{ "imp",		'i',  2,  6, 2, 20, 1,  4, 0 },
+	{ "leprechaun",		'L',  5, 15, 8, 20, 1,  2, 0 },
 	{ "orc",		'O',  2,  9, 6,  0, 1,  8, 0 },
 	{ "yellow light",	'y',  3, 15, 0,  0, 0,  0, 0 },
 	{ "zombie",		'Z',  2,  6, 8,  0, 1,  8, 0 },
@@ -88,12 +87,22 @@ struct permonst mons[CMNUM+2] = {
 	{ "trapper",		',', 12,  3, 3,  0, 0,  0, 0 },
 	{ "purple worm",	'P', 15,  9, 6, 20, 2,  8, 0 },
 	{ "demon",		'&', 10, 12,-4, 30, 1,  4, 0 },
+#ifdef SAC
+	{ "soldier",		'3', 12,  9,-3, 15,10,  4, 0 },
+#endif /* SAC */
 	{ "minotaur",		'm', 15, 15, 6,  0, 4, 10, 0 },
 	{ "shopkeeper", 	'@', 12, 18, 0, 50, 4,  8, sizeof(struct eshk) }
 };
 
 struct permonst pm_ghost = { "ghost", ' ', 10, 3, -5, 50, 1, 1, sizeof(plname) };
+#ifdef SAC
+struct permonst pm_wizard = { "wizard of Yendor", '1', 20, 12, -8, 100, 2, 12, 0 };
+#else
 struct permonst pm_wizard = { "wizard of Yendor", '1', 15, 12, -2, 70, 1, 12, 0 };
+#endif
+#ifdef RPH
+struct permonst pm_medusa = {"medusa", '8', 15, 12, 2, 50, 1, 8, 0};
+#endif
 #ifdef MAIL
 struct permonst pm_mail_daemon = { "mail daemon", '2', 100, 1, 10, 127, 0, 0, 0 };
 #endif

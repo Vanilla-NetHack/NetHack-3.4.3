@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)func_tab.h	1.3	87/07/14
+/*	SCCS Id: @(#)func_tab.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* func_tab.h - version 1.0.2 */
 

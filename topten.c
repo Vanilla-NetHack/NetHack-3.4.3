@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)topten.c	1.4	87/08/08
+/*	SCCS Id: @(#)topten.c	2.1	87/09/28
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* topten.c - version 1.0 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -15,8 +14,8 @@ extern int done_hup, done_stopprint;
 
 #define newttentry() (struct toptenentry *) alloc(sizeof(struct toptenentry))
 #define	NAMSZ	10
-#define	DTHSZ	40
-#define	PERSMAX	 3
+#define	DTHSZ	60
+#define	PERSMAX	 3		/* entries per name/uid per char. allowed */
 #define	POINTSMIN	1	/* must be > 0 */
 #define	ENTRYMAX	100	/* must be >= 10 */
 #ifndef MSDOS
@@ -172,11 +171,11 @@ topten(){
 	    (rank < rank0-flags.end_around || rank > rank0+flags.end_around)
 	    && (!flags.end_own ||
 #ifdef PERS_IS_UID
-				  t1->uid != t0->uid ))
+				  t1->uid != t0->uid
 #else
-				  strncmp(t1->name, t0->name, NAMSZ)))
+				  strncmp(t1->name, t0->name, NAMSZ)
 #endif
-		continue;
+		)) continue;
 	  if(rank == rank0-flags.end_around &&
 	     rank0 > flags.end_top+flags.end_around+1 &&
 	     !flags.end_own)
@@ -204,7 +203,11 @@ unlock:	;
 outheader() {
 char linebuf[BUFSZ];
 register char *bp;
+#ifdef KJSMODS
+	(void) strcpy(linebuf, " No  Points    Name");
+#else
 	(void) strcpy(linebuf, "Number Points  Name");
+#endif
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
 	(void) strcpy(bp, "Hp [max]");
@@ -219,10 +222,14 @@ char linebuf[BUFSZ];
 	linebuf[0] = 0;
 	if(rank) Sprintf(eos(linebuf), "%3d", rank);
 		else Sprintf(eos(linebuf), "   ");
-#ifdef DGKMOD
-	Sprintf(eos(linebuf), " %6ld %10s", t1->points, t1->name);
+#ifdef KJSMODS
+	Sprintf(eos(linebuf), " %7ld %10s", t1->points, t1->name);
 #else
+# ifdef DGKMOD
+	Sprintf(eos(linebuf), " %6ld %10s", t1->points, t1->name);
+# else
 	Sprintf(eos(linebuf), " %6ld %8s", t1->points, t1->name);
+# endif
 #endif
 	if(t1->plchar == 'X') Sprintf(eos(linebuf), " ");
 	else Sprintf(eos(linebuf), "-%c ", t1->plchar);
@@ -235,9 +242,11 @@ char linebuf[BUFSZ];
 	} else {
 	  if(!strncmp(t1->death,"quit",4)) {
 	    quit = TRUE;
+#ifndef KJSMODS
 	    if(t1->maxhp < 3*t1->hp && t1->maxlvl < 4)
 		Sprintf(eos(linebuf), "cravenly gave up");
 	    else
+#endif
 		Sprintf(eos(linebuf), "quit");
 	  }
 	  else if(!strcmp(t1->death,"choked"))
@@ -262,9 +271,16 @@ char linebuf[BUFSZ];
 	  register char *bp = eos(linebuf);
 	  char hpbuf[10];
 	  int hppos;
+#ifdef KJSMODS
+	  int lngr = strlen(linebuf);
+#endif
 	  Sprintf(hpbuf, (t1->hp > 0) ? itoa(t1->hp) : "-");
 	  hppos = COLNO - 7 - strlen(hpbuf);
+#ifdef KJSMODS
+	  if (lngr >= hppos) hppos = (2*COLNO) - 7 - strlen(hpbuf);
+#endif
 	  if(bp <= linebuf + hppos) {
+	    /* pad any necessary blanks to the hit point entry */
 	    while(bp < linebuf + hppos) *bp++ = ' ';
 	    (void) strcpy(bp, hpbuf);
 	    Sprintf(eos(bp), " [%d]", t1->maxhp);

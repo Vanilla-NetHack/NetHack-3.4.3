@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)o_init.c	1.4	87/08/08
+/*	SCCS Id: @(#)o_init.c	2.0	87/09/16
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* o_init.c - version 1.0.3 */
 
 #include	"config.h"		/* for typedefs */
 #include	"objects.h"
@@ -17,7 +16,10 @@ register char ch;
 }
 
 init_objects(){
-register int i, j, first, last, sum, end, tmp_i;
+register int i, j, first, last, sum, end;
+#ifdef MSDOS
+register int tmp_i;
+#endif
 register char let, *tmp;
 
 	/* bug fix to prevent "initialization error" abort on Intel Xenix.
@@ -208,15 +210,18 @@ register int i;
 
 init_corpses() {
 
-#ifdef KOPS
-	strcpy(objects[DEAD_KOP].oc_name, "dead Kop");
-#endif
 #ifdef SPIDERS
 	strcpy(objects[DEAD_GIANT_SPIDER].oc_name, "dead giant spider");
 #endif
+
+#ifdef KOPS
+	strcpy(objects[DEAD_KOP].oc_name, "dead Kop");
+# endif
+
 #ifdef ROCKMOLE
 	strcpy(objects[DEAD_ROCKMOLE].oc_name, "dead rockmole");
 #endif
+
 #ifndef KAA
 	strcpy(objects[DEAD_QUASIT].oc_name, "dead quasit");
 	strcpy(objects[DEAD_VIOLET_FUNGI].oc_name, "dead violet fungi");

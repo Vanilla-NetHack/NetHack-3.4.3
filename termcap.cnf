@@ -1,0 +1,51 @@
+#
+# ibm-pc with color monitor: orange foreground, blue background
+#			     highlight is intense red on blue
+#			     underline is intense red on blue
+#
+ibmpc:\
+	:co#80:\
+	:li#24:\
+	:cl=\E[2J:\
+	:bs:\
+	:ho=\E[H:\
+	:cm=\E[%i%2;%2H:\
+	:up=\E[A:\
+	:xd=\E[B:\
+	:nd=\E[C:\
+	:bc=\E[D:\
+	:ce=\E[K:\
+	:ti=\E[0;33;44m:\
+	:te=\E[0;33;44m:\
+	:so=\E[1;31;44m:\
+	:se=\E[0;33;44m:\
+	:us=\E[1;31;44m:\
+	:ue=\E[0;33;44m:\
+	:al=\E[L:\
+	:dl=\E[M:
+#
+# Monochrome IBMPC.
+#	This is a termcap for the NANSI.SYS device driver.
+#	It is the same as the ANSI termcap, except NANSI supports
+#	line insert (al) and delete (dl) while ANSI does not.
+#
+ibmpc-mono:\
+	:co#80:\
+	:li#24:\
+	:cl=\E[2J:\
+	:bs:\
+	:ho=\E[H:\
+	:cm=\E[%i%2;%2H:\
+	:up=\E[A:\
+	:xd=\E[B:\
+	:nd=\E[C:\
+	:bc=\E[D:\
+	:ce=\E[K:\
+	:ti=\E[m:\
+	:te=\E[m:\
+	:so=\E[1m:\
+	:se=\E[m:\
+	:us=\E[1m:\
+	:ue=\E[m:\
+	:al=\E[L:\
+	:dl=\E[M:

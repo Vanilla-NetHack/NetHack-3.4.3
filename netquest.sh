@@ -1,5 +1,5 @@
 #!/bin/sh
-#	SCCS Id: @(#)netquest.sh	1.3	87/07/14
+#	SCCS Id: @(#)netquest.sh	1.4	87/08/08
 QUESTDIR=/usr/games/lib/questdir
 QUEST=$HACKDIR/netquest
 MAXNROFPLAYERS=4

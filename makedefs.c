@@ -1,13 +1,14 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* makedefs.c - NetHack version 1.0 */
+/* makedefs.c - NetHack version 2.2 */
 
-static	char	SCCS_Id[] = "@(#)makedefs.c	1.4\t87/08/08";
+static	char	SCCS_Id[] = "@(#)makedefs.c	2.2\t87/11/29";
 
-#include	"config.h"
 #include	<stdio.h>
+#include	"config.h"
 
 #ifdef MSDOS
 #undef	exit
+#define freopen _freopen
 #define	alloc	malloc
 #define RDMODE	"r"
 #define WRMODE	"w"
@@ -84,7 +85,6 @@ FILE	*freopen();
 	}
 	ntrap = 10;
 	printf("\n");
-
 #ifdef NEWTRAPS
 	printf("#define\tMGTRP\t\t%d\n", ntrap++);
 	printf("#define\tSQBRD\t\t%d\n", ntrap++);
@@ -101,6 +101,9 @@ FILE	*freopen();
 #endif
 #ifdef KAA
 	printf("#define\tRUST_TRAP\t%d\n", ntrap++);
+# ifdef RPH
+	printf("#define\tPOLY_TRAP\t%d\n", ntrap++);
+# endif
 #endif
 	printf("\n#define\tTRAPNUM\t%d\n", ntrap);
 	fclose(stdin);
@@ -247,13 +250,31 @@ FILE	*freopen();
 #ifdef NEWCLASS
 	    if(!strcmp(inline, "^	a trap")) {
 		puts(inline);
-		printf("\\\tan opulant throne.\n");
+		printf("\\\tan opulent throne.\n");
 	    } else
 #endif
 		puts(inline);
 	}
+#ifdef SAC
+	printf("3\ta soldier\n");
+#endif
+#ifdef RPH
+	printf("8\tthe medusa;\n");
+	printf("\tThis hideous  creature from  ancient Greek myth was the doom\n");
+	printf("\tof many a valiant adventurer.  It is said that one gaze from\n");
+	printf("\tits eyes  could turn a man to stone.  One bite from the nest\n");
+	printf("\tof  snakes which  crown its head could  cause instant death.\n");
+	printf("\tThe only  way to kill this  monstrosity is to turn its  gaze\n");
+	printf("\tback upon itself.\n"); 
+#endif
 #ifdef KAA
-	printf("9\ta giant\n");
+	printf("9\ta giant;\n");
+	printf("\tGiants have always walked the earth, though they are rare in\n");
+	printf("\tthese times.  They range in size from  little over nine feet\n");
+	printf("\tto a towering twenty feet or more.  The larger ones use huge\n");
+	printf("\tboulders as weapons, hurling them over large distances.  All\n");
+	printf("\ttypes of giants share a love for men  -  roasted, boiled, or\n");
+	printf("\tfried.  Their table manners are legendary.\n");
 #endif
 	fclose(stdin);
 	fclose(stdout);
@@ -308,7 +329,7 @@ int skip;
 		if (! duplicate()) {
 
 		    if(!strncmp(current->string, "RIN_", 4))
-			    specprop(current->string+4, propct++);
+			    propct = specprop(current->string+4, propct);
 		    for(sp = current->string; *sp; sp++) capitalize(sp);
 		    /* avoid trouble with stupid C preprocessors */
 		    if(!strncmp(current->string, "WORTHLESS_PIECE_OF_", 19))
@@ -397,11 +418,11 @@ specprop(name, count)
 		printf("#define\tH%s\tu.uprops[%d].p_flgs\n", tname, count);
 		printf("#define\t%s\t((H%s) || index(\"%s\", u.usym))\n",
 			tname, tname, abilities[i].monsters);
-		return(0);
+		return(++count);
 	    }
 
 	printf("#define\t%s\tu.uprops[%d].p_flgs\n", tname, count);
-	return(0);
+	return(++count);
 }
 
 char line[LINSZ], *lp = line, *lp0 = line, *lpe = line;
@@ -527,17 +548,17 @@ char identif[NSZ], *ip;
 			goto swi;
 		case ',':
 			if(!inparens && !inbraces){
-				if(prefix && !current->string[prefix]) {
+			    if(prefix && !current->string[prefix]) {
 #ifndef SPELLS
-					*skip = strncmp(current->string, "SPE_", 4);
+				*skip = strncmp(current->string, "SPE_", 4);
 #else
-					*skip = 1;
+				*skip = 1;
 #endif
-					current->string[0] = 0;
-				}
-				if(stringseen) return(1);
-				printf("unexpected ,\n");
-				exit(1);
+				current->string[0] = 0;
+			    }
+			    if(stringseen) return(1);
+			    printf("unexpected ,\n");
+			    exit(1);
 			}
 			commaseen++;
 			continue;
@@ -627,8 +648,32 @@ rename(oldname, newname)
 }
 #endif
 
-#ifdef __TURBOC__
+#ifdef MSDOS
+/* Get around bug in freopen when opening for writing	*/
+/* Supplied by Nathan Glasser (nathan@mit-eddie)	*/
+#undef freopen
+FILE *_freopen(fname, fmode, fp)
+char *fname, *fmode;
+FILE *fp;
+{
+    if (!strncmp(fmode,"w",1))
+    {
+        FILE *tmpfp;
+
+        if ((tmpfp = fopen(fname,fmode)) == NULL)
+            return(NULL);
+        if (dup2(fileno(tmpfp),fileno(fp)) < 0)
+            return(NULL);
+        fclose(tmpfp);
+        return(fp);
+    }
+    else
+        return(freopen(fname,fmode,fp));
+}
+
+# ifdef __TURBOC__
 int getpid() {
 	return(1);
 }
+# endif
 #endif

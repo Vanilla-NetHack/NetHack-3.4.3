@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)rm.h	1.4	87/08/08
+/*	SCCS Id: @(#)rm.h	2.1	87/10/17
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* rm.h - version 1.0.2 */
 
 /*
  * The dungeon presentation graphics code and data structures were rewritten
@@ -33,7 +32,13 @@
 #define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
 #define	ACCESSIBLE(typ)	((typ) >= DOOR)			/* good position */
 #define	IS_ROOM(typ)		((typ) >= ROOM)		/* ROOM or STAIRS */
+#ifdef RPH
+/* zappable positions include 1 in 5 doors. */
+#define ZAP_POS(typ)	((typ) >= POOL || (((typ) == DOOR) && !rn2(5)))
+#define SPACE_POS(typ)	((typ) > DOOR)
+#else
 #define	ZAP_POS(typ)		((typ) > DOOR)
+#endif
 #define IS_POOL(typ)    ((typ) == POOL)
 #define IS_THRONE(typ)    ((typ) == THRONE)
 #define IS_FOUNTAIN(typ)        ((typ) == FOUNTAIN)
@@ -144,4 +149,5 @@ struct finfo {
 	long	size;
 };
 extern struct finfo fileinfo[];
+#define ZFINFO	{ 0, 0L, 0L }
 #endif

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)apply.c	1.4	87/08/08
+/*	SCCS Id: @(#)apply.c	2.1	87/09/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* apply.c - version 1.0.3 */
 
 #include	"hack.h"
 #include	"edog.h"
@@ -20,6 +19,9 @@ static use_camera(), use_ice_box(), use_whistle();
 static use_magic_whistle(), use_pick_axe();
 #ifdef MARKER
 extern int dowrite();
+#endif
+#ifdef RPH
+static use_mirror();
 #endif
 
 doapply() {
@@ -47,6 +49,11 @@ doapply() {
 	case WHISTLE:
 		use_whistle(obj);
 		break;
+#ifdef RPH
+	case MIRROR:
+		use_mirror(obj);
+		break;
+#endif
 #ifdef WALKIES
 	case LEASH:
 		use_leash(obj);
@@ -70,9 +77,19 @@ doapply() {
 
 #ifdef KAA
 	case STETHOSCOPE:
-		res = use_stethoscope(obj);
+		res = use_stethoscope();
 		break;
 #endif
+	case BLINDFOLD:
+		if (Blindfolded) {
+		    Blindfolded = 0;
+		    if (!Blinded)	Blinded = 1;	/* see on next move */
+		    else		pline("You still cannot see.");
+		} else {
+		    Blindfolded = 1;
+		    seeoff(0);
+		}
+		break;
 	default:
 		pline("Sorry, I don't know how to use that.");
 	xit:
@@ -104,7 +121,7 @@ register struct monst *mtmp;
 	if(!u.dx && !u.dy && !u.dz) {
 		if(!Blind) {
 			pline("You are blinded by the flash!");
-			Blind += rnd(25);
+			Blinded += rnd(25);
 			seeoff(0);
 		}
 		return;
@@ -142,7 +159,7 @@ register struct monst *mtmp;
 /* Strictly speaking it makes no sense for usage of a stethoscope to
    not take any time; however, unless it did, the stethoscope would be
    almost useless. */
-static use_stethoscope(obj) register struct obj *obj; {
+static use_stethoscope() {
 register struct monst *mtmp;
 register struct rm *lev;
 register int rx, ry;
@@ -334,9 +351,19 @@ register struct monst *mtmp = fmon;
 
 			mtmp->mleashed = 0;
 			pline("You remove the leash from your %s.",
+#ifdef RPH
+		/* a hack to include the dogs full name.  +4 elminates */
+		/* the 'the' at the start of the name */
+				 lmonnam(mtmp) + 4);
+#else
 				 mtmp->data->mname);
+#endif
 		} else	pline("You must be next to your %s to unleash him.",
+#ifdef RPH
+				lmonnam(mtmp)+4);
+#else
 				 mtmp->data->mname);
+#endif
 	} else {
 
 	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
@@ -426,7 +453,7 @@ dig() {
 		if(IS_WALL(levl[dpx][dpy].typ)) {
 			register int rno = inroom(dpx,dpy);
 
-			if(rno >= 0 && rooms[rno].rtype >= 8) {
+			if(rno >= 0 && rooms[rno].rtype >= SHOPBASE) {
 			  pline("This wall seems too hard to dig into.");
 			  return(0);
 			}
@@ -601,3 +628,107 @@ struct obj *obj;
 	}
 	return(1);
 }
+
+#ifdef RPH
+static
+use_mirror(obj)
+struct obj *obj;
+{
+     register struct monst *mtmp;
+     register char mlet;
+     extern mpickobj(), freeinv(), rloc();
+
+	if(!getdir(1)){		/* ask: in what direction? */
+		flags.move = multi = 0;
+		return;
+	}
+	if(u.uswallow) {
+		pline("You reflect %s's stomach.", monnam(u.ustuck));
+		return;
+	}
+	if(u.dz) {
+		pline("You reflect the %s.",
+			(u.dz > 0) ? "floor" : "ceiling");
+		return;
+	}
+	if(!u.dx && !u.dy && !u.dz) {
+		if(!Blind) 
+		    pline ("You look as ugly as ever.");
+		else {
+		    if (rn2(4-u.uluck/3) || !HTelepat) 
+		        pline ("You can't see your ugly face.");
+		    else {
+			char *tm, *tl; int ll;
+			if (rn2(4)) {
+			    tm = "ugly monster";
+			    ll = dlevel - u.medusa_level;
+			}
+			else {
+			    tm = "intelligent being";
+			    ll = dlevel - u.wiz_level;
+			}
+			if (ll < -10) tl = "far below you";
+			else if (ll < -1) tl = "below you";
+			else if (ll == -1) tl = "under your feet";
+			else if (ll == 0)  tl = "very close to you";
+			else if (ll == 1) tl = "above your head";
+			else if (ll > 10) tl = "far above you";
+			else tl = "above you";
+			pline ("You get an impression that an %s lives %s.",
+				tm, tl);
+		    }
+		}
+		return;
+	}
+	if(mtmp = bchit(u.dx, u.dy, COLNO, 0)) {
+	    mlet = mtmp->data->mlet;
+	    if(mtmp->msleep){
+	        pline ("%s is tired and doesn't look at your mirror.",
+	        	    Monnam(mtmp));
+	        mtmp->msleep = 0;
+	    } else
+	    if (!mtmp->mcansee) {
+	        pline("%s can't see anything at the moment.",
+	        	Monnam(mtmp));
+	    }
+	    /* some monsters do special things */
+	    else if (!mtmp->mcan && index("EUN8",mlet))
+	     switch (mlet) {
+	      case '8':
+	      	    pline("%s is turned to stone!", Monnam(mtmp));
+		    killed(mtmp);
+		    break;
+	      case 'E':
+	            pline("%s is frozen by its reflection.",Monnam(mtmp));
+	            mtmp->mfroz = 1;
+	    	    break;
+	      case 'U':
+	    	    pline ("%s has confused itself!", Monnam(mtmp));
+	    	    mtmp->mconf = 1;
+		    break;
+	      case 'N':
+	    	    pline ("%s looks beautiful in your mirror.",Monnam(mtmp));
+	    	    pline ("She decides to take it!");
+	    	    freeinv(obj);
+	    	    mpickobj(mtmp,obj);
+	    	    rloc(mtmp);
+	    	    break;
+	      default:
+	      	    break;
+	     }
+	    else if (mlet == 'V' || mlet == '&') 
+	        pline ("%s doesn't seem to reflect anything.", Monnam(mtmp));
+	    else if (!index("agquv1N", mlet) && rn2(5)) {
+	        pline ("%s is frightened by its reflection.",
+	        	    Monnam(mtmp));
+	        mtmp->mflee = 1;
+	        mtmp->mfleetim += d(2,4);
+	    }
+	    else
+	        pline ("%s doesn't seem to mind %s refection.",
+	    	    Monnam(mtmp),
+	    	    (mlet=='1'?"his":(mlet=='N'?"her":"its")));
+	}/* if monster hit with mirror */
+}/* use_mirror */
+
+#endif

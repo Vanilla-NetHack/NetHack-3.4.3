@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)mkobj.c	1.4	87/08/08
+/*	SCCS Id: @(#)mkobj.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mkobj.c - version 1.0.3 */
 
 #include "hack.h"
 #ifdef SPELLS
@@ -13,7 +12,7 @@ struct obj *mkobj(), *mksobj();
 
 struct obj *
 mkobj_at(let,x,y)
-register let,x,y;
+register int let,x,y;
 {
 	register struct obj *otmp = mkobj(let);
 	otmp->ox = x;
@@ -23,24 +22,52 @@ register let,x,y;
 	return(otmp);
 }
 
+struct obj *
 mksobj_at(otyp,x,y)
-register otyp,x,y;
+register int otyp,x,y;
 {
 	register struct obj *otmp = mksobj(otyp);
 	otmp->ox = x;
 	otmp->oy = y;
 	otmp->nobj = fobj;
-	fobj = otmp;
+	return((fobj = otmp));
 }
+
+#ifdef RPH
+struct obj *
+mk_named_obj_at (let, x, y, nm, lth)	/* used for named corpses */
+register let, x, y;
+char * nm;
+register int lth;
+{
+	register struct obj *otmp;
+	register struct obj *obj2;
+
+	if (lth == 0)  return (mkobj_at (let,x,y));
+
+	otmp =  mkobj(let);
+	obj2 = newobj(lth);
+	*obj2 = *otmp;
+	obj2->onamelth = lth;
+	(void) strcpy (ONAME(obj2), nm);
+	free( (char *)otmp);
+	obj2->ox = x;
+	obj2->oy = y;
+	obj2->nobj = fobj;
+	fobj = obj2;
+	return(obj2);
+}
+#endif
 
 struct obj *
 mkobj(let) {
 int realtype;
 	switch (let) {
-		case 0: {
+		case RANDOM_SYM: {
 			realtype=probtype(mkobjstr[rn2(sizeof(mkobjstr)-1)]);
 			break;
 		}
+		case '3': { realtype = DEAD_SOLDIER; break; }
 		case '9': { realtype = DEAD_GIANT; break; }
 		case '&': { realtype = DEAD_DEMON; break; }
 		default: realtype = letter(let) ?
@@ -123,7 +150,11 @@ register otyp;
 		}
 		break;
 	case WAND_SYM:
+#ifdef HARD
+		if(otmp->otyp == WAN_WISHING) otmp->spe = rnd(3); else
+#else		
 		if(otmp->otyp == WAN_WISHING) otmp->spe = 3; else
+#endif		
 		otmp->spe = rn1(5,
 			(objects[otmp->otyp].bits & NODIR) ? 11 : 4);
 		break;
@@ -134,12 +165,13 @@ register otyp;
 				otmp->spe = -rne(3);
 			} else otmp->spe = rne(3);
 		} else if(otmp->otyp == RIN_TELEPORTATION ||
+			  otmp->otyp == RIN_POLYMORPH ||
 			  otmp->otyp == RIN_AGGRAVATE_MONSTER ||
 			  otmp->otyp == RIN_HUNGER || !rn2(9))
 			otmp->cursed = 1;
 		break;
 	default:
-		panic("impossible mkobj %d", otmp->otyp);
+		panic("impossible mkobj %d, sym '%c'.", otmp->otyp, let);
 	}
 	otmp->owt = weight(otmp);
 	return(otmp);

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)makemon.c	1.4	87/08/08
+/*	SCCS Id: @(#)makemon.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* makemon.c - version 1.0.2 */
 
 #include	"hack.h"
 extern char fut_geno[];
@@ -14,6 +13,14 @@ extern boolean in_mklev;
 struct permonst d_lord   = { "demon lord",	'&',12,13,-5,50,1,5,0 },
 		d_prince = { "demon prince",	'&',14,14,-6,70,1,6,0 };
 #endif
+#ifdef KJSMODS
+# ifdef KOPS
+struct permonst kobold = { "kobold",'K',1,6,7,0,1,4,0 };
+# endif
+# ifdef ROCKMOLE
+struct permonst giant_rat = { "giant rat",'r',0,12,7,0,1,3,0 };
+# endif
+#endif /* KJSMODS /**/
 
 /*
  * called with [x,y] = coordinates;
@@ -29,46 +36,67 @@ makemon(ptr,x,y)
 register struct permonst *ptr;
 {
 	register struct monst *mtmp;
-	register tmp, ct;
+	register nleft, deep, ct;
 	boolean anything = (!ptr);
-
+	int zlevel = dlevel;
+#ifdef BVH
+	if(has_amulet()) zlevel = 40;
+#endif
+	/* if a monster already exists at the position, return */
 	if(x != 0 || y != 0) if(m_at(x,y)) return((struct monst *) 0);
 	if(ptr){
+		/* if you are to make a specific monster and it has 
+		   already been genocided, return */
 		if(index(fut_geno, ptr->mlet)) return((struct monst *) 0);
 	} else {
-		ct = CMNUM - strlen(fut_geno);
-		if(index(fut_geno, 'm')) ct++;  /* make only 1 minotaur */
-		if(index(fut_geno, '@')) ct++;
-		if(ct <= 0) return(0); 		  /* no more monsters! */
-		tmp = 7;
-#ifdef KOPS
-		tmp--;
-#endif
+		/* make a random (common) monster. */
+		nleft = CMNUM - strlen(fut_geno);
+		if(index(fut_geno, 'm')) nleft++;  /* only 1 minotaur */
+		if(index(fut_geno, '@')) nleft++;
+		if(nleft <= 0)
+		    return((struct monst *) 0);	/* no more monsters! */
+
+		/* determine the strongest monster to make. */
 #ifdef ROCKMOLE
-		if(dlevel<4) tmp--;
+		deep = rn2(nleft*zlevel/24 + 6);
+#else
+		deep = rn2(nleft*zlevel/24 + 7);
 #endif
-		tmp = rn2(ct*dlevel/24 + 7);
-		if(tmp < dlevel - 4) tmp = rn2(ct*dlevel/24 + 12);
-		if(tmp >= ct) tmp = rn1(ct - ct/2, ct/2);
-		ct = 0;
-#ifdef KOPS
-		ct++;
-#endif
-		while(!(tmp + 1 <= CMNUM - ct))	tmp--;
-		for(; ct < CMNUM; ct++){
+		if(deep < zlevel - 4) deep = rn2(nleft*zlevel/24 + 12);
+		/* if deep is greater than the number of monsters left 
+		   to create, set deep to a random number between half 
+		   the number left and the number left. */
+		if(deep >= nleft) deep = rn1(nleft - nleft/2, nleft/2);
+
+		for(ct = 0 ; ct < CMNUM ; ct++){
 			ptr = &mons[ct];
+			if(index(fut_geno, ptr->mlet)) continue;
 #ifdef KOPS
 			if(ptr->mlet == 'K') {
-				tmp--;
+# ifdef KJSMODS
+				/* since this is a random monster, make 
+				   a Kobold instead of a Kop. */
+				ptr = &kobold;
+# else
+				deep--;
+# endif
 				continue;
 			}
-#endif
-			if(index(fut_geno, ptr->mlet)) continue;
-			if(tmp-- <= 0) goto gotmon;
+#endif /* KOPS /**/
+			if(deep-- <= 0) goto gotmon;
 		}
-		panic("makemon?");
+		/* this can happen if you are deep in the dungeon and 
+		   mostly weak monsters have been genocided. */
+		return((struct monst *) 0);
 	}
 gotmon:
+#if defined(KJSMODS) && defined(ROCKMOLE)
+	/* make a giant rat */
+	if((zlevel < 4 && ptr->mlet == 'r')
+	   || (zlevel == 1 && (ptr->mlet == 'h' || ptr->mlet == 'i'))
+	   || (zlevel == 2 && (ptr->mlet == 'o' || ptr->mlet == 'y'))
+	) ptr = &giant_rat;
+#endif
 	mtmp = newmonst(ptr->pxlth);
 	*mtmp = zeromonst;	/* clear all entries in structure */
 	for(ct = 0; ct < ptr->pxlth; ct++)
@@ -110,11 +138,11 @@ gotmon:
 		else {
 			mtmp->cham = 1;
 			(void) newcham(mtmp,
-				&mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+				&mons[zlevel+14+rn2(CMNUM-14-zlevel)]);
 		}
 #else
 		mtmp->cham = 1;
-		(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+		(void) newcham(mtmp, &mons[zlevel+14+rn2(CMNUM-14-zlevel)]);
 #endif
 	}
 	if(ptr->mlet == 'I' || ptr->mlet == ';')
@@ -125,21 +153,32 @@ gotmon:
 #ifdef HARD
 	if(ptr->mlet == '&' && (Inhell || u.udemigod)) {
 
-		if(!rn2(5 + !Inhell)) {
+		if(!rn2(3 + !Inhell + !u.udemigod)) {
 		    if (rn2(3 + Inhell)) mtmp->data = &d_lord;
 		    else  {
-				mtmp->data = &d_prince;
-				mtmp->mpeaceful = 1;
-				mtmp->minvis = 1;
+			mtmp->data = &d_prince;
+			mtmp->mpeaceful = 1;
+			mtmp->minvis = 1;
 		    }
 		}
+#ifdef RPH
+		if(uwep)
+		    if(!strcmp(ONAME(uwep), "Excalibur"))
+			mtmp->mpeaceful = mtmp->mtame = 0;
+#endif
 	}
 #endif /* HARD /**/
 #ifndef NOWORM
 	if(ptr->mlet == 'w' && getwn(mtmp))  initworm(mtmp);
 #endif
 
-	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
+	if(anything)
+	    if(ptr->mlet == 'O' || ptr->mlet == 'k'
+#ifdef SAC
+	       || ptr->mlet == '3'
+#endif /* SAC /**/
+				  ) {
+
 		coord mm;
 		register int cnt = rnd(10);
 		mm.x = x;
@@ -170,13 +209,36 @@ struct monst *mtmp;
 			mpickobj(mtmp, otmp);
 		}
 # endif
+# ifdef SAC
+	case '3':			/* Outfit the troops */
+		if (!rn2(4)) {
+			otmp = mksobj(HELMET);
+			mpickobj(mtmp, otmp); }
+		if (!rn2(4)) {
+			otmp = mksobj(CHAIN_MAIL);
+			mpickobj(mtmp, otmp); }
+		if (!rn2(3)) {
+			otmp = mksobj(DAGGER);
+			mpickobj(mtmp, otmp); }
+		if (!rn2(6)) {
+			otmp = mksobj(SPEAR);
+			mpickobj(mtmp, otmp); }
+		if (!rn2(2)) {
+			otmp = mksobj(TIN);
+			mpickobj(mtmp, otmp); }
+# endif /* SAC /**/
 # ifdef KOPS
 	case 'K':		/* create Keystone Kops with cream pies to
 				 * throw. As suggested by KAA.	   [MRS]
 				 */
-		if (!rn2(4)) {
+		if (!rn2(4)
+#  ifdef KJSMODS
+  		    && !strcmp(mtmp->data->mname, "Keystone Kop")
+#  endif
+								) {
 			otmp = mksobj(CREAM_PIE);
 			otmp->quan = 2 + rnd(2);
+			otmp->owt = weight(otmp);
 			mpickobj(mtmp, otmp);
 		}
 		break;
@@ -187,9 +249,11 @@ struct monst *mtmp;
 		if (!rn2(4)) {
 			otmp = mksobj(DART);
 			otmp->quan = 2 + rnd(12);
+			otmp->owt = weight(otmp);
 			mpickobj(mtmp, otmp);
 		}
 		break;
+
 	case 'C':
 		if (rn2(2)) {
 			otmp = mksobj(CROSSBOW);
@@ -197,6 +261,7 @@ struct monst *mtmp;
 			mpickobj(mtmp, otmp);
 			otmp = mksobj(CROSSBOW_BOLT);
 			otmp->quan = 2 + rnd(12);
+			otmp->owt = weight(otmp);
 			mpickobj(mtmp, otmp);
 		}
 		break;
@@ -212,7 +277,7 @@ register xchar xx,yy;
 {
 	register xchar x,y;
 	coord foo[15], *tfoo;
-	int range;
+	int range, i;
 
 	tfoo = foo;
 	range = 1;
@@ -244,8 +309,9 @@ register xchar xx,yy;
 		range++;
 	} while(tfoo == foo);
 foofull:
-	cc->x = foo[rn2(tfoo-foo)].x;
-	cc->y = foo[rn2(tfoo-foo)].y;
+	i = rn2(tfoo - foo);
+	cc->x = foo[i].x;
+	cc->y = foo[i].y;
 	return(0);
 }
 
@@ -297,5 +363,5 @@ register int x,y;
 		if(ptr->mlet == let)
 			return(makemon(ptr,x,y));
 	}
-	return(0);
+	return((struct monst *)0);
 }

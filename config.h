@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)config.h	1.4	87/08/08
+/*	SCCS Id: @(#)config.h	2.2	87/11/11
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* config.h - version 1.0.3 */
 
 #ifndef CONFIG	/* make sure the compiler does not see the typedefs twice */
 #define	CONFIG
@@ -17,7 +16,6 @@
  * index		strchr
  * rindex		strrchr
  * Also, the code for suspend and various ioctls is only given for BSD4.2
- * (I do not have access to a SYSV system.)
  */
 /* #define MSDOS 	/* define for MS-DOS (actually defined by compiler) */
 #define	UNIX		/* delete if no fork(), exec() available */
@@ -26,7 +24,7 @@
 /* #define SYSV		/* define for System V */
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION	"1.4f"	/* version number. */
+#define VERSION	"2.2a"	/* version number. */
 
 #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
 /* #define APOLLO		/* same for the Apollo */
@@ -76,6 +74,17 @@
 
 #ifdef BSD
 #define	SUSPEND		/* let ^Z suspend the game */
+#endif
+
+#ifdef BSD
+/* Use the high quality random number routines. */
+extern long random();
+#define rand()	random()
+#define srand(seed) srandom(seed)
+#else
+extern long lrand48();
+#define rand()	lrand48()
+#define srand(seed) srand48(seed)
 #endif
 #endif /* UNIX /**/
 
@@ -206,6 +215,14 @@ typedef	xchar	boolean;		/* 0 or 1 */
 #define COM_COMPL	/* Command line completion by John S. Bien */
 #define GRAPHICS	/* Funky screen character support (Eric S. Raymond) */
 #define HACKOPTIONS	/* Support DGK-style HACKOPTIONS processing (ESR) */
+#define RPH		/* Various hacks by Richard P. Hughey */
+#define KJSMODS		/* Various changes made by Kevin Sweet */
+#define	BVH		/* Additions by Bruce Holloway */
+#define SAC		/* Soldiers, barracks by Steve Creps */
+
+#if defined(MSDOS) && defined(GRAPHICS)
+#define MSDOSCOLOR
+#endif
 
 /*
  *	Status Line options.

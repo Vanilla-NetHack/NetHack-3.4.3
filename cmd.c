@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)cmd.c	1.4	87/08/08
+/*	SCCS Id: @(#)cmd.c	2.0	87/09/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* cmd.c - version 1.0.3 */
 
 #include	"hack.h"
 #include	"func_tab.h"
@@ -12,6 +11,9 @@ doengrave(),dotele(),dohelp(),doeat(),doddrop(),do_mname(),doidtrap(),
 doprwep(),doprarm(),doprring(),doprgold(),dodiscovered(),dotypeinv(),dolook(),
 doset(),doup(), dodown(), done1(), donull(), dothrow(), doextcmd(), dodip(),
 dopray(), doextlist();
+#ifdef WIZARD
+int wiz_wish(), wiz_identify();
+#endif
 #ifdef NEWCLASS
 int dosit(), doturn();
 #endif
@@ -123,9 +125,15 @@ char ch;
 #endif /* REDO */
 
 struct func_tab cmdlist[]={
+#ifdef WIZARD
+	{'\011', wiz_identify},
+#endif
 	{'\020', doredotopl},
 	{'\022', doredraw},
 	{'\024', dotele},
+#ifdef WIZARD
+	{'\027', wiz_wish},
+#endif
 #ifdef SUSPEND
 	{'\032', dosuspend},
 #endif
@@ -169,7 +177,9 @@ struct func_tab cmdlist[]={
 #endif
 /*	'y', 'Y' : go nw */
 	{'z', dozap},
-/*	'Z' : UNUSED */
+#ifdef SPELLS
+	{'Z', docast},
+#endif
 	{'<', doup},
 	{'>', dodown},
 	{'/', dowhatis},
@@ -251,7 +261,7 @@ register char *cmd;
 #endif
 		bell();
 		flags.move = 0;
-		return(0);	/* probably we just had an interrupt */
+		return;		/* probably we just had an interrupt */
 	}
 	if(movecmd(*cmd)) {
 	walk:
@@ -338,6 +348,7 @@ register char *cmd;
 	  pline("Unknown command '%s'.", expcmd);
 	}
 	multi = flags.move = 0;
+	return;
 }
 
 doextcmd()	/* here after # - now read a full-word command */
@@ -493,3 +504,29 @@ isok(x,y) register x,y; {
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */
 	return(x >= 1 && x <= COLNO-1 && y >= 0 && y <= ROWNO-1);
 }
+
+#ifdef WIZARD
+int wiz_wish()	/* Unlimited wishes for wizard mode by Paul Polderman */
+{
+	if (!wizard) {
+		pline("Alas! You are not allowed to make a wish.");
+		pline("Nice try though...");
+	} else
+		makewish();
+	return(0);
+}
+
+int wiz_identify()
+{
+	struct obj *obj;
+
+	if (!wizard)
+		pline("You don't have the proper identity!");
+	else {
+		for (obj = invent; obj; obj = obj->nobj)
+			if (!objects[obj->otyp].oc_name_known || !obj->known)
+				identify(obj);
+	}
+	return(0);
+}
+#endif /* WIZARD */

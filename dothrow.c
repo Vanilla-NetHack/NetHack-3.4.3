@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	1.3	87/07/14
+/*	SCCS Id: @(#)dothrow.c	2.1	87/11/01
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* dothrow.c - version 1.0 */
 
@@ -154,15 +154,22 @@ hitfloor(obj)
 	if(obj->otyp == EXPENSIVE_CAMERA) {
 		pline("It is shattered in a thousand pieces!");
 		obfree(obj, Null(obj));
-	} else if(obj->otyp == EGG) {
+#ifdef RPH
+	} else	if(obj->otyp == MIRROR) {
+	    	pline ("The mirror shatters.  That's seven years bad luck!");
+		obfree(obj, Null(obj));
+		u.uluck -= 2;
+		if ((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
+#endif	
+	} else	if(obj->otyp == EGG) {
 		pline("\"Splash!\"");
 		obfree(obj, Null(obj));
 #ifdef KAA
-	} else if(obj->otyp == CREAM_PIE) {
+	} else	if(obj->otyp == CREAM_PIE) {
 		pline("What a mess!");
 		obfree(obj, Null(obj));
 #endif
-	} else if(obj->olet == POTION_SYM) {
+	} else	if(obj->olet == POTION_SYM) {
 		pline("The flask breaks, and you smell a peculiar odor ...");
 		potionbreathe(obj);
 		obfree(obj, Null(obj));

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)potion.c	1.4	87/08/08
+/*	SCCS Id: @(#)potion.c	2.1	87/09/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* potion.c - version 1.0.3 */
 
 #include "hack.h"
 extern int float_down();
@@ -91,7 +90,8 @@ peffects(otmp)
 		unkn++;
 		if(index("VWZ&",u.usym)) {
 			pline("This burns like acid!");
-			losehp(d(2,6)); /* will never kill you */
+			/* should never kill you, but... */
+			losehp(d(2,6), "potion of holy water");
 		} else {
 			pline("You feel full of awe.");
 			if (Sick) Sick=0;
@@ -203,8 +203,9 @@ peffects(otmp)
 			pline("Fortunately you have been immunized!");
 		else {
 #endif
-			losestr(rn1(4,3));
-			losehp(rnd(10), "contaminated potion");
+			losestr((Poison_resistance) ? 1 : rn1(4,3));
+			if(!Poison_resistance)
+				losehp(rnd(10), "contaminated potion");
 #ifdef KAA
 		}
 #endif
@@ -249,7 +250,7 @@ peffects(otmp)
 			else 
 				pline("A cloud of darkness falls upon you.");
 		else	nothing++;
-		Blind += rn1(100,250);
+		Blinded += rn1(100,250);
 		seeoff(0);
 		break;
 	case POT_GAIN_LEVEL: 
@@ -286,7 +287,7 @@ peffects(otmp)
 			break;
 		}
 #else
-		pline("This potion tastes wierd!");
+		pline("This potion tastes weird!");
 		break;
 #endif
 	default:
@@ -310,7 +311,7 @@ healup(nhp, nxtra, curesick, cureblind)
 		u.uhp += nhp;
 		if(u.uhp > u.uhpmax)	u.uhp = (u.uhpmax += nxtra);
 	}
-	if(Blind && cureblind)	Blind = 1;	/* see on next move */
+	if(Blind && cureblind)	Blinded = 1;	/* see on next move */
 	if(Sick && curesick)	Sick = 0;
 	flags.botl = 1;
 	return;
@@ -473,7 +474,7 @@ register struct obj *obj;
 		HConfusion += rnd(5);
 		break;
 	case POT_INVISIBILITY:
-		pline("For an instant you couldn't see your right hand.");
+		pline("For an instant you could see through yourself!");
 		break;
 	case POT_PARALYSIS:
 		pline("Something seems to be holding you.");
@@ -485,7 +486,7 @@ register struct obj *obj;
 		break;
 	case POT_BLINDNESS:
 		if(!Blind) pline("It suddenly gets dark.");
-		Blind += rnd(5);
+		Blinded += rnd(5);
 		seeoff(0);
 		break;
 /*	

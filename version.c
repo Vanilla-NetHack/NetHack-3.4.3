@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)version.c	1.4	87/08/08
+/*	SCCS Id: @(#)version.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* version.c - Usenet version 1.0 */
 
 #include	"hack.h"
 #include	"date.h"
@@ -8,9 +7,9 @@
 doversion(){
 
 #ifdef BETA
-	pline("%s Net%s Beta Version %s - last edit %s.",
+	pline("%s Net%s Beta Version %s - last build %s.",
 #else
-	pline("%s Net%s Version %s - last edit %s.",
+	pline("%s Net%s Version %s - last build %s.",
 #endif
 #ifdef UNIX
 		"Unix"
@@ -66,12 +65,13 @@ doMSCversion()
 	pg_line("");
 	pg_line("PC and UNIX HACK were merged by Mike Stephenson and Ken Arromdee");
 	pg_line("incorporating many modifications and features made by the above,");
-	pg_line("as well as the following honoured hackers:");
+	pg_line("as well as the following honored hackers:");
 
 	pg_line("");
-	pg_line("    Scott R. Turner    Tom Almy          John S. Bien");
-	pg_line("    Gil Neiger         Ralf Brown	  Eric S. Raymond");
-	pg_line("    Eric Backus        Roland McGrath    Greg Laskin");
+	pg_line("    Scott R. Turner    Tom Almy           John S. Bien");
+	pg_line("    Gil Neiger         Ralf Brown         Eric S. Raymond");
+	pg_line("    Eric Backus        Roland McGrath     Greg Laskin");
+	pg_line("    Bruce Holloway     Richard P. Hughey  Kevin Sweet");
 	set_pager(1);
 	return(0);
 quit:

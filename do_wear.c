@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)do_wear.c	1.3	87/07/14
+/*	SCCS Id: @(#)do_wear.c	2.0	87/09/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* do_wear.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -64,7 +63,7 @@ doremring() {
 		}
 	}
 	/* NOTREACHED */
-#ifdef lint
+#ifdef LINT
 	return(0);
 #endif
 }
@@ -171,7 +170,7 @@ doweararm() {
 	delay = -objects[otmp->otyp].oc_delay;
 	if(delay){
 		nomul(delay);
-		nomovemsg = "You finished your dressing manoeuvre.";
+		nomovemsg = "You finished your dressing maneuvre.";
 	}
 	otmp->known = 1;
 	return(1);
@@ -239,14 +238,7 @@ dowearring() {
 		u.udaminc += otmp->spe;
 		break;
 	case RIN_PROTECTION_FROM_SHAPE_CHAN:
-#ifdef DGKMOD
-		/* If you're no longer protected, let the chameleons
-		 * change shape again -dgk
-		 */
-		restartcham();
-#else
 		rescham();
-#endif /* DGKMOD /**/
 		break;
 	}
 	prinv(otmp);
@@ -260,7 +252,7 @@ register long mask;
 	mask = obj->owornmask & W_RING;
 	setworn((struct obj *) 0, obj->owornmask);
 	if(!(u.uprops[PROP(obj->otyp)].p_flgs & mask))
-		impossible("Strange... I didnt know you had that ring.");
+		impossible("Strange... I didn't know you had that ring.");
 	u.uprops[PROP(obj->otyp)].p_flgs &= ~mask;
 	switch(obj->otyp) {
 	case RIN_FIRE_RESISTANCE:
@@ -285,6 +277,14 @@ register long mask;
 		break;
 	case RIN_INCREASE_DAMAGE:
 		u.udaminc -= obj->spe;
+		break;
+	case RIN_PROTECTION_FROM_SHAPE_CHAN:
+#ifdef DGKMOD
+		/* If you're no longer protected, let the chameleons
+		 * change shape again -dgk
+		 */
+		restartcham();
+#endif /* DGKMOD /**/
 		break;
 	}
 }

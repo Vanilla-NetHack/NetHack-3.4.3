@@ -1,5 +1,5 @@
 #	Hack or Quest Makefile.
-#	SCCS Id: @(#)Makefile.unix	1.4	87/08/08
+#	SCCS Id: @(#)Makefile.unix	2.1	87/10/08
 
 # if you are cross-compiling (eg. from Xenix into a Dos enviornment)
 # you will have to redefine these filenames.
@@ -7,19 +7,23 @@ MAIN = unixmain.c
 TTY  = unixtty.c
 UNIX = unixunix.c
 
+# flags may have to be changed as required
+CFLAGS = -O
+LFLAGS =
+
 # on some systems the termcap library is in -ltermcap
 TERMLIB = -ltermlib
 
 # make NetHack
-GAME = nethack
-GAMEUID = games
-GAMEGRP = bin
+GAME     = nethack
+GAMEUID  = games
+GAMEGRP  = bin
+
 #	GAMEDIR also appears in config.h as "HACKDIR".
-GAMEDIR = /usr/games/lib/$(GAME)dir
+GAMEDIR  = /usr/games/lib/$(GAME)dir
 SHELLDIR = /usr/games
-MANDIR  = /usr/man/man6
-CFLAGS = -O
-LFLAGS =
+MANDIR   = /usr/man/man6
+MANEXT   = 6
 
 HACKCSRC = alloc.c apply.c bones.c cmd.c decl.c do.c do_name.c do_wear.c\
 	dog.c dogmove.c dothrow.c eat.c end.c engrave.c fight.c fountain.c\
@@ -33,12 +37,14 @@ HACKCSRC = alloc.c apply.c bones.c cmd.c decl.c do.c do_name.c do_wear.c\
 
 CSOURCES = $(HACKCSRC) makedefs.c
 
-HSOURCES = hack.h mfndpos.h config.h edog.h eshk.h extern.h\
-	flag.h func_tab.h gold.h mkroom.h monst.h obj.h objclass.h\
-	objects.h permonst.h rm.h spell.h trap.h wseg.h you.h
+HSOURCES = config.h date.h edog.h eshk.h extern.h flag.h func_tab.h\
+	gen.h gold.h hack.h mfndpos.h mkroom.h monst.h msdos.h\
+	obj.h objclass.h objects.h onames.h permonst.h rm.h\
+	spell.h trap.h wseg.h you.h
 
 SOURCES = $(CSOURCES) $(HSOURCES)
 
+SPECIFICS = main.o tty.o unix.o
 AUX = help hh nethack.6 nethack.sh
 VARAUX = data rumors
 
@@ -55,12 +61,15 @@ HOBJ = alloc.o apply.o bones.o cmd.o decl.o do.o do_name.o do_wear.o\
 	trap.o tty.o u_init.o unix.o vault.o version.o wield.o wizard.o\
 	worm.o worn.o write.o zap.o
 
-$(GAME):	specifics $(HOBJ) Makefile
+$(GAME):	$(SPECIFICS) $(HOBJ) Makefile
 	@echo "Loading ..."
 	@cc $(LFLAGS) -o $(GAME) $(HOBJ) $(TERMLIB)
 
-all:	$(GAME) lint
+all:	$(GAME) Guidebook lint
 	@echo "Done."
+
+Guidebook:	Guidebook.mn
+	nroff -mn Guidebook.mn > Guidebook
 
 makedefs:	makedefs.c alloc.o config.h
 	cc -o makedefs alloc.o makedefs.c
@@ -82,8 +91,6 @@ trap.h:	config.h makedefs
 onames.h:	makedefs objects.h
 	./makedefs -o
 
-specifics:	main.o tty.o unix.o
-
 main.o:
 
 main.c:	unixmain.c hack.h
@@ -91,7 +98,7 @@ main.c:	unixmain.c hack.h
 
 tty.o:
 
-tty.c:	unixtty.c extern.h
+tty.c:	unixtty.c hack.h func_tab.h
 	cp $(TTY) tty.c
 
 unix.o:
@@ -126,8 +133,8 @@ initial:
 	mkdir $(GAMEDIR) $(GAMEDIR)/save
 	touch $(GAMEDIR)/perm
 	touch $(GAMEDIR)/record
-	chown $(GAMEUID) $(GAMEDIR) $(GAMEDIR)/*
-	chgrp $(GAMEGRP) $(GAMEDIR) $(GAMEDIR)/*
+	chown $(GAMEUID) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
+	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
 	chmod 666 $(GAMEDIR)/*
 	chmod 777 $(GAMEDIR) $(GAMEDIR)/save
 
@@ -135,7 +142,7 @@ install: $(VARAUX) $(GAME)
 	-mkdir $(GAMEDIR)
 	-mkdir $(GAMEDIR)/save
 	-rm -f $(GAMEDIR)/$(GAME)
-	-rm -f $(GAMEDIR)/bones*
+	-rm -f $(GAMEDIR)/bones* $(GAMEDIR)/alock* $(GAMEDIR)/wizard*
 	-rm -f $(GAMEDIR)/save/*
 	touch $(GAMEDIR)/perm $(GAMEDIR)/record
 	cp help hh rumors data $(GAMEDIR)
@@ -145,8 +152,11 @@ install: $(VARAUX) $(GAME)
 	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR)/*
 	chmod 0755 $(SHELLDIR)/$(GAME)
 	chmod 04755 $(GAMEDIR)/$(GAME)
-	-cp nethack.6 $(MANDIR)
+	-cp nethack.6 $(MANDIR)/$(GAME).$(MANEXT)
 
+debug:
+	ln $(GAMEDIR)/$(GAME) a.out
+	ln $(GAMEDIR)/core core
 
 tags: $(SOURCES)
 	@echo ctags -tw ...
@@ -207,7 +217,7 @@ eat.o:  hack.h
 end.o:  hack.h
 engrave.o:  hack.h
 fight.o:  hack.h
-fountain.o:  hack.h
+fountain.o:  hack.h mkroom.h
 invent.o:  hack.h wseg.h
 ioctl.o:  config.h
 lev.o:  hack.h mkroom.h wseg.h
@@ -222,7 +232,7 @@ monmove.o:  hack.h mfndpos.h
 monst.o:  hack.h eshk.h
 o_init.o:  config.h objects.h onames.h
 objnam.o:  hack.h
-options.o:  config.h hack.h
+options.o:  hack.h
 pager.o:  hack.h
 polyself.o: hack.h
 potion.o:  hack.h
@@ -239,12 +249,12 @@ shknam.o:  hack.h
 sit.o: hack.h
 spell.o:  hack.h
 steal.o:  hack.h
-termcap.o:  config.h flag.h
+termcap.o:  hack.h
 timeout.o:  hack.h
 topl.o:  hack.h
 topten.o:  hack.h
 track.o:  hack.h
-trap.o:  hack.h mkroom.h
+trap.o:  hack.h edog.h mkroom.h
 u_init.o:  hack.h
 vault.o:  hack.h mkroom.h
 wield.o:  hack.h
@@ -254,12 +264,14 @@ worn.o:  hack.h
 write.o:  hack.h
 zap.o:  hack.h
 version.o:  hack.h date.h
-extern.h: config.h spell.h obj.h you.h
+extern.h: config.h spell.h obj.h
 	touch extern.h
-hack.h:  config.h objclass.h monst.h gold.h trap.h obj.h flag.h rm.h permonst.h spell.h onames.h extern.h you.h
+hack.h: extern.h flag.h gold.h monst.h objclass.h rm.h trap.h you.h 
 	touch hack.h
 objects.h:  config.h objclass.h
 	touch objects.h
+you.h: config.h onames.h permonst.h 
+	touch you.h
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above

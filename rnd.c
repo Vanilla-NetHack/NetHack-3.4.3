@@ -1,7 +1,12 @@
-/*	SCCS Id: @(#)rnd.c	1.4	87/08/08
-/* rnd.c - version 1.0.2 */
-
-#define RND(x)	((rand()>>3) % x)
+/*	SCCS Id: @(#)rnd.c	2.0	87/09/15
+ */
+#include	"config.h"
+#ifdef UNIX
+#define RND(x)	(random() % (x))
+#else
+/* Good luck: the bottom order bits are cyclic. */
+#define RND(x)	((rand()>>3) % (x))
+#endif
 
 rn1(x,y)	/* y <= rn1(x,y) < (y+x) */ 
 register x,y;

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)save.c	1.4	87/08/08
+/*	SCCS Id: @(#)save.c	2.1	87/10/07
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* save.c - version 1.0.3 */
 
 #include <signal.h>
 #include <stdio.h>
@@ -22,7 +21,7 @@ dosave(){
 		settty("Be seeing you ...\n");
 		exit(0);
 	}
-#ifdef lint
+#ifdef LINT
 	return(0);
 #endif
 }
@@ -181,13 +180,16 @@ register fd;
 	fcobj = restobjchn(fd);
 	fallen_down = restmonchn(fd);
 	mread(fd, (char *) &tmp, sizeof tmp);
-	if(tmp != getuid()) {		/* strange ... */
+#ifdef WIZARD
+	if(!wizard)
+#endif
+	    if(tmp != getuid()) {		/* strange ... */
 		(void) close(fd);
 		(void) unlink(SAVEF);
 		puts("Saved game was not yours.");
 		restoring = FALSE;
 		return(0);
-	}
+	    }
 	mread(fd, (char *) &flags, sizeof(struct flag));
 #ifdef DGK
 	/* Some config file OPTIONS take precedence over those in save file.
@@ -313,7 +315,7 @@ register fd;
 	register struct obj *otmp, *otmp2;
 	register struct obj *first = 0;
 	int xl;
-#ifdef lint
+#ifdef LINT
 	/* suppress "used before set" warning from lint */
 	otmp2 = 0;
 #endif
@@ -341,12 +343,15 @@ register fd;
 	register struct monst *mtmp, *mtmp2;
 	register struct monst *first = 0;
 	int xl;
-	int monsindex;
+	int monsindex, mi;
 	extern struct permonst li_dog, dog, la_dog;
 #ifdef KAA
 	extern struct permonst hell_hound;
 # ifdef HARD
 	extern struct permonst d_lord, d_prince;
+# endif
+# ifdef KJSMODS
+	extern struct permonst pm_guard, pm_ghost, pm_eel;
 # endif
 #endif
 
@@ -364,21 +369,31 @@ register fd;
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
 		monsindex = *((int *)&mtmp->data);
-		if (monsindex == -1)		/* Special fake index */
+		if (monsindex == (mi = -1))	/* Special fake index */
 			mtmp->data = &li_dog;
-		else if (monsindex == -2)	/* Special fake index */
+		else if (monsindex == --mi)	/* Special fake index */
 			mtmp->data = &dog;
-		else if (monsindex == -3)	/* Special fake index */
+		else if (monsindex == --mi)	/* Special fake index */
 			mtmp->data = &la_dog;
 #ifdef KAA
-		else if (monsindex == -4)
+		else if (monsindex == --mi)
 			mtmp->data = &hell_hound;
 # ifdef HARD
-		else if (monsindex == -5)
+		else if (monsindex == --mi)
 			mtmp->data = &d_lord;
 
-		else if (monsindex == -6)
+		else if (monsindex == --mi)
 			mtmp->data = &d_prince;
+# endif
+# ifdef KJSMODS
+		else if (monsindex == --mi)
+			mtmp->data = &pm_guard;
+
+		else if (monsindex == --mi)
+			mtmp->data = &pm_ghost;
+
+		else if (monsindex == --mi)
+			mtmp->data = &pm_eel;
 # endif
 #endif
 		else
@@ -408,7 +423,7 @@ register fd;
 	mread(fd, (char *)&monbegin, sizeof(monbegin));
 	differ = (char *)(&mons[0]) - (char *)(monbegin);
 
-#ifdef lint
+#ifdef LINT
 	/* suppress "used before set" warning from lint */
 	mtmp2 = 0;
 #endif

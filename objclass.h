@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)objclass.h	1.4	87/08/08
+/*	SCCS Id: @(#)objclass.h	2.1	87/09/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* objclass.h - version 1.0.3 */
 
 /* definition of a class of objects */
 
@@ -44,6 +43,7 @@ extern struct objclass objects[];
 
 /* definitions of all object-symbols */
 
+#define	RANDOM_SYM	'\0'	/* used for generating random objects */
 #define	ILLOBJ_SYM	'\\'
 #define	AMULET_SYM	'"'
 #define	FOOD_SYM	'%'
@@ -63,8 +63,7 @@ extern struct objclass objects[];
 #define	SPBOOK_SYM	'+'	/* actually SPELL-book */
 #endif
 /* Other places with explicit knowledge of object symbols:
- * ....shk.c:	char shtypes[] = "=/)%?![";
- * mklev.c:	"=/)%?![<>+"
+ * mklev.c:	"=/)%?![<>+"	(used for calculating Amulet apperances)
  * mkobj.c:	char mkobjstr[] = "))[[!!!!????%%%%/=**+";
  * apply.c:   otmp = getobj("0#%", "put in");
  * eat.c:     otmp = getobj("%", "eat");

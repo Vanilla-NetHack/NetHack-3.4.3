@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)wizard.c	1.4	87/08/08
+/*	SCCS Id: @(#)wizard.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* wizard.c - version 1.0.3 */
 
 /* wizard code - inspired by rogue code from Merlyn Leroy (digi-g!brian) */
 /*	       - heavily modified to give the wiz balls.  (genat!mike)   */
@@ -8,9 +7,14 @@
 #include "hack.h"
 extern struct permonst pm_wizard;
 extern struct monst *makemon();
+extern struct obj *carrying();
 
 #if defined(HARD) || defined(DGKMOD)
-char	nasties[] = "cdDeImoPTUVwxXz&\\,:;";
+# ifdef SAC
+char	nasties[] = "cdDeImoPTUVwxXz3&,:;";
+# else
+char	nasties[] = "cdDeImoPTUVwxXz&,:;";
+# endif
 #define WIZSHOT	    2
 #else
 #define	WIZSHOT	    6	/* one chance in WIZSHOT that wizard will try magic */
@@ -221,9 +225,12 @@ register struct obj *obj;
 			 if(hit && obj->otyp == CREAM_PIE) {
 			    if(!Blind)	pline("Yeech! You've been creamed.");
 			    else	pline("There's something sticky all over your face.");
-			    u.ucreamed += (blindinc = rnd(25));
-			    Blind += blindinc;
-			    seeoff(0);
+			    /* blindfold keeps pie filling out of your eyes */
+			    if (!Blindfolded) {
+				u.ucreamed += (blindinc = rnd(25));
+				Blinded += blindinc;
+				seeoff(0);
+			    }
 			 }
 			}
 #endif
@@ -250,7 +257,9 @@ register struct monst *mtmp;
 	if(mtmp->data->mlet != '1' && mtmp->mcan) return(1);
 
 	/* spit fire only when both in a room or both in a corridor */
+#ifndef RPH
 	if(inroom(u.ux,u.uy) != inroom(mtmp->mx,mtmp->my)) return(1);
+#endif
 	tx = u.ux - mtmp->mx;
 	ty = u.uy - mtmp->my;
 #ifdef DGKMOD
@@ -322,9 +331,9 @@ register struct monst *mtmp;
 		spells successfully.  Sometimes they fail anyway */
 		if(mtmp->mcan ||
 #ifdef HARD
-		   rn2(4)
+		   !rn2(10)
 #else
-		   rn2(2)
+		   !rn2(2)
 #endif
 		   ) {
 		    if(canseemon(mtmp))
@@ -355,12 +364,17 @@ register struct monst *mtmp;
 			break;
 		    case 1:
 			pline("\"Destroy the thief, my pets!\"");
+#ifdef HARD
+			nasty();
+#endif
 			aggravate();	/* aggravate all the monsters */
 			/* fall into next case */
 		    case 2:
-			if (flags.no_of_wizards == 1 && rnd(5) == 0)
+			if (flags.no_of_wizards == 1 && !rn2(3)) {
 			    /* if only 1 wizard, clone himself */
+			    pline("Double Trouble...");
 			    clonewiz(mtmp);
+			}
 			break;
 		    case 3:
 			if(mtmp->mspeed == MSLOW)	mtmp->mspeed = 0;
@@ -399,8 +413,9 @@ register struct monst *mtmp;
 {
 	register struct monst *mtmp2;
 
-	if(mtmp2 = makemon(PM_WIZARD, mtmp->mx, mtmp->my)) {
+	if(mtmp2 = makemon(PM_WIZARD, u.ux, u.uy)) {
 		flags.no_of_wizards = 2;
+		mtmp2->mtame = mtmp2->mpeaceful = 0;
 		unpmon(mtmp2);
 		mtmp2->mappearance = wizapp[rn2(sizeof(wizapp)-1)];
 		pmon(mtmp2);
@@ -412,18 +427,17 @@ nasty() {
 #ifdef HARD
 	register struct monst	*mtmp;
 	struct monst	*mkmon_at();
-	register int	i, nastynum;
+	register int	i, nastynum, tmp;
 
 	nastynum = sizeof(nasties) - 1;
+	tmp = (u.ulevel > 3) ? u.ulevel/3 : 1;	/* just in case -- rph */
 
-	for(i = rnd(u.ulevel/3); i > 0; --i) {
+	for(i = rnd(tmp); i > 0; --i)
+	    if((mtmp = mkmon_at(nasties[rn2(nastynum)], u.ux, u.uy)))  {
 
-		if((mtmp = mkmon_at(nasties[rn2(nastynum)], u.ux, u.uy)))  {
-
-			mtmp->msleep = 0;
-			mtmp->mpeaceful = 0;
-		}
-	}
+		mtmp->msleep = 0;
+		mtmp->mpeaceful = 0;
+	    }
 #else
 	(void) makemon((struct permonst *)0, u.ux, u.uy);
 #endif
@@ -455,6 +469,7 @@ intervene() {
 wizdead(mtmp)
 register struct monst	*mtmp;
 {
+	flags.no_of_wizards--;
 	if(! u.udemigod)  {
 
 		u.udemigod = TRUE;
@@ -474,8 +489,8 @@ register struct monst	*mtmp;
 
 	    if(mtmp = makemon(PM_WIZARD, u.ux, u.uy)) {
 
-		mtmp->msleep = 1;
-		flags.no_of_wizards = 1;
+		mtmp->msleep = mtmp->mtame = mtmp->mpeaceful = 0;
+		flags.no_of_wizards++;
 		pline("A voice booms out...");
 		pline("\"So you thought you could kill me, fool.\"");
 	    }

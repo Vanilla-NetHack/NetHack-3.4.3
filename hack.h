@@ -1,8 +1,10 @@
-/*	SCCS Id: @(#)hack.h	1.4	87/08/08
+/*	SCCS Id: @(#)hack.h	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.h - version 1.0.3 */
 
-#include "config.h"
+#ifndef HACK_H
+#define HACK_H
+
+#include "extern.h"
 
 #ifdef __TURBOC__
 /* work around the case-insensitivity of the DOS linker */
@@ -31,7 +33,6 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #include	"monst.h"	/* uses coord */
 #include	"gold.h"
 #include	"trap.h"
-#include	"obj.h"
 #include	"flag.h"
 
 #define	plur(x)	(((x) == 1) ? "" : "s")
@@ -46,7 +47,6 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #define	newstring(x)	(char *) alloc((unsigned)(x))
 
 #ifdef SPELLS
-#include "spell.h"
 #define	NO_SPELL	0
 #endif
 
@@ -55,8 +55,6 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 
 #define ON 1
 #define OFF 0
-
-#include "extern.h"
 
 #ifdef GENIX
 #define DIST	jhndist
@@ -71,5 +69,11 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #else
 #define	MAX_CARR_CAP	500
 #endif
+#ifdef RPH
+#define	MAXLEVEL	60
+#else
 #define	MAXLEVEL	40
+#endif
 #define	FAR	(COLNO+2)	/* position outside screen */
+
+#endif /* HACK_H /**/

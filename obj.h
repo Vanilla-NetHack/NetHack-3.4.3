@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	1.3	87/07/14
+/*	SCCS Id: @(#)obj.h	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* obj.h - version 1.0.3 */
 

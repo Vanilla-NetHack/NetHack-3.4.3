@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)mklev.c	1.4	87/08/08
+/*	SCCS Id: @(#)mklev.c	2.1	87/09/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mklev.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -8,6 +7,10 @@ extern char *getlogin(), *getenv();
 extern struct monst *makemon();
 extern struct obj *mkobj_at();
 extern struct trap *maketrap();
+
+#ifdef RPH
+extern struct permonst pm_medusa;
+#endif
 
 #define somex() ((rand()%(croom->hx-croom->lx+1))+croom->lx)
 #define somey() ((rand()%(croom->hy-croom->ly+1))+croom->ly)
@@ -43,6 +46,9 @@ makelevel()
 	register
 #endif
 		 int x,y;
+#ifdef SPIDERS			/* always put a web with a spider */
+	struct monst *tmonst;
+#endif
 
 	nroom = 0;
 	doorindex = 0;
@@ -52,12 +58,26 @@ makelevel()
 		levl[x][y] = zerorm;
 
 	oinit();	/* assign level dependent obj probabilities */
-
+#ifdef RPH
+	if (u.wiz_level == 0) {
+	    u.medusa_level = rn1(3,25);
+	    u.wiz_level    = d(3,10) + u.medusa_level;
+# ifdef WIZARD
+	    if (wizard && dlevel == 1)
+	        pline ("The wiz is at %d, and the medusa at %d",
+			u.wiz_level, u.medusa_level);
+# endif
+	}
+	if (dlevel > u.medusa_level) {
+	    makemaz();
+	    return;
+	}
+#else
 	if(dlevel >= rn1(3, 26)) {	/* there might be several mazes */
 		makemaz();
 		return;
 	}
-
+#endif
 	/* construct the rooms */
 	nroom = 0;
 	secret = FALSE;
@@ -69,6 +89,13 @@ makelevel()
 	ydnstair = somey();
 	levl[xdnstair][ydnstair].scrsym = DN_SYM;
 	levl[xdnstair][ydnstair].typ = STAIRS;
+#ifdef RPH
+	{ struct monst *mtmp;
+	if (dlevel == u.medusa_level) 
+	    if (mtmp = makemon(PM_MEDUSA, xdnstair, ydnstair))
+	        mtmp->msleep = 1;
+	}
+#endif
 	if(nroom > 1) {
 		troom = croom;
 		croom = &rooms[rn2(nroom-1)];
@@ -87,9 +114,21 @@ makelevel()
 		   avoided: maybe the player fell through a trapdoor
 		   while a monster was on the stairs. Conclusion:
 		   we have to check for monsters on the stairs anyway. */
-		if(!rn2(3)) (void)
-			makemon((struct permonst *) 0, somex(), somey());
-
+#ifdef BVH
+		if(has_amulet() || !rn2(3))
+#else
+		if (!rn2(3))
+#endif
+#ifndef SPIDERS
+		    (void)makemon((struct permonst *) 0, somex(), somey());
+#else
+		{
+		    x = somex(); y = somey();
+		    tmonst=makemon((struct permonst *) 0, x,y);
+		    if (tmonst && tmonst->data->mlet == 's')
+		        (void) maketrap (x,y,WEB);
+		}
+#endif
 		/* put traps and mimics inside */
 		goldseen = FALSE;
 		while(!rn2(8-(dlevel/6))) mktrap(0,0,croom);
@@ -422,7 +461,8 @@ chk:
 	croom->hx = hix;
 	croom->ly = lowy;
 	croom->hy = hiy;
-	croom->rtype = croom->doorct = croom->fdoor = 0;
+	croom->rtype = OROOM;
+	croom->doorct = croom->fdoor = 0;
 
 	for(x = lowx-1; x <= hix+1; x++)
 	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
@@ -623,11 +663,12 @@ make_niches()
 
 	while(ct--) {
 
-		if(dlevel > 15 && rn1(6,0) == 0 && ltptr) {
+		if(dlevel > 15 && !rn2(6) && ltptr) {
 
 			ltptr = FALSE;
 			makeniche(LEVEL_TELEP);
-		} if (rn1(6,0) == 0)	{
+		} else if (dlevel > 5 && dlevel < 25
+			   && !rn2(6) && vamp) {
 
 			vamp = FALSE;
 			makeniche(TRAPDOOR);
@@ -674,7 +715,7 @@ int trap_type;
 	if(doorindex < DOORMAX)
 	  while(vct--) {
 	    aroom = &rooms[rn2(nroom-1)];
-	    if(aroom->rtype != 0) continue;	/* not an ordinary room */
+	    if(aroom->rtype != OROOM) continue;	/* not an ordinary room */
 	    if(aroom->doorct == 1 && rn2(5)) continue;
 	    if(rn2(2)) {
 		dy = 1;
@@ -729,11 +770,15 @@ register
 #ifndef REGBUG
 	register
 #endif
-		 int kind,nopierc,nomimic,fakedoor,fakegold,
-#ifdef NEWCLASS
-		     nospikes, nolevltp,
+		int kind,nopierc,nomimic,fakedoor,fakegold,
+#ifdef SPIDERS
+		    nospider,
 #endif
-		     tryct = 0;
+#ifdef NEWCLASS
+		    nospikes, nolevltp,
+#endif
+		    tryct = 0;
+
 	xchar mx,my;
 	extern char fut_geno[];
 
@@ -743,6 +788,9 @@ register
 		nolevltp = (dlevel < 5) ? 1 : 0;
 		nospikes = (dlevel < 6) ? 1 : 0;
 #endif
+#ifdef SPIDERS
+		nospider = (dlevel < 7) ? 1 : 0;
+#endif
 		nomimic = (dlevel < 9 || goldseen ) ? 1 : 0;
 		if(index(fut_geno, 'M')) nomimic = 1;
 
@@ -751,7 +799,7 @@ register
 			if((kind == PIERC && nopierc) ||
 			   (kind == MIMIC && nomimic)
 #ifdef SPIDERS
-			   || (kind == WEB)
+			   || ((kind == WEB) && nospider)
 #endif
 #ifdef NEWCLASS
 			   || (kind == SPIKED_PIT && nospikes)
@@ -818,6 +866,9 @@ register
 		}
 	} while(t_at(mx, my) || levl[mx][my].typ == STAIRS);
 	ttmp = maketrap(mx, my, kind);
+#ifdef SPIDERS
+	if (kind == WEB) mkmon_at ('s', mx, my);
+#endif
 	if(mazeflag && !rn2(10) && ttmp->ttyp < PIERC)
 		ttmp->tseen = 1;
 }

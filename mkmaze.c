@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)mkmaze.c	1.4	87/08/08
+/*	SCCS Id: @(#)mkmaze.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mkmaze.c - version 1.0.2 */
 
 #include "hack.h"
 #include "mkroom.h"		/* not really used */
@@ -20,7 +19,12 @@ makemaz()
 	for(x = 2; x < COLNO-1; x++)
 		for(y = 2; y < ROWNO-1; y++)
 			levl[x][y].typ = (x%2 && y%2) ? 0 : HWALL;
+#ifndef RPH
 	if(al) {
+#else	/* make decoy wizard levels */
+	if((dlevel == u.wiz_level) ||
+	   (!rn2(3) && (dlevel > u.medusa_level+1))) {
+#endif
 	    register struct monst *mtmp;
 
 	    zx = 2*(COLNO/4) - 1;
@@ -31,21 +35,39 @@ makemaz()
 		    (y == zy-1 || y == zy+1 || x == zx-1 || x == zx+2) ? HWALL:
 		    ROOM;
 	    }
-	    (void) mkobj_at(AMULET_SYM, zx, zy);
-	    flags.made_amulet = 1;
-	    walkfrom(zx+4, zy);
-	    if(mtmp = makemon(&hell_hound, zx, zy))
-		mtmp->msleep = 1;
-	    if(mtmp = makemon(PM_WIZARD, zx+1, zy)) {
-		mtmp->msleep = 1;
-		flags.no_of_wizards = 1;
+#ifdef RPH
+	    if (dlevel == u.wiz_level) {
+#endif		
+		    (void) mkobj_at(AMULET_SYM, zx, zy);
+		    flags.made_amulet = 1;
+		    walkfrom(zx+4, zy);
+		    if(mtmp = makemon(&hell_hound, zx, zy))
+			mtmp->msleep = 1;
+		    if(mtmp = makemon(PM_WIZARD, zx+1, zy)) {
+			mtmp->msleep = 1;
+			flags.no_of_wizards = 1;
+		    }
+#ifdef RPH
+	    } else {
+		struct obj *ot;
+	    	/* make a cheap plastic imitation */
+	    	if (ot = mkobj_at(AMULET_SYM, zx, zy))
+		    ot-> spe = -1;
+		walkfrom(zx+4,zy);
+		if (mtmp = makemon(&hell_hound, zx, zy))
+		    mtmp->msleep = 1;
+		mkmon_at ('&', zx+1,zy);
 	    }
+#endif
 	} else {
 	    mazexy(&mm);
 	    zx = mm.x;
 	    zy = mm.y;
 	    walkfrom(zx,zy);
-	    (void) mksobj_at(WAN_WISHING, zx, zy);
+#ifdef RPH
+	    if (!rn2(10) || (dlevel == u.medusa_level + 1))
+#endif
+		(void) mksobj_at(WAN_WISHING, zx, zy);
 	    (void) mkobj_at(ROCK_SYM, zx, zy);	/* put a rock on top of it */
 	}
 

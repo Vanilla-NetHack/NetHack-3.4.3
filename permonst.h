@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)permonst.h	1.3	87/07/14
+/*	SCCS Id: @(#)permonst.h	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* permonst.h - version 1.0.2 */
 
 struct permonst {
 	char *mname,mlet;
@@ -38,9 +37,24 @@ extern struct permonst mons[];
 #define PM_ETTIN	&mons[49]
 /* The ones below changed to include giants. */
 #define	PM_DEMON	&mons[55]
-#define	PM_MINOTAUR	&mons[56]	/* last in mons array */
-#define	PM_SHK		&mons[57]	/* very last */
+
+#ifdef SAC
+#define PM_SOLDIER	&mons[56]
+#define	PM_MINOTAUR	&mons[57]	/* last in mons array */
+#define	PM_SHK		&mons[58]	/* very last */
+#else
+#define	PM_MINOTAUR	&mons[56]
+#define	PM_SHK		&mons[57]
+#endif
+
 #define	PM_GHOST	&pm_ghost
 #define	PM_EEL		&pm_eel
 #define	PM_WIZARD	&pm_wizard
-#define	CMNUM		56		/* number of common monsters */
+#ifdef RPH
+#define PM_MEDUSA	&pm_medusa
+#endif
+#ifdef SAC
+#define	CMNUM		57		/* number of common monsters */
+#else
+#define	CMNUM		56
+#endif

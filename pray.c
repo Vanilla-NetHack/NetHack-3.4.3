@@ -1,15 +1,12 @@
-/*	SCCS Id: @(#)pray.c	1.4	87/08/08
+/*	SCCS Id: @(#)pray.c	2.1	87/10/07
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* pray.c - version 1.0 */
 
 #include "hack.h"
 
 extern char *nomovemsg;
-/*
-#ifdef KAA
-extern char *xname();
-#endif
-*/
+extern struct monst *mkmon_at();
+extern struct obj *mkobj_at();
+
 dopray() {		/* M. Stephenson (1.0.3b) */
 #ifdef PRAYERS
 	if (u.ublesscnt > 0)  {		/* disturbing the gods too much */
@@ -17,11 +14,16 @@ dopray() {		/* M. Stephenson (1.0.3b) */
 		u.ublesscnt += 200;
 		u.uluck -= 3;
 		if (u.uluck < LUCKMIN)  u.uluck = LUCKMIN;
+#ifdef HARD
+		u.ugangr++;
+		angrygods();
+#else
 		if (u.ugangr++)	angrygods();
 		else {			/* exactly one warning */
 			pline("A voice booms out: You have angered us,");
 			pline("Disturb us again at your own risk!");
 		}
+#endif
 	} else  if (u.uluck < 0) angrygods();	/* a bad boy/girl */
 	else	pleased();	    		/* or a good boy/girl */
 #endif
@@ -34,8 +36,10 @@ dopray() {		/* M. Stephenson (1.0.3b) */
 angrygods() {
 	register int	tmp;
 
-	pline ("You get the felling the gods are angry...");
-	tmp = u.ugangr + (u.uluck > 0) ? u.uluck : -u.uluck;
+	pline ("You get the feeling the gods are angry...");
+	/* changed from tmp = u.ugangr + abs (u.uluck) -- rph */
+	tmp =  3*u.ugangr + (u.uluck > 0 ? -u.uluck/3 : -u.uluck);
+	tmp =  (tmp > 15 ? 15 : tmp);  /* lets be a little reasonable */
 	switch (tmp ? rn2(tmp): 0) {
 
 	    case 0:
@@ -85,12 +89,12 @@ pleased() {
 			break;
 	    case 1:
 			if(!uwep) {
-			    if(uleft->cursed) {
+			    if(uleft && uleft->cursed) {
 				pline("your left hand glows amber.");
 				uleft->cursed = 0;
-			    } else if(uright->cursed) {
+			    } else if(uright && uright->cursed) {
 				pline("your right hand glows amber.");
-				uleft->cursed = 0;
+				uright->cursed = 0;
 			    } else    pline("but nothing seems to happen.");
 			    break;
 			}
@@ -118,7 +122,7 @@ pleased() {
 			u.ustr = u.ustrmax;
 			if (u.uhunger < 900)	init_uhunger();
 			if (u.uluck < 0)	u.uluck = 0;
-			if (Blind)		Blind = 1;
+			if (Blinded)		Blinded = 1;
 			flags.botl = 1;
 			break;
 	    case 4:
@@ -144,7 +148,11 @@ pleased() {
 			break;
 
 	    case 6:	pline ("An object appears at your feet!");
+#ifdef SPELLS
 			mkobj_at('+', u.ux, u.uy);
+#else
+			mkobj_at('?', u.ux, u.uy);
+#endif
 			break;
 
 	    case 7:	pline("A voice booms out:  We crown thee...");
@@ -154,6 +162,10 @@ pleased() {
 			HFire_resistance |= INTRINSIC;
 			HCold_resistance |= INTRINSIC;
 			HPoison_resistance |= INTRINSIC;
+#ifdef RPH
+			if(uwep && (uwep->otyp == LONG_SWORD))
+				oname(uwep, "Excalibur");
+#endif
 			break;
 
 	    default:	impossible("Confused deity!");

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)do.c	1.4	87/08/08
+/*	SCCS Id: @(#)do.c	2.0	87/09/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* do.c - version 1.0.3 */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
 
@@ -18,7 +17,8 @@ extern char *xname();
 #endif
 
 dodrop() {
-	return(drop(getobj("0$#", "drop")));
+	if(u.ugold)	return(drop(getobj("0$#", "drop")));
+	else		return(drop(getobj("0#", "drop")));
 }
 
 static
@@ -58,6 +58,16 @@ drop(obj) register struct obj *obj; {
 		}
 		setuwep((struct obj *) 0);
 	}
+#ifdef WALKIES
+        if (obj->otyp == LEASH) {
+            register struct monst *mtmp = fmon;
+            while (mtmp && !mtmp->mleashed) mtmp = mtmp->nmon;
+            if (mtmp) {
+                pline ("Your leash is tied around your hand.");
+                return (0);
+            }
+        }
+#endif
 	pline("You dropped %s.", doname(obj));
 	dropx(obj);
 	return(1);
@@ -114,7 +124,7 @@ dodown()
 		return(1);
 	}
 	if(Levitation) {
-		pline("You're floating high above the stairs.");
+		pline("Your floating high above the stairs.");
 		return(0);
 	}
 
@@ -308,18 +318,19 @@ donull() {
 #if defined(KAA) && defined(KOPS)
 wipeoff()
 {
-	u.ucreamed -= 4;
+	if(u.ucreamed < 4)	u.ucreamed = 0;
+	else			u.ucreamed -= 4;
 	if(u.ucreamed > 0)  {
-		Blind -= 4;
+		Blinded -= 4;
 		if(Blind <= 1) {
 			pline("You've got the glop off.");
 			u.ucreamed = 0;
-			Blind = 1;
+			Blinded = 1;
 			return(0);
 		}
 		return(1);		/* still busy */
 	}
-	pline("You're face feels clean now.");
+	pline("Your face feels clean now.");
 	u.ucreamed = 0;
 	return(0);
 }
@@ -335,7 +346,7 @@ dowipe()
 #endif
 		return(1);
 	}
-	pline("You're face is already clean.");
+	pline("Your face is already clean.");
 	return(1);
 }
 #endif

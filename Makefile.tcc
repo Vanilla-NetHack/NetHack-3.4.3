@@ -1,5 +1,4 @@
-#
-#	SCCS Id: @(#)Makefile.tcc	1.4	87/08/08
+#	SCCS Id: @(#)Makefile.tcc	2.2	87/11/11
 # 	Makefile for NetHack (PC) version 1.0 written using
 #	Turbo C v1.0
 # 
@@ -95,40 +94,31 @@ date.h :  hack.h makedefs.exe
 trap.h :  config.h makedefs.exe
 	makedefs.exe -t
 
-main.obj : main.c
+main.obj :  pcmain.c hack.h
+	$(CC) $(CFLAGS) -Fo$@ -c pcmain.c
 
-main.c :  pcmain.c hack.h
-	copy pcmain.c main.c
-	touch main.c
+tty.obj :  pctty.c hack.h msdos.h
+	$(CC) $(CFLAGS) -Fo$@ -c pctty.c
 
-tty.obj : tty.c
-
-tty.c :  pctty.c hack.h msdos.h
-	copy pctty.c tty.c
-	touch tty.c
-
-unix.obj : unix.c
-
-unix.c :  pcunix.c hack.h mkroom.h
-	copy pcunix.c unix.c
-	touch unix.c
+unix.obj :  pcunix.c hack.h mkroom.h
+	$(CC) $(CFLAGS) -Fo$@ -c pcunix.c
 
 decl.obj :  hack.h mkroom.h
 apply.obj :  hack.h edog.h mkroom.h
 bones.obj :  hack.h
 hack.obj :  hack.h
-cmd.obj :  hack.h func_tab.h msdos.h
+cmd.obj :  hack.h func_tab.h
 do.obj :  hack.h
 do_name.obj :  hack.h
 do_wear.obj :  hack.h
 dog.obj :  hack.h edog.h mkroom.h
-dogmove.obj :  hack.h mfndpos.h
+dogmove.obj :  hack.h mfndpos.h edog.h mkroom.h
 dothrow.obj :  hack.h
 eat.obj :  hack.h
 end.obj :  hack.h
 engrave.obj :  hack.h
 fight.obj :  hack.h
-fountain.obj :  hack.h
+fountain.obj :  hack.h mkroom.h
 invent.obj :  hack.h wseg.h
 ioctl.obj :  config.h
 lev.obj :  hack.h mkroom.h wseg.h
@@ -141,11 +131,12 @@ mkshop.obj :  hack.h mkroom.h eshk.h
 mon.obj :  hack.h mfndpos.h
 monmove.obj :  hack.h mfndpos.h
 monst.obj :  hack.h eshk.h
+msdos.obj : msdos.h
 o_init.obj :  config.h objects.h onames.h
 objnam.obj :  hack.h
-options.obj :  config.h hack.h
+options.obj :  hack.h
 pager.obj :  hack.h
-polyself.obj :  hack.h
+polyself.obj : hack.h
 potion.obj :  hack.h
 pray.obj :  hack.h
 pri.obj :  hack.h
@@ -153,33 +144,34 @@ prisym.obj :  hack.h wseg.h
 read.obj :  hack.h
 rip.obj :  hack.h
 	tcc -c $(CFLAGS) -d- rip.c
-rumors.obj :  config.h
+rumors.obj :  hack.h
 save.obj :  hack.h
 search.obj :  hack.h
 shk.obj :  hack.h mfndpos.h mkroom.h eshk.h
 shknam.obj :  hack.h
-sit.obj :  hack.h
-spell.obj:  hack.h
+sit.obj : hack.h
+spell.obj :  hack.h
 steal.obj :  hack.h
-termcap.obj :  config.h flag.h
+termcap.obj :  hack.h
 timeout.obj :  hack.h
 topl.obj :  hack.h
 topten.obj :  hack.h
 track.obj :  hack.h
-trap.obj :  hack.h mkroom.h
+trap.obj :  hack.h edog.h mkroom.h
 u_init.obj :  hack.h
 vault.obj :  hack.h mkroom.h
-version.obj : hack.h date.h
 wield.obj :  hack.h
 wizard.obj :  hack.h
 worm.obj :  hack.h wseg.h
 worn.obj :  hack.h
 write.obj :  hack.h
 zap.obj :  hack.h
-msdos.obj : msdos.h
-extern.h: config.h
+version.obj :  hack.h date.h
+extern.h: config.h spell.h obj.h
 	touch extern.h
-hack.h :  config.h objclass.h monst.h gold.h trap.h obj.h flag.h rm.h permonst.h onames.h spell.h extern.h you.h
+hack.h: extern.h flag.h gold.h monst.h objclass.h rm.h trap.h you.h 
 	touch hack.h
-objects.h :  config.h objclass.h
+objects.h:  config.h objclass.h
 	touch objects.h
+you.h: config.h onames.h permonst.h 
+	touch you.h

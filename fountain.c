@@ -1,7 +1,13 @@
-/*	SCCS Id: @(#)fountain.c	1.4	87/08/08
-/* fountain.c  v 1.4.1 */
+/*	SCCS Id: @(#)fountain.c	2.1	87/10/19
+/* fountain.c  v 1.4.3 */
 
 /*
+ * Revision 1.4.3  87/11/25  19:16:00  M. Stephenson
+ * Implemented levitation bug fixes.
+ *
+ * Revision 1.4.2  87/10/19  11:48:00  M. Stephenson
+ * Implementation of KJS bug fixes.
+ *
  * Revision 1.4.1  87/05/20  11:53:00  M. Stephenson
  * Implementation of KAA bug fixes.
  *
@@ -25,6 +31,7 @@
 #include "hack.h"
 
 extern struct monst *mkmon_at();
+extern struct obj *mkobj_at();
 extern char genocided[];
 
 #ifdef FOUNTAINS
@@ -46,7 +53,9 @@ register struct monst *mtmp;
 
 	if((mtmp = mkmon_at('&',u.ux,u.uy))) {
 	    pline("You have unleashed a water demon!");
-	    if (rnd(100)>97) {
+
+	/* Give those on low levels a (slightly) better chance of survival */
+	    if ( rnd(100) > (80 + dlevel)) {
 		pline("Grateful for his release, he grants you a wish!");
 		makewish();
 		mondied(mtmp);
@@ -111,27 +120,26 @@ dofindgem() /* Find a gem in the sparkling waters. */ {
 }
 
 dryup(){
-	if (!rn2(5) && (levl[u.ux][u.uy].typ == FOUNTAIN)) {
+	if (!rn2(3) && (levl[u.ux][u.uy].typ == FOUNTAIN)) {
 		pline("The fountain dries up!");
 		levl[u.ux][u.uy].typ = ROOM;
 		if(Invis) newsym(u.ux, u.uy);
 	}
 }
 
-drinkfountain(){
+drinkfountain() {
 
-       /* What happens when you drink from a fountain? */
+	/* What happens when you drink from a fountain? */
+	register int fate = rnd(30);
 
-       register int fate = rnd(30);
+	if(Levitation) 	pline("You are floating high above the fountain.");
+	else if (fate < 10) {
+		pline("The cool draught refreshes you.");
+		lesshungry(rnd(10));
+	} else {
+	    switch (fate) {
 
-       if (fate < 10) {
-	  pline("The cool draught refreshes you.");
-	  lesshungry(rnd(10));
-       } 
-       else
-	  switch (fate) {
-
-	       case 20: /* Foul water */
+		case 20: /* Foul water */
 
 			pline("The water is foul!  You gag and vomit.");
 			morehungry(rnd(20)+10);
@@ -141,27 +149,27 @@ drinkfountain(){
 			}
 			break;
 
-	       case 21: /* Poisonous */
+		case 21: /* Poisonous */
 
 			pline("The water is contaminated!");
 			if (Poison_resistance) {
 			   pline("Perhaps it is run off from the nearby orange farm.");
-			   losehp(rnd(4),"contaminated water");
+			   losehp(rnd(4),"unrefrigerated orange juice");
 			   break;
 			}
 			losestr(rn1(4,3));
 			losehp(rnd(10),"contaminated water");
 			break;
 	
-	       case 22: /* Fountain of snakes! */
+		case 22: /* Fountain of snakes! */
 			dowatersnakes();
 			break;
 
-	       case 23: /* Water demon */
+		case 23: /* Water demon */
 			dowaterdemon();
 			break;
 
-	       case 24: /* Curse an item... */ {
+		case 24: /* Curse an item... */ {
 			register struct obj *obj;
 
 			pline("This water's no good!");
@@ -171,39 +179,39 @@ drinkfountain(){
 			break;
 			}
 			 
-	       case 25: /* See invisible */
+		case 25: /* See invisible */
 
 			pline("You see an image of someone stalking you.");
 			pline("But it disappears.");
 			HSee_invisible |= INTRINSIC;
 			break;
 
-	       case 26: /* See Monsters */{
+		case 26: /* See Monsters */ {
+			register struct monst *mtmp;
 
-		       register struct monst *mtmp;
-			if(!fmon) {
-			       pline("You feel oddly disturbed.");
-			} else {
-				cls();
-				for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-					if(mtmp->mx > 0)
-						at(mtmp->mx,mtmp->my,mtmp->data->mlet);
-				prme();
-				pline("You sense the presence of monsters.");
-				more();
-				docrt();
+			  if(!fmon) pline("You feel oddly disturbed.");
+			  else {
+			    cls();
+			    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+				if(mtmp->mx > 0)
+				    at(mtmp->mx,mtmp->my,mtmp->data->mlet);
+			    prme();
+			    pline("You sense the presence of monsters.");
+			    more();
+			    docrt();
+			  }
 			}
-			break; }
+			break;
 
-	       case 27: /* Find a gem in the sparkling waters. */
+		case 27: /* Find a gem in the sparkling waters. */
 			dofindgem();
 			break;
 
-	       case 28: /* Water Nymph */
-		       dowaternymph();
-		       break;
+		case 28: /* Water Nymph */
+			dowaternymph();
+			break;
 
-	       case 29: /* Scare */ {
+		case 29: /* Scare */ {
 			register struct monst *mtmp;
 
 			pline("This water gives you bad breath!");
@@ -212,13 +220,14 @@ drinkfountain(){
 			}
 			break;
 
-	       case 30: /* Gushing forth in this room */
+		case 30: /* Gushing forth in this room */
 			dogushforth();
 			break;
-	  }
-
+		default:
+			break;
+	    }
+	}
 	dryup();
-
 }
 
 dipfountain(obj)
@@ -226,7 +235,8 @@ register struct obj *obj;
 {
 	register int fate = rnd(30);
 
-	if(fate<10)
+	if(Levitation) 	pline("You are floating high above the fountain.");
+	else if(fate<10)
 		if(!obj->rustfree &&
 			/* Only swords affected here */
 			(obj->otyp == LONG_SWORD ||
@@ -240,65 +250,78 @@ register struct obj *obj;
 			} else pline("Your weapon looks quite rusted.");
 		} else pline("Well, it looks wet now.");
 	else if(fate<14)
-		if(obj->otyp == LONG_SWORD && !strcmp(ONAME(obj),"Excalibur")){
+		if(obj->otyp == LONG_SWORD
+#ifndef RPH
+		   && !strcmp(ONAME(obj), "Excalibur")
+#endif
+		) {
 			/* The lady of the lake acts! - Eric Backus */
 			/* Be *REAL* nice to him */
 	pline("A murky hand from the depths reaches up to bless the sword.");
 	pline("As the hand retreats, the fountain disappears!");
+#ifndef RPH
 			if(obj->spe < 5) obj->spe = 5;
+#else
+			/* otherwise +rnd(10) / +5 "Super"sword */
+			oname(obj, "Excalibur");
+#endif
+#ifdef KAA
+			obj->dknown = 1;	/* blessed */
+#endif
 			obj->cursed = 0;
 			obj->rustfree = 1;
 			levl[u.ux][u.uy].typ = ROOM;
 			if(Invis) newsym(u.ux, u.uy);
 			return(0);
 		} else pline ("Well, it looks wet now.");
-	else
-		switch (fate) {
-			case 16: /* Curse the item */
-				pline("Well, it looks wet now.");
-				obj->cursed = 1;
-				break;
-			case 17:
-			case 18:
-			case 19:
-			case 20: /* Uncurse the item */
-				if(obj->cursed) {
-				    pline("The water glows for a moment.");
-				    obj->cursed = 0;
-				} else {
-				    pline("A feeling of loss comes over you.");
-				}
-				break;
-			case 21: /* Water Demon */
-				dowaterdemon();
-				break;
-			case 22: /* Water Nymph */
-				dowaternymph();
-				break;
-			case 23: /* An Endless Stream Of Snakes */
-				dowatersnakes();
-				break;
-			case 24: /* Find a gem */
-				dofindgem();
-				break;
-			case 25: /* Water gushes forth */
-				dogushforth();
-				break;
-			case 26: /* Strange feeling */
-				pline("A strange tingling runs up your arm.");
-				break;
-			case 27: /* Strange feeling */
-				pline("You feel a sudden chill.");
-				break;
-			case 28: /* Strange feeling */
-			pline("An urge to take a bath nearly overwhelms you.");
-				break;
-			case 29: /* You see coins */
+	else {
+	    switch (fate) {
+		case 16: /* Curse the item */
+			pline("Well, it looks wet now.");
+			obj->cursed = 1;
+			break;
+		case 17:
+		case 18:
+		case 19:
+		case 20: /* Uncurse the item */
+			if(obj->cursed) {
+			    pline("The water glows for a moment.");
+			    obj->cursed = 0;
+			} else {
+			    pline("A feeling of loss comes over you.");
+			}
+			break;
+		case 21: /* Water Demon */
+			dowaterdemon();
+			break;
+		case 22: /* Water Nymph */
+			dowaternymph();
+			break;
+		case 23: /* An Endless Stream Of Snakes */
+			dowatersnakes();
+			break;
+		case 24: /* Find a gem */
+			dofindgem();
+			break;
+		case 25: /* Water gushes forth */
+			dogushforth();
+			break;
+		case 26: /* Strange feeling */
+			pline("A strange tingling runs up your arm.");
+			break;
+		case 27: /* Strange feeling */
+			pline("You feel a sudden chill.");
+			break;
+		case 28: /* Strange feeling */
+		pline("An urge to take a bath nearly overwhelms you.");
+			break;
+		case 29: /* You see coins */
 		pline("Far below you, you see coins glistening in the water.");
-				break;
-			default:
-				break;
-		}
+			break;
+		default:
+			break;
+	    }
+	}
 	dryup();
 	return(0);
 }

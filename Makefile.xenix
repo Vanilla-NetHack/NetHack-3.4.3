@@ -1,5 +1,5 @@
 #	Hack or Quest Makefile.
-#	SCCS Id: @(#)Makefile.xenix	1.4	87/08/08
+#	SCCS Id: @(#)Makefile.xenix	2.1	87/10/08
 
 # if you are cross-compiling (eg. from Xenix into a Dos enviornment)
 # you will have to redefine these filenames.
@@ -12,15 +12,19 @@ TERMLIB = -ltermlib
 CRT0   =
 LIBS = ${TERMLIB} 
 
-# make NetHack
-GAME = nethack
-GAMEUID = games
-GAMEGRP = bin
-GAMEDIR = /usr/games/lib/$(GAME)dir
-SHELLDIR = /usr/games
-MANDIR  = 
+# flags may have to be changed as required
 CFLAGS = -LARGE -Ml
 LFLAGS = -Ml
+
+# make NetHack
+GAME     = nethack
+GAMEUID  = games
+GAMEGRP  = bin
+GAMEDIR  = /usr/games/lib/$(GAME)dir
+SHELLDIR = /usr/games
+MANDIR   = /usr/man/manl
+MANEXT   = l
+
 HACKCSRC = apply.c bones.c decl.c\
 	cmd.c do.c dothrow.c do_name.c do_wear.c dog.c dogmove.c eat.c end.c\
 	engrave.c fight.c fountain.c hack.c invent.c ioctl.c lev.c main.c\
@@ -42,6 +46,7 @@ SOURCES = $(CSOURCES) $(HSOURCES)
 
 AUX = help hh nethack.6 nethack.sh
 VARAUX = data rumors
+SPECIFICS = main.o tty.o unix.o
 
 DISTR = $(SOURCES) $(AUX) $(VARAUX) README.OLD README\
 	Makefile.unix Makefile.xenix Makefile.pc Make.ini
@@ -59,7 +64,7 @@ HOBJ = apply.o bones.o decl.o cmd.o do.o dothrow.o do_name.o do_wear.o dog.o\
 .c.o:
 	cc -O -c -Gt24 ${CFLAGS} $*.c
 
-$(GAME):	specifics $(HOBJ) Makefile
+$(GAME):	$(SPECIFICS) $(HOBJ) Makefile
 	cc $(LFLAGS) -m hack.map -o $(GAME) /lib/Lsignal.o $(CRT0) $(HOBJ) $(LIBS) -SEG#256
 
 	
@@ -91,8 +96,6 @@ trap.h:	config.h makedefs
 
 onames.h:	makedefs objects.h
 	./makedefs -o
-
-specifics:	main.o tty.o unix.o
 
 main.o: main.c
 
@@ -140,18 +143,22 @@ initial:
 	chmod 666 $(GAMEDIR)/*
 	chmod 777 $(GAMEDIR) $(GAMEDIR)/save
 
-install: $(VARAUX)
+install: $(VARAUX) $(GAME)
 	-rm -f $(GAMEDIR)/$(GAME)
-	-rm -f $(GAMEDIR)/bones*
+	-rm -f $(GAMEDIR)/bones* $(GAMEDIR)/alock* $(GAMEDIR)/wizard*
 	-rm -f $(GAMEDIR)/save/*
 	cp help hh rumors data $(GAMEDIR)
 	cp $(GAME).sh $(SHELLDIR)/$(GAME)
 	cp $(GAME) $(GAMEDIR)/$(GAME)
-	chown $(GAMEUID) $(SHELLDIR)/$(GAME) $(GAMEDIR)/*
-	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR)/*
+	chown $(GAMEUID) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
+	chgrp $(GAMEGRP) $(SHELLDIR)/$(GAME) $(GAMEDIR) $(GAMEDIR)/*
 	chmod 0755 $(SHELLDIR)/$(GAME)
 	chmod 04755 $(GAMEDIR)/$(GAME)
-	-cp nethack.6 $(MANDIR)
+	-cp nethack.6 $(MANDIR)/$(GAME).$(MANEXT)
+
+debug:
+	ln $(GAMEDIR)/$(GAME) a.out
+	ln $(GAMEDIR)/core core
 
 clean:
 	rm -f *.o
@@ -160,28 +167,24 @@ spotless: clean
 	rm -f a.out core $(GAME) makedefs
 	rm -f Makefile $(VARAUX) main.c tty.c unix.c
 
-bones.o:  hack.h
 decl.o:  hack.h mkroom.h
-end.o:  hack.h
-hack.o:  hack.h
-ioctl.o:  config.h
-o_init.o:  config.h objects.h onames.h
-objnam.o:  hack.h
-u_init.o:  hack.h
-version.o:  hack.h date.h
 apply.o:  hack.h edog.h mkroom.h
+bones.o:  hack.h
+hack.o:  hack.h
 cmd.o:  hack.h func_tab.h
 do.o:  hack.h
-dothrow.o:  hack.h
 do_name.o:  hack.h
 do_wear.o:  hack.h
 dog.o:  hack.h edog.h mkroom.h
-dogmove.o:  hack.h mfndpos.h
+dogmove.o:  hack.h mfndpos.h edog.h mkroom.h
+dothrow.o:  hack.h
 eat.o:  hack.h
+end.o:  hack.h
 engrave.o:  hack.h
 fight.o:  hack.h
-fountain.o:  hack.h
+fountain.o:  hack.h mkroom.h
 invent.o:  hack.h wseg.h
+ioctl.o:  config.h
 lev.o:  hack.h mkroom.h wseg.h
 makemon.o:  hack.h
 mhitu.o:  hack.h
@@ -192,11 +195,13 @@ mkshop.o:  hack.h mkroom.h eshk.h
 mon.o:  hack.h mfndpos.h
 monmove.o:  hack.h mfndpos.h
 monst.o:  hack.h eshk.h
-options.o:  config.h hack.h
+o_init.o:  config.h objects.h onames.h
+objnam.o:  hack.h
+options.o:  hack.h
 pager.o:  hack.h
 polyself.o: hack.h
 potion.o:  hack.h
-pray.o: hack.h
+pray.o:  hack.h
 pri.o:  hack.h
 prisym.o:  hack.h wseg.h
 read.o:  hack.h
@@ -206,15 +211,16 @@ save.o:  hack.h
 search.o:  hack.h
 shk.o:  hack.h mfndpos.h mkroom.h eshk.h
 shknam.o:  hack.h
-sit.o:  hack.h
+sit.o: hack.h
 spell.o:  hack.h
 steal.o:  hack.h
-termcap.o:  config.h flag.h
+termcap.o:  hack.h
 timeout.o:  hack.h
 topl.o:  hack.h
 topten.o:  hack.h
 track.o:  hack.h
-trap.o:  hack.h mkroom.h
+trap.o:  hack.h edog.h mkroom.h
+u_init.o:  hack.h
 vault.o:  hack.h mkroom.h
 wield.o:  hack.h
 wizard.o:  hack.h
@@ -222,9 +228,12 @@ worm.o:  hack.h wseg.h
 worn.o:  hack.h
 write.o:  hack.h
 zap.o:  hack.h
-extern.h: config.h
+version.o:  hack.h date.h
+extern.h: config.h spell.h obj.h
 	touch extern.h
-hack.h:  config.h objclass.h monst.h gold.h trap.h obj.h flag.h rm.h permonst.h spell.h onames.h extern.h you.h
+hack.h: extern.h flag.h gold.h monst.h objclass.h rm.h trap.h you.h 
 	touch hack.h
 objects.h:  config.h objclass.h
 	touch objects.h
+you.h: config.h onames.h permonst.h 
+	touch you.h

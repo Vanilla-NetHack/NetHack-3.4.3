@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)fight.c	1.4	87/08/08
+/*	SCCS Id: @(#)fight.c	2.1	87/10/17
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* fight.c - version 1.0.3 */
 
 #include	<stdio.h>
 #include	"hack.h"
@@ -13,6 +12,9 @@ extern boolean stoned;
 extern boolean unweapon;
 extern char *nomovemsg, *defmonnam();
 extern struct monst *mkmon_at();
+#endif
+#ifdef RPH
+extern struct obj *mk_named_obj();
 #endif
 
 static boolean far_noise;
@@ -89,23 +91,36 @@ boolean vis;
 mondied(mdef) register struct monst *mdef; {
 register struct permonst *pd = mdef->data;
 #ifdef KOPS
-	if(letter(pd->mlet) && rn2(3) && pd->mlet != 'K'){
-#else
-	if(letter(pd->mlet) && rn2(3)){
+	if(pd->mlet != 'K')
 #endif
-		if (pd->mlet == '1') panic("mondied: making obj '1'");
-		(void) mkobj_at(pd->mlet,mdef->mx,mdef->my);
-		if(cansee(mdef->mx,mdef->my)){
+	{
+#if defined(ROCKMOLE) && defined(KJSMODS)
+	    /* if a giant rat is killed by a monster, do not make a 
+	     * corpse (like Keystone Kops above). */
+	    if(!(pd->mlet == 'r' && dlevel < 4))
+#endif
+		if(letter(pd->mlet) && rn2(3)) {
+		    if (pd->mlet == '1') panic("mondied: making obj '1'");
+#ifndef RPH
+		    (void) mkobj_at(pd->mlet,mdef->mx,mdef->my);
+#else
+		    (void) mk_named_obj_at(pd->mlet,mdef->mx,mdef->my,
+					   NAME(mdef), mdef->mnamelth);
+#endif
+		    if(cansee(mdef->mx,mdef->my)){
 			unpmon(mdef);
 			atl(mdef->mx,mdef->my,fobj->olet);
+		    }
+		    stackobj(fobj);
 		}
-		stackobj(fobj);
+		mondead(mdef);
 	}
-	mondead(mdef);
 }
 
 /* drop a rock and remove monster */
-monstone(mdef) register struct monst *mdef; {
+monstone(mdef)
+	register struct monst *mdef;
+{
 	extern char mlarge[];
 	if(index(mlarge, mdef->data->mlet))
 		mksobj_at(ENORMOUS_ROCK, mdef->mx, mdef->my);
@@ -119,22 +134,26 @@ monstone(mdef) register struct monst *mdef; {
 }
 		
 
-fightm(mtmp) register struct monst *mtmp; {
+fightm(mtmp)
+	register struct monst *mtmp;
+{
 register struct monst *mon;
-	for(mon = fmon; mon; mon = mon->nmon) if(mon != mtmp) {
+
+	for(mon = fmon; mon; mon = mon->nmon)
+	    if(mon != mtmp) {
 		if(DIST(mon->mx,mon->my,mtmp->mx,mtmp->my) < 3)
-		    if(rn2(4))
-			return(hitmm(mtmp,mon));
-	}
+		    if(rn2(4))  return(hitmm(mtmp,mon));
+	    }
 	return(-1);
 }
 
 /* u is hit by sth, but not a monster */
 thitu(tlev,dam,name)
-register tlev,dam;
-register char *name;
+	register tlev,dam;
+	register char *name;
 {
-char buf[BUFSZ];
+	char buf[BUFSZ];
+
 	setan(name,buf);
 	if(u.uac + tlev <= rnd(20)) {
 		if(Blind) pline("It misses.");
@@ -292,14 +311,32 @@ register thrown;
 			tmp++;
 		}
 	    }
-	    if(mon->data->mlet == 'O' && obj->otyp == TWO_HANDED_SWORD &&
-		!strcmp(ONAME(obj), "Orcrist"))
-		tmp += rnd(10);
+#ifdef BVH
+	    if(!strcmp(ONAME(obj), "Excalibur")) tmp += rnd(10);
+	    else
+#endif
+		if(obj->otyp == KATANA
+		   && !strcmp(ONAME(obj), "Snickersnee")) tmp += rnd(5);
+
+	    else if(mon->data->mlet == 'O' && obj->otyp == TWO_HANDED_SWORD
+		    && !strcmp(ONAME(obj), "Orcrist"))	tmp += rnd(10);
+
 	} else	switch(obj->otyp) {
 		case HEAVY_IRON_BALL:
 			tmp = rnd(25); break;
 		case ENORMOUS_ROCK:
 			tmp = rnd(20); break;
+#ifdef RPH
+		case MIRROR:
+			pline("You break your mirror.  That's bad luck!");
+		        u.uluck -= 2;
+		        if ((int)u.uluck < LUCKMIN) u.uluck = LUCKMIN;
+			freeinv(obj);
+			if(obj->owornmask)
+				setworn((struct obj *) 0, obj->owornmask);
+			obfree(obj, (struct obj *) 0);
+			return(TRUE);
+#endif
 		case EXPENSIVE_CAMERA:
 	pline("You succeed in destroying your camera. Congratulations!");
 			freeinv(obj);
@@ -307,20 +344,21 @@ register thrown;
 				setworn((struct obj *) 0, obj->owornmask);
 			obfree(obj, (struct obj *) 0);
 			return(TRUE);
-		case DEAD_COCKATRICE:
+		case DEAD_COCKATRICE:	/* fixed by polder@cs.vu.nl */
 			pline("You hit %s with the cockatrice corpse.",
 				monnam(mon));
 			if(mon->data->mlet == 'c') {
 				tmp = 1;
 				hittxt = TRUE;
-#ifdef KAA
-				stoned = TRUE;
-				xkilled(mon,0);
-#endif
 				break;
 			}
-			pline("%s is turned to stone!", Monnam(mon));
+			pline ("%s is turned to stone!", Monnam(mon));
+#ifdef KAA
+			stoned = TRUE;
+			xkilled(mon,0);
+#else
 			killed(mon);
+#endif
 			return(FALSE);
 		case CLOVE_OF_GARLIC:		/* no effect against demons */
 			if(index(UNDEAD, mon->data->mlet))
@@ -425,16 +463,20 @@ register struct monst *mtmp;
 	/*  changes by wwp 5/16/85 */
 	if (!Blind && !Confusion && !Hallucination
 	    && mdat->mlet == 'd' && mtmp->mtame) {
-		mtmp->mflee = 1;			
+		char *dname;		/* added by Janet Walz (walz@mimsy) */
+		mtmp->mflee = 1;
 		mtmp->mfleetim = rnd(6);
-		pline("You stop to avoid hitting your dog");
+		if (dname = NAME(mtmp))
+		    pline("You stop to avoid hitting %s.",dname);
+		else
+		    pline("You stop to avoid hitting your dog.");
 		return(TRUE);
 	}
 	if (flags.confirm && (mtmp->mpeaceful || mtmp->mtame) && ! Confusion
 	    && !Hallucination && !Invisible)
 
 		if (Blind ? Telepat : (!mtmp->minvis || See_invisible)) {
-			pline("Really attack?");
+			pline("Really attack %s?", monnam(mtmp));
 			(void) fflush(stdout);
 			if (readchar() != 'y') {
 				flags.move = 0;
@@ -476,6 +518,8 @@ register struct monst *mtmp;
 			mdat->ac + abon();
 	if (u.usym=='y' || u.usym=='F') tmp=100;
 	if (index("uEa",u.usym)) return(TRUE);
+#else
+	tmp = u.uluck + u.ulevel + mdat->ac + abon();
 #endif
 	if(uwep) {
 #ifdef KAA	/* Blessed weapons used against undead or demons */
@@ -484,6 +528,9 @@ register struct monst *mtmp;
 #endif
 		if(uwep->olet == WEAPON_SYM || uwep->otyp == PICK_AXE)
 			tmp += uwep->spe;
+#ifdef  BVH
+		if(!strcmp(ONAME(uwep),"Excalibur")) tmp += 5;
+#endif
 		if(uwep->otyp == TWO_HANDED_SWORD) tmp -= 1;
 		else if(uwep->otyp == KATANA) tmp += 1;
 		else if(uwep->otyp == DAGGER ||

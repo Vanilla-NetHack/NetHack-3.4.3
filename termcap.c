@@ -1,11 +1,9 @@
-/*	SCCS Id: @(#)termcap.c	1.4	87/08/08
+/*	SCCS Id: @(#)termcap.c	2.1	87/10/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* termcap.c - version 1.0.3 */
 
 #include <stdio.h>
 #include <ctype.h>	/* for isdigit() */
-#include "config.h"	/* for ROWNO and COLNO */
-#include "hack.h"	/* for  *HI, *HE */
+#include "hack.h"	/* for ROWNO, COLNO, *HI, *HE */
 #ifdef GENIX
 #define	void	int	/* jhn - mod to prevent compiler from bombing */
 #endif
@@ -14,14 +12,14 @@ extern char *tgetstr(), *tgoto(), *getenv();
 extern long *alloc();
 
 #ifndef TERMINFO
-# ifndef lint
+# ifndef LINT
 extern			/* it is defined in libtermlib (libtermcap) */
 # endif
 	short ospeed;		/* terminal baudrate; used by tputs */
 #endif
 static char tbuf[512];
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
-static char *VS, *VE;
+static char *VS, *VE, *US, *UE;
 static int SG;
 static char PC = '\0';
 char *CD;		/* tested in pri.c: docorner() */
@@ -43,22 +41,30 @@ startup()
 	ND = "\033[1C";
 	XD = "\033[1B";
 	BC = "\033[1D";
-	SO = "\033[7m";
-	SE = "\033[0m";
+# ifdef MSDOSCOLOR	/* creps@silver.bacs.indiana.edu */
+	TI = "\033[44;37m";
+	TE = "\033[0m";
+	VS = VE = "";
+	SO = "\033[31m";
+	SE = "\033[44;37m";
+# else
 	TI = TE = VS = VE = "";
+  	SO = "\033[7m";
+  	SE = "\033[0m";
+# endif
 	CD = "\033";
 	CO = COLNO;
 	LI = ROWNO;
-#if defined(DGK) || defined(SORTING)
-	/* Both HI and HE have 4 characters.  The function let_to_name()
-	 * in msdos.c uses this length when creating a buffer.  If you
-	 * make HI and HE longer, you must also change the length of buf[]
-	 * in let_to_name()
-	 */
+# if defined(DGK) || defined(SORTING)
+#  ifdef MSDOSCOLOR
+	HI = "\033[32m";
+	HE = "\033[44;37m";
+#  else
 	HI = "\033[4m";
 	HE = "\033[0m";
-#endif
-#else
+#  endif
+# endif
+#else /* MSDOS /**/
 	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
@@ -108,28 +114,36 @@ startup()
 	}
 	SO = tgetstr("so", &tbufptr);
 	SE = tgetstr("se", &tbufptr);
+	US = tgetstr("us", &tbufptr);
+	UE = tgetstr("ue", &tbufptr);
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
-	if(!SO || !SE || (SG > 0)) SO = SE = 0;
-#ifdef SORTING
+	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = 0;
+	TI = tgetstr("ti", &tbufptr);
+	TE = tgetstr("te", &tbufptr);
+	VS = VE = "";
+# ifdef SORTING
 	/* Get rid of padding numbers for HI and HE.  Hope they
 	 * aren't really needed!!!  HI and HE are ouputted to the
 	 * pager as a string - so how can you send it NULLS???
 	 *  -jsb
 	 */
-	    HI = (char *) alloc(strlen(SO));
-	    HE = (char *) alloc(strlen(SE));
+	    HI = (char *) alloc(strlen(SO) + 1);
+	    HE = (char *) alloc(strlen(SE) + 1);
 	    i = 0;
 	    while(isdigit(SO[i])) i++;
 	    strcpy(HI, &SO[i]);
 	    i = 0;
 	    while(isdigit(SE[i])) i++;
 	    strcpy(HE, &SE[i]);
-#endif
+# endif
 	CD = tgetstr("cd", &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);
 #endif /* MSDOS /**/
+#ifdef MSDOSCOLOR
+	init_hilite();
+#endif
 }
 
 start_screen()
@@ -245,6 +259,10 @@ xputs(s) char *s; {
 cl_end() {
 	if(CE)
 		xputs(CE);
+/*#ifdef MSDOSCOLOR
+/*		xputs(TI);
+/*#endif
+*/
 	else {	/* no-CE fix - free after Harold Rynes */
 		/* this looks terrible, especially on a slow terminal
 		   but is better than nothing */
@@ -260,8 +278,10 @@ cl_end() {
 
 clear_screen() {
 	xputs(CL);
-	xputs(HO);
-	curx = cury = 1;
+#ifdef MSDOSCOLOR
+	xputs(TI);
+#endif
+	home();
 }
 
 home()
@@ -356,3 +376,33 @@ cl_eos()			/* free after Robert Viduya */
 		curs(cx, cy);
 	}
 }
+
+#ifdef MSDOSCOLOR
+
+#define ESCCHR		'\033'
+#define HILITE_ATTRIB	1	/* highlight */
+
+#define HILITE_MONSTER	1	/* red */
+#define HILITE_OBJECT	2	/* green */
+
+init_hilite()
+{
+	register int hilen, def_background;
+
+	/* find default background color */
+	hilen = strlen(HI) - 1;
+	if (hilen < 5) def_background = 0;	/* black */
+	else {
+		if (!isdigit(HI[hilen-1])) def_background = 0;
+		else def_background = HI[hilen-1];
+	}
+
+	HI_MON = (char *) alloc(sizeof("E[0;33;44m"));
+	sprintf(HI_MON, "%c[%d;3%d;4%dm", ESCCHR, HILITE_ATTRIB, 
+	        HILITE_MONSTER, def_background);
+	HI_OBJ = (char *) alloc(sizeof("E[0;33;44m"));
+	sprintf(HI_OBJ, "%c[%d;3%d;4%dm", ESCCHR, HILITE_ATTRIB, 
+	        HILITE_OBJECT, def_background);
+}
+
+#endif /* MSDOSCOLOR */

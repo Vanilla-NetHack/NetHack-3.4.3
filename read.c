@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)read.c	1.4	87/08/08
+/*	SCCS Id: @(#)read.c	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.read.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -20,7 +19,7 @@ doread() {
 	if(!scroll) return(0);
 	
 	/* below added to allow reading of fortune cookies */
-	if(scroll->otyp ==FORTUNE_COOKIE) {
+	if(scroll->otyp == FORTUNE_COOKIE) {
 		if(Blind) {
 			pline("This cookie has a scrap of paper inside!");
 			pline("What a pity, that you cannot read it!");
@@ -42,12 +41,12 @@ doread() {
 	  pline("As you pronounce the formula on it, the scroll disappears.");
 	else
 	  pline("As you read the scroll, it disappears.");
-	if(confused)
+	if(confused) {
 	  if (Hallucination)
 	      pline("Being so trippy, you screw up ... ");
 	  else
 	      pline("Being confused, you mispronounce the magic words ... ");
-
+	}
 	if(!seffects(scroll))  {
 		if(!objects[scroll->otyp].oc_name_known) {
 		    if(known && !confused) {
@@ -479,7 +478,7 @@ seffects(sobj)
 			pline("You feel guilty.");
 			break;
 		}
-		pline("You are being punished for your misbehaviour!");
+		pline("You are being punished for your misbehavior!");
 		if(Punished){
 			pline("Your iron ball gets heavier.");
 			uball->owt += 15;
@@ -593,8 +592,11 @@ register char ch;
 	/*
 	 * can't genocide certain monsters
 	 */
-	if (index("12 &:", ch))	return FALSE;
-
+#ifdef SAC
+	if (index("123 &:", ch)) return FALSE;
+#else
+	if (index("12 &:", ch))  return FALSE;
+#endif
 	if (ch == pm_eel.mlet)	return TRUE;
 	for (mp = mons; mp < &mons[CMNUM+2]; mp++)
 		if (mp->mlet == ch) return TRUE;

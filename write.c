@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)write.c	1.4	87/08/08
-/* write.c - version 1.0.3 */
+/*	SCCS Id: @(#)write.c	2.0	87/09/16
+ */
 
 #include "hack.h"
 
@@ -56,8 +56,8 @@ register struct obj *scroll;
 	case SCR_BLANK_PAPER:
 	default:
 		impossible("You can't write such a weird scroll!");
-		return(1000);
 	}
+	return(1000);
 }
 
 

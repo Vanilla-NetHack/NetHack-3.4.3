@@ -1,14 +1,18 @@
-/*	SCCS Id: @(#)mon.c	1.4	87/08/08
+/*	SCCS Id: @(#)mon.c	2.1	87/10/17
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* mon.c - version 1.0.3 */
 
 #include "hack.h"
 #include "mfndpos.h"
-extern struct obj *mkobj_at();
+extern struct monst *mkmon_at();
+extern struct trap *maketrap();
+extern struct obj *mkobj_at(), *mksobj_at();
 extern char *hcolor();
 #ifdef KAA
 extern boolean	stoned;
 extern char mlarge[];
+#endif
+#ifdef RPH
+extern struct obj *mk_named_obj_at();
 #endif
 
 int warnlevel;		/* used by movemon and dochugw */
@@ -82,7 +86,7 @@ movemon()
 	if(warnlevel >= 0)
 	if(warnlevel > lastwarnlev || moves > lastwarntime + 5){
 	    register char *rr;
-	    switch(Warning & (LEFT_RING | RIGHT_RING)){
+	    switch((int) (Warning & (LEFT_RING | RIGHT_RING))){
 	    case LEFT_RING:
 		rr = "Your left ring glows";
 		break;
@@ -142,31 +146,31 @@ meatgold(mtmp) register struct monst *mtmp; {
 register struct gold *gold;
 register int pile;
 register struct obj *otmp;
-       /* Eats gold if it is there */
-      while(gold = g_at(mtmp->mx, mtmp->my)){
-	      freegold(gold);
-	       /* Left behind a pile? */
-	       pile = rnd(25);
-	       if(pile < 3)
-		 mksobj_at(ROCK, mtmp->mx, mtmp->my);
-	      newsym(mtmp->mx, mtmp->my);
+#ifdef KJSMODS
+	if(dlevel < 4) return;
+#endif
+	/* Eats gold if it is there */
+	while(gold = g_at(mtmp->mx, mtmp->my)){
+		freegold(gold);
+		/* Left behind a pile? */
+		pile = rnd(25);
+		if(pile < 3) mksobj_at(ROCK, mtmp->mx, mtmp->my);
+		newsym(mtmp->mx, mtmp->my);
 	}
-       /* Eats armor if it is there */
-       otmp = o_at(mtmp->mx,mtmp->my);
-       if((otmp) && (otmp->otyp >= PLATE_MAIL) && (otmp->otyp <= RING_MAIL)){
-	      freeobj(otmp);
-	       /* Left behind a pile? */
-	       pile = rnd(25);
-	       if(pile < 3)
-		  mksobj_at(ROCK, mtmp->mx, mtmp->my);
-	      newsym(mtmp->mx, mtmp->my);
+	/* Eats armor if it is there */
+	otmp = o_at(mtmp->mx,mtmp->my);
+	if((otmp) && (otmp->otyp >= PLATE_MAIL) && (otmp->otyp <= RING_MAIL)){
+		freeobj(otmp);
+		/* Left behind a pile? */
+		pile = rnd(25);
+		if(pile < 3)  mksobj_at(ROCK, mtmp->mx, mtmp->my);
+		newsym(mtmp->mx, mtmp->my);
 	}
 }
 #endif /* ROCKMOLE /**/
 
 mpickgold(mtmp) register struct monst *mtmp; {
 register struct gold *gold;
-register struct obj *otmp;
 	while(gold = g_at(mtmp->mx, mtmp->my)){
 		mtmp->mgold += gold->amount;
 		freegold(gold);
@@ -261,7 +265,7 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		{ register struct trap *ttmp = t_at(nx, ny);
 		  register long tt;
 			if(ttmp) {
-				tt = 1L <<" ttmp->ttyp;"
+				tt = 1L << ttmp->ttyp;
 				/* below if added by GAN 02/06/87 to avoid
 				 * traps out of range
 				 */
@@ -331,17 +335,21 @@ register struct monst *mtmp;
 	relmon(mtmp);
 	unstuck(mtmp);
 #ifdef KOPS
-       if(mtmp->data->mlet == 'K') {
+       if(mtmp->data->mlet == 'K' &&
+          !strcmp(mtmp->data->mname,"Keystone Kop")) {
 	   /* When a Kop dies, he probably comes back. */
-	   register int fate = rnd(3);
-	   if(fate == 1) {
-	     /* returns near the stairs */
-	     mkmon_at('K',xdnstair,ydnstair);
-	   } else if(fate == 2) {
-	     /* randomly */
-	     mkmon_at('K',0,0);
+	   switch(rnd(3)) {
+
+		case 1:	     /* returns near the stairs */
+			mkmon_at('K',xdnstair,ydnstair);
+			break;
+		case 2:	     /* randomly */
+			mkmon_at('K',0,0);
+			break;
+		default:
+			break;
 	   }
-       }
+	  }
 #endif
 	if(mtmp->isshk) shkdead(mtmp);
 	if(mtmp->isgd) gddead();
@@ -425,12 +433,16 @@ int	dest;
 /* Dest=1, normal; dest=0, don't print message; dest=2, don't drop corpse
    either; dest=3, message but no corpse */
 {
-#ifdef lint
+#ifdef LINT
 #define	NEW_SCORING
 #endif
 	register int tmp,tmp2,nk,x,y;
 	register struct permonst *mdat = mtmp->data;
 	extern long newuexp();
+#ifdef RPH
+	int old_nlth;
+	char old_name[BUFSZ];
+#endif
 
 	if(mtmp->cham) mdat = PM_CHAMELEON;
 	if (dest & 1) {
@@ -457,6 +469,13 @@ int	dest;
 	    extern char fut_geno[];
 	    u.nr_killed[tmp]++;
 	    if((nk = u.nr_killed[tmp]) > MAXMONNO &&
+#ifdef HARD
+# ifdef KOPS
+		!index("KkO&", mdat->mlet) &&
+# else
+		!index("kO&", mdat->mlet) &&
+# endif
+#endif
 		!index(fut_geno, mdat->mlet))
 		    charcat(fut_geno,  mdat->mlet);
 	}
@@ -473,12 +492,22 @@ int	dest;
 	/* give experience points */
 	tmp = 1 + mdat->mlevel * mdat->mlevel;
 	if(mdat->ac < 3) tmp += 2*(7 - mdat->ac);
-#ifdef KAA
-	if(index("AcsSDXaeRTVWU&In:P9", mdat->mlet))
+	if(index(
+#ifdef RPH
+# ifdef KAA
+		 "AcsSDXaeRTVWU&In:P89",
+# else
+		 "AcsSDXaeRTVWU&In:P8",
+# endif
 #else
-	if(index("AcsSDXaeRTVWU&In:P", mdat->mlet))
+# ifdef KAA
+		 "AcsSDXaeRTVWU&In:P9",
+# else
+		 "AcsSDXaeRTVWU&In:P",
+# endif
 #endif
-		tmp += 2*mdat->mlevel;
+					 mdat->mlet)) tmp += 2*mdat->mlevel;
+
 	if(index("DeV&P",mdat->mlet)) tmp += (7*mdat->mlevel);
 	if(mdat->mlevel > 6) tmp += 50;
 	if(mdat->mlet == ';') tmp += 1000;
@@ -506,7 +535,19 @@ int	dest;
 	more_experienced(tmp,0);
 	flags.botl = 1;
 	while(u.ulevel < 14 && u.uexp >= newuexp()){
+#ifdef RPH
+		/* make experience gaining simiar to d&d, whereby you */
+		/* can at most go up by one level at a time, extra expr */
+		/* possibly helping you along. Afterall, how much real */
+		/* experience does one get shooting a wand of death at */
+		/* a dragon created w/ a poymorph?? */
+		u.ulevel++;
+		if (u.uexp >= newuexp())
+		    u.uexp = newuexp() - 1;
+		pline("Welcome to experience level %u.", u.ulevel);
+#else
 		pline("Welcome to experience level %u.", ++u.ulevel);
+#endif
 		tmp = rnd(10);
 		if(tmp < 3) tmp = rnd(10);
 		u.uhpmax += tmp;
@@ -521,6 +562,10 @@ int	dest;
 
 	/* dispose of monster and make cadaver */
 	x = mtmp->mx;	y = mtmp->my;
+#ifdef RPH
+	old_nlth = mtmp->mnamelth;
+	if (old_nlth > 0)  (void) strcpy (old_name, NAME(mtmp));
+#endif	    
 	mondead(mtmp);
 	tmp = mdat->mlet;
 	if(tmp == 'm') { /* he killed a minotaur, give him a wand of digging */
@@ -535,6 +580,12 @@ int	dest;
 		stackobj(fobj);
 	} else
 #endif
+#ifdef KJSMODS
+	if(tmp == 'N') { 
+		mksobj_at(POT_OBJECT_DETECTION, x, y);
+		stackobj(fobj);
+	} else
+#endif
 #ifdef KAA
 	if(tmp == '&') (void) mkobj_at(0, x, y);
 	else
@@ -546,28 +597,54 @@ int	dest;
 #else
 	if(!letter(tmp) || (!index("mw", tmp) && !rn2(3))) tmp = 0;
 #endif
-
-	if(ACCESSIBLE(levl[x][y].typ))	/* might be mimic in wall or dead eel*/
-	    if(x != u.ux || y != u.uy) {  /* might be here after swallowed */
+	tmp2 = rn2(5);
+#ifdef KJSMODS
+	/* if a kobold or a giant rat does not become treasure, do
+	 *  not make a corpse. */
+# ifdef KOPS
+	if(mdat->mlet == 'K'
+	   && !strcmp(mdat->mname,"kobold") && tmp) tmp2 = 0;
+# endif
+# ifdef ROCKMOLE
+	if((mdat->mlet == 'r' && dlevel < 4) && tmp) tmp2 = 0;
+# endif
+#endif
+	if(!ACCESSIBLE(levl[x][y].typ)) {
+	    /* might be mimic in wall or dead eel*/
+ 	    newsym(x,y);
+	} else if(x != u.ux || y != u.uy) {
+		/* might be here after swallowed */
 #ifdef KAA
 		if(stoned) {
-			register char typetmp;
+			register int typetmp;
 			if(index(mlarge, tmp))	typetmp = ENORMOUS_ROCK;
 			else			typetmp = ROCK;
 			mksobj_at(typetmp, x, y);
 			if(cansee(x,y))
-				atl(x,y,Hallucination ? rndobjsym() :
-				objects[typetmp].oc_olet);
-		} else if(index("NTVm&w",mdat->mlet) || rn2(5)) {
-#else
-		if(index("NTVm&w",mdat->mlet) || rn2(5)) {
+			    atl(x, y, Hallucination ? rndobjsym() :
+				      objects[typetmp].oc_olet);
+		} else
 #endif
+		if(index("NTVm&w",mdat->mlet) || tmp2) {
+#ifndef RPH
 			register struct obj *obj2 = mkobj_at(tmp,x,y);
+#else
+			register struct obj *obj2;
+			if (letter(tmp))
+			    obj2 = mk_named_obj_at(tmp, x, y,
+						   old_name, old_nlth);
+# ifdef KOPS
+			else if (mdat->mlet == 'K')
+			    obj2 = mksobj_at((rn2(4) ? CLUB : WHISTLE), x, y);
+# endif
+			else
+			    obj2 = mkobj_at(tmp,x,y);
+#endif   /* RPH /**/
 			if(cansee(x,y))
 			    atl(x, y, Hallucination ? rndobjsym() : obj2->olet);
 			stackobj(obj2);
 		}
-	    }
+	}
 }
 
 kludge(str,arg)
@@ -689,7 +766,11 @@ register struct monst *mtmp;
 	if(cansee(mtmp->mx,mtmp->my) &&
 		(!Stealth || (mtmp->data->mlet == 'e' && rn2(10))) &&
 		(!index("NL",mtmp->data->mlet) || !rn2(50)) &&
+#ifdef RPH
+		(Aggravate_monster || index("8d1", mtmp->data->mlet)
+#else
 		(Aggravate_monster || index("d1", mtmp->data->mlet)
+#endif
 			|| (!rn2(7) && !mtmp->mimic))) {
 		mtmp->msleep = 0;
 		return(1);

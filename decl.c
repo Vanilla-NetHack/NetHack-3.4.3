@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)decl.c	1.4	87/08/08
+/*	SCCS Id: @(#)decl.c	2.1	87/10/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* Decl.c - version 1.0.3 */
 
 #include	"hack.h"
 char nul[40];			/* contains zeros */
@@ -19,8 +18,8 @@ struct symbols defsyms = {
     '"',
 #endif
 };
-#endif
 struct symbols showsyms;	/* will contain the symbols actually used */
+#endif	/* GRAPHICS /**/
 
 #ifdef DGK
 char hackdir[PATHLEN];		/* where rumors, help, record are */
@@ -28,10 +27,11 @@ char levels[PATHLEN];		/* where levels are */
 char lock[FILENAME];		/* pathname of level files */
 char permbones[PATHLEN];	/* where permanent copy of bones go */
 int ramdisk = FALSE;		/* whether to copy bones to levels or not */
+struct symbols symbol = {'|', '-', '-', '-', '-', '-', '+', '.', '#'};
 int saveprompt = TRUE;
 char *alllevels = "levels.*";
 char *allbones = "bones.*";
-char *configfile = "HACK.CNF";	/* read by read_config_file() */
+char *configfile = "NetHack.cnf";	/* read by read_config_file() */
 #else
 char lock[PL_NSIZ+4] = "1lock";	/* long enough for login name .99 */
 #endif
@@ -70,10 +70,13 @@ char	*occtxt;
 int	occtime;
 #endif
 #ifdef REDO
-int	in_doagain;
+int	in_doagain = FALSE;
 #endif
 
 char *HI, *HE;		/* set up in termcap.c */
+#ifdef MSDOSCOLOR
+char *HI_MON, *HI_OBJ;	/* set up in termcap.c */
+#endif
 
 char genocided[60];
 char fut_geno[60];

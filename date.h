@@ -1,3 +1,3 @@
-/*	SCCS Id: @(#)date.h	1.3	87/07/14 */
+/*	SCCS Id: @(#)date.h	1.4	87/08/08 */
 
-char datestring[] = "Fri Jun 26 11:49:16 1987";
+char datestring[] = "Mon Nov 30 01:25:12 1987";

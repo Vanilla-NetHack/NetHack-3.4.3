@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)trap.c	1.4	87/08/08
+/*	SCCS Id: @(#)trap.c	2.1	87/10/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* trap.c - version 1.0.3 */
 
 #include	<stdio.h>
 #include	"hack.h"
@@ -32,14 +31,17 @@ char *traps[] = {
 	," web"
 #endif
 #ifdef NEWCLASS
-	," spiked pit",
-	" level teleporter"
+	," spiked pit"
+	," level teleporter"
 #endif
 #ifdef SPELLS
 	," anti-magic field" 
 #endif
 #ifdef KAA
 	," rust trap"
+# ifdef RPH
+	,"polymorph trap"
+# endif
 #endif
 };
 
@@ -156,12 +158,13 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			case 0:
 				pline("A gush of water hits you on the head!");
 				if (uarmh) {
-					if (uarmh->rustfree)
-						pline("Your helmet is not affected!");
-					else {
-						pline("Your helmet rusts!");
-						uarmh->spe--;
-					}
+				    if (uarmh->rustfree)
+					pline("Your helmet is not affected!");
+				    else if (uarmh->spe > -6) {
+					pline("Your helmet rusts!");
+					uarmh->spe--;
+				    } else
+					pline("Your helmet looks quite rusted now.");
 				}
 				break;
 			case 1:
@@ -180,15 +183,19 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 				goto glovecheck;
 			default:
 				pline("A gush of water hits you!");
-				if (uarm)
-					if (uarm->rustfree ||
-						uarm->otyp >= STUDDED_LEATHER_ARMOR) 
-						pline("Your %s not affected!",
-						aobjnam(uarm,"are"));
-					else {
-						pline("Your %s!",aobjnam(uarm,"corrode"));
-						uarm->spe--;
-					}
+				if (uarm) {
+				    if (uarm->rustfree ||
+					uarm->otyp >= STUDDED_LEATHER_ARMOR) 
+					    pline("Your %s not affected!",
+						  aobjnam(uarm,"are"));
+				    else if(uarm->spe > -6) {
+					    pline("Your %s!",
+						  aobjnam(uarm,"corrode"));
+					    uarm->spe--;
+				    } else
+					    pline("Your %s quite rusted now.",
+						  aobjnam(uarm, "look"));
+				}
 			}
 			break;
 #endif
@@ -239,6 +246,13 @@ if(uarmh) pline("Fortunately, you are wearing a helmet!");
 			}
 			flags.botl = 1;
 			break;
+#endif
+#if defined(RPH) && defined(KAA)
+		case POLY_TRAP:
+			    pline("You feel a change coming over you.");
+			    polyself();
+			    deltrap(trap);
+			    break;
 #endif
 #ifdef NEWTRAPS
 		case MGTRP:
@@ -331,6 +345,12 @@ mintrap(mtmp) register struct monst *mtmp; {
 			}
 			break;
 #ifdef KAA
+# ifdef RPH
+  		case POLY_TRAP:
+		    if(!resist(mtmp, '/', 0, NOTELL))
+			newcham(mtmp,&mons[rn2(CMNUM)]);
+		    break;
+# endif
 		case RUST_TRAP:
 			if(in_sight)
 				pline("A gush of water hits %s!",monnam(mtmp));
@@ -463,7 +483,6 @@ float_up(){
 }
 
 float_down(){
-	register struct rm *tmpr;
 	register struct trap *trap;
 	
 	/* check for falling into pool - added by GAN 10/20/86 */
@@ -503,10 +522,27 @@ vtele() {
 	tele();
 }
 
+#ifdef BVH
+int has_amulet() {
+    register struct  obj *otmp;
+
+    for(otmp = invent; otmp; otmp = otmp->nobj)
+	if(otmp->olet == AMULET_SYM && otmp->spe >= 0)
+	    return(1);
+    return(0);
+}
+#endif
+
 tele() {
 	coord cc;
 	register int nux,nuy;
 
+#ifdef BVH
+	if(has_amulet() && rn2(3)) {
+	    pline("You feel disoriented for a moment.");
+	    return;
+	}
+#endif
 	if(Teleport_control) {
 #ifdef KAA
 	    if (multi < 0 && (!nomovemsg ||
@@ -631,6 +667,13 @@ unplacebc(){
 
 level_tele() {
 register int newlevel;
+
+#ifdef BVH
+	if(has_amulet() && rn2(5)) {
+	    pline("You feel very disoriented for a moment.");
+	    return;
+	}
+#endif
 	if(Teleport_control) {
 	    char buf[BUFSZ];
 
@@ -641,9 +684,9 @@ register int newlevel;
 	    newlevel = atoi(buf);
 	} else {
 #ifdef DGKMOD
-	    newlevel = rn2(5) ? rnz(dlevel + 3) : 30;
+	    newlevel = rn2(5) | !Fire_resistance ? rnz(dlevel + 3) : 30;
 #else
-	    newlevel = rnz(dlevel + 3);	/* 5 - 24 */
+	    newlevel = rnz(dlevel + 3);			/* 5 - 24 */
 #endif
 	    if(dlevel == newlevel)
 		if(!xdnstair) newlevel--; else newlevel++;
@@ -671,18 +714,20 @@ register int newlevel;
 			pline("\"You are here a bit early, but we'll let you in.\"");
 			killer = "visit to heaven";
 			done("died");
-		}
-	    newlevel = 0;
+		} else	if (newlevel == -9) {
+			pline("You feel deliriously happy. ");
+			pline("(In fact, you're on Cloud 9!) ");
+			more();
+		} else	newlevel = 0;
 	    pline("You are now high above the clouds ...");
 	    if(Levitation) {
 		pline("You float gently down to earth.");
 		done("escaped");
 	    }
 	    pline("Unfortunately, you don't know how to fly.");
-	    pline("You fall down a few thousand feet and break your neck.");
-	    pline("You die...");
+	    pline("You plummet a few thousand feet to your death.");
 	    dlevel = 0;
-	    killer = "fall";
+	    killer = "long fall";
 	    done("died");
 	}
 
@@ -705,7 +750,7 @@ domagictrap()
 	  /* below checks for blindness added by GAN 10/30/86 */
 	  if (!Blind)  {
 		pline("You are momentarily blinded by a flash of light!");
-		Blind += rn1(5,10);
+		Blinded += rn1(5,10);
 		seeoff(0);
 	  }  else
 		pline("You hear a deafening roar!");
@@ -799,9 +844,7 @@ domagictrap()
 	     default: break;
 	  }
 }
-
 #endif /* NEWTRAPS /**/
-
 
 drown()
 {

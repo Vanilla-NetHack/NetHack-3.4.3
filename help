@@ -36,7 +36,7 @@ is a giant ant.
 		   (but usually a doorway).
 		}  A pool of water
 		{  A fountain (your dungeon may not have these).
-		\  An opulant throne (You may not have this either).
+		\  An opulent throne (You may not have this either).
 		$  A pile or pot of gold.
 
 Commands:
@@ -95,6 +95,7 @@ Commands:
 	X	transcribe (learn) a spell.
 	x	print a list of know spells.
 	z	zap a wand.
+	Z	cast a spell.
 	t	throw an object or shoot an arrow.
 	p	pay your shopping bill.
 	d	drop something. d7a: drop seven items of object a.

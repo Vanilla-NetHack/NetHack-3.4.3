@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)wield.c	1.4	87/08/08
+/*	SCCS Id: @(#)wield.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* wield.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct obj zeroobj;
@@ -27,13 +26,15 @@ dowield()
 #endif
 	if(!(wep = getobj("#-)", "wield"))) /* nothing */;
 	else if(wep == &zeroobj) {
-	  if(uwep == 0){
+	  if(uwep == 0) {
 	    pline("You are already empty handed.");
-	  } else {
-	    setuwep((struct obj *) 0);
-	    res++;
-	    pline("You are empty handed.");
-	  }
+	  } else if (welded(uwep))
+		pline("The %s welded to your hand!",aobjnam(uwep,"are"));
+	  	else  {
+	  	  setuwep((struct obj *) 0);
+	  	  res++;
+	  	  pline("You are empty handed.");
+	  	}
 	} else if(uwep == wep)
 		pline("You are already wielding that!");
 	else if(welded(uwep))
@@ -70,10 +71,10 @@ corrode_weapon(){
 	if(!uwep || uwep->olet != WEAPON_SYM) return;	/* %% */
 	if(uwep->rustfree)
 		pline("Your %s not affected.", aobjnam(uwep, "are"));
-	else {
+	else if (uwep->spe > -6) {
 		pline("Your %s!", aobjnam(uwep, "corrode"));
 		uwep->spe--;
-	}
+	} else	pline("Your %s quite rusted now.", aobjnam(uwep, "look"));
 }
 
 chwepon(otmp,amount)

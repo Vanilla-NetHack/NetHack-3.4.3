@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)do_name.c	1.4	87/08/08
+/*	SCCS Id: @(#)do_name.c	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* do_name.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "hack.h"
@@ -111,15 +110,31 @@ extern char *lmonnam();
  * when there might be pointers around in unknown places. For now: only
  * when  obj  is in the inventory.
  */
-do_oname(obj) register struct obj *obj; {
-register struct obj *otmp, *otmp2;
-register lth;
-char buf[BUFSZ];
+do_oname(obj)
+	register struct obj *obj;
+{
+	char buf[BUFSZ];
+
 	pline("What do you want to name %s? ", doname(obj));
 	getlin(buf);
 	clrlin();
-	if(!*buf || *buf == '\033')
+	if(!*buf || *buf == '\033')	return;
+#ifdef RPH
+	if(!strcmp(buf, "Excalibur")) {
+		pline("Somehow you can't seem to engrave that word.");
 		return;
+	}
+#endif
+	oname(obj, buf);
+}
+
+oname(obj, buf)
+	register struct obj *obj;
+	char	*buf;
+{
+register struct obj *otmp, *otmp2;
+register int	lth;
+
 	lth = strlen(buf)+1;
 	if(lth > 63){
 		buf[62] = 0;
@@ -138,7 +153,7 @@ char buf[BUFSZ];
 	if(obj == invent) invent = otmp2;
 	else for(otmp = invent; ; otmp = otmp->nobj){
 		if(!otmp)
-			panic("Do_oname: cannot find obj.");
+			panic("oname: cannot find obj.");
 		if(otmp->nobj == obj){
 			otmp->nobj = otmp2;
 			break;
@@ -211,7 +226,7 @@ char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
 	 */
 	"Adri", "Andries", "Andreas", "Bert", "David", "Dirk", "Emile",
 	"Frans", "Fred", "Greg", "Hether", "Jay", "John", "Jon", "Karnov",
-	"Kay", "Kenny", "Maud", "Michiel", "Mike", "Peter", "Robert",
+	"Kay", "Kenny", "Kevin", "Maud", "Michiel", "Mike", "Peter", "Robert",
 	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Miracleman",
 	"Stephan"
 };

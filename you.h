@@ -1,12 +1,15 @@
-/*	SCCS Id: @(#)you.h	1.4	87/08/08
+/*	SCCS Id: @(#)you.h	2.1	87/11/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* you.h - version 1 */
+
+#ifndef YOU_H
+#define YOU_H
 
 #include "config.h"
 #include "onames.h"
 #include "permonst.h"
 
 struct prop {
+
 #define	TIMEOUT		007777	/* mask */
 #define	LEFT_RING	W_RINGL	/* 010000L */
 #define	RIGHT_RING	W_RINGR	/* 020000L */
@@ -14,6 +17,7 @@ struct prop {
 #define	LEFT_SIDE	LEFT_RING
 #define	RIGHT_SIDE	RIGHT_RING
 #define	BOTH_SIDES	(LEFT_SIDE | RIGHT_SIDE)
+
 	long p_flgs;
 	int (*p_tofn)();	/* called after timeout */
 };
@@ -63,19 +67,24 @@ struct you {
 #define	Punished	u.uprops[PUNISHED].p_flgs
 #define	SICK		(LAST_RING+6)		/* not a ring */
 #define	Sick		u.uprops[SICK].p_flgs
-#define	BLIND		(LAST_RING+7)		/* not a ring */
-#define	Blind		u.uprops[BLIND].p_flgs
+#define	BLINDED		(LAST_RING+7)		/* not a ring */
+#define	Blinded		u.uprops[BLINDED].p_flgs
 #define	WOUNDED_LEGS	(LAST_RING+8)		/* not a ring */
 #define Wounded_legs	u.uprops[WOUNDED_LEGS].p_flgs
 #define STONED		(LAST_RING+9)		/* not a ring */
 #define Stoned		u.uprops[STONED].p_flgs
 #define HALLUCINATION	(LAST_RING+10)		/* not a ring */
 #define Hallucination	u.uprops[HALLUCINATION].p_flgs
+#define	BLINDFOLDED	(LAST_RING+11)		/* not a ring */
+#define	Blindfolded	u.uprops[BLINDFOLDED].p_flgs
+#define Blind		(Blinded || Blindfolded)
 #define PROP(x) (x-RIN_ADORNMENT)       /* convert ring to index in uprops */
+	struct prop uprops[LAST_RING+11];
+
 	unsigned umconf;
 	char *usick_cause;
-	struct prop uprops[LAST_RING+11];
-	int mh, mhmax, mtimedone, umonnum;	    /* for polymorph-self */
+	int mh, mhmax, mtimedone, umonnum;	/* for polymorph-self */
+	schar mstr, mstrmax;			/* for saving ustr/ustrmax */
 #if defined(KOPS) && defined(KAA)
 	unsigned ucreamed;
 #endif
@@ -86,6 +95,10 @@ struct you {
 	unsigned udemigod;		/* once you kill the wiz */
 	unsigned udg_cnt;		/* how long you have been demigod */
 #endif
+#ifdef RPH
+	int medusa_level;		/* level of wiz and medusa */
+	int wiz_level;
+#endif	
 	schar ustr,ustrmax;
 	schar udaminc;
 	schar uac;
@@ -103,3 +116,5 @@ struct you {
 	struct monst *ustuck;
 	int nr_killed[CMNUM+2];		/* used for experience bookkeeping */
 };
+
+#endif /* YOU_H /**/

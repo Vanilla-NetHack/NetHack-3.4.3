@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)ioctl.c	1.3	87/07/14
+/*	SCCS Id: @(#)ioctl.c	2.0	87/09/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.ioctl.c - version 1.0.2 */
 
 /* This cannot be part of hack.tty.c (as it was earlier) since on some
    systems (e.g. MUNIX) the include files <termio.h> and <sgtty.h>
@@ -28,7 +27,8 @@ setioctls() {
 #ifdef BSD
 	(void) ioctl(fileno(stdin), (int) TIOCSLTC, (char *) &ltchars);
 #else
-	(void) ioctl(fileno(stdin), (int) TCSETA, &termio);
+	/* Now modified to run under Sys V R3.	- may have to be #ifdef'ed */
+	(void) ioctl(fileno(stdin), (int) TCSETAW, &termio);
 #endif
 }
 

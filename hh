@@ -41,6 +41,7 @@ w	wield	wield a weapon	(w-  wield nothing)
 x	spells	print a list of know spells
 X	Xcribe	transcribe (learn) a spell
 z	zap	zap a wand
+X	cast	cast a spell
 C	name	name an individual monster (e.g., baptize your dog)
 D	Drop	drop several things
 E	Engrave write a message in the dust on the floor  (E-  use fingers)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	1.4	87/08/08
+/*	SCCS Id: @(#)msdos.c	2.1	87/10/19
 /* An assortment of MSDOS functions.
  */
 
@@ -22,22 +22,37 @@ char *
 getlogin() {
 	return ((char *) NULL);
 }
-
+# ifdef REDO
 tgetch() {
 	char ch, popch();
 	static char DOSgetch(), BIOSgetch();
 
 	if (!(ch = popch())) {
-# ifdef DGK
+#  ifdef DGK
 		/* BIOSgetch can use the numeric key pad on IBM compatibles. */
 		if (flags.IBMBIOS)
 			ch = BIOSgetch();
 		else
-# endif
+#  endif
 			ch = DOSgetch();
 	}
 	return ((ch == '\r') ? '\n' : ch);
 }
+# else /* REDO /**/
+tgetch() {
+	char ch;
+	static char DOSgetch(), BIOSgetch();
+
+#  ifdef DGK
+	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
+	if (flags.IBMBIOS)
+		ch = BIOSgetch();
+	else
+#  endif
+		ch = DOSgetch();
+	return ((ch == '\r') ? '\n' : ch);
+}
+# endif /* REDO /**/
 
 # define DIRECT_INPUT	0x7
 static char
@@ -502,18 +517,52 @@ read_config_file() {
 			}
 			(void) strncpy(SAVEF, bufp, PATHLEN);
 			append_slash(SAVEF);
-
+#ifdef GRAPHICS
 		} else if (!strncmp(buf, "GRAPHICS", 4)) {
-			struct symbols s;
+			char translate[17];
+			short i;
 
-			if (sscanf(bufp, "%u%u%u%u%u%u%u%u%u", &s.vwall,
-				    &s.hwall, &s.tlcorn, &s.trcorn, &s.blcorn,
-				    &s.brcorn, &s.door, &s.room, &s.corr) == 9)
-				symbol = s;
-			else {
-				msmsg("GRAPHICS did not contain 9 values\n");
-				getreturn("to continue");
+		     if ((i = sscanf(bufp, "%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u%u",
+				&translate[0], &translate[1], &translate[2],
+				&translate[3], &translate[4], &translate[5],
+				&translate[6], &translate[7], &translate[8],
+				&translate[9], &translate[10], &translate[11],
+				&translate[12], &translate[13], &translate[14],
+				&translate[15], &translate[16])) < 0) {
+					msmsg ("Syntax error in GRAPHICS\n");
+					getreturn("to continue");
 			}
+			translate[i] = '\0';
+#endif /* GRAPHICS /**/
+/*
+ * You could have problems here if you configure FOUNTAINS, SPIDERS or NEWCLASS
+ * in or out and forget to change the tail entries in your graphics string.
+ */
+#define SETPCHAR(f, n)	showsyms.f = (strlen(translate) > n) ? translate[n] : defsyms.f
+			SETPCHAR(stone, 0);
+			SETPCHAR(vwall, 1);
+			SETPCHAR(hwall, 2);
+			SETPCHAR(tlcorn, 3);
+			SETPCHAR(trcorn, 4);
+			SETPCHAR(blcorn, 5);
+			SETPCHAR(brcorn, 6);
+			SETPCHAR(door, 7);
+			SETPCHAR(room, 8);
+			SETPCHAR(corr, 9);
+			SETPCHAR(upstair, 10);
+			SETPCHAR(dnstair, 11);
+			SETPCHAR(trap, 12);
+#ifdef FOUNTAINS
+			SETPCHAR(pool, 13);
+			SETPCHAR(fountain, 14);
+#endif
+#ifdef NEWCLASS
+			SETPCHAR(throne, 15);
+#endif
+#ifdef SPIDERS
+			SETPCHAR(web, 16);
+#endif
+#undef SETPCHAR
 		} else {
 			msmsg("Bad option line: '%s'\n", buf);
 			getreturn("to continue");

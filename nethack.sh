@@ -1,5 +1,5 @@
 #!/bin/sh
-#	SCCS Id: @(#)nethack.sh	1.3	87/07/14
+#	SCCS Id: @(#)nethack.sh	1.4	87/08/08
 HACKDIR=/usr/games/lib/nethackdir
 HACK=$HACKDIR/nethack
 MAXNROFPLAYERS=4

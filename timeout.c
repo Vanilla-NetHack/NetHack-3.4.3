@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)timeout.c	1.3	87/07/14
+/*	SCCS Id: @(#)timeout.c	2.0	87/09/18
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* timeout.c - version 1.0.3 */
 
 #include	"hack.h"
 
@@ -37,7 +36,7 @@ register struct monst *mtmp;
 			else
 				pline("You feel less confused now.");
 			break;
-		case BLIND:
+		case BLINDED:
 			if (Hallucination) pline("Oh like wow! What a rush.");
 			else		   pline("You can see again.");
 			setsee();

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)extern.h	1.3	87/07/14
+/*	SCCS Id: @(#)extern.h	2.1	87/10/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* extern.h - version 1.0 */
 
 #include "config.h"
 
@@ -27,6 +26,9 @@ extern int in_doagain;
 #endif
 
 extern char *HI, *HE;		/* set up in termcap.c */
+#ifdef MSDOSCOLOR
+extern char *HI_MON, *HI_OBJ;	/* set up in termcap.c */
+#endif
 
 #include "obj.h"
 extern struct obj *invent, *uwep, *uarm, *uarm2, *uarmh, *uarms, *uarmg, 

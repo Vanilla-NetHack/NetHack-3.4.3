@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)monst.h	1.3	87/07/14
+/*	SCCS Id: @(#)monst.h	2.1	87/09/28
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* monst.h - version 1.0.2 */
 
 struct monst {
 	struct monst *nmon;
@@ -19,11 +18,11 @@ struct monst {
 	Bitfield(mhide,1);	/* hides beneath objects */
 	Bitfield(mundetected,1);	/* not seen in present hiding place */
 	Bitfield(mspeed,2);
+	Bitfield(mflee,1);	/* fleeing */
+	Bitfield(mfleetim,7);	/* timeout for mflee */
 	Bitfield(msleep,1);
 	Bitfield(mfroz,1);
 	Bitfield(mconf,1);
-	Bitfield(mflee,1);	/* fleeing */
-	Bitfield(mfleetim,7);	/* timeout for mflee */
 	Bitfield(mcan,1);	/* has been cancelled */
 	Bitfield(mtame,1);	/* implies peaceful */
 	Bitfield(mpeaceful,1);	/* does not attack unprovoked */

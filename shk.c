@@ -1,12 +1,11 @@
-/*	SCCS Id: @(#)shk.c	1.4	87/08/08
+/*	SCCS Id: @(#)shk.c	2.1	87/08/23
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* shk.c - version 1.0.3 */
 
 #include "hack.h"
 #ifdef QUEST
 int shlevel = 0;
 struct monst *shopkeeper = 0;
-struct obj *billobjs = 0;
+struct	obj	*billobjs = 0;
 obfree(obj,merge) register struct obj *obj, *merge; {
 	free((char *) obj);
 }
@@ -33,7 +32,9 @@ char *shkname(){ return(""); }
 #define	ANGRY(mon)	!NOTANGRY(mon)
 
 extern char plname[], *xname();
-extern struct obj *o_on(), *bp_to_obj();
+extern struct monst *makemon();
+extern struct obj *o_on(), *bp_to_obj(),
+		  *carrying();
 
 /* Descriptor of current shopkeeper. Note that the bill need not be
    per-shopkeeper, since it is valid only when in a shop. */
@@ -51,23 +52,6 @@ static setpaid(), findshk(), dopayobj(), getprice(), realhunger();
 		obj->quan <= bp->bquan
  */
 
-
-char shtypes[] = {	/* 9 shoptypes: 8 specialized, 1 mixed */
-	RING_SYM, WAND_SYM,
-#ifdef SPELLS
-	SPBOOK_SYM,
-#endif
-	WEAPON_SYM, FOOD_SYM, SCROLL_SYM, POTION_SYM, ARMOR_SYM, 0
-};
-char *shopnam[] = {
-	"engagement ring", "walking cane",
-#ifdef SPELLS
-	"rare book",
-#endif
-	"antique weapon", "delicatessen", "second hand book",
-	"liquor", "used armor", "assorted antiques"
-};
-
 char *
 shkname(mtmp)				/* called in do_name.c */
 register struct monst *mtmp;
@@ -81,7 +65,7 @@ register struct monst *mtmp;
 	register struct eshk *eshk = ESHK(mtmp);
 
 	if(eshk->shoplevel == dlevel)
-		rooms[eshk->shoproom].rtype = 0;
+		rooms[eshk->shoproom].rtype = OROOM;
 	if(mtmp == shopkeeper) {
 		setpaid();
 		shopkeeper = 0;
@@ -154,25 +138,21 @@ register roomno = inroom(u.ux,u.uy);
 			pline("You stole for a total worth of %ld zorkmids.",
 				total);
 			ESHK(shopkeeper)->robbed += total;
-#ifdef KOPS
-			/* Keystone Kops srt@ucla */
-			pline("An alarm sounds throughout the dungeon!");
-			pline("The Kops are after you!");
-#endif
 			setpaid();
-			if((rooms[ESHK(shopkeeper)->shoproom].rtype == GENERAL)
+			if((rooms[ESHK(shopkeeper)->shoproom].rtype == SHOPBASE)
 			    == (rn2(3) == 0))
 			    ESHK(shopkeeper)->following = 1;
 #ifdef KOPS
-			{
-			    coord enexto();
+			{   /* Keystone Kops srt@ucla */
 			    coord mm;
 			    register int cnt = dlevel + rnd(3);
 			    /* Create a swarm near the staircase */
+			    pline("An alarm sounds throughout the dungeon!");
+			    pline("The Keystone Kops are after you!");
 			    mm.x = xdnstair;
 			    mm.y = ydnstair;
 			    while(cnt--) {
-				    mm = enexto(mm.x, mm.y);
+				    (void) enexto(&mm, mm.x, mm.y);
 				    (void) mkmon_at('K', mm.x, mm.y);
 			    }
 			    /* Create a swarm near the shopkeeper */
@@ -180,7 +160,7 @@ register roomno = inroom(u.ux,u.uy);
 			    mm.x = shopkeeper->mx;
 			    mm.y = shopkeeper->my;
 			    while(cnt--) {
-				    mm = enexto(mm.x, mm.y);
+				    (void) enexto(&mm, mm.x, mm.y);
 				    (void) mkmon_at('K', mm.x, mm.y);
 			    }
 			}
@@ -203,7 +183,7 @@ register roomno = inroom(u.ux,u.uy);
 			pline("It looks rather muddy down here.");
 		} else
 		if(rt == COURT) {
-			pline("You are in an opulant throne room!");
+			pline("You are in an opulent throne room!");
 		} else
 		if(rt == MORGUE) {
 			if(midnight())
@@ -213,7 +193,7 @@ register roomno = inroom(u.ux,u.uy);
 		} else
 			rt = 0;
 		if(rt != 0) {
-			rooms[roomno].rtype = 0;
+			rooms[roomno].rtype = OROOM;
 			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 				if(rt != ZOO || !rn2(3))
 					mtmp->msleep = 0;
@@ -221,12 +201,14 @@ register roomno = inroom(u.ux,u.uy);
 	}
 
 	/* Did we just enter a shop? */
-	if(roomno >= 0 && rooms[roomno].rtype >= 8) {
+	if(roomno >= 0 && rooms[roomno].rtype >= SHOPBASE) {
+	    register int rt = rooms[roomno].rtype;
+
 	    if(shlevel != dlevel || !shopkeeper
 				 || ESHK(shopkeeper)->shoproom != roomno)
 		findshk(roomno);
 	    if(!shopkeeper) {
-		rooms[roomno].rtype = 0;
+		rooms[roomno].rtype = OROOM;
 		u.uinshop = 0;
 	    } else if(!u.uinshop){
 		if(!ESHK(shopkeeper)->visitct ||
@@ -240,13 +222,14 @@ register roomno = inroom(u.ux,u.uy);
 		}
 		if(!ESHK(shopkeeper)->following) {
 		    boolean box, pick;
-		    struct obj *carrying();
 
-		    pline("Hello %s! Welcome%s to %s's %s shop!",
+		    pline("Hello %s! Welcome%s to %s's %s!",
 			plname,
 			ESHK(shopkeeper)->visitct++ ? " again" : "",
 			shkname(shopkeeper),
-			shopnam[rooms[ESHK(shopkeeper)->shoproom].rtype - 8] );
+			shtypes[rt - SHOPBASE].name);
+/*			shtypes[rooms[ESHK(shopkeeper)->shoproom].rtype - SHOPBASE].name);
+*/
 		    box = carrying(ICE_BOX) != (struct obj *)0;
 		    pick = carrying(PICK_AXE) != (struct obj *)0;
 		    if(box || pick) {
@@ -463,9 +446,9 @@ int pass, tmp;
 #endif /* MSDOS /**/
 		}
 	}
-	pline("Thank you for shopping in %s's %s store!",
+	pline("Thank you for shopping in %s's %s!",
 		shkname(shopkeeper),
-		shopnam[rooms[ESHK(shopkeeper)->shoproom].rtype - 8]);
+		shtypes[rooms[ESHK(shopkeeper)->shoproom].rtype - SHOPBASE].name);
 	NOTANGRY(shopkeeper) = 1;
 	return(1);
 }
@@ -563,6 +546,7 @@ register struct bill_x *bp;
 /* called in hack.c when we pickup an object */
 addtobill(obj) register struct obj *obj; {
 register struct bill_x *bp;
+char	buf[40];
 	if(!inshop() ||
 	(u.ux == ESHK(shopkeeper)->shk.x && u.uy == ESHK(shopkeeper)->shk.y) ||
 	(u.ux == ESHK(shopkeeper)->shd.x && u.uy == ESHK(shopkeeper)->shd.y) ||
@@ -585,6 +569,28 @@ register struct bill_x *bp;
 	bp->bquan = obj->quan;
 	bp->useup = 0;
 	bp->price = getprice(obj);
+	strcpy(buf, "For you, ");
+	if (ANGRY(shopkeeper)) strcat(buf, "scum ");
+	else {
+	    switch(rnd(4) + u.udemigod) {
+		case 1:	strcat(buf, "good");
+			break;
+		case 2:	strcat(buf, "honored");
+			break;
+		case 3:	strcat(buf, "most gracious");
+			break;
+		case 4:	strcat(buf, "esteemed");
+			break;
+		case 5:	strcat(buf, "holy");
+			break;
+	    }
+	    if(u.usym != '@') strcat(buf, " creature");
+	    else	      strcat(buf, (flags.female) ? " lady" : " sir");
+	}
+	pline("%s; only %d %s %s.", buf, bp->price,
+			(bp->bquan > 1) ? "per" : "for this",
+			typename(obj->otyp));
+
 	ESHK(shopkeeper)->billct++;
 	obj->unpaid = 1;
 }
@@ -654,9 +660,12 @@ register struct bill_x *bp;
 	if(shopkeeper->msleep || shopkeeper->mfroz ||
 		inroom(shopkeeper->mx,shopkeeper->my) != ESHK(shopkeeper)->shoproom)
 		return;
-	if(ESHK(shopkeeper)->billct == BILLSZ ||
-	  ((tmp = shtypes[rooms[ESHK(shopkeeper)->shoproom].rtype-8]) && tmp != obj->olet)
-	  || index("_0", obj->olet)) {
+	if(ESHK(shopkeeper)->billct == BILLSZ
+	   || !saleable(rooms[ESHK(shopkeeper)->shoproom].rtype-SHOPBASE, obj)
+/*
+	  ((tmp = shtypes[rooms[ESHK(shopkeeper)->shoproom].rtype-SHOPBASE].symb) && tmp != obj->olet)
+*/
+	   || index("_0", obj->olet)) {
 		pline("%s seems not interested.", Monnam(shopkeeper));
 #ifdef DGKMOD
 		obj->no_charge = 1;
@@ -756,57 +765,86 @@ getprice(obj) register struct obj *obj; {
 register int tmp, ac;
 	switch(obj->olet){
 	case AMULET_SYM:
-		tmp = 10*rnd(500);
+		tmp = rn1(1500, 3500);
 		break;
 	case TOOL_SYM:
-		tmp = 10*rnd((obj->otyp == EXPENSIVE_CAMERA) ? 150 :
+	    switch(obj->otyp) {
+		case EXPENSIVE_CAMERA:	tmp = rn1(400, 200);
+					break;
 #ifdef MARKER
-			(obj->otyp == MAGIC_MARKER) ? 100 :
+		case MAGIC_MARKER:	tmp = rn1(100,50);
+					break;
 #endif
-			30);
-		break;
+#ifdef WALKIES
+		case LEASH:		tmp = rn1(40,20);
+					break;
+#endif
+#ifdef RPH
+		case BLINDFOLD:		tmp = rn1(40,20);
+					break;
+		case MIRROR:		tmp = rn1(80,40);
+					break;
+#endif
+		case STETHOSCOPE:	tmp = rn1(100,80);
+					break;
+		case CAN_OPENER:	tmp = rn1(50,30);
+					break;
+		default:		tmp = rn1(20,10);
+					break;
+	    }
+	    break;
 	case RING_SYM:
-		tmp = 10*rnd(100);
+		tmp = rn1(200,100);
 		break;
 	case WAND_SYM:
-		tmp = 10*rnd(100);
+		tmp = rn1(300,150);
 		break;
 	case SCROLL_SYM:
-		tmp = 10*rnd(50);
 #ifdef MAIL
 		if(obj->otyp == SCR_MAIL)
-			tmp = rnd(5);
+			tmp = rn1(5,5);
+		else
 #endif
+			tmp = rn1(200,100);
 		break;
 	case POTION_SYM:
-		tmp = 10*rnd(50);
+		tmp = rn1(200,100);
 		break;
 #ifdef SPELLS
 	case SPBOOK_SYM:
-		tmp = 10*rnd(200);
+		tmp = rn1(500,500);
 		break;
 #endif
 	case FOOD_SYM:
-		tmp = 10*rnd(5 + (2000/realhunger()));
+
+		tmp = (2000+objects[obj->otyp].nutrition)/realhunger();
+		tmp = rn1((tmp < 10) ? 10 : tmp,
+		          objects[obj->otyp].nutrition/20 + 5);
 		break;
 	case GEM_SYM:
-		tmp = 10*rnd(20);
+		tmp = rn1(120,60);
 		break;
 	case ARMOR_SYM:
 		ac = ARM_BONUS(obj);
 		if(ac <= -10)		/* probably impossible */
 			ac = -9;
-		tmp = 100 + ac*ac*rnd(10+ac);
+		tmp = ac*ac+10*rn1(10+ac,10);
 		break;
 	case WEAPON_SYM:
 		if(obj->otyp < BOOMERANG)
-			tmp = 5*rnd(10);
+			tmp = rn1(4,2);
+		else if(obj->otyp == BOOMERANG ||
+			obj->otyp == DAGGER ||
+			obj->otyp == CLUB ||
+			obj->otyp == SLING)
+			tmp = rn1(50,50);
 		else if(obj->otyp == KATANA)
-			tmp = 10*rnd(200);
+			tmp = rn1(700,800);
 		else if(obj->otyp == LONG_SWORD ||
-			obj->otyp == TWO_HANDED_SWORD)
-			tmp = 10*rnd(150);
-		else	tmp = 10*rnd(75);
+			obj->otyp == TWO_HANDED_SWORD ||
+			obj->otyp == BROAD_SWORD)
+			tmp = rn1(500,500);
+		else	tmp = rn1(150,100);
 		break;
 	case CHAIN_SYM:
 		pline("Strange ..., carrying a chain?");
@@ -890,6 +928,12 @@ register struct monst *shkp;
 				pline("Hello %s! Didn't you forget to pay?",
 					plname);
 				followmsg = moves;
+#ifdef HARD
+				if (!rn2(5)) {
+	    pline ("%s doesn't like customers who don't pay.", Monnam(shkp));
+				    NOTANGRY(shkp) = 0;
+				}
+#endif				    
 			}
 			if(udist < 2)
 				return(0);
@@ -908,13 +952,15 @@ register struct monst *shkp;
 		    if(udist > 4)
 			return(-1);	/* leave it to m_move */
 	} else if(ANGRY(shkp)) {
-		long saveBlind = Blind;
-		Blind = 0;
+		long saveBlind = Blinded;
+		long saveBlindf = Blindfolded;
+		Blinded = Blindfolded = 0;
 		if(shkp->mcansee && !Invis && cansee(omx,omy)) {
 			gx = u.ux;
 			gy = u.uy;
 		}
-		Blind = saveBlind;
+		Blinded = saveBlind;
+		Blindfolded = saveBlindf;
 		avoid = FALSE;
 	} else {
 #define	GDIST(x,y)	((x-gx)*(x-gx)+(y-gy)*(y-gy))
@@ -1014,10 +1060,19 @@ register struct monst *shkp;
 }
 #endif /* QUEST /**/
 
-online(x,y) {
-	return(x==u.ux || y==u.uy ||
-		(x-u.ux)*(x-u.ux) == (y-u.uy)*(y-u.uy));
+online(x,y)		/*	New version to speed things up.
+			 *	Compiler dependant, may not always work.
+			 */
+	register xchar x, y;
+{
+	return((x-=u.ux) == 0 || (y-=u.uy) == 0 || x == y || (x+=y) == 0);
 }
+
+/*			Original version, just in case...
+ *online(x,y) {
+ *	return(x==u.ux || y==u.uy || (x-u.ux)*(x-u.ux) == (y-u.uy)*(y-u.uy));
+ *}
+ */
 
 /* Does this monster follow me downstairs? */
 follower(mtmp)

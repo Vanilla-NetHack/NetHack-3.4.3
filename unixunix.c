@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)unixunix.c	1.3	87/07/14
+/*	SCCS Id: @(#)unixunix.c	1.4	87/08/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 

@@ -1,12 +1,11 @@
-/*	SCCS Id: @(#)end.c	1.4	87/08/08
+/*	SCCS Id: @(#)end.c	2.1	87/10/07
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* end.c - version 1.0.3 */
 
 #include <stdio.h>
 #include <signal.h>
 #include "hack.h"
 #define	Sprintf	(void) sprintf
-extern char plname[], pl_character[];
+extern char plname[], pl_character[], SAVEF[];
 
 xchar maxdlevel = 1;
 int done_stopprint;
@@ -16,7 +15,7 @@ int done_hup;
 done1()
 {
 	(void) signal(SIGINT,SIG_IGN);
-#if defined(WIZARD) && defined(UNIX) 
+#if defined(WIZARD) && defined(UNIX) && !defined(KJSMODS)
 	if(wizard) {
 	    pline("Dump core?");
 	    if(readchar() == 'y') {
@@ -53,25 +52,43 @@ done_hangup(){
 }
 #endif
 
-done_in_by(mtmp) register struct monst *mtmp; {
-static char buf[BUFSZ];
-extern char *shkname();
+done_in_by(mtmp)
+register struct monst *mtmp;
+{
+	char *hallmon();
+	static char buf[BUFSZ], *prefix;
+	extern char *eos(), *shkname();
 	pline("You die ...");
-	if(mtmp->data->mlet == ' '){
-		Sprintf(buf, "the ghost of %s", (char *) mtmp->mextra);
-		killer = buf;
+	if (Hallucination) { 
+		Sprintf(buf, "hallucinated %s (actually ", hallmon()); 
+		prefix = (index("aeiou",*mtmp->data->mname) ? "an" : "a");
+	}
+	if(mtmp->data->mlet == ' ') {
+		if (Hallucination) Sprintf(eos(buf), "the ghost of %s)",
+					   (char *) mtmp->mextra);
+		else Sprintf(buf, "the ghost of %s", (char *) mtmp->mextra);
 	} else if(mtmp->mnamelth) {
-		Sprintf(buf, "%s called %s",
-			mtmp->data->mname, NAME(mtmp));
-		killer = buf;
+		if (Hallucination) Sprintf(eos(buf), "%s %s called %s)",
+					   prefix, mtmp->data->mname,
+					   NAME(mtmp));
+		else Sprintf(buf, "%s called %s",
+			     mtmp->data->mname, NAME(mtmp));
 	} else if(mtmp->minvis) {
-		Sprintf(buf, "invisible %s", mtmp->data->mname);
-		killer = buf;
-      } else if(mtmp->isshk) {         /* stewr 870807 */
-	        Sprintf(buf, "shopkeeper, %s %s",
-			rn2(2) ? "Mr." : "Ms.", shkname(mtmp));
-		killer = buf;
-	} else killer = mtmp->data->mname;
+		if (Hallucination) Sprintf(eos(buf), "an invisible %s)",
+					   mtmp->data->mname);
+		else Sprintf(buf, "invisible %s", mtmp->data->mname);
+	} else if(mtmp->isshk) {
+		if (Hallucination) Sprintf(eos(buf), "%s %s the shopkeeper)",
+					   rn2(2) ? "Mr." : "Ms.",
+					   shkname(mtmp));
+		else Sprintf(buf, "%s %s, the shopkeeper!",
+			     rn2(2) ? "Mr." : "Ms.", shkname(mtmp));
+	} else {
+		if (Hallucination) Sprintf(eos(buf), "%s %s)",
+					   prefix, mtmp->data->mname);
+		else Sprintf(buf, "%s", mtmp->data->mname);
+	}
+	killer = buf;
 	done("died");
 }
 
@@ -85,6 +102,12 @@ char *str;
 				    /* was exit(1) */
 	home(); cls();
 	puts(" Suddenly, the dungeon collapses.");
+#ifdef WIZARD
+	pline("Report error to %s and it may be possible to rebuild.",WIZARD);
+	more();
+	(void) sprintf (SAVEF, "%s.e", SAVEF);
+	dosave0(0);
+#endif	
 	fputs(" ERROR:  ", stdout);
 	printf(str,a1,a2,a3,a4,a5,a6);
 	more();				/* contains a fflush() */
@@ -144,11 +167,20 @@ die:
 	if(flags.toplin == 1) more();
 #ifdef DIAGS
 	pline("Do you want to have your possessions identified? [Yynq] ");
+	/* New dump format by maartenj@cs.vu.nl */
 	if ((c = readchar()) == 'y' || c == 'Y') {
 	    struct obj *obj;
-	    for(obj = invent; obj && !done_stopprint; obj = obj->nobj)
-		identify(obj);
-	    pline("That's all, folks!"), more();
+
+	    for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
+		objects[obj->otyp].oc_name_known = 1;
+# ifdef KAA
+		obj->known = 1;
+		if (obj->olet != WEAPON_SYM) obj->dknown = 1;
+# else
+		obj->known = obj->dknown = 1;
+# endif /* KAA */
+	    }
+	    doinv((char *) 0);
 	}
 	if (c == 'q' || c == 'Y')  done_stopprint++;
 #endif
@@ -165,6 +197,9 @@ die:
 		if(!flags.notombstone) outrip();
 	}
 	if(*st1 == 'c') killer = st1;		/* after outrip() */
+#ifdef KJSMODS
+	if(with_amulet()) (void) strcat(killer," (with amulet)");
+#endif 
 	settty((char *) 0);	/* does a clear_screen() */
 	if(!done_stopprint)
 		printf("Goodbye %s %s...\n\n", pl_character, plname);
@@ -251,9 +286,9 @@ die:
 		if(worthlessct)
 #ifndef DGKMOD
 		  if(!done_stopprint)
-		    printf("\t%u worthless piece%s of coloured glass,\n",
+		    printf("\t%u worthless piece%s of colored glass,\n",
 #else
-		  printf("        %u worthless piece%s of coloured glass,\n",
+		  printf("        %u worthless piece%s of colored glass,\n",
 #endif
 			worthlessct, plur(worthlessct));
 		if(has_amulet) u.urexp *= 2;
@@ -278,6 +313,10 @@ die:
 	if(done_stopprint) printf("\n\n");
 #ifdef APOLLO
 	getret();
+#endif
+#ifdef MSDOSCOLOR
+	getret();
+	end_screen();
 #endif
 	exit(0);
 }
@@ -313,3 +352,32 @@ charcat(s,c) register char *s, c; {
 	*s++ = c;
 	*s = 0;
 }
+
+char *
+hallmon()
+{
+	register char let;
+	register int ct;
+	register struct permonst *ptr;
+
+	let = rndmonsym();
+	for(ct = 0; ct < CMNUM+1 ; ct++) {
+		ptr = &mons[ct];
+		if(ptr->mlet == let) return(ptr->mname);
+			
+	}
+	return("giant eel");
+}
+
+#ifdef KJSMODS
+with_amulet()
+{
+	register struct obj *otmp;
+	for(otmp = invent; otmp; otmp = otmp->nobj) {
+		if(otmp->olet == AMULET_SYM) { 
+			if(otmp->spe >= 0) return(1);
+		}
+	}
+	return(0);
+}
+#endif 

@@ -1,6 +1,5 @@
-/*	SCCS Id: @(#)objects.h	1.4	87/08/08
+/*	SCCS Id: @(#)objects.h	2.2	87/11/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.objects.h - version 1.0.3 */
 
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * + */
 #include "config.h"
@@ -96,6 +95,9 @@ struct objclass objects[] = {
 	FOOD("dead xan",	0, 3, 30, 300),
 	FOOD("dead yellow light",	0, 1, 1, 10),
 	FOOD("dead zruty",	0, 6, 60, 600),
+#ifdef SAC
+	FOOD("dead soldier",	0, 4, 40, 400),
+#endif /* SAC */
 	FOOD("dead giant",	0, 7, 70, 700),
 	FOOD("dead demon",	0, 8, 80, 800),
 
@@ -120,7 +122,7 @@ struct objclass objects[] = {
 	WEAPON("axe",		5, 3, 6, 4),
 	WEAPON("flail",		5, 3, 6, 5), /* +1 small, +1d4 large */
 	WEAPON("long sword",	5, 3, 8, 12),
-	WEAPON("two handed sword",	4, 4, 12, 6), /* +2d6 large */
+	WEAPON("two-handed sword",	4, 4, 12, 6), /* +2d6 large */
 	WEAPON("dagger",	4, 3, 4, 3),
 	WEAPON("worm tooth",	0, 4, 2, 2),
 	WEAPON("crysknife",	0, 3, 10, 10),
@@ -152,26 +154,27 @@ struct objclass objects[] = {
 	WEAPON("crossbow",	5, 3, 4, 6),
 
 #ifdef WALKIES
-	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 70, 0, 2, 0, 0, 0 },
+	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 55, 0, 2, 0, 0, 0 },
 	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 20, 0, 20, 0, 0, 0 },
 #else
-	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 90, 0, 2, 0, 0, 0 },
+	{ "whistle", "whistle", NULL, 0, 0, TOOL_SYM, 75, 0, 2, 0, 0, 0 },
 	{ "leash", NULL, NULL, 1, 0, TOOL_SYM, 0, 0, 20, 0, 0, 0 },
 #endif
-	{ "magic whistle", "whistle", NULL, 0, 0,
-		TOOL_SYM, 10, 0, 2, 0, 0, 0 },
-	{ "expensive camera", NULL, NULL, 1, 1,
-		TOOL_SYM, 0, 0, 3, 0, 0, 0 },
-	{ "ice box", "large box", NULL, 0, 0,
-		TOOL_SYM, 0, 0, 40, 0, 0, 0 },
-	{ "pick-axe", NULL, NULL, 1, 1,
-		TOOL_SYM, 0, 0, 5, 6, 3, 0 },
-	{ "magic marker", NULL, NULL, 1, 0,
-		TOOL_SYM, 0, 0, 1, 0, 0, 0 },
-	{ "stethoscope", NULL, NULL, 1, 0,
-		TOOL_SYM, 0, 0, 3, 0, 0, 0 },
-	{ "can opener", NULL, NULL, 1, 1,
-		TOOL_SYM, 0, 0, 1, 0, 0, 0 },
+	{ "magic whistle", "whistle", NULL, 0, 0, TOOL_SYM, 9, 0, 2, 0, 0, 0 },
+#ifdef RPH
+	{ "blindfold", "blindfold", NULL, 0, 0, TOOL_SYM, 5, 0, 2, 0, 0, 0 },
+	{ "mirror", "mirror", NULL, 0, 0, TOOL_SYM, 5, 0, 3, 0, 0, 0},
+#else
+	{ "blindfold", "blindfold", NULL, 0, 0, TOOL_SYM, 10, 0, 2, 0, 0, 0 },
+	{ "mirror", "mirror", NULL, 0, 0, TOOL_SYM, 0, 0, 3, 0, 0, 0},
+#endif
+	{ "expensive camera", NULL, NULL, 1, 1, TOOL_SYM, 1, 0, 3, 0, 0, 0 },
+	{ "ice box", "large box", NULL, 0, 0, TOOL_SYM, 1, 0, 40, 0, 0, 0 },
+	{ "pick-axe", NULL, NULL, 1, 1, TOOL_SYM, 1, 0, 5, 6, 3, 0 },
+	{ "magic marker", NULL, NULL, 1, 0, TOOL_SYM, 1, 0, 1, 0, 0, 0 },
+	{ "stethoscope", NULL, NULL, 1, 0, TOOL_SYM, 1, 0, 3, 0, 0, 0 },
+	{ "can opener", NULL, NULL, 1, 1, TOOL_SYM, 1, 0, 1, 0, 0, 0 },
+
 	{ "heavy iron ball", NULL, NULL, 1, 0,
 		BALL_SYM, 100, 0, 20, 0, 0, 0 },
 	{ "iron chain", NULL, NULL, 1, 0,
@@ -297,7 +300,7 @@ struct objclass objects[] = {
 	WAND("probing",		"oak",		0,	IMMEDIATE),
 #endif
 	WAND("digging",		"iron",		5,	RAY),
-	WAND("magic missile",	"aluminium",	10,	RAY),
+	WAND("magic missile",	"aluminum",	10,	RAY),
 	WAND("fire",		"steel",	5,	RAY),
 	WAND("sleep",		"curved",	5,	RAY),
 	WAND("cold",		"short",	5,	RAY),
@@ -372,8 +375,10 @@ struct objclass objects[] = {
 	RING("protection",	"granite",	SPEC),
 	RING("warning",		"wire",		0),
 	RING("teleport control", "iron",	0),
-	RING(NULL,		"ivory",	0),
-	RING(NULL,		"blackened",	0),
+	RING("polymorph",	"ivory",	0),
+	RING("polymorph control","blackened",	0),
+	RING(NULL,		"hematite",	0),
+	RING(NULL,		"brass",	0),
 
 /* gems ************************************************************/
 #define	GEM(name,color,prob,gval)	{ name, color, NULL, 0, 1,\
