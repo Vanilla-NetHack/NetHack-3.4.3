@@ -123,7 +123,7 @@ register boolean special;
 
 	if(!In_endgame(&u.uz)) special = FALSE;
 
-	if ((mtmp = makemon(ptr, x, y)) != 0) {
+	if ((mtmp = makemon(ptr, x, y, NO_MM_FLAGS)) != 0) {
 	    int weapon, quan;
 	    struct obj *otmp;
 

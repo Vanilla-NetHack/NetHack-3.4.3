@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.2	96/01/18	*/
+/*	SCCS Id: @(#)save.c	3.2	96/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -271,7 +271,7 @@ register int fd, mode;
 	bwrite(fd, (genericptr_t) spl_book,
 				sizeof(struct spell) * (MAXSPELL + 1));
 	save_artifacts(fd);
-	save_oracles(fd);
+	save_oracles(fd, mode);
 	if(u.ustuck)
 	    bwrite(fd, (genericptr_t) &(u.ustuck->m_id), sizeof u.ustuck->m_id);
 	bwrite(fd, (genericptr_t) pl_character, sizeof pl_character);
@@ -358,9 +358,8 @@ int mode;
 			if (!swapout_oldest())
 				return FALSE;
 	}
-	if (mode & WRITE_SAVE) {
+	if (mode & (WRITE_SAVE | FREE_SAVE)) {
 		bytes_counted = 0;
-		/* mode is WRITE_SAVE and possibly FREE_SAVE */
 		savelev0(fd, lev, mode);
 	}
 	level_info[lev].where = ACTIVE;
@@ -581,7 +580,7 @@ register unsigned num;
 	bytes_counted += num;
 	if (count_only) return;
 #endif
-	if (write(fd, loc, num) != num) {
+	if ((unsigned) write(fd, loc, num) != num) {
 #if defined(UNIX) || defined(VMS)
 	    if (program_state.done_hup)
 		terminate(EXIT_FAILURE);
@@ -772,7 +771,7 @@ register struct obj *otmp;
 	while(otmp) {
 	    otmp2 = otmp->nobj;
 	    if (perform_bwrite(mode)) {
-		xl = otmp->onamelth;
+		xl = otmp->oxlth + otmp->onamelth;
 		bwrite(fd, (genericptr_t) &xl, sizeof(int));
 		bwrite(fd, (genericptr_t) otmp, xl + sizeof(struct obj));
 	    }
@@ -866,6 +865,17 @@ register int fd, mode;
 	    ffruit = 0;
 }
 
+/* also called by prscore(); this probably belongs in dungeon.c... */
+void
+free_dungeons()
+{
+#ifdef FREE_ALL_MEMORY
+	savelevchn(0, FREE_SAVE);
+	save_dungeon(0, FALSE, TRUE);
+#endif
+	return;
+}
+
 void
 freedynamicdata()
 {
@@ -874,11 +884,10 @@ freedynamicdata()
 # define freeobjchn(X)	(saveobjchn(0, X, FREE_SAVE),  X = 0)
 # define freemonchn(X)	(savemonchn(0, X, FREE_SAVE),  X = 0)
 # define freetrapchn(X)	(savetrapchn(0, X, FREE_SAVE), X = 0)
-# define freelevchn()	 savelevchn(0, FREE_SAVE)
 # define freefruitchn()	 savefruitchn(0, FREE_SAVE)
 # define freenames()	 savenames(0, FREE_SAVE)
+# define free_oracles()	save_oracles(0, FREE_SAVE)
 # define free_waterlevel() save_waterlevel(0, FREE_SAVE)
-# define free_dungeon()	 save_dungeon(0, FALSE, TRUE)
 # define free_worm()	 save_worm(0, FREE_SAVE)
 # define free_timers(R)	 save_timers(0, FREE_SAVE, R)
 # define free_light_sources(R) save_light_sources(0, FREE_SAVE, R);
@@ -907,11 +916,12 @@ freedynamicdata()
 	freeobjchn(migrating_objs);
 	freemonchn(migrating_mons);
 	freemonchn(mydogs);		/* ascension or dungeon escape */
-	freelevchn();
+     /* freelevchn();	[folded into free_dungeons()] */
+	free_oracles();
 	freefruitchn();
 	freenames();
 	free_waterlevel();
-	free_dungeon();
+	free_dungeons();
 
 #endif	/* FREE_ALL_MEMORY */
 	return;

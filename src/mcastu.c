@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mcastu.c	3.2	95/08/12	*/
+/*	SCCS Id: @(#)mcastu.c	3.2	96/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -255,7 +255,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 
 			for (i = 0; i <= (int) mtmp->m_lev; i++)
 			   if ((pm = mkclass(let,0)) &&
-					(mtmp2 = makemon(pm, u.ux, u.uy))) {
+			(mtmp2 = makemon(pm, u.ux, u.uy, NO_MM_FLAGS))) {
 				mtmp2->msleep = mtmp2->mpeaceful =
 					mtmp2->mtame = 0;
 				set_malign(mtmp2);
@@ -265,6 +265,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			break;
 		    case 6:
 		    case 7:		/* blindness */
+			/* note: resists_blnd() doesn't apply here */
 			if (!Blinded) {
 			    pline("Scales cover your eyes!");
 			    make_blinded(Half_spell_damage ? 100L:200L, FALSE);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.2	96/03/17	*/
+/*	SCCS Id: @(#)do_name.c	3.2	96/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -181,7 +181,6 @@ do_mname()
 	coord cc;
 	register int cx,cy;
 	register struct monst *mtmp;
-	register char *curr;
 	char qbuf[QBUFSZ];
 
 	if (Hallucination) {
@@ -215,10 +214,8 @@ do_mname()
 		(char *)0, 1));
 	getlin(qbuf,buf);
 	if(!*buf || *buf == '\033') return(0);
-
-	/* strip trailing spaces; unnames monster if all spaces */
-	for (curr = eos(buf); curr > buf; )
-		if (*--curr == ' ') *curr = '\0'; else break;
+	/* strip leading and trailing spaces; unnames monster if all spaces */
+	(void)mungspaces(buf);
 
 	if (type_is_pname(mtmp->data))
 	    pline("%s doesn't like being called names!", Monnam(mtmp));
@@ -237,17 +234,14 @@ do_oname(obj)
 register struct obj *obj;
 {
 	char buf[BUFSZ], qbuf[QBUFSZ];
-	register char *curr;
 	const char *aname;
 	short objtyp;
 
 	Sprintf(qbuf, "What do you want to name %s?", doname(obj));
 	getlin(qbuf, buf);
 	if(!*buf || *buf == '\033')	return;
-
-	/* strip trailing spaces; unnames item if all spaces */
-	for (curr = eos(buf); curr > buf; )
-		if (*--curr == ' ') *curr = '\0'; else break;
+	/* strip leading and trailing spaces; unnames item if all spaces */
+	(void)mungspaces(buf);
 
 	/* relax restrictions over proper capitalization for artifacts */
 	if ((aname = artifact_name(buf, &objtyp)) != 0 && objtyp == obj->otyp)
@@ -272,36 +266,31 @@ register struct obj *obj;
 		update_inventory();
 }
 
+/*
+ * Allocate a new and possibly larger storage space for an obj.
+ */
 struct obj *
-oname(obj, name)
+replobj(obj, oextra_size, oextra_src, oname_size, name)
 struct obj *obj;
+int oextra_size;		/* storage to allocate for oextra            */
+genericptr_t oextra_src;
+int oname_size;			/* size of name string + 1 (null terminator) */
 const char *name;
 {
 	struct obj *otmp;
-	int lth;
-	char buf[PL_PSIZ];
 
-	lth = *name ? (int)(strlen(name) + 1) : 0;
-	if (lth > PL_PSIZ) {
-		lth = PL_PSIZ;
-		name = strncpy(buf, name, PL_PSIZ - 1);
-		buf[PL_PSIZ - 1] = '\0';
-	}
-	/* If named artifact exists in the game, do not create another.
-	 * Also trying to create an artifact shouldn't de-artifact
-	 * it (e.g. Excalibur from prayer). In this case the object
-	 * will retain its current name. */
-	if (obj->oartifact || (lth && exist_artifact(obj->otyp, name)))
-		return obj;
-	if (lth == obj->onamelth) {
-		/* no need to replace entire object */
-		if (lth) Strcpy(ONAME(obj), name);
-		return obj;
-	}
-
-	otmp = newobj(lth);
+	otmp = newobj(oextra_size + oname_size);
 	*otmp = *obj;	/* the cobj pointer is copied to otmp */
-	otmp->onamelth = lth;
+	if (oextra_size) {
+	    if (oextra_src)
+		(void) memcpy((genericptr_t)otmp->oextra, oextra_src,
+								oextra_size);
+	} else {
+	    otmp->mtraits = 0;
+	}
+	otmp->oxlth = oextra_size;
+	
+	otmp->onamelth = oname_size;
 	otmp->timed = 0;	/* not timed, yet */
 	otmp->lamplit = 0;	/* ditto */
 	/* __GNUC__ note:  if the assignment of otmp->onamelth immediately
@@ -309,9 +298,9 @@ const char *name;
 	   test on vax (`insv' instruction used to store bitfield does
 	   not set condition codes, but optimizer behaves as if it did).
 	   gcc-2.8.0 should finally fix this.... */
-	if (lth) {
+	if (oname_size) {
+	    if (name)
 		Strcpy(ONAME(otmp), name);
-		artifact_exists(otmp, name, TRUE);
 	}
 
 	if (obj->owornmask) {
@@ -369,6 +358,38 @@ const char *name;
 	return otmp;
 }
 
+struct obj *
+oname(obj, name)
+struct obj *obj;
+const char *name;
+{
+	int lth;
+	char buf[PL_PSIZ];
+
+	lth = *name ? (int)(strlen(name) + 1) : 0;
+	if (lth > PL_PSIZ) {
+		lth = PL_PSIZ;
+		name = strncpy(buf, name, PL_PSIZ - 1);
+		buf[PL_PSIZ - 1] = '\0';
+	}
+	/* If named artifact exists in the game, do not create another.
+	 * Also trying to create an artifact shouldn't de-artifact
+	 * it (e.g. Excalibur from prayer). In this case the object
+	 * will retain its current name. */
+	if (obj->oartifact || (lth && exist_artifact(obj->otyp, name)))
+		return obj;
+
+	if (lth == obj->onamelth) {
+		/* no need to replace entire object */
+		if (lth) Strcpy(ONAME(obj), name);
+	} else {
+		obj = replobj(obj, obj->oxlth,
+			      (genericptr_t)obj->oextra, lth, name);
+	}
+	if (lth) artifact_exists(obj, name, TRUE);
+	return obj;
+}
+
 static NEARDATA const char callable[] = {
 	SCROLL_CLASS, POTION_CLASS, WAND_CLASS, RING_CLASS, AMULET_CLASS,
 	GEM_CLASS, SPBOOK_CLASS, ARMOR_CLASS, TOOL_CLASS, 0 };
@@ -421,12 +442,14 @@ register struct obj *obj;
 	char buf[BUFSZ], qbuf[QBUFSZ];
 	struct obj otemp;
 	register char **str1;
-	register char *str;
 
 	if (!obj->dknown) return; /* probably blind */
 	otemp = *obj;
 	otemp.quan = 1L;
 	otemp.onamelth = 0;
+#ifdef OEXTRA
+	otemp.oxlth = 0;
+#endif
 	if (objects[otemp.otyp].oc_class == POTION_CLASS && otemp.corpsenm) {
 		/* kludge, meaning it's sink water */
 		Sprintf(qbuf,"Call a stream of %s fluid:",
@@ -441,9 +464,8 @@ register struct obj *obj;
 	str1 = &(objects[obj->otyp].oc_uname);
 	if(*str1) free((genericptr_t)*str1);
 
-	/* strip trailing spaces; uncalls item if all spaces */
-	for (str = eos(buf); str > buf; )
-		if (*--str == ' ') *str = '\0'; else break;
+	/* strip leading and trailing spaces; uncalls item if all spaces */
+	(void)mungspaces(buf);
 	if (!*buf) {
 		if (*str1)	/* had name, so possibly remove from disco[] */
 			undiscover_object(obj->otyp),  *str1 = (char *)0;

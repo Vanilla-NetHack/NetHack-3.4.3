@@ -133,6 +133,7 @@ extern int attrib_text_intense;	/* text mode intense attribute */
 extern int attrib_gr_intense;	/* graphics mode intense attribute */
 extern boolean tiles_on;
 extern boolean traditional;
+extern boolean inmap;		/* in the map window */
 
 /*
  * Global Variables
@@ -193,8 +194,8 @@ extern int vp[SCREENPLANES];
 extern int vp2[SCREENPLANES];
 #  endif /* OVLB */
 
-STATIC_VAR struct planar_cell_struct planecell;
-STATIC_VAR struct overview_planar_cell_struct planecell_O;
+STATIC_VAR struct planar_cell_struct *planecell;
+STATIC_VAR struct overview_planar_cell_struct *planecell_O;
 
 # if defined(USE_TILES)
 STATIC_VAR struct tibhdr_struct tibheader;
@@ -401,7 +402,7 @@ int ch;
 	} else if (!overview) {
 	    if ((col >= clipx) && (col <= clipxmax)) {
 		if (!ReadPlanarTileFile(glyph2tile[glyphnum], &planecell))
-			vga_DisplayCell(&planecell, 
+			vga_DisplayCell(planecell, 
 					col - clipx, row);
 		else
 			pline("vga_xputg: Error reading tile (%d,%d) from file",
@@ -409,7 +410,7 @@ int ch;
 	    }
 	} else {
 	    if (!ReadPlanarTileFile_O(glyph2tile[glyphnum], &planecell_O))
-			vga_DisplayCell_O(&planecell_O, col, row);
+			vga_DisplayCell_O(planecell_O, col, row);
 	    else
 			pline("vga_xputg: Error reading tile (%d,%d) from file",
 					glyphnum,glyph2tile[glyphnum]);
@@ -510,7 +511,7 @@ boolean clearfirst;
 			if (!overview) {
 			  	if (!ReadPlanarTileFile(glyph2tile[t], 
 				    &planecell)) {
-					vga_DisplayCell(&planecell,
+					vga_DisplayCell(planecell,
 						x - clipx, y + TOP_MAP_ROW);
 		  	  	} else
 			      pline("vga_redrawmap: Error reading tile (%d,%d)",
@@ -518,7 +519,7 @@ boolean clearfirst;
 		     	} else {
 				if (!ReadPlanarTileFile_O(glyph2tile[t], 
 				     &planecell_O)) {
-					vga_DisplayCell_O(&planecell_O,
+					vga_DisplayCell_O(planecell_O,
 						x, y + TOP_MAP_ROW);
 		  	  	} else
 			     pline("vga_redrawmap: Error reading tile (%d,%d)",
@@ -648,7 +649,7 @@ boolean left;
 	    for (x = i; x < j; x += 2) {
 		t = map[y][x].glyph;
 		if (!ReadPlanarTileFile(glyph2tile[t], &planecell)) 
-			vga_DisplayCell(&planecell, x - clipx, y + TOP_MAP_ROW);
+			vga_DisplayCell(planecell, x - clipx, y + TOP_MAP_ROW);
 		else
 			pline("vga_shiftmap: Error reading tile (%d,%d)",
 				t, glyph2tile[t]);		
@@ -1125,9 +1126,11 @@ positionbar()
 	    }
 	}
 #  ifdef SIMULATE_CURSOR
-	tmp = curcol + 1;
-	if ((tmp != ucol) && (curcol >= 0))	
-		vga_special('_', tmp, PBAR_COLOR_HERO);
+	if (inmap) {
+		tmp = curcol + 1;
+		if ((tmp != ucol) && (curcol >= 0))	
+			vga_special('_', tmp, PBAR_COLOR_HERO);
+	}
 #  endif
 }
 
@@ -1183,9 +1186,10 @@ vga_DrawCursor()
 /*	char on[2] =  {0xFF,0xFF}; */
 /*	char off[2] = {0x00,0x00}; */
 	boolean isrogue = Is_rogue_level(&u.uz);
-	boolean singlebyte = (isrogue || overview || traditional);
+	boolean singlebyte = (isrogue || overview || traditional || !inmap);
+	int curtyp;
 
-	if (!cursor_type) return;	/* CURSOR_INVIS - nothing to do */
+	if (!cursor_type && inmap) return;	/* CURSOR_INVIS - nothing to do */
 
 	x = min(curcol,(CO - 1)); /* protection from callers */
 	y = min(currow,(LI - 1));		  /* protection from callers */
@@ -1233,8 +1237,10 @@ vga_DrawCursor()
              */ 
 
 	    cursor = undercursor;
+	    if (inmap) curtyp = cursor_type;
+	    else curtyp = CURSOR_UNDERLINE;
 
-	    switch(cursor_type) {
+	    switch(curtyp) {
 
 		case CURSOR_CORNER:
 		    for(i = 0; i < 2; ++i) {
@@ -1367,7 +1373,7 @@ vga_DrawCursor()
 	    }
 	    egawriteplane(15);
 #ifdef POSITIONBAR
-	    positionbar();
+	    if (inmap) positionbar();
 #endif
 }
 
@@ -1379,9 +1385,10 @@ vga_HideCursor()
 	char __far *tmp1;
 	char __far *tmp2;
 	boolean isrogue = Is_rogue_level(&u.uz);
-	boolean singlebyte = (isrogue || overview || traditional);
+	boolean singlebyte = (isrogue || overview || traditional || !inmap);
+	int curtyp;
 	
-	if (!cursor_type) return;	/* CURSOR_INVIS - nothing to do */
+	if (inmap && !cursor_type) return;	/* CURSOR_INVIS - nothing to do */
 	/* protection from callers */
 	x = min(curcol,(CO - 1)); 
 	y = min(currow,(LI-1));
@@ -1393,7 +1400,10 @@ vga_HideCursor()
 	    else
 		    pixx = col2x((x-clipx));
 
-	    if (cursor_type == CURSOR_UNDERLINE)  /* optimization for uline */
+	    if (inmap) curtyp = cursor_type;
+	    else curtyp = CURSOR_UNDERLINE;
+
+	    if (curtyp == CURSOR_UNDERLINE)  /* optimization for uline */
 		i = ROWS_PER_CELL - 1;
 	    else
 		i = 0;

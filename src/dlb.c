@@ -5,6 +5,10 @@
 #include "config.h"
 #include "dlb.h"
 
+#ifdef __DJGPP__
+#include <string.h>
+#endif
+
 #ifdef DLB
 /*
  * Data librarian.  Present a STDIO-like interface to NetHack while
@@ -290,8 +294,10 @@ dlb_fread(buf, size, quan, dp)
     if (quan == 0) return 0;
 
     pos = dp->start + dp->mark;
-    if (dp->lib->fmark != pos)
+    if (dp->lib->fmark != pos) {
 	fseek(dp->lib->fdata, pos, SEEK_SET);	/* check for error??? */
+	dp->lib->fmark = pos;
+    }
 
     nread = fread(buf, size, quan, dp->lib->fdata);
     nbytes = nread * size;

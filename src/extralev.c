@@ -296,7 +296,7 @@ makerogueghost()
 	if (!nroom) return; /* Should never happen */
 	croom = &rooms[rn2(nroom)];
 	x = somex(croom); y = somey(croom);
-	if (!(ghost = makemon(&mons[PM_GHOST], x, y)))
+	if (!(ghost = makemon(&mons[PM_GHOST], x, y, NO_MM_FLAGS)))
 		return;
 	ghost->msleep = 1;
 	Strcpy((char *)ghost->mextra, roguename());

@@ -378,7 +378,8 @@ clonewiz()
 {
 	register struct monst *mtmp2;
 
-	if ((mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) != 0) {
+	if ((mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR],
+				u.ux, u.uy, NO_MM_FLAGS)) != 0) {
 	    mtmp2->msleep = mtmp2->mtame = mtmp2->mpeaceful = 0;
 	    if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
 		add_to_minv(mtmp2, mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE));
@@ -406,11 +407,12 @@ nasty(mcast)
 	for(i = rnd(tmp); i > 0; --i)
 	    for(j=0; j<20; j++) {
 		if((mtmp = makemon(&mons[nasties[rn2(SIZE(nasties))]],
-				   u.ux, u.uy))) {
+				   u.ux, u.uy, NO_MM_FLAGS))) {
 		    mtmp->msleep = mtmp->mpeaceful = mtmp->mtame = 0;
 		    set_malign(mtmp);
 		} else /* GENOD? */
-		    mtmp = makemon((struct permonst *)0, u.ux, u.uy);
+		    mtmp = makemon((struct permonst *)0,
+					u.ux, u.uy, NO_MM_FLAGS);
 		if(mtmp && (mtmp->data->maligntyp == 0 ||
 		            sgn(mtmp->data->maligntyp) == sgn(castalign)) )
 		    break;
@@ -430,7 +432,8 @@ resurrect()
 	if (!flags.no_of_wizards) {
 	    /* make a new Wizard */
 	    verb = "kill";
-	    mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy);
+	    mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR],
+				u.ux, u.uy, NO_MM_FLAGS);
 	} else {
 	    /* look for a migrating Wizard */
 	    verb = "elude";

@@ -19,6 +19,7 @@ typedef struct tty_mi {
     int attr;			/* string attribute */
     boolean selected;		/* TRUE if selected by user */
     char selector;		/* keyboard accelerator */
+    char gselector;		/* group accelerator */
 } tty_menu_item;
 
 /* descriptor for tty-based windows */
@@ -32,6 +33,7 @@ struct WinDesc {
     short maxrow, maxcol;	/* the maximum size used -- for MENU wins */
 				/* maxcol is also used by WIN_MESSAGE for */
 				/* tracking the ^P command */
+    short *datlen;		/* allocation size for *data */
     char **data;		/* window data [row][column] */
     char *morestr;		/* string to display instead of default */
     tty_menu_item *mlist;	/* menu information (MENU) */
@@ -180,7 +182,7 @@ E void FDECL(tty_putstr, (winid, int, const char *));
 E void FDECL(tty_display_file, (const char *, BOOLEAN_P));
 E void FDECL(tty_start_menu, (winid));
 E void FDECL(tty_add_menu, (winid,int,const ANY_P *,
-			CHAR_P,int,const char *, BOOLEAN_P));
+			CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
 E void FDECL(tty_end_menu, (winid, const char *));
 E int FDECL(tty_select_menu, (winid, int, MENU_ITEM_P **));
 E char FDECL(tty_message_menu, (CHAR_P,int,const char *));

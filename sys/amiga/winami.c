@@ -759,10 +759,10 @@ amii_get_ext_cmd( void )
 	sprintf( buf, "%-10s - %s ",
 		 extcmdlist[ i ].ef_txt,
 		 extcmdlist[ i ].ef_desc );
-	amii_add_menu( win, NO_GLYPH, &id, extcmdlist[i].ef_txt[0], 0, buf, MENU_UNSELECTED);
+	amii_add_menu( win, NO_GLYPH, &id, extcmdlist[i].ef_txt[0], 0, 0, buf, MENU_UNSELECTED);
     }
 
-    amii_end_menu( win, "\33" );
+    amii_end_menu( win, (char*)0 );
     sel = amii_select_menu( win, PICK_ONE, &mip );
     amii_destroy_nhwindow( win );
 
@@ -830,10 +830,10 @@ amii_get_ext_cmd( void )
 			 extcmdlist[ i ].ef_txt,
 			 extcmdlist[ i ].ef_desc );
 		amii_add_menu( win, NO_GLYPH, &id, extcmdlist[i].ef_txt[0], 0,
-		   buf, MENU_UNSELECTED);
+		   0, buf, MENU_UNSELECTED);
 	    }
 
-	    amii_end_menu( win, "\33" );
+	    amii_end_menu( win, (char*)0 );
 	    sel = amii_select_menu( win, PICK_ONE, &mip );
 	    amii_destroy_nhwindow( win );
 

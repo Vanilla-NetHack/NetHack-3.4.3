@@ -1,5 +1,5 @@
-            MSDOS specific help file for NetHack 3.2.0
-		  (Last Revision: February 19, 1996)
+            MSDOS specific help file for NetHack 3.2.1
+		  (Last Revision: May 20, 1996)
 
 Copyright (c) NetHack PC Development Team 1993, 1994, 1995, 1996.
 NetHack may be freely distributed.  See license for details.
@@ -100,7 +100,7 @@ OPTIONS=VIDEOSHADES
 OPTIONS=VIDEOCOLORS
 		(NetHack.cnf only)
 		This option is only provided because some people on
-		r.g.h mentioned how they liked to modify the color
+		r.g.r.n mentioned how they liked to modify the color
 		values from the default ANSI.SYS behaviour, and were
 		"upset" to find out that they could no longer do so
 		under 3.1.2.  The color map is as accurate as possible
@@ -164,22 +164,23 @@ While playing NetHack under MSDOS you can press the ALT key in combination
 with another key to execute an extended command as an alternative method
 to pressing the # key combination:
 
-Alt-a    adjust    - adjust inventory letters.
-Alt-c    chat      - talk to someone.
-Alt-d    dip       - dip an object into something.
-Alt-f    force     - force a lock.
-Alt-i    invoke    - invoke an object's powers.
-Alt-j    jump      - jump to a location.
-Alt-l    loot      - loot a box on the floor.
-Alt-m    monster   - use a monster's special ability.
-Alt-n    name      - name an item or type of object.
-Alt-o    offer     - offer a sacrifice to the gods.
-Alt-p    pray      - pray to the gods for help.
-Alt-r    rub       - rub a lamp.
-Alt-s    sit       - sit down.
-Alt-t    turn      - turn undead.
-Alt-u    untrap    - untrap something.
-Alt-v    version   - list compile time options for this version of NetHack.
-Alt-w    wipe      - wipe off your face.
+Alt-a    adjust         - adjust inventory letters.
+Alt-c    chat           - talk to someone or something.
+Alt-d    dip            - dip an object into something.
+Alt-e    enhance        - enhance your skill with a weapon.
+Alt-f    force          - force a lock.
+Alt-i    invoke         - invoke an object's powers.
+Alt-j    jump           - jump to a location.
+Alt-l    loot           - loot a box on the floor.
+Alt-m    monster        - use a monster's special ability.
+Alt-n    name           - name an item or type of object.
+Alt-o    offer          - offer a sacrifice to the gods.
+Alt-p    pray           - pray to the gods for help.
+Alt-r    rub            - rub a lamp.
+Alt-s    sit            - sit down.
+Alt-t    turn           - turn undead.
+Alt-u    untrap         - untrap something.
+Alt-v    version        - list compile time options for this version of NetHack.
+Alt-w    wipe           - wipe off your face.
 
 If you are playing on NEC PC-9800, use the GRPH key instead of the ALT key.

@@ -10,6 +10,8 @@
 struct trap {
 	struct trap *ntrap;
 	xchar tx,ty;
+	d_level dst;	/* destination for portals */
+	coord launch;
 	Bitfield(ttyp,5);
 	Bitfield(tseen,1);
 	Bitfield(once,1);
@@ -20,8 +22,6 @@ struct trap {
 				 when you untrap a monster.  It would be too
 				 easy to make a monster peaceful if you could
 				 set a trap for it and then untrap it. */
-	d_level dst;	/* destination for portals */
-	coord launch;
 	union {
 	    short v_launch_otyp;	/* type of object to be triggered */
 	    coord v_launch2;	/* secondary launch point (for boulders) */

@@ -171,6 +171,7 @@ player_selection()
 		-- Do a window-port specific player type selection.  If
 		   player_selection() offers a Quit option, it is its
 		   responsibility to clean up and terminate the process.
+		   You need to fill in pl_character[0].
 display_file(str, boolean complain)
 		-- Display the file named str.  Complain about missing files
 		   iff complain is TRUE.
@@ -235,8 +236,8 @@ start_menu(window)
 		   putstr() to the window.  Only windows of type NHW_MENU may
 		   be used for menus.
 add_menu(windid window, int glyph, const anything identifier,
-				char accelerator, int attr, char *str,
-				boolean preselected)
+				char accelerator, char groupacc,
+				int attr, char *str, boolean preselected)
 		-- Add a text line str to the given menu window.  If identifier
 		   is 0, then the line cannot be selected (e.g. a title).
 		   Otherwise, identifier is the value returned if the line is
@@ -254,6 +255,13 @@ add_menu(windid window, int glyph, const anything identifier,
 	        -- It is expected that callers do not mix accelerator
 		   choices.  Either all selectable items have an accelerator
 		   or let the window system pick them.  Don't do both.
+		-- Groupacc is a group accelerator.  It may be any character
+		   outside of the standard accelerator (see above) or a
+		   number.  If 0, the item is unaffected by any group
+		   accelerator.  If this accelerator conflicts with
+		   the menu command (or their user defined alises), it loses.
+		   The menu commands and aliases take care not to interfere
+		   with the default object class symbols.
 		-- If you want this choice to be preselected when the
 		   menu is displayed, set preselected to TRUE.
 

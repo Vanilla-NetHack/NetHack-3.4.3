@@ -97,6 +97,7 @@ $       Count your gold
 M-a     Adjust inventory letters
 M-c     Talk to someone
 M-d     Dip an object into something
+M-e     Advance or check weapons skills
 M-f     Force a lock
 M-i     Invoke an object's special powers
 M-j     Jump to another location

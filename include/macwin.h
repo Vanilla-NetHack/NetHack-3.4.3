@@ -311,7 +311,7 @@ E void FDECL(mac_putstr, (winid, int, const char *));
 E void FDECL(mac_display_file, (const char *, BOOLEAN_P));
 E void FDECL(mac_start_menu, (winid));
 E void FDECL(mac_add_menu, (winid,int,const anything *,
-		CHAR_P,int,const char *, BOOLEAN_P));
+		CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
 E void FDECL(mac_end_menu, (winid, const char *));
 E int FDECL(mac_select_menu, (winid, int, menu_item **));
 E void NDECL(mac_update_inventory);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmap.c	3.2	92/07/15	*/
+/*	SCCS Id: @(#)mkmap.c	3.2	96/05/23	*/
 /* Copyright (c) J. C. Collet, M. Stephenson and D. Cohrs, 1992   */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -169,9 +169,9 @@ flood_fill_rm(sx, sy, rmno, lit, anyroom)
     schar fg_typ = levl[sx][sy].typ;
 
     /* back up to find leftmost uninitialized location */
-    while(sx > 0
-	  && (anyroom ? IS_ROOM(levl[sx][sy].typ) : levl[sx][sy].typ == fg_typ)
-	  && levl[sx][sy].roomno != rmno)
+    while (sx > 0 &&
+	  (anyroom ? IS_ROOM(levl[sx][sy].typ) : levl[sx][sy].typ == fg_typ) &&
+	  (int) levl[sx][sy].roomno != rmno)
 	sx--;
     sx++; /* compensate for extra decrement */
 
@@ -192,10 +192,8 @@ flood_fill_rm(sx, sy, rmno, lit, anyroom)
 			IS_DOOR(levl[ii][jj].typ))) {
 			levl[ii][jj].edge = 1;
 			if(lit) levl[ii][jj].lit = lit;
-			if (levl[ii][jj].roomno != rmno)
+			if ((int) levl[ii][jj].roomno != rmno)
 			    levl[ii][jj].roomno = SHARED;
-			else
-			    levl[ii][jj].roomno = rmno;
 		    }
 	}
 	n_loc_filled++;
@@ -205,34 +203,34 @@ flood_fill_rm(sx, sy, rmno, lit, anyroom)
     if(isok(sx,sy-1))
 	for(i=sx; i<nx; i++)
 	    if(levl[i][sy-1].typ == fg_typ) {
-		if(levl[i][sy-1].roomno != rmno)
+		if ((int) levl[i][sy-1].roomno != rmno)
 		    flood_fill_rm(i,sy-1,rmno,lit,anyroom);
 	    } else {
 		if((i>sx || isok(i-1,sy-1)) &&
 		      levl[i-1][sy-1].typ == fg_typ) {
-		    if(levl[i-1][sy-1].roomno != rmno)
+		    if ((int) levl[i-1][sy-1].roomno != rmno)
 			flood_fill_rm(i-1,sy-1,rmno,lit,anyroom);
 		}
 		if((i<nx-1 || isok(i+1,sy-1)) &&
 		      levl[i+1][sy-1].typ == fg_typ) {
-		    if(levl[i+1][sy-1].roomno != rmno)
+		    if ((int) levl[i+1][sy-1].roomno != rmno)
 			flood_fill_rm(i+1,sy-1,rmno,lit,anyroom);
 		}
 	    }
     if(isok(sx,sy+1))
 	for(i=sx; i<nx; i++)
 	    if(levl[i][sy+1].typ == fg_typ) {
-		if(levl[i][sy+1].roomno != rmno)
+		if ((int) levl[i][sy+1].roomno != rmno)
 		    flood_fill_rm(i,sy+1,rmno,lit,anyroom);
 	    } else {
 		if((i>sx || isok(i-1,sy+1)) &&
 		      levl[i-1][sy+1].typ == fg_typ) {
-		    if(levl[i-1][sy+1].roomno != rmno)
+		    if ((int) levl[i-1][sy+1].roomno != rmno)
 			flood_fill_rm(i-1,sy+1,rmno,lit,anyroom);
 		}
 		if((i<nx-1 || isok(i+1,sy+1)) &&
 		      levl[i+1][sy+1].typ == fg_typ) {
-		    if(levl[i+1][sy+1].roomno != rmno)
+		    if ((int) levl[i+1][sy+1].roomno != rmno)
 			flood_fill_rm(i+1,sy+1,rmno,lit,anyroom);
 		}
 	    }
@@ -294,7 +292,8 @@ join_map(bg_typ, fg_typ)
 		     */
 		    for(sx = min_rx; sx<=max_rx; sx++)
 			for(sy = min_ry; sy<=max_ry; sy++)
-			    if(levl[sx][sy].roomno == nroom+ROOMOFFSET) {
+			    if ((int) levl[sx][sy].roomno ==
+				    nroom + ROOMOFFSET) {
 				levl[sx][sy].typ = bg_typ;
 				levl[sx][sy].roomno = NO_ROOM;
 			    }

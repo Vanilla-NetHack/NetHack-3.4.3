@@ -1,4 +1,4 @@
-               Instructions for Installing NetHack 3.2.0
+               Instructions for Installing NetHack 3.2.1
                            on a VMS system
                =========================================
 
@@ -6,9 +6,9 @@
     NetHack, then read it again!
 
 1.  Building NetHack requires a C compiler (either VAX C, DEC C, or GNU C)
-    and VMS version V4.6 or later (but see note #9).  This release has
-    been tested on VAX/VMS V5.5-2, V6.2, and Alpha/VMS V6.2, plus been
-    confirmed to compile and link successfully under V7.0.  The build
+    and VMS version V4.6 or later (but see note #9).  This release has been
+    tested on VAX/VMS V5.5-2, V6.2, and Alpha/VMS V6.2; also, release 3.2.0
+    was confirmed to compile and link successfully under V7.0.  The build
     procedure (vmsbuild.com) should not need to be modified; it accepts
     an option for selecting the compiler, and it can detect different
     versions which might require specific command qualifiers.  Versions
@@ -38,6 +38,7 @@
         [.sys   .amiga] -- AmigaDOS
         [.sys   .amiga   .splitter]
         [.sys   .atari] -- Atari TOS
+        [.sys   .be]    -- BeBox BeOS
         [.sys   .mac]   -- Macintosh
         [.sys   .mac     .old]
         [.sys   .msdos] -- MSDOS for IBM PCs and compatibles
@@ -127,7 +128,7 @@
 8.  The file nethack.com which is copied to the playground directory can
     be used to invoke NetHack, or nethack.exe can be run directly.  Most
     of the command-line options specified in the Unix man-page (file
-    [.dat]nethack.6) are also applicable to VMS.  Some comments at the
+    [.doc]nethack.txt) are also applicable to VMS.  Some comments at the
     beginning of nethack.com illustrate several of the options.  New
     players should read the file "Guidebook.txt" which will be copied
     into the playground directory as "Guidebook.doc".
@@ -136,9 +137,8 @@
 Notes:
 
 1.  Save files and bones files from earlier versions will not work with
-    3.2.0.  The scoreboard file (RECORD) from old versions is also not
-    compatible with 3.2.0.  If you install into an existing playground
-    directory, you should remove old files RECORD.;1 and LOGFILE.;* first.
+    3.2.1.  The scoreboard file (RECORD) from versions older than 3.2.0
+    are not compatible, but one from version 3.2.0 is.
 
 2.  To specify user-preference options in your environment, define the
     logical name NETHACKOPTIONS to have the value of a quoted string
@@ -153,7 +153,7 @@ Notes:
     tradeoff for enabling checkpoint is that using it makes level changes
     do more I/O and take longer.  The "menustyle" option controls some
     aspects of the user interface, and can be set to "menustyle:traditional"
-    to make 3.2.0 behave more like 3.1.3.
+    to make 3.2.1 behave more like 3.1.3.
 
     If logical name or DCL symbol NETHACKOPTIONS is not defined, NetHack
     will try HACKOPTIONS instead.  Regardless of whether or not either
@@ -176,8 +176,9 @@ Notes:
 3.  Instead of using vmsbuild.com to compile and link everything, you can
     use the set of Makefiles found in the vms subdirectory, provided you
     have an appropriate and compatible make utility.  They've been tested
-    using Digital's MMS.  There are five of them, and the suffix or
-    filetype on their names indicates where they should be placed.
+    using MMK, a freeware clone of Digital's MMS.  There are five of them,
+    and the suffix or filetype on their names indicates where they should
+    be placed.
        $ copy [.sys.vms]Makefile.top []Makefile.
        $ copy [.sys.vms]Makefile.src [.src]Makefile.
        $ copy [.sys.vms]Makefile.utl [.util]Makefile.
@@ -196,7 +197,7 @@ Notes:
     much of the actual installation work, so if you want to make any
     customizations or file protection changes, edit install.com to suit.
     Also set MAKE in all of the Makefiles to the appropriate command if
-    not using MMS.
+    not using MMS or MMK.
 
     Once the Makefiles are tailored for your site, give the command
        $ mms all,install
@@ -433,7 +434,8 @@ Notes:
        PERM.LOCK;1          no such file
     then someone has deleted PERM.;1 while the synonym entry was still
     in place, and PERM.LOCK was left as a dangling name which no longer
-    points at any file.  The SET FILE/REMOVE command above will fix it.
+    points at any file.  The SET FILE/REMOVE command above will fix the
+    dangling name; a new PERM.;1 will need to be created as mentioned above.
 
     In similar fashion, synchronized access to the scoreboard file RECORD
     is accomplished using temporary entry RECORD.LOCK and LOGFILE using
@@ -468,8 +470,8 @@ Notes:
 14. There is no support for VMS POSIX in this release of NetHack.
 
 15. If necessary, send problem reports via e-mail to
-       "nethack-bugs@linc.cis.upenn.edu"  (numeric address 130.91.6.8).
+       "nethack-bugs@linc.cis.upenn.edu"  (numeric address 158.130.12.3).
     Always include version information for NetHack, the operating system,
     and the C compiler used.
 
-15-MAR-1996
+24-MAY-1996

@@ -947,19 +947,13 @@ $(SBIN)txt2iff: $(OO)txt2iff.o $(NAMEOBJS) $(OO)tiletext.o $(OO)tiletxt.o
 		$(OO)tiletxt.o  $(FLLIB)
 
 $(NETHACK)tiles/objects.iff: /win/share/objects.txt $(SBIN)txt2iff
-#	$(UUDEC) $(WSHARE)objtil.uu
 	$(SBIN)txt2iff $(WSHARE)objects.txt $(NETHACK)tiles/objects.iff
-	delete objects.til
 
 $(NETHACK)tiles/monsters.iff : /win/share/monsters.txt $(SBIN)txt2iff
-#	$(UUDEC) $(WSHARE)montil.uu
 	$(SBIN)txt2iff $(WSHARE)monsters.txt $(NETHACK)tiles/monsters.iff
-	delete monsters.til
 
 $(NETHACK)tiles/other.iff : /win/share/other.txt $(SBIN)txt2iff
-#	$(UUDEC) $(WSHARE)othtil.uu
 	$(SBIN)txt2iff $(WSHARE)other.txt $(NETHACK)tiles/other.iff
-	delete other.til
 
 # Sound installation rules.
 inst-sounds: $(SOUNDFILES)

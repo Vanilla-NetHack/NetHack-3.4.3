@@ -114,7 +114,7 @@ typedef long clock_t;
 void FDECL(get_cursor, (int *, int *));
 # endif
 
-
+void FDECL(adjust_cursor_flags, (struct WinDesc *));
 void FDECL(cmov, (int, int));
 void FDECL(nocmov, (int, int));
 STATIC_DCL void NDECL(init_ttycolor);
@@ -130,6 +130,7 @@ int attrib_text_intense;  /* text mode intense attribute */
 int attrib_gr_intense;	  /* graphics mode intense attribute */
 boolean tiles_on = FALSE; /* do we have tiles on? */
 boolean traditional = FALSE; /* traditonal TTY character mode */
+boolean inmap = FALSE;	  /* in the map window */
 #  ifdef TEXTCOLOR
 char ttycolors[CLR_MAX];	/* also used/set in options.c */
 #  endif /* TEXTCOLOR */
@@ -144,6 +145,7 @@ extern int attrib_text_intense;
 extern int attrib_gr_intense;
 extern boolean tiles_on;
 extern boolean traditonal;
+extern boolean inmap;
 #  ifdef TEXTCOLOR
 extern char ttycolors[CLR_MAX];	/* also used/set in options.c */
 #  endif /* TEXTCOLOR */
@@ -610,6 +612,26 @@ char *posbar;
 }
 #  endif
 
+void
+adjust_cursor_flags(cw)
+struct WinDesc *cw;
+{
+#  ifdef SIMULATE_CURSOR
+#   if 0
+    if (cw->type == NHW_MAP) cursor_flag = 1;
+    else cursor_flag = 0;
+#   else
+    if (cw->type == NHW_MAP) {
+	inmap = 1;
+	cursor_flag = 1;
+    } else {
+	inmap = 0;
+	cursor_flag = 1;
+    }
+#   endif /* 0 */
+#  endif /* SIMULATE_CURSOR */
+}
+
 #  ifdef SIMULATE_CURSOR
 
 /* change the defaults in pcvideo.h, not here */
@@ -919,7 +941,12 @@ char *sopt;
 	 */
 		if (flags.hasvesa) flags.usevesa = 1;
 		else if (flags.has8514) flags.use8514 = 1;
-		else if (flags.hasvga)	flags.usevga  = 1;
+		else if (flags.hasvga)	{
+			flags.usevga  = 1;
+			/* VGA depends on BIOS to enable function keys*/
+			flags.BIOS = 1;
+			flags.rawio = 1;
+		}
 	} else {
 		return 0;
 	}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.2	95/10/04	*/
+/*	SCCS Id: @(#)lev_main.c	3.2	96/05/10	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -214,7 +214,7 @@ char **argv;
 	FILE *fin;
 	int i;
 	boolean errors_encountered = FALSE;
-#if defined(THINK_C) || defined(__MWERKS__)
+#if defined(MAC) && (defined(THINK_C) || defined(__MWERKS__))
 	static char *mac_argv[] = {	"lev_comp",	/* dummy argv[0] */
 				":dat:Arch.des",
 				":dat:Barb.des",
@@ -584,7 +584,7 @@ wallify_map()
 boolean
 check_subrooms()
 {
-	short	i, j, n_subrooms;
+	unsigned i, j, n_subrooms;
 	boolean	found, ok = TRUE;
 	char	*last_parent, msg[256];
 
@@ -941,8 +941,9 @@ long flgs;
 {
 	char c;
 	uchar len;
-	static long version_info[3] = {
-			VERSION_NUMBER, VERSION_FEATURES, VERSION_SANITY
+	static unsigned long version_info[4] = {
+			VERSION_NUMBER, VERSION_FEATURES,
+			VERSION_SANITY1, VERSION_SANITY2
 	};
 
 	Write(fd, version_info, sizeof version_info);

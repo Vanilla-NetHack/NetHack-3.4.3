@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.2	96/02/28	*/
+/*	SCCS Id: @(#)detect.c	3.2	96/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -635,8 +635,13 @@ struct obj *obj;
 	case 2 : pline("%s confuses you!", The(bname));
 	    make_confused(HConfusion + rnd(100),FALSE);
 	    break;
-	case 3 : pline("%s damages your vision!", The(bname));
-	    make_blinded(Blinded + rnd(100),FALSE);
+	case 3 : if (!resists_blnd(&youmonst)) {
+		pline("%s damages your vision!", The(bname));
+		make_blinded(Blinded + rnd(100),FALSE);
+	    } else {
+		pline("%s assaults your vision.", The(bname));
+		You("are unaffected!");
+	    }
 	    break;
 	case 4 : pline("%s zaps your mind!", The(bname));
 	    make_hallucinated(HHallucination + rnd(100),FALSE,0L);

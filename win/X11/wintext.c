@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintext.c	3.2	92/3/7	*/
+/*	SCCS Id: @(#)wintext.c	3.2	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -329,7 +329,7 @@ destroy_text_window(wp)
     if (text_info->blocked || text_info->destroy_on_ack) {
 	XtDestroyWidget(wp->popup);
 	free_text_buffer(&text_info->text);
-	free((char *) text_info);
+	free((genericptr_t)text_info),  wp->text_information = 0;
 	wp->type = NHW_NONE;	/* allow reuse */
     } else {
 	text_info->destroy_on_ack = TRUE;	/* destroy on next ACK */
@@ -619,5 +619,6 @@ create_ripout_widget(Widget parent)
     return imageport;
 }
 
+#endif /* GRAPHIC_TOMBSTONE */
 
-#endif
+/*wintext.c*/

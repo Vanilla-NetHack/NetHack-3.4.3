@@ -48,9 +48,9 @@ extern int  FDECL(ReadTileFileHeader, (struct tibhdr_struct *, BOOLEAN_P));
 
 # ifdef PLANAR_FILE
 #  ifdef SCREEN_VGA
-extern int  FDECL(ReadPlanarTileFile,(int, struct planar_cell_struct *));
+extern int  FDECL(ReadPlanarTileFile,(int, struct planar_cell_struct **));
 extern int  FDECL(ReadPlanarTileFile_O,
-			(int, struct overview_planar_cell_struct *));
+			(int, struct overview_planar_cell_struct **));
 #  endif
 # endif
 

@@ -131,7 +131,7 @@ PRECOMPHEAD = N			# set to Y if you want to use precomp. headers
 
 RESFILE = $(GAME).res
 
-#Do not uncomment these for 3.2.0
+#Do not uncomment these for 3.2.1
 #TILEUTIL  = $(UTIL)\tile2bmp.exe
 #TILEBMP   = $(OBJ)\nhtiles.bmp
 #TILEGAME  = $(OBJ)\tile.o
@@ -315,7 +315,7 @@ DGNCOMPOBJS    = $(O)dgn_yacc.o	$(O)dgn_$(LEX).o $(O)dgn_main.o \
 RECOVOBJS      = $(O)recover.o
 
 #
-# Leave these commented for 3.2.0
+# Leave these commented for 3.2.1
 #
 #TEXT_IO        = $(O)tiletext.o	$(O)tiletxt.o	$(O)drawing.o \
 #		 $(O)decl.o	$(O)monst.o	$(O)objects.o

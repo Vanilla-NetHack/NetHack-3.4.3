@@ -76,7 +76,7 @@ xchar x, y;
 	    }
 
 	    pm->pxlth += sizeof (struct edog);
-	    mtmp = makemon(pm, x, y);
+	    mtmp = makemon(pm, x, y, NO_MM_FLAGS);
 	    pm->pxlth -= sizeof (struct edog);
 	    if (otmp && !mtmp) { /* monster was genocided or square occupied */
 		pline_The("figurine writhes and then shatters into pieces!");
@@ -132,7 +132,7 @@ makedog()
 	}
 
 	mons[pettype].pxlth = sizeof(struct edog);
-	mtmp = makemon(&mons[pettype], u.ux, u.uy);
+	mtmp = makemon(&mons[pettype], u.ux, u.uy, NO_MM_FLAGS);
 	mons[pettype].pxlth = 0;
 
 	if(!mtmp) return((struct monst *) 0); /* pets were genocided */

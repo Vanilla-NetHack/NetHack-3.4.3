@@ -74,6 +74,7 @@ via the meta modifier instead of the # prefix:
 M-a     adjust  adjust inventory letters
 M-c     chat    talk to someone
 M-d     dip     dip an object into something
+M-e     enhance advance or check weapons skills
 M-f     force   force a lock
 M-i     invoke  invoke an object's special powers
 M-j     jump    jump to another location

@@ -23,7 +23,7 @@ struct window_procs {
     void FDECL((*win_display_file), (const char *, BOOLEAN_P));
     void FDECL((*win_start_menu), (winid));
     void FDECL((*win_add_menu), (winid,int,const ANY_P *,
-		CHAR_P,int,const char *, BOOLEAN_P));
+		CHAR_P,CHAR_P,int,const char *, BOOLEAN_P));
     void FDECL((*win_end_menu), (winid, const char *));
     int FDECL((*win_select_menu), (winid, int, MENU_ITEM_P **));
     char FDECL((*win_message_menu), (CHAR_P,int,const char *));

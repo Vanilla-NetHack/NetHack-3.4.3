@@ -53,6 +53,7 @@ static void topl_flash_resp(int resp_idx);
 static void topl_set_def(int new_def_idx);
 static void adjust_window_pos(NhWindow *aWin, WindowPtr theWindow, short w);
 static void mac_cliparound (int x, int y);
+static pascal void FrameItem(DialogPtr dlog, short item);
 
 
 #ifndef USESROUTINEDESCRIPTORS /* not using universal headers */
@@ -128,6 +129,7 @@ static int clicked_mod ;
 static Boolean cursor_locked = false ;
 
 static ControlActionUPP UpUPP, DownUPP;		/* scrolling callbacks, initialized in InitMac */
+static UserItemUPP FrameItemUPP;
 
 void
 lock_mouse_cursor(Boolean new_cursor_locked)
@@ -383,6 +385,7 @@ InitMac( void )
 	
 	UpUPP = NewControlActionProc(Up);
 	DownUPP = NewControlActionProc(Down);
+	FrameItemUPP = NewUserItemProc(FrameItem);
 }
 
 
@@ -1617,7 +1620,7 @@ static void
 DoScrollBar ( Point p , short code , ControlHandle theBar , NhWindow * aWin ,
 	WindowPtr theWindow )
 {
-	ControlActionUPP func;
+	ControlActionUPP func = NULL;
 
 	winToScroll = aWin ;
 	switch ( code ) {
@@ -2723,7 +2726,7 @@ mac_start_menu ( winid win )
 
 
 void
-mac_add_menu ( winid win , int glyph, const anything *any , CHAR_P menuChar , int attr , const char * inStr , int preselected)
+mac_add_menu ( winid win , int glyph, const anything *any , CHAR_P menuChar , CHAR_P groupAcc, int attr , const char * inStr , int preselected)
 {
 	long addSize ;
 	int newWid ;
@@ -2925,7 +2928,7 @@ SetFrameItem ( DialogPtr dlog , short frame , short item )
 	InsetRect ( & r , -4 , -4 ) ;
 	r2 = r ;
 	GetDItem ( dlog , frame , & kind , & h , & r ) ;
-	SetDItem ( dlog , frame , kind , ( Handle ) FrameItem , & r2 ) ;
+	SetDItem ( dlog , frame , kind , ( Handle ) FrameItemUPP , & r2 ) ;
 	frame_corner = 16 ;
 }
 

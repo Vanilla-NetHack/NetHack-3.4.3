@@ -193,7 +193,7 @@ VOBJ21 = worm.o	    worn.o     write.o	  zap.o	     light.o
 VOBJ22 = dlb.o      dig.o      teleport.o
 
 SOBJ   = msdos.o    sound.o    sys.o	  tty.o	     unix.o    video.o \
-	vidtxt.o
+	vidtxt.o    pckeys.o
 
 VVOBJ  = version.o
 
@@ -383,6 +383,7 @@ spotless: clean
 	if exist $(SRC)\termcap.c  del $(SRC)\termcap.c
 	if exist $(SRC)\tile2bin.c del $(SRC)\tile2bin.c
 	if exist $(SRC)\msdos.c	   del $(SRC)\msdos.c
+	if exist $(SRC)\pckeys.c   del $(SRC)\pckeys.c
 	if exist $(SRC)\video.c	   del $(SRC)\video.c
 	if exist $(SRC)\sound.c	   del $(SRC)\sound.c
 	if exist $(SRC)\tilemap.c  del $(SRC)\tilemap.c
@@ -877,6 +878,10 @@ sys.o : $(HACK_H) $(SSHR)\pcsys.c
 msdos.o : $(HACK_H)  $(MSYS)\msdos.c
 	copy $(MSYS)\msdos.c .
 	$(CC) $(CFLAGS) -o$@ msdos.c
+
+pckeys.o : $(HACK_H)  $(MSYS)\pckeys.c
+	copy $(MSYS)\pckeys.c .
+	$(CC) $(CFLAGS) -o$@ pckeys.c
 
 pctiles.o : $(HACK_H)  $(MSYS)\pctiles.c $(INCL)\portio.h
 	copy $(MSYS)\pctiles.c .

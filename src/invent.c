@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.2	96/03/03	*/
+/*	SCCS Id: @(#)invent.c	3.2	96/05/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -190,23 +190,24 @@ struct obj *obj;
 		flags.botl = 1;
 		return obj;
 	} else if (obj->otyp == AMULET_OF_YENDOR) {
-		if (u.uhave.amulet) impossible ("already have amulet?");
+		if (u.uhave.amulet) impossible("already have amulet?");
 		u.uhave.amulet = 1;
 	} else if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
-		if (u.uhave.menorah) impossible ("already have candelabrum?");
+		if (u.uhave.menorah) impossible("already have candelabrum?");
 		u.uhave.menorah = 1;
 	} else if (obj->otyp == BELL_OF_OPENING) {
-		if (u.uhave.bell) impossible ("already have silver bell?");
+		if (u.uhave.bell) impossible("already have silver bell?");
 		u.uhave.bell = 1;
 	} else if (obj->otyp == SPE_BOOK_OF_THE_DEAD) {
-		if (u.uhave.book) impossible ("already have the book?");
+		if (u.uhave.book) impossible("already have the book?");
 		u.uhave.book = 1;
-	} else if (is_quest_artifact(obj)) {
-		if (u.uhave.questart) impossible ("already have the artifact?");
-		u.uhave.questart = 1;
-		artitouch();
-		set_artifact_intrinsic(obj, 1, W_ART);
-	} else if(obj->oartifact) {
+	} else if (obj->oartifact) {
+		if (is_quest_artifact(obj)) {
+		    if (u.uhave.questart)
+			impossible("already have quest artifact?");
+		    u.uhave.questart = 1;
+		    artitouch();
+		}
 		set_artifact_intrinsic(obj, 1, W_ART);
 	}
 	/* merge if possible; find end of chain in the process */
@@ -228,8 +229,8 @@ struct obj *obj;
 	obj->where = OBJ_INVENT;
 
 added:
-	if (obj->otyp == LUCKSTONE
-	    || (obj->oartifact && spec_ability(obj, SPFX_LUCK))) {
+	if (obj->otyp == LUCKSTONE ||
+	    (obj->oartifact && spec_ability(obj, SPFX_LUCK))) {
 		/* new luckstone must be in inventory by this point
 		 * for correct calculation */
 		set_moreluck();
@@ -315,27 +316,30 @@ register struct obj *obj;
 		flags.botl = 1;
 		return;
 	} else if (obj->otyp == AMULET_OF_YENDOR) {
-		if (!u.uhave.amulet) impossible ("don't have amulet?");
+		if (!u.uhave.amulet) impossible("don't have amulet?");
 		u.uhave.amulet = 0;
 	} else if (obj->otyp == CANDELABRUM_OF_INVOCATION) {
-		if (!u.uhave.menorah) impossible ("don't have candelabrum?");
+		if (!u.uhave.menorah) impossible("don't have candelabrum?");
 		u.uhave.menorah = 0;
 	} else if (obj->otyp == BELL_OF_OPENING) {
-		if (!u.uhave.bell) impossible ("don't have silver bell?");
+		if (!u.uhave.bell) impossible("don't have silver bell?");
 		u.uhave.bell = 0;
 	} else if (obj->otyp == SPE_BOOK_OF_THE_DEAD) {
-		if (!u.uhave.book) impossible ("don't have the book?");
+		if (!u.uhave.book) impossible("don't have the book?");
 		u.uhave.book = 0;
-	} else if (is_quest_artifact(obj)) {
-		if(!u.uhave.questart) impossible ("don't have the artifact?");
-		u.uhave.questart = 0;
-		set_artifact_intrinsic(obj, 0, W_ART);
 	} else if (obj->oartifact) {
+		if (is_quest_artifact(obj)) {
+		    if (!u.uhave.questart)
+			impossible("don't have quest artifact?");
+		    u.uhave.questart = 0;
+		}
 		set_artifact_intrinsic(obj, 0, W_ART);
-	} else if (obj->otyp == LOADSTONE) {
+	}
+
+	if (obj->otyp == LOADSTONE) {
 		curse(obj);
-	} else if (obj->otyp == LUCKSTONE
-		   || (obj->oartifact && spec_ability(obj, SPFX_LUCK))) {
+	} else if (obj->otyp == LUCKSTONE ||
+		    (obj->oartifact && spec_ability(obj, SPFX_LUCK))) {
 		set_moreluck();
 		flags.botl = 1;
 	}
@@ -869,9 +873,9 @@ boolean combo;		/* combination menu flag */
 		    word, ilets);
 	    getlin(qbuf, buf);
 	    if (buf[0] == '\033') return(0);
-	    if (index(buf, 'i'))
-		(void) display_inventory((char *)0, FALSE);
-	    else
+	    if (index(buf, 'i')) {
+		if (display_inventory((char *)0, TRUE) == '\033') return 0;
+	    } else
 		break;
 	}
 
@@ -1311,13 +1315,13 @@ nextclass:
 			if (!flags.sortpack || otmp->oclass == *invlet) {
 			    if (flags.sortpack && !classcount) {
 				any.a_void = 0;		/* zero */
-				add_menu(win, NO_GLYPH, &any, 0, ATR_INVERSE,
+				add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE,
 				    let_to_name(*invlet, FALSE), MENU_UNSELECTED);
 				classcount++;
 			    }
 			    any.a_char = ilet;
 			    add_menu(win, obj_to_glyph(otmp),
-					&any, ilet, ATR_NONE, doname(otmp),
+					&any, ilet, 0, ATR_NONE, doname(otmp),
 					MENU_UNSELECTED);
 			}
 		}
@@ -1745,8 +1749,7 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	    return(FALSE);
 
 	if (obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN) {
-		if((obj->corpsenm != otmp->corpsenm) ||
-			(ONAME(obj) && strcmp(ONAME(obj), ONAME(otmp))))
+		if (obj->corpsenm != otmp->corpsenm)
 				return FALSE;
 	}
 
@@ -1769,13 +1772,16 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	if (obj->unpaid && !same_price(obj, otmp))
 	    return FALSE;
 
-/* if they have names, make sure they're the same */
+	/* if they have names, make sure they're the same */
 	if ( (obj->onamelth != otmp->onamelth &&
 		((obj->onamelth && otmp->onamelth) || obj->otyp == CORPSE)
 	     ) ||
 	    (obj->onamelth && otmp->onamelth &&
 		    strncmp(ONAME(obj), ONAME(otmp), (int)obj->onamelth)))
 		return FALSE;
+
+	/* for the moment, any additional information is incompatible */
+	if (obj->oxlth || otmp->oxlth) return FALSE;
 
 	if(obj->oartifact != otmp->oartifact) return FALSE;
 
@@ -2078,9 +2084,9 @@ const char *hdr, *txt;
 	any.a_void = 0;
 	win = create_nhwindow(NHW_MENU);
 	start_menu(win);
-	add_menu(win, NO_GLYPH, &any, 0, ATR_INVERSE, hdr, MENU_UNSELECTED);
-	add_menu(win, NO_GLYPH, &any, 0, ATR_NONE, "", MENU_UNSELECTED);
-	add_menu(win, NO_GLYPH, &any, 0, ATR_NONE, txt, MENU_UNSELECTED);
+	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE, hdr, MENU_UNSELECTED);
+	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
+	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, txt, MENU_UNSELECTED);
 	end_menu(win, (char *)0);
 	if (select_menu(win, PICK_NONE, &selected) > 0)
 	    free((genericptr_t)selected);

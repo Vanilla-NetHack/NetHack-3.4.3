@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.2	96/03/16	*/
+/*	SCCS Id: @(#)read.c	3.2	96/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -430,7 +430,8 @@ forget_objects(percent)
 	}
 
 	for (count = 0, i = 1; i < NUM_OBJECTS; i++)
-	    if (objects[i].oc_name_known && OBJ_DESCR(objects[i]))
+	    if (OBJ_DESCR(objects[i]) &&
+		    (objects[i].oc_name_known || objects[i].oc_uname))
 		indices[count++] = i;
 
 	randomize(indices, count);
@@ -1330,16 +1331,22 @@ int how;
 	    reset_rndmonst(mndx);
 	    kill_genocided_monsters();
 	    update_inventory();	/* in case identified eggs were affected */
-	} else if (!(mons[mndx].geno & G_UNIQ) &&
-		   !(mvitals[mndx].mvflags & (G_GENOD | G_EXTINCT))) {
-	    pline("Sent in some %s.", makeplural(buf));
-	    for (i = rn1(3, 4); i > 0; i--) {
-		struct monst *mmon = makemon(ptr, u.ux, u.uy);
+	} else {
+	    int cnt = 0;
 
-		if (mmon) discard_minvent(mmon);
-		if (mvitals[mndx].mvflags & G_EXTINCT)
+	    if (!(mons[mndx].geno & G_UNIQ) &&
+		    !(mvitals[mndx].mvflags & (G_GENOD | G_EXTINCT)))
+		for (i = rn1(3, 4); i > 0; i--) {
+		    if (!makemon(ptr, u.ux, u.uy, NO_MINVENT))
+			break;	/* couldn't make one */
+		    ++cnt;
+		    if (mvitals[mndx].mvflags & G_EXTINCT)
 			break;	/* just made last one */
-	    }
+		}
+	    if (cnt)
+		pline("Sent in some %s.", makeplural(buf));
+	    else
+		pline(nothing_happens);
 	}
 }
 
@@ -1423,7 +1430,8 @@ create_particular()
 	if (tries == 5) pline(thats_enough_tries);
 	else {
 	    (void) cant_create(&which);
-	    return((boolean)(makemon(&mons[which], u.ux, u.uy) != 0));
+	    return((boolean)(makemon(&mons[which],
+				u.ux, u.uy, NO_MM_FLAGS) != 0));
 	}
 	return FALSE;
 }

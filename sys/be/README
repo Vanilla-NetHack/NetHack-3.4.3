@@ -1,0 +1,46 @@
+This file is sys/be/README.  It is for those intending to compile
+NetHack 3.2.1 on a BeBox running BeOS 1.1d7.  An actual game
+has never been run due to the (current) lack of an uncrippled
+linker.
+
+
+BeBox NetHack currently only supports the TTY windowing system.  In
+order to compile it, it would benefit you greatly to think of your Be
+system as a unix variant.  It is possible to compile using the
+Metrowerks IDE -- the Mac port of Nethack uses the Metrowerks compiler.
+However, there are four executables and several steps involved in making
+NetHack.  Unless you are extremely familiar with the build sequence, I
+suggest you avoid it for now.  Let the Unix Makefiles take care of all
+that for you.
+
+
+From a freshly unpacked source tree:
+
+1. Copy the Makfiles in sys/unix to their proper spots.  If you
+   don't know what they are, read sys/unix/Install.unx.
+
+2. Edit src/Makefile:
+	o Change System to SysBe.
+	o Comment out the Unix versions of SYSSRC and SYSOBJ variables.
+	o Uncomment the Be versions of SYSRC and SYSOBJ.
+	o Uncomment the BeBox versions CC, CFLAGS, LD, and LFLAGS.
+	o Comment out the default CFLAGS and LFLAGS.
+	o Change WINTTYLIB to be -ltermcap.
+
+3. Edit util/Makefile:
+	o Uncomment the BeBox versions of CC and CFLAGS.
+	o Comment out the default CFLAGS and LFLAGS.
+	o Change YACC and LEX to be bison -y and flex respectively.
+
+4. Edit include/config.h to change HACKDIR to be the location of your
+   install directory.  You may want to uncomment the DLB define.
+
+5. Edit Makefile and change GAMEDIR to match HACKDIR in include/config.h.
+   Make sure the path to GAMEDIR exists.
+
+6. Type make install at the top level.
+
+
+
+It is quite likely that some necessary steps needed to make the
+game have been omitted.  Feel free to ad-lib as necessary.

@@ -27,6 +27,7 @@ struct eshk {
 	long loan;		/* shop-gold picked (part of debit) */
 	int shoptype;		/* the value of rooms[shoproom].rtype */
 	schar shoproom;		/* index in rooms; set by inshop() */
+	schar unused;		/* to force alignment for stupid compilers */
 	boolean following;	/* following customer since he owes us sth */
 	boolean surcharge;	/* angry shk inflates prices */
 	coord shk;		/* usual position shopkeeper */

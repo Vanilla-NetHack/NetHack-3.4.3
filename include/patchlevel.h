@@ -1,19 +1,19 @@
-/*	SCCS Id: @(#)patchlevel.h	3.2	96/03/10	*/
+/*	SCCS Id: @(#)patchlevel.h	3.2	96/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.2.0 */
+/* NetHack 3.2.1 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	2
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	0
+#define PATCHLEVEL	1
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
  */
-#define EDITLEVEL	00
+#define EDITLEVEL	0
 
 #define COPYRIGHT_BANNER_A \
 "NetHack, Copyright 1985-1996"
@@ -34,25 +34,56 @@
  * PP = patch level, ee = edit level, L = literal suffix "L",
  * with all four numbers specified as two hexadecimal digits.
  */
-#define VERSION_COMPATIBILITY 0x03020000L
+#define VERSION_COMPATIBILITY 0x03020100L
 #endif
 
-/*
- *  NetHack 3.2.0, April 8, 1996
+/*****************************************************************************/
+/* Version 3.2.1 */
+
+/*  Patch 1, May 28, 1996
+ *  eliminate `#qualifications'; fix weapon proficiency handling for missiles
+ *  keep Medusa from continuing to move after she's been killed by reflection
+ *	of her own gaze (fixes relmon panic)
+ *  make monsters a little smarter; assorted eating and chatting changes
+ *  fix object amnesia for spellbooks; fix Nazgul's sleep gas attack
+ *  fix bullwhip usage for case of having recently been in a trap
+ *  egg hatching fixes, oil potion fixes, magic marker fixes
+ *  support object class chars as selection accelerators for some menus
+ *  stricter parsing of run-time options at startup time
+ *  interactive setting of options via menu (courtesy Per Liboriussen)
  *
+ *  Selected platform- or configuration-specific changes:
+ *  Amiga: fix panic for tiles display in Gnomish mines
+ *  BeOS: preliminary support for new BeBox platform; initially tty only
+ *  DLB: avoid excessive fseek calls (major performance hit for MSDOS)
+ *  HPUX: workaround for gcc-2.6.3 bug adversely affecting monster generation
+ *  Mac: avoid MW 68K struct copy optimization bug which caused crashes;
+ *	fix dragging of scrollbar; boost partitions to 2MB minimum
+ *  MSDOS: wasn't safe to enter endgame for MFLOPPY configuration;
+ *	fix re-entry into game after "!" (shell escape) + chdir + EXIT;
+ *	F3/F4/F5 display interface swapping improvements;
+ *	add support for preloading all tiles in protected mode environment
+ *  TERMINFO: colors were wrong for some systems, such as Linux
+ *  X11: display help files properly
+ */
+
+/*
+ *  NetHack 3.2.0, April 11, 1996
  *  enhancements to the windowing systems including "tiles" or icons to
- *	visually represent monsters and objects.
- *  window based menu system introduced for inventory and selection.
- *  moving light sources besides the player.
- *  improved #untrap. (courtesy Helge Hafting)
+ *	visually represent monsters and objects (courtesy Warwick Allison)
+ *  window based menu system introduced for inventory and selection
+ *  moving light sources besides the player
+ *  improved #untrap (courtesy Helge Hafting)
  *  spellcasting logic changes to balance spellcasting towards magic-using
- *	classes. (courtesy Stephen White)
- *  many, many bug fixes and abuse eliminations.
+ *	classes (courtesy Stephen White)
+ *  many, many bug fixes and abuse eliminations
  */
 
 /* Version 3.2 */
 
 /*****************************************************************************/
+/* Version 3.1.x */
+
 /*
  *  Patch 3, July 12, 1993
  *  further revise Mac windowing and extend to Think C (courtesy
@@ -219,3 +250,13 @@
  *  fix a handful of bugs, and do some code cleaning elsewhere
  *  add more instructions for new environments and things commonly done wrong
  */
+
+/*
+ *  NetHack 3.0 baseline release, July, 1989
+ */
+
+/* Version 3.0 */
+
+/*****************************************************************************/
+
+/*patchlevel.h*/

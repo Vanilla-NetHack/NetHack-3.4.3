@@ -105,7 +105,7 @@
 #endif
 #endif /* NEED_VARARGS */
 
-#if defined(NHSTDC) || defined(MSDOS) || defined(MAC) || defined(ULTRIX_PROTO)
+#if defined(NHSTDC) || defined(MSDOS) || defined(MAC) || defined(ULTRIX_PROTO) || defined(__beos__)
 
 /*
  * Used for robust ANSI parameter forward declarations:
@@ -204,6 +204,9 @@ typedef genericptr genericptr_t;	/* (void *) or (char *) */
 #define UNWIDENED_PROTOTYPES
 #endif
 #if defined(applec)
+#define UNWIDENED_PROTOTYPES
+#endif
+#if defined(__MWERKS__) && defined(__beos__)
 #define UNWIDENED_PROTOTYPES
 #endif
 #if defined(WIN32)

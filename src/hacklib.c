@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hacklib.c	3.2	95/08/04	*/
+/*	SCCS Id: @(#)hacklib.c	3.2	96/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* Copyright (c) Robert Patrick Rankin, 1991		  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -15,6 +15,7 @@ NetHack, except that rounddiv may call panic().
 	char		highc		(char)
 	char		lowc		(char)
 	char *		lcase		(char *)
+	char *		mungspaces	(char *)
 	char *		eos		(char *)
 	char *		s_suffix	(const char *)
 	char *		xcrypt		(const char *, char *)
@@ -88,6 +89,25 @@ lcase(s)		/* convert a string into all lowercase */
 	if ('A' <= *p && *p <= 'Z') *p |= 040;
     return s;
 }
+
+/* remove excess whitespace from a string buffer (in place) */
+char *
+mungspaces(bp)
+char *bp;
+{
+    register char c, *p, *p2;
+    boolean was_space = TRUE;
+
+    for (p = p2 = bp; (c = *p) != '\0'; p++) {
+	if (c == '\t') c = ' ';
+	if (c != ' ' || !was_space) *p2++ = c;
+	was_space = (c == ' ');
+    }
+    if (was_space && p2 > bp) p2--;
+    *p2 = '\0';
+    return bp;
+}
+
 #endif /* OVLB */
 
 #ifdef OVL0

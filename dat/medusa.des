@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)medusa.des	3.2	96/02/14
+#	SCCS Id: @(#)medusa.des	3.2	96/05/11
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1990, 1991 by M. Stephenson
 # NetHack may be freely redistributed.  See license for details.
@@ -42,7 +42,7 @@ TELEPORT_REGION:(01,01,05,17),(0,0,0,0),down
 TELEPORT_REGION:(26,04,50,15),(0,0,0,0),up
 # Stairs
 STAIR:(05,14),up
-STAIR:(35,10),down
+STAIR:(36,10),down
 # Doors
 DOOR:closed,(46,07)
 DOOR:locked,(38,08)
@@ -54,7 +54,10 @@ BRANCH:levregion(01,00,79,20),(30,06,46,13)
 NON_DIGGABLE:(30,06,46,13)
 # Objects
 CONTAINER:'`',"statue",(36,10),uncursed,"knight",0,"Perseus"
-OBJECT:'[',"shield of reflection",contained
+OBJECT[75%]:'[',"shield of reflection",contained,cursed,+0
+OBJECT[25%]:'[',"levitation boots",contained,random,+0
+OBJECT[50%]:')',"scimitar",contained,blessed,+2
+OBJECT[50%]:'(',"sack",contained
 # These aren't really containers, but specifying CONTAINER forces them to be
 # empty, since CONTAINERs contain only what is explicitly specified.
 CONTAINER:'`',"statue",random
@@ -146,7 +149,10 @@ NON_DIGGABLE:(01,02,06,17)
 NON_DIGGABLE:(60,02,73,17)
 # Objects
 CONTAINER:'`',"statue",(68,10),uncursed,"knight",0,"Perseus"
-OBJECT:'[',"shield of reflection",contained
+OBJECT[25%]:'[',"shield of reflection",contained,cursed,+0
+OBJECT[75%]:'[',"levitation boots",contained,random,+0
+OBJECT[50%]:')',"scimitar",contained,blessed,+2
+OBJECT[50%]:'(',"sack",contained
 CONTAINER:'`',"statue",(64,08)
 CONTAINER:'`',"statue",(65,08)
 CONTAINER:'`',"statue",(64,09)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)windows.c	3.2	95/12/10	*/
+/*	SCCS Id: @(#)windows.c	3.2	96/05/19	*/
 /* Copyright (c) D. Cohrs, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,6 +14,10 @@ extern void NDECL(win_X11_init);
 #endif
 #ifdef MAC
 extern struct window_procs mac_procs;
+#endif
+#ifdef __begui__
+extern struct window_procs be_procs;
+extern void NDECL(be_win_init);
 #endif
 #ifdef AMIGA_INTUITION
 extern struct window_procs amii_procs;
@@ -42,6 +46,9 @@ struct win_choices {
 #endif
 #ifdef MAC
     { &mac_procs, 0 },
+#endif
+#ifdef __begui__
+    { &be_procs, be_win_init },
 #endif
 #ifdef AMIGA_INTUITION
     { &amii_procs, ami_wininit_data },		/* Old font version of the game */
@@ -83,6 +90,7 @@ const char *s;
 
     if (windowprocs.win_raw_print == def_raw_print)
 	terminate(EXIT_SUCCESS);
+    wait_synch();
 }
 
 /*

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)muse.c	3.2	96/02/14	*/
+/*	SCCS Id: @(#)muse.c	3.2	96/04/29	*/
 /*	Copyright (C) 1990 by Ken Arromdee			   */
 /* NetHack may be freely redistributed.  See license for details.  */
 
@@ -74,7 +74,7 @@ struct obj *obj;
 		if (!enexto(&cc, mon->mx, mon->my, &mons[PM_GHOST])) return 0;
 		mquaffmsg(mon, obj);
 		m_useup(mon, obj);
-		mtmp = makemon(&mons[PM_GHOST], cc.x, cc.y);
+		mtmp = makemon(&mons[PM_GHOST], cc.x, cc.y, NO_MM_FLAGS);
 		if (!mtmp) {
 		    if (vis) pline(empty);
 		} else {
@@ -96,7 +96,7 @@ struct obj *obj;
 		if (!enexto(&cc, mon->mx, mon->my, &mons[PM_DJINNI])) return 0;
 		mquaffmsg(mon, obj);
 		m_useup(mon, obj);
-		mtmp = makemon(&mons[PM_DJINNI], cc.x, cc.y);
+		mtmp = makemon(&mons[PM_DJINNI], cc.x, cc.y, NO_MM_FLAGS);
 		if (!mtmp) {
 		    if (vis) pline(empty);
 		} else {
@@ -162,18 +162,36 @@ mreadmsg(mtmp, otmp)
 struct monst *mtmp;
 struct obj *otmp;
 {
-	boolean vismon = (canseemon(mtmp));
-	if (flags.soundok)
-		otmp->dknown = 1;
+	boolean vismon = canseemon(mtmp);
+	char saverole, onambuf[BUFSZ];
+	unsigned savebknown;
+
+	if (!vismon && !flags.soundok)
+	    return;		/* no feedback */
+
+	otmp->dknown = 1;  /* seeing or hearing it read reveals its label */
+	/* shouldn't be able to hear curse/bless status of unseen scrolls;
+	   for priest characters, bknown will always be set during naming */
+	savebknown = otmp->bknown;
+	saverole = u.role;
 	if (!vismon) {
-		if (flags.soundok)
-		    You_hear("%s reading %s.",
-			an(Hallucination ? rndmonnam() : mtmp->data->mname),
-			singular(otmp, doname));
-	} else pline("%s reads %s!", Monnam(mtmp), singular(otmp,doname));
-	if (mtmp->mconf && (vismon || flags.soundok))
-		pline("Being confused, %s mispronounces the magic words...",
-		      vismon ? mon_nam(mtmp) : he[pronoun_gender(mtmp)]);
+	    otmp->bknown = 0;
+	    if (Role_is('P')) u.role = '@';	/* '@' => not 'P' */
+	}
+	Strcpy(onambuf, singular(otmp, doname));
+	otmp->bknown = savebknown;
+	u.role = saverole;
+
+	if (vismon)
+	    pline("%s reads %s!", Monnam(mtmp), onambuf);
+	else
+	    You_hear("%s reading %s.",
+		     an(Hallucination ? rndmonnam() : mtmp->data->mname),
+		     onambuf);
+
+	if (mtmp->mconf)
+	    pline("Being confused, %s mispronounces the magic words...",
+		  vismon ? mon_nam(mtmp) : he[pronoun_gender(mtmp)]);
 }
 
 static void
@@ -592,7 +610,7 @@ mon_tele:
 		if (!enexto(&cc, mtmp->mx, mtmp->my, pm)) return 0;
 		mzapmsg(mtmp, otmp, FALSE);
 		otmp->spe--;
-		mon = makemon((struct permonst *)0, cc.x, cc.y);
+		mon = makemon((struct permonst *)0, cc.x, cc.y, NO_MM_FLAGS);
 		if (mon && canspotmon(mon) && oseen)
 		    makeknown(WAN_CREATE_MONSTER);
 		return 2;
@@ -614,7 +632,7 @@ mon_tele:
 		    /* `fish' potentially gives bias towards water locations;
 		       `pm' is what to actually create (0 => random) */
 		    if (!enexto(&cc, mtmp->mx, mtmp->my, fish)) break;
-		    mon = makemon(pm, cc.x, cc.y);
+		    mon = makemon(pm, cc.x, cc.y, NO_MM_FLAGS);
 		    if (mon && canspotmon(mon)) known = TRUE;
 		}
 		/* The only case where we don't use oseen.  For wands, you
@@ -826,6 +844,8 @@ struct monst *mtmp;
 #define MUSE_POT_PARALYSIS 9
 #define MUSE_POT_BLINDNESS 10
 #define MUSE_POT_CONFUSION 11
+#define MUSE_FROST_HORN 12
+#define MUSE_FIRE_HORN 13
 
 /* Select an offensive item/action for a monster.  Returns TRUE iff one is
  * found.
@@ -871,10 +891,20 @@ struct monst *mtmp;
 			m.offensive = obj;
 			m.has_offense = MUSE_WAN_FIRE;
 		    }
+		    nomore(MUSE_FIRE_HORN);
+		    if(obj->otyp == FIRE_HORN && obj->spe > 0) {
+			m.offensive = obj;
+			m.has_offense = MUSE_FIRE_HORN;
+		    }
 		    nomore(MUSE_WAN_COLD);
 		    if(obj->otyp == WAN_COLD && obj->spe > 0) {
 			m.offensive = obj;
 			m.has_offense = MUSE_WAN_COLD;
+		    }
+		    nomore(MUSE_FROST_HORN);
+		    if(obj->otyp == FROST_HORN && obj->spe > 0) {
+			m.offensive = obj;
+			m.has_offense = MUSE_FROST_HORN;
 		    }
 		    nomore(MUSE_WAN_LIGHTNING);
 		    if(obj->otyp == WAN_LIGHTNING && obj->spe > 0) {
@@ -1104,6 +1134,20 @@ struct monst *mtmp;
 		buzz((int)(-30 - (otmp->otyp - WAN_MAGIC_MISSILE)),
 			(otmp->otyp == WAN_MAGIC_MISSILE) ? 2 : 6,
 			mtmp->mx, mtmp->my,
+			sgn(mtmp->mux-mtmp->mx), sgn(mtmp->muy-mtmp->my));
+		m_using = FALSE;
+		return (mtmp->mhp <= 0) ? 1 : 2;
+	case MUSE_FIRE_HORN:
+	case MUSE_FROST_HORN:
+		if (oseen) {
+			makeknown(otmp->otyp);
+			pline("%s plays a %s!", Monnam(mtmp), xname(otmp));
+		} else
+			You_hear("a horn being played.");
+		otmp->spe--;
+		m_using = TRUE;
+		buzz(-30 - ((otmp->otyp==FROST_HORN) ? AD_COLD-1 : AD_FIRE-1),
+			rn1(6,6), mtmp->mx, mtmp->my,
 			sgn(mtmp->mux-mtmp->mx), sgn(mtmp->muy-mtmp->my));
 		m_using = FALSE;
 		return (mtmp->mhp <= 0) ? 1 : 2;
@@ -1599,6 +1643,8 @@ struct obj *obj;
 				acidic(&mons[obj->corpsenm])))
 		|| (typ == UNICORN_HORN && !obj->cursed &&
 			mon->data->mlet != S_UNICORN)
+		|| typ == FROST_HORN
+		|| typ == FIRE_HORN
 	));
 }
 

@@ -16,6 +16,7 @@
  *     __DJGPP__ is defined automatically by djgpp version 2 and above.
  *     _MSC_VER is defined automatically by Microsoft C.
  *     __BORLANDC__ is defined automatically by Borland C.
+ *     __SC__ is defined automatically by Symantec C.
  */
 
 /*
@@ -96,7 +97,7 @@
 
 /* The following is needed for prototypes of certain functions */
 
-#if defined(_MSC_VER) || defined(__BORLANDC__)
+#if defined(_MSC_VER) || defined(__BORLANDC__) || defined(__SC__)
 #include <process.h>	/* Provides prototypes of exit(), spawn()      */
 #endif
 
@@ -226,14 +227,14 @@
 
 #if defined(MSDOS) && defined(NO_TERMS)
 # ifdef TERMLIB
-#  ifdef _MSC_VER
+#  if defined(_MSC_VER) || defined(__SC__)
 #   pragma message("Warning -- TERMLIB defined with NO_TERMS in pcconf.h")
 #   pragma message("           Forcing undef of TERMLIB")
 #  endif
 #undef TERMLIB
 # endif
 # ifdef ANSI_DEFAULT
-#  ifdef _MSC_VER
+#  if defined(_MSC_VER) || defined(__SC__)
 #   pragma message("Warning -- ANSI_DEFAULT defined with NO_TERMS in pcconf.h")
 #   pragma message("           Forcing undef of ANSI_DEFAULT")
 #  endif
@@ -241,13 +242,12 @@
 # endif
 /* only one screen package is allowed */
 # if defined(SCREEN_BIOS) && defined(SCREEN_DJGPPFAST)
-#  ifdef _MSC_VER
-/* Microsoft C compiler */
+#  if defined(_MSC_VER) || defined(__SC__)
 #   pragma message("Warning -- More than one screen package defined in pcconf.h")
 #  endif
-#  if defined(_MSC_VER) || defined(__BORLANDC__)
+#  if defined(_MSC_VER) || defined(__BORLANDC__) || defined(__SC__)
 #   if defined(SCREEN_DJGPPFAST)
-#    ifdef _MSC_VER
+#    if defined(_MSC_VER) || defined(__SC__)
 #    pragma message("           Forcing undef of SCREEN_DJGPPFAST")
 #    endif
 #undef SCREEN_DJGPPFAST	  /* Can't use djgpp fast with other compilers anyway */
@@ -293,6 +293,9 @@
 # endif
 # ifdef __BORLANDC__
 # define msleep(k) delay(k)
+# endif
+# ifdef __SC__
+# define msleep(k) (void) usleep((long)((k)*1000))
 # endif
 #endif
 

@@ -56,9 +56,7 @@ static char NDECL(BIOSgetch);
 static char * NDECL(getdta);
 static unsigned int FDECL(dos_ioctl, (int,int,unsigned));
 #ifdef USE_TILES
-extern boolean tiles_on;	/* from video.c */
-extern boolean traditional;	/* from video.c */
-extern boolean overview;	/* from vidvga.c */
+extern boolean FDECL(pckeys,(unsigned char, unsigned char));	/* pckeys.c */
 #endif
 
 int
@@ -237,7 +235,6 @@ BIOSgetch()
 {
       unsigned char scan, shift, ch=0;
       const struct pad *kpad;
-
       union REGS regs;
 
       do {
@@ -263,41 +260,11 @@ BIOSgetch()
 		else
 			ch = kpad[scan - KEYPADLO].normal;
 	}
-
+#ifdef USE_TILES
 	/* Check for special interface manipulation keys */
-#ifdef SIMULATE_CURSOR
-	if (scan == 0x3d) {	/* F3 = toggle cursor type */
-		HideCursor();
-		cursor_type += 1;
-		if (cursor_type >= NUM_CURSOR_TYPES) cursor_type = 0;
-		DrawCursor();
-		ch = 0xFF;		    /* signal non-nethack code */
+	if (pckeys(scan, shift)) {
+		ch = 0xFF;
 		continue;
-	}
-#endif
-#if defined(USE_TILES)
-	if (tiles_on) {
- 		if (scan == 0x74 && (shift & CTRL)) {
-		/* scroll horizontal to right */
-			ch = 0xFF;	    /* signal non-nethack code */
-			vga_userpan(1);
-			continue;
-		} else if (scan == 0x73 && (shift & CTRL)) {
-		/* scroll horizontal to left */
-			ch = 0xFF;
-			vga_userpan(0);
-			continue;
-		} else if (scan == 0x3E) {
-			traditional = FALSE;
-			vga_overview(overview ? 0 : 1);
-			ch = 0xFF;
-			continue;
-		} else if (scan == 0x3F) {
-			overview = FALSE;
-			vga_traditional(traditional ? 0 : 1);
-			ch = 0xFF;
-			continue;
-		}
 	}
 #endif
 	/* Translate unassigned Alt-letters */
@@ -386,7 +353,7 @@ char *path;
  * Functions to get filenames using wildcards
  */
 int
-findfirst(path)
+findfirst_file(path)
 char *path;
 {
 	union REGS regs;
@@ -401,7 +368,7 @@ char *path;
 }
 
 int
-findnext() {
+findnext_file() {
 	union REGS regs;
 
 	regs.h.ah = FINDNEXT;
@@ -427,7 +394,7 @@ getdta()
 	regs.h.ah = GETDTA;
 	intdosx(&regs, &regs, &sregs);
 #   ifdef MK_FP
-	ret = MK_FP(sregs.es, regs.x.bx);
+	ret = (char *)MK_FP(sregs.es, regs.x.bx);
 #   else
 	FP_OFF(ret) = regs.x.bx;
 	FP_SEG(ret) = sregs.es;
@@ -436,12 +403,12 @@ getdta()
 }
 
 long
-filesize(file)
+filesize_nh(file)
 char *file;
 {
 	char *dta;
 
-	if (findfirst(file)) {
+	if (findfirst_file(file)) {
 		dta = getdta();
 		return  (* (long *) (dta + 26));
 	} else

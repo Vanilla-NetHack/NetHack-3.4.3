@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.2	96/02/03	*/
+/*	SCCS Id: @(#)restore.c	3.2	96/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -399,6 +399,7 @@ unsigned int *mid;
 	flags.has8514 = oldflags.has8514;
 	flags.use8514 = oldflags.use8514;
 	flags.grmode  = oldflags.grmode;
+	flags.preload_tiles = oldflags.preload_tiles;
 #endif
 	/* these come from the current environment; ignore saved values */
 	flags.window_inited = oldflags.window_inited;

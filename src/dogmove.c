@@ -21,9 +21,23 @@ register struct monst *mon;
 {
 	register struct obj *obj;
 	struct obj *wep = MON_WEP(mon);
+	boolean item1 = FALSE, item2 = FALSE;
 
-	for(obj = mon->minvent; obj; obj = obj->nobj)
+	if (is_animal(mon->data) || mindless(mon->data))
+		item1 = item2 = TRUE;
+	if (!tunnels(mon->data) || !needspick(mon->data))
+		item1 = TRUE;
+	for(obj = mon->minvent; obj; obj = obj->nobj) {
+		if (!item1 && obj->otyp == PICK_AXE) {
+			item1 = TRUE;
+			continue;
+		}
+		if (!item2 && obj->otyp == UNICORN_HORN && !obj->cursed) {
+			item2 = TRUE;
+			continue;
+		}
 		if (!obj->owornmask && obj != wep) return obj;
+	}
 	return (struct obj *)0;
 }
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)apply.c	3.2	96/01/28	*/
+/*	SCCS Id: @(#)apply.c	3.2	96/05/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,8 +7,9 @@
 
 #ifdef OVLB
 
-static const char tools[] = { TOOL_CLASS, POTION_CLASS,
-				WEAPON_CLASS, WAND_CLASS, 0 };
+static const char tools[] = { TOOL_CLASS, WEAPON_CLASS, WAND_CLASS, 0 };
+static const char tools_too[] = { ALL_CLASSES, TOOL_CLASS, POTION_CLASS,
+					  WEAPON_CLASS, WAND_CLASS, 0 };
 
 #ifdef TOURIST
 static int FDECL(use_camera, (struct obj *));
@@ -626,6 +627,8 @@ struct obj *obj;
 	    if (vis)
 		pline ("%s doesn't have a reflection.", Monnam(mtmp));
 	} else if(!mtmp->mcan && mtmp->data == &mons[PM_MEDUSA]) {
+		if (mon_reflects(mtmp, "The gaze is reflected away by %s %s!"))
+			return 1;
 		if (vis)
 			pline("%s is turned to stone!", Monnam(mtmp));
 		stoned = TRUE;
@@ -711,9 +714,9 @@ register struct obj *obj;
 		    !(mvitals[PM_WOOD_NYMPH].mvflags & G_GONE) &&
 		    !(mvitals[PM_WATER_NYMPH].mvflags & G_GONE) &&
 		    !(mvitals[PM_MOUNTAIN_NYMPH].mvflags & G_GONE) &&
-		    (mtmp = makemon(mkclass(S_NYMPH, 0), u.ux, u.uy)) != 0) {
+		    (mtmp = makemon(mkclass(S_NYMPH, 0),
+					u.ux, u.uy, NO_MINVENT)) != 0) {
 		You("summon %s!", a_monnam(mtmp));
-		discard_minvent(mtmp);	/* treat this like reverse genocide */
 		if (!obj_resists(obj, 93, 100)) {
 		    pline("%s has shattered!", The(xname(obj)));
 		    useup(obj);
@@ -746,7 +749,7 @@ register struct obj *obj;
 
 		mm.x = u.ux;
 		mm.y = u.uy;
-		mkundead(&mm);
+		mkundead(&mm, FALSE, NO_MINVENT);
 		wakem = TRUE;
 
 	    } else  if (invoking) {
@@ -1056,6 +1059,7 @@ light_cocktail(obj)
 	    obj->no_charge = 1;		/* you're now obligated to pay for it */
 	    obj->unpaid = 0;
 	}
+	makeknown(obj->otyp);
 
 	if (obj->quan > 1L) {
 	    (void) splitobj(obj, 1L);
@@ -1343,8 +1347,8 @@ struct obj *obj;
 	/*
 	 *		Chances for number of troubles to be fixed
 	 *		 0	1      2      3      4	    5	   6	  7
-	 *   blessed:  16/80  16/80  15/80  13/80  10/80   6/80   3/80	 1/80
-	 *  uncursed:	4/12   4/12   3/12   1/12    0	    0	   0	  0
+	 *   blessed:  22.7%  22.7%  19.5%  15.4%  10.7%   5.7%   2.6%	 0.8%
+	 *  uncursed:  35.4%  35.4%  22.9%   6.3%    0	    0	   0	  0
 	 */
 	val_limit = rn2( d(2, (obj && obj->blessed) ? 4 : 2) );
 	if (val_limit > trouble_count) val_limit = trouble_count;
@@ -1522,10 +1526,16 @@ struct obj *otmp;
 	    what = "underwater";
 	else if (Levitation)
 	    what = "while levitating";
+	else if (is_pool(u.ux, u.uy))
+	    what = "in water";
+	else if (is_lava(u.ux, u.uy))
+	    what = "in lava";
 	else if (On_stairs(u.ux, u.uy))
 	    what = (u.ux == xdnladder || u.ux == xupladder) ?
 			"on the ladder" : "on the stairs";
-	else if (IS_FURNITURE(levl[u.ux][u.uy].typ) || t_at(u.ux, u.uy))
+	else if (IS_FURNITURE(levl[u.ux][u.uy].typ) ||
+		IS_ROCK(levl[u.ux][u.uy].typ) ||
+		closed_door(u.ux, u.uy) || t_at(u.ux, u.uy))
 	    what = "here";
 	if (what) {
 	    You_cant("set a trap %s!",what);
@@ -1537,6 +1547,9 @@ struct obj *otmp;
 	    ttmp->tseen = 1;
 	    ttmp->madeby_u = 1;
 	    newsym(u.ux, u.uy); /* if our hero happens to be invisible */
+	    if (*in_rooms(u.ux,u.uy,SHOPBASE)) {
+	    	add_damage(u.ux, u.uy, 0L);		/* schedule removal */
+	    }
 	    You("set and arm %s.",
 		an(defsyms[trap_to_defsym(ttyp)].explanation));
 	    if ((otmp->cursed || Fumbling) && (rnl(10) > 5)) dotrap(ttmp);
@@ -1635,7 +1648,7 @@ struct obj *obj;
 	 *			- you only end up hitting.
 	 *
 	 */
-	else if(u.utraptype == TT_PIT) {
+	else if(u.utrap && u.utraptype == TT_PIT) {
 		const char *wrapped_what = (char *)0;
 
 		if (mtmp) {
@@ -1826,11 +1839,11 @@ do_break_wand(obj)
 	if (obj->otyp == WAN_DIGGING) {
 	    if(dig_check(BY_OBJECT, FALSE, x, y))
 		digactualhole(x, y, BY_OBJECT,
-			      (rn2(obj->spe)<3 || !Can_fall_thru(&u.uz)) ?
+			      (rn2(obj->spe) < 3 || !Can_dig_down(&u.uz)) ?
 			       PIT : HOLE);
 	    continue;
 	} else if(obj->otyp == WAN_CREATE_MONSTER) {
-	    (void) makemon((struct permonst *)0, x, y);
+	    (void) makemon((struct permonst *)0, x, y, NO_MM_FLAGS);
 	    continue;
 	} else {
 	    if (x == u.ux && y == u.uy) {
@@ -1870,7 +1883,7 @@ doapply()
 	register int res = 1;
 
 	if(check_capacity((char *)0)) return (0);
-	obj = getobj(tools, "use or apply");
+	obj = getobj(carrying(POT_OIL) ? tools_too : tools, "use or apply");
 	if(!obj) return 0;
 
 	if (obj->oclass == WAND_CLASS)
@@ -1905,7 +1918,8 @@ doapply()
 			obj->spe--;
 			if(!rn2(23)) cnt += rn2(7) + 1;
 			while(cnt--)
-			    (void) makemon((struct permonst *) 0, u.ux, u.uy);
+			   (void) makemon((struct permonst *) 0,
+						u.ux, u.uy, NO_MM_FLAGS);
 			makeknown(BAG_OF_TRICKS);
 		} else
 			pline(nothing_happens);

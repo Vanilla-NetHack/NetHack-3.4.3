@@ -29,10 +29,10 @@ tty_doprev_message()
     ttyDisplay->dismiss_more = C('p');	/* <ctrl/P> allowed at --More-- */
     do {
 	morc = 0;
-	if (cw->data[cw->maxcol])
-	    redotoplin(cw->data[cw->maxcol]);
-	else if (cw->maxcol == cw->maxrow)
+	if (cw->maxcol == cw->maxrow)
 	    redotoplin(toplines);
+	else if (cw->data[cw->maxcol])
+	    redotoplin(cw->data[cw->maxcol]);
 	cw->maxcol--;
 	if (cw->maxcol < 0) cw->maxcol = cw->rows-1;
 	if (!cw->data[cw->maxcol])
@@ -69,14 +69,17 @@ STATIC_OVL void
 remember_topl()
 {
     register struct WinDesc *cw = wins[WIN_MESSAGE];
+    int idx = cw->maxrow;
+    unsigned len = strlen(toplines) + 1;
 
-    cw->data[cw->maxrow] = (char*) alloc((unsigned)strlen(toplines)+1);
-    Strcpy(cw->data[cw->maxrow], toplines);
-    cw->maxcol = cw->maxrow = (cw->maxrow+1) % cw->rows;
-    if(cw->data[cw->maxrow]) {
-	free((genericptr_t)cw->data[cw->maxrow]);
-	cw->data[cw->maxrow] = 0;
+    if (len > (unsigned)cw->datlen[idx]) {
+	if (cw->data[idx]) free(cw->data[idx]);
+	len += (8 - (len & 7));		/* pad up to next multiple of 8 */
+	cw->data[idx] = (char *)alloc(len);
+	cw->datlen[idx] = (short)len;
     }
+    Strcpy(cw->data[idx], toplines);
+    cw->maxcol = cw->maxrow = (idx + 1) % cw->rows;
 }
 
 void

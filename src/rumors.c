@@ -1,8 +1,9 @@
-/*	SCCS Id: @(#)rumors.c	3.2	95/08/04	*/
+/*	SCCS Id: @(#)rumors.c	3.2	96/04/20	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include "lev.h"
 #include "dlb.h"
 
 /*	[note: this comment is fairly old, but still accurate for 3.1]
@@ -173,12 +174,20 @@ dlb *fp;
 }
 
 void
-save_oracles(fd)
-int fd;
+save_oracles(fd, mode)
+int fd, mode;
 {
-	bwrite(fd, (genericptr_t) &oracle_cnt, sizeof oracle_cnt);
-	if (oracle_cnt)
-	    bwrite(fd, (genericptr_t) oracle_loc, oracle_cnt * sizeof (long));
+	if (perform_bwrite(mode)) {
+	    bwrite(fd, (genericptr_t) &oracle_cnt, sizeof oracle_cnt);
+	    if (oracle_cnt)
+		bwrite(fd, (genericptr_t)oracle_loc, oracle_cnt*sizeof (long));
+	}
+	if (release_data(mode)) {
+	    if (oracle_cnt) {
+		free((genericptr_t)oracle_loc);
+		oracle_loc = 0,  oracle_cnt = 0,  oracle_flg = 0;
+	    }
+	}
 }
 
 void

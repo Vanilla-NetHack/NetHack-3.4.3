@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)teleport.c	3.2	96/03/10	*/
+/*	SCCS Id: @(#)teleport.c	3.2	96/05/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -215,6 +215,7 @@ register int nux,nuy;
 	vision_full_recalc = 1;
 	nomul(0);
 	spoteffects();
+	invocation_message();
 }
 
 boolean
@@ -937,19 +938,29 @@ rloco(obj)
 register struct obj *obj;
 {
 	register xchar tx, ty, otx, oty;
+	boolean restricted_fall;
+	int try_limit = 4000;
 
 	obj_extract_self(obj);
-
 	otx = obj->ox;
 	oty = obj->oy;
+	restricted_fall = (otx == 0 && dndest.lx);
 	do {
-		tx = rn1(COLNO-3,2);
-		ty = rn2(ROWNO);
-	} while (!goodpos(tx, ty, (struct monst *)0, (struct permonst *)0));
+	    tx = rn1(COLNO-3,2);
+	    ty = rn2(ROWNO);
+	    if (!--try_limit) break;
+	} while (!goodpos(tx, ty, (struct monst *)0, (struct permonst *)0) ||
+		/* bug: this lacks provision for handling the Wizard's tower */
+		 (restricted_fall &&
+		  (!within_bounded_area(tx, ty, dndest.lx, dndest.ly,
+						dndest.hx, dndest.hy) ||
+		   (dndest.nlx &&
+		    within_bounded_area(tx, ty, dndest.nlx, dndest.nly,
+						dndest.nhx, dndest.nhy)))));
 
-	if (flooreffects(obj, tx, ty, "fall"))
-		return;
-	if (otx == 0 && oty == 0) {
+	if (flooreffects(obj, tx, ty, "fall")) {
+	    return;
+	} else if (otx == 0 && oty == 0) {
 	    ;	/* fell through a trapdoor; no update of old loc needed */
 	} else {
 	    if (costly_spot(otx, oty)
@@ -998,7 +1009,7 @@ random_teleport_level()
 	 * --KAA
 	 */
 	min_depth = 1;
-	max_depth = dunlevs_in_dungeon(&u.uz) + 
+	max_depth = dunlevs_in_dungeon(&u.uz) +
 			(dungeons[u.uz.dnum].depth_start - 1);
 
 	if (nlev > max_depth) {

@@ -338,6 +338,13 @@ int attr;
 
 	(void) int86(DOS_EXT_FUNC, &regs, &regs);
 
+	if (ch == '\n') {
+		regs.h.dl = '\r';
+		regs.h.ah = PUTCHAR;
+		regs.h.cl = DIRECT_CON_IO;
+
+		(void) int86(DOS_EXT_FUNC, &regs, &regs);
+	}
 	regs.h.dl = ch;
 	regs.h.ah = PUTCHAR;
 	regs.h.cl = DIRECT_CON_IO;

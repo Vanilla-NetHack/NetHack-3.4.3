@@ -214,23 +214,6 @@ nartifact_exist()
 
     return a;
 }
-
-/*
- * This function is used to un-create an artifact.  Normally, when an artifact
- * is destroyed, it cannot be re-created by any means.  However, if you call
- * this function _before_ destroying the object, then the artifact can be
- * re-created later on.  Currently used only by the wish code.
- */
-void
-artifact_unexist(otmp)
-    register struct obj *otmp;
-{
-    if (otmp->oartifact && artiexist[(int)otmp->oartifact])
-	artiexist[(int)otmp->oartifact] = 0;
-    else
-	impossible("Destroying non-existing artifact?!");
-}
-
 #endif /* OVLB */
 #ifdef OVL0
 
@@ -1081,7 +1064,7 @@ arti_invoke(obj)
 	    for (i = num_ok_dungeons = 0; i < n_dgns; i++) {
 		if (!dungeons[i].dunlev_ureached) continue;
 		any.a_int = i+1;
-		add_menu(tmpwin, NO_GLYPH, &any, 0, ATR_NONE,
+		add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
 			 dungeons[i].dname, MENU_UNSELECTED);
 		num_ok_dungeons++;
 		last_ok_dungeon = i;

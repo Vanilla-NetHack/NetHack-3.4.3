@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.h	3.2	95/07/04	*/
+/*	SCCS Id: @(#)hack.h	3.2	96/05/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -62,6 +62,9 @@
 #endif
 #ifndef OBJCLASS_H
 #include "objclass.h"
+#endif
+#ifndef YOUPROP_H
+#include "youprop.h"
 #endif
 #ifndef WINTYPE_H
 #include "wintype.h"
@@ -135,6 +138,10 @@ NEARDATA extern coord bhitpos;	/* place where thrown weapon falls to the ground 
 #endif /* USE_TRAMPOLI */
 
 #define NO_SPELL	0
+
+/* flags to control makemon() */
+#define NO_MM_FLAGS       0x00  /* use this rather than plain 0 */
+#define NO_MINVENT        0x01  /* suppress minvent when creating mon */
 
 /* flags to control query_objlist() */
 #define BY_NEXTHERE	  0x1	/* follow objlist by nexthere field */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monflag.h	3.2	95/07/29	*/
+/*	SCCS Id: @(#)monflag.h	3.2	96/05/04	*/
 /* Copyright (c) 1989 Mike Threepoint				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,6 +45,9 @@
 #define MS_SELL		34	/* demand payment, complain about shoplifters */
 #define MS_ORACLE	35	/* do a consultation */
 #define MS_PRIEST	36	/* ask for contribution; do cleansing */
+#define MS_SPELL	37	/* spellcaster not matching any of the above */
+#define MS_WERE		38	/* lycanthrope in human form */
+#define MS_BOAST	39	/* giants */
 
 
 #define MR_FIRE         0x01    /* resists fire */

@@ -50,7 +50,7 @@ typedef long	off_t;
  * impossible to get right automatically.
  * This is the type of signal handling functions.
  */
-#if defined(_MSC_VER) || defined(__TURBOC__) || defined(WIN32)
+#if defined(_MSC_VER) || defined(__TURBOC__) || defined(__SC__) || defined(WIN32)
 # define SIG_RET_TYPE void (__cdecl *)(int)
 #endif
 #ifndef SIG_RET_TYPE
@@ -74,7 +74,9 @@ typedef long	off_t;
 # ifdef random
 # undef random
 # endif
+# if !defined(__SC__)
 E long NDECL(random);
+# endif
 # if !defined(SUNOS4) || defined(RANDOM)
 E void FDECL(srandom, (unsigned int));
 # else
@@ -102,7 +104,7 @@ E void FDECL(free, (genericptr_t));
 #   endif
 #  endif
 # endif
-#if !defined(__SASC_60) && !defined(_DCC)
+#if !defined(__SASC_60) && !defined(_DCC) && !defined(__SC__)
 # if defined(AMIGA) && !defined(AZTEC_50)
 E int FDECL(perror, (const char *));
 # else
@@ -159,7 +161,9 @@ E int FDECL(write, (int,genericptr_t,unsigned));
 # ifdef OS2_CSET2	/* IBM CSet/2 */
 E int FDECL(unlink, (char *));
 # else
+#  ifndef __SC__
 E int FDECL(unlink, (const char *));
+#  endif
 # endif
 
 #endif /* AZTEC_50 && __GNUC__ */
@@ -409,7 +413,7 @@ E char	*FDECL(rindex, (const char *,int));
 	/* problem with prototype mismatches */
 #define SPRINTF_PROTO
 #endif
-#if defined(__MWERKS__)
+#if defined(__MWERKS__) || defined(__SC__)
 	/* Metrowerks already has a prototype for sprintf() */
 # define SPRINTF_PROTO
 #endif

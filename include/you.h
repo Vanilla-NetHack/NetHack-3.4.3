@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)you.h	3.2	95/08/13	*/
+/*	SCCS Id: @(#)you.h	3.2	96/05/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,8 +14,8 @@
 #ifndef MONST_H
 #include "monst.h"
 #endif
-#ifndef YOUPROP_H
-#include "youprop.h"
+#ifndef PROP_H
+#include "prop.h"
 #endif
 
 /*
@@ -53,10 +53,10 @@
 #define P_BOOMERANG		26
 #define P_WHIP			27
 #define P_UNICORN_HORN		28	/* last weapon */
-#define P_TWO_WEAPON_COMBAT	29
+#define P_TWO_WEAPON_COMBAT	29	/* currently unused */
 #define P_BARE_HANDED_COMBAT	30
-#define P_MARTIAL_ARTS		31	/* currently unused */
-#define P_NUM_SKILLS		32	/* should always be the last entry */
+#define P_MARTIAL_ARTS		P_BARE_HANDED_COMBAT	/* role distinguishes */
+#define P_NUM_SKILLS		31	/* should always be the last entry */
 
 #define P_NO_TYPE		P_NUM_SKILLS
 #define P_LAST_WEAPON		P_UNICORN_HORN
@@ -73,6 +73,8 @@
 #define P_BASIC			2
 #define P_SKILLED		3
 #define P_EXPERT		4
+#define P_MASTER		5	/* unarmed combat/martial arts only */
+#define P_GRAND_MASTER		6	/* unarmed combat/martial arts only */
 
 #define practice_needed_to_advance(level) ((level)*(level)*20)
 
@@ -88,11 +90,12 @@ struct skills {
 #define P_ADVANCE(type)		(u.weapon_skills[type].advance)
 #define P_RESTRICTED(type)	(u.weapon_skills[type].skill == P_ISRESTRICTED)
 
-#define PN_POLEARMS		(NUM_OBJECTS+0)
-#define PN_TWO_WEAPON_COMBAT	(NUM_OBJECTS+1)
-#define PN_BARE_HANDED_COMBAT	(NUM_OBJECTS+2)
-#define PN_MARTIAL_ARTS		(NUM_OBJECTS+3)
-#define PN_SABER		(NUM_OBJECTS+4)
+/* categories whose names don't come from OBJ_NAME(objects[type]) */
+#define PN_POLEARMS		(-1)
+#define PN_SABER		(-2)
+#define PN_TWO_WEAPONS		(-3)
+#define PN_BARE_HANDED		(-4)
+#define PN_MARTIAL_ARTS		(-5)
 
 #define P_SKILL_LIMIT 60	/* max number of skill advancements */
 
@@ -315,5 +318,8 @@ struct you {
 #define Role_is(X) (u.role == X)
 #define human_role() (!Role_is('E'))
 #define Upolyd (u.mtimedone != 0)
+
+/* these roles qualify for a martial arts bonus */
+#define martial_bonus()	(Role_is('S') || Role_is('P'))
 
 #endif	/* YOU_H */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.2	96/02/27	*/
+/*	SCCS Id: @(#)shknam.c	3.2	96/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -248,7 +248,7 @@ int sx, sy;
 
 	if (rn2(100) < depth(&u.uz) &&
 	    !MON_AT(sx, sy) && (ptr = mkclass(S_MIMIC,0)) &&
-	    (mtmp=makemon(ptr,sx,sy))) {
+	    (mtmp=makemon(ptr,sx,sy,NO_MM_FLAGS))) {
 		/* note: makemon will set the mimic symbol to a shop item */
 		if (rn2(10) >= depth(&u.uz)) {
 			mtmp->m_ap_type = M_AP_OBJECT;
@@ -338,14 +338,14 @@ struct mkroom	*sroom;
 	/* check that the shopkeeper placement is sane */
 	if(sroom->irregular) {
 	    int rmno = (sroom - rooms) + ROOMOFFSET;
-	    if(isok(sx-1,sy) &&
-	       levl[sx-1][sy].roomno == rmno && !levl[sx-1][sy].edge) sx--;
-	    else if(isok(sx+1,sy) &&
-	       levl[sx+1][sy].roomno == rmno && !levl[sx+1][sy].edge) sx++;
-	    else if(isok(sx,sy-1) &&
-	       levl[sx][sy-1].roomno == rmno && !levl[sx][sy-1].edge) sy--;
-	    else if(isok(sx,sy+1) &&
-	       levl[sx][sy+1].roomno == rmno && !levl[sx][sy+1].edge) sx++;
+	    if (isok(sx-1,sy) && !levl[sx-1][sy].edge &&
+		(int) levl[sx-1][sy].roomno == rmno) sx--;
+	    else if (isok(sx+1,sy) && !levl[sx+1][sy].edge &&
+		(int) levl[sx+1][sy].roomno == rmno) sx++;
+	    else if (isok(sx,sy-1) && !levl[sx][sy-1].edge &&
+		(int) levl[sx][sy-1].roomno == rmno) sy--;
+	    else if (isok(sx,sy+1) && !levl[sx][sy+1].edge &&
+		(int) levl[sx][sy+1].roomno == rmno) sx++;
 	    else goto shk_failed;
 	}
 	else if(sx == sroom->lx-1) sx++;
@@ -379,7 +379,8 @@ struct mkroom	*sroom;
 	if(MON_AT(sx, sy)) rloc(m_at(sx, sy)); /* insurance */
 
 	/* now initialize the shopkeeper monster structure */
-	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy))) return(-1);
+	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy, NO_MM_FLAGS)))
+		return(-1);
 	shk->isshk = shk->mpeaceful = TRUE;
 	set_malign(shk);
 	shk->msleep = FALSE;
@@ -456,7 +457,7 @@ register struct mkroom *sroom;
     for(sx = sroom->lx; sx <= sroom->hx; sx++)
 	for(sy = sroom->ly; sy <= sroom->hy; sy++) {
 	    if(sroom->irregular) {
-		if(levl[sx][sy].edge || levl[sx][sy].roomno != rmno ||
+		if (levl[sx][sy].edge || (int) levl[sx][sy].roomno != rmno ||
 		   distmin(sx, sy, doors[sh].x, doors[sh].y) <= 1)
 		    continue;
 	    } else if((sx == sroom->lx && doors[sh].x == sx-1) ||

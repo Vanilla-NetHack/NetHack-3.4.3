@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)spell.c	3.2	96/03/16	*/
+/*	SCCS Id: @(#)spell.c	3.2	96/05/19	*/
 /*	Copyright (c) M. Stephenson 1988			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -169,6 +169,9 @@ static void
 deadbook(book2)
 struct obj *book2;
 {
+    struct monst *mtmp, *mtmp2;
+    coord mm;
+
     You("turn the pages of the Book of the Dead...");
     makeknown(SPE_BOOK_OF_THE_DEAD);
     if(invocation_pos(u.ux, u.uy) && !On_stairs(u.ux, u.uy)) {
@@ -215,24 +218,25 @@ struct obj *book2;
     }
 
     /* when not an invocation situation */
-    if(book2->cursed)
+    if (book2->cursed) {
 raise_dead:
-    {
-	register struct monst *mtmp;
-	coord mm;
 
 	You("raised the dead!");
+	/* first maybe place a dangerous adversary */
+	if (!rn2(3) && ((mtmp = makemon(&mons[PM_MASTER_LICH],
+					u.ux, u.uy, NO_MINVENT)) != 0 ||
+			(mtmp = makemon(&mons[PM_NALFESHNEE],
+					u.ux, u.uy, NO_MINVENT)) != 0)) {
+	    mtmp->mpeaceful = 0;
+	    set_malign(mtmp);
+	}
+	/* next handle the affect on things you're carrying */
+	(void) unturn_dead(&youmonst);
+	/* last place some monsters around you */
 	mm.x = u.ux;
 	mm.y = u.uy;
-	mkundead(&mm);
-	if(!rn2(4))
-	    if ((mtmp = makemon(&mons[PM_MASTER_LICH],u.ux,u.uy)) != 0) {
-		mtmp->mpeaceful = 0;
-		set_malign(mtmp);
-	    }
+	mkundead(&mm, TRUE, NO_MINVENT);
     } else if(book2->blessed) {
-	register struct monst *mtmp, *mtmp2;
-
 	for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 	    mtmp2 = mtmp->nmon;		/* tamedog() changes chain */
 	    if(is_undead(mtmp->data) && cansee(mtmp->mx, mtmp->my)) {
@@ -283,15 +287,16 @@ learn()
 			if (book->spestudied >= rnd(30 - spellev(i))) {
 			    pline("This spellbook is too faint to be read anymore.");
 			    book->otyp = booktype = SPE_BLANK_PAPER;
-			    makeknown((int)booktype);
-			}
-			else if (spelluses(i) < 20 - spellev(i)) {
+			}  else if (spelluses(i) < 20 - spellev(i)) {
 			    Your("knowledge of that spell is keener.");
 			    spl_book[i].sp_uses += 10 - spellev(i);
 			    book->spestudied++;
 			    exercise(A_WIS, TRUE);	/* extra study */
 			} else
 			    You("know that spell quite well already.");
+			/* make book become known even when spell is already
+			   known, in case amnesia made you forget the book */
+			makeknown((int)booktype);
 			break;
 		} else if (spellid(i) == NO_SPELL)  {
 			spl_book[i].sp_id = booktype;
@@ -389,6 +394,9 @@ register struct obj *spellbook;
 		}
 
 		/* Books are often wiser than their readers (Rus.) */
+#ifndef NO_SIGNAL
+		spellbook->in_use = TRUE;
+#endif
 		if(!spellbook->blessed &&
 			spellbook->otyp != SPE_BOOK_OF_THE_DEAD &&
 			(spellbook->cursed ||
@@ -398,25 +406,42 @@ register struct obj *spellbook;
 			nomul(delay);			/* study time */
 			delay = 0;
 			if(!rn2(3)) {
-				useup(spellbook);
-				pline_The("spellbook crumbles to dust!");
+			    pline_The("spellbook crumbles to dust!");
+			    if (!objects[spellbook->otyp].oc_name_known &&
+				   !objects[spellbook->otyp].oc_uname)
+				docall(spellbook);
+			    useup(spellbook);
 			}
-			return(1);
-		}
-		else if(confused) {
-			if(!rn2(3) &&
-			    spellbook->otyp != SPE_BOOK_OF_THE_DEAD) {
-				useup(spellbook);
-				pline("Being confused you have difficulties in controlling your actions.");
-				display_nhwindow(WIN_MESSAGE, FALSE);
-				You("accidentally tear the spellbook to pieces.");
-			}
+#ifndef NO_SIGNAL
 			else
-				You("find yourself reading the first line over and over again.");
+			    spellbook->in_use = FALSE;
+#endif
+			return(1);
+		} else if (confused) {
+			if (!rn2(3) &&
+				spellbook->otyp != SPE_BOOK_OF_THE_DEAD) {
+			    pline(
+	  "Being confused you have difficulties in controlling your actions.");
+			    display_nhwindow(WIN_MESSAGE, FALSE);
+			    You("accidentally tear the spellbook to pieces.");
+			    if (!objects[spellbook->otyp].oc_name_known &&
+				   !objects[spellbook->otyp].oc_uname)
+				docall(spellbook);
+			    useup(spellbook);
+			} else {
+			    You(
+		  "find yourself reading the first line over and over again.");
+#ifndef NO_SIGNAL
+			    spellbook->in_use = FALSE;
+#endif
+			}
 			nomul(delay);
 			delay = 0;
 			return(1);
 		}
+#ifndef NO_SIGNAL
+		spellbook->in_use = FALSE;
+#endif
 
 		You("begin to %s the runes.",
 		    spellbook->otyp == SPE_BOOK_OF_THE_DEAD ? "recite" :
@@ -715,7 +740,7 @@ dospellmenu(how, spell_no)
 	 * in the window-ports (say via a tab character).
 	 */
 	Sprintf(buf, "%-20s     Level Fail", "Name");
-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, buf, MENU_UNSELECTED);
+	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, MENU_UNSELECTED);
 	for (i = 0; i < MAXSPELL && spellid(i) != NO_SPELL; i++) {
 		Sprintf(buf, "%-20s  %2d%s  %3d%%",
 			spellname(i), spellev(i),
@@ -723,7 +748,7 @@ dospellmenu(how, spell_no)
 
 		any.a_int = i+1;	/* must be non-zero */
 		add_menu(tmpwin, NO_GLYPH, &any,
-			 spellet(i), 0,buf, MENU_UNSELECTED);
+			 spellet(i), 0, ATR_NONE, buf, MENU_UNSELECTED);
 	      }
 	end_menu(tmpwin, how == PICK_ONE ? "Choose a spell" :
 					   "Currently known spells");

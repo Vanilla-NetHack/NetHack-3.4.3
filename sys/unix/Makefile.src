@@ -1,5 +1,5 @@
 #	NetHack Makefile.
-#	SCCS Id: @(#)Makefile.src	3.2	94/07/10
+#	SCCS Id: @(#)Makefile.src	3.2	96/05/08
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -21,6 +21,7 @@
 #	'Sysatt'	-- AT&T UNIXPC, 7300, 3B1
 #	'SysV-AT'	-- Microport 286 UNIX (put -DDUMB in CFLAGS)
 #	'Systos'	-- Atari
+#	'SysBe'		-- BeBox
 SYSTEM = Sysunix
 
 #
@@ -36,7 +37,7 @@ SHELL=/bin/sh
 # system.
 #
 # for UNIX systems
-SYSSRC = ../sys/unix/ioctl.c ../sys/unix/unixmain.c ../sys/unix/unixtty.c \
+SYSSRC = ../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
 	../sys/unix/unixunix.c
 SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 #
@@ -44,6 +45,10 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 # SYSSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 #	../sys/share/pctty.c ../sys/share/pcunix.c
 # SYSOBJ = tos.o pcmain.o pcsys.o pctty.o pcunix.o
+#
+# for BeBox
+#SYSSRC = ../sys/be/bemain.c ../sys/share/unixtty.c ../sys/share/ioctl.c
+#SYSOBJ = bemain.o unixtty.o ioctl.o
 
 
 # if you are using gcc as your compiler:
@@ -109,6 +114,12 @@ SYSOBJ = ioctl.o unixmain.o unixtty.o unixunix.o
 # CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
 # LFLAGS = -b i486-linuxaout -L/usr/X11/lib
 
+# flags for BeBox
+#CC = mwcc
+#CFLAGS = -r -D__beos__=1 -I../include
+#LD = mwld
+#LFLAGS = -map nethack.xMAP
+
 # flags for debugging:
 # CFLAGS = -g -I../include
 
@@ -143,7 +154,7 @@ WINOBJ = $(WINTTYOBJ)
 # Systos needs -lcurses16 if you use -mshort
 # AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in config.h
 # and -ltermcap otherwise
-# Linux uses -ltermcap
+# Be and Linux use -ltermcap
 #
 # libraries for tty ports
 # WINTTYLIB = -ltermcap
@@ -223,8 +234,8 @@ HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c ball.c bones.c \
 # all operating-system-dependent .c (for dependencies and such)
 SYSCSRC = ../sys/atari/tos.c ../sys/share/pcmain.c ../sys/share/pcsys.c \
 	../sys/share/pctty.c ../sys/share/pcunix.c ../sys/share/random.c \
-	../sys/unix/ioctl.c ../sys/unix/unixmain.c ../sys/unix/unixtty.c \
-	../sys/unix/unixunix.c
+	../sys/share/ioctl.c ../sys/share/unixtty.c ../sys/unix/unixmain.c \
+	../sys/unix/unixunix.c ../sys/be/bemain.c
 
 # all windowing-system-dependent .c (for dependencies and such)
 WINCSRC = $(WINTTYSRC) $(WINX11SRC)
@@ -240,9 +251,9 @@ CSOURCES = $(HACKCSRC) $(SYSSRC) $(WINCSRC) monstr.c vis_tab.c
 # cause dependency loops if run through "make depend"
 # and dgn_comp.h, dgn_file.h, lev_comp.h, special level & dungeon files.
 #
-HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h color.h \
-	config.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h edog.h \
-	emin.h engrave.h epri.h eshk.h extern.h flag.h func_tab.h \
+HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h \
+	color.h config.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h \
+	edog.h emin.h engrave.h epri.h eshk.h extern.h flag.h func_tab.h \
 	global.h hack.h lev.h macconf.h mfndpos.h micro.h mkroom.h \
 	monattk.h mondata.h monflag.h monst.h monsym.h obj.h objclass.h \
 	os2conf.h patchlevel.h pcconf.h permonst.h prop.h rect.h rm.h \
@@ -301,6 +312,11 @@ SysV-AT:	DUMB.Setup $(HOBJ) Makefile
 	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB)
 	@touch SysV-AT
 
+SysBe: $(HOBJ) Makefile
+	@echo "Loading ..."
+	@$(LD) $(LFLAGS) -o $(GAME) $(HOBJ) $(WINLIB) $(LIBS)
+	@touch SysBe
+
 DUMB.Setup:	../include/extern.h
 	cp ../include/extern.h ../include/extern.h.BAK 
 	cat ../include/extern.h | \
@@ -338,9 +354,11 @@ objects.o:
 	$(CC) $(CFLAGS) -c objects.c
 	@rm -f $(MAKEDEFS)
 
-# need those include files not in monst.c/objects.c dependencies below
-$(MAKEDEFS): ../util/makedefs.c  ../include/artilist.h ../include/patchlevel.h \
-		../include/qtext.h
+$(MAKEDEFS): ../util/makedefs.c  ../include/config.h ../include/permonst.h \
+		../include/objclass.h ../include/monsym.h \
+		../include/artilist.h ../include/dungeon.h ../include/obj.h \
+		../include/monst.h ../include/you.h ../include/flag.h \
+		../include/dlb.h ../include/patchlevel.h ../include/qtext.h
 	@( cd ../util ; $(MAKE) makedefs)
 
 ../include/onames.h: $(MAKEDEFS)
@@ -471,7 +489,7 @@ depend:
 tos.o: ../sys/atari/tos.c  ../include/hack.h ../include/termcap.h
 	$(CC) $(CFLAGS) -c ../sys/atari/tos.c
 pcmain.o: ../sys/share/pcmain.c  ../include/hack.h ../include/dlb.h \
-		../include/win32api.h
+		# ../include/win32api.h
 	$(CC) $(CFLAGS) -c ../sys/share/pcmain.c
 pcsys.o: ../sys/share/pcsys.c  ../include/hack.h ../include/wintty.h
 	$(CC) $(CFLAGS) -c ../sys/share/pcsys.c
@@ -481,14 +499,16 @@ pcunix.o: ../sys/share/pcunix.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/share/pcunix.c
 random.o: ../sys/share/random.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/share/random.c
-ioctl.o: ../sys/unix/ioctl.c  ../include/hack.h ../include/termcap.h
-	$(CC) $(CFLAGS) -c ../sys/unix/ioctl.c
+ioctl.o: ../sys/share/ioctl.c  ../include/hack.h ../include/termcap.h
+	$(CC) $(CFLAGS) -c ../sys/share/ioctl.c
+unixtty.o: ../sys/share/unixtty.c  ../include/hack.h
+	$(CC) $(CFLAGS) -c ../sys/share/unixtty.c
 unixmain.o: ../sys/unix/unixmain.c  ../include/hack.h ../include/dlb.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixmain.c
-unixtty.o: ../sys/unix/unixtty.c  ../include/hack.h
-	$(CC) $(CFLAGS) -c ../sys/unix/unixtty.c
 unixunix.o: ../sys/unix/unixunix.c  ../include/hack.h
 	$(CC) $(CFLAGS) -c ../sys/unix/unixunix.c
+bemain.o: ../sys/be/bemain.c  ../include/hack.h
+	$(CC) $(CFLAGS) -c ../sys/be/bemain.c
 getline.o: ../win/tty/getline.c  ../include/hack.h ../include/wintty.h \
 		../include/func_tab.h
 	$(CC) $(CFLAGS) -c ../win/tty/getline.c
@@ -609,7 +629,7 @@ restore.o:  ../include/hack.h ../include/lev.h ../include/termcap.h \
 	../include/quest.h
 rip.o:  ../include/hack.h
 rnd.o:  ../include/hack.h
-rumors.o:  ../include/hack.h ../include/dlb.h
+rumors.o:  ../include/hack.h ../include/lev.h ../include/dlb.h
 save.o:  ../include/hack.h ../include/lev.h ../include/quest.h
 shk.o:  ../include/hack.h ../include/eshk.h
 shknam.o:  ../include/hack.h ../include/eshk.h
@@ -659,15 +679,15 @@ zap.o:  ../include/hack.h
 ../include/global.h:  ../include/coord.h ../include/vmsconf.h \
 		../include/unixconf.h ../include/os2conf.h \
 		../include/pcconf.h ../include/tosconf.h ../include/amiconf.h \
-		../include/macconf.h ../include/ntconf.h
+		../include/macconf.h ../include/beconf.h ../include/ntconf.h
 	touch ../include/global.h
 ../include/hack.h:  ../include/config.h ../include/dungeon.h \
 		../include/monsym.h ../include/mkroom.h ../include/objclass.h \
-		../include/wintype.h ../include/decl.h ../include/timeout.h \
-		../include/trap.h ../include/flag.h ../include/rm.h \
-		../include/vision.h ../include/display.h ../include/engrave.h \
-		../include/rect.h  ../include/winprocs.h ../include/wintty.h \
-		../include/trampoli.h 
+		../include/youprop.h ../include/wintype.h ../include/decl.h \
+		../include/timeout.h ../include/trap.h ../include/flag.h \
+		../include/rm.h ../include/vision.h ../include/display.h \
+		../include/engrave.h ../include/rect.h  ../include/winprocs.h \
+		../include/wintty.h ../include/trampoli.h 
 	touch ../include/hack.h
 ../include/macconf.h:  ../include/system.h
 	touch ../include/macconf.h
@@ -684,8 +704,6 @@ zap.o:  ../include/hack.h
 	touch ../include/permonst.h
 ../include/rm.h:  ../include/align.h
 	touch ../include/rm.h
-../include/sp_lev.h:  ../include/align.h
-	touch ../include/sp_lev.h
 ../include/tosconf.h:  ../include/micro.h ../include/pcconf.h
 	touch ../include/tosconf.h
 ../include/unixconf.h:  ../include/system.h
@@ -695,7 +713,7 @@ zap.o:  ../include/hack.h
 ../include/vmsconf.h:  ../include/system.h
 	touch ../include/vmsconf.h
 ../include/you.h:  ../include/align.h ../include/attrib.h ../include/monst.h \
-		../include/youprop.h
+		../include/prop.h
 	touch ../include/you.h
 ../include/youprop.h:  ../include/prop.h ../include/permonst.h \
 		../include/mondata.h ../include/pm.h

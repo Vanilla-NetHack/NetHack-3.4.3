@@ -1,4 +1,4 @@
-.TH LEV_COMP 6 "13 Dec 1995"
+.TH LEV_COMP 6 "16 May 1996"
 .UC 4
 .SH NAME
 lev_comp \- NetHack special levels compiler
@@ -261,7 +261,7 @@ map_detail	: monster_detail
 		| passwall_detail
 		;
 
-monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
+monster_detail	: MONSTER_ID chance ':' monster_c ',' m_name ',' coordinate
 		 monster_infos
 		;
 
@@ -276,11 +276,11 @@ monster_info	: ',' string
 		| ',' MON_APPEARANCE string
 		;
 
-object_detail	: OBJECT_ID ':' object_desc
-		| COBJECT_ID ':' object_desc
+object_detail	: OBJECT_ID object_desc
+		| COBJECT_ID object_desc
 		;
 
-object_desc	: object_c ',' o_name ',' object_where object_infos
+object_desc	: chance ':' object_c ',' o_name ',' object_where object_infos
 		;
 
 object_where	: coordinate
@@ -312,8 +312,7 @@ optional_name	: /* nothing */
 door_detail	: DOOR_ID ':' door_state ',' coordinate
 		;
 
-trap_detail	: TRAP_ID ':' trap_name ',' coordinate
-		| TRAP_ID ':' trap_name ',' coordinate ',' trap_chance
+trap_detail	: TRAP_ID chance ':' trap_name ',' coordinate
 		;
 
 drawbridge_detail: DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state
@@ -400,9 +399,6 @@ trap_name	: string
 		| RANDOM_TYPE
 		;
 
-trap_chance	: CHANCE_ID ':' INTEGER
-		;
-
 room_type	: string
 		| RANDOM_TYPE
 		;
@@ -460,6 +456,10 @@ string		: STRING
 
 amount		: INTEGER
 		| RANDOM_TYPE
+		;
+
+chance		: /* empty */
+		| PERCENT
 		;
 
 engraving_type	: ENGRAVING_TYPE
@@ -533,14 +533,14 @@ RANDOM_PLACES: (4,3), (4,5), (3,4), (5,4)
 MONSTER: 'd', "hell hound", place[0]
 # a chest on another random side
 OBJECT: '(', "chest", place[1]
-# a sack on a random side, with a diamond and ruby in it
+# a sack on a random side, with a diamond and maybe a ruby in it
 CONTAINER: '(', "sack", place[2]
 OBJECT: '*', "diamond", contained
-OBJECT: '*', "ruby", contained
+OBJECT[50%]: '*', "ruby", contained
 # a random dragon somewhere
 MONSTER: 'D', random, random
-# a random trap in the EAST end
-TRAP: random, (6,4)
+# 3 out of 4 chance for a random trap in the EAST end
+TRAP[75%]: random, (6,4)
 # an electric eel below the SOUTH end
 MONSTER: ';', "electric eel", (4,8)
 # make the walls non-diggable

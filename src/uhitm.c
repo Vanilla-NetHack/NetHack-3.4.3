@@ -1,11 +1,13 @@
-/*	SCCS Id: @(#)uhitm.c	3.2	96/02/07	*/
+/*	SCCS Id: @(#)uhitm.c	3.2	96/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 static boolean FDECL(known_hitum, (struct monst *,int *,struct attack *));
+static void FDECL(steal_it, (struct monst *, struct attack *));
 static boolean FDECL(hitum, (struct monst *,int,struct attack *));
+static boolean FDECL(m_slips_free, (struct monst *mtmp,struct attack *mattk));
 static int FDECL(explum, (struct monst *,struct attack *));
 static void FDECL(start_engulf, (struct monst *));
 static void NDECL(end_engulf);
@@ -21,7 +23,7 @@ static boolean override_confirmation = FALSE;
 
 
 #ifdef WEAPON_SKILLS
-#define PROJECTILE(obj)	((obj) && objects[(obj)->otyp].oc_wepcat==WEP_MISSILE)
+#define PROJECTILE(obj)	((obj) && objects[(obj)->otyp].oc_wepcat == WEP_AMMO)
 #endif
 
 boolean
@@ -210,8 +212,10 @@ register struct monst *mtmp;
 		return(FALSE);
 
 	tmp = find_roll_to_hit(mtmp);
-	(void) maybe_polyd( hmonas(mtmp,tmp),
-		hitum(mtmp,tmp,playermon.mattk) );
+	if (Upolyd)
+		(void) hmonas(mtmp, tmp);
+	else
+		(void) hitum(mtmp, tmp, playermon.mattk);
 	mtmp->mstrategy &= ~STRAT_WAITMASK;
 	return(TRUE);
 }
@@ -319,7 +323,7 @@ register int thrown;
 #ifdef WEAPON_SKILLS
 	boolean valid_weapon_attack = FALSE;
 	int type;
-	struct obj *monwep, *wep;
+	struct obj *monwep;
 #endif /* WEAPON_SKILLS */
 
 	wakeup(mon);
@@ -327,10 +331,10 @@ register int thrown;
 	    if (mdat == &mons[PM_SHADE])
 		tmp = 0;
 #ifdef WEAPON_SKILLS
-	    else if (P_RESTRICTED(P_MARTIAL_ARTS))
+	    else if (martial_bonus())
+		tmp = rnd(4);	/* bonus for martial arts */
+	    else
 		tmp = rnd(2);
-	    else	/* knowing Martial Arts will increase base damage */
-		tmp = rnd(4);
 	    valid_weapon_attack = (tmp > 1);
 #else
 	    else
@@ -510,10 +514,7 @@ register int thrown;
 				change_luck(-5);
 
 			if (obj->corpsenm == PM_COCKATRICE) {
-			    /* minor bug: this identifies the type of egg,
-			       but if it is being thrown, any others it was
-			       grouped with can't be marked as known because
-			       it has already been split away from them... */
+			    learn_egg_type(PM_COCKATRICE);
 			    You("hit %s with %s cockatrice egg%s.  Splat!",
 				mon_nam(mon),
 				obj->known ? "the" : cnt > 1L ? "some" : "a",
@@ -561,6 +562,7 @@ register int thrown;
 			break;
 		    case CREAM_PIE:
 		    case BLINDING_VENOM:
+			/* note: resists_blnd() does not apply here */
 			if (Blind || !haseyes(mdat))
 			    pline(obj->otyp==CREAM_PIE ? "Splat!" : "Splash!");
 			else if (obj->otyp == BLINDING_VENOM)
@@ -634,12 +636,12 @@ register int thrown;
 
 #ifdef WEAPON_SKILLS
 	if (valid_weapon_attack) {
-	    /* to be valid a projectile must have the correct projector */
+	    struct obj *wep;
+
+	    /* to be valid a projectile must have had the correct projector */
 	    wep = PROJECTILE(obj) ? uwep : obj;
 	    tmp += weapon_dam_bonus(wep);
-	    type = weapon_type(wep);
-	    if (type != P_NO_TYPE)
-		P_ADVANCE(type)++;
+	    use_skill(weapon_type(wep));
 	}
 #endif /* WEAPON_SKILLS */
 
@@ -774,6 +776,40 @@ register int thrown;
 	return((boolean)(destroyed ? FALSE : TRUE));
 }
 
+/* check whether slippery clothing protects from hug or wrap attack */
+/* [currently assumes that you are the attacker] */
+static boolean
+m_slips_free(mdef, mattk)
+struct monst *mdef;
+struct attack *mattk;
+{
+	struct obj *obj = which_armor(mdef, W_ARMC);
+
+	if (!obj) obj = which_armor(mdef, W_ARM);
+#ifdef TOURIST
+	if (!obj) obj = which_armor(mdef, W_ARMU);
+#endif
+	/* if defender's cloak/armor is greased, attacker slips off */
+	if (obj && (obj->greased || obj->otyp == OILSKIN_CLOAK)) {
+	    You("%s %s %s %s!",
+		mattk->adtyp == AD_WRAP ?
+			"slip off of" : "grab, but cannot hold onto",
+		s_suffix(mon_nam(mdef)),
+		obj->greased ? "greased" : "slippery",
+		/* avoid "slippery slippery cloak"
+		   for undiscovered oilskin cloak */
+		(obj->greased || objects[obj->otyp].oc_name_known) ?
+			xname(obj) : "cloak");
+
+	    if (obj->greased && !rn2(2)) {
+		pline_The("grease wears off.");
+		obj->greased = 0;
+	    }
+	    return TRUE;
+	}
+	return FALSE;
+}
+
 static void NDECL(demonpet);
 /*
  * Send in a demon pet for the hero.  Exercise wisdom.
@@ -790,9 +826,89 @@ demonpet()
 
 	pline("Some hell-p has arrived!");
 	pm = !rn2(6) ? &mons[ndemon(u.ualign.type)] : uasmon;
-	if ((dtmp = makemon(pm, u.ux, u.uy)) != 0)
+	if ((dtmp = makemon(pm, u.ux, u.uy, NO_MM_FLAGS)) != 0)
 	    (void)tamedog(dtmp, (struct obj *)0);
 	exercise(A_WIS, TRUE);
+}
+
+static void
+steal_it(mdef, mattk)
+struct monst *mdef;
+struct attack *mattk;
+{
+	
+	if(mdef->minvent) {
+	    struct obj *otmp, *stealoid;
+	
+	    stealoid = (struct obj *)0;
+	    if (could_seduce(&youmonst,mdef,mattk)){
+		for(otmp = mdef->minvent; otmp; otmp=otmp->nobj)
+		    if (otmp->owornmask & W_ARM) {
+			stealoid = otmp;
+			/* unwear even if not stolen */
+			mdef->misc_worn_check &= ~W_ARM;
+			stealoid->owornmask = 0L;
+			update_mon_intrinsics(mdef, stealoid, FALSE);
+		    }
+	    }
+	    if (stealoid) {
+		boolean whoops = FALSE, stolen = FALSE;
+	
+		if (gender(mdef) == (int) u.mfemale &&
+					uasmon->mlet == S_NYMPH)
+		    You(
+		  "charm %s.  She gladly hands over her possessions.",
+			mon_nam(mdef));
+		else
+		    You(
+		    "seduce %s and %s starts to take off %s clothes.",
+			mon_nam(mdef), he[pronoun_gender(mdef)],
+			his[pronoun_gender(mdef)]);
+		while ((otmp = mdef->minvent) != 0) {
+			obj_extract_self(otmp);
+			if (otmp->owornmask) {
+			    mdef->misc_worn_check &= ~otmp->owornmask;
+			    otmp->owornmask = 0L;
+			    update_mon_intrinsics(mdef, otmp, FALSE);
+			}
+			if (!stolen && otmp==stealoid) {
+			    otmp = hold_another_object(otmp,
+				      (const char *)0, (const char *)0,
+						      (const char *)0);
+			    stealoid = otmp;
+			    stolen = TRUE;
+			} else {
+			    otmp = hold_another_object(otmp,
+					 "You steal %s.", doname(otmp),
+							"You steal: ");
+			}
+			if (otmp->otyp == CORPSE &&
+			    otmp->corpsenm == PM_COCKATRICE &&
+			    !uarmg) {
+				whoops = TRUE;
+				break;
+			}
+		}
+		pline("%s finishes taking off %s suit.",
+		      Monnam(mdef), his[pronoun_gender(mdef)]);
+		if (stolen) You("steal %s!", doname(stealoid));
+		if (whoops) instapetrify("cockatrice corpse");
+		possibly_unwield(mdef);
+	   } else {
+		otmp = mdef->minvent;
+		obj_extract_self(otmp);
+		if (otmp->owornmask) {
+		    mdef->misc_worn_check &= !otmp->owornmask;
+		    otmp->owornmask = 0L;
+		    update_mon_intrinsics(mdef, otmp, FALSE);
+		}
+		otmp = hold_another_object(otmp, "You steal %s.",
+					  doname(otmp), "You steal: ");
+		if (!(mdef->misc_worn_check & W_ARMG))
+		    mselftouch(mdef, (const char *)0, TRUE);
+		possibly_unwield(mdef);
+	   }
+	}
 }
 
 int
@@ -878,78 +994,7 @@ register struct attack *mattk;
 #endif
 	    case AD_SEDU:
 	    case AD_SITM:
-		if(mdef->minvent) {
-		    struct obj *otmp, *stealoid;
-
-		    stealoid = (struct obj *)0;
-		    if (could_seduce(&youmonst,mdef,mattk)){
-			for(otmp = mdef->minvent; otmp; otmp=otmp->nobj)
-			    if (otmp->owornmask & W_ARM) {
-				stealoid = otmp;
-				/* unwear even if not stolen */
-				mdef->misc_worn_check &= ~W_ARM;
-				stealoid->owornmask = 0L;
-				update_mon_intrinsics(mdef, stealoid, FALSE);
-			    }
-		    }
-		    if (stealoid) {
-			boolean whoops = FALSE, stolen = FALSE;
-
-			if (gender(mdef) == u.mfemale &&
-						uasmon->mlet == S_NYMPH)
-			    You(
-			  "charm %s.  She gladly hands over her possessions.",
-				mon_nam(mdef));
-			else
-			    You(
-			    "seduce %s and %s starts to take off %s clothes.",
-				mon_nam(mdef), he[pronoun_gender(mdef)],
-				his[pronoun_gender(mdef)]);
-			while ((otmp = mdef->minvent) != 0) {
-				obj_extract_self(otmp);
-				if (otmp->owornmask) {
-				    mdef->misc_worn_check &= ~otmp->owornmask;
-				    otmp->owornmask = 0L;
-				    update_mon_intrinsics(mdef, otmp, FALSE);
-				}
-				if (!stolen && otmp==stealoid) {
-				    otmp = hold_another_object(otmp,
-					      (const char *)0, (const char *)0,
-							      (const char *)0);
-				    stealoid = otmp;
-				    stolen = TRUE;
-				} else {
-				    otmp = hold_another_object(otmp,
-						 "You steal %s.", doname(otmp),
-								"You steal: ");
-				}
-				if (otmp->otyp == CORPSE &&
-				    otmp->corpsenm == PM_COCKATRICE &&
-				    !uarmg) {
-					whoops = TRUE;
-					break;
-				}
-			}
-			pline("%s finishes taking off %s suit.",
-			      Monnam(mdef), his[pronoun_gender(mdef)]);
-			if (stolen) You("steal %s!", doname(stealoid));
-			if (whoops) instapetrify("cockatrice corpse");
-			possibly_unwield(mdef);
-		   } else {
-			otmp = mdef->minvent;
-			obj_extract_self(otmp);
-			if (otmp->owornmask) {
-			    mdef->misc_worn_check &= !otmp->owornmask;
-			    otmp->owornmask = 0L;
-			    update_mon_intrinsics(mdef, otmp, FALSE);
-			}
-			otmp = hold_another_object(otmp, "You steal %s.",
-						  doname(otmp), "You steal: ");
-			if (!(mdef->misc_worn_check & W_ARMG))
-			    mselftouch(mdef, (const char *)0, TRUE);
-			possibly_unwield(mdef);
-		   }
-		}
+		steal_it(mdef, mattk);
 		tmp = 0;
 		break;
 	    case AD_SGLD:
@@ -969,8 +1014,7 @@ register struct attack *mattk;
 		}
 		break;
 	    case AD_BLND:
-		if(haseyes(pd)) {
-
+		if (!resists_blnd(mdef)) {
 		    if(!Blind) pline("%s is blinded.", Monnam(mdef));
 		    mdef->mcansee = 0;
 		    mdef->mblinded += tmp;
@@ -1069,22 +1113,9 @@ register struct attack *mattk;
 		break;
 	    case AD_WRAP:
 		if (!sticks(mdef->data)) {
-		    struct obj *obj = which_armor(mdef, W_ARMC);
-		    if (!obj) obj = which_armor(mdef, W_ARM);
-#ifdef TOURIST
-		    if (!obj) obj = which_armor(mdef, W_ARMU);
-#endif
 		    if (!u.ustuck && !rn2(10)) {
-			if (obj && obj->greased) {
+			if (m_slips_free(mdef, mattk)) {
 			    tmp = 0;
-			    You("slip off of %s%ss greased %s!",
-				mon_nam(mdef),
-				canspotmon(mdef) ? "'" : "",
-				xname(obj));
-			    if (!rn2(2)) {
-				pline_The("grease wears off.");
-				obj->greased = 0;
-			    }
 			} else {
 			    You("swing yourself around %s!",
 				  mon_nam(mdef));
@@ -1154,7 +1185,7 @@ register struct attack *mattk;
 	You("explode!");
 	switch(mattk->adtyp) {
 	    case AD_BLND:
-		if (haseyes(mdef->data) && mdef->mcansee) {
+		if (!resists_blnd(mdef)) {
 		    pline("%s is blinded by your flash of light!", Monnam(mdef));
 		    mdef->mblinded = min((int)mdef->mblinded + tmp, 127);
 		    mdef->mcansee = 0;
@@ -1284,7 +1315,7 @@ register struct attack *mattk;
 			}
 			break;
 		    case AD_BLND:
-			if(haseyes(mdef->data)) {
+			if (!resists_blnd(mdef)) {
 			    if (mdef->mcansee)
 				pline("%s can't see in there!", Monnam(mdef));
 			    mdef->mcansee = 0;
@@ -1391,7 +1422,7 @@ use_weapon:
 			if(uwep) tmp += hitval(uwep, mon);
 			dhit = (tmp > (dieroll = rnd(20)) || u.uswallow);
 			/* Enemy dead, before any special abilities used */
-			if (!known_hitum(mon,&dhit,mattk)) return 0;
+			if (!known_hitum(mon,&dhit,mattk)) return FALSE;
 			/* might be a worm that gets cut in half */
 			if (m_at(u.ux+u.dx, u.uy+u.dy) != mon) return((boolean)(nsum != 0));
 			/* Do not print "You hit" message, since known_hitum
@@ -1768,7 +1799,7 @@ struct obj *otmp;	/* source of flash */
 		res = 1;
 	    }
 	} else if (mtmp->data->mlet != S_LIGHT) {
-	    if (mtmp->mcansee && haseyes(mtmp->data)) {
+	    if (!resists_blnd(mtmp)) {
 		tmp = dist2(otmp->ox, otmp->oy, mtmp->mx, mtmp->my);
 		if (useeit) {
 		    pline("%s is blinded by the flash!", Monnam(mtmp));

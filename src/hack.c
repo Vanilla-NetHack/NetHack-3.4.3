@@ -889,18 +889,7 @@ domove()
 	    newsym(u.ux0,u.uy0);
 	    /* Since the hero has moved, adjust what can be seen/unseen. */
 	    vision_recalc(1);	/* Do the work now in the recover time. */
-
-	    /* a special clue-msg when on the Invocation position */
-	    if(invocation_pos(u.ux, u.uy) && !On_stairs(u.ux, u.uy)) {
-		struct obj *otmp = carrying(CANDELABRUM_OF_INVOCATION);
-
-		You_feel("a strange vibration under your %s.",
-			makeplural(body_part(FOOT)));
-		if (otmp && otmp->spe == 7 && otmp->lamplit)
-		    pline("%s %s!", The(xname(otmp)),
-			Blind ? "throbs palpably" :
-				"glows with a strange light");
-	    }
+	    invocation_message();
 	}
 
 	if (Punished)				/* put back ball and chain */
@@ -913,6 +902,21 @@ domove()
 	if (cause_delay) {
 	    nomul(-2);
 	    nomovemsg = "";
+	}
+}
+
+void
+invocation_message()
+{
+	/* a special clue-msg when on the Invocation position */
+	if(invocation_pos(u.ux, u.uy) && !On_stairs(u.ux, u.uy)) {
+	    struct obj *otmp = carrying(CANDELABRUM_OF_INVOCATION);
+
+	    You_feel("a strange vibration under your %s.",
+		    makeplural(body_part(FOOT)));
+	    if (otmp && otmp->spe == 7 && otmp->lamplit)
+		pline("%s %s!", The(xname(otmp)),
+		    Blind ? "throbs palpably" : "glows with a strange light");
 	}
 }
 
@@ -1262,7 +1266,8 @@ dopickup()
 		return(1);
 	}
 	if(is_pool(u.ux, u.uy)) {
-	    if (Wwalking || is_flyer(uasmon) || is_clinger(uasmon)) {
+	    if (Wwalking || is_floater(uasmon) || is_clinger(uasmon)
+			|| (is_flyer(uasmon) && !Breathless)) {
 		You("cannot dive into the water to pick things up.");
 		return(1);
 	    } else if (!Underwater) {
@@ -1451,7 +1456,7 @@ const char *msg_override;
 {
 	multi = 0;	/* caller will usually have done this already */
 	if (msg_override) nomovemsg = msg_override;
-	else if (!nomovemsg) nomovemsg = "You can move again.";
+	else if (!nomovemsg) nomovemsg = You_can_move_again;
 	if (*nomovemsg) pline(nomovemsg);
 	nomovemsg = 0;
 	u.usleep = 0;

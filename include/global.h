@@ -164,8 +164,12 @@ typedef xchar	boolean;		/* 0 or 1 */
 #include "amiconf.h"
 #endif
 
-#if defined(MAC) && ! defined(MACCONF_H)
+#if defined(MAC) && !defined(MACCONF_H)
 #include "macconf.h"
+#endif
+
+#if defined(__beos__) && !defined(BECONF_H)
+#include "beconf.h"
 #endif
 
 #if defined(WIN32) && !defined(NTCONF_H)

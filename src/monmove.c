@@ -317,6 +317,7 @@ register struct monst *mtmp;
 	    m_respond(mtmp);
 	if (mdat == &mons[PM_MEDUSA] && cansee(mtmp->mx, mtmp->my))
 	    m_respond(mtmp);
+	if (mtmp->mhp <= 0) return(1); /* m_respond gaze can kill medusa */
 	if (mdat->mmove < rnd(6)) return(0);
 
 	/* fleeing monsters might regain courage */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.2	96/03/11	*/
+/*	SCCS Id: @(#)engrave.c	3.2	96/04/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,8 +7,6 @@
 #include <ctype.h>
 
 STATIC_VAR NEARDATA struct engr *head_engr;
-
-STATIC_DCL void FDECL(del_engr, (struct engr *));
 
 #ifdef OVLB
 /* random engravings */
@@ -1018,7 +1016,7 @@ doengrave()
 
 	if (post_engr_text[0]) pline(post_engr_text);
 
-	if (doblind) {
+	if (doblind && !resists_blnd(&youmonst)) {
 	    You("are blinded by the flash!");
 	    make_blinded((long)rnd(50),FALSE);
 	}
@@ -1073,7 +1071,7 @@ int fd;
 	}
 }
 
-STATIC_OVL void
+void
 del_engr(ep)
 register struct engr *ep;
 {

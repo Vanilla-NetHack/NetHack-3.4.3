@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.2	95/08/12	*/
+/*	SCCS Id: @(#)cmd.c	3.2	96/05/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -679,7 +679,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 #endif
 	if (u.moreluck > 0) you_have("extra luck");
 	else if (u.moreluck < 0) you_have("reduced luck");
-	if (carrying(LUCKSTONE)) {
+	if (carrying(LUCKSTONE) || stone_luck(TRUE)) {
 	    ltmp = stone_luck(FALSE);
 	    if (ltmp <= 0)
 		enl_msg("Bad luck ", "does", "did", " not time out for you");
@@ -759,6 +759,18 @@ wiz_attributes()
 #endif /* OVLB */
 #ifdef OVL1
 
+#ifdef WEAPON_SKILLS
+STATIC_PTR int NDECL(obsolete_qualifications);
+
+/* 3.2.0's "#qualifications" was eliminated in 3.2.1; remove this for 3.3 */
+STATIC_PTR int
+obsolete_qualifications()
+{
+	pline("`#qualifications' is obsolete.  Use `#enhance'.");
+	return 0;
+}
+#endif /* WEAPON_SKILLS */
+
 #ifndef M
 # ifndef NHSTDC
 #  define M(c)		(0x80 | (c))
@@ -806,7 +818,7 @@ static const struct func_tab cmdlist[] = {
 	{'e', FALSE, doeat},
 	{'E', FALSE, doengrave},
 #ifdef WEAPON_SKILLS
-	{M('e'), TRUE, select_weapon_skill},
+	{M('e'), TRUE, enhance_weapon_skill},
 #endif /* WEAPON_SKILLS */
 /* Soon to be
 	{'f', FALSE, dofight, "fighting"},
@@ -839,7 +851,7 @@ static const struct func_tab cmdlist[] = {
 	{'q', FALSE, dodrink},
 	{'Q', TRUE, done2},
 #ifdef WEAPON_SKILLS
-	{M('q'), TRUE, check_weapon_skills},
+	{M('Q'), TRUE, obsolete_qualifications},
 #endif /* WEAPON_SKILLS */
 	{'r', FALSE, doread},
 	{'R', FALSE, doremring},
@@ -897,7 +909,8 @@ struct ext_func_tab extcmdlist[] = {
 	{"chat", "talk to someone", dotalk, TRUE},	/* converse? */
 	{"dip", "dip an object into something", dodip, FALSE},
 #ifdef WEAPON_SKILLS
-	{"enhance", "advance a weapon skill", select_weapon_skill, TRUE},
+	{"enhance", "advance or check weapons skills", enhance_weapon_skill,
+							TRUE},
 #endif /* WEAPON_SKILLS */
 	{"force", "force a lock", doforce, FALSE},
 	{"invoke", "invoke an object's powers", doinvoke, TRUE},
@@ -908,7 +921,8 @@ struct ext_func_tab extcmdlist[] = {
 	{"offer", "offer a sacrifice to the gods", dosacrifice, FALSE},
 	{"pray", "pray to the gods for help", dopray, TRUE},
 #ifdef WEAPON_SKILLS
-	{"qualifications", "check your weapon skills", check_weapon_skills, TRUE},
+	{"qualifications", "(obsolete; use #enhance)", obsolete_qualifications,
+							TRUE},
 #endif /* WEAPON_SKILLS */
 	{"rub", "rub a lamp", dorub, FALSE},
 	{"sit", "sit down", dosit, FALSE},
@@ -997,7 +1011,7 @@ count_obj(chain, total_count, total_size, top, recurse)
 	for (count = size = 0, obj = chain; obj; obj = obj->nobj) {
 	    if (top) {
 		count++;
-		size += sizeof(struct obj) + obj->onamelth;
+		size += sizeof(struct obj) + obj->oxlth + obj->onamelth;
 	    }
 	    if (recurse && obj->cobj)
 		count_obj(obj->cobj, total_count, total_size, TRUE, TRUE);

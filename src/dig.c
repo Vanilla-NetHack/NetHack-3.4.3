@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dig.c	3.2	96/03/15	*/
+/*	SCCS Id: @(#)dig.c	3.2	96/04/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -322,10 +322,12 @@ dig()
 
 		    switch(rn2(2)) {
 		      case 0:
-			mtmp = makemon(&mons[PM_EARTH_ELEMENTAL], dpx, dpy);
+			mtmp = makemon(&mons[PM_EARTH_ELEMENTAL],
+					dpx, dpy, NO_MM_FLAGS);
 			break;
 		      default:
-			mtmp = makemon(&mons[PM_XORN], dpx, dpy);
+			mtmp = makemon(&mons[PM_XORN],
+					dpx, dpy, NO_MM_FLAGS);
 			break;
 		    }
 		    if(mtmp) pline_The("debris from your digging comes to life!");
@@ -436,6 +438,12 @@ int ttyp;
 #endif
 	}
 
+	if (ttyp != PIT && !Can_dig_down(&u.uz)) {
+	    impossible("digactualhole: can't dig %s on this level.",
+		       defsyms[trap_to_defsym(ttyp)].explanation);
+	    ttyp = PIT;
+	}
+
 	Strcpy(surface_type, surface(x,y));	/* maketrap() might change it */
 	shopdoor = IS_DOOR(lev->typ) && *in_rooms(x, y, SHOPBASE);
 	oldobjs = level.objects[x][y];
@@ -475,8 +483,6 @@ int ttyp;
 		    (void) mintrap(mtmp);
 	    }
 	} else {	/* was TRAPDOOR now a HOLE*/
-	    if (!Can_fall_thru(&u.uz))
-		panic("Holes & trapdoors cannot exist on this level.");
 
 	    if(madeby_u)
 		You("dig a hole through the %s.", surface_type);
@@ -918,10 +924,11 @@ zap_dig()
 			      "ladder" : "stairs", ceiling(u.ux, u.uy));
 		    You("loosen a rock from the %s.", ceiling(u.ux, u.uy));
 		    pline("It falls on your %s!", body_part(HEAD));
-		    losehp(1, "falling rock", KILLED_BY_AN);
+		    losehp(rnd((uarmh && is_metallic(uarmh)) ? 2 : 6),
+			   "falling rock", KILLED_BY_AN);
 		    if ((otmp = mksobj_at(ROCK, u.ux, u.uy, FALSE)) != 0) {
-		(void)xname(otmp);	/* set dknown, maybe bknown */
-		stackobj(otmp);
+			(void)xname(otmp);	/* set dknown, maybe bknown */
+			stackobj(otmp);
 		    }
 		    if (Invisible) newsym(u.ux, u.uy);
 		} else {

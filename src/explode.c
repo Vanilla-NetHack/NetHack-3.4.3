@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c	3.2	96/01/06	*/
+/*	SCCS Id: @(#)explode.c	3.2	96/05/01	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -355,7 +355,7 @@ unsigned int scflags;
 	    } else if ((scflags & MAY_DESTROY) && (!rn2(10)
 			|| (objects[otmp->otyp].oc_material == GLASS
 			|| otmp->otyp == EGG))) {
-		if (breaks(otmp, sx, sy, FALSE)) used_up = TRUE;
+		if (breaks(otmp, (xchar)sx, (xchar)sy)) used_up = TRUE;
 	    }
 
 	    if (!used_up) {
@@ -411,10 +411,14 @@ unsigned int scflags;
 				    if (multi) nomul(0);
 				    hitvalu = 8 + stmp->obj->spe;
 				    if (bigmonst(uasmon)) hitvalu++;
+				    /* could just use doname all the time,
+				     * except thitu adds "an" to the front
+				     */
 				    hitu = thitu(hitvalu,
-						dmgval(stmp->obj, &youmonst),
-						stmp->obj,
-						xname(stmp->obj));
+					dmgval(stmp->obj, &youmonst),
+					stmp->obj,
+					(stmp->obj->quan>1) ? doname(stmp->obj)
+						: xname(stmp->obj));
 				    if (hitu) {
 					stmp->range -= 3;
 					stop_occupation();

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.h	3.2	96/02/18	*/
+/*	SCCS Id: @(#)winX.h	3.2	96/05/12	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -120,6 +120,7 @@ typedef struct x11_mi {
     anything identifier;	/* Opaque type to identify this selection */
     boolean selected;		/* Been selected? */
     char selector;		/* Char used to select this entry. */
+    char gselector;		/* Group selector. */
     int  attr;			/* Attribute for the line. */
     char *str;			/* The text of the item. */
 } x11_menu_item;
@@ -127,7 +128,8 @@ typedef struct x11_mi {
 struct menu {
     x11_menu_item *base;	/* Starting pointer for item list. */
     x11_menu_item *last;	/* End pointer for item list. */
-    const char    *query;	/* Query string */
+    const char    *query;	/* Query string. */
+    const char	  *gacc;	/* Group accelerators. */
     int		  count;	/* Number of strings. */
     String	  *list_pointer;/* String list. */
     Boolean	  *sensitive;	/* Active list. */
@@ -148,6 +150,7 @@ struct menu_info_t {
     boolean is_menu;		/* Has been confirmed to being a menu window. */
     boolean is_active;		/* TRUE when waiting for user input. */
     boolean is_up;		/* TRUE when window is popped-up. */
+    boolean cancelled;	/* Menu has been explicitly cancelled. */
 };
 
 /*
@@ -186,6 +189,7 @@ struct xwindow {
 	struct menu_info_t   *Menu_info;    /* menu window info */
 	struct text_info_t   *Text_info;    /* menu window info */
     } Win_info;
+    boolean	keep_window;
 };
 
 /* Defines to use for the window information union. */
@@ -363,7 +367,7 @@ E void FDECL(X11_putstr, (winid, int, const char *));
 E void FDECL(X11_display_file, (const char *, BOOLEAN_P));
 E void FDECL(X11_start_menu, (winid));
 E void FDECL(X11_add_menu, (winid,int,const ANY_P *,
-			CHAR_P,int,const char *, BOOLEAN_P));
+			CHAR_P, CHAR_P, int, const char *, BOOLEAN_P));
 E void FDECL(X11_end_menu, (winid, const char *));
 E int FDECL(X11_select_menu, (winid, int, MENU_ITEM_P **));
 E void NDECL(X11_update_inventory);

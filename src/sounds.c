@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sounds.c	3.2	95/10/20	*/
+/*	SCCS Id: @(#)sounds.c	3.2	96/05/04	*/
 /*	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -403,12 +403,14 @@ static int
 domonnoise(mtmp)
 register struct monst *mtmp;
 {
-    register const char *pline_msg = 0;	/* Monnam(mtmp) will be prepended */
+    register const char *pline_msg = 0,	/* Monnam(mtmp) will be prepended */
+			*verbl_msg = 0;	/* verbalize() */
+    struct permonst *ptr = mtmp->data;
 
     /* presumably nearness and sleep checks have already been made */
     if (!flags.soundok) return(0);
 
-    switch (mtmp->data->msound) {
+    switch (ptr->msound) {
 	case MS_ORACLE:
 	    return doconsult(mtmp);
 	case MS_PRIEST:
@@ -422,6 +424,19 @@ register struct monst *mtmp;
 	case MS_SELL: /* pitch, pay, total */
 	    shk_chat(mtmp);
 	    break;
+	case MS_VAMPIRE:
+	    /* [bug: vampire case missing here] */
+	    break;
+	case MS_WERE:
+	    if (flags.moonphase == FULL_MOON && (night() ^ !rn2(13))) {
+		pline("%s throws back %s head and lets out a blood curdling %s!",
+		      Monnam(mtmp), his[pronoun_gender(mtmp)],
+		      ptr == &mons[PM_HUMAN_WERERAT] ? "shriek" : "howl");
+		wake_nearto(mtmp->mx, mtmp->my, 11*11);
+	    } else
+		pline_msg =
+		     "whispers inaudibly.  All you can make out is \"moon\".";
+	    break;
 	case MS_SILENT:
 	    break;
 	case MS_BARK:
@@ -429,10 +444,10 @@ register struct monst *mtmp;
 		pline_msg = "howls.";
 	    } else if (mtmp->mpeaceful) {
 		if (mtmp->mtame &&
-		    (mtmp->mconf || mtmp->mflee || mtmp->mtrapped ||
-		     moves > EDOG(mtmp)->hungrytime || mtmp->mtame < 5))
+			(mtmp->mconf || mtmp->mflee || mtmp->mtrapped ||
+			 moves > EDOG(mtmp)->hungrytime || mtmp->mtame < 5))
 		    pline_msg = "whines.";
-		else if (EDOG(mtmp)->hungrytime > moves + 1000)
+		else if (mtmp->mtame && EDOG(mtmp)->hungrytime > moves + 1000)
 		    pline_msg = "yips.";
 		else
 		    pline_msg = "barks.";
@@ -443,7 +458,7 @@ register struct monst *mtmp;
 	case MS_MEW:
 	    if (mtmp->mtame) {
 		if (mtmp->mconf || mtmp->mflee || mtmp->mtrapped ||
-		    mtmp->mtame < 5)
+			mtmp->mtame < 5)
 		    pline_msg = "yowls.";
 		else if (moves > EDOG(mtmp)->hungrytime)
 		    pline_msg = "miaos.";
@@ -517,13 +532,28 @@ register struct monst *mtmp;
 	    pline_msg = "mumbles incomprehensibly.";
 	    break;
 	case MS_DJINNI:
-	    if (mtmp->mtame) verbalize("Thank you for freeing me!");
-	    else if (mtmp->mpeaceful) verbalize("I'm free!");
-	    else verbalize("This will teach you not to disturb me!");
+	    if (mtmp->mtame) verbl_msg = "Thank you for freeing me!";
+	    else if (mtmp->mpeaceful) verbl_msg = "I'm free!";
+	    else verbl_msg = "This will teach you not to disturb me!";
 	    break;
+	case MS_BOAST:	/* giants */
+	    if (!mtmp->mpeaceful) {
+		switch (rn2(4)) {
+		case 0: pline("%s boasts about %s gem collection.",
+			      Monnam(mtmp), his[pronoun_gender(mtmp)]);
+			break;
+		case 1: pline_msg = "complains about a diet of mutton.";
+			break;
+	       default: pline_msg = "shouts \"Fee Fie Foe Foo!\" and guffaws.";
+			wake_nearto(mtmp->mx, mtmp->my, 7*7);
+			break;
+		}
+		break;
+	    }
+	    /* else FALLTHRU */
 	case MS_HUMANOID:
 	    if (!mtmp->mpeaceful) {
-		if (In_endgame(&u.uz) && is_mplayer(mtmp->data)) {
+		if (In_endgame(&u.uz) && is_mplayer(ptr)) {
 		    mplayer_talk(mtmp);
 		    break;
 		} else {
@@ -536,25 +566,25 @@ register struct monst *mtmp;
 	    else if (mtmp->mhp < mtmp->mhpmax/4)
 		pline_msg = "moans.";
 	    else if (mtmp->mconf || mtmp->mstun)
-		verbalize(!rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?");
+		verbl_msg = !rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?";
 	    else if (!mtmp->mcansee)
-		verbalize("I can't see!");
+		verbl_msg = "I can't see!";
 	    else if (mtmp->mtrapped)
-		verbalize("I'm trapped!");
+		verbl_msg = "I'm trapped!";
 	    else if (mtmp->mhp < mtmp->mhpmax/2)
 		pline_msg = "asks for a potion of healing.";
 	    else if (mtmp->mtame && moves > EDOG(mtmp)->hungrytime)
-		verbalize("I'm hungry.");
-	    /* Specific monster's interests */
-	    else if (is_elf(mtmp->data))
+		verbl_msg = "I'm hungry.";
+	    /* Specific monsters' interests */
+	    else if (is_elf(ptr))
 		pline_msg = "curses orcs.";
-	    else if (is_dwarf(mtmp->data))
+	    else if (is_dwarf(ptr))
 		pline_msg = "talks about mining.";
-	    else if (likes_magic(mtmp->data))
+	    else if (likes_magic(ptr))
 		pline_msg = "talks about spellcraft.";
-	    else if (carnivorous(mtmp->data))
+	    else if (ptr->mlet == S_CENTAUR)
 		pline_msg = "discusses hunting.";
-	    else switch (monsndx(mtmp->data)) {
+	    else switch (monsndx(ptr)) {
 		case PM_HOBBIT:
 		    pline_msg = (mtmp->mhpmax - mtmp->mhp >= 10) ?
 				"complains about unpleasant dungeon conditions."
@@ -565,26 +595,27 @@ register struct monst *mtmp;
 		    break;
 #ifdef TOURIST
 		case PM_TOURIST:
-		    verbalize("Aloha.");
+		    verbl_msg = "Aloha.";
 		    break;
 #endif
 		default:
 		    pline_msg = "discusses dungeon exploration.";
+		    break;
 	    }
 	    break;
 	case MS_SEDUCE:
 #ifdef SEDUCE
-	    if (mtmp->data->mlet != S_NYMPH &&
+	    if (ptr->mlet != S_NYMPH &&
 		could_seduce(mtmp, &youmonst, (struct attack *)0) == 1) {
 			(void) doseduce(mtmp);
 			break;
 	    }
-	    switch ((poly_gender() != mtmp->female) ? rn2(3) : 0) {
+	    switch ((poly_gender() != (int) mtmp->female) ? rn2(3) : 0) {
 #else
 	    switch ((poly_gender() == 0) ? rn2(3) : 0) {
 #endif
 		case 2:
-			verbalize("Hello, sailor.");
+			verbl_msg = "Hello, sailor.";
 			break;
 		case 1:
 			pline_msg = "comes on to you.";
@@ -604,7 +635,7 @@ register struct monst *mtmp;
 		    "You're under arrest!",
 		    "Stop in the name of the Law!",
 		};
-		verbalize(arrest_msg[rn2(3)]);
+		verbl_msg = arrest_msg[rn2(3)];
 	    }
 	    break;
 #endif
@@ -618,24 +649,28 @@ register struct monst *mtmp;
 	    if (!mtmp->mpeaceful)
 		cuss(mtmp);
 	    break;
+	case MS_SPELL:
+	    /* deliberately vague, since it's not actually casting any spell */
+	    pline_msg = "seems to mutter a cantrip.";
+	    break;
 	case MS_NURSE:
 	    if (uwep && (uwep->oclass == WEAPON_CLASS || is_weptool(uwep)))
-		verbalize("Put that weapon away before you hurt someone!");
+		verbl_msg = "Put that weapon away before you hurt someone!";
 	    else if (uarmc || uarm || uarmh || uarms || uarmg || uarmf)
-		verbalize(Role_is('H') ?
+		verbl_msg = Role_is('H') ?
 			  "Doc, I can't help you unless you cooperate." :
-			  "Please undress so I can examine you.");
+			  "Please undress so I can examine you.";
 #ifdef TOURIST
 	    else if (uarmu)
-		verbalize("Take off your shirt, please.");
+		verbl_msg = "Take off your shirt, please.";
 #endif
-	    else verbalize("Relax, this won't hurt a bit.");
+	    else verbl_msg = "Relax, this won't hurt a bit.";
 	    break;
 	case MS_GUARD:
 	    if (u.ugold)
-		verbalize("Please drop that gold and follow me.");
+		verbl_msg = "Please drop that gold and follow me.";
 	    else
-		verbalize("Please follow me.");
+		verbl_msg = "Please follow me.";
 	    break;
 	case MS_SOLDIER:
 	    {
@@ -648,18 +683,19 @@ register struct monst *mtmp;
 		    "The food's not fit for Orcs!",
 		    "My feet hurt, I've been on them all day!",
 		};
-		verbalize(mtmp->mpeaceful ? soldier_pax_msg[rn2(3)]
-					  : soldier_foe_msg[rn2(3)]);
+		verbl_msg = mtmp->mpeaceful ? soldier_pax_msg[rn2(3)]
+					    : soldier_foe_msg[rn2(3)];
 	    }
 	    break;
 	case MS_RIDER:
-	    if (mtmp->data == &mons[PM_DEATH] && mtmp->mpeaceful)
+	    if (ptr == &mons[PM_DEATH] && mtmp->mpeaceful)
 		pline_msg = "is busy reading a copy of Sandman #9.";
-	    else verbalize("Who do you think you are, War?");
+	    else verbl_msg = "Who do you think you are, War?";
 	    break;
     }
 
     if (pline_msg) pline("%s %s", Monnam(mtmp), pline_msg);
+    else if (verbl_msg) verbalize(verbl_msg);
     return(1);
 }
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.2	96/03/10	*/
+/*	SCCS Id: @(#)topten.c	3.2	96/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -229,6 +229,7 @@ int how;
 	restore_colors();	/* make sure the screen is black on white */
 #endif
 	/* create a new 'topten' entry */
+	t0_used = FALSE;
 	t0 = newttentry();
 	/* deepest_lev_reached() is in terms of depth(), and reporting the
 	 * deepest level reached in the dungeon death occurred in doesn't
@@ -296,7 +297,6 @@ int how;
 		    wizard ? "wizard" : "discover");
 		topten_print(pbuf);
 	    }
-	    dealloc_ttentry(t0);
 	    goto showwin;
 	}
 
@@ -312,7 +312,6 @@ int how;
 	if (!rfile) {
 		HUP raw_print("Cannot open record file!");
 		unlock_file(RECORD);
-		dealloc_ttentry(t0);
 		goto destroywin;
 	}
 
@@ -323,7 +322,6 @@ int how;
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
-	t0_used = FALSE;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for(rank = 1; ; ) {
 	    readentry(rfile, t1);
@@ -369,7 +367,8 @@ int how;
 		    }
 		}
 	    if(rank <= ENTRYMAX) {
-		t1 = t1->tt_next = newttentry();
+		t1->tt_next = newttentry();
+		t1 = t1->tt_next;
 		rank++;
 	    }
 	    if(rank > ENTRYMAX) {
@@ -387,7 +386,6 @@ int how;
 			HUP raw_print("Cannot write record file");
 			unlock_file(RECORD);
 			free_ttlist(tt_head);
-			if (!t0_used) dealloc_ttentry(t0);
 			goto destroywin;
 		}
 #endif	/* UPDATE_RECORD_IN_PLACE */
@@ -443,31 +441,31 @@ int how;
 #ifdef UPDATE_RECORD_IN_PLACE
 	if (flg) {
 # ifdef TRUNCATE_FILE
-		/* if a reasonable way to truncate a file exists, use it */
-		truncate_file(rfile);
+	    /* if a reasonable way to truncate a file exists, use it */
+	    truncate_file(rfile);
 # else
-		/* use sentinel record rather than relying on truncation */
-		t0->points = 0L;	/* terminates file when read back in */
-		t0->ver_major = t0->ver_minor = t0->patchlevel = 0;
-		t0->uid = t0->deathdnum = t0->deathlev = 0;
-		t0->maxlvl = t0->hp = t0->maxhp = t0->deaths = 0;
-		t0->plchar = t0->sex = '-';
-		Strcpy(t0->birthdate, strcpy(t0->deathdate, yymmdd(0L)));
-		Strcpy(t0->name, "@");
-		Strcpy(t0->death, "<eod>\n");
-		writeentry(rfile, t0);
-		(void) fflush(rfile);
+	    /* use sentinel record rather than relying on truncation */
+	    t1->points = 0L;	/* terminates file when read back in */
+	    t1->ver_major = t1->ver_minor = t1->patchlevel = 0;
+	    t1->uid = t1->deathdnum = t1->deathlev = 0;
+	    t1->maxlvl = t1->hp = t1->maxhp = t1->deaths = 0;
+	    t1->plchar = t1->sex = '-';
+	    Strcpy(t1->birthdate, strcpy(t1->deathdate, yymmdd(0L)));
+	    Strcpy(t1->name, "@");
+	    Strcpy(t1->death, "<eod>\n");
+	    writeentry(rfile, t1);
+	    (void) fflush(rfile);
 # endif	/* TRUNCATE_FILE */
 	}
 #endif	/* UPDATE_RECORD_IN_PLACE */
 	(void) fclose(rfile);
 	unlock_file(RECORD);
 	free_ttlist(tt_head);
-	if (!t0_used) dealloc_ttentry(t0);
 
   showwin:
 	if (flags.toptenwin && !done_stopprint) display_nhwindow(toptenwin, 1);
   destroywin:
+	if (!t0_used) dealloc_ttentry(t0);
 	if (flags.toptenwin) {
 	    destroy_nhwindow(toptenwin);
 	    toptenwin=WIN_ERR;
@@ -507,12 +505,13 @@ boolean so;
 	Sprintf(eos(linebuf), " %10ld  %.10s", t1->points, t1->name);
 	Sprintf(eos(linebuf), "-%c ", t1->plchar);
 	if (!strncmp("escaped", t1->death, 7)) {
+	    Sprintf(eos(linebuf), "escaped the dungeon %s[max level %d]",
+		    !strncmp(" (", t1->death + 7, 2) ? t1->death + 7 + 2 : "",
+		    t1->maxlvl);
+	    /* fixup for closing paren in "escaped... with...Amulet)[max..." */
+	    if ((bp = index(linebuf, ')')) != 0)
+		*bp = (t1->deathdnum == astral_level.dnum) ? '\0' : ' ';
 	    second_line = FALSE;
-	    if (!strcmp(" (with the Amulet)", t1->death + 7))
-		Strcat(linebuf, "escaped the dungeon with the Amulet");
-	    else
-		Sprintf(eos(linebuf), "escaped the dungeon [max level %d]",
-			t1->maxlvl);
 	} else if (!strncmp("ascended", t1->death, 8)) {
 	    Sprintf(eos(linebuf), "ascended to demigod%s-hood",
 		    (t1->sex == 'F') ? "dess" : "");
@@ -581,6 +580,9 @@ boolean so;
 		    !(*bp == ' ' && (bp-linebuf < hppos));
 		    bp--)
 		;
+	    /* special case: if about to wrap in the middle of maximum
+	       dungeon depth reached, wrap in front of it instead */
+	    if (bp > linebuf + 5 && !strncmp(bp - 5, " [max", 5)) bp -= 5;
 	    Strcpy(linebuf3, bp+1);
 	    *bp = 0;
 	    if (so) {
@@ -660,7 +662,7 @@ char **argv;
 {
 	const char **players;
 	int playerct, rank;
-	boolean current_ver = TRUE;
+	boolean current_ver = TRUE, init_done = FALSE;
 	register struct toptenentry *t1;
 	FILE *rfile;
 	boolean match_found = FALSE;
@@ -670,6 +672,7 @@ char **argv;
 #ifndef PERS_IS_UID
 	const char *player0;
 #endif
+
 	if (argc < 2 || strncmp(argv[1], "-s", 2)) {
 		raw_printf("prscore: bad arguments (%d)", argc);
 		return;
@@ -694,6 +697,7 @@ char **argv;
 	if (wiz1_level.dlevel == 0) {
 		dlb_init();
 		init_dungeons();
+		init_done = TRUE;
 	}
 
 	if (!argv[1][2]){	/* plain "-s" */
@@ -742,37 +746,37 @@ char **argv;
 	    if (!match_found &&
 		    score_wanted(current_ver, rank, t1, playerct, players, uid))
 		match_found = TRUE;
-	    t1 = t1->tt_next = newttentry();
+	    t1->tt_next = newttentry();
+	    t1 = t1->tt_next;
 	}
+
 	(void) fclose(rfile);
-	if (!match_found) {
+	if (init_done) {
+	    free_dungeons();
+	    dlb_cleanup();
+	}
+
+	if (match_found) {
+	    outheader();
+	    t1 = tt_head;
+	    for (rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
+		if (score_wanted(current_ver, rank, t1, playerct, players, uid))
+		    (void) outentry(rank, t1, 0);
+	    }
+	} else {
 	    Sprintf(pbuf, "Cannot find any %sentries for ",
 				current_ver ? "current " : "");
 	    if (playerct < 1) Strcat(pbuf, "you.");
 	    else {
-		    if (playerct > 1) Strcat(pbuf, "any of ");
-		    for (i = 0; i < playerct; i++) {
-			    Strcat(pbuf, players[i]);
-			    if (i < playerct-1) Strcat(pbuf, ":");
-		    }
+		if (playerct > 1) Strcat(pbuf, "any of ");
+		for (i = 0; i < playerct; i++) {
+		    Strcat(pbuf, players[i]);
+		    if (i < playerct-1) Strcat(pbuf, ":");
+		}
 	    }
 	    raw_print(pbuf);
 	    raw_printf("Call is: %s -s [-v] [-role] [maxrank] [playernames]",
 			 hname);
-#ifdef	AMIGA
-	    display_nhwindow(amii_rawprwin, 1);
-	    destroy_nhwindow(amii_rawprwin);
-	    amii_rawprwin = WIN_ERR;
-#endif
-	    free_ttlist(tt_head);
-	    return;
-	}
-
-	outheader();
-	t1 = tt_head;
-	for (rank = 1; t1->points != 0; rank++, t1 = t1->tt_next) {
-	    if (score_wanted(current_ver, rank, t1, playerct, players, uid))
-		(void) outentry(rank, t1, 0);
 	}
 	free_ttlist(tt_head);
 #ifdef	AMIGA
@@ -823,15 +827,17 @@ struct obj *otmp;
 	register int i;
 	register struct toptenentry *tt;
 	FILE *rfile;
+	struct toptenentry tt_buf;
 
 	if (!otmp) return((struct obj *) 0);
 
 	rfile = fopen_datafile(RECORD, "r");
 	if (!rfile) {
-		panic("Cannot open record file!");
+		impossible("Cannot open record file!");
+		return (struct obj *)0;
 	}
 
-	tt = newttentry();
+	tt = &tt_buf;
 	rank = rnd(10);
 pickentry:
 	for(i = rank; i; i--) {
@@ -854,7 +860,6 @@ pickentry:
 		otmp = oname(otmp, tt->name);
 		if (otmp->otyp == CORPSE) start_corpse_timeout(otmp);
 	}
-	dealloc_ttentry(tt);
 
 	(void) fclose(rfile);
 	return otmp;

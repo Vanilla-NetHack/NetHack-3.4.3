@@ -21,6 +21,11 @@
 #ifdef TOS
 #include <osbind.h>
 #endif
+#if defined(MSDOS) && !defined(__GO32__)
+#define findfirst findfirst_file
+#define findnext findnext_file
+#define filesize filesize_nh
+#endif
 
 #ifdef MOVERLAY
 extern void __far __cdecl _movepause( void );
@@ -97,9 +102,9 @@ dosh()
 		if (flags.BIOS)
 			(void)Cursconf(1, -1);
 #  endif
+		chdirx(hackdir, 0);
 		get_scr_size(); /* maybe the screen mode changed (TH) */
 		resume_nhwindows();
-		chdirx(hackdir, 0);
 	} else
 		pline("Can't find %s.",COMSPEC);
 	return 0;

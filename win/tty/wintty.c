@@ -41,6 +41,7 @@ extern void msmsg(const char *,...);
 #define DEBUG
 
 extern const char *roles[];	/* from u_init.c */
+extern char mapped_menu_cmds[]; /* from options.c */
 
 /* Interface definition, for windows.c */
 struct window_procs tty_procs = {
@@ -110,70 +111,6 @@ static char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 static char winpanicstr[] = "Bad window id %d";
 char defmorestr[] = "--More--";
 
-/*
- * Standard menu manipulation accelerators.  These may _not_ be:
- *
- *	+ a number - reserved for counts
- *	+ an upper or lower case US ASCII letter - used for accelerators
- *	+ ESC - reserved for escaping the menu
- *	+ NULL, CR or LF - reserved for commiting the selection(s).  NULL
- *	  is kind of odd, but xwaitforspace() will return it if someone
- *	  hits a <ret>.
- *
- * Standard letters (for now) are:
- *
- *		<  back 1 page
- *		>  forward 1 page
- *		^  first page
- *		$  last page
- *
- *		page		all
- *		 +    select	 *
- *		 -    deselect	 %
- *		 ~    invert	 @
- *
- * The above letter display a definite UNIX slant:
- * '$' would be great for gold, but is the obvious UNIX choice for last.
- * '^' would be good for one of the inverts, but is more logically "top"
- *	for most UNIX commands.
- * '!' would be nice for one of the inverts, but is also the UNIX shell escape.
- */
-#define MENU_PREVIOUS_PAGE '<'
-#define MENU_NEXT_PAGE '>'
-#define MENU_FIRST_PAGE '^'
-#define MENU_LAST_PAGE '$'
-#define MENU_SET_PAGE '+'
-#define MENU_UNSET_PAGE '-'
-#define MENU_INVERT_PAGE '~'
-#define MENU_SET_ALL '*'
-#define MENU_UNSET_ALL '%'
-#define MENU_INVERT_ALL '@'
-
-static const char standard_menu_chars[] = {
-    MENU_PREVIOUS_PAGE,
-    MENU_NEXT_PAGE,
-    MENU_FIRST_PAGE,
-    MENU_LAST_PAGE,
-    MENU_SET_PAGE,
-    MENU_UNSET_PAGE,
-    MENU_INVERT_PAGE,
-    MENU_SET_ALL,
-    MENU_UNSET_ALL,
-    MENU_INVERT_ALL,
-    0 /* must end in null */
-};
-
-/*
- * Allow the standard menu accelerators to have aliases.  Right now, this
- * is internal only.  We need a way to do it independently.
- */
-#define MAX_MENU_MAPPED 16	/* some number */
-static char mapped_menu_accelerators[MAX_MENU_MAPPED+1];
-static char menu_mapped_op[MAX_MENU_MAPPED+1];
-static short n_menu_mapped = 0;
-
-
-
 #ifdef CLIPPING
 # if defined(USE_TILES) && defined(MSDOS)
 boolean clipping = FALSE;	/* clipping on? */
@@ -186,10 +123,8 @@ static int clipy = 0, clipymax = 0;
 #endif /* CLIPPING */
 
 #if defined(USE_TILES) && defined(MSDOS)
-# ifdef SIMULATE_CURSOR
-extern int cursor_flag;
-# endif
 extern boolean tiles_on;
+extern void FDECL(adjust_cursor_flags, (struct WinDesc *));
 #endif
 
 #if defined(ASCIIGRAPH) && !defined(NO_TERMS)
@@ -208,14 +143,31 @@ static void FDECL(dmore,(struct WinDesc *, const char *));
 static void FDECL(set_item_state, (winid, int, tty_menu_item *));
 static void FDECL(set_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
 static void FDECL(unset_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
-static void FDECL(invert_all_on_page, (winid,tty_menu_item *,tty_menu_item *));
-static void FDECL(add_menu_alias, (CHAR_P, CHAR_P));
-static char FDECL(map_menu_accelerator, (CHAR_P));
+static void FDECL(invert_all_on_page, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
+static void FDECL(invert_all, (winid,tty_menu_item *,tty_menu_item *, CHAR_P));
 static tty_menu_item *FDECL(reverse, (tty_menu_item *));
 static const char * FDECL(compress_str, (const char *));
 static void FDECL(tty_putsym, (winid, int, int, CHAR_P));
 static char *FDECL(copy_of, (const char *));
 static void FDECL(bail, (const char *));	/* __attribute__((noreturn)) */
+
+/*
+ * A string containing all the default commands -- to add to a list
+ * of acceptable inputs.
+ */
+static const char default_menu_cmds[] = {
+	MENU_FIRST_PAGE,
+	MENU_LAST_PAGE,
+	MENU_NEXT_PAGE,
+	MENU_PREVIOUS_PAGE,
+	MENU_SELECT_ALL,
+	MENU_UNSELECT_ALL,
+	MENU_INVERT_ALL,
+	MENU_SELECT_PAGE,
+	MENU_UNSELECT_PAGE,
+	MENU_INVERT_PAGE,
+	0	/* null terminator */
+};
 
 
 /* clean up and quit */
@@ -332,10 +284,8 @@ char** argv;
     (void) signal(SIGWINCH, winch);
 #endif
 
-    /* init accelerator list, then add one */
-    mapped_menu_accelerators[0] = 0;
-    menu_mapped_op[0] = 0;;
-    add_menu_alias(' ', MENU_NEXT_PAGE);
+    /* add one a space forward menu command alias */
+    add_menu_cmd_alias(' ', MENU_NEXT_PAGE);
 
     tty_clear_nhwindow(BASE_WINDOW);
 
@@ -682,18 +632,25 @@ tty_create_nhwindow(type)
     if(newwin->maxrow) {
 	newwin->data =
 		(char **) alloc(sizeof(char *) * (unsigned)newwin->maxrow);
+	newwin->datlen =
+		(short *) alloc(sizeof(short) * (unsigned)newwin->maxrow);
 	if(newwin->maxcol) {
-	    for(i=0; i< newwin->maxrow; i++)
-		newwin->data[i] =
-		    (char *) alloc(sizeof(char) * (unsigned)newwin->maxcol);
+	    for (i = 0; i < newwin->maxrow; i++) {
+		newwin->data[i] = (char *) alloc((unsigned)newwin->maxcol);
+		newwin->datlen[i] = newwin->maxcol;
+	    }
 	} else {
-	    for(i=0; i< newwin->maxrow; i++)
-		newwin->data[i] = 0;
+	    for (i = 0; i < newwin->maxrow; i++) {
+		newwin->data[i] = (char *) 0;
+		newwin->datlen[i] = 0;
+	    }
 	}
 	if(newwin->type == NHW_MESSAGE)
 	    newwin->maxrow = 0;
-    } else
-	newwin->data = 0;
+    } else {
+	newwin->data = (char **)0;
+	newwin->datlen = (short *)0;
+    }
 
     return newid;
 }
@@ -729,11 +686,14 @@ free_window_info(cw, free_data)
 	for(i=0; i<cw->maxrow; i++)
 	    if(cw->data[i]) {
 		free((genericptr_t)cw->data[i]);
-		cw->data[i] = 0;
+		cw->data[i] = (char *)0;
+		if (cw->datlen) cw->datlen[i] = 0;
 	    }
 	if (free_data) {
 	    free((genericptr_t)cw->data);
-	    cw->data = 0;
+	    cw->data = (char **)0;
+	    if (cw->datlen) free((genericptr_t)cw->datlen);
+	    cw->datlen = (short *)0;
 	    cw->rows = 0;
 	}
     }
@@ -866,15 +826,16 @@ unset_all_on_page(window, page_start, page_end)
 }
 
 static void
-invert_all_on_page(window, page_start, page_end)
+invert_all_on_page(window, page_start, page_end, acc)
     winid window;
     tty_menu_item *page_start, *page_end;
+    char acc;	/* group accelerator, 0 => all */
 {
     tty_menu_item *curr;
     int n;
 
     for (n = 0, curr = page_start; curr != page_end; n++, curr = curr->next)
-	if (curr->identifier.a_void) {
+	if (curr->identifier.a_void && (acc == 0 || curr->gselector == acc)) {
 	    if (curr->selected) {
 		curr->selected = FALSE;
 		curr->count = -1L;
@@ -884,31 +845,38 @@ invert_all_on_page(window, page_start, page_end)
 	}
 }
 
+/*
+ * Invert all entries that match the give group accelerator (or all if
+ * zero).
+ */
 static void
-add_menu_alias(from_ch, to_ch)
-    char from_ch, to_ch;
+invert_all(window, page_start, page_end, acc)
+    winid window;
+    tty_menu_item *page_start, *page_end;
+    char acc;	/* group accelerator, 0 => all */
 {
-    if (n_menu_mapped < MAX_MENU_MAPPED) {
-	if (index(standard_menu_chars, to_ch)) {
-	    mapped_menu_accelerators[n_menu_mapped] = from_ch;
-	    menu_mapped_op[n_menu_mapped] = to_ch;
-	    n_menu_mapped++;
-	} else
-	    pline("add_menu_alias: must map to standard char");
-    } else
-	pline("add_menu_alias: overflow");
-}
+    tty_menu_item *curr;
+    boolean on_curr_page;
+    struct WinDesc *cw =  wins[window];
 
-static char
-map_menu_accelerator(ch)
-    char ch;
-{
-    char *found = index(mapped_menu_accelerators, ch);
-    if (found) {
-	int idx = found - mapped_menu_accelerators;
-	ch = menu_mapped_op[idx];
+    invert_all_on_page(window, page_start, page_end, acc);
+
+    /* invert the rest */
+    for (on_curr_page = FALSE, curr = cw->mlist; curr; curr = curr->next) {
+	if (curr == page_start)
+	    on_curr_page = TRUE;
+	else if (curr == page_end)
+	    on_curr_page = FALSE;
+
+	if (!on_curr_page && curr->identifier.a_void
+				&& (acc == 0 || curr->gselector == acc)) {
+	    if (curr->selected) {
+		curr->selected = FALSE;
+		curr->count = -1;
+	    } else
+		curr->selected = TRUE;
+	}
     }
-    return ch;
 }
 
 /*ARGSUSED*/
@@ -976,7 +944,7 @@ tty_display_nhwindow(window, blocking)
 	    int curr_page, page_lines;
 	    tty_menu_item *page_start, *page_end, *curr;
 	    boolean finished, counting, reset_count;
-	    char *rp, resp[QBUFSZ], *msave, morestr[QBUFSZ];
+	    char *rp, resp[QBUFSZ], gacc[QBUFSZ], *msave, morestr[QBUFSZ];
 	    long count;
 
 	    curr_page = page_lines = 0;
@@ -988,6 +956,18 @@ tty_display_nhwindow(window, blocking)
 	    count = 0;
 	    reset_count = TRUE;
 	    finished = FALSE;
+
+	    /* collect group accelerators when doing multiple pickups */
+	    gacc[0] = 0;
+	    if (cw->how == PICK_ANY) {
+		for (rp = gacc, curr = cw->mlist; curr; curr = curr->next) {
+		    if (curr->gselector && !index(gacc, curr->gselector)) {
+			*rp++ = curr->gselector;
+			*rp = 0;
+		    }
+		}
+		*rp = 0;
+	    }
 
 	    /* loop until finished */
 	    while (!finished) {
@@ -1057,9 +1037,10 @@ tty_display_nhwindow(window, blocking)
 		    }
 
 		    /* set extra chars.. */
-		    Strcat(resp, standard_menu_chars);
+		    Strcat(resp, default_menu_cmds);
 		    Strcat(resp, "0123456789\033\n\r");	/* counts, quit */
-		    Strcat(resp, mapped_menu_accelerators);
+		    Strcat(resp, gacc);			/* group accelerators */
+		    Strcat(resp, mapped_menu_cmds);
 
 		    if (cw->npages > 1)
 			Sprintf(cw->morestr, "(%d of %d)",
@@ -1076,9 +1057,16 @@ tty_display_nhwindow(window, blocking)
 		    xwaitforspace(resp);
 		}
 
-		morc = map_menu_accelerator(morc);
+		morc = map_menu_cmd(morc);
 		switch (morc) {
-		    case '0': case '1': case '2': case '3': case '4':
+		    case '0':
+			/* special case: '0' is also the default ball class */
+			if (!counting && index(gacc, morc)) {
+			    invert_all(window, page_start, page_end, morc);
+			    break;
+			}
+			/* fall through to count the zero */
+		    case '1': case '2': case '3': case '4':
 		    case '5': case '6': case '7': case '8': case '9':
 			count = (count * 10L) + (long) (morc - '0');
 			/*
@@ -1143,19 +1131,19 @@ tty_display_nhwindow(window, blocking)
 			    curr_page = cw->npages-1;
 			}
 			break;
-		    case MENU_SET_PAGE:
+		    case MENU_SELECT_PAGE:
 			if (cw->how != PICK_ONE)
 			    set_all_on_page(window, page_start, page_end);
 			break;
-		    case MENU_UNSET_PAGE:
+		    case MENU_UNSELECT_PAGE:
 			if (cw->how != PICK_ONE)
 			    unset_all_on_page(window, page_start, page_end);
 			break;
 		    case MENU_INVERT_PAGE:
 			if (cw->how != PICK_ONE)
-			    invert_all_on_page(window, page_start, page_end);
+			    invert_all_on_page(window, page_start, page_end, 0);
 			break;
-		    case MENU_SET_ALL:
+		    case MENU_SELECT_ALL:
 			if (cw->how == PICK_ONE) break;
 
 			set_all_on_page(window, page_start, page_end);
@@ -1164,7 +1152,7 @@ tty_display_nhwindow(window, blocking)
 			    if (curr->identifier.a_void && !curr->selected)
 				curr->selected = TRUE;
 			break;
-		    case MENU_UNSET_ALL:
+		    case MENU_UNSELECT_ALL:
 			if (cw->how == PICK_ONE) break;
 
 			unset_all_on_page(window, page_start, page_end);
@@ -1175,62 +1163,49 @@ tty_display_nhwindow(window, blocking)
 				curr->count = -1;
 			    }
 			break;
-		    case MENU_INVERT_ALL: {
-			boolean on_curr_page = FALSE;
-
+		    case MENU_INVERT_ALL:
 			if (cw->how == PICK_ONE) break;
-
-			invert_all_on_page(window, page_start, page_end);
-			/* invert the rest */
-			for (curr = cw->mlist; curr; curr = curr->next) {
-			    if (curr == page_start)
-				on_curr_page = TRUE;
-			    else if (curr == page_end)
-				on_curr_page = FALSE;
-			    if (!on_curr_page && curr->identifier.a_void) {
-				if (curr->selected) {
-				    curr->selected = FALSE;
-				    curr->count = -1;
-				} else
-				    curr->selected = TRUE;
-			    }
-			}
+			invert_all(window, page_start, page_end, 0);
 			break;
-		    }
 		    default:
 			if (cw->how != PICK_NONE && index(resp, morc)) {
 			    int nn;	/* nth row */
 			    tty_menu_item *ncurr;
 
-			    /* find, toggle, and possibly update */
-			    for (nn = 0, ncurr = page_start; ncurr != page_end;
-						    nn++, ncurr = ncurr->next)
-				if (morc == ncurr->selector) {
-				    if (ncurr->selected) {
-					if (counting && count > 0) {
-					    ncurr->count = count;
-					    set_item_state(window, nn, ncurr);
-					} else { /* change state */
-					    ncurr->selected = FALSE;
-					    ncurr->count = -1L;
-					    set_item_state(window, nn, ncurr);
+			    if (index(gacc, morc)) {
+				invert_all(window, page_start, page_end, morc);
+			    } else {
+				/* find, toggle, and possibly update */
+				for (nn = 0, ncurr = page_start;
+						ncurr != page_end;
+						nn++, ncurr = ncurr->next)
+				    if (morc == ncurr->selector) {
+					if (ncurr->selected) {
+					    if (counting && count > 0) {
+						ncurr->count = count;
+						set_item_state(window,nn,ncurr);
+					    } else { /* change state */
+						ncurr->selected = FALSE;
+						ncurr->count = -1L;
+						set_item_state(window,nn,ncurr);
+					    }
+					} else {	/* !selected */
+					    if (counting && count > 0) {
+						ncurr->count = count;
+						ncurr->selected = TRUE;
+						set_item_state(window,nn,ncurr);
+					    } else if (!counting) {
+						ncurr->selected = TRUE;
+						set_item_state(window,nn,ncurr);
+					    }
+					    /* do nothing counting&&count==0 */
 					}
-				    } else {	/* !selected */
-					if (counting && count > 0) {
-					    ncurr->count = count;
-					    ncurr->selected = TRUE;
-					    set_item_state(window, nn, ncurr);
-					} else if (!counting) {
-					    ncurr->selected = TRUE;
-					    set_item_state(window, nn, ncurr);
-					}
-					/* do nothing if counting&&count==0 */
-				    }
 
-				    if (cw->how == PICK_ONE)
-					finished = TRUE;
-				    break;
-				}
+					if (cw->how == PICK_ONE)
+					    finished = TRUE;
+					break;
+				    }
+			    }
 			} else
 			    tty_nhbell();
 			break;
@@ -1363,10 +1338,7 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
     ttyDisplay->lastwin = window;
 
 #if defined(USE_TILES) && defined(MSDOS)
-# ifdef SIMULATE_CURSOR
-    if (cw->type == NHW_MAP) cursor_flag = 1;
-    else cursor_flag = 0;
-# endif
+    adjust_cursor_flags(cw);
 #endif
     cw->curx = --x;	/* column 0 is never used */
     cw->cury = y;
@@ -1711,11 +1683,12 @@ tty_start_menu(window)
  * later.
  */
 void
-tty_add_menu(window, glyph, identifier, ch, attr, str, preselected)
+tty_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
     winid window;	/* window to use, must be of type NHW_MENU */
     int glyph;		/* glyph to display with item (unused) */
     const anything *identifier;	/* what to return if selected */
     char ch;		/* keyboard accelerator (0 = pick our own) */
+    char gch;		/* group accelerator (0 = no group) */
     int attr;		/* attribute for string (like tty_putstr()) */
     const char *str;	/* menu string */
     boolean preselected; /* item is marked as selected */
@@ -1744,6 +1717,7 @@ tty_add_menu(window, glyph, identifier, ch, attr, str, preselected)
     item->count = -1L;
     item->selected = preselected;
     item->selector = ch;
+    item->gselector = gch;
     item->attr = attr;
     item->str = copy_of(newstr);
 
@@ -1796,8 +1770,8 @@ tty_end_menu(window, prompt)
 	anything any;
 
 	any.a_void = 0;	/* not selectable */
-	tty_add_menu(window, NO_GLYPH, &any, 0, ATR_NONE, "", MENU_UNSELECTED);
-	tty_add_menu(window, NO_GLYPH, &any, 0, ATR_NONE, prompt, MENU_UNSELECTED);
+	tty_add_menu(window, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
+	tty_add_menu(window, NO_GLYPH, &any, 0, 0, ATR_NONE, prompt, MENU_UNSELECTED);
     }
 
     lmax = min(52, (int)ttyDisplay->rows - 1);		/* # lines per page */

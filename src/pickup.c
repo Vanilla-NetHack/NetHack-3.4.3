@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.2	96/03/03	*/
+/*	SCCS Id: @(#)pickup.c	3.2	96/05/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -595,7 +595,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 		    /* if sorting, print type name (once only) */
 		    if (qflags & INVORDER_SORT && !printed_type_name) {
 			any.a_obj = (struct obj *) 0;
-			add_menu(win, NO_GLYPH, &any, 0, ATR_INVERSE,
+			add_menu(win, NO_GLYPH, &any, 0, 0, ATR_INVERSE,
 					let_to_name(*pack, FALSE), MENU_UNSELECTED);
 			printed_type_name = TRUE;
 		    }
@@ -603,6 +603,7 @@ boolean FDECL((*allow), (OBJ_P));/* allow function */
 		    any.a_obj = curr;
 		    add_menu(win, obj_to_glyph(curr), &any,
 			    qflags & USE_INVLET ? curr->invlet : 0,
+			    def_oc_syms[(int)objects[curr->otyp].oc_class],
 			    ATR_NONE, doname(curr), MENU_UNSELECTED);
 		}
 	    pack++;
@@ -680,7 +681,7 @@ int how;			/* type of query */
 		invlet = 'a';
 		any.a_void = 0;
 		any.a_int = ALL_TYPES_SELECTED;
-		add_menu(win, NO_GLYPH, &any, invlet, ATR_NONE,
+		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
 		       (qflags & WORN_TYPES) ? "All worn types" : "All types",
 			MENU_UNSELECTED);
 		invlet = 'b';
@@ -696,9 +697,10 @@ int how;			/* type of query */
 		   if (!collected_type_name) {
 			any.a_void = 0;
 			any.a_int = curr->oclass;
-			add_menu(win, NO_GLYPH, &any, invlet++, ATR_NONE,
-						let_to_name(*pack, FALSE),
-						MENU_UNSELECTED);
+			add_menu(win, NO_GLYPH, &any, invlet++,
+				def_oc_syms[(int)objects[curr->otyp].oc_class],
+				ATR_NONE, let_to_name(*pack, FALSE),
+				MENU_UNSELECTED);
 			collected_type_name = TRUE;
 		   }
 		}
@@ -714,7 +716,7 @@ int how;			/* type of query */
 		invlet = 'u';
 		any.a_void = 0;
 		any.a_int = 'u';
-		add_menu(win, NO_GLYPH, &any, invlet, ATR_NONE,
+		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
 			"Unpaid items", MENU_UNSELECTED);
 	}
 	/* billed items: checked by caller, so always include if BILLED_TYPES */
@@ -722,14 +724,14 @@ int how;			/* type of query */
 		invlet = 'x';
 		any.a_void = 0;
 		any.a_int = 'x';
-		add_menu(win, NO_GLYPH, &any, invlet, ATR_NONE,
+		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
 			 "Unpaid items already used up", MENU_UNSELECTED);
 	}
 	if (qflags & CHOOSE_ALL) {
 		invlet = 'A';
 		any.a_void = 0;
 		any.a_int = 'A';
-		add_menu(win, NO_GLYPH, &any, invlet, ATR_NONE,
+		add_menu(win, NO_GLYPH, &any, invlet, 0, ATR_NONE,
 			(qflags & WORN_TYPES) ?
 			"Auto-select every item being worn" :
 			"Auto-select every item", MENU_UNSELECTED);
@@ -1177,13 +1179,8 @@ doloot()	/* loot a container on the floor. */
 		    }
 
 		    You("carefully open %s...", the(xname(cobj)));
-		    if (cobj->otrapped && chest_trap(cobj, FINGER, FALSE)) {
-			timepassed = 1;
-			continue;	/* explosion destroyed cobj */
-		    }
-		    if(multi < 0) return (1); /* a paralysis trap */
-
 		    timepassed |= use_container(cobj, 0);
+		    if (multi < 0) return 1;		/* chest trap */
 		}
 	}
 	if(c == -1){
@@ -1213,7 +1210,8 @@ verbalize("Thank you for your contribution to reduce the debt.");
 				add_to_container(coffers, goldob);
 			    }
 			} else {
-			    struct monst *mon = makemon(courtmon(), u.ux, u.uy);
+			    struct monst *mon = makemon(courtmon(),
+						    u.ux, u.uy, NO_MM_FLAGS);
 			    if (mon) {
 				mon->mgold += goldob->quan;
 				delobj(goldob);
@@ -1477,12 +1475,22 @@ register int held;
 	int cnt = 0, used = 0, lcnt = 0,
 	    menu_on_request;
 
-	current_container = obj;        /* for use by in/out_container */
 	if (obj->olocked) {
 	    pline("%s seems to be locked.", The(xname(obj)));
 	    if (held) You("must put it down to unlock.");
 	    return 0;
+	} else if (obj->otrapped) {
+	    if (held) You("open %s...", the(xname(obj)));
+	    (void) chest_trap(obj, HAND, FALSE);
+	    /* even if the trap fails, you've used up this turn */
+	    if (multi >= 0) {	/* in case we didn't become paralyzed */
+		nomul(-1);
+		nomovemsg = "";
+	    }
+	    return 1;
 	}
+	current_container = obj;	/* for use by in/out_container */
+
 	if (obj->spe == 1) {
 	    static NEARDATA const char sc[] = "Schroedinger's Cat";
 	    struct obj *ocat;
@@ -1493,7 +1501,8 @@ register int held;
 	       (telepathic or monster/object/food detection) ought to
 	       force the determination of alive vs dead state; but basing
 	       it just on opening the box is much simpler to cope with */
-	    cat = rn2(2) ? makemon(&mons[PM_HOUSECAT], obj->ox, obj->oy) : 0;
+	    cat = rn2(2) ? makemon(&mons[PM_HOUSECAT],
+				   obj->ox, obj->oy, NO_MINVENT) : 0;
 	    if (cat) {
 		cat->mpeaceful = 1;
 		set_malign(cat);
@@ -1739,12 +1748,12 @@ struct obj *obj;
     start_menu(win);
     any.a_int = 1;
     Sprintf(buf,"Take something out of %s", the(xname(obj)));
-    add_menu(win, NO_GLYPH, &any, 'a', ATR_NONE, buf, MENU_UNSELECTED);
+    add_menu(win, NO_GLYPH, &any, 'a', 0, ATR_NONE, buf, MENU_UNSELECTED);
     any.a_int = 2;
     Sprintf(buf,"Put something into %s",the(xname(obj)));
-    add_menu(win, NO_GLYPH, &any, 'b', ATR_NONE, buf, MENU_UNSELECTED);
+    add_menu(win, NO_GLYPH, &any, 'b', 0, ATR_NONE, buf, MENU_UNSELECTED);
     any.a_int = 3;
-    add_menu(win, NO_GLYPH, &any, 'c', ATR_NONE,
+    add_menu(win, NO_GLYPH, &any, 'c', 0, ATR_NONE,
 		"Both of the above", MENU_UNSELECTED);
     end_menu(win, prompt);
     n = select_menu(win, PICK_ONE, &pick_list);

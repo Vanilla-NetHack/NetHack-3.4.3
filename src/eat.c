@@ -170,14 +170,22 @@ choke(food)	/* To a full belly all food is bad. (It.) */
 	register struct obj *food;
 {
 	/* only happens if you were satiated */
-	if(u.uhs != SATIATED) return;
-
-	if (Role_is('K') && u.ualign.type == A_LAWFUL)
-		adjalign(-1);		/* gluttony is unchivalrous */
+	if (u.uhs != SATIATED) {
+		if (food->otyp != AMULET_OF_STRANGULATION)
+			return;
+	} else {
+		if (Role_is('K') && u.ualign.type == A_LAWFUL)
+			adjalign(-1);		/* gluttony is unchivalrous */
+	}
 
 	exercise(A_CON, FALSE);
 
 	if (Breathless || (!Strangled && !rn2(20))) {
+		/* choking by eating AoS doesn't involve stuffing yourself */
+		if (food->otyp == AMULET_OF_STRANGULATION) {
+			You("choke, but recover your composure.");
+			return;
+		}
 		You("stuff yourself and then vomit voluminously.");
 		morehungry(1000);	/* you just got *very* sick! */
 		vomit();

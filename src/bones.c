@@ -240,14 +240,14 @@ savebones()
 		 * on your location
 		 */
 		in_mklev = TRUE;
-		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy);
+		mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy, NO_MM_FLAGS);
 		in_mklev = FALSE;
 		if (!mtmp) return;
 		Strcpy((char *) mtmp->mextra, plname);
 	} else {
 		/* give your possessions to the monster you become */
 		in_mklev = TRUE;
-		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy);
+		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy, NO_MM_FLAGS);
 		in_mklev = FALSE;
 		if (!mtmp) {
 			drop_upon_death((struct monst *)0, (struct obj *)0);

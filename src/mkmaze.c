@@ -420,7 +420,7 @@ fixup_special()
 	if (rn2(2))
 	    otmp = mk_tt_object(STATUE, somex(croom), somey(croom));
 	else /* Medusa statues don't contain books */
-	    otmp = mkcorpstat(STATUE, (struct permonst *)0,
+	    otmp = mkcorpstat(STATUE, (struct monst *)0, (struct permonst *)0,
 			      somex(croom), somey(croom), FALSE);
 	if (otmp) {
 	    while (pm_resistance(&mons[otmp->corpsenm],MR_STONE)
@@ -601,11 +601,11 @@ register const char *s;
 	}
 	for (x = rn2(3); x; x--) {
 		mazexy(&mm);
-		(void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y);
+		(void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y, NO_MM_FLAGS);
 	}
 	for(x = rn1(5,7); x; x--) {
 		mazexy(&mm);
-		(void) makemon((struct permonst *) 0, mm.x, mm.y);
+		(void) makemon((struct permonst *) 0, mm.x, mm.y, NO_MM_FLAGS);
 	}
 	for(x = rn1(6,7); x; x--) {
 		mazexy(&mm);

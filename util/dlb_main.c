@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dlb_main.c	3.2	96/03/04	*/
+/*	SCCS Id: @(#)dlb_main.c	3.2	96/05/23	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,9 @@
 #include "dlb.h"
 #if !defined(O_WRONLY) && !defined(MAC) && !defined(AZTEC_C)
 #include <fcntl.h>
+#endif
+#if defined(__DJGPP__)
+#include <string.h>
 #endif
 
 #ifdef MICRO
@@ -284,7 +287,7 @@ main(argc, argv)
 	    total_read = 0;
 	    do {
 		r = lib.dir[i].fsize - total_read;
-		if (r > sizeof(buf)) r = sizeof(buf);
+		if (r > (int) sizeof(buf)) r = (int) sizeof(buf);
 
 		n = fread(buf, 1, r, lib.fdata);
 		if (n != r) {

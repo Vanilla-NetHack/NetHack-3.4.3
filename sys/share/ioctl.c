@@ -82,10 +82,10 @@ catch_stp()
 }
 #endif /* AUX */
 
-#ifdef USE_WIN_IOCTL
 void
 getwindowsz()
 {
+#ifdef USE_WIN_IOCTL
     /*
      * ttysize is found on Suns and BSD
      * winsize is found on Suns, BSD, and Ultrix
@@ -102,8 +102,8 @@ getwindowsz()
 	if (ttsz.ws_col)
 	    CO = ttsz.ws_col;
     }
-}
 #endif
+}
 
 void
 getioctls()
@@ -122,9 +122,7 @@ getioctls()
 #  endif
 # endif
 #endif
-#ifdef USE_WIN_IOCTL
 	getwindowsz();
-#endif
 #ifdef AUX
 	( void ) signal ( SIGTSTP , catch_stp ) ;
 #endif

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.2	95/07/29	*/
+/*	SCCS Id: @(#)mondata.c	3.2	96/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -89,6 +89,31 @@ struct monst *mon;
 	return FALSE;
 }
 
+/* TRUE iff monster is resistant to light-induced blindness */
+boolean
+resists_blnd(mon)
+struct monst *mon;
+{
+	struct permonst *ptr = mon->data;
+	boolean is_you = (mon == &youmonst);
+	struct obj *o;
+
+	if (is_you ? Blind : (mon->mblinded || !mon->mcansee || !haseyes(ptr)))
+	    return TRUE;
+	/* AD_BLND => yellow light, dust vortex, ki-rin (?), Archon */
+	if (dmgtype(ptr, AD_BLND) && !attacktype(ptr, AT_SPIT))
+	    return TRUE;
+	o = is_you ? uwep : MON_WEP(mon);
+	if (o && o->oartifact && defends(AD_BLND, o))
+	    return TRUE;
+	o = is_you ? invent : mon->minvent;
+	for ( ; o; o = o->nobj)
+	    if ((o->owornmask && objects[o->otyp].oc_oprop == BLINDED) ||
+		    (o->oartifact && protects(AD_BLND, o)))
+		return TRUE;
+	return FALSE;
+}
+
 #endif /* OVLB */
 #ifdef OVL0
 
@@ -153,9 +178,7 @@ breakarm(ptr)	/* creature will break out of armor */
 	return((boolean)((bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr))
 	                || ptr == &mons[PM_MARILITH]) && !sliparm(ptr)));
 	/* Marilith is about the only case of a monster which is otherwise
-	 * humanoid but cannot wear armor (too many arms).  Centaurs would
-	 * be another except that they are already accounted for by
-	 * bigmonst.
+	 * humanoid but cannot wear armor (too many arms).
 	 */
 }
 #endif /* OVLB */
@@ -410,6 +433,9 @@ static const short grownups[][2] = {
 	{PM_GNOME, PM_GNOME_LORD}, {PM_GNOME_LORD, PM_GNOME_KING},
 	{PM_DWARF, PM_DWARF_LORD}, {PM_DWARF_LORD, PM_DWARF_KING},
 	{PM_OGRE, PM_OGRE_LORD}, {PM_OGRE_LORD, PM_OGRE_KING},
+	{PM_ELF, PM_ELF_LORD}, {PM_WOODLAND_ELF, PM_ELF_LORD},
+	{PM_GREEN_ELF, PM_ELF_LORD}, {PM_GREY_ELF, PM_ELF_LORD},
+	{PM_ELF_LORD, PM_ELVENKING},
 	{PM_LICH, PM_DEMILICH}, {PM_DEMILICH, PM_MASTER_LICH},
 	{PM_VAMPIRE, PM_VAMPIRE_LORD}, {PM_BAT, PM_GIANT_BAT},
 	{PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
@@ -424,6 +450,7 @@ static const short grownups[][2] = {
 	{PM_BLACK_NAGA_HATCHLING, PM_BLACK_NAGA},
 	{PM_GOLDEN_NAGA_HATCHLING, PM_GOLDEN_NAGA},
 	{PM_GUARDIAN_NAGA_HATCHLING, PM_GUARDIAN_NAGA},
+	{PM_SMALL_MIMIC, PM_LARGE_MIMIC}, {PM_LARGE_MIMIC, PM_GIANT_MIMIC},
 	{PM_BABY_LONG_WORM, PM_LONG_WORM},
 	{PM_BABY_PURPLE_WORM, PM_PURPLE_WORM},
 	{PM_BABY_CROCODILE, PM_CROCODILE},
@@ -431,7 +458,17 @@ static const short grownups[][2] = {
 	{PM_SERGEANT, PM_LIEUTENANT},
 	{PM_LIEUTENANT, PM_CAPTAIN},
 	{PM_WATCHMAN, PM_WATCH_CAPTAIN},
-	{PM_SMALL_MIMIC, PM_LARGE_MIMIC}, {PM_LARGE_MIMIC, PM_GIANT_MIMIC},
+	{PM_ALIGNED_PRIEST, PM_HIGH_PRIEST},
+	{PM_STUDENT, PM_ARCHEOLOGIST},
+	{PM_ATTENDANT, PM_HEALER},
+	{PM_PAGE, PM_KNIGHT},
+	{PM_ACOLYTE, PM_PRIEST},
+	{PM_APPRENTICE, PM_WIZARD},
+#ifdef KOPS
+	{PM_KEYSTONE_KOP, PM_KOP_SERGEANT},
+	{PM_KOP_SERGEANT, PM_KOP_LIEUTENANT},
+	{PM_KOP_LIEUTENANT, PM_KOP_KAPTAIN},
+#endif
 	{NON_PM,NON_PM}
 };
 

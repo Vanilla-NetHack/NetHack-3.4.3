@@ -152,7 +152,7 @@ EFFECTS =  241 240 242 243 042 033 123 125	   \
 #TEXTPENS=0,14
 #OTHERPENS=1,12
 #
-# Screen mode selections below should all work for either the font of tile
+# Screen mode selections below should all work for either the font or tile
 # version of the game.  Other modes can be tried and as long as they are at
 # least 640x200, the game should adapt to them...
 #

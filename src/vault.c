@@ -216,7 +216,7 @@ fnd:
 	}
 
 	/* make something interesting happen */
-	if(!(guard = makemon(&mons[PM_GUARD], x, y))) return;
+	if(!(guard = makemon(&mons[PM_GUARD], x, y, NO_MM_FLAGS))) return;
 	guard->isgd = 1;
 	guard->mpeaceful = 1;
 	set_malign(guard);

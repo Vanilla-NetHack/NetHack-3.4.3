@@ -34,6 +34,11 @@ extern void NDECL(check_sco_console);
 extern void NDECL(init_sco_cons);
 #endif
 
+static void NDECL(wd_message);
+#ifdef WIZARD
+static boolean wiz_error_flag = FALSE;
+#endif
+
 int
 main(argc,argv)
 int argc;
@@ -223,8 +228,7 @@ char *argv[];
 #endif
 		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
-		if (discover)
-			You("are in non-scoring discovery mode.");
+		wd_message();
 
 		if (discover || wizard) {
 			if(yn("Do you want to keep the save file?") == 'n')
@@ -241,8 +245,7 @@ not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
-		if (discover)
-			You("are in non-scoring discovery mode.");
+		wd_message();
 
 		flags.move = 0;
 		set_wear();
@@ -268,7 +271,7 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 		case 'D':
-# ifdef WIZARD
+#ifdef WIZARD
 			{
 			  char *user;
 			  int uid;
@@ -296,7 +299,8 @@ char *argv[];
 			  }
 			}
 			/* otherwise fall thru to discover */
-# endif
+			wiz_error_flag = TRUE;
+#endif
 		case 'X':
 			discover = TRUE;
 			break;
@@ -406,12 +410,29 @@ whoami() {
 void
 port_help()
 {
-    /*
-     * Display unix-specific help.   Just show contents of the helpfile
-     * named by PORT_HELP.
-     */
-    display_file(PORT_HELP, TRUE);
+	/*
+	 * Display unix-specific help.   Just show contents of the helpfile
+	 * named by PORT_HELP.
+	 */
+	display_file(PORT_HELP, TRUE);
 }
 #endif
 
+static void
+wd_message()
+{
+#ifdef WIZARD
+	if (wiz_error_flag) {
+		pline("Only user \"%s\" may access debug (wizard) mode.",
+# ifndef KR1ED
+			WIZARD);
+# else
+			WIZARD_NAME);
+# endif
+		pline("Entering discovery mode instead.");
+	} else
+#endif
+	if (discover)
+		You("are in non-scoring discovery mode.");
+}
 /*unixmain.c*/

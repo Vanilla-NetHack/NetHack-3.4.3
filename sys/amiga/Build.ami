@@ -74,7 +74,7 @@ II.B.1. Introduction to Compiling NetHack
     will build the auxiliary files including help files, special levels,
     icons, and the font files and will put these files into their final
     positions - most will be in dlb archives (if DLB was defined in config.h).
-    The first make run should be done in OBJ: and the make install should be
+    The first make run should be done in NH:obj and the make install should be
     done in NetHack:; for both runs, the makefile is NH:sys/amiga/Makefile.ami
     (or NH:sys/amiga/DMakefile for DMake).
 

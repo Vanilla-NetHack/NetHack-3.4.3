@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.2	95/12/16	*/
+/*	SCCS Id: @(#)u_init.c	3.2	96/05/13	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -251,7 +251,7 @@ static struct def_skill Skill_E[] = {
     { P_SPEAR, P_EXPERT },		{ P_JAVELIN, P_BASIC },
     { P_BOW, P_EXPERT },		{ P_SLING, P_BASIC },
     { P_CROSSBOW, P_BASIC },		{ P_SHURIKEN, P_BASIC },
-    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 2 },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_MARTIAL_ARTS, 3 },
     { P_NO_TYPE, 0 }
 };
 
@@ -294,6 +294,7 @@ static struct def_skill Skill_P[] = {
     { P_SLING, P_BASIC },		{ P_CROSSBOW, P_BASIC },
     { P_DART, P_BASIC },		{ P_SHURIKEN, P_BASIC },
     { P_BOOMERANG, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
+    { P_BARE_HANDED_COMBAT, 2 },
     { P_NO_TYPE, 0 }
 };
 
@@ -307,7 +308,7 @@ static struct def_skill Skill_R[] = {
     { P_HAMMER, P_BASIC },		{ P_POLEARMS, P_BASIC },
     { P_SPEAR, P_BASIC },		{ P_CROSSBOW, P_EXPERT },
     { P_DART, P_EXPERT },		{ P_SHURIKEN, P_SKILLED },
-    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_BARE_HANDED_COMBAT, 2 },
+    { P_TWO_WEAPON_COMBAT, P_EXPERT },	{ P_BARE_HANDED_COMBAT, 4 },
     { P_NO_TYPE, 0 }
 };
 
@@ -340,7 +341,7 @@ static struct def_skill Skill_T[] = {
     { P_CROSSBOW, P_BASIC },		{ P_DART, P_EXPERT },
     { P_SHURIKEN, P_BASIC },		{ P_BOOMERANG, P_BASIC },
     { P_WHIP, P_BASIC },		{ P_UNICORN_HORN, P_SKILLED },
-    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 4 },
+    { P_TWO_WEAPON_COMBAT, P_SKILLED }, { P_BARE_HANDED_COMBAT, 3 },
     { P_NO_TYPE, 0 }
 };
 #endif /* TOURIST */
@@ -784,7 +785,7 @@ register struct trobj *trop;
 		if (OBJ_DESCR(objects[obj->otyp]) && obj->known)
 			makeknown(obj->otyp);
 		if (obj->otyp == OIL_LAMP)
-			knows_object(POT_OIL);
+			makeknown(POT_OIL);
 
 		if(obj->oclass == ARMOR_CLASS){
 			if (is_shield(obj) && !uarms)
@@ -801,13 +802,13 @@ register struct trobj *trop;
 				setworn(obj, W_ARMC);
 			else if (is_boots(obj) && !uarmf)
 				setworn(obj, W_ARMF);
-			else if (!uarm)
+			else if (is_suit(obj) && !uarm)
 				setworn(obj, W_ARM);
 		}
 		/* below changed by GAN 01/09/87 to allow wielding of
 		 * pick-axe or can-opener if there is no weapon
 		 */
-		if(obj->oclass == WEAPON_CLASS || obj->otyp == PICK_AXE ||
+		if(obj->oclass == WEAPON_CLASS || is_weptool(obj) ||
 		   obj->otyp == TIN_OPENER)
 			if(!uwep) setuwep(obj);
 #if !defined(PYRAMID_BUG) && !defined(MAC)

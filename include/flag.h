@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)flag.h	3.2	96/02/26	*/
+/*	SCCS Id: @(#)flag.h	3.2	96/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -52,9 +52,7 @@ struct flag {
 	boolean  mon_moving;	/* monsters' turn to move */
 	boolean  move;
 	boolean  mv;
-#ifdef TIMED_DELAY
 	boolean  nap;		/* `timed_delay' option for display effects */
-#endif
 	boolean  news;		/* print news */
 	boolean  nopick;	/* do not pickup objects (as when running) */
 	boolean  null;		/* OK to send nulls to the terminal */
@@ -134,9 +132,8 @@ struct flag {
 #if defined(MSDOS) || defined(WIN32)
 	boolean hassound;		/* has a sound card                  */
 	boolean usesound;		/* use the sound card                */
-# ifdef PCMUSIC
 	boolean usepcspeaker;		/* use the pc speaker		     */
-# endif
+	boolean preload_tiles;		/* preload the tiles into RAM        */
 #endif
 };
 

@@ -36,10 +36,6 @@
  * - Share AppleEvents with NetHack to auto-recover crashed games.
  */
 
-#if 1
-/************************************************************************\
- * (1) precompile header => mrecover.h, (0) compile code
-\************************************************************************/
 
 /**** Toolbox defines ****/
 
@@ -69,6 +65,7 @@
 #include <Script.h>
 #include <StandardFile.h>
 #include <ToolUtils.h>
+#include <Processes.h>
 
 #ifndef __MWERKS__	/* glue for System 7 Icon Family call (needed by Think C 5.0.4) */
 pascal OSErr GetIconSuite(Handle *theIconSuite, short theResID, long selector)
@@ -200,12 +197,7 @@ typedef struct versXRec
 	unsigned char	versStr[];	/* (small string)(large string) */
 } versXRec, *versXPtr, **versXHandle;
 
-#else
-/************************************************************************\
- * compile source code
-\************************************************************************/
 
-#include "mrecover.h"
 
 /**** Global variables ****/
 modeFlags		in = {1};				/* in Front */
@@ -230,6 +222,8 @@ Point			sfGetWhere;				/* top left corner of get file dialog */
 Ptr				pIOBuf;					/* read/write buffer pointer */
 short			vRefNum;				/* SFGetFile working directory/volume refnum */
 long			dirID;					/* directory i.d. */
+NMUPP			nmCompletionUPP;		/* UPP for nmCompletion */
+FileFilterUPP	basenameFileFilterUPP;	/* UPP for basenameFileFilter */
 
 #define CREATOR		'nh31'				/* NetHack signature */
 #define SAVETYPE	'SAVE'				/* save file type */
@@ -302,15 +296,17 @@ main()
 	InitWindows();
 	InitMenus();
 	TEInit();
-	InitDialogs((ResumeProcPtr) 0);
+	InitDialogs(0L);
 	InitCursor();
+	nmCompletionUPP = NewNMProc(nmCompletion);
+	basenameFileFilterUPP = NewFileFilterProc(basenameFileFilter);
 
 	/* get system environment, notification requires 6.0 or better */
 	(void) SysEnvirons(curSysEnvVers, &sysEnv);
 	if (sysEnv.systemVersion < 0x0600)
 	{
 		ParamText("\pAbort: System 6.0 is required", "\p", "\p", "\p");
-		(void) Alert(alidNote, (ModalFilterProcPtr) 0L);
+		(void) Alert(alidNote, (ModalFilterUPP) 0L);
 		ExitToShell();
 	}
 
@@ -335,6 +331,7 @@ warmup()
 				in.Front = (wnEvt.message & resumeFlag);
 	}
 
+#if 0 // ???
 	/* clear out the Finder info */
 	{
 		short	message, count;
@@ -343,15 +340,30 @@ warmup()
 		while(count)
 			ClrAppFiles(count--);
 	}
+#endif
 
 	/* fill out the notification template */
 	nmt.nmr.qType = nmType;
 	nmt.nmr.nmMark = 1;
 	nmt.nmr.nmSound = (Handle) -1L;		/* system beep */
 	nmt.nmr.nmStr = nmt.nmBuf;
-	nmt.nmr.nmResp = nmCompletion;
+	nmt.nmr.nmResp = nmCompletionUPP;
 	nmt.nmr.nmPending = (long) &in.Notify;
 
+
+#if 1
+	{
+		/* get the app name */
+		ProcessInfoRec info;
+		ProcessSerialNumber psn;
+
+		info.processInfoLength = sizeof(info);
+		info.processName = nmt.nmBuf;
+		info.processAppSpec = NULL;
+		GetCurrentProcess(&psn);
+		GetProcessInformation(&psn, &info);
+	}
+#else
 	/* prepend app name (31 chars or less) to notification buffer */
 	{
 		short	apRefNum;
@@ -359,6 +371,7 @@ warmup()
 
 		GetAppParms(* (Str255 *) &nmt.nmBuf, &apRefNum, &apParams);
 	}
+#endif
 
 	/* add formatting (two line returns) */
 	nmt.nmBuf[++(nmt.nmBuf[0])] = '\r';
@@ -576,7 +589,7 @@ note(short errorSignal, short alertID, unsigned char *msg)
 
 	/* in front and no error so use an alert */
 	ParamText(msg, "\p", "\p", "\p");
-	(void) Alert(alertID, (ModalFilterProcPtr) 0L);
+	(void) Alert(alertID, (ModalFilterUPP) 0L);
 	ResetAlrtStage();
 
 	memActivity++;
@@ -990,8 +1003,8 @@ beginRecover()
 	SFTypeList		levlType = {'LEVL'};
 	SFReply			sfGetReply;
 
-	SFGetFile(sfGetWhere, "\p", &basenameFileFilter, 1, levlType,
-				(DlgHookProcPtr) 0L, &sfGetReply);
+	SFGetFile(sfGetWhere, "\p", basenameFileFilterUPP, 1, levlType,
+				(DlgHookUPP) 0L, &sfGetReply);
 
 	memActivity++;
 
@@ -1404,4 +1417,4 @@ unlink_file(unsigned char *filename)
 		return;
 	}
 }
-#endif
+

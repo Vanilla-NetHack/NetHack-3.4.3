@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.c	3.2	96/02/02	*/
+/*	SCCS Id: @(#)winX.c	3.2	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -79,7 +79,7 @@ static struct icon_info {
  */
 struct xwindow window_list[MAX_WINDOWS];
 AppResources appResources;
-void (*input_func)();
+void FDECL((*input_func), (Widget,XEvent *,String *,Cardinal *));
 int click_x, click_y, click_button;	/* Click position on a map window   */
 					/* (filled by set_button_values()). */
 int updated_inventory;
@@ -594,6 +594,7 @@ X11_create_nhwindow(type)
     /* The create routines will set type, popup, w, and Win_info. */
     wp->prevx = wp->prevy = wp->cursx = wp->cursy =
 				wp->pixel_width = wp->pixel_height = 0;
+    wp->keep_window = FALSE;
 
     switch (type) {
 	case NHW_MAP:
@@ -647,8 +648,8 @@ X11_display_nhwindow(window, blocking)
     boolean blocking;
 {
     struct xwindow *wp;
-    check_winid(window);
 
+    check_winid(window);
     wp = &window_list[window];
 
     switch (wp->type) {
@@ -709,8 +710,9 @@ X11_destroy_nhwindow(window)
     winid window;
 {
     struct xwindow *wp;
-    check_winid(window);
 
+    check_winid(window);
+    wp = &window_list[window];
     /*
      * "Zap" known windows, but don't destroy them.  We need to keep the
      * toplevel widget popped up so that later windows (e.g. tombstone)
@@ -718,21 +720,19 @@ X11_destroy_nhwindow(window)
      * roots that the DECWindow wm creates.
      */
     if (window == WIN_MESSAGE) {
+	wp->keep_window = TRUE;
 	WIN_MESSAGE = WIN_ERR;
 	flags.window_inited = 0;
-	return;
     } else if (window == WIN_MAP) {
+	wp->keep_window = TRUE;
 	WIN_MAP = WIN_ERR;
-	return;
     } else if (window == WIN_STATUS) {
+	wp->keep_window = TRUE;
 	WIN_STATUS = WIN_ERR;
-	return;
     } else if (window == WIN_INVEN) {
+	/* don't need to keep this one */
 	WIN_INVEN = WIN_ERR;
-	return;
     }
-
-    wp = &window_list[window];
 
     switch (wp->type) {
 	case NHW_MAP:
@@ -817,8 +817,8 @@ void X11_outrip(window, how)
     int how;
 {
     struct xwindow *wp;
-    check_winid(window);
 
+    check_winid(window);
     wp = &window_list[window];
 
     if (wp->type == NHW_TEXT) {
@@ -979,9 +979,7 @@ char** argv;
 }
 
 /*
- * Let the OS take care of almost everything.  This includes the "main"
- * three windows:  message, map, and status.  If I destroy one, I must
- * destroy them all.
+ * All done.
  */
 /* ARGSUSED */
 void X11_exit_nhwindows(dummy)
@@ -998,6 +996,14 @@ void X11_exit_nhwindows(dummy)
 	XFreePixmap(XtDisplay(toplevel), tile_pixmap);
 	tile_pixmap = None;
     }
+    if (WIN_INVEN != WIN_ERR)
+	X11_destroy_nhwindow(WIN_INVEN);
+    if (WIN_STATUS != WIN_ERR)
+	X11_destroy_nhwindow(WIN_STATUS);
+    if (WIN_MAP != WIN_ERR)
+	X11_destroy_nhwindow(WIN_MAP);
+    if (WIN_MESSAGE != WIN_ERR)
+	X11_destroy_nhwindow(WIN_MESSAGE);
 }
 
 
@@ -1276,6 +1282,8 @@ X11_display_file(str, complain)
 #define LLEN 128
     char line[LLEN];
     int num_lines;
+    char *textlines;
+    int charcount;
 
     /* Use the port-independent file opener to see if the file exists. */
     fp = dlb_fopen(str, RDTMODE);
@@ -1287,19 +1295,38 @@ X11_display_file(str, complain)
     }
 
     /*
-     * Count the number of lines in the file.  If under the max display
-     * size, use that instead.
+     * Count the number of lines and characters in the file.
      */
     num_lines = 0;
+    charcount = 1;
     while (dlb_fgets(line, LLEN, fp)) {
 	num_lines++;
-	if (num_lines >= DISPLAY_FILE_SIZE) break;
+	charcount += strlen(line);
     }
 
     (void) dlb_fclose(fp);
 
     /* Ignore empty files */
     if (num_lines == 0) return;
+
+    /* If over the max window size, truncate the window size to the max */
+    if (num_lines >= DISPLAY_FILE_SIZE)
+	num_lines = DISPLAY_FILE_SIZE;
+
+    /*
+     * Re-open the file and read the data into a buffer.  Cannot use
+     * the XawAsciiFile type of widget, because that is not DLB-aware.
+     */
+    textlines = (char *) alloc((unsigned int) charcount);
+    textlines[0] = '\0';
+
+    fp = dlb_fopen(str, RDTMODE);
+
+    while (dlb_fgets(line, LLEN, fp)) {
+	(void) strcat(textlines, line);
+    }
+
+    (void) dlb_fclose(fp);
 
     num_args = 0;
     XtSetArg(args[num_args], XtNtitle, str);	num_args++;
@@ -1314,8 +1341,8 @@ X11_display_file(str, complain)
 				XawtextScrollWhenNeeded);	num_args++;
     XtSetArg(args[num_args], XtNscrollVertical,
 				XawtextScrollWhenNeeded);	num_args++;
-    XtSetArg(args[num_args], XtNtype, XawAsciiFile);		num_args++;
-    XtSetArg(args[num_args], XtNstring, str);			num_args++;
+    XtSetArg(args[num_args], XtNtype, XawAsciiString);		num_args++;
+    XtSetArg(args[num_args], XtNstring, textlines);		num_args++;
     XtSetArg(args[num_args], XtNdisplayCaret, False);		num_args++;
     XtSetArg(args[num_args], XtNtranslations,
 	XtParseTranslationTable(display_translations));		num_args++;
@@ -1353,6 +1380,7 @@ X11_display_file(str, complain)
     XtSetValues(dispfile, args, num_args);
 
     nh_XtPopup(popup, (int)XtGrabNone, (Widget)0);
+    free(textlines);
 }
 
 

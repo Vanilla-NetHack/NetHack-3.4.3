@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.2	96/03/17	*/
+/*	SCCS Id: @(#)objnam.c	3.2	96/05/05	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1292,18 +1292,7 @@ register char *bp;
 	actualn = dn = un = 0;
 
 	/* first, remove extra whitespace they may have typed */
-	if (bp) {
-		char c, *p2;
-		boolean was_space = TRUE;
-
-		for (p = p2 = bp; (c = *p) != '\0'; p++) {
-		     /* if (c == '\t') c = ' '; */
-			if (c != ' ' || !was_space)  *p2++ = c;
-			was_space = (c == ' ');
-		}
-		if (was_space && p2 > bp)  p2--;
-		*p2 = '\0';
-	}
+	if (bp) (void)mungspaces(bp);
 
 	for(;;) {
 		register int l;
@@ -1959,6 +1948,8 @@ typfnd:
 			}
 			break;
 		case STATUE: otmp->corpsenm = mntmp;
+			if (Has_contents(otmp) && verysmall(&mons[mntmp]))
+			    delete_contents(otmp);	/* no spellbook */
 			break;
 		case SCALE_MAIL:
 			/* Dragon mail - depends on the order of objects */
@@ -2054,7 +2045,7 @@ typfnd:
 	    && !wizard
 #endif
 	    ) {
-	    artifact_unexist(otmp);
+	    artifact_exists(otmp, ONAME(otmp), FALSE);
 	    obfree(otmp, (struct obj *) 0);
 	    otmp = &zeroobj;
 	    pline(

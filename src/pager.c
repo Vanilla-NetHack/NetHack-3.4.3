@@ -668,13 +668,13 @@ help_menu(sel)
 	    if (help_menu_items[i][0] == '%') {
 		Sprintf(helpbuf, help_menu_items[i], PORT_ID);
 		any.a_int = PORT_HELP_ID + 1;
-		add_menu(tmpwin, NO_GLYPH, &any, 0, ATR_NONE,
+		add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
 			 helpbuf, MENU_UNSELECTED);
 	    } else
 #endif
 	    {
 		any.a_int = (*help_menu_items[i]) ? i+1 : 0;
-		add_menu(tmpwin, NO_GLYPH, &any, 0,
+		add_menu(tmpwin, NO_GLYPH, &any, 0, 0,
 			ATR_NONE, help_menu_items[i], MENU_UNSELECTED);
 	    }
 	end_menu(tmpwin, "Select one item:");

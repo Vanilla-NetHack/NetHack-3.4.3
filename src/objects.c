@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objects.c	3.2	96/03/28	*/
+/*	SCCS Id: @(#)objects.c	3.2	96/05/23	*/
 /* Copyright (c) Mike Threepoint, 1989.				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,6 +45,11 @@ NEARDATA struct objdescr obj_descr[] = {
 # define OBJECT(obj,bits,prp,sym,prob,dly,wt,cost,sdam,ldam,oc1,oc2,nut,color) \
 	{0, 0, (char *)0, bits, prp, sym, dly, COLOR_FIELD(color) \
 	 prob, wt, cost, sdam, ldam, oc1, oc2, nut}
+# ifndef lint
+#  define HARDGEM(n) (n >= 8)
+# else
+#  define HARDGEM(n) (0)
+# endif
 
 NEARDATA struct objclass objects[] = {
 #endif
@@ -464,7 +469,7 @@ BOOTS("levitation boots", "snow boots",
 /* rings ... */
 #define RING(name,power,stone,cost,mgc,spec,mohs,metal,color) OBJECT( \
 		OBJ(name,stone), \
-		BITS(0,0,spec,0,mgc,spec,0,0,0,mohs>=8,0,0,metal), \
+		BITS(0,0,spec,0,mgc,spec,0,0,0,HARDGEM(mohs),0,0,metal), \
 		power, RING_CLASS, 0, 0, 3, cost, 0, 0, 0, 0, 15, color )
 RING("adornment", ADORNED, "wooden",        100, 1, 1, 2, WOOD, HI_WOOD),
 RING("gain strength", 0, "granite",         150, 1, 1, 7, MINERAL, HI_MINERAL),
@@ -818,11 +823,11 @@ WAND((char *)0,        "jeweled",   0, 150, 1, 0,         IRON,     HI_MINERAL),
 /* gems ... - includes stones and rocks but not boulders */
 #define GEM(name,desc,prob,wt,gval,nutr,mohs,glass,color) OBJECT( \
 	    OBJ(name,desc), \
-	    BITS(0,1,0,0,0,0,0,0,0,mohs>=8,0,WEP_AMMO,glass), 0, \
+	    BITS(0,1,0,0,0,0,0,0,0,HARDGEM(mohs),0,WEP_AMMO,glass), 0, \
 	    GEM_CLASS, prob, 0, 1, gval, 3, 3, 0, WP_SLING, nutr, color )
 #define ROCK(name,desc,kn,prob,wt,gval,sdam,ldam,mgc,nutr,mohs,glass,color) OBJECT( \
 	    OBJ(name,desc), \
-	    BITS(kn,1,0,0,mgc,0,0,0,0,mohs>=8,0,WEP_AMMO,glass), 0, \
+	    BITS(kn,1,0,0,mgc,0,0,0,0,HARDGEM(mohs),0,WEP_AMMO,glass), 0, \
 	    GEM_CLASS, prob, 0, wt, gval, sdam, ldam, 0, WP_SLING, nutr, color )
 GEM("dilithium crystal", "white",      3,  1, 4500, 15,  5, GEMSTONE, CLR_WHITE),
 GEM("diamond", "white",                4,  1, 4000, 15, 10, GEMSTONE, CLR_WHITE),

@@ -32,7 +32,6 @@ struct obj {
 	schar spe;		/* quality of weapon, armor or ring (+ or -)
 				   number of charges for wand ( >= -1 )
 				   marks your eggs, spinach tins
-				   indicates statues have spellbooks inside
 				   royal coffers for a court ( == 2)
 				   tells which fruit a fruit is
 				   special for uball and amulet %% BAH */
@@ -78,13 +77,19 @@ struct obj {
 
 	Bitfield(oinvis,1);	/* not yet implemented */
 	Bitfield(greased,1);	/* covered with grease */
-	Bitfield(onamelth,6);
+	Bitfield(mtraits,1);	/* obj struct has a monst struct attached */
+	/* free bits */
 
 	int	corpsenm;	/* type of corpse is mons[corpsenm] */
 #define leashmon  corpsenm	/* gets m_id of attached pet */
 #define spestudied corpsenm	/* how many times a spellbook has been studied */
 	unsigned oeaten;	/* nutrition left in food, if partly eaten */
 	long age;		/* creation date */
+
+	uchar onamelth;		/* length of name (following oxlth) */
+	short oxlth;		/* length of following data */
+	/* in order to prevent alignment problems oextra should
+	   be (or follow) a long int */
 	long owornmask;
 
 /* note that TIMEOUT in you.h is defined as 07777L; no bits for items that
@@ -121,7 +126,7 @@ struct obj {
 };
 
 #define newobj(xl)	(struct obj *)alloc((unsigned)(xl) + sizeof(struct obj))
-#define ONAME(otmp)	((char *)(otmp)->oextra)
+#define ONAME(otmp)	(((char *)(otmp)->oextra) + (otmp)->oxlth)
 
 #define carried(o)	((o)->where == OBJ_INVENT)
 #define Has_contents(o) (/* (Is_container(o) || (o)->otyp == STATUE) && */ \

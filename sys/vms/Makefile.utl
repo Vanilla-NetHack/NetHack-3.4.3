@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.2	95/10/23
+#	SCCS Id: @(#)Makefile.utl	3.2	96/05/10
 
 #  Copy this file to [.util]Makefile. and then edit it as needed.
 #  Settings for CC and CFLAGS ought to match the ones used in [.src]Makefile.
@@ -150,8 +150,11 @@ $(LIBOPT) : $(SRC)Makefile.;		# linker options file
 $(MAKEDEFS) :	$(MAKEOBJS) $(VMSMAKEOBJS) $(LIBOPT)
 	$(LINK) $(LFLAGS) $(MAKEOBJS),$(VMSMAKEOBJS),$(LIBS)
 
-makedefs.obj :	$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
-		$(INC)monsym.h $(INC)artilist.h $(INC)patchlevel.h $(INC)qtext.h
+makedefs.obj :	makedefs.c \
+		$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
+		$(INC)monsym.h $(INC)artilist.h $(INC)dungeon.h \
+		$(INC)obj.h $(INC)monst.h $(INC)you.h $(INC)flag.h \
+		$(INC)dlb.h $(INC)patchlevel.h $(INC)qtext.h
 
 $(INC)onames.h	: $(MAKEDEFS)
 	$(RUN) $(MAKEDEFS) -o

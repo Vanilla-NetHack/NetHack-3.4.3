@@ -18,6 +18,7 @@ typedef struct amii_mi {
     long glyph;			/* Glyph for menu item */
     char selected;		/* Been selected? */
     char selector;		/* Char used to select this entry. */
+    char gselector;		/* Group selector */
     char canselect;		/* Can user select this entry. */
     char attr;			/* Attribute for the line. */
     char *str;			/* The text of the item. */

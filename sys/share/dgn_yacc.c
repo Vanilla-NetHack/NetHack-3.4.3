@@ -8,7 +8,7 @@ static char yysccsid[] = "@(#)yaccpar	1.9 (Berkeley) 02/21/93";
 #define yyerrok (yyerrflag=0)
 #define YYRECOVERING (yyerrflag!=0)
 #define YYPREFIX "yy"
-/*	SCCS Id: @(#)dgn_comp.c	3.2	94/10/08	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.2	96/05/10	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -548,8 +548,9 @@ output_dgn()
 {
 	int	nd, cl = 0, nl = 0,
 		    cb = 0, nb = 0;
-	static long version_info[3] = {
-			VERSION_NUMBER, VERSION_FEATURES, VERSION_SANITY
+	static unsigned long version_info[4] = {
+			VERSION_NUMBER, VERSION_FEATURES,
+			VERSION_SANITY1, VERSION_SANITY2
 	};
 
 	if(++n_dgns <= 0) {

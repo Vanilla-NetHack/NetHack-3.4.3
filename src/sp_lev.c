@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.c	3.2	96/03/13	*/
+/*	SCCS Id: @(#)sp_lev.c	3.2	96/05/08	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -735,11 +735,13 @@ create_monster(m,croom)
 monster	*m;
 struct mkroom	*croom;
 {
-	struct monst	*mtmp;
-	schar		x,y;
-	char		class;
-	aligntyp	amask;
-	struct permonst *pm;
+    struct monst *mtmp;
+    schar x, y;
+    char class;
+    aligntyp amask;
+    struct permonst *pm;
+
+    if (rn2(100) < m->chance) {
 
 	if (m->class >= 0)
 	    class = (char) def_char_to_monclass((char)m->class);
@@ -789,7 +791,7 @@ struct mkroom	*croom;
 	    mtmp = mk_roamer(pm, Amask2align(amask), x, y, m->peaceful);
 	else if(PM_ARCHEOLOGIST <= m->id && m->id <= PM_WIZARD)
 	         mtmp = mk_mplayer(pm, x, y, FALSE);
-	else mtmp = makemon(pm, x, y);
+	else mtmp = makemon(pm, x, y, NO_MM_FLAGS);
 
 	if (mtmp) {
 	    /* handle specific attributes for some special monsters */
@@ -870,9 +872,10 @@ struct mkroom	*croom;
 	    }
 	}
 
+    }		/* if (rn2(100) < m->chance) */
  m_done:
-	Free(m->name.str);
-	Free(m->appear_as.str);
+    Free(m->name.str);
+    Free(m->appear_as.str);
 }
 
 /*
@@ -884,9 +887,11 @@ create_object(o,croom)
 object	*o;
 struct mkroom	*croom;
 {
-	struct obj	*otmp;
-	schar	x,y;
-	char	c;
+    struct obj *otmp;
+    schar x, y;
+    char c;
+
+    if (rn2(100) < o->chance) {
 
 	x = o->x; y = o->y;
 	if (croom)
@@ -942,7 +947,6 @@ struct mkroom	*croom;
 
 	if (o->name.str) {	/* Give a name to that object */
 	    otmp = oname(otmp, o->name.str);
-	    free((genericptr_t) o->name.str);
 	}
 
 	switch(o->containment) {
@@ -956,18 +960,53 @@ struct mkroom	*croom;
 		}
 		remove_object(otmp);
 		add_to_container(container, otmp);
-		return;
+		goto o_done;		/* don't stack, but do other cleanup */
 	    /* container */
 	    case 2:
 		delete_contents(otmp);
 		container = otmp;
-		return;
+		break;
 	    /* nothing */
 	    case 0: break;
 
 	    default: impossible("containment type %d?", (int) o->containment);
 	}
+
+	/* Medusa level special case: statues are petrified monsters, so they
+	 * are not stone-resistant and have monster inventory.  They also lack
+	 * other contents, but that can be specified as an empty container.
+	 */
+	if (o->id == STATUE && Is_medusa_level(&u.uz) &&
+		    o->corpsenm == NON_PM) {
+	    struct monst *was;
+	    struct obj *obj;
+	    int wastyp;
+
+	    /* Named random statues are of player types, and aren't stone-
+	     * resistant (if they were, we'd have to reset the name as well as
+	     * setting corpsenm).
+	     */
+	    for (wastyp = otmp->corpsenm; ; wastyp = rndmonnum()) {
+		/* makemon without rndmonst() might create a group */
+		was = makemon(&mons[wastyp], 0, 0, NO_MM_FLAGS);
+		if (!resists_ston(was)) break;
+		mongone(was);
+	    }
+	    otmp->corpsenm = wastyp;
+	    while(was->minvent) {
+		obj = was->minvent;
+		obj->owornmask = 0;
+		obj_extract_self(obj);
+		add_to_container(otmp, obj);
+	    }
+	    mongone(was);
+	}
+
 	stackobj(otmp);
+
+    }		/* if (rn2(100) < o->chance) */
+ o_done:
+    Free(o->name.str);
 }
 
 /*
@@ -1970,7 +2009,7 @@ dlb *fd;
 
     char    n, numpart = 0;
     xchar   nwalk = 0, nwalk_sav;
-    short   filling;
+    schar   filling;
     char    halign, valign;
 
     int     xi, dir, size;
@@ -2492,11 +2531,11 @@ dlb *fd;
 	    }
 	    for (x = rn2(2); x; x--) {
 		maze1xy(&mm, DRY);
-		(void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y);
+		(void) makemon(&mons[PM_MINOTAUR], mm.x, mm.y, NO_MM_FLAGS);
 	    }
 	    for(x = rnd((int) (12 * mapfact) / 100); x; x--) {
 		    maze1xy(&mm, WET|DRY);
-		    (void) makemon((struct permonst *) 0, mm.x, mm.y);
+		    (void) makemon((struct permonst *) 0, mm.x, mm.y, NO_MM_FLAGS);
 	    }
 	    for(x = rn2((int) (15 * mapfact) / 100); x; x--) {
 		    maze1xy(&mm, DRY);
@@ -2528,7 +2567,7 @@ const char *name;
 	dlb *fd;
 	boolean result = FALSE;
 	char c;
-	long vers_info[3];
+	unsigned long vers_info[4];
 
 	fd = dlb_fopen(name, RDBMODE);
 	if (!fd) return FALSE;

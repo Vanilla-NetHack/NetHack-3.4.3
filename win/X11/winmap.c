@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmap.c	3.2	95/09/03	*/
+/*	SCCS Id: @(#)winmap.c	3.2	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -1112,6 +1112,7 @@ map_exposed(w, client_data, widget_data)
 
     wp = find_widget(w);
     map_info = wp->map_information;
+    if (wp->keep_window && !map_info) return;
     /*
      * The map is sent an expose event when the viewport resizes.  Make sure
      * that the cursor is still in the viewport after the resize.
@@ -1527,21 +1528,18 @@ destroy_map_window(wp)
     struct xwindow *wp;
 {
     struct map_info_t *map_info = wp->map_information;
-#ifdef TEXTCOLOR
-    int i;
-#endif
 
-    if (wp->popup) {
+    if (wp->popup)
 	nh_XtPopdown(wp->popup);
 
-	if (map_info->is_tile) {
-	    /* free alloc'ed tile information */
-	    free((char *) map_info->mtype.tile_map);
-	} else {
-	    struct text_map_info_t *text_map = map_info->mtype.text_map;
+    if (map_info) {
+	struct text_map_info_t *text_map = map_info->mtype.text_map;
 
-	    /* Free allocated GCs. */
+	/* Free allocated GCs. */
+	if (!map_info->is_tile) {
 #ifdef TEXTCOLOR
+	    int i;
+
 	    for (i = 0; i < CLR_MAX; i++) {
 		XtReleaseGC(wp->w, text_map->color_gcs[i]);
 		XtReleaseGC(wp->w, text_map->inv_color_gcs[i]);
@@ -1550,18 +1548,22 @@ destroy_map_window(wp)
 	    XtReleaseGC(wp->w, text_map->copy_gc);
 	    XtReleaseGC(wp->w, text_map->inv_copy_gc);
 #endif
-	    /* free alloc'ed text information */
-	    free((char *) map_info->mtype.text_map);
 	}
+	/* free alloc'ed text information */
+	free((genericptr_t)text_map),   map_info->mtype.text_map = 0;
 
 	/* Free malloc'ed space. */
-	free((char *) map_info);
-
-	/* Destroy map widget. */
-	XtDestroyWidget(wp->popup);
+	free((genericptr_t)map_info),  wp->map_information = 0;
     }
 
-    wp->type = NHW_NONE;	/* allow re-use */
+	/* Destroy map widget. */
+    if (wp->popup && !wp->keep_window)
+	XtDestroyWidget(wp->popup),  wp->popup = (Widget)0;
+
+    if (wp->keep_window)
+	XtRemoveCallback(wp->w, XtNexposeCallback, map_exposed, (XtPointer)0);
+    else
+	wp->type = NHW_NONE;	/* allow re-use */
 }
 
 

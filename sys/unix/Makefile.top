@@ -103,7 +103,7 @@ spec_levs:
 	( cd util ; $(MAKE) lev_comp )
 	( cd dat ; $(MAKE) spec_levs )
 	( cd dat ; $(MAKE) quest_levs )
-	
+
 dungeon:
 	( cd util ; $(MAKE) dgn_comp )
 	( cd dat ; $(MAKE) dungeon )

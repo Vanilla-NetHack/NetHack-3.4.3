@@ -1,5 +1,5 @@
 #	Makefile for NetHack's utility programs.
-#	SCCS Id: @(#)Makefile.utl	3.2	95/05/06
+#	SCCS Id: @(#)Makefile.utl	3.2	96/05/09
 
 # newer makes predefine $(MAKE) to 'make' and do smarter processing of
 # recursive make calls if $(MAKE) is used
@@ -68,6 +68,11 @@
 #   OR compile backwards compatible a.out format
 # CFLAGS = -O2 -b i486-linuxaout -fomit-frame-pointer -I../include -I/usr/X11/include
 # LFLAGS = -b i486-linuxaout -L/usr/X11/lib
+
+# flags for BeBox using the command line
+# remember to uncomment flex and bison below
+#CC = mwcc
+#CFLAGS = -D__beos__=1 -I../include
 
 # flags for debugging:
 # CFLAGS = -g -I../include
@@ -138,8 +143,10 @@ YACCDIST =
 makedefs:	$(MAKEOBJS)
 	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
 
-makedefs.o:  ../include/config.h ../include/permonst.h ../include/objclass.h \
-		../include/monsym.h ../include/artilist.h \
+makedefs.o: makedefs.c  ../include/config.h ../include/permonst.h \
+		../include/objclass.h ../include/monsym.h \
+		../include/artilist.h ../include/dungeon.h ../include/obj.h \
+		../include/monst.h ../include/you.h ../include/flag.h \
 		../include/patchlevel.h ../include/qtext.h
 
 ../include/onames.h: makedefs

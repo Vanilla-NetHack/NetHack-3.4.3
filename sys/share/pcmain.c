@@ -205,7 +205,7 @@ char *argv[];
 			exit(EXIT_SUCCESS);
 		}
 		/* Don't inialize the window system just to print usage */
-		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "-H", 2)) {
+		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "/?", 2)) {
 			nhusage();
 			exit(EXIT_SUCCESS);
 		}

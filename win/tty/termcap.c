@@ -764,16 +764,25 @@ cl_eos()			/* free after Robert Viduya */
 #if defined(TEXTCOLOR) && defined(TERMLIB)
 # if defined(UNIX) && defined(TERMINFO)
 /*
- * Sets up color highlighting, using terminfo(4) escape sequences (highlight
- * code found in print.c).  It is assumed that the background color is black.
+ * Sets up color highlighting, using terminfo(4) escape sequences.
+ *
+ * Having never seen a terminfo system without curses, we assume this
+ * inclusion is safe.  On systems with color terminfo, it should define
+ * the 8 COLOR_FOOs, and avoid us having to guess whether this particular
+ * terminfo uses BGR or RGB for its indexes.
+ *
+ * If we don't get the definitions, then guess.  Original color terminfos
+ * used BGR.  Linux using ncurses and SCO UNIX are known to have RGB terminfos.
+ *
+ * In any case, treat black specially so we don't try to display black
+ * characters on the assumed black background.
  */
+#include <curses.h>
 
-/* terminfo indexes for the basic colors it guarantees, used to map ANSI
- * RGB to terminfo BGR.  SCO UNIX already uses RGB for terminfo colors,
- * but still needs black treated specially. */
-
-#  ifndef _M_UNIX
-#define COLOR_BLACK   1		/* fake out to avoid black on black */
+#  ifdef COLOR_BLACK	/* trust include file */
+#undef COLOR_BLACK
+#  else
+#   ifndef _M_UNIX	/* guess BGR */
 #define COLOR_BLUE    1
 #define COLOR_GREEN   2
 #define COLOR_CYAN    3
@@ -781,8 +790,7 @@ cl_eos()			/* free after Robert Viduya */
 #define COLOR_MAGENTA 5
 #define COLOR_YELLOW  6
 #define COLOR_WHITE   7
-#  else
-#define COLOR_BLACK   4		/* fake out to avoid black on black */
+#   else		/* guess RGB */
 #define COLOR_RED     1
 #define COLOR_GREEN   2
 #define COLOR_YELLOW  3
@@ -790,7 +798,9 @@ cl_eos()			/* free after Robert Viduya */
 #define COLOR_MAGENTA 5
 #define COLOR_CYAN    6
 #define COLOR_WHITE   7
+#   endif
 #  endif
+#define COLOR_BLACK COLOR_BLUE
 
 const int ti_map[8] = {
 	COLOR_BLACK, COLOR_RED, COLOR_GREEN, COLOR_YELLOW,

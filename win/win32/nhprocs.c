@@ -976,11 +976,12 @@ LBS_NOTIFY | WS_BORDER | WS_VISIBLE | LBS_WANTKEYBOARDINPUT | LBS_USETABSTOPS,
  */
 
 void
-win32_add_menu(window, glyph, identifier, ch, attr, str, preselected)
+win32_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
 winid window;
 int glyph;                  /* unused (for now) */
 const anything *identifier;
 char ch;
+char gch;		    /* group accelerator, 0 => none */
 int attr;
 const char *str;
 boolean preselected;

@@ -309,7 +309,7 @@
 #define tty_putstr(x,y,z)		tty_putstr_(x,y,z)
 #define tty_display_file(x,y)		tty_display_file_(x,y)
 #define tty_start_menu(x)		tty_start_menu_(x)
-#define tty_add_menu(a,b,c,d,e,f,g)	tty_add_menu_(a,b,c,d,e,f,g)
+#define tty_add_menu(a,b,c,d,e,f,g,h)	tty_add_menu_(a,b,c,d,e,f,g,h)
 #define tty_end_menu(a,b)		tty_end_menu_(a,b)
 #define tty_select_menu(a,b,c)		tty_select_menu_(a,b,c)
 #define tty_update_inventory()		tty_update_inventory_()

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)weapon.c	3.2	96/03/03	*/
+/*	SCCS Id: @(#)weapon.c	3.2	96/05/12	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,28 +25,36 @@ STATIC_OVL NEARDATA const short skill_names_indices[P_NUM_SKILLS] = {
 	PN_POLEARMS,	SPEAR,		JAVELIN,	TRIDENT,
 	LANCE,		BOW,		SLING,		CROSSBOW,
 	DART,		SHURIKEN,	BOOMERANG,	BULLWHIP,
-	UNICORN_HORN,	PN_TWO_WEAPON_COMBAT,
-	PN_BARE_HANDED_COMBAT, PN_MARTIAL_ARTS
+	UNICORN_HORN,	PN_TWO_WEAPONS,	PN_BARE_HANDED,
 };
 
+/* note: entry [0] isn't used */
 STATIC_OVL NEARDATA const char *odd_skill_names[] = {
-    "polearms", "two weapon combat", "bare handed combat",
-    "martial arts", "saber"
+    0, "polearms", "saber", "two weapon combat",
+    "bare handed combat", "martial arts",
 };
+
+static NEARDATA const char may_advance_msg[] =
+				"feel more confident in your fighting skills.";
 
 #endif	/* OVLB */
+
+STATIC_DCL boolean FDECL(can_advance, (int));
+
 #ifdef OVL1
 
 static char *FDECL(skill_level_name, (int,char *));
 static int FDECL(slots_required, (int));
-static boolean FDECL(can_advance, (int));
 static void FDECL(skill_advance, (int));
 
 #endif	/* OVL1 */
 
-#define P_NAME(type) (skill_names_indices[type] < NUM_OBJECTS ? \
+#define P_NAME(type) (skill_names_indices[type] >= 0 ? \
 		      OBJ_NAME(objects[skill_names_indices[type]]) : \
-		      odd_skill_names[skill_names_indices[type] - NUM_OBJECTS])
+		      (type == P_BARE_HANDED_COMBAT ? \
+			(martial_bonus() ? odd_skill_names[-PN_MARTIAL_ARTS] \
+					 : odd_skill_names[-PN_BARE_HANDED]) : \
+		      odd_skill_names[-skill_names_indices[type]]))
 #endif /* WEAPON_SKILLS */
 
 #ifdef OVLB
@@ -564,18 +572,17 @@ char *buf;
 {
     const char *ptr;
 
-    if (skill <= P_LAST_WEAPON || skill == P_TWO_WEAPON_COMBAT) {
-	switch (P_SKILL(skill)) {
-	    case P_UNSKILLED:	ptr = "Unskilled"; break;
-	    case P_BASIC:	ptr = "Basic";     break;
-	    case P_SKILLED:	ptr = "Skilled";   break;
-	    case P_EXPERT:	ptr = "Expert";    break;
-	    default:		ptr = "Unknown?";  break;
-	}
-	Strcpy(buf, ptr);
-    } else {
-	Sprintf(buf, "%d", P_SKILL(skill));
+    switch (P_SKILL(skill)) {
+	case P_UNSKILLED:    ptr = "Unskilled"; break;
+	case P_BASIC:	     ptr = "Basic";     break;
+	case P_SKILLED:	     ptr = "Skilled";   break;
+	case P_EXPERT:	     ptr = "Expert";    break;
+	/* these are for unarmed combat/martial arts only */
+	case P_MASTER:	     ptr = "Master";    break;
+	case P_GRAND_MASTER: ptr = "Grand Master"; break;
+	default:	     ptr = "Unknown";	break;
     }
+    Strcpy(buf, ptr);
     return buf;
 }
 
@@ -592,7 +599,7 @@ int skill;
 }
 
 /* return true if this skill can be advanced */
-static boolean
+STATIC_OVL boolean
 can_advance(skill)
 int skill;
 {
@@ -604,113 +611,89 @@ int skill;
 	    && u.weapon_slots >= slots_required(skill);
 }
 
-/* `#qualifications' extended command */
-int
-check_weapon_skills()
-{
-    int i, len, name_length;
-    char buf[BUFSIZ], buf2[BUFSIZ];
-    winid tmpwin;
-
-    tmpwin = create_nhwindow(NHW_MENU);
-    putstr(tmpwin, 0, "Current Skills:");
-    putstr(tmpwin, 0, "");
-
-    /* Find longest available skill name. */
-    for (name_length = 0, i = 0; i < P_NUM_SKILLS; i++)
-	if (!P_RESTRICTED(i) && (len = strlen(P_NAME(i))) > name_length)
-	    name_length = len;
-
-    /* list the skills, indicating which ones could be advanced */
-    for (i = 0; i < P_NUM_SKILLS; i++) {
-	if (P_RESTRICTED(i)) continue;
-#if 1
-	if (i == P_TWO_WEAPON_COMBAT) continue;
-#endif
-
-	/* sigh, this assumes a monospaced font */
-	if (wizard)
-	    Sprintf(buf2, "%-*s %c%-9s %4d(%4d)", name_length, P_NAME(i),
-		    can_advance(i) ? '*' : ' ',
-		    skill_level_name(i, buf),
-		    P_ADVANCE(i), practice_needed_to_advance(P_SKILL(i)));
-	else
-	    Sprintf(buf2, "%-*s %c[%s]", name_length, P_NAME(i),
-		    can_advance(i) ? '*' : ' ',
-		    skill_level_name(i, buf));
-	putstr(tmpwin, 0, buf2);
-    }
-
-    display_nhwindow(tmpwin, TRUE);
-    destroy_nhwindow(tmpwin);
-    return 0;
-}
-
 static void
 skill_advance(skill)
 int skill;
 {
-    You("are now more skilled in %s.", P_NAME(skill));
     u.weapon_slots -= slots_required(skill);
     P_SKILL(skill)++;
     u.skill_record[u.skills_advanced++] = skill;
+    /* subtly change the adavnce message to indicate no more advancement */
+    You("are now %s skilled in %s.", 
+    	P_SKILL(skill) >= P_MAX_SKILL(skill) ? "most" : "more",
+    	P_NAME(skill));
 }
 
-/* `#enhance' extended command */
+/*
+ * The `#enhance' extended command.  What we _really_ would like is
+ * to keep being able to pick things to advance until we couldn't any
+ * more.  This is currently not possible -- the menu code has no way
+ * to call us back for instant action.  Even if it did, we would also need
+ * to be able to update the menu since selecting one item could make
+ * others unselectable.
+ */
 int
-select_weapon_skill()
+enhance_weapon_skill()
 {
-    int i, n, mark, len, longest;
+    int i, n, len, longest, to_advance;
     char buf[BUFSIZ], buf2[BUFSIZ];
     menu_item *selected;
     anything any;
     winid win;
 
-    /* count # of skills we can advance */
-    for (longest = mark = n = i = 0; i < P_NUM_SKILLS; i++)
-	if (can_advance(i)) {
-	    if ((len = strlen(P_NAME(i))) > longest) longest = len;
-	    mark = i;	/* in case we can only advance one */
-	    n++;
-	}
-
-    if (n == 0) {
-	You("are not able to advance any skill right now.");
-	return 0;
+    /* find longest available skill name, count those that can advance */
+    for (longest = 0, to_advance = 0, i = 0; i < P_NUM_SKILLS; i++) {
+	if (!P_RESTRICTED(i) && (len = strlen(P_NAME(i))) > longest)
+	    longest = len;
+	if (can_advance(i)) to_advance++;
     }
 
-    if (n != 1) {
-	/* ask which skill to advance */
-	win = create_nhwindow(NHW_MENU);
-	start_menu(win);
-	any.a_void = 0;
-	for (i = 0; i < P_NUM_SKILLS; i++) {
-	    if (!can_advance(i)) continue;
+    win = create_nhwindow(NHW_MENU);
+    start_menu(win);
 
-	    if (i <= P_LAST_WEAPON || i == P_TWO_WEAPON_COMBAT)
-		(void) skill_level_name(i, buf2);
-	    else
-		Sprintf(buf2, "%d", slots_required(i));
-
-	    /* assume monospaced font */
-	    Sprintf(buf, "%-*s [%s]", longest, P_NAME(i), buf2);
-	    any.a_int = i + 1;	/* must be non-zero */
-#if 1
-	    if (i == P_TWO_WEAPON_COMBAT) continue;
+    /* list the skills, making ones that could be advanced selectable */
+    for (any.a_void = 0, i = 0; i < P_NUM_SKILLS; i++) {
+	if (P_RESTRICTED(i)) continue;
+	if (i == P_TWO_WEAPON_COMBAT) continue;	/* skip for now */
+	/*
+	 * Sigh, this assumes a monospaced font.
+	 * The 12 is the longest skill level name.
+	 * The "    " is room for a selection letter and dash, "a - ".
+	 */
+#ifdef WIZARD
+	if (wizard)
+	    Sprintf(buf2, "%s%-*s %-12s %4d(%4d)",
+		    to_advance == 0 || can_advance(i) ? "" : "    " ,
+		    longest, P_NAME(i),
+		    skill_level_name(i, buf),
+		    P_ADVANCE(i), practice_needed_to_advance(P_SKILL(i)));
+	else
 #endif
-	    add_menu(win, NO_GLYPH, &any, 0, 0, buf, MENU_UNSELECTED);
-	}
+	    Sprintf(buf2, "%s %-*s [%s]",
+		    to_advance == 0 || can_advance(i) ? "" : "    ",
+		    longest, P_NAME(i),
+		    skill_level_name(i, buf));
 
-	end_menu(win, "Pick a skill to advance:");
-	n = select_menu(win, PICK_ONE, &selected);
-	destroy_nhwindow(win);
-	if (n <= 0) return 0;			/* cancelled dialog */
-
-	mark = selected[0].item.a_int - 1;	/* get item selected */
-	free((genericptr_t)selected);
+	any.a_int = can_advance(i) ? i+1 : 0;
+	add_menu(win, NO_GLYPH, &any, 0, 0, ATR_NONE, buf2, MENU_UNSELECTED);
     }
 
-    skill_advance(mark);
+    end_menu(win, to_advance ?	"Pick a skill to advance:" :
+				"Current skills:");
+    n = select_menu(win, to_advance ? PICK_ONE : PICK_NONE, &selected);
+    destroy_nhwindow(win);
+    if (n > 0) {
+	n = selected[0].item.a_int - 1;	/* get item selected */
+	free((genericptr_t)selected);
+	skill_advance(n);
+	/* check for more skills able to advance, if so then .. */
+	for (i = 0; i < P_NUM_SKILLS; i++) {
+	    if (can_advance(i)) {
+		You("feel you could be more dangerous!");
+		break;
+	    }
+	}
+    }
     return 0;
 }
 
@@ -737,9 +720,31 @@ int skill;
 #ifdef WEAPON_SKILLS
 
 void
+use_skill(skill)
+int skill;
+{
+    boolean advance_before;
+
+    if (skill != P_NO_TYPE && !P_RESTRICTED(skill)) {
+	advance_before = can_advance(skill);
+	P_ADVANCE(skill)++;
+	if (!advance_before && can_advance(skill))
+	    You(may_advance_msg);
+    }
+}
+
+void
 add_weapon_skill()
 {
+    int i, before, after;
+
+    for (i = 0, before = 0; i < P_NUM_SKILLS; i++)
+	if (can_advance(i)) before++;
     u.weapon_slots++;
+    for (i = 0, after = 0; i < P_NUM_SKILLS; i++)
+	if (can_advance(i)) after++;
+    if (before < after)
+	You(may_advance_msg);
 }
 
 void
@@ -823,6 +828,8 @@ struct obj *obj;
 		type = P_SPEAR; break;
 	    case JAVELIN:
 		type = P_JAVELIN; break;
+	    case TRIDENT:
+		type = P_TRIDENT; break;
 	    case LANCE:
 		type = P_LANCE; break;
 	    case BOW:			case ELVEN_BOW:
@@ -851,9 +858,8 @@ struct obj *obj;
 	return type;
     }
 
-    /* No object is one of these. */
-    return P_RESTRICTED(P_BARE_HANDED_COMBAT) ? P_MARTIAL_ARTS :
-						P_BARE_HANDED_COMBAT;
+    /* no object => */
+    return P_BARE_HANDED_COMBAT;
 }
 
 /*
@@ -889,9 +895,8 @@ struct obj *weapon;
 	    case P_EXPERT:	bonus = -3; break;
 	}
     } else if (type == P_BARE_HANDED_COMBAT) {
-	bonus = (P_SKILL(type) + 1) / 2;	/* restricted == 0 */
-    } else if (type == P_MARTIAL_ARTS) {
-	bonus = (P_SKILL(type) + 1) * 2 / 3;	/* restricted == 0 */
+	/* restricted == 0 */
+	bonus = ((P_SKILL(type) + 1) * (martial_bonus() ? 2 : 1)) / 2;
     }
     return bonus;
 }
@@ -920,9 +925,7 @@ struct obj *weapon;
 	    case P_EXPERT:	bonus =  2; break;
 	}
     } else if (type == P_BARE_HANDED_COMBAT && P_SKILL(type)) {
-	bonus = P_SKILL(type) / 2;
-    } else if (type == P_MARTIAL_ARTS && P_SKILL(type)) {
-	bonus = P_SKILL(type) * 2 / 3;
+	bonus = (P_SKILL(type) * (martial_bonus() ? 2 : 1)) / 2;
     }
     return bonus;
 }
@@ -963,6 +966,10 @@ struct def_skill *class_skill;
 	    if (P_SKILL(skill) == P_ISRESTRICTED)	/* skill pre-set */
 		P_SKILL(skill) = P_UNSKILLED;
 	}
+
+	/* High potential fighters already know how to use their hands. */
+	if (P_MAX_SKILL(P_BARE_HANDED_COMBAT) > P_EXPERT)
+	    P_SKILL(P_BARE_HANDED_COMBAT) = P_BASIC;
 
 	/*
 	 * Make sure we haven't missed setting the max on a skill

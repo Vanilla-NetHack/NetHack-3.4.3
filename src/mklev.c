@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mklev.c	3.2	96/01/05	*/
+/*	SCCS Id: @(#)mklev.c	3.2	96/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -405,7 +405,7 @@ register int type;
 		     (mvitals[PM_GIANT_MIMIC].mvflags & G_GONE))) {
 		    /* make a mimic instead */
 		    levl[x][y].doormask = D_NODOOR;
-		    mtmp = makemon(mkclass(S_MIMIC,0), x, y);
+		    mtmp = makemon(mkclass(S_MIMIC,0), x, y, NO_MM_FLAGS);
 		    if (mtmp)
 			set_mimic_sym(mtmp);
 		}
@@ -750,7 +750,7 @@ skip0:
 
 		if(u.uhave.amulet || !rn2(3)) {
 		    x = somex(croom); y = somey(croom);
-		    tmonst = makemon((struct permonst *) 0, x,y);
+		    tmonst = makemon((struct permonst *) 0, x,y,NO_MM_FLAGS);
 		    if (tmonst && tmonst->data == &mons[PM_GIANT_SPIDER] &&
 			!is_pool(x,y))
 			(void) maketrap (x,y,WEB);
@@ -772,9 +772,9 @@ skip0:
 		if(!rn2(60)) mkaltar(croom);
 		/* put statues inside */
 		if(!rn2(20))
-		    (void) mkcorpstat(STATUE, (struct permonst *)0,
+		    (void) mkcorpstat(STATUE, (struct monst *)0,
+				      (struct permonst *)0,
 				      somex(croom), somey(croom), TRUE);
-
 		/* put box/chest inside;
 		 *  40% chance for at least 1 box, regardless of number
 		 *  of rooms; about 5 - 7.5% for 2 boxes, least likely
@@ -933,7 +933,7 @@ register struct mkroom *croom;
 
 	/* skip the room if already done; i.e. a shop handled out of order */
 	/* also skip if this is non-rectangular (it _must_ be done already) */
-	if (levl[lowx][lowy].roomno == roomno || croom->irregular)
+	if ((int) levl[lowx][lowy].roomno == roomno || croom->irregular)
 	    return;
 #ifdef SPECIALIZATION
 # ifdef REINCARNATION
@@ -1232,7 +1232,8 @@ coord *tm;
 	}
 
 	(void) maketrap(m.x, m.y, kind);
-	if (kind == WEB) (void) makemon(&mons[PM_GIANT_SPIDER], m.x, m.y);
+	if (kind == WEB) (void) makemon(&mons[PM_GIANT_SPIDER],
+						m.x, m.y, NO_MM_FLAGS);
 }
 
 void

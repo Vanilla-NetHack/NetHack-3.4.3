@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.2	95/08/30	*/
+/*	SCCS Id: @(#)timeout.c	3.2	96/04/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -270,8 +270,7 @@ boolean wakeup_msg;
 	nomul(how_long);
 	/* early wakeup from combat won't be possible until next monster turn */
 	u.usleep = monstermoves;
-	if (wakeup_msg) nomovemsg = "You wake up.";
-	/* otherwise defaults to "You can move again." */
+	nomovemsg = wakeup_msg ? "You wake up." : You_can_move_again;
 }
 
 /* Attach an egg hatch timeout to the given egg. */
@@ -314,26 +313,53 @@ hatch_egg(arg, timeout)
 genericptr_t arg;
 long timeout;
 {
-	xchar x, y;
-	boolean silent, canseeit;
 	struct obj *egg;
-	struct monst *mon = (struct monst *) 0;
-	int yours;
+	struct monst *mon, *mon2;
+	coord cc;
+	xchar x, y;
+	boolean yours, silent, canseeit = FALSE;
+	int i, mnum, hatchcount = 0;
 
 	egg = (struct obj *) arg;
-
 	/* sterilized while waiting */
 	if (egg->corpsenm == NON_PM) return;
 
-	yours = egg->spe;
+	mon = mon2 = (struct monst *)0;
+	mnum = big_to_little(egg->corpsenm);
+	yours = egg->spe != 0;
 	silent = (timeout != monstermoves);	/* hatched while away */
 
 	/* only can hatch when in INVENT, FLOOR, MINVENT */
 	if (get_obj_location(egg, &x, &y, 0)) {
+	    hatchcount = rnd((int)egg->quan);
 	    canseeit = cansee(x, y) && !silent;
-	    mon = makemon(&mons[big_to_little(egg->corpsenm)], x, y);
-	} else {
-	    canseeit = 0;
+	    if (!(mons[mnum].geno & G_UNIQ) &&
+		   !(mvitals[mnum].mvflags & (G_GENOD | G_EXTINCT))) {
+		for (i = hatchcount; i > 0; i--) {
+		    if (!enexto(&cc, x, y, &mons[mnum]) ||
+			 !(mon = makemon(&mons[mnum], cc.x, cc.y, NO_MINVENT)))
+			break;
+		    /* tame if your own egg hatches while you're on the
+		       same dungeon level, or any dragon egg which hatches
+		       while it's in your inventory */
+		    if ((yours && !silent) ||
+			(mon->data->mlet == S_DRAGON &&
+				egg->where == OBJ_INVENT)) {
+			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0) {
+			    mon = mon2;
+			    if (egg->where == OBJ_INVENT &&
+				    mon->data->mlet != S_DRAGON)
+				mon->mtame = 20;
+			}
+		    }
+		    if (mvitals[mnum].mvflags & G_EXTINCT)
+			break;	/* just made last one */
+		    mon2 = mon;	/* in case makemon() fails on 2nd egg */
+		}
+		if (!mon) mon = mon2;
+		hatchcount -= i;
+		egg->quan -= (long)hatchcount;
+	    }
 	}
 #if 0
 	/*
@@ -353,6 +379,9 @@ long timeout;
 
 	    + Mark the egg as hatched, then place the monster when we
 	      place the migrating objects.
+
+	    + Or just kill any egg which gets sent to another level.
+	      Falling is the usual reason such transportation occurs.
 	    */
 	    canseeit = FALSE;
 	    mon = ???
@@ -360,60 +389,74 @@ long timeout;
 #endif
 
 	if (mon) {
-	    struct monst *mon2;
-	    boolean learn_type = canseeit;
-	    int mnum = egg->corpsenm;
+	    char monnambuf[BUFSZ], carriedby[BUFSZ];
+	    boolean siblings = (hatchcount > 1), redraw = FALSE;
 
-	    discard_minvent(mon);		/* no initial inventory */
+	    if (canseeit) {
+		Sprintf(monnambuf, "%s%s",
+			siblings ? "some " : "",
+			siblings ? makeplural(m_monnam(mon)) : a_monnam(mon));
+		learn_egg_type(mnum);
+	    }
 	    switch (egg->where) {
 		case OBJ_INVENT:
-		    learn_type = TRUE;	/* always know type if in invent */
 		    if (Blind)
 			You_feel("%s %s from your pack!", something,
 			    locomotion(mon->data, "drop"));
 		    else
 			You("see %s %s out of your pack!",
-			    a_monnam(mon),
-			    locomotion(mon->data, "drop"));
-
+			    monnambuf, locomotion(mon->data, "drop"));
 		    if (yours) {
-			pline("Its cries sound like \"%s.\"",
+			pline("%s cries sound like \"%s.\"",
+			    siblings ? "Their" : "Its",
 			    flags.female ? "mommy" : "daddy");
-			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0)
-			    mon = mon2;
-			mon->mtame = 20;
 		    } else if (mon->data->mlet == S_DRAGON) {
 			verbalize("Gleep!");		/* Mything eggs :-) */
-			if ((mon2 = tamedog(mon, (struct obj *)0)) != 0)
-			    mon = mon2;
 		    }
 		    break;
 
 		case OBJ_FLOOR:
-		    if (canseeit)
-			You("see %s hatch.", a_monnam(mon));
+		    if (canseeit) {
+			You("see %s hatch.", monnambuf);
+			redraw = TRUE;	/* update egg's map location */
+		    }
 		    break;
 
 		case OBJ_MINVENT:
 		    if (canseeit) {
-			char buf[BUFSZ];	/* avoid conflict */
-			Strcpy(buf,a_monnam(mon));
-			You("see %s %s out of %s pack!",
-			    buf, locomotion(mon->data, "drop"),
-			    s_suffix(a_monnam(egg->ocarry)));
+			/* egg carring monster might be invisible */
+			if (canseemon(egg->ocarry))
+			    Sprintf(carriedby, "%s pack",
+				     s_suffix(a_monnam(egg->ocarry)));
+			else
+			    Strcpy(carriedby, "thin air");
+			You("see %s %s out of %s!", monnambuf,
+			    locomotion(mon->data, "drop"), carriedby);
 		    }
 		    break;
 #if 0
 		case OBJ_MIGRATING:
 		    break;
 #endif
+		default:
+		    impossible("egg hatched where? (%d)", (int)egg->where);
+		    break;
 	    }
-	    /* free egg here because we use it above */
-	    obj_extract_self(egg);
-	    obfree(egg, (struct obj *)0);
-
-	    if (learn_type)
-		learn_egg_type(mnum);
+	    if (egg->quan > 0) {
+		/* still some eggs left */
+		attach_egg_hatch_timeout(egg);
+		if (egg->timed) {
+		    /* replace ordinary egg timeout with a short one */
+		    (void) stop_timer(HATCH_EGG, (genericptr_t)egg);
+		    (void) start_timer((long)rnd(12), TIMER_OBJECT,
+					HATCH_EGG, (genericptr_t)egg);
+		}
+	    } else {
+		/* free egg here because we use it above */
+		obj_extract_self(egg);
+		obfree(egg, (struct obj *)0);
+	    }
+	    if (redraw) newsym(x, y);
 	}
 }
 
@@ -422,19 +465,11 @@ void
 learn_egg_type(mnum)
 int mnum;
 {
-	boolean knew_egg = mvitals[mnum].mvflags & MV_KNOWS_EGG;
-
+	/* baby monsters hatch from grown-up eggs */
+	mnum = little_to_big(mnum);
 	mvitals[mnum].mvflags |= MV_KNOWS_EGG;
-	if (!knew_egg) {
-	    struct obj *obj;
-
-	    /* update inventory if we find an egg of this type in there */
-	    for (obj = invent; obj; obj = obj->nobj)
-		if (obj->otyp == EGG && obj->corpsenm == mnum) {
-		    update_inventory();
-		    break;
-		}
-	}
+	/* we might have just learned about other eggs being carried */
+	update_inventory();
 }
 
 /* give a fumble message */

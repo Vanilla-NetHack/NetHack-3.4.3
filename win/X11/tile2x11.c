@@ -157,7 +157,7 @@ FILE *fp;
 	    fprintf(fp, "\",\n");
     }
 
-    return fprintf(fp, "};\n")>0;
+    return fprintf(fp, "};\n")>=0;
 }
 #endif	/* USE_XPM */
 

@@ -1982,6 +1982,8 @@ register struct monst *shkp;
 			otmp->quan = (bp->bquan -= obj->quan);
 			otmp->owt = 0;	/* superfluous */
 			otmp->onamelth = 0;
+			otmp->oxlth = 0;
+			otmp->mtraits = 0;
 			bp->useup = 1;
 			add_to_billobjs(otmp);
 			return;
@@ -2566,6 +2568,7 @@ register boolean croaked;
 	register struct damage *tmp_dam, *tmp2_dam;
 	register boolean did_repair = FALSE, saw_door = FALSE;
 	register boolean saw_floor = FALSE, stop_picking = FALSE;
+	register boolean saw_untrap = FALSE;
 	uchar saw_walls = 0;
 
 	tmp_dam = level.damagelist;
@@ -2605,6 +2608,8 @@ register boolean croaked;
 			saw_walls++;
 		    else if (IS_DOOR(levl[x][y].typ))
 			saw_door = TRUE;
+		    else if (disposition == 3)		/* untrapped */
+			saw_untrap = TRUE;
 		    else
 			saw_floor = TRUE;
 		}
@@ -2635,6 +2640,8 @@ register boolean croaked;
 		pline("Suddenly, the shop door reappears!");
 	    else if (saw_floor)
 		pline("Suddenly, the floor damage is gone!");
+	    else if (saw_untrap)
+	        pline("Suddenly, the trap is removed from the floor!");
 	    else if (inside_shop(u.ux, u.uy) == ESHK(shkp)->shoproom)
 		You_feel("more claustrophobic than before.");
 	    else if (flags.soundok && !rn2(10))
@@ -2646,6 +2653,7 @@ register boolean croaked;
 
 /*
  * 0: repair postponed, 1: silent repair (no messages), 2: normal repair
+ * 3: untrap
  */
 int
 repair_damage(shkp, tmp_dam, catchup)
@@ -2674,8 +2682,22 @@ boolean catchup;	/* restoring a level */
 	    if ((mtmp = m_at(x, y)) && (!passes_walls(mtmp->data)))
 		return(0);
 	}
-	if ((ttmp = t_at(x, y)) != 0)
+	if ((ttmp = t_at(x, y)) != 0) {
+	    if (x == u.ux && y == u.uy)
+		if (!passes_walls(uasmon))
+		    return(0);
+	    if (ttmp->ttyp == LANDMINE || ttmp->ttyp == BEAR_TRAP) {
+		/* convert to an object */
+		otmp = mksobj((ttmp->ttyp == LANDMINE) ? LAND_MINE :
+				BEARTRAP, TRUE, FALSE);
+		otmp->quan= 1;
+		otmp->owt = weight(otmp);
+		mpickobj(shkp, otmp);
+	    }
 	    deltrap(ttmp);
+	    newsym(x, y);
+	    return(3);
+	}
 	if (IS_ROOM(tmp_dam->typ)) {
 	    /* No messages if player already filled trapdoor */
 	    if (catchup || !ttmp)
@@ -2940,7 +2962,7 @@ coord *mm;
 
 	    while (cnt--)
 		if (enexto(mm, mm->x, mm->y, &mons[mndx]))
-		    (void) makemon(&mons[mndx], mm->x, mm->y);
+		    (void) makemon(&mons[mndx], mm->x, mm->y, NO_MM_FLAGS);
 	}
 }
 #endif	/* KOPS */

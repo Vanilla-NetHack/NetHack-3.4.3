@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.2	96/03/02	*/
+/*	SCCS Id: @(#)lev_lex.c	3.2	96/05/16	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -72,20 +72,8 @@ extern void FDECL(exit, (int));
 extern YYSTYPE yylval;
 
 int line_number = 1, colon_line_number = 1;
-
-/*
- * This is *** UGLY *** but I can't think a better way to do it;
- * I really need a huge buffer to scan maps...
- * (This should probably be `#ifndef FLEX_SCANNER' since it's lex-specific.)
- */
-#ifdef YYLMAX
-#undef YYLMAX
-#endif
-#define YYLMAX	2048
-#if defined(sun) && defined(SVR4) && !defined(FLEX_SCANNER)
-char wwtext[YYLMAX];
-#define yytext wwtext
-#endif
+static char map[4096];
+static int map_cnt = 0;
 
 /*
  *	This is a hack required by Michael Hamel to get things
@@ -122,25 +110,19 @@ input()		/* Under MPW \n is chr(13)! Compensate for this. */
 %s MAPC
 %%
 <MAPC>ENDMAP	{
-#ifdef FLEX23_BUG
-		  /*
-		   * There is a bug in Flex 2.3 patch level < 6
-		   * (absent in previous versions)
-		   * that results in the following behaviour :
-		   * Once you enter an yymore(), you never exit from it.
-		   * This should do the trick!
-		   */
-		  extern int yy_more_len;
-
-		  yy_more_len = 0;
-#endif	/* FLEX23_BUG */
 		  BEGIN(INITIAL);
-		  yylval.map = (char *) alloc(yyleng-5);
-		  (void) strncpy(yylval.map, yytext,yyleng-6);
-		  yylval.map[yyleng-6] = 0;
+		  yylval.map = (char *) alloc(map_cnt + 1);
+		  (void) strncpy(yylval.map, map, map_cnt);
+		  yylval.map[map_cnt] = 0;
+		  map_cnt = 0;
 		  return MAP_ID;
 		}
-<MAPC>[-|}{+ABCISHKPLW\\#. ]*\n	{ line_number++; yymore(); }
+<MAPC>[-|}{+ABCISHKPLW\\#. ]*\n	{
+		  line_number++;
+		  (void) strncpy(map + map_cnt, yytext, yyleng);
+		  map_cnt += yyleng;
+		  map[map_cnt] = 0;
+		}
 ^#.*\n		{ line_number++; }
 :		{ colon_line_number = line_number; return ':'; }
 MESSAGE		return MESSAGE_ID;
@@ -239,6 +221,7 @@ noteleport	{ yylval.i=NOTELEPORT; return FLAG_TYPE; }
 hardfloor	{ yylval.i=HARDFLOOR; return FLAG_TYPE; }
 nommap		{ yylval.i=NOMMAP; return FLAG_TYPE; }
 shortsighted	{ yylval.i=SHORTSIGHTED; return FLAG_TYPE; }
+\[\ *[0-9]+\%\ *\] { yylval.i = atoi(yytext + 1); return PERCENT; }
 [+\-]?[0-9]+	{ yylval.i=atoi(yytext); return INTEGER; }
 \"[^"]*\"	{ yytext[yyleng-1] = 0; /* Discard the trailing \" */
 		  yylval.map = (char *) alloc(strlen(yytext+1)+1);

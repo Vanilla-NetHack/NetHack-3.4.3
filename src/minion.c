@@ -45,7 +45,7 @@ register struct permonst *ptr;
 	}
 
 	while (cnt > 0) {
-	    (void)makemon(&mons[dtype], u.ux, u.uy);
+	    (void)makemon(&mons[dtype], u.ux, u.uy, NO_MM_FLAGS);
 	    cnt--;
 	}
 	return;
@@ -78,20 +78,20 @@ boolean talk;
     if (mons[mnum].pxlth == 0) {
 	struct permonst *pm = &mons[mnum];
 	pm->pxlth = sizeof(struct emin);
-	mon = makemon(pm, u.ux, u.uy);
+	mon = makemon(pm, u.ux, u.uy, NO_MM_FLAGS);
 	pm->pxlth = 0;
 	if (mon) {
 	    mon->isminion = TRUE;
 	    EMIN(mon)->min_align = alignment;
 	}
     } else if (mnum == PM_ANGEL) {
-	mon = makemon(&mons[mnum], u.ux, u.uy);
+	mon = makemon(&mons[mnum], u.ux, u.uy, NO_MM_FLAGS);
 	if (mon) {
 	    mon->isminion = TRUE;
 	    EPRI(mon)->shralign = alignment;	/* always A_LAWFUL here */
 	}
     } else
-	mon = makemon(&mons[mnum], u.ux, u.uy);
+	mon = makemon(&mons[mnum], u.ux, u.uy, NO_MM_FLAGS);
     if (mon) {
 	if (talk) {
 	    pline_The("voice of %s booms:", align_gname(alignment));

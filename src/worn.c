@@ -5,6 +5,7 @@
 #include "hack.h"
 
 static void FDECL(m_lose_armor, (struct monst *,struct obj *));
+static void FDECL(m_dowear_type, (struct monst *,long,BOOLEAN_P));
 
 const struct worn {
 	long w_mask;
@@ -166,14 +167,12 @@ register struct monst *mon;
 }
 
 /* weapons are handled separately; rings and eyewear aren't used by monsters */
-#define m_might_wear(O) ((O)->oclass == ARMOR_CLASS ||	\
-			 (O)->oclass == AMULET_CLASS)
 
-/* Wear first object of that type it finds, and never switch unless it
- * has none at all.  This means that monsters with leather armor never
- * switch to plate mail, but it also avoids the overhead of either having 8
- * struct obj *s for every monster in the game, or of doing multiple inventory
- * searches each round using which_armor().
+/* Wear the best object of each type that the monster has.  During creation,
+ * the monster can put everything on at once; otherwise, wearing takes time.
+ * This doesn't affect monster searching for objects--a monster may very well
+ * search for objects it would not want to wear, because we don't want to
+ * check which_armor() each round.
  *
  * We'll let monsters put on shirts and/or suits under worn cloaks, but
  * not shirts under worn suits.  This is somewhat arbitrary, but it's
@@ -187,8 +186,6 @@ m_dowear(mon, creation)
 register struct monst *mon;
 boolean creation;
 {
-	register struct obj *obj;
-
 	/* Note the restrictions here are the same as in dowear in do_wear.c
 	 * except for the additional restriction on intelligence.  (Players
 	 * are always intelligent, even if polymorphed).
@@ -199,70 +196,112 @@ boolean creation;
 	if (mindless(mon->data) && (mon->data->mlet != S_MUMMY || !creation))
 		return;
 
-	for(obj = mon->minvent; obj; obj = obj->nobj) {
-		long flag;
-		int m_delay = 0;
-
-		/* if already worn or never wearable, skip it right away */
-		if (obj->owornmask || !m_might_wear(obj)) continue;
-
-		if (obj->oclass == AMULET_CLASS) {
-			if (obj->otyp != AMULET_OF_LIFE_SAVING &&
-			    obj->otyp != AMULET_OF_REFLECTION)
-				continue;
-			flag = W_AMUL;
+	m_dowear_type(mon, W_AMUL, creation);
 #ifdef TOURIST
-		} else if (is_shirt(obj)) {
-			if (cantweararm(mon->data) ||
-			    /* can't put on shirt if already wearing suit */
-			    (mon->misc_worn_check & W_ARM))
-				continue;
-			flag = W_ARMU;
-			m_delay = (mon->misc_worn_check & W_ARMC) ? 2 : 0;
+	/* can't put on shirt if already wearing suit */
+	if (!cantweararm(mon->data) || (mon->misc_worn_check & W_ARM))
+	    m_dowear_type(mon, W_ARMU, creation);
 #endif
-		} else if (is_cloak(obj)) {
-			/* treating small as a special case allows
-			   hobbits, gnomes, and kobolds to wear cloaks */
-			if (cantweararm(mon->data) &&
-			    mon->data->msize != MZ_SMALL)
-				continue;
-			flag = W_ARMC;
-		} else if (is_helmet(obj)) {
-			flag = W_ARMH;
-		} else if (is_shield(obj)) {
-			if (MON_WEP(mon) && bimanual(MON_WEP(mon)))
-				continue;
-			flag = W_ARMS;
-		} else if (is_gloves(obj)) {
-			if (MON_WEP(mon) && MON_WEP(mon)->cursed)
-				continue;
-			flag = W_ARMG;
-		} else if (is_boots(obj)) {
-			if (slithy(mon->data) || mon->data->mlet == S_CENTAUR)
-				continue;
-			flag = W_ARMF;
-		} else if (obj->oclass == ARMOR_CLASS) {
-			if (cantweararm(mon->data))
-				continue;
-			flag = W_ARM;
-			m_delay = (mon->misc_worn_check & W_ARMC) ? 2 : 0;
-		} else
-			continue;		/* shouldn't be possible */
+	/* treating small as a special case allows
+	   hobbits, gnomes, and kobolds to wear cloaks */
+	if (!cantweararm(mon->data) || mon->data->msize != MZ_SMALL)
+	    m_dowear_type(mon, W_ARMC, creation);
+	m_dowear_type(mon, W_ARMH, creation);
+	if (!MON_WEP(mon) || !bimanual(MON_WEP(mon)))
+	    m_dowear_type(mon, W_ARMS, creation);
+	m_dowear_type(mon, W_ARMG, creation);
+	if (!slithy(mon->data) && mon->data->mlet != S_CENTAUR)
+	    m_dowear_type(mon, W_ARMF, creation);
+	if (!cantweararm(mon->data))
+	    m_dowear_type(mon, W_ARM, creation);
+}
 
-		if (mon->misc_worn_check & flag) continue;
-			/* already wearing one */
-		if (!creation && canseemon(mon)) {
-			pline("%s puts on %s.", Monnam(mon),
-						distant_name(obj, doname));
-			m_delay += objects[obj->otyp].oc_delay;
-			mon->mfrozen = m_delay;
-			if (mon->mfrozen) mon->mcanmove = 0;
-		}
-		mon->misc_worn_check |= flag;
-		obj->owornmask |= flag;
-		update_mon_intrinsics(mon, obj, TRUE);
-		if (mon->mfrozen) break;		/* now busy */
+static void
+m_dowear_type(mon, flag, creation)
+struct monst *mon;
+long flag;
+boolean creation;
+{
+	struct obj *old, *best, *obj;
+	int m_delay = 0;
+
+	if (mon->mfrozen) return; /* probably putting previous item on */
+
+	old = which_armor(mon, flag);
+	if (old && old->cursed) return;
+	if (old && flag == W_AMUL) return; /* no such thing as better amulets */
+	best = old;
+
+	for(obj = mon->minvent; obj; obj = obj->nobj) {
+	    switch(flag) {
+		case W_AMUL:
+		    if (obj->oclass != AMULET_CLASS ||
+			    (obj->otyp != AMULET_OF_LIFE_SAVING &&
+				obj->otyp != AMULET_OF_REFLECTION))
+			continue;
+		    best = obj;
+		    goto outer_break; /* no such thing as better amulets */
+		case W_ARMU:
+		    if (!is_shirt(obj)) continue;
+		    break;
+		case W_ARMC:
+		    if (!is_cloak(obj)) continue;
+		    break;
+		case W_ARMH:
+		    if (!is_helmet(obj)) continue;
+		    break;
+		case W_ARMS:
+		    if (!is_shield(obj)) continue;
+		    break;
+		case W_ARMG:
+		    if (!is_gloves(obj)) continue;
+		    break;
+		case W_ARMF:
+		    if (!is_boots(obj)) continue;
+		    break;
+		case W_ARM:
+		    if (!is_suit(obj)) continue;
+		    break;
+	    }
+	    if (obj->owornmask) continue;
+	    /* I'd like to define a VISIBLE_ARM_BONUS which doesn't assume the
+	     * monster knows obj->spe, but if I did that, a monster would keep
+	     * switching forever between two -2 caps since when it took off one
+	     * it would forget spe and once again think the object is better
+	     * than what it already has.
+	     */
+	    if (best && (ARM_BONUS(best) >= ARM_BONUS(obj))) continue;
+	    best = obj;
 	}
+outer_break:
+	if (!best || best == old) return;
+
+	if ((flag == W_ARMU || flag == W_ARM) &&
+		(mon->misc_worn_check & W_ARMC))
+	    m_delay += 2;
+	if (old)
+	    m_delay += objects[old->otyp].oc_delay;
+
+	if (old) /* do this first to avoid "(being worn)" */
+	    old->owornmask = 0L;
+	if (!creation && canseemon(mon)) {
+	    if (old) {
+		char buf[BUFSZ];
+
+		Sprintf(buf, "%s", distant_name(old, doname));
+		pline("%s removes %s and puts on %s.",
+		    Monnam(mon), buf, distant_name(best, doname));
+	    } else
+		pline("%s puts on %s.", Monnam(mon),distant_name(best,doname));
+	    m_delay += objects[best->otyp].oc_delay;
+	    mon->mfrozen = m_delay;
+	    if (mon->mfrozen) mon->mcanmove = 0;
+	}
+	if (old)
+	    update_mon_intrinsics(mon, old, FALSE);
+	mon->misc_worn_check |= flag;
+	best->owornmask |= flag;
+	update_mon_intrinsics(mon, best, TRUE);
 }
 
 struct obj *

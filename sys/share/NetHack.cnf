@@ -18,11 +18,12 @@
 
 # *** OPTIONS ***
 #
-# These two options should be used for most setups.  If you're machine isn't
-# very IBM-compatible, and NetHack doesn't work, try commenting out this line.
-#
+# The three options on this line should be used for most setups.  
+# If your machine isn't very IBM-compatible, and NetHack doesn't work, 
+# try commenting out this line.
 OPTIONS=rawio,BIOS,IBMgraphics
-# To use VGA graphical tiles on an MS-DOS PC with VGA or better, use:
+# To use VGA graphical tiles on an MS-DOS PC with VGA or better,uncomment 
+# this:
 #OPTIONS=video:autodetect
 # Some versions of NetHack use the pc speaker to play the notes given when
 # playing music instruments in NetHack.  To use this feature, if available,

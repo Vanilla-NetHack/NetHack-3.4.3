@@ -42,7 +42,7 @@ char lock[PL_NSIZ+14] = "1lock"; /* long enough for uid+name+.99 */
 # endif	/* VMS */
 #endif	/* MFLOPPY */
 
-#ifdef UNIX
+#if defined(UNIX) || defined(__beos__)
 #define SAVESIZE	(PL_NSIZ + 13)	/* save/99999player.e */
 #else
 # ifdef VMS
@@ -892,8 +892,8 @@ const char *configfile =
 #ifdef UNIX
 			".nethackrc";
 #else
-# ifdef MAC
-			"NetHack defaults";
+# if defined(MAC) || defined(__beos__)
+			"NetHack Defaults";
 # else
 			"NetHack.cnf";
 # endif
@@ -934,7 +934,7 @@ const char *filename;
 		}
 	}
 
-#if defined(MICRO) || defined(MAC)
+#if defined(MICRO) || defined(MAC) || defined(__beos__)
 	if ((fp = fopenp(configfile, "r")) != (FILE *)0)
 		return(fp);
 #else

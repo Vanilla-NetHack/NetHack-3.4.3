@@ -111,12 +111,17 @@ register struct monst *mtmp;
 	    case PM_LONG_WORM:
 		(void) mksobj_at(WORM_TOOTH, x, y, TRUE);
 		goto default_1;
+	    case PM_VAMPIRE:
+	    case PM_VAMPIRE_LORD:
+		/* include mtmp in the mkcorpstat() call */
+		num = undead_to_corpse(mndx);
+		obj = mkcorpstat(CORPSE, mtmp, &mons[num], x, y, TRUE);
+		obj->age -= 100;		/* this is an *OLD* corpse */
+		break;
 	    case PM_KOBOLD_MUMMY:
 	    case PM_GNOME_MUMMY:
 	    case PM_ORC_MUMMY:
 	    case PM_ELF_MUMMY:
-	    case PM_VAMPIRE:
-	    case PM_VAMPIRE_LORD:
 	    case PM_HUMAN_MUMMY:
 	    case PM_GIANT_MUMMY:
 	    case PM_ETTIN_MUMMY:
@@ -128,7 +133,8 @@ register struct monst *mtmp;
 	    case PM_GIANT_ZOMBIE:
 	    case PM_ETTIN_ZOMBIE:
 		num = undead_to_corpse(mndx);
-		obj = mkcorpstat(CORPSE, &mons[num], x, y, TRUE);
+		obj = mkcorpstat(CORPSE, (struct monst *)0,
+				 &mons[num], x, y, TRUE);
 		obj->age -= 100;		/* this is an *OLD* corpse */
 		break;
 	    case PM_IRON_GOLEM:
@@ -144,7 +150,7 @@ register struct monst *mtmp;
 		mtmp->mnamelth = 0;
 		break;
 	    case PM_STONE_GOLEM:
-		obj = mkcorpstat(STATUE, mdat, x, y, FALSE);
+		obj = mkcorpstat(STATUE, (struct monst *)0, mdat, x, y, FALSE);
 		break;
 	    case PM_WOOD_GOLEM:
 		num = d(2,4);
@@ -167,7 +173,7 @@ register struct monst *mtmp;
 	    default:
 		if (mvitals[mndx].mvflags & G_NOCORPSE)
 			return (struct obj *)0;
-		else obj = mkcorpstat(CORPSE, mdat, x, y, TRUE);
+		else obj = mkcorpstat(CORPSE, mtmp, mdat, x, y, TRUE);
 		break;
 	}
 	/* All special cases should precede the G_NOCORPSE check */
@@ -1080,10 +1086,10 @@ register struct monst *mtmp;
 	    /* Dead Kops may come back. */
 	    switch(rnd(5)) {
 		case 1:	     /* returns near the stairs */
-			(void) makemon(mtmp->data,xdnstair,ydnstair);
+			(void) makemon(mtmp->data,xdnstair,ydnstair,NO_MM_FLAGS);
 			break;
 		case 2:	     /* randomly */
-			(void) makemon(mtmp->data,0,0);
+			(void) makemon(mtmp->data,0,0,NO_MM_FLAGS);
 			break;
 		default:
 			break;
@@ -1558,9 +1564,9 @@ register struct monst *mtmp;
 	}
 	if (!rn2(10)) {
 	    if (!rn2(13))
-		(void) makemon(&mons[PM_PURPLE_WORM], 0, 0);
+		(void) makemon(&mons[PM_PURPLE_WORM], 0, 0, NO_MM_FLAGS);
 	    else
-		(void) makemon((struct permonst *)0, 0, 0);
+		(void) makemon((struct permonst *)0, 0, 0, NO_MM_FLAGS);
 
 	}
 	aggravate();

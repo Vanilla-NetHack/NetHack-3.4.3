@@ -1,7 +1,7 @@
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -60,14 +60,14 @@ GRAMMAR
 
 
 
-Dec                      Last change: 13                        1
+May                      Last change: 16                        1
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -126,14 +126,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        2
+May                      Last change: 16                        2
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -192,14 +192,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        3
+May                      Last change: 16                        3
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -258,14 +258,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        4
+May                      Last change: 16                        4
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -310,7 +310,7 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
                      | passwall_detail
                      ;
 
-     monster_detail  : MONSTER_ID ':' monster_c ',' m_name ',' coordinate
+     monster_detail  : MONSTER_ID chance ':' monster_c ',' m_name ',' coordinate
                       monster_infos
                      ;
 
@@ -324,14 +324,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        5
+May                      Last change: 16                        5
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -339,11 +339,11 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
                      | ',' MON_APPEARANCE string
                      ;
 
-     object_detail   : OBJECT_ID ':' object_desc
-                     | COBJECT_ID ':' object_desc
+     object_detail   : OBJECT_ID object_desc
+                     | COBJECT_ID object_desc
                      ;
 
-     object_desc     : object_c ',' o_name ',' object_where object_infos
+     object_desc     : chance ':' object_c ',' o_name ',' object_where object_infos
                      ;
 
      object_where    : coordinate
@@ -375,8 +375,7 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
      door_detail     : DOOR_ID ':' door_state ',' coordinate
                      ;
 
-     trap_detail     : TRAP_ID ':' trap_name ',' coordinate
-                     | TRAP_ID ':' trap_name ',' coordinate ',' trap_chance
+     trap_detail     : TRAP_ID chance ':' trap_name ',' coordinate
                      ;
 
      drawbridge_detail: DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state
@@ -390,14 +389,15 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        6
+
+May                      Last change: 16                        6
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -456,14 +456,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        7
+May                      Last change: 16                        7
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -487,9 +487,6 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
      trap_name       : string
                      | RANDOM_TYPE
-                     ;
-
-     trap_chance     : CHANCE_ID ':' INTEGER
                      ;
 
      room_type       : string
@@ -519,23 +516,22 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
                      | RANDOM_TYPE
                      ;
 
-
-
-
-Dec                      Last change: 13                        8
-
-
-
-
-
-
-LEV_COMP(6)                   1995                    LEV_COMP(6)
-
-
-
      altar_type      : ALTAR_TYPE
                      | RANDOM_TYPE
                      ;
+
+
+
+May                      Last change: 16                        8
+
+
+
+
+
+
+LEV_COMP(6)                   1996                    LEV_COMP(6)
+
+
 
      p_register      : P_REGISTER '[' INTEGER ']'
                      ;
@@ -565,6 +561,10 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
                      | RANDOM_TYPE
                      ;
 
+     chance          : /* empty */
+                     | PERCENT
+                     ;
+
      engraving_type  : ENGRAVING_TYPE
                      | RANDOM_TYPE
                      ;
@@ -588,14 +588,14 @@ LEV_COMP(6)                   1995                    LEV_COMP(6)
 
 
 
-Dec                      Last change: 13                        9
+May                      Last change: 16                        9
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
@@ -645,28 +645,28 @@ EXAMPLE
      MONSTER: 'd', "hell hound", place[0]
      # a chest on another random side
      OBJECT: '(', "chest", place[1]
-     # a sack on a random side, with a diamond and ruby in it
+     # a sack on a random side, with a diamond and maybe a ruby in it
      CONTAINER: '(', "sack", place[2]
      OBJECT: '*', "diamond", contained
-     OBJECT: '*', "ruby", contained
+     OBJECT[50%]: '*', "ruby", contained
      # a random dragon somewhere
      MONSTER: 'D', random, random
 
 
 
-Dec                      Last change: 13                       10
+May                      Last change: 16                       10
 
 
 
 
 
 
-LEV_COMP(6)                   1995                    LEV_COMP(6)
+LEV_COMP(6)                   1996                    LEV_COMP(6)
 
 
 
-     # a random trap in the EAST end
-     TRAP: random, (6,4)
+     # 3 out of 4 chance for a random trap in the EAST end
+     TRAP[75%]: random, (6,4)
      # an electric eel below the SOUTH end
      MONSTER: ';', "electric eel", (4,8)
      # make the walls non-diggable
@@ -720,7 +720,7 @@ BUGS
 
 
 
-Dec                      Last change: 13                       11
+May                      Last change: 16                       11
 
 
 

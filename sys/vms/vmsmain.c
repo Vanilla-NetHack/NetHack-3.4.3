@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmain.c	3.2	96/01/15	*/
+/*	SCCS Id: @(#)vmsmain.c	3.2	96/05/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
@@ -20,6 +20,11 @@ static void NDECL(byebye);
 extern void FDECL(VAXC$ESTABLISH, (vms_handler_type (*)(genericptr_t,genericptr_t)));
 static vms_handler_type FDECL(vms_handler, (genericptr_t,genericptr_t));
 #include <ssdef.h>	/* system service status codes */
+#endif
+
+static void NDECL(wd_message);
+#ifdef WIZARD
+static boolean wiz_error_flag = FALSE;
 #endif
 
 int
@@ -127,7 +132,8 @@ char *argv[];
 		Strcpy(plname, "wizard");
 	else
 #endif
-	if(!*plname || !strncmp(plname, "games", 4))
+	if (!*plname || !strncmpi(plname, "games", 4) ||
+	    !strcmpi(plname, "nethack"))
 		askname();
 	plnamesuffix();		/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
@@ -196,8 +202,7 @@ char *argv[];
 #endif
 		pline("Hello %s, welcome back to NetHack!", plname);
 		check_special_room(FALSE);
-		if (discover)
-			You("are in non-scoring discovery mode.");
+		wd_message();
 
 		if (discover || wizard) {
 			if (yn("Do you want to keep the save file?") == 'n')
@@ -213,8 +218,7 @@ not_recovered:
 		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to NetHack!", plname);
-		if (discover)
-			You("are in non-scoring discovery mode.");
+		wd_message();
 
 		flags.move = 0;
 		set_wear();
@@ -240,13 +244,14 @@ char *argv[];
 		argc--;
 		switch(argv[0][1]){
 		case 'D':
-# ifdef WIZARD
+#ifdef WIZARD
 			if(!strcmpi(getenv("USER"), WIZARD_NAME)) {
 				wizard = TRUE;
 				break;
 			}
 			/* otherwise fall thru to discover */
-# endif
+			wiz_error_flag = TRUE;
+#endif /* WIZARD */
 		case 'X':
 		case 'x':
 			discover = TRUE;
@@ -394,5 +399,31 @@ genericptr_t sigargs, mechargs;	/* [0] is argc, [1..argc] are the real args */
     return SS$_RESIGNAL;
 }
 #endif
+
+#ifdef PORT_HELP
+void
+port_help()
+{
+	/*
+	 * Display VMS-specific help.   Just show contents of the helpfile
+	 * named by PORT_HELP.
+	 */
+	display_file(PORT_HELP, TRUE);
+}
+#endif /* PORT_HELP */
+
+static void
+wd_message()
+{
+#ifdef WIZARD
+	if (wiz_error_flag) {
+		pline("Only user \"%s\" may access debug (wizard) mode.",
+			WIZARD_NAME);
+		pline("Entering discovery mode instead.");
+	} else
+#endif
+	if (discover)
+		You("are in non-scoring discovery mode.");
+}
 
 /*vmsmain.c*/

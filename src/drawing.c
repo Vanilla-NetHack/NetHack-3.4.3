@@ -155,7 +155,7 @@ const char def_monsyms[MAXMCLASSES] = {
 };
 
 /* The explanations below are also used when the user gives a string
- * for blessed genocide, so no text should wholy contain any later
+ * for blessed genocide, so no text should wholly contain any later
  * text.  They should also always contain obvious names (eg. cat/feline).
  */
 const char *monexplain[MAXMCLASSES] = {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mail.c	3.2	95/07/19	*/
+/*	SCCS Id: @(#)mail.c	3.2	96/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -370,7 +370,8 @@ struct mail_info *info;
     if (!md_start(&start) || !md_stop(&stop,&start)) goto give_up;
 
     /* Make the daemon.  Have it rush towards the hero. */
-    if (!(md = makemon(&mons[PM_MAIL_DAEMON], start.x, start.y))) goto give_up;
+    if (!(md = makemon(&mons[PM_MAIL_DAEMON], start.x, start.y, NO_MM_FLAGS)))
+	 goto give_up;
     if (!md_rush(md, stop.x, stop.y)) goto go_back;
 
     message_seen = TRUE;
@@ -433,7 +434,7 @@ struct obj *otmp;
 {
 	char *junk[]={
 	"Please disregard previous letter.",
-	"Welcome to NetHack 3.2!",
+	"Welcome to NetHack 3.2.1!",
 #ifdef AMIGA
 	"Only Amiga makes it possible.",
 	"CATS have all the answers.",

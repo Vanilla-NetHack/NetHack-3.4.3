@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.2	96/03/23	*/
+/*	SCCS Id: @(#)dothrow.c	3.2	96/05/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,11 @@
 static int FDECL(gem_accept, (struct monst *, struct obj *));
 static int FDECL(throw_gold, (struct obj *));
 static void FDECL(check_shop_obj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P));
+static boolean FDECL(breaktest, (struct obj *));
+static void FDECL(breakobj, (struct obj *,XCHAR_P,XCHAR_P,BOOLEAN_P,BOOLEAN_P));
+static void FDECL(breakmsg, (struct obj *,BOOLEAN_P));
+static boolean FDECL(toss_up,(struct obj *, BOOLEAN_P));
+
 
 static NEARDATA const char toss_objs[] =
 	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, WEAPON_CLASS, 0 };
@@ -96,7 +101,7 @@ register struct obj *obj;
 		pline("%s hit%s the %s.", Doname2(obj),
 		      (obj->quan == 1L) ? "s" : "", surface(u.ux,u.uy));
 
-	if (breaks(obj, u.ux, u.uy, TRUE)) return;
+	if (hero_breaks(obj, u.ux, u.uy, TRUE)) return;
 	if (ship_object(obj, u.ux, u.uy, FALSE)) return;
 	dropy(obj);
 }
@@ -222,6 +227,90 @@ register boolean broken;
 	}
 }
 
+/*
+ * Hero tosses an object upwards with appropriate consequences.
+ *
+ * Returns FALSE if the object is gone.
+ */
+static boolean
+toss_up(obj, hitsroof)
+struct obj *obj;
+boolean hitsroof;
+{
+    int do_death = 0;
+    const char *almost;
+    /* note: obj->quan == 1 */
+
+    if (hitsroof) {
+	if (breaktest(obj)) {
+		pline("%s hits the %s.", Doname2(obj), ceiling(u.ux, u.uy));
+		breakmsg(obj, !Blind);
+		breakobj(obj, u.ux, u.uy, TRUE, TRUE);
+		return FALSE;
+	}
+	almost = "";
+    } else {
+	almost = " almost";
+    }
+    pline("%s%s hits the %s, then falls back on top of your %s.",
+	  Doname2(obj), almost, ceiling(u.ux,u.uy), body_part(HEAD));
+
+    /* object now hits you */
+
+    if (obj->oclass != POTION_CLASS	/* potions have hit handling below */
+		&& breaktest(obj)) {
+	int otyp = obj->otyp;
+	int blindinc;
+
+	breakmsg(obj, !Blind);
+	breakobj(obj, u.ux, u.uy, TRUE, TRUE);
+	/* obj is now gone */
+	switch (otyp) {
+		case EGG:
+		case CREAM_PIE:
+		case BLINDING_VENOM:
+			pline("You've got it all over your face!");
+			blindinc = rnd(25);
+			if (blindinc && !Blindfolded) {
+				if (otyp != BLINDING_VENOM)
+					u.ucreamed += blindinc;
+				else if (!Blind)
+					pline("It blinds you!");
+				make_blinded(Blinded + blindinc, FALSE);
+			}
+			break;
+	}
+	return FALSE;
+    }
+    if(obj->oclass == POTION_CLASS)
+	  potionhit(&youmonst, obj);
+    else {
+	  int dmg = rnd((int)(obj->owt));
+
+	  if (uarmh) {
+	      if(is_metallic(uarmh)) {
+		  pline("Fortunately, you are wearing a hard helmet.");
+		  dmg = 1;
+	      } else if (flags.verbose)
+		  Your("%s does not protect you.", xname(uarmh));
+	  } else if (obj->otyp == CORPSE &&
+			  obj->corpsenm == PM_COCKATRICE) {
+	      if (!resists_ston(&youmonst) &&
+		  !(poly_when_stoned(uasmon) &&
+				  polymon(PM_STONE_GOLEM))) {
+		  killer = doname(obj);
+		  You("turn to stone.");
+		  do_death = STONING;
+	      }
+    }
+    hitfloor(obj);
+    if (do_death == STONING)
+	      done(STONING);
+	  else
+	      losehp(dmg, "falling object", KILLED_BY_AN);
+    }
+    return TRUE;
+}
 
 void
 throwit(obj)
@@ -231,7 +320,6 @@ register struct obj *obj;
 	register int range, urange;
 	boolean impaired = (Confusion || Stunned || Blind ||
 			   Hallucination || Fumbling);
-	int do_death = 0;
 
 	if ((obj->cursed || obj->greased) && (u.dx || u.dy) && !rn2(7)) {
 	    boolean slipok = TRUE;
@@ -264,50 +352,20 @@ register struct obj *obj;
 		bhitpos.x = mon->mx;
 		bhitpos.y = mon->my;
 	} else if(u.dz) {
-	  if (u.dz < 0 && Role_is('V') &&
-		obj->oartifact == ART_MJOLLNIR && !impaired) {
-	      pline("%s hits the %s and returns to your hand!",
-		    The(xname(obj)), ceiling(u.ux,u.uy));
-	      obj = addinv(obj);
-	      (void) encumber_msg();
-	      setuwep(obj);
-	      return;
-	  }
-	  if (u.dz < 0 && !Is_airlevel(&u.uz) && !Underwater && !Is_waterlevel(&u.uz)) {
-	      pline("%s hits the %s, then falls back on top of your %s.",
-		  Doname2(obj),		/* note: obj->quan == 1 */
-		  ceiling(u.ux,u.uy),
-		  body_part(HEAD));
-	      if(obj->oclass == POTION_CLASS)
-		  potionhit(&youmonst, obj);
-	      else {
-		  int dmg = rnd((int)(obj->owt));
-		
-		  if (uarmh) {
-		      if(is_metallic(uarmh)) {
-			  pline("Fortunately, you are wearing a hard helmet.");
-			  dmg = 1;
-		      } else if (flags.verbose)
-			  Your("%s does not protect you.", xname(uarmh));
-		  } else if (obj->otyp == CORPSE &&
-				  obj->corpsenm == PM_COCKATRICE) {
-		      if (!resists_ston(&youmonst) &&
-			  !(poly_when_stoned(uasmon) &&
-					  polymon(PM_STONE_GOLEM))) {
-			  killer = doname(obj);
-			  You("turn to stone.");
-			  do_death = STONING;
-		      }
-		  }
-
-		  hitfloor(obj);
-		  if (do_death == STONING)
-		      done(STONING);
-		  else
-		      losehp(dmg, "falling object", KILLED_BY_AN);
-	      }
-	  } else hitfloor(obj);
-	  return;
+	    if (u.dz < 0 && Role_is('V') &&
+		    obj->oartifact == ART_MJOLLNIR && !impaired) {
+		pline("%s hits the %s and returns to your hand!",
+		      The(xname(obj)), ceiling(u.ux,u.uy));
+		obj = addinv(obj);
+		(void) encumber_msg();
+		setuwep(obj);
+	    } else if (u.dz < 0 && !Is_airlevel(&u.uz) &&
+		    !Underwater && !Is_waterlevel(&u.uz)) {
+		(void) toss_up(obj, rn2(5));
+	    } else {
+		hitfloor(obj);
+	    }
+	    return;
 
 	} else if(obj->otyp == BOOMERANG && !Underwater) {
 		if(Is_airlevel(&u.uz) || Levitation) hurtle(-u.dx, -u.dy, 1);
@@ -328,9 +386,9 @@ register struct obj *obj;
 		if (range < 1) range = 1;
 
 		if ((obj->oclass == WEAPON_CLASS || obj->oclass == GEM_CLASS)
-		    && uwep && objects[obj->otyp].w_propellor) {
-		    if (objects[obj->otyp].w_propellor ==
-			                     -objects[uwep->otyp].w_propellor)
+			&& objects[obj->otyp].w_propellor) {
+		    if (uwep && objects[obj->otyp].w_propellor ==
+					-objects[uwep->otyp].w_propellor)
 			range++;
 		    else
 			range /= 2;
@@ -344,8 +402,11 @@ register struct obj *obj;
 		    if(range < 1) range = 1;
 		}
 
-		if (obj->otyp == BOULDER) range = 20;
-		if (obj == uball && u.utrap && u.utraptype == TT_INFLOOR)
+		if (obj->otyp == BOULDER)
+		    range = 20;		/* you must be giant */
+		else if (obj->oartifact == ART_MJOLLNIR)
+		    range = (range + 1) / 2;	/* it's heavy */
+		else if (obj == uball && u.utrap && u.utraptype == TT_INFLOOR)
 		    range = 1;
 
 		if (Underwater) range = 1;
@@ -424,11 +485,13 @@ register struct obj *obj;
 		}
 
 		if (!IS_SOFT(levl[bhitpos.x][bhitpos.y].typ) &&
-			breaks(obj, bhitpos.x, bhitpos.y, TRUE)) {
+			breaktest(obj)) {
 		    tmp_at(DISP_FLASH, obj_glyph);
 		    tmp_at(bhitpos.x, bhitpos.y);
 		    delay_output();
 		    tmp_at(DISP_END, 0);
+		    breakmsg(obj, cansee(bhitpos.x, bhitpos.y));
+		    breakobj(obj, bhitpos.x, bhitpos.y, TRUE, TRUE);
 		    return;
 		}
 		if(flooreffects(obj,bhitpos.x,bhitpos.y,"fall")) return;
@@ -515,7 +578,7 @@ register struct obj   *obj;
 	register int	disttmp; /* distance modifier */
 	int otyp = obj->otyp;
 	boolean guaranteed_hit = (u.uswallow && mon == u.ustuck);
-	
+
 	/* Differences from melee weapons:
 	 *
 	 * Dex still gives a bonus, but strength does not.
@@ -664,8 +727,8 @@ register struct obj   *obj;
 	} else {
 	    if (guaranteed_hit)
 		/* this assumes that guaranteed_hit is due to swallowing */
-	    	pline("%s vanishes into %s %s.",
-	    		The(xname(obj)), s_suffix(mon_nam(mon)),
+		pline("%s vanishes into %s %s.",
+			The(xname(obj)), s_suffix(mon_nam(mon)),
 			is_animal(u.ustuck->data) ? "entrails" : "currents");
 	    else
 		    pline("%s misses %s.", The(xname(obj)), mon_nam(mon));
@@ -748,77 +811,114 @@ nopick:
 }
 
 /*
- * Check to see if obj breaks.  This routine assumes the cause is the hero,
- * and that the break is in sight of the hero.
+ * Comments about the restructuring of the old breaks() routine.
  *
- * This assumption is probably not true from the call in scatter().
- * This routine needs to be generalized.
+ * There are now three distinct phases to object breaking:
+ *     breaktest() - which makes the check/decision about whether the
+ *                   object is going to break.
+ *     breakmsg()  - which outputs a message about the breakage,
+ *                   appropriate for that particular object. Should
+ *                   only be called after a positve breaktest().
+ *                   on the object and, if it going to be called,
+ *                   it must be called before calling breakobj().
+ *                   Calling breakmsg() is optional.
+ *     breakobj()  - which actually does the breakage and the side-effects
+ *                   of breaking that particular object. This should
+ *                   only be called after a positive breaktest() on the
+ *                   object.
  *
+ * Each of the above routines is currently static to this source module.
+ * There are two routines callable from outside this source module which
+ * perform the routines above in the correct sequence.
+ *
+ *   hero_breaks() - called when an object is to be broken as a result
+ *                   of something that the hero has done. (throwing it,
+ *                   kicking it, etc.)
+ *   breaks()      - called when an object is to be broken for some
+ *                   reason other than the hero doing something to it.
+ */
+
+/*
+ * The hero causes breakage of an object (throwing, dropping it, etc.)
+ * Return 0 if the object didn't break, 1 if the object broke.
+ */
+int
+hero_breaks(obj, x, y, from_invent)
+struct obj *obj;
+xchar x, y;		/* object location (ox, oy may not be right) */
+boolean from_invent;	/* thrown or dropped by player; maybe on shop bill */
+{
+	boolean in_view = !Blind;
+	if (!breaktest(obj)) return 0;
+	breakmsg(obj, in_view);
+	breakobj(obj, x, y, TRUE, from_invent);
+	return 1;
+}
+
+/*
+ * The object is going to break for a reason other than the hero doing
+ * something to it.
  * Return 0 if the object doesn't break, 1 if the object broke.
  */
 int
-breaks(obj, x, y, from_invent)
+breaks(obj, x, y)
 struct obj *obj;
-int x, y;			/* object location (ox, oy may not be right) */
-boolean from_invent;	/* thrown or dropped by player; maybe on shop bill */
+xchar x, y;		/* object location (ox, oy may not be right) */
 {
-	const char *to_pieces;
+	boolean in_view = Blind ? FALSE : cansee(x, y);
 
-	if (obj_resists(obj, 1, 100)) return 0;
+	if (!breaktest(obj)) return 0;
+	breakmsg(obj, in_view);
+	breakobj(obj, x, y, FALSE, FALSE);
+	return 1;
+}
 
-	to_pieces = "";
+/*
+ * Unconditionally break an object. Assumes all resistance checks
+ * and break messages have been delivered prior to getting here.
+ * This routine assumes the cause is the hero if heros_fault is TRUE.
+ *
+ */
+static void
+breakobj(obj, x, y, heros_fault, from_invent)
+struct obj *obj;
+xchar x, y;		/* object location (ox, oy may not be right) */
+boolean heros_fault;
+boolean from_invent;
+{
 	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
 		case MIRROR:
-			if (!flags.mon_moving)
+			if (heros_fault)
 			    change_luck(-2);
-			/*FALLTHRU*/
-		case CRYSTAL_BALL:
-#ifdef TOURIST
-		case EXPENSIVE_CAMERA:
-#endif
-			to_pieces = " into a thousand pieces";
-			/*FALLTHRU*/
+			break;
 		case POT_WATER:		/* really, all potions */
-			if (Blind)
-			    You_hear("%s shatter!", something);
-			else
-			    pline("%s shatters%s!", Doname2(obj), to_pieces);
-
 			if (obj->oclass == POTION_CLASS) {
 			    if (obj->otyp == POT_OIL && obj->lamplit)
 				splatter_burning_oil(x,y);
 			    else if (distu(x,y) <= 2) {
-				You("smell a peculiar odor...");
+				/* [what about "familiar odor" when known?] */
+				if (obj->otyp != POT_WATER)
+				    You("smell a peculiar odor...");
 				potionbreathe(obj);
 			    }
 			    /* monster breathing isn't handled... [yet?] */
 			}
 			break;
 		case EGG:
-			if (!flags.mon_moving) {
+			if (heros_fault) {
 			    if (obj->spe && obj->corpsenm >= LOW_PM)
 				if (obj->quan < 5)
 				    change_luck((schar) -(obj->quan));
 				else
 				    change_luck(-5);
 			}
-			pline("Splat!");
 			break;
-		case CREAM_PIE:
-			pline("What a mess!");
-			break;
-		case ACID_VENOM:
-		case BLINDING_VENOM:
-			pline("Splash!");
-			break;
-		default:
-			return 0;
 	}
-
-	if (from_invent) {
+	if (heros_fault) {
+	    if (from_invent) {
 		if (*u.ushops)
-		    check_shop_obj(obj, x, y, TRUE);
-	} else if (!flags.mon_moving && !obj->no_charge && costly_spot(x, y)) {
+			check_shop_obj(obj, x, y, TRUE);
+	    } else if (!obj->no_charge && costly_spot(x, y)) {
 		/* it is assumed that the obj is a floor-object */
 		char *o_shop = in_rooms(x, y, SHOPBASE);
 		struct monst *shkp = shop_keeper(*o_shop);
@@ -826,20 +926,81 @@ boolean from_invent;	/* thrown or dropped by player; maybe on shop bill */
 		if (shkp) {		/* (implies *o_shop != '\0') */
 		    static NEARDATA long lastmovetime = 0L;
 		    static NEARDATA boolean peaceful_shk = FALSE;
-		    /* We want to base shk actions on her peacefulness
-		       at start of this turn, so that "simultaneous"
-		       multiple breakage isn't drastically worse than
-		       single breakage.  (ought to be done via ESHK)  */
-		    if (moves != lastmovetime) peaceful_shk = shkp->mpeaceful;
+		    /*  We want to base shk actions on her peacefulness
+			at start of this turn, so that "simultaneous"
+			multiple breakage isn't drastically worse than
+			single breakage.  (ought to be done via ESHK)  */
+		    if (moves != lastmovetime)
+			peaceful_shk = shkp->mpeaceful;
 		    if (stolen_value(obj, x, y, peaceful_shk, FALSE) > 0L &&
 			(*o_shop != u.ushops[0] || !inside_shop(u.ux, u.uy)) &&
 			moves != lastmovetime) make_angry_shk(shkp, x, y);
 		    lastmovetime = moves;
 		}
+	    }
 	}
-
 	delobj(obj);
-	return 1;
+}
+
+/*
+ * Check to see if obj is going to break, but don't actually break it.
+ * Return 0 if the object isn't going to break, 1 if it is.
+ */
+static boolean
+breaktest(obj)
+struct obj *obj;
+{
+	if (obj_resists(obj, 1, 100)) return 0;
+	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
+		case MIRROR:
+		case CRYSTAL_BALL:
+#ifdef TOURIST
+		case EXPENSIVE_CAMERA:
+#endif
+		case POT_WATER:		/* really, all potions */
+		case EGG:
+		case CREAM_PIE:
+		case ACID_VENOM:
+		case BLINDING_VENOM:
+			return 1;
+		default:
+			return 0;
+	}
+}
+
+static void
+breakmsg(obj, in_view)
+struct obj *obj;
+boolean in_view;
+{
+	const char *to_pieces;
+
+	to_pieces = "";
+	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
+		case MIRROR:
+		case CRYSTAL_BALL:
+#ifdef TOURIST
+		case EXPENSIVE_CAMERA:
+#endif
+			to_pieces = " into a thousand pieces";
+			/*FALLTHRU*/
+		case POT_WATER:		/* really, all potions */
+			if (!in_view)
+			    You_hear("%s shatter!", something);
+			else
+			    pline("%s shatters%s!", Doname2(obj), to_pieces);
+			break;
+		case EGG:
+			pline("Splat!");
+			break;
+		case CREAM_PIE:
+			if (in_view) pline("What a mess!");
+			break;
+		case ACID_VENOM:
+		case BLINDING_VENOM:
+			pline("Splash!");
+			break;
+	}
 }
 
 /*

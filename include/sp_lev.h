@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sp_lev.h	3.2	95/06/12	*/
+/*	SCCS Id: @(#)sp_lev.h	3.2	96/05/08	*/
 /* Copyright (c) 1989 by Jean-Christophe Collet			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -36,7 +36,7 @@ typedef union str_or_len {
 } Str_or_Len;
 
 typedef struct {
-	boolean	init_present;
+	boolean	init_present, padding;
 	char	fg, bg;
 	boolean	smoothed, joined;
 	xchar   lit, walled;
@@ -55,26 +55,20 @@ typedef struct {
 } trap;
 
 typedef struct {
-	xchar x, y, class, appear;
-	schar peaceful, asleep;
-	aligntyp	align;
-	short id;
 	Str_or_Len name, appear_as;
+	short id;
+	aligntyp align;
+	xchar x, y, chance, class, appear;
+	schar peaceful, asleep;
 } monster;
 
 typedef struct {
-	xchar x, y, class;
-	xchar curse_state;
-	short id;
-	short spe;
-	int   corpsenm;
-	xchar containment;
 	Str_or_Len name;
+	int   corpsenm;
+	short id, spe;
+	xchar x, y, chance, class, containment;
+	schar curse_state;
 } object;
-
-#ifndef ALIGN_H
-#include "align.h"
-#endif
 
 typedef struct {
 	xchar		x, y;
@@ -112,7 +106,7 @@ typedef struct {
 	struct { xchar x1, y1, x2, y2; } inarea;
 	struct { xchar x1, y1, x2, y2; } delarea;
 	boolean in_islev, del_islev;
-	xchar rtype;
+	xchar rtype, padding;
 	Str_or_Len rname;
 } lev_region;
 
@@ -128,15 +122,15 @@ typedef struct {
 } engraving;
 
 typedef struct {
-	xchar x,y;
+	xchar x, y;
 } fountain;
 
 typedef struct {
-	xchar x,y;
+	xchar x, y;
 } sink;
 
 typedef struct {
-	xchar x,y;
+	xchar x, y;
 } pool;
 
 typedef struct {
@@ -187,7 +181,7 @@ typedef struct {
 typedef struct {
 	long flags;
 	lev_init init_lev;
-	short filling;
+	schar filling;
 	char numpart;
 	mazepart **parts;
 } specialmaze;
@@ -234,6 +228,7 @@ typedef struct {
 	} src, dest;
 } corridor;
 
+/* used only by lev_comp */
 typedef struct {
 	long flags;
 	lev_init init_lev;

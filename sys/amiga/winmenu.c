@@ -56,11 +56,12 @@ amii_start_menu(window)
 
 /* Add a string to a menu */
 void
-amii_add_menu(window,glyph, id,ch,attr,str,preselected)
+amii_add_menu(window,glyph, id, ch, gch, attr, str, preselected)
     register winid window;
     register int glyph;
     register const anything *id;
     register char ch;
+    register char gch;
     register int attr;
     register const char *str;
     register BOOLEAN_P preselected;
@@ -80,6 +81,7 @@ amii_add_menu(window,glyph, id,ch,attr,str,preselected)
     mip->attr = attr;
     mip->glyph = Is_rogue_level(&u.uz) ? NO_GLYPH : glyph;
     mip->selector = 0;
+    mip->gselector = gch;
 
     if (id->a_void && !ch && cw->menu.chr != 0)
     {
@@ -134,7 +136,7 @@ amii_end_menu(window,morestr)
     {
 	anything any;
 	any.a_void = 0;
-	amii_add_menu( window, NO_GLYPH, &any, 0, ATR_NONE, morestr,
+	amii_add_menu( window, NO_GLYPH, &any, 0, 0, ATR_NONE, morestr,
 	   MENU_UNSELECTED);
     }
 
@@ -731,6 +733,9 @@ DoMenuScroll( win, blocking, how, retmip )
 			    {
 				if( how == PICK_ONE )
 				    aredone = 1;
+				amip->selected = !amip->selected;
+			    } else if (amip->gselector == code )
+			    {
 				amip->selected = !amip->selected;
 			    }
 			}

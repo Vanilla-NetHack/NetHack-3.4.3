@@ -1,5 +1,5 @@
 #	NetHack Makefile (VMS) - for building nethack itself.
-#	SCCS Id: @(#)Makefile.src	3.2	96/03/02
+#	SCCS Id: @(#)Makefile.src	3.2	96/05/24
 
 #  Copy this file to [.src]Makefile. and then edit it as needed.
 #  If you changed CC or CFLAGS, make similar changes in [.util]Makefile.
@@ -92,7 +92,7 @@ RANDOBJ = random.obj
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
 VERSION  =3.2
-PATCHLVL =0
+PATCHLVL =1
 
 MAKEDEFS = $(UTL)makedefs.exe;
 
@@ -120,7 +120,7 @@ VERSOURCES = $(HACKCSRC) $(SYSSRC) $(WINSRC) $(RANDSRC) monstr.c vis_tab.c
 # cause dependency loops if run through "make depend"
 # and dgn_comp.h, dgn_file.h, lev_comp.h, special level & dungeon files.
 #
-HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h color.h \
+HACKINCL = align.h amiconf.h artifact.h artilist.h attrib.h beconf.h color.h \
 	   config.h coord.h decl.h def_os2.h display.h dlb.h dungeon.h edog.h \
 	   emin.h engrave.h epri.h eshk.h extern.h flag.h func_tab.h \
 	   global.h hack.h lev.h macconf.h mfndpos.h micro.h mkroom.h \
@@ -216,9 +216,11 @@ objects.obj :
 	$(CC) $(CFLAGS) objects.c
      @- if f$search("$(MAKEDEFS)").nes."" then delete $(MAKEDEFS)
 
-# need those include files not in monst.c/objects.c dependencies below
 $(MAKEDEFS) :	$(FIRSTOBJ) $(UTL)makedefs.c \
-		$(INC)artilist.h $(INC)patchlevel.h $(INC)qtext.h  $(LIBOPT)
+		$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
+		$(INC)monsym.h $(INC)artilist.h $(INC)dungeon.h \
+		$(INC)obj.h $(INC)monst.h $(INC)you.h $(INC)flag.h \
+		$(INC)dlb.h $(INC)patchlevel.h $(INC)qtext.h  $(LIBOPT)
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(MAKEDEFS)
       @ $(CD) $(SRC)
@@ -397,7 +399,7 @@ rect.obj :	$(INC)hack.h
 restore.obj :	$(INC)hack.h $(INC)lev.h $(INC)termcap.h $(INC)quest.h
 rip.obj :	$(INC)hack.h
 rnd.obj :	$(INC)hack.h
-rumors.obj :	$(INC)hack.h $(INC)dlb.h
+rumors.obj :	$(INC)hack.h $(INC)lev.h $(INC)dlb.h
 save.obj :	$(INC)hack.h $(INC)lev.h $(INC)quest.h
 shk.obj :	$(INC)hack.h $(INC)eshk.h
 shknam.obj :	$(INC)hack.h $(INC)eshk.h
@@ -445,14 +447,14 @@ $(INC)eshk.h :	$(INC)dungeon.h
 # ignore the non-VMS configuration headers
 #$(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h $(INC)unixconf.h \
 #		   $(INC)os2conf.h $(INC)pcconf.h $(INC)tosconf.h \
-#		   $(INC)amiconf.h $(INC)macconf.h $(INC)ntconf.h
+#		   $(INC)amiconf.h $(INC)macconf.h $(INC)beconf.h $(INC)ntconf.h
 $(INC)global.h :  $(INC)coord.h $(INC)vmsconf.h
 			$(TOUCH) $(INC)global.h
 $(INC)hack.h :	$(INC)config.h $(INC)dungeon.h $(INC)monsym.h $(INC)mkroom.h \
-		$(INC)objclass.h $(INC)decl.h $(INC)timeout.h $(INC)trap.h \
-		$(INC)flag.h $(INC)rm.h $(INC)vision.h $(INC)display.h \
-		$(INC)engrave.h $(INC)rect.h $(INC)winprocs.h \
-		$(INC)wintty.h $(INC)trampoli.h
+		$(INC)objclass.h $(INC)youprop.h $(INC)wintype.h \
+		$(INC)decl.h $(INC)timeout.h $(INC)trap.h $(INC)flag.h \
+		$(INC)rm.h $(INC)vision.h $(INC)display.h $(INC)engrave.h \
+		$(INC)rect.h $(INC)winprocs.h $(INC)wintty.h $(INC)trampoli.h
 			$(TOUCH) $(INC)hack.h
 $(INC)macconf.h :  $(INC)system.h
 			$(TOUCH) $(INC)macconf.h
@@ -468,8 +470,6 @@ $(INC)permonst.h :  $(INC)monattk.h $(INC)monflag.h $(INC)align.h
 			$(TOUCH) $(INC)permonst.h
 $(INC)rm.h :  $(INC)align.h
 			$(TOUCH) $(INC)rm.h
-$(INC)sp_lev.h :  $(INC)align.h
-			$(TOUCH) $(INC)sp_lev.h
 $(INC)tosconf.h :  $(INC)micro.h $(INC)pcconf.h
 			$(TOUCH) $(INC)tosconf.h
 $(INC)unixconf.h :  $(INC)system.h
@@ -478,7 +478,7 @@ $(INC)vault.h :  $(INC)dungeon.h
 			$(TOUCH) $(INC)vault.h
 $(INC)vmsconf.h :  $(INC)system.h
 			$(TOUCH) $(INC)vmsconf.h
-$(INC)you.h :  $(INC)align.h $(INC)attrib.h $(INC)monst.h $(INC)youprop.h
+$(INC)you.h :  $(INC)align.h $(INC)attrib.h $(INC)monst.h $(INC)prop.h
 			$(TOUCH) $(INC)you.h
 $(INC)youprop.h :  $(INC)prop.h $(INC)permonst.h $(INC)mondata.h $(INC)pm.h
 			$(TOUCH) $(INC)youprop.h

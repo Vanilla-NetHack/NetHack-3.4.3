@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.2	96/04/08	*/
+/*	SCCS Id: @(#)mhitm.c	3.2	96/04/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -702,10 +702,10 @@ label2:			if (mdef->mhp > 0) return 0;
 		}
 		break;
 	    case AD_BLND:
-		if (!magr->mcan && haseyes(pd)) {
+		if (!magr->mcan && !resists_blnd(mdef)) {
 		    register unsigned rnd_tmp;
 
-		    if (vis && mdef->mcansee)
+		    if (vis)
 			pline("%s is blinded.", Monnam(mdef));
 		    rnd_tmp = d((int)mattk->damn, (int)mattk->damd);
 		    if ((rnd_tmp += mdef->mblinded) > 127) rnd_tmp = 127;
@@ -901,8 +901,12 @@ int amt, how;
 	    shieldeff(mon->mx, mon->my);
 	} else if (mon->mcanmove) {
 	    amt += (int) mon->mfrozen;
-	    mon->mcanmove = 0;
-	    mon->mfrozen = min(amt, 127);
+	    if (amt > 0) {	/* sleep for N turns */
+		mon->mcanmove = 0;
+		mon->mfrozen = min(amt, 127);
+	    } else {		/* sleep until awakened */
+		mon->msleep = 1;
+	    }
 	    return 1;
 	}
 	return 0;

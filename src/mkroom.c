@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.c	3.2	93/04/04	*/
+/*	SCCS Id: @(#)mkroom.c	3.2	96/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -67,11 +67,7 @@ mkshop()
 	register struct mkroom *sroom;
 	int i = -1;
 #ifdef WIZARD
-# ifdef GCC_WARN
-	register char *ep = (char *)0;
-# else
-	register char *ep;
-# endif
+	char *ep = (char *)0;	/* (init == lint suppression) */
 
 	/* first determine shoptype */
 	if(wizard){
@@ -243,7 +239,8 @@ struct mkroom *sroom;
 		ty = sroom->ly + (sroom->hy - sroom->ly + 1)/2;
 		if(sroom->irregular) {
 		    /* center might not be valid, so put queen elsewhere */
-		    if(levl[tx][ty].roomno != rmno || levl[tx][ty].edge) {
+		    if ((int) levl[tx][ty].roomno != rmno ||
+			    levl[tx][ty].edge) {
 			(void) somexy(sroom, &mm);
 			tx = mm.x; ty = mm.y;
 		    }
@@ -256,8 +253,8 @@ struct mkroom *sroom;
 	for(sx = sroom->lx; sx <= sroom->hx; sx++)
 	    for(sy = sroom->ly; sy <= sroom->hy; sy++) {
 		if(sroom->irregular) {
-		    if(levl[sx][sy].roomno != rmno ||
-		       levl[sx][sy].edge ||
+		    if ((int) levl[sx][sy].roomno != rmno ||
+			  levl[sx][sy].edge ||
 			  (sroom->doorct &&
 			   distmin(sx, sy, doors[sh].x, doors[sh].y) <= 1))
 			continue;
@@ -279,7 +276,7 @@ struct mkroom *sroom;
 			(sx == tx && sy == ty ? &mons[PM_QUEEN_BEE] :
 			 &mons[PM_KILLER_BEE]) :
 		    (struct permonst *) 0,
-		   sx, sy);
+		   sx, sy, NO_MM_FLAGS);
 		if(mon) {
 			mon->msleep = 1;
 			if (type==COURT && mon->mpeaceful) {
@@ -348,17 +345,25 @@ struct mkroom *sroom;
 	}
 }
 
+/* make a swarm of undead around mm */
 void
-mkundead(mm)   /* make a swarm of undead around mm */
+mkundead(mm, revive_corpses, mm_flags)
 coord *mm;
+boolean revive_corpses;
+int mm_flags;
 {
-	register int cnt = (level_difficulty() + 1)/10 + rnd(5);
-	register struct permonst *mdat;
+	int cnt = (level_difficulty() + 1)/10 + rnd(5);
+	struct permonst *mdat;
+	struct obj *otmp;
+	coord cc;
 
-	while(cnt--) {
-	      mdat = morguemon();
-	      if(enexto(mm, mm->x, mm->y, mdat))
-		   (void) makemon(mdat, mm->x, mm->y);
+	while (cnt--) {
+	    mdat = morguemon();
+	    if (enexto(&cc, mm->x, mm->y, mdat) &&
+		    (!revive_corpses ||
+		     !(otmp = sobj_at(CORPSE, cc.x, cc.y)) ||
+		     !revive(otmp)))
+		(void) makemon(mdat, cc.x, cc.y, mm_flags);
 	}
 	level.flags.graveyard = TRUE;	/* reduced chance for undead corpse */
 }
@@ -402,12 +407,13 @@ mkswamp()	/* Michiel Huisjes & Fred de Wilde */
 			    /* mkclass() won't do, as we might get kraken */
 			    (void) makemon(rn2(5) ? &mons[PM_GIANT_EEL]
 						  : &mons[PM_ELECTRIC_EEL],
-						sx, sy);
+						sx, sy, NO_MM_FLAGS);
 			    eelct++;
 			}
 		    } else
 			if(!rn2(4))	/* swamps tend to be moldy */
-			    (void) makemon(mkclass(S_FUNGUS,0), sx, sy);
+			    (void) makemon(mkclass(S_FUNGUS,0),
+						sx, sy, NO_MM_FLAGS);
 		}
 		level.flags.has_swamp = 1;
 	}
@@ -526,13 +532,15 @@ coord *c;
 	    while(try_cnt++ < 100) {
 		c->x = somex(croom);
 		c->y = somey(croom);
-		if(!levl[c->x][c->y].edge && levl[c->x][c->y].roomno == i)
+		if (!levl[c->x][c->y].edge &&
+			(int) levl[c->x][c->y].roomno == i)
 		    return TRUE;
 	    }
 	    /* try harder; exhaustively search until one is found */
 	    for(c->x = croom->lx; c->x <= croom->hx; c->x++)
 		for(c->y = croom->ly; c->y <= croom->hy; c->y++)
-		    if(!levl[c->x][c->y].edge && levl[c->x][c->y].roomno == i)
+		    if (!levl[c->x][c->y].edge &&
+			    (int) levl[c->x][c->y].roomno == i)
 			return TRUE;
 	    return FALSE;
 	}
@@ -647,7 +655,7 @@ struct mkroom *r;
 {
 	short i;
 	/*
-	 * Well, I really should write only useful informations instead
+	 * Well, I really should write only useful information instead
 	 * of writing the whole structure. That is I should not write
 	 * the subrooms pointers, but who cares ?
 	 */
@@ -687,7 +695,7 @@ struct mkroom *r;
 }
 
 /*
- * rest_rooms : That's for restore rooms. Read the rooms structure from
+ * rest_rooms : That's for restoring rooms. Read the rooms structure from
  * the disk.
  */
 

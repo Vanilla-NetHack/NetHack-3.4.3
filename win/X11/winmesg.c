@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmesg.c	3.2	93/02/02	*/
+/*	SCCS Id: @(#)winmesg.c	3.2	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -205,11 +205,17 @@ destroy_message_window(wp)
 {
     if (wp->popup) {
 	nh_XtPopdown(wp->popup);
-	XtDestroyWidget(wp->popup);
-	set_circle_buf(wp->mesg_information, 0);	/* free buffer list */
-	free((char *)wp->mesg_information);
+	if (!wp->keep_window)
+	    XtDestroyWidget(wp->popup),  wp->popup = (Widget)0;
     }
-    wp->type = NHW_NONE;
+    if (wp->mesg_information) {
+	set_circle_buf(wp->mesg_information, 0);	/* free buffer list */
+	free((genericptr_t)wp->mesg_information),  wp->mesg_information = 0;
+    }
+    if (wp->keep_window)
+	XtRemoveCallback(wp->w, XtNexposeCallback, mesg_exposed, (XtPointer)0);
+    else
+	wp->type = NHW_NONE;
 }
 
 
@@ -290,10 +296,10 @@ set_circle_buf(mesg_info, count)
 	 * the list is non_empty.
 	 */
 	tail = get_previous(mesg_info->head);
-	for (i = mesg_info->num_lines - count;	i--; ) {
+	for (i = mesg_info->num_lines - count; i > 0; i--) {
 	    curr = mesg_info->head;
 	    mesg_info->head = curr->next;
-	    if (curr->line) free(curr->line);
+	    if (curr->line) free((genericptr_t)curr->line);
 	    free((genericptr_t)curr);
 	}
 	if (count == 0) {
@@ -541,6 +547,7 @@ mesg_exposed(w, client_data, widget_data)
 	while (XCheckTypedWindowEvent(dpy, win, Expose, &evt)) continue;
 
 	wp = find_widget(w);
+	if (wp->keep_window && !wp->mesg_information) return;
 	mesg_check_size_change(wp);
 	redraw_message_window(wp);
     }
@@ -614,3 +621,5 @@ mesg_resized(w, client_data, call_data)
 	wp->mesg_information->num_lines);
 #endif
 }
+
+/*winmesg.c*/

@@ -1,5 +1,5 @@
 $ ! vms/vmsbuild.com -- compile and link NetHack 3.2.*			[pr]
-$	version_number = "3.2.0"
+$	version_number = "3.2.1"
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.-.src] if starting from [.sys.vms]
@@ -271,7 +271,7 @@ $ gosub compile_list
 $!
 $link:
 $ milestone "<linking...>"
-$ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain)'crtl''gnulib''ident_opt'
+$ link/Exe=nethack.exe 'nethacklib'/Lib/Incl=(vmsmain)'crtl''gnulib''ident_opt'
 $ milestone "NetHack"
 $     if c_opt.eq.o_LINK then  goto done	!"LINK" only
 $special:
@@ -286,18 +286,18 @@ $ c_list = "#lev_lex,#dgn_lex"
 $ copy [-.sys.vms]lev_lex.h stdio.*/Prot=(s:rwd,o:rwd)
 $ gosub compile_list
 $ rename stdio.h lev_lex.*
-$ link/exe=lev_comp lev_main,lev_yacc,lev_lex,-
+$ link/exe=lev_comp.exe lev_main.obj,lev_yacc.obj,lev_lex.obj,-
 	panic.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
 $ milestone "lev_comp"
-$ link/exe=dgn_comp dgn_main,dgn_yacc,dgn_lex,-
+$ link/exe=dgn_comp.exe dgn_main.obj,dgn_yacc.obj,dgn_lex.obj,-
 	panic.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
 $ milestone "dgn_comp"
 $!
 $ c_list = "#dlb_main,#recover"
 $ gosub compile_list
-$ link/exe=dlb dlb_main.obj,panic.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
+$ link/exe=dlb.exe dlb_main.obj,panic.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
 $ milestone "dlb"
-$ link/exe=[] recover.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
+$ link/exe=recover.exe recover.obj,'nethacklib'/Lib'crtl''gnulib''ident_opt'
 $ milestone "recover"
 $!
 $done:

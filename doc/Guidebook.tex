@@ -39,7 +39,7 @@
 %.au
 \author{Eric S. Raymond\\
 (Extensively edited and expanded for 3.0 by Mike Threepoint)}
-\date{April 3, 1995}
+\date{May 24, 1996}
 
 \maketitle
 
@@ -61,7 +61,7 @@ usually seemed better off than when they passed through the first time.  And
 who was to say that all of those who did not return had not just kept going?
 %.pg
 
-Asking around, you hear about a bauble, some call it The Amulet of Yendor,
+Asking around, you hear about a bauble, called the Amulet of Yendor by some,
 which, if you can find it, will bring you great wealth.  One legend you were
 told even mentioned that the one who finds the amulet will be granted
 immortality by the gods.  The amulet is rumored to be somewhere beyond the
@@ -83,8 +83,8 @@ will vary with your background and training.
 \blist{}
 \item[\bb{Archeologists}]%
 understand dungeons pretty well; this enables them
-to move quickly and sneak up on dungeon nasties.  They start equipped
-with proper tools for a scientific expedition.
+to move quickly and sneak up on the local nasties.  They start equipped
+with the tools for a proper scientific expedition.
 %.pg
 %
 \item[\bb{Barbarians}]%
@@ -122,7 +122,7 @@ their armor.
 are clerics militant, crusaders
 advancing the cause of righteousness with arms, armor, and arts
 thaumaturgic.  Their ability to commune with deities via prayer
-occasionally extricates them from peril; but can also put them in it.
+occasionally extricates them from peril, but can also put them in it.
 %.pg
 %
 \item[\bb{Rogues}]%
@@ -152,7 +152,7 @@ in them stealth and cunning.
 %
 \item[\bb{Wizards}]%
 start out with a knowledge of magic, a selection of magical
-items and a particular affinity for dweomercraft.  Although seemingly weak
+items, and a particular affinity for dweomercraft.  Although seemingly weak
 and easy to overcome at first sight, an experienced Wizard is a deadly foe.
 \elist
 
@@ -279,7 +279,7 @@ particular, it can affect the prices shopkeepers offer you.
 %.lp
 \item[\bb{Alignment}]
 %
-{\it Lawful}, {\it Neutral\/} or {\it Chaotic}.  Basically, Lawful is
+{\it Lawful}, {\it Neutral\/} or {\it Chaotic}.  Often, Lawful is
 good and Chaotic is evil.  Your alignment influences how other
 monsters react toward you.  Monsters of a like alignment are more likely
 to be non-aggressive, while those of an opposing alignment are more likely
@@ -440,11 +440,11 @@ Letters and certain other symbols represent the various inhabitants
 of the Mazes of Menace.  Watch out, they can be nasty and vicious.
 Sometimes, however, they can be helpful.
 
+\elist
 %.pg
 You need not memorize all these symbols; you can ask the game what any
 symbol represents with the `{\tt /}' command (see the Commands section for
 more info).
-\elist
 
 %.hn 1
 \section{Commands}
@@ -506,10 +506,10 @@ explicitly ask for it by typing in the name of the monster or object.
 Tell what a command does.
 %.lp
 \item[\tb{<}]
-Go up a staircase to the previous level (if you are on the stairs).
+Go up to the previous level (if you are on the staircase or ladder).
 %.lp
 \item[\tb{>}]
-Go down a staircase to the next level (if you are on the stairs).
+Go down to the next level (if you are on the staircase or ladder).
 %.lp
 \item[\tb{[yuhjklbn]}]
 Go one step in the direction indicated (see Figure 2).  If there is
@@ -557,6 +557,9 @@ Apply (use) a tool (pick-axe, key, lamp \ldots).
 \item[\tb{A}]
 Remove all armor.  Use `{\tt T}' (take off) to take off only one piece of
 armor.
+Remove one or more worn items, such as armor.
+Use `{\tt T}' (take off) to take off only one piece of armor 
+or `{\tt R}' (remove) to take off only one accessory.
 %.lp
 \item[\tb{\^{}A}]
 Redo the previous command.
@@ -599,7 +602,7 @@ Engrave a message on the floor.
 Engraving the word ``{\tt Elbereth}'' will cause most monsters to not attack
 you hand-to-hand (but if you attack, you will rub it out); this is
 often useful to give yourself a breather.  (This feature may be compiled out
-of the game, so your version might not necessarily have it.)\\
+of the game, so your version might not have it.)\\
 %.sd
 %.si
 {\tt E-} -- write in the dust with your fingers.
@@ -680,7 +683,7 @@ Display the game history.
 %.lp
 \item[\tb{w}]
 Wield weapon.\\
-{\tt w-} -- wield nothing, use your bare hands.
+{\tt w-} means wield nothing, use your bare hands.
 %.lp
 \item[\tb{W}]
 Wear armor.
@@ -755,8 +758,9 @@ depends on what features the game was compiled with.
 with another key, modifies it by setting the `meta' [8th, or `high']
 bit), you can invoke the extended commands by meta-ing the first
 letter of the command.  In {\it OS/2, PC\/ {\rm and} ST NetHack}, the `Alt'
-key can be used in this fashion; on the Amiga set altmeta to get this
-behavior.
+key can be used in this fashion; on the Amiga set the
+{\it altmeta\/}
+option to get this behavior.
 \blist{}
 %.lp
 \item[\tb{M-a}]
@@ -769,6 +773,9 @@ Talk to someone.
 %.lp
 \item[\tb{M-d}]
 Dip an object into something.
+%.lp
+\item[\tb{M-e}]
+Advance or check weapons skills.
 %.lp
 \item[\tb{M-f}]
 Force a lock.
@@ -928,7 +935,7 @@ when you move.  Otherwise your pet will be stranded and may become
 wild.
 
 %.hn 2
-\subsection*{Ghost levels}
+\subsection*{Bones levels}
 
 %.pg
 You may encounter the shades and corpses of other adventurers (or even
@@ -1017,15 +1024,28 @@ weapon, you do only 1--2 hit points of damage (plus bonuses, if any).
 There are wielded weapons, like maces and swords, and thrown weapons,
 like arrows and spears.  To hit monsters with a weapon, you must wield it and
 attack them, or throw it at them.  You can simply select to throw a spear.
-To shoot an arrow, you must first wield a bow, then throw the arrow.
+To shoot an arrow, you should first wield a bow, then throw the arrow.
 Crossbows shoot crossbow bolts.  Slings hurl rocks and (other) stones
 (like gems).  You can wield only one weapon at a time, but you can change
 weapons unless you're wielding a cursed one.
+To switch to bare hands, wield `{\tt \-}', or use the `{\tt A}' command which
+allows you to unwield the current weapon in addition to taking off
+other worn items.
+
+%.pg
+The ``{\tt \#enhance}'' command will be present if
+the ``weapon skills'' feature is enabled, and deals with your
+proficiency in various types of weapons.
+
 %.pg
 Enchanted weapons have a ``plus'' (or ``to hit enhancement'' which can be
 either positive or negative) that adds or subtracts to/from your chance to
 hit and the damage you do to a monster.  The only way to determine a weapon's
 enchantment is to have it magically identified somehow.
+
+%.pg
+Most weapons are subject to some type of damage like rust.  Such
+damage can be repaired.
 
 %.pg
 Those of you in the audience who are AD\&D players, be aware that each
@@ -1035,7 +1055,8 @@ weapon which exists in AD\&D does the same damage to monsters in
 in an appendix to {\it Unearthed Arcana}, an AD\&D supplement.
 
 %.pg
-The commands to use weapons are `{\tt w}' (wield) and `{\tt t}' (throw).
+The commands to use weapons are `{\tt w}' (wield), `{\tt t}' (throw), and
+the ``{\tt \#enhance}'' extended command.
 
 %.hn 2
 \subsection*{Armor (`{\tt [}')}
@@ -1067,7 +1088,7 @@ no armor              & 10
 shields, cloaks)
 to lower your armor class even further, but you can only wear one item
 of each category (one suit of armor, one cloak, one helmet, one
-shield, and so on).
+shield, and so on) at a time.
 
 %.pg
 If a piece of armor is enchanted, its armor protection will be better
@@ -1080,7 +1101,13 @@ pieces of armor usually have negative enchantments (minuses) in
 addition to being unremovable.
 
 %.pg
+Many types of armor are subject to some kind of damage like rust.  Such
+damage can be repaired.  Some types of armor may inhibit spell casting.
+
+%.pg
 The commands to use armor are `{\tt W}' (wear) and `{\tt T}' (take off).
+The `{\tt A}' command can also be used to take off armor as well as other
+worn items.
 
 %.hn 2
 \subsection*{Food (`{\tt \%}')}
@@ -1099,6 +1126,7 @@ When you kill monsters, they usually leave corpses which are also
 ``food.''  Many, but not all, of these are edible; some also give you
 special powers when you eat them.  A good rule of thumb is ``you are
 what you eat.''
+
 %.pg
 You can name one food item after something you like to eat with the
 {\it fruit\/} option, if your dungeon has it.
@@ -1123,15 +1151,18 @@ blessed, and how many uses it has left.  Some objects of subtle
 enchantment are difficult to identify without these.
 
 %.pg
-If you receive mail while you are playing (on
-versions compiled with this feature), a mail daemon may run up and
-deliver it to you as a %
-{\it scroll of mail}.  To use this feature,
+A mail daemon may run up and deliver mail to you as a %
+{\it scroll of mail} (on versions compiled with this feature).
+To use this feature on versions where {\it NetHack\/}
+mail delivery is triggered by electronic mail appearing in your system mailbox,
 you must let {\it NetHack\/} know where to look for new mail by setting the
-``MAIL'' environment variable to the file name of your mailbox.  You
-may also want to set the ``MAILREADER'' environment variable to the
+``MAIL'' environment variable to the file name of your mailbox.
+You may also want to set the ``MAILREADER'' environment variable to the
 file name of your favorite reader, so {\it NetHack\/} can shell to it when you
-read the scroll.  You can disable the mail daemon by clearing the
+read the scroll.
+On versions of {\it NetHack\/} where mail is randomly
+generated internal to the game, these environment variables are ignored.
+You can disable the mail daemon by turning off the
 {\it mail\/} option.
 
 %.pg
@@ -1184,8 +1215,12 @@ The command to use a wand is `{\tt z}' (zap).  To break one, use the `{\tt a}'
 Rings are very useful items, since they are relatively permanent
 magic, unlike the usually fleeting effects of potions, scrolls, and
 wands.
+
+%.pg
 Putting on a ring activates its magic.  You can wear only two
 rings, one on each ring finger.
+
+%.pg
 Most rings also cause you to grow hungry more rapidly, the rate
 varying with the type of ring.
 
@@ -1199,7 +1234,7 @@ The commands to use rings are `{\tt P}' (put on) and `{\tt R}' (remove).
 Spell books are tomes of mighty magic.  When studied with the `{\tt r}' (read)
 command, they bestow the knowledge of a spell---unless the attempt
 backfires.
-Reading a cursed spell book, or one with mystic runes beyond
+Reading a cursed spell book or one with mystic runes beyond
 your ken can be harmful to your health!
 
 %.pg
@@ -1214,6 +1249,10 @@ your naked mind.  Releasing the magical energy releases some of your
 memory of the spell with it.  Each time you cast a spell, your
 familiarity with it will dwindle, until you eventually forget the
 details completely and must relearn it.
+
+%.pg
+Casting a spell also requires flexible movement, and wearing various types
+of armor may interfere with that.
 
 %.pg
 The command to read a spell book is the same as for scrolls, `{\tt r}'
@@ -1239,12 +1278,11 @@ The command to use tools is `{\tt a}' (apply).
 You may encounter chests or boxes in your travels.  These can be
 opened with the ``{\tt \#loot}'' extended command when they are on the floor,
 or with the `{\tt a}' (apply) command when you are carrying one.  However,
-chests are often locked, and require you to either use a key to unlock
-it, a tool to pick the lock, or to break it open with brute force.
-Chests are unwieldy objects, and must be set down to be unlocked (by
-kicking them, using a key or lock picking tool with the `{\tt a}' (apply)
-command, or by using a weapon to force the lock with the ``{\tt \#force}''
-extended command).
+chests are often locked, and are in any case unwieldy objects.
+You must set one down before unlocking it by kicking it,
+using a key or lock-picking tool with the `{\tt a}' (apply) command,
+or by using a weapon to force the lock with the ``{\tt \#force}''
+extended command.
 
 %.pg
 Some chests are trapped, causing nasty things to happen when you
@@ -1545,17 +1583,61 @@ be the first letter of one of the following:  traditional, combination,
 partial, or full.  Traditional was the only interface available for
 earlier versions; it consists of a prompt for object class characters,
 followed by an object-by-object prompt for all items matching the selected
-object class(es).  Combination starts will a prompt for object class(es)
+object class(es).  Combination starts with a prompt for object class(es)
 of interest, but then displays a menu of matching objects rather than
 prompting one-by-one.  Partial skips the object class filtering and
 immediately displays a menu of all objects.  Full displays a menu of
 object classes rather than a character prompt, and then a menu of matching
 objects for selection.
+\item[\ib{menu\_deselect\_all}]
+Menu character accelerator to deselect all items in a menu.
+Implemented by the X11 and tty ports.
+Default `-'.
+\item[\ib{menu\_deselect\_page}]
+Menu character accelerator deselect all items on this page of a menu.
+Implemented only by the tty port.
+Default `\verb+\+'.
+\item[\ib{menu\_first\_page}]
+Menu character accelerator to jump to the first page in a menu.
+Implemented only by the tty port.
+Default `\verb+^+'.
+\item[\ib{menu\_invert\_all}]
+Menu character accelerator to invert all items in a menu.
+Implemented by the X11 and tty ports.
+Default `@'.
+\item[\ib{menu\_invert\_page}]
+Menu character accelerator to invert all items on this page of a menu.
+Implemented only by the tty port.
+Default `\verb+~+'.
+\item[\ib{menu\_last\_page}]
+Menu character accelerator to jump to the last page in a menu.
+Implemented only by the tty port.
+Default `\verb+|+'.
+\item[\ib{menu\_next\_page}]
+Menu character accelerator to goto the next menu page.
+Implemented only by the tty port.
+Default `\verb+>+'.
+\item[\ib{menu\_previous\_page}]
+Menu character accelerator to goto the previous menu page.
+Implemented only by the tty port.
+Default `\verb+<+'.
+\item[\ib{menu\_search}]
+Menu character accelerator to search for a menu item.
+Implemented only by the X11 port.
+Default `:'.
+\item[\ib{menu\_select\_all}]
+Menu character accelerator to select all items in a menu.
+Implemented by the X11 and tty ports.
+Default `.'.
+\item[\ib{menu\_select\_page}]
+Menu character accelerator to select all items on this page of a menu.
+Implemented only by the tty port.
+Default `,'.
 %.lp
 \item[\ib{monsters}]
 Set the characters used to display monster classes (default
 ``\verb+abcdefghijklmnopqrstuv+
-\verb+wxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@ \\&;:~]+'').
+\verb+wxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@ '&;:~]+'').
 This string is subjected to the same processing as the {\it dungeon\/} option.
 The order of the symbols is
 ant or other insect, blob, cockatrice,
@@ -1621,7 +1703,7 @@ Specify the order to list object types in (default
 containing the symbols for the various object types.
 %.lp
 \item[\ib{perm\_invent}]
-If True, always display your current inventory in a window.  This only
+If true, always display your current inventory in a window.  This only
 makes sense for windowing system interfaces that implement this feature.
 %.lp
 \item[\ib{pettype}]
@@ -1634,8 +1716,14 @@ Cannot be set with the `{\tt O}' command.
 Specify the object types to be picked up when {\it autopickup\/}
 is on.  Default is all types.
 %.lp
+\item[\ib{preload\_tiles}]
+For the protected mode MSDOS version, control whether tiles
+get pre-loaded into RAM at the start of the game.  Doing so
+enhances performance of the tile graphics, but uses more memory. (default on).
+Cannot be set with the `{\tt O}' command.
+%.lp
 \item[\ib{rawio}]
-Force raw (non-ctrl-break) mode for faster output and more
+Force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `{\tt \^{}P}' as a printer toggle
 without it) (default off).  Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `{\tt O}' command.
@@ -1704,12 +1792,14 @@ Cannot be set with the `{\tt O}' command.
 Provide more commentary during the game (default on).
 %.lp
 \item[\ib{videocolors}]
+\begin{sloppypar}
 Set the color palette for PC systems using NO\_TERMS
-(default 4 2 6 1 5 3 15 12 10 14 9 13 11).
+(default 4-2-6-1-5-3-15-12-10-14-9-13-11).
 The order of colors is red, green, brown, blue, magenta, cyan,
 bright.white, bright.red, bright.green, yellow, bright.blue,
 bright.magenta, and bright.cyan.
 Cannot be set with the `{\tt O}' command.
+\end{sloppypar}
 %.lp
 \item[\ib{videoshades}]
 Set the intensity level of the three gray scales available

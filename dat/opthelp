@@ -121,6 +121,20 @@ effects    like dungeon, but for special effects symbols
            exml exmm exmr                   (explosion matrix middle row)
            exbl exbm exbr                   (explosion matrix bottom row)
            default:  |-\\/*!)(0#@*/-\\||\\-//-\\|\ |\\-/
+menu_*     create single character accelerators for menu commands.  Below
+           is a list of all commands.  Each is followed by a list of window-
+           ports that implement them:  'x' is X11, 't' is tty.
+           menu_deselect_all  deselect all items in a menu [-](xt)
+           menu_deselect_page deselect all items on this page of a menu [\](t)
+           menu_first_page    jump to the first page in a menu [^](t)
+           menu_invert_all    invert all items in a menu [@](xt)
+           menu_invert_page   invert all items on this page of a menu [~](t)
+           menu_last_page     jump to the last page in a menu [|](t)
+           menu_next_page     goto the next menu page [>](t)
+           menu_previous_page goto the previous menu page [<](t)
+           menu_search        search for a menu item [:](x)
+           menu_select_all    select all items in a menu [.](xt)
+           menu_select_page   select all items on this page of a menu [,](t)
 monsters   like dungeon, but for monster symbols
            default:  abcdefghijklmnopqrstuvwxyz
                      ABCDEFGHIJKLMNOPQRSTUVWXYZ@\ \\&;:~]

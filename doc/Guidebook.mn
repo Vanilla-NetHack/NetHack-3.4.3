@@ -4,7 +4,7 @@
 .ds vr "NetHack 3.2
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "April 3, 1996
+.ds f2 "May 24, 1996
 .mt
 A Guide to the Mazes of Menace
 (Guidebook for NetHack 3.2)
@@ -26,7 +26,7 @@ adventuring route.  After all, when adventurers came back this way they
 usually seemed better off than when they passed through the first time.  And
 who was to say that all of those who did not return had not just kept going?
 .pg
-Asking around, you hear about a bauble, some call it The Amulet of Yendor,
+Asking around, you hear about a bauble, called the Amulet of Yendor by some,
 which, if you can find it, will bring you great wealth.  One legend you were
 told even mentioned that the one who finds the amulet will be granted
 immortality by the gods.  The amulet is rumored to be somewhere beyond the
@@ -70,7 +70,7 @@ their armor.
 \fIPriests\fP and \fIPriestesses\fP are clerics militant, crusaders
 advancing the cause of righteousness with arms, armor, and arts
 thaumaturgic.  Their ability to commune with deities via prayer
-occasionally extricates them from peril; but can also put them in it.
+occasionally extricates them from peril, but can also put them in it.
 .pg
 \fIRogues\fP are agile and stealthy thieves, with knowledge of locks,
 traps, and poisons.  Their advantage lies in surprise, which they employ
@@ -89,7 +89,7 @@ Northlands makes them strong, inures them to extremes of cold, and instills
 in them stealth and cunning.
 .pg
 \fIWizards\fP start out with a knowledge of magic, a selection of magical
-items and a particular affinity for dweomercraft.  Although seemingly weak
+items, and a particular affinity for dweomercraft.  Although seemingly weak
 and easy to overcome at first sight, an experienced Wizard is a deadly foe.
 .pg
 You set out for the dungeon and after several days of uneventful
@@ -141,7 +141,7 @@ when referring to things you might see on the screen during your game.
 .pg
 In order to understand what is going on in NetHack, first you must
 understand what NetHack is doing with the screen.  The NetHack screen
-replaces the ``You see...'' descriptions of text adventure games.
+replaces the ``You see ...'' descriptions of text adventure games.
 Figure 1 is a sample of what a NetHack screen might look like.
 
 .TS S
@@ -201,7 +201,7 @@ magic).  It affects your magical energy.
 Charisma affects how certain creatures react toward you.  In
 particular, it can affect the prices shopkeepers offer you.
 .lp Alignment
-\fBLawful\fP, \fBNeutral\fP, or \fBChaotic\fP.  Basically, Lawful is
+\fBLawful\fP, \fBNeutral\fP, or \fBChaotic\fP.  Often, Lawful is
 good and Chaotic is evil.  Your alignment influences how other
 monsters react toward you.  Monsters of a like alignment are more likely
 to be non-aggressive, while those of an opposing alignment are more likely
@@ -312,7 +312,7 @@ An altar, or an iron chain.
 A pool of water or moat or a pool of lava.
 .lp {
 A fountain.
-.lp "\\\\
+.lp "\e
 An opulent throne.
 .lp "a-zA-Z and other symbols
 Letters and certain other symbols represent the various inhabitants
@@ -373,9 +373,9 @@ explicitly ask for it by typing in the name of the monster or object.
 .lp &
 Tell what a command does.
 .lp <
-Go up a staircase to the previous level (if you are on the stairs).
+Go up to the previous level (if you are on the staircase or ladder).
 .lp >
-Go down a staircase to the next level (if you are on the stairs).
+Go down to the next level (if you are on the staircase or ladder).
 .lp [yuhjklbn]
 Go one step in the direction indicated (see Figure 2).  If there is
 a monster there, you will fight the monster instead.  Only these
@@ -386,9 +386,9 @@ one-step movement commands cause you to fight monsters; the others
 center;
 c c.
 y  k  u	7  8  9
-  \\\\\\\\ | /	    \\\\\\\\ | /
+\e | /	\e | /
 h- . -l	4- . -6
-  / | \\\\\\\\	    / | \\\\\\\\
+/ | \e	/ | \e
 b  j  n	1  2  3
 	(if \fBnumber_pad\fP is set)
 .TE
@@ -411,7 +411,9 @@ Rest, do nothing for one turn.
 .lp a
 Apply (use) a tool (pick-axe, key, lamp...).
 .lp A
-Remove all armor.  Use `T' (take off) to take off only one piece of armor.
+Remove one or more worn items, such as armor.
+Use `T' (take off) to take off only one piece of armor 
+or `R' (remove) to take off only one accessory.
 .lp ^A
 Redo the previous command.
 .lp c
@@ -443,7 +445,7 @@ Engrave a message on the floor.
 Engraving the word ``Elbereth'' will cause most monsters to not attack
 you hand-to-hand (but if you attack, you will rub it out); this is
 often useful to give yourself a breather.  (This feature may be compiled out
-of the game, so your version might not necessarily have it.)
+of the game, so your version might not have it.)
 .sd
 .si
 E- - write in the dust with your fingers.  
@@ -543,7 +545,7 @@ Tell what tools you are using.
 Count your gold pieces.
 .lp +
 List the spells you know (same as `x').
-.lp "\\\\
+.lp "\e
 Show what types of objects have been discovered.
 .lp !
 Escape to a shell.
@@ -558,8 +560,9 @@ If your keyboard has a meta key (which, when pressed in combination
 with another key, modifies it by setting the `meta' [8th, or `high']
 bit), you can invoke the extended commands by meta-ing the first
 letter of the command.  In OS/2, PC, and ST NetHack, the `Alt' key
-can be used in this fashion; on the Amiga set altmeta to get this
-behavior.
+can be used in this fashion; on the Amiga set the
+.op altmeta
+option to get this behavior.
 .lp M-a
 Adjust inventory letters (most useful when the
 .op fixinv
@@ -568,6 +571,8 @@ option is ``on'').
 Talk to someone.
 .lp M-d
 Dip an object into something.
+.lp M-e
+Advance or check weapons skills.
 .lp M-f
 Force a lock.
 .lp M-i
@@ -686,7 +691,7 @@ Your pet will follow you up and down staircases if it is next to you
 when you move.  Otherwise your pet will be stranded and may become
 wild.
 .hn 2
-Ghost levels
+Bones levels
 .pg
 You may encounter the shades and corpses of other adventurers (or even
 former incarnations of yourself!) and their personal effects.  Ghosts
@@ -764,15 +769,25 @@ weapon, you do only 1-2 hit points of damage (plus bonuses, if any).
 There are wielded weapons, like maces and swords, and thrown weapons,
 like arrows and spears.  To hit monsters with a weapon, you must wield it and
 attack them, or throw it at them.  You can simply select to throw a spear.
-To shoot an arrow, you must first wield a bow, then throw the arrow.
+To shoot an arrow, you should first wield a bow, then throw the arrow.
 Crossbows shoot crossbow bolts.  Slings hurl rocks and (other) stones
 (like gems).  You can wield only one weapon at a time, but you can change
 weapons unless you're wielding a cursed one.
+To switch to bare hands, wield `-', or use the `A' command which
+allows you to unwield the current weapon in addition to taking off
+other worn items.
+.pg
+The ``#enhance'' command will be present if
+the ``weapon skills'' feature is enabled, and deals with your
+proficiency in various types of weapons.
 .pg
 Enchanted weapons have a ``plus'' (or ``to hit enhancement'' which can be
 either positive or negative) that adds or subtracts to/from your chance to
 hit and the damage you do to a monster.  The only way to determine a weapon's
 enchantment is to have it magically identified somehow.
+.pg
+Most weapons are subject to some type of damage like rust.  Such
+damage can be repaired.
 .pg
 Those of you in the audience who are AD&D players, be aware that each
 weapon which exists in AD&D does the same damage to monsters in
@@ -780,7 +795,8 @@ NetHack.  Some of the more obscure weapons (such as the \fIaklys\fP,
 \fIlucern hammer\fP, and \fIbec-de-corbin\fP) are defined in an
 appendix to \fIUnearthed Arcana\fP, an AD&D supplement.
 .pg
-The commands to use weapons are `w' (wield) and `t' (throw).
+The commands to use weapons are `w' (wield), `t' (throw), and
+the ``#enhance'' extended command.
 .hn 2
 Armor (`[')
 .pg
@@ -814,7 +830,7 @@ no armor	10
 You can also wear other pieces of armor (ex. helmets, boots, shields, cloaks)
 to lower your armor class even further, but you can only wear one item
 of each category (one suit of armor, one cloak, one helmet, one
-shield, and so on).
+shield, and so on) at a time.
 .pg
 If a piece of armor is enchanted, its armor protection will be better
 (or worse) than normal, and its ``plus'' (or minus) will subtract from
@@ -825,7 +841,12 @@ find out the armor class and any ``plusses'' it provides.  Cursed
 pieces of armor usually have negative enchantments (minuses) in
 addition to being unremovable.
 .pg
+Many types of armor are subject to some kind of damage like rust.  Such
+damage can be repaired.  Some types or armor may inhibit spell casting.
+.pg
 The commands to use armor are `W' (wear) and `T' (take off).
+The `A' command can also be used to take off armor as well as other
+worn items.
 .hn 2
 Food (`%')
 .pg
@@ -858,15 +879,20 @@ can be used to determine what another object is, whether it is cursed or
 blessed, and how many uses it has left.  Some objects of subtle
 enchantment are difficult to identify without these.
 .pg
-If you receive mail while you are playing (on versions compiled with this
-feature), a mail daemon may run up and deliver it to you as a
-\fIscroll of mail\fP.  To use this feature, you must let NetHack know where
-to look for new mail by setting the ``MAIL'' environment variable to the file
-name of your mailbox.  You may also want to set the ``MAILREADER'' environment
+A mail daemon may run up and deliver mail to you as a
+\fIscroll of mail\fP (on versions compiled with this feature).
+To use this feature on versions where NetHack mail delivery is triggered
+by electronic mail appearing in your system mailbox,
+you must let NetHack know where to look for new mail by setting
+the ``MAIL'' environment variable to the file name of your mailbox.
+You may also want to set the ``MAILREADER'' environment
 variable to the file name of your favorite reader, so NetHack can shell to it
-when you read the scroll.  You can disable the mail daemon by clearing the
+when you read the scroll.
+On versions of NetHack where mail is randomly generated internal to the game,
+these environment variables are ignored.
+You can disable the mail daemon by turning off the
 .op mail
-flag.
+option.
 .pg
 The command to read a scroll is `r'.
 .hn 2
@@ -922,7 +948,7 @@ Spell books (`+')
 Spell books are tomes of mighty magic.  When studied with the `r' (read)
 command, they bestow the knowledge of a spell\(emunless the attempt
 backfires.
-Reading a cursed spell book, or one with mystic runes beyond
+Reading a cursed spell book or one with mystic runes beyond
 your ken can be harmful to your health!
 .pg
 A spell (even when learned) can also backfire when you cast it.  If you
@@ -935,6 +961,9 @@ your naked mind.  Releasing the magical energy releases some of your
 memory of the spell with it.  Each time you cast a spell, your
 familiarity with it will dwindle, until you eventually forget the
 details completely and must relearn it.
+.pg
+Casting a spell also requires flexible movement, and wearing various types
+of armor may interfere with that.
 .pg
 The command to read a spell book is the same as for scrolls, `r'
 (read).  The `+' command lists your current spells and the number of
@@ -954,12 +983,10 @@ Chests and boxes
 You may encounter chests or boxes in your travels.  These can be
 opened with the ``#loot'' extended command when they are on the floor,
 or with the `a' (apply) command when you are carrying one.  However,
-chests are often locked, and require you to either use a key to unlock
-it, a tool to pick the lock, or to break it open with brute force.
-Chests are unwieldy objects, and must be set down to be unlocked (by
-kicking them, using a key or lock picking tool with the `a' (apply)
-command, or by using a weapon to force the lock with the ``#force''
-extended command).
+chests are often locked, and are in any case unwieldy objects.
+You must set one down before unlocking it by kicking it,
+using a key or lock-picking tool with the `a' (apply) command,
+or by using a weapon to force the lock with the ``#force'' extended command.
 .pg
 Some chests are trapped, causing nasty things to happen when you
 unlock or open them.  You can check for and try to deactivate traps
@@ -1033,7 +1060,7 @@ For example, to set up an environment variable so that ``female'' is on,
 ``autopickup'' is off, the name is set to ``Blue Meanie'', and the fruit
 is set to ``papaya'', you would enter the command
 .sd
-% \fBsetenv NETHACKOPTIONS "female,\\!autopickup,name:Blue Meanie,fruit:papaya"\fP
+% \fBsetenv NETHACKOPTIONS "female,\e!autopickup,name:Blue Meanie,fruit:papaya"\fP
 .ed
 in \fIcsh\fP (note the need to escape the ! since it's special to the shell), or
 .sd
@@ -1058,7 +1085,7 @@ or
 option in a different syntax,
 a sequence of decimal numbers giving the character position
 in the current font to be used in displaying each entry.
-Such a sequence can be continued to multiple lines by putting a `\\'
+Such a sequence can be continued to multiple lines by putting a `\e'
 at the end of each line to be continued.
 Any line starting with `#' is treated as a comment.
 .pg
@@ -1109,7 +1136,7 @@ Name your starting dog (ex. ``dogname:Fang'').
 Cannot be set with the `O' command.
 .lp dungeon
 Set the graphics symbols for displaying the dungeon
-(default \&`` |--------||.-|++.##<><>_\\\\#{}.}..## #}'').
+(default \&``\ |--------||.-|++.##<><>_\e\e#{}.}..##\ #}'').
 The
 .op dungeon
 option should be followed by a string of 1-38
@@ -1120,9 +1147,9 @@ Remember that you may need to escape some of these characters
 if, for example, you use \fIcsh\fP.
 
 Note that this option string is escape-processed in conventional C
-fashion.  This means that `\\' is a prefix to take the following
+fashion.  This means that `\e' is a prefix to take the following
 character literally, and not as a special prefix.  The special escape
-form `\\m' switches on the meta bit in the following character, and the `^'
+form `\em' switches on the meta bit in the following character, and the `^'
 prefix causes the following character to be treated as a control
 character.
 
@@ -1144,7 +1171,7 @@ may be added, or the present ones rearranged.
 Cannot be set with the `O' command.
 .lp effects
 Set the graphics symbols for displaying special effects
-(default \&``|-\\\\/*!)(0#@*/-\\\\||\\\\-//-\\\\| |\\\\-/'').
+(default \&``|-\e\e/*!)(0#@*/-\e\e||\e\e-//-\e\e|\ |\e\e-/'').
 The
 .op effects
 option should be followed by a string of 1-29
@@ -1214,15 +1241,59 @@ be the first letter of one of the following:  traditional, combination,
 partial, or full.  Traditional was the only interface available for
 earlier versions; it consists of a prompt for object class characters,
 followed by an object-by-object prompt for all items matching the selected
-object class(es).  Combination starts will a prompt for object class(es)
+object class(es).  Combination starts with a prompt for object class(es)
 of interest, but then displays a menu of matching objects rather than
 prompting one-by-one.  Partial skips the object class filtering and
 immediately displays a menu of all objects.  Full displays a menu of
 object classes rather than a character prompt, and then a menu of matching
 objects for selection.
+.lp menu_deselect_all
+Menu character accelerator to deselect all items in a menu.
+Implemented by the X11 and tty ports.
+Default '-'.
+.lp menu_deselect_page
+Menu character accelerator deselect all items on this page of a menu.
+Implemented only by the tty port.
+Default '\e'.
+.lp menu_first_page
+Menu character accelerator to jump to the first page in a menu.
+Implemented only by the tty port.
+Default '^'.
+.lp menu_invert_all
+Menu character accelerator to invert all items in a menu.
+Implemented by the X11 and tty ports.
+Default '@'.
+.lp menu_invert_page
+Menu character accelerator to invert all items on this page of a menu.
+Implemented only by the tty port.
+Default '~'.
+.lp menu_last_page
+Menu character accelerator to jump to the last page in a menu.
+Implemented only by the tty port.
+Default '|'.
+.lp menu_next_page
+Menu character accelerator to goto the next menu page.
+Implemented only by the tty port.
+Default '>'.
+.lp menu_previous_page 
+Menu character accelerator to goto the previous menu page.
+Implemented only by the tty port.
+Default '<'.
+.lp menu_search
+Menu character accelerator to search for a menu item.
+Implemented only by the X11 port.
+Default ':'.
+.lp menu_select_all
+Menu character accelerator to select all items in a menu.
+Implemented by the X11 and tty ports.
+Default '.'.
+.lp menu_select_page
+Menu character accelerator to select all items on this page of a menu.
+Implemented only by the tty port.
+Default ','.
 .lp monsters
 Set the characters used to display monster classes (default
-``abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@\ \\&;:~]'').
+``abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ@\ \'&;:~]'').
 This string is subjected to the same processing as the
 .op dungeon
 option.
@@ -1281,11 +1352,11 @@ food, potion, scroll, spell book, wand, gold, gem or rock, boulder or statue,
 iron ball, chain, and venom.
 Cannot be set with the `O' command.
 .lp packorder
-Specify the order to list object types in (default ``\\")[%?+/=!(*`0_'').
+Specify the order to list object types in (default ``\e")[%?+/=!(*`0_'').
 The value of this option should be a string containing the
 symbols for the various object types.
 .lp perm_invent
-If True, always display your current inventory in a window.  This only
+If true, always display your current inventory in a window.  This only
 makes sense for windowing system interfaces that implement this feature.
 .lp pettype
 Specify the type of your initial pet, if you are playing a character class
@@ -1295,6 +1366,11 @@ Cannot be set with the `O' command.
 Specify the object types to be picked up when
 .op autopickup
 is on.  Default is all types.
+.lp preload_tiles
+For the protected mode MSDOS version, control whether tiles
+get pre-loaded into RAM at the start of the game.  Doing so
+enhances performance of the tile graphics, but uses more memory. (default on).
+Cannot be set with the `O' command.
 .lp rawio\ \ \ 
 Force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `^P' as a printer toggle
@@ -1355,7 +1431,7 @@ Cannot be set with the `O' command.
 Provide more commentary during the game (default on).
 .lp videocolors
 Set the color palette for PC systems using NO_TERMS
-(default 4 2 6 1 5 3 15 12 10 14 9 13 11).
+(default 4-2-6-1-5-3-15-12-10-14-9-13-11).
 The order of colors is red, green, brown, blue, magenta, cyan,
 bright.white, bright.red, bright.green, yellow, bright.blue,
 bright.magenta, and bright.cyan.

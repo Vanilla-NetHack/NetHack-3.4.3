@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pray.c	3.2	96/03/22	*/
+/*	SCCS Id: @(#)pray.c	3.2	96/05/24	*/
 /* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,6 +12,7 @@ static void FDECL(angrygods,(ALIGNTYP_P));
 static void FDECL(pleased,(ALIGNTYP_P));
 static void FDECL(godvoice,(ALIGNTYP_P,const char*));
 static void FDECL(god_zaps_you,(ALIGNTYP_P));
+static void FDECL(fry_by_god,(ALIGNTYP_P));
 static void FDECL(gods_angry,(ALIGNTYP_P));
 static void FDECL(gods_upset,(ALIGNTYP_P));
 static void FDECL(consume_offering,(struct obj *));
@@ -358,30 +359,60 @@ decurse:
 	}
 }
 
+/* "I am sometimes shocked by...  the nuns who never take a bath without
+ * wearing a bathrobe all the time.  When asked why, since no man can see them,
+ * they reply 'Oh, but you forget the good God'.  Apparently they conceive of
+ * the Deity as a Peeping Tom, whose omnipotence enables Him to see through
+ * bathroom walls, but who is foiled by bathrobes." --Bertrand Russell, 1943
+ * Divine wrath, dungeon walls, and armor follow the same principle.
+ */
 static void
 god_zaps_you(resp_god)
 aligntyp resp_god;
 {
-	pline("Suddenly, a bolt of lightning strikes you!");
-	if (Reflecting) {
-	    shieldeff(u.ux, u.uy);
-	    if (Blind)
-		pline("For some reason you're unaffected.");
-	    else {
-		if (Reflecting & W_AMUL) {
-		    pline("It reflects from your medallion.");
-		    makeknown(AMULET_OF_REFLECTION);
-		} else {
-		    pline("It reflects from your shield.");
-		    makeknown(SHIELD_OF_REFLECTION);
+	if (u.uswallow) {
+	    pline("Suddenly a bolt of lightning comes down at you from the heavens!");
+	    pline("It strikes %s!", mon_nam(u.ustuck));
+	    if (!resists_elec(u.ustuck)) {
+		pline("%s fries to a crisp!", Monnam(u.ustuck));
+		/* Yup, you get experience.  It takes guts to successfully
+		 * pull off this trick on your god, anyway.
+		 */
+		xkilled(u.ustuck, 0);
+	    } else
+		pline("%s seems unaffected.", Monnam(u.ustuck));
+	} else {
+	    pline("Suddenly, a bolt of lightning strikes you!");
+	    if (Reflecting) {
+		shieldeff(u.ux, u.uy);
+		if (Blind)
+		    pline("For some reason you're unaffected.");
+		else {
+		    if (Reflecting & W_AMUL) {
+			pline("It reflects from your medallion.");
+			makeknown(AMULET_OF_REFLECTION);
+		    } else {
+			pline("It reflects from your shield.");
+			makeknown(SHIELD_OF_REFLECTION);
+		    }
 		}
-	    }
-	    goto ohno;
-	} else if (Shock_resistance) {
-	    shieldeff(u.ux, u.uy);
-	    pline("It seems not to affect you.");
-ohno:
-	    pline("%s is not deterred...", align_gname(resp_god));
+	    } else if (Shock_resistance) {
+		shieldeff(u.ux, u.uy);
+		pline("It seems not to affect you.");
+	    } else
+		fry_by_god(resp_god);
+	}
+
+	pline("%s is not deterred...", align_gname(resp_god));
+	if (u.uswallow) {
+	    pline("A wide-angle disintegration beam aimed at you hits %s!",
+			mon_nam(u.ustuck));
+	    if (!resists_disint(u.ustuck)) {
+		pline("%s fries to a crisp!", Monnam(u.ustuck));
+		xkilled(u.ustuck, 2); /* no corpse */
+	    } else
+		pline("%s seems unaffected.", Monnam(u.ustuck));
+	} else {
 	    pline("A wide-angle disintegration beam hits you!");
 
 	    /* disintegrate shield and body armor before disintegrating
@@ -396,29 +427,34 @@ ohno:
 #ifdef TOURIST
 	    if (uarmu && !uarm && !uarmc) (void) destroy_arm(uarmu);
 #endif
-
-	    if (Disint_resistance) {
+	    if (!Disint_resistance)
+		fry_by_god(resp_god);
+	    else {
 		You("bask in its %s glow for a minute...", Black);
 		godvoice(resp_god, "I believe it not!");
-		if (Is_astralevel(&u.uz) || Is_sanctum(&u.uz)) {
-		    /* one more try for high altars */
-		    verbalize("Thou cannot escape my wrath, mortal!");
-		    summon_minion(resp_god, FALSE);
-		    summon_minion(resp_god, FALSE);
-		    summon_minion(resp_god, FALSE);
-		    verbalize("Destroy %s, my servants!", him[flags.female]);
-		}
-		return;
+	    }
+	    if (Is_astralevel(&u.uz) || Is_sanctum(&u.uz)) {
+		/* one more try for high altars */
+		verbalize("Thou cannot escape my wrath, mortal!");
+		summon_minion(resp_god, FALSE);
+		summon_minion(resp_god, FALSE);
+		summon_minion(resp_god, FALSE);
+		verbalize("Destroy %s, my servants!", him[flags.female]);
 	    }
 	}
-	{
-	    char killerbuf[64];
-	    You("fry to a crisp.");
-	    killer_format = KILLED_BY;
-	    Sprintf(killerbuf, "the wrath of %s", align_gname(resp_god));
-	    killer = killerbuf;
-	    done(DIED);
-	}
+}
+
+static void
+fry_by_god(resp_god)
+aligntyp resp_god;
+{
+	char killerbuf[64];
+
+	You("fry to a crisp.");
+	killer_format = KILLED_BY;
+	Sprintf(killerbuf, "the wrath of %s", align_gname(resp_god));
+	killer = killerbuf;
+	done(DIED);
 }
 
 static void
@@ -449,7 +485,8 @@ aligntyp resp_god;
 	    case 3:
 			godvoice(resp_god,(char *)0);
 			pline("\"Thou %s, %s.\"",
-			      ugod_is_angry() ? "hast strayed from the path" :
+			    (ugod_is_angry() && resp_god == u.ualign.type)
+				? "hast strayed from the path" :
 						"art arrogant",
 			      u.usym == S_HUMAN ? "mortal" : "creature");
 			verbalize("Thou must relearn thy lessons!");
@@ -668,10 +705,10 @@ pleased(g_align)
 		    verbalize("I crown thee...      The Hand of Elbereth!");
 		    if (obj && (obj->otyp == LONG_SWORD) && !obj->oartifact) {
 			obj = oname(obj, artiname(ART_EXCALIBUR));
-#ifdef WEAPON_SKILLS
-			unrestrict_weapon_skill(P_LONG_SWORD);
-#endif /* WEAPON_SKILLS */
 		    }
+#ifdef WEAPON_SKILLS
+		    unrestrict_weapon_skill(P_LONG_SWORD);
+#endif /* WEAPON_SKILLS */
 		    break;
 		case A_NEUTRAL:
 		    u.uevent.uhand_of_elbereth = 2;
@@ -952,7 +989,8 @@ dosacrifice()
 		    change_luck(altaralign == A_NONE ? -2 : 2);
 		    demonless_msg = "blood coagulates";
 		}
-		if ((dmon = makemon(&mons[dlord(altaralign)], u.ux, u.uy))) {
+		if ((dmon = makemon(&mons[dlord(altaralign)],
+						u.ux, u.uy, NO_MM_FLAGS ))) {
 		    You("have summoned %s!", a_monnam(dmon));
 		    if (sgn(u.ualign.type) == sgn(dmon->data->maligntyp))
 			dmon->mpeaceful = TRUE;
@@ -1449,8 +1487,7 @@ doturn()
 				if(u.ualign.type == A_CHAOTIC) {
 				    mtmp->mpeaceful = TRUE;
 				} else { /* damn them */
-				    You("destroy %s!", mon_nam(mtmp));
-				    mondied(mtmp);
+				    killed(mtmp);
 				}
 			    }
 			    break;

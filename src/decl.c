@@ -202,7 +202,7 @@ NEARDATA struct c_color_names c_color_names = {
 struct c_common_strings c_common_strings = {
 	"Nothing happens.",		"That's enough tries!",
 	"That is a silly thing to %s.",	"shudder for a moment.",
-	"something", "Something"
+	"something", "Something", "You can move again."
 };
 
 /* Vision */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)write.c	3.2	95/02/11	*/
+/*	SCCS Id: @(#)write.c	3.2	96/05/05	*/
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
@@ -69,7 +69,7 @@ dowrite(pen)
 register struct obj *pen;
 {
 	register struct obj *paper;
-	char namebuf[BUFSZ], *nm;
+	char namebuf[BUFSZ], *nm, *bp;
 	register struct obj *new_obj;
 	int basecost, actualcost;
 	int curseval;
@@ -107,6 +107,7 @@ register struct obj *pen;
 	/* what to write */
 	Sprintf(qbuf, "What type of %s do you want to write?", typeword);
 	getlin(qbuf, namebuf);
+	(void)mungspaces(namebuf);	/* remove any excess whitespace */
 	if(namebuf[0] == '\033' || !namebuf[0])
 		return(1);
 	nm = namebuf;
@@ -114,26 +115,25 @@ register struct obj *pen;
 	else if (!strncmpi(nm, "spellbook ", 10)) nm += 10;
 	if (!strncmpi(nm, "of ", 3)) nm += 3;
 
-	if (paper->oclass == SPBOOK_CLASS) {
-		first = bases[SPBOOK_CLASS];
-		last = bases[SPBOOK_CLASS+1] - 1;
-	} else {
-		first = bases[SCROLL_CLASS];
-		last = bases[SCROLL_CLASS+1] - 1;
+	if ((bp = strstri(nm, " armour")) != 0) {
+		(void)strncpy(bp, " armor ", 7);	/* won't add '\0' */
+		(void)mungspaces(bp + 1);	/* remove the extra space */
 	}
 
-	for (i=first; i<=last; i++) {
+	first = bases[(int)paper->oclass];
+	last = bases[(int)paper->oclass + 1] - 1;
+	for (i = first; i <= last; i++) {
 		/* extra shufflable descr not representing a real object */
 		if (!OBJ_NAME(objects[i])) continue;
 
-		if (!strncmpi(OBJ_NAME(objects[i]), nm,
-		    strlen(OBJ_NAME(objects[i])))) goto found;
-		if (!strncmpi(OBJ_DESCR(objects[i]), nm,
-		    strlen(OBJ_DESCR(objects[i])))) {
+		if (!strcmpi(OBJ_NAME(objects[i]), nm))
+			goto found;
+		if (!strcmpi(OBJ_DESCR(objects[i]), nm)) {
 			by_descr = TRUE;
 			goto found;
 		}
 	}
+
 	pline("There is no such %s!", typeword);
 	return 1;
 found:
@@ -142,10 +142,14 @@ found:
 		You_cant("write that!");
 		pline("It's obscene!");
 		return 1;
-	}
-
-	if (i == SPE_BOOK_OF_THE_DEAD) {
+	} else if (i == SPE_BOOK_OF_THE_DEAD) {
 		pline("No mere dungeon adventurer could write that.");
+		return 1;
+	} else if (by_descr && paper->oclass == SPBOOK_CLASS &&
+		    !objects[i].oc_name_known) {
+		/* can't write unknown spellbooks by description */
+		pline(
+		  "Unfortunately you don't have enough information to go on.");
 		return 1;
 	}
 
@@ -173,7 +177,8 @@ found:
 		Your("marker dries out!");
 		/* scrolls disappear, spellbooks don't */
 		if (paper->oclass == SPBOOK_CLASS)
-			pline_The("spellbook is left unfinished.");
+			pline_The(
+		       "spellbook is left unfinished and your writing fades.");
 		else {
 			pline_The("scroll is now useless and disappears!");
 			useup(paper);
@@ -187,14 +192,19 @@ found:
 	/* can't write if we don't know it - unless we're lucky */
 	if(!(objects[new_obj->otyp].oc_name_known) &&
 	   !(objects[new_obj->otyp].oc_uname) &&
-	   !by_descr &&
 	   (rnl(Role_is('W') ? 3 : 15))) {
-		You("don't know how to write that!");
+		You("%s to write that!", by_descr ? "fail" : "don't know how");
 		/* scrolls disappear, spellbooks don't */
 		if (paper->oclass == SPBOOK_CLASS)
-			You("write in your best handwriting:  \"My Diary\".");
+			You(
+       "write in your best handwriting:  \"My Diary\", but it quickly fades.");
 		else {
-			You("write \"%s was here!\" and the scroll disappears.",plname);
+			if (by_descr) {
+			    Strcpy(namebuf, OBJ_DESCR(objects[new_obj->otyp]));
+			    wipeout_text(namebuf, (6+MAXULEV - u.ulevel)/6, 0);
+			} else
+			    Sprintf(namebuf, "%s was here!", plname);
+			You("write \"%s\" and the scroll disappears.", namebuf);
 			useup(paper);
 		}
 		obfree(new_obj, (struct obj *) 0);
@@ -204,10 +214,12 @@ found:
 	/* useup old scroll / spellbook */
 	useup(paper);
 
-	/* now you know it! */
-	if (!by_descr) makeknown(new_obj->otyp);
-
 	/* success */
+	if (new_obj->oclass == SPBOOK_CLASS) {
+		/* acknowledge the change in the object's description... */
+		pline("The spellbook warps strangely, then turns %s.",
+		      OBJ_DESCR(objects[new_obj->otyp]));
+	}
 	new_obj->blessed = (curseval > 0);
 	new_obj->cursed = (curseval < 0);
 #ifdef MAIL
@@ -216,7 +228,6 @@ found:
 	new_obj = hold_another_object(new_obj, "Oops!  %s out of your grasp!",
 					       The(aobjnam(new_obj, "slip")),
 					       (const char *)0);
-	if (new_obj) new_obj->known = 1;
 	return(1);
 }
 

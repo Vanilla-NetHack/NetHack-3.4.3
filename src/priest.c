@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.2	96/03/28	*/
+/*	SCCS Id: @(#)priest.c	3.2	96/05/03	*/
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989.		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -196,8 +196,8 @@ boolean sanctum;   /* is it the seat of the high priest? */
 	if(MON_AT(sx+1, sy))
 		rloc(m_at(sx+1, sy)); /* insurance */
 
-	priest = (sanctum ? makemon(&mons[PM_HIGH_PRIEST], sx+1, sy)
-			  : makemon(&mons[PM_ALIGNED_PRIEST], sx+1, sy));
+	priest = makemon(&mons[sanctum ? PM_HIGH_PRIEST : PM_ALIGNED_PRIEST],
+			 sx + 1, sy, NO_MM_FLAGS);
 	if (priest) {
 		EPRI(priest)->shroom = (sroom - rooms) + ROOMOFFSET;
 		EPRI(priest)->shralign = Amask2align(levl[sx][sy].altarmask);
@@ -378,7 +378,8 @@ register int roomno;
 		if(!rn2(5)) {
 		    struct monst *mtmp;
 
-		    if(!(mtmp = makemon(&mons[PM_GHOST],u.ux,u.uy))) return;
+		    if(!(mtmp = makemon(&mons[PM_GHOST],u.ux,u.uy,NO_MM_FLAGS)))
+			return;
 		    pline("An enormous ghost appears next to you!");
 		    mtmp->mpeaceful = 0;
 		    set_malign(mtmp);
@@ -510,7 +511,7 @@ boolean peaceful;
 	
 	if (MON_AT(x, y)) rloc(m_at(x, y));	/* insurance */
 
-	if (!(roamer = makemon(ptr, x, y)))
+	if (!(roamer = makemon(ptr, x, y, NO_MM_FLAGS)))
 		return((struct monst *)0);
 
 	EPRI(roamer)->shralign = alignment;

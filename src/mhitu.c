@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	3.2	96/01/21	*/
+/*	SCCS Id: @(#)mhitu.c	3.2	96/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,7 @@ STATIC_VAR NEARDATA struct obj *otmp;
 
 STATIC_DCL void FDECL(urustm, (struct monst *, struct obj *));
 # ifdef OVL1
+static boolean FDECL(u_slip_free, (struct monst *,struct attack *));
 static int FDECL(passiveum, (struct permonst *,struct monst *,struct attack *));
 # endif /* OVL1 */
 
@@ -458,13 +459,10 @@ mattacku(mtmp)
 	}
 
 	/* Unlike defensive stuff, don't let them use item _and_ attack. */
-	/* Exception:  Medusa; her gaze is automatic.  (We actually kludge
-	 * by permitting a full attack sequence, not just a gaze attack.)
-	 */
 	if(find_offensive(mtmp)) {
 		int foo = use_offensive(mtmp);
 
-		if (mtmp->data != &mons[PM_MEDUSA] && foo != 0) return(foo==1);
+		if (foo != 0) return(foo==1);
 	}
 
 	for(i = 0; i < NATTK; i++) {
@@ -502,7 +500,11 @@ mattacku(mtmp)
 			break;
 
 		case AT_GAZE:	/* can affect you either ranged or not */
-			sum[i] = gazemu(mtmp, mattk);
+			/* Medusa gaze already operated through m_respond in
+			 * dochug(); don't gaze more than once per round.
+			 */
+			if (mdat != &mons[PM_MEDUSA])
+				sum[i] = gazemu(mtmp, mattk);
 			break;
 
 		case AT_EXPL:	/* automatic hit if next to, and aimed at you */
@@ -706,6 +708,38 @@ struct permonst *mdat;
 	}
 }
 
+/* check whether slippery clothing protects from hug or wrap attack */
+static boolean
+u_slip_free(mtmp, mattk)
+struct monst *mtmp;
+struct attack *mattk;
+{
+	struct obj *obj = (uarmc ? uarmc : uarm);
+
+#ifdef TOURIST
+	if (!obj) obj = uarmu;
+#endif
+	/* if your cloak/armor is greased, monster slips off */
+	if (obj && (obj->greased || obj->otyp == OILSKIN_CLOAK)) {
+	    pline("%s %s your %s %s!",
+		  Monnam(mtmp),
+		  (mattk->adtyp == AD_WRAP) ?
+			"slips off of" : "grabs you, but cannot hold onto",
+		  obj->greased ? "greased" : "slippery",
+		  /* avoid "slippery slippery cloak"
+		     for undiscovered oilskin cloak */
+		  (obj->greased || objects[obj->otyp].oc_name_known) ?
+			xname(obj) : "cloak");
+
+	    if (obj->greased && !rn2(2)) {
+		pline_The("grease wears off.");
+		obj->greased = 0;
+	    }
+	    return TRUE;
+	}
+	return FALSE;
+}
+
 /*
  * hitmu: monster hits you
  *	  returns 2 if monster dies (e.g. "yellow light"), 1 otherwise
@@ -761,6 +795,8 @@ hitmu(mtmp, mattk)
 		armpro = objects[uarm->otyp].a_can;
 	if (uarmc && armpro < objects[uarmc->otyp].a_can)
 		armpro = objects[uarmc->otyp].a_can;
+	if (uarmh && armpro < objects[uarmh->otyp].a_can)
+		armpro = objects[uarmh->otyp].a_can;
 	uncancelled = !mtmp->mcan && ((rn2(3) >= armpro) || !rn2(50));
 
 /*	Now, adjust damages via resistances or specific attacks */
@@ -768,23 +804,14 @@ hitmu(mtmp, mattk)
 	    case AD_PHYS:
 		if (mattk->aatyp == AT_HUGS && !sticks(uasmon)) {
 		    if(!u.ustuck && rn2(2)) {
-			register struct obj *obj = (uarmc ? uarmc : uarm);
-
-			/* if your cloak/armor is greased, monster slips off */
-			if (obj && obj->greased) {
+			if (u_slip_free(mtmp, mattk)) {
 			    dmg = 0;
-			    pline("%s grabs you, but cannot hold onto your greased %s!",
-				  Monnam(mtmp), xname(obj));
-			    if (!rn2(2)) {
-				pline_The("grease wears off.");
-				obj->greased = 0;
-			    }
 			} else {
 			    u.ustuck = mtmp;
 			    pline("%s grabs you!", Monnam(mtmp));
 			}
 		    } else if(u.ustuck == mtmp) {
-		        exercise(A_STR, FALSE);
+			exercise(A_STR, FALSE);
 			You("are being %s.",
 			      (mtmp->data == &mons[PM_ROPE_GOLEM])
 			      ? "choked" : "crushed");
@@ -797,7 +824,7 @@ hitmu(mtmp, mattk)
 			    pline("%s hits you with the cockatrice corpse.",
 				Monnam(mtmp));
 			    if (!Stoned)
-			        goto do_stone;
+				goto do_stone;
 			}
 			dmg += dmgval(otmp, &youmonst);
 			if (dmg <= 0) dmg = 1;
@@ -1030,19 +1057,8 @@ do_stone:
 	    case AD_WRAP:
 		if ((!mtmp->mcan || u.ustuck == mtmp) && !sticks(uasmon)) {
 		    if (!u.ustuck && !rn2(10)) {
-			register struct obj *obj = (uarmc ? uarmc : uarm);
-#ifdef TOURIST
-			if (!obj) obj = uarmu;
-#endif
-			/* if your cloak/armor is greased, monster slips off */
-			if (obj && obj->greased) {
+			if (u_slip_free(mtmp, mattk)) {
 			    dmg = 0;
-			    pline("%s slips off of your greased %s!",
-				  Monnam(mtmp), xname(obj));
-			    if (!rn2(2)) {
-				pline_The("grease wears off.");
-				obj->greased = 0;
-			    }
 			} else {
 			    pline("%s swings itself around you!",
 				  Monnam(mtmp));
@@ -1431,7 +1447,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		    }
 		    break;
 		case AD_BLND:
-		    if (!defends(AD_BLND, uwep)) {
+		    if (!resists_blnd(&youmonst)) {
 			if(!Blind) {
 			    You_cant("see in here!");
 			    make_blinded((long)tmp,FALSE);
@@ -1534,7 +1550,7 @@ boolean ufound;
 		break;
 
 	    case AD_BLND:
-		not_affected |= (u.umonnum == PM_YELLOW_LIGHT) || Blind;
+		not_affected = resists_blnd(&youmonst);
 		if (!not_affected) {
 		    /* sometimes you're affected even if it's invisible */
 		    if (mon_visible(mtmp) || (rnd(tmp /= 2) > u.ulevel)) {
@@ -1594,6 +1610,8 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 			      s_suffix(Monnam(mtmp)),
 			      (Reflecting & W_AMUL) ?
 			      "medallion" : "shield");
+	if (mon_reflects(mtmp, "The gaze is reflected away by %s %s!"))
+			    break;
 			pline("%s is turned to stone!", Monnam(mtmp));
 		    }
 		    stoned = TRUE;
@@ -1637,8 +1655,8 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 		}
 		break;
 	    case AD_BLND:
-		if(!mtmp->mcan && canseemon(mtmp) && !defends(AD_BLND, uwep) &&
-		   distu(mtmp->mx,mtmp->my) <= BOLT_LIM*BOLT_LIM) {
+		if (!mtmp->mcan && canseemon(mtmp) && !resists_blnd(&youmonst)
+			&& distu(mtmp->mx,mtmp->my) <= BOLT_LIM*BOLT_LIM) {
 		    int blnd = d((int)mattk->damn, (int)mattk->damd);
 		    make_blinded((long)blnd,FALSE);
 		    make_stunned((long)d(1,3),TRUE);
@@ -2199,7 +2217,7 @@ cloneu()
 	if (u.mh <= 1) return(struct monst *)0;
 	if (mvitals[mndx].mvflags & G_EXTINCT) return(struct monst *)0;
 	uasmon->pxlth += sizeof(struct edog);
-	mon = makemon(uasmon, u.ux, u.uy);
+	mon = makemon(uasmon, u.ux, u.uy, NO_MM_FLAGS);
 	uasmon->pxlth -= sizeof(struct edog);
 	mon = christen_monst(mon, plname);
 	initedog(mon);

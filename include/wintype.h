@@ -53,4 +53,18 @@ typedef struct mi {
 /* invalid winid */
 #define WIN_ERR ((winid) -1)
 
+/* menu window keyboard commands (may be mapped) */
+#define MENU_FIRST_PAGE		'^'
+#define MENU_LAST_PAGE		'|'
+#define MENU_NEXT_PAGE		'>'
+#define MENU_PREVIOUS_PAGE	'<'
+#define MENU_SELECT_ALL		'.'
+#define MENU_UNSELECT_ALL	'-'
+#define MENU_INVERT_ALL		'@'
+#define MENU_SELECT_PAGE	','
+#define MENU_UNSELECT_PAGE	'\\'
+#define MENU_INVERT_PAGE	'~'
+#define MENU_SEARCH		':'
+
+
 #endif /* WINTYPE_H */

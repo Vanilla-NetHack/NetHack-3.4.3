@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.2	96/04/08	*/
+/*	SCCS Id: @(#)trap.c	3.2	96/05/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,6 +22,7 @@ STATIC_DCL boolean FDECL(thitm, (int, struct monst *, struct obj *, int));
 STATIC_DCL int FDECL(mkroll_launch,
 			(struct trap *,XCHAR_P,XCHAR_P,SHORT_P,long));
 STATIC_DCL boolean FDECL(isclearpath,(coord *, int, SCHAR_P, SCHAR_P));
+STATIC_DCL void FDECL(blow_up_landmine, (struct trap *));
 
 #ifndef OVLB
 STATIC_VAR const char *a_your[2];
@@ -180,8 +181,22 @@ register int x, y, typ;
 	ttmp->ttyp = typ;
 	switch(typ) {
 	    case STATUE_TRAP:	    /* create a "living" statue */
-		(void) mkcorpstat(STATUE, &mons[rndmonnum()], x, y, FALSE);
+	      { struct monst *mtmp;
+		struct obj *otmp, *statue;
+
+		statue = mkcorpstat(STATUE, (struct monst *)0,
+					&mons[rndmonnum()], x, y, FALSE);
+		mtmp = makemon(&mons[statue->corpsenm], 0, 0, NO_MM_FLAGS);
+		if (!mtmp) break; /* should never happen */
+		while(mtmp->minvent) {
+		    otmp = mtmp->minvent;
+		    otmp->owornmask = 0;
+		    obj_extract_self(otmp);
+		    add_to_container(statue, otmp);
+		}
+		mongone(mtmp);
 		break;
+	      }
 	    case ROLLING_BOULDER_TRAP:	/* boulder will roll towards trigger */
 		(void) mkroll_launch(ttmp, x, y, BOULDER, 1L);
 		break;
@@ -294,7 +309,16 @@ xchar x, y;
 	struct obj *otmp = sobj_at(STATUE, x, y);
 
 	deltrap(trap);
-	if (otmp && (mtmp = makemon(&mons[otmp->corpsenm], x, y)) != 0) {
+	if (otmp && (mtmp = makemon(&mons[otmp->corpsenm],
+					x, y, NO_MINVENT)) != 0) {
+	    struct obj *obj;
+
+	    while(otmp->cobj) {
+		obj = otmp->cobj;
+		obj_extract_self(obj);
+		add_to_minv(mtmp, obj);
+	    }
+	    m_dowear(mtmp, TRUE);
 	    delobj(otmp);
 	    /* mimic statue becomes seen mimic; other hiders won't be hidden */
 	    if (mtmp->m_ap_type) seemimic(mtmp);
@@ -564,8 +588,11 @@ two_hand:		    erode_weapon(FALSE);
 	    case HOLE:
 	    case TRAPDOOR:
 		seetrap(trap);
-		if(!Can_fall_thru(&u.uz))
-		    panic("Holes & trapdoors cannot exist on this level.");
+		if (!Can_fall_thru(&u.uz)) {
+		    impossible("dotrap: %ss cannot exist on this level.",
+			       defsyms[trap_to_defsym(ttype)].explanation);
+		    break;		/* don't activate it after all */
+		}
 		fall_through(TRUE);
 		break;
 
@@ -687,17 +714,11 @@ two_hand:		    erode_weapon(FALSE);
 		    set_wounded_legs(RIGHT_SIDE, rn1(35, 41));
 		    exercise(A_DEX, FALSE);
 		}
-		scatter(u.ux, u.uy, 4,
-			    MAY_DESTROY | MAY_HIT | MAY_FRACTURE | VIS_EFFECTS);
-		del_engr_at(u.ux, u.uy);
-		wake_nearto(u.ux, u.uy, 500);
-		trap->ttyp = PIT;		/* turn the mine into a pit */
-		trap->madeby_u = FALSE;	/* resulting pit isn't yours */
-		if (IS_DOOR(levl[u.ux][u.uy].typ))
-		    levl[u.ux][u.uy].doormask = D_BROKEN;
+		blow_up_landmine(trap);
 		newsym(u.ux,u.uy);		/* update trap symbol */
 		losehp(rnd(16), "land mine", KILLED_BY_AN);
-		dotrap(trap);	/* fall recursively into the pit... */
+		/* fall recursively into the pit... */
+		if ((trap = t_at(u.ux, u.uy)) != 0) dotrap(trap);
 		break;
 
 	    case ROLLING_BOULDER_TRAP:
@@ -721,6 +742,24 @@ two_hand:		    erode_weapon(FALSE);
 		impossible("You hit a trap of type %u", trap->ttyp);
 	}
 }
+
+/* some actions common to both player and monsters for triggered landmine */
+STATIC_OVL void
+blow_up_landmine(trap)
+struct trap *trap;
+{
+	scatter(trap->tx, trap->ty, 4,
+		MAY_DESTROY | MAY_HIT | MAY_FRACTURE | VIS_EFFECTS);
+	del_engr_at(trap->tx, trap->ty);
+	wake_nearto(trap->tx, trap->ty, 400);
+	if (IS_DOOR(levl[trap->tx][trap->ty].typ))
+	    levl[trap->tx][trap->ty].doormask = D_BROKEN;
+	/* TODO: destroy drawbridge if present;
+		 sometimes delete trap instead of always leaving a pit */
+	trap->ttyp = PIT;		/* explosion creates a pit */
+	trap->madeby_u = FALSE;		/* resulting pit isn't yours */
+}
+
 #endif /* OVLB */
 #ifdef OVL3
 
@@ -1023,16 +1062,7 @@ register struct monst *mtmp;
 			otmp->quan = 1L;
 			otmp->owt = weight(otmp);
 			if (in_sight) seetrap(trap);
-			if (is_whirly(mptr) || passes_walls(mptr)) {
-			    if (in_sight)
-				pline("A rock falls harmlessly through %s.",
-				      mon_nam(mtmp));
-			    else if (cansee(mtmp->mx, mtmp->my))
-				pline("A rock falls to the %s.",
-				      surface(mtmp->mx, mtmp->my));
-			    place_object(otmp, mtmp->mx, mtmp->my);
-			    stackobj(otmp);
-			} else if (thitm(0, mtmp, otmp, d(2, 6)))
+			if (thitm(0, mtmp, otmp, d(2, 6)))
 			    trapkilled = TRUE;
 			break;
 
@@ -1166,9 +1196,11 @@ register struct monst *mtmp;
 			break;
 		case HOLE:
 		case TRAPDOOR:
-			if(!Can_fall_thru(&u.uz))
-			 panic("Holes & trapdoors cannot exist on this level.");
-
+			if (!Can_fall_thru(&u.uz)) {
+			 impossible("mintrap: %ss cannot exist on this level.",
+				    defsyms[trap_to_defsym(tt)].explanation);
+			    break;	/* don't activate it after all */
+			}
 			if (is_flyer(mptr) || mptr == &mons[PM_WUMPUS] ||
 			    (mtmp->wormno && count_wsegs(mtmp) > 5) ||
 			    mptr->msize >= MZ_HUGE) break;
@@ -1288,21 +1320,13 @@ register struct monst *mtmp;
 			}
 			if (!in_sight)
 				pline("Kaablamm!  You hear an explosion in the distance!");
-			scatter(mtmp->mx, mtmp->my, 4,
-				MAY_DESTROY | MAY_HIT | MAY_FRACTURE | VIS_EFFECTS);
-			del_engr_at(mtmp->mx, mtmp->my);
-			if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ))
-				levl[mtmp->mx][mtmp->my].doormask = D_BROKEN;
-
-			trap->ttyp = PIT;       /* explosion creates a pit */
-			trap->madeby_u = FALSE; /* resulting pit isn't yours */
+			blow_up_landmine(trap);
 			if(thitm(0, mtmp, (struct obj *)0, rnd(16)))
 				trapkilled = TRUE;
 			else {
 				/* monsters recursively fall into new pit */
 				if (mintrap(mtmp) == 2) trapkilled=TRUE;
 			}
-			wake_nearto(mtmp->mx, mtmp->my, 500);
 			if (unconscious()) {
 				multi = -1;
 				nomovemsg="The explosion awakens you!";
@@ -1551,6 +1575,10 @@ struct obj *box;	/* null for floor trap */
 	boolean see_it = !Blind;
 	int num;
 
+/* Bug: for box case, the equivalent of burn_floor_paper() ought
+ * to be done upon its contents.
+ */
+
 	if ((box && !carried(box)) ? is_pool(box->ox, box->oy) : Underwater) {
 	    pline("A cascade of steamy bubbles erupts from %s!",
 		    the(box ? xname(box) : surface(u.ux,u.uy)));
@@ -1593,18 +1621,18 @@ domagictrap()
 	/* What happened to the poor sucker? */
 
 	if (fate < 10) {
-
 	  /* Most of the time, it creates some monsters. */
 	  register int cnt = rnd(4);
 
-	  /* below checks for blindness added by GAN 10/30/86 */
-	  if (!Blind)  {
+	  if (!resists_blnd(&youmonst)) {
 		You("are momentarily blinded by a flash of light!");
 		make_blinded((long)rn1(5,10),FALSE);
+	  } else if (!Blind) {
+		You("see a flash of light!");
 	  }  else
 		You_hear("a deafening roar!");
 	  while(cnt--)
-		(void) makemon((struct permonst *) 0, u.ux, u.uy);
+		(void) makemon((struct permonst *) 0, u.ux, u.uy, NO_MM_FLAGS);
 	}
 	else
 	  switch (fate) {
@@ -1719,8 +1747,7 @@ register boolean force, here;
 				obj->otyp = POT_WATER;
 				obj->blessed = obj->cursed = 0;
 				obj->odiluted = 0;
-			} else if (obj->otyp != POT_WATER ||
-				   obj->blessed || obj->cursed)
+			} else if (obj->otyp != POT_WATER)
 				obj->odiluted++;
 		} else if (is_rustprone(obj) && obj->oeroded < MAX_ERODE &&
 			  !(obj->oerodeproof || (obj->blessed && !rnl(4)))) {
@@ -2166,7 +2193,7 @@ int otyp;
 	int fails = try_disarm(ttmp, FALSE);
 
 	if (fails < 2) return fails;
-	You("disarm %s trap", the_your[ttmp->madeby_u]);
+	You("disarm %s trap.", the_your[ttmp->madeby_u]);
 	cnv_trap_obj(otyp, 50-rnl(50), ttmp);
 	return 1;
 }
@@ -2396,11 +2423,17 @@ boolean force;
 		    exercise(A_DEX, TRUE);
 		    if(!force && (confused || Fumbling ||
 				     rnd(75+level_difficulty()/2) > ch)) {
-			    You("set it off!");
-			    b_trapped("door", FINGER);
-		    } else
-			    You("disarm it!");
-		    levl[x][y].doormask &= ~D_TRAPPED;
+			You("set it off!");
+			b_trapped("door", FINGER);
+			levl[x][y].doormask = D_NODOOR;
+			unblock_point(x, y);
+			newsym(x, y);
+			/* (probably ought to charge for this damage...) */
+			if (*in_rooms(x, y, SHOPBASE)) add_damage(x, y, 0L);
+		    } else {
+			You("disarm it!");
+			levl[x][y].doormask &= ~D_TRAPPED;
+		    }
 		} else pline("This door was not trapped.");
 		return(1);
 	} else {
@@ -2421,6 +2454,10 @@ boolean disarm;
 	register struct obj *otmp = obj, *otmp2;
 	char	buf[80];
 	const char *msg;
+	coord cc;
+
+	if (get_obj_location(obj, &cc.x, &cc.y, 0))	/* might be carried */
+	    obj->ox = cc.x,  obj->oy = cc.y;
 
 	You(disarm ? "set it off!" : "trigger a trap!");
 	display_nhwindow(WIN_MESSAGE, FALSE);
@@ -2540,7 +2577,7 @@ boolean disarm;
 			pline("Suddenly you are frozen in place!");
 			nomul(-d(5, 6));
 			exercise(A_DEX, FALSE);
-			nomovemsg = "You can move again.";
+			nomovemsg = You_can_move_again;
 			break;
 		case 2:
 		case 1:

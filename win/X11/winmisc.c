@@ -145,7 +145,7 @@ X11_player_selection()
 		player_select_translations,
 		"quit", ps_quit,
 		"random", ps_random,
-		num_roles, roles, 0, ps_select, &player_form);
+		num_roles, roles, (Widget **)0, ps_select, &player_form);
 
     ps_selected = 0;
     positionpopup(popup, FALSE);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dbridge.c	3.2	95/06/24	*/
+/*	SCCS Id: @(#)dbridge.c	3.2	96/05/18	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -746,6 +746,7 @@ close_drawbridge(x,y)
 int x,y;
 {
 	register struct rm *lev1, *lev2;
+	struct trap *t;
 	int x2, y2;
 
 	lev1 = &levl[x][y];
@@ -780,8 +781,10 @@ int x,y;
 	(void) revive_nasty(x,y,(char *)0);
 	(void) revive_nasty(x2,y2,(char *)0);
 	delallobj(x, y);
-	newsym(x, y);
 	delallobj(x2, y2);
+	if ((t = t_at(x, y)) != 0) deltrap(t);
+	if ((t = t_at(x2, y2)) != 0) deltrap(t);
+	newsym(x, y);
 	newsym(x2, y2);
 	block_point(x2,y2);	/* vision */
 }
@@ -795,6 +798,7 @@ open_drawbridge(x,y)
 int x,y;
 {
 	register struct rm *lev1, *lev2;
+	struct trap *t;
 	int x2, y2;
 
 	lev1 = &levl[x][y];
@@ -815,6 +819,8 @@ int x,y;
 	do_entity(&(occupants[1]));
 	(void) revive_nasty(x,y,(char *)0);
 	delallobj(x, y);
+	if ((t = t_at(x, y)) != 0) deltrap(t);
+	if ((t = t_at(x2, y2)) != 0) deltrap(t);
 	newsym(x, y);
 	newsym(x2, y2);
 	unblock_point(x2,y2);	/* vision */
@@ -830,6 +836,7 @@ destroy_drawbridge(x,y)
 int x,y;
 {
 	register struct rm *lev1, *lev2;
+	struct trap *t;
 	int x2, y2;
 	boolean e_inview;
 	struct entity *etmp1 = &(occupants[0]), *etmp2 = &(occupants[1]);
@@ -876,6 +883,8 @@ int x,y;
 	wake_nearto(x, y, 500);
 	lev2->typ = DOOR;
 	lev2->doormask = D_NODOOR;
+	if ((t = t_at(x, y)) != 0) deltrap(t);
+	if ((t = t_at(x2, y2)) != 0) deltrap(t);
 	newsym(x,y);
 	newsym(x2,y2);
 	if (!does_block(x2,y2,lev2)) unblock_point(x2,y2);	/* vision */

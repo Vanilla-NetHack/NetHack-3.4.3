@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dokick.c	3.2	96/03/23	*/
+/*	SCCS Id: @(#)dokick.c	3.2	96/05/04	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,7 +6,7 @@
 #include "eshk.h"
 
 #define is_bigfoot(x)	((x) == &mons[PM_SASQUATCH])
-#define martial()	(Role_is('S') || Role_is('P') || is_bigfoot(uasmon))
+#define martial()	(martial_bonus() || is_bigfoot(uasmon))
 
 static NEARDATA struct rm *maploc;
 static NEARDATA const char *gate_str;
@@ -64,16 +64,10 @@ register boolean clumsy;
 		if (martial()) dmg += rn2(ACURR(A_DEX)/2 + 1);
 	}
 	dmg += u.udaminc;	/* add ring(s) of increase damage */
-	if (dmg > 0) {
+	if (dmg > 0)
 		mon->mhp -= dmg;
-		if (mon->mhp < 1) {
-			(void) passive(mon, TRUE, 0, TRUE);
-			killed(mon);
-			return;
-		}
-	}
-	if(martial() && !bigmonst(mon->data) && !rn2(3) && mon->mcanmove
-	   && mon != u.ustuck) {
+	if(mon->mhp > 0 && martial() && !bigmonst(mon->data) && !rn2(3)
+			&& mon->mcanmove && mon != u.ustuck) {
 		/* see if the monster has a place to move into */
 		mdx = mon->mx + u.dx;
 		mdy = mon->my + u.dy;
@@ -86,8 +80,13 @@ register boolean clumsy;
 			set_apparxy(mon);
 		}
 	}
-	(void) passive(mon, FALSE, 1, TRUE);
 
+	(void) passive(mon, TRUE, mon->mhp > 0, TRUE);
+	if (mon->mhp <= 0) killed(mon);
+
+	/* may bring up a dialog, so put this after all messages */
+	if (dmg > 1 && martial_bonus())	/* exercise proficiency */
+	    use_skill(P_MARTIAL_ARTS);
 }
 
 static void
@@ -310,8 +309,13 @@ xchar x, y;
 
 	if(martial()) range += rnd(3);
 
-	if(is_ice(x,y)) { range += rnd(3); slide = TRUE; }
-	if(kickobj->greased) { range += rnd(3); slide = TRUE; }
+	if (is_pool(x, y)) {
+	    /* you're in the water too; significantly reduce range */
+	    range = range / 3 + 1;	/* {1,2}=>1, {3,4,5}=>2, {6,7,8}=>3 */
+	} else {
+	    if (is_ice(x, y)) range += rnd(3),  slide = TRUE;
+	    if (kickobj->greased) range += rnd(3),  slide = TRUE;
+	}
 
 	/* Mjollnir is magically too heavy to kick */
 	if(kickobj->oartifact == ART_MJOLLNIR) range = 1;
@@ -386,7 +390,7 @@ xchar x, y;
 	}
 
 	/* fragile objects should not be kicked */
-	if (breaks(kickobj, kickobj->ox, kickobj->oy, FALSE)) return 1;
+	if (hero_breaks(kickobj, kickobj->ox, kickobj->oy, FALSE)) return 1;
 
 	if(IS_ROCK(levl[x][y].typ)) {
 		if ((!martial() && rn2(20) > ACURR(A_DEX))
@@ -573,9 +577,9 @@ dokick()
 
 	maploc = &levl[x][y];
 
-	/* The next four tests should stay in      */
-	/* their present order: monsters, objects, */
-	/* non-doors, doors.			   */
+	/* The next five tests should stay in    */
+	/* their present order: monsters, pools, */
+	/* objects, non-doors, doors.		 */
 
 	if(MON_AT(x, y)) {
 		struct permonst *mdat = m_at(x,y)->data;
@@ -591,6 +595,12 @@ dokick()
 		    hurtle(-u.dx, -u.dy, range);
 		}
 		return(1);
+	}
+
+	if (is_pool(x, y) ^ !!u.uinwater) {
+		/* objects normally can't be removed from water by kicking */
+		You("splash some water around.");
+		return 1;
 	}
 
 	kickobj = (struct obj *)0;
@@ -712,7 +722,8 @@ dokick()
 			else
 			    pline("A %s ooze gushes up from the drain!",
 					 hcolor(Black));
-			(void) makemon(&mons[PM_BLACK_PUDDING], x, y);
+			(void) makemon(&mons[PM_BLACK_PUDDING],
+					 x, y, NO_MM_FLAGS);
 			exercise(A_DEX, TRUE);
 			newsym(x,y);
 			maploc->looted |= S_LPUDDING;
@@ -724,7 +735,8 @@ dokick()
 			pline("%s returns!", (Blind ? Something :
 							"The dish washer"));
 			if (makemon(&mons[poly_gender() == 1 ?
-				PM_INCUBUS : PM_SUCCUBUS], x, y)) newsym(x,y);
+				PM_INCUBUS : PM_SUCCUBUS], x, y, NO_MM_FLAGS))
+			    newsym(x,y);
 			maploc->looted |= S_LDWASHER;
 			exercise(A_DEX, TRUE);
 			return(1);
@@ -778,7 +790,7 @@ dumb:
 		exercise(A_DEX, FALSE);
 		if (martial() || ACURR(A_DEX) >= 16 || rn2(3)) {
 			You("kick at empty space.");
-			feel_location(x,y);
+			if (Blind) feel_location(x,y);
 		} else {
 			pline("Dumb move!  You strain a muscle.");
 			exercise(A_STR, FALSE);

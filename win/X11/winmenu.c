@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winmenu.c	3.2	96/01/15	*/
+/*	SCCS Id: @(#)winmenu.c	3.2	96/05/12	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -27,6 +27,7 @@
 #else
 #include <X11/Xaw/List.h>
 #endif
+#include <X11/Xos.h>
 
 #ifdef PRESERVE_NO_SYSV
 # ifdef SYSV
@@ -40,6 +41,7 @@
 
 
 static void FDECL(menu_select, (Widget, XtPointer, XtPointer));
+static void FDECL(invert_line, (struct xwindow *, x11_menu_item *, int));
 static void FDECL(menu_ok, (Widget, XtPointer, XtPointer));
 static void FDECL(menu_cancel, (Widget, XtPointer, XtPointer));
 static void FDECL(menu_all, (Widget, XtPointer, XtPointer));
@@ -145,6 +147,32 @@ menu_delete(w, event, params, num_params)
 }
 
 /*
+ * Invert the count'th line (curr) in the given window.
+ */
+/*ARGSUSED*/
+static void
+invert_line(wp, curr, count)
+    struct xwindow *wp;
+    x11_menu_item *curr;
+    int count;
+{
+    curr->selected = !curr->selected;
+    if (curr->selected) {
+#ifdef USE_FWF
+	XfwfMultiListHighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+	curr->str[2] = '+';
+#endif
+    } else {
+#ifdef USE_FWF
+	XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
+#else
+	curr->str[2] = '-';
+#endif
+    }
+}
+
+/*
  * Called when we get a key press event on a menu window.
  */
 /* ARGSUSED */
@@ -172,13 +200,12 @@ menu_key(w, event, params, num_params)
     }
 
     if (menu_info->is_active) {		/* waiting for input */
+	ch = map_menu_cmd(ch);
 	if (ch == '\033') {		/* quit */
 	    select_none(wp);
-
 	} else if (ch == '\n' || ch == '\r') {
 	    ;	/* accept */
-
-	} else if (ch == '/') {		/* search */
+	} else if (ch == MENU_SEARCH) {		/* search */
 	    if (menu_info->how == PICK_ANY || menu_info->how == PICK_ONE) {
 		char buf[BUFSZ];
 		X11_getlin("Search for:", buf);
@@ -193,22 +220,36 @@ menu_key(w, event, params, num_params)
 		X11_nhbell();
 		return;
 	    }
-	} else if (ch == '*') {		/* select all */
+	} else if (ch == MENU_SELECT_ALL) {		/* select all */
 	    if (menu_info->how == PICK_ANY)
 		select_all(wp);
 	    else
 		X11_nhbell();
 	    return;
-	} else if (ch == '%') {		/* deselect all */
+	} else if (ch == MENU_UNSELECT_ALL) {		/* unselect all */
 	    if (menu_info->how == PICK_ANY)
 		select_none(wp);
 	    else
 		X11_nhbell();
 	    return;
-	} else if (ch == '@') {		/* invert all */
+	} else if (ch == MENU_INVERT_ALL) {		/* invert all */
 	    if (menu_info->how == PICK_ANY)
 		invert_all(wp);
 	    else
+		X11_nhbell();
+	    return;
+	} else if (index(menu_info->curr_menu.gacc, ch)) {
+	    /* matched a group accelerator */
+	    if (menu_info->how == PICK_ANY) {
+		for (count = 0, curr = menu_info->curr_menu.base; curr;
+						curr = curr->next, count++) {
+		    if (curr->identifier.a_void != 0 && curr->gselector == ch)
+			invert_line(wp, curr, count);
+		}
+#ifndef USE_FWF
+		XawListChange(wp->w, menu_info->curr_menu.list_pointer, 0, 0, True);
+#endif
+	    } else
 		X11_nhbell();
 	    return;
 	} else {
@@ -218,25 +259,11 @@ menu_key(w, event, params, num_params)
 		if (curr->identifier.a_void != 0 && curr->selector == ch) break;
 
 	    if (curr) {
-		curr->selected = !curr->selected;
-		if (curr->selected) {
-#ifdef USE_FWF
-		    XfwfMultiListHighlightItem((XfwfMultiListWidget)wp->w, count);
-#else
-		    curr->str[2] = '+';
-		    XawListChange(wp->w,
-				menu_info->curr_menu.list_pointer, 0, 0, True);
+		invert_line(wp, curr, count);
+#ifndef USE_FWF
+		XawListChange(wp->w, menu_info->curr_menu.list_pointer, 0, 0, True);
 #endif
-		    selected_something = TRUE;
-		} else {
-#ifdef USE_FWF
-		    XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
-#else
-		    curr->str[2] = '-';
-		    XawListChange(wp->w,
-				menu_info->curr_menu.list_pointer, 0, 0, True);
-#endif
-		}
+		selected_something = curr->selected;
 	    } else {
 		X11_nhbell();		/* no match */
 	    }
@@ -273,8 +300,10 @@ menu_cancel(w, client_data, call_data)
 {
     struct xwindow *wp = (struct xwindow *) client_data;
 
-    if (wp->menu_information->is_active)
+    if (wp->menu_information->is_active) {
 	select_none(wp);
+	wp->menu_information->cancelled = TRUE;
+    }
     menu_popdown(wp);
 }
 
@@ -333,18 +362,18 @@ select_all(wp)
 {
     x11_menu_item *curr;
     int count;
+    boolean changed = FALSE;
 
     for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
 					curr = curr->next, count++)
-	if (curr->identifier.a_void != 0 && !curr->selected) {
-	    curr->selected = TRUE;
-#ifdef USE_FWF
-	    XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
-#else
-	    curr->str[2] = '+';
-#endif
-	}
+	if (curr->identifier.a_void != 0 && !curr->selected)
+	    if (!curr->selected) {
+		invert_line(wp, curr, count);
+		changed = TRUE;
+	    }
+
 #ifndef USE_FWF
+    if (changed)
 	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
 #endif
 }
@@ -355,18 +384,18 @@ select_none(wp)
 {
     x11_menu_item *curr;
     int count;
+    boolean changed = FALSE;
 
     for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
 					curr = curr->next, count++)
-	if (curr->identifier.a_void != 0 && curr->selected) {
-	    curr->selected = FALSE;
-#ifdef USE_FWF
-	    XfwfMultiListUnhighlightItem((XfwfMultiListWidget) wp->w, count);
-#else
-	    curr->str[2] = '-';
-#endif
-	}
+	if (curr->identifier.a_void != 0 && curr->selected)
+	    if (curr->selected) {
+		invert_line(wp, curr, count);
+		changed = TRUE;
+		}
+
 #ifndef USE_FWF
+    if (changed)
 	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
 #endif
 }
@@ -380,19 +409,11 @@ invert_all(wp)
 
     for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
 					curr = curr->next, count++)
-	if (curr->identifier.a_void != 0) {
-	    curr->selected = !curr->selected;
-#ifdef USE_FWF
-	    if (curr->selected)
-		XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
-	    else
-		XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
-#else
-	    curr->str[2] = curr->selected ? '+' : '-';
-#endif
-	}
+	if (curr->identifier.a_void != 0)
+	    invert_line(wp, curr, count);
+
 #ifndef USE_FWF
-	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
+    XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
 #endif
 }
 
@@ -403,21 +424,17 @@ invert_match(wp, match)
 {
     x11_menu_item *curr;
     int count;
+    boolean changed = FALSE;
 
     for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
-					curr = curr->next, count++)
+						curr = curr->next, count++)
 	if (curr->identifier.a_void != 0 && strstri(curr->str, match)) {
-	    curr->selected = !curr->selected;
-#ifdef USE_FWF
-	    if (curr->selected)
-		XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
-	    else
-		XfwfMultiListUnhighlightItem((XfwfMultiListWidget)wp->w, count);
-#else
-	    curr->str[2] = curr->selected ? '+' : '-';
-#endif
+	    invert_line(wp, curr, count);
+	    changed = TRUE;
 	}
+
 #ifndef USE_FWF
+    if (changed)
 	XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
 #endif
 }
@@ -433,13 +450,12 @@ select_match(wp, match)
     for (count = 0, curr = wp->menu_information->curr_menu.base; curr;
 						curr = curr->next, count++)
 	if (curr->identifier.a_void != 0 && strstri(curr->str, match)) {
-	    curr->selected = TRUE;
-#ifdef USE_FWF
-	    XfwfMultiListHighlightItem((XfwfMultiListWidget) wp->w, count);
-	    XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
-#else
-	    curr->str[2] = '+';
+	    if (!curr->selected) {
+		invert_line(wp, curr, count);
+#ifndef USE_FWF
+		XawListChange(wp->w, wp->menu_information->curr_menu.list_pointer, 0, 0, True);
 #endif
+	    }
 	    return;
 	}
 
@@ -515,11 +531,12 @@ X11_start_menu(window)
 
 /*ARGSUSED*/
 void
-X11_add_menu(window, glyph, identifier, ch, attr, str, preselected)
+X11_add_menu(window, glyph, identifier, ch, gch, attr, str, preselected)
     winid window;
     int glyph;			/* unused (for now) */
     const anything *identifier;
     char ch;
+    char gch;			/* group accelerator (0 = no group) */
     int attr;
     const char *str;
     boolean preselected;
@@ -540,7 +557,7 @@ X11_add_menu(window, glyph, identifier, ch, attr, str, preselected)
     item->attr = attr;
 /*    item->selected = preselected; */
     item->selected = FALSE;
-    
+
     if (identifier->a_void) {
 	char buf[QBUFSZ];
 
@@ -565,6 +582,7 @@ X11_add_menu(window, glyph, identifier, ch, attr, str, preselected)
     }
 
     item->selector = ch;
+    item->gselector = gch;
 
     if (menu_info->new_menu.last) {
 	menu_info->new_menu.last->next = item;
@@ -580,6 +598,9 @@ X11_end_menu(window, query)
     winid window;
     const char *query;
 {
+    char gacc[QBUFSZ], *ap;
+    x11_menu_item *curr;
+
     struct menu_info_t *menu_info;
     check_winid(window);
     menu_info = window_list[window].menu_information;
@@ -588,6 +609,16 @@ X11_end_menu(window, query)
 	return;
     }
     menu_info->new_menu.query = copy_of(query);
+
+    /* collect the group accelerators into a string */
+    for (gacc[0] = 0, ap = gacc, curr = menu_info->curr_menu.base;
+						curr; curr = curr->next) {
+	if (curr->gselector) {
+	    *ap++ = curr->gselector;
+	    *ap = 0;
+	}
+    }
+    menu_info->new_menu.gacc = copy_of(gacc);
 }
 
 int
@@ -641,15 +672,15 @@ X11_select_menu(window, how, menu_list)
     labeled = (menu_info->new_menu.query && *(menu_info->new_menu.query))
 	? TRUE : FALSE;
 
-    /* Menus don't appear to size components correctly, except
+    /*
+     * Menus don't appear to size components correctly, except
      * when first created.  For 3.2.0 release, just recreate
      * each time.
      */
     if (menu_info->valid_widgets
-    && (window != WIN_INVEN || !flags.perm_invent))
-    {
+			&& (window != WIN_INVEN || !flags.perm_invent)) {
 	XtDestroyWidget(wp->popup);
-	menu_info->valid_widgets=FALSE;
+	menu_info->valid_widgets = FALSE;
     }
 
     if (!menu_info->valid_widgets) {
@@ -903,9 +934,12 @@ X11_select_menu(window, how, menu_list)
 	retval = 0;
     } else {
 	menu_info->is_active = TRUE;	/* waiting for user response */
+	menu_info->cancelled = FALSE;
 	nh_XtPopup(wp->popup, (int)XtGrabExclusive, wp->w);
 	(void) x_event(EXIT_ON_EXIT);
 	menu_info->is_active = FALSE;
+	if (menu_info->cancelled)
+	    return -1;
 
 	retval = 0;
 	for (curr = menu_info->curr_menu.base; curr; curr = curr->next)
@@ -963,10 +997,11 @@ free_menu(mp)
 	mp->last = mp->base;
 	mp->base = mp->base->next;
 
-	free(mp->last->str);
+	free((genericptr_t)mp->last->str);
 	free((genericptr_t)mp->last);
     }
     if (mp->query) free((genericptr_t) mp->query);
+    if (mp->gacc) free((genericptr_t) mp->gacc);
     if (mp->list_pointer) free((genericptr_t) mp->list_pointer);
     if (mp->sensitive) free((genericptr_t) mp->sensitive);
     reset_menu_to_default(mp);
@@ -976,7 +1011,12 @@ static void
 reset_menu_to_default(mp)
     struct menu *mp;
 {
-    (void) memset((genericptr_t) mp, '\0', sizeof(struct menu));
+    mp->base = mp->last = (x11_menu_item *)0;
+    mp->query = (const char *)0;
+    mp->gacc = (const char *)0;
+    mp->count = 0;
+    mp->list_pointer = (String *)0;
+    mp->sensitive = (Boolean *)0;
     mp->curr_selector = 'a';	/* first accelerator */
 }
 
@@ -1021,3 +1061,5 @@ destroy_menu_window(wp)
     wp->menu_information = (struct menu_info_t *) 0;
     wp->type = NHW_NONE;	/* allow re-use */
 }
+
+/*winmenu.c*/

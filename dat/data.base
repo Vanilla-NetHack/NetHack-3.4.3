@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)data.base	3.2	96/02/27
+#	SCCS Id: @(#)data.base	3.2	96/05/13
 #	Copyright (c) 1994, 1995, 1996 by the NetHack Development Team
 #	Copyright (c) 1994 by Boudewijn Wayers
 #	NetHack may be freely redistributed.  See license for details.
@@ -13,8 +13,8 @@
 #
 # If the first character of a key field is "~", then anything which matches
 # the rest of that key will be treated as if it did not match any of the
-# following keys for that entry.  For instance `~orc ??m*' followed by
-# `orc*' prevents "orc mummy" and "orc zombie" from matching "orc*".
+# following keys for that entry.  For instance, `~orc ??m*' preceding `orc*'
+# prevents "orc mummy" and "orc zombie" from matching.
 #
 aclys
 aklys
@@ -287,6 +287,22 @@ bugbear
 	sun god Tezcatlipoca transformed himself into Mixcoatl-Camaxtli
 	to make fire by twirling the sacred fire sticks.
 		[ Encyclopedia of Gods, by Michael Jordan ]
+s*d*g*r* cat
+	Imagine a sealed container, so perfectly constructed that no
+	physical influence can pass either inwards or outwards across its
+	walls.  Imagine that inside the container is a cat, and also a
+	device that can be triggered by some quantum event.  If that event
+	takes place, then the device smashes a phial containing cyanide and
+	the cat is killed.  If the event does not take place, the cat lives
+	on.  In Schroedinger's original version, the quantum event was the
+	decay of a radioactive atom.  ...  To the outside observer, the cat
+	is indeed in a linear combination of being alive and dead, and only
+	when the container is finally opened would the cat's state vector
+	collapse into one or the other.  On the other hand, to a (suitably
+	protected) observer inside the container, the cat's state-vector
+	would have collapsed much earlier, and the outside observer's
+	linear combination has no relevance.
+	        [ The Emperor's New Mind, by Roger Penrose ]
 *cat
 kitten
 	Well-known quadruped domestic animal from the family of
@@ -526,6 +542,23 @@ dwarf*
 	they like, and a dwarvish gift is likely to turn to gold in
 	the hand.  But on the whole they are a snappish lot.
 	    [ The Immortals, by Derek and Julia Parker ]
+earendil
+elwing
+	In after days, when because of the triumph of Morgoth Elves and
+	Men became estranged, as he most wished, those of the Elven-race
+	that lived still in Middle-earth waned and faded, and Men usurped
+	the sunlight.  Then the Quendi wandered in the lonely places of the
+	great lands and the isles, and took to the moonlight and the
+	starlight, and to the woods and the caves, becoming as shadows
+	and memories, save those who ever and anon set sail into the West
+	and vanished from Middle-earth.  But in the dawn of years Elves
+	and Men were allies and held themselves akin, and there were some
+	among Men that learned the wisdom of the Eldar, and became great
+	and valiant among the captains of the Noldor.  And in the glory
+	and beauty of the Elves, and in their fate, full share had the
+	offspring of elf and mortal, Earendil, and Elwing, and Elrond
+	their child.
+		[ The Silmarillion, by J.R.R. Tolkien ]
 eel
 giant eel
 	The behaviour of eels in fresh water extends the air of
@@ -749,16 +782,6 @@ goblin
 	slaves that have to work till they die for want of air and
 	light.
 	     [ The Hobbit, by J.R.R. Tolkien ]
-goblin king
-	The Great Goblin gave a truly awful howl of rage when he
-	looked at it, and all his soldiers gnashed their teeth,
-	clashed their shields, and stamped.  They knew the sword at
-	once.  It had killed hundreds of goblins in its time, when
-	the fair elves of Gondolin hunted them in the hills or did
-	battle before their walls.  They had called it Orcrist,
-	Goblin-cleaver, but the goblins called it simply Biter.  They
-	hated it and hated worse any one that carried it.
-	     [ The Hobbit, by J.R.R. Tolkien ]
 gold
 gold piece
 zorkmid
@@ -903,7 +926,7 @@ hobgoblin
 	sit on that stone, he would be unable to quit it for ever.
 	The ninety-nine years is nearly up, so trouble may soon be
 	heard of on the road between Hurworth and Neasham.
-		[ Katharine Briggs, A dictionary of Fairies ]
+		[ A Dictionary of Fairies, by Katharine Briggs ]
 hom*nculus
 	A homunculus is a creature summoned by a mage to perform some
 	particular task.  They are particularly good at spying.  They
@@ -1017,7 +1040,7 @@ imp
 	well as the English Puritans regarded all fairies as devils.
 	The fairies of tradition often hover uneasily between the
 	ghostly and the diabolic state.
-		[ Katharine Briggs, A Dictionary of Fairies ]
+		[ A Dictionary of Fairies, by Katharine Briggs ]
 incubus
 succubus
 	The incubus and succubus are male and female versions of the
@@ -1770,6 +1793,7 @@ orb of fate
 	warning, and damage, both spell and physical, is partially
 	absorbed by the orb itself.  When invoked it has the power
 	to teleport the invoker between levels.
+goblin king
 orcrist
 	The Great Goblin gave a truly awful howl of rage when he
 	looked at it, and all his soldiers gnashed their teeth,
@@ -1949,9 +1973,9 @@ sasquatch
 	and rarely seen, this creature is reputed to be a relative
 	of the ferocious yeti.
 sceptre of might
-	This quarterstaff was created aeons ago in some unknown cave,
+	This mace was created aeons ago in some unknown cave,
 	and has been passed down from generation to generation of
-	cavemen.  It is a very mighty quarterstaff indeed, and in
+	cave dwellers.  It is a very mighty mace indeed, and in
 	addition will protect anyone who carries it from magic
 	missile attacks.  When invoked, it causes conflict in the
 	area around it.

@@ -262,12 +262,7 @@ Helmet_on()
 	case HELM_OF_TELEPATHY:
 		break;
 	case HELM_OF_BRILLIANCE:
-		if (uarmh->spe) {
-			ABON(A_INT) += uarmh->spe;
-			ABON(A_WIS) += uarmh->spe;
-			flags.botl = 1;
-			makeknown(uarmh->otyp);
-		}
+		adj_abon(uarmh, uarmh->spe);
 		break;
 	case CORNUTHAUM:
 		/* people think marked wizards know what they're talking
@@ -300,8 +295,7 @@ Helmet_on()
 		  ACURR(A_INT) <= (ABASE(A_INT) + ABON(A_INT) + ATEMP(A_INT)) ?
 			     "like sitting in a corner" : "giddy");
 		} else {
-		    Your("%s oscillates briefly.",
-			 mindless(uasmon) ? body_part(HEAD) : "mind");
+		    Your("mind oscillates briefly.");
 		    makeknown(HELM_OF_OPPOSITE_ALIGNMENT);
 		}
 		break;
@@ -334,11 +328,7 @@ Helmet_off()
 		see_monsters();
 		return 0;
 	case HELM_OF_BRILLIANCE:
-		if (uarmh->spe) {
-			ABON(A_INT) -= uarmh->spe;
-			ABON(A_WIS) -= uarmh->spe;
-			flags.botl = 1;
-		}
+		adj_abon(uarmh, -uarmh->spe);
 		break;
 	case HELM_OF_OPPOSITE_ALIGNMENT:
 		u.ualign.type = u.ualignbase[0];
@@ -370,9 +360,7 @@ Gloves_on()
 		flags.botl = 1; /* taken care of in attrib.c */
 		break;
 	case GAUNTLETS_OF_DEXTERITY:
-		if (uarmg->spe) makeknown(uarmg->otyp);
-		ABON(A_DEX) += uarmg->spe;
-		flags.botl = 1;
+		adj_abon(uarmg, uarmg->spe);
 		break;
 	default: impossible(unknown_type, c_gloves, uarmg->otyp);
     }
@@ -397,9 +385,7 @@ Gloves_off()
 		flags.botl = 1; /* taken care of in attrib.c */
 		break;
 	case GAUNTLETS_OF_DEXTERITY:
-		if (uarmg->spe) makeknown(uarmg->otyp);
-		ABON(A_DEX) -= uarmg->spe;
-		flags.botl = 1;
+		adj_abon(uarmg, -uarmg->spe);
 		break;
 	default: impossible(unknown_type, c_gloves, uarmg->otyp);
     }
@@ -1717,13 +1703,19 @@ adj_abon(otmp, delta)
 register struct obj *otmp;
 register schar delta;
 {
-	if (uarmg && otmp->otyp == GAUNTLETS_OF_DEXTERITY) {
-		ABON(A_DEX) += (delta);
+	if (uarmg && uarmg == otmp && otmp->otyp == GAUNTLETS_OF_DEXTERITY) {
+		if (delta) {
+			makeknown(uarmg->otyp);
+			ABON(A_DEX) += (delta);
+		}
 		flags.botl = 1;
 	}
-	if (uarmh && otmp->otyp == HELM_OF_BRILLIANCE) {
-		ABON(A_INT) += (delta);
-		ABON(A_WIS) += (delta);
+	if (uarmh && uarmh == otmp && otmp->otyp == HELM_OF_BRILLIANCE) {
+		if (delta) {
+			makeknown(uarmh->otyp);
+			ABON(A_INT) += (delta);
+			ABON(A_WIS) += (delta);
+		}
 		flags.botl = 1;
 	}
 }

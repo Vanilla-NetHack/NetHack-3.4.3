@@ -89,12 +89,12 @@ projects can use the default preferences:
 			not compile because of register overflow.  [NetHack
 			only]
 	PPC Project
-		Set name to <MakeDefs, LevComp DgnComp, NetHack 3.2>
+		Set name to <MakeDefs, LevComp DgnComp, NetHack>
 		Other settings [NetHack only]
 			creator:			nh31
-			preferred heap size:	2000
-			minimum heap size:	1500
-			stack size:			128
+			preferred heap size:2500
+			minimum heap size:	2000
+			stack size:			128		[PPC only]
 
 
 The SIOUX library may be replaced with console.stubs.c for the NetHack

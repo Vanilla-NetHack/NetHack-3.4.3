@@ -234,7 +234,7 @@ long mask;	/* nonzero if resistance status should change by mask */
 static void
 ghost_from_bottle()
 {
-	struct monst *mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy);
+	struct monst *mtmp = makemon(&mons[PM_GHOST], u.ux, u.uy, NO_MM_FLAGS);
 
 	if (!mtmp) {
 		pline("This bottle turns out to be empty.");
@@ -515,6 +515,7 @@ peffects(otmp)
 		    Your("%s are frozen to the %s!",
 			 makeplural(body_part(FOOT)), surface(u.ux, u.uy));
 		nomul(-(rn1(10, 25 - 12*bcsign(otmp))));
+		nomovemsg = You_can_move_again;
 		exercise(A_DEX, FALSE);
 		break;
 	case POT_MONSTER_DETECTION:
@@ -984,6 +985,7 @@ register struct obj *obj;
 		kn++;
 		pline("%s seems to be holding you.", Something);
 		nomul(-rnd(5));
+		nomovemsg = You_can_move_again;
 		exercise(A_DEX, FALSE);
 		break;
 	case POT_SPEED:
@@ -1473,7 +1475,7 @@ register struct obj *obj;
 	struct monst *mtmp;
 	int chance;
 
-	if(!(mtmp = makemon(&mons[PM_DJINNI], u.ux, u.uy))){
+	if(!(mtmp = makemon(&mons[PM_DJINNI], u.ux, u.uy, NO_MM_FLAGS))){
 		pline("It turns out to be empty.");
 		return;
 	}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.2	96/02/29	*/
+/*	SCCS Id: @(#)mkobj.c	3.2	96/05/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -238,7 +238,7 @@ long num;
 
 	if (obj->cobj || num <= 0L || obj->quan < num)
 	    panic("splitobj");	/* can't split containers */
-	otmp = newobj(obj->onamelth);
+	otmp = newobj(obj->oxlth + obj->onamelth);
 	*otmp = *obj;		/* copies whole structure */
 	otmp->o_id = flags.ident++;
 	if (!otmp->o_id) otmp->o_id = flags.ident++;	/* ident overflowed */
@@ -253,6 +253,9 @@ long num;
 	/* as a back pointer to the container object when contained. */
 	if (obj->where == OBJ_FLOOR)
 	    obj->nexthere = otmp;
+	if (obj->oxlth)
+	    (void)memcpy((genericptr_t)otmp->oextra, (genericptr_t)obj->oextra,
+			obj->oxlth);
 	if (obj->onamelth)
 	    (void)strncpy(ONAME(otmp), ONAME(obj), (int)obj->onamelth);
 	if (obj->unpaid) splitbill(obj,otmp);
@@ -277,12 +280,15 @@ register struct obj *otmp;
 
 	if (otmp->unpaid)
 	    subfrombill(otmp, shop_keeper(*u.ushops));
-	dummy = newobj(otmp->onamelth);
+	dummy = newobj(otmp->oxlth + otmp->onamelth);
 	*dummy = *otmp;
 	dummy->where = OBJ_FREE;
 	dummy->o_id = flags.ident++;
 	if (!dummy->o_id) dummy->o_id = flags.ident++;	/* ident overflowed */
 	dummy->timed = 0;
+	if (otmp->oxlth)
+	    (void)memcpy((genericptr_t)dummy->oextra,
+			(genericptr_t)otmp->oextra, otmp->oxlth);
 	if (otmp->onamelth)
 	    (void)strncpy(ONAME(dummy), ONAME(otmp), (int)otmp->onamelth);
 	if (Is_candle(dummy)) dummy->lamplit = 0;
@@ -340,7 +346,7 @@ boolean artif;
 	    otmp->oeaten = 0;
 	    switch(otmp->otyp) {
 	    case CORPSE:
-		/* overridden by mkcorpstat() */
+		/* possibly overridden by mkcorpstat() */
 		tryct = 50;
 		do otmp->corpsenm = undead_to_corpse(rndmonnum());
 		while ((mvitals[otmp->corpsenm].mvflags & G_NOCORPSE) && (--tryct > 0));
@@ -524,11 +530,11 @@ boolean artif;
 	case ROCK_CLASS:
 		switch (otmp->otyp) {
 		    case STATUE:
-			if (rn2(level_difficulty()/2 + 10) > 10) {
-			    add_to_container(otmp, mkobj(SPBOOK_CLASS,FALSE));
-			}
-			/* overridden by mkcorpstat() */
+			/* possibly overridden by mkcorpstat() */
 			otmp->corpsenm = rndmonnum();
+			if (!verysmall(&mons[otmp->corpsenm]) &&
+				rn2(level_difficulty()/2 + 10) > 10)
+			    add_to_container(otmp, mkobj(SPBOOK_CLASS,FALSE));
 		}
 		break;
 	case GOLD_CLASS:
@@ -554,6 +560,7 @@ start_corpse_timeout(body)
 	struct obj *body;
 {
 	long when;
+	int rot_adjust;
 	short action;
 
 #define TAINT_AGE (50L)		/* age when corpses go bad */
@@ -565,6 +572,9 @@ start_corpse_timeout(body)
 
 	action = ROT_CORPSE;		/* default action: rot away */
 	when = ROT_AGE;			/* rot away when this old */
+	rot_adjust = in_mklev ? 25 : 10;	/* give some variation */
+	when += (long)(rnz(rot_adjust) - rot_adjust);
+
 	if (is_rider(&mons[body->corpsenm])) {
 		/*
 		 * Riders always revive.  They have a 1/3 chance per turn
@@ -754,38 +764,100 @@ int x, y;
 #endif /* OVLB */
 #ifdef OVL1
 
+/* return TRUE if the corpse has special timing */
+#define special_corpse(num)  (((num) == PM_LIZARD)		\
+				|| (is_rider(&mons[num]))	\
+				|| (mons[num].mlet == S_TROLL))
+
+/*
+ * OEXTRA note: Passing mtmp causes mtraits to be saved
+ * even if ptr passed as well, but ptr is always used for
+ * the corpse type (corpsenm). That allows the corpse type
+ * to be different from the original monster,
+ *	i.e.  vampire -> human corpse
+ * yet still allow restoration of the original monster upon
+ * resurrection.
+ */
 struct obj *
-mkcorpstat(objtype, ptr, x, y, init)
+mkcorpstat(objtype, mtmp, ptr, x, y, init)
 int objtype;	/* CORPSE or STATUE */
+struct monst *mtmp;
 struct permonst *ptr;
 int x, y;
 boolean init;
 {
 	register struct obj *otmp;
 
-	if(objtype != CORPSE && objtype != STATUE)
-		impossible("making corpstat type %d", objtype);
+	if (objtype != CORPSE && objtype != STATUE)
+	    impossible("making corpstat type %d", objtype);
 	otmp = mksobj_at(objtype, x, y, init);
-	if(otmp)  {
+	if (otmp) {
+#ifdef OEXTRA
+	    if (mtmp) {
+		struct obj *otmp2;
+
+		if (!ptr) ptr = mtmp->data;
+		/* save_mtraits frees original data pointed to by otmp */
+		otmp2 = save_mtraits(otmp, mtmp);
+		if (otmp2) otmp = otmp2;
+	    }
+#endif /* OEXTRA */
+
+	    /* use the corpse or statue produced by mksobj() as-is
+	       unless `ptr' is non-null */
+	    if (ptr) {
 		int old_corpsenm = otmp->corpsenm;
-		if(ptr)	otmp->corpsenm = monsndx(ptr);
-		else	otmp->corpsenm = rndmonnum();
+
+		otmp->corpsenm = monsndx(ptr);
 		otmp->owt = weight(otmp);
-
-/* return TRUE if the corpse has special timing */
-#define special_corpse(num)  (((num) == PM_LIZARD)		\
-				|| (is_rider(&mons[num]))	\
-				|| (mons[num].mlet == S_TROLL))
-
 		if (otmp->otyp == CORPSE &&
 			(special_corpse(old_corpsenm) ||
 				special_corpse(otmp->corpsenm))) {
 		    obj_stop_timers(otmp);
 		    start_corpse_timeout(otmp);
 		}
+	    }
 	}
 	return(otmp);
 }
+
+#ifdef OEXTRA
+struct obj *
+save_mtraits(obj, mtmp)
+struct obj *obj;
+struct monst *mtmp;
+{
+	struct obj *otmp;
+	int lth, namelth;
+
+	lth = sizeof(struct monst) + mtmp->mxlth + mtmp->mnamelth;
+	namelth = obj->onamelth ? strlen(ONAME(obj)) + 1 : 0;
+	otmp = replobj(obj, lth, (genericptr_t) mtmp, namelth, ONAME(obj));
+	if (otmp && otmp->oxlth) {
+		struct monst *mtmp2 = (struct monst *)otmp->oextra;
+		mtmp2->mnum = otmp->corpsenm;
+		otmp->mtraits = 1;		/* mark it */
+	}
+	return otmp;
+}
+
+/* returns a pointer to the monst structure within the obj.
+ * Do not use the return value in any monst chains directly!
+ */
+struct monst *
+get_mtraits(obj)
+struct obj *obj;
+{
+	struct monst *mtmp = (struct monst *)0;
+
+	if (obj->oxlth && obj->mtraits == 1) {
+		mtmp = (struct monst *)obj->oextra;
+		/* save_mtraits() validated mtmp->mnum */
+		mtmp->data = &mons[mtmp->mnum];
+	}
+	return mtmp;
+}
+#endif /* OEXTRA */
 
 #endif /* OVL1 */
 #ifdef OVLB
@@ -818,7 +890,8 @@ const char *nm;
 {
 	struct obj *otmp;
 
-	otmp = mkcorpstat(objtype, ptr, x, y, (boolean)(objtype != STATUE));
+	otmp = mkcorpstat(objtype, (struct monst *)0, ptr,
+				x, y, (boolean)(objtype != STATUE));
 	if (nm)
 		otmp = oname(otmp, nm);
 	return(otmp);

@@ -8,7 +8,7 @@ static void FDECL(center, (int, char *));
 
 extern const char *killed_by_prefix[];
 
-#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac)
+#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac) || defined(__beos__)
 
 static const char *rip_txt[] = {
 "              ----------                      ----------",

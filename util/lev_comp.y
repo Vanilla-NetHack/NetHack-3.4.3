@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_yacc.c	3.2	95/11/10	*/
+/*	SCCS Id: @(#)lev_yacc.c	3.2	96/05/16	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -32,7 +32,8 @@
  */
 #define MAX_OF_TYPE	128
 
-#define New(type)		(type *) alloc(sizeof(type))
+#define New(type)		\
+	(type *) memset((genericptr_t)alloc(sizeof(type)), 0, sizeof(type))
 #define NewTab(type, size)	(type **) alloc(sizeof(type *) * size)
 #define Free(ptr)		free((genericptr_t)ptr)
 
@@ -146,7 +147,7 @@ extern const char *fname;
 }
 
 
-%token	<i> CHAR INTEGER BOOLEAN
+%token	<i> CHAR INTEGER BOOLEAN PERCENT
 %token	<i> MESSAGE_ID MAZE_ID LEVEL_ID LEV_INIT_ID GEOMETRY_ID NOMAP_ID
 %token	<i> OBJECT_ID COBJECT_ID MONSTER_ID TRAP_ID DOOR_ID DRAWBRIDGE_ID
 %token	<i> MAZEWALK_ID WALLIFY_ID REGION_ID FILLING
@@ -164,7 +165,7 @@ extern const char *fname;
 %token	<map> STRING MAP_ID
 %type	<i> h_justif v_justif trap_name room_type door_state light_state
 %type	<i> alignment altar_type a_register roomfill filling door_pos
-%type	<i> door_wall walled secret amount
+%type	<i> door_wall walled secret amount chance
 %type	<i> engraving_type flags flag_list prefilled lev_region lev_init
 %type	<i> monster monster_c m_register object object_c o_register
 %type	<map> string maze_def level_def m_name o_name
@@ -363,8 +364,6 @@ init_rreg	: RANDOM_OBJECTS_ID ':' object_list
 rooms		: /* Nothing  -  dummy room for use with INIT_MAP */
 		  {
 			tmproom[nrooms] = New(room);
-			(void) memset((genericptr_t) tmproom[nrooms], 0,
-					sizeof *tmproom[nrooms]);
 			tmproom[nrooms]->name = (char *) 0;
 			tmproom[nrooms]->parent = (char *) 0;
 			tmproom[nrooms]->rtype = 0;
@@ -454,8 +453,6 @@ aroom		: room_def room_details
 subroom_def	: SUBROOM_ID ':' room_type ',' light_state ',' subroom_pos ',' room_size ',' string roomfill
 		  {
 			tmproom[nrooms] = New(room);
-			(void) memset((genericptr_t) tmproom[nrooms], 0,
-					sizeof *tmproom[nrooms]);
 			tmproom[nrooms]->parent = $11;
 			tmproom[nrooms]->name = (char *) 0;
 			tmproom[nrooms]->rtype = $3;
@@ -474,8 +471,6 @@ subroom_def	: SUBROOM_ID ':' room_type ',' light_state ',' subroom_pos ',' room_
 room_def	: ROOM_ID ':' room_type ',' light_state ',' room_pos ',' room_align ',' room_size roomfill
 		  {
 			tmproom[nrooms] = New(room);
-			(void) memset((genericptr_t) tmproom[nrooms], 0,
-					sizeof *tmproom[nrooms]);
 			tmproom[nrooms]->name = (char *) 0;
 			tmproom[nrooms]->parent = (char *) 0;
 			tmproom[nrooms]->rtype = $3;
@@ -629,7 +624,7 @@ door_pos	: INTEGER
 
 maze_def	: MAZE_ID ':' string ',' filling
 		  {
-			maze.filling = $5;
+			maze.filling = (schar) $5;
 			if (index($3, '.'))
 			    yyerror("Invalid dot ('.') in level name.");
 			if ((int) strlen($3) > 8)
@@ -821,38 +816,36 @@ map_detail	: monster_detail
 		| passwall_detail
 		;
 
-monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
+monster_detail	: MONSTER_ID chance ':' monster_c ',' m_name ',' coordinate
 		  {
 			tmpmonst[nmons] = New(monster);
 			tmpmonst[nmons]->x = current_coord.x;
 			tmpmonst[nmons]->y = current_coord.y;
-			tmpmonst[nmons]->class = $<i>3;
+			tmpmonst[nmons]->class = $<i>4;
 			tmpmonst[nmons]->peaceful = -1; /* no override */
 			tmpmonst[nmons]->asleep = -1;
 			tmpmonst[nmons]->align = - MAX_REGISTERS - 2;
 			tmpmonst[nmons]->name.str = 0;
 			tmpmonst[nmons]->appear = 0;
 			tmpmonst[nmons]->appear_as.str = 0;
+			tmpmonst[nmons]->chance = $2;
+			tmpmonst[nmons]->id = NON_PM;
 			if (!in_room)
 			    check_coord(current_coord.x, current_coord.y,
 					"Monster");
-			if (!$5)
-			    tmpmonst[nmons]->id = NON_PM;
-			else {
-				int token = get_monster_id($5, (char) $<i>3);
-				if (token == ERR) {
-				    yywarning(
+			if ($6) {
+			    int token = get_monster_id($6, (char) $<i>4);
+			    if (token == ERR)
+				yywarning(
 			      "Invalid monster name!  Making random monster.");
-				    tmpmonst[nmons]->id = NON_PM;
-				} else
-				    tmpmonst[nmons]->id = token;
-				Free($5);
+			    else
+				tmpmonst[nmons]->id = token;
+			    Free($6);
 			}
 		  }
 		 monster_infos
 		  {
-			nmons++;
-			if (nmons >= MAX_OF_TYPE) {
+			if (++nmons >= MAX_OF_TYPE) {
 			    yyerror("Too many monsters in room or mazepart!");
 			    nmons--;
 			}
@@ -886,10 +879,10 @@ monster_info	: ',' string
 		  }
 		;
 
-object_detail	: OBJECT_ID ':' object_desc
+object_detail	: OBJECT_ID object_desc
 		  {
 		  }
-		| COBJECT_ID ':' object_desc
+		| COBJECT_ID object_desc
 		  {
 			/* 1: is contents of next object with 2 */
 			/* 2: is a container */
@@ -898,31 +891,30 @@ object_detail	: OBJECT_ID ':' object_desc
 		  }
 		;
 
-object_desc	: object_c ',' o_name
+object_desc	: chance ':' object_c ',' o_name
 		  {
 			tmpobj[nobj] = New(object);
-			tmpobj[nobj]->class = $<i>1;
+			tmpobj[nobj]->class = $<i>3;
 			tmpobj[nobj]->corpsenm = NON_PM;
 			tmpobj[nobj]->curse_state = -1;
 			tmpobj[nobj]->name.str = 0;
-			if (!$3)
-			    tmpobj[nobj]->id = -1;
-			else {
-				int token = get_object_id($3);
-				if (token == ERR) {
-				    yywarning("Illegal object name!  Making random object.");
-				    tmpobj[nobj]->id = -1;
-				} else
-				    tmpobj[nobj]->id = token;
-				Free($3);
+			tmpobj[nobj]->chance = $1;
+			tmpobj[nobj]->id = -1;
+			if ($5) {
+			    int token = get_object_id($5);
+			    if (token == ERR)
+				yywarning(
+				"Illegal object name!  Making random object.");
+			     else
+				tmpobj[nobj]->id = token;
+			    Free($5);
 			}
 		  }
 		 ',' object_where object_infos
 		  {
-			nobj++;
-			if (nobj >= MAX_OF_TYPE) {
-				yyerror("Too many objects in room or mazepart!");
-				nobj--;
+			if (++nobj >= MAX_OF_TYPE) {
+			    yyerror("Too many objects in room or mazepart!");
+			    nobj--;
 			}
 		  }
 		;
@@ -1025,34 +1017,17 @@ door_detail	: DOOR_ID ':' door_state ',' coordinate
 		  }
 		;
 
-trap_detail	: TRAP_ID ':' trap_name ',' coordinate
+trap_detail	: TRAP_ID chance ':' trap_name ',' coordinate
 		  {
 			tmptrap[ntrap] = New(trap);
 			tmptrap[ntrap]->x = current_coord.x;
 			tmptrap[ntrap]->y = current_coord.y;
-			tmptrap[ntrap]->type = $<i>3;
-			tmptrap[ntrap]->chance = 100;
+			tmptrap[ntrap]->type = $<i>4;
+			tmptrap[ntrap]->chance = $2;
 			if (!in_room)
 			    check_coord(current_coord.x, current_coord.y,
 					"Trap");
-			ntrap++;
-			if (ntrap >= MAX_OF_TYPE) {
-				yyerror("Too many traps in room or mazepart!");
-				ntrap--;
-			}
-		  }
-		| TRAP_ID ':' trap_name ',' coordinate ',' trap_chance
-		  {
-			tmptrap[ntrap] = New(trap);
-			tmptrap[ntrap]->x = current_coord.x;
-			tmptrap[ntrap]->y = current_coord.y;
-			tmptrap[ntrap]->type = $<i>3;
-			tmptrap[ntrap]->chance = $<i>7;
-			if (!in_room)
-			    check_coord(current_coord.x, current_coord.y,
-					"Trap");
-			ntrap++;
-			if (ntrap >= MAX_OF_TYPE) {
+			if (++ntrap >= MAX_OF_TYPE) {
 				yyerror("Too many traps in room or mazepart!");
 				ntrap--;
 			}
@@ -1535,17 +1510,6 @@ trap_name	: string
 		| RANDOM_TYPE
 		;
 
-trap_chance	: CHANCE_ID ':' INTEGER
-		   {
-			if (tmptrap[ntrap]->chance)
-			    yyerror("This trap already assigned a chance!");
-			else if ($3 < 1 || $3 > 99)
-			    yyerror("The chance is supposed to be percentile.");
-			else
-			    tmptrap[ntrap]->chance = $3;
-		   }
-		;
-
 room_type	: string
 		  {
 			int token = get_room_type($1);
@@ -1668,6 +1632,18 @@ string		: STRING
 
 amount		: INTEGER
 		| RANDOM_TYPE
+		;
+
+chance		: /* empty */
+		  {
+			$$ = 100;	/* default is 100% */
+		  }
+		| PERCENT
+		  {
+			if ($1 <= 0 || $1 > 100)
+			    yyerror("Expected percentile chance.");
+			$$ = $1;
+		  }
 		;
 
 engraving_type	: ENGRAVING_TYPE

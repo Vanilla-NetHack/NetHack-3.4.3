@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artilist.h	3.2	95/06/23	*/
+/*	SCCS Id: @(#)artilist.h	3.2	96/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -133,7 +133,7 @@ A("Snickersnee",		KATANA,
 
 A("Sunsword",			LONG_SWORD,
 	(SPFX_RESTR|SPFX_DFLAG2), 0, M2_UNDEAD,
-	PHYS(5,0),	NO_DFNS,	NO_CARY,	0, A_LAWFUL,	 0  ),
+	PHYS(5,0),	DFNS(AD_BLND),	NO_CARY,	0, A_LAWFUL,	 0  ),
 
 /*
  *	The artifacts for the quest dungeon, all self-willed.
@@ -166,7 +166,7 @@ A("The Staff of Aesculapius",	QUARTERSTAFF,
 	HEALING,	A_NEUTRAL,	'H' ),
 
 A("The Magic Mirror of Merlin",	MIRROR,
-	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEEK), SPFX_ESP, 0,
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEAK), SPFX_ESP, 0,
 	NO_ATTK,	NO_DFNS,	CARY(AD_MAGM),
 	0,		A_LAWFUL,	'K' ),
 
@@ -176,7 +176,7 @@ A("The Mitre of Holiness",	HELM_OF_BRILLIANCE,
 	ENERGY_BOOST,	A_LAWFUL,	'P' ),
 
 A("The Master Key of Thievery", SKELETON_KEY,
-	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEEK),
+	(SPFX_NOGEN|SPFX_RESTR|SPFX_INTEL|SPFX_SPEAK),
 		(SPFX_WARN|SPFX_TCTRL|SPFX_HPHDAM), 0,
 	NO_ATTK,	NO_DFNS,	NO_CARY,
 	UNTRAP,		A_CHAOTIC,	'R' ),

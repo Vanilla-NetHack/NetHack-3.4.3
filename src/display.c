@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.2	95/02/27	*/
+/*	SCCS Id: @(#)display.c	3.2	96/05/19	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -501,6 +501,8 @@ newsym(x,y)
     register struct rm *lev = &(levl[x][y]);
     register int see_it;
     register xchar worm_tail;
+
+    if (in_mklev) return;
 
     /* only permit updating the hero when swallowed */
     if (u.uswallow) {

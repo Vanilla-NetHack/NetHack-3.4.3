@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.2	96/03/15	*/
+/*	SCCS Id: @(#)mthrowu.c	3.2	96/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -36,7 +36,8 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	struct obj *obj;
 	register const char *name;
 {
-	const char *onm = (obj && obj_is_pname(obj)) ? the(name) : an(name);
+	const char *onm = (obj && obj_is_pname(obj)) ? the(name) :
+		(obj->quan > 1) ? name : an(name);
 	boolean is_acid = (obj && obj->otyp == ACID_VENOM);
 
 	if(u.uac + tlev <= rnd(20)) {
@@ -148,7 +149,6 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 	    return 1;
 	} else {
 	    damage = dmgval(otmp, mtmp);
-	    if (damage < 1) damage = 1;
 	    if (otmp->otyp == ACID_VENOM && resists_acid(mtmp))
 		damage = 0;
 	    if (ismimic) seemimic(mtmp);
@@ -196,6 +196,7 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 
 	    if ((otmp->otyp == CREAM_PIE || otmp->otyp == BLINDING_VENOM) &&
 		   haseyes(mtmp->data)) {
+		/* note: resists_blnd() doesn't apply here */
 		if (vis) pline("%s is blinded by %s.",
 				Monnam(mtmp), the(xname(otmp)));
 		mtmp->mcansee = 0;

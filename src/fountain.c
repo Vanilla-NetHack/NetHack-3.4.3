@@ -32,8 +32,8 @@ dowatersnakes() /* Fountain of snakes! */
 	else
 	    You_hear("%s hissing!", something);
 	while(num-- > 0)
-	    if((mtmp = makemon(&mons[PM_WATER_MOCCASIN],u.ux,u.uy)) &&
-	       t_at(mtmp->mx, mtmp->my))
+	    if((mtmp = makemon(&mons[PM_WATER_MOCCASIN],
+			u.ux, u.uy, NO_MM_FLAGS)) && t_at(mtmp->mx, mtmp->my))
 		(void) mintrap(mtmp);
     } else
 	pline_The("fountain bubbles furiously for a moment, then calms.");
@@ -46,7 +46,7 @@ dowaterdemon() /* Water demon */
 	register struct monst *mtmp;
 
 	if(mvitals[PM_WATER_DEMON].mvflags & G_GONE) return;
-	if((mtmp = makemon(&mons[PM_WATER_DEMON],u.ux,u.uy))) {
+	if((mtmp = makemon(&mons[PM_WATER_DEMON],u.ux,u.uy, NO_MM_FLAGS))) {
 	    if (!Blind)
 		You("unleash %s!", a_monnam(mtmp));
 	    else
@@ -69,7 +69,7 @@ dowaternymph() /* Water Nymph */
 	register struct monst *mtmp;
 
 	if(mvitals[PM_WATER_NYMPH].mvflags & G_GONE) return;
-	if((mtmp = makemon(&mons[PM_WATER_NYMPH],u.ux,u.uy))) {
+	if((mtmp = makemon(&mons[PM_WATER_NYMPH],u.ux,u.uy, NO_MM_FLAGS))) {
 		if (!Blind)
 		   You("attract %s!", a_monnam(mtmp));
 		else
@@ -474,7 +474,8 @@ drinksink()
 		case 3: if (mvitals[PM_SEWER_RAT].mvflags & G_GONE)
 				pline_The("sink seems quite dirty.");
 			else {
-				mtmp = makemon(&mons[PM_SEWER_RAT], u.ux, u.uy);
+				mtmp = makemon(&mons[PM_SEWER_RAT],
+						u.ux, u.uy, NO_MM_FLAGS);
 				pline("Eek!  There's %s in the sink!",
 					Blind ? "something squirmy" :
 					a_monnam(mtmp));
@@ -509,7 +510,8 @@ drinksink()
 			break;
 		case 7: pline_The("water moves as though of its own will!");
 			if ((mvitals[PM_WATER_ELEMENTAL].mvflags & G_GONE)
-			    || !makemon(&mons[PM_WATER_ELEMENTAL], u.ux, u.uy))
+			    || !makemon(&mons[PM_WATER_ELEMENTAL],
+			 		u.ux, u.uy, NO_MM_FLAGS))
 				pline("But it quiets down.");
 			break;
 		case 8: pline("Yuk, this water tastes awful.");

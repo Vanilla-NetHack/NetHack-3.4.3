@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dungeon.c	3.2	96/03/10	*/
+/*	SCCS Id: @(#)dungeon.c	3.2	96/05/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -620,7 +620,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	register s_level *x;
 	struct proto_dungeon pd;
 	struct level_map *lev_map;
-	long vers_info[3];
+	unsigned long vers_info[4];
 
 	pd.n_levs = pd.n_brs = 0;
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winstat.c	3.2	93/02/04	*/
+/*	SCCS Id: @(#)winstat.c	3.2	96/04/05	*/
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -39,6 +39,7 @@ extern const char *enc_stat[]; /* from botl.c */
 
 static void FDECL(update_fancy_status, (struct xwindow *));
 static Widget FDECL(create_fancy_status, (Widget,Widget));
+static void FDECL(destroy_fancy_status, (struct xwindow *));
 
 void
 create_status_window(wp, create_popup, parent)
@@ -129,11 +130,18 @@ destroy_status_window(wp)
 {
     /* If status_information is defined, then it a "text" status window. */
     if (wp->status_information) {
-	nh_XtPopdown(wp->popup);
-	XtDestroyWidget(wp->popup);
-	free((char *) wp->status_information);
+	if (wp->popup) {
+	    nh_XtPopdown(wp->popup);
+	    if (!wp->keep_window)
+		XtDestroyWidget(wp->popup),  wp->popup = (Widget)0;
+	}
+	free((genericptr_t)wp->status_information);
+	wp->status_information = 0;
+    } else {
+	destroy_fancy_status(wp);
     }
-    wp->type = NHW_NONE;
+    if (!wp->keep_window)
+	wp->type = NHW_NONE;
 }
 
 
@@ -172,15 +180,6 @@ adjust_status(wp, str)
 
 
 /* Fancy Status -------------------------------------------------------------*/
-static Widget init_info_form();
-static Widget init_column();
-static void set_widths();
-static void get_widths();
-static void create_widget();
-static const char *width_string();
-static void hilight_label();
-static void update_val();
-
 static int hilight_time = 1;	/* number of turns to hilight a changed value */
 
 struct X_status_value {
@@ -197,6 +196,15 @@ struct X_status_value {
 #define SV_VALUE 0	/* displays a label:value pair */
 #define SV_LABEL 1	/* displays a changable label */
 #define SV_NAME  2	/* displays an unchangeable name */
+
+static void FDECL(hilight_label, (Widget));
+static void FDECL(update_val, (struct X_status_value *,long));
+static const char *FDECL(width_string, (int));
+static void FDECL(create_widget, (Widget,struct X_status_value *,int));
+static void FDECL(get_widths, (struct X_status_value *,int *,int *));
+static void FDECL(set_widths, (struct X_status_value *,int,int));
+static Widget FDECL(init_column, (char *,Widget,Widget,Widget,int *));
+static Widget FDECL(init_info_form, (Widget,Widget,Widget));
 
 /*
  * Form entry storage indices.
@@ -564,15 +572,11 @@ static void
 update_fancy_status(wp)
     struct xwindow *wp;
 {
-    const struct X_status_value *sv;
+    struct X_status_value *sv;
     long val;
     int i;
 
     if (wp->cursy != 0) return;	/* do a complete update when line 0 is done */
-
-#ifdef GCC_WARN
-    val = 0;
-#endif
 
     for (i = 0, sv = shown_stats; i < NUM_STATS; i++, sv++) {
 	switch (i) {
@@ -638,6 +642,7 @@ update_fancy_status(wp)
 		    impossible("update_other: unknown shown value");
 		    active = FALSE;
 		}
+		val = 0;
 		break;
 	    }
 	}
@@ -966,3 +971,21 @@ create_fancy_status(parent, top)
     return form;
 }
 
+static void
+destroy_fancy_status(wp)
+struct xwindow *wp;
+{
+    int i;
+    struct X_status_value *sv;
+
+    if (!wp->keep_window)
+	XtDestroyWidget(wp->w),  wp->w = (Widget)0;
+
+    for (i = 0, sv = shown_stats; i < NUM_STATS; i++, sv++)
+	if (sv->type == SV_LABEL) {
+	    free((genericptr_t)sv->name);
+	    sv->name = 0;
+	}
+}
+
+/*winstat.c*/

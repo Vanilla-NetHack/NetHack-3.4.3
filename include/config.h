@@ -55,9 +55,11 @@
 #endif
 
 #ifdef __MWERKS__	/* defined by Metrowerks compiler */
-# define MAC
+# ifndef __beos__	/* BeOS */
+#  define MAC
+# endif
 # define NEED_VARARGS
-# define USE_STDARGS
+# define USE_STDARG
 # undef UNIX
 #endif
 
@@ -233,6 +235,11 @@
 /* Windows NT supports TTY_GRAPHICS */
 #ifdef WIN32
 #  define DEFAULT_WINDOW_SYS "tty"
+#endif
+
+#ifdef __beos__
+/* leave at tty graphics for now */
+/* # define DEFAULT_WINDOW_SYS "be" */
 #endif
 
 #ifndef DEFAULT_WINDOW_SYS
@@ -425,8 +432,6 @@ typedef unsigned char	uchar;
 #  define MACRO_CPATH	/* use clear_path macros instead of functions */
 # endif
 #endif
-
-
 
 /*
  * Section 4:  THE FUN STUFF!!!

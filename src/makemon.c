@@ -77,10 +77,40 @@ register int x, y, n;
 	coord mm;
 	register int cnt = rnd(n);
 	struct monst *mon;
+#if defined(__GNUC__) && (defined(HPUX) || defined(DGUX))
+	/* There is an unresolved problem with several people finding that
+	 * the game hangs eating CPU; if interrupted and restored, the level
+	 * will be filled with monsters.  Of those reports giving system type,
+	 * there were two DG/UX and two HP-UX, all using gcc as the compiler.
+	 * hcroft@hpopb1.cern.ch, using gcc 2.6.3 on HP-UX, says that the
+	 * problem went away for him and another reporter-to-newsgroup
+	 * after adding this debugging code.  This has almost got to be a
+	 * compiler bug, but until somebody tracks it down and gets it fixed,
+	 * might as well go with the "but it went away when I tried to find
+	 * it" code.
+	 */
+	int cnttmp,cntdiv;
 
+	cnttmp = cnt;
+# ifdef DEBUG
+	pline("init group call x=%d,y=%d,n=%d,cnt=%d.", x, y, n, cnt);
+# endif
+	cntdiv = ((u.ulevel < 3) ? 4 : (u.ulevel < 5) ? 2 : 1);
+#endif
 	/* Tuning: cut down on swarming at low character levels [mrs] */
 	cnt /= (u.ulevel < 3) ? 4 : (u.ulevel < 5) ? 2 : 1;
+#if defined(__GNUC__) && (defined(HPUX) || defined(DGUX))
+	if (cnt != (cnttmp/cntdiv)) {
+		pline("cnt=%d using %d, cnttmp=%d, cntdiv=%d", cnt,
+			(u.ulevel < 3) ? 4 : (u.ulevel < 5) ? 2 : 1,
+			cnttmp, cntdiv);
+	}
+#endif
 	if(!cnt) cnt++;
+#if defined(__GNUC__) && (defined(HPUX) || defined(DGUX))
+	if (cnt < 0) cnt = 1;
+	if (cnt > 10) cnt = 10;
+#endif
 
 	mm.x = x;
 	mm.y = y;
@@ -92,7 +122,7 @@ register int x, y, n;
 		 * smaller group.
 		 */
 		if (enexto(&mm, mm.x, mm.y, mtmp->data)) {
-		    mon = makemon(mtmp->data, mm.x, mm.y);
+		    mon = makemon(mtmp->data, mm.x, mm.y, NO_MM_FLAGS);
 		    mon->mpeaceful = FALSE;
 		    set_malign(mon);
 		    /* Undo the second peace_minded() check in makemon(); if the
@@ -634,15 +664,17 @@ struct monst *mon;
  *	In case we make a monster group, only return the one at [x,y].
  */
 struct monst *
-makemon(ptr, x, y)
+makemon(ptr, x, y, mmflags)
 register struct permonst *ptr;
 register int	x, y;
+register int	mmflags;
 {
 	register struct monst *mtmp;
 	register int	mndx, ct;
 	boolean anymon = (!ptr);
 	boolean byyou = (x == u.ux && y == u.uy);
-
+	boolean allow_minvent = ((mmflags & NO_MINVENT) == 0);
+	
 	/* if caller wants random location, do it here */
 	if(x == 0 && y == 0) {
 		int tryct = 0;	/* careful with bigrooms */
@@ -844,11 +876,16 @@ register int	x, y;
 	    }
 	}
 
-	if(is_armed(ptr))
+	if (allow_minvent) {
+	    if(is_armed(ptr))
 		m_initweap(mtmp);	/* equip with weapons / armor */
-	m_initinv(mtmp);    /* add on a few special items incl. more armor */
-	m_dowear(mtmp, TRUE);
-
+	    m_initinv(mtmp);    /* add on a few special items incl. more armor */
+	    m_dowear(mtmp, TRUE);
+	} else if (mtmp->minvent) {	/* sanity check */
+	    impossible("makemon: non-null minvent despite NO_MINVENT flag.");
+	    discard_minvent(mtmp);
+	    mtmp->minvent = (struct obj *)0;	/* caller expects this */
+	}
 	if (ptr->mflags3 & M3_WAITMASK) {
 		if (ptr->mflags3 & M3_WAITFORU)
 			mtmp->mstrategy |= STRAT_WAITFORU;
@@ -893,7 +930,7 @@ struct permonst *mptr;		/* usually null; used for confused reading */
 	    if (!mptr && u.uinwater && enexto(&c, x, y, &mons[PM_GIANT_EEL]))
 		x = c.x,  y = c.y;
 
-	    mon = makemon(mptr, x, y);
+	    mon = makemon(mptr, x, y, NO_MM_FLAGS);
 	    if (mon && canspotmon(mon)) known = TRUE;
 	}
 	return known;
@@ -1195,6 +1232,7 @@ struct monst *mtmp, *victim;
 	   have both little and big forms */
 	oldtype = monsndx(ptr);
 	newtype = little_to_big(oldtype);
+	if (newtype == PM_PRIEST && mtmp->female) newtype = PM_PRIESTESS;
 	if ((int)++mtmp->m_lev >= mons[newtype].mlevel && newtype != oldtype) {
 	    ptr = &mons[newtype];
 	    if (mvitals[newtype].mvflags & G_GENOD) {	/* allow G_EXTINCT */

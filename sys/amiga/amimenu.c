@@ -77,9 +77,6 @@ static struct IntuiText nam = \
     TEXT(T_Mn, "M-n  #name an item or type of object");
     TEXT(T_Mo, "M-o  #offer a sacrifice to the gods");
     TEXT(T_Mp, "M-p  #pray to the gods for help");
-#ifdef WEAPON_SKILLS
-    TEXT(T_Mq, "M-q  Show #qualifications with weapons");
-#endif
     TEXT(T_Mr, "M-r  #rub a lamp");
     TEXT(T_Ms, "M-s  #sit down");
     TEXT(T_Mt, "M-t  #turn undead");
@@ -204,15 +201,12 @@ static struct MenuItem extsub[] = {
     { &extsub[ 9+WS1], IDATA(128+'n', T_Mn,  80+WS10) },
     { &extsub[10+WS1], IDATA(128+'o', T_Mo,  90+WS10) },
     { &extsub[11+WS1], IDATA(128+'p', T_Mp, 100+WS10) },
-#ifdef WEAPON_SKILLS
-    { &extsub[12+WS1], IDATA(128+'q', T_Mq,  110+WS10) },
-#endif
-    { &extsub[12+WS1+WS1], IDATA(128+'r', T_Mr, 110+WS10+WS10) },
-    { &extsub[13+WS1+WS1], IDATA(128+'s', T_Ms, 120+WS10+WS10) },
-    { &extsub[14+WS1+WS1], IDATA(128+'t', T_Mt, 130+WS10+WS10) },
-    { &extsub[15+WS1+WS1], IDATA(128+'u', T_Mu, 140+WS10+WS10) },
-    { &extsub[16+WS1+WS1], IDATA(128+'v', T_Mv, 150+WS10+WS10) },
-    { NULL       , IDATA(128+'w', T_Mw, 160+WS10+WS10) },
+    { &extsub[12+WS1], IDATA(128+'r', T_Mr, 110+WS10) },
+    { &extsub[13+WS1], IDATA(128+'s', T_Ms, 120+WS10) },
+    { &extsub[14+WS1], IDATA(128+'t', T_Mt, 130+WS10) },
+    { &extsub[15+WS1], IDATA(128+'u', T_Mu, 140+WS10) },
+    { &extsub[16+WS1], IDATA(128+'v', T_Mv, 150+WS10) },
+    { NULL       , IDATA(128+'w', T_Mw, 160+WS10) },
 };
 #undef WS1
 #undef WS10

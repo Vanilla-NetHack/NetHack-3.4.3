@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)were.c	3.2	95/07/29	*/
+/*	SCCS Id: @(#)were.c	3.2	96/05/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,18 +10,29 @@ void
 were_change(mon)
 register struct monst *mon;
 {
-	register int pm = monsndx(mon->data);
+	if (!is_were(mon->data))
+	    return;
 
-	if(is_were(mon->data))
-	    if(is_human(mon->data)) {
-		if(Protection_from_shape_changers) return;
-		if(!rn2(50-(night()*20)) || flags.moonphase == FULL_MOON) {
-		    new_were(mon);
-		    if(mons[pm].msound == MS_BARK && flags.soundok)
-			You_hear("a %s howling at the moon.",
-			    pm == PM_HUMAN_WEREJACKAL ? "jackal" : "wolf");
+	if (is_human(mon->data)) {
+	    if (!Protection_from_shape_changers &&
+		    !rn2(night() ? (flags.moonphase == FULL_MOON ?  3 : 30)
+				 : (flags.moonphase == FULL_MOON ? 10 : 50))) {
+		new_were(mon);		/* change into animal form */
+		if (flags.soundok) {
+		    const char *howler;
+
+		    switch (monsndx(mon->data)) {
+		    case PM_HUMAN_WEREWOLF:	  howler = "wolf";    break;
+		    case PM_HUMAN_WEREJACKAL: howler = "jackal";  break;
+		    default:		  howler = (char *)0; break;
+		    }
+		    if (howler)
+			You_hear("a %s howling at the moon.", howler);
 		}
-	    } else if(!rn2(30) || Protection_from_shape_changers) new_were(mon);
+	    }
+	} else if (!rn2(30) || Protection_from_shape_changers) {
+	    new_were(mon);		/* change back into human form */
+	}
 }
 
 #endif /* OVL0 */
@@ -105,7 +116,7 @@ register boolean yours;
 		default:
 			continue;
 	    }
-	    mtmp = makemon(&mons[typ], u.ux, u.uy);
+	    mtmp = makemon(&mons[typ], u.ux, u.uy, NO_MM_FLAGS);
 	    if (mtmp) success = TRUE;
 	    if (yours && mtmp)
 		(void) tamedog(mtmp, (struct obj *) 0);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.2	95/11/29	*/
+/*	SCCS Id: @(#)end.c	3.2	96/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -541,6 +541,14 @@ die:
    killer is declared a (const char *)
 */
 	if (u.uhave.amulet) Strcat(kilbuf, " (with the Amulet)");
+	else if (how == ESCAPED) {
+	    if (Is_astralevel(&u.uz))	/* offered Amulet to wrong deity */
+		Strcat(kilbuf, " (in celestial disgrace)");
+	    else if (carrying(FAKE_AMULET_OF_YENDOR))
+		Strcat(kilbuf, " (with a fake Amulet)");
+		/* don't bother counting to see whether it should be plural */
+	}
+
 	if (!done_stopprint) {
 	    Sprintf(pbuf, "%s %s the %s...",
 		   Role_is('S') ? "Sayonara" :
@@ -711,10 +719,15 @@ void
 terminate(status)
 int status;
 {
+#ifdef __beos__
+	extern void nethack_exit(int);
+#else
+#	define nethack_exit exit
+#endif
+
 #ifdef MAC
 	getreturn("to exit");
 #endif
-
 	/* don't bother to try to release memory if we're in panic mode, to
 	   avoid trouble in case that happens to be due to memory problems */
 	if (!program_state.panicking) {
@@ -722,7 +735,7 @@ int status;
 	    dlb_cleanup();
 	}
 
-	exit(status);
+	nethack_exit(status);
 }
 
 static void

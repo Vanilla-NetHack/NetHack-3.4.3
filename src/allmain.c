@@ -108,7 +108,8 @@ moveloop()
 				(depth(&u.uz) >
 				 depth(&stronghold_level))
 				? 50 : 70))
-			    (void) makemon((struct permonst *)0, 0, 0);
+			    (void) makemon((struct permonst *)0, 0, 0,
+						NO_MM_FLAGS);
 			++monstermoves;
 			moverate -= 12;
 		    }

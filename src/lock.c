@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lock.c	3.2	95/10/04	*/
+/*	SCCS Id: @(#)lock.c	3.2	96/04/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -718,14 +718,23 @@ int x, y;
 	const char *quickly_dissipates = "quickly dissipates";
 	
 	if (door->typ == SDOOR) {
-	    if (otmp->otyp == WAN_OPENING || otmp->otyp == SPE_KNOCK) {
+	    switch (otmp->otyp) {
+	    case WAN_OPENING:
+	    case SPE_KNOCK:
+	    case WAN_STRIKING:
+	    case SPE_FORCE_BOLT:
 		door->typ = DOOR;
 		door->doormask = D_CLOSED | (door->doormask & D_TRAPPED);
-		if (cansee(x,y)) pline("A door appears in the wall!");
 		newsym(x,y);
-		return TRUE;
-	    } else
+		if (cansee(x,y)) pline("A door appears in the wall!");
+		if (otmp->otyp == WAN_OPENING || otmp->otyp == SPE_KNOCK)
+		    return TRUE;
+		break;		/* striking: continue door handling below */
+	    case WAN_LOCKING:
+	    case SPE_WIZARD_LOCK:
+	    default:
 		return FALSE;
+	    }
 	}
 
 	switch(otmp->otyp) {

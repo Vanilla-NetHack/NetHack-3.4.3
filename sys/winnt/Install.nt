@@ -4,7 +4,7 @@
                     Instructions for compiling and installing
                  NetHack 3.2 on a Windows NT or Windows 95 system
          ==============================================================
-         (or, How to make NetHack 3.2.0 for the WIN32 Console subsystem)
+         (or, How to make NetHack 3.2.1 for the WIN32 Console subsystem)
 		      Last revision: February 23, 1996
 
 Credit for PC versions of NetHack 3.2 goes to the PC Development team
@@ -61,7 +61,7 @@ Setting Up
     they are not necessary for building the TTY version for the Win32 
     console subsystem.  You can delete them to save space.  Your distribution 
     may contain a directory win\win32.  This window port variant was a
-    recent addition and was not ready for the 3.2.0 release.  You may 
+    recent addition and was not ready for the 3.2.1 release.  You may 
     ignore it (or contribute to it).
 
     Required Directories for a Win32 Console NetHack:
@@ -180,7 +180,7 @@ Running NetHack
     or from a shortcut, just use the following information when 
     setting up the icon or shortcut.
 
-         Description      :  NetHack 3.2.0 
+         Description      :  NetHack 3.2.1 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
 
    (changing the directory to the appropriate one of course)

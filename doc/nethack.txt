@@ -146,7 +146,10 @@ NETHACK(6)                    1996                     NETHACK(6)
 
 FILES
      All    files    are    in    the    playground,     normally
-     /usr/games/lib/nethackdir.
+     /usr/games/lib/nethackdir.   If  DLB  was defined during the
+     compile, the data files and special levels will be inside  a
+     larger  file,  normally  nhdat,  instead  of  being separate
+     files.
      nethack                     The program itself.
      data, oracles, rumors       Data files used by NetHack.
      options, quest.dat          More data files.
@@ -185,9 +188,6 @@ ENVIRONMENT
 SEE ALSO
      dgn_comp(6), lev_comp(6), recover(6)
 
-BUGS
-     Probably infinite.
-
 
 
 
@@ -203,12 +203,12 @@ NETHACK(6)                    1996                     NETHACK(6)
 
 
 
+BUGS
+     Probably infinite.
+
+
+
      Dungeons & Dragons is a Trademark of TSR Inc.
-
-
-
-
-
 
 
 
