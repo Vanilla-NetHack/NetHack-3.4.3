@@ -66,4 +66,22 @@
  *  teach '/' about configurable symbols
  */
 
-#define PATCHLEVEL	6
+/*
+ *  Patch 7, February 19, 1990
+ *  refine overlay support to handle portions of .c files through OVLx
+ *	(courtesy above plus Kevin Smolkowski)
+ *  update and extend Amiga port and documentation (courtesy Richard Addison,
+ *	Jochen Erwied, Mark Gooderum, Ken Lorber, Greg Olson, Mike Passaretti,
+ *	and Gregg Wonderly)
+ *  refine and extend Macintosh port and documentation (courtesy Johnny Lee,
+ *	Kevin Sitze, Michael Sokolov, Andy Swanson, Jon Watte, and Tom West)
+ *  refine VMS documentation
+ *  continuing ANSIfication, this time of const usage
+ *  teach '/' about differences within monster classes
+ *  smarter eating code (yet again), death messages, and treatment of
+ *	non-animal monsters, monster unconsciousness, and naming
+ *  extended version command to give compilation options
+ *  and the usual bug fixes and hole plugs
+ */
+
+#define PATCHLEVEL	7

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.0	89/11/15
+/*	SCCS Id: @(#)mhitm.c	3.0	89/11/27
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,9 +7,13 @@
 #  include "artifact.h"
 #endif
 
+#ifdef OVLB
+
 static boolean vis, far_noise;
 static long noisetime;
 static struct obj *otmp;
+
+#endif /* OVLB */
 
 static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
 static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
@@ -18,6 +22,10 @@ static int FDECL(gulpmm, (struct monst *,struct monst *,struct attack *));
 static int FDECL(explmm, (struct monst *,struct monst *,struct attack *));
 static int FDECL(mdamagem, (struct monst *,struct monst *,struct attack *));
 static void FDECL(mswingsm, (struct monst *, struct monst *, struct obj *));
+static void FDECL(noises,(struct monst *,struct attack *));
+static void FDECL(missmm,(struct monst *,struct monst *,struct attack *));
+
+#ifdef OVLB
 
 static void
 noises(magr, mattk)
@@ -55,15 +63,20 @@ missmm(magr, mdef, mattk)
 	} else  noises(magr, mattk);
 }
 
+/*
+ * fightm returns 3 if no attack, otherwise the results of mattackm
+ */
 int
 fightm(mtmp)		/* have monsters fight each other */
 	register struct monst *mtmp;
 {
-register struct monst *mon;
-/*	TODO:	this loop needs to be restructured, as we don't know if
- *		either "mon" or "mon->nmon" will exist after the attack.
- */
-	for(mon = fmon; mon; mon = mon->nmon)
+register struct monst *mon, *nmon;
+#ifdef LINT
+	nmon = 0;
+#endif
+	for(mon = fmon; mon; mon = nmon) {
+	    nmon = mon->nmon;
+	    if(nmon == mtmp) nmon = mtmp->nmon;
 	    if(mon != mtmp) {
 		if(dist2(mon->mx,mon->my,mtmp->mx,mtmp->my) < 3)
 		/* note: grid bug check needed here as well as in mattackm */
@@ -71,7 +84,8 @@ register struct monst *mon;
 				|| mtmp->my==mon->my)
 			return(mattackm(mtmp,mon));
 	    }
-	return(-1);
+	}
+	return(3);
 }
 
 /*
@@ -93,7 +107,7 @@ mattackm(magr, mdef)
 
 	if(!magr || !mdef) return(0);		/* mike@genat */
 	pa = magr->data; pd = mdef->data;
-	if(magr->mfroz) return(0);		/* riv05!a3 */
+	if(!magr->mcanmove) return(0);		/* riv05!a3 */
 	if(pa==&mons[PM_GRID_BUG] && magr->mx != mdef->mx
 						&& magr->my != mdef->my)
 		return(0);
@@ -101,7 +115,7 @@ mattackm(magr, mdef)
 /*	Calculate the armour class differential.	*/
 
 	tmp = pd->ac + magr->m_lev;
-	if(mdef->mconf || mdef->mfroz || mdef->msleep){
+	if(mdef->mconf || !mdef->mcanmove || mdef->msleep){
 		tmp += 4;
 		if(mdef->msleep) mdef->msleep = 0;
 	}
@@ -194,7 +208,7 @@ hitmm(magr, mdef, mattk)
 		if(magr->mimic) seemimic(magr);
 		if((compat = could_seduce(magr,mdef,mattk)) && !magr->mcan) {
 			Sprintf(buf, "%s %s", Monnam(magr),
-				mdef->mblinded ? "talks to" : "smiles at");
+				mdef->mcansee ? "smiles at" : "talks to");
 			pline("%s %s %s.", buf, mon_nam(mdef),
 				compat == 2 ?
 					"engagingly" : "seductively");
@@ -238,7 +252,7 @@ gazemm(magr, mdef, mattk)
 		pline("%s %s.", buf, mon_nam(mdef));
 	}
 
-	if (mdef->mblinded || mdef->msleep) {
+	if (!mdef->mcansee || mdef->msleep) {
 
 	    if(vis) pline("but nothing happens.");
 	    return(0);
@@ -254,6 +268,8 @@ gulpmm(magr, mdef, mattk)
 {
 	int	mx, my, tmp;
 	char buf[BUFSZ];
+
+	if(mdef->data->msize >= MZ_HUGE) return 0;
 
 	if(vis) {
 		Sprintf(buf,"%s swallows", Monnam(magr));
@@ -307,6 +323,9 @@ explmm(magr, mdef, mattk)
 	return(2);
 }
 
+static const char psf[] =
+	"have a peculiarly sad feeling for a moment, then it passes.";
+
 static int
 mdamagem(magr, mdef, mattk)
 	register struct monst	*magr, *mdef;
@@ -316,9 +335,21 @@ mdamagem(magr, mdef, mattk)
 	int	tmp = d((int)mattk->damn,(int)mattk->damd);
 	char buf[BUFSZ];
 
+	if(mdef->data == &mons[PM_COCKATRICE] && !resists_ston(magr->data) &&
+	   (mattk->aatyp != AT_WEAP || !otmp) &&
+	   (mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL) &&
+	   (!is_mercenary(magr->data) || !m_carrying(magr, LEATHER_GLOVES))) {
+	   /* Note: other monsters may carry gloves, only soldiers have them */
+	   /* as their "armor" and can be said to wear them */
+		if (vis) pline("%s turns to stone!", Monnam(magr));
+		else if (magr->mtame) You(psf);
+		monstone(magr);
+		return -1;
+	}
+
 	switch(mattk->adtyp) {
 	    case AD_DGST:
-		if(flags.verbose && flags.soundok) pline("\"Burrrrp!\"");
+		if(flags.verbose && flags.soundok) verbalize("Burrrrp!");
 		tmp = mdef->mhp;
 		break;
 	    case AD_STUN:
@@ -363,7 +394,9 @@ mdamagem(magr, mdef, mattk)
 #ifdef GOLEMS
 		golemeffects(mdef, AD_FIRE, tmp);
 #endif /* GOLEMS */
+		if(vis) pline("%s is on fire!", Monnam(mdef));
 		if(resists_fire(pd)) {
+		    pline("The fire doesn't seem to burn %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
 		} else {
@@ -382,7 +415,10 @@ mdamagem(magr, mdef, mattk)
 #ifdef GOLEMS
 		golemeffects(mdef, AD_COLD, tmp);
 #endif /* GOLEMS */
+		if(vis) pline("%s is covered in frost!", Monnam(mdef));
 		if(resists_cold(pd)) {
+		    pline("The frost doesn't seem to chill %s!",
+			mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
 		} else tmp += destroy_mitem(mdef, POTION_SYM, AD_COLD);
@@ -395,7 +431,9 @@ mdamagem(magr, mdef, mattk)
 #ifdef GOLEMS
 		golemeffects(mdef, AD_ELEC, tmp);
 #endif /* GOLEMS */
+		if(vis) pline("%s gets zapped!", Monnam(mdef));
 		if(resists_elec(pd)) {
+		    pline("The zap doesn't shock %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 		    tmp = 0;
 		}
@@ -405,7 +443,14 @@ mdamagem(magr, mdef, mattk)
 		    tmp = 0;
 		    break;
 		}
-		if(resists_acid(pd)) tmp = 0;
+		if(resists_acid(pd)) {
+		    pline("%s is covered in acid, but it seems harmless.",
+			Monnam(mdef));
+		    tmp = 0;
+		} else {
+		    pline("%s is covered in acid!", Monnam(mdef));
+		    pline("It burns %s!", mon_nam(mdef));
+		}
 		break;
 	    case AD_RUST:
 #ifdef GOLEMS
@@ -442,8 +487,7 @@ mdamagem(magr, mdef, mattk)
 		if(!resists_ston(pd)) {
 			magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
 			if(vis) pline("%s turns to stone!", Monnam(mdef));
-			else if(mdef->mtame)
-     You("have a peculiarly sad feeling for a moment, then it passes.");
+			else if(mdef->mtame) You(psf);
 			monstone(mdef);
 			ptr = grow_up(magr);
 			if(!ptr) return(-1);
@@ -459,21 +503,29 @@ mdamagem(magr, mdef, mattk)
 		}
 		break;
 	    case AD_SLEE:
-		if(!resists_sleep(pd) && !magr->mcan && vis && !mdef->msleep
-							&& !mdef->mfroz) {
-		    pline("%s falls asleep.", Monnam(mdef));
-		    mdef->msleep = 1;
+		if(!resists_sleep(pd) && !magr->mcan && !mdef->msleep
+							&& mdef->mcanmove) {
+		    if (vis) {
+			Strcpy(buf, Monnam(mdef));
+			pline("%s is put to sleep by %s.", buf, mon_nam(magr));
+		    }
+		    mdef->mcanmove = 0;
+		    mdef->mfrozen = rnd(10);
 		}
 		break;
 	    case AD_PLYS:
-		if(!magr->mcan && vis && !mdef->mfroz) {
-		    pline("%s stops moving.", Monnam(mdef));
-		    mdef->mfroz = 1;
+		if(!magr->mcan && mdef->mcanmove) {
+		    if (vis) {
+			Strcpy(buf, Monnam(mdef));
+			pline("%s is frozen by %s.", buf, mon_nam(magr));
+		    }
+		    mdef->mcanmove = 0;
+		    mdef->mfrozen = rnd(10);
 		}
 		break;
 	    case AD_SLOW:
 		if(!magr->mcan && vis && mdef->mspeed != MSLOW) {
-		    pline("%s slows down.", Monnam(mdef));
+		    if (vis) pline("%s slows down.", Monnam(mdef));
 		    if (mdef->mspeed == MFAST) mdef->mspeed = 0;
 		    else mdef->mspeed = MSLOW;
 		}
@@ -491,7 +543,7 @@ mdamagem(magr, mdef, mattk)
 	    case AD_BLND:
 		if(!magr->mcan && haseyes(pd)) {
 
-		    if(vis && !mdef->mblinded)
+		    if(vis && mdef->mcansee)
 			pline("%s is blinded.", Monnam(mdef));
 		    {
 			register unsigned rnd_tmp;
@@ -606,7 +658,10 @@ mdamagem(magr, mdef, mattk)
 
 	if((mdef->mhp -= tmp) < 1) {
 	    magr->mhpmax += 1 + rn2((int)mdef->m_lev+1);
-	    if(vis) pline("%s is killed!", Monnam(mdef));
+	    if(vis)
+		pline("%s is %s!", Monnam(mdef),
+			(is_demon(mdef->data) || is_undead(mdef->data)) ?
+			 "destroyed" : "killed");
 	    else if(mdef->mtame)
 		You("have a sad feeling for a moment, then it passes.");
 	    mondied(mdef);
@@ -620,6 +675,9 @@ mdamagem(magr, mdef, mattk)
 	return(1);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 noattacks(ptr)			/* returns 1 if monster doesn't attack */
 	struct	permonst *ptr;
@@ -631,6 +689,9 @@ noattacks(ptr)			/* returns 1 if monster doesn't attack */
 
 	return(1);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 static void
 mrustm(magr, mdef, obj)
@@ -671,3 +732,5 @@ register struct obj *otemp;
 	      is_human(magr->data) ? "his" : "its",
 	      xname(otemp), buf);
 }
+
+#endif /* OVLB */

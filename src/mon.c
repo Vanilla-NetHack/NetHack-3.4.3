@@ -1,9 +1,12 @@
-/*	SCCS Id: @(#)mon.c	3.0	89/11/19
+/*	SCCS Id: @(#)mon.c	3.0	89/11/22
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#if (defined(MICROPORT_BUG) || !defined(LINT)) && !defined(__STDC__)
+/* Aztec C on amiga doesn't recognize defined() at this point! */
+#ifndef AZTEC_C
+#if defined(MICROPORT_BUG) || (!defined(LINT) && !defined(__STDC__))
 #define MKROOM_H
+#endif /* Avoid the microport bug */
 #endif
 
 #include "hack.h"
@@ -14,15 +17,28 @@
 #endif
 
 #ifdef HARD
-static boolean restrap();
+OSTATIC boolean FDECL(restrap,(struct monst *));
+#endif
+#ifdef INFERNO
 #  include <ctype.h>
 #endif
 
+static struct obj *FDECL(make_corpse,(struct monst *));
+OSTATIC void NDECL(dmonsfree);
+static void FDECL(m_detach,(struct monst *));
+
+#ifdef OVL1
+
 long lastwarntime;
 int lastwarnlev;
-static const char *warnings[] = {
+const char *warnings[] = {
 	"white", "pink", "red", "ruby", "purple", "black" };
-struct monst *fdmon;	/* chain of dead monsters, need not be saved */
+
+#endif /* OVL1 */
+#ifdef OVLB
+
+struct monst *fdmon;  /* chain of dead monsters, need not be saved */
+		      /* otherwise used only in priest.c */
 
 /* Creates a monster corpse, a "special" corpse, or nothing if it doesn't
  * leave corpses.  Monsters which leave "special" corpses should have
@@ -41,6 +57,16 @@ register struct monst *mtmp;
 	int x = mtmp->mx, y = mtmp->my;
 
 	switch(monsndx(mdat)) {
+	    case PM_WHITE_UNICORN:
+	    case PM_GRAY_UNICORN:
+	    case PM_BLACK_UNICORN:
+		(void) mksobj_at(UNICORN_HORN, x, y);
+		goto default_1;
+#ifdef WORM
+	    case PM_LONG_WORM:
+		(void) mksobj_at(WORM_TOOTH, x, y);
+		goto default_1;
+#endif
 	    case PM_KOBOLD_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_KOBOLD_ZOMBIE:
@@ -115,6 +141,7 @@ register struct monst *mtmp;
 			obj = mksobj_at(LEATHER_ARMOR, x, y);
 		break;
 #endif
+	    default_1:
 	    default:
 		if (mdat->geno & G_NOCORPSE)
 			return (struct obj *)0;
@@ -137,8 +164,10 @@ register struct monst *mtmp;
 	return obj;
 }
 
+#endif /* OVLB */
+#ifdef OVL2
 
-static void
+XSTATIC void
 dmonsfree(){
 register struct monst *mtmp;
 	while(mtmp = fdmon){
@@ -147,11 +176,13 @@ register struct monst *mtmp;
 	}
 }
 
+#endif /* OVL2 */
+#ifdef OVL1
+
 void
 movemon()
 {
 	register struct monst *mtmp;
-	register int fr;
 
 	warnlevel = 0;
 
@@ -223,6 +254,8 @@ movemon()
 		}
 		if(mtmp->mblinded && !--mtmp->mblinded)
 			mtmp->mcansee = 1;
+		if(mtmp->mfrozen && !--mtmp->mfrozen)
+			mtmp->mcanmove = 1;
 		if(mtmp->mfleetim && !--mtmp->mfleetim)
 			mtmp->mflee = 0;
 #ifdef HARD
@@ -231,21 +264,39 @@ movemon()
 #endif
 		if(mtmp->mimic) continue;
 		if(mtmp->mspeed != MSLOW || !(moves%2)){
-			/* continue if the monster died fighting */
-			fr = -1;
-/* TODO:	Handle the case of the aggressor dying? */
-			if(Conflict && !mtmp->iswiz &&
-			   /* area you can see if you're not blind */
-			   (dist(mtmp->mx,mtmp->my) < 3 ||
-			    (levl[mtmp->mx][mtmp->my].lit &&
-			     ((seelx <= mtmp->mx && mtmp->mx <= seehx &&
-			       seely <= mtmp->my && mtmp->my <= seehy) ||
-			      (seelx2 <= mtmp->mx && mtmp->mx <= seehx2 &&
-			       seely2 <= mtmp->my && mtmp->my <= seehy2)))) &&
-			   (fr = fightm(mtmp)) == 2)
-				continue;
-  			if(fr<0 && dochugw(mtmp))
-				continue;
+		/* continue if the monster died fighting */
+		  if (Conflict && !mtmp->iswiz && mtmp->mcansee) {
+/* Note: A couple of notes on conflict here.
+	 1. Conflict does not take effect in the first round.  Therefore, 
+	    A monster in a stepping into the area will get to swing at you.
+	 2. Conflict still works when you are invisible.  (?)
+	 3. Certain areas (namely castle) you can be in 3 "rooms" at once!
+	    Polyself into Xorn wearing ring of conflict and it can be done.
+	    This code only allows for two.  This needs to be changed if more
+	    areas (with diggable walls and > 2 rooms) are put into the game.
+*/
+		    xchar clx = 0, chx = 0, cly = 0, chy = 0,
+			  clx2 = 0, chx2 = 0, cly2 = 0, chy2 = 0;
+		    /* seelx etc. are not set if blind or blindfolded! */
+		    getcorners(&clx, &chx, &cly, &chy,
+			       &clx2, &chx2, &cly2, &chy2);
+		    if ((dist(mtmp->mx,mtmp->my) < 3) || 
+		    /* if the monster is next to you OR */
+		 	(levl[u.ux][u.uy].lit &&
+			 levl[mtmp->mx][mtmp->my].lit &&
+		    /* both you and it are lit AND */
+			 ((clx <= mtmp->mx && mtmp->mx <= chx &&
+			   cly <= mtmp->my && mtmp->my <= chy) ||
+			  (clx2 <= mtmp->mx && mtmp->mx <= chx2 &&
+			   cly2 <= mtmp->my && mtmp->my <= chy2))))
+		    /* you *could* see it (ie it can see you) */
+		      if (fightm(mtmp) != 3)
+		      /* have it fight if it choses to */
+			continue;
+		  }
+		  if(dochugw(mtmp))
+		  /* otherwise just move the monster */
+		    continue;
 		}
 		if(mtmp->mspeed == MFAST && dochugw(mtmp))
 			continue;
@@ -262,7 +313,7 @@ movemon()
 		warnlevel = SIZE(warnings)-1;
 	if(!Blind && warnlevel >= 0)
 	if(warnlevel > lastwarnlev || moves > lastwarntime + 5){
-	    register char *rr;
+	    register const char *rr;
 	
 	    switch((int) (Warning & (LEFT_RING | RIGHT_RING))){
 	    case LEFT_RING:
@@ -288,6 +339,9 @@ movemon()
 
 	dmonsfree();	/* remove all dead monsters */
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 meatgold(mtmp)
@@ -409,6 +463,9 @@ mpickgems(mtmp)
 		}
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 curr_mon_load(mtmp)
 register struct monst *mtmp;
@@ -475,10 +532,13 @@ struct obj *otmp;
 	return(TRUE);
 }
 
+#endif /* OVL0 */
+#ifdef OVL2
+
 void
 mpickstuff(mtmp, str)
 	register struct monst *mtmp;
-	register char *str;
+	register const char *str;
 {
 	register struct obj *otmp;
 
@@ -497,6 +557,9 @@ mpickstuff(mtmp, str)
 		return;			/* pick only one object */
 	    }
 }
+
+#endif /* OVL2 */
+#ifdef OVL0
 
 /* return number of acceptable neighbour positions */
 int
@@ -532,22 +595,20 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 	    if(IS_ROCK(ntyp = levl[nx][ny].typ) && !(flag & ALLOW_WALL) &&
 		!((flag & ALLOW_DIG) && may_dig(nx,ny))) continue;
 	    if(IS_DOOR(ntyp) && !amorphous(mon->data) &&
-	       ((levl[nx][ny].doormask & D_LOCKED &&
-		   !is_giant(mon->data) && !mon->isshk) ||
-		(levl[nx][ny].doormask & D_CLOSED &&
-		   (verysmall(mon->data) ||
-		    (!is_giant(mon->data) && nohands(mon->data))))
-	       ) && !(flag & (ALLOW_WALL|ALLOW_DIG))) continue;
+	       ((levl[nx][ny].doormask & D_CLOSED && !(flag & OPENDOOR)) ||
+		(levl[nx][ny].doormask & D_LOCKED && !(flag & UNLOCKDOOR))
+	       ) && !(flag & (ALLOW_WALL|ALLOW_DIG|BUSTDOOR))) continue;
 	    if(nx != x && ny != y &&
 #ifdef REINCARNATION
-	       ((IS_DOOR(nowtyp) && ((levl[x][y].doormask & ~D_BROKEN)
-			|| dlevel == rogue_level)) ||
-		(IS_DOOR(ntyp) && ((levl[nx][ny].doormask & ~D_BROKEN)
-			|| dlevel == rogue_level))))
+	       ((IS_DOOR(nowtyp) &&
+	         ((levl[x][y].doormask & ~D_BROKEN) || dlevel == rogue_level)) ||
+		(IS_DOOR(ntyp) &&
+		 ((levl[nx][ny].doormask & ~D_BROKEN) || dlevel == rogue_level))
 #else
 	       ((IS_DOOR(nowtyp) && (levl[x][y].doormask & ~D_BROKEN)) ||
-		(IS_DOOR(ntyp) && (levl[nx][ny].doormask & ~D_BROKEN))))
+		(IS_DOOR(ntyp) && (levl[nx][ny].doormask & ~D_BROKEN))
 #endif
+	       ))
 		continue;
 	    if(is_pool(nx,ny) == wantpool || poolok) {
 		/* Displacement also displaces the Elbereth/scare monster,
@@ -636,6 +697,9 @@ impossible("A monster looked at a very strange trap of type %d.", ttmp->ttyp);
 	return(cnt);
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 int
 dist(x, y)
 register int x,y;
@@ -655,6 +719,9 @@ register int x,y;
 	return (distance < 3);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 static const char *poiseff[] = {
 
 	" feel very weak", "r brain is on fire",
@@ -671,9 +738,9 @@ poisontell(typ)
 }
 
 void
-poisoned(string, typ, pname)
-register char *string, *pname;
-register int  typ;
+poisoned(string, typ, pname, fatal)
+register const char *string, *pname;
+register int  typ, fatal;
 {
 	register int i, plural;
 	boolean thrown_weapon = !strncmp(string, "poison", 6);
@@ -699,17 +766,18 @@ register int  typ;
 		pline("The poison doesn't seem to affect you.");
 		return;
 	}
-	i = rn2(10 + 20*thrown_weapon);
+	i = rn2(fatal + 20*thrown_weapon);
 	if(i == 0 && typ != A_CHA) {
 		u.uhp = -1;
 		pline("The poison was deadly...");
 	} else if(i <= 5) {
-		pline("You%s!", poiseff[typ]);
+		You("%s!", poiseff[typ]);
 		adjattrib(typ, thrown_weapon ? -1 : -rn1(3,3), TRUE);
 	} else {
-		losehp(thrown_weapon ? rnd(6) : rn1(10,6), pname);
+		losehp(thrown_weapon ? rnd(6) : rn1(10,6), pname, KILLED_BY_AN);
 	}
 	if(u.uhp < 1) {
+		killer_format = KILLED_BY_AN;
 		killer = pname;
 		done(POISONING);
 	}
@@ -749,7 +817,6 @@ register struct monst *mtmp;
 	}
 #endif
 	if(mtmp->isshk) shkdead(mtmp);
-	if(mtmp->isgd) gddead();
 #ifdef WORM
 	if(mtmp->wormno) wormdead(mtmp);
 #endif
@@ -774,7 +841,6 @@ register struct monst *mtmp, *mtmp2;
 	fmon = mtmp2;
 	if(u.ustuck == mtmp) u.ustuck = mtmp2;
 	if(mtmp2->isshk) replshk(mtmp,mtmp2);
-	if(mtmp2->isgd) replgd(mtmp,mtmp2);
 #ifdef WORM
 	if(mtmp2->wormno) {
 		/* Each square the worm is on has a pointer; fix them all */
@@ -871,15 +937,6 @@ xkilled(mtmp, dest)
 	if(mdat == &mons[PM_RATWERE])
 		mtmp->data = mdat = &mons[PM_WERERAT];
 
-	if(u.umconf) {
-	    if(!Blind) {
-		Your("%s stop glowing %s.",
-		makeplural(body_part(HAND)),
-		Hallucination ? hcolor() : red);
-	    }
-	    u.umconf = 0;
-	}
-
 	/* if we have killed MAXMONNO monsters of a given type, and it
 	 * can be done, genocide that monster.
 	 */
@@ -949,18 +1006,6 @@ xkilled(mtmp, dest)
 #endif
 					) return;
 
-#ifdef WORM
-	if(mdat == &mons[PM_LONG_WORM]) {
-		(void) mksobj_at(WORM_TOOTH, x, y);
-		stackobj(fobj);
-		newsym(x,y);
-	}
-#endif
-	if(mdat->mlet == S_UNICORN) {
-		(void) mksobj_at(UNICORN_HORN, x, y);
-		stackobj(fobj);
-		newsym(x,y);
-	}
 #ifdef MAIL
 	if(mdat == &mons[PM_MAIL_DAEMON]) {
 		(void) mksobj_at(SCR_MAIL, x, y);
@@ -968,9 +1013,7 @@ xkilled(mtmp, dest)
 		newsym(x,y);
 	}
 #endif
-	if(!ACCESSIBLE(levl[x][y].typ) ||
-	   (IS_DOOR(levl[x][y].typ) &&
-	    levl[x][y].doormask & (D_CLOSED | D_LOCKED))) {
+	if(!accessible(x, y)) {
 	    /* might be mimic in wall or dead eel*/
  	    newsym(x,y);
 	} else if(x != u.ux || y != u.uy) {
@@ -1050,6 +1093,7 @@ newcham(mtmp, mdat)	/* make a chameleon look like a new monster */
 {
 	register int mhp, hpn, hpd;
 	int tryct;
+       struct permonst *olddata = mtmp->data;
 
 	/* mdat = 0 -> caller wants a random monster shape */
 	tryct = 0;
@@ -1109,11 +1153,16 @@ newcham(mtmp, mdat)	/* make a chameleon look like a new monster */
 	if (u.ustuck == mtmp) {
 		if(u.uswallow) {
 			if(!attacktype(mdat,AT_ENGL)) {
-				/* cf. digging out of monster with wand */
-				You("break out of %s's stomach!",
-					mon_nam(mtmp));
-				mtmp->mhp = 1;	/* almost dead */
-				regurgitates(mtmp);
+				/* Does mdat care? */
+				if (!noncorporeal(mdat) && !amorphous(mdat) && 
+				    !is_whirly(mdat) && 
+				    (mdat != &mons[PM_YELLOW_LIGHT])) {
+					You("break out of %s%s!", mon_nam(mtmp),
+					    (is_animal(mdat)? 
+					    "'s stomach" : ""));
+					mtmp->mhp = 1;  /* almost dead */
+				}
+				expels(mtmp, olddata, FALSE);
 			}
 		} else {
 			if(!sticks(mdat)
@@ -1164,6 +1213,9 @@ mnearto(mtmp,x,y,gz)	/* Make monster near (or at) location if possible */
 	set_apparxy(mtmp);
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 void
 setmangry(mtmp)
 	register struct monst *mtmp;
@@ -1210,7 +1262,7 @@ disturb(mtmp)		/* awaken monsters while in the same room.
 }
 
 #ifdef HARD
-static boolean
+XSTATIC boolean
 restrap(mtmp)
 /* unwatched hiders may hide again,
  * if so, a 1 is returned.
@@ -1236,6 +1288,9 @@ register struct monst *mtmp;
 	return(FALSE);
 }
 #endif
+
+#endif /* OVL2 */
+#ifdef OVLB
 
 /* drop (perhaps) a cadaver and remove monster */
 void
@@ -1276,7 +1331,7 @@ register struct monst *mdef;
 {
 	struct obj *otmp;
 
-	if(mdef->data->msize > MZ_TINY ||
+	if((int)mdef->data->msize > MZ_TINY ||
 	   !rn2(2 + ((mdef->data->geno & G_FREQ) > 2))) {
 		otmp = mk_named_object(STATUE, mdef->data, mdef->mx, mdef->my,
 			NAME(mdef), (int)mdef->mnamelth);
@@ -1331,3 +1386,5 @@ int damtype, dam;
 	}
 }
 #endif /* GOLEMS */
+
+#endif /* OVLB */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monattk.h	3.0	89/06/15
+/*	SCCS Id: @(#)monattk.h	3.0	89/11/20
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright 1988, M. Stephenson */
 
@@ -72,6 +72,5 @@
 
 #define AD_SAMU		252		/* hits, may steal Amulet (Wizard) */
 #define AD_CURS		253		/* random curse (ex. gremlin) */
-#define AD_CUSS		255		/* says nasty things about you */
 
 #endif /* MONATTK_H /**/

@@ -1,105 +1,431 @@
 #	Hack Makefile.
-#	SCCS Id: @(#)Makefile.ami       3.0     89/04/23
+#	SCCS Id: @(#)Makefile.ami	3.0	90/02/13
 
-# This makefile is specifically for the Amiga.
+# This makefile is arranged for compiling for the Amiga with Lattice C but
+# can be configured for compiling with Manx C 3.6 with simple changes.
+# The appropriate changes are identified by #[LATTICE] and #[MANX3.6] in
+# this makefile as should be set according to the compiler being used.
 
-CFLAGS	  = +cd -e200
-CPPFLAGS  = -I -Iamiga: -Iinclude:
-CC	  = cc
-
-#   Use my special modified Cpp (-w flag writes all #defines)
-#   since the one built in Manx CC is too stupid for now.
-
-.c.o:
-	Cpp $(CPPFLAGS) $< ram:_$*.c
-	cc  $(CFLAGS) -o $*.o ram:_$*.c
-	delete ram:_$*.c
-
-#   Search path for default rules: (for my special modified Make)
-
-.PATH:	src1: src2:
-
-.PRECIOUS:  include:config.h include:decl.h include:_hack.h \
-	    include:permonst.h include:you.h
-
-
-# object files for makedefs
-MAKEOBJS = makedefs.o monst.o objects.o
-
-# object files for level compiler
-SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o monst.o objects.o
-
-# make NetHack
-GAME	 = nethack
-
-# if you defined RANDOM in unixconf.h/pcconf.h since your system did not come
-# with a reasonable random number generator
-RANDOBJ = random.o
-
-# nothing below this line should have to be changed
+# The following assignments should be made before using this makefile:
 #
-# other things that have to be reconfigured are in config.h,
-# {unixconf.h, pcconf.h, amiconf.h}, and possibly system.h
+#   HackExe:	directory where final executable should go
+#   NetHack:	directory where other runtime support files should go
+#   Amiga:	"amiga" directory
+#   Auxil:	"auxil" directory
+#   Incl:	"include" directory
+#   Others:	"others" directory
+#   Src1:	"src" directory (a* through l*)
+#   Src2:	"src" directory (m* through po*)
+#   Src3:	"src" directory (pr* through z*)
+#   O_Amiga:	destination for object files from Amiga:
+#   O_Others:	destination for object files from Others:
+#   O_Src1:	destination for object files from Src1:
+#   O_Src2:	destination for object files from Src2:
+#   O_Src3:	destination for object files from Src3:
+#
+# Startup makefile with:
+#
+#[LATTICE]
+#	cd NetHack:
+#	lmk -f Amiga:Makefile.ami
+#
+#[MANX3.6]
+#	cd NetHack:
+#	make -f Amiga:Makefile.ami
+#
+# May use following targets on lmk/make command line:
+#   all		do it all (default)
+#   link	just create $(GAME) from object files
+#   obj1	just create O_Src1 object files
+#   obj2	just create O_Src2 object files
+#   obj3	just create O_Src3 object files
+#   obja	just create O_Amiga object files
+#   objo	just create O_Others object files
+#   clean	deletes the object files
+#   spotless	deletes the object files, $(GAME), and more
+#
+# Note:  We do NOT build the Guidebook here since it needs tbl
+# (See the file Auxil:Makefile.auxil for more information)
 
-# HACKCSRC = allmain.c alloc.c apply.c artifact.c attrib.c bones.c cmd.c \
-#	    dbridge.c decl.c demon.c do.c do_name.c do_wear.c dog.c dogmove.c \
-#	    dokick.c dothrow.c eat.c end.c engrave.c exper.c extralev.c \
-#	    fountain.c getline.c hack.c invent.c lock.c mail.c makemon.c \
-#	    mcastu.c mhitm.c mhitu.c mklev.c mkmaze.c mkobj.c mkroom.c mon.c \
-#	    mondata.c monmove.c monst.c mthrowu.c music.c o_init.c objects.c \
-#	    objnam.c options.c pager.c pickup.c polyself.c potion.c pray.c \
-#	    pri.c priest.c prisym.c read.c restore.c rip.c rnd.c rumors.c \
-#	    save.c search.c shk.c shknam.c sit.c sounds.c sp_lev.c spell.c \
-#	    steal.c termcap.c timeout.c topl.c topten.c track.c trap.c \
-#	    u_init.c uhitm.c vault.c version.c weapon.c were.c wield.c \
-#	    wizard.c worm.c worn.c write.c zap.c
 
-# all .c files but msdos.c, tos.c, *main.c, *tty.c, *unix.c, (system specific)
-# and makedefs.c, lev_comp.c, panic.c (not part of any nethack)
+# Precompiled header file:
+#   $(HDEP) should appear in any dependency list for an object file where
+#   we would want to make use of the precompiled version of Incl:hack.h,
+#   while $(CSYM) should appear in the C compiler command line that creates
+#   any such object file.  (Changes made here should agree with the $(HDEP):
+#   target that appears later in this makefile.)
+#
+#   Notice that since this file would be created on Ram: that we would
+#   end up recompiling everything if we followed the normal make sequence.
+#   Thus, we could use:
+#
+#[LATTICE]
+#	cd NetHack:
+#	lmk -f Amiga:Makefile.ami Ram:hack.sym
+#	setdate Ram:hack.sym {date & time of Incl:hack.h}
+#	lmk -f Amiga:Makefile.ami
+#
+#[MANX3.6]
+#	cd NetHack:
+#	make -f Amiga:Makefile.ami Ram:hack.sym
+#	setdate Ram:hack.sym {date & time of Incl:hack.h}
+#	make -f Amiga:Makefile.ami
 
-# CSOURCES = $(HACKCSRC) pcmain.c makedefs.c panic.c
+#[LATTICE]
+#   If we were to use the precompiled header file feature, we would uncomment
+#   these following two lines.  However, there are still problems in the
+#   behavior of this feature in version 5.04, so these lines are commented
+#   out for now.
 
-# HACKINCL = artifact.h attrib.h config.h coord.h decl.h edog.h epri.h eshk.h \
-#	    extern.h flag.h func_tab.h global.h gold.h hack.h lev.h mfndpos.h \
-#	    mkroom.h monattk.h mondata.h monflag.h monst.h monsym.h msdos.h \
-#	    obj.h objclass.h permonst.h prop.h rm.h sp_lev.h spell.h \
-#	    tradstdc.h trapname.h vault.h wseg.h you.h youprop.h
+#HDEP	= Ram:hack.sym
+#CSYM	= -HRam:hack.sym
 
-# all .h files except date.h, onames.h, pm.h & trap.h which would cause
-# dependency loops if run through "make depend".
+#[LATTICE]
+#   If we were to use the precompiled header file feature in a newer version
+#   of Lattice, we would comment out these following two lines.
 
-# HSOURCES = $(HACKINCL) date.h onames.h pm.h trap.h
+HDEP	= Incl:hack.h
+CSYM	=
+
+#[MANX3.6]
+#   If we were compiling with Aztec 3.6 and wanted to use the symbol table
+#   pre-loading feature, we would uncomment these following two lines.
+
+#HDEP	= Ram:hack.sym
+#CSYM	= +IRam:hack.sym
+
+
+# Pathname for (optional) uudecode program:
+#   If uudecode is available for use by this makefile, give its name below.
+#   Use a harmless command (like echo) otherwise.
+
+UUDEC	= echo
+#UUDEC	= uudecode
+
+
+# Pathname for the C compiler being used.
+
+#[LATTICE]
+
+CC	= lc
+
+#[MANX3.6]
+
+#CC	= cc
+
+
+# Compilation flags for selected C Compiler:
+#   $(CFLAGS) should appear before filename arguments of $(CC) command line.
+
+#[LATTICE]
+#   Note: do not use -ms with Lattice 5.04 (Others:lev_lex.c fails)
+
+CFLAGS	= -b0 -cfi -d1 -iIncl: -ma
+
+#[MANX3.6]
+
+#CFLAGS	= +c +d -e300 -z8000 +q -iIncl:
+
+
+# Components of varous link command lines:
+#   $(LINK) should be the pathname of the linker being used (with any options
+#   that should appear at the beginning of the command line).  The name of the
+#   output file should appear immediately after $(LINK).  $(LIN) should appear
+#   before the list of object files in each link command.  $(LLINK) should
+#   appear as the list of object files in the link command line that creates
+#   the NetHack executable.  $(LLIB) should appear at the end of each link
+#   command line.
+
+#[LATTICE]
+
+LINK	= Blink to
+LIN	= from Lib:catch.o
+LLINK	= with Amiga:ami.lnk
+LLIB	= lib Lib:lc.lib BATCH
+
+#[MANX3.6]
+
+#LINK	= ln +q +ss -o
+#LIN	=
+#LLINK	= -f Amiga:ami.lnk
+#LLIB	= -lcl
+
+
+# Name of the game:
+
+GAME	= HackExe:NetHack
+
+
+# A more reasonable random number generator (recommended for the Amiga):
+
+RANDOBJ	= O_Others:random.o
+
+
+.PRECIOUS:  Incl:config.h Incl:decl.h Incl:hack.h Incl:permonst.h Incl:you.h
+
+
+# Almost nothing below this line should have to be changed.
+# (Exceptions are marked by [LATTICE] and [MANX3.6].)
+#
+# Other things that have to be reconfigured are in config.h,
+# (amiconf.h, pcconf.h), and possibly system.h, tradstdc.h.
+
+
+# HSRC1 = \
+#	Src1:allmain.c		Src1:alloc.c		Src1:apply.c \
+#	Src1:artifact.c		Src1:attrib.c		Src1:bones.c \
+#	Src1:cmd.c		Src1:dbridge.c		Src1:decl.c \
+#	Src1:demon.c		Src1:do.c		Src1:do_name.c \
+#	Src1:do_wear.c		Src1:dog.c		Src1:dogmove.c \
+#	Src1:dokick.c		Src1:dothrow.c		Src1:eat.c \
+#	Src1:end.c		Src1:engrave.c		Src1:exper.c \
+#	Src1:extralev.c		Src1:fountain.c		Src1:getline.c \
+#	Src1:hack.c		Src1:invent.c		Src1:lock.c
+#
+# HSRC2 = \
+#	Src2:mail.c		Src2:makemon.c		Src2:mcastu.c \
+#	Src2:mhitm.c		Src2:mhitu.c		Src2:mklev.c \
+#	Src2:mkmaze.c		Src2:mkobj.c		Src2:mkroom.c \
+#	Src2:mon.c		Src2:mondata.c		Src2:monmove.c \
+#	Src2:monst.c		Src2:mthrowu.c		Src2:music.c \
+#	Src2:o_init.c		Src2:objects.c		Src2:objnam.c \
+#	Src2:options.c		Src2:pager.c		Src2:pickup.c \
+#	Src2:polyself.c		Src2:potion.c
+#
+# HSRC3 = \
+#	Src3:pray.c		Src3:pri.c		Src3:priest.c \
+#	Src3:prisym.c		Src3:read.c		Src3:restore.c \
+#	Src3:rip.c		Src3:rnd.c		Src3:rumors.c \
+#	Src3:save.c		Src3:search.c		Src3:shk.c \
+#	Src3:shknam.c		Src3:sit.c		Src3:sounds.c \
+#	Src3:sp_lev.c		Src3:spell.c		Src3:steal.c \
+#	Src3:timeout.c		Src3:topl.c		Src3:topten.c \
+#	Src3:track.c		Src3:trap.c		Src3:u_init.c \
+#	Src3:uhitm.c		Src3:vault.c		Src3:version.c \
+#	Src3:weapon.c		Src3:were.c		Src3:wield.c \
+#	Src3:wizard.c		Src3:worm.c		Src3:worn.c \
+#	Src3:write.c		Src3:zap.c
+
+
+# All .c that are part of the main NetHack program and not system specific:
+
+# HACKCSRC = $(HSRC1) $(HSRC2) $(HSRC3)
+
+
+# Other .c files (duplicates commented out):
+
+# MAKESRC = \
+#	Src2:makedefs.c #	Src2:monst.c		Src2:objects.c
+#
+# SPLEVSRC = \
+#	Src1:lev_comp.c		Others:lev_lex.c	Src1:lev_main.c
+#
+# AMIGASRC = \
+#	Amiga:amidos.c		Amiga:amitcap.c		Amiga:amitty.c \
+#	Amiga:amiunix.c		Amiga:amiwbench.c	Amiga:amiwind.c
+#
+# OTHERSRC = \
+#	Others:pcmain.c		Others:random.c
+
+
+# All .c that are used:
+
+# CSOURCES = $(HACKCSRC) $(MAKESRC) $(SPLEVSRC) $(AMIGASRC) $(OTHERSRC)
+
+
+# All .h files (except date.h, onames.h, pm.h, and trap.h, which would
+# cause dependency loops in run through "make depend"):
+
+# HACKINCL = \
+#	Incl:amiconf.h		Incl:anime.h		Incl:artifact.h \
+#	Incl:attrib.h		Incl:color.h		Incl:config.h \
+#	Incl:coord.h		Incl:decl.h		Incl:edog.h \
+#	Incl:epri.h		Incl:eshk.h		Incl:extern.h \
+#	Incl:flag.h		Incl:func_tab.h		Incl:global.h \
+#	Incl:gold.h		Incl:hack.h		Incl:lev.h \
+#	Incl:mfndpos.h		Incl:mkroom.h		Incl:monattk.h \
+#	Incl:mondata.h		Incl:monflag.h		Incl:monst.h \
+#	Incl:monsym.h		Incl:msdos.h		Incl:obj.h \
+#	Incl:objclass.h		Incl:patchlevel.h	Incl:pcconf.h \
+#	Incl:permonst.h		Incl:prop.h		Incl:rm.h \
+#	Incl:sp_lev.h		Incl:spell.h		Incl:system.h \
+#	Incl:tradstdc.h		Incl:vault.h		Incl:wseg.h \
+#	Incl:you.h		Incl:youprop.h
+
+
+# All .h files:
+
+# HSOURCES = \
+#	$(HACKINCL)		Incl:date.h		Incl:onames.h \
+#	Incl:pm.h		Incl:trap.h
+
+
+# All source files:
 
 # SOURCES = $(CSOURCES) $(HSOURCES)
 
-AOBJ  = amidos.o amitcap.o amitty.o amiunix.o amiwind.o
-HOBJ1 = allmain.o alloc.o apply.o artifact.o attrib.o bones.o cmd.o dbridge.o \
-	decl.o demon.o do.o do_name.o do_wear.o dog.o dogmove.o dokick.o \
-	dothrow.o eat.o end.o engrave.o exper.o extralev.o fountain.o \
-	getline.o hack.o invent.o lock.o
-HOBJ2 = mail.o main.o makemon.o mcastu.o mhitm.o mhitu.o mklev.o mkmaze.o \
-	mkobj.o mkroom.o mon.o mondata.o monmove.o monst.o mthrowu.o music.o \
-	o_init.o objects.o objnam.o options.o pager.o pickup.o polyself.o \
-	potion.o pray.o pri.o priest.o prisym.o read.o restore.o rip.o rnd.o \
-	rumors.o save.o
-HOBJ3 = search.o shk.o shknam.o sit.o sounds.o sp_lev.o spell.o steal.o \
-	timeout.o topl.o topten.o track.o trap.o u_init.o \
-	uhitm.o vault.o version.o weapon.o were.o wield.o wizard.o \
-	worm.o worn.o write.o zap.o $(RANDOBJ)
 
-HOBJ =	$(AOBJ) $(HOBJ1) $(HOBJ2) $(HOBJ3)
+# Object files for makedefs:
 
-# the .o files from the HACKCSRC list, plus main.o tty.o unix.o
+MAKEOBJS = \
+	O_Src2:makedefs.o	O_Src2:monst.o		O_Src2:objects.o
 
-$(GAME): $(HOBJ)
-	ln -f ami.lnk
+
+# Object files for special levels compiler:
+
+SPLEVOBJS = \
+	O_Src1:lev_comp.o	O_Others:lev_lex.o	O_Src1:lev_main.o \
+	O_Src2:monst.o		O_Src2:objects.o
+
+
+# Object files for NetHack:
+
+HOBJ1 = \
+	O_Src1:allmain.o	O_Src1:alloc.o		O_Src1:apply.o \
+	O_Src1:artifact.o	O_Src1:attrib.o		O_Src1:bones.o \
+	O_Src1:cmd.o		O_Src1:dbridge.o	O_Src1:decl.o \
+	O_Src1:demon.o		O_Src1:do.o		O_Src1:do_name.o \
+	O_Src1:do_wear.o	O_Src1:dog.o		O_Src1:dogmove.o \
+	O_Src1:dokick.o		O_Src1:dothrow.o	O_Src1:eat.o \
+	O_Src1:end.o		O_Src1:engrave.o	O_Src1:exper.o \
+	O_Src1:extralev.o	O_Src1:fountain.o	O_Src1:getline.o \
+	O_Src1:hack.o		O_Src1:invent.o		O_Src1:lock.o
+
+HOBJ2 = \
+	O_Src2:mail.o		O_Src2:makemon.o	O_Src2:mcastu.o \
+	O_Src2:mhitm.o		O_Src2:mhitu.o		O_Src2:mklev.o \
+	O_Src2:mkmaze.o		O_Src2:mkobj.o		O_Src2:mkroom.o \
+	O_Src2:mon.o		O_Src2:mondata.o	O_Src2:monmove.o \
+	O_Src2:monst.o		O_Src2:mthrowu.o	O_Src2:music.o \
+	O_Src2:o_init.o		O_Src2:objects.o	O_Src2:objnam.o \
+	O_Src2:options.o	O_Src2:pager.o		O_Src2:pickup.o \
+	O_Src2:polyself.o	O_Src2:potion.o
+
+HOBJ3 = \
+	O_Src3:pray.o		O_Src3:pri.o		O_Src3:priest.o \
+	O_Src3:prisym.o		O_Src3:read.o		O_Src3:restore.o \
+	O_Src3:rip.o		O_Src3:rnd.o		O_Src3:rumors.o \
+	O_Src3:save.o		O_Src3:search.o		O_Src3:shk.o \
+	O_Src3:shknam.o		O_Src3:sit.o		O_Src3:sounds.o \
+	O_Src3:sp_lev.o		O_Src3:spell.o		O_Src3:steal.o \
+	O_Src3:timeout.o	O_Src3:topl.o		O_Src3:topten.o \
+	O_Src3:track.o		O_Src3:trap.o		O_Src3:u_init.o \
+	O_Src3:uhitm.o		O_Src3:vault.o		O_Src3:version.o \
+	O_Src3:weapon.o		O_Src3:were.o		O_Src3:wield.o \
+	O_Src3:wizard.o		O_Src3:worm.o		O_Src3:worn.o \
+	O_Src3:write.o		O_Src3:zap.o
+
+AMIGAOBJ = \
+	O_Amiga:amidos.o	O_Amiga:amitcap.o	O_Amiga:amitty.o \
+	O_Amiga:amiunix.o	O_Amiga:amiwbench.o	O_Amiga:amiwind.o
+
+OTHEROBJ = \
+	O_Others:pcmain.o	$(RANDOBJ)
+
+
+# All the object files for NetHack:
+
+HOBJ = $(HOBJ1) $(HOBJ2) $(HOBJ3) $(AMIGAOBJ) $(OTHEROBJ)
+
+
+# The auxiliary runtime files:
+
+AUXFILES = \
+	NetHack:data		NetHack:rumors		NetHack:castle \
+	NetHack:endgame		NetHack:tower1		NetHack:cmdhelp \
+	NetHack:help		NetHack:hh		NetHack:history \
+	NetHack:license		NetHack:opthelp		NetHack:oracles \
+	NetHack:perm		NetHack:record		NetHack:NetHack.cnf \
+	NetHack:hack.font	NetHack:hack		NetHack:hack/8 \
+	NetHack:default.icon	HackExe:NetHack.info	NetHack:NewGame.info \
+	NetHack:NetHackScore.info
+
+
+# Getting down to business:
+
+all:  NetHack:lev_comp $(GAME) auxilstuff
+
+$(GAME):  $(HOBJ)
+	$(LINK) $(GAME) $(LIN) $(LLINK) $(LLIB)
 
 link:
-	ln -f ami.lnk
+	$(LINK) $(GAME) $(LIN) $(LLINK) $(LLIB)
 
-obj1:	$(HOBJ1)
-obj2:	$(HOBJ2)
-obj3:	$(HOBJ3)
+obj1:  $(HOBJ1)
+obj2:  $(HOBJ2)
+obj3:  $(HOBJ3)
+obja:  $(AMIGAOBJ)
+objo:  $(OTHEROBJ)
+
+
+# The default method for creating object files:
+
+#[LATTICE]
+
+.c.o:
+	$(CC) $(CFLAGS) $(CSYM) -o$@ $<
+
+#[MANX3.6]
+
+#$(HOBJ1):
+#	$(CC) $(CFLAGS) $(CSYM) -o$@ Src1:$*.c
+
+#$(HOBJ2):
+#	$(CC) $(CFLAGS) $(CSYM) -o$@ Src2:$*.c
+
+#$(HOBJ3):
+#	$(CC) $(CFLAGS) $(CSYM) -o$@ Src3:$*.c
+
+#$(AMIGAOBJ):
+#	$(CC) $(CFLAGS) $(CSYM) -o$@ Amiga:$*.c
+
+#$(OTHEROBJ):
+#	$(CC) $(CFLAGS) $(CSYM) -o$@ Others:$*.c
+
+
+clean:
+	-delete O_Amiga:\#?.o O_Others:\#?.o
+	-delete O_Src1:\#?.o O_Src2:\#?.o O_Src3:\#?.o
+
+spotless:  clean
+	-delete $(GAME) NetHack:lev_comp NetHack:makedefs
+	-delete Auxil:data Auxil:rumors
+	-delete NetHack:data NetHack:rumors
+	-delete NetHack:castle NetHack:endgame
+	-delete NetHack:tower1 NetHack:tower2 NetHack:tower3
+	-delete Incl:onames.h Incl:pm.h
+	-echo > Incl:onames.h "" noline
+	-wait 2
+	-echo > Incl:pm.h "" noline
+	-wait 2
+	-setdate Src2:makedefs.c
+	-wait 2
+# (Make sure files exist and have timestamps in the right order for
+# next compile)
+
+
+# Creating precompiled version of Incl:hack.h to save disk I/O.
+
+#[LATTICE]
+#   If we were to use the precompiled header file feature of Lattice C, we
+#   would uncomment the following lines.  However, there are still problems
+#   in the behavior of this feature in version 5.04, so these lines are
+#   commented out for now.  (Also see defines for HDEP and CSYM near the
+#   beginning of this file, as these should be appropriately defined.)
+
+#$(HDEP):  Incl:hack.h NetHack:makedefs
+#	echo > Ram:hackincl.c "#include <Incl:hack.h>"
+#	$(CC) $(CFLAGS) -ph -o$@ Ram:hackincl.c
+#	-delete Ram:hackincl.c
+
+#[MANX3.6]
+#   If we were compiling with Aztec 3.6 and wanted to use the symbol table
+#   pre-loading feature, we would uncomment these following two lines.
+
+#$(HDEP):  Incl:hack.h NetHack:makedefs
+#	$(CC) $(CFLAGS) -a -oRam:hack.asm +h$@ Incl:hack.h
+#	-delete Ram:hack.asm
+
 
 #
 #	Please note:	The dependency lines for the modules here are
@@ -107,26 +433,24 @@ obj3:	$(HOBJ3)
 #			the dependency list would cause a dependency
 #			loop.
 #
-makedefs:	$(MAKEOBJS)
-	ln -o makedefs $(MAKEOBJS) -lcl
 
-makedefs.o:  include:config.h include:permonst.h include:objclass.h
+NetHack:makedefs:  $(MAKEOBJS)
+	$(LINK) NetHack:makedefs $(LIN) $(MAKEOBJS) $(LLIB)
 
-lev_comp:  $(SPLEVOBJS)
-	ln -o lev_comp $(SPLEVOBJS) -lcl
+O_Src2:makedefs.o:  Src2:makedefs.c Incl:config.h Incl:permonst.h Incl:objclass.h
+	$(CC) -dMAKEDEFS_C $(CFLAGS) -o$@ Src2:makedefs.c
 
-lev_comp.o:  include:hack.h include:sp_lev.h
-	Cpp $(CPPFLAGS) src1:lev_comp.c ram:_lev_comp.c
-	cc  +cd -e300 -o lev_comp.o ram:_lev_comp.c
-	delete ram:_lev_comp.c
-lev_lex.o:  include:lev_comp.h include:hack.h include:sp_lev.h
-	Cpp $(CPPFLAGS) src1:lev_lex.c ram:_lev_lex.c
-	cc  +cd -e300 -o lev_lex.o ram:_lev_lex.c
-	delete ram:_lev_lex.c
-lev_main.o:  include:hack.h include:sp_lev.h
-	Cpp $(CPPFLAGS) src1:lev_main.c ram:_lev_main.c
-	cc  +cd -e300 -o lev_main.o ram:_lev_main.c
-	delete ram:_lev_main.c
+NetHack:lev_comp:  $(SPLEVOBJS)
+	$(LINK) NetHack:lev_comp $(LIN) $(SPLEVOBJS) $(LLIB)
+
+O_Src1:lev_comp.o:  Src1:lev_comp.c $(HDEP) Incl:sp_lev.h
+	$(CC) -dLEV_LEX_C $(CFLAGS) -o$@ Src1:lev_comp.c
+
+O_Others:lev_lex.o:  Others:lev_lex.c $(HDEP) Incl:lev_comp.h Incl:sp_lev.h
+	$(CC) -dLEV_LEX_C $(CFLAGS) -o$@ Others:lev_lex.c
+
+O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP) Incl:sp_lev.h
+	$(CC) -dLEV_LEX_C -dAMIGA $(CFLAGS) -o$@ Src1:lev_main.c
 
 #
 #	The following include files depend on makedefs to be created.
@@ -141,174 +465,233 @@ lev_main.o:  include:hack.h include:sp_lev.h
 #	files, we kludge around this by making date.h dependent on hack.h,
 #	even though it doesn't include this file.
 #
-include:date.h:      include:hack.h makedefs $(AOBJ)
-	-makedefs -v
 
-include:trap.h:      include:config.h makedefs
-	-makedefs -t
-	copy makedefs.1 include:trap.h
+Incl:date.h:  $(HDEP) NetHack:makedefs $(AMIGAOBJ)
+	NetHack:makedefs -v
 
-include:onames.h:    makedefs
-	-makedefs -o
+Incl:trap.h:  Incl:config.h NetHack:makedefs
+	NetHack:makedefs -t
+	-copy makedefs.1 $@
 
-include:pm.h:	     makedefs
-	-makedefs -p
+Incl:onames.h:  NetHack:makedefs
+	NetHack:makedefs -o
+
+Incl:pm.h:  NetHack:makedefs
+	NetHack:makedefs -p
 
 #
 #	The following programs vary depending on what OS you are using.
-#	As a result, they are not defined in HACKSRC, and their dependancies
+#	As a result, they are not defined in HACKSRC and their dependancies
 #	are explicitly outlined here.
 #
 
-amidos.o: include:hack.h amiga:amidos.c
-	$(CC) $(CFLAGS) amiga:amidos.c -o amidos.o
+O_Amiga:amidos.o:  Amiga:amidos.c $(HDEP)
 
-amitcap.o: include:hack.h amiga:amitcap.c
-	$(CC) $(CFLAGS) amiga:amitcap.c -o amitcap.o
+O_Amiga:amitcap.o:  Amiga:amitcap.c $(HDEP)
 
-amitty.o: include:hack.h amiga:amitty.c
-	$(CC) $(CFLAGS) amiga:amitty.c -o amitty.o
+O_Amiga:amitty.o:  Amiga:amitty.c $(HDEP)
 
-amiunix.o: include:hack.h amiga:amiunix.c
-	$(CC) $(CFLAGS) amiga:amiunix.c -o amiunix.o
+O_Amiga:amiunix.o:  Amiga:amiunix.c $(HDEP)
 
-amiwind.o: include:hack.h amiga:amiwind.c amiga:amimenu.c
-	$(CC) $(CFLAGS) +IData:syms/amiga.syms amiga:amiwind.c -o amiwind.o
+O_Amiga:amiwind.o:  Amiga:amiwind.c Amiga:amimenu.c $(HDEP)
 
-main.o: include:hack.h src2:pcmain.c
-	Cpp $(CPPFLAGS) src2:pcmain.c ram:_main.c
-	cc  $(CFLAGS) -o main.o ram:_main.c
-	delete ram:_main.c
+O_Amiga:amiwbench.o:  Amiga:amiwbench.c $(HDEP)
 
-# Pre-include hack.h to save disk I/O. Rename the original hack.h
-# to _hack.h though. The -w option makes Cpp write out all
-# necessary #defines at the end of the output.
+O_Others:random.o:  Others:random.c
+	$(CC) $(CFLAGS) -o$@ Others:random.c
 
-include:hack.h: include:_hack.h makedefs
-	-Cpp -Iinclude: -Iamiga: -w include:_hack.h hack.h
-	-copy hack.h include:hack.h
+O_Others:pcmain.o:  Others:pcmain.c $(HDEP)
 
-clean:
-	delete *.o ram:_*.c ram:ctmp*
 
-spotless: clean
-	delete $(GAME) lev_comp makedefs
-	delete include:onames.h include:pm.h
-	setdate include:onames.h include:pm.h
-	setdate makedefs.c
-#(make sure files exist and have timestamps in the right order for next compile)
+# Create/copy other stuff into NetHack: directory:
+
+auxilstuff:  $(AUXFILES)
+
+NetHack:data:  Auxil:data
+	copy Auxil:data $@
+
+Auxil:data:  Auxil:data.base Incl:config.h NetHack:makedefs
+	NetHack:makedefs -d
+
+NetHack:rumors:  Auxil:rumors
+	copy Auxil:rumors $@
+
+Auxil:rumors:  Auxil:rumors.tru Auxil:rumors.fal NetHack:makedefs
+	NetHack:makedefs -r
+
+NetHack:castle:  Auxil:castle.des NetHack:lev_comp
+	NetHack:lev_comp Auxil:castle.des
+
+NetHack:endgame:  Auxil:endgame.des NetHack:lev_comp
+	NetHack:lev_comp Auxil:endgame.des
+
+NetHack:tower1:  Auxil:tower.des NetHack:lev_comp
+	NetHack:lev_comp Auxil:tower.des
+
+NetHack:cmdhelp:  Auxil:cmdhelp
+	copy Auxil:cmdhelp $@
+
+NetHack:help:  Auxil:help
+	copy Auxil:help $@
+
+NetHack:hh:  Auxil:hh
+	copy Auxil:hh $@
+
+NetHack:history:  Auxil:history
+	copy Auxil:history $@
+
+NetHack:license:  Auxil:license
+	copy Auxil:license $@
+
+NetHack:opthelp:  Auxil:opthelp
+	copy Auxil:opthelp $@
+
+NetHack:oracles:  Auxil:oracles
+	copy Auxil:oracles $@
+
+NetHack:perm:
+	echo > $@ "" NOLINE
+
+NetHack:record:
+	echo > $@ "" NOLINE
+
+NetHack:NetHack.cnf:  Amiga:NetHack.cnf
+	copy Amiga:NetHack.cnf $@
+
+NetHack:hack.font:  Amiga:amifont.uu
+	$(UUDEC) Amiga:amifont.uu
+
+NetHack:hack:
+	makedir $@
+
+NetHack:hack/8:  Amiga:amifont8.uu NetHack:hack
+	$(UUDEC) Amiga:amifont8.uu
+	-rename 8 hack/8
+
+NetHack:default.icon:  Amiga:dflticon.uu
+	$(UUDEC) Amiga:dflticon.uu
+
+HackExe:NetHack.info:  Amiga:NHinfo.uu
+	$(UUDEC) Amiga:NHinfo.uu
+
+NetHack:NewGame.info:  Amiga:NewGame.uu
+	$(UUDEC) Amiga:NewGame.uu
+
+NetHack:NetHackScore.info:  Amiga:NHScore.uu
+	$(UUDEC) Amiga:NHScore.uu
 
 
 # DO NOT DELETE THIS LINE
 
-allmain.o:  include:hack.h
-alloc.o:  include:config.h
-apply.o:  include:hack.h include:edog.h
-artifact.o:  include:hack.h include:artifact.h
-attrib.o:  include:hack.h
-bones.o:  include:hack.h
-cmd.o:	include:hack.h include:func_tab.h
-dbridge.o:  include:hack.h
-decl.o:  include:hack.h
-demon.o:  include:hack.h
-do.o:  include:hack.h
-do_name.o:  include:hack.h
-do_wear.o:  include:hack.h
-dog.o:	include:hack.h include:edog.h
-dogmove.o:  include:hack.h include:mfndpos.h include:edog.h
-dokick.o:  include:hack.h
-dothrow.o:  include:hack.h
-eat.o:	include:hack.h
-end.o:	include:hack.h include:eshk.h
-engrave.o:  include:hack.h
-exper.o:  include:hack.h
-extralev.o:  include:hack.h
-fountain.o:  include:hack.h
-getline.o: include:hack.h include:func_tab.h
-hack.o:  include:hack.h
-invent.o:  include:hack.h include:lev.h include:wseg.h
-lock.o:  include:hack.h
-mail.o:  include:hack.h
-makemon.o:  include:hack.h
-mcastu.o:  include:hack.h
-mhitm.o:  include:hack.h include:artifact.h
-mhitu.o:  include:hack.h include:artifact.h include:edog.h
-mklev.o:  include:hack.h
-mkmaze.o:  include:hack.h
-mkobj.o:  include:hack.h
-mkroom.o:  include:hack.h
-mon.o:	include:hack.h include:mfndpos.h include:artifact.h
-mondata.o:  include:hack.h include:eshk.h include:epri.h
-monmove.o:  include:hack.h include:mfndpos.h include:artifact.h
-monst.o:  include:config.h include:permonst.h include:monsym.h include:eshk.h include:vault.h include:epri.h
-	Cpp $(CPPFLAGS) src2:monst.c ram:_monst.c
-	cc  $(CFLAGS) -z4000 -o monst.o ram:_monst.c
-	delete ram:_monst.c
-mthrowu.o:  include:hack.h
-music.o:  include:hack.h
-o_init.o:  include:hack.h
-objects.o:  include:config.h include:obj.h include:objclass.h include:prop.h
-	Cpp $(CPPFLAGS) src2:objects.c ram:_objects.c
-	cc  $(CFLAGS) -z8000 +q -o objects.o ram:_objects.c
-	delete ram:_objects.c
-objnam.o:  include:hack.h
-options.o:  include:hack.h
-pager.o:  include:hack.h
-pickup.o:  include:hack.h
-polyself.o:  include:hack.h
-potion.o:  include:hack.h
-pray.o:  include:hack.h
-pri.o:	include:hack.h
-priest.o:  include:hack.h include:mfndpos.h include:eshk.h include:epri.h
-prisym.o:  include:hack.h include:wseg.h include:lev.h
-read.o:  include:hack.h
-restore.o:  include:hack.h include:lev.h include:wseg.h
-rip.o:	include:hack.h
-	Cpp $(CPPFLAGS) src2:rip.c ram:_rip.c
-	cc  $(CFLAGS) +q -o rip.o ram:_rip.c
-	delete ram:_rip.c
-rnd.o:	include:hack.h
-rumors.o:  include:hack.h
-save.o:  include:hack.h include:lev.h include:wseg.h
-search.o:  include:hack.h include:artifact.h
-shk.o:	include:hack.h include:eshk.h
-shknam.o:  include:hack.h include:eshk.h
-sit.o:	include:hack.h
-sounds.o:  include:hack.h include:edog.h include:eshk.h
-sp_lev.o:  include:hack.h include:sp_lev.h
-spell.o:  include:hack.h
-steal.o:  include:hack.h
-timeout.o:  include:hack.h
-topl.o:  include:hack.h
-topten.o:  include:hack.h
-track.o:  include:hack.h
-trap.o:  include:hack.h include:edog.h include:trapname.h
-u_init.o:  include:hack.h
-uhitm.o:  include:hack.h include:artifact.h
-vault.o:  include:hack.h include:vault.h
-version.o:  include:hack.h include:date.h
-weapon.o:  include:hack.h
-were.o:  include:hack.h
-wield.o:  include:hack.h
-wizard.o:  include:hack.h
-worm.o:  include:hack.h include:wseg.h
-worn.o:  include:hack.h
-write.o:  include:hack.h
-zap.o:	include:hack.h
-include:config.h:  include:tradstdc.h include:global.h
-	-setdate include:config.h
-include:decl.h:  include:spell.h include:obj.h include:you.h include:onames.h include:pm.h
-	-setdate include:decl.h
-include:global.h:  include:coord.h include:unixconf.h include:pcconf.h include:tosconf.h include:amiconf.h
-	-setdate include:global.h
-include:_hack.h:  include:config.h include:decl.h include:monsym.h include:mkroom.h include:objclass.h include:gold.h include:trap.h include:flag.h include:rm.h
-	-setdate include:_hack.h
-include:permonst.h:  include:monattk.h include:monflag.h
-	-setdate include:permonst.h
-include:you.h:	include:attrib.h include:monst.h include:youprop.h
-	-setdate include:you.h
-include:youprop.h:  include:prop.h include:permonst.h include:mondata.h include:pm.h
-	-setdate include:youprop.h
+O_Src1:allmain.o:  Src1:allmain.c $(HDEP)
+O_Src1:alloc.o:  Src1:alloc.c Incl:config.h
+	$(CC) $(CFLAGS) -o$@ Src1:alloc.c
+O_Src1:apply.o:  Src1:apply.c $(HDEP) Incl:edog.h
+O_Src1:artifact.o:  Src1:artifact.c $(HDEP) Incl:artifact.h
+O_Src1:attrib.o:  Src1:attrib.c $(HDEP)
+O_Src1:bones.o:  Src1:bones.c $(HDEP)
+O_Src1:cmd.o:  Src1:cmd.c $(HDEP) Incl:func_tab.h
+O_Src1:dbridge.o:  Src1:dbridge.c $(HDEP)
+O_Src1:decl.o:  Src1:decl.c $(HDEP)
+O_Src1:demon.o:  Src1:demon.c $(HDEP)
+O_Src1:do.o:  Src1:do.c $(HDEP)
+O_Src1:do_name.o:  Src1:do_name.c $(HDEP)
+O_Src1:do_wear.o:  Src1:do_wear.c $(HDEP)
+O_Src1:dog.o:  Src1:dog.c $(HDEP) Incl:edog.h
+O_Src1:dogmove.o:  Src1:dogmove.c $(HDEP) Incl:mfndpos.h Incl:edog.h
+O_Src1:dokick.o:  Src1:dokick.c $(HDEP)
+O_Src1:dothrow.o:  Src1:dothrow.c $(HDEP)
+O_Src1:eat.o:  Src1:eat.c $(HDEP)
+O_Src1:end.o:  Src1:end.c $(HDEP) Incl:eshk.h
+O_Src1:engrave.o:  Src1:engrave.c $(HDEP)
+O_Src1:exper.o:  Src1:exper.c $(HDEP)
+O_Src1:extralev.o:  Src1:extralev.c $(HDEP)
+O_Src1:fountain.o:  Src1:fountain.c $(HDEP)
+O_Src1:getline.o:  Src1:getline.c $(HDEP) Incl:func_tab.h
+O_Src1:hack.o:  Src1:hack.c $(HDEP)
+O_Src1:invent.o:  Src1:invent.c $(HDEP) Incl:lev.h Incl:wseg.h
+O_Src1:lock.o:  Src1:lock.c $(HDEP)
+O_Src2:mail.o:  Src2:mail.c $(HDEP)
+O_Src2:makemon.o:  Src2:makemon.c $(HDEP)
+O_Src2:mcastu.o:  Src2:mcastu.c $(HDEP)
+O_Src2:mhitm.o:  Src2:mhitm.c $(HDEP) Incl:artifact.h
+O_Src2:mhitu.o:  Src2:mhitu.c $(HDEP) Incl:artifact.h Incl:edog.h
+O_Src2:mklev.o:  Src2:mklev.c $(HDEP)
+O_Src2:mkmaze.o:  Src2:mkmaze.c $(HDEP)
+O_Src2:mkobj.o:  Src2:mkobj.c $(HDEP)
+O_Src2:mkroom.o:  Src2:mkroom.c $(HDEP)
+O_Src2:mon.o:  Src2:mon.c $(HDEP) Incl:mfndpos.h Incl:artifact.h
+O_Src2:mondata.o:  Src2:mondata.c $(HDEP) Incl:eshk.h Incl:epri.h
+O_Src2:monmove.o:  Src2:monmove.c $(HDEP) Incl:mfndpos.h Incl:artifact.h
+O_Src2:monst.o:  Src2:monst.c Incl:config.h Incl:permonst.h Incl:monsym.h Incl:eshk.h Incl:vault.h Incl:epri.h
+	$(CC) $(CFLAGS) -o$@ Src2:monst.c
+O_Src2:mthrowu.o:  Src2:mthrowu.c $(HDEP)
+O_Src2:music.o:  Src2:music.c $(HDEP)
+O_Src2:o_init.o:  Src2:o_init.c $(HDEP)
+O_Src2:objects.o:  Src2:objects.c Incl:config.h Incl:obj.h Incl:objclass.h Incl:prop.h
+	$(CC) $(CFLAGS) -o$@ Src2:objects.c
+O_Src2:objnam.o:  Src2:objnam.c $(HDEP)
+O_Src2:options.o:  Src2:options.c $(HDEP)
+O_Src2:pager.o:  Src2:pager.c $(HDEP)
+O_Src2:pickup.o:  Src2:pickup.c $(HDEP)
+O_Src2:polyself.o:  Src2:polyself.c $(HDEP)
+O_Src2:potion.o:  Src2:potion.c $(HDEP)
+O_Src3:pray.o:  Src3:pray.c $(HDEP)
+O_Src3:pri.o:  Src3:pri.c $(HDEP)
+O_Src3:priest.o:  Src3:priest.c $(HDEP) Incl:mfndpos.h Incl:eshk.h Incl:epri.h
+O_Src3:prisym.o:  Src3:prisym.c $(HDEP) Incl:wseg.h Incl:lev.h
+O_Src3:read.o:  Src3:read.c $(HDEP)
+O_Src3:restore.o:  Src3:restore.c $(HDEP) Incl:lev.h Incl:wseg.h
+O_Src3:rip.o:  Src3:rip.c $(HDEP)
+O_Src3:rnd.o:  Src3:rnd.c $(HDEP)
+O_Src3:rumors.o:  Src3:rumors.c $(HDEP)
+O_Src3:save.o:  Src3:save.c $(HDEP) Incl:lev.h Incl:wseg.h
+O_Src3:search.o:  Src3:search.c $(HDEP) Incl:artifact.h
+O_Src3:shk.o:  Src3:shk.c $(HDEP) Incl:eshk.h
+O_Src3:shknam.o:  Src3:shknam.c $(HDEP) Incl:eshk.h
+O_Src3:sit.o:  Src3:sit.c $(HDEP)
+O_Src3:sounds.o:  Src3:sounds.c $(HDEP) Incl:edog.h Incl:eshk.h
+O_Src3:sp_lev.o:  Src3:sp_lev.c $(HDEP) Incl:sp_lev.h
+O_Src3:spell.o:  Src3:spell.c $(HDEP)
+O_Src3:steal.o:  Src3:steal.c $(HDEP)
+O_Src3:timeout.o:  Src3:timeout.c $(HDEP)
+O_Src3:topl.o:  Src3:topl.c $(HDEP)
+O_Src3:topten.o:  Src3:topten.c $(HDEP)
+O_Src3:track.o:  Src3:track.c $(HDEP)
+O_Src3:trap.o:  Src3:trap.c $(HDEP) Incl:edog.h
+O_Src3:u_init.o:  Src3:u_init.c $(HDEP)
+O_Src3:uhitm.o:  Src3:uhitm.c $(HDEP) Incl:artifact.h
+O_Src3:vault.o:  Src3:vault.c $(HDEP) Incl:vault.h
+O_Src3:version.o:  Src3:version.c $(HDEP) Incl:date.h
+O_Src3:weapon.o:  Src3:weapon.c $(HDEP)
+O_Src3:were.o:  Src3:were.c $(HDEP)
+O_Src3:wield.o:  Src3:wield.c $(HDEP)
+O_Src3:wizard.o:  Src3:wizard.c $(HDEP)
+O_Src3:worm.o:  Src3:worm.c $(HDEP) Incl:wseg.h
+O_Src3:worn.o:  Src3:worn.c $(HDEP)
+O_Src3:write.o:  Src3:write.c $(HDEP)
+O_Src3:zap.o:  Src3:zap.c $(HDEP)
+Incl:config.h:  Incl:tradstdc.h Incl:global.h
+	-setdate Incl:config.h
+	-wait 2
+Incl:decl.h:  Incl:spell.h Incl:obj.h Incl:you.h Incl:onames.h Incl:pm.h
+	-setdate Incl:decl.h
+	-wait 2
+Incl:global.h:  Incl:coord.h Incl:unixconf.h Incl:pcconf.h Incl:tosconf.h Incl:amiconf.h
+	-setdate Incl:global.h
+	-wait 2
+Incl:hack.h:  Incl:config.h Incl:decl.h Incl:monsym.h Incl:mkroom.h Incl:objclass.h Incl:gold.h Incl:trap.h Incl:flag.h Incl:rm.h
+	-setdate Incl:hack.h
+	-wait 2
+Incl:permonst.h:  Incl:monattk.h Incl:monflag.h
+	-setdate Incl:permonst.h
+	-wait 2
+Incl:you.h:  Incl:attrib.h Incl:monst.h Incl:youprop.h
+	-setdate Incl:you.h
+	-wait 2
+Incl:youprop.h:  Incl:prop.h Incl:permonst.h Incl:mondata.h Incl:pm.h
+	-setdate Incl:youprop.h
+	-wait 2
 # DEPENDENCIES MUST END AT END OF FILE
 # IF YOU PUT STUFF HERE IT WILL GO AWAY
 # see make depend above

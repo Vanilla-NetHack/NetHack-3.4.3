@@ -77,22 +77,29 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 
     At the time of this release, NetHack 3.0 is known to run on:
 
-	DEC vaxen running Ultrix and BSD
-	Sun-3s running SunOS 4.0
-	Encore Multimax running UMAX 4.2
-	Bull XPS100 running System V R2.2 or R3.1
-	Bull DPX/2 200 running System V R3.1
-	AT&T 3B4000 running System V
-	AT&T 3B1 running System V (3.51)
-	286 box running Microport SysV/AT (not extensively tested)
-	IBM PC compatibles running MicroSoft C or Turbo C under MS-DOS
-	Commodore Amiga (probably -- there have been some changes since
-		the Amiga port was done, but we believe it should still work)
-	Atari 1040ST under TOS
-	DEC vaxen running VMS (probably still requires tweaking) 
-	Data General AViiON systems under DG/UX
+        DEC vaxen running Ultrix and BSD
+        Sun-3s running SunOS 4.0
+        Encore Multimax running UMAX 4.2
+        Bull XPS100 running System V R2.2 or R3.1
+        Bull DPX/2 200 running System V R3.1
+        AT&T 3B4000 running System V
+        AT&T 3B1 running System V (3.51)
+        AT&T 3B2/600 & 3B2/622 running System V R3.2.1
+        AT&T 3B2/1000 Model 80 running System V R3.2.2
+        286 box running Microport SysV/AT (not extensively tested)
+        IBM PC compatibles running MicroSoft C or Turbo C under MS-DOS
+        IBM PS/2 and AT compatibles running MicroSoft C under OS/2
+        Commodore Amiga running Lattice or Manx/Aztec C under
+		AmigaDOS 1.3 (WorkBench 1.3, KickStart 1.2 or 1.3)
+        Atari 1040ST under TOS
+        DEC vaxen running VMS
+        Data General AViiON systems under DG/UX
         Valid Logic Systems SCALD-System
         Macintosh (still requires testing)
+        Mips M2000 running RiscOS 4.1
+        Gould NP1 running UTX 3/2
+        Stride 460 running UniStride 2.1
+        Pyramid 9820x running OSx 4.4c
 
 			- - - - - - - - - - -
 

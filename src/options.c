@@ -1,12 +1,11 @@
 /*	SCCS Id: @(#)options.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
-
 #include "hack.h"
 static boolean set_order;
 
-static void FDECL(nmcpy, (char *, char *, int));
-static int FDECL(next_opt, (char *));
+static void FDECL(nmcpy, (char *, const char *, int));
+void FDECL(escapes,(const char *, char *));
 
 void
 initoptions()
@@ -16,8 +15,8 @@ initoptions()
 	flags.time = flags.nonews = flags.notombstone = flags.end_own =
 	flags.standout = flags.nonull = flags.ignintr = FALSE;
 	flags.no_rest_on_space = flags.invlet_constant = TRUE;
-	flags.end_top = 5;
-	flags.end_around = 4;
+	flags.end_top = 3;
+	flags.end_around = 2;
 	flags.female = FALSE;			/* players are usually male */
 	flags.sortpack = TRUE;
 	flags.soundok = TRUE;
@@ -25,10 +24,6 @@ initoptions()
 	flags.confirm = TRUE;
 	flags.safe_dog = TRUE;
 	flags.silent = 	flags.pickup = TRUE;
-#ifdef MACOS
-	flags.standout = TRUE;
-	flags.end_around = 3;	/* Mac display routines don't scroll */
-#endif
 #ifdef TUTTI_FRUTTI
 	nmcpy(pl_fruit, objects[SLIME_MOLD].oc_name, PL_FSIZ);
 #endif
@@ -49,6 +44,13 @@ initoptions()
 #endif
 	read_config_file();
 #endif /* MSDOS */
+#ifdef MACOS
+	flags.standout = TRUE;
+	flags.end_around = 2;	/* Mac display routines don't scroll */
+	flags.end_top = 4;
+	read_config_file();
+	
+#endif
 	if(opts = getenv("NETHACKOPTIONS"))
 		parseoptions(opts,TRUE);
 #ifdef TUTTI_FRUTTI
@@ -60,20 +62,18 @@ initoptions()
 }
 
 static void
-nmcpy(dest, source, maxlen)
-	char	*dest, *source;
+nmcpy(dest, src, maxlen)
+	char	*dest;
+	const char *src;
 	int	maxlen;
 {
-	char	*cs, *cd;
 	int	count;
 
-	cd = dest;
-	cs = source;
 	for(count = 1; count < maxlen; count++) {
-		if(*cs == ',' || *cs == '\0') break; /*exit on \0 terminator*/
-		*cd++ = *cs++;
+		if(*src == ',' || *src == '\0') break; /*exit on \0 terminator*/
+		*dest++ = *src++;
 	}
-	*cd = 0;
+	*dest = 0;
 }
 
 /*
@@ -85,7 +85,8 @@ nmcpy(dest, source, maxlen)
  */
 void
 escapes(cp, tp)
-char	*cp, *tp;
+const char	*cp;
+char *tp;
 {
     while (*cp)
     {
@@ -97,7 +98,7 @@ char	*cp, *tp;
 	}
 	if (*cp == '\\' && index("0123456789xXoO", cp[1]))
 	{
-	    char *dp, *hex = "00112233445566778899aAbBcCdDeEfF";
+	    const char *dp, *hex = "00112233445566778899aAbBcCdDeEfF";
 	    int dcount = 0;
 
 	    cp++;
@@ -157,6 +158,7 @@ parseoptions(opts, from_env)
 register char *opts;
 boolean from_env;
 {
+#ifndef MACOS
 	register char *op;
 	unsigned num;
 	boolean negated;
@@ -476,6 +478,9 @@ bad:
 		return;
 	}
 #ifdef MSDOS
+# ifdef AMIGA_WBENCH
+	if(ami_wbench_badopt(opts))
+# endif
 	Printf("Bad syntax in OPTIONS in %s: %s.", configfile, opts);
 #else
 	Printf("Bad syntax in NETHACKOPTIONS: %s.", opts);
@@ -485,11 +490,308 @@ bad:
 	);
 #endif
 	getret();
+#endif /* MACOS */
 }
 
 int
 doset()
 {
+#ifdef MACOS
+#define	OPTIONS			"Nethack prefs"
+#define OK_BUTTON 1
+#define SAVE_BUTTON 2
+#define CANCEL_BUTTON 3
+#define MIN_CHECKBOX 4
+#define EXPLORE_BOX 4
+#define FEM_BOX 5
+#define NEWS_BOX 6
+#define FIXINV_BOX 7
+#define TOMB_BOX 8
+#define TIME_BOX 9
+#define VERBOSE_BOX 10
+#define SILENT_BOX 11
+#define AUTOZOOM_BOX 12
+#define INVERSE_BOX 13
+#define SORT_BOX 14
+#define COLOR_BOX 15
+#define PICKUP_BOX 16
+#define CONFIRM_BOX 17
+#define SAFE_BOX 18
+#define REST_SPACE_BOX 19
+#define MAX_CHECKBOX 19
+#define PLAYER_NAME 20
+#define CAT_NAME 21
+#define DOG_NAME 22
+#define FRUIT_NAME 23
+#define PACKORDER 24
+#define END_TOP 26
+#define END_AROUND 27
+#define FRUIT_TEXT 35
+#define PACK_TEXT 34
+#define ITEMTEXT(item,text) {GetDItem(optionDlg,item,&type,&ItemHndl,&box); \
+					         (void)CtoPstr(text); \
+					         SetIText(ItemHndl,text);\
+					         (void)PtoCstr(text);}
+#define HIDEITEM(item) {GetDItem(optionDlg,item,&type,&ItemHndl,&box); \
+				        HideControl(ItemHndl);\
+				        SetDItem(optionDlg,item,type+128,ItemHndl,&box);}
+#define HIDETEXT(item) {GetDItem(optionDlg,item,&type,&ItemHndl,&box);\
+						SetDItem(optionDlg,item,128+statText,ItemHndl,&box);\
+						SetIText(ItemHndl,"\0");}
+#define SHOWITEM(item) {GetDItem(optionDlg,item,&type,&ItemHndl,&box);\
+						SetDItem(optionDlg,item,type-128,ItemHndl,&box);\
+						ShowControl(ItemHndl);}
+#define GETTEXT(item,maxsize) {GetDItem(optionDlg,item,&type,&ItemHndl,&box);\
+					GetIText (ItemHndl, &tmp_name);\
+					tmp_name[tmp_name[0]+1] = 0;\
+					if (tmp_name[0] > maxsize)\
+						tmp_name[0] = maxsize;}
+	static boolean *flag_ptrs[20] = {0, 0, 0, 0, &flags.explore,
+			&flags.female, &flags.nonews,&flags.invlet_constant,
+			&flags.notombstone, &flags.time, &flags.verbose,
+			&flags.silent, 0, &flags.standout, &flags.sortpack,
+#ifdef TEXTCOLOR
+			&flags.use_color,
+#else
+			0,
+#endif
+			&flags.pickup, &flags.confirm,
+			&flags.safe_dog, &flags.no_rest_on_space};
+	extern short macflags;
+	short dlgItem, type;
+	Rect box;
+	extern WindowPtr	HackWindow;
+	Handle ItemHndl;
+	unsigned num;
+	char *op;
+	char tmp_name[256];
+	char savename[PL_NSIZ];
+	char savedog[63];
+	char savecat[63];
+	char savefruit[PL_FSIZ];
+	char saveorder[20];
+	DialogRecord	dlgR;
+	DialogPtr optionDlg;
+	DialogTHndl	th, centreDlgBox();
+	boolean done = FALSE;
+    short savemacflags = macflags;
+	struct flag saveflags;
+	register char	*sp, *tmp;
+
+	SetCursor(&ARROW_CURSOR);
+
+	BlockMove(&flags, &saveflags, sizeof(struct flag));
+	
+	th = centreDlgBox(130, FALSE);
+
+	optionDlg = GetNewDialog(130, (Ptr)&dlgR, (WindowPtr)-1);
+/* set initial values of text items */
+	nmcpy(savename,plname,sizeof(plname)-1);
+	ITEMTEXT(PLAYER_NAME,plname);
+	if(*dogname){
+		nmcpy(savedog,dogname,62);
+		ITEMTEXT(DOG_NAME,dogname);
+	}
+	if(*catname){
+		nmcpy(savecat,catname,62);
+		ITEMTEXT(CAT_NAME,catname);
+	}
+#ifdef TUTTI_FRUTTI
+	if(*pl_fruit){
+		nmcpy(savefruit,pl_fruit,PL_FSIZ);
+		ITEMTEXT(FRUIT_NAME,pl_fruit);
+	}
+#else
+	HIDETEXT(FRUIT_NAME);
+	HIDETEXT(FRUIT_TEXT);
+#endif
+	nmcpy(saveorder,inv_order,strlen(inv_order)+1);
+	ITEMTEXT(PACKORDER,inv_order);
+/* set initial values of record items */
+	Sprintf(tmp_name,"%u",flags.end_top);
+	ITEMTEXT(END_TOP,tmp_name);
+	Sprintf(tmp_name,"%u",flags.end_around);
+	ITEMTEXT(END_AROUND,tmp_name);
+/* set initial values of checkboxes */
+	for(dlgItem = MIN_CHECKBOX; dlgItem <= MAX_CHECKBOX; dlgItem++) {
+		GetDItem(optionDlg, dlgItem, &type, &ItemHndl, &box);
+		switch (dlgItem){
+			case NEWS_BOX:
+#ifndef NEWS
+				HIDEITEM(NEWS_BOX);
+				break;
+#endif
+			case TOMB_BOX:
+			case REST_SPACE_BOX:
+				SetCtlValue(ItemHndl,!(*(flag_ptrs[dlgItem])));
+				break;
+			case AUTOZOOM_BOX:
+				SetCtlValue(ItemHndl,macflags & fZoomOnContextSwitch);
+				break;
+#ifndef TEXTCOLOR
+			case COLOR_BOX:
+				HIDEITEM(COLOR_BOX);
+				break;
+#endif
+			default:
+				SetCtlValue(ItemHndl,*(flag_ptrs[dlgItem]));
+		}
+	}
+	SelIText(optionDlg, PLAYER_NAME, 0, 32767);
+	
+	ShowWindow(optionDlg);
+	GetDItem(optionDlg, OK, &type, &ItemHndl, &box);
+	SetPort (optionDlg);
+	PenSize(3, 3);
+	InsetRect (&box, -4, -4);
+	FrameRoundRect (&box, 16, 16);
+	
+	while(!done) {
+		ModalDialog((ProcPtr)0, &dlgItem);
+		GetDItem(optionDlg, dlgItem, &type, &ItemHndl, &box);
+		if (dlgItem >= MIN_CHECKBOX && dlgItem <= MAX_CHECKBOX) {
+			SetCtlValue(ItemHndl, ! GetCtlValue (ItemHndl));
+			if (dlgItem != AUTOZOOM_BOX)
+				*(flag_ptrs[dlgItem]) = !*(flag_ptrs[dlgItem]);
+			else
+				macflags ^= fZoomOnContextSwitch;
+		}
+		else switch(dlgItem){
+			case SAVE_BUTTON:
+				GETTEXT(PLAYER_NAME,PL_NSIZ-1);
+				strncpy(plname, tmp_name, tmp_name[0]+1);
+				(void)PtoCstr (plname);
+			
+				GETTEXT(DOG_NAME,62);
+				strncpy(dogname, tmp_name, tmp_name[0]+1);
+				(void)PtoCstr (dogname);
+			
+				GETTEXT(CAT_NAME,62);
+				strncpy(catname, tmp_name, tmp_name[0]+1);
+				(void)PtoCstr (catname);
+
+#ifdef TUTTI_FRUTTI
+				GETTEXT(FRUIT_NAME,PL_FSIZ-1);
+				strncpy(pl_fruit, tmp_name, tmp_name[0]+1);
+				(void)PtoCstr (pl_fruit);
+#endif
+
+				GETTEXT(PACKORDER,19);
+				op = tmp_name+1;
+				/* Missing characters in new order are filled in at the end 
+				 * from inv_order.
+				 */
+				for (sp = op; *sp; sp++)
+					if ((!index(inv_order, *sp))||(index(sp+1, *sp))){
+						for(tmp = sp; *tmp;tmp++)
+							tmp[0]=tmp[1];
+						sp--;
+					}			/* bad or duplicate char in order - remove it*/
+				tmp = (char *) alloc((unsigned)(strlen(inv_order)+1));
+				Strcpy(tmp, op);
+				for (sp = inv_order, num = strlen(tmp); *sp; sp++)
+					if (!index(tmp, *sp)) {
+						tmp[num++] = *sp;
+						tmp[num] = 0;
+					}
+				Strcpy(inv_order, tmp);
+				free((genericptr_t)tmp);
+
+				GETTEXT(END_TOP,5);
+				op = tmp_name+1;
+				while(*op) {
+					num = 1;
+					if(digit(*op)) {
+						num = atoi(op);
+						while(digit(*op)) op++;
+					} else op++;
+				}
+				flags.end_top=num;
+				GETTEXT(END_AROUND,5);
+				op = tmp_name+1;
+				while(*op) {
+					num = 1;
+					if(digit(*op)) {
+						num = atoi(op);
+						while(digit(*op)) op++;
+					} else op++;
+				}
+				flags.end_around = num;
+				write_opts();
+				nmcpy(dogname,savedog,62);
+				nmcpy(catname,savecat,62);
+				nmcpy(plname,savename,sizeof(plname)-1);
+#ifdef TUTTI_FRUTTI
+				nmcpy(pl_fruit,savefruit,PL_FSIZ-1);
+#endif
+				nmcpy(inv_order,saveorder,strlen(inv_order)+1);
+			case CANCEL_BUTTON:
+				flags = saveflags;
+				macflags = savemacflags;
+				done = TRUE;
+				break;
+			case OK_BUTTON:
+				GETTEXT(END_TOP,5);
+				op = tmp_name+1;
+				while(*op) {
+					num = 1;
+					if(digit(*op)) {
+						num = atoi(op);
+						while(digit(*op)) op++;
+					} else op++;
+				}
+				flags.end_top=num;
+				GETTEXT(END_AROUND,5);
+				op = tmp_name+1;
+				while(*op) {
+					num = 1;
+					if(digit(*op)) {
+						num = atoi(op);
+						while(digit(*op)) op++;
+					} else op++;
+				}
+				flags.end_around = num;
+#ifdef TUTTI_FRUTTI
+				GETTEXT(FRUIT_NAME,PL_FSIZ-1);
+				(void)PtoCstr (tmp_name);
+				(void)fruitadd(tmp_name);
+				nmcpy(pl_fruit,tmp_name,PL_FSIZ-1);
+#endif
+				nmcpy(dogname,savedog,62);
+				nmcpy(catname,savecat,62);
+				nmcpy(plname,savename,sizeof(plname)-1);
+				GETTEXT(PACKORDER,19);
+				op = tmp_name+1;
+				/* Missing characters in new order are filled in at the end 
+				 * from inv_order.
+				 */
+				for (sp = op; *sp; sp++)
+					if ((!index(inv_order, *sp))||(index(sp+1, *sp))){
+						for (tmp = sp; *tmp;tmp++)
+							tmp[0]=tmp[1];
+						sp--;
+					}			/* bad or duplicate char in order - remove it*/
+				tmp = (char *) alloc((unsigned)(strlen(inv_order)+1));
+				Strcpy(tmp, op);
+				for (sp = inv_order, num = strlen(tmp); *sp; sp++)
+					if (!index(tmp, *sp)) {
+						tmp[num++] = *sp;
+						tmp[num] = 0;
+					}
+				Strcpy(inv_order, tmp);
+				free((genericptr_t)tmp);
+				flags.female = saveflags.female;
+				flags.explore = saveflags.explore;
+				done = TRUE;
+				break;
+			default:;
+		}
+	} 
+	HideWindow(optionDlg);
+	DisposDialog (optionDlg);
+	SetPort (HackWindow);
+	return 0; 
+#else
 	char buf[BUFSZ];
 
 	pline("What options do you want to set? ");
@@ -536,7 +838,7 @@ doset()
 #ifdef TUTTI_FRUTTI
 	    Sprintf(eos(buf), "fruit:%s,", pl_fruit);
 #endif
-	    if(flags.end_top != 5 || flags.end_around != 4 || flags.end_own){
+	    if(flags.end_top != 3 || flags.end_around != 2 || flags.end_own){
 		Sprintf(eos(buf), "endgame: %u top scores/%u around me",
 			flags.end_top, flags.end_around);
 		if(flags.end_own) Strcat(buf, "/own scores");
@@ -551,6 +853,7 @@ doset()
 	}
 
 	return 0;
+#endif /* MACOS */
 }
 
 int
@@ -637,24 +940,29 @@ option_help() {
 	set_pager(1);
 	return;
 quit:
+	(void) next_opt("\033");
 	set_pager(2);
 	return;
 }
 
 /*
  * prints the next boolean option, on the same line if possible, on a new
- * line if not
+ * line if not. End with next_opt(""). Note that next_opt("\033") may be
+ * used to abort.
  */
-static int
+int
 next_opt(str)
-	char *str;
+const char *str;
 {
-	static char buf[80];
+	static char buf[121];
 	static int i = 0;
 	int r = 0;
 
+	if (*str == '\033') {
+		i = 0; buf[0] = 0; return 0;
+	}
 	i += strlen(str);
-	if (i > (CO - 2) || !*str) {
+	if (i > min(CO - 2, 120) || !*str) {
 		r = page_line(buf);
 		buf[0] = 0;
 		i = strlen(str);
@@ -677,7 +985,11 @@ char *str;
 {
 	register int i,j;
 	register struct fruit *f;
+#ifdef __GNULINT__
+	struct fruit *lastf = 0;
+#else
 	struct fruit *lastf;
+#endif
 	int highest_fruit_id = 0;
 	char buf[PL_FSIZ];
 	boolean user_specified = (str == pl_fruit);

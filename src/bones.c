@@ -4,17 +4,11 @@
 
 #include "hack.h"
 
-#ifdef OLD_TOS
-#define OMASK	0x8000
-#else
 #define OMASK	0
-#endif
 
 #ifdef DGK
 char bones[FILENAME];
-#ifndef OLD_TOS
 extern long bytes_counted;
-#endif
 #else
 char bones[] = "bones.xxxx";
 #endif
@@ -22,6 +16,15 @@ char bones[] = "bones.xxxx";
 #ifdef COMPRESS
 static char cmd[60], proxy[20];
 
+static void NDECL(compress_bones);
+#endif
+static boolean FDECL(no_bones_level, (int));
+void FDECL(resetobjs,(struct obj *));
+#ifdef TUTTI_FRUTTI
+static void FDECL(goodfruit, (int));
+#endif
+
+#ifdef COMPRESS
 static void
 compress_bones()
 {
@@ -40,6 +43,10 @@ static boolean
 no_bones_level(lev)
 int lev;
 {
+	extern int save_dlevel;		/* in do.c */
+
+	if (save_dlevel) lev = save_dlevel;
+
 	return (lev == medusa_level ||
 		lev == wiz_level
 #ifdef REINCARNATION
@@ -80,12 +87,16 @@ struct obj *ochain;
 	for (otmp = ochain; otmp; otmp = otmp->nobj) {
 		otmp->o_id = 0;
 		if (((otmp->otyp != CORPSE && otmp->otyp != STATUE)
-       			|| otmp->corpsenm < PM_ARCHEOLOGIST)
+			|| otmp->corpsenm < PM_ARCHEOLOGIST)
 #ifdef NAMED_ITEMS
-			&& !is_artifact(otmp)
+			&& !(is_artifact(otmp) && !exist_artifact(otmp,ONAME(otmp)))
 #endif
 		)
-		otmp->onamelth = 0;
+			otmp->onamelth = 0;
+#ifdef NAMED_ITEMS
+		else if (is_artifact(otmp))
+			artifact_exists(otmp,ONAME(otmp),TRUE);
+#endif
 		if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
 #ifdef TUTTI_FRUTTI
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
@@ -194,13 +205,10 @@ savebones(){
 		if (!mtmp) return;
 		Strcpy((char *) mtmp->mextra, plname);
 	} else {
-		mons[u.ugrave_arise].pxlth += strlen(plname);
 		mtmp = makemon(&mons[u.ugrave_arise], u.ux, u.uy);
-		mons[u.ugrave_arise].pxlth -= strlen(plname);
 		in_mklev = FALSE;
 		if (!mtmp) return;
-		Strcpy(NAME(mtmp), plname);
-		mtmp->mnamelth = strlen(plname);
+		mtmp = christen_monst(mtmp, plname);
 		atl(u.ux, u.uy, mtmp->data->mlet);
 		Your("body rises from the dead as %s...",
 			an(mons[u.ugrave_arise].mname));
@@ -260,20 +268,20 @@ savebones(){
 		return;
 	}
 
-#if defined(DGK) && !defined(OLD_TOS)	/* check whether there is room */
+#if defined(DGK)	/* check whether there is room */
 	count_only = TRUE;
-#ifdef TUTTI_FRUTTI
+# ifdef TUTTI_FRUTTI
 	savefruitchn(fd);
-#endif
+# endif
 	savelev(fd, dlevel, COUNT);
-#ifdef ZEROCOMP
+# ifdef ZEROCOMP
 	bflush(fd);
-#endif
+# endif
 	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
-#ifdef WIZARD
+# ifdef WIZARD
 		if (wizard)
 			pline("Insufficient space to create bones file.");
-#endif
+# endif
 		unlink(bones);
 		return;
 	}
@@ -283,7 +291,7 @@ savebones(){
 #ifdef TUTTI_FRUTTI
 	savefruitchn(fd);
 #endif
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	savelev(fd, dlevel, WRITE);
 #else
 	savelev(fd,dlevel);
@@ -354,6 +362,17 @@ gotbones:
 		getlev(fd, 0, dlevel, TRUE);
 	}
 	(void) close(fd);
+#ifdef NAMED_ITEMS
+	/* to correctly reset named artifacts on the level */
+	{
+		register struct monst *mtmp;
+
+		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+			resetobjs(mtmp->minvent);
+		resetobjs(fobj);
+		resetobjs(fcobj);
+	}
+#endif
 #ifdef WIZARD
 	if(wizard) {
 		pline("Unlink bones? ");

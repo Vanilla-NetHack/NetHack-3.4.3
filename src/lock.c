@@ -4,12 +4,23 @@
 
 #include	"hack.h"
 
-static struct {
+#ifndef OVERLAY
+static int NDECL(picklock);
+static int NDECL(forcelock);
+#else
+int NDECL(picklock);
+int NDECL(forcelock);
+#endif
+static boolean FDECL(obstructed,(int,int));
+
+VSTATIC struct xlock_s {
 	int	door_or_box, picktyp;
 	struct rm  *door;
 	struct obj *box;
 	int chance, usedtime;
 } xlock;
+
+#ifdef OVLB
 
 #ifndef OVERLAY
 static
@@ -146,8 +157,14 @@ forcelock() {	/* try to force a locked chest */
 	return((xlock.usedtime = 0));
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 void
 reset_pick() { xlock.usedtime = 0; }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 int
 pick_lock(pick) /* pick a lock with a given object */
@@ -157,6 +174,9 @@ pick_lock(pick) /* pick a lock with a given object */
 	register struct rm	*door;
 	register struct obj	*otmp;
 
+#ifdef __GNULINT__
+	ch = 0;		/* GCC myopia */
+#endif
 	picktyp = pick->otyp;
 	if(xlock.usedtime && picktyp == xlock.picktyp) {
 
@@ -375,8 +395,9 @@ doopen() {		/* try to open a door */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) return(0);
 
-	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
-				mtmp->mappearance == CLOSED_DOOR_SYM &&
+	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic &&
+				mtmp->m_ap_type == M_AP_FURNITURE &&
+				mtmp->mappearance == S_cdoor &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
 		return(1);
@@ -463,8 +484,9 @@ doclose() {		/* try to close a door */
 		return(1);
 	}
 
-	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
-				mtmp->mappearance == CLOSED_DOOR_SYM &&
+	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic &&
+				mtmp->m_ap_type == M_AP_FURNITURE && 
+				mtmp->mappearance == S_cdoor &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
 		return(1);
@@ -524,7 +546,7 @@ boxlock(obj, otmp)	/* box obj was hit with spell effect otmp */
 			/* returns 1 if something happened */
 	register struct obj *obj, *otmp;	/* obj *is* a box */
 {
-	register boolean res;
+	register boolean res = 0;
 
 	switch(otmp->otyp) {
 	    case WAN_LOCKING:
@@ -683,3 +705,5 @@ bimanual(otmp) struct obj * otmp; {
 	return(otmp->olet == WEAPON_SYM && objects[otmp->otyp].oc_bimanual);
 }
 #endif /* STUPID_CPP */
+
+#endif /* OVLB */

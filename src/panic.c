@@ -6,7 +6,6 @@
  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* #define MAKEDEFS_C	1   /* define for Macs */
 #define NEED_VARARGS
 #include	"config.h"
 

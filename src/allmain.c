@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.0	89/09/26
+/*	SCCS Id: @(#)allmain.c	3.0	89/12/22
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,36 +10,69 @@
 #include <signal.h>
 #endif
 
-int (*afternmv)();
-int (*occupation)();
+#ifdef OVLB
+int NDECL((*afternmv));
+int NDECL((*occupation));
+#endif
+
+#ifdef OVL0
 
 void
 moveloop()
 {
 #ifdef MSDOS
 	char ch;
-	int abort;
+	int abort_lev;
 #endif
 
 	for(;;) {
 #ifdef MACOS
-	if (!(moves % 20)) {
-		UnloadSeg(doapply);
-		UnloadSeg(initedog);
+	static	int old_dlevel = 0;
+	extern	xchar dlevel; 
+	extern	Boolean	lowMem;
+	extern	long	lowMemLimit;
+	if (!(moves % 20) || lowMem || FreeMem() < lowMemLimit || old_dlevel != dlevel) {
+		old_dlevel = dlevel;
+		UnloadSeg(ddocall);
+		UnloadSeg(castmu);
+		UnloadSeg(doforce);
 		UnloadSeg(doeat);
-		UnloadSeg(doengrave);
-		UnloadSeg(doopen);
-		UnloadSeg(mattacku);
-		UnloadSeg(mklev);
-		UnloadSeg(attacktype);
-		UnloadSeg(dohelp);
-		UnloadSeg(dopray);
-		UnloadSeg(dorecover);
-		UnloadSeg(timeout);
-		UnloadSeg(setworn);
+		UnloadSeg(dozap);
 		UnloadSeg(initterm);
-		UnloadSeg(done);
+		UnloadSeg(doapply);
+		UnloadSeg(dokick);
+		UnloadSeg(outrumor);
+		UnloadSeg(steal);
+		UnloadSeg(done1);
+		UnloadSeg(dodrink);
+		UnloadSeg(doturn);
+#ifdef REINCARNATION
+		UnloadSeg(makeroguerooms);
+#endif
+#ifdef STRONGHOLD
+		UnloadSeg(load_special);
+#endif
+		UnloadSeg(mklev);
+#ifdef MUSIC
+		UnloadSeg(do_play_instrument);
+#endif
+#ifdef SPELLS
+		UnloadSeg(docast);
+#endif
 		UnloadSeg(savebones);
+		UnloadSeg(expels);
+		UnloadSeg(attack);
+		UnloadSeg(doname);
+		if (FreeMem() < 36864)
+		{
+			long	space;
+			
+			UnloadSeg(newhp);
+			UnloadSeg(attack);
+
+			space = 0x7FFFFFFFL;
+			MaxMem(&space);
+		}
 	}
 #endif
 #ifdef CLIPPING
@@ -163,23 +196,28 @@ moveloop()
 
 		if(multi >= 0 && occupation) {
 #ifdef MSDOS
-			abort = 0;
+			abort_lev = 0;
 			if (kbhit()) {
 				if ((ch = Getchar()) == ABORT)
-					abort++;
+					abort_lev++;
 # ifdef REDO
 				else
 					pushch(ch);
 # endif /* REDO */
 			}
-			if(abort || monster_nearby()) {
+			if (!abort_lev && (*occupation)() == 0)
+#else
+			if ((*occupation)() == 0)
+#endif
+				occupation = 0;
+#ifdef MSDOS
+			if(abort_lev || monster_nearby()) {
 #else
 			if(monster_nearby()) {
 #endif
 				stop_occupation();
 				reset_eat();
-			} else if ((*occupation)() == 0)
-				occupation = 0;
+			}
 #ifdef MSDOS
 			if (!(++occtime % 7))
 				(void) fflush(stdout);
@@ -219,18 +257,25 @@ moveloop()
 	}
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 void
 stop_occupation()
 {
 	if(occupation) {
 		You("stop %s.", occtxt);
 		occupation = 0;
+		sync_hunger();
 #ifdef REDO
 		multi = 0;
 		pushch(0);
 #endif
 	}
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 newgame() {
@@ -278,3 +323,5 @@ newgame() {
 
 	return;
 }
+
+#endif /* OVLB */

@@ -117,7 +117,8 @@ losexp() {	/* hit by drain life attack */
 
 	if(u.ulevel > 1) {
 		pline("Goodbye level %u.", u.ulevel--);
-		adjabil(-1);	/* remove intrinsic abilities */
+		/* remove intrinsic abilities */
+		adjabil((int)u.ulevel+1, (int)u.ulevel);
 	} else
 		u.uhp = -1;
 	num = newhp();
@@ -151,7 +152,8 @@ newexplevel() {
 		if (u.uexp >= newuexp(u.ulevel)) u.uexp = newuexp(u.ulevel) - 1;
 		pline("Welcome to experience level %u.", u.ulevel);
 		set_uasmon();	/* set up for the new level. */
-		adjabil(1);	/* give new intrinsic abilities */
+		/* give new intrinsics */
+		adjabil((int)u.ulevel-1, (int)u.ulevel);
 		tmp = newhp();
 		u.uhpmax += tmp;
 		u.uhp += tmp;
@@ -180,7 +182,7 @@ pluslvl() {
 	if(u.ulevel < MAXULEV) {
 		u.uexp = newuexp(u.ulevel);
 		pline("Welcome to experience level %u.", ++u.ulevel);
-		adjabil(1);
+		adjabil((int)u.ulevel-1, (int)u.ulevel);
 	}
 	flags.botl = 1;
 }

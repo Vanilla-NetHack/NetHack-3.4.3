@@ -4,6 +4,10 @@
 
 #include	"hack.h"
 
+static int FDECL(counter_were,(int));
+
+#ifdef OVL0
+
 void
 were_change(mon)
 register struct monst *mon;
@@ -21,6 +25,9 @@ register struct monst *mon;
 		}
 	    } else if(!rn2(30) || Protection_from_shape_changers) new_were(mon);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 static int
 counter_were(pm)
@@ -108,3 +115,5 @@ you_were() {
 	(void) polymon(u.ulycn);
 }
 #endif
+
+#endif /* OVLB */

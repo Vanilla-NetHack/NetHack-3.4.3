@@ -7,14 +7,22 @@
 #include	"hack.h"
 
 #ifdef MACOS
+# ifdef THINK_C
+#include	<MemoryMgr.h>
+# else
+#include	<Memory.h>
+#define ApplLimit 0x130         /* application limit [pointer]*/
+# endif
 
 /* Global variables */
 extern WindowPtr	HackWindow;	/* points to NetHack's window */
 char	*keys[8];
 short macflags;
+Boolean	lowMem;
+long	lowMemLimit;
 typedef struct defaultData {
 	long	defaultFlags;
-	long	fontSize;
+	long	lowMemLimit;
 	Str255	fontName;
 } defaultData;
 #define	fDFZoomWindow	0x02L
@@ -39,11 +47,25 @@ short	row, col;
 	term_info	*t;
 	
 	/* standard Mac initialization */
+#ifdef THINK_C
+	SetApplLimit((Ptr)ApplLimit - 8192);	/* an extra 8K for stack */
+#else
+	SetApplLimit(*(long *)ApplLimit - 8192);
+#endif	
 	MaxApplZone();
+	UnloadSeg(mprintf);
+	for (i = 2; i<9; i++) {
+		temp = GetResource('CODE', i);
+		HUnlock(temp);
+		MoveHHi(temp);
+		HLock(temp);
+	}
+	
 	MoreMasters();
 	MoreMasters();
 	MoreMasters();
 	MoreMasters();
+	lowMem = (FreeMem() < 700 *1024) ? TRUE : FALSE;
 	InitGraf(&MAINGRAFPORT);
 	
 	InitFonts();
@@ -56,7 +78,12 @@ short	row, col;
 	
 	/* Application-specific startup code */
 	theMenu = NewMenu(appleMenu, "\001\024");	/*  apple menu  */
-	AppendMenu(theMenu,"\030About NetHack 3.0g\311;(-");
+	{
+		char	tmp[256];
+		sprintf(&tmp[1],"About NetHack %s\311;(-", VERSION);
+		tmp[0] = (char)strlen(&tmp[1]);
+		AppendMenu(theMenu,tmp);
+	}
 	AddResMenu(theMenu, 'DRVR');
 	InsertMenu(theMenu, 0);
 	DisableItem(theMenu,0);
@@ -93,14 +120,18 @@ short	row, col;
 	macflags = (fToggleNumPad | fDoNonKeyEvt);
 	
 	/* Set font to monaco, user-defined font or to Hackfont if available */
-	size = 9;
+	if ((SCREEN_BITS.bounds.bottom - SCREEN_BITS.bounds.top) >400
+		&& (SCREEN_BITS.bounds.right - SCREEN_BITS.bounds.left) > 580)
+		size = 12;
+	else
+		size = 9;
 	strcpy((char *)&font[0], "\006Monaco");
 	
 	temp = GetResource(HACK_DATA, DEFAULT_DATA);
 	if (temp) {
 		HLock(temp);
 		dD = (defaultData *)(*temp);
-		size = (short)dD->fontSize;
+		lowMemLimit = dD->lowMemLimit;
 		strncpy((char *)&font[0], (char *)&dD->fontName[0],
 					(short)dD->fontName[0] + 1);
 		if (dD->defaultFlags & fDFZoomWindow)
@@ -171,6 +202,11 @@ short	row, col;
 		SysBeep(1);
 	}
 
+	/* Some tweaking to allow for intl. ADB keyboard (unknown) */
+	if (t->system.machineType > envMacPlus && !t->system.keyBoardType) {
+		t->system.keyBoardType = envStandADBKbd;
+	}
+
 #define	KEY_MAP	103
 	temp = GetResource(HACK_DATA, KEY_MAP);
 	if (temp) {
@@ -198,10 +234,11 @@ short	row, col;
 
 	/* give time for Multifinder to bring NetHack window to front */
 	for(tempFont = 0; tempFont<10; tempFont++) {
-		(void)GetNextEvent(everyEvent,&theEvent);
+		SystemTask();
+		(void)GetNextEvent(nullEvent,&theEvent);
 	}
 
-	HackWindow = NewWindow(0L, &boundsRect, "\015NetHack [MOV]",
+	HackWindow = NewWindow(0L, &boundsRect, "\016NetHack [MOVE]",
 			TRUE, noGrowDocProc, (WindowPtr)-1, FALSE, (long)t);
 
 	t->inColor = 0;
@@ -251,6 +288,10 @@ short	row, col;
 		}
 	} else {
 		panic("Can't get OBJECT resource data.");
+	}
+	
+	for (i = 0; i<8; i++) {
+		t->cursor[i] = GetCursor(100+i);
 	}
 	
 	(void)aboutBox(0);	
@@ -325,4 +366,95 @@ free_decl()
 	free((char *)level.monsters);
 }
 #endif /* SMALLDATA */
+
+#define	OPTIONS			"Nethack prefs"
+
+# ifdef AZTEC
+#undef OMASK
+#define OMASK	O_RDONLY
+# else
+#undef OMASK
+#define OMASK	(O_RDONLY | O_BINARY )
+# endif
+
+int
+read_config_file()
+{
+
+	int optfd;
+	optfd = 0;
+	if ( (optfd = open(OPTIONS, OMASK)) > (int)NULL){
+		read_opts(optfd);
+		(void) close(optfd);
+	}
+}
+
+int
+write_opts()
+{
+	int fd;
+	short temp_flags;
+
+	if((fd = open(OPTIONS, O_WRONLY | O_BINARY)) <= 0) {
+		OSErr	result;
+		char	*tmp;
+		
+		tmp = CtoPstr(OPTIONS);
+		result = Create((StringPtr)tmp, (short)0, CREATOR, AUXIL_TYPE);
+	 	if (result == noErr)
+	 		fd = open(OPTIONS, O_WRONLY | O_BINARY);
+	 }
+
+	if (fd < 0)
+		pline("can't create options file!");
+	else {
+		write(fd, &flags, sizeof(flags));
+	
+		write(fd, plname, PL_NSIZ);
+	
+		write(fd, dogname, 63);
+	
+		write(fd, catname, 63);
+		
+		temp_flags = (macflags & fZoomOnContextSwitch) ? 1 : 0;
+		write(fd, &temp_flags, sizeof(short));
+	
+#ifdef TUTTI_FRUTTI
+		write(fd, pl_fruit, PL_FSIZ);
+#endif
+		write(fd, inv_order, strlen(inv_order)+1);
+		close(fd);
+	}
+	return 0;
+}
+
+int
+read_opts(fd)
+int fd;
+{	char tmp_order[20];
+	short	temp_flags;
+	
+	read(fd, (char *)&flags, sizeof(flags));
+
+	read(fd, plname, PL_NSIZ);
+
+	read(fd, dogname, 63);
+	
+	read(fd, catname, 63);
+	
+	read(fd, &temp_flags, sizeof(short));
+	if (temp_flags & 0x01)
+		macflags |= fZoomOnContextSwitch;
+	else
+		macflags &= ~fZoomOnContextSwitch;
+
+#ifdef TUTTI_FRUTTI
+	read(fd, pl_fruit, PL_FSIZ);
+#endif
+	read(fd,tmp_order,strlen(inv_order)+1);
+	if(strlen(tmp_order) == strlen(inv_order))
+		strcpy(inv_order,tmp_order);
+	return 0;
+}
+
 #endif /* MACOS */

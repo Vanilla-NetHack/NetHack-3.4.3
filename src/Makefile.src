@@ -102,8 +102,8 @@ HACKINCL = amiconf.h artifact.h attrib.h color.h config.h coord.h decl.h\
 	   gold.h hack.h lev.h macconf.h mfndpos.h mkroom.h monattk.h mondata.h\
 	   monflag.h monst.h monsym.h msdos.h obj.h objclass.h patchlevel.h\
 	   pcconf.h permonst.h prop.h rm.h sp_lev.h spell.h system.h termcap.h\
-	   tosconf.h tradstdc.h trapname.h unixconf.h vault.h vmsconf.h wseg.h\
-	   you.h youprop.h
+	   tosconf.h tradstdc.h unixconf.h vault.h vmsconf.h wseg.h you.h\
+	   youprop.h
 
 # all .h files except date.h, onames.h, pm.h & trap.h which would cause
 # dependency loops if run through "make depend".
@@ -409,7 +409,7 @@ timeout.o:  ../include/hack.h
 topl.o:  ../include/hack.h
 topten.o:  ../include/hack.h
 track.o:  ../include/hack.h
-trap.o:  ../include/hack.h ../include/edog.h ../include/trapname.h
+trap.o:  ../include/hack.h ../include/edog.h
 u_init.o:  ../include/hack.h
 uhitm.o:  ../include/hack.h ../include/artifact.h
 vault.o:  ../include/hack.h ../include/vault.h

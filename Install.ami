@@ -1,134 +1,311 @@
 
-Compilation and installation instructions for NetHack on the Amiga
-==================================================================
-						   by Olaf Seibert
-To Play Only:
-------------
+	Instructions for compiling and installing NetHack 3.0
+			on an AMIGA system
+	=====================================================
+		    Last Revision: 17 Feb 1990
 
-	1.  Need one megabyte.
-	2.  Wait for the binary distribution on comp.binaries.amiga.
-
-To Build:
+Overview
 --------
+    This file contains the procedure to follow when installing NetHack 3.0
+    on an Amiga computer system.  It also includes some procedures and hints
+    for individuals desiring to create a binary from the source.  This
+    document is divided into 4 sections.  Section I deals with installing
+    already existing binaries and data files to create a working NetHack
+    game disk (or directory, in the case of a hard drive).  Section II
+    describes, in general, how to produce working binaries from the source.
+    Section III and IV are compiler specific sections, with section III
+    designed for Lattice users, and section IV for Manx/Aztec users.
 
-Requirements:
+Credits
+-------
+    Olaf Seibert first ported NetHack 2.3 and 3.0 to the Amiga.  Richard
+    Addison, Jochen Erwied, Mark Gooderum, Ken Lorber, Greg Olson, Mike
+    Passaretti, and Gregg Wonderly polished and extended the 3.0 port.
 
-	1a. Harddisk with 3M of free space; or
-	1b. Two floppy drives and enough memory for an >= 1M ramdisk
-	    and make/cpp/compiler/assembler resident; or
-	1c. Three floppy drives and enough memory for a +- 200K ramdisk
-	    and make/cpp/compiler/assembler resident.
+Section I - Installation Guide
+-------------------------------
+    This section assumes you have the following handy:
 
-	2.  With 1b and 1c you also need at least 4 empty floppies.
+	* NetHack (executable code)
+	* Rumors file
+	* Oracle file
+	* All of the various help and informational files (help, opthelp, etc)
+	* Special level files (castle, tower1, tower2, tower3, endgame)
+	* Amiga with at least 1 meg memory (may be optimistic....)
 
-and Optionally
+    And optionally:
 
-	1.  A CPP that handles #if defined(SYMBOL). A Decus CPP,
-	    available on a Fish disk, will do fine;
-	2.  Same as 1, modified to write all #define-s at the end
-	    of the output file
-	3.  A modified Make (originally from net.sources, also from a Fish
-	    disk), modified to search several directories when trying to
-	    apply a default rule, and to allow colons (:) in target names.
-	4.  A file zapper, to learn that stupid Manx 3.6 compiler that if it
-	    doesn't know signed, const, and volatile, it shouldn't look for
-	    them. Patch those 'keywords' to someting like __gned, __nst, and
-	    __latile.
-	5.  Rez (by Jim Goodnow) is highly recommended.
+	* Icons if WorkBench interface is to be used.  These files include
+		+ NetHack.info
+		+ NewGame.info
+		+ NetHackScore.info
+		+ default.icon
+	* Special NetHack font.
 
+    Installation Steps:
 
-First, read the Unix installation instructions; the organization on the
-Amiga is similar, with the differences stated below:
+	1) If you have a hard disk, create a directory named NetHack.
+	   Assign Nethack: to be the path to this directory.  If you have a
+	   floppy, format a disk named NetHack.
 
-For floppy users (as I am), source is split over two diskettes, SRC1 and
-SRC2. The first contains roughly [a-l]*.c, the second [m-z]*.c. Include
-files are in the Assigned directory INCLUDE:, on SRC1:include. You may want
-to (initially) copy hack.h to _hack.h, see below. Amiga specific files are
-in AMIGA:, in SRC1:amiga. The modified stdio.h and friends also go there.
-There must also be an AUXIL: somewhere. I put all files that are not
-necessary for the Amiga version on the same disk as AUXIL:, otherwise it
-will not fit.
+	2) If you have a hard disk, assign HackExe: to the above directory.
+	   If you have a floppy, format an additional disk named HackExe.
 
-On a harddisk, you can either Assign SRC1: and SRC2: to the same directory,
-or change the makefile slightly.
+	3) Copy Nethack, NetHack.info, NewGame.info, and NetHackScore.info
+	   to HackExe.  Create an empty file called NewGame (WorkBench
+	   refuses to Duplicate a project icon without a file attached).
 
-Set up the compiler environment such that it will look for #include files
-first in AMIGA: and INCLUDE:, and only last in the default include file
-directory. For convenience, you may copy time.h and ctype.h to AMIGA:, to
-save a few disk swaps. It is expected that time_t is defined in time.h; if
-it is not, change system.h. You don't want to define Bitfield in config.h
-to use real bitfields; the Manx compiler is too buggy in that area. [It
-evaluates the lhs of bitfield op= expr twice, including side-effects, and
-if the lhs is too complicated, it messes up a few registers as well; as in
-push d1; do something else with d1; pop it back in d0; use d1 instead of
-d0]. You also don't want COMPRESS, but do want ZEROCOMP. Of course, since I
-wrote that part.
+	4) Copy the remainder of the files to NetHack:.  If you are using
+	   the optional font, create a Hack subdirectory on NetHack:, and
+	   copy "8" into it.
 
-This is the initialization script file that I use:
+	5) Configure NetHack.cnf as per your configuration.  Remember not
+	   to set GRAPHICS if you are not using the optional font.
 
-	rez cpp dme cc -l as -n make
-	assign amiga: src1:amiga include: src1:include	; assumes ARP.
-	set INCLUDE=!include:!amiga:!SYS:include CLIB=SYS2:lib
-	copy c:delete ram:c
-	copy c:setdate ram:c
-	ares delete remove		; assumes ARP.
-	type <nil: to ram:c/dme 	; to defeat Ash/Shell-Seg
-	type <nil: to ram:c/cc		;   in combination with Rez.
-	type <nil: to ram:c/as
-	type <nil: to ram:c/make
+    That's all there is to it!  If you are using the CLI interface, make sure
+    that the stack is set fairly large (at LEAST 40000 bytes).  Move to the
+    NetHack: directory, and type NetHack <cmd line options>.  If you're
+    using the WorkBench interface, click on the NetHack directory/disk.
+    You should see 3 icons.  Select the "NewGame" option, and "Duplicate" from
+    the WorkBench pull down menu.  This icon now represents your personal
+    profile.  You can now rename this icon, and tailor it to your liking
+    as described below.  If you start a game from the WorkBench interface,
+    saving the game will automatically tie the personal file icon with the
+    saved game.  So the next time you select your icon, the game will be
+    restored.
 
-If you put everything in the right place, CD to the place where you want
-the object files to appear (i.e. the RAM disk or your fast harddisk), and
-type Make, assuming you first put the Amiga makefile there. The process
-will then do about the following:
+    As mentioned above, the icon representing your personal profile can be
+    customized by you.  This is done via the the Info command available from
+    WorkBench.  You can adjust the following using the ToolTypes from the
+    WorkBench info command:
 
-- Make makedefs, which makes a few header files
-- Pre-CPP include:_hack.h to include:hack.h, which also leaves a copy in
-  the current directory. The idea of this is, that we pre-include
-  everything that hack.h includes. You need the modified CPP for that,
-  since we don't want to loose all #defines in the process.
-- Then the amiga specific files are compiled. One of them makes use of a
-  precompiled set of all Amiga header files. You can easily leave out this
-  compiler option.
-- The other files are compiled, using a separate CPP.
-- Finally, things are linked, to an executable of about 650K including
-  wack symbols. Doing this in the 1M ram disk is tricky but possible.
-  Use a second CLI/Shell to delete object files during the second linking
-  pass.
+	* OPTIONS=<options> - Options as avaliable in the NetHack.cnf file.
 
-If everything works the first time, this process takes no less than three
-hours, using setup 1b and a 2.5M Amiga 1000 with 68000.
+	* HACKDIR=<directory> - Set NetHack working directory to be this
+	  directory.
 
-If you have a different setup than I have, you might change the appropriate
-things appropriately :-)
+	* RAMDISK=<ram disk> - Set up ram disk option.
 
-I haven't provided a makefile for the auxiliary files, see Makefile.auxil
-and the directory listing below for that.
+	* LEVELS=<levels> - Intermediate level saving device/directory.
 
-     hack (dir)
-       8				   2088
-  castle			      1945
-  cmdhelp			      3035
-  data				     11612
-  endgame			       987
-  hack.font			       264
-  help				      5799
-  hh				      2606
-  history			      1503
-  license			      4417
-  NetHack			    654324
-  NetHack.cnf			      1990
-  opthelp			      3549
-  oracles			      3370
-  perm					 0
-  record			       197
-  rumors			     16899
-  tower1			       369
-  tower2			       337
-  tower3			       371
+	* PATH=<path> - To search for files such as rumors, help, etc.
 
-These sizes may vary from version to version
+	* CMDLINE=<args> - Arguments as passed on command line from cli.
+	  Note:  only the following flags are valid at this point: n, X,
+	  D, and r.
 
-Happy NetHacking!
+	* SCORE <options> - Display the record of scores.  Options as
+	  available on the command line from CLI after a -s flag.
 
--Olaf Seibert
+    Note that the NetHack.cnf file is read first, then the ToolTypes.  This
+    means that the options specified in the NetHack.cnf act as defaults
+    which can be overridden by an individual's personal icon's ToolTypes.
+    Thus the system oriented entries (HACKDIR, RAMDISK, LEVELS, and PATH)
+    should generally be set only in NetHack.cnf.  NetHack.cnf should have
+    default values for OPTIONS, which will generally be overridden by
+    ToolTypes entries.
+
+Section II - General Compilation Instructions
+---------------------------------------------
+
+    1)  Before doing any compilation, read the README files distributed
+	with the source.  These should familiarize you with the
+	source tree layout, and what files are shared with what computers.
+	Generally, everything in the amiga directory is used exclusively by
+	the Amiga.
+
+    2)  Create the sub-directories, and name them as indicated in the source
+	README file.  If you have a hard drive, this is fairly trivial
+	(create a directory, and corresponding NetHack sub-directories).
+	If you have only floppies, you'll have to be a bit more clever.
+	The makefile (Makefile.ami) is set up to depend upon certain
+        assignments, providing the developer with a fairly flexible
+	environment.  The main directory with which a floppy user will have
+        problems is the src directory.  In order to fit all of the source on
+	to floppies, the src directory has been split into logical units.
+	For example, the makefile expects:
+
+	    Src1:  contains src [a-l]*.c
+	    Src2:  contains src [m-po]*.c
+	    Src3:  contains src [pr-z]*.c
+
+	See makefile.ami for assignment assumptions.
+
+    3)  Edit config.h to your liking and system configuration.  The following
+	are strong suggestions for certain #define values.
+
+	    + UNIX - DO NOT DEFINE
+	    + MSDOS - DO NOT DEFINE HERE, IT WILL BE DONE LATER FOR YOU
+	    + COMPRESS - DO NOT DEFINE
+	    + ZEROCOMP - DEFINE
+	    + CHDIR - RECOMMENDED
+	    + HACKDIR - "NetHack:" MANDATORY
+	    + BITFIELDS - DO NOT DEFINE IF YOU HAVE MANX3.6
+	    + CLIPPING - DO NOT DEFINE
+
+	4) Edit amiconf.h to your liking.  It is recommended you leave
+	   everything as is with the following exceptions:
+
+            + TEXTCOLOR - Will allow the use of colors for text objects in
+              the game.  For instance, red gems will be red.  Unfortunately,
+              at this time this is only configurable at compile time, when
+	      it really should be configurable at run time.  Note also that
+	      there is a slight bug when running textcolor, namely that when
+	      you are polymorphed, the color you are is not correct because
+	      the cursor overlays the default monster color.  You can see
+	      yourself fine, but you do not represent the correct monster color.
+
+	    + HACKFONT - Enable if you want to use the special NetHack font,
+	      disable otherwise.
+
+            + AMIGA_WBENCH - Enable if you want the WorkBench interface to
+	      be compiled into the code. This does NOT preclude you from
+              running from CLI.
+
+	5) If you have significant spare ram, you may wish to make your
+	   compiler resident (Lattice 5.04's lc, lc1, and lc2 need about
+	   215K while Manx's cc and as need about 135K).
+
+	6) At this point, you're almost ready to begin a compile.  Read VERY
+	   CAREFULLY through the Makefile to familiarize yourself with which
+	   assignments are assumed.  Otherwise, you're going to get something
+	   like "Insert O_Src1: in any drive." requestors.  If you have the
+	   uudecode program and need to uudecode the various *.uu files from
+	   the Amiga: directory (font and icons), define the UUDEC symbol
+	   at the appropriate place in the makefile.  The first thing
+	   Makefile.ami does is build a program called 'makedefs', which
+	   handles a variety of data file generation.  Makedefs will then be
+	   run to create a few files, followed by an alphabetically sorted
+	   compilation of the entire source tree.  This compilation process
+	   will compile selected files from Amiga:, Others:, Src1:, Src2:,
+	   and Src3: directories.  If all goes well, all of the  objects will
+	   be linked together to form a binary.  With all of the options
+	   enabled, the Manx 3.6 executable runs about 790K, and the Lattice
+	   executable runs about 790K (without debug hunks, or about 1050K
+	   with debug hunks - see below).
+
+SECTION III - Lattice Compilation Instructions
+----------------------------------------------
+
+    If you're a Lattice user, you should be pretty well set up at this point.
+    If you have some spare ram, you may wish to examine the Amiga:compact.lat
+    script.  This script will reduce your compile time by using Lattice's
+    lcompact utility to pre-scan the header files and place compacted copies
+    onto the Ram: disk.  Read through the comments in that script if you
+    wish to utilize it.
+
+    Due to a problem with version 5.04, you must make one change:  edit the
+    file Others:lev_lex.c.  At (or near) line 1002 is the definition for the
+    function yyunput.  Delete the word "register" from this line.  Note that
+    if you neglect to do this, you will get an Error 72 at line 318 of file
+    lev_comp.l (this is the correct message - lev_lex.c is flex output).  Save
+    the changed file.  Later compiler versions may or may not need this fix.
+
+    Type 'CD NetHack:' and then type "lmk -f Amiga:Makefile.ami".  If all
+    goes well, you'll have a working binary a couple of hours later (depending
+    on your hardware configuration).  A couple of notes and warnings from the
+    Lattice users on the team:
+
+	* The primary Lattice compiler used on the Amiga port was version
+	  5.04.  However, the patch bringing the compiler to 5.04a does
+	  not appear necessary for compiling NH3.0pl7.
+
+	* The function monsndx, in file mondata.c, has a section of code
+	  which Lattice 5.04 compiles incorrectly.  A hack has been written
+	  around this so that Lattice will generate the correct code.  It is
+	  recommended that you leave this in place, and not attempt to
+	  "improve" it.  As of this date (1/90) Lattice is preparing 5.05
+	  which, it is being claimed, fixes this bug.
+
+	* Included in the Lattice port is code for generating a SnapShot.tb
+	  file upon catching various internal disasters.  That is why the
+	  -d1 flag is in the makefile.  This adds about 270K to the disk
+	  image, but it does not increase the run time memory requirements.
+	  Floppy users will have to delete -d1 flag, or the binary won't
+	  fit on a single disk.
+
+	* The optimizer seems to work, but no extensive testing has been
+	  done with it.
+
+	* There are a large number of warnings under Lattice, which are
+	  harmless.
+
+SECTION IV  - AZTEC/MANX Compilation Instructions
+-------------------------------------------------
+
+    NetHack 3.0 compiles and runs fine under Aztec 3.6, but a little bit
+    of work is necessary.  The problem is that the Aztec pre-processor
+    is fairly stupid, and doesn't recognize the defined() pre-processor
+    function.  Unfortunately, this function is laced throughout the NetHack
+    code, hence removing it would be quite a chore, and end up rendering the
+    code much more unreadable.
+
+    There are a couple solutions to this problem.  The first solution is to
+    run every source file through some c pre-processor which understands
+    defined() (the Decus cpp works fine).  The problem with this solution is
+    that the time it takes to compile/recompile is (at least) doubled.  My
+    configuration is a 33 meg hard drive and 2 1/2 megs of ram, and it still
+    takes over 4 hours to generate a binary from scratch!  Also note that
+    Makefile.ami was not built to support cpp, and so you'll have to modify
+    the makefile to add this step.
+
+    But don't despair, have we got a deal for you!  The Apple NetHackers also
+    had a similar problem with defined, which led them to developing a
+    defined() hack (located in config.h).  This hack basically adds
+    the defined() functionality to the Aztec pre-processor, with the exception
+    of performing this operation on strings.  Fortunately, using defined() on
+    strings is done very rarely, and they are handled on an individual basis.
+    (The only one I can think of right now is WIZARD/WIZARD_NAME).  What's the
+    catch, you ask?  Well, there is one. The problem is as follows.
+
+    The Aztec compiler doesn't know how to handle const, volatile, and signed
+    data types.  Normally, this can be fixed by sticking a #define const
+    before const is used, thereby rendering it disabled.  Unfortunately, the
+    Aztec pre-processor, in its infinite wisdom, WILL NOT LET YOU REDEFINE
+    these strings.
+
+    The solution to this is not quite as elegant as the solution to the
+    defined() problem above.  It requires a one time modification to the
+    Aztec cc binary.  (DO THIS TO A BACKUP COPY OF CC!!)  Find a disk zapper,
+    NewZap works fine.  Then do a search for the string 'const'.  Change
+    the const, signed and volatile strings to __nst, __gned and __latile.
+    (It's really not as bad as it sounds....)
+
+    A couple of warnings regarding the 3.6 compiler/NetHack:
+
+	* The 3.6 Manx bitfield handling is buggy at best.  Though I can't
+	  specifically cite a flaw when NetHack is compiled with it, I
+	  don't trust it.  I recommend you don't either.
+
+	* If your signal.h (in your Manx include directory) has SIGINT
+	  commented out, go ahead and uncomment it.
+
+	* If you use the cpp method, pass -DAZTEC_C and -DMCH_AMIGA to
+          the cpp.  These are defined automatically by Aztec C, but are
+          ineffective if the source is run through a filter first.
+
+	* There will be a few harmless warnings in the compile process.
+	  These warnings will be in amidos.c, and pickup.c.  There may also
+	  be a warning when defining lev_lex.c that LEV_LEX is redefined.  This
+	  is OK.  Any other warnings should be investigated.
+
+	* I haven't tried sdb on it, as I can't affort the disk space.  (You'll
+	  have to save the intermediate cpp files if you cpp).  Unless you've
+          got a whopping amount of memory, I suspect it's going to be too large.
+
+	* There are 2 versions of lev_lex.c that are being distributed; one
+	  generated by (unix) lex, and one generated by gnu flex.  The gnu
+	  flex lev_lex.c should work without modification.  If you use the
+          lex lev_lex.c, you will get 4 warnings regarding ptr/int conversions.
+          Change the masks from (int) to (long) to generate a clean binary.
+
+	* Unfortunately, Manx 5.0 arrived too late to integrate into patch
+	  level 7, but merging will occur in the next few weeks.  Contact us
+	  (below) for progress/hints.
+
+			- - - - - - - - - - - -
+
+If you have problems or questions, email to nethack-bugs@linc.cis.upenn.edu,
+or directly to Greg Olson (golson@sundown.sun.com)  for Manx questions,
+to Ken Lorber (keni@dtix.dt.navy.mil) for Lattice questions, or to
+Richard Addison (addison@pollux.usc.edu) for either.  Have fun!!

@@ -30,6 +30,16 @@
 #include "hack.h"
 
 #ifdef MUSIC
+#include <ctype.h>
+
+static void FDECL(awaken_monsters,(int));
+static void FDECL(put_monsters_to_sleep,(int));
+static void FDECL(charm_snakes,(int));
+static void FDECL(calm_nymphs,(int));
+static void NDECL(awaken_soldiers);
+static void FDECL(charm_monsters,(int));
+static void FDECL(do_earthquake,(int));
+static int FDECL(do_improvisation,(struct obj *));
 
 /*
  * Wake every monster in range...
@@ -48,7 +58,8 @@ int distance;
 			  mtmp->mflee = 1;
 		} else if (dist(mtmp->mx, mtmp->my) < distance) {
 			mtmp->msleep = 0;
-			mtmp->mfroz = 0;
+			mtmp->mcanmove = 1;
+			mtmp->mfrozen = 0;
 		}
 		mtmp = mtmp->nmon;
 	}
@@ -66,8 +77,8 @@ int distance;
 
 	while(mtmp) {
 		  if (dist(mtmp->mx, mtmp->my) < distance)
-		    if(!mtmp->mfroz && !resist(mtmp, WAND_SYM, 0, NOTELL))
-		      mtmp->mfroz = 1;
+		    if(mtmp->mcanmove && !resist(mtmp, WAND_SYM, 0, NOTELL))
+		      mtmp->mcanmove = mtmp->mfrozen = 0;
 		mtmp = mtmp->nmon;
 	}
 }
@@ -122,8 +133,10 @@ awaken_soldiers() {
 	register struct monst *mtmp = fmon;
 
 	while(mtmp) {
-		if (IS_SOLDIER(mtmp->data))
-			mtmp->mpeaceful = mtmp->msleep = mtmp->mfroz = 0;
+		if (IS_SOLDIER(mtmp->data)) {
+			mtmp->mpeaceful = mtmp->msleep = 0;
+			mtmp->mcanmove = 1;
+		}
 		mtmp = mtmp->nmon;
 	}
 #endif /* ARMY /**/
@@ -219,7 +232,7 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 					int saved_conf = u.umconf;
 
 					if(!cansee(x,y))
-					    pline("It has died!");
+					    pline("It is destroyed!");
 					else {
 					    You("destroy %s!",
 					    mtmp->mtame ?
@@ -242,7 +255,8 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 					    You("fall into a chasm!");
 					    u.utrap = rn1(6,2);
 					    u.utraptype = TT_PIT;
-					    losehp(rnd(6),"fall into a chasm");
+					    losehp(rnd(6),"fell into a chasm",
+						NO_KILLER_PREFIX);
 					    selftouch("Falling, you");
 				    }
 			    } else
@@ -302,7 +316,9 @@ struct obj *instr;
 			} else {
 				if (!u.dx && !u.dy && !u.dz) {
 					if((damage = zapyourself(instr)))
-					  losehp(damage,"self-inflicted injury");
+					  losehp(damage,
+		self_pronoun("using a magical horn on %sself", "him"),
+					  NO_KILLER_PREFIX);
 					makeknown(instr->otyp);
 					return(2);
 				}
@@ -368,7 +384,7 @@ struct obj *instr;
 	pline("What tune are you playing? [what 5 notes] ");
 	getlin(buf);
 	for(s=buf;*s;s++)
-	    *s = (*s >='a' && *s<='z') ? 'A' + *s - 'a' : *s;
+		if (islower(*s)) *s=toupper(*s);
 	You("extract a strange sound from the %s!",xname(instr));
 	/* Check if there was the Stronghold drawbridge near
 	 * and if the tune conforms to what we're waiting for.

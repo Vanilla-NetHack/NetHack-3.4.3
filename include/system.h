@@ -7,44 +7,35 @@
 
 #define E extern
 
-#ifndef THINKC4
-# if defined(AMIGA) || defined(MACOS)
-#  define _SIZE_T 1
-typedef unsigned int	size_t;
-# else
-#  include <sys/types.h>
-# endif
-#endif
-#if defined(AZTEC) || defined(THINKC4)
-typedef long	off_t;
-#endif
-
-#ifdef ULTRIX
-/* The Ultrix v3.0 <sys/types.h> seems to be very wrong. */
-# define off_t long
-# define time_t long
+/* some old <sys/types.h> may not define off_t and size_t; if your system is
+ * one of these, define them by hand below
+ */
+#if !defined(THINKC4) && !defined(AMIGA) && !defined(MACOS)
+# include <sys/types.h>
 #endif
 
 #if defined(TOS) && defined(__GNUC__) && !defined(_SIZE_T)
 # define _SIZE_T
 #endif
 
-/* some old <sys/types.h> may not define off_t and size_t; if your system is
- * one of these, define them here
- */
-#ifdef MSDOS
+#if defined(MSDOS) || ((defined(AMIGA) || defined(MACOS)) && !defined(THINKC4))
 # ifndef _SIZE_T
 #  define _SIZE_T
 typedef unsigned int	size_t;
 # endif
-# ifdef __TURBOC__
-typedef long  off_t;
-# endif
 #endif
 
-#ifdef VMS
+#ifdef ULTRIX
+/* The Ultrix v3.0 <sys/types.h> seems to be very wrong. */
+# define time_t long
+#endif
+#if defined(ULTRIX) || defined(VMS)
 # define off_t long
 #endif
+#if defined(AZTEC) || defined(THINKC4) || (defined(MSDOS) && defined(__TURBOC__))
+typedef long	off_t;
+#endif
+
 
 /* You may want to change this to fit your system, as this is almost
  * impossible to get right automatically.
@@ -72,15 +63,20 @@ E void srand48();
 E void FDECL(exit, (int));
 # endif /* MSDOS */
 E void FDECL(free, (genericptr_t));
-# ifndef MACOS
+# ifdef AMIGA
+E int FDECL(perror, (const char *));
+# else
+#  ifndef MACOS
 E void FDECL(perror, (const char *));
+#  endif
 # endif
 #endif
-
 #if defined(BSD) || defined(ULTRIX) || (defined(MACOS) && !defined(THINKC4))
 E int qsort();
 #else
+# ifndef LATTICE
 E void FDECL(qsort, (genericptr_t,size_t,size_t,int(*)(genericptr_t,genericptr_t)));
+# endif
 #endif
 
 #ifdef ULTRIX
@@ -104,6 +100,10 @@ E int FDECL(chdir, (char *));
 E char *FDECL(getcwd, (char *,int));
 #endif
 
+#ifdef TOS
+E int FDECL(creat, (const char *, int));
+#endif
+
 /* both old & new versions of Ultrix want these, but real BSD does not */
 #ifdef ultrix
 E void abort();
@@ -114,9 +114,17 @@ E void FDECL(abort, (void));
 E void FDECL(_exit, (int));
 E int FDECL(system, (const char *));
 #endif
+#ifdef HPUX
+E long FDECL(fork, (void));
+#endif
 
 #ifdef SYSV
 E char *memcpy();
+#endif
+#ifdef HPUX
+E void *FDECL(memcpy, (char *,char *,int));
+E int FDECL(memcmp, (char *,char *,int));
+E void *FDECL(memset, (char*,int,int));
 #endif
 #ifdef MSDOS
 # if defined(TOS) && defined(__GNUC__)
@@ -124,9 +132,16 @@ E int FDECL(memcmp, (const char *,const char *,size_t));
 E char *FDECL(memcpy, (char *,const char *,size_t));
 E char *FDECL(memset, (char*,int,size_t));
 # else
+#  ifndef LATTICE
+#    ifdef MSC
+void * _CDECL memcpy(void *, const void *, size_t);
+void * _CDECL memset(void *, int, size_t);
+#    else
 E int FDECL(memcmp, (char *,char *,unsigned int));
 E char *FDECL(memcpy, (char *,char *,unsigned int));
 E char *FDECL(memset, (char*,int,int));
+#    endif
+#  endif
 # endif /* TOS */
 #endif
 
@@ -136,10 +151,19 @@ E void sleep();
 #if defined(ULTRIX) || defined(SYSV)
 E unsigned sleep();
 #endif
+#if defined(HPUX)
+E unsigned int FDECL(sleep, (unsigned int));
+#endif
 
 E char *FDECL(getenv, (const char *));
 E char *getlogin();
-E int getpid();
+#ifdef HPUX
+E long FDECL(getuid, (void));
+E long FDECL(getgid, (void));
+E long FDECL(getpid, (void));
+#else
+E int FDECL(getpid, (void));
+#endif
 
 /*# string(s).h #*/
 
@@ -148,7 +172,7 @@ E char	*FDECL(strncpy, (char *,const char *,size_t));
 E char	*FDECL(strcat, (char *,const char *));
 E char	*FDECL(strncat, (char *,const char *,size_t));
 
-#if defined(SYSV) || (defined(MSDOS) && !defined(AMIGA)) || defined(THINK_C)
+#if defined(SYSV) || defined(MSDOS) || defined(AMIGA) || defined(THINK_C) || defined(VMS) || defined(HPUX)
 E char	*FDECL(strchr, (const char *,int));
 E char	*FDECL(strrchr, (const char *,int));
 #else /* BSD */
@@ -159,11 +183,19 @@ E char	*FDECL(rindex, (const char *,int));
 
 E int	FDECL(strcmp, (const char *,const char *));
 E int	FDECL(strncmp, (const char *,const char *,size_t));
-#if defined(MSDOS) || defined(THINKC4)
+#ifdef MSDOS
 E size_t FDECL(strlen, (const char *));
 #else
-E int	strlen();
-#endif
+# ifdef HPUX
+E unsigned int	FDECL(strlen, (char *));
+# else
+#  ifdef THINKC4
+E size_t	FDECL(strlen, (char *));
+#  else
+E int	FDECL(strlen, (char *));
+#  endif /* THINKC4 */
+# endif /* HPUX */
+#endif /* MSDOS */
 
 /* Old varieties of BSD have char *sprintf().
  * Newer varieties of BSD have int sprintf() but allow for the old char *.
@@ -171,7 +203,7 @@ E int	strlen();
  * If your system doesn't agree with this breakdown, you may want to change
  * this declaration, especially if your machine treats the types differently.
  */
-#if defined(BSD) || defined(ULTRIX)
+#if (defined(BSD) || defined(ULTRIX)) && !defined(DGUX) && !defined(NeXT)
 # define OLD_SPRINTF
 E char *sprintf();
 #else
@@ -195,7 +227,7 @@ E int FDECL(vprintf, (const char *, va_list));
 #define Strcat	(void) strcat
 #define Strcpy	(void) strcpy
 
-#if defined(MACOS) && !defined(MAKEDEFS_C)
+#if defined(MACOS) && defined(CUSTOM_IO)
 # undef printf
 # undef puts
 # undef putchar
@@ -214,21 +246,34 @@ E int FDECL(vprintf, (const char *, va_list));
 # define Vsprintf (void) vsprintf
 #endif
 
+#ifdef TOS
+E int FDECL(tgetent, (const char *,const char *));
+E int FDECL(tgetnum, (const char *));
+E int FDECL(tgetflag, (const char *));
+E char *FDECL(tgetstr, (const char *,char **));
+E char *FDECL(tgoto, (const char *,int,int));
+E void FDECL(tputs, (const char *,int,int (*)()));
+#else
 E int FDECL(tgetent, (char *,char *));
 E int FDECL(tgetnum, (char *));
 E int FDECL(tgetflag, (char *));
 E char *FDECL(tgetstr, (char *,char **));
 E char *FDECL(tgoto, (char *,int,int));
 E void FDECL(tputs, (char *,int,int (*)()));
+#endif
 
+#ifndef MACOS
 E genericptr_t FDECL(malloc, (size_t));
+#endif
 
 /* time functions */
 
 #ifndef MACOS
+# ifndef LATTICE
 E struct tm *FDECL(localtime, (const time_t *));
+# endif
 
-# if defined(ULTRIX) || defined(SYSV) || (defined(MSDOS) && !defined(AMIGA))
+# if defined(ULTRIX) || defined(SYSV) || defined(MSDOS)
 E time_t FDECL(time, (time_t *));
 # else
 E long FDECL(time, (time_t *));
@@ -236,8 +281,11 @@ E long FDECL(time, (time_t *));
 #endif
 
 #ifdef MSDOS
+# ifdef abs
+# undef abs
+# endif
 E int FDECL(abs, (int));
-E int FDECL(atoi, (char *));
+E int FDECL(atoi, (const char *));
 #endif
 
 #undef E

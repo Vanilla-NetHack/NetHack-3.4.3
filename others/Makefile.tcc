@@ -1,22 +1,10 @@
-#	SCCS Id: @(#)Makefile.tcc	3.0	89/11/18
+#	SCCS Id: @(#)Makefile.tcc	3.0	89/11/20
 #	PC NetHack 3.0 Makefile for Turbo C 2.0
 #	Perpetrator: Mike Threepoint, 890707
 
 ###
-### Directories
-###
-# makedefs.c hardcodes the include and auxil directories, don't change them.
-OBJ	= o
-INCL	= ..\include
-AUX	= ..\auxil
-SRC	= ..\src
-OTHERS	= ..\others
-
-
-###
 ### Locals
 ###
-
 # the name of the game
 GAME	= nethack
 
@@ -28,19 +16,36 @@ GAMEFILE = $(GAMEDIR)\$(GAME).exe
 
 
 ###
+### Directories
+###
+# makedefs.c hardcodes the include and auxil directories, don't change them.
+OBJ	= o
+INCL	= ..\include
+AUX	= ..\auxil
+SRC	= ..\src
+OTHERS	= ..\others
+
+# where the Turbo C libraries are kept
+LIB     = \turbo\c\lib
+
+# directory NDMAKE uses for temporary files
+MAKE_TMP = $(TMP)
+
+
+###
 ### Compiler
 ###
 CC	= tcc
 
 # must use Huge model; Large is limited to 64K total global data.
-MODEL	= h
+MODEL   = h
 
 # signed chars, jump optimize, strict ANSI, register optimize, no stack frame
 CFLAGS	= -c -no -m$(MODEL) -I$(INCL) -K- -O -A -Z -k- -w-pia -w-pro $(WIZARD)
 ## Note: Turbo C 2.0's -Z is bugged.  If you have weird problems, try -Z-.
 
 # wizardly defines
-WIZARD	= -DDEBUG
+WIZARD  =
 
 # linkers
 TLINK	= tlink
@@ -70,29 +75,48 @@ TLFLAGS = /x/c
 ASM	= tasm
 AFLAGS	= /MX
 
+# yacc/lex
+YACC	= bison
+LEX	= flex
+
 
 ###
 ### Rules
 ###
 # search order
 .SUFFIXES: .exe .obj .c .asm .y .l
+
+# .l -> .c (for flex)
+.l.c:
+	$(LEX) $<
+	del $@
+	ren lex.yyc $@
+# .y -> .c (for bison)
+.y.c:
+	$(YACC) $<
+	del $@
+	ren y.tbc $@
+	del $*.h
+	ren y.tbh $*.h
 # .c -> .obj
 .c.obj:
 	$(CC) $(CFLAGS) -c $<
 # .asm -> .obj
 .asm.obj:
-	$(ASM) $< $(AFLAGS);
+	$(ASM) $(AFLAGS) $<;
 # .obj -> .exe (for tlink)
 .obj.exe:
 	$(TLINK) $(TLFLAGS) $(C0) $<, $@,, $(LIBS);
-## Note: .y -> .c or .l -> .c rules are missing, because none of the developers
-##	 had a yacc or lex for the PC to write rules for.
+
+# NDMAKE automatic response file generation
+.RESPONSE_LINK: tlink
+.RESPONSE_LIB:  tlib
 
 
 ###
 ### Optional features (see pcconf.h)
 ###
-# uncomment the blank definitions if not used
+# uncomment the definitions used
 
 # overlays
 #OVERLAY = $(OBJ)\trampoli.obj ovlmgr.obj
@@ -139,8 +163,8 @@ TERMLIST = -+ $(OBJ)\tgetent.obj -+ $(OBJ)\tgetflag.obj -+ $(OBJ)\tgetnum.obj \
 # panic.c is unnecessary for makedefs.exe and lev_comp.exe.
 # ioctl.c is unnecessary for nethack.exe.
 
-ROOT =	$(OBJ)\main.obj 	$(OBJ)\allmain.obj	$(OBJ)\termcap.obj \
-	$(OBJ)\cmd.obj		$(OBJ)\hack.obj 	$(OBJ)\msdos.obj \
+ROOT =	$(OBJ)\main.obj    $(OBJ)\allmain.obj $(OBJ)\msdos.obj \
+	$(OBJ)\termcap.obj $(OBJ)\cmd.obj     $(OBJ)\hack.obj \
 	$(OVERLAY)
 
 # the overlays -- the Microsoft Overlay Linker is limited to 63
@@ -150,51 +174,51 @@ OVL02 = $(OBJ)\topl.obj
 OVL03 = $(OBJ)\pri.obj $(OBJ)\prisym.obj
 OVL04 = $(OBJ)\rnd.obj $(RANDOM)
 OVL05 = $(OBJ)\timeout.obj
-OVL06 = $(OBJ)\mon.obj $(OBJ)\exper.obj $(OBJ)\attrib.obj
-OVL07 = $(OBJ)\monst.obj $(OBJ)\mondata.obj
-OVL08 = $(OBJ)\monmove.obj $(OBJ)\track.obj
-OVL09 = $(OBJ)\dog.obj $(OBJ)\dogmove.obj
-OVL10 = $(OBJ)\makemon.obj
-OVL11 = $(OBJ)\do_name.obj $(OBJ)\getline.obj
-OVL12 = $(OBJ)\weapon.obj
-OVL13 = $(OBJ)\wield.obj
-OVL14 = $(OBJ)\invent.obj
-OVL15 = $(OBJ)\objects.obj
-OVL16 = $(OBJ)\mkobj.obj $(OBJ)\o_init.obj
-OVL17 = $(OBJ)\objnam.obj
-OVL18 = $(OBJ)\worn.obj
-OVL19 = $(OBJ)\do_wear.obj
-OVL20 = $(OBJ)\trap.obj
-OVL21 = $(OBJ)\dothrow.obj
-OVL22 = $(OBJ)\dokick.obj
-OVL23 = $(OBJ)\uhitm.obj
-OVL24 = $(OBJ)\mhitu.obj
-OVL25 = $(OBJ)\mcastu.obj
-OVL26 = $(OBJ)\mhitm.obj
-OVL27 = $(OBJ)\mthrowu.obj
-OVL28 = $(OBJ)\steal.obj
-OVL29 = $(OBJ)\priest.obj
-OVL30 = $(OBJ)\vault.obj
-OVL31 = $(OBJ)\shk.obj $(OBJ)\shknam.obj
-OVL32 = $(OBJ)\wizard.obj
-OVL33 = $(OBJ)\worm.obj
-OVL34 = $(OBJ)\were.obj
-OVL35 = $(OBJ)\demon.obj
-OVL36 = $(OBJ)\artifact.obj
-OVL37 = $(OBJ)\music.obj $(OBJ)\dbridge.obj
-OVL38 = $(OBJ)\sit.obj $(OBJ)\fountain.obj
-OVL39 = $(OBJ)\sounds.obj
-OVL40 = $(OBJ)\spell.obj
-OVL41 = $(OBJ)\read.obj
-OVL42 = $(OBJ)\potion.obj
-OVL43 = $(OBJ)\zap.obj
-OVL44 = $(OBJ)\eat.obj $(OBJ)\rumors.obj
-OVL45 = $(OBJ)\do.obj
-OVL46 = $(OBJ)\search.obj
-OVL47 = $(OBJ)\lock.obj
-OVL48 = $(OBJ)\apply.obj
-OVL49 = $(OBJ)\engrave.obj
-OVL50 = $(OBJ)\write.obj
+OVL06 = $(OBJ)\mon.obj $(OBJ)\exper.obj
+OVL07 = $(OBJ)\attrib.obj
+OVL08 = $(OBJ)\monst.obj $(OBJ)\mondata.obj
+OVL09 = $(OBJ)\monmove.obj $(OBJ)\track.obj
+OVL10 = $(OBJ)\dog.obj $(OBJ)\dogmove.obj
+OVL11 = $(OBJ)\makemon.obj
+OVL12 = $(OBJ)\do_name.obj $(OBJ)\getline.obj
+OVL13 = $(OBJ)\weapon.obj
+OVL14 = $(OBJ)\wield.obj
+OVL15 = $(OBJ)\invent.obj
+OVL16 = $(OBJ)\objects.obj
+OVL17 = $(OBJ)\mkobj.obj $(OBJ)\o_init.obj
+OVL18 = $(OBJ)\objnam.obj
+OVL19 = $(OBJ)\worn.obj
+OVL20 = $(OBJ)\do_wear.obj
+OVL21 = $(OBJ)\trap.obj
+OVL22 = $(OBJ)\dothrow.obj
+OVL23 = $(OBJ)\dokick.obj
+OVL24 = $(OBJ)\uhitm.obj
+OVL25 = $(OBJ)\mhitu.obj
+OVL26 = $(OBJ)\mcastu.obj
+OVL27 = $(OBJ)\mhitm.obj
+OVL28 = $(OBJ)\mthrowu.obj
+OVL29 = $(OBJ)\steal.obj
+OVL30 = $(OBJ)\priest.obj
+OVL31 = $(OBJ)\vault.obj
+OVL32 = $(OBJ)\shk.obj $(OBJ)\shknam.obj
+OVL33 = $(OBJ)\wizard.obj
+OVL34 = $(OBJ)\worm.obj
+OVL35 = $(OBJ)\were.obj
+OVL36 = $(OBJ)\demon.obj
+OVL37 = $(OBJ)\artifact.obj
+OVL38 = $(OBJ)\music.obj $(OBJ)\dbridge.obj
+OVL39 = $(OBJ)\sit.obj $(OBJ)\fountain.obj
+OVL40 = $(OBJ)\sounds.obj
+OVL41 = $(OBJ)\spell.obj
+OVL42 = $(OBJ)\read.obj
+OVL43 = $(OBJ)\potion.obj
+OVL44 = $(OBJ)\zap.obj
+OVL45 = $(OBJ)\eat.obj $(OBJ)\rumors.obj
+OVL46 = $(OBJ)\do.obj
+OVL47 = $(OBJ)\search.obj
+OVL48 = $(OBJ)\lock.obj
+OVL49 = $(OBJ)\apply.obj
+OVL50 = $(OBJ)\engrave.obj $(OBJ)\write.obj
 OVL51 = $(OBJ)\pray.obj
 OVL52 = $(OBJ)\options.obj
 OVL53 = $(OBJ)\pickup.obj
@@ -496,11 +520,11 @@ $(OBJ)\topl.obj:	$(HACK_H)
 $(OBJ)\topten.obj:	$(HACK_H)
 $(OBJ)\track.obj:	$(HACK_H)
 $(OBJ)\trampoli.obj:	$(HACK_H)
-$(OBJ)\trap.obj:	$(HACK_H)   $(INCL)\edog.h	 $(INCL)\trapname.h
+$(OBJ)\trap.obj:	$(HACK_H)   $(INCL)\edog.h
 $(OBJ)\u_init.obj:	$(HACK_H)
 $(OBJ)\uhitm.obj:	$(HACK_H)   $(INCL)\artifact.h
 $(OBJ)\vault.obj:	$(HACK_H)   $(INCL)\vault.h
-$(OBJ)\version.obj:	$(HACK_H)   $(INCL)\date.h
+$(OBJ)\version.obj:	$(HACK_H)   $(INCL)\date.h	 $(INCL)\patchlev.h
 $(OBJ)\weapon.obj:	$(HACK_H)
 $(OBJ)\were.obj:	$(HACK_H)
 $(OBJ)\wield.obj:	$(HACK_H)

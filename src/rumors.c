@@ -22,7 +22,8 @@
 /* The oracle file consists of a number of multiple-line records, separated
  * (but not terminated) by "-----" lines.
  */
-
+static void NDECL(init_rumors);
+static void NDECL(outoracle);
 long first_rumor = sizeof(long);
 long true_rumor_size, false_rumor_size, end_rumor_file;
 #ifdef ORACLE
@@ -43,7 +44,13 @@ init_rumors()
 	Strcat(tmp,RUMORFILE);
 	if(fp = fopen(tmp, "r")) {
 #else
+# ifdef MACOS
+	if(!(fp = fopen(RUMORFILE, "r")))
+		fp = openFile(RUMORFILE, "r");
+	if (fp) {
+# else
 	if(fp = fopen(RUMORFILE, "r")) {
+# endif
 #endif
 	    (void) fread((genericptr_t)&true_rumor_size,sizeof(long),1,fp);
 	    (void) fseek(fp, 0L, 2);
@@ -67,7 +74,13 @@ init_rumors()
 	Strcat(tmp,ORACLEFILE);
 	if(fp = fopen(tmp, "r")) {
 #else
+# ifdef MACOS
+	if(!(fp = fopen(ORACLEFILE, "r")))
+		fp = openFile(ORACLEFILE, "r");
+	if (fp) {
+# else
 	if(fp = fopen(ORACLEFILE, "r")) {
+# endif
 #endif
 	    (void) fseek(fp, 0L, 2);
 	    oracle_size = ftell(fp);
@@ -112,7 +125,7 @@ boolean cookie;
 	if(rumors = fopen(tmp, "r")) {
 #else
 # ifdef MACOS
-	if(rumors = fopen(RUMORFILE, "r"))
+	if(!(rumors = fopen(RUMORFILE, "r")))
 		rumors = openFile(RUMORFILE, "r");
 	if (rumors) {
 # else
@@ -130,6 +143,10 @@ boolean cookie;
 			break;
 		    case -1: beginning = first_rumor + true_rumor_size;
 			tidbit = true_rumor_size + Rand() % false_rumor_size;
+			break;
+		    default:
+			impossible("strange truth value for rumor");
+			tidbit = 0; beginning = first_rumor;
 			break;
 		}
 		(void) fseek(rumors, first_rumor + tidbit, 0);
@@ -176,7 +193,7 @@ outoracle()
 	if(oracles = fopen(tmp, "r")) {
 #else
 # ifdef MACOS
-	if(oracles = fopen(ORACLEFILE, "r"))
+	if(!(oracles = fopen(ORACLEFILE, "r")))
 		oracles = openFile(ORACLEFILE, "r");
 	if (oracles) {
 # else

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mklev.c	3.0	88/11/24
+/*	SCCS Id: @(#)mklev.c	3.0	89/12/06
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,12 +9,29 @@
 /* conversion of result to int is reasonable */
 
 #ifdef SINKS
-static void mksink();
+static void FDECL(mksink,(struct mkroom *));
 #endif
 #ifdef ALTARS
-static void mkaltar();
+static void FDECL(mkaltar,(struct mkroom *));
 #endif
-static boolean occupied();
+static boolean FDECL(occupied,(XCHAR_P,XCHAR_P));
+static void NDECL(makevtele);
+static void NDECL(init_levels);
+static void NDECL(makelevel);
+static boolean FDECL(bydoor,(XCHAR_P,XCHAR_P));
+static boolean FDECL(place_niche,(struct mkroom *,int*,int*,int*));
+static void FDECL(makeniche,(int));
+static void NDECL(make_niches);
+static void NDECL(makebigroom);
+static void FDECL(addrsx,(int,int,int,int,BOOLEAN_P));
+static void FDECL(addrs,(int,int,int,int));
+static int FDECL(comp,(genericptr_t,genericptr_t));
+static void FDECL(dosdoor,(int,int,struct mkroom *,int));
+static void NDECL(makecorridors);
+static void FDECL(join,(int,int));
+static int NDECL(makerooms);
+static int FDECL(maker,(SCHAR_P,SCHAR_P,SCHAR_P,SCHAR_P,BOOLEAN_P));
+static void FDECL(finddpos,(coord *,XCHAR_P,XCHAR_P,XCHAR_P,XCHAR_P));
 
 int
 somex(croom)
@@ -115,12 +132,26 @@ register int lowx,lowy,hix,hiy;
 	}
 }
 
+/* Args must be genericptr_t so that qsort will always be happy. */
+
 static int
-comp(x,y)
-register struct mkroom *x,*y;
+comp(vx,vy)
+genericptr_t vx, vy;
 {
+#ifdef LINT
+/* lint complains about possible pointer alignment problems, but we know
+   that vx and vy are always properly aligned. Hence, the following
+   bogus definition:
+*/
+	return (vx == vy) ? 0 : -1;
+#else
+	register struct mkroom *x, *y;
+
+	x = (struct mkroom *)vx;
+	y = (struct mkroom *)vy;
 	if(x->lx < y->lx) return(-1);
 	return(x->lx > y->lx);
+#endif /* LINT */
 }
 
 static void
@@ -793,7 +824,8 @@ makelevel() {
 			x = somex(croom); y = somey(croom);
 			if (goodpos(x,y,(struct permonst *)0)) {
 				otmp = mk_tt_object(STATUE, x, y);
-				while(resists_ston(&mons[otmp->corpsenm])) {
+				while(otmp &&
+				      resists_ston(&mons[otmp->corpsenm])) {
 					otmp->corpsenm = rndmonnum();
 					otmp->owt = weight(otmp);
 				}
@@ -817,7 +849,7 @@ makelevel() {
 #endif
 	is_maze_lev = FALSE;
 
-#ifdef SYSV
+#if defined(SYSV) || defined(DGUX)
 	qsort((genericptr_t) rooms, (unsigned)nroom, sizeof(struct mkroom), comp);
 #else
 	qsort((genericptr_t) rooms, nroom, sizeof(struct mkroom), comp);
@@ -892,17 +924,12 @@ skip0:
 
 		/* put a sleeping monster inside */
 		/* Note: monster may be on the stairs. This cannot be
-		   avoided: maybe the player fell through a trapdoor
+		   avoided: maybe the player fell through a trap door
 		   while a monster was on the stairs. Conclusion:
 		   we have to check for monsters on the stairs anyway. */
 
 		if(u.uhave_amulet || !rn2(3)) {
 		    x = somex(croom); y = somey(croom);
-#ifdef REINCARNATION
-		    if (dlevel == rogue_level)
-			tmonst = makemon(roguemon(), x, y);
-		    else
-#endif
 		    tmonst = makemon((struct permonst *) 0, x,y);
 		    if (tmonst && tmonst->data == &mons[PM_GIANT_SPIDER])
 			(void) maketrap (x,y,WEB);
@@ -1063,6 +1090,9 @@ register struct mkroom *croom;
 
 	xchar mx,my;
 
+#ifdef __GNULINT__
+	kind = nomimic = 0;
+#endif
 	if(!num || num >= TRAPNUM) {
 		nomonst = (dlevel < 4) ? 1 : 0;
 		nolevltp = (dlevel < 5) ? 1 : 0;
@@ -1127,7 +1157,8 @@ register struct mkroom *croom;
 
 		if((mtmp = makemon(mkclass(S_MIMIC), mx, my))) {
 		    mtmp->mimic = 1;
-		    mtmp->mappearance = CLOSED_DOOR_SYM;
+		    mtmp->m_ap_type = M_AP_FURNITURE;
+		    mtmp->mappearance = S_cdoor;
 		}
 		return;
 	}

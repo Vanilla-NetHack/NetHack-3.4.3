@@ -4,8 +4,17 @@
 #include "hack.h"
 
 #if defined(UNIX) && !defined(LINT)
-static	const char	SCCS_Id[] = "@(#)hack.c	3.0\t89/11/03";
+static	const char	SCCS_Id[] = "@(#)hack.c	3.0\t89/11/20";
 #endif
+
+OSTATIC int NDECL(moverock);
+#ifdef SINKS
+OSTATIC void NDECL(dosinkfall);
+#endif
+static boolean FDECL(is_edge,(XCHAR_P,XCHAR_P));
+static boolean FDECL(bad_rock,(XCHAR_P,XCHAR_P));
+
+#ifdef OVLB
 
 /* called on movement:
 	1. when throwing ball+chain far away
@@ -24,7 +33,7 @@ unsee() {
 	    for(y = u.uy-1; y < u.uy+2; y++) {
 		if(!isok(x, y)) continue;
 		lev = &levl[x][y];
-		if(!lev->lit && IS_FLOOR(lev->typ)){
+		if(!lev->lit && lev->scrsym == ROOM_SYM) {
 			lev->scrsym = STONE_SYM;
 			lev->new = 1;
 			on_scr(x,y);
@@ -42,8 +51,8 @@ unsee() {
 	in mhitu.c:  seeoff(1)	- swallowed
 	in mthrow.c: seeoff(0)	- hit by a cream pie.
 	in potion.c: seeoff(0)	- quaffing or sniffing a potion of blindness
-	in spell.c:  seeoff(0)	- due to a cursed spellbook
-	in trap.c:   seeoff(1)	- fall through trapdoor
+	in spell.c:  seeoff(0)	- due to a cursed spell book
+	in trap.c:   seeoff(1)	- fall through trap door
  */
 void
 seeoff(mode)
@@ -67,7 +76,7 @@ int mode;
 			lev = &levl[x][y];
 			if(MON_AT(x, y))
 			    unpmon(m_at(x,y));
-			if(!lev->lit && IS_FLOOR(lev->typ)) {
+			if(!lev->lit && lev->scrsym == ROOM_SYM) {
 			    lev->seen = 0;
 			    atl(x, y, (char)STONE_SYM);
 			}
@@ -75,7 +84,10 @@ int mode;
 	    }
 }
 
-static int
+#endif /* OVLB */
+#ifdef OVL2
+
+XSTATIC int
 moverock() {
 	register xchar rx, ry;
 	register struct obj *otmp;
@@ -143,8 +155,7 @@ moverock() {
 				rloco(otmp);
 				continue;
 			    }
-			if(levl[rx][ry].typ == DOOR &&
-				(levl[rx][ry].doormask & (D_LOCKED | D_CLOSED)))
+			if(closed_door(rx, ry))
 				goto nopushmsg;
 			if(is_pool(rx,ry)) {
 #ifdef STRONGHOLD
@@ -209,21 +220,22 @@ nopushmsg:
 	return (0);
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 void
 movobj(obj, ox, oy)
 register struct obj *obj;
 register xchar ox, oy;
 {
-	/* Some dirty programming to get display right */
-	freeobj(obj);
-	unpobj(obj);
-	obj->nobj = fobj;
-	fobj = obj;
-	move_object(obj, ox, oy);
+	remove_object(obj);
+	newsym(obj->ox, obj->oy);
+	place_object(obj, ox, oy);
+	newsym(ox, oy);
 }
 
 #ifdef SINKS
-static
+XSTATIC
 void
 dosinkfall() {
 	register struct obj *obj;
@@ -234,11 +246,12 @@ dosinkfall() {
 	} else {
 # endif
 		You("crash to the floor!");
-		losehp((rn1(10, 20 - (int)ACURR(A_CON))),"fall onto a sink");
+		losehp((rn1(10, 20 - (int)ACURR(A_CON))),
+			"fell onto a sink", NO_KILLER_PREFIX);
 		for(obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
 		    if(obj->olet == WEAPON_SYM) {
 			You("fell on %s.",doname(obj));
-			losehp(rn2(3),"fall onto a sink");
+			losehp(rn2(3),"fell onto a sink", NO_KILLER_PREFIX);
 		    }
 # ifdef POLYSELF
 	}
@@ -264,6 +277,9 @@ dosinkfall() {
 }
 #endif
 
+#endif /* OVLB */
+#ifdef OVL1
+
 static boolean
 is_edge(x,y)
 register xchar x,y;
@@ -279,6 +295,9 @@ register xchar x,y;
 	       (y == rooms[roomno].ly - 1) || (y == rooms[roomno].hy + 1));
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 boolean
 may_dig(x,y)
 register xchar x,y;
@@ -286,6 +305,9 @@ register xchar x,y;
 {
 return (!(IS_STWALL(levl[x][y].typ) && (levl[x][y].diggable & W_NONDIGGABLE)));
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 static boolean
 bad_rock(x,y)
@@ -348,7 +370,7 @@ domove() {
 		if(u.ustuck && (x != u.ustuck->mx ||
 				y != u.ustuck->my)) {
 			if(dist(u.ustuck->mx, u.ustuck->my) > 2) {
-				/* perhaps it fled (or was teleported or ... ) */
+			/* perhaps it fled (or was teleported or ... ) */
 				u.ustuck = 0;
 			} else {
 #ifdef POLYSELF
@@ -376,7 +398,7 @@ domove() {
 			/* Don't attack if you're running */
 			if (flags.run && !mtmp->mimic &&
 				    (Blind ? Telepat :
-					    (!mtmp->minvis || See_invisible))) {
+					 (!mtmp->minvis || See_invisible))) {
 				nomul(0);
 				flags.move = 0;
 				return;
@@ -434,38 +456,50 @@ domove() {
 		    return;
 	    }
 #endif
-	    if(IS_DOOR(tmpr->typ) && (tmpr->doormask & (D_LOCKED | D_CLOSED))
+	    if(closed_door(x, y)) {
 #ifdef POLYSELF
-	       && !amorphous(uasmon)
+		if(amorphous(uasmon))
+		    You("ooze under the door.");
+		else {
 #endif
-	      ){
 		    flags.move = 0;
 		    if(x == u.ux || y == u.uy) {
 		        if (Blind || Stunned || ACURR(A_DEX) < 10 || Fumbling)
 			    pline("Ouch!  You bump into a door.");
-		        else pline("That door is closed.");
+		         else pline("That door is closed.");
 		    }
 		    nomul(0);
 		    return;
+#ifdef POLYSELF
+		}
+#endif
 	    }
 #ifdef POLYSELF
 	}
 #endif
 	ust = &levl[u.ux][u.uy];
+
 	if(bad_rock(x,y) ||
 	   (u.dx && u.dy
 #ifdef POLYSELF
-		    && !passes_walls(uasmon)
+		 && !passes_walls(uasmon)
 #endif
+		 && ( (IS_DOOR(ust->typ) && block_entry(x, y)) ||
 #ifdef REINCARNATION
-		    && (((IS_DOOR(tmpr->typ) && ((tmpr->doormask & ~D_BROKEN)
-				|| dlevel == rogue_level)) ||
-		        ((IS_DOOR(ust->typ) && ((ust->doormask & ~D_BROKEN)
-				|| dlevel == rogue_level))))))) {
+			(IS_DOOR(tmpr->typ) &&
+			 ((tmpr->doormask & ~D_BROKEN) 
+			   || dlevel == rogue_level || block_door(x, y))
+                        )  
+		     || (IS_DOOR(ust->typ) &&
+			 ((ust->doormask & ~D_BROKEN) || dlevel == rogue_level)
+                        )
 #else
-		    && (((IS_DOOR(tmpr->typ) && (tmpr->doormask & ~D_BROKEN)) ||
-		      ((IS_DOOR(ust->typ) && (ust->doormask & ~D_BROKEN))))))){
+			(IS_DOOR(tmpr->typ) &&
+			 ((tmpr->doormask & ~D_BROKEN) || block_door(x, y))) ||
+			(IS_DOOR(ust->typ) && (ust->doormask & ~D_BROKEN))
 #endif
+		    )
+	   )) {
 		flags.move = 0;
 		nomul(0);
 		return;
@@ -507,15 +541,14 @@ domove() {
 		}
 
 		movobj(uball, uchain->ox, uchain->oy);
-		unpobj(uball);		/* BAH %% */
-		move_object(uchain, u.ux, u.uy);
+		movobj(uchain, u.ux, u.uy);
 		nomul(-2);
 		nomovemsg = "";
 	nodrag:	;
 	}
 #ifdef POLYSELF
 	if (tunnels(uasmon) && !needspick(uasmon) && IS_ROCK(tmpr->typ)) {
-		static char *digtxt;
+		static const char *digtxt;
 
 		if(dig_pos.x != x || dig_pos.y != y
 		    || dig_level != dlevel || dig_down) {
@@ -649,6 +682,9 @@ domove() {
 	spoteffects();
 }
 
+#endif /* OVL1 */
+#ifdef OVL2
+
 void
 spoteffects()
 {
@@ -676,6 +712,9 @@ spoteffects()
 
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 int
 dopickup() {
 	/* uswallow case added by GAN 01/29/87 */
@@ -684,7 +723,7 @@ dopickup() {
 		    You("pick up %s's tongue.", mon_nam(u.ustuck));
 		    pline("But it's kind of slimy, so you drop it.");
 		} else
-		    pline("You don't %s anything in here to pick up.",
+		    You("don't %s anything in here to pick up.",
 			  Blind ? "feel" : "see");
 		return(1);
 	}
@@ -700,6 +739,9 @@ dopickup() {
 	return(1);
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 /* stop running if we see something interesting */
 /* turn around a corner if that is the only way we can proceed */
 /* do not turn left or right twice */
@@ -707,9 +749,9 @@ void
 lookaround() {
 	register int x, y, i, x0, y0, m0, i0 = 9, corrct = 0, noturn = 0;
 	register struct monst *mtmp;
-#ifdef LINT
+#if defined(LINT) || defined(__GNULINT__)
 	/* suppress "used before set" message */
-	x0 = y0 = 0;
+	x0 = y0 = m0 = 0;
 #endif
 	if(Blind || flags.run == 0) return;
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
@@ -823,13 +865,16 @@ monster_nearby() {
 		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
 		   !mtmp->mtame && !mtmp->mpeaceful &&
 		   !noattacks(mtmp->data) &&
-		   !mtmp->mfroz && !mtmp->msleep &&  /* aplvax!jcn */
+		   mtmp->mcanmove && !mtmp->msleep &&  /* aplvax!jcn */
 		   (!mtmp->minvis || See_invisible) &&
 		   !onscary(u.ux, u.uy, mtmp))
 			return(1);
 	}
 	return(0);
 }
+
+#endif /* OVL2 */
+#ifdef OVL0
 
 int
 cansee(x,y)
@@ -847,12 +892,18 @@ xchar x,y;
 	return(0);
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 int
 sgn(a)
 	register int a;
 {
 	return((a > 0) ? 1 : (a == 0) ? 0 : -1);
 }
+
+#endif /* OVL1 */
+#ifdef OVL2
 
 void
 getcorners(lx1,hx1,ly1,hy1,lx2,hx2,ly2,hy2)
@@ -901,6 +952,9 @@ xchar *lx1,*hx1,*ly1,*hy1,*lx2,*hx2,*ly2,*hy2;
 	}
 }
 
+#endif /* OVL2 */
+#ifdef OVL1
+
 void
 setsee() {
 	register int x, y;
@@ -937,6 +991,9 @@ setsee() {
 	}
 }
 
+#endif /* OVL1 */
+#ifdef OVL2
+
 void
 nomul(nval)
 	register int nval;
@@ -946,10 +1003,14 @@ nomul(nval)
 	flags.mv = flags.run = 0;
 }
 
+#endif /* OVL2 */
+#ifdef OVL1
+
 void
-losehp(n, knam)
-	register int n;
-	register const char *knam;
+losehp(n, knam, k_format)
+register int n;
+register const char *knam;
+boolean k_format;
 {
 #ifdef POLYSELF
 	if (u.mtimedone) {
@@ -965,7 +1026,8 @@ losehp(n, knam)
 		u.uhpmax = u.uhp;	/* perhaps n was negative */
 	flags.botl = 1;
 	if(u.uhp < 1) {
-		killer = (char *)knam;	/* the thing that killed you */
+		killer_format = k_format;
+		killer = knam;		/* the thing that killed you */
 		You("die...");
 		done(DIED);
 	} else if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50 && n > 0){
@@ -1052,6 +1114,9 @@ inv_weight() {
 	return(wt - weight_cap());
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 int
 inv_cnt() {
 	register struct obj *otmp = invent;
@@ -1115,3 +1180,5 @@ makeknown(x) unsigned x; {
 	objects[x].oc_name_known = 1;
 }
 #endif /* STUPID_CPP */
+
+#endif /* OVLB */

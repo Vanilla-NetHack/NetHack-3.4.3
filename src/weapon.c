@@ -9,6 +9,8 @@
  */
 #include	"hack.h"
 
+#ifdef OVLB
+
 static const char kebabable[] = { S_XORN, S_DRAGON, S_NAGA, S_GIANT, 0 };
 
 /*
@@ -167,6 +169,9 @@ set_uasmon() {		/* update the "uasmon" structure */
 #endif
 	return;
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 #define	Oselect(x)	if((otmp = m_carrying(mtmp, x))) return(otmp);
 
@@ -352,6 +357,9 @@ abon() {	/* attack bonus for strength & dexterity */
 	else return(sbon+ACURR(A_DEX)-14);
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 int
 dbon() {	/* damage bonus for strength */
 #ifdef POLYSELF
@@ -367,3 +375,5 @@ dbon() {	/* damage bonus for strength */
 	else if(ACURR(A_STR) < 118) return(5);	/* up to 18/99 */
 	else return(6);
 }
+
+#endif /* OVL1 */

@@ -6,7 +6,6 @@
  * function declarations for all of nethack
  */
 #define EXTERN_H
-/* #define MAKEDEFS_C	1	/* for Mac compilers with 32K data limit */
 #include "config.h"
 #include "obj.h"
 #include "objclass.h"
@@ -376,7 +375,7 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 35, 6, 0, WP_CROSSBOW, HI_WOOD),
 #else
 	{ "pick-axe", NULL, NULL, 1,0,1,1,METAL, 0, TOOL_SYM, 20,
 						0, 10, 50, 6, 3, 0, C(HI_METAL)},
-	{ "unicorn horn", NULL, NULL, 1,0,1,0,0, 0, TOOL_SYM, 0,
+	{ "unicorn horn", NULL, NULL, 1,0,1,1,0, 0, TOOL_SYM, 0,
 						0, 4, 100, 12, 12, 0, C(WHITE)},
 	{ "blinding venom", "splash of venom", NULL,
 		0,1,0,0,0, 0, VENOM_SYM, 500, 0, 0, 0, 0, 0, 0, C(HI_ORGANIC)},
@@ -437,7 +436,7 @@ ARMOR("dragon scale mail", NULL,
 ARMOR("plate mail", NULL,
 			1, 1, 0, 44, 5, 9, 600, 3, 2, METAL, HI_METAL),
 ARMOR("crystal plate mail", NULL,
-			1, 1, 0, 10, 5, 9, 820, 3, 2, 0, WHITE|BRIGHT),
+			1, 1, 0, 10, 5, 9, 820, 3, 2, GLASS, WHITE|BRIGHT),
 #ifdef SHIRT
 ARMOR("bronze plate mail", NULL,
 			1, 1, 0, 25, 5, 9, 400, 4, 0, COPPER, HI_COPPER),

@@ -7,6 +7,9 @@
 #include "hack.h"	/* mainly for index() which depends on BSD */
 
 #ifdef MAIL
+static void FDECL(mdrush,(struct monst *,int,int));
+static void FDECL(mdappear,(struct monst *,BOOLEAN_P));
+static void NDECL(newmail);
 
 # ifdef UNIX
 #  include <sys/stat.h>
@@ -55,9 +58,14 @@
  *	- It may also do this with adjoining castle rooms.
  */
 
+#ifdef OVL0
+
 # if !defined(UNIX) && !defined(VMS)
 int mustgetmail = -1;
 # endif
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 # ifdef UNIX
 extern struct passwd *getpwuid();
@@ -65,20 +73,36 @@ static struct stat omstat,nmstat;
 static char *mailbox = NULL;
 static long laststattime;
 
+# ifdef AMS				/* Just a placeholder for AMS */
+#   define MAILPATH "/dev/null"
+# else
 #  ifdef BSD
 #   define MAILPATH "/usr/spool/mail/"
 #  endif
 #  ifdef SYSV
 #   define MAILPATH "/usr/mail/"
 #  endif
+# endif /* AMS */
 
 void
 getmailstatus() {
 	if(!mailbox && !(mailbox = getenv("MAIL"))) {
 #  ifdef MAILPATH
+#   ifdef AMS
+	        struct passwd ppasswd;
+
+		bcopy(getpwuid(getuid()), &ppasswd, sizeof(struct passwd));
+		if (ppasswd.pw_dir) {
+		     mailbox = (char *) alloc((unsigned) strlen(ppasswd.pw_dir)+sizeof(AMS_MAILBOX));
+		     Strcpy(mailbox, ppasswd.pw_dir);
+		     Strcat(mailbox, AMS_MAILBOX);
+		} else
+		  return;
+#   else
 		mailbox = (char *) alloc(sizeof(MAILPATH)+8);
 		Strcpy(mailbox, MAILPATH);
 		Strcat(mailbox, getpwuid(getuid())->pw_name);
+#  endif /* AMS */
 #  else
 		return;
 #  endif
@@ -217,9 +241,14 @@ newmail() {
 # ifdef VMS
 	pline("\"Hello, %s!  I have a message for you.\"", plname);
 # else
+#  ifdef NO_MAILREADER
+	pline("\"Hello, %s!  You have some mail in the outside world.\"", plname);
+#  else
 	pline("\"Hello, %s!  I have some mail for you.\"", plname);
 # endif
+# endif
 
+# ifndef NO_MAILREADER
 	if(dist(md->mx,md->my) > 2)
 		verbalize("Catch!");
 	more();
@@ -243,9 +272,15 @@ newmail() {
 # ifdef VMS
 	broadcasts--;
 # endif
+# endif /* NO_MAILREADER */
 }
 
+#endif /* OVLB */
+
 # if !defined(UNIX) && !defined(VMS)
+
+#ifdef OVL0
+
 void
 ckmailstatus() {
 	if (mustgetmail < 0)
@@ -256,14 +291,23 @@ ckmailstatus() {
 	}
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 void
 readmail()
 {
 	pline("It says:  \"Please disregard previous letter.\"");
 }
+
+#endif /* OVLB */
+
 # endif /* !UNIX && !VMS */
 
 # ifdef UNIX
+
+#ifdef OVL0
+
 void
 ckmailstatus() {
 	if(!mailbox
@@ -288,6 +332,9 @@ ckmailstatus() {
 	}
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 void
 readmail() {
 #  ifdef DEF_MAILREADER			/* This implies that UNIX is defined */
@@ -300,21 +347,33 @@ readmail() {
 		exit(1);
 	}
 #  else
+#   ifndef AMS  			/* AMS mailboxes are directories */
 	(void) page_file(mailbox, FALSE);
-#  endif
+#   endif /* AMS */
+#  endif /* DEF_MAILREADER */
+
 	/* get new stat; not entirely correct: there is a small time
 	   window where we do not see new mail */
 	getmailstatus();
 }
+
+#endif /* OVLB */
+
 # endif /* UNIX */
 
 # ifdef VMS
+
+#ifdef OVL0
+
 void
 ckmailstatus()
 {
 	if (broadcasts)
 		newmail();
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 readmail()
@@ -330,5 +389,7 @@ readmail()
 	}
 }
 # endif /* VMS */
+
+#endif /* OVLB */
 
 #endif /* MAIL */

@@ -4,7 +4,21 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
+
 #include "hack.h"       /* for ROWNO, COLNO, *HI, *HE, *AS, *AE */
+
+#ifdef LATTICE
+#undef TRUE
+#undef FALSE
+#undef COUNT
+#undef NULL
+#include <proto/dos.h>
+#endif
+
+#ifndef LATTICE
+extern void FDECL(Delay, (unsigned long));
+#endif
+extern void NDECL(Initialize);
 
 static char HO[] = "\233H";         /* Home         CSI H */
 static char CL[] = "\f";            /* Clear        FF */
@@ -17,7 +31,7 @@ static char MR[] = "\2337m";        /* Reverse on   CSI 7 m */
 static char ME[] = "\2330m";        /* Reverse off  CSI 0 m */
 
 #ifdef TEXTCOLOR
-static char SO[] = "\23333m";       /* Standout: Color #3 (orange) */
+static char SO[] = "\23337m";       /* Use colormap entry #7 (red) */
 static char SE[] = "\2330m";
 #else
 static char SO[] = "\2337m";        /* Inverse video */
@@ -25,9 +39,12 @@ static char SE[] = "\2330m";
 #endif
 
 #ifdef TEXTCOLOR
-/* color maps */
-static int foreg[8] = { 2, 3, 1, 3, 3, 3, 3, 0 };
-static int backg[8] = { 1, 2, 2, 0, 1, 1, 1, 1 };
+/*
+ * Map our amiga-specific colormap into the colormap specified in color.h.
+ * See amiwind.c for the amiga specific colormap.
+ */
+static int foreg[16] = { 0, 7, 4, 2, 6, 5, 3, 1, 0, 0, 0, 0, 0, 0, 0, 0 };
+static int backg[16] = { 1, 0, 0, 0, 0, 0, 0, 0, 1, 7, 4, 2, 6, 5, 3, 1 };
 #endif
 
 void
@@ -35,37 +52,25 @@ startup()
 {
 #ifdef TEXTCOLOR
     register int c;
-#endif  
-
+#endif
     (void) Initialize();        /* This opens screen, window, console, &c */
-
     CO = COLNO;
     LI = ROWNO+3;               /* used in pri.c and pager.c */
 
     set_whole_screen();
-
     CD = "\233J";               /* used in pager.c */
 
 #ifdef TEXTCOLOR
     /*
-     * We need 5 different 'colors', but in a 4-color screen we really
-     * cannot make these available, even more so because we use the user's
-     * preferred Workbench colors. Instead, we use different combinations
-     * of the 4 possible colors. For orientation: default colors are
-     * white (1) on blue (0), and a orange (3) cursor on a black (2) character.
-     *
-     * "Black": Black on White
-     * "Red":	Orange on Black
-     * "Green": White on Black
-     * "Yellow": Orange on Blue
-     * "Blue":	Orange on White
-     * "Magenta": White on Black
-     * "Cyan":	White on Black
-     * "White": Blue on White
+     * Perform amiga to color.h colormap conversion - Please note that the
+     * console device can only handle 8 foreground and 8 background colors
+     * while color.h defines 8 basic and 8 hilite colors.  Hilite colors
+     * are handled as inverses.  For instance, a hilited green color will
+     * appear as green background with a black foreground.
      */
-    for (c = 0; c < SIZE(HI_COLOR); c++) {
-	HI_COLOR[c] = (char *) alloc(sizeof("E0;33;44m"));
-	Sprintf(HI_COLOR[c], "\2333%d;4%dm", foreg[c], backg[c]);
+    for (c = 0; c < SIZE(hilites); c++) {
+        hilites[c] = (char *) alloc(sizeof("E0;33;44m"));
+        Sprintf(hilites[c], "\2333%d;4%dm", foreg[c], backg[c]);
     }
 
     HI = "\2331m";              /* Bold (hilight) */

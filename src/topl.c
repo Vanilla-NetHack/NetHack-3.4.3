@@ -2,20 +2,34 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define NEED_VARARGS
+#define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
 #include "hack.h"
 
-char toplines[BUFSIZ];
-xchar tlx, tly;			/* set by pline; used by addtopl */
-static boolean no_repeat = FALSE;
+VSTATIC char toplines[BUFSIZ];
 
-struct topl {
+#ifndef OVLB
+OSTATIC boolean no_repeat;
+#else /* OVLB */
+XSTATIC boolean no_repeat = FALSE;
+#endif /* OVLB */
+
+extern xchar tlx, tly;
+#ifdef OVLB
+xchar tlx, tly;			/* set by pline; used by addtopl */
+#endif /* OVLB */
+
+OSTATIC void NDECL(redotoplin);
+OSTATIC void FDECL(xmore,(const char *));
+VSTATIC struct topl {
 	struct topl *next_topl;
 	char *topl_text;
 } *old_toplines, *last_redone_topl;
+
 #define	OTLMAX	20		/* max nr of old toplines remembered */
 
-static void
+#ifdef OVL1
+
+XSTATIC void
 redotoplin() {
 	home();
 	if(index(toplines, '\n')) cl_end();
@@ -35,6 +49,9 @@ redotoplin() {
 		more();
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 int
 doredotopl(){
 	if(last_redone_topl)
@@ -47,6 +64,9 @@ doredotopl(){
 	redotoplin();
 	return 0;
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 void
 remember_topl() {
@@ -74,7 +94,9 @@ remember_topl() {
 }
 
 void
-addtopl(s) char *s; {
+addtopl(s)
+const char *s;
+{
 	curs(tlx,tly);
 	if(tlx + strlen(s) > CO) putsym('\n');
 	putstr(s);
@@ -83,9 +105,12 @@ addtopl(s) char *s; {
 	flags.toplin = 1;
 }
 
-static void
+#endif /* OVL1 */
+#ifdef OVL2
+
+XSTATIC void
 xmore(s)
-char *s;	/* allowed chars besides space/return */
+const char *s;	/* allowed chars besides space/return */
 {
 	if(flags.toplin) {
 		curs(tlx, tly);
@@ -104,6 +129,7 @@ char *s;	/* allowed chars besides space/return */
 		cl_end();
 		docorner(1, tly-1);
 		tlx = tly = 1;
+		curs(tlx, tly);
 	}
 	flags.toplin = 0;
 }
@@ -113,12 +139,18 @@ more(){
 	xmore("");
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 void
 cmore(s)
-register char *s;
+register const char *s;
 {
 	xmore(s);
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 void
 clrlin(){
@@ -134,10 +166,11 @@ clrlin(){
 	flags.toplin = 0;
 }
 
-/*VARARGS1*/
-/* Note the modified mstatusline has 9 arguments KAA */
+#endif /* OVL1 */
+#ifdef OVLB
 
-/* Also note that these declarations rely on knowledge of the internals
+/*VARARGS1*/
+/* Note that these declarations rely on knowledge of the internals
  * of the variable argument handling stuff in "tradstdc.h"
  */
 
@@ -272,13 +305,13 @@ Your VA_DECL(const char *,line)
 /*ARGSUSED*/
 /*VARARGS2*/
 void
-kludge  VA_DECL2(char *, str, char *, arg)
+kludge  VA_DECL2(const char *, str, const char *, arg)
 #ifdef VA_NEXT
 	char *other1, *other2, *other3;
 #endif
 	VA_START(arg);
-	VA_INIT(str, char *);
-	VA_INIT(arg, char *);
+	VA_INIT(str, const char *);
+	VA_INIT(arg, const char *);
 #ifdef VA_NEXT
 	VA_NEXT(other1, char *);
 	VA_NEXT(other2, char *);
@@ -293,6 +326,9 @@ kludge  VA_DECL2(char *, str, char *, arg)
 	} else pline(str,arg,OTHER_ARGS);
 	VA_END();
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 putsym(c)
@@ -325,6 +361,9 @@ register const char *s;
 	while(*s) putsym(*s++);
 }
 
+#endif /* OVL0 */
+#ifdef OVL2
+
 char
 yn_function(resp, def)
 const char *resp;
@@ -356,12 +395,17 @@ char def;
 	return q;
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 /*VARARGS1*/
 void
-impossible VA_DECL(char *, s)
+impossible VA_DECL(const char *, s)
 	VA_START(s);
-	VA_INIT(s, char *);
+	VA_INIT(s, const char *);
 	vpline(s,VA_ARGS);
 	pline("Program in disorder - perhaps you'd better Quit.");
 	VA_END();
 }
+
+#endif /* OVLB */

@@ -16,8 +16,8 @@
  *	are set, they may have a special meaning.  For example, if set
  *	for a blinding attack, they determine the amount of time blinded.
  */
-struct attack {
 
+struct attack {
 	uchar           aatyp;
 	uchar           adtyp, damn, damd;
 };
@@ -35,7 +35,8 @@ struct permonst {
 #if defined(SMALLDATA) && !defined(MAKEDEFS_C)
 	char		mname[24], mlet;		/* full name and sym */
 #else
-	char		*mname, mlet;		/* full name and sym */
+	const char	*mname;			/* full name */
+	char		mlet;			/* symbol */
 #endif
 	schar		mlevel,			/* base monster level */
 			mmove,			/* move speed */

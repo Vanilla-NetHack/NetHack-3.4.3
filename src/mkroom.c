@@ -11,22 +11,27 @@
  *	dist2() -- Euclidean square-of-distance function
  *	courtmon() -- generate a court monster
  */
+
+#define MONATTK_H	/* comment line for pre-compiled headers */
+/* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
 
-static void mkshop(), mkzoo(), mkswamp();
+static void NDECL(mkshop), FDECL(mkzoo,(int)), NDECL(mkswamp);
 #ifdef ORACLE
-static void mkdelphi();
+static void NDECL(mkdelphi);
 #endif
 #if defined(ALTARS) && defined(THEOLOGY)
-static void mktemple();
+static void NDECL(mktemple);
 #endif
 
-static struct permonst *morguemon();
+static struct permonst * NDECL(morguemon);
 #ifdef ARMY
-static struct permonst *squadmon();
+static struct permonst * NDECL(squadmon);
 #endif
 
 #define sq(x) ((x)*(x))
+
+#ifdef OVLB
 
 static boolean
 isbig(sroom)
@@ -69,7 +74,11 @@ mkshop()
 	register struct mkroom *sroom;
 	int i = -1;
 #ifdef WIZARD
+# ifdef __GNULINT__
+	register char *ep = (char *)0;
+# else
 	register char *ep;
+# endif
 
 	/* first determine shoptype */
 	if(wizard){
@@ -192,6 +201,10 @@ int type;
 	sroom->rtype = type;
 	sh = sroom->fdoor;
 	switch(type) {
+#ifdef __GNULINT__
+	    default:
+		/* make sure tx and ty are initialized */
+#endif
 	    case COURT:
 		tx = somex(sroom); ty = somey(sroom); break;
 		/* TODO: try to ensure the enthroned monster is an M2_PRINCE */
@@ -332,12 +345,12 @@ mkdelphi()
 	oracl->mpeaceful = 1;
 
 	yy -= dy;
-	if(ACCESSIBLE(levl[xx-1][yy].typ))
-		(void) mkcorpstat(STATUE, &mons[PM_FOREST_CENTAUR], xx-1, yy);
-	if(ACCESSIBLE(levl[xx][yy].typ))
-		(void) mkcorpstat(STATUE, &mons[PM_MOUNTAIN_CENTAUR], xx, yy);
-	if(ACCESSIBLE(levl[xx+1][yy].typ))
-		(void) mkcorpstat(STATUE, &mons[PM_PLAINS_CENTAUR], xx+1, yy);
+	if(accessible(xx-1, yy))
+	    (void) mkcorpstat(STATUE, &mons[PM_FOREST_CENTAUR], xx-1, yy);
+	if(accessible(xx, yy))
+	    (void) mkcorpstat(STATUE, &mons[PM_MOUNTAIN_CENTAUR], xx, yy);
+	if(accessible(xx+1,yy))
+	    (void) mkcorpstat(STATUE, &mons[PM_PLAINS_CENTAUR], xx+1, yy);
 # ifdef FOUNTAINS
 	mkfount(0,sroom);
 # endif
@@ -371,8 +384,9 @@ mktemple()
 	 */
 	levl[sx][sy].typ = ALTAR;
 	levl[sx][sy].scrsym = ALTAR_SYM;
-	levl[sx][sy].altarmask = rn2((int)A_LAW+1) | A_SHRINE;
+	levl[sx][sy].altarmask = rn2((int)A_LAW+1);
 	priestini(dlevel, sx, sy, (int) levl[sx][sy].altarmask);
+ 	levl[sx][sy].altarmask |= A_SHRINE;
 }
 #endif
 
@@ -405,6 +419,9 @@ register struct mkroom *sroom;
 		   sroom->ly <= yupstair && yupstair <= sroom->hy);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 dist2(x0,y0,x1,y1)
 int x0, y0, x1, y1;
@@ -412,6 +429,9 @@ int x0, y0, x1, y1;
 	register int dx = x0 - x1, dy = y0 - y1;
 	return sq(dx) + sq(dy);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 #ifdef THRONES
 struct permonst *
@@ -458,3 +478,5 @@ gotone:
 	else			    return((struct permonst *) 0);
 }
 #endif /* ARMY /* */
+
+#endif /* OVLB */

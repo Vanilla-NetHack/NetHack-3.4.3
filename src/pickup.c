@@ -7,8 +7,22 @@
  */
 
 #include	"hack.h"
+#ifndef OVERLAY
+static int FDECL(in_container,(struct obj *));
+static int FDECL(ck_container,(struct obj *));
+static int FDECL(ck_bag,(struct obj *));
+static int FDECL(out_container,(struct obj *));
+#else
+int FDECL(in_container,(struct obj *));
+int FDECL(ck_container,(struct obj *));
+int FDECL(ck_bag,(struct obj *));
+int FDECL(out_container,(struct obj *));
+#endif
+void FDECL(explode_bag,(struct obj *));
 
-void explode_bag();
+#ifdef OVLB
+
+static const char nearloadmsg[] = "have a little trouble lifting";
 
 void
 pickup(all)
@@ -33,10 +47,15 @@ int all;
 	dummygold.cobj = 0;
 
 	if(Levitation) {
-		if (multi || (all && !flags.pickup)) read_engr_at(u.ux,u.uy);
+		if ((multi && !flags.run) || (all && !flags.pickup))
+			read_engr_at(u.ux,u.uy);
 		return;
 	}
-	if (multi || (all && !flags.pickup)) {
+	/* multi && !flags.run means they are in the middle of some other
+	 * action, or possibly paralyzed, sleeping, etc.... and they just
+	 * teleported onto the object.  They shouldn't pick it up.
+	 */
+	if ((multi && !flags.run) || (all && !flags.pickup)) {
 		int ct = 0;
 
 		for (obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
@@ -172,14 +191,17 @@ int all;
 			continue;
 		    }
 		    if (gold_capacity >= gold->amount) {
+			u.ugold += gold->amount;
+			if (inv_weight() > -5)
+				You(nearloadmsg);
 			pline("%ld gold piece%s.",
 				gold->amount, plur(gold->amount));
-			u.ugold += gold->amount;
 			freegold(gold);
 			if(Invisible) newsym(u.ux,u.uy);
 		    } else {
-	pline("You can only carry %s of the %ld gold pieces lying here.",
+		You("can only carry %s of the %ld gold pieces lying here.",
 			    gold_capacity == 1L ? "one" : "some", gold->amount);
+			You(nearloadmsg);
 			pline("%ld gold piece%s.",
 				 gold_capacity, plur(gold_capacity));
 			u.ugold += gold_capacity;
@@ -199,6 +221,7 @@ int all;
 		    pline("Touching the dead cockatrice is a fatal mistake.");
 		    You("turn to stone.");
 		    You("die...");
+		    killer_format = KILLED_BY_AN;
 		    killer = "cockatrice corpse";
 		    done(STONING);
 		}
@@ -213,7 +236,7 @@ int all;
 			if(!(objects[SCR_SCARE_MONSTER].oc_name_known) &&
 			   !(objects[SCR_SCARE_MONSTER].oc_uname))
 				docall(obj);
-		    delobj(obj);
+		    useupf(obj);
 		    continue;
 		  }
 		}
@@ -222,7 +245,7 @@ int all;
 		if(obj == uchain)
 			continue;
 
-		wt = inv_weight() + obj->owt;
+		wt = inv_weight() + (int)obj->owt;
 		if (obj->otyp == LOADSTONE)
 			goto lift_some; /* pick it up even if too heavy */
 #ifdef POLYSELF
@@ -277,7 +300,7 @@ int all;
 		  int mergquan;
 
 		  obj = pick_obj(obj);
-		  if(wt > -5) You("have a little trouble lifting");
+		  if(wt > -5) You(nearloadmsg);
 		  if(!Blind) obj->dknown = 1;
 		  mergquan = obj->quan;
 		  obj->quan = pickquan; /* to fool prinv() */
@@ -294,7 +317,8 @@ struct obj *
 pick_obj(otmp)
 register struct obj *otmp;
 {
-	addtobill(otmp, TRUE);       /* sets obj->unpaid if necessary */
+	if (otmp != uball)	     /* don't charge for this - kd, 1/17/90 */
+		addtobill(otmp, TRUE);       /* sets obj->unpaid if necessary */
 	freeobj(otmp);
 	if(Invisible) newsym(u.ux,u.uy);
 	return(addinv(otmp));    /* might merge it with other objects */
@@ -307,7 +331,7 @@ doloot() {	/* loot a container on the floor. */
 	register int c;
 
 	if (Levitation) {
-		pline("You cannot reach the floor.");
+		You("cannot reach the floor.");
 		return(0);
 	}
 	for(cobj = level.objects[u.ux][u.uy]; cobj; cobj = cobj->nexthere) {
@@ -327,13 +351,14 @@ doloot() {	/* loot a container on the floor. */
 
 			You("carefully open the bag...");
 			pline("It develops a huge set of teeth and bites you!");
-			losehp(rnd(10), "carnivorous bag");
+			losehp(rnd(10), "carnivorous bag", KILLED_BY_AN);
 			makeknown(BAG_OF_TRICKS);
 			continue;
 		    }
 
 		    You("carefully open the %s...", xname(cobj));
 		    if(cobj->otrapped) chest_trap(cobj, FINGER);
+		    if(multi < 0) return 0; /* a paralysis trap */
 
 		    use_container(cobj, 0);
 		}
@@ -347,14 +372,20 @@ struct obj *current_container;	/* a local variable of use_container, to be
 #define Icebox (current_container->otyp == ICE_BOX)
 int baggone;	/* used in askchain so bag isn't used after explosion */
 
+#endif /* OVLB */
+#ifdef OVL0
+
 void
 inc_cwt(cobj, obj)
 register struct obj *cobj, *obj;
 {
 	if (cobj->otyp == BAG_OF_HOLDING)
-		cobj->owt += (obj->cursed?(obj->owt*2):(obj->owt/(obj->blessed?4:2)) + 1);
+		cobj->owt += (cobj->cursed?(obj->owt*2):(obj->owt/(cobj->blessed?4:2)) + 1);
 	else	cobj->owt += obj->owt;
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 #ifndef OVERLAY
 static 
@@ -363,6 +394,8 @@ int
 in_container(obj)
 register struct obj *obj;
 {
+	char buf[BUFSZ];
+
 	if(obj == uball || obj == uchain) {
 		You("must be kidding.");
 		return(0);
@@ -394,7 +427,7 @@ register struct obj *obj;
 	/* magic bag -> magic bag will self destruct later on. */
 	if(Is_container(obj) && Is_container(current_container) &&
 	    (!Is_mbag(obj) || !Is_mbag(current_container))) {
-		pline("It won't go in.");
+		pline("The %s won't go in.", xname(obj));
 		return(1);	/* be careful! */
 	}
 	if(obj == uwep) {
@@ -407,7 +440,7 @@ register struct obj *obj;
 	}
 #ifdef WALKIES
 	if(obj->otyp == LEASH && obj->leashmon != 0) {
-		pline("It is attached to your pet.");
+		pline("The %s is attached to your pet.", xname(obj));
 		return(0);
 	}
 #endif
@@ -417,6 +450,8 @@ register struct obj *obj;
 	obj->cobj = current_container;
 	obj->nobj = fcobj;
 	fcobj = obj;
+	Strcpy(buf, xname(obj->cobj));
+	You("put %s into the %s.", doname(obj), buf);
 
 	if(Icebox) obj->age = monstermoves - obj->age; /* actual age */
 
@@ -425,7 +460,7 @@ register struct obj *obj;
 		 (obj->otyp == WAN_CANCELLATION && (obj->spe > 0)) )) {
 		explode_bag(obj);
 		You("are blasted by a magical explosion!");
-		losehp(d(6,6),"magical explosion");
+		losehp(d(6,6),"magical explosion", KILLED_BY_AN);
 		baggone = 1;
 	}
 	return(1);
@@ -441,11 +476,15 @@ register struct obj *obj;
 	return(obj->cobj == current_container);
 }
 
+/* ck_bag() needs a formal argument to make the overlay/prototype mechanism
+ * work right */
+/*ARGSUSED*/
 #ifndef OVERLAY
 static 
 #endif
 int
-ck_bag()
+ck_bag(obj)
+struct obj *obj;
 {
 	return(!baggone);
 }
@@ -458,9 +497,23 @@ out_container(obj)
 register struct obj *obj;
 {
 	register struct obj *otmp;
+	register boolean near_capacity = (inv_weight() > -5);
 
 	if(inv_cnt() >= 52) {
 		pline("You have no room to hold anything else.");
+		return(0);
+	}
+	if(obj->otyp != LOADSTONE && inv_weight() + (int)obj->owt > 0) {
+		char buf[BUFSZ];
+
+		Strcpy(buf, doname(obj));
+		pline("There %s %s in the %s, but %s.",
+			obj->quan==1 ? "is" : "are",
+			buf, xname(current_container),
+			invent ? "you cannot carry any more"
+			: "it is too heavy for you to carry");
+		/* "too heavy for you to lift" is not right if you're carrying
+		   the container... */
 		return(0);
 	}
 	if(obj == fcobj) fcobj = fcobj->nobj;
@@ -476,6 +529,8 @@ register struct obj *obj;
 	/* simulated point of time */
 
 	(void) addinv(obj);
+	if (near_capacity) You("have a little trouble removing");
+	prinv(obj);
 	return 0;
 }
 
@@ -608,9 +663,11 @@ dec_cwt(cobj, obj)
 register struct obj *cobj, *obj;
 {
 	if (Is_mbag(cobj))
-		cobj->owt -= (obj->owt/2 + 1);
+		cobj->owt -= (cobj->cursed?(obj->owt*2):(obj->owt/(cobj->blessed?4:2)) + 1);
 	else	cobj->owt -= obj->owt;
 
 	if(cobj->owt < objects[cobj->otyp].oc_weight)
 		cobj->owt = objects[cobj->otyp].oc_weight;
 }
+
+#endif /* OVLB */

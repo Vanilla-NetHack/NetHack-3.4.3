@@ -1,20 +1,38 @@
-/*	SCCS Id: @(#)makemon.c	3.0	89/11/15
+/*	SCCS Id: @(#)makemon.c	3.0	89/11/22
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
+#ifdef REINCARNATION
+# include <ctype.h>
+#endif
 
-struct monst zeromonst;
+VSTATIC struct monst zeromonst;
+
 static int FDECL(uncommon, (struct permonst *));
+OSTATIC void FDECL(m_initgrp,(struct monst *,int,int,int));
+static void FDECL(m_initthrow,(struct monst *,int,int));
+OSTATIC void FDECL(m_initweap,(struct monst *));
+static void FDECL(m_initinv,(struct monst *));
+static void FDECL(rloc_to,(struct monst *,int,int));
+static int FDECL(mstrength,(struct permonst *));
+
+extern int monstr[];
+
+#ifdef OVLB
 
 int monstr[NUMMONS];
+
+#endif /* OVLB */
 
 #define m_initsgrp(mtmp, x, y)	m_initgrp(mtmp, x, y, 3)
 #define m_initlgrp(mtmp, x, y)	m_initgrp(mtmp, x, y, 10)
 #define toostrong(monindx, lev) (monstr[monindx] > lev)
 #define tooweak(monindx, lev)	(monstr[monindx] < lev)
 
-static void
+#ifdef OVLB
+
+XSTATIC void
 m_initgrp(mtmp, x, y, n)	/* make a group just like mtmp */
 register struct monst *mtmp;
 register int x, y, n;
@@ -50,6 +68,7 @@ register int x, y, n;
 	}
 }
 
+
 static void
 m_initthrow(mtmp,otyp,oquan)
 struct monst *mtmp;
@@ -66,7 +85,7 @@ int otyp,oquan;
 	mpickobj(mtmp, otmp);
 }
 
-static void
+XSTATIC void
 m_initweap(mtmp)
 register struct monst *mtmp;
 {
@@ -118,7 +137,7 @@ register struct monst *mtmp;
 #ifdef TOLKIEN
 		if (mm == PM_HOBBIT) {
 		    switch (rn2(3)) {
-		  	case 0:
+			case 0:
 			    (void)mongets(mtmp, DAGGER);
 			    break;
 			case 1:
@@ -134,10 +153,13 @@ register struct monst *mtmp;
 		    (void)mongets(mtmp, IRON_SHOES);
 		    if (!rn2(4)) {
 			(void)mongets(mtmp, DWARVISH_SHORT_SWORD);
-			(void)mongets(mtmp,
-			    rn2(3) ? DWARVISH_MATTOCK : AXE);
+			/* note: you can't use a mattock with a shield */
+			if (rn2(2)) (void)mongets(mtmp, DWARVISH_MATTOCK);
+			else {
+				(void)mongets(mtmp, AXE);
+				(void)mongets(mtmp, DWARVISH_ROUNDSHIELD);
+			}
 			(void)mongets(mtmp, DWARVISH_IRON_HELM);
-			(void)mongets(mtmp, DWARVISH_ROUNDSHIELD);
 			if (!rn2(3))
 			    (void)mongets(mtmp, DWARVISH_MITHRIL_COAT);
 		    } else {
@@ -338,6 +360,9 @@ register struct monst *mtmp;
 	}
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 static void
 m_initinv(mtmp)
 register struct	monst	*mtmp;
@@ -392,6 +417,8 @@ register struct	monst	*mtmp;
 			if (!rn2(2)) (void) mongets(mtmp, C_RATION);
 		    }
 #endif
+		} else if (ptr == &mons[PM_SHOPKEEPER]) {
+		    (void) mongets(mtmp,SKELETON_KEY);
 		}
 		break;
 
@@ -450,7 +477,9 @@ register int	x, y;
 	if(x == 0 && y == 0) {
 		int uroom;
 		int tryct = 0;	/* careful with bigrooms */
-
+#ifdef __GNULINT__
+		uroom = 0;	/* supress used before set warning */
+#endif
 		if(!in_mklev) uroom = inroom(u.ux, u.uy);
 
 		do {
@@ -465,16 +494,12 @@ register int	x, y;
 		return((struct monst *) 0);
 
 	if(ptr){
-		/* if you are to make a specific monster and it has 
+		/* if you are to make a specific monster and it has
 		   already been genocided, return */
 		if(ptr->geno & G_GENOD) return((struct monst *) 0);
 	} else {
 		/* make a random (common) monster. */
-#ifdef REINCARNATION
-		if (!(ptr = (dlevel==rogue_level) ? roguemon() : rndmonst()))
-#else
 		if(!(ptr = rndmonst()))
-#endif
 		{
 #ifdef DEBUG
 		    pline("Warning: no monster.");
@@ -489,8 +514,6 @@ register int	x, y;
 	*mtmp = zeromonst;		/* clear all entries in structure */
 	for(ct = 0; ct < ptr->pxlth; ct++)
 		((char *) &(mtmp->mextra[0]))[ct] = 0;
- 	if(type_is_pname(ptr))
- 		Strcpy(NAME(mtmp), ptr->mname);
 	mtmp->nmon = fmon;
 	fmon = mtmp;
 	mtmp->m_id = flags.ident++;
@@ -503,19 +526,19 @@ register int	x, y;
 	    mtmp->mhpmax = mtmp->mhp = golemhp(monsndx(ptr));
 	else
 #endif /* GOLEMS */
- 	if(ptr->mlevel > 49) {
+	if(ptr->mlevel > 49) {
 	    /* "special" fixed hp monster
 	     * the hit points are encoded in the mlevel in a somewhat strange
 	     * way to fit in the 50..127 positive range of a signed character
 	     * above the 1..49 that indicate "normal" monster levels */
- 	    mtmp->mhpmax = mtmp->mhp = 2*(ptr->mlevel - 6);
- 	    mtmp->m_lev = mtmp->mhp / 4;	/* approximation */
- 	} else if((ptr->mlet == S_DRAGON) && (ptr >= &mons[PM_GRAY_DRAGON]))
+	    mtmp->mhpmax = mtmp->mhp = 2*(ptr->mlevel - 6);
+	    mtmp->m_lev = mtmp->mhp / 4;	/* approximation */
+	} else if((ptr->mlet == S_DRAGON) && (ptr >= &mons[PM_GRAY_DRAGON]))
 	    mtmp->mhpmax = mtmp->mhp = 80;
 	else if(!mtmp->m_lev) mtmp->mhpmax = mtmp->mhp = rnd(4);
 	else mtmp->mhpmax = mtmp->mhp = d((int)mtmp->m_lev, 8);
 	place_monster(mtmp, x, y);
-	mtmp->mcansee = 1;
+	mtmp->mcansee = mtmp->mcanmove = 1;
 	mtmp->mpeaceful = peace_minded(ptr);
 
 	switch(ptr->mlet) {
@@ -543,11 +566,11 @@ register int	x, y;
 			if(rn2(5) && !u.uhave_amulet) mtmp->msleep = 1;
 			break;
 		case S_UNICORN:
-			if ((ptr==&mons[PM_WHITE_UNICORN] && 
+			if ((ptr==&mons[PM_WHITE_UNICORN] &&
 				u.ualigntyp == U_LAWFUL) ||
-			(ptr==&mons[PM_GRAY_UNICORN] && 
+			(ptr==&mons[PM_GRAY_UNICORN] &&
 				u.ualigntyp == U_NEUTRAL) ||
-			(ptr==&mons[PM_BLACK_UNICORN] && 
+			(ptr==&mons[PM_BLACK_UNICORN] &&
 				u.ualigntyp == U_CHAOTIC))
 				mtmp->mpeaceful = 1;
 			break;
@@ -565,7 +588,8 @@ register int	x, y;
 	} else if (ptr == &mons[PM_WIZARD_OF_YENDOR]) {
 		mtmp->iswiz = 1;
 		flags.no_of_wizards++;
-	}
+	} else if (ptr == &mons[PM_QUANTUM_MECHANIC])
+		mtmp = qname(mtmp);
 
 	if(in_mklev) {
 		if(((is_ndemon(ptr)) ||
@@ -676,14 +700,15 @@ struct permonst *mdat;
 	    if (passes_walls(mdat)) return 1;
 	}
 	if (!ACCESSIBLE(levl[x][y].typ)) return 0;
-	if (IS_DOOR(levl[x][y].typ) &&
-		    (levl[x][y].doormask & (D_LOCKED | D_CLOSED)) &&
-		    (!mdat || !amorphous(mdat)))
+	if (closed_door(x, y) && (!mdat || !amorphous(mdat)))
 		return 0;
 	if (sobj_at(BOULDER, x, y) && (!mdat || !throws_rocks(mdat)))
 		return 0;
 	return 1;
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 static void
 rloc_to(mtmp, x, y)
@@ -742,6 +767,9 @@ struct monst *mtmp;
 	rloc(mtmp);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 static int
 cmnum()	{	/* return the number of "common" monsters */
 
@@ -761,6 +789,9 @@ struct	permonst *ptr;
 		(!Inhell ? ptr->geno & G_HELL : ptr->maligntyp > 0);
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 /* This routine is designed to return an integer value which represents
  * an approximation of monster strength.  It uses a similar method of
  * determination as "experience()" to arrive at the strength.
@@ -771,7 +802,7 @@ struct permonst *ptr;
 {
 	int	i, tmp2, n, tmp = ptr->mlevel;
 
- 	if(tmp > 49)		/* special fixed hp monster */
+	if(tmp > 49)		/* special fixed hp monster */
 	    tmp = 2*(tmp - 6) / 4;
 
 /*	For creation in groups */
@@ -830,14 +861,26 @@ init_monstr()
 		monstr[ct] = mstrength(&(mons[ct]));
 }
 
+#endif /* OVL1 */
+#ifdef OVL0
+
 struct	permonst *
-rndmonst() {		/* select a random monster */
+rndmonst()		/* select a random monster */
+{
 	register struct permonst *ptr;
 	register int i, ct;
 	register int zlevel;
 	static int minmlev, maxmlev, accept;
 	static long oldmoves = 0L;	/* != 1, starting value of moves */
+#ifdef REINCARNATION
+	static boolean upper;
 
+	upper = (dlevel == rogue_level);
+#endif
+
+#ifdef __GNULINT__
+	ptr = (struct permonst *)0; /* suppress "used uninitialized" warning */
+#endif
 	if(oldmoves != moves) {		/* must recalculate accept */
 	    oldmoves = moves;
 	    zlevel = u.uhave_amulet ? MAXLEVEL : dlevel;
@@ -855,7 +898,13 @@ rndmonst() {		/* select a random monster */
 /*
  *	Find out how many monsters exist in the range we have selected.
  */
-	    for(accept = ct = 0 ; mons[ct].mlet; ct++) {
+	    accept = 0;
+#ifdef REINCARNATION
+	    for(ct = (upper ? PM_APE : 0);
+			upper ? isupper(mons[ct].mlet) : mons[ct].mlet; ct++) {
+#else
+	    for(ct = 0 ; mons[ct].mlet; ct++) {
+#endif
 		ptr = &(mons[ct]);
 		if(uncommon(ptr)) continue;
 		if(tooweak(ct, minmlev) || toostrong(ct, maxmlev))
@@ -874,7 +923,12 @@ rndmonst() {		/* select a random monster */
  *	Now, select a monster at random.
  */
 	ct = rnd(accept);
+#ifdef REINCARNATION
+	for(i = (upper ? PM_APE : 0);
+	    (upper ? isupper(mons[i].mlet) : mons[i].mlet) && ct > 0; i++) {
+#else
 	for(i = 0; mons[i].mlet && ct > 0; i++) {
+#endif
 		ptr = &(mons[i]);
 		if(uncommon(ptr)) continue;
 		if(tooweak(i, minmlev) || toostrong(i, maxmlev))
@@ -889,6 +943,9 @@ rndmonst() {		/* select a random monster */
 	}
 	return(ptr);
 }
+
+#endif /* OVL0 */
+#ifdef OVL1
 
 /*	The routine below is used to make one of the multiple types
  *	of a given monster class.  It will return 0 if no monsters
@@ -949,6 +1006,9 @@ register struct permonst *ptr;
 	return((tmp > tmp2) ? tmp2 : (tmp > 0 ? tmp : 0)); /* 0 lower limit */
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 struct permonst *
 grow_up(mtmp)		/* mon mtmp "grows up" to a bigger version. */
 register struct monst *mtmp;
@@ -976,6 +1036,9 @@ register struct monst *mtmp;
 	return(mtmp->data);
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 int
 mongets(mtmp, otyp)
 register struct monst *mtmp;
@@ -989,45 +1052,12 @@ register int otyp;
 		curse(otmp);
 	    }
 	    mpickobj(mtmp, otmp);
-	    return(otmp->spe);	    
+	    return(otmp->spe);
 	} else return(0);
 }
 
-#ifdef REINCARNATION
-struct permonst *
-roguemon()
-{
-/* Make a monster for a Rogue-like level; only capital letters.  There are
- * no checks for "too hard" or "too easy", though dragons are specifically
- * ruled out because playtesting showed they made the level too hard.
- * Modified from rndmonst().
- */
-#define isupper(x) ('A'<=(x) && (x)<='Z')
-	register struct permonst *ptr;
-	register int accept,ct,i;
-
-	/* See how many there are. */
-	accept = 0;
-	for(ct = PM_APE ; isupper(mons[ct].mlet); ct++) {
-		if (mons[ct].mlet == S_DRAGON) continue;
-		ptr = &(mons[ct]);
-		if(uncommon(ptr)) continue;
-		accept += (ptr->geno & G_FREQ);
-	}
-	if(!accept) return((struct permonst *) 0);
-
-	/* Now, select one at random. */
-	ct = rnd(accept);
-	for(i = PM_APE; isupper(mons[i].mlet) && ct > 0; i++) {
-		if (mons[i].mlet == S_DRAGON) continue;
-		ptr = &(mons[i]);
-		if(uncommon(ptr)) continue;
-		ct -= (ptr->geno & G_FREQ);
-	}
-	if(ct > 0) return((struct permonst *) 0);
-	return(ptr);
-}
-#endif
+#endif /* OVL1 */
+#ifdef OVLB
 
 #ifdef GOLEMS
 int
@@ -1047,6 +1077,9 @@ int type;
 	}
 }
 #endif /* GOLEMS */
+
+#endif /* OVLB */
+#ifdef OVL1
 
 /*
  *	Alignment vs. yours determines monster's attitude to you.
@@ -1109,7 +1142,10 @@ struct monst *mtmp;
 		mtmp->malign = abs(mal);
 }
 
-static char syms[] = { 0, 0, RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, GOLD_SYM,
+#endif /* OVL1 */
+#ifdef OVLB
+
+static char syms[] = { 0, 1, RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, GOLD_SYM,
 	SCROLL_SYM, POTION_SYM, ARMOR_SYM, AMULET_SYM, TOOL_SYM, ROCK_SYM,
 	GEM_SYM,
 #ifdef SPELLS
@@ -1119,51 +1155,106 @@ static char syms[] = { 0, 0, RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, GOLD_SYM,
 };
 
 void
-set_mimic_sym(mtmp) /* KAA */
+set_mimic_sym(mtmp)		/* KAA, modified by ERS */
 register struct monst *mtmp;
 {
 	int roomno, rt;
-	char sym;
+	unsigned appear, ap_type;
+	int s_sym;
+	struct obj *otmp;
+	int mx, my;
+
 	if (!mtmp) return;
-
-	syms[0] = UP_SYM;
-	syms[1] = DN_SYM;
-
+	mx = mtmp->mx; my = mtmp->my;
 	mtmp->mimic = 1;
-	roomno = inroom(mtmp->mx, mtmp->my);
-	if (levl[mtmp->mx][mtmp->my].gmask)
-		sym = GOLD_SYM;
-	else if (OBJ_AT(mtmp->mx, mtmp->my))
-		sym = level.objects[mtmp->mx][mtmp->my]->olet;
-	else if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ) ||
-		 IS_WALL(levl[mtmp->mx][mtmp->my].typ) ||
-		 levl[mtmp->mx][mtmp->my].typ == SDOOR ||
-		 levl[mtmp->mx][mtmp->my].typ == SCORR)
-		sym = CLOSED_DOOR_SYM;
-	else if (is_maze_lev)
-		sym = rn2(2) ? ROCK_SYM : syms[rn2(sizeof syms)];
-	else if (roomno < 0)
-		sym = ROCK_SYM;
-	else if ((rt = rooms[roomno].rtype) == ZOO || rt == VAULT)
-		sym = GOLD_SYM;
+	roomno = inroom(mx, my);
+	if (levl[mx][my].gmask) {
+		ap_type = M_AP_GOLD;
+		if (g_at(mx, my)->amount <= 32767)
+			appear = g_at(mx, my)->amount;
+		else
+			appear = 32000 + rnd(767);
+	}
+	else if (OBJ_AT(mx, my)) {
+		ap_type = M_AP_OBJECT;
+		appear = level.objects[mx][my]->otyp;
+	}
+	else if (IS_DOOR(levl[mx][my].typ) ||
+		 IS_WALL(levl[mx][my].typ) ||
+		 levl[mx][my].typ == SDOOR ||
+		 levl[mx][my].typ == SCORR) {
+		ap_type = M_AP_FURNITURE;
+		appear = S_cdoor;
+	}
+	else if (is_maze_lev && rn2(2)) {
+		ap_type = M_AP_OBJECT;
+		appear = STATUE;
+	}
+	else if (roomno < 0) {
+		ap_type = M_AP_OBJECT;
+		appear = BOULDER;
+	}
+	else if ((rt = rooms[roomno].rtype) == ZOO || rt == VAULT) {
+		ap_type = M_AP_GOLD;
+		appear = rn2(100)+10;	/* number of gold pieces in pile */
+	}
 #ifdef ORACLE
-	else if (rt == DELPHI)
-		sym = rn2(2) ? ROCK_SYM : FOUNTAIN_SYM;
+	else if (rt == DELPHI) {
+		if (rn2(2)) {
+			ap_type = M_AP_OBJECT;
+			appear = STATUE;
+		}
+		else {
+			ap_type = M_AP_FURNITURE;
+			appear = S_fountain;
+		}
+	}
 #endif
 #ifdef ALTARS
-	else if (rt == TEMPLE)
-		sym = ALTAR_SYM;
+	else if (rt == TEMPLE) {
+		ap_type = M_AP_FURNITURE;
+		appear = S_altar;
+	}
 #endif
 	/* We won't bother with beehives, morgues, barracks, throne rooms
 	 * since they shouldn't contain too many mimics anyway...
 	 */
 	else if (rt >= SHOPBASE) {
-		int s_sym = get_shop_item(rt - SHOPBASE);
-
-		if (s_sym < 0) sym = objects[-s_sym].oc_olet;
-		else if (s_sym == RANDOM_SYM)
-			sym = syms[rn2(sizeof(syms)-2) + 2];
-		else sym = s_sym;
-	} else sym = syms[rn2(sizeof syms)];
-	mtmp->mappearance = sym;
+		s_sym = get_shop_item(rt - SHOPBASE);
+		if (s_sym < 0) {
+			ap_type = M_AP_OBJECT;
+			appear = -s_sym;
+		}
+		else {
+			if (s_sym == RANDOM_SYM)
+				s_sym = syms[rn2(sizeof(syms)-2) + 2];
+			goto assign_sym;
+		}
+	}
+	else {
+		s_sym = syms[rn2(sizeof syms)];
+assign_sym:
+		if (s_sym < 2) {
+			ap_type = M_AP_FURNITURE;
+			appear = s_sym ? S_upstair : S_dnstair;
+		}
+		else if (s_sym == GOLD_SYM) {
+			ap_type = M_AP_GOLD;
+			appear = rn2(100)+100;
+		}
+		else {
+			ap_type = M_AP_OBJECT;
+			if (s_sym == S_MIMIC_DEF)
+				appear = STRANGE_OBJECT;
+			else {
+				otmp = mkobj( (char) s_sym, FALSE );
+				appear = otmp->otyp;
+				free((genericptr_t) otmp);
+			}
+		}
+	}
+	mtmp->m_ap_type = ap_type;
+	mtmp->mappearance = appear;
 }
+
+#endif /* OVLB */

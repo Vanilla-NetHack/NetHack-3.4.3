@@ -6,86 +6,116 @@
 #include	"func_tab.h"
 
 #ifdef DUMB	/* stuff commented out in extern.h, but needed here */
-extern int doapply(); /**/
-extern int dorub(); /**/
-extern int dojump(); /**/
-extern int doextlist(); /**/
-extern int dodrop(); /**/
-extern int doddrop(); /**/
-extern int dodown(); /**/
-extern int doup(); /**/
-extern int donull(); /**/
-extern int dowipe(); /**/
-extern int do_mname(); /**/
-extern int ddocall(); /**/
-extern int dotakeoff(); /**/
-extern int doremring(); /**/
-extern int dowear(); /**/
-extern int doputon(); /**/
-extern int doddoremarm(); /**/
-extern int dokick(); /**/
-extern int dothrow(); /**/
-extern int doeat(); /**/
-extern int done2(); /**/
-extern int doengrave(); /**/
-extern int dopickup(); /**/
-extern int ddoinv(); /**/
-extern int dotypeinv(); /**/
-extern int dolook(); /**/
-extern int doprgold(); /**/
-extern int doprwep(); /**/
-extern int doprarm(); /**/
-extern int doprring(); /**/
-extern int dopramulet(); /**/
-extern int doprtool(); /**/
-extern int dosuspend(); /**/
-extern int doforce(); /**/
-extern int doopen(); /**/
-extern int doclose(); /**/
-extern int dosh(); /**/
-extern int dodiscovered(); /**/
-extern int doset(); /**/
-extern int dotogglepickup(); /**/
-extern int dowhatis(); /**/
-extern int dowhatdoes(); /**/
-extern int dohelp(); /**/
-extern int dohistory(); /**/
-extern int doloot(); /**/
-extern int dodrink(); /**/
-extern int dodip(); /**/
-extern int dosacrifice(); /**/
-extern int dopray(); /**/
-extern int doturn(); /**/
-extern int doredraw(); /**/
-extern int doread(); /**/
-extern int dosave(); /**/
-extern int dosave0(); /**/
-extern int dosearch(); /**/
+extern int NDECL(doapply); /**/
+extern int NDECL(dorub); /**/
+extern int NDECL(dojump); /**/
+extern int NDECL(doextlist); /**/
+extern int NDECL(dodrop); /**/
+extern int NDECL(doddrop); /**/
+extern int NDECL(dodown); /**/
+extern int NDECL(doup); /**/
+extern int NDECL(donull); /**/
+extern int NDECL(dowipe); /**/
+extern int NDECL(do_mname); /**/
+extern int NDECL(ddocall); /**/
+extern int NDECL(dotakeoff); /**/
+extern int NDECL(doremring); /**/
+extern int NDECL(dowear); /**/
+extern int NDECL(doputon); /**/
+extern int NDECL(doddoremarm); /**/
+extern int NDECL(dokick); /**/
+extern int NDECL(dothrow); /**/
+extern int NDECL(doeat); /**/
+extern int NDECL(done2); /**/
+extern int NDECL(doengrave); /**/
+extern int NDECL(dopickup); /**/
+extern int NDECL(ddoinv); /**/
+extern int NDECL(dotypeinv); /**/
+extern int NDECL(dolook); /**/
+extern int NDECL(doprgold); /**/
+extern int NDECL(doprwep); /**/
+extern int NDECL(doprarm); /**/
+extern int NDECL(doprring); /**/
+extern int NDECL(dopramulet); /**/
+extern int NDECL(doprtool); /**/
+extern int NDECL(dosuspend); /**/
+extern int NDECL(doforce); /**/
+extern int NDECL(doopen); /**/
+extern int NDECL(doclose); /**/
+extern int NDECL(dosh); /**/
+extern int NDECL(dodiscovered); /**/
+extern int NDECL(doset); /**/
+extern int NDECL(dotogglepickup); /**/
+extern int NDECL(dowhatis); /**/
+extern int NDECL(dowhatdoes); /**/
+extern int NDECL(dohelp); /**/
+extern int NDECL(dohistory); /**/
+extern int NDECL(doloot); /**/
+extern int NDECL(dodrink); /**/
+extern int NDECL(dodip); /**/
+extern int NDECL(dosacrifice); /**/
+extern int NDECL(dopray); /**/
+extern int NDECL(doturn); /**/
+extern int NDECL(doredraw); /**/
+extern int NDECL(doread); /**/
+extern int NDECL(dosave); /**/
+extern int NDECL(dosave0); /**/
+extern int NDECL(dosearch); /**/
 extern int FDECL(dosearch0, (int)); /**/
-extern int doidtrap(); /**/
-extern int dopay(); /**/
-extern int dosit(); /**/
-extern int dotalk(); /**/
-extern int docast(); /**/
-extern int dovspell(); /**/
-extern int doredotopl(); /**/
-extern int dotele(); /**/
-extern int dountrap(); /**/
-extern int doversion(); /**/
-extern int dowield(); /**/
-extern int dozap(); /**/
+extern int NDECL(doidtrap); /**/
+extern int NDECL(dopay); /**/
+extern int NDECL(dosit); /**/
+extern int NDECL(dotalk); /**/
+extern int NDECL(docast); /**/
+extern int NDECL(dovspell); /**/
+extern int NDECL(doredotopl); /**/
+extern int NDECL(dotele); /**/
+extern int NDECL(dountrap); /**/
+extern int NDECL(doversion); /**/
+extern int NDECL(doextversion); /**/
+extern int NDECL(dowield); /**/
+extern int NDECL(dozap); /**/
 #endif /* DUMB */
 
+#ifdef OVL1
+
+static int NDECL((*timed_occ_fn));
+
+#endif /* OVL1 */
+
 #ifndef OVERLAY
-static 
+static int NDECL(timed_occupation);
+static int NDECL(doextcmd);
+# ifdef POLYSELF
+static int NDECL(domonability);
+# endif
+# ifdef WIZARD
+static int NDECL(wiz_wish);
+static int NDECL(wiz_identify);
+static int NDECL(wiz_map);
+static int NDECL(wiz_genesis);
+static int NDECL(wiz_where);
+static int NDECL(wiz_detect);
+static int NDECL(wiz_level_tele);
+# endif
+# ifdef EXPLORE_MODE
+static int NDECL(enter_explore_mode);
+# endif
+# if defined(WIZARD) || defined(EXPLORE_MODE)
+static int NDECL(wiz_attributes);
+# endif
+#endif /* OVERLAY */
+
+#ifdef REDO
+static char NDECL(popch);
 #endif
-int (*timed_occ_fn)();
-#ifdef POLYSELF
-#ifndef OVERLAY
-static 
+
+#ifdef STUPID_CPP
+static char FDECL(unctrl, (CHAR_P));
+static char FDECL(unmeta, (CHAR_P));
 #endif
-int domonability();
-#endif
+
+#ifdef OVL1
 
 /* Count down by decrementing multi */
 #ifndef OVERLAY
@@ -124,8 +154,8 @@ reset_occupations() {
  */
 void
 set_occupation(fn, txt, xtime)
-int (*fn)();
-char *txt;
+int NDECL((*fn));
+const char *txt;
 int xtime;
 {
 	if (xtime) {
@@ -198,6 +228,9 @@ char ch;
 	return;
 }
 #endif /* REDO */
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 #ifndef OVERLAY
 static 
@@ -274,6 +307,36 @@ domonability()
 	else if (u.umonnum >= 0)
 		pline("Any special ability you may have is purely reflexive.");
 	else You("don't have a special ability!");
+	return 0;
+}
+#endif
+
+#ifdef EXPLORE_MODE
+#ifndef OVERLAY
+static 
+#endif
+int
+enter_explore_mode()
+{
+	if(!discover && !wizard) {
+		pline("Beware!  From discovery mode there will be no return to normal game.");
+		more();
+#ifndef MACOS
+		pline("Do you want to enter discovery mode? ");
+	 	if(yn() == 'y') {
+#else
+		if(!flags.silent) SysBeep(1);
+		if(UseMacAlertText(128, "Enter discovery mode ?") == 1) {
+#endif
+			clrlin();
+			pline("You are now in non-scoring discovery mode.");
+			discover = TRUE;
+		}
+		else {
+			clrlin();
+			pline("Resuming normal game.");
+		}
+	}
 	return 0;
 }
 #endif
@@ -462,7 +525,7 @@ enlightenment() {
 	}
 #ifdef WIZARD
 	if (wizard) {
-		Sprintf(buf, "Your luck is %d.", u.uluck);
+		Sprintf(buf, "Your luck is %d.", Luck);
 		cornline(1, buf);
 	}
 #endif
@@ -485,6 +548,9 @@ wiz_attributes()
 	return 0;
 }
 #endif /* WIZARD || EXPLORE_MODE */
+
+#endif /* OVLB */
+#ifdef OVL1
 
 #ifndef M
 #define M(c)		(0x80 | (c))
@@ -573,11 +639,15 @@ const struct func_tab cmdlist[]={
 	{M('u'), dountrap},
 	{'v', doversion},
 	{'V', dohistory},
+	{M('v'), doextversion},
 	{'w', dowield},
 	{'W', dowear},
 	{M('w'), dowipe},
 #ifdef SPELLS
 	{'x', dovspell},			/* Mike Stephenson */
+#endif
+#ifdef EXPLORE_MODE
+	{'X', enter_explore_mode},
 #endif
 /*	'y', 'Y' : go nw */
 	{'z', dozap},
@@ -631,6 +701,8 @@ const struct ext_func_tab extcmdlist[] = {
 	"sit", "sit down", dosit,
 	"turn", "turn undead", doturn,
 	"untrap", "untrap something", dountrap,
+	"version", "print compile time options for this version of NetHack",
+		doextversion,
 	"wipe", "wipe off your face", dowipe,
 	"?", "get this list of extended commands", doextlist,
 	NULL, NULL, donull
@@ -716,7 +788,8 @@ register char *cmd;
 		flags.run = 3;
 		goto rush;
 	}
-	if(*cmd == 'm' && movecmd(cmd[1])) {
+	if((*cmd == 'm' || (flags.num_pad & *cmd == '-')) &&
+	    movecmd(cmd[1])) {
 		flags.run = 0;
 		flags.nopick = 1;
 		goto walk;
@@ -725,6 +798,12 @@ register char *cmd;
 		flags.run = 1;
 		flags.nopick = 1;
 		goto rush;
+	}
+	if(flags.num_pad && *cmd == '0') {
+	        (void)ddoinv();	/* A convenience borrowed from the PC */
+		flags.move = 0;
+		multi = 0;
+		return;
 	}
 	while(tlist->f_char) {
 		if((*cmd & 0xff) == (tlist->f_char & 0xff)){
@@ -735,8 +814,13 @@ register char *cmd;
 			/* Now control-A can stop lengthy commands */
 			/* in the PC version only -- use ^C-N otherwise */
 			if (tlist->f_text && !occupation && multi)
-				set_occupation(tlist->f_funct, tlist->f_text,
-					multi);
+#ifdef __GNULINT__
+				set_occupation(tlist->f_funct,
+						tlist->f_text, multi);
+#else
+				set_occupation(((struct func_tab *)tlist)->f_funct,
+					tlist->f_text, multi);
+#endif
 			res = (*(tlist->f_funct))();
 			if(!res) {
 				flags.move = 0;
@@ -810,7 +894,7 @@ int
 movecmd(sym)	/* also sets u.dz, but returns false for <> */
 char sym;
 {
-	register char *dp;
+	register const char *dp;
 	register const char *sdp = flags.num_pad ? ndir : sdir;
 
 	u.dz = 0;
@@ -826,6 +910,9 @@ char sym;
 #endif
 	return !u.dz;
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 getdir(s)
@@ -865,6 +952,9 @@ confdir()
 	return;
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 isok(x,y)
 register int x, y;
@@ -872,3 +962,5 @@ register int x, y;
 	/* x corresponds to curx, so x==1 is the first column. Ach. %% */
 	return x >= 1 && x <= COLNO-1 && y >= 0 && y <= ROWNO-1;
 }
+
+#endif /* OVL0 */

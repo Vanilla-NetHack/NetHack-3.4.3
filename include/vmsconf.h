@@ -31,6 +31,12 @@
  * The remainder of the file should not need to be changed.
  */
 
+/* GCC 1.36 (or maybe GAS) for VMS has a bug with extern const declarations.
+   Until it is fixed, eliminate const. */
+#ifdef __GNUC__
+# define const
+#endif
+
 #include <time.h>
 #include <file.h>
 
@@ -59,11 +65,15 @@
 #define Srand(seed) srand(seed)
 #endif
 
+#define bcopy(s1,s2,sz) memcpy(s2,s1,sz)
 #define unlink(x) delete(x)
 #define exit(x) vms_exit(x)
 #define getuid() vms_getuid()
 #define abort() vms_abort()
 #define creat(f,m) vms_creat(f,m)
+
+/* VMS global names are case insensitive... */
+#define An vms_an
 
 #endif
 #endif /* VMS /* */

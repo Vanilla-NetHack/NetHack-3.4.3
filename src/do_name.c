@@ -4,6 +4,15 @@
 
 #include "hack.h"
 
+#ifdef NAMED_ITEMS
+# include <ctype.h>
+#endif
+
+static char *FDECL(visctrl, (CHAR_P));
+static void FDECL(do_oname, (struct obj *));
+
+#ifdef OVLB
+
 static
 char *
 visctrl(c)
@@ -29,11 +38,27 @@ char c;
 void
 getpos(cc,force,goal)
 coord	*cc;
-int force; char *goal;
+int force;
+const char *goal;
 {
 	register int cx, cy, i, c;
 	const char *sdp = flags.num_pad ? ndir : sdir;
+#ifdef MACOS
+	extern short	macflags;
+	Boolean	fUpdateFlagOn;
+	long	ticks;
+#endif
+
 	if(flags.verbose) pline("(For instructions type a ?)");
+#ifdef MACOS	
+	if ((macflags & fDoUpdate) && (macflags & fDoNonKeyEvt)) {
+		fUpdateFlagOn = true;
+	} else {
+		fUpdateFlagOn = false;
+		macflags |= (fDoUpdate | fDoNonKeyEvt);
+	}
+	macflags |= fMoveWRTMouse;
+#endif
 	cx = cc->x;
 	cy = cc->y;
 #ifdef CLIPPING
@@ -63,6 +88,11 @@ int force; char *goal;
 						    "use hjkl or ." :
 				    "aborted");
 			if(force) goto nxtc;
+#ifdef MACOS
+			macflags &= ~fMoveWRTMouse;
+			if (!fUpdateFlagOn)
+				macflags &= ~(fDoUpdate | fDoNonKeyEvt);
+#endif
 			cc->x = -1;
 			cc->y = 0;
 			return;
@@ -75,17 +105,47 @@ int force; char *goal;
 		curs(cx,cy+2);
 #endif
 	}
+#ifdef MACOS
+	macflags &= ~fMoveWRTMouse;
+	if (!fUpdateFlagOn)
+		macflags &= ~(fDoUpdate | fDoNonKeyEvt);
+#endif
 	cc->x = cx;
 	cc->y = cy;
 	return;
+}
+
+struct monst *
+christen_monst(mtmp, name)
+struct monst *mtmp;
+const char *name;
+{
+	register int lth,i;
+	register struct monst *mtmp2;
+
+	/* dogname and catname are 63-character arrays; the generic naming
+	 * function do_mname() below also cut names off at 63 characters */
+	lth = strlen(name)+1;
+	if(lth > 63){
+		lth = 63;
+	}
+	mtmp2 = newmonst(mtmp->mxlth + lth);
+	*mtmp2 = *mtmp;
+	for(i=0; i<mtmp->mxlth; i++)
+		((char *) mtmp2->mextra)[i] = ((char *) mtmp->mextra)[i];
+	mtmp2->mnamelth = lth;
+	(void)strncpy(NAME(mtmp2), name, lth);
+	NAME(mtmp2)[lth-1] = 0;
+	replmon(mtmp,mtmp2);
+	return(mtmp2);
 }
 
 int
 do_mname(){
 	char buf[BUFSZ];
 	coord cc;
-	register int cx,cy,lth,i;
-	register struct monst *mtmp, *mtmp2;
+	register int cx,cy;
+	register struct monst *mtmp;
 	register char *curr;
 	boolean blank;
 
@@ -127,18 +187,7 @@ do_mname(){
  	    }
  	    return(0);
  	}
-	lth = strlen(buf)+1;
-	if(lth > 63){
-		buf[62] = 0;
-		lth = 63;
-	}
-	mtmp2 = newmonst(mtmp->mxlth + lth);
-	*mtmp2 = *mtmp;
-	for(i=0; i<mtmp->mxlth; i++)
-		((char *) mtmp2->mextra)[i] = ((char *) mtmp->mextra)[i];
-	mtmp2->mnamelth = lth;
-	Strcpy(NAME(mtmp2), buf);
-	replmon(mtmp,mtmp2);
+	(void) christen_monst(mtmp, buf);
 	return(0);
 }
 
@@ -166,8 +215,20 @@ register struct obj *obj;
 	if(blank) *buf = '\0';
 
 #ifdef NAMED_ITEMS
-	if(is_artifact(obj) || restr_name(obj, buf))
-		pline("Somehow you can't seem to engrave that word.");
+	if(is_artifact(obj))
+		pline("The artifact seems to resist the attempt.");
+	else if (restr_name(obj, buf) || exist_artifact(obj, buf)) {
+		int n = rn2(strlen(buf));
+		char c;
+
+		while (tolower(buf[n]) == (c = 'a' + rn2('z'-'a')));
+		if (isupper(buf[n])) buf[n] = toupper(c);
+		else buf[n] = c;
+		pline("While engraving your hand slips.");
+		more();
+		You("engrave: \"%s\".",buf);
+		(void)oname(obj, buf, 1);
+	}
 	else
 #endif
 		(void)oname(obj, buf, 1);
@@ -176,15 +237,21 @@ register struct obj *obj;
 struct obj *
 oname(obj, buf, ininv)
 register struct obj *obj;
-char	*buf;
+const char	*buf;
 register int ininv;
 {
 	register struct obj *otmp, *otmp2, *contents;
 	register int	lth;
 
 	lth = *buf ? strlen(buf)+1 : 0;
+#ifdef NAMED_ITEMS
+	/* if named artifact exists in the game, do not create another */
+	if (exist_artifact(obj, buf))
+		lth = 0;
+	else
+		artifact_exists(obj, buf, TRUE);
+#endif
 	if(lth > 63){
-		buf[62] = 0;
 		lth = 63;
 	}
 	otmp2 = newobj(lth);
@@ -198,8 +265,10 @@ register int ininv;
 	 */
 	if (buf) (void)donull();
 #endif
-	if(lth) Strcpy(ONAME(otmp2), buf);
-
+	if(lth) {
+		(void)strncpy(ONAME(otmp2), buf, lth);
+		ONAME(otmp2)[lth-1] = 0;
+	}
 	if (obj->owornmask) {
 		/* Note: dying by burning in Hell causes problems if you
 		 * try doing this when owornmask isn't set.
@@ -235,7 +304,7 @@ static const char callable[] = {
 #ifdef SPELLS
 	SPBOOK_SYM,
 #endif
-	ARMOR_SYM, 0 };
+	ARMOR_SYM, TOOL_SYM, 0 };
 
 int
 ddocall()
@@ -296,7 +365,7 @@ register struct obj *obj;
 
 	/* clear old name */
 	str1 = &(objects[obj->otyp].oc_uname);
-	if(*str1) free(*str1);
+	if(*str1) free((genericptr_t)*str1);
 
 	/* uncalls item if all spaces */
 	for (str = buf, blank = 1; *str; blank = (*str++ == ' '));
@@ -311,13 +380,16 @@ register struct obj *obj;
 	*str1 = str;
 }
 
-const char *ghostnames[] = {
+#endif /*OVLB*/
+#ifdef OVL0
+
+static const char *ghostnames[] = {
 	/* these names should have length < PL_NSIZ */
 	/* Capitalize the names for aesthetics -dgk */
 	"Adri", "Andries", "Andreas", "Bert", "David", "Dirk", "Emile",
 	"Frans", "Fred", "Greg", "Hether", "Jay", "John", "Jon", "Karnov",
 	"Kay", "Kenny", "Kevin", "Maud", "Michiel", "Mike", "Peter", "Robert",
-	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Miracleman",
+	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Havok",
 	"Stephan", "Lance Braccus", "Shadowhawk"
 };
 
@@ -361,7 +433,7 @@ int vb;
 		{ register const char *gn = (const char *) mtmp->mextra;
 		  if(!*gn) {		/* might also look in scorefile */
 		    gn = ghostnames[rn2(SIZE(ghostnames))];
-			Strcpy((char *) mtmp->mextra, !rn2(5) ? plname : gn);
+		    Strcpy((char *) mtmp->mextra, !rn2(5) ? (const char *)plname : gn);
 		  }
 		  Sprintf(buf, "%s's ghost", (char *) mtmp->mextra);
 		}
@@ -381,12 +453,18 @@ int vb;
 	return(buf);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 char *
 lmonnam(mtmp)
 register struct monst *mtmp;
 {
 	return(x_monnam(mtmp, 1));
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 char *
 mon_nam(mtmp)
@@ -405,10 +483,13 @@ register struct monst *mtmp;
 	return(bp);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 char *
 a_monnam(mtmp,adj)
 register struct monst *mtmp;
-register char *adj;
+register const char *adj;
 {
 	register char *bp = mon_nam(mtmp);
 #ifdef LINT	/* static char buf[BUFSZ]; */
@@ -427,7 +508,7 @@ register char *adj;
 char *
 a2_monnam(mtmp,adj)
 register struct monst *mtmp;
-register char *adj;
+register const char *adj;
 {
 	register char *bp = mon_nam(mtmp);
 #ifdef LINT	/* static char buf[BUFSZ]; */
@@ -446,7 +527,7 @@ register char *adj;
 char *
 Amonnam(mtmp, adj)
 register struct monst *mtmp;
-register char *adj;
+register const char *adj;
 {
 	register char *bp = a_monnam(mtmp,adj);
 
@@ -480,7 +561,7 @@ register struct monst *mtmp;
 	return(bp);
 }
 
-char *
+const char *
 rndmonnam() {  /* Random name of monster type, if hallucinating */
 	int name;
 
@@ -491,8 +572,33 @@ rndmonnam() {  /* Random name of monster type, if hallucinating */
 	return(mons[name].mname);
 }
 
-#ifdef REINCARNATION
+const char *pronoun_pairs[][2] = {
+	{"him", "her"}, {"Him", "Her"}, {"his", "her"}, {"His", "Her"},
+	{"he", "she"}, {"He", "She"},
+	{0, 0}
+};
+
 char *
+self_pronoun(str, pronoun)
+const char *str;
+const char *pronoun;
+{
+	static char buf[BUFSZ];
+	register int i;
+
+	for(i=0; pronoun_pairs[i][0]; i++) {
+		if(!strncmp(pronoun, pronoun_pairs[i][0], 3)) {
+			Sprintf(buf, str, pronoun_pairs[i][flags.female]);
+			return buf;
+		}
+	}
+	impossible("never heard of pronoun %s?", pronoun);
+	Sprintf(buf, str, pronoun_pairs[i][0]);
+	return buf;
+}
+
+#ifdef REINCARNATION
+const char *
 roguename() /* Name of a Rogue player */
 {
 	char *i, *opts;
@@ -511,3 +617,4 @@ roguename() /* Name of a Rogue player */
 }
 #endif
 
+#endif /* OVLB */

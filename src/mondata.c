@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.0	89/11/19
+/*	SCCS Id: @(#)mondata.c	3.0	89/11/21
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,8 @@
 #include "epri.h"
 
 /*	These routines provide basic data for any type of monster. */
+
+#ifdef OVL0
 
 boolean
 attacktype(ptr, atyp)
@@ -21,12 +23,14 @@ attacktype(ptr, atyp)
 	return(FALSE);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 boolean
 resists_ston(ptr)	/* returns TRUE if monster is petrify resistant */
 	register struct permonst *ptr;
 {
-	return (ptr->mflags1 & M1_STON_RES || dmgtype(ptr, AD_STON) ||
-		dmgtype(ptr, AD_ACID));
+	return (ptr->mflags1 & (M1_STON_RES | M1_ACID) || dmgtype(ptr, AD_STON));
 }
 
 boolean
@@ -37,6 +41,9 @@ resists_drli(ptr)	/* returns TRUE if monster is drain-life resistant */
 	return(is_undead(ptr) || is_demon(ptr) || is_were(ptr));
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 boolean
 ranged_attk(ptr)	/* returns TRUE if monster can attack at range */
 	register struct permonst *ptr;
@@ -45,6 +52,9 @@ ranged_attk(ptr)	/* returns TRUE if monster can attack at range */
 		attacktype(ptr, AT_SPIT) || attacktype(ptr, AT_GAZE) ||
 		attacktype(ptr, AT_MAGC));
 }
+
+#endif /* OVL0 */
+#ifdef OVL1
 
 boolean
 can_track(ptr)		/* returns TRUE if monster can track well */
@@ -55,6 +65,9 @@ can_track(ptr)		/* returns TRUE if monster can track well */
 #endif
 	return(haseyes(ptr));
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 #ifdef POLYSELF
 boolean
@@ -81,6 +94,9 @@ sliparm(ptr)	/* creature will slide out of armor */
 	       (ptr->msize <= MZ_SMALL || ptr == &mons[PM_GHOST]));
 }
 #endif
+
+#endif /* OVLB */
+#ifdef OVL1
 
 boolean
 sticks(ptr)	/* creature sticks other creatures it hits */
@@ -121,12 +137,20 @@ int
 monsndx(ptr)		/* return an index into the mons array */
 	struct	permonst	*ptr;
 {
+#ifdef LATTICE_504_BUG
+	register int d;
+/* no problem - see, pspace IS bounded (and fits in 32 bits!) KL */
+const int pspace= sizeof(struct permonst[NUMMONS])/NUMMONS;
+#endif
 	register int	i;
 
 	if(ptr == &playermon) return(-1);
-
+#ifndef LATTICE_504_BUG
 	i = (int)(ptr - &mons[0]);
-
+#else
+	d=(int)((int)ptr-(int)&mons[0]);
+	i= d/pspace;
+#endif
 	if(i < 0 || i >= NUMMONS) {    
 	    panic("monsndx - could not index monster (%x)", ptr);
 	    return FALSE;		/* will not get here */
@@ -175,12 +199,12 @@ char *str;
 	if (!strncmp(str, "cavewomen", 9)) return PM_CAVEWOMAN;
 	if (!strncmp(str, "zruties", 7)) return PM_ZRUTY;
 	if (!strncmp(str, "djinn", 5)) return PM_DJINNI;
-		/* be careful with "ies"; "priest", "zombies" */
 	for(s=str; *s; s++) {
 		if (!strncmp(s, "vortices", 8)) {
 			Strcpy(s+4, "ex");
 			break;
 		}
+		/* be careful with "ies"; "priest", "zombies" */
 		if (!strncmp(s, "jellies", 7) || !strncmp(s, "mummies", 7)) {
 			Strcpy(s+4, "y");
 			break;
@@ -203,6 +227,9 @@ char *str;
 	return mntmp;
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 #ifdef POLYSELF
 boolean
 webmaker(ptr)   /* creature can spin a web */
@@ -220,8 +247,11 @@ is_female(mtmp)
 #if defined(ALTARS) && defined(THEOLOGY)
 	if (mtmp->ispriest) return !EPRI(mtmp)->ismale;
 #endif
-	return !!(mtmp->data->mflags1 & M1_FEM);
+	return !!(mtmp->data->mflags2 & M2_FEM);
 }
+
+#endif /* OVLB */
+#ifdef OVL2
 
 /* Gender function.  Differs from is_female() in that 1) It allows the monster
  * type of a polymorphed shopkeeper to override ESHK(mtmp)->ismale, and 2)
@@ -232,7 +262,7 @@ gender(mtmp)
 	register struct monst *mtmp;
 {
 	if (!humanoid(mtmp->data)) return 2;
-	if (mtmp->data->mflags1 & M1_FEM) return 1;
+	if (mtmp->data->mflags2 & M2_FEM) return 1;
 	if (mtmp->data == &mons[PM_CAVEMAN]
 		|| mtmp->data == &mons[PM_PRIEST]
 #ifdef INFERNO
@@ -246,11 +276,14 @@ gender(mtmp)
 	return 0;
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 boolean
 levl_follower(mtmp)
 register struct monst *mtmp;
 {
-	return (mtmp->mtame || (mtmp->data->mflags1 & M1_STALK) || is_fshk(mtmp)
+	return (mtmp->mtame || (mtmp->data->mflags2 & M2_STALK) || is_fshk(mtmp)
 		|| (mtmp->iswiz && !mon_has_amulet(mtmp)));
 }
 
@@ -280,6 +313,14 @@ player_mon()
 const int grownups[][2] = { {PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
 	{PM_HELL_HOUND_PUP, PM_HELL_HOUND}, {PM_KITTEN, PM_HOUSECAT},
 	{PM_HOUSECAT, PM_LARGE_CAT}, {PM_BABY_GRAY_DRAGON, PM_GRAY_DRAGON},
+	{PM_KOBOLD, PM_LARGE_KOBOLD}, {PM_LARGE_KOBOLD, PM_KOBOLD_LORD},
+	{PM_GNOME, PM_GNOME_LORD}, {PM_GNOME_LORD, PM_GNOME_KING},
+	{PM_DWARF, PM_DWARF_LORD}, {PM_DWARF_LORD, PM_DWARF_KING},
+	{PM_SMALL_MIMIC, PM_LARGE_MIMIC}, {PM_LARGE_MIMIC, PM_GIANT_MIMIC},
+	{PM_BAT, PM_GIANT_BAT},
+	{PM_LICH, PM_DEMILICH}, {PM_DEMILICH, PM_MASTER_LICH},
+	{PM_OGRE, PM_OGRE_LORD}, {PM_OGRE_LORD, PM_OGRE_KING},
+	{PM_VAMPIRE, PM_VAMPIRE_LORD},
 	{PM_BABY_RED_DRAGON, PM_RED_DRAGON},
 	{PM_BABY_WHITE_DRAGON, PM_WHITE_DRAGON},
 	{PM_BABY_BLUE_DRAGON, PM_BLUE_DRAGON},
@@ -300,6 +341,7 @@ const int grownups[][2] = { {PM_LITTLE_DOG, PM_DOG}, {PM_DOG, PM_LARGE_DOG},
 	{PM_SERGEANT, PM_LIEUTENANT},
 	{PM_LIEUTENANT, PM_CAPTAIN},
 #endif
+	{PM_BABY_CROCODILE, PM_CROCODILE},
 	{-1,-1}
 };
 
@@ -323,6 +365,22 @@ int montype;
 	return montype;
 }
 
+
+const char *
+locomotion(ptr, def)
+const struct permonst *ptr;
+const char *def;
+{
+	return (
+		is_floater(ptr) ? "float" :
+		is_flyer(ptr) ? "fly" :
+		slithy(ptr) ? "slither" :
+		amorphous(ptr) ? "ooze" :
+		nolimbs(ptr) ? "crawl" :
+		def
+	       );
+
+}
 
 #ifdef STUPID_CPP	/* otherwise these functions are macros in mondata.h */
 
@@ -362,26 +420,32 @@ noncorporeal(ptr) struct permonst *ptr; {
 }
 
 int
-is_animal(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_ANIMAL) != 0L);
+amorphous(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_AMORPHOUS) != 0L);
 }
 
 int
-humanoid(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_HUMANOID) != 0L);
+tunnels(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_TUNNEL) != 0L);
 }
 
 int
-is_undead(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_UNDEAD) != 0L);
+needspick(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_NEEDPICK) != 0L);
 }
 
 int
-is_were(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_WERE) != 0L);
+hides_under(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_CONCEAL) != 0L);
 }
 
-int haseyes(ptr) struct permonst *ptr; {
+int
+is_hider(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_HIDE) != 0L);
+}
+
+int
+haseyes(ptr) struct permonst *ptr; {
 	return((ptr->mflags1 & M1_NOEYES) == 0L);
 }
 
@@ -391,18 +455,41 @@ nohands(ptr) struct permonst *ptr; {
 }
 
 int
-lays_eggs(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_EGGS) != 0L);
+nolimbs(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_NOLIMBS) == M1_NOLIMBS);
+}
+
+# ifdef POLYSELF
+int
+polyok(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_NOPOLY) == 0L);
+}
+# endif
+
+int
+is_whirly(ptr) struct permonst *ptr; {
+	return((ptr->mlet == S_VORTEX) || 
+	       (ptr == &mons[PM_AIR_ELEMENTAL]));
 }
 
 int
-poisonous(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_POIS) != 0L);
+humanoid(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_HUMANOID) != 0L);
 }
 
 int
-resists_poison(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & (M1_POIS | M1_POIS_RES)) != 0L);
+is_animal(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_ANIMAL) != 0L);
+}
+
+int
+slithy(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_SLITHY) != 0L);
+}
+
+int
+thick_skinned(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_THICK_HIDE) != 0L);
 }
 
 int
@@ -411,13 +498,19 @@ resists_fire(ptr) struct permonst *ptr; {
 }
 
 int
+resists_sleep(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_SLEE_RES) != 0L || is_undead(ptr));
+}
+
+int
 resists_cold(ptr) struct permonst *ptr; {
 	return((ptr->mflags1 & M1_COLD_RES) != 0L);
 }
 
 int
-resists_acid(ptr) struct permonst *ptr; {
-	return(dmgtype(ptr, AD_ACID));
+resists_disint(ptr) struct permonst *ptr; {
+	return(ptr == &mons[PM_BLACK_DRAGON] ||
+		ptr == &mons[PM_BABY_BLACK_DRAGON]);
 }
 
 int
@@ -426,14 +519,23 @@ resists_elec(ptr) struct permonst *ptr; {
 }
 
 int
-resists_sleep(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & (M1_SLEE_RES | M1_UNDEAD)) != 0L);
+resists_acid(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_ACID) != 0L);
 }
 
 int
-resists_disint(ptr) struct permonst *ptr; {
-	return(ptr == &mons[PM_BLACK_DRAGON] ||
-		ptr == &mons[PM_BABY_BLACK_DRAGON]);
+acidic(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_ACID) != 0L);
+}
+
+int
+resists_poison(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & (M1_POIS | M1_POIS_RES)) != 0L);
+}
+
+int
+poisonous(ptr) struct permonst *ptr; {
+	return((ptr->mflags1 & M1_POIS) != 0L);
 }
 
 int
@@ -482,30 +584,13 @@ likes_magic(ptr) struct permonst *ptr; {
 }
 
 int
-hides_under(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_CONCEAL) != 0L);
+is_undead(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_UNDEAD) != 0L);
 }
 
 int
-is_hider(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_HIDE) != 0L);
-}
-
-# ifdef POLYSELF
-int
-polyok(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_NOPOLY) == 0L);
-}
-# endif /* POLYSELF */
-
-int
-tunnels(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_TUNNEL) != 0L);
-}
-
-int
-needspick(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_NEEDPICK) != 0L);
+is_were(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_WERE) != 0L);
 }
 
 int
@@ -531,6 +616,12 @@ is_golem(ptr) struct permonst *ptr; {
 # endif /* GOLEMS */
 
 int
+is_domestic(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_DOMESTIC) != 0L);
+}
+
+
+int
 is_orc(ptr) struct permonst *ptr; {
 	return((ptr->mflags2 & M2_ORC) != 0L);
 }
@@ -551,51 +642,8 @@ is_mercenary(ptr) struct permonst *ptr; {
 }
 
 int
-throws_rocks(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_ROCKTHROW) != 0L);
-}
-
-int
 is_wanderer(ptr) struct permonst *ptr; {
 	return((ptr->mflags2 & M2_WANDER) != 0L);
-}
-
-int
-is_lord(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_LORD) != 0L);
-}
-
-int
-is_prince(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_PRINCE) != 0L);
-}
-
-# ifdef INFERNO
-int
-is_ndemon(ptr) struct permonst *ptr; {
-	return(is_demon(ptr) &&
-		(ptr->mflags1 & (M1_LORD | M1_PRINCE)) == 0L);
-}
-# else
-int
-is_ndemon(ptr) struct permonst *ptr; {
-	return(ptr == &mons[PM_DEMON]);
-}
-# endif
-
-int
-is_dlord(ptr) struct permonst *ptr; {
-	return(is_demon(ptr) && is_lord(ptr));
-}
-
-int
-is_dprince(ptr) struct permonst *ptr; {
-	return(is_demon(ptr) && is_prince(ptr));
-}
-
-int
-type_is_pname(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_PNAME) != 0L);
 }
 
 int
@@ -609,13 +657,13 @@ always_peaceful(ptr) struct permonst *ptr; {
 }
 
 int
-strongmonst(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_STRONG) != 0L);
+extra_nasty(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_NASTY) != 0L);
 }
 
 int
-extra_nasty(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_NASTY) != 0L);
+strongmonst(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_STRONG) != 0L);
 }
 
 # ifdef POLYSELF
@@ -636,11 +684,6 @@ cantweararm(ptr) struct permonst *ptr; {
 # endif /* POLYSELF */
 
 int
-nolimbs(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_NOLIMBS) != 0L);
-}
-
-int
 carnivorous(ptr) struct permonst *ptr; {
 	return((ptr->mflags2 & M2_CARNIVORE) != 0L);
 }
@@ -651,13 +694,58 @@ herbivorous(ptr) struct permonst *ptr; {
 }
 
 int
-thick_skinned(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_THICK_HIDE) != 0L);
+metallivorous(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_METALLIVORE) != 0L);
 }
 
 int
-amorphous(ptr) struct permonst *ptr; {
-	return((ptr->mflags2 & M2_AMORPHOUS) != 0L);
+lays_eggs(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_EGGS) != 0L);
+}
+
+int
+throws_rocks(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_ROCKTHROW) != 0L);
+}
+
+int
+type_is_pname(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_PNAME) != 0L);
+}
+
+int
+is_lord(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_LORD) != 0L);
+}
+
+int
+is_prince(ptr) struct permonst *ptr; {
+	return((ptr->mflags2 & M2_PRINCE) != 0L);
+}
+
+# ifdef INFERNO
+int
+is_ndemon(ptr) struct permonst *ptr; {
+	return(is_demon(ptr) &&
+		(ptr->mflags2 & (M2_LORD | M2_PRINCE)) == 0L);
+}
+# else
+int
+is_ndemon(ptr) struct permonst *ptr; {
+	return(ptr == &mons[PM_DEMON]);
+}
+# endif
+
+int
+is_dlord(ptr) struct permonst *ptr; {
+	return(is_demon(ptr) && is_lord(ptr));
+}
+
+int
+is_dprince(ptr) struct permonst *ptr; {
+	return(is_demon(ptr) && is_prince(ptr));
 }
 
 #endif /* STUPID_CPP */
+
+#endif /* OVLB */

@@ -1,7 +1,7 @@
 
 # line 1 "lev_comp.y"
  
-/*	SCCS Id: @(#)lev_comp.c	3.0	89/07/02
+/*	SCCS Id: @(#)lev_comp.c	3.0	90/01/03
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,24 +11,55 @@
  */
 
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONDATA_H
+#define MONDATA_H	/* comment line for pre-compiled headers */
+#define MONFLAG_H	/* comment line for pre-compiled headers */
+
 #include "hack.h"
 #include "sp_lev.h"
-#include <fcntl.h>
+#ifndef O_WRONLY
+# include <fcntl.h>
+#endif
+#ifndef O_CREAT	/* some older BSD systems do not define O_CREAT in <fcntl.h> */
+# include <sys/file.h>
+#endif
+
+void FDECL(yyerror, (char *));
+void FDECL(yywarning, (char *));
+int NDECL(yylex);
+int NDECL(yyparse);
+
+int FDECL(get_room_type, (char *));
+int FDECL(get_trap_type, (char *));
+int FDECL(get_monster_id, (char *, CHAR_P));
+int FDECL(get_object_id, (char *, CHAR_P));
+boolean FDECL(check_monster_char, (CHAR_P));
+boolean FDECL(check_object_char, (CHAR_P));
+void FDECL(scan_map, (char *));
+void NDECL(store_part);
+void FDECL(write_maze, (int, specialmaze *));
 
 #ifdef AMIGA
 char *fgets();
-# define    alloc   malloc
 # undef     fopen
 # undef     printf
 # undef     Printf
 # define    Printf  printf
+#ifndef	LATTICE
 # define    memset(addr,val,len)    setmem(addr,len,val)
+#endif
 #endif
 
 #ifdef MSDOS
 # undef exit
 #endif
+
+#ifdef MACOS
+# undef printf
+# undef Printf
+# define Printf printf
+#endif
+
+#undef NULL
 
 #define MAX_REGISTERS	10
 #define ERR		(-1)
@@ -55,7 +86,7 @@ struct {
 	"trapdoor",	TRAPDOOR,
 	"teleport",	TELEP_TRAP,
 	"pit",		PIT,
-	"sleeping gas",	SLP_GAS_TRAP,
+	"sleep gas",	SLP_GAS_TRAP,
 	"magic",	MGTRP,
 	"board",	SQBRD,
 	"web",		WEB,
@@ -106,7 +137,7 @@ short db_dirs[4] = {
 static altar *tmpaltar[256];
 #endif /* ALTARS /**/
 static lad *tmplad[256];
-static dig *tmpdig[256];
+static digpos *tmpdig[256];
 static char *tmpmap[ROWNO];
 static region *tmpreg[16];
 static door *tmpdoor[256];
@@ -134,11 +165,8 @@ unsigned int max_x_map, max_y_map;
 extern int fatal_error;
 extern char* fname;
 
-boolean check_monster_char(), check_object_char();
-void scan_map(), store_part(), write_maze();
 
-
-# line 140 "lev_comp.y"
+# line 168 "lev_comp.y"
 typedef union 
 {
 	int	i;
@@ -189,7 +217,7 @@ extern short yyerrflag;
 YYSTYPE yylval, yyval;
 # define YYERRCODE 256
 
-# line 617 "lev_comp.y"
+# line 653 "lev_comp.y"
 
 
 /* 
@@ -204,7 +232,7 @@ char *s;
 	
 	for(i=0; i < SHOPBASE -1; i++)
 	    if (!strcmp(s, room_types[i].name))
-		return room_types[i].type;
+		return ((int) room_types[i].type);
 	return ERR;
 }
 
@@ -220,7 +248,7 @@ char *s;
 	
 	for(i=0; i < TRAPNUM - 1; i++)
 	    if(!strcmp(s,trap_types[i].name))
-		return(trap_types[i].type);
+		return((int)trap_types[i].type);
 	return ERR;
 }
 
@@ -465,7 +493,7 @@ store_part()
 	/* The non_diggable directives */
 
 	if(tmppart[npart]->ndig = ndig) {
-		tmppart[npart]->digs = (dig **) alloc(sizeof(dig*) * ndig);
+		tmppart[npart]->digs = (digpos **) alloc(sizeof(digpos*) * ndig);
 		for(i=0;i<ndig;i++)
 		    tmppart[npart]->digs[i] = tmpdig[i];
 	}
@@ -610,7 +638,7 @@ specialmaze *maze;
 	    /* The non_diggable directives */
 	    (void) write(fd, &(pt->ndig), 1);
 	    for(j=0;j<pt->ndig;j++) {
-		    (void) write(fd,(genericptr_t) pt->digs[j], sizeof(dig));
+		    (void) write(fd,(genericptr_t) pt->digs[j], sizeof(digpos));
 		    free(pt->digs[j]);
 	    }
 	    if (pt->ndig > 0)
@@ -641,126 +669,130 @@ short yyexca[] ={
 -1, 1,
 	0, -1,
 	-2, 0,
+-1, 67,
+	44, 27,
+	-2, 26,
 	};
-# define YYNPROD 86
+# define YYNPROD 87
 # define YYLAST 251
 short yyact[]={
 
- 164, 130, 126,  91,  16,  19, 168, 146,  69,  72,
- 145,  19,  19,  19,  19, 167,  75,  74,  26,  27,
+ 165, 130, 126,  91,  16,  19, 169, 146,  69,  72,
+ 145,  19,  19,  19,  19, 168,  75,  74,  26,  27,
  143, 137,  12, 138, 144, 141,  65,  87, 134,   6,
-  88,  78, 173,  80,  40,  39,  42,  41,  43,  46,
-  44, 170, 169, 155,  45,  47,  48, 147,  83,  85,
+  88,  78, 174,  80,  40,  39,  42,  41,  43,  46,
+  44, 171, 170, 156,  45,  47,  48, 148,  83,  85,
   22,  24,  23, 135, 131, 127, 116, 105,  72,  65,
-  18,  92,  71,  86, 171, 153,  67,  93, 151, 149,
- 157,  64, 114, 110, 108,  97,  62,  61,  60,  59,
+  18,  92,  93,  86,  66,  70, 172,  63, 154, 152,
+ 150, 158, 114, 110, 108,  97,  62,  61,  60,  59,
   58,  57,  56,  55,  54,  53,  51,  50,  49,  17,
-  13, 172, 165, 156, 154, 152, 150, 148, 139, 122,
- 119, 118, 117, 115, 113, 112, 111, 109, 107, 106,
- 104, 103,  52, 174, 158,  69,  77,  90,  68,  98,
-   9,  99, 100, 101,   3, 142,  82,   7,  94,  14,
-  84,  79, 166, 140, 162, 136,  89,  81, 102,  76,
-  38,  37,  36,  35,  34,  33,  32,  31,  30,  29,
-  28,  70,  66,  63,  21,  73,  25,  11,  20,  15,
-  10,   8,   4,   2,   1, 128, 124,   5, 125, 123,
- 129, 121,  68, 132, 133, 120,   0,   0,   0,   0,
+  13,  64, 173,  71, 166, 157, 155, 153, 151, 149,
+ 139, 122, 121, 119, 118, 117, 115, 113, 112, 111,
+ 109, 107, 106,  68, 103,  52, 175,  90, 159,  69,
+  98,  99, 100, 101,   8,   2,  94,  84,  79,   7,
+  81,  76,  38,  37,  14,  36,  35,  34, 102,  33,
+  32,  31,  30,  29,  28, 104,  82,  77,  67,  21,
+  11,  20,  15,  10,   9,   4,   3,   1, 128, 124,
+   5, 142, 167, 140, 136, 163,  89,  73, 125,  25,
+ 129, 120, 123, 132, 133,   0,   0,   0,   0,   0,
+   0,   0,   0,   0,  68,   0, 147,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
- 159,   0, 160,   0,   0, 163, 161,   0,   0,   0,
+   0, 160,   0, 161,   0,   0, 164, 162,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,  95,   0,   0,
   96 };
 short yypact[]={
 
--230,-1000,-230,-1000,-1000,-239,  32,-1000,-239,-1000,
+-230,-1000,-1000,-230,-1000,-239,  32,-1000,-1000,-239,
 -1000,-287,  31,-285,-1000,-219,-1000,-267,-1000,-1000,
--228,-1000,  30,  29,  28,  68,-1000,-1000,-1000,-1000,
+-228,-1000,  30,  29,  28,  71,-1000,-1000,-1000,-1000,
 -1000,-1000,-1000,-1000,-1000,-1000,-1000,-1000,-1000,  27,
   26,  25,  24,  23,  22,  21,  20,  19,  18,-198,
-  75,-199,-270,-248,-231,-249,-276, -32,  79, -32,
- -32, -32,  79,  67,-1000,-1000,  66,-1000,-1000,-201,
-  65,-1000,-1000,-1000,-1000,-1000,  64,-1000,-1000,-1000,
- -17,  63,-1000,-1000,-1000, -18,  62,-1000,-1000,  61,
--1000,-1000,  60,-1000,-1000,-1000, -19,  59,-202,  58,
-  57,  56,-1000,-198,  75,  55,-199,-277,-203,-278,
--204, -32, -32,-250,-205,-256,  54,-259,-268,-282,
--1000,-1000,-211,-1000,  53,-1000,-1000, -24,  52,-1000,
--1000, -25,-1000,-1000,  51, -28,  50,-1000,-1000,-215,
-  49,-1000,-1000,-1000, -21,-1000,-1000,  73, -32,-1000,
- -32,-1000,-249,-1000,-279,  48,-273,-216,-1000,-1000,
--1000,-1000,-1000,-1000,-1000,-217,-1000,-1000,-1000, -29,
-  47,-1000,-226,  72,-1000 };
+  79,-199,-270,-248,-231,-249,-276, -32,  80, -32,
+ -32, -32,  80,-1000,  70,-1000,-1000,-1000,-1000,-201,
+-1000,  68,-1000,-1000,-1000,-1000,  67,-1000,-1000,-1000,
+ -17,  66,-1000,-1000,-1000, -18,  65,-1000,-1000,  64,
+-1000,-1000,  63,-1000,-1000,-1000, -19,  62,-202,  61,
+  60,  59,-1000,-198,  58,  57,-199,-277,-203,-278,
+-204, -32, -32,-250,-205,-256,  56,-259,-268,-282,
+-1000,  79,-211,-1000,  55,-1000,-1000, -23,  54,-1000,
+-1000, -24,-1000,-1000,  53, -25,  52,-1000,-1000,-215,
+  51,-1000,-1000,-1000, -20,-1000,-1000,-1000,  77, -32,
+-1000, -32,-1000,-249,-1000,-279,  50,-273,-216,-1000,
+-1000,-1000,-1000,-1000,-1000,-1000,-217,-1000,-1000,-1000,
+ -27,  48,-1000,-226,  75,-1000 };
 short yypgo[]={
 
-   0,  60, 167, 166, 165, 164, 163, 124, 162, 161,
- 120, 160, 159, 158, 157, 156, 155, 154, 153, 152,
- 151,  71,  62,  66, 150, 149, 148, 147, 146, 145,
- 144, 143, 142, 141, 140, 139,  61, 137,  63, 136,
-  75, 135, 134, 133, 132, 131, 130,  67, 128, 125 };
+   0, 169, 167, 166, 165,  63, 164, 163, 162, 161,
+  60, 160, 159, 158, 157, 125, 156, 155, 124, 154,
+ 153, 152, 151, 150, 149,  67,  64,  65,  91,  93,
+ 148, 145, 144, 143, 142, 141, 140, 139, 137, 136,
+ 135, 133, 132, 131,  61, 130,  75, 128, 127,  62,
+ 126 };
 short yyr1[]={
 
-   0,   5,   5,   6,   6,   7,   8,   2,   9,   9,
-  10,  11,  14,  15,  15,  16,  16,  12,  12,  17,
-  17,  17,  18,  18,  20,  20,  19,  19,  13,  13,
-  24,  24,  24,  24,  24,  24,  24,  24,  24,  24,
-  25,  26,  27,  28,  29,  32,  33,  34,  30,  31,
-  35,  35,  35,  37,  37,  37,   3,   3,   4,   4,
-  39,  39,  42,  42,  36,  36,  36,  38,  38,  41,
-  41,  43,  43,  43,  44,  44,  48,  46,  45,  49,
-  23,  22,  21,   1,  47,  40 };
+   0,  14,  14,  15,  15,  16,  17,  11,  18,  18,
+  19,  20,  23,   1,   1,   2,   2,  21,  21,  24,
+  24,  24,  25,  25,  27,  27,  26,  31,  26,  22,
+  22,  32,  32,  32,  32,  32,  32,  32,  32,  32,
+  32,  33,  34,  35,  36,  37,  40,  41,  42,  38,
+  39,  43,  43,  43,  45,  45,  45,  12,  12,  13,
+  13,   3,   3,   4,   4,  44,  44,  44,   5,   5,
+   6,   6,   7,   7,   7,   8,   8,  50,  48,  47,
+   9,  30,  29,  28,  10,  49,  46 };
 short yyr2[]={
 
    0,   0,   1,   1,   2,   1,   2,   3,   1,   2,
    3,   2,   5,   1,   1,   1,   1,   0,   2,   3,
-   3,   3,   1,   3,   1,   3,   1,   3,   0,   2,
+   3,   3,   1,   3,   1,   3,   1,   0,   4,   0,
+   2,   1,   1,   1,   1,   1,   1,   1,   1,   1,
+   1,   7,   7,   5,   5,   7,   5,   5,   3,   7,
+   7,   1,   1,   1,   1,   1,   1,   1,   1,   1,
    1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
-   7,   7,   5,   5,   7,   5,   5,   3,   7,   7,
-   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
-   1,   1,   1,   1,   1,   1,   1,   1,   1,   1,
-   1,   1,   1,   1,   1,   1,   4,   4,   4,   4,
-   1,   1,   1,   1,   5,   9 };
+   1,   1,   1,   1,   1,   1,   1,   4,   4,   4,
+   4,   1,   1,   1,   1,   5,   9 };
 short yychk[]={
 
--1000,  -5,  -6,  -7,  -8,  -2, 259,  -7,  -9, -10,
- -11, -14, 261,  58, -10, -12, 291,  58,  -1, 290,
- -13, -17, 269, 271, 270, -15, 285, 286, -24, -25,
- -26, -27, -28, -29, -30, -31, -32, -33, -34, 263,
+-1000, -14, -15, -16, -17, -11, 259, -15, -18, -19,
+ -20, -23, 261,  58, -18, -21, 291,  58, -10, 290,
+ -22, -24, 269, 271, 270,  -1, 285, 286, -32, -33,
+ -34, -35, -36, -37, -38, -39, -40, -41, -42, 263,
  262, 265, 264, 266, 268, 272, 267, 273, 274,  58,
   58,  58,  44,  58,  58,  58,  58,  58,  58,  58,
-  58,  58,  58, -18, -21, 257, -19, -23, -47,  40,
- -20, -22, 257, -16, 287, 286, -35, -22, 279, -45,
- 281, -37, -21, 279, -46, 280, -38, 276, 279, -39,
-  -1, 279, -36, -47, -48, 279, 282, -40,  40, -36,
- -36, -36, -40,  44,  44, 258,  44,  44,  91,  44,
+  58,  58,  58, -25, -28, 257, -26, -30, -49,  40,
+ -27, -29, 257,  -2, 287, 286, -43, -29, 279, -47,
+ 281, -45, -28, 279, -48, 280,  -5, 276, 279,  -3,
+ -10, 279, -44, -49, -50, 279, 282, -46,  40, -44,
+ -44, -44, -46,  44, -31, 258,  44,  44,  91,  44,
   91,  44,  44,  44,  91,  44, 258,  44,  44,  44,
- -21, -23,  44, -22,  -3,  -1, 279, 258,  -4,  -1,
- 279, 258, -36, -36, 278, 258, -41, 277, 279,  44,
- -43, 284, -49, 279, 283, 278, 289, 258,  44,  93,
-  44,  93,  44,  93,  44, 258,  44,  91,  41, -36,
- -36, -38, -42,  -1, 279,  44, -44, 288, 279, 258,
- 258,  93,  44, 258,  41 };
+ -25,  44,  44, -27, -12, -10, 279, 258, -13, -10,
+ 279, 258, -44, -44, 278, 258,  -6, 277, 279,  44,
+  -7, 284,  -9, 279, 283, 278, 289, -26, 258,  44,
+  93,  44,  93,  44,  93,  44, 258,  44,  91,  41,
+ -44, -44,  -5,  -4, -10, 279,  44,  -8, 288, 279,
+ 258, 258,  93,  44, 258,  41 };
 short yydef[]={
 
    1,  -2,   2,   3,   5,   0,   0,   4,   6,   8,
-  17,   0,   0,   0,   9,  28,  11,   0,   7,  83,
-  10,  18,   0,   0,   0,   0,  13,  14,  29,  30,
-  31,  32,  33,  34,  35,  36,  37,  38,  39,   0,
+  17,   0,   0,   0,   9,  29,  11,   0,   7,  84,
+  10,  18,   0,   0,   0,   0,  13,  14,  30,  31,
+  32,  33,  34,  35,  36,  37,  38,  39,  40,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-   0,   0,   0,  19,  22,  82,  20,  26,  80,   0,
-  21,  24,  81,  12,  15,  16,   0,  50,  51,  52,
-   0,   0,  53,  54,  55,   0,   0,  67,  68,   0,
-  60,  61,   0,  64,  65,  66,   0,   0,   0,   0,
-   0,   0,  47,   0,   0,   0,   0,   0,   0,   0,
+   0,   0,   0,  19,  22,  83,  20,  -2,  81,   0,
+  21,  24,  82,  12,  15,  16,   0,  51,  52,  53,
+   0,   0,  54,  55,  56,   0,   0,  68,  69,   0,
+  61,  62,   0,  65,  66,  67,   0,   0,   0,   0,
+   0,   0,  48,   0,   0,   0,   0,   0,   0,   0,
    0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
-  23,  27,   0,  25,   0,  56,  57,   0,   0,  58,
-  59,   0,  42,  43,   0,   0,   0,  69,  70,   0,
-   0,  71,  72,  73,   0,  45,  46,   0,   0,  78,
-   0,  77,   0,  76,   0,   0,   0,   0,  84,  40,
-  41,  44,  48,  62,  63,   0,  49,  74,  75,   0,
-   0,  79,   0,   0,  85 };
+  23,   0,   0,  25,   0,  57,  58,   0,   0,  59,
+  60,   0,  43,  44,   0,   0,   0,  70,  71,   0,
+   0,  72,  73,  74,   0,  46,  47,  28,   0,   0,
+  79,   0,  78,   0,  77,   0,   0,   0,   0,  85,
+  41,  42,  45,  49,  63,  64,   0,  50,  75,  76,
+   0,   0,  80,   0,   0,  86 };
 #ifndef lint
 static char yaccpar_sccsid[] = "@(#)yaccpar	4.1	(Berkeley)	2/11/83";
 #endif not lint
@@ -911,17 +943,23 @@ yyparse() {
 		switch(yym){
 			
 case 6:
-# line 170 "lev_comp.y"
+# line 200 "lev_comp.y"
 {
 			  int fout, i;
 
 			  if (fatal_error > 0)
 				  fprintf(stderr,"%s : %d errors detected. No output created!\n", fname, fatal_error);
 			  else {
+#ifdef MACOS
+				  OSErr	result;
+				  
+				  result = Create(CtoPstr(yypvt[-1].map), 0, CREATOR, AUXIL_TYPE);
+				  (void)PtoCstr(yypvt[-1].map);
+#endif		
 				  fout = open(yypvt[-1].map, O_WRONLY | O_CREAT
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 					      | O_BINARY
-#endif /* MSDOS */
+#endif /* MSDOS || MACOS */
 					      , 0644);
 				  if (fout < 0) {
 					  yyerror("Can't open output file!!");
@@ -937,17 +975,17 @@ case 6:
 			  }
 		  } break;
 case 7:
-# line 196 "lev_comp.y"
+# line 232 "lev_comp.y"
 {
 			  yyval.map = yypvt[-0].map;
 		  } break;
 case 10:
-# line 204 "lev_comp.y"
+# line 240 "lev_comp.y"
 {
 			store_part();
 		  } break;
 case 11:
-# line 209 "lev_comp.y"
+# line 245 "lev_comp.y"
 {
 			tmppart[npart] = (mazepart *) alloc(sizeof(mazepart));
 			tmppart[npart]->halign = yypvt[-1].i % 10;
@@ -958,12 +996,12 @@ case 11:
 			scan_map(yypvt[-0].map);
 		  } break;
 case 12:
-# line 220 "lev_comp.y"
+# line 256 "lev_comp.y"
 {
 			  yyval.i = yypvt[-2].i + ( yypvt[-0].i * 10 );
 		  } break;
 case 19:
-# line 234 "lev_comp.y"
+# line 270 "lev_comp.y"
 {
 			  if (tmppart[npart]->nrobjects)
 			      yyerror("Object registers already initialized!");
@@ -974,7 +1012,7 @@ case 19:
 			  }
 		  } break;
 case 20:
-# line 244 "lev_comp.y"
+# line 280 "lev_comp.y"
 {
 			  if (tmppart[npart]->nloc)
 			      yyerror("Location registers already initialized!");
@@ -990,7 +1028,7 @@ case 20:
 			  }
 		  } break;
 case 21:
-# line 259 "lev_comp.y"
+# line 295 "lev_comp.y"
 {
 			  if (tmppart[npart]->nrmonst)
 			      yyerror("Monster registers already initialized!");
@@ -1001,7 +1039,7 @@ case 21:
 			  }
 		  } break;
 case 22:
-# line 270 "lev_comp.y"
+# line 306 "lev_comp.y"
 {
 			  if (n_olist < MAX_REGISTERS)
 			      olist[n_olist++] = yypvt[-0].i;
@@ -1009,15 +1047,15 @@ case 22:
 			      yyerror("Object list too long!");
 		  } break;
 case 23:
-# line 277 "lev_comp.y"
+# line 313 "lev_comp.y"
 {
 			  if (n_olist < MAX_REGISTERS)
-			      olist[n_olist++] = yypvt[-0].i;
+			      olist[n_olist++] = yypvt[-2].i;
 			  else
 			      yyerror("Object list too long!");
 		  } break;
 case 24:
-# line 285 "lev_comp.y"
+# line 321 "lev_comp.y"
 {
 			  if (n_mlist < MAX_REGISTERS)
 			      mlist[n_mlist++] = yypvt[-0].i;
@@ -1025,15 +1063,15 @@ case 24:
 			      yyerror("Monster list too long!");
 		  } break;
 case 25:
-# line 292 "lev_comp.y"
+# line 328 "lev_comp.y"
 {
 			  if (n_mlist < MAX_REGISTERS)
-			      mlist[n_mlist++] = yypvt[-0].i;
+			      mlist[n_mlist++] = yypvt[-2].i;
 			  else
 			      yyerror("Monster list too long!");
 		  } break;
 case 26:
-# line 300 "lev_comp.y"
+# line 336 "lev_comp.y"
 {
 			  if (n_plist < MAX_REGISTERS)
 			      plist[n_plist++] = current_coord;
@@ -1041,15 +1079,15 @@ case 26:
 			      yyerror("Location list too long!");
 		  } break;
 case 27:
-# line 307 "lev_comp.y"
+# line 343 "lev_comp.y"
 {
 			  if (n_plist < MAX_REGISTERS)
 			      plist[n_plist++] = current_coord;
 			  else
 			      yyerror("Location list too long!");
 		  } break;
-case 40:
-# line 329 "lev_comp.y"
+case 41:
+# line 365 "lev_comp.y"
 {
 			  int token;
 
@@ -1060,7 +1098,7 @@ case 40:
 			  if (!yypvt[-2].map)
 			      tmpmonst[nmons]->id = -1;
 			  else {
-				  token = get_monster_id(yypvt[-2].map, (char) yypvt[-4].i);  
+				  token = get_monster_id(yypvt[-2].map, (char) yypvt[-4].i);
 				  if (token == ERR) {
 				      yywarning("Illegal monster name!  Making random monster.");
 				      tmpmonst[nmons]->id = -1;
@@ -1069,8 +1107,8 @@ case 40:
 			  }
 			  nmons++;
 		  } break;
-case 41:
-# line 350 "lev_comp.y"
+case 42:
+# line 386 "lev_comp.y"
 {
 			  int token;
 
@@ -1090,8 +1128,8 @@ case 41:
 			  }
 			  nobj++;
 		  } break;
-case 42:
-# line 371 "lev_comp.y"
+case 43:
+# line 407 "lev_comp.y"
 {
 			tmpdoor[ndoor] = (door *) alloc(sizeof(door));
 			tmpdoor[ndoor]->x = current_coord.x;
@@ -1099,8 +1137,8 @@ case 42:
 			tmpdoor[ndoor]->mask = yypvt[-2].i;
 			ndoor++;
 		  } break;
-case 43:
-# line 380 "lev_comp.y"
+case 44:
+# line 416 "lev_comp.y"
 {
 			tmptrap[ntrap] = (trap *) alloc(sizeof(trap));
 			tmptrap[ntrap]->x = current_coord.x;
@@ -1108,8 +1146,8 @@ case 43:
 			tmptrap[ntrap]->type = yypvt[-2].i;
 			ntrap++;
 		  } break;
-case 44:
-# line 389 "lev_comp.y"
+case 45:
+# line 425 "lev_comp.y"
 {
 			tmpdb[ndb] = (drawbridge *) alloc(sizeof(drawbridge));
 			tmpdb[ndb]->x = current_coord.x;
@@ -1123,8 +1161,8 @@ case 44:
 			  yyerror("A drawbridge can only be open or closed!");
 			ndb++;
 		   } break;
-case 45:
-# line 404 "lev_comp.y"
+case 46:
+# line 440 "lev_comp.y"
 {
 			tmpwalk[nwalk] = (walk *) alloc(sizeof(walk));
 			tmpwalk[nwalk]->x = current_coord.x;
@@ -1132,8 +1170,8 @@ case 45:
 			tmpwalk[nwalk]->dir = yypvt[-0].i;
 			nwalk++;
 		  } break;
-case 46:
-# line 413 "lev_comp.y"
+case 47:
+# line 449 "lev_comp.y"
 {
 			tmplad[nlad] = (lad *) alloc(sizeof(lad));
 			tmplad[nlad]->x = current_coord.x;
@@ -1141,18 +1179,18 @@ case 46:
 			tmplad[nlad]->up = yypvt[-0].i;
 			nlad++;
 		  } break;
-case 47:
-# line 422 "lev_comp.y"
+case 48:
+# line 458 "lev_comp.y"
 {
-			tmpdig[ndig] = (dig *) alloc(sizeof(dig));
+			tmpdig[ndig] = (digpos *) alloc(sizeof(digpos));
 			tmpdig[ndig]->x1 = current_region.x1;
 			tmpdig[ndig]->y1 = current_region.y1;
 			tmpdig[ndig]->x2 = current_region.x2;
 			tmpdig[ndig]->y2 = current_region.y2;
 			ndig++;
 		  } break;
-case 48:
-# line 432 "lev_comp.y"
+case 49:
+# line 468 "lev_comp.y"
 {
 			tmpreg[nreg] = (region *) alloc(sizeof(region));
 			tmpreg[nreg]->x1 = current_region.x1;
@@ -1163,8 +1201,8 @@ case 48:
 			tmpreg[nreg]->rtype = yypvt[-0].i;
 			nreg++;
 		  } break;
-case 49:
-# line 444 "lev_comp.y"
+case 50:
+# line 480 "lev_comp.y"
 {
 #ifndef ALTARS
 			yywarning("Altars are not allowed in this version!  Ignoring...");
@@ -1177,36 +1215,36 @@ case 49:
 			naltar++;
 #endif /* ALTARS */
 		  } break;
-case 51:
-# line 459 "lev_comp.y"
+case 52:
+# line 495 "lev_comp.y"
 {
 			  yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 54:
-# line 466 "lev_comp.y"
+case 55:
+# line 502 "lev_comp.y"
 {
 			  yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 57:
-# line 473 "lev_comp.y"
-{
-			  yyval.map = (char *) 0;
-		  } break;
-case 59:
-# line 479 "lev_comp.y"
+case 58:
+# line 509 "lev_comp.y"
 {
 			  yyval.map = (char *) 0;
 		  } break;
 case 60:
-# line 484 "lev_comp.y"
+# line 515 "lev_comp.y"
 {
-		  	int token = get_trap_type(yypvt[-0].map);
+			  yyval.map = (char *) 0;
+		  } break;
+case 61:
+# line 520 "lev_comp.y"
+{
+			int token = get_trap_type(yypvt[-0].map);
 			if (token == ERR)
 				yyerror("unknown trap type!");
 			yyval.i = token;
 		  } break;
-case 62:
-# line 493 "lev_comp.y"
+case 63:
+# line 529 "lev_comp.y"
 {
 			int token = get_room_type(yypvt[-0].map);
 			if (token == ERR) {
@@ -1215,18 +1253,18 @@ case 62:
 			} else
 				yyval.i = token;
 		  } break;
-case 66:
-# line 506 "lev_comp.y"
+case 67:
+# line 542 "lev_comp.y"
 {
 			  current_coord.x = current_coord.y = -MAX_REGISTERS-1;
 		  } break;
-case 73:
-# line 519 "lev_comp.y"
+case 74:
+# line 555 "lev_comp.y"
 {
 			  yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 76:
-# line 527 "lev_comp.y"
+case 77:
+# line 563 "lev_comp.y"
 {
 			if ( yypvt[-1].i >= MAX_REGISTERS ) {
 				yyerror("Register Index overflow!");
@@ -1234,17 +1272,8 @@ case 76:
 				current_coord.x = current_coord.y = - yypvt[-1].i - 1;
 			}
 		  } break;
-case 77:
-# line 536 "lev_comp.y"
-{
-			if ( yypvt[-1].i >= MAX_REGISTERS ) {
-				yyerror("Register Index overflow!");
-			} else {
-				yyval.i = - yypvt[-1].i - 1;
-			}
-		  } break;
 case 78:
-# line 545 "lev_comp.y"
+# line 572 "lev_comp.y"
 {
 			if ( yypvt[-1].i >= MAX_REGISTERS ) {
 				yyerror("Register Index overflow!");
@@ -1253,7 +1282,16 @@ case 78:
 			}
 		  } break;
 case 79:
-# line 554 "lev_comp.y"
+# line 581 "lev_comp.y"
+{
+			if ( yypvt[-1].i >= MAX_REGISTERS ) {
+				yyerror("Register Index overflow!");
+			} else {
+				yyval.i = - yypvt[-1].i - 1;
+			}
+		  } break;
+case 80:
+# line 590 "lev_comp.y"
 {
 			if ( yypvt[-1].i >= 3 ) {
 				yyerror("Register Index overflow!");
@@ -1261,18 +1299,18 @@ case 79:
 				yyval.i = - yypvt[-1].i - 1;
 			}
 		  } break;
-case 81:
-# line 565 "lev_comp.y"
+case 82:
+# line 601 "lev_comp.y"
 {
-			if (check_monster_char(yypvt[-0].i))
+			if (check_monster_char((char) yypvt[-0].i))
 				yyval.i = yypvt[-0].i ;
 			else {
 				yyerror("unknown monster class!");
 				yyval.i = ERR;
 			}
 		  } break;
-case 82:
-# line 575 "lev_comp.y"
+case 83:
+# line 611 "lev_comp.y"
 {
 			char c;
 
@@ -1290,19 +1328,19 @@ case 82:
 				yyval.i = ERR;
 			}
 		  } break;
-case 84:
-# line 595 "lev_comp.y"
+case 85:
+# line 631 "lev_comp.y"
 {
-		        if (yypvt[-3].i < 0 || yypvt[-3].i > max_x_map ||
+			if (yypvt[-3].i < 0 || yypvt[-3].i > max_x_map ||
 			    yypvt[-1].i < 0 || yypvt[-1].i > max_y_map)
 			    yyerror("Coordinates out of map range!");
 			current_coord.x = yypvt[-3].i;
 			current_coord.y = yypvt[-1].i;
 		  } break;
-case 85:
-# line 604 "lev_comp.y"
+case 86:
+# line 640 "lev_comp.y"
 {
-		        if (yypvt[-7].i < 0 || yypvt[-7].i > max_x_map ||
+			if (yypvt[-7].i < 0 || yypvt[-7].i > max_x_map ||
 			    yypvt[-5].i < 0 || yypvt[-5].i > max_y_map ||
 			    yypvt[-3].i < 0 || yypvt[-3].i > max_x_map ||
 			    yypvt[-1].i < 0 || yypvt[-1].i > max_y_map)

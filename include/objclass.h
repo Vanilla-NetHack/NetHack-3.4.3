@@ -8,9 +8,9 @@
 /* definition of a class of objects */
 
 struct objclass {
-	char *oc_name;		/* actual name */
-	char *oc_descr;		/* description when name unknown */
-	char *oc_uname;		/* called by user */
+	const char *oc_name;		/* actual name */
+	const char *oc_descr;		/* description when name unknown */
+	char *oc_uname;			/* called by user */
 	Bitfield(oc_name_known,1);
 	Bitfield(oc_merge,1);	/* merge otherwise equal objects */
 	Bitfield(oc_uses_known,1); /* obj->known affects full decription */
@@ -79,7 +79,7 @@ extern struct objclass objects[];
 /* definitions of all object-symbols */
 
 #define	RANDOM_SYM	'\0'	/* used for generating random objects */
-#define	ILLOBJ_SYM	'\\'
+#define	ILLOBJ_SYM	']'	/* should be same as S_MIMIC_DEF      */
 #define	AMULET_SYM	'"'
 #define	FOOD_SYM	'%'
 #define	WEAPON_SYM	')'

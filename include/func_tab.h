@@ -8,15 +8,15 @@
 
 struct func_tab {
 	char f_char;
-	int (*f_funct)();
-	char *f_text;
+	int NDECL((*f_funct));
+	const char *f_text;
 };
 
 extern const struct func_tab cmdlist[];
 
 struct ext_func_tab {
-	char *ef_txt, *ef_desc;
-	int (*ef_funct)();
+	const char *ef_txt, *ef_desc;
+	int NDECL((*ef_funct));
 };
 
 extern const struct ext_func_tab extcmdlist[];

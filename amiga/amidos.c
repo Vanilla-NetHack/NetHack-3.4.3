@@ -3,23 +3,63 @@
 /* An assortment of imitations of cheap plastic MSDOS functions.
  */
 
-#include <libraries/dos.h>
+#define NEED_VARARGS
+#include "hack.h"
 
 #undef TRUE
 #undef FALSE
 #undef COUNT
 #undef NULL
 
-#define NEED_VARARGS
-#include "hack.h"
+#include <libraries/dos.h>
+#ifdef LATTICE
+#include <proto/exec.h>
+#include <proto/dos.h>
+#endif
+
+/* Prototypes for functions defined in amidos.c */
+void NDECL (flushout);
+int NDECL (getpid);
+int FDECL (abs, (int x));
+int NDECL (tgetch);
+int NDECL (dosh);
+long FDECL (freediskspace, (char *path));
+long FDECL (filesize, (char *file));
+void FDECL (eraseall, (char *path,
+              char *files));
+char *FDECL (CopyFile, (char *from,
+               char *to));
+void FDECL (copybones, (int mode));
+void NDECL (playwoRAMdisk);
+int FDECL (saveDiskPrompt, (int start));
+void NDECL (gameDiskPrompt);
+void NDECL (read_config_file);
+void NDECL (set_lock_and_bones);
+void FDECL (append_slash, (char *name));
+void FDECL (getreturn, (char *str));
+void VDECL (msmsg, (char *fmt, ...));
+FILE * FDECL (fopenp, (char *name,
+                      char *mode));
+int FDECL (chdir, (char *dir));
+void FDECL (msexit, (int code));
+static boolean NDECL (record_exists);
+static int FDECL (strcmpi, (register char *a, register char *b));
 
 extern char Initialized;
 
-struct FileLock *Lock(), *CurrentDir(); /* Cheating - BCPL pointers */
-struct FileHandle *Open();              /* Cheating - BCPL pointer */
-long Read(), Write(), IoErr(), AvailMem();
-void *malloc();
-char *rindex(), *index();
+#ifdef AZTEC_C
+struct DateStamp *FDECL(DateStamp, (struct DateStamp *));
+BPTR FDECL(Lock, (char *, long));
+BPTR FDECL(CurrentDir, (BPTR));
+BPTR FDECL(Open, (char *, long));
+long FDECL(Read, (BPTR, char *, long));
+long FDECL(Write, (BPTR, char *, long));
+long NDECL(IoErr);
+long FDECL(AvailMem, (long));
+void *FDECL(malloc, (unsigned int));
+char *FDECL(rindex, (char *, int));
+char *FDECL(index, (char *, int));
+#endif
 
 int Enable_Abort = 0;	/* for stdio package */
 
@@ -52,7 +92,7 @@ int getpid()
     while (pid == 0) {
 	struct DateStamp dateStamp;
 	pid = rnd(30000);
-	pid += DateStamp(&dateStamp);    /* More or less random */
+	pid += (short) DateStamp(&dateStamp);    /* More or less random */
 	pid ^= (short) (dateStamp.ds_Days >> 16) ^
 	       (short) (dateStamp.ds_Days)       ^
 	       (short) (dateStamp.ds_Minute)     +
@@ -60,7 +100,7 @@ int getpid()
 	pid %= 30000;
     }
 
-    return pid;
+    return (int)pid;
 }
 
 #ifndef getlogin
@@ -139,8 +179,8 @@ char *path;
 	    fileName[0] = '\0';
     }
 
-    if (infoData = malloc(sizeof(*infoData))) {
-	struct FileLock *fileLock;  /* Cheating */
+    if (infoData = malloc(sizeof(struct InfoData))) {
+	BPTR fileLock;
 	if (fileLock = Lock(fileName, SHARED_LOCK)) {
 	    if (Info(fileLock, infoData)) {
 		/* We got a kind of DOS volume, since we can Lock it. */
@@ -174,11 +214,11 @@ long
 filesize(file)
 char *file;
 {
-    register struct FileLock *fileLock;
+    register BPTR fileLock;
     register struct FileInfoBlock *fileInfoBlock;
     register long size = 0;
 
-    if (fileInfoBlock = malloc(sizeof(*fileInfoBlock))) {
+    if (fileInfoBlock = malloc(sizeof(struct FileInfoBlock))) {
 	if (fileLock = Lock(file, SHARED_LOCK)) {
 	    if (Examine(fileLock, fileInfoBlock)) {
 		size = fileInfoBlock->fib_Size;
@@ -201,9 +241,9 @@ char *path, *files;
 {
     char buf[FILENAME];
     short i;
-    struct FileLock *fileLock, *dirLock;
+    BPTR fileLock, dirLock;
 
-    if (dirLock = Lock(path)) {
+    if (dirLock = Lock(path ,SHARED_LOCK)) {
 	dirLock = CurrentDir(dirLock);
 
 	strcpy(buf, files);
@@ -227,7 +267,7 @@ char *path, *files;
 char *CopyFile(from, to)
 char *from, *to;
 {
-    register struct FileHandle *fromFile, *toFile;
+    register BPTR fromFile, toFile;
     register char *buffer;
     register long size;
     char *error = NULL;
@@ -257,7 +297,7 @@ void
 copybones(mode)
 int mode;
 {
-    struct FileLock *fileLock;
+    BPTR fileLock;
     char from[FILENAME], to[FILENAME];
     char *frompath, *topath, *status;
     short i;
@@ -336,7 +376,7 @@ saveDiskPrompt(start)
 {
     extern int saveprompt;
     char buf[BUFSIZ], *bp;
-    struct FileLock *fileLock;
+    BPTR fileLock;
 
     if (saveprompt) {
 	/* Don't prompt if you can find the save file */
@@ -413,7 +453,7 @@ read_config_file()
 {
     char    tmp_ramdisk[PATHLEN], tmp_levels[PATHLEN];
     char    buf[BUFSZ], *bufp;
-    FILE    *fp, *fopenp();
+    FILE    *fp;
     extern  char plname[];
     extern  int saveprompt;
 
@@ -567,8 +607,23 @@ void
 msmsg VA_DECL(char *, fmt)
     VA_START(fmt);
     VA_INIT(fmt, char *);
+#ifdef LATTICE
+	{
+	extern struct Screen *HackScreen;
+	char buf[100];
+	vsprintf(buf,fmt,VA_ARGS);
+	if(HackScreen){
+		WindowFPuts(buf);
+		WindowFlush();
+	} else {
+		fprintf(stdout,buf);
+		fflush(stdout);
+	}
+	}
+#else
     vprintf(fmt, VA_ARGS);
     (void) fflush(stdout);
+#endif
     VA_END();
 }
 
@@ -583,7 +638,7 @@ register char *name, *mode;
 {
     char buf[BUFSIZ], *bp, *pp, lastch;
     FILE *fp;
-    register struct FileLock *theLock;
+    register BPTR theLock;
 
     /* Try the default directory first.  Then look along PATH.
      */
@@ -622,10 +677,10 @@ register char *name, *mode;
  *  Assumes -1 is not a valid lock, since 0 is valid.
  */
 
-#define NO_LOCK     ((struct FileLock *) -1)
+#define NO_LOCK     ((BPTR) -1)
 
 char orgdir[1];
-static struct FileLock *OrgDirLock = NO_LOCK;
+static BPTR OrgDirLock = NO_LOCK;
 
 chdir(dir)
 char *dir;
@@ -641,7 +696,7 @@ char *dir;
 	 * Go to some new place. If still at the original
 	 * directory, save the FileLock.
 	 */
-	struct FileLock *newDir;
+	BPTR newDir;
 
 	if (newDir = Lock(dir, SHARED_LOCK)) {
 	    if (OrgDirLock == NO_LOCK) {
@@ -702,7 +757,7 @@ register char *a, *b;
  *  memcmp - used to compare two struct symbols, in lev.c
  */
 
-#ifndef memcmp
+#if defined(AZTEC_C) && !defined(memcmp)
 memcmp(a, b, size)
 register unsigned char *a, *b;
 register int size;
@@ -713,17 +768,5 @@ register int size;
     }
 
     return 0;		/* equal */
-}
-#endif
-
-#ifndef memcpy
-char *
-memcpy(dest, source, size)
-register char *dest;
-char *source;
-int size;
-{
-    movmem(source, dest, size);
-    return dest;
 }
 #endif

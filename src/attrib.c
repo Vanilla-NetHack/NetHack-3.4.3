@@ -1,11 +1,12 @@
-/*
- *	attrib.c	- attribute modification routines.
- *
- *	Copyright 1988, M. Stephenson
- */
+/*	SCCS Id: @(#)attrib.c	3.0	90/2/15
+/*	Copyright 1988, 1989, 1990, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+/*  attribute modification routines. */
+
+#include "hack.h"
+
+#ifdef OVLB
 
 const char	*plusattr[] = {	/* part of the output on gain of attribute */
 
@@ -30,13 +31,13 @@ const struct innate {
 
 	schar	ulevel;
 	long	*ability;
-	char	*gainstr, *losestr;
-}	a_abil[] = { {	 0, &(Stealth), "", "" },
-		     {   0, &(Fast), "", "" },
+	const char *gainstr, *losestr;
+}	a_abil[] = { {	 1, &(Stealth), "", "" },
+		     {   1, &(Fast), "", "" },
 		     {  10, &(Searching), "perceptive", "" },
 		     {	 0, 0, 0, 0 } },
 
-	b_abil[] = { {	 0, &(HPoison_resistance), "", "" },
+	b_abil[] = { {	 1, &(HPoison_resistance), "", "" },
 		     {   7, &(Fast), "quick", "slow" },
 		     {  15, &(Stealth), "stealthy", "" },
 		     {	 0, 0, 0, 0 } },
@@ -45,13 +46,13 @@ const struct innate {
 		     {	15, &(Warning), "sensitive", "" },
 		     {	 0, 0, 0, 0 } },
 
-	e_abil[] = { {   0, &(Fast), "", "" },
-		     {	 0, &(HSee_invisible), "", "" },
-		     {	 0, &(Searching), "", "" },
-		     {	 0, &(HSleep_resistance), "", "" },
+	e_abil[] = { {   1, &(Fast), "", "" },
+		     {	 1, &(HSee_invisible), "", "" },
+		     {	 1, &(Searching), "", "" },
+		     {	 1, &(HSleep_resistance), "", "" },
 		     {	 0, 0, 0, 0 } },
 
-	h_abil[] = { {	 0, &(HPoison_resistance), "", "" },
+	h_abil[] = { {	 1, &(HPoison_resistance), "", "" },
 		     {	15, &(Warning), "sensitive", "" },
 		     {	 0, 0, 0, 0 } },
 
@@ -62,11 +63,11 @@ const struct innate {
 		     {  20, &(HFire_resistance), "cool", "warmer" },
 		     {	 0, 0, 0, 0 } },
 
-	r_abil[] = { {	 0, &(Stealth), "", ""  },
+	r_abil[] = { {	 1, &(Stealth), "", ""  },
 		     {  10, &(Searching), "perceptive", "" },
 		     {	 0, 0, 0, 0 } },
 
-	s_abil[] = { {	 0, &(Fast), "", "" },
+	s_abil[] = { {	 1, &(Fast), "", "" },
 		     {  15, &(Stealth), "stealthy", "" },
 		     {	 0, 0, 0, 0 } },
 
@@ -74,8 +75,8 @@ const struct innate {
 		     {	20, &(HPoison_resistance), "hardy", "" },
 		     {	 0, 0, 0, 0 } },
 
-	v_abil[] = { {	 0, &(HCold_resistance), "", "" },
-		     {	 0, &(Stealth), "", "" },
+	v_abil[] = { {	 1, &(HCold_resistance), "", "" },
+		     {	 1, &(Stealth), "", "" },
 		     {   7, &(Fast), "quick", "slow" },
 		     {	 0, 0, 0, 0 } },
 
@@ -150,6 +151,9 @@ const struct clattr {
 	X_attr = { {	 3,  3,  3,  3,  3,  3 },
 		   {	20, 15, 15, 15, 20, 15 },
 		     0,  0, 12, 10, 14,  1,  0 };
+
+static const struct clattr *NDECL(clx);
+static void NDECL(init_align);
 
 void
 adjattrib(ndx, incr, silent)
@@ -259,6 +263,9 @@ boolean parameter; /* So I can't think up of a good name.  So sue me. --KAA */
 	return sgn(bonchance);
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 void
 restore_attrib() {
 
@@ -276,6 +283,9 @@ restore_attrib() {
 	    }
 	}
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 static const struct	clattr *
 clx()  {
@@ -394,25 +404,27 @@ redist_attr() {
 }
 
 void
-adjabil(flag)
-
-	int	flag;		/* +ve/-ve  = gain/lose */
+adjabil(oldlevel,newlevel)
+int oldlevel, newlevel;
 {
 	register const struct clattr	*attr = clx();
+#ifdef __GNULINT__
+	/* this is the "right" definition */
 	register const struct innate	*abil = attr->abil;
+#else
+	/* this one satisfies more compilers */
+	register struct innate	*abil = (struct innate *)attr->abil;
+#endif
 
 	if(abil) {
-
 	    for(; abil->ability; abil++) {
-		if ((flag>0 && u.ulevel >= abil->ulevel) ||
-					(flag<0 && u.ulevel < abil->ulevel)) {
-		    if(flag > 0) {
+		if(oldlevel < abil->ulevel && newlevel >= abil->ulevel) {
 			if(!(*(abil->ability) & INTRINSIC)) {
 			    *(abil->ability) |= INTRINSIC;
 			    if(strlen(abil->gainstr))
 				You("feel %s!", abil->gainstr);
 			}
-		    } else {
+		} else if (oldlevel >= abil->ulevel && newlevel < abil->ulevel) {
 			if((*(abil->ability) & INTRINSIC)) {
 			    *(abil->ability) &= ~INTRINSIC;
 			    if(strlen(abil->losestr))
@@ -420,8 +432,7 @@ adjabil(flag)
 			    else if(strlen(abil->gainstr))
 				You("feel less %s!", abil->gainstr);
 			}
-		    }
-		} 
+		}
 	    }
 	}
 }
@@ -459,8 +470,13 @@ newhp() {
 	return((hp <= 0) ? 1 : hp);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 schar
-acurr(x) { 
+acurr(x)
+int x;
+{ 
 	register int tmp = (u.abon.a[x] + u.atemp.a[x] + u.acurr.a[x]);
 
 	if (x == A_STR) {
@@ -469,6 +485,9 @@ acurr(x) {
 	} 
 	else return((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp);
 }
+
+#endif /* OVL0 */
+#ifdef OVL2
 
 /* avoid possible problems with alignment overflow, and provide a centralized
  * location for any future alignment limits
@@ -486,3 +505,5 @@ register int n;
 		if(newalign > u.ualign)
 			u.ualign = newalign;
 }
+
+#endif /* OVL2 */

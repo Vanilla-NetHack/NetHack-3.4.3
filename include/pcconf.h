@@ -6,11 +6,13 @@
 #ifndef PCCONF_H
 #define PCCONF_H
 
-/* #define OS2		/* define for OS/2 (Timo Hakulinen) */
-/* #define OS2_CODEVIEW /* define for OS/2 CodeView debugger,
-			   otherwise path searches may fail (TH) */
+#if !defined(TOS) && !defined(AMIGA)
 
-#ifndef TOS
+/* #define MSC		/* define for pre-ANSI Microsoft C compilers (ver. < 5.0). */
+
+/* #define OS2		/* define for OS/2 (Timo Hakulinen) */
+/* #define OS2_CODEVIEW	/* define for OS/2 CodeView debugger versions earlier
+			   than 2.3, otherwise path searches may fail */
 /*
  *  The following options are configurable:
  */
@@ -61,7 +63,9 @@ extern const char *configfile;
 #define index	strchr
 #define rindex	strrchr
 
+#ifndef AMIGA
 #include <time.h>
+#endif
 
 #ifdef RANDOM
 /* Use the high quality random number routines. */
@@ -95,7 +99,7 @@ extern const char *configfile;
 #define Getchar tgetch
 #endif
 
-#ifndef TOS
+#if !defined(TOS) && !defined(AMIGA)
 #  define TEXTCOLOR /* */
 #endif
 

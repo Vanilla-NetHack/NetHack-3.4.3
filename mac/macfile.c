@@ -4,10 +4,10 @@
 
 /*	Common routines to locate files using mac dialog boxes */
 
-/*#define MAKEDEFS_C	1	/* define when using makedefs */
 #include "config.h"
 #ifdef MACOS
 
+#define	LARGE_SFGETDLG	-4000
 short
 findNamedFile(filename,type,reply)
 char	*filename;
@@ -24,7 +24,7 @@ SFReply	*reply;
 	
 	name[0] = (char)strlen(filename);
 	Strcpy((char *)&name[1], filename);
-	dialog = GetNewDialog(128,&storage,(WindowPtr)-1);
+	SetResLoad(TRUE);
 	
 	if (type == 1)
 		ParamText("\005 save","\004 for",name,"");
@@ -50,11 +50,7 @@ SFReply	*reply;
 	}
 	reply->good = TRUE;
 	do {
-		BringToFront((WindowPtr)dialog);
-		ShowWindow((WindowPtr)dialog);
-		DrawDialog(dialog);
-		SFGetFile(where,prompt,0L,numTypes,types,0L,reply);
-		HideWindow((WindowPtr)dialog);
+		SFPGetFile(where,prompt,0L,numTypes,types,0L,reply,LARGE_SFGETDLG,0L);
 		if (reply->good) {
 			if ((type == 2 && 
 				!strncmp((char *)&name[1],
@@ -65,13 +61,13 @@ SFReply	*reply;
 			}
 		}
 	} while (!ok && reply->good);
-	CloseDialog(dialog);
+
 	return ok;
 }
 
-#ifndef MAKEDEFS_C
+#ifdef CUSTOM_IO
 extern WindowPtr HackWindow;
-
+extern short macflags;
 /*	this function also gets called by topten() in topten.c to
  *	locate the record file, but it doesn't matter at this point
  *	since the game is over by now. If nethack ever restarts,
@@ -83,27 +79,39 @@ openFile(fileName, rdmode)
 char	*fileName, *rdmode;
 {
 	term_info *t;
-	SFReply	reply;
 	FILE	*fp;
 		
 	t = (term_info *)GetWRefCon(HackWindow);
-	if (t->auxFileVRefNum) {
-		SetVol(0L,t->auxFileVRefNum);
-	} else
-		SetVol(0L, t->recordVRefNum);
 
-	reply.good = false;
+	SetVol(0L, t->recordVRefNum);
 	fp = fopen(fileName, rdmode);
-	if (!fp && findNamedFile(fileName,2,&reply)) {
-		if (reply.good) {
-			t->auxFileVRefNum = reply.vRefNum;
+	if (!fp) {		
+		SFReply	reply;
+
+		if (t->auxFileVRefNum) {
+			SetVol(0L,t->auxFileVRefNum);
 		}
-	}
-	if (!fp)
+		
+		reply.good = false;
 		fp = fopen(fileName, rdmode);
-	else if (!t->auxFileVRefNum && reply.good) {
-		(void)GetVol((StringPtr)&reply.fName,&t->auxFileVRefNum);
+		if (!fp && findNamedFile(fileName,2,&reply)) {
+			if (reply.good) {
+				t->auxFileVRefNum = reply.vRefNum;
+			}
+		}
+		
+		if (!fp)
+			fp = fopen(fileName, rdmode);
+		else if (!t->auxFileVRefNum && reply.good) {
+			(void)GetVol((StringPtr)&reply.fName,&t->auxFileVRefNum);
+		}
+
+		SetPort(HackWindow);
+		if ((macflags & fDoUpdate) && !reply.good)
+			docrt();
+
 	}
+
 	return fp;
 }
 #endif

@@ -8,6 +8,11 @@
  */
 
 /* #include "hack.h"	/* uncomment for the Mac */
+
+#ifdef AMIGA
+#include "hack.h"
+#undef exit
+#endif
 #include <stdio.h>
 
 #define MAX_ERRORS	25
@@ -16,7 +21,27 @@ extern int line_number;
 char *fname = "(stdin)";
 int fatal_error = 0;
 
+#ifdef LATTICE
+long *alloc(unsigned int);
+#ifdef exit
+#undef exit
+#endif
+#include <stdlib.h>
+#endif
+
+#ifdef	FDECL
+int  FDECL (main, (int, char **));
+int  NDECL (yyparse);
+void FDECL (yyerror, (char *));
+void FDECL (yywarning, (char *));
+int  NDECL (yywrap);
+#endif
+
+#ifdef LSC
+_main(argc, argv)
+#else
 main(argc, argv) 
+#endif
 int argc;
 char **argv;
 {
@@ -76,7 +101,7 @@ char **argv;
 	    yyparse();
 	else 			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
-#ifdef VMS
+#if defined(VMS) || defined(AZTEC_C)
 		    extern FILE *yyin;
 		    yyin = fin = fopen(argv[i], "r");
 #else
@@ -99,7 +124,7 @@ char **argv;
  * MAX_ERRORS wouldn't be reasonable.
  */
 
-yyerror(s)
+void yyerror(s)
 char *s;
 {
 	fprintf(stderr,"%s : line %d : %s\n",fname,line_number, s);
@@ -113,7 +138,7 @@ char *s;
  * Just display a warning (that is : a non fatal error)
  */
 
-yywarning(s)
+void yywarning(s)
 char *s;
 {
 	fprintf(stderr,"%s : line %d : WARNING : %s\n",fname,line_number,s);

@@ -14,12 +14,14 @@ struct trobj {
 };
 
 static void FDECL(ini_inv, (struct trobj *));
+static void FDECL(knows_class,(CHAR_P));
+static int FDECL(role_index,(CHAR_P));
 
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
 #define	UNDEF_BLESS	2
 
-char *(roles[]) = {	/* must all have distinct first letter */
+const char *(roles[]) = {	/* must all have distinct first letter */
 			/* roles[2] and [6] are changed for females */
 			/* in all cases, the corresponding male and female */
 			/* roles must start with the same letter */
@@ -235,7 +237,7 @@ static int
 role_index(pc)
 char pc;
 {
-	register char *cp;
+	register const char *cp;
 
 	if(cp = index(pl_classes, pc))
 		return(cp - pl_classes);
@@ -247,8 +249,10 @@ u_init()
 {
 	register int i;
 	char pick, pc;
-
-	Printf("\nNetHack, Copyright 1985, 1986, 1987, 1988, 1989.");
+#ifdef __GNULINT__
+	pick = i = 0;	/* prevent "used before set" warnings */
+#endif
+	Printf("\nNetHack, Copyright 1985, 1986, 1987, 1988, 1989, 1990.");
 	Printf("\n         By Stichting Mathematisch Centrum and M. Stephenson.");
 	Printf("\n         See license for details.\n\n");
 
@@ -264,6 +268,8 @@ u_init()
 		Printf("\nUnknown role: %c\n", pc);
 		pl_character[0] = pc = 0;
 	}
+
+#ifndef MACOS
 
 	Printf("\nShall I pick a character for you? [Y,N, or Q(quit)] ");
 
@@ -314,6 +320,10 @@ u_init()
 	}
 	if(pc == '\n')	pc = 0;
 
+#else
+	flags.wantspace = FALSE;
+#endif /* MACOS */
+
 beginner:
 	if(!pc) {
 		i = rn2(SIZE(roles));
@@ -337,7 +347,7 @@ got_suffix:
 
 	u.ulevel = 0;	/* set up some of the initial attributes */
 	u.uhp = u.uhpmax = newhp();
-	adjabil(1);
+	adjabil(0,1);
 	u.ulevel = 1;
 
 	u.uluck  = u.moreluck = 0;
@@ -469,11 +479,6 @@ got_suffix:
 	case 'S':
 		ini_inv(Samurai);
 		if(!rn2(5)) ini_inv(Blindfold);
-		objects[SHORT_SWORD].oc_name = "wakizashi";
-		objects[BROADSWORD].oc_name = "ninja-to";
-		objects[GLAIVE].oc_name = "naginata";
-		/* objects[BOW].oc_name = "yumi"; */
-		objects[LOCK_PICK].oc_name = "osaku";
 		knows_class(WEAPON_SYM);
 		break;
 	case 'P':

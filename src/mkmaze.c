@@ -7,6 +7,10 @@
 extern int x_maze_max, y_maze_max;
 
 #if defined(WALLIFIED_MAZE) || defined(STRONGHOLD)
+static int FDECL(iswall,(int,int));
+static boolean FDECL(okay,(int,int,int));
+static void FDECL(maze0xy,(coord *));
+
 static int
 iswall(x,y)
 int x,y;

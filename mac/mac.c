@@ -11,6 +11,14 @@
 WindowPtr	HackWindow;	/* points to Hack's window */
 extern char	*keys[8];
 extern short macflags;
+short cursorPos=0;
+short repDelay;
+long lastMD;
+struct line {
+	struct line *next_line;
+	char *line_text;
+} *mactexthead;
+short maclinect, macmaxlen;
 
 int
 tgetch()
@@ -18,29 +26,37 @@ tgetch()
 {
 	char	ch;
 	EventRecord	theEvent;
-	Rect cursorRect;
+	Rect cursorRect,box,windowRect;
 	long	message,cursorTime,start;
 	MenuHandle	theMenu;
-	short	keyCode;
+	register short	keyCode;
+	short	temp;
 	term_info	*t;
 	boolean	noControlKey;
 	GrafPtr	oldPort,oldPort1;
 	static char nextCommand;
 	short aboutBox();
 	char mButtonDown();
+	Point	mouseLoc;
+	WindowPtr	theWindow;
+	void	doUpdate();
 #define noEscapeKey	noControlKey
 #define	clearKey	0x47
 #define ESCAPEkey	0x1B
 	
 	t = (term_info *)GetWRefCon(HackWindow);
+	mouseLoc.h = (macflags & fMoveWRTMouse) ? t->tcur_x : (u.ux-1);
+	mouseLoc.v = (macflags & fMoveWRTMouse) ? t->tcur_y : (u.uy+1);
 	cursorRect.left = t->tcur_x * t->charWidth + Screen_Border;
 	cursorRect.right = cursorRect.left + t->charWidth - 1;
 	cursorRect.top = t->height * t->tcur_y + Screen_Border;
 	cursorRect.bottom = cursorRect.top + t->height;
-	cursorTime = GetCaretTime()/2;
-	keyCode = 0;
+	cursorTime = GetCaretTime();
 	noControlKey = (t->system.keyBoardType <= envMacPlusKbd) ? TRUE : FALSE;
-	
+	box.left = mouseLoc.h * t->charWidth + Screen_Border;
+	box.right = box.left + t->charWidth;
+	box.top = mouseLoc.v * t->height + Screen_Border + t->height/2 - (t->charWidth/2);
+	box.bottom = box.top + t->charWidth;
 	/* permit use of cursor keys and numeric keypad */
 	/* does the same translation as in msdos.c but includes cursor keys */
 	ch = '\0';
@@ -61,163 +77,307 @@ tgetch()
 	}
 	GetPort(&oldPort);
 	SetPort(HackWindow);
-	while (!ch) {
-		keyCode = 0;
-	    GetPort(&oldPort1);
-	    SetPort((GrafPtr)HackWindow);
-	    /* do cursor blinking */
-	    message = TickCount() + cursorTime;
-	    while (!WaitNextEvent(everyEvent, &theEvent, 10L, 0L)) {
-		/* wait until something occurs */
-		if (!Invisible) {
-		    if (TickCount() > message) {
-			InvertRect(&cursorRect);
-			message = TickCount() + cursorTime;
-			keyCode = !keyCode;
-		    }
-		}
-	    }
-	    if (keyCode)
+	if (!(macflags & fDoNonKeyEvt)) {
+		cursorPos = -1;
+		SetCursor(&ARROW_CURSOR);
+	}
+	/* do cursor blinking */
+	message = TickCount() + cursorTime;
+	if (!EventAvail(keyDownMask|mDownMask|autoKeyMask,&theEvent)) {
+		keyCode = true;
 		InvertRect(&cursorRect);
-	    SetPort(oldPort1);
-	    if (theEvent.what == keyDown || theEvent.what == autoKey) {
-		/* use raw key codes */
-		keyCode = (LoWord(theEvent.message) & keyCodeMask)>>8;
-		if (keyCode == 50 && noEscapeKey)
-		    ch = (char)ESCAPEkey;	/* ESC */
-		else if (keyCode == clearKey) {
-		    macflags = macflags ^ fToggleNumPad;
-		    SetWTitle(HackWindow,
-			    (macflags & fToggleNumPad)	? "\015NetHack [MOV]"
-							: "\015NetHack [NUM]");
-		} else if ((macflags & fToggleNumPad) &&
-				(keyCode>64 && keyCode<127))
-		    ch = t->keyMap[keyCode-65];
-		/* make the command key = control key on old Mac keyboards */
-		if ((theEvent.modifiers & cmdKey) && noControlKey) {
-		    ch = (char)(theEvent.message & 0x1F);
-		}
-		if ((theEvent.modifiers & shiftKey) && (ch)) {
-		    ch = (ch == '.') ? ':' : (char)toupper(ch);
-		}
-		if (theEvent.modifiers & optionKey) {
-		    for(start = 43; start < 56; start++) {
-			if (t->keyMap[start] == (char)(theEvent.message & 0xFFL)) {
-			    ch = t->keyMap[start - 13];
-			    break;
+	} else
+		keyCode = 0;
+	while (!ch) {
+		(void)WaitNextEvent(everyEvent, &theEvent, 0L, 0L);
+		if (theEvent.what == keyDown || theEvent.what == autoKey) {
+			ch = 0;
+			ObscureCursor();
+			/* use raw key codes */
+			temp = keyCode;
+			keyCode = (LoWord(theEvent.message) & keyCodeMask)>>8;
+ 			if (keyCode == clearKey) {
+				macflags = macflags ^ fToggleNumPad;
+				SetWTitle(HackWindow,
+					(macflags & fToggleNumPad)	? "\016NetHack [MOVE]"
+												: "\015NetHack [NUM]");
+				keyCode = temp;
+				ch = 0;
+				continue;
 			}
-		    }
-		}
-		/* not a cursor key or from the numeric keypad */
-		if (!ch && keyCode != clearKey) {
-		    ch = (char)(theEvent.message & 0xFF);
-		}
-	    } else {
-		/* what other events to handle */
-		switch (theEvent.what) {		
-		    case nullEvent:
-			SetCursor(&ARROW_CURSOR);
-			break;
-		    case app4Evt:
-#define	kSuspendResumeMessage 1  /* high byte of suspend/resume event message */
-#define	SuspResIsResume(evtMessage)	((evtMessage) & 0x00000001)
-
-			switch (theEvent.message >> 24) {
-			    case kSuspendResumeMessage:
-				if (!SuspResIsResume(theEvent.message)) {
-				    /* ---------- SUSPEND EVENT ------------ */
-				    if (macflags & fZoomOnContextSwitch)	
-					SizeWindow(HackWindow,60,60,TRUE);
-				} else {
-				    /* ---------- RESUME EVENT ------------- */
-				    if (macflags & fZoomOnContextSwitch)	
-					SizeWindow(HackWindow,
-					 (t->maxCol * t->charWidth) + 2*Screen_Border,
-					 (t->maxRow * t->height) + 2*Screen_Border,
-					 TRUE);
+			if (temp)
+				InvertRect(&cursorRect);
+			if ((macflags & fToggleNumPad) && (keyCode>0x40 &&keyCode < 0x5D) 
+				|| (keyCode > 0x7A && keyCode<0x7F)) {
+				ch = t->keyMap[keyCode-65];
+				if ((theEvent.modifiers & shiftKey) && (ch)) {
+					ch = (ch == '.') ? ':' : (char)toupper(ch);
 				}
+				if (ch)
+					break;
+			}
+			if (keyCode == 50 && noEscapeKey) {
+				ch = (char)ESCAPEkey;	/* ESC */
+				break;
+			}			/* make the command key = control key on old Mac keyboards */
+			if ((theEvent.modifiers & cmdKey) && noControlKey) {
+				ch = (char)(theEvent.message & 0x1F);
 				break;
 			}
-			break;
-		
-		    case updateEvt:
-			if (HackWindow == (WindowPtr)theEvent.message) {
-#ifdef TEXTCOLOR
-			    if (t->system.hasColorQD) {
-				Rect	r;
-				GDHandle	gd;
-				
-				r = (**(*(WindowPeek)HackWindow).contRgn).rgnBBox;
-				LocalToGlobal(&r.top);
-				LocalToGlobal(&r.bottom);
-				gd = GetMaxDevice(&r);
-				HLock((Handle)gd);
-				t->inColor = (**(**gd).gdPMap).pixelSize > 1;
-				HUnlock((Handle)gd);
-			    }
-#endif
-			    GetPort(&oldPort);
-			    SetPort((GrafPtr)HackWindow);
-			    BeginUpdate(HackWindow);
-			    t = (term_info *)GetWRefCon(HackWindow);
-			    if (t->inColor && macflags & fDoUpdate) {
-				keyCode = flags.toplin;
-				flags.toplin = 0;
-				docrt();
-				flags.toplin = keyCode;
-			    } else {
-				for (keyCode = 0;keyCode < t->maxRow; keyCode++) {
-				    MoveTo(Screen_Border,
-					    t->ascent + (keyCode * t->height)
-						    + Screen_Border);
-				    DrawText(&t->screen[keyCode][0], 0, t->maxCol);
-				}
-			    }
-			    EndUpdate(HackWindow);
-			    SetPort(oldPort);
-			} 
-			break;
-				
-		    case activateEvt:
-			if (HackWindow == (WindowPtr)theEvent.message) {
-			    if (theMenu = GetMHandle(editMenu)) {
-				if (theEvent.modifiers & activeFlag) {
-				    if (macflags & fDoUpdate) {
-					SetMenuBar(t->fullMBarHandle);
-					for (keyCode = fileMenu;
-					      keyCode <= extendMenu;keyCode++) {
-					    if (keyCode != editMenu)
-						EnableItem(GetMHandle(keyCode), 0);
+			if (theEvent.modifiers & optionKey) {
+				for(start = 43; start < 56; start++) {
+					if (t->keyMap[start] == (char)(theEvent.message & 0xFFL)) {
+						ch = t->keyMap[start - 13];
+						break;
 					}
-					EnableItem(GetMHandle(appleMenu), 1);
-				    }
-				    DisableItem(theMenu, 0);
-				} else {
-				    EnableItem(theMenu, 0);
-				    if (macflags & fDoUpdate) {
-					SetMenuBar(t->shortMBarHandle);
-					for (keyCode = fileMenu;
-					      keyCode <= extendMenu;keyCode++) {
-					    if (keyCode != editMenu)
-						DisableItem(GetMHandle(keyCode), 0);
-					}
-					DisableItem(GetMHandle(appleMenu), 1);
-				    }
 				}
-				DrawMenuBar();
-			    }
 			}
-			break;
+			/* not a cursor key or from the numeric keypad */
+			if (!ch) {
+				ch = (char)(theEvent.message & 0xFF);
+			}
+		} else {
+		/* what other events to handle */
+			switch (theEvent.what) {		
+			case nullEvent:
+				GetPort(&oldPort1);
+				SetPort((GrafPtr)HackWindow);
+				/* wait until something occurs */
+				if (TickCount() > message) {
+					message = TickCount() + cursorTime;
+					if (!(macflags & fMoveWRTMouse)
+						|| (macflags & fMoveWRTMouse && !keyCode)) {
+						InvertRect(&cursorRect);
+						keyCode = !keyCode;
+					}
+				}
+				if (FrontWindow() == HackWindow && (macflags & fDoNonKeyEvt)) {
+					if ((FindWindow(theEvent.where,&theWindow) == inContent)
+						&& (macflags & fDoUpdate) && (HackWindow == theWindow)) {
+						
+						GetMouse(&mouseLoc);
+						if (PtInRect(mouseLoc,&box)) {
+							CursHandle theCurs;
+							
+							theCurs = GetCursor(3);
+							cursorPos = 8;
+							SetCursor(*theCurs);
+						} else {
+							PtToAngle(&box,mouseLoc,&temp);
+							if (temp >336 || temp < 23) {
+								temp = 0;
+							} else {
+								temp = (temp + 23)/45;
+							}
+							if (temp >=0 && temp <8 && cursorPos != temp) {
+								SetCursor(*t->cursor[temp]);
+								cursorPos = temp;
+#ifdef THINK_C
+								repDelay = KeyThresh*2;
+#else
+								repDelay = 42;
+#endif
+								lastMD = theEvent.when;
+							}
+						}
+					} else if (cursorPos>=0) {
+						cursorPos = -1;
+						SetCursor(&ARROW_CURSOR);
+					}
+				}
+				if (StillDown() && cursorPos>=0 && cursorPos < 8
+					&& TickCount() > lastMD+repDelay) {
+					ch = mButtonDown(theEvent, t, &nextCommand);
+					if (repDelay) {
+#ifdef THINK_C
+						repDelay = KeyRepThresh*2;
+#else
+						repDelay /= 3;
+#endif
+					}
+					lastMD = TickCount();
+					/*return ch;*/
+				}			
+				SetPort(oldPort1);
+				break;
+			case app4Evt:
+#define	kSuspendResumeMessage	1		/* high byte of suspend/resume event message */
+#define	kMouseMovedMessage		0xFA	/* high byte of mouse-moved event message */
+#define	SuspResIsResume(evtMessage)		((evtMessage) & 0x00000001)
+
+				switch (theEvent.message >> 24) {
+					case kSuspendResumeMessage:
+						if (!SuspResIsResume(theEvent.message)) {
+						/* ---------- SUSPEND EVENT ------------ */
+							if (macflags & fZoomOnContextSwitch
+								&& !EmptyRect(&(**(HackWindow)->visRgn).rgnBBox))
+							{
+								InvalRect(&HackWindow->portRect);
+								SizeWindow(HackWindow,60,60,FALSE);
+							}
+						} else {
+						/* ---------- RESUME EVENT ------------- */
+							if (macflags & fZoomOnContextSwitch) {
+								SizeWindow(HackWindow,
+								 (t->maxCol * t->charWidth) + 2 * Screen_Border,
+								 (t->maxRow * t->height) + 2 * Screen_Border,
+								 TRUE);
+								SetPort(HackWindow);
+								InvalRect(&HackWindow->portRect);
+								if ((int) (theMenu = GetMHandle(editMenu))
+									&& FrontWindow() == HackWindow) {
+									SetMenuBar(t->fullMBarHandle);
+									for (temp = fileMenu;temp <= extendMenu;temp++) {
+									if (temp != editMenu)
+										EnableItem(GetMHandle(temp), 0);
+									}
+									EnableItem(GetMHandle(appleMenu), 1);
+									DisableItem(theMenu, 0);
+									DrawMenuBar();
+								}
+							}
+						}
+						break;
+				}
+				break;
+		
+			case updateEvt:
+				if (HackWindow == (WindowPtr)theEvent.message) {
+					doUpdate(t);
+				}
+				break;
 				
-		    case mouseDown:
-			ch = mButtonDown(theEvent, t, &nextCommand);
-			break;
-		}
-	    }		
+			case activateEvt:
+				if (HackWindow == (WindowPtr)theEvent.message) {
+					if (theMenu = GetMHandle(editMenu)) {
+						if (theEvent.modifiers & activeFlag) {
+							if (macflags & fDoUpdate) {
+								SetMenuBar(t->fullMBarHandle);
+								for (temp = fileMenu;temp <= extendMenu;temp++) {
+									if (temp != editMenu)
+										EnableItem(GetMHandle(temp), 0);
+								}
+								EnableItem(GetMHandle(appleMenu), 1);
+							}
+							DisableItem(theMenu, 0);
+						} else {
+							EnableItem(theMenu, 0);
+							if (macflags & fDoUpdate) {
+								SetMenuBar(t->shortMBarHandle);
+								for (temp = fileMenu;temp <= extendMenu;temp++) {
+									if (temp != editMenu)
+										DisableItem(GetMHandle(temp), 0);
+								}
+								DisableItem(GetMHandle(appleMenu), 1);
+							}
+						}
+						DrawMenuBar();
+					}
+				}
+				break;
+				
+			case mouseDown:
+				ch = mButtonDown(theEvent, t, &nextCommand);
+				break;
+			}
+		}		
 	}
+	if (keyCode && ch && (theEvent.what != keyDown && theEvent.what != autoKey))
+		InvertRect(&cursorRect);
+
 	SetPort(oldPort);
-	ObscureCursor();
 	return ((ch == '\r') ? '\n' : ch);
+}
+
+void
+doUpdate(t)
+term_info	*t;
+{
+	short	temp;
+	GrafPtr	oldPort;
+#ifdef TEXTCOLOR
+	if (t->system.hasColorQD) {
+		Rect	r;
+		GDHandle	gd;
+		
+		r = (**(*(WindowPeek)HackWindow).contRgn).rgnBBox;
+		LocalToGlobal(&r.top);
+		LocalToGlobal(&r.bottom);
+		gd = GetMaxDevice(&r);
+		HLock((Handle)gd);
+		t->inColor = (**(**gd).gdPMap).pixelSize > 1;
+		HUnlock((Handle)gd);
+	}
+#endif
+	GetPort(&oldPort);
+	SetPort((GrafPtr)HackWindow);
+	BeginUpdate(HackWindow);
+	if (t->inColor && (macflags & fDoUpdate) && !(macflags & 0x2000)) {
+		char	*tmp;
+		short	x,y;
+		
+		tmp = calloc(2*t->maxCol, sizeof(char));
+		BlockMove(t->screen[0], tmp, t->maxCol);
+		BlockMove(t->screen[1], &tmp[t->maxCol], t->maxCol);
+		x = t->tcur_x;
+		y = t->tcur_y;
+		temp = flags.toplin;
+		flags.toplin = 0;
+		docrt();
+		flags.toplin = temp;
+		BlockMove(tmp, t->screen[0], t->maxCol);
+		BlockMove(&tmp[t->maxCol], t->screen[1], t->maxCol);
+		free(tmp);
+		t->tcur_y = y;
+		t->tcur_x = x;
+	}
+	if (macflags & fDoUpdate) {
+		for (temp = 0;
+			temp < ((t->inColor && !(macflags & fFullScrKluge))
+				? 2 : t->maxRow);
+			temp++) {
+			if ((macflags & fScreenKluges) == fScreenKluges
+				&& temp == t->maxRow-1){
+				if(flags.standout)
+					standoutbeg();
+			}
+			MoveTo(Screen_Border,
+				t->ascent + (temp * t->height) + Screen_Border);
+			DrawText(&t->screen[temp][0], 0, t->maxCol);
+			if ((macflags & fScreenKluges) == fScreenKluges
+				&& temp == t->maxRow-1){
+				if(flags.standout)
+					standoutend();
+			}
+		}
+
+		if (macflags & fDisplayKluge) {
+			register struct line *tl;
+			int curline, lth;
+			
+		    if(flags.toplin == 1) more();	/* ab@unido */
+		    remember_topl();
+		
+		    lth = CO - macmaxlen - 2;		   /* Use full screen width */
+		    if (maclinect < LI && lth >= 10) {		     /* in a corner */
+				home ();
+				cl_end ();
+				flags.toplin = 0;
+				curline = 1;
+				for (tl = mactexthead; tl; tl = tl->next_line) {
+				    curs (lth, curline);
+				    if(curline > 1)
+						cl_end ();
+				    xputs(tl->line_text);
+				    curx = curx + strlen(tl->line_text);
+				    curline++;
+				}
+				curs (lth, curline);
+			}
+		}
+	}
+	EndUpdate(HackWindow);
+	SetPort(oldPort);
 }
 
 char
@@ -236,8 +396,8 @@ char	*nextCommand;
 	GrafPtr	oldPort;
 
 	ch = '\0';
-	if (macflags & fDoNonKeyEvt) 
-	switch (FindWindow(theEvent.where,&theWindow)) {
+	if (macflags & fDoNonKeyEvt) {
+		switch (FindWindow(theEvent.where,&theWindow)) {
 	    case inMenuBar:
 
 		SetCursor(&ARROW_CURSOR);
@@ -251,7 +411,7 @@ char	*nextCommand;
 			(void)SystemEdit((short)message - 1);
 			break;
 		    case appleMenu:
-			if (LoWord(message) > 2) {
+			if (LoWord(message) > 1) {
 			    GetItem(GetMHandle(HiWord(message)),LoWord(message),
 					deskacc);
 			    SetMenuBar(t->shortMBarHandle);
@@ -324,16 +484,74 @@ char	*nextCommand;
 		}
 		menuBar = (ROM85 == -1) ? 20 : GetMBarHeight();
 
-		SetRect(&boundsRect, Screen_Border, menuBar + Screen_Border,
-			SCREEN_BITS.bounds.right - Screen_Border,
-			SCREEN_BITS.bounds.bottom - Screen_Border);
+		{
+		RgnHandle fooRgn = GetGrayRgn();
+			boundsRect = (*fooRgn)->rgnBBox;
+		}
 		SetCursor(&ARROW_CURSOR);
 		DragWindow(theWindow, theEvent.where, &boundsRect);
 		break;
 	
-	    case inContent:
-		SelectWindow(theWindow);
+	case inContent:
+		if (theWindow != FrontWindow()) {
+			SelectWindow(theWindow);
+		} else if (theWindow == HackWindow) {
+			Point	mouseLoc;
+			Rect	box;
+			short	temp;
+
+			if(flags.wantspace) {
+				ch = 0x20;
+			} else {
+				box.left = (u.ux-1) * t->charWidth + Screen_Border + (t->charWidth/2);
+				box.right = box.left + 1;
+				box.top = (u.uy+1) * t->height + Screen_Border + t->height/2;
+				box.bottom = box.top + 1;
+				GetMouse(&mouseLoc);
+				PtToAngle(&box,mouseLoc,&temp);
+				if (temp >337 || temp < 23) {
+					temp = 0;
+				} else {
+					temp = (temp + 23)/45;
+				}
+				switch(cursorPos) {
+					case 0:
+						ch = 'k';
+						break;
+					case 1:
+						ch = 'u';
+						break;
+					case 2:
+						ch = 'l';
+						break;
+					case 3:
+						ch = 'n';
+						break;
+					case 4:
+						ch = 'j';
+						break;
+					case 5:
+						ch = 'b';
+						break;
+					case 6:
+						ch = 'h';
+						break;
+					case 7:
+						ch ='y';
+						break;
+					case 8:
+						ch = '.';
+						break;
+				}
+				if ((theEvent.modifiers & shiftKey) && (ch)) {
+					ch = (ch == '.') ? ':' : (char)toupper(ch);
+				}
+			}
+		}			
 		break;
+		}
+	} else {
+		if(flags.wantspace) ch = 0x20;
 	}
 	return ch;
 }
@@ -381,7 +599,8 @@ kbhit()
 {	
 	EventRecord	theEvent;
 	
-	return (EventAvail(keyDownMask, &theEvent));
+	SystemTask();
+	return (EventAvail(keyDownMask | mDownMask, &theEvent));
 }
 #endif
 
@@ -408,6 +627,44 @@ short	col,row;
 	t->tcur_y = row;
 	t->tcur_x = col;
 	return 1;
+}
+
+static void
+checkScroll(t)
+term_info *t;
+{
+	if (t->tcur_y >= t->maxRow-1) {
+		short	temp;
+		char	*s;
+
+		BlockMove((Ptr)t->screen[1], (Ptr)t->screen[0],
+			(Size)((t->maxRow - 1) * t->maxCol));
+		for (temp = 0, s = t->screen[t->maxRow - 1];
+				temp < t->maxCol; temp++, s++) {
+			*s = ' ';
+		}
+		{
+			Pattern p, o;
+			Rect	window;
+			
+			if (macflags & fInvertedScreen) {
+				BlockMove((Ptr)&((GrafPtr)HackWindow)->bkPat, (Ptr)&o,
+						sizeof(Pattern));
+				GetIndPattern(&p, sysPatListID,1);
+				BackPat(p);
+			}
+			window = HackWindow->portRect;
+			InsetRect(&window, 4,4);
+			window.top += t->height;
+			ScrollRect(&window, 0, -t->height,
+					((WindowPeek)HackWindow)->updateRgn);
+			ValidRect(&window);
+			if (macflags & fInvertedScreen) {
+				BackPat(o);
+			}
+		}
+		t->tcur_y = t->maxRow - 1;
+	}
 }
 
 void
@@ -532,7 +789,7 @@ char	*s;
 	    
 	    if (sLen) {
 		while (stmp < (s + sLen)) {
-		    temp = (x + charleft - 1 < t->maxCol) ? charleft : t->maxCol - x;
+		    temp = (x + charleft - 1 < t->maxCol - 1) ? charleft : t->maxCol - x;
 		    savech = '\0';
 		    c1 = stmp + temp;	/* point to the char after the end */
 		    c = index(stmp, '\n');
@@ -556,22 +813,28 @@ char	*s;
 		    if (!savech) {
 			    t->tcur_x += temp;
 		    }
-		    if (t->tcur_x == t->maxCol || savech) {
-			t->tcur_x = 0;
-			if (savech != '\r')
-				y = (++t->tcur_y);
-				/* should probably check for overflow */
-		    }
-		    x = t->tcur_x;
-		    cur.h = Screen_Border;
-		    cur.v = y * t->height + t->ascent + Screen_Border;
-		    MoveTo(cur.h,cur.v);
-		}
+
+		    if (t->tcur_x >= t->maxCol-1 || savech) {
+			    if (savech != '\r') {
+				    if (t->tcur_y >= t->maxRow-1) {
+					    checkScroll(t);
+				    } else {
+					    y = (++t->tcur_y);
+				    }
+			    }
+	
+			    x = t->tcur_x = 0;
+			    cur.h = Screen_Border;
+			    cur.v = y * t->height + t->ascent + Screen_Border;
+			    MoveTo(cur.h,cur.v);
+			}
 	    }
 	}
-	if (t->tcur_x >= t->maxCol) {
+	}
+	if (t->tcur_x >= t->maxCol-1) {
 	    t->tcur_x = t->tcur_x % t->maxCol;
 	    t->tcur_y++;
+	    checkScroll(t);
 	}
 	SetPort(prevPort);
 }
@@ -621,21 +884,34 @@ char	c;
 	}
 	if (c == '\007') {
 		SysBeep(1);
-	} else if ((c != '\n') && (c != '\r')) {
+	} else if ((c == '\n') || (c == '\r')) {
+		t->tcur_x = 0;
+		if (t->tcur_y >= t->maxRow && c == '\r') {
+			t->tcur_y = t->maxRow - 1;
+		} else if (c == '\n') {
+			if (t->tcur_y >= t->maxRow-1) {
+				checkScroll(t);
+			} else {
+				t->tcur_y++;
+			}
+		}
+	} else {
 		t->screen[y][x] = c;
 		DrawText(&c, 0, 1);
-		if (!savech)
+		if (!savech) {
 			t->tcur_x++;
-	} else {
-		t->tcur_x = 0;
-		if (t->tcur_y < t->maxRow) {
-			if (c == '\n')
+			if (t->tcur_x >= t->maxCol)
+			{
+				t->tcur_x = 0;
 				t->tcur_y++;
+				checkScroll(t);
+			}
 		}
-		cur.h = (t->tcur_x * t->charWidth) + Screen_Border;
-		cur.v = t->ascent + (t->tcur_y * t->height) + Screen_Border;
-		MoveTo(cur.h,cur.v);
 	}
+	cur.h = (t->tcur_x * t->charWidth) + Screen_Border;
+	cur.v = t->ascent + (t->tcur_y * t->height) + Screen_Border;
+	MoveTo(cur.h,cur.v);
+
 	SetPort(prevPort);	
 	return 1;
 }
@@ -742,6 +1018,36 @@ char	*fstr;
 	return 1;
 }
 
+DialogTHndl
+centreDlgBox(resNum, clip)
+short	resNum;
+Boolean	clip;
+{
+	DialogTHndl	th = (DialogTHndl) GetResource('DLOG', resNum);
+	Rect	rect;
+	short	dv, dh;
+
+	/* centre dialog box on screen */
+	if (th) {
+		rect = SCREEN_BITS.bounds;
+		HLock((Handle)th);
+		dv = ((**th).boundsRect.bottom - (**th).boundsRect.top)/2;
+		dv -= (clip) ? 20 : 0;
+		dh = ((**th).boundsRect.right - (**th).boundsRect.left)/2;
+	
+		(**th).boundsRect.bottom =
+				(rect.bottom + rect.top + MBarHeight)/2 + dv;
+		(**th).boundsRect.top	 =
+				(rect.bottom + rect.top + MBarHeight)/2 - dv;
+		(**th).boundsRect.right	 = (rect.right + rect.left)/2 + dh;
+		(**th).boundsRect.left	 = (rect.right + rect.left)/2 - dh;
+		HUnlock((Handle)th);
+	} else
+		panic("Couldn't load dialog resource");	
+
+	return th;
+}
+
 short
 aboutBox(prompt)
 short	prompt;
@@ -757,21 +1063,11 @@ short	prompt;
 	GrafPtr	oldPort;
 	EventRecord	theEvent;
 	term_info	*t;
-	DialogTHndl	th = (DialogTHndl) GetResource('DLOG', 129);
-	short	dv, dh;
+	DialogTHndl	th;
 
 	/* if about box on startup, centre about box on screen */
 	if (!prompt) {
-		rect = SCREEN_BITS.bounds;
-		dv = ((**th).boundsRect.bottom - 40 - (**th).boundsRect.top)/2;
-		dh = ((**th).boundsRect.right - (**th).boundsRect.left)/2;
-
-		(**th).boundsRect.bottom =
-				(rect.bottom + rect.top + MBarHeight)/2 + dv;
-		(**th).boundsRect.top	 =
-				(rect.bottom + rect.top + MBarHeight)/2 - dv;
-		(**th).boundsRect.right	 = (rect.right + rect.left)/2 + dh;
-		(**th).boundsRect.left	 = (rect.right + rect.left)/2 - dh;
+		th = centreDlgBox(129, TRUE);
 	}
 
 	GetPort(&oldPort);
@@ -800,6 +1096,7 @@ short	prompt;
 		}
 	} else {
 		while (!itemHit) {
+			SystemTask();
 			if (GetNextEvent(everyEvent,&theEvent))
 				if (theEvent.what == mouseDown ||
   			            theEvent.what == keyDown ||
@@ -807,7 +1104,7 @@ short	prompt;
 					itemHit = OK_BUTTON;
 		}
 	}
-	CloseDialog(theDialog);
+	DisposDialog(theDialog);
 	ReleaseResource((Handle)th);
 	SetPort(oldPort);
 	return (itemHit == MORE_INFO_BUTTON);

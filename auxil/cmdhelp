@@ -66,6 +66,8 @@ v	Show version
 V	Show long version and game history
 w	Wield (put in use) a weapon
 W	Wear a piece of armor
+x	List known spells (only if defined)
+X	Enter explore (discovery) mode (only if defined)
 y	Go northwest 1 space
 Y	Go northwest until you are on top of something
 ^Y	Go northwest until you are near something
@@ -103,4 +105,5 @@ M-r	Rub a lamp
 M-s	Sit down
 M-t	Turn undead
 M-u	Untrap something (usually a trapped object)
+M-v	Print compile time options for this version of NetHack
 M-w	Wipe off your face

@@ -67,7 +67,7 @@ struct you {
 	struct prop uprops[LAST_PROP+1];
 
 	unsigned umconf;
-	char *usick_cause;
+	const char *usick_cause;
 /* For messages referring to hands, eyes, feet, etc... when polymorphed */
 #define ARM 0
 #define EYE 1
@@ -81,7 +81,8 @@ struct you {
 #define LEG 9
 #define LIGHT_HEADED 10
 #define NECK 11
-#define TOE 12
+#define SPINE 12
+#define TOE 13
 #ifdef POLYSELF
 	int mh, mhmax, mtimedone, umonnum;	/* for polymorph-self */
 	struct attribs	macurr,			/* for monster attribs */

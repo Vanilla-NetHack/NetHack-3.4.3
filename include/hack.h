@@ -75,6 +75,11 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #include	"rm.h"
 #endif
 
+#ifdef OVERLAY	/* This doesn't belong here, but we have little choice */
+#undef NDECL
+#define NDECL(f) f()
+#endif
+
 #ifndef EXTERN_H
 #include	"extern.h"
 #endif
@@ -117,5 +122,30 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #define getuid() 1
 #define getlogin() ((char *) NULL)
 #endif /* MSDOS */
+
+/* Macro for a few items that are only static if we're not overlaid.... */
+#if defined(OVERLAY) && (defined(OVL0) || defined(OVL1) || defined(OVL2) || defined(OVLB))
+# define OSTATIC extern
+# define XSTATIC
+# define OVERLAY_SPLIT
+# ifdef OVLB
+#  define VSTATIC
+# else
+#  define VSTATIC extern
+# endif
+#else
+# define OSTATIC static
+# define XSTATIC static
+# define VSTATIC static
+#endif
+
+/* Unless explicit control is being taken of what is linked where, */
+/* always compile everything */
+#if !defined(OVERLAY) || (!defined(OVL0) && !defined(OVL1) && !defined(OVL2) && !defined(OVLB))
+# define OVL0	/* Highest priority */
+# define OVL1
+# define OVL2	/* Lowest specified priority */
+# define OVLB	/* The base overlay segment */
+#endif
 
 #endif /* HACK_H /**/

@@ -8,8 +8,10 @@
 #include "wseg.h"
 #include "lev.h"
 
-static void FDECL(pwseg, (struct wseg *));
+OSTATIC void FDECL(pwseg, (struct wseg *));
 #endif
+
+#ifdef OVL0
 
 void
 atl(x,y,ch)
@@ -43,6 +45,9 @@ register int x, y;
 	if(y < scrly) scrly = y;
 	if(y > scrhy) scrhy = y;
 }
+
+#endif /* OVL0 */
+#ifdef OVL2
 
 /* call: (x,y) - display
 	(-1,0) - close (leave last symbol)
@@ -161,6 +166,9 @@ register int xx,yy;
 	}
 }
 
+#endif /* OVL2 */
+#ifdef OVL1
+
 void
 curs_on_u()
 {
@@ -195,6 +203,9 @@ pru()
 	}
 	levl[u.ux][u.uy].seen = 1;
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 /* print a position that is visible for @ */
 void
@@ -423,6 +434,9 @@ register int x, y;
 	atl(x,y,(char)news0(x,y));
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 /* used with wand of digging (or pick-axe): fill scrsym and force display */
 /* also when a POOL evaporates */
 void
@@ -442,6 +456,9 @@ register int x, y;
 	}
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 void
 nosee(x,y)
 register int x, y;
@@ -450,7 +467,7 @@ register int x, y;
 
 	if(!isok(x,y)) return;
 	room = &levl[x][y];
-	if(IS_FLOOR(levl[x][y].typ)
+	if(levl[x][y].scrsym == ROOM_SYM
 	   && !room->lit && !Blind) {
 		room->scrsym = STONE_SYM;	/* was ' ' -- OIS */
 		room->new = 1;
@@ -515,6 +532,9 @@ register int x, y;
 	return(0);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 #ifdef NEWSCR
 void
 pobj(obj)
@@ -553,7 +573,7 @@ register struct obj *obj;
 }
 
 #ifdef WORM
-static void
+XSTATIC void
 pwseg(wtmp)
 register struct wseg *wtmp;
 {
@@ -588,12 +608,6 @@ boolean IS_DOOR(typ)
 unsigned typ;
 {
 	return(typ == DOOR);
-}
-
-boolean IS_FLOOR(typ)
-unsigned typ;
-{
-	return(typ == ROOM);
 }
 
 boolean ACCESSIBLE(typ)
@@ -662,3 +676,5 @@ unsigned typ;
 	return(typ >= STAIRS && typ <= ALTAR);
 }
 #endif /* STUPID_CPP */
+
+#endif /* OVLB */

@@ -1,8 +1,10 @@
 $ makedefs := $sys$disk:[]makedefs
 $ cc = "CC/NOLIST/OPT=NOINLINE/DEB/INCL=[-.INCLUDE]/DEFI=(""WIZARD=""""GENTZEL"""""")"
+$! cc = "GCC/DEB/INCL=[-.INCLUDE]/DEFI=(""WIZARD=""""GENTZEL"""""")/CC1=""-fwritable-strings"""
 $ link := link/nomap'p2'
 $ if p1 .eqs. "LINK" then goto link
 $ define sys sys$library:
+$ ! /obj=file doesn't work for GCC 1.36, so use rename instead
 $ cc alloc.c
 $ cc makedefs.c
 $ cc monst.c
@@ -41,7 +43,8 @@ $ cc hack.c
 $ cc invent.c
 $ cc lock.c
 $ cc mail.c
-$ cc [-.vms]vmsmain.c/obj=main.obj
+$ cc [-.vms]vmsmain.c
+$ rename vmsmain.obj main.obj
 $ cc makemon.c
 $ cc mcastu.c
 $ cc mhitm.c
@@ -86,10 +89,12 @@ $ cc topl.c
 $ cc topten.c
 $ cc track.c
 $ cc trap.c
-$ cc [-.vms]vmstty.c/obj=tty.obj
+$ cc [-.vms]vmstty.c
+$ rename vmstty.obj tty.obj
 $ cc u_init.c
 $ cc uhitm.c
-$ cc [-.vms]vmsunix.c/obj=unix.obj
+$ cc [-.vms]vmsunix.c
+$ rename vmsunix.obj unix.obj
 $ cc vault.c
 $ makedefs -v
 $ cc version.c
@@ -102,7 +107,10 @@ $ cc worn.c
 $ cc write.c
 $ cc zap.c
 $ cc [-.others]random.c
-$ cc/def="bcopy(s1,s2,sz)=memcpy(s2,s1,sz)" [-.vms]vmstermcap.c
+$ create vmstermcap.c
+#define bcopy(s,d,n) memcpy(d,s,n)
+$ append [-.vms]vmstermcap.c []
+$ cc vmstermcap.c
 $ cc [-.vms]vmstparam.c
 $link:
 $ link/exe=nethack sys$input:/opt
@@ -200,3 +208,4 @@ vmsmisc.obj,-
 vmstermcap.obj,-
 vmstparam.obj
 sys$library:vaxcrtl/library
+!gnu_cc:[000000]gcclib/library

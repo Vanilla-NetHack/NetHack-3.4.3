@@ -267,7 +267,7 @@ o\timeout.o:  $(HACK_H)
 o\topl.o:  $(HACK_H)
 o\topten.o:  $(HACK_H)
 o\track.o:  $(HACK_H)
-o\trap.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\trapname.h
+o\trap.o:  $(HACK_H) $(INCL)\edog.h
 o\u_init.o:  $(HACK_H)
 o\uhitm.o:  $(HACK_H) $(INCL)\artifact.h
 o\vault.o:  $(HACK_H) $(INCL)\vault.h

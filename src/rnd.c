@@ -17,12 +17,17 @@ extern int rand();
 #endif
 #endif /* LINT */
 
+#ifdef OVL2
+
 int
 rn1(x,y)	/* y <= rn1(x,y) < (y+x) */
 register int x, y;
 {
 	return(RND(x)+y);
 }
+
+#endif /* OVL2 */
+#ifdef OVL0
 
 int
 rn2(x)		/* 0 <= rn2(x) < x */
@@ -37,8 +42,11 @@ register int x;
 	return(RND(x));
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 int
-rnl(x)		/* 0 <= rnl(x) < x; somtimes subtracting Luck */
+rnl(x)		/* 0 <= rnl(x) < x; sometimes subtracting Luck */
 register int x;	/* good luck approaches 0, bad luck approaches (x-1) */
 {
 	register int i = RND(x);
@@ -51,6 +59,9 @@ register int x;	/* good luck approaches 0, bad luck approaches (x-1) */
 
 	return i;
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 int
 rnd(x)		/* 1 <= rnd(x) <= x */
@@ -65,6 +76,9 @@ register int x;
 	return(RND(x)+1);
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 int
 d(n,x)		/* n <= d(n,x) <= (n*x) */
 register int n, x;
@@ -74,6 +88,9 @@ register int n, x;
 	while(n--) tmp += RND(x);
 	return(tmp);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 rne(x)	  /* by stewr 870807 */
@@ -103,3 +120,5 @@ int i;
 	return((int)x);
 }
 #endif
+
+#endif /* OVLB */

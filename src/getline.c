@@ -12,10 +12,18 @@
 #if defined(SYSV) || defined(DGUX)
 #define	NR_OF_EOFS	20
 #endif
+#ifdef MACOS
+extern short macflags;
+#endif
+#ifdef OVL1
 
 char morc = 0;	/* tell the outside world what char he used */
 
+#endif /* OVL1 */
+
 extern char erase_char, kill_char;	/* from appropriate tty.c file */
+
+#ifdef OVL1
 
 /*
  * Read a line closed with '\n' into the array char bufp[BUFSZ].
@@ -29,17 +37,28 @@ register char *bufp;
 {
 	register char *obufp = bufp;
 	register int c;
-
+#ifdef MACOS
+	short	tmpflags;
+	
+	tmpflags = macflags;
+	macflags &= ~fDoNonKeyEvt;
+#endif
 	flags.toplin = 2;		/* nonempty, no --More-- required */
 	for(;;) {
 		(void) fflush(stdout);
 		if((c = Getchar()) == EOF) {
 			*bufp = 0;
+#ifdef MACOS
+	macflags |= (tmpflags & fDoNonKeyEvt);
+#endif
 			return;
 		}
 		if(c == '\033') {
 			*obufp = c;
 			obufp[1] = 0;
+#ifdef MACOS
+	macflags |= (tmpflags & fDoNonKeyEvt);
+#endif
 			return;
 		}
 		if(c == erase_char || c == '\b') {
@@ -49,6 +68,9 @@ register char *bufp;
 			} else	bell();
 		} else if(c == '\n') {
 			*bufp = 0;
+#ifdef MACOS
+	macflags |= (tmpflags & fDoNonKeyEvt);
+#endif
 			return;
 		} else if(' ' <= c && c < '\177' && 
 			    (bufp-obufp < BUFSZ-1 || bufp-obufp < COLNO)) {
@@ -70,7 +92,13 @@ register char *bufp;
 		} else
 			bell();
 	}
+#ifdef MACOS
+	macflags |= (tmpflags & fDoNonKeyEvt);
+#endif
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 getret() {
@@ -79,7 +107,7 @@ getret() {
 
 void
 cgetret(s)
-register char *s;
+register const char *s;
 {
 	putsym('\n');
 	if(flags.standout)
@@ -92,26 +120,41 @@ register char *s;
 	xwaitforspace(s);
 }
 
+#endif /* OVLB */
+#ifdef OVL1
 
 void
 xwaitforspace(s)
-register char *s;	/* chars allowed besides space or return */
+register const char *s;	/* chars allowed besides space or return */
 {
 	register int c;
 
 	morc = 0;
+#ifdef MACOS
+	flags.wantspace = TRUE;
+#endif
 
 	while((c = readchar()) != '\n') {
+#ifdef MACOS
+		if(c == '\r' || c == 0x3 || c == 'p') break;
+#endif
 	    if(flags.cbreak) {
-		if(c == ' ') break;
-		if(s && index(s,c)) {
-			morc = c;
-			break;
-		}
-		bell();
+			if(c == ' ') break;
+			if(s && index(s,c)) {
+				morc = c;
+				break;
+			}
+			bell();
 	    }
 	}
+
+#ifdef MACOS
+	flags.wantspace = FALSE;
+#endif
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 static int last_multi;
 
@@ -131,26 +174,29 @@ parse()
 	curs_on_u();
 
 	if (!flags.num_pad || (foo = readchar()) == 'n')
-	    while((foo = readchar()) >= '0' && foo <= '9') {
-		multi = 10*multi+foo-'0';
-		if (multi < 0 || multi > LARGEST_INT)
-			multi = LARGEST_INT;
-		if (multi > 9) {
-			remember_topl();
-			home();
-			cl_end();
-			Printf("Count: %d", multi);
-		}
-		last_multi = multi;
-		if(!cnt && foo == '0') prezero = TRUE;
-		cnt++;
-	    }
-	    if (foo == '\033') {   /* esc cancels count (TH) */
-		remember_topl();
-		home();
-		cl_end();
-		multi = last_multi = 0;
-	    }
+	    do {
+	    	foo = readchar();
+	    	if(foo >= '0' && foo <= '9') {
+				multi = 10*multi+foo-'0';
+				if (multi < 0 || multi > LARGEST_INT)
+					multi = LARGEST_INT;
+				if (multi > 9) {
+					remember_topl();
+					home();
+					cl_end();
+					Printf("Count: %d", multi);
+				}
+				last_multi = multi;
+				if(!cnt && foo == '0') prezero = TRUE;
+				cnt++;
+		    }
+		    if (foo == '\033') {   /* esc cancels count (TH) */
+				remember_topl();
+				home();
+				cl_end();
+				multi = last_multi = 0;
+		    }
+		} while(foo >= '0' && foo <= '9');
 # ifdef REDO
 	if (foo == DOAGAIN || in_doagain)
 		multi = last_multi;
@@ -184,6 +230,9 @@ parse()
 	return(in_line);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 #ifdef UNIX
 static void
 end_of_input()
@@ -193,6 +242,9 @@ end_of_input()
 	exit(0);
 }
 #endif
+
+#endif /* OVLB */
+#ifdef OVL0
 
 char
 readchar() {
@@ -225,6 +277,9 @@ readchar() {
 		flags.toplin = 2;
 	return((char) sym);
 }
+
+#endif /* OVL0 */
+#ifdef OVL2
 
 #ifdef COM_COMPL
 /* Read in an extended command - doing command line completion for
@@ -303,3 +358,5 @@ register char *bufp;
 
 }
 #endif /* COM_COMPL */
+
+#endif /* OVL2 */

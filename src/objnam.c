@@ -9,18 +9,43 @@
 #define	PREFIX	50
 #define SCHAR_MAX 127
 
+#ifndef OVLB
+
+OSTATIC const char *keystr[N_LOX], *lockstr[N_LOX];
+
+#else /* OVLB */
 /*	We want the player to be able to learn what key goes in what lock.  */
-const char *keystr[N_LOX] = { "round", "square", "triangular", "oval",
-			    "octagonal", "hexagonal", "cylindrical",
-			    "irregular", "conical", "wedge-shaped" },
-	   *lockstr[N_LOX] = { "round", "square", "triangular", "oval",
-			    "octagonal", "hexagonal", "wide",
-			    "notched", "large round", "large square" };
+XSTATIC const char *keystr[N_LOX] = { "round", "square", "triangular", "oval",
+			              "octagonal", "hexagonal", "cylindrical",
+			              "irregular", "conical", "wedge-shaped" },
+	          *lockstr[N_LOX] = { "round", "square", "triangular", "oval",
+			              "octagonal", "hexagonal", "wide",
+			              "notched", "large round", "large square" };
+#endif /* OVLB */
 
 static int FDECL(rnd_class, (int,int));
+OSTATIC int FDECL(named_key,(const char *));
+OSTATIC int FDECL(named_box,(const char *));
+OSTATIC char *FDECL(strprepend,(char *,const char *));
+static char *FDECL(sitoa,(int));
 
-static int
-named_key(s) register char *s; {
+static struct Jitem {
+	int item;
+	const char *name;
+} Japanese_items[] = {
+	{ SHORT_SWORD, "wakizashi" },
+	{ BROADSWORD, "ninja-to" },
+	{ GLAIVE, "naginata" },
+	/* { BOW, "yumi" }, */
+	{ LOCK_PICK, "osaku" },
+	{0, "" }
+};
+OSTATIC const char *FDECL(Japanese_item_name,(int));
+
+#ifdef OVL1
+
+XSTATIC int
+named_key(s) register const char *s; {
 	char tc[BUFSZ];
 	register int i;
 
@@ -32,9 +57,9 @@ named_key(s) register char *s; {
 	return(0);
 }
 
-static int
+XSTATIC int
 named_box(s)
-register char *s;
+register const char *s;
 {
 	char tc[BUFSZ];
 	register int i;
@@ -47,8 +72,10 @@ register char *s;
 	return(0);
 }
 
-static char *
-strprepend(s,pref) register char *s, *pref; {
+XSTATIC char *
+strprepend(s,pref)
+register char *s;
+register const char *pref; {
 register int i = strlen(pref);
 	if(i > PREFIX) {
 		pline("WARNING: prefix too short.");
@@ -70,6 +97,9 @@ sitoa(a) int a; {
 	return(buf);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 char *
 typename(otyp)
 register int otyp;
@@ -80,10 +110,13 @@ char buf[BUFSZ];
 static char buf[BUFSZ];
 #endif
 register struct objclass *ocl = &objects[otyp];
-register char *actualn = ocl->oc_name;
-register char *dn = ocl->oc_descr;
-register char *un = ocl->oc_uname;
+register const char *actualn = ocl->oc_name;
+register const char *dn = ocl->oc_descr;
+register const char *un = ocl->oc_uname;
 register int nn = ocl->oc_name_known;
+
+	if (pl_character[0] == 'S' && Japanese_item_name(otyp))
+		actualn = Japanese_item_name(otyp);
 	switch(ocl->oc_olet) {
 	case POTION_SYM:
 		Strcpy(buf, "potion");
@@ -165,6 +198,9 @@ char *FDECL((*func), (struct obj *));
 	return str;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 char *
 xname(obj)
 register struct obj *obj;
@@ -176,9 +212,12 @@ static char bufr[BUFSZ];
 #endif
 register char *buf = &(bufr[PREFIX]);	/* leave room for "17 -3 " */
 register int nn = objects[obj->otyp].oc_name_known;
-register char *actualn = objects[obj->otyp].oc_name;
-register char *dn = objects[obj->otyp].oc_descr;
-register char *un = objects[obj->otyp].oc_uname;
+register const char *actualn = objects[obj->otyp].oc_name;
+register const char *dn = objects[obj->otyp].oc_descr;
+register const char *un = objects[obj->otyp].oc_uname;
+
+	if (pl_character[0] == 'S' && Japanese_item_name((int)obj->otyp))
+		actualn = Japanese_item_name((int)obj->otyp);
 
 	buf[0] = 0;
 	if(!Blind) obj->dknown=1;
@@ -202,11 +241,23 @@ register char *un = objects[obj->otyp].oc_uname;
 			Strcpy(buf, "poisoned ");
 	    case VENOM_SYM:
 	    case TOOL_SYM:
-		if(nn)	Strcat(buf, actualn);
-		else	Strcat(buf, dn);
+		if(un) {
+			/* un must come first here.  If it does not, they could
+			 * tell objects apart by seeing which ones refuse to
+			 * accept names.
+			 */
+			Sprintf(buf, "%s called %s",
+				nn ? actualn : dn, un);
+		} else if(nn)
+			Strcat(buf, actualn);
+		else
+			Strcat(buf, dn);
+		/* If we use an() here we'd have to remember never to use */
+		/* it whenever calling doname() or xname(). */
 		if(obj->otyp == FIGURINE)
-			Sprintf(eos(buf), " of %s",
-				an(mons[obj->corpsenm].mname));
+		    Sprintf(eos(buf), " of a%s %s",
+			index(vowels,*(mons[obj->corpsenm].mname)) ? "n" : "",
+			mons[obj->corpsenm].mname);
 		break;
 	    case ARMOR_SYM:
 		if(obj->otyp==DRAGON_SCALE_MAIL) {
@@ -266,7 +317,9 @@ register char *un = objects[obj->otyp].oc_uname;
 		break;
 	    case ROCK_SYM:
 		if(obj->otyp == STATUE)
-		    Sprintf(buf, "%s of %s", actualn, an(mons[obj->corpsenm].mname));
+		    Sprintf(buf, "%s of a%s %s", actualn,
+			index(vowels,*(mons[obj->corpsenm].mname)) ? "n" : "",
+			mons[obj->corpsenm].mname);
 		else Strcpy(buf, actualn);
 		break;
 	    case BALL_SYM:
@@ -351,8 +404,8 @@ register char *un = objects[obj->otyp].oc_uname;
 			break;
 		}
 		if(!nn) {
-			char *rock=(obj->otyp==LOADSTONE||obj->otyp==LUCKSTONE)
-				? "stone" : "gem";
+			const char *rock=
+	(obj->otyp==LOADSTONE||obj->otyp==LUCKSTONE) ? "stone" : "gem";
 			if(un)	Sprintf(buf,"%s called %s", rock, un);
 			else	Sprintf(buf, "%s %s", dn, rock);
 			break;
@@ -373,6 +426,9 @@ register char *un = objects[obj->otyp].oc_uname;
 	}
 	return(buf);
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 char *
 doname(obj)
@@ -544,6 +600,9 @@ plus:
 	return(bp);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 /*
  * Used if only one of a collection of objects is named (e.g. in eat.c).
  */
@@ -572,7 +631,7 @@ char *FDECL((*func), (struct obj *));
 
 char *
 an(str)
-register char *str;
+register const char *str;
 {
 	static char buf[BUFSZ];
 
@@ -592,17 +651,23 @@ register char *str;
 
 char *
 An(str)
-register char *str;
+const char *str;
 {
-	str = an(str);
-	if (*str == 'a') *str = 'A';
-	return str;
+	register char *tmp;
+
+	tmp = an(str);
+	if (*tmp == 'a') *tmp = 'A';
+	return tmp;
 }
 
 char *
-aobjnam(otmp,verb) register struct obj *otmp; register char *verb; {
-register char *bp = xname(otmp);
-char prefix[PREFIX];
+aobjnam(otmp,verb)
+register struct obj *otmp;
+register const char *verb;
+{
+	register char *bp = xname(otmp);
+	char prefix[PREFIX];
+
 	if(otmp->quan != 1) {
 		Sprintf(prefix, "%u ", otmp->quan);
 		bp = strprepend(bp, prefix);
@@ -656,6 +721,9 @@ register char *str;
 		if('A' <= *p && *p <= 'Z') *p += 'a'-'A';
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 /* Plural routine; chiefly used for user-defined fruits.  We have to try to
  * account for everything reasonable the player has; something unreasonable
  * can still break the code.  However, it's still a lot more accurate than
@@ -666,17 +734,18 @@ register char *str;
  */
 char *
 makeplural(oldstr)
-char *oldstr;
+const char *oldstr;
 {
 	register char *spot;
 	static char str[BUFSZ];
-	static char *excess;
+	const char *excess;
 	int len;
 
 	while (*oldstr==' ') oldstr++;
 	if (!oldstr || !*oldstr) {
 		impossible("plural of null?");
-		return("s");
+		Strcpy(str, "s");
+		return str;
 	}
 	Strcpy(str, oldstr);
 
@@ -853,11 +922,21 @@ bottom:	if (excess) Strcpy(str+strlen(str), excess);
 	return str;
 }
 
-/* wishable subranges of objects */
-static const struct o_range {
-	char *name, osym;
+#endif /* OVL0 */
+
+struct o_range {
+	const char *name, osym;
 	int  f_o_range, l_o_range;
-} o_ranges[] = {
+};
+
+#ifndef OVLB
+
+OSTATIC const struct o_range o_ranges[];
+
+#else /* OVLB */
+
+/* wishable subranges of objects */
+XSTATIC const struct o_range o_ranges[] = {
 	{ "bag",	TOOL_SYM,   SACK,	    BAG_OF_TRICKS },
 	{ "gloves",	ARMOR_SYM,  LEATHER_GLOVES, GAUNTLETS_OF_DEXTERITY },
 	{ "gauntlets",	ARMOR_SYM,  LEATHER_GLOVES, GAUNTLETS_OF_DEXTERITY },
@@ -873,26 +952,34 @@ static const struct o_range {
 	{ "sword",	WEAPON_SYM, SHORT_SWORD,    KATANA }
 };
 
-
 /*
  * Singularize a string the user typed in; this helps reduce the complexity
- * of readobjnam.
+ * of readobjnam, and is also used in pager.c to singularize the string
+ * for which help is sought.
  */
 
-static
-void
-singularize(bp)
-char *bp;
+char *
+makesingular(oldstr)
+const char *oldstr;
 {
-	char *p;
+	char *p, *bp;
+	static char str[BUFSZ];
 
+	if (!oldstr || !*oldstr) {
+		impossible("singular of null?");
+		str[0] = 0; return str;
+	}
+	Strcpy(str, oldstr);
+	bp = str;
+
+	while (*bp == ' ') bp++;
 	/* find "cloves of garlic", "worthless pieces of blue glass" */
 	for(p = bp; *p; p++) 
 	    if(!strncmp(p, "s of ", 5)){
 		/* but don't singularize "gauntlets" */
 		if(strncmp(p-8, "gauntlet", 8))
 			while(*p = p[1]) p++;
-		return;
+		return bp;
 	    }
 
 	/* remove -s or -es (boxes) or -ies (rubies) */
@@ -904,39 +991,40 @@ char *bp;
 				   !strcmp(p-4, "pies"))
 					goto mins;
 				Strcpy(p-3, "y");
-				return;
+				return bp;
 			}
 
 			/* note: cloves / knives from clove / knife */
 			if(!strcmp(p-6, "knives")) {
 				Strcpy(p-3, "fe");
-				return;
+				return bp;
 			}
 
 			if(!strcmp(p-6, "staves")) {
 				Strcpy(p-3, "ff");
-				return;
+				return bp;
 			}
 
 			/* note: nurses, axes but boxes */
 			if(!strcmp(p-5, "boxes")) {
 				p[-2] = 0;
-				return;
+				return bp;
 			}
 		}
 		/* but don't singularize boots or gloves */
 		else if(!strcmp(p-5, "boots") ||
 			!strcmp(p-6, "gloves"))
-				return;
+				return bp;
 	mins:
 		p[-1] = 0;
 	} else {
 		if(!strcmp(p-5, "teeth")) {
 			Strcpy(p-5, "tooth");
-			return;
+			return bp;
 		}
 		/* here we cannot find the plural suffix */
 	}
+	return bp;
 }
 
 /* Return something wished for.  If not an object, return &zeroobj; if an error
@@ -964,7 +1052,7 @@ register char *bp;
 	 */
 #endif
 	char let;
-	char *un, *dn, *an;
+	char *un, *dn, *actualn;
 	char *name=0;
 #ifdef WIZARD
 	int fake=0;
@@ -978,7 +1066,7 @@ register char *bp;
 #define SPINACH 2
 	contents = UNDEFINED;
 	let = 0;
-	an = dn = un = 0;
+	actualn = dn = un = 0;
 	
 	for(;;) {
 		if (!bp) goto any;
@@ -1135,8 +1223,8 @@ register char *bp;
 	}
 
 	/* first change to singular if necessary */
-	if(cnt != 1)
-		singularize(bp);
+	if(cnt != 1 && *bp)
+		Strcpy(bp, makesingular(bp));
 
 sing:
 	/* Maybe we need a special strcmp() which ignores capitalization and
@@ -1174,12 +1262,12 @@ sing:
 	   !strcmp(bp, "leather armor") || /* Prevent falling to 'armor'. */
 	   !strcmp(bp, "studded leather armor")) {
 		let = ARMOR_SYM;
-		an = bp;
+		actualn = bp;
 		goto srch;
 	}
 	if(!strcmp(bp, "food ration")){
 		let = FOOD_SYM;
-		an = bp;
+		actualn = bp;
 		goto srch;
 	}
 	if((iskey = named_key(bp)) > 0) {
@@ -1213,10 +1301,10 @@ sing:
 			let = wrpsym[i];
 			if(let != AMULET_SYM) {
 			    bp += j;
-			    if(!strncmp(bp, " of ", 4)) an = bp+4;
+			    if(!strncmp(bp, " of ", 4)) actualn = bp+4;
 			    /* else if(*bp) ?? */
 			} else
-			    an = bp;
+			    actualn = bp;
 			goto srch;
 		}
 		if(!strcmp(p-j, wrp[i])){
@@ -1231,7 +1319,7 @@ sing:
 	if(!strcmp(p-6, " stone")){
 		p[-6] = 0;
 		let = GEM_SYM;
-		dn = an = bp;
+		dn = actualn = bp;
 		goto srch;
 	}
 	if(!strcmp(p-10, "gold piece") || !strcmp(p-7, "zorkmid") ||
@@ -1278,15 +1366,15 @@ sing:
 		goto typfnd;
 	    }
 
-	an = bp;
-	if (!dn) dn = an; /* ex. "black cap" */
+	actualn = bp;
+	if (!dn) dn = actualn; /* ex. "black cap" */
 srch:
 	i = 1;
 	if(let) i = bases[letindex(let)];
 	while(i <= NROFOBJECTS && (!let || objects[i].oc_olet == let)){
-		register char *zn;
+		register const char *zn;
 
-		if(an && (zn = objects[i].oc_name) && !strcmp(an, zn)) {
+		if(actualn && (zn = objects[i].oc_name) && !strcmp(actualn, zn)) {
 			typ = i;
 			goto typfnd;
 		}
@@ -1299,6 +1387,16 @@ srch:
 			goto typfnd;
 		}
 		i++;
+	}
+	if (actualn) {
+		struct Jitem *j = Japanese_items;
+		while(j->item) {
+			if (actualn && !strcmp(actualn, j->name)) {
+				typ = j->item;
+				goto typfnd;
+			}
+			j++;
+		}
 	}
 #ifdef TUTTI_FRUTTI
 	for(f=ffruit; f; f = f->nextf) {
@@ -1351,7 +1449,7 @@ typfnd:
 		wizard ||
 #endif
 		 (cnt <= 20 &&
-		  (let == WEAPON_SYM && typ <= SHURIKEN) || (typ == ROCK))))
+		  ((let == WEAPON_SYM && typ <= SHURIKEN) || (typ == ROCK)))))
 			otmp->quan = cnt;
 
 	if (spesgn == 0) spe = otmp->spe;
@@ -1362,7 +1460,7 @@ typfnd:
 			typ == UNICORN_HORN ||
 			(let==RING_SYM && objects[typ].oc_charged)) {
 		if(spe > rnd(5) && spe > otmp->spe) spe = 0;
-		if(spe > 2 && u.uluck < 0) spesgn = -1;
+		if(spe > 2 && Luck < 0) spesgn = -1;
 	} else {
 		if (let == WAND_SYM) {
 			if (spe > 1 && spesgn == -1) spe = 1;
@@ -1461,22 +1559,38 @@ typfnd:
 		curse(otmp);
 	} else if (uncursed) {
 		otmp->blessed = 0;
-		otmp->cursed = (u.uluck < 0);
+		otmp->cursed = (Luck < 0
+#ifdef WIZARD
+					 && !wizard
+#endif
+							);
 	} else if (blessed) {
-		otmp->blessed = (u.uluck >= 0);
-		otmp->cursed = (u.uluck < 0);
+		otmp->blessed = (Luck >= 0
+#ifdef WIZARD
+					 || wizard
+#endif
+							);
+		otmp->cursed = (Luck < 0
+#ifdef WIZARD
+					 && !wizard
+#endif
+							);
 	} else if (spesgn < 0) {
 		curse(otmp);
 	}
 
 	/* prevent wishing abuse */
-	if (otmp->otyp == WAN_WISHING || otmp->otyp == MAGIC_LAMP)
+	if (
+#ifdef WIZARD
+		!wizard &&
+#endif
+		(otmp->otyp == WAN_WISHING || otmp->otyp == MAGIC_LAMP))
 		otmp->recharged = 1;
 
 	/* set poisoned */
 	if (ispoisoned) {
 	    if (let == WEAPON_SYM && typ <= SHURIKEN)
-		otmp->opoisoned = (u.uluck >= 0);
+		otmp->opoisoned = (Luck >= 0);
 #ifdef WIZARD
 	    else if (Is_box(otmp))
 		otmp->otrapped = 1;
@@ -1514,3 +1628,18 @@ int first,last;
 			return i;
 	return 0;
 }
+
+XSTATIC const char *
+Japanese_item_name(i)
+int i;
+{
+	struct Jitem *j = Japanese_items;
+
+	while(j->item) {
+		if (i == j->item)
+			return j->name;
+		j++;
+	}
+	return (const char *)0;
+}
+#endif /* OVLB */

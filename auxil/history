@@ -20,36 +20,47 @@ many of the added features, and produced NetHack version 1.4.  He then
 coordinated a cast of thousands in enhancing and debugging NetHack 1.4 and 
 released NetHack versions 2.2 and 2.3.
 
+ 
 Later, Mike coordinated a major rewrite of the game, heading a team which
 included Ken Arromdee, Jean-Christophe Collet, Steve Creps, Eric Hendrickson,
 Izchak Miller, Eric S. Raymond, John Rupley, Mike Threepoint, and Janet Walz,
-to produce NetHack 3.0. 
+to produce NetHack 3.0c.
 
-Olaf Seibert ported NetHack 2.3 and 3.0 to the Amiga.
+NetHack 3.0 was ported to the Atari by Eric R. Smith, to OS/2 by Timo
+Hakulinen, and to VMS by David Gentzel.  The three of them and Kevin Darcy
+later joined the main development team to produce subsequent revisions of
+3.0.
 
-Eric R. Smith ported NetHack 3.0 to the Atari.
+Olaf Seibert ported NetHack 2.3 and 3.0 to the Amiga.  Norm Meluch, Stephen
+Spackman and Pierre Martineau designed overlay code for PC NetHack 3.0.
+Johnny Lee ported NetHack 3.0 to the Macintosh.  Along with various other
+Dungeoneers, they continued to enhance the PC, Macintosh, and Amiga ports
+through the later revisions of 3.0.
 
-Timo Hakulinen ported NetHack 3.0 to OS/2.
 
-David Gentzel ported NetHack 3.0 to VMS.
  
-Johnny Lee ported NetHack 3.0 to the Macintosh.
-
-Norm Meluch, Stephen Spackman and Pierre Martineau designed overlay code for
-PC NetHack 3.0.
-
+ 
+ 
+ 
+ 
 From time to time, some depraved individual out there in netland sends a
 particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
 
-
-
-    Tom Almy                  Bruce Holloway         Izchak Miller
-    Ken Arromdee              Richard P. Hughey      Gil Neiger
-    Eric Backus               Del Lamb               Eric S. Raymond
-    John S. Bien              Greg Laskin            John Rupley
-    Ralf Brown                Steve Linhart          Kevin Sweet
-    Jean-Christophe Collet    Benson I. Margulies    Scott R. Turner
-    Steve Creps               Roland McGrath         Janet Walz
-    Eric Hendrickson          Bruce Mewborne
+    Richard Addison           Richard P. Hughey      Eric S. Raymond
+    Tom Almy                  Ari Huttunen           John Rupley
+    Ken Arromdee              Del Lamb               Olaf Seibert
+    Eric Backus               Greg Laskin            Kevin Sitze
+    John S. Bien              Johnny Lee             Eric R. Smith
+    Ralf Brown                Steve Linhart          Kevin Smolkowski
+    Jean-Christophe Collet    Ken Lorber             Michael Sokolov
+    Steve Creps               Benson I. Margulies    Stephen Spackman
+    Kevin Darcy               Pierre Martineau       Andy Swanson
+    Matthew Day               Roland McGrath         Kevin Sweet
+    Jochen Erwied             Norm Meluch            Scott R. Turner
+    David Gentzel             Bruce Mewborne         Janet Walz
+    Mark Gooderum             Izchak Miller          Jon Watte
+    Timo Hakulinen            Gil Neiger             Tom West
+    Eric Hendrickson          Greg Olson             Gregg Wonderly
+    Bruce Holloway            Mike Passaretti

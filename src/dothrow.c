@@ -6,7 +6,9 @@
 
 #include "hack.h"
 
+static void FDECL(hitfloor, (struct obj *));
 static void FDECL(gem_accept, (struct monst *, struct obj *));
+static boolean NDECL(martial);
 static int FDECL(throw_gold, (struct obj *));
 static const char toss_objs[] = { '0', GOLD_SYM, '#', WEAPON_SYM, 0 };
 #ifdef WORM
@@ -100,7 +102,8 @@ register struct obj *obj;
 		potionhit(&youmonst, obj);
 	    else {
 		if(uarmh) pline("Fortunately, you are wearing a helmet!");
-		losehp(uarmh ? 1 : rnd((int)(obj->owt)), "falling object");
+		losehp(uarmh ? 1 : rnd((int)(obj->owt)), "falling object",
+			KILLED_BY_AN);
 		if (!breaks(obj, TRUE)) dropy(obj);
 	    }
 	  } else hitfloor(obj);
@@ -189,7 +192,8 @@ register struct obj *obj;
 					(side == LEFT_SIDE) ? "left" : "right",
 					body_part(LEG));
 				set_wounded_legs(side, 500+rn2(1000));
-				losehp(2, "thrown ball");
+				losehp(2, "leg damage from being pulled out of a bear trap",
+					KILLED_BY);
 				}
 				u.utrap = 0;
 			}
@@ -238,9 +242,12 @@ register struct obj   *obj;
 		mon->msleep = 0;
 		tmp += 2;
 	}
-	if(mon->mfroz) {
+	if(!mon->mcanmove) {
 		tmp += 4;
-		if(!rn2(10)) mon->mfroz = 0;
+		if(!rn2(10)) {
+			mon->mcanmove = 1;
+			mon->mfrozen = 0;
+		}
 	}
 	if (is_orc(mon->data) && pl_character[0]=='E') tmp++;
 	if (u.uswallow && mon == u.ustuck) tmp += 1000; /* Guaranteed hit */
@@ -310,8 +317,7 @@ register struct obj   *obj;
 	} else {
 		pline("The %s misses %s.", xname(obj),
 			cansee(bhitpos.x,bhitpos.y) ? mon_nam(mon) : "it");
-		if(obj->olet == FOOD_SYM &&
-		  (mon->data->mlet == S_DOG || mon->data->mlet == S_FELINE))
+		if(obj->olet == FOOD_SYM && is_domestic(mon->data))
 			if(tamedog(mon,obj)) return(1);
 	}
 	return(0);
@@ -422,8 +428,12 @@ struct obj *obj;
 	}
 
 	if(u.uswallow) {
-		pline("The gold disappears in the %s's entrails.", 
-					mon_nam(u.ustuck));
+		if (is_animal(u.ustuck->data))
+			pline("The gold disappears in the %s's entrails.", 
+			      mon_nam(u.ustuck));
+		else
+			pline("The gold disappears into %s.",
+			      mon_nam(u.ustuck));
 		u.ustuck->mgold += zorks;
 		return(1);
 	}

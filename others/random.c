@@ -15,8 +15,20 @@
  * WARRANTIES OF MERCHANTIBILITY AND FITNESS FOR A PARTICULAR PURPOSE.
  */
 
-#if defined(LIBC_SCCS) && !defined(lint)
+/* Several minor changes were made for the NetHack distribution to satisfy
+ * non-BSD compilers (by definition BSD compilers do not need to compile
+ * this file for NetHack).  These changes consisted of:
+ *	- changing the sccsid conditions to nested ifdefs from defined()s
+ *	to accommodate stupid preprocessors
+ *	- giving srandom() type void instead of allowing it to default to int
+ *	- making the first return in initstate() return a value consistent
+ *	with its type (instead of no value)
+ */
+
+#ifdef LIBC_SCCS
+# ifndef lint
 static char sccsid[] = "@(#)random.c	5.5 (Berkeley) 7/6/88";
+# endif
 #endif /* LIBC_SCCS and not lint */
 
 #include <stdio.h>
@@ -182,6 +194,7 @@ static  long		*end_ptr		= &randtbl[ DEG_3 + 1 ];
  * values produced by this routine.
  */
 
+void
 srandom( x )
 
     unsigned		x;
@@ -236,7 +249,7 @@ initstate( seed, arg_state, n )
 	if(  n  <  BREAK_1  )  {
 	    if(  n  <  BREAK_0  )  {
 		fprintf( stderr, "initstate: not enough state (%d bytes) with which to do jack; ignored.\n", n );
-		return;
+		return (char *)0;
 	    }
 	    rand_type = TYPE_0;
 	    rand_deg = DEG_0;

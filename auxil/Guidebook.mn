@@ -1,10 +1,10 @@
 .ds h0 "NetHack Guidebook
 .ds h1
 .ds h2 %
-.ds vr "NetHack Version 3.0
+.ds vr "NetHack 3.0i
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "October 19, 1989
+.ds f2 "February 20, 1990
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -114,15 +114,6 @@ In order to understand what is going on in NetHack, first you must
 understand what NetHack is doing with the screen.  The NetHack screen
 replaces the ``You see...'' descriptions of text adventure games.
 Figure 1 is a sample of what a NetHack screen might look like.
-.hn 2
-The bottom lines
-.pg
-The bottom two lines of the screen contain several cryptic pieces of
-information describing your current status.  If either status line
-becomes longer than the width of the screen, you might not see all of
-it.  Here are explanations of what the various status items mean
-(though your configuration may not have all the status items listed
-below):
 
 .TS S
 center tab(~);
@@ -130,22 +121,31 @@ a.
 _
 The bat bites!
 
-    ------------
-    |..........+
-    |..<..d..$.|
-    |...@B.....|
-    |..........|
-    -----+------
+    ------
+    |....|    ----------
+    |.<..|####...@...$.|
+    |....-#   |...B....+
+    |....|    |.d......|
+    ------    -------|--
 
 
 
 Player the Rambler         St:12 Dx:7 Co:18 In:11 Wi:9 Ch:15  Neutral
-Level:1 G:0  HP:9(12) Pw:3(3) AC:10 Xp:2/19 T:257 Weak
+Dlvl:1 G:0  HP:9(12) Pw:3(3) AC:10 Xp:1/19 T:257 Weak
 _
 .TE
 .ce 1
 Figure 1
 
+.hn 2
+The status lines (bottom)
+.pg
+The bottom two lines of the screen contain several cryptic pieces of
+information describing your current status.  If either status line
+becomes longer than the width of the screen, you might not see all of
+it.  Here are explanations of what the various status items mean
+(though your configuration may not have all the status items listed
+below):
 .lp Rank\ \ 
 Your character's name and professional ranking (based on the
 experience level, above).
@@ -173,7 +173,7 @@ particular, it can affect the prices shopkeepers offer you.
 \fBLawful\fP, \fBNeutral\fP, or \fBChaotic\fP.  Basically, Lawful is
 good and Chaotic is evil.  Your alignment influences how other
 monsters react toward you.
-.lp Level\ 
+.lp Dungeon Level\ 
 How deep you have gone into the dungeon.  It starts at one and
 increases as you go deeper into the dungeon.  The Amulet of Yendor is
 reputed to be somewhere beneath the twentieth level.
@@ -212,7 +212,7 @@ Additional status flags may appear after the hunger status:  \fBConf\fP
 when you're confused, \fBSick\fP when sick, \fBBlind\fP when you can't
 see, \fBStun\fP when stunned, and \fBHallu\fP when hallucinating.
 .hn 2
-The top line
+The message line (top)
 .pg
 The top line of the screen is reserved for messages that describe
 things that are impossible to represent visually.  If you see a
@@ -221,7 +221,7 @@ another message to display on the screen, but it wants to make certain
 that you've read the one that is there first.  To read the next message,
 just press the space bar.
 .hn 2
-The rest of the screen
+The map (rest of the screen)
 .pg
 The rest of the screen is the map of the level as you have explored it
 so far.  Each symbol on the screen represents something.  You can set
@@ -231,24 +231,31 @@ option to change some of the symbols the game uses; otherwise, the
 game will use default symbols.  Here is a list of what the default
 symbols mean:
 .lp "- and | 
-These form the walls of a room or an open door.
+The walls of a room, or an open door.
 .lp .
-This is the floor of a room or a doorway.
+The floor of a room, or a doorless doorway.
 .lp #
-This is a corridor, or possibly a kitchen sink or drawbridge (if your
-dungeon has sinks or drawbridges).
-.lp >
-This is the staircase to the next level.
+A corridor, or possibly a kitchen sink or drawbridge (if your dungeon
+has sinks or drawbridges).
 .lp <
-The staircase to the previous level.
+A way to the previous level.
+.lp >
+A way to the next level.
+.lp +
+A closed door, or a spell book containing a spell you can learn (if your
+dungeon has spell books).
 .lp @
-You (usually) or another human.
+A human (you, usually).
+.lp $
+A pile of gold.
+.lp ^
+A trap (once you detect it).
 .lp )
-A weapon of some sort.
+A weapon.
 .lp [
 A suit or piece of armor.
 .lp %
-A piece of food (not necessarily healthy...).
+A piece of food (not necessarily healthy).
 .lp ?
 A scroll.
 .lp /
@@ -258,18 +265,13 @@ A ring.
 .lp !
 A potion.
 .lp (
-Some other useful object (pick-axe, key, lamp...).
-.lp $
-A pile of gold.
-.lp *
-A gem or rock (possibly valuable, possibly worthless).
-.lp +
-A closed door, or a spell book containing a spell you can learn (if your
-dungeon has spell books).
-.lp ^
-A trap (once you detect it).
+A useful item (pick-axe, key, lamp...).
 .lp """
 An amulet, or a spider web.
+.lp *
+A gem or rock (possibly valuable, possibly worthless).
+.lp `
+A boulder or statue.
 .lp 0
 An iron ball.
 .lp _
@@ -280,12 +282,14 @@ A pool of water or moat.
 A fountain (your dungeon may not have fountains).
 .lp "\\\\
 An opulent throne (your dungeon may not have thrones either).
-.lp `
-A boulder or statue.
 .lp "a-zA-Z and other symbols
 Letters and certain other symbols represent the various inhabitants
 of the Mazes of Menace.  Watch out, they can be nasty and vicious.
 Sometimes, however, they can be helpful.
+.pg
+You need not memorize all these symbols; you can ask the game what any
+symbol represents with the `/' command (see the Commands section for
+more info).
 
 .hn 1
 Commands
@@ -459,6 +463,10 @@ display the game history.
 wield weapon.  w- means wield nothing, use your bare hands.
 .lp W
 Wear armor.
+.lp x
+list the spells you know (same as `+').
+.lp X
+enter explore (discovery) mode.
 .lp z
 zap a wand.
 .lp Z
@@ -489,7 +497,7 @@ tell what tools you are using.
 .lp $
 count your gold pieces.
 .lp +
-list the spells you know.
+list the spells you know (same as `x').
 .lp "\\\\
 show what types of objects have been discovered.
 .lp !
@@ -532,6 +540,8 @@ sit down.
 turn undead.
 .lp M-u
 untrap something (usually a trapped object).
+.lp M-v
+print compile time options for this version of NetHack.
 .lp M-w
 wipe off your face.
 .pg
@@ -557,8 +567,11 @@ room, the entire room will be drawn on the screen.  If you walk into a
 dark room, only the areas you can see will be displayed.  In darkness,
 you can only see one space in all directions.  Corridors are always
 dark, but remain on the map as you explore them.
+.pg
+Secret corridors are hidden.  You can find them with the `s' (search)
+command.
 .hn 2
-Doorways (`+')
+Doorways
 .pg
 Doorways connect rooms and corridors.  Some doorways have no doors;
 you can walk right through.  Others have doors in them, which may be
@@ -569,8 +582,16 @@ You can get through a locked door by using a tool to pick the lock
 with the `a' (apply) command, or by kicking it open with the `^D'
 (kick) command.
 .pg
-Secret doors [and corridors] are hidden.  You can find them with the
-`s' (search) command.
+Open doors cannot be entered diagonally; you must approach them
+straight on, horizontally or vertically.  Doorways without doors are
+not restricted.
+.pg
+Doors can be useful for shutting out monsters.  Most monsters cannot
+open doors, although a few don't need to (ex. ghosts can walk through
+doors).
+.pg
+Secret doors are hidden.  You can find them with the `s' (search)
+command.
 .hn 2
 Traps (`^')
 .pg
@@ -597,11 +618,11 @@ Remember:  Discretion is the better part of valor.
 .hn 2
 Your pet
 .pg
-You start the game with a little dog or cat, which follows you about
-the dungeon and fights monsters with you.  Like you, your pet needs
-food to survive.  It usually feeds itself on fresh carrion and other
-meats.  If you're worried about it or want to train it, you can feed
-it, too, by throwing it food.
+You start the game with a little dog (`d') or cat (`f'), which follows
+you about the dungeon and fights monsters with you.  Like you, your
+pet needs food to survive.  It usually feeds itself on fresh carrion
+and other meats.  If you're worried about it or want to train it, you
+can feed it, too, by throwing it food.
 .pg
 Your pet also gains experience from killing monsters, and can grow
 over time, gaining hit points and doing more damage.  Initially, your
@@ -906,7 +927,7 @@ Gold (`$')
 .pg
 Gold adds to your score, and you can buy things in shops with it.
 Your version of NetHack may display how much gold you have on the
-status line.  If not, you can just hit `$' to count it.
+status line.  If not, the `$' command will count it.
 
 .hn 1
 Options
@@ -952,6 +973,8 @@ listed may be inactive in your dungeon.
 .lp catname
 name your starting cat (ex. ``catname:Morris'').
 Cannot be set with the `O' command.
+.lp color\ \ \ 
+(default on) use color for different monsters, objects, and dungeon features.
 .lp confirm\ 
 (default on) have user confirm attacks on pets, shopkeepers, and other
 peaceable creatures.
@@ -978,10 +1001,10 @@ from time to time.  You should set this to something you find more
 appetizing than slime mold.  Apples, oranges, pears, bananas, and melons
 already exist in NetHack, so don't use those.
 .lp graphics
-(default `` |--------|||-\\/+.#<>^"}{#\\_<>##'')
+(default `` |--------|||-\\/.-|+.#<>^"}{#\\_<>##'')
 set the graphics symbols for screen displays.  The 
 .op graphics
-option (if used) should come last, followed by a string of up to 32
+option (if used) should come last, followed by a string of up to 35
 characters to be used instead of the default map-drawing characters.
 The dungeon map will use the characters you specify instead of the
 default symbols.
@@ -998,7 +1021,7 @@ to `\\^' now).
 
 Alternate line-drawing character sets can be used on terminals that
 support them.  A graphics string of 
-``\ \\mx\\mq\\ml\\mk\\mm\\mj\\mn\\mv\\mw\\mu\\mt\\mx\\mq\\\\/+\\m~\\ma'' 
+``\ \\mx\\mq\\ml\\mk\\mm\\mj\\mn\\mv\\mw\\mu\\mt\\mx\\mq\\\\/\\m~\\mq\\mx+\\m~\\ma'' 
 will take advantage of the ANSI line-drawing character set (available
 on some VT100 and higher terminals) if it is loaded as the alternate
 set.  If it doesn't work, your terminal may not support alternate
@@ -1010,13 +1033,13 @@ The order of the symbols is:  solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
 right corner, cross wall, upward T wall, downward T wall, leftward T
 wall, rightward T wall, vertical beam, horizontal beam, left slant,
-right slant, no door, vertical open door, horizontal open door, closed door,
-floor of a room, corridor, stairs up, stairs down,trap, web, pool or moat,
-fountain, kitchen sink, throne, altar, ladderup, ladder down,
-vertical drawbridge, horizontal drawbridge.  
-You might want to use `+' for the corners and T walls for a more esthetic,
-boxier display.  Note that in the next release, new symbols may be
-added, or the present ones rearranged.
+right slant, no door, vertical open door, horizontal open door, closed
+door, floor of a room, corridor, stairs up, stairs down, trap, web,
+pool or moat, fountain, kitchen sink, throne, altar, ladder up, ladder
+down, vertical drawbridge, horizontal drawbridge.  
+You might want to use `+' for the corners and T walls for a more
+esthetic, boxier display.  Note that in the next release, new symbols
+may be added, or the present ones rearranged.
 
 Cannot be set with the `O' command.
 .lp IBM_BIOS
@@ -1051,7 +1074,7 @@ symbols for the various object types.
 .lp rawio\ \ \ 
 (default off) force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `^P' as a printer toggle
-without it).  Note: DEC Rainbows hang if this is turned on.
+without it).  Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `O' command.
 .lp rest_on_space
 (default off) make the space bar a synonym for the `.' (rest) command.
@@ -1109,10 +1132,9 @@ paltry cost of not getting on the high score list.
 There are two ways of enabling explore mode.  One is to start the game
 with the
 .op -X
-switch.  The other is to answer yes to the question ``Do you want to
-create a non-scoring, restartable save file?'' upon saving the game.
-The other benefits of explore mode are left for the trepid reader to
-discover.
+switch.  The other is to issue the `X' command while already playing
+the game.  The other benefits of explore mode are left for the trepid
+reader to discover.
 
 .hn
 Credits
@@ -1144,12 +1166,13 @@ on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6).
 producing ST Hack 1.03.
 .pg
 \fBMike Stephenson\fP merged these various versions back together,
-incorporating many of the added features, and produced NetHack 1.4.  He later
-coordinated a cast of thousands throughout the Usenet in adding and debugging
-features, and released NetHack versions 2.2 and 2.3.  Later, he coordinated a
-major rewrite of the game, heading a team which included Ken Arromdee,
-Jean-Christophe Collet, Steve Creps, Eric Hendrickson, Izchak Miller, John
-Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0.
+incorporating many of the added features, and produced NetHack 1.4.
+He then coordinated a cast of thousands throughout the Usenet in
+adding and debugging features, and released NetHack versions 2.2 and
+2.3.  Later, he coordinated a major rewrite of the game, heading a
+team which included Ken Arromdee, Jean-Christophe Collet, Steve Creps,
+Eric Hendrickson, Izchak Miller, John Rupley, Mike Threepoint, and
+Janet Walz, to produce NetHack 3.0.
 .pg
 \fBOlaf Siebert\fP ported NetHack 2.3 and 3.0 to the Amiga.
 .pg
@@ -1160,6 +1183,9 @@ Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0.
 \fBDavid Gentzel\fP ported NetHack 3.0 to VMS.
 .pg
 \fBJohnny Lee\fP ported NetHack 3.0 to the Macintosh.
+.pg
+\fBNorm Meluch\fP, \fBStephen Spackman\fP, and \fBPierre Martineau\fP
+designed overlay code for PC NetHack 3.0.
 .pg
 The following folks have made significant contributions to the playability
 of the game:

@@ -26,6 +26,8 @@ static struct stat buf, hbuf;
 
 extern time_t time();
 
+static struct tm *NDECL(getlt);
+
 void
 setrandom()
 {

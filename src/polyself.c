@@ -1,15 +1,20 @@
-/*	SCCS Id: @(#)polyself.c 3.0	89/11/19
+/*	SCCS Id: @(#)polyself.c 3.0	89/11/21
 /* Polymorph self routine.  Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 #ifdef POLYSELF
-static void break_armor(), drop_weapon();
-static void skinback();
-static void uunstick();
+static void NDECL(break_armor);
+static void FDECL(drop_weapon,(int));
+static void NDECL(skinback);
+static void NDECL(uunstick);
+#ifdef OVLB
 static boolean sticky;
+#endif /* OVLB */
 #endif
+
+#ifdef OVLB
 
 void
 newman()
@@ -20,9 +25,9 @@ newman()
 	if (!rn2(10)) {
 		flags.female = !flags.female;
 		max_rank_sz();
-		if (pl_character[0]=='P')
-			Strcpy(pl_character+6, flags.female?"ess":"");
-		if (pl_character[0]=='C')
+		if (pl_character[0] == 'P')
+			Strcpy(pl_character+6, flags.female ? "ess" : "");
+		if (pl_character[0] == 'C')
 			Strcpy(pl_character+5, flags.female ? "woman" : "man");
 	}
 #ifdef POLYSELF
@@ -42,8 +47,7 @@ newman()
 	if (u.ulevel > 127 || u.ulevel == 0) u.ulevel = 1;
 	if (u.ulevel > MAXULEV) u.ulevel = MAXULEV;
 
-	for(tmp = u.ulevel; tmp != tmp2; tmp += (tmp2 < u.ulevel) ? -1 : 1)
-		adjabil((tmp2 > u.ulevel) ? -1 : 1);
+	adjabil(tmp2, (int)u.ulevel);
 	tmp = u.uhpmax;
 
 	/* random experience points for the new experience level */
@@ -54,7 +58,9 @@ newman()
 /* If it was u.uhpmax*u.ulevel/tmp+9-rn2(19), then a 1st level character
    with 16 hp who polymorphed into a 3rd level one would have an average
    of 48 hp.  */
-#ifndef LINT
+#ifdef LINT
+	u.uhp = u.uhp + tmp;
+#else
 	u.uhp = u.uhp * (long)u.uhpmax/tmp;
 #endif
 #ifdef SPELLS
@@ -79,6 +85,7 @@ newman()
 		} else {
 #endif
 		    Your("new form doesn't seem healthy enough to survive.");
+		    killer_format = KILLED_BY_AN;
 		    killer="unsuccessful polymorph";
 		    done(DIED);
 #ifdef POLYSELF
@@ -107,8 +114,18 @@ newname:	more();
 		regularize(SAVEF+7);
 		Strcat(SAVEF, ";1");
 #else
+# ifdef MSDOS
+		(void)strcpy(SAVEF, SAVEP);
+		{
+			int i = strlen(SAVEF);
+			(void)strncat(SAVEF, plname, 8);
+			regularize(SAVEF+i);
+		}
+		(void)strcat(SAVEF, ".sav");
+# else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+# endif
 #endif
 #ifdef WIZARD
 	}
@@ -141,7 +158,7 @@ polyself()
 	if(!Polymorph_control && !draconian && !iswere && !isvamp) {
 	    if (rn2(20) > ACURR(A_CON)) {
 		You("shudder for a moment.");
-		losehp(rn2(30),"system shock");
+		losehp(rn2(30),"system shock", KILLED_BY_AN);
 		return;
 	    }
 	}
@@ -200,8 +217,12 @@ polyself()
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 	if (Inhell && !Fire_resistance) {
 	    You("burn to a crisp.");
-	    killer = "unwise polymorph";
-	    done(BURNING);
+	    killer_format = KILLED_BY;
+	    killer = "losing fire resistance after polymorphing";
+	    while(1) {
+		done(BURNING);
+		You("continue burning.");
+	    }
 	}
 }
 
@@ -284,24 +305,26 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 	/* Low level characters can't become high level monsters for long */
 		u.mtimedone = u.mtimedone * u.ulevel / mons[mntmp].mlevel;
 	flags.botl = 1;
-	if (can_breathe(uasmon))
-		pline("Use the command #monster for breath weapon.");
-	if (attacktype(uasmon, AT_SPIT))
+	if (flags.verbose) {
+	    if (can_breathe(uasmon))
+		pline("Use the command #monster to use your breath weapon.");
+	    if (attacktype(uasmon, AT_SPIT))
 		pline("Use the command #monster to spit venom.");
-	if (u.usym == S_NYMPH)
-		pline("Use the command #monster if you have to remove an iron ball.");
-	if (u.usym == S_UMBER)
+	    if (u.usym == S_NYMPH)
+		pline("Use the command #monster to remove an iron ball.");
+	    if (u.usym == S_UMBER)
 		pline("Use the command #monster to confuse monsters.");
-	if (is_hider(uasmon))
+	    if (is_hider(uasmon))
 		pline("Use the command #monster to hide.");
-	if (is_were(uasmon))
+	    if (is_were(uasmon))
 		pline("Use the command #monster to summon help.");
-	if (webmaker(uasmon))
+	    if (webmaker(uasmon))
 		pline("Use the command #monster to spin a web.");
-	if (u.usym == S_UNICORN)
+	    if (u.usym == S_UNICORN)
 		pline("Use the command #monster to use your horn.");
-	if (lays_eggs(uasmon) || u.umonnum == PM_QUEEN_BEE)
+	    if (lays_eggs(uasmon) || u.umonnum == PM_QUEEN_BEE)
 		pline("Use the command #sit to lay an egg.");
+	}
 	find_ac();
 	return(1);
 }
@@ -312,6 +335,7 @@ break_armor() {
 
      if (breakarm(uasmon)) {
 	if (otmp = uarm) {
+		if (donning(otmp)) cancel_don();
 		You("break out of your armor!");
 		(void) Armor_gone();
 		useup(otmp);
@@ -329,6 +353,7 @@ break_armor() {
 #endif
      } else if (sliparm(uasmon)) {
 	if (otmp = uarm) {
+		if (donning(otmp)) cancel_don();
 		Your("armor falls around you!");
 		(void) Armor_gone();
 		dropx(otmp);
@@ -348,11 +373,12 @@ break_armor() {
      }
      if (nohands(uasmon) || verysmall(uasmon)) {
 	  if (otmp = uarmg) {
+	       if (donning(otmp)) cancel_don();
 	       /* Drop weapon along with gloves */
 	       You("drop your gloves%s!", uwep ? " and weapon" : "");
+	       drop_weapon(0);
 	       (void) Gloves_off();
 	       dropx(otmp);
-	       drop_weapon(0);
 	  }
 	  if (otmp = uarms) {
 	       You("can no longer hold your shield!");
@@ -360,11 +386,13 @@ break_armor() {
 	       dropx(otmp);
 	  }
 	  if (otmp = uarmh) {
+	       if (donning(otmp)) cancel_don();
 	       Your("helmet falls to the floor!");
 	       (void) Helmet_off();
 	       dropx(otmp);
 	  }
 	  if (otmp = uarmf) {
+	       if (donning(otmp)) cancel_don();
 	       Your("boots %s off your feet!",
 			verysmall(uasmon) ? "slide" : "are pushed");
 	       (void) Boots_off();
@@ -403,13 +431,17 @@ rehumanize()
 	u.umonnum = -1;
 	skinback();
 	set_uasmon();
-	You("return to %sn form!",(pl_character[0]=='E')?"elve":"huma");
+	You("return to %sn form!", (pl_character[0] == 'E')? "elve" : "huma");
 
 	if (u.uhp < 1)	done(DIED);
 	if (!Fire_resistance && Inhell) {
 	    You("burn to a crisp.");
-	    killer = "dissipating polymorph spell";
-	    done(BURNING);
+	    killer_format = KILLED_BY;
+	    killer = "losing fire resistance after rehumanization";
+	    while(1) {
+		done(BURNING);
+		You("continue burning.");
+	    }
 	}
 	if (!uarmg) selftouch("No longer petrify-resistant, you");
 	if (sticky) uunstick();
@@ -470,9 +502,40 @@ dospinweb() {
 	}
 	if (u.uswallow) {
 		You("release web fluid inside %s.", mon_nam(u.ustuck));
-		pline("%s regurgitates you!", Monnam(u.ustuck));
-		regurgitates(u.ustuck);
-		return(1);
+		if (is_animal(u.ustuck->data)) {
+			expels(u.ustuck, u.ustuck->data, TRUE);
+			return(0);
+		}
+		if (is_whirly(u.ustuck->data)) {
+			int i;
+
+			for (i = 0; i < NATTK; i++)
+				if (u.ustuck->data->mattk[i].aatyp == AT_ENGL)
+					break;
+			if (i == NATTK)
+			       impossible("Swallower has no engulfing attack?");
+			else {
+				char sweep[30];
+
+				sweep[0] = '\0';
+				switch(u.ustuck->data->mattk[i].adtyp) {
+					case AD_FIRE:
+						Strcpy(sweep, "ignites and ");
+						break;
+					case AD_ELEC:
+						Strcpy(sweep, "fries and ");
+						break;
+					case AD_COLD:
+						Strcpy(sweep,
+						      "freezes, shatters and ");
+						break;
+				}
+				pline("The web %sis swept away!", sweep);
+			}
+			return(0);
+		}		     /* default: a nasty jelly-like creature */ 
+		pline("The web dissolves into %s.", mon_nam(u.ustuck));
+		return(0);
 	}
 	if (u.utrap) {
 		You("cannot spin webs while stuck in a trap.");
@@ -495,7 +558,7 @@ dospinweb() {
 			Your("webbing vanishes!");
 			return(0);
 		case TRAPDOOR: if (!is_maze_lev) {
-				You("web over the trapdoor.");
+				You("web over the trap door.");
 				deltrap(ttmp);
 				if (Invisible) newsym(u.ux, u.uy);
 				return 1;
@@ -516,7 +579,7 @@ dospinweb() {
 			dotrap(ttmp);
 			return(1);
 		default:
-			impossible("Webbing over trap type %d?",ttmp->ttyp);
+			impossible("Webbing over trap type %d?", ttmp->ttyp);
 			return(0);
 	}
 	ttmp = maketrap(u.ux, u.uy, WEB);
@@ -554,7 +617,6 @@ doconfuse()
 		else if (mtmp->mimic)
 		    continue;
 		else if (flags.safe_dog && !Confusion && !Hallucination
-		  && (mtmp->data->mlet == S_DOG || mtmp->data->mlet == S_FELINE)
 		  && mtmp->mtame) {
 		    if (mtmp->mnamelth)
 			You("avoid gazing at %s.", NAME(mtmp));
@@ -564,13 +626,20 @@ doconfuse()
 		} else {
 		    if (flags.confirm && mtmp->mpeaceful && !Confusion
 							&& !Hallucination) {
+#ifdef MACOS
+			char mac_tbuf[80];
+			if(!flags.silent) SysBeep(1);
+			sprintf(mac_tbuf, "Really confuse %s?", mon_nam(mtmp));
+			if(UseMacAlertText(128, mac_tbuf) != 1) continue;
+#else
 			pline("Really confuse %s? ", mon_nam(mtmp));
 			(void) fflush(stdout);
 			if (yn() != 'y') continue;
+#endif
 			setmangry(mtmp);
 		    }
-		    if (mtmp->mfroz || mtmp->mstun || mtmp->msleep ||
-							mtmp->mblinded)
+		    if (!mtmp->mcanmove || mtmp->mstun || mtmp->msleep ||
+							!mtmp->mcansee)
 			continue;
 		    if (!mtmp->mconf)
 			Your("gaze confuses %s!", mon_nam(mtmp));
@@ -588,7 +657,7 @@ doconfuse()
 		    }
 #ifdef MEDUSA
 		    if ((mtmp->data==&mons[PM_MEDUSA]) && !mtmp->mcan) {
-			pline("Gazing at an awake medusa is not a very good idea...");
+			pline("Gazing at the awake Medusa is not a very good idea.");
 			/* as if gazing at a sleeping anything is fruitful... */
 			You("turn to stone...");
 			done(STONING);
@@ -605,7 +674,7 @@ int
 dohide()
 {
 	if (u.uundetected || u.usym == S_MIMIC_DEF) {
-		pline("You are already hiding.");
+		You("are already hiding.");
 		return(0);
 	}
 	if (u.usym == S_MIMIC) {
@@ -621,7 +690,7 @@ dohide()
 static void
 uunstick()
 {
-	kludge("%s is no longer in your clutches...", Monnam(u.ustuck));
+	kludge("%s is no longer in your clutches.", Monnam(u.ustuck));
 	u.ustuck = 0;
 }
 
@@ -636,7 +705,7 @@ skinback()
 }
 #endif
 
-char *
+const char *
 body_part(part)
 int part;
 {
@@ -646,33 +715,34 @@ int part;
 	 */
 	static const char *humanoid_parts[] = { "arm", "eye", "face", "finger",
 		"fingertip", "foot", "hand", "handed", "head", "leg",
-		"light headed", "neck", "toe" };
+                "light headed", "neck", "spine", "toe" };
 #ifdef POLYSELF
 	static const char *jelly_parts[] = { "pseudopod", "dark spot", "front",
 		"pseudopod extension", "pseudopod extremity",
 		"pseudopod root", "grasp", "grasped", "cerebral area",
-		"lower pseudopod", "viscous", "middle",
+		"lower pseudopod", "viscous", "middle", "surface",
 		"pseudopod extremity" },
 	*animal_parts[] = { "forelimb", "eye", "face", "foreclaw", "claw tip",
 		"rear claw", "foreclaw", "clawed", "head", "rear limb",
-		"light headed", "neck", "rear claw tip" },
+		"light headed", "neck", "spine", "rear claw tip" },
 	*horse_parts[] = { "forelimb", "eye", "face", "forehoof", "hoof tip",
 		"rear hoof", "foreclaw", "hooved", "head", "rear limb",
-		"light headed", "neck", "rear hoof tip" },
+		"light headed", "neck", "backbone", "rear hoof tip" },
 	*sphere_parts[] = { "appendage", "optic nerve", "body", "tentacle",
 		"tentacle tip", "lower appendage", "tentacle", "tentacled",
-		"body", "lower tentacle", "rotational", "equator",
+		"body", "lower tentacle", "rotational", "equator", "body",
 		"lower tentacle tip" },
 	*fungus_parts[] = { "mycelium", "visual area", "front", "hypha",
 		"hypha", "root", "strand", "stranded", "cap area",
-		"rhizome", "sporulated", "stalk", "rhizome tip" },
+		"rhizome", "sporulated", "stalk", "root", "rhizome tip" },
 	*vortex_parts[] = { "region", "eye", "front", "minor current",
 		"minor current", "lower current", "swirl", "swirled",
 		"central core", "lower current", "addled", "center",
-		"edge" },
+		"currents", "edge" },
 	*snake_parts[] = { "vestigial limb", "eye", "face", "large scale",
 		"large scale tip", "rear region", "scale gap", "scale gapped",
-		"head", "rear region", "light headed", "neck", "rear scale" };
+		"head", "rear region", "light headed", "neck", "length",
+		"rear scale" };
 	
 	if (humanoid(uasmon) || (u.usym==S_CENTAUR && 
 		(part==ARM || part==FINGER || part==FINGERTIP
@@ -681,7 +751,8 @@ int part;
 	if (u.usym==S_SNAKE || u.usym==S_NAGA || u.usym==S_WORM)
 		return snake_parts[part];
 	if (u.usym==S_EYE) return sphere_parts[part];
-	if (u.usym==S_JELLY || u.usym==S_PUDDING) return jelly_parts[part];
+	if (u.usym==S_JELLY || u.usym==S_PUDDING || u.usym==S_BLOB)
+		return jelly_parts[part];
 	if (u.usym==S_VORTEX || u.usym==S_ELEMENTAL) return vortex_parts[part];
 	if (u.usym==S_FUNGUS) return fungus_parts[part];
 	return animal_parts[part];
@@ -689,6 +760,9 @@ int part;
 	return humanoid_parts[part];
 #endif
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 int
 poly_gender()
@@ -709,17 +783,19 @@ poly_gender()
  *	  or "lady" when polymorphed)
  */
 #ifdef POLYSELF
-	if (uasmon->mflags1 & M1_FEM) return 1;
-#ifdef INFERNO
-	if (u.umonnum==PM_INCUBUS) return 0;
-#endif
+	if (uasmon->mflags2 & M2_FEM) return 1;
+# ifdef INFERNO
+	if (u.umonnum == PM_INCUBUS) return 0;
+# endif
 	if (!humanoid(uasmon)) return 2;
 #endif
 	return flags.female;
 }
 
-#ifdef POLYSELF
-#ifdef GOLEMS
+#endif /* OVL0 */
+#ifdef OVLB
+
+#if defined(POLYSELF) && defined(GOLEMS)
 void
 ugolemeffects(damtype, dam)
 int damtype, dam;
@@ -746,5 +822,6 @@ int damtype, dam;
 		pline("Strangely, you feel better than before.");
 	}
 }
-#endif /* GOLEMS */
-#endif
+#endif /* POLYSELF && GOLEMS */
+
+#endif /* OVLB */

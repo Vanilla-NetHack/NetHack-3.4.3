@@ -1,18 +1,26 @@
-/*	SCCS Id: @(#)mthrowu.c	3.0	88/04/13
+/*	SCCS Id: @(#)mthrowu.c	3.0	89/11/22
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
 
-static int movedist();
+OSTATIC int FDECL(movedist,(int,int,int,int));
+static void FDECL(drop_throw,(struct obj *,BOOLEAN_P,int,int));
+OSTATIC void FDECL(m_throw,(int,int,int,int,int,struct obj *));
 
 #define URETREATING(x,y) (movedist(u.ux,u.uy,x,y) > movedist(u.ux0,u.uy0,x,y))
 
-boolean lined_up();
+boolean FDECL(lined_up, (struct monst *));
+
+#ifndef OVLB
+
+OSTATIC const char *breathwep[];
+
+#else /* OVLB */
 
 schar	tbx = 0, tby = 0;	/* used for direction of throw, buzz, etc. */
 
-const char *breathwep[] = {	"fragments",
+XSTATIC const char *breathwep[] = {	"fragments",
 				"fire",
 				"sleep gas",
 				"frost",
@@ -26,18 +34,18 @@ int
 thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	register int tlev, dam;
 	struct obj *obj;
-	register char *name;
+	register const char *name;
 {
-	char *oname = an(name);
-	boolean acidic = (obj && obj->otyp == ACID_VENOM);
+	const char *onm = an(name);
+	boolean is_acid = (obj && obj->otyp == ACID_VENOM);
 
 	if(u.uac + tlev <= rnd(20)) {
 		if(Blind || !flags.verbose) pline("It misses.");
-		else You("are almost hit by %s!", oname);
+		else You("are almost hit by %s!", onm);
 		return(0);
 	} else {
 		if(Blind || !flags.verbose) You("are hit!");
-		else You("are hit by %s!", oname);
+		else You("are hit by %s!", onm);
 #ifdef POLYSELF
 		if (obj && obj->otyp == SILVER_ARROW && (u.ulycn != -1 ||
 				is_demon(uasmon) || u.usym == S_VAMPIRE ||
@@ -46,12 +54,12 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 			pline("The %sarrow sears your flesh!",
 				Blind ? "" : "silver ");
 		}
-		if (acidic && resists_acid(uasmon))
+		if (is_acid && resists_acid(uasmon))
 			pline("It doesn't seem to hurt you.");
 		else {
 #endif
-			if (acidic) pline("It burns!");
-			losehp(dam, name);
+			if (is_acid) pline("It burns!");
+			losehp(dam, name, KILLED_BY_AN);
 #ifdef POLYSELF
 		}
 #endif
@@ -85,7 +93,7 @@ int x,y;
 	} else free((genericptr_t)obj);
 }
 
-static void
+XSTATIC void
 m_throw(x, y, dx, dy, range, obj)
 	register int x,y,dx,dy,range;		/* direction and range */
 	register struct obj *obj;
@@ -174,7 +182,10 @@ m_throw(x, y, dx, dy, range, obj)
 			}
 			mtmp->mhp -= damage;
 			if(mtmp->mhp < 1) {
-			    pline("%s is killed!", vis ? Monnam(mtmp) : "It");
+			    pline("%s is %s!", vis ? Monnam(mtmp) : "It",
+			       (is_demon(mtmp->data) || 
+					is_undead(mtmp->data) || !vis) ?
+				 "destroyed" : "killed");
 			    mondied(mtmp);
 			}
 
@@ -214,7 +225,7 @@ m_throw(x, y, dx, dy, range, obj)
 			if (hitu && obj->opoisoned)
 			    /* it's safe to call xname twice because it's the
 			       same object both times... */
-			    poisoned(xname(singleobj), A_STR, xname(singleobj));
+			    poisoned(xname(singleobj), A_STR, xname(singleobj), 10);
 			if(hitu && (obj->otyp == CREAM_PIE ||
 				     obj->otyp == BLINDING_VENOM)) {
 			    blindinc = rnd(25);
@@ -228,6 +239,7 @@ m_throw(x, y, dx, dy, range, obj)
 					makeplural(body_part(EYE)));
 			    }
 			}
+			stop_occupation();
 			if (hitu || !range) {
 			    drop_throw(singleobj, hitu, u.ux, u.uy);
 			    break;
@@ -285,6 +297,9 @@ struct obj *obj;
 	}
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 /* Always returns 0??? -SAC */
 int
 thrwmu(mtmp)	/* monster throws item at you */
@@ -308,7 +323,7 @@ register struct monst *mtmp;
 		   !rn2(BOLT_LIM-movedist(x,mtmp->mux,y,mtmp->muy)))
 		{
 		    int savequan = otmp->quan;
-		    char *verb = "throws";
+		    const char *verb = "throws";
 
 		    if (otmp->otyp == ARROW
 #ifdef TOLKIEN
@@ -331,9 +346,13 @@ register struct monst *mtmp;
 	return 0;
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 int
-spitmu(mtmp)			/* monster spits substance at you */
+spitmu(mtmp, mattk)		/* monster spits substance at you */
 register struct monst *mtmp;
+register struct attack *mattk;
 {
 	register struct obj *otmp;
 
@@ -344,12 +363,18 @@ register struct monst *mtmp;
 	    return 0;
 	}
 	if(lined_up(mtmp)) {
-		otmp = mksobj(mtmp->data==&mons[PM_COBRA] ?
-			BLINDING_VENOM : ACID_VENOM, FALSE);
-		/* really incorrect; should check the attack type; this might
-		 * fail if someone introduces another monster with a venom
-		 * attack...
-		 */
+		switch (mattk->adtyp) {
+		    case AD_BLND:
+		    case AD_DRST:
+			otmp = mksobj(BLINDING_VENOM, FALSE);
+			break;
+		    default:
+			impossible("bad attack type in spitmu");
+				/* fall through */
+		    case AD_ACID:
+			otmp = mksobj(ACID_VENOM, FALSE);
+			break;
+		}
 		if(!rn2(BOLT_LIM-movedist(mtmp->mx,mtmp->mux,mtmp->my,mtmp->muy))) {
 		    if (canseemon(mtmp))
 			pline("%s spits venom!", Monnam(mtmp));
@@ -361,6 +386,9 @@ register struct monst *mtmp;
 	}
 	return 0;
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 int
 breamu(mtmp, mattk)			/* monster breathes at you (ranged) */
@@ -412,10 +440,7 @@ register xchar ax, ay, bx, by;
 		x = bx; y = by;
 		while(x != ax || y != ay) {
 
-		    if (!ACCESSIBLE(levl[x][y].typ) ||
-			  (IS_DOOR(levl[x][y].typ) && 
-				(levl[x][y].doormask & (D_LOCKED | D_CLOSED)))) 
-			return FALSE;
+		    if(!accessible(x, y)) return FALSE;
 		    x += sgn(tbx), y += sgn(tby);
 		}
 		return TRUE;
@@ -429,6 +454,9 @@ lined_up(mtmp)		/* is mtmp in position to use ranged attack? */
 {
 	return(linedup(mtmp->mux,mtmp->muy,mtmp->mx,mtmp->my));
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 /* Check if a monster is carrying a particular item.
  */
@@ -445,8 +473,12 @@ int type;
 	return((struct obj *) 0);
 }
 
-static int
+#endif /* OVL0 */
+#ifdef OVL1
+
+XSTATIC int
 movedist(x0, x1, y0, y1)
+int x0, x1, y0, y1;
 {
 	register int absdx, absdy;
 
@@ -455,3 +487,5 @@ movedist(x0, x1, y0, y1)
 
 	return (max(absdx,absdy));
 }
+
+#endif /* OVL1 */

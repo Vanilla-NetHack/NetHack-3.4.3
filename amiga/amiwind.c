@@ -8,7 +8,12 @@
  *  screens, windows, menus, and input via IntuiMessages.
  */
 
-#define MANX			/* Define for the Manx compiler */
+#include "hack.h"
+
+#undef TRUE
+#undef FALSE
+#undef COUNT
+#undef NULL
 
 #include <exec/types.h>
 #include <exec/alerts.h>
@@ -19,28 +24,65 @@
 #include <intuition/intuition.h>
 #include <libraries/dosextens.h>
 
-#undef TRUE			/* All these are also defined in */
-#undef FALSE			/* the Amiga system include files */
-#undef COUNT
-#undef NULL
+#ifdef LATTICE
+#include <dos.h>
+#include <proto/exec.h>
+#include <proto/graphics.h>
+#include <proto/intuition.h>
+#include <proto/diskfont.h>
+#include <proto/console.h>
+#endif
 
-#include "hack.h"
+#include "Amiga:amimenu.c"
 
-#include "amimenu.c"
+/*
+ * Versions we need of various libraries.  We can't use LIBRARY_VERSION
+ * as defined in <exec/types.h> because some of the libraries we need
+ * don't have that version number in the 1.2 ROM.
+ */
+
+#define INTUITION_VERSION 33L
+#define GRAPHICS_VERSION  33L
+#define DISKFONT_VERSION  34L
+#define ICON_VERSION	  34L
 
 /*  First, external declarations... */
 
-struct Library *OpenLibrary();
-struct Screen *OpenScreen();
-struct Window *OpenWindow();
-struct TextFont *OpenDiskFont(), *OpenFont();
-struct IntuiMessage *GetMsg();
-struct MenuItem *ItemAddress();
-struct Process *FindTask();         /* Cheating */
-long DeadKeyConvert(), OpenDevice(), CloseDevice();
-struct MsgPort *CreatePort();
 extern struct Library *IconBase;
-void abort();
+struct Library *ConsoleDevice;
+
+#ifdef AZTEC_C
+void FDECL(Alert, (long, char *));
+void NDECL(Forbid);
+void NDECL(Permit);
+struct Process *FDECL(FindTask, (char *));
+struct Library *FDECL(OpenLibrary, (char *, long));
+void FDECL(CloseLibrary, (struct Library *));
+struct Message *FDECL(GetMsg, (struct MsgPort *));
+void FDECL(ReplyMsg, (struct Message *));
+long FDECL(OpenDevice, (char *, long, struct IORequest *, long));
+void FDECL(CloseDevice, (struct IORequest *));
+long FDECL(DoIO, (struct IORequest *));
+struct TextFont *FDECL(OpenDiskFont, (struct TextAttr *));
+struct TextFont *FDECL(OpenFont, (struct TextAttr *));
+void FDECL(CloseFont, (struct TextFont *));
+void FDECL(LoadRGB4, (struct ViewPort *, unsigned short *, long));
+long FDECL(SetFont, (struct RastPort *, struct TextFont*));
+struct MsgPort *FDECL(CreatePort, (char *, long));
+void FDECL(DeletePort, (struct MsgPort *));
+struct Screen *FDECL(OpenScreen, (struct NewScreen *));
+struct Window *FDECL(OpenWindow, (struct NewWindow *));
+void FDECL(CloseWindow, (struct Window *));
+void FDECL(SetMenuStrip, (struct Window *, struct Menu *));
+void FDECL(ClearMenuStrip, (struct Window *));
+struct MenuItem *FDECL(ItemAddress, (struct Menu *, long));
+long FDECL(RawKeyConvert, (struct InputEvent *, char *, long, struct KeyMap *));
+#endif
+
+static int NDECL(BufferGetchar);
+static void FDECL(ConvertKey, (register struct IntuiMessage *));
+static void FDECL(ProcessMessage, (register struct IntuiMessage *));
+void NDECL(Initialize);
 
 /*  Now our own variables */
 
@@ -56,7 +98,7 @@ struct Library *GfxBase;
 struct Library *DiskfontBase;
 #endif
 
-struct Device *ConsoleDevice;
+extern struct Library *ConsoleDevice;
 
 #define CSI	    '\x9b'
 #define NO_CHAR     -1
@@ -103,7 +145,22 @@ struct TextAttr Hack80 = {
 #define BARHEIGHT	11
 #define WINDOWHEIGHT	192
 #define WIDTH		640
+
+#ifdef TEXTCOLOR
+#define DEPTH       3
+static unsigned short palette[] = {
+	0x0000,	/* Black   */
+	0x0DDD, /* White   */
+    	0x0C75, /* Brown   */
+	0x0B08,	/* Cyan    */
+	0x00B0,	/* Green   */
+	0x0F08,	/* Magenta */
+	0x055F,	/* Blue    */
+	0x0F00,	/* Red     */
+};
+#else
 #define DEPTH		2
+#endif
 
 struct NewScreen NewHackScreen = {
     0, 0, WIDTH, BARHEIGHT + WINDOWHEIGHT, DEPTH,
@@ -161,7 +218,7 @@ static int BufferGetchar()
  *  RawKeyConvert those events???
  */
 
-int ConvertKey(message)
+static void ConvertKey(message)
 register struct IntuiMessage *message;
 {
     static struct InputEvent theEvent;
@@ -210,7 +267,7 @@ register struct IntuiMessage *message;
 
 #ifdef BETA
     if (!ConsoleDevice) { /* Should never happen */
-	abort(AG_IOError | AO_ConsoleDev);
+	Abort(AG_IOError | AO_ConsoleDev);
 	return;
     }
 #endif
@@ -251,7 +308,7 @@ wasarrow:
  *  ahead of input demands, when the user types ahead.
  */
 
-static char ProcessMessage(message)
+static void ProcessMessage(message)
 register struct IntuiMessage *message;
 {
     switch(message->Class) {
@@ -262,7 +319,7 @@ register struct IntuiMessage *message;
 
 	    thismenu = message->Code;
 	    while (thismenu != MENUNULL) {
-		item = ItemAddress(&HackMenu, (ULONG) thismenu);
+		item = ItemAddress(HackMenu, (ULONG) thismenu);
 		if (KbdBuffered < KBDBUFFER)
 		    BufferQueueChar(item->Command); /* Unused: No COMMSEQ */
 		thismenu = item->NextSelect;
@@ -283,7 +340,7 @@ register struct IntuiMessage *message;
 	}
 #endif
     }
-    ReplyMsg(message);
+    ReplyMsg((struct Message *) message);
 }
 
 /*
@@ -299,10 +356,10 @@ int kbhit()
     register struct IntuiMessage *message;
 
     while( (KbdBuffered < KBDBUFFER / 2) &&
-	    (message = GetMsg(HackWindow->UserPort)) )
+	    (message = (struct IntuiMessage *) GetMsg(HackWindow->UserPort)) )
 	ProcessMessage(message);
 
-    return KbdBuffered;
+    return (int) KbdBuffered;
 }
 
 /*
@@ -326,7 +383,7 @@ void WindowFlush()
 {
 #ifdef BETA
     if (!ConsoleDevice) { /* Should never happen */
-	abort(AG_IOError | AO_ConsoleDev);
+	Abort(AG_IOError | AO_ConsoleDev);
 	return;
     }
 #endif
@@ -335,7 +392,7 @@ void WindowFlush()
 	ConsoleIO.io_Command = CMD_WRITE;
 	ConsoleIO.io_Data = (APTR)ConsoleBuffer;
 	ConsoleIO.io_Length = Buffered;
-	DoIO(&ConsoleIO);
+	DoIO((struct IORequest *) &ConsoleIO);
 	Buffered = 0;
     }
 }
@@ -362,12 +419,12 @@ char c;
 void WindowFPuts(string)
 char *string;
 {
-    register int len = _BUILTIN_strlen(string);
+    register int len = strlen(string);
 
     if (len + Buffered >= CONBUFFER)
 	WindowFlush();
 
-    _BUILTIN_strcpy(ConsoleBuffer + Buffered, string);
+    strcpy(ConsoleBuffer + Buffered, string);
     Buffered += len;
 }
 
@@ -389,25 +446,37 @@ char *string;
  *  flushing the existing characters first, if necessary.
  */
 
+/*VARARGS1*/
+#if defined(USE_STDARG) || defined(USE_VARARGS)
+void
+WindowPrintf VA_DECL(char *, fmt)
+    VA_START(fmt);
+    VA_INIT(fmt, char *);
+    WindowFlush();  /* Don't know if all will fit */
+    vsprintf(ConsoleBuffer, fmt, VA_ARGS);
+    ConsoleIO.io_Command = CMD_WRITE;
+    ConsoleIO.io_Data = (APTR)ConsoleBuffer;
+    ConsoleIO.io_Length = -1;
+    DoIO((struct IORequest *) &ConsoleIO);
+    VA_END();
+}
+#else
 void WindowPrintf(fmt, args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9)
 char *fmt;
 long args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9;
 {
-#ifdef MANX	    /* Efficient but not portable */
+# ifdef AZTEC_C 	/* Efficient but not portable */
     format(WindowPutchar, fmt, &args);
 #else
     WindowFlush();  /* Don't know if all will fit */
-# ifdef __STDC__    /* Cheap and portable way */
-    vsprintf(ConsoleBuffer, fmt, &args);
-# else		    /* Expensive... */
     sprintf(ConsoleBuffer, fmt, args, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
-# endif
     ConsoleIO.io_Command = CMD_WRITE;
     ConsoleIO.io_Data = (APTR)ConsoleBuffer;
     ConsoleIO.io_Length = -1;
-    DoIO(&ConsoleIO);
+    DoIO((struct IORequest *) &ConsoleIO);
 #endif
 }
+#endif
 
 /*
  *  Clean up everything. But before we do, ask the user to hit return
@@ -424,7 +493,7 @@ void CleanUp()
 	if (cu->cu_XCCP != 1 || cu->cu_YCCP != 1)
 	    getret();
 
-	CloseDevice(&ConsoleIO);
+	CloseDevice((struct IORequest *) &ConsoleIO);
 	ConsoleDevice = NULL;
     }
     if (ConsoleIO.io_Message.mn_ReplyPort)
@@ -432,11 +501,11 @@ void CleanUp()
     if (HackWindow) {
 	register struct IntuiMessage *msg;
 
-	FindTask(NULL)->pr_WindowPtr = (APTR) pr_WindowPtr;
+	((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
 	ClearMenuStrip(HackWindow);
 	Forbid();
-	while (msg = GetMsg(HackWindow->UserPort))
-	    ReplyMsg(msg);
+	while (msg = (struct IntuiMessage *) GetMsg(HackWindow->UserPort))
+	    ReplyMsg((struct Message *) msg);
 	CloseWindow(HackWindow);
 	Permit();
 	HackWindow = NULL;
@@ -445,10 +514,10 @@ void CleanUp()
 	CloseScreen(HackScreen);
 	HackScreen = NULL;
     }
-    /* if (IconBase) {
+    if (IconBase) {
 	CloseLibrary(IconBase);
 	IconBase = NULL;
-    } */
+    }
 #ifdef HACKFONT
     if (HackFont) {
 	CloseFont(HackFont);
@@ -471,7 +540,7 @@ void CleanUp()
     Initialized = 0;
 }
 
-void abort(rc)
+void Abort(rc)
 long rc;
 {
 #ifdef CHDIR
@@ -483,16 +552,24 @@ long rc;
 	getret();
     } else
 	Alert(rc, 0L);
+#ifdef LATTICE
+	{
+/*	__emit(0x4afc);		/* illegal instruction */
+	__emit(0x40fc);		/* divide by */
+	__emit(0x0000);		/*  #0	*/
+		/* NOTE: don't move CleanUp() above here - */
+		/* it is too likely to kill the system     */
+		/* before it can get the SnapShot out, if  */
+		/* there is something really wrong.	   */
+__builtin_printf("abort botch");				/* (KL)TEMP */
+	}
+#endif
     CleanUp();
 #undef exit
-    exit(rc);
-}
-
-/*  Used by library routines, and the debugger */
-
-void _abort()
-{
-    abort(-10L);
+#ifdef AZTEC_C
+    _abort();
+#endif
+    exit((int) rc);
 }
 
 /*
@@ -504,14 +581,14 @@ void Initialize()
     if (Initialized)
 	return;
 
-    if ( (IntuitionBase = OpenLibrary("intuition.library", LIBRARY_VERSION))
+    if ( (IntuitionBase = OpenLibrary("intuition.library", INTUITION_VERSION))
 	  == NULL)
-	abort(AG_OpenLib | AO_Intuition);
+	Abort(AG_OpenLib | AO_Intuition);
 
 #ifdef HACKFONT
 
-    if ( (GfxBase = OpenLibrary("graphics.library", LIBRARY_VERSION)) == NULL)
-	abort(AG_OpenLib | AO_GraphicsLib);
+    if ( (GfxBase = OpenLibrary("graphics.library", GRAPHICS_VERSION)) == NULL)
+	Abort(AG_OpenLib | AO_GraphicsLib);
 
     /*
      *	Force our own font to be loaded, if possible.
@@ -522,7 +599,7 @@ void Initialize()
      */
 
     if ((HackFont = OpenFont(&Hack80)) == NULL) {
-	if (DiskfontBase = OpenLibrary("diskfont.library", LIBRARY_VERSION)) {
+	if (DiskfontBase = OpenLibrary("diskfont.library", DISKFONT_VERSION)) {
 	    Hack80.ta_Name -= SIZEOF_DISKNAME;
 	    HackFont = OpenDiskFont(&Hack80);
 	    Hack80.ta_Name += SIZEOF_DISKNAME;
@@ -532,8 +609,8 @@ void Initialize()
     }
 #endif
 
-    /* if ( (IconBase = OpenLibrary("icon.library", LIBRARY_VERSION)) == NULL)
-	abort(AG_OpenLib | AO_IconLib); */
+    /* if ( (IconBase = OpenLibrary("icon.library", ICON_VERSION)) == NULL)
+	Abort(AG_OpenLib | AO_IconLib); */
 
     /*
      *	Now Intuition is supposed to use our HackFont for the screen,
@@ -541,16 +618,20 @@ void Initialize()
      *	So, we need to do a SetFont() a bit later on.
      */
     if ( (HackScreen = OpenScreen(&NewHackScreen)) == NULL)
-	abort(AN_OpenScreen & ~AT_DeadEnd);
+	Abort(AN_OpenScreen & ~AT_DeadEnd);
+
+#ifdef TEXTCOLOR
+    LoadRGB4(&HackScreen->ViewPort, palette, 8L);
+#endif
 
     NewHackWindow.Screen = HackScreen;
 
     if ( (HackWindow = OpenWindow(&NewHackWindow)) == NULL)
-	abort(AN_OpenWindow & ~AT_DeadEnd);
+	Abort(AN_OpenWindow & ~AT_DeadEnd);
 
-    SetMenuStrip(HackWindow, &HackMenu);
+    SetMenuStrip(HackWindow, HackMenu);
     {
-	register struct Process *myProcess = FindTask(NULL);
+	register struct Process *myProcess = (struct Process *) FindTask(NULL);
 	pr_WindowPtr = (struct Window *)myProcess->pr_WindowPtr;
 	myProcess->pr_WindowPtr = (APTR) HackWindow;
     }
@@ -562,10 +643,10 @@ void Initialize()
     ConsoleIO.io_Data = (APTR) HackWindow;
     ConsoleIO.io_Length = sizeof(*HackWindow);
     ConsoleIO.io_Message.mn_ReplyPort = CreatePort(NULL, 0L);
-    if (OpenDevice("console.device", 0L, &ConsoleIO, 0L) != 0)
-	abort(AG_OpenDev | AO_ConsoleDev);
+    if (OpenDevice("console.device", 0L, (struct IORequest *) &ConsoleIO, 0L) != 0)
+	Abort(AG_OpenDev | AO_ConsoleDev);
 
-    ConsoleDevice = ConsoleIO.io_Device;
+    ConsoleDevice = (struct Library *) ConsoleIO.io_Device;
 
     Buffered = 0;
     KbdBuffered = 0;

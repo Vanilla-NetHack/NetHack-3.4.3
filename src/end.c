@@ -2,9 +2,9 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
+#define NEED_VARARGS	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
-#define NEED_VARARGS
 
 #include "hack.h"
 #ifndef NO_SIGNAL
@@ -13,7 +13,8 @@
 
 #include "eshk.h"
 
-void end_box_display();
+void NDECL(end_box_display);
+static int NDECL(done_intr);
 
 static const char *deaths[] = {		/* the array of death */
 	"died", "choked", "poisoned", "starvation", "drowning",
@@ -49,8 +50,13 @@ done1()
 int
 done2()
 {
+#ifdef MACOS
+	if(!flags.silent) SysBeep(1);
+	if(UseMacAlert(128) != 1) {
+#else
 	pline("Really quit? ");
 	if(yn() == 'n') {
+#endif
 #ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
@@ -61,20 +67,29 @@ done2()
 		multi = 0;
 		return 0;
 	}
-#if defined(WIZARD) && (defined(UNIX) || defined(VMS))
+#if defined(WIZARD) && (defined(UNIX) || defined(VMS) || defined(LATTICE))
 	if(wizard) {
-#ifdef VMS
+# ifdef VMS
 	    pline("Enter debugger? ");
-#else
+# else
+#  ifdef LATTICE
+	    pline("Create SnapShot? ");
+#  else
 	    pline("Dump core? ");
-#endif
+#  endif
+# endif
+/* KL - do I need to change the next 3 lines? */
 	    if(yn() == 'y') {
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 		settty(NULL);
-#ifdef SYSV
+#ifdef AMIGA
+		Abort(0);
+#else
+# ifdef SYSV
 		(void)
-#endif
+# endif
 		    abort();
+#endif
 	    }
 	}
 #endif
@@ -90,10 +105,10 @@ done_intr(){
 	done_stopprint++;
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
-#if defined(UNIX) || defined(VMS)
+# if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, SIG_IGN);
-#endif
-#endif /* TOS /* */
+# endif
+#endif /* NO_SIGNAL /* */
 	return 0;
 }
 
@@ -116,8 +131,10 @@ register struct monst *mtmp;
 
 	You("die...");
 	buf[0] = '\0';
-	if (mtmp->iswiz)
+	if (mtmp->iswiz) {
 		Strcat(buf, "the ");
+		killer_format = KILLED_BY;
+	}
 	if (mtmp->minvis)
 		Strcat(buf, "invisible ");
 	if (Hallucination)
@@ -125,12 +142,15 @@ register struct monst *mtmp;
 
 	if(mtmp->data->mlet == S_GHOST) {
 		register char *gn = (char *) mtmp->mextra;
-		if (!Hallucination && !mtmp->minvis && *gn)
+		if (!Hallucination && !mtmp->minvis && *gn) {
 			Strcat(buf, "the ");
+			killer_format = KILLED_BY;
+		}
 		Sprintf(eos(buf), (*gn ? "ghost of %s" : "ghost%s"), gn);
 	} else if(mtmp->isshk) {
 		Sprintf(eos(buf), "%s %s, the shopkeeper",
 			(ESHK(mtmp)->ismale ? "Mr." : "Ms."), shkname(mtmp));
+		killer_format = KILLED_BY;
 	} else Strcat(buf, mtmp->data->mname);
 	if (mtmp->mnamelth) Sprintf(eos(buf), " called %s", NAME(mtmp));
 	killer = buf;
@@ -155,20 +175,20 @@ boolean panicking;
 extern boolean hu;	/* from save.c */
 
 void
-panic VA_DECL(char *, str)
+panic VA_DECL(const char *, str)
 	VA_START(str);
 	VA_INIT(str, char *);
-#ifdef MACOS
-	puts(str);
-	more();
-#endif
 
 	if(panicking++)
-#ifdef SYSV
+#ifdef AMIGA
+	    Abort(0);
+#else
+# ifdef SYSV
 	    (void)
-#endif
+# endif
 		abort();    /* avoid loops - this should never happen*/
 				    /* was exit(1) */
+#endif
 	home(); cls();
 	(void) puts(" Suddenly, the dungeon collapses.");
 #if defined(WIZARD) && !defined(MSDOS)
@@ -195,14 +215,26 @@ panic VA_DECL(char *, str)
 #else
 	(void) fputs(" ERROR:  ", stdout);
 #endif
+#ifdef LATTICE
+	{
+	char pbuf[100];
+	vsprintf(pbuf,str,VA_ARGS);
+	(void)puts(pbuf);
+	}
+#else
 	Vprintf(str,VA_ARGS);
+#endif
 	more();				/* contains a fflush() */
-#if defined(WIZARD) && (defined(UNIX) || defined(VMS))
+#if defined(WIZARD) && (defined(UNIX) || defined(VMS) || defined(LATTICE))
 	if (wizard)
-# ifdef SYSV
+# ifdef AMIGA
+		Abort(0);
+# else
+#  ifdef SYSV
 		(void)
-# endif
+#  endif
 		    abort();	/* generate core dump */
+# endif
 #endif
 	VA_END();
 	done(PANICKED);
@@ -213,19 +245,28 @@ void
 done(how)
 int how;
 {
+#ifdef MACOS
+	int see_c;
+	char mac_buf[80];
+#endif
 	struct permonst *upmon;
-	char buf[BUFSZ], buf2[BUFSZ], buf3[BUFSZ];
-	/* buf: used if killer gets changed
+	char kilbuf[BUFSZ], buf2[BUFSZ];
+	/* kilbuf: used to copy killer in case it comes from something like
+	 *	xname(), which would otherwise get overwritten when we call
+	 *	xname() when listing possessions
 	 * buf2: same as player name, except it is capitalized
-	 * buf3: used to copy killer in case it comes from something like
-		xname(), which would otherwise get overwritten when we call
-		xname() when listing possessions
 	 */
 	char	c;
 	boolean taken;
-
-	Strcpy(buf3, (!killer || how >= PANICKED ? deaths[how] : killer));
-	killer = buf3;
+#ifdef ENDGAME
+	if (how == ASCENDED)
+		killer_format = NO_KILLER_PREFIX;
+#endif
+	/* Avoid killed by "a" burning or "a" starvation */
+	if (!killer && (how == STARVING || how == BURNING))
+		killer_format = KILLED_BY;
+	Strcpy(kilbuf, (!killer || how >= PANICKED ? deaths[how] : killer));
+	killer = kilbuf;
 #ifdef WIZARD
 	if (wizard && how == TRICKED) {
 		You("are a very tricky wizard, it seems.");
@@ -280,10 +321,10 @@ int how;
 die:
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done_intr);
-#if defined(UNIX) || defined(VMS)
+# if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, (SIG_RET_TYPE) done_intr);
 	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
-#endif
+# endif
 #endif /* NO_SIGNAL /* */
 	upmon = player_mon();
 	if(u.ugrave_arise > -1) /* create no corpse */ ;
@@ -297,24 +338,44 @@ die:
 		(void) mk_named_object(CORPSE, upmon, u.ux, u.uy, plname,
 							strlen(plname));
 
-	if(how == QUIT && u.uhp < 1) {
-		how = DIED;
-		Strcpy(buf, "quit while already on Charon's boat");
-		killer = buf;
+	if (how == QUIT) {
+		killer_format = NO_KILLER_PREFIX;
+		if (u.uhp < 1) {
+			how = DIED;
+/* note that killer is pointing at kilbuf */
+			Strcpy(kilbuf, "quit while already on Charon's boat");
+		}
 	}
+	if (how == ESCAPED) killer_format = NO_KILLER_PREFIX;
 	taken = paybill();
 	paygd();
 	clearlocks();
 	if(flags.toplin == 1) more();
 
 	if(invent) {
+#ifndef MACOS
 	    if(taken)
 		pline("Do you want to see what you had when you %s? ",
 			(how == QUIT) ? "quit" : "died");
 	    else
 		pline("Do you want your possessions identified? ");
-	    /* New dump format by maartenj@cs.vu.nl */
 	    if ((c = yn_function(ynqchars,'y')) == 'y') {
+#else
+		{
+			extern short macflags;
+		
+			/* stop user from using menus, etc. */
+			macflags &= ~(fDoNonKeyEvt | fDoUpdate);
+		}
+	    if(taken)
+		sprintf(mac_buf, "Do you want to see what you had when you %s? ",
+			(how == QUIT) ? "quit" : "died");
+	    else
+		sprintf(mac_buf, "Do you want your possessions identified? ");
+		if(!flags.silent) SysBeep(1);
+	    if ((c = "qqynq"[UseMacAlertText(129,mac_buf)+1]) == 'y') {
+#endif
+	    /* New dump format by maartenj@cs.vu.nl */
 		struct obj *obj;
 
 		for(obj = invent; obj && !done_stopprint; obj = obj->nobj) {
@@ -339,31 +400,47 @@ die:
 	    }
 	}
 
+	if (!done_stopprint) {
+#ifdef MACOS
+		c = "qqynq"[UseMacAlertText(129, "Do you want to see your instrinsics ?")+1];
+#else
+	    pline("Do you want to see your intrinsics? ");
+	    c = yn_function(ynqchars, 'y');
+#endif
+	    if (c == 'y') enlightenment();
+	    if (c == 'q') done_stopprint++;
+	}
+
 	if(how < GENOCIDED) {
 #ifdef WIZARD
 	    if(wizard) {
+#ifdef MACOS
+		if(!flags.silent) SysBeep(20);
+		if(UseMacAlertText(128, "Save bones ?") == 1) savebones();
+#else
 		pline("Save bones? ");
 		if(yn() == 'y') savebones();
+#endif
 	    }  else
 #endif
-		savebones();
+		if (how != PANICKED && how !=TRICKED)
+			savebones();
 	    if(!flags.notombstone) outrip();
 	}
-	if(how == STONING) {
-		Strcpy(buf, "turned to stone by ");
-		Strcat(buf, killer);
-		/* No a or an; topten.c will do that. */
-		killer = buf;
-	}
-	if(u.uhave_amulet) Strcat(killer, " (with the Amulet)");
+
+/* changing kilbuf really changes killer. we do it this way because
+   killer is declared a (const char *)
+*/
+	if(u.uhave_amulet) Strcat(kilbuf, " (with the Amulet)");
 	settty(NULL);	/* does a clear_screen() */
 	Strcpy(buf2, plname);
 	if('a' <= buf2[0] && buf2[0] <= 'z') buf2[0] += 'A'-'a';
 	if(!done_stopprint)
 	    Printf("Goodbye %s the %s...\n\n", buf2,
 #ifdef ENDGAME
-		   how != ASCENDED ? pl_character :
-		   flags.female ? "Demigoddess" : "Demigod");
+		   how != ASCENDED ? (const char *)pl_character :
+		   flags.female ? (const char *)"Demigoddess" : 
+			(const char *)"Demigod");
 #else
 		   pl_character);
 #endif
@@ -467,18 +544,22 @@ die:
 	if(!done_stopprint)
   Printf("You were level %u with a maximum of %d hit points when you %s.\n",
 	    u.ulevel, u.uhpmax, ends[how]);
-	if(how == ESCAPED && !done_stopprint){
-		getret();	/* all those pieces of colored glass ... */
-		cls();
-	}
-#if (defined(WIZARD) || defined(EXPLORE_MODE)) && !defined(LOGFILE)
+#if (defined(WIZARD) || defined(EXPLORE_MODE))
+# ifndef LOGFILE
 	if(wizard || discover)
 		Printf("\nSince you were in %s mode, the score list \
 will not be checked.\n", wizard ? "wizard" : "discover");
 	else
+# endif
 #endif
-		topten();
+	{
+		if (!done_stopprint) {
+			getret();
+			cls();
+		}
 /* "So when I die, the first thing I will see in Heaven is a score list?" */
+		topten(how);
+	}
 	if(done_stopprint) Printf("\n\n");
 #if defined(APOLLO) || defined(MACOS)
 	getret();
@@ -488,12 +569,12 @@ will not be checked.\n", wizard ? "wizard" : "discover");
 
 void
 clearlocks(){
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	eraseall(levels, alllevels);
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-# if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS) || defined(MACOS)
+# if defined(UNIX) || defined(MSDOS) || defined(VMS) || defined(MACOS)
 	register int x;
 #  if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP,SIG_IGN);

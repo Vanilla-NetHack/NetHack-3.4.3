@@ -1,21 +1,29 @@
-/*	SCCS Id: @(#)sounds.c	3.0	88/06/19 */
+/*	SCCS Id: @(#)sounds.c	3.0	90/02/05 */
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright (c) 1989 Janet Walz, Mike Threepoint */
 
+#define ONAMES_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
 
-#define ONAMES_H
 #include "hack.h"
 #include "edog.h"
 
+static int FDECL(domonnoise,(struct monst *));
+
+#ifdef OVLB
+
 void
 verbalize(str)
-register char *str;
+register const char *str;
 {
 	if(flags.soundok) pline("\"%s\"", str);
 }
 
+#endif /* OVLB */
+
 #ifdef SOUNDS
+
+#ifdef OVL0
 
 void
 dosounds()
@@ -24,6 +32,12 @@ dosounds()
     register struct mkroom *sroom;
     register xchar roomtype;
     register int croomno;
+    boolean gold_in_vault, u_in_room;
+    register int vx, vy;
+
+#ifdef __GNULINT__
+    gold_in_vault = u_in_room = FALSE;
+#endif
 
     hallu = Hallucination ? 1 : 0;
 
@@ -61,19 +75,30 @@ dosounds()
 	for (sroom = &rooms[0]; ; sroom++) {	/* find any special room */
 	    if (sroom->hx < 0) break;		/* no more rooms */
 	    if (sroom->rtype != OROOM) {
+		croomno = inroom(u.ux,u.uy);
+		u_in_room = croomno >= 0 && sroom == &rooms[croomno];
 		if (sroom->rtype < SHOPBASE)
 		    roomtype = sroom->rtype;
-		else {
-		    croomno = inroom(u.ux,u.uy);
-		    if (croomno == -1 || sroom != &rooms[croomno])
+		else if (!u_in_room) {
 			/* player not presently in shop */
-			/* other special room types disappear when player
-			   enters */
-			roomtype = SHOPBASE;
+			/* NOTE: other special room types disappear when player
+			   enters (except VAULT) */
+		    roomtype = SHOPBASE;
 		}
 		break;
 	    }
 	}
+
+	if (roomtype == VAULT) {
+	    gold_in_vault = FALSE;
+	    for (vx = sroom->lx; vx <= sroom->hx && !gold_in_vault; vx++)
+		for (vy = sroom->ly; vy <= sroom->hy; vy++)
+		    if (g_at(vx, vy)) {
+			gold_in_vault = TRUE;
+			break;
+		    }
+	}
+
 	switch (roomtype) {
 #ifdef THRONES
 	    case COURT:
@@ -108,9 +133,13 @@ dosounds()
 		}
 		break;
 	    case VAULT:
-		switch (rn2(2)+hallu) {
+		if(gd_sound())
+		  switch (rn2(2)+hallu) {
 		    case 0:
-			You("hear someone counting money.");
+			if (gold_in_vault && !u_in_room)
+			    You("hear someone counting money.");
+			else
+			    You("hear someone searching.");
 			break;
 		    case 1:
 			You("hear the footsteps of a guard on patrol.");
@@ -198,6 +227,8 @@ You("hear a sound reminding you of an elephant stepping on a peanut.");
     }
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
 
 #include "eshk.h"
 
@@ -283,8 +314,32 @@ register struct monst *mtmp;
 	    break;
     }
 }
+
+#endif /* OVLB */
+
 #endif /* SOUNDS */
 
+#ifdef OVLB
+
+/* for the connoisseurs ... */
+static const char *Qmen[] = {
+	"Max",      /* Born */
+	"Wolfgang", /* Pauli */
+	"Louis",    /* de Broglie */
+	"Erwin",    /* Schroedinger */
+	"Werner",   /* Heisenberg */
+	"Niels",    /* Bohr */
+	"Paul",     /* Dirac */
+	"Pascual",  /* Jordan */
+	"Dick",     /* Feynman */
+	"Sam" }; /* Beckett ("Oh, boy." :-) */
+
+struct monst *
+qname(mtmp)
+struct monst *mtmp;
+{
+	return(christen_monst(mtmp, Qmen[rn2(SIZE(Qmen))]));
+}
 
 static int
 domonnoise(mtmp)
@@ -391,7 +446,7 @@ register struct monst *mtmp;
 		kludge("%s moans.", Monnam(mtmp));
 	    else if (mtmp->mconf || mtmp->mstun)
 		verbalize(!rn2(3) ? "Huh?" : rn2(2) ? "What?" : "Eh?");
-	    else if (mtmp->mblinded)
+	    else if (!mtmp->mcansee)
 		verbalize("I can't see!");
 	    else if (mtmp->mtrapped)
 		verbalize("I'm trapped!");
@@ -417,6 +472,20 @@ kludge("%s complains about unpleasant dungeon conditions.", Monnam(mtmp));
 # endif
 		case PM_ARCHEOLOGIST:
 kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(mtmp));
+		    break;
+		case PM_QUANTUM_MECHANIC:
+		    /* a trademark line for other Quantum Leap cultists -3. */
+		    if (mtmp->mnamelth && strcmp(NAME(mtmp), "Sam") == 0)
+			verbalize("Oh, boy.");
+		    else {
+			const char *Qman;
+
+			do Qman = Qmen[rn2(SIZE(Qmen))];
+			while (mtmp->mnamelth && strcmp(NAME(mtmp), Qman) == 0);
+
+			kludge("%s asks if you've seen %s anywhere around.", 
+				Monnam(mtmp), Qman);
+		    }		    
 		    break;
 		default:
 		    kludge("%s discusses dungeon exploration.", Monnam(mtmp));
@@ -481,12 +550,11 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 		(void) demon_talk(mtmp);
 		break;
 	    }
+	    /* fall through */
 # endif
-	case MS_JEER:
-	    kludge("%s jeers at you.", Monnam(mtmp));
-	    break;
 	case MS_CUSS:
-	    cuss(mtmp);
+	    if (!mtmp->mpeaceful && !mtmp->mtame)
+		cuss(mtmp);
 	    break;
 	case MS_GUARD:
 	    if (u.ugold)
@@ -596,10 +664,12 @@ dotalk()
 	pline("I see nobody there.");
 	return(0);
     }
-    if (mtmp->mfroz || mtmp->msleep) {
+    if (!mtmp->mcanmove || mtmp->msleep) {
 	kludge("%s seems not to notice you.", Monnam(mtmp));
 	return 0;
     }
 
     return domonnoise(mtmp);
 }
+
+#endif /* OVLB */

@@ -2,8 +2,8 @@
 /*	Copyright 1988, 1989 by Ken Arromdee				*/
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include "hack.h"
 
 #ifdef REINCARNATION
@@ -21,6 +21,9 @@ struct rogueroom {
 #define RIGHT 8
 
 static struct rogueroom r[3][3];
+static void FDECL(roguejoin,(int,int,int,int,int));
+static void FDECL(roguecorr,(int,int,int));
+static void FDECL(miniwalk,(int,int));
 
 static
 void

@@ -7,7 +7,7 @@
 
 #define TEXT(nam,str) \
 static struct IntuiText nam = \
-  {0,1,JAM2,0,0,(struct TextAttr*)NULL,(UBYTE*)str,(struct IntuiText*)NULL}
+  {0,1,JAM2,0,0,0L,(UBYTE*)str,0L}
 
 	/* Commands */
 	TEXT(T_HELP,  "?   Display help menu");
@@ -64,7 +64,7 @@ static struct IntuiText nam = \
 	TEXT(T_E,     "E   Engrave msg on floor");
 
 #define IFLAGS ITEMENABLED|ITEMTEXT|HIGHCOMP
-#define IDATA(cmd,str,off) 0,off,WDT,9,IFLAGS,0,(APTR)&str,NULL,cmd,(struct MenuItem*)NULL,0
+#define IDATA(cmd,str,off) 0,off,WDT,9,IFLAGS,0,(APTR)&str,NULL,cmd,0L,0
 
 /* Commands */
 

@@ -7,6 +7,30 @@
 #ifdef WORM
 #include "wseg.h"
 
+static void FDECL(remseg,(struct monst *,struct wseg *));
+
+/* Each tailed worm has a wormno.  This is used as an index for the following
+ * arrays:
+ * wsegs: the start of a a linked list of segments, located at the tail.
+ * wheads: the end of a linked list of segments, located at the head.  Putting
+ *	the tail of the list at the head of the worm and vice versa is an
+ *	endless source of confusion, but necessary.  From now on, we will use
+ *	"start" and "end" to refer to the list, and "head" and "tail" to refer
+ *	to the worm.
+ * wgrowtime: obvious.
+ *
+ * When a worm is moved, we add a new segment at the head (end of the list)
+ * and (unless we want it to grow) delete the segment at the tail (beginning
+ * of the list).  This new head segment is located in the same square as
+ * the actual head of the worm (thus requiring a special case when setting
+ * level.monsters upon worm movement).  If we do want to grow the worm, we
+ * don't delete the tail segment, and we give the worm extra hit points,
+ * which possibly go into its maximum.
+ *
+ * Non-moving worms (worm_nomove) shrink instead of grow as their tails keep
+ * going while their heads are stopped short.  Delete the tail segment,
+ * and remove hit points from the worm.
+ */
 struct wseg *wsegs[32] = DUMMY, *wheads[32] = DUMMY, *m_atseg = 0;
 long wgrowtime[32] = DUMMY;
 
@@ -193,7 +217,15 @@ unsigned weptyp;		/* uwep->otyp or 0 */
 		wsegs[tmp2] = wsegs[tmp];
 		wgrowtime[tmp2] = 0;
 	}
+	/* do-loop: go from the tail to the head.  Segments close to the tail
+	 * either die or become part of worm 2.  We stop at the hit segment
+	 * and this loop never goes down the entire length of the worm.
+	 */
 	do {
+	    /* The segment immediately next to (tailwards) the one hit, */
+	    /* becoes the head of the new second worm.  Note: at this point, */
+	    /* wtmp->nseg is the one you hit, wtmp is immediately tailwards, */
+	    /* and wtmp->nseg->nseg is immediately headwards. */
 	    if(wtmp->nseg->wx == x && wtmp->nseg->wy == y){
 		if(tmp2) wheads[tmp2] = wtmp;
 		wsegs[tmp] = wtmp->nseg->nseg;
@@ -202,7 +234,7 @@ unsigned weptyp;		/* uwep->otyp or 0 */
 		if(tmp2) {
 		    kludge("You cut %s in half.", mon_nam(mtmp));
 		/* devalue the monster level of both halves of the worm */
-		    mtmp->m_lev = (mtmp->m_lev <= 2) ? 2 : mtmp->m_lev - 2;
+		    mtmp->m_lev = (mtmp->m_lev <= 3) ? 2 : mtmp->m_lev - 2;
 		    mtmp2->m_lev = mtmp->m_lev;
 		/* calculate the mhp on the new (lower) monster level */
 		    mtmp2->mhpmax = mtmp2->mhp = d((int)mtmp2->m_lev, 8);
@@ -219,8 +251,11 @@ unsigned weptyp;		/* uwep->otyp or 0 */
 		mtmp->mhp /= 2;
 		return;
 	    }
+	/* Worm segments which are closer to the tail than the one you hit, */
+	/* get either deleted or transferred from the old to new worms */
 	    wtmp2 = wtmp->nseg;
 	    if(!tmp2) remseg(mtmp, wtmp);
+	    else place_worm_seg(mtmp2, wtmp->wx, wtmp->wy);
 	    wtmp = wtmp2;
 	} while(wtmp->nseg);
 	panic("Cannot find worm segment");

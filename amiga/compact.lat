@@ -1,0 +1,134 @@
+;	NetHack header compacting script for Lattice C on Amiga.
+;	SCCS Id: @(#)compact.lat	3.0	90/02/18
+;
+; This script will compact the NetHack header files onto the Ram: disk for
+; Lattice 5.04 on the Amiga.  To use this script, perform the assignments
+; mentioned in Makefile.ami (specifically, assign Incl: to the directory
+; with the NetHack include files).  Make the changes to the header files
+; according to the directions in Install.ami.  Then, invoke this script
+; with:
+;
+;	execute Amiga:compact.lat
+;
+; When completed, this script will have created the directory Ram:Incl
+; which will contain the output from using lcompact on the header files.
+; The script will have also assigned Incl: to Ram:Incl.  The files stored
+; in Ram:Incl will take on the order of 120K.
+;
+; Note:  Using this script effectively causes the entire NetHack source
+; to be re-compiled because the dates on the header files (the lcompact'd
+; versions in Ram:Incl) will be later the any existing object files.
+; This is inconsequential for the first compile, however, since everything
+; needs to be compiled anyway.  The time savings are significant.  For
+; subsequent compiles (for anyone making custom changes), this problem
+; can be circumvented by copying the contents of Ram:Incl to a more
+; permanant storage device (using copy's clone option).  Changes to the
+; text-editable header files need to be propagated through use of lcompact
+; as appropriate.
+;
+; [For the curious:  Two files (hack.h and system.h) cannot be compacted
+; properly with the version of lcompact that comes with Lattice C 5.04.
+; Constructs like '#define Foo (void)foo' get transformed as if they were
+; '#define Foo(void) foo'.  One file (trap.h) cannot be compacted becuase
+; makedefs needs to read and modify it.  Three files (date.h, onames.h,
+; and pm.h) are created within Makefile.ami by makedefs.]
+
+makedir Ram:Incl
+echo "Compacting amiconf.h"
+lcompact < Incl:amiconf.h > Ram:Incl/amiconf.h
+echo "Compacting artifact.h"
+lcompact < Incl:artifact.h > Ram:Incl/artifact.h
+echo "Compacting attrib.h"
+lcompact < Incl:attrib.h > Ram:Incl/attrib.h
+echo "Compacting color.h"
+lcompact < Incl:color.h > Ram:Incl/color.h
+echo "Compacting config.h"
+lcompact < Incl:config.h > Ram:Incl/config.h
+echo "Compacting coord.h"
+lcompact < Incl:coord.h > Ram:Incl/coord.h
+echo "Compacting decl.h"
+lcompact < Incl:decl.h > Ram:Incl/decl.h
+echo "Compacting edog.h"
+lcompact < Incl:edog.h > Ram:Incl/edog.h
+echo "Compacting epri.h"
+lcompact < Incl:epri.h > Ram:Incl/epri.h
+echo "Compacting eshk.h"
+lcompact < Incl:eshk.h > Ram:Incl/eshk.h
+echo "Compacting extern.h"
+lcompact < Incl:extern.h > Ram:Incl/extern.h
+echo "Compacting flag.h"
+lcompact < Incl:flag.h > Ram:Incl/flag.h
+echo "Compacting func_tab.h"
+lcompact < Incl:func_tab.h > Ram:Incl/func_tab.h
+echo "Compacting global.h"
+lcompact < Incl:global.h > Ram:Incl/global.h
+echo "Compacting gold.h"
+lcompact < Incl:gold.h > Ram:Incl/gold.h
+echo "Compacting lev.h"
+lcompact < Incl:lev.h > Ram:Incl/lev.h
+echo "Compacting lev_comp.h"
+lcompact < Incl:lev_comp.h > Ram:Incl/lev_comp.h
+echo "Compacting mfndpos.h"
+lcompact < Incl:mfndpos.h > Ram:Incl/mfndpos.h
+echo "Compacting mkroom.h"
+lcompact < Incl:mkroom.h > Ram:Incl/mkroom.h
+echo "Compacting monattk.h"
+lcompact < Incl:monattk.h > Ram:Incl/monattk.h
+echo "Compacting mondata.h"
+lcompact < Incl:mondata.h > Ram:Incl/mondata.h
+echo "Compacting monflag.h"
+lcompact < Incl:monflag.h > Ram:Incl/monflag.h
+echo "Compacting monst.h"
+lcompact < Incl:monst.h > Ram:Incl/monst.h
+echo "Compacting monsym.h"
+lcompact < Incl:monsym.h > Ram:Incl/monsym.h
+echo "Compacting msdos.h"
+lcompact < Incl:msdos.h > Ram:Incl/msdos.h
+echo "Compacting obj.h"
+lcompact < Incl:obj.h > Ram:Incl/obj.h
+echo "Compacting objclass.h"
+lcompact < Incl:objclass.h > Ram:Incl/objclass.h
+echo "Compacting patchlevel.h"
+lcompact < Incl:patchlevel.h > Ram:Incl/patchlevel.h
+echo "Compacting pcconf.h"
+lcompact < Incl:pcconf.h > Ram:Incl/pcconf.h
+echo "Compacting permonst.h"
+lcompact < Incl:permonst.h > Ram:Incl/permonst.h
+echo "Compacting prop.h"
+lcompact < Incl:prop.h > Ram:Incl/prop.h
+echo "Compacting rm.h"
+lcompact < Incl:rm.h > Ram:Incl/rm.h
+echo "Compacting sp_lev.h"
+lcompact < Incl:sp_lev.h > Ram:Incl/sp_lev.h
+echo "Compacting spell.h"
+lcompact < Incl:spell.h > Ram:Incl/spell.h
+echo "Compacting termcap.h"
+lcompact < Incl:termcap.h > Ram:Incl/termcap.h
+echo "Compacting tosconf.h"
+lcompact < Incl:tosconf.h > Ram:Incl/tosconf.h
+echo "Compacting tradstdc.h"
+lcompact < Incl:tradstdc.h > Ram:Incl/tradstdc.h
+echo "Compacting unixconf.h"
+lcompact < Incl:unixconf.h > Ram:Incl/unixconf.h
+echo "Compacting vault.h"
+lcompact < Incl:vault.h > Ram:Incl/vault.h
+echo "Compacting wseg.h"
+lcompact < Incl:wseg.h > Ram:Incl/wseg.h
+echo "Compacting you.h"
+lcompact < Incl:you.h > Ram:Incl/you.h
+echo "Compacting youprop.h"
+lcompact < Incl:youprop.h > Ram:Incl/youprop.h
+echo "Copying hack.h"
+copy Incl:hack.h Ram:Incl/hack.h
+echo "Copying system.h"
+copy Incl:system.h Ram:Incl/system.h
+echo "Copying trap.h"
+copy Incl:trap.h Ram:Incl/trap.h
+echo "Creating empty date.h"
+echo > Ram:Incl/date.h NOLINE
+echo "Creating empty onames.h"
+echo > Ram:Incl/onames.h NOLINE
+echo "Creating empty pm.h"
+echo > Ram:Incl/pm.h NOLINE
+echo "Assigning Incl: to Ram:Incl"
+assign Incl: Ram:Incl

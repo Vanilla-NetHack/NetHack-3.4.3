@@ -7,14 +7,17 @@
 
 #define	UTSZ	50
 
-coord utrack[UTSZ];
-int utcnt = 0;
-int utpnt = 0;
+VSTATIC int utcnt, utpnt;
+VSTATIC coord utrack[UTSZ];
 
+#ifdef OVLB
 void
 initrack(){
 	utcnt = utpnt = 0;
 }
+#endif /* OVLB */
+
+#ifdef OVL1
 
 /* add to track */
 void
@@ -25,6 +28,9 @@ settrack(){
 	utrack[utpnt].y = u.uy;
 	utpnt++;
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 coord *
 gettrack(x, y)
@@ -42,3 +48,5 @@ register int x, y;
 	}
 	return (coord *)0;
 }
+
+#endif /* OVL0 */

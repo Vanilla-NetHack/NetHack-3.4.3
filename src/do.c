@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.0	89/11/15
+/*	SCCS Id: @(#)do.c	3.0	89/11/20
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,15 +6,26 @@
 
 #include "hack.h"
 
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 extern struct finfo fileinfo[];
 #else
 extern boolean level_exists[];
 #endif
 
+#ifdef SINKS
+static void FDECL(trycall, (struct obj *));
+static void FDECL(dosinkring, (struct obj *));
+#endif
 #ifndef OVERLAY
 static int FDECL(drop, (struct obj *));
 #endif
+static void NDECL(litter);
+#ifndef OVERLAY
+static int NDECL(wipeoff);
+#endif
+boolean NDECL(drag_down);
+
+#ifdef OVLB
 
 static const char drop_types[] = { '0', GOLD_SYM, '#', 0 };
 
@@ -22,6 +33,9 @@ int
 dodrop() {
 	return(drop(getobj(drop_types, "drop")));
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 /* Used for objects which sometimes do special things when dropped; must be
  * called with the object not in any chain.  Returns 1 if the object is
@@ -58,7 +72,7 @@ int x,y;
 		if (Blind) You("hear the boulder roll.");
 		else pline("The boulder %sfills a %s.",
 			t->tseen ? "" : "triggers and ",
-			t->ttyp == TRAPDOOR ? "trapdoor" : "pit");
+			t->ttyp == TRAPDOOR ? "trap door" : "pit");
 		deltrap(t);
 		if (u.utrap && x==u.ux && y==u.uy) {
 		    u.utrap = 0;
@@ -66,7 +80,9 @@ int x,y;
 		    if (!passes_walls(uasmon)) {
 #endif
 			pline("Unfortunately, you were still in it.");
-			losehp(rnd(15), "burial beneath a boulder");
+			losehp(rnd(15),
+			  self_pronoun("dropped a boulder onto %sself","him"),
+			  NO_KILLER_PREFIX);
 #ifdef POLYSELF
 		    }
 #endif
@@ -80,6 +96,9 @@ int x,y;
 	}
 	return FALSE;
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 #ifdef ALTARS
 void
@@ -241,7 +260,7 @@ register struct obj *obj;
 boolean
 canletgo(obj,word)
 register struct obj *obj;
-register char *word;
+register const char *word;
 {
 	if(obj->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)){
 	       if (*word)
@@ -249,11 +268,22 @@ register char *word;
 		return(FALSE);
 	}
 	if (obj->otyp == LOADSTONE && obj->cursed) {
-		obj->bknown = 1;
 		if (*word)
 			pline("For some reason, you cannot %s the stone%s!",
 				word,
 		      		plur((long)obj->quan));
+		/* Kludge -- see invent.c */
+		if (obj->corpsenm) {
+			struct obj *otmp;
+
+			otmp = obj;
+			obj = obj->nobj;
+			obj->quan += otmp->quan;
+			obj->owt = weight(obj);
+			freeinv(otmp);
+			obfree(otmp, obj);
+		}
+		obj->bknown = 1;
 		return(FALSE);
 	}
 #ifdef WALKIES
@@ -400,7 +430,7 @@ dodown()
 #ifdef STRONGHOLD
 			levl[u.ux][u.uy].typ == LADDER ? "ladder" :
 #endif
-			"trapdoor");
+			"trap door");
 		return(0);
 	}
 
@@ -415,7 +445,12 @@ dodown()
 		if (levl[u.ux][u.uy].typ == LADDER) at_ladder = TRUE;
 #endif
 		if (trap)
-			pline("You jump into the trapdoor...");
+#ifdef POLYSELF
+			You("%s into the trap door.",
+				locomotion(uasmon, "jump"));
+#else
+			You("jump into the trap door.");
+#endif
 		goto_level(dlevel+1, !trap, TRUE);
 #ifdef STRONGHOLD
 		at_ladder = FALSE;
@@ -461,9 +496,17 @@ doup()
 
 #ifdef ENDGAME
 	if (dlevel == 1) {
+#ifdef MACOS
+		if(!flags.silent) SysBeep(20);
+		if(UseMacAlertText(128,
+			"Beware, there will be no return!  Still climb?") != 1) {
+			return 0;
+		}
+#else
 		pline("Beware, there will be no return!  Still climb? ");
 		if (yn() != 'y') return(0);
 		else more();
+#endif /* MACOS */
 	}
 #endif
 #ifdef WALKIES
@@ -537,23 +580,27 @@ drag_down()
 	if(forward) {
 		if(rn2(6)) {
 			You("get dragged downstairs by the iron ball.");
-			losehp(rnd(6), "iron ball accident");
+			losehp(rnd(6), "dragged downstairs by an iron ball",
+				NO_KILLER_PREFIX);
 			return(TRUE);
 		}
 	} else {
 		if(rn2(2)) {
 			pline("The iron ball smacks into you!");
-			losehp(rnd(20), "iron ball collision");
+			losehp(rnd(20), "iron ball collision", KILLED_BY_AN);
 			dragchance -= 2;
 		} 
 		if(dragchance >= rnd(6)) {
 			You("get dragged downstairs by the iron ball.");
-			losehp(rnd(3), "iron ball accident");
+			losehp(rnd(3), "dragged downstairs by an iron ball",
+				NO_KILLER_PREFIX);
 			return(TRUE);
 		}
 	}
 	return(FALSE);
 }
+
+int save_dlevel = 0;
 
 void
 goto_level(newlevel, at_stairs, falling)
@@ -613,14 +660,15 @@ register boolean at_stairs, falling;
 	    if(Fire_resistance) {
 		pline("But the fire doesn't seem to harm you.");
 	    } else {
-		int save_dlevel = dlevel;
-
+		save_dlevel = dlevel;
 		You("burn to a crisp.");
 		You("die...");
 		dlevel = maxdlevel = newlevel;
+		killer_format = KILLED_BY_AN;
 		killer = "visit to hell";
 		done(BURNING);
 		dlevel = newlevel = save_dlevel; /* in case they survive */
+		save_dlevel = 0;
 	    }
 	}
 
@@ -645,7 +693,7 @@ register boolean at_stairs, falling;
 		if (FSOpen(fileName, t->system.sysVRefNum, &refNum)) {
 				if (er = Create(&fileName,t->system.sysVRefNum,
 							CREATOR,LEVEL_TYPE))
-					SysBeep(1);
+					SysBeep(20);
 		} else {
 			(void)SetEOF(refNum,0L);
 			(void)FSClose(refNum);
@@ -694,8 +742,8 @@ register boolean at_stairs, falling;
 	if(u.uswallow)				/* idem */
 		u.uswldtim = u.uswallow = 0;
 	flags.nscrinh = 1;
-	u.ux = FAR;				/* hack */
-	(void) inshop();			/* probably was a trapdoor */
+	u.ux = u.ux0 = FAR;				/* hack */
+	(void) inshop();			/* probably was a trap door */
 
 #ifdef DGK
 # ifdef ZEROCOMP
@@ -733,7 +781,7 @@ register boolean at_stairs, falling;
 # ifdef ENDGAME
 	   dlevel == ENDLEVEL ||
 # endif
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	/* If the level has no .where yet, it hasn't been made */
 	   !fileinfo[dlevel].where)
 #else
@@ -741,7 +789,7 @@ register boolean at_stairs, falling;
 #endif
 		mklev();
 	else {
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		/* If not currently accessible, swap it in. */
 		if (fileinfo[dlevel].where != ACTIVE)
 			swapin_file(dlevel);
@@ -762,6 +810,16 @@ register boolean at_stairs, falling;
 		(void) close(fd);
 	}
 
+#ifdef MACOS
+	{
+		OSErr	er;
+		struct term_info	*t;
+		extern WindowPtr	HackWindow;
+		
+		t = (term_info *)GetWRefCon(HackWindow);
+		SetVol(0L,t->system.sysVRefNum);
+	}
+#endif
 #ifdef ENDGAME
 	if(dlevel != ENDLEVEL)
 #endif
@@ -820,11 +878,11 @@ register boolean at_stairs, falling;
 				}
 				placebc(1);
 			} 
-			losehp(rnd(3), "fall");
+			losehp(rnd(3), "falling downstairs", KILLED_BY);
 			selftouch("Falling, you");
 		}
 	    }
-	} else {	/* trapdoor or level_tele */
+	} else {	/* trap door or level_tele */
 	    register int tryct = 0;
 	    do {
 #ifdef STRONGHOLD
@@ -865,7 +923,9 @@ register boolean at_stairs, falling;
 					body_part(HEAD));
 				if (uarmh)
 					Your("helmet doesn't help too much...");
-				losehp(rnd(25), "iron ball");
+				losehp(rnd(25),
+					"Crunched in the head by an iron ball",
+					NO_KILLER_PREFIX);
 			}
 		}
 		placebc(1);
@@ -878,6 +938,10 @@ register boolean at_stairs, falling;
 
 	losedogs();
 	if(MON_AT(u.ux, u.uy)) mnexto(m_at(u.ux, u.uy));
+	if(MON_AT(u.ux, u.uy)) {
+		impossible("mnexto failed (do.c)?");
+		rloc(m_at(u.ux, u.uy));
+	}
 	flags.nscrinh = 0;
 	setsee();
 	seeobjs();	/* make old cadavers disappear - riv05!a3 */
@@ -949,15 +1013,16 @@ dowipe()
 struct obj *
 splitobj(obj, num) register struct obj *obj; register int num; {
 register struct obj *otmp;
-	otmp = newobj(0);
+	otmp = newobj(obj->onamelth);
 	*otmp = *obj;		/* copies whole structure */
 	otmp->o_id = flags.ident++;
-	otmp->onamelth = 0;
 	obj->quan = num;
 	obj->owt = weight(obj);
 	otmp->quan -= num;
 	otmp->owt = weight(otmp);	/* -= obj->owt ? */
 	obj->nobj = obj->nexthere = otmp;
+	if (obj->onamelth)
+		(void)strncpy(ONAME(otmp), ONAME(obj), (int)obj->onamelth);
 	if(obj->unpaid) splitbill(obj,otmp);
 	return(otmp);
 }
@@ -994,3 +1059,5 @@ heal_legs()
 		Wounded_legs = 0;
 	}
 }
+
+#endif /* OVLB */

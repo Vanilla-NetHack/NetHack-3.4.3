@@ -1,14 +1,36 @@
--o Ram:NetHack
-+ss
-allmain.o alloc.o amidos.o amitcap.o amitty.o amiunix.o amiwind.o apply.o
-artifact.o attrib.o bones.o cmd.o dbridge.o decl.o demon.o do.o dog.o dogmove.o
-dokick.o dothrow.o do_name.o do_wear.o eat.o end.o engrave.o exper.o
-extralev.o fountain.o getline.o hack.o invent.o lock.o mail.o main.o
-makemon.o mcastu.o mhitm.o mhitu.o mklev.o mkmaze.o mkobj.o mkroom.o mon.o
-mondata.o monmove.o monst.o mthrowu.o music.o objects.o objnam.o options.o
-o_init.o pager.o pickup.o polyself.o potion.o pray.o pri.o priest.o
-prisym.o random.o read.o restore.o rip.o rnd.o rumors.o save.o search.o
-shk.o shknam.o sit.o sounds.o spell.o sp_lev.o steal.o timeout.o topl.o
-topten.o track.o trap.o uhitm.o u_init.o vault.o version.o weapon.o were.o
-wield.o wizard.o worm.o worn.o write.o zap.o
--lml -lcl
+	O_Src1:allmain.o	O_Src1:alloc.o		O_Src1:apply.o
+	O_Src1:artifact.o	O_Src1:attrib.o		O_Src1:bones.o
+	O_Src1:cmd.o		O_Src1:dbridge.o	O_Src1:decl.o
+	O_Src1:demon.o		O_Src1:do.o		O_Src1:do_name.o
+	O_Src1:do_wear.o	O_Src1:dog.o		O_Src1:dogmove.o
+	O_Src1:dokick.o		O_Src1:dothrow.o	O_Src1:eat.o
+	O_Src1:end.o		O_Src1:engrave.o	O_Src1:exper.o
+	O_Src1:extralev.o	O_Src1:fountain.o	O_Src1:getline.o
+	O_Src1:hack.o		O_Src1:invent.o		O_Src1:lock.o
+
+	O_Src2:mail.o		O_Src2:makemon.o	O_Src2:mcastu.o
+	O_Src2:mhitm.o		O_Src2:mhitu.o		O_Src2:mklev.o
+	O_Src2:mkmaze.o		O_Src2:mkobj.o		O_Src2:mkroom.o
+	O_Src2:mon.o		O_Src2:mondata.o	O_Src2:monmove.o
+	O_Src2:monst.o		O_Src2:mthrowu.o	O_Src2:music.o
+	O_Src2:o_init.o		O_Src2:objects.o	O_Src2:objnam.o
+	O_Src2:options.o	O_Src2:pager.o		O_Src2:pickup.o
+	O_Src2:polyself.o	O_Src2:potion.o
+
+	O_Src3:pray.o		O_Src3:pri.o		O_Src3:priest.o
+	O_Src3:prisym.o		O_Src3:read.o		O_Src3:restore.o
+	O_Src3:rip.o		O_Src3:rnd.o		O_Src3:rumors.o
+	O_Src3:save.o		O_Src3:search.o		O_Src3:shk.o
+	O_Src3:shknam.o		O_Src3:sit.o		O_Src3:sounds.o
+	O_Src3:sp_lev.o		O_Src3:spell.o		O_Src3:steal.o
+	O_Src3:timeout.o	O_Src3:topl.o		O_Src3:topten.o
+	O_Src3:track.o		O_Src3:trap.o		O_Src3:u_init.o
+	O_Src3:uhitm.o		O_Src3:vault.o		O_Src3:version.o
+	O_Src3:weapon.o		O_Src3:were.o		O_Src3:wield.o
+	O_Src3:wizard.o		O_Src3:worm.o		O_Src3:worn.o
+	O_Src3:write.o		O_Src3:zap.o
+
+	O_Amiga:amidos.o	O_Amiga:amitcap.o	O_Amiga:amitty.o
+	O_Amiga:amiunix.o	O_Amiga:amiwbench.o	O_Amiga:amiwind.o
+
+	O_Others:pcmain.o	O_Others:random.o

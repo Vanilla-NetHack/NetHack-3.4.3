@@ -13,10 +13,13 @@ struct fakecorridor {
 struct egd {
 	int fcbeg, fcend;	/* fcend: first unused pos */
 	xchar gdx, gdy;		/* goal of guard's walk */
+	xchar ogx, ogy;		/* guard's last position */
+	xchar gdlevel;		/* level guard was created on */
+	xchar warncnt;		/* number of warnings to follow */
 	unsigned gddone:1;
 	struct fakecorridor fakecorr[FCSIZ];
 };
 
-#define	EGD	((struct egd *)(&(guard->mextra[0])))
+#define	EGD(mon)	((struct egd *)(&(mon->mextra[0])))
 
 #endif /* VAULT_H /* */

@@ -7,6 +7,7 @@
  */
 #define EXTERN_H
 #include "config.h"
+long *FDECL(alloc,(unsigned int));
 
 #ifdef LINT
 /*
@@ -23,7 +24,7 @@ long dummy = ftell(stderr);
 
 #else
 #ifndef __TURBOC__
-extern void VDECL(panic, (char *,...));
+extern void VDECL(panic, (const char *,...));
 
 long *
 alloc(lth)

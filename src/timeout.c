@@ -1,8 +1,15 @@
-/*	SCCS Id: @(#)timeout.c	3.0	87/07/06
+/*	SCCS Id: @(#)timeout.c	3.0	89/11/20
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
+
+#ifdef OVERLAY
+extern void NDECL(stoned_dialog), NDECL(vomiting_dialog), NDECL(choke_dialog);
+extern void FDECL(hatch_it, (struct obj*));
+#endif
+
+#ifdef OVLB
 
 /* He is being petrified - dialogue by inmet!tower */
 static const char *stoned_texts[] = {
@@ -13,7 +20,7 @@ static const char *stoned_texts[] = {
 	"You are a statue."			/* 1 */
 };
 
-static void
+XSTATIC void
 stoned_dialogue() {
 	register long i = (Stoned & TIMEOUT);
 
@@ -34,7 +41,7 @@ static const char *vomiting_texts[] = {
 	"You suddenly vomit!"			/* 0 */
 };
 
-static void
+XSTATIC void
 vomiting_dialogue() {
 	register long i = (Vomiting & TIMEOUT) / 3L;
 
@@ -42,7 +49,7 @@ vomiting_dialogue() {
 	   i >= 0 && i < SIZE(vomiting_texts))
 		pline(vomiting_texts[SIZE(vomiting_texts) - i]);
 
-	switch(i) {
+	switch((int)i) {
 
 	    case 0:	vomit(); morehungry(20); break;
 	    case 2:	make_confused(HConfusion + d(2,4), FALSE);
@@ -59,7 +66,7 @@ static const char *choke_texts[] = {
 	"You suffocate."
 };
 
-static void
+XSTATIC void
 choke_dialogue()
 {
 	register long i = (Strangled & TIMEOUT);
@@ -68,6 +75,9 @@ choke_dialogue()
 		pline(choke_texts[SIZE(choke_texts) - i], Hallucination ?
 			hcolor() : blue);
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 timeout()
@@ -105,14 +115,17 @@ timeout()
 		if(upp->p_tofn) (*upp->p_tofn)();
 		else switch(upp - u.uprops){
 		case STONED:
-			if (!killer) killer = "cockatrice";
-			done(STONING);
+			if (!killer) {
+				killer_format = KILLED_BY_AN;
+				killer = "cockatrice";
+			} done(STONING);
 			break;
 		case VOMITING:
 			make_vomiting(0L, TRUE);
 			break;
 		case SICK:
 			You("die from your illness.");
+			killer_format = KILLED_BY_AN;
 			killer = u.usick_cause;
 			done(POISONING);
 			break;
@@ -155,6 +168,7 @@ timeout()
 			}
 			break;
 		case STRANGLED:
+			killer_format = KILLED_BY;
 			killer = "strangulation";
 			done(DIED);
 			break;
@@ -191,9 +205,10 @@ timeout()
 	}
 }
 
-static const char slithy[] = { S_SNAKE, S_NAGA, S_WORM, 0 };
+#endif /* OVL0 */
+#ifdef OVLB
 
-static void
+XSTATIC void
 hatch_it(otmp)		/* hatch the egg "otmp" if possible */
 register struct obj *otmp;
 {
@@ -215,13 +230,11 @@ register struct obj *otmp;
 
 		if(Blind)
 		    You("feel something %s from your pack!",
-			  (index(slithy, mtmp->data->mlet)) ?
-			      "slither" : "drop");
+			locomotion(mtmp->data, "drop"));
 		else
-		    pline("%s just %s out of your pack!",
-			  An(mtmp->data->mname),
-			  (index(slithy, mtmp->data->mlet)) ?
-			      "slithered" : "dropped");
+		    You("see %s %s out of your pack!",
+			an(mtmp->data->mname),
+			locomotion(mtmp->data, "drop"));
 
 #ifdef POLYSELF
 		if (yours) {
@@ -239,6 +252,9 @@ register struct obj *otmp;
 	    }
 	}
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 void
 hatch_eggs()	    /* hatch any eggs that have been too long in pack */
@@ -264,3 +280,5 @@ hatch_eggs()	    /* hatch any eggs that have been too long in pack */
 	}
 */
 }
+
+#endif /* OVL1 */

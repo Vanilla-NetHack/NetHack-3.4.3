@@ -3,13 +3,13 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
 
-#include <signal.h>
-
 #include "hack.h"
+
+#include <signal.h>
 
 char SAVEF[PL_NSIZ + 20];			/* [.save]<uic>player;1 */
 
-char *hname = 0;		/* name of the game (argv[0] of call) */
+const char *hname = 0;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 int hackpid = 0;				/* current pid */
 int locknum = 0;				/* max num of players */
@@ -213,7 +213,8 @@ char *argv[];
 
 	Sprintf(SAVEF, "[.save]%d%s", getuid(), plname);
 	regularize(SAVEF+7);	/* avoid bogus chars in name */
-	if((fd = open(SAVEF,0)) >= 0 &&
+	if((fd = open(SAVEF,O_RDONLY)) >= 0 &&
+	   /* if not up-to-date, quietly unlink file via false condition */
 	   (uptodate(fd) || unlink(SAVEF) >= 0)) {
 #ifdef WIZARD
 		/* Since wizard is actually flags.debug, restoring might
@@ -221,8 +222,9 @@ char *argv[];
 		 */
 		boolean remember_wiz_mode = wizard;
 #endif
+		(void) chmod(SAVEF,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-		pline("Restoring old save file...");
+		pline("Restoring save file...");
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
@@ -240,7 +242,9 @@ char *argv[];
 		if (discover || wizard) {
 			pline("Do you want to keep the save file? ");
 			if(yn() == 'n')
-				(void) unlink(SAVEF);
+			    (void) unlink(SAVEF);
+			else
+			    (void) chmod(SAVEF,FCMASK); /* back to readable */
 		}
 #endif
 		flags.move = 0;
@@ -331,14 +335,19 @@ boolean wr;
 	}
 
 	/* warn the player if we can't write the record file */
+	/* perhaps we should also test whether . is writable */
+	/* unfortunately the access systemcall is worthless */
 	if(wr) {
 	    register int fd;
 
 	    if(dir == NULL)
 		dir = "";
-	    if((fd = open(RECORD, 2)) < 0) {
-		Printf("Warning: cannot write %s%s", dir, RECORD);
-		getret();
+	    if((fd = open(RECORD, O_RDWR)) < 0) {
+		if((fd = open(RECORD, O_CREAT|O_RDWR, FCMASK)) < 0) {
+		    Printf("Warning: cannot write %s/%s", dir, RECORD);
+		    getret();
+		} else
+		    (void) close(fd);
 	    } else
 		(void) close(fd);
 	}
@@ -366,7 +375,7 @@ whoami() {
 static void
 byebye()
 {
-    void (*hup)();
+    int (*hup)();
     extern unsigned int dosh_pid;
 
     /* SIGHUP doesn't seem to do anything on VMS, so we fudge it here... */

@@ -7,10 +7,13 @@
 
 #include <signal.h>
 #include <pwd.h>
+#ifndef O_RDONLY
+#include <fcntl.h>
+#endif
 
 char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 
-char *hname = 0;		/* name of the game (argv[0] of call) */
+const char *hname = 0;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 int hackpid = 0;				/* current pid */
 int locknum = 0;				/* max num of players */
@@ -233,7 +236,7 @@ char *argv[];
 #ifdef COMPRESS
 	Strcpy(old,SAVEF);
 	Strcat(SAVEF,".Z");
-	if((fd = open(SAVEF,0)) >= 0) {
+	if((fd = open(SAVEF,O_RDONLY)) >= 0) {
  	    (void) close(fd);
 	    Strcpy(cmd, COMPRESS);
 	    Strcat(cmd, " -d ");	/* uncompress */
@@ -246,7 +249,8 @@ char *argv[];
 	}
 	Strcpy(SAVEF,old);
 #endif
-	if((fd = open(SAVEF,0)) >= 0 &&
+	if((fd = open(SAVEF,O_RDONLY)) >= 0 &&
+	   /* if not up-to-date, quietly unlink file via false condition */
 	   (uptodate(fd) || unlink(SAVEF) == 666)) {
 #ifdef WIZARD
 		/* Since wizard is actually flags.debug, restoring might
@@ -254,8 +258,9 @@ char *argv[];
 		 */
 		boolean remember_wiz_mode = wizard;
 #endif
+		(void) chmod(SAVEF,0);	/* disallow parallel restores */
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
-		pline("Restoring old save file...");
+		pline("Restoring save file...");
 		(void) fflush(stdout);
 		if(!dorecover(fd))
 			goto not_recovered;
@@ -274,6 +279,19 @@ char *argv[];
 			pline("Do you want to keep the save file? ");
 			if(yn() == 'n')
 				(void) unlink(SAVEF);
+			else {
+			    (void) chmod(SAVEF,FCMASK); /* back to readable */
+# ifdef COMPRESS
+			    Strcpy(cmd, COMPRESS);
+			    Strcat(cmd, " ");
+#  ifdef COMPRESS_OPTIONS
+			    Strcat(cmd, COMPRESS_OPTIONS);
+			    Strcat(cmd, " ");
+#  endif
+			    Strcat(cmd,SAVEF);
+			    (void) system(cmd);
+# endif
+			}
 		}
 #endif
 		flags.move = 0;
@@ -382,9 +400,12 @@ boolean wr;
 
 	    if(dir == NULL)
 		dir = ".";
-	    if((fd = open(RECORD, 2)) < 0) {
-		Printf("Warning: cannot write %s/%s", dir, RECORD);
-		getret();
+	    if((fd = open(RECORD, O_RDWR)) < 0) {
+		if((fd = open(RECORD, O_CREAT|O_RDWR, FCMASK)) < 0) {
+		    Printf("Warning: cannot write %s/%s", dir, RECORD);
+		    getret();
+		} else
+		    (void) close(fd);
 	    } else
 		(void) close(fd);
 	}

@@ -20,7 +20,7 @@ E int locknum;
 E char *catmore;
 #endif	/* DEF_PAGER */
 E char SAVEF[];
-E char *hname;
+E const char *hname;
 E const char *hu_stat[];	/* defined in eat.c */
 E int medusa_level;
 E int bigroom_level;
@@ -73,19 +73,23 @@ E const char nyaqchars[];
 E int smeq[];
 E int doorindex;
 E char *save_cm;
-E char *killer;
+#define KILLED_BY_AN 0
+#define KILLED_BY 1
+#define NO_KILLER_PREFIX 2
+E int killer_format;
+E const char *killer;
 E char inv_order[];
 E char plname[PL_NSIZ];
 E char dogname[];
 E char catname[];
 E const char sdir[], ndir[];	/* defined in hack.c */
-E char *occtxt;		/* defined when occupation != NULL */
-E char *nomovemsg;
+E const char *occtxt;		/* defined when occupation != NULL */
+E const char *nomovemsg;
 E const char nul[];
 E char *HI, *HE, *AS, *AE;	/* set up in termcap.c */
 E char *CD;			/* set up in termcap.c */
 E int CO, LI;			/* set up in termcap.c: COLNO and ROWNO+3 */
-E char *traps[];
+E const char *traps[];
 #ifndef MAKEDEFS_C  /* avoid conflict with lock() */
 E char lock[];
 #endif
@@ -130,7 +134,11 @@ E int clipx, clipy, clipxmax, clipymax;
 #ifndef COLOR_H
 #include "color.h"
 #endif
+# ifdef TOS
+E const char *hilites[MAXCOLORS];
+# else
 E char *hilites[MAXCOLORS];
+# endif
 #endif
 
 #ifndef OBJ_H
@@ -189,6 +197,14 @@ E const char white[];
 
 E const char nothing_happens[];
 E const char thats_enough_tries[];
+
+E const char monsyms[], objsyms[];
+E const char *monexplain[], *objexplain[];
+
+#ifdef NAMED_ITEMS
+E const int artifact_num;
+E boolean artiexist[];
+#endif
 
 #undef E
 

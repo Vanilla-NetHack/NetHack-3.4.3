@@ -2,8 +2,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include "hack.h"
 #include "lev.h"
 
@@ -14,13 +14,13 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif /* !NO_SIGNAL */
-#if defined(EXPLORE_MODE) && !defined(LSC) && !defined(O_RDONLY)
+#if defined(EXPLORE_MODE) && !defined(LSC) && !defined(O_RDONLY) && !defined(AZTEC_C)
 #include <fcntl.h>
 #endif /* EXPLORE_MODE */
 
 boolean hu;		/* set during hang-up */
 
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 struct finfo fileinfo[MAXLEVEL+1];
 long bytes_counted;
 int count_only;
@@ -28,39 +28,39 @@ int count_only;
 boolean level_exists[MAXLEVEL+1];
 #endif
 
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 static void savelev0();
-#endif /* DGK && !OLD_TOS */
+#endif /* DGK */
 static void saveobjchn();
 static void savemonchn();
 static void savegoldchn();
 static void savetrapchn();
 static void savegenoinfo();
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 static boolean swapout_oldest();
 static void copyfile();
-#endif /* defined(DGK) && !defined(OLD_TOS) */
+#endif /* defined(DGK) */
 static void spill_objs();
+#ifdef __GNULINT__
+static long nulls[10];
+#else
+#define nulls nul
+#endif
 
 int
 dosave(){
 	clrlin();
+#ifdef MACOS
+	if(!flags.silent) SysBeep(1);
+	if(UseMacAlertText(128, "Really save ?") != 1) {
+#else
 	pline("Really save? ");	/* especially useful if COMPRESS defined */
 	if(yn() == 'n') {
+#endif
 		clrlin();
 		(void) fflush(stdout);
 		if(multi > 0) nomul(0);
 	} else {
-#ifdef EXPLORE_MODE
-# ifdef WIZARD
-		if(!discover && !wizard) {
-# else
-		if(!discover) {
-# endif
-	pline("Do you want to create a non-scoring, restartable save file? ");
-			if(yn() == 'y')  discover = TRUE;
-		}
-#endif
 		clear_screen();
 		(void) fflush(stdout);
 		hu = FALSE;
@@ -93,7 +93,7 @@ dosave0() {
 	register int fd, ofd;
 	int tmp;		/* not register ! */
 	xchar ltmp;
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	long fds, needed;
 	int mode;
 #endif
@@ -110,7 +110,7 @@ dosave0() {
 #if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP, SIG_IGN);
 #endif
-#if !defined(__TURBOC__) && !defined(OLD_TOS) && !defined(NO_SIGNAL)
+#if !defined(__TURBOC__) && !defined(NO_SIGNAL)
 	(void) signal(SIGINT, SIG_IGN);
 #endif
 
@@ -120,8 +120,11 @@ dosave0() {
 # endif
 # ifdef EXPLORE_MODE
 	if(!hu) {
-
-	    fd = open(SAVEF, O_RDONLY);
+#  ifdef AMIGA_WBENCH
+	    (fd = ami_wbench_getsave(O_RDONLY));
+#  else
+	    (fd = open(SAVEF, O_RDONLY));
+#  endif
 	    if (fd > 0) {
 		(void) close(fd);
 		clrlin();
@@ -133,7 +136,11 @@ dosave0() {
 # ifdef TOS
 	fd = creat(SAVEF, FCMASK);
 # else
-	fd = open(SAVEF, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
+#  ifdef AMIGA_WBENCH
+	fd=ami_wbench_getsave(O_WRONLY | O_CREAT | O_TRUNC);
+#  else
+	(fd = open(SAVEF, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK));
+#  endif
 # endif
 #else /* MSDOS */
 # ifdef EXPLORE_MODE
@@ -183,6 +190,9 @@ dosave0() {
 #endif /* MSDOS */
 	if(fd < 0) {
 		if(!hu) pline("Cannot open save file.");
+#ifdef AMIGA_WBENCH
+		ami_wbench_unlink(SAVEF);
+#endif
 		(void) unlink(SAVEF);		/* ab@unido */
 		return(0);
 	}
@@ -193,7 +203,7 @@ dosave0() {
 		change_luck(-1);		/* and unido!ab */
 	home();
 	cl_end();
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	if(!hu) msmsg("Saving: ");
 	mode = COUNT;
 again:
@@ -235,7 +245,12 @@ again:
 	bwrite(fd, (genericptr_t) &is_maze_lev, sizeof is_maze_lev);
 	bwrite(fd, (genericptr_t) &u, sizeof(struct you));
 #ifdef SPELLS
-	bwrite(fd, (genericptr_t) spl_book, sizeof(struct spell) * (MAXSPELL + 1));
+	bwrite(fd, (genericptr_t) spl_book, 
+				sizeof(struct spell) * (MAXSPELL + 1));
+#endif
+#ifdef NAMED_ITEMS
+	bwrite(fd, (genericptr_t) artiexist, 
+				(unsigned)(sizeof(boolean) * artifact_num));
 #endif
 	if(u.ustuck)
 		bwrite(fd, (genericptr_t) &(u.ustuck->m_id), sizeof u.ustuck->m_id);
@@ -246,7 +261,7 @@ again:
 	savefruitchn(fd);
 #endif
 	savenames(fd);
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	if (mode == COUNT) {
 # ifdef ZEROCOMP
 		bflush(fd);
@@ -256,6 +271,9 @@ again:
 		for (ltmp = 1; ltmp <= maxdlevel; ltmp++)
 			if (ltmp != dlevel && fileinfo[ltmp].where)
 				needed += fileinfo[ltmp].size + (sizeof ltmp);
+#ifdef AMIGA_WBENCH
+		needed+=ami_wbench_iconsize(SAVEF);
+#endif
 		fds = freediskspace(SAVEF);
 		if(needed > fds) {
 		    if(!hu) {
@@ -264,6 +282,9 @@ again:
 				fds);
 		    }
 		    flushout();
+#ifdef AMIGA_WBENCH
+		    ami_wbench_unlink(SAVEF);
+#endif
 		    (void) close(fd);
 		    (void) unlink(SAVEF);
 		    return 0;
@@ -273,7 +294,7 @@ again:
 	}
 #endif
 	for(ltmp = (xchar)1; ltmp <= maxdlevel; ltmp++) {
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (ltmp == dlevel || !fileinfo[ltmp].where) continue;
 		if (fileinfo[ltmp].where != ACTIVE)
 			swapin_file(ltmp);
@@ -294,6 +315,9 @@ again:
 			(void)SetVol(0L, savenum);
 #endif
 		    (void) unlink(SAVEF);
+#ifdef AMIGA_WBENCH
+		    ami_wbench_unlink(SAVEF);
+#endif
 		    if(!hu) done(TRICKED);
 		    return(0);
 		}
@@ -303,7 +327,7 @@ again:
 		getlev(ofd, hackpid, ltmp, FALSE);
 		(void) close(ofd);
 		bwrite(fd, (genericptr_t) &ltmp, sizeof ltmp);  /* level number */
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		savelev(fd, ltmp, WRITE);			/* actual level */
 #else
 		savelev(fd, ltmp);			/* actual level */
@@ -328,10 +352,13 @@ again:
 	Strcat(cmd, SAVEF);
 	(void) system(cmd);
 #endif
+#ifdef AMIGA_WBENCH
+	ami_wbench_iconwrite(SAVEF);
+#endif
 	return(1);
 }
 
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 boolean
 savelev(fd, lev, mode)
 int fd;
@@ -385,7 +412,7 @@ xchar lev;
 #endif
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
-#if !defined(DGK) || defined(OLD_TOS)
+#if !defined(DGK)
 	if(lev >= 0 && lev <= MAXLEVEL)
 		level_exists[lev] = TRUE;
 #endif
@@ -430,9 +457,9 @@ xchar lev;
 		 * the display of the screen when the game is restored under
 		 * a potentially different value of showsyms from the
 		 * environment */
-		/* if a game is saved off the rogue level, the usual showsyms
-		 * will be written out for the rogue level too, but they will
-		 * be ignored on restore so it doesn't matter */
+		/* if a game is saved while not on rogue level, the usual
+		 * showsyms will be written out for the rogue level too, but
+		 * they will be ignored on restore so it doesn't matter */
 		bwrite(fd, (genericptr_t) savesyms, sizeof savesyms);
 	else
 #endif
@@ -466,14 +493,14 @@ xchar lev;
 		for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp->nseg){
 			bwrite(fd,(genericptr_t) wtmp,sizeof(struct wseg));
 		}
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!count_only)
 #endif
 			wsegs[tmp] = 0;
 	}
 	bwrite(fd,(genericptr_t) wgrowtime,sizeof(wgrowtime));
 #endif /* WORM /**/
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	if (count_only)	return;
 #endif
 	billobjs = 0;
@@ -522,7 +549,7 @@ register int fd;
 	  flushoutrun(outrunlength);
       }
       if (outbufp) {
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	  if (!count_only)    /* flush buffer */
 #endif
 		  (void) write(fd, outbuf, outbufp);
@@ -560,7 +587,7 @@ register int fd;
 register genericptr_t loc;
 register unsigned num;
 {
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	bytes_counted += num;
 	if (!count_only)
 #endif
@@ -593,7 +620,7 @@ register struct obj *otmp;
 	    xl = otmp->onamelth;
 	    bwrite(fd, (genericptr_t) &xl, sizeof(int));
 	    bwrite(fd, (genericptr_t) otmp, xl + sizeof(struct obj));
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	    if (!count_only)
 #endif
 		free((genericptr_t) otmp);
@@ -620,7 +647,7 @@ register struct monst *mtmp;
 		bwrite(fd, (genericptr_t) &xl, sizeof(int));
 		bwrite(fd, (genericptr_t) mtmp, xl + sizeof(struct monst));
 		if(mtmp->minvent) saveobjchn(fd,mtmp->minvent);
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!count_only)
 #endif
 		free((genericptr_t) mtmp);
@@ -638,13 +665,13 @@ register struct gold *gold;
 	while(gold) {
 		gold2 = gold->ngold;
 		bwrite(fd, (genericptr_t) gold, sizeof(struct gold));
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!count_only)
 #endif
 			free((genericptr_t) gold);
 		gold = gold2;
 	}
-	bwrite(fd, (genericptr_t)nul, sizeof(struct gold));
+	bwrite(fd, (genericptr_t)nulls, sizeof(struct gold));
 }
 
 static void
@@ -656,13 +683,13 @@ register struct trap *trap;
 	while(trap) {
 		trap2 = trap->ntrap;
 		bwrite(fd, (genericptr_t) trap, sizeof(struct trap));
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!count_only)
 #endif
 			free((genericptr_t) trap);
 		trap = trap2;
 	}
-	bwrite(fd, (genericptr_t)nul, sizeof(struct trap));
+	bwrite(fd, (genericptr_t)nulls, sizeof(struct trap));
 }
 
 #ifdef TUTTI_FRUTTI
@@ -683,13 +710,13 @@ register int fd;
 		if (f1->fid >= 0) {
 			bwrite(fd, (genericptr_t) f1, sizeof(struct fruit));
 		}
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!count_only)
 #endif
 			free((genericptr_t) f1);
 		f1 = f2;
 	}
-	bwrite(fd, (genericptr_t)nul, sizeof(struct fruit));
+	bwrite(fd, (genericptr_t)nulls, sizeof(struct fruit));
 }
 #endif
 
@@ -703,7 +730,7 @@ register int fd;
 		bwrite(fd, (genericptr_t) &(mons[i].geno), sizeof(unsigned));
 }
 
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 boolean
 swapin_file(lev)
 int lev;
@@ -808,7 +835,7 @@ register struct obj *cobj;
 {
 	register struct obj *otmp, *otmp2, *probj;
 
-#ifdef LINT
+#if defined(LINT) || defined(__GNULINT__)
 	probj = (struct obj *)0;    /* suppress "used before set" error */
 #endif
 	for(otmp = fcobj; otmp; otmp = otmp2) {

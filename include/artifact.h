@@ -26,7 +26,7 @@
 
 struct artifact {
 	unsigned    otyp;
-	char	    *name;
+	const char  *name;
 	unsigned    spfx;
 	unsigned long mtype;	/* monster type, symbol, or flag */
 	struct attack attk, defn;

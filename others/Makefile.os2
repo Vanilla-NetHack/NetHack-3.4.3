@@ -1,108 +1,159 @@
-#	SCCS Id: @(#)Makefile.os2	3.0	89/08/19
-#	PC NetHack 3.0 Makefile for Microsoft(tm) C 5.1 and OS/2
+#	SCCS Id: @(#)Makefile.os2	3.0	90/01/20
+#	OS/2 NetHack 3.0 Makefile for Microsoft(tm) C 5.1 -- Timo Hakulinen
 #
-#	NDMAKE ver 4.3+ is required, MS-MAKE does not work
-#	without (probably large) modifications -- Timo Hakulinen
+#	NDMAKE ver 4.5 is required, MS-MAKE will not work. MS-NMAKE
+#	may work but requires probably modifications to some targets.
 #
 #	Copy pctty.c, pcunix.c, pcmain.c, msdos.c and this file
-#	(+ termcap sources if used) into $(SRC) directory, then
+#	(+ termcap sources if used) into $(SRC) directory, rename
+#	this file to "makefile" (important, some targets rely on it),
 #	compile and link in real mode inside $(SRC).
 #
-#	To use CodeView define OS2_CODEVIEW in pcconf.h and set
-#	HACKDIR (+ TERM and TERMCAP if used) in OS/2 config.sys.
+#	When using CodeView versions earlier than ver. 2.3, define
+#	OS2_CODEVIEW in pcconf.h and set HACKDIR (+ TERM and TERMCAP
+#	if used) in OS/2 config.sys. Otherwise path searches may fail.
+#
+#	Note that $(GAMEDIR) must exist prior to compilation.
 #
 # Large memory model
 CC	= cl
 LINK	= link
 MODEL	= L
 
-# Directories (makedefs hardcodes these, don't change them)
+# $(MAKE) macro is often predefined, so we use $(MAKEBIN) instead.
+MAKEBIN	= make
+
+# For those of us who have these on PC.
+#YACC	= yacc
+#LEX	= lex
+YACC	= bison -y
+LEX	= flex
+# Standard file names may vary in PC installations.
+YTABC	= y_tab.c
+YTABH	= y_tab.h
+LEXYYC	= lexyy.c
+
+# Directories (makedefs hardcodes these, don't change them).
 INCL	= ..\include
 AUX	= ..\auxil
 SRC	= ..\src
+OBJ	= $(SRC)\o2
 
-# memory model, compile only, #define LINT_ARGS, disable optimization,
-# remove stack probes, 80286 instruction set, dedicated datasegment for
-# items >= 5 bytes, pack structures on 1 byte boundaries, generate code
-# for 8087 coprocessor, include file path
-CFLAGS	= /A$(MODEL) /c /DLINT_ARGS /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /I$(INCL)
+# The game name and description.
+GAME	= nethack
+GAMEDES = NetHack 3.0
 
-# + prepare for CodeView symbolic debugger
-#CFLAGS	= /A$(MODEL) /c /DLINT_ARGS /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /I$(INCL) /Zi
+# The game directory.
+GAMEDIR = \games\$(GAME)
 
-# don't ignore case in symbols, no default lib search, stack 4096 bytes
-# (actually a bit of overkill), allow max 1024 segments in program
-LFLAGS	= /noig /nod /stack:4096 /seg:1024
+# Memory model, compile only, disable optimization, remove stack probes,
+# 80286 instruction set, dedicated datasegment for items >= 5 bytes,
+# pack structures on 1 byte boundaries, generate code for 8087
+# coprocessor, compiler warning level, include file path.
+CFLAGS	= /A$(MODEL) /c /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /W1 /I$(INCL) $(CDFLAGS)
 
-# + prepare for CodeView symbolic debugger
-#LFLAGS	= /noig /nod /stack:4096 /seg:1024 /CO
+# + prepare for CodeView symbolic debugger.
+CDFLAGS =
+#CDFLAGS = /Zi
 
-# real mode C libraries for 8087 coprocessor
+# Don't ignore case in symbols, no default lib search, stack 4096 bytes.
+# (actually a bit of overkill), allow max 1024 segments in program.
+LFLAGS	= /noig /nod /stack:4096 /seg:1024 $(LDFLAGS)
+
+# + prepare for CodeView symbolic debugger.
+LDFLAGS =
+#LDFLAGS = /CO
+
+# Real mode C libraries for 8087 coprocessor (change if necessary).
 RLIBS	= $(MODEL)libc7r
 
-# protected mode C libraries for 8087, OS/2 API entry points
+# Protected mode C libraries for 8087 (change if necessary),
+# OS/2 API entry points.
 PLIBS	= $(MODEL)libc7p doscalls
 
-# termcap routines
-TERMLIB= termlib.lib
-
-# module definition file for OS/2
+# Module definition file for OS/2.
 OS2DEFS	= $(GAME).def
 
-# target system
+# Target system.
 TARG	= pc
 
-.c.o:
-	$(CC) $(CFLAGS) /Foo\$*.o $*.c
+# The default make target (so just typing 'make' is useful).
+default: $(GAME)
+
+# If you have yacc and lex programs and make any changes, comment out the
+# upper two lines and uncomment the lower two.
+do_yacc: yacc_msg
+do_lex:  lex_msg
+#do_yacc: yacc_act
+#do_lex:  lex_act
 
 # Optional high-quality BSD random number generation routines (see pcconf.h).
 # Set to nothing if not used.
-RANDOM = o\random.o
-#RANDOM=
+RANDOM	= $(OBJ)\random.o
+#RANDOM	=
 
-# Termcap objs. Set to nothing if TERMLIB not defined in pcconf.h. In that
-# case a dummy termlib.lib is created.
-#TERMOBJS= o\tgetent.o o\tgetflag.o o\tgetnum.o o\tgetstr.o o\tgoto.o o\tputs.o o\isdigit.o o\fgetlr.o
-TERMOBJS=
+# Termcap routines.
+TERMCAPS = termlib.lib
+
+# If TERMLIB defined in pcconf.h, comment out the upper line and
+# uncomment the lower.
+TERMLIB =
+#TERMLIB = $(TERMCAPS)
+
+######################################################################
+#
+# Nothing below this line should have to be changed.
+#
+# Other things that have to be reconfigured are in config.h,
+# {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h.
+#
+
+# The game filename.
+GAMEFILE = $(GAMEDIR)\$(GAME).exe
 
 # For NDMAKE, to handle the .o suffix.
 .SUFFIXES: .exe .o .c .y .l
 
-# The game name
-GAME= nethack
+.c.o:
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $*.c
 
-# The game directory
-GAMEDIR = \games\$(GAME)
+# Termcap objects.
+TERMOBJS = $(OBJ)\tgetent.o $(OBJ)\tgetflag.o $(OBJ)\tgetnum.o \
+	   $(OBJ)\tgetstr.o $(OBJ)\tgoto.o $(OBJ)\tputs.o $(OBJ)\isdigit.o \
+	   $(OBJ)\fgetlr.o
 
-# The game filename
-GAMEFILE = $(GAMEDIR)\$(GAME).exe
+# Object files for makedefs.
+MAKEOBJS = $(OBJ)\makedefs.o $(OBJ)\alloc.o $(OBJ)\monst.o $(OBJ)\objects.o \
+	   $(OBJ)\panic.o
 
-# object files for makedefs
-MAKEOBJS = o\makedefs.o o\alloc.o o\monst.o o\objects.o o\panic.o
+# Object files for special levels compiler.
+SPLEVOBJS = $(OBJ)\lev_comp.o $(OBJ)\lev_lex.o $(OBJ)\lev_main.o \
+	    $(OBJ)\alloc.o $(OBJ)\monst.o $(OBJ)\objects.o $(OBJ)\panic.o
 
-# object files for special levels compiler
-SPLEVOBJS = o\lev_comp.o o\lev_lex.o o\lev_main.o o\alloc.o o\monst.o o\objects.o o\panic.o
-
-# nothing below this line should have to be changed
-#
-# other things that have to be reconfigured are in config.h,
-# {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
-
-VOBJ =	o\allmain.o o\alloc.o o\apply.o o\artifact.o o\attrib.o o\bones.o \
-	o\cmd.o o\dbridge.o o\decl.o o\demon.o o\do.o o\do_name.o o\do_wear.o \
-	o\dog.o o\dogmove.o o\dokick.o o\dothrow.o o\eat.o o\end.o o\engrave.o \
-	o\exper.o o\extralev.o o\fountain.o o\getline.o o\hack.o o\invent.o \
-	o\lock.o o\mail.o o\main.o o\makemon.o o\mcastu.o o\mhitm.o o\mhitu.o \
-	o\mklev.o o\mkmaze.o o\mkobj.o o\mkroom.o o\mon.o o\mondata.o \
-	o\msdos.o o\monmove.o o\monst.o o\mthrowu.o o\music.o o\o_init.o \
-	o\objects.o o\objnam.o o\options.o o\pager.o o\pickup.o o\polyself.o \
-	o\potion.o o\pray.o o\pri.o o\priest.o o\prisym.o $(RANDOM) o\read.o \
-	o\restore.o o\rip.o o\rnd.o o\rumors.o o\save.o o\search.o o\shk.o \
-	o\shknam.o o\sit.o o\sounds.o o\sp_lev.o o\spell.o o\steal.o \
-	o\termcap.o o\timeout.o o\topl.o o\topten.o o\track.o o\trap.o \
-	o\tty.o o\u_init.o o\uhitm.o o\unix.o o\vault.o o\weapon.o o\were.o \
-	o\wield.o o\wizard.o o\worm.o o\worn.o o\write.o o\zap.o
-HOBJ =	$(VOBJ) o\version.o
+VOBJ =	$(OBJ)\allmain.o $(OBJ)\alloc.o    $(OBJ)\apply.o    $(OBJ)\artifact.o \
+	$(OBJ)\attrib.o  $(OBJ)\bones.o    $(OBJ)\cmd.o      $(OBJ)\dbridge.o \
+	$(OBJ)\decl.o    $(OBJ)\demon.o    $(OBJ)\do.o       $(OBJ)\do_name.o \
+	$(OBJ)\do_wear.o $(OBJ)\dog.o      $(OBJ)\dogmove.o  $(OBJ)\dokick.o \
+	$(OBJ)\dothrow.o $(OBJ)\eat.o      $(OBJ)\end.o      $(OBJ)\engrave.o \
+	$(OBJ)\exper.o   $(OBJ)\extralev.o $(OBJ)\fountain.o $(OBJ)\getline.o \
+	$(OBJ)\hack.o    $(OBJ)\invent.o   $(OBJ)\lock.o     $(OBJ)\mail.o \
+	$(OBJ)\main.o    $(OBJ)\makemon.o  $(OBJ)\mcastu.o   $(OBJ)\mhitm.o \
+	$(OBJ)\mhitu.o   $(OBJ)\mklev.o    $(OBJ)\mkmaze.o   $(OBJ)\mkobj.o \
+	$(OBJ)\mkroom.o  $(OBJ)\mon.o      $(OBJ)\mondata.o  $(OBJ)\msdos.o \
+	$(OBJ)\monmove.o $(OBJ)\monst.o    $(OBJ)\mthrowu.o  $(OBJ)\music.o \
+ 	$(OBJ)\o_init.o  $(OBJ)\objects.o  $(OBJ)\objnam.o   $(OBJ)\options.o \
+	$(OBJ)\pager.o   $(OBJ)\pickup.o   $(OBJ)\polyself.o $(OBJ)\potion.o \
+	$(OBJ)\pray.o    $(OBJ)\pri.o      $(OBJ)\priest.o   $(OBJ)\prisym.o \
+	$(RANDOM)        $(OBJ)\read.o     $(OBJ)\restore.o  $(OBJ)\rip.o \
+	$(OBJ)\rnd.o     $(OBJ)\rumors.o   $(OBJ)\save.o     $(OBJ)\search.o \
+	$(OBJ)\shk.o     $(OBJ)\shknam.o   $(OBJ)\sit.o      $(OBJ)\sounds.o \
+	$(OBJ)\sp_lev.o  $(OBJ)\spell.o    $(OBJ)\steal.o    $(OBJ)\termcap.o \
+	$(OBJ)\timeout.o $(OBJ)\topl.o     $(OBJ)\topten.o   $(OBJ)\track.o \
+	$(OBJ)\trap.o    $(OBJ)\tty.o      $(OBJ)\u_init.o   $(OBJ)\uhitm.o \
+	$(OBJ)\unix.o    $(OBJ)\vault.o    $(OBJ)\weapon.o   $(OBJ)\were.o \
+	$(OBJ)\wield.o   $(OBJ)\wizard.o   $(OBJ)\worm.o     $(OBJ)\worn.o \
+	$(OBJ)\write.o   $(OBJ)\zap.o
+HOBJ =	$(VOBJ) $(OBJ)\version.o
 
 PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\msdos.h $(INCL)\system.h \
 	     $(INCL)\extern.h $(INCL)\def_os2.h 
@@ -119,42 +170,68 @@ HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 	     $(INCL)\rm.h
 
 # The main target
-$(GAMEDIR)\$(GAME).exe: o $(HOBJ) $(OS2DEFS) $(TERMLIB)
+$(GAMEDIR)\$(GAME).exe: $(OBJ) $(HOBJ) $(OS2DEFS) $(TERMLIB)
 	$(LINK) $(HOBJ),$(GAMEDIR)\$(GAME),$(GAME),$(PLIBS) $(TERMLIB),$(OS2DEFS) $(LFLAGS) ;
 
-# NDMAKE automatically generates LINK and LIB response files
+# NDMAKE automatically generates LINK and LIB response files.
 
 $(GAME): $(GAMEDIR)\$(GAME).exe
 $(GAME).exe: $(GAMEDIR)\$(GAME).exe
 
-all:	o makedefs lev_comp $(GAME) auxil record
+all:	$(OBJ) makedefs lev_comp $(GAME) auxil
 	@echo Done.
 
-o:
-	mkdir o
+$(OBJ):
+	mkdir $(OBJ)
 
-$(TERMLIB): $(TERMOBJS)
-	lib $(TERMLIB) -+ $(TERMOBJS) ;
+# Target for termcap routines.
 
-makedefs:	makedefs.exe
-makedefs.exe:	$(MAKEOBJS)
+$(TERMCAPS): $(TERMOBJS)
+	lib $(TERMCAPS) -+ $(TERMOBJS) ;
+
+# Targets for makedefs.
+
+makedefs: makedefs.exe
+makedefs.exe: $(MAKEOBJS)
 	$(LINK) $(MAKEOBJS),,,$(RLIBS) $(LFLAGS) ;
 
-o\makedefs.o:  $(INCL)\config.h $(INCL)\permonst.h $(INCL)\objclass.h
+$(OBJ)\makedefs.o: $(INCL)\config.h $(INCL)\permonst.h $(INCL)\objclass.h
 
-lev_comp:  lev_comp.exe
-lev_comp.exe:  $(SPLEVOBJS)
-	$(LINK) $(SPLEVOBJS),lev_comp,,$(RLIBS) $(LFLAGS) ;
+# Targets for the special levels compiler.
 
-o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
-o\lev_lex.o:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
-o\lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
+lev_comp: lev_comp.exe
+lev_comp.exe: $(SPLEVOBJS)
+	$(LINK) $(SPLEVOBJS),,,$(RLIBS) $(LFLAGS) ;
 
-# If you have yacc or lex programs, and make any changes,
-# add some .y.c and .l.c rules to your Make.ini.
+$(OBJ)\lev_comp.o: $(HACK_H) $(INCL)\sp_lev.h lev_comp.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $*.c
+$(OBJ)\lev_lex.o:  $(HACK_H) $(INCL)\sp_lev.h $(INCL)\lev_comp.h lev_lex.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $*.c
+$(OBJ)\lev_main.o: $(HACK_H) $(INCL)\sp_lev.h
 
-lev_comp.c:  lev_comp.y
+lev_comp.c: lev_comp.y
+	$(MAKEBIN) do_yacc
+
 lev_lex.c:  lev_comp.l
+	$(MAKEBIN) do_lex
+
+yacc_msg:
+	@echo lev_comp.y has changed. To update lev_comp.c and lev_comp.h run YACC.
+
+yacc_act:
+	$(YACC) -d lev_comp.y
+	copy $(YTABC) lev_comp.c
+	copy $(YTABH) $(INCL)\lev_comp.h
+	del $(YTABC)
+	del $(YTABH)
+
+lex_msg:
+	@echo lev_comp.l has changed. To update lev_lex.c run LEX.
+
+lex_act:
+	$(LEX) lev_comp.l
+	copy $(LEXYYC) lev_lex.c
+	del $(LEXYYC)
 
 #
 #	The following include files depend on makedefs to be created.
@@ -162,7 +239,7 @@ lev_lex.c:  lev_comp.l
 #	date.h should be remade any time any of the source or include code
 #	is modified.
 #
-$(INCL)\date.h:	 $(VOBJ) makedefs.exe
+$(INCL)\date.h: $(VOBJ) makedefs.exe
 	.\makedefs -v
 
 $(INCL)\trap.h:	makedefs.exe
@@ -183,14 +260,14 @@ rumors: $(AUX)\rumors.tru $(AUX)\rumors.fal makedefs.exe
 #
 #	The following programs vary depending on what OS you are using.
 #
-o\main.o:   $(HACK_H) $(TARG)main.c
-	$(CC) $(CFLAGS) /Foo\main.o $(TARG)main.c
+$(OBJ)\main.o: $(HACK_H) $(TARG)main.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\main.o $(TARG)main.c
 
-o\tty.o:   $(HACK_H) $(INCL)\func_tab.h $(TARG)tty.c
-	$(CC) $(CFLAGS) /Foo\tty.o $(TARG)tty.c
+$(OBJ)\tty.o:  $(HACK_H) $(INCL)\func_tab.h $(TARG)tty.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\tty.o $(TARG)tty.c
 
-o\unix.o:   $(HACK_H) $(TARG)unix.c
-	$(CC) $(CFLAGS) /Foo\unix.o $(TARG)unix.c
+$(OBJ)\unix.o: $(HACK_H) $(TARG)unix.c
+	$(CC) $(CFLAGS) /Fo$(OBJ)\unix.o $(TARG)unix.c
 
 #
 # Secondary targets
@@ -212,17 +289,13 @@ spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
 
 $(OS2DEFS):
 	echo NAME $(GAME) WINDOWCOMPAT> $(OS2DEFS)
-	echo DESCRIPTION 'NetHack 3.0'>> $(OS2DEFS)
+	echo DESCRIPTION '$(GAMEDES)'>> $(OS2DEFS)
 	echo PROTMODE>> $(OS2DEFS)
 	echo EXETYPE OS2>> $(OS2DEFS)
 
-record: $(GAMEDIR)\record
-$(GAMEDIR)\record:
-	echo foo> $(GAMEDIR)\record
-
 clean:
-	del o\*.o
-	rmdir o
+	del $(OBJ)\*.o
+	rmdir $(OBJ)
 
 spotless: clean
 	del $(INCL)\date.h
@@ -230,7 +303,7 @@ spotless: clean
 	del $(INCL)\pm.h
 	del makedefs.exe
 	del lev_comp.exe
-	del $(TERMLIB)
+	del $(TERMCAPS)
 	del *.def
 	del *.map
 	del $(AUX)\data
@@ -245,94 +318,95 @@ spotless: clean
 
 # GO AHEAD, DELETE THIS LINE
 
-o\allmain.o:  $(HACK_H)
-o\alloc.o:  $(CONFIG_H)
-o\apply.o:  $(HACK_H) $(INCL)\edog.h
-o\artifact.o:  $(HACK_H) $(INCL)\artifact.h
-o\attrib.o:  $(HACK_H)
-o\bones.o:  $(HACK_H)
-o\cmd.o:  $(HACK_H) $(INCL)\func_tab.h
-o\dbridge.o: $(HACK_H)
-o\decl.o:  $(HACK_H)
-o\demon.o:  $(HACK_H)
-o\do.o:  $(HACK_H)
-o\do_name.o:  $(HACK_H)
-o\do_wear.o:  $(HACK_H)
-o\dog.o:  $(HACK_H) $(INCL)\edog.h
-o\dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
-o\dokick.o:  $(HACK_H)
-o\dothrow.o:  $(HACK_H)
-o\eat.o:  $(HACK_H)
-o\end.o:  $(HACK_H) $(INCL)\eshk.h
-o\engrave.o:  $(HACK_H)
-o\exper.o:  $(HACK_H)
-o\extralev.o:  $(HACK_H)
-o\fountain.o:  $(HACK_H)
-o\getline.o:  $(HACK_H) $(INCL)\func_tab.h
-o\hack.o:  $(HACK_H)
-o\invent.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-o\ioctl.o:  $(HACK_H)
-o\lev_comp.o:  $(HACK_H) $(INCL)\sp_lev.h
-o\lock.o:  $(HACK_H)
-o\makemon.o:  $(HACK_H)
-o\mail.o:  $(HACK_H)
-o\mcastu.o:  $(HACK_H)
-o\mhitm.o:  $(HACK_H) $(INCL)\artifact.h
-o\mhitu.o:  $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
-o\mklev.o:  $(HACK_H)
-o\mkmaze.o:  $(HACK_H)
-o\mkobj.o:  $(HACK_H)
-o\mkroom.o:  $(HACK_H)
-o\mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
-o\mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
-o\monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
-o\monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
-o\msdos.o:  $(HACK_H)
-o\mthrowu.o:  $(HACK_H)
-o\music.o:  $(HACK_H)
-o\o_init.o:  $(HACK_H) $(INCL)\onames.h
-o\objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h
-o\objnam.o:  $(HACK_H)
-o\options.o:  $(HACK_H)
-o\pager.o:  $(HACK_H)
-o\panic.o:  $(CONFIG_H)
-o\pickup.o:  $(HACK_H)
-o\polyself.o:  $(HACK_H)
-o\potion.o:  $(HACK_H)
-o\pray.o:  $(HACK_H)
-o\pri.o:  $(HACK_H) $(INCL)\termcap.h
-o\priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
-o\prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-o\random.o:
-o\read.o:  $(HACK_H)
-o\restore.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-o\rip.o:  $(HACK_H)
-o\rnd.o:  $(HACK_H)
-o\rumors.o:  $(HACK_H)
-o\save.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-o\search.o:  $(HACK_H) $(INCL)\artifact.h
-o\shk.o:  $(HACK_H) $(INCL)\eshk.h
-o\shknam.o:  $(HACK_H) $(INCL)\eshk.h
-o\sit.o:  $(HACK_H)
-o\sounds.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
-o\sp_lev.o:  $(HACK_H) $(INCL)\sp_lev.h
-o\spell.o:  $(HACK_H)
-o\steal.o:  $(HACK_H)
-o\termcap.o:  $(HACK_H) $(INCL)\termcap.h
-o\timeout.o:  $(HACK_H)
-o\topl.o:  $(HACK_H)
-o\topten.o:  $(HACK_H)
-o\track.o:  $(HACK_H)
-o\trap.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\trapname.h
-o\u_init.o:  $(HACK_H)
-o\uhitm.o:  $(HACK_H) $(INCL)\artifact.h
-o\vault.o:  $(HACK_H) $(INCL)\vault.h
-o\version.o:  $(HACK_H) $(INCL)\date.h
-o\weapon.o:  $(HACK_H)
-o\were.o:  $(HACK_H)
-o\wield.o:  $(HACK_H)
-o\wizard.o:  $(HACK_H)
-o\worm.o:  $(HACK_H) $(INCL)\wseg.h
-o\worn.o:  $(HACK_H)
-o\write.o:  $(HACK_H)
-o\zap.o:  $(HACK_H)
+$(OBJ)\allmain.o:  $(HACK_H)
+$(OBJ)\alloc.o:    $(CONFIG_H)
+$(OBJ)\apply.o:    $(HACK_H) $(INCL)\edog.h
+$(OBJ)\artifact.o: $(HACK_H) $(INCL)\artifact.h
+$(OBJ)\attrib.o:   $(HACK_H)
+$(OBJ)\bones.o:    $(HACK_H)
+$(OBJ)\cmd.o:      $(HACK_H) $(INCL)\func_tab.h
+$(OBJ)\dbridge.o:  $(HACK_H)
+$(OBJ)\decl.o:     $(HACK_H)
+$(OBJ)\demon.o:    $(HACK_H)
+$(OBJ)\do.o:       $(HACK_H)
+$(OBJ)\do_name.o:  $(HACK_H)
+$(OBJ)\do_wear.o:  $(HACK_H)
+$(OBJ)\dog.o:      $(HACK_H) $(INCL)\edog.h
+$(OBJ)\dogmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
+$(OBJ)\dokick.o:   $(HACK_H)
+$(OBJ)\dothrow.o:  $(HACK_H)
+$(OBJ)\eat.o:      $(HACK_H)
+$(OBJ)\end.o:      $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\engrave.o:  $(HACK_H)
+$(OBJ)\exper.o:    $(HACK_H)
+$(OBJ)\extralev.o: $(HACK_H)
+$(OBJ)\fountain.o: $(HACK_H)
+$(OBJ)\getline.o:  $(HACK_H) $(INCL)\func_tab.h
+$(OBJ)\hack.o:     $(HACK_H)
+$(OBJ)\invent.o:   $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+$(OBJ)\ioctl.o:    $(HACK_H)
+$(OBJ)\lev_comp.o: $(HACK_H) $(INCL)\sp_lev.h
+$(OBJ)\lock.o:     $(HACK_H)
+$(OBJ)\makemon.o:  $(HACK_H)
+$(OBJ)\mail.o:     $(HACK_H)
+$(OBJ)\mcastu.o:   $(HACK_H)
+$(OBJ)\mhitm.o:    $(HACK_H) $(INCL)\artifact.h
+$(OBJ)\mhitu.o:    $(HACK_H) $(INCL)\artifact.h $(INCL)\edog.h
+$(OBJ)\mklev.o:    $(HACK_H)
+$(OBJ)\mkmaze.o:   $(HACK_H)
+$(OBJ)\mkobj.o:    $(HACK_H)
+$(OBJ)\mkroom.o:   $(HACK_H)
+$(OBJ)\mon.o:      $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+$(OBJ)\mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
+$(OBJ)\monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+$(OBJ)\monst.o:    $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h \
+		   $(INCL)\epri.h
+$(OBJ)\msdos.o:    $(HACK_H)
+$(OBJ)\mthrowu.o:  $(HACK_H)
+$(OBJ)\music.o:    $(HACK_H)
+$(OBJ)\o_init.o:   $(HACK_H) $(INCL)\onames.h
+$(OBJ)\objects.o:  $(CONFIG_H) $(INCL)\obj.h $(INCL)\objclass.h $(INCL)\prop.h
+$(OBJ)\objnam.o:   $(HACK_H)
+$(OBJ)\options.o:  $(HACK_H)
+$(OBJ)\pager.o:    $(HACK_H)
+$(OBJ)\panic.o:    $(CONFIG_H)
+$(OBJ)\pickup.o:   $(HACK_H)
+$(OBJ)\polyself.o: $(HACK_H)
+$(OBJ)\potion.o:   $(HACK_H)
+$(OBJ)\pray.o:     $(HACK_H)
+$(OBJ)\pri.o:      $(HACK_H) $(INCL)\termcap.h
+$(OBJ)\priest.o:   $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
+$(OBJ)\prisym.o:   $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+$(OBJ)\random.o:
+$(OBJ)\read.o:     $(HACK_H)
+$(OBJ)\restore.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+$(OBJ)\rip.o:      $(HACK_H)
+$(OBJ)\rnd.o:      $(HACK_H)
+$(OBJ)\rumors.o:   $(HACK_H)
+$(OBJ)\save.o:     $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
+$(OBJ)\search.o:   $(HACK_H) $(INCL)\artifact.h
+$(OBJ)\shk.o:      $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\shknam.o:   $(HACK_H) $(INCL)\eshk.h
+$(OBJ)\sit.o:      $(HACK_H)
+$(OBJ)\sounds.o:   $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
+$(OBJ)\sp_lev.o:   $(HACK_H) $(INCL)\sp_lev.h
+$(OBJ)\spell.o:    $(HACK_H)
+$(OBJ)\steal.o:    $(HACK_H)
+$(OBJ)\termcap.o:  $(HACK_H) $(INCL)\termcap.h
+$(OBJ)\timeout.o:  $(HACK_H)
+$(OBJ)\topl.o:     $(HACK_H)
+$(OBJ)\topten.o:   $(HACK_H)
+$(OBJ)\track.o:    $(HACK_H)
+$(OBJ)\trap.o:     $(HACK_H) $(INCL)\edog.h
+$(OBJ)\u_init.o:   $(HACK_H)
+$(OBJ)\uhitm.o:    $(HACK_H) $(INCL)\artifact.h
+$(OBJ)\vault.o:    $(HACK_H) $(INCL)\vault.h
+$(OBJ)\version.o:  $(HACK_H) $(INCL)\date.h
+$(OBJ)\weapon.o:   $(HACK_H)
+$(OBJ)\were.o:     $(HACK_H)
+$(OBJ)\wield.o:    $(HACK_H)
+$(OBJ)\wizard.o:   $(HACK_H)
+$(OBJ)\worm.o:     $(HACK_H) $(INCL)\wseg.h
+$(OBJ)\worn.o:     $(HACK_H)
+$(OBJ)\write.o:    $(HACK_H)
+$(OBJ)\zap.o:      $(HACK_H)

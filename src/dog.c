@@ -1,14 +1,20 @@
-/*	SCCS Id: @(#)dog.c	3.0	89/06/12
+/*	SCCS Id: @(#)dog.c	3.0	89/11/20
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "edog.h"
 
+#ifdef OVLB
+
 char dogname[63] = DUMMY;
 char catname[63] = DUMMY;
 
+#endif /* OVLB */
+
 #define domestic(mtmp)	(mtmp->data->msound == MS_BARK || mtmp->data->msound == MS_MEW)
+
+#ifdef OVLB
 
 void
 initedog(mtmp)
@@ -59,6 +65,7 @@ top:
 	    return;
 	}
 	initedog(mtmp);
+	mtmp->msleep = 0;
 	if (otmp && otmp->cursed) { /* cursed figurine */
 		You("get a bad feeling about this.");
 		mtmp->mtame = mtmp->mpeaceful = 0;
@@ -85,16 +92,10 @@ makedog() {
 	if(!mtmp) return((struct monst *) 0); /* dogs were genocided */
 
 	if (petname[0]) {
-		register struct monst *mtmp2;
-
-		mtmp->mnamelth = strlen(petname) + 1;
-		mtmp2 = newmonst(sizeof(struct edog) + mtmp->mnamelth);
-		*mtmp2 = *mtmp;
-
-		replmon(mtmp, mtmp2);
-		mtmp = mtmp2;
-		Strcpy(NAME(mtmp), petname);
+		mtmp = christen_monst(mtmp, petname);
+#ifndef MACOS
 		petname[0] = '\0'; /* name first only; actually unnecessary */
+#endif
 	}
 	initedog(mtmp);
 	return(mtmp);
@@ -102,8 +103,8 @@ makedog() {
 
 /* attach the monsters that went down (or up) together with @ */
 struct monst *mydogs = 0;
-/* monsters that fell through a trapdoor or stepped on a tele-trap. */
-/* 'down' is now true only of trapdooor falling, not for tele-trap. */
+/* monsters that fell through a trap door or stepped on a tele-trap. */
+/* 'down' is now true only of trap door falling, not for tele-trap. */
 struct monst *fallen_down = 0;
 				
 void
@@ -116,7 +117,7 @@ losedogs(){
 		fmon = mtmp;
 		mnexto(mtmp);
 	}
-#ifdef LINT
+#if defined(LINT) || defined(__GNULINT__)
 	mtmp0 = (struct monst *)0;
 #endif
 	for(mtmp = fallen_down; mtmp; mtmp = mtmp2) {
@@ -155,7 +156,7 @@ register struct monst *mtmp;
 		   the amulet; if you don't have it, will chase you
 		   only if in range. -3. */
 			(u.uhave_amulet && mtmp->iswiz))
-			&& !mtmp->msleep && !mtmp->mfroz) {
+			&& !mtmp->msleep && mtmp->mcanmove) {
 #ifdef WORM
 		/* Bug "fix" for worm changing levels collapsing dungeon
 		 */
@@ -216,6 +217,9 @@ register int tolev;
 		/* so rloc() on next level doesn't affect MON_AT() state */
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 /* return quality of food; the lower the better */
 /* fungi will eat even tainted food */
 int
@@ -244,11 +248,16 @@ register struct obj *obj;
 			return POISON;
 		    return (carni ? CADAVER : MANFOOD);
 		case CORPSE:
-		    if ((obj->age+50 <= moves && obj->corpsenm != PM_LIZARD
+		    if ((obj->age+50 <= monstermoves
+					    && obj->corpsenm != PM_LIZARD
 					    && mon->data->mlet != S_FUNGUS) ||
+			(acidic(&mons[obj->corpsenm]) &&
+						!resists_acid(mon->data)) ||
 			(poisonous(&mons[obj->corpsenm]) &&
 						!resists_poison(mon->data)))
 			return POISON;
+		    else if (mon->data->mlet == S_FUNGUS)
+			return (herbi ? CADAVER : MANFOOD);
 		    else return (carni ? CADAVER : MANFOOD);
 		case CLOVE_OF_GARLIC:
 		    return (is_undead(mon->data) ? TABU :
@@ -277,6 +286,9 @@ register struct obj *obj;
 	}
 }
 
+#endif /* OVL1 */
+#ifdef OVL0
+
 /* return roomnumber or -1 */
 int
 inroom(x,y) xchar x,y; {
@@ -289,6 +301,9 @@ inroom(x,y) xchar x,y; {
 	}
 	return(-1);	/* not in room or on door */
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 int
 tamedog(mtmp, obj)
@@ -306,7 +321,7 @@ register struct obj *obj;
 	/* If we cannot tame him, at least he's no longer afraid. */
 	mtmp->mflee = 0;
 	mtmp->mfleetim = 0;
-	if(mtmp->mtame || mtmp->mfroz ||
+	if(mtmp->mtame || !mtmp->mcanmove ||
 #ifdef MEDUSA
 	   mtmp->data == &mons[PM_MEDUSA] ||
 #endif
@@ -334,3 +349,5 @@ register struct obj *obj;
 	replmon(mtmp,mtmp2);
 	return(1);
 }
+
+#endif /* OVLB */

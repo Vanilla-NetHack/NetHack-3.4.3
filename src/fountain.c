@@ -6,13 +6,21 @@
 #include "hack.h"
 
 #ifdef FOUNTAINS
+static void NDECL(dowatersnakes);
+static void NDECL(dowaterdemon);
+static void NDECL(dowaternymph);
+static void FDECL(dogushforth,(int));	
+static void NDECL(dofindgem);
 
 static
 void
 dowatersnakes() /* Fountain of snakes! */ {
 	register int num = rnd(6);
 	if (!(mons[PM_WATER_MOCCASIN].geno & G_GENOD)) {
-		pline("An endless stream of snakes pours forth!");
+		if (!Blind)
+			pline("An endless stream of snakes pours forth!");
+		else
+			You("hear something hissing!");
 		while(num-- > 0) (void) makemon(&mons[PM_WATER_MOCCASIN],u.ux,u.uy);
 	} else
 		pline("The fountain bubbles furiously for a moment, then calms.");
@@ -24,11 +32,15 @@ dowaterdemon() /* Water demon */ {
 register struct monst *mtmp;
 
 	if((mtmp = makemon(&mons[PM_WATER_DEMON],u.ux,u.uy))) {
-	    You("have unleashed %s!", defmonnam(mtmp));
+	    if (!Blind)
+	    	You("have unleashed %s!", defmonnam(mtmp));
+	    else
+		You("feel the presence of evil.");
 
 	/* Give those on low levels a (slightly) better chance of survival */
 	    if ( rnd(100) > (80 + dlevel)) {
-		pline("Grateful for his release, he grants you a wish!");
+		pline("Grateful for %s release, %s grants you a wish!",
+			Blind ? "its" : "his", Blind ? "it" : "he" );
 		makewish();
 		mongone(mtmp);
 	    }
@@ -40,11 +52,16 @@ void
 dowaternymph() /* Water Nymph */ {
 	register struct monst *mtmp;
 	if((mtmp = makemon(&mons[PM_WATER_NYMPH],u.ux,u.uy))) {
-
-		You("have attracted %s!", defmonnam(mtmp));
+		if (!Blind)
+		   You("have attracted %s!", defmonnam(mtmp));
+		else
+		   You("hear a seductive voice.");
 		mtmp->msleep = 0;
 	} else
-		pline("A large bubble rises to the surface and pops.");
+		if (!Blind)
+		   pline("A large bubble rises to the surface and pops.");
+		else
+		   You("hear a loud pop.");
 }
 
 
@@ -106,7 +123,7 @@ dofindgem() /* Find a gem in the sparkling waters. */ {
 void
 dryup(){
 	if (!rn2(3) && IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
-		pline("The fountain dries up!");
+		if (!Blind) pline("The fountain dries up!");
 		levl[u.ux][u.uy].typ = ROOM;
 		levl[u.ux][u.uy].looted = 0;
 		if(Invisible) newsym(u.ux, u.uy);
@@ -154,11 +171,12 @@ drinkfountain() {
 #else
 	   pline("Perhaps it is runoff from the nearby orange farm.");
 #endif
-			   losehp(rnd(4),"unrefrigerated sip of juice");
+			   losehp(rnd(4),"unrefrigerated sip of juice",
+				KILLED_BY_AN);
 			   break;
 			}
 			losestr(rn1(4,3));
-			losehp(rnd(10),"contaminated water");
+			losehp(rnd(10),"contaminated water", KILLED_BY);
 			break;
 	
 		case 22: /* Fountain of snakes! */
@@ -237,7 +255,9 @@ register struct obj *obj;
 	}
 
 	if (obj->otyp == LONG_SWORD && u.ulevel >= 5 && !rn2(6)
-#ifndef NAMED_ITEMS
+#ifdef NAMED_ITEMS
+	    && !is_artifact(obj) && !exist_artifact(obj, "Excalibur")
+#else
 	    && !strcmp(ONAME(obj), "Excalibur")
 #endif
 	   ) {
@@ -314,6 +334,7 @@ register struct obj *obj;
 		 * by.	Just like a shopping mall!  Chris Woodbury  */
 
 			mkgold((long)(rnd((MAXLEVEL-dlevel)*2)+5), u.ux, u.uy);
+			if (!Blind)
 		pline("Far below you, you see coins glistening in the water.");
 			break;
 	}
@@ -339,7 +360,7 @@ drinksink()
 		case 2: You("take a sip of scalding hot water.");
 			if (Fire_resistance)
 				pline("It seems quite tasty.");
-			else losehp(rnd(6), "sip of boiling water");
+			else losehp(rnd(6), "sipping boiling water", KILLED_BY);
 			break;
 		case 3: if (mons[PM_SEWER_RAT].geno & G_GENOD)
 				pline("The sink seems quite dirty.");

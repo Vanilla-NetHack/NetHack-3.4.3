@@ -1,5 +1,5 @@
 %{ 
-/*	SCCS Id: @(#)lev_comp.c	3.0	89/07/02
+/*	SCCS Id: @(#)lev_comp.c	3.0	90/01/03
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,8 +9,8 @@
  */
 
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONDATA_H
-#define MONFLAG_H
+#define MONDATA_H	/* comment line for pre-compiled headers */
+#define MONFLAG_H	/* comment line for pre-compiled headers */
 
 #include "hack.h"
 #include "sp_lev.h"
@@ -21,14 +21,30 @@
 # include <sys/file.h>
 #endif
 
+void FDECL(yyerror, (char *));
+void FDECL(yywarning, (char *));
+int NDECL(yylex);
+int NDECL(yyparse);
+
+int FDECL(get_room_type, (char *));
+int FDECL(get_trap_type, (char *));
+int FDECL(get_monster_id, (char *, CHAR_P));
+int FDECL(get_object_id, (char *, CHAR_P));
+boolean FDECL(check_monster_char, (CHAR_P));
+boolean FDECL(check_object_char, (CHAR_P));
+void FDECL(scan_map, (char *));
+void NDECL(store_part);
+void FDECL(write_maze, (int, specialmaze *));
+
 #ifdef AMIGA
 char *fgets();
-# define    alloc   malloc
 # undef     fopen
 # undef     printf
 # undef     Printf
 # define    Printf  printf
+#ifndef	LATTICE
 # define    memset(addr,val,len)    setmem(addr,len,val)
+#endif
 #endif
 
 #ifdef MSDOS
@@ -40,6 +56,8 @@ char *fgets();
 # undef Printf
 # define Printf printf
 #endif
+
+#undef NULL
 
 #define MAX_REGISTERS	10
 #define ERR		(-1)
@@ -145,9 +163,6 @@ unsigned int max_x_map, max_y_map;
 extern int fatal_error;
 extern char* fname;
 
-boolean check_monster_char(), check_object_char();
-void scan_map(), store_part(), write_maze();
-
 %}
 
 %union
@@ -167,6 +182,8 @@ void scan_map(), store_part(), write_maze();
 %token	<i> ALIGNMENT LEFT_OR_RIGHT CENTER TOP_OR_BOT ALTAR_TYPE UP_OR_DOWN
 %token	<i> ',' ':' '(' ')' '[' ']'
 %token	<map> STRING MAP_ID
+%type	<i> h_justif v_justif trap_name room_type door_state light_state
+%type	<i> alignment altar_type a_register
 %type	<map> string maze_def m_name o_name
 %start	file
 
@@ -175,7 +192,7 @@ file		: /* notthing */
 		| levels ;
 
 levels		: level
-		| levels level ;
+		| level levels ;
 
 level		: maze_level ;
 
@@ -186,6 +203,12 @@ maze_level	: maze_def regions
 			  if (fatal_error > 0)
 				  fprintf(stderr,"%s : %d errors detected. No output created!\n", fname, fatal_error);
 			  else {
+#ifdef MACOS
+				  OSErr	result;
+				  
+				  result = Create(CtoPstr($1), 0, CREATOR, AUXIL_TYPE);
+				  (void)PtoCstr($1);
+#endif		
 				  fout = open($1, O_WRONLY | O_CREAT
 #if defined(MSDOS) || defined(MACOS)
 					      | O_BINARY
@@ -211,7 +234,7 @@ maze_def	: MAZE_ID ':' string
 		  }
 
 regions 	: aregion
-		| regions aregion;
+		| aregion regions ;
 
 aregion 	: map_definition reg_init map_details
 		  {
@@ -286,10 +309,10 @@ object_list	: object
 			  else
 			      yyerror("Object list too long!");
 		  }
-		| object_list ',' object
+		| object ',' object_list
 		  {
 			  if (n_olist < MAX_REGISTERS)
-			      olist[n_olist++] = $<i>3;
+			      olist[n_olist++] = $<i>1;
 			  else
 			      yyerror("Object list too long!");
 		  }
@@ -301,10 +324,10 @@ monster_list	: monster
 			  else
 			      yyerror("Monster list too long!");
 		  }
-		| monster_list ',' monster
+		| monster ',' monster_list
 		  {
 			  if (n_mlist < MAX_REGISTERS)
-			      mlist[n_mlist++] = $<i>3;
+			      mlist[n_mlist++] = $<i>1;
 			  else
 			      yyerror("Monster list too long!");
 		  }
@@ -316,13 +339,13 @@ place_list	: place
 			  else
 			      yyerror("Location list too long!");
 		  }
-		| place_list ',' place
+		| place
 		  {
 			  if (n_plist < MAX_REGISTERS)
 			      plist[n_plist++] = current_coord;
 			  else
 			      yyerror("Location list too long!");
-		  }
+		  } ',' place_list
 
 map_details	: /* nothing */
 		| map_details map_detail ;
@@ -576,7 +599,7 @@ place		: coord
 
 monster 	: CHAR
 		  {
-			if (check_monster_char($1))
+			if (check_monster_char((char) $1))
 				$<i>$ = $1 ;
 			else {
 				yyerror("unknown monster class!");
@@ -641,7 +664,7 @@ char *s;
 	
 	for(i=0; i < SHOPBASE -1; i++)
 	    if (!strcmp(s, room_types[i].name))
-		return room_types[i].type;
+		return ((int) room_types[i].type);
 	return ERR;
 }
 
@@ -657,7 +680,7 @@ char *s;
 	
 	for(i=0; i < TRAPNUM - 1; i++)
 	    if(!strcmp(s,trap_types[i].name))
-		return(trap_types[i].type);
+		return((int)trap_types[i].type);
 	return ERR;
 }
 

@@ -4,6 +4,10 @@
 
 #include	"hack.h"		/* for typedefs */
 
+static void NDECL(setgemprobs);
+static void FDECL(shuffle,(int,int,BOOLEAN_P));
+static boolean FDECL(interesting_to_discover,(int));
+
 /* note that NROFOBJECTS is the number of legal objects, which does not count
  * the strange object and null object that take up positions 0 and NROFOBJECTS+1
  * in the objects array
@@ -70,7 +74,7 @@ shuffle(o_low, o_high, domaterial)
 	register boolean domaterial;
 {
 	register int i, j;
-	char *desc;
+	const char *desc;
 #ifdef TEXTCOLOR
 	int color;
 #endif /* TEXTCOLOR */
@@ -120,7 +124,9 @@ register char let;
 		bases[i] = 0;
 	for(i = 0; i != TOTAL_OBJS; i++)
 		disco[i] = i;
-
+#ifdef NAMED_ITEMS
+	init_exists();	/* zero out the "artifact exists" list */
+#endif
 	/* init base; if probs given check that they add up to 1000,
 	   otherwise compute probs; shuffle descriptions */
 	end = TOTAL_OBJS;
@@ -238,7 +244,7 @@ register int fd;
 #ifdef MACOS
 	for (i = 0 ; i < TOTAL_OBJS; i++) {
 		descr[i] = objects[i].oc_descr;
-		objects[i].oc_descr = (char *)switches[i];
+		objects[i].oc_descr = (const char *)switches[i];
 	}
 #endif
 	bwrite(fd, (genericptr_t)objects, sizeof(struct objclass) * TOTAL_OBJS);
@@ -295,7 +301,7 @@ register int fd;
 		objects[i].oc_descr = d[switches[i]].descr;
 	}
 #else
-# if !defined(MSDOS) && !defined(M_XENIX)
+# if !defined(MSDOS) && !defined(M_XENIX) && !defined(HPUX)
 	differ = (genericptr_t)&objects[0] - (genericptr_t)then;
 # else
 	differ = (long)&objects[0] - (long)then;
@@ -308,7 +314,7 @@ register int fd;
 			objects[i].oc_name += differ;
 # else
 			objects[i].oc_name =
-			    (char *)((long)(objects[i].oc_name) + differ);
+			    (const char *)((long)(objects[i].oc_name) + differ);
 # endif
 		}
 		if (objects[i].oc_descr) {
@@ -316,7 +322,7 @@ register int fd;
 			objects[i].oc_descr += differ;
 # else
 			objects[i].oc_descr =
-			    (char *)((long)(objects[i].oc_descr) + differ);
+			    (const char *)((long)(objects[i].oc_descr) + differ);
 # endif
 		}
 #endif /* MACOS */

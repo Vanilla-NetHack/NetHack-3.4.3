@@ -4,9 +4,20 @@
 
 #include "hack.h"
 
+#ifdef OVLB
+
 static int todelay;
 
-static long takeoff_mask = 0L, taking_off = 0L;
+#endif /*OVLB */
+
+#ifndef OVLB
+
+OSTATIC long takeoff_mask, taking_off;
+
+#else /* OVLB */
+
+XSTATIC long takeoff_mask = 0L, taking_off = 0L;
+
 static const long takeoff_order[] = { WORN_BLINDF, 1L, /* weapon */
 	WORN_SHIELD, WORN_GLOVES, LEFT_RING, RIGHT_RING, WORN_CLOAK,
 	WORN_HELMET, WORN_AMUL, WORN_ARMOR,
@@ -14,6 +25,26 @@ static const long takeoff_order[] = { WORN_BLINDF, 1L, /* weapon */
 	WORN_SHIRT,
 #endif
 	WORN_BOOTS, 0L };
+
+static void FDECL(on_msg, (struct obj *));
+#ifndef OVERLAY
+static int NDECL(Armor_on);
+static int NDECL(Boots_on);
+#endif
+static int NDECL(Cloak_on);
+#ifndef OVERLAY
+static int NDECL(Helmet_on);
+static int NDECL(Gloves_on);
+#endif
+static void NDECL(Amulet_on);
+static void FDECL(Ring_off_or_gone, (struct obj *, BOOLEAN_P));
+#ifndef OVERLAY
+static int FDECL(select_off, (struct obj *));
+#endif
+static struct obj *NDECL(do_takeoff);
+#ifndef OVERLAY
+static int NDECL(take_off);
+#endif
 
 void
 off_msg(otmp) register struct obj *otmp; {
@@ -348,6 +379,7 @@ Gloves_off() {
 	You("wield the cockatrice corpse in your bare %s.",
 	    makeplural(body_part(HAND)));
 	You("turn to stone...");
+	killer_format = KILLED_BY_AN;
 	killer = "cockatrice corpse";
 	done(STONING);
     }
@@ -398,6 +430,7 @@ Shield_off() {
 /* This must be done in worn.c, because one of the possible intrinsics conferred
  * is fire resistance, and we have to immediately set HFire_resistance in worn.c
  * since worn.c will check it before returning.
+ */
 #ifndef OVERLAY
 static 
 #endif
@@ -406,7 +439,6 @@ Armor_on()
 {
     return 0;
 }
- */
 
 int
 Armor_off()
@@ -467,8 +499,18 @@ newname:	more();
 		regularize(SAVEF+7);
 		Strcat(SAVEF, ";1");
 #else
+# ifdef MSDOS
+		(void)strcpy(SAVEF, SAVEP);
+		{
+			int i = strlen(SAVEF);
+			(void)strncat(SAVEF, plname, 8);
+			regularize(SAVEF+i);
+		}
+		(void)strcat(SAVEF, ".sav");
+# else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+# endif
 #endif
 #ifdef WIZARD
 		}
@@ -558,6 +600,7 @@ register struct obj *obj;
 			Your("body takes on a %s transparency...",
 				Hallucination ? "normal" : "strange");
 		}
+		break;
 	case RIN_ADORNMENT:
 		ABON(A_CHA) += obj->spe;
 		flags.botl = 1;
@@ -699,7 +742,7 @@ register struct obj *otmp;
 /* called in main to set intrinsics of worn start-up items */
 void
 set_wear() {
-/*	if (uarm)  (void) Armor_on(); */
+	if (uarm)  (void) Armor_on();
 	if (uarmc) (void) Cloak_on();
 	if (uarmf) (void) Boots_on();
 	if (uarmg) (void) Gloves_on();
@@ -711,10 +754,22 @@ boolean
 donning(otmp)
 register struct obj *otmp;
 {
-    return (otmp == uarmf && afternmv == Boots_on)
-	|| (otmp == uarmh && afternmv == Helmet_on)
-	|| (otmp == uarmg && afternmv == Gloves_on)
-/*	|| (otmp == uarm && afternmv == Armor_on)*/;
+    return (otmp == uarmf && (afternmv == Boots_on || afternmv == Boots_off))
+	|| (otmp == uarmh && (afternmv == Helmet_on || afternmv == Helmet_off))
+	|| (otmp == uarmg && (afternmv == Gloves_on || afternmv == Gloves_off))
+	|| (otmp == uarm && (afternmv == Armor_on || afternmv == Armor_off));
+}
+
+void
+cancel_don()
+{
+	/* the piece of armor we were donning/doffing has vanished, so stop
+	 * wasting time on it (and don't dereference it when donning would
+	 * otherwise finish)
+	 */
+	afternmv = 0;
+	nomovemsg = NULL;
+	multi = 0;
 }
 
 static const char clothes[] = {ARMOR_SYM, 0};
@@ -722,7 +777,12 @@ static const char accessories[] = {RING_SYM, AMULET_SYM, TOOL_SYM, 0};
 
 int
 dotakeoff() {
+#ifdef __GNULINT__
+	register struct obj *otmp = 0;
+		/* suppress "may be used uninitialized" warning */
+#else
 	register struct obj *otmp;
+#endif
 	int armorpieces = 0;
 
 #define MOREARM(x) if (x) { armorpieces++; otmp = x; }
@@ -782,7 +842,12 @@ dotakeoff() {
 
 int
 doremring() {
+#ifdef __GNULINT__
+	register struct obj *otmp = 0;
+		/* suppress "may be used uninitialized" warning */
+#else
 	register struct obj *otmp;
+#endif
 	int Accessories = 0;
 
 #define MOREACC(x) if (x) { Accessories++; otmp = x; }
@@ -1017,7 +1082,7 @@ dowear() {
 		if(is_boots(otmp)) afternmv = Boots_on;
 		if(is_helmet(otmp)) afternmv = Helmet_on;
 		if(is_gloves(otmp)) afternmv = Gloves_on;
-/*		if(otmp == uarm) afternmv = Armor_on; */
+		if(otmp == uarm) afternmv = Armor_on;
 		nomovemsg = "You finish your dressing maneuver.";
 	} else {
 		if(is_cloak(otmp)) (void) Cloak_on();
@@ -1144,7 +1209,11 @@ doputon() {
 	return(1);
 }
 
+#endif /* OVLB */
+
 #define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
+
+#ifdef OVL0
 
 void
 find_ac() {
@@ -1171,6 +1240,9 @@ find_ac() {
 		flags.botl = 1;
 	}
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 glibr()
@@ -1431,8 +1503,14 @@ take_off() {
 	return(1);		/* get busy */
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 void
 reset_remarm() { taking_off = takeoff_mask =0L; }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 doddoremarm() {
@@ -1460,6 +1538,8 @@ register struct obj *atmp;
 		(void) Cloak_off();
 		useup(otmp);
 	} else if((otmp = uarm) && (!atmp || atmp == uarm)) {
+		/* may be disintegrated by spell or dragon breath... */
+		if (donning(otmp)) cancel_don();
 		Your("armor turns to dust and falls to the floor!");
 		(void) Armor_gone();
 		useup(otmp);
@@ -1469,15 +1549,18 @@ register struct obj *atmp;
 		useup(otmp);
 #endif
 	} else if((otmp = uarmh) && (!atmp || atmp == uarmh)) {
+		if (donning(otmp)) cancel_don();
 		Your("helmet turns to dust and is blown away!");
 		(void) Helmet_off();
 		useup(otmp);
 	} else if((otmp = uarmg) && (!atmp || atmp == uarmg)) {
+		if (donning(otmp)) cancel_don();
 		Your("gloves vanish!");
 		(void) Gloves_off();
 		useup(otmp);
 		selftouch("You");
 	} else if((otmp = uarmf) && (!atmp || atmp == uarmf)) {
+		if (donning(otmp)) cancel_don();
 		Your("boots disintegrate!");
 		(void) Boots_off();
 		useup(otmp);
@@ -1505,3 +1588,5 @@ register schar delta;
 		flags.botl = 1;
 	}
 }
+
+#endif /* OVLB */

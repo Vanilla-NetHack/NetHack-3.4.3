@@ -2,7 +2,6 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* makedefs.c - NetHack version 3.0 */
 
-#define MAKEDEFS_C 1	/* needs to be defined to 1 for Mac */
 
 #define EXTERN_H
 #include	"config.h"
@@ -13,14 +12,15 @@
 #endif /* NULL */
 #define NULL	((genericptr_t)0)
 
-#ifndef LINT
+#if !defined(LINT) && !defined(__GNULINT__)
 static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/11/15";
 #endif
 
 #ifdef MSDOS
-#ifndef TOS
+# if !defined(AMIGA) && !defined(TOS)
 # define freopen _freopen
-#endif
+FILE *FDECL(_freopen, (char *,char *,FILE *));
+# endif
 # undef	exit
 extern void FDECL(exit, (int));
 # define RDMODE	"r"
@@ -29,28 +29,25 @@ extern void FDECL(exit, (int));
 # define RDMODE  "r+"
 # define WRMODE  "w+"
 #endif
-#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
-void rename();
-#endif
-#ifdef AMIGA
-# undef freopen
-# undef printf
-# undef puts
-# undef fflush
-# define fflush FFLUSH
-# undef fputs
-# undef fprintf
+
+#ifdef MACOS
+Boolean FDECL(TouchFile,(char *));
+Str255 VolName;
+int vRef;
+Str255 File;
+FInfo info;
+OSErr macErr;
 #endif
 
 /* construct definitions of object constants */
 
 #ifdef AMIGA
-# define MONST_FILE	 "include:pm.h"
-# define ONAME_FILE	 "include:onames.h"
-# define TRAP_FILE	 "include:trap.h"
-# define DATE_FILE	 "include:date.h"
-# define DATA_FILE	 "auxil:data"
-# define RUMOR_FILE	 "auxil:rumors"
+# define MONST_FILE	 "Incl:pm.h"
+# define ONAME_FILE	 "Incl:onames.h"
+# define TRAP_FILE	 "Incl:trap.h"
+# define DATE_FILE	 "Incl:date.h"
+# define DATA_FILE	 "Auxil:data"
+# define RUMOR_FILE	 "Auxil:rumors"
 #else
 # ifndef MACOS
 /* construct definitions of object constants */
@@ -84,12 +81,34 @@ void rename();
 
 char	in_line[256];
 extern char *FDECL(gets, (char *));
-void do_objs(), do_traps(), do_data(), do_date(), do_permonst(), do_rumors();
-#ifdef SMALLDATA
-void do_monst(), save_resource();
+
+int FDECL(main, (int, char **));
+void NDECL(do_objs);
+void NDECL(do_traps);
+void NDECL(do_data);
+void NDECL(do_date);
+void NDECL(do_permonst);
+void NDECL(do_rumors);
+
+char * FDECL(tmpdup, (const char *));
+
+#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
+void FDECL(rename, (char *, char *));
 #endif
+
+#ifdef SMALLDATA
+void NDECL(do_monst);
+void NDECL(save_resource);
+#endif
+
 char *FDECL(limit, (char *,BOOLEAN_P));
-FILE *FDECL(_freopen, (char *,char *,FILE *));
+
+#if defined(SMALLDATA) && defined(MACOS)
+OSErr FDECL(write_resource, (Handle, short, Str255, short));
+# if defined(AZTEC) || defined(THINKC4)
+int NDECL(getpid);
+# endif
+#endif
 
 int
 main(argc, argv)
@@ -113,14 +132,14 @@ char	*argv[];
 
 	/* standard Mac initialization */
 	InitGraf(&MAINGRAFPORT);
-	
+
 	InitFonts();
 	InitWindows();
 	InitMenus();
 	InitCursor();
 	FlushEvents(everyEvent,0);
 	InitDialogs(NULL);
-	
+
 	params[0] = '-';
 	options = "DVPRTOM";
 	dialog = GetNewDialog(200, 0L, (WindowPtr) -1);
@@ -154,7 +173,7 @@ char	*argv[];
 	if (itemHit == OK_BUTTON && lastItem >= FIRST_RADIO_BUTTON) {
 		argc = 2;
 		option = params;
-	
+
 #else
 	if(argc == 2) {
 	    option = argv[1];
@@ -183,12 +202,12 @@ char	*argv[];
 		case 'r':
 		case 'R':	do_rumors();
 				break;
-#if defined(SMALLDATA) && defined(MACOS)
+#if defined(SMALLDATA)
 		case 'm':
 		case 'M':	do_monst();
 				break;
-		
-#endif	/* SMALLDATA && MACOS */
+
+#endif	/* SMALLDATA */
 
 		default:
 				(void) fprintf(stderr,
@@ -260,7 +279,6 @@ do_traps() {
 void
 do_rumors(){
 	char	infile[30];
-	FILE	*FDECL(freopen, (char *,char *,FILE *));
 	long	true_rumor_size;
 
 	if(freopen(RUMOR_FILE, WRMODE, stdout) == (FILE *)0) {
@@ -294,6 +312,15 @@ do_rumors(){
 
 	(void) fclose(stdin);
 	(void) fclose(stdout);
+#ifdef MACOS
+	strcpy((char *)File, RUMOR_FILE);
+	CtoPstr((char *)File);
+	if(!GetVol(VolName, &vRef) && !GetFInfo(File, vRef, &info)){
+		info.fdCreator = CREATOR;
+		info.fdType = TEXT_TYPE;
+		(void) SetFInfo(File, vRef, &info);
+	}
+#endif
 	return;
 }
 
@@ -321,6 +348,10 @@ do_date(){
 #endif
 	for(c = cbuf; *c != '\n'; c++);	*c = 0; /* strip off the '\n' */
 	Printf("const char datestring[] = \"%s\";\n", cbuf);
+#ifdef MSDOS
+      /* get the time we did a compile for checking save and level files */
+	Printf("const long compiletime = %ld;\n", clock);
+#endif
 
 	(void) fclose(stdout);
 	return;
@@ -329,7 +360,9 @@ do_date(){
 void
 do_data(){
 	char	tempfile[30];
-
+#ifndef INFERNO
+	boolean	skipping_demons = TRUE;
+#endif
 	Sprintf(tempfile, "%s.base", DATA_FILE);
 	if(freopen(tempfile, RDMODE, stdin) == (FILE *)0) {
 		perror(tempfile);
@@ -342,38 +375,76 @@ do_data(){
 	}
 
 	while(gets(in_line) != NULL) {
-#ifndef GOLEMS
-	    if(!strcmp(in_line, "'\ta golem;"))
+#ifndef INFERNO
+	    if(skipping_demons)
+		while(gets(in_line) != NULL && strcmp(in_line, "*centaur"))
+		    ; /* do nothing */
+	    skipping_demons = FALSE;
+#endif
+#ifndef ARMY
+	    if(!strcmp(in_line, "*soldier")) {
+		while(gets(in_line) != NULL && in_line[0] != '\t') ;
 		while(gets(in_line) != NULL && in_line[0] == '\t')
 		    ; /* do nothing */
-#endif
-#ifndef	SPELLS
-	    if(!strcmp(in_line, "+\ta spell book"))
-		; /* do nothing */
-	    else
-#endif
-#ifndef KOPS
-	    if(!strcmp(in_line, "K\ta Keystone Kop"))
-		; /* do nothing */
+	    }
 	    else
 #endif
 #ifndef WORM
-	    if(!strcmp(in_line, "~\tthe tail of a long worm"))
-		; /* do nothing */
+	    if(!strcmp(in_line, "*long worm")) {
+		while(gets(in_line) != NULL && in_line[0] != '\t') ;
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
+	    }
+	    else
+#endif
+#ifndef GOLEMS
+	    if(!strcmp(in_line, "*golem"))
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
+	    else
+#endif
+#ifndef MEDUSA
+	    if(!strcmp(in_line, "medusa"))
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
+	    else
+#endif
+#ifndef NAMED_ITEMS
+	    if(!strcmp(in_line, "snickersnee")
+		|| !strcmp(in_line, "orcrist")
+	      )
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
+	    else
+#endif
+#ifndef TOLKIEN
+	    if(!strcmp(in_line, "hobbit"))
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
 	    else
 #endif
 		(void) puts(in_line);
 	}
 	(void) fclose(stdin);
 	(void) fclose(stdout);
+#ifdef MACOS
+	Strcpy((char *)File, DATA_FILE);
+	CtoPstr((char *)File);
+	if(!GetVol(VolName, &vRef) && !GetFInfo(File, vRef, &info)){
+		info.fdCreator = CREATOR;
+		info.fdType = TEXT_TYPE;
+		(void) SetFInfo(File, vRef, &info);
+	}
+#endif
+
 	return;
 }
 
 void
-do_permonst() {
-
+do_permonst()
+{
 	int	i;
-	char	*c;
+	char	*c, *nam;
 
 	if(freopen(MONST_FILE, WRMODE, stdout) == (FILE *)0) {
 		perror(MONST_FILE);
@@ -384,11 +455,11 @@ do_permonst() {
 
 	for(i = 0; mons[i].mlet; i++) {
 		Printf("\n#define\tPM_");
-		for(c = mons[i].mname; *c; c++) {
+		for(nam = c = tmpdup(mons[i].mname); *c; c++) {
 		    if((*c >= 'a') && (*c <= 'z')) *c -= (char)('a' - 'A');
 		    else if(*c == ' ' || *c == '-')	*c = '_';
 		}
-		Printf("%s\t%d", mons[i].mname, i);
+		Printf("%s\t%d", nam, i);
 	}
 	Printf("\n\n#define\tNUMMONS\t%d\n", i);
 	Printf("\n#endif /* PM_H /**/\n");
@@ -409,15 +480,15 @@ boolean	pref;
 }
 
 void
-do_objs() {
-
-	register int i = 0, sum = 0;
-	register char *c;
+do_objs()
+{
+	int i = 0, sum = 0;
+	char *c, *objnam;
 #ifdef SPELLS
-	register int nspell = 0;
+	int nspell = 0;
 #endif
-	register boolean prefix = 0;
-	register char let = '\0';
+	boolean prefix = 0;
+	char let = '\0';
 	boolean	sumerr = FALSE;
 
 	if(freopen(ONAME_FILE, WRMODE, stdout) == (FILE *)0) {
@@ -428,7 +499,7 @@ do_objs() {
 	Printf("#ifndef ONAMES_H\n#define ONAMES_H\n\n");
 
 	for(i = 0; !i || objects[i].oc_olet != ILLOBJ_SYM; i++) {
-		if (!(c = objects[i].oc_name)) continue;
+		if (!(objnam = tmpdup(objects[i].oc_name))) continue;
 
 		/* make sure probabilities add up to 1000 */
 		if(objects[i].oc_olet != let) {
@@ -442,7 +513,7 @@ do_objs() {
 			sum = 0;
 		}
 
-		for(; *c; c++) {
+		for(c = objnam; *c; c++) {
 		    if((*c >= 'a') && (*c <= 'z')) *c -= (char)('a' - 'A');
 		    else if(*c == ' ' || *c == '-')	*c = '_';
 		}
@@ -464,13 +535,13 @@ do_objs() {
 			/* avoid trouble with stupid C preprocessors */
 			if(objects[i].oc_material == GLASS) {
 			    Printf("/* #define\t%s\t%d */\n",
-							objects[i].oc_name, i);
+							objnam, i);
 			    continue;
 			}
 		    default:
 			Printf("#define\t");
 		}
-		Printf("%s\t%d\n", limit(objects[i].oc_name, prefix), i);
+		Printf("%s\t%d\n", limit(objnam, prefix), i);
 		prefix = 0;
 
 		sum += objects[i].oc_prob;
@@ -484,6 +555,17 @@ do_objs() {
 	(void) fclose(stdout);
 	if (sumerr) exit(1);
 	return;
+}
+
+char *
+tmpdup(str)
+const char *str;
+{
+	static char buf[128];
+
+	if (!str) return (char *)0;
+	(void)strncpy(buf, str, 127);
+	return buf;
 }
 
 #if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
@@ -536,7 +618,7 @@ getpid()
 #endif /* MSDOS */
 
 
-#if defined(SMALLDATA) && defined(MACOS)
+#if defined(SMALLDATA)
 void
 do_monst()
 {
@@ -548,12 +630,12 @@ do_monst()
 	Str255	name;
 	short	findNamedFile();
 	OSErr	write_resource();
-	
+
 	for(i = 0; mons[i].mlet; i++) {
 		;
 	}
 	i++;
-	
+
 	/*
 	 * convert to struct where character arrays instead of pointers to
 	 * strings are used
@@ -564,16 +646,16 @@ do_monst()
 		BlockMove(&(mons[j].mlet), &(pmMonst[j].pmp.mlet),
 				(long)sizeof(struct pmpart));
 	}
-	
+
 	PtrToHand((Ptr)pmMonst, &monstData, (long)(i * sizeof(struct pmstr)));
-	
+
 	/* store the object data, in Nethack the char * will be copied in */
 	for(i = 0; !i || objects[i].oc_olet != ILLOBJ_SYM; i++) {
 		;
 	}
 	PtrToHand((Ptr)objects, &objData, ((i+1)*sizeof(struct objclass)));
 
-	strcpy((char *)&name[0], "\014Nethack.rsrc");
+	strcpy((char *)&name[0], "\010NH3.rsrc");
 	if (findNamedFile(&name[1], 0, &reply)) {
 	    strncpy((char *)&name[0],(char *)&reply.fName[0], reply.fName[0]+1);
 	    if ((refNum = OpenResFile(name)) != -1) {
@@ -581,14 +663,14 @@ do_monst()
 		    strcpy((char *)&name[0], "\012MONST_DATA");
 		    if (error = write_resource(monstData,
 						MONST_DATA, name, refNum)) {
-		    	SysBeep(1);
-		    	Printf("Couldn't add monster data resource.\n");
+			SysBeep(1);
+			Printf("Couldn't add monster data resource.\n");
 		    }
 		    strcpy((char *)&name[0], "\013OBJECT_DATA");
 		    if (error = write_resource(objData,
 						OBJECT_DATA, name, refNum)) {
-		    	SysBeep(1);
-		    	Printf("Couldn't add object data resource.\n");
+			SysBeep(1);
+			Printf("Couldn't add object data resource.\n");
 		    }
 		    CloseResFile(refNum);
 		    if (ResError() != noErr) {
@@ -598,10 +680,59 @@ do_monst()
 		}
 	    }
 	}
-	
+
 	DisposHandle(monstData);
 	DisposHandle(objData);
+
+	vRef = reply.vRefNum;
+	(void) TouchFile(SHELP);
+	(void) TouchFile(HELP);
+#ifdef NEWS
+	(void) TouchFile("news");
+#endif
+	if(!TouchFile(RECORD))
+		(void) Create(File, vRef, CREATOR, TEXT_TYPE);
+
+	(void) TouchFile(CMDHELPFILE);
+	(void) TouchFile(HISTORY);
+	(void) TouchFile(OPTIONFILE);
+#ifdef ORACLE
+	(void) TouchFile(ORACLEFILE);
+#endif
+	(void) TouchFile(LICENSE);
+#ifdef MACOS
+	(void) TouchFile(MACHELP);
+#endif
 }
+
+Boolean
+TouchFile(fname)
+char *fname;
+{
+	SFReply	reply;
+	short	findNamedFile();
+
+	Strcpy((char *)File, fname);
+	CtoPstr((char *)File);
+	File[File[0]+1] = 0;
+	reply.good = TRUE;
+	if(GetFInfo(File, vRef, &info)){
+		findNamedFile(&File[1], 2, &reply);
+		if(reply.good){
+			vRef = reply.vRefNum;
+			GetFInfo(File, vRef, &info);
+		}
+	}
+	if(reply.good){
+		info.fdCreator = CREATOR;
+		info.fdType = TEXT_TYPE;
+		(void) SetFInfo(File, vRef, &info);
+	}
+
+	return(reply.good);
+}
+
+
 
 OSErr
 write_resource(data, resID, resName, refNum)
@@ -625,8 +756,8 @@ short	refNum;
 			error = ResError();
 		}
 		if (error != noErr) {
-    		return error;
-    	}
+			return error;
+		}
 	} else if (ResError() != resNotFound && ResError() != noErr) {
 			return (ResError());
 	}
@@ -645,4 +776,4 @@ getpid()
 	return 1;
 }
 # endif
-#endif	/* SMALLDATA && MACOS */
+#endif	/* SMALLDATA */

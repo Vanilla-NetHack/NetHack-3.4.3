@@ -1,7 +1,11 @@
-#	SCCS Id: @(#)Makefile.st	3.0	89/07/07
+#	SCCS Id: @(#)Makefile.st	3.0	90/01/14
 #	ST NetHack 3.0 Makefile for GCC 1.34 or higher
 #
-#    NOTE: There's one really awful kludge here: I had to break
+#    NOTE: There's a bug in the GCC 1.35 (and maybe 1.34) that
+#    requires the omission of the -O flag on a couple of files;
+#    see the comments further down.
+#
+#    Also: There's one really awful kludge here: I had to break
 #    monst.o up into two pieces to get it to compile on my machine
 #    (a Mega 2). You'll need "sed" to get this to work.
 #    If you have 2.5 megs or more, you can probably delete the
@@ -26,12 +30,19 @@ INCL	= ..\include
 AUX	= ..\auxil
 SRC	= ..\src
 
-CFLAGS	= $(MODEL) -O -fomit-frame-pointer -I..\include
+#
+# Use the following line for maximum warnings
+WARN=-D__GNULINT__ -W -Wimplicit -Wreturn-type -Wunused -Wpointer-arith \
+ -Wcast-qual -Wwrite-strings
+#
+# WARN =
+#
+CFLAGS = $(MODEL) -O -fomit-frame-pointer $(WARN) -I..\include
 LFLAGS	= $(MODEL) -s
 TARG	= tos
 PC	= pc
 
-# Optional high-quality BSD random number generation routines (see pcconf.h).
+# Optional high-quality BSD random number generation routines (see tosconf.h).
 # Set to nothing if not used.
 RANDOM = random.o
 
@@ -90,10 +101,7 @@ HACK_H	   = $(CONFIG_H) $(DECL_H) $(INCL)\monsym.h $(INCL)\mkroom.h \
 $(GAME).ttp: $(HOBJ)
 	$(CC) -o $(GAME).ttp $(LFLAGS) $(HOBJ) $(TERMCAP)
 
-$(GAMEDIR)\$(GAME).ttp: $(GAME).ttp
-	cp $(GAME).ttp $(GAMEDIR)
-
-$(GAME): $(GAMEDIR)\$(GAME).ttp
+$(GAME): $(GAME).ttp
 
 all:	$(GAME) lev_comp.ttp auxil
 	@echo Done.
@@ -117,7 +125,7 @@ lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
 #
 # Also: for some reason the supplied lev_lex.c causes the GCC to abort
 # on my machine (maybe not enough memory?) when compiled with -mshort.
-# With MODEL=-mshort, I had to delete lev_lex.c and use these rules.
+# With MODEL=-mshort, I had to use the lev_lex.c from others.
 #
 lev_comp.c:  lev_comp.y
 	$(YACC) -d lev_comp.y
@@ -166,15 +174,15 @@ unix.o:   $(HACK_H) $(PC)unix.c
 	$(CC) -c $(CFLAGS) $(PC)unix.c -o unix.o
 
 #
-# GNU C doesn't like the array in rip.c!!!
-rip.o:   $(HACK_H) 
-	$(CC) -c $(CFLAGS) -fwritable-strings rip.c
+# GCC 1.35 has trouble with the construct
+#	for (x = ...) for(y = ...) levl[x][y].foo = stuff;
+# this happens in (at least) bones.c and shknam.c. So if you're using
+# 1.35, uncomment the following lines. The problem is fixed in 1.36.
 #
-# GCC 1.35 + bones.c + -mshort + -O == incorrect code. Don't ask me why.
-# So we just omit the -O on bones.c
-#
-bones.o: $(HACK_H)
-	$(CC) -c $(MODEL) -I$(INCL) bones.c
+#bones.o: $(HACK_H)
+#	$(CC) $(MODEL) $(WARN) -I$(INCL) -c bones.c
+#shknam.o: $(HACK_H) $(INCL)\eshk.h
+#	$(CC) $(MODEL) $(WARN) -I$(INCL) -c shknam.c
 #
 # Secondary targets
 #
@@ -221,7 +229,7 @@ alloc.o:  $(CONFIG_H)
 apply.o:  $(HACK_H) $(INCL)\edog.h
 artifact.o:  $(HACK_H) $(INCL)\artifact.h
 attrib.o:  $(HACK_H)
-#bones.o:  $(HACK_H)
+bones.o:  $(HACK_H)
 cmd.o:  $(HACK_H) $(INCL)\func_tab.h
 dbridge.o: $(HACK_H)
 decl.o:  $(HACK_H)
@@ -261,7 +269,7 @@ monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 # kludge for "monst.c: Virtual memory exhausted" errors
 # we build monst.s in two pieces, then glue them together with
 # "sed". if you don't have memory problems, uncomment out
-# all but the next line. if you don't have sed, get it from
+# all but the line starting "monst.o:". if you don't have sed, get it from
 # a comp.binaries.atari.st site, or get gnu sed (the port to
 # the atari GCC is easy).
 
@@ -291,7 +299,7 @@ prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 random.o:
 read.o:  $(HACK_H)
 restore.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
-#rip.o:  $(HACK_H)
+rip.o:  $(HACK_H)
 rnd.o:  $(HACK_H)
 rumors.o:  $(HACK_H)
 save.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
@@ -308,7 +316,7 @@ timeout.o:  $(HACK_H)
 topl.o:  $(HACK_H)
 topten.o:  $(HACK_H)
 track.o:  $(HACK_H)
-trap.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\trapname.h
+trap.o:  $(HACK_H) $(INCL)\edog.h
 u_init.o:  $(HACK_H)
 uhitm.o:  $(HACK_H) $(INCL)\artifact.h
 vault.o:  $(HACK_H) $(INCL)\vault.h

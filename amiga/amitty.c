@@ -46,8 +46,12 @@ void error VA_DECL(char *, s)
 	VA_INIT(s, char *);
 	end_screen();
 	putchar('\n');
-	vprintf(s,VA_ARGS);
+
+        {char buf[180];
+	vsprintf(buf,s,VA_ARGS);
+        printf(buf);
+        }	/* Overloaded */
 	putchar('\n');
 	VA_END();
-	abort(1);
+	Abort(0L);
 }

@@ -1,5 +1,5 @@
-;	SCCS Id: @(#)ovlmgr.asm 	3.0	89/11/16
-;  Copyright (c) Pierre Martineau and Stephen Spackman, 1989.
+;	SCCS Id: @(#)ovlmgr.asm 	3.0.624	90/02/18
+;  Copyright (c) Pierre Martineau and Stephen Spackman, 1989, 1990.
 ;  This product may be freely redistributed.  See NetHack license for details.
 
 		PAGE	60,132
@@ -15,41 +15,41 @@
 
 ; assumptions:	      - all registers are preserved including flags
 ;		      - the stack is preserved
-;		      - re-entrancy is not required
+;		      - re-entrancy is not rEQUired
 
-DOSALLOC	equ	48h			; memory allocation
-DOSFREE 	equ	49h			; free allocated memory
-DOSREALLOC	equ	4ah			; modify memory block
-DOSREAD 	equ	3fh			; read bytes from handle
-DOSSEEK 	equ	42h			; logical handle seek
-DOSOPEN 	equ	3dh			; open handle
-DOSCLOSE	equ	3eh			; close handle
-DOSGETVEC	equ	35h			; get interrupt vector
-DOSSETVEC	equ	25h			; set interrupt vector
-DOSEXEC 	equ	4bh			; exec child process
-DOS		equ	21h			; Dos interrupt #
-PRINT		equ	09h			; print string
-TERMINATE	equ	4ch			; terminate process
-CR		equ	0dh
-LF		equ	0ah
-BELL		equ	07h
-FAERIE		equ	0h			; Used for dummy segment allocation
-PARSIZ		equ	10h			; this is the size of a paragraph - this better not change!
+DOSALLOC	EQU	48h			; memory allocation
+DOSFREE 	EQU	49h			; free allocated memory
+DOSREALLOC	EQU	4ah			; modify memory block
+DOSREAD 	EQU	3fh			; read bytes from handle
+DOSSEEK 	EQU	42h			; logical handle seek
+DOSOPEN 	EQU	3dh			; open handle
+DOSCLOSE	EQU	3eh			; close handle
+DOSGETVEC	EQU	35h			; get interrupt vector
+DOSSETVEC	EQU	25h			; set interrupt vector
+DOSEXEC 	EQU	4bh			; exec child process
+DOS		EQU	21h			; Dos interrupt #
+PRINT		EQU	09h			; print string
+TERMINATE	EQU	4ch			; terminate process
+CR		EQU	0dh
+LF		EQU	0ah
+BELL		EQU	07h
+FAERIE		EQU	0h			; Used for dummy segment allocation
+PARSIZ		EQU	10h			; this is the size of a paragraph - this better not change!
 
-; The following extrns are supplied by the linker
+; The following EXTRNs are supplied by the linker
 
-extrn		$$OVLBASE:byte			; segment of OVERLAY_AREA
-extrn		$$MPGSNOVL:byte 		; ^ to module table
-extrn		$$MPGSNBASE:word		; ^ to module segment fixups
-extrn		$$INTNO:byte			; interrupt number to be used
-extrn		$$COVL:word			; number of physical overlays
-extrn		$$CGSN:word			; number of modules
-extrn		$$MAIN:far			; ^ to function main()
+EXTRN		$$OVLBASE:BYTE			; segment of OVERLAY_AREA
+EXTRN		$$MPGSNOVL:BYTE 		; ^ to module table
+EXTRN		$$MPGSNBASE:WORD		; ^ to module segment fixups
+EXTRN		$$INTNO:BYTE			; interrupt number to be used
+EXTRN		$$COVL:WORD			; number of physical overlays
+EXTRN		$$CGSN:WORD			; number of modules
+EXTRN		$$MAIN:FAR			; ^ to function main()
 
-public		$$OVLINIT			; Our entry point
+PUBLIC		$$OVLINIT			; Our entry point
 						; called by the c startup code
 
-ovlflgrec	record	running:1=0,locked:1=0,loaded:1=0 ; overlay flags
+ovlflgrec	RECORD	running:1=0,locked:1=0,loaded:1=0 ; overlay flags
 
 ; This is a dirty hack. What we need is a virtual segment that will be built
 ; by the (our) loader in multiple copies, one per overlay. Unfortunately, this
@@ -63,103 +63,103 @@ ovlflgrec	record	running:1=0,locked:1=0,loaded:1=0 ; overlay flags
 ; practise because it is 86-mode specific, but the *need* for this entire
 ; programme is 86-mode specific, anyway.
 
-pspseg		segment para at FAERIE		; dummy segment for psp
-		org	2ch			; ^ to segment of environmemt in psp
+pspseg		SEGMENT PARA AT FAERIE		; dummy segment for psp
+		ORG	2ch			; ^ to segment of environmemt in psp
 pspenv		LABEL	WORD
-pspseg		ends
+pspseg		ENDS
 
-ovltbl		segment para at FAERIE		; Dummy segment definition for overlay table
+ovltbl		SEGMENT PARA AT FAERIE		; Dummy segment definition for overlay table
 
 ; NOTE: This segment definition MUST be exactly 16 bytes long
 
 ovlflg		ovlflgrec	<0,0,0> 	; overlay flags
-ovltblpad1	db	?			; go ahead, delete me!
-ovlmemblk	dw	?			; ^ to allocated memory block
-ovlseg		dw	0			; ovl segment physical add.
-ovlfiloff	dw	?			; ovl file offset in pages (512 bytes)
-ovlsiz		dw	?			; ovl size in paragraphs
-ovllrudat	dd	0			; misc lru data (pseudo time stamp)
-ovltblpad2	dw	?			; go ahead, delete me!
+ovltblpad1	DB	?			; go ahead, delete me!
+ovlmemblk	DW	?			; ^ to allocated memory block
+ovllrudat	DD	?			; misc lru data (pseudo time stamp)
+ovlseg		DW	?			; ovl segment physical add.
+ovlfiloff	DW	?			; ovl file offset in pages (512 bytes)
+ovlsiz		DW	?			; ovl size in paragraphs
+ovltblpad	DB	PARSIZ - ($ - ovlflg) MOD PARSIZ DUP (?) ; pad to 16 bytes
 
-if1
-if		$ gt PARSIZ
-		.err
-		%out This segment MUST be no more than 16 bytes, REALLY!!!
-endif
-endif
+IF1
+IF		($ - ovlflg) GT PARSIZ
+		.ERR
+		%OUT This segment MUST be no more than 16 bytes, REALLY!!!
+ENDIF
+ENDIF
 
-ovlsegsiz	equ	PARSIZ			; this had better be true!!! (16 bytes)
+OVLSEGSIZ	EQU	PARSIZ			; this had better be true!!! (16 bytes)
 
-ovltbl		ends
+ovltbl		ENDS
 
-EXEHDR		struc				; structure of an EXE header
-exesign 	dw	5a4dh			; signature
-exelstpgesiz	dw	?			; last page size (512 byte pages)
-exesiz		dw	?			; total pages (including partial last page)
-relocitems	dw	?			; number of relocation entries
-hdrparas	dw	?			; number of paragraphs in the header
-minalloc	dw	?			; minimum paragraph allocation
-maxalloc	dw	?			; maximum patagraph allocation
-exess		dw	?			; initial stack segment
-exesp		dw	?			; initial stack pointer
-exechksum	dw	?			; checksum
-exeip		dw	?			; initial instruction pointer
-execs		dw	?			; initial code segment
-reloctbloff	dw	?			; offset from beginning of header to relocation table
-exeovlnum	dw	?			; overlay number
-EXEHDR		ends
+EXEHDR		STRUC				; structure of an EXE header
+exesign 	DW	5a4dh			; signature
+exelstpgesiz	DW	?			; last page size (512 byte pages)
+exesiz		DW	?			; total pages (including partial last page)
+relocitems	DW	?			; number of relocation entries
+hdrparas	DW	?			; number of paragraphs in the header
+minalloc	DW	?			; minimum paragraph allocation
+maxalloc	DW	?			; maximum patagraph allocation
+exess		DW	?			; initial stack segment
+exesp		DW	?			; initial stack pointer
+exechksum	DW	?			; checksum
+exeip		DW	?			; initial instruction pointer
+execs		DW	?			; initial code segment
+reloctbloff	DW	?			; offset from beginning of header to relocation table
+exeovlnum	DW	?			; overlay number
+EXEHDR		ENDS
 
-MASK_used	equ	1			; memory block flag
+MASK_used	EQU	1			; memory block flag
 
-memctlblk	struc				; memory block structure
-memblkflg	db	0			; flags
-memblkpad1	db	0			; go ahead, delete me!
-memblknxt	dw	0			; ^ to next block
-memblkprv	dw	0			; ^ to previous block
-memblkovl	dw	0			; ^ to overlay occupying this block
-memblksiz	dw	0			; size in paragraphs
-memblkpad	db	PARSIZ - ($ - memblkflg) mod parsiz dup (?) ; pad to 16 bytes
-memctlblk	ends
+MEMCTLBLK	STRUC				; memory block structure
+memblkflg	DB	?			; flags
+memblkpad1	DB	?			; go ahead, delete me!
+memblknxt	DW	?			; ^ to next block
+memblkprv	DW	?			; ^ to previous block
+memblkovl	DW	?			; ^ to overlay occupying this block
+memblksiz	DW	?			; size in paragraphs
+memblkpad	DB	PARSIZ - memblkpad MOD PARSIZ DUP (?) ; pad to 16 bytes
+MEMCTLBLK	ENDS
 
-memctlblksiz	equ	memblkpad + SIZE memblkpad ; should equal 1 paragraph (16 bytes)
+MEMCTLBLKSIZ	EQU	TYPE MEMCTLBLK / PARSIZ ; should equal 1 paragraph
 
 ;-------------------------------------------------------------------------------
 
-code		segment public
+code		SEGMENT PUBLIC
 
-ovlexefilhdl	dw	-1			; always-open file handle of our .EXE
-ovltim		dd	0			; pseudo-lru time variable
-curovl		dw	offset framestk 	; ^ into stack frame
-ovlcnt		dw	0			; # overlays
-modcnt		dw	0			; # of modules
-ovltblbse	dw	-1			; segment of first overlay descriptor
-ovlrootcode	dw	0			; logical segment of OVERLAY_AREA
-ovldata 	dw	0			; logical segment of OVERLAY_END
-memblk1st	dw	0			; first memory block
-pspadd		dw	0			; our psp address + 10h (for relocations)
-oldvec		dd	-1			; saved interrupt vector
-oldint21	dd	-1			; saved int 21 vector
-memstat 	db	0ffh			; must we re-allocate some memory
-bxreg		dw	0			; temp save area
-esreg		dw	0			; temp save area
-farcall 	dd	0			; internal trampoline.
+; NOTE: the following order is optimum for alignement purposes accross the
+;	entire INTEL 80x86 family of processors.
+
+ovltim		DD	?			; pseudo-lru time variable
+farcall 	DD	?			; internal trampoline.
+oldvec		DD	-1			; saved interrupt vector
+oldint21	DD	-1			; saved int 21 vector
+ovlexefilhdl	DW	-1			; always-open file handle of our .EXE
+ovltblbse	DW	-1			; segment of first overlay descriptor
+ovlcnt		DW	?			; # overlays
+modcnt		DW	?			; # of modules
+ovlrootcode	DW	?			; logical segment of OVERLAY_AREA
+ovldata 	DW	?			; logical segment of OVERLAY_END
+memblk1st	DW	?			; first memory block
+pspadd		DW	?			; our psp address + 10h (for relocations)
+bxreg		DW	?			; temp save area
+esreg		DW	?			; temp save area
+moduletbl	DD	256 DUP (?)		; module lookup table (256 modules)
+curovl		DW	OFFSET stkframe 	; ^ into stack frame
+stkframe	DW	64*3 DUP (?)		; internal stack (64 ovls deep)
 hdr		EXEHDR	<>			; EXE header work area
-hdrsize 	equ	$ - hdr
+intnum		DB	?			; overlay interrupt number
 
-framestk	dw	100h dup (0)		; internal stack
-
-moduletbl	dw	256*2 dup (0)		; module lookup table
-
-noroom		db	CR,LF,'Not enough memory to run this program.  Time to go to the store.',CR,LF,BELL,'$'
-nocore		db	CR,LF,'Your dog eats all your remaining memory!  You die.',CR,LF,BELL,'$'
-nofile		db	CR,LF,'The Nymph stole your .EXE file!  You die.',CR,LF,BELL,'$'
-exitmsg 	db	CR,LF,'$'
+noroom		DB	CR,LF,'Not enough memory to run this program. Time to go to the store.',CR,LF,BELL,'$'
+nocore		DB	CR,LF,'Your dog eats all your remaining memory! You die.',CR,LF,BELL,'$'
+nofile		DB	CR,LF,'The Nymph stole your .EXE file! You die.',CR,LF,BELL,'$'
+exitmsg 	DB	CR,LF,'$'
 
 ;-------------------------------------------------------------------------------
 
-$$OVLINIT	proc	far			; Init entry point
+$$OVLINIT	PROC	FAR			; Init entry point
 
-		assume	cs:code,ds:pspseg,es:nothing
+		ASSUME	CS:code,DS:pspseg,ES:NOTHING
 
 		push	ax
 		push	bx
@@ -177,7 +177,7 @@ $$OVLINIT	proc	far			; Init entry point
 		mov	si,-1
 envloop:					; search for end of environment
 		inc	si
-		cmp	word ptr [si],0
+		cmp	WORD PTR [si],0
 		jnz	envloop
 		add	si,4			; point to EXE filename
 		mov	al,0			; access code
@@ -186,7 +186,7 @@ envloop:					; search for end of environment
 		int	DOS			; open EXE
 		jnc	dontdie
 		mov	al,5
-		mov	dx,offset nofile
+		mov	dx,OFFSET nofile
 		jmp	putserr 		; cry to the world!
 dontdie:
 		mov	ovlexefilhdl,ax 	; save handle
@@ -209,7 +209,6 @@ getmore:
 		jnc	gotitall
 		jmp	buyram
 gotitall:
-		mov	memstat,0		; indicate that we have memory
 		mov	ovltblbse,ax		; overlay descriptor table begins at start of memory block
 		mov	ax,SEG $$COVL		; segment of DGROUP
 		mov	ds,ax
@@ -228,7 +227,7 @@ memloop:
 		jmp	buyram
 cockadoodledoo:
 
-		assume	es:ovltbl
+		ASSUME	ES:ovltbl
 
 		xor	bp,bp
 		xor	di,di
@@ -239,8 +238,8 @@ filsegtbllpp:					; initialise ovl table
 		add	ax,hdr.exeovlnum
 		mov	es,ax			; ^ to ovl table entry
 		xor	ax,ax
-		mov	word ptr ovllrudat,ax	; initialise ovl lru
-		mov	word ptr ovllrudat+2,ax
+		mov	WORD PTR ovllrudat,ax	; initialise ovl lru
+		mov	WORD PTR ovllrudat+2,ax
 		mov	ovlseg,ax		; initialise ovl segment
 		mov	ovlflg,al		; initialise ovl flags
 		mov	ax,hdr.exesiz
@@ -289,7 +288,7 @@ notlargest:
 makmemblk:
 		push	si			; contains largest ovl size in paragraphs
 
-		assume	es:nothing		; prepare first two memory blocks
+		ASSUME	ES:nothing		; prepare first two memory blocks
 						; OVERLAY_AREA and allocated memory block
 		mov	ax,ovlrootcode		; OVERLAY_AREA segment
 		mov	es,ax
@@ -309,12 +308,12 @@ makmemblk:
 		pop	bx
 		mov	es:memblksiz,bx 	; allocated memory block size less ovl table
 		mov	memblk1st,ax		; save pointer to first mem block
-		mov	word ptr ovltim,0	; initialise global lru time stamp
-		mov	word ptr ovltim+2,0
-		mov	ax,offset framestk
+		mov	WORD PTR ovltim,0	; initialise global lru time stamp
+		mov	WORD PTR ovltim+2,0
+		mov	ax,OFFSET stkframe
 		mov	curovl,ax		; initialise stack frame pointer
 		mov	di,ax
-		mov	word ptr cs:[di],-1	; initialise stack frame
+		mov	WORD PTR cs:[di],-1	; initialise stack frame
 		add	di,6
 		mov	ax,ovltblbse
 		mov	cs:[di],ax
@@ -333,20 +332,19 @@ chgintvec:
 		mov	ds,ax
 		mov	ah,DOSGETVEC
 		mov	al,$$INTNO		; get int number to use
+		mov	intnum,al
 		int	DOS			; get original vector
-		mov	word ptr oldvec,bx	; save original vector
-		mov	word ptr oldvec+2,es
+		mov	WORD PTR oldvec,bx	; save original vector
+		mov	WORD PTR oldvec+2,es
 
 		mov	ah,DOSGETVEC
 		mov	al,21h
 		int	DOS			; get original vector
-		mov	word ptr oldint21,bx	; save original vector
-		mov	word ptr oldint21+2,es
+		mov	WORD PTR oldint21,bx	; save original vector
+		mov	WORD PTR oldint21+2,es
 
-		mov	ax,SEG $$INTNO
-		mov	ds,ax
 		mov	ah,DOSSETVEC
-		mov	al,$$INTNO
+		mov	al,intnum
 		mov	bx,cs
 		mov	ds,bx
 		mov	dx,OFFSET ovlmgr	; point to ovlmgr
@@ -365,11 +363,11 @@ chgintvec:
 		mov	ax,cs
 		mov	ds,ax
 
-		assume	ds:code
+		ASSUME	DS:code
 
-		mov	bx,offset $$MPGSNBASE	; ^ to linker provided overlay segment fixups
-		mov	si,offset $$MPGSNOVL	; ^ to linker provided module table
-		mov	di,offset moduletbl	; ^ to our module table
+		mov	bx,OFFSET $$MPGSNBASE	; ^ to linker provided overlay segment fixups
+		mov	si,OFFSET $$MPGSNOVL	; ^ to linker provided module table
+		mov	di,OFFSET moduletbl	; ^ to our module table
 modloop:
 		mov	al,es:[si]		; real physical ovl number
 		xor	ah,ah
@@ -394,13 +392,13 @@ modloop:
 		pop	ax			; restore the world
 		jmp	$$MAIN			; And away we go!
 
-$$OVLINIT	endp
+$$OVLINIT	ENDP
 
 ;-------------------------------------------------------------------------------
 
-ovlmgr		proc	far			; This the it!
+ovlmgr		PROC	FAR			; This the it!
 
-		assume cs:code,ds:nothing,es:nothing
+		ASSUME CS:code,DS:NOTHING,ES:NOTHING
 
 		mov	bxreg,bx		; preserve bx
 		mov	esreg,es		; and es
@@ -409,7 +407,7 @@ ovlmgr		proc	far			; This the it!
 		push	ax
 		push	si
 		mov	ax,es:[bx+1]		; offset in ovl to call
-		mov	word ptr farcall,ax	; into trampoline
+		mov	WORD PTR farcall,ax	; into trampoline
 		xor	ah,ah
 		mov	al,es:[bx]		; module # to call
 		add	bx,3			; fix return address
@@ -420,24 +418,26 @@ ovlmgr		proc	far			; This the it!
 		mov	bx,ax
 		shl	bx,1
 		shl	bx,1			; * 4 (2 words/entry in module tbl)
-		add	bx,offset moduletbl
+		add	bx,OFFSET moduletbl
 		mov	es,cs:[bx]		; ovl tbl entry
 		mov	ax,cs:[bx+2]		; segment fixup
 		mov	cs:[si+6],es		; ovl entry into stack frame
 		add	curovl,6		; update stack
 
-		assume	es:ovltbl
+		ASSUME	ES:ovltbl
 
 		mov	si,WORD PTR ovltim	; lru time stamp
 		inc	si			; time passes!
 		mov	WORD PTR ovltim,si	; update global clock
 		mov	WORD PTR ovllrudat,si	; as well as ovl clock
+		mov	si,WORD PTR ovltim+2	; high order word
 		jz	ininc			; dword increment
-cryupcdon:	test	ovlflg,mask loaded	; ovl loaded?
+cryupcdon:	mov	WORD PTR ovllrudat+2,si
+		test	ovlflg,mask loaded	; ovl loaded?
 		jz	inload			; load it then.
 ovlloadedupc:
 		add	ax,ovlseg		; add fixup and segment address
-		mov	word ptr farcall+2,ax	; into trampoline
+		mov	WORD PTR farcall+2,ax	; into trampoline
 		mov	bx,bxreg		; retore all registers
 		mov	es,esreg
 		pop	si
@@ -456,8 +456,10 @@ ovlloadedupc:
 		inc	cx
 		mov	WORD PTR ovltim,cx
 		mov	WORD PTR ovllrudat,cx
+		mov	cx,WORD PTR ovltim+2
 		jz	outinc
-crydncdon:	test	ovlflg,mask loaded	; ovl loaded?
+crydncdon:	mov	WORD PTR ovllrudat+2,cx
+		test	ovlflg,mask loaded	; ovl loaded?
 		jz	outload 		; better get it before someone notices
 jmpback:
 		sub	curovl,6		; adjust stack
@@ -467,10 +469,8 @@ jmpback:
 		iret				; and GO back
 
 ininc:
-		mov	si,WORD PTR ovltim+2	; high word of lru
 		inc	si
-		mov	WORD PTR ovltim+2,si	; update global and
-		mov	WORD PTR ovllrudat+2,si ; ovl clocks
+		mov	WORD PTR ovltim+2,si	; update global clock
 		jmp	cryupcdon
 
 inload:
@@ -478,23 +478,21 @@ inload:
 		jmp	ovlloadedupc
 
 outinc:
-		mov	cx,WORD PTR ovltim+2
 		inc	cx
 		mov	WORD PTR ovltim+2,cx
-		mov	WORD PTR ovllrudat+2,cx
 		jmp	crydncdon
 
 outload:
 		call	loadoverlay
 		jmp	jmpback
 
-ovlmgr		endp
+ovlmgr		ENDP
 
 ;-------------------------------------------------------------------------------
 
-loadoverlay	proc	near			; load overlay pointed to by es
+loadoverlay	PROC	NEAR			; load overlay pointed to by es
 
-		assume	cs:code,ds:nothing,es:ovltbl
+		ASSUME	CS:code,DS:NOTHING,ES:ovltbl
 
 		push	ax
 		push	bx
@@ -505,10 +503,6 @@ loadoverlay	proc	near			; load overlay pointed to by es
 		push	bp
 		push	ds
 		push	es			; just in case
-		cmp	memstat,0
-		jz	dontrealloc
-		call	reallocmem
-dontrealloc:
 		call	setrunning		; set the running flags
 		test	ovlflg,MASK running	; was it already running?
 		jnz	fxdadr			; Yup, it's a toughie
@@ -519,7 +513,7 @@ fxdadr:
 		call	releasepages		; free memory where this ovl should be loaded
 gleaner:
 		mov	ovlmemblk,ax		; memory block to use
-		add	ax,memctlblksiz / PARSIZ; skip mem ctl blk
+		add	ax,MEMCTLBLKSIZ 	; skip mem ctl blk
 		mov	ds,ax
 		mov	dx,ovlfiloff		; where in the file is it?
 		mov	cl,dh
@@ -557,16 +551,16 @@ gleaner:
 
 burnhead:
 		mov	al,5
-		mov	dx,offset nofile
+		mov	dx,OFFSET nofile
 		jmp	putserr
 
-loadoverlay	endp
+loadoverlay	ENDP
 
 ;-------------------------------------------------------------------------------
 
-ovlrlc		proc	near			; ds:0 -> the overlay to relocate
+ovlrlc		PROC	NEAR			; ds:0 -> the overlay to relocate
 
-		assume	cs:code,ds:nothing,es:ovltbl
+		ASSUME	CS:code,DS:NOTHING,ES:ovltbl
 
 		mov	cx,ds:relocitems	; roto-count
 		mov	ax,ds
@@ -595,13 +589,13 @@ reloccomputed:
 		loop	dorelocs		; what goes around, comes around.
 relocdone:	ret
 
-ovlrlc		endp
+ovlrlc		ENDP
 
 ;-------------------------------------------------------------------------------
 
-getvictim	proc	near			; select a victim to discard (and free up some memory)
+getvictim	PROC	NEAR			; select a victim to discard (and free up some memory)
 
-		assume	cs:code,ds:ovltbl,es:nothing
+		ASSUME	CS:code,DS:ovltbl,ES:NOTHING
 
 		push	bx
 		push	cx
@@ -615,30 +609,6 @@ getvictim	proc	near			; select a victim to discard (and free up some memory)
 		mov	dx,ax			; will contain the high word of lru
 		mov	bp,ax			; will contain ovl tbl entry
 		mov	bx,ax			; ovl tbl ptr
-;		 mov	 cx,ovlcnt		 ; number of ovl's to scan
-;foon:		 test	 ovlflg[bx],MASK loaded  ; is this one loaded?
-;		 jz	 skip			 ; nope, try next one
-;		 test	 ovlflg[bx],MASK locked  ; is this one loacked?
-;		 jnz	 skip			 ; yup, try next one
-;		 test	 ovlflg[bx],MASK running ; is this one running?
-;		 jnz	 skip			 ; yup, try next one
-;		 mov	 si,WORD PTR ovltim	 ; get global lru
-;		 mov	 di,WORD PTR ovltim+2
-;		 sub	 si,WORD PTR ovllrudat[bx] ; subtract from ovl lru
-;		 sbb	 di,WORD PTR ovllrudat[bx+2]
-;		 cmp	 dx,di			 ; is this one older?
-;		 jc	 better 		 ; it sure is
-;		 jnz	 skip			 ; it definitely isn't
-;		 cmp	 ax,si
-;		 jnc	 skip			 ; it really isn't
-;better:	 mov	 ax,si			 ; save the lru stuff and ovl ptr
-;		 mov	 dx,di
-;		 mov	 bp,bx
-;skip:		 add	 bx,ovlsegsiz		 ; do next ovl
-;		 loop	 foon
-;		 or	 bp,bp			 ; did we find anyone to kill?
-;		 jnz	 gotvictim		 ; yes we did, partner.
-;		 xor	 bx,bx			 ; Oh well, do it again disregarding the running flag
 		mov	cx,ovlcnt
 foon1:		test	ovlflg[bx],MASK loaded
 		jz	skip1
@@ -656,13 +626,13 @@ foon1:		test	ovlflg[bx],MASK loaded
 better1:	mov	ax,si
 		mov	dx,di
 		mov	bp,bx
-skip1:		add	bx,ovlsegsiz
+skip1:		add	bx,OVLSEGSIZ
 		loop	foon1
 		or	bp,bp			; were we more successful this time?
 		jnz	gotvictim		; now we got one.
 nomoremem:
 		mov	al,5			; were really %$# now!
-		mov	dx,offset nocore
+		mov	dx,OFFSET nocore
 		jmp	putserr
 gotvictim:
 		shr	bp,1			; convert offset to segment
@@ -679,20 +649,20 @@ gotvictim:
 		pop	cx
 		pop	bx
 		ret
-getvictim	endp
+getvictim	ENDP
 
 ;-------------------------------------------------------------------------------
 
-setrunning	proc	near			; set running flag on overlays still running
+setrunning	PROC	NEAR			; set running flag on overlays still running
 
-		assume cs:code,ds:nothing,es:ovltbl
+		ASSUME CS:code,DS:NOTHING,ES:ovltbl
 
 		push	es
 		mov	es,ovltblbse
 		mov	cx,ovlcnt
 		xor	bx,bx
 jim:		and	ovlflg[bx],NOT MASK running ; start by clearing them all
-		add	bx,ovlsegsiz
+		add	bx,OVLSEGSIZ
 		loop	jim
 
 		; Now chain down the stack links, setting running flags
@@ -702,20 +672,22 @@ jim:		and	ovlflg[bx],NOT MASK running ; start by clearing them all
 		jmp	jam
 jamloop:
 		mov	ds,cs:[bx]
-		assume	ds:ovltbl
+
+		ASSUME	DS:ovltbl
+
 		or	ovlflg,MASK running
 		sub	bx,6
 jam:
-		cmp	word ptr cs:[bx],-1	; end of stack ?
+		cmp	WORD PTR cs:[bx],-1	; end of stack ?
 		jnz	jamloop
 		pop	es
 		ret
 
-setrunning	    endp
+setrunning	ENDP
 
 ;-------------------------------------------------------------------------------
 
-int21		proc	near
+int21		PROC	FAR
 
 ; free almost all overlay memory if app. tries to call the DOS exec function.
 
@@ -723,15 +695,18 @@ int21		proc	near
 		jz	freeall
 		cmp	ah,TERMINATE
 		jz	saybyebye
+notours:
 		jmp	cs:oldint21
 saybyebye:
 		pop	ax			; clean up stack
 		pop	ax
 		pop	ax
 		mov	al,0			; return code 0
-		mov	dx,offset exitmsg
+		mov	dx,OFFSET exitmsg
 		jmp	putserr
 freeall:
+		or	al,al			; is it load and exec?
+		jnz	notours
 		push	ax
 		push	bx
 		push	cx
@@ -742,7 +717,7 @@ freeall:
 		push	es
 		push	ds			; preserve calling env.
 
-		assume cs:code,ds:nothing,es:ovltbl
+		ASSUME CS:code,DS:NOTHING,ES:ovltbl
 
 		mov	ax,cs:memblk1st 	; start de-allocating from first blk
 		jmp	short lastblk
@@ -766,12 +741,17 @@ lastblk:
 		mov	es:memblksiz,2		; adjust size
 		mov	es:memblknxt,0		; no other blocks after this one
 		mov	es:memblkflg,0		; not used
-		mov	cs:memstat,0ffh 	; memory needs to be re-alloced some day
 
-		mov	dx,word ptr cs:oldint21
-		mov	ds,word ptr cs:oldint21+2
+		mov	dx,WORD PTR cs:oldint21
+		mov	ds,WORD PTR cs:oldint21+2
 		mov	ah,DOSSETVEC		; put back DOS vector to avoid calling ourselves again!
 		mov	al,21h
+		int	DOS
+
+		mov	dx,WORD PTR cs:oldvec
+		mov	ds,WORD PTR cs:oldvec+2
+		mov	ah,DOSSETVEC
+		mov	al,intnum
 		int	DOS
 
 		mov	es,cs:ovltblbse
@@ -779,6 +759,9 @@ lastblk:
 		add	bx,2			; re-adjust alloced size
 		mov	ah,DOSREALLOC
 		int	DOS
+		mov	bp,sp
+		push	[bp+22]			; ensure returned flags are based on user's!
+		popf
 		pop	ds
 		pop	es
 		pop	bp
@@ -788,13 +771,68 @@ lastblk:
 		pop	cx
 		pop	bx
 		pop	ax
-		jmp	cs:oldint21		; allow DOS to continue!
 
-int21		endp
+		int	DOS			; allow DOS to continue!
+
+		push	ax
+		push	bx
+		push	cx
+		push	dx
+		push	si
+		push	di
+		push	bp
+		push	es
+		push	ds			; preserve calling env.
+		mov	bp,sp
+		pushf
+		pop	[bp+22]			; fix return flags
+
+; re-allocate our memory after a DOS exec function
+
+		call	reallocmem
+
+		mov	ah,DOSGETVEC
+		mov	al,21h
+		int	DOS			; get original vector
+		mov	WORD PTR cs:oldint21,bx ; save original vector
+		mov	WORD PTR cs:oldint21+2,es
+
+		mov	ah,DOSSETVEC
+		mov	al,21h
+		mov	bx,cs
+		mov	ds,bx
+		mov	dx,OFFSET int21 	; point to int21
+		int	DOS			; set vector
+
+		mov	ah,DOSGETVEC
+		mov	al,intnum
+		int	DOS			; get original vector
+		mov	WORD PTR cs:oldvec,bx	; save original vector
+		mov	WORD PTR cs:oldvec+2,es
+
+		mov	ah,DOSSETVEC
+		mov	al,intnum
+		mov	bx,cs
+		mov	ds,bx
+		mov	dx,OFFSET ovlmgr	; point to ovlmgr
+		int	DOS			; set vector
+
+		pop	ds
+		pop	es
+		pop	bp
+		pop	di
+		pop	si
+		pop	dx
+		pop	cx
+		pop	bx
+		pop	ax
+		iret
+
+int21		ENDP
 
 ;-------------------------------------------------------------------------------
 
-reallocmem	proc	near
+reallocmem	PROC	NEAR
 
 ; re-allocate our memory after a DOS exec function
 
@@ -807,39 +845,25 @@ reallocmem	proc	near
 		mov	es,cs:ovltblbse
 		push	bx			; contains largest available blk
 		int	DOS
-		mov	cs:memstat,0		; flag it re-alloced
 		mov	ax,cs:ovltblbse
 		add	ax,cs:ovlcnt
 		mov	es,ax			; ^ to first mem blk in alloced mem
 		pop	ax
-		sub	ax,cs:ovlcnt		; remove ovl rbl size
+		sub	ax,cs:ovlcnt		; remove ovl tbl size
 		mov	es:memblksiz,ax 	; fix mem blk size
-
-		mov	ah,DOSGETVEC
-		mov	al,21h
-		int	DOS			; get original vector
-		mov	word ptr cs:oldint21,bx ; save original vector
-		mov	word ptr cs:oldint21+2,es
-
-		mov	ah,DOSSETVEC
-		mov	al,21h
-		mov	bx,cs
-		mov	ds,bx
-		mov	dx,OFFSET int21 	; point to int21
-		int	DOS			; set vector
 
 		pop	es
 		ret
 
-reallocmem	endp
+reallocmem	ENDP
 
 ;-------------------------------------------------------------------------------
 
-releasepages	proc	near			; Arg in es, result in ax
+releasepages	PROC	NEAR			; Arg in es, result in ax
 
 ; release any memory (and overlays) where this overlay should reside
 
-		assume	es:ovltbl
+		ASSUME	ES:ovltbl
 
 		mov	bx,es:ovlmemblk 	; start of memory to release
 doitagain:
@@ -851,7 +875,7 @@ dvartloop:
 		jnc	dvartsmaller		; yup
 		mov	dx,bx
 		add	dx,es:ovlsiz
-		add	dx,memctlblksiz / PARSIZ; end of memory to release
+		add	dx,MEMCTLBLKSIZ 	; end of memory to release
 		cmp	ax,dx			; does it start above?
 		jnc	dvartsilly		; yup
 		call	killmem 		; it's in the way. Zap it.
@@ -867,7 +891,7 @@ chkmemblk:					; was that enough?
 		jc	dvartsilly		; yup, wasn't enough
 		mov	dx,bx
 		add	dx,es:ovlsiz
-		add	dx,memctlblksiz / PARSIZ; end of memory to be released
+		add	dx,MEMCTLBLKSIZ 	; end of memory to be released
 		add	ax,ds:memblksiz 	; end of freed memory
 		cmp	ax,dx			; does it end in the memory to be released?
 		jc	dvartsilly		; yup, release more
@@ -879,7 +903,7 @@ dvartgotblk:
 		call	splitblkhigh		; split the block
 nosplit:
 		mov	cx,es:ovlsiz
-		add	cx,memctlblksiz / PARSIZ; paragraphs needed to load ovl
+		add	cx,MEMCTLBLKSIZ 	; paragraphs needed to load ovl
 		jmp	splitblklow		; split remaining block
 dvartsilly:
 		mov	ax,ds:memblknxt
@@ -889,17 +913,17 @@ dvart:
 		jmp	dvartloop		; play it again Sam.
 dvartnocore:
 		mov	al,5			; super OOPS!
-		mov	dx,offset nocore
+		mov	dx,OFFSET nocore
 		jmp	putserr
 
-releasepages	endp
+releasepages	ENDP
 
 ;-------------------------------------------------------------------------------
 
-getpages	proc	near			; get enough memory to load ovl
+getpages	PROC	NEAR			; get enough memory to load ovl
 
 		mov	cx,ax
-		add	cx,memctlblksiz / PARSIZ; total paragraphs needed
+		add	cx,MEMCTLBLKSIZ 	; total paragraphs needed
 		call	largestmem		; find largest free blk
 		cmp	dx,cx			; large enough?
 		jnc	gotdork 		; yup.
@@ -911,11 +935,11 @@ dorkkill:
 gotdork:
 		jmp	splitblklow		; split the free blk
 
-getpages	endp
+getpages	ENDP
 
 ;-------------------------------------------------------------------------------
 
-splitblklow	proc	near
+splitblklow	PROC	NEAR
 
 ; split a block of memory returning the lower one to be used.
 
@@ -952,11 +976,11 @@ noodorksplit:
 		mov	ax,ds			; return lower blk segment
 		ret
 
-splitblklow	endp
+splitblklow	ENDP
 
 ;-------------------------------------------------------------------------------
 
-splitblkhigh	proc	near
+splitblkhigh	PROC	NEAR
 
 ; split a block of memory returning the upper one to be used.
 
@@ -991,11 +1015,11 @@ nodorksplit:
 		mov	ax,ds			; return upper blk segment
 		ret
 
-splitblkhigh	endp
+splitblkhigh	ENDP
 
 ;-------------------------------------------------------------------------------
 
-largestmem	proc	near	; returns seg in ax, size in dx; clobbers bx,ds,es
+largestmem	PROC	NEAR	; returns seg in ax, size in dx; clobbers bx,ds,es
 				; retruns first block that's large enough if possible
 
 		mov	ax,memblk1st		; first mem blk
@@ -1014,11 +1038,11 @@ gook:		or	ax,ax			; end of list?
 		jnz	gookloop		; around and around
 		ret
 
-largestmem	endp
+largestmem	ENDP
 
 ;-------------------------------------------------------------------------------
 
-killmem 	proc	near
+killmem 	PROC	NEAR
 
 		test	ds:memblkflg,MASK_used	; is it used?
 		jz	memnotused		; don't kill ovl
@@ -1029,24 +1053,26 @@ killmem 	proc	near
 memnotused:
 		jmp	mergemem		; merge free memory
 
-killmem 	endp
+killmem 	ENDP
 
 ;-------------------------------------------------------------------------------
 
-killovl 	proc	near		; preserves bx
+killovl 	PROC	NEAR		; preserves bx
 
 		mov	ds,ax
-		assume	ds:ovltbl
+
+		ASSUME	DS:ovltbl
+
 		and	ovlflg,NOT MASK loaded	; ovl no longer loaded
 		mov	ax,ovlmemblk		; get mem blk
 		mov	ds,ax
 		jmp	mergemem		; merge free memory
 
-killovl 	endp
+killovl 	ENDP
 
 ;-------------------------------------------------------------------------------
 
-mergemem	proc	near
+mergemem	PROC	NEAR
 
 ; merge physically adjacent free memory blocks. Preserves es. ds -> a free block.
 
@@ -1098,18 +1124,18 @@ killdone:
 		pop	es
 		ret
 
-mergemem	endp
+mergemem	ENDP
 
 ;-------------------------------------------------------------------------------
 
-gethdr		proc	near			; read EXE header from handle
+gethdr		PROC	NEAR			; read EXE header from handle
 
 		push	cx
 		mov	ax,cs
 		mov	ds,ax
-		mov	dx,offset hdr		; a place to put it
+		mov	dx,OFFSET hdr		; a place to put it
 		mov	bx,ovlexefilhdl 	; the file handle
-		mov	cx,hdrsize		; header size in bytes
+		mov	cx,TYPE EXEHDR		; header size in bytes
 		mov	ah,DOSREAD
 		int	DOS			; read from file
 		jc	exegone 		; oops
@@ -1119,14 +1145,14 @@ gethdr		proc	near			; read EXE header from handle
 		ret				; Wow, it worked!
 exegone:
 		mov	al,5			; You lose!
-		mov	dx,offset nofile
+		mov	dx,OFFSET nofile
 		jmp	putserr
 
-gethdr		endp
+gethdr		ENDP
 
 ;-------------------------------------------------------------------------------
 
-putserr 	proc	near
+putserr 	PROC	NEAR
 
 ; display error msg, close file, restore int vectors, free mem and return to DOS.
 
@@ -1135,21 +1161,21 @@ putserr 	proc	near
 		mov	ds,ax
 		mov	ah,PRINT
 		int	DOS			; display error msg
-		mov	dx,word ptr oldvec	; get old vector
+		mov	dx,WORD PTR oldvec	; get old vector
 		cmp	dx,-1			; was it ever replaced?
 		jz	free21			; nope
 		push	ds
-		mov	ds,word ptr oldvec+2
+		mov	ds,WORD PTR oldvec+2
 		mov	ah,DOSSETVEC		; put it back then.
-		mov	al,$$INTNO
+		mov	al,intnum
 		int	DOS
 		pop	ds
 free21:
-		mov	dx,word ptr oldint21
+		mov	dx,WORD PTR oldint21
 		cmp	dx,-1
 		jz	freemem
 		push	ds
-		mov	ds,word ptr oldint21+2
+		mov	ds,WORD PTR oldint21+2
 		mov	ah,DOSSETVEC		; put it back then.
 		mov	al,21h
 		int	DOS
@@ -1172,8 +1198,8 @@ byebye:
 		mov	ah,TERMINATE
 		int	DOS			; terminate this process
 
-putserr 	endp
+putserr 	ENDP
 
-code		ends
+code		ENDS
 
-		end
+		END

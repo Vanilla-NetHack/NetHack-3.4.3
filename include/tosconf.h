@@ -8,29 +8,23 @@
 
 #define MSDOS		/* must be defined to allow some inclusions */
 
-/* NOTE: if your TOS compiler is dumb, #define OLD_TOS and compile with
-   oldtos.c to get a minimal configuration (you may need to do some
-   tweaking); otherwise (e.g. GCC) don't do it. OLD_TOS corresponds
-   most closely to LATTICE C, I think */
+/*
+   Adjust these options to suit your compiler. The default here is for
+   GNU C with the latest version of the library.
+*/
 
-/* #define OLD_TOS 		/* primitive C library */
-/* #define NO_SIGNAL 		/* compiler doesn't support signals */
+/*#define NO_SIGNAL 		/* library doesn't support signals	*/
+/*#define NO_FSTAT		/* library doesn't have fstat() call	*/
 
-#ifdef __GNUC__
+#ifdef O_BINARY
+#define FCMASK 	O_BINARY
+#else
 #define FCMASK	0666
 #define O_BINARY 0
-#else
-#define FCMASK	0x8000
 #endif
 
 #ifdef UNIXDEBUG
-#define O_BINARY	0
 #define remove(x)	unlink(x)
-#endif
-
-#ifdef OLD_TOS
-#define Rand() rand()
-#define Srand() srand()
 #endif
 
 /* configurable options */

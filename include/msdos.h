@@ -10,6 +10,9 @@
 #endif
 extern const char *alllevels, *allbones;
 extern char levels[], bones[], permbones[], SAVEF[], hackdir[];
+#ifdef MSDOS
+extern char SAVEP[];
+#endif
 extern int ramdisk;
 #if defined(DGK) && !defined(OLD_TOS)
 extern int count_only;

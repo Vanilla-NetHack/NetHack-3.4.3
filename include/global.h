@@ -5,19 +5,21 @@
 #ifndef GLOBAL_H
 #define	GLOBAL_H
 
-#include <stdio.h>
+#ifndef VMS
+# include <stdio.h>
+#endif
 
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION "3.0h"  /* version number. */
+#define VERSION "3.0i"  /* version number. */
 
 /*
  * Files expected to exist in the playground directory.
  */
 
-#define RECORD	"record"  /* the file containing the list of topscorers */
-#define	HELP	"help"	  /* the file containing command descriptions */
-#define	SHELP	"hh"	  /* abbreviated form of the same */
+#define RECORD		"record"  /* a file containing list of topscorers */
+#define	HELP		"help"	  /* a file containing command descriptions */
+#define	SHELP		"hh"	  	/* abbreviated form of the same */
 #define	RUMORFILE	"rumors"	/* a file with fortune cookies */
 #define ORACLEFILE	"oracles"	/* a file with oracular information */
 #define	DATAFILE	"data"	/* a file giving the meaning of symbols used */
@@ -25,7 +27,9 @@
 #define HISTORY		"history"	/* a file giving nethack's history */
 #define LICENSE		"license"	/* file with license information */
 #define OPTIONFILE	"opthelp"	/* a file explaining runtime options */
-
+#ifdef MACOS
+#define MACHELP		"MacHelp"	/* file with Macintosh information */
+#endif
 
 
 /* Assorted definitions that may depend on selections in config.h. */
@@ -55,9 +59,11 @@
 typedef schar	xchar;
 typedef	xchar	boolean;		/* 0 or 1 */
 
-#ifndef MACOS	/* defined in MacTypes.h(LSC) or Types.h(Aztec & MPW) */
+#ifndef MACOS
+#ifndef TRUE		/* defined in some systems' native include files */
 #define	TRUE	((boolean)1)
 #define	FALSE	((boolean)0)
+#endif
 #endif
 
 #ifdef BITFIELDS
@@ -74,7 +80,7 @@ typedef	xchar	boolean;		/* 0 or 1 */
  * prototypes for the ANSI compilers so people quit trying to fix the prototypes
  * to match the standard and thus lose the typechecking.
  */
-#if defined(MSDOS) || defined(THINKC4) && !(defined(AMIGA) || defined(TOS))
+#if (defined(MSDOS) && !defined(TOS)) || defined (AMIGA) || defined(THINKC4)
 # define CHAR_P char
 # define SCHAR_P schar
 # define UCHAR_P uchar
@@ -122,6 +128,7 @@ typedef	xchar	boolean;		/* 0 or 1 */
 
 #if defined(VMS) && !defined(VMSCONF_H)
 # include "vmsconf.h"
+# include <stdio.h>
 #endif
 
 #if defined(UNIX) && !defined(UNIXCONF_H)

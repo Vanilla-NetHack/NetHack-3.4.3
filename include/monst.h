@@ -18,9 +18,16 @@ struct monst {
 #define	MTSZ	4
 	coord mtrack[MTSZ];	/* monster track */
 	int mhp, mhpmax;
-	char mappearance;	/* nonzero for undetected 'M's and the Wizard */
-	int mspec_used; 	/* monster's special ability attack timeout */
+	unsigned mappearance;	/* for undetected mimics and the wiz */
+	uchar	 m_ap_type;	/* what mappearance is describing: */
+#define M_AP_NOTHING	0	/* mappearance is unused */
+#define M_AP_FURNITURE	1	/* stairs, a door, an altar, etc. */
+#define M_AP_OBJECT	2	/* an object */
+#define M_AP_MONSTER	3	/* a monster */
+#define M_AP_GOLD	4	/* a quantity (mappearance holds it) of gold */
+
 	schar mtame;		/* level of tameness, implies peaceful */
+	int mspec_used; 	/* monster's special ability attack timeout */
 
 	Bitfield(mimic,1);	/* undetected mimic */
 	Bitfield(mdispl,1);	/* mdx,mdy valid */
@@ -33,27 +40,30 @@ struct monst {
 	Bitfield(mflee,1);	/* fleeing */
 	Bitfield(mfleetim,7);	/* timeout for mflee */
 
+	Bitfield(mcansee,1);	/* cansee 1, temp.blinded 0, blind 0 */
+	Bitfield(mblinded,7);	/* cansee 0, temp.blinded n, blind 0 */
+
+	Bitfield(mcanmove,1);	/* paralysis, similar to mblinded */
+	Bitfield(mfrozen,7);
+
 	Bitfield(msleep,1);	/* sleeping */
-	Bitfield(mfroz,1);	/* frozen */
 	Bitfield(mstun,1);	/* stunned (off balance) */
 	Bitfield(mconf,1);	/* confused */
 	Bitfield(mcan,1);	/* has been cancelled */
 	Bitfield(mpeaceful,1);	/* does not attack unprovoked */
-	Bitfield(mcansee,1);	/* cansee 1, temp.blinded 0, blind 0 */
-
-	Bitfield(mblinded,7);	/* cansee 0, temp.blinded n, blind 0 */
 	Bitfield(mtrapped,1);	/* trapped in a pit or bear trap */
-
+	Bitfield(mleashed,1);	/* monster is on a leash */
 	Bitfield(isshk,1);	/* is shopkeeper */
+
 	Bitfield(isgd,1);	/* is guard */
 #if defined(ALTARS) && defined(THEOLOGY)
 	Bitfield(ispriest,1);	/* is a priest */
 #endif
 	Bitfield(iswiz,1);	/* is the Wizard of Yendor */
-	Bitfield(mleashed,1);	/* monster is on a leash */
 #ifdef WORM
 	Bitfield(wormno,5);	/* at most 31 worms on any level */
 #endif
+
 	long mtrapseen;		/* bitmap of traps we've been trapped in */
 	long mlstmv;		/* prevent two moves at once */
 	struct obj *minvent;

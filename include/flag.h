@@ -62,6 +62,9 @@ struct flag {
 #endif
 	boolean  rawio;		/* Whether can use rawio (IOCTL call) */
 #endif
+#ifdef MACOS
+	boolean  wantspace;		/* Waiting for a space (as in --More--) */
+#endif
 };
 
 extern struct flag flags;

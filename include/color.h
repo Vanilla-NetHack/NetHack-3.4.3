@@ -12,15 +12,14 @@
 #define BLUE		4
 #define MAGENTA 	5
 #define CYAN		6
-#define WHITE		7
 #define GRAY		7	/* lo-intensity white */
 #define BRIGHT		8
 #define ORANGE_COLORED	9
 #define YELLOW		11
+#define WHITE		15
 #define MAXCOLORS	16	/* 8 basic + 8 bright */
 
 /* these can be configured */
-#define HI_MON		RED + BRIGHT	/* default flesh - red slaps! */
 #define HI_OBJ		MAGENTA
 #define HI_METAL	CYAN
 #define HI_COPPER	YELLOW
@@ -33,6 +32,6 @@
 #define HI_PAPER	WHITE
 #define HI_GLASS	CYAN + BRIGHT
 #define HI_MINERAL	GRAY
-#define HI_ZAP		BLUE + BRIGHT	/* blue zaps! */
+#define HI_ZAP		BLUE + BRIGHT
 
 #endif /* COLOR_H */

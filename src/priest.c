@@ -3,12 +3,21 @@
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include "hack.h"
 #include "mfndpos.h"
 #include "eshk.h"
 #include "epri.h"
+
+static boolean FDECL(histemple_at,(struct monst *,int,int));
+static int FDECL(t_alignment,(struct mkroom *));
+static boolean FDECL(is_shrined,(struct mkroom *));
+static boolean FDECL(t_coaligned,(struct mkroom *));
+struct monst *FDECL(findpriest,(struct mkroom *));
+static boolean FDECL(p_inhistemple,(struct mkroom *));
+
+#ifdef OVLB
 
 /* used for the insides of shk_move and pri_move */
 int
@@ -42,6 +51,11 @@ register xchar omx,omy,gx,gy;
 	if (tunnels(mtmp->data) &&
 		    (!needspick(mtmp->data) || m_carrying(mtmp, PICK_AXE)))
 		allowflags |= ALLOW_DIG;
+	if (!nohands(mtmp->data) && !verysmall(mtmp->data)) {
+		allowflags |= OPENDOOR;
+		if (m_carrying(mtmp, SKELETON_KEY)) allowflags |= BUSTDOOR;
+	}
+	if (is_giant(mtmp->data)) allowflags |= BUSTDOOR;
 	cnt = mfndpos(mtmp, poss, info, allowflags);
 	if (allowflags & ALLOW_DIG) if(!mdig_tunnel(mtmp)) return(-2);
 
@@ -100,7 +114,11 @@ pick_move:
 	return(0);
 }
 
+#endif /* OVLB */
+
 #if defined(ALTARS) && defined(THEOLOGY)
+
+#ifdef OVL0
 
 struct mkroom *
 in_temple(x, y)
@@ -112,6 +130,9 @@ register int x, y;
 		return((struct mkroom *)0);
 	return(&rooms[roomno]);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 static boolean
 histemple_at(priest, x, y)
@@ -308,8 +329,13 @@ findpriest(troom)
 struct mkroom *troom;
 {
 	register struct monst *mtmp;
+	extern struct monst *fdmon; /* from mon.c */
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if(mtmp->ispriest && histemple_at(mtmp,mtmp->mx,mtmp->my)
+			&& &rooms[EPRI(mtmp)->shroom] == troom)
+		return(mtmp);
+	for(mtmp = fdmon; mtmp; mtmp = mtmp->nmon)
 	    if(mtmp->ispriest && histemple_at(mtmp,mtmp->mx,mtmp->my)
 			&& &rooms[EPRI(mtmp)->shroom] == troom)
 		return(mtmp);
@@ -383,10 +409,11 @@ register struct monst *priest;
 
 	/* priests don't chat unless peaceful and in their own temple */
 	if(!histemple_at(priest,priest->mx,priest->my) || priest->mtame ||
-		 !priest->mpeaceful || priest->mfroz || priest->msleep) {
-            if(priest->mfroz || priest->msleep) {
+		 !priest->mpeaceful || !priest->mcanmove || priest->msleep) {
+            if(!priest->mcanmove || priest->msleep) {
 	        kludge("%s breaks out of his reverie!", Monnam(priest));
-                priest->mfroz = priest->msleep = 0;
+                priest->mfrozen = priest->msleep = 0;
+		priest->mcanmove = 1;
 	    }
 	    /* The following is now impossible according to monst.c, */
 	    /* but it should stay just in case we change the latter. */
@@ -547,4 +574,7 @@ angry_priest()
 	if(!(priest = findpriest(in_temple(u.ux, u.uy)))) return;
 	wakeup(priest);
 }
+
+#endif /* OVLB */
 #endif /* ALTARS && THEOLOGY */
+

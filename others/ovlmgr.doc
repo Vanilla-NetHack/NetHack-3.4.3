@@ -1,6 +1,6 @@
 		     Brief notes about ovlmgr.asm
 		     ----------------------------
-			 (revised 1989nov12)
+		     (version 3.0.624: 1990Feb19)
 
 OVLMGR.ASM is a preliminary version of a multiple-residency overlay
 manager for use with the Microsoft Overlay Linker. It is functionally
@@ -104,13 +104,17 @@ use.
 NOTA BENE: This is a preliminary version of the overlay manager, but
 by now it should be fairly well debugged. If you are considering
 upgrading it please be aware that the following improvements are
-planned for the next version (though who knows when delivery will
-occur):
+planned for the next version (many of them are already written and are
+now being debugged or tested):
+
 	Twice the speed
+	Better memory utilisation
 	EMS support
-	compatible versions of setjmp() and longjmp()
-	Integration with malloc() so the heap can grow
+	i386 support
+	Compatible versions of setjmp() and longjmp()
+	A method of changing the C heap size without relinking
 	Major code revamping
+	Monitoring, tuning and debugging tools
 
 Enjoy!
 ------------------------------------------------------------------------
@@ -160,6 +164,14 @@ both overlays happen to reside in memory at the time.
 
 Locking overlays into memory is not really implemeted even though
 reading the source code might make you think it was.
+
+Although we have not found a way of supporting versions of DOS prior
+to 3.0, the overlay manager still does not check that it is running
+under 3.0 or better (a stupid oversight at the time of writing).
+
+This is not actually the most recent version of the overlay manager,
+but it IS the most recent one that seems to run cleanly with NetHack.
+A phenomenon that we are still investigating....
 ------------------------------------------------------------------------
 BUG ALERT
 
@@ -168,6 +180,23 @@ overlay through a pointer, you *may* die with the Microsoft overlay
 manager. If you ever try to call a function in an overlay through a
 pointer, you *will* die with ours. Nothing in an overlay ever ends up
 in the same segment as the linker anticipated.	You have been warned!
+------------------------------------------------------------------------
+BUGS FIXED
+
+A couple of rather stupid and/or unpleasant bugs have been fixed in
+this version (unfortunately called 3.0.624):
+
+The interrupt vectors are now restored correctly when the programme
+exits, making a number of strange and worrisome interactions with DOS
+go away.
+
+The lru computation is now done correctly, reducing the amount of disk
+I/O dramatically, and bringing behaviour in line with the theoretical
+model.
+
+The implementation of the exec() call is now significantly cleaner and
+the chance of unfortunate interactions with software run in a subshell
+is greatly reduced.
 ------------------------------------------------------------------------
 FOOTNOTES
 
@@ -195,6 +224,7 @@ It, and this document, are copyright. They are, however, provided as
 part of NetHack and may be freely distributed as described in the
 NetHack license.
 ----------------------------------------------------------------------
-Stephen P Spackman		       stephen@concour.cs.concordia.ca
+Stephen P Spackman		             stephen@tira.uchicago.edu
+Pierre G Martineau             elevia!ozrout!pierre@clyde.concordia.ca
 ----------------------------------------------------------------------
-     Copyright (C) 1989 Pierre G Martineau and Stephen P Spackman
+  Copyright (C) 1989, 1990 Pierre G Martineau and Stephen P Spackman

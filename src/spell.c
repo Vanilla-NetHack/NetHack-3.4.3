@@ -45,19 +45,19 @@ cursed_book(lev)
 		if (uarmg) {
 		    if (uarmg->rustfree)
 			Your("gloves seem unaffected.");
-		    else if (uarmg->spe > -6) {
+		    else if (uarmg->spe > -2) {
 			Your("gloves corrode!");
 			uarmg->spe--;
 		    } else
-			Your("gloves look quite corroded.");
+			Your("gloves %s quite corroded.",Blind ? "feel":"look");
 		    break;
 		}
 		if(Poison_resistance) {
 		    losestr(rn1(1,2));
-		    losehp(rnd(6), "contact poison");
+		    losehp(rnd(6), "contact-poisoned spellbook", KILLED_BY_AN);
 		} else {
 		    losestr(rn1(4,3));
-		    losehp(rnd(10), "contact poison");
+		    losehp(rnd(10), "contact-poisoned spellbook", KILLED_BY_AN);
 		}
 		break;
 	case 6:
@@ -67,7 +67,7 @@ cursed_book(lev)
 		} else {
 		    pline("As you read the book, it explodes in your %s!",
 			body_part(FACE));
-		    losehp (2*rnd(10)+5, "exploding rune");
+		    losehp (2*rnd(10)+5, "exploding rune", KILLED_BY_AN);
 		}
 		break;
 	default:
@@ -316,7 +316,7 @@ boolean atme;
 
 #ifdef HARD
 	if (confused ||
-	    ((int)(ACURR(A_INT) + u.uluck) - 3 * spellev(spell)) < 0) {
+	    ((int)(ACURR(A_INT) + Luck) - 3 * spellev(spell)) < 0) {
 
 		if (Hallucination)
 			pline("Far out... a light show!");
@@ -353,7 +353,9 @@ boolean atme;
 			else (void) getdir(1);
 			if(!u.dx && !u.dy && !u.dz) {
 			    if((damage = zapyourself(pseudo)))
-				losehp(damage, "self-inflicted injury");
+				losehp(damage, 
+		self_pronoun("zapped %sself with a spell", "him"),
+					NO_KILLER_PREFIX);
 			} else	weffects(pseudo);
 		} else weffects(pseudo);
 		break;
@@ -425,6 +427,7 @@ losespells() {
 
 static char
 spellet(spl)
+int spl;
 {
 	return (spl < 27) ? ('a' + spl - 1) : ('A' + spl - 27);
 }

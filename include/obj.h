@@ -94,7 +94,6 @@ struct obj {
 #define is_sword(otmp)	(otmp->otyp >= SHORT_SWORD && otmp->otyp <= KATANA)
 #define bimanual(otmp)	(otmp->olet == WEAPON_SYM && objects[otmp->otyp].oc_bimanual)
 
-#define is_flammable(otmp)	(objects[otmp->otyp].oc_material == WOOD || objects[otmp->otyp].oc_material == 0)
 #define is_rustprone(otmp)	(objects[otmp->otyp].oc_material == METAL)
 #define is_corrodeable(otmp)	(objects[otmp->otyp].oc_material == COPPER)
 # endif /* STUPID_CPP */

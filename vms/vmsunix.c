@@ -23,6 +23,8 @@
 #undef off_t
 #include <sys/stat.h>
 
+int FDECL(link, (const char *, const char *));
+
 void
 setrandom()
 {
@@ -197,7 +199,7 @@ getlock()
 		if((fd = open(lock, 0)) == -1) {
 			if(errno == ENOENT) goto gotlock;    /* no such file */
 			perror(lock);
-			(void) delete(LLOCK);
+			(void) unlink(LLOCK);
 			error("Cannot open %s", lock);
 		}
 
@@ -206,13 +208,13 @@ getlock()
 		(void) close(fd);
 	} while(i < locknum);
 
-	(void) delete(LLOCK);
+	(void) unlink(LLOCK);
 	error(locknum ? "Too many hacks running now."
 		      : "There is a game in progress under your name.");
 gotlock:
 	fd = creat(lock, FCMASK);
-	if(delete(LLOCK) == -1)
-		error("Cannot delete %s.", LLOCK);
+	if(unlink(LLOCK) == -1)
+		error("Cannot unlink %s.", LLOCK);
 	if(fd == -1) {
 		error("cannot creat lock file.");
 	} else {
@@ -242,7 +244,7 @@ register char *s;
 }
 
 int link(file, new)
-char *file, *new;
+const char *file, *new;
 {
     int status;
     struct FAB fab;
@@ -298,7 +300,7 @@ char *file, *new;
 
 #undef unlink
 int unlink(file)
-char *file;
+const char *file;
 {
     int status;
     struct FAB fab = cc$rms_fab;
@@ -306,7 +308,7 @@ char *file;
     char esa[NAM$C_MAXRSS];
 
     fab.fab$l_fop = FAB$M_DLT;
-    fab.fab$l_fna = file;
+    fab.fab$l_fna = (char *) file;
     fab.fab$b_fns = strlen(file);
     fab.fab$l_nam = &nam;
     nam.nam$l_esa = esa;

@@ -4,10 +4,14 @@
 
 #include "hack.h"
 
+static void FDECL(mkbox_cnts,(struct obj *));
+
 struct icp {
     int  iprob; /* probability of an item type */
     char ilet;	/* item class */
 };
+
+#ifdef OVLB
 
 const struct icp mkobjprobs[] = {
 {10, WEAPON_SYM},
@@ -110,12 +114,13 @@ boolean artif;
 	register int tprob, i, prob = rnd(1000);
 
 	if(let == RANDOM_SYM) {
-		struct icp *iprobs =
+		const struct icp *iprobs =
 #ifdef REINCARNATION
-				    (dlevel == rogue_level) ? rogueprobs :
+				    (dlevel == rogue_level) ?
+				    (const struct icp *)rogueprobs :
 #endif
-				    Inhell ? hellprobs :
-				    mkobjprobs;
+				    Inhell ? (const struct icp *)hellprobs :
+				    (const struct icp *)mkobjprobs;
 
 		for(tprob = rnd(100);
 		    (tprob -= iprobs->iprob) > 0;
@@ -162,7 +167,7 @@ struct obj *box;
 		otmp->age = 0;
 	    } else {
 		register int tprob;
-		struct icp *iprobs = boxiprobs;
+		const struct icp *iprobs = boxiprobs;
 
 		for(tprob = rnd(100);
 		    (tprob -= iprobs->iprob) > 0;
@@ -239,7 +244,7 @@ boolean artif;
 #endif
 		break;
 	case FOOD_SYM:
-		otmp->oeaten = FALSE;
+		otmp->oeaten = 0;
 		if(otmp->otyp == CORPSE) {
 		    /* overridden by mkcorpstat() */
 		    do otmp->corpsenm = rndmonnum();
@@ -412,6 +417,10 @@ register struct obj *otmp;
 {
 	otmp->cursed = 0;
 	otmp->blessed = 1;
+	if (otmp->otyp == LUCKSTONE) {
+		if (stone_luck(TRUE) >= 0) u.moreluck = LUCKADD;
+		else u.moreluck = -LUCKADD;
+	}
 	return;
 }
 
@@ -421,6 +430,10 @@ register struct obj *otmp;
 {
 	otmp->blessed = 0;
 	otmp->cursed = 1;
+	if (otmp->otyp == LUCKSTONE) {
+		if (stone_luck(TRUE) >= 0) u.moreluck = LUCKADD;
+		else u.moreluck = -LUCKADD;
+	}
 	return;
 }
 
@@ -454,6 +467,9 @@ int c;
 	return(('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z'));
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 weight(obj)
 register struct obj *obj;
@@ -475,6 +491,9 @@ register struct obj *obj;
 		return obj->quan * (mons[obj->corpsenm].cwt * 3 / 2);
 	return(wt ? wt*obj->quan : (obj->quan + 1)>>1);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 mkgold(num,x,y)
@@ -554,16 +573,20 @@ register int lth;
 	return(otmp);
 }
 
-#ifdef STUPID_CPP
 boolean
 is_flammable(otmp)
 register struct obj *otmp;
 {
-	return((objects[otmp->otyp].oc_material == WOOD ||
-			objects[otmp->otyp].oc_material == 0));
+	int otyp = otmp->otyp;
+
+	if (otyp == DRAGON_SCALE_MAIL && otmp->corpsenm == PM_RED_DRAGON)
+		return FALSE;
+	return((objects[otyp].oc_material == WOOD ||
+			objects[otyp].oc_material == 0));
 
 }
 
+#ifdef STUPID_CPP
 boolean
 is_rustprone(otmp)
 register struct obj *otmp;
@@ -629,4 +652,4 @@ int x, y;
     place_object(otmp, x, y);
 }
 
-
+#endif /* OVLB */

@@ -12,6 +12,26 @@
 
 #include "hack.h"
 
+#ifdef STRONGHOLD
+static void FDECL(redosym, (int, int));
+static void FDECL(get_wall_for_db, (int *, int *));
+static struct entity *FDECL(e_at, (int, int));
+static void FDECL(m_to_e, (struct monst *, struct entity *));
+static void FDECL(u_to_e, (struct entity *));
+static void FDECL(set_entity, (int, int, struct entity *));
+static char *FDECL(e_nam, (struct entity *));
+/* static char *FDECL(Enam, (struct entity *)); */ /* unused */
+static char *FDECL(E_phrase, (struct entity *, const char *));
+static boolean FDECL(e_survives_at, (struct entity *, int, int));
+static void FDECL(e_died, (struct entity *, int, int));
+static boolean FDECL(automiss, (struct entity *));
+static boolean FDECL(e_missed, (struct entity *, BOOLEAN_P));
+static boolean FDECL(e_jumps, (struct entity *));
+static void FDECL(do_entity, (struct entity *));
+#endif
+
+#ifdef OVL0
+
 boolean
 is_pool(x,y)
 int x,y;
@@ -24,7 +44,12 @@ int x,y;
        return FALSE;
 }
 
+#endif /* OVL0 */
+
 #ifdef STRONGHOLD
+
+#ifdef OVL1
+
 void
 initsym(x,y)
 int x,y;
@@ -88,6 +113,9 @@ int x,y;
 	return (-1);
 }
 
+#endif /* OVL1 */
+#ifdef OVL1
+
 /*
  * Use is_db_wall where you want to verify that a
  * drawbridge "wall" is UP in the location x, y
@@ -100,6 +128,9 @@ int x,y;
 	return( (levl[x][y].typ == VWALL || levl[x][y].typ == HWALL) &&
 		levl[x][y].diggable & W_GATEWAY);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 /*
  * Return true with x,y pointing to the drawbridge if x,y initially indicate
@@ -169,6 +200,9 @@ boolean flag;
 			wall = VWALL;
 			x2++;
 			break;
+		default:
+			impossible("bad direction in create_drawbridge");
+			/* fall through */
 		case DB_WEST:
 			wall = VWALL;
 			x2--;
@@ -308,7 +342,7 @@ struct entity *etmp;
 static char *
 E_phrase(etmp, verb)
 struct entity *etmp;
-char *verb;
+const char *verb;
 {
 	char wholebuf[80], verbbuf[30];
 
@@ -427,7 +461,7 @@ boolean chunks;
 
 	if (is_flyer(etmp->edata) && 
 	    (is_u(etmp)? !Sleeping : 
-	     (!etmp->emon->mfroz && !etmp->emon->msleep)))
+	     (etmp->emon->mcanmove && !etmp->emon->msleep)))
 						  /* flying requires mobility */
 		misses = 5;	/* out of 8 */	
 	else
@@ -461,7 +495,7 @@ struct entity *etmp;
 	int tmp = 4; 		/* out of 10 */
 
 	if (is_u(etmp)? (Sleeping || Fumbling) : 
-		        (etmp->emon->mfroz || etmp->emon->msleep || 
+		        (!etmp->emon->mcanmove || etmp->emon->msleep || 
 			 !etmp->edata->mmove))
 		return(FALSE);
 
@@ -664,6 +698,7 @@ struct entity *etmp;
 				pline("%s behind the drawbridge.",
 		      	      	      E_phrase(etmp, "disappear"));
 		if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
+			killer_format = KILLED_BY_AN;
 			killer = "closing drawbridge";
 			e_died(etmp, 0, CRUSHING); 		/* no message */
 			return;
@@ -697,7 +732,8 @@ struct entity *etmp;
 				else
 				      pline("%s into the moat.",
 			      	            E_phrase(etmp, "fall"));
-		killer = "fall from a drawbridge";
+		killer_format = NO_KILLER_PREFIX;
+		killer = "fell from a drawbridge";
 		e_died(etmp, e_inview? 1 : 0,        /* CRUSHING is arbitrary */
 		       (is_pool(etmp->ex, etmp->ey))? DROWNING : CRUSHING);
 		       						    /* corpse */
@@ -832,6 +868,7 @@ int x,y;
 			if (e_inview)
 				pline("%s blown apart by flying debris",
 			      	      E_phrase(etmp2, "are"));
+			killer_format = KILLED_BY_AN;
 			killer = "exploding drawbridge";
 			e_died(etmp2, e_inview? 2 : 3, CRUSHING);/* no corpse */
 		}	      /* nothing which is vulnerable can survive this */
@@ -862,6 +899,7 @@ int x,y;
 					pline("%s from shrapnel", 
 					      E_phrase(etmp1, "die"));
 #endif
+			killer_format = KILLED_BY_AN;
 			killer = "collapsing drawbridge";
 			e_died(etmp1, e_inview? 0 : 1, CRUSHING);   /* corpse */
 		}
@@ -869,5 +907,8 @@ int x,y;
 	redosym(x,y);
 	redosym(x2,y2);
 }
+
+
+#endif /* OVLB */
 
 #endif /* STRONGHOLD /**/

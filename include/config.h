@@ -20,7 +20,15 @@
 #define MSDOS		/* define for MS-DOS (in case compiler doesn't) */
 #else
 /* #define MSDOS	/* define for MS-DOS and most other micros */
-/* #define AMIGA	/* define for Commodore-Amiga */
+			/* DO NOT define for AMIGA - MSDOS will be
+			 * automatically defined at the right place. */
+# ifdef AZTEC_C 	/* Manx 3.6 auto-defines this */
+#  ifdef MCH_AMIGA	/* Manx 3.6 auto-defines this for AMIGA */
+#   ifndef AMIGA
+#define AMIGA		/* define for Commodore-Amiga */
+#   endif		/* (Lattice auto-defines AMIGA) */
+#  endif
+# endif
 /* #define TOS		/* define for Atari 1040ST */
 
 /* #define STUPID	/* avoid some complicated expressions if
@@ -34,20 +42,47 @@
 			 * library in the makefile */
 /* #define MINIMAL_TERM	/* if a terminal handles highlighting or tabs poorly,
 			   try this define, used in pager.c and termcap.c */
-/* #define MACOS 1 	/* define for Apple Macintosh */
+/* #define MACOS 	/* define for Apple Macintosh */
+#endif
+
+#ifdef AMIGA
+#define NEED_VARARGS
+# ifdef AZTEC_C
+#  define KR1ED		/* Aztec 3.6 needs extra help for defined() */
+# endif
 #endif
 
 #ifdef MACOS
-#define KR1ED 1		/* for compilers which can't handle defined() */
-#define LSC 1		/* for the Lighspeed 3.01p4 C compiler on the Mac */
-/* #define AZTEC 1	/* for the Manx Aztec C 3.6c compiler */
-/* #define THINKC4	/* for the Think C 4 compiler */
+/* #define KR1ED	/* for compilers which can't handle defined() */
+			/* Lightspeed & Aztec can't handle defined() yet */
+/* #define LSC		/* for the Lightspeed 3.01p4 C compiler on the Mac */
+/* #define AZTEC	/* for the Manx Aztec C 3.6c compiler */
+#define THINKC4	/* for the Think C 4 compiler */
+/* #define MAKEDEFS_C	/* uncomment this ONLY while compiling makedefs */
+/* #define CUSTOM_IO	/* uncomment only while compiling Nethack */
+# ifndef MAKEDEFS_C
+#  ifndef NEED_VARARGS
 #define NEED_VARARGS	/* if you're using precompiled headers */
-#define SMALLDATA 1	/* for Mac compilers with 32K global data limit */
- 
-# ifdef KR1ED
-#define defined(x) (x<<1) /* Lightspeed & Aztec can't handle defined() yet */
+#  endif
 # endif
+#define SMALLDATA	/* for Mac compilers with 32K global data limit */
+#endif
+
+
+#ifdef KR1ED		/* For compilers which cannot handle defined() */
+#define defined(x) (-x-1 != -1)
+/* Because:
+ * #define FOO => FOO={} => defined( ) => (-1 != - - 1) => 1
+ * #define FOO 1 or on command-line -DFOO
+ *      => defined(1) => (-1 != - 1 - 1) => 1
+ * if FOO isn't defined, FOO=0. But some compilers default to 0 instead of 1
+ * for -DFOO, oh well.
+ *      => defined(0) => (-1 != - 0 - 1) => 0
+ *
+ * But:
+ * defined("") => (-1 != - "" - 1)
+ *   [which is an unavoidable catastrophe.]
+ */
 #endif
 
 
@@ -63,7 +98,7 @@
 # ifndef KR1ED
 #define WIZARD  "izchak" /* the person allowed to use the -D option */
 # else
-#define WIZARD 1
+#define WIZARD
 #define WIZARD_NAME "johnny"
 # endif
 #endif
@@ -78,13 +113,16 @@
  *	smaller bones/level/save files, but require additional code and time.
  */
 
+#ifndef MACOS
 #define COMPRESS "/usr/local/compress"  /* path name for 'compress' */
-#ifndef COMPRESS
+# ifndef COMPRESS
 #define ZEROCOMP	/* Use only if COMPRESS is not used -- Olaf Seibert */
+# endif
 #endif
 
-
+#ifndef MACOS
 #define CHDIR		/* delete if no chdir() available */
+#endif
 
 #ifdef CHDIR
 /*
@@ -173,46 +211,48 @@ typedef unsigned char	uchar;
  */ 
 
 /* game features */
-#define POLYSELF      1 /* Polymorph self code by Ken Arromdee */
-#define THEOLOGY      1 /* Smarter gods - The Unknown Hacker */
-#define SOUNDS        1 /* Add more life to the dungeon */
-#define KICK          1 /* Allow kicking things besides doors -Izchak Miller */
+#define POLYSELF      /* Polymorph self code by Ken Arromdee */
+#define THEOLOGY      /* Smarter gods - The Unknown Hacker */
+#define SOUNDS        /* Add more life to the dungeon */
+#define KICK          /* Allow kicking things besides doors -Izchak Miller */
 /* dungeon features */
-#define THRONES       1 /* Thrones and Courts by M. Stephenson */
-#define FOUNTAINS     1 /* Fountain code by SRT (+ GAN + EB) */
-#define SINKS         1 /* Kitchen sinks - Janet Walz */
-#define ALTARS        1 /* Sacrifice sites - Jean-Christophe Collet */
+#define THRONES       /* Thrones and Courts by M. Stephenson */
+#define FOUNTAINS     /* Fountain code by SRT (+ GAN + EB) */
+#define SINKS         /* Kitchen sinks - Janet Walz */
+#define ALTARS        /* Sacrifice sites - Jean-Christophe Collet */
 /* dungeon levels */
-#define WALLIFIED_MAZE 1 /* Fancy mazes - Jean-Christophe Collet */
-#define REINCARNATION 1 /* Rogue-like levels */
-#define STRONGHOLD    1 /* Challenging special levels - Jean-Christophe Collet*/
+#define WALLIFIED_MAZE /* Fancy mazes - Jean-Christophe Collet */
+#define REINCARNATION /* Rogue-like levels */
+#define STRONGHOLD    /* Challenging special levels - Jean-Christophe Collet*/
 /* monsters & objects */
-#define ORACLE        1 /* Include another source of information */
-#define MEDUSA        1 /* Mirrors and the Medusa by Richard P. Hughey */
-#define KOPS          1 /* Keystone Kops by Scott R. Turner */
-#define ARMY          1 /* Soldiers, barracks by Steve Creps */
-#define WORM          1 /* Long worms */
-#define GOLEMS        1 /* Golems, by KAA */
-#define INFERNO       1 /* Demons & Demonlords */
+#define ORACLE        /* Include another source of information */
+#define MEDUSA        /* Mirrors and the Medusa by Richard P. Hughey */
+#define KOPS          /* Keystone Kops by Scott R. Turner */
+#define ARMY          /* Soldiers, barracks by Steve Creps */
+#define WORM          /* Long worms */
+#define GOLEMS        /* Golems, by KAA */
+#define INFERNO       /* Demons & Demonlords */
 #ifdef INFERNO
-#define SEDUCE        1 /* Succubi/incubi additions, by KAA, suggested by IM */
+#define SEDUCE        /* Succubi/incubi additions, by KAA, suggested by IM */
 #endif
-#define TOLKIEN       1 /* More varieties of objects and monsters */
-#define PROBING       1 /* Wand of probing code by Gil Neiger */
-#define WALKIES       1 /* Leash code by M. Stephenson */
-#define SHIRT         1 /* Hawaiian shirt code by Steve Linhart */
-#define MUSIC         1 /* Musical instruments - Jean-Christophe Collet */
-#define TUTTI_FRUTTI  1 /* Fruits as in Rogue, but which work... -KAA */
-#define SPELLS        1 /* Spell casting by M. Stephenson */
-#define NAMED_ITEMS   1 /* Special named items handling */
+#define TOLKIEN       /* More varieties of objects and monsters */
+#define PROBING       /* Wand of probing code by Gil Neiger */
+#define WALKIES       /* Leash code by M. Stephenson */
+#define SHIRT         /* Hawaiian shirt code by Steve Linhart */
+#define MUSIC         /* Musical instruments - Jean-Christophe Collet */
+#define TUTTI_FRUTTI  /* Fruits as in Rogue, but which work... -KAA */
+#define SPELLS        /* Spell casting by M. Stephenson */
+#define NAMED_ITEMS   /* Special named items handling */
 /* difficulty */
-#define ELBERETH      1 /* Allow for disabling the E word - Mike 3point */
-#define EXPLORE_MODE  1 /* Allow non-scoring play with additional powers */
-#define HARD          1 /* Enhanced wizard code by M. Stephenson */
+#define ELBERETH      /* Allow for disabling the E word - Mike 3point */
+#define EXPLORE_MODE  /* Allow non-scoring play with additional powers */
+#define HARD          /* Enhanced wizard code by M. Stephenson */
 /* I/O */
-#define REDO          1 /* support for redoing last command - DGK */
-#define COM_COMPL     1 /* Command line completion by John S. Bien */
-#define CLIPPING      1 /* allow smaller screens -- ERS */
+#define REDO          /* support for redoing last command - DGK */
+#define COM_COMPL     /* Command line completion by John S. Bien */
+#ifndef AMIGA
+#define CLIPPING      /* allow smaller screens -- ERS */
+#endif
 
 #ifdef REDO
 #define DOAGAIN '\001'		/* The "redo" key used in tty.c and cmd.c */

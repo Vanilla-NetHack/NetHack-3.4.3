@@ -11,10 +11,24 @@
 
 #define	NOINVSYM	'#'
 
-static boolean mergable();
+static boolean FDECL(mergable,(struct obj *,struct obj *));
+OSTATIC void FDECL(assigninvlet,(struct obj *));
+static int FDECL(merged,(struct obj *,struct obj *,int));
+OSTATIC struct obj *FDECL(mkgoldobj,(long));
+#ifndef OVERLAY
+static int FDECL(ckunpaid,(struct obj *));
+#else
+int FDECL(ckunpaid,(struct obj *));
+#endif
+static boolean NDECL(wearing_armor);
+static boolean FDECL(is_worn,(struct obj *));
+static char FDECL(obj_to_let,(struct obj *));
+
+OSTATIC char *FDECL(xprname,(struct obj *,CHAR_P,BOOLEAN_P));
+
+#ifdef OVLB
 
 int lastinvnr = 51;	/* 0 ... 51 */
-static char *xprname();
 
 char inv_order[] = {
 	AMULET_SYM, WEAPON_SYM, ARMOR_SYM, FOOD_SYM, SCROLL_SYM,
@@ -24,7 +38,7 @@ char inv_order[] = {
 	POTION_SYM, RING_SYM, WAND_SYM, TOOL_SYM, GEM_SYM,
 	ROCK_SYM, BALL_SYM, CHAIN_SYM, 0 };
 
-static void
+XSTATIC void
 assigninvlet(otmp)
 register struct obj *otmp;
 {
@@ -51,6 +65,9 @@ register struct obj *otmp;
 	lastinvnr = i;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 /* merge obj with otmp and delete obj if types agree */
 static int
 merged(otmp, obj, lose)
@@ -67,6 +84,8 @@ register int lose;
 			/ (otmp->quan + obj->quan);
 		otmp->quan += obj->quan;
 		otmp->owt += obj->owt;
+		if(!otmp->onamelth && obj->onamelth)
+			(void)oname(otmp, ONAME(obj), 1);
 		if(lose) freeobj(obj);
 		obfree(obj,otmp);	/* free(obj), bill->otmp */
 		return(1);
@@ -130,10 +149,12 @@ added:
 		 * for correct calculation */
 		if (stone_luck(TRUE) >= 0) u.moreluck = LUCKADD;
 		else u.moreluck = -LUCKADD;
-		flags.botl = 1;
 	}
 	return(obj);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 useup(obj)
@@ -146,6 +167,7 @@ register struct obj *obj;
 		obj->quan--;
 		obj->owt = weight(obj);
 	} else {
+		if(obj->otyp == CORPSE) food_disappears(obj);
 		setnotworn(obj);
 		freeinv(obj);
 		delete_contents(obj);
@@ -188,6 +210,8 @@ register struct obj *obj;
 #ifdef WALKIES
 	if(obj->otyp == LEASH && obj->leashmon != 0) o_unleash(obj);
 #endif
+	if(obj->otyp == CORPSE) food_disappears(obj);
+
 	freeobj(obj);
 	unpobj(obj);
 
@@ -248,6 +272,9 @@ register struct gold *gold;
 #endif
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 struct obj *
 sobj_at(n,x,y)
 register int n, x, y;
@@ -259,6 +286,9 @@ register int n, x, y;
 		    return(otmp);
 	return((struct obj *)0);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 int
 carried(obj)
@@ -331,7 +361,7 @@ register int x, y;
 }
 
 /* make dummy object structure containing gold - for temporary use only */
-static
+XSTATIC
 struct obj *
 mkgoldobj(q)
 register long q;
@@ -341,11 +371,17 @@ register long q;
 	otmp = newobj(0);
 	/* should set o_id etc. but otmp will be freed soon */
 	otmp->olet = GOLD_SYM;
+#ifdef POLYSELF
+	otmp->ox = 0; /* necessary for eating gold */
+#endif
 	u.ugold -= q;
 	OGOLD(otmp) = q;
 	flags.botl = 1;
 	return(otmp);
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 /*
  * getobj returns:
@@ -378,6 +414,11 @@ register const char *let,*word;
 	if(*let == '0') let++, allowcnt = 1;
 	if(*let == GOLD_SYM) let++,
 		usegold = TRUE, allowgold = (u.ugold ? TRUE : FALSE);
+#ifdef POLYSELF
+	/* Equivalent of an "ugly check" for gold */
+	if (usegold && !strcmp(word, "eat") && !metallivorous(uasmon))
+		usegold = allowgold = FALSE;
+#endif
 	if(*let == '#') let++, allowall = TRUE;
 	if(*let == '-') let++, allownone = TRUE;
 	if(allownone) *bp++ = '-';
@@ -410,8 +451,11 @@ register const char *let,*word;
 		/* Second ugly check; unlike the first it won't trigger an
 		 * "else" in "you don't have anything else to ___".
 		 */
-		if ((!strcmp(word, "wear") &&
+		else if ((!strcmp(word, "wear") &&
 		    (otmp->olet == TOOL_SYM && otmp->otyp != BLINDFOLD))
+#ifdef POLYSELF
+		|| (!strcmp(word, "eat") && !is_edible(otmp))
+#endif
 		|| (!strcmp(word, "can") &&
 		    (otmp->otyp != CORPSE))
 		|| (!strcmp(word, "write with") &&
@@ -508,7 +552,7 @@ register const char *let,*word;
 			allowcnt = 1;
 			if(cnt == 0 && prezero) return((struct obj *)0);
 			if(cnt > 1) {
-			    pline("You can only throw one item at a time.");
+			    You("can only throw one item at a time.");
 			    continue;
 			}
 		}
@@ -552,6 +596,7 @@ register const char *let,*word;
 		if(cnt == 0) return (struct obj *)0;
 		if(cnt != otmp->quan) {
 			register struct obj *obj;
+			
 #ifdef LINT	/*splitobj for (long )cnt > 30000 && sizeof(int) == 2*/
 			obj = (struct obj *)0;
 #else
@@ -561,11 +606,23 @@ register const char *let,*word;
 			else
 				obj = splitobj(otmp, (int) cnt);
 #endif
+		/* Very ugly kludge necessary to prevent someone from trying
+		 * to drop one of several loadstones and having the loadstone
+		 * now be separate.  If putting items in containers is ever
+		 * changed to allow putting in counts of individual items, a
+		 * similar kludge will be needed.
+		 */
+			if (!strcmp(word, "drop") && obj->otyp == LOADSTONE
+					&& obj->cursed)
+				otmp->corpsenm = obj->invlet;
 			if(otmp == uwep) setuwep(obj);
 		}
 	}
 	return(otmp);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 #ifndef OVERLAY
 static 
@@ -600,8 +657,8 @@ static const char removeables[] =
 /* Takeoff (A). Return the number of times fn was called successfully */
 int
 ggetobj(word, fn, mx)
-register char *word;
-register int (*fn)(), mx;
+register const char *word;
+register int FDECL((*fn),(struct obj *)), mx;
 {
 	char buf[BUFSZ];
 	register char *ip;
@@ -609,7 +666,7 @@ register int (*fn)(), mx;
 	register int oletct = 0, iletct = 0;
 	register boolean allflag = FALSE;
 	char olets[20], ilets[20];
-	int (*ckfn)() = (int (*)()) 0;
+	int FDECL((*ckfn),(struct obj *)) = (int (*)()) 0;
 	xchar allowgold = (u.ugold && !strcmp(word, "drop")) ? 1 : 0; /* BAH */
 	register boolean takeoff = !strcmp(word, "take off");
 
@@ -708,8 +765,8 @@ int
 askchain(objchn, ininv, olets, allflag, fn, ckfn, mx, word)
 register struct obj *objchn;
 register int ininv, allflag, mx;
-register char *olets, *word;
-register int (*fn)(), (*ckfn)();
+register const char *olets, *word;
+register int FDECL((*fn),(struct obj *)), FDECL((*ckfn),(struct obj *));
 {
 	register struct obj *otmp, *otmp2;
 	register char sym, ilet;
@@ -732,11 +789,9 @@ nextclass:
 		if(takeoff && !is_worn(otmp)) continue;
 		if(ckfn && !(*ckfn)(otmp)) continue;
 		if(!allflag) {
-			if(ininv) {
-			    if (nodot)
-				 pline(xprname(otmp, ilet, FALSE));
-			    else pline(xprname(otmp, ilet, TRUE));
-			}
+			if(ininv)
+			    pline("%s", xprname(otmp, ilet,
+							nodot ? FALSE : TRUE));
 			else
 			    pline(doname(otmp));
 			addtopl("? ");
@@ -788,7 +843,10 @@ register struct obj *obj;
 	pline(xprname(obj, obj_to_let(obj), TRUE));
 }
 
-static char *
+#endif /* OVLB */
+#ifdef OVL1
+
+XSTATIC char *
 xprname(obj,let,dot)
 register struct obj *obj;
 register char let;
@@ -807,6 +865,9 @@ register boolean dot;
 	return(li);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 int
 ddoinv()
 {
@@ -814,11 +875,14 @@ ddoinv()
 	return 0;
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 /* called with 0 or "": all objects in inventory */
 /* otherwise: all objects with (serial) letter in lets */
 void
 doinv(lets)
-register char *lets;
+register const char *lets;
 {
 	register struct obj *otmp;
 	register char ilet;
@@ -878,6 +942,9 @@ nextclass:
 	any[ct] = 0;
 	cornline(2, any);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 dotypeinv()				/* free after Robert Viduya */
@@ -965,7 +1032,7 @@ int
 dolook() {
     	register struct obj *otmp, *otmp0;
     	register struct gold *gold;
-    	char *verb = Blind ? "feel" : "see";
+    	const char *verb = Blind ? "feel" : "see";
     	int ct = 0;
     	int fd = 0;
 
@@ -1012,7 +1079,7 @@ dolook() {
 #endif
 #ifdef ALTARS
     	if(IS_ALTAR(levl[u.ux][u.uy].typ))  {
-		char *al;
+		const char *al;
 
 		fd++;
 		switch (levl[u.ux][u.uy].altarmask & ~A_SHRINE) {
@@ -1073,6 +1140,7 @@ dolook() {
 		    (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
 			pline("Touching the dead cockatrice is a fatal mistake...");
 			You("turn to stone...");
+			killer_format = KILLED_BY_AN;
 			killer = "cockatrice corpse";
 			done(STONING);
 		}
@@ -1098,6 +1166,9 @@ dolook() {
     	return(!!Blind);
 }
 
+#endif /* OVLB */
+#ifdef OVL1
+
 void
 stackobj(obj)
 register struct obj *obj;
@@ -1122,22 +1193,39 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	   obj->otrapped != otmp->otrapped)
 	    return(FALSE);
 
-	else if((obj->olet==WEAPON_SYM || obj->olet==ARMOR_SYM) &&
+	if((obj->olet==WEAPON_SYM || obj->olet==ARMOR_SYM) &&
 		obj->rustfree != otmp->rustfree) return FALSE;
 
-	else if(obj->olet == FOOD_SYM && (obj->oeaten != otmp->oeaten ||
+	if(obj->olet == FOOD_SYM && (obj->oeaten != otmp->oeaten ||
 		obj->orotten != otmp->orotten))
 		return(FALSE);
 
-	else if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN)
-		return( (obj->corpsenm == otmp->corpsenm) &&
-			(!ONAME(obj) || !strcmp(ONAME(obj), ONAME(otmp))) );
+	if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN) {
+		if((obj->corpsenm != otmp->corpsenm) ||
+			(ONAME(obj) && strcmp(ONAME(obj), ONAME(otmp))))
+				return FALSE;
+	}
 
-	else if(obj->known == otmp->known || 
+/* if they have names, make sure they're the same */
+	if ( (obj->onamelth != otmp->onamelth &&
+		((obj->onamelth && otmp->onamelth) || obj->otyp == CORPSE)
+	     ) ||
+	    (obj->onamelth && 
+		    strncmp(ONAME(obj), ONAME(otmp), (int)obj->onamelth)))
+		return FALSE;
+
+#ifdef NAMED_ITEMS
+	if(is_artifact(obj) != is_artifact(otmp)) return FALSE;
+#endif
+
+	if(obj->known == otmp->known || 
 		!objects[otmp->otyp].oc_uses_known) {
 		return(objects[obj->otyp].oc_merge);
 	} else return(FALSE);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 doprgold(){
@@ -1305,3 +1393,5 @@ reassign()
 		obj->invlet = (i < 26) ? ('a'+i) : ('A'+i-26);
 	lastinvnr = i;
 }
+
+#endif /* OVLB */

@@ -25,14 +25,54 @@ struct yysvf {
 	int *yystops;};
 struct yysvf *yyestate;
 extern struct yysvf yysvec[], *yybgin;
-/*	SCCS Id: @(#)lev_lex.c	3.0	89/07/02
+/*	SCCS Id: @(#)lev_lex.c	3.0	90/01/04
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
+
+#define LEV_LEX_C
+
+/* block some unused #defines to avoid overloading some cpp's */
+#define MONDATA_H	/* comment this line for pre-compiled headers */
+#define MONFLAG_H	/* comment this line for pre-compiled headers */
 
 #include "hack.h"
 #include "lev_comp.h"
 #include "sp_lev.h"
 
+/* Most of these don't exist in flex, yywrap is macro and
+ * yyunput is properly declared in flex.skel.
+ */
+#ifndef FLEX_SCANNER
+int FDECL (yyback, (int *, int));
+int NDECL (yylook);
+int NDECL (yyinput);
+int NDECL (yywrap);
+int NDECL (yylex);
+int FDECL (yyunput, (int));
+int FDECL (yyoutput, (int));
+#endif
+
+#ifdef MSDOS
+#undef exit
+#endif
+
+/* this doesn't always get put in lev_comp.h
+ * (esp. when using older versions of bison)
+ */
+
+extern YYSTYPE yylval;
+
+#ifdef MACOS
+#undef putchar
+#undef putc
+#undef printf
+#undef Printf
+#define Printf printf
+# ifdef LSC
+#define	putc(c,stream)	(fputc(c,stream))
+#define	putchar(c)	(fputc(c,stdout))
+# endif
+#endif
 int line_number = 1;
 
 /* This is *** UGLY *** but I can't think a better way to do it
@@ -51,30 +91,31 @@ yyfussy: switch(nstr){
 case 0:
 if(yywrap()) return(0); break;
 case 1:
-	{ line_number++; }
-break;
-case 2:
-	return MAZE_ID;
-break;
-case 3:
-	return LEVEL_ID;
-break;
-case 4:
-return GEOMETRY_ID;
-break;
-case 5:
-	{ BEGIN MAPC; }
-break;
-case 6:
 { line_number++; yymore(); }
 break;
-case 7:
+case 2:
 { BEGIN 0;
+		  line_number++;
 		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
 		  yylval.map = (char *) alloc(strlen(yytext)+1);
-		  strcpy(yylval.map, yytext+1);
+		  strcpy(yylval.map, yytext);
 		  return MAP_ID;
 		}
+break;
+case 3:
+	{ line_number++; }
+break;
+case 4:
+	return MAZE_ID;
+break;
+case 5:
+	return LEVEL_ID;
+break;
+case 6:
+return GEOMETRY_ID;
+break;
+case 7:
+	{ BEGIN MAPC; line_number++; }
 break;
 case 8:
 	return OBJECT_ID;
@@ -229,6 +270,13 @@ default:
 fprintf(yyout,"bad switch yylook %d",nstr);
 } return(0); }
 /* end of yylex */
+#ifdef	AMIGA
+long *alloc(n)
+	unsigned n;
+{
+	return ((long *)malloc (n));
+}
+#endif
 int yyvstop[] ={
 0,
 
@@ -330,7 +378,7 @@ int yyvstop[] ={
 55,
 0,
 
-6,
+1,
 52,
 0,
 
@@ -359,17 +407,17 @@ int yyvstop[] ={
 48,
 0,
 
-1,
+3,
 0,
 
-6,
+1,
 0,
 
 53,
 0,
 
 1,
-6,
+3,
 0,
 
 54,
@@ -384,13 +432,10 @@ int yyvstop[] ={
 39,
 0,
 
--5,
-0,
-
 11,
 0,
 
-2,
+4,
 0,
 
 21,
@@ -414,13 +459,13 @@ int yyvstop[] ={
 30,
 0,
 
-5,
+7,
 0,
 
 18,
 0,
 
-3,
+5,
 0,
 
 35,
@@ -483,9 +528,6 @@ int yyvstop[] ={
 46,
 0,
 
--7,
-0,
-
 9,
 0,
 
@@ -495,10 +537,10 @@ int yyvstop[] ={
 44,
 0,
 
-7,
+2,
 0,
 
-4,
+6,
 0,
 
 13,
@@ -787,22 +829,22 @@ yycrank+188,	0,		0,
 yycrank+0,	0,		yyvstop+102,
 yycrank+200,	0,		0,	
 yycrank+191,	0,		0,	
-yycrank+298,	0,		yyvstop+104,
+yycrank+298,	0,		0,	
 yycrank+232,	0,		0,	
 yycrank+229,	0,		0,	
-yycrank+0,	0,		yyvstop+106,
+yycrank+0,	0,		yyvstop+104,
 yycrank+248,	0,		0,	
 yycrank+246,	0,		0,	
 yycrank+247,	0,		0,	
 yycrank+241,	0,		0,	
-yycrank+231,	0,		yyvstop+108,
+yycrank+231,	0,		yyvstop+106,
 yycrank+235,	0,		0,	
 yycrank+252,	0,		0,	
 yycrank+254,	0,		0,	
 yycrank+243,	0,		0,	
 yycrank+244,	0,		0,	
+yycrank+0,	0,		yyvstop+108,
 yycrank+0,	0,		yyvstop+110,
-yycrank+0,	0,		yyvstop+112,
 yycrank+214,	0,		0,	
 yycrank+211,	0,		0,	
 yycrank+215,	0,		0,	
@@ -810,89 +852,89 @@ yycrank+226,	0,		0,
 yycrank+227,	0,		0,	
 yycrank+214,	0,		0,	
 yycrank+229,	0,		0,	
+yycrank+0,	0,		yyvstop+112,
 yycrank+0,	0,		yyvstop+114,
 yycrank+0,	0,		yyvstop+116,
-yycrank+0,	0,		yyvstop+118,
 yycrank+230,	0,		0,	
 yycrank+217,	0,		0,	
 yycrank+220,	0,		0,	
 yycrank+226,	0,		0,	
 yycrank+235,	0,		0,	
 yycrank+241,	0,		0,	
-yycrank+0,	0,		yyvstop+120,
+yycrank+0,	0,		yyvstop+118,
 yycrank+240,	0,		0,	
 yycrank+236,	0,		0,	
 yycrank+232,	0,		0,	
 yycrank+242,	0,		0,	
 yycrank+249,	0,		0,	
 yycrank+238,	0,		0,	
+yycrank+0,	0,		yyvstop+120,
 yycrank+0,	0,		yyvstop+122,
-yycrank+0,	0,		yyvstop+124,
 yycrank+290,	0,		0,	
-yycrank+0,	0,		yyvstop+126,
+yycrank+0,	0,		yyvstop+124,
 yycrank+274,	0,		0,	
 yycrank+273,	0,		0,	
 yycrank+276,	0,		0,	
-yycrank+0,	0,		yyvstop+128,
+yycrank+0,	0,		yyvstop+126,
 yycrank+295,	0,		0,	
 yycrank+292,	0,		0,	
 yycrank+296,	0,		0,	
 yycrank+286,	0,		0,	
 yycrank+294,	0,		0,	
 yycrank+294,	0,		0,	
+yycrank+0,	0,		yyvstop+128,
 yycrank+0,	0,		yyvstop+130,
-yycrank+0,	0,		yyvstop+132,
 yycrank+264,	0,		0,	
 yycrank+264,	0,		0,	
 yycrank+266,	0,		0,	
-yycrank+0,	0,		yyvstop+134,
+yycrank+0,	0,		yyvstop+132,
 yycrank+289,	0,		0,	
 yycrank+293,	0,		0,	
 yycrank+293,	0,		0,	
 yycrank+298,	0,		0,	
 yycrank+283,	0,		0,	
-yycrank+0,	0,		yyvstop+136,
+yycrank+0,	0,		yyvstop+134,
 yycrank+284,	0,		0,	
-yycrank+0,	0,		yyvstop+138,
+yycrank+0,	0,		yyvstop+136,
 yycrank+292,	0,		0,	
-yycrank+0,	0,		yyvstop+140,
+yycrank+0,	0,		yyvstop+138,
 yycrank+301,	0,		0,	
+yycrank+0,	0,		yyvstop+140,
 yycrank+0,	0,		yyvstop+142,
-yycrank+0,	0,		yyvstop+144,
 yycrank+323,	0,		0,	
 yycrank+331,	0,		0,	
 yycrank+323,	0,		0,	
-yycrank+0,	0,		yyvstop+146,
+yycrank+0,	0,		yyvstop+144,
 yycrank+330,	0,		0,	
 yycrank+325,	0,		0,	
 yycrank+337,	0,		0,	
-yycrank+0,	0,		yyvstop+148,
+yycrank+0,	0,		yyvstop+146,
 yycrank+315,	0,		0,	
+yycrank+0,	0,		yyvstop+148,
 yycrank+0,	0,		yyvstop+150,
 yycrank+0,	0,		yyvstop+152,
 yycrank+0,	0,		yyvstop+154,
 yycrank+0,	0,		yyvstop+156,
 yycrank+0,	0,		yyvstop+158,
-yycrank+0,	0,		yyvstop+160,
 yycrank+297,	0,		0,	
 yycrank+305,	0,		0,	
+yycrank+0,	0,		yyvstop+160,
 yycrank+0,	0,		yyvstop+162,
 yycrank+0,	0,		yyvstop+164,
 yycrank+0,	0,		yyvstop+166,
-yycrank+0,	0,		yyvstop+168,
-yycrank+404,	0,		yyvstop+170,
+yycrank+404,	0,		0,	
 yycrank+347,	0,		0,	
 yycrank+327,	0,		0,	
 yycrank+342,	0,		0,	
+yycrank+0,	0,		yyvstop+168,
+yycrank+347,	0,		0,	
+yycrank+347,	0,		0,	
+yycrank+0,	0,		yyvstop+170,
 yycrank+0,	0,		yyvstop+172,
-yycrank+347,	0,		0,	
-yycrank+347,	0,		0,	
 yycrank+0,	0,		yyvstop+174,
+yycrank+348,	0,		0,	
 yycrank+0,	0,		yyvstop+176,
 yycrank+0,	0,		yyvstop+178,
-yycrank+348,	0,		0,	
-yycrank+0,	0,		yyvstop+180,
-yycrank+0,	0,		yyvstop+182,
 yycrank+356,	0,		0,	
 yycrank+346,	0,		0,	
 yycrank+363,	0,		0,	
@@ -902,7 +944,7 @@ yycrank+366,	0,		0,
 yycrank+355,	0,		0,	
 yycrank+360,	0,		0,	
 yycrank+370,	0,		0,	
-yycrank+0,	0,		yyvstop+184,
+yycrank+0,	0,		yyvstop+180,
 yycrank+361,	0,		0,	
 yycrank+355,	0,		0,	
 yycrank+370,	0,		0,	
@@ -911,16 +953,16 @@ yycrank+372,	0,		0,
 yycrank+358,	0,		0,	
 yycrank+376,	0,		0,	
 yycrank+375,	0,		0,	
-yycrank+0,	0,		yyvstop+186,
+yycrank+0,	0,		yyvstop+182,
 yycrank+377,	0,		0,	
 yycrank+363,	0,		0,	
 yycrank+365,	0,		0,	
 yycrank+367,	0,		0,	
 yycrank+367,	0,		0,	
-yycrank+0,	0,		yyvstop+188,
+yycrank+0,	0,		yyvstop+184,
 yycrank+368,	0,		0,	
-yycrank+0,	0,		yyvstop+190,
-yycrank+0,	0,		yyvstop+192,
+yycrank+0,	0,		yyvstop+186,
+yycrank+0,	0,		yyvstop+188,
 0,	0,	0};
 struct yywork *yytop = yycrank+502;
 struct yysvf *yybgin = yysvec+1;
@@ -943,7 +985,7 @@ char yymatch[] ={
 01  ,01  ,01  ,'#' ,'#' ,'#' ,01  ,01  ,
 0};
 char yyextra[] ={
-0,0,0,0,0,1,0,1,
+0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,
 0,0,0,0,0,0,0,0,

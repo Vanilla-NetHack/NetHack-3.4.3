@@ -20,6 +20,7 @@ O	options set options
 \	known	display list of what's been discovered
 v	version	display version number
 V	history	display game history
+X	explore	switch the game to explore (discovery) mode
 ^A	again	redo the previous command (^A denotes the keystroke CTRL-A)
 ^R	redraw	redraw the screen
 ^P	prevmsg	repeat previous message (subsequent ^P's repeat earlier ones)
@@ -52,6 +53,7 @@ t	throw	throw or shoot a weapon
 T	takeoff	take off some armor
 w	wield	wield a weapon	(w-  wield nothing)
 W	wear	put on some armor
+x	spells	list the spells you know
 z	zap	zap a wand
 Z	Zap	cast a spell
 <	up	go up the stairs
@@ -80,6 +82,7 @@ M-r	rub	rub a lamp
 M-s	sit	sit down
 M-t	turn	turn undead
 M-u	untrap	untrap something (usually a trapped object)
+M-v	version print compile time options for this version
 M-w	wipe	wipe off your face
 
 If the "number_pad" option is on, these additional commands are available:

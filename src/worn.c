@@ -35,8 +35,8 @@ setworn(obj, mask)
 register struct obj *obj;
 long mask;
 {
-	register struct worn *wp;
-	register struct obj *oobj;
+	register const struct worn *wp;
+	register struct obj *oobj = 0;
 
 	for(wp = worn; wp->w_mask; wp++) if(wp->w_mask & mask) {
 		oobj = *(wp->w_obj);
@@ -71,17 +71,18 @@ long mask;
 	 */
 	if (Inhell && !Fire_resistance) {
 		pline(crispy);
-		killer = "loss of fire protection";
+		killer_format = NO_KILLER_PREFIX;
+		killer = self_pronoun("lost %s fire protection in hell","his");
 		done(BURNING);
 		/* If we're here they survived with life saving, so put the
 		 * weapon they just unwielded back in their hands...
 		 */
-		if (oobj->otyp != DRAGON_SCALE_MAIL
+		if (!oobj || (oobj->otyp != DRAGON_SCALE_MAIL
 				&& oobj->otyp != RIN_FIRE_RESISTANCE
 #ifdef NAMED_ITEMS
 				&& !defends(AD_FIRE, oobj)
 #endif
-				&& oobj->corpsenm != PM_RED_DRAGON)
+				&& oobj->corpsenm != PM_RED_DRAGON))
 			impossible("lost FR from a non-FR item?");
 		setworn(oobj, mask);
 	}
@@ -92,7 +93,7 @@ void
 setnotworn(obj)
 register struct obj *obj;
 {
-	register struct worn *wp;
+	register const struct worn *wp;
 
 	if (!obj) return;
 	for(wp = worn; wp->w_mask; wp++)
@@ -111,7 +112,8 @@ register struct obj *obj;
 	 */
 	if (Inhell && !Fire_resistance && obj->olet != AMULET_SYM) {
 		pline(crispy);
-		killer = "loss of fire protection";
+		killer_format = NO_KILLER_PREFIX;
+		killer = self_pronoun("lost %s fire protection in hell","his");
 		done(BURNING);
 		/* Survived with lifesaving, etc...; there's no general way
 		 * to undo the setnotworn()--we can't re-wear/wield the

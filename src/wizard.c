@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.0	88/04/11
+/*	SCCS Id: @(#)wizard.c	3.0	90/01/09
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,8 @@
 /*	       - dewimped and given some maledictions. -3. */
 
 #include "hack.h"
+
+#ifdef OVLB
 
 #ifdef HARD
 /*	TODO:	Expand this list.	*/
@@ -20,11 +22,17 @@ static const int nasties[] = {
 	};
 #endif /* HARD */
 
-/*	TODO:	investigate this. */
-static const char wizapp[] = {
-	S_HUMAN, S_DEMON, S_VAMPIRE, S_DRAGON, S_TROLL, S_UMBER,
-	S_XORN, S_XAN, S_COCKATRICE, S_EYE, S_NAGA, S_TRAPPER,
-	/* '1' /* Historical reference */ };
+static const unsigned wizapp[] = {
+	PM_HUMAN, PM_WATER_DEMON, PM_VAMPIRE,
+	PM_RED_DRAGON, PM_TROLL, PM_UMBER_HULK,
+	PM_XORN, PM_XAN, PM_COCKATRICE,
+	PM_FLOATING_EYE,
+	PM_GUARDIAN_NAGA,
+	PM_TRAPPER
+};
+
+#endif /* OVLB */
+#ifdef OVL0
 
 /* If he has found the Amulet, make the wizard appear after some time */
 void
@@ -39,12 +47,15 @@ amulet(){
 		    if(u.uhave_amulet) {
 			mtmp->msleep = 0;
 			if(dist(mtmp->mx,mtmp->my) > 2)
-			    pline(
-    "You get the creepy feeling that somebody noticed your taking the Amulet."
+			    You(
+    "get the creepy feeling that somebody noticed your taking the Amulet."
 			    );
 			return;
 		    }
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 int
 mon_has_amulet(mtmp)
@@ -86,6 +97,9 @@ register struct monst *mtmp;
 			    /* teleport to it and pick it up */
 			    remove_monster(mtmp->mx, mtmp->my);
 			    place_monster(mtmp, otmp->ox, otmp->oy);
+			    if (cansee(mtmp->mx, mtmp->my))
+				pline("%s picks up %s.", Monnam(mtmp),
+								xname(otmp));
 			    freeobj(otmp);
 			    mpickobj(mtmp, otmp);
 			    pmon(mtmp);
@@ -100,7 +114,8 @@ register struct monst *mtmp;
 	/* secondary goal - stayin' alive */
 
 	/* if wounded, hole up on or near the stairs (to block them) */
-	if(mtmp->mhp < 20 + rnd(10))
+	/* unless, of course, there are no stairs (e.g. endlevel */
+	if(mtmp->mhp < 20 + rnd(10) && (xupstair || yupstair))
 	    if (mtmp->mx != xupstair && mtmp->my != yupstair)
 		mnearto(mtmp,xupstair,yupstair,TRUE);
 
@@ -131,8 +146,10 @@ aggravate()
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		mtmp->msleep = 0;
-		if(mtmp->mfroz && !rn2(5))
-			mtmp->mfroz = 0;
+		if(!mtmp->mcanmove && !rn2(5)) {
+			mtmp->mfrozen = 0;
+			mtmp->mcanmove = 1;
+		}
 	}
 }
 
@@ -148,6 +165,7 @@ clonewiz()
 			mtmp2->minvent->spe = -1;
 		}
 		unpmon(mtmp2);
+		mtmp2->m_ap_type = M_AP_MONSTER;
 		mtmp2->mappearance = wizapp[rn2(SIZE(wizapp))];
 		pmon(mtmp2);
 	}
@@ -262,47 +280,78 @@ const char *random_insult[] = {
 
 const char *random_malediction[] = {
 	"Hell shall soon claim thy remains,",
-	"I chortle at thee, pathetic",
-	"Prepare to die,",
+	"I chortle at thee, thou pathetic",
+	"Prepare to die, thou ",
 	"Resistance is useless,",
 	"Surrender or die, thou",
-	"There shall be no mercy, yon",
+	"There shall be no mercy, thou",
 	"Thou shalt repent of thy cunning,",
 	"Thou art as a flea to me,",
 	"Thou art doomed,",
 	"Thy fate is sealed,",
 	"Verily, thou shalt be one dead"
-/*	"Go play leapfrog with a unicorn,", */
 };
 
-/* Insult the player */
+#ifdef SOUNDS
+const char *demonic_malediction[] = {
+	"I first mistook thee for a statue, when I regarded thy head of stone.",
+	"Come here often?",
+	"Dost pain excite thee?  Wouldst thou prefer the whip?",
+	"Thinkest thou it shall tickle as I rip out thy lungs?",
+	"Eat slime and die!",
+	"Go ahead, fetch thy mama!  I shall wait.",
+	"Go play leapfrog with a herd of unicorns!",
+	"Hast thou been drinking, or art thou always so clumsy?",
+	"This time I shall let thee off with a spanking, but let it not happen again.",
+	"I've met smarter (and prettier) acid blobs.",
+	"Look!  Thy bootlace is undone!",
+	"Mercy!  Dost thou wish me to die of laughter?",
+	"Run away!  Live to flee another day!",	
+	"Thou hadst best fight better than thou canst dress!",
+	"Twixt thy cousin and thee, Medusa is the prettier.",
+	"Methinks thou wert unnaturally interested in yon corpse back there, eh, varlet?",
+	"Up thy nose with a rubber hose!",
+	"Verily, thy corpse could not smell worse!",
+	"Wait!  I shall polymorph into a grid bug to give thee a fighting chance!",
+	"Why search for the Amulet?  Thou wouldst but lose it, cretin.",
+};
+#endif
+
+/* Insult or intimidate the player */
 void
 cuss(mtmp)
 register struct monst	*mtmp;
 {
-	switch (rn2(5)) {
-	    case 0: pline("%s casts aspersions on your ancestry.",
-			  Monnam(mtmp));
-		    break;
-	    case 1: pline("%s laughs fiendishly.", /* typical bad guy action */
-			  Monnam(mtmp));
-		    break;
-	    default:
-		    if (u.uhave_amulet && !rn2(SIZE(random_insult)))
-			pline("\"Relinquish the amulet, %s!\"",
-			      random_insult[rn2(SIZE(random_insult))]);
-		    else if (u.uhp < 5 && !rn2(2))	/* Panic */
-			pline(rn2(2) ?
-				"\"Even now thy life force ebbs, %s!\"" :
-				"\"Savor thy breath, %s, it be thine last!\"",
-			      random_insult[rn2(SIZE(random_insult))]);
-		    else if (mtmp->mhp < 5 && !rn2(2))	/* Parthian shot */
-			pline(rn2(2) ?
-				"\"I shall return.\"" :
-				"\"I'll be back.\"");
-		    else
-			pline("\"%s %s!\"",
-			      random_malediction[rn2(SIZE(random_malediction))],
-			      random_insult[rn2(SIZE(random_insult))]);
+#ifdef SOUNDS
+	if (mtmp->iswiz) {
+#endif
+	    if (!rn2(5))  /* typical bad guy action */
+		pline("%s laughs fiendishly.", Monnam(mtmp));
+	    else 
+		if (u.uhave_amulet && !rn2(SIZE(random_insult)))
+		    pline("\"Relinquish the amulet, %s!\"",
+			  random_insult[rn2(SIZE(random_insult))]);
+		else if (u.uhp < 5 && !rn2(2))	/* Panic */
+		    pline(rn2(2) ?
+			  "\"Even now thy life force ebbs, %s!\"" :
+			  "\"Savor thy breath, %s, it be thine last!\"",
+			  random_insult[rn2(SIZE(random_insult))]);
+		else if (mtmp->mhp < 5 && !rn2(2))	/* Parthian shot */
+		    verbalize(rn2(2) ?
+			      "I shall return." :
+			      "I'll be back.");
+		else
+		    pline("\"%s %s!\"",
+			  random_malediction[rn2(SIZE(random_malediction))],
+			  random_insult[rn2(SIZE(random_insult))]);
+#ifdef SOUNDS
+	} else {
+	    if (!rn2(5))
+		kludge("%s casts aspersions on your ancestry.", Monnam(mtmp));
+	    else
+		verbalize(demonic_malediction[rn2(SIZE(demonic_malediction))]);
 	}
+#endif
 }
+
+#endif /* OVLB */

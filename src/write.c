@@ -4,6 +4,8 @@
 
 #include "hack.h"
 
+static int FDECL(cost,(struct obj *));
+
 /*
  * returns basecost of a scroll
  */
@@ -109,6 +111,7 @@ register struct obj *pen;
 	   newscroll->otyp == SCR_BLANK_PAPER)  {
 		You("can't write that!");
 		pline("It's obscene!");
+		obfree(newscroll, (struct obj *) 0); /* pb@ethz.uucp */
 		return;
 	}
 	

@@ -7,9 +7,17 @@
 #include "mfndpos.h"
 #include "edog.h"
 
+#ifdef OVL0
+
 static const char nofetch[] = { BALL_SYM, CHAIN_SYM, ROCK_SYM, 0 };
 
-static void
+#endif /* OVL0 */
+
+OSTATIC void FDECL(dog_eat, (struct monst *, struct obj *, XCHAR_P, int, int));
+
+#ifdef OVLB
+
+XSTATIC void
 dog_eat(mtmp, obj, otyp, x, y)
 register struct monst *mtmp;
 register struct obj * obj;
@@ -54,6 +62,9 @@ int x, y;
 	delobj(obj);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 /* return 0 (no move), 1 (move) or 2 (dead) */
 int
 dog_move(mtmp, after)
@@ -75,6 +86,9 @@ long allowflags;
 #define GDIST(x,y) (dist2(x,y,gx,gy))
 #define DDIST(x,y) (dist2(x,y,omx,omy))
 
+#ifdef __GNULINT__
+	chi = -1;	/* gcc warning from 'goto newdogpos' */
+#endif
 	omx = mtmp->mx;
 	omy = mtmp->my;
 	whappr = (moves - edog->whistletime < 5);
@@ -134,6 +148,7 @@ long allowflags;
 			goto newdogpos;
 		    }
 		    if(can_carry(mtmp, obj))
+		    if(!obj->cursed)
 		    if(rn2(20) < edog->apport+3)
 		    if(rn2(udist) || !rn2((int) edog->apport)){
 			if (cansee(omx, omy) && flags.verbose)
@@ -243,6 +258,12 @@ long allowflags;
 	
 	allowflags = ALLOW_M | ALLOW_TRAPS | ALLOW_SSM | ALLOW_SANCT;
 	if (passes_walls(mtmp->data)) allowflags |= (ALLOW_ROCK|ALLOW_WALL);
+	if (throws_rocks(mtmp->data)) allowflags |= ALLOW_ROCK;
+	if (!nohands(mtmp->data) && !verysmall(mtmp->data)) {
+		allowflags |= OPENDOOR;
+		if (m_carrying(mtmp, SKELETON_KEY)) allowflags |= BUSTDOOR;
+	}
+	if (is_giant(mtmp->data)) allowflags |= BUSTDOOR;
 	if (tunnels(mtmp->data) && !needspick(mtmp->data))
 		allowflags |= ALLOW_DIG;
 	cnt = mfndpos(mtmp, poss, info, allowflags);
@@ -258,6 +279,7 @@ long allowflags;
 #endif
 		if(info[i] & ALLOW_M) {
 			if(MON_AT(nx, ny)) {
+			    int stat;
 			    register struct monst *mtmp2 = m_at(nx,ny);
 
 			    if(mtmp2->m_lev >= mtmp->m_lev+2 ||
@@ -266,9 +288,10 @@ long allowflags;
 				continue;
 			    if(after) return(0); /* hit only once each move */
 
-			    if(mattackm(mtmp, mtmp2) == 1 && rn2(4) &&
+			    if((stat = mattackm(mtmp, mtmp2)) == 1 && rn2(4) &&
 			      mtmp2->mlstmv != moves &&
 			      mattackm(mtmp2, mtmp) == 2) return(2);
+			    if(stat == -1) return(2);
 			    return(0);
 			}
 		}
@@ -377,3 +400,5 @@ dognext:
 #endif
 	return(1);
 }
+
+#endif /* OVL0 */

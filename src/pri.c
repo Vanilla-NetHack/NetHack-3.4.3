@@ -2,8 +2,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include "hack.h"
 #include <ctype.h>  /* for isalpha() */
 #if defined(ALTARS) && defined(THEOLOGY)
@@ -11,11 +11,10 @@
 #endif
 #include "termcap.h"
 
-static void FDECL(hilite, (int,int,UCHAR_P, UCHAR_P));
-static void FDECL(cornbot, (int));
-static boolean FDECL(ismnst, (CHAR_P));
+OSTATIC void FDECL(hilite, (int,int,UCHAR_P, UCHAR_P));
+OSTATIC void FDECL(cornbot, (int));
 #ifdef TEXTCOLOR
-static uchar FDECL(mimic_color, (UCHAR_P));
+OSTATIC uchar FDECL(mimic_color, (struct monst *));
 #endif
 
 #ifndef ASCIIGRAPH
@@ -23,19 +22,40 @@ static uchar FDECL(mimic_color, (UCHAR_P));
 #endif
 
 #ifndef g_putch
+#ifdef OVL0
 static boolean GFlag = FALSE; /* graphic flag */
+#endif /* OVL0 */
 #endif
 
 /* 100 suffices for bot(); must be larger than COLNO */
 #define MAXCO 100
-static char oldbot1[MAXCO], newbot1[MAXCO];
-static char oldbot2[MAXCO], newbot2[MAXCO];
+VSTATIC char oldbot1[MAXCO], newbot1[MAXCO];
+VSTATIC char oldbot2[MAXCO], newbot2[MAXCO];
+#ifdef OVL2
 static const char *dispst = "*0#@#0#*0#@#0#*0#@#0#*0#@#0#*0#@#0#*";
-static int mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
+#endif /* OVL2 */
+#ifndef OVLB
+OSTATIC int mrank_sz;
+#else /* OVLB */
+XSTATIC int mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
+#endif /* OVLB */
 
 #ifdef CLIPPING
-#define curs(x, y) win_curs((x), (y)-2)
+#define curs(x, y) (void) win_curs((x), (y)-2)
 #endif
+
+#ifdef OVL0
+
+char *
+eos(s)
+register char *s;
+{
+	while(*s) s++;
+	return(s);
+}
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 swallowed(first)
@@ -135,10 +155,13 @@ int x, y;
 			u.udispl = 0;
 			levl[u.udisx][u.udisy].scrsym = news0(u.udisx, u.udisy);
 		}
-		doredraw();
+		(void) doredraw();
 	}
 }
 #endif /* CLIPPING */
+
+#endif /* OVLB */
+#ifdef OVL0
 
 /*
  *  Allow for a different implementation than this...
@@ -224,6 +247,9 @@ uchar ch,typ;
 #endif
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 void
 prme(){
 	if(!Invisible
@@ -236,11 +262,14 @@ prme(){
 	}
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 void
 shieldeff(x, y)		/* produce a magical shield effect at x,y */
 	register xchar x, y;
 {
-	register char *ch;
+	register const char *ch;
 	register struct monst *mtmp = 0;
 
 	if((x != u.ux) || (y != u.uy)) {
@@ -276,12 +305,18 @@ shieldeff(x, y)		/* produce a magical shield effect at x,y */
 	return;
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 int
 doredraw()
 {
 	docrt();
 	return 0;
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 docrt()
@@ -318,7 +353,7 @@ docrt()
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
-#if ((defined(DGK) && !defined(TEXTCOLOR)) || defined(MACOS)) & !defined(CLIPPING)
+#if ((defined(DGK) && !defined(TEXTCOLOR)) || defined(MACOS)) && !defined(CLIPPING)
 # ifdef MACOS
 	t = (term_info *)GetWRefCon(HackWindow);
 	if (!t->inColor)
@@ -329,11 +364,11 @@ docrt()
 		for(y = 0; y < ROWNO; y++) {
 			char buf[COLNO+1];
 			int start, end;
-# if defined(OLD_TOS) || defined(LSC) || defined(AZTEC)
+# if defined(LSC) || defined(AZTEC) || defined(AZTEC_C)
 			setmem(buf, COLNO, ' ');
 # else
 			memset(buf, ' ', COLNO);
-# endif /* OLD_TOS */
+# endif
 			for(x = 0, start = -1, end = -1; x < COLNO; x++)
 				if((room = &levl[x][y])->new) {
 					room->new = 0;
@@ -391,7 +426,10 @@ docrt()
 	bot();
 }
 
-static void
+#endif /* OVL0 */
+#ifdef OVLB
+
+XSTATIC void
 cornbot(lth)
 register int lth;
 {
@@ -399,6 +437,9 @@ register int lth;
 	oldbot2[lth] = 0;
 	flags.botl = 1;
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 docorner(xmin, ymax)
@@ -467,6 +508,9 @@ register int xmin, ymax;
 	}
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 void
 seeglds()
 {
@@ -532,6 +576,9 @@ seeobjs()
 	}
 }
 
+#endif /* OVL1 */
+#ifdef OVL0
+
 void
 seemons()
 {
@@ -564,14 +611,14 @@ register struct monst *mon;
 	    if (Hallucination)
 	    atl(mon->mx,mon->my,
 		(char) ((!mon->mimic || Protection_from_shape_changers) ?
-		rndmonsym() : (mon->mappearance == CLOSED_DOOR_SYM) ?
-		CLOSED_DOOR_SYM : rndobjsym()));
+		rndmonsym() : (mon->m_ap_type == M_AP_FURNITURE) ?
+		showsyms[mon->mappearance] : rndobjsym()));
 	    else
 
 		atl(mon->mx,mon->my,
-		    (!mon->mappearance ||
+		    (!mon->m_ap_type ||
 		     Protection_from_shape_changers) ?
-		     mon->data->mlet : mon->mappearance);
+		     mon->data->mlet : (char) mimic_appearance(mon));
 		mon->mdispl = 1;
 		mon->mdx = mon->mx;
 		mon->mdy = mon->my;
@@ -584,6 +631,9 @@ register struct monst *mon;
 #endif
 }
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 void
 unpmon(mon)
 register struct monst *mon;
@@ -593,6 +643,9 @@ register struct monst *mon;
 		mon->mdispl = 0;
 	}
 }
+
+#endif /* OVL1 */
+#ifdef OVL0
 
 void
 nscr() {
@@ -617,6 +670,9 @@ nscr() {
 	scrlx = COLNO;
 	scrly = ROWNO;
 }
+
+#endif /* OVL0 */
+#ifdef OVL1
 
 /* Make sure that there are 18 entries in the rank arrays. */
 /* 0 and even entries are male ranks, odd entries are female. */
@@ -873,7 +929,13 @@ static const char *elf_ranks[] = {
 	"Elentari", 	/* Star-queen (Q.) */ /* Elbereth (S.) */
 };
 
-static const char **
+#endif /* OVL1 */
+
+OSTATIC const char **NDECL(rank_array);
+
+#ifdef OVL1
+
+XSTATIC const char **
 rank_array() {
 	register const char **ranks;
 
@@ -895,7 +957,13 @@ rank_array() {
 	return(ranks);
 }
 
-static char *
+#endif /* OVL1 */
+
+OSTATIC const char *rank();
+
+#ifdef OVL1
+
+XSTATIC const char *
 rank() {
 	register int place;
 	register const char **ranks = rank_array();
@@ -915,6 +983,9 @@ rank() {
 	return(pl_character);
 }
 
+#endif /* OVL1 */
+#ifdef OVLB
+
 void
 max_rank_sz() {
 	register int i, maxr = 0;
@@ -927,6 +998,9 @@ max_rank_sz() {
 	}
 	else mrank_sz = strlen(pl_character);
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 static void
 fillbot(row,oldbot,newbot)
@@ -1094,7 +1168,7 @@ bot2()
 	}
 	if(Confusion)	   Sprintf(eos(newbot2), " Conf");
 	if(Sick)	   Sprintf(eos(newbot2), " Sick");
-	if(Blinded)	   Sprintf(eos(newbot2), " Blind");
+	if(Blind)	   Sprintf(eos(newbot2), " Blind");
 	if(Stunned)	   Sprintf(eos(newbot2), " Stun");
 	if(Hallucination)  Sprintf(eos(newbot2), " Hallu");
 #ifdef CLIPPING
@@ -1113,6 +1187,8 @@ register char *ob1 = oldbot1, *ob2 = oldbot2;
 	flags.botl = flags.botlx = 0;
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 mstatusline(mtmp)
@@ -1171,13 +1247,21 @@ cls()
 	flags.botlx = 1;
 }
 
+#endif /* OVLB */
+#ifdef OVL2
+
 char
 rndmonsym()
 {
 	return(mons[rn2(NUMMONS - 1)].mlet);
 }
 
-static const char objsyms[] = {
+/*
+ * we don't use objsyms here because (someday) objsyms may be
+ * user programmable
+ */
+
+static const char rndobs[] = {
 	WEAPON_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM, WAND_SYM,
 #ifdef SPELLS
 	SPBOOK_SYM,
@@ -1187,7 +1271,7 @@ static const char objsyms[] = {
 char
 rndobjsym()
 {
-	return objsyms[rn2(SIZE(objsyms))];
+	return rndobs[rn2(SIZE(rndobs))];
 }
 
 static const char *hcolors[] = {
@@ -1209,12 +1293,18 @@ hcolor()
 	return hcolors[rn2(SIZE(hcolors))];
 }
 
+#endif /* OVL2 */
+#ifdef OVL0
+
 /*ARGSUSED*/
-static void
+XSTATIC void
 hilite(x, y, let, typ)
 int x, y;
 uchar let, typ;
 {
+#ifdef TEXTCOLOR
+	boolean colorit;
+#endif
 	if (let == ' '
 #if !defined(MSDOS) && !defined(MACOS)
 	    || !flags.standout
@@ -1233,12 +1323,19 @@ uchar let, typ;
 			 || let == S_MIMIC_DEF)
 			/* is an object */
 			typ = AT_OBJ;
-		else if (ismnst((char) let))
+		else if (vism_at(x, y))
 			/* is a monster */
 			typ = AT_MON;
 	}
 #ifdef TEXTCOLOR
-	if (flags.use_color) {
+# ifdef REINCARNATION
+	colorit = flags.use_color && dlevel != rogue_level;
+# else
+	colorit = flags.use_color;
+# endif
+	if (colorit) {
+	    struct monst *mtmp;
+
 	    switch (typ) {
 		case AT_MON:
 		    switch (let) {
@@ -1246,10 +1343,12 @@ uchar let, typ;
 			    typ = HI_OBJ;
 			    break;
 		        default:
-			    if (u.ux == x && u.uy == y)
+			    if (u.ux == x && u.uy == y && u.usym == let)
 				typ = uasmon->mcolor;
-			    else if (level.monsters[x][y])
-			        typ = level.monsters[x][y]->data->mcolor;
+			    else if (mtmp = m_at(x, y))
+			        typ = mtmp->m_ap_type ?
+					mimic_color(mtmp) :
+					mtmp->data->mcolor;
 			    else
 				typ = 0;
 		    }
@@ -1266,9 +1365,8 @@ uchar let, typ;
 			    typ = mons[otmp->corpsenm].mcolor;
 			else
 			    typ = objects[level.objects[x][y]->otyp].oc_color;
-		    }
-		    else
-			typ = mimic_color(let);
+		     } else
+			typ = mimic_color(m_at(x, y));
 		    }
 		    break;
 		case AT_MAP:
@@ -1295,53 +1393,84 @@ uchar let, typ;
 		    break;
 		}
 	}
-	if (typ && flags.use_color)
-		xputs(hilites[typ]);
+	if (typ && colorit)
+		xputs(hilites[Hallucination ? rn2(MAXCOLORS) : typ]);
 	else
 #endif
+#ifdef REINCARNATION
+	if (typ == AT_MON && dlevel != rogue_level) revbeg();
+#else
 	if (typ == AT_MON) revbeg();
-
+#endif
 	g_putch(let);
 
 #ifdef TEXTCOLOR
-	if (typ && flags.use_color) xputs(HE); else
+	if (typ && colorit) xputs(HE); else
 #endif
+#ifdef REINCARNATION
+	if (typ == AT_MON && dlevel != rogue_level) m_end();
+#else
 	if (typ == AT_MON) m_end();
+#endif
 }
 
-static boolean
-ismnst(let)
-char let;
+#endif /* OVL0 */
+#ifdef OVL2
+
+/*
+ * find the appropriate symbol for printing a mimic
+ */
+
+uchar
+mimic_appearance(mon)
+struct monst *mon;
 {
-	register int ct;
-	register struct permonst *ptr;
-
-	if (let & 0x80) return 0;
-	if (isalpha(let)) return 1; /* for speed */
-
-	for (ct = 0 ; ct < NUMMONS; ct++) {
-		ptr = &mons[ct];
-		if(ptr->mlet == let) return 1;
+	switch(mon->m_ap_type) {
+	case M_AP_NOTHING:
+		return mon->data->mlet;
+	case M_AP_FURNITURE:
+		return showsyms[mon->mappearance];
+	case M_AP_OBJECT:
+		return objects[mon->mappearance].oc_olet;
+	case M_AP_MONSTER:
+		return mons[mon->mappearance].mlet;
+	case M_AP_GOLD:
+		return GOLD_SYM;
+	default:
+		impossible("Monster mimicking %d", mon->m_ap_type);
+		return 0;
 	}
-#ifdef WORM
-	if (let == S_WORM_TAIL) return 1;
-#endif
-	return 0;
+/*NOTREACHED*/
 }
 
 #ifdef TEXTCOLOR
 /* pick an appropriate color for a mimic imitating an object */
 
-static uchar
-mimic_color(let)
-uchar let;
+XSTATIC uchar
+mimic_color(mtmp)
+struct monst *mtmp;
 {
-	int i;
-
-	for(i = 0; i < NROFOBJECTS; i++) {
-		if (objects[i].oc_olet == let)
-			return objects[i].oc_color;
+	if (!mtmp)
+		return 0;
+	switch (mtmp->m_ap_type) {
+	case M_AP_NOTHING:
+		return mtmp->data->mcolor;
+	case M_AP_FURNITURE:
+# ifdef FOUNTAINS
+		if (mtmp->mappearance == S_fountain && hilites[BLUE] != HI)
+			return BLUE;
+# endif
+		return 0;
+	case M_AP_OBJECT:
+		return objects[mtmp->mappearance].oc_color;
+	case M_AP_MONSTER:
+		return mons[mtmp->mappearance].mcolor;
+	case M_AP_GOLD:
+		return HI_GOLD;
+	default:
+		return 0;
 	}
-	return HI_OBJ;
 }
 #endif
+
+#endif /* OVL2 */

@@ -7,6 +7,8 @@
 #include "hack.h"
 #include "eshk.h"
 
+#ifdef OVLB
+
 static const char *shkliquors[] = {
     /* Ukraine */
     "Njezjin", "Tsjernigof", "Gomel", "Ossipewsk", "Gorlowka",
@@ -137,6 +139,7 @@ static const char *shkgeneral[] = {
  * In the latter case, prepend it with a unary minus so the code can know
  * (by testing the sign) whether to use mkobj() or mksobj().
  */
+
 const struct shclass shtypes[] = {
 	{"general store", RANDOM_SYM,
 #ifdef SPELLS
@@ -144,35 +147,35 @@ const struct shclass shtypes[] = {
 #else
 	    47,
 #endif
-	    D_SHOP, {{100, RANDOM_SYM}, {0, 0}, {0, 0}}, shkgeneral},
+	    D_SHOP, {{100, RANDOM_SYM}, {0, 0}, {0, 0}}, (char **)shkgeneral},
 	{"used armor dealership", ARMOR_SYM, 14,
-	    D_SHOP, {{90, ARMOR_SYM}, {10, WEAPON_SYM}, {0, 0}}, shkarmors},
+	    D_SHOP, {{90, ARMOR_SYM}, {10, WEAPON_SYM}, {0, 0}}, (char **)shkarmors},
 	{"second hand bookstore", SCROLL_SYM, 10, D_SHOP,
 #ifdef SPELLS
 	    {{90, SCROLL_SYM}, {10, SPBOOK_SYM}, {0, 0}},
 #else
 	    {{100, SCROLL_SYM}, {0, 0}, {0, 0}},
 #endif
-	    shkbooks},
+	    (char **)shkbooks},
 	{"liquor emporium", POTION_SYM, 10, D_SHOP,
-	    {{100, POTION_SYM}, {0, 0}, {0, 0}}, shkliquors},
+	    {{100, POTION_SYM}, {0, 0}, {0, 0}}, (char **)shkliquors},
 	{"antique weapons outlet", WEAPON_SYM, 5, D_SHOP,
-	    {{90, WEAPON_SYM}, {10, ARMOR_SYM}, {0, 0}}, shkweapons},
+	    {{90, WEAPON_SYM}, {10, ARMOR_SYM}, {0, 0}}, (char **)shkweapons},
 	{"delicatessen", FOOD_SYM, 5, D_SHOP,
-	    {{95, FOOD_SYM}, {5, POTION_SYM}, {0, 0}}, shkfoods},
+	    {{95, FOOD_SYM}, {5, POTION_SYM}, {0, 0}}, (char **)shkfoods},
 	{"jewelers", RING_SYM, 3, D_SHOP,
-	    {{85, RING_SYM}, {10, GEM_SYM}, {5, AMULET_SYM}, {0, 0}}, shkrings},
+	    {{85, RING_SYM}, {10, GEM_SYM}, {5, AMULET_SYM}, {0, 0}}, (char **)shkrings},
 	{"quality apparel and accessories", WAND_SYM, 3, D_SHOP,
 	    {{90, WAND_SYM}, {5, -LEATHER_GLOVES}, {5, -ELVEN_CLOAK}, {0, 0}},
-	     shkwands},
+	     (char **)shkwands},
 	{"hardware store", TOOL_SYM, 3, D_SHOP,
-	    {{100, TOOL_SYM}, {0, 0}, {0, 0}}, shktools},
+	    {{100, TOOL_SYM}, {0, 0}, {0, 0}}, (char **)shktools},
 	/* Actually shktools is ignored; the code specifically chooses a
 	 * random implementor name (the only shop type with random shopkeepers)
 	 */
 #ifdef SPELLS
 	{"rare books", SPBOOK_SYM, 3, D_SHOP,
-	    {{90, SPBOOK_SYM}, {10, SCROLL_SYM}, {0, 0}}, shkbooks},
+	    {{90, SPBOOK_SYM}, {10, SCROLL_SYM}, {0, 0}}, (char **)shkbooks},
 #endif
 	{NULL, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, (char **)0}
 };
@@ -191,7 +194,10 @@ int sx, sy;
 				(mtmp=makemon(ptr,sx,sy))) {
 		mtmp->mimic = 1;
 		/* note: makemon will set the mimic symbol to a shop item */
-		if (rn2(10) >= dlevel) mtmp->mappearance = S_MIMIC_DEF;
+		if (rn2(10) >= dlevel) {
+			mtmp->m_ap_type = M_AP_OBJECT;
+			mtmp->mappearance = STRANGE_OBJECT;
+		}
 	} else if ((atype = get_shop_item(shp - shtypes)) < 0)
 		(void) mksobj_at(-atype, sx, sy);
 	else (void) mkobj_at(atype, sx, sy);
@@ -208,7 +214,7 @@ findname(nampt, nlp)
     for(i = 0; i < dlevel; i++)
 	if (strlen(nlp[i]) == 0) {
 	    /* Not enough names, try general name */
-	    if (nlp != shkgeneral)
+	    if (nlp != (char **)shkgeneral)
 		findname(nampt, shkgeneral);
 	    else
 		Strcpy(nampt, "Dirk");
@@ -278,7 +284,7 @@ struct mkroom	*sroom;
 	ESHK(shk)->following = 0;
 	ESHK(shk)->billct = 0;
 	shk->mgold = 1000L + 30L*(long)rnd(100);	/* initial capital */
-	if (shp->shknms == shktools) {
+	if (shp->shknms == (char **)shktools) {
 		static int who;
 		who = rn2(sizeof(shktools)/sizeof(char *) - 1);
 		if (who==21) ESHK(shk)->ismale = FALSE;
@@ -296,7 +302,7 @@ struct mkroom	*sroom;
 void
 stock_room(shp, sroom)
 /* stock a newly-created room with artifacts */
-struct shclass	*shp;
+const struct shclass	*shp;
 register struct mkroom *sroom;
 {
     /*
@@ -306,19 +312,35 @@ register struct mkroom *sroom;
      * door get artifacts).
      */
     register int sx, sy, sh;
+    char buf[BUFSZ];
 
     /* first, try to place a shopkeeper in the room */
     if ((sh = shkinit(shp, sroom)) < 0)
 	return;
 
-    /* make sure no doorways without doors in shops */
-    for(sx = sroom->lx - 1; sx <= sroom->hx + 1; sx++)
-	for(sy = sroom->ly - 1; sy <= sroom->hy + 1; sy++) {
-	    if(IS_DOOR(levl[sx][sy].typ))
-		if (levl[sx][sy].doormask == D_NODOOR) {
-		  levl[sx][sy].doormask = D_ISOPEN;
-		  mnewsym(sx,sy);
-		}
+    /* make sure no doorways without doors, and no */
+    /* trapped doors, in shops.			   */
+    sx = doors[sroom->fdoor].x;
+    sy = doors[sroom->fdoor].y;
+
+    if(levl[sx][sy].doormask == D_NODOOR) {
+	    levl[sx][sy].doormask = D_ISOPEN;
+	    mnewsym(sx,sy);
+    }
+    if(levl[sx][sy].doormask & D_TRAPPED) {	
+	    levl[sx][sy].doormask &= ~D_TRAPPED;
+	    levl[sx][sy].doormask = D_LOCKED;
+    }
+
+    if(levl[sx][sy].doormask == D_LOCKED) {
+	    register int m = sx, n = sy;
+
+	    if(IS_ROOM(levl[sx+1][sy].typ)) m--;
+	    else if(IS_ROOM(levl[sx-1][sy].typ)) m++;
+	    if(IS_ROOM(levl[sx][sy+1].typ)) n--;
+	    else if(IS_ROOM(levl[sx][sy-1].typ)) n++;
+	    Sprintf(buf, "Closed for inventory"); 
+	    make_engr_at(m, n, buf); 
     }
 
     for(sx = sroom->lx; sx <= sroom->hx; sx++)
@@ -335,6 +357,9 @@ register struct mkroom *sroom;
      * monsters will sit on top of artifacts and not the other way around.
      */
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 int
 saleable(nshop, obj)			/* does "shop" stock this item type */
@@ -359,7 +384,7 @@ int
 get_shop_item(type)
 int type;
 {
-	struct shclass *shp = shtypes+type;
+	const struct shclass *shp = shtypes+type;
 	register int i,j;
 
 	/* select an appropriate artifact type at random */
@@ -368,3 +393,5 @@ int type;
 
 	return shp->iprobs[i].itype;
 }
+
+#endif /* OVL0 */

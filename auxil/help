@@ -119,6 +119,8 @@ Commands:
 		history of the game.
 	w	Wield weapon.  w- means wield nothing, use bare hands.
 	W	Wear armor.
+	x	List the spells you know (same as '+').
+	X	Switch the game to explore (discovery) mode.
 	z	Zap a wand.
 	Z	Cast a spell.
 	^Z	Suspend the game.
@@ -132,7 +134,7 @@ Commands:
 	" 	Tell what amulet you are wearing.
 	(	Tell what tools you are using.
 	$	Count your gold pieces.
-	+	List the spells you know.
+	+	List the spells you know (same as 'x').
 	\	Show what types of objects have been discovered.
 	!	Escape to a shell.
 	#	Introduces one of the "extended" commands.  To get a list of

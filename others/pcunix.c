@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcunix.c	3.0	88/07/21
+/*	SCCS Id: @(#)pcunix.c	3.0	89/12/29
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,23 +14,20 @@
  */
 
 #include "hack.h"	/* mainly for index() which depends on BSD */
-#ifdef TOS
-#ifndef OLD_TOS
-#include <errno.h>
-#else
-#include <error.h>
-#endif /* OLD_TOS */
-#endif
 
 #ifndef MACOS
 #include	<sys/types.h>
 #include	<sys/stat.h>
 #endif
 
-#ifndef OLD_TOS
-# ifndef MACOS
-static struct stat buf, hbuf;
+#ifdef OVLB
+
+#ifndef MACOS
+static struct stat buf;
+# ifdef WANT_GETHDATE
+static struct stat hbuf;
 # endif
+#endif
 
 void
 setrandom()
@@ -96,12 +93,12 @@ midnight()
 	return(getlt()->tm_hour == 0);
 }
 
-# ifndef MACOS
+#ifndef MACOS
 void
 gethdate(name)
 char *name;
 {
-#  if defined(TOS) && !defined(__GNUC__)
+# ifdef WANT_GETHDATE
 /* old version - for people short of space */
 /*
 /* register char *np;
@@ -141,12 +138,14 @@ char *name;
 	path = np + 1;
     }
     error("Cannot get status of %s.", (np = rindex(name, '/')) ? np+1 : name);
-#  endif /* TOS && __GNUC__ */
+# endif /* WANT_GETHDATE */
 }
 
 int
-uptodate(fd) {
-#  if defined(TOS) && !defined(__GNUC__) /* no fstat yet */
+uptodate(fd)
+int fd;
+{
+# ifdef WANT_GETHDATE
     if(fstat(fd, &buf)) {
 	pline("Cannot get status of saved level? ");
 	return(0);
@@ -155,23 +154,50 @@ uptodate(fd) {
 	pline("Saved level is out of date. ");
 	return(0);
     }
-#  endif
+# else
+#  if defined(MSDOS) && !defined(NO_FSTAT)
+    if(fstat(fd, &buf)) {
+	if(moves > 1) pline("Cannot get status of saved level? ");
+	else pline("Cannot get status of saved game");
+	return(0);
+    } 
+    if(comp_times(buf.st_mtime)) { 
+	if(moves > 1) pline("Saved level is out of date");
+	else pline("Saved game is out of date. ");
+	return(0);
+    }
+#  endif  /* MSDOS /* */
+# endif /* WANT_GETHDATE */
     return(1);
 }
-# endif	/* MACOS /* */
-#endif /* OLD_TOS /* */
+#endif	/* MACOS /* */
 
 void
 regularize(s)
-	/* normalize file name - we don't like .'s, /'s, :'s [Mac], or spaces */
+/*
+ * normalize file name - we don't like .'s, /'s, :'s [Mac], or spaces,
+ * and in msdos / OS/2 we really get picky
+ */
 register char *s;
 {
 	register char *lp;
 
+#ifdef MSDOS
+	for (lp = s; *lp; lp++)
+		if (*lp <= ' ' || *lp == '"' || (*lp >= '*' && *lp <= ',') ||
+		    *lp == '.' || *lp == '/' || (*lp >= ':' && *lp <= '?') ||
+# ifdef OS2
+		    *lp == '&' || *lp == '(' || *lp == ')' ||
+# endif
+		    *lp == '|' || *lp >= 127 || (*lp >= '[' && *lp <= ']'))
+                        *lp = '_';
+#else
 	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' '))
-#ifdef MACOS
-			|| (lp=index(s, ':'))
+# ifdef MACOS
+	   || (lp=index(s, ':'))
+# endif
+		) *lp = '_';
 #endif
-								)
-		*lp = '_';
 }
+
+#endif /* OVLB */

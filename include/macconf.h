@@ -10,7 +10,7 @@
  *  The following options are configurable:
  */
 
-#define RANDOM		1 /* have Berkeley random(3) */
+#define RANDOM		/* have Berkeley random(3) */
 
 #define PATHLEN	220	/* maximum pathlength */
 #define FILENAME	31	/* maximum filename length (conservative) */
@@ -18,7 +18,7 @@
 #define glo(x)	name_file(lock, x)	/* name_file used for bones */
 #include "msdos.h"	/* contains necessary externs for [os_name].c */
 extern char *configfile;
-#define NO_SIGNAL	1
+#define NO_SIGNAL
 #define	perror(x)
 
 /*
@@ -55,6 +55,8 @@ extern char *configfile;
 #include	<types.h>
 #include	<io.h>
 #define	memcpy(x,y,j)	movmem(y,x,j)
+#define memset(x,y,j)	setmem(x,j,y)
+extern char *malloc();
 extern char	*calloc();
 #else
 #include	<Fcntl.h>
@@ -70,6 +72,7 @@ extern char	*calloc();
 #endif
 #endif
 
+#include	<pascal.h>
 #include	<Quickdraw.h>
 #include	<FontMgr.h>
 #include	<EventMgr.h>
@@ -101,8 +104,14 @@ extern char	*calloc();
 #ifdef AZTEC
 #include	<utime.h>	/* AZTEC 3.6c */
 #define	curs(x,y)	tcurs(x,y)
+#include	<Types.h>
+#define	CtoPstr	ctop
+#define	PtoCstr	ptoc
 #else
 #include	<Time.h>	/* MPW 3.0 */
+#include	<Strings.h>
+#define	CtoPstr	c2pstr
+#define	PtoCstr	p2cstr
 #endif
 
 
@@ -141,11 +150,12 @@ typedef struct term_info {
 	SysEnvRec	system;
 	char	*keyMap;
 	short	color[8];
+	CursHandle	cursor[8];
 	Handle	shortMBarHandle,
 			fullMBarHandle;
 } term_info;
 
-#define TEXTCOLOR	1
+#define TEXTCOLOR
 
 #define	appleMenu	101
 #define	fileMenu	102
@@ -172,6 +182,11 @@ typedef struct term_info {
 #define	LEFT_OFFSET	10
 
 /* for macflags variable */
+#define	fScreenKluges		0x3000
+#define	fFullScrKluge		0x2000
+#define	fCornScrKluge		0x1000
+#define	fDisplayKluge		0x800
+#define	fMoveWRTMouse		0x400
 #define	fZoomOnContextSwitch		0x200
 #define	fUseCustomFont		0x100
 #define	fToggleNumPad		0x80
@@ -189,11 +204,17 @@ typedef struct term_info {
 #define	BONES_TYPE	'BONE'
 #define	LEVEL_TYPE	'LEVL'
 #define	HACK_DATA	'HDTA'
+#define AUXIL_TYPE	'AUXL'
+#define TEXT_TYPE	'TEXT'
 #define MONST_DATA	101
 #define OBJECT_DATA	104
 #define	DEFAULT_DATA	100
 
 #include "extern.h"
+
+# ifndef MACALERT_H
+#  include "MacAlert.h"
+# endif
 
 #endif /* MACCONF_H /* */
 #endif /* MACOS / */

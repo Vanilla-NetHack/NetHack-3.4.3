@@ -65,7 +65,8 @@ dowield()
 	    You("wield the cockatrice corpse in your bare %s.",
 			makeplural(body_part(HAND)));
 	    You("turn to stone...");
-	    killer="cockatrice corpse";
+	    killer_format = KILLED_BY;
+	    killer="touching a cockatrice corpse";
 	    done(STONING);
 	} else if(uarms && bimanual(wep))
 	    You("cannot wield a two-handed %s and hold a shield.",
@@ -114,7 +115,7 @@ corrode_weapon(){
 	else if (uwep->spe > -6) {
 		Your("%s!", aobjnam(uwep, "corrode"));
 		uwep->spe--;
-	} else	Your("%s quite rusted now.", aobjnam(uwep, "look"));
+	} else	Your("%s quite rusted now.", aobjnam(uwep, Blind ? "feel" : "look"));
 }
 
 int
@@ -124,9 +125,10 @@ register int amount;
 {
 	register const char *color = Hallucination ? hcolor() :
 				     (amount < 0) ? black : blue;
-	register char *xtime;
+	register const char *xtime;
 
-	if(!uwep || (uwep->olet != WEAPON_SYM && uwep->otyp != PICK_AXE)) {
+	if(!uwep || (uwep->olet != WEAPON_SYM && uwep->otyp != PICK_AXE
+			&& uwep->otyp != UNICORN_HORN)) {
 		char buf[36];
 
 		Sprintf(buf, "Your %s %s.", makeplural(body_part(HAND)),
@@ -145,7 +147,7 @@ register int amount;
 
 	if(uwep->otyp == CRYSKNIFE && amount < 0) {
 		uwep->otyp = WORM_TOOTH;
-		Your("weapon looks duller now.");
+		Your("weapon seems duller now.");
 		return(1);
 	}
 #endif

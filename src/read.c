@@ -4,6 +4,8 @@
 
 #include "hack.h"
 
+#ifdef OVLB
+
 boolean	known;
 
 static const char readable[] = { '#', SCROLL_SYM,
@@ -12,8 +14,18 @@ static const char readable[] = { '#', SCROLL_SYM,
 #endif
 	0 };
 
+#endif /* OVLB */
+
 static void FDECL(explode, (struct obj *));
-static void do_class_genocide();
+static void NDECL(do_class_genocide);
+static void FDECL(stripspe,(struct obj *));
+static void FDECL(p_glow1,(struct obj *));
+static void FDECL(p_glow2,(struct obj *,const char *));
+static void FDECL(recharge,(struct obj *,int));
+static void FDECL(forget,(BOOLEAN_P));
+OSTATIC void FDECL(show_map_spot,(int,int));
+
+#ifdef OVLB
 
 int
 doread() {
@@ -118,12 +130,12 @@ register struct obj	*otmp;
 static void
 p_glow2(otmp,color)
 register struct obj	*otmp;
-register char *color;
+register const char *color;
 {
 	Your("%s %s%s for a moment.",
 		xname(otmp),
 		Blind ? "vibrates" : "glows ",
-		Blind ? "" : Hallucination ? hcolor() : color);
+		Blind ? (const char *)"" : Hallucination ? hcolor() : color);
 }
 
 /*
@@ -137,30 +149,38 @@ struct obj *obj;
 int curse_bless;
 {
 	register int n;
-	boolean cursed, blessed;
+	boolean is_cursed, is_blessed;
 
-	cursed = curse_bless < 0;
-	blessed = curse_bless > 0;
+	is_cursed = curse_bless < 0;
+	is_blessed = curse_bless > 0;
 
 	if (obj->olet != WAND_SYM) {
 	    switch(obj->otyp) {
 	    case MAGIC_MARKER:
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (obj->recharged) {
+		    if (obj->spe < 3)
+			Your("marker seems permanently dried out.");
+		    else
+			pline(nothing_happens);
+		}
+		else if (is_blessed) {
 		    n = obj->spe;
 		    if (n < 50) obj->spe = 50;
 		    if (n >= 50 && n < 75) obj->spe = 75;
 		    if (n >= 75) obj->spe += 10;
 		    p_glow2(obj,blue);
+		    obj->recharged = 1;
 		} else {
 		    if (obj->spe < 50) obj->spe = 50;
 		    else obj->spe++;
 		    p_glow2(obj,white);
+		    obj->recharged = 1;
 		}
 		break;
 	    case LAMP:
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed) {
 		    n = rn2(11);
 		    if (obj->spe < n) obj->spe = n;
 		    else obj->spe += rnd(3);
@@ -171,8 +191,8 @@ int curse_bless;
 		}
 		break;
 	    case MAGIC_LAMP:
-		if (cursed) stripspe(obj);
-		else if (blessed > 0) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed > 0) {
 		    if (obj->spe == 1 || obj->recharged)
 			pline(nothing_happens);
 		    else {
@@ -194,8 +214,8 @@ int curse_bless;
 		}
 		break;
 	    case CRYSTAL_BALL:
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed) {
 		    obj->spe = 6;
 		    p_glow2(obj,blue);
 		} else {
@@ -206,8 +226,8 @@ int curse_bless;
 		}
 		break;
 	    case BAG_OF_TRICKS:
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed) {
 		    if (obj->spe <= 10)
 			obj->spe += (5 + rnd(10));
 		    else obj->spe += (5 + rnd(5));
@@ -228,8 +248,8 @@ int curse_bless;
 		    explode(obj);
 		    return;
 		}
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed) {
 		    if (obj->spe != 3) {
 			obj->spe = 3;
 			p_glow2(obj,blue);
@@ -246,8 +266,8 @@ int curse_bless;
 		obj->recharged = 1; /* another recharging disallowed */
 	    }
 	    else {
-		if (cursed) stripspe(obj);
-		else if (blessed) {
+		if (is_cursed) stripspe(obj);
+		else if (is_blessed) {
 		    if (objects[obj->otyp].bits & NODIR) {
 			n = rn1(5,11);
 			if (obj->spe < n) obj->spe = n;
@@ -331,7 +351,7 @@ register struct obj	*sobj;
 				xname(otmp),
 				sobj->cursed ? "mottled" : "shimmering",
 				Hallucination ? hcolor() :
-				  sobj->cursed ? black : "gold",
+				  sobj->cursed ? black : (const char *)"gold",
 				sobj->cursed ? "glow" :
 				  (is_shield(otmp) ? "layer" : "shield"));
 			if(!(sobj->cursed))
@@ -347,7 +367,7 @@ register struct obj	*sobj;
 		Your("%s violently %s%s for a while, then evaporates.",
 			    xname(otmp),
 			    Blind ? "vibrates" : "glows ",
-			    Blind ? "" : Hallucination ? hcolor() : silver);
+			    Blind ? nul : Hallucination ? hcolor() : silver);
 			if(is_cloak(otmp)) (void) Cloak_off();
 			if(is_boots(otmp)) (void) Boots_off();
 			if(is_helmet(otmp)) (void) Helmet_off();
@@ -361,7 +381,7 @@ register struct obj	*sobj;
 		Your("%s %s%s for a %s.",
 			xname(otmp),
 			Blind ? "vibrates" : "glows ",
-			Blind ? "" : Hallucination ? hcolor() :
+			Blind ? nul : Hallucination ? hcolor() :
 			  sobj->cursed ? black : silver,
 			  (s*s>1) ? "while" : "moment");
 		otmp->cursed = sobj->cursed;
@@ -407,21 +427,35 @@ register struct obj	*sobj;
 			Your("%s begin to %s%s.",
 			    makeplural(body_part(HAND)),
 			    Blind ? "tingle" : "glow ",
-			    Blind ? "" : Hallucination ? hcolor() : purple);
+			    Blind ? nul : Hallucination ? hcolor() : purple);
 			make_confused(HConfusion + rnd(100),FALSE);
 		    } else {
 			pline("A %s%s surrounds your %s.",
-			    Blind ? "" : Hallucination ? hcolor() : red,
+			    Blind ? nul : Hallucination ? hcolor() : red,
 			    Blind ? "faint buzz" : " glow",
 			    body_part(HEAD));
 			make_confused(0L,TRUE);
 		    }
 		} else {
-			Your("%s%s %s.",
+		    if (!sobj->blessed) {
+			Your("%s%s %s%s.",
 			makeplural(body_part(HAND)),
 			Blind ? "" : " begin to glow",
-			Blind ? "tingle" : Hallucination ? hcolor() : red);
-			u.umconf = 1;
+			Blind ? (const char *)"tingle" : Hallucination ? hcolor() : red,
+			u.umconf ? " even more" : "");
+			u.umconf++;
+		    } else {
+			if (Blind)
+			    Your("%s tingle %s sharply.",
+				makeplural(body_part(HAND)),
+				u.umconf ? "even more" : "very");
+			else
+			    Your("%s glow a%s brilliant %s.",
+				makeplural(body_part(HAND)),
+				u.umconf ? "n even more" : "",
+				Hallucination ? hcolor() : red);
+			u.umconf += (1 + rnd(8));
+		    }
 		}
 		break;
 	case SCR_SCARE_MONSTER:
@@ -433,9 +467,10 @@ register struct obj	*sobj;
 
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		    if(cansee(mtmp->mx,mtmp->my)) {
-			if(confused || sobj->cursed)
-			    mtmp->mflee = mtmp->mfroz = mtmp->msleep = 0;
-			else
+			if(confused || sobj->cursed) {
+			    mtmp->mflee = mtmp->mfrozen = mtmp->msleep = 0;
+			    mtmp->mcanmove = 1;
+			} else
 			    if (! resist(mtmp, sobj->olet, 0, NOTELL))
 				mtmp->mflee = 1;
 			if(!mtmp->mtame) ct++;	/* pets don't laugh at you */
@@ -512,8 +547,8 @@ register struct obj	*sobj;
 	    }
 /*	    break;	/*NOTREACHED*/
 	case SCR_ENCHANT_WEAPON:
-		if(uwep && (uwep->olet == WEAPON_SYM || uwep->otyp == PICK_AXE)
-							&& confused) {
+		if(uwep && (uwep->olet == WEAPON_SYM || uwep->otyp == PICK_AXE
+			|| uwep->otyp == UNICORN_HORN) && confused) {
 		/* olet check added 10/25/86 GAN */
                         uwep->rustfree = !(sobj->cursed);
 			if(Blind)
@@ -523,7 +558,7 @@ register struct obj	*sobj;
 				aobjnam(uwep, "are"),
 				sobj->cursed ? "mottled" : "shimmering",
 				Hallucination ? hcolor() :
-				  sobj->cursed ? purple : "gold",
+				  sobj->cursed ? purple : (const char *)"gold",
 				sobj->cursed ? "glow" : "shield");
 		} else return !chwepon(sobj, bcsign(sobj)*2+1);
 		break;
@@ -571,8 +606,14 @@ register struct obj	*sobj;
 
 			if (sobj->blessed && !Teleport_control) {
 				known = TRUE;
+#ifndef MACOS
 				pline("Do you wish to teleport? ");
 				if (yn()=='n') break;
+#else
+				if(!flags.silent) SysBeep(1);
+				if(UseMacAlertText(128, "Do you wish to teleport ?") == 2)
+					break;
+#endif
 			}
 			tele();
 			if(uroom != inroom(u.ux, u.uy)) known = TRUE;
@@ -589,6 +630,11 @@ register struct obj	*sobj;
 		if (food_detect(sobj))
 			return(1);	/* nothing detected */
 		break;
+#ifdef SPELLS
+	case SPE_IDENTIFY:
+		cval = rn2(5);
+		goto id;
+#endif
 	case SCR_IDENTIFY:
 		/* known = TRUE; */
 		if(confused)
@@ -602,7 +648,7 @@ register struct obj	*sobj;
 		useup(sobj);
 		makeknown(SCR_IDENTIFY);
 #ifdef SPELLS
-	case SPE_IDENTIFY:
+	id:
 #endif
 		if(!confused)
 		    while(invent && !ggetobj("identify", identify, cval));
@@ -665,7 +711,7 @@ register struct obj	*sobj;
 		    } else {
 			pline("The scroll catches fire and you burn your %s.",
 				makeplural(body_part(HAND)));
-			losehp(1, "scroll of fire");
+			losehp(1, "scroll of fire", KILLED_BY_AN);
 		    }
 		    return(1);
 		}
@@ -676,7 +722,7 @@ register struct obj	*sobj;
 			You("are uninjured.");
 		} else {
 			u.uhpmax -= num;
-			losehp(num, "scroll of fire");
+			losehp(num, "scroll of fire", KILLED_BY_AN);
 		}
 		destroy_item(SCROLL_SYM, AD_FIRE);
 #ifdef SPELLS
@@ -689,9 +735,14 @@ register struct obj	*sobj;
 		    if(dist(mtmp->mx,mtmp->my) < 3) {
 			if (resists_fire(mtmp->data)) continue;
 			if (u.uswallow) {
-			    if (mtmp != u.ustuck) continue;
-			    pline("%s gets heartburn.", Monnam(u.ustuck));
-			    num *= 2;
+				if (mtmp != u.ustuck) continue;
+				if (is_animal(u.ustuck->data))
+					pline("%s gets heartburn.", 
+					      Monnam(u.ustuck));
+				else
+					You("toast %s slightly.", 
+					    Monnam(u.ustuck)); 
+				num *= 2;
 			}
 			mtmp->mhp -= num;		/* No saving throw! */
 			if(resists_cold(mtmp->data))
@@ -724,7 +775,7 @@ register struct obj *obj;
 {
     Your("%s vibrates violently, and explodes!",xname(obj));
     bell();
-    losehp(rn2(2*(u.uhpmax+1)/3),"exploding wand");
+    losehp(rn2(2*(u.uhpmax+1)/3),"exploding wand", KILLED_BY_AN);
     useup(obj);
 }
 
@@ -745,7 +796,14 @@ register boolean on;
 			pline("It suddenly becomes dark in here.");
 	} else {
 		if(u.uswallow){
-			pline("%s's stomach is lit.", Monnam(u.ustuck));
+			if (is_animal(u.ustuck->data))
+				pline("%s's stomach is lit.", Monnam(u.ustuck));
+			else
+				if (is_whirly(u.ustuck->data))
+					pline("%s shines briefly.", 
+					      Monnam(u.ustuck));
+				else
+					pline("%s glistens.", Monnam(u.ustuck));
 			return;
 		}
 		if(is_maze_lev){
@@ -829,6 +887,7 @@ do_class_genocide()
 			    pline("Wiped out all %s.", n);
 			    if (&mons[i] == player_mon()) {
 				u.uhp = -1;
+				killer_format = KILLED_BY_AN;
 				killer = "scroll of genocide";
 #ifdef POLYSELF
 				if (u.umonnum >= 0)
@@ -935,6 +994,7 @@ deadmeat:
 	    pline("Wiped out all %s.", makeplural(buf));
 	    if(killplayer) {
 		u.uhp = -1;
+		killer_format = KILLED_BY_AN;
 		killer = "genocide spell";
 #ifdef POLYSELF
 	/* A polymorphed character will die as soon as he is rehumanized. */
@@ -961,7 +1021,10 @@ deadmeat:
 	}
 }
 
-static void
+#endif /* OVLB */
+#ifdef OVL0
+
+XSTATIC void
 show_map_spot(x, y)
 register int x, y;
 {
@@ -997,6 +1060,9 @@ do_mapping() {
 	    for(zx = 0; zx < COLNO; zx++)
 		show_map_spot(zx, zy);
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 void
 do_vicinity_map() {
@@ -1065,7 +1131,7 @@ register struct obj	*sobj;
 		return(1);
 	} else if(!ct) {
 		known = TRUE;
-		You("%s %s close nearby.", sobj ? "smell" : "sense",
+		You("%s %s nearby.", sobj ? "smell" : "sense",
 			confused ? "something" : "food");
 	} else {
 		known = TRUE;
@@ -1136,14 +1202,17 @@ boolean
 create_particular()
 {
 	char buf[BUFSZ];
-	int which;
+	int which, tries = 0;
 
 	do {
 	    pline("Create what kind of monster? [type the name] ");
 	    getlin(buf);
-	} while(strlen(buf) < 1);
-	which = name_to_mon(buf);
-	if (which != -1) {
+	    which = name_to_mon(buf);
+	    if (which < 0) pline("I've never heard of such monsters.");
+	    else break;
+	} while (++tries < 5);
+	if (tries == 5) pline(thats_enough_tries);
+	else {
 	    if (!(mons[which].geno & G_GENOD) && cant_create(&which) &&
 								!Blind) {
 		if (mons[which].geno & G_GENOD)
@@ -1157,3 +1226,5 @@ pline("The disoriented creature's eyes slowly glaze over.");
 	return FALSE;
 }
 #endif /* WIZARD || EXPLORE_MODE */
+
+#endif /* OVLB */

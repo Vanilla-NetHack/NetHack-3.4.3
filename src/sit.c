@@ -33,7 +33,7 @@ dosit() {
 		switch (rnd(13))  {
 		    case 1:
 			adjattrib(rn2(A_MAX), -rn1(4,3), FALSE);
-			losehp(rnd(10), "cursed throne");
+			losehp(rnd(10), "cursed throne", KILLED_BY_AN);
 			break;
 		    case 2:
 			adjattrib(rn2(A_MAX), 1, FALSE);
@@ -42,8 +42,8 @@ dosit() {
 		pline("A%s charge of electricity shoots through your body!",
 			      (Shock_resistance) ? "" : " massive");
 			if(Shock_resistance)
-				losehp(rnd(6), "electric chair");
-			else	losehp(rnd(30), "electric chair");
+				losehp(rnd(6), "electric chair", KILLED_BY_AN);
+			else	losehp(rnd(30), "electric chair", KILLED_BY_AN);
 			break;
 		    case 4:
 			You("feel much, much better!");
@@ -78,12 +78,12 @@ dosit() {
 		    case 9:
 			You("hear a voice echo:");
 	pline("\"A curse upon thee for sitting upon this most holy throne!\"");
-			if (u.uluck > 0)  {
+			if (Luck > 0)  {
 			    make_blinded(Blinded + rn1(100,250),TRUE);
 			} else	    rndcurse();
 			break;
 		    case 10:
-			if (u.uluck < 0 || (HSee_invisible & INTRINSIC))  {
+			if (Luck < 0 || (HSee_invisible & INTRINSIC))  {
 				pline("An image forms in your mind.");
 				do_mapping();
 			} else  {
@@ -92,7 +92,7 @@ dosit() {
 			}
 			break;
 		    case 11:
-			if (u.uluck < 0)  {
+			if (Luck < 0)  {
 			    You("feel threatened.");
 			    aggravate();
 			} else  {
@@ -180,7 +180,8 @@ attrcurse() {			/* remove a random INTRINSIC ability */
 			HFire_resistance &= ~INTRINSIC;
 			if (Inhell && !Fire_resistance) {
 			    You("burn to a crisp.");
-			    killer = "gremlin curse";
+			    killer_format = NO_KILLER_PREFIX;
+			    killer = self_pronoun("a gremlin stole %s fire resistance in hell", "his");
 			    done(BURNING);
 			} else You("feel warmer.");
 			break;

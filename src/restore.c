@@ -99,7 +99,7 @@ boolean ghostly;
 	register struct fruit *oldf;
 #endif
 	int xl;
-#ifdef LINT
+#if defined(LINT) || defined(__GNULINT__)
 	/* suppress "used before set" warning from lint */
 	otmp2 = 0;
 #endif
@@ -148,13 +148,13 @@ boolean ghostly;
 	off_t differ;
 
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
-#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4)
+#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4) && !defined(HPUX)
 	differ = (genericptr_t)(&mons[0]) - (genericptr_t)(monbegin);
 #else
 	differ = (long)(&mons[0]) - (long)(monbegin);
 #endif
 
-#ifdef LINT
+#if defined(LINT) || defined(__GNULINT__)
 	/* suppress "used before set" warning from lint */
 	mtmp2 = 0;
 #endif
@@ -167,7 +167,7 @@ boolean ghostly;
 		mread(fd, (genericptr_t) mtmp, (unsigned) xl + sizeof(struct monst));
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
-#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4)
+#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4) && !defined(HPUX)
 		/* ANSI type for differ is ptrdiff_t --
 		 * long may be wrong for segmented architecture --
 		 * may be better to cast pointers to (struct permonst *)
@@ -241,6 +241,9 @@ register int fd;
 	    if(tmp != getuid()) {		/* strange ... */
 		(void) close(fd);
 		(void) unlink(SAVEF);
+#ifdef AMIGA_WBENCH
+		ami_wbench_unlink(SAVEF);
+#endif
 		(void) puts("Saved game was not yours.");
 		restoring = FALSE;
 		return(0);
@@ -286,8 +289,23 @@ register int fd;
 #endif
 	mread(fd, (genericptr_t) &is_maze_lev, sizeof is_maze_lev);
 	mread(fd, (genericptr_t) &u, sizeof(struct you));
+	if(u.uhp <= 0) {
+	    (void) close(fd);
+	    (void) unlink(SAVEF);
+#ifdef AMIGA_WBENCH
+	    ami_wbench_unlink(SAVEF);
+#endif
+	    (void) puts("You were not healthy enough to survive restoration.");
+	    restoring = FALSE;
+	    return(0);
+	}
 #ifdef SPELLS
-	mread(fd, (genericptr_t) spl_book, sizeof(struct spell) * (MAXSPELL + 1));
+	mread(fd, (genericptr_t) spl_book, 
+				sizeof(struct spell) * (MAXSPELL + 1));
+#endif
+#ifdef NAMED_ITEMS
+	mread(fd, (genericptr_t) artiexist, 
+			(unsigned int)(sizeof(boolean) * artifact_num));
 #endif
 	if(u.ustuck)
 		mread(fd, (genericptr_t) &mid, sizeof mid);
@@ -349,10 +367,8 @@ register int fd;
 			
 			if (er = Create(&fileName, 0, CREATOR, LEVEL_TYPE))
 				SysBeep(1);
-			else {
-				msmsg(".");
-				nfd = open(lock, O_WRONLY | O_BINARY);
-			}
+			msmsg(".");
+			nfd = open(lock, O_WRONLY | O_BINARY);
 			(void)SetVol(0L, oldVolume);
 		}
 # else
@@ -360,7 +376,7 @@ register int fd;
 # endif /* MACOS */
 #endif
 		if (nfd < 0)	panic("Cannot open temp file %s!\n", lock);
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 		if (!savelev(nfd, ltmp, COUNT | WRITE)) {
 
 			/* The savelev can't proceed because the size required
@@ -423,6 +439,9 @@ register int fd;
 				)
 #endif
 		(void) unlink(SAVEF);
+#ifdef AMIGA_WBENCH
+		ami_wbench_unlink(SAVEF);
+#endif
 #ifdef REINCARNATION
 	/* this can't be done earlier because we need to check the initial
 	 * showsyms against the one saved in each of the non-rogue levels */
@@ -489,7 +508,7 @@ boolean ghostly;
 	short tlev;
 #endif
 
-#if defined(MSDOS) && !defined(TOS)
+#if defined(MSDOS) && !defined(TOS) && !defined(LATTICE) && !defined(AZTEC_C)
 	setmode(fd, O_BINARY);	    /* is this required for TOS??? NO --ERS */
 #endif
 #ifdef TUTTI_FRUTTI
@@ -558,15 +577,22 @@ boolean ghostly;
 	mread(fd, (genericptr_t) levl, sizeof(levl));
 #endif
 	mread(fd, (genericptr_t) osymbol, sizeof(osymbol));
-	if (memcmp((genericptr_t) osymbol,
-		   (genericptr_t) showsyms, sizeof (showsyms))
 #ifdef REINCARNATION
-		&& dlvl != rogue_level
-		/* rogue level always uses default syms, and showsyms will still
-		 * have its initial value from environment when restoring a
-		 * game */
+	if (memcmp((genericptr_t) osymbol, ((dlevel==rogue_level)
+			? (genericptr_t)savesyms : (genericptr_t)showsyms),
+			sizeof (osymbol))
+		&& dlvl != rogue_level) {
+		/* rogue level always uses default syms.  Although showsyms
+		 * will be properly initialized from environment when restoring
+		 * a game, this routine is called upon saving as well as
+		 * restoring; when saving on the Rogue level, showsyms will
+		 * be wrong, so use savesyms (which is always right, both on
+		 * saving and restoring).
+		 */
+#else
+	if (memcmp((genericptr_t) osymbol,
+		   (genericptr_t) showsyms, sizeof (showsyms))) {
 #endif
-	    ) {
 		for (x = 0; x < COLNO; x++)
 			for (y = 0; y < ROWNO; y++) {
 				osym = levl[x][y].scrsym;
@@ -768,6 +794,14 @@ boolean ghostly;
 		if (!ghostly) {
 			nhp = mtmp->mhp +
 				(regenerates(mtmp->data) ? tmoves : tmoves/20);
+			if(!mtmp->mcansee && mtmp->mblinded) {
+				if (mtmp->mblinded < tmoves) mtmp->mblinded = 0;
+				else mtmp->mblinded -= tmoves;
+			}
+			if(!mtmp->mcanmove && mtmp->mfrozen) {
+				if (mtmp->mfrozen < tmoves) mtmp->mfrozen = 0;
+				else mtmp->mfrozen -= tmoves;
+			}
 			if(nhp > mtmp->mhpmax)
 				mtmp->mhp = mtmp->mhpmax;
 			else
@@ -780,7 +814,6 @@ boolean ghostly;
 	  }
 	}
 
-	setgd();
 	fgold = 0;
 	while(gold = newgold(),
 	      mread(fd, (genericptr_t)gold, sizeof(struct gold)),
@@ -915,6 +948,9 @@ register unsigned int len;
 		pline("Read %d instead of %u bytes.\n", rlen, len);
 		if(restoring) {
 			(void) unlink(SAVEF);
+#ifdef AMIGA_WBENCH
+			ami_wbench_unlink(SAVEF);
+#endif
 			error("Error restoring old game.");
 		}
 		panic("Error reading level file.");

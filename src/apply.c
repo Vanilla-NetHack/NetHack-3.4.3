@@ -2,8 +2,8 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include	"hack.h"
 #include	"edog.h"
 
@@ -11,9 +11,29 @@
 #define IS_INSTRUMENT(typ)	((typ) >= FLUTE && (typ) <= DRUM_OF_EARTHQUAKE)
 #endif /* MUSIC /**/
 
+#ifdef OVLB
+
 static const char tools[] = { TOOL_SYM, 0 };
 
 static boolean did_dig_msg;
+
+static struct monst *FDECL(bchit, (int, int, int, CHAR_P));
+static void FDECL(use_camera, (struct obj *));
+static void FDECL(use_stethoscope, (struct obj *));
+static void FDECL(use_whistle, (struct obj *));
+static void FDECL(use_magic_whistle, (struct obj *));
+#ifdef WALKIES
+static void FDECL(use_leash, (struct obj *));
+#endif
+OSTATIC int NDECL(dig);
+static boolean FDECL(wield_tool, (struct obj *));
+static int FDECL(use_pick_axe, (struct obj *));
+#ifdef MEDUSA
+static void FDECL(use_mirror, (struct obj *));
+#endif
+static void FDECL(use_lamp, (struct obj *));
+static void FDECL(use_crystal_ball, (struct obj *));
+static void FDECL(use_tinning_kit, (struct obj *));
 
 /* version of bhit for cameras and mirrors */
 static
@@ -35,10 +55,7 @@ bchit(ddx,ddy,range,sym) register int ddx,ddy,range; char sym; {
 			mtmp = m_at(bchx,bchy);
 			break;
 		}
-		if(!ZAP_POS(levl[bchx][bchy].typ) ||
-		    (IS_DOOR(levl[bchx][bchy].typ) &&
-			    (levl[bchx][bchy].doormask & (D_CLOSED | D_LOCKED)))
-		  ) {
+		if(!ZAP_POS(levl[bchx][bchy].typ) || closed_door(bchx, bchy)) {
 			bchx -= ddx;
 			bchy -= ddy;
 			break;
@@ -57,7 +74,8 @@ register struct monst *mtmp;
 		return;
 	}
 	if(u.uswallow) {
-		You("take a picture of %s's stomach.", mon_nam(u.ustuck));
+		You("take a picture of %s's %s.", mon_nam(u.ustuck),
+		    is_animal(u.ustuck->data)? "stomach" : "interior");
 		return;
 	}
 	if(obj->cursed && !rn2(2)) goto blindu;
@@ -216,8 +234,12 @@ register xchar x, y, n;
 	return(abs(u.ux - x) > n  || abs(u.uy - y) > n);
 }
 
+#endif /* OVLB */
+
 #ifdef WALKIES
 #define MAXLEASHED	2
+
+#ifdef OVLB
 
 int
 number_leashed()
@@ -369,7 +391,10 @@ register struct monst *mtmp;
 	}
 	return((struct obj *)0);
 }
-
+#endif /* WALKIES */
+#endif /* OVLB */
+#ifdef OVL0
+#ifdef WALKIES
 void
 check_leash(x, y)
 register xchar x, y;
@@ -415,11 +440,13 @@ register xchar x, y;
 		}
 	    }
 }
+
 #endif /* WALKIES */
 
-#ifndef OVERLAY
-static 
-#endif
+#endif /* OVL0 */
+#ifdef OVLB
+
+XSTATIC
 int
 dig() {
 	register struct rm *lev;
@@ -484,7 +511,7 @@ dig() {
 		}
 	} else
 	if(dig_effort > 100) {
-		register char *digtxt;
+		register const char *digtxt;
 		register struct obj *obj;
 
 		if(obj = sobj_at(STATUE, dpx, dpy)) {
@@ -516,8 +543,7 @@ dig() {
 			digtxt = "You just broke through a secret door.";
 			if(!(lev->doormask & D_TRAPPED))
 				lev->doormask = D_BROKEN;
-		} else if (IS_DOOR(lev->typ) &&
-			   (lev->doormask & (D_CLOSED | D_LOCKED))) {
+		} else if(closed_door(dpx, dpy)) {
 			digtxt = "You just broke a hole through the door.";
 			if(!(lev->doormask & D_TRAPPED))
 				lev->doormask = D_BROKEN;
@@ -534,8 +560,7 @@ dig() {
 		dig_level = -1;
 		return(0);
 	} else {
-		if(IS_WALL(lev->typ) ||
-		 (IS_DOOR(lev->typ) && lev->doormask & (D_CLOSED | D_LOCKED))) {
+		if(IS_WALL(lev->typ) || closed_door(dpx, dpy)) {
 		    register int rno = inroom(dpx,dpy);
 
 		    if(rno >= 0 && rooms[rno].rtype >= SHOPBASE) {
@@ -676,12 +701,16 @@ struct obj *obj;
 	if(u.uswallow && attack(u.ustuck)) /* return(1) */;
 	else if(u.dz < 0) You("cannot reach the ceiling.");
 	else if(!u.dx && !u.dy && !u.dz) {
+		char buf[BUFSZ];
 		int dam;
 
-		dam = rnd(2) + dbon();
+		dam = rnd(2) + dbon() + obj->spe;
 		if (dam <= 0) dam = 1;
 		You("hit yourself with your own pick-axe.");
-		losehp(dam, "self-inflicted wound");
+		/* self_pronoun() won't work twice in a sentence */
+		Strcpy(buf, self_pronoun("killed %sself with %%s own pick-axe",
+			"him"));
+		losehp(dam, self_pronoun(buf, "his"), NO_KILLER_PREFIX);
 		flags.botl=1;
 		return(1);
 	} else if(u.dz == 0) {
@@ -695,11 +724,9 @@ struct obj *obj;
 			pline("Clash!");
 			return(1);
 		}
-		isclosedoor = (IS_DOOR(lev->typ) &&
-			       (lev->doormask & (D_CLOSED | D_LOCKED)));
+		isclosedoor = closed_door(rx, ry);
 		if(!IS_ROCK(lev->typ)
-		     && (!IS_DOOR(lev->typ) || (lev->doormask==D_NODOOR
-			|| lev->doormask & (D_ISOPEN | D_BROKEN)))
+		     && !isclosedoor
 		     && !sobj_at(STATUE, rx, ry)
 		     && !sobj_at(BOULDER, rx, ry)) {
 			/* ACCESSIBLE or POOL */
@@ -806,7 +833,7 @@ struct obj *obj;
 				(poly_gender()==1 ? "beautiful" : "handsome") :
 				"ugly");
 		} else {
-		if (rn2(4-u.uluck/3) || !HTelepat ||
+		if (Luck <= 10 && rn2(4-Luck/3) || !HTelepat ||
 		    (u.ukilled_medusa
 #ifdef HARD
 			&& u.udemigod
@@ -819,7 +846,7 @@ struct obj *obj;
 				body_part(FACE));
 		} else {
 			static char buf[35];
-			char *tm, *tl; int ll;
+			const char *tm, *tl; int ll;
 			if (!u.ukilled_medusa && rn2(4)) {
 			    tm = "n ugly snake-headed monster";
 			    ll = dlevel - medusa_level;
@@ -847,7 +874,8 @@ struct obj *obj;
 		return;
 	}
 	if(u.uswallow) {
-		You("reflect %s's stomach.", mon_nam(u.ustuck));
+		You("reflect %s's %s.", mon_nam(u.ustuck), 
+		    is_animal(u.ustuck->data)? "stomach" : "interior");
 		return;
 	}
 	if(u.dz) {
@@ -879,12 +907,17 @@ struct obj *obj;
 		killed(mtmp);
 	} else if(!mtmp->mcan && !mtmp->minvis &&
 					mtmp->data == &mons[PM_FLOATING_EYE]) {
+		int tmp = d((int)mtmp->m_lev, (int)mtmp->data->mattk[0].damd);
+		if (!rn2(4)) tmp = 120;
 	/* Note: floating eyes cannot use their abilities while invisible,
 	 * but medusas and umber hulks can.
 	 */
 		if (!Blind)
 			pline("%s is frozen by its reflection.",Monnam(mtmp));
-		mtmp->mfroz = 1;
+		mtmp->mcanmove = 0;
+		if (mtmp->mfrozen + tmp > 127)
+			mtmp->mfrozen = 127;
+		else mtmp->mfrozen += tmp;
 	} else if(!mtmp->mcan && mtmp->data == &mons[PM_UMBER_HULK]) {
 		if (!Blind)
 			pline ("%s has confused itself!", Monnam(mtmp));
@@ -898,6 +931,7 @@ struct obj *obj;
 	    	    pline ("%s looks beautiful in your mirror.",Monnam(mtmp));
 	    	    pline ("She decides to take it!");
 		} else pline ("It steals your mirror!");
+		setnotworn(obj); /* in case mirror was wielded */
 	    	freeinv(obj);
 	    	mpickobj(mtmp,obj);
 	    	rloc(mtmp);
@@ -967,7 +1001,8 @@ use_crystal_ball(obj)
 			break;
 		case 5 : pline("The crystal ball explodes!");
 			useup(obj);
-			losehp(rnd(30), "exploding crystal ball");
+			losehp(rnd(30), "exploding crystal ball",
+				KILLED_BY_AN);
 			break;
 		}
 		obj->spe -= 1;
@@ -1119,7 +1154,7 @@ register struct obj *obj;
 	 */
 	if (!(corpse = floorfood("can", 1))) return;
 	if (corpse->oeaten) {
-		pline("You cannot tin something which is partly eaten.");
+		You("cannot tin something which is partly eaten.");
 		return;
 	}
 	if ((corpse->corpsenm == PM_COCKATRICE)
@@ -1129,8 +1164,13 @@ register struct obj *obj;
 		&& !uarmg) {
 pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 		You("turn to stone...");
-		killer = "unwise tinning decision";
+		killer_format = KILLED_BY;
+		killer = "trying to tin a cockatrice without gloves";
 		done(STONING);
+	}
+	if (mons[corpse->corpsenm].cnutrit == 0) {
+		You("can't tin something that insubstantial!");
+		return;
 	}
 	can = mksobj(TIN,FALSE);
 	can->corpsenm = corpse->corpsenm;
@@ -1150,16 +1190,15 @@ int
 use_unicorn_horn(obj)
 struct obj *obj;
 {
-	boolean cursed = (obj && obj->cursed);
 	boolean blessed = (obj && obj->blessed);
 	boolean did_something = FALSE;
 
-	if (cursed) {
+	if (obj && obj->cursed) {
 		switch (rn2(6)) {
 		    static char buf[BUFSZ];
 		    case 0: make_sick(Sick ? 1L : (long)(20 + rn2(20)), TRUE);
 			    Strcpy(buf, xname(obj));
-			    u.usick_cause = buf;
+			    u.usick_cause = (const char *)buf;
 			    break;
 		    case 1: make_blinded(Blinded + (long) rnd(100), TRUE);
 			    break;
@@ -1189,6 +1228,10 @@ struct obj *obj;
 	}
 	if (Hallucination && (!did_something || blessed)) {
 		make_hallucinated(0L, TRUE);
+		did_something++;
+	}
+	if (Vomiting && (!did_something || blessed)) {
+		make_vomiting(0L, TRUE);
 		did_something++;
 	}
 	if (HConfusion && (!did_something || blessed)) {
@@ -1303,7 +1346,7 @@ doapply() {
 			You("have no tin to open.");
 			goto xit;
 		}
-		You("cannot open a tin without eating its contents.");
+		You("cannot open a tin without eating or discarding its contents.");
 		if(flags.verbose)
 			pline("In order to eat, use the 'e' command.");
 		if(obj != uwep)
@@ -1339,3 +1382,5 @@ doapply() {
 	nomul(0);
 	return res;
 }
+
+#endif /* OVLB */

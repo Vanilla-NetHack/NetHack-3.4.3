@@ -115,7 +115,7 @@ gettty(){
 /* reset terminal to original state */
 void
 settty(s)
-char *s;
+const char *s;
 {
 	clear_screen();
 	end_screen();
@@ -192,9 +192,9 @@ introff() {		/* disable kbd interrupts if required*/
 /*VARARGS1*/
 
 void
-error VA_DECL(char *,s)
+error VA_DECL(const char *,s)
 	VA_START(s);
-	VA_INIT(s, char *);
+	VA_INIT(s, const char *);
 	if(settty_needed)
 		settty(NULL);
 	Vprintf(s,VA_ARGS);

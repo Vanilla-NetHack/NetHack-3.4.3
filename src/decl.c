@@ -41,8 +41,9 @@ int smeq[MAXNROFROOMS+1] = DUMMY;
 int doorindex = 0;
 
 char *save_cm = 0;
-char *killer = 0;
-char *nomovemsg = 0;
+int killer_format = 0;
+const char *killer = 0;
+const char *nomovemsg = 0;
 const char nul[40] = DUMMY;		/* contains zeros */
 char plname[PL_NSIZ] = DUMMY;		/* player name */
 char pl_character[PL_CSIZ] = DUMMY;
@@ -61,9 +62,9 @@ schar music_heard = 0;
 #endif
 
 #ifdef SMALLDATA
-char *occtxt = 0;
+const char *occtxt = 0;
 #else
-char *occtxt = DUMMY;
+const char *occtxt = DUMMY;
 #endif
 const char quitchars[] = " \r\n\033";
 const char vowels[] = "aeiouAEIOU";
@@ -87,7 +88,11 @@ int clipx, clipy, clipxmax, clipymax;
 #endif
 
 #ifdef TEXTCOLOR
+# ifdef TOS
+const char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
+# else
 char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
+# endif
 #endif
 #ifdef MSDOS
 char hackdir[PATHLEN];		/* where rumors, help, record are */
@@ -202,38 +207,38 @@ symbol_array showsyms = DUMMY; /* will contain the symbols actually used */
 symbol_array savesyms = DUMMY;
 #endif
 
-char *explainsyms[MAXPCHARS] = {
-	"a dark part of a room", "a wall", "a wall",
-	"a wall", "a wall", "a wall",
-	"a wall", "a wall", "a wall",
-	"a wall", "a wall", "a wall",
-	"a wall", "a wall", "a wall",
-	"a wall", "a doorway", "an open door",
-	"an open door", "a closed door", "the floor of a room",
-	"a corridor", "a staircase up", "a staircase down",
-	"a trap", "a web", "a water filled area",
+const char *explainsyms[MAXPCHARS] = {
+	"dark part of a room", "wall", "wall",
+	"wall", "wall", "wall",
+	"wall", "wall", "wall",
+	"wall", "wall", "wall",
+	"wall", "wall", "wall",
+	"wall", "doorway", "open door",
+	"open door", "closed door", "floor of a room",
+	"corridor", "staircase up", "staircase down",
+	"trap", "web", "water filled area",
 #ifdef FOUNTAINS
-	"a fountain",
+	"fountain",
 #else
 	"",
 #endif
 #ifdef SINKS
-	"a sink",
+	"sink",
 #else
 	"",
 #endif
 #ifdef THRONES
-	"an opulent throne",
+	"opulent throne",
 #else
 	"",
 #endif
 #ifdef ALTARS
-	"an altar",
+	"altar",
 #else
 	"",
 #endif
 #ifdef STRONGHOLD
-	"a ladder up", "a ladder down", "a drawbridge", "a drawbridge"
+	"ladder up", "ladder down", "drawbridge", "drawbridge"
 #else
 	"", "", "", ""
 #endif
@@ -273,3 +278,64 @@ const char white[] = "white";
 
 const char nothing_happens[] = "Nothing happens.";
 const char thats_enough_tries[] = "That's enough tries!";
+
+const char monsyms[] = { S_HUMAN, S_GHOST, S_ANT, S_BLOB, S_COCKATRICE, S_DOG,
+S_EYE, S_FELINE, S_GREMLIN, S_HUMANOID, S_IMP, S_JELLY, S_KOBOLD,
+S_LEPRECHAUN, S_MIMIC, S_NYMPH, S_ORC, S_PIERCER, S_QUADRUPED, S_RODENT,
+S_SPIDER, S_TRAPPER, S_UNICORN, S_VORTEX, S_WORM, S_XAN, S_YLIGHT, S_ZRUTY,
+S_APE, S_BAT, S_CENTAUR, S_DRAGON, S_ELEMENTAL, S_FUNGUS, S_GNOME, S_GIANT,
+S_STALKER, S_JABBERWOCK,
+#ifdef KOPS
+S_KOP,
+#endif
+S_LICH, S_MUMMY, S_NAGA, S_OGRE, S_PUDDING, S_QUANTMECH, S_RUSTMONST, S_SNAKE,
+S_TROLL, S_UMBER, S_VAMPIRE, S_WRAITH, S_XORN, S_YETI, S_ZOMBIE,
+#ifdef GOLEMS
+S_GOLEM,
+#endif
+S_DEMON, S_EEL, S_LIZARD,
+#ifdef WORM
+S_WORM_TAIL,
+#endif
+0 };
+
+const char objsyms[] = { WEAPON_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM,
+WAND_SYM,
+#ifdef SPELLS
+SPBOOK_SYM,
+#endif
+RING_SYM, AMULET_SYM, FOOD_SYM, TOOL_SYM, GEM_SYM, GOLD_SYM,
+ROCK_SYM, BALL_SYM, CHAIN_SYM, 0 };
+
+const char *monexplain[] = {
+"human", "ghost", "ant or other insect", "blob", "cockatrice",
+"dog or other canine", "eye or sphere", "feline", "gremlin", "humanoid",
+"imp or minor demon", "jelly", "kobold", "leprechaun", "mimic",
+"nymph", "orc", "piercer", "quadruped", "rodent",
+"spider", "trapper or lurker above", "unicorn", "vortex", "worm",
+"xan or other mythical/fantastic insect", "yellow light", "zruty",
+"ape", "bat", "centaur", "dragon", "elemental",
+"fungus or mold", "gnome", "giant humanoid", "invisible stalker", "jabberwock",
+#ifdef KOPS
+"Keystone Kop",
+#endif
+"lich", "mummy", "naga", "ogre", "pudding or ooze",
+"quantum mechanic", "rust monster", "snake", "troll", "umber hulk",
+"vampire", "wraith", "xorn", "yeti", "zombie",
+#ifdef GOLEMS
+"golem",
+#endif
+"demon",  "sea monster", "lizard",
+#ifdef WORM
+"long worm tail",
+#endif
+};
+
+const char *objexplain[] = {
+"weapon", "suit or piece of armor", "potion", "scroll", "wand",
+#ifdef SPELLS
+"spell book",
+#endif
+"ring", "amulet", "piece of food", "useful item (pick-axe, key, lamp...)",
+"gem or rock", "pile of gold", "boulder or statue", "iron ball", "iron chain"
+};

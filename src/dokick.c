@@ -7,11 +7,19 @@
 
 #define martial()	((pl_character[0] == 'S' || pl_character[0] == 'P'))
 
+static struct rm *maploc;
+
 #ifdef KICK
 
 # ifdef WORM
 extern boolean notonhead;
 # endif
+
+static void FDECL(kickdmg, (struct monst *, BOOLEAN_P));
+static void FDECL(kick_monster, (int, int));
+static int FDECL(kick_object, (int, int));
+
+static struct obj *obj = (struct obj *) 0;
 
 static void
 kickdmg(mon, clumsy)
@@ -54,7 +62,7 @@ register boolean clumsy;
 		killed(mon);
 		return;
 	}
-	if(martial() && !bigmonst(mon->data) && !rn2(3) && !mon->mfroz) {
+	if(martial() && !bigmonst(mon->data) && !rn2(3) && mon->mcanmove) {
 	    	/* see if the monster has a place to move into */
 	    	mdx = mon->mx + u.dx;
 	    	mdy = mon->my + u.dy;
@@ -70,7 +78,7 @@ register boolean clumsy;
 
 /*	it is unchivalrous to attack the defenseless or from behind */
 	if (pl_character[0] == 'K' && u.ualigntyp == U_LAWFUL && 
-		u.ualign > -10 && (mon->mfroz || mon->msleep || mon->mflee))
+		u.ualign > -10 && (!mon->mcanmove || mon->msleep || mon->mflee))
 	    	adjalign(-1);
 
 }
@@ -149,7 +157,7 @@ doit:
 	kludge("You kick %s.", mon_nam(mon));
 	if(!rn2(clumsy ? 3 : 4) && (clumsy || !bigmonst(mon->data)) && 
 	   mon->mcansee && !mon->mtrapped && !thick_skinned(mon->data) && 
-	   mon->data->mlet != S_EEL && haseyes(mon->data) && !mon->mfroz && 
+	   mon->data->mlet != S_EEL && haseyes(mon->data) && mon->mcanmove && 
 	   !mon->mstun && !mon->mconf && !mon->msleep &&
 	   mon->data->mmove >= 12) {
 		if(!nohands(mon->data) && !rn2(martial() ? 5 : 3)) {
@@ -236,10 +244,7 @@ boolean
 bad_kick_throw_pos(x,y)
 xchar x,y;
 {
-	register struct rm *lvl = &(levl[x][y]);
-
-	return(!ACCESSIBLE(lvl->typ) || lvl->typ == SDOOR ||
-	    (IS_DOOR(lvl->typ) && (lvl->doormask & (D_CLOSED | D_LOCKED))) );
+	return(!accessible(x, y) || levl[x][y].typ == SDOOR);
 }
 
 struct monst *
@@ -286,7 +291,7 @@ int x, y;
 	int range, odx, ody, cnt = 0;
 	register struct monst *mon;
 	struct gold *gold;
-	register struct obj *otmp, *obj;
+	register struct obj *otmp;
 	boolean costly = FALSE;
 
 	/* if a pile, the "top" object gets kicked */
@@ -469,11 +474,48 @@ int x, y;
 }
 #endif /* KICK */
 
+char *
+kickstr() {
+	static char buf[BUFSIZ];
+
+#ifdef KICK
+	if (obj) Sprintf(buf, "kicking %s", doname(obj));
+	else
+#endif
+	if (IS_STWALL(maploc->typ)) Strcpy(buf, "kicking a wall");
+	else if (IS_ROCK(maploc->typ)) Strcpy(buf, "kicking a rock");
+#ifdef THRONES
+	else if (IS_THRONE(maploc->typ)) Strcpy(buf, "kicking a throne");
+#endif
+#ifdef SINKS
+	else if (IS_SINK(maploc->typ)) Strcpy(buf, "kicking a sink");
+#endif
+#ifdef ALTARS
+	else if (IS_ALTAR(maploc->typ)) Strcpy(buf, "kicking an altar");
+#endif
+#ifdef STRONGHOLD
+	else if (IS_DRAWBRIDGE(maploc->typ))
+		Strcpy(buf, "kicking the drawbridge");
+#endif
+	else {
+		switch (maploc->typ) {
+		case STAIRS:	
+			Strcpy(buf, "kicking the stairs");
+			break;
+#ifdef STRONGHOLD
+		case LADDER:
+			Strcpy(buf, "kicking a ladder");
+			break;
+#endif
+		}
+	}
+
+	return buf;
+}
 
 int
 dokick() {		/* try to kick the door down - noisy! */
         register int x, y;
-	register struct rm *maploc;
 	register int avrg_attrib = (ACURR(A_STR)+ACURR(A_DEX)+ACURR(A_CON))/3;
 
 #ifdef POLYSELF
@@ -520,7 +562,10 @@ dokick() {		/* try to kick the door down - noisy! */
 		switch(rn2(3)) {
 		case 0:  You("can't move your %s!", body_part(LEG));
 			 break;
-		case 1:  pline("%s burps loudly.", Monnam(u.ustuck)); break;
+		case 1:  if (is_animal(u.ustuck->data)) {
+			 	pline("%s burps loudly.", Monnam(u.ustuck)); 
+			       	break; 
+                         }
 		default: Your("feeble kick has no effect."); break;
 		}
 		return(1);
@@ -573,17 +618,17 @@ dokick() {		/* try to kick the door down - noisy! */
 # ifdef THRONES
 		if(IS_THRONE(maploc->typ)) {
 		    register int i;
-		    if((u.uluck < 0 || maploc->doormask) && !rn2(3)) {
+		    if((Luck < 0 || maploc->doormask) && !rn2(3)) {
 			pline("CRASH!  You destroy the throne.");
 			maploc->typ = ROOM;
 			maploc->doormask = 0; /* don't leave loose ends.. */
 			mkgold((long)rnd(200), x, y);
 			prl(x, y);
 			return(1);
-		    } else if(u.uluck && !rn2(3) && !maploc->looted) {
+		    } else if(Luck > 0 && !rn2(3) && !maploc->looted) {
 			You("kick loose some ornamental coins and gems!");
 			mkgold((300L+(long)rn2(201)), x, y);
-			i = u.uluck + 1;
+			i = Luck + 1;
 			if(i > 6) i = 6;
 			while(i--) (void) mkobj_at(GEM_SYM, x, y);
 			prl(x, y);
@@ -656,7 +701,8 @@ dokick() {		/* try to kick the door down - noisy! */
 ouch:
 		    pline("Ouch!  That hurts!");
 		    if(!rn2(3)) set_wounded_legs(RIGHT_SIDE, 5 + rnd(5));
-		    losehp(rnd(ACURR(A_CON) > 15 ? 3 : 5), "dumb move");
+		    losehp(rnd(ACURR(A_CON) > 15 ? 3 : 5), kickstr(),
+			KILLED_BY);
 		    return(1);
 		}
 # ifdef STRONGHOLD

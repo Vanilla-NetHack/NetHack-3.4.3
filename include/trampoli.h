@@ -20,6 +20,9 @@
 #ifdef POLYSELF
 #define domonability()     domonability_()
 #endif /* POLYSELF */
+#ifdef EXPLORE_MODE
+#define enter_explore_mode() enter_explore_mode_()
+#endif /* EXPLORE_MODE */
 #define timed_occupation() timed_occupation_()
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 #define wiz_attributes()   wiz_attributes_()
@@ -87,6 +90,7 @@
 
 
 /* ### end.c ### */
+#define done1() done1_()
 #define done2() done2_()
 
 
@@ -130,6 +134,10 @@
 #define picklock()  picklock_()
 
 
+/* ### mondata.c ### */
+#define canseemon(x)	canseemon_(x)
+
+
 /* ### o_init.c ### */
 #define dodiscovered() dodiscovered_()
 
@@ -156,7 +164,7 @@
 
 
 /* ### pickup.c ### */
-#define ck_bag()         ck_bag_()
+#define ck_bag(x)        ck_bag_(x)
 #define ck_container(x)  ck_container_(x)
 #define doloot()         doloot_()
 #define in_container(x)  in_container_(x)
@@ -227,6 +235,7 @@
 
 /* ### version.c ### */
 #define doversion() doversion_()
+#define doextversion() doextversion_()
 
 /* ### wield.c ### */
 #define dowield() dowield_()

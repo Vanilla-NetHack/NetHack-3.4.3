@@ -1,29 +1,51 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.0	89/11/08
+/*	SCCS Id: @(#)lev_lex.c	3.0	90/01/04
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #define LEV_LEX_C
 
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONDATA_H
-#define MONFLAG_H
+#define MONDATA_H	/* comment this line for pre-compiled headers */
+#define MONFLAG_H	/* comment this line for pre-compiled headers */
 
 #include "hack.h"
 #include "lev_comp.h"
 #include "sp_lev.h"
 
+/* Most of these don't exist in flex, yywrap is macro and
+ * yyunput is properly declared in flex.skel.
+ */
+#ifndef FLEX_SCANNER
+int FDECL (yyback, (int *, int));
+int NDECL (yylook);
+int NDECL (yyinput);
+int NDECL (yywrap);
+int NDECL (yylex);
+int FDECL (yyunput, (int));
+int FDECL (yyoutput, (int));
+#endif
+
 #ifdef MSDOS
 #undef exit
 #endif
 
-#ifdef TOS
-extern YYSTYPE yylval;	/* this doesn't always get put in lev_comp.h */
-#endif
+/* this doesn't always get put in lev_comp.h
+ * (esp. when using older versions of bison)
+ */
+
+extern YYSTYPE yylval;
 
 #ifdef MACOS
 #undef putchar
 #undef putc
+#undef printf
+#undef Printf
+#define Printf printf
+# ifdef LSC
+#define	putc(c,stream)	(fputc(c,stream))
+#define	putchar(c)	(fputc(c,stdout))
+# endif
 #endif
 int line_number = 1;
 
@@ -102,3 +124,10 @@ down		{ yylval.i=0; return UP_OR_DOWN; }
 '.'		{ yylval.i = yytext[1]; return CHAR; }
 .		{ return yytext[0]; }
 %%
+#ifdef	AMIGA
+long *alloc(n)
+	unsigned n;
+{
+	return ((long *)malloc (n));
+}
+#endif

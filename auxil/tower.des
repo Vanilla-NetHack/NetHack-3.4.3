@@ -81,8 +81,8 @@ RANDOM_PLACES:(04,02),(08,02),(12,02),(02,04),(14,04),
 MAZEWALK:(16,06),east
 LADDER:(12,06),up
 LADDER:(04,08),down
-REGION:(11,07,12,07),unlit,"ordinary"
-REGION:(11,09,12,09),unlit,"ordinary"
+REGION:(04,04,12,04),unlit,"ordinary"
+REGION:(04,08,09,08),unlit,"ordinary"
 MONSTER:'&',random,place[0]
 MONSTER:'&',random,place[1]
 MONSTER:'d',"hell hound pup",place[2]

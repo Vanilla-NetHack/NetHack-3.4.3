@@ -68,7 +68,6 @@
 #define IS_STWALL(typ)	((typ) <= TRWALL)	/* STONE <= (typ) <= TRWALL */
 #define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
 #define IS_DOOR(typ)	((typ) == DOOR)
-#define IS_FLOOR(typ)	((typ) == ROOM)
 #define ACCESSIBLE(typ)	((typ) >= DOOR)		/* good position */
 #define IS_ROOM(typ)	((typ) >= ROOM)		/* ROOM, STAIRS, furniture.. */
 #define ZAP_POS(typ)	((typ) >= POOL)
@@ -128,7 +127,7 @@
 typedef uchar symbol_array[MAXPCHARS];
 
 extern symbol_array showsyms;
-extern char *explainsyms[MAXPCHARS];  /* tells what the characters are */
+extern const char *explainsyms[MAXPCHARS];  /* tells what the characters are */
 #ifdef REINCARNATION
 extern symbol_array savesyms;
 #endif

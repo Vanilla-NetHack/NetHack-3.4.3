@@ -9,7 +9,7 @@ dsummon(ptr)		/* summon demon */
 	register struct permonst *ptr;
 {
 #ifdef INFERNO
-	register int dtype, cnt = 0;
+	register int dtype = 0, cnt = 0;
 
 	if(is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 
@@ -44,10 +44,9 @@ dsummon(ptr)		/* summon demon */
 #define	Athome	(Inhell && !mtmp->cham)
 
 int
-demon_talk(mtmp)		/* returns 1 if he won't attack. */
+demon_talk(mtmp)		/* returns 1 if it won't attack. */
 register struct monst *mtmp;
 {
-	char	*x_monnam(), *Xmonnam();
 	long	demand, offer;
 
 #ifdef NAMED_ITEMS
@@ -58,13 +57,6 @@ register struct monst *mtmp;
 	}
 #endif /* NAMED_ITEMS */
 
-	if(is_ndemon(mtmp->data)) {  /* not for regular '&'s */
-
-	    pline("%s mutters something about awful working conditions.",
-		  Xmonnam(mtmp));
-	    return(0);
-	}
-
 	/* Slight advantage given. */
 	if(is_dprince(mtmp->data) && mtmp->minvis) {
 	    mtmp->minvis = 0;
@@ -73,7 +65,7 @@ register struct monst *mtmp;
 	}
 	if(u.usym == S_DEMON) {	/* Won't blackmail their own. */
 
-	    pline("%s says, \"Good hunting %s.\" and vanishes.",
+	    pline("%s says, \"Good hunting, %s.\" and vanishes.",
 		  Xmonnam(mtmp), flags.female ? "Sister" : "Brother");
 	    rloc(mtmp);
 	    return(1);
@@ -87,7 +79,7 @@ register struct monst *mtmp;
 		  Xmonnam(mtmp), demand, plur(demand));
 
 	    if((offer = bribe(mtmp)) >= demand) {
-		pline("%s vanishes laughing about cowardly mortals.",
+		pline("%s vanishes, laughing about cowardly mortals.",
 		      Xmonnam(mtmp));
 	    } else {
 		if((long)rnd(40) > (demand - offer)) {

@@ -7,6 +7,10 @@
 #  include "artifact.h"
 #endif
 
+static void FDECL(findone,(XCHAR_P,XCHAR_P,int *));
+
+#ifdef OVLB
+
 static void
 findone(zx,zy,num)
 xchar zx,zy;
@@ -66,12 +70,17 @@ findit()	/* returns number of things found */
 	num = 0;
 	for(zy = ly; zy <= hy; zy++)
 		for(zx = lx; zx <= hx; zx++)
-			findone(zx,zy,&num);
+			if(isok(zx,zy))
+				findone(zx,zy,&num);
 	for(zy = ly2; zy <= hy2; zy++)
 		for(zx = lx2; zx <= hx2; zx++)
-			findone(zx,zy,&num);
+			if(isok(zx,zy))
+				findone(zx,zy,&num);
 	return(num);
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 int
 dosearch()
@@ -98,7 +107,8 @@ register int aflag;
 			pline("What are you looking for?  The exit?");
 	} else
 	    for(x = u.ux-1; x < u.ux+2; x++)
-	      for(y = u.uy-1; y < u.uy+2; y++)
+	      for(y = u.uy-1; y < u.uy+2; y++) {
+		if(!isok(x,y)) continue;
 		if(x != u.ux || y != u.uy) {
 		    if(levl[x][y].typ == SDOOR) {
 #ifdef NAMED_ITEMS
@@ -153,6 +163,7 @@ register int aflag;
 					    You("find %s posing as a statue.",
 						  defmonnam(mtmp));
 					delobj(otmp);
+					newsym(x, y);
 				      }
 				    deltrap(trap);
 				    return(1);
@@ -164,8 +175,12 @@ register int aflag;
 			    }
 		    }
 		}
+	      }
 	return(1);
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 int
 doidtrap() {
@@ -180,13 +195,16 @@ doidtrap() {
 		    if(u.dz)
 			if((u.dz < 0) != (is_maze_lev && trap->ttyp == TRAPDOOR))
 			    continue;
-			pline("That is a%s.",traps[ Hallucination ? rn2(TRAPNUM-3)+2 :
+			pline("That is a%s.",traps[ Hallucination ? rn2(TRAPNUM-3)+3 :
 			trap->ttyp]);
 		    return 0;
 		}
 	pline("I can't see a trap there.");
 	return 0;
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 wakeup(mtmp)
@@ -198,13 +216,19 @@ register struct monst *mtmp;
 	if(mtmp->mimic) seemimic(mtmp);
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 /* NOTE: we must check if(mtmp->mimic) before calling this routine */
 void
 seemimic(mtmp)
 register struct monst *mtmp;
 {
 	mtmp->mimic = 0;
+	mtmp->m_ap_type = M_AP_NOTHING;
 	mtmp->mappearance = 0;
 	unpmon(mtmp);
 	pmon(mtmp);
 }
+
+#endif /* OVLB */

@@ -4,7 +4,7 @@
 
 #include	"hack.h"
 
-struct engr {
+VSTATIC struct engr {
 	struct engr *nxt_engr;
 	char *engr_txt;
 	xchar engr_x, engr_y;
@@ -18,8 +18,10 @@ struct engr {
 #define POLY	5	/* temporary type - for polymorphing engraving */
 } *head_engr;
 
-static void FDECL(del_engr, (struct engr *));
+OSTATIC void FDECL(del_engr, (struct engr *));
+OSTATIC struct engr * FDECL(engr_at,(XCHAR_P,XCHAR_P));
 
+#ifdef OVLB
 /* random engravings */
 const char *random_engr[] =
 			 {"Elbereth", "ad ae?ar um",
@@ -32,7 +34,10 @@ const char *random_engr[] =
 			 "Y?u won?t get i? up ?he ste?s",
 			 "A.S. ->"};
 
-static struct engr *
+#endif /* OVLB */
+#ifdef OVL0
+
+XSTATIC struct engr *
 engr_at(x,y) register xchar x,y; {
 register struct engr *ep = head_engr;
 	while(ep) {
@@ -46,7 +51,7 @@ register struct engr *ep = head_engr;
 #ifdef ELBERETH
 int
 sengr_at(s,x,y)
-	register char *s;
+	register const char *s;
 	register xchar x,y;
 {
 	register struct engr *ep = engr_at(x,y);
@@ -68,6 +73,9 @@ sengr_at(s,x,y)
 }
 #endif
 
+#endif /* OVL0 */
+#ifdef OVL2
+
 void
 u_wipe_engr(cnt)
 register int cnt;
@@ -75,6 +83,9 @@ register int cnt;
 	if(!u.uswallow && !Levitation)
 		wipe_engr_at(u.ux, u.uy, cnt);
 }
+
+#endif /* OVL2 */
+#ifdef OVL1
 
 void
 wipe_engr_at(x,y,cnt) register xchar x,y,cnt; {
@@ -103,6 +114,9 @@ char ch;
 	    }
 	}
 }
+
+#endif /* OVL1 */
+#ifdef OVL2
 
 void
 read_engr_at(x,y) register int x,y; {
@@ -136,10 +150,13 @@ register int	canfeel;
 	}
 }
 
+#endif /* OVL2 */
+#ifdef OVLB
+
 void
 make_engr_at(x,y,s)
 register int x,y;
-register char *s;
+register const char *s;
 {
 	register struct engr *ep;
 
@@ -163,7 +180,6 @@ register char *s;
  */
 int
 freehand(){
-
 	return(!uwep ||
 	   !uwep->cursed ||
 	   (!bimanual(uwep) && (!uarms || !uarms->cursed)));
@@ -188,14 +204,22 @@ register int len, tmp;
 register char *sp, *sptmp;
 register struct engr *ep, *oep = engr_at(u.ux,u.uy);
 char buf[BUFSZ];
+boolean jello = FALSE;
 xchar type, polytype = 0;
 int spct;		/* number of leading spaces */
 register struct obj *otmp;
 	multi = 0;
 
 	if(u.uswallow) {
-		pline("What would you write?  \"Jonah was here\"?");
-		return(0);
+		if (is_animal(u.ustuck->data)) {
+			pline("What would you write?  \"Jonah was here\"?");
+			return(0);
+		} else
+			if (is_whirly(u.ustuck->data)) {
+				You("can't reach the ground.");
+				return(0);
+			} else 
+				jello = TRUE;
 	}
 
 	/* one may write with finger, weapon or wand */
@@ -225,6 +249,14 @@ register struct obj *otmp;
 	if(otmp != &zeroobj && index(too_large,otmp->olet)) {
 		You("can't engrave with such a large object!");
 		return(1);
+       }
+
+	if (jello) {
+		You("tickle %s with your %s.", mon_nam(u.ustuck), 
+		    (otmp == &zeroobj) ? makeplural(body_part(FINGER)) :
+			xname(otmp));
+		Your("message dissolves...");
+		return(0);
 	}
 
 	if(otmp != &zeroobj && index(paper,otmp->olet)) {
@@ -452,7 +484,8 @@ dust:
 			nomovemsg = "You finish writing.";
 			if(type != MARK)
 			nomovemsg = "You finish engraving.";
-			if(otmp->olet != WAND_SYM && otmp->otyp != ATHAME)  {
+			if(otmp->olet != WAND_SYM && (otmp->otyp != ATHAME
+					|| otmp->cursed))  {
 				if(otmp->olet == WEAPON_SYM)
 					Your("%s dull.",
 					       aobjnam(otmp, "get"));
@@ -535,20 +568,29 @@ void
 save_engravings(fd) int fd; {
 register struct engr *ep = head_engr;
 register struct engr *ep2;
+#ifdef __GNULINT__
+static long nulls[] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 };
+#endif
 	while(ep) {
 	    ep2 = ep->nxt_engr;
 	    if(ep->engr_lth && ep->engr_txt[0]){
 		bwrite(fd, (genericptr_t)&(ep->engr_lth), sizeof(ep->engr_lth));
 		bwrite(fd, (genericptr_t)ep, sizeof(struct engr) + ep->engr_lth);
 	    }
-#if defined(DGK) && !defined(OLD_TOS)
+#if defined(DGK)
 	    if (!count_only)
 #endif
 		free((genericptr_t) ep);
 	    ep = ep2;
 	}
+
+#ifdef __GNULINT__
+	bwrite(fd, (genericptr_t)nulls, sizeof(unsigned));
+#else
 	bwrite(fd, (genericptr_t)nul, sizeof(unsigned));
-#if defined(DGK) && !defined(OLD_TOS)
+#endif
+
+#if defined(DGK)
 	if (!count_only)
 #endif
 		head_engr = 0;
@@ -570,7 +612,7 @@ unsigned lth;
 	}
 }
 
-static void
+XSTATIC void
 del_engr(ep) register struct engr *ep; {
 register struct engr *ept;
 	if(ep == head_engr)
@@ -588,3 +630,5 @@ register struct engr *ept;
 	}
 	free((genericptr_t) ep);
 }
+
+#endif /* OVLB */

@@ -4,7 +4,9 @@
 
 #include "hack.h"
 
-static char *
+#ifdef OVLB
+
+static const char *
 equipname(otmp)
 
 	register struct obj *otmp;
@@ -42,7 +44,7 @@ register struct monst *mtmp;
 		freegold(gold);
 		if(Invisible) newsym(u.ux, u.uy);
 		pline("%s quickly snatches some gold from between your %s!",
-			Monnam(mtmp), makeplural(body_part(FOOT)));
+			Blind ? "It" : Monnam(mtmp), makeplural(body_part(FOOT)));
 		if(!u.ugold || !rn2(5)) {
 			rloc(mtmp);
 			mtmp->mflee = 1;
@@ -74,7 +76,7 @@ stealarm(){
 	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	      if(mtmp->m_id == stealmid) {
 		  freeinv(otmp);
-		  pline("%s steals %s!", Monnam(mtmp), doname(otmp));
+		  pline("%s steals %s!", Blind ? "It" : Monnam(mtmp), doname(otmp));
 		  mpickobj(mtmp,otmp);
 		  mtmp->mflee = 1;
 		  rloc(mtmp);
@@ -158,29 +160,28 @@ gotobj:
 			break;
 		case ARMOR_SYM:
 			/* Stop putting on armor which has been stolen. */
-			if (donning(otmp))
-			    afternmv = 0;
-			if(multi < 0 || otmp == uarms){
+			if (donning(otmp)) {
+			  cancel_don();
 			  if (otmp == uarm)  (void) Armor_off();
-			  else if (otmp == uarmc) (void) Cloak_off();
+			  /* else if (otmp == uarmc) (void) Cloak_off(); */
 			  else if (otmp == uarmf) (void) Boots_off();
 			  else if (otmp == uarmg) (void) Gloves_off();
 			  else if (otmp == uarmh) (void) Helmet_off();
-			  else if (otmp == uarms) (void) Shield_off();
+			  /* else if (otmp == uarms) (void) Shield_off(); */
 			  else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
 			  break;
 			}
-		{ int curssv = otmp->cursed;
+		    { int curssv = otmp->cursed;
 			otmp->cursed = 0;
 			stop_occupation();
 			if(flags.female)
 			    pline("%s charms you.  You gladly %s your %s.",
-				  Monnam(mtmp),
+				  Blind ? "She" : Monnam(mtmp),
 				  curssv ? "let her take" : "hand over",
 				  equipname(otmp));
 			else
 			    pline("%s seduces you and %s off your %s.",
-				  Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
+				  Blind ? "It" : Amonnam(mtmp, "beautiful"),
 				  curssv ? "helps you to take" : "you start taking",
 				  equipname(otmp));
 			named++;
@@ -207,7 +208,7 @@ gotobj:
 				return(0);
 			}
 			break;
-		}
+		    }
 		default:
 			impossible("Tried to steal a strange worn thing.");
 		}
@@ -217,17 +218,20 @@ gotobj:
 	if(otmp == uball) unpunish();
 
 	freeinv(otmp);
-	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
+	pline("%s stole %s.", named ? "She" : (Blind ? "It" : Monnam(mtmp)), doname(otmp));
 	mpickobj(mtmp,otmp);
 	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
 	    && !resists_ston(mtmp->data)) {
-	    pline("%s turns to stone.", Monnam(mtmp));
+	    pline("%s turns to stone.", Blind ? "It" : Monnam(mtmp));
 	    stoned = TRUE;
 	    xkilled(mtmp, 0);
 	    return -1;
 	}
 	return((multi < 0) ? 0 : 1);
 }
+
+#endif /* OVLB */
+#ifdef OVL1
 
 void
 mpickobj(mtmp,otmp)
@@ -237,6 +241,9 @@ register struct obj *otmp;
 	otmp->nobj = mtmp->minvent;
 	mtmp->minvent = otmp;
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 stealamulet(mtmp)
@@ -250,12 +257,15 @@ register struct monst *mtmp;
 		setnotworn(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
-		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
+		pline("%s stole %s!", Blind ? "It":Monnam(mtmp), doname(otmp));
 		rloc(mtmp);
 		return;
 	    }
 	}
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 /* release the objects the killed animal has stolen */
 void
@@ -266,10 +276,10 @@ register int show;
 	register struct obj *otmp, *otmp2;
 
 	for(otmp = mtmp->minvent; otmp; otmp = otmp2){
-		place_object(otmp, mtmp->mx, mtmp->my);
 		otmp2 = otmp->nobj;
-		otmp->nobj = fobj;
 		if (flooreffects(otmp,mtmp->mx,mtmp->my)) continue;
+		place_object(otmp, mtmp->mx, mtmp->my);
+		otmp->nobj = fobj;
 		fobj = otmp;
 		stackobj(fobj);
 		if(show & cansee(mtmp->mx,mtmp->my))
@@ -285,3 +295,5 @@ register int show;
 			atl(mtmp->mx,mtmp->my, Hallucination ? rndobjsym() : GOLD_SYM);
 	}
 }
+
+#endif /* OVL0 */

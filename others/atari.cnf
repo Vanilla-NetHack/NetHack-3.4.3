@@ -1,7 +1,7 @@
 # A '#' at the beginning of a line means the rest of the line is a comment.
 #
 # This configuration file is set up for two cases, for a hard disk
-# (as drive C:), and for two floppy disks.
+# (as drive C:), and for one (double sided) floppy disk.
 #
 # To change the configuration, comment out the unwanted lines, and
 # uncomment the configuration you want.
@@ -27,32 +27,31 @@
 #
 OPTIONS=time,rest_on_space,nopickup
 
-# Color: if you have a color monitor and want colored objects to appear,
-# comment out the following line.
-OPTIONS=nocolor
+# Color: if you have a color monitor and *don't* want colors, 
+# comment out the following line. (Mono users don't get color no matter what.)
+#
+#OPTIONS=nocolor
 
 # *** HARD DISK CONFIGURATION ***
 #
-HACKDIR=c:\games\nethack
+#HACKDIR=c:\games\nethack
 #
 #   LEVELS and SAVE default to HACKDIR
 #
-LEVELS=c:\games\nethack
-SAVE=c:\games\nethack;n
-#
+#LEVELS=c:\games\nethack
 #   appending a ";n" to SAVE means don't prompt to insert a disk.
-#SAVE=;n
+#SAVE=c:\games\nethack;n
 #
-# Using a ramdisk speeds things up; a 200K ramdisk is OK even on a 1 megabyte
+# Using a ramdisk speeds things up; a 150K ramdisk is OK even on a 1 megabyte
 # system.
-RAMDISK=m:
+#RAMDISK=m:
 
 
-# *** 2-FLOPPY CONFIGURATION ***
+# *** 1-FLOPPY CONFIGURATION ***
 #
-#HACKDIR=a:
-#LEVELS=b:
-#SAVE=b:
+HACKDIR=a:
+LEVELS=a:
+SAVE=a:
 #RAMDISK=m:
 
 
@@ -70,10 +69,10 @@ RAMDISK=m:
 # set to their respective defaults.
 #
 #
-# An example using the Atari's graphics character set:
+# To use the Atari's (not very good) graphics character set, uncomment the
+# next GRAPHICS= line:
 #	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
 #GRAPHICS=042 124 045 169 170 045 045 043 045 045 045 045 124 045 092 047 249 251 251 252 250 240 174 175 222 223 247 221 189 196 227 243 242 178 179
 #
-# Using the font constructed by hackfnt.prg
-#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-#GRAPHICS=032 190 191 194 195 192 193 189 197 196 199 198 190 191 092 047 202 201 201 200 202 203 210 211 207 206 214 204 205 208 209 212 213 215 215
+# To use the font constructed by hackfnt.prg, uncomment the following line:
+#GRAPHICS=032 217 218 194 195 192 193 216 197 196 199 198 217 218 092 047 202 201 201 200 202 203 210 211 207 206 214 204 205 208 209 212 213 215 215

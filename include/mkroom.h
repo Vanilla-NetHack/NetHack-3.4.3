@@ -13,7 +13,7 @@ struct mkroom {
 };
 
 struct shclass {
-	char	*name;	/* name of the shop type */
+	const char	*name;	/* name of the shop type */
 	char	symb;	/* this identifies the shop type */
 	int	prob;	/* the shop type probability in % */
 	schar	dist;	/* artifact placement type */

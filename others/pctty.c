@@ -3,7 +3,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (PC) version */
 
-#define NEED_VARARGS
+#define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
 #include "hack.h"
 
 char erase_char, kill_char;
@@ -25,7 +25,9 @@ gettty(){
 
 /* reset terminal to original state */
 void
-settty(s) char *s; {
+settty(s)
+const char *s;
+{
 	end_screen();
 	if(s) Printf(s);
 	(void) fflush(stdout);
@@ -38,9 +40,9 @@ settty(s) char *s; {
 /*VARARGS1*/
 
 void
-error VA_DECL(char *,s)
+error VA_DECL(const char *,s)
 	VA_START(s);
-	VA_INIT(s, char *);
+	VA_INIT(s, const char *);
 	end_screen();
 	putchar('\n');
 	Vprintf(s,VA_ARGS);

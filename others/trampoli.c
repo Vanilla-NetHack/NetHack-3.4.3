@@ -39,6 +39,12 @@ int dorub()   { return dorub_();   }
 #undef domonability
 #endif /* POLYSELF */
 
+#ifdef EXPLORE_MODE
+#undef enter_explore_mode
+
+int enter_explore_mode() { return enter_explore_mode_(); }
+#endif
+
 #undef timed_occupation
 
 #if defined(WIZARD) || defined(EXPLORE_MODE)
@@ -131,7 +137,7 @@ int Armor_off()   { return Armor_off_();   }
 int Boots_off()   { return Boots_off_();   }
 int Gloves_off()  { return Gloves_off_();  }
 int Helmet_off()  { return Helmet_off_();  }
-/* int Armor_on()    { return Armor_on_();    } */
+int Armor_on()    { return Armor_on_();    }
 int Boots_on()    { return Boots_on_();    }
 int Gloves_on()   { return Gloves_on_();   }
 int Helmet_on()   { return Helmet_on_();   }
@@ -173,8 +179,10 @@ int unfaint()     { return unfaint_();    }
 
 
 /* ### end.c ### */
+#undef done1
 #undef done2
 
+int done1() { return done1_(); }
 int done2() { return done2_(); }
 
 
@@ -241,6 +249,11 @@ int doopen()    { return doopen_();    }
 int forcelock() { return forcelock_(); }
 int picklock()  { return picklock_();  }
 
+/* ### mondata.c ### */
+#undef canseemon
+
+boolean canseemon(x) struct monst *x; { return canseemon_(x); }
+
 
 /* ### o_init.c ### */
 #undef dodiscovered
@@ -290,7 +303,7 @@ int dowhatis()   { return dowhatis_();   }
 #undef in_container
 #undef out_container
 
-int ck_bag()  { return ck_bag_();  }
+int ck_bag(obj) struct obj *obj; { return ck_bag_(obj);  }
 int ck_container(obj)  struct obj *obj; { return ck_container_(obj); }
 int doloot() { return doloot_(); }
 int in_container(obj)  struct obj *obj; { return in_container_(obj); }
@@ -398,8 +411,10 @@ int float_down() { return float_down_(); }
 
 /* ### version.c ### */
 #undef doversion
+#undef doextversion
 
 int doversion() { return doversion_(); }
+int doextversion() { return doextversion_(); }
 
 
 /* ### wield.c ### */

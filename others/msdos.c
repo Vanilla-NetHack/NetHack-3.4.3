@@ -1,11 +1,13 @@
-/*	SCCS Id: @(#)msdos.c	3.0	89/11/08
+/*	SCCS Id: @(#)msdos.c	3.0	89/12/26
 /* NetHack may be freely redistributed.  See license for details. */
 /* An assortment of MSDOS functions.
  */
 
 #define NEED_VARARGS
 #include "hack.h"
+
 #ifdef MSDOS
+
 # ifdef TOS
 #  include <osbind.h>
 #  ifndef WORD
@@ -17,19 +19,24 @@
 #  endif
 #  include <dos.h>
 # endif
-#ifdef OS2
-# include "def_os2.h"   /* OS2 definitions (Timo Hakulinen) */
-#endif
-static char DOSgetch();
-#ifdef DGK
-static char BIOSgetch();
-#endif
-static unsigned int ioctl();
+# ifdef OS2
+#  include "def_os2.h"   /* OS2 definitions (Timo Hakulinen) */
+# endif
 
-#ifdef TOS
+#include <ctype.h>
+#include <fcntl.h>
+#include <process.h>
+
+static char DOSgetch();
+# ifdef DGK
+static char BIOSgetch();
+# endif
+# ifdef TOS
 static void init_aline();
 char *_a_line;			/* for Line A variables */
-#endif
+# else
+static unsigned int ioctl();
+# endif
 
 void
 flushout()
@@ -42,171 +49,124 @@ int
 tgetch() {
 	char ch;
 
-#ifdef DGK
+# ifdef DGK
 	/* BIOSgetch can use the numeric key pad on IBM compatibles. */
 	if (flags.IBMBIOS)
 		ch = BIOSgetch();
 	else
-#endif
+# endif
 		ch = DOSgetch();
 	return ((ch == '\r') ? '\n' : ch);
 }
 
-#ifndef OS2
-#define DIRECT_INPUT	0x7
-#endif
-static char
-DOSgetch() {
-#ifdef OS2
-	KBDKEYINFO CharData;
-	USHORT IOWait = 0;
-	HKBD KbdHandle = 0;
-
-	KbdCharIn(&CharData,IOWait,KbdHandle);
-	if (CharData.chChar == 0) {	/* an extended code -- not yet supported */
-		KbdCharIn(&CharData,IOWait,KbdHandle);	   /* eat the next character */
-		CharData.chChar = 0;		/* and return a 0 */
-	}
-	return (CharData.chChar);
-#else
-#ifdef TOS
-	return (Crawcin() & 0x007f);
-#else
-    union REGS regs;
-
-	regs.h.ah = DIRECT_INPUT;
-	intdos(&regs, &regs);
-	if (!regs.h.al) {	/* an extended code -- not yet supported */
-		regs.h.ah = DIRECT_INPUT;
-		intdos(&regs, &regs);	/* eat the next character */
-		regs.h.al = 0;		/* and return a 0 */
-	}
-	return (regs.h.al);
-#endif /* TOS */
-#endif /* OS2 */
-}
-
-#include <ctype.h>
-#include <fcntl.h>
-#include <process.h>
-
-static char *COMSPEC = 
-#ifdef TOS
-"SHELL";
-#else
-"COMSPEC";
-#endif
-
-#define getcomspec() getenv(COMSPEC)
-
-#ifdef SHELL
-int
-dosh() {
-	extern char orgdir[];
-	char *comspec;
-
-	if (comspec = getcomspec()) {
-#if defined(DGK) && !defined(TOS)	/* TOS has a variety of shells */
-		settty("To return to NetHack, enter \"exit\" at the DOS prompt.\n");
-#else
-		settty((char *)0);
-#endif /* DGK */
-		chdirx(orgdir, 0);
-		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
-			Printf("\nCan't spawn \"%s\"!\n", comspec);
-			flags.toplin = 0;
-			more();
-		}
-		gettty(); /* ctrl-P might get turned back on (TH) */
-		chdirx(hackdir, 0);
-		start_screen();
-		docrt();
-	} else
-#ifdef OS2
-		pline("Can't execute CMD.EXE");
-#else
-# ifdef TOS
-		pline("Can't find SHELL");
-# else
-		pline("Can't execute COMMAND.COM");
-# endif
-#endif /* OS2 */
-	return 0;
-}
-#endif /* SHELL */
-
-#ifdef DGK
-/* Normal characters are output when the shift key is not pushed.
- * Shift characters are output when either shift key is pushed.
+# if !defined(OS2) && !defined(TOS)
+/*
+ * MS-DOS functions
  */
-#ifdef TOS
+#define DIRECT_INPUT	0x07	/* Unfiltered Character Input Without Echo */
+#define FATINFO 	0x1B	/* Get Default Drive Data */
+/* MS-DOS 2.0+: */
+#define GETDTA		0x2F	/* Get DTA Address */
+#define FREESPACE	0x36	/* Get Drive Allocation Info */
+#define GETSWITCHAR	0x3700	/* Get Switch Character */
+#define FINDFIRST	0x4E	/* Find First File */
+#define FINDNEXT	0x4F	/* Find Next File */
+#define SETFILETIME	0x5701	/* Set File Date & Time */
+/*
+ * BIOS interrupts
+ */
+#define KEYBRD_BIOS	0x16
+#define VIDEO_BIOS	0x10
+/*
+ * Keyboard BIOS functions
+ */
+#define READCHAR	0x00	/* Read Character from Keyboard */
+#define GETKEYFLAGS	0x02	/* Get Keyboard Flags */
+/*
+ * Video BIOS functions
+ */
+#define SETCURPOS	0x02	/* Set Cursor Position */
+#define GETMODE 	0x0f	/* Get Video Mode */
+#define FONTINFO	0x1130	/* Get Font Info */
+# endif
+
+
+/*
+ *  Keyboard translation tables.
+ */
+#  ifdef TOS
 #define KEYPADLO	0x61
 #define KEYPADHI	0x71
-#else
+#  else
 #define KEYPADLO	0x47
 #define KEYPADHI	0x53
-#endif
+#  endif
 
 #define PADKEYS 	(KEYPADHI - KEYPADLO + 1)
 #define iskeypad(x)	(KEYPADLO <= (x) && (x) <= KEYPADHI)
 
+/*
+ * Keypad keys are translated to the normal values below.
+ * When IBM_BIOS is active, shifted keypad keys are translated to the
+ *    shift values below.
+ */
 static const struct pad {
 	char normal, shift;
-	} keypad[PADKEYS] = {
-#ifdef TOS
+} keypad[PADKEYS] = {
+#  ifdef TOS
 			{C('['), 'Q'},		/* UNDO */
 			{'?', '/'},		/* HELP */
 			{'(', 'a'},		/* ( */
 			{')', 'w'},		/* ) */
 			{'/', '/'},		/* / */
 			{C('p'), '$'},		/* * */
-#endif
+#  endif
 			{'y', 'Y'},		/* 7 */
 			{'k', 'K'},		/* 8 */
 			{'u', 'U'},		/* 9 */
-#ifndef TOS
+#  ifndef TOS
 			{'m', C('p')},		/* - */
-#endif
+#  endif
 			{'h', 'H'},		/* 4 */
-#ifdef TOS
+#  ifdef TOS
 			{'.', '.'},
-#else
+#  else
 			{'g', 'g'},		/* 5 */
-#endif
+#  endif
 			{'l', 'L'},		/* 6 */
-#ifndef TOS
+#  ifndef TOS
 			{'p', 'P'},		/* + */
-#endif
+#  endif
 			{'b', 'B'},		/* 1 */
 			{'j', 'J'},		/* 2 */
 			{'n', 'N'},		/* 3 */
 			{'i', 'I'},		/* Ins */
 			{'.', ':'}		/* Del */
-	}, numpad[PADKEYS] = {
-#ifdef TOS
+}, numpad[PADKEYS] = {
+#  ifdef TOS
 			{C('['), 'Q'}	,	/* UNDO */
 			{'?', '/'},		/* HELP */
 			{'(', 'a'},		/* ( */
 			{')', 'w'},		/* ) */
 			{'/', '/'},		/* / */
 			{C('p'), '$'},		/* * */
-#endif
+#  endif
 			{'7', M('7')},		/* 7 */
 			{'8', M('8')},		/* 8 */
 			{'9', M('9')},		/* 9 */
-#ifndef TOS
+#  ifndef TOS
 			{'m', C('p')},		/* - */
-#endif
+#  endif
 			{'4', M('4')},		/* 4 */
-#ifdef TOS
+#  ifdef TOS
 			{'.', '.'},		/* 5 */
-#else
+#  else
 			{'g', 'G'},		/* 5 */
-#endif
+#  endif
 			{'6', M('6')},		/* 6 */
-#ifndef TOS
+#  ifndef TOS
 			{'p', 'P'},		/* + */
-#endif
+#  endif
 			{'1', M('1')},		/* 1 */
 			{'2', M('2')},		/* 2 */
 			{'3', M('3')},		/* 3 */
@@ -215,21 +175,13 @@ static const struct pad {
 };
 
 /*
- * INT 16h function 00h does not return a letter if Alt is pressed,
- * but it does return the letter's scan code.  So, in order to convent
- * Alt-letter to a letter with the meta bit set, we use a scan code
- * table to translate the scan codes into letters, then set the
- * "meta" bit for them.  -3.
+ * Unlike Ctrl-letter, the Alt-letter keystrokes have no specific ASCII
+ * meaning unless assigned one by a keyboard conversion table, so the
+ * keyboard BIOS normally does not return a character code when Alt-letter
+ * is pressed.	So, to interpret unassigned Alt-letters, we must use a
+ * scan code table to translate the scan code into a letter, then set the
+ * "meta" bit for it.  -3.
  */
-/*
- * An addition to the above text: If a DOS or OS/2 keyboard conversion
- * table is in effect (almost always so outside of US), pressing ALT-letter
- * may indeed return a character which must be taken into account as a
- * character command instead of a metacommand. When an ALT-letter is pressed,
- * it is checked whether the character code is something else than a 0, and
- * if so, it is interpreted as a valid character command. (TH)
- */
-#ifdef MSDOS
 #define SCANLO		0x10
 #define SCANHI		0x32
 #define SCANKEYS	(SCANHI - SCANLO + 1)
@@ -240,23 +192,21 @@ static const char scanmap[SCANKEYS] = { 	/* ... */
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
 	0, '\\', 'z','x','c','v','b','N','m' 	/* ... */
 };
-#endif
 
-/* BIOSgetch gets keys directly with a BIOS call.
+# ifdef DGK
+/*
+ * BIOSgetch gets keys directly with a BIOS call.
  */
 #define SHIFT		(0x1 | 0x2)
 #define CTRL		0x4
 #define ALT		0x8
-#if !defined(OS2) && !defined(TOS)
-#define KEYBRD_BIOS	0x16
-#endif
 
 static char
 BIOSgetch() {
 	unsigned char scan, shift, ch;
-	struct pad (*kpad)[PADKEYS];
+	const struct pad *kpad;
 
-#ifdef OS2
+#  ifdef OS2
 	KBDKEYINFO CharData;
 	USHORT IOWait = 0;
 	HKBD KbdHandle = 0;
@@ -265,88 +215,178 @@ BIOSgetch() {
 	ch = CharData.chChar;
 	scan = CharData.chScan;
 	shift = CharData.fsState;
-#else /* OS2 */
-# ifdef TOS
+#  else /* OS2 */
+#   ifdef TOS
 	long  x;
-# else
+#   else
 	union REGS regs;
-# endif
+#   endif
 
 	/* Get scan code.
 	 */
-# ifdef TOS
+#   ifdef TOS
 	x = Crawcin();
 	ch = x & 0x0ff;
 	scan = (x & 0x00ff0000L) >> 16;
-# else
-	regs.h.ah = 0;
+#   else
+	regs.h.ah = READCHAR;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	ch = regs.h.al;
 	scan = regs.h.ah;
-# endif
+#   endif
 	/* Get shift status.
 	 */
-# ifdef TOS
+#   ifdef TOS
 	shift = Kbshift(-1);
-# else
-	regs.h.ah = 2;
+#   else
+	regs.h.ah = GETKEYFLAGS;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	shift = regs.h.al;
-# endif
-#endif /* OS2 */
+#   endif
+#  endif /* OS2 */
 
-	/* If scan code is for the keypad, translate it.
-	 */
+	/* Translate keypad keys */
 	if (iskeypad(scan)) {
 		kpad = flags.num_pad ? numpad : keypad;
-		if (shift & SHIFT) {
-			/* if number_pad is on, this makes little difference */
-			ch = (*kpad)[scan - KEYPADLO].shift;
-		} else
-			ch = (*kpad)[scan - KEYPADLO].normal;
+		if (shift & SHIFT)
+			ch = kpad[scan - KEYPADLO].shift;
+		else
+			ch = kpad[scan - KEYPADLO].normal;
 	}
-	if (shift & ALT) {
-		if (ch) return ch; 	/* because of multilingual keyboards (TH) */
-		else if (inmap(scan))
-		    ch = scanmap[scan - SCANLO];
+	/* Translate unassigned Alt-letters */
+	if ((shift & ALT) && !ch) {
+		if (inmap(scan))
+			ch = scanmap[scan - SCANLO];
 		return (isprint(ch) ? M(ch) : ch);
 	}
 	return ch;
 }
 
-#ifndef TOS
-
-# ifndef OS2
-#define FINDFIRST	0x4E00
-#define FINDNEXT	0x4F00
-#define GETDTA		0x2F00
-#define SETFILETIME	0x5701
-#define GETSWITCHAR	0x3700
-#define FREESPACE	0x3600
-#define FATINFO 	0x1B00
-# endif
-
-# ifdef __TURBOC__
-#define switchar()	(char)getswitchar()
+static char
+DOSgetch() {
+# ifdef TOS
+	return (Crawcin() & 0x007f);
 # else
-#  ifndef OS2
+#  ifdef OS2
+	KBDKEYINFO CharData;
+	USHORT IOWait = 0;
+	HKBD KbdHandle = 0;
+
+	KbdCharIn(&CharData,IOWait,KbdHandle);
+	if (CharData.chChar == 0) {	/* an extended code -- not yet supported */
+		KbdCharIn(&CharData,IOWait,KbdHandle);	   /* eat the next character */
+		CharData.chChar = 0;		/* and return a 0 */
+	}
+	return (CharData.chChar);
+#  else
+	union REGS regs;
+	char ch;
+	struct pad (*kpad)[PADKEYS];
+
+	regs.h.ah = DIRECT_INPUT;
+	intdos(&regs, &regs);
+	ch = regs.h.al;
+
+	/*
+	 * The extended codes for Alt-shifted letters, and unshifted keypad
+	 * and function keys, correspond to the scan codes.  So we can still
+	 * translate the unshifted cursor keys and Alt-letters.  -3.
+	 */
+	if (ch == 0) {		/* an extended key */
+		regs.h.ah = DIRECT_INPUT;
+		intdos(&regs, &regs);	/* get the extended key code */
+		ch = regs.h.al;
+
+		if (iskeypad(ch)) {	/* unshifted keypad keys */
+			kpad = (void *)(flags.num_pad ? numpad : keypad);
+			ch = (*kpad)[ch - KEYPADLO].normal;
+		} else if (inmap(ch)) { /* Alt-letters */
+			ch = scanmap[ch - SCANLO];
+			if (isprint(ch)) ch = M(ch);
+		} else ch = 0;		/* munch it */
+	}
+	return (ch);
+#  endif /* OS2 */
+# endif /* TOS */
+}
+
+
+#  ifndef TOS
+
+#   ifdef __TURBOC__
+#define switchar()	(char)getswitchar()
+#   else
+#    ifndef OS2
 static char
 switchar()
 {
-    union REGS regs;
+	union REGS regs;
 
 	regs.x.ax = GETSWITCHAR;
 	intdos(&regs, &regs);
 	return regs.h.dl;
 }
-#  endif /* OS2 */
+#    endif /* OS2 */
+#   endif /* __TURBOC__ */
+# endif  /* TOS */
+
+static const char *COMSPEC = 
+# ifdef TOS
+"SHELL";
+# else
+"COMSPEC";
 # endif
+
+#define getcomspec() getenv(COMSPEC)
+
+# ifdef SHELL
+int
+dosh() {
+	extern char orgdir[];
+	char *comspec;
+
+	if (comspec = getcomspec()) {
+#  if defined(DGK) && !defined(TOS)	/* TOS has a variety of shells */
+		settty("To return to NetHack, enter \"exit\" at the DOS prompt.\n");
+#  else
+		settty((char *)0);
+#  endif /* DGK */
+		chdirx(orgdir, 0);
+		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
+			Printf("\nCan't spawn \"%s\"!\n", comspec);
+			flags.toplin = 0;
+			more();
+		}
+#ifdef TOS
+/* Some shells (e.g. Gulam) turn the cursor off when they exit */
+		if (flags.IBMBIOS)
+			(void)Cursconf(1, -1);
+#endif
+		gettty(); /* ctrl-P might get turned back on (TH) */
+		chdirx(hackdir, 0);
+		start_screen();
+		docrt();
+	} else
+#  ifdef OS2
+		pline("Can't execute CMD.EXE");
+#  else
+#   ifdef TOS
+		pline("Can't find SHELL.");
+#   else
+		pline("Can't find COMSPEC.");
+#   endif
+#  endif /* OS2 */
+	return 0;
+}
+# endif /* SHELL */
+
+#ifndef TOS
 
 long
 freediskspace(path)
 char *path;
 {
-# ifdef OS2
+#   ifdef OS2
 	struct {
 		ULONG  idFileSystem;
 		ULONG  cSectorUnit;
@@ -366,10 +406,10 @@ char *path;
 	else
 		return ((long) FSInfoBuf.cSectorUnit * FSInfoBuf.cUnitAvail *
 			       FSInfoBuf.cbSector);
-# else
+#   else /* OS2 */
 	union REGS regs;
 
-	regs.x.ax = FREESPACE;
+	regs.h.ah = FREESPACE;
 	if (path[0] && path[1] == ':')
 		regs.h.dl = (toupper(path[0]) - 'A') + 1;
 	else
@@ -379,13 +419,13 @@ char *path;
 		return -1L;		/* bad drive number */
 	else
 		return ((long) regs.x.bx * regs.x.cx * regs.x.ax);
-# endif /* OS2 */
+#   endif /* OS2 */
 }
 
-# ifdef OS2
+#   ifdef OS2
 FILEFINDBUF ResultBuf;
 HDIR DirHandle;
-# endif
+#   endif
 
 /* Functions to get filenames using wildcards
  */
@@ -393,42 +433,42 @@ static int
 findfirst(path)
 char *path;
 {
-# ifdef OS2
+#   ifdef OS2
 	USHORT res, SearchCount = 1;
 
 	DirHandle = 1;
 	res = DosFindFirst((PSZ)path,&DirHandle,0,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount,0L);
 	return(!res);
-# else
+#   else
 	union REGS regs;
 	struct SREGS sregs;
 
-	regs.x.ax = FINDFIRST;
-	regs.x.cx = 0;		/* normal files */
+	regs.h.ah = FINDFIRST;
+	regs.x.cx = 0;		/* attribute: normal files */
 	regs.x.dx = FP_OFF(path);
 	sregs.ds = FP_SEG(path);
 	intdosx(&regs, &regs, &sregs);
 	return !regs.x.cflag;
-# endif /* OS2 */
+#   endif /* OS2 */
 }
 
 static int
 findnext() {
-# ifdef OS2
+#   ifdef OS2
 	USHORT res, SearchCount = 1;
 
 	res = DosFindNext(DirHandle,&ResultBuf,sizeof(FILEFINDBUF),&SearchCount);
 	return(!res);
-# else
+#   else
 	union REGS regs;
 
-	regs.x.ax = FINDNEXT;
+	regs.h.ah = FINDNEXT;
 	intdos(&regs, &regs);
 	return !regs.x.cflag;
-# endif /* OS2 */
+#   endif /* OS2 */
 }
 
-# ifndef OS2
+#   ifndef OS2
 /* Get disk transfer area, Turbo C already has getdta */
 static char *
 getdta() {
@@ -436,19 +476,19 @@ getdta() {
 	struct SREGS sregs;
 	char *ret;
 
-	regs.x.ax = GETDTA;
+	regs.h.ah = GETDTA;
 	intdosx(&regs, &regs, &sregs);
-#  ifdef MK_FP
+#    ifdef MK_FP
 	ret = MK_FP(sregs.es, regs.x.bx);
-#  else
+#    else
 	FP_OFF(ret) = regs.x.bx;
 	FP_SEG(ret) = sregs.es;
-#  endif
+#    endif
 	return ret;
 }
-# endif  /* OS2 */
+#   endif /* OS2 */
 
-#else /* TOS */
+#  else /* TOS */
 
 long
 freediskspace(path)
@@ -483,23 +523,23 @@ getdta() {
 	return (char *) Fgetdta();
 }
 
-#endif /* TOS */
+#  endif /* TOS */
 
 long
 filesize(file)
 char *file;
 {
-#ifndef OS2
+#  ifndef OS2
 	char *dta;
-#endif
+#  endif
 
 	if (findfirst(file)) {
-#ifdef OS2
+#  ifdef OS2
 		return  (* (long *) (ResultBuf.cbFileAlloc));
-#else
+#  else
 		dta = getdta();
 		return  (* (long *) (dta + 26));
-#endif
+#  endif
 	} else
 		return -1L;
 }
@@ -508,24 +548,23 @@ void
 eraseall(path, files)
 const char *path, *files;
 {
-	char
-#ifndef OS2
-		*dta,
-#endif
-	buf[PATHLEN];
+#  ifndef OS2
+	char *dta;
+#  endif
+	char buf[PATHLEN];
 
-#ifndef OS2
+#  ifndef OS2
 	dta = getdta();
-#endif
+#  endif
 	Sprintf(buf, "%s%s", path, files);
 	if (findfirst(buf))
 		do {
 			Sprintf(buf, "%s%s", path,
-#ifdef OS2
+#  ifdef OS2
 				ResultBuf.achName
-#else
+#  else
 				dta + 30
-#endif
+#  endif
 				);
 			(void) unlink(buf);
 		} while (findnext());
@@ -535,15 +574,19 @@ const char *path, *files;
 /* Rewritten for version 3.3 to be faster
  */
 void
-copybones(mode) {
-	char from[PATHLEN], to[PATHLEN], last[13], copy[8];
-	char *frompath, *topath,
-#ifndef OS2
-	*dta,
-#endif
-	*comspec;
+copybones(mode)
+int mode;
+{
+	char from[PATHLEN], to[PATHLEN], last[13];
+	char *frompath, *topath;
+#  ifndef OS2
+	char *dta;
+#  endif
+#  ifndef TOS
 	int status;
+	char copy[8], *comspec;
 	extern saveprompt;
+#  endif
 
 	if (!ramdisk)
 		return;
@@ -551,42 +594,42 @@ copybones(mode) {
 	/* Find the name of the last file to be transferred
 	 */
 	frompath = (mode != TOPERM) ? permbones : levels;
-#ifndef OS2
+#  ifndef OS2
 	dta = getdta();
-#endif
+#  endif
 	last[0] = '\0';
 	Sprintf(from, "%s%s", frompath, allbones);
 	topath = (mode == TOPERM) ? permbones : levels;
-#ifdef TOS
+#  ifdef TOS
 	eraseall(topath, allbones);
-#endif
+#  endif
 	if (findfirst(from))
 		do {
-#ifdef TOS
+#  ifdef TOS
 			Sprintf(from, "%s%s", frompath, dta+30); 
 			Sprintf(to, "%s%s", topath, dta+30);
 			if (_copyfile(from, to))
 				goto error_copying;
-#endif
+#  endif
 			Strcpy(last,
-#ifdef OS2
+#  ifdef OS2
 				ResultBuf.achName
-#else
+#  else
 				dta + 30
-#endif
+#  endif
 				);
 		} while (findnext());
-#ifdef TOS
+#  ifdef TOS
 	else
 		return;
-#else
+#  else
 	if (last[0]) {
 		Sprintf(copy, "%cC copy",
-#ifdef OS2
+#   ifdef OS2
 			'/'
-#else
+#   else
 			switchar()
-#endif
+#   endif
 			);
 
 		/* Remove any bones files in `to' directory.
@@ -600,7 +643,7 @@ copybones(mode) {
 			to, "> nul", NULL);
 	} else
 		return;
-#endif /* TOS */
+#  endif /* TOS */
 
 	/* See if the last file got there.  If so, remove the ramdisk bones
 	 * files.
@@ -617,9 +660,11 @@ error_copying:
 	 */
 	Sprintf(to, "%s%s", topath, allbones);
 	msmsg("Can't copy \"%s\" to \"%s\" -- ", from, to);
+#  ifndef TOS
 	if (status < 0)
 	    msmsg("can't spawn \"%s\"!", comspec);
 	else
+#  endif
 	    msmsg((freediskspace(topath) < filesize(from)) ?
 			"insufficient disk space." : "bad path(s)?");
 	if (mode == TOPERM) {
@@ -643,19 +688,19 @@ char drive;
 	union REGS regs;
 	char *fat_id;
 
-	regs.x.ax = FATINFO;
+	regs.h.ah = FATINFO;
 	intdos(&regs, &regs);
 	/* also returns size info, as
 	   AL (sectors/cluster) * CX (bytes/sector) * DX (clusters/disk) */
-# ifdef MK_FP
+#   ifdef MK_FP
 	fat_id = MK_FP(sregs.ds, regs.x.bx);
-# else
+#   else
 	FP_OFF(fat_id) = regs.x.bx;
 	FP_SEG(fat_id) = sregs.ds;
-# endif
+#   endif
 	return (*fat_id != 0xF8);
 }
-#endif
+#endif /* 0 */
 
 void
 playwoRAMdisk() {
@@ -674,7 +719,9 @@ playwoRAMdisk() {
 }
 
 int
-saveDiskPrompt(start) {
+saveDiskPrompt(start)
+int start;
+{
 	extern saveprompt;
 	char buf[BUFSIZ], *bp;
 	int fd;
@@ -716,25 +763,25 @@ saveDiskPrompt(start) {
 static boolean
 record_exists() {
 	int fd;
-#ifdef OS2_CODEVIEW
+#  ifdef OS2_CODEVIEW
 	char tmp[PATHLEN];
 
 	Strcpy(tmp,hackdir);
 	append_slash(tmp);
 	Strcat(tmp,RECORD);
 	if ((fd = open(tmp, 0)) >= 0) {
-#else
+#  else
 	if ((fd = open(RECORD, 0)) >= 0) {
-#endif
+#  endif
 		(void) close(fd);
 		return TRUE;
 	}
 	return FALSE;
 }
 
-#ifdef TOS
+#  ifdef TOS
 #define comspec_exists() 1
-#else
+#  else
 /* Return 1 if the comspec was found */
 static boolean
 comspec_exists() {
@@ -748,7 +795,7 @@ comspec_exists() {
 		}
 	return FALSE;
 }
-#endif
+#  endif
 
 /* Prompt for game disk, then check for record file.
  */
@@ -773,26 +820,26 @@ gameDiskPrompt() {
 	getreturn("to continue");
 	return;
 }
-#endif /* DGK */
+
+# endif /* DGK */
 
 /* Read configuration */
 void
 read_config_file() {
-#ifdef DGK
+# ifdef DGK
 	char	tmp_ramdisk[PATHLEN];
 	extern	int saveprompt;
-	FILE	*fopenp();
-#else
+# else
 #define fopenp fopen
-#endif
+# endif
 	char	tmp_levels[PATHLEN];
 	char	buf[BUFSZ], *bufp;
 	FILE	*fp;
 	extern	char plname[];
 
-#ifdef DGK
+# ifdef DGK
 	tmp_ramdisk[0] = 0;
-#endif
+# endif
 	tmp_levels[0] = 0;
 	if ((fp = fopenp(configfile, "r")) == (FILE *)0) {
 		msmsg("Warning: no configuration file!\n");
@@ -828,10 +875,10 @@ read_config_file() {
 		if (!strncmp(buf, "HACKDIR", 4)) {
 			strncpy(hackdir, bufp, PATHLEN);
 		
-#ifdef DGK
+# ifdef DGK
 		} else if (!strncmp(buf, "RAMDISK", 3)) {
 			strncpy(tmp_ramdisk, bufp, PATHLEN);
-#endif
+# endif
 
 		} else if (!strncmp(buf, "LEVELS", 4)) {
 			strncpy(tmp_levels, bufp, PATHLEN);
@@ -842,21 +889,44 @@ read_config_file() {
 				plnamesuffix();	/* set the character class */
 
 		} else if (!strncmp(buf, "SAVE", 4)) {
-#ifdef DGK
+# ifdef DGK
 			char *ptr;
 			if (ptr = index(bufp, ';')) {
 				*ptr = '\0';
 				if (*(ptr+1) == 'n' || *(ptr+1) == 'N')
 					saveprompt = FALSE;
 			}
-#endif /* DGK */
+# endif /* DGK */
 			(void) strncpy(SAVEF, bufp, PATHLEN);
+			(void) strncpy(SAVEP, bufp, PATHLEN);
 			append_slash(SAVEF);
+			append_slash(SAVEP);
 		} else if (!strncmp(buf, "GRAPHICS", 4)) {
 			unsigned int translate[MAXPCHARS+1];
 			int lth;
-
-		     if ((lth = sscanf(bufp,
+#ifdef OVERLAY
+			/* THIS is what I call a stupid hack, but MSC cannot survive
+			   the overlays without it (TH) */
+			lth = sscanf(bufp,
+	"%d%d%d%d%d%d%d%d%d%d%d%d",
+				&translate[0], &translate[1], &translate[2],
+				&translate[3], &translate[4], &translate[5],
+				&translate[6], &translate[7], &translate[8],
+				&translate[9], &translate[10], &translate[11]);
+			lth += sscanf(bufp,
+	"%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%d%d%d%d%d%d%d%d%d%d%d%d",
+				&translate[12], &translate[13], &translate[14],
+				&translate[15], &translate[16], &translate[17],
+				&translate[18], &translate[19], &translate[20],
+				&translate[21], &translate[22], &translate[23]);
+			lth += sscanf(bufp,
+	"%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%*d%d%d%d%d%d%d%d%d%d%d%d",
+				&translate[24], &translate[25], &translate[26],
+				&translate[27], &translate[28], &translate[29],
+				&translate[30], &translate[31], &translate[32],
+				&translate[33], &translate[34]);
+#else
+		     lth = sscanf(bufp,
 	"%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
@@ -869,9 +939,11 @@ read_config_file() {
 				&translate[24], &translate[25], &translate[26],
 				&translate[27], &translate[28], &translate[29],
 				&translate[30], &translate[31], &translate[32],
-				&translate[33], &translate[34])) <= 0) {
-					msmsg ("Syntax error in GRAPHICS\n");
-					getreturn("to continue");
+				&translate[33], &translate[34]);
+#endif /* OVERLAY */
+			if (lth <= 0) {
+				msmsg ("Syntax error in GRAPHICS\n");
+				getreturn("to continue");
 			}
 			assign_graphics(translate, lth);
 		} else {
@@ -881,20 +953,20 @@ read_config_file() {
 	}
 	(void) fclose(fp);
 
-#ifdef DGK
+# ifdef DGK
 	Strcpy(permbones, tmp_levels);
 	if (tmp_ramdisk[0]) {
 		Strcpy(levels, tmp_ramdisk);
 		if (strcmp(permbones, levels))		/* if not identical */
 			ramdisk = TRUE;
 	} else
-#endif /* DGK */
+# endif /* DGK */
 		Strcpy(levels, tmp_levels);
 	Strcpy(bones, levels);
 	return;
 }
 
-#ifdef DGK
+# ifdef DGK
 /* Set names for bones[] and lock[]
  */
 void
@@ -911,7 +983,7 @@ set_lock_and_bones() {
 	Strcat(lock, alllevels);
 	return;
 }
-#endif /* DGK */
+# endif /* DGK */
 
 /* Add a backslash to any name not ending in /, \ or :   There must
  * be room for the \
@@ -936,11 +1008,11 @@ void
 getreturn(str)
 const char *str;
 {
-#ifdef TOS
+# ifdef TOS
 	msmsg("Hit <Return> %s.", str);
-#else
+# else
 	msmsg("Hit <Enter> %s.", str);
-#endif
+# endif
 	while (Getchar() != '\n') ;
 	return;
 }
@@ -957,39 +1029,39 @@ msmsg VA_DECL(const char *, fmt)
 
 /* Chdrive() changes the default drive.
  */
-#ifndef __TURBOC__
-# ifndef OS2
-#  define SELECTDISK      0x0E
-# endif
+# ifndef __TURBOC__
+#  ifndef OS2
+#define SELECTDISK	0x0E
+#  endif
 void
 chdrive(str)
 char *str;
 {
 	char *ptr;
-# ifndef TOS
-#  ifndef OS2
+#  ifndef TOS
+#   ifndef OS2
 	union REGS inregs;
+#   endif
 #  endif
-# endif
 	char drive;
 
 	if ((ptr = index(str, ':')) != NULL) {
 		drive = toupper(*(ptr - 1));
-# ifdef TOS
-		Dsetdrv(drive - 'A');
-# else
-#  ifdef OS2
-		DosSelectDisk((USHORT)(drive - 'A' + 1));
+#  ifdef TOS
+		(void)Dsetdrv(drive - 'A');
 #  else
+#   ifdef OS2
+		DosSelectDisk((USHORT)(drive - 'A' + 1));
+#   else
 		inregs.h.ah = SELECTDISK;
 		inregs.h.dl = drive - 'A';
 		intdos(&inregs, &inregs);
+#   endif
 #  endif
-# endif
 	}
 	return;
 }
-#else
+# else
 extern int setdisk(int);
 
 void
@@ -1000,16 +1072,16 @@ char *str;
 		(void)setdisk((int)(toupper(str[0]) - 'A'));
 	return;
 }
-#endif
+# endif
 
-#ifndef TOS
+# ifndef TOS
 /* Use the IOCTL DOS function call to change stdin and stdout to raw
  * mode.  For stdin, this prevents MSDOS from trapping ^P, thus
  * freeing us of ^P toggling 'echo to printer'.
  * Thanks to Mark Zbikowski (markz@microsoft.UUCP).
  */
 
-#ifndef OS2
+#  ifndef OS2
 #define DEVICE		0x80
 #define RAW		0x20
 #define IOCTL		0x44
@@ -1017,63 +1089,63 @@ char *str;
 #define STDOUT		fileno(stdout)
 #define GETBITS		0
 #define SETBITS		1
-#endif
+#  endif
 
 static unsigned	int old_stdin, old_stdout;
 
 void
 disable_ctrlP() {
-#ifdef OS2
+#  ifdef OS2
 	KBDINFO KbdInfo;
 	HKBD KbdHandle = 0;
-#endif
+#  endif
 
-#ifdef DGK
+#  ifdef DGK
 	if (!flags.rawio) return;
-#endif
-#ifdef OS2
+#  endif
+#  ifdef OS2
 	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFF7; /* ASCII off */
 	KbdInfo.fsMask |= 0x0004; /* BINARY on */
 	KbdSetStatus(&KbdInfo,KbdHandle);
-#else
+#  else
 	old_stdin = ioctl(STDIN, GETBITS, 0);
 	old_stdout = ioctl(STDOUT, GETBITS, 0);
 	if (old_stdin & DEVICE)
 		ioctl(STDIN, SETBITS, old_stdin | RAW);
 	if (old_stdout & DEVICE)
 		ioctl(STDOUT, SETBITS, old_stdout | RAW);
-#endif /* OS2 */
+#  endif /* OS2 */
 	return;
 }
 
 void
 enable_ctrlP() {
-#ifdef OS2
+#  ifdef OS2
 	KBDINFO KbdInfo;
 	HKBD KbdHandle = 0;
-#endif
+#  endif
 
-#ifdef DGK
+#  ifdef DGK
 	if (!flags.rawio) return;
-#endif
-#ifdef OS2
+#  endif
+#  ifdef OS2
 	KbdInfo.cb = sizeof(KbdInfo);
 	KbdGetStatus(&KbdInfo,KbdHandle);
 	KbdInfo.fsMask &= 0xFFFB; /* BINARY off */
 	KbdInfo.fsMask |= 0x0008; /* ASCII on */
 	KbdSetStatus(&KbdInfo,KbdHandle);
-#else
+#  else
 	if (old_stdin)
 		(void) ioctl(STDIN, SETBITS, old_stdin);
 	if (old_stdout)
 		(void) ioctl(STDOUT, SETBITS, old_stdout);
-#endif
+#  endif
 	return;
 }
 
-#ifndef OS2
+#  ifndef OS2
 static unsigned int
 ioctl(handle, mode, setvalue)
 int handle, mode;
@@ -1089,23 +1161,23 @@ unsigned setvalue;
 	intdos(&regs, &regs);
 	return (regs.x.dx);
 }
-#endif /* OS2 */
-#endif /* TOS */
+#  endif /* OS2 */
+# endif /* TOS */
 
-#ifdef DGK
+# ifdef DGK
 /* Follow the PATH, trying to fopen the file.
  */
-#ifdef TOS
-#define PATHSEP ','
-#else
+#  ifdef TOS
+#define PATHSEP	','
+#  else
 #define PATHSEP	';'
-#endif
+#  endif
 
 FILE *
 fopenp(name, mode)
-char *name, *mode;
+const char *name, *mode;
 {
-	char buf[BUFSIZ], *bp, *pp, lastch;
+	char buf[BUFSIZ], *bp, *pp, lastch = 0;
 	FILE *fp;
 
 	/* Try the default directory first.  Then look along PATH.
@@ -1128,71 +1200,72 @@ char *name, *mode;
 				pp++;
 		}
 	}
-#ifdef OS2_CODEVIEW /* one more try for hackdir */
+#  ifdef OS2_CODEVIEW /* one more try for hackdir */
 	Strcpy(buf,hackdir);
 	append_slash(buf);
 	Strcat(buf,name);
 	if(fp = fopen(buf,mode))
 		return fp;
-#endif
+#  endif
 	return (FILE *)0;
 }
-#endif /* DGK */
+# endif /* DGK */
 
 /* Chdir back to original directory
  */
 #undef exit
-#ifdef TOS
+# ifdef TOS
 extern boolean run_from_desktop;	/* set in pcmain.c */
-#endif
+# endif
 
 void exit(int);
 void
 msexit(code)
+int code;
 {
-#ifdef CHDIR
+# ifdef CHDIR
 	extern char orgdir[];
-#endif
+# endif
 
 	flushout();
-#ifndef TOS
+# ifndef TOS
 	enable_ctrlP();		/* in case this wasn't done */
-#endif
-#ifdef DGK
+# endif
+# ifdef DGK
 	if (ramdisk) copybones(TOPERM);
-#endif
-#ifdef CHDIR
+# endif
+# ifdef CHDIR
 	chdir(orgdir);		/* chdir, not chdirx */
 	chdrive(orgdir);
-#endif
-#ifdef TOS
+# endif
+# ifdef TOS
 	if (run_from_desktop)
 	    getreturn("to continue"); /* so the user can read the score list */
-# ifdef TEXTCOLOR
+#  ifdef TEXTCOLOR
 	if (flags.IBMBIOS && flags.use_color)
 		restore_colors();
+#  endif
 # endif
-#endif
 	exit(code);
 	return;
 }
 
-# ifdef DGK		/* for flags.IBMBIOS */
+#  ifdef DGK		/* for flags.IBMBIOS */
 void
 get_scr_size()
 {
-#  ifdef OS2
+#   ifdef OS2
 	VIOMODEINFO ModeInfo;
 	HVIO VideoHandle = 0;
 
 	ModeInfo.cb = sizeof(ModeInfo);
 
-	VioGetMode(&ModeInfo,VideoHandle);
+	(void) VioGetMode(&ModeInfo,VideoHandle);
 
 	CO = ModeInfo.col;
 	LI = ModeInfo.row;
-#  else
-#   ifndef TOS
+#   else
+#    ifndef TOS
 	union REGS regs;
 
 	if (!flags.IBMBIOS) {		/* assume standard screen size */
@@ -1201,11 +1274,11 @@ get_scr_size()
 		return;
 	}
 
-	regs.x.ax = 0x1130;		/* Func AH = 11h, Subfunc AL = 30h */
+	regs.x.ax = FONTINFO;
 	regs.x.bx = 0;			/* current ROM BIOS font */
 	regs.h.dl = 24;			/* default row count */
 					/* in case no EGA/MCGA/VGA */
-	int86(0x10, &regs, &regs);	/* Get Font Information */
+	int86(VIDEO_BIOS, &regs, &regs); /* Get Font Information */
 
 	/* MDA/CGA/PCjr ignore INT 10h, Function 11h, but since we
 	 * cleverly loaded up DL with the default, everything's fine.
@@ -1215,8 +1288,8 @@ get_scr_size()
 	 * table.  -3.
 	 */
 
-	regs.h.ah = 0x0f;
-	int86(0x10, &regs, &regs);	/* Get Video Mode */
+	regs.h.ah = GETMODE;
+	int86(VIDEO_BIOS, &regs, &regs); /* Get Video Mode */
 
 	/* This goes back all the way to the original PC.  Completely
 	 * safe.  AH contains # of columns, AL contains display mode,
@@ -1225,18 +1298,51 @@ get_scr_size()
 
 	LI = regs.h.dl + 1;
 	CO = regs.h.ah;
-#   else  /* TOS */
+#    else  /* TOS */
 	init_aline();
 	LI = (*((WORD  *)(_a_line + -42L))) + 1;
 	CO = (*((WORD  *)(_a_line + -44L))) + 1;
-#   endif /* TOS */
-#  endif
+#    endif /* TOS */
+#   endif /* OS2 */
 }
-# endif
+
+#   ifndef TOS
+void
+gotoxy(x,y)
+int x,y;
+{
+#    ifdef OS2
+	HVIO VideoHandle = 0;
+
+	x--; y--;			/* (0,0) is upper right corner */
+
+	(void) VioSetCurPos(x, y, VideoHandle);
+#    else
+	union REGS regs;
+
+	x--; y--;			/* (0,0) is upper right corner */
+
+	regs.h.ah = SETCURPOS;
+	regs.h.bh = 0;			/* display page */
+	regs.h.dh = y;			/* row */
+	regs.h.dl = x;			/* column */
+	int86(VIDEO_BIOS, &regs, &regs); /* Set Cursor Position */
+
+	/* This, too, goes back all the way to the original PC.  If
+	 * we ever get so fancy as to swap display pages (i doubt it),
+	 * then we'll need to set BH appropriately.  This function
+	 * returns nothing.  -3.
+	 */
+#    endif /* OS2 */
+}
+#   endif /* TOS */
+#  endif /* DGK */
+
 #endif /* MSDOS */
 
+
 #ifdef TOS
-#define BIGBUF  8192
+# define BIGBUF  8192
 
 int
 _copyfile(from, to)
@@ -1267,15 +1373,15 @@ int kbhit()
 static void
 init_aline()
 {
-#ifdef __GNUC__
+# ifdef __GNUC__
 	asm(" .word 0xa000; movel d0, __a_line");
-#else
+# else
 	asm(" .dc.w 0xa000");	/* tweak as necessary for your compiler */
 	asm(" move.l d0, __a_line");
-#endif
+# endif
 }
 
-#ifdef TEXTCOLOR
+# ifdef TEXTCOLOR
 static unsigned orig_color[4] = {-1, -1, -1, -1};
 static unsigned new_color[4] = { 0x0, 0x730, 0x047, 0x555 };
 static int numcolors = 2;
@@ -1283,6 +1389,8 @@ static int numcolors = 2;
 void set_colors()
 {
 	int i;
+	char *s;
+	static char newhe[] = "\033q\033b\017\033c0";
 
 	init_aline();
 	numcolors = 1 << (((unsigned char *) _a_line)[1]);
@@ -1297,11 +1405,13 @@ void set_colors()
 	else {
 		orig_color[0] = Setcolor(0, new_color[0]);
 		orig_color[1] = Setcolor(15, 0x777);
-		for (i = 0; i < 16; i++) {
-			hilites[i] = (char *) alloc(sizeof("\033b0"));
-			sprintf(hilites[i], "\033b%c", '0'+i);
+		hilites[0] = "";
+		for (i = 1; i < 16; i++) {
+			s = (char *) alloc(sizeof("\033b0"));
+			sprintf(s, "\033b%c", '0'+i);
+			hilites[i] = s;
 		}
-		HE = "\033q\033b\017\033c0";
+		HE = newhe;
 	}
 }
 
@@ -1319,5 +1429,5 @@ void restore_colors()
 		(void) Setcolor(15, orig_color[1]);
 	}
 }
-#endif /* TEXTCOLOR */
+# endif /* TEXTCOLOR */
 #endif /* TOS */

@@ -2,15 +2,15 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#define MONATTK_H	/* comment line for pre-compiled headers */
 /* block some unused #defines to avoid overloading some cpp's */
-#define MONATTK_H
 #include "hack.h"	/* for ROWNO, COLNO, *HI, *HE, *AS, *AE */
 
 #include <ctype.h>	/* for isdigit() */
 
 #include "termcap.h"
 
-#if !defined(SYSV) || defined(TOS) || defined(UNIXPC)
+#if (!defined(SYSV) && !defined(HPUX)) || defined(TOS) || defined(UNIXPC)
 # ifndef LINT
 extern			/* it is defined in libtermlib (libtermcap) */
 # endif
@@ -20,7 +20,13 @@ short	ospeed = 0;	/* gets around "not defined" error message */
 #endif
 
 #ifdef ASCIIGRAPH
-  boolean IBMgraphics = FALSE;
+
+#ifdef OVLB
+
+boolean IBMgraphics = FALSE;
+
+#endif /* OVLB */
+
 #endif
 
 
@@ -30,31 +36,39 @@ short	ospeed = 0;	/* gets around "not defined" error message */
 #define Tgetstr(key) (tgetstr(key,&tbufptr))
 #endif /* MICROPORT_286_BUG **/
 
-static void nocmov();
+OSTATIC void FDECL(nocmov, (int, int));
 #ifdef TEXTCOLOR
 # ifdef TERMLIB
-static void init_hilite();
+static void NDECL(init_hilite);
 # endif
 #endif
 
-static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
-static char *VS, *VE, *US, *UE;
-static char *MR, *ME;
+VSTATIC char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
+VSTATIC char *VS, *VE, *US, *UE;
+VSTATIC char *MR, *ME;
 #if 0
-static char *MB, *MH;
-static char *MD;	/* may already be in use below */
+VSTATIC char *MB, *MH;
+VSTATIC char *MD;     /* may already be in use below */
 #endif
 #ifdef TERMLIB
 # ifdef TEXTCOLOR
-static char *MD;
+VSTATIC char *MD;
 # endif
-static int SG;
-static char PC = '\0';
-static char tbuf[512];
+VSTATIC int SG;
+#ifdef OVLB
+XSTATIC char PC = '\0';
+#else /* OVLB */
+OSTATIC char PC;
+#endif /* OVLB */
+VSTATIC char tbuf[512];
 #endif
 
+#ifdef OVLB
+static char nullstr[] = "";
+#endif /* OVLB */
+
 #ifndef TERMLIB
-static char tgotobuf[20];
+VSTATIC char tgotobuf[20];
 # ifdef TOS
 #define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+' ', x+' '), tgotobuf)
 # else
@@ -62,11 +76,13 @@ static char tgotobuf[20];
 # endif
 #endif /* TERMLIB */
 
+#ifdef OVLB
+
 void
 startup()
 {
 #ifdef TERMLIB
-	register char *term;
+	register const char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
 #endif
@@ -122,6 +138,8 @@ startup()
 	    showsyms[S_room] = 0xfa;	/* meta-z, centered dot */
 	    showsyms[S_ndoor] = 0xfa;
 	    showsyms[S_pool] = 0xf7;	/* meta-w, approx. equals */
+	    showsyms[S_hodoor] = 0xfe;	/* meta-~, small centered square */
+	    showsyms[S_vodoor] = 0xfe;
 	}
 #endif /* ASCIIGRAPH */
 
@@ -328,12 +346,12 @@ startup()
 	US = Tgetstr("us");
 	UE = Tgetstr("ue");
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
-	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = "";
+	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = nullstr;
 	TI = Tgetstr("ti");
 	TE = Tgetstr("te");
-	VS = VE = "";
+	VS = VE = nullstr;
 # ifdef TERMINFO
-	VS = Tgetstr("enacs");	/* graphics start */
+	VS = Tgetstr("eA");	/* enable graphics */
 # endif
 # if 0
 	MB = Tgetstr("mb");	/* blink */
@@ -419,7 +437,6 @@ curs(x, y)
 register int x, y;	/* not xchar: perhaps xchar is unsigned and
 			   curx-x would be unsigned as well */
 {
-
 	if (y == cury && x == curx)
 		return;
 	if(!ND && (curx != x || x <= 3)) {	/* Extremely primitive */
@@ -438,8 +455,12 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
 		cmov(x, y);
 }
 
-static void
+#endif /* OVLB */
+#ifdef OVL0
+
+XSTATIC void
 nocmov(x, y)
+int x,y;
 {
 	if (cury > y) {
 		if(UP) {
@@ -510,7 +531,7 @@ char c;
 
 void
 xputs(s)
-char *s;
+const char *s;
 {
 #ifndef MACOS
 # ifndef TERMLIB
@@ -544,11 +565,17 @@ cl_end() {
 	}
 }
 
+#endif /* OVL0 */
+#ifdef OVLB
+
 void
 clear_screen() {
 	xputs(CL);
 	home();
 }
+
+#endif /* OVLB */
+#ifdef OVL0
 
 void
 home()
@@ -633,6 +660,9 @@ graph_off() {
 }
 #endif
 
+#endif /* OVL0 */
+#ifdef OVL1
+
 #if !defined(MSDOS) && !defined(MACOS)
 # ifdef VMS
 static const short tmspc10[] = {		/* from termcap */
@@ -668,7 +698,11 @@ delay_output() {
 		tputs("$<50>", 1, xputc);
 #  endif
 # else
+#  ifdef __STDC__
+		tputs("50", 1, (int (*)())xputc);
+#  else
 		tputs("50", 1, xputc);
+#  endif
 # endif
 
 	else if(ospeed > 0 && ospeed < SIZE(tmspc10)) if(CM) {
@@ -683,6 +717,9 @@ delay_output() {
 	}
 #endif /* MSDOS || MACOS */
 }
+
+#endif /* OVL1 */
+#ifdef OVLB
 
 void
 cl_eos()			/* free after Robert Viduya */
@@ -762,20 +799,29 @@ init_hilite()
 static void
 init_hilite()
 {
+#  ifdef TOS
+	int c;
+	static char unhilite[] = "\033q\033b3\033c0";
+#  else
 	int backg = BLACK, foreg = WHITE, len;
 	register int c, color;
+#  endif
 
 	for (c = 0; c < SIZE(hilites); c++)
 		hilites[c] = HI;
 
 #  ifdef TOS
-	hilites[RED] = hilites[BRIGHT+RED] = "\033b1";
-	hilites[BLUE] = hilites[BRIGHT+BLUE] = "\033b2";
-	hilites[CYAN] = hilites[BRIGHT+CYAN] = "\033b3\033c2";
-	hilites[ORANGE_COLORED] = hilites[RED];
-	hilites[WHITE] = hilites[GRAY] = "\033b3";
-	hilites[MAGENTA] = hilites[BRIGHT+MAGENTA] = "\033b1\033c2";
-	HE = "\033q\033b3\033c0";	/* to turn off the color stuff too */
+	hilites[BROWN] = "\033b0\033c1";
+	hilites[RED] = "\033b1";
+	hilites[MAGENTA] = hilites[MAGENTA|BRIGHT] = "\033b1\033c2";
+	hilites[CYAN] = hilites[CYAN|BRIGHT] = "\033b3\033c2";
+	hilites[BLUE] = hilites[BLUE|BRIGHT] = "\033b2";
+	hilites[GREEN] = hilites[GREEN|BRIGHT] = "\033b2\033c3";
+	hilites[GRAY] = "\033b3\033c0";
+	hilites[ORANGE_COLORED] = "\033b3\033c1";
+	hilites[YELLOW] = "\033b1\033c3";
+	hilites[WHITE] = "\033b0\033c3";
+	HE = unhilite;	/* to turn off the color stuff too */
 #  else /* TOS */
 	/* find the background color, HI[len] == 'm' */
 	len = strlen(HI) - 1;
@@ -817,3 +863,5 @@ init_hilite()
 }
 # endif /* UNIX */
 #endif /* TEXTCOLOR */
+
+#endif /* OVLB */

@@ -4,6 +4,9 @@
 
 #include	"hack.h"
 
+#ifdef OVL0
+
+static void FDECL(cursetxt,(struct monst *));
 const char *spelltyp[] = {
 	"shower of missiles",
 	"fireball",
@@ -22,11 +25,26 @@ void
 cursetxt(mtmp)
 	register struct monst *mtmp;
 {
-	if(canseemon(mtmp))
+	if(canseemon(mtmp)) {
+	    if ((Invis && !perceives(mtmp->data) &&
+				(mtmp->mux != u.ux || mtmp->muy != u.uy))
+#ifdef POLYSELF
+			|| u.usym == S_MIMIC_DEF || u.uundetected
+#endif
+									)
+		pline("%s points and curses in your general direction.",
+				Monnam(mtmp));
+	    else if (Displaced && (mtmp->mux != u.ux || mtmp->muy != u.uy))
+		pline("%s points and curses at your displaced image.",
+				Monnam(mtmp));
+	    else
 		pline("%s points at you, then curses.", Monnam(mtmp));
-	else if((!(moves%4) || !rn2(4)) && flags.soundok) 
+	} else if((!(moves%4) || !rn2(4)) && flags.soundok) 
 		You("hear a mumbled curse.");
 }
+
+#endif /* OVL0 */
+#ifdef OVLB
 
 int
 castmu(mtmp, mattk)	/* monster casts spell at you */
@@ -41,7 +59,11 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 	} else {
 	    nomul(0);
 	    if(rn2(ml*10) < (mtmp->mconf ? 100 : 20)) {	/* fumbled attack */
-		if(canseemon(mtmp))
+		if(canseemon(mtmp)
+#ifdef SOUNDS
+				&& flags.soundok
+#endif
+							)
 		    pline("The air crackles around %s.", mon_nam(mtmp));
 		return(0);
 	    }
@@ -104,6 +126,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			    if(Hallucination)
 				You("have an out of body experience.");
 			    else  {
+				killer_format = KILLED_BY_AN;
 				killer = "touch of death";
 				done(DIED);
 			    }
@@ -300,6 +323,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 	return(1);
 }
 
+#endif /* OVLB */
+#ifdef OVL0
+
 int
 buzzmu(mtmp, mattk)		/* monster uses spell (ranged) */
 	register struct monst *mtmp;
@@ -321,4 +347,6 @@ buzzmu(mtmp, mattk)		/* monster uses spell (ranged) */
 	}
 	return(1);
 }
+
+#endif /* OVL0 */
 

@@ -1,193 +1,101 @@
-	NetHack data file - version 3.0
-@	a human;
-		These strange creatures live mostly on the  surface  of  the
-		earth, gathering together in societies of various forms, but
-		occasionally a stray will descend into the depths and commit
-		mayhem  among  the  dungeon  residents who, naturally, often
-		resent the intrusion of such beasts.  They  are  capable  of
-		using  weapons  and  magic,  and it is even rumored that the
-		Wizard of Yendor is a member of this species.
-+	a spell book
- 	a ghost
-)	a weapon
-[	a suit or piece of armor
-%	a piece of food
-?	a scroll
-/	a wand
-=	a ring
-!	a potion
-(	a useful item (pick-axe, key, lamp, etc.)
-*	a gem or rock
-$	a pile of gold;
-		A metal of characteristic yellow colour, the  most  precious
-		metal  used as a common commercial medium of exchange.  Sym-
-		bol, Au; at.  no. 79; at. wt. 197.2.  It is the most  malle-
-		able  and  ductile  of  all metals, and very heavy (sp. gr.,
-		19.3).  It is quite unalterable by heat, moisture, and  most
-		corrosive  agents,  and therefore well suited for its use in
-		coin and jewelry.
-		      [ Webster's New International Dictionary of the
-			English Language, Second Edition ]
-"	an amulet
-0	an iron ball
-_	an iron chain
-`	a boulder or statue
-a	an ant or other insect
-b	a blob
-c	a cockatrice;
-		Once in a great while, when the positions of the  stars  are
-		just right, a seven-year-old rooster will lay an egg.  Then,
-		along will come a snake, to coil around the egg, or a  toad,
-		to  squat  upon  the  egg, keeping it warm and helping it to
-		hatch.  When it hatches, out comes a creature called  basil-
-		isk, or cockatrice, the most deadly of all creatures. A sin-
-		gle glance from its yellow, piercing toad's eyes  will  kill
-		both man  and beast.  Its power of destruction is said to be
-		so great that sometimes simply to hear its  hiss  can  prove
-		fatal.  Its  breath is so venomous  that it causes all vege-
-		tation to wither.
-		There is, however, one  creature  which  can  withstand  the
-		basilisk's deadly gaze, and this is the weasel. No one knows
-		why this is so, but although the fierce weasel can slay  the
-		basilisk, it will itself be killed in the struggle.  Perhaps
-		the weasel knows the basilisk's fatal weakness:  if it  ever
-		sees  its own reflection in a mirror it will perish instant-
-		ly.  But even a dead basilisk is dangerous, for  it is  said
-		that merely touching its lifeless body can cause a person to
-		sicken and die.
-				[Mythical Beasts by Deirdre Headon
-				 (The Leprechaun Library) and other sources]
-d	a dog or other canine
-e	an eye or sphere
-f	a feline
-g	a gremlin;
-		The  gremlin is a highly  intelligent and  completely   evil
-		creature.   It lives to torment  other creatures and will go
-		to great lengths to inflict pain or cause injury.
-h	a humanoid;
-		Humanoids  are all approximately  the size of a human,   and
-		may  be  mistaken for one  at a distance.  They  are usually
-		of a tribal  nature, and will  fiercely defend their  lairs.
-		Usually   hostile, they  may even band  together to raid and
-		pillage human settlements.
-i	an imp or minor demon;
-		 ... imps ... little creatures of two feet high  that  could
-		gambol and jump prodigiously; ...
-				   [The Charwoman's Shadow, by Lord Dunsany]
-	
-		An 'imp' is an off-shoot or cutting.  Thus an 'ymp tree' was
-		a grafted tree, or one grown from a cutting, not from seed.
-		'Imp' properly means a small devil, an off-shoot  of  Satan,
-		but  the distinction between goblins or bogles and imps from
-		hell is hard to make, and many in the  Celtic  countries  as
-		well as the English Puritans regarded all fairies as devils.
-		The fairies of tradition often hover  uneasily  between  the
-		ghostly and the diabolic state.
-				 [Katharine Briggs, A Dictionary of Fairies]
-j	a jelly
-k	a kobold;
-		The race of kobolds are reputed to be an artificial creation
-		of a master wizard (demi-god?).  They are about 3' tall with
-		a vaguely dog-like face.  They bear a violent dislike of the
-		Elven race, and  will go out  of their way to  cause trouble
-		for Elves at any time.
-l	a leprechaun;
-		The Irish Leprechaun is the Faeries' shoemaker and is  known
-		under  various names  in different parts of Ireland:  Cluri-
-		caune in Cork, Lurican in Kerry, Lurikeen in Kildare and Lu-
-		rigadaun  in  Tipperary.  Although he works for the Faeries,
-		the Leprechaun is not of the same species.  He is small, has
-		dark  skin  and wears strange clothes.  His nature has some-
-		thing of the manic-depressive about it:  first he  is  quite
-		happy, whistling merrily as he nails a sole on to a shoe;  a
-		few minutes later, he is sullen and  morose,  drunk  on  his
-		home-made heather ale.  The Leprechaun's two great loves are
-		tobacco and whiskey, and he is a first-rate con-man,  impos-
-		sible  to  out-fox.  No  one, no matter how clever, has ever
-		managed to cheat him out of his hidden pot of  gold  or  his
-		magic shilling.  At the last minute he always thinks of some
-		way to divert his captor's attention  and  vanishes  in  the
-		twinkling  of  an eye.
-					 [A Field Guide to the Little People
-					by Nancy Arrowsmith & George Moorse]
-m	a mimic
-n	a nymph
-o	an orc
-p	a piercer;
-		Ye Piercer doth look like unto  a  stalactyte,  and  hangeth
-		from  the  roofs of caves and caverns.  Unto the height of a
-		man, and thicker than a man's thigh do  they  grow,  and  in
-		groups  do they hang.  If a creature doth pass beneath them,
-		they will by its heat and noise perceive it, and  fall  upon
-		it  to kill and devour it, though in any other way they move
-		but exceeding slow.
-						   [ the Bestiary of Xygag ]
-q	a quadruped;
-		The woodlands and other regions  are inhabited by multitudes
-		of four-legged creatures  which cannot be simply classified.
-		They might not have fiery breath  or deadly stings,  but ad-
-		venturers  have  nevertheless  met their end  numerous times
-		due to the claws, hooves, or bites of such animals.
-	
-		...the leucrocotta, a wild beast of extraordinary swiftness,
-		the size of the wild ass, with the legs of a Stag, the neck,
-		tail, and breast of a lion,  the head of a badger,  a cloven
-		hoof, the mouth slit up as far as the ears,  and one contin-
-		uous bone  instead of  teeth;  it is said,  too,  that  this
-		animal can imitate the human voice.
-				 [Curious Creatures in Zoology, John Ashton]
-r	a rodent
-s	a spider
-t	a trapper or lurker above
-u	a unicorn;
-		Men have always sought the elusive unicorn, for  the  single
-		twisted  horn  which projected from its forehead was thought
-		to be a powerful talisman.  It was said that the unicorn had
-		simply  to  dip  the tip of its horn in a muddy pool for the
-		water to become pure.  Men also believed that to  drink from
-		this horn was a protection against all sickness, and that if
-		the horn was ground to a powder it would act as an  antidote
-		to all poisons.  Less than 200 years ago in France, the horn
-		of a unicorn was used in a ceremony to test the  royal  food
-		for poison.
-		Although only the size of a small horse, the  unicorn  is  a
-		very  fierce  beast,  capable  of killing an elephant with a
-		single thrust from its horn.  Its  fleetness  of  foot  also
-		makes  this solitary creature difficult to capture. However,
-		it can be tamed and captured by a maiden. Made gentle by the
-		sight  of a virgin, the unicorn can be lured to lay its head
-		in her lap, and in this docile mood, the maiden  may  secure
-		it with a golden rope.
-		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
-v	a vortex
-w	a worm;
-		[The crysknife] is manufactured in two forms from teeth tak-
-		en  from dead sandworms.  The two forms are "fixed" and "un-
-		fixed." An unfixed  knife  requires  proximity  to  a  human
-		body's  electrical  field  to prevent disintegration.  Fixed
-		knives are treated for storage.  All are about  20  centime-
-		ters long.
-						[ Dune, by Frank Herbert ]
-x	a xan or other mythical/fantastic insect;
-		They sent their friend the mosquito [xan] ahead of  them  to
-		find  out  what lay ahead.  "Since you are the one who sucks
-		the blood of men walking along paths," they told the mosqui-
-		to,  "go  and  sting the men of Xibalba."  The mosquito flew
-		down the dark road to the Underworld.  Entering the house of
-		the Lords of Death, he stung the first person that he saw...
-	
-		The mosquito stung this man as well, and when he yelled, the
-		man  next  to him asked, "Gathered Blood, what's wrong?"  So
-		he flew along the row stinging all the seated men  until  he
-		knew the names of all twelve.
-				[ Popul Vuh, as translated by Ralph Nelson ]
-y	a yellow light
-z	a zruty;
-		The zruty are  wild and gigantic beings,  living in the wil-
-		dernesses of the Tatra mountains.
-A	a giant ape
-B	a giant bat
-C	a centaur;
+	NetHack data file - version 3.0i
+	demons should all come first, before the *centaur line
+balrog
+		...  It came to the edge of the fire and the light  faded as
+		if a  cloud had  bent over it.  Then  with a rush it  leaped
+		the fissure.  The flames roared up to greet it, and wreathed
+		about  it; and a black smoke swirled in the air. Its stream-
+		ing  mane kindled,  and blazed behind it.  In its right hand
+		was a  blade like a stabbing tongue of fire;  in its left it
+		held a whip of many thongs.
+		'Ai, ai!'  wailed Legolas. 'A Balrog!  A Balrog is come!'
+			   [ The Fellowship of the Ring, by J.R.R. Tolkien ]
+horned devil
+		Horned devils lack any real special abilities,  though  they
+		are quite difficult to kill.
+incubus
+succubus
+		The incubus and succubus are male and female versions of the
+		same  demon, one who lies with a human for its own purposes,
+		usually to the detriment of the mortals who  are  unwise  in
+		their dealings with them.
+erinyes
+		These female-seeming devils attack hand to hand  and  poison
+		their unwary victims as well.
+marilith
+		The marilith, a type V demon, has a torso shaped  like  that
+		of  a human female, and the lower body of a great snake.  It
+		has multiple arms, and can freely attack with all  of  them.
+		Since it is intelligent enough to use weapons, this means it
+		can cause great damage.
+barbed devil
+		Barbed devils lack any real special abilities,  though  they
+		are quite difficult to kill.
+vrock
+		The vrock is one of the weaker forms of demon, being only  a
+		type  I.   It  resembles a cross between a human being and a
+		vulture and does physical damage by biting and by using  the
+		claws on both its arms and feet.
+hezrou
+		``Hezrou'' is the common name for the type II demon.  It  is
+		among the weaker of demons, but still quite formidable.
+bone devil
+		Bone devils attack with weapons and with a great hooked tail
+		which causes a loss of strength to those they sting.
+nalfeshnee
+		Not only do these demons, which are of type IV, do  physical
+		damage  with  their  claws and bite, but they are capable of
+		using magic as well.
+ice devil
+		Ice devils  are  large  semi-insectoid  creatures,  who  are
+		equally  at home in the fires of Hell and the cold of Limbo,
+		and who can cause the traveller to feel the latter with just
+		a touch of their tail.
+pit fiend
+		Pit fiends are among the more powerful of devils, capable of
+		attacking  twice with weapons as well as grabbing and crush-
+		ing the life out of  thise  unwary  enough  to  enter  their
+		domains.
+juiblex
+jubilex
+		Little is known about the Faceless Lord,  even  the  correct
+		spelling  of  his name.  He does not have a physical form as
+		we know it, and those who have peered into his  realm  claim
+		he  is  a  slime-like  creature who swallows other creatures
+		alive, spits acidic secretions, and causes  disease  in  his
+		victims which can be almost instantly fatal.
+yeenoghu
+		Yeenoghu, the demon lord of gnolls,  still  exists  although
+		all his followers have been wiped off the face of the earth.
+		He casts magic projectiles at those close to him, and a mere
+		gaze  into  his  piercing  eyes  may  hopelessly confuse the
+		battle-weary adventurer.
+orcus
+		Orcus, Prince of the Undead, has a rams head  and  a  poison
+		stinger.   He is most feared, though, for his powerful magic
+		abilities.  His wand causes death to those he chooses.
+geryon
+		Geryon is an arch-devil sometimes  called  the  Wild  Beast,
+		attacking  with  his claws and poison sting.  His ranking in
+		Hell is rumored to be quite low.
+dispater
+		Dispater is an arch-devil who rules the city of Dis.  He  is
+		a powerful mage.
+baalzebub
+		Baalzebub has been known as the lord of the flies.  His bite
+		drips  poison,  and a mere glance into his eyes can stun the
+		hapless invader of his realm.
+asmodeus
+		It is said that Asmodeus is the overlord over all  of  hell.
+		His  appearance,  unlike  many  other  demons and devils, is
+		human apart from his horns and tail.  He  can  freeze  flesh
+		with a touch.
+demogorgon
+		Demogorgon, the prince of demons, wallows in filth  and  can
+		spread  a quickly fatal illness to his victims while rending
+		them.  He is a mighty spellcaster, and he can drain the life
+		of mortals with a touch of his tail.
+*centaur
 		Of all the monsters put together by  the  Greek  imagination
 		the  Centaurs (Kentauroi) constituted a class in themselves.
 		Despite a strong streak  of  sensuality  in  their  make-up,
@@ -204,8 +112,32 @@ C	a centaur;
 		These  strange creatures  were said to live in the caves and
 		clefts of the mountains, myths associating  them  especially
 		with the hills of Thessaly and the range of Erymanthos.
-			       [Mythology of all races, Vol. 1, pp. 270-271]
-D	a dragon;
+			     [ Mythology of all races, Vol. 1, pp. 270-271 ]
+cockatrice
+		Once in a great while, when the positions of the  stars  are
+		just right, a seven-year-old rooster will lay an egg.  Then,
+		along will come a snake, to coil around the egg, or a  toad,
+		to  squat  upon  the  egg, keeping it warm and helping it to
+		hatch.  When it hatches, out comes a creature called  basil-
+		isk, or cockatrice, the most deadly of all creatures. A sin-
+		gle glance from its yellow, piercing toad's eyes  will  kill
+		both man  and beast.  Its power of destruction is said to be
+		so great that sometimes simply to hear its  hiss  can  prove
+		fatal.  Its  breath is so venomous  that it causes all vege-
+		tation to wither.
+	
+		There is, however, one  creature  which  can  withstand  the
+		basilisk's deadly gaze, and this is the weasel. No one knows
+		why this is so, but although the fierce weasel can slay  the
+		basilisk, it will itself be killed in the struggle.  Perhaps
+		the weasel knows the basilisk's fatal weakness:  if it  ever
+		sees  its own reflection in a mirror it will perish instant-
+		ly.  But even a dead basilisk is dangerous, for  it is  said
+		that merely touching its lifeless body can cause a person to
+		sicken and die.
+		[ Mythical Beasts by Deirdre Headon (The Leprechaun Library)
+		  and other sources ]
+*dragon
 		In the West  the dragon was  the  natural  enemy   of   man.
 		Although  preferring  to live in bleak and desolate regions,
 		whenever it was seen among men it left in its wake a   trail
@@ -215,16 +147,24 @@ D	a dragon;
 		pouring from its fire-breathing nostrils, but also with  the
 		thrashings  of  its  tail,  the  most   deadly  part  of its
 		serpent-like body.
-		     [Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
-E	an elemental;
+		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+*elemental
 		Elementals are manifestations of the  basic  nature  of  the
 		universe.   There  are four known forms of elementals:  air,
 		fire, water, and earth.  Some mystics  have  postulated  the
 		necessity  for  a fifth type, the spirit elemental, but none
 		have ever been encountered, at least on this  plane  of  ex-
 		istence.
-F	a fungus or mold
-G	a gnome;
+*giant
+giant humanoid
+		Giants have always walked the earth, though they are rare in
+		these times.  They range in size from  little over nine feet
+		to a towering twenty feet or more.  The larger ones use huge
+		boulders as weapons, hurling them over large distances.  All
+		types of giants share a love for men  -  roasted, boiled, or
+		fried.  Their table manners are legendary.
+gnome*
+gnomish wizard
 		...  And then a gnome came by,  carrying a bundle,   an  old
 		fellow three times  as large as an imp  and wearing  clothes
 		of a sort, especially a hat.  And he was  clearly   just  as
@@ -238,16 +178,106 @@ G	a gnome;
 		to doff it.
 		'What is the trouble, Alaraba?' said Ramon Alonzo.
 		'White magic. Run!' said the gnome ...
-				       [The Charwoman's Shadow, by Lord Dunsany.]
-H	a giant humanoid;
-		Giants have always walked the earth, though they are rare in
-		these times.  They range in size from  little over nine feet
-		to a towering twenty feet or more.  The larger ones use huge
-		boulders as weapons, hurling them over large distances.  All
-		types of giants share a love for men  -  roasted, boiled, or
-		fried.  Their table manners are legendary.
-I	an invisible stalker
-J	a jabberwock;
+				[ The Charwoman's Shadow, by Lord Dunsany. ]
+gold
+pile of gold
+		A metal of characteristic yellow colour, the  most  precious
+		metal  used as a common commercial medium of exchange.  Sym-
+		bol, Au; at.  no. 79; at. wt. 197.2.  It is the most  malle-
+		able  and  ductile  of  all metals, and very heavy (sp. gr.,
+		19.3).  It is quite unalterable by heat, moisture, and  most
+		corrosive  agents,  and therefore well suited for its use in
+		coin and jewelry.
+				[ Webster's New International Dictionary
+				  of the English Language, Second Edition ]
+*golem
+		These creatures, not quite living but not  really  nonliving
+		either,   are   created from inanimate materials by powerful
+		mages or priests.
+gremlin
+		The  gremlin is a highly  intelligent and  completely   evil
+		creature.   It lives to torment  other creatures and will go
+		to great lengths to inflict pain or cause injury.
+grid bug
+		These  electrically based creatures are  not native  to this
+		universe.  They  appear to come from a world  whose  laws of
+		motion are radically different from ours.
+hobbit
+		Hobbits  are  an unobtrusive  but very ancient people,  more
+		numerous formerly than they are today;  for they love  peace
+		and quiet and good tilled earth:  a  well-ordered and  well-
+		farmed countryside  was their favourite haunt.  They  do not
+		and  did  not  understand  or like machines more complicated
+		than a forge-bellows, a water-mill, or a handloom,  although
+		they  were skillful with tools.  Even  in ancient days  they
+		were, as a rule, shy of "the Big Folk", as they call us, and
+		now they avoid us with dismay and are becoming hard to find.
+			   [ The Fellowship of the Ring, by J.R.R. Tolkien ]
+hobgoblin
+		Hobgoblin. Used by the  Puritans  and  in  later  times  for
+		wicked  goblin  spirits,  as in Bunyan's 'Hobgoblin nor foul
+		friend', but its more correct use is for the friendly  spir-
+		its  of  the brownie type.  In 'A midsummer night's dream' a
+		fairy says to Shakespeare's Puck:
+		        Those that Hobgoblin call you, and sweet Puck,
+		        You do their work, and they shall have good luck:
+		        Are you not he?
+		and obviously Puck would not wish to be called  a  hobgoblin
+		if that was an ill-omened word.
+		Hobgoblins are on the whole, good-humoured and ready  to  be
+		helpful,  but fond of practical joking, and like most of the
+		fairies rather nasty people to annoy. Boggarts hover on  the
+		verge of hobgoblindom.  Bogles are just over the edge.
+		One Hob mentioned by Henderson, was Hob Headless who haunted
+		the  road  between Hurworth and Neasham, but could not cross
+		the little river Kent, which flowed into the  Tess.  He  was
+		exorcised  and  laid under a large stone by the roadside for
+		ninety-nine years and a day. If anyone was so unwary  as  to
+		sit  on  that stone, he would be unable to quit it for ever.
+		The ninety-nine years is nearly up, so trouble may  soon  be
+		heard of on the road between Hurworth and Neasham.
+		             [ Katharine Briggs, A  dictionary  of Fairies ]
+humanoid
+		Humanoids  are all approximately  the size of a human,   and
+		may  be  mistaken for one  at a distance.  They  are usually
+		of a tribal  nature, and will  fiercely defend their  lairs.
+		Usually   hostile, they  may even band  together to raid and
+		pillage human settlements.
+human
+archeologist
+barbarian
+cave*man
+elf
+healer
+knight
+priest*
+rogue
+samurai
+tourist
+valkyrie
+wizard
+		These strange creatures live mostly on the  surface  of  the
+		earth, gathering together in societies of various forms, but
+		occasionally a stray will descend into the depths and commit
+		mayhem  among  the  dungeon  residents who, naturally, often
+		resent the intrusion of such beasts.  They  are  capable  of
+		using  weapons  and  magic,  and it is even rumored that the
+		Wizard of Yendor is a member of this species.
+imp
+		 ... imps ... little creatures of two feet high  that  could
+		gambol and jump prodigiously; ...
+				 [ The Charwoman's Shadow, by Lord Dunsany ]
+	
+		An 'imp' is an off-shoot or cutting.  Thus an 'ymp tree' was
+		a grafted tree, or one grown from a cutting, not from seed.
+		'Imp' properly means a small devil, an off-shoot  of  Satan,
+		but  the distinction between goblins or bogles and imps from
+		hell is hard to make, and many in the  Celtic  countries  as
+		well as the English Puritans regarded all fairies as devils.
+		The fairies of tradition often hover  uneasily  between  the
+		ghostly and the diabolic state.
+			       [ Katharine Briggs, A Dictionary of Fairies ]
+jabberwock
 		"Beware the Jabberwock, my son!
 		  The jaws that bite, the claws that catch!
 		Beware the Jubjub bird, and shun
@@ -262,9 +292,42 @@ J	a jabberwock;
 		  The Jabberwock, with eyes of flame,
 		Came whiffling through the tulgey wood,
 		  And burbled as it came!
-					[Jabberwocky, by Lewis Carroll]
-K	a Keystone Kop
-L	a lich;
+					[ Jabberwocky, by Lewis Carroll ]
+*kobold*
+		The race of kobolds are reputed to be an artificial creation
+		of a master wizard (demi-god?).  They are about 3' tall with
+		a vaguely dog-like face.  They bear a violent dislike of the
+		Elven race, and  will go out  of their way to  cause trouble
+		for Elves at any time.
+leprechaun
+		The Irish Leprechaun is the Faeries' shoemaker and is  known
+		under  various names  in different parts of Ireland:  Cluri-
+		caune in Cork, Lurican in Kerry, Lurikeen in Kildare and Lu-
+		rigadaun  in  Tipperary.  Although he works for the Faeries,
+		the Leprechaun is not of the same species.  He is small, has
+		dark  skin  and wears strange clothes.  His nature has some-
+		thing of the manic-depressive about it:  first he  is  quite
+		happy, whistling merrily as he nails a sole on to a shoe;  a
+		few minutes later, he is sullen and  morose,  drunk  on  his
+		home-made heather ale.  The Leprechaun's two great loves are
+		tobacco and whiskey, and he is a first-rate con-man,  impos-
+		sible  to  out-fox.  No  one, no matter how clever, has ever
+		managed to cheat him out of his hidden pot of  gold  or  his
+		magic shilling.  At the last minute he always thinks of some
+		way to divert his captor's attention  and  vanishes  in  the
+		twinkling  of  an eye.
+				     [ A Field Guide to the Little People
+				       by Nancy Arrowsmith & George Moorse ]
+leocrotta
+leu*otta
+		...the leucrocotta, a wild beast of extraordinary swiftness,
+		the size of the wild ass, with the legs of a Stag, the neck,
+		tail, and breast of a lion,  the head of a badger,  a cloven
+		hoof, the mouth slit up as far as the ears,  and one contin-
+		uous bone  instead of  teeth;  it is said,  too,  that  this
+		animal can imitate the human voice.
+			       [ Curious Creatures in Zoology, John Ashton ]
+*lich
 		Once in a great  while, an evil master wizard or priest will
 		manage through use of great magics to extend his or her life
 		far beyond the normal  span of a human.  The usual effect of
@@ -272,38 +335,145 @@ L	a lich;
 		great magical power.  A Lich  hates life in any form; even a
 		touch from one of these  creatures will cause a numbing cold
 		in the victim.  They all possess the capability to use magic.
-M	a mummy
-N	a naga;
+medusa
+		This hideous  creature from  ancient Greek myth was the doom
+		of many a valiant adventurer.  It is said that one gaze from
+		its eyes  could turn a man to stone.  One bite from the nest
+		of  snakes which  crown its head could  cause instant death.
+		The only  way to kill this  monstrosity is to turn its  gaze
+		back upon itself.
+*naga*
 		The naga is a mystical creature with the body of a snake and
 		the head of a man or woman.  They will fiercely  protect the
 		territory they consider their own.  Some nagas can be forced
 		to serve as a guardian by a spell caster of great power.
-O	an ogre
-P	a pudding or ooze;
+*ooze
+*pudding
 		These giant amoeboid creatures look like nothing  more  than
 		puddles  of  slime,  but they both live and move, feeding on
 		metal or wood as well as the occasional dungeon explorer  to
 		supplement their diet.
-Q	a quantum mechanic;
+orcrist
+		The  Great Goblin  gave a truly awful howl of  rage when  he
+		looked  at  it,  and  all his soldiers  gnashed their teeth,
+		clashed their shields,  and stamped.  They knew the sword at
+		once.  It had killed hundreds of goblins in  its time,  when
+		the  fair elves of Gondolin hunted them in the hills or  did
+		battle  before  their  walls.  They  had called it  Orcrist,
+		Goblin-cleaver, but the goblins called it simply Biter. They
+		hated it and hated worse any one that carried it.
+					   [ The Hobbit, by J.R.R. Tolkien ]
+piercer
+		Ye Piercer doth look like unto  a  stalactyte,  and  hangeth
+		from  the  roofs of caves and caverns.  Unto the height of a
+		man, and thicker than a man's thigh do  they  grow,  and  in
+		groups  do they hang.  If a creature doth pass beneath them,
+		they will by its heat and noise perceive it, and  fall  upon
+		it  to kill and devour it, though in any other way they move
+		but exceeding slow.
+						   [ the Bestiary of Xygag ]
+quantum mechanic
 		These creatures are not native to this universe;  they  seem
 		to have strangely derived powers, and unknown motives.
-R	a rust monster;
+quadruped
+		The woodlands and other regions  are inhabited by multitudes
+		of four-legged creatures  which cannot be simply classified.
+		They might not have fiery breath  or deadly stings,  but ad-
+		venturers  have  nevertheless  met their end  numerous times
+		due to the claws, hooves, or bites of such animals.
+rust monster
 		These strange creatures live on a   diet  of  metals.   They
 		will  turn  a  suit  of  armour into so much useless  rusted
 		scrap in no time at all.
-S	a snake
-T	a troll
-U	an umber hulk
-V	a vampire
-W	a wraith
-X	a xorn
-Y	a yeti
-Z	a zombie
-&	a demon
-:	a lizard
-;	a giant eel or other water creature
-'	a golem;
-		These creatures, not quite living but not  really  nonliving
-		either,   are   created from inanimate materials by powerful
-		mages or priests.
-~	the tail of a long worm
+snickersnee
+		Ah, never shall I forget the cry, 
+		    or the shriek that shrieked he,
+		As I gnashed my teeth, and from my sheath
+		    I drew my Snickersnee!
+		--Koko, Lord high executioner of Titipu
+				     [ The Mikado, by Sir W.S. Gilbert ]
+*soldier
+sergeant
+lieutenant
+captain
+		The soldiers  of Yendor are  well-trained in the art of war,
+		many  trained by  the wizard himself.  Some say the soldiers
+		are explorers  who were  unfortunate enough  to be captured,
+		and  put under the wizard's spell.  Those who have  survived
+		encounters  with  soldiers   say  they  travel  together  in
+		platoons,  and are fierce fighters.  Because of the  load of
+		their  combat gear,  however,  one can usually run away from
+		them, and doing so is considered a wise thing.
+tengu
+		The tengu was the  most  troublesome  creature  of  Japanese
+		legend.   Part  bird  and part man, with red beak for a nose
+		and flashing eyes, the tengu was notorious for  stirring  up
+		feuds  and  prolonging  enmity between families. Indeed, the
+		belligerent tengus were supposed to have  been  man's  first
+		instructors in the use of arms.
+		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+*unicorn
+unicorn horn
+		Men have always sought the elusive unicorn, for  the  single
+		twisted  horn  which projected from its forehead was thought
+		to be a powerful talisman.  It was said that the unicorn had
+		simply  to  dip  the tip of its horn in a muddy pool for the
+		water to become pure.  Men also believed that to  drink from
+		this horn was a protection against all sickness, and that if
+		the horn was ground to a powder it would act as an  antidote
+		to all poisons.  Less than 200 years ago in France, the horn
+		of a unicorn was used in a ceremony to test the  royal  food
+		for poison.
+	
+		Although only the size of a small horse, the  unicorn  is  a
+		very  fierce  beast,  capable  of killing an elephant with a
+		single thrust from its horn.  Its  fleetness  of  foot  also
+		makes  this solitary creature difficult to capture. However,
+		it can be tamed and captured by a maiden. Made gentle by the
+		sight  of a virgin, the unicorn can be lured to lay its head
+		in her lap, and in this docile mood, the maiden  may  secure
+		it with a golden rope.
+		[Mythical Beasts by Deirdre Headon (The Leprechaun Library)]
+*long worm
+worm tooth
+crysknife
+		[The crysknife] is manufactured in two forms from teeth tak-
+		en  from dead sandworms.  The two forms are "fixed" and "un-
+		fixed." An unfixed  knife  requires  proximity  to  a  human
+		body's  electrical  field  to prevent disintegration.  Fixed
+		knives are treated for storage.  All are about  20  centime-
+		ters long.
+						  [ Dune, by Frank Herbert ]
+wizard of yendor
+		No  one knows how old this mighty wizard is,  or from whence
+		he came.  It is known that,  having lived a span far greater
+		than any normal man's, he grew weary of lesser mortals;  and
+		so, spurning all human company,  he forsook the dwellings of
+		men  and  went to live in the depths of the  Earth.  He took
+		with him the mystical artifact, the Amulet of Yendor,  which
+		is said to hold great power indeed. Many have sought to find
+		the  wizard and  his treasure,  but none have found  him and
+		lived to tell the tale.  Woe be to the incautious adventurer
+		who disturbs this mighty sorcerer!
+xan
+		They sent their friend the mosquito [xan] ahead of  them  to
+		find  out  what lay ahead.  "Since you are the one who sucks
+		the blood of men walking along paths," they told the mosqui-
+		to,  "go  and  sting the men of Xibalba."  The mosquito flew
+		down the dark road to the Underworld.  Entering the house of
+		the Lords of Death, he stung the first person that he saw...
+	
+		The mosquito stung this man as well, and when he yelled, the
+		man  next  to him asked, "Gathered Blood, what's wrong?"  So
+		he flew along the row stinging all the seated men  until  he
+		knew the names of all twelve.
+				[ Popul Vuh, as translated by Ralph Nelson ]
+*zombie
+		The zombi...  is a soulless human corpse,  still  dead,  but
+		taken	from  the  grave  and  endowed	by  sorcery  with  a
+		mechanical semblance of life, --  it is a dead body which is
+		made to walk and act and move as if it were alive.
+							  [ W. B. Seabrook ]
+zruty
+		The zruty are  wild and gigantic beings,  living in the wil-
+		dernesses of the Tatra mountains.

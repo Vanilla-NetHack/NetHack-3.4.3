@@ -14,7 +14,7 @@
 #ifdef STRONGHOLD
 #include "sp_lev.h"
 
-#if defined(MSDOS) || defined(MACOS) && !defined(AMIGA)
+#if defined(MACOS) || (defined(MSDOS) && !defined(AMIGA))
 # define RDMODE "rb"
 #else
 # define RDMODE "r"
@@ -470,8 +470,8 @@ FILE *fd;
 		get_location(&x, &y);
 
 		typ = tmpaltar.align == -11 ? rn2(3) :
-		      tmpaltar.align < 0    ? ralign[-tmpaltar.align-1] :
-					      tmpaltar.align;
+		      (tmpaltar.align < 0    ? ralign[-tmpaltar.align-1] :
+					      tmpaltar.align);
 		if (tmpaltar.shrine)
 		    typ |= A_SHRINE;
 
@@ -570,7 +570,7 @@ FILE *fd;
 
 boolean
 load_special(name)
-char *name;
+const char *name;
 {
 	FILE *fd;
 	boolean result;

@@ -10,6 +10,10 @@
 #define void	int
 #endif
 
+#ifdef APOLLO	/* the Apollo C compiler claims to be __STDC__, but isn't */
+#undef __STDC__
+#endif
+
 /*
  * ANSI X3J11 detection.
  * Makes substitutes for compatibility with the old C standard.
@@ -18,8 +22,8 @@
 /* Decide how to handle variable parameter lists:
  * USE_STDARG means use the ANSI <stdarg.h> facilities (only ANSI compilers
  * should do this, and only if the library supports it).
- * USE_VARARGS means use the <varargs.h> facilities. Again, this should only
- * be done if the library supports it. ANSI is *not* required for this.
+ * USE_VARARGS means use the <varargs.h> facilities.  Again, this should only
+ * be done if the library supports it.  ANSI is *not* required for this.
  * Otherwise, the kludgy old methods are used.
  * The defaults are USE_STDARG for ANSI compilers, and USE_OLDARGS for
  * others.
@@ -28,8 +32,8 @@
 /* #define USE_VARARGS		/* use <varargs.h> instead of <stdarg.h> */
 /* #define USE_OLDARGS		/* don't use any variable argument facilites */
 
-#ifdef __STDC__
-# if !(defined(AMIGA) || defined(USE_VARARGS) || defined(USE_OLDARGS))
+#if defined(__STDC__) || defined(VMS)
+# if !(defined(AMIGA) && defined(AZTEC_C) || defined(USE_VARARGS) || defined(USE_OLDARGS))
 #   define USE_STDARG
 # endif
 #endif
@@ -71,18 +75,24 @@
 #endif
 #endif /* NEED_VARARGS */
 
-#if (defined(__STDC__) || defined(MSDOS) || defined(THINKC4)) && !defined(AMIGA)
+
+#if defined(__STDC__) || defined(MSDOS) || defined(THINKC4)
 
 /* Used for robust ANSI parameter forward declarations:
  * int VDECL(sprintf, (char *, const char *, ...));
  *
+ * NDECL() is used for functions with zero arguments;
  * FDECL() is used for functions with a fixed number of arguments;
  * VDECL() is used for functions with a variable number of arguments.
  * Separate macros are needed because ANSI will mix old-style declarations
- * with prototypes, except in the case of varargs.
+ * with prototypes, except in the case of varargs, and the OVERLAY-specific
+ * trampoli.* mechanism conflicts with the ANSI <<f(void)>> syntax.
  */
 
+# define NDECL(f)	f(void)	/* Must be overridden if OVERLAY set later */
+
 # define FDECL(f,p)	f p
+
 # if defined(MSDOS) || defined(USE_STDARG)
 #  define VDECL(f,p)	f p
 # else
@@ -102,11 +112,12 @@ typedef void *		genericptr_t;
 
 #else /* __STDC__ */	/* a "traditional" C  compiler */
 
+# define NDECL(f)	f()
 # define FDECL(f,p)	f()
 # define VDECL(f,p)	f()
 
 # ifndef genericptr_t
-#  ifdef AMIGA
+#  if defined(AMIGA) || defined(HPUX)
 typedef void *		genericptr_t;
 #  else
 typedef char *		genericptr_t;
