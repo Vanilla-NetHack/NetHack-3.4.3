@@ -1,7 +1,8 @@
+/*	SCCS Id: @(#)unixunix.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.unix.c - version 1.0.3 */
 
-/* This file collects some Unix dependencies; hack.pager.c contains some more */
+/* This file collects some Unix dependencies; pager.c contains some more */
 
 /*
  * The time is used for:
@@ -22,14 +23,14 @@
 #include	<sys/time.h>
 #else
 #include	<time.h>
-#endif BSD
+#endif
 
 extern char *getenv();
 extern time_t time();
 
 setrandom()
 {
- 	(void) srand((int) time ((time_t *) 0));
+	(void) srand((int) time ((time_t *) 0));
 }
 
 struct tm *
@@ -141,7 +142,7 @@ uptodate(fd) {
 		pline("Saved level is out of date. ");
 		return(0);
 	}
- return(1);
+	return(1);
 }
 
 /* see whether we should throw away this xlock file */
@@ -279,7 +280,7 @@ gotlock:
  *	- Make him lose his mail when a Nymph steals the letter.
  *	- Do something to the text when the scroll is enchanted or cancelled.
  */
-#include	"def.mkroom.h"
+#include	"mkroom.h"
 static struct stat omstat,nmstat;
 static char *mailbox;
 static long laststattime;
@@ -293,7 +294,7 @@ getmailstatus() {
 		mailbox = 0;
 #else
 		omstat.st_mtime = 0;
-#endif PERMANENT_MAILBOX
+#endif
 	}
 }
 
@@ -301,7 +302,7 @@ ckmailstatus() {
 	if(!mailbox
 #ifdef MAILCKFREQ
 		    || moves < laststattime + MAILCKFREQ
-#endif MAILCKFREQ
+#endif
 							)
 		return;
 	laststattime = moves;
@@ -311,7 +312,7 @@ ckmailstatus() {
 		mailbox = 0;
 #else
 		nmstat.st_mtime = 0;
-#endif PERMANENT_MAILBOX
+#endif
 	} else if(nmstat.st_mtime > omstat.st_mtime) {
 		if(nmstat.st_size)
 			newmail();
@@ -362,7 +363,7 @@ boolean away;
 				fx = doors[tmp].x;
 				fy = doors[tmp].y;
 			}
- tmp++;
+			tmp++;
 		}
 		tmp_at(-1, md->data->mlet);	/* open call */
 		if(away) {	/* interchange origin and destination */
@@ -395,7 +396,7 @@ boolean away;
 			    break;
 			} 
 		}
- tmp_at(-1,-1);			/* close call */
+		tmp_at(-1,-1);			/* close call */
 	}
 	if(!away)
 		pmon(md);
@@ -411,14 +412,14 @@ readmail() {
 		execl(mr, mr, (char *) 0);
 		exit(1);
 	}
-#else DEF_MAILREADER
+#else
 	(void) page_file(mailbox, FALSE);
-#endif DEF_MAILREADER
+#endif
 	/* get new stat; not entirely correct: there is a small time
 	   window where we do not see new mail */
 	getmailstatus();
 }
-#endif MAIL
+#endif /* MAIL /**/
 
 regularize(s)	/* normalize file name - we don't like ..'s or /'s */
 register char *s;

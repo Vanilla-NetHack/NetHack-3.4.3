@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)do.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do.c - version 1.0.3 */
+/* do.c - version 1.0.3 */
 
 /* Contains code for 'd', 'D' (drop), '>', '<' (up, down) and 't' (throw) */
 
@@ -11,6 +12,10 @@ extern boolean level_exists[];
 extern struct monst youmonst;
 extern char *Doname();
 extern char *nomovemsg;
+int	identify();
+#ifdef KAA
+extern char *xname();
+#endif
 
 dodrop() {
 	return(drop(getobj("0$#", "drop")));
@@ -24,11 +29,20 @@ drop(obj) register struct obj *obj; {
 
 		if(amount == 0)
 			pline("You didn't drop any gold pieces.");
-		else {
-			mkgold(amount, u.ux, u.uy);
+/* Fix bug with dropping huge amounts of gold read as negative    KAA */
+		else if(amount < 0) {
+			u.ugold += amount;
+	pline("The LRS would be very interested to know you have that much.");
+		} else {
+			/* uswallow test added by GAN 01/29/87 */
 			pline("You dropped %ld gold piece%s.",
-				amount, plur(amount));
-			if(Invisible) newsym(u.ux, u.uy);
+				 amount, plur(amount));
+			if(u.uswallow)
+				(u.ustuck)->mgold += amount;
+			else {
+				mkgold(amount, u.ux, u.uy);
+				if(Invisible) newsym(u.ux, u.uy);
+			}
 		}
 		free((char *) obj);
 		return(1);
@@ -42,7 +56,7 @@ drop(obj) register struct obj *obj; {
 			pline("Your weapon is welded to your hand!");
 			return(0);
 		}
- setuwep((struct obj *) 0);
+		setuwep((struct obj *) 0);
 	}
 	pline("You dropped %s.", doname(obj));
 	dropx(obj);
@@ -62,13 +76,26 @@ register struct obj *obj;
 {
 	if(obj->otyp == CRYSKNIFE)
 		obj->otyp = WORM_TOOTH;
-	obj->ox = u.ux;
-	obj->oy = u.uy;
-	obj->nobj = fobj;
-	fobj = obj;
-	if(Invisible) newsym(u.ux,u.uy);
-	subfrombill(obj);
-	stackobj(obj);
+	/* uswallow check done by GAN 01/29/87 */
+	if(u.uswallow)
+		mpickobj(u.ustuck,obj);
+	else  {
+		obj->ox = u.ux;
+		obj->oy = u.uy;
+		/* Blind check added by GAN 02/18/87 */
+		if(Blind)  {
+#ifdef KAA
+			if(obj->olet != ')')
+#endif
+			    obj->dknown = index("/=!?*",obj->olet) ? 0 : 1;
+			obj->known = 0;
+		}
+		obj->nobj = fobj;
+		fobj = obj;
+		if(Invisible) newsym(u.ux,u.uy);
+		subfrombill(obj);
+		stackobj(obj);
+	}
 }
 
 /* drop several things */
@@ -126,7 +153,14 @@ register boolean at_stairs;
 	if(newlevel == dlevel) return;	      /* this can happen */
 
 	glo(dlevel);
+#ifdef DGK
+	/* Use O_TRUNC to force the file to be shortened if it already
+	 * exists and is currently longer.
+	 */
+	fd = open(lock, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FMASK);
+#else
 	fd = creat(lock, FMASK);
+#endif
 	if(fd < 0) {
 		/*
 		 * This is not quite impossible: e.g., we may have
@@ -135,11 +169,24 @@ register boolean at_stairs;
 		 * Another possibility is that the directory was not
 		 * writable.
 		 */
+#ifdef DGK
+		pline("Cannot create level file '%s'.", lock);
+#else
 		pline("A mysterious force prevents you from going %s.",
 			up ? "up" : "down");
+#endif
 		return;
 	}
 
+#ifdef DGK
+	if (!savelev(fd, dlevel, COUNT)) {
+		(void) close(fd);
+		(void) unlink(lock);
+		pline("HACK is out of disk space for making levels!");
+		pline("You can save, quit, or continue playing.");
+		return;
+	}
+#endif
 	if(Punished) unplacebc();
 	u.utrap = 0;				/* needed in level_tele */
 	u.ustuck = 0;				/* idem */
@@ -151,20 +198,37 @@ register boolean at_stairs;
 	u.ux = FAR;				/* hack */
 	(void) inshop();			/* probably was a trapdoor */
 
+#ifdef DGK
+	savelev(fd,dlevel, WRITE);
+#else
 	savelev(fd,dlevel);
+#endif
 	(void) close(fd);
 
 	dlevel = newlevel;
 	if(maxdlevel < dlevel)
 		maxdlevel = dlevel;
 	glo(dlevel);
-
+#ifdef MSDOS
+	/* If the level has no where yet, it hasn't been made
+	 */
+	if(!fileinfo[dlevel].where)
+#else
 	if(!level_exists[dlevel])
+#endif
 		mklev();
 	else {
 		extern int hackpid;
+#ifdef DGK
+		/* If not currently accessible, swap it in.
+		 */
+		if (fileinfo[dlevel].where != ACTIVE)
+			swapin_file(dlevel);
 
+		if((fd = open(lock, O_RDONLY | O_BINARY)) < 0) {
+#else
 		if((fd = open(lock,0)) < 0) {
+#endif
 			pline("Cannot open %s .", lock);
 			pline("Probably someone removed it.");
 			done("tricked");
@@ -181,9 +245,11 @@ register boolean at_stairs;
 		    u.ux = xupstair;	/* this will confuse the player! */
 		    u.uy = yupstair;
 		}
-		if(Punished && !Levitation){
+/* Remove bug which crashes with levitation/punishment  KAA */
+		if(Punished) {
+		    if(!Levitation) 
 			pline("With great effort you climb the stairs.");
-			placebc(1);
+		    placebc(1);
 		}
 	    } else {
 		u.ux = xupstair;
@@ -232,207 +298,47 @@ register boolean at_stairs;
 	seeobjs();	/* make old cadavers disappear - riv05!a3 */
 	docrt();
 	pickup(1);
-	read_engr_at(u.ux,u.uy);
+	if (!Blind) read_engr_at(u.ux,u.uy);
 }
 
 donull() {
 	return(1);	/* Do nothing, but let other things happen */
 }
 
-dopray() {
-	nomovemsg = "You finished your prayer.";
-	nomul(-3);
-	return(1);
-}
-
-struct monst *bhit(), *boomhit();
-dothrow()
+#if defined(KAA) && defined(KOPS)
+wipeoff()
 {
-	register struct obj *obj;
-	register struct monst *mon;
-	register tmp;
-
-	obj = getobj("#)", "throw");   /* it is also possible to throw food */
-				       /* (or jewels, or iron balls ... ) */
-	if(!obj || !getdir(1))	       /* ask "in what direction?" */
-		return(0);
-	if(obj->owornmask & (W_ARMOR | W_RING)){
-		pline("You can't throw something you are wearing.");
-		return(0);
-	}
-
-	u_wipe_engr(2);
-
-	if(obj == uwep){
-		if(obj->cursed){
-			pline("Your weapon is welded to your hand.");
-			return(1);
+	u.ucreamed -= 4;
+	if(u.ucreamed > 0)  {
+		Blind -= 4;
+		if(Blind <= 1) {
+			pline("You've got the glop off.");
+			u.ucreamed = 0;
+			Blind = 1;
+			return(0);
 		}
-		if(obj->quan > 1)
-			setuwep(splitobj(obj, 1));
-		else
-			setuwep((struct obj *) 0);
+		return(1);		/* still busy */
 	}
-	else if(obj->quan > 1)
-		(void) splitobj(obj, 1);
-	freeinv(obj);
-	if(u.uswallow) {
-		mon = u.ustuck;
-		bhitpos.x = mon->mx;
-		bhitpos.y = mon->my;
-	} else if(u.dz) {
-	  if(u.dz < 0) {
-	    pline("%s hits the ceiling, then falls back on top of your head.",
-		Doname(obj));		/* note: obj->quan == 1 */
-	    if(obj->olet == POTION_SYM)
-		potionhit(&youmonst, obj);
-	    else {
-		if(uarmh) pline("Fortunately, you are wearing a helmet!");
-		losehp(uarmh ? 1 : rnd((int)(obj->owt)), "falling object");
-		dropy(obj);
-	    }
-	  } else {
-	    pline("%s hits the floor.", Doname(obj));
-	    if(obj->otyp == EXPENSIVE_CAMERA) {
-		pline("It is shattered in a thousand pieces!");
-		obfree(obj, Null(obj));
-	    } else if(obj->otyp == EGG) {
-		pline("\"Splash!\"");
-		obfree(obj, Null(obj));
-	    } else if(obj->olet == POTION_SYM) {
-		pline("The flask breaks, and you smell a peculiar odor ...");
-		potionbreathe(obj);
-		obfree(obj, Null(obj));
-	    } else {
-		dropy(obj);
-	    }
-	  }
-	  return(1);
-	} else if(obj->otyp == BOOMERANG) {
-		mon = boomhit(u.dx, u.dy);
-		if(mon == &youmonst) {		/* the thing was caught */
-			(void) addinv(obj);
-			return(1);
-		}
-	} else {
-		if(obj->otyp == PICK_AXE && shkcatch(obj))
-		    return(1);
-
-		mon = bhit(u.dx, u.dy, (obj->otyp == ICE_BOX) ? 1 :
-			(!Punished || obj != uball) ? 8 : !u.ustuck ? 5 : 1,
-			obj->olet,
-			(int (*)()) 0, (int (*)()) 0, obj);
+	pline("You're face feels clean now.");
+	u.ucreamed = 0;
+	return(0);
+}
+	
+dowipe()
+{
+	if(u.ucreamed)  {
+#ifdef DGKMOD
+		set_occupation(wipeoff, "wiping off your face", 0);
+#else
+		occupation = wipeoff;
+		occtxt = "wiping off your face";
+#endif
+		return(1);
 	}
-	if(mon) {
-		/* awake monster if sleeping */
-		wakeup(mon);
-
-		if(obj->olet == WEAPON_SYM) {
-			tmp = -1+u.ulevel+mon->data->ac+abon();
-			if(obj->otyp < ROCK) {
-				if(!uwep ||
-				    uwep->otyp != obj->otyp+(BOW-ARROW))
-					tmp -= 4;
-				else {
-					tmp += uwep->spe;
-				}
-			} else
-			if(obj->otyp == BOOMERANG) tmp += 4;
-			tmp += obj->spe;
-			if(u.uswallow || tmp >= rnd(20)) {
-				if(hmon(mon,obj,1) == TRUE){
-				  /* mon still alive */
-#ifndef NOWORM
-				  cutworm(mon,bhitpos.x,bhitpos.y,obj->otyp);
-#endif NOWORM
-				} else mon = 0;
-				/* weapons thrown disappear sometimes */
-				if(obj->otyp < BOOMERANG && rn2(3)) {
-					/* check bill; free */
-					obfree(obj, (struct obj *) 0);
-					return(1);
-				}
-			} else miss(objects[obj->otyp].oc_name, mon);
-		} else if(obj->otyp == HEAVY_IRON_BALL) {
-			tmp = -1+u.ulevel+mon->data->ac+abon();
-			if(!Punished || obj != uball) tmp += 2;
-			if(u.utrap) tmp -= 2;
-			if(u.uswallow || tmp >= rnd(20)) {
-				if(hmon(mon,obj,1) == FALSE)
-					mon = 0;	/* he died */
-			} else miss("iron ball", mon);
-		} else if(obj->olet == POTION_SYM && u.ulevel > rn2(15)) {
-			potionhit(mon, obj);
-			return(1);
-		} else {
-			if(cansee(bhitpos.x,bhitpos.y))
-				pline("You miss %s.",monnam(mon));
-			else pline("You miss it.");
-			if(obj->olet == FOOD_SYM && mon->data->mlet == 'd')
-				if(tamedog(mon,obj)) return(1);
-			if(obj->olet == GEM_SYM && mon->data->mlet == 'u' &&
-				!mon->mtame){
-			 if(obj->dknown && objects[obj->otyp].oc_name_known){
-			  if(objects[obj->otyp].g_val > 0){
-			    u.uluck += 5;
-			    goto valuable;
-			  } else {
-			    pline("%s is not interested in your junk.",
-				Monnam(mon));
-			  }
-			 } else { /* value unknown to @ */
-			    u.uluck++;
-			valuable:
-			    if(u.uluck > LUCKMAX)	/* dan@ut-ngp */
-				u.uluck = LUCKMAX;
-			    pline("%s graciously accepts your gift.",
-				Monnam(mon));
-			    mpickobj(mon, obj);
-			    rloc(mon);
-			    return(1);
-			 }
-			}
-		}
-	}
-		/* the code following might become part of dropy() */
-	if(obj->otyp == CRYSKNIFE)
-		obj->otyp = WORM_TOOTH;
-	obj->ox = bhitpos.x;
-	obj->oy = bhitpos.y;
-	obj->nobj = fobj;
-	fobj = obj;
-	/* prevent him from throwing articles to the exit and escaping */
-	/* subfrombill(obj); */
-	stackobj(obj);
-	if(Punished && obj == uball &&
-		(bhitpos.x != u.ux || bhitpos.y != u.uy)){
-		freeobj(uchain);
-		unpobj(uchain);
-		if(u.utrap){
-			if(u.utraptype == TT_PIT)
-				pline("The ball pulls you out of the pit!");
-			else {
-			    register long side =
-				rn2(3) ? LEFT_SIDE : RIGHT_SIDE;
-			    pline("The ball pulls you out of the bear trap.");
-			    pline("Your %s leg is severely damaged.",
-				(side == LEFT_SIDE) ? "left" : "right");
-			    set_wounded_legs(side, 500+rn2(1000));
-			    losehp(2, "thrown ball");
-			}
-			u.utrap = 0;
-		}
-		unsee();
-		uchain->nobj = fobj;
-		fobj = uchain;
-		u.ux = uchain->ox = bhitpos.x - u.dx;
-		u.uy = uchain->oy = bhitpos.y - u.dy;
-		setsee();
-		(void) inshop();
-	}
-	if(cansee(bhitpos.x, bhitpos.y)) prl(bhitpos.x,bhitpos.y);
+	pline("You're face is already clean.");
 	return(1);
 }
+#endif
 
 /* split obj so that it gets size num */
 /* remainder is put in the object structure delivered by this call */

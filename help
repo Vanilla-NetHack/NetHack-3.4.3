@@ -1,11 +1,11 @@
-	Welcome to HACK!		   ( description of version 1.0.3 )
+	Welcome to NetHack!		   ( description of version 1.0 )
 
-	Hack is a Dungeons and Dragons like game where you (the adventurer)
+	NetHack is a Dungeons and Dragons like game where you (the adventurer)
 descend into the depths of the dungeon in search of the Amulet of Yendor
-(reputed to be hidden on the twentieth level).  You are accompanied by a
+(reputed to be hidden on the twentieth level).	You are accompanied by a
 little dog that can help you in many ways and can be trained to do all
 sorts of things. On the way you will find useful (or useless) items, (quite
-possibly with magic properties) and assorted monsters.  You attack a monster
+possibly with magic properties) and assorted monsters.	You attack a monster
 by trying to move into the space a monster is in (but often it is much
 wiser to leave it alone).
 
@@ -16,7 +16,7 @@ your location, hack gives you a visual image of the dungeon level you are on.
 		A to Z and a to z:  monsters.  You can find out what a letter
 represents by saying "/ (letter)", as in "/A", which will tell you that 'A'
 is a giant ant.
-		- and |  These form the walls of a room (or maze).
+		- and |	 These form the walls of a room (or maze).
 		.  this is the floor of a room.
 		#  this is a corridor.
 		>  this is the staircase to the next level.
@@ -32,6 +32,11 @@ is a giant ant.
 		=  A ring.
 		?  A scroll.
 		!  A magic potion.
+		+  A spellbook containing a spell you can learn;
+		   (but usually a doorway).
+		}  A pool of water
+		{  A fountain (your dungeon may not have these).
+		\  An opulant throne (You may not have this either).
 		$  A pile or pot of gold.
 
 Commands:
@@ -51,9 +56,9 @@ Commands:
 	m	(followed by one of kjhlyubn): move without picking up
 		any objects.
 	M	(followed by one of KJHLYUBN): Move far, no pickup.
-	f	(followed by one of kjhlyubn): move until something
+	g	(followed by one of kjhlyubn): move until something
 		interesting is found.
-	F	(followed by one of KJHLYUBN): as previous, but forking
+	G	(followed by one of KJHLYUBN): as previous, but forking
 		of corridors is not considered interesting.
 	i	print your inventory.
 	I	print selected parts of your inventory, like in
@@ -84,6 +89,8 @@ Commands:
 	R	Remove Ring.
 	W	Wear armor.
 	P	Put on a ring.
+	X	transcribe (learn) a spell.
+	x	print a list of know spells.
 	z	zap a wand.
 	t	throw an object or shoot an arrow.
 	p	pay your shopping bill.
@@ -120,11 +127,11 @@ Commands:
 	as in "20s" or "40.".
 
 	At present, some information is displayed on the bottom line.
-	(It is expected that this information will go away in future versions.)
 	You see on what dungeon level you are, how many hit points you have
 	now (and will have when fully recovered), what your armor class is
 	(the lower the better), your strength, experience level and the
-	state of your stomach.
+	state of your stomach.	Optionally, you may or may not see other
+	information such as magical energy, how much gold you have, etc.
 
 	Have Fun, and Good Hacking!
 

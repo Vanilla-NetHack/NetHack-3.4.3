@@ -1,9 +1,10 @@
+/*	SCCS Id: @(#)worm.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.worm.c - version 1.0.2 */
+/* worm.c - version 1.0.2 */
 
 #include "hack.h"
 #ifndef NOWORM
-#include "def.wseg.h"
+#include "wseg.h"
 
 struct wseg *wsegs[32];	/* linked list, tail first */
 struct wseg *wheads[32];
@@ -120,7 +121,9 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 	/* cutting goes best with axe or sword */
 	tmp = rnd(20);
 	if(weptyp == LONG_SWORD || weptyp == TWO_HANDED_SWORD ||
-		weptyp == AXE) tmp += 5;
+	   weptyp == SCIMITAR || weptyp == SHORT_SWORD ||
+	   weptyp == BROAD_SWORD || weptyp == AXE || weptyp == KATANA)
+		tmp += 5;
 	if(tmp < 12) return;
 
 	/* if tail then worm just loses a tail segment */
@@ -160,6 +163,7 @@ register uchar weptyp;		/* uwep->otyp or 0 */
 				mtmp2->my = wtmp->wy;
 				mtmp2->nmon = fmon;
 				fmon = mtmp2;
+				unpmon(mtmp2);			/* MRS */
 				pmon(mtmp2);
 			} else {
 				pline("You cut off part of the worm's tail.");
@@ -180,4 +184,4 @@ remseg(wtmp) register struct wseg *wtmp; {
 		newsym(wtmp->wx, wtmp->wy);
 	free((char *) wtmp);
 }
-#endif NOWORM
+#endif /* NOWORM /**/

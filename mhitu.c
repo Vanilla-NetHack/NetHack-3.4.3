@@ -1,8 +1,12 @@
+/*	SCCS Id: @(#)mhitu.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mhitu.c - version 1.0.3 */
+/* mhitu.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct monst *makemon();
+#ifdef KAA
+extern char pl_character[];
+#endif
 
 /*
  * mhitu: monster hits you
@@ -33,18 +37,34 @@ register struct monst *mtmp;
 		switch(mdat->mlet) {	/* now mtmp == u.ustuck */
 		case ',':
 			youswld(mtmp, (u.uac > 0) ? u.uac+4 : 4,
-				5, "The trapper");
+				5, Monnam(mtmp));
 			break;
 		case '\'':
-			youswld(mtmp,rnd(6),7,"The lurker above");
+			youswld(mtmp,rnd(6),7,Monnam(mtmp));
 			break;
 		case 'P':
-			youswld(mtmp,d(2,4),12,"The purple worm");
+			youswld(mtmp,d(2,4),12,Monnam(mtmp));
 			break;
 		default:
 			/* This is not impossible! */
+#ifdef DGKMOD
+			/* If the swallowing monster changes into a monster
+			 * that is not capable of swallowing you, you get
+			 * regurgitated - dgk
+			 */
+			pline("You get regurgitated!");
+			u.ux = mtmp->mx;
+			u.uy = mtmp->my;
+			u.uswallow = 0;
+			u.ustuck = 0;
+			mnexto(mtmp);
+			setsee();
+			docrt();
+			break;
+#else
 			pline("The mysterious monster totally digests you.");
 			u.uhp = 0;
+#endif /* DGKMOD /**/
 		}
 		if(u.uhp < 1) done_in_by(mtmp);
 		return(0);
@@ -72,21 +92,13 @@ register struct monst *mtmp;
 		if(wiz_hit(mtmp)) return(1);	/* he disappeared */
 		break;
 	case '&':
-		if(!mtmp->cham && !mtmp->mcan && !rn2(13)) {
-			(void) makemon(PM_DEMON,u.ux,u.uy);
-		} else {
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,rnd(3));
-			(void) hitu(mtmp,rnd(3));
-			(void) hitu(mtmp,rn1(4,2));
-		}
+		demon_hit(mtmp);
 		break;
 	case ',':
-		if(tmp) justswld(mtmp,"The trapper");
+		if(tmp) justswld(mtmp,Monnam(mtmp));
 		break;
 	case '\'':
-		if(tmp) justswld(mtmp, "The lurker above");
+		if (tmp) justswld(mtmp,Monnam(mtmp));
 		break;
 	case ';':
 		if(ctmp) {
@@ -116,13 +128,17 @@ register struct monst *mtmp;
 		break;
 	case 'c':
 		if(!rn2(5)) {
+		    if (mtmp->mcan)
+			pline("You hear a cough from %s!", monnam(mtmp));
+		    else {
 			pline("You hear %s's hissing!", monnam(mtmp));
-			if(ctmp || !rn2(20) || (flags.moonphase == NEW_MOON
-			    && !carrying(DEAD_LIZARD))) {
+			if(!rn2(20) || (flags.moonphase == NEW_MOON
+			    && !carrying(DEAD_LIZARD) && u.usym != 'c')) {
 				Stoned = 5;
 				/* pline("You get turned to stone!"); */
 				/* done_in_by(mtmp); */
 			}
+		    }
 		}
 		break;
 	case 'D':
@@ -132,7 +148,7 @@ register struct monst *mtmp;
 			(void) hitu(mtmp,rnd(8));
 			break;
 		}
-		kludge("%s breathes fire!","The dragon");
+		kludge("%s breathes fire!",Monnam(mtmp));
 		buzz(-1,mtmp->mx,mtmp->my,u.ux-mtmp->mx,u.uy-mtmp->my);
 		break;
 	case 'd':
@@ -143,7 +159,7 @@ register struct monst *mtmp;
 		break;
 	case 'F':
 		if(mtmp->mcan) break;
-		kludge("%s explodes!","The freezing sphere");
+		kludge("%s explodes!", Monnam(mtmp));
 		if(Cold_resistance) pline("You don't seem affected by it.");
 		else {
 			xchar dn;
@@ -160,15 +176,21 @@ register struct monst *mtmp;
 		return(1);
 	case 'g':
 		if(ctmp && multi >= 0 && !rn2(3)) {
-			kludge("You are frozen by %ss juices","the cube'");
-			nomul(-rnd(10));
+		/* fix so we don't know what hit us when blind  KAA */
+		    if (Blind)
+			pline("You are frozen by its juices!");
+		    else
+			pline("You are frozen by %s's juices!",monnam(mtmp));
+		    nomul(-rnd(10));
 		}
 		break;
 	case 'h':
 		if(ctmp && multi >= 0 && !rn2(5)) {
-			nomul(-rnd(10));
-			kludge("You are put to sleep by %ss bite!",
-				"the homunculus'");
+		    nomul(-rnd(10));
+		    if (Blind)
+			pline("You are put to sleep by its bite!");
+		    else
+			pline("You are put to sleep by %s's bite!",monnam(mtmp));
 		}
 		break;
 	case 'j':
@@ -185,11 +207,25 @@ register struct monst *mtmp;
 		}
 		break;
 	case 'L':
-		if(tmp) stealgold(mtmp);
+#ifdef KAA
+		if (u.usym=='L') break;
+#endif
+		if(!mtmp->mcan && tmp) stealgold(mtmp);
 		break;
 	case 'N':
+#ifdef KAA
+		if (u.usym=='N') {
+			if (mtmp->minvent)
+	pline("%s brags about the goods some dungeon explorer provided.",
+	Monnam(mtmp));
+			else
+	pline("%s makes some remarks about how difficult theft is lately.",
+	Monnam(mtmp));
+			rloc(mtmp);
+		} else
+#endif
 		if(mtmp->mcan && !Blind) {
-	pline("%s tries to seduce you, but you seem not interested.",
+		pline("%s tries to seduce you, but you seem not interested.",
 			Amonnam(mtmp, "plain"));
 			if(rn2(3)) rloc(mtmp);
 		} else if(steal(mtmp)) {
@@ -198,7 +234,11 @@ register struct monst *mtmp;
 		}
 		break;
 	case 'n':
-		if(!uwep && !uarm && !uarmh && !uarms && !uarmg) {
+		if(!uwep
+#ifdef KAA
+		   && u.usym == '@'
+#endif
+		   && !uarm && !uarmh && !uarms && !uarmg) {
 		    pline("%s hits! (I hope you don't mind)",
 			Monnam(mtmp));
 			u.uhp += rnd(7);
@@ -207,8 +247,17 @@ register struct monst *mtmp;
 			flags.botl = 1;
 			if(!rn2(50)) rloc(mtmp);
 		} else {
-			(void) hitu(mtmp,d(2,6));
-			(void) hitu(mtmp,d(2,6));
+#ifdef KAA
+			if (pl_character[0] == 'P' && u.usym == '@') {
+			    if (!(moves % 5))
+				pline("Doc, I can't help you unless you cooperate.");
+			} else {
+#endif
+				(void) hitu(mtmp,d(2,6));
+				(void) hitu(mtmp,d(2,6));
+#ifdef KAA
+			}
+#endif
 		}
 		break;
 	case 'o':
@@ -216,26 +265,33 @@ register struct monst *mtmp;
 		if(hitu(mtmp,rnd(6)) && tmp &&	/* hits with both paws */
 		    !u.ustuck && rn2(2)) {
 			u.ustuck = mtmp;
-			kludge("%s has grabbed you!","The owlbear");
-			u.uhp -= d(2,8);
+			kludge("%s has grabbed you!", Monnam(mtmp));
+			losehp_m(d(2,8), mtmp);
 		} else if(u.ustuck == mtmp) {
-			u.uhp -= d(2,8);
+			losehp_m(d(2,8), mtmp);
 			pline("You are being crushed.");
 		}
 		break;
 	case 'P':
 		if(ctmp && !rn2(4))
-			justswld(mtmp,"The purple worm");
+			justswld(mtmp,Monnam(mtmp));
 		else
 			(void) hitu(mtmp,d(2,4));
 		break;
 	case 'Q':
+#ifdef KAA
+		if(ctmp) {
+			pline("Your position suddenly seems very uncertain!");
+			tele();
+		}
+#else
 		(void) hitu(mtmp,rnd(2));
 		(void) hitu(mtmp,rnd(2));
+#endif
 		break;
 	case 'R':
-		if(tmp && uarmh && !uarmh->rustfree &&
-		    (int) uarmh->spe >= -1) {
+		if(ctmp && uarmh && !uarmh->rustfree &&
+		   (int) uarmh->spe >= -1) {
 			pline("Your helmet rusts!");
 			uarmh->spe--;
 		} else
@@ -252,7 +308,7 @@ register struct monst *mtmp;
 		}
 		break;
 	case 's':
-		if(tmp && !rn2(8)) {
+		if(ctmp && !rn2(8)) {
 			poisoned("scorpion's sting",mdat->mname);
 		}
 		(void) hitu(mtmp,rnd(8));
@@ -276,7 +332,7 @@ register struct monst *mtmp;
 		if(ctmp && !u.ustuck) u.ustuck = mtmp;
 		break;
 	case 'V':
-		if(tmp) u.uhp -= 4;
+		if(tmp)  losehp_m(4, mtmp);
 		if(ctmp) losexp();
 		break;
 	case 'W':
@@ -285,7 +341,7 @@ register struct monst *mtmp;
 #ifndef NOWORM
 	case 'w':
 		if(tmp) wormhit(mtmp);
-#endif NOWORM
+#endif
 		break;
 	case 'X':
 		(void) hitu(mtmp,rnd(5));
@@ -294,16 +350,25 @@ register struct monst *mtmp;
 		break;
 	case 'x':
 		{ register long side = rn2(2) ? RIGHT_SIDE : LEFT_SIDE;
-		  pline("%s pricks in your %s leg!",
-			Monnam(mtmp), (side == RIGHT_SIDE) ? "right" : "left");
-		  set_wounded_legs(side, rnd(50));
-		  losehp_m(2, mtmp);
+#ifdef KAA
+		  if (mtmp->mcan)
+		    pline("%s nuzzles against your %s leg!",
+			  Monnam(mtmp), (side==RIGHT_SIDE)?"right":"left");
+		  else {
+#endif
+		    pline("%s pricks your %s leg!",
+			  Monnam(mtmp), (side==RIGHT_SIDE)?"right":"left");
+		    set_wounded_legs(side, rnd(50));
+		    losehp_m(2, mtmp);
+#ifdef KAA
+		  }
+#endif
 		  break;
 		}
 	case 'y':
 		if(mtmp->mcan) break;
 		mondead(mtmp);
-		if(!Blind) {
+		if(!Blind && (u.usym != 'y')) {
 			pline("You are blinded by a blast of light!");
 			Blind = d(4,12);
 			seeoff(0);
@@ -324,6 +389,8 @@ register dam;
 	register tmp, res;
 
 	nomul(0);
+	if (mtmp->mfroz || mtmp->mhp <= 0) return(0);
+	/* If you are a 'a' or 'E' the monster might not get a second hit */
 	if(u.uswallow) return(0);
 
 	if(mtmp->mhide && mtmp->mundetected) {
@@ -355,9 +422,146 @@ register dam;
 	} else {
 		if(Blind) pline("It hits!");
 		else pline("%s hits!",Monnam(mtmp));
+		if (u.usym == 'a' && !rn2(4)) {
+			pline("%s is splashed by your acid!",Monnam(mtmp));
+			mtmp->mhp -= rnd(10);
+			if(mtmp->mhp <= 0) {
+				pline("%s dies!",Monnam(mtmp));
+				xkilled(mtmp,0);
+			}
+		}
 		losehp_m(dam, mtmp);
 		res = 1;
 	}
 	stop_occupation();
+	if(u.usym=='E' && mtmp->mcansee && rn2(2)) {
+		pline("%s is frozen by your gaze!",Monnam(mtmp));
+		mtmp->mfroz = 1;
+	}
 	return(res);
 }
+
+#define	Athome	(Inhell && !mtmp->cham)
+
+#ifdef HARD
+demon_talk(mtmp)		/* returns 1 if we pay him off. */
+register struct monst *mtmp;
+{
+	char	*xmonnam(), *Xmonnam();
+	int	demand, offer;
+
+	if(!strcmp(mtmp->data->mname, "demon")) {  /* not for regular '&'s */
+
+	    pline("%s mutters something about awful working conditions.",
+		  Xmonnam(mtmp));
+	    return(0);
+	}
+
+	if(u.usym == '&') {	/* Won't blackmail their own. */
+
+	    pline("%s says, 'Good hunting %s.' and vanishes",
+		  Xmonnam(mtmp), flags.female ? "Sister" : "Brother");
+	    mondead(mtmp);
+	    return(1);
+	}
+
+	demand = (u.ugold * (rnd(80) + 20 * Athome)) / 100;
+	if(!demand)  {		/* you have no gold */
+	    mtmp->mpeaceful = 0;
+	    return(0);
+	} else {
+	    char buf[80];
+
+	    pline("%s demands %d Zorkmids for safe passage.",
+		  Xmonnam(mtmp), demand);
+	    pline("how many will you offer him?");
+	    getlin(buf);
+	    sscanf(buf, "%d", &offer);
+
+	    if(offer >= u.ugold) {
+		pline("You give %s all your gold.", xmonnam(mtmp));
+		offer = u.ugold;
+	    } else pline("You give %s %d Zorkmids.", xmonnam(mtmp), offer);
+	    u.ugold -= offer;
+
+	    if(offer >= demand) {
+		pline("%s vanishes laughing about cowardly mortals.",
+		      Xmonnam(mtmp));
+	    } else {
+		if(rnd(40) > (demand - offer)) {
+		    pline("%s scowls at you menacingly, then vanishes.",
+			  Xmonnam(mtmp));
+		} else {
+		    pline("%s gets angry...", Xmonnam(mtmp));
+		    mtmp->mpeaceful = 0;
+		    return(0);
+		}
+	    }
+	}
+	mondead(mtmp);
+	return(1);
+}
+#endif
+
+demon_hit(mtmp)
+register struct monst *mtmp;
+{
+	register struct	obj	*otmp;
+	int	onum, nobj = 0,
+		ml = mtmp->data->mlevel;
+
+	if(!mtmp->cham && !mtmp->mcan && !rn2(13)) {
+		(void) makemon(PM_DEMON,u.ux,u.uy);
+	} else {
+	    switch((!mtmp->mcan) ? rn2(ml - 5 - !Athome) : 0)   {
+#ifdef HARD
+		case 12:
+		case 11:
+		case 10:
+		case 9:			/* the wiz */
+			(void) hitu(mtmp, 1);
+			pline("Oh no, he's using the touch of death!");
+			if (rn2(ml) > 12)  {
+
+			    if(Confusion)
+				pline("You have an out of body experience.");
+			    else  {
+				killer = "touch of death";
+				done("died");
+			    }
+			} else pline("Lucky for you, it didn't work!");
+			break;
+		case 8:			/* demon princes */
+			(void) hitu(mtmp, 1);
+			if(!destroy_arm()) pline("Your skin itches.");
+			break;
+		case 7:
+			(void) hitu(mtmp, 1);
+			for (otmp = invent; otmp; otmp = otmp->nobj)  nobj++;
+			onum = rn2(nobj);
+			for(otmp = invent; onum != 0; onum--) otmp = otmp->nobj;
+			otmp->cursed++;
+			break;
+		case 6:			/* demon lords */
+			(void) hitu(mtmp, 1);
+			pline("You suddenly feel weaker!");
+			losestr(rnd(ml - 6));
+			break;
+		case 5:
+			(void) hitu(mtmp, 1);
+			if (Confusion)	pline("Hey, that tickles!");
+			else		pline("Huh, What? Where am I?");
+			HConfusion += rn1(7, 16);
+			break;
+#endif /* HARD /**/
+		default:		/* demons and chamelons as demons */
+			(void) hitu(mtmp,d(2,5 + Athome));
+			(void) hitu(mtmp,d(2,5 + Athome));
+			(void) hitu(mtmp,rnd(2 + Athome));
+			(void) hitu(mtmp,rnd(2 + Athome));
+			(void) hitu(mtmp,rn1(4,1 + Athome));
+			break;
+	    }
+	}
+	return(0);
+} 

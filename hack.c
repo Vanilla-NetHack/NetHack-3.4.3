@@ -1,9 +1,11 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* hack.c - version 1.0.3 */
 
-#include "hack.h"
 #include <stdio.h>
-
+#include "hack.h"
+#ifdef UNIX
+static	char	SCCS_Id[] = "@(#)hack.c	1.3\t87/07/14";
+#endif
 extern char news0();
 extern char *nomovemsg;
 extern char *exclam();
@@ -29,12 +31,16 @@ unsee() {
 	if(seehx){
 		seehx = 0;
 	} else
-#endif QUEST
+#endif
 	for(x = u.ux-1; x < u.ux+2; x++)
 	  for(y = u.uy-1; y < u.uy+2; y++) {
 		if(!isok(x, y)) continue;
 		lev = &levl[x][y];
+#ifdef DGK
+		if(!lev->lit && lev->scrsym == symbol.room) {
+#else
 		if(!lev->lit && lev->scrsym == '.') {
+#endif
 			lev->scrsym =' ';
 			lev->new = 1;
 			on_scr(x,y);
@@ -43,12 +49,16 @@ unsee() {
 }
 
 /* called:
-	in hack.eat.c: seeoff(0) - blind after eating rotten food
-	in hack.mon.c: seeoff(0) - blinded by a yellow light
-	in hack.mon.c: seeoff(1) - swallowed
-	in hack.do.c:  seeoff(0) - blind after drinking potion
-	in hack.do.c:  seeoff(1) - go up or down the stairs
-	in hack.trap.c:seeoff(1) - fall through trapdoor
+	in apply.c:  seeoff(0) - when taking a picture of yourself
+	in do.c:     seeoff(0) - blind after drinking potion
+	in do.c:     seeoff(1) - go up or down the stairs
+	in eat.c:    seeoff(0) - blind after eating rotten food
+	in mhitu.c:  seeoff(0) - blinded by a yellow light
+	in mon.c:    seeoff(1) - swallowed
+	in potion.c: seeoff(0) - quaffing or sniffing a potion of blindness
+	in spell.c:  seeoff(0) - due to a cursed spellbook
+	in trap.c:   seeoff(1) - fall through trapdoor
+	in wizard.c: seeoff(0) - hit by a cream pie.
  */
 seeoff(mode)	/* 1 to redo @, 0 to leave them */
 {	/* 1 means misc movement, 0 means blindness */
@@ -63,100 +73,31 @@ seeoff(mode)	/* 1 to redo @, 0 to leave them */
 	if(seehx) {
 		seehx = 0;
 	} else
-#endif QUEST
+#endif
 	if(!mode) {
 		for(x = u.ux-1; x < u.ux+2; x++)
 			for(y = u.uy-1; y < u.uy+2; y++) {
 				if(!isok(x, y)) continue;
 				lev = &levl[x][y];
+#ifdef DGK
+				if(!lev->lit && lev->scrsym == symbol.room)
+#else
 				if(!lev->lit && lev->scrsym == '.')
+#endif
 					lev->seen = 0;
 			}
 	}
 }
 
-domove()
-{
-	xchar oldx,oldy;
-	register struct monst *mtmp;
-	register struct rm *tmpr,*ust;
-	struct trap *trap;
+static
+moverock() {
+	register xchar rx, ry;
 	register struct obj *otmp;
+	register struct trap *ttmp;
 
-	u_wipe_engr(rnd(5));
-
-	if(inv_weight() > 0){
-		pline("You collapse under your load.");
-		nomul(0);
-		return;
-	}
-	if(u.uswallow) {
-		u.dx = u.dy = 0;
-		u.ux = u.ustuck->mx;
-		u.uy = u.ustuck->my;
-	} else {
-		if(Confusion) {
-			do {
-				confdir();
-			} while(!isok(u.ux+u.dx, u.uy+u.dy) ||
-    IS_ROCK(levl[u.ux+u.dx][u.uy+u.dy].typ));
-		}
-		if(!isok(u.ux+u.dx, u.uy+u.dy)){
-			nomul(0);
-			return;
-		}
-	}
-
-	ust = &levl[u.ux][u.uy];
-	oldx = u.ux;
-	oldy = u.uy;
-	if(!u.uswallow && (trap = t_at(u.ux+u.dx, u.uy+u.dy)) && trap->tseen)
-		nomul(0);
-	if(u.ustuck && !u.uswallow && (u.ux+u.dx != u.ustuck->mx ||
-		u.uy+u.dy != u.ustuck->my)) {
-		if(dist(u.ustuck->mx, u.ustuck->my) > 2){
-			/* perhaps it fled (or was teleported or ... ) */
-			u.ustuck = 0;
-		} else {
-			if(Blind) pline("You cannot escape from it!");
-			else pline("You cannot escape from %s!",
-				monnam(u.ustuck));
-			nomul(0);
-			return;
-		}
-	}
-	if(u.uswallow || (mtmp = m_at(u.ux+u.dx,u.uy+u.dy))) {
-	/* attack monster */
-
-		nomul(0);
-		gethungry();
-		if(multi < 0) return;	/* we just fainted */
-
-		/* try to attack; note that it might evade */
-		if(attack(u.uswallow ? u.ustuck : mtmp))
-			return;
-	}
-	/* not attacking an animal, so we try to move */
-	if(u.utrap) {
-		if(u.utraptype == TT_PIT) {
-			pline("You are still in a pit.");
-			u.utrap--;
-		} else {
-			pline("You are caught in a beartrap.");
-			if((u.dx && u.dy) || !rn2(5)) u.utrap--;
-		}
- return;
-	}
-	tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
-	if(IS_ROCK(tmpr->typ) ||
-	   (u.dx && u.dy && (tmpr->typ == DOOR || ust->typ == DOOR))){
-		flags.move = 0;
-		nomul(0);
-		return;
-	}
 	while(otmp = sobj_at(ENORMOUS_ROCK, u.ux+u.dx, u.uy+u.dy)) {
-		register xchar rx = u.ux+2*u.dx, ry = u.uy+2*u.dy;
-		register struct trap *ttmp;
+		rx = u.ux+2*u.dx;
+		ry = u.uy+2*u.dy;
 		nomul(0);
 		if(isok(rx,ry) && !IS_ROCK(levl[rx][ry].typ) &&
 		    (levl[rx][ry].typ != DOOR || !(u.dx && u.dy)) &&
@@ -204,15 +145,117 @@ domove()
 		} else {
 		    pline("You try to move the enormous rock, but in vain.");
 	    cannot_push:
+#ifdef KAA
+		    if (u.usym=='9') {
+# ifdef DGKMOD
+			if(!flags.pickup)
+				pline("You easily can push it aside.");
+			else
+# endif
+				pline("However, you easily can pick it up.");
+			break;
+		    }
+#endif
 		    if((!invent || inv_weight()+90 <= 0) &&
 			(!u.dx || !u.dy || (IS_ROCK(levl[u.ux][u.uy+u.dy].typ)
 					&& IS_ROCK(levl[u.ux+u.dx][u.uy].typ)))){
 			pline("However, you can squeeze yourself into a small opening.");
 			break;
 		    } else
+			return (-1);
+		}
+	}
+	return (0);
+}
+
+domove()
+{
+	register struct monst *mtmp;
+	register struct rm *tmpr,*ust;
+	struct trap *trap;
+	register struct obj *otmp;
+
+	u_wipe_engr(rnd(5));
+
+	if(inv_weight() > 0){
+		pline("You collapse under your load.");
+		nomul(0);
+		return;
+	}
+	if(u.uswallow) {
+		u.dx = u.dy = 0;
+		u.ux = u.ustuck->mx;
+		u.uy = u.ustuck->my;
+	} else {
+		if(Confusion) {
+			do {
+				confdir();
+			} while(!isok(u.ux+u.dx, u.uy+u.dy) ||
+			    IS_ROCK(levl[u.ux+u.dx][u.uy+u.dy].typ));
+		}
+		if(!isok(u.ux+u.dx, u.uy+u.dy)){
+			nomul(0);
 			return;
 		}
-	    }
+	}
+
+	ust = &levl[u.ux][u.uy];
+	u.ux0 = u.ux;
+	u.uy0 = u.uy;
+	if(!u.uswallow && (trap = t_at(u.ux+u.dx, u.uy+u.dy)) && trap->tseen)
+		nomul(0);
+	if(u.ustuck && !u.uswallow && (u.ux+u.dx != u.ustuck->mx ||
+		u.uy+u.dy != u.ustuck->my)) {
+		if(dist(u.ustuck->mx, u.ustuck->my) > 2){
+			/* perhaps it fled (or was teleported or ... ) */
+			u.ustuck = 0;
+		} else {
+			if(Blind) pline("You cannot escape from it!");
+			else pline("You cannot escape from %s!",
+				monnam(u.ustuck));
+			nomul(0);
+			return;
+		}
+	}
+	if(u.uswallow || (mtmp = m_at(u.ux+u.dx,u.uy+u.dy))) {
+	/* attack monster */
+
+#ifdef SAFE_ATTACK
+		/* Don't attack if you're running */
+		if (flags.run && !mtmp->mimic
+		&& (Blind ? Telepat : (!mtmp->minvis || See_invisible))) {
+			nomul(0);
+			flags.move = 0;
+			return;
+		}
+#endif
+		nomul(0);
+		gethungry();
+		if(multi < 0) return;	/* we just fainted */
+
+		/* try to attack; note that it might evade */
+		if(attack(u.uswallow ? u.ustuck : mtmp))
+			return;
+	}
+	/* not attacking an animal, so we try to move */
+	if(u.utrap) {
+		if(u.utraptype == TT_PIT) {
+			pline("You are still in a pit.");
+			u.utrap--;
+		} else {
+			pline("You are caught in a beartrap.");
+			if((u.dx && u.dy) || !rn2(5)) u.utrap--;
+		}
+		return;
+	}
+	tmpr = &levl[u.ux+u.dx][u.uy+u.dy];
+	if(IS_ROCK(tmpr->typ) ||
+	   (u.dx && u.dy && (tmpr->typ == DOOR || ust->typ == DOOR))){
+		flags.move = 0;
+		nomul(0);
+		return;
+	}
+	if(moverock() < 0) return;
 	if(u.dx && u.dy && IS_ROCK(levl[u.ux][u.uy+u.dy].typ) &&
 		IS_ROCK(levl[u.ux+u.dx][u.uy].typ) &&
 		invent && inv_weight()+40 > 0) {
@@ -253,7 +296,14 @@ domove()
 	if(flags.run) {
 		if(tmpr->typ == DOOR ||
 		(xupstair == u.ux && yupstair == u.uy) ||
-		(xdnstair == u.ux && ydnstair == u.uy))
+		(xdnstair == u.ux && ydnstair == u.uy)
+#ifdef FOUNTAINS
+		|| IS_FOUNTAIN(levl[u.ux][u.uy].typ)
+#endif
+#ifdef NEWCLASS
+		|| IS_THRONE(levl[u.ux][u.uy].typ)
+#endif
+		)
 			nomul(0);
 	}
 
@@ -263,7 +313,7 @@ domove()
 /*
 	if(u.udispl) {
 		u.udispl = 0;
-		newsym(oldx,oldy);
+		newsym(u.ux0,u.uy0);
 	}
 */
 	if(!Blind) {
@@ -275,7 +325,7 @@ domove()
 				if(tmpr->typ == DOOR)
 					prl1(u.ux+u.dx,u.uy+u.dy);
 				else if(ust->typ == DOOR)
-					nose1(oldx-u.dx,oldy-u.dy);
+					nose1(u.ux0-u.dx,u.uy0-u.dy);
 			} else {
 				unsee();
 				prl1(u.ux+u.dx,u.uy+u.dy);
@@ -294,11 +344,11 @@ domove()
 					}
 				}
 			}
- nose1(oldx-u.dx,oldy-u.dy);
+			nose1(u.ux0-u.dx,u.uy0-u.dy);
 		}
- #endif QUEST
+#endif /* QUEST /**/
 	} else {
- pru();
+		pru();
 	}
 	if(!flags.nopick) pickup(1);
 	if(trap) dotrap(trap);		/* fall into pit, arrow trap, etc. */
@@ -320,6 +370,12 @@ register int ox, oy;
 }
 
 dopickup(){
+	/* uswallow case added by GAN 01/29/87 */
+	if(u.uswallow)  {
+		pline("You pick up %s's tongue.",monnam(u.ustuck));
+		pline("But it's kind of slimy, so you drop it.");
+		return(1);
+	}
 	if(!g_at(u.ux,u.uy) && !o_at(u.ux,u.uy)) {
 		pline("There is nothing here to pick up.");
 		return(0);
@@ -337,8 +393,49 @@ pickup(all)
 	register struct gold *gold;
 	register struct obj *obj, *obj2;
 	register int wt;
+	char buf[BUFSZ];
+	register char *ip;
+	register char sym;
+	register int oletct = 0, iletct = 0;
+	char olets[20], ilets[20];
 
 	if(Levitation) return;
+#ifdef DGKMOD
+	if (all && !flags.pickup) {
+		int ct = 0;
+
+		for (obj = fobj; obj; obj = obj->nobj)
+			if (obj->ox == u.ux && obj->oy == u.uy)
+				if (!Punished || obj != uchain)
+					ct++;
+		/* If gold is the only thing here, pick it up.
+		 */
+		if (!ct && g_at(u.ux, u.uy)) {
+			if (flags.run) nomul(0);
+			while (gold = g_at(u.ux,u.uy)) {
+				pline("%ld gold piece%s.", gold->amount,
+					plur(gold->amount));
+				u.ugold += gold->amount;
+				flags.botl = 1;
+				freegold(gold);
+			}
+			if (Invisible) newsym(u.ux,u.uy);
+		}
+
+		/* If there are objects here, take a look.
+		 */
+		if (ct) {
+			if (flags.run)
+				nomul(0);
+			nscr();
+			if (ct < 5)
+				dolook();
+			else
+				pline("There are several objects here.");
+		}
+		return;
+	}
+#endif
 	while(gold = g_at(u.ux,u.uy)) {
 		pline("%ld gold piece%s.", gold->amount, plur(gold->amount));
 		u.ugold += gold->amount;
@@ -347,33 +444,96 @@ pickup(all)
 		if(flags.run) nomul(0);
 		if(Invisible) newsym(u.ux,u.uy);
 	}
-
 	/* check for more than one object */
 	if(!all) {
 		register int ct = 0;
 
 		for(obj = fobj; obj; obj = obj->nobj)
-			if(obj->ox == u.ux && obj->oy == u.uy)
-				if(!Punished || obj != uchain)
-					ct++;
+			if(obj->ox == u.ux && obj->oy == u.uy) ct++;
+		if(g_at(u.ux,u.uy))
+			ct++;
 		if(ct < 2)
 			all++;
 		else
 			pline("There are several objects here.");
 	}
 
+	/* added by GAN 10/24/86 to allow selective picking up */
+	if(!all)  {
+		register struct obj *otmp = fobj;
+
+		if(g_at(u.ux,u.uy)) ilets[iletct++] = '$';
+		ilets[iletct] = 0;
+		while(otmp) {
+			if(!index(ilets, otmp->olet) &&
+			   otmp->ox == u.ux && otmp->oy == u.uy)  {
+				ilets[iletct++] = otmp->olet;
+				ilets[iletct] = 0;
+			}
+			otmp = otmp->nobj;
+		}        
+		if(iletct == 1)
+			strcpy(buf,ilets);
+		else  {
+			ilets[iletct++] = ' ';
+			ilets[iletct++] = 'a';
+			ilets[iletct++] = 'A';
+			ilets[iletct] = 0;
+
+			if(iletct = 3)    
+			pline("What kinds of thing do you want to pick up? [%s]", ilets);
+			getlin(buf);
+			if(buf[0] == '\033') {
+				clrlin();
+				return(0);
+			}
+		}
+		ip = buf;
+		olets[0] = 0;
+		while(sym = *ip++){
+			/* new A function (selective all) added by
+			 * GAN 01/09/87
+			 */
+			if(sym == 'A')  {
+				for(oletct = 0; ilets[oletct] != ' '; oletct++)
+					olets[oletct] = ilets[oletct];
+				olets[oletct] = 0;
+				break;
+			}
+			if(sym == ' ') continue;
+			if(sym == 'a') all++; else
+			if(index(ilets, sym)){
+				if(!index(olets, sym)){
+					olets[oletct++] = sym;
+					olets[oletct] = 0;
+				}
+			}
+			else pline("There are no %c's here.", sym);
+		}        
+	}
+
+	if(all || index(olets,'$'))
+		while(gold = g_at(u.ux,u.uy)) {
+			pline("%ld gold piece%s.", gold->amount,
+			   plur(gold->amount));
+			u.ugold += gold->amount;
+			flags.botl = 1;
+			freegold(gold);
+			if(flags.run) nomul(0);
+			if(Invis) newsym(u.ux,u.uy);
+	}
+
+
 	for(obj = fobj; obj; obj = obj2) {
-	    obj2 = obj->nobj;	/* perhaps obj will be picked up */
+	    obj2 = obj->nobj;   /* perhaps obj will be picked up */
 	    if(obj->ox == u.ux && obj->oy == u.uy) {
 		if(flags.run) nomul(0);
 
-		/* do not pick up uchain */
-		if(Punished && obj == uchain)
-			continue;
-
-		if(!all) {
+		if(!all)  {
 			char c;
-
+		       
+			if(!index(olets,obj->olet)) continue;
+ 
 			pline("Pick up %s ? [ynaq]", doname(obj));
 			while(!index("ynaq ", (c = readchar())))
 				bell();
@@ -381,27 +541,38 @@ pickup(all)
 			if(c == 'n') continue;
 			if(c == 'a') all = 1;
 		}
-
-		if(obj->otyp == DEAD_COCKATRICE && !uarmg){
+ 
+		if(obj->otyp == DEAD_COCKATRICE && !uarmg && u.usym != 'c') {
 		    pline("Touching the dead cockatrice is a fatal mistake.");
 		    pline("You turn to stone.");
+		    pline("You die...");
 		    killer = "cockatrice cadaver";
 		    done("died");
-		}
-
+		}        
+ 
 		if(obj->otyp == SCR_SCARE_MONSTER){
 		  if(!obj->spe) obj->spe = 1;
 		  else {
 		    /* Note: perhaps the 1st pickup failed: you cannot
 			carry anymore, and so we never dropped it -
-			let's assume that treading on it twice also
+			lets assume that treading on it twice also
 			destroys the scroll */
 		    pline("The scroll turns to dust as you pick it up.");
+#ifdef KAA
+			if(!(objects[SCR_SCARE_MONSTER].oc_name_known) &&
+			   !(objects[SCR_SCARE_MONSTER].oc_uname))
+				docall(obj);
+#endif
 		    delobj(obj);
 		    continue;
 		  }
 		}
+		   
+		/* do not pick up uchain */
+		if(Punished && obj == uchain)
+			continue;
 
+				  
 		wt = inv_weight() + obj->owt;
 		if(wt > 0) {
 			if(obj->quan > 1) {
@@ -423,24 +594,25 @@ pickup(all)
 					(qq == 1) ? "one" : "some",
 					doname(obj));
 				(void) splitobj(obj, qq);
-				/* note: obj2 is set already, so we'll never
+				/* note: obj2 is set already, so well never
 				 * encounter the other half; if it should be
 				 * otherwise then write
-				 *	obj2 = splitobj(obj,qq);
+				 *      obj2 = splitobj(obj,qq);
 				 */
 				goto lift_some;
-			}
+			}          
 		too_heavy:
 			pline("There %s %s here, but %s.",
 				(obj->quan == 1) ? "is" : "are",
 				doname(obj),
 				!invent ? "it is too heavy for you to lift"
-					: "you cannot carry anymore");
+				/* There is no such word as "anymore". KAA */
+					: "you cannot carry any more");
 			break;
 		}
 	lift_some:
 		if(inv_cnt() >= 52) {
-		    pline("Your knapsack cannot accomodate anymore items.");
+		    pline("Your knapsack cannot accomodate any more items.");
 		    break;
 		}
 		if(wt > -5) pline("You have a little trouble lifting");
@@ -449,15 +621,19 @@ pickup(all)
 		addtobill(obj);       /* sets obj->unpaid if necessary */
 		{ int pickquan = obj->quan;
 		  int mergquan;
-		if(!Blind) obj->dknown = 1;	/* this is done by prinv(),
+#ifdef KAA
+		if(!Blind) if(obj->olet != WEAPON_SYM) obj->dknown = 1;
+#else
+		if(!Blind) obj->dknown = 1;     /* this is done by prinv(),
 				 but addinv() needs it already for merging */
+#endif
 		obj = addinv(obj);    /* might merge it with other objects */
 		  mergquan = obj->quan;
-		  obj->quan = pickquan;	/* to fool prinv() */
+		  obj->quan = pickquan; /* to fool prinv() */
 		prinv(obj);
 		  obj->quan = mergquan;
 		}
-  }
+	    }
 	}
 }
 
@@ -471,12 +647,12 @@ register struct monst *mtmp;
 #ifdef lint
 	/* suppress "used before set" message */
 	x0 = y0 = 0;
-#endif lint
+#endif
 	if(Blind || flags.run == 0) return;
 	if(flags.run == 1 && levl[u.ux][u.uy].typ == ROOM) return;
 #ifdef QUEST
 	if(u.ux0 == u.ux+u.dx && u.uy0 == u.uy+u.dy) goto stop;
-#endif QUEST
+#endif
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++){
 		if(x == u.ux && y == u.uy) continue;
 		if(!levl[x][y].typ) continue;
@@ -486,6 +662,46 @@ register struct monst *mtmp;
 				goto stop;
 		} else mtmp = 0; /* invisible M cannot influence us */
 		if(x == u.ux-u.dx && y == u.uy-u.dy) continue;
+#ifdef DGK
+		{
+		register uchar sym = levl[x][y].scrsym;
+
+		if (sym == symbol.vwall || sym == symbol.hwall
+			|| sym == symbol.room || sym == ' ' || IS_CORNER(sym))
+			continue;
+		else if (sym == symbol.door) {
+			if(x != u.ux && y != u.uy) continue;
+			if(flags.run != 1) goto stop;
+			goto corr;
+		} else if (sym == symbol.corr) {
+		corr:
+			if(flags.run == 1 || flags.run == 3) {
+				i = DIST(x,y,u.ux+u.dx,u.uy+u.dy);
+				if(i > 2) continue;
+				if(corrct == 1 && DIST(x,y,x0,y0) != 1)
+					noturn = 1;
+				if(i < i0) {
+					i0 = i;
+					x0 = x;
+					y0 = y;
+					m0 = mtmp ? 1 : 0;
+				}
+			}
+			corrct++;
+			continue;
+		} else if (sym == '^') {
+			if(flags.run == 1) goto corr;	/* if you must */
+			if(x == u.ux+u.dx && y == u.uy+u.dy) goto stop;
+			continue;
+		} else {		/* e.g. objects or trap or stairs */
+			if(flags.run == 1) goto corr;
+			if(mtmp) continue;		/* d */
+		}
+		stop:
+			nomul(0);
+			return;
+		}
+#else
 		switch(levl[x][y].scrsym){
 		case '|':
 		case '-':
@@ -523,10 +739,11 @@ register struct monst *mtmp;
 			nomul(0);
 			return;
 		}
+#endif
 	}
 #ifdef QUEST
 	if(corrct > 0 && (flags.run == 4 || flags.run == 5)) goto stop;
-#endif QUEST
+#endif
 	if(corrct > 1 && flags.run == 2) goto stop;
 	if((flags.run == 1 || flags.run == 3) && !noturn && !m0 && i0 &&
 		(corrct == 1 || (corrct == 2 && i0 == 1))) {
@@ -571,7 +788,7 @@ register struct monst *mtmp;
 			(!mtmp->minvis || See_invisible))
 			return(1);
 	}
- return(0);
+	return(0);
 }
 
 #ifdef QUEST
@@ -598,14 +815,14 @@ register int dx,dy,adx,ady,sdx,sdy,dmax,d;
 			   !rroom(sdx*( (d*adx-1)/ady+1 ), sdy*d))
 				return(0);
 		}
- return(1);
+		return(1);
 	} else {
 		for(d = 1; d <= adx; d++){
 			if(!rroom(sdx*d, sdy*( (d*ady)/adx )) ||
 			   !rroom(sdx*d, sdy*( (d*ady-1)/adx+1 )))
 				return(0);
 		}
- return(1);
+		return(1);
 	}
 }
 
@@ -622,7 +839,7 @@ cansee(x,y) xchar x,y; {
 		y <= seehy) return(1);
 	return(0);
 }
-#endif QUEST
+#endif /* QUEST /**/
 
 sgn(a) register int a; {
 	return((a > 0) ? 1 : (a == 0) ? 0 : -1);
@@ -677,18 +894,25 @@ setsee()
 	    if(seehx == u.ux) for(y = u.uy-1; y <= u.uy+1; y++) prl(seehx+1,y);
 	}
 }
-#endif QUEST
+#endif /* QUEST /**/
 
 nomul(nval)
 register nval;
 {
+#ifdef DGKMOD
+	if(multi < nval) return;	/* This is a bug fix by ab@unido */
+#else
 	if(multi < 0) return;
+#endif
 	multi = nval;
 	flags.mv = flags.run = 0;
 }
 
 abon()
 {
+#ifdef KAA
+	if (u.usym != '@') return(mons[u.umonnum].mlevel-3);
+#endif
 	if(u.ustr == 3) return(-3);
 	else if(u.ustr < 6) return(-2);
 	else if(u.ustr < 8) return(-1);
@@ -700,6 +924,8 @@ abon()
 
 dbon()
 {
+	if (u.usym != '@') return(0);
+
 	if(u.ustr < 6) return(-1);
 	else if(u.ustr < 16) return(0);
 	else if(u.ustr < 18) return(1);
@@ -726,12 +952,22 @@ losehp(n,knam)
 register n;
 register char *knam;
 {
+#ifdef KAA
+	if (u.mtimedone) {
+		u.mh -= n;
+		if (u.mhmax < u.mh) u.mhmax = u.mh;
+		flags.botl = 1;
+		if (u.mh < 1) rehumanize();
+		return(0);
+	}
+#endif
 	u.uhp -= n;
 	if(u.uhp > u.uhpmax)
 		u.uhpmax = u.uhp;	/* perhaps n was negative */
 	flags.botl = 1;
 	if(u.uhp < 1) {
 		killer = knam;	/* the thing that killed you */
+		pline("you died");
 		done("died");
 	}
 }
@@ -740,6 +976,14 @@ losehp_m(n,mtmp)
 register n;
 register struct monst *mtmp;
 {
+#ifdef KAA
+	if (u.mtimedone) {
+		u.mh -= n;
+		flags.botl = 1;
+		if (u.mh < 1) rehumanize();
+		return;
+	}
+#endif
 	u.uhp -= n;
 	flags.botl = 1;
 	if(u.uhp < 1)
@@ -751,6 +995,8 @@ losexp()	/* hit by V or W */
 	register num;
 	extern long newuexp();
 
+	if (u.usym == 'V' || u.usym=='W') return;
+
 	if(u.ulevel > 1)
 		pline("Goodbye level %u.", u.ulevel--);
 	else
@@ -758,6 +1004,13 @@ losexp()	/* hit by V or W */
 	num = rnd(10);
 	u.uhp -= num;
 	u.uhpmax -= num;
+#ifdef SPELLS
+	num = rnd(u.ulevel/2+1) + 1;		/* M. Stephenson */
+	u.uen -= num;
+	if (u.uen < 0)		u.uen = 0;
+	u.uenmax -= num;
+	if (u.uenmax < 0)	u.uenmax = 0;
+#endif
 	u.uexp = newuexp();
 	flags.botl = 1;
 }
@@ -766,6 +1019,15 @@ inv_weight(){
 register struct obj *otmp = invent;
 register int wt = (u.ugold + 500)/1000;
 register int carrcap;
+#ifdef KAA
+	if (u.mtimedone) {
+		if (u.usym == '9') carrcap = MAX_CARR_CAP * 4;
+		else if (u.usym == 'N') carrcap = MAX_CARR_CAP;
+		else if (mons[u.umonnum].mlevel <= 3)
+			carrcap = 5*mons[u.umonnum].mlevel + 30;
+		else carrcap = 5*mons[u.umonnum].mlevel + 100;
+	}
+#endif
 	if(Levitation)			/* pugh@cornell */
 		carrcap = MAX_CARR_CAP;
 	else {

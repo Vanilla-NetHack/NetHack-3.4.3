@@ -1,19 +1,28 @@
+/*	SCCS Id: @(#)makemon.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.makemon.c - version 1.0.2 */
+/* makemon.c - version 1.0.2 */
 
 #include	"hack.h"
 extern char fut_geno[];
 extern char *index();
-extern struct obj *mkobj_at();
+extern struct obj *mkobj_at(), *mksobj(), *mkobj();
 struct monst zeromonst;
+extern boolean in_mklev;
+
+#ifdef HARD		/* used in hell for bigger, badder demons! */
+
+struct permonst d_lord   = { "demon lord",	'&',12,13,-5,50,1,5,0 },
+		d_prince = { "demon prince",	'&',14,14,-6,70,1,6,0 };
+#endif
 
 /*
  * called with [x,y] = coordinates;
  *	[0,0] means anyplace
  *	[u.ux,u.uy] means: call mnexto (if !in_mklev)
  *
- *	In case we make an Orc or killer bee, we make an entire horde (swarm);
- *	note that in this case we return only one of them (the one at [x,y]).
+ *	In case we make an Orc or killer bee, we make an entire horde
+ *	(swarm); note that in this case we return only one of them
+ *	(the one at [x,y]).
  */
 struct monst *
 makemon(ptr,x,y)
@@ -31,16 +40,33 @@ register struct permonst *ptr;
 		if(index(fut_geno, 'm')) ct++;  /* make only 1 minotaur */
 		if(index(fut_geno, '@')) ct++;
 		if(ct <= 0) return(0); 		  /* no more monsters! */
+		tmp = 7;
+#ifdef KOPS
+		tmp--;
+#endif
+#ifdef ROCKMOLE
+		if(dlevel<4) tmp--;
+#endif
 		tmp = rn2(ct*dlevel/24 + 7);
 		if(tmp < dlevel - 4) tmp = rn2(ct*dlevel/24 + 12);
 		if(tmp >= ct) tmp = rn1(ct - ct/2, ct/2);
-		for(ct = 0; ct < CMNUM; ct++){
+		ct = 0;
+#ifdef KOPS
+		ct++;
+#endif
+		while(!(tmp + 1 <= CMNUM - ct))	tmp--;
+		for(; ct < CMNUM; ct++){
 			ptr = &mons[ct];
-			if(index(fut_geno, ptr->mlet))
+#ifdef KOPS
+			if(ptr->mlet == 'K') {
+				tmp--;
 				continue;
-			if(!tmp--) goto gotmon;
+			}
+#endif
+			if(index(fut_geno, ptr->mlet)) continue;
+			if(tmp-- <= 0) goto gotmon;
 		}
- panic("makemon?");
+		panic("makemon?");
 	}
 gotmon:
 	mtmp = newmonst(ptr->pxlth);
@@ -62,13 +88,12 @@ gotmon:
 		mtmp->mimic = 1;
 		mtmp->mappearance = ']';
 	}
-	{ extern boolean in_mklev;
 	if(!in_mklev) {
 		if(x == u.ux && y == u.uy && ptr->mlet != ' ')
 			mnexto(mtmp);
 		if(x == 0 && y == 0)
 			rloc(mtmp);
-	}}
+	}
 	if(ptr->mlet == 's' || ptr->mlet == 'S') {
 		mtmp->mhide = mtmp->mundetected = 1;
 		if(in_mklev)
@@ -76,19 +101,43 @@ gotmon:
 			(void) mkobj_at(0, mtmp->mx, mtmp->my);
 	}
 	if(ptr->mlet == ':') {
+#ifdef DGKMOD
+		/* If you're protected with a ring, don't create
+		 * any shape-changing chameleons -dgk
+		 */
+		if (Protection_from_shape_changers)
+			mtmp->cham = 0;
+		else {
+			mtmp->cham = 1;
+			(void) newcham(mtmp,
+				&mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+		}
+#else
 		mtmp->cham = 1;
 		(void) newcham(mtmp, &mons[dlevel+14+rn2(CMNUM-14-dlevel)]);
+#endif
 	}
 	if(ptr->mlet == 'I' || ptr->mlet == ';')
 		mtmp->minvis = 1;
 	if(ptr->mlet == 'L' || ptr->mlet == 'N'
 	    || (in_mklev && index("&w;", ptr->mlet) && rn2(5))
 	) mtmp->msleep = 1;
+#ifdef HARD
+	if(ptr->mlet == '&' && (Inhell || u.udemigod)) {
 
+		if(!rn2(5 + !Inhell)) {
+		    if (rn2(3 + Inhell)) mtmp->data = &d_lord;
+		    else  {
+				mtmp->data = &d_prince;
+				mtmp->mpeaceful = 1;
+				mtmp->minvis = 1;
+		    }
+		}
+	}
+#endif /* HARD /**/
 #ifndef NOWORM
-	if(ptr->mlet == 'w' && getwn(mtmp))
-		initworm(mtmp);
-#endif NOWORM
+	if(ptr->mlet == 'w' && getwn(mtmp))  initworm(mtmp);
+#endif
 
 	if(anything) if(ptr->mlet == 'O' || ptr->mlet == 'k') {
 		coord enexto();
@@ -101,9 +150,62 @@ gotmon:
 			(void) makemon(ptr, mm.x, mm.y);
 		}
 	}
-
+#ifdef DGKMOD
+	m_initinv(mtmp);
+#endif
 	return(mtmp);
 }
+
+#ifdef DGKMOD
+/* Give some monsters an initial inventory to use */
+m_initinv(mtmp)
+struct monst *mtmp;
+{
+	struct obj *otmp;
+
+	switch (mtmp->data->mlet) {
+# ifdef KAA
+	case '9':
+		if (rn2(2)) {
+			otmp = mksobj(ENORMOUS_ROCK);
+			mpickobj(mtmp, otmp);
+		}
+# endif
+# ifdef KOPS
+	case 'K':		/* create Keystone Kops with cream pies to
+				 * throw. As suggested by KAA.	   [MRS]
+				 */
+		if (!rn2(4)) {
+			otmp = mksobj(CREAM_PIE);
+			otmp->quan = 2 + rnd(2);
+			mpickobj(mtmp, otmp);
+		}
+		break;
+	case 'O':
+# else
+	case 'K':
+# endif
+		if (!rn2(4)) {
+			otmp = mksobj(DART);
+			otmp->quan = 2 + rnd(12);
+			mpickobj(mtmp, otmp);
+		}
+		break;
+	case 'C':
+		if (rn2(2)) {
+			otmp = mksobj(CROSSBOW);
+			otmp->cursed = rn2(2);
+			mpickobj(mtmp, otmp);
+			otmp = mksobj(CROSSBOW_BOLT);
+			otmp->quan = 2 + rnd(12);
+			mpickobj(mtmp, otmp);
+		}
+		break;
+	default:
+		break;
+	}
+}
+#endif
 
 coord
 enexto(xx,yy)
@@ -119,28 +221,28 @@ register xchar xx,yy;
 		for(x = xx-range; x <= xx+range; x++)
 			if(goodpos(x, yy-range)) {
 				tfoo->x = x;
-				tfoo++->y = yy-range;
+				(tfoo++)->y = yy-range;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(x = xx-range; x <= xx+range; x++)
 			if(goodpos(x,yy+range)) {
 				tfoo->x = x;
-				tfoo++->y = yy+range;
+				(tfoo++)->y = yy+range;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(y = yy+1-range; y < yy+range; y++)
 			if(goodpos(xx-range,y)) {
 				tfoo->x = xx-range;
-				tfoo++->y = y;
+				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(y = yy+1-range; y < yy+range; y++)
 			if(goodpos(xx+range,y)) {
 				tfoo->x = xx+range;
-				tfoo++->y = y;
+				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
 			}
- range++;
+		range++;
 	} while(tfoo == foo);
 foofull:
 	return( foo[rn2(tfoo-foo)] );
@@ -153,7 +255,7 @@ goodpos(x,y)	/* used only in mnexto and rloc */
 	   m_at(x,y) || !ACCESSIBLE(levl[x][y].typ)
 	   || (x == u.ux && y == u.uy)
 	   || sobj_at(ENORMOUS_ROCK, x, y)
- ));
+	));
 }
 
 rloc(mtmp)
@@ -164,7 +266,7 @@ struct monst *mtmp;
 
 #ifndef NOWORM
 	if(ch == 'w' && mtmp->mx) return;	/* do not relocate worms */
-#endif NOWORM
+#endif
 	do {
 		tx = rn1(COLNO-3,2);
 		ty = rn2(ROWNO);
@@ -178,7 +280,7 @@ struct monst *mtmp;
 			docrt();
 		} else	u.ustuck = 0;
 	}
- pmon(mtmp);
+	pmon(mtmp);
 }
 
 struct monst *
@@ -194,5 +296,5 @@ register int x,y;
 		if(ptr->mlet == let)
 			return(makemon(ptr,x,y));
 	}
- return(0);
+	return(0);
 }

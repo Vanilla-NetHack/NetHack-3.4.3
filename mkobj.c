@@ -1,9 +1,14 @@
+/*	SCCS Id: @(#)mkobj.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkobj.c - version 1.0.3 */
+/* mkobj.c - version 1.0.3 */
 
 #include "hack.h"
-
+#ifdef SPELLS
+char mkobjstr[] = "))[[!!!!????+%%%%/=**))[[!!!!????+%%%%/=**(%";
+#else
 char mkobjstr[] = "))[[!!!!????%%%%/=**))[[!!!!????%%%%/=**(%";
+#endif
+
 struct obj *mkobj(), *mksobj();
 
 struct obj *
@@ -30,15 +35,19 @@ register otyp,x,y;
 
 struct obj *
 mkobj(let) {
-	if(!let)
-		let = mkobjstr[rn2(sizeof(mkobjstr) - 1)];
-	return(
-	    mksobj(
-		letter(let) ?
-		    CORPSE + ((let > 'Z') ? (let-'a'+'Z'-'@'+1) : (let-'@'))
-		:   probtype(let)
-	    )
-	);
+int realtype;
+	switch (let) {
+		case 0: {
+			realtype=probtype(mkobjstr[rn2(sizeof(mkobjstr)-1)]);
+			break;
+		}
+		case '9': { realtype = DEAD_GIANT; break; }
+		case '&': { realtype = DEAD_DEMON; break; }
+		default: realtype = letter(let) ?
+				CORPSE + ((let>'Z') ? (let-'a'+'Z'-'@'+1) : (let-'@'))
+			:	probtype(let);
+	}
+	return(mksobj(realtype));
 }
 	
 
@@ -58,7 +67,21 @@ register otyp;
 	otmp->quan = 1;
 	otmp->olet = let;
 	otmp->otyp = otyp;
-	otmp->dknown = index("/=!?*", let) ? 0 : 1;
+	otmp->dknown = index(
+#ifdef KAA
+#ifdef SPELLS
+	"/=!?*+)",
+#else
+	"/=!?*)",
+#endif
+#else
+#ifdef SPELLS
+	"/=!?*+",
+#else
+	"/=!?*",
+#endif
+#endif
+		    let) ? 0 : 1;
 	switch(let) {
 	case WEAPON_SYM:
 		otmp->quan = (otmp->otyp <= ROCK) ? rn1(6,6) : 1;
@@ -74,7 +97,7 @@ register otyp;
 		/* if tins are to be identified, need to adapt doname() etc */
 		if(otmp->otyp == TIN)
 			otmp->spe = rnd(...);
-#endif NOT_YET_IMPLEMENTED
+#endif
 		/* fall into next case */
 	case GEM_SYM:
 		otmp->quan = rn2(6) ? 1 : 2;
@@ -86,6 +109,11 @@ register otyp;
 	case SCROLL_SYM:
 	case AMULET_SYM:
 		break;
+#ifdef SPELLS
+	case SPBOOK_SYM:
+		if(!rn2(17)) otmp->cursed = 1;
+		break;
+#endif
 	case ARMOR_SYM:
 		if(!rn2(8)) otmp->cursed = 1;
 		if(!rn2(10)) otmp->spe = rnd(3);
@@ -111,7 +139,7 @@ register otyp;
 			otmp->cursed = 1;
 		break;
 	default:
-		panic("impossible mkobj");
+		panic("impossible mkobj %d", otmp->otyp);
 	}
 	otmp->owt = weight(otmp);
 	return(otmp);

@@ -1,9 +1,10 @@
-.TH HACK 6 "31 March 1985"
+.TH NETHACK 6 "7 March 1987"
 .UC 4
 .SH NAME
 hack \- Exploring The Dungeons of Doom
 .SH SYNOPSIS
-.B /usr/games/hack
+.B /usr/games/nethack
+.B /usr/games/netquest
 [
 .B \-d
 .I directory
@@ -16,7 +17,8 @@ hack \- Exploring The Dungeons of Doom
 .I playername
 ]
 .br
-.B /usr/games/hack
+.B /usr/games/nethack
+.B /usr/games/netquest
 [
 .B \-d
 .I directory
@@ -30,11 +32,11 @@ hack \- Exploring The Dungeons of Doom
 ]
 .SH DESCRIPTION
 .PP
-.I Hack
+.I NetHack
 is a display oriented dungeons & dragons - like game.
 Both display and command structure resemble rogue.
 (For a game with the same structure but entirely different display -
-a real cave instead of dull rectangles - try Quest.)
+a real cave instead of dull rectangles - try NetQuest.)
 .PP
 To get started you really only need to know two commands.  The command
 .B ?
@@ -67,7 +69,7 @@ files such as lockfiles and the list of topscorers and a subdirectory
 .I save
 where games are saved.
 The game administrator may however choose to install hack with a fixed
-playing ground, usually /usr/games/lib/hackdir.
+playing ground, usually /usr/games/lib/nethackdir.
 .PP
 The
 .B \-n
@@ -80,15 +82,16 @@ option supplies the answer to the question "Who are you?".
 When
 .I playername
 has as suffix one of
-.B \-T \-S \-K \-F \-C \-W
+.B \-T \-S \-K \-F \-C \-W \-N \-A \-P \-V \-E \-H
 then this supplies the answer to the question "What kind of character ... ?".
 .PP
 The
 .B \-s
 option will print out the list of your scores. It may be followed by arguments
 .B \-X
-where X is one of the letters C, F, K, S, T, W to print the scores of
-Cavemen, Fighters, Knights, Speleologists, Tourists or Wizards.
+where X is one of the letters C, F, K, S, T, W, N, A, P, V, E, H to print the
+scores of Cave(wo)men, Fighters, Knights, Samurai, Tourists, Wizards, Ninjas,
+Archaeologists, Priest(esse)s, Valkyries, Elves, or Healers.
 It may also be followed by one or more player names to print the scores of the
 players mentioned.
 .SH AUTHORS
@@ -97,10 +100,23 @@ original hack, very much like rogue (but full of bugs).
 .br
 Andries Brouwer continuously deformed their sources into the current
 version - in fact an entirely different game.
+.br
+Mike Stephenson has continued the perversion of sources adding various
+warped character classes and sadistic traps with the help of many strange
+people who reside in that place between the worlds, the Usenet Zone.
+.br
+Don Kneller, Gil Neiger, Scott Turner and Ken Arromdee deserve special
+mention in this regard.
+.br
+The resulting mess is now called NetHack (or NetQuest), to denote its
+development by the Usenet.  Andries Brouwer has made this request for the
+distinction, as he may eventually release a new version of his own.
 .SH FILES
 .DT
 .ta \w'data, rumors\ \ \ 'u
-hack	The hack program.
+nethack		The hack program.
+.br
+netquest	The quest program.
 .br
 data, rumors	Data files used by hack.
 .br
@@ -115,12 +131,6 @@ save	A subdirectory containing the saved
 bones_dd	Descriptions of the ghost and
 .br
 	belongings of a deceased adventurer.
-.br
-xlock.dd	Description of a dungeon level.
-.br
-safelock	Lock file for xlock.
-.br
-record_lock	Lock file for record.
 .br
 xlock.dd	Description of a dungeon level.
 .br
@@ -158,4 +168,3 @@ like GENOCIDED, INVENT, MAGIC and SHOPTYPE.
 .SH BUGS
 .PP
 Probably infinite.
-Mail complaints to mcvax!aeb .

@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)rm.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.rm.h - version 1.0.2 */
+/* rm.h - version 1.0.2 */
 
 /* Level location types */
 #define	HWALL 1
@@ -13,6 +14,8 @@
 #define	CORR 8
 #define	ROOM 9
 #define	STAIRS 10
+#define FOUNTAIN 11
+#define THRONE 12
 
 /*
  * Avoid using the level types in inequalities:
@@ -24,6 +27,9 @@
 #define	ACCESSIBLE(typ)	((typ) >= DOOR)			/* good position */
 #define	IS_ROOM(typ)		((typ) >= ROOM)		/* ROOM or STAIRS */
 #define	ZAP_POS(typ)		((typ) > DOOR)
+#define IS_POOL(typ)    ((typ) == POOL)
+#define IS_THRONE(typ)    ((typ) == THRONE)
+#define IS_FOUNTAIN(typ)        ((typ) == FOUNTAIN)
 
 /*
  * A few of the associated symbols are not hardwired.
@@ -32,21 +38,49 @@
 #define	CORR_SYM	':'
 #else
 #define	CORR_SYM	'#'
-#endif QUEST
+#endif
 #define	POOL_SYM	'}'
+#define FOUNTAIN_SYM    '{'
+#define THRONE_SYM      '\\'
+#define WEB_SYM         '"'
+#define DOOR_SYM	'+'
 
-#define	ERRCHAR	'{'
+#define	ERRCHAR	']'
 
 /*
  * The structure describing a coordinate position.
  * Before adding fields, remember that this will significantly affect
  * the size of temporary files and save files.
  */
+#ifdef MSDOS
+/* Save disk space by using unsigned char's instead of unsigned ints
+ */
+struct rm {
+	uchar scrsym;
+	uchar typ:5;
+	uchar new:1;
+	uchar seen:1;
+	uchar lit:1;
+};
+#else
 struct rm {
 	char scrsym;
-	unsigned typ:5;
-	unsigned new:1;
-	unsigned seen:1;
-	unsigned lit:1;
+	Bitfield(typ,5);
+	Bitfield(new,1);
+	Bitfield(seen,1);
+	Bitfield(lit,1);
 };
+#endif /* MSDOS /**/
 extern struct rm levl[COLNO][ROWNO];
+
+#ifdef DGK
+#define ACTIVE	1
+#define SWAPPED	2
+
+struct finfo {
+	int	where;
+	long	time;
+	long	size;
+};
+extern struct finfo fileinfo[];
+#endif

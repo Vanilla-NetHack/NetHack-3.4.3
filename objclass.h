@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)objclass.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.objclass.h - version 1.0.3 */
+/* objclass.h - version 1.0.3 */
 
 /* definition of a class of objects */
 
@@ -26,9 +27,17 @@ struct objclass {
 #define		RAY		4
 				/* rings */
 #define		SPEC		1	/* +n is meaningful */
-#define	wldam		oc_oc1	/* for weapons and PICK_AXE */
-#define	wsdam		oc_oc2	/* for weapons and PICK_AXE */
+  /* Check the AD&D rules!  The FIRST is small monster damage. */
+#define	wsdam		oc_oc1	/* for weapons and PICK_AXE */
+#define	wldam		oc_oc2	/* for weapons and PICK_AXE */
+
 #define	g_val		oc_oi	/* for gems: value on exit */
+#ifdef MSDOS
+	int oc_descr_i;		/* where the description comes from */
+#endif
+#ifdef SPELLS
+#define spl_lev		oc_oi	/* for books: spell level */
+#endif
 };
 
 extern struct objclass objects[];
@@ -49,12 +58,15 @@ extern struct objclass objects[];
 #define	WAND_SYM	'/'
 #define	RING_SYM	'='
 #define	GEM_SYM		'*'
+#ifdef SPELLS
+#define	SPBOOK_SYM	'+'	/* actually SPELL-book */
+#endif
 /* Other places with explicit knowledge of object symbols:
  * ....shk.c:	char shtypes[] = "=/)%?![";
- * mklev.c:	"=/)%?![<>"
- * hack.mkobj.c:	char mkobjstr[] = "))[[!!!!????%%%%/=**";
- * hack.apply.c:   otmp = getobj("0#%", "put in");
- * hack.eat.c:     otmp = getobj("%", "eat");
- * hack.invent.c:          if(index("!%?[)=*(0/\"", sym)){
- * hack.invent.c:    || index("%?!*",otmp->olet))){
+ * mklev.c:	"=/)%?![<>+"
+ * mkobj.c:	char mkobjstr[] = "))[[!!!!????%%%%/=**+";
+ * apply.c:   otmp = getobj("0#%", "put in");
+ * eat.c:     otmp = getobj("%", "eat");
+ * invent.c:          if(index("!%?[)=*(0/+\"", sym)){
+ * invent.c:    || index("%?!*+",otmp->olet))){
  */

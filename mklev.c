@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)mklev.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mklev.c - version 1.0.3 */
+/* mklev.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -11,7 +12,7 @@ extern struct trap *maketrap();
 #define somex() ((rand()%(croom->hx-croom->lx+1))+croom->lx)
 #define somey() ((rand()%(croom->hy-croom->ly+1))+croom->ly)
 
-#include "def.mkroom.h"
+#include "mkroom.h"
 #define	XLIM	4	/* define minimum required space around a room */
 #define	YLIM	3
 boolean secret;		/* TRUE while making a vault: increase [XY]LIM */
@@ -38,7 +39,10 @@ makelevel()
 {
 	register struct mkroom *croom, *troom;
 	register unsigned tryct;
-	register x,y;
+#ifndef REGBUG
+	register
+#endif
+		 int x,y;
 
 	nroom = 0;
 	doorindex = 0;
@@ -90,6 +94,9 @@ makelevel()
 		goldseen = FALSE;
 		while(!rn2(8-(dlevel/6))) mktrap(0,0,croom);
 		if(!goldseen && !rn2(3)) mkgold(0L,somex(),somey());
+#ifdef FOUNTAINS
+		if(!rn2(10)) mkfount(0,croom);
+#endif
 		if(!rn2(3)) {
 			(void) mkobj_at(0, somex(), somey());
 			tryct = 0;
@@ -123,9 +130,12 @@ makelevel()
 
 #ifdef WIZARD
 	if(wizard && getenv("SHOPTYPE")) mkshop(); else
-#endif WIZARD
- 	if(dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3) mkshop();
+#endif
+	if(dlevel > 1 && dlevel < 20 && rn2(dlevel) < 3) mkshop();
 	else
+#ifdef NEWCLASS
+	if(dlevel > 4 && !rn2(6)) mkzoo(COURT);
+#endif
 	if(dlevel > 6 && !rn2(7)) mkzoo(ZOO);
 	else
 	if(dlevel > 9 && !rn2(5)) mkzoo(BEEHIVE);
@@ -196,8 +206,7 @@ int tryct = 0, xlim, ylim;
 		hiy = lowy + dy;
 
 		if(maker(lowx, dx, lowy, dy)) {
-			if(secret)
-				return(1);
+			if(secret) return(1);
 			addrs(lowx-1, lowy-1, hix+1, hiy+1);
 			tryct = 0;
 		} else
@@ -260,7 +269,7 @@ boolean discarded;		/* piece of a discarded area */
 	if(rsmax >= MAXRS) {
 #ifdef WIZARD
 		if(wizard) pline("MAXRS may be too small.");
-#endif WIZARD
+#endif
 		return;
 	}
 	rsmax++;
@@ -347,7 +356,11 @@ register type;
 		type = DOOR;
 	levl[x][y].typ = type;
 	if(type == DOOR)
+#ifdef DGK
+		levl[x][y].scrsym = symbol.door;
+#else
 		levl[x][y].scrsym = '+';
+#endif /* DGK /**/
 	aroom->doorct++;
 	broom = aroom+1;
 	if(broom->hx < 0) tmp = doorindex; else
@@ -382,7 +395,7 @@ chk:
 #ifdef WIZARD
 			    if(wizard && !secret)
 				pline("Strange area [%d,%d] in maker().",x,y);
-#endif WIZARD
+#endif
 				if(!rn2(3)) return(0);
 				if(x < lowx)
 					lowx = x+xlim+1;
@@ -414,6 +427,27 @@ chk:
 	croom->hy = hiy;
 	croom->rtype = croom->doorct = croom->fdoor = 0;
 
+#ifdef DGK
+	for(x = lowx-1; x <= hix+1; x++)
+	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
+		levl[x][y].scrsym = symbol.hwall;
+		levl[x][y].typ = HWALL;
+	}
+	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
+	    for(y = lowy; y <= hiy; y++) {
+		levl[x][y].scrsym = symbol.vwall;
+		levl[x][y].typ = VWALL;
+	}
+	for(x = lowx; x <= hix; x++)
+	    for(y = lowy; y <= hiy; y++) {
+		levl[x][y].scrsym = symbol.room;
+		levl[x][y].typ = ROOM;
+	}
+	levl[lowx-1][lowy-1].scrsym = symbol.tlcorn;
+	levl[hix+1][lowy-1].scrsym = symbol.trcorn;
+	levl[lowx-1][hiy+1].scrsym = symbol.blcorn;
+	levl[hix+1][hiy+1].scrsym = symbol.brcorn;
+#else
 	for(x = lowx-1; x <= hix+1; x++)
 	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
 		levl[x][y].scrsym = '-';
@@ -429,6 +463,7 @@ chk:
 		levl[x][y].scrsym = '.';
 		levl[x][y].typ = ROOM;
 	}
+#endif /* DGK /**/
 
 	smeq[nroom] = nroom;
 	croom++;
@@ -528,7 +563,11 @@ register a,b;
 	    if(!(crm->typ)) {
 		if(rn2(100)) {
 			crm->typ = CORR;
+#ifdef DGK
+			crm->scrsym = symbol.corr;
+#else
 			crm->scrsym = CORR_SYM;
+#endif
 			if(nxcor && !rn2(50))
 				(void) mkobj_at(ROCK_SYM, xx, yy);
 		} else {
@@ -603,16 +642,52 @@ register a,b;
 make_niches()
 {
 	register int ct = rnd(nroom/2 + 1);
-	while(ct--) makeniche(FALSE);
+#ifdef NEWCLASS
+	boolean	ltptr = TRUE,
+		vamp = TRUE;
+
+	while(ct--) {
+
+		if(dlevel > 15 && rn1(6,0) == 0 && ltptr) {
+
+			ltptr = FALSE;
+			makeniche(LEVEL_TELEP);
+		} if (rn1(6,0) == 0)	{
+
+			vamp = FALSE;
+			makeniche(TRAPDOOR);
+		} else	makeniche(NO_TRAP);
+	}
+#else
+	while(ct--) makeniche(NO_TRAP);
+#endif
 }
 
 makevtele()
 {
-	makeniche(TRUE);
+	makeniche(TELEP_TRAP);
 }
 
-makeniche(with_trap)
-boolean with_trap;
+/* there should be one of these per trap */
+char    *engravings[] = {       "", "", "", "", "",
+				"ad ae?ar um", "?la? ?as ?er?",
+				"", "", ""
+#ifdef NEWTRAPS
+				,"", ""
+#endif
+#ifdef SPIDERS
+				,""
+#endif
+#ifdef NEWCLASS
+				, "", "ad ae?ar um"
+#endif
+#ifdef SPELLS
+				,""
+#endif
+				};
+
+makeniche(trap_type)
+int trap_type;
 {
 	register struct mkroom *aroom;
 	register struct rm *rm;
@@ -636,18 +711,24 @@ boolean with_trap;
 	    xx = dd.x;
 	    yy = dd.y;
 	    if((rm = &levl[xx][yy+dy])->typ) continue;
-	    if(with_trap || !rn2(4)) {
+	    if(trap_type || !rn2(4)) {
+
 		rm->typ = SCORR;
 		rm->scrsym = ' ';
-		if(with_trap) {
-		    ttmp = maketrap(xx, yy+dy, TELEP_TRAP);
+		if(trap_type) {
+		    ttmp = maketrap(xx, yy+dy, trap_type);
 		    ttmp->once = 1;
-		    make_engr_at(xx, yy-dy, "ad ae?ar um");
+		    if (strlen(engravings[trap_type]) > 0)
+			make_engr_at(xx, yy-dy, engravings[trap_type]);
 		}
 		dosdoor(xx, yy, aroom, SDOOR);
 	    } else {
 		rm->typ = CORR;
+#ifdef DGK
+		rm->scrsym = symbol.corr;
+#else
 		rm->scrsym = CORR_SYM;
+#endif
 		if(rn2(7))
 		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
@@ -660,21 +741,53 @@ boolean with_trap;
 }
 
 /* make a trap somewhere (in croom if mazeflag = 0) */
-mktrap(num,mazeflag,croom)
-register num,mazeflag;
-register struct mkroom *croom;
+mktrap(num, mazeflag, croom)
+#ifndef REGBUG
+register
+#endif
+	 int num, mazeflag;
+#ifndef REGBUG
+register
+#endif
+	 struct mkroom *croom;
 {
-	register struct trap *ttmp;
-	register int kind,nopierc,nomimic,fakedoor,fakegold,tryct = 0;
-	register xchar mx,my;
+#ifndef REGBUG
+	register
+#endif
+		 struct trap *ttmp;
+#ifndef REGBUG
+	register
+#endif
+		 int kind,nopierc,nomimic,fakedoor,fakegold,
+#ifdef NEWCLASS
+		     nospikes, nolevltp,
+#endif
+		     tryct = 0;
+	xchar mx,my;
 	extern char fut_geno[];
 
 	if(!num || num >= TRAPNUM) {
 		nopierc = (dlevel < 4) ? 1 : 0;
+#ifdef NEWCLASS
+		nolevltp = (dlevel < 5) ? 1 : 0;
+		nospikes = (dlevel < 6) ? 1 : 0;
+#endif
 		nomimic = (dlevel < 9 || goldseen ) ? 1 : 0;
 		if(index(fut_geno, 'M')) nomimic = 1;
-		kind = rn2(TRAPNUM - nopierc - nomimic);
-		/* note: PIERC = 7, MIMIC = 8, TRAPNUM = 9 */
+
+		do {
+		    kind = rnd(TRAPNUM-1);
+			if((kind == PIERC && nopierc) ||
+			   (kind == MIMIC && nomimic)
+#ifdef SPIDERS
+			   || (kind == WEB)
+#endif
+#ifdef NEWCLASS
+			   || (kind == SPIKED_PIT && nospikes)
+			   || (kind == LEVEL_TELEP && nolevltp)
+#endif
+			   )  kind = NO_TRAP;
+		} while(kind == NO_TRAP);
 	} else kind = num;
 
 	if(kind == MIMIC) {
@@ -688,15 +801,13 @@ register struct mkroom *croom;
 			if(fakedoor) {
 				/* note: fakedoor maybe on actual door */
 				if(rn2(2)){
-					if(rn2(2))
-						mx = croom->hx+1;
-					else mx = croom->lx-1;
-					my = somey();
+				    if(rn2(2))	mx = croom->hx+1;
+				    else	mx = croom->lx-1;
+				    my = somey();
 				} else {
-					if(rn2(2))
-						my = croom->hy+1;
-					else my = croom->ly-1;
-					mx = somex();
+				    if(rn2(2))	my = croom->hy+1;
+				    else	my = croom->ly-1;
+				    mx = somex();
 				}
 			} else if(mazeflag) {
 				extern coord mazexy();
@@ -712,9 +823,17 @@ register struct mkroom *croom;
 		if(mtmp = makemon(PM_MIMIC,mx,my)) {
 		    mtmp->mimic = 1;
 		    mtmp->mappearance =
+#ifdef DGK
+			fakegold ? '$' : fakedoor ? symbol.door :
+#else
 			fakegold ? '$' : fakedoor ? '+' :
+#endif
 			(mazeflag && rn2(2)) ? AMULET_SYM :
+#ifdef SPELLS
+			"=/)%?![<>+" [ rn2(10) ];
+#else
 			"=/)%?![<>" [ rn2(9) ];
+#endif
 		}
 		return;
 	}
@@ -737,3 +856,39 @@ register struct mkroom *croom;
 	if(mazeflag && !rn2(10) && ttmp->ttyp < PIERC)
 		ttmp->tseen = 1;
 }
+
+#ifdef FOUNTAINS
+mkfount(mazeflag,croom)
+register struct mkroom *croom;
+register mazeflag;
+{
+      register xchar mx,my;
+      register int tryct = 0;
+
+      do {
+	      if(++tryct > 200)
+		      return;
+	      if(mazeflag){
+		      extern coord mazexy();
+		      coord mm;
+		      mm = mazexy();
+		      mx = mm.x;
+		      my = mm.y;
+	      } else {
+		      mx = somex();
+		      my = somey();
+	      }
+      } while(t_at(mx, my) || levl[mx][my].typ == STAIRS
+#ifdef NEWCLASS
+	      || IS_THRONE(levl[mx][my].typ)
+#endif
+	     );
+
+       /* Put a fountain at mx, my */
+
+       levl[mx][my].typ = FOUNTAIN;
+       levl[mx][my].scrsym = FOUNTAIN_SYM;
+
+}
+#endif /* FOUNTAINS /**/
+

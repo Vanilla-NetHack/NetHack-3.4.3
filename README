@@ -1,0 +1,214 @@
+			      NetHack V1.0 README
+
+	This file contains information on NetHack, it's history, features,
+and installation proceedures.
+
+	For a detailed history of the game, see the README.OLD file, which
+contains three separate readme files, dating back to the original release of
+the game (then named hack) by Jay Fenlason.
+
+	 History:
+	==========
+
+	NetHack is the product of literally dozens of people's work.  I have
+a list of *some* of those who made major additions to the game which appears
+below:
+
+Jay Fenlason	wrote the original release of "Hack", with help	from
+		Kenny Woodland, Mike Thome and Jon Payne.
+
+Andries Brouwer	did a major re-write on the program and	publshed (at least)
+		two versions to the Usenet.
+
+Don Kneller	ported the 1.0.3 version of Hack to the PC, creating PC-Hack.
+
+	The following folks didn't actually re-write the game, or port it to
+a new machine, but have made significant contributions to the playability of
+the game:
+
+ins_akaa@jhunix.UUCP (Ken Arromdee)
+
+	New character classes.
+	New weapons code.
+	Armor weights implemented.
+	New tools code.
+	Polymorph self code.
+	additional bug fixes.
+
+srt@ucla-cs (Scott R. Turner)
+
+	Rockmole & Keystone Kops code.
+	Squeeky Board & Magic traps.
+	Fountain code.
+	more bug fixes.
+
+gil@cornell.UUCP (Gil Neiger)
+
+	Magic Marker code.
+	Fountain code enhancements.
+	Enhancements to dozens of routines.
+	more bug fixes (esp. in hack.zap.c)
+
+ericb@hplsla.UUCP (Eric Backus)
+
+	#dip mods to fountain code.
+	yet more bug fixes.
+
+	As for myself, I have added new character classes and traps, the
+Throne Room, spellbooks and spellcasting, implemented code for praying and
+made some enhancements to the endgame.
+
+	NetHack is an integrated version of two major "flavors" of Hack,
+Unix and PC Hack.  It is designed so that you should be able to compile it
+in either one of the target enviornments.  The filenames of all modules have
+been modified to correspond with the PC-Hack standards implemented by Don
+Kneller.
+
+	 config.h
+	==========
+
+	As distributed, it is set up to compile on my machine (a Pyramid 98xe
+in the Berkeley universe).  Due to the large number of "features" in NetHack,
+the config file (config.h) is used to select the target options.
+
+	Here is a list of the currently supported options:
+
+SPELLS		Spell casting code
+PRAYERS		Prayer code
+KAA		Various changes made by Ken Arromdee
+MARKER		Magic marker modification
+NEWCLASS	New classes, traps, and Throne Rooms.
+SAFE_ATTACK 	Safe attack code
+PROBING		Wand of probing code
+DIAGS		Diagnostics after death/quit
+SORTING		Sorted inventory
+DGK		Additional features by Don Kneller (PC specific)
+DGKMOD		Additional features by Don Kneller (Non-PC specific)
+REDO 		support for redoing last command
+HARD		Enhanced wizard code among other things.
+NEWTRAPS	Magic and Squeeky board traps
+FREEHAND	Cannot use Pick-axe without wielding it.
+SPIDERS		Spiders and webs
+FOUNTAINS	Fountain code
+KOPS		Keystone Kops
+ROCKMOLE	Rockmoles
+
+Status Line options:
+
+GOLD_ON_BOTL
+EXP_ON_BOTL
+
+	In a number of cases, code written for one specific version of Hack
+or another was separated out and given it's own designation (eg. REDO has
+been moved out of DGKMOD which was moved out of DGK from PC-HACK).
+
+	 Some New Features:
+	====================
+
+	Some of the old code (eg. KOPS) has been enhanced to allow for more
+functionality.  Here's a couple of examples - you can find out the rest for
+yourself in the traditional Hack style :-)
+
+	Kops now throw cream pies (thank/blame KAA for the suggestion).
+
+	The wizard may not stay dead!!!
+
+	There are a couple of new types of demons.
+
+	Demons may not be aggressive.
+
+	There are lots more of these little gems, with sufficient hints in
+various fortune cookies to give away enough clues.
+
+	 Makefiles:
+	============
+
+	The Unix "Makefile" has been enhanced to make installation cleaner
+and also to allow "initialization" of the play directories (WARNING: this
+will destroy old score files!!!).  The PC Makefile hasn't been upgraded in
+this respect.
+
+	The program "makedefs" has been modified in order to allow limited
+use of "#ifdef/#else/#endif" sets in objects.h.  Makedefs will only generate
+one #define for any number of ocurrences of a given object name string.  In
+addition, "makedefs" also generates alternate defines for "DEAD_xxxxx" in
+those cases where a monster has been given an alternate identity.
+
+	Makedefs has also been modified in order that it may be used to
+initialize the following variable def files:
+
+	objects.h	-o option,  see above.
+	trap.h		-t option,  trap type defines.
+	date.h		-d option,  date string.
+	data		-D option,  optional monster names.
+	rumors		-r option,  optional rumor addition.
+
+	To compile the program on any 4.n or Sys V system, you should only
+need to copy "Makefile.unix" to "Makefile", set up "Makefile" and "config.h",
+then type "make".  On a Xenix system, use "Makefile.xenix" and similarly set
+up "Makefile" and "config.h", with "STUPID" defined.  At this point in time,
+I can get the Xenix version to build, but it will immediately dump core on
+invocation.
+
+	 Known Problems:
+	=================
+
+	There are several known problem areas and deficiencies in the code
+which I haven't yet addressed, prefering to get the really fatal bugs out of
+the way.  Here's a short list of things someone out there might want to work
+on (and it is by no means complete):
+
+	- The WALKIES code is really crude.  Fido get's mnexto()'d you when
+	  he gets out of the effective leash range.  I haven't yet been able
+	  to integrate leashed movement into dogmove().  You might just want
+	  to comment out the #define in config.h.
+
+	- ROCKMOLES have some problems with screen updating.  I didn't make
+	  any changes to the code I received, and have noticed some distinct
+	  problems with walls not being set to "door" until the rockmole
+	  moves off the cell.
+
+	- There are some problems in the item selection code, the usual effect
+	  of which is to leave the cursor sitting at some arbitrary point on
+	  the screen instead of returning it to the upper left hand corner or
+	  onto the "@".  This doesn't affect the screen updating, so I have
+	  ignored it up to now.
+
+	- REDO may not be completely implemented.  I am still working on it
+	  here but would appreciate any help anyone out there might want to
+	  give.
+
+	I fully expect that about one week's worth of play on the net will
+result in a couple dozen bugs being discovered.  I would like to keep a lid
+on the potential explosion of different sub-versions of the game, so if you
+possibly can, please send me the bug reports, instead of releasing them to
+the general public.  I will apply them to my code here, and will generate an
+update to the release when the mass of fixes (or mass * severity factor) gets
+large enough.  This way, we should be able to keep most of the net up to a
+certain level  -  this may turn out to be the first truely net maintained
+game.  Unless circumstances change, I will continue to consolidate fixes and
+modifications to the game, and will continue to post to the net through
+comp.sources.games, with notices of new patches/fixes/mods going out through
+rec.games.hack.
+
+	 Making Bug Reports:
+	=====================
+
+	To send bug reports, just E-Mail me at any one of the following net
+addresses (in order of connectivity):
+
+	seismo!mnetor!genat!mike
+	utzoo!mnetor!genat!mike
+	pyramid!pyrnj!genat!mike
+	utzoo!utgpu!genat!mike
+
+	When you send in a bug report, please keep your code fragments as
+small as possible.  Remember that each site along the way is paying for the
+transmission of the code.
+
+						Mike Stephenson
+
+Mail:	Genamation Inc.		Phone:	(416) 475-9434
+	351 Steelcase Rd. W
+	Markham, Ontario.	UUCP:	{seismo, utzoo}!mnetor!genat!mike
+	Canada   L3R 3W1

@@ -1,8 +1,13 @@
+/*	SCCS Id: @(#)wield.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.wield.c - version 1.0.3 */
+/* wield.c - version 1.0.3 */
 
 #include	"hack.h"
 extern struct obj zeroobj;
+extern char *hcolor();
+#ifdef KAA
+extern boolean unweapon;
+#endif
 
 setuwep(obj) register struct obj *obj; {
 	setworn(obj, W_WEP);
@@ -14,10 +19,16 @@ dowield()
 	register int res = 0;
 
 	multi = 0;
+#ifdef KAA
+	if (cantwield(u.usym)) {
+		pline("Don't be ridiculous!");
+		return(0);
+	}
+#endif
 	if(!(wep = getobj("#-)", "wield"))) /* nothing */;
 	else if(uwep == wep)
 		pline("You are already wielding that!");
-	else if(uwep && uwep->cursed)
+	else if(welded(uwep))
 		pline("The %s welded to your hand!",
 			aobjnam(uwep, "are"));
 	else if(wep == &zeroobj) {
@@ -28,6 +39,12 @@ dowield()
 			res++;
 			pline("You are empty handed.");
 		}
+	/* Prevent wielding a cockatrice in pack when not wearing gloves KAA*/
+	} else if (!uarmg && wep->otyp == DEAD_COCKATRICE) {
+		pline("You wield the dead cockatrice in your bare hands.");
+		pline("You turn to stone ...");
+		killer="dead cockatrice";
+		done("died");
 	} else if(uarms && wep->otyp == TWO_HANDED_SWORD)
 	pline("You cannot wield a two-handed sword and wear a shield.");
 	else if(wep->owornmask & (W_ARMOR | W_RING))
@@ -35,13 +52,18 @@ dowield()
 	else {
 		setuwep(wep);
 		res++;
-		if(uwep->cursed)
+		if(welded(uwep))
 		    pline("The %s %s to your hand!",
 			aobjnam(uwep, "weld"),
 			(uwep->quan == 1) ? "itself" : "themselves"); /* a3 */
 		else prinv(uwep);
 	}
- return(res);
+#ifdef KAA
+	if(res && uwep)
+		unweapon = (uwep->otyp >= BOW || uwep->otyp <= BOOMERANG) ? 
+		TRUE : FALSE;
+#endif
+	return(res);
 }
 
 corrode_weapon(){
@@ -60,6 +82,8 @@ register amount;
 {
 register char *color = (amount < 0) ? "black" : "green";
 register char *time;
+
+	if(Hallucination) color=hcolor();
 	if(!uwep || uwep->olet != WEAPON_SYM) {
 		strange_feeling(otmp,
 			(amount > 0) ? "Your hands twitch."
@@ -82,11 +106,13 @@ register char *time;
 
 	/* there is a (soft) upper limit to uwep->spe */
 	if(amount > 0 && uwep->spe > 5 && rn2(3)) {
-	    pline("Your %s violently green for a while and then evaporate%s.",
-		aobjnam(uwep, "glow"), plur(uwep->quan));
+	    pline("Your %s violently %s for a while and then evaporate%s.",
+		aobjnam(uwep,"glow"),Hallucination ? hcolor() : "green",
+		plur(uwep->quan));
+
 	    while(uwep)		/* let all of them disappear */
 				/* note: uwep->quan = 1 is nogood if unpaid */
-	        useup(uwep);
+		useup(uwep);
 	    return(1);
 	}
 	if(!rn2(6)) amount *= 2;
@@ -96,4 +122,11 @@ register char *time;
 	uwep->spe += amount;
 	if(amount > 0) uwep->cursed = 0;
 	return(1);
+}
+
+int
+welded(obj) register struct obj *obj;  {
+	return(obj == uwep && obj->cursed &&
+	       (obj->olet == WEAPON_SYM || obj->otyp == HEAVY_IRON_BALL ||
+		obj->otyp == CAN_OPENER || obj->otyp == PICK_AXE));
 }

@@ -1,9 +1,10 @@
+/*	SCCS Id: @(#)o_init.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.o_init.c - version 1.0.3 */
+/* o_init.c - version 1.0.3 */
 
 #include	"config.h"		/* for typedefs */
-#include	"def.objects.h"
-#include	"hack.onames.h"		/* for LAST_GEM */
+#include	"objects.h"
+#include	"onames.h"		/* for LAST_GEM */
 extern char *index();
 
 int
@@ -16,25 +17,28 @@ register char ch;
 }
 
 init_objects(){
-register int i, j, first, last, sum, end;
+register int i, j, first, last, sum, end, tmp_i;
 register char let, *tmp;
 	/* init base; if probs given check that they add up to 100, 
 	   otherwise compute probs; shuffle descriptions */
 	end = SIZE(objects);
+#ifdef MSDOS
+	/* Assign indices to all oc_descr_i first */
+	for (i = 0; i < end; i++)
+		objects[i].oc_descr_i = i;
+#endif
 	first = 0;
 	while( first < end ) {
 		let = objects[first].oc_olet;
 		last = first+1;
 		while(last < end && objects[last].oc_olet == let
-				&& objects[last].oc_name != NULL)
-			last++;
+				 && objects[last].oc_name != NULL) last++;
 		i = letindex(let);
 		if((!i && let != ILLOBJ_SYM) || bases[i] != 0)
 			error("initialization error");
 		bases[i] = first;
 
-		if(let == GEM_SYM)
-			setgemprobs();
+		if(let == GEM_SYM) setgemprobs();
 	check:
 		sum = 0;
 		for(j = first; j < last; j++) sum += objects[j].oc_prob;
@@ -44,7 +48,7 @@ register char let, *tmp;
 			goto check;
 		}
 		if(sum != 100)
-			error("init-prob error for %c", let);
+			error("init-prob error for %c (%d%%)", let, sum);
 
 		if(objects[first].oc_descr != NULL && let != TOOL_SYM){
 			/* shuffle, also some additional descriptions */
@@ -56,6 +60,12 @@ register char let, *tmp;
 				tmp = objects[j].oc_descr;
 				objects[j].oc_descr = objects[i].oc_descr;
 				objects[i].oc_descr = tmp;
+#ifdef MSDOS
+	/* keep track of where the description came from */
+				tmp_i = objects[j].oc_descr_i;
+				objects[j].oc_descr_i = objects[i].oc_descr_i;
+				objects[i].oc_descr_i = tmp_i;
+#endif
 			}
 		}
 		first = last;
@@ -117,8 +127,28 @@ unsigned len;
 restnames(fd) register fd; {
 register int i;
 unsigned len;
+#ifdef MSDOS
+	char *oc_descr[NROFOBJECTS + 1], *oc_name;
+
+	mread(fd, (char *) bases, sizeof bases);
+
+	/* Read in objects 1 at a time, correcting oc_name pointer and
+	 * saving pointer to current description.
+	 */
+	for (i = 0; i < SIZE(objects); i++) {
+		oc_name = objects[i].oc_name;
+		oc_descr[i] = objects[i].oc_descr;
+		mread(fd, (char *) &objects[i], sizeof (struct objclass));
+		objects[i].oc_name = oc_name;
+	}
+
+	/* Convert from saved indices into pointers */
+	for (i = 0; i < SIZE(objects); i++)
+		objects[i].oc_descr = oc_descr[objects[i].oc_descr_i];
+#else
 	mread(fd, (char *) bases, sizeof bases);
 	mread(fd, (char *) objects, sizeof objects);
+#endif
 	for(i=0; i < SIZE(objects); i++) if(objects[i].oc_uname) {
 		mread(fd, (char *) &len, sizeof len);
 		objects[i].oc_uname = (char *) alloc(len);
@@ -131,6 +161,10 @@ dodiscovered()				/* free after Robert Viduya */
     extern char *typename();
     register int i, end;
     int	ct = 0;
+#ifdef DGKMOD
+    char class = -1;
+    extern char *let_to_name();
+#endif
 
     cornline(0, "Discoveries");
 
@@ -138,6 +172,12 @@ dodiscovered()				/* free after Robert Viduya */
     for (i = 0; i < end; i++) {
 	if (interesting_to_discover (i)) {
 	    ct++;
+#ifdef DGKMOD
+	    if (objects[i].oc_olet != class) {
+		class = objects[i].oc_olet;
+		cornline(1, let_to_name(class));
+	    }
+#endif
 	    cornline(1, typename(i));
 	}
     }
@@ -157,4 +197,22 @@ register int i;
 	objects[i].oc_uname != NULL ||
 	 (objects[i].oc_name_known && objects[i].oc_descr != NULL)
     );
+}
+
+init_corpses() {
+
+#ifdef KOPS
+	strcpy(objects[DEAD_KOP].oc_name, "dead Kop");
+#endif
+#ifdef SPIDERS
+	strcpy(objects[DEAD_GIANT_SPIDER].oc_name, "dead giant spider");
+#endif
+#ifdef ROCKMOLE
+	strcpy(objects[DEAD_ROCKMOLE].oc_name, "dead rockmole");
+#endif
+#ifndef KAA
+	strcpy(objects[DEAD_QUASIT].oc_name, "dead quasit");
+	strcpy(objects[DEAD_VIOLET_FUNGI].oc_name, "dead violet fungi");
+#endif
+	return(0);
 }

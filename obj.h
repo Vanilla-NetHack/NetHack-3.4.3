@@ -1,5 +1,9 @@
+/*	SCCS Id: @(#)obj.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.obj.h - version 1.0.3 */
+/* obj.h - version 1.0.3 */
+
+#ifndef OBJ_H
+#define OBJ_H
 
 struct obj {
 	struct obj *nobj;
@@ -7,9 +11,14 @@ struct obj {
 	unsigned o_cnt_id;		/* id of container object is in */
 	xchar ox,oy;
 	xchar odx,ody;
-	uchar otyp;
+	unsigned otyp;
+#ifdef DGK
+	unsigned int	owt;
+	unsigned int	quan;
+#else
 	uchar owt;
 	uchar quan;		/* use oextra for tmp gold objects */
+#endif
 	schar spe;		/* quality of weapon, armor or ring (+ or -)
 				   number of charges for wand ( >= -1 )
 				   special for uball and amulet %% BAH */
@@ -22,6 +31,7 @@ struct obj {
 	Bitfield(cursed,1);
 	Bitfield(unpaid,1);	/* on some bill */
 	Bitfield(rustfree,1);
+	Bitfield(no_charge, 1);	/* if shk shouldn't charge for this */
 	Bitfield(onamelth,6);
 	long age;		/* creation date */
 	long owornmask;
@@ -46,3 +56,5 @@ extern struct obj *fobj;
 #define newobj(xl)	(struct obj *) alloc((unsigned)(xl) + sizeof(struct obj))
 #define	ONAME(otmp)	((char *) otmp->oextra)
 #define	OGOLD(otmp)	(otmp->oextra[0])
+
+#endif

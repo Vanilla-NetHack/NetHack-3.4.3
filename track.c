@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)track.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.track.c - version 1.0.2 */
+/* track.c - version 1.0.2 */
 
 #include "hack.h"
 

@@ -1,9 +1,13 @@
+/*	SCCS Id: @(#)options.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.options.c - version 1.0.3 */
+/* options.c - version 1.0.3 */
 
 #include "config.h"
 #include "hack.h"
 extern char *eos();
+#ifdef SORTING
+static boolean set_order;
+#endif
 
 initoptions()
 {
@@ -17,9 +21,22 @@ initoptions()
 	flags.end_top = 5;
 	flags.end_around = 4;
 	flags.female = FALSE;			/* players are usually male */
-
+#ifdef SORTING
+	flags.sortpack = TRUE;
+#endif
+#ifdef SAFE_ATTACK
+	flags.confirm = TRUE;
+#endif
+#ifdef DGKMOD
+	flags.silent = 	flags.pickup = TRUE;
+#endif
+#ifdef DGK
+	flags.IBMBIOS = flags.DECRainbow = flags.rawio = FALSE;
+	read_config_file();
+#else
 	if(opts = getenv("HACKOPTIONS"))
 		parseoptions(opts,TRUE);
+#endif
 }
 
 parseoptions(opts, from_env)
@@ -46,12 +63,13 @@ boolean from_env;
 		negated = !negated;
 	}
 	
-	if(!strncmp(opts,"standout",8)) {
+#ifndef DGK
+	if(!strncmp(opts,"standout",4)) {
 		flags.standout = !negated;
 		return;
 	}
 
-	if(!strncmp(opts,"null",3)) {
+	if(!strncmp(opts,"null",4)) {
 		flags.nonull = negated;
 		return;
 	}
@@ -65,6 +83,85 @@ boolean from_env;
 		flags.nonews = negated;
 		return;
 	}
+#endif
+
+#ifdef SAFE_ATTACK
+	if (!strncmp(opts, "conf", 4)) {
+		flags.confirm = !negated;
+		return;
+	}
+
+#endif
+#ifdef DGKMOD
+	if (!strncmp(opts, "sile", 4)) {
+		flags.silent = !negated;
+		return;
+	}
+
+	if (!strncmp(opts, "pick", 4)) {
+		flags.pickup = !negated;
+		return;
+	}
+#endif
+#ifdef DGK
+	if (!strncmp(opts, "IBMB", 4)) {
+		flags.IBMBIOS = !negated;
+		return;
+	}
+
+	if (!strncmp(opts, "rawi", 4)) {
+		if (from_env)
+			flags.rawio = !negated;
+		else
+			pline("'rawio' only settable from %s.", configfile);
+		return;
+	}
+
+	if (!strncmp(opts, "DECR", 4)) {
+		flags.DECRainbow = !negated;
+		return;
+	}
+#endif
+
+#ifdef SORTING
+	if (!strncmp(opts, "sort", 4)) {
+		flags.sortpack = !negated;
+		return;
+	}
+
+	/*
+	 * the order to list the pack
+	 */
+	if (!strncmp(opts,"packorder",4)) {
+		register char	*sp, *tmp;
+		extern char	inv_order[];
+		int tmpend;
+
+		op = index(opts,':');
+		if(!op) goto bad;
+		op++;			/* skip : */
+
+		/* Missing characters in new order are filled in at the end 
+		 * from inv_order.
+		 */
+		for (sp = op; *sp; sp++)
+			if (!index(inv_order, *sp))
+				goto bad;		/* bad char in order */
+			else if (index(sp + 1, *sp))
+				goto bad;		/* dup char in order */
+		tmp = (char *) alloc(strlen(inv_order) + 1);
+		(void) strcpy(tmp, op);
+		for (sp = inv_order, tmpend = strlen(tmp); *sp; sp++)
+			if (!index(tmp, *sp)) {
+				tmp[tmpend++] = *sp;
+				tmp[tmpend] = 0;
+			}
+		(void) strcpy(inv_order, tmp);
+		free(tmp);
+		set_order = TRUE;
+		return;
+	}
+#endif
 
 	if(!strncmp(opts,"time",4)) {
 		flags.time = !negated;
@@ -77,6 +174,7 @@ boolean from_env;
 		return;
 	}
 
+#ifndef DGK
 	if(!strncmp(opts,"fixinv",4)) {
 		if(from_env)
 			flags.invlet_constant = !negated;
@@ -84,13 +182,24 @@ boolean from_env;
 			pline("The fixinvlet option must be in HACKOPTIONS.");
 		return;
 	}
+#endif
 
 	if(!strncmp(opts,"male",4)) {
-		flags.female = negated;
+#ifdef KAA
+		if(!from_env && flags.female != negated)
+			pline("That is not anatomically possible.");
+		else
+#endif
+			flags.female = negated;
 		return;
 	}
 	if(!strncmp(opts,"female",6)) {
-		flags.female = !negated;
+#ifdef KAA
+		if(!from_env && flags.female == negated)
+			pline("That is not anatomically possible.");
+		else
+#endif
+			flags.female = !negated;
 		return;
 	}
 
@@ -98,7 +207,11 @@ boolean from_env;
 	if(!strncmp(opts,"name",4)) {
 		extern char plname[PL_NSIZ];
 		if(!from_env) {
+#ifdef DGK
+		  pline("'name' only settable from %s.", configfile);
+#else
 		  pline("The playername can be set only from HACKOPTIONS.");
+#endif
 		  return;
 		}
 		op = index(opts,':');
@@ -144,49 +257,118 @@ bad:
 	if(!from_env) {
 		if(!strncmp(opts, "help", 4)) {
 			pline("%s%s%s",
+#ifdef DGK
+
+"To set options use OPTIONS=<options> in ", configfile,
+" or give the command \"O\" followed by the line <options> while playing.  ",
+"Here <options> is a list of options separated by commas." );
+			pline("%s%s",
+"Boolean options are confirm, pickup, rawio, silent, sortpack, time, IBMBIOS,",
+" and DECRainbow.  These can be negated by prefixing them with '!' or \"no\"." );
+			pline("%s%s%s",
+"The compound options are name, as in OPTIONS=name:Merlin-W,",
+#ifdef SORTING
+" packorder, which lists the order that items should appear in your pack",
+#ifdef SPELLS
+" (the default is:  packorder:\")[%?+/=!(*0  ), and endgame." );
+#else
+" (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
+#endif /* SPELLS /**/
+#else
+"and engame.", "");
+#endif /* SORTING /**/ 	
+			pline("%s%s%s",
+"Endgame is followed by a description of which parts of the scorelist ",
+"you wish to see.  You might for example say: ",
+"\"endgame:own scores/5 top scores/4 around my score\"." );
+
+#else
+
 "To set options use `HACKOPTIONS=\"<options>\"' in your environment, or ",
-"give the command 'o' followed by the line `<options>' while playing. ",
+"give the command 'O' followed by the line `<options>' while playing. ",
 "Here <options> is a list of <option>s separated by commas." );
 			pline("%s%s%s",
 "Simple (boolean) options are rest_on_space, news, time, ",
 "null, tombstone, (fe)male. ",
 "These can be negated by prefixing them with '!' or \"no\"." );
-			pline("%s",
-"A string option is name, as in HACKOPTIONS=\"name:Merlin-W\"." );
 			pline("%s%s%s",
-"A compound option is endgame; it is followed by a description of what ",
-"parts of the scorelist you want to see. You might for example say: ",
+"The compound options are name, as in OPTIONS=name:Merlin-W,",
+#ifdef SORTING
+" packorder, which lists the order that items should appear in your pack",
+#ifdef SPELLS
+" (the default is:  packorder:\")[%?+/=!(*0  ), and endgame." );
+#else
+" (the default is:  packorder:\")[%?/=!(*0  ), and endgame." );
+#endif /* SPELLS /**/
+#else
+"and engame.", "");
+#endif /* SORTING /**/ 	
+			pline("%s%s%s",
+"Endgame is followed by a description of what parts of the scorelist",
+"you want to see. You might for example say: ",
 "`endgame:own scores/5 top scores/4 around my score'." );
+
+#endif /* DGK /**/
 			return;
 		}
 		pline("Bad option: %s.", opts);
 		pline("Type `o help<cr>' for help.");
 		return;
 	}
+#ifdef DGK
+	printf("Bad syntax in OPTIONS in %s.", configfile);
+#else
 	puts("Bad syntax in HACKOPTIONS.");
 	puts("Use for example:");
 	puts(
 "HACKOPTIONS=\"!restonspace,notombstone,endgame:own/5 topscorers/4 around me\""
 	);
+#endif
 	getret();
 }
 
 doset()
 {
 	char buf[BUFSZ];
+#ifdef SORTING
+	extern char inv_order[];
+#endif
 
 	pline("What options do you want to set? ");
 	getlin(buf);
 	if(!buf[0] || buf[0] == '\033') {
+#ifdef DGK
+	    (void) strcpy(buf,"OPTIONS=");
+#else
 	    (void) strcpy(buf,"HACKOPTIONS=");
 	    (void) strcat(buf, flags.female ? "female," : "male,");
 	    if(flags.standout) (void) strcat(buf,"standout,");
 	    if(flags.nonull) (void) strcat(buf,"nonull,");
 	    if(flags.nonews) (void) strcat(buf,"nonews,");
-	    if(flags.time) (void) strcat(buf,"time,");
 	    if(flags.notombstone) (void) strcat(buf,"notombstone,");
-	    if(flags.no_rest_on_space)
-		(void) strcat(buf,"!rest_on_space,");
+	    if(flags.no_rest_on_space)	(void) strcat(buf,"!rest_on_space,");
+#endif
+#ifdef SORTING
+	    if (flags.sortpack) (void) strcat(buf,"sortpack,");
+	    if (set_order){
+		(void) strcat(buf, "packorder: ");
+		(void) strcat(buf, inv_order);
+		(void) strcat(buf, ",");
+	    }
+#endif
+#ifdef SAFE_ATTACK
+	    if (flags.confirm) (void) strcat(buf,"confirm,");
+#endif
+#ifdef DGKMOD
+	    if (flags.pickup) (void) strcat(buf,"pickup,");
+	    if (flags.silent) (void) strcat(buf,"silent,");
+#endif
+#ifdef DGK
+	    if (flags.rawio) (void) strcat(buf,"rawio,");
+	    if (flags.IBMBIOS) (void) strcat(buf,"IBMBIOS,");
+	    if (flags.DECRainbow) (void) strcat(buf,"DECRainbow,");
+#endif
+	    if(flags.time) (void) strcat(buf,"time,");
 	    if(flags.end_top != 5 || flags.end_around != 4 || flags.end_own){
 		(void) sprintf(eos(buf), "endgame: %u topscores/%u around me",
 			flags.end_top, flags.end_around);
@@ -201,3 +383,11 @@ doset()
 
 	return(0);
 }
+
+#ifdef DGKMOD
+dotogglepickup() {
+	flags.pickup = !flags.pickup;
+	pline("Pickup: %s.", flags.pickup ? "ON" : "OFF");
+	return (0);
+}
+#endif

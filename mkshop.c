@@ -1,16 +1,21 @@
+/*	SCCS Id: @(#)mkshop.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkshop.c - version 1.0.3 */
+/* mkshop.c - version 1.0.3 */
 
 #ifndef QUEST
 #include "hack.h"
-#include "def.mkroom.h"
-#include "def.eshk.h"
+#include "mkroom.h"
+#include "eshk.h"
 #define	ESHK	((struct eshk *)(&(shk->mextra[0])))
 extern struct monst *makemon();
 extern struct obj *mkobj_at();
 extern int nroom;
-extern char shtypes[];	/* = "=/)%?!["; 8 types: 7 specialized, 1 mixed */
+extern char shtypes[];	/* = "=/+)%?!["; 9 types: 8 specialized, 1 mixed */
+#ifdef SPELLS
+schar shprobs[] = { 3,3,3,5,5,10,10,14,47 };	/* their probabilities */
+#else
 schar shprobs[] = { 3,3,5,5,10,10,14,50 };	/* their probabilities */
+#endif
 
 mkshop(){
 register struct mkroom *sroom;
@@ -36,6 +41,12 @@ register struct monst *shk;
 				mkzoo(BEEHIVE);
 				return;
 			}
+#ifdef NEWCLASS
+			if(*ep == 't' || *ep == 'T'){
+				mkzoo(COURT);
+				return;
+			}
+#endif
 			if(*ep == 's' || *ep == 'S'){
 				mkswamp();
 				return;
@@ -46,7 +57,7 @@ register struct monst *shk;
 		}
 	}
 gottype:
-#endif WIZARD
+#endif
 	for(sroom = &rooms[0], roomno = 0; ; sroom++, roomno++){
 		if(sroom->hx < 0) return;
 		if(sroom - rooms >= nroom) {
@@ -59,7 +70,7 @@ gottype:
 		if(
 #ifdef WIZARD
 		   (wizard && getenv("SHOPTYPE") && sroom->doorct != 0) ||
-#endif WIZARD
+#endif
 			sroom->doorct == 1) break;
 	}
 
@@ -97,7 +108,7 @@ gottype:
 		}
 		more();
 	    }
-#endif WIZARD
+#endif
 	    return;
 	}
 	if(!(shk = makemon(PM_SHK,sx,sy))) return;
@@ -129,7 +140,7 @@ gottype:
 			    (let && rn2(10) < dlevel) ? let : ']';
 			continue;
 		}
- (void) mkobj_at(let, sx, sy);
+		(void) mkobj_at(let, sx, sy);
 	}
 }
 
@@ -142,6 +153,9 @@ int type;
 	int goldlim = 500 * dlevel;
 	int moct = 0;
 	struct permonst *morguemon();
+#ifdef NEWCLASS
+	struct permonst *courtmon();
+#endif
 
 	i = nroom;
 	for(sroom = &rooms[rn2(nroom)]; ; sroom++) {
@@ -149,10 +163,8 @@ int type;
 			sroom = &rooms[0];
 		if(!i-- || sroom->hx < 0)
 			return;
-		if(sroom->rtype)
-			continue;
-		if(type == MORGUE && sroom->rlit)
-			continue;
+		if(sroom->rtype)			continue;
+		if(type == MORGUE && sroom->rlit)	continue;
 		if(has_upstairs(sroom) || (has_dnstairs(sroom) && rn2(3)))
 			continue;
 		if(sroom->doorct == 1 || !rn2(5))
@@ -161,12 +173,15 @@ int type;
 	sroom->rtype = type;
 	sh = sroom->fdoor;
 	for(sx = sroom->lx; sx <= sroom->hx; sx++)
-	for(sy = sroom->ly; sy <= sroom->hy; sy++){
+	    for(sy = sroom->ly; sy <= sroom->hy; sy++){
 		if((sx == sroom->lx && doors[sh].x == sx-1) ||
 		   (sx == sroom->hx && doors[sh].x == sx+1) ||
 		   (sy == sroom->ly && doors[sh].y == sy-1) ||
 		   (sy == sroom->hy && doors[sh].y == sy+1)) continue;
 		mon = makemon(
+#ifdef NEWCLASS
+		   (type == COURT) ? courtmon() :
+#endif
 		   (type == MORGUE) ? morguemon() :
 		   (type == BEEHIVE) ? PM_KILLER_BEE : (struct permonst *) 0,
 		   sx, sy);
@@ -190,6 +205,17 @@ int type;
 		   break;
 		}
 	}
+#ifdef NEWCLASS
+	if(type == COURT)  {
+
+		sx = sroom->lx + (rn2(sroom->hx - sroom->lx));
+		sy = sroom->ly + (rn2(sroom->hy - sroom->ly));
+		levl[sx][sy].typ = THRONE;
+		levl[sx][sy].scrsym = THRONE_SYM;
+		mkgold((long) rn1(50 * dlevel,10), sx, sy);
+	}
+#endif
+
 }
 
 struct permonst *
@@ -271,4 +297,26 @@ dist2(x0,y0,x1,y1){
 sq(a) int a; {
 	return(a*a);
 }
-#endif QUEST
+#endif /* QUEST /**/
+
+#ifdef NEWCLASS
+struct permonst *
+courtmon()
+{
+	int     i = rn2(60) + rn2(3*dlevel);
+
+	if (i > 100)		return(PM_DRAGON);
+	else if (i > 95)	return(PM_XORN);
+	else if (i > 85)	return(PM_TROLL);
+	else if (i > 75)	return(PM_ETTIN);
+	else if (i > 60)	return(PM_CENTAUR);
+	else if (i > 45)	return(PM_ORC);
+	else if (i > 30)	return(PM_HOBGOBLIN);
+#ifdef KOPS
+	else			return(PM_GNOME);
+#else
+	else if (i > 15)	return(PM_GNOME);
+	else			return(PM_KOBOLD);
+#endif
+}
+#endif /* NEWCLASS /**/

@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)monst.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.monst.h - version 1.0.2 */
+/* monst.h - version 1.0.2 */
 
 struct monst {
 	struct monst *nmon;
@@ -24,7 +25,7 @@ struct monst {
 	Bitfield(mflee,1);	/* fleeing */
 	Bitfield(mfleetim,7);	/* timeout for mflee */
 	Bitfield(mcan,1);	/* has been cancelled */
-	Bitfield(mtame,1);		/* implies peaceful */
+	Bitfield(mtame,1);	/* implies peaceful */
 	Bitfield(mpeaceful,1);	/* does not attack unprovoked */
 	Bitfield(isshk,1);	/* is shopkeeper */
 	Bitfield(isgd,1);	/* is guard */
@@ -34,9 +35,12 @@ struct monst {
 	Bitfield(mnamelth,6);	/* length of name (following mxlth) */
 #ifndef NOWORM
 	Bitfield(wormno,5);	/* at most 31 worms on any level */
-#endif NOWORM
-	unsigned mtrapseen;	/* bitmap of traps we've been trapped in */
-	long mlstmv;	/* prevent two moves at once */
+#endif
+#ifdef WALKIES
+	Bitfield(mleashed,1);	/* monster is on a leash */
+#endif
+	long mtrapseen;		/* bitmap of traps we've been trapped in */
+	long mlstmv;		/* prevent two moves at once */
 	struct obj *minvent;
 	long mgold;
 	unsigned mxlth;		/* length of following data */

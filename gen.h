@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)gen.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.gen.h version 1.0.1: added ONCE flag */
+/* gen.h version 1.0.1: added ONCE flag */
 
 struct gen {
 	struct gen *ngen;

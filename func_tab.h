@@ -1,15 +1,17 @@
+/*	SCCS Id: @(#)func_tab.h	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* def.func_tab.h - version 1.0.2 */
+/* func_tab.h - version 1.0.2 */
 
 struct func_tab {
 	char f_char;
 	int (*f_funct)();
+	char *f_text;
 };
 
 extern struct func_tab cmdlist[];
 
 struct ext_func_tab {
-	char *ef_txt;
+	char *ef_txt, *ef_desc;
 	int (*ef_funct)();
 };
 

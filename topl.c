@@ -1,8 +1,9 @@
+/*	SCCS Id: @(#)topl.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.topl.c - version 1.0.2 */
+/* topl.c - version 1.0.2 */
 
-#include "hack.h"
 #include <stdio.h>
+#include "hack.h"
 extern char *eos();
 extern int CO;
 
@@ -116,8 +117,9 @@ clrlin(){
 }
 
 /*VARARGS1*/
-pline(line,arg1,arg2,arg3,arg4,arg5,arg6)
-register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
+/* Because the modified mstatusline has 9 arguments KAA */
+pline(line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9)
+register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6,*arg7,*arg8,*arg9;
 {
 	char pbuf[BUFSZ];
 	register char *bp = pbuf, *tl;
@@ -125,7 +127,7 @@ register char *line,*arg1,*arg2,*arg3,*arg4,*arg5,*arg6;
 
 	if(!line || !*line) return;
 	if(!index(line, '%')) (void) strcpy(pbuf,line); else
-	(void) sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6);
+	(void) sprintf(pbuf,line,arg1,arg2,arg3,arg4,arg5,arg6,arg7,arg8,arg9);
 	if(flags.toplin == 1 && !strcmp(pbuf, toplines)) return;
 	nscr();		/* %% */
 

@@ -1,0 +1,259 @@
+
+	This file consists of all previous README files for the game, as
+released with the original version (Jay F.), first usenet version (Andries B.),
+and PC-Hack (Don K.).  This way "README" is current for this version.
+
+						Mike Stephenson
+
+-- Original README file --------------------------------------------------------
+
+This is export hack, my first semester programming project.
+
+To set it up for your system, you will have to do the following:
+	1: create a hack uid, to own the top ten list, etc.
+	2: create a hack directory "/usr/lib/game/hack" is the default.
+	2.5: make the directory 700 mode.	/* sav files go in there...*/
+	3: modify hack.main.c to use the new directory.
+	4: modify hack.main.c so it uses the new hack gid.  Gid accounts can
+go into magic mode without the password, can get cores with ^G, etc.
+(make sure gid isn't checked anywhere else...)
+	5: recompile hack.
+	6: put it in games after making it set-uid hack.
+	8: fix the bugs I undobtedly left in it.
+	9: tell me what you think of it.
+
+	Hack uses the UCB file /etc/termcap to get your terminal escape codes.
+If you don't use it, you will have to make extensive changes to hack.pri.c
+
+If you find any bugs (That you think I don't know about), or have any
+awesome new changes (Like a better save (One that works!)), or have ANY
+questions, write me
+		Jay Fenlason
+		29 East St.
+		Sudbury Mass.
+			01776
+
+or call me at (617) 443-5036.  Since I have both a modem and a teen-age
+sister, Good Luck.
+
+
+Hack is split (roughly) into several source files that do different things.
+I have tried to fit all the procedures having to do with a certain segment
+of the game into a single file, but the job is not the best in the world.
+The rough splits are:
+
+hack.c		General random stuff and things I never got around to moving.
+hack.main.c	main() and other random procedures, also the lock file stuff.
+hack.mon.c	Monsters, moving, attacking, etc.
+hack.do.c	drink, eat, read, wield, save, etc.
+hack.do1.c	zap, wear, remove, etc...
+hack.pri.c	stuff having to do with the screen, most of the terminal
+		independant stuff is in here.
+hack.lev.c	temp files and calling of mklev.
+
+Because of the peculiar restraints on our system, I make mklev (create
+a level) a separate procedure execd by hack when needed.  The source for
+mklev is (Naturaly) mklev.c.  You may want to put mklev back into hack.
+Good luck.
+
+Most of hack was written by me, with help from
+		Kenny Woodland (KW)	(general random things including
+			the original BUZZ())
+		Mike Thome	(MT)	(The original chamelian)
+	and	Jon Payne	(JP)	(The original lock file kludge and
+			the massive CURS())
+
+This entire program would not have been possible without the SFSU Logo
+Workshop.  I am eternally grateful to all of our students (Especially K.L.),
+without whom I would never have seen Rogue.  I am especially grateful to
+Mike Clancy, without whose generous help I would never have gotten to play
+ROGUE.
+
+-- Hack 1.0.x README file ------------------------------------------------------
+
+Hack is a display oriented dungeons & dragons - like game.
+Both display and command structure resemble rogue.
+(For a game with the same structure but entirely different display -
+a real cave instead of dull rectangles - try Quest)
+
+Hack was originally written by Jay Fenlason (at lincolnsudbury:
+ 29 East St., Sudbury Mass., 01776) with help from
+ Kenny Woodland, Mike Thome and Jon Payne.
+Basically it was an implementation of Rogue, however, with 52+ instead of 26
+ monster types.
+The current version is more than thrice as large (with such new features as
+ the dog, the long worms, the shops, etc.) and almost entirely rewritten
+ (only the display routines are the original ones - I must rewrite these
+ too one day; especially when you are blind strange things still happen).
+
+Files for hack:
+	hack		The actual game
+	record		Top 100 list (just start with an empty file)
+	news		Tells about recent changes in hack, or bugs found ...
+			(Just start with no news file.)
+	data		Auxiliary file used by hack to give you the names
+			and sometimes some more information on the
+			objects and monsters.
+	help		Introductory information (no doubt outdated).
+	hh		Compactified version of help.
+	perm		An empty file used for locking purposes.
+	rumors		Texts for fortune cookies.
+			(Some of these contain information on the game,
+			others are just plain stupid. Additional rumors
+			are appreciated.)
+	hack.sh		A shell script.
+			(We have hack.sh in /usr/games/hack and
+			hack in /usr/games/lib/hackdir/hack and all the other
+			hack stuff in /usr/games/lib/hackdir - perhaps this
+			will make the script clear.
+			There is no need for you to use it.)
+	READ_ME		This file.
+	Original_READ_ME Jay Fenlason's READ_ME
+
+System files used:
+	/etc/termcap	Used in conjunction with the environment variable
+			$TERM.
+	/bin/cat
+	/usr/ucb/more
+	/bin/sh		Used when $SHELL is undefined.
+
+How to install hack:
+0. Compile the sources. Perhaps you should first look at the file config.h
+   and define BSD if you are on a BSDtype system,
+   define STUPID if your C-compiler chokes on complicated expressions.
+   Make sure schar and uchar represent signed and unsigned types.
+   If your C compiler doesnt allow initialization of bit fields
+   change Bitfield. When config.h looks reasonable, say 'make'.
+   (Perhaps you have to change TERMLIB in the makefile.)
+1. If it didnt exist already, introduce a loginname `play' .
+2. The program  hack  resides in a directory so that it is executable
+   for everybody and is suid play:
+	---s--s--x  1 play	206848 Apr  3 00:17 hack
+   Perhaps you wish to restrict playing to certain hours, or have games
+   running under nice; in that case you might write a program play.c
+   such that the program play is suid play and executable for everybody
+   while all the games in /usr/games are readable or executable for
+   play only; all the program play does is asking for the name of a game,
+   checking that time-of-day and system load do not forbid playing,
+   and then executing the game. Thus:
+	-r-sr-sr-x  1 play	 13312 May 24 12:52 play
+	---x------  1 play	206848 Apr  3 00:17 hack
+   If you are worried about security you might let play do
+   chroot("/usr/games") so that no player can get access to the rest
+   of the system via shell escapes and the likes.
+   If you #define SECURE in config.h then hack will not setuid(getuid())
+   before executing a chdir(). Hack will always do setuid(getuid()) with
+   a fork. If you do not define UNIX then hack will not fork.
+3. The rest of the stuff belonging to hack sits in a subdirectory hackdir
+   (on our system /usr/games/lib/hackdir) with modes
+	drwx------  3 play	1024 Aug  9 09:03 hackdir
+   Here all the temporary files will be created (with names like xlock.17
+   or user.5).
+4. If you are not really short on file space, creating a subdirectory
+   hackdir/save (modes again drwx------) will enable users to save their
+   unfinished games.
+
+The program hack is called
+$ hack [-d hackdir] [maxnrofplayers]
+(for playing) or
+$ hack [-d hackdir] -s [listofusers | limit | all]
+(for seeing part of the scorelist).
+The shell file hack (in this kit called hack.sh) takes care of
+calling hack with the right arguments.
+
+Send complaints, bug reports, suggestions for improvements to
+mcvax!aeb - in real life Andries Brouwer.
+
+-- PC Hack 3.51 README file ----------------------------------------------------
+
+	Welcome to the sources for PC HACK (version 3.51).
+
+Introduction
+------------
+This is a version of the public domain program HACK 1.03 (copyright
+Stichting Mathematisch Centrum, Amsterdam, 1984, 1985.) implemented
+under MSDOS with the Microsoft(tm) C v3.0 compiler.
+
+You may copy this version of PC HACK and make any changes you want to
+it.  You may give it away, but you may not sell it.
+
+
+The sources are in ARC format in HACK351S.ARC.  The commands:
+
+	C> arc51 e hack351s makefile make.*
+	C> arc51 e hack351s *.h
+	C> arc51 e hack351s *.c
+
+will unpack the files.
+
+With a hard disk system, you should be able to type `make' and the sources
+will start to be compiled.  This takes a long time.  A floppy disk system
+does not really have enough storage.
+
+
+Compiling
+---------
+The LARGE compiler model is used.  To add WIZARD mode, add a -DWIZARD
+to the MAKEFILE, or a #define WIZARD to the CONFIG.H file.
+
+The MAKEFILE included with PC HACK 3.51 sources is for my version of MAKE.
+It is very similar to UNIX(tm) `make'.  See MAKE.DOC for details.
+
+To compile the sources by hand the command for each `filename.c' file is:
+	msc -AL -DREGBUG -DLINT_ARGS -Ot -Gs filename.c;
+
+
+Linking
+-------
+I used the Microsoft 8086 Linker version 3.01
+
+To link the *.obj files by hand, the command is:
+	link @linkfile
+
+Where the contents of the linkfile (not supplied) should be:
+
+decl.obj apply.obj bones.obj cmd.obj do.obj +
+do_name.obj do_wear.obj dog.obj eat.obj +
+end.obj engrave.obj fight.obj hack.obj +
+invent.obj ioctl.obj lev.obj main.obj +
+makemon.obj mhitu.obj mklev.obj mkmaze.obj +
+mkobj.obj mkshop.obj mon.obj monst.obj +
+o_init.obj objnam.obj options.obj pager.obj +
+potion.obj pri.obj read.obj rip.obj +
+rumors.obj save.obj search.obj shk.obj +
+shknam.obj steal.obj termcap.obj +
+timeout.obj topl.obj track.obj trap.obj +
+tty.obj unix.obj u_init.obj vault.obj +
+wield.obj wizard.obj worm.obj worn.obj +
+zap.obj version.obj rnd.obj alloc.obj +
+msdos.obj 
+hack /NOIG /STACK:4000; 
+
+
+Differences from UNIX HACK
+--------------------------
+Changes that were introduced to port UNIX HACK to the MSDOS environment
+are surrounded with `#ifdef MSDOS', `#endif' directives.
+
+Other changes I have made are surrounded by `#ifdef DGK', `#endif'
+directives.  It should be possible to compile these sources without
+any of my changes by removing the `#define DGK' line from CONFIG.H.
+
+Also, functions I have added are mainly restricted to the file msdos.c,
+although some of them are in other places (ie. wizard.c)
+
+
+Finally
+-------
+If you have any questions, contact me at one of:
+
+	Don Kneller
+	UUCP:	...ucbvax!ucsfcgl!kneller
+	ARPA:	kneller@ucsf-cgl.ARPA
+	BITNET:	kneller@ucsfcgl.BITNET
+	USMAIL:	D. G. Kneller
+		2 Panoramic Way #204
+		Berkeley, CA 94704
+
+--------------------------------------------------------------------------------
+END OF FILE

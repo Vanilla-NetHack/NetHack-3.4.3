@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)zap.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.zap.c - version 1.0.3 */
+/* zap.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -7,17 +8,25 @@ extern struct obj *mkobj_at();
 extern struct monst *makemon(), *mkmon_at(), youmonst;
 struct monst *bhit();
 char *exclam();
+#ifdef KAA
+extern char *xname();
+#endif
 
 char *fl[]= {
 	"magic missile",
 	"bolt of fire",
 	"sleep ray",
 	"bolt of cold",
-	"death ray"
+	"death ray",
+	"magic missle",		/* Spell equivalents of above wands */
+	"fireball",
+	"sleep ray",
+	"cone of cold",
+	"finger of death"
 };
 
-/* Routines for IMMEDIATE wands. */
-/* bhitm: monster mtmp was hit by the effect of wand otmp */
+/* Routines for IMMEDIATE wands and spells. */
+/* bhitm: monster mtmp was hit by the effect of wand or spell otmp */
 bhitm(mtmp, otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
@@ -25,46 +34,72 @@ register struct obj *otmp;
 	wakeup(mtmp);
 	switch(otmp->otyp) {
 	case WAN_STRIKING:
+#ifdef SPELLS
+	case SPE_FORCE_BOLT:
+#endif
 		if(u.uswallow || rnd(20) < 10+mtmp->data->ac) {
 			register int tmp = d(2,12);
-			hit("wand", mtmp, exclam(tmp));
-			mtmp->mhp -= tmp;
-			if(mtmp->mhp < 1) killed(mtmp);
-		} else miss("wand", mtmp);
+			hit((otmp->otyp == WAN_STRIKING) ? "wand" : "spell", mtmp, exclam(tmp));
+			resist(mtmp, otmp->olet, tmp, TELL);
+		} else miss((otmp->otyp == WAN_STRIKING) ? "wand" : "spell", mtmp);
 		break;
 	case WAN_SLOW_MONSTER:
-		mtmp->mspeed = MSLOW;
+#ifdef SPELLS
+	case SPE_SLOW_MONSTER:
+#endif
+		if(! resist(mtmp, otmp->olet, 0, NOTELL))
+			mtmp->mspeed = MSLOW;
 		break;
 	case WAN_SPEED_MONSTER:
-		mtmp->mspeed = MFAST;
+		if (!resist(mtmp, otmp->olet, 0, NOTELL))
+			mtmp->mspeed = MFAST;
 		break;
 	case WAN_UNDEAD_TURNING:
+#ifdef SPELLS
+	case SPE_TURN_UNDEAD:
+#endif
 		if(index(UNDEAD,mtmp->data->mlet)) {
-			mtmp->mhp -= rnd(8);
-			if(mtmp->mhp < 1) killed(mtmp);
-			else mtmp->mflee = 1;
+
+			if(!resist(mtmp, otmp->olet, rnd(8), NOTELL))
+				mtmp->mflee = 1;
 		}
 		break;
 	case WAN_POLYMORPH:
-		if( newcham(mtmp,&mons[rn2(CMNUM)]) )
-			objects[otmp->otyp].oc_name_known = 1;
+#ifdef SPELLS
+	case SPE_POLYMORPH:
+#endif
+		if(!resist(mtmp, otmp->olet, 0, NOTELL))
+		    if( newcham(mtmp,&mons[rn2(CMNUM)]) )
+			if (!Hallucination)
+			    objects[otmp->otyp].oc_name_known = 1;
 		break;
 	case WAN_CANCELLATION:
-		mtmp->mcan = 1;
+#ifdef SPELLS
+	case SPE_CANCELLATION:
+#endif
+		if(!resist(mtmp, otmp->olet, 0, NOTELL))
+			mtmp->mcan = 1;
 		break;
 	case WAN_TELEPORTATION:
+#ifdef SPELLS
+	case SPE_TELEPORT_AWAY:
+#endif
 		rloc(mtmp);
 		break;
 	case WAN_MAKE_INVISIBLE:
 		mtmp->minvis = 1;
 		break;
-#ifdef WAN_PROBING
-	case WAN_PROBING:
-		mstatusline(mtmp);
+	case WAN_NOTHING:
 		break;
-#endif WAN_PROBING
+	case WAN_PROBING:
+#ifdef PROBING
+		mstatusline(mtmp);
+#else
+		pline("Nothing Happens.");
+#endif
+		break;
 	default:
-		impossible("What an interesting wand (%u)", otmp->otyp);
+		impossible("What an interesting effect (%u)", otmp->otyp);
 	}
 }
 
@@ -72,81 +107,114 @@ bhito(obj, otmp)	/* object obj was hit by the effect of wand otmp */
 register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 {
 	register int res = TRUE;
+#ifdef DGKMOD
+	struct obj *otmp2;
+#endif
 
 	if(obj == uball || obj == uchain)
 		res = FALSE;
 	else
 	switch(otmp->otyp) {
 	case WAN_POLYMORPH:
+#ifdef SPELLS
+	case SPE_POLYMORPH:
+#endif
 		/* preserve symbol and quantity, but turn rocks into gems */
+#ifdef DGKMOD
+		otmp2 = mkobj_at((obj->otyp == ROCK
+			|| obj->otyp == ENORMOUS_ROCK) ? GEM_SYM : obj->olet,
+			obj->ox, obj->oy);
+		otmp2->quan = obj->quan;
+		/* keep special fields (including charges on wands) */
+		/* The DGK modification doesn't allow polymorphing a weapon
+		   with enchantments into another one, and doesn't allow 
+		   polymorphed rings to have plusses.  KAA*/
+		if (index("/)[", otmp2->olet)) otmp2->spe = obj->spe;
+		otmp2->cursed = otmp->cursed;
+		/* update the weight */
+		otmp2->owt = weight(otmp2);
+#else
 		mkobj_at((obj->otyp == ROCK || obj->otyp == ENORMOUS_ROCK)
 			? GEM_SYM : obj->olet,
 			obj->ox, obj->oy) -> quan = obj->quan;
+#endif
 		delobj(obj);
 		break;
 	case WAN_STRIKING:
+#ifdef SPELLS
+	case SPE_FORCE_BOLT:
+#endif
 		if(obj->otyp == ENORMOUS_ROCK)
 			fracture_rock(obj);
 		else
 			res = FALSE;
 		break;
 	case WAN_CANCELLATION:
+#ifdef SPELLS
+	case SPE_CANCELLATION:
+#endif
 		if(obj->spe && obj->olet != AMULET_SYM) {
 			obj->known = 0;
 			obj->spe = 0;
 		}
 		break;
 	case WAN_TELEPORTATION:
+#ifdef SPELLS
+	case SPE_TELEPORT_AWAY:
+#endif
 		rloco(obj);
 		break;
 	case WAN_MAKE_INVISIBLE:
 		obj->oinvis = 1;
 		break;
 	case WAN_UNDEAD_TURNING:
+#ifdef SPELLS
+	case SPE_TURN_UNDEAD:
+#endif
 		res = revive(obj);
 		break;
 	case WAN_SLOW_MONSTER:		/* no effect on objects */
+#ifdef SPELLS
+	case SPE_SLOW_MONSTER:
+#endif
 	case WAN_SPEED_MONSTER:
-#ifdef WAN_PROBING
+	case WAN_NOTHING:
 	case WAN_PROBING:
-#endif WAN_PROBING
 		res = FALSE;
 		break;
 	default:
-		impossible("What an interesting wand (%u)", otmp->otyp);
+		impossible("What an interesting effect (%u)", otmp->otyp);
 	}
 	return(res);
 }
 
-dozap()
+/*
+ * zappable - returns 1 if zap is available, 0 otherwise.
+ *	      it removes a charge from the wand if zappable.
+ * added by GAN 11/03/86
+ */
+int
+zappable(wand)
+register struct obj *wand;
 {
-	register struct obj *obj;
-	xchar zx,zy;
-
-	obj = getobj("/", "zap");
-	if(!obj) return(0);
-	if(obj->spe < 0 || (obj->spe == 0 && rn2(121))) {
-		pline("Nothing Happens.");
+	if(wand->spe < 0 || (wand->spe ==0 && rn2(121)))
+		return(0);
+	else  {
+		if(wand->spe == 0)
+			pline("You wrest one more spell from the worn-out wand.");
+		wand->spe--;
 		return(1);
 	}
-	if(obj->spe == 0)
-		pline("You wrest one more spell from the worn-out wand.");
-	if(!(objects[obj->otyp].bits & NODIR) && !getdir(1))
-		return(1);	/* make him pay for knowing !NODIR */
-	obj->spe--;
-	if(objects[obj->otyp].bits & IMMEDIATE) {
-		if(u.uswallow)
-			bhitm(u.ustuck, obj);
-		else if(u.dz) {
-			if(u.dz > 0) {
-				register struct obj *otmp = o_at(u.ux, u.uy);
-				if(otmp)
-					(void) bhito(otmp, obj);
-			}
-		} else
-			(void) bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
-	} else {
-	    switch(obj->otyp){
+}
+
+/*
+ * zapnodir - zaps an NODIR wand.
+ * added by GAN 11/03/86
+ */
+zapnodir(wand)
+register struct obj *wand;
+{
+	switch(wand->otyp){
 		case WAN_LIGHT:
 			litroom(TRUE);
 			break;
@@ -161,22 +229,180 @@ dozap()
 			}
 			break;
 		case WAN_WISHING:
-			{ char buf[BUFSZ];
-			  register struct obj *otmp;
-			  extern struct obj *readobjnam(), *addinv();
-		      if(u.uluck + rn2(5) < 0) {
-			pline("Unfortunately, nothing happens.");
-			break;
-		      }
-		      pline("You may wish for an object. What do you want? ");
-		      getlin(buf);
-		      if(buf[0] == '\033') buf[0] = 0;
-		      otmp = readobjnam(buf);
-		      otmp = addinv(otmp);
-		      prinv(otmp);
-		      break;
+			  
+			if(u.uluck + rn2(5) < 0) {
+				pline("Unfortunately, nothing happens.");
+				break;
 			}
+			makewish();
+			break;
+	}
+	if(!objects[wand->otyp].oc_name_known) {
+			objects[wand->otyp].oc_name_known = 1;
+			more_experienced(0,10);
+	}
+}
+
+dozap()
+{
+	register struct obj *obj;
+	int	damage;
+
+	obj = getobj("/", "zap");
+	if(!obj) return(0);
+	
+	/* zappable addition done by GAN 11/03/86 */
+	if(!zappable(obj))  {
+		pline("Nothing Happens.");
+		return(1);
+	}
+	if(!(objects[obj->otyp].bits & NODIR) && !getdir(1)) {
+		pline("The %s glows and fades.",xname(obj));
+		return(1);	/* make him pay for knowing !NODIR */
+	}
+#ifdef KAA
+     if(!u.dx && !u.dy && !u.dz && !(objects[obj->otyp].bits & NODIR)) {
+
+		if((damage = zapyourself(obj)))
+			losehp(damage,"self-inflicted injury");
+		return(1);
+     }
+#endif
+	weffects(obj);
+	return(1);
+}
+
+#ifdef KAA
+#define	makeknown(x)	objects[x].oc_name_known = 1
+
+zapyourself(obj)
+	register struct obj	*obj;
+{
+struct obj	*otmp;
+int	damage = 0;
+
+	  switch(obj->otyp) {
+	       case WAN_STRIKING:
+		    damage=d(8,6);
+		    pline("The wand hits you!");
+		    break;
+	       case WAN_FIRE:
+		    if (!Fire_resistance) damage=d(12,6);
+		    pline("The wand sprays you with flames!");
+		    makeknown(WAN_FIRE);
+		    burn_scrolls();
+		    boil_potions();
+		    break;
+	       case WAN_COLD:
+		    if (!Cold_resistance) damage=d(12,6);
+		    pline("You are blasted with liquid nitrogen!");
+		    makeknown(WAN_COLD);
+		    break;
+	       case WAN_MAGIC_MISSILE:
+		    damage = d(4,6);
+		    pline("You are shot at point blank range!");
+		    makeknown(WAN_MAGIC_MISSILE);
+		    break;
+	       case WAN_POLYMORPH:
+		    makeknown(WAN_POLYMORPH);
+		    polyself();
+		    break;
+	       case WAN_CANCELLATION:
+		    for(otmp = invent; otmp; otmp = otmp->nobj)
+		       if(otmp != uball && otmp->otyp != AMULET_OF_YENDOR)
+			      otmp->spe = 0;
+		    if(u.mtimedone) rehumanize();
+		    flags.botl = 1;  /* because of potential AC change */
+		    find_ac();
+		    break;
+	       case WAN_MAKE_INVISIBLE:
+		    HInvis |= INTRINSIC;
+		    /* Tough luck if you cannot see invisible! */
+		    if (!See_invisible) newsym(u.ux, u.uy);
+		    break;
+	       case WAN_SPEED_MONSTER:
+		    Fast |= INTRINSIC;
+		    break;
+	       case WAN_SLEEP:
+		    makeknown(WAN_SLEEP);
+		    pline("The sleep ray hits you!");
+		    nomul(-rn2(50));
+		    break;
+	       case WAN_SLOW_MONSTER:
+		    Fast = 0;
+		    break;
+	       case WAN_TELEPORTATION:
+		    tele();
+		    break;
+	       case WAN_DEATH:
+		    pline("You irradiate yourself with pure energy!");
+		    pline("You die.");
+		    killer = "wand of death";
+		    done("died");
+		    break;
+	       case WAN_DIGGING:
+	       case WAN_UNDEAD_TURNING:
+	       case WAN_NOTHING:
+		    break;
+	       default: impossible("object %d zap?",obj->otyp);
+	  }
+	return(damage);
+}
+#endif /* KAA /**/
+
+/* called for various wand and spell effects - M. Stephenson */
+weffects(obj)
+	register struct	obj	*obj;
+{
+	xchar zx,zy;
+
+	if(objects[obj->otyp].bits & IMMEDIATE) {
+		if(u.uswallow)
+			bhitm(u.ustuck, obj);
+		else if(u.dz) {
+			if(u.dz > 0 && o_at(u.ux,u.uy)) {
+				register struct obj *otmp;
+				
+				/* changed by GAN to hit all objects there */
+				for(otmp = fobj; otmp ; otmp = otmp->nobj)
+					if(otmp->ox == u.ux &&
+					   otmp->oy == u.uy)
+						(void) bhito(otmp, obj);
+			}
+		} else
+			(void) bhit(u.dx,u.dy,rn1(8,6),0,bhitm,bhito,obj);
+	} else {
+	    switch(obj->otyp){
+		case WAN_LIGHT:
+#ifdef SPELLS
+		case SPE_LIGHT:
+#endif
+			litroom(TRUE);
+			break;
+		case WAN_SECRET_DOOR_DETECTION:
+#ifdef SPELLS
+		case SPE_DETECT_UNSEEN:
+#endif
+			if(!findit()) return(1);
+			break;
+		case WAN_CREATE_MONSTER:
+			{ register int cnt = 1;
+			if(!rn2(23)) cnt += rn2(7) + 1;
+			while(cnt--)
+			    (void) makemon((struct permonst *) 0, u.ux, u.uy);
+			}
+			break;
+		case WAN_WISHING:
+			if(u.uluck + rn2(5) < 0) {
+			    pline("Unfortunately, nothing happens.");
+			    break;
+			}
+			makewish();
+			break;
 		case WAN_DIGGING:
+#ifdef SPELLS
+		case SPE_DIG:
+#endif
 			/* Original effect (approximately):
 			 * from CORR: dig until we pierce a wall
 			 * from ROOM: piece wall and dig until we reach
@@ -246,8 +472,16 @@ dozap()
 			break;
 			}
 		default:
-			buzz((int) obj->otyp - WAN_MAGIC_MISSILE,
-				u.ux, u.uy, u.dx, u.dy);
+#ifdef SPELLS
+			if((int) obj->otyp >= SPE_MAGIC_MISSILE) {
+
+				buzz((int) obj->otyp - SPE_MAGIC_MISSILE + 5,
+					u.ux, u.uy, u.dx, u.dy);
+			} else
+#endif
+
+				buzz((int) obj->otyp - WAN_MAGIC_MISSILE,
+					u.ux, u.uy, u.dx, u.dy);
 			break;
 		}
 		if(!objects[obj->otyp].oc_name_known) {
@@ -255,7 +489,7 @@ dozap()
 			more_experienced(0,10);
 		}
 	}
-	return(1);
+	return;
 }
 
 char *
@@ -320,9 +554,14 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 			(*fhitm)(mtmp, obj);
 			range -= 3;
 		}
-		if(fhito && (otmp = o_at(bhitpos.x,bhitpos.y))){
-			if((*fhito)(otmp, obj))
-				range--;
+		/* modified by GAN to hit all objects */
+		if(fhito && o_at(bhitpos.x,bhitpos.y)){
+			int hitanything = 0;
+			for(otmp = fobj; otmp; otmp = otmp->nobj)
+				if(otmp->ox == bhitpos.x &&
+				   otmp->oy == bhitpos.y)
+					hitanything += (*fhito)(otmp, obj);
+			if(hitanything)	range--;
 		}
 		if(!ZAP_POS(typ)) {
 			bhitpos.x -= ddx;
@@ -398,8 +637,8 @@ register int type;
 register xchar sx,sy;
 register int dx,dy;
 {
-	int abstype = abs(type);
-	register char *fltxt = (type == -1) ? "blaze of fire" : fl[abstype];
+	int abstype = (type == 10) ? 1 : abs(type);
+	register char *fltxt = (type == -1 || type == 10) ? "blaze of fire" : fl[abstype];
 	struct rm *lev;
 	xchar range;
 	struct monst *mon;
@@ -455,6 +694,11 @@ register int dx,dy;
 			} else
 				pline("You hear a hissing sound.");
 		}
+		if(o_at(sx,sy) && abstype == 1)
+			if(burn_floor_scrolls(sx,sy) && cansee(sx,sy))  {
+				mnewsym(sx,sy);
+				pline("You see a puff of smoke.");
+			}
 		if((mon = m_at(sx,sy)) &&
 		   (type != -1 || mon->data->mlet != 'D')) {
 			wakeup(mon);
@@ -481,25 +725,28 @@ register int dx,dy;
 				pline("The %s hits you!",fltxt);
 				switch(abstype) {
 				case 0:
-					dam = d(2,6);
+				case 5:	dam = d(2,6);
 					break;
 				case 1:
-					if(Fire_resistance)
+				case 6:	if(Fire_resistance)
 						pline("You don't feel hot!");
 					else dam = d(6,6);
-					if(!rn2(3))
+					if(!rn2(3)) {
+						boil_potions();
 						burn_scrolls();
+					}
 					break;
 				case 2:
-					nomul(-rnd(25)); /* sleep ray */
+				case 7:	nomul(-rnd(25)); /* sleep ray */
 					break;
 				case 3:
-					if(Cold_resistance)
+				case 8:	if(Cold_resistance)
 						pline("You don't feel cold!");
 					else dam = d(6,6);
 					break;
 				case 4:
-					u.uhp = -1;
+				case 9:	u.uhp = -1;
+					break;
 				}
 				losehp(dam,fltxt);
 			} else pline("The %s whizzes by you!",fltxt);
@@ -548,27 +795,34 @@ register type;
 
 	switch(type) {
 	case 0:			/* magic missile */
-		tmp = d(2,6);
+	case 5: tmp = d(2,6);
 		break;
 	case -1:		/* Dragon blazing fire */
-	case 1:			/* fire */
+	case 1:			/* fire wand*/
+	case 6:			/* fire spell */
+	case 10:		/* Polymorphed human blazing fire */
 		if(index("Dg", mon->data->mlet)) break;
 		tmp = d(6,6);
 		if(index("YF", mon->data->mlet)) tmp += 7;
 		break;
 	case 2:			/* sleep*/
-		mon->mfroz = 1;
+	case 7: tmp = 0;
+		if(!resist(mon, (type == 2) ? '/' : '+', 0, NOTELL))
+			mon->mfroz = 1;
 		break;
 	case 3:			/* cold */
+	case 8:
 		if(index("YFgf", mon->data->mlet)) break;
 		tmp = d(6,6);
 		if(mon->data->mlet == 'D') tmp += 7;
 		break;
 	case 4:			/* death*/
+	case 9:
 		if(index(UNDEAD, mon->data->mlet)) break;
 		tmp = mon->mhp+1;
 		break;
 	}
+	if (resist(mon, (type < 5) ? '/' : '+', 0, NOTELL)) tmp /= 2;
 	mon->mhp -= tmp;
 	return(tmp);
 }
@@ -580,13 +834,35 @@ revive(obj)
 register struct obj *obj;
 {
 	register struct monst *mtmp;
+	register int let;
 
 	if(obj->olet == FOOD_SYM && obj->otyp > CORPSE) {
+#ifdef KAA
+		switch (obj->otyp) {
+			case DEAD_HUMAN: { let = 'Z'; break; }
+			case DEAD_GIANT: { let = '9'; break; }
+			case DEAD_DEMON: { let = '&'; break; }
+			default: let = CORPSE_I_TO_C(obj->otyp);
+		}
+		delobj(obj);
+/* Originally there was a bug which caused the object not to be erased
+   from the screen.  This happened because first the monster got created,
+   then the corpse removed.  Although delobj() called unpobj(), the object
+   didn't get erased from the screen because the monster was sitting on top
+   of it.  Solution: place the delobj() call before the mkmon() call. */
+		mtmp = mkmon_at(let, obj->ox, obj->oy);
+		if (mtmp && obj->otyp == DEAD_HUMAN) {
+			mtmp->mhp = mtmp->mhpmax = 100;
+			mtmp->mspeed = MFAST;
+		}
+#endif
 		/* do not (yet) revive shopkeepers */
 		/* Note: this might conceivably produce two monsters
 			at the same position - strange, but harmless */
-		mtmp = mkmon_at(CORPSE_I_TO_C(obj->otyp),obj->ox,obj->oy);
+#ifndef KAA
 		delobj(obj);
+		mtmp = mkmon_at(CORPSE_I_TO_C(obj->otyp),obj->ox,obj->oy);
+#endif
 	}
 	return(!!mtmp);		/* TRUE if some monster created */
 }
@@ -620,23 +896,146 @@ register struct obj *obj;			   /* no texts here! */
 		prl(obj->ox,obj->oy);
 }
 
+boil_potions()
+{
+	register struct obj *obj, *obj2;
+	register int scrquan, i;
+	
+	for(obj = invent; obj; obj = obj2) {
+		obj2 = obj->nobj;
+		if(obj->olet == POTION_SYM) {
+			scrquan = obj->quan;
+			for(i = 1; i <= scrquan; i++) 
+				if(!rn2(3)) {
+					pline("%s %s boils and explodes!",
+					(obj->quan != 1) ? "One of your" : "Your",
+					xname(obj));
+					potionbreathe(obj);
+					useup(obj);
+					losehp(rn2(4),"boiling potion");
+				}
+		}
+	}
+}
+				
 burn_scrolls()
 {
 	register struct obj *obj, *obj2;
 	register int cnt = 0;
+	register int scrquan, i;
 
 	for(obj = invent; obj; obj = obj2) {
 		obj2 = obj->nobj;
 		if(obj->olet == SCROLL_SYM) {
-			cnt++;
-			useup(obj);
+			scrquan = obj->quan;
+			for(i = 1; i <= scrquan ; i++)
+				if(!rn2(3))  {
+					cnt++;
+					useup(obj);
+				}
 		}
 	}
-	if(cnt > 1) {
-		pline("Your scrolls catch fire!");
-		losehp(cnt, "burning scrolls");
-	} else if(cnt) {
-		pline("Your scroll catches fire!");
-		losehp(1, "burning scroll");
+
+	/* "Killed by a burning scrolls" doesn't make too much sense.  KAA*/
+	if (cnt) {
+		pline("%s of your scrolls catch%s fire!",
+		cnt==1 ? "One" : "Some", cnt==1 ? "es" : "");
+		if(Fire_resistance)
+			pline("You aren't hurt!");
+		else
+			losehp(cnt,"burning scroll");
 	}
+}
+
+resist(mtmp, olet, damage, tell)
+register struct monst	*mtmp;
+register char	olet;
+register int	damage, tell;
+{
+register int	resisted = 0;
+#ifdef HARD
+register int	level;
+
+	switch(olet)  {
+
+	    case '/':	level = 8;
+			break;
+
+	    case '?':	level = 6;
+			break;
+
+	    case '!':	level = 5;
+			break;
+
+	    default:	level = u.ulevel;
+			break;
+	}
+
+	resisted = (rn2(100) - mtmp->data->mlevel + level) < mtmp->data->mr;
+	if(resisted) {
+
+		if(tell) pline("The %s resists!", mtmp->data->mname);
+		mtmp->mhp -= damage/2;
+	} else
+#endif
+		mtmp->mhp -= damage;
+
+	if(mtmp->mhp < 1) killed(mtmp);
+	return(resisted);
+}
+
+/*
+ * burn scrolls on floor at position x,y
+ * return the number of scrolls burned
+ */
+int
+burn_floor_scrolls(x,y)
+{
+	register struct obj *obj, *obj2;
+	register int scrquan, i;
+	register int cnt = 0;
+
+	for(obj = fobj; obj; obj = obj2) {
+		obj2 = obj->nobj;
+		/* Bug fix - KAA */
+		if(obj->ox == x && obj->oy == y && obj->olet == SCROLL_SYM) {
+			scrquan = obj->quan;
+			for(i = 1; i <= scrquan ; i++)
+				if(!rn2(3))  {
+					cnt++;
+					useupf(obj);
+				}
+		}
+	}
+	return(cnt);
+}
+
+makewish()	/* Separated as there are now 3 places you can wish at. */
+{
+	char buf[BUFSZ];
+	register struct obj *otmp;
+	extern struct obj *readobjnam(), *addinv();
+	int wishquan, mergquan;
+
+	pline("You may wish for an object. What do you want? ");
+	getlin(buf);
+	if(buf[0] == '\033') buf[0] = 0;
+	otmp = readobjnam(buf);
+#ifdef KAA
+/* Wishing for gold has been implemented in readobjnam() and returns 0
+   if successful. */
+	if (otmp) { 
+#endif
+		wishquan = otmp->quan;
+		otmp = addinv(otmp);
+		/* indented lines added below so quantity shows
+		 *  right.     GAN - 11/13/86
+		 */
+		  mergquan = otmp->quan;
+		  otmp->quan = wishquan; /* to fool prinv() */
+		prinv(otmp);
+		  otmp->quan = mergquan;
+#ifdef KAA
+	}
+#endif
 }

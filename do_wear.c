@@ -1,8 +1,9 @@
+/*	SCCS Id: @(#)do_wear.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do_wear.c - version 1.0.3 */
+/* do_wear.c - version 1.0.3 */
 
-#include "hack.h"
 #include <stdio.h>
+#include "hack.h"
 extern char *nomovemsg;
 extern char quitchars[];
 extern char *Doname();
@@ -65,7 +66,7 @@ doremring() {
 	/* NOTREACHED */
 #ifdef lint
 	return(0);
-#endif lint
+#endif
 }
 
 dorr(otmp) register struct obj *otmp; {
@@ -111,6 +112,12 @@ doweararm() {
 	register int err = 0;
 	long mask = 0;
 
+#ifdef KAA
+	if(!index("@enozCGHIKLNOTUVWXYZ&",u.usym)) {
+		pline("Don't even bother.");
+		return(0);
+	}
+#endif
 	otmp = getobj("[", "wear");
 	if(!otmp) return(0);
 	if(otmp->owornmask & W_ARMOR) {
@@ -126,7 +133,7 @@ doweararm() {
 	} else if(otmp->otyp == SHIELD){
 		if(uarms) pline("You are already wearing a shield."), err++;
 		if(uwep && uwep->otyp == TWO_HANDED_SWORD)
-	pline("You cannot wear a shield and wield a two-handed sword."), err++;
+	pline("You cannot wear a shield and wield a two handed sword."), err++;
 		if(!err) mask = W_ARMS;
 	} else if(otmp->otyp == PAIR_OF_GLOVES) {
 		if(uarmg) {
@@ -139,6 +146,12 @@ doweararm() {
 		} else
 			mask = W_ARMG;
 	} else {
+#ifdef KAA
+		if(cantweararm(u.usym)) {
+			pline("You can't wear armor!");
+			return(0);
+		}
+#endif
 		if(uarm) {
 			if(otmp->otyp != ELVEN_CLOAK || uarm2) {
 				pline("You are already wearing some armor.");
@@ -147,7 +160,7 @@ doweararm() {
 		}
 		if(!err) mask = W_ARM;
 	}
-	if(otmp == uwep && uwep->cursed) {
+	if(welded(otmp)) {
 		if(!err++)
 			pline("%s is welded to your hand.", Doname(uwep));
 	}
@@ -183,7 +196,7 @@ dowearring() {
 		pline("You are already wearing that.");
 		return(0);
 	}
-	if(otmp == uwep && uwep->cursed) {
+	if(welded(otmp)) {
 		pline("%s is welded to your hand.", Doname(uwep));
 		return(0);
 	}
@@ -192,7 +205,7 @@ dowearring() {
 	else do {
 		char answer;
 
- 		pline("What ring-finger, Right or Left? ");
+		pline("What ring-finger, Right or Left? ");
 		if(index(quitchars, (answer = readchar())))
 			return(0);
 		switch(answer){
@@ -215,9 +228,6 @@ dowearring() {
 	case RIN_LEVITATION:
 		if(!oldprop) float_up();
 		break;
-	case RIN_PROTECTION_FROM_SHAPE_CHANGERS:
-		rescham();
-		break;
 	case RIN_GAIN_STRENGTH:
 		u.ustr += otmp->spe;
 		u.ustrmax += otmp->spe;
@@ -227,6 +237,16 @@ dowearring() {
 		break;
 	case RIN_INCREASE_DAMAGE:
 		u.udaminc += otmp->spe;
+		break;
+	case RIN_PROTECTION_FROM_SHAPE_CHAN:
+#ifdef DGKMOD
+		/* If you're no longer protected, let the chameleons
+		 * change shape again -dgk
+		 */
+		restartcham();
+#else
+		rescham();
+#endif /* DGKMOD /**/
 		break;
 	}
 	prinv(otmp);
@@ -271,6 +291,9 @@ register long mask;
 
 find_ac(){
 register int uac = 10;
+#ifdef KAA
+	if (u.mtimedone) uac = mons[u.umonnum].ac;
+#endif
 	if(uarm) uac -= ARM_BONUS(uarm);
 	if(uarm2) uac -= ARM_BONUS(uarm2);
 	if(uarmh) uac -= ARM_BONUS(uarmh);
@@ -278,6 +301,9 @@ register int uac = 10;
 	if(uarmg) uac -= ARM_BONUS(uarmg);
 	if(uleft && uleft->otyp == RIN_PROTECTION) uac -= uleft->spe;
 	if(uright && uright->otyp == RIN_PROTECTION) uac -= uright->spe;
+#ifdef PRAYERS
+	if (Protection & INTRINSIC) uac -= u.ublessed;
+#endif
 	if(uac != u.uac){
 		u.uac = uac;
 		flags.botl = 1;
@@ -289,8 +315,13 @@ register struct obj *otmp;
 int xfl = 0;
 	if(!uarmg) if(uleft || uright) {
 		/* Note: at present also cursed rings fall off */
+		/* changed 10/30/86 by GAN */
 		pline("Your %s off your fingers.",
+#ifdef HARD
+			((uleft && !uleft->cursed) && (uright && !uright->cursed)) ? "rings slip" : "ring slips");
+#else
 			(uleft && uright) ? "rings slip" : "ring slips");
+#endif
 		xfl++;
 		if((otmp = uleft) != Null(obj)){
 			ringoff(uleft);
@@ -301,8 +332,13 @@ int xfl = 0;
 			dropx(otmp);
 		}
 	}
-	if((otmp = uwep) != Null(obj)){
+	if(((otmp = uwep) != Null(obj))
+#ifdef HARD
+	   && !otmp->cursed
+#endif
+	) {
 		/* Note: at present also cursed weapons fall */
+		/* changed 10/30/86 by GAN */
 		setuwep((struct obj *) 0);
 		dropx(otmp);
 		pline("Your weapon %sslips from your hands.",
@@ -323,6 +359,7 @@ corrode_armor(){
 register struct obj *otmph = some_armor();
 	if(otmph){
 		if(otmph->rustfree ||
+		   otmph->otyp == CRYSTAL_PLATE_MAIL ||
 		   otmph->otyp == ELVEN_CLOAK ||
 		   otmph->otyp == LEATHER_ARMOR ||
 		   otmph->otyp == STUDDED_LEATHER_ARMOR) {
@@ -333,4 +370,28 @@ register struct obj *otmph = some_armor();
 		pline("Your %s!", aobjnam(otmph, "corrode"));
 		otmph->spe--;
 	}
+}
+
+static
+remarm(obj) register struct obj *obj; {
+	if(!obj || obj->olet != '[')
+		return(0);
+	(void) marmoroff(obj);
+	return(1);
+}
+
+static
+marmoroff(otmp) register struct obj *otmp; {
+register int delay = -objects[otmp->otyp].oc_delay;
+	if(cursed(otmp)) return(0);
+	setworn((struct obj *) 0, otmp->owornmask & W_ARMOR);
+	if(delay)
+		nomul(delay);
+	off_msg(otmp);
+	nomovemsg = "You finished taking off your armor.";
+	return(1);
+}
+
+doddoremarm() {
+	return(ggetobj("take off",remarm,0));
 }

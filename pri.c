@@ -1,8 +1,11 @@
+/*	SCCS Id: @(#)pri.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.pri.c - version 1.0.3 */
+/* pri.c - version 1.0.3 */
 
-#include "hack.h"
 #include <stdio.h>
+#include "hack.h"
+
+#define DEBUG
 xchar scrlx, scrhx, scrly, scrhy;	/* corners of new area on screen */
 
 extern char *hu_stat[];	/* in eat.c */
@@ -28,127 +31,18 @@ swallowed()
 	u.udisy = u.uy;
 }
 
-
-/*VARARGS1*/
-boolean panicking;
-
-panic(str,a1,a2,a3,a4,a5,a6)
-char *str;
-{
-	if(panicking++) exit(1);    /* avoid loops - this should never happen*/
-	home();
-	puts(" Suddenly, the dungeon collapses.");
-	fputs(" ERROR:  ", stdout);
-	printf(str,a1,a2,a3,a4,a5,a6);
-#ifdef DEBUG
-#ifdef UNIX
-	if(!fork())
-		abort();	/* generate core dump */
-#endif UNIX
-#endif DEBUG
-	more();			/* contains a fflush() */
-	done("panicked");
-}
-
-atl(x,y,ch)
-register x,y;
-{
-	register struct rm *crm = &levl[x][y];
-
-	if(x<0 || x>COLNO-1 || y<0 || y>ROWNO-1){
-		impossible("atl(%d,%d,%c)",x,y,ch);
-		return;
-	}
-	if(crm->seen && crm->scrsym == ch) return;
-	crm->scrsym = ch;
-	crm->new = 1;
-	on_scr(x,y);
-}
-
-on_scr(x,y)
-register x,y;
-{
-	if(x < scrlx) scrlx = x;
-	if(x > scrhx) scrhx = x;
-	if(y < scrly) scrly = y;
-	if(y > scrhy) scrhy = y;
-}
-
-/* call: (x,y) - display
-	(-1,0) - close (leave last symbol)
-	(-1,-1)- close (undo last symbol)
-	(-1,let)-open: initialize symbol
-	(-2,let)-change let
-*/
-
-tmp_at(x,y) schar x,y; {
-static schar prevx, prevy;
-static char let;
-	if((int)x == -2){	/* change let call */
-		let = y;
-		return;
-	}
-	if((int)x == -1 && (int)y >= 0){	/* open or close call */
-		let = y;
-		prevx = -1;
-		return;
-	}
-	if(prevx >= 0 && cansee(prevx,prevy)) {
-		delay_output();
-		prl(prevx, prevy);	/* in case there was a monster */
-		at(prevx, prevy, levl[prevx][prevy].scrsym);
-	}
-	if(x >= 0){	/* normal call */
-		if(cansee(x,y)) at(x,y,let);
-		prevx = x;
-		prevy = y;
-	} else {	/* close call */
-		let = 0;
-		prevx = -1;
-	}
-}
-
-/* like the previous, but the symbols are first erased on completion */
-Tmp_at(x,y) schar x,y; {
-static char let;
-static xchar cnt;
-static coord tc[COLNO];		/* but watch reflecting beams! */
-register xx,yy;
-	if((int)x == -1) {
-		if(y > 0) {	/* open call */
-			let = y;
-			cnt = 0;
-			return;
-		}
-		/* close call (do not distinguish y==0 and y==-1) */
-		while(cnt--) {
-			xx = tc[cnt].x;
-			yy = tc[cnt].y;
-			prl(xx, yy);
-			at(xx, yy, levl[xx][yy].scrsym);
-		}
-		cnt = let = 0;	/* superfluous */
-		return;
-	}
-	if((int)x == -2) {	/* change let call */
-		let = y;
-		return;
-	}
-	/* normal call */
-	if(cansee(x,y)) {
-		if(cnt) delay_output();
-		at(x,y,let);
-		tc[cnt].x = x;
-		tc[cnt].y = y;
-		if(++cnt >= COLNO) panic("Tmp_at overflow?");
-		levl[x][y].new = 0;	/* prevent pline-nscr erasing --- */
-	}
-}
-
 setclipped(){
 	error("Hack needs a screen of size at least %d by %d.\n",
 		ROWNO+2, COLNO);
 }
+
+#ifdef DGK
+static int multipleAts;		/* TRUE if we have many at()'s to do */
+static int DECgraphics;		/* The graphics mode toggle */
+
+#define DECgraphicsON() ((void) putchar('\16'), DECgraphics = TRUE)
+#define DECgraphicsOFF() ((void) putchar('\17'), DECgraphics = FALSE)
+#endif
 
 at(x,y,ch)
 register xchar x,y;
@@ -160,14 +54,44 @@ char ch;
 		impossible("At gets 0%o at %d %d.", ch, x, y);
 		return;
 	}
-#endif lint
+#endif
 	if(!ch) {
 		impossible("At gets null at %d %d.", x, y);
 		return;
 	}
 	y += 2;
 	curs(x,y);
-	(void) putchar(ch);
+#ifdef DGK
+	if (flags.DECRainbow) {
+		/* If there are going to be many at()s in a row without
+		 * intervention, only change the graphics mode when the
+		 * character changes between graphic and regular.
+		 */
+		if (multipleAts) {
+			if (ch & 0x80) {
+				if (!DECgraphics)
+					DECgraphicsON();
+				(void) putchar(ch ^ 0x80); /* Strip 8th bit */
+			} else {
+				if (DECgraphics)
+					DECgraphicsOFF();
+				(void) putchar(ch);
+			}
+		/* Otherwise, we don't know how many at()s will be happening
+		 * before printing of normal strings, so change to graphics
+		 * mode when necessary, then change right back.
+		 */
+		} else {
+			if (ch & 0x80) {
+				DECgraphicsON();
+				(void) putchar(ch ^ 0x80); /* Strip 8th bit */
+				DECgraphicsOFF();
+			} else
+				(void) putchar(ch);
+		}
+	} else
+#endif
+		(void) putchar(ch);
 	curx++;
 }
 
@@ -206,6 +130,53 @@ docrt()
 	seemons();	/* force new positions to be shown */
 /* This nonsense should disappear soon --------------------------------- */
 
+#ifdef DGK
+	/* For DEC Rainbows, we must translate each character to strip
+	 * out the 8th bit if necessary.
+	 */
+	if (flags.DECRainbow) {
+		multipleAts = TRUE;
+		for(y = 0; y < ROWNO; y++)
+			for(x = 0; x < COLNO; x++)
+				if((room = &levl[x][y])->new) {
+					room->new = 0;
+					at(x,y,room->scrsym);
+				} else if(room->seen)
+					at(x,y,room->scrsym);
+		multipleAts = FALSE;
+		if (DECgraphics)
+			DECgraphicsOFF();
+	} else {
+	/* Otherwise, line buffer the output to do the redraw in
+	 * about 2/3 of the time.
+	 */
+		for(y = 0; y < ROWNO; y++) {
+			char buf[COLNO+1];
+			int start, end;
+
+			memset(buf, ' ', COLNO);
+			for(x = 0, start = -1, end = -1; x < COLNO; x++)
+				if((room = &levl[x][y])->new) {
+					room->new = 0;
+					buf[x] = room->scrsym;
+					if (start < 0)
+						start = x;
+					end = x;
+				} else if(room->seen) {
+					buf[x] = room->scrsym;
+					if (start < 0)
+						start = x;
+					end = x;
+				}
+			if (end >= 0) {
+				buf[end + 1] = '\0';
+				curs(start, y + 2);
+				fputs(buf + start, stdout);
+				curx = end + 1;
+			}
+		}
+	}
+#else
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
 			if((room = &levl[x][y])->new) {
@@ -213,6 +184,7 @@ docrt()
 				at(x,y,room->scrsym);
 			} else if(room->seen)
 				at(x,y,room->scrsym);
+#endif
 	scrlx = COLNO;
 	scrly = ROWNO;
 	scrhx = scrhy = 0;
@@ -236,6 +208,10 @@ docorner(xmin,ymax) register xmin,ymax; {
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
+#ifdef DGK
+	if (flags.DECRainbow)
+		multipleAts = TRUE;
+#endif
 	for(y = 0; y < ymax; y++) {
 		if(y > ROWNO && CD) break;
 		curs(xmin,y+2);
@@ -251,6 +227,13 @@ docorner(xmin,ymax) register xmin,ymax; {
 		    }
 		}
 	}
+#ifdef DGK
+	if (flags.DECRainbow) {
+		multipleAts = FALSE;
+		if (DECgraphics)
+			DECgraphicsOFF();
+	}
+#endif
 	if(ymax > ROWNO) {
 		cornbot(xmin-1);
 		if(ymax > ROWNO+1 && CD) {
@@ -260,266 +243,36 @@ docorner(xmin,ymax) register xmin,ymax; {
 	}
 }
 
-curs_on_u(){
-	curs(u.ux, u.uy+2);
-}
-
-pru()
-{
-	if(u.udispl && (Invisible || u.udisx != u.ux || u.udisy != u.uy))
-		/* if(! levl[u.udisx][u.udisy].new) */
-			if(!vism_at(u.udisx, u.udisy))
-				newsym(u.udisx, u.udisy);
-	if(Invisible) {
-		u.udispl = 0;
-		prl(u.ux,u.uy);
-	} else
-	if(!u.udispl || u.udisx != u.ux || u.udisy != u.uy) {
-		atl(u.ux, u.uy, u.usym);
-		u.udispl = 1;
-		u.udisx = u.ux;
-		u.udisy = u.uy;
-	}
- levl[u.ux][u.uy].seen = 1;
-}
-
-#ifndef NOWORM
-#include	"def.wseg.h"
-extern struct wseg *m_atseg;
-#endif NOWORM
-
-/* print a position that is visible for @ */
-prl(x,y)
-{
-	register struct rm *room;
-	register struct monst *mtmp;
-	register struct obj *otmp;
-
-	if(x == u.ux && y == u.uy && (!Invisible)) {
-		pru();
-		return;
-	}
-	if(!isok(x,y)) return;
-	room = &levl[x][y];
-	if((!room->typ) ||
-	   (IS_ROCK(room->typ) && levl[u.ux][u.uy].typ == CORR))
-		return;
-	if((mtmp = m_at(x,y)) && !mtmp->mhide &&
-		(!mtmp->minvis || See_invisible)) {
-#ifndef NOWORM
-		if(m_atseg)
-			pwseg(m_atseg);
-		else
-#endif NOWORM
-		pmon(mtmp);
-	}
-	else if((otmp = o_at(x,y)) && room->typ != POOL)
-		atl(x,y,otmp->olet);
-	else if(mtmp && (!mtmp->minvis || See_invisible)) {
-		/* must be a hiding monster, but not hiding right now */
-		/* assume for the moment that long worms do not hide */
-		pmon(mtmp);
-	}
-	else if(g_at(x,y) && room->typ != POOL)
-		atl(x,y,'$');
-	else if(!room->seen || room->scrsym == ' ') {
-		room->new = room->seen = 1;
-		newsym(x,y);
-		on_scr(x,y);
-	}
- room->seen = 1;
-}
-
-char
-news0(x,y)
-register xchar x,y;
-{
-	register struct obj *otmp;
-	register struct trap *ttmp;
-	struct rm *room;
-	register char tmp;
-
-	room = &levl[x][y];
-	if(!room->seen) tmp = ' ';
-	else if(room->typ == POOL) tmp = POOL_SYM;
-	else if(!Blind && (otmp = o_at(x,y))) tmp = otmp->olet;
-	else if(!Blind && g_at(x,y)) tmp = '$';
-	else if(x == xupstair && y == yupstair) tmp = '<';
-	else if(x == xdnstair && y == ydnstair) tmp = '>';
-	else if((ttmp = t_at(x,y)) && ttmp->tseen) tmp = '^';
-	else switch(room->typ) {
-	case SCORR:
-	case SDOOR:
-		tmp = room->scrsym;	/* %% wrong after killing mimic ! */
-		break;
-	case HWALL:
-		tmp = '-';
-		break;
-	case VWALL:
-		tmp = '|';
-		break;
-	case LDOOR:
-	case DOOR:
-		tmp = '+';
-		break;
-	case CORR:
-		tmp = CORR_SYM;
-		break;
-	case ROOM:
-		if(room->lit || cansee(x,y) || Blind) tmp = '.';
-		else tmp = ' ';
-		break;
-/*
-	case POOL:
-		tmp = POOL_SYM;
-		break;
-*/
-	default:
-		tmp = ERRCHAR;
-	}
- return(tmp);
-}
-
-newsym(x,y)
-register x,y;
-{
-	atl(x,y,news0(x,y));
-}
-
-/* used with wand of digging (or pick-axe): fill scrsym and force display */
-/* also when a POOL evaporates */
-mnewsym(x,y)
-register x,y;
-{
-	register struct rm *room;
-	char newscrsym;
-
-	if(!vism_at(x,y)) {
-		room = &levl[x][y];
-		newscrsym = news0(x,y);
-		if(room->scrsym != newscrsym) {
-			room->scrsym = newscrsym;
-			room->seen = 0;
-		}
-	}
-}
-
-nosee(x,y)
-register x,y;
-{
-	register struct rm *room;
-
-	if(!isok(x,y)) return;
-	room = &levl[x][y];
-	if(room->scrsym == '.' && !room->lit && !Blind) {
-		room->scrsym = ' ';
-		room->new = 1;
-		on_scr(x,y);
-	}
-}
-
-#ifndef QUEST
-prl1(x,y)
-register x,y;
-{
-	if(u.dx) {
-		if(u.dy) {
-			prl(x-(2*u.dx),y);
-			prl(x-u.dx,y);
-			prl(x,y);
-			prl(x,y-u.dy);
-			prl(x,y-(2*u.dy));
-		} else {
-			prl(x,y-1);
-			prl(x,y);
-			prl(x,y+1);
-		}
-	} else {
-		prl(x-1,y);
-		prl(x,y);
-		prl(x+1,y);
-	}
-}
-
-nose1(x,y)
-register x,y;
-{
-	if(u.dx) {
-		if(u.dy) {
-			nosee(x,u.uy);
-			nosee(x,u.uy-u.dy);
-			nosee(x,y);
-			nosee(u.ux-u.dx,y);
-			nosee(u.ux,y);
-		} else {
-			nosee(x,y-1);
-			nosee(x,y);
-			nosee(x,y+1);
-		}
-	} else {
-		nosee(x-1,y);
-		nosee(x,y);
-		nosee(x+1,y);
-	}
-}
-#endif QUEST
-
-vism_at(x,y)
-register x,y;
-{
-	register struct monst *mtmp;
-
-	return((x == u.ux && y == u.uy && !Invisible)
-			? 1 :
-	       (mtmp = m_at(x,y))
-			? ((Blind && Telepat) || canseemon(mtmp)) :
-		0);
-}
-
-#ifdef NEWSCR
-pobj(obj) register struct obj *obj; {
-register int show = (!obj->oinvis || See_invisible) &&
-		cansee(obj->ox,obj->oy);
-	if(obj->odispl){
-		if(obj->odx != obj->ox || obj->ody != obj->oy || !show)
-		if(!vism_at(obj->odx,obj->ody)){
-			newsym(obj->odx, obj->ody);
-			obj->odispl = 0;
-		}
-	}
-	if(show && !vism_at(obj->ox,obj->oy)){
-		atl(obj->ox,obj->oy,obj->olet);
-		obj->odispl = 1;
-		obj->odx = obj->ox;
-		obj->ody = obj->oy;
-	}
-}
-#endif NEWSCR
-
-unpobj(obj) register struct obj *obj; {
-/* 	if(obj->odispl){
-		if(!vism_at(obj->odx, obj->ody))
-			newsym(obj->odx, obj->ody);
-		obj->odispl = 0;
-	}
-*/
-	if(!vism_at(obj->ox,obj->oy))
-		newsym(obj->ox,obj->oy);
-}
+/* Trolls now regenerate thanks to KAA */
 
 seeobjs(){
 register struct obj *obj, *obj2;
 	for(obj = fobj; obj; obj = obj2) {
-		obj2 = obj->nobj;
-		if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE
-			&& obj->age + 250 < moves)
-				delobj(obj);
+	    obj2 = obj->nobj;
+	    if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE) {
+
+		if (obj->otyp == DEAD_TROLL && obj->age + 20 < moves) {
+			delobj(obj);
+			if (cansee(obj->ox, obj->oy)) 
+				pline("The troll rises from the dead!");
+			(void) makemon(&mons[38],obj->ox, obj->oy);
+		} else if (obj->age + 250 < moves) delobj(obj);
+	    }
 	}
+
 	for(obj = invent; obj; obj = obj2) {
-		obj2 = obj->nobj;
-		if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE
-			&& obj->age + 250 < moves)
-				useup(obj);
+	    obj2 = obj->nobj;
+	    if(obj->olet == FOOD_SYM && obj->otyp >= CORPSE) {
+
+		if (obj->otyp == DEAD_TROLL && obj->age + 20 < moves) {
+		    if (obj == uwep)
+			pline("The dead troll writhes out of your grasp!");
+		    else
+			pline("You feel squirming in your backpack!");
+		    (void)makemon(&mons[38],u.ux,u.uy);
+		    useup(obj);
+		} else if (obj->age + 250 < moves) useup(obj);
+	    }
 	}
 }
 
@@ -532,7 +285,7 @@ register struct monst *mtmp;
 		pmon(mtmp);
 #ifndef NOWORM
 		if(mtmp->wormno) wormsee(mtmp->wormno);
-#endif NOWORM
+#endif
 	}
 }
 
@@ -542,10 +295,27 @@ register int show = (Blind && Telepat) || canseemon(mon);
 		if(mon->mdx != mon->mx || mon->mdy != mon->my || !show)
 			unpmon(mon);
 	}
-	if(show && !mon->mdispl){
+
+/* If you're hallucinating, the monster must be redrawn even if it has
+   already been printed.  Problem: the monster must also be redrawn right
+   after hallucination is over, so it looks normal again.  Therefore 
+   code similar to pmon is in timeout.c. */
+	if(show && (!mon->mdispl || Hallucination)) {
+		if (Hallucination) 
+		atl(mon->mx,mon->my,
+			(!mon->mimic || Protection_from_shape_changers) ?
+				rndmonsym() :
+# ifdef DGK
+				(mon->mappearance==symbol.door) ? symbol.door
+# else
+				(mon->mappearance == DOOR_SYM) ? DOOR_SYM
+# endif
+				: rndobjsym());
+		else
+
 		atl(mon->mx,mon->my,
 		 (!mon->mappearance
-		  || u.uprops[PROP(RIN_PROTECTION_FROM_SHAPE_CHANGERS)].p_flgs
+		  || u.uprops[PROP(RIN_PROTECTION_FROM_SHAPE_CHAN)].p_flgs
 		 ) ? mon->data->mlet : mon->mappearance);
 		mon->mdispl = 1;
 		mon->mdx = mon->mx;
@@ -596,27 +366,65 @@ register int i;
 extern char *eos();
 	if(flags.botlx) *ob = 0;
 	flags.botl = flags.botlx = 0;
+	(void) sprintf(newbot,
 #ifdef GOLD_ON_BOTL
-	(void) sprintf(newbot,
-		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Str ",
-		dlevel, u.ugold, u.uhp, u.uhpmax, u.uac);
+# ifdef SPELLS
+		"Lev %-2d Gp %-5lu Hp %3d(%d) Ep %3d(%d) Ac %-2d  ",
+		dlevel, u.ugold,
+#  ifdef KAA
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
+		u.uen, u.uenmax, u.uac);
+#  else
+		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
+#  endif
+# else
+		"Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  ",
+		dlevel, u.ugold,
+#  ifdef KAA
+		u.mtimedone ? u.mh : u.uhp, u.mtimedone ? u.mhmax : u.uhpmax,
+		u.uac);
+#  else
+		u.uhp, u.uhpmax, u.uac);
+#  endif
+# endif
 #else
-	(void) sprintf(newbot,
-		"Level %-2d   Hp %3d(%d)   Ac %-2d   Str ",
-		dlevel,  u.uhp, u.uhpmax, u.uac);
-#endif GOLD_ON_BOTL
-	if(u.ustr>18) {
-	    if(u.ustr>117)
-		(void) strcat(newbot,"18/**");
-	    else
-		(void) sprintf(eos(newbot), "18/%02d",u.ustr-18);
-	} else
-	    (void) sprintf(eos(newbot), "%-2d   ",u.ustr);
+# ifdef SPELLS
+		"Level %-2d Hp %3d(%d) Energy %3d(%d) Ac %-2d ",
+		dlevel,
+#  ifdef KAA
+		u.mtimedone ? u.mhp : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
+		u.uen, u.uenmax, u.uac);
+#  else
+		u.uhp, u.uhpmax, u.uen, u.uenmax, u.uac);
+#  endif
+# else
+		"Level %-2d   Hp %3d(%d)   Ac %-2d   ",
+		dlevel,
+#  ifdef KAA
+		u.mtimedone ? u.mhp : u.uhp, u.mtimedone ? u.mhmax, u.uhpmax,
+		u.uac);
+#  else
+		u.uhp, u.uhpmax, u.uac);
+#  endif
+# endif
+#endif
+#ifdef KAA
+	if (u.mtimedone)
+		(void) sprintf(eos(newbot), "HD %d", mons[u.umonnum].mlevel);
+	else
+#endif
+	    if(u.ustr>18) {
+		if(u.ustr>117)
+		    (void) strcat(newbot,"Str 18/**");
+		else
+		    (void) sprintf(eos(newbot), "Str 18/%02d",u.ustr-18);
+	    } else
+		(void) sprintf(eos(newbot), "Str %-2d   ",u.ustr);
 #ifdef EXP_ON_BOTL
 	(void) sprintf(eos(newbot), "  Exp %2d/%-5lu ", u.ulevel,u.uexp);
 #else
 	(void) sprintf(eos(newbot), "   Exp %2u  ", u.ulevel);
-#endif EXP_ON_BOTL
+#endif
 	(void) strcat(newbot, hu_stat[u.uhs]);
 	if(flags.time)
 	    (void) sprintf(eos(newbot), "  %ld", moves);
@@ -637,17 +445,31 @@ extern char *eos();
 		if(*ob) ob++;
 		if(*nb) nb++;
 	}
- (void) strcpy(oldbot, newbot);
+	(void) strcpy(oldbot, newbot);
 }
 
-#ifdef WAN_PROBING
+#if defined(WAN_PROBING) || defined(KAA)
 mstatusline(mtmp) register struct monst *mtmp; {
 	pline("Status of %s: ", monnam(mtmp));
-	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)  Ac %-2d  Dam %d",
-	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->mhpmax,
-	    mtmp->data->ac, (mtmp->data->damn + 1) * (mtmp->data->damd + 1));
+	pline("Level %-2d  Gold %-5lu  Hp %3d(%d)",
+	    mtmp->data->mlevel, mtmp->mgold, mtmp->mhp, mtmp->mhpmax);
+	pline("Ac %-2d  Dam %d %s %s",
+	    mtmp->data->ac, (mtmp->data->damn + 1) * (mtmp->data->damd + 1),
+	    mtmp->mcan ? ", cancelled" : "" ,mtmp->mtame ? " (tame)" : "");
 }
-#endif WAN_PROBING
+
+extern char plname[];
+ustatusline() {
+	pline("Status of %s ", plname);
+	pline("Level %d, gold %lu, hit points %d(%d), AC %d.",
+# ifdef KAA
+		u.ulevel, u.ugold, u.mtimedone ? u.mh : u.uhp,
+		u.mtimedone ? u.mhmax : u.uhpmax, u.uac);
+# else
+		u.ulevel, u.ugold, u.uhp, u.uhpmax, u.uac);
+# endif
+}
+#endif
 
 cls(){
 	if(flags.toplin == 1)
@@ -657,4 +479,39 @@ cls(){
 	clear_screen();
 
 	flags.botlx = 1;
+}
+
+rndmonsym() {
+	register int x;
+	if((x=rn2(58)) < 26)
+		return('a'+x);
+	else if (x<52)
+		return('A'+x-26);
+	else switch(x) {
+		case 52: return(';');
+		case 53: return('&');
+		case 54: return(':');
+		case 55: return('\'');
+		case 56: return(',');
+		case 57: return('9');
+		default: impossible("Bad random monster %d",x); return('{');
+	}
+}
+
+rndobjsym() {
+	char *rndsym=")[!?%/=*($'";
+	return *(rndsym+rn2(11));
+}
+
+char *hcolors[] = { "ultraviolet","infrared","hot pink", "psychedelic",
+"bluish-orange","reddish-green","dark white","light black","loud",
+"salty","sweet","sour","bitter","luminescent","striped","polka-dotted",
+"square","round","triangular","brilliant","navy blue","cerise",
+"charteruse","copper","sea green","spiral","swirly","blotchy",
+"fluorescent green","burnt orange","indigo","amber","tan",
+"sky blue-pink","lemon yellow" };
+
+char *
+hcolor() {
+	return hcolors[rn2(35)];
 }

@@ -1,22 +1,22 @@
+/*	SCCS Id: @(#)unixmain.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.main.c - version 1.0.3 */
+/* main.c - (Unix) version 1.0.3 */
 
 #include <stdio.h>
 #include <signal.h>
 #include "hack.h"
 
 #ifdef QUEST
-#define	gamename	"quest"
+#define	gamename	"NetQuest"
 #else
-#define	gamename	"hack"
-#endif QUEST
+#define	gamename	"NetHack"
+#endif
 
 extern char *getlogin(), *getenv();
 extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
 
 int (*afternmv)();
 int (*occupation)();
-char *occtxt;			/* defined when occupation != NULL */
 
 int done1();
 int hangup();
@@ -25,7 +25,7 @@ int hackpid;				/* current pid */
 int locknum;				/* max num of players */
 #ifdef DEF_PAGER
 char *catmore;				/* default pager */
-#endif DEF_PAGER
+#endif
 char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 char *hname;		/* name of the game (argv[0] of call) */
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
@@ -40,7 +40,7 @@ char *argv[];
 	register int fd;
 #ifdef CHDIR
 	register char *dir;
-#endif CHDIR
+#endif
 
 	hname = argv[0];
 	hackpid = getpid();
@@ -68,30 +68,11 @@ char *argv[];
 		if(!*dir)
 		    error("Flag -d must be followed by a directory name.");
 	}
-#endif CHDIR
-
-	/*
-	 * Who am i? Algorithm: 1. Use name as specified in HACKOPTIONS
-	 *			2. Use $USER or $LOGNAME	(if 1. fails)
-	 *			3. Use getlogin()		(if 2. fails)
-	 * The resulting name is overridden by command line options.
-	 * If everything fails, or if the resulting name is some generic
-	 * account like "games", "play", "player", "hack" then eventually
-	 * we'll ask him.
-	 * Note that we trust him here; it is possible to play under
-	 * somebody else's name.
-	 */
-	{ register char *s;
-
-	  initoptions();
-	  if(!*plname && (s = getenv("USER")))
-		(void) strncpy(plname, s, sizeof(plname)-1);
-	  if(!*plname && (s = getenv("LOGNAME")))
-		(void) strncpy(plname, s, sizeof(plname)-1);
-	  if(!*plname && (s = getlogin()))
-		(void) strncpy(plname, s, sizeof(plname)-1);
-	}
-
+#endif /* CHDIR /**/
+#ifdef DGKMOD
+	initoptions();
+#endif
+	whoami();
 	/*
 	 * Now we know the directory containing 'record' and
 	 * may do a prscore().
@@ -99,7 +80,7 @@ char *argv[];
 	if(argc > 1 && !strncmp(argv[1], "-s", 2)) {
 #ifdef CHDIR
 		chdirx(dir,0);
-#endif CHDIR
+#endif
 		prscore(argc, argv);
 		exit(0);
 	}
@@ -112,6 +93,7 @@ char *argv[];
 	setbuf(stdout,obuf);
 	setrandom();
 	startup();
+	init_corpses();	/* initialize optional corpse names */
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
@@ -128,7 +110,7 @@ char *argv[];
 	 */
 #ifdef CHDIR
 	chdirx(dir,1);
-#endif CHDIR
+#endif
 
 	/*
 	 * Process options.
@@ -144,12 +126,12 @@ char *argv[];
 			else
 				printf("Sorry.\n");
 			break;
-#endif WIZARD
+#endif
 #ifdef NEWS
 		case 'n':
 			flags.nonews = TRUE;
 			break;
-#endif NEWS
+#endif
 		case 'u':
 			if(argv[0][2])
 			  (void) strncpy(plname, argv[0]+2, sizeof(plname)-1);
@@ -174,17 +156,17 @@ char *argv[];
 #ifdef MAX_NR_OF_PLAYERS
 	if(!locknum || locknum > MAX_NR_OF_PLAYERS)
 		locknum = MAX_NR_OF_PLAYERS;
-#endif MAX_NR_OF_PLAYERS
+#endif
 #ifdef DEF_PAGER
 	if(!(catmore = getenv("HACKPAGER")) && !(catmore = getenv("PAGER")))
 		catmore = DEF_PAGER;
-#endif DEF_PAGER
+#endif
 #ifdef MAIL
 	getmailstatus();
-#endif MAIL
+#endif
 #ifdef WIZARD
 	if(wizard) (void) strcpy(plname, "wizard"); else
-#endif WIZARD
+#endif
 	if(!*plname || !strncmp(plname, "player", 4)
 		    || !strncmp(plname, "games", 4))
 		askname();
@@ -193,7 +175,7 @@ char *argv[];
 				/* accepts any suffix */
 #ifdef WIZARD
 	if(!wizard) {
-#endif WIZARD
+#endif
 		/*
 		 * check for multiple games under the same name
 		 * (if !locknum) or check max nr of players (otherwise)
@@ -206,6 +188,7 @@ char *argv[];
 #ifdef WIZARD
 	} else {
 		register char *sfoo;
+		extern char genocided[], fut_geno[];
 		(void) strcpy(lock,plname);
 		if(sfoo = getenv("MAGIC"))
 			while(*sfoo) {
@@ -217,7 +200,6 @@ char *argv[];
 		if(sfoo = getenv("GENOCIDED")){
 			if(*sfoo == '!'){
 				extern struct permonst mons[CMNUM+2];
-				extern char genocided[], fut_geno[];
 				register struct permonst *pm = mons;
 				register char *gp = genocided;
 
@@ -226,13 +208,13 @@ char *argv[];
 						*gp++ = pm->mlet;
 					pm++;
 				}
- *gp = 0;
+				*gp = 0;
 			} else
 				(void) strcpy(genocided, sfoo);
 			(void) strcpy(fut_geno, genocided);
 		}
 	}
-#endif WIZARD
+#endif /* WIZARD /**/
 	setftty();
 	(void) sprintf(SAVEF, "save/%d%s", getuid(), plname);
 	regularize(SAVEF+5);		/* avoid . or / in name */
@@ -247,46 +229,21 @@ char *argv[];
 		flags.move = 0;
 	} else {
 not_recovered:
-		fobj = fcobj = invent = 0;
-		fmon = fallen_down = 0;
-		ftrap = 0;
-		fgold = 0;
-		flags.ident = 1;
-		init_objects();
-		u_init();
-
-		(void) signal(SIGINT,done1);
-		mklev();
-		u.ux = xupstair;
-		u.uy = yupstair;
-		(void) inshop();
-		setsee();
-		flags.botlx = 1;
-		makedog();
-		{ register struct monst *mtmp;
-		  if(mtmp = m_at(u.ux, u.uy)) mnexto(mtmp);	/* riv05!a3 */
-		}
-		seemons();
-#ifdef NEWS
-		if(flags.nonews || !readnews())
-			/* after reading news we did docrt() already */
-#endif NEWS
-			docrt();
-
+		newgame();
 		/* give welcome message before pickup messages */
 		pline("Hello %s, welcome to %s!", plname, gamename);
 
 		pickup(1);
-		read_engr_at(u.ux,u.uy);
+		if(!Blind) read_engr_at(u.ux,u.uy);
 		flags.move = 1;
 	}
 
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		pline("You are lucky! Full moon tonight.");
-		u.uluck++;
+		if(!u.uluck) u.uluck++;
 	} else if(flags.moonphase == NEW_MOON) {
- pline("Be careful! New moon tonight.");
+		pline("Be careful! New moon tonight.");
 	}
 
 	initrack();
@@ -306,37 +263,85 @@ not_recovered:
 			if(Glib) glibr();
 			timeout();
 			++moves;
+#ifdef PRAYERS
+			if (u.ublesscnt)  u.ublesscnt--;
+#endif
 			if(flags.time) flags.botl = 1;
-			if(u.uhp < 1) {
+#ifdef KAA
+			if(u.mtimedone)
+			    if(u.mh < 1) rehumanize();
+			else
+#endif
+			    if(u.uhp < 1) {
 				pline("You die...");
 				done("died");
-			}
+			    }
 			if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50){
 			    wailmsg = moves;
-			    if(u.uhp == 1)
-			    pline("You hear the wailing of the Banshee...");
-			    else
-			    pline("You hear the howling of the CwnAnnwn...");
+#ifdef KAA
+			    if(index("WEV", pl_character[0])) {
+				if (u.uhp == 1)
+				pline("%s is about to die.", pl_character);
+				else
+				pline("%s, your life force is running out.",
+					pl_character);
+			    } else {
+#endif
+				if(u.uhp == 1)
+				pline("You hear the wailing of the Banshee...");
+				else
+				pline("You hear the howling of the CwnAnnwn...");
+#ifdef KAA
+			    }
+#endif
 			}
+#ifdef KAA
+			if (u.mtimedone) {
+			    if (u.mh < u.mhmax) {
+				if (Regeneration || !(moves%20)) {
+					flags.botl = 1;
+					u.mh++;
+				}
+			    }
+			}
+#endif
 			if(u.uhp < u.uhpmax) {
 				if(u.ulevel > 9) {
-					if(Regeneration || !(moves%3)) {
+					if(HRegeneration || !(moves%3)) {
 					    flags.botl = 1;
 					    u.uhp += rnd((int) u.ulevel-9);
 					    if(u.uhp > u.uhpmax)
 						u.uhp = u.uhpmax;
 					}
-				} else if(Regeneration ||
+				} else if(HRegeneration ||
 					(!(moves%(22-u.ulevel*2)))) {
 					flags.botl = 1;
 					u.uhp++;
 				}
 			}
+#ifdef SPELLS
+			if ((u.uen<u.uenmax) && (!(moves%(21-u.ulevel/2)))) {
+				u.uen += rn2(u.ulevel/4 + 1) + 1;
+				if (u.uen > u.uenmax)  u.uen = u.uenmax;
+				flags.botl = 1;
+			}
+#endif
 			if(Teleportation && !rn2(85)) tele();
 			if(Searching && multi >= 0) (void) dosearch();
 			gethungry();
 			invault();
 			amulet();
+#ifdef HARD
+			if (u.udemigod) {
+
+				u.udg_cnt--;
+				if(u.udg_cnt <= 0) {
+
+					intervene();
+					u.udg_cnt = rn1(200, 50);
+				}
+			}
+#endif
 		}
 		if(multi < 0) {
 			if(!++multi){
@@ -351,18 +356,22 @@ not_recovered:
 		find_ac();
 #ifndef QUEST
 		if(!flags.mv || Blind)
-#endif QUEST
+#endif
 		{
 			seeobjs();
 			seemons();
 			nscr();
 		}
+#ifdef DGK
+		if(flags.time) flags.botl = 1;
+#endif
 		if(flags.botl || flags.botlx) bot();
 
 		flags.move = 1;
 
 		if(multi >= 0 && occupation) {
-			if(monster_nearby())
+
+			if (monster_nearby())
 				stop_occupation();
 			else if ((*occupation)() == 0)
 				occupation = 0;
@@ -372,7 +381,7 @@ not_recovered:
 		if(multi > 0) {
 #ifdef QUEST
 			if(flags.run >= 4) finddir();
-#endif QUEST
+#endif
 			lookaround();
 			if(!multi) {	/* lookaround may clear multi */
 				flags.move = 0;
@@ -389,7 +398,7 @@ not_recovered:
 		} else if(multi == 0) {
 #ifdef MAIL
 			ckmailstatus();
-#endif MAIL
+#endif
 			rhack((char *) 0);
 		}
 		if(multi && multi%7 == 0)
@@ -448,21 +457,21 @@ char *dir;
 boolean wr;
 {
 
-#ifdef SECURE
+# ifdef SECURE
 	if(dir					/* User specified directory? */
-#ifdef HACKDIR
+#  ifdef HACKDIR
 	       && strcmp(dir, HACKDIR)		/* and not the default? */
-#endif HACKDIR
+#  endif
 		) {
 		(void) setuid(getuid());		/* Ron Wessels */
 		(void) setgid(getgid());
 	}
-#endif SECURE
+# endif
 
-#ifdef HACKDIR
+# ifdef HACKDIR
 	if(dir == NULL)
 		dir = HACKDIR;
-#endif HACKDIR
+# endif
 
 	if(dir && chdir(dir) < 0) {
 		perror(dir);
@@ -484,12 +493,76 @@ boolean wr;
 		(void) close(fd);
 	}
 }
-#endif CHDIR
+#endif /* CHDIR /**/
 
 stop_occupation()
 {
 	if(occupation) {
 		pline("You stop %s.", occtxt);
 		occupation = 0;
+#ifdef REDO
+		multi = 0;
+		pushch(0);		
+#endif
 	}
+}
+
+whoami() {
+	/*
+	 * Who am i? Algorithm: 1. Use name as specified in HACKOPTIONS
+	 *			2. Use $USER or $LOGNAME	(if 1. fails)
+	 *			3. Use getlogin()		(if 2. fails)
+	 * The resulting name is overridden by command line options.
+	 * If everything fails, or if the resulting name is some generic
+	 * account like "games", "play", "player", "hack" then eventually
+	 * we'll ask him.
+	 * Note that we trust him here; it is possible to play under
+	 * somebody else's name.
+	 */
+	register char *s;
+
+#ifndef DGKMOD
+	initoptions();
+#endif
+	if(!*plname && (s = getenv("USER")))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+	if(!*plname && (s = getenv("LOGNAME")))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+	if(!*plname && (s = getlogin()))
+		(void) strncpy(plname, s, sizeof(plname)-1);
+}
+
+newgame() {
+	fobj = fcobj = invent = 0;
+	fmon = fallen_down = 0;
+	ftrap = 0;
+	fgold = 0;
+	flags.ident = 1;
+	init_objects();
+	u_init();
+
+	(void) signal(SIGINT,done1);
+	mklev();
+	u.ux = xupstair;
+	u.uy = yupstair;
+	(void) inshop();
+	setsee();
+	flags.botlx = 1;
+	{
+		register struct monst *mtmp;
+
+		/* Move the monster from under you or else
+		 * makedog() will fail when it calls makemon().
+		 * 			- ucsfcgl!kneller
+		 */
+		if (mtmp = m_at(u.ux, u.uy))  mnexto(mtmp);
+	}
+	(void) makedog();
+	seemons();
+#ifdef NEWS
+	if(flags.nonews || !readnews())
+		/* after reading news we did docrt() already */
+#endif
+		docrt();
+	return(0);
 }

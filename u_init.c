@@ -1,9 +1,10 @@
+/*	SCCS Id: @(#)u_init.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.u_init.c - version 1.0.3 */
+/* u_init.c - version 1.0.3   */
 
-#include "hack.h"
 #include <stdio.h>
 #include <signal.h>
+#include "hack.h"
 #define Strcpy	(void) strcpy
 #define	Strcat	(void) strcat
 #define	UNDEF_TYP	0
@@ -15,9 +16,15 @@ extern char plname[];
 struct you zerou;
 char pl_character[PL_CSIZ];
 char *(roles[]) = {	/* must all have distinct first letter */
-			/* roles[4] may be changed to -man */
-	"Tourist", "Speleologist", "Fighter", "Knight",
-	"Cave-man", "Wizard"
+			/* roles[4] & [7] may be changed for females */
+	"Archeologist", "Tourist", "Fighter", "Knight", "Cave-man",
+#ifdef NEWCLASS
+	"Samurai", "Ninja", "Priest",
+#endif
+#ifdef KAA
+	"Valkyrie", "Elf", "Healer",
+#endif
+	"Wizard"
 };
 #define	NR_OF_ROLES	SIZE(roles)
 char rolesyms[NR_OF_ROLES + 1];		/* filled by u_init() */
@@ -35,10 +42,14 @@ struct trobj Extra_objs[] = {
 	{ 0, 0, 0, 0, 0 },
 	{ 0, 0, 0, 0, 0 }
 };
-#endif WIZARD
+#endif
 
 struct trobj Cave_man[] = {
+#ifdef KAA
+	{ CLUB, 1, WEAPON_SYM, 1, 1 },
+#else
 	{ MACE, 1, WEAPON_SYM, 1, 1 },
+#endif
 	{ BOW, 1, WEAPON_SYM, 1, 1 },
 	{ ARROW, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
 	{ LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
@@ -61,7 +72,32 @@ struct trobj Knight[] = {
 	{ 0, 0, 0, 0, 0 }
 };
 
-struct trobj Speleologist[] = {
+#ifdef KAA
+struct trobj Elf[] = {
+	{ SHORT_SWORD, 0, WEAPON_SYM, 1, 1 },
+	{ BOW, 0, WEAPON_SYM, 1, 1 },
+	{ ARROW, 0, WEAPON_SYM, 25, 1 },
+	{ UNDEF_TYP, 0, ARMOR_SYM, 1, 1 },
+	{ 0, 0, 0, 0, 0 }
+};
+
+struct trobj Valkyrie[] = {
+	{ LONG_SWORD, 1, WEAPON_SYM, 1, 1 },
+	{ SHIELD, 3, ARMOR_SYM, 1, 1 },
+	{ FOOD_RATION, 0, FOOD_SYM, 1, 1 },
+	{ 0, 0, 0, 0, 0 }
+};
+
+struct trobj Healer[] = {
+	{ STETHOSCOPE, 0, TOOL_SYM, 1, 0 },
+	{ POT_HEALING, 0, POTION_SYM, 4, 0 },
+	{ POT_EXTRA_HEALING, 0, POTION_SYM, 4, 0 },
+	{ APPLE, 0, FOOD_SYM, 5, 0 },
+	{ 0, 0, 0, 0, 0}
+};
+#endif /* KAA /**/
+
+struct trobj Archeologist[] = {
 	{ STUDDED_LEATHER_ARMOR, 0, ARMOR_SYM, 1, 1 },
 	{ UNDEF_TYP, 0, POTION_SYM, 2, 0 },
 	{ FOOD_RATION, 0, FOOD_SYM, 3, 1 },
@@ -74,6 +110,20 @@ struct trobj Tinopener[] = {
 	{ CAN_OPENER, 0, TOOL_SYM, 1, 1 },
 	{ 0, 0, 0, 0, 0 }
 };
+
+#ifdef MARKER
+struct trobj Magicmarker[] = {
+	{ MAGIC_MARKER, 50, TOOL_SYM, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#endif
+
+#ifdef WALKIES
+struct trobj Leash[] = {
+	{ LEASH, 0, CHAIN_SYM, 1, 0 },
+	{ 0, 0, 0, 0, 0 }
+};
+#endif
 
 struct trobj Tourist[] = {
 	{ UNDEF_TYP, 0, FOOD_SYM, 10, 1 },
@@ -89,15 +139,49 @@ struct trobj Wizard[] = {
 	{ UNDEF_TYP, UNDEF_SPE, RING_SYM, 2, 0 },
 	{ UNDEF_TYP, UNDEF_SPE, POTION_SYM, 2, 0 },
 	{ UNDEF_TYP, UNDEF_SPE, SCROLL_SYM, 3, 0 },
+#ifdef SPELLS
+	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_SYM, 1, 0 },
+#endif
 	{ 0, 0, 0, 0, 0 }
 };
+
+#ifdef NEWCLASS
+struct	trobj	Samurai[] = {
+	{ KATANA, 0, WEAPON_SYM, 1, 1 },
+	{ BOW,    1, WEAPON_SYM, 1, 1 },
+	{ ARROW,  0, WEAPON_SYM, 25, 1 },	/* quan is variable */
+	{ SPLINT_MAIL, 0, ARMOR_SYM, 1, 1},
+	{ 0, 0, 0, 0, 0 }
+};
+
+struct	trobj	Ninja[] = {
+	{ KATANA, 0, WEAPON_SYM, 1, 1 },
+	{ SHURIKEN, 0, WEAPON_SYM, 25, 1 },	/* quan is variable */
+	{ LEATHER_ARMOR, 1, ARMOR_SYM, 1, 1},
+	{ 0, 0, 0, 0, 0 }
+};
+
+struct	trobj	Priest[] = {
+	{ CHAIN_MAIL, 0, ARMOR_SYM, 1, 1 },
+	{ SHIELD, 0, ARMOR_SYM, 1, 1 },
+	{ MACE, 1, WEAPON_SYM, 1, 1 },
+#ifdef SPELLS
+	{ UNDEF_TYP, UNDEF_SPE, SPBOOK_SYM, 2, 0 },
+#endif
+	{ 0, 0, 0, 0, 0 }
+};
+#endif /* NEWCLASS /**/
 
 u_init(){
 register int i;
 char exper = 'y', pc;
 extern char readchar();
-	if(flags.female)	/* should have been set in HACKOPTIONS */
+	if(flags.female)  {	/* should have been set in HACKOPTIONS */
 		roles[4] = "Cave-woman";
+#ifdef NEWCLASS
+		roles[7] = "Priestess";
+#endif
+	}
 	for(i = 0; i < NR_OF_ROLES; i++)
 		rolesyms[i] = roles[i][0];
 	rolesyms[i] = 0;
@@ -110,55 +194,49 @@ extern char readchar();
 		pl_character[0] = pc = 0;
 	}
 
-	printf("\nAre you an experienced player? [ny] ");
+	printf("\nShall I pick a character for you (yes, no, or quit) ? [ynq] ");
 
-	while(!index("ynYN \n\004", (exper = readchar())))
-		bell();
-	if(exper == '\004')		/* Give him an opportunity to get out */
-		end_of_input();
+	while(!index("yYnNqQ", (exper = readchar())))	bell();
+
 	printf("%c\n", exper);		/* echo */
-	if(index("Nn \n", exper)) {
+
+	if (index("qQ", exper)) exit(0);
+
+	if(index("Yy", exper)) {
 		exper = 0;
 		goto beginner;
 	}
 
-	printf("\nTell me what kind of character you are:\n");
-	printf("Are you");
+	printf("\n Tell me what kind of character you are:\n");
+	printf(" Are you");
 	for(i = 0; i < NR_OF_ROLES; i++) {
-		printf(" a %s", roles[i]);
-		if(i == 2)			/* %% */
-			printf(",\n\t");
-		else if(i < NR_OF_ROLES - 2)
-			printf(",");
-		else if(i == NR_OF_ROLES - 2)
-			printf(" or");
+		printf(" %s %s", index("AEIOU",roles[i][0]) ? "an" : "a", roles[i]);
+		if((((i + 1) % 4) == 0) && (i != NR_OF_ROLES -1)) printf(",\n\t");
+		else if(i < NR_OF_ROLES - 2)	printf(",");
+		if(i == NR_OF_ROLES - 2)	printf(" or");
 	}
-	printf("? [%s] ", rolesyms);
+	printf("? [%s or q(quit)] ", rolesyms);
 
 	while(pc = readchar()) {
+		if (pc == 'q' || pc == 'Q') exit(0);
 		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
 		if((i = role_index(pc)) >= 0) {
 			printf("%c\n", pc);	/* echo */
 			(void) fflush(stdout);	/* should be seen */
 			break;
 		}
-		if(pc == '\n')
-			break;
-		if(pc == '\004')    /* Give him the opportunity to get out */
-			end_of_input();
+		if(pc == '\n') break;
 		bell();
 	}
-	if(pc == '\n')
-		pc = 0;
+	if(pc == '\n')	pc = 0;
 
 beginner:
 	if(!pc) {
-		printf("\nI'll choose a character for you.\n");
 		i = rn2(NR_OF_ROLES);
 		pc = rolesyms[i];
-		printf("This game you will be a%s %s.\n",
-			exper ? "n experienced" : "",
-			roles[i]);
+		printf("\nThis game you will be %s %s%s.\n",
+			(exper || index("AEIOU", roles[i][0])) ? "an" : "a",
+			exper ? "experienced " : "", roles[i]);
 		getret();
 		/* give him some feedback in case mklev takes much time */
 		(void) putchar('\n');
@@ -176,13 +254,26 @@ got_suffix:
 	u = zerou;
 	u.usym = '@';
 	u.ulevel = 1;
+#ifdef SPELLS
+	u.uen = u.uenmax = 1;
+#endif
+#ifdef PRAYERS
+	u.ublesscnt = 300;			/* no prayers just yet */
+	u.ublessed = 0;				/* not worthy yet */
+	u.ugangr   = 0;				/* gods not angry */
+#endif
+#ifdef KAA
+	u.mh = u.mhmax = u.umonnum = u.mtimedone = 0;
+#endif
 	init_uhunger();
 #ifdef QUEST
 	u.uhorizon = 6;
-#endif QUEST
+#endif
 	uarm = uarm2 = uarmh = uarms = uarmg = uwep = uball = uchain =
 	uleft = uright = 0;
-
+#ifdef SPELLS
+	for (i = 0; i <= MAXSPELL; i++) spl_book[i].sp_id = NO_SPELL;
+#endif
 	switch(pc) {
 	case 'c':
 	case 'C':
@@ -193,12 +284,21 @@ got_suffix:
 		break;
 	case 't':
 	case 'T':
+#ifdef KAA
+		objects[POT_EXTRA_HEALING].oc_name_known=1;
+#endif
 		Tourist[3].trquan = 20 + rnd(20);
 		u.ugold = u.ugold0 = rnd(1000);
 		u.uhp = u.uhpmax = 10;
 		u.ustr = u.ustrmax = 8;
 		ini_inv(Tourist);
 		if(!rn2(25)) ini_inv(Tinopener);
+#ifdef MARKER
+		else if(!rn2(25)) ini_inv(Magicmarker);
+#endif
+#ifdef WALKIES
+		else if(!rn2(25)) ini_inv(Leash);
+#endif
 		break;
 	case 'w':
 	case 'W':
@@ -206,17 +306,56 @@ got_suffix:
 			Wizard[i].trquan += rn2(3) - 1;
 		u.uhp = u.uhpmax = 15;
 		u.ustr = u.ustrmax = 16;
+#ifdef SPELLS
+		u.uen = u.uenmax += rn2(4);
+#endif
 		ini_inv(Wizard);
+#ifdef MARKER
+		if(!rn2(5)) ini_inv(Magicmarker);
+#endif
 		break;
-	case 's':
-	case 'S':
+	case 'a':
+	case 'A':
 		Fast = INTRINSIC;
 		Stealth = INTRINSIC;
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 10;
-		ini_inv(Speleologist);
+		ini_inv(Archeologist);
 		if(!rn2(10)) ini_inv(Tinopener);
+#ifdef MARKER
+		else if(!rn2(10)) ini_inv(Magicmarker);
+#endif
 		break;
+#ifdef KAA
+	case 'e':
+	case 'E':
+		Elf[2].trquan = 15+rnd(20);
+		Elf[3].trotyp = (rn2(2) ? ELFIN_CHAIN_MAIL : ELVEN_CLOAK);
+		Fast = INTRINSIC;
+		HSee_invisible = INTRINSIC;
+		u.uhp = u.uhpmax = 16;
+		u.ustr = u.ustrmax = 16;
+		ini_inv(Elf);
+		break;
+	case 'v':
+	case 'V':
+		Stealth = INTRINSIC;
+		HCold_resistance = INTRINSIC;
+		flags.female = TRUE;
+		u.uhp = u.uhpmax = 16;
+		u.ustr = u.ustrmax = 17;
+		ini_inv(Valkyrie);
+		break;
+	case 'h':
+	case 'H':
+		objects[POT_HEALING].oc_name_known=1;
+		objects[POT_EXTRA_HEALING].oc_name_known=1;
+		HPoison_resistance = INTRINSIC;
+		u.uhp = u.uhpmax = 16;
+		u.ustr = u.ustrmax = 15;
+		ini_inv(Healer);
+		break;
+#endif
 	case 'k':
 	case 'K':
 		u.uhp = u.uhpmax = 12;
@@ -229,6 +368,37 @@ got_suffix:
 		u.ustr = u.ustrmax = 17;
 		ini_inv(Fighter);
 		break;
+#ifdef NEWCLASS
+	case 's':
+	case 'S':
+		Fast = INTRINSIC;
+		u.uhp = u.uhpmax = 16;
+		u.ustr = u.ustrmax = 16;
+		Samurai[2].trquan = 12 + rnd(9)*rnd(9);
+		ini_inv(Samurai);
+		break;
+	case 'n':
+	case 'N':
+		Fast = INTRINSIC;
+		Stealth = INTRINSIC;
+		u.uhp = u.uhpmax = 15;
+		u.ustr = u.ustrmax = 10;
+		Ninja[1].trquan = 12 + rnd(9)*rnd(9);
+		ini_inv(Ninja);
+		break;
+	case 'p':
+	case 'P':
+		u.uhp = u.uhpmax = 13;
+		u.ustr = u.ustrmax = 15;
+# ifdef SPELLS
+		u.uen = u.uenmax += rn2(4);
+# endif
+		ini_inv(Priest);
+# ifdef MARKER
+		if(!rn2(10)) ini_inv(Magicmarker);
+# endif
+		break;
+#endif /* NEWCLASS /**/
 	default:	/* impossible */
 		u.uhp = u.uhpmax = 12;
 		u.ustr = u.ustrmax = 16;
@@ -242,7 +412,7 @@ got_suffix:
 
 #ifdef WIZARD
 	if(wizard) wiz_inv();
-#endif WIZARD
+#endif
 
 	/* make sure he can carry all he has - especially for T's */
 	while(inv_weight() > 0 && u.ustr < 118)
@@ -289,7 +459,11 @@ extern struct obj *mkobj();
 				if(!uarm) setworn(obj, W_ARM);
 			}
 		}
-		if(obj->olet == WEAPON_SYM)
+		/* below changed by GAN 01/09/87 to allow wielding of
+		 * pick-axe or can-opener if there is no weapon
+		 */
+		if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE ||
+		   obj->otyp == CAN_OPENER)
 			if(!uwep) setuwep(obj);
 #ifndef PYRAMID_BUG
 		if(--trop->trquan) continue;	/* make a similar object */
@@ -299,7 +473,7 @@ extern struct obj *mkobj();
 			if(trop->trquan)
 				continue;	/* make a similar object */
 		}
-#endif PYRAMID_BUG
+#endif
 		trop++;
 	}
 }
@@ -330,7 +504,7 @@ register int type;
 	trop->trquan = 1;
 	ini_inv(trop);
 }
-#endif WIZARD
+#endif /* WIZARD /**/
 
 plnamesuffix() {
 register char *p;

@@ -1,10 +1,17 @@
+/*	SCCS Id: @(#)unixtty.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.tty.c - version 1.0.3 */
+/* tty.c - (Unix) version 1.0.3 */
 /* With thanks to the people who sent code for SYSV - hpscdi!jon,
    arnold@ucsf-cgl, wcs@bo95b, cbcephus!pds and others. */
 
-#include	"hack.h"
 #include	<stdio.h>
+#include	"extern.h"
+#include	"flag.h"
+
+#define	ON	1
+#define OFF	0
+#define	BUFSZ	256
+
 
 /*
  * The distinctions here are not BSD - rest but rather USG - rest, as
@@ -14,7 +21,7 @@
 #define	V7
 #else
 #define USG
-#endif BSD
+#endif
 
 /*
  * Some systems may have getchar() return EOF for various reasons, and
@@ -22,7 +29,7 @@
  */
 #ifndef BSD
 #define	NR_OF_EOFS	20
-#endif BSD
+#endif
 
 
 #ifdef USG
@@ -57,7 +64,7 @@
 #define GTTY(x)		(gtty(0, x))
 #define STTY(x)		(stty(0, x))
 
-#endif USG
+#endif
 
 extern short ospeed;
 static char erase_char, kill_char;
@@ -124,7 +131,7 @@ register int change = 0;
 		/* be satisfied with one character; no timeout */
 		curttyb.c_cc[VMIN] = 1;		/* was VEOF */
 		curttyb.c_cc[VTIME] = 0;	/* was VEOL */
-#endif USG
+#endif
 		change++;
 	}
 	if(change){
@@ -234,27 +241,50 @@ register int c;
 	}
 }
 
+static int last_multi;
+
 char *
 parse()
 {
 	static char inline[COLNO];
 	register foo;
 
+	multi = 0;
 	flags.move = 1;
 	if(!Invisible) curs_on_u(); else home();
-	while((foo = readchar()) >= '0' && foo <= '9')
+	while((foo = readchar()) >= '0' && foo <= '9') {
 		multi = 10*multi+foo-'0';
+#ifdef DGKMOD
+		if (multi < 0 || multi > LARGEST_INT)
+			multi = LARGEST_INT;
+		if (multi > 9) {
+			remember_topl();
+			home();
+			cl_end();
+			printf("Count: %d", multi);
+		}
+#endif
+		last_multi = multi;
+	}
+# ifdef REDO
+	if (foo == DOAGAIN || in_doagain)
+		multi = last_multi;
+	else {
+		savech(0);	/* reset input queue */
+		savech(foo);
+	}
+# endif
 	if(multi) {
 		multi--;
 		save_cm = inline;
 	}
 	inline[0] = foo;
 	inline[1] = 0;
-	if(foo == 'f' || foo == 'F'){
+	if(foo == 'g' || foo == 'G'){
 		inline[1] = getchar();
 #ifdef QUEST
 		if(inline[1] == foo) inline[2] = getchar(); else
-#endif QUEST
+#endif
 		inline[2] = 0;
 	}
 	if(foo == 'm' || foo == 'M'){
@@ -287,7 +317,7 @@ readchar() {
 	}
 #else
 		end_of_input();
-#endif NR_OF_EOFS
+#endif /* NR_OF_EOFS /**/
 	if(flags.toplin == 1)
 		flags.toplin = 2;
 	return((char) sym);

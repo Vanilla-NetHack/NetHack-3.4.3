@@ -1,9 +1,11 @@
+/*	SCCS Id: @(#)do_name.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.do_name.c - version 1.0.3 */
+/* do_name.c - version 1.0.3 */
 
-#include "hack.h"
 #include <stdio.h>
+#include "hack.h"
 extern char plname[];
+extern char *rndmonnam();
 
 coord
 getpos(force,goal) int force; char *goal; {
@@ -54,6 +56,17 @@ extern char *lmonnam();
 	cx = cc.x;
 	cy = cc.y;
 	if(cx < 0) return(0);
+#ifdef DGKMOD
+	if (cx == u.ux && cy == u.uy) {
+		pline("This ugly monster is called %s and cannot be renamed.",
+		plname);
+		return(1);
+	}
+	if (!cansee(cx, cy) || !(mtmp = m_at(cx, cy)) || mtmp->mimic) {
+		pline("I see no monster there.");
+		return(1);
+	}
+#else
 	mtmp = m_at(cx,cy);
 	if(!mtmp){
 	    if(cx == u.ux && cy == u.uy)
@@ -71,6 +84,7 @@ extern char *lmonnam();
 	    pline("I cannot see a monster there.");
 	    return(1);
 	}
+#endif
 	pline("What do you want to call %s? ", lmonnam(mtmp));
 	getlin(buf);
 	clrlin();
@@ -136,17 +150,31 @@ char buf[BUFSZ];
 ddocall()
 {
 	register struct obj *obj;
+	char	ch;
 
-	pline("Do you want to name an individual object? [ny] ");
-	switch(readchar()) {
+#ifdef REDO
+	if (!in_doagain)
+#endif
+		pline("Do you want to name an individual object? [ny] ");
+	switch(ch = readchar()) {
 	case '\033':
 		break;
 	case 'y':
+#ifdef REDO
+		savech(ch);
+#endif
 		obj = getobj("#", "name");
 		if(obj) do_oname(obj);
 		break;
 	default:
+#ifdef REDO
+		savech(ch);
+#endif
+#ifdef KAA
+		obj = getobj("?!=/*", "call");
+#else
 		obj = getobj("?!=/", "call");
+#endif
 		if(obj) docall(obj);
 	}
 	return(0);
@@ -178,10 +206,19 @@ register struct obj *obj;
 }
 
 char *ghostnames[] = {		/* these names should have length < PL_NSIZ */
+#ifdef DGKMOD
+	/* Capitalize the names for asthetics -dgk
+	 */
+	"Adri", "Andries", "Andreas", "Bert", "David", "Dirk", "Emile",
+	"Frans", "Fred", "Greg", "Hether", "Jay", "John", "Jon", "Karnov",
+	"Kay", "Kenny", "Maud", "Michiel", "Mike", "Peter", "Robert",
+	"Ron", "Tom", "Wilmar", "Nick Danger", "Phoenix", "Miracleman"
+#else
 	"adri", "andries", "andreas", "bert", "david", "dirk", "emile",
 	"frans", "fred", "greg", "hether", "jay", "john", "jon", "kay",
 	"kenny", "maud", "michiel", "mike", "peter", "robert", "ron",
 	"tom", "wilmar"
+#endif
 };
 
 char *
@@ -212,7 +249,7 @@ extern char *shkname();
 	default:
 		(void) sprintf(buf, "the %s%s",
 			mtmp->minvis ? "invisible " : "",
-			mtmp->data->mname);
+			(Hallucination ? rndmonnam() : mtmp->data->mname));
 	}
 	if(vb && mtmp->mnamelth) {
 		(void) strcat(buf, " called ");
@@ -266,10 +303,30 @@ char *
 Xmonnam(mtmp) register struct monst *mtmp; {
 register char *bp = Monnam(mtmp);
 	if(!strncmp(bp, "The ", 4)) {
-		bp += 2;
+#ifdef KAA
+		if(index("AEIOUaeio",*(bp+4))) {
+			bp += 1; *(bp+1) = 'n';
+		} else
+#endif
+			bp += 2;
 		*bp = 'A';
 	}
 	return(bp);
+}
+
+char *
+defmonnam(mtmp) register struct monst *mtmp; {
+register char *bp = Xmonnam(mtmp);
+	if (!strncmp(bp,"A ",2) || !strncmp(bp,"An ",3))
+		*bp = 'a';
+	return(bp);
+}
+
+char *
+rndmonnam() {  /* Random name of monster type, if hallucinating */
+int x;
+	if ((x=rn2(CMNUM+2)) != CMNUM+1) return (&mons[x])->mname;
+	return("giant eel");
 }
 
 char *

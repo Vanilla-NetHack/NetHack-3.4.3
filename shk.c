@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)shk.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.shk.c - version 1.0.3 */
+/* shk.c - version 1.0.3 */
 
 #include "hack.h"
 #ifdef QUEST
@@ -22,10 +23,10 @@ shk_move(){ return(0); }
 replshk(mtmp,mtmp2) struct monst *mtmp, *mtmp2; {}
 char *shkname(){ return(""); }
 
-#else QUEST
-#include	"hack.mfndpos.h"
-#include	"def.mkroom.h"
-#include	"def.eshk.h"
+#else
+#include	"mfndpos.h"
+#include	"mkroom.h"
+#include	"eshk.h"
 
 #define	ESHK(mon)	((struct eshk *)(&(mon->mextra[0])))
 #define	NOTANGRY(mon)	mon->mpeaceful
@@ -43,6 +44,7 @@ static int shlevel = 0;	/* level of this shopkeeper */
 				/* only accessed here and by save & restore */
 static long int total;		/* filled by addupbill() */
 static long int followmsg;	/* last time of follow message */
+static setpaid(), findshk(), dopayobj(), getprice(), realhunger();
 
 /*
 	invariants: obj->unpaid iff onbill(obj) [unless bp->useup]
@@ -50,15 +52,20 @@ static long int followmsg;	/* last time of follow message */
  */
 
 
-char shtypes[] = {	/* 8 shoptypes: 7 specialized, 1 mixed */
-	RING_SYM, WAND_SYM, WEAPON_SYM, FOOD_SYM, SCROLL_SYM,
-	POTION_SYM, ARMOR_SYM, 0
+char shtypes[] = {	/* 9 shoptypes: 8 specialized, 1 mixed */
+	RING_SYM, WAND_SYM,
+#ifdef SPELLS
+	SPBOOK_SYM,
+#endif
+	WEAPON_SYM, FOOD_SYM, SCROLL_SYM, POTION_SYM, ARMOR_SYM, 0
 };
-
-static char *shopnam[] = {
-	"engagement ring", "walking cane", "antique weapon",
-	"delicatessen", "second hand book", "liquor",
-	"used armor", "assorted antiques"
+char *shopnam[] = {
+	"engagement ring", "walking cane",
+#ifdef SPELLS
+	"rare book",
+#endif
+	"antique weapon", "delicatessen", "second hand book",
+	"liquor", "used armor", "assorted antiques"
 };
 
 char *
@@ -112,7 +119,7 @@ register struct monst *mtmp;
 		billobjs = obj->nobj;
 		free((char *) obj);
 	}
- ESHK(shopkeeper)->billct = 0;
+	ESHK(shopkeeper)->billct = 0;
 }
 
 static
@@ -133,22 +140,56 @@ register roomno = inroom(u.ux,u.uy);
 	/* Did we just leave a shop? */
 	if(u.uinshop &&
 	    (u.uinshop != roomno + 1 || shlevel != dlevel || !shopkeeper)) {
-		u.uinshop = 0;
+
+	/* This is part of the bugfix for shopkeepers not having their
+	 * bill paid.  As reported by ab@unido -dgk
+	 * I made this standard due to the KOPS code below. -mrs 
+	 */
 		if(shopkeeper) {
 		    if(ESHK(shopkeeper)->billct) {
-			pline("Somehow you escaped the shop without paying!");
+			if(inroom(shopkeeper->mx, shopkeeper->my) 
+			    == u.uinshop - 1)	/* ab@unido */
+			    pline("Somehow you escaped the shop without paying!");
 			addupbill();
 			pline("You stole for a total worth of %ld zorkmids.",
 				total);
 			ESHK(shopkeeper)->robbed += total;
+#ifdef KOPS
+			/* Keystone Kops srt@ucla */
+			pline("An alarm sounds throughout the dungeon!");
+			pline("The Kops are after you!");
+#endif
 			setpaid();
 			if((rooms[ESHK(shopkeeper)->shoproom].rtype == GENERAL)
 			    == (rn2(3) == 0))
 			    ESHK(shopkeeper)->following = 1;
+#ifdef KOPS
+			{
+			    coord enexto();
+			    coord mm;
+			    register int cnt = dlevel + rnd(3);
+			    /* Create a swarm near the staircase */
+			    mm.x = xdnstair;
+			    mm.y = ydnstair;
+			    while(cnt--) {
+				    mm = enexto(mm.x, mm.y);
+				    (void) mkmon_at('K', mm.x, mm.y);
+			    }
+			    /* Create a swarm near the shopkeeper */
+			    cnt = dlevel + rnd(3);
+			    mm.x = shopkeeper->mx;
+			    mm.y = shopkeeper->my;
+			    while(cnt--) {
+				    mm = enexto(mm.x, mm.y);
+				    (void) mkmon_at('K', mm.x, mm.y);
+			    }
+			}
+#endif
 		    }
 		    shopkeeper = 0;
 		    shlevel = 0;
 		}
+		u.uinshop = 0;
 	}
 
 	/* Did we just enter a zoo of some kind? */
@@ -160,6 +201,9 @@ register roomno = inroom(u.ux,u.uy);
 		} else
 		if(rt == SWAMP) {
 			pline("It looks rather muddy down here.");
+		} else
+		if(rt == COURT) {
+			pline("You are in an opulant throne room!");
 		} else
 		if(rt == MORGUE) {
 			if(midnight())
@@ -183,8 +227,6 @@ register roomno = inroom(u.ux,u.uy);
 		findshk(roomno);
 	    if(!shopkeeper) {
 		rooms[roomno].rtype = 0;
-		u.uinshop = 0;
-	    } else if(inroom(shopkeeper->mx, shopkeeper->my) != roomno) {
 		u.uinshop = 0;
 	    } else if(!u.uinshop){
 		if(!ESHK(shopkeeper)->visitct ||
@@ -219,7 +261,7 @@ register roomno = inroom(u.ux,u.uy);
 		u.uinshop = roomno + 1;
 	    }
 	}
- return(u.uinshop);
+	return(u.uinshop);
 }
 
 static
@@ -282,7 +324,7 @@ register struct bill_x *bpm;
 			*bp = bill[ESHK(shopkeeper)->billct];
 		}
 	}
- free((char *) obj);
+	free((char *) obj);
 }
 
 static
@@ -332,15 +374,18 @@ int pass, tmp;
 		    long ugold = u.ugold;
 
 		    if(u.ugold > ltmp) {
-			pline("You give %s the %ld gold pieces he asked for.",
-				monnam(shkp), ltmp);
+			pline("You give %s the %ld gold pieces %s asked for.",
+			monnam(shkp), ltmp, index("@CGHKLOQTVWZ&ehimt", shkp->data->mlet)
+			? "he" : (index("nN", shkp->data->mlet) ? "she" : "it"));
 			pay(ltmp, shkp);
 		    } else {
 			pline("You give %s all your gold.", monnam(shkp));
 			pay(u.ugold, shkp);
 		    }
 		    if(ugold < ltmp/2) {
-			pline("Unfortunately, he doesn't look satisfied.");
+			pline("Unfortunately, %s doesn't look satisfied.",
+			index("@CGHKLOQTVWZ&ehimt", shkp->data->mlet)
+			? "he" : (index("nN", shkp->data->mlet) ? "she" : "it"));
 		    } else {
 			ESHK(shkp)->robbed = 0;
 			ESHK(shkp)->following = 0;
@@ -350,9 +395,9 @@ int pass, tmp;
 			    shkp->mgold = 0;
 			    mondead(shkp);
 			}
-   }
+		    }
 		}
- return(1);
+		return(1);
 	}
 		
 	if(!ESHK(shkp)->billct){
@@ -362,8 +407,9 @@ int pass, tmp;
 			return(1);
 		}
 		if(ESHK(shkp)->robbed){
-#define min(a,b)	((a<b)?a:b)
-		    pline("But since his shop has been robbed recently,");
+			pline("But since %s shop has been robbed recently,",
+			index("@CGHKLOQTVWZ&ehimt", shkp->data->mlet)
+			? "his" : (index("nN", shkp->data->mlet) ? "her" : "its"));
 		    pline("you %srepay %s's expenses.",
 		      (u.ugold < ESHK(shkp)->robbed) ? "partially " : "",
 		      monnam(shkp));
@@ -376,10 +422,14 @@ int pass, tmp;
 				amonnam(shkp, "angry"));
 			if(u.ugold >= 1000){
 				ltmp = 1000;
-				pline(" you give him 1000 gold pieces.");
+				pline(" you give %s 1000 gold pieces.",
+				index("@CGHKLOQTVWZ&ehimt", shkp->data->mlet)
+				? "him" : (index("nN", shkp->data->mlet) ? "her" : "it"));
 			} else {
 				ltmp = u.ugold;
-				pline(" you give him all your money.");
+				pline(" you give %s all your money.",
+				index("@CGHKLOQTVWZ&ehimt", shkp->data->mlet)
+				? "him" : (index("nN", shkp->data->mlet) ? "her" : "it"));
 			}
 			pay(ltmp, shkp);
 			if(strncmp(ESHK(shkp)->customer, plname, PL_NSIZ)
@@ -387,9 +437,9 @@ int pass, tmp;
 				pline("%s calms down.", Monnam(shkp));
 				NOTANGRY(shkp) = 1;
 			} else	pline("%s is as angry as ever.",
- 	Monnam(shkp));
+					Monnam(shkp));
 		}
- return(1);
+		return(1);
 	}
 	if(shkp != shopkeeper) {
 		impossible("dopay: not to shopkeeper?");
@@ -405,7 +455,11 @@ int pass, tmp;
 				continue;
 			}
 			if(!dopayobj(bp)) return(1);
+#ifdef MSDOS
+			*bp = bill[--ESHK(shopkeeper)->billct];
+#else
 			bill[tmp] = bill[--ESHK(shopkeeper)->billct];
+#endif /* MSDOS /**/
 		}
 	}
 	pline("Thank you for shopping in %s's %s store!",
@@ -457,9 +511,9 @@ long ltmp;
 			if(otmp) otmp->nobj = obj->nobj;
 			else pline("Error in shopkeeper administration.");
 		}
- free((char *) obj);
+		free((char *) obj);
 	}
- return(1);
+	return(1);
 }
 
 /* routine called after dying (or quitting) with nonempty bill */
@@ -477,7 +531,7 @@ paybill(){
 	pline("%s comes and takes the %ld zorkmids you owed him.",
 		Monnam(shopkeeper), total);
 		}
- setpaid();	/* in case we create bones */
+		setpaid();	/* in case we create bones */
 	}
 }
 
@@ -517,6 +571,14 @@ register struct bill_x *bp;
 		pline("You got that for free!");
 		return;
 	}
+#ifdef DGKMOD
+	/* To recognize objects the showkeeper is not interested in. -dgk
+	 */
+	if (obj->no_charge) {
+		obj->no_charge = 0;
+		return;
+	}
+#endif
 	bp = &bill[ESHK(shopkeeper)->billct];
 	bp->bo_id = obj->o_id;
 	bp->bquan = obj->quan;
@@ -595,6 +657,9 @@ register struct bill_x *bp;
 	  ((tmp = shtypes[rooms[ESHK(shopkeeper)->shoproom].rtype-8]) && tmp != obj->olet)
 	  || index("_0", obj->olet)) {
 		pline("%s seems not interested.", Monnam(shopkeeper));
+#ifdef DGKMOD
+		obj->no_charge = 1;
+#endif
 		return;
 	}
 	ltmp = getprice(obj) * obj->quan;
@@ -611,10 +676,13 @@ pline("Thank you for your contribution to restock this recently plundered shop."
 	if(ltmp > shopkeeper->mgold)
 		ltmp = shopkeeper->mgold;
 	pay(-ltmp, shopkeeper);
-	if(!ltmp)
-	pline("%s gladly accepts %s but cannot pay you at present.",
-		Monnam(shopkeeper), doname(obj));
-	else
+	if(!ltmp) {
+		pline("%s gladly accepts %s but cannot pay you at present.",
+			Monnam(shopkeeper), doname(obj));
+#ifdef DGKMOD
+			obj->no_charge = 1;
+#endif
+	} else
 	pline("You sold %s and got %ld gold piece%s.", doname(obj), ltmp,
 		plur(ltmp));
 }
@@ -690,7 +758,11 @@ register int tmp, ac;
 		tmp = 10*rnd(500);
 		break;
 	case TOOL_SYM:
-		tmp = 10*rnd((obj->otyp == EXPENSIVE_CAMERA) ? 150 : 30);
+		tmp = 10*rnd((obj->otyp == EXPENSIVE_CAMERA) ? 150 :
+#ifdef MARKER
+			(obj->otyp == MAGIC_MARKER) ? 100 :
+#endif
+			30);
 		break;
 	case RING_SYM:
 		tmp = 10*rnd(100);
@@ -703,11 +775,16 @@ register int tmp, ac;
 #ifdef MAIL
 		if(obj->otyp == SCR_MAIL)
 			tmp = rnd(5);
-#endif MAIL
+#endif
 		break;
 	case POTION_SYM:
 		tmp = 10*rnd(50);
 		break;
+#ifdef SPELLS
+	case SPBOOK_SYM:
+		tmp = 10*rnd(200);
+		break;
+#endif
 	case FOOD_SYM:
 		tmp = 10*rnd(5 + (2000/realhunger()));
 		break;
@@ -723,6 +800,8 @@ register int tmp, ac;
 	case WEAPON_SYM:
 		if(obj->otyp < BOOMERANG)
 			tmp = 5*rnd(10);
+		else if(obj->otyp == KATANA)
+			tmp = 10*rnd(200);
 		else if(obj->otyp == LONG_SWORD ||
 			obj->otyp == TWO_HANDED_SWORD)
 			tmp = 10*rnd(150);
@@ -736,7 +815,7 @@ register int tmp, ac;
 	default:
 		tmp = 10000;
 	}
- return(tmp);
+	return(tmp);
 }
 
 static
@@ -748,7 +827,7 @@ register struct obj *otmp = invent;
 			tmp += objects[otmp->otyp].nutrition;
 		otmp = otmp->nobj;
 	}
- return((tmp <= 0) ? 1 : tmp);
+	return((tmp <= 0) ? 1 : tmp);
 }
 
 shkcatch(obj)
@@ -766,7 +845,7 @@ register struct obj *obj;
 		shkp->minvent = obj;
 		return(1);
 	}
- return(0);
+	return(0);
 }
 
 /*
@@ -784,7 +863,7 @@ register struct monst *shkp;
 	schar shkroom,chi,chcnt,cnt;
 	boolean uondoor, satdoor, avoid, badinv;
 	coord poss[9];
-	int info[9];
+	long info[9];
 	struct obj *ib = 0;
 
 	omx = shkp->mx;
@@ -857,11 +936,11 @@ register struct monst *shkp;
 		  }
 
 		  if(((!ESHK(shkp)->robbed && !ESHK(shkp)->billct) || avoid)
-		  	&& GDIST(omx,omy) < 3){
-		  	if(!badinv && !online(omx,omy))
+			&& GDIST(omx,omy) < 3){
+			if(!badinv && !online(omx,omy))
 				return(0);
-		  	if(satdoor)
-		  		appr = gx = gy = 0;
+			if(satdoor)
+				appr = gx = gy = 0;
 		  }
 		}
 	}
@@ -886,13 +965,13 @@ register struct monst *shkp;
 	for(i=0; i<cnt; i++){
 		nx = poss[i].x;
 		ny = poss[i].y;
-	   	if(levl[nx][ny].typ == ROOM
+		if(levl[nx][ny].typ == ROOM
 		|| shkroom != ESHK(shkp)->shoproom
 		|| ESHK(shkp)->following) {
 #ifdef STUPID
 		    /* cater for stupid compilers */
 		    register int zz;
-#endif STUPID
+#endif
 		    if(uondoor && (ib = sobj_at(ICE_BOX, nx, ny))) {
 			nix = nx; niy = ny; chi = i; break;
 		    }
@@ -903,7 +982,7 @@ register struct monst *shkp;
 			(appr && (zz = GDIST(nix,niy)) && zz > GDIST(nx,ny))
 #else
 			(appr && GDIST(nx,ny) < GDIST(nix,niy))
-#endif STUPID
+#endif
 			) {
 			    nix = nx;
 			    niy = ny;
@@ -928,11 +1007,11 @@ register struct monst *shkp;
 			freeobj(ib);
 			mpickobj(shkp, ib);
 		}
- return(1);
+		return(1);
 	}
- return(0);
+	return(0);
 }
-#endif QUEST
+#endif /* QUEST /**/
 
 online(x,y) {
 	return(x==u.ux || y==u.uy ||

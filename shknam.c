@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)shknam.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.shknam.c - version 1.0.2 */
+/* shknam.c - version 1.0.2 */
 
 #include "hack.h"
 

@@ -1,15 +1,16 @@
+/*	SCCS Id: @(#)termcap.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.termcap.c - version 1.0.3 */
+/* termcap.c - version 1.0.3 */
 
 #include <stdio.h>
 #include "config.h"	/* for ROWNO and COLNO */
-#include "def.flag.h"	/* for flags.nonull */
+#include "hack.h"	/* for  *HI, *HE */
 extern char *tgetstr(), *tgoto(), *getenv();
 extern long *alloc();
 
 #ifndef lint
 extern			/* it is defined in libtermlib (libtermcap) */
-#endif lint
+#endif
 	short ospeed;		/* terminal baudrate; used by tputs */
 static char tbuf[512];
 static char *HO, *CL, *CE, *UP, *CM, *ND, *XD, *BC, *SO, *SE, *TI, *TE;
@@ -19,8 +20,38 @@ static char PC = '\0';
 char *CD;		/* tested in pri.c: docorner() */
 int CO, LI;		/* used in pri.c and whatis.c */
 
+#ifdef MSDOS
+static char tgotobuf[20];
+#define tgoto(fmt, x, y)	(sprintf(tgotobuf, fmt, y+1, x+1), tgotobuf)
+#endif /* MSDOS /**/
+
 startup()
 {
+#ifdef MSDOS
+	HO = "\033[H";
+	CL = "\033[2J";
+	CE = "\033[K";
+	UP = "\033[1A";
+	CM = "\033[%d;%dH";	/* used with function tgoto() */
+	ND = "\033[1C";
+	XD = "\033[1B";
+	BC = "\033[1D";
+	SO = "\033[7m";
+	SE = "\033[0m";
+	TI = TE = VS = VE = "";
+	CD = "\033";
+	CO = COLNO;
+	LI = ROWNO;
+#if defined(DGK) || defined(SORTING)
+	/* Both HI and HE have 4 characters.  The function let_to_name()
+	 * in msdos.c uses this length when creating a buffer.  If you
+	 * make HI and HE longer, you must also change the length of buf[]
+	 * in let_to_name()
+	 */
+	HI = "\033[4m";
+	HE = "\033[0m";
+#endif
+#else
 	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
@@ -71,20 +102,32 @@ startup()
 	SE = tgetstr("se", &tbufptr);
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
 	if(!SO || !SE || (SG > 0)) SO = SE = 0;
+#ifdef SORTING
+	HI = SO;	/* I know... Its a kluge. (MRS) */
+	HE = SE;
+#endif
 	CD = tgetstr("cd", &tbufptr);
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free(tptr);
+#endif /* MSDOS /**/
 }
 
 start_screen()
 {
 	xputs(TI);
 	xputs(VS);
+#ifdef DGK
+	/* Select normal ASCII and line drawing character sets.
+	 */
+	if (flags.DECRainbow)
+		xputs("\033(B\033)0");
+#endif
 }
 
 end_screen()
 {
+	clear_screen();
 	xputs(VE);
 	xputs(TE);
 }
@@ -173,7 +216,11 @@ xputc(c) char c; {
 }
 
 xputs(s) char *s; {
+#ifdef MSDOS
+	fputs(s, stdout);
+#else
 	tputs(s, 1, xputc);
+#endif
 }
 
 cl_end() {
@@ -194,6 +241,7 @@ cl_end() {
 
 clear_screen() {
 	xputs(CL);
+	xputs(HO);
 	curx = cury = 1;
 }
 
@@ -226,6 +274,9 @@ backsp()
 
 bell()
 {
+#ifdef DGKMOD
+	if (flags.silent) return;
+#endif /* DGKMOD /**/
 	(void) putchar('\007');		/* curx does not change */
 	(void) fflush(stdout);
 }
@@ -238,6 +289,14 @@ delay_output() {
 	/* delay 50 ms - could also use a 'nap'-system call */
 	/* BUG: if the padding character is visible, as it is on the 5620
 	   then this looks terrible. */
+#ifdef MSDOS
+	/* simulate the delay with "cursor here" */
+	register i;
+	for (i = 0; i < 3; i++) {
+		cmov(curx, cury);
+		(void) fflush(stdout);
+	}
+#else
 	if(!flags.nonull)
 		tputs("50", 1, xputc);
 
@@ -255,6 +314,7 @@ delay_output() {
 			i -= cmlen*tmspc10[ospeed];
 		}
 	}
+#endif /* MSDOS /**/
 }
 
 cl_eos()			/* free after Robert Viduya */

@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)pager.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.pager.c - version 1.0.3 */
+/* pager.c - version 1.0.3 */
 
 /* This file contains the command routine dowhatis() and a pager. */
 /* Also readmail() and doshell(), and generally the things that
@@ -7,7 +8,7 @@
 
 #include	<stdio.h>
 #include	<signal.h>
-#include "hack.h"
+#include	 "hack.h"
 extern int CO, LI;	/* usually COLNO and ROWNO+2 */
 extern char *CD;
 extern char quitchars[];
@@ -26,6 +27,10 @@ dowhatis()
 	else {
 		pline("Specify what? ");
 		q = readchar();
+#ifdef DGKMOD
+		if (index(quitchars, q))
+			return(0);
+#endif
 		if(q != '\t')
 		while(fgets(buf,BUFSZ,fp))
 		    if(*buf == q) {
@@ -68,15 +73,40 @@ FILE *fp;
 int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 {
 	register char *bufr, *ep;
+#ifdef DGK
+	/* There seems to be a bug in ANSI.SYS  The first tab character
+	 * after a clear screen sequence is not expanded correctly.  Thus
+	 * expand the tabs by hand -dgk
+	 */
+	int tabstop = 8, spaces;
+	char buf[BUFSIZ], *bufp, *bufrp;
+
+	set_pager(0);
+	bufr = (char *) alloc((unsigned) CO);
+	while (fgets(buf, BUFSIZ, fp) && (!strip || *buf == '\t')){
+		bufp = buf;
+		bufrp = bufr;
+		while (*bufp && *bufp != '\n') {
+			if (*bufp == '\t') {
+				spaces = tabstop - (bufrp - bufr) % tabstop;
+				while (spaces--)
+					*bufrp++ = ' ';
+				bufp++;
+			} else
+				*bufrp++ = *bufp++;
+		}
+		*bufrp = '\0';
+#else
 	int (*prevsig)() = signal(SIGINT, intruph);
 
 	set_pager(0);
 	bufr = (char *) alloc((unsigned) CO);
 	bufr[CO-1] = 0;
-	while(fgets(bufr,CO-1,fp) && (!strip || *bufr == '\t') && !got_intrup){
+	while(fgets(bufr,CO-1,fp) && (!strip || *bufr == '\t')){
 		ep = index(bufr, '\n');
 		if(ep)
 			*ep = 0;
+#endif /* DGK /**/
 		if(page_line(bufr+strip)) {
 			set_pager(2);
 			goto ret;
@@ -86,8 +116,10 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 ret:
 	free(bufr);
 	(void) fclose(fp);
+#ifndef DGK
 	(void) signal(SIGINT, prevsig);
 	got_intrup = 0;
+#endif
 }
 
 static boolean whole_screen = TRUE;
@@ -106,7 +138,7 @@ readnews() {
 	set_whole_screen();
 	return(ret);		/* report whether we did docrt() */
 }
-#endif NEWS
+#endif
 
 set_pager(mode)
 register int mode;	/* 0: open  1: wait+close  2: close */
@@ -316,7 +348,7 @@ boolean silent;
 	}
 	(void) close(fd);
       }
-#else DEF_PAGER
+#else
       {
 	FILE *f;			/* free after Robert Viduya */
 
@@ -329,7 +361,7 @@ boolean silent;
 	}
 	page_more(f, 0);
       }
-#endif DEF_PAGER
+#endif /* DEF_PAGER /**/
 
 	return(1);
 }
@@ -348,7 +380,7 @@ register char *str;
 	}
 	return(0);
 }
-#endif SHELL
+#endif /* SHELL /**/
 
 #ifdef NOWAITINCLUDE
 union wait {		/* used only for the cast  (union wait *) 0  */
@@ -366,8 +398,8 @@ union wait {		/* used only for the cast  (union wait *) 0  */
 #include	<sys/wait.h>
 #else
 #include	<wait.h>
-#endif BSD
-#endif NOWAITINCLUDE
+#endif
+#endif /* NOWAITINCLUDE /**/
 
 child(wt) {
 register int f = fork();
@@ -377,7 +409,7 @@ register int f = fork();
 		(void) setgid(getgid());
 #ifdef CHDIR
 		(void) chdir(getenv("HOME"));
-#endif CHDIR
+#endif
 		return(1);
 	}
 	if(f == -1) {	/* cannot fork */
@@ -393,9 +425,9 @@ register int f = fork();
 	(void) signal(SIGINT,done1);
 #ifdef WIZARD
 	if(wizard) (void) signal(SIGQUIT,SIG_DFL);
-#endif WIZARD
+#endif
 	if(wt) getret();
 	docrt();
 	return(0);
 }
-#endif UNIX
+#endif /* UNIX /**/

@@ -1,22 +1,24 @@
+/*	SCCS Id: @(#)invent.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.invent.c - version 1.0.3 */
+/* invent.c - version 1.0.3 */
 
-#include	"hack.h"
 #include	<stdio.h>
+#include	"hack.h"
 extern struct obj *splitobj();
 extern struct obj zeroobj;
 extern char morc;
 extern char quitchars[];
-char *xprname();
+static char *xprname();
 
 #ifndef NOWORM
-#include	"def.wseg.h"
+#include	"wseg.h"
 extern struct wseg *wsegs[32];
-#endif NOWORM
+#endif
 
 #define	NOINVSYM	'#'
 
-static int lastinvnr = 51;	/* 0 ... 51 */
+int lastinvnr = 51;	/* 0 ... 51 */
+
 static
 assigninvlet(otmp)
 register struct obj *otmp;
@@ -174,7 +176,7 @@ register x,y;
 	register struct monst *mtmp;
 #ifndef NOWORM
 	register struct wseg *wtmp;
-#endif NOWORM
+#endif
 
 	m_atseg = 0;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
@@ -188,7 +190,7 @@ register x,y;
 			return(mtmp);
 		    }
 		}
-#endif NOWORM
+#endif
 	}
 	return(0);
 }
@@ -223,6 +225,7 @@ register struct obj *otmp;
 	return(0);
 }
 
+struct obj *
 carrying(type)
 register int type;
 {
@@ -230,8 +233,8 @@ register int type;
 
 	for(otmp = invent; otmp; otmp = otmp->nobj)
 		if(otmp->otyp == type)
-			return(TRUE);
-	return(FALSE);
+			return(otmp);
+	return((struct obj *) 0);
 }
 
 struct obj *
@@ -323,9 +326,14 @@ register char *let,*word;
 		if((!strcmp(word, "take off") &&
 		    !(otmp->owornmask & (W_ARMOR - W_ARM2)))
 		|| (!strcmp(word, "wear") &&
-   (otmp->owornmask & (W_ARMOR | W_RING)))
+		    (otmp->owornmask & (W_ARMOR | W_RING)))
 		|| (!strcmp(word, "wield") &&
-		    (otmp->owornmask & W_WEP))) {
+		    (otmp->owornmask & W_WEP))
+#ifdef MARKER
+		|| (!strcmp(word, "write with") &&
+		    (otmp->olet == TOOL_SYM && otmp->otyp != MAGIC_MARKER))
+#endif
+		    ) {
 			foo--;
 			foox++;
 		}
@@ -359,14 +367,23 @@ register char *let,*word;
 	}
 	for(;;) {
 		if(!buf[0])
+#ifdef REDO
+		    if(!in_doagain)
+#endif
 			pline("What do you want to %s [*]? ", word);
 		else
+#ifdef REDO
+		    if(!in_doagain)
+#endif
 			pline("What do you want to %s [%s or ?*]? ",
 				word, buf);
 
 		cnt = 0;
 		ilet = readchar();
 		while(digit(ilet) && allowcnt) {
+#ifdef REDO
+			if (ilet != '?' && ilet != '*')	savech(ilet);
+#endif
 			cnt = 10*cnt + (ilet - '0');
 			allowcnt = 2;	/* signal presence of cnt */
 			ilet = readchar();
@@ -398,6 +415,9 @@ register char *let,*word;
 			if(!(ilet = morc)) continue;
 			/* ... */
 		}
+#ifdef REDO
+		if (ilet != '?' && ilet != '*')	savech(ilet);
+#endif
 		if(flags.invlet_constant) {
 			for(otmp = invent; otmp; otmp = otmp->nobj)
 				if(otmp->invlet == ilet) break;
@@ -493,7 +513,11 @@ xchar allowgold = (u.ugold && !strcmp(word, "drop")) ? 1 : 0;	/* BAH */
 		} else
 		if(sym == 'a' || sym == 'A') allflag = TRUE; else
 		if(sym == 'u' || sym == 'U') ckfn = ckunpaid; else
+#ifdef SPELLS
+		if(index("!%?[()=*/+\"0", sym)){
+#else
 		if(index("!%?[()=*/\"0", sym)){
+#endif
 			if(!index(olets, sym)){
 				olets[oletct++] = sym;
 				olets[oletct] = 0;
@@ -524,11 +548,22 @@ int max;
 register struct obj *otmp, *otmp2;
 register char sym, ilet;
 register int cnt = 0;
+#ifdef SORTING
+	/* changes so the askchain is interrogated in the order specified.
+	 * For example, if a person specifies =/ then first all rings will be
+	 * asked about followed by all wands -dgk
+	 */
+nextclass:
+#endif
 	ilet = 'a'-1;
 	for(otmp = objchn; otmp; otmp = otmp2){
 		if(ilet == 'z') ilet = 'A'; else ilet++;
 		otmp2 = otmp->nobj;
+#ifdef SORTING
+		if (olets && *olets && otmp->olet != *olets) continue;
+#else
 		if(olets && *olets && !index(olets, otmp->olet)) continue;
+#endif
 		if(ckfn && !(*ckfn)(otmp)) continue;
 		if(!allflag) {
 			pline(xprname(otmp, ilet));
@@ -550,6 +585,10 @@ register int cnt = 0;
 			goto ret;
 		}
 	}
+#ifdef SORTING
+	if (olets && *olets && *++olets)
+		goto nextclass;
+#endif
 	pline(cnt ? "That was all." : "No applicable objects.");
 ret:
 	return(cnt);
@@ -594,6 +633,15 @@ ddoinv()
 	return(0);
 }
 
+#ifdef SORTING
+# ifdef SPELLS
+char inv_order[] = "\")[%?+/=!(*0_`";	/* to be safe, include _ and ` */
+# else
+char inv_order[] = "\")[%?/=!(*0_`";
+# endif
+extern char *let_to_name();
+#endif
+
 /* called with 0 or "": all objects in inventory */
 /* otherwise: all objects with (serial) letter in lets */
 doinv(lets)
@@ -603,6 +651,10 @@ register char *lets;
 	register char ilet;
 	int ct = 0;
 	char any[BUFSZ];
+#ifdef SORTING
+	char *invlet = inv_order;
+	int classcount = 0;
+#endif /* SORTING /**/
 
 	morc = 0;		/* just to be sure */
 
@@ -612,6 +664,26 @@ register char *lets;
 	}
 
 	cornline(0, (char *) 0);
+#ifdef SORTING
+nextclass:
+	classcount = 0;
+	ilet = 'a';
+	for(otmp = invent; otmp; otmp = otmp->nobj) {
+		if(flags.invlet_constant) ilet = otmp->invlet;
+		if(!lets || !*lets || index(lets, ilet)) {
+			if (!flags.sortpack || otmp->olet == *invlet) {
+				if (flags.sortpack && !classcount) {
+					cornline(1, let_to_name(*invlet));
+					classcount++;
+				}
+				cornline(1, xprname(otmp, ilet));
+				any[ct++] = ilet;
+			}
+		}
+		if(!flags.invlet_constant) if(++ilet > 'z') ilet = 'A';
+	}
+	if (flags.sortpack && *++invlet) goto nextclass;
+#else
 	ilet = 'a';
 	for(otmp = invent; otmp; otmp = otmp->nobj) {
 	    if(flags.invlet_constant) ilet = otmp->invlet;
@@ -621,6 +693,7 @@ register char *lets;
 	    }
 	    if(!flags.invlet_constant) if(++ilet > 'z') ilet = 'A';
 	}
+#endif /* SORTING /**/
 	any[ct] = 0;
 	cornline(2, any);
 }
@@ -656,9 +729,15 @@ dotypeinv ()				/* free after Robert Viduya */
 	stuff[stct] = 0;
 
 	if(stct > 1) {
+#ifdef REDO
+	  if (!in_doagain)
+#endif
 	    pline ("What type of object [%s] do you want an inventory of? ",
 		stuff);
 	    c = readchar();
+#ifdef REDO
+	    savech(c);
+#endif
 	    if(index(quitchars,c)) return(0);
 	} else
 	    c = stuff[0];
@@ -702,21 +781,51 @@ dolook() {
     register struct gold *gold;
     char *verb = Blind ? "feel" : "see";
     int	ct = 0;
+    int fd = 0;
 
+#ifdef KAA
+    if(!Blind) read_engr_at(u.ux, u.uy); /* Eric Backus */
+#endif
     if(!u.uswallow) {
-	if(Blind) {
-	    pline("You try to feel what is lying here on the floor.");
-	    if(Levitation) {				/* ab@unido */
-		pline("You cannot reach the floor!");
-		return(1);
-	    }
-	}
 	otmp0 = o_at(u.ux, u.uy);
 	gold = g_at(u.ux, u.uy);
+    }  else  {
+	pline("You %s no objects here.", verb);
+	return(!!Blind);
     }
 
-    if(u.uswallow || (!otmp0 && !gold)) {
-	pline("You %s no objects here.", verb);
+    /* added by GAN 10/30/86 */
+#ifdef FOUNTAINS
+    if(IS_FOUNTAIN(levl[u.ux][u.uy].typ))  {
+	fd++;
+	pline("There is a fountain here.");
+    }
+#endif
+#ifdef NEWCLASS
+    if(IS_THRONE(levl[u.ux][u.uy].typ))  {
+	fd++;
+	pline("There is an opulent throne here.");
+    }    
+#endif
+    if(u.ux == xupstair && u.uy == yupstair)  {
+	fd++;
+	pline("There is a stairway up here.");
+    }
+    if(u.ux == xdnstair && u.uy == ydnstair)  {
+	fd++;
+	cornline(1, "There is a stairway down here.");
+    }
+    if(Blind)  {
+	 pline("You try to feel what is lying here on the floor.");
+	 if(Levitation)  {
+		pline("But you can't reach it!");
+		return(0);
+	 }
+    }
+ 
+    if(!otmp0 && !gold) {
+	if(Blind || !fd)
+		pline("You %s no objects here.", verb);
 	return(!!Blind);
     }
 
@@ -769,7 +878,11 @@ merged(otmp,obj,lose) register struct obj *otmp, *obj; {
 	  obj->spe == otmp->spe &&
 	  obj->dknown == otmp->dknown &&
 	  obj->cursed == otmp->cursed &&
+#ifdef SPELLS
+	  (index("%*?!+", obj->olet) ||
+#else
 	  (index("%*?!", obj->olet) ||
+#endif
 	    (obj->known == otmp->known &&
 		(obj->olet == WEAPON_SYM && obj->otyp < BOOMERANG)))) {
 		otmp->quan += obj->quan;
@@ -804,7 +917,7 @@ doprgold(){
 	if(!u.ugold)
 		pline("You do not carry any gold.");
 	else if(u.ugold <= 500)
-		pline("You are carrying %ld gold pieces.", u.ugold);
+		pline("You are carrying %ld gold piece%s.", u.ugold, plur(u.ugold));
 	else {
 		pline("You sit down in order to count your gold pieces.");
 		goldcounted = 500;
@@ -858,3 +971,51 @@ doprring(){
 digit(c) char c; {
 	return(c >= '0' && c <= '9');
 }
+
+/*
+ * useupf(obj)
+ * uses up an object that's on the floor
+ */
+useupf(obj)
+register struct obj *obj;
+{
+	if(obj->quan > 1)  {
+		obj->quan--;
+		obj->owt = weight(obj);
+	}  else delobj(obj);
+}
+
+#ifdef SORTING
+/*
+ * Convert from a symbol to a string for printing object classes
+ *
+ * Names from objects.h
+ * char obj_symbols[] = {
+ *	ILLOBJ_SYM, AMULET_SYM, FOOD_SYM, WEAPON_SYM, TOOL_SYM,
+ *	BALL_SYM, CHAIN_SYM, ROCK_SYM, ARMOR_SYM, POTION_SYM, SCROLL_SYM,
+ *	WAND_SYM, [SPBOOK_SYM], RING_SYM, GEM_SYM, 0 };
+ */
+#define Sprintf (void) sprintf
+
+extern char obj_symbols[];
+static char *names[] = {"Illegal objects", "Amulets", "Comestibles", "Weapons",
+			"Tools", "Iron balls", "Chains", "Rocks", "Armor",
+			"Potions", "Scrolls", "Wands",
+#ifdef SPELLS
+			"Spellbooks",
+#endif
+			"Rings", "Gems"};
+char *
+let_to_name(let)
+char let;
+{
+	char *pos = index(obj_symbols, let);
+	extern char *HI, *HE;
+	/* buffer size is len(HI) + len(HE) + max(len(names[])) + 1 */
+	static char buf[4 + 4 + 15 + 1];
+
+	if (pos == NULL) pos = obj_symbols;
+	Sprintf(buf, "%s%s%s", HI, names[pos - obj_symbols], HE);
+	return (buf);
+}
+#endif /* SORTING /**/

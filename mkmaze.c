@@ -1,14 +1,15 @@
+/*	SCCS Id: @(#)mkmaze.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.mkmaze.c - version 1.0.2 */
+/* mkmaze.c - version 1.0.2 */
 
 #include "hack.h"
-#include "def.mkroom.h"		/* not really used */
+#include "mkroom.h"		/* not really used */
 extern struct monst *makemon();
 extern struct permonst pm_wizard;
 extern struct obj *mkobj_at();
 extern coord mazexy();
 struct permonst hell_hound =
-	{ "hell hound", 'd', 12, 14, 2, 3, 6, 0 };
+	{ "hell hound", 'd', 12, 14, 2, 20, 3, 6, 0 };
 
 makemaz()
 {
@@ -52,12 +53,21 @@ makemaz()
 	for(x = 2; x < COLNO-1; x++)
 		for(y = 2; y < ROWNO-1; y++) {
 			switch(levl[x][y].typ) {
+#ifdef DGK
+			case HWALL:
+				levl[x][y].scrsym = symbol.hwall;
+				break;
+			case ROOM:
+				levl[x][y].scrsym = symbol.room;
+				break;
+#else
 			case HWALL:
 				levl[x][y].scrsym = '-';
 				break;
 			case ROOM:
 				levl[x][y].scrsym = '.';
 				break;
+#endif /* DGK /**/
 			}
 		}
 	for(x = rn1(8,11); x; x--) {
@@ -86,6 +96,47 @@ makemaz()
 	xdnstair = ydnstair = 0;
 }
 
+#ifdef DGK
+/* Make the mazewalk iterative by faking a stack.  This is needed to
+ * ensure the mazewalk is successful in the limited stack space of
+ * the program.  This iterative version uses the mimumum amount of stack
+ * that is totally safe.
+ */
+walkfrom(x,y)
+int x,y;
+{
+#define CELLS (ROWNO * COLNO) / 4		/* a maze cell is 4 squares */
+	char mazex[CELLS + 1], mazey[CELLS + 1];	/* char's are OK */
+	int q, a, dir, pos;
+	int dirs[4];
+
+	pos = 1;
+	mazex[pos] = (char) x;
+	mazey[pos] = (char) y;
+	while (pos) {
+		x = (int) mazex[pos];
+		y = (int) mazey[pos];
+		levl[x][y].typ = ROOM;
+		q = 0;
+		for (a = 0; a < 4; a++)
+			if(okay(x, y, a)) dirs[q++]= a;
+		if (!q)
+			pos--;
+		else {
+			dir = dirs[rn2(q)];
+			move(&x, &y, dir);
+			levl[x][y].typ = ROOM;
+			move(&x, &y, dir);
+			pos++;
+			if (pos > CELLS)
+				panic("Overflow in walkfrom");
+			mazex[pos] = (char) x;
+			mazey[pos] = (char) y;
+		}
+	}
+}
+#else
+
 walkfrom(x,y) int x,y; {
 register int q,a,dir;
 int dirs[4];
@@ -102,6 +153,7 @@ int dirs[4];
 		walkfrom(x,y);
 	}
 }
+#endif /* DGK /**/
 
 move(x,y,dir)
 register int *x, *y;

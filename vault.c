@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)vault.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.vault.c - version 1.0.2 */
+/* vault.c - version 1.0.2 */
 
 #include	"hack.h"
 #ifdef QUEST
@@ -12,7 +13,7 @@ invault(){}
 #else
 
 
-#include "def.mkroom.h"
+#include "mkroom.h"
 extern struct monst *makemon();
 #define	FCSIZ	(ROWNO+COLNO)
 struct fakecorridor {
@@ -27,7 +28,7 @@ struct egd {
 };
 
 static struct permonst pm_guard =
-	{ "guard", '@', 12, 12, -1, 4, 10, sizeof(struct egd) };
+	{ "guard", '@', 12, 12, -1, 40, 4, 10, sizeof(struct egd) };
 
 static struct monst *guard;
 static int gdlevel;
@@ -74,7 +75,7 @@ register struct monst *mtmp;
 		gdlevel = dlevel;
 		return;
 	}
- guard = 0;
+	guard = 0;
 }
 
 invault(){
@@ -256,4 +257,4 @@ register struct monst *mtmp, *mtmp2;
 		guard = mtmp2;
 }
 
-#endif QUEST
+#endif /* QUEST /**/

@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)objnam.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.objnam.c - version 1.0.2 */
+/* objnam.c - version 1.0.2 */
 
 #include	"hack.h"
 #define Sprintf (void) sprintf
@@ -48,6 +49,11 @@ register int nn = ocl->oc_name_known;
 	case WAND_SYM:
 		Strcpy(buf, "wand");
 		break;
+#ifdef SPELLS
+	case SPBOOK_SYM:
+		Strcpy(buf, "spellbook");
+		break;
+#endif
 	case RING_SYM:
 		Strcpy(buf, "ring");
 		break;
@@ -90,7 +96,11 @@ register char *an = objects[obj->otyp].oc_name;
 register char *dn = objects[obj->otyp].oc_descr;
 register char *un = objects[obj->otyp].oc_uname;
 register int pl = (obj->quan != 1);
+#ifdef KAA
+	if(!obj->dknown && !Blind && obj->olet != WEAPON_SYM) obj->dknown=1;
+#else
 	if(!obj->dknown && !Blind) obj->dknown = 1; /* %% doesnt belong here */
+#endif
 	switch(obj->olet) {
 	case AMULET_SYM:
 		Strcpy(buf, (obj->spe < 0 && obj->known)
@@ -111,6 +121,13 @@ register int pl = (obj->quan != 1);
 			break;
 		}
 		/* fungis ? */
+#ifdef KAA /* The fungus mistake was a D&D holdover. */
+		if(obj->otyp == DEAD_VIOLET_FUNGUS && pl) {
+			pl = 0;
+			Strcpy(buf, "dead violet fungi");
+			break;
+		}
+#endif
 		/* fall into next case */
 	case WEAPON_SYM:
 		if(obj->otyp == WORM_TOOTH && pl) {
@@ -181,6 +198,18 @@ register int pl = (obj->quan != 1);
 		else
 			Sprintf(buf, "%s wand", dn);
 		break;
+#ifdef SPELLS
+	case SPBOOK_SYM:
+		if(!obj->dknown)
+			Sprintf(buf, "spellbook");
+		else if(nn)
+			Sprintf(buf, "spellbook of %s", an);
+		else if(un)
+			Sprintf(buf, "spellbook called %s", un);
+		else
+			Sprintf(buf, "%s spellbook", dn);
+		break;
+#endif
 	case RING_SYM:
 		if(!obj->dknown)
 			Sprintf(buf, "ring");
@@ -197,7 +226,14 @@ register int pl = (obj->quan != 1);
 			break;
 		}
 		if(!nn) {
-			Sprintf(buf, "%s gem", dn);
+#ifdef KAA
+			if(un) {
+				if (!pl)  Sprintf(buf,"gem called %s",un);
+				else	  Sprintf(buf,"gems called %s",un);
+				pl=0;
+			} else
+#endif
+				Sprintf(buf, "%s gem", dn);
 			break;
 		}
 		Strcpy(buf, an);
@@ -260,10 +296,19 @@ register char *bp = xname(obj);
 		/* fall into next case */
 	case WEAPON_SYM:
 		if(obj->known) {
+#ifdef KAA
+			/* dknown is special for weapons */
+			if(obj->dknown && obj->olet == WEAPON_SYM)
+				Strcat(prefix,"blessed ");
+#endif
 			Strcat(prefix, sitoa(obj->spe));
 			Strcat(prefix, " ");
 		}
 		break;
+#ifdef MARKER
+	case TOOL_SYM:			/* temp. hack by GAN 11/18/86 */
+		if(obj->otyp != MAGIC_MARKER) break;
+#endif
 	case WAND_SYM:
 		if(obj->known)
 			Sprintf(eos(bp), " (%d)", obj->spe);
@@ -287,7 +332,7 @@ register char *bp = xname(obj);
 	return(bp);
 }
 
-/* used only in hack.fight.c (thitu) */
+/* used only in fight.c (thitu) */
 setan(str,buf)
 register char *str,*buf;
 {
@@ -331,8 +376,16 @@ register struct obj *obj;
 	return(s);
 }
 
-char *wrp[] = { "wand", "ring", "potion", "scroll", "gem" };
-char wrpsym[] = { WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM };
+char *wrp[] = {	"wand", "ring", "potion", "scroll", "gem"
+#ifdef SPELLS
+		, "spellbook"
+#endif
+	      };
+char wrpsym[] = { WAND_SYM, RING_SYM, POTION_SYM, SCROLL_SYM, GEM_SYM
+#ifdef SPELLS
+		  , SPBOOK_SYM
+#endif
+		};
 
 struct obj *
 readobjnam(bp) register char *bp; {
@@ -341,11 +394,14 @@ register int i;
 int cnt, spe, spesgn, typ, heavy;
 char let;
 char *un, *dn, *an;
+#ifdef KAA
+int blessed=0;
+#endif
 /* int the = 0; char *oname = 0; */
 	cnt = spe = spesgn = typ = heavy = 0;
 	let = 0;
 	an = dn = un = 0;
-	for(p = bp; *p; p++)
+	for(p = bp; *p; p++)	/* set the string to lower case */
 		if('A' <= *p && *p <= 'Z') *p += 'a'-'A';
 	if(!strncmp(bp, "the ", 4)){
 /*		the = 1; */
@@ -357,6 +413,12 @@ char *un, *dn, *an;
 		cnt = 1;
 		bp += 2;
 	}
+#ifdef KAA
+	if(!strncmp(bp,"blessed ",8)) {
+		blessed=1;
+		bp += 8;
+	}
+#endif
 	if(!cnt && digit(*bp)){
 		cnt = atoi(bp);
 		while(digit(*bp)) bp++;
@@ -416,7 +478,11 @@ char *un, *dn, *an;
 		if(p[-1] == 's') {
 			if(p[-2] == 'e') {
 				if(p[-3] == 'i') {
+#ifdef KAA
+					if(!strcmp(p-7, "cookies") || !strcmp(p-4, "pies"))
+#else
 					if(!strcmp(p-7, "cookies"))
+#endif
 						goto mins;
 					Strcpy(p-3, "y");
 					goto sing;
@@ -437,7 +503,11 @@ char *un, *dn, *an;
 		mins:
 			p[-1] = 0;
 		} else {
-			if(!strcmp(p-9, "homunculi")) {
+			if(!strcmp(p-9, "homunculi")
+#ifdef KAA
+				|| !strcmp(p-5, "fungi")
+#endif
+							) {
 				Strcpy(p-1, "us"); /* !! makes string longer */
 				goto sing;
 			}
@@ -453,12 +523,21 @@ sing:
 		typ = AMULET_OF_YENDOR;
 		goto typfnd;
 	}
-	p = eos(bp);
-	if(!strcmp(p-5, " mail")){	/* Note: ring mail is not a ring ! */
+	if(!strcmp(bp, "ring mail")){	/* Note: ring mail is not a ring ! */
 		let = ARMOR_SYM;
 		an = bp;
 		goto srch;
 	}
+
+	p = eos(bp);
+#ifdef KOPS	/* kluge to re-capitalize "dead Kop" */
+	if (!strcmp(p-3, "kop")) {
+		*(p-3) = 'K';
+		an = bp;
+		goto srch;
+	}
+#endif
+
 	for(i = 0; i < sizeof(wrpsym); i++) {
 		register int j = strlen(wrp[i]);
 		if(!strncmp(bp, wrp[i], j)){
@@ -483,6 +562,16 @@ sing:
 		an = bp;
 		goto srch;
 	}
+#ifdef KAA
+	if(!strcmp(p-10, "gold piece") || !strcmp(p-7, "zorkmid")) {
+		if (cnt > 5000) cnt=5000;
+		if (cnt < 1) cnt=1;
+		pline("%d gold piece%s.", cnt, cnt==1 ? "" : "s");
+		u.ugold += cnt;
+		flags.botl=1;
+		return(0);
+	}
+#endif
 	if(!strcmp(bp, "very heavy iron ball")){
 		heavy = 1;
 		typ = HEAVY_IRON_BALL;
@@ -520,13 +609,23 @@ typfnd:
 	if(heavy)
 		otmp->owt += 15;
 	if(cnt > 0 && index("%?!*)", let) &&
+#ifdef KAA
+		(cnt < 4 || (let == WEAPON_SYM && typ <= ROCK && cnt <= 20)))
+#else
 		(cnt < 4 || (let == WEAPON_SYM && typ <= ROCK && cnt < 20)))
+#endif
 		otmp->quan = cnt;
 
 	if(spe > 3 && spe > otmp->spe)
 		spe = 0;
 	else if(let == WAND_SYM)
 		spe = otmp->spe;
+#ifdef KAA
+	if(let==WEAPON_SYM && blessed) {
+		if(u.uluck < 0) otmp->cursed=1;
+		else otmp->dknown=1;
+	}
+#endif
 	if(spe == 3 && u.uluck < 0)
 		spesgn = -1;
 	if(let != WAND_SYM && spesgn == -1)
@@ -537,6 +636,10 @@ typfnd:
 		spe = -1;
 	else if(typ == WAN_WISHING && rn2(10))
 		spe = (rn2(10) ? -1 : 0);
+#ifdef MARKER
+	else if(typ == MAGIC_MARKER)
+		spe = rn1(50,50);
+#endif
 	otmp->spe = spe;
 
 	if(spesgn == -1)

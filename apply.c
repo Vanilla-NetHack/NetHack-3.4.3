@@ -1,16 +1,26 @@
+/*	SCCS Id: @(#)apply.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.apply.c - version 1.0.3 */
+/* apply.c - version 1.0.3 */
 
 #include	"hack.h"
-#include	"def.edog.h"
-#include	"def.mkroom.h"
-extern struct monst *bchit();
+#include	"edog.h"
+#include	"mkroom.h"
+static struct monst *bchit();
 extern struct obj *addinv();
 extern struct trap *maketrap();
 extern int (*occupation)();
 extern char *occtxt;
 extern char quitchars[];
 extern char pl_character[];
+
+#ifdef KAA
+extern boolean unweapon;
+#endif
+static use_camera(), use_ice_box(), use_whistle();
+static use_magic_whistle(), use_pick_axe();
+#ifdef MARKER
+extern int dowrite();
+#endif
 
 doapply() {
 	register struct obj *obj;
@@ -37,7 +47,16 @@ doapply() {
 	case WHISTLE:
 		use_whistle(obj);
 		break;
-
+#ifdef WALKIES
+	case LEASH:
+		use_leash(obj);
+		break;
+#endif
+#ifdef MARKER
+	case MAGIC_MARKER:
+		dowrite(obj);
+		break;
+#endif
 	case CAN_OPENER:
 		if(!carrying(TIN)) {
 			pline("You have no can to open.");
@@ -49,6 +68,11 @@ doapply() {
     pline("Opening the tin will be much easier if you wield the can-opener.");
 		goto xit;
 
+#ifdef KAA
+	case STETHOSCOPE:
+		res = use_stethoscope(obj);
+		break;
+#endif
 	default:
 		pline("Sorry, I don't know how to use that.");
 	xit:
@@ -76,6 +100,16 @@ register struct monst *mtmp;
 			(u.dz > 0) ? "floor" : "ceiling");
 		return;
 	}
+#ifdef KAA
+	if(!u.dx && !u.dy && !u.dz) {
+		if(!Blind) {
+			pline("You are blinded by the flash!");
+			Blind += rnd(25);
+			seeoff(0);
+		}
+		return;
+	}
+#endif
 	if(mtmp = bchit(u.dx, u.dy, COLNO, '!')) {
 		if(mtmp->msleep){
 			mtmp->msleep = 0;
@@ -104,6 +138,66 @@ register struct monst *mtmp;
 	}
 }
 
+#ifdef KAA
+/* Strictly speaking it makes no sense for usage of a stethoscope to
+   not take any time; however, unless it did, the stethoscope would be
+   almost useless. */
+static use_stethoscope(obj) register struct obj *obj; {
+register struct monst *mtmp;
+register struct rm *lev;
+register int rx, ry;
+	if(!freehand()) {
+		pline("You have no free hand!");
+		return(1);
+	}
+	if (!getdir(1)) {
+		flags.move=multi=0;
+		return(0);
+	}
+	if(u.dz < 0 || (u.dz && Levitation)) {
+		pline("You can't reach the %s!", u.dz<0 ? "ceiling" : "floor");
+		return(1);
+	}
+	if(u.dz) {
+		pline("The floor seems healthy enough.");
+		return(0);
+	}
+	if (Confusion) confdir();
+	rx = u.ux + u.dx; ry = u.uy + u.dy;
+	if(u.uswallow) {
+		mstatusline(u.ustuck);
+		return(0);
+	}
+	if(mtmp=m_at(rx,ry)) {
+		mstatusline(mtmp);
+		return(0);
+	}
+	if (!isok(rx,ry)) {
+		pline("You hear the sounds at the end of the universe.");
+		return(0);
+	}
+	lev = &levl[rx][ry];
+	if(lev->typ == SDOOR) {
+		pline("You hear a hollow sound!  This must be a secret door!");
+		lev->typ = DOOR;
+#ifdef DGK
+		atl(rx, ry, symbol.door);
+#else
+		atl(rx, ry, DOOR_SYM);
+#endif
+		return(0);
+	}
+	if(lev->typ == SCORR) {
+		pline("You hear a hollow sound!  This must be a secret passage!");
+		lev->typ = CORR;
+		atl(rx, ry, CORR_SYM);
+		return(0);
+	}
+	pline("You hear nothing special.");
+	return(0);
+}
+#endif	
+	
 static
 struct obj *current_ice_box;	/* a local variable of use_ice_box, to be
 				used by its local procedures in/ck_ice_box */
@@ -127,7 +221,7 @@ in_ice_box(obj) register struct obj *obj; {
 			pline("Your weapon is welded to your hand!");
 			return(0);
 		}
- setuwep((struct obj *) 0);
+		setuwep((struct obj *) 0);
 	}
 	current_ice_box->owt += obj->owt;
 	freeinv(obj);
@@ -197,7 +291,7 @@ bchit(ddx,ddy,range,sym) register int ddx,ddy,range; char sym; {
 			bchy -= ddy;
 			break;
 		}
- if(sym) Tmp_at(bchx, bchy);
+		if(sym) Tmp_at(bchx, bchy);
 	}
 	if(sym) Tmp_at(-1, -1);
 	return(mtmp);
@@ -215,7 +309,7 @@ register struct monst *mtmp = fmon;
 			if(mtmp->mtame)
 				EDOG(mtmp)->whistletime = moves;
 		}
- mtmp = mtmp->nmon;
+		mtmp = mtmp->nmon;
 	}
 }
 
@@ -229,6 +323,46 @@ register struct monst *mtmp = fmon;
 		mtmp = mtmp->nmon;
 	}
 }
+
+#ifdef WALKIES
+/* ARGSUSED */
+static
+use_leash(obj) struct obj *obj; {
+register struct monst *mtmp = fmon;
+
+	while(mtmp && !mtmp->mleashed) mtmp = mtmp->nmon;
+
+	if(mtmp) {
+
+		if (next_to(mtmp))  {
+
+			mtmp->mleashed = 0;
+			pline("You remove the leash from your %s.",
+				 mtmp->data->mname);
+		} else	pline("You must be next to your %s to unleash him.",
+				 mtmp->data->mname);
+	} else {
+
+	    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+
+		if(mtmp->mtame && next_to(mtmp)) {
+
+			pline("You slip the leash around your %s.", mtmp->data->mname);
+			mtmp->mleashed = 1;
+			if(mtmp->msleep)  mtmp->msleep = 0;
+			return(0);
+		}
+	    }
+	    pline("There's nothing here to put a leash on.");
+	}
+	return(0);
+}
+
+next_to(mtmp) register struct monst *mtmp; {
+
+	return((abs(u.ux - mtmp->mx) <= 1) && (abs(u.uy - mtmp->my) <= 1));
+}
+#endif
 
 static int dig_effort;	/* effort expended on current pos */
 static uchar dig_level;
@@ -301,9 +435,9 @@ dig() {
 			  return(0);
 			}
 		}
- pline("You hit the rock with all your might.");
+		pline("You hit the rock with all your might.");
 	}
- return(1);
+	return(1);
 }
 
 /* When will hole be finished? Very rough indication used by shopkeeper. */
@@ -324,7 +458,7 @@ dighole()
 			ttmp = maketrap(u.ux, u.uy, TRAPDOOR);
 		ttmp->tseen = 1;
 		pline("You've made a hole in the floor.");
-		if(!u.ustuck) {
+		if(!u.ustuck && !Levitation) {			/* KAA */
 			if(inshop())
 				shopdig(1);
 			pline("You fall through ...");
@@ -332,7 +466,7 @@ dighole()
 				u.utrap = 0;
 				u.utraptype = 0;
 			}
- goto_level(dlevel+1, FALSE);
+			goto_level(dlevel+1, FALSE);
 		}
 	}
 }
@@ -348,6 +482,21 @@ struct obj *obj;
 	register struct rm *lev;
 	register int rx, ry, res = 0;
 
+#ifndef FREEHAND
+	/* edited by GAN 10/20/86 so that you can't apply the
+	 * pick-axe while wielding a cursed weapon
+	 */
+	if(!freehand())  {
+		pline("You have no free hand to dig with!");
+		return(0);
+	}
+# ifdef KAA
+	if(cantwield(u.usym)) {
+		pline("You can't hold it strongly enough.");
+		return(0);
+	}
+# endif
+#else
 	if(obj != uwep) {
 		if(uwep && uwep->cursed) {
 			/* Andreas Bormann - ihnp4!decvax!mcvax!unido!ab */
@@ -355,10 +504,18 @@ struct obj *obj;
 			pline("you cannot use that pick-axe.");
 			return(0);
 		}
+# ifdef KAA
+		if(cantwield(u.usym)) {
+			pline("You can't hold it strongly enough.");
+			return(0);
+		}
+		unweapon = TRUE;
+# endif
 		pline("You now wield %s.", doname(obj));
 		setuwep(obj);
 		res = 1;
 	}
+#endif
 	while(*sdp) {
 		(void) movecmd(*sdp);	/* sets u.dx and u.dy and u.dz */
 		rx = u.ux + u.dx;
@@ -378,6 +535,14 @@ struct obj *obj;
 	if(u.dz < 0)
 		pline("You cannot reach the ceiling.");
 	else
+#ifdef KAA
+	if(!u.dx && !u.dy && !u.dz) {
+		pline("You hit yourself with your own pick-axe.");
+		losehp(rnd(2)+dbon(), "self-inflicted wound");
+		flags.botl=1;
+		return(1);
+	}
+#endif
 	if(u.dz == 0) {
 		if(Confusion)
 			confdir();
@@ -409,11 +574,15 @@ struct obj *obj;
 				pline("You start digging.");
 			} else
 				pline("You continue digging.");
+#ifdef DGKMOD
+			set_occupation(dig, "digging", 0);
+#else
 			occupation = dig;
 			occtxt = "digging";
+#endif
 		}
 	} else if(Levitation) {
- pline("You cannot reach the floor.");
+		pline("You cannot reach the floor.");
 	} else {
 		if(dig_pos.x != u.ux || dig_pos.y != u.uy
 		    || dig_level != dlevel || !dig_down) {
@@ -427,8 +596,12 @@ struct obj *obj;
 				shopdig(0);
 		} else
 			pline("You continue digging in the floor.");
+#ifdef DGKMOD
+		set_occupation(dig, "digging", 0);
+#else
 		occupation = dig;
 		occtxt = "digging";
+#endif
 	}
- return(1);
+	return(1);
 }

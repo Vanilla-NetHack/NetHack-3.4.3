@@ -1,7 +1,9 @@
+/*	SCCS Id: @(#)search.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.search.c - version 1.0.3 */
+/* search.c - version 1.0.3 */
 
 #include "hack.h"
+char *rndmonnam(), *defmonnam();
 
 extern struct monst *makemon();
 
@@ -23,11 +25,19 @@ findit()	/* returns number of things found */
 		for(zx = lx; zx <= hx; zx++) {
 			if(levl[zx][zy].typ == SDOOR) {
 				levl[zx][zy].typ = DOOR;
+#ifdef DGK
+				atl(zx, zy, symbol.door);
+#else
 				atl(zx, zy, '+');
+#endif
 				num++;
 			} else if(levl[zx][zy].typ == SCORR) {
 				levl[zx][zy].typ = CORR;
+#ifdef DGK
+				atl(zx, zy, symbol.corr);
+#else
 				atl(zx, zy, CORR_SYM);
+#endif
 				num++;
 			} else if(ttmp = t_at(zx, zy)) {
 				if(ttmp->ttyp == PIERC){
@@ -75,17 +85,21 @@ dosearch()
 		/* Be careful not to find anything in an SCORR or SDOOR */
 			if(mtmp = m_at(x,y)) if(mtmp->mimic){
 				seemimic(mtmp);
-				pline("You find a mimic.");
+				pline("You find %s.",defmonnam(mtmp));
 				return(1);
 			}
 			for(trap = ftrap; trap; trap = trap->ntrap)
 			if(trap->tx == x && trap->ty == y &&
 			   !trap->tseen && !rn2(8)) {
 				nomul(0);
-				pline("You find a%s.", traps[trap->ttyp]);
+				if (trap->ttyp != PIERC)
+				pline("You find a%s.", traps[Hallucination ?
+				rn2(TRAPNUM-2) : trap->ttyp ]);
+
 				if(trap->ttyp == PIERC) {
 					deltrap(trap);
-					(void) makemon(PM_PIERCER,x,y);
+					mtmp=makemon(PM_PIERCER,x,y);
+					pline("You find %s.", defmonnam(mtmp));
 					return(1);
 				}
 				trap->tseen = 1;
@@ -107,7 +121,8 @@ register int x,y;
 		    if(u.dz)
 			if((u.dz < 0) != (!xdnstair && trap->ttyp == TRAPDOOR))
 			    continue;
-		    pline("That is a%s.", traps[trap->ttyp]);
+			pline("That is a%s.",traps[ Hallucination ? rn2(TRAPNUM-2) :
+			trap->ttyp]);
 		    return(0);
 		}
 	pline("I can't see a trap there.");

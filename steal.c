@@ -1,5 +1,6 @@
+/*	SCCS Id: @(#)steal.c	1.3	87/07/14
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
-/* hack.steal.c - version 1.0.3 */
+/* steal.c - version 1.0.3 */
 
 #include "hack.h"
 
@@ -101,7 +102,11 @@ struct monst *mtmp;
 		{ int curssv = otmp->cursed;
 			otmp->cursed = 0;
 			stop_occupation();
-			pline("%s seduces you and %s off your %s.",
+			if(flags.female)
+				pline("%s charms you.  You gladly hand over your humble garments.",
+				Monnam(mtmp));
+			else
+				pline("%s seduces you and %s off your %s.",
 				Amonnam(mtmp, Blind ? "gentle" : "beautiful"),
 				otmp->cursed ? "helps you to take"
 					    : "you start taking",
@@ -129,11 +134,8 @@ struct monst *mtmp;
 			impossible("Tried to steal a strange worn thing.");
 		}
 	}
-	else if(otmp == uwep)
-		setuwep((struct obj *) 0);
-	if(otmp->olet == CHAIN_SYM) {
-		impossible("How come you are carrying that chain?");
-	}
+	else if(otmp == uwep) setuwep((struct obj *) 0);
+
 	if(Punished && otmp == uball){
 		Punished = 0;
 		freeobj(uchain);
@@ -189,7 +191,7 @@ register show;
 		fobj = otmp;
 		stackobj(fobj);
 		if(show & cansee(mtmp->mx,mtmp->my))
-			atl(otmp->ox,otmp->oy,otmp->olet);
+			atl(otmp->ox,otmp->oy,Hallucination?rndobjsym() : otmp->olet);
 	}
 	mtmp->minvent = (struct obj *) 0;
 	if(mtmp->mgold || mtmp->data->mlet == 'L') {
@@ -198,6 +200,6 @@ register show;
 		tmp = (mtmp->mgold > 10000) ? 10000 : mtmp->mgold;
 		mkgold((long)(tmp + d(dlevel,30)), mtmp->mx, mtmp->my);
 		if(show & cansee(mtmp->mx,mtmp->my))
-			atl(mtmp->mx,mtmp->my,'$');
+			atl(mtmp->mx,mtmp->my, Hallucination ? rndobjsym() : '$');
 	}
 }

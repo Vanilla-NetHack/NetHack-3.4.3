@@ -1,3 +1,4 @@
+/*	SCCS Id: @(#)alloc.c	1.3	87/07/14
 /* alloc.c - version 1.0.2 */
 #ifdef LINT
 
@@ -32,6 +33,7 @@ register unsigned lth;
 	return((long *) ptr);
 }
 
+#ifndef DGK
 long *
 enlarge(ptr,lth)
 register char *ptr;
@@ -43,5 +45,6 @@ register unsigned lth;
 		panic("Cannot reallocate %d bytes", lth);
 	return((long *) nptr);
 }
+#endif
 
-#endif LINT
+#endif /* LINT /**/
