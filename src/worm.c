@@ -142,6 +142,10 @@ register unsigned int tmp;
 			newsym(wtmp->wx, wtmp->wy);
 			wtmp->wdispl = 0;
 		}
+		else if (cansee(wtmp->wx, wtmp->wy) && !wtmp->wdispl) {
+			atl(wtmp->wx, wtmp->wy, S_WORM_TAIL);
+			wtmp->wdispl = 1;
+		}
 }
 
 void

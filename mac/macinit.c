@@ -238,6 +238,21 @@ short	row, col;
 		panic("Can't get MONST resource data.");
 	}
 	
+	temp = GetResource(HACK_DATA, OBJECT_DATA);
+	if (temp) {
+		DetachResource(temp);
+		MoveHHi(temp);
+		HLock(temp);
+		i = GetHandleSize(temp);
+		objects = (struct objclass *)(*temp);
+		for (j = 0; j< NROFOBJECTS+1; j++) {
+			objects[j].oc_name = sm_obj[j].oc_name;
+			objects[j].oc_descr = sm_obj[j].oc_descr;
+		}
+	} else {
+		panic("Can't get OBJECT resource data.");
+	}
+	
 	(void)aboutBox(0);	
 	return 0;
 }
@@ -258,6 +273,7 @@ init_decl()
 {
 	short	i;
 	char	*l;
+	extern char **Map;
 	
 	l = calloc(COLNO , sizeof(struct rm **));
 	level.locations = (struct rm **)l;
@@ -285,6 +301,14 @@ init_decl()
 	level.objlist = (struct obj *)0L;
 	level.monlist = (struct monst *)0L;
 	
+l = calloc(COLNO, sizeof(char *));
+Map = (char **)l;
+l = calloc(ROWNO * COLNO, sizeof(char));
+for (i = 0; i < COLNO; i++) {
+    Map[i] = 
+	(char *)(l + (i * ROWNO * sizeof(char)));
+}
+
 }
 
 /* Since NetHack usually exits before reaching end of main()	*/

@@ -60,19 +60,20 @@ SAVE=;n
 # stone, vertical wall, horizontal wall, top left corner, top right corner, 
 # bottom left corner, bottom right corner, crosswall, up T wall, down T wall, 
 # left T wall, right T wall, vertical beam, horizontal beam, left slant, right
-# slant, door, floor, corridor, up stairs, down stairs, trap, web, pool,
+# slant, no door, vertical open door, horizontal open door, closed door,
+# floor, corridor, up stairs, down stairs, trap, web, pool,
 # fountain, sink, throne, altar, up ladder, down ladder, vertical drawbridge
 # wall, horizontal drawbridge wall 
 #
-# If you specify less that 32 ASCII values, the remaining characters will be
+# If you specify less that 35 ASCII values, the remaining characters will be
 # set to their respective defaults.
 #
 #
 # An example using the IBM graphics character set:
-#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 239 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
+#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
+GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 249 239 239 254 249 177 060 062 094 157 247 244 035 190 220 060 062 186 205
 # An alternative:
-#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 185 204 179 196 092 047 239 249 177 060 062 094 034 247 244 035 092 095 060 062 179 196
+#GRAPHICS= 032 186 205 201 187 200 188 206 202 203 185 204 179 196 092 047 249 239 239 254 249 177 060 062 094 034 247 244 035 092 095 060 062 179 196
 #
 #
 # Using the DEC Rainbow/ANSI line-drawing character set:
@@ -83,4 +84,4 @@ GRAPHICS = 032 179 196 218 191 192 217 197 193 194 180 195 179 196 092 047 239 2
 # can use characters from both sets this way.  These are also the characters
 # to use for the ANSI ruling character set '0'.
 #
-#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 043 254 225
+#GRAPHICS= 032 248 241 236 235 237 234 238 246 247 245 244 248 241 092 047 254 241 248 043 254 225

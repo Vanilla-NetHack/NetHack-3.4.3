@@ -52,7 +52,7 @@ struct flag {
 	boolean  pickup;	/* whether you pickup or move and look */
 	boolean  num_pad;	/* use numbers for movement commands */
 #ifdef TEXTCOLOR
-	boolean  use_color;	/* use color grapics */
+	boolean  use_color;	/* use color graphics */
 #endif
 #ifdef DGK
 	boolean  IBMBIOS;	/* whether we can use a BIOS call for

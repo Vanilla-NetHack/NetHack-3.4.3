@@ -85,8 +85,9 @@ register int madepool = 0;
 		     
 	    levl[mx][my].typ = POOL;
 	    levl[mx][my].doormask = 0;
-	    if(!Blind) atl(mx,my,(char) POOL_SYM);
-	    else levl[mx][my].seen = 0;
+	    mnewsym(mx,my);
+	    if (cansee(mx, my))
+		prl(mx, my);
 	    madepool = 1;
 	}
 
@@ -99,7 +100,7 @@ dofindgem() /* Find a gem in the sparkling waters. */ {
 
 	if (!Blind) You("spot a gem in the sparkling waters!");
 	(void) mkobj_at(GEM_SYM,u.ux,u.uy);
-	levl[u.ux][u.uy].doormask = T_LOOTED;
+	levl[u.ux][u.uy].looted = T_LOOTED;
 }
 
 void
@@ -107,7 +108,7 @@ dryup(){
 	if (!rn2(3) && IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
 		pline("The fountain dries up!");
 		levl[u.ux][u.uy].typ = ROOM;
-		levl[u.ux][u.uy].doormask = 0;
+		levl[u.ux][u.uy].looted = 0;
 		if(Invisible) newsym(u.ux, u.uy);
 		fountsound--;
 	}
@@ -131,7 +132,7 @@ drinkfountain() {
 
 		case 19: /* Self-knowledge */
 
-			You("feel self-knowledgable...");
+			You("feel self-knowledgeable...");
 			more();
 			enlightenment();
 			pline("The feeling subsides.");
@@ -193,7 +194,7 @@ drinkfountain() {
 
 		case 27: /* Find a gem in the sparkling waters. */
 
-			if (levl[u.ux][u.uy].doormask == 0) {
+			if (!levl[u.ux][u.uy].looted) {
 				dofindgem();
 				break;
 			}
@@ -230,45 +231,38 @@ void
 dipfountain(obj)
 register struct obj *obj;
 {
-	register int fate = rnd(30);
+	if (Levitation) {
+		You("are floating high above the fountain.");
+		return;
+	}
 
-	if(Levitation)	You("are floating high above the fountain.");
-	else if(fate<10)
-		if(!obj->rustfree && is_sword(obj)) {
-			if(obj->spe > -6) {
-				Your("sword rusts somewhat.");
-				obj->spe--;
-			} else Your("sword looks quite rusted.");
-		} else pline("Well, it looks wet now.");
-	else if(fate<14)
-		if(obj->otyp == LONG_SWORD
+	if (obj->otyp == LONG_SWORD && u.ulevel >= 5 && !rn2(6)
 #ifndef NAMED_ITEMS
-		   && !strcmp(ONAME(obj), "Excalibur")
+	    && !strcmp(ONAME(obj), "Excalibur")
 #endif
-		   && u.ulevel >= 5
-		) {
-			/* The lady of the lake acts! - Eric Backus */
-			/* Be *REAL* nice to him */
+	   ) {
+		/* The lady of the lake acts! - Eric Backus */
+		/* Be *REAL* nice */
 	pline("A murky hand from the depths reaches up to bless the sword.");
 	pline("As the hand retreats, the fountain disappears!");
 
 #ifndef NAMED_ITEMS
-			if(obj->spe < 5) obj->spe = 5;
+		if(obj->spe < 5) obj->spe = 5;
 #else
-			/* otherwise +rnd(10) / +5 "Super"sword */
-			obj = oname(obj, "Excalibur", 1);
+		/* otherwise +rnd(10) / +5 "Super"sword */
+		obj = oname(obj, "Excalibur", 1);
 #endif
-			bless(obj);
-			obj->rustfree = 1;
-			levl[u.ux][u.uy].typ = ROOM;
-			if(Invisible) newsym(u.ux, u.uy);
-			fountsound--;
-			return;
-		} else pline ("Well, it looks wet now.");
-	else {
-	    switch (fate) {
+		bless(obj);
+		obj->rustfree = 1;
+		levl[u.ux][u.uy].typ = ROOM;
+                levl[u.ux][u.uy].looted = 0;
+		if(Invisible) newsym(u.ux, u.uy);
+		fountsound--;
+		return;
+	} else (void) get_wet(obj);
+
+	switch (rnd(30)) {
 		case 16: /* Curse the item */
-			pline("Well, it looks wet now.");
 			curse(obj);
 			break;
 		case 17:
@@ -289,7 +283,7 @@ register struct obj *obj;
 		case 22: /* Water Nymph */
 			dowaternymph();
 			break;
-		case 23: /* An Endless Stream Of Snakes */
+		case 23: /* an Endless Stream of Snakes */
 			dowatersnakes();
 			break;
 		case 24: /* Find a gem */
@@ -308,23 +302,20 @@ register struct obj *obj;
 		case 28: /* Strange feeling */
 			pline("An urge to take a bath overwhelms you.");
 			if (u.ugold > 10) {
-			     	u.ugold -= somegold()/10;
-			  You("lost some of your gold in the fountain!");
-			  levl[u.ux][u.uy].doormask = 0;
-	 		}
+			    u.ugold -= somegold() / 10;
+			    You("lost some of your gold in the fountain!");
+			    levl[u.ux][u.uy].looted = 0;
+			}
 			break;
 		case 29: /* You see coins */
 
 		/* We make fountains have more coins the closer you are to the
 		 * surface.  After all, there will have been more people going
-		 * by.  Just like a shopping mall!  Chris Woodbury  */
+		 * by.	Just like a shopping mall!  Chris Woodbury  */
 
-			mkgold((long)(rnd((MAXLEVEL-dlevel)*2)+5),u.ux,u.uy);
+			mkgold((long)(rnd((MAXLEVEL-dlevel)*2)+5), u.ux, u.uy);
 		pline("Far below you, you see coins glistening in the water.");
 			break;
-		default:
-			break;
-	    }
 	}
 	dryup();
 	return;
@@ -377,10 +368,10 @@ drinksink()
 			(void) dopotion(otmp);
 			obfree(otmp, (struct obj *)0);
 			break;
-		case 5: if (levl[u.ux][u.uy].doormask == 0) {
+		case 5: if (!levl[u.ux][u.uy].looted) {
 			    You("find a ring in the sink!");
 			    (void) mkobj_at(RING_SYM, u.ux, u.uy);
-			    levl[u.ux][u.uy].doormask = T_LOOTED;
+			    levl[u.ux][u.uy].looted = T_LOOTED;
 			} else pline("Some dirty water backs up in the drain.");
 			break;
 		case 6: pline("The pipes break!  Water spurts out!");

@@ -140,7 +140,9 @@ useup(obj)
 register struct obj *obj;
 {
 	if(obj->quan > 1){
+#ifndef NO_SIGNAL
 		obj->in_use = FALSE;	/* no longer in use */
+#endif
 		obj->quan--;
 		obj->owt = weight(obj);
 	} else {
@@ -252,8 +254,7 @@ register int n, x, y;
 {
 	register struct obj *otmp;
 
-	if(OBJ_AT(x, y))
-	    for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+	for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
 		if(otmp->otyp == n)
 		    return(otmp);
 	return((struct obj *)0);
@@ -282,6 +283,17 @@ register int type;
 	return((struct obj *) 0);
 }
 
+boolean
+have_lizard()
+{
+	register struct obj *otmp;
+
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+		if(otmp->otyp == CORPSE && otmp->corpsenm == PM_LIZARD)
+			return(TRUE);
+	return(FALSE);
+}
+
 struct obj *
 o_on(id, objchn)
 unsigned int id;
@@ -292,6 +304,18 @@ register struct obj *objchn;
 		objchn = objchn->nobj;
 	}
 	return((struct obj *) 0);
+}
+
+boolean
+obj_here(obj, x, y)
+register struct obj *obj;
+int x, y;
+{
+	register struct obj *otmp;
+
+	for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+		if(obj == otmp) return(TRUE);
+	return(FALSE);
 }
 
 struct gold *
@@ -331,7 +355,7 @@ register long q;
  */
 struct obj *
 getobj(let,word)
-register char *let,*word;
+register const char *let,*word;
 {
 	register struct obj *otmp;
 	register char ilet,ilet1,ilet2;
@@ -395,6 +419,9 @@ register char *let,*word;
 		|| (!strcmp(word, "rub") &&
 		    (otmp->olet == TOOL_SYM &&
 		     otmp->otyp != LAMP && otmp->otyp != MAGIC_LAMP))
+		|| (!strcmp(word, "wield") &&
+		    (otmp->olet == TOOL_SYM &&
+		     otmp->otyp != PICK_AXE && otmp->otyp != UNICORN_HORN))
 		    )
 			foo--;
 	    }
@@ -540,7 +567,10 @@ register char *let,*word;
 	return(otmp);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 ckunpaid(otmp)
 register struct obj *otmp;
 {
@@ -1033,22 +1063,20 @@ dolook() {
 
     	cornline(0, "Things that are here:");
     	for(otmp = otmp0; otmp; otmp = otmp->nexthere) {
-		if(otmp->ox == u.ux && otmp->oy == u.uy) {
-	    		ct++;
-	    		cornline(1, doname(otmp));
+		ct++;
+		cornline(1, doname(otmp));
 
-	    		if(Blind  && !uarmg &&
+		if(Blind  && !uarmg &&
 #ifdef POLYSELF
-			!resists_ston(uasmon) &&
+		    !resists_ston(uasmon) &&
 #endif
-	       		(otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
-			    pline("Touching the dead cockatrice is a fatal mistake...");
-			    You("turn to stone...");
-			    killer = "cockatrice corpse";
-			    done(STONING);
-	    		}
+		    (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE)) {
+			pline("Touching the dead cockatrice is a fatal mistake...");
+			You("turn to stone...");
+			killer = "cockatrice corpse";
+			done(STONING);
 		}
-    	}
+	}
 
     	if(gold) {
 		char gbuf[30];
@@ -1074,11 +1102,11 @@ void
 stackobj(obj)
 register struct obj *obj;
 {
-	register struct obj *otmp = fobj;
-	for(otmp = fobj; otmp; otmp = otmp->nobj) if(otmp != obj)
-		if(otmp->ox == obj->ox && otmp->oy == obj->oy &&
-			merged(obj,otmp,1))
-				break;
+	register struct obj *otmp;
+
+	for(otmp = level.objects[obj->ox][obj->oy]; otmp; otmp = otmp->nexthere)
+		if(otmp != obj && merged(obj,otmp,1))
+			break;
 	return;
 }
 
@@ -1097,7 +1125,8 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	else if((obj->olet==WEAPON_SYM || obj->olet==ARMOR_SYM) &&
 		obj->rustfree != otmp->rustfree) return FALSE;
 
-	else if(obj->olet == FOOD_SYM && obj->oeaten != otmp->oeaten)
+	else if(obj->olet == FOOD_SYM && (obj->oeaten != otmp->oeaten ||
+		obj->orotten != otmp->orotten))
 		return(FALSE);
 
 	else if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN)
@@ -1205,17 +1234,22 @@ char c;
 }
 
 /*
- * useupf(obj)
- * uses up an object that's on the floor
+ * uses up an object that's on the floor, charging for it as necessary
  */
 void
 useupf(obj)
 register struct obj *obj;
 {
-	if(obj->quan > 1)  {
-		obj->quan--;
-		obj->owt = weight(obj);
-	}  else delobj(obj);
+	register struct obj *otmp;
+
+	/* burn_floor_paper() keeps an object pointer that it tries to
+	 * useupf() multiple times, so obj must survive if plural */
+	if(obj->quan > 1)
+		otmp = splitobj(obj, (int)obj->quan - 1);
+	else
+		otmp = obj;
+	addtobill(otmp, FALSE);
+	delobj(otmp);
 }
 
 /*
@@ -1241,13 +1275,18 @@ char *
 let_to_name(let)
 char let;
 {
-	char *pos = index(obj_symbols, let);
+	const char *pos = index(obj_symbols, let);
 	/* arbitrary buffer size by Tom May (tom@uw-warp) */
 	static char *buf = NULL;
 
 	if (buf == NULL)
-	    buf = (char *) alloc ((unsigned)(strlen(HI)+strlen(HE)+15+1));
-
+	    buf = (char *) alloc ((unsigned)(strlen(HI)+17+strlen(HE)));
+/* 
+   THE ALLOC() *MUST* BE BIG ENOUGH TO ACCOMODATE THE LONGEST NAME PLUS A
+   NULL BYTE: 
+			Boulders/Statues   +  '\0'
+			1234567890123456 = 16 + 1 = 17
+*/
 	if (pos == NULL) pos = obj_symbols;
 	if (HI && HE)
 	    Sprintf(buf, "%s%s%s", HI, names[pos - obj_symbols], HE);

@@ -6,6 +6,7 @@
  * function declarations for all of nethack
  */
 #define EXTERN_H
+/* #define MAKEDEFS_C	1	/* for Mac compilers with 32K data limit */
 #include "config.h"
 #include "obj.h"
 #include "objclass.h"
@@ -24,14 +25,28 @@
 #define C(n)
 #endif
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+struct objclass *objects;
+struct small_objclass sm_obj[] = {
+#else
 struct objclass objects[] = {
+#endif
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+	{ "strange object", NULL},
+#else
 	{ "strange object", NULL, NULL, 1,0,0,0,0, 0,
 		ILLOBJ_SYM, 0, 0, 0, 0, 0, 0, 0, C(0) },
+#endif
 /* amulets ... - THE Amulet comes last because it is special */
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define AMULET(name,desc,power,prob,weight) { \
+	name, desc}
+#else
 #define AMULET(name,desc,power,prob,weight) { \
 	name, desc, NULL, 0,0,0,0,METAL, power, AMULET_SYM, prob, 0, weight, \
 	150, 0, 0, 0, C(HI_METAL) }
+#endif
 
 	AMULET("amulet of esp", 	  "circular",	TELEPAT,    190, 2),
 	AMULET("amulet of life saving",   "spherical",	LIFESAVED,   90, 2),
@@ -41,13 +56,23 @@ struct objclass objects[] = {
 	AMULET("amulet of change",	  "square",	0,	    150, 2),
 								/* POLYMORPH */
 	AMULET("amulet of reflection",	  "hexagonal",	REFLECTING,  90, 2),
+
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+	{ "Amulet of Yendor", NULL},
+#else
 	{ "Amulet of Yendor", NULL, NULL, 1,0,1,0,METAL, 0,
 		AMULET_SYM, 0, 0, 2, 3500, 0, 0, 0, C(HI_METAL) },
+#endif
 #undef AMULET
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define FOOD(name,prob,delay,wt,uk,tin,nutrition,color) { \
+	name, NULL}
+#else
 #define FOOD(name,prob,delay,wt,uk,tin,nutrition,color) { \
 	name, NULL, NULL, 1,1,uk,0,tin, 0, FOOD_SYM, prob, delay, wt, \
 	nutrition/20 + 5, 0, 0, nutrition, C(color) }
+#endif
 
 /* all types of food (except tins & corpses) must have a delay of at least 1. */
 /* delay on corpses is computed and is weight dependant */
@@ -64,17 +89,16 @@ struct objclass objects[] = {
 #else
 	FOOD("tripe ration",	   150, 2, 2, 0, 0, 200, BROWN),
 #endif
-	FOOD("dead lizard",	    35, 1, 1, 0, 0,  40, GREEN),
 	FOOD("corpse",		     0, 1, 0, 0, 0,   0, BROWN),
-	FOOD("egg",		    75, 1, 1, 1, 0,  80, WHITE),
+	FOOD("egg",		    85, 1, 1, 1, 0,  80, WHITE),
 	/* fruits & veggies */
-	FOOD("apple",		    10, 1, 1, 0, 0,  50, RED),
-	FOOD("orange",		     7, 1, 1, 0, 0,  80, ORANGE_COLORED),
-	FOOD("pear",		     7, 1, 1, 0, 0,  50, GREEN+BRIGHT),
-	FOOD("melon",		     7, 1, 1, 0, 0, 100, GREEN+BRIGHT),
-	FOOD("banana",		     7, 1, 1, 0, 0,  80, YELLOW),
+	FOOD("apple",		    15, 1, 1, 0, 0,  50, RED),
+	FOOD("orange",		    10, 1, 1, 0, 0,  80, ORANGE_COLORED),
+	FOOD("pear",		    10, 1, 1, 0, 0,  50, GREEN|BRIGHT),
+	FOOD("melon",		    10, 1, 1, 0, 0, 100, GREEN|BRIGHT),
+	FOOD("banana",		    10, 1, 1, 0, 0,  80, YELLOW),
 	FOOD("carrot",		    15, 1, 1, 0, 0,  50, ORANGE_COLORED),
-	FOOD("clove of garlic",      5, 1, 1, 0, 0,  40, WHITE),
+	FOOD("clove of garlic",      7, 1, 1, 0, 0,  40, WHITE),
 #ifdef TUTTI_FRUTTI
 	FOOD("slime mold",	    75, 1, 1, 0, 0, 250, BROWN),
 #else
@@ -83,11 +107,11 @@ struct objclass objects[] = {
 	/* human food */
 	FOOD("lump of royal jelly",  0, 1, 1, 0, 0, 200, YELLOW),
 	FOOD("cream pie",	    25, 1, 1, 0, 0, 100, WHITE),
-	FOOD("candy bar",	     7, 1, 1, 0, 0, 100, BROWN),
+	FOOD("candy bar",	    13, 1, 1, 0, 0, 100, BROWN),
 	FOOD("fortune cookie",	    55, 1, 1, 0, 0,  40, BROWN),
 #ifdef TOLKIEN
 	FOOD("pancake", 	    25, 2, 1, 0, 0, 200, BROWN),
-	FOOD("lembas wafer",	    20, 2, 1, 0, 0, 800, WHITE+BRIGHT),
+	FOOD("lembas wafer",	    20, 2, 1, 0, 0, 800, WHITE|BRIGHT),
 	FOOD("cram ration",	    20, 3, 3, 0, 0, 600, HI_ORGANIC),
 	FOOD("food ration",	   385, 5, 4, 0, 0, 800, HI_ORGANIC),
 #else
@@ -101,15 +125,30 @@ struct objclass objects[] = {
 	FOOD("tin",		    75, 0, 1, 1, METAL, 0, HI_METAL),
 #undef FOOD
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define WEAPON(name,app,kn,mg,bi,prob,wt,cost,sdam,ldam,metal,color) { \
+	name, app}
+#else
 #define WEAPON(name,app,kn,mg,bi,prob,wt,cost,sdam,ldam,metal,color) { \
 	name, app, NULL, kn,mg,1,bi,metal, 0, WEAPON_SYM, prob, 0, wt, \
 	cost, sdam, ldam, 0, C(color) }
+#endif
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define PROJECTILE(name,app,kn,bi,prob,wt,cost,sdam,ldam,metal,prop,color) { \
+	name, app}
+#else
 #define PROJECTILE(name,app,kn,bi,prob,wt,cost,sdam,ldam,metal,prop,color) { \
 	name, app, NULL, kn,1,1,bi,metal, 0, WEAPON_SYM, prob, 0, wt, \
 	cost, sdam, ldam, prop, C(color) }
+#endif
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define BOW(name,app,kn,bi,prob,wt,cost,sdam,ldam,metal,prop,color) { \
+	name, app}
+#else
 #define BOW(name,app,kn,bi,prob,wt,cost,sdam,ldam,metal,prop,color) { \
 	name, app, NULL, kn,0,1,bi,metal, 0, WEAPON_SYM, prob, 0, wt, \
 	cost, sdam, ldam, -(prop), C(color) }
+#endif
 
 /* Note: for weapons that don't do an even die of damage (ex. 2-7 or 3-18)
  * the extra damage is added on in weapon.c, not here! */
@@ -263,9 +302,14 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 35, 6, 0, WP_CROSSBOW, HI_WOOD),
 #undef BOW
 
 /* tools ... - PICK AXE comes last because it has special characteristics */
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define TOOL(name,desc,kn,chg,prob,weight,cost,material,color) {\
+	name, desc}
+#else
 #define TOOL(name,desc,kn,chg,prob,weight,cost,material,color) {\
 	name, desc, NULL, kn,0,chg,chg,material, 0, TOOL_SYM, prob, 0, \
 	weight, cost, 0, 0, 0, C(color)}
+#endif
 
 #ifdef WALKIES
 	TOOL("leash",		NULL,	1, 0,  70,  3,	20, 0, HI_LEATHER),
@@ -321,8 +365,19 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 35, 6, 0, WP_CROSSBOW, HI_WOOD),
 	TOOL("drum of earthquake", "drum", 0, 1, 2,  4,	25, 0, BROWN),
 #endif
 #undef TOOL
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+	{ "pick-axe", NULL},
+	{ "unicorn horn", NULL},
+	{ "blinding venom", "splash of venom"},
+	{ "acid venom", "splash of venom"},
+	    /* +d6 small or large */
+	{ "heavy iron ball", NULL},
+	{ "iron chain", NULL},
+#else
 	{ "pick-axe", NULL, NULL, 1,0,1,1,METAL, 0, TOOL_SYM, 20,
 						0, 10, 50, 6, 3, 0, C(HI_METAL)},
+	{ "unicorn horn", NULL, NULL, 1,0,1,0,0, 0, TOOL_SYM, 0,
+						0, 4, 100, 12, 12, 0, C(WHITE)},
 	{ "blinding venom", "splash of venom", NULL,
 		0,1,0,0,0, 0, VENOM_SYM, 500, 0, 0, 0, 0, 0, 0, C(HI_ORGANIC)},
 	{ "acid venom", "splash of venom", NULL,
@@ -332,18 +387,29 @@ BOW("crossbow",	  NULL,		1, 0, 45, 3,  40, 35, 6, 0, WP_CROSSBOW, HI_WOOD),
 		BALL_SYM, 1000, 0, 20, 10, 0, 0, 0, C(HI_METAL)},
 	{ "iron chain", NULL, NULL, 1,0,0,0,METAL, 0,
 		CHAIN_SYM, 1000, 0, 20, 0, 0, 0, 0, C(HI_METAL)},
+#endif
 
 	/* Note: boulders and rocks normally do not appear at random; the
 	 * probabilities only come into effect when you try to polymorph them.
 	 */
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+	{ "boulder", NULL},
+	{ "statue", NULL},
+#else
 	{ "boulder", NULL, NULL, 1,0,0,0,MINERAL, 0, ROCK_SYM, 100, 0,
 		200 /* > MAX_CARR_CAP */, 0, 20, 20, 0, C(HI_MINERAL)},
 	{ "statue", NULL, NULL, 1,0,0,0,MINERAL, 0, ROCK_SYM, 900, 0,
 	        250, 0, 20, 20, 0, C(HI_MINERAL)},
+#endif
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define ARMOR(name,desc,kn,blk,power,prob,delay,weight,cost,ac,can,metal,c) \
+	{name, desc}
+#else
 #define ARMOR(name,desc,kn,blk,power,prob,delay,weight,cost,ac,can,metal,c) \
 	{name, desc, NULL, kn,0,1,blk,metal, power, ARMOR_SYM, prob,\
 	delay, weight, cost, ac, can, 0, C(c)}
+#endif
 #ifdef TOLKIEN
 ARMOR("elven leather helm", "leather hat",
 			0, 0, 0,  6, 1, 2,   8, 9, 0, 0, HI_LEATHER),
@@ -371,7 +437,7 @@ ARMOR("dragon scale mail", NULL,
 ARMOR("plate mail", NULL,
 			1, 1, 0, 44, 5, 9, 600, 3, 2, METAL, HI_METAL),
 ARMOR("crystal plate mail", NULL,
-			1, 1, 0, 10, 5, 9, 820, 3, 2, 0, WHITE+BRIGHT),
+			1, 1, 0, 10, 5, 9, 820, 3, 2, 0, WHITE|BRIGHT),
 #ifdef SHIRT
 ARMOR("bronze plate mail", NULL,
 			1, 1, 0, 25, 5, 9, 400, 4, 0, COPPER, HI_COPPER),
@@ -483,9 +549,14 @@ ARMOR("levitation boots", "snow boots",
 			0, 0, LEVITATION,  12, 2, 4, 30, 9, 0, 0, BROWN),
 #undef ARMOR
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define POTION(name,desc,power,prob,cost,color) \
+	{ name, desc}
+#else
 #define POTION(name,desc,power,prob,cost,color) \
 		{ name, desc, NULL, 0,1,0,0,0, power,\
 		POTION_SYM, prob, 0, 2, cost, 0, 0, 0, C(color)}
+#endif
 
 #ifdef SPELLS
 POTION("fruit juice",		"smoky",	0,	45, 50,	WHITE),
@@ -496,27 +567,33 @@ POTION("fruit juice",		"smoky",	0,	70, 50,	WHITE),
 POTION("booze", 		"bubbly",	0,	65, 50,	WHITE),
 #endif
 POTION("gain ability",		"swirly",	0,	45,300,	WHITE),
-POTION("restore ability",	"pink",		0,	45,100,	MAGENTA+BRIGHT),
-POTION("sickness",		"ruby",		SICK,	45, 50,	RED),
+POTION("restore ability",	"pink",		0,	45,100,	MAGENTA|BRIGHT),
+POTION("sickness",		"ruby",		0,	45, 50,	RED),
 POTION("confusion",		"orange",	CONFUSION, 45, 100, ORANGE_COLORED),
 POTION("blindness",		"yellow",	BLINDED, 45,150, YELLOW),
-POTION("paralysis",		"emerald", 	0,	45,300,	GREEN+BRIGHT),
+POTION("paralysis",		"emerald", 	0,	45,300,	GREEN|BRIGHT),
 POTION("speed", 		"dark green", 	FAST,	45,200,	GREEN),
 POTION("levitation",		"cyan",		LEVITATION, 45,200, CYAN),
-POTION("hallucination", 	"brilliant blue", HALLUC, 45,100, BLUE+BRIGHT),
+POTION("hallucination", 	"brilliant blue", HALLUC, 45,100, BLUE|BRIGHT),
 POTION("invisibility",		"sky blue",	INVIS,	45,150,	CYAN),
 POTION("see invisible", 	"magenta",	SEE_INVIS, 45,50, MAGENTA),
 POTION("healing",		"purple", 	0,	65,100,	MAGENTA),
 POTION("extra healing", 	"purple-red",	0,	50,100,	MAGENTA),
-POTION("gain level",		"puce",		0,	20,300,	MAGENTA+BRIGHT),
+POTION("gain level",		"puce",		0,	20,300,	MAGENTA|BRIGHT),
 POTION("enlightenment",		"brown",	0,	20,200,	BROWN),
 POTION("monster detection",	"white",	0,	45,150,	WHITE),
-POTION("object detection",	"glowing",	0,	45,150,	WHITE+BRIGHT),
+POTION("object detection",	"glowing",	0,	45,150,	WHITE|BRIGHT),
 POTION("water", 		"clear",	0,	125,100,CYAN),
 #undef POTION
 
-#define SCROLL(name,text,prob,cost) { name, text, NULL, 0,1,0,0,0, 0,\
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define SCROLL(name,text,prob,cost) \
+	{ name, text}
+#else
+#define SCROLL(name,text,prob,cost) \
+	{ name, text, NULL, 0,1,0,0,0, 0,\
 		SCROLL_SYM, prob, 0, 3, cost, 0, 0, 0, C(HI_PAPER)}
+#endif
 #ifdef MAIL
 	SCROLL("mail",			"KIRJE",	     0,   0),
 #endif
@@ -546,9 +623,14 @@ POTION("water", 		"clear",	0,	125,100,CYAN),
 	SCROLL(NULL,			"GARVEN DEH",	     0, 100),
 #undef SCROLL
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define WAND(name,typ,prob,cost,flags,metal,c)	{ \
+	name, typ}
+#else
 #define WAND(name,typ,prob,cost,flags,metal,c)	{ \
 	name, typ, NULL, 0,0,1,0,metal, 0, WAND_SYM, \
 	prob, 0, 3, cost, flags, 0, 0, C(c) }
+#endif
 
 WAND("light",		"glass",	95, 100, NODIR,    GLASS,HI_GLASS),
 WAND("secret door detection", "balsa",	50, 150, NODIR,    WOOD,HI_WOOD),
@@ -585,9 +667,14 @@ WAND(NULL,		"jeweled",	 0, 150, 0,	   METAL,HI_MINERAL),
 
 #ifdef SPELLS
 /* books */
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define SPELL(name,desc,prob,delay,level,flags,color) \
+	{ name, desc}
+#else
 #define SPELL(name,desc,prob,delay,level,flags,color) \
 	{ name, desc, NULL, 0,1,0,0,0, 0, SPBOOK_SYM, prob, delay, \
 	5, level*100, flags, 0, level, C(color)}
+#endif
 
 SPELL("magic missile",	 "parchment",	45,  3, 2, RAY,		HI_PAPER),
 SPELL("fireball",	 "vellum",	20,  6, 4, RAY,		HI_PAPER),
@@ -597,15 +684,15 @@ SPELL("finger of death", "stained",	 5, 10, 7, RAY,		HI_PAPER),
 SPELL("light",		 "cloth",	45,  1, 1, NODIR,	HI_CLOTH),
 SPELL("detect monsters", "leather", 	45,  1, 1, NODIR,	HI_LEATHER),
 SPELL("healing",	 "white",	40,  2, 1, NODIR,	WHITE),
-SPELL("knock",		 "pink",	40,  1, 1, IMMEDIATE,	MAGENTA+BRIGHT),
+SPELL("knock",		 "pink",	40,  1, 1, IMMEDIATE,	MAGENTA|BRIGHT),
 SPELL("force bolt",	 "red",		40,  2, 1, IMMEDIATE,	RED),
 SPELL("confuse monster", "orange",	37,  2, 2, IMMEDIATE,	ORANGE_COLORED),
 SPELL("cure blindness",  "yellow", 	27,  2, 2, IMMEDIATE,	YELLOW),
-SPELL("slow monster",	 "light green",	37,  2, 2, IMMEDIATE,	GREEN+BRIGHT),
+SPELL("slow monster",	 "light green",	37,  2, 2, IMMEDIATE,	GREEN|BRIGHT),
 SPELL("wizard lock",	 "dark green",	35,  3, 2, IMMEDIATE,	GREEN),
-SPELL("create monster",  "turquoise",	37,  3, 2, NODIR,	CYAN+BRIGHT),
+SPELL("create monster",  "turquoise",	37,  3, 2, NODIR,	CYAN|BRIGHT),
 SPELL("detect food",	 "cyan",	37,  3, 2, NODIR,	CYAN),
-SPELL("cause fear",	 "light blue",	25,  3, 3, NODIR,	BLUE+BRIGHT),
+SPELL("cause fear",	 "light blue",	25,  3, 3, NODIR,	BLUE|BRIGHT),
 SPELL("clairvoyance",	 "dark blue",	15,  3, 3, NODIR,	BLUE),
 SPELL("cure sickness",	 "indigo",	32,  3, 3, NODIR,	BLUE),
 SPELL("charm monster",	 "magenta",	20,  3, 3, IMMEDIATE,	MAGENTA),
@@ -623,22 +710,27 @@ SPELL("identify",	 "bronze",	25,  8, 5, NODIR,	HI_COPPER),
 SPELL("turn undead",	 "copper",	17,  8, 6, IMMEDIATE,	HI_COPPER),
 SPELL("polymorph",	 "silver",	12,  8, 6, IMMEDIATE,	HI_SILVER),
 SPELL("teleport away",	 "gold",	15,  6, 6, IMMEDIATE,	HI_GOLD),
-SPELL("create familiar", "glittering", 	10,  7, 6, NODIR,	WHITE+BRIGHT),
-SPELL("cancellation",	 "shining",	12,  8, 7, IMMEDIATE,	WHITE+BRIGHT),
-SPELL("genocide",	 "glowing",	 5, 10, 7, NODIR,	WHITE+BRIGHT),
+SPELL("create familiar", "glittering", 	10,  7, 6, NODIR,	WHITE|BRIGHT),
+SPELL("cancellation",	 "shining",	12,  8, 7, IMMEDIATE,	WHITE|BRIGHT),
+SPELL("genocide",	 "glowing",	 5, 10, 7, NODIR,	WHITE|BRIGHT),
 SPELL(NULL,		 "dull",	 0,  0, 0, 0,		HI_PAPER),
 SPELL(NULL,		 "thin",	 0,  0, 0, 0,		HI_PAPER),
 SPELL(NULL,		 "thick",	 0,  0, 0, 0,		HI_PAPER),
 #undef SPELL
 #endif /* SPELLS /**/
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define RING(name,stone,power,cost,spec,metal,color) \
+	{ name, stone}
+#else
 #define RING(name,stone,power,cost,spec,metal,color) \
 		{ name, stone, NULL, 0,0,spec,spec,metal, \
 		power, RING_SYM, 0, 0, 1, cost, 0, 0, 0, C(color)}
+#endif
 
 RING("adornment",	"wooden",	ADORNED,	100, 1, WOOD, HI_WOOD),
 RING("gain strength",	"granite",	0,		150, 1, MINERAL, HI_MINERAL),
-RING("increase damage", "coral",	0,		150, 1, MINERAL, RED+BRIGHT),
+RING("increase damage", "coral",	0,		150, 1, MINERAL, RED|BRIGHT),
 RING("protection",	"black onyx",	PROTECTION,	100, 1, MINERAL, BLACK),
 RING("regeneration",	"moonstone",	REGENERATION,	200, 0, MINERAL, HI_MINERAL),
 RING("searching",	"tiger eye",	SEARCHING,	200, 0, MINERAL, BROWN),
@@ -647,7 +739,7 @@ RING("levitation",	"agate",	LEVITATION,	200, 0, MINERAL, RED),
 RING("hunger",		"topaz",	HUNGER, 	100, 0, MINERAL, CYAN),
 RING("aggravate monster", "sapphire",	AGGRAVATE_MONSTER, 150, 0, METAL, BLUE),
 RING("conflict",	"ruby", 	CONFLICT,	300, 0, METAL, RED),
-RING("warning", 	"diamond", 	WARNING,	100, 0, METAL, WHITE+BRIGHT),
+RING("warning", 	"diamond", 	WARNING,	100, 0, METAL, WHITE|BRIGHT),
 RING("poison resistance", "pearl",	POISON_RES,	150, 0, METAL, WHITE),
 RING("fire resistance", "iron",		FIRE_RES,	200, 0, METAL, HI_METAL),
 RING("cold resistance", "brass",	COLD_RES,	150, 0, COPPER, HI_COPPER),
@@ -658,7 +750,7 @@ RING("teleport control", "gold",	TELEPORT_CONTROL,
 #ifdef POLYSELF
 RING("polymorph",	"ivory",	POLYMORPH,	300, 0, 0, WHITE),
 RING("polymorph control","emerald",	POLYMORPH_CONTROL,
-							300, 0, METAL, GREEN+BRIGHT),
+							300, 0, METAL, GREEN|BRIGHT),
 #endif
 RING("invisibility",	"wire",		INVIS,		150, 0, METAL, HI_METAL),
 RING("see invisible",	"engagement",	SEE_INVIS,	150, 0, METAL, HI_METAL),
@@ -667,9 +759,14 @@ RING("protection from shape changers", "shining", PROT_FROM_SHAPE_CHANGERS,
 #undef RING
 
 /* gems ************************************************************/
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#define GEM(name,desc,prob,wt,gval,glass, color) \
+	{ name, desc}
+#else
 #define GEM(name,desc,prob,wt,gval,glass, color) \
 		{ name, desc, NULL, 0,1,0,0,glass, 0,\
 		GEM_SYM, prob, 0, wt, gval, 3, 3, WP_SLING, C(color)}
+#endif
 GEM("dilithium crystal", "white",	 3, 1, 4500, MINERAL, WHITE),
 GEM("diamond", "white", 		 4, 1, 4000, MINERAL, WHITE),
 GEM("ruby", "red",			 5, 1, 3500, MINERAL, RED),
@@ -694,11 +791,19 @@ GEM("worthless piece of green glass", "green",	131, 1, 0, GLASS, GREEN),
 GEM("worthless piece of violet glass", "violet",131, 1, 0, GLASS, MAGENTA),
 GEM("luckstone", "gray",		 10, 1,  60, MINERAL, GRAY),
 GEM("loadstone", "gray",		 10, 50,  1, MINERAL, GRAY),
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+{ "rock", NULL},
+#else
 { "rock", NULL, NULL, 1,1,0,0,MINERAL, 0,
 		GEM_SYM, 10, 0, 1, 0, 3, 3, WP_SLING, C(HI_MINERAL)},
+#endif
 #undef GEM
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+	{ NULL, NULL}
+#else
 	{ NULL, NULL, NULL, 0,0,0,0,0, 0, ILLOBJ_SYM, 0, 0, 0, 0, 0, 0, 0, C(0) }
+#endif
 };
 
 #undef C

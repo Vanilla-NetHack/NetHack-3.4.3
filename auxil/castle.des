@@ -40,7 +40,7 @@ ENDMAP
 # Random registers initialisation
 RANDOM_OBJECTS:'[',')','*','%'
 RANDOM_PLACES:(04,02),(58,02),(04,14),(58,14)
-RANDOM_MONSTERS:'l','n','E','H','M','O','R','T','X','Z'
+RANDOM_MONSTERS:'L','N','E','H','M','O','R','T','X','Z'
 # Doors
 DOOR:closed,(07,03)
 DOOR:closed,(55,03)

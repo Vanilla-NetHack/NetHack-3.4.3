@@ -253,8 +253,10 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 			    if (cansee(x,y))
 				pline("The door collapses.");
 			    levl[x][y].doormask = D_NODOOR;
+			    mnewsym(x,y);
 			    if (!MON_AT(x, y) && !(x == u.ux && y == u.uy))
 				newsym(x,y);
+			    if (cansee(x,y)) prl(x,y);
 			    break;
 		    }
 	    }
@@ -280,8 +282,11 @@ struct obj *instr;
 		  charm_snakes((int)u.ulevel*3);
 		break;
 	      case MAGIC_FLUTE: /* Make monster fall asleep */
-		You("produce soft music.");
-		put_monsters_to_sleep((int)u.ulevel*5);
+		if (instr->spe > 0) {
+			instr->spe--;
+			You("produce soft music.");
+			put_monsters_to_sleep((int)u.ulevel*5);
+		}
 		break;
 	      case HORN:	/* Awaken monsters or scare monsters */
 		You("produce a frightful, grave sound.");
@@ -317,7 +322,7 @@ struct obj *instr;
 		break;
 	      case MAGIC_HARP:	/* Charm monsters */
 		if (instr->spe > 0) {
-			pline("The %s produces very attractive music.",xname(instr));
+			pline("The %s produces very attractive music.", xname(instr));
 			instr->spe--;
 			charm_monsters(((int)u.ulevel - 1) / 3 + 1);
 		}
@@ -330,8 +335,8 @@ struct obj *instr;
 		if (instr->spe > 0) {
 			You("produce a heavy, thunderous rolling!");
 			pline("The entire dungeon is shaking around you!");
-			do_earthquake(((int)u.ulevel - 1) / 3 + 1);
 			instr->spe--;
+			do_earthquake(((int)u.ulevel - 1) / 3 + 1);
 			makeknown(DRUM_OF_EARTHQUAKE);
 		}
 		break;

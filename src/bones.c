@@ -71,6 +71,42 @@ int id;
 }
 #endif
 
+void
+resetobjs(ochain)
+struct obj *ochain;
+{
+	struct obj *otmp;
+
+	for (otmp = ochain; otmp; otmp = otmp->nobj) {
+		otmp->o_id = 0;
+		if (((otmp->otyp != CORPSE && otmp->otyp != STATUE)
+       			|| otmp->corpsenm < PM_ARCHEOLOGIST)
+#ifdef NAMED_ITEMS
+			&& !is_artifact(otmp)
+#endif
+		)
+		otmp->onamelth = 0;
+		if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
+#ifdef TUTTI_FRUTTI
+		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+#endif
+		otmp->dknown = otmp->bknown = 0;
+		otmp->invlet = 0;
+#ifdef MAIL
+		if (otmp->otyp == SCR_MAIL)
+			otmp->spe = 1;
+#endif
+#ifdef POLYSELF
+		if (otmp->otyp == EGG)
+			otmp->spe = 0;
+#endif
+		if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
+			otmp->spe = -1;      /* no longer the actual amulet */
+			curse(otmp);
+		}
+	}			
+}
+
 /* save bones and possessions of a deceased adventurer */
 void
 savebones(){
@@ -166,26 +202,15 @@ savebones(){
 		Strcpy(NAME(mtmp), plname);
 		mtmp->mnamelth = strlen(plname);
 		atl(u.ux, u.uy, mtmp->data->mlet);
-		Your("body rises from the dead as a%s %s...",
-			index(vowels, *(mons[u.ugrave_arise].mname)) ? "n" : "",
-			mons[u.ugrave_arise].mname);
+		Your("body rises from the dead as %s...",
+			an(mons[u.ugrave_arise].mname));
 	}
 	mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
 	mtmp->mhp = mtmp->mhpmax = u.uhpmax;
 	mtmp->msleep = 1;
 	if(u.ugold) mkgold(u.ugold, u.ux, u.uy);
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
-		for(otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
-		    otmp->dknown = otmp->bknown = 0;
-#ifdef TUTTI_FRUTTI
-		    if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
-#endif
-		    if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
-		    if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
-			otmp->spe = -1;  /* no longer the actual amulet */
-			curse(otmp);
-		    }
-		}
+		resetobjs(mtmp->minvent);
 		mtmp->m_id = 0;
 		mtmp->mlstmv = 0L;
 		if(mtmp->mtame) mtmp->mtame = mtmp->mpeaceful = 0;
@@ -194,35 +219,8 @@ savebones(){
 	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
 		ttmp->tseen = 0;
 
-	for(otmp = fobj; otmp; otmp = otmp->nobj)  {
-
-		otmp->o_id = 0;
-		if (((otmp->otyp != CORPSE && otmp->otyp != STATUE)
-				|| otmp->corpsenm < PM_ARCHEOLOGIST)
-#ifdef NAMED_ITEMS
-				&& !is_artifact(otmp)
-#endif
-		   )
-			otmp->onamelth = 0;
-		if(objects[otmp->otyp].oc_uses_known) otmp->known = 0;
-#ifdef TUTTI_FRUTTI
-		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
-#endif
-		otmp->dknown = otmp->bknown = 0;
-		otmp->invlet = 0;
-#ifdef MAIL
-		if (otmp->otyp == SCR_MAIL)
-			otmp->spe = 1;
-#endif
-#ifdef POLYSELF
-		if (otmp->otyp == EGG)
-			otmp->spe = 0;
-#endif
-		if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
-			otmp->spe = -1;      /* no longer the actual amulet */
-			curse(otmp);
-		}
-	}
+	resetobjs(fobj);
+	resetobjs(fcobj);   /* let's (not) forget about these - KCD, 10/21/89 */
 
 	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++)
 		levl[x][y].seen = levl[x][y].new = levl[x][y].scrsym = 0;
@@ -242,7 +240,7 @@ savebones(){
 		(void)GetVol(&fileName,&oldvolume);
 		(void)SetVol(0L, t->system.sysVRefNum);
 		fileName[0] = (uchar)strlen(bones);
-		(void)strcpy((char *)&fileName[1],bones);
+		Strcpy((char *)&fileName[1],bones);
 		
 		if (er = Create(&fileName,0,CREATOR,BONES_TYPE))
 			SysBeep(1);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.0	88/04/13
+/*	SCCS Id: @(#)read.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,7 +12,7 @@ static const char readable[] = { '#', SCROLL_SYM,
 #endif
 	0 };
 
-static void explode P((struct obj *));
+static void FDECL(explode, (struct obj *));
 static void do_class_genocide();
 
 int
@@ -52,7 +52,9 @@ doread() {
 		pline("Being blind, you cannot read the formula on the scroll.");
 		return(0);
 	    }
+#ifndef NO_SIGNAL
 	scroll->in_use = TRUE;		/* now being read */
+#endif
 #ifdef SPELLS
 	if(scroll->olet == SPBOOK_SYM) {
 	    if(confused) {
@@ -85,6 +87,9 @@ doread() {
 		}
 		if(!(scroll->otyp == SCR_BLANK_PAPER) || confused)
 			useup(scroll);
+#ifndef NO_SIGNAL
+		else scroll->in_use = FALSE;
+#endif
 	}
 	return(1);
 }
@@ -121,12 +126,179 @@ register char *color;
 		Blind ? "" : Hallucination ? hcolor() : color);
 }
 
+/*
+ * recharge an object; curse_bless is -1 if the recharging implement
+ * was cursed, +1 if blessed, 0 otherwise.
+ */
+static
+void
+recharge(obj, curse_bless)
+struct obj *obj;
+int curse_bless;
+{
+	register int n;
+	boolean cursed, blessed;
+
+	cursed = curse_bless < 0;
+	blessed = curse_bless > 0;
+
+	if (obj->olet != WAND_SYM) {
+	    switch(obj->otyp) {
+	    case MAGIC_MARKER:
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    n = obj->spe;
+		    if (n < 50) obj->spe = 50;
+		    if (n >= 50 && n < 75) obj->spe = 75;
+		    if (n >= 75) obj->spe += 10;
+		    p_glow2(obj,blue);
+		} else {
+		    if (obj->spe < 50) obj->spe = 50;
+		    else obj->spe++;
+		    p_glow2(obj,white);
+		}
+		break;
+	    case LAMP:
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    n = rn2(11);
+		    if (obj->spe < n) obj->spe = n;
+		    else obj->spe += rnd(3);
+		    p_glow2(obj,blue);
+		} else {
+		    obj->spe++;
+		    p_glow1(obj);
+		}
+		break;
+	    case MAGIC_LAMP:
+		if (cursed) stripspe(obj);
+		else if (blessed > 0) {
+		    if (obj->spe == 1 || obj->recharged)
+			pline(nothing_happens);
+		    else {
+			obj->spe = 1;
+			obj->recharged = 1;
+			p_glow1(obj);
+		    }
+		} else {
+		    if (obj->spe == 1 || obj->recharged)
+			pline(nothing_happens);
+		    else {
+			n = rn2(2);
+			if (!n) {
+			    obj->spe = 1;
+			    obj->recharged = 1;
+			    p_glow1(obj);
+			} else pline(nothing_happens);
+		    }
+		}
+		break;
+	    case CRYSTAL_BALL:
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    obj->spe = 6;
+		    p_glow2(obj,blue);
+		} else {
+		    if (obj->spe < 5) {
+			obj->spe++;
+			p_glow1(obj);
+		    } else pline(nothing_happens);
+		}
+		break;
+	    case BAG_OF_TRICKS:
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    if (obj->spe <= 10)
+			obj->spe += (5 + rnd(10));
+		    else obj->spe += (5 + rnd(5));
+		    p_glow2(obj,blue);
+		} else {
+		    obj->spe += rnd(5);
+		    p_glow1(obj);
+		}
+		break;
+	    default:
+		You("have a feeling of loss.");
+		return;
+	    } /* switch */
+	}
+	else {
+	    if (obj->otyp == WAN_WISHING) {
+		if (obj->recharged) { /* recharged once already? */
+		    explode(obj);
+		    return;
+		}
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    if (obj->spe != 3) {
+			obj->spe = 3;
+			p_glow2(obj,blue);
+		    } else {
+			explode(obj);
+			return;
+		    }
+		} else {
+		    if (obj->spe < 3) {
+			obj->spe++;
+			p_glow2(obj,blue);
+		    } else pline(nothing_happens);
+		}
+		obj->recharged = 1; /* another recharging disallowed */
+	    }
+	    else {
+		if (cursed) stripspe(obj);
+		else if (blessed) {
+		    if (objects[obj->otyp].bits & NODIR) {
+			n = rn1(5,11);
+			if (obj->spe < n) obj->spe = n;
+			else obj->spe++;
+		    }
+		    else {
+			n = rn1(5,4);
+			if (obj->spe < n) obj->spe = n;
+			else obj->spe++;
+		    }
+		    p_glow2(obj,blue);
+		} else {
+		    obj->spe++;
+		    p_glow1(obj);
+		}
+	    }
+	}
+}
+
+/*
+ * forget some things (e.g. after reading a scroll of amnesia). abs(howmuch)
+ * controls the level of forgetfulness; 0 == part of the map, 1 == all of
+ * of map,  2 == part of map + spells, 3 == all of map + spells.
+ */
+
+static
+void
+forget(howmuch)
+boolean howmuch;
+{
+	register int zx, zy;
+
+	known = TRUE;
+	for(zx = 0; zx < COLNO; zx++) for(zy = 0; zy < ROWNO; zy++)
+	    if(howmuch & 1 || rn2(7))
+		if(!cansee(zx,zy))
+		    levl[zx][zy].seen = levl[zx][zy].new =
+			levl[zx][zy].scrsym = 0;
+	docrt();
+#ifdef SPELLS
+	if(howmuch & 2) losespells();
+#endif
+}
+
 int
 seffects(sobj)
 register struct obj	*sobj;
 {
 	register int cval = 0;
 	register boolean confused = (Confusion != 0);
+	register struct obj *otmp;
 
 	switch(sobj->otyp) {
 #ifdef MAIL
@@ -142,8 +314,8 @@ register struct obj	*sobj;
 #endif
 	case SCR_ENCHANT_ARMOR:
 	    {
-		register struct obj *otmp = some_armor();
 		register schar s = 0;
+		otmp = some_armor();
 		if(!otmp) {
 			strange_feeling(sobj,
 					!Blind ? "Your skin glows then fades." :
@@ -162,8 +334,8 @@ register struct obj	*sobj;
 				  sobj->cursed ? black : "gold",
 				sobj->cursed ? "glow" :
 				  (is_shield(otmp) ? "layer" : "shield"));
-			if(!(otmp->rustfree))
-				otmp->rustfree = !(sobj->cursed);
+			if(!(sobj->cursed))
+				otmp->rustfree = TRUE;
 			break;
 		}
 #ifdef TOLKIEN
@@ -200,15 +372,15 @@ register struct obj	*sobj;
 		break;
 	    }
 	case SCR_DESTROY_ARMOR:
-	    {   register struct obj *otmp = some_armor();
-
+	    {
+		otmp = some_armor();
 		if(confused) {
 			if(!otmp) {
 				strange_feeling(sobj,"Your bones itch.");
 				return(1);
 			}
-			p_glow2(otmp,purple);
 			otmp->rustfree = sobj->cursed;
+			p_glow2(otmp,purple);
 			break;
 		}
 		if(!sobj->cursed || (sobj->cursed && (!otmp || !otmp->cursed))) {
@@ -343,6 +515,7 @@ register struct obj	*sobj;
 		if(uwep && (uwep->olet == WEAPON_SYM || uwep->otyp == PICK_AXE)
 							&& confused) {
 		/* olet check added 10/25/86 GAN */
+                        uwep->rustfree = !(sobj->cursed);
 			if(Blind)
 			    Your("weapon feels warm for a moment.");
 			else
@@ -352,7 +525,6 @@ register struct obj	*sobj;
 				Hallucination ? hcolor() :
 				  sobj->cursed ? purple : "gold",
 				sobj->cursed ? "glow" : "shield");
-			uwep->rustfree = !(sobj->cursed);
 		} else return !chwepon(sobj, bcsign(sobj)*2+1);
 		break;
 	case SCR_TAMING:
@@ -436,143 +608,15 @@ register struct obj	*sobj;
 		    while(invent && !ggetobj("identify", identify, cval));
 		return(1);
 	case SCR_CHARGING:
-	    {	register struct obj *obj;
-		register int n;
 		if (confused) {
 		    You("feel charged up!");
 		    break;
 		}
 		known = TRUE;
 		pline("This is a charging scroll.");
-		obj = getobj("0#", "charge");
-		if (!obj) break;
-		if (obj->olet != WAND_SYM) {
-		    switch(obj->otyp) {
-		    case MAGIC_MARKER:
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    n = obj->spe;
-			    if (n < 50) obj->spe = 50;
-			    if (n >= 50 && n < 75) obj->spe = 75;
-			    if (n >= 75) obj->spe += 10;
-			    p_glow2(obj,blue);
-			} else {
-			    if (obj->spe < 50) obj->spe = 50;
-			    else obj->spe++;
-			    p_glow2(obj,white);
-			}
-			break;
-		    case LAMP:
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    n = rn2(11);
-			    if (obj->spe < n) obj->spe = n;
-			    else obj->spe += rnd(3);
-			    p_glow2(obj,blue);
-			} else {
-			    obj->spe++;
-			    p_glow1(obj);
-			}
-			break;
-		    case MAGIC_LAMP:
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    if (obj->spe == 1 || obj->recharged)
-				pline(nothing_happens);
-			    else {
-				obj->spe = 1;
-				obj->recharged = 1;
-				p_glow1(obj);
-			    }
-			} else {
-			    if (obj->spe == 1 || obj->recharged)
-				pline(nothing_happens);
-			    else {
-				n = rn2(2);
-				if (!n) {
-				    obj->spe = 1;
-				    obj->recharged = 1;
-				    p_glow1(obj);
-				} else pline(nothing_happens);
-			    }
-			}
-			break;
-		    case CRYSTAL_BALL:
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    obj->spe = 6;
-			    p_glow2(obj,blue);
-			} else {
-			    if (obj->spe < 5) {
-				obj->spe++;
-				p_glow1(obj);
-			    } else pline(nothing_happens);
-			}
-			break;
-		    case BAG_OF_TRICKS:
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    if (obj->spe <= 10)
-				obj->spe += (5 + rnd(10));
-			    else obj->spe += (5 + rnd(5));
-			    p_glow2(obj,blue);
-			} else {
-			    obj->spe += rnd(5);
-			    p_glow1(obj);
-			}
-			break;
-		    default:
-			pline("The scroll %s%s, and disintegrates.",
-				Blind ? "vibrates violently" : "glows ",
-				Blind ? "" : Hallucination ? hcolor() : "dark red");
-		    } /* switch */
-		    break;
-		}
-		else {
-		    if (obj->otyp == WAN_WISHING) {
-			if (obj->recharged) { /* recharged once already? */
-			    explode(obj);
-			    break;
-			}
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    if (obj->spe != 3) {
-				obj->spe = 3;
-				p_glow2(obj,blue);
-			    } else {
-				explode(obj);
-				break;
-			    }
-			} else {
-			    if (obj->spe < 3) {
-				obj->spe++;
-				p_glow2(obj,blue);
-			    } else pline(nothing_happens);
-			}
-			obj->recharged = 1; /* another recharging disallowed */
-		    }
-		    else {
-			if (sobj->cursed) stripspe(obj);
-			else if (sobj->blessed) {
-			    if (objects[obj->otyp].bits & NODIR) {
-				n = rn1(5,11);
-				if (obj->spe < n) obj->spe = n;
-				else obj->spe++;
-			    }
-			    else {
-				n = rn1(5,4);
-				if (obj->spe < n) obj->spe = n;
-				else obj->spe++;
-			    }
-			    p_glow2(obj,blue);
-			} else {
-			    obj->spe++;
-			    p_glow1(obj);
-			}
-			break;
-		    }
-		}
-	    }
+		otmp = getobj("0#", "charge");
+		if (!otmp) break;
+		recharge(otmp, sobj->cursed ? -1 : (sobj->blessed ? 1 : 0));
 		break;
 	case SCR_MAGIC_MAPPING:
 		known = TRUE;
@@ -589,15 +633,8 @@ register struct obj	*sobj;
 		}
 		break;
 	case SCR_AMNESIA:
-	    {	register int zx, zy;
-
 		known = TRUE;
-		for(zx = 0; zx < COLNO; zx++) for(zy = 0; zy < ROWNO; zy++)
-		    if(!confused || sobj->cursed || rn2(7))
-			if(!cansee(zx,zy))
-			    levl[zx][zy].seen = levl[zx][zy].new =
-				levl[zx][zy].scrsym = 0;
-		docrt();
+		forget( ((!sobj->blessed) << 1) | (!confused || sobj->cursed) );
 		if (Hallucination) /* Ommmmmm! */
 			Your("mind releases itself from mundane concerns.");
 		else if (!strncmp(plname, "Maud", 4))
@@ -606,11 +643,7 @@ register struct obj	*sobj;
 			pline("Who was that Maud person anyway?");
 		else
 			pline("Thinking of Maud you forget everything else.");
-#ifdef SPELLS
-		if(!sobj->blessed) losespells();
-#endif
 		break;
-	    }
 	case SCR_FIRE:
 	    {	register int num;
 		register struct monst *mtmp;
@@ -762,8 +795,8 @@ do_class_genocide()
 			pline(thats_enough_tries);
 			return;
 		}
-    pline("What class of monsters do you wish to genocide? [type a letter] ");
 		do {
+    pline("What class of monsters do you wish to genocide? [type a letter] ");
 			getlin(buf);
 		} while (buf[0]=='\033' || strlen(buf) != 1);
 		immunecnt = gonecnt = goodcnt = 0;

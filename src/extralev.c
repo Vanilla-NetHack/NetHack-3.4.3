@@ -29,8 +29,12 @@ int x1,y1,x2,y2;
 int horiz;
 {
 	register int x,y,middle;
+#ifndef MAX
 #define MAX(a,b) (((a) > (b)) ? (a) : (b))
+#endif
+#ifndef MIN
 #define MIN(a,b) (((a) < (b)) ? (a) : (b))
+#endif
 	if (horiz) {
 		middle = x1 + rn2(x2-x1+1);
 		for(x=MIN(x1,middle); x<=MAX(x1,middle); x++)
@@ -71,6 +75,7 @@ int x,y,dir;
 									fromy);
 			dodoor(fromx, fromy, &rooms[r[x][y].nroom]);
 			levl[fromx][fromy].doormask = D_NODOOR;
+			mnewsym(fromx,fromy);
 			fromy++;
 		}
 		if(y >= 2) {
@@ -90,6 +95,7 @@ int x,y,dir;
 				impossible("up: no wall at %d,%d?",tox,toy);
 			dodoor(tox, toy, &rooms[r[x][y].nroom]);
 			levl[tox][toy].doormask = D_NODOOR;
+			mnewsym(tox,toy);
 			toy--;
 		}
 		roguejoin(fromx, fromy, tox, toy, FALSE);
@@ -108,6 +114,7 @@ int x,y,dir;
 									fromy);
 			dodoor(fromx, fromy, &rooms[r[x][y].nroom]);
 			levl[fromx][fromy].doormask = D_NODOOR;
+			mnewsym(fromx,fromy);
 			fromx++;
 		}
 		if(x >= 2) {
@@ -127,6 +134,7 @@ int x,y,dir;
 				impossible("left: no wall at %d,%d?",tox,toy);
 			dodoor(tox, toy, &rooms[r[x][y].nroom]);
 			levl[tox][toy].doormask = D_NODOOR;
+			mnewsym(tox,toy);
 			tox--;
 		}
 		roguejoin(fromx, fromy, tox, toy, TRUE);
@@ -307,13 +315,14 @@ makeroguerooms() {
 
 void
 corr(x,y)
+int x, y;
 {
 	if (rn2(50)) {
 		levl[x][y].typ = CORR;
 		levl[x][y].scrsym = CORR_SYM;
 	} else {
 		levl[x][y].typ = SCORR;
-		levl[x][y].scrsym = STONE_SYM;
+		levl[x][y].scrsym = ' ';	/* _not_ STONE_SYM */
 	}
 }
 

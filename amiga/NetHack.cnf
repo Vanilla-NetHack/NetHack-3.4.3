@@ -42,7 +42,8 @@ RAMDISK=Ram:
 # stone, vertical wall, horizontal wall, top left corner, top right corner, 
 # bottom left corner, bottom right corner, crosswall, up T wall, down T wall, 
 # left T wall, right T wall, vertical beam, horizontal beam, left slant, right
-# slant, door, floor, corridor, up stairs, down stairs, trap, web, pool,
+# slant, no door, vertical open door, horizontal open door, closed door,
+# floor, corridor, up stairs, down stairs, trap, web, pool,
 # fountain, sink, throne, altar, up ladder, down ladder, vertical drawbridge
 # wall, horizontal drawbridge wall 
 #
@@ -52,5 +53,5 @@ RAMDISK=Ram:
 # Note that the hack.font has special graphics characters from 192 on.
 
 # An example using the hack.font graphics character set:
-#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
-GRAPHICS = 032 192 193 194 195 196 197 198 216 214 215 213 192 193 092 047 198 046 035 060 062 094 034 125 123 035 092 095 060 062 035 035
+#	   ' '  |   -   .   .   `   '   -   -   -   -   -   |   -   \   /   .   -   |   +   .   #   <   >   ^   "   }   {   #   \   _   <   >   #   #
+GRAPHICS = 032 192 193 194 195 196 197 198 216 214 215 213 192 193 092 047 046 193 192 198 046 035 060 062 094 034 125 123 035 092 095 060 062 035 035

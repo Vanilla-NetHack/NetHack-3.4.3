@@ -150,7 +150,8 @@ doit:
 	if(!rn2(clumsy ? 3 : 4) && (clumsy || !bigmonst(mon->data)) && 
 	   mon->mcansee && !mon->mtrapped && !thick_skinned(mon->data) && 
 	   mon->data->mlet != S_EEL && haseyes(mon->data) && !mon->mfroz && 
-	   !mon->mstun && !mon->mconf && mon->data->mmove >= 12) {
+	   !mon->mstun && !mon->mconf && !mon->msleep &&
+	   mon->data->mmove >= 12) {
 		if(!nohands(mon->data) && !rn2(martial() ? 5 : 3)) {
 		    kludge("%s blocks your %skick.", Monnam(mon), 
 				clumsy ? "clumsy " : "");
@@ -289,12 +290,11 @@ int x, y;
 	boolean costly = FALSE;
 
 	/* if a pile, the "top" object gets kicked */
-	for (otmp = fobj; otmp; otmp = otmp->nobj)
-		if(otmp->ox == x && otmp->oy == y)
-		    if(!otmp->cobj) {
-			    cnt++;
-			    if(cnt == 1) obj = otmp;
-		    }
+	for (otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+		if(!otmp->cobj) {
+			cnt++;
+			if(cnt == 1) obj = otmp;
+		}
 
 	/* range < 2 means the object will not move.	*/
 	/* maybe dexterity should also figure here.     */
@@ -302,8 +302,8 @@ int x, y;
 				ACURR(A_STR))/2 - obj->owt/4);
 	else range = rnd((int)ACURR(A_STR));
 
-	if(range < 1) range = 1; /* safety... */
 	if(martial()) range = range + rnd(3);
+	if(range < 1) range = 1; /* safety... */
 
 	/* see if the object has a place to move into */
 	odx = x + u.dx;
@@ -355,7 +355,9 @@ int x, y;
 		return(1);
 	}
 
-	if(obj->otyp == BOULDER || obj == uball || obj == uchain)
+	/* cnt should always be >= 1 here (meaning obj is set) due to
+	 * conditions of call */
+	if(!cnt || obj->otyp == BOULDER || obj == uball || obj == uchain)
 		return(0);
 
 	/* a box gets a chance of breaking open here */
@@ -365,16 +367,13 @@ int x, y;
 		if (!obj->olocked && (!rn2(3) ||
 					(martial() && !rn2(2)))) {
 		    pline("The lid slams open, then falls shut.");
-		    if(otrp) goto gotcha;
+		    if(otrp) chest_trap(obj, LEG);
 		    return(1);
 		} else if (obj->olocked && 
 				(!rn2(5) || (martial() && !rn2(2)))) {
 		    You("break open the lock!");
 		    obj->olocked = 0;
-	            if(otrp) {
-gotcha:
-		        chest_trap(obj, LEG);
-		    }
+	            if(otrp) chest_trap(obj, LEG);
 		    return(1);
 		}
 		/* let it fall through to the next cases... */
@@ -393,10 +392,9 @@ gotcha:
 	/* potions get a chance of breaking here */
 	if(obj->olet == POTION_SYM) {
 		if(rn2(2)) {
-		    You("smash the %s!", xname(obj));
-		    if(costly) addtobill(obj, FALSE);
+		    You("smash %s %s!", obj->quan==1 ? "the" : "a", xname(obj));
 		    potionbreathe(obj);
-		    delobj(obj);
+		    useupf(obj);
 		    return(1);
 		}
 	}
@@ -438,6 +436,8 @@ gotcha:
 	    return(0);
 	}
 
+	if (obj->quan > 1) (void) splitobj(obj, 1);
+
 	/* Needed to fool bhit's display-cleanup to show immediately	*/
 	/* the next object in the pile.  We know here that the object	*/
 	/* will move, so there is no need to worry about the location,	*/
@@ -448,6 +448,7 @@ gotcha:
 
 	mon = bhit(u.dx, u.dy, range, obj->olet,
 			(int (*)()) 0, (int (*)()) 0, obj);
+	freeobj(obj);
 	if(mon) {
 # ifdef WORM
 		if (mon->mx != bhitpos.x || mon->my != bhitpos.y)
@@ -459,6 +460,8 @@ gotcha:
 	}
 	if(costly && !costly_spot(bhitpos.x,bhitpos.y)) addtobill(obj, FALSE);
 	move_object(obj, bhitpos.x, bhitpos.y);
+	obj->nobj = fobj;
+	fobj = obj;
 	stackobj(obj);
 	if(!MON_AT(obj->ox, obj->oy))
 	    newsym(obj->ox, obj->oy);
@@ -548,12 +551,13 @@ dokick() {		/* try to kick the door down - noisy! */
 		    if(rn2(30) < avrg_attrib) { 
 			pline("Crash!  You kick open a secret door!");
 			maploc->typ = DOOR;
-			atl(x, y, (char) DOOR_SYM);
 			if(maploc->doormask & D_TRAPPED) {
 			    b_trapped("door");
 			    maploc->doormask = D_NODOOR;
 			} else
 			    maploc->doormask = D_ISOPEN;
+			mnewsym(x,y);
+			prl(x,y);
 			return(1);
 		    } else goto ouch;
 		}
@@ -561,7 +565,8 @@ dokick() {		/* try to kick the door down - noisy! */
 		    if(rn2(30) < avrg_attrib) { 
 			pline("Crash!  You kick open a secret passage!");
 			maploc->typ = CORR;
-			atl(x, y, (char) CORR_SYM);
+			mnewsym(x,y);
+			prl(x,y);
 			return(1);
 		    } else goto ouch;
 		}
@@ -575,7 +580,7 @@ dokick() {		/* try to kick the door down - noisy! */
 			mkgold((long)rnd(200), x, y);
 			prl(x, y);
 			return(1);
-		    } else if(u.uluck && !rn2(3) && !maploc->doormask) {
+		    } else if(u.uluck && !rn2(3) && !maploc->looted) {
 			You("kick loose some ornamental coins and gems!");
 			mkgold((300L+(long)rn2(201)), x, y);
 			i = u.uluck + 1;
@@ -583,7 +588,7 @@ dokick() {		/* try to kick the door down - noisy! */
 			while(i--) (void) mkobj_at(GEM_SYM, x, y);
 			prl(x, y);
 			/* prevent endless milking */
-			maploc->doormask = T_LOOTED; 
+			maploc->looted = T_LOOTED;
 			return(1);
 		    } else if (!rn2(4)) {
 			register struct trap *ttmp = 
@@ -617,7 +622,7 @@ dokick() {		/* try to kick the door down - noisy! */
 			      Hallucination ? hcolor() : black);
 			pmon(makemon(&mons[PM_BLACK_PUDDING], x, y));
 			return(1);
-#  ifdef HARD
+#  ifdef INFERNO
 		    } else if(!rn2(3) &&
 #   ifndef POLYSELF
 			      poly_gender() != 2 &&
@@ -630,12 +635,12 @@ dokick() {		/* try to kick the door down - noisy! */
 #  endif
 		    } else if(!rn2(3)) {
 			pline("Flupp!  Muddy waste pops up from the drain.");
-			if(!maploc->doormask) { /* only once per sink */
+			if(!maploc->looted) { /* only once per sink */
 			    if(!Blind) 
 				You("see a ring shining in its midst.");
 			    (void) mkobj_at(RING_SYM, x, y);
 			    prl(x, y);
-			    maploc->doormask = T_LOOTED;
+			    maploc->looted = T_LOOTED;
 			}
 			return(1);
 		    }
@@ -692,9 +697,11 @@ dumb:
 		} else {
 		    pline("As you kick the door, it crashes open!");
 		    maploc->doormask = D_BROKEN;
-		    if(in_shop(x, y) && !in_shop(u.ux, u.uy))
+		    if(in_shop(x, y))
 			pay_for_door(x, y, "break");
 		}
+		mnewsym(x,y);
+		prl(x,y);
 	} else	pline("WHAMMM!!!");
 
 	return(1);

@@ -4,7 +4,7 @@
 #include "hack.h"
 
 #if defined(UNIX) && !defined(LINT)
-static	const char	SCCS_Id[] = "@(#)hack.c	3.0\t88/10/25";
+static	const char	SCCS_Id[] = "@(#)hack.c	3.0\t89/11/03";
 #endif
 
 /* called on movement:
@@ -24,7 +24,7 @@ unsee() {
 	    for(y = u.uy-1; y < u.uy+2; y++) {
 		if(!isok(x, y)) continue;
 		lev = &levl[x][y];
-		if(!lev->lit && lev->scrsym == ROOM_SYM) {
+		if(!lev->lit && IS_FLOOR(lev->typ)){
 			lev->scrsym = STONE_SYM;
 			lev->new = 1;
 			on_scr(x,y);
@@ -46,7 +46,9 @@ unsee() {
 	in trap.c:   seeoff(1)	- fall through trapdoor
  */
 void
-seeoff(mode) {	/* 1 to redo @, 0 to leave them */
+seeoff(mode)
+int mode;
+{		/* 1 to redo @, 0 to leave them */
 		/* 1 means misc movement, 0 means blindness */
 	register xchar x,y;
 	register struct rm *lev;
@@ -65,7 +67,7 @@ seeoff(mode) {	/* 1 to redo @, 0 to leave them */
 			lev = &levl[x][y];
 			if(MON_AT(x, y))
 			    unpmon(m_at(x,y));
-			if(!lev->lit && lev->scrsym == ROOM_SYM) {
+			if(!lev->lit && IS_FLOOR(lev->typ)) {
 			    lev->seen = 0;
 			    atl(x, y, (char)STONE_SYM);
 			}
@@ -94,7 +96,11 @@ moverock() {
 		}
 #endif
 		if(isok(rx,ry) && !IS_ROCK(levl[rx][ry].typ) &&
-		    (!IS_DOOR(levl[rx][ry].typ) || !(u.dx && u.dy)) &&
+		    (!IS_DOOR(levl[rx][ry].typ) || !(u.dx && u.dy) || (
+#ifdef REINCARNATION
+			dlevel != rogue_level &&
+#endif
+		     (levl[rx][ry].doormask & ~D_BROKEN) == D_NODOOR)) &&
 		    !sobj_at(BOULDER, rx, ry)) {
 			if(MON_AT(rx, ry)) {
 			    mtmp = m_at(rx,ry);
@@ -229,10 +235,8 @@ dosinkfall() {
 # endif
 		You("crash to the floor!");
 		losehp((rn1(10, 20 - (int)ACURR(A_CON))),"fall onto a sink");
-		if(OBJ_AT(u.ux, u.uy))
-		for(obj=fobj; obj; obj=obj->nobj)
-		    if(obj->ox == u.ux && obj->oy == u.uy &&
-		       obj->olet == WEAPON_SYM) {
+		for(obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
+		    if(obj->olet == WEAPON_SYM) {
 			You("fell on %s.",doname(obj));
 			losehp(rn2(3),"fall onto a sink");
 		    }
@@ -451,9 +455,17 @@ domove() {
 	if(bad_rock(x,y) ||
 	   (u.dx && u.dy
 #ifdef POLYSELF
-			&& !passes_walls(uasmon)
+		    && !passes_walls(uasmon)
 #endif
-			&& (IS_DOOR(tmpr->typ) || IS_DOOR(ust->typ)))){
+#ifdef REINCARNATION
+		    && (((IS_DOOR(tmpr->typ) && ((tmpr->doormask & ~D_BROKEN)
+				|| dlevel == rogue_level)) ||
+		        ((IS_DOOR(ust->typ) && ((ust->doormask & ~D_BROKEN)
+				|| dlevel == rogue_level))))))) {
+#else
+		    && (((IS_DOOR(tmpr->typ) && (tmpr->doormask & ~D_BROKEN)) ||
+		      ((IS_DOOR(ust->typ) && (ust->doormask & ~D_BROKEN))))))){
+#endif
 		flags.move = 0;
 		nomul(0);
 		return;
@@ -521,7 +533,10 @@ domove() {
 		} else {
 			if (IS_WALL(tmpr->typ)) {
 				digtxt = "You chew a hole in the wall.";
-				tmpr->typ = DOOR;
+				if(!is_maze_lev)
+				  tmpr->typ = DOOR;
+				else
+				  tmpr->typ = ROOM;
 			} else if (tmpr->typ==SDOOR) {
 				digtxt = "You chew through a secret door.";
 				tmpr->typ = DOOR;
@@ -537,6 +552,8 @@ domove() {
 			if(IS_DOOR(tmpr->typ) && (tmpr->doormask & D_TRAPPED)) {
 				b_trapped("door");
 				tmpr->doormask = D_NODOOR;
+				mnewsym(x, y);
+				prl(x, y);
 			}
 			dig_level = -1;
 		}
@@ -696,6 +713,9 @@ lookaround() {
 #endif
 	if(Blind || flags.run == 0) return;
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
+#ifdef POLYSELF
+		if(u.umonnum == PM_GRID_BUG && x != u.ux && y != u.uy) continue;
+#endif
 		if(x == u.ux && y == u.uy) continue;
 		if(MON_AT(x, y) && (mtmp = m_at(x,y)) && !mtmp->mimic &&
 		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
@@ -707,8 +727,10 @@ lookaround() {
 		{
 		register uchar sym = levl[x][y].scrsym;
 
-		if (IS_ROCK(levl[x][y].typ) || sym == ROOM_SYM) continue;
-		else if (sym == DOOR_SYM) {
+		if (IS_ROCK(levl[x][y].typ) ||
+		   (sym == ROOM_SYM && !IS_DOOR(levl[x][y].typ)))
+		     continue;
+		else if (sym == CLOSED_DOOR_SYM) {
 			if(x != u.ux && y != u.uy) continue;
 			if(flags.run != 1) goto stop;
 			goto bcorr;
@@ -927,7 +949,7 @@ nomul(nval)
 void
 losehp(n, knam)
 	register int n;
-	register char *knam;
+	register const char *knam;
 {
 #ifdef POLYSELF
 	if (u.mtimedone) {
@@ -943,7 +965,7 @@ losehp(n, knam)
 		u.uhpmax = u.uhp;	/* perhaps n was negative */
 	flags.botl = 1;
 	if(u.uhp < 1) {
-		killer = knam;	/* the thing that killed you */
+		killer = (char *)knam;	/* the thing that killed you */
 		You("die...");
 		done(DIED);
 	} else if(u.uhp*10 < u.uhpmax && moves-wailmsg > 50 && n > 0){

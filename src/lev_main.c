@@ -7,6 +7,7 @@
  * and some useful functions needed by yacc
  */
 
+/* #include "hack.h"	/* uncomment for the Mac */
 #include <stdio.h>
 
 #define MAX_ERRORS	25
@@ -21,6 +22,55 @@ char **argv;
 {
 	FILE *fin;
 	int i;
+
+#if defined(MACOS) && defined(SMALLDATA)
+# ifdef THINKC4
+#include <console.h>
+# endif
+#define YYLMAX	2048
+	extern char	*yysbuf, *yytext, *yysptr;
+	Handle temp;
+	Str255 name;
+	long	j;
+	extern struct permonst *mons;
+	extern struct objclass *objects;
+
+	/* sub in the Nethack resource filename */
+	strcpy((char *)name, "\010NH3.rsrc");
+	yysbuf = (char *)alloc(YYLMAX);
+	yysptr = yysbuf;
+	yytext = (char *)alloc(YYLMAX);
+
+	(void)OpenResFile(name);
+	temp = GetResource(HACK_DATA, MONST_DATA);
+	if (temp) {
+		DetachResource(temp);
+		MoveHHi(temp);
+		HLock(temp);
+		i = GetHandleSize(temp);
+		mons = (struct permonst *)(*temp);
+	} else {
+		panic("Can't get MONST resource data.");
+	}
+	
+	temp = GetResource(HACK_DATA, OBJECT_DATA);
+	if (temp) {
+		DetachResource(temp);
+		MoveHHi(temp);
+		HLock(temp);
+		i = GetHandleSize(temp);
+		objects = (struct objclass *)(*temp);
+		for (j = 0; j< NROFOBJECTS+1; j++) {
+			objects[j].oc_name = sm_obj[j].oc_name;
+			objects[j].oc_descr = sm_obj[j].oc_descr;
+		}
+	} else {
+		panic("Can't get OBJECT resource data.");
+	}
+# ifdef THINKC4
+	argc = ccommand(&argv);
+# endif
+#endif
 
 	if (argc == 1)		/* Read standard input */
 	    yyparse();

@@ -8,11 +8,7 @@
 
 #include <ctype.h>	/* for isdigit() */
 
-#ifndef MSDOS
-# ifndef MACOS
-# define TERMLIB	/* include termcap code */
-# endif
-#endif
+#include "termcap.h"
 
 #if !defined(SYSV) || defined(TOS) || defined(UNIXPC)
 # ifndef LINT
@@ -22,6 +18,11 @@ extern			/* it is defined in libtermlib (libtermcap) */
 #else
 short	ospeed = 0;	/* gets around "not defined" error message */
 #endif
+
+#ifdef ASCIIGRAPH
+  boolean IBMgraphics = FALSE;
+#endif
+
 
 #ifdef MICROPORT_286_BUG
 #define Tgetstr(key) (tgetstr(key,tbuf))
@@ -81,16 +82,10 @@ startup()
 	term = getenv("TERM");
 #endif
 	/* Set the default map symbols */
-	(void) memcpy((genericptr_t) &showsyms, 
-		(genericptr_t) &defsyms, sizeof(struct symbols));
+	(void) memcpy((genericptr_t) showsyms, 
+		(genericptr_t) defsyms, sizeof showsyms);
 
-#if !defined(AMIGA) && !defined(TOS) && !defined(MACOS)
-# if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
-#  define IBMXASCII
-# endif
-#endif
-
-#ifdef IBMXASCII
+#ifdef ASCIIGRAPH
 	/*
 	 * If we're on an IBM box, default to the nice IBM Extended ASCII
 	 * line-drawing characters (codepage 437).
@@ -103,33 +98,38 @@ startup()
 	 * characters.
 	 */
 # if !defined(MSDOS) || defined(DECRAINBOW) || defined(OS2)
+#  ifdef TERMLIB
 	if (strncmp("AT", term, 2) == 0)
+#  endif
 # endif
 	{
-	    showsyms.vwall = 0xb3;	/* meta-3, vertical rule */
-	    showsyms.hwall = 0xc4;	/* meta-D, horizontal rule */
-	    showsyms.tlcorn = 0xda;	/* meta-Z, top left corner */
-	    showsyms.trcorn = 0xbf;	/* meta-?, top right corner */
-	    showsyms.blcorn = 0xc0;	/* meta-@, bottom left */
-	    showsyms.brcorn = 0xd9;	/* meta-Y, bottom right */
-	    showsyms.crwall = 0xc5;	/* meta-E, cross */
-	    showsyms.tuwall = 0xc1;	/* meta-A, T up */
-	    showsyms.tdwall = 0xc2;	/* meta-B, T down */
-	    showsyms.tlwall = 0xb4;	/* meta-4, T left */
-	    showsyms.trwall = 0xc3;	/* meta-C, T right */
-	    showsyms.vbeam = 0xb3;	/* meta-3, vertical rule */
-	    showsyms.hbeam = 0xc4;	/* meta-D, horizontal rule */
-	    showsyms.room = 0xfa;	/* meta-z, centered dot */
-	    showsyms.pool = 0xf7;	/* meta-w, approx. equals */
+	    IBMgraphics = TRUE;
+	    showsyms[S_vwall] = 0xb3;	/* meta-3, vertical rule */
+	    showsyms[S_hodoor] = 0xb3;
+	    showsyms[S_hwall] = 0xc4;	/* meta-D, horizontal rule */
+	    showsyms[S_vodoor] = 0xc4;
+	    showsyms[S_tlcorn] = 0xda;	/* meta-Z, top left corner */
+	    showsyms[S_trcorn] = 0xbf;	/* meta-?, top right corner */
+	    showsyms[S_blcorn] = 0xc0;	/* meta-@, bottom left */
+	    showsyms[S_brcorn] = 0xd9;	/* meta-Y, bottom right */
+	    showsyms[S_crwall] = 0xc5;	/* meta-E, cross */
+	    showsyms[S_tuwall] = 0xc1;	/* meta-A, T up */
+	    showsyms[S_tdwall] = 0xc2;	/* meta-B, T down */
+	    showsyms[S_tlwall] = 0xb4;	/* meta-4, T left */
+	    showsyms[S_trwall] = 0xc3;	/* meta-C, T right */
+	    showsyms[S_vbeam] = 0xb3;	/* meta-3, vertical rule */
+	    showsyms[S_hbeam] = 0xc4;	/* meta-D, horizontal rule */
+	    showsyms[S_room] = 0xfa;	/* meta-z, centered dot */
+	    showsyms[S_ndoor] = 0xfa;
+	    showsyms[S_pool] = 0xf7;	/* meta-w, approx. equals */
 	}
-#endif /* IBMXASCII */
-#undef IBMXASCII
+#endif /* ASCIIGRAPH */
 
 #ifdef TERMLIB
 	if(!term)
 #endif
 #if defined(TOS) && defined(__GNUC__) && defined(TERMLIB)
-		term = "st52";		/* library has a default */
+		term = "builtin";		/* library has a default */
 #else
 # ifdef MACOS
 	/* dummy termcap for the Mac */
@@ -155,7 +155,7 @@ startup()
 		unsigned char   *sym;
 		short   i;
 
-		sym = &showsyms.stone;
+		sym = &showsyms[S_stone];
 		theRes = GetResource(HACK_DATA,102);
 		HLock(theRes);
 		strncpy((char *)sym,(char *)(*theRes),32);
@@ -173,6 +173,8 @@ startup()
 # ifdef ANSI_DEFAULT
 #  ifdef TOS
 	{
+		CO = 80; LI = 25;
+		TI = VS = VE = TE = "";
 		HO = "\033H";
 		CL = "\033E";		/* the VT52 termcap */
 		CE = "\033K";
@@ -184,11 +186,15 @@ startup()
 		SO = "\033p";
 		SE = "\033q";
 		HI = "\033p";
-		HE = "\033q\033b\020";
+#ifdef TEXTCOLOR
+		HE = "\033q\033b\017";
 		for (i = 0; i < SIZE(hilites); i++) {
 			hilites[i] = (char *) alloc(sizeof("Eb1"));
-			Sprintf(hilites[i], (i%4)?"\033b%c","\033p", i);
+			Sprintf(hilites[i], (i%4)?"\033b%c" : "\033p", i);
 		}
+#else
+		HE = "\033q";
+#endif
 	}
 #  else /* TOS */
 	{
@@ -230,7 +236,11 @@ startup()
 		for (i = 0; i < MAXCOLORS / 2; i++) {
 			hilites[i] = (char *) alloc(sizeof("\033[0;3%dm"));
 			hilites[i+BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
+#    ifdef MSDOS
+			Sprintf(hilites[i], (i == BLUE ? "\033[1;3%dm" : "\033[0;3%dm"), i);
+#    else
 			Sprintf(hilites[i], "\033[0;3%dm", i);
+#    endif
 			Sprintf(hilites[i+BRIGHT], "\033[1;3%dm", i);
 		}
 #   endif
@@ -241,7 +251,7 @@ startup()
 		error("Can't get TERM.");
 # endif /* ANSI_DEFAULT */
 # endif /* MACOS */
-#endif /* __GNUC__ */
+#endif /* __GNUC__ && TOS && TERMCAP */
 #ifdef TERMLIB
 	tptr = (char *) alloc(1024);
 
@@ -279,10 +289,18 @@ startup()
 	if (!CO) CO = tgetnum("co");
 	if (!LI) LI = tgetnum("li");
 # else
+#  if defined(TOS) && defined(__GNUC__)
+	if (!strcmp(term, "builtin"))
+		get_scr_size();
+	else {
+#  endif
 	CO = tgetnum("co");
 	LI = tgetnum("li");
 	if (!LI || !CO)			/* if we don't override it */
 		get_scr_size();
+#  if defined(TOS) && defined(__GNUC__)
+	}
+#  endif
 # endif
 	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
@@ -314,6 +332,9 @@ startup()
 	TI = Tgetstr("ti");
 	TE = Tgetstr("te");
 	VS = VE = "";
+# ifdef TERMINFO
+	VS = Tgetstr("enacs");	/* graphics start */
+# endif
 # if 0
 	MB = Tgetstr("mb");	/* blink */
 	MD = Tgetstr("md");	/* boldface */
@@ -377,6 +398,21 @@ end_screen()
 }
 
 /* Cursor movements */
+
+#ifdef CLIPPING
+/* if (x,y) is currently viewable, move the cursor there and return TRUE */
+boolean
+win_curs(x, y)
+int x, y;
+{
+	if (clipping && (x<=clipx || x>=clipxmax || y<=clipy || y>=clipymax))
+		return FALSE;
+	y -= clipy;
+	x -= clipx;
+	curs(x, y+2);
+	return TRUE;
+}
+#endif
 
 void
 curs(x, y)
@@ -500,7 +536,7 @@ cl_end() {
 		   but is better than nothing */
 		register int cx = curx, cy = cury;
 
-		while(curx < COLNO) {
+		while(curx < CO) {
 			xputc(' ');
 			curx++;
 		}
@@ -585,7 +621,7 @@ bell()
 	(void) fflush(stdout);
 }
 
-#if defined(TERMLIB) || defined(DECRAINBOW)
+#ifdef ASCIIGRAPH
 void
 graph_on() {
 	if (AS) xputs(AS);
@@ -632,10 +668,10 @@ delay_output() {
 		tputs("$<50>", 1, xputc);
 #  endif
 # else
-		tputs("50", 1, xputs);
+		tputs("50", 1, xputc);
 # endif
 
-	else if(ospeed > 0 || ospeed < SIZE(tmspc10)) if(CM) {
+	else if(ospeed > 0 && ospeed < SIZE(tmspc10)) if(CM) {
 		/* delay by sending cm(here) an appropriate number of times */
 		register int cmlen = strlen(tgoto(CM, curx-1, cury-1));
 		register int i = 500 + tmspc10[ospeed]/2;
@@ -769,6 +805,11 @@ init_hilite()
 	    if (foreg != c && backg != c) {
 		hilites[c] = (char *) alloc(sizeof("\033[0;3%d;4%dm"));
 		hilites[c+BRIGHT] = (char *) alloc(sizeof("\033[1;3%d;4%dm"));
+#ifdef MSDOS    /* brighten low-visibility colors */
+		if (c == BLUE)
+		    Sprintf(hilites[c], "\033[1;3%d;4%dm", c, backg);
+		else
+#endif
 		Sprintf(hilites[c], "\033[0;3%d;4%dm", c, backg);
 		Sprintf(hilites[c+BRIGHT], "\033[1;3%d;4%dm", c, backg);
 	    }

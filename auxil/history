@@ -18,10 +18,12 @@ producing ST Hack 1.03.
 Mike Stephenson merged these various versions back together, incorporating
 many of the added features, and produced NetHack version 1.4.  He then
 coordinated a cast of thousands in enhancing and debugging NetHack 1.4 and 
-released NetHack versions 2.2 and 2.3.  Later, he coordinated a major rewrite
-of the game, heading a team which included Ken Arromdee, Jean-Christophe
-Collet, Steve Creps, Eric Hendrickson, Izchak Miller, Eric S. Raymond, John 
-Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0. 
+released NetHack versions 2.2 and 2.3.
+
+Later, Mike coordinated a major rewrite of the game, heading a team which
+included Ken Arromdee, Jean-Christophe Collet, Steve Creps, Eric Hendrickson,
+Izchak Miller, Eric S. Raymond, John Rupley, Mike Threepoint, and Janet Walz,
+to produce NetHack 3.0. 
 
 Olaf Seibert ported NetHack 2.3 and 3.0 to the Amiga.
 
@@ -31,12 +33,17 @@ Timo Hakulinen ported NetHack 3.0 to OS/2.
 
 David Gentzel ported NetHack 3.0 to VMS.
  
-Johnny Lee ported NetHack 3.0 to Macintosh.
+Johnny Lee ported NetHack 3.0 to the Macintosh.
+
+Norm Meluch, Stephen Spackman and Pierre Martineau designed overlay code for
+PC NetHack 3.0.
 
 From time to time, some depraved individual out there in netland sends a
 particularly intriguing modification to help out with the game.  The Gods of
 the Dungeon sometimes make note of the names of the worst of these miscreants
 in this, the list of Dungeoneers:
+
+
 
     Tom Almy                  Bruce Holloway         Izchak Miller
     Ken Arromdee              Richard P. Hughey      Gil Neiger

@@ -67,6 +67,27 @@ find_lev_obj()
 	}
 }
 
+#ifndef NO_SIGNAL
+static void
+inven_inuse()
+/* Things that were marked "in_use" when the game was saved (ex. via the
+ * infamous "HUP" cheat) get used up here.
+ */
+{
+	register struct obj *otmp, *otmp2;
+
+	for(otmp = invent; otmp; otmp = otmp2) {
+		otmp2 = otmp->nobj;
+		if(otmp->olet != ARMOR_SYM && otmp->olet != WEAPON_SYM
+			&& otmp->otyp != PICK_AXE && otmp->otyp != UNICORN_HORN
+			&& otmp->in_use) {
+			pline("Finishing off %s...", xname(otmp));
+			useup(otmp);
+		}
+	}
+}
+#endif
+
 static struct obj *
 restobjchn(fd, ghostly)
 register int fd;
@@ -90,11 +111,6 @@ boolean ghostly;
 		else otmp2->nobj = otmp;
 		mread(fd, (genericptr_t) otmp, (unsigned) xl + sizeof(struct obj));
 		if(!otmp->o_id) otmp->o_id = flags.ident++;
-	/* Things that were marked "in_use" when the game was saved (eg. via
-	 * the infamous "HUP" cheat get used up here.
-	 */
-		if(otmp->olet != ARMOR_SYM && otmp->olet != WEAPON_SYM
-			&& otmp->otyp != PICK_AXE && otmp->in_use) useup(otmp);
 #ifdef TUTTI_FRUTTI
 		if(ghostly && otmp->otyp == SLIME_MOLD) {
 			for(oldf=oldfruit; oldf; oldf=oldf->nextf)
@@ -240,7 +256,10 @@ register int fd;
 #endif /* DECRAINBOW */
 	flags.IBMBIOS = oldflags.IBMBIOS;
 #endif
+#ifdef TEXTCOLOR
+	flags.use_color = oldflags.use_color;
 #endif
+#endif /* MSDOS */
 	mread(fd, (genericptr_t) &dlevel, sizeof dlevel);
 	mread(fd, (genericptr_t) &maxdlevel, sizeof maxdlevel);
 	mread(fd, (genericptr_t) &moves, sizeof moves);
@@ -254,7 +273,8 @@ register int fd;
 #ifdef REINCARNATION
 	mread(fd, (genericptr_t) &rogue_level, sizeof rogue_level);
 	if (dlevel==rogue_level)
-		savesyms = showsyms;
+		(void) memcpy((genericptr_t)savesyms,
+			      (genericptr_t)showsyms, sizeof savesyms);
 #endif
 #ifdef STRONGHOLD
 	mread(fd, (genericptr_t) &stronghold_level, sizeof stronghold_level);
@@ -406,8 +426,12 @@ register int fd;
 #ifdef REINCARNATION
 	/* this can't be done earlier because we need to check the initial
 	 * showsyms against the one saved in each of the non-rogue levels */
-	if (dlevel==rogue_level)
-		showsyms = defsyms;
+	if (dlevel==rogue_level) {
+		(void) memcpy((genericptr_t)showsyms,
+			      (genericptr_t)defsyms, sizeof showsyms);
+		showsyms[S_ndoor] = showsyms[S_vodoor] =
+		    showsyms[S_hodoor] = '+';
+	}
 #endif
 	if(u.ustuck) {
 		register struct monst *mtmp;
@@ -430,6 +454,13 @@ register int fd;
 	for(otmp = fobj; otmp; otmp = otmp->nobj)
 		if(otmp->owornmask)
 			setworn(otmp, otmp->owornmask);
+#ifndef NO_SIGNAL
+	/* in_use processing must be after:
+	 *  inven has been read so fcobj has been built and freeinv() works
+	 *  current level has been restored so billing information is available
+	 */
+	inven_inuse();
+#endif
 	docrt();
 	restoring = FALSE;
 	return(1);
@@ -451,7 +482,7 @@ boolean ghostly;
 	long nhp;
 	int hpid;
 	xchar dlvl;
-	struct symbols osymbol;
+	symbol_array osymbol;
 	int x, y;
 	uchar osym, nsym;
 #ifdef TOS
@@ -526,9 +557,9 @@ boolean ghostly;
 #else
 	mread(fd, (genericptr_t) levl, sizeof(levl));
 #endif
-	mread(fd, (genericptr_t) &osymbol, sizeof(osymbol));
-	if (memcmp((genericptr_t) &osymbol,
-		   (genericptr_t) &showsyms, sizeof (struct symbols))
+	mread(fd, (genericptr_t) osymbol, sizeof(osymbol));
+	if (memcmp((genericptr_t) osymbol,
+		   (genericptr_t) showsyms, sizeof (showsyms))
 #ifdef REINCARNATION
 		&& dlvl != rogue_level
 		/* rogue level always uses default syms, and showsyms will still
@@ -543,94 +574,100 @@ boolean ghostly;
 				switch (levl[x][y].typ) {
 				case STONE:
 				case SCORR:
-					if (osym == osymbol.stone)
-						nsym = showsyms.stone;
+					if (osym == osymbol[S_stone])
+						nsym = showsyms[S_stone];
 					break;
 				case ROOM:
 #ifdef STRONGHOLD
 				case DRAWBRIDGE_DOWN:
 #endif /* STRONGHOLD /**/
-					if (osym == osymbol.room)
-						nsym = showsyms.room;
+					if (osym == osymbol[S_room])
+						nsym = showsyms[S_room];
 					break;
 				case DOOR:
-					if (osym == osymbol.door)
-						nsym = showsyms.door;
+					if (osym == osymbol[S_ndoor])
+						nsym = showsyms[S_ndoor];
+					else if (osym == osymbol[S_vodoor])
+						nsym = showsyms[S_vodoor];
+					else if (osym == osymbol[S_hodoor])
+						nsym = showsyms[S_hodoor];
+					else if (osym == osymbol[S_cdoor])
+						nsym = showsyms[S_cdoor];
 					break;
 				case CORR:
-					if (osym == osymbol.corr)
-						nsym = showsyms.corr;
+					if (osym == osymbol[S_corr])
+						nsym = showsyms[S_corr];
 					break;
 				case VWALL:
-					if (osym == osymbol.vwall)
-						nsym = showsyms.vwall;
+					if (osym == osymbol[S_vwall])
+						nsym = showsyms[S_vwall];
 #ifdef STRONGHOLD
-					else if (osym == osymbol.dbvwall)
-						nsym = showsyms.dbvwall;
+					else if (osym == osymbol[S_dbvwall])
+						nsym = showsyms[S_dbvwall];
 #endif
 					break;
 				case HWALL:
-					if (osym == osymbol.hwall)
-						nsym = showsyms.hwall;
+					if (osym == osymbol[S_hwall])
+						nsym = showsyms[S_hwall];
 #ifdef STRONGHOLD
-					else if (osym == osymbol.dbhwall)
-						nsym = showsyms.dbhwall;
+					else if (osym == osymbol[S_dbhwall])
+						nsym = showsyms[S_dbhwall];
 #endif
 					break;
 				case TLCORNER:
-					if (osym == osymbol.tlcorn)
-						nsym = showsyms.tlcorn;
+					if (osym == osymbol[S_tlcorn])
+						nsym = showsyms[S_tlcorn];
 					break;
 				case TRCORNER:
-					if (osym == osymbol.trcorn)
-						nsym = showsyms.trcorn;
+					if (osym == osymbol[S_trcorn])
+						nsym = showsyms[S_trcorn];
 					break;
 				case BLCORNER:
-					if (osym == osymbol.blcorn)
-						nsym = showsyms.blcorn;
+					if (osym == osymbol[S_blcorn])
+						nsym = showsyms[S_blcorn];
 					break;
 				case BRCORNER:
-					if (osym == osymbol.brcorn)
-						nsym = showsyms.brcorn;
+					if (osym == osymbol[S_brcorn])
+						nsym = showsyms[S_brcorn];
 					break;
 				case SDOOR:
-					if (osym == osymbol.vwall)
-						nsym = showsyms.vwall;
-					else if (osym == osymbol.hwall)
-						nsym = showsyms.hwall;
+					if (osym == osymbol[S_vwall])
+						nsym = showsyms[S_vwall];
+					else if (osym == osymbol[S_hwall])
+						nsym = showsyms[S_hwall];
 					break;
 				case CROSSWALL:
-					if (osym == osymbol.crwall)
-						nsym = showsyms.crwall;
+					if (osym == osymbol[S_crwall])
+						nsym = showsyms[S_crwall];
 					break;
 				case TUWALL:
-					if (osym == osymbol.tuwall)
-						nsym = showsyms.tuwall;
+					if (osym == osymbol[S_tuwall])
+						nsym = showsyms[S_tuwall];
 					break;
 				case TDWALL:
-					if (osym == osymbol.tdwall)
-						nsym = showsyms.tdwall;
+					if (osym == osymbol[S_tdwall])
+						nsym = showsyms[S_tdwall];
 					break;
 				case TLWALL:
-					if (osym == osymbol.tlwall)
-						nsym = showsyms.tlwall;
+					if (osym == osymbol[S_tlwall])
+						nsym = showsyms[S_tlwall];
 					break;
 				case TRWALL:
-					if (osym == osymbol.trwall)
-						nsym = showsyms.trwall;
+					if (osym == osymbol[S_trwall])
+						nsym = showsyms[S_trwall];
 					break;
 				case STAIRS:
-					if (osym == osymbol.upstair)
-						nsym = showsyms.upstair;
-					else if (osym == osymbol.dnstair)
-						nsym = showsyms.dnstair;
+					if (osym == osymbol[S_upstair])
+						nsym = showsyms[S_upstair];
+					else if (osym == osymbol[S_dnstair])
+						nsym = showsyms[S_dnstair];
 					break;
 #ifdef STRONGHOLD
 				case LADDER:
-					if (osym == osymbol.upladder)
-						nsym = showsyms.upladder;
-					else if (osym == osymbol.dnladder)
-						nsym = showsyms.dnladder;
+					if (osym == osymbol[S_upladder])
+						nsym = showsyms[S_upladder];
+					else if (osym == osymbol[S_dnladder])
+						nsym = showsyms[S_dnladder];
 					break;
 #endif /* STRONGHOLD /**/
 				case POOL:
@@ -638,31 +675,31 @@ boolean ghostly;
 #ifdef STRONGHOLD
 				case DRAWBRIDGE_UP:
 #endif /* STRONGHOLD /**/
-					if (osym == osymbol.pool)
-						nsym = showsyms.pool;
+					if (osym == osymbol[S_pool])
+						nsym = showsyms[S_pool];
 					break;
 #ifdef FOUNTAINS
 				case FOUNTAIN:
-					if (osym == osymbol.fountain)
-						nsym = showsyms.fountain;
+					if (osym == osymbol[S_fountain])
+						nsym = showsyms[S_fountain];
 					break;
 #endif /* FOUNTAINS /**/
 #ifdef THRONES
 				case THRONE:
-					if (osym == osymbol.throne)
-						nsym = showsyms.throne;
+					if (osym == osymbol[S_throne])
+						nsym = showsyms[S_throne];
 					break;
 #endif /* THRONES /**/
 #ifdef SINKS
 				case SINK:
-					if (osym == osymbol.sink)
-						nsym = showsyms.sink;
+					if (osym == osymbol[S_sink])
+						nsym = showsyms[S_sink];
 					break;
 #endif /* SINKS /**/
 #ifdef ALTARS
 				case ALTAR:
-					if (osym == osymbol.altar)
-						nsym = showsyms.altar;
+					if (osym == osymbol[S_altar])
+						nsym = showsyms[S_altar];
 					break;
 #endif /* ALTARS /**/
 				default:
@@ -689,7 +726,7 @@ boolean ghostly;
 	fmon = restmonchn(fd, ghostly);
 
 	/* regenerate animals while on another level */
-	{ long tmoves = (moves > omoves) ? moves-omoves : 0;
+	{ long tmoves = (monstermoves > omoves) ? monstermoves-omoves : 0;
 	  register struct monst *mtmp2;
 
 	  for(mtmp = fmon; mtmp; mtmp = mtmp2) {

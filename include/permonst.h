@@ -47,7 +47,8 @@ struct permonst {
 	unsigned	cwt,			/* weight of corpse */
 			cnutrit;		/* its nutritional value */
 	short		pxlth;			/* length of extension */
-	uchar		msound;			/* noise it makes */
+	uchar		msound; 		/* noise it makes (6 bits) */
+	uchar		msize;			/* physical size (3 bits) */
 	long		mflags1,		/* boolean bitflags */
 			mflags2;		/* more boolean bitflags */
 # ifdef TEXTCOLOR

@@ -28,7 +28,7 @@ uwepgone()
 	}
 }
 
-static const char wield_objs[] = { '#', '-', WEAPON_SYM, 0 };
+static const char wield_objs[] = { '#', '-', WEAPON_SYM, TOOL_SYM, 0 };
 
 int
 dowield()
@@ -76,6 +76,7 @@ dowield()
 		res++;
 		if(wep->cursed && (wep->olet == WEAPON_SYM ||
 			wep->otyp == HEAVY_IRON_BALL || wep->otyp == PICK_AXE ||
+			wep->otyp == UNICORN_HORN ||
 			wep->otyp == TIN_OPENER)) {
 		    pline("The %s %s to your %s!",
 			aobjnam(wep, "weld"),
@@ -96,9 +97,12 @@ dowield()
 		}
 		setuwep(wep);
 	}
+	/* Note: Explicitly wielding a pick-axe will not give a "bashing"
+	 * message.  Wielding one via 'a'pplying it will.
+	 */
 	if(res && uwep)
-		unweapon = (uwep->otyp >= BOW || uwep->otyp <= BOOMERANG) ?
-		TRUE : FALSE;
+		unweapon = ((uwep->otyp >= BOW || uwep->otyp <= BOOMERANG) &&
+			uwep->otyp != PICK_AXE && uwep->otyp != UNICORN_HORN);
 	return(res);
 }
 
@@ -182,7 +186,8 @@ register struct obj *obj;
 {
 	if (obj && obj == uwep && obj->cursed &&
 		  (obj->olet == WEAPON_SYM || obj->otyp == HEAVY_IRON_BALL ||
-		   obj->otyp == TIN_OPENER || obj->otyp == PICK_AXE))
+		   obj->otyp == TIN_OPENER || obj->otyp == PICK_AXE ||
+		   obj->otyp == UNICORN_HORN))
 	{
 		obj->bknown = 1;
 		return 1;

@@ -320,14 +320,15 @@ char c;
 
 void
 putstr(s)
-register char *s;
+register const char *s;
 {
 	while(*s) putsym(*s++);
 }
 
 char
 yn_function(resp, def)
-char *resp, def;
+const char *resp;
+char def;
 /*
  *   Generic yes/no function
  */

@@ -113,7 +113,7 @@ boolean cookie;
 #else
 # ifdef MACOS
 	if(rumors = fopen(RUMORFILE, "r"))
-		rumors = openFile(RUMORFILE);
+		rumors = openFile(RUMORFILE, "r");
 	if (rumors) {
 # else
 	if(rumors = fopen(RUMORFILE, "r")) {
@@ -177,7 +177,7 @@ outoracle()
 #else
 # ifdef MACOS
 	if(oracles = fopen(ORACLEFILE, "r"))
-		oracles = openFile(ORACLEFILE);
+		oracles = openFile(ORACLEFILE, "r");
 	if (oracles) {
 # else
 	if(oracles = fopen(ORACLEFILE, "r")) {

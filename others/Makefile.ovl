@@ -1,0 +1,451 @@
+#	SCCS Id: @(#)Makefile.ovl	3.0	89/11/16
+#	PC NetHack 3.0 Makefile for Microsoft(tm) "C" 5.1 -- Pierre Martineau
+#	Overlay Arrangement -- Stephen Spackman, Pierre Martineau, Norm Meluch
+#
+#	 Other things that have to be reconfigured are in config.h,
+#	 {unixconf.h, pcconf.h, tosconf.h}, and possibly system.h
+#
+#	 In addition to your C compiler,
+#
+#	 if you want to change	you will need a		and a rule in 
+#	 files with suffix	workalike for		Make.ini called
+#	   .y			  yacc			  .y.c
+#	   .l			  lex			  .l.c
+#	   .asm			  masm
+#
+# ******************************************************************************
+# ************************ Compiler Info ***************************************
+# ******************************************************************************
+# Large memory model, register bug, remove stack probes:
+CC	= cl /c
+LINK	= link
+MODEL	= L
+ASM	= masm
+# 286 or higher machines can use the /G2 CFLAG option for better performance.
+CFLAGS	= /A$(MODEL) /Os /Oa /Gs /Gt24 /Zp1 /W0 /I$(INCL)
+LFLAGS	= /noi /seg:512 /map /st:4096 /cp:1
+AFLAGS	= /MX
+# ******************************************************************************
+# ********* Directories (makedefs hardcodes these, don't change them) **********
+# ******************************************************************************
+INCL	= ..\include
+AUX	= ..\auxil
+SRC	= ..\src
+OTHERS	= ..\others
+OBJ	= $(SRC)\o
+# ******************************************************************************
+# ************************ Local Variables *************************************
+# ******************************************************************************
+# The game name
+GAME	 = nethack
+
+# Default main target
+MAINTARG : $(GAME)
+
+# The game directory
+# make sure GAMEDIR exists!
+GAMEDIR  = \games
+
+# The game filename
+GAMEFILE = $(GAMEDIR)\$(GAME).exe
+
+# Overlay manager object file.
+OVLMGR	 = ovlmgr.obj
+
+# Switch the following line if you have made changes in ovlmgr.asm
+# $(OBJ)\$(OVLMGR):
+$(OBJ)\$(OVLMGR): ; copy $(OTHERS)\$(OVLMGR) $(OBJ)\$(OVLMGR)
+
+# Optional high-quality BSD random number generation routines (see pcconf.h).
+# Set to nothing if not used.
+RANDOM	 = $(OBJ)\random.o
+# RANDOM =
+
+# Target prefix
+TARG	 = pc
+
+# Optional C library specifier for those with non-standard libraries
+# CLIB	   = llibcer /nod
+CLIB	 =
+
+# The TERMLIB line may be commented out if TERMLIB isn't defined in the source
+# TERMLIB  =
+TERMLIB  = $(SRC)\termlib.lib
+# ******************************************************************************
+# ************************ Begin Structure Definition **************************
+# ******************************************************************************
+#
+# nothing below this line should have to be changed
+#
+ROOT =	$(OBJ)\main.o $(OBJ)\allmain.o $(OBJ)\termcap.o $(OBJ)\cmd.o \
+	$(OBJ)\trampoli.o $(OBJ)\hack.o $(OBJ)\msdos.o $(OBJ)\$(OVLMGR)
+
+# These are the overlays; the Microsoft linker limits them to 63.
+#
+OVL01 = $(OBJ)\rip.o $(OBJ)\topten.o $(OBJ)\end.o
+OVL02 = $(OBJ)\lock.o
+OVL03 = $(OBJ)\artifact.o
+OVL04 = $(OBJ)\mklev.o $(OBJ)\mkroom.o
+OVL05 = $(OBJ)\trap.o
+OVL06 = $(OBJ)\read.o
+OVL07 = $(OBJ)\dbridge.o
+OVL08 = $(OBJ)\u_init.o
+OVL09 = $(OBJ)\eat.o $(OBJ)\rumors.o
+OVL10 = $(OBJ)\do_wear.o
+OVL11 = $(OBJ)\restore.o $(OBJ)\save.o $(OBJ)\bones.o
+OVL12 = $(OBJ)\search.o
+OVL13 = $(OBJ)\weapon.o
+OVL14 = $(OBJ)\mon.o
+OVL15 = $(OBJ)\dokick.o
+OVL16 = $(OBJ)\priest.o
+OVL17 = $(OBJ)\steal.o
+OVL18 = $(OBJ)\potion.o
+OVL19 = $(OBJ)\mcastu.o
+OVL20 = $(OBJ)\exper.o
+OVL21 = $(OBJ)\extralev.o
+OVL22 = $(OBJ)\pager.o
+OVL23 = $(OBJ)\dog.o $(OBJ)\dogmove.o
+OVL24 = $(OBJ)\sit.o $(OBJ)\fountain.o
+OVL25 = $(OBJ)\sounds.o
+OVL26 = $(OBJ)\worn.o
+OVL27 = $(OBJ)\were.o $(OBJ)\demon.o
+OVL28 = $(OBJ)\mhitm.o
+OVL29 = $(OBJ)\attrib.o
+OVL30 = $(OBJ)\unix.o
+OVL31 = $(OBJ)\engrave.o
+OVL32 = $(OBJ)\getline.o
+OVL33 = $(OBJ)\wizard.o
+OVL34 = $(OBJ)\worm.o
+OVL35 = $(OBJ)\mthrowu.o
+OVL36 = $(OBJ)\music.o
+OVL37 = $(OBJ)\zap.o
+OVL38 = $(OBJ)\pri.o $(OBJ)\prisym.o
+OVL39 = $(OBJ)\objnam.o
+OVL40 = $(OBJ)\write.o
+OVL41 = $(OBJ)\mondata.o
+OVL42 = $(OBJ)\dothrow.o
+OVL43 = $(OBJ)\monst.o $(OBJ)\objects.o $(OBJ)\mail.o $(OBJ)\alloc.o $(OBJ)\tty.o $(OBJ)\topl.o
+OVL44 = $(OBJ)\monmove.o
+OVL45 = $(OBJ)\mkmaze.o $(OBJ)\sp_lev.o
+OVL46 = $(OBJ)\makemon.o
+OVL47 = $(OBJ)\apply.o
+OVL48 = $(OBJ)\decl.o $(OBJ)\polyself.o
+OVL49 = $(OBJ)\do.o
+OVL50 = $(OBJ)\spell.o
+OVL51 = $(OBJ)\uhitm.o
+OVL52 = $(OBJ)\invent.o
+OVL53 = $(OBJ)\wield.o
+OVL54 = $(OBJ)\mkobj.o $(OBJ)\o_init.o
+OVL55 = $(OBJ)\shk.o $(OBJ)\shknam.o
+OVL56 = $(OBJ)\pickup.o
+OVL57 = $(OBJ)\pray.o
+OVL58 = $(OBJ)\options.o
+OVL59 = $(OBJ)\do_name.o
+OVL60 = $(OBJ)\rnd.o $(RANDOM)
+OVL61 = $(OBJ)\vault.o
+OVL62 = $(OBJ)\mhitu.o
+OVL63 = $(OBJ)\version.o $(OBJ)\track.o $(OBJ)\timeout.o
+
+#
+# ******************************************************************************
+# ************************* Make Objects ***************************************
+# ******************************************************************************
+#
+MOBJ =	$(OVL01) $(OVL02) $(OVL03) $(OVL04) $(OVL05) $(OVL06) $(OVL07) $(OVL08) \
+	$(OVL09) $(OVL10) $(OVL11) $(OVL12) $(OVL13) $(OVL14) $(OVL15) $(OVL16) \
+	$(OVL17) $(OVL18) $(OVL19) $(OVL20) $(OVL21) $(OVL22) $(OVL23) $(OVL24) \
+	$(OVL25) $(OVL26) $(OVL27) $(OVL28) $(OVL29) $(OVL30) $(OVL31) $(OVL32) \
+	$(OVL33) $(OVL34) $(OVL35) $(OVL36) $(OVL37) $(OVL38) $(OVL39) $(OVL40) \
+	$(OVL41) $(OVL42) $(OVL43) $(OVL44) $(OVL45) $(OVL46) $(OVL47) $(OVL48) \
+	$(OVL49) $(OVL50) $(OVL51) $(OVL52) $(OVL53) $(OVL54) $(OVL55) $(OVL56) \
+	$(OVL57) $(OVL58) $(OVL59) $(OVL60) $(OVL61) $(OVL62)
+
+VOBJ =	$(ROOT) $(MOBJ)
+
+HOBJ =	$(VOBJ) $(OVL63)
+
+# object files for makedefs
+MAKEOBJS    =	$(OBJ)\makedefs.o $(OBJ)\alloc.o    $(OBJ)\monst.o    \
+		$(OBJ)\objects.o  $(OBJ)\panic.o
+
+OVERLAYS = ($(OVL01)) ($(OVL02)) ($(OVL03)) ($(OVL04)) ($(OVL05)) ($(OVL06)) \
+	   ($(OVL07)) ($(OVL08)) ($(OVL09)) ($(OVL10)) ($(OVL11)) ($(OVL12)) \
+	   ($(OVL13)) ($(OVL14)) ($(OVL15)) ($(OVL16)) ($(OVL17)) ($(OVL18)) \
+	   ($(OVL19)) ($(OVL20)) ($(OVL21)) ($(OVL22)) ($(OVL23)) ($(OVL24)) \
+	   ($(OVL25)) ($(OVL26)) ($(OVL27)) ($(OVL28)) ($(OVL29)) ($(OVL30)) \
+	   ($(OVL31)) ($(OVL32)) ($(OVL33)) ($(OVL34)) ($(OVL35)) ($(OVL36)) \
+	   ($(OVL37)) ($(OVL38)) ($(OVL39)) ($(OVL40)) ($(OVL41)) ($(OVL42)) \
+	   ($(OVL43)) ($(OVL44)) ($(OVL45)) ($(OVL46)) ($(OVL47)) ($(OVL48)) \
+	   ($(OVL49)) ($(OVL50)) ($(OVL51)) ($(OVL52)) ($(OVL53)) ($(OVL54)) \
+	   ($(OVL55)) ($(OVL56)) ($(OVL57)) ($(OVL58)) ($(OVL59)) ($(OVL60)) \
+	   ($(OVL61)) ($(OVL62)) ($(OVL63))
+
+# object files for special levels compiler
+SPLEVOBJS   =	$(OBJ)\lev_comp.o $(OBJ)\lev_lex.o  $(OBJ)\lev_main.o \
+		$(OBJ)\alloc.o	  $(OBJ)\monst.o    $(OBJ)\objects.o  \
+		$(OBJ)\panic.o
+
+TL_LOBJECTS =	$(OBJ)\tgetent.o  $(OBJ)\tgetflag.o $(OBJ)\tgetnum.o  \
+		$(OBJ)\tgetstr.o  $(OBJ)\tgoto.o    $(OBJ)\tputs.o    \
+		$(OBJ)\isdigit.o  $(OBJ)\fgetlr.o
+
+# ******************************************************************************
+# ************************** Header Objects ************************************
+# ******************************************************************************
+
+TRAP_H	   = $(INCL)\trap.h
+PERMONST_H = $(INCL)\permonst.h    $(INCL)\monflag.h
+PCCONF_H   = $(INCL)\$(TARG)conf.h $(INCL)\extern.h   $(INCL)\msdos.h \
+	     $(INCL)\system.h
+GLOBAL_H   = $(PCCONF_H)	   $(INCL)\coord.h    $(INCL)\global.h
+CONFIG_H   = $(GLOBAL_H)	   $(INCL)\config.h   $(INCL)\tradstdc.h
+YOU_H	   = $(PERMONST_H)	   $(INCL)\attrib.h   $(INCL)\mondata.h \
+	     $(INCL)\monst.h	   $(INCL)\you.h      $(INCL)\youprop.h
+DECL_H	   = $(YOU_H)		   $(INCL)\decl.h     $(INCL)\obj.h \
+	     $(INCL)\onames.h	   $(INCL)\pm.h       $(INCL)\spell.h
+HACK_H	   = $(CONFIG_H)	   $(DECL_H)	      $(TRAP_H) \
+	     $(INCL)\flag.h	   $(INCL)\gold.h     $(INCL)\mkroom.h \
+	     $(INCL)\monsym.h	   $(INCL)\objclass.h $(INCL)\rm.h \
+	     $(INCL)\trampoli.h
+
+# ******************************************************************************
+# ************************ File Dependencies ***********************************
+# ******************************************************************************
+
+.SUFFIXES: .exe .o .c .y .l .obj .asm
+
+.c.o:
+	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $*.c
+
+.asm.obj:
+	$(ASM) $(AFLAGS) $*.asm,$(OBJ)\$*.obj ;
+
+$(GAME): $(GAMEFILE)
+
+$(GAME).exe: $(GAMEFILE)
+
+$(GAMEFILE): $(OBJ) $(HOBJ) $(TERMLIB)
+	@echo Loading....
+	$(LINK) $(ROOT) $(OVERLAYS),$(GAMEFILE),$(GAME),$(CLIB) $(TERMLIB) $(LFLAGS) ;
+	@echo Nethack is up to date.
+
+$(OBJ):
+	if not exist .\$(OBJ)\*.* mkdir $(OBJ)
+	if not exist $(GAMEDIR)   mkdir $(GAMEDIR)
+	if not exist $(GAMEDIR)   mkdir $(GAMEDIR)\bones
+
+$(TERMLIB):	$(TL_LOBJECTS)
+		lib $(TERMLIB) -+ $(TL_LOBJECTS);
+
+#
+#	The following 3 programs vary depending on what OS you are using.
+#
+
+$(OBJ)\main.o:	$(HACK_H) $(TARG)main.c
+	$(CC) $(CFLAGS)  /Fo.\$(OBJ)\main.o $(TARG)main.c
+
+$(OBJ)\tty.o:	$(HACK_H) $(INCL)\func_tab.h $(TARG)tty.c
+	$(CC) $(CFLAGS)  /Fo.\$(OBJ)\tty.o  $(TARG)tty.c
+
+$(OBJ)\unix.o:	$(HACK_H) $(TARG)unix.c
+	$(CC) $(CFLAGS)  /Fo.\$(OBJ)\unix.o $(TARG)unix.c
+
+$(OBJ)\makedefs.o:	$(INCL)\config.h $(INCL)\permonst.h $(INCL)\objclass.h
+
+makedefs.exe:	$(MAKEOBJS)
+	$(LINK) $(LFLAGS) $(MAKEOBJS), makedefs.exe,, $(CLIB);
+
+lev_comp.exe:	$(SPLEVOBJS)
+	$(LINK) $(LFLAGS) $(SPLEVOBJS),lev_comp.exe,, $(CLIB);
+
+# If you have yacc or lex programs, and make any changes,
+# add some .y.c and .l.c rules to your Make.ini.
+#
+#lev_comp.c:	lev_comp.y
+#lev_lex.c:	lev_comp.l
+
+# ******************************************************************************
+# *************************  Makedefs Stuff ************************************
+# ******************************************************************************
+#	The following include files depend on makedefs to be created.
+#	date.h should be remade any time any of the source or include code
+#	is modified.
+#
+$(INCL)\date.h: $(VOBJ) makedefs.exe
+	.\makedefs -v
+
+$(INCL)\trap.h: 	makedefs.exe
+	.\makedefs -t
+
+$(INCL)\onames.h:	makedefs.exe
+	.\makedefs -o
+
+$(INCL)\pm.h:		makedefs.exe
+	.\makedefs -p
+
+data:	$(AUX)\data.bas makedefs.exe
+	.\makedefs -d
+
+rumors: $(AUX)\rumors.tru $(AUX)\rumors.fal makedefs.exe
+	.\makedefs -r
+
+# ******************************************************************************
+# ************************ Secondary targets ***********************************
+# ******************************************************************************
+
+install:	$(OBJ) lev_comp.exe $(GAMEFILE) auxil.tag install.tag
+	@echo Don't forget to check HACKDIR in nethack.cnf.
+	@echo Done.
+
+#
+#	Watch Out!  This make cleans out the game & bones dirs!
+#	This will delete any config file you have and overwrite it
+#	with the default.
+#	Since the game options may have changed since your last install,
+#	you should say yes to clean the directory.
+#
+install.tag:
+	copy $(OTHERS)\termcap		$(GAMEDIR)
+	copy $(AUX)\*.			$(GAMEDIR)
+	copy $(OTHERS)\nethack.cnf	$(GAMEDIR)
+	echo record > $(GAMEDIR)\record
+	echo install done > install.tag
+
+spec_lev.tag: lev_comp.exe $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
+	lev_comp $(AUX)\castle.des
+	lev_comp $(AUX)\endgame.des
+	lev_comp $(AUX)\tower.des
+	copy castle $(GAMEDIR)
+	copy endgame $(GAMEDIR)
+	copy tower? $(GAMEDIR)
+	echo spec_lev done > spec_lev.tag
+
+auxil.tag:	spec_lev.tag	data	rumors
+	echo special levels created > auxil.tag
+
+clean:
+	del $(OBJ)\*.o
+	del $(OBJ)\*.obj
+	rmdir $(OBJ)
+
+spotless: clean
+	del $(INCL)\date.h
+	del $(INCL)\onames.h
+	del $(INCL)\pm.h
+	if exist makedefs.exe del makedefs.exe
+	if exist lev_comp.exe del lev_comp.exe
+	del castle
+	del endgame
+	del tower?
+	del *.bak
+	del *.tag
+	del *.map
+	del *.lib
+	del *.txt
+	del $(AUX)\data
+	del $(AUX)\rumors
+
+# ******************************************************************************
+# ************************* Other dependencies *********************************
+# ******************************************************************************
+# Other dependencies
+#
+# I deleted that line.	;-}
+#
+$(OBJ)\allmain.o:	$(HACK_H)
+$(OBJ)\alloc.o: 	$(CONFIG_H)
+$(OBJ)\apply.o: 	$(HACK_H)   $(INCL)\edog.h
+$(OBJ)\artifact.o:	$(HACK_H)   $(INCL)\artifact.h
+$(OBJ)\attrib.o:	$(HACK_H)
+$(OBJ)\bones.o: 	$(HACK_H)
+$(OBJ)\cmd.o:		$(HACK_H)   $(INCL)\func_tab.h
+$(OBJ)\dbridge.o:	$(HACK_H)
+$(OBJ)\decl.o:		$(HACK_H)
+$(OBJ)\demon.o: 	$(HACK_H)
+$(OBJ)\do.o:		$(HACK_H)
+$(OBJ)\do_name.o:	$(HACK_H)
+$(OBJ)\do_wear.o:	$(HACK_H)
+$(OBJ)\dog.o:		$(HACK_H)   $(INCL)\edog.h
+$(OBJ)\dogmove.o:	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\edog.h
+$(OBJ)\dokick.o:	$(HACK_H)
+$(OBJ)\dothrow.o:	$(HACK_H)
+$(OBJ)\eat.o:		$(HACK_H)
+$(OBJ)\end.o:		$(HACK_H)   $(INCL)\eshk.h
+$(OBJ)\engrave.o:	$(HACK_H)
+$(OBJ)\exper.o: 	$(HACK_H)
+$(OBJ)\extralev.o:	$(HACK_H)
+$(OBJ)\fountain.o:	$(HACK_H)
+$(OBJ)\getline.o:	$(HACK_H)   $(INCL)\func_tab.h
+$(OBJ)\hack.o:		$(HACK_H)
+$(OBJ)\invent.o:	$(HACK_H)   $(INCL)\lev.h	 $(INCL)\wseg.h
+$(OBJ)\ioctl.o: 	$(HACK_H)
+$(OBJ)\lev_comp.o:	$(HACK_H)   $(INCL)\sp_lev.h
+$(OBJ)\lev_lex.o:	$(HACK_H)   $(INCL)\sp_lev.h	 $(INCL)\lev_comp.h
+$(OBJ)\lev_main.o:	$(HACK_H)   $(INCL)\sp_lev.h
+$(OBJ)\lock.o:		$(HACK_H)
+$(OBJ)\makemon.o:	$(HACK_H)
+$(OBJ)\mail.o:		$(HACK_H)
+$(OBJ)\mcastu.o:	$(HACK_H)
+$(OBJ)\mhitm.o: 	$(HACK_H)   $(INCL)\artifact.h
+$(OBJ)\mhitu.o: 	$(HACK_H)   $(INCL)\artifact.h	 $(INCL)\edog.h
+$(OBJ)\mklev.o: 	$(HACK_H)
+$(OBJ)\mkmaze.o:	$(HACK_H)
+$(OBJ)\mkobj.o: 	$(HACK_H)
+$(OBJ)\mkroom.o:	$(HACK_H)
+$(OBJ)\mon.o:		$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\artifact.h
+$(OBJ)\mondata.o:	$(HACK_H)   $(INCL)\eshk.h	 $(INCL)\epri.h
+$(OBJ)\monmove.o:	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\artifact.h
+$(OBJ)\monst.o: 	$(CONFIG_H) $(PERMONST_H)	 $(INCL)\eshk.h     \
+			$(INCL)\epri.h $(INCL)\vault.h
+$(OBJ)\msdos.o: 	$(HACK_H)
+$(OBJ)\mthrowu.o:	$(HACK_H)
+$(OBJ)\music.o: 	$(HACK_H)
+$(OBJ)\o_init.o:	$(HACK_H)   $(INCL)\onames.h
+$(OBJ)\objects.o:	$(CONFIG_H) $(INCL)\obj.h	 $(INCL)\objclass.h \
+			$(INCL)\prop.h
+$(OBJ)\objnam.o:	$(HACK_H)
+$(OBJ)\options.o:	$(HACK_H)
+$(OBJ)\pager.o: 	$(HACK_H)
+$(OBJ)\panic.o: 	$(CONFIG_H)
+$(OBJ)\pickup.o:	$(HACK_H)
+$(OBJ)\polyself.o:	$(HACK_H)
+$(OBJ)\potion.o:	$(HACK_H)
+$(OBJ)\pray.o:		$(HACK_H)
+$(OBJ)\pri.o:		$(HACK_H)
+$(OBJ)\priest.o:	$(HACK_H)   $(INCL)\mfndpos.h	 $(INCL)\eshk.h \
+			$(INCL)\epri.h
+$(OBJ)\prisym.o:	$(HACK_H)   $(INCL)\lev.h	 $(INCL)\wseg.h
+$(OBJ)\random.o:
+$(OBJ)\read.o:		$(HACK_H)
+$(OBJ)\restore.o:	$(HACK_H)   $(INCL)\lev.h	 $(INCL)\wseg.h
+$(OBJ)\rip.o:		$(HACK_H)
+$(OBJ)\rnd.o:		$(HACK_H)
+$(OBJ)\rumors.o:	$(HACK_H)
+$(OBJ)\save.o:		$(HACK_H)   $(INCL)\lev.h	 $(INCL)\wseg.h
+$(OBJ)\search.o:	$(HACK_H)   $(INCL)\artifact.h
+$(OBJ)\shk.o:		$(HACK_H)   $(INCL)\eshk.h
+$(OBJ)\shknam.o:	$(HACK_H)   $(INCL)\eshk.h
+$(OBJ)\sit.o:		$(HACK_H)
+$(OBJ)\sounds.o:	$(HACK_H)   $(INCL)\edog.h	 $(INCL)\eshk.h
+$(OBJ)\sp_lev.o:	$(HACK_H)   $(INCL)\sp_lev.h
+$(OBJ)\spell.o: 	$(HACK_H)
+$(OBJ)\steal.o: 	$(HACK_H)
+$(OBJ)\termcap.o:	$(HACK_H)
+$(OBJ)\timeout.o:	$(HACK_H)
+$(OBJ)\topl.o:		$(HACK_H)
+$(OBJ)\topten.o:	$(HACK_H)
+$(OBJ)\track.o: 	$(HACK_H)
+$(OBJ)\trampoli.o:	$(HACK_H)
+$(OBJ)\trap.o:		$(HACK_H)   $(INCL)\edog.h	 $(INCL)\trapname.h
+$(OBJ)\u_init.o:	$(HACK_H)
+$(OBJ)\uhitm.o: 	$(HACK_H)   $(INCL)\artifact.h
+$(OBJ)\vault.o: 	$(HACK_H)   $(INCL)\vault.h
+$(OBJ)\version.o:	$(HACK_H)   $(INCL)\date.h
+$(OBJ)\weapon.o:	$(HACK_H)
+$(OBJ)\were.o:		$(HACK_H)
+$(OBJ)\wield.o: 	$(HACK_H)
+$(OBJ)\wizard.o:	$(HACK_H)
+$(OBJ)\worm.o:		$(HACK_H)   $(INCL)\wseg.h
+$(OBJ)\worn.o:		$(HACK_H)
+$(OBJ)\write.o: 	$(HACK_H)
+$(OBJ)\zap.o:		$(HACK_H)

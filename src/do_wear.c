@@ -24,12 +24,8 @@ off_msg(otmp) register struct obj *otmp; {
 /* for items that involve no delay */
 static void
 on_msg(otmp) register struct obj *otmp; {
-	register char *bp = xname(otmp);
-	char buf[BUFSZ];
-
-	setan(bp, buf);
 	if(flags.verbose)
-	    You("are now wearing %s.", buf);
+	    You("are now wearing %s.", an(xname(otmp)));
 }
 
 boolean
@@ -72,7 +68,10 @@ is_shield(otmp) register struct obj *otmp; {
  * The Type_off() functions call setworn() themselves.
  */
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 Boots_on() {
     long oldprop =
 		u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~(WORN_BOOTS | TIMEOUT);
@@ -220,7 +219,10 @@ Cloak_off() {
     return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 Helmet_on() {
     switch(uarmh->otyp) {
 	case FEDORA:
@@ -288,7 +290,10 @@ Helmet_off() {
     return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 Gloves_on() {
     long oldprop =
 	u.uprops[objects[uarmg->otyp].oc_oprop].p_flgs & ~(WORN_GLOVES | TIMEOUT);
@@ -338,6 +343,14 @@ Gloves_off() {
 	default: impossible("Unknown type of gloves (%d)", uarmg->otyp);
     }
     setworn((struct obj *)0, W_ARMG);
+    if (uwep && uwep->otyp == CORPSE && uwep->corpsenm == PM_COCKATRICE) {
+	/* Prevent wielding cockatrice when not wearing gloves */
+	You("wield the cockatrice corpse in your bare %s.",
+	    makeplural(body_part(HAND)));
+	You("turn to stone...");
+	killer = "cockatrice corpse";
+	done(STONING);
+    }
     return 0;
 }
 
@@ -385,7 +398,10 @@ Shield_off() {
 /* This must be done in worn.c, because one of the possible intrinsics conferred
  * is fire resistance, and we have to immediately set HFire_resistance in worn.c
  * since worn.c will check it before returning.
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 Armor_on()
 {
     return 0;
@@ -689,6 +705,16 @@ set_wear() {
 	if (uarmg) (void) Gloves_on();
 	if (uarmh) (void) Helmet_on();
 /*	if (uarms) (void) Shield_on(); */
+}
+
+boolean
+donning(otmp)
+register struct obj *otmp;
+{
+    return (otmp == uarmf && afternmv == Boots_on)
+	|| (otmp == uarmh && afternmv == Helmet_on)
+	|| (otmp == uarmg && afternmv == Gloves_on)
+/*	|| (otmp == uarm && afternmv == Armor_on)*/;
 }
 
 static const char clothes[] = {ARMOR_SYM, 0};
@@ -1118,6 +1144,8 @@ doputon() {
 	return(1);
 }
 
+#define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
+
 void
 find_ac() {
 	register int uac = 10;
@@ -1227,7 +1255,10 @@ register struct obj *otmph = some_armor();
 	}
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 select_off(otmp)
 register struct obj *otmp;
 {
@@ -1332,7 +1363,10 @@ do_takeoff() {
 	return(otmp);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 take_off() {
 
 	register int i;

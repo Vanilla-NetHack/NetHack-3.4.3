@@ -9,6 +9,51 @@
 
 static const char nofetch[] = { BALL_SYM, CHAIN_SYM, ROCK_SYM, 0 };
 
+static void
+dog_eat(mtmp, obj, otyp, x, y)
+register struct monst *mtmp;
+register struct obj * obj;
+xchar otyp;
+int x, y;
+{
+	register struct edog *edog = EDOG(mtmp);
+	int nutrit;
+
+	if(edog->hungrytime < moves)
+	    edog->hungrytime = moves;
+	/* Note: to get the correct percentage-eaten in case oeaten is set,
+	 * use "obj->owt / obj->quan / base-weight".  It so happens that here
+	 * we want to multiply by obj->quan, which thus cancels out.
+	 * It is arbitrary that the pet takes the same length of time to eat
+	 * as a human, but gets 5X as much nutrition.
+	 */
+	if(obj->otyp == CORPSE) {
+	    mtmp->meating = 3 + (mons[obj->corpsenm].cwt >> 2);
+	    nutrit = 5 * mons[obj->corpsenm].cnutrit;
+	} else {
+	    mtmp->meating = objects[obj->otyp].oc_delay;
+	    nutrit = 5 * objects[obj->otyp].nutrition;
+	}
+	if(obj->oeaten) {
+	    mtmp->meating = eaten_stat(mtmp->meating, obj);
+	    nutrit = eaten_stat(nutrit, obj);
+	}
+	edog->hungrytime += nutrit;
+	mtmp->mconf = 0;
+	if (mtmp->mtame < 20) mtmp->mtame++;
+	if(cansee(x,y))
+	    pline("%s eats %s.", Monnam(mtmp), doname(obj));
+	/* perhaps this was a reward */
+	if(otyp != CADAVER)
+#ifdef LINT
+	    edog->apport = 0;
+#else
+	    edog->apport += (unsigned)(200L/
+		((long)edog->dropdist+moves-edog->droptime));
+#endif
+	delobj(obj);
+}
+
 /* return 0 (no move), 1 (move) or 2 (dead) */
 int
 dog_move(mtmp, after)
@@ -32,10 +77,10 @@ long allowflags;
 
 	omx = mtmp->mx;
 	omy = mtmp->my;
-	whappr = (moves - EDOG(mtmp)->whistletime < 5);
-	if(moves > EDOG(mtmp)->hungrytime + 500) {
+	whappr = (moves - edog->whistletime < 5);
+	if(moves > edog->hungrytime + 500) {
 		if(!carnivorous(mtmp->data) && !herbivorous(mtmp->data)) {
-			EDOG(mtmp)->hungrytime = moves + 500;
+			edog->hungrytime = moves + 500;
 			/* but not too high; it might polymorph */
 		} else if (!mtmp->mconf) {
 			mtmp->mconf = 1;
@@ -45,7 +90,7 @@ long allowflags;
 			if(cansee(omx,omy))
 			    pline("%s is confused from hunger.", Monnam(mtmp));
 			else You("feel worried about %s.", mon_nam(mtmp));
-		} else if(moves > EDOG(mtmp)->hungrytime + 750 ||
+		} else if(moves > edog->hungrytime + 750 ||
 							mtmp->mhp < 1) {
 #ifdef WALKIES
 			if(mtmp->mleashed)
@@ -85,7 +130,8 @@ long allowflags;
 		    if((otyp = dogfood(mtmp, obj)) <= CADAVER){
 			nix = omx;
 			niy = omy;
-			goto eatobj;
+			dog_eat(mtmp, obj, otyp, nix, niy);
+			goto newdogpos;
 		    }
 		    if(can_carry(mtmp, obj))
 		    if(rn2(20) < edog->apport+3)
@@ -137,7 +183,7 @@ long allowflags;
 	    }
 
 	if(gtyp == UNDEF ||
-	  (gtyp != DOGFOOD && gtyp != APPORT && moves < EDOG(mtmp)->hungrytime)){
+	  (gtyp != DOGFOOD && gtyp != APPORT && moves < edog->hungrytime)){
 		if(dogroom < 0 || dogroom == uroom){
 			gx = u.ux;
 			gy = u.uy;
@@ -246,63 +292,19 @@ long allowflags;
 
 		/* dog eschews cursed objects */
 		/* but likes dog food */
-		obj = fobj;
-		if(OBJ_AT(nx, ny)) 
-		  while(obj){
-		    if(obj->ox != nx || obj->oy != ny)
-			goto nextobj;
+		for(obj = level.objects[nx][ny]; obj; obj = obj->nexthere) {
 		    if(obj->cursed && !mtmp->mleashed) goto nxti;
 		    if(obj->olet == FOOD_SYM &&
 			(otyp = dogfood(mtmp, obj)) < MANFOOD &&
-			(otyp < ACCFOOD || EDOG(mtmp)->hungrytime <= moves)){
+			(otyp < ACCFOOD || edog->hungrytime <= moves)){
 			/* Note: our dog likes the food so much that he
 			might eat it even when it conceals a cursed object */
 			nix = nx;
 			niy = ny;
 			chi = i;
-		     eatobj:
-			if(EDOG(mtmp)->hungrytime < moves)
-			    EDOG(mtmp)->hungrytime = moves;
-			/* Note: to get the correct percentage-eaten in case
-			 * oeaten is set, use "obj->owt / obj->quan /
-			 * base-weight".  It so happens that here we want to
-			 * multiply by obj->quan, which thus cancels out.
-			 * It is arbitrary that the pet takes the same length
-			 * of time to eat as a human, but gets 5X as much
-			 * nutrition.
-			 */
-			if(obj->otyp == CORPSE) {
-			    mtmp->meating =
-				(3 + (mons[obj->corpsenm].cwt >> 2))
-				* obj->owt / mons[obj->corpsenm].cwt;
-			    EDOG(mtmp)->hungrytime += 5 * 
-				mons[obj->corpsenm].cnutrit
-				* obj->owt / mons[obj->corpsenm].cwt;
-			} else {
-			    mtmp->meating =
-				objects[obj->otyp].oc_delay
-				* obj->owt / objects[obj->otyp].oc_weight;
-			    EDOG(mtmp)->hungrytime += 5 *
-				objects[obj->otyp].nutrition
-				* obj->owt / objects[obj->otyp].oc_weight;
-			}
-			mtmp->mconf = 0;
-			if (mtmp->mtame < 20) mtmp->mtame++;
-			if(cansee(nix,niy))
-			    pline("%s eats %s.", Monnam(mtmp), doname(obj));
-			/* perhaps this was a reward */
-			if(otyp != CADAVER)
-#ifdef LINT	/* edog->apport += (unsigned) (200L/((long) edog->dropdist...*/
-			edog->apport = 0;
-#else
-			edog->apport += (unsigned)(200L/
-				((long)edog->dropdist+moves-edog->droptime));
-#endif
-			delobj(obj);
+			dog_eat(mtmp, obj, otyp, nix, niy);
 			goto newdogpos;
 		    }
-		nextobj:
-		    obj = obj->nobj;
 		}
 
 		for(j=0; j<MTSZ && j<cnt-1; j++)

@@ -77,7 +77,10 @@ cursed_book(lev)
 	return;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 learn()
 {
 	register int	i;
@@ -382,7 +385,7 @@ boolean atme;
 		healup(0, 0, 0, 1);
 		break;
 	case SPE_CURE_SICKNESS:
-		You("are no longer ill.");
+		if (Sick) You("are no longer ill.");
 		healup(0, 0, 1, 0);
 		break;
 	case SPE_EXTRA_HEALING:

@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)worn.c	3.0	88/12/23
+/*	SCCS Id: @(#)worn.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
-static const char crispy[] = "The flames of Hell burn you to a crisp.";
-static void set_armor_intrinsic P((struct obj *,long,BOOLEAN_P));
+static const char crispy[] = "The flames of hell burn you to a crisp.";
+static void FDECL(set_armor_intrinsic, (struct obj *,BOOLEAN_P));
 
 const struct worn {
 	long w_mask;
@@ -49,15 +49,19 @@ long mask;
 		    u.uprops[objects[oobj->otyp].oc_oprop].p_flgs = 
 			    u.uprops[objects[oobj->otyp].oc_oprop].p_flgs & 
 				~wp->w_mask;
-		    set_armor_intrinsic(oobj, wp->w_mask, 0);
+		    set_armor_intrinsic(oobj, 0);
 		}
 		*(wp->w_obj) = obj;
 		if(obj) {
 		    obj->owornmask |= wp->w_mask;
-		    u.uprops[objects[obj->otyp].oc_oprop].p_flgs = 
+		/* prevent getting intrinsics from wielding potions, etc... */
+		/* wp_mask should be same as mask at this point */
+		    if(obj->olet == WEAPON_SYM || mask != W_WEP) {
+			u.uprops[objects[obj->otyp].oc_oprop].p_flgs = 
 			    u.uprops[objects[obj->otyp].oc_oprop].p_flgs | 
 				wp->w_mask;
-		    set_armor_intrinsic(obj, wp->w_mask, 1);
+			set_armor_intrinsic(obj, 1);
+		    }
 		}
 	}
 	/* A kludge to solve the problem of someone gaining fire resistance
@@ -98,7 +102,7 @@ register struct obj *obj;
 				u.uprops[objects[obj->otyp].oc_oprop].p_flgs & 
 					~wp->w_mask;
 			obj->owornmask &= ~wp->w_mask;
-			set_armor_intrinsic(obj, wp->w_mask, 0);
+			set_armor_intrinsic(obj, 0);
 		}
 	/* See comments above in setworn().  The major difference is the
 	 * need to check AMULET_SYM so if someone goes to Hell without
@@ -129,9 +133,8 @@ register struct obj *obj;
 }
 
 static void
-set_armor_intrinsic(obj,maskbit,on)
+set_armor_intrinsic(obj,on)
 register struct obj *obj;
-long maskbit;	/* people can do funny things like wield armor */
 boolean on;
 {
 	long *mask;
@@ -163,6 +166,6 @@ boolean on;
 		default:
 			return;
 	}
-	if (on) *mask |= maskbit;
-	else *mask &= ~maskbit;
+	if (on) *mask |= WORN_ARMOR;
+	else *mask &= ~WORN_ARMOR;
 }

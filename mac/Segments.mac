@@ -21,6 +21,7 @@ cmd.c
 getline.c
 mac.c
 macfile.c
+MacTraps
 pcmain.c
 prisym.c
 random.c
@@ -31,7 +32,6 @@ termcap.c
 apply.c
 attrib.c
 do.c
-hack.c
 
 ===== Seg 3 =====
 dog.c
@@ -39,6 +39,7 @@ dogmove.c
 dokick.c
 dothrow.c
 do_name.c
+hack.c
 
 ===== Seg 4 =====
 do_wear.c
@@ -87,9 +88,9 @@ potion.c
 pray.c
 pri.c
 priest.c
-read.c
 
 ===== Seg 12 =====
+read.c
 restore.c
 rumors.c
 save.c
@@ -97,9 +98,10 @@ search.c
 sit.c
 sounds.c
 spell.c
-steal.c
 
 ===== Seg 13 =====
+sp_lev.c
+steal.c
 timeout.c
 topl.c
 track.c
@@ -116,7 +118,6 @@ write.c
 zap.c
 
 ===== Seg 15 =====
-MacTraps
 stdio [LIB]
 storage [LIB]
 strings [LIB]

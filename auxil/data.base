@@ -1,5 +1,5 @@
 	NetHack data file - version 3.0
-@	human;
+@	a human;
 		These strange creatures live mostly on the  surface  of  the
 		earth, gathering together in societies of various forms, but
 		occasionally a stray will descend into the depths and commit
@@ -7,15 +7,8 @@
 		resent the intrusion of such beasts.  They  are  capable  of
 		using  weapons  and  magic,  and it is even rumored that the
 		Wizard of Yendor is a member of this species.
--	a wall
-|	a wall
-+	a door
-.	the floor of a room
- 	a dark part of a room (or a ghost)
-#	a corridor
-<	a way to the previous level
->	a way to the next level
-}	water filled area
++	a spell book
+ 	a ghost
 )	a weapon
 [	a suit or piece of armor
 %	a piece of food
@@ -35,8 +28,7 @@ $	a pile of gold;
 		coin and jewelry.
 		      [ Webster's New International Dictionary of the
 			English Language, Second Edition ]
-"	an amulet (or a web)
-^	a trap
+"	an amulet
 0	an iron ball
 _	an iron chain
 `	a boulder or statue
@@ -92,26 +84,34 @@ i	an imp or minor demon;
 		The fairies of tradition often hover  uneasily  between  the
 		ghostly and the diabolic state.
 				 [Katharine Briggs, A Dictionary of Fairies]
+j	a jelly
 k	a kobold;
 		The race of kobolds are reputed to be an artificial creation
 		of a master wizard (demi-god?).  They are about 3' tall with
 		a vaguely dog-like face.  They bear a violent dislike of the
 		Elven race, and  will go out  of their way to  cause trouble
 		for Elves at any time.
-l	a lich;
-		Once in a great  while, an evil master wizard or priest will
-		manage through use of great magics to extend his or her life
-		far beyond the normal  span of a human.  The usual effect of
-		this is to transform the human, over time, into an undead of
-		great magical power.  A Lich  hates life in any form; even a
-		touch from one of these  creatures will cause a numbing cold
-		in the victim.  They all possess the capability to use magic.
+l	a leprechaun;
+		The Irish Leprechaun is the Faeries' shoemaker and is  known
+		under  various names  in different parts of Ireland:  Cluri-
+		caune in Cork, Lurican in Kerry, Lurikeen in Kildare and Lu-
+		rigadaun  in  Tipperary.  Although he works for the Faeries,
+		the Leprechaun is not of the same species.  He is small, has
+		dark  skin  and wears strange clothes.  His nature has some-
+		thing of the manic-depressive about it:  first he  is  quite
+		happy, whistling merrily as he nails a sole on to a shoe;  a
+		few minutes later, he is sullen and  morose,  drunk  on  his
+		home-made heather ale.  The Leprechaun's two great loves are
+		tobacco and whiskey, and he is a first-rate con-man,  impos-
+		sible  to  out-fox.  No  one, no matter how clever, has ever
+		managed to cheat him out of his hidden pot of  gold  or  his
+		magic shilling.  At the last minute he always thinks of some
+		way to divert his captor's attention  and  vanishes  in  the
+		twinkling  of  an eye.
+					 [A Field Guide to the Little People
+					by Nancy Arrowsmith & George Moorse]
 m	a mimic
-n	a naga;
-		The naga is a mystical creature with the body of a snake and
-		the head of a man or woman.  They will fiercely  protect the
-		territory they consider their own.  Some nagas can be forced
-		to serve as a guardian by a spell caster of great power.
+n	a nymph
 o	an orc
 p	a piercer;
 		Ye Piercer doth look like unto  a  stalactyte,  and  hangeth
@@ -168,7 +168,7 @@ w	a worm;
 		knives are treated for storage.  All are about  20  centime-
 		ters long.
 						[ Dune, by Frank Herbert ]
-x	a xan;
+x	a xan or other mythical/fantastic insect;
 		They sent their friend the mosquito [xan] ahead of  them  to
 		find  out  what lay ahead.  "Since you are the one who sucks
 		the blood of men walking along paths," they told the mosqui-
@@ -247,29 +247,37 @@ H	a giant humanoid;
 		types of giants share a love for men  -  roasted, boiled, or
 		fried.  Their table manners are legendary.
 I	an invisible stalker
-J	a jelly
+J	a jabberwock;
+		"Beware the Jabberwock, my son!
+		  The jaws that bite, the claws that catch!
+		Beware the Jubjub bird, and shun
+		  The frumious Bandersnatch!"
+		
+		He took his vorpal sword in hand;
+		  Long time the manxome foe he sought --
+		So rested he by the Tumtum tree,
+		  And stood awhile in thought.
+		
+		And, as in uffish thought he stood,
+		  The Jabberwock, with eyes of flame,
+		Came whiffling through the tulgey wood,
+		  And burbled as it came!
+					[Jabberwocky, by Lewis Carroll]
 K	a Keystone Kop
-L	a leprechaun;
-		The Irish Leprechaun is the Faeries' shoemaker and is  known
-		under  various names  in different parts of Ireland:  Cluri-
-		caune in Cork, Lurican in Kerry, Lurikeen in Kildare and Lu-
-		rigadaun  in  Tipperary.  Although he works for the Faeries,
-		the Leprechaun is not of the same species.  He is small, has
-		dark  skin  and wears strange clothes.  His nature has some-
-		thing of the manic-depressive about it:  first he  is  quite
-		happy, whistling merrily as he nails a sole on to a shoe;  a
-		few minutes later, he is sullen and  morose,  drunk  on  his
-		home-made heather ale.  The Leprechaun's two great loves are
-		tobacco and whiskey, and he is a first-rate con-man,  impos-
-		sible  to  out-fox.  No  one, no matter how clever, has ever
-		managed to cheat him out of his hidden pot of  gold  or  his
-		magic shilling.  At the last minute he always thinks of some
-		way to divert his captor's attention  and  vanishes  in  the
-		twinkling  of  an eye.
-					 [A Field Guide to the Little People
-					by Nancy Arrowsmith & George Moorse]
+L	a lich;
+		Once in a great  while, an evil master wizard or priest will
+		manage through use of great magics to extend his or her life
+		far beyond the normal  span of a human.  The usual effect of
+		this is to transform the human, over time, into an undead of
+		great magical power.  A Lich  hates life in any form; even a
+		touch from one of these  creatures will cause a numbing cold
+		in the victim.  They all possess the capability to use magic.
 M	a mummy
-N	a nymph
+N	a naga;
+		The naga is a mystical creature with the body of a snake and
+		the head of a man or woman.  They will fiercely  protect the
+		territory they consider their own.  Some nagas can be forced
+		to serve as a guardian by a spell caster of great power.
 O	an ogre
 P	a pudding or ooze;
 		These giant amoeboid creatures look like nothing  more  than
@@ -292,5 +300,10 @@ X	a xorn
 Y	a yeti
 Z	a zombie
 &	a demon
-:	a chameleon
-;	a giant eel
+:	a lizard
+;	a giant eel or other water creature
+'	a golem;
+		These creatures, not quite living but not  really  nonliving
+		either,   are   created from inanimate materials by powerful
+		mages or priests.
+~	the tail of a long worm

@@ -43,8 +43,13 @@ register struct monst *mtmp;
 			!(here->diggable & W_NONDIGGABLE)) {
 		if(flags.soundok && flags.verbose && !rn2(5))
 		       You("hear the sound of crashing rock.");
-		here->typ = DOOR;
-		here->doormask = D_NODOOR;
+		if(!is_maze_lev) {
+		  here->typ = DOOR;
+		  here->doormask = D_NODOOR;
+		}
+		else
+		  here->typ = ROOM;
+		mnewsym(mtmp->mx, mtmp->my);
 	    }
 	}
 	/* Eats away door if present & closed or locked */
@@ -52,11 +57,13 @@ register struct monst *mtmp;
 		(here->doormask & (D_LOCKED | D_CLOSED))) {
 		if(here->doormask & D_TRAPPED) {
 		    here->doormask = D_NODOOR;
+		    mnewsym(mtmp->mx, mtmp->my);
 		    if(mb_trapped(mtmp)) return(FALSE);
 		} else {
 		    if(!rn2(3) && flags.verbose) /* not too often.. */
 		        You("feel an unexpected draft of air.");
 		    here->doormask = D_BROKEN;
+		    mnewsym(mtmp->mx, mtmp->my);
 		}
 	    }
 	else return TRUE; /* it doesn't leave rocks if it didn't dig */
@@ -132,7 +139,7 @@ int *inrange, *nearby, *scared;
 
 	*inrange = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <=
 							(BOLT_LIM * BOLT_LIM));
-	*nearby = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) < 3);
+	*nearby = monnear(mtmp, mtmp->mux, mtmp->muy);
 
 	/* Note: if your image is displaced, the monster sees the Elbereth
 	 * at your displaced position, thus never attacking your displaced
@@ -232,7 +239,7 @@ register struct monst *mtmp;
 	/* check distance and scariness of attacks */
 	distfleeck(mtmp,&inrange,&nearby,&scared);
 
-#ifdef HARD	/* Demonic Blackmail!!! */
+#ifdef INFERNO		/* Demonic Blackmail!!! */
 	if(nearby && is_demon(mdat) && mtmp->mpeaceful && !mtmp->mtame) {
 		if (mtmp->mux != u.ux || mtmp->muy != u.uy) {
 			pline("%s whispers something to thin air.",
@@ -619,20 +626,26 @@ postmov:
 			/* can't lock out shk */
 		    if(btrapped) {
 			here->doormask = D_NODOOR;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 			if(mb_trapped(mtmp)) return(2);
 		    } else {
 			if (flags.verbose) {
 			    if (canseeit)
-			       You("see a door being unlocked and opened.");
+			      You("see a door being unlocked and opened.");
 			    else if (flags.soundok)
 			       You("hear a door being unlocked and opened.");
 		        }
 		        here->doormask = D_ISOPEN;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 		    }
 		} else if (here->doormask == D_CLOSED && 
 					!nohands(mtmp->data)) {
 		    if(btrapped) {
 			here->doormask = D_NODOOR;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 			if(mb_trapped(mtmp)) return(2);
 		    } else {
 		        if (flags.verbose) {
@@ -642,11 +655,15 @@ postmov:
 			         You("hear the sound of a door opening.");
 		        }
 		        here->doormask = D_ISOPEN;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 		    }
 		} else if(here->doormask & (D_LOCKED | D_CLOSED)) {
 			/* mfndpos guarantees monster is a giant */
 		    if(btrapped) {
 			here->doormask = D_NODOOR;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 			if(mb_trapped(mtmp)) return(2);
 		    } else {
 		        if (flags.verbose) {
@@ -658,9 +675,11 @@ postmov:
 		        if (here->doormask & D_LOCKED && !rn2(2))
 			        here->doormask = D_NODOOR;
 		        else here->doormask = D_BROKEN;
+			mnewsym(mtmp->mx, mtmp->my);
+			if (canseeit) prl(mtmp->mx,mtmp->my);
 		    }
 		}
-	    }
+	      }
 	    /* Maybe a rock mole just ate something? */
 	    if(can_tunnel) if(!mdig_tunnel(mtmp)) return(2); /* died? */
 

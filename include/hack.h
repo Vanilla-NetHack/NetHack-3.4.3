@@ -79,6 +79,16 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #include	"extern.h"
 #endif
 
+#ifdef OVERLAY
+#ifndef TRAMPOLI_H
+#include	"trampoli.h"
+#endif
+
+#undef EXTERN_H
+#include	"extern.h"
+#endif /* OVERLAY */
+
+
 #ifdef STRONGHOLD
 # define Inhell		(dlevel > stronghold_level && dlevel <= MAXLEVEL)
 #else
@@ -103,7 +113,7 @@ extern coord bhitpos;	/* place where thrown weapon falls to the ground */
 #define	makeknown(x)	objects[x].oc_name_known = 1
 # endif /* STUPID_CPP */
 
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 #define getuid() 1
 #define getlogin() ((char *) NULL)
 #endif /* MSDOS */

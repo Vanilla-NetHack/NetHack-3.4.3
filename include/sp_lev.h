@@ -43,7 +43,7 @@ typedef struct {
 
 typedef struct {
 	xchar x1, y1, x2, y2;
-} dig;
+} digpos;
 
 typedef struct {
 	xchar x, y, up;
@@ -80,7 +80,7 @@ typedef struct {
 	char nwalk;
 	walk **walks;
 	char ndig;
-	dig **digs;
+	digpos **digs;
 	char nlad;
 	lad **lads;
 #ifdef ALTARS

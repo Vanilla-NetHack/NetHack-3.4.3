@@ -313,7 +313,8 @@ data 'HDTA' (208, "Extended Commands") {
 
 data 'HDTA' (102, "graphics") {
 	$"20 BA CD C9 BB C8 BC CE CA CB B9 CC B3 C4 5C 2F"/*  :MI;H<NJK9L3D\/ */
-	$"EF FA B0 3C 3E 5E 22 7D 7B 23 5C 5F 3C 3E 23 23"/* ..0<>^"}{#\_<>## */
+	$"B0 CD BA EF FA B0 3C 3E 5E 22 7D 7B 23 5C 5F 3C"/* ..0<>^"}{#\_<>## */
+	$"3E 23 23 00"
 };
 
 data 'HDTA' (103, "keymap") {

@@ -1,16 +1,13 @@
-/*	SCCS Id: @(#)mon.c	3.0	88/10/31
+/*	SCCS Id: @(#)mon.c	3.0	89/11/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifdef MICROPORT_BUG
+#if (defined(MICROPORT_BUG) || !defined(LINT)) && !defined(__STDC__)
 #define MKROOM_H
 #endif
 
 #include "hack.h"
 #include "mfndpos.h"
-#ifdef NAMED_ITEMS
-#  include "artifact.h"
-#endif
 
 #ifdef WORM
 #  include "wseg.h"
@@ -49,42 +46,49 @@ register struct monst *mtmp;
 	    case PM_KOBOLD_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_KOBOLD;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_GNOME_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_GNOME_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_GNOME;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_ORC_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_ORC_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_ORC;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_ELF_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_ELF_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_ELF;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_HUMAN_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_HUMAN_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_HUMAN;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_GIANT_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_GIANT_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_GIANT;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 	    case PM_ETTIN_MUMMY:
 		obj = mksobj_at(MUMMY_WRAPPING, x, y); /* and fall through */
 	    case PM_ETTIN_ZOMBIE:
 		obj = mksobj_at(CORPSE, x, y);
 		obj->corpsenm = PM_ETTIN;
+		obj->age -= 50;			/* this is an *OLD* corpse */
 		break;
 #ifdef GOLEMS
 	    case PM_IRON_GOLEM:
@@ -173,7 +177,10 @@ movemon()
 		mtmp->mlstmv = moves;
 
 		/* most monsters drown in pools */
-		{ boolean inpool,infountain,iseel,isgremlin;
+		{ boolean inpool,iseel,isgremlin;
+#ifdef FOUNTAINS
+		  boolean infountain;
+#endif
 
 		  inpool = is_pool(mtmp->mx,mtmp->my);
 		  iseel = mtmp->data->mlet == S_EEL;
@@ -226,7 +233,7 @@ movemon()
 		if(mtmp->mspeed != MSLOW || !(moves%2)){
 			/* continue if the monster died fighting */
 			fr = -1;
-/* TODO:	Handle the case of the agressor dying? */
+/* TODO:	Handle the case of the aggressor dying? */
 			if(Conflict && !mtmp->iswiz &&
 			   /* area you can see if you're not blind */
 			   (dist(mtmp->mx,mtmp->my) < 3 ||
@@ -300,9 +307,9 @@ meatgold(mtmp)
 		newsym(mtmp->mx, mtmp->my);
 	}
 	/* Eats topmost metal object if it is there */
-	for (otmp = fobj; otmp; otmp = otmp->nobj)
-	    if (otmp->ox == mtmp->mx && otmp->oy == mtmp->my &&
-		objects[otmp->otyp].oc_material > WOOD &&
+	for (otmp = level.objects[mtmp->mx][mtmp->my];
+						    otmp; otmp = otmp->nexthere)
+	    if (objects[otmp->otyp].oc_material > WOOD &&
 		objects[otmp->otyp].oc_material < MINERAL) {
 		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s eats %s!", Monnam(mtmp),
@@ -337,29 +344,27 @@ meatobj(mtmp)		/* for gelatinous cubes */
 
 	/* Eats organic, glass, or wood objects if there */
 	/* Engulfs others, except huge rocks and metal attached to player */
-	for (otmp = fobj; otmp; otmp = otmp2) {
-	    otmp2 = otmp->nobj;
-	    if (otmp->ox == mtmp->mx && otmp->oy == mtmp->my) {
-		if(objects[otmp->otyp].oc_material <= WOOD) {
-		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
-			pline("%s eats %s!", Monnam(mtmp),
-				distant_name(otmp, doname));
-		    else if (flags.soundok && flags.verbose)
-			You("hear a slurping sound.");
-                    /* Heal up to the object's weight in hp */
-		    if (mtmp->mhp < mtmp->mhpmax) {
-			mtmp->mhp += objects[otmp->otyp].oc_weight;
-			if (mtmp->mhp > mtmp->mhpmax) mtmp->mhp = mtmp->mhpmax;
-		    }
-		    delobj(otmp);		/* munch */
-		} else if (otmp->olet != ROCK_SYM &&
-					otmp != uball && otmp != uchain) {
-		    if (cansee(mtmp->mx, mtmp->my) && flags.verbose)
-			pline("%s engulfs %s.", Monnam(mtmp),
-				distant_name(otmp,doname));
-		    freeobj(otmp);
-		    mpickobj(mtmp, otmp);	/* slurp */
+	for (otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp = otmp2) {
+	    otmp2 = otmp->nexthere;
+	    if(objects[otmp->otyp].oc_material <= WOOD) {
+		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
+		    pline("%s eats %s!", Monnam(mtmp),
+			    distant_name(otmp, doname));
+		else if (flags.soundok && flags.verbose)
+		    You("hear a slurping sound.");
+		/* Heal up to the object's weight in hp */
+		if (mtmp->mhp < mtmp->mhpmax) {
+		    mtmp->mhp += objects[otmp->otyp].oc_weight;
+		    if (mtmp->mhp > mtmp->mhpmax) mtmp->mhp = mtmp->mhpmax;
 		}
+		delobj(otmp);		/* munch */
+	    } else if (otmp->olet != ROCK_SYM &&
+				    otmp != uball && otmp != uchain) {
+		if (cansee(mtmp->mx, mtmp->my) && flags.verbose)
+		    pline("%s engulfs %s.", Monnam(mtmp),
+			    distant_name(otmp,doname));
+		freeobj(otmp);
+		mpickobj(mtmp, otmp);	/* slurp */
 	    }
 	    /* Engulf & devour is instant, so don't set meating */
 	    newsym(mtmp->mx, mtmp->my);
@@ -389,20 +394,19 @@ mpickgems(mtmp)
 {
 	register struct obj *otmp;
 
-	for(otmp = fobj; otmp; otmp = otmp->nobj)
-	  if(throws_rocks(mtmp->data) ? otmp->otyp == BOULDER :
+	for(otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp=otmp->nexthere)
+	    if(throws_rocks(mtmp->data) ? otmp->otyp == BOULDER :
 			(otmp->olet == GEM_SYM && otmp->otyp < LAST_GEM+6))
-	    if(otmp->ox == mtmp->mx && otmp->oy == mtmp->my)
-	      if(mtmp->data->mlet != S_UNICORN
-		 || objects[otmp->otyp].g_val != 0){
-		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
+		if(mtmp->data->mlet != S_UNICORN
+			|| objects[otmp->otyp].g_val != 0){
+		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s picks up %s.", Monnam(mtmp),
 				distant_name(otmp, doname));
-		freeobj(otmp);
-		mpickobj(mtmp, otmp);
-		newsym(mtmp->mx, mtmp->my);
-		return;	/* pick only one object */
-	      }
+		    freeobj(otmp);
+		    mpickobj(mtmp, otmp);
+		    newsym(mtmp->mx, mtmp->my);
+		    return;	/* pick only one object */
+		}
 }
 
 int
@@ -481,9 +485,8 @@ mpickstuff(mtmp, str)
 /*	prevent shopkeepers from leaving the door of their shop */
 	if(mtmp->isshk && inhishop(mtmp)) return;
 
-	for(otmp = fobj; otmp; otmp = otmp->nobj)
-	  if(index(str, otmp->olet))
-	    if(otmp->ox == mtmp->mx && otmp->oy == mtmp->my) {
+	for(otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp=otmp->nexthere)
+	    if(index(str, otmp->olet)) {
 		if(!can_carry(mtmp,otmp)) return;
 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s picks up %s.", Monnam(mtmp), doname(otmp));
@@ -503,14 +506,16 @@ mfndpos(mon, poss, info, flag)
 	long *info;	/* long info[9] */
 	long flag;
 {
-	register int x,y,nx,ny,cnt = 0,ntyp;
-	int nowtyp;
-	boolean wantpool,poolok;
+	register int x,y,nx,ny,cnt = 0;
+	register uchar ntyp;
+	uchar nowtyp;
+	boolean wantpool,poolok,nodiag;
 
 	x = mon->mx;
 	y = mon->my;
 	nowtyp = levl[x][y].typ;
 
+	nodiag = (mon->data == &mons[PM_GRID_BUG]);
 	wantpool = mon->data->mlet == S_EEL;
 	poolok = is_flyer(mon->data) || (is_swimmer(mon->data) && !wantpool);
 nexttry:	/* eels prefer the water, but if there is no water nearby,
@@ -523,6 +528,7 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		flag |= ALLOW_SSM;
 	for(nx = x-1; nx <= x+1; nx++) for(ny = y-1; ny <= y+1; ny++) {
 	    if((nx == x && ny == y) || !isok(nx,ny)) continue;
+	    if(nx != x && ny != y && nodiag) continue;
 	    if(IS_ROCK(ntyp = levl[nx][ny].typ) && !(flag & ALLOW_WALL) &&
 		!((flag & ALLOW_DIG) && may_dig(nx,ny))) continue;
 	    if(IS_DOOR(ntyp) && !amorphous(mon->data) &&
@@ -532,7 +538,16 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		   (verysmall(mon->data) ||
 		    (!is_giant(mon->data) && nohands(mon->data))))
 	       ) && !(flag & (ALLOW_WALL|ALLOW_DIG))) continue;
-	    if(nx != x && ny != y && (IS_DOOR(nowtyp) || IS_DOOR(ntyp)))
+	    if(nx != x && ny != y &&
+#ifdef REINCARNATION
+	       ((IS_DOOR(nowtyp) && ((levl[x][y].doormask & ~D_BROKEN)
+			|| dlevel == rogue_level)) ||
+		(IS_DOOR(ntyp) && ((levl[nx][ny].doormask & ~D_BROKEN)
+			|| dlevel == rogue_level))))
+#else
+	       ((IS_DOOR(nowtyp) && (levl[x][y].doormask & ~D_BROKEN)) ||
+		(IS_DOOR(ntyp) && (levl[nx][ny].doormask & ~D_BROKEN))))
+#endif
 		continue;
 	    if(is_pool(nx,ny) == wantpool || poolok) {
 		/* Displacement also displaces the Elbereth/scare monster,
@@ -629,6 +644,17 @@ register int x,y;
 	return dx*dx + dy*dy;
 }
 
+boolean
+monnear(mon, x, y)
+register struct monst *mon;
+register int x,y;
+/* Is the square close enough for the monster to move or attack into? */
+{
+	register int distance = dist2(mon->mx, mon->my, x, y);
+	if (distance==2 && mon->data==&mons[PM_GRID_BUG]) return 0;
+	return (distance < 3);
+}
+
 static const char *poiseff[] = {
 
 	" feel very weak", "r brain is on fire",
@@ -659,7 +685,7 @@ register int  typ;
 	    plural = (string[strlen(string) - 1] == 's')? 1 : 0;
 	    if(Blind)
 		pline("%s poisoned.", plural ? "They were" : "It was");
-#ifdef HARD
+#ifdef INFERNO
 	    /* avoid "The" Orcus's sting was poisoned... */
 	    else if(isupper(*string))
 		pline("%s %s poisoned!", string, plural ? "were" : "was");
@@ -930,6 +956,11 @@ xkilled(mtmp, dest)
 		newsym(x,y);
 	}
 #endif
+	if(mdat->mlet == S_UNICORN) {
+		(void) mksobj_at(UNICORN_HORN, x, y);
+		stackobj(fobj);
+		newsym(x,y);
+	}
 #ifdef MAIL
 	if(mdat == &mons[PM_MAIL_DAEMON]) {
 		(void) mksobj_at(SCR_MAIL, x, y);
@@ -954,7 +985,7 @@ xkilled(mtmp, dest)
 			otmp = mkobj_at(RANDOM_SYM, x, y);
 			/* Don't create large objects from small monsters */
 			typ = otmp->otyp;
-			if (!bigmonst(mdat) && typ != FOOD_RATION
+			if (mdat->msize < MZ_HUMAN && typ != FOOD_RATION
 #ifdef WALKIES
 			    && typ != LEASH
 #endif
@@ -973,7 +1004,7 @@ xkilled(mtmp, dest)
 		 * different from whether or not the corpse is "special";
 		 * if we want both, we have to specify it explicitly.
 		 */
-		if (bigmonst(mdat)
+		if (bigmonst(mdat) || mdat == &mons[PM_LIZARD]
 #ifdef GOLEMS
 				   || is_golem(mdat)
 #endif
@@ -1007,7 +1038,7 @@ restartcham() {
 	register struct monst *mtmp;
 
 	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-		if (mtmp->data->mlet == S_CHAMELEON)
+		if (mtmp->data == &mons[PM_CHAMELEON])
 			mtmp->cham = 1;
 }
 
@@ -1045,11 +1076,12 @@ newcham(mtmp, mdat)	/* make a chameleon look like a new monster */
 #ifdef WORM
 	if(mtmp->wormno) wormdead(mtmp);	/* throw tail away */
 #endif
-	mtmp->m_lev = adj_lev(mdat);		/* new monster level */
-
 	hpn = mtmp->mhp;
  	hpd = (mtmp->m_lev < 50) ? (mtmp->m_lev)*8 : mdat->mlevel;
  	if(!hpd) hpd = 4;
+
+	mtmp->m_lev = adj_lev(mdat);		/* new monster level */
+
  	mhp = (mtmp->m_lev < 50) ? (mtmp->m_lev)*8 : mdat->mlevel;
  	if(!mhp) mhp = 4;
 
@@ -1244,7 +1276,7 @@ register struct monst *mdef;
 {
 	struct obj *otmp;
 
-	if(!verysmall(mdef->data) ||
+	if(mdef->data->msize > MZ_TINY ||
 	   !rn2(2 + ((mdef->data->geno & G_FREQ) > 2))) {
 		otmp = mk_named_object(STATUE, mdef->data, mdef->mx, mdef->my,
 			NAME(mdef), (int)mdef->mnamelth);

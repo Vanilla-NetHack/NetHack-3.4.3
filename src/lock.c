@@ -11,7 +11,9 @@ static struct {
 	int chance, usedtime;
 } xlock;
 
+#ifndef OVERLAY
 static
+#endif
 int
 picklock() {	/* try to open/close a lock */
 
@@ -59,6 +61,8 @@ picklock() {	/* try to open/close a lock */
 	    if(xlock.door->doormask & D_TRAPPED) {
 		    b_trapped("door");
 		    xlock.door->doormask = D_NODOOR;
+		    mnewsym(u.ux+u.dx, u.uy+u.dy);
+		    prl(u.ux+u.dx, u.uy+u.dy);
 	    } else if(xlock.door->doormask == D_LOCKED)
 		xlock.door->doormask = D_CLOSED;
 	    else xlock.door->doormask = D_LOCKED;
@@ -72,7 +76,9 @@ picklock() {	/* try to open/close a lock */
 	return((xlock.usedtime = 0));
 }
 
-static
+#ifndef OVERLAY
+static 
+#endif
 int
 forcelock() {	/* try to force a locked chest */
 
@@ -182,46 +188,44 @@ pick_lock(pick) /* pick a lock with a given object */
 	y = u.uy + u.dy;
 	if((x == u.ux) && (y == u.uy)) { /* pick the lock on a container */
 	    c = 'n';			/* in case there are no boxes here */
-	    if(OBJ_AT(x, y))
-	    for(otmp = fobj; otmp; otmp = otmp->nobj)
-		if((otmp->ox == x) && (otmp->oy == y))
-		    if(Is_box(otmp) &&
-		       /* credit cards are only good for unlocking */
-		       (picktyp != CREDIT_CARD || otmp->olocked)) {
-			pline("There is %s here, %s the lock? ",
-			doname(otmp), (!otmp->olocked) ? "close" :
-			((picktyp == LOCK_PICK) ? "pick" : "open" ));
+	    for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+		if(Is_box(otmp) &&
+			       /* credit cards are only good for unlocking */
+			       (picktyp != CREDIT_CARD || otmp->olocked)) {
+		    pline("There is %s here, %s the lock? ",
+		    doname(otmp), (!otmp->olocked) ? "close" :
+		    ((picktyp == LOCK_PICK) ? "pick" : "open" ));
 
-			c = ynq();
-			if(c == 'q') return(0);
-			if(c == 'n') continue;
+		    c = ynq();
+		    if(c == 'q') return(0);
+		    if(c == 'n') continue;
 
-			if(picktyp == KEY && otmp->spe != pick->spe) {
-				pline("The %s won't fit the lock.",xname(pick));
-				return(1);
-			}
-			switch(picktyp) {
-			    case CREDIT_CARD:
-				ch = ACURR(A_DEX)+(20*(pl_character[0] == 'R'));
-				break;
-			    case LOCK_PICK:
-				ch = 4*ACURR(A_DEX)+(25*(pl_character[0] == 'R'));
-				break;
-			    case SKELETON_KEY:
-				ch = 75 + ACURR(A_DEX);
-				break;
-			    case KEY:
-				ch = 1000;
-				break;
-			    default:	ch = 0;
-			}
-			if(otmp->cursed) ch /= 2;
-
-			xlock.door_or_box = 0;
-			xlock.picktyp = picktyp;
-			xlock.box = otmp;
-			break;
+		    if(picktyp == KEY && otmp->spe != pick->spe) {
+			    pline("The %s won't fit the lock.",xname(pick));
+			    return(1);
 		    }
+		    switch(picktyp) {
+			case CREDIT_CARD:
+			    ch = ACURR(A_DEX)+(20*(pl_character[0] == 'R'));
+			    break;
+			case LOCK_PICK:
+			    ch = 4*ACURR(A_DEX)+(25*(pl_character[0] == 'R'));
+			    break;
+			case SKELETON_KEY:
+			    ch = 75 + ACURR(A_DEX);
+			    break;
+			case KEY:
+			    ch = 1000;
+			    break;
+			default:	ch = 0;
+		    }
+		    if(otmp->cursed) ch /= 2;
+
+		    xlock.door_or_box = 0;
+		    xlock.picktyp = picktyp;
+		    xlock.box = otmp;
+		    break;
+		}
 	    if(c != 'y')
 		return(0);		/* decided against all boxes */
 	} else {			/* pick the lock in a door */
@@ -329,32 +333,30 @@ doforce() {		/* try to force a chest with your weapon */
 
 	/* A lock is made only for the honest man, the thief will break it. */
 	xlock.box = (struct obj *)0;
-	if(OBJ_AT(u.ux, u.uy))
-	for(otmp = fobj; otmp; otmp = otmp->nobj)
-	    if((otmp->ox == u.ux) && (otmp->oy == u.uy))
-		if(Is_box(otmp)) {
-		  if(otmp->olocked)
+	for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp->nexthere)
+	    if(Is_box(otmp)) {
+		if(otmp->olocked)
 		    pline("There is %s here, force the lock? ", doname(otmp));
-		  else {
+		else {
 		    pline("There is a %s here, but it's already unlocked.",
 			  xname(otmp));
 		    continue;
-		  }
-
-		  c = ynq();
-		  if(c == 'q') return(0);
-		  if(c == 'n') continue;
-
-		  if(picktyp)
-		    You("force your %s into a crack and pry.", xname(uwep));
-		  else
-		    You("start bashing it with your %s.", xname(uwep));
-		  xlock.box = otmp;
-		  xlock.chance = objects[otmp->otyp].wldam * 2;
-		  xlock.picktyp = picktyp;
-		  xlock.usedtime = 0;
-		  break;
 		}
+
+		c = ynq();
+		if(c == 'q') return(0);
+		if(c == 'n') continue;
+
+		if(picktyp)
+		    You("force your %s into a crack and pry.", xname(uwep));
+		else
+		    You("start bashing it with your %s.", xname(uwep));
+		xlock.box = otmp;
+		xlock.chance = objects[otmp->otyp].wldam * 2;
+		xlock.picktyp = picktyp;
+		xlock.usedtime = 0;
+		break;
+	    }
 
 	if(xlock.box)	set_occupation(forcelock, "forcing the lock", 0);
 	else		You("decide not to force the issue.");
@@ -374,7 +376,7 @@ doopen() {		/* try to open a door */
 	if((x == u.ux) && (y == u.uy)) return(0);
 
 	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
-				mtmp->mappearance == DOOR_SYM &&
+				mtmp->mappearance == CLOSED_DOOR_SYM &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
 		return(1);
@@ -418,6 +420,8 @@ doopen() {		/* try to open a door */
 		door->doormask = D_NODOOR;
 	    } else
 		door->doormask = D_ISOPEN;
+	    mnewsym(x,y);
+	    prl(x,y);
 	} else {
 	    pline("The door resists!");
 	}
@@ -460,7 +464,7 @@ doclose() {		/* try to close a door */
 	}
 
 	if(MON_AT(x, y) && (mtmp = m_at(x,y))->mimic && 
-				mtmp->mappearance == DOOR_SYM &&
+				mtmp->mappearance == CLOSED_DOOR_SYM &&
 				!Protection_from_shape_changers) {
 		stumble_onto_mimic(mtmp);
 		return(1);
@@ -506,6 +510,8 @@ doclose() {		/* try to close a door */
 	    if (rn2(25) < (ACURR(A_STR)+ACURR(A_DEX)+ACURR(A_CON))/3) {
 		pline("The door closes.");
 		door->doormask = D_CLOSED;
+		mnewsym(x,y);
+		prl(x,y);
 	    }
 	    else pline("The door resists!");
 	}
@@ -561,10 +567,8 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 	      ) {
 		door->typ = DOOR;
 		door->doormask = D_CLOSED | (door->doormask & D_TRAPPED);
-		if(cansee(x,y)) {
-		    pline("A section of the wall opens up!");
-		    newsym(x,y);
-		}
+		if(cansee(x,y)) pline("A section of the wall opens up!");
+		mnewsym(x,y);
 		return(1);
 	    } else
 		return(0);
@@ -608,6 +612,8 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 			default: res = 0;
 		}
 		door->doormask = D_LOCKED | (door->doormask & D_TRAPPED);
+		mnewsym(x,y);
+		if(cansee(x,y)) prl(x,y);
 		break;
 	    case WAN_OPENING:
 #ifdef SPELLS
@@ -632,6 +638,8 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 			    else if (flags.soundok)
 			       You("hear a distant explosion.");
 			door->doormask = D_NODOOR;
+			mnewsym(x,y);
+			if (cansee(x,y)) prl(x,y);
 			break;
 		    }
 		    door->doormask = D_BROKEN;
@@ -640,6 +648,8 @@ doorlock(otmp,x,y)	/* door was hit with spell effect otmp */
 			    pline("The door crashes open!");
 			else if (flags.soundok)
 			    You("hear a crashing sound.");
+		    mnewsym(x,y);
+		    if (cansee(x,y)) prl(x,y);
 		} else res = 0;
 		break;
 	    default:	impossible("magic (%d) attempted on door.", otmp->otyp);

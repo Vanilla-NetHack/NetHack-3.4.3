@@ -15,7 +15,7 @@
 
 void end_box_display();
 
-static const char *deaths[] = { 	/* the array of death */
+static const char *deaths[] = {		/* the array of death */
 	"died", "choked", "poisoned", "starvation", "drowning",
 	"burning", "crushed", "turned to stone", "genocided",
 	"panic", "trickery",
@@ -44,7 +44,7 @@ done1()
 		return 0;
 	}
 	return done2();
-} 
+}
 
 int
 done2()
@@ -198,7 +198,7 @@ panic VA_DECL(char *, str)
 	Vprintf(str,VA_ARGS);
 	more();				/* contains a fflush() */
 #if defined(WIZARD) && (defined(UNIX) || defined(VMS))
-	if (wizard)	
+	if (wizard)
 # ifdef SYSV
 		(void)
 # endif
@@ -243,12 +243,7 @@ int how;
 		      !Blind ? "begins to glow" : "feels warm");
 		You("feel much better!");
 		pline("The medallion crumbles to dust!");
-		if (uamul)	/* Huss:  Check if amulet really is worn */
-			useup(uamul);
-		else if (uwep && uwep->otyp == AMULET_OF_LIFE_SAVING)
-			useup(uwep);	/* Oops, he must be wielding it. */
-		else
-			impossible("Using an amulet without having it?");
+		useup(uamul);
 		if (u.uhunger < 500) u.uhunger = 500;
 		nomovemsg = "You survived that attempt on your life.";
 		curs_on_u();
@@ -367,7 +362,7 @@ die:
 	if(!done_stopprint)
 	    Printf("Goodbye %s the %s...\n\n", buf2,
 #ifdef ENDGAME
-		   how != ASCENDED ? pl_character : 
+		   how != ASCENDED ? pl_character :
 		   flags.female ? "Demigoddess" : "Demigod");
 #else
 		   pl_character);
@@ -441,7 +436,7 @@ die:
 				    doname(otmp), i);
 			} else if(otmp->olet == AMULET_SYM) {
 				otmp->known = 1;
-				i = (otmp->spe < 0) ? 2 : 
+				i = (otmp->spe < 0) ? 2 :
 					otmp->otyp == AMULET_OF_YENDOR ?
 							5000 : 500;
 				u.urexp += i;
@@ -459,7 +454,7 @@ die:
 		    if (how != ASCENDED) {
 			if(dlevel == ENDLEVEL)
 			     Printf("in the endgame ");
-		    	else Printf("on dungeon level %d ", dlevel);
+			else Printf("on dungeon level %d ", dlevel);
 		    }
 #else
 		    Printf("on dungeon level %d ", dlevel);
@@ -498,8 +493,7 @@ clearlocks(){
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-# if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS) \
-							|| defined(MACOS)
+# if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS) || defined(MACOS)
 	register int x;
 #  if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP,SIG_IGN);
@@ -528,7 +522,6 @@ void
 end_box_display()
 {
 	register struct obj *box, *obj;
-	int boxcnt = 0;
 	char buf[BUFSZ];
 
 	for(box=invent; box; box=box->nobj) {
@@ -539,10 +532,7 @@ end_box_display()
 		    if (obj->cobj == box) {
 			if (!cnt) {
 			    Sprintf(buf, "Contents of the %s:",xname(box));
-			    if (!boxcnt)
-				cornline(0, buf);
-			    else
-				cornline(1, buf);
+			    cornline(0, buf);
 			}
 			makeknown(obj->otyp);
 			obj->known = obj->bknown = obj->dknown = 1;
@@ -551,15 +541,9 @@ end_box_display()
 		    }
 		}
 		if (!cnt) {
-		    Sprintf(buf, "The %s is empty.", xname(box));
-		    if (!boxcnt)
-			cornline(0, buf);
-		    else
-			cornline(1, buf);
-		} else
-		    cornline(1," ");
-		boxcnt++;
+		    pline("The %s is empty.", xname(box));
+		    more();
+		} else cornline(2,"");
 	    }
 	}
-	if (boxcnt) cornline(2,"");
 }

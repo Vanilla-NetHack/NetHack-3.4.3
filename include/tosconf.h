@@ -13,8 +13,8 @@
    tweaking); otherwise (e.g. GCC) don't do it. OLD_TOS corresponds
    most closely to LATTICE C, I think */
 
-/* #define OLD_TOS */
-/* #define NO_SIGNAL */
+/* #define OLD_TOS 		/* primitive C library */
+/* #define NO_SIGNAL 		/* compiler doesn't support signals */
 
 #ifdef __GNUC__
 #define FCMASK	0666
@@ -34,11 +34,15 @@
 #endif
 
 /* configurable options */
-#define DGK
-#define RANDOM
-#define SHELL
-#define TEXTCOLOR
-#define TERMLIB
+#define DGK			/* lots of enhancements 	*/
+#define RANDOM			/* improved random numbers 	*/
+#define SHELL			/* allow spawning of shell 	*/
+#define TEXTCOLOR		/* allow color 			*/
+#define TERMLIB			/* use termcap			*/
+
+#ifndef TERMLIB
+#define ANSI_DEFAULT		/* use vt52 by default		*/
+#endif
 
 #ifndef MSDOS_H
 #include "msdos.h"
@@ -46,8 +50,6 @@
 #ifndef PCCONF_H
 #include "pcconf.h"	 	 /* remainder of stuff is same as the PC */
 #endif
-#ifdef TERMLIB
-#undef ANSI_DEFAULT
-#endif
+
 #endif /* TOSCONF_H /* */
 #endif /* TOS /* */

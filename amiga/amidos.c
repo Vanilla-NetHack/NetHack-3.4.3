@@ -478,7 +478,7 @@ read_config_file()
 	    int  lth;
 
 	    if ((lth = sscanf(bufp,
-	     "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
+	"%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
 				&translate[6], &translate[7], &translate[8],
@@ -489,7 +489,8 @@ read_config_file()
 				&translate[21], &translate[22], &translate[23],
 				&translate[24], &translate[25], &translate[26],
 				&translate[27], &translate[28], &translate[29],
-				&translate[30], &translate[31])) < 0) {
+				&translate[30], &translate[31], &translate[32],
+				&translate[33], &translate[34])) < 0) {
 		    msmsg ("Syntax error in GRAPHICS\n");
 		    getreturn("to continue");
 	    } /* Yuck! Worked only with low-byte first!!! */

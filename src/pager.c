@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	3.0	88/10/25 */
+/*	SCCS Id: @(#)pager.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
-#include	 "hack.h"
+#include	"hack.h"
 
 #ifndef NO_SIGNAL
 #include <signal.h>
@@ -23,16 +23,48 @@ extern short macflags;
 
 static char hc = 0;
 
-static void page_more();
-static boolean clear_help P((CHAR_P));
-static boolean valid_help P((CHAR_P));
+static void FDECL(page_more, (FILE *,int));
+static boolean FDECL(clear_help, (CHAR_P));
+static boolean FDECL(valid_help, (CHAR_P));
+
+/*
+ * print out another possibility for dowhatis. "new" is the possible new
+ * string; "out_flag" indicates whether we really want output, and if
+ * so what kind of output: 0 == no output, 1 == "(or %s)" output. 
+ * Returns TRUE if this new string wasn't the last string printed.
+ */
+
+static boolean
+outspec(new, out_flag)
+char *new;
+int out_flag;
+{
+	static char old[50];
+
+	if (!strcmp(old, new))
+		return FALSE;		/* don't print the same thing twice */
+
+	if (out_flag)
+		pline("(or %s)", new);
+
+	Strcpy(old, new);
+	return 1;
+}
 
 int
 dowhatis()
 {
 	FILE *fp;
 	char bufr[BUFSZ+6];
-	register char *buf = &bufr[6], *ep, q;
+	register char *buf = &bufr[6], *ep;
+	uchar q, typ;
+	register int i;
+	coord	cc;
+	boolean oldverb = flags.verbose;
+	boolean found_in_file = FALSE;
+	int	found = 0;
+	register struct monst *mtmp;
+
 #ifdef OS2_CODEVIEW
 	char tmp[PATHLEN];
 
@@ -43,205 +75,190 @@ dowhatis()
 #else
 	fp = fopen(DATAFILE, "r");
 #endif
-	if(!fp)
+	if(!fp) {
 #ifdef MACOS
-		fp = openFile(DATAFILE);
-	if (!fp)
+		fp = openFile(DATAFILE, "r");
+	}
+	if (!fp) {
 #endif
 		pline("Cannot open data file!");
-	else {
-		coord	cc;
-		uchar	r;
-		boolean oldverb = flags.verbose;
+		return 0;
+	}
 
-		pline ("Specify unknown object by cursor? ");
-		q = ynq();
-		if (q == 'q') {
-			(void) fclose(fp);
-			return 0;
-		} else if (q == 'n') {
-			cc.x = cc.y = -1;
-			pline("Specify what? ");
-			r = readchar();
-		} else {
-		    cc.x = u.ux;
-		    cc.y = u.uy;
-	selobj:
-		    if(flags.verbose)
+	pline ("Specify unknown object by cursor? ");
+	q = ynq();
+	if (q == 'q') {
+		(void) fclose(fp);
+		return 0;
+	} else if (q == 'n') {
+		cc.x = cc.y = -1;
+		pline("Specify what? ");
+		q = readchar();
+	} else {
+		cc.x = u.ux;
+		cc.y = u.uy;
+selobj:
+		found_in_file = FALSE;
+		found = 0;
+		(void) outspec("", 0);		/* reset output */
+		if(flags.verbose)
 			pline("Please move the cursor to an unknown object.");
-		    else
+		else
 			pline("Pick an object.");
-		    getpos(&cc, FALSE, "an unknown object");
-		    if (cc.x < 0) {
+		getpos(&cc, FALSE, "an unknown object");
+		if (cc.x < 0) {
 			    (void) fclose(fp); /* sweet@scubed */
 			    flags.verbose = oldverb;
 			    return 0;
-		    }
-		    flags.verbose = FALSE;
-		    r = levl[cc.x][cc.y].scrsym;
-		    if (!r || !levl[cc.x][cc.y].seen) r = ' ';
 		}
+		flags.verbose = FALSE;
+		q = levl[cc.x][cc.y].scrsym;
+		if (!q || (!levl[cc.x][cc.y].seen && !MON_AT(cc.x,cc.y)))
+			q = ' ';
+	}
 
-#define conv_sym(x)	if(r == showsyms.x) q = defsyms.x
-		conv_sym(stone);
-		else conv_sym(vwall);
-		else conv_sym(hwall);
-		else conv_sym(tlcorn);
-		else conv_sym(trcorn);
-		else conv_sym(blcorn);
-		else conv_sym(brcorn);
-		else conv_sym(crwall);
-		else conv_sym(tuwall);
-		else conv_sym(tdwall);
-		else conv_sym(tlwall);
-		else conv_sym(trwall);
-		else conv_sym(door);
-		else conv_sym(room);
-		else conv_sym(corr);
-		else conv_sym(upstair);
-		else conv_sym(dnstair);
-		else conv_sym(trap);
-		else conv_sym(web); 
-		else conv_sym(pool);
-#ifdef FOUNTAINS
-		else conv_sym(fountain);
-#endif
-#ifdef SINKS
-		else conv_sym(sink);
-#endif
-#ifdef THRONES
-		else conv_sym(throne);
-#endif
-#ifdef ALTARS
-		else conv_sym(altar);
-#endif
-#ifdef STRONGHOLD
-		else conv_sym(upladder);
-		else conv_sym(dnladder);
-		else conv_sym(dbvwall);
-		else conv_sym(dbhwall);
-#endif
-#undef conv_sym
-		else {
-			q = r;
-			if (index(quitchars, q)) {
-				(void) fclose(fp); /* sweet@scubed */
-				flags.verbose = oldverb;
-				return 0;
-			}
-		}
+	if (index(quitchars, (char)q)) {
+		(void) fclose(fp); /* sweet@scubed */
+		flags.verbose = oldverb;
+		return 0;
+	}
 
-		if(q != '\t')
-		while(fgets(buf,BUFSZ,fp))
-		    if(*buf == q) {
+/* now check for symbols defined in the data file */
+	if(q != '\t')
+	while(fgets(buf,BUFSZ,fp)) {
+		if(*buf == q) {
 			ep = index(buf, '\n');
 			if(ep) *ep = 0;
 			/* else: bad data file */
 			/* Expand tab 'by hand' */
-			if(buf[1] == '\t'){
+			if (buf[1] == '\t') {
 				buf = bufr;
-				buf[0] = r;
+				buf[0] = q;
 				(void) strncpy(buf+1, "       ", 7);
 			}
-			/* use %s so '%' won't be interpreted as a format */
-			pline("%s", buf);
-			if(cc.x != -1) {
-			    register struct monst *mtmp;
+			pline("%s", buf);	/* watch out for % in output */
+			(void) outspec("", 0);
+			found++;
+			found_in_file = TRUE;
+			break;
+		}
+	}
 
-			    if(MON_AT(cc.x,cc.y))
-				mtmp = m_at(cc.x,cc.y);
-			    else
-				mtmp = (struct monst *) 0;
-#ifdef ALTARS
-			    if (r == showsyms.altar && q == defsyms.altar &&
-				(IS_ALTAR(levl[cc.x][cc.y].typ) ||
-				 (mtmp && mtmp->mimic))
-			       ) {
-				    int type = levl[cc.x][cc.y].altarmask &
-						~A_SHRINE;
-				    pline((type == A_CHAOS) ? "(chaotic)" :
-					  (type == A_NEUTRAL) ? "(neutral)" :
-					  "(lawful)");
-			    } else
-#endif
-			    if (q == CHAIN_SYM && OBJ_AT(cc.x, cc.y))
-				    pline("(chain)");
-			    else if (r == showsyms.door && q == defsyms.door &&
-				(IS_DOOR(levl[cc.x][cc.y].typ) ||
-				 (mtmp && mtmp->mimic))) {
-				/* Note: this will say mimics in walls are
-				 *	 closed doors, which we want.
-				 */
-				switch(levl[cc.x][cc.y].doormask & ~D_TRAPPED) {
-				    case D_NODOOR: pline("(doorway)"); break;
-				    case D_BROKEN: pline("(broken door)"); break;
-				    case D_ISOPEN: pline("(open door)"); break;
-				    default:	   pline("(closed door)"); break;
-						   /* locked or not */
-				}
-			    }
-#ifdef SPELLS
-			    else if (q == SPBOOK_SYM && OBJ_AT(cc.x, cc.y))
-				    pline("(spellbook)");
-#endif
-#ifdef STRONGHOLD
-			    else
-			    if (((r == showsyms.dbvwall && q == defsyms.dbvwall) ||
-				 (r == showsyms.dbvwall && q == defsyms.dbvwall)) &&
-				is_db_wall(cc.x,cc.y))
-				    pline("(raised drawbridge)");
-#endif
-#ifdef SINKS
-			    else if (r == showsyms.sink && q == defsyms.sink &&
-				IS_SINK(levl[cc.x][cc.y].typ))
-				    pline("(sink)");
-#endif
-			    if (!Invisible 
+/* Now check for graphics symbols */
+	for (i = 0; i < MAXPCHARS; i++) {
+		if ( q == showsyms[i] && (*explainsyms[i])) {
+			if (!found) {
+				pline("%c       %s",q,explainsyms[i]);
+				(void) outspec(explainsyms[i], 0);
+				found++;
+			}
+			else if (outspec(explainsyms[i], 1))
+				found++;
+		}
+	}
+
+	if (!found)
+		pline("I've never heard of such things.");
+
+/* now check for specific things at a given location */
+	if(cc.x != -1 && found) {
+		if(MON_AT(cc.x,cc.y)) {
+			mtmp = m_at(cc.x,cc.y);
+			if (!showmon(mtmp) || Hallucination)
+				mtmp = (struct monst *)0;
+		} else
+			mtmp = (struct monst *) 0;
+		typ = levl[cc.x][cc.y].typ;
+		if (!Invisible 
 #ifdef POLYSELF
 				&& !u.uundetected
 #endif
-					&& u.ux==cc.x && u.uy==cc.y) {
-				pline("(%s named %s)",
+				&& u.ux==cc.x && u.uy==cc.y) {
+			pline("(%s named %s)",
 #ifdef POLYSELF
-				    u.mtimedone ? mons[u.umonnum].mname :
+				u.mtimedone ? mons[u.umonnum].mname :
 #endif
-				    pl_character, plname);
-			    /* Note: the blind/telepathy check is necessary.
-			     * Otherwise a ghost sitting on a blank square
-			     * gets identified even while blind because the
-			     * symbol is "correct".
-			     */
-			    } else if (mtmp && (!Blind || Telepat)) {
-				if (q == mtmp->data->mlet)
-				    pline("(%s%s)",
-					mtmp->mtame ? "tame " :
-					  mtmp->mpeaceful ? "peaceful " : "",
-					strncmp(lmonnam(mtmp), "the ", 4)
-					  ? lmonnam(mtmp) : lmonnam(mtmp)+4);
-			    }
+				pl_character, plname);
+		} else if (mtmp && !mtmp->mimic)
+			pline("(%s%s)",
+			   mtmp->mtame ? "tame " :
+			   mtmp->mpeaceful ? "peaceful " : "",
+			   strncmp(lmonnam(mtmp), "the ", 4)
+				  ? lmonnam(mtmp) : lmonnam(mtmp)+4);
+/* Only worry about the rest of the cases if the symbol could represent
+   more than one thing */
+		else if (found <= 1)
+			/* do nothing */ ;
+		else if (!levl[cc.x][cc.y].seen)
+			pline("(a dark part of a room)");
+#ifdef ALTARS
+		else if (q == showsyms[S_altar] && 
+			 (IS_ALTAR(typ) || (mtmp && mtmp->mimic))) {
+			int kind = levl[cc.x][cc.y].altarmask & ~A_SHRINE;
+			pline( "(%s altar)",
+				(kind == A_CHAOS) ? "chaotic" :
+				(kind == A_NEUTRAL) ? "neutral" :
+				 "lawful" );
+		}
+#endif
+		else if ((q==showsyms[S_ndoor] ||
+			  q==showsyms[S_vodoor] ||
+			  q==showsyms[S_hodoor] ||
+			  q==showsyms[S_cdoor]) &&
+			(IS_DOOR(typ) ||
+				(IS_WALL(typ) && mtmp && mtmp->mimic))) {
+			/* Note: this will say mimics in walls are
+			 *	 closed doors, which we want.
+			 */
+			switch(levl[cc.x][cc.y].doormask & ~D_TRAPPED) {
+				case D_NODOOR: pline("(doorway)"); break;
+				case D_BROKEN: pline("(broken door)"); break;
+				case D_ISOPEN: pline("(open door)"); break;
+				default:       pline("(closed door)"); break;
+						   /* locked or not */
 			}
-			if(ep[-1] == ';') {
-				pline("More info? ");
-				if(yn() == 'y') {
-					page_more(fp,1); /* does fclose() */
-					flags.verbose = oldverb;
-					return 0;
-				}
-			}
-			if(cc.x != -1) {
-				buf = &bufr[6];
-				more();
-				rewind(fp);
-				goto selobj;
-			}
-			(void) fclose(fp); 	/* kopper@psuvax1 */
+		}
+#ifdef STRONGHOLD
+		else if ((q == showsyms[S_dbvwall] ||
+			  q == showsyms[S_dbhwall]) &&
+			  is_db_wall(cc.x,cc.y))
+				pline("(raised drawbridge)");
+#endif
+#ifdef SINKS
+		else if (q == showsyms[S_sink] && IS_SINK(levl[cc.x][cc.y].typ))
+			pline("(sink)");
+#endif
+		else if (IS_ROOM(typ) && q == showsyms[S_room])
+			pline("(floor of a room)");
+		else if (q == showsyms[S_corr] && SPACE_POS(typ))
+			pline("(corridor)");
+		else if (!ACCESSIBLE(typ)) {
+			if (q == showsyms[S_stone] || q == ' ')
+				pline("(dark part of a room)");
+			else
+				pline("(wall)");
+		}
+	}
+
+/* now check for "more info" */
+	if(found_in_file && ep[-1] == ';') {
+		pline("More info? ");
+		if(yn() == 'y') {
+			page_more(fp,1); /* does fclose() */
 			flags.verbose = oldverb;
 			return 0;
-		    }
-		pline("I've never heard of such things.");
-		(void) fclose(fp);
-		flags.verbose = oldverb;
+		}
 	}
+
+/* if specified by cursor, keep going */
+	if(cc.x != -1) {
+		buf = &bufr[6];
+		more();
+		rewind(fp);
+		goto selobj;
+	}
+	(void) fclose(fp); 	/* kopper@psuvax1 */
+	flags.verbose = oldverb;
 	return 0;
 }
 
@@ -261,7 +278,7 @@ dowhatdoes()
 #else
 # ifdef MACOS
 	if(!(fp = fopen(CMDHELPFILE, "r")))
-		fp = openFile(CMDHELPFILE);
+		fp = openFile(CMDHELPFILE, "r");
 	if (!fp) {
 # else
 	if(!(fp = fopen(CMDHELPFILE, "r"))) {
@@ -659,8 +676,25 @@ char c;
 	 * help menu, we end up restoring the part of the maze underneath the
 	 * help menu when the last page of a long help file is displayed with
 	 * an external pager.
+	 *
+	 * When whole_screen is FALSE and the internal pager is used, the
+	 * screen is big enough so that the maze is left in place during paging
+	 * and the paging occurs in the lower part of the screen.  In this case
+	 * the pager clears out the part it wrote over when it exits but it
+	 * doesn't redraw the whole screen.  So all characters require that
+	 * the help menu be cleared.
+	 *
+	 * When an external pager is used, the screen is always cleared.
+	 * However, the "f" and "h" help options always use the internal
+	 * pager even if DEF_PAGER is defined.
+	 *                        - Bob Wilber  wilber@homxb.att.com  10/20/89
 	 */
 	return(index(quitchars,c) || c == 'd' || c == 'e'
+#ifdef DEF_PAGER
+	        || (!whole_screen && (c == 'f' || c == 'h'))
+#else
+	        || !whole_screen
+#endif
 #ifdef WIZARD
 		|| c == 'j'
 #endif
@@ -763,7 +797,7 @@ boolean silent;
 #else
 # ifdef MACOS
 	if ((f = fopen (fnam, "r")) == (FILE *) 0)
-		f = openFile(fnam);
+		f = openFile(fnam, "r");
 	/* refresh screen kluge */
 	if (!f) {
 		cls();

@@ -13,7 +13,8 @@
 
 #if defined(BSD) || defined(ULTRIX)
 #include	<sgtty.h>
-struct ltchars ltchars, ltchars0;
+struct ltchars ltchars;
+struct ltchars ltchars0 = { -1, -1, -1, -1, -1, -1 }; /* turn all off */
 #else
 #include	<termio.h>	/* also includes part of <sgtty.h> */
 struct termio termio;

@@ -147,7 +147,7 @@ register struct monst *priest;
 	gy += rn1(3,-1);
 
 	if(!priest->mpeaceful) {
-		if(dist(omx,omy) < 3) {
+		if(monnear(priest, u.ux, u.uy)) {
 			if(Displaced)
 				Your("displaced image doesn't fool %s!",
 					mon_nam(priest));

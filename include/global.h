@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)global.h	3.0	89/07/12
+/*	SCCS Id: @(#)global.h	3.0	89/11/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@
 
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION	"3.0g"	/* version number. */
+#define VERSION "3.0h"  /* version number. */
 
 /*
  * Files expected to exist in the playground directory.

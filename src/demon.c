@@ -8,9 +8,9 @@ void
 dsummon(ptr)		/* summon demon */
 	register struct permonst *ptr;
 {
+#ifdef INFERNO
 	register int dtype, cnt = 0;
 
-#ifdef HARD
 	if(is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 
 	    dtype = (!rn2(20)) ? dprince() : (!rn2(4)) ? dlord() : ndemon();
@@ -23,25 +23,24 @@ dsummon(ptr)		/* summon demon */
 
 	} else if(is_ndemon(ptr)) {
 
-	    dtype = (!rn2(20)) ? dlord() : ndemon();
+	    dtype = (!rn2(20)) ? dlord() : (!rn2(6)) ? ndemon() : monsndx(ptr);
 	    cnt = 1;
 	}
 
 	if(!dtype) return;
-#else
-	dtype = PM_DEMON;
-	cnt = 1;
-#endif
 
 	while(cnt > 0) {
 
 	    (void)makemon(&mons[dtype], u.ux, u.uy);
 	    cnt--;
 	}
+#else
+	(void)makemon(&mons[PM_DEMON], u.ux, u.uy);
+#endif
 	return;
 }
 
-#ifdef HARD
+#ifdef INFERNO
 #define	Athome	(Inhell && !mtmp->cham)
 
 int
@@ -105,7 +104,7 @@ register struct monst *mtmp;
 }
 #endif
 
-#if defined(HARD) || (defined(ALTARS) && defined(THEOLOGY))
+#if defined(INFERNO) || (defined(ALTARS) && defined(THEOLOGY))
 long
 bribe(mtmp)
 struct monst *mtmp;
@@ -137,7 +136,7 @@ struct monst *mtmp;
 
 int
 dprince() {
-#ifdef HARD
+#ifdef INFERNO
 	int	tryct, pm;
 
 	for(tryct = 0; tryct < 20; tryct++) {
@@ -153,7 +152,7 @@ dprince() {
 
 int
 dlord() {
-#ifdef HARD
+#ifdef INFERNO
 	int	tryct, pm;
 
 	for(tryct = 0; tryct < 20; tryct++) {
@@ -169,7 +168,7 @@ dlord() {
 
 int
 ndemon() {
-#ifdef HARD
+#ifdef INFERNO
 	int	tryct;
 	struct	permonst *ptr;
 

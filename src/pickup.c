@@ -33,17 +33,15 @@ int all;
 	dummygold.cobj = 0;
 
 	if(Levitation) {
-		if (all && !flags.pickup) read_engr_at(u.ux,u.uy);
+		if (multi || (all && !flags.pickup)) read_engr_at(u.ux,u.uy);
 		return;
 	}
-	if (all && !flags.pickup) {
+	if (multi || (all && !flags.pickup)) {
 		int ct = 0;
 
-		for (obj = fobj; obj; obj = obj->nobj)
-			if(obj->ox == u.ux && obj->oy == u.uy)
-			    if(!obj->cobj)
-				if (obj != uchain)
-					ct++;
+		for (obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
+			if(!obj->cobj && obj != uchain)
+				ct++;
 
 		/* Stop on a zorkmid */
 		if (gold) ct++;
@@ -209,7 +207,9 @@ int all;
 		  if(obj->blessed) obj->blessed = 0;
 		  else if(!obj->spe && !obj->cursed) obj->spe = 1;
 		  else {
-		    pline("The scroll turns to dust as you pick it up.");
+		    pline("The scroll%s turn%s to dust as you pick %s up.",
+				plur((long)obj->quan), (obj->quan==1) ? "s":"",
+				(obj->quan==1) ? "it" : "them");
 			if(!(objects[SCR_SCARE_MONSTER].oc_name_known) &&
 			   !(objects[SCR_SCARE_MONSTER].oc_uname))
 				docall(obj);
@@ -310,10 +310,7 @@ doloot() {	/* loot a container on the floor. */
 		pline("You cannot reach the floor.");
 		return(0);
 	}
-	if(OBJ_AT(u.ux, u.uy))
-	for(cobj = fobj; cobj; cobj = cobj->nobj) {
-
-	    if(cobj->ox == u.ux && cobj->oy == u.uy)
+	for(cobj = level.objects[u.ux][u.uy]; cobj; cobj = cobj->nexthere) {
 		if(Is_container(cobj)) {
 
 		    pline("There is %s here, loot it? ", doname(cobj));
@@ -355,11 +352,14 @@ inc_cwt(cobj, obj)
 register struct obj *cobj, *obj;
 {
 	if (cobj->otyp == BAG_OF_HOLDING)
-		cobj->owt += (obj->owt/2 + 1);
+		cobj->owt += (obj->cursed?(obj->owt*2):(obj->owt/(obj->blessed?4:2)) + 1);
 	else	cobj->owt += obj->owt;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 in_container(obj)
 register struct obj *obj;
 {
@@ -431,20 +431,29 @@ register struct obj *obj;
 	return(1);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 ck_container(obj)
 register struct obj *obj;
 {
 	return(obj->cobj == current_container);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 ck_bag()
 {
 	return(!baggone);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 out_container(obj)
 register struct obj *obj;
 {

@@ -48,8 +48,22 @@
  *  add support for Macintosh OS (courtesy Johnny Lee)
  *  fix annoying dependency loop via new color.h file
  *  allow interruption while eating -- general handling of partially eaten food
- *  smarter treatment of iron balls
+ *  smarter treatment of iron balls (courtesy Kevin Darcy)
  *  a handful of other bug fixes
  */
 
-#define PATCHLEVEL	5
+/*
+ *  Patch 6, November 19, 1989
+ *  add overlay support for MS-DOS (courtesy Pierre Martineau, Stephen
+ *	Spackman, and Norm Meluch)
+ *  refine Macintosh port
+ *  different door states show as different symbols (courtesy Ari Huttunen)
+ *  smarter drawbridges (courtesy Kevin Darcy)
+ *  add CLIPPING and split INFERNO off HARD
+ *  further refine eating code wrt picking up and resumption
+ *  make first few levels easier, by adding :x monsters and increasing initial
+ *	attribute points and hitting probability
+ *  teach '/' about configurable symbols
+ */
+
+#define PATCHLEVEL	6

@@ -28,23 +28,22 @@ thitu(tlev, dam, obj, name)	/* u is hit by sth, but not a monster */
 	struct obj *obj;
 	register char *name;
 {
-	char buf[BUFSZ];
+	char *oname = an(name);
 	boolean acidic = (obj && obj->otyp == ACID_VENOM);
 
-	setan(name, buf);
 	if(u.uac + tlev <= rnd(20)) {
 		if(Blind || !flags.verbose) pline("It misses.");
-		else You("are almost hit by %s!", buf);
+		else You("are almost hit by %s!", oname);
 		return(0);
 	} else {
 		if(Blind || !flags.verbose) You("are hit!");
-		else You("are hit by %s!", buf);
+		else You("are hit by %s!", oname);
 #ifdef POLYSELF
 		if (obj && obj->otyp == SILVER_ARROW && (u.ulycn != -1 ||
 				is_demon(uasmon) || u.usym == S_VAMPIRE ||
 				(u.usym == S_IMP && u.umonnum != PM_TENGU))) {
 			dam += rnd(20);
-			pline("You feel the %sarrow sear your flesh!",
+			pline("The %sarrow sears your flesh!",
 				Blind ? "" : "silver ");
 		}
 		if (acidic && resists_acid(uasmon))
@@ -268,6 +267,10 @@ struct obj *obj;
 {
 	struct obj *otmp, *prev;
 
+	if (obj->quan > 1) {
+		obj->quan--;
+		return;
+	}
 	prev = ((struct obj *) 0);
 	for (otmp = mon->minvent; otmp; otmp = otmp->nobj) {
 		if (otmp == obj) {
@@ -315,9 +318,7 @@ register struct monst *mtmp;
 			|| otmp->otyp == CROSSBOW_BOLT) verb = "shoots";
 		    otmp->quan = 1;
 		    if (canseemon(mtmp))
-			pline("%s %s a%s %s!", Monnam(mtmp), verb,
-				index(vowels,*(xname(otmp))) ? "n" : "",
-				xname(otmp));
+			pline("%s %s %s!", Monnam(mtmp), verb, an(xname(otmp)));
 		    otmp->quan = savequan;
 		    m_throw(mtmp->mx, mtmp->my, sgn(tbx), sgn(tby), 
 			movedist(mtmp->mx,mtmp->mux,mtmp->my,mtmp->muy), otmp);

@@ -22,14 +22,15 @@ Instructions for installing NetHack 3.0 on a Macintosh system
 4.  Go to the include subdirectory and edit config.h according to the comments
     to match your system and desired set of features.  Similarly edit
     macconf.h.  COMPRESS and ZEROCOMP were undefined since I used the
-    built-in Mac routines PackBits and UnpackBits.  All the options except
-    for STRONGHOLD were defined.  BITFIELDS was defined in order to come in
-    under the 32K global data limit.
+    built-in Mac routines PackBits and UnpackBits.  All the options were
+    defined.  BITFIELDS was defined in order to come in under the 32K
+    global data limit.
 
     For compilers, you can select from LSC or THINKC4 (or AZTEC if you want to
     do some work).  If you select AZTEC or LSC (not THINKC4) you'll have to
-    define KR1ED and SMALLDATA (AZTEC users might be able to get around it).
-    This sets up a macro which allows older preprocessors to make use of the
+    define KR1ED. SMALLDATA should be defined (AZTEC users might be able
+    to get around it).
+    KR1ED uses up a macro which allows older preprocessors to make use of the
     defined() construct.  (The options in part 4 of config.h have a 1
     following them to allow the defined() macro to work.)
     
@@ -43,8 +44,8 @@ Instructions for installing NetHack 3.0 on a Macintosh system
     "#include hack.h".
 
     Under the "Set Project Type..." menu, select Application, File type 'APPL',
-    Creator 'nh30', Partition 700K, Separate STRS, and select Background Null
-    Events and Suspend & Resume Events from the Multifinder Popup menu.
+    Creator 'nh30', Partition 700K, Separate STRS, and select Multifinder-
+    Aware and Suspend & Resume Events from the Multifinder Popup menu.
 
     An executable with all features set, except for STRONGHOLD, will be around
     600K in size.
@@ -96,6 +97,36 @@ Instructions for installing NetHack 3.0 on a Macintosh system
     If you're industrious you might try working on the special files.
     If you compiled in the special levels, make sure castle, tower?, and
     perhaps endgame are there, too.  The lev_comp file will create these.
+	You may use precompiled headers here. Just make sure they are the
+	first #include or #define in the lev*.c files. THINK C 4 users make sure
+	that stdio.h won't try to include itself twice by prepending
+	a	#ifndef _H_stdio
+		#define _H_stdio
+	to the beginning of stdio.h and a corresponding #endif at the end of the
+	file.
+	A couple of changes needed in lev_lex.c which couldn't be incorporated into
+	lev_lex.l (at least not now) if SMALLDATA is used:
+	Change
+		int yyleng; extern char yytext[];
+		int yymorfg;
+		extern char *yysptr, yysbuf[];
+	to
+		int yyleng; extern char *yytext;
+		int yymorfg;
+		extern char *yysptr, *yysbuf;
+	Change
+		char yytext[YYLMAX];
+	to
+		char *yytext;
+	Change
+		char yysbuf[YYLMAX];
+		char *yysptr = yysbuf;
+	to
+		char *yysbuf;
+		char *yysptr;
+	You'll probably have to comment out the second #define NLSTATE if you're
+	using Think/Lightspeed C.
+	There is code in lev_main.c to handle the changes.
 
 Notes:
 

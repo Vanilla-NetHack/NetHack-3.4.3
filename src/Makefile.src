@@ -47,12 +47,6 @@ TARG = unix
 CFLAGS = -O -I../include
 LFLAGS =
 
-# object files for makedefs
-MAKEOBJS = makedefs.o monst.o objects.o panic.o
-
-# object files for special levels compiler
-SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o alloc.o monst.o objects.o panic.o
-
 # on some systems the termcap library is in -ltermcap or -lcurses
 # on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
 # Sysatt uses shared library in lieu of this option
@@ -105,11 +99,11 @@ CSOURCES = $(HACKCSRC) $(TARGSRC) $(MAKESRC) $(SPLEVSRC)
 
 HACKINCL = amiconf.h artifact.h attrib.h color.h config.h coord.h decl.h\
 	   def_os2.h edog.h epri.h eshk.h extern.h flag.h func_tab.h global.h\
-	   gold.h hack.h lev.h mfndpos.h mkroom.h monattk.h mondata.h monflag.h\
-	   monst.h monsym.h msdos.h obj.h objclass.h patchlevel.h pcconf.h\
-	   permonst.h prop.h rm.h sp_lev.h spell.h system.h tosconf.h\
-	   tradstdc.h trapname.h unixconf.h vault.h vmsconf.h wseg.h you.h\
-	   youprop.h
+	   gold.h hack.h lev.h macconf.h mfndpos.h mkroom.h monattk.h mondata.h\
+	   monflag.h monst.h monsym.h msdos.h obj.h objclass.h patchlevel.h\
+	   pcconf.h permonst.h prop.h rm.h sp_lev.h spell.h system.h termcap.h\
+	   tosconf.h tradstdc.h trapname.h unixconf.h vault.h vmsconf.h wseg.h\
+	   you.h youprop.h
 
 # all .h files except date.h, onames.h, pm.h & trap.h which would cause
 # dependency loops if run through "make depend".
@@ -118,6 +112,12 @@ HACKINCL = amiconf.h artifact.h attrib.h color.h config.h coord.h decl.h\
 HSOURCES = $(HACKINCL) date.h onames.h pm.h trap.h lev_comp.h
 
 SOURCES = $(CSOURCES) $(HSOURCES)
+
+# object files for makedefs
+MAKEOBJS = makedefs.o monst.o objects.o panic.o
+
+# object files for special levels compiler
+SPLEVOBJS = lev_comp.o lev_lex.o lev_main.o alloc.o monst.o objects.o panic.o
 
 HOBJ = allmain.o alloc.o apply.o artifact.o attrib.o bones.o cmd.o dbridge.o\
 	decl.o demon.o do.o do_name.o do_wear.o dog.o dogmove.o dokick.o\
@@ -387,7 +387,7 @@ pickup.o:  ../include/hack.h
 polyself.o:  ../include/hack.h
 potion.o:  ../include/hack.h
 pray.o:  ../include/hack.h
-pri.o:  ../include/hack.h ../include/epri.h
+pri.o:  ../include/hack.h ../include/epri.h ../include/termcap.h
 priest.o:  ../include/hack.h ../include/mfndpos.h ../include/eshk.h ../include/epri.h
 prisym.o:  ../include/hack.h ../include/wseg.h ../include/lev.h
 read.o:  ../include/hack.h
@@ -404,7 +404,7 @@ sounds.o:  ../include/hack.h ../include/edog.h ../include/eshk.h
 sp_lev.o:  ../include/hack.h ../include/sp_lev.h
 spell.o:  ../include/hack.h
 steal.o:  ../include/hack.h
-termcap.o:  ../include/hack.h
+termcap.o:  ../include/hack.h ../include/termcap.h
 timeout.o:  ../include/hack.h
 topl.o:  ../include/hack.h
 topten.o:  ../include/hack.h
@@ -428,10 +428,12 @@ zap.o:  ../include/hack.h
 			touch ../include/config.h
 ../include/decl.h:  ../include/spell.h ../include/color.h ../include/obj.h ../include/you.h ../include/onames.h ../include/pm.h
 			touch ../include/decl.h
-../include/global.h:  ../include/coord.h ../include/vmsconf.h ../include/unixconf.h ../include/pcconf.h ../include/tosconf.h ../include/amiconf.h
+../include/global.h:  ../include/coord.h ../include/vmsconf.h ../include/unixconf.h ../include/pcconf.h ../include/tosconf.h ../include/amiconf.h ../include/macconf.h
 			touch ../include/global.h
 ../include/hack.h:  ../include/config.h ../include/decl.h ../include/monsym.h ../include/mkroom.h ../include/objclass.h ../include/gold.h ../include/trap.h ../include/flag.h ../include/rm.h 
 			touch ../include/hack.h
+../include/macconf.h:  ../include/msdos.h ../include/system.h 
+			touch ../include/macconf.h
 ../include/pcconf.h:  ../include/msdos.h ../include/system.h
 			touch ../include/pcconf.h
 ../include/permonst.h:  ../include/monattk.h ../include/monflag.h

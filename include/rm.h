@@ -10,6 +10,23 @@
  * and generalized for NetHack's release 2 by Eric S. Raymond (eric@snark)
  * building on Don G. Kneller's MS-DOS implementation. See options.c for
  * the code that permits the user to set the contents of the symbol structure.
+ *
+ * The door representation was changed by Ari Huttunen(ahuttune@niksula.hut.fi)
+ */
+
+/*
+ * TLCORNER	TDWALL		TRCORNER
+ * +- 		-+- 		-+
+ * |  		 |  	 	 |
+ *
+ * TRWALL	CROSSWALL	TLWALL		HWALL
+ * |  		 |  		 |
+ * +- 		-+- 		-+		---
+ * |  		 |  		 |
+ *
+ * BLCORNER	TUWALL		BRCORNER	VWALL
+ * |  		 |  		 |		|
+ * +- 		-+- 		-+		|
  */
 
 /* Level location types */
@@ -46,16 +63,16 @@
  * these types are subject to change.
  * Instead, use one of the macros below.
  */
+#ifndef STUPID_CPP	/* otherwise these macros are functions in prisym.c */
 #define IS_WALL(typ)	((typ) && (typ) <= TRWALL)
 #define IS_STWALL(typ)	((typ) <= TRWALL)	/* STONE <= (typ) <= TRWALL */
 #define IS_ROCK(typ)	((typ) < POOL)		/* absolutely nonaccessible */
 #define IS_DOOR(typ)	((typ) == DOOR)
+#define IS_FLOOR(typ)	((typ) == ROOM)
 #define ACCESSIBLE(typ)	((typ) >= DOOR)		/* good position */
 #define IS_ROOM(typ)	((typ) >= ROOM)		/* ROOM, STAIRS, furniture.. */
 #define ZAP_POS(typ)	((typ) >= POOL)
 #define SPACE_POS(typ)	((typ) > DOOR)
-#define IS_CORNER(typ)	((typ) >= TLCORNER && (typ) <= BRCORNER)
-#define IS_T(typ)	((typ) >= CRWALL && (typ) <= TRWALL)
 #define IS_POOL(typ)	((typ) >= POOL && (typ) <= DRAWBRIDGE_UP)
 #define IS_THRONE(typ)	((typ) == THRONE)
 #define IS_FOUNTAIN(typ) ((typ) == FOUNTAIN)
@@ -63,66 +80,97 @@
 #define IS_ALTAR(typ)	((typ) == ALTAR)
 #define IS_DRAWBRIDGE(typ) ((typ) == DRAWBRIDGE_UP || (typ) == DRAWBRIDGE_DOWN)
 #define IS_FURNITURE(typ) ((typ) >= STAIRS && (typ) <= ALTAR)
+#endif
 
 /*
  * The level-map symbols may be compiled in or defined at initialization time
  */
 
 /* screen symbols for using character graphics. */
-struct symbols {
-    unsigned char stone, vwall, hwall, tlcorn, trcorn, blcorn, brcorn;
-    unsigned char crwall, tuwall, tdwall, tlwall, trwall;
-    unsigned char vbeam, hbeam, lslant, rslant;
-    unsigned char door, room, corr, upstair, dnstair, trap, web;
-    unsigned char pool;
-    unsigned char fountain;
-    unsigned char sink;
-    unsigned char throne;
-    unsigned char altar;
-    unsigned char upladder, dnladder, dbvwall, dbhwall;
-};
-extern struct symbols showsyms;
-#ifdef REINCARNATION
-extern struct symbols savesyms;
-#endif
-extern const struct symbols defsyms;
+#define S_stone		0
+#define S_vwall		1
+#define S_hwall		2
+#define S_tlcorn	3
+#define S_trcorn	4
+#define S_blcorn	5
+#define S_brcorn	6
+#define S_crwall	7
+#define S_tuwall	8
+#define S_tdwall	9
+#define S_tlwall	10
+#define S_trwall	11
+#define S_vbeam		12
+#define S_hbeam		13
+#define S_lslant	14
+#define S_rslant	15
+#define S_ndoor		16
+#define S_vodoor	17
+#define S_hodoor	18
+#define S_cdoor		19
+#define S_room		20
+#define S_corr		21
+#define S_upstair	22
+#define S_dnstair	23
+#define S_trap		24
+#define S_web		25
+#define S_pool		26
+#define S_fountain	27
+#define S_sink		28
+#define S_throne	29
+#define S_altar		30
+#define S_upladder	31
+#define S_dnladder	32
+#define S_dbvwall	33
+#define S_dbhwall	34
 
-#define STONE_SYM	showsyms.stone
-#define VWALL_SYM	showsyms.vwall
-#define HWALL_SYM	showsyms.hwall
-#define TLCORN_SYM	showsyms.tlcorn
-#define TRCORN_SYM	showsyms.trcorn
-#define BLCORN_SYM	showsyms.blcorn
-#define BRCORN_SYM	showsyms.brcorn
-#define CRWALL_SYM	showsyms.crwall
-#define TUWALL_SYM	showsyms.tuwall
-#define TDWALL_SYM	showsyms.tdwall
-#define TLWALL_SYM	showsyms.tlwall
-#define TRWALL_SYM	showsyms.trwall
-#define VBEAM_SYM	showsyms.vbeam
-#define HBEAM_SYM	showsyms.hbeam
-#define LSLANT_SYM	showsyms.lslant
-#define RSLANT_SYM	showsyms.rslant
-#define DOOR_SYM	showsyms.door
-#define ROOM_SYM	showsyms.room
-#define	CORR_SYM	showsyms.corr
-#define UP_SYM		showsyms.upstair
-#define DN_SYM		showsyms.dnstair
-#define TRAP_SYM	showsyms.trap
-#define WEB_SYM		showsyms.web
-#define	POOL_SYM	showsyms.pool
-#define FOUNTAIN_SYM	showsyms.fountain
-#define SINK_SYM	showsyms.sink
-#define THRONE_SYM	showsyms.throne
-#define ALTAR_SYM	showsyms.altar
-#define UPLADDER_SYM	showsyms.upladder
-#define DNLADDER_SYM	showsyms.dnladder
-#define DB_VWALL_SYM	showsyms.dbvwall
-#define DB_HWALL_SYM	showsyms.dbhwall
+#define MAXPCHARS	35	/* maximum number of mapped characters */
+
+typedef uchar symbol_array[MAXPCHARS];
+
+extern symbol_array showsyms;
+extern char *explainsyms[MAXPCHARS];  /* tells what the characters are */
+#ifdef REINCARNATION
+extern symbol_array savesyms;
+#endif
+extern symbol_array defsyms;
+
+#define STONE_SYM	showsyms[S_stone]
+#define VWALL_SYM	showsyms[S_vwall]
+#define HWALL_SYM	showsyms[S_hwall]
+#define TLCORN_SYM	showsyms[S_tlcorn]
+#define TRCORN_SYM	showsyms[S_trcorn]
+#define BLCORN_SYM	showsyms[S_blcorn]
+#define BRCORN_SYM	showsyms[S_brcorn]
+#define CRWALL_SYM	showsyms[S_crwall]
+#define TUWALL_SYM	showsyms[S_tuwall]
+#define TDWALL_SYM	showsyms[S_tdwall]
+#define TLWALL_SYM	showsyms[S_tlwall]
+#define TRWALL_SYM	showsyms[S_trwall]
+#define VBEAM_SYM	showsyms[S_vbeam]
+#define HBEAM_SYM	showsyms[S_hbeam]
+#define LSLANT_SYM	showsyms[S_lslant]
+#define RSLANT_SYM	showsyms[S_rslant]
+#define NO_DOOR_SYM	showsyms[S_ndoor]
+#define H_OPEN_DOOR_SYM	showsyms[S_hodoor]
+#define V_OPEN_DOOR_SYM	showsyms[S_vodoor]
+#define CLOSED_DOOR_SYM	showsyms[S_cdoor]
+#define ROOM_SYM	showsyms[S_room]
+#define	CORR_SYM	showsyms[S_corr]
+#define UP_SYM		showsyms[S_upstair]
+#define DN_SYM		showsyms[S_dnstair]
+#define TRAP_SYM	showsyms[S_trap]
+#define WEB_SYM		showsyms[S_web]
+#define	POOL_SYM	showsyms[S_pool]
+#define FOUNTAIN_SYM	showsyms[S_fountain]
+#define SINK_SYM	showsyms[S_sink]
+#define THRONE_SYM	showsyms[S_throne]
+#define ALTAR_SYM	showsyms[S_altar]
+#define UPLADDER_SYM	showsyms[S_upladder]
+#define DNLADDER_SYM	showsyms[S_dnladder]
+#define DB_VWALL_SYM	showsyms[S_dbvwall]
+#define DB_HWALL_SYM	showsyms[S_dbhwall]
 
 #define	ERRCHAR	']'
-
-#define MAXPCHARS	32	/* maximum number of mapped characters */
 
 /*
  * The 5 possible states of doors
@@ -166,7 +214,8 @@ extern const struct symbols defsyms;
  */
 #define DB_MOAT		0
 #define DB_FLOOR	8
-#define DB_UNDER	8	/* mask for underneath */
+#define DB_ICE		16
+#define DB_UNDER	24	/* mask for underneath */
 
 /* 
  * Some walls may be non diggable.
@@ -182,17 +231,28 @@ extern const struct symbols defsyms;
 #define LA_DOWN 	2
 
 /*
+ * Room areas may be iced pools,
+ */
+#define ICED_POOL	8
+#define ICED_MOAT	16
+
+
+/*
  * at() display character types, in order of precedence.
  */
+#ifndef MAXCOLORS
+#define MAXCOLORS	1
+#endif
+ 
 #define AT_APP		(uchar)0
-/* 1-7 are specific overrides, see decl.h */
+/* 1-MAXCOLORS are specific overrides, see color.h */
 /* non-specific */
-#define AT_ZAP		(uchar)8
-#define AT_MON		(uchar)9
+#define AT_ZAP		(uchar)(MAXCOLORS+1)
+#define AT_MON		(uchar)(MAXCOLORS+2)
 #define AT_U		AT_MON
-#define AT_OBJ		(uchar)10
+#define AT_OBJ		(uchar)(MAXCOLORS+3)
 #define AT_GLD		AT_OBJ
-#define AT_MAP		(uchar)11
+#define AT_MAP		(uchar)(MAXCOLORS+4)
 
 /*
  * The structure describing a coordinate position.
@@ -213,6 +273,8 @@ struct rm {
 #define diggable	doormask
 #define ladder		doormask
 #define drawbridgemask	doormask
+#define looted		doormask
+#define icedpool	doormask
 
 #ifdef MACOS
 typedef struct

@@ -4,7 +4,7 @@
 .ds vr "NetHack Version 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "September 6, 1989
+.ds f2 "October 19, 1989
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -231,9 +231,9 @@ option to change some of the symbols the game uses; otherwise, the
 game will use default symbols.  Here is a list of what the default
 symbols mean:
 .lp "- and | 
-These form the walls of a room.
+These form the walls of a room or an open door.
 .lp .
-This is the floor of a room.
+This is the floor of a room or a doorway.
 .lp #
 This is a corridor, or possibly a kitchen sink or drawbridge (if your
 dungeon has sinks or drawbridges).
@@ -264,7 +264,7 @@ A pile of gold.
 .lp *
 A gem or rock (possibly valuable, possibly worthless).
 .lp +
-A doorway, or a spell book containing a spell you can learn (if your
+A closed door, or a spell book containing a spell you can learn (if your
 dungeon has spell books).
 .lp ^
 A trap (once you detect it).
@@ -774,7 +774,7 @@ The command to eat food is `e'.
 Scrolls (`?')
 .pg
 Scrolls are labeled with various titles, probably chosen by ancient wizards
-for their amusement value (i.e. ``READ ME,'' or ``HOLY BIBLE'' backwards).
+for their amusement value (ex. ``READ ME,'' or ``HOLY BIBLE'' backwards).
 Scrolls disappear after you read them (except for blank ones, without
 magic spells on them).
 .pg
@@ -1010,10 +1010,11 @@ The order of the symbols is:  solid rock, vertical wall, horizontal
 wall, upper left corner, upper right corner, lower left corner, lower
 right corner, cross wall, upward T wall, downward T wall, leftward T
 wall, rightward T wall, vertical beam, horizontal beam, left slant,
-right slant, door, floor of a room, corridor, stairs up, stairs down,
-trap, web, pool or moat, fountain, kitchen sink, throne, altar, ladder
-up, ladder down, vertical drawbridge, horizontal drawbridge.  You
-might want to use `+' for the corners and T walls for a more esthetic,
+right slant, no door, vertical open door, horizontal open door, closed door,
+floor of a room, corridor, stairs up, stairs down,trap, web, pool or moat,
+fountain, kitchen sink, throne, altar, ladderup, ladder down,
+vertical drawbridge, horizontal drawbridge.  
+You might want to use `+' for the corners and T walls for a more esthetic,
 boxier display.  Note that in the next release, new symbols may be
 added, or the present ones rearranged.
 
@@ -1155,6 +1156,10 @@ Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0.
 \fBEric R. Smith\fP ported NetHack 3.0 to the Atari.
 .pg
 \fBTimo Hakulinen\fP ported NetHack 3.0 to OS/2.
+.pg
+\fBDavid Gentzel\fP ported NetHack 3.0 to VMS.
+.pg
+\fBJohnny Lee\fP ported NetHack 3.0 to the Macintosh.
 .pg
 The following folks have made significant contributions to the playability
 of the game:

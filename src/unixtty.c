@@ -38,6 +38,7 @@
 #define CBRKMASK	ICANON
 #define CBRKON		! /* reverse condition */
 #define OSPEED(x)	((x).c_cflag & CBAUD)
+#define IS_7BIT(x)	((x).c_cflag & CS7)
 #define inputflags	c_iflag
 #define STRIPHI		ISTRIP
 #define GTTY(x)		(ioctl(0, TCGETA, x))
@@ -63,6 +64,7 @@
 #define CBRKMASK	CBREAK
 #define CBRKON		/* empty */
 #define inputflags	sg_flags	/* don't know how enabling meta bits */
+#define IS_7BIT(x)	(FALSE)
 #define STRIPHI		0		/* should actually be done on BSD */
 #define OSPEED(x)	(x).sg_ospeed
 #define GTTY(x)		(gtty(0, x))
@@ -154,7 +156,7 @@ register int change = 0;
 #endif
 		change++;
 	}
-	curttyb.inputflags &=~ STRIPHI;
+	if(!IS_7BIT(inittyb)) curttyb.inputflags &=~ STRIPHI;
 	/* If an interrupt character is used, it will be overriden and
 	 * set to ^C.
 	 */

@@ -79,8 +79,8 @@ extern WindowPtr HackWindow;
  */
 
 FILE *
-openFile(fileName)
-char	*fileName;
+openFile(fileName, rdmode)
+char	*fileName, *rdmode;
 {
 	term_info *t;
 	SFReply	reply;
@@ -89,16 +89,19 @@ char	*fileName;
 	t = (term_info *)GetWRefCon(HackWindow);
 	if (t->auxFileVRefNum) {
 		SetVol(0L,t->auxFileVRefNum);
-	}
-	fp = fopen(fileName,"r");
+	} else
+		SetVol(0L, t->recordVRefNum);
+
+	reply.good = false;
+	fp = fopen(fileName, rdmode);
 	if (!fp && findNamedFile(fileName,2,&reply)) {
 		if (reply.good) {
 			t->auxFileVRefNum = reply.vRefNum;
 		}
 	}
 	if (!fp)
-		fp = fopen(fileName,"r");
-	else if (!t->auxFileVRefNum) {
+		fp = fopen(fileName, rdmode);
+	else if (!t->auxFileVRefNum && reply.good) {
 		(void)GetVol((StringPtr)&reply.fName,&t->auxFileVRefNum);
 	}
 	return fp;

@@ -3,6 +3,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+#include <ctype.h>
 
 static char *rip[] = {
 "                       ----------",
@@ -41,18 +42,16 @@ outrip(){
 	register int x, y;
 
 	cls();
-	Sprintf(buf,"%s", plname);
+	Sprintf(buf, "%s", plname);
 	buf[16] = 0;
 	center(6, buf);
-	Sprintf(buf, "%ld AU", u.ugold);
+	Sprintf(buf, "%ld Au", u.ugold);
 	center(7, buf);
-	Sprintf(buf, "killed by%s",
-		!strncmp(killer, "the ", 4) ? "" :
-		(!strcmp(eos(killer)-4, "tion") && *(eos(killer)-5)!='o') ? "" :
-		!strcmp(killer, "contaminated water") ? "" :
-		!strncmp(killer, "Mr.", 3) ? "" :
-		!strncmp(killer, "Ms.", 3) ? "" :
-		index(vowels, *killer) ? " an" : " a");
+	Strcpy(buf, "killed by");
+	if (islower(*killer) && strncmp(killer, "the ", 4) &&
+	    (strcmp(eos(killer)-4, "tion") || *(eos(killer)-5) == 'o') &&
+	    strcmp(killer, "contaminated water"))
+		Strcat(buf, index(vowels, *killer) ? " an" : " a");
 	center(8, buf);
 	Strcpy(buf, killer);
 	if(strlen(buf) > 16) {

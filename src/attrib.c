@@ -95,55 +95,55 @@ const struct clattr {
  * a minimum strength of 6 since without one you can't teleport or cast
  * spells. --KAA
  */
-	struct	innate *abil;
-}	a_attr = { {	 6,  9,  9,  6,  6,  6 },  /* Archeologist */
+	const struct	innate *abil;
+}	a_attr = { {	 7, 10, 10,  7,  7,  7 },  /* Archeologist */
 		   {	20, 20, 20, 10, 20, 10 },
 		    10,  1, 13, 10, 14,  2, a_abil },
 
-	b_attr = { {	15,  6,  6, 14, 15,  5 },  /* Barbarian */
+	b_attr = { {	16,  7,  7, 15, 16,  6 },  /* Barbarian */
 		   {	30,  6,  7, 20, 30,  7 },
 		    10, -1, 16, 12, 10,  3, b_abil },
 
-	c_attr = { {	 9,  6,  6,  6,  7,  5 },  /* Caveman (fighter) */
+	c_attr = { {	10,  7,  7,  7,  8,  6 },  /* Caveman (fighter) */
 		   {	30,  6,  7, 20, 30,  7 },
 		     0,  1, 16, 10, 10,  3, c_abil },
 
 /*
 	e_attr = { {	13, 13, 14,  6, 14,  6 },
  */
-	e_attr = { {	12, 12, 12,  8, 12,  6 },  /* Elf (ranger) */
+	e_attr = { {	13, 13, 13,  9, 13,  7 },  /* Elf (ranger) */
 		   {	30, 10, 10, 20, 20, 10 },
 		    10,  1, 15, 10, 11,  2, e_abil },
 
-	h_attr = { {	 6,  6, 12,  6, 10, 15 },  /* Healer (druid) */
+	h_attr = { {	 7,  7, 13,  7, 11, 16 },  /* Healer (druid) */
 		   {	15, 20, 20, 15, 25, 10 },
 		    10,  1, 13, 10, 20,  2, h_abil },
 
-	k_attr = { {	12,  6, 13,  6,  9, 17 },  /* Knight (paladin) */
+	k_attr = { {	13,  7, 14,  8, 10, 17 },  /* Knight (paladin) */
 		   {	20, 15, 15, 10, 20, 10 },
 		    10,  1, 16, 10, 10,  3, k_abil },
 
-	p_attr = { {	 6,  6,  9,  6,  6,  6 },  /* Priest (cleric) */
+	p_attr = { {	 7,  7, 10,  7,  7,  7 },  /* Priest (cleric) */
 		   {	15, 10, 30, 15, 20, 10 },
 		     0,  0, 14, 10, 10,  2, p_abil },
 
-	r_attr = { {	 6,  6,  6,  9,  6,  5 },  /* Rogue (thief) */
+	r_attr = { {	 7,  7,  7, 10,  7,  6 },  /* Rogue (thief) */
 		   {	20, 10, 10, 30, 20, 10 },
 		    10, -1, 12, 10, 11,  2, r_abil },
 
-	s_attr = { {	 9,  6,  6,  9, 17,  5 },  /* Samurai (fighter/thief) */
+	s_attr = { {	10,  8,  7, 10, 17,  6 },  /* Samurai (fighter/thief) */
 		   {	30, 10, 10, 30, 14, 10 },
 		    10,  1, 15, 10, 11,  2, s_abil },
 
-	t_attr = { {	 6,  9,  5,  6,  6,  9 },  /* Tourist */
+	t_attr = { {	 7, 10,  6,  7,  7, 10 },  /* Tourist */
 		   {	15, 10, 10, 15, 30, 20 },
 		     0,  0, 10, 10, 14,  1, t_abil },
 
-	v_attr = { {	 9,  6,  6,  6,  9,  6 },  /* Valkyrie (fighter) */
+	v_attr = { {	10,  7,  7,  7, 10,  7 },  /* Valkyrie (fighter) */
 		   {	30,  6,  7, 20, 30,  7 },
 		     0, -1, 16, 10, 10,  3, v_abil },
 
-	w_attr = { {	 6,  9,  6,  6,  6,  6 },  /* Wizard (magic-user) */
+	w_attr = { {	 7, 10,  7,  7,  7,  7 },  /* Wizard (magic-user) */
 		   {	10, 30, 10, 20, 20, 10 },
 		     0,  0, 12, 10, 12,  1, w_abil },
 
@@ -277,10 +277,10 @@ restore_attrib() {
 	}
 }
 
-static struct	clattr *
+static const struct	clattr *
 clx()  {
 
-	register struct	clattr	*attr;
+	register const struct	clattr	*attr;
 
 	switch	(pl_character[0]) {
 
@@ -318,7 +318,7 @@ clx()  {
 static void
 init_align() {	/* called from newhp if u.ulevel is 0 */
 
-	register struct	clattr	*attr = clx();
+	register const struct	clattr	*attr = clx();
 
 	u.ualign = (int)attr->align;
 	u.ualigntyp = attr->aligntyp;
@@ -329,7 +329,7 @@ init_attr(np)
 	register int	np;
 {
 	register int	i, x, tryct;
-	register struct	clattr	*attr = clx();
+	register const struct	clattr	*attr = clx();
 
 	for(i = 0; i < A_MAX; i++) {
 
@@ -398,8 +398,8 @@ adjabil(flag)
 
 	int	flag;		/* +ve/-ve  = gain/lose */
 {
-	register struct	clattr	*attr = clx();
-	register struct innate	*abil = attr->abil;
+	register const struct clattr	*attr = clx();
+	register const struct innate	*abil = attr->abil;
 
 	if(abil) {
 
@@ -428,7 +428,7 @@ adjabil(flag)
 
 int
 newhp() {
-	register struct	clattr	*attr = clx();
+	register const struct clattr	*attr = clx();
 	int	hp, conplus;
 
 	if(u.ulevel == 0) {

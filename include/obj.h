@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	3.0	88/04/12
+/*	SCCS Id: @(#)obj.h	3.0	89/11/10
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,6 +22,7 @@ struct obj {
 				   marks your eggs, spinach tins, key shapes
 				   indicates statues have spellbooks inside
 				   tells which fruit a fruit is
+				   marks diluted potions
 				   special for uball and amulet %% BAH */
 #define N_LOX	10	/* # of key/lock shapes */
 	char	olet;
@@ -31,9 +32,9 @@ struct obj {
 	Bitfield(oinvis,1);	/* not yet implemented */
 	Bitfield(olocked,1);	/* object is locked */
 #define recharged olocked	/* recharged once */
-#define oeaten	olocked		/* partially eaten food */
+#define orotten olocked 	/* rotten food */
 	Bitfield(otrapped,1);	/* container is trapped */
-#define opoisoned otrapped	/* weapon has been coated with poison */
+#define opoisoned otrapped	/* object (weapon) is coated with poison */
 	Bitfield(odispl,1);
 	Bitfield(known,1);	/* exact nature known */
 	Bitfield(dknown,1);	/* color or text known */
@@ -42,10 +43,12 @@ struct obj {
 	Bitfield(blessed,1);
 	Bitfield(unpaid,1);	/* on some bill */
 	Bitfield(rustfree,1);
-#define flameproof 	rustfree/* for non-metal armor items */
-#define in_use 		rustfree/* for magic items before useup items */
+#ifndef NO_SIGNAL
+# define in_use rustfree	/* for magic items before useup items */
+#endif
 	Bitfield(no_charge,1);	/* if shk shouldn't charge for this */
 	Bitfield(onamelth,6);
+	unsigned oeaten;	/* nutrition left in food, if partly eaten */
 	long age;		/* creation date */
 	long owornmask;
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.0	88/10/30
+/*	SCCS Id: @(#)mkobj.c	3.0	89/11/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -257,7 +257,7 @@ boolean artif;
 			else		otmp->corpsenm = -1; /* empty */
 		    } else		otmp->corpsenm = -1; /* empty */
 		} else if(otmp->otyp == TIN) {
-		    if(!rn2(10)) {
+		    if(!rn2(6)) {
 			otmp->spe = 1;		/* spinach */
 			otmp->corpsenm = -1;
 		    } else do {
@@ -448,7 +448,9 @@ register struct obj *otmp;
 }
 
 int
-letter(c) {
+letter(c)
+int c;
+{
 	return(('@' <= c && c <= 'Z') || ('a' <= c && c <= 'z'));
 }
 
@@ -507,7 +509,7 @@ int x, y;
 	register struct obj *otmp;
 
 	if(objtype != CORPSE && objtype != STATUE)
-		impossible("making corpstate type %d", objtype);
+		impossible("making corpstat type %d", objtype);
 	otmp = mksobj_at(objtype, x, y);
 	if(otmp)  {
 		if(ptr)	otmp->corpsenm = monsndx(ptr);

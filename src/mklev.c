@@ -394,7 +394,7 @@ register int a, b;
 				(void) mksobj_at(BOULDER, xx, yy);
 		} else {
 			crm->typ = SCORR;
-			crm->scrsym = STONE_SYM;
+			crm->scrsym = ' ';	/* _not_ STONE_SYM */
 		}
 	    } else
 	    if(crm->typ != CORR && crm->typ != SCORR) {
@@ -498,7 +498,6 @@ register int type;
 		type = DOOR;
 	levl[x][y].typ = type;
 	if(type == DOOR) {
-	    levl[x][y].scrsym = DOOR_SYM;
 	    if(!rn2(3)) {      /* is it a locked door, closed, or a doorway? */
 		if(!rn2(5))
 		    levl[x][y].doormask = D_ISOPEN;
@@ -509,10 +508,9 @@ register int type;
 
 		if (levl[x][y].doormask != D_ISOPEN && !shdoor && !rn2(25))
 		    levl[x][y].doormask |= D_TRAPPED;
-	    } else {
-		if(shdoor)	levl[x][y].doormask = D_ISOPEN;
-		else		levl[x][y].doormask = D_NODOOR;
-	    }
+	    } else
+		levl[x][y].doormask = (shdoor ? D_ISOPEN : D_NODOOR);
+	    levl[x][y].scrsym = news0(x,y);
 	} else { /* SDOOR */
 		if(shdoor || !rn2(5))	levl[x][y].doormask = D_LOCKED;
 		else			levl[x][y].doormask = D_CLOSED;
@@ -599,7 +597,7 @@ int trap_type;
 	    if(trap_type || !rn2(4)) {
 
 		rm->typ = SCORR;
-		rm->scrsym = STONE_SYM;
+		rm->scrsym = ' ';		/* _not_ STONE_SYM */
 		if(trap_type) {
 		    ttmp = maketrap(xx, yy+dy, trap_type);
 		    ttmp->once = 1;
@@ -787,13 +785,19 @@ makelevel() {
 #ifdef MEDUSA
 	if (dlevel == medusa_level) {
 		struct monst *mtmp;
+		struct obj *otmp;
 
 		if (mtmp = makemon(&mons[PM_MEDUSA], xdnstair, ydnstair))
 			mtmp->msleep = 1;
 		for (tryct = rn1(1,3); tryct; tryct--) {
 			x = somex(croom); y = somey(croom);
-			if (goodpos(x,y,(struct permonst *)0))
-				(void) mk_tt_object(STATUE, x, y);
+			if (goodpos(x,y,(struct permonst *)0)) {
+				otmp = mk_tt_object(STATUE, x, y);
+				while(resists_ston(&mons[otmp->corpsenm])) {
+					otmp->corpsenm = rndmonnum();
+					otmp->owt = weight(otmp);
+				}
+			}
 		}
 	}
 #endif
@@ -922,16 +926,22 @@ skip0:
 		/* put statues inside */
 #ifdef MEDUSA
 		if(!rn2(dlevel == medusa_level ? 1 : 20)) {
+			struct obj *otmp;
+
 			if (!rn2(dlevel == medusa_level ? 2 : 50))
-				(void) mk_tt_object(STATUE,
+				otmp = mk_tt_object(STATUE,
 						somex(croom), somey(croom));
 			else {
-				struct obj *otmp =
-					mkcorpstat(STATUE, (struct permonst *)0,
+				otmp = mkcorpstat(STATUE, (struct permonst *)0,
 						somex(croom), somey(croom));
-				if (dlevel == medusa_level && otmp) 
-					otmp->spe = 0;
+			}
+			if (dlevel == medusa_level && otmp) {
 				/* Medusa statues don't contain books */
+				otmp->spe = 0;
+				while(resists_ston(&mons[otmp->corpsenm])) {
+					otmp->corpsenm = rndmonnum();
+					otmp->owt = weight(otmp);
+				}
 			}
 		}
 #else
@@ -1117,7 +1127,7 @@ register struct mkroom *croom;
 
 		if((mtmp = makemon(mkclass(S_MIMIC), mx, my))) {
 		    mtmp->mimic = 1;
-		    mtmp->mappearance = DOOR_SYM;
+		    mtmp->mappearance = CLOSED_DOOR_SYM;
 		}
 		return;
 	}

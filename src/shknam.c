@@ -185,9 +185,10 @@ int sx, sy;
 {
 	register struct monst *mtmp;
 	int atype;
+	struct permonst *ptr;
 
-	if (rn2(100) < dlevel && !MON_AT(sx, sy) &&
-				(mtmp=makemon(mkclass(S_MIMIC),sx,sy))) {
+	if (rn2(100) < dlevel && !MON_AT(sx, sy) && (ptr = mkclass(S_MIMIC)) &&
+				(mtmp=makemon(ptr,sx,sy))) {
 		mtmp->mimic = 1;
 		/* note: makemon will set the mimic symbol to a shop item */
 		if (rn2(10) >= dlevel) mtmp->mappearance = S_MIMIC_DEF;
@@ -314,8 +315,10 @@ register struct mkroom *sroom;
     for(sx = sroom->lx - 1; sx <= sroom->hx + 1; sx++)
 	for(sy = sroom->ly - 1; sy <= sroom->hy + 1; sy++) {
 	    if(IS_DOOR(levl[sx][sy].typ))
-		if (levl[sx][sy].doormask == D_NODOOR)
-		    levl[sx][sy].doormask = D_ISOPEN;
+		if (levl[sx][sy].doormask == D_NODOOR) {
+		  levl[sx][sy].doormask = D_ISOPEN;
+		  mnewsym(sx,sy);
+		}
     }
 
     for(sx = sroom->lx; sx <= sroom->hx; sx++)

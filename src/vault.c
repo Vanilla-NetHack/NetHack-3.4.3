@@ -147,7 +147,8 @@ fnd:
 int
 gd_move(){
 	int x, y, nx, ny;
-	int dx, dy, gx, gy, typ, i;
+	int dx, dy, gx, gy, i;
+	uchar typ;
 	struct fakecorridor *fcp;
 	register struct rm *crm;
 

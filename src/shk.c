@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.0	89/02/10
+/*	SCCS Id: @(#)shk.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,7 +9,7 @@
 #include "eshk.h"
 
 #ifdef KOPS
-static int makekops P((coord *));
+static int FDECL(makekops, (coord *));
 static void kops_gone();
 #endif /* KOPS */
 
@@ -25,9 +25,9 @@ static int shlevel = 0;	/* level of this shopkeeper */
 				/* only accessed here and by save & restore */
 static long int total;		/* filled by addupbill() */
 static long int followmsg;	/* last time of follow message */
-static void setpaid(), findshk P((int));
-static int dopayobj P((struct bill_x *)), getprice P((struct obj *));
-static struct obj *bp_to_obj P((struct bill_x *));
+static void setpaid(), FDECL(findshk, (int));
+static int FDECL(dopayobj, (struct bill_x *)), FDECL(getprice, (struct obj *));
+static struct obj *FDECL(bp_to_obj, (struct bill_x *));
 
 /*
 	invariants: obj->unpaid iff onbill(obj) [unless bp->useup]
@@ -292,13 +292,13 @@ register struct monst *mtmp;
 }
 
 boolean
-tended_shop(roomno)
-register int roomno;
+tended_shop(sroom)
+struct mkroom *sroom;
 {
 	register struct monst *mtmp;
 
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(mtmp->isshk && ESHK(mtmp)->shoproom == roomno
+	    if(mtmp->isshk && &rooms[ESHK(mtmp)->shoproom] == sroom
 		&& inhishop(mtmp)) return(TRUE);
 	return(FALSE);
 }
@@ -945,7 +945,8 @@ register struct obj *obj;
 	ltmp = (long) getprice(obj) * (long) obj->quan;
 	if(ESHK(shopkeeper)->billct == BILLSZ
 	   || !saleable(rooms[ESHK(shopkeeper)->shoproom].rtype-SHOPBASE, obj)
-	   || obj->olet == BALL_SYM || ltmp == 0L) {
+	   || obj->olet == BALL_SYM || ltmp == 0L
+	   || (obj->olet == FOOD_SYM && obj->oeaten)) {
 		pline("%s seems not interested.", Monnam(shopkeeper));
 		obj->no_charge = 1;
 		return;
@@ -1114,7 +1115,8 @@ register struct monst *shkp;
 	omx = shkp->mx;
 	omy = shkp->my;
 
-	if((udist = dist(omx,omy)) < 3) {
+	if((udist = dist(omx,omy)) < 3 &&
+	   (shkp->data != &mons[PM_GRID_BUG] || (omx==u.ux || omy==u.uy))) {
 		if(ANGRY(shkp)) {
 			if(Displaced)
 			  Your("displaced image doesn't fool %s!",
@@ -1247,7 +1249,8 @@ register int fall;
 	    pline("\"%s, do not damage the floor here!\"",
 			flags.female ? "Madam" : "Sir");
 	if (pl_character[0] == 'K') adjalign(-sgn(u.ualigntyp));
-    } else if(!um_dist(shopkeeper->mx, shopkeeper->my, 5)) {
+    } else if(!um_dist(shopkeeper->mx, shopkeeper->my, 5) &&
+	      !shopkeeper->msleep && !shopkeeper->mfroz) {
 	register struct obj *obj, *obj2;
 
 	if(dist(shopkeeper->mx, shopkeeper->my) > 2) {
@@ -1346,8 +1349,10 @@ char *dmgstr;
 	/* if he's not in his shop.. */
 	if(!in_shop(shopkeeper->mx ,shopkeeper->my)) return;
 
-	/* if a !shopkeeper shows up at the door, move him */
-	if(MON_AT(x, y) && (mtmp = m_at(x, y)) != shopkeeper) {
+	if(in_shop(u.ux, u.uy)) mnexto(shopkeeper);
+	else {
+	    /* if a !shopkeeper shows up at the door, move him */
+	    if(MON_AT(x, y) && (mtmp = m_at(x, y)) != shopkeeper) {
 		if(flags.soundok) {
 		    You("hear an angry voice: \"Out of my way, scum!\"");
 		    (void) fflush(stdout);
@@ -1359,14 +1364,16 @@ char *dmgstr;
 #endif
 		}
 		mnearto(mtmp, x, y, FALSE);
+	    }
+
+	    /* make shk show up at the door */
+	    remove_monster(shopkeeper->mx, shopkeeper->my);
+	    place_monster(shopkeeper, x, y);
+	    pmon(shopkeeper);
 	}
 
-	/* make shk show up at the door */
-	remove_monster(shopkeeper->mx, shopkeeper->my);
-	place_monster(shopkeeper, x, y);
-	pmon(shopkeeper);
-
-	damage = (ACURR(A_STR) > 18) ? 400 : 20 * ACURR(A_STR);
+	if(!strcmp(dmgstr, "destroy")) damage = 400;
+	else damage = (ACURR(A_STR) > 18) ? 400 : 20 * ACURR(A_STR);
 
 	if(um_dist(x, y, 1) || u.ugold < (long) damage || !rn2(50)) {
 		if(um_dist(x, y, 1))

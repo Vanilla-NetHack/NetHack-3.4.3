@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.0	88/10/22
+/*	SCCS Id: @(#)dothrow.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,8 +6,8 @@
 
 #include "hack.h"
 
-static void gem_accept P((struct monst *, struct obj *));
-static int throw_gold P((struct obj *));
+static void FDECL(gem_accept, (struct monst *, struct obj *));
+static int FDECL(throw_gold, (struct obj *));
 static const char toss_objs[] = { '0', GOLD_SYM, '#', WEAPON_SYM, 0 };
 #ifdef WORM
 extern boolean notonhead;
@@ -255,7 +255,8 @@ register struct obj   *obj;
 		}
 		return(1);
 	}
-	if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE || obj->olet == GEM_SYM) {
+	if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE ||
+	   obj->otyp == UNICORN_HORN || obj->olet == GEM_SYM) {
 		if(obj->otyp < DART || obj->olet == GEM_SYM) {
 		    if (!uwep ||
 			objects[obj->otyp].w_propellor !=

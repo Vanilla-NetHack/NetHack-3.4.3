@@ -433,11 +433,11 @@ xchar lev;
 		/* if a game is saved off the rogue level, the usual showsyms
 		 * will be written out for the rogue level too, but they will
 		 * be ignored on restore so it doesn't matter */
-		bwrite(fd, (genericptr_t) &savesyms, sizeof(struct symbols));
+		bwrite(fd, (genericptr_t) savesyms, sizeof savesyms);
 	else
 #endif
-		bwrite(fd, (genericptr_t) &showsyms, sizeof(struct symbols));
-	bwrite(fd,(genericptr_t) &monstermoves,sizeof(long));
+		bwrite(fd, (genericptr_t) showsyms, sizeof showsyms);
+	bwrite(fd,(genericptr_t) &monstermoves,sizeof(monstermoves));
 	bwrite(fd,(genericptr_t) &xupstair,sizeof(xupstair));
 	bwrite(fd,(genericptr_t) &yupstair,sizeof(yupstair));
 	bwrite(fd,(genericptr_t) &xdnstair,sizeof(xdnstair));

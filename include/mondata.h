@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.h	3.0	89/03/06
+/*	SCCS Id: @(#)mondata.h	3.0	89/11/08
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright (c) 1989 Mike Threepoint */
 
@@ -7,8 +7,9 @@
 
 # ifndef STUPID_CPP	/* otherwise these macros are functions in mondata.c */
 
-#define bigmonst(ptr)		(((ptr)->mflags1 & M1_BIG) != 0L)
-#define verysmall(ptr)		(((ptr)->mflags1 & M1_VSMALL) != 0L)
+#define verysmall(ptr)		((ptr)->msize < MZ_SMALL)
+#define bigmonst(ptr)		((ptr)->msize >= MZ_LARGE)
+
 #define is_flyer(ptr)		(((ptr)->mflags1 & M1_FLY) != 0L)
 #define is_floater(ptr) 	((ptr)->mlet == S_EYE)
 #define is_swimmer(ptr) 	(((ptr)->mflags1 & M1_SWIM) != 0L)
@@ -60,12 +61,12 @@
 #define is_wanderer(ptr)	(((ptr)->mflags2 & M2_WANDER) != 0L)
 #define is_lord(ptr)		(((ptr)->mflags1 & M1_LORD) != 0L)
 #define is_prince(ptr)		(((ptr)->mflags1 & M1_PRINCE) != 0L)
-#ifdef HARD
+#ifdef INFERNO
 #define is_ndemon(ptr)		(is_demon(ptr) && \
 			 (((ptr)->mflags1 & (M1_LORD | M1_PRINCE)) == 0L))
-#else /* HARD */
+#else
 #define is_ndemon(ptr)		(ptr == &mons[PM_DEMON])
-#endif /* HARD */
+#endif
 #define is_dlord(ptr)		(is_demon(ptr) && is_lord(ptr))
 #define is_dprince(ptr)		(is_demon(ptr) && is_prince(ptr))
 #define type_is_pname(ptr)	(((ptr)->mflags2 & M2_PNAME) != 0L)

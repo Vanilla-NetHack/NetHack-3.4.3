@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.0	88/04/13
+/*	SCCS Id: @(#)u_init.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -13,7 +13,7 @@ struct trobj {
 	Bitfield(trbless,2);
 };
 
-static void ini_inv P((struct trobj *));
+static void FDECL(ini_inv, (struct trobj *));
 
 #define	UNDEF_TYP	0
 #define	UNDEF_SPE	'\177'
@@ -27,10 +27,9 @@ char *(roles[]) = {	/* must all have distinct first letter */
 	"Priest", "Rogue", "Samurai", "Tourist", "Valkyrie", "Wizard"
 };
 
-struct you zerou;
+const char *pl_classes = "ABCEHKPRSTVW";
 
-#define	NR_OF_ROLES	SIZE(roles)
-char rolesyms[NR_OF_ROLES + 1];		/* filled by u_init() */
+struct you zerou;
 
 struct trobj Cave_man[] = {
 #define C_ARROWS	2
@@ -235,12 +234,11 @@ register char sym;
 static int
 role_index(pc)
 char pc;
-{		/* must be called only from u_init() */
-		/* so that rolesyms[] is defined */
+{
 	register char *cp;
 
-	if(cp = index(rolesyms, pc))
-		return(cp - rolesyms);
+	if(cp = index(pl_classes, pc))
+		return(cp - pl_classes);
 	return(-1);
 }
 
@@ -258,9 +256,6 @@ u_init()
 		roles[2] = "Cave-woman";
 		roles[6] = "Priestess";
 	}
-	for(i = 0; i < NR_OF_ROLES; i++)
-		rolesyms[i] = roles[i][0];
-	rolesyms[i] = 0;
 
 	if(pc = pl_character[0]) {
 		if('a' <= pc && pc <= 'z') pc += 'A'-'a';
@@ -290,16 +285,16 @@ u_init()
 		goto beginner;
 
 	Printf("\nWhat kind of character are you:\n\n");
-	Printf("         An");
-	Printf(" %s,",roles[0]);
-	for(i = 1; i < NR_OF_ROLES; i++) {
-		Printf(" a%s %s", index(vowels,roles[i][0]) ? "n" : "", roles[i]);
-		if((((i + 1) % 4) == 0) && (i != NR_OF_ROLES -1)) Printf(",\n        ");
-		else if(i < NR_OF_ROLES - 2)	Printf(",");
-		if(i == NR_OF_ROLES - 2)	Printf(" or");
+	Printf(" 	 %s,", An(roles[0]));
+	for(i = 1; i < SIZE(roles); i++) {
+		Printf(" %s", an(roles[i]));
+		if((((i + 1) % 4) == 0) && (i != SIZE(roles) -1)) 
+			Printf(",\n        ");
+		else if(i < SIZE(roles) - 2)	Printf(",");
+		if(i == SIZE(roles) - 2)	Printf(" or");
 	}
 	Printf("?\n         [");
-	for(i = 0; i < NR_OF_ROLES; i++) Printf("%c,", rolesyms[i]);
+	for(i = 0; i < SIZE(roles); i++) Printf("%c,", pl_classes[i]);
 	Printf(" or Q] ");
 
 	while(pc = readchar()) {
@@ -321,11 +316,9 @@ u_init()
 
 beginner:
 	if(!pc) {
-		i = rn2(NR_OF_ROLES);
-		pc = rolesyms[i];
-		Printf("\nThis game you will be %s %s.\n",
-			index("AEIOU", roles[i][0]) ? "an" : "a",
-			roles[i]);
+		i = rn2(SIZE(roles));
+		pc = pl_classes[i];
+		Printf("\nThis game you will be %s.\n", an(roles[i]));
 		getret();
 		/* give him some feedback in case mklev takes much time */
 		(void) putchar('\n');
@@ -503,7 +496,7 @@ got_suffix:
 		ini_inv(Wishing);
 #endif
 	find_ac();			/* get initial ac value */
-	init_attr((pick != 'Y') ? 69 : 72);	/* init attribute values */
+	init_attr((pick != 'Y') ? 75 : 77);	/* init attribute values */
 	max_rank_sz();			/* set max str size for class ranks */
 /*
  *	Do we really need this?
@@ -619,8 +612,7 @@ register struct trobj *trop;
 		if(obj->olet == FOOD_SYM && undefined) {
 			obj->known = 1;
 			/* needed for tins and eggs; harmless otherwise */
-			obj->bknown = (obj->otyp != DEAD_LIZARD);
-			/* only for dead lizards does the blessing not matter */
+			obj->bknown = 1;
 		}
 		/*
 		 * The below lines not needed because they don't correspond

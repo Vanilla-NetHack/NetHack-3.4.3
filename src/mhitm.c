@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.0	88/11/10
+/*	SCCS Id: @(#)mhitm.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,13 +11,13 @@ static boolean vis, far_noise;
 static long noisetime;
 static struct obj *otmp;
 
-static void mrustm P((struct monst *, struct monst *, struct obj *));
-static int hitmm P((struct monst *,struct monst *,struct attack *));
-static int gazemm P((struct monst *,struct monst *,struct attack *));
-static int gulpmm P((struct monst *,struct monst *,struct attack *));
-static int explmm P((struct monst *,struct monst *,struct attack *));
-static int mdamagem P((struct monst *,struct monst *,struct attack *));
-static void mswingsm P((struct monst *, struct monst *, struct obj *));
+static void FDECL(mrustm, (struct monst *, struct monst *, struct obj *));
+static int FDECL(hitmm, (struct monst *,struct monst *,struct attack *));
+static int FDECL(gazemm, (struct monst *,struct monst *,struct attack *));
+static int FDECL(gulpmm, (struct monst *,struct monst *,struct attack *));
+static int FDECL(explmm, (struct monst *,struct monst *,struct attack *));
+static int FDECL(mdamagem, (struct monst *,struct monst *,struct attack *));
+static void FDECL(mswingsm, (struct monst *, struct monst *, struct obj *));
 
 static void
 noises(magr, mattk)
@@ -66,7 +66,10 @@ register struct monst *mon;
 	for(mon = fmon; mon; mon = mon->nmon)
 	    if(mon != mtmp) {
 		if(dist2(mon->mx,mon->my,mtmp->mx,mtmp->my) < 3)
-		    return(mattackm(mtmp,mon));
+		/* note: grid bug check needed here as well as in mattackm */
+		    if(mtmp->data != &mons[PM_GRID_BUG] || mtmp->mx==mon->mx
+				|| mtmp->my==mon->my)
+			return(mattackm(mtmp,mon));
 	    }
 	return(-1);
 }
@@ -91,6 +94,9 @@ mattackm(magr, mdef)
 	if(!magr || !mdef) return(0);		/* mike@genat */
 	pa = magr->data; pd = mdef->data;
 	if(magr->mfroz) return(0);		/* riv05!a3 */
+	if(pa==&mons[PM_GRID_BUG] && magr->mx != mdef->mx
+						&& magr->my != mdef->my)
+		return(0);
 
 /*	Calculate the armour class differential.	*/
 

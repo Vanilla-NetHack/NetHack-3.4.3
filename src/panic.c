@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)panic.c	3.0	88/05/03
+/*	SCCS Id: @(#)panic.c	3.0	89/11/15
  * Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985.
  *
  *	This code was adapted from the code in end.c to run in a standalone
@@ -12,7 +12,7 @@
 
 #ifdef MSDOS
 #undef exit
-extern void exit P((int));
+extern void FDECL(exit, (int));
 #endif
 #ifdef AZTEC
 #define abort() exit()
@@ -44,4 +44,3 @@ panic VA_DECL(char *,str)
 	exit(1);		/* redundant */
 	return;
 }
-

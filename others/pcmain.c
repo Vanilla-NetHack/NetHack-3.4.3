@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	3.0	88/11/23
+/*	SCCS Id: @(#)pcmain.c	3.0	89/10/25
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - PC, ST, and Amiga NetHack */
@@ -8,6 +8,7 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif
+#include <ctype.h>
 #ifdef MACOS
 extern WindowPtr	HackWindow;
 extern short *switches;
@@ -21,7 +22,7 @@ char orgdir[PATHLEN];
 char SAVEF[FILENAME];
 
 char *hname = "NetHack";	/* used for syntax messages */
-#ifndef AMIGA
+#if !defined(AMIGA) && !defined(MACOS)
 char obuf[BUFSIZ];	/* BUFSIZ is defined in stdio.h */
 #endif
 int hackpid;		/* not used anymore, but kept in for save files */
@@ -56,6 +57,8 @@ long _stksize = 16*1024;
 #define OMASK	0
 # endif
 #endif
+
+static const char *classes = "ABCEHKPRSTVW";
 
 int
 main(argc,argv)
@@ -160,7 +163,7 @@ char *argv[];
 # endif /* DGK && !OLD_TOS */
 
 	initoptions();
-# ifdef TOS
+# if defined(TOS) && defined(TEXTCOLOR)
 	if (flags.IBMBIOS && flags.use_color)
 		set_colors();
 # endif
@@ -236,7 +239,7 @@ char *argv[];
 		case 'D':
 # ifdef WIZARD
 			/* Must have "name" set correctly by NETHACK.CNF,
-			 * NETHACKOPTIONS, or -U
+			 * NETHACKOPTIONS, or -u
 			 * before this flag to enter wizard mode. */
 			if(!strcmp(plname, WIZARD)) {
 				wizard = TRUE;
@@ -263,7 +266,7 @@ char *argv[];
 			  argv++;
 			  (void) strncpy(plname, argv[0], sizeof(plname)-1);
 			} else
-				Printf("Player name expected after -U\n");
+				Printf("Player name expected after -u\n");
 			break;
 #ifdef DGK
 		/* Player doesn't want to use a RAM disk
@@ -273,9 +276,27 @@ char *argv[];
 			break;
 #endif
 		default:
-			/* allow -T for Tourist, etc. */
-			(void) strncpy(pl_character, argv[0]+1,
-				sizeof(pl_character)-1);
+			if (index(classes, toupper(argv[0][1]))) {
+				/* allow -T for Tourist, etc. */
+				(void) strncpy(pl_character, argv[0]+1,
+					       sizeof(pl_character)-1);
+				break;
+			} else Printf("\nUnknown switch: %s\n", argv[0]);
+		case '?':
+Printf("\nUsage: %s [-d dir] -s [-[%s]] [maxrank] [name]...", hname, classes);
+Printf("\n       or");
+Printf("\n       %s [-d dir] [-u name] [-[%s]]", hname, classes);
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+			Printf(" [-[DX]]");
+#endif
+#ifdef NEWS
+			Printf(" [-n]");
+#endif
+#ifdef DGK
+			Printf(" [-r]");
+#endif
+			putchar('\n');
+			return 0;
 		}
 	}
 
@@ -288,13 +309,18 @@ char *argv[];
 		Strcpy(plname, "wizard");
 	else
 #endif
-#if defined(KR1ED) && defined(WIZARD) && defined(MACOS)
-	if (!strcmp(plname,WIZARD))
-		Strcpy(plname, "wizard");
-	else
-#endif
 	if (!*plname)
 		askname();
+#if defined(WIZARD) && defined(MACOS)
+# ifdef KR1ED
+	if (!strcmp(plname,WIZARD_NAME)) {
+# else
+	if (!strcmp(plname,WIZARD)) {
+# endif
+		Strcpy(plname, "wizard");
+		wizard = true;
+	}
+#endif
 	plnamesuffix();		/* strip suffix from name; calls askname() */
 				/* again if suffix was whole name */
 				/* accepts any suffix */
@@ -431,7 +457,7 @@ not_recovered:
 }
 
 /*
- * plname is filled either by an option (-U Player  or  -UPlayer) or
+ * plname is filled either by an option (-u Player  or  -uPlayer) or
  * explicitly (by being the wizard) or by askname.
  * It may still contain a suffix denoting pl_character.
  */

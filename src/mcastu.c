@@ -72,7 +72,7 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 			dmg = 0;
 		}
 		break;
-#ifdef HARD
+#ifdef INFERNO
 	    case AD_MAGM:
 		You("are hit by a shower of missiles!");
 		if(Antimagic) {

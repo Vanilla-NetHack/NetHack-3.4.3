@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	3.0	88/11/20
+/*	SCCS Id: @(#)msdos.c	3.0	89/11/08
 /* NetHack may be freely redistributed.  See license for details. */
 /* An assortment of MSDOS functions.
  */
@@ -8,6 +8,9 @@
 #ifdef MSDOS
 # ifdef TOS
 #  include <osbind.h>
+#  ifndef WORD
+#    define WORD short		/* 16 bits -- redefine if necessary */
+#  endif
 # else
 #  ifdef __TURBOC__	/* avoid incompatible redeclaration */
 #   undef getdate
@@ -15,13 +18,18 @@
 #  include <dos.h>
 # endif
 #ifdef OS2
-# include "def_os2.h"    /* OS2 definitions (Timo Hakulinen) */
+# include "def_os2.h"   /* OS2 definitions (Timo Hakulinen) */
 #endif
 static char DOSgetch();
 #ifdef DGK
 static char BIOSgetch();
 #endif
 static unsigned int ioctl();
+
+#ifdef TOS
+static void init_aline();
+char *_a_line;			/* for Line A variables */
+#endif
 
 void
 flushout()
@@ -498,7 +506,7 @@ char *file;
 
 void
 eraseall(path, files)
-char *path, *files;
+const char *path, *files;
 {
 	char
 #ifndef OS2
@@ -535,7 +543,6 @@ copybones(mode) {
 #endif
 	*comspec;
 	int status;
-	long fs;
 	extern saveprompt;
 
 	if (!ramdisk)
@@ -850,7 +857,7 @@ read_config_file() {
 			int lth;
 
 		     if ((lth = sscanf(bufp,
-	 "%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
+	"%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d%d",
 				&translate[0], &translate[1], &translate[2],
 				&translate[3], &translate[4], &translate[5],
 				&translate[6], &translate[7], &translate[8],
@@ -861,7 +868,8 @@ read_config_file() {
 				&translate[21], &translate[22], &translate[23],
 				&translate[24], &translate[25], &translate[26],
 				&translate[27], &translate[28], &translate[29],
-				&translate[30], &translate[31])) <= 0) {
+				&translate[30], &translate[31], &translate[32],
+				&translate[33], &translate[34])) <= 0) {
 					msmsg ("Syntax error in GRAPHICS\n");
 					getreturn("to continue");
 			}
@@ -926,7 +934,7 @@ char *name;
 
 void
 getreturn(str)
-char *str;
+const char *str;
 {
 #ifdef TOS
 	msmsg("Hit <Return> %s.", str);
@@ -938,9 +946,9 @@ char *str;
 }
 
 void
-msmsg VA_DECL(char *, fmt)
+msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
-	VA_INIT(fmt, char *);
+	VA_INIT(fmt, const char *);
 	Vprintf(fmt, VA_ARGS);
 	flushout();
 	VA_END();
@@ -950,38 +958,40 @@ msmsg VA_DECL(char *, fmt)
 /* Chdrive() changes the default drive.
  */
 #ifndef __TURBOC__
-#ifndef OS2
-#define SELECTDISK	0x0E
-#endif
+# ifndef OS2
+#  define SELECTDISK      0x0E
+# endif
 void
 chdrive(str)
 char *str;
 {
 	char *ptr;
-#ifndef TOS
-#ifndef OS2
+# ifndef TOS
+#  ifndef OS2
 	union REGS inregs;
-#endif
-#endif
+#  endif
+# endif
 	char drive;
 
 	if ((ptr = index(str, ':')) != NULL) {
 		drive = toupper(*(ptr - 1));
-#ifdef TOS
+# ifdef TOS
 		Dsetdrv(drive - 'A');
-#else
-#ifdef OS2
+# else
+#  ifdef OS2
 		DosSelectDisk((USHORT)(drive - 'A' + 1));
-#else
+#  else
 		inregs.h.ah = SELECTDISK;
 		inregs.h.dl = drive - 'A';
 		intdos(&inregs, &inregs);
-#endif
-#endif
+#  endif
+# endif
 	}
 	return;
 }
 #else
+extern int setdisk(int);
+
 void
 chdrive(str)
 char *str;
@@ -1158,8 +1168,10 @@ msexit(code)
 #ifdef TOS
 	if (run_from_desktop)
 	    getreturn("to continue"); /* so the user can read the score list */
+# ifdef TEXTCOLOR
 	if (flags.IBMBIOS && flags.use_color)
 		restore_colors();
+# endif
 #endif
 	exit(code);
 	return;
@@ -1213,6 +1225,10 @@ get_scr_size()
 
 	LI = regs.h.dl + 1;
 	CO = regs.h.ah;
+#   else  /* TOS */
+	init_aline();
+	LI = (*((WORD  *)(_a_line + -42L))) + 1;
+	CO = (*((WORD  *)(_a_line + -44L))) + 1;
 #   endif /* TOS */
 #  endif
 }
@@ -1248,22 +1264,60 @@ int kbhit()
 	return Cconis();
 }
 
+static void
+init_aline()
+{
+#ifdef __GNUC__
+	asm(" .word 0xa000; movel d0, __a_line");
+#else
+	asm(" .dc.w 0xa000");	/* tweak as necessary for your compiler */
+	asm(" move.l d0, __a_line");
+#endif
+}
+
+#ifdef TEXTCOLOR
 static unsigned orig_color[4] = {-1, -1, -1, -1};
 static unsigned new_color[4] = { 0x0, 0x730, 0x047, 0x555 };
+static int numcolors = 2;
 
 void set_colors()
 {
 	int i;
 
-	for (i = 0; i < 4; i++)
-		orig_color[i] = Setcolor(i, new_color[i]);
+	init_aline();
+	numcolors = 1 << (((unsigned char *) _a_line)[1]);
+	if (numcolors == 2) {			/* mono */
+		flags.use_color = FALSE;
+		return;
+	}
+	else if (numcolors == 4) {
+		for (i = 0; i < 4; i++)
+			orig_color[i] = Setcolor(i, new_color[i]);
+	}
+	else {
+		orig_color[0] = Setcolor(0, new_color[0]);
+		orig_color[1] = Setcolor(15, 0x777);
+		for (i = 0; i < 16; i++) {
+			hilites[i] = (char *) alloc(sizeof("\033b0"));
+			sprintf(hilites[i], "\033b%c", '0'+i);
+		}
+		HE = "\033q\033b\017\033c0";
+	}
 }
 
 void restore_colors()
 {
 	int i;
 
-	for (i = 0; i < 4; i++)
-		(void) Setcolor(i, orig_color[i]);
+	if (numcolors == 2)
+		return;
+	else if (numcolors == 4)
+		for (i = 0; i < 4; i++)
+			(void) Setcolor(i, orig_color[i]);
+	else {
+		(void) Setcolor(0, orig_color[0]);
+		(void) Setcolor(15, orig_color[1]);
+	}
 }
+#endif /* TEXTCOLOR */
 #endif /* TOS */

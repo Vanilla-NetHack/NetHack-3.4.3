@@ -32,14 +32,14 @@ DEC_Rainbow	you are on a DEC Rainbow and want to use its graphics  [FALSE]
 
 Boolean options if DGK was not set at compile time:
 null		allow nulls to be sent to your terminal  [TRUE]
+		try turning this option off (forcing NetHack to use its own
+		delay code) if moving objects seem to teleport across rooms
 standout	use standout mode for --More-- on messages  [FALSE]
 
 Boolean option if TEXTCOLOR was set at compile time:
 color		use different colors for objects on screen  [TRUE]
 
 Any Boolean option can be negated by prefixing it with a '!' or 'no'.
-
-
 
 
  
@@ -77,7 +77,8 @@ graphics	a list of symbols to be used in place of the default ones for
 		vwall hwall tlcorn trcorn blcorn brcorn       (room boundaries)
 		crwall tuwall tdwall tlwall trwall  (wallified maze characters)
 		vbeam hbeam lslant rslant			    (zap beams)
-		door room corr upstair dnstair trap web pool
+		ndoor vodoor hodoor cdoor   (no, vert-open, horiz-open, closed)
+		room corr upstair dnstair trap web pool
 		fountain sink throne altar
 		upladder dnladder vdbridge hdbridge]
 

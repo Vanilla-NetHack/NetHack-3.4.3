@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.0	88/11/24
+/*	SCCS Id: @(#)topten.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -37,9 +37,9 @@ struct toptenentry {
 	char date[7];		/* yymmdd */
 } *tt_head;
 
-static char *itoa P((int)), *ordin P((int));
+static char *FDECL(itoa, (int)), *FDECL(ordin, (int));
 static void outheader();
-static int outentry P((int,struct toptenentry *,int));
+static int FDECL(outentry, (int,struct toptenentry *,int));
 
 void
 topten(){
@@ -416,7 +416,7 @@ register int rank, so;
 		Strcat(linebuf, "starved to death");
 		starv = TRUE;
 	  } else if(!strcmp(t1->death,"poisoned")) {
-		Strcat(linebuf, "was posioned");
+		Strcat(linebuf, "was poisoned");
 	  } else if(!strcmp(t1->death,"crushed")) {
 		Strcat(linebuf, "was crushed to death");
 	  } else if(!strncmp(t1->death, "turned to stone by ",19)) {
@@ -437,16 +437,13 @@ register int rank, so;
 	    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
 	  if(quit && t1->death[4]) Strcat(linebuf, t1->death + 4);
 	}
-	if(iskilled) Sprintf(eos(linebuf), " by %s%s",
+	if(iskilled) Sprintf(eos(linebuf), " by %s",
 	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4)
 	   || !strncmp(t1->death, "Mr. ", 4) || !strncmp(t1->death, "Ms. ", 4)
 	   || !strcmp(t1->death, "contaminated water")
 	   || (!strncmp(eos(t1->death)-4,"tion",4) && *(eos(t1->death)-5)!='o')
-	   ) ? "" :
-	  index(vowels,*t1->death) ? "an " : "a ",
-	  t1->death);
-	if (isstoned) Sprintf(eos(linebuf), " by %s%s", index(vowels,
-		*(t1->death + 19)) ? "an " : "a ", t1->death + 19);
+	   ) ? t1->death : an(t1->death));
+	if (isstoned) Sprintf(eos(linebuf), " by %s", an(t1->death + 19));
 	Strcat(linebuf, ".");
 	if(t1->maxhp) {
 	  register char *bp = eos(linebuf);
@@ -566,7 +563,7 @@ char **argv;
 		if(!argv[1][2]){
 			argc--;
 			argv++;
-		} else if(!argv[1][3] && index("ABCEHKPRSTVW", argv[1][2])) {
+		} else if(!argv[1][3] && index(pl_classes, argv[1][2])) {
 			argv[1]++;
 			argv[1][0] = '-';
 		} else	argv[1] += 2;
@@ -680,9 +677,9 @@ char **argv;
 	   .hacklog or something in his home directory. */
 	flags.beginner = (total_score < 6000);
 	for(i=0; i<6; i++)
-	    if(!index(totchars, "ABCEHKPRSTVW"[i])) {
+	    if(!index(totchars, pl_classes[i])) {
 		flags.beginner = 1;
-		if(!pl_character[0]) pl_character[0] = "ABCEHKPRSTVW"[i];
+		if(!pl_character[0]) pl_character[0] = pl_classes[i];
 		break;
 	}
 #endif /* nonsense /**/

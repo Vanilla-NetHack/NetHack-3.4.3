@@ -42,6 +42,9 @@ moveloop()
 		UnloadSeg(savebones);
 	}
 #endif
+#ifdef CLIPPING
+		cliparound(u.ux, u.uy);
+#endif
 		if(flags.move) {	/* actual time passed */
 
 #ifdef SOUNDS
@@ -262,6 +265,9 @@ newgame() {
 	 */
 	if(MON_AT(u.ux, u.uy)) mnexto(m_at(u.ux, u.uy));
 
+#ifdef CLIPPING
+	cliparound(u.ux, u.uy);
+#endif
 	(void) makedog();
 	seemons();
 #ifdef NEWS

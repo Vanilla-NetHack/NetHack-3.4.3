@@ -42,13 +42,12 @@
 #define LSC 1		/* for the Lighspeed 3.01p4 C compiler on the Mac */
 /* #define AZTEC 1	/* for the Manx Aztec C 3.6c compiler */
 /* #define THINKC4	/* for the Think C 4 compiler */
-
+#define NEED_VARARGS	/* if you're using precompiled headers */
 #define SMALLDATA 1	/* for Mac compilers with 32K global data limit */
  
 # ifdef KR1ED
 #define defined(x) (x<<1) /* Lightspeed & Aztec can't handle defined() yet */
 # endif
-
 #endif
 
 
@@ -79,8 +78,10 @@
  *	smaller bones/level/save files, but require additional code and time.
  */
 
-#define COMPRESS "/usr/local/compress"
-/* #define ZEROCOMP	/* Use only if COMPRESS is not used -- Olaf Seibert */
+#define COMPRESS "/usr/local/compress"  /* path name for 'compress' */
+#ifndef COMPRESS
+#define ZEROCOMP	/* Use only if COMPRESS is not used -- Olaf Seibert */
+#endif
 
 
 #define CHDIR		/* delete if no chdir() available */
@@ -90,7 +91,7 @@
  * If you define HACKDIR, then this will be the default playground;
  * otherwise it will be the current directory.
  */
-#define HACKDIR "/usr/games/lib/nethackdir"
+#define HACKDIR "/usr/games/lib/nethackdir" 	/* nethack directory */
 
 /*
  * Some system administrators are stupid enough to make Hack suid root
@@ -99,7 +100,7 @@
  * since the user might create files in a directory of his choice.
  * Of course SECURE is meaningful only if HACKDIR is defined.
  */
-/* #define SECURE			/* do setuid(getuid()) after chdir() */
+/* #define SECURE	/* do setuid(getuid()) after chdir() */
 
 /*
  * If it is desirable to limit the number of people that can play Hack
@@ -171,39 +172,47 @@ typedef unsigned char	uchar;
  * complexity of the game but also to the size of the load module.
  */ 
 
-#define SPELLS        1 /* Spell casting by M. Stephenson */
+/* game features */
 #define POLYSELF      1 /* Polymorph self code by Ken Arromdee */
-#define THRONES       1 /* Thrones and Courts by M. Stephenson */
-#define PROBING       1 /* Wand of probing code by Gil Neiger */
-#define REDO          1 /* support for redoing last command - DGK */
-#define HARD          1 /* Enhanced wizard code by M. Stephenson */
-#define WALKIES       1 /* Leash code by M. Stephenson */
-#define FOUNTAINS     1 /* Fountain code by SRT (+ GAN + EB) */
-#define KOPS          1 /* Keystone Kops by Scott R. Turner */
-#define COM_COMPL     1 /* Command line completion by John S. Bien */
-#define MEDUSA        1 /* Mirrors and the Medusa by Richard P. Hughey */
-#define NAMED_ITEMS   1 /* Special named items handling */
-#define ARMY          1 /* Soldiers, barracks by Steve Creps */
-#define SHIRT         1 /* Hawaiian shirt code by Steve Linhart */
 #define THEOLOGY      1 /* Smarter gods - The Unknown Hacker */
-#define SINKS         1 /* Kitchen sinks - Janet Walz */
 #define SOUNDS        1 /* Add more life to the dungeon */
-#define REINCARNATION 1 /* Rogue-like levels */
-#define ELBERETH      1 /* Allow for disabling the E word - Mike 3point */
-#define WORM          1 /* Long worms */
-#define ORACLE        1 /* Include another source of information */
-#define EXPLORE_MODE  1 /* Allow non-scoring play with additional powers */
+#define KICK          1 /* Allow kicking things besides doors -Izchak Miller */
+/* dungeon features */
+#define THRONES       1 /* Thrones and Courts by M. Stephenson */
+#define FOUNTAINS     1 /* Fountain code by SRT (+ GAN + EB) */
+#define SINKS         1 /* Kitchen sinks - Janet Walz */
 #define ALTARS        1 /* Sacrifice sites - Jean-Christophe Collet */
+/* dungeon levels */
 #define WALLIFIED_MAZE 1 /* Fancy mazes - Jean-Christophe Collet */
-#ifdef HARD
+#define REINCARNATION 1 /* Rogue-like levels */
+#define STRONGHOLD    1 /* Challenging special levels - Jean-Christophe Collet*/
+/* monsters & objects */
+#define ORACLE        1 /* Include another source of information */
+#define MEDUSA        1 /* Mirrors and the Medusa by Richard P. Hughey */
+#define KOPS          1 /* Keystone Kops by Scott R. Turner */
+#define ARMY          1 /* Soldiers, barracks by Steve Creps */
+#define WORM          1 /* Long worms */
+#define GOLEMS        1 /* Golems, by KAA */
+#define INFERNO       1 /* Demons & Demonlords */
+#ifdef INFERNO
 #define SEDUCE        1 /* Succubi/incubi additions, by KAA, suggested by IM */
 #endif
-#define STRONGHOLD    1 /* Challenging special levels - Jean-Christophe Collet*/
-#define MUSIC         1 /* Musical instruments - Jean-Christophe Collet */
-#define GOLEMS        1 /* Golems, by KAA */
 #define TOLKIEN       1 /* More varieties of objects and monsters */
-#define KICK          1 /* Allow kicking things besides doors -Izchak Miller */
+#define PROBING       1 /* Wand of probing code by Gil Neiger */
+#define WALKIES       1 /* Leash code by M. Stephenson */
+#define SHIRT         1 /* Hawaiian shirt code by Steve Linhart */
+#define MUSIC         1 /* Musical instruments - Jean-Christophe Collet */
 #define TUTTI_FRUTTI  1 /* Fruits as in Rogue, but which work... -KAA */
+#define SPELLS        1 /* Spell casting by M. Stephenson */
+#define NAMED_ITEMS   1 /* Special named items handling */
+/* difficulty */
+#define ELBERETH      1 /* Allow for disabling the E word - Mike 3point */
+#define EXPLORE_MODE  1 /* Allow non-scoring play with additional powers */
+#define HARD          1 /* Enhanced wizard code by M. Stephenson */
+/* I/O */
+#define REDO          1 /* support for redoing last command - DGK */
+#define COM_COMPL     1 /* Command line completion by John S. Bien */
+#define CLIPPING      1 /* allow smaller screens -- ERS */
 
 #ifdef REDO
 #define DOAGAIN '\001'		/* The "redo" key used in tty.c and cmd.c */

@@ -10,13 +10,16 @@
 /* #define OS2_CODEVIEW /* define for OS/2 CodeView debugger,
 			   otherwise path searches may fail (TH) */
 
+#ifndef TOS
 /*
  *  The following options are configurable:
  */
 
+#define OVERLAY 		/* MS DOS overlay manager - PGM */
+
 #define DGK			/* MS DOS specific enhancements by dgk */
 
-/* #define TERMLIB		/* enable use of termcap file /etc/termcap */
+#define TERMLIB 		/* enable use of termcap file /etc/termcap */
 			/* or ./termcap for MSDOS (SAC) */
 			/* compile and link in Fred Fish's termcap library, */
 			/* enclosed in TERMCAP.ARC, to use this */
@@ -24,14 +27,17 @@
 
 #define RANDOM		/* have Berkeley random(3) */
 
-#define PATHLEN		64	/* maximum pathlength */
+#define SHELL		/* via exec of COMMAND.COM */
+
+#endif /* TOS */
+
+#define PATHLEN 	64	/* maximum pathlength */
 #define FILENAME	80	/* maximum filename length (conservative) */
 #ifndef MSDOS_H
-#include "msdos.h"	/* contains necessary externs for [os_name].c */
+#include "msdos.h"      /* contains necessary externs for [os_name].c */
 #endif
-#define glo(x)	name_file(lock, (int)x)	/* name_file used for bones */
+#define glo(x)	name_file(lock, (int)x) /* name_file used for bones */
 extern const char *configfile;
-/*#define SHELL			/* via exec of COMMAND.COM */
 
 #ifdef DGK
 /*	Selectable DGK options:
@@ -41,7 +47,7 @@ extern const char *configfile;
 /*	Non-Selectable DGK options:
  */
 # define FROMPERM	 1	/* for ramdisk use */
-# define TOPERM		 2	/* for ramdisk use */
+# define TOPERM 	 2	/* for ramdisk use */
 
 #endif /* DGK /**/
 
@@ -67,9 +73,9 @@ extern const char *configfile;
 #endif /* RANDOM */
 
 #ifdef __TURBOC__
-#define	alloc	malloc
+#define alloc	malloc
 # if __TURBOC__ < 0x0200 /* version 2.0 has signal() */
-#define	signal	ssignal
+#define signal	ssignal
 # endif
 /* rename the next two functions - they clash with the Turbo C library */
 #define getdate getdate_
@@ -77,12 +83,12 @@ extern const char *configfile;
 #endif
 
 #ifndef TOS
-#define	FCMASK	0660	/* file creation mask */
+#define FCMASK	0660	/* file creation mask */
 #endif
 
 #include <fcntl.h>
 
-#define	exit	msexit		/* do chdir first */
+#define exit	msexit		/* do chdir first */
 
 #ifndef REDO
 #undef	Getchar

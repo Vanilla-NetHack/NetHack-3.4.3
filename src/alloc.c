@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)alloc.c	3.0	88/07/21
+/*	SCCS Id: @(#)alloc.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,7 +23,7 @@ long dummy = ftell(stderr);
 
 #else
 #ifndef __TURBOC__
-extern void panic P((char *,...));
+extern void VDECL(panic, (char *,...));
 
 long *
 alloc(lth)

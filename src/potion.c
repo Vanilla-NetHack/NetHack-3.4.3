@@ -127,7 +127,7 @@ boolean talk;
 	if (!xtime && old ) {
 		if (!Blind && talk) pline("Everything looks SO boring now.");
 		for (mtmp=fmon; mtmp; mtmp=mtmp->nmon)
-		  if ((Blind && Telepat) || canseemon(mtmp))
+		  if (showmon(mtmp))
 		    atl(mtmp->mx, mtmp->my, (!mtmp->mappearance ||
 					     Protection_from_shape_changers)
 			? mtmp->data->mlet : mtmp->mappearance);
@@ -182,7 +182,9 @@ dodrink() {
 
 	otmp = getobj(beverages, "drink");
 	if(!otmp) return(0);
+#ifndef NO_SIGNAL
 	otmp->in_use = TRUE;		/* you've opened the stopper */
+#endif
 	if(objects[otmp->otyp].oc_descr && !strcmp(objects[otmp->otyp].oc_descr, "smoky") && !rn2(13)) {
 		ghost_from_bottle();
 		useup(otmp);
@@ -259,9 +261,7 @@ peffects(otmp)
 	case POT_WATER:
 		if(!otmp->blessed && !otmp->cursed) {
 			pline("This tastes like %swater.",
-			      otmp->spe == -1 ? "impure " :
-			      !otmp->rustfree ? "" : "mineral "
-			     );
+			      otmp->spe == -1 ? "impure " : "");
 			lesshungry(rnd(otmp->spe == -1 ? 3 : 10));
 			break;
 		}
@@ -317,7 +317,7 @@ peffects(otmp)
 			unkn++;
 			You("have an uneasy feeling...");
 		} else {
-			You("feel self-knowledgable...");
+			You("feel self-knowledgeable...");
 			if (otmp->blessed) {
 				adjattrib(A_INT, 1, FALSE);
 				adjattrib(A_WIS, 1, FALSE);
@@ -786,7 +786,7 @@ register struct obj *obj;
 	/* note: no obfree() */
 }
 
-static int
+static boolean
 neutralizes(o1, o2)
 register struct obj *o1, *o2;
 {
@@ -797,17 +797,60 @@ register struct obj *o1, *o2;
 		case POT_CONFUSION:
 			if (o2->otyp == POT_HEALING ||
 			    o2->otyp == POT_EXTRA_HEALING)
-				return 1;
+				return TRUE;
 		case POT_HEALING:
 		case POT_EXTRA_HEALING:
+		case UNICORN_HORN:
 			if (o2->otyp == POT_SICKNESS ||
 			    o2->otyp == POT_HALLUCINATION ||
 			    o2->otyp == POT_BLINDNESS ||
 			    o2->otyp == POT_CONFUSION)
-				return 1;
+				return TRUE;
 	}
 
-	return 0;
+	return FALSE;
+}
+
+boolean
+get_wet(obj)
+register struct obj *obj;
+/* returns TRUE if something happened (potion should be used up) */
+{
+	switch (obj->olet) {
+	    case WEAPON_SYM:
+		if (!obj->rustfree &&
+		    objects[obj->otyp].oc_material == METAL &&
+		    obj->spe > -6 && !rn2(10)) {
+			Your("%s somewhat.", aobjnam(obj,"rust"));
+			obj->spe--;
+			return TRUE;
+		} else break;
+	    case POTION_SYM:
+		if (obj->otyp == POT_WATER) return FALSE;
+		Your("%s.", aobjnam(obj,"dilute"));
+		if (obj->spe == -1) {
+			obj->spe = 0;
+			obj->blessed = obj->cursed = 0;
+			obj->otyp = POT_WATER;
+		} else obj->spe--;
+		return TRUE;
+	    case SCROLL_SYM:
+		if (obj->otyp != SCR_BLANK_PAPER
+#ifdef MAIL
+		    && obj->otyp != SCR_MAIL
+#endif
+		    ) {
+			if (!Blind) {
+				if (obj->quan == 1)
+					pline("The scroll fades.");
+				else pline("The scrolls fade.");
+			}
+			obj->otyp = SCR_BLANK_PAPER;
+			return TRUE;
+		}
+	}
+	Your("%s wet.", aobjnam(obj,"get"));
+	return FALSE;
 }
 
 int
@@ -815,12 +858,15 @@ dodip()
 {
 	register struct obj *potion, *obj;
 	char *tmp;
+	uchar here;
 
 	if(!(obj = getobj("#", "dip")))
 		return(0);
+
+	here = levl[u.ux][u.uy].typ;
 #ifdef FOUNTAINS
 	/* Is there a fountain to dip into here? */
-	if (IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
+	if (IS_FOUNTAIN(here)) {
 		pline("Dip it into the fountain? ");
 		if(yn() == 'y') {
 			dipfountain(obj);
@@ -828,6 +874,15 @@ dodip()
 		}
 	}
 #endif
+        if (is_pool(u.ux,u.uy)) {
+		pline("Dip it into the %s? ",
+		      here == POOL ? "pool" : "moat");
+		if(yn() == 'y') {
+			(void) get_wet(obj);
+			return(1);
+		}
+	}
+
 	if(!(potion = getobj(beverages, "dip into")))
 		return(0);
 	if (potion==obj && potion->quan==1) {
@@ -879,36 +934,9 @@ dodip()
 				obj->bknown=1;
 				goto poof;
 			}
-		} else if (obj->otyp != POT_WATER) {
-			if (obj->olet == WEAPON_SYM && !obj->rustfree &&
-			    objects[obj->otyp].oc_material == METAL &&
-			    obj->spe > -6 && !rn2(10)) {
-				Your("%s somewhat.", aobjnam(obj,"rust"));
-				obj->spe--;
-				goto poof;
-			} else if (obj->olet == POTION_SYM) {
-				Your("%s.", aobjnam(obj,"dilute"));
-				if (obj->spe == -1) {
-					obj->spe = 0;
-					obj->blessed = obj->cursed = 0;
-					obj->otyp = POT_WATER;
-				} else obj->spe--;
-				goto poof;
-			} else if (obj->olet == SCROLL_SYM &&
-#ifdef MAIL
-				   obj->otyp != SCR_MAIL &&
-#endif
-				   obj->otyp != SCR_BLANK_PAPER) {
-				if (!Blind) {
-					if (obj->quan == 1)
-						pline("The scroll fades.");
-					else pline("The scrolls fade.");
-				}
-				obj->otyp = SCR_BLANK_PAPER;
-				goto poof;
-			} else
-				Your("%s wet.", aobjnam(obj,"get"));
-		}
+		} else
+			if (get_wet(obj))
+			    goto poof;
 	}
 	else if(obj->olet == POTION_SYM && obj->otyp != potion->otyp) {
 		/* Mixing potions is dangerous... */
@@ -926,8 +954,8 @@ dodip()
 		obj->blessed = obj->cursed = obj->bknown = 0;
 		if (Blind) obj->dknown = 0;
 
-		switch (neutralizes(obj, potion) || obj->spe == -1 ?
-			1 : rnd(8)) {
+		switch (neutralizes(obj, potion) ||
+			obj->spe == -1 /* diluted */ ? 1 : rnd(8)) {
 			case 1:
 				obj->otyp = POT_WATER;
 				obj->blessed = obj->cursed = 0;
@@ -982,6 +1010,14 @@ dodip()
 		goto poof;
 	    }
 	}
+
+	if(obj->otyp == UNICORN_HORN && neutralizes(obj, potion)) {
+		pline("The potion clears.");
+		potion->otyp = POT_WATER;
+		potion->blessed = potion->cursed = 0;
+		return(1);
+	}
+
 	pline("Interesting...");
 	return(1);
 }

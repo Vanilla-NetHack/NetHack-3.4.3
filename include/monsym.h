@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.0	88/04/11
+/*	SCCS Id: @(#)monsym.h	3.0	89/11/08
 /*	Monster symbols and creation information rev 1.0 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,15 +10,15 @@
 #define	S_COCKATRICE	'c'
 #define	S_DOG		'd'
 #define	S_EYE		'e'
-#define S_FELINE	'f'
+#define	S_FELINE	'f'
 #define	S_GREMLIN	'g'
 #define	S_HUMANOID	'h'
 #define	S_IMP		'i'
 #define	S_JELLY		'j'
 #define	S_KOBOLD	'k'
-#define	S_LICH		'l'
+#define	S_LEPRECHAUN	'l'
 #define	S_MIMIC		'm'
-#define	S_NAGA		'n'
+#define	S_NYMPH 	'n'
 #define	S_ORC		'o'
 #define	S_PIERCER	'p'
 #define	S_QUADRUPED	'q'
@@ -29,7 +29,7 @@
 #define	S_VORTEX	'v'
 #define	S_WORM		'w'
 #define	S_XAN		'x'
-#define S_YLIGHT	'y'
+#define	S_YLIGHT	'y'
 #define	S_ZRUTY		'z'
 #define	S_APE		'A'
 #define	S_BAT		'B'
@@ -42,9 +42,9 @@
 #define	S_STALKER	'I'
 #define	S_JABBERWOCK	'J'
 #define	S_KOP		'K'
-#define	S_LEPRECHAUN	'L'
+#define	S_LICH		'L'
 #define	S_MUMMY		'M'
-#define	S_NYMPH		'N'
+#define	S_NAGA		'N'
 #define	S_OGRE		'O'
 #define	S_PUDDING	'P'
 #define	S_QUANTMECH	'Q'
@@ -59,10 +59,10 @@
 #define	S_ZOMBIE	'Z'
 #define	S_HUMAN		'@'
 #define	S_GHOST		' '
-#define S_GOLEM		'\''
+#define	S_GOLEM		'\''
 #define	S_DEMON		'&'
 #define	S_EEL		';'
-#define	S_CHAMELEON	':'
+#define	S_LIZARD	':'
 
 #define	S_WORM_TAIL	'~'
 #define	S_MIMIC_DEF	']'

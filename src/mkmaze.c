@@ -26,7 +26,7 @@ wallification(x1, y1, x2, y2, see)
 int x1, y1, x2, y2;
 boolean see;
 {
-	char type;
+	uchar type;
 	short x,y;
 	register struct rm *room;
 
@@ -43,102 +43,50 @@ boolean see;
 		room = &levl[x][y];
 		type = room->typ;
 		if (iswall(x,y)) {
-		    if (IS_DOOR(type)) {
-			room->scrsym = DOOR_SYM;
-			continue;
-		    } else
+		  if (IS_DOOR(type))
+		    continue;
+		  else
 		    if (iswall(x,y-1))
 			if (iswall(x,y+1))
 			    if (iswall(x-1,y))
-				if (iswall(x+1,y)) {
-					room->scrsym = CRWALL_SYM; /* -+- */
+				if (iswall(x+1,y))
 					room->typ = CROSSWALL;
-				} else {
-					room->scrsym = TLWALL_SYM; /* -| */
+				else
 					room->typ = TLWALL;
-				}
 			    else
-				if (iswall(x+1,y)) {
-					room->scrsym = TRWALL_SYM; /* |- */
+				if (iswall(x+1,y))
 					room->typ = TRWALL;
-				} else {
+				else
 					room->typ = VWALL;
-#ifdef STRONGHOLD
-					if (is_drawbridge_wall(x,y) >= 0)
-					    room->scrsym = DB_VWALL_SYM;
-					else
-#endif
-					    room->scrsym = VWALL_SYM; /* | */
-				}
 			else
 			    if (iswall(x-1,y))
-				if (iswall(x+1,y)) {		      
-					room->scrsym = TUWALL_SYM;  /*  |  */
-					room->typ = TUWALL;	    /* -+- */
-				} else {
-					room->scrsym = BRCORN_SYM;  /*	| */
-					room->typ = BRCORNER;	    /* -+ */
-				}
+				if (iswall(x+1,y))
+					room->typ = TUWALL;
+				else
+					room->typ = BRCORNER;
 			    else
-				if (iswall(x+1,y)) {		    
-					room->scrsym = BLCORN_SYM;  /* |  */
-					room->typ = BLCORNER;	    /* +- */
-				} else {
+				if (iswall(x+1,y))
+					room->typ = BLCORNER;
+				else
 					room->typ = VWALL;
-#ifdef STRONGHOLD
-					if (is_drawbridge_wall(x,y) >= 0)
-					    room->scrsym = DB_VWALL_SYM;
-					else
-#endif
-					    room->scrsym = VWALL_SYM; /* | */
-				}
 		    else
 			if (iswall(x,y+1))
 			    if (iswall(x-1,y))
-				if (iswall(x+1,y)) {
-					room->scrsym = TDWALL_SYM;  /* -+- */
-					room->typ = TDWALL;	    /*	| */
-				} else {
-					room->scrsym = TRCORN_SYM;  /* -+ */
-					room->typ = TRCORNER;	    /*	| */
-				}
-			    else
-				if (iswall(x+1,y)) {
-					room->scrsym = TLCORN_SYM;  /* +- */
-					room->typ = TLCORNER;	    /* |  */
-				} else {
-					room->typ = VWALL;
-#ifdef STRONGHOLD
-					if (is_drawbridge_wall(x,y) >= 0)
-					    room->scrsym = DB_VWALL_SYM;
-					else
-#endif
-					    room->scrsym = VWALL_SYM; /* | */
-				}
-			else {
-				room->typ = HWALL;
-#ifdef STRONGHOLD
-				if (is_drawbridge_wall(x,y) >= 0)
-				    room->scrsym = DB_HWALL_SYM;
+				if (iswall(x+1,y))
+					room->typ = TDWALL;
 				else
-#endif
-				    room->scrsym = HWALL_SYM;
-			}
+					room->typ = TRCORNER;
+			    else
+				if (iswall(x+1,y))
+					room->typ = TLCORNER;
+				else
+					room->typ = VWALL;
+			else
+				room->typ = HWALL;
 		    if (type == SDOOR) room->typ = type;
-		    if (see) room->seen = 0;
-		} else {
-		    switch(room->typ) {
-			case STONE:
-				room->scrsym = STONE_SYM;
-				break;
-			case CORR:
-				room->scrsym = CORR_SYM;
-				break;
-			case ROOM:
-				room->scrsym = ROOM_SYM;
-		    }
-		    if (see) room->seen = 0;
 		}
+		room->scrsym = news0(x,y);
+		if (see) room->seen = 0;
 	    }
 }
 #endif /* WALLIFIED_MAZE /**/
@@ -273,14 +221,12 @@ makemaz()
 	    if(mtmp = makemon(&mons[PM_HELL_HOUND], zx+1, zy))
 		mtmp->msleep = 1;
 	    (void) makemon(&mons[PM_KRAKEN], zx+2, zy+2);
+	    if (mtmp = makemon(&mons[PM_VAMPIRE_LORD], zx-1, zy))
+		mtmp->msleep = 1;
 	    if (dlevel == wiz_level) {
 
 		(void) mksobj_at(AMULET_OF_YENDOR, zx, zy);
 		flags.made_amulet = 1;
-#ifndef STRONGHOLD
-		if(mtmp = makemon(&mons[PM_VLAD_THE_IMPALER], zx-1, zy))
-			mtmp->msleep = 1;
-#endif
 		if(mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], zx, zy))
 			mtmp->msleep = 1;
 	    } else {
@@ -288,10 +234,6 @@ makemaz()
 	    	/* make a cheap plastic imitation */
 		if (ot = mksobj_at(AMULET_OF_YENDOR, zx, zy))
 		    ot-> spe = -1;
-#ifndef STRONGHOLD
-		if (mtmp = makemon(&mons[PM_VAMPIRE_LORD], zx-1, zy))
-		    mtmp->msleep = 1;
-#endif
 		(void) makemon(&mons[dprince()], zx, zy);
 	    }
 	    /* they should wake up when we intrude */
@@ -317,37 +259,8 @@ makemaz()
 	wallification(2, 2, x_maze_max, y_maze_max, TRUE);
 #else
 	for(x = 2; x < x_maze_max; x++)
-		for(y = 2; y < y_maze_max; y++) {
-			switch(levl[x][y].typ) {
-			case STONE:
-				levl[x][y].scrsym = STONE_SYM;
-				break;
-			case CORR:
-				levl[x][y].scrsym = CORR_SYM;
-				break;
-			case ROOM:
-				levl[x][y].scrsym = ROOM_SYM;
-				break;
-			case HWALL:
-				levl[x][y].scrsym = HWALL_SYM;
-				break;
-			case VWALL:
-				levl[x][y].scrsym = VWALL_SYM;
-				break;
-			case TLCORNER:
-				levl[x][y].scrsym = TLCORN_SYM;
-				break;
-			case TRCORNER:
-				levl[x][y].scrsym = TRCORN_SYM;
-				break;
-			case BLCORNER:
-				levl[x][y].scrsym = BLCORN_SYM;
-				break;
-			case BRCORNER:
-				levl[x][y].scrsym = BRCORN_SYM;
-				break;
-			}
-		}
+		for(y = 2; y < y_maze_max; y++)
+			levl[x][y].scrsym = news0(x,y);
 #endif
 	mazexy(&mm);
 	levl[(xupstair = mm.x)][(yupstair = mm.y)].scrsym = UP_SYM;

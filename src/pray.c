@@ -184,9 +184,8 @@ register int trouble;
 		    break;
 	    case TROUBLE_HIT:
 		    if (!Blind) {
-			const char *tmp = Hallucination ? hcolor() : golden;
-			pline("A%s %s glow surrounds you.",
-			      index(vowels,*tmp) ? "n" : "", tmp);
+			pline("%s glow surrounds you.",
+			      An(Hallucination ? hcolor() : golden));
 		    } else You("feel much better.");
 		    u.uhp = u.uhpmax += 5;
 		    flags.botl = 1;
@@ -312,8 +311,8 @@ angrygods() {
 
 	    case 0:
 	    case 1:	if (Hallucination)
-			    You("feel %sholy dread.",
-				  u.ualigntyp == U_CHAOTIC ? "an un" : "a ");
+			    You("feel a%sholy dread.",
+				  u.ualigntyp == U_CHAOTIC ? "n un" : " ");
 			else You("feel that %s is %s.",
 #  ifdef ALTARS
 				   on_altar() ? a_gname() : u_gname(),
@@ -350,11 +349,9 @@ angrygods() {
 			    break;
 			} /* else fall thru */
 	    case 4:
-	    case 5:	if (!Blind) {
-			    const char *temp = Hallucination ? hcolor() : black;
-			    pline("A%s %s glow surrounds you.",
-				  index(vowels,*temp) ? "n" : "", temp);
-			}
+	    case 5:	if (!Blind)
+			    pline("%s glow surrounds you.",
+				  An(Hallucination ? hcolor() : black));
 			rndcurse();
 			break;
 	    case 7:
@@ -407,7 +404,6 @@ ohno:
 
 static void
 pleased() {
-	char	*tmp;
 	int trouble = in_trouble ();	/* what's your worst difficulty? */
 	int pat_on_head = 0;
 
@@ -481,10 +477,9 @@ pleased() {
 			    } else if(uwep->otyp < BOW) {
 				uwep->blessed = uwep->bknown = 1;
 				if (!Blind) {
-				    tmp = Hallucination ? hcolor() : light_blue;
-				    Your("%s with a%s %s aura.",
+				    Your("%s with %s aura.",
 					  aobjnam(uwep, "softly glow"),
-					  index(vowels,*tmp) ? "n" : "", tmp);
+					  an(Hallucination ? hcolor() : light_blue));
 				}
 			    }
 			}
@@ -507,11 +502,9 @@ pleased() {
 			}
 			/* Otherwise, falls into next case */
 #endif
-	    case 2:	if (!Blind) {
-			    tmp = Hallucination ? hcolor() : golden;
-			    You("are surrounded by a%s %s glow.",
-				  index(vowels,*tmp) ? "n" : "", tmp);
-			}
+	    case 2:	if (!Blind)
+			    You("are surrounded by %s glow.",
+				an(Hallucination ? hcolor() : golden));
 			u.uhp = u.uhpmax += 5;
 			ABASE(A_STR) = AMAX(A_STR);
 			if (u.uhunger < 900)	init_uhunger();
@@ -522,11 +515,10 @@ pleased() {
 	    case 4:
 		{	register struct obj *otmp;
 
-			tmp = Hallucination ? hcolor() : light_blue;
 			if (Blind)
 				You("feel the power of %s.", u_gname());
-			else You("are surrounded by a%s %s aura.",
-					index(vowels,*tmp) ? "n" : "", tmp);
+			else You("are surrounded by %s aura.",
+				 an(Hallucination ? hcolor() : light_blue));
 			for(otmp=invent; otmp; otmp=otmp->nobj) {
 				if (otmp->cursed) {
 				    otmp->cursed = 0;
@@ -598,8 +590,8 @@ pleased() {
 				    pline("Something appears at your %s.",
 					makeplural(body_part(FOOT)));
 				else
-				    pline("A %s sword appears at your %s!",
-					Hallucination ? hcolor() : "black",
+				    pline("%s sword appears at your %s!",
+					An(Hallucination ? hcolor() : black),
 					makeplural(body_part(FOOT)));
 				obj = mksobj(BROADSWORD, FALSE);
 				obj = oname(obj, "Stormbringer", 0);
@@ -678,7 +670,8 @@ register struct obj *otmp;
 		pline("Your sacrifice disappears!");
 	else pline ("Your sacrifice is consumed in a %s!",
 		    u.ualigntyp == U_LAWFUL ? "flash of light" : "burst of flame");
-	useup(otmp);
+	if (carried(otmp)) useup(otmp);
+	else useupf(otmp);
 }
 
 int
@@ -713,7 +706,7 @@ dosacrifice()
    a pet corpse was tame, so you can still sacrifice it.)
  */
 
-#define MAXVALUE 33	/* Highest corpse value (approx.) */
+#define MAXVALUE 24	/* Highest corpse value (besides Wiz) */
 
 	if (otmp->otyp == CORPSE) {
 	    register struct permonst *mtmp = &mons[otmp->corpsenm];
@@ -722,8 +715,7 @@ dosacrifice()
 	    if (otmp->corpsenm == PM_ACID_BLOB || (monstermoves <= otmp->age + 50))
 		value = monstr[otmp->corpsenm] + 1;
 	    if (otmp->oeaten)
-		value =
-		    value * otmp->owt / mons[otmp->corpsenm].cwt / otmp->quan;
+		value = eaten_stat(value, otmp);
 
 	    if (is_human(mtmp)) { /* Human sacrifice! */
 #ifdef POLYSELF
@@ -741,16 +733,16 @@ dosacrifice()
 			angry_priest();
 		} else {
 			register struct monst *dmon;
-			const char *color = Hallucination ? hcolor() : black;
     /* Human sacrifice on a chaotic altar is equivalent to demon summoning */
 #ifdef THEOLOGY
 			if (levl[u.ux][u.uy].altarmask & A_SHRINE)
 				pline("The blood covers the altar!");
 			else {
 #endif
-    pline("The blood floods over the altar, which vanishes in a%s %s cloud!",
-				  index(vowels, *color) ? "n" : "", color);
+    pline("The blood floods over the altar, which vanishes in %s cloud!",
+				  an(Hallucination ? hcolor() : black));
 				levl[u.ux][u.uy].typ = ROOM;
+				levl[u.ux][u.uy].altarmask = 0;
 #ifdef THEOLOGY
 			}
 #endif
@@ -772,7 +764,8 @@ dosacrifice()
 			if (!Inhell) angrygods();
 			change_luck(-5);
 		} else adjalign(5);
-		useup(otmp);
+		if (carried(otmp)) useup(otmp);
+		else useupf(otmp);
 		return(1);
 	    } else if (is_undead(mtmp)) { /* Not demons--no demon corpses */
 		if (u.ualigntyp != U_CHAOTIC)
@@ -828,7 +821,8 @@ dosacrifice()
 		else {
 		    /* The final Test.	Did you win? */
 		    if(uamul == otmp) Amulet_off();
-		    useup(otmp);    /* well, it's gone now */
+		    if(carried(otmp)) useup(otmp);    /* well, it's gone now */
+		    else useupf(otmp);
 		    You("offer the Amulet to %s...", a_gname());
 		    if (u.ualigntyp !=
 			    (levl[u.ux][u.uy].altarmask & ~A_SHRINE) - 1) {
@@ -1094,6 +1088,19 @@ doturn()
 
 	if((pl_character[0] != 'P') &&
 	   (pl_character[0] != 'K')) {
+#ifdef SPELLS
+		/* Try to use turn undead spell. */
+		if (objects[SPE_TURN_UNDEAD].oc_name_known) {
+		    register int sp_no;
+		    for (sp_no = 0; sp_no < MAXSPELL &&
+				spl_book[sp_no].sp_id != NO_SPELL &&
+				spl_book[sp_no].sp_id != SPE_TURN_UNDEAD; sp_no++);
+
+		    if (sp_no < MAXSPELL &&
+			spl_book[sp_no].sp_id == SPE_TURN_UNDEAD)
+			    return spelleffects(++sp_no, TRUE);
+		}
+#endif
 
 		You("don't know how to turn undead!");
 		return(0);

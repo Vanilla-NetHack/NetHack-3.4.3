@@ -20,10 +20,6 @@
 #include "pcconf.h"     /* remainder of stuff is almost same as the PC */
 #endif
 
-#undef  index
-#undef  rindex
-extern char  *index P((const char *,int));
-extern char  *rindex P((const char *,int));
 #define memcpy(dest, source, size)  movmem(source, dest, size)
 
 /*

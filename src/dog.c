@@ -150,7 +150,7 @@ void
 keepdogs(){
 register struct monst *mtmp;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
-	    if(((dist(mtmp->mx,mtmp->my) < 3 && levl_follower(mtmp)) ||
+	    if(((monnear(mtmp, u.ux, u.uy) && levl_follower(mtmp)) ||
 		/* the wiz will level t-port from anywhere to chase
 		   the amulet; if you don't have it, will chase you
 		   only if in range. -3. */
@@ -160,7 +160,7 @@ register struct monst *mtmp;
 		/* Bug "fix" for worm changing levels collapsing dungeon
 		 */
 		if (mtmp->data == &mons[PM_LONG_WORM]) {
-			if (canseemon(mtmp) || (Blind && Telepat))
+			if (showmon(mtmp))
 				pline("The worm can't fit down the stairwell.");
 # ifdef WALKIES
 			if (mtmp->mleashed) {
@@ -244,13 +244,12 @@ register struct obj *obj;
 			return POISON;
 		    return (carni ? CADAVER : MANFOOD);
 		case CORPSE:
-		    if ((obj->age+50 <= moves && mon->data->mlet != S_FUNGUS) ||
+		    if ((obj->age+50 <= moves && obj->corpsenm != PM_LIZARD
+					    && mon->data->mlet != S_FUNGUS) ||
 			(poisonous(&mons[obj->corpsenm]) &&
 						!resists_poison(mon->data)))
 			return POISON;
 		    else return (carni ? CADAVER : MANFOOD);
-		case DEAD_LIZARD:
-		    return (carni ? ACCFOOD : MANFOOD);
 		case CLOVE_OF_GARLIC:
 		    return (is_undead(mon->data) ? TABU :
 			    (herbi ? ACCFOOD : MANFOOD));

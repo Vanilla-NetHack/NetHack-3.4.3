@@ -112,7 +112,7 @@ timeout()
 			make_vomiting(0L, TRUE);
 			break;
 		case SICK:
-			You("die from food poisoning.");
+			You("die from your illness.");
 			killer = u.usick_cause;
 			done(POISONING);
 			break;
@@ -216,19 +216,19 @@ register struct obj *otmp;
 		if(Blind)
 		    You("feel something %s from your pack!",
 			  (index(slithy, mtmp->data->mlet)) ?
-			  "slither" : "drop");
+			      "slither" : "drop");
 		else
-		    pline("A%s %s just %s out of your pack!",
-			  (index(vowels, *(mtmp->data->mname))) ? "n" : "",
-			  mtmp->data->mname,
+		    pline("%s just %s out of your pack!",
+			  An(mtmp->data->mname),
 			  (index(slithy, mtmp->data->mlet)) ?
-			  "slithered" : "dropped");
+			      "slithered" : "dropped");
 
 #ifdef POLYSELF
 		if (yours) {
 		    pline("Its cries sound like \"%s.\"",
 			flags.female ? "mommy" : "daddy");
 		    (void) tamedog(mtmp, (struct obj *)0);
+		    mtmp->mtame = 20;
 		    return;
 		}
 #endif

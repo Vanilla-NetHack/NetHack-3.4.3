@@ -71,22 +71,22 @@
 #endif
 #endif /* NEED_VARARGS */
 
-#if (defined(__STDC__) || defined(MSDOS)) && !defined(AMIGA)
+#if (defined(__STDC__) || defined(MSDOS) || defined(THINKC4)) && !defined(AMIGA)
 
 /* Used for robust ANSI parameter forward declarations:
- * int sprintf P((char *, const char *, ...));
+ * int VDECL(sprintf, (char *, const char *, ...));
  *
- * P() is used to surround parameter list for functions with a fixed number
- * of arguments; V() is used for varying numbers of arguments.  Separate
- * macros are needed because ANSI will mix old-style declarations with
- * prototypes, except in the case of varargs.
+ * FDECL() is used for functions with a fixed number of arguments;
+ * VDECL() is used for functions with a variable number of arguments.
+ * Separate macros are needed because ANSI will mix old-style declarations
+ * with prototypes, except in the case of varargs.
  */
 
-# define P(s)		s
+# define FDECL(f,p)	f p
 # if defined(MSDOS) || defined(USE_STDARG)
-#  define V(s)		s
+#  define VDECL(f,p)	f p
 # else
-#  define V(s)		()
+#  define VDECL(f,p)	f()
 # endif
 
 # ifdef __TURBOC__	/* Cover for stupid Turbo C */
@@ -102,8 +102,8 @@ typedef void *		genericptr_t;
 
 #else /* __STDC__ */	/* a "traditional" C  compiler */
 
-# define P(s)		()
-# define V(s)		()
+# define FDECL(f,p)	f()
+# define VDECL(f,p)	f()
 
 # ifndef genericptr_t
 #  ifdef AMIGA

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.0	88/10/24
+/*	SCCS Id: @(#)cmd.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,7 +61,7 @@ extern int doread(); /**/
 extern int dosave(); /**/
 extern int dosave0(); /**/
 extern int dosearch(); /**/
-extern int dosearch0 P((int)); /**/
+extern int FDECL(dosearch0, (int)); /**/
 extern int doidtrap(); /**/
 extern int dopay(); /**/
 extern int dosit(); /**/
@@ -76,13 +76,22 @@ extern int dowield(); /**/
 extern int dozap(); /**/
 #endif /* DUMB */
 
-static int (*timed_occ_fn)();
+#ifndef OVERLAY
+static 
+#endif
+int (*timed_occ_fn)();
 #ifdef POLYSELF
-static int domonability();
+#ifndef OVERLAY
+static 
+#endif
+int domonability();
 #endif
 
 /* Count down by decrementing multi */
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 timed_occupation() {
 	(*timed_occ_fn)();
 	if (multi > 0)
@@ -173,7 +182,7 @@ char ch;
 	return;
 }
 
-/* A ch == 0 resets the saveq.  Only save keystrokes when not
+/* A ch == 0 resets the saveq.	Only save keystrokes when not
  * replaying a previous command.
  */
 void
@@ -190,11 +199,14 @@ char ch;
 }
 #endif /* REDO */
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 doextcmd()	/* here after # - now read a full-word command */
 {
 	char buf[BUFSZ];
-	register struct ext_func_tab *efp = extcmdlist;
+	register const struct ext_func_tab *efp = extcmdlist;
 again:
 	pline("# ");
 #ifdef COM_COMPL
@@ -221,15 +233,15 @@ again:
 int
 doextlist()	/* here after #? - now list all full-word commands */
 {
-	register struct ext_func_tab *efp = extcmdlist;
-	char     buf[BUFSZ];
+	register const struct ext_func_tab *efp = extcmdlist;
+	char	 buf[BUFSZ];
 
 	set_pager(0);
 	if(page_line("") ||
 	   page_line("            Extended Commands List") ||
 	   page_line("") ||
 	   page_line("    Press '#', then type (first letter only):") ||
-	   page_line(""))					 goto quit;
+	   page_line(""))                                        goto quit;
 
 	while(efp->ef_txt) {
 
@@ -245,7 +257,10 @@ quit:
 }
 
 #ifdef POLYSELF
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 domonability()
 {
 	if (can_breathe(uasmon)) return dobreathe();
@@ -255,6 +270,7 @@ domonability()
 	else if (is_were(uasmon)) return dosummon();
 	else if (webmaker(uasmon)) return dospinweb();
 	else if (is_hider(uasmon)) return dohide();
+	else if (u.usym == S_UNICORN) return use_unicorn_horn((struct obj *)0);
 	else if (u.umonnum >= 0)
 		pline("Any special ability you may have is purely reflexive.");
 	else You("don't have a special ability!");
@@ -263,7 +279,10 @@ domonability()
 #endif
 
 #ifdef WIZARD
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_wish()	/* Unlimited wishes for wizard mode by Paul Polderman */
 {
 	if (wizard)	makewish();
@@ -271,7 +290,10 @@ wiz_wish()	/* Unlimited wishes for wizard mode by Paul Polderman */
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_identify()
 {
 	struct obj *obj;
@@ -287,7 +309,10 @@ wiz_identify()
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_map()
 {
 	if (wizard)	do_mapping();
@@ -295,7 +320,10 @@ wiz_map()
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_genesis()
 {
 	if (wizard)	(void) create_particular();
@@ -303,14 +331,17 @@ wiz_genesis()
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_where()
 {
 	if (wizard) {
 		pline("Medusa:%d  Wiz:%d  Big:%d", medusa_level, wiz_level, bigroom_level);
 #ifdef STRONGHOLD
 #  ifdef MUSIC
-		pline("Castle:%d (tune %s)  Tower:%d-%d", 
+		pline("Castle:%d (tune %s)  Tower:%d-%d",
 		      stronghold_level, tune, tower_level, tower_level+2);
 #  else
 		pline("Castle:%d  Tower:%d-%d",
@@ -328,7 +359,10 @@ wiz_where()
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_detect()
 {
 	if(wizard)  (void) findit();
@@ -336,7 +370,10 @@ wiz_detect()
 	return 0;
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_level_tele()
 {
 	if (wizard)	level_tele();
@@ -435,7 +472,10 @@ enlightenment() {
 }
 
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 wiz_attributes()
 {
 	if (wizard || discover)
@@ -446,8 +486,12 @@ wiz_attributes()
 }
 #endif /* WIZARD || EXPLORE_MODE */
 
+#ifndef M
 #define M(c)		(0x80 | (c))
+#endif
+#ifndef C
 #define C(c)		(0x1f & (c))
+#endif
 const struct func_tab cmdlist[]={
 	{C('d'), dokick},	/* "D" is for door!...? */
 #ifdef WIZARD
@@ -616,7 +660,7 @@ void
 rhack(cmd)
 register char *cmd;
 {
-	register struct func_tab *tlist = cmdlist;
+	register const struct func_tab *tlist = cmdlist;
 	boolean firsttime = FALSE;
 	register int res;
 
@@ -766,13 +810,20 @@ int
 movecmd(sym)	/* also sets u.dz, but returns false for <> */
 char sym;
 {
-	register char *dp, *sdp = flags.num_pad ? ndir : sdir;
+	register char *dp;
+	register const char *sdp = flags.num_pad ? ndir : sdir;
 
 	u.dz = 0;
 	if(!(dp = index(sdp, sym))) return 0;
 	u.dx = xdir[dp-sdp];
 	u.dy = ydir[dp-sdp];
 	u.dz = zdir[dp-sdp];
+#ifdef POLYSELF
+	if (u.dx && u.dy && u.umonnum == PM_GRID_BUG) {
+		u.dx = u.dy = 0;
+		return 0;
+	}
+#endif
 	return !u.dz;
 }
 
@@ -804,7 +855,11 @@ boolean s;
 void
 confdir()
 {
-	register int x = rn2(8);
+	register int x = 
+#ifdef POLYSELF
+		(u.umonnum == PM_GRID_BUG) ? 2*rn2(4) :
+#endif
+							rn2(8);
 	u.dx = xdir[x];
 	u.dy = ydir[x];
 	return;

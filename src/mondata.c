@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.0	89/01/10
+/*	SCCS Id: @(#)mondata.c	3.0	89/11/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,8 +61,8 @@ boolean
 breakarm(ptr)	/* creature will break out of armor */
 	register struct permonst *ptr;
 {
-	return(bigmonst(ptr) || (!verysmall(ptr) && !humanoid(ptr))
-#ifdef HARD
+	return(bigmonst(ptr) || (ptr->msize > MZ_SMALL && !humanoid(ptr))
+#ifdef INFERNO
 	       || ptr == &mons[PM_MARILITH]
 #endif
 	       );
@@ -77,7 +77,8 @@ boolean
 sliparm(ptr)	/* creature will slide out of armor */
 	register struct permonst *ptr;
 {
-	return(!bigmonst(ptr) && (verysmall(ptr) || ptr == &mons[PM_GHOST]));
+	return(ptr->msize < MZ_LARGE &&
+	       (ptr->msize <= MZ_SMALL || ptr == &mons[PM_GHOST]));
 }
 #endif
 
@@ -162,7 +163,7 @@ char *str;
 	else if (!strncmp(str, "an ", 3)) str += 3;
 
 	/* Some irregular plurals */
-#ifdef HARD
+#ifdef INFERNO
 	if (!strncmp(str, "incubi", 6)) return PM_INCUBUS;
 	if (!strncmp(str, "succubi", 7)) return PM_SUCCUBUS;
 #endif
@@ -234,7 +235,7 @@ gender(mtmp)
 	if (mtmp->data->mflags1 & M1_FEM) return 1;
 	if (mtmp->data == &mons[PM_CAVEMAN]
 		|| mtmp->data == &mons[PM_PRIEST]
-#ifdef HARD
+#ifdef INFERNO
 		|| mtmp->data == &mons[PM_INCUBUS]
 #endif
 						) return 0;
@@ -327,12 +328,12 @@ int montype;
 
 int
 bigmonst(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_BIG) != 0L);
+	return(ptr->msize >= MZ_LARGE);
 }
 
 int
 verysmall(ptr) struct permonst *ptr; {
-	return((ptr->mflags1 & M1_VSMALL) != 0L);
+	return(ptr->msize < MZ_SMALL);
 }
 
 int
@@ -569,18 +570,18 @@ is_prince(ptr) struct permonst *ptr; {
 	return((ptr->mflags1 & M1_PRINCE) != 0L);
 }
 
-# ifdef HARD
+# ifdef INFERNO
 int
 is_ndemon(ptr) struct permonst *ptr; {
 	return(is_demon(ptr) &&
 		(ptr->mflags1 & (M1_LORD | M1_PRINCE)) == 0L);
 }
-# else /* HARD */
+# else
 int
 is_ndemon(ptr) struct permonst *ptr; {
 	return(ptr == &mons[PM_DEMON]);
 }
-# endif /* HARD */
+# endif
 
 int
 is_dlord(ptr) struct permonst *ptr; {

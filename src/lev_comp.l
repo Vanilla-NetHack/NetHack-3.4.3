@@ -1,9 +1,13 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.0	89/07/02
+/*	SCCS Id: @(#)lev_lex.c	3.0	89/11/08
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #define LEV_LEX_C
+
+/* block some unused #defines to avoid overloading some cpp's */
+#define MONDATA_H
+#define MONFLAG_H
 
 #include "hack.h"
 #include "lev_comp.h"
@@ -13,6 +17,14 @@
 #undef exit
 #endif
 
+#ifdef TOS
+extern YYSTYPE yylval;	/* this doesn't always get put in lev_comp.h */
+#endif
+
+#ifdef MACOS
+#undef putchar
+#undef putc
+#endif
 int line_number = 1;
 
 /* This is *** UGLY *** but I can't think a better way to do it
@@ -25,18 +37,19 @@ int line_number = 1;
 %}
 %s MAPC
 %%
+<MAPC>[-|}{+SK\\#. ]*\n	{ line_number++; yymore(); }	
+<MAPC>ENDMAP\n	{ BEGIN 0;
+		  line_number++;
+		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
+		  yylval.map = (char *) alloc(strlen(yytext)+1);
+		  strcpy(yylval.map, yytext);
+		  return MAP_ID;
+		}
 ^#.*\n		{ line_number++; }
 MAZE		return MAZE_ID;
 LEVEL		return LEVEL_ID;
 GEOMETRY	return GEOMETRY_ID;
-^MAP\n		{ BEGIN MAPC; }
-<MAPC>[-|}{+SK\\#. ]*\n	{ line_number++; yymore(); }	
-<MAPC>ENDMAP\n	{ BEGIN 0;
-		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
-		  yylval.map = (char *) alloc(strlen(yytext)+1);
-		  strcpy(yylval.map, yytext+1);
-		  return MAP_ID;
-		}
+^MAP\n		{ BEGIN MAPC; line_number++; }
 OBJECT		return OBJECT_ID;
 MONSTER		return MONSTER_ID;
 TRAP		return TRAP_ID;

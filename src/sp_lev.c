@@ -14,7 +14,7 @@
 #ifdef STRONGHOLD
 #include "sp_lev.h"
 
-#if defined(MSDOS) && !defined(AMIGA)
+#if defined(MSDOS) || defined(MACOS) && !defined(AMIGA)
 # define RDMODE "rb"
 #else
 # define RDMODE "r"
@@ -29,7 +29,11 @@
 static walk walklist[50];
 extern int x_maze_max, y_maze_max;
 
+#ifdef MACOS
+char **Map;
+#else
 static char Map[COLNO][ROWNO];
+#endif
 static char robjects[10], rloc_x[10], rloc_y[10], rmonst[10],
 	ralign[3] = { A_CHAOS, A_NEUTRAL, A_LAW };
 static xchar xstart, ystart, xsize, ysize;
@@ -215,7 +219,7 @@ FILE *fd;
     object  tmpobj;
     drawbridge tmpdb;
     walk    tmpwalk;
-    dig     tmpdig;
+    digpos  tmpdig;
     lad     tmplad;
 #ifdef ALTARS
     altar   tmpaltar;
@@ -327,6 +331,7 @@ FILE *fd;
 
 		get_location(&x, &y);
 		levl[x][y].doormask = typ;
+		mnewsym(x,y);
 
 		/* Now the complicated part, list it with each subroom */
 		/* The dog move and mail daemon routines use this */
@@ -581,6 +586,10 @@ char *name;
 	fd = fopen(tmp, RDMODE);
 #else
 	fd = fopen(name, RDMODE);
+# ifdef MACOS
+	if (!fd)
+		fd = openFile(name, RDMODE);
+# endif
 #endif
 #ifdef OS2_CODEVIEW
 	}

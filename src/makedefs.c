@@ -14,7 +14,7 @@
 #define NULL	((genericptr_t)0)
 
 #ifndef LINT
-static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/01/10";
+static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/11/15";
 #endif
 
 #ifdef MSDOS
@@ -22,7 +22,7 @@ static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/01/10";
 # define freopen _freopen
 #endif
 # undef	exit
-extern void exit P((int));
+extern void FDECL(exit, (int));
 # define RDMODE	"r"
 # define WRMODE	"w"
 #else
@@ -83,13 +83,13 @@ void rename();
 
 
 char	in_line[256];
-extern char *gets P((char *));
+extern char *FDECL(gets, (char *));
 void do_objs(), do_traps(), do_data(), do_date(), do_permonst(), do_rumors();
 #ifdef SMALLDATA
 void do_monst(), save_resource();
 #endif
-char *limit P((char *,BOOLEAN_P));
-FILE *_freopen();
+char *FDECL(limit, (char *,BOOLEAN_P));
+FILE *FDECL(_freopen, (char *,char *,FILE *));
 
 int
 main(argc, argv)
@@ -211,7 +211,11 @@ do_traps() {
 	int	ntrap;
 	char	tempfile[30];
 
+#ifdef MACOS
+	Sprintf(tempfile, ":include:makedefs.%d", getpid());
+#else
 	Sprintf(tempfile, "makedefs.%d", getpid());
+#endif
 	if(freopen(tempfile, WRMODE, stdout) == (FILE *)0) {
 		perror(tempfile);
 		exit(1);
@@ -245,7 +249,7 @@ do_traps() {
 	Printf("\n#endif /* TRAP_H /**/\n");
 	(void) fclose(stdin);
 	(void) fclose(stdout);
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 	remove(TRAP_FILE);
 #endif
 	rename(tempfile, TRAP_FILE);
@@ -256,7 +260,7 @@ do_traps() {
 void
 do_rumors(){
 	char	infile[30];
-	FILE	*freopen();
+	FILE	*FDECL(freopen, (char *,char *,FILE *));
 	long	true_rumor_size;
 
 	if(freopen(RUMOR_FILE, WRMODE, stdout) == (FILE *)0) {
@@ -338,46 +342,27 @@ do_data(){
 	}
 
 	while(gets(in_line) != NULL) {
-#ifdef  SINKS
-	    if(!strcmp(in_line, "#\ta corridor"))
-		Printf("#\ta corridor (or a kitchen sink)\n");
+#ifndef GOLEMS
+	    if(!strcmp(in_line, "'\ta golem;"))
+		while(gets(in_line) != NULL && in_line[0] == '\t')
+		    ; /* do nothing */
+#endif
+#ifndef	SPELLS
+	    if(!strcmp(in_line, "+\ta spell book"))
+		; /* do nothing */
 	    else
 #endif
-#ifdef	ALTARS
-	    if(!strcmp(in_line, "_\tan iron chain"))
-		Printf("_\tan iron chain (or an altar)\n");
+#ifndef KOPS
+	    if(!strcmp(in_line, "K\ta Keystone Kop"))
+		; /* do nothing */
 	    else
 #endif
-#ifdef	SPELLS
-	    if(!strcmp(in_line, "+\ta door"))
-		Printf("+\ta door (or a spell book)\n");
+#ifndef WORM
+	    if(!strcmp(in_line, "~\tthe tail of a long worm"))
+		; /* do nothing */
 	    else
 #endif
-#ifdef	FOUNTAINS
-	    if(!strcmp(in_line, "}\twater filled area")) {
 		(void) puts(in_line);
-		Printf("{\ta fountain\n");
-	    } else
-#endif
-#ifdef	THRONES
-	    if(!strcmp(in_line, "^\ta trap")) {
-		(void) puts(in_line);
-		Printf("\\\tan opulent throne\n");
-	    } else
-#endif
-	    if(!strcmp(in_line, ";\ta giant eel")) {
-		(void) puts(in_line);
-#ifdef	WORM
-		Printf("~\tthe tail of a long worm\n");
-#endif
-#ifdef	GOLEMS
-Printf("'\ta golem\n");
-Printf("\t\tThese creatures, not quite living but not  really  nonliving\n");
-Printf("\t\teither,   are   created from inanimate materials by powerful\n");
-Printf("\t\tmages or priests.\n");
-#endif
-	    } else
-	      (void) puts(in_line);
 	}
 	(void) fclose(stdin);
 	(void) fclose(stdout);
@@ -550,13 +535,19 @@ getpid()
 # endif
 #endif /* MSDOS */
 
+
 #if defined(SMALLDATA) && defined(MACOS)
 void
 do_monst()
 {
-	Handle	data;
+	Handle	monstData, objData;
 	short i,j;
 	pmstr	*pmMonst;
+	SFReply	reply;
+	short	refNum,error;
+	Str255	name;
+	short	findNamedFile();
+	OSErr	write_resource();
 	
 	for(i = 0; mons[i].mlet; i++) {
 		;
@@ -574,63 +565,30 @@ do_monst()
 				(long)sizeof(struct pmpart));
 	}
 	
-	PtrToHand((Ptr)pmMonst, &data, (long)(i * sizeof(struct pmstr)));
-	save_resource(data);
-	DisposHandle(data);
-}
-
-
-void
-save_resource(data)
-Handle	data;
-{
-	SFReply	reply;
-	short	refNum,error;
-	Str255	name;
-	ResType	theType;
-	Handle	theRes;
-	short	findNamedFile();
-#define MONST_DATA_ID	101
+	PtrToHand((Ptr)pmMonst, &monstData, (long)(i * sizeof(struct pmstr)));
+	
+	/* store the object data, in Nethack the char * will be copied in */
+	for(i = 0; !i || objects[i].oc_olet != ILLOBJ_SYM; i++) {
+		;
+	}
+	PtrToHand((Ptr)objects, &objData, ((i+1)*sizeof(struct objclass)));
 
 	strcpy((char *)&name[0], "\014Nethack.rsrc");
 	if (findNamedFile(&name[1], 0, &reply)) {
-	    strncpy((char *)&name[0],(char *)&reply.fName[1], reply.fName[0]);
-	    name[reply.fName[0]] = '\0';
+	    strncpy((char *)&name[0],(char *)&reply.fName[0], reply.fName[0]+1);
 	    if ((refNum = OpenResFile(name)) != -1) {
 		if (ResError() == noErr) {
-		    theType = HACK_DATA;
 		    strcpy((char *)&name[0], "\012MONST_DATA");
-		    error = CurResFile();
-		    if (theRes = GetResource(theType, MONST_DATA_ID)) {
-			RmveResource(theRes);
-			error = ResError();
-			if (error == noErr) {
-			    DisposHandle(theRes);
-			    UpdateResFile(refNum);
-			    error = ResError();
-			    if (error != noErr)
-				SysBeep(1);
-			} else {
-			    Printf("Couldn't remove old copy of data resource.");
-			    return;
-			}
-		    } else if (ResError() != resNotFound && ResError() != noErr) {
-			SysBeep(1);
-			Printf("Resource file is protected.");
-			return;
+		    if (error = write_resource(monstData,
+						MONST_DATA, name, refNum)) {
+		    	SysBeep(1);
+		    	Printf("Couldn't add monster data resource.\n");
 		    }
-		    AddResource(data, theType, MONST_DATA_ID, name);
-		    error = ResError();
-		    if (error != noErr) {
-			SysBeep(1);
-			Printf("Couldn't add data resource.");
-		    } else {
-			WriteResource(data);
-			error = ResError();
-			if (error != noErr) {
-			    SysBeep(1);
-			    Printf("Couldn't write data resource.");
-			}
+		    strcpy((char *)&name[0], "\013OBJECT_DATA");
+		    if (error = write_resource(objData,
+						OBJECT_DATA, name, refNum)) {
+		    	SysBeep(1);
+		    	Printf("Couldn't add object data resource.\n");
 		    }
 		    CloseResFile(refNum);
 		    if (ResError() != noErr) {
@@ -640,6 +598,45 @@ Handle	data;
 		}
 	    }
 	}
+	
+	DisposHandle(monstData);
+	DisposHandle(objData);
+}
+
+OSErr
+write_resource(data, resID, resName, refNum)
+Handle	data;
+short	resID;
+Str255	resName;
+short	refNum;
+{
+	ResType	theType;
+	short	error;
+	Handle	theRes;
+
+    theType = HACK_DATA;
+    error = CurResFile();
+    if (theRes = GetResource(theType, resID)) {
+		RmveResource(theRes);
+		error = ResError();
+		if (error == noErr) {
+			DisposHandle(theRes);
+			UpdateResFile(refNum);
+			error = ResError();
+		}
+		if (error != noErr) {
+    		return error;
+    	}
+	} else if (ResError() != resNotFound && ResError() != noErr) {
+			return (ResError());
+	}
+	AddResource(data, theType, resID, resName);
+	error = ResError();
+	if (error == noErr) {
+		WriteResource(data);
+		error = ResError();
+	}
+    return error;
 }
 # if defined(AZTEC) || defined(THINKC4)
 int

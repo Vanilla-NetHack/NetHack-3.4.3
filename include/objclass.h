@@ -47,8 +47,7 @@ struct objclass {
 #define WP_BOW		1
 #define WP_SLING	2
 #define WP_CROSSBOW	3
-#define	a_ac		oc_oc1	/* for armors - only used in ARM_BONUS */
-#define ARM_BONUS(obj)	((10 - objects[obj->otyp].a_ac) + obj->spe)
+#define	a_ac		oc_oc1	/* for armors - used in ARM_BONUS in do.c */
 #define	a_can		oc_oc2	/* for armors */
 #define bits		oc_oc1	/* for wands */
 				/* wands */
@@ -66,7 +65,16 @@ struct objclass {
 #endif
 };
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+struct small_objclass{
+	char *oc_name;		/* actual name */
+	char *oc_descr;		/* description when name unknown */
+};
+extern struct small_objclass sm_obj[];
+extern struct objclass *objects;
+#else
 extern struct objclass objects[];
+#endif    /* MACOS && !MAKEDEFS_C */
 
 /* definitions of all object-symbols */
 
@@ -90,9 +98,6 @@ extern struct objclass objects[];
 #ifdef SPELLS
 #define	SPBOOK_SYM	'+'	/* actually SPELL-book */
 #endif
-/* Other places with explicit knowledge of object symbols:
- * pager.c:	if(q == '%') pline("%%	a piece of food");
- */
 
 #ifdef TUTTI_FRUTTI
 struct fruit {

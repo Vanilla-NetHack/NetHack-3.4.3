@@ -1,16 +1,16 @@
-/*	SCCS Id: @(#)makemon.c	3.0	88/04/11
+/*	SCCS Id: @(#)makemon.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
 
 struct monst zeromonst;
-static int uncommon P((struct permonst *));
+static int FDECL(uncommon, (struct permonst *));
 
 int monstr[NUMMONS];
 
-#define m_initsgrp(mtmp, x, y) m_initgrp(mtmp, x, y, 3)
-#define m_initlgrp(mtmp, x, y) m_initgrp(mtmp, x, y, 10)
+#define m_initsgrp(mtmp, x, y)	m_initgrp(mtmp, x, y, 3)
+#define m_initlgrp(mtmp, x, y)	m_initgrp(mtmp, x, y, 10)
 #define toostrong(monindx, lev) (monstr[monindx] > lev)
 #define tooweak(monindx, lev)	(monstr[monindx] < lev)
 
@@ -22,6 +22,13 @@ register int x, y, n;
 	coord mm;
 	register int cnt = rnd(n);
 	struct monst *mon;
+
+/*
+ *	Temporary kludge to cut down on swarming at lower character levels
+ *	till we can get this game a little more balanced. [mrs]
+ */
+	cnt /= (u.ulevel < 3) ? 4 : (u.ulevel < 5) ? 2 : 1;
+	if(!cnt) cnt++;
 
 	mm.x = x;
 	mm.y = y;
@@ -64,6 +71,7 @@ m_initweap(mtmp)
 register struct monst *mtmp;
 {
 	register struct permonst *ptr = mtmp->data;
+	register int mm = monsndx(ptr);
 #ifdef REINCARNATION
 	if (dlevel==rogue_level) return;
 #endif
@@ -84,7 +92,7 @@ register struct monst *mtmp;
 		break;
 	    case S_HUMAN:
 		if(is_mercenary(ptr))
-		    switch(monsndx(ptr)) {
+		    switch (mm) {
 
 #ifdef ARMY
 			case PM_SOLDIER:
@@ -108,7 +116,7 @@ register struct monst *mtmp;
 
 	    case S_HUMANOID:
 #ifdef TOLKIEN
-		if (monsndx(ptr) == PM_HOBBIT) {
+		if (mm == PM_HOBBIT) {
 		    switch (rn2(3)) {
 		  	case 0:
 			    (void)mongets(mtmp, DAGGER);
@@ -201,53 +209,53 @@ register struct monst *mtmp;
 		break;
 #endif
 	    case S_ORC:
+		if(rn2(2)) (void)mongets(mtmp, ORCISH_HELM);
 #ifdef TOLKIEN
-		{ int mm = monsndx(ptr);
-		  if(rn2(2)) (void)mongets(mtmp, ORCISH_HELM);
-		  if (mm == PM_MORDOR_ORC ||
-		     (mm == PM_ORC_CAPTAIN && rn2(2))) {
-		      if(rn2(2)) (void)mongets(mtmp, SCIMITAR);
-		      if(rn2(2)) (void)mongets(mtmp, ORCISH_SHIELD);
-		      if(rn2(2)) (void)mongets(mtmp, KNIFE);
-		      if(rn2(2)) (void)mongets(mtmp, ORCISH_CHAIN_MAIL);
-		  } else if (mm == PM_URUK_HAI || mm == PM_ORC_CAPTAIN) {
-		      if(rn2(2)) (void)mongets(mtmp, ORCISH_CLOAK);
-		      if(rn2(2)) (void)mongets(mtmp, ORCISH_SHORT_SWORD);
-		      if(rn2(2)) (void)mongets(mtmp, IRON_SHOES);
-		      if(rn2(2)) {
-			  (void)mongets(mtmp, ORCISH_BOW);
-			  m_initthrow(mtmp, ORCISH_ARROW, 12);
-		      }
-		      if(rn2(2)) (void)mongets(mtmp, URUK_HAI_SHIELD);
-		  } else if (mm != PM_ORC_SHAMAN) {
-		      (void)mongets(mtmp, (mm == PM_GOBLIN || rn2(2) == 0) ?
-				    ORCISH_DAGGER : SCIMITAR);
-		  }
-		}
+		switch (mm != PM_ORC_CAPTAIN ? mm :
+			rn2(2) ? PM_MORDOR_ORC : PM_URUK_HAI) {
+		    case PM_MORDOR_ORC:
+			if(rn2(2)) (void)mongets(mtmp, SCIMITAR);
+			if(rn2(2)) (void)mongets(mtmp, ORCISH_SHIELD);
+			if(rn2(2)) (void)mongets(mtmp, KNIFE);
+			if(rn2(2)) (void)mongets(mtmp, ORCISH_CHAIN_MAIL);
+			break;
+		    case PM_URUK_HAI:
+			if(rn2(2)) (void)mongets(mtmp, ORCISH_CLOAK);
+			if(rn2(2)) (void)mongets(mtmp, ORCISH_SHORT_SWORD);
+			if(rn2(2)) (void)mongets(mtmp, IRON_SHOES);
+			if(rn2(2)) {
+			    (void)mongets(mtmp, ORCISH_BOW);
+			    m_initthrow(mtmp, ORCISH_ARROW, 12);
+			}
+			if(rn2(2)) (void)mongets(mtmp, URUK_HAI_SHIELD);
+			break;
+		    default:
+			if (mm != PM_ORC_SHAMAN)
+			  (void)mongets(mtmp, (mm == PM_GOBLIN || rn2(2) == 0) ?
+					      ORCISH_DAGGER : SCIMITAR);
 #else /* TOLKIEN */
-		{ int mm = monsndx(ptr);
-		  if(rn2(2)) (void)mongets(mtmp, ORCISH_HELM);
-		  if (mm == PM_ORC_CAPTAIN) {
-		      if(rn2(2)) {
-			  if(rn2(2)) (void)mongets(mtmp, SCIMITAR);
-			  if(rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
-			  if(rn2(2)) (void)mongets(mtmp, KNIFE);
-			  if(rn2(2)) (void)mongets(mtmp, CHAIN_MAIL);
-		      } else {
-			  if(rn2(2)) (void)mongets(mtmp, SHORT_SWORD);
-			  if(rn2(2)) (void)mongets(mtmp, IRON_SHOES);
-			  if(rn2(2)) {
-			      (void)mongets(mtmp, BOW);
-			      m_initthrow(mtmp, ARROW, 12);
-			  }
-			  if(rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
-		      }
-		  } else if (mm != PM_ORC_SHAMAN) {
-		      (void)mongets(mtmp, (mm == PM_GOBLIN || rn2(2) == 0) ?
-				    DAGGER : SCIMITAR);
-		  }
-		}
+		switch (mm) {
+		    case  PM_ORC_CAPTAIN:
+			if(rn2(2)) {
+			    if(rn2(2)) (void)mongets(mtmp, SCIMITAR);
+			    if(rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
+			    if(rn2(2)) (void)mongets(mtmp, KNIFE);
+			    if(rn2(2)) (void)mongets(mtmp, CHAIN_MAIL);
+			} else {
+			    if(rn2(2)) (void)mongets(mtmp, SHORT_SWORD);
+			    if(rn2(2)) (void)mongets(mtmp, IRON_SHOES);
+			    if(rn2(2)) {
+				(void)mongets(mtmp, BOW);
+				m_initthrow(mtmp, ARROW, 12);
+			    }
+			    if(rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
+			}
+		    default:
+			if (mm != PM_ORC_SHAMAN)
+			  (void)mongets(mtmp, (mm == PM_GOBLIN || rn2(2) == 0) ?
+					      DAGGER : SCIMITAR);
 #endif /* TOLKIEN */
+		}
 		break;
 	    case S_KOBOLD:
 		if (!rn2(4)) m_initthrow(mtmp, DART, 12);
@@ -269,11 +277,30 @@ register struct monst *mtmp;
 		(void)mongets(mtmp, LONG_SWORD);
 		break;
 	    case S_DEMON:
-#ifdef HARD
-		if (monsndx(ptr) == PM_BALROG) {
-		    (void)mongets(mtmp, BULLWHIP);
-		    (void)mongets(mtmp, BROADSWORD);
-		    break;
+#ifdef INFERNO
+		switch (mm) {
+		    case PM_BALROG:
+			(void)mongets(mtmp, BULLWHIP);
+			(void)mongets(mtmp, BROADSWORD);
+			break;
+		    case PM_ORCUS:
+			(void)mongets(mtmp, WAN_DEATH); /* the Wand of Orcus */
+			break;
+		    case PM_HORNED_DEVIL:
+			(void)mongets(mtmp, rn2(4) ? TRIDENT : BULLWHIP);
+			break;
+		    case PM_ICE_DEVIL:
+			if (!rn2(4)) (void)mongets(mtmp, SPEAR);
+			break;
+		    case PM_ASMODEUS:
+			(void)mongets(mtmp, WAN_COLD);
+			break;
+		    case PM_DISPATER:
+			(void)mongets(mtmp, WAN_STRIKING);
+			break;
+		    case PM_YEENOGHU:
+			(void)mongets(mtmp, FLAIL);
+			break;
 		}
 #endif
 		/* prevent djinnis and mail daemons from leaving objects when
@@ -504,17 +531,6 @@ register int	x, y;
 			if(OBJ_AT(x, y) || levl[x][y].gmask)
 			    mtmp->mundetected = 1;
 			break;
-		case S_CHAMELEON:
-			/* If you're protected with a ring, don't create
-			 * any shape-changing chameleons -dgk
-			 */
-			if (Protection_from_shape_changers)
-				mtmp->cham = 0;
-			else {
-				mtmp->cham = 1;
-				(void) newcham(mtmp, rndmonst());
-			}
-			break;
 		case S_STALKER:
 		case S_EEL:
 			mtmp->minvis = 1;
@@ -536,7 +552,17 @@ register int	x, y;
 				mtmp->mpeaceful = 1;
 			break;
 	}
-	if (ptr == &mons[PM_WIZARD_OF_YENDOR]) {
+	if (ptr == &mons[PM_CHAMELEON]) {
+		/* If you're protected with a ring, don't create
+		 * any shape-changing chameleons -dgk
+		 */
+		if (Protection_from_shape_changers)
+			mtmp->cham = 0;
+		else {
+			mtmp->cham = 1;
+			(void) newcham(mtmp, rndmonst());
+		}
+	} else if (ptr == &mons[PM_WIZARD_OF_YENDOR]) {
 		mtmp->iswiz = 1;
 		flags.no_of_wizards++;
 	}
@@ -559,7 +585,7 @@ register int	x, y;
 			}
 		}
 	}
-#ifdef HARD
+#ifdef INFERNO
 	if(is_dprince(ptr)) {
 	    mtmp->mpeaceful = mtmp->minvis = 1;
 # ifdef NAMED_ITEMS
@@ -629,7 +655,7 @@ struct permonst *mdat;
 		range++;
 	} while(tfoo == foo);
 foofull:
-	i = rn2(tfoo - foo);
+	i = rn2((int)(tfoo - foo));
 	cc->x = foo[i].x;
 	cc->y = foo[i].y;
 	return;
@@ -779,7 +805,7 @@ struct permonst *ptr;
 					|| (tmp2 == AD_WERE)
 #endif
 								) n += 2;
-	    else n += (tmp2 != AD_PHYS);
+	    else if (ptr != &mons[PM_GRID_BUG]) n += (tmp2 != AD_PHYS);
 	    n += ((ptr->mattk[i].damd * ptr->mattk[i].damn) > 23);
 	}
 
@@ -935,10 +961,9 @@ register struct monst *mtmp;
 	newtype = little_to_big(monsndx(ptr));
 	if (++mtmp->m_lev >= mons[newtype].mlevel) {
 		if (mons[newtype].geno & G_GENOD) {
-			pline("As %s grows up into a%s %s, %s dies!",
+			pline("As %s grows up into %s, %s dies!",
 				mon_nam(mtmp),
-				index(vowels,*mons[newtype].mname) ? "n" : "",
-				mons[newtype].mname,
+				an(mons[newtype].mname),
 				mon_nam(mtmp));
 			mondied(mtmp);
 			return (struct permonst *)0;
@@ -1111,8 +1136,10 @@ register struct monst *mtmp;
 	else if (OBJ_AT(mtmp->mx, mtmp->my))
 		sym = level.objects[mtmp->mx][mtmp->my]->olet;
 	else if (IS_DOOR(levl[mtmp->mx][mtmp->my].typ) ||
-		 IS_WALL(levl[mtmp->mx][mtmp->my].typ))
-		sym = DOOR_SYM;
+		 IS_WALL(levl[mtmp->mx][mtmp->my].typ) ||
+		 levl[mtmp->mx][mtmp->my].typ == SDOOR ||
+		 levl[mtmp->mx][mtmp->my].typ == SCORR)
+		sym = CLOSED_DOOR_SYM;
 	else if (is_maze_lev)
 		sym = rn2(2) ? ROCK_SYM : syms[rn2(sizeof syms)];
 	else if (roomno < 0)

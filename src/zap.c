@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)zap.c	3.0	88/10/25
+/*	SCCS Id: @(#)zap.c	3.0	89/11/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,14 +45,17 @@ const char *fl[]= {
 
 #ifdef TEXTCOLOR
 static const int zapcolor[10] = {
-	AT_ZAP, RED, AT_ZAP, WHITE, AT_ZAP, WHITE,
+	AT_ZAP, RED|BRIGHT, AT_ZAP, WHITE|BRIGHT, AT_ZAP, WHITE|BRIGHT,
 	AT_ZAP, AT_ZAP, AT_ZAP, AT_ZAP
 };
 #endif
 
 /* Routines for IMMEDIATE wands and spells. */
 /* bhitm: monster mtmp was hit by the effect of wand or spell otmp */
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 bhitm(mtmp, otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
@@ -168,21 +171,13 @@ revive(obj,ininv)
 register struct obj *obj;
 boolean ininv;
 {
-	register struct monst *mtmp;
+	register struct monst *mtmp = (struct monst *)0;
 
 	if(obj->otyp == CORPSE) {
-		int montype,x,y,nl;
-		char buf[BUFSZ];
+		int montype = obj->corpsenm;
+		int x = ininv ? u.ux : obj->ox;
+		int y = ininv ? u.uy : obj->oy;
 
-		if (nl = obj->onamelth) Strcpy(buf, ONAME(obj));
-		montype = obj->corpsenm;
-		if (ininv) {
-			x = u.ux; y = u.uy;
-			useup(obj);
-		} else {
-			x = obj->ox; y = obj->oy;
-			useupf(obj);
-		}
 		if (cant_create(&montype)) { /* will make zombie instead */
 			mtmp = makemon(&mons[PM_HUMAN_ZOMBIE], x, y);
 			if (mtmp) {
@@ -190,24 +185,30 @@ boolean ininv;
 				mtmp->mspeed = MFAST;
 			}
 		} else {
+			struct obj *otmp;
 #ifdef ARMY
 			if (is_mercenary(&mons[montype]))
 				montype = PM_UNARMORED_SOLDIER;
 #endif
-			mons[montype].pxlth += nl;
+			mons[montype].pxlth += obj->onamelth;
 			mtmp = makemon(&mons[montype], x, y);
-			mons[montype].pxlth -= nl;
+			mons[montype].pxlth -= obj->onamelth;
 			if (mtmp) {
 				/* Monster retains its name */
-				mtmp->mnamelth = nl;
-				if (nl) Strcpy(NAME(mtmp), buf);
+				if (mtmp->mnamelth = obj->onamelth)
+					Strcpy(NAME(mtmp), ONAME(obj));
 				/* No inventory for newly revived monsters */
-				while(obj = (mtmp->minvent)) {
-					mtmp->minvent = obj->nobj;
-					free((genericptr_t)obj);
+				while(otmp = (mtmp->minvent)) {
+					mtmp->minvent = otmp->nobj;
+					free((genericptr_t)otmp);
 				}
 			}
 		}
+		if (mtmp && obj->oeaten)
+			mtmp->mhp = eaten_stat(mtmp->mhp, obj);
+		if (ininv) useup(obj);
+		else useupf(obj);
+		newsym(x, y);
 	}
 	return mtmp;
 }
@@ -247,6 +248,25 @@ register struct obj *obj;
 }
 
 static int
+bhitgold(gold, otmp)
+register struct gold *gold;
+register struct obj *otmp;
+{
+	switch(otmp->otyp) {
+	case WAN_TELEPORTATION:
+#ifdef SPELLS
+	case SPE_TELEPORT_AWAY:
+#endif
+		rlocgold(gold);
+		break;
+	}
+	return 1;
+}
+
+#ifndef OVERLAY
+static 
+#endif
+int
 bhito(obj, otmp)	/* object obj was hit by the effect of wand otmp */
 register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 {
@@ -294,8 +314,9 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 		    (otmp2->olet == WEAPON_SYM && otmp2->otyp <= SHURIKEN))
 			otmp2->opoisoned = 1;
 
-		/* Turn dragon corpses into dragon armors */
-		if (obj->otyp == CORPSE && obj->corpsenm >= PM_GRAY_DRAGON
+		if (obj->otyp == CORPSE){
+		    /* Turn dragon corpses into dragon armors */
+		    if (obj->corpsenm >= PM_GRAY_DRAGON
 				&& obj->corpsenm <= PM_YELLOW_DRAGON) {
 			if (!rn2(10)) { /* Random failure */
 				otmp2->otyp = TIN;
@@ -309,6 +330,15 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 				otmp2->cursed = 0;
 			}
 			otmp2->corpsenm = obj->corpsenm;
+		    /* and croc corpses into shoes */
+		    } else if (obj->corpsenm == PM_CROCODILE) {
+			otmp2->otyp = LOW_BOOTS;
+			otmp2->olet = ARMOR_SYM;
+			otmp2->spe = 0;
+			otmp2->rustfree = 1;
+			otmp2->quan = 1;
+			otmp2->cursed = 0;
+		    }
 		}
 
 		/* update the weight */
@@ -732,15 +762,17 @@ register struct	obj	*obj;
 				(void)close_drawbridge(u.ux, u.uy);
 		    else
 #endif
-		    if (OBJ_AT(u.ux, u.uy)) {
-			register struct obj *otmp,*otmp2;
+		    {
+			register struct obj *otmp, *otmp2;
 
-			/* changed by GAN to hit all objects there */
-			for(otmp = fobj; otmp ; otmp = otmp2) {
-				otmp2 = otmp->nobj;
+			if(levl[u.ux][u.uy].gmask)
+				(void) bhitgold(g_at(u.ux, u.uy), obj);
+			for(otmp = level.objects[u.ux][u.uy];
+							otmp; otmp = otmp2) {
+				/* changed by GAN to hit all objects there */
+				otmp2 = otmp->nexthere;
 				/* save pointer as bhito may destroy otmp */
-				if(otmp->ox == u.ux && otmp->oy == u.uy)
-			    		(void) bhito(otmp, obj);
+				(void) bhito(otmp, obj);
 			}
 		    }
 		}
@@ -842,11 +874,8 @@ register struct	obj	*obj;
 						room->typ == SDOOR) {
 					    room->typ = DOOR;
 					    room->doormask = D_NODOOR;
-					    if(in_shop(zx,zy)) {
-						shopdoor = TRUE;
-						dlx = zx;
-						dly = zy;
-					    }
+					    mnewsym(zx, zy);
+					    if (cansee(zx,zy)) prl(zx, zy);
 					    digdepth -= 2;
 					} else {
 					    room->typ = CORR;
@@ -857,6 +886,8 @@ register struct	obj	*obj;
 				else if(room->typ == DOOR &&
 					(room->doormask & (D_LOCKED | D_CLOSED))) {
 				    room->doormask = D_NODOOR;
+				    mnewsym(zx, zy);
+				    if (cansee(zx,zy)) prl(zx, zy);
 				    if(in_shop(zx,zy)) {
 					shopdoor = TRUE;
 					dlx = zx;
@@ -870,7 +901,8 @@ register struct	obj	*obj;
 			}
 			mnewsym(zx,zy);	/* not always necessary */
 			Tmp_at2(-1,-1);	/* closing call */
-			if(shopdoor && !in_shop(u.ux, u.uy))
+			if(!Blind) prl(u.ux+u.dx, u.uy+u.dy);
+			if(shopdoor)
 				pay_for_door(dlx, dly, "destroy");
 			break;
 			}
@@ -907,9 +939,9 @@ register int force;
 
 void
 hit(str,mtmp,force)
-register char *str;
+register const char *str;
 register struct monst *mtmp;
-register char *force;		/* usually either "." or "!" */
+register const char *force;		/* usually either "." or "!" */
 {
 	if(!cansee(mtmp->mx,mtmp->my) || !flags.verbose) pline("The %s hits it.", str);
 	else pline("The %s hits %s%s", str, mon_nam(mtmp), force);
@@ -917,7 +949,7 @@ register char *force;		/* usually either "." or "!" */
 
 void
 miss(str,mtmp)
-register char *str;
+register const char *str;
 register struct monst *mtmp;
 {
 	pline("The %s misses %s.", str,
@@ -941,7 +973,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 {
 	register struct monst *mtmp;
 	register struct obj *otmp;
-	register int typ;
+	register uchar typ;
 	boolean shopdoor = FALSE;
 	xchar dlx, dly;
 
@@ -995,17 +1027,17 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 			range -= 3;
 		}
 		/* modified by GAN to hit all objects */
-		if(fhito && OBJ_AT(bhitpos.x, bhitpos.y)){
+		if(fhito){
 		    int hitanything = 0;
-		    otmp = fobj;
-		    /* Fix for polymorph bug, Tim Wright */
-		    while(otmp) { /* was a "for" loop.  */
-			register struct obj *next_obj;
+		    register struct obj *next_obj;
 
-			next_obj = otmp->nobj;
-			if(otmp->ox == bhitpos.x && otmp->oy == bhitpos.y)
-			    hitanything += (*fhito)(otmp, obj);
-			otmp = next_obj;
+		    if((fhito == bhito) && levl[bhitpos.x][bhitpos.y].gmask)
+			hitanything += bhitgold(g_at(bhitpos.x,bhitpos.y),obj);
+		    for(otmp = level.objects[bhitpos.x][bhitpos.y];
+							otmp; otmp = next_obj) {
+			/* Fix for polymorph bug, Tim Wright */
+			next_obj = otmp->nexthere;
+			hitanything += (*fhito)(otmp, obj);
 		    }
 		    if(hitanything)	range--;
 		}
@@ -1049,7 +1081,7 @@ struct obj *obj;			/* 2nd arg to fhitm/fhito */
 	if(sym)
 	   tmp_at(-1, is_pool(bhitpos.x,bhitpos.y) ? -1 : 0);
 
-	if(shopdoor && !in_shop(u.ux, u.uy))
+	if(shopdoor)
 		pay_for_door(dlx, dly, "destroy");
 
 	return (struct monst *)0;
@@ -1216,22 +1248,18 @@ int x, y;
 	register struct obj *obj, *obj2;
 	register int scrquan, i, cnt = 0;
 
-	if(OBJ_AT(x, y))
-	for(obj = fobj; obj; obj = obj2) {
-	    obj2 = obj->nobj;
+	for(obj = level.objects[x][y]; obj; obj = obj2) {
+	    obj2 = obj->nexthere;
 	    /* Bug fix - KAA */
-	    if(obj->ox == x && obj->oy == y &&
 #ifdef SPELLS
-	       (obj->olet == SCROLL_SYM || obj->olet == SPBOOK_SYM)) {
+	    if((obj->olet == SCROLL_SYM || obj->olet == SPBOOK_SYM)) {
 #else
-	       obj->olet == SCROLL_SYM) {
+	    if(obj->olet == SCROLL_SYM) {
 #endif
 		scrquan = obj->quan;
 		for(i = 1; i <= scrquan ; i++)
 		    if(!rn2(3))  {
 			cnt++;
-			if(in_shop(u.ux, u.uy))
-				addtobill(obj, FALSE);
 			useupf(obj);
 		    }
 	    }
@@ -1252,7 +1280,7 @@ register xchar sx,sy;
 register int dx,dy;
 {
 	int abstype = abs(type) % 10;
-	register char *fltxt = fl[abs(type)];
+	register const char *fltxt = fl[abs(type)];
 	struct rm *lev;
 	xchar range, olx, oly;
 	struct monst *mon;
@@ -1307,7 +1335,14 @@ register int dx,dy;
 			Tmp_at2(-2,(int) dirlet(dx,dy));
 			continue;
 		}
-		if(is_pool(sx,sy) && abstype == 1 /* fire */) {
+		if(abstype == 1 /* fire */ &&
+		   (is_pool(sx,sy) || (lev->typ == ROOM && lev->icedpool))) {
+		    if(lev->typ == ROOM) {
+			lev->typ = (lev->icedpool == ICED_POOL ? POOL : MOAT);
+			lev->icedpool = 0;
+			pline("The ice crackles and melts.");
+			mnewsym(sx,sy);
+		    } else {
 #ifdef STRONGHOLD
 			if(lev->typ != POOL) {	/* MOAT or DRAWBRIDGE_UP */
 			    if(cansee(sx,sy))
@@ -1329,17 +1364,22 @@ register int dx,dy;
 #ifdef STRONGHOLD
 			}
 #endif
+		    }
 		}
-		if(is_pool(sx,sy) && abstype == 3 /* cold */) {
+		if(abstype == 3 /* cold */ && is_pool(sx,sy)) {
 			boolean moat = (lev->typ != POOL);
 
 			range -= 3;
 #ifdef STRONGHOLD
-			if(lev->typ == DRAWBRIDGE_UP)
-				lev->drawbridgemask |= DB_FLOOR;
-			else
+			if(lev->typ == DRAWBRIDGE_UP) {
+				lev->drawbridgemask |= DB_ICE;
+			} else {
 #endif
 				lev->typ = ROOM;
+				lev->icedpool = (moat ? ICED_MOAT : ICED_POOL);
+#ifdef STRONGHOLD
+			}
+#endif
 			mnewsym(sx,sy);
 			if(cansee(sx,sy)) {
 				if(moat)
@@ -1353,8 +1393,11 @@ register int dx,dy;
 			switch(abstype) {
 			case 1:
 			   lev->doormask = D_NODOOR;
-			   if(cansee(sx,sy))
+			   mnewsym(sx,sy);
+			   if(cansee(sx,sy)) {
 				pline("The door is consumed in flames!");
+				prl(sx,sy);
+			   }
 			   else You("smell smoke.");
 			   if(type >= 0 && in_shop(sx, sy)) {
 				shopdoor = TRUE;
@@ -1364,8 +1407,11 @@ register int dx,dy;
 			   break;
 			case 3:
 			   lev->doormask = D_NODOOR;
-			   if(cansee(sx,sy))
+			   mnewsym(sx,sy);
+			   if(cansee(sx,sy)) {
 				pline("The door freezes and shatters!");
+				prl(sx,sy);
+			   }
 			   else You("feel cold.");
 			   if(type >= 0 && in_shop(sx, sy)) {
 				shopdoor = TRUE;
@@ -1375,8 +1421,11 @@ register int dx,dy;
 			   break;
 			case 4:
 			   lev->doormask = D_NODOOR;
-			   if(cansee(sx,sy))
+			   mnewsym(sx,sy);
+			   if(cansee(sx,sy)) {
 				pline("The door disintegrates!");
+				prl(sx,sy);
+			   }
 			   else if(flags.soundok)
 				You("hear a crashing sound.");
 			   if(type >= 0 && in_shop(sx, sy)) {
@@ -1387,8 +1436,11 @@ register int dx,dy;
 			   break;
 			case 5:
 			   lev->doormask = D_BROKEN;
-			   if(cansee(sx,sy))
+			   mnewsym(sx,sy);
+			   if(cansee(sx,sy)) {
 				pline("The door splinters!");
+				prl(sx,sy);
+			   }
 			   else if(flags.soundok)
 				You("hear a crackling sound.");
 			   if(type >= 0 && in_shop(sx, sy)) {
@@ -1590,7 +1642,8 @@ register int dx,dy;
 			stop_occupation();
 		}
 		if(!ZAP_POS(lev->typ)) {
-			int bounce = 0, rmn;
+			int bounce = 0;
+			uchar rmn;
 			if(cansee(sx,sy)) pline("The %s bounces!", fltxt);
 			range--;
 			if(!dx || !dy || !rn2(20)){
@@ -1627,6 +1680,27 @@ register int dx,dy;
 				       abstype == 3 ? "shatter" :
 				       abstype == 4 ? "disintegrate" :
 				       "destroy");
+}
+
+void
+rlocgold(gold)
+register struct gold *gold;
+{
+	register int tx, ty, otx, oty;
+	long val = gold->amount;
+
+	otx = gold->gx;
+	oty = gold->gy;
+	do {
+		tx = rn1(COLNO-3,2);
+		ty = rn2(ROWNO);
+	} while(!goodpos(tx,ty,(struct permonst *)0));
+	freegold(g_at(otx,oty));
+	mkgold(val, tx, ty);
+	if(cansee(otx,oty))
+		newsym(otx,oty);
+	if(cansee(tx,ty))
+		newsym(tx,ty);
 }
 
 void

@@ -1,0 +1,200 @@
+		     Brief notes about ovlmgr.asm
+		     ----------------------------
+			 (revised 1989nov12)
+
+OVLMGR.ASM is a preliminary version of a multiple-residency overlay
+manager for use with the Microsoft Overlay Linker. It is functionally
+compatible with the one in the MSC library _except_:
+
+- it doesn't support setjmp()/longjmp().
+- it leaves only a SMALL, fixed space for your heap (1).
+- it usually accesses the disk less often and is a lot faster in some
+  applications.
+- it has different tuning characteristics.
+- you must (of course) link OVLMGR.OBJ into the root overlay (that is,
+  outside any parentheses in the link command).
+
+  See also the bugs list below.
+
+As with other Microsoft-compatible overlay handlers you must be *very*
+careful never to call a function in an overlay through a pointer,
+unless the initiator of the call resides in the *same* physical
+overlay as the target (2).
+
+Although using the overlay manager is in essence much like using
+Microsoft's, they operate on a slightly different principle, and tuning
+for them is rather different. Technical part begins.
+
+When overlay linking is requested (see you linker manual), the MS
+overlay linker changes all far calls into overlays from the (normal,
+8086) format:
+
+	offset	contents
+	------	--------
+	:0000	CALL
+	:0001	target-offset
+	:0003	target-segment
+
+to this:
+	:0000	INT
+	:0001	int#	target-mod#
+	:0003	target-offset
+
+(note that here we are looking at the actual layout of the machine
+code, not at the assembly code as such) and relocates the code parts
+of all the different overlays into the *same* physical area. The
+overlaid code is all actually placed at the end of the .EXE file,
+after the 'normal' executable image, along with all its administrative
+data (fixups etc.).
+	When this altered 'call' is executed, of course, the interrupt
+handler int# is invoked. Its job is to ensure that the target overlay
+module is in memory (reading it from the tail of the .EXE file if it
+isn't already loaded) and then transfer to the given offset within it,
+'faking up' the effect of the 'real' far call that would normally have
+occurred.  Something similar must be done when the call returns, to
+ensure that the thing being returned *into* is still (or is once more)
+loaded.
+	The Microsoft linker, as we have said, relocates all the
+overlays to the same load address; and, in fact, it allocates am empty
+block of memory there that is at least as large as the largest
+overlay. Into this area all the overlays are loaded without further
+change; thus, there can only ever be one overlay in memory at one
+time. Transferring from one overlay to another causes one overlay to
+replace the other in the allocated overlay swap area.
+	Our overlay manager does not use the space allocated by the
+linker in the same way. Rather, it allocates almost all of the memory
+available from MS-DOS (including the original overlay area). As
+overlays are needed, they are loaded wherever they will fit, and
+dynamically relocated to that address.	Thus, many more than one
+overlay may be loaded at any given time, greatly increasing potential
+performance. Managament of space is more or less according to an LRU
+policy - once all of memory is full, the least recently used overlay
+is selected as the most likely candidate for replacement.
+
+The implications of this difference are as follows: while with the
+conventional (default) overlay manager, the best strategy is to group
+object modules together in an overlay whenever they are known to be
+used in rapid succession, to make each overlay as big as possible (all
+things being equal) in order to take advantage of all available
+memory, and to make as few overlays as possible (to reduce the amount
+of disk access), the best strategy with our overaly manager is almost
+the reverse. Having a lot of small overlays will increase the amount
+of useful stuff that can be resident in memory at the same time; all
+of memory will automatically be employed; and there is no advantage at
+all to uniformity of size (except perhaps in the unlikely case of
+*exact* uniformity!).
+	One thing that is no longer a problem with this version
+(though it was with all earlier versions of this overlay manager) is
+that the DOS exec() call works normally. The memory that is allocated
+for administering the overlay system is freed before the exec call is
+made and reallocated afterwards (we trap the DOS function request
+vector to do this, which isn't very nice as a programming practise but
+makes the existence of the overlay manager far more transparent).
+There is, however, one circumstance under which this can be
+problematic: if you use the exec() call to load a TSR application,
+thereby causing memory that the overlay manager was using to become
+unavailable, you may make it impossible for the overlaid application
+to proceed. This is because code that is nominally 'running' (i.e. is
+currently on the stack) cannot be relocated and must be reloaded
+at the *same address* that previously held it. If another process now
+owns that area of memory, there is nothing we can do.
+	We believe that this should not be a serious concern in normal
+use.
+
+NOTA BENE: This is a preliminary version of the overlay manager, but
+by now it should be fairly well debugged. If you are considering
+upgrading it please be aware that the following improvements are
+planned for the next version (though who knows when delivery will
+occur):
+	Twice the speed
+	EMS support
+	compatible versions of setjmp() and longjmp()
+	Integration with malloc() so the heap can grow
+	Major code revamping
+
+Enjoy!
+------------------------------------------------------------------------
+MESSAGES
+
+Not enough memory to run this program. Time to go to the store.
+	Although DOS successfully loaded the programme, it proved
+	impossible to allocate enough additional contiguous memory to
+	load one or more of the overlays. Either reduce the
+	RAM-loading of the application by reducing the size of either
+	the root or the largest overlays, or increase the amount of
+	memory available by unloading TSRs and/or simplifying your
+	CONFIG.SYS.
+
+Your dog eats all your remaining memory! You die.
+	Either an internal error has occurred in ovlmgr or the
+	application programme, or some event has caused memory that
+	ovlmgr believed it could count on becoming unavailable. A
+	typical example of the latter would be the result of
+	attempting to load a TSR while an overlaid application is
+	running.
+
+The Nymph stole your .EXE file! You die.
+	For some reason ovlmgr could not locate or read the original
+	.EXE file in which the overlays reside. This could be due to
+	your attempting to use a very old version of DOS,
+	an abject shortage of file handles, some strange event causng
+	the file to be deleted, a disk error, or the diskette that
+	contained the executable has been removed.
+------------------------------------------------------------------------
+KNOWN BUGS
+
+The present version cannot always be used as a direct replacement for
+Microsoft's overlay manager (even granted the documented differences)
+because the minimum size required for an overlaid programme to run is
+at least the size of the root plus TWICE the size of the largest
+overlay. If a programme has previously had its overlay structure tuned
+to take best advantage of Microsoft overlays, this may well cause a
+problem. The overlays themselves will need to be split up.
+
+The error messages are whimsical and NetHack-culture-specific.
+Somewhat more informative versions appeared in one version of the
+programme but they seem to have been lost.
+
+Transfers between overlays are very slow in machine terms, even if
+both overlays happen to reside in memory at the time.
+
+Locking overlays into memory is not really implemeted even though
+reading the source code might make you think it was.
+------------------------------------------------------------------------
+BUG ALERT
+
+To repeat a point made above, if you ever try to call a function in an
+overlay through a pointer, you *may* die with the Microsoft overlay
+manager. If you ever try to call a function in an overlay through a
+pointer, you *will* die with ours. Nothing in an overlay ever ends up
+in the same segment as the linker anticipated.	You have been warned!
+------------------------------------------------------------------------
+FOOTNOTES
+
+(1) If you hunt through the code you will find a magic constant you
+can play with to vary this allotment, if you're brave enough. It's
+currently tuned for NetHack 3.0. If you should get a message to the
+effect that NetHack can't allocate 28000 and some bytes when entering
+a maze level, that isn't our problem! In all probability you forgot to
+rebuild your special level files when you changed the compiler flags.
+We got that one, too, at one point.
+
+(2) This problem can be circumvented through the use of surrogate
+'trampoline' functions: functions that reside in the root overlay and
+simply pass right through to the 'real', overlaid, implementations.
+This can even be made transparent to the source code through the use
+of the C macro preprocessor, with a locution of the form
+	#define foo(x) foo_(x)
+visible everywhere except at the actual definition point of the
+trampoline. This has been implemented in Nethack 3.0h.
+----------------------------------------------------------------------
+NOTICE
+
+OVLMGR.ASM is brought to you by Pierre Martineau and Stephen Spackman.
+It, and this document, are copyright. They are, however, provided as
+part of NetHack and may be freely distributed as described in the
+NetHack license.
+----------------------------------------------------------------------
+Stephen P Spackman		       stephen@concour.cs.concordia.ca
+----------------------------------------------------------------------
+     Copyright (C) 1989 Pierre G Martineau and Stephen P Spackman

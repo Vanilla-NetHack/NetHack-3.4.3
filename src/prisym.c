@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)prisym.c	3.0	88/11/09
+/*	SCCS Id: @(#)prisym.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,7 +8,7 @@
 #include "wseg.h"
 #include "lev.h"
 
-static void pwseg P((struct wseg *));
+static void FDECL(pwseg, (struct wseg *));
 #endif
 
 void
@@ -164,7 +164,12 @@ register int xx,yy;
 void
 curs_on_u()
 {
+#ifdef CLIPPING
+	cliparound(u.ux, u.uy);
+	(void)win_curs(u.ux, u.uy);
+#else
 	curs(u.ux, u.uy+2);
+#endif
 }
 
 void
@@ -194,6 +199,7 @@ pru()
 /* print a position that is visible for @ */
 void
 prl(x,y)
+int x, y;
 {
 	register struct rm *room;
 	register struct monst *mtmp = (struct monst *)0;
@@ -278,7 +284,7 @@ register xchar x,y;
 	else if(ttmp && ttmp->tseen) tmp = TRAP_SYM;
 	else switch(room->typ) {
 	case SCORR:
-		tmp = STONE_SYM;
+		tmp = ' ';	/* _not_ STONE_SYM! */
 		break;
 	case SDOOR:
 		croom = inroom(x,y);
@@ -323,7 +329,27 @@ register xchar x,y;
 		tmp = BRCORN_SYM;
 		break;
 	case DOOR:
-		tmp = DOOR_SYM;
+		if (room->doormask == D_NODOOR || room->doormask & D_BROKEN)
+		    tmp = NO_DOOR_SYM;
+		else if (room->doormask & (D_CLOSED|D_LOCKED))
+		    tmp = CLOSED_DOOR_SYM;
+		/* We know door is open. */
+		else {
+		    croom=inroom(x,y);
+		    if(croom == -1) {
+#ifdef STRONGHOLD
+			if(IS_WALL(levl[x-1][y].typ)||IS_WALL(levl[x+1][y].typ))
+			    tmp = H_OPEN_DOOR_SYM;
+			else
+			    tmp = V_OPEN_DOOR_SYM;
+#else
+			impossible("door %d %d not in room",x,y);
+#endif
+		    } else if(rooms[croom].ly<=y && y<=rooms[croom].hy)
+			tmp = V_OPEN_DOOR_SYM;
+		    else
+			tmp = H_OPEN_DOOR_SYM;
+		}
 		break;
 	case CORR:
 		tmp = CORR_SYM;
@@ -424,7 +450,8 @@ register int x, y;
 
 	if(!isok(x,y)) return;
 	room = &levl[x][y];
-	if(room->scrsym == ROOM_SYM && !room->lit && !Blind) {
+	if(IS_FLOOR(levl[x][y].typ)
+	   && !room->lit && !Blind) {
 		room->scrsym = STONE_SYM;	/* was ' ' -- OIS */
 		room->new = 1;
 		on_scr(x,y);
@@ -484,10 +511,7 @@ register int x, y;
 	if(x == u.ux && y == u.uy && !Invisible) return(1);
 
 	if(MON_AT(x, y))
-		if (Blind && Telepat || canseemon(m_at(x,y)))
-		    return(1);
-		else return ((HTelepat & WORN_HELMET) &&
-			     (dist(x, y) <= (BOLT_LIM * BOLT_LIM)));
+		return(showmon(m_at(x,y)));
 	return(0);
 }
 
@@ -539,3 +563,102 @@ register struct wseg *wtmp;
 	}
 }
 #endif
+
+
+#ifdef STUPID_CPP	/* otherwise these functions are macros in rm.h */
+boolean IS_WALL(typ)
+unsigned typ;
+{
+	return(typ && typ <= TRWALL);
+}
+
+boolean IS_STWALL(typ)
+unsigned typ;
+{
+	return(typ <= TRWALL);			/* STONE <= (typ) <= TRWALL */
+}
+
+boolean IS_ROCK(typ)
+unsigned typ;
+{
+	return(typ < POOL);			/* absolutely nonaccessible */
+}
+
+boolean IS_DOOR(typ)
+unsigned typ;
+{
+	return(typ == DOOR);
+}
+
+boolean IS_FLOOR(typ)
+unsigned typ;
+{
+	return(typ == ROOM);
+}
+
+boolean ACCESSIBLE(typ)
+unsigned typ;
+{
+	return(typ >= DOOR);			/* good position */
+}
+
+boolean IS_ROOM(typ)
+unsigned typ;
+{
+	return(typ >= ROOM);			/* ROOM, STAIRS, furniture.. */
+}
+
+boolean ZAP_POS(typ)
+unsigned typ;
+{
+	return(typ >= POOL);
+}
+
+boolean SPACE_POS(typ)
+unsigned typ;
+{
+	return(typ > DOOR);
+}
+
+boolean IS_POOL(typ)
+unsigned typ;
+{
+	return(typ >= POOL && typ <= DRAWBRIDGE_UP);
+}
+
+boolean IS_THRONE(typ)
+unsigned typ;
+{
+	return(typ == THRONE);
+}
+
+boolean IS_FOUNTAIN(typ)
+unsigned typ;
+{
+	return(typ == FOUNTAIN);
+}
+
+boolean IS_SINK(typ)
+unsigned typ;
+{
+	return(typ == SINK);
+}
+
+boolean IS_ALTAR(typ)
+unsigned typ;
+{
+	return(typ == ALTAR);
+}
+
+boolean IS_DRAWBRIDGE(typ)
+unsigned typ;
+{
+	return(typ == DRAWBRIDGE_UP || typ == DRAWBRIDGE_DOWN);
+}
+
+boolean IS_FURNITURE(typ)
+unsigned typ;
+{
+	return(typ >= STAIRS && typ <= ALTAR);
+}
+#endif /* STUPID_CPP */

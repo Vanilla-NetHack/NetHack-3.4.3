@@ -3,10 +3,10 @@
 #
 #    NOTE: There's one really awful kludge here: I had to break
 #    monst.o up into two pieces to get it to compile on my machine
-#    (a Mega 2). If you've got 2.5 megs or more, you can (and probably
-#    should) replace "monst1.o monst2.o" by "monst.o", and delete
-#    the dependencies for monst1.o and monst2.o. If they ever change
-#    the loader, this kludge might break.
+#    (a Mega 2). You'll need "sed" to get this to work.
+#    If you have 2.5 megs or more, you can probably delete the
+#    strange dependency lines for monst.o and just compile
+#    it directly.
 #
 CC	= d:\gnu\bin\gcc.ttp
 LD	= d:\gnu\bin\gcc-ld.ttp
@@ -26,7 +26,7 @@ INCL	= ..\include
 AUX	= ..\auxil
 SRC	= ..\src
 
-CFLAGS	= $(MODEL) -O -I..\include
+CFLAGS	= $(MODEL) -O -fomit-frame-pointer -I..\include
 LFLAGS	= $(MODEL) -s
 TARG	= tos
 PC	= pc
@@ -45,11 +45,11 @@ GAMEDIR = \games\$(GAME)
 GAMEFILE = $(GAMEDIR)\$(GAME).ttp
 
 # object files for makedefs
-MAKEOBJS = makedefs.o alloc.o monst1.o monst2.o objects.o panic.o
+MAKEOBJS = makedefs.o alloc.o monst.o objects.o panic.o
 
 # object files for special levels compiler
 SPLEVOBJS = lev_comp.o lev_lex.o \
-	lev_main.o alloc.o monst1.o monst2.o objects.o panic.o
+	lev_main.o alloc.o monst.o objects.o panic.o
 
 # nothing below this line should have to be changed
 #
@@ -62,7 +62,7 @@ VOBJ = allmain.o alloc.o apply.o artifact.o attrib.o bones.o cmd.o \
  	eat.o end.o engrave.o exper.o extralev.o fountain.o getline.o hack.o \
 	invent.o lock.o main.o makemon.o mcastu.o mhitm.o \
 	mhitu.o mklev.o mkmaze.o mkobj.o mkroom.o mon.o mondata.o monmove.o \
-	monst1.o  monst2.o mthrowu.o msdos.o music.o o_init.o objects.o \
+	monst.o  mthrowu.o msdos.o music.o o_init.o objects.o \
 	objnam.o options.o pager.o \
 	pickup.o polyself.o potion.o pray.o pri.o priest.o prisym.o read.o \
 	restore.o rip.o rnd.o rumors.o save.o search.o shk.o shknam.o sit.o \
@@ -121,12 +121,14 @@ lev_main.o:  $(HACK_H) $(INCL)\sp_lev.h
 #
 lev_comp.c:  lev_comp.y
 	$(YACC) -d lev_comp.y
-	mv y,tab.c lev_comp.c
-	mv y,tab.h ..\include\lev_comp.h
+	cp y,tab.c lev_comp.c
+	cp y,tab.h ..\include\lev_comp.h
+	rm y,tab.c y,tab.h
 
 lev_lex.c:  lev_comp.l
 	$(LEX) lev_comp.l
-	mv lex,yy.c lev_lex.c
+	cp lex,yy.c lev_lex.c
+	rm lex,yy.c
 #
 #	The following include files depend on makedefs to be created.
 #
@@ -177,21 +179,23 @@ bones.o: $(HACK_H)
 # Secondary targets
 #
 
-auxil:	spec_levs
+AUXMISC = cmdhelp help hh history license opthelp oracles
+
+auxil:	data rumors spec_levs
 	cd $(AUX)
-	cp *. $(GAMEDIR)
+	cp data rumors $(GAMEDIR)
+	rm data rumors
+	cp $(AUXMISC) $(GAMEDIR)
 
 spec_levs: $(AUX)\castle.des $(AUX)\endgame.des $(AUX)\tower.des
 	cd $(AUX)
 	..\src\lev_comp castle.des
 	..\src\lev_comp endgame.des
 	..\src\lev_comp tower.des
-	cp castle $(GAMEDIR)
-	rm castle
-	cp endgame $(GAMEDIR)
-	rm endgame
-	cp tower? $(GAMEDIR)
-	rm tower?
+	cp castle endgame $(GAMEDIR)
+	rm castle endgame
+	cp tower1 tower2 tower3 $(GAMEDIR)
+	rm tower1 tower2 tower3
 
 clean:
 	rm *.o
@@ -253,12 +257,21 @@ mkroom.o:  $(HACK_H)
 mon.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
 mondata.o:  $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
 monmove.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+
 # kludge for "monst.c: Virtual memory exhausted" errors
-#monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
-monst1.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h monst.c
-	$(CC) $(CFLAGS) -c -o monst1.o -DSPLITMON_1 monst.c
-monst2.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h monst.c
-	$(CC) $(CFLAGS) -c -o monst2.o -DSPLITMON_2 monst.c
+# we build monst.s in two pieces, then glue them together with
+# "sed". if you don't have memory problems, uncomment out
+# all but the next line. if you don't have sed, get it from
+# a comp.binaries.atari.st site, or get gnu sed (the port to
+# the atari GCC is easy).
+
+monst.o:  $(CONFIG_H) $(PERMONST_H) $(INCL)\eshk.h $(INCL)\vault.h $(INCL)\epri.h
+	$(CC) $(CFLAGS) -S -o monst1.s -DSPLITMON_1 monst.c
+	$(CC) $(CFLAGS) -S -o monst2.s -DSPLITMON_2 monst.c
+	sed -e s/LC/LD/ -e s/gcc_compiled.:// monst2.s >>monst1.s
+	$(CC) $(CFLAGS) -c monst1.s -o monst.o
+	rm monst1.s monst2.s
+
 msdos.o:  $(HACK_H)
 mthrowu.o:  $(HACK_H)
 music.o:  $(HACK_H)
@@ -272,7 +285,7 @@ pickup.o:  $(HACK_H)
 polyself.o:  $(HACK_H)
 potion.o:  $(HACK_H)
 pray.o:  $(HACK_H)
-pri.o:  $(HACK_H)
+pri.o:  $(HACK_H) $(INCL)\termcap.h
 priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
 prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 random.o:
@@ -290,7 +303,7 @@ sounds.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
 sp_lev.o:  $(HACK_H) $(INCL)\sp_lev.h
 spell.o:  $(HACK_H)
 steal.o:  $(HACK_H)
-termcap.o:  $(HACK_H)
+termcap.o:  $(HACK_H) $(INCL)\termcap.h
 timeout.o:  $(HACK_H)
 topl.o:  $(HACK_H)
 topten.o:  $(HACK_H)

@@ -300,7 +300,7 @@ o\pickup.o:  $(HACK_H)
 o\polyself.o:  $(HACK_H)
 o\potion.o:  $(HACK_H)
 o\pray.o:  $(HACK_H)
-o\pri.o:  $(HACK_H)
+o\pri.o:  $(HACK_H) $(INCL)\termcap.h
 o\priest.o:  $(HACK_H) $(INCL)\mfndpos.h $(INCL)\eshk.h $(INCL)\epri.h
 o\prisym.o:  $(HACK_H) $(INCL)\lev.h $(INCL)\wseg.h
 o\random.o:
@@ -318,7 +318,7 @@ o\sounds.o:  $(HACK_H) $(INCL)\edog.h $(INCL)\eshk.h
 o\sp_lev.o:  $(HACK_H) $(INCL)\sp_lev.h
 o\spell.o:  $(HACK_H)
 o\steal.o:  $(HACK_H)
-o\termcap.o:  $(HACK_H)
+o\termcap.o:  $(HACK_H) $(INCL)\termcap.h
 o\timeout.o:  $(HACK_H)
 o\topl.o:  $(HACK_H)
 o\topten.o:  $(HACK_H)

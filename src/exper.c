@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)exper.c	3.0	89/04/21
+/*	SCCS Id: @(#)exper.c	3.0	89/11/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -15,7 +15,7 @@ register unsigned lev;
 	return(0L * lev);
 #else
 	if(lev < 10) return (10L*(1L << lev));
-	if(lev < 20) return (10000L*(1L << lev-10));
+	if(lev < 20) return (10000L*(1L << (lev-10)));
 	return (10000000L*(lev-19));
 #endif
 }

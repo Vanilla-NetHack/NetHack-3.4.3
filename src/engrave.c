@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.0	89/06/12
+/*	SCCS Id: @(#)engrave.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,14 +11,14 @@ struct engr {
 	unsigned engr_lth;	/* for save & restore; not length of text */
 	long engr_time;	/* moment engraving was (will be) finished */
 	xchar engr_type;
-#define	DUST	1
-#define	ENGRAVE	2
-#define	BURN	3
+#define DUST	1
+#define ENGRAVE	2
+#define BURN	3
 #define MARK	4
 #define POLY	5	/* temporary type - for polymorphing engraving */
 } *head_engr;
 
-static void del_engr P((struct engr *));
+static void FDECL(del_engr, (struct engr *));
 
 /* random engravings */
 const char *random_engr[] =

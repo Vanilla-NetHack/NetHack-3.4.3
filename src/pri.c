@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pri.c	3.0	89/06/16
+/*	SCCS Id: @(#)pri.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,23 +9,17 @@
 #if defined(ALTARS) && defined(THEOLOGY)
 #include "epri.h"
 #endif
+#include "termcap.h"
 
-static void hilite P((int,int,UCHAR_P, UCHAR_P));
-static void cornbot P((int));
-static boolean ismnst P((CHAR_P));
+static void FDECL(hilite, (int,int,UCHAR_P, UCHAR_P));
+static void FDECL(cornbot, (int));
+static boolean FDECL(ismnst, (CHAR_P));
 #ifdef TEXTCOLOR
-static uchar mimic_color P((UCHAR_P));
+static uchar FDECL(mimic_color, (UCHAR_P));
 #endif
 
-#if defined(MSDOS) && !defined(TERMLIB) && !defined(DECRAINBOW)
-#  define g_putch  (void) putchar
-#endif
-
-/* This is the same logic used for "#define IBMXASCII" in file "termcap.c" */
-#if !defined(AMIGA)
-# if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
-#  define g_putch  (void) putchar
-# endif
+#ifndef ASCIIGRAPH
+# define g_putch  (void) putchar
 #endif
 
 #ifndef g_putch
@@ -38,6 +32,10 @@ static char oldbot1[MAXCO], newbot1[MAXCO];
 static char oldbot2[MAXCO], newbot2[MAXCO];
 static const char *dispst = "*0#@#0#*0#@#0#*0#@#0#*0#@#0#*0#@#0#*";
 static int mrank_sz = 0;  /* loaded by max_rank_sz (called in u_init) */
+
+#ifdef CLIPPING
+#define curs(x, y) win_curs((x), (y)-2)
+#endif
 
 void
 swallowed(first)
@@ -90,13 +88,57 @@ register int first;
 	u.udisx = u.ux;
 	u.udisy = u.uy;
 }
+#ifdef CLIPPING
+#undef curs
+#endif
 
 void
 setclipped()
 {
+#ifndef CLIPPING
 	error("NetHack needs a screen of size at least %d by %d.\n",
 		ROWNO+3, COLNO);
+#else
+	clipping = TRUE;
+	clipx = clipy = 0;
+	clipxmax = CO;
+	clipymax = LI - 3;
+#endif
 }
+
+#ifdef CLIPPING
+void
+cliparound(x, y)
+int x, y;
+{
+	int oldx = clipx, oldy = clipy;
+
+	if (!clipping) return;
+	if (x < clipx + 5) {
+		clipx = max(0, x - 20);
+		clipxmax = clipx + CO;
+	}
+	else if (x > clipxmax - 5) {
+		clipxmax = min(COLNO, clipxmax + 20);
+		clipx = clipxmax - CO;
+	}
+	if (y < clipy + 2) {
+		clipy = max(0, y - 10);
+		clipymax = clipy + (LI - 3);
+	}
+	else if (y > clipymax - 2) {
+		clipymax = min(ROWNO, clipymax + 10);
+		clipy = clipxmax - (LI - 3);
+	}
+	if (clipx != oldx || clipy != oldy) {
+		if (u.udispl) {
+			u.udispl = 0;
+			levl[u.udisx][u.udisy].scrsym = news0(u.udisx, u.udisy);
+		}
+		doredraw();
+	}
+}
+#endif /* CLIPPING */
 
 /*
  *  Allow for a different implementation than this...
@@ -108,7 +150,9 @@ static void
 g_putch(ch)
 uchar ch;
 {
-	if (ch & 0x80) {
+	if (IBMgraphics)    /* IBM-compatible displays don't need other stuff */
+		(void) putchar(ch);
+	else if (ch & 0x80) {
 		if (!GFlag) {
 			graph_on();
 			GFlag = TRUE;
@@ -125,7 +169,7 @@ uchar ch;
 
 #endif
 
-static boolean
+boolean
 showmon(mon)
 register struct monst *mon;
 {
@@ -168,11 +212,16 @@ uchar ch,typ;
 		    (!OBJ_AT(x, y) && !levl[x][y].gmask || is_pool(x,y)))
 		    typ = AT_MAP;
 
-	y += 2;
-	curs(x,y);
-
-	hilite(x, y-2, ch, typ);
+#ifdef CLIPPING
+	if (win_curs(x, y)) {
+#else
+	curs(x,y+2);
+#endif
+	hilite(x, y, ch, typ);
 	curx++;
+#ifdef CLIPPING
+	}
+#endif
 }
 
 void
@@ -269,7 +318,7 @@ docrt()
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
-#if (defined(DGK) && !defined(TEXTCOLOR)) || defined(MACOS)
+#if ((defined(DGK) && !defined(TEXTCOLOR)) || defined(MACOS)) & !defined(CLIPPING)
 # ifdef MACOS
 	t = (term_info *)GetWRefCon(HackWindow);
 	if (!t->inColor)
@@ -328,7 +377,7 @@ docrt()
 				at(x,y,room->scrsym,AT_APP);
 			} else if(room->seen)
 				at(x,y,room->scrsym,AT_APP);
-#endif /* DGK && !TEXTCOLOR */
+#endif /* DGK && !TEXTCOLOR && !CLIPPING */
 #ifndef g_putch
 	if (GFlag) {
 		graph_off();
@@ -364,15 +413,24 @@ register int xmin, ymax;
 		return;
 	}
 
+#ifdef CLIPPING
+	xmin += clipx; ymax += clipy;
+#endif
 	seemons();	/* reset old positions */
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 	    if(mtmp->mx >= xmin && mtmp->my < ymax)
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
+#ifdef CLIPPING
+	for(y = clipy; y < ymax; y++) {
+		if(clipping && y > clipymax && CD) break;
+		curs(xmin - clipx, (y - clipy)+2);
+#else
 	for(y = 0; y < ymax; y++) {
 		if(y > ROWNO+1 && CD) break;
 		curs(xmin,y+2);
+#endif
 		cl_end();
 		if(y < ROWNO) {
 		    for(x = xmin; x < COLNO; x++) {
@@ -444,8 +502,12 @@ seeobjs()
 			struct monst *mtmp = revive(obj, FALSE);
 
 			if (mtmp && visible)
-				pline("%s rises from the dead!", Monnam(mtmp));
-		} else if (obj->age + 250 < monstermoves) delobj(obj);
+				pline("%s rises from the dead!",
+					(mtmp->mhp==mtmp->mhpmax) ? Monnam(mtmp)
+					: Amonnam(mtmp, "bite-covered"));
+		} else if (obj->corpsenm != PM_LIZARD &&
+						obj->age + 250 < monstermoves)
+			delobj(obj);
 	    }
 	}
 
@@ -458,11 +520,14 @@ seeobjs()
 		    struct monst *mtmp = revive(obj, TRUE);
 
 		    if (mtmp && wielded)
-			pline("The %s %s writhes out of your grasp!",
+			pline("The %s%s %s writhes out of your grasp!",
+				(mtmp->mhp < mtmp->mhpmax) ? "bite-covered ":"",
 				mtmp->data->mname, xname(obj));
 		    else if (mtmp)
 			You("feel squirming in your backpack!");
-		} else if (obj->age + 250 < monstermoves) useup(obj);
+		} else if (obj->corpsenm != PM_LIZARD &&
+						obj->age + 250 < monstermoves)
+		    useup(obj);
 	    }
 	}
 }
@@ -499,8 +564,8 @@ register struct monst *mon;
 	    if (Hallucination)
 	    atl(mon->mx,mon->my,
 		(char) ((!mon->mimic || Protection_from_shape_changers) ?
-		rndmonsym() : (mon->mappearance == DOOR_SYM) ?
-		DOOR_SYM : rndobjsym()));
+		rndmonsym() : (mon->mappearance == CLOSED_DOOR_SYM) ?
+		CLOSED_DOOR_SYM : rndobjsym()));
 	    else
 
 		atl(mon->mx,mon->my,
@@ -879,7 +944,11 @@ char *oldbot, *newbot;
 		register char *bp0 = newbot, *bp1 = newbot;
 
 		do {
+#ifdef CLIPPING
+			if(*bp0 != ' ' || bp0[1] != ' ')
+#else
 			if(*bp0 != ' ' || bp0[1] != ' ' || bp0[2] != ' ')
+#endif
 				*bp1++ = *bp0;
 		} while(*bp0++);
 	}
@@ -910,6 +979,9 @@ bot1()
 {
 	register int i,j;
 
+#ifdef CLIPPING
+	if (CO > 59) {
+#endif
 	Strcpy(newbot1, plname);
 	if('a' <= newbot1[0] && newbot1[0] <= 'z') newbot1[0] += 'A'-'a';
 	newbot1[10] = 0;
@@ -939,6 +1011,11 @@ bot1()
 	      do { Sprintf(eos(newbot1)," "); /* pad with spaces */
 		   i--;
 	      } while((i - j) > 0);
+#ifdef CLIPPING
+	}
+	else
+		*newbot1 = 0;
+#endif
 	if(ACURR(A_STR)>18) {
 		if(ACURR(A_STR)>118)
 		    Sprintf(eos(newbot1),"St:%2d ",ACURR(A_STR)-100);
@@ -959,7 +1036,11 @@ bot1()
 	    + u.urexp + (50 * maxdlevel)
 	    + (maxdlevel > 20? 1000*((maxdlevel > 30) ? 10 : maxdlevel - 20) :0));
 #endif
+#ifdef CLIPPING
+	fillbot(min(LI-1, ROWNO+2), oldbot1, newbot1);
+#else
 	fillbot(ROWNO+2, oldbot1, newbot1);
+#endif
 }
 
 static void
@@ -1016,7 +1097,11 @@ bot2()
 	if(Blinded)	   Sprintf(eos(newbot2), " Blind");
 	if(Stunned)	   Sprintf(eos(newbot2), " Stun");
 	if(Hallucination)  Sprintf(eos(newbot2), " Hallu");
+#ifdef CLIPPING
+	fillbot(min(LI, ROWNO+3), oldbot2, newbot2);
+#else
 	fillbot(ROWNO+3, oldbot2, newbot2);
+#endif
 }
 
 void
@@ -1130,7 +1215,6 @@ hilite(x, y, let, typ)
 int x, y;
 uchar let, typ;
 {
-
 	if (let == ' '
 #if !defined(MSDOS) && !defined(MACOS)
 	    || !flags.standout
@@ -1164,18 +1248,28 @@ uchar let, typ;
 		        default:
 			    if (u.ux == x && u.uy == y)
 				typ = uasmon->mcolor;
-			    else
+			    else if (level.monsters[x][y])
 			        typ = level.monsters[x][y]->data->mcolor;
+			    else
+				typ = 0;
 		    }
-		break;
+		    break;
 		case AT_OBJ:
+		    { struct obj *otmp;
+
 		    if (let == GOLD_SYM)
 			typ = HI_GOLD;
-		    else if (level.objects[x][y] && 
-			   let == objects[level.objects[x][y]->otyp].oc_olet)
-			typ = objects[level.objects[x][y]->otyp].oc_color;
+		    else if ((otmp = level.objects[x][y]) && 
+			   let == objects[otmp->otyp].oc_olet) {
+			if (otmp->otyp == CORPSE ||
+				otmp->otyp == DRAGON_SCALE_MAIL)
+			    typ = mons[otmp->corpsenm].mcolor;
+			else
+			    typ = objects[level.objects[x][y]->otyp].oc_color;
+		    }
 		    else
 			typ = mimic_color(let);
+		    }
 		    break;
 		case AT_MAP:
 		    if ( ((let == POOL_SYM && IS_POOL(levl[x][y].typ))
@@ -1190,6 +1284,9 @@ uchar let, typ;
 				&& hilites[HI_GOLD] != HI)
 			typ = HI_GOLD;
 #endif
+		    else if (levl[x][y].typ == ROOM && levl[x][y].icedpool
+				&& hilites[CYAN] != HI)
+			typ = CYAN;
 		    else
 			typ = 0;
 		    break;

@@ -61,7 +61,10 @@ register struct monst *mtmp;
 unsigned int stealoid;		/* object to be stolen */
 unsigned int stealmid;		/* monster doing the stealing */
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 stealarm(){
 	register struct monst *mtmp;
 	register struct obj *otmp;
@@ -83,6 +86,7 @@ stealarm(){
 }
 
 /* Returns 1 when something was stolen (or at least, when N should flee now)
+ * Returns -1 if the monster died in the attempt
  * Avoid stealing the object stealoid
  */
 int
@@ -94,7 +98,7 @@ struct monst *mtmp;
 	register int named = 0;
 
 	/* the following is true if successful on first of two attacks. */
-	if(dist(mtmp->mx, mtmp->my) > 3) return(0);
+	if(!monnear(mtmp, u.ux, u.uy)) return(0);
 
 	if(!invent){
 	    /* Not even a thousand men in armor can strip a naked man. */
@@ -125,8 +129,11 @@ struct monst *mtmp;
 		impossible("Steal fails!");
 		return(0);
 	}
+	/* can't steal gloves while wielding - so steal the wielded item. */
+	if (otmp == uarmg && uwep)
+	    otmp = uwep;
 	/* can't steal armor while wearing cloak - so steal the cloak. */
-	if(otmp == uarm && uarmc) otmp = uarmc;
+	else if(otmp == uarm && uarmc) otmp = uarmc;
 #ifdef SHIRT
 	else if(otmp == uarmu && uarmc) otmp = uarmc;
 	else if(otmp == uarmu && uarm) otmp = uarm;
@@ -150,6 +157,9 @@ gotobj:
 			Ring_gone(otmp);
 			break;
 		case ARMOR_SYM:
+			/* Stop putting on armor which has been stolen. */
+			if (donning(otmp))
+			    afternmv = 0;
 			if(multi < 0 || otmp == uarms){
 			  if (otmp == uarm)  (void) Armor_off();
 			  else if (otmp == uarmc) (void) Cloak_off();
@@ -209,6 +219,13 @@ gotobj:
 	freeinv(otmp);
 	pline("%s stole %s.", named ? "She" : Monnam(mtmp), doname(otmp));
 	mpickobj(mtmp,otmp);
+	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
+	    && !resists_ston(mtmp->data)) {
+	    pline("%s turns to stone.", Monnam(mtmp));
+	    stoned = TRUE;
+	    xkilled(mtmp, 0);
+	    return -1;
+	}
 	return((multi < 0) ? 0 : 1);
 }
 

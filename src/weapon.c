@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)weapon.c	3.0	89/04/24
+/*	SCCS Id: @(#)weapon.c	3.0	89/11/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,8 @@ struct	permonst *ptr;
 {
 	int	tmp = 0;
 
-	if(otmp->olet == WEAPON_SYM || otmp->otyp == PICK_AXE)
+	if(otmp->olet == WEAPON_SYM || otmp->otyp == PICK_AXE
+						|| otmp->otyp == UNICORN_HORN)
 		tmp += otmp->spe;
 
 /*	Put weapon specific "to hit" bonuses in below:		*/
@@ -75,7 +76,7 @@ struct	permonst *ptr;
 
 	if(otmp->otyp == CREAM_PIE)	return(0);
 
-	if(bigmonst(ptr)) {
+	if(ptr->msize >= MZ_HUMAN) {
 	    if(objects[otmp->otyp].wldam)
 		tmp = rnd(objects[otmp->otyp].wldam);
 	    switch (otmp->otyp) {
@@ -132,7 +133,8 @@ struct	permonst *ptr;
 	if (otmp->otyp == BULLWHIP && thick_skinned(ptr))
 		/* thick skinned/scaled creatures don't feel it */
 		tmp = 0;
-	if (otmp->olet == WEAPON_SYM || otmp->otyp == PICK_AXE)
+	if (otmp->olet == WEAPON_SYM || otmp->otyp == PICK_AXE
+						|| otmp->otyp == UNICORN_HORN)
 		tmp += otmp->spe;
 
 /*	Put weapon vs. monster type damage bonuses in below:	*/
@@ -256,6 +258,7 @@ register struct monst *mtmp;
 /* 0 = used by any monster; 1 = only used by strong monsters */
 static const int hwep[][2] =
 	{ {DWARVISH_MATTOCK,1}, {TWO_HANDED_SWORD,1}, {KATANA,0},
+	  {UNICORN_HORN,1},
 #ifdef WORM
 	  {CRYSKNIFE,0},
 #endif
@@ -281,7 +284,7 @@ static const int hwep[][2] =
 #else /* TOLKIEN */
 /* 0 = used by any monster; 1 = only used by strong monsters */
 static const int hwep[][2] =
-	{ {TWO_HANDED_SWORD,1}, {KATANA,0},
+	{ {TWO_HANDED_SWORD,1}, {KATANA,0}, {UNICORN_HORN,1},
 #ifdef WORM
 	  {CRYSKNIFE,0},
 #endif
@@ -336,6 +339,11 @@ abon() {	/* attack bonus for strength & dexterity */
 	else if(ACURR(A_STR) < 69) sbon = 1;	/* up to 18/50 */
 	else if(ACURR(A_STR) < 118) sbon = 2;
 	else sbon = 3;
+/*
+ *	Temporary kludge - make it a bit easier for a low level character
+ *			   to hit until we tune the game a little better.
+ */
+	sbon += (u.ulevel < 3) ? 2 : (u.ulevel < 5) ? 1 : 0;
 
 	if(ACURR(A_DEX) < 4) return(sbon-3);
 	else if(ACURR(A_DEX) < 6) return(sbon-2);

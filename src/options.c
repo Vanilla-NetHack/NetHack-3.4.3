@@ -1,12 +1,12 @@
-/*	SCCS Id: @(#)options.c	3.0	88/11/09
+/*	SCCS Id: @(#)options.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 static boolean set_order;
 
-static void nmcpy P((char *, char *, int));
-static int next_opt P((char *));
+static void FDECL(nmcpy, (char *, char *, int));
+static int FDECL(next_opt, (char *));
 
 void
 initoptions()
@@ -143,50 +143,13 @@ assign_graphics(graph_ints,glth)
 register unsigned int *graph_ints;
 register int glth;
 {
-#define SETPCHAR(f, n)	showsyms.f = (glth > n) ? graph_ints[n] : defsyms.f
-	SETPCHAR(stone, 0);
-	SETPCHAR(vwall, 1);
-	SETPCHAR(hwall, 2);
-	SETPCHAR(tlcorn, 3);
-	SETPCHAR(trcorn, 4);
-	SETPCHAR(blcorn, 5);
-	SETPCHAR(brcorn, 6);
-	SETPCHAR(crwall, 7);
-	SETPCHAR(tuwall, 8);
-	SETPCHAR(tdwall, 9);
-	SETPCHAR(tlwall, 10);
-	SETPCHAR(trwall, 11);
-	SETPCHAR(vbeam, 12);
-	SETPCHAR(hbeam, 13);
-	SETPCHAR(lslant, 14);
-	SETPCHAR(rslant, 15);
-	SETPCHAR(door, 16);
-	SETPCHAR(room, 17);
-	SETPCHAR(corr, 18);
-	SETPCHAR(upstair, 19);
-	SETPCHAR(dnstair, 20);
-	SETPCHAR(trap, 21);
-	SETPCHAR(web, 22);
-	SETPCHAR(pool, 23);
-#ifdef FOUNTAINS
-	SETPCHAR(fountain, 24);
-#endif
-#ifdef SINKS
-	SETPCHAR(sink, 25);
-#endif
-#ifdef THRONES
-	SETPCHAR(throne, 26);
-#endif
-#ifdef ALTARS
-	SETPCHAR(altar, 27);
-#endif
-#ifdef STRONGHOLD
-	SETPCHAR(upladder, 28);
-	SETPCHAR(dnladder, 29);
-	SETPCHAR(dbvwall, 30);
-	SETPCHAR(dbhwall, 31);
-#endif
-#undef SETPCHAR
+	register int i;
+
+	if (glth > MAXPCHARS) glth = MAXPCHARS;		/* sanity check */
+	for (i = 0; i < glth; i++)
+		showsyms[i] = graph_ints[i];
+	for (i = glth; i < MAXPCHARS; i++)
+		showsyms[i] = defsyms[i];
 }
 
 void

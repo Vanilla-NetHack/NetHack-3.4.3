@@ -101,7 +101,7 @@ void
 mkartifact(otmp1)
 struct obj **otmp1;
 {
-	register struct artifact *artif;
+	register const struct artifact *artif;
 	register struct obj *otmp = *otmp1;
 	register int n = 0;
 
@@ -123,13 +123,14 @@ static struct artifact *
 get_artifact(otmp)
 struct obj *otmp;
 {
-	register struct artifact *artif;
+	register const struct artifact *artif;
 
 	if(otmp)
 	    if(strlen(ONAME(otmp)))
 		for(artif = artilist; artif->otyp; artif++)
 		    if(artif->otyp == otmp->otyp &&
-		       !strcmp(ONAME(otmp), artif->name)) return(artif);
+		       !strcmp(ONAME(otmp), artif->name))
+			    return((struct artifact *)artif);
 	return((struct artifact *)0);
 }
 
@@ -155,7 +156,7 @@ restr_name(otmp, name)	/* returns 1 if name is restricted for otmp->otyp */
 register struct obj *otmp;
 register char	*name;
 {
-	register struct artifact *artif;
+	register const struct artifact *artif;
 
 	if(!strlen(name)) return(0);
 
@@ -172,7 +173,7 @@ struct obj *
 mk_aligned_artifact(align)
 unsigned align;
 {
-	register struct artifact *artif;
+	register const struct artifact *artif;
 	register struct obj *otmp;
 	register int n = 0;
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.0	88/11/24
+/*	SCCS Id: @(#)do_name.c	3.0	89/11/08
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -32,11 +32,16 @@ coord	*cc;
 int force; char *goal;
 {
 	register int cx, cy, i, c;
-	char *sdp = flags.num_pad ? ndir : sdir;
+	const char *sdp = flags.num_pad ? ndir : sdir;
 	if(flags.verbose) pline("(For instructions type a ?)");
 	cx = cc->x;
 	cy = cc->y;
+#ifdef CLIPPING
+	cliparound(cx, cy);
+	(void) win_curs(cx, cy);
+#else
 	curs(cx,cy+2);
+#endif
 	while((c = readchar()) != '.'){
 		for(i=0; i<8; i++) if(sdp[i] == c){
 			if(1 <= cx + xdir[i] && cx + xdir[i] <= COLNO)
@@ -63,7 +68,12 @@ int force; char *goal;
 			return;
 		}
 	nxtc:	;
+#ifdef CLIPPING
+		cliparound(cx, cy);
+		(void) win_curs(cx, cy);
+#else
 		curs(cx,cy+2);
+#endif
 	}
 	cc->x = cx;
 	cc->y = cy;
@@ -112,7 +122,8 @@ do_mname(){
  	    if(!mtmp->mtame) {
  		pline("%s gets %sangry!", Monnam(mtmp),
  		      mtmp->mpeaceful ? "" : "very ");
- 		mtmp->mpeaceful = mtmp->msleep = 0;
+ 		mtmp->mpeaceful = 0;
+		mtmp->msleep = 0;
  	    }
  	    return(0);
  	}
@@ -132,9 +143,9 @@ do_mname(){
 }
 
 /*
- * This routine changes the address of  obj . Be careful not to call it
+ * This routine changes the address of obj. Be careful not to call it
  * when there might be pointers around in unknown places. For now: only
- * when  obj  is in the inventory.
+ * when obj is in the inventory.
  */
 static
 void
@@ -168,7 +179,7 @@ register struct obj *obj;
 char	*buf;
 register int ininv;
 {
-	register struct obj *otmp, *otmp2;
+	register struct obj *otmp, *otmp2, *contents;
 	register int	lth;
 
 	lth = *buf ? strlen(buf)+1 : 0;
@@ -209,6 +220,10 @@ register int ininv;
 				break;
 			}
 		}
+	}
+	if (Is_container(obj)) {
+		for(contents=fcobj; contents; contents=contents->nobj)
+			if(contents->cobj==obj) contents->cobj = otmp2;
 	}
 	/* obfree(obj, otmp2);	/* now unnecessary: no pointers on bill */
 	free((genericptr_t) obj);	/* let us hope nobody else saved a pointer */
@@ -272,10 +287,8 @@ register struct obj *obj;
 	if (otemp.corpsenm) { /* kludge, meaning it's sink water */
 		pline("Call a stream of %s fluid: ",
 				objects[otemp.otyp].oc_descr);
-	} else {
-		str = xname(&otemp);
-		pline("Call %s %s: ", index(vowels,*str) ? "an" : "a", str);
-	}
+	} else
+		pline("Call %s: ", an(xname(&otemp)));
 	getlin(buf);
 	clrlin();
 	if(!*buf || *buf == '\033')
@@ -345,12 +358,12 @@ int vb;
 
 	switch(mtmp->data->mlet) {
 	    case S_GHOST:
-		{ register char *gn = (char *) mtmp->mextra;
+		{ register const char *gn = (const char *) mtmp->mextra;
 		  if(!*gn) {		/* might also look in scorefile */
 		    gn = ghostnames[rn2(SIZE(ghostnames))];
 			Strcpy((char *) mtmp->mextra, !rn2(5) ? plname : gn);
 		  }
-		  Sprintf(buf, "%s's ghost", gn);
+		  Sprintf(buf, "%s's ghost", (char *) mtmp->mextra);
 		}
 		break;
 	    default:
@@ -472,8 +485,8 @@ rndmonnam() {  /* Random name of monster type, if hallucinating */
 	int name;
 
 	do {
-		name = rn2(PM_CHAMELEON);
-		/* chameleon: last monster before player classes */
+		name = rn2(PM_ARCHEOLOGIST);
+		/* archeologist: first player class */
 	} while(type_is_pname(&mons[name]) || (mons[name].geno & G_NOGEN));
 	return(mons[name].mname);
 }

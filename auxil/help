@@ -15,8 +15,8 @@ on.
 
 	NetHack uses the following symbols:
 
-	- and |  The walls of a room.
-	.	 The floor of a room.
+	- and |  The walls of a room, also open doors.
+	.	 The floor of a room or a doorway.
 	#	 A corridor, or kitchen sink (if your dungeon has sinks).
 	>	 A way to the next level.
 	<	 A way to the previous level.
@@ -31,7 +31,7 @@ on.
 	(	 Some other useful object (pick-axe, key, lamp...)
 	$	 A pile of gold.
 	*	 A gem or rock (possibly valuable, possibly worthless).
-	+	 A doorway, or a spell book containing a spell
+	+	 A closed door, or a spell book containing a spell
 		 you can learn (if your dungeon has spell books).
 	^	 A trap (once you detect it).
 	" 	 An amulet, or a spider web.

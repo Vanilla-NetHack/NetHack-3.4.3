@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monflag.h	3.0	89/06/23
+/*	SCCS Id: @(#)monflag.h	3.0	89/11/09
 /* NetHack may be freely redistributed.  See license for details. */
 /* Copyright (c) 1989 Mike Threepoint */
 
@@ -18,38 +18,37 @@
 #define MS_NEIGH	10	/* neighs, as an equine */
 #define MS_WAIL 	11	/* wails, as a tortured soul */
 #define MS_GURGLE	12	/* gurgles, as liquid or through saliva */
+#define MS_BURBLE	13	/* burbles (jabberwock) */
 #define MS_SHRIEK	15	/* wakes up others */
-#define MS_IMITATE	18	/* imitates others (leocrotta) */
-#define MS_MUMBLE	19	/* says something or other */
+#define MS_LAUGH	17	/* grins, smiles, giggles, and laughs */
+#define MS_MUMBLE	18	/* says something or other */
+#define MS_IMITATE	19	/* imitates others (leocrotta) */
 #define MS_SEDUCE	20	/* "Hello, sailor." (Nymphs) */
-#ifdef KOPS
-#define MS_ARREST	21	/* "Stop in the name of the law!" (Kops) */
+#define MS_VAMPIRE	21	/* vampiric seduction, Vlad's exclamations */
+#define MS_ORC		MS_GRUNT	/* intelligent brutes */
+#define MS_JEER 	24	/* berates you */
+#ifdef INFERNO
+#define MS_BRIBE	25	/* asks for money, or berates you */
 #endif
-#define MS_LAUGH	22	/* grins, smiles, giggles, and laughs */
-#define MS_JEER 	23	/* berates you */
-#ifdef HARD
-#define MS_BRIBE	24	/* asks for money, or berates you */
-#endif
-#define MS_CUSS 	25	/* really berates you (the Wiz) */
+#define MS_CUSS 	26	/* really berates you (the Wiz) */
+#define MS_NURSE	27	/* "Take off your shirt, please." */
+#define MS_DJINNI	28	/* "Thank you for freeing me!" */
+#define MS_HUMANOID	29	/* generic traveling companion */
+#define MS_GUARD	30	/* "Please drop that gold and follow me." */
+#define MS_SELL 	31	/* demand payment, complain about shoplifters */
 #ifdef ORACLE
-#define MS_ORACLE	26	/* do a consultation */
+#define MS_ORACLE	32	/* do a consultation */
 #endif
 #ifdef ALTARS
-#define MS_PRIEST	27	/* ask for contribution; do cleansing */
+#define MS_PRIEST	33	/* ask for contribution; do cleansing */
 #endif
-#define MS_GUARD	28	/* "Please drop that gold and follow me." */
-#define MS_NURSE	29	/* "Take off your shirt, please." */
-#define MS_SELL 	30	/* demand payment, complain about shoplifters */
-#define MS_DJINNI	31	/* "Thank you for freeing me!" */
+#ifdef KOPS
+#define MS_ARREST	34	/* "Stop in the name of the law!" (Kops) */
+#endif
 #ifdef ARMY
-#define MS_SOLDIER	32	/* army expressions */
+#define MS_SOLDIER	35	/* army expressions */
 #endif
-#define MS_VAMPIRE	33	/* vampiric seduction, Vlad's exclamations */
-#define MS_HUMANOID	34	/* generic traveling companion */
-#define MS_ORC		MS_GRUNT	/* other intelligent brutes */
 
-#define M1_BIG		0x00000001L
-#define M1_VSMALL	0x00000002L
 #define M1_FLY		0x00000004L
 #define M1_SWIM		0x00000008L
 #define M1_WALLWALK	0x00000010L
@@ -105,5 +104,13 @@
 #define M2_OMNIVORE	0x00300000L	/* eats both */
 #define M2_THICK_HIDE	0x01000000L	/* has thick hide or scales */
 #define M2_AMORPHOUS	0x02000000L	/* fluid; can slide under doors */
+
+#define MZ_TINY		0		/* < 2' */
+#define MZ_SMALL 	1		/* 2-4' */
+#define MZ_MEDIUM	2		/* 4-7' */
+#define MZ_HUMAN	MZ_MEDIUM	/* human-sized */
+#define MZ_LARGE 	3		/* 7-12' */
+#define MZ_HUGE		4		/* 12-25' */
+#define MZ_GIGANTIC	7		/* off the scale */
 
 #endif /* MONFLAG_H */

@@ -62,6 +62,7 @@ tgetch()
 	GetPort(&oldPort);
 	SetPort(HackWindow);
 	while (!ch) {
+		keyCode = 0;
 	    GetPort(&oldPort1);
 	    SetPort((GrafPtr)HackWindow);
 	    /* do cursor blinking */
@@ -436,7 +437,6 @@ char	*s;
 	TextFont(t->fontNum);
 	TextSize(t->fontSize);
 	TextMode(srcCopy);
-	macflags &= ~0x1000;
 	/* a termcap-type escape string */
 	if (!strncmp(s, "\033[", 2)) {
 	    switch(*(s + 2)) {
@@ -444,10 +444,10 @@ char	*s;
 		    if (t->inColor) {
 			temp = (short)(*(s + 3) - 'a');
 			if (temp >= BLACK && temp < MAXCOLORS &&
-			    (temp % (MAXCOLORS / 2) != GRAY))	/* set colour */
+			    (temp % (MAXCOLORS / 2) != GRAY)) /* set colour */
 				ForeColor(t->color[temp % (MAXCOLORS / 2)]);
 			if (temp == GRAY)
-				macflags |= 0x1000;
+		                ForeColor(t->color[0]);
 			 /* yellow fgnd hard to see on white bgnd */
 			 /* so change to green background */
 			if (temp == YELLOW || temp == BROWN)
@@ -532,7 +532,7 @@ char	*s;
 	    
 	    if (sLen) {
 		while (stmp < (s + sLen)) {
-		    temp = (x + charleft - 1 < t->maxCol) ? sLen : t->maxCol - x;
+		    temp = (x + charleft - 1 < t->maxCol) ? charleft : t->maxCol - x;
 		    savech = '\0';
 		    c1 = stmp + temp;	/* point to the char after the end */
 		    c = index(stmp, '\n');
@@ -623,17 +623,6 @@ char	c;
 		SysBeep(1);
 	} else if ((c != '\n') && (c != '\r')) {
 		t->screen[y][x] = c;
-		if (macflags & 0x1000) {
-			eraseRect.top = cur.v -t->ascent;
-			eraseRect.bottom = eraseRect.top + t->height;
-			eraseRect.left = cur.h;
-			eraseRect.right = cur.h + t->charWidth;
-			GetPenState(&pnState);
-			FillRect(&eraseRect, dkGray);
-			SetPenState(&pnState);
-			macflags &= ~0x1000;
-			TextMode(srcOr);
-		}
 		DrawText(&c, 0, 1);
 		if (!savech)
 			t->tcur_x++;
@@ -812,7 +801,9 @@ short	prompt;
 	} else {
 		while (!itemHit) {
 			if (GetNextEvent(everyEvent,&theEvent))
-				if (theEvent.what == mouseDown)
+				if (theEvent.what == mouseDown ||
+  			            theEvent.what == keyDown ||
+  				    theEvent.what == autoKey)
 					itemHit = OK_BUTTON;
 		}
 	}

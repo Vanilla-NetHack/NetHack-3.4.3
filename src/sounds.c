@@ -56,7 +56,7 @@ dosounds()
 		You("seem to hear dishes being washed!");
 		break;
 	}
-    if (!rn2(300)) {
+    if (!rn2(200)) {
 	roomtype = OROOM;
 	for (sroom = &rooms[0]; ; sroom++) {	/* find any special room */
 	    if (sroom->hx < 0) break;		/* no more rooms */
@@ -179,7 +179,7 @@ You("hear a sound reminding you of an elephant stepping on a peanut.");
 		}
 		break;
 	    case SHOPBASE:
-		if(tended_shop(croomno))
+		if(tended_shop(sroom))
 		  switch (rn2(2)+hallu) {
 		    case 0:
 			You("hear the chime of a cash register.");
@@ -364,6 +364,9 @@ register struct monst *mtmp;
 	case MS_GURGLE:
 	    kludge("%s gurgles.", Monnam(mtmp));
 	    break;
+	case MS_BURBLE:
+	    kludge("%s burbles.", Monnam(mtmp));
+	    break;
 	case MS_SHRIEK:
 	    kludge("%s shrieks.", Monnam(mtmp));
 	    aggravate();
@@ -472,7 +475,7 @@ kludge("%s describes a recent article in \"Spelunker Today\" magazine.", Monnam(
 		    kludge("%s laughs.", Monnam(mtmp));
 	    }
 	    break;
-# ifdef HARD
+# ifdef INFERNO
 	case MS_BRIBE:
 	    if (mtmp->mpeaceful && !mtmp->mtame) {
 		(void) demon_talk(mtmp);

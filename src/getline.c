@@ -165,7 +165,7 @@ parse()
 	}
 	in_line[0] = foo;
 	in_line[1] = 0;
-	if(foo == 'g' || foo == 'G'){
+	if(foo == 'g' || foo == 'G' || (flags.num_pad && foo == '5')){
 		in_line[1] = Getchar();
 #ifdef REDO
 		savech(in_line[1]);

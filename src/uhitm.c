@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)uhitm.c	3.0	88/04/11
+/*	SCCS Id: @(#)uhitm.c	3.0	89/11/19
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -344,10 +344,10 @@ register int thrown;
 	    }
 	} else {
 	    if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE ||
-	       obj->olet == ROCK_SYM) {
+	       obj->otyp == UNICORN_HORN || obj->olet == ROCK_SYM) {
 
 		if(obj == uwep && (obj->otyp > VOULGE || obj->otyp < BOOMERANG)
-				&& obj->otyp != PICK_AXE)
+			&& obj->otyp != PICK_AXE && obj->otyp != UNICORN_HORN)
 		    tmp = rnd(2);
 		else {
 		    tmp = dmgval(obj, mon->data);
@@ -430,7 +430,7 @@ register int thrown;
 			    xkilled(mon,0);
 			    return(FALSE);
 			}
-			tmp = bigmonst(&mons[obj->corpsenm]) ? 5 : 2 ;
+			tmp = mons[obj->corpsenm].msize + 1;
 			break;
 		case EGG: /* only possible if hand-to-hand */
 			if(obj->corpsenm > -1
@@ -629,7 +629,7 @@ register struct attack *mattk;
 
 	stoned = FALSE;
 	if (is_demon(uasmon) && !rn2(13) && !uwep
-# ifdef HARD
+# ifdef INFERNO
 		&& u.umonnum != PM_SUCCUBUS && u.umonnum != PM_INCUBUS
 		&& u.umonnum != PM_BALROG
 # endif
@@ -1311,7 +1311,7 @@ boolean kicked;
 		}
 		break;
 	      case AD_COLD:		/* brown mold or blue jelly */
-		if(dist(mon->mx, mon->my) <= 3) {
+		if(monnear(mon, u.ux, u.uy)) {
 		    tmp = d((int)mon->m_lev+1, (int)ptr->mattk[i].damd);
 		    if(Cold_resistance) {
   			shieldeff(u.ux, u.uy);
@@ -1347,7 +1347,7 @@ boolean kicked;
 		    make_stunned((long)d((int)mon->m_lev+1, (int)ptr->mattk[i].damd), TRUE);
 		break;
 	      case AD_FIRE:
-		if(dist(mon->mx, mon->my) <= 3) {
+		if(monnear(mon, u.ux, u.uy)) {
 		    tmp = d((int)mon->m_lev+1, (int)ptr->mattk[i].damd);
 		    if(Fire_resistance) {
   			shieldeff(u.ux, u.uy);
@@ -1379,7 +1379,7 @@ register struct monst *mtmp;
 	if(!u.ustuck && !mtmp->mflee && dmgtype(mtmp->data,AD_STCK))
 		u.ustuck = mtmp;
 	if (Blind) goto generic;
-	else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == DOOR_SYM)
+	else if (levl[u.ux+u.dx][u.uy+u.dy].scrsym == CLOSED_DOOR_SYM)
 #ifdef SPELLS
 	{
 		if (IS_ROCK(levl[u.ux+u.dx][u.uy+u.dy].typ) ||

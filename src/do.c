@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.0	89/06/12
+/*	SCCS Id: @(#)do.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,7 +12,9 @@ extern struct finfo fileinfo[];
 extern boolean level_exists[];
 #endif
 
-static int drop P((struct obj *));
+#ifndef OVERLAY
+static int FDECL(drop, (struct obj *));
+#endif
 
 static const char drop_types[] = { '0', GOLD_SYM, '#', 0 };
 
@@ -31,7 +33,7 @@ struct obj *obj;
 int x,y;
 {
 	struct trap *t = t_at(x,y);
-	boolean pool = IS_POOL(levl[x][y].typ);
+	boolean pool = is_pool(x,y);
 
 	if(obj->otyp == BOULDER && (pool ||
 	  (t && (t->ttyp==PIT || t->ttyp==SPIKED_PIT || t->ttyp==TRAPDOOR)))) {
@@ -86,12 +88,9 @@ doaltarobj(obj)  /* obj is an object dropped on an altar */
 {
 	if (Blind) return;
 	if (obj->blessed || obj->cursed) {
-		register const char *fcolor = Hallucination ? hcolor() :
-					obj->blessed ? amber : black;
-
-		pline("There is %s %s flash as %s hit%s the altar.",
-		      index(vowels, *fcolor) ? "an" : "a",
-		      fcolor,
+		pline("There is %s flash as %s hit%s the altar.",
+		      an(Hallucination ? hcolor() :
+			 obj->blessed ? amber : black),
 		      doname(obj),
 		      (obj->quan==1) ? "s" : "");
 		if (!Hallucination) obj->bknown = 1;
@@ -125,7 +124,7 @@ register struct obj *obj;
 	You("drop %s down the drain.", doname(obj));
 	switch(obj->otyp) {	/* effects that can be noticed without eyes */
 	    case RIN_SEARCHING:
-	You("thought your %s got lost in the sink, but there it is!",
+		You("thought your %s got lost in the sink, but there it is!",
 			xname(obj));
 		dropx(obj);
 		trycall(obj);
@@ -181,12 +180,11 @@ register struct obj *obj;
 		    break;
 		case RIN_HUNGER:
 		    ideed = FALSE;
-		    for(otmp=fobj; otmp; otmp=otmp2) {
-			otmp2 = otmp->nobj;
-			if(otmp->ox == u.ux && otmp->oy == u.uy)
-			    if(otmp != uball && otmp != uchain) {
-				pline("Suddenly, %s vanishes from the sink!",
-							    doname(otmp));
+		    for(otmp = level.objects[u.ux][u.uy]; otmp; otmp = otmp2) {
+			otmp2 = otmp->nexthere;
+			if(otmp != uball && otmp != uchain) {
+			    pline("Suddenly, %s vanishes from the sink!",
+							doname(otmp));
 			    delobj(otmp);
 			    ideed = TRUE;
 			}
@@ -269,7 +267,10 @@ register char *word;
 	return(TRUE);
 }
 
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 drop(obj) register struct obj *obj; {
 	if(!obj) return(0);
 	if(obj->olet == GOLD_SYM) {		/* pseudo object */
@@ -501,8 +502,8 @@ litter()
 			if (otmp == uwep)
 				setuwep((struct obj *)0);
 			if ((otmp != uwep) && (canletgo(otmp, ""))) {
-				Your("%s left behind on the stairs.",
-				     aobjnam(otmp, "get"));
+				Your("%s you down the stairs.",
+				     aobjnam(otmp, "follow"));
 				dropx(otmp);
 			}
 		}
@@ -561,9 +562,6 @@ register boolean at_stairs, falling;
 {
 	register int fd;
 	register boolean up = (newlevel < dlevel);
-	boolean stair_fall = (at_stairs && !up && ((inv_weight() + 5 > 0) || 
-						  Punished || Fumbling));
-	boolean stair_drag = FALSE;
 
 #ifdef ENDGAME
 	if(dlevel == ENDLEVEL) return;	/* To be on the safe side.. */
@@ -689,14 +687,6 @@ register boolean at_stairs, falling;
 	}
 #endif
 	if(Punished) unplacebc();
-	if (stair_fall) {
-#ifdef STRONGHOLD
-			You("fall down the %s.",
-			    !at_ladder ? "stairs" : "ladder");
-#else
-		You("fall down the stairs.");
-#endif
-	}
 	u.utrap = 0;				/* needed in level_tele */
 	u.ustuck = 0;				/* idem */
 	keepdogs();
@@ -723,11 +713,16 @@ register boolean at_stairs, falling;
 	if (newlevel == rogue_level || dlevel == rogue_level) {
 		/* No graphics characters on Rogue levels */
 		if (dlevel != rogue_level) {
-			savesyms = showsyms;
-			showsyms = defsyms;
+			(void) memcpy((genericptr_t)savesyms,
+				      (genericptr_t)showsyms, sizeof savesyms);
+			(void) memcpy((genericptr_t)showsyms,
+				      (genericptr_t)defsyms, sizeof showsyms);
+			showsyms[S_vodoor] = showsyms[S_hodoor] = 
+			    showsyms[S_ndoor] = '+';
 		}
 		if (newlevel != rogue_level)
-			showsyms = savesyms;
+			(void) memcpy((genericptr_t)showsyms,
+				      (genericptr_t)savesyms, sizeof showsyms);
 	}
 #endif
 	dlevel = newlevel;
@@ -806,9 +801,16 @@ register boolean at_stairs, falling;
 		    u.uy = yupladder;
 		}
 #endif
-		if(stair_fall) {
+		if(at_stairs && !up && ((inv_weight() + 5 > 0) || 
+					Punished || Fumbling)) {
+#ifdef STRONGHOLD
+			You("fall down the %s.",
+			    !at_ladder ? "stairs" : "ladder");
+#else
+			You("fall down the stairs.");
+#endif
 			if (Punished) {
-				if (stair_drag)
+				if (drag_down())
 					litter();
 				if (carried(uball)) {
 					if (uwep == uball)
@@ -904,7 +906,9 @@ donull() {
 	return(1);	/* Do nothing, but let other things happen */
 }
 
+#ifndef OVERLAY
 static
+#endif
 int
 wipeoff() {
 	if(u.ucreamed < 4)	u.ucreamed = 0;

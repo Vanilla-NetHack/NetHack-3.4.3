@@ -10,6 +10,8 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONDATA_H
+#define MONFLAG_H
+
 #include "hack.h"
 #include "sp_lev.h"
 #ifndef O_WRONLY
@@ -31,6 +33,12 @@ char *fgets();
 
 #ifdef MSDOS
 # undef exit
+#endif
+
+#ifdef MACOS
+# undef printf
+# undef Printf
+# define Printf printf
 #endif
 
 #define MAX_REGISTERS	10
@@ -109,7 +117,7 @@ short db_dirs[4] = {
 static altar *tmpaltar[256];
 #endif /* ALTARS /**/
 static lad *tmplad[256];
-static dig *tmpdig[256];
+static digpos *tmpdig[256];
 static char *tmpmap[ROWNO];
 static region *tmpreg[16];
 static door *tmpdoor[256];
@@ -153,11 +161,11 @@ void scan_map(), store_part(), write_maze();
 %token	<i> MAZE_ID LEVEL_ID GEOMETRY_ID
 %token	<i> OBJECT_ID MONSTER_ID TRAP_ID DOOR_ID DRAWBRIDGE_ID MAZEWALK_ID
 %token	<i> REGION_ID RANDOM_OBJECTS_ID RANDOM_MONSTERS_ID RANDOM_PLACES_ID
-%token	<i> ALTAR_ID LADDER_ID NON_DIGGABLE_ID ROOM_ID 
+%token	<i> ALTAR_ID LADDER_ID NON_DIGGABLE_ID ROOM_ID
 %token	<i> DOOR_STATE LIGHT_STATE
 %token	<i> DIRECTION RANDOM_TYPE O_REGISTER M_REGISTER P_REGISTER A_REGISTER
 %token	<i> ALIGNMENT LEFT_OR_RIGHT CENTER TOP_OR_BOT ALTAR_TYPE UP_OR_DOWN
-%token  <i> ',' ':' '(' ')' '[' ']'
+%token	<i> ',' ':' '(' ')' '[' ']'
 %token	<map> STRING MAP_ID
 %type	<map> string maze_def m_name o_name
 %start	file
@@ -179,9 +187,9 @@ maze_level	: maze_def regions
 				  fprintf(stderr,"%s : %d errors detected. No output created!\n", fname, fatal_error);
 			  else {
 				  fout = open($1, O_WRONLY | O_CREAT
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 					      | O_BINARY
-#endif /* MSDOS */
+#endif /* MSDOS || MACOS */
 					      , 0644);
 				  if (fout < 0) {
 					  yyerror("Can't open output file!!");
@@ -202,10 +210,10 @@ maze_def	: MAZE_ID ':' string
 			  $$ = $3;
 		  }
 
-regions		: aregion
+regions 	: aregion
 		| regions aregion;
 
-aregion		: map_definition reg_init map_details
+aregion 	: map_definition reg_init map_details
 		  {
 			store_part();
 		  }
@@ -341,7 +349,7 @@ monster_detail	: MONSTER_ID ':' monster_c ',' m_name ',' coordinate
 			  if (!$5)
 			      tmpmonst[nmons]->id = -1;
 			  else {
-				  token = get_monster_id($5, (char) $<i>3);  
+				  token = get_monster_id($5, (char) $<i>3);
 				  if (token == ERR) {
 				      yywarning("Illegal monster name!  Making random monster.");
 				      tmpmonst[nmons]->id = -1;
@@ -405,7 +413,7 @@ drawbridge_detail: DRAWBRIDGE_ID ':' coordinate ',' DIRECTION ',' door_state
 			ndb++;
 		   }
 
-mazewalk_detail	: MAZEWALK_ID ':' coordinate ',' DIRECTION
+mazewalk_detail : MAZEWALK_ID ':' coordinate ',' DIRECTION
 		  {
 			tmpwalk[nwalk] = (walk *) alloc(sizeof(walk));
 			tmpwalk[nwalk]->x = current_coord.x;
@@ -423,9 +431,9 @@ ladder_detail	: LADDER_ID ':' coordinate ',' UP_OR_DOWN
 			nlad++;
 		  }
 
-diggable_detail	: NON_DIGGABLE_ID ':' region
+diggable_detail : NON_DIGGABLE_ID ':' region
 		  {
-			tmpdig[ndig] = (dig *) alloc(sizeof(dig));
+			tmpdig[ndig] = (digpos *) alloc(sizeof(digpos));
 			tmpdig[ndig]->x1 = current_region.x1;
 			tmpdig[ndig]->y1 = current_region.y1;
 			tmpdig[ndig]->x2 = current_region.x2;
@@ -487,7 +495,7 @@ o_name		: string
 
 trap_name	: string
 		  {
-		  	int token = get_trap_type($1);
+			int token = get_trap_type($1);
 			if (token == ERR)
 				yyerror("unknown trap type!");
 			$<i>$ = token;
@@ -537,7 +545,7 @@ p_register	: P_REGISTER '[' INTEGER ']'
 			}
 		  }
 
-o_register	: O_REGISTER '[' INTEGER ']' 
+o_register	: O_REGISTER '[' INTEGER ']'
 		  {
 			if ( $3 >= MAX_REGISTERS ) {
 				yyerror("Register Index overflow!");
@@ -566,7 +574,7 @@ a_register	: A_REGISTER '[' INTEGER ']'
 
 place		: coord
 
-monster		: CHAR
+monster 	: CHAR
 		  {
 			if (check_monster_char($1))
 				$<i>$ = $1 ;
@@ -598,7 +606,7 @@ string		: STRING
 
 coord		: '(' INTEGER ',' INTEGER ')'
 		  {
-		        if ($2 < 0 || $2 > max_x_map ||
+			if ($2 < 0 || $2 > max_x_map ||
 			    $4 < 0 || $4 > max_y_map)
 			    yyerror("Coordinates out of map range!");
 			current_coord.x = $2;
@@ -607,7 +615,7 @@ coord		: '(' INTEGER ',' INTEGER ')'
 
 region		: '(' INTEGER ',' INTEGER ',' INTEGER ',' INTEGER ')'
 		  {
-		        if ($2 < 0 || $2 > max_x_map ||
+			if ($2 < 0 || $2 > max_x_map ||
 			    $4 < 0 || $4 > max_y_map ||
 			    $6 < 0 || $6 > max_x_map ||
 			    $8 < 0 || $8 > max_y_map)
@@ -894,7 +902,7 @@ store_part()
 	/* The non_diggable directives */
 
 	if(tmppart[npart]->ndig = ndig) {
-		tmppart[npart]->digs = (dig **) alloc(sizeof(dig*) * ndig);
+		tmppart[npart]->digs = (digpos **) alloc(sizeof(digpos*) * ndig);
 		for(i=0;i<ndig;i++)
 		    tmppart[npart]->digs[i] = tmpdig[i];
 	}
@@ -1039,7 +1047,7 @@ specialmaze *maze;
 	    /* The non_diggable directives */
 	    (void) write(fd, &(pt->ndig), 1);
 	    for(j=0;j<pt->ndig;j++) {
-		    (void) write(fd,(genericptr_t) pt->digs[j], sizeof(dig));
+		    (void) write(fd,(genericptr_t) pt->digs[j], sizeof(digpos));
 		    free(pt->digs[j]);
 	    }
 	    if (pt->ndig > 0)

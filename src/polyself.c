@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c	3.0	88/10/22
+/*	SCCS Id: @(#)polyself.c 3.0	89/11/19
 /* Polymorph self routine.  Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -185,8 +185,8 @@ polyself()
 	if (mntmp < 0) {
 		tries = 0;
 		do {
-			mntmp = rn2(PM_CHAMELEON);
-			/* All valid monsters are from 0 to PM_CHAMELEON-1 */
+			mntmp = rn2(PM_ARCHEOLOGIST);
+			/* All valid monsters are from 0 to PM_ARCHEOLOGIST-1 */
 		} while(!polyok(&mons[mntmp]) && tries++ < 200);
 	}
 
@@ -234,9 +234,7 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 	u.usym = mons[mntmp].mlet;
 
 	if (tmp != mntmp)
-		You("turn into a%s %s!",
-			index(vowels, *(mons[mntmp].mname)) ? "n" : "",
-			mons[mntmp].mname);
+		You("turn into %s!", an(mons[mntmp].mname));
 	else
 		You("feel like a new %s!", mons[mntmp].mname);
 
@@ -300,6 +298,8 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 		pline("Use the command #monster to summon help.");
 	if (webmaker(uasmon))
 		pline("Use the command #monster to spin a web.");
+	if (u.usym == S_UNICORN)
+		pline("Use the command #monster to use your horn.");
 	if (lays_eggs(uasmon) || u.umonnum == PM_QUEEN_BEE)
 		pline("Use the command #sit to lay an egg.");
 	find_ac();
@@ -366,7 +366,7 @@ break_armor() {
 	  }
 	  if (otmp = uarmf) {
 	       Your("boots %s off your feet!",
-			verysmall(uasmon) ? "slide" : "get pushed");
+			verysmall(uasmon) ? "slide" : "are pushed");
 	       (void) Boots_off();
 	       dropx(otmp);
 	  }
@@ -638,6 +638,7 @@ skinback()
 
 char *
 body_part(part)
+int part;
 {
 	/* Note: it is assumed these will never be >22 characters long,
 	 * plus the trailing null, after pluralizing (since sometimes a
@@ -669,7 +670,7 @@ body_part(part)
 		"minor current", "lower current", "swirl", "swirled",
 		"central core", "lower current", "addled", "center",
 		"edge" },
-	*snake_parts[] = { "vestigal limb", "eye", "face", "large scale",
+	*snake_parts[] = { "vestigial limb", "eye", "face", "large scale",
 		"large scale tip", "rear region", "scale gap", "scale gapped",
 		"head", "rear region", "light headed", "neck", "rear scale" };
 	
@@ -709,7 +710,7 @@ poly_gender()
  */
 #ifdef POLYSELF
 	if (uasmon->mflags1 & M1_FEM) return 1;
-#ifdef HARD
+#ifdef INFERNO
 	if (u.umonnum==PM_INCUBUS) return 0;
 #endif
 	if (!humanoid(uasmon)) return 2;
@@ -721,7 +722,7 @@ poly_gender()
 #ifdef GOLEMS
 void
 ugolemeffects(damtype, dam)
-int damtype;
+int damtype, dam;
 {
 	int heal = 0;
 	/* We won't bother with "slow"/"haste" since players do not

@@ -81,6 +81,11 @@ char *HI = DUMMY, *HE = DUMMY, *AS = DUMMY, *AE = DUMMY, *CD = DUMMY;
 #endif
 int CO = 0, LI = 0;	/* set up in termcap.c: usually COLNO and ROWNO+3 */
 
+#ifdef CLIPPING
+boolean clipping;	/* clipping on? */
+int clipx, clipy, clipxmax, clipymax;
+#endif
+
 #ifdef TEXTCOLOR
 char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
 #endif
@@ -155,7 +160,7 @@ struct obj *fcobj = 0, *invent = 0, *uwep = 0, *uarm = 0,
 	*uarmc = 0, *uarmh = 0, *uarms = 0, *uarmg = 0, *uarmf = 0, *uamul = 0,
 	*uright = 0, *uleft = 0, *ublindf = 0, *uchain = 0, *uball = 0;
 
-const struct symbols defsyms = {
+symbol_array defsyms = {
     ' ', /* stone */
     '|', /* vwall */
     '-', /* hwall */
@@ -172,7 +177,10 @@ const struct symbols defsyms = {
     '-', /* hbeam */
     '\\', /* lslant */
     '/', /* rslant */
-    '+', /* door */
+    '.', /* ndoor */
+    '-', /* vodoor */
+    '|', /* hodoor */
+    '+', /* cdoor */
     '.', /* room */
     '#', /* corr */
     '<', /* upstair */
@@ -189,10 +197,47 @@ const struct symbols defsyms = {
     '#', /* dbvwall */	/* used ifdef STRONGHOLD */
     '#', /* dbhwall */	/* used ifdef STRONGHOLD */
 };
-struct symbols showsyms = DUMMY; /* will contain the symbols actually used */
+symbol_array showsyms = DUMMY; /* will contain the symbols actually used */
 #ifdef REINCARNATION
-struct symbols savesyms = DUMMY;
+symbol_array savesyms = DUMMY;
 #endif
+
+char *explainsyms[MAXPCHARS] = {
+	"a dark part of a room", "a wall", "a wall",
+	"a wall", "a wall", "a wall",
+	"a wall", "a wall", "a wall",
+	"a wall", "a wall", "a wall",
+	"a wall", "a wall", "a wall",
+	"a wall", "a doorway", "an open door",
+	"an open door", "a closed door", "the floor of a room",
+	"a corridor", "a staircase up", "a staircase down",
+	"a trap", "a web", "a water filled area",
+#ifdef FOUNTAINS
+	"a fountain",
+#else
+	"",
+#endif
+#ifdef SINKS
+	"a sink",
+#else
+	"",
+#endif
+#ifdef THRONES
+	"an opulent throne",
+#else
+	"",
+#endif
+#ifdef ALTARS
+	"an altar",
+#else
+	"",
+#endif
+#ifdef STRONGHOLD
+	"a ladder up", "a ladder down", "a drawbridge", "a drawbridge"
+#else
+	"", "", "", ""
+#endif
+};
 
 #ifdef SPELLS
 struct spell spl_book[MAXSPELL + 1] = DUMMY;

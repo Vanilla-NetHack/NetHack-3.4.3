@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)trap.c	3.0	88/10/22
+/*	SCCS Id: @(#)trap.c	3.0	89/11/10
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -196,6 +196,12 @@ register struct trap *trap;
 			      Levitation ? "float" : "fly");
 			break;
 		    }
+#ifdef POLYSELF
+		    if(amorphous(uasmon)) {
+			pline("A bear trap closes harmlessly through you.");
+			break;
+		    }
+#endif
 		    u.utrap = 4 + rn2(4);
 		    u.utraptype = TT_BEARTRAP;
 		    pline("A bear trap closes on your %s!",
@@ -207,15 +213,14 @@ register struct trap *trap;
 		    break;
 		case STATUE_TRAP:
 		    deltrap(trap);
-		    for(otmp=fobj; otmp; otmp=otmp->nobj) {
-			if(otmp->otyp == STATUE && otmp->ox == u.ux &&
-				otmp->oy == u.uy && otmp->corpsenm == trap->pm)
+		    for(otmp=level.objects[u.ux][u.uy];
+						otmp; otmp = otmp->nexthere)
+			if(otmp->otyp == STATUE && otmp->corpsenm == trap->pm)
 			    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
 				pline("The statue comes to life!");
 				delobj(otmp);
 				break;
 			    }
-		    }
 		    break;
 		case MONST_TRAP:
 		    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
@@ -323,7 +328,7 @@ register struct trap *trap;
 		    } else {
 #ifdef ENDGAME
 			if(dlevel == ENDLEVEL) {
-			    pline("A shiver runs down your spine...");
+			    You("feel a wrenching sensation.");
 			    break;
 			}
 #endif
@@ -344,8 +349,16 @@ register struct trap *trap;
 			You("are covered with rust!");
 			rehumanize();
 			break;
-		    }
+		    } else
 #endif /* GOLEMS */
+		    if (u.umonnum == PM_GREMLIN && rn2(3)) {
+			pline("A gush of water hits you!");
+			if(mtmp = cloneu()) {
+			    mtmp->mhpmax = (u.mhmax /= 2);
+			    You("multiply.");
+			}
+			break;
+		    }
 #endif
 		/* Unlike monsters, traps cannot aim their rust attacks at
 		 * you, so instead of looping through and taking either the
@@ -635,7 +648,9 @@ register struct monst *mtmp;
 	    mtmp->mtrapseen |= (1 << tt);
 	    switch (tt) {
 		case BEAR_TRAP:
-			if(bigmonst(mtmp->data)) {
+			if(mtmp->data->msize > MZ_SMALL &&
+			   !amorphous(mtmp->data)) {
+				mtmp->mtrapped = 1;
 				if(in_sight)
 				  pline("%s is caught in a bear trap!",
 					Monnam(mtmp));
@@ -644,7 +659,6 @@ register struct monst *mtmp;
 					|| mtmp->data == &mons[PM_BUGBEAR])
 					&& flags.soundok)
 			    You("hear the roaring of an angry bear!");
-				mtmp->mtrapped = 1;
 			}
 			break;
 #ifdef POLYSELF
@@ -665,8 +679,17 @@ register struct monst *mtmp;
 								mon_nam(mtmp));
 				mondied(mtmp);
 				trapkilled = TRUE;
-			}
+			} else
 #endif /* GOLEMS */
+			if (mtmp->data == &mons[PM_GREMLIN] && rn2(3)) {
+				struct monst *mtmp2 = clone_mon(mtmp);
+
+				if (mtmp2) {
+				    mtmp2->mhpmax = (mtmp->mhpmax /= 2);
+				    if(in_sight)
+					pline("%s multiplies.", Monnam(mtmp));
+				}
+			}
 			break;
 		case PIT:
 		case SPIKED_PIT:
@@ -740,7 +763,7 @@ register struct monst *mtmp;
 			if(!is_flyer(mtmp->data)
 #ifdef WORM
 				&& !mtmp->wormno
-			    /* long worms cannot be allowed to change levels */
+			    /* long worms with tails mustn't change levels */
 #endif
 			    ){
 #ifdef WALKIES
@@ -866,7 +889,7 @@ float_up() {
 		}
 	} else
 		if (Hallucination)
-			pline("Oh wow!  You're floating in the air!");
+			pline("Up, up, and awaaaay!  You're walking on air!");
 		else
 			You("start to float in the air!");
 }
@@ -1009,7 +1032,12 @@ dotele()
 			}
 		}
 		if (trap)
-			You("jump onto the teleportation trap...");
+#ifdef POLYSELF
+			You("%s onto the teleportation trap.",
+			    nolimbs(uasmon) ? "slither" : "jump");
+#else
+			You("jump onto the teleportation trap.");
+#endif
 	}
 	if(!trap && (!Teleportation ||
 	   (u.ulevel < (pl_character[0] == 'W' ? 8 : 12)
@@ -1088,7 +1116,7 @@ placebc(attach)
 int attach;
 {
 	if(!uchain || !uball){
-		impossible("Where are your chain and ball??");
+		impossible("Where are your ball and chain?");
 		return;
 	}
 	if(!carried(uball))
@@ -1230,7 +1258,7 @@ domagictrap() {
 	  }  else
 		You("hear a deafening roar!");
 	  while(cnt--)
-	   (void) makemon((struct permonst *) 0, u.ux, u.uy);
+		(void) makemon((struct permonst *) 0, u.ux, u.uy);
 	}
 	else
 	  switch (fate) {
@@ -1256,21 +1284,26 @@ domagictrap() {
 			} else {
 				num = rnd(6);
 				u.uhpmax -= num;
-				losehp(num,"a burst of flame");
+				losehp(num,"burst of flame");
 				break;
 			}
 		      }
 
 	     /* odd feelings */
 	     case 13:   pline("A shiver runs up and down your spine!");
+             /* TO DO: What if you're polymorphed into something spineless? */
 			break;
-	     case 14:   You("hear distant howling.");
+	     case 14:	You(Hallucination ?
+				"hear the moon howling at you." :
+				"hear distant howling.");
 			break;
 	     case 15:   You("suddenly yearn for your distant homeland.");
 			break;
 	     case 16:   Your("pack shakes violently!");
 			break;
-	     case 17:	You("smell charred flesh.");
+	     case 17:	You(Hallucination ?
+				"smell hamburgers." :
+				"smell charred flesh.");
 			break;
 
 	     /* very occasionally something nice happens. */
@@ -1292,10 +1325,9 @@ domagictrap() {
 		   {  register struct obj *obj;
 
 			/* below plines added by GAN 10/30/86 */
-			if (Hallucination)
-			    You("feel in touch with the Universal Oneness.");
-			else
-			    You("feel like someone is helping you.");
+			You(Hallucination ?
+				"feel in touch with the Universal Oneness." :
+				"feel like someone is helping you.");
 			for(obj = invent; obj ; obj = obj->nobj)
 			       if(obj->owornmask || obj->otyp == LOADSTONE)
 					obj->cursed = 0;
@@ -1328,7 +1360,7 @@ drown() {
 	}
 
 #ifdef POLYSELF
-	if(u.usym == S_GREMLIN && rn2(3)) {
+	if(u.umonnum == PM_GREMLIN && rn2(3)) {
 		struct monst *mtmp;
 		if(mtmp = cloneu()) {
 			mtmp->mhpmax = (u.mhmax /= 2);
@@ -1376,7 +1408,7 @@ register int n;
 int
 dountrap() {	/* disarm a trapped object */
 	register struct obj *otmp;
-	register boolean confused = (Confusion > 0);
+	register boolean confused = (Confusion > 0 || Hallucination > 0);
 	register int x,y;
 	int ch;
 	struct trap *ttmp;
@@ -1392,49 +1424,42 @@ dountrap() {	/* disarm a trapped object */
 	y = u.uy + u.dy;
 
 	if(!u.dx && !u.dy) {
-	    if(OBJ_AT(x, y))
-		for(otmp = fobj; otmp; otmp = otmp->nobj)
-		    if((otmp->ox == x) && (otmp->oy == y))
-			if(Is_box(otmp)) {
-			    pline("There is %s here, check for traps? ",
-				  doname(otmp));
+	    for(otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
+		if(Is_box(otmp)) {
+		    pline("There is %s here, check for traps? ", doname(otmp));
 
-			    switch (ynq()) {
-				case 'q': return(0);
-				case 'n': continue;
-			    }
+		    switch (ynq()) {
+			case 'q': return(0);
+			case 'n': continue;
+		    }
 
-			    if((otmp->otrapped && !confused 
-					&& rn2(MAXLEVEL+2-dlevel) < 10)
-			       || confused && !rn2(3)) {
-				You("find a trap on the %s!  Disarm it? ",
-				       xname(otmp));
+		    if((otmp->otrapped && !confused 
+				&& rn2(MAXLEVEL+2-dlevel) < 10)
+		       || confused && !rn2(3)) {
+			You("find a trap on the %s!  Disarm it? ", xname(otmp));
 
-				switch (ynq()) {
-				    case 'q': return(1);
-				    case 'n': continue;
-				}
-
-				if(otmp->otrapped) {
-				    ch = 15 +
-					 (pl_character[0] == 'R') ? u.ulevel*3 :
-					 u.ulevel;
-				    if(confused || Fumbling || rnd(75+dlevel/2) > ch) {
-					You("set it off!");
-					chest_trap(otmp, FINGER);
-				    } else {
-					You("disarm it!");
-				        otmp->otrapped = 0;
-				    }
-				} else pline("That %s was not trapped.",
-					     doname(otmp));
-				return(1);
-			    } else {
-				You("find no traps on the %s.",
-				    xname(otmp));
-				return(1);
-			    }
+			switch (ynq()) {
+			    case 'q': return(1);
+			    case 'n': continue;
 			}
+
+			if(otmp->otrapped) {
+			    ch = 15 + (pl_character[0] == 'R') ? u.ulevel*3
+								: u.ulevel;
+			    if(confused || Fumbling || rnd(75+dlevel/2) > ch) {
+				You("set it off!");
+				chest_trap(otmp, FINGER);
+			    } else {
+				You("disarm it!");
+				otmp->otrapped = 0;
+			    }
+			} else pline("That %s was not trapped.", doname(otmp));
+			return(1);
+		    } else {
+			You("find no traps on the %s.", xname(otmp));
+			return(1);
+		    }
+		}
 	    if ((ttmp = t_at(x,y)) && ttmp->tseen)
 		You("cannot disable this trap.");
 	    else
@@ -1505,10 +1530,10 @@ register int bodypart;
 			Sprintf(buf, "exploding %s", xname(obj));
 
 			delete_contents(obj);
-			for(otmp = fobj; otmp; otmp = otmp2) {
-			    otmp2 = otmp->nobj;
-			    if((otmp->ox == u.ux) && (otmp->oy == u.uy))
-				delobj(otmp);
+			for(otmp = level.objects[u.ux][u.uy];
+							otmp; otmp = otmp2) {
+			    otmp2 = otmp->nexthere;
+			    delobj(otmp);
 			}
 
 			losehp(d(6,6), buf);
@@ -1689,8 +1714,8 @@ boolean
 unconscious()
 {
 	return (multi < 0 && (!nomovemsg ||
-	      !strncmp(nomovemsg,"You wake", 8) ||
-	      !strncmp(nomovemsg,"You awake", 9) ||
-	      !strncmp(nomovemsg,"You regain con", 15) ||
-	      !strncmp(nomovemsg,"You are consci", 15)));
+		!strncmp(nomovemsg,"You wake", 8) ||
+		!strncmp(nomovemsg,"You awake", 9) ||
+		!strncmp(nomovemsg,"You regain con", 15) ||
+		!strncmp(nomovemsg,"You are consci", 15)));
 }

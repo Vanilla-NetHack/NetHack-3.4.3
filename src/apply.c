@@ -95,8 +95,10 @@ blindu:
 				mtmp->mflee = 1;
 				if(rn2(4)) mtmp->mfleetim = rnd(100);
 			}
-			if(tmp < 3) mtmp->mcansee  = mtmp->mblinded = 0;
-			else {
+			if(tmp < 3) {
+				mtmp->mcansee  = 0;
+				mtmp->mblinded = 0;
+			} else {
 				tmp2 = mtmp->mblinded;
 				tmp2 += rnd(1 + 50/tmp);
 				if(tmp2 > 127) tmp2 = 127;
@@ -415,8 +417,10 @@ register xchar x, y;
 }
 #endif /* WALKIES */
 
-
-static int
+#ifndef OVERLAY
+static 
+#endif
+int
 dig() {
 	register struct rm *lev;
 	register int dpx = dig_pos.x, dpy = dig_pos.y;
@@ -524,6 +528,8 @@ dig() {
 		if(IS_DOOR(lev->typ) && (lev->doormask & D_TRAPPED)) {
 			b_trapped("door");
 			lev->doormask = D_NODOOR;
+			mnewsym(dpx, dpy);
+			prl(dpx, dpy);
 		}
 		dig_level = -1;
 		return(0);
@@ -642,7 +648,8 @@ use_pick_axe(obj)
 struct obj *obj;
 {
 	char dirsyms[12];
-	register char *dsp = dirsyms, *sdp = flags.num_pad ? ndir : sdir;
+	register char *dsp = dirsyms;
+	register const char *sdp = flags.num_pad ? ndir : sdir;
 	register struct rm *lev;
 	register int rx, ry, res = 0;
 	register boolean isclosedoor = FALSE;
@@ -779,17 +786,17 @@ struct obj *obj;
 #endif
 			   if (Hallucination) You("look %s.", hcolor());
 		    else if (Sick)
-			You("look peakish.");
+			You("look peaked.");
 		    else if (u.uhs >= WEAK)
 			You("look undernourished.");
 #ifdef POLYSELF
 		    else if (u.usym == S_NYMPH
-#ifdef HARD
+#ifdef INFERNO
 			     || u.umonnum==PM_SUCCUBUS
 #endif
 			     )
 			You("look beautiful in the mirror.");
-#ifdef HARD
+#ifdef INFERNO
 		    else if (u.umonnum == PM_INCUBUS)
 			You("look handsome in the mirror.");
 #endif
@@ -883,7 +890,7 @@ struct obj *obj;
 			pline ("%s has confused itself!", Monnam(mtmp));
 	    	mtmp->mconf = 1;
 	} else if(!mtmp->mcan && !mtmp->minvis && (mlet == S_NYMPH
-#ifdef HARD
+#ifdef INFERNO
 			  || mtmp->data==&mons[PM_SUCCUBUS]
 #endif
 			  )) {
@@ -1135,7 +1142,82 @@ pline("Tinning a cockatrice corpse without gloves was not a very wise move...");
 	can->blessed = obj->blessed;
 	can = addinv(can);
 	You("now have %s.", doname(can));
-	useup(corpse);
+	if (carried(corpse)) useup(corpse);
+	else useupf(corpse);
+}
+
+int
+use_unicorn_horn(obj)
+struct obj *obj;
+{
+	boolean cursed = (obj && obj->cursed);
+	boolean blessed = (obj && obj->blessed);
+	boolean did_something = FALSE;
+
+	if (cursed) {
+		switch (rn2(6)) {
+		    static char buf[BUFSZ];
+		    case 0: make_sick(Sick ? 1L : (long)(20 + rn2(20)), TRUE);
+			    Strcpy(buf, xname(obj));
+			    u.usick_cause = buf;
+			    break;
+		    case 1: make_blinded(Blinded + (long) rnd(100), TRUE);
+			    break;
+		    case 2: if (!Confusion)
+				You("suddenly feel %s.",
+					Hallucination ? "trippy" : "confused");
+			    make_confused(HConfusion + (long) rnd(100), TRUE);
+			    break;
+		    case 3: make_stunned(HStun + (long) rnd(100), TRUE);
+			    break;
+		    case 4: adjattrib(rn2(6), -1, FALSE);
+			    break;
+		    case 5: make_hallucinated(Hallucination + (long) rnd(100),
+				TRUE);
+			    break;
+		}
+		return 1;
+	}
+		
+	if (Sick) {
+		make_sick(0L, TRUE);
+		did_something++;
+	}
+	if (Blinded && (!did_something || blessed)) {
+		make_blinded(0L, TRUE);
+		did_something++;
+	}
+	if (Hallucination && (!did_something || blessed)) {
+		make_hallucinated(0L, TRUE);
+		did_something++;
+	}
+	if (HConfusion && (!did_something || blessed)) {
+		make_confused(0L, TRUE);
+		did_something++;
+	}
+	if (HStun && (!did_something || blessed)) {
+		make_stunned(0L, TRUE);
+		did_something++;
+	}
+	if (!did_something || blessed) {
+		register int j;
+		int did_stat = 0;
+		int i = rn2(A_MAX);
+		for(j=0; j<A_MAX; j++) {
+			if ((blessed || j==i) && ABASE(i) < AMAX(i)) {
+				did_something++;
+				/* They may have to use it several times... */
+				if (!did_stat) {
+					did_stat++;
+					pline("This makes you feel good!");
+				}
+				ABASE(i)++;
+				flags.botl = 1;
+			}
+		}
+	}
+	if (!did_something) pline(nothing_happens);
+	return !!did_something;
 }
 
 int
@@ -1244,6 +1326,9 @@ doapply() {
 		} 
 		else if (!ublindf) Blindf_on(obj);
 		else You("are already wearing a blindfold!");
+		break;
+	case UNICORN_HORN:
+		res = use_unicorn_horn(obj);
 		break;
 	default:
 		pline("Sorry, I don't know how to use that.");

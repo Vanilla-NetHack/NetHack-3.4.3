@@ -1,143 +1,310 @@
-Instructions for installing NetHack 3.0 on an MS-DOS or TOS system
-==================================================================
+	Instructions for compiling and installing NetHack 3.0
+		   on an MS-DOS, TOS, or OS/2 system
+	=====================================================
+	    (or, How to make PC, ST, and OS/2 NetHack 3.0)
+		      Last revision: 19 Nov 1989
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories src, include, auxil,
-    amiga, and others.  If you do not follow this structure, the Makefile
-    will not function properly.  All the UNIX .c files and the source Makefile
-    belong in src; all the PC .c files and Makefiles belong in others; all the
-    .h files belong in include; other assorted files belong in auxil.  The
-    PC version does not use any files from the amiga directory.
+    others, amiga, mac, and vms.  If you do not follow this structure, the
+    Makefile will not function properly.
 
-    If you downloaded or ftp'd the sources from a UNIX system, the lines will
-    probably end in UNIX-style newlines, instead of DOS-style carriage return
-    and line feed pairs.  Turbo C in particular does not like these; you will
-    have to run a program such as Rahul Dhesi's 'flip' to convert them.
+    All the shared and UNIX-specific .c files and the source Makefile belong
+    in src; all the PC .c files and make files belong in others; all the .h
+    files belong in include; other assorted files belong in auxil.  We will
+    not need any of the files from the amiga, mac, and vms directories.
 
-2.  Move everything from the others directory to your src directory; you'll
-    be needing it, especially pc*.c.  PC NetHack needs msdos.c, as does
-    ST NetHack.
+	If you downloaded or ftp'd the sources from a UNIX system, the lines
+	will probably end in UNIX-style newlines, instead of the carriage
+	return and line feed pairs used by DOS and OS/2.  Turbo C 2.0 in
+	particular dislikes these; you'll have to convert them (with a utility
+	like Rahul Dhesi's "flip").  Also, every file should end with an empty
+	line, because both Microsoft C and MASM have a habit of ignoring the
+	last line of each file.
 
-3.  You should have several Makefiles in your src directory now.  If you are
-    using Microsoft C, rename Makefile.pc to Makefile; if Turbo C, rename
-    Makefile.tcc to Makefile, and also rename Maketcc.ini to Make.ini.
-    NDMake can find Make.ini anywhere on your PATH, so you may relocate it
-    if you wish.  If you're using the GCC on an Atari ST system, rename
-    Makefile.st to Makefile.  If you are using another compiler, you will
-    have to adapt one of the Makefiles (and the Make.ini file, if you're
-    using NDMake) to your needs.  Good luck.
+2.  Move all the .c files from the others directory to your src directory.
+    You will definitely need pc*.c and msdos.c.
 
-    As for the other Makefiles, I would delete them to make space, but you may
-    want to keep them around for comparison in case something goes wrong.  Two
-    other Makefiles we will not be using, Makefile.top and Makefile.auxil,
-    reside in the top and auxil directories.  We won't need those either.
+	random.c is only needed if you want the high-quality random number
+	generation routines.  The trampoli.c and ovlmgr.asm files are needed
+	for the MS-DOS overlays.  ovlmgr.obj should remain in others
+	(the makefile copies it when it's needed).  You can comment out the
+	#define RANDOM line in pcconf.h or tosconf.h to disable the random
+	number routines. Similarly, commenting out the #define OVERLAY in
+	pcconf.h disables the overlay code.  We'll get to pcconf.h/tosconf.h
+	in step 4.
+
+	oldtos.c is an old Atari ST version of msdos.c.  If you're using
+	a compiler other than GCC, you may need to #define OLD_TOS in
+	tosconf.h and edit your make file to use this.
+
+    Run a uudecode utility on termcap.uu (Fred Fish's termcap library) and
+    ovlmgr.uu (MS-DOS overlay manager), to generate the files termcap.arc
+    and ovlmgr.obj.  Move these into your src directory, too.  Unarc
+    termcap.arc.
+
+	termcap.arc contains termcap routines.  Using them involves some
+	knowledge of the UNIX concept of a termcap database and setting
+	the TERM environment variable.  Commenting out the #define TERMLIB
+	in pcconf.h/tosconf.h to disable this feature (relying on the
+	ANSI_DEFAULT feature) will make your job quite a bit easier.
+
+	ovlmgr.obj is used with the OVERLAY code, as above.
+
+3.  Now look at Makefile.* in your others directory.  Consult the list below
+    and pick out the make file most appropriate to your system.  Rename this
+    file to "Makefile" (no extension), and move it into your src directory.
+
+    DOS:
+	Microsoft C 5.1 	Makefile.ovl	Make.ini
+	Microsoft C 4.0		Makefile.pc	(not available)
+	Turbo C 2.0		Makefile.tcc	Maketcc.ini
+    OS/2:
+	Microsoft C 5.1		Makefile.os2	Make.ini
+    TOS:
+	GCC 1.34		Makefile.st
+
+    If an .ini file is also listed, move that init file to your src directory
+    too, renaming it to "Make.ini" if necessary.  If you like, you may also
+    place Make.ini in any directory listed in your PATH environment variable.
+
+	The PC NetHack make files are set up for NDMAKE, a public domain
+	"make" utility.  Both Microsoft's and Borland's "make" leave much to
+	be desired.  Neither can handle the complexity of the make file's link
+	command.  It is worth the extra effort to get NDMAKE if you don't
+	already have it.  If you must use Microsoft's or Borland's "make", you
+	will have to edit and/or merge the make and the make init files into a
+	form your make can use.
+
+	If you're using a different compiler, you will have to adapt one of
+	the make files (and make init file, if appropriate) to your needs.  In
+	particular, change the CC and CFLAGS macros to your C compiler's file
+	name and the parameters to pass to it.
+
+	    Makefile.top in the top directory and Makefile.aux(il) in the
+	    auxil directory are for UNIX NetHack.  You may delete them.
 
 4.  Go to the include subdirectory and edit config.h according to the comments
-    to match your system and desired set of features.  Similarly edit
-    pcconf.h.  For Atari ST users, edit tosconf.h.  If you're an ST owner
-    using something other than the GCC, it's possible that you might
-    want to define the symbol OLD_TOS and use oldtos.c instead of msdos.c.
-    This is *not* guaranteed to work, so be prepared to make some changes
-    either way.
+    to match your system and desired set of features.  Also edit pcconf.h for
+    PC or OS/2 NetHack, or tosconf.h for ST NetHack.
 
-    (ST owners can also skip this section, since the complete game will fit
-     in <1 megabyte, and nothing you do is likely to make it work on a 520).
-    The base size of the executable, with no extra features, will be around
-    520K in size.  Anything over 540K is likely not to work.  With MicroSoft
-    C, here is an incomplete list of the costs of various additional features
-    in terms of executable size:
+	If you're using an Atari ST and some compiler other than GCC, you may
+	possibly want to #define OLD_TOS and use oldtos.c instead of msdos.c.
+	This is *not* guaranteed to work, so be prepared to make some changes.
 
-    ALTARS		 4K
-    ARMY		 1K
-    COM_COMPL		 1K
-    COMPRESS		 2K
-    DGK			 7K
-    ENDGAME		 2K
-    EXPLORE_MODE	 1K
-    FOUNTAINS		 2K
-    GOLEMS		 2K
-    HARD - SEDUCE	 5K
-    MSDOSCOLOR		 1K
-    MUSIC		 6K
-    POLYSELF		31K
-    PROBING		 0K
-    REDO		 1K
-    REINCARNATION	 7K
-    SINKS		 5K
-    SOUNDS		 6K
-    SPELLS		10K
-    STRONGHOLD		13K
-    THEOLOGY		11K
-    THRONES		 3K
-    WALKIES		 4K
-    WALLIFIED_MAZE	 0K
-    WIZARD		 3K
+    ST and OS/2 NetHackers can skip to the next section, since the entire game
+    will fit in less than one megabyte.  (Unfortunately, nothing you do is
+    likely to make NH3.0 work on a 520ST.)
 
-    I eked by with just DGK, MSDOSCOLOR, REDO, HARD, MEDUSA, EXPLORE_MODE,
-    and WIZARD, to give you an idea of just how little leeway you have for all
-    these nifty features.  Maybe those of you with overlay linkers can get by
-    with more.
+    PC NetHackers:
 
-5.  If you want to, look through system.h.  This file attempts to match the
-    types for system calls and library routines with various flavors of
-    operating systems.  Leaving this file alone is unlikely to cause problems,
-    but if you're using a different compiler and get compile errors with
-    any functions in the standard library, it's worth checking the
-    declarations there.
+    To compile under MS-DOS, you must either produce an overlaid executable or
+    make some very difficult decisions about which features to include.
 
-6.  If you want to change the high score list behavior, go to the src
-    subdirectory and look at the top of topten.c.  You may want to change the
-    definitions of PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN of
-    51 and ENTRYMAX of 50 to keep the size of the score list down.
+    The base size of a PC NetHack executable, with no extra features or
+    overlays, will be around 520 kilobytes.  Anything over 590K is likely not
+    to work.  Here's an incomplete and outdated list of the approximate costs
+    of various additional features in terms of executable size, using
+    Microsoft C:
 
-7.  Edit the top section of the Makefile.  (If you are doing a full
-    recompile, or if you got your files from someplace besides the official
-    distribution, type 'touch makedefs.c' to make sure certain files (onames.h,
-    pm.h) get remade instead of relying on the potentially troublesome
-    timestamps.)  Be sure the directory you want the game installed in
-    actually exists.  If you elected to use the high-quality BSD random
-    routines by defining RANDOM in pcconf.h, you will have to add random.c
-    to the dependency and link macros.  If you elected to use Fred Fish's
-    termcap library (bundled in as termcap.arc), you will have to generate
-    termcap.lib from those sources (follow the comments therein, if you can).
+	WIZARD		    3K
+	LOGFILE
+	NEWS
+	COMPRESS	    2K
+	ZEROCOMP
+	CHDIR
 
-    Now, type 'make all', and take a long siesta; your computer will be
+	POLYSELF	   31K
+	THEOLOGY	   11K
+	SOUNDS		    6K
+	KICK
+
+	THRONES 	    3K
+	FOUNTAINS	    2K
+	SINKS		    5K
+	ALTARS		    4K
+
+	WALLIFIED_MAZE	    1K
+	REINCARNATION	    7K
+	STRONGHOLD	   13K
+
+	ORACLE
+	MEDUSA
+	KOPS
+	ARMY		    1K
+	WORM
+	GOLEMS		    2K
+	INFERNO
+	SEDUCE
+	TOLKIEN
+	PROBING 	    1K
+	WALKIES 	    4K
+	SHIRT
+	MUSIC		    6K
+	TUTTI_FRUTTI
+	SPELLS		   10K
+	NAMED_ITEMS
+
+	ELBERETH	    3K
+	EXPLORE_MODE	    2K
+	HARD
+
+	REDO		    1K
+	COM_COMPL	    1K
+	CLIPPING
+
+	OVERLAY
+	DGK		    7K
+	TERMLIB
+	RANDOM		    1K
+	SHELL
+	TEXTCOLOR	    1K
+
+    Using Microsoft C and overlays, we've managed to enable everything.
+    Unfortunately, the overlay manager doesn't work with Turbo C.  Using
+    Turbo C, we eked by with just WIZARD, ZEROCOMP, BITFIELDS, ELBERETH,
+    HARD, REDO, DGK and TEXTCOLOR.  There's very little leeway for nifty
+    features without an overlay manager.
+
+5.  If you're using a compiler not in the list in step 3, you may want to look
+    through system.h, in the include directory.  This file matches the return
+    and parameter types for system calls and library routines with various
+    flavors of compilers and operating systems.  Leaving this file alone is
+    unlikely to cause problems, but if you get compile errors with any
+    functions in the standard library, it's worth checking the declarations
+    there.
+
+6.  If you want to change the high score list behavior, examine the top of
+    topten.c, in the src directory.  You may want to change the definitions of
+    PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN to 51 and ENTRYMAX to
+    50 to keep the size of the score list down.
+
+7.  Go to the src directory and edit the top of your Makefile.  Be sure the
+    directory you want the game installed in actually exists.
+
+    If you elected not to use the high-quality BSD random number routines by
+    commenting out RANDOM in pcconf.h or tosconf.h, comment out (or set equal
+    to nothing) the RANDOM macro in your Makefile.
+
+    If you elected to use Fred Fish's termcap library (bundled in as
+    termcap.arc), you will have to generate termcap.lib from those sources
+    (follow the comments therein, if you can).
+
+    If you're using Makefile.ovl and you have Microsoft's Macro Assembler
+    version 5.1, you may want to enable the option in the make file to rebuild
+    ovlmgr.obj, altho a ready-made object file is provided for those of you
+    without.
+
+    If you are recompiling after patching your sources, or if you got your
+    files from somewhere other than the official distribution, "touch
+    makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
+    lest potentially troublesome timestamps fool "make".
+
+8.  Now, enter "make all", and take a long siesta; your computer will be
     occupied for a long time.  If all goes well, you will get an executable.
-    If you tried to compile in too many features, you probably will not get
-    a working one, and have to start over.
+    If you tried to compile in too many features, you will probably get a
+    dysfunctional executable, and will have to start over.
 
-    TOS users: if you're short on memory (and GCC users will be short on
-    memory if they only have 2 megabytes) you might want to type
-    'make -n all >script' and then use the Gulam command 'source script'.
+	Hint:  If you're short on memory, you might enter "make -n all
+	>script.bat", and then in DOS enter "script", or in TOS use the Gulam
+	command "source script.bat".  GCC users will be short on memory if
+	they only have 2 megabytes.
 
-8.  Edit NetHack.cnf to reflect your particular setup, following the comments.
-    Then move the file to your game directory, along with the termcap file.
+9.  Make sure the support files-- data, rumors, cmdhelp, opthelp, help, hh,
+    history, license, and oracles (if ORACLES was #define'd)-- were copied
+    to the game directory.  If not, move them there from the auxil directory
+    yourself.  rumors can be created manually by entering "makedefs -r";
+    data by entering "makedefs -d".
 
-    If your game directory is not on your PATH, you will want to 'set HACKDIR
-    =\games\nethack' (or whatever directory you want to use) now, and add it
-    to your autoexec.bat if you'll be playing often.
+    If you compiled in the compiled levels (if STRONGHOLD was #define'd), make
+    sure castle, tower?, and possibly endgame are there, too.  They can be
+    created manually by entering "lev_comp filename.des", where filename.des
+    is the appropriate description file (found in the auxil directory).
 
-    Make sure the support files data, rumors, cmdhelp, opthelp, help, hh,
-    history, and license (and oracles, if you compiled in that feature) got
-    copied to the game directory.  If not, move them there from the auxil
-    directory yourself.  rumors can be created manually by typing 'makedefs
-    -r'; data by typing 'makedefs -d'.
+10. Go to the others directory.  Copy NetHack.cnf, or Atari.cnf for TOS, to
+    your game directory as "NetHack.cnf".  Edit it to reflect your particular
+    setup and personal preferences, following the comments.
 
-    If you compiled in the special levels, make sure castle, tower?, and
-    perhaps endgame are there, too.  lev_comp file.des will create these.
+    If you compiled in the TERMLIB feature, also move the "termcap" file to
+    your game directory.  (Note:  GCC's termcap routines have built-in
+    defaults, so the termcap file is not necessary with that compiler.)
 
-Notes:
+    To use funky graphics charaters in TOS, uudecode "atarifnt.uue" and unarc
+    the resulting "atarifnt.arc".  This contains a program to run that makes
+    some line graphics characters available to NetHack.  To use them, uncomment
+    the appropriate line in your NetHack.cnf file.
 
-1.  No, your old save files and bones files will not work with NetHack 3.0.
-    Don't bother trying to keep them.  The old score list will work fine,
-    but I recommend you delete it and create a new, empty one ('type record
-    >record' will do this nicely).  It is a good deal harder to achieve the
-    same scores in this version.
+    If you'll be running NetHack from a different subdirectory, you will
+    want to "set HACKDIR=\games\nethack" (or whatever directory you want to
+    use) now.  Add it to your autoexec.bat (in DOS), if you'll be playing
+    often.
 
-2.  To install an update of this version of NetHack after changing something,
-    type 'make' from the src directory.  If you created the new version
-    yourself, it should be safe to use 'make update' as long as you did not
-    add, delete, or reorder monsters or objects and you did not change 
-    the format of saved level files.  If you did any of these things, you
-    should also delete any saved games and bones levels.  (Trying to use such
-    files often produces amusing but useless confusions on the game's part.)
+11. Play NetHack.  If it works, you're done!
+
+
+Notes
+-----
+
+1)  Save files and bones files from previous versions will not work with
+    NetHack 3.0.  Don't bother trying to keep them.  The record (score list)
+    file will work fine, but I recommend you delete it and create a new, empty
+    one.  Achieving the same scores in this version is a great deal harder.
+
+2)  To install an update of NetHack after changing something, enter "make"
+    from the src directory.  If you add, delete, or reorder monsters or
+    objects, or you change the format of saved level files, delete any save
+    and bones files.  (Trying to use such files sometimes produces amusing
+    confusions on the game's part, but usually crashes.)
+
+3)  While making the PC and OS/2 versions, during linking the Microsoft
+    Overlay Linker will need temporary storage space.  Make sure you have
+    about a meg of free disk whereever you have defined your temporary
+    storage.
+
+4)  About overlays:
+
+    First and foremost:  We have been developing with MSC 5.1 as a compiler
+    and NDmake 4.5 as a make.  NDmake is readily available on the Usenet,
+    obtaining MSC might be more of a problem.  MSC 5.0 is broken.  You *will
+    not* be able to compile the overlay version with that compiler due to
+    problems with the /Gt option allowing the CONST segement to become
+    > 64k when linking.
+
+    Anyone who uses Turbo C is free to try to compile the game.  Not only does
+    TLINK not do overlays, it chokes on huge projects, so you will need to use
+    some other linker, probably the Microsoft Overlay Linker.  Also,
+    you will more than likely have to find a way to tell the compiler to
+    keep most of your data out of the default data segment (whence the mystic
+    /Gt24 for MSC in Makefile.ovl).  Certain other problems can probably be
+    anticipated.  Feel free to try other compilers and linkers and please do
+    inform us if you succeed.
+
+    If you use the custom overlay manager, ovlmgr.asm, you will want to use
+    Makefile.ovl.  Otherwise you will have to roll your own make file;
+    Makefile.ovl may serve you as a stylistic guide, but ovlmgr's optimisation
+    characteristics are very different from those of (for example) the
+    standard Microsoft Overlay Manager:  you will find the actual partitioning
+    of the overlays entirely inappropriate to a more conventional system.
+
+    To make the game, follow the instructions above for arrangement of files
+    from the others directory to src.  If you are using the standard Microsoft
+    Overlay Linker (which we have been assuming you are) you should make doubly
+    certain that OVERLAY is defined in pcconf.h, since otherwise things will
+    compile properly but very ugly things are likely to happen wherever
+    function pointers cross overlay boundaries - the linker is a little thick
+    about that.  Now check the variables at the top of the  makefile for
+    correctness on your system.  Once you have the compiler, linker, source
+    files moved, and the include files configured, go to the src directory and
+    type "make install".
+
+    The versions of the software we used are:
+
+    MS Overlay Linker      3.65
+    MSC 		    5.1
+    MASM		    5.1
+
+    NDMake                  4.5
+
+    On a 286 10MHz PC you will have nethack in about 2 - 2.5 hours.
+    Hope you enjoy the game.  We have worked very hard to try to bring it back
+    to the PC.

@@ -51,6 +51,7 @@ E xchar seehx2, seelx2, seehy2, seely2; /* where to see */
 E xchar fountsound, sinksound;	/* numbers of noisy things */
 
 E char pl_character[PL_CSIZ];
+E const char *pl_classes;
 #ifdef TUTTI_FRUTTI
 E char pl_fruit[PL_FSIZ];
 E int current_fruit;
@@ -118,6 +119,11 @@ E struct spell spl_book[];	/* sized in decl.c */
 
 #ifdef REDO
 E int in_doagain;
+#endif
+
+#ifdef CLIPPING
+E boolean clipping;
+E int clipx, clipy, clipxmax, clipymax;
 #endif
 
 #ifdef TEXTCOLOR

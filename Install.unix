@@ -51,9 +51,11 @@ Notes:
 
 1.  A number of systems, such as Xenix, support both the termcap and terminfo
     terminal capability libraries.  Make sure that the TERMINFO definition in
-    unixconf.h and TERMLIB in the source Makefile correspond.
-    If spurious characters appear on the screen while kicking, zapping, etc.
+    unixconf.h and the TERMLIB definition in the source Makefile correspond.
+    If spurious characters appear on the screen while kicking, zapping, etc.,
     it is likely that you have linked the source to the wrong library.
+    If your terminal library does not provide suitable delays, NetHack will
+    try to fake its own if you set the nonull option.
 
 2.  No, your old save files and bones files will not work with NetHack 3.0.
     Don't bother trying to keep them.  The old score list will work fine; the

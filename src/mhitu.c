@@ -1,4 +1,4 @@
-/*	SCCS Id: \@(#)mhitu.c	3.0	88/10/28
+/*	SCCS Id: @(#)mhitu.c	3.0	89/11/15
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,16 +9,16 @@
 
 static struct obj *otmp;
 #ifdef POLYSELF
-static void urustm P((struct monst *, struct obj *));
-static int passiveum P((struct permonst *, struct monst *));
+static void FDECL(urustm, (struct monst *, struct obj *));
+static int FDECL(passiveum, (struct permonst *, struct monst *));
 #endif
 #ifdef SEDUCE
-static void mayberem P((struct obj *, char *));
+static void FDECL(mayberem, (struct obj *, char *));
 #endif
-static int hitmu P((struct monst *,struct attack *));
-static int gulpmu P((struct monst *,struct attack *));
-static int explmu P((struct monst *,struct attack *));
-static int gazemu P((struct monst *,struct attack *));
+static int FDECL(hitmu, (struct monst *,struct attack *));
+static int FDECL(gulpmu, (struct monst *,struct attack *));
+static int FDECL(explmu, (struct monst *,struct attack *));
+static int FDECL(gazemu, (struct monst *,struct attack *));
 
 
 static void
@@ -152,7 +152,7 @@ register struct monst *mtmp;
 {
 	unstuck(mtmp);
 	mnexto(mtmp);
-	pru();
+	prme();
 	spoteffects();
 	/* to cover for a case where mtmp is not in a next square */
 	if(um_dist(mtmp->mx,mtmp->my,1))
@@ -177,7 +177,7 @@ mattacku(mtmp)
 	struct	permonst *mdat = mtmp->data;
 	boolean ranged = (dist(mtmp->mx, mtmp->my) > 3);
 		/* Is it near you?  Affects your actions */
-	boolean range2 = (dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) > 3);
+	boolean range2 = !monnear(mtmp, mtmp->mux, mtmp->muy);
 		/* Does it think it's near you?  Affects its actions */
 	boolean foundyou = (mtmp->mux==u.ux && mtmp->muy==u.uy);
 		/* Is it attacking you or your image? */
@@ -280,7 +280,7 @@ doattack:
 
 /*	Special demon handling code */
 	if(!mtmp->cham && is_demon(mdat) && !range2
-#ifdef HARD
+#ifdef INFERNO
 	   && mtmp->data != &mons[PM_BALROG]
 	   && mtmp->data != &mons[PM_SUCCUBUS]
 	   && mtmp->data != &mons[PM_INCUBUS]
@@ -437,6 +437,74 @@ doattack:
 }
 
 /*
+ * helper function for some compilers that have trouble with hitmu
+ */
+
+static
+void
+hurtarmor(mdat, attack)
+struct permonst *mdat;
+int attack;
+{
+	boolean getbronze, rusting;
+	int	hurt;
+
+	rusting = (attack == AD_RUST);
+	if (rusting) {
+		hurt = 1;
+		getbronze = (mdat == &mons[PM_BLACK_PUDDING] &&
+			     uarm && is_corrodeable(uarm));
+	}
+	else {
+		hurt=2;
+		getbronze = FALSE;
+	}
+	/* What the following code does: it keeps looping until it
+	 * finds a target for the rust monster.
+	 * Head, feet, etc... not covered by metal, or covered by
+	 * rusty metal, are not targets.  However, your body always
+	 * is, no matter what covers it.
+	 */
+	while (1) {
+	    switch(rn2(5)) {
+	    case 0:
+		if (!rust_dmg(uarmh, rusting ? "helmet" : "leather helmet",
+					 hurt, FALSE))
+			continue;
+		break;
+	    case 1:
+		if (uarmc) break;
+		/* Note the difference between break and continue;
+		 * break means it was hit and didn't rust; continue
+		 * means it wasn't a target and though it didn't rust
+		 * something else did.
+		 */
+		if (getbronze)
+		    (void)rust_dmg(uarm, "bronze armor", 3, TRUE);
+		else if (uarm)
+		    (void)rust_dmg(uarm, xname(uarm), hurt, TRUE);
+		break;
+	    case 2:
+		if (!rust_dmg(uarms, rusting ? "shield" : "wooden shield",
+					 hurt, FALSE))
+			continue;
+		break;
+	    case 3:
+		if (!rust_dmg(uarmg, rusting ? "metal gauntlets" : "gloves",
+					 hurt, FALSE))
+			continue;
+		break;
+	    case 4:
+		if (!rust_dmg(uarmf, rusting ? "metal boots" : "boots",
+					 hurt, FALSE))
+			continue;
+		break;
+	    }
+	    break; /* Out of while loop */
+	}
+}
+
+/*
  * hitmu: monster hits you
  *	  returns 2 if monster dies (e.g. "yellow light"), 1 otherwise
  *	  3 if the monster lives but teleported, so it can't keep attacking you
@@ -449,7 +517,6 @@ hitmu(mtmp, mattk)
 {
 	register struct permonst *mdat = mtmp->data;
 	register int dmg, ctmp, ptmp;
-	register boolean getbronze;
 	char	 buf[BUFSZ];
 #ifdef POLYSELF
 	struct permonst *olduasmon = uasmon;
@@ -567,7 +634,7 @@ hitmu(mtmp, mattk)
 		    if(mtmp->m_lev > rn2(25))
 			destroy_item(SPBOOK_SYM, AD_FIRE);
 #endif
-		}
+		} else dmg = 0;
 		break;
 	    case AD_COLD:
 		hitmsg(mtmp, mattk);
@@ -579,7 +646,7 @@ hitmu(mtmp, mattk)
 		    }
 		    if(mtmp->m_lev > rn2(20))
 			destroy_item(POTION_SYM, AD_COLD);
-		}
+		} else dmg = 0;
 		break;
 	    case AD_ELEC:
 		hitmsg(mtmp, mattk);
@@ -593,7 +660,7 @@ hitmu(mtmp, mattk)
 			destroy_item(WAND_SYM, AD_ELEC);
 		    if(mtmp->m_lev > rn2(20))
 			destroy_item(RING_SYM, AD_ELEC);
-		}
+		} else dmg = 0;
 		break;
 	    case AD_SLEE:
 		hitmsg(mtmp, mattk);
@@ -671,8 +738,7 @@ dopois:
 			    if (Blind) You("hear its hissing!");
 			    else You("hear %s's hissing!", mon_nam(mtmp));
 			if((!rn2(10) ||
-			    (flags.moonphase == NEW_MOON &&
-			     !carrying(DEAD_LIZARD)))
+			    (flags.moonphase == NEW_MOON && !have_lizard()))
 #ifdef POLYSELF
 			    && !resists_ston(uasmon)
 #endif
@@ -766,10 +832,17 @@ dopois:
 			rloc(mtmp);
 			return 3;
 		    }
-		} else if(steal(mtmp)) {
+		} else {
+		    switch (steal(mtmp)) {
+		      case -1:
+			return 2;
+		      case 0:
+			break;
+		      default:
 			rloc(mtmp);
 			mtmp->mflee = 1;
 			return 3;
+		    }
 		}
 		break;
 #ifdef SEDUCE
@@ -807,44 +880,7 @@ dopois:
 		}
 #endif /* GOLEMS */
 #endif
-		/* What the following code does: it keeps looping until it
-		 * finds a target for the rust monster.
-		 * Head, feet, etc... not covered by metal, or covered by
-		 * rusty metal, are not targets.  However, your body always
-		 * is, no matter what covers it.
-		 */
-		getbronze = (mdat == &mons[PM_BLACK_PUDDING] &&
-			     uarm && is_corrodeable(uarm));
-		while (1) {
-		    switch(rn2(5)) {
-		    case 0:
-			if (!rust_dmg(uarmh, "helmet", 1, FALSE)) continue;
-			break;
-		    case 1:
-			if (uarmc) break;
-			/* Note the difference between break and continue;
-			 * break means it was hit and didn't rust; continue
-			 * means it wasn't a target and though it didn't rust
-			 * something else did.
-			 */
-			if (getbronze)
-			    (void)rust_dmg(uarm, "bronze armor", 3, TRUE);
-			else
-			    (void)rust_dmg(uarm, "armor", 1, TRUE);
-			break;
-		    case 2:
-			if (!rust_dmg(uarms, "shield", 1, FALSE)) continue;
-			break;
-		    case 3:
-			if (!rust_dmg(uarmg, "metal gauntlets", 1, FALSE))
-			    continue;
-			break;
-		    case 4:
-			if (!rust_dmg(uarmf, "metal boots", 1, FALSE)) continue;
-			break;
-		    }
-		    break; /* Out of while loop */
-		}
+		hurtarmor(mdat, AD_RUST);
 		break;
 	    case AD_DCAY:
 		hitmsg(mtmp, mattk);
@@ -859,29 +895,7 @@ dopois:
 		}
 #endif /* GOLEMS */
 #endif
-		while (1) {
-		    switch(rn2(5)) {
-		    case 0:
-			if (!rust_dmg(uarmh, "leather helmet", 2, FALSE))
-				continue;
-			break;
-		    case 1:
-			if (uarmc) break;
-			if (uarm) (void)rust_dmg(uarm, xname(uarm), 2, TRUE);
-			break;
-		    case 2:
-			if (!rust_dmg(uarms, "wooden shield", 2, FALSE))
-				continue;
-			break;
-		    case 3:
-			if (!rust_dmg(uarmg, "gloves", 2, FALSE)) continue;
-			break;
-		    case 4:
-			if (!rust_dmg(uarmf, "boots", 2, FALSE)) continue;
-			break;
-		    }
-		    break; /* Out of while loop */
-		}
+		hurtarmor(mdat, AD_DCAY);
 		break;
 	    case AD_HEAL:
 		if(!uwep
@@ -889,7 +903,7 @@ dopois:
 		   && !uarmu
 #endif
 		   && !uarm && !uarmh && !uarms && !uarmg && !uarmc && !uarmf) {
-		    kludge("%s hits! (I hope you don't mind.)", Monnam(mtmp));
+		    kludge("%s hits!  (I hope you don't mind.)", Monnam(mtmp));
 #ifdef POLYSELF
 			if (u.mtimedone) {
 				u.mh += rnd(7);
@@ -911,7 +925,7 @@ dopois:
 		} else
 		    if(pl_character[0] == 'H') {
 			    if (flags.soundok && !(moves % 5))
-				pline("'Doc, I can't help you unless you cooperate.'");
+				verbalize("Doc, I can't help you unless you cooperate.");
 			    dmg = 0;
 		    } else hitmsg(mtmp, mattk);
 		break;
@@ -971,7 +985,7 @@ dopois:
 		if(flags.soundok && !rn2(3)) cuss(mtmp);
 		dmg = 0;
 		break;
-#ifdef HARD /* a non-gaze AD_CONF exists only for one of the demons */
+#ifdef INFERNO /* a non-gaze AD_CONF exists only for one of the demons */
 	    case AD_CONF:
 		hitmsg(mtmp, mattk);
 		if(!mtmp->mcan && !rn2(4) && !mtmp->mspec_used) {
@@ -1026,6 +1040,10 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		u.ustuck = mtmp;
 		pmon(mtmp);
 		kludge("%s engulfs you!", Monnam(mtmp));
+		if (u.utrap) {
+			You("are released from the trap!");
+			u.utrap = 0;
+		}
 #ifdef WALKIES
 		if((i = number_leashed()) > 0) {
 			pline("The leash%s snap%s loose...",
@@ -1074,7 +1092,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 		    } else
 #endif
 		    if (Hallucination) pline("Ouch!  You've been slimed!");
-		    else You("are covered in slime!  It burns!!!");
+		    else You("are covered in slime!  It burns!");
 		    break;
 		case AD_BLND:
 		    if(!Blind) {
@@ -1120,7 +1138,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 			} else You("are burning to a crisp!");
 		    } else tmp = 0;
 		    break;
-#ifdef HARD
+#ifdef INFERNO
 		case AD_DISE:
 		    if (!Sick) You("feel very sick.");
 		    make_sick(Sick + (long)rn1(25-ACURR(A_CON),15),FALSE);
@@ -1246,7 +1264,7 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 		    make_confused(HConfusion + conf, FALSE);
 		}
 		break;
-#ifdef HARD
+#ifdef INFERNO
 	    case AD_STUN:
 		if(!mtmp->mcan && canseemon(mtmp) && mtmp->mcansee &&
 					!mtmp->mspec_used && rn2(5)) {
@@ -1351,7 +1369,7 @@ struct attack *mattk;
 		return 0;
 
 	if(pagr->mlet != S_NYMPH
-#ifdef HARD
+#ifdef INFERNO
 		&& ((pagr != &mons[PM_INCUBUS] && pagr != &mons[PM_SUCCUBUS])
 # ifdef SEDUCE
 		    || (mattk && mattk->adtyp != AD_SSEX)
@@ -1606,7 +1624,7 @@ char *str;
 			(obj == uarmu) ? "let me massage you" :
 #endif
 			/* obj == uarmh */
-			"so I can run my fingers through your hair");
+			"let me run my fingers through your hair");
 
 	if (obj == uarm)  (void) Armor_off();
 	else if (obj == uarmc) (void) Cloak_off();

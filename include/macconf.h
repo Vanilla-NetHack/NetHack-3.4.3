@@ -62,7 +62,7 @@ extern char	*calloc();
 #include	<Stdlib.h>
 #include	<String.h>
 #undef getuid
-#ifndef MAKEDEFS_C
+#if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
 #ifdef stdout
 #undef stdout
 #define stdout (FILE *)NULL
@@ -190,6 +190,7 @@ typedef struct term_info {
 #define	LEVEL_TYPE	'LEVL'
 #define	HACK_DATA	'HDTA'
 #define MONST_DATA	101
+#define OBJECT_DATA	104
 #define	DEFAULT_DATA	100
 
 #include "extern.h"
