@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Samurai.des	3.4	1995/06/29
+#	SCCS Id: @(#)Samurai.des	3.4	2002/04/08
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1991-92 by M. Stephenson, P. Winner
 # NetHack may be freely redistributed.  See license for details.
@@ -265,9 +265,15 @@ MAP
            .......................           
 ENDMAP
 # Dungeon Description
+RANDOM_PLACES:(02,11),(42,09)
 REGION:(00,00,44,19),unlit,"ordinary"
+# Doors
+DOOR:closed,(19,10)
+DOOR:closed,(22,08)
+DOOR:closed,(22,12)
+DOOR:closed,(25,10)
 # Stairs
-STAIR:(02,10),up
+STAIR:place[0],up
 # Non diggable walls
 NON_DIGGABLE:(00,00,44,19)
 # Objects
@@ -386,6 +392,11 @@ MAP
 -------------                                  -------------
 ENDMAP
 REGION:(00,00,59,15),unlit,"ordinary"
+# Doors
+DOOR:closed,(16,07)
+DOOR:closed,(16,08)
+DOOR:closed,(43,07)
+DOOR:closed,(43,08)
 #
 STAIR: random, up
 STAIR: random, down

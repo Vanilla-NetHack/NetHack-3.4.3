@@ -6,6 +6,7 @@
 #include "mhmap.h"
 #include "mhmsg.h"
 #include "mhinput.h"
+#include "mhfont.h"
 
 #include "patchlevel.h"
 
@@ -92,8 +93,10 @@ void mswin_map_stretch(HWND hWnd, LPSIZE lpsz, BOOL redraw)
 	
 	/* set new screen tile size */
 	data = (PNHMapWindow)GetWindowLong(hWnd, GWL_USERDATA);
-	data->xScrTile = (data->bFitToScreenMode? wnd_size.cx : lpsz->cx) / COLNO;
-	data->yScrTile = (data->bFitToScreenMode? wnd_size.cy : lpsz->cy) / ROWNO;
+	data->xScrTile = 
+		max(1, (data->bFitToScreenMode? wnd_size.cx : lpsz->cx) / COLNO);
+	data->yScrTile = 
+		max(1, (data->bFitToScreenMode? wnd_size.cy : lpsz->cy) / ROWNO);
 
 	/* set map origin point */
 	data->map_orig.x = max(0, client_rt.left + (wnd_size.cx - data->xScrTile*COLNO)/2 );
@@ -157,12 +160,18 @@ void mswin_map_stretch(HWND hWnd, LPSIZE lpsz, BOOL redraw)
 	lgfnt.lfItalic			=	FALSE;				 // italic attribute option
 	lgfnt.lfUnderline		=	FALSE;				 // underline attribute option
 	lgfnt.lfStrikeOut		=	FALSE;			     // strikeout attribute option
-	lgfnt.lfCharSet			=	OEM_CHARSET;         // character set identifier
+	lgfnt.lfCharSet			=	mswin_charset();     // character set identifier
 	lgfnt.lfOutPrecision	=	OUT_DEFAULT_PRECIS;  // output precision
 	lgfnt.lfClipPrecision	=	CLIP_DEFAULT_PRECIS; // clipping precision
 	lgfnt.lfQuality			=	DEFAULT_QUALITY;     // output quality
-	lgfnt.lfPitchAndFamily	=	FIXED_PITCH;		 // pitch and family
-	_tcscpy(lgfnt.lfFaceName, NHMAP_FONT_NAME);
+	if( iflags.wc_font_map &&
+		*iflags.wc_font_map ) {
+		lgfnt.lfPitchAndFamily	= DEFAULT_PITCH;		 // pitch and family
+		NH_A2W(iflags.wc_font_map, lgfnt.lfFaceName, LF_FACESIZE);
+	} else {
+		lgfnt.lfPitchAndFamily	= FIXED_PITCH;		 // pitch and family
+		NH_A2W(NHMAP_FONT_NAME, lgfnt.lfFaceName, LF_FACESIZE);
+	}
 	data->hMapFont = CreateFontIndirect(&lgfnt);
 
 	mswin_cliparound(data->xCur, data->yCur);
@@ -418,6 +427,7 @@ void onMSNHCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			( msg_data->y<(data->yPos+mcam) ||
 			  msg_data->y>(data->yPos+data->yPageSize-mcam) );
 		
+		mcam += iflags.wc_scroll_amount - 1;
 		/* get page size and center horizontally on x-position */
 		if( scroll_x ) {
 			if( data->xPageSize<=2*mcam ) {
@@ -555,12 +565,13 @@ void onPaint(HWND hWnd)
 				unsigned special;
 				int mgch;
 				HBRUSH back_brush;
+				COLORREF OldFg;
 
 				nhcoord2display(data, i, j, &glyph_rect);
 
 #if (VERSION_MAJOR < 4) && (VERSION_MINOR < 4) && (PATCHLEVEL < 2)
 				nhglyph2charcolor(data->map[i][j], &ch, &color);
-				SetTextColor (hDC, nhcolor_to_RGB(color) );
+				OldFg = SetTextColor (hDC, nhcolor_to_RGB(color) );
 #else
 				/* rely on NetHack core helper routine */
 				mapglyph(data->map[i][j], &mgch, &color,
@@ -568,13 +579,20 @@ void onPaint(HWND hWnd)
 				ch = (char)mgch;
 				if (((special & MG_PET) && iflags.hilite_pet) ||
 				    ((special & MG_DETECT) && iflags.use_inverse)) {
-					back_brush = CreateSolidBrush(RGB(192, 192, 192));
+					back_brush = CreateSolidBrush(nhcolor_to_RGB(CLR_GRAY));
 					FillRect (hDC, &glyph_rect, back_brush);
 					DeleteObject (back_brush);
-					SetTextColor( hDC,  RGB(0, 0, 0) );
-				} else
-				{
-					SetTextColor (hDC, nhcolor_to_RGB(color) );
+					switch (color)
+					{
+					case CLR_GRAY:
+					case CLR_WHITE:
+						OldFg = SetTextColor( hDC,  nhcolor_to_RGB(CLR_BLACK));
+						break;
+					default:
+						OldFg = SetTextColor (hDC, nhcolor_to_RGB(color) );
+					}
+				} else {
+					OldFg = SetTextColor (hDC, nhcolor_to_RGB(color) );
 				}
 #endif
 
@@ -584,6 +602,7 @@ void onPaint(HWND hWnd)
 						 &glyph_rect,
 						 DT_CENTER | DT_VCENTER | DT_NOPREFIX
 						 );
+				SetTextColor (hDC, OldFg);
 			}
 			SelectObject(hDC, oldFont);
 		} else {
@@ -871,84 +890,87 @@ COLORREF nhcolor_to_RGB(int c)
 
 /* apply bitmap pointed by sourceDc transparently over 
    bitmap pointed by hDC */
+
+typedef BOOL (WINAPI* LPTRANSPARENTBLT)(HDC, int, int, int, int, HDC, int, int, int, int, UINT); 
 void nhapply_image_transparent( 
 	HDC hDC, int x, int y, int width, int height,
 	HDC sourceDC, int s_x, int s_y, int s_width, int s_height,
 	COLORREF cTransparent
 )
 {
-	HDC        hdcMem, hdcBack, hdcObject, hdcSave;
-	COLORREF   cColor;
-	HBITMAP    bmAndBack, bmAndObject, bmAndMem, bmSave;
-	HBITMAP    bmBackOld, bmObjectOld, bmMemOld, bmSaveOld;
+    /* Don't use TransparentBlt; According to Microsoft, it contains a memory leak in Window 95/98. */
+		HDC        hdcMem, hdcBack, hdcObject, hdcSave;
+		COLORREF   cColor;
+		HBITMAP    bmAndBack, bmAndObject, bmAndMem, bmSave;
+		HBITMAP    bmBackOld, bmObjectOld, bmMemOld, bmSaveOld;
 
-	/* Create some DCs to hold temporary data. */
-	hdcBack   = CreateCompatibleDC(hDC);
-	hdcObject = CreateCompatibleDC(hDC);
-	hdcMem    = CreateCompatibleDC(hDC);
-	hdcSave   = CreateCompatibleDC(hDC);
+		/* Create some DCs to hold temporary data. */
+		hdcBack   = CreateCompatibleDC(hDC);
+		hdcObject = CreateCompatibleDC(hDC);
+		hdcMem    = CreateCompatibleDC(hDC);
+		hdcSave   = CreateCompatibleDC(hDC);
 
-	/* this is bitmap for our pet image */
-	bmSave = CreateCompatibleBitmap(hDC, s_width, s_height);
+		/* this is bitmap for our pet image */
+		bmSave = CreateCompatibleBitmap(hDC, width, height);
 
-	/* Monochrome DC */
-	bmAndBack   = CreateBitmap(s_width, s_height, 1, 1, NULL);
-	bmAndObject = CreateBitmap(s_width, s_height, 1, 1, NULL);
+		/* Monochrome DC */
+		bmAndBack   = CreateBitmap(width, height, 1, 1, NULL);
+		bmAndObject = CreateBitmap(width, height, 1, 1, NULL);
 
-	/* resulting bitmap */
-	bmAndMem    = CreateCompatibleBitmap(hDC, s_width, s_height);
+		/* resulting bitmap */
+		bmAndMem    = CreateCompatibleBitmap(hDC, width, height);
 
-	/* Each DC must select a bitmap object to store pixel data. */
-	bmBackOld   = SelectObject(hdcBack, bmAndBack);
-	bmObjectOld = SelectObject(hdcObject, bmAndObject);
-	bmMemOld    = SelectObject(hdcMem, bmAndMem);
-	bmSaveOld   = SelectObject(hdcSave, bmSave);
+		/* Each DC must select a bitmap object to store pixel data. */
+		bmBackOld   = SelectObject(hdcBack, bmAndBack);
+		bmObjectOld = SelectObject(hdcObject, bmAndObject);
+		bmMemOld    = SelectObject(hdcMem, bmAndMem);
+		bmSaveOld   = SelectObject(hdcSave, bmSave);
 
-	/* copy source image because it is going to be overwritten */
-	BitBlt(hdcSave, 0, 0, s_width, s_height, sourceDC, s_x, s_y, SRCCOPY);
+		/* copy source image because it is going to be overwritten */
+		StretchBlt(hdcSave, 0, 0, width, height, sourceDC, s_x, s_y, s_width, s_height, SRCCOPY);
 
-	/* Set the background color of the source DC to the color.
-	   contained in the parts of the bitmap that should be transparent */
-	cColor = SetBkColor(hdcSave, cTransparent);
+		/* Set the background color of the source DC to the color.
+		   contained in the parts of the bitmap that should be transparent */
+		cColor = SetBkColor(hdcSave, cTransparent);
 
-	/* Create the object mask for the bitmap by performing a BitBlt
-	   from the source bitmap to a monochrome bitmap. */
-	BitBlt(hdcObject, 0, 0, s_width, s_height, hdcSave, 0, 0, SRCCOPY);
+		/* Create the object mask for the bitmap by performing a BitBlt
+		   from the source bitmap to a monochrome bitmap. */
+		BitBlt(hdcObject, 0, 0, width, height, hdcSave, 0, 0, SRCCOPY);
 
-	/* Set the background color of the source DC back to the original
-	   color. */
-	SetBkColor(hdcSave, cColor);
+		/* Set the background color of the source DC back to the original
+		   color. */
+		SetBkColor(hdcSave, cColor);
 
-	/* Create the inverse of the object mask. */
-	BitBlt(hdcBack, 0, 0, s_width, s_height, hdcObject, 0, 0, NOTSRCCOPY);
+		/* Create the inverse of the object mask. */
+		BitBlt(hdcBack, 0, 0, width, height, hdcObject, 0, 0, NOTSRCCOPY);
 
-	/* Copy background to the resulting image  */
-	StretchBlt(hdcMem, 0, 0, s_width, s_height, hDC, x, y, width, height, SRCCOPY);
+		/* Copy background to the resulting image  */
+		BitBlt(hdcMem, 0, 0, width, height, hDC, x, y, SRCCOPY);
 
-	/* Mask out the places where the source image will be placed. */
-	BitBlt(hdcMem, 0, 0, s_width, s_height, hdcObject, 0, 0, SRCAND);
+		/* Mask out the places where the source image will be placed. */
+		BitBlt(hdcMem, 0, 0, width, height, hdcObject, 0, 0, SRCAND);
 
-	/* Mask out the transparent colored pixels on the source image. */
-	BitBlt(hdcSave, 0, 0, s_width, s_height, hdcBack, 0, 0, SRCAND);
+		/* Mask out the transparent colored pixels on the source image. */
+		BitBlt(hdcSave, 0, 0, width, height, hdcBack, 0, 0, SRCAND);
 
-	/* XOR the source image with the beckground. */
-	BitBlt(hdcMem, 0, 0, s_width, s_height, hdcSave, 0, 0, SRCPAINT);
+		/* XOR the source image with the beckground. */
+		BitBlt(hdcMem, 0, 0, width, height, hdcSave, 0, 0, SRCPAINT);
 
-	/* blt resulting image to the screen */
-	StretchBlt( 
-		hDC, 
-		x, y, width, height, hdcMem,
-		0, 0, s_width, s_height, SRCCOPY 
-	);
+		/* blt resulting image to the screen */
+		BitBlt( 
+			hDC, 
+			x, y, width, height, hdcMem,
+			0, 0, SRCCOPY 
+		);
 
-	/* cleanup */
-	DeleteObject(SelectObject(hdcBack, bmBackOld));
-	DeleteObject(SelectObject(hdcObject, bmObjectOld));
-	DeleteObject(SelectObject(hdcMem, bmMemOld));
-	DeleteObject(SelectObject(hdcSave, bmSaveOld));
+		/* cleanup */
+		DeleteObject(SelectObject(hdcBack, bmBackOld));
+		DeleteObject(SelectObject(hdcObject, bmObjectOld));
+		DeleteObject(SelectObject(hdcMem, bmMemOld));
+		DeleteObject(SelectObject(hdcSave, bmSaveOld));
 
-	DeleteDC(hdcMem);
-	DeleteDC(hdcBack);
-	DeleteDC(hdcObject);
-	DeleteDC(hdcSave);
+		DeleteDC(hdcMem);
+		DeleteDC(hdcBack);
+		DeleteDC(hdcObject);
+		DeleteDC(hdcSave);
 }

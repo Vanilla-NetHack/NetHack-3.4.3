@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	3.4	2002/02/17	*/
+/*	SCCS Id: @(#)mhitu.c	3.4	2003/01/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -316,7 +316,7 @@ mattacku(mtmp)
 		/* Might be attacking your image around the corner, or
 		 * invisible, or you might be blind....
 		 */
-
+	
 	if(!ranged) nomul(0);
 	if(mtmp->mhp <= 0 || (Underwater && !is_swimmer(mtmp->data)))
 	    return(0);
@@ -356,6 +356,7 @@ mattacku(mtmp)
 		u.uundetected = 0;
 		if (is_hider(youmonst.data)) {
 		    coord cc; /* maybe we need a unexto() function? */
+		    struct obj *obj;
 
 		    You("fall from the %s!", ceiling(u.ux,u.uy));
 		    if (enexto(&cc, u.ux, u.uy, youmonst.data)) {
@@ -363,7 +364,7 @@ mattacku(mtmp)
 			newsym(mtmp->mx,mtmp->my);
 			place_monster(mtmp, u.ux, u.uy);
 			if(mtmp->wormno) worm_move(mtmp);
-			teleds(cc.x, cc.y);
+			teleds(cc.x, cc.y, TRUE);
 			set_apparxy(mtmp);
 			newsym(u.ux,u.uy);
 		    } else {
@@ -377,7 +378,8 @@ mattacku(mtmp)
 		    if (youmonst.data->mlet != S_PIERCER)
 			return(0);	/* trappers don't attack */
 
-		    if (which_armor(mtmp, WORN_HELMET)) {
+		    obj = which_armor(mtmp, WORN_HELMET);
+		    if (obj && is_metallic(obj)) {
 			Your("blow glances off %s helmet.",
 			               s_suffix(mon_nam(mtmp)));
 		    } else {
@@ -436,15 +438,15 @@ mattacku(mtmp)
 		return(0);
 	}
 
-	/* player might be mimicking gold */
-	if (youmonst.m_ap_type == M_AP_OBJECT
-		&& youmonst.mappearance == GOLD_PIECE
-		&& !range2 && foundyou && !u.uswallow) {
+	/* player might be mimicking an object */
+	if (youmonst.m_ap_type == M_AP_OBJECT && !range2 && foundyou && !u.uswallow) {
 	    if (!youseeit)
-		 pline("%s %s!", Something, likes_gold(mtmp->data) ?
+		 pline("%s %s!", Something,
+			(likes_gold(mtmp->data) && youmonst.mappearance == GOLD_PIECE) ?
 			"tries to pick you up" : "disturbs you");
-	    else pline("Wait, %s!  That gold is really %s named %s!",
+	    else pline("Wait, %s!  That %s is really %s named %s!",
 			m_monnam(mtmp),
+			mimic_obj_name(&youmonst),
 			an(mons[u.umonnum].mname),
 			plname);
 	    if (multi < 0) {	/* this should always be the case */
@@ -452,7 +454,7 @@ mattacku(mtmp)
 		Sprintf(buf, "You appear to be %s again.",
 			Upolyd ? (const char *) an(youmonst.data->mname) :
 			    (const char *) "yourself");
-		unmul(buf);	/* immediately stop mimicking gold */
+		unmul(buf);	/* immediately stop mimicking */
 	    }
 	    return 0;
 	}
@@ -477,7 +479,7 @@ mattacku(mtmp)
 	   && mtmp->data != &mons[PM_BALROG]
 	   && mtmp->data != &mons[PM_SUCCUBUS]
 	   && mtmp->data != &mons[PM_INCUBUS])
-	    if(!mtmp->mcan && !rn2(13))	msummon(mdat);
+	    if(!mtmp->mcan && !rn2(13))	msummon(mtmp);
 
 /*	Special lycanthrope handling code */
 	if(!mtmp->cham && is_were(mdat) && !range2) {
@@ -787,6 +789,51 @@ struct attack *mattk;
 	return FALSE;
 }
 
+/* armor that sufficiently covers the body might be able to block magic */
+int
+magic_negation(mon)
+struct monst *mon;
+{
+	struct obj *armor;
+	int armpro = 0;
+
+	armor = (mon == &youmonst) ? uarm : which_armor(mon, W_ARM);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+	armor = (mon == &youmonst) ? uarmc : which_armor(mon, W_ARMC);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+	armor = (mon == &youmonst) ? uarmh : which_armor(mon, W_ARMH);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+
+	/* armor types for shirt, gloves, shoes, and shield don't currently
+	   provide any magic cancellation but we might as well be complete */
+#ifdef TOURIST
+	armor = (mon == &youmonst) ? uarmu : which_armor(mon, W_ARMU);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+#endif
+	armor = (mon == &youmonst) ? uarmg : which_armor(mon, W_ARMG);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+	armor = (mon == &youmonst) ? uarmf : which_armor(mon, W_ARMF);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+	armor = (mon == &youmonst) ? uarms : which_armor(mon, W_ARMS);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+
+#ifdef STEED
+	/* this one is really a stretch... */
+	armor = (mon == &youmonst) ? 0 : which_armor(mon, W_SADDLE);
+	if (armor && armpro < objects[armor->otyp].a_can)
+	    armpro = objects[armor->otyp].a_can;
+#endif
+
+	return armpro;
+}
+
 /*
  * hitmu: monster hits you
  *	  returns 2 if monster dies (e.g. "yellow light"), 1 otherwise
@@ -840,13 +887,7 @@ hitmu(mtmp, mattk)
 /*	Use uncancelled when the cancellation factor takes into account certain
  *	armor's special magic protection.  Otherwise just use !mtmp->mcan.
  */
-	armpro = 0;
-	if (uarm && armpro < objects[uarm->otyp].a_can)
-		armpro = objects[uarm->otyp].a_can;
-	if (uarmc && armpro < objects[uarmc->otyp].a_can)
-		armpro = objects[uarmc->otyp].a_can;
-	if (uarmh && armpro < objects[uarmh->otyp].a_can)
-		armpro = objects[uarmh->otyp].a_can;
+	armpro = magic_negation(&youmonst);
 	uncancelled = !mtmp->mcan && ((rn2(3) >= armpro) || !rn2(50));
 
 	permdmg = 0;
@@ -912,11 +953,7 @@ hitmu(mtmp, mattk)
 	    case AD_FIRE:
 		hitmsg(mtmp, mattk);
 		if (uncancelled) {
-		    pline("You're %s!",
-			  youmonst.data == &mons[PM_WATER_ELEMENTAL] ?
-				"boiling" :
-			  mattk->aatyp == AT_HUGS ? "being roasted" :
-			  "on fire");
+		    pline("You're %s!", on_fire(youmonst.data, mattk));
 		    if (youmonst.data == &mons[PM_STRAW_GOLEM] ||
 		        youmonst.data == &mons[PM_PAPER_GOLEM]) {
 			    You("roast!");
@@ -990,12 +1027,9 @@ hitmu(mtmp, mattk)
 dopois:
 		hitmsg(mtmp, mattk);
 		if (uncancelled && !rn2(8)) {
-			Sprintf(buf, "%s %s",
-				!canspotmon(mtmp) ? "Its" :
-				Hallucination ? s_suffix(rndmonnam()) :
-				                s_suffix(mdat->mname),
-				mpoisons_subj(mtmp, mattk));
-			poisoned(buf, ptmp, mdat->mname, 30);
+		    Sprintf(buf, "%s %s",
+			    s_suffix(Monnam(mtmp)), mpoisons_subj(mtmp, mattk));
+		    poisoned(buf, ptmp, mdat->mname, 30);
 		}
 		break;
 	    case AD_DRIN:
@@ -1058,14 +1092,15 @@ dopois:
 	    case AD_PLYS:
 		hitmsg(mtmp, mattk);
 		if (uncancelled && multi >= 0 && !rn2(3)) {
-	    	if (Free_action) You("momentarily stiffen.");            
-	    	else {
-	    	    if (Blind) You("are frozen!");
-	    	    else You("are frozen by %s!", mon_nam(mtmp));
-	    	    nomovemsg = 0;	/* default: "you can move again" */
-	    	    nomul(-rnd(10));
-	    	    exercise(A_DEX, FALSE);
-	    	}
+		    if (Free_action) {
+			You("momentarily stiffen.");            
+		    } else {
+			if (Blind) You("are frozen!");
+			else You("are frozen by %s!", mon_nam(mtmp));
+			nomovemsg = 0;	/* default: "you can move again" */
+			nomul(-rnd(10));
+			exercise(A_DEX, FALSE);
+		    }
 		}
 		break;
 	    case AD_DRLI:
@@ -1081,6 +1116,7 @@ dopois:
 		/* This case is too obvious to ignore, but Nethack is not in
 		 * general very good at considering height--most short monsters
 		 * still _can_ attack you when you're flying or mounted.
+		 * [FIXME: why can't a flying attacker overcome this?]
 		 */
 		  if (
 #ifdef STEED
@@ -1089,9 +1125,11 @@ dopois:
 				    Levitation || Flying) {
 		    pline("%s tries to reach your %s %s!", Monnam(mtmp),
 			  sidestr, body_part(LEG));
+		    dmg = 0;
 		  } else if (mtmp->mcan) {
 		    pline("%s nuzzles against your %s %s!", Monnam(mtmp),
 			  sidestr, body_part(LEG));
+		    dmg = 0;
 		  } else {
 		    if (uarmf) {
 			if (rn2(2) && (uarmf->otyp == LOW_BOOTS ||
@@ -1104,6 +1142,7 @@ dopois:
 			else {
 			    pline("%s scratches your %s boot!", Monnam(mtmp),
 				sidestr);
+			    dmg = 0;
 			    break;
 			}
 		    } else pline("%s pricks your %s %s!", Monnam(mtmp),
@@ -1125,7 +1164,7 @@ dopois:
 			    You_hear("%s hissing!", s_suffix(mon_nam(mtmp)));
 			if(!rn2(10) ||
 			    (flags.moonphase == NEW_MOON && !have_lizard())) {
-do_stone:
+ do_stone:
 			    if (!Stoned && !Stone_resistance
 				    && !(poly_when_stoned(youmonst.data) &&
 					polymon(PM_STONE_GOLEM))) {
@@ -1158,8 +1197,9 @@ do_stone:
 		    } else if(u.ustuck == mtmp) {
 			if (is_pool(mtmp->mx,mtmp->my) && !Swimming
 			    && !Amphibious) {
-			    boolean moat = (levl[u.ux][u.uy].typ != POOL) &&
-				(levl[u.ux][u.uy].typ != WATER) &&
+			    boolean moat =
+				(levl[mtmp->mx][mtmp->my].typ != POOL) &&
+				(levl[mtmp->mx][mtmp->my].typ != WATER) &&
 				!Is_medusa_level(&u.uz) &&
 				!Is_waterlevel(&u.uz);
 
@@ -1235,11 +1275,6 @@ do_stone:
 			if (!is_animal(mtmp->data) && !tele_restrict(mtmp))
 			    rloc(mtmp);
 			if (is_animal(mtmp->data) && *buf) {
-			    /* set mavenge bit for animals so knights won't
-			       suffer an alignment penalty during retaliation;
-			       note that only happens when the thief succeeds
-			       in getting something (*buf != 0) */
-			    mtmp->mavenge = 1;
 			    if (canseemon(mtmp))
 				pline("%s tries to %s away with %s.",
 				      Monnam(mtmp),
@@ -1304,6 +1339,11 @@ do_stone:
 		hurtarmor(AD_DCAY);
 		break;
 	    case AD_HEAL:
+		/* a cancelled nurse is just an ordinary monster */
+		if (mtmp->mcan) {
+		    hitmsg(mtmp, mattk);
+		    break;
+		}
 		if(!uwep
 #ifdef TOURIST
 		   && !uarmu
@@ -1596,7 +1636,7 @@ gulpmu(mtmp, mattk)	/* monster swallows you, or damage if u.uswallow */
 
 		i = number_leashed();
 		if (i > 0) {
-		    char *s = (i > 1) ? "leashes" : "leash";
+		    const char *s = (i > 1) ? "leashes" : "leash";
 		    pline_The("%s %s loose.", s, vtense(s, "snap"));
 		    unleash_all();
 		}
@@ -2350,7 +2390,7 @@ const char *str;
 			/* obj == uarmh */
 			hairbuf);
 	}
-	remove_worn_item(obj);
+	remove_worn_item(obj, TRUE);
 }
 #endif  /* SEDUCE */
 
@@ -2394,15 +2434,16 @@ register struct attack *mattk;
 		goto assess_dmg;
 	    case AD_STON: /* cockatrice */
 	    {
-		int protector =
-		    mattk->aatyp == AT_TENT ? 0 :
-		    mattk->aatyp == AT_KICK ? W_ARMF : W_ARMG;
-		if (!resists_ston(mtmp) &&
-		    (mattk->aatyp != AT_WEAP || !MON_WEP(mtmp)) &&
-		    mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL &&
-		    mattk->aatyp != AT_MAGC &&
-		    !(mtmp->misc_worn_check & protector)) {
-		    if(poly_when_stoned(mtmp->data)) {
+		long protector = attk_protection((int)mattk->aatyp),
+		     wornitems = mtmp->misc_worn_check;
+
+		/* wielded weapon gives same protection as gloves here */
+		if (MON_WEP(mtmp) != 0) wornitems |= W_ARMG;
+
+		if (!resists_ston(mtmp) && (protector == 0L ||
+			(protector != ~0L &&
+			    (wornitems & protector) != protector))) {
+		    if (poly_when_stoned(mtmp->data)) {
 			mon_to_stone(mtmp);
 			return (1);
 		    }

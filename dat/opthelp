@@ -7,6 +7,7 @@ autopickup     automatically pick up objects you move over        [TRUE]
 autoquiver     when firing with an empty quiver, select some
                suitable inventory weapon to fill the quiver       [FALSE]
 BIOS           allow the use of IBM ROM BIOS calls                [FALSE]
+cmdassist      give help for errors on direction & other commands [TRUE]
 confirm        ask before hitting tame or peaceful monsters       [TRUE]
 DECgraphics    use DEC/VT line-drawing characters for the dungeon [FALSE]
 eight_bit_tty  send 8-bit characters straight to terminal         [FALSE]
@@ -17,6 +18,7 @@ IBMgraphics    use IBM extended characters for the dungeon        [FALSE]
 ignintr        ignore interrupt signal, including breaks          [FALSE]
 legacy         print introductory message                         [TRUE]
 lit_corridor   show a dark corridor as lit if in sight            [FALSE]
+lootabc        use a/b/c rather than o/i/b when looting           [FALSE]
 mail           enable the mail daemon                             [TRUE]
 null           allow nulls to be sent to your terminal            [TRUE]
                try turning this option off (forcing NetHack to use its own
@@ -29,6 +31,7 @@ pushweapon     when wielding a new weapon, put your previously
 rawio          allow the use of raw I/O                           [FALSE]
 rest_on_space  count the space bar as a rest character            [FALSE]
 safe_pet       prevent you from (knowingly) attacking your pet(s) [TRUE]
+showrace       show yourself by your race rather than by role     [FALSE]
 silent         don't use your terminal's bell sound               [TRUE]
 sortpack       group similar kinds of objects in inventory        [TRUE]
 sound          enable messages about what your character hears    [TRUE]
@@ -40,6 +43,8 @@ standout       use standout mode for --More-- on messages         [FALSE]
 time           display elapsed game time, in moves                [FALSE]
 tombstone      print tombstone when you die                       [TRUE]
 toptenwin      print topten in a window rather than stdout        [FALSE]
+travel         enable the command to travel to a map location via [TRUE]
+               a shortest-path algorithm, usually invoked by '_'.
 verbose        print more commentary during the game              [TRUE]
 
 
@@ -72,9 +77,6 @@ timed_delay    on unix and VMS, use a timer instead of sending
                display effect.  on MSDOS without the termcap
                lib, whether or not to pause for visual effect.    [TRUE]
 
-Boolean option if TTY_GRAPHICS was set at compile time:
-msg_window show previous messages in a screen-size window         [FALSE]
-
 Boolean option if USE_TILES was set at compile time (MSDOS protected mode only):
 preload_tiles  control whether tiles get pre-loaded into RAM at the
                start of the game.  Doing so enhances performance
@@ -87,7 +89,7 @@ Compound options are written as option_name:option_value.
 
 Compound options which can be set during the game are:
 
-boulder       override the default boulder symbol with another default:`
+boulder       override the default boulder symbol with another default: [`]
 disclose      the types of information you want offered at the end of the
               game  [all]
 fruit         the name of a fruit you enjoy eating  [slime mold]
@@ -108,6 +110,13 @@ pickup_burden when you pick up an item that exceeds this encumberance
               or overLoaded), you will be asked if you want to continue. [S]
 pickup_types  a list of default symbols for kinds of objects to autopickup
               when that option is on  [all]
+runmode       controls how often the map window is updated when performing
+              multi-step movement (various running modes or travel command):
+              teleport -- don't update map until movement stops;
+              run      -- periodically update map (interval is seven steps);
+              walk     -- update map after every step;
+              crawl    -- like walk, but delay after making each step.
+              (This only affects screen display, not actual movement.)  [run]
 scores        the parts of the score list you wish to see when the game ends
               You choose a combination of top scores, scores around the top
               scores, and all of your own scores.  [!own/3 top/2 around]
@@ -115,7 +124,7 @@ suppress_alert disable various version-specific warnings about changes
               in game play or the user interface, such as notification given
               for the 'Q' command that quitting is now done via #quit
               (e.g., use suppress_alert:3.3.1 to stop that and any other
-              notifications added in that version or earlier) default: (none)
+              notifications added in that version or earlier) default: [(none)]
 
 Compound options which may be set only on startup are:
 
@@ -200,8 +209,16 @@ traps      like dungeon, but for trap symbols
            teleportation_trap level_teleporter magic_portal web statue_trap
            magic_trap anti_magic_trap polymorph_trap
            default:  ^^^^^^^^^^^^^^^^^"^^^^
+
 windowtype windowing system to be used  [depends on operating system]
 
+Compound option if TTY_GRAPHICS was set at compile time:
+msg_window the type of message window to use:
+           single      -- One message at a time
+           full        -- Full window with all saved top line messages
+           reverse     -- Same as full, but messages printed most-recent-first
+           combination -- Two single messages, then as full
+           default:  single
 
 Some sample options lists are:
 !autopickup,!tombstone,name:Gandalf,scores:own/3 top/2 around

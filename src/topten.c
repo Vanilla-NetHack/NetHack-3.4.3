@@ -37,7 +37,7 @@ static long final_fpos;
 #define POINTSMIN	1	/* must be > 0 */
 #define ENTRYMAX	100	/* must be >= 10 */
 
-#if !defined(MICRO) && !defined(MAC)
+#if !defined(MICRO) && !defined(MAC) && !defined(WIN32)
 #define PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
 #endif
 struct toptenentry {
@@ -76,9 +76,9 @@ STATIC_DCL void FDECL(nsb_unmung_line,(char*));
 #endif
 
 /* must fit with end.c; used in rip.c */
-NEARDATA const char *killed_by_prefix[] = {
+NEARDATA const char * const killed_by_prefix[] = {
 	"killed by ", "choked on ", "poisoned by ", "", "drowned in ",
-	"", "dissolved in ", "crushed to death by ", "petrified by ",
+	"burned by ", "dissolved in ", "crushed to death by ", "petrified by ",
 	"turned to slime by ", "killed by ", "", "", "", "", ""
 };
 
@@ -128,13 +128,13 @@ FILE *rfile;
 struct toptenentry *tt;
 {
 #ifdef NO_SCAN_BRACK /* Version_ Pts DgnLevs_ Hp___ Died__Born id */
-	static const char *fmt = "%d %d %d %ld %d %d %d %d %d %d %ld %ld %d%*c";
-	static const char *fmt32 = "%c%c %s %s%*c";
-	static const char *fmt33 = "%s %s %s %s %s %s%*c";
+	static const char fmt[] = "%d %d %d %ld %d %d %d %d %d %d %ld %ld %d%*c";
+	static const char fmt32[] = "%c%c %s %s%*c";
+	static const char fmt33[] = "%s %s %s %s %s %s%*c";
 #else
-	static const char *fmt = "%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d ";
-	static const char *fmt32 = "%c%c %[^,],%[^\n]%*c";
-	static const char *fmt33 = "%s %s %s %s %[^,],%[^\n]%*c";
+	static const char fmt[] = "%d.%d.%d %ld %d %d %d %d %d %d %ld %ld %d ";
+	static const char fmt32[] = "%c%c %[^,],%[^\n]%*c";
+	static const char fmt33[] = "%s %s %s %s %[^,],%[^\n]%*c";
 #endif
 
 #ifdef UPDATE_RECORD_IN_PLACE
@@ -340,7 +340,7 @@ int how;
 
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
 	if (lock_file(LOGFILE, SCOREPREFIX, 10)) {
-	    if(!(lfile = fopen_datafile(LOGFILE, "a", TRUE))) {
+	    if(!(lfile = fopen_datafile(LOGFILE, "a", SCOREPREFIX))) {
 		HUP raw_print("Cannot open log file!");
 	    } else {
 		writeentry(lfile, t0);
@@ -366,9 +366,9 @@ int how;
 		goto destroywin;
 
 #ifdef UPDATE_RECORD_IN_PLACE
-	rfile = fopen_datafile(RECORD, "r+", TRUE);
+	rfile = fopen_datafile(RECORD, "r+", SCOREPREFIX);
 #else
-	rfile = fopen_datafile(RECORD, "r", TRUE);
+	rfile = fopen_datafile(RECORD, "r", SCOREPREFIX);
 #endif
 
 	if (!rfile) {
@@ -445,7 +445,7 @@ int how;
 				     t0->fpos : final_fpos), SEEK_SET);
 #else
 		(void) fclose(rfile);
-		if(!(rfile = fopen_datafile(RECORD, "w", TRUE))){
+		if(!(rfile = fopen_datafile(RECORD, "w", SCOREPREFIX))){
 			HUP raw_print("Cannot write record file");
 			unlock_file(RECORD);
 			free_ttlist(tt_head);
@@ -629,8 +629,9 @@ boolean so;
 		}
 		Sprintf(eos(linebuf), fmt, arg);
 	    } else {
-		Sprintf(eos(linebuf), " in %s on level %d",
-			dungeons[t1->deathdnum].dname, t1->deathlev);
+		Sprintf(eos(linebuf), " in %s", dungeons[t1->deathdnum].dname);
+		if (t1->deathdnum != knox_level.dnum)
+		    Sprintf(eos(linebuf), " on level %d", t1->deathlev);
 		if (t1->deathlev != t1->maxlvl)
 		    Sprintf(eos(linebuf), " [max %d]", t1->maxlvl);
 	    }
@@ -762,7 +763,7 @@ char **argv;
 		return;
 	}
 
-	rfile = fopen_datafile(RECORD, "r", TRUE);
+	rfile = fopen_datafile(RECORD, "r", SCOREPREFIX);
 	if (!rfile) {
 		raw_print("Cannot open record file!");
 		return;
@@ -787,14 +788,6 @@ char **argv;
 	if (!argv[1][2]){	/* plain "-s" */
 		argc--;
 		argv++;
-#if 0 /* uses obsolete pl_classes[] */
-	} else if (!argv[1][3] && index(pl_classes, argv[1][2])) {
-		/* may get this case instead of next accidentally,
-		 * but neither is listed in the documentation, so
-		 * anything useful that happens is a bonus anyway */
-		argv[1]++;
-		argv[1][0] = '-';
-#endif
 	} else	argv[1] += 2;
 
 	if (argc > 1 && !strcmp(argv[1], "-v")) {
@@ -856,6 +849,12 @@ char **argv;
 	    else {
 		if (playerct > 1) Strcat(pbuf, "any of ");
 		for (i = 0; i < playerct; i++) {
+		    /* stop printing players if there are too many to fit */
+		    if (strlen(pbuf) + strlen(players[i]) + 2 >= BUFSZ) {
+			if (strlen(pbuf) < BUFSZ-4) Strcat(pbuf, "...");
+			else Strcpy(pbuf+strlen(pbuf)-4, "...");
+			break;
+		    }
 		    Strcat(pbuf, players[i]);
 		    if (i < playerct-1) {
 			if (players[i][0] == '-' &&
@@ -922,7 +921,7 @@ struct obj *otmp;
 
 	if (!otmp) return((struct obj *) 0);
 
-	rfile = fopen_datafile(RECORD, "r", TRUE);
+	rfile = fopen_datafile(RECORD, "r", SCOREPREFIX);
 	if (!rfile) {
 		impossible("Cannot open record file!");
 		return (struct obj *)0;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.4	2002/03/09	*/
+/*	SCCS Id: @(#)dog.c	3.4	2002/09/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -56,8 +56,20 @@ boolean quietly;
 	int chance, trycnt = 100;
 
 	do {
-	    if (otmp) {
-		pm = &mons[otmp->corpsenm]; /* Figurine; otherwise spell */
+	    if (otmp) {	/* figurine; otherwise spell */
+		int mndx = otmp->corpsenm;
+		pm = &mons[mndx];
+		/* activating a figurine provides one way to exceed the
+		   maximum number of the target critter created--unless
+		   it has a special limit (erinys, Nazgul) */
+		if ((mvitals[mndx].mvflags & G_EXTINCT) &&
+			mbirth_limit(mndx) != MAXMONNO) {
+		    if (!quietly)
+			/* have just been given "You <do something with>
+			   the figurine and it transforms." message */
+			pline("... into a pile of dust.");
+		    break;	/* mtmp is null */
+		}
 	    } else if (!rn2(3)) {
 		pm = &mons[pet_type()];
 	    } else {
@@ -69,7 +81,7 @@ boolean quietly;
 		}
 	    }
 
-	    mtmp = makemon(pm, x, y, MM_EDOG);
+	    mtmp = makemon(pm, x, y, MM_EDOG|MM_IGNOREWATER);
 	    if (otmp && !mtmp) { /* monster was genocided or square occupied */
 	 	if (!quietly)
 		   pline_The("figurine writhes and then shatters into pieces!");
@@ -78,6 +90,9 @@ boolean quietly;
 	} while (!mtmp && --trycnt > 0);
 
 	if (!mtmp) return (struct monst *)0;
+
+	if (is_pool(mtmp->mx, mtmp->my) && minliquid(mtmp))
+		return (struct monst *)0;
 
 	initedog(mtmp);
 	mtmp->msleeping = 0;
@@ -152,7 +167,7 @@ makedog()
 	    otmp->dknown = otmp->bknown = otmp->rknown = 1;
 	    otmp->owornmask = W_SADDLE;
 	    otmp->leashmon = mtmp->m_id;
-	    update_mon_intrinsics(mtmp, otmp, TRUE);
+	    update_mon_intrinsics(mtmp, otmp, TRUE, TRUE);
 	}
 #endif
 
@@ -453,7 +468,13 @@ boolean pets_only;	/* true for ascension or final escape */
 		   the amulet; if you don't have it, will chase you
 		   only if in range. -3. */
 			(u.uhave.amulet && mtmp->iswiz))
-		&& !mtmp->msleeping && mtmp->mcanmove
+		&& ((!mtmp->msleeping && mtmp->mcanmove)
+#ifdef STEED
+		    /* eg if level teleport or new trap, steed has no control
+		       to avoid following */
+		    || (mtmp == u.usteed)
+#endif
+		    )
 		/* monster won't follow if it hasn't noticed you yet */
 		&& !(mtmp->mstrategy & STRAT_WAITFORU)) {
 		stay_behind = FALSE;
@@ -596,6 +617,7 @@ register struct obj *obj;
 	boolean carni = carnivorous(mon->data);
 	boolean herbi = herbivorous(mon->data);
 	struct permonst *fptr = &mons[obj->corpsenm];
+	boolean starving;
 
 	if (is_quest_artifact(obj) || obj_resists(obj, 0, 95))
 	    return (obj->cursed ? TABU : APPORT);
@@ -609,11 +631,16 @@ register struct obj *obj;
 
 	    /* Ghouls only eat old corpses... yum! */
 	    if (mon->data == &mons[PM_GHOUL])
-	    	return (obj->otyp == CORPSE && obj->age+50 <= monstermoves) ?
-	       			DOGFOOD : TABU;
+		return (obj->otyp == CORPSE &&
+			peek_at_iced_corpse_age(obj) + 50L <= monstermoves) ?
+				DOGFOOD : TABU;
 
 	    if (!carni && !herbi)
 		    return (obj->cursed ? UNDEF : APPORT);
+
+	    /* a starving pet will eat almost anything */
+	    starving = (mon->mtame && !mon->isminion &&
+			EDOG(mon)->mhpmax_penalty);
 
 	    switch (obj->otyp) {
 		case TRIPE_RATION:
@@ -627,7 +654,7 @@ register struct obj *obj;
 			return POISON;
 		    return (carni ? CADAVER : MANFOOD);
 		case CORPSE:
-		   if ((peek_at_iced_corpse_age(obj)+50 <= monstermoves
+		   if ((peek_at_iced_corpse_age(obj) + 50L <= monstermoves
 					    && obj->corpsenm != PM_LIZARD
 					    && obj->corpsenm != PM_LICHEN
 					    && mon->data->mlet != S_FUNGUS) ||
@@ -640,24 +667,25 @@ register struct obj *obj;
 		    else return (carni ? CADAVER : MANFOOD);
 		case CLOVE_OF_GARLIC:
 		    return (is_undead(mon->data) ? TABU :
-			    (herbi ? ACCFOOD : MANFOOD));
+			    ((herbi || starving) ? ACCFOOD : MANFOOD));
 		case TIN:
 		    return (metallivorous(mon->data) ? ACCFOOD : MANFOOD);
 		case APPLE:
 		case CARROT:
-		    return (herbi ? DOGFOOD : MANFOOD);
+		    return (herbi ? DOGFOOD : starving ? ACCFOOD : MANFOOD);
 		case BANANA:
 		    return ((mon->data->mlet == S_YETI) ? DOGFOOD :
-			    (herbi ? ACCFOOD : MANFOOD));
+			    ((herbi || starving) ? ACCFOOD : MANFOOD));
 		default:
+		    if (starving) return ACCFOOD;
 		    return (obj->otyp > SLIME_MOLD ?
 			    (carni ? ACCFOOD : MANFOOD) :
 			    (herbi ? ACCFOOD : MANFOOD));
 	    }
 	default:
 	    if (obj->otyp == AMULET_OF_STRANGULATION ||
-	    		obj->otyp == RIN_SLOW_DIGESTION)
-	    	return (TABU);
+			obj->otyp == RIN_SLOW_DIGESTION)
+		return TABU;
 	    if (hates_silver(mon->data) &&
 		objects[obj->otyp].oc_material == SILVER)
 		return(TABU);
@@ -783,19 +811,28 @@ register struct obj *obj;
  * If the pet wasn't abused and was very tame, it might revive tame.
  */
 void
-wary_dog(mtmp, quietly)
+wary_dog(mtmp, was_dead)
 struct monst *mtmp;
-boolean quietly;
+boolean was_dead;
 {
-    int has_edog;
+    struct edog *edog;
+    boolean quietly = was_dead;
 
+    mtmp->meating = 0;
     if (!mtmp->mtame) return;
-    has_edog = !mtmp->isminion;
-    if (has_edog &&
-		((EDOG(mtmp)->killed_by_u == 1) || (EDOG(mtmp)->abuse > 2))) {
+    edog = !mtmp->isminion ? EDOG(mtmp) : 0;
+
+    /* if monster was starving when it died, undo that now */
+    if (edog && edog->mhpmax_penalty) {
+	mtmp->mhpmax += edog->mhpmax_penalty;
+	mtmp->mhp += edog->mhpmax_penalty;	/* heal it */
+	edog->mhpmax_penalty = 0;
+    }
+
+    if (edog && (edog->killed_by_u == 1 || edog->abuse > 2)) {
 	mtmp->mpeaceful = mtmp->mtame = 0;
-	if (EDOG(mtmp)->abuse >= 0 && EDOG(mtmp)->abuse < 10)
-		if (!rn2(EDOG(mtmp)->abuse + 1)) mtmp->mpeaceful = 1;
+	if (edog->abuse >= 0 && edog->abuse < 10)
+	    if (!rn2(edog->abuse + 1)) mtmp->mpeaceful = 1;
 	if(!quietly && cansee(mtmp->mx, mtmp->my)) {
 	    if (haseyes(youmonst.data)) {
 		if (haseyes(mtmp->data))
@@ -810,10 +847,10 @@ boolean quietly;
 	    }
 	}
     } else {
-    	/* chance it goes wild anyway - Pet Semetary */
-    	if (!rn2(mtmp->mtame)) {
-    		mtmp->mpeaceful = mtmp->mtame = 0;
-    	}
+	/* chance it goes wild anyway - Pet Semetary */
+	if (!rn2(mtmp->mtame)) {
+	    mtmp->mpeaceful = mtmp->mtame = 0;
+	}
     }
     if (!mtmp->mtame) {
 	newsym(mtmp->mx, mtmp->my);
@@ -823,10 +860,19 @@ boolean quietly;
     }
 
     /* if its still a pet, start a clean pet-slate now */
-    if (has_edog && mtmp->mtame) {
-	EDOG(mtmp)->revivals++;
-    	EDOG(mtmp)->killed_by_u = 0;
-    	EDOG(mtmp)->abuse = 0;
+    if (edog && mtmp->mtame) {
+	edog->revivals++;
+	edog->killed_by_u = 0;
+	edog->abuse = 0;
+	edog->ogoal.x = edog->ogoal.y = -1;
+	if (was_dead || edog->hungrytime < monstermoves + 500L)
+	    edog->hungrytime = monstermoves + 500L;
+	if (was_dead) {
+	    edog->droptime = 0L;
+	    edog->dropdist = 10000;
+	    edog->whistletime = 0L;
+	    edog->apport = 5;
+	} /* else lifesaved, so retain current values */
     }
 }
 

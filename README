@@ -1,51 +1,32 @@
-                NetHack 3.4.0 -- General information
+                NetHack 3.4.1 -- General information
 
-NetHack 3.4.0 is an enhancement to the dungeon exploration game NetHack.
+NetHack 3.4 is an enhancement to the dungeon exploration game NetHack.
 It is a distant descendent of Rogue and Hack, and a direct descendent of
 NetHack 3.3.
 
-There are a great number of bug fixes in this release, as well as 
-many changes and surprises beyond what you see listed below.
-Here is a brief overview of some new additions and changes in the game.
-
-o Many, many bug fixes and tweaks to the core code and to several ports
-o Enhanced config file processing and player selection prompts for some ports
-o Stamina affects ability to throw heavy things
-o Objects merge in containers
-o Wish for "nothing", and genocide "none" to preserve your conduct
-o Several small refinements to race/role separation
-o Config file BOULDER option to specify the symbol for displaying boulders
-o New travel command which is particularly helpful for mouse navigation on
-  handheld computers
-o more feedback about skill advancement from #enhance command
-o End-of-game disclose options can be individually tuned to your liking
-o Mac: command-key shortcuts in the player selection dialog
-o Amiga: screenmode requester
-o Win32: new graphical interface contributed by Alex Kompel
-
-We've also included variations of enhancements contributed by members 
-of the NetHack community at large. Among them:
-
-o Scott Bigham's new T-shirt messages and his option to turn off 
-  resistance display effects
-o Malcolm Ryan's option for "autodig"
-o Jay Tilton's full-screen message window display via control-P
-o Dylan O'Donnell's patch for optionally starting with no pet
-o Tom Friedetzky's blessed/uncursed/cursed selection patch for menustyle:full
-o Jason Short's additonal lens uses
-o Kelly Bailey's Gnomish Mines changes
-o Ken Arnold's patch to display prices in your inventory
-
-Carried forward
-o The Gnome toolkit interface is still considered an experimental option. 
-  We have not enhanced the port ourselves, and so far we have not received
-  any contributions doing so from the NetHack community.
+NetHack 3.4.1 is a bugfix release for 3.4.0.
+ *  Fix a few fatal errors including one for reentering shops, one
+       involving land mines and boulders/statues, one for delayed
+       polymorph, and one for chest traps blowing up a ball and chain
+ *  Fix a buffer overflow that could lead to security problems
+ *  Hundreds of general bug fixes
+ *  Several message and other glitches corrected
+ *  Travel command adjustments and ability to disable travel command
+ *  message recall window extensions (by Christian Cooper)
+ *  win32: some interface improvements
+ *  unix: improved tile support
+ *  gnome: some fixes, and some enhancements by Dylan Alex Simon
+ *  Windows CE port included (by Alex Kompel)
 
 A fuller list of changes for this release can be found in the file 
-doc/fixes34.0 in the source distribution.  The text in there was written 
+doc/fixes34.1 in the source distribution.  The text in there was written 
 for the development team's own use and is provided "as is", so please do 
 not ask us to further explain the entries in that file.
 
+We've also added a trouble log (paniclog) that will keep a record of the
+details behind a "dungeon collapses" message, or a "perhaps you better
+quit" message to assist in getting the required information included in
+bug reports to us.
 
                         - - - - - - - - - - -
 
@@ -77,17 +58,18 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     o.  A 'sys/os2' subdirectory, which contains files specific to OS/2.
     p.  A 'sys/unix' subdirectory, which contains files specific to UNIX.
     q.  A 'sys/vms' subdirectory, which contains files specific to VMS.
-    r.  A 'sys/winnt' subdirectory, which contains files specific to Windows NT.
-    s.  A 'win' directory, which contains subdirectories for files that
+    r.  A 'sys/wince' subdirectory, which contains files specific to Windows CE.
+    s.  A 'sys/winnt' subdirectory, which contains files specific to Windows NT.
+    t.  A 'win' directory, which contains subdirectories for files that
         are windowing-system specific (but not operating-system specific).
-    t.  A 'win/share' subdirectory, which contains files shared by some
+    u.  A 'win/share' subdirectory, which contains files shared by some
         windowing systems.
-    u.  A 'win/Qt' subdirectory, which contains files specific to Qt.
-    v.  A 'win/X11' subdirectory, which contains files specific to X11.
-    w.  A 'win/gem' subdirectory, which contains files specific to GEM.
-    x.  A 'win/gnome' subdirectory, which contains files specific to GNOME.
-    y.  A 'win/tty' subdirectory, which contains files specific to ttys.
-    z.  A 'win/win32' subdirectory, which contains files specific to the
+    v.  A 'win/Qt' subdirectory, which contains files specific to Qt.
+    w.  A 'win/X11' subdirectory, which contains files specific to X11.
+    x.  A 'win/gem' subdirectory, which contains files specific to GEM.
+    y.  A 'win/gnome' subdirectory, which contains files specific to GNOME.
+    z.  A 'win/tty' subdirectory, which contains files specific to ttys.
+    A.  A 'win/win32' subdirectory, which contains files specific to the
         Windows Win32 API.
 
     The names of these directories should not be changed unless you are
@@ -123,15 +105,22 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
         Commodore Amiga running AmigaDOS 3.0 or higher with SAS/C 6.x
                 (but see Makefile.ami about DICE and Manx)
-        DEC Alpha/VMS (aka OpenVMS AXP), running V1.x through V7.0
-        DEC VAX/VMS, running V4.6 through V7.0
+        DEC Alpha/VMS (aka OpenVMS AXP), running V1.x through V7.1
+        DEC VAX/VMS, running V4.6 through V7.1
         HP 9000s700 running HP-UX 10.x, 11.x
         IBM PS/2 and AT compatibles running OS/2 - 2.0 and up with GCC emx
         Intel 80386 or greater (or clone) boxes running MS-DOS with DPMI.
         Intel 80386 or greater (or clone) boxes running Linux, BSDI, or
-		Windows 95/98/NT/2000
-	Intel Pentium or better (or clone) running BeOS 4.5
+                Windows 95/98/NT/2000/XP
+        Intel Pentium or better (or clone) running BeOS 4.5
         Sun SPARC based machine running SunOS 4.x, Solaris 2.x, or Solaris 7
+
+    NetHack 3.4 will also run on the following, but a cross-compiler hosted
+    on another platform, such as win32, is required to build from source.
+
+        Pocket PC devices running Windows CE 3.0 and higher
+        H/PC Pro devices running Windows CE 2.11 and higher.
+	Palm Size PC 1.1 devices running Windows CE 2.11
 
     Previous versions of NetHack were tested on the following systems,
     and we expect that NetHack 3.4 will work on them as well:
@@ -166,13 +155,13 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     C compiler.
 
     With the demise of Windows NT on the DEC Alpha, no attempt has been
-    made to build NetHack 3.4.0 on that platform.
+    made to build NetHack 3.4.1 on that platform.
 
-    No attempt has been made to build or run NetHack 3.4.0 on Windows Me
-    or Windows XP at this point.  It may work, but then again it may not.
+    No attempt has been made to build or run NetHack 3.4.1 on Windows Me
+    at this point.  It may work, but then again it may not.
     
     A build for Intel 80286 machines and DOS "real mode" overlaid versions 
-    has not been produced for 3.4.0.  Nobody on the porting team has
+    has not been produced for 3.4.1.  Nobody on the porting team has
     the time or the software to attempt the necessary tuning that will allow 
     it to achieve the balance of having just the right amount of available 
     memory, and still have acceptable performance.  The sources necessary 
@@ -182,20 +171,19 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 
                         - - - - - - - - - - -
 
-If you have problems building the game, or you find bugs in it, the
-development team may be reached at
-
-                    nethack-bugs@nethack.org
+If you have problems building the game, or you find bugs in it, we recommend 
+filing a bug report from our "Contact Us" web page at:
+    http://www.nethack.org/ 
 
 When sending correspondence, please observe the following:
 o Please be sure to include your machine type, OS, and patchlevel.
-o Never send binary files (e.g. save files or bones files) to the
-  nethack-bugs address.  Whichever platform you are using, only a small
-  minority of the development team has access to it, and you will rapidly
-  annoy the others.  If you have found a bug and think that your save file
-  would aid in solving the problem, send us a description in words of the
-  problem, your machine type, your operating system, and the version of
-  NetHack.  Tell us that you have a save file, but do not actually send it.
+o Never send us binary files (e.g. save files or bones files). Whichever 
+  platform you are using, only a small minority of the development team has 
+  access to it, and you will rapidly annoy the others.  If you have found 
+  a bug and think that your save file would aid in solving the problem, 
+  send us a description in words of the problem, your machine type, your 
+  operating system, and the version of NetHack.  Tell us that you have a 
+  save file, but do not actually send it.
   In the rare case that we think your save file would be helpful, you will
   be contacted by a member of the development team with the address of a
   specific person to send the save file to.
@@ -205,17 +193,19 @@ o Though we make an effort to reply to each bug report, it may take some
 o We don't give hints for playing the game.
 o Don't bother to ask when the next version will be out.  You will not get
   a reply.
-Alternatively, you may fill out the bug report form on our web
-page at http://www.nethack.org/.
 
-Patches especially should be directed to this address.  If you've changed
-something to get NetHack to run on your system, it's likely that others have
-done it by making slightly different modifications.  By routing your patches
-through the development team, we should be able to avoid making everyone else
-choose among variant patches claiming to do the same thing, to keep most of
-the copies of 3.4 synchronized by means of official patches, and to maintain
-the painfully-created file organization.  (This process has been working since
-the time when everyone just posted their own patches to 2.3.  At that time,
+If you don't have access to the world wide web, or if you want to submit
+a patch for the NetHack source code via email directly, you can direct it 
+to this address:
+    nethack-bugs (at) nethack.org
+
+If you've changed something to get NetHack to run on your system, it's likely
+that others have done it by making slightly different modifications.  By routing 
+your patches through the development team, we should be able to avoid making 
+everyone else choose among variant patches claiming to do the same thing, to keep
+most of the copies of 3.4 synchronized by means of official patches, and to 
+maintain the painfully-created file organization.  (This process has been working
+since the time when everyone just posted their own patches to 2.3.  At that time,
 there were no archived bug-fixes to give to people who got 2.3 after its initial
 release, so the same bugs kept being discovered by new batches of people.)
 We have been successful in preventing this from happening since the 3.0

@@ -1,4 +1,4 @@
-/*      SCCS Id: @(#)mapimail.c 3.4     2000/04/25        */
+/*      SCCS Id: @(#)mapimail.c 3.4     $Date: 2002/07/24 08:25:20 $        */
 /* Copyright (c) Michael Allison, 1997                  */
 /* NetHack may be freely redistributed.  See license for details. */
 

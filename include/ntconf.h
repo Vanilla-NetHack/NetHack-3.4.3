@@ -18,10 +18,12 @@
 
 #define PC_LOCKING		/* Prevent overwrites of aborted or in-progress games */
 				/* without first receiving confirmation. */
-#define NOCWD_ASSUMPTIONS	/* Allow paths to be specified for HACKDIR,
-				   LEVELDIR, SAVEDIR, BONESDIR, DATADIR,
-				   SCOREDIR, LOCKDIR, and CONFIGDIR */
 
+#define HOLD_LOCKFILE_OPEN	/* Keep an exclusive lock on the .0 file */
+
+#define SELF_RECOVER		/* Allow the game itself to recover from an aborted game */
+
+#define USER_SOUNDS
 /*
  * -----------------------------------------------------------------
  *  The remaining code shouldn't need modification.
@@ -29,7 +31,15 @@
  */
 /* #define SHORT_FILENAMES	/* All NT filesystems support long names now */
 
-#define MICRO		/* always define this! */
+#ifdef MICRO
+#undef MICRO			/* never define this! */
+#endif
+
+#define NOCWD_ASSUMPTIONS	/* Always define this. There are assumptions that
+                                   it is defined for WIN32.
+				   Allow paths to be specified for HACKDIR,
+				   LEVELDIR, SAVEDIR, BONESDIR, DATADIR,
+				   SCOREDIR, LOCKDIR, CONFIGDIR, and TROUBLEDIR */
 #define NO_TERMS
 #define ASCIIGRAPH
 
@@ -44,6 +54,10 @@
 #define OPTIONS_FILE OPTIONS_USED
 
 #define PORT_HELP	"porthelp"
+
+#ifdef WIN32CON
+#define PORT_DEBUG	/* include ability to debug international keyboard issues */
+#endif
 
 /* The following is needed for prototypes of certain functions */
 #if defined(_MSC_VER)
@@ -104,10 +118,20 @@
 #define FILENAME_CMP  stricmp		      /* case insensitive */
 #endif
 
-#ifdef MICRO
-# ifndef MICRO_H
-#include "micro.h"	/* contains necessary externs for [os_name].c */
-# endif
+#if 0
+extern char levels[], bones[], permbones[],
+#endif /* 0 */
+
+/* this was part of the MICRO stuff in the past */
+extern const char *alllevels, *allbones;
+extern char hackdir[];
+#define ABORT C('a')
+#define getuid() 1
+#define getlogin() ((char *)0)
+extern void NDECL(win32_abort);
+#ifdef WIN32CON
+extern void FDECL(nttty_preference_update, (const char *));
+extern void NDECL(toggle_mouse_support);
 #endif
 
 #include <fcntl.h>
@@ -115,12 +139,14 @@
 #include <io.h>
 #include <direct.h>
 #else
+int  _RTLENTRY _EXPFUNC access  (const char _FAR *__path, int __amode);
 int  _RTLENTRY _EXPFUNC _chdrive(int __drive);
 int  _RTLENTRYF _EXPFUNC32   chdir( const char _FAR *__path );
 char _FAR * _RTLENTRY  _EXPFUNC     getcwd( char _FAR *__buf, int __buflen );
 int  _RTLENTRY _EXPFUNC write (int __handle, const void _FAR *__buf, unsigned __len);
 int  _RTLENTRY _EXPFUNC creat   (const char _FAR *__path, int __amode);
 int  _RTLENTRY _EXPFUNC close   (int __handle);
+int  _RTLENTRY _EXPFUNC _close  (int __handle);
 int  _RTLENTRY _EXPFUNC open  (const char _FAR *__path, int __access,... /*unsigned mode*/);
 long _RTLENTRY _EXPFUNC lseek  (int __handle, long __offset, int __fromwhere);
 int  _RTLENTRY _EXPFUNC read  (int __handle, void _FAR *__buf, unsigned __len);

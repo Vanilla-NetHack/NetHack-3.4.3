@@ -19,7 +19,7 @@ STATIC_DCL void NDECL(do_positionbar);
 void
 moveloop()
 {
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
     char ch;
     int abort_lev;
 #endif
@@ -100,7 +100,7 @@ moveloop()
 
 		    /* calculate how much time passed. */
 #ifdef STEED
-		    if (u.usteed && flags.mv) {
+		    if (u.usteed && u.umoved) {
 			/* your speed doesn't augment steed's speed */
 			moveamt = mcalcmove(u.usteed);
 		    } else
@@ -221,21 +221,27 @@ moveloop()
 
 		    if(!u.uinvulnerable) {
 			if(Teleportation && !rn2(85)) {
-#ifdef REDO
 			    xchar old_ux = u.ux, old_uy = u.uy;
-#endif
 			    tele();
-#ifdef REDO
 			    if (u.ux != old_ux || u.uy != old_uy) {
+				if (!next_to_u()) {
+				    check_leash(old_ux, old_uy);
+				}
+#ifdef REDO
 				/* clear doagain keystrokes */
 				pushch(0);
 				savech(0);
-			    }
 #endif
+			    }
 			}
+			/* delayed change may not be valid anymore */
+			if ((change == 1 && !Polymorph) ||
+			    (change == 2 && u.ulycn == NON_PM))
+			    change = 0;
 			if(Polymorph && !rn2(100))
 			    change = 1;
-			else if (u.ulycn >= LOW_PM && !rn2(80 - (20 * night())))
+			else if (u.ulycn >= LOW_PM && !Upolyd &&
+				 !rn2(80 - (20 * night())))
 			    change = 2;
 			if (change && !Unchanging) {
 			    if (multi >= 0) {
@@ -278,10 +284,13 @@ moveloop()
 
 		    /* when immobile, count is in turns */
 		    if(multi < 0) {
-			if (++multi == 0)	/* finished yet? */
+			if (++multi == 0) {	/* finished yet? */
 			    unmul((char *)0);
+			    /* if unmul caused a level change, take it now */
+			    if (u.utotype) deferred_goto();
+			}
 		    }
-		}			
+		}
 	    } while (youmonst.movement<NORMAL_SPEED); /* hero can't move loop */
 
 	    /******************************************/
@@ -315,7 +324,7 @@ moveloop()
 	flags.move = 1;
 
 	if(multi >= 0 && occupation) {
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 	    abort_lev = 0;
 	    if (kbhit()) {
 		if ((ch = Getchar()) == ABORT)
@@ -331,14 +340,14 @@ moveloop()
 #endif
 		occupation = 0;
 	    if(
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 		   abort_lev ||
 #endif
 		   monster_nearby()) {
 		stop_occupation();
 		reset_eat();
 	    }
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 	    if (!(++occtime % 7))
 		display_nhwindow(WIN_MAP, FALSE);
 #endif
@@ -403,8 +412,12 @@ moveloop()
 	    flags.botl = 1;
 
 	if (vision_full_recalc) vision_recalc(0);	/* vision! */
-	if (multi && multi%7 == 0)
+	/* when running in non-tport mode, this gets done through domove() */
+	if ((!flags.run || iflags.runmode == RUN_TPORT) &&
+		(multi && (!flags.travel ? !(multi % 7) : !(moves % 7L)))) {
+	    if (flags.time && flags.run) flags.botl = 1;
 	    display_nhwindow(WIN_MAP, FALSE);
+	}
     }
 }
 

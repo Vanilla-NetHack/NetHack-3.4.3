@@ -1,11 +1,10 @@
-/*	SCCS Id: @(#)attrib.c	3.4	2000/05/17	*/
+/*	SCCS Id: @(#)attrib.c	3.4	2002/10/07	*/
 /*	Copyright 1988, 1989, 1990, 1992, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*  attribute modification routines. */
 
 #include "hack.h"
-#include "artifact.h"
 
 /* #define DEBUG */	/* uncomment for debugging info */
 
@@ -13,10 +12,10 @@
 
 	/* part of the output on gain or loss of attribute */
 static
-const char	*plusattr[] = {
+const char	* const plusattr[] = {
 	"strong", "smart", "wise", "agile", "tough", "charismatic"
 },
-		*minusattr[] = {
+		* const minusattr[] = {
 	"weak", "stupid", "foolish", "clumsy", "fragile", "repulsive"
 };
 
@@ -99,6 +98,7 @@ const struct innate {
 
 static long next_check = 600L;	/* arbitrary first setting */
 STATIC_DCL void NDECL(exerper);
+STATIC_DCL void FDECL(postadjabil, (long *));
 
 /* adjust an attribute; return TRUE if change is made, FALSE otherwise */
 boolean
@@ -211,9 +211,8 @@ boolean parameter; /* So I can't think up of a good name.  So sue me. --KAA */
 	register struct obj *otmp;
 	register long bonchance = 0;
 
-	for(otmp = invent; otmp; otmp=otmp->nobj)
-	    if (otmp->otyp == LUCKSTONE
-		|| (otmp->oartifact && spec_ability(otmp, SPFX_LUCK))) {
+	for (otmp = invent; otmp; otmp = otmp->nobj)
+	    if (confers_luck(otmp)) {
 		if (otmp->cursed) bonchance -= otmp->quan;
 		else if (otmp->blessed) bonchance += otmp->quan;
 		else if (parameter) bonchance += otmp->quan;
@@ -318,9 +317,15 @@ exerper()
 		pline("exerper: Hunger checks");
 #endif
 		switch (hs) {
-		    case SATIATED:	exercise(A_DEX, FALSE); break;
+		    case SATIATED:	exercise(A_DEX, FALSE);
+					if (Role_if(PM_MONK))
+					    exercise(A_WIS, FALSE);
+					break;
 		    case NOT_HUNGRY:	exercise(A_CON, TRUE); break;
-		    case WEAK:		exercise(A_STR, FALSE); break;
+		    case WEAK:		exercise(A_STR, FALSE);
+					if (Role_if(PM_MONK))	/* fasting */
+					    exercise(A_WIS, TRUE);
+					break;
 		    case FAINTING:
 		    case FAINTED:	exercise(A_CON, FALSE); break;
 		}
@@ -517,6 +522,16 @@ redist_attr()
 	(void)encumber_msg();
 }
 
+STATIC_OVL
+void
+postadjabil(ability)
+long *ability;
+{
+	if (!ability) return;
+	if (ability == &(HWarning) || ability == &(HSee_invisible))
+		see_monsters();
+}
+
 void
 adjabil(oldlevel,newlevel)
 int oldlevel, newlevel;
@@ -554,6 +569,7 @@ int oldlevel, newlevel;
 	}
 
 	while (abil || rabil) {
+	    long prevabil;
 	    /* Have we finished with the intrinsics list? */
 	    if (!abil || !abil->ability) {
 	    	/* Try the race intrinsics */
@@ -562,7 +578,7 @@ int oldlevel, newlevel;
 	    	rabil = 0;
 	    	mask = FROMRACE;
 	    }
-
+		prevabil = *(abil->ability);
 		if(oldlevel < abil->ulevel && newlevel >= abil->ulevel) {
 			/* Abilities gained at level 1 can never be lost
 			 * via level loss, only via means that remove _any_
@@ -587,6 +603,8 @@ int oldlevel, newlevel;
 				You_feel("less %s!", abil->gainstr);
 			}
 		}
+	    if (prevabil != *(abil->ability))	/* it changed */
+		postadjabil(abil->ability);
 	    abil++;
 	}
 

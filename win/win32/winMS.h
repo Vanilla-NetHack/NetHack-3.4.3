@@ -67,6 +67,16 @@ typedef struct mswin_nhwindow_app {
 
     DWORD       saveRegistrySettings; /* Flag if we should save this time */
     DWORD       regNetHackMode;   /* NetHack mode means no Windows keys in some places */
+
+	LONG	regMainMinX;
+	LONG	regMainMinY;
+	LONG	regMainMaxX;
+	LONG	regMainMaxY;
+	LONG	regMainLeft;
+	LONG	regMainTop;
+	LONG	regMainBottom;
+	LONG	regMainRight;
+	DWORD   regMainShowState;
 } NHWinApp, *PNHWinApp;
 
 #define E extern
@@ -90,7 +100,7 @@ void mswin_display_nhwindow(winid wid, BOOLEAN_P block);
 void mswin_destroy_nhwindow(winid wid);
 void mswin_curs(winid wid, int x, int y);
 void mswin_putstr(winid wid, int attr, const char *text);
-void mswin_putstr_ex(winid wid, int attr, const char *text, boolean append);
+void mswin_putstr_ex(winid wid, int attr, const char *text, int);
 void mswin_display_file(const char *filename,BOOLEAN_P must_exist);
 void mswin_start_menu(winid wid);
 void mswin_add_menu(winid wid, int glyph, const ANY_P * identifier,
@@ -133,6 +143,9 @@ void nhapply_image_transparent(
 	HDC sourceDC, int s_x, int s_y, int s_width, int s_height,
 	COLORREF cTransparent
 );
+
+void mswin_popup_display(HWND popup, int* done_indicator);
+void mswin_popup_destroy(HWND popup);
 
 void mswin_read_reg(void);
 void mswin_destroy_reg(void);

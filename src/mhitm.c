@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.4	2002/02/17	*/
+/*	SCCS Id: @(#)mhitm.c	3.4	2003/01/02	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -242,7 +242,7 @@ mattackm(magr, mdef)
 		    magr->weapon_check = NEED_HTH_WEAPON;
 		    if (mon_wield_item(magr) != 0) return 0;
 		}
-		possibly_unwield(magr);
+		possibly_unwield(magr, FALSE);
 		otmp = MON_WEP(magr);
 
 		if (otmp) {
@@ -306,8 +306,12 @@ mattackm(magr, mdef)
 		break;
 
 	    case AT_EXPL:
-		strike = 1;	/* automatic hit */
 		res[i] = explmm(magr, mdef, mattk);
+		if (res[i] == MM_MISS) { /* cancelled--no attack */
+		    strike = 0;
+		    attk = 0;
+		} else
+		    strike = 1;	/* automatic hit */
 		break;
 
 	    case AT_ENGL:
@@ -537,6 +541,9 @@ explmm(magr, mdef, mattk)
 {
 	int result;
 
+	if (magr->mcan)
+	    return MM_MISS;
+
 	if(cansee(magr->mx, magr->my))
 		pline("%s explodes!", Monnam(magr));
 	else	noises(magr, mattk);
@@ -563,19 +570,21 @@ mdamagem(magr, mdef, mattk)
 	register struct monst	*magr, *mdef;
 	register struct attack	*mattk;
 {
-	struct	permonst *pa = magr->data, *pd = mdef->data;
-	int	tmp = d((int)mattk->damn,(int)mattk->damd);
 	struct obj *obj;
 	char buf[BUFSZ];
-	int protector =
-	    mattk->aatyp == AT_TENT ? 0 :
-	    mattk->aatyp == AT_KICK ? W_ARMF : W_ARMG;
-	int num;
+	struct permonst *pa = magr->data, *pd = mdef->data;
+	int armpro, num, tmp = d((int)mattk->damn, (int)mattk->damd);
+	boolean cancelled;
 
-	if (touch_petrifies(pd) && !resists_ston(magr) &&
-	   (mattk->aatyp != AT_WEAP || !otmp) &&
-	   (mattk->aatyp != AT_GAZE && mattk->aatyp != AT_EXPL) &&
-	   !(magr->misc_worn_check & protector)) {
+	if (touch_petrifies(pd) && !resists_ston(magr)) {
+	    long protector = attk_protection((int)mattk->aatyp),
+		 wornitems = magr->misc_worn_check;
+
+	    /* wielded weapon gives same protection as gloves here */
+	    if (otmp != 0) wornitems |= W_ARMG;
+
+	    if (protector == 0L ||
+		  (protector != ~0L && (wornitems & protector) != protector)) {
 		if (poly_when_stoned(pa)) {
 		    mon_to_stone(magr);
 		    return MM_HIT; /* no damage during the polymorph */
@@ -586,7 +595,12 @@ mdamagem(magr, mdef, mattk)
 		else if (magr->mtame && !vis)
 		    You(brief_feeling, "peculiarly sad");
 		return MM_AGR_DIED;
+	    }
 	}
+
+	/* cancellation factor is the same as when attacking the hero */
+	armpro = magic_negation(mdef);
+	cancelled = magr->mcan || !((rn2(3) >= armpro) || !rn2(50));
 
 	switch(mattk->adtyp) {
 	    case AD_DGST:
@@ -641,18 +655,24 @@ mdamagem(magr, mdef, mattk)
 		    pline("%s %s for a moment.", Monnam(mdef),
 			  makeplural(stagger(mdef->data, "stagger")));
 		mdef->mstun = 1;
-		/* fall through */
+		goto physical;
+	    case AD_LEGS:
+		if (magr->mcan) {
+		    tmp = 0;
+		    break;
+		}
+		goto physical;
 	    case AD_WERE:
 	    case AD_HEAL:
-	    case AD_LEGS:
 	    case AD_PHYS:
-		if (mattk->aatyp == AT_KICK && thick_skinned(pd))
-			tmp = 0;
-		else if(mattk->aatyp == AT_WEAP) {
+ physical:
+		if (mattk->aatyp == AT_KICK && thick_skinned(pd)) {
+		    tmp = 0;
+		} else if(mattk->aatyp == AT_WEAP) {
 		    if(otmp) {
 			if (otmp->otyp == CORPSE &&
 				touch_petrifies(&mons[otmp->corpsenm]))
-			    goto do_stone_goto_label;
+			    goto do_stone;
 			tmp += dmgval(otmp, mdef);
 			if (otmp->oartifact) {
 			    (void)artifact_hit(magr,mdef, otmp, &tmp, dieroll);
@@ -673,15 +693,13 @@ mdamagem(magr, mdef, mattk)
 		}
 		break;
 	    case AD_FIRE:
-		if (magr->mcan) {
+		if (cancelled) {
 		    tmp = 0;
 		    break;
 		}
 		if (vis)
 		    pline("%s is %s!", Monnam(mdef),
-			  mdef->data == &mons[PM_WATER_ELEMENTAL] ? "boiling" :
-			  mattk->aatyp == AT_HUGS ?
-				"being roasted" : "on fire");
+			  on_fire(mdef->data, mattk));
 		if (pd == &mons[PM_STRAW_GOLEM] ||
 		    pd == &mons[PM_PAPER_GOLEM]) {
 			if (vis) pline("%s burns completely!", Monnam(mdef));
@@ -706,7 +724,7 @@ mdamagem(magr, mdef, mattk)
 		tmp += destroy_mitem(mdef, POTION_CLASS, AD_FIRE);
 		break;
 	    case AD_COLD:
-		if (magr->mcan) {
+		if (cancelled) {
 		    tmp = 0;
 		    break;
 		}
@@ -722,7 +740,7 @@ mdamagem(magr, mdef, mattk)
 		tmp += destroy_mitem(mdef, POTION_CLASS, AD_COLD);
 		break;
 	    case AD_ELEC:
-		if (magr->mcan) {
+		if (cancelled) {
 		    tmp = 0;
 		    break;
 		}
@@ -755,7 +773,8 @@ mdamagem(magr, mdef, mattk)
 		if (!rn2(6)) erode_obj(MON_WEP(mdef), TRUE, TRUE);
 		break;
 	    case AD_RUST:
-		if (!magr->mcan && pd == &mons[PM_IRON_GOLEM]) {
+		if (magr->mcan) break;
+		if (pd == &mons[PM_IRON_GOLEM]) {
 			if (vis) pline("%s falls to pieces!", Monnam(mdef));
 			mondied(mdef);
 			if (mdef->mhp > 0) return 0;
@@ -765,15 +784,19 @@ mdamagem(magr, mdef, mattk)
 							0 : MM_AGR_DIED));
 		}
 		hurtmarmor(mdef, AD_RUST);
+		mdef->mstrategy &= ~STRAT_WAITFORU;
 		tmp = 0;
 		break;
 	    case AD_CORR:
+		if (magr->mcan) break;
 		hurtmarmor(mdef, AD_CORR);
+		mdef->mstrategy &= ~STRAT_WAITFORU;
 		tmp = 0;
 		break;
 	    case AD_DCAY:
-		if (!magr->mcan && (pd == &mons[PM_WOOD_GOLEM] ||
-		    pd == &mons[PM_LEATHER_GOLEM])) {
+		if (magr->mcan) break;
+		if (pd == &mons[PM_WOOD_GOLEM] ||
+		    pd == &mons[PM_LEATHER_GOLEM]) {
 			if (vis) pline("%s falls to pieces!", Monnam(mdef));
 			mondied(mdef);
 			if (mdef->mhp > 0) return 0;
@@ -783,12 +806,14 @@ mdamagem(magr, mdef, mattk)
 							0 : MM_AGR_DIED));
 		}
 		hurtmarmor(mdef, AD_DCAY);
+		mdef->mstrategy &= ~STRAT_WAITFORU;
 		tmp = 0;
 		break;
 	    case AD_STON:
-do_stone_goto_label:
+		if (magr->mcan) break;
+ do_stone:
 		/* may die from the acid if it eats a stone-curing corpse */
-		if (munstone(mdef, FALSE)) goto label2;
+		if (munstone(mdef, FALSE)) goto post_stone;
 		if (poly_when_stoned(pd)) {
 			mon_to_stone(mdef);
 			tmp = 0;
@@ -797,7 +822,7 @@ do_stone_goto_label:
 		if (!resists_ston(mdef)) {
 			if (vis) pline("%s turns to stone!", Monnam(mdef));
 			monstone(mdef);
-label2:			if (mdef->mhp > 0) return 0;
+ post_stone:		if (mdef->mhp > 0) return 0;
 			else if (mdef->mtame && !vis)
 			    You(brief_feeling, "peculiarly sad");
 			return (MM_DEF_DIED | (grow_up(magr,mdef) ?
@@ -806,11 +831,12 @@ label2:			if (mdef->mhp > 0) return 0;
 		tmp = (mattk->adtyp == AD_STON ? 0 : 1);
 		break;
 	    case AD_TLPT:
-		if (!magr->mcan && tmp < mdef->mhp && !tele_restrict(mdef)) {
+		if (!cancelled && tmp < mdef->mhp && !tele_restrict(mdef)) {
 		    char mdef_Monnam[BUFSZ];
 		    /* save the name before monster teleports, otherwise
 		       we'll get "it" in the suddenly disappears message */
 		    if (vis) Strcpy(mdef_Monnam, Monnam(mdef));
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		    rloc(mdef);
 		    if (vis && !canspotmon(mdef)
 #ifdef STEED
@@ -821,30 +847,33 @@ label2:			if (mdef->mhp > 0) return 0;
 		}
 		break;
 	    case AD_SLEE:
-		if (!magr->mcan && !mdef->msleeping &&
+		if (!cancelled && !mdef->msleeping &&
 			sleep_monst(mdef, rnd(10), -1)) {
 		    if (vis) {
 			Strcpy(buf, Monnam(mdef));
 			pline("%s is put to sleep by %s.", buf, mon_nam(magr));
 		    }
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		    slept_monst(mdef);
 		}
 		break;
 	    case AD_PLYS:
-		if(!magr->mcan && mdef->mcanmove) {
+		if(!cancelled && mdef->mcanmove) {
 		    if (vis) {
 			Strcpy(buf, Monnam(mdef));
 			pline("%s is frozen by %s.", buf, mon_nam(magr));
 		    }
 		    mdef->mcanmove = 0;
 		    mdef->mfrozen = rnd(10);
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		}
 		break;
 	    case AD_SLOW:
-		if (!magr->mcan && vis && mdef->mspeed != MSLOW) {
+		if (!cancelled && mdef->mspeed != MSLOW) {
 		    unsigned int oldspeed = mdef->mspeed;
 
 		    mon_adjust_speed(mdef, -1, (struct obj *)0);
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		    if (mdef->mspeed != oldspeed && vis)
 			pline("%s slows down.", Monnam(mdef));
 		}
@@ -857,6 +886,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		if (!magr->mcan && !mdef->mconf && !magr->mspec_used) {
 		    if (vis) pline("%s looks confused.", Monnam(mdef));
 		    mdef->mconf = 1;
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		}
 		break;
 	    case AD_BLND:
@@ -869,6 +899,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		    if ((rnd_tmp += mdef->mblinded) > 127) rnd_tmp = 127;
 		    mdef->mblinded = rnd_tmp;
 		    mdef->mcansee = 0;
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		}
 		tmp = 0;
 		break;
@@ -877,6 +908,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		    if (vis) pline("%s looks %sconfused.",
 				    Monnam(mdef), mdef->mconf ? "more " : "");
 		    mdef->mconf = 1;
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		}
 		tmp = 0;
 		break;
@@ -884,6 +916,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		if (!night() && (pa == &mons[PM_GREMLIN])) break;
 		if (!magr->mcan && !rn2(10)) {
 		    mdef->mcan = 1;	/* cancelled regardless of lifesave */
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
 		    if (is_were(pd) && pd->mlet != S_HUMAN)
 			were_change(mdef);
 		    if (pd == &mons[PM_CLAY_GOLEM]) {
@@ -926,6 +959,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		    add_to_minv(magr, gold);
                 }
 #endif
+		mdef->mstrategy &= ~STRAT_WAITFORU;
 		if (vis) {
 		    Strcpy(buf, Monnam(magr));
 		    pline("%s steals some gold from %s.", buf, mon_nam(mdef));
@@ -937,7 +971,7 @@ label2:			if (mdef->mhp > 0) return 0;
 		}
 		break;
 	    case AD_DRLI:
-		if (rn2(2) && !resists_drli(mdef)) {
+		if (!cancelled && !rn2(3) && !resists_drli(mdef)) {
 			tmp = d(2,6);
 			if (vis)
 			    pline("%s suddenly seems weaker!", Monnam(mdef));
@@ -953,13 +987,13 @@ label2:			if (mdef->mhp > 0) return 0;
 #endif
 	    case AD_SITM:	/* for now these are the same */
 	    case AD_SEDU:
+		if (magr->mcan) break;
 		/* find an object to steal, non-cursed if magr is tame */
-		for (obj = mdef->minvent; obj; obj = obj->nobj) {
+		for (obj = mdef->minvent; obj; obj = obj->nobj)
 		    if (!magr->mtame || !obj->cursed)
 			break;
-		}
 
-		if (!magr->mcan && obj) {
+		if (obj) {
 			char onambuf[BUFSZ], mdefnambuf[BUFSZ];
 
 			/* make a special x_monnam() call that never omits
@@ -979,7 +1013,7 @@ label2:			if (mdef->mhp > 0) return 0;
 				if (otmp->owornmask & W_WEP)
 				    setmnotwielded(mdef,otmp);
 				otmp->owornmask = 0L;
-				update_mon_intrinsics(mdef, otmp, FALSE);
+				update_mon_intrinsics(mdef, otmp, FALSE, FALSE);
 			}
 			/* add_to_minv() might free otmp [if it merges] */
 			if (vis)
@@ -990,7 +1024,8 @@ label2:			if (mdef->mhp > 0) return 0;
 				pline("%s steals %s from %s!", buf,
 				    onambuf, mdefnambuf);
 			}
-			possibly_unwield(mdef);
+			possibly_unwield(mdef, FALSE);
+			mdef->mstrategy &= ~STRAT_WAITFORU;
 			mselftouch(mdef, (const char *)0, FALSE);
 			if (mdef->mhp <= 0)
 				return (MM_DEF_DIED | (grow_up(magr,mdef) ?
@@ -1007,7 +1042,7 @@ label2:			if (mdef->mhp > 0) return 0;
 	    case AD_DRST:
 	    case AD_DRDX:
 	    case AD_DRCO:
-		if (!magr->mcan && !rn2(8)) {
+		if (!cancelled && !rn2(8)) {
 		    if (vis)
 			pline("%s %s was poisoned!", s_suffix(Monnam(magr)),
 			      mpoisons_subj(magr, mattk));
@@ -1055,18 +1090,25 @@ label2:			if (mdef->mhp > 0) return 0;
 			          s_suffix(Monnam(mdef)));
 		break;
 	    case AD_SLIM:
-	    	if (!rn2(4) && mdef->data != &mons[PM_FIRE_VORTEX] &&
-	    			mdef->data != &mons[PM_FIRE_ELEMENTAL] &&
-	    			mdef->data != &mons[PM_SALAMANDER] &&
-	    			mdef->data != &mons[PM_GREEN_SLIME]) {
-	    	    if (vis) pline("%s turns into slime.", Monnam(mdef));
-	    	    (void) newcham(mdef, &mons[PM_GREEN_SLIME], FALSE);
-	    	    tmp = 0;
-	    	}
-	    	break;
+		if (cancelled) break;	/* physical damage only */
+		if (!rn2(4) && mdef->data != &mons[PM_FIRE_VORTEX] &&
+				mdef->data != &mons[PM_FIRE_ELEMENTAL] &&
+				mdef->data != &mons[PM_SALAMANDER] &&
+				mdef->data != &mons[PM_GREEN_SLIME]) {
+		    (void) newcham(mdef, &mons[PM_GREEN_SLIME], FALSE, vis);
+		    mdef->mstrategy &= ~STRAT_WAITFORU;
+		    tmp = 0;
+		}
+		break;
 	    case AD_STCK:
+		if (cancelled) tmp = 0;
+		break;
 	    case AD_WRAP: /* monsters cannot grab one another, it's too hard */
-	    case AD_ENCH: /* There's no msomearmor() function, so just do damage */
+		if (magr->mcan) tmp = 0;
+		break;
+	    case AD_ENCH:
+		/* there's no msomearmor() function, so just do damage */
+	     /* if (cancelled) break; */
 		break;
 	    default:	tmp = 0;
 			break;
@@ -1082,6 +1124,23 @@ label2:			if (mdef->mhp > 0) return 0;
 	    }
 	    monkilled(mdef, "", (int)mattk->adtyp);
 	    if (mdef->mhp > 0) return 0; /* mdef lifesaved */
+
+	    if (mattk->adtyp == AD_DGST) {
+		/* various checks similar to dog_eat and meatobj.
+		 * after monkilled() to provide better message ordering */
+		if (mdef->cham != CHAM_ORDINARY) {
+		    (void) newcham(magr, (struct permonst *)0, FALSE, TRUE);
+		} else if (mdef->data == &mons[PM_GREEN_SLIME]) {
+		    (void) newcham(magr, &mons[PM_GREEN_SLIME], FALSE, TRUE);
+		} else if (mdef->data == &mons[PM_WRAITH]) {
+		    (void) grow_up(magr, (struct monst *)0);
+		    /* don't grow up twice */
+		    return (MM_DEF_DIED | (magr->mhp > 0 ? 0 : MM_AGR_DIED));
+		} else if (mdef->data == &mons[PM_NURSE]) {
+		    magr->mhp = magr->mhpmax;
+		}
+	    }
+
 	    return (MM_DEF_DIED | (grow_up(magr,mdef) ? 0 : MM_AGR_DIED));
 	}
 	return(MM_HIT);
@@ -1334,6 +1393,49 @@ int mdead;
 		return (mdead | mhit | MM_AGR_DIED);
 	}
 	return (mdead | mhit);
+}
+
+/* "aggressive defense"; what type of armor prevents specified attack
+   from touching its target? */
+long
+attk_protection(aatyp)
+int aatyp;
+{
+    long w_mask = 0L;
+
+    switch (aatyp) {
+    case AT_NONE:
+    case AT_SPIT:
+    case AT_EXPL:
+    case AT_BOOM:
+    case AT_GAZE:
+    case AT_BREA:
+    case AT_MAGC:
+	w_mask = ~0L;		/* special case; no defense needed */
+	break;
+    case AT_CLAW:
+    case AT_TUCH:
+    case AT_WEAP:
+	w_mask = W_ARMG;	/* caller needs to check for weapon */
+	break;
+    case AT_KICK:
+	w_mask = W_ARMF;
+	break;
+    case AT_BUTT:
+	w_mask = W_ARMH;
+	break;
+    case AT_HUGS:
+	w_mask = (W_ARMC|W_ARMG); /* attacker needs both to be protected */
+	break;
+    case AT_BITE:
+    case AT_STNG:
+    case AT_ENGL:
+    case AT_TENT:
+    default:
+	w_mask = 0L;		/* no defense available */
+	break;
+    }
+    return w_mask;
 }
 
 #endif /* OVLB */

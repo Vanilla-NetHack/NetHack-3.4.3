@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mthrowu.c	3.4	2001/12/10	*/
+/*	SCCS Id: @(#)mthrowu.c	3.4	2002/11/07	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -186,9 +186,9 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 	    if (ismimic) seemimic(mtmp);
 	    mtmp->msleeping = 0;
 	    if (vis) hit(distant_name(otmp,mshot_xname), mtmp, exclam(damage));
-	    else if (verbose) pline("It is hit%s", exclam(damage));
+	    else if (verbose) pline("%s is hit%s", Monnam(mtmp), exclam(damage));
 
-	    if (otmp->opoisoned) {
+	    if (otmp->opoisoned && is_poisonable(otmp)) {
 		if (resists_poison(mtmp)) {
 		    if (vis) pline_The("poison doesn't seem to affect %s.",
 				   mon_nam(mtmp));
@@ -221,9 +221,12 @@ boolean verbose;  /* give message(s) even when you can't see what happened */
 	    if (mtmp->mhp < 1) {
 		if (vis || verbose)
 		    pline("%s is %s!", Monnam(mtmp),
-			(nonliving(mtmp->data) || !vis)
+			(nonliving(mtmp->data) || !canspotmon(mtmp))
 			? "destroyed" : "killed");
-		if (!flags.mon_moving) xkilled(mtmp,0);
+		/* don't blame hero for unknown rolling boulder trap */
+		if (!flags.mon_moving &&
+		    (otmp->otyp != BOULDER || range >= 0 || !otmp->otrapped))
+		    xkilled(mtmp,0);
 		else mondied(mtmp);
 	    }
 
@@ -299,14 +302,24 @@ m_throw(mon, x, y, dx, dy, range, obj)
 	    }
 	    dx = rn2(3)-1;
 	    dy = rn2(3)-1;
-	    /* pre-check validity of new direction */
-	    if((!dx && !dy)
-	       || !isok(bhitpos.x+dx,bhitpos.y+dy)
-	       /* missile hits the wall */
-	       || IS_ROCK(levl[bhitpos.x+dx][bhitpos.y+dy].typ)) {
+	    /* check validity of new direction */
+	    if (!dx && !dy) {
 		(void) drop_throw(singleobj, 0, bhitpos.x, bhitpos.y);
 		return;
 	    }
+	}
+
+	/* pre-check for doors, walls and boundaries.
+	   Also need to pre-check for bars regardless of direction;
+	   the random chance for small objects hitting bars is
+	   skipped when reaching them at point blank range */
+	if (!isok(bhitpos.x+dx,bhitpos.y+dy)
+	    || IS_ROCK(levl[bhitpos.x+dx][bhitpos.y+dy].typ)
+	    || closed_door(bhitpos.x+dx, bhitpos.y+dy)
+	    || (levl[bhitpos.x + dx][bhitpos.y + dy].typ == IRONBARS &&
+		hits_bars(&singleobj, bhitpos.x, bhitpos.y, 0, 0))) {
+	    (void) drop_throw(singleobj, 0, bhitpos.x, bhitpos.y);
+	    return;
 	}
 
 	/* Note: drop_throw may destroy singleobj.  Since obj must be destroyed
@@ -377,7 +390,8 @@ m_throw(mon, x, y, dx, dy, range, obj)
 			    if (dam < 1) dam = 1;
 			    hitu = thitu(hitv, dam, singleobj, (char *)0);
 		    }
-		    if (hitu && singleobj->opoisoned) {
+		    if (hitu && singleobj->opoisoned &&
+			is_poisonable(singleobj)) {
 			char onmbuf[BUFSZ], knmbuf[BUFSZ];
 			struct obj otmp;
 			unsigned save_ocknown;
@@ -433,12 +447,18 @@ m_throw(mon, x, y, dx, dy, range, obj)
 			|| !isok(bhitpos.x+dx,bhitpos.y+dy)
 			/* missile hits the wall */
 			|| IS_ROCK(levl[bhitpos.x+dx][bhitpos.y+dy].typ)
+			/* missile hit closed door */
+			|| closed_door(bhitpos.x+dx, bhitpos.y+dy)
+			/* missile might hit iron bars */
+			|| (levl[bhitpos.x+dx][bhitpos.y+dy].typ == IRONBARS &&
+			hits_bars(&singleobj, bhitpos.x, bhitpos.y, !rn2(5), 0))
 #ifdef SINKS
 			/* Thrown objects "sink" */
 			|| IS_SINK(levl[bhitpos.x][bhitpos.y].typ)
 #endif
 								) {
-		    (void) drop_throw(singleobj, 0, bhitpos.x, bhitpos.y);
+		    if (singleobj) /* hits_bars might have destroyed it */
+			(void) drop_throw(singleobj, 0, bhitpos.x, bhitpos.y);
 		    break;
 		}
 		tmp_at(bhitpos.x, bhitpos.y);
@@ -469,10 +489,10 @@ struct obj *obj;
 		obj->owt = weight(obj);
 	} else {
 		obj_extract_self(obj);
-		possibly_unwield(mon);
+		possibly_unwield(mon, FALSE);
 		if (obj->owornmask) {
 		    mon->misc_worn_check &= ~obj->owornmask;
-		    update_mon_intrinsics(mon, obj, FALSE);
+		    update_mon_intrinsics(mon, obj, FALSE, FALSE);
 		}
 		obfree(obj, (struct obj*) 0);
 	}
@@ -741,6 +761,83 @@ int type;
 		if(otmp->otyp == type)
 			return(otmp);
 	return((struct obj *) 0);
+}
+
+/* TRUE iff thrown/kicked/rolled object doesn't pass through iron bars */
+boolean
+hits_bars(obj_p, x, y, always_hit, whodidit)
+struct obj **obj_p;	/* *obj_p will be set to NULL if object breaks */
+int x, y;
+int always_hit;	/* caller can force a hit for items which would fit through */
+int whodidit;	/* 1==hero, 0=other, -1==just check whether it'll pass thru */
+{
+    struct obj *otmp = *obj_p;
+    int obj_type = otmp->otyp;
+    boolean hits = always_hit;
+
+    if (!hits)
+	switch (otmp->oclass) {
+	case WEAPON_CLASS:
+	    {
+		int oskill = objects[obj_type].oc_skill;
+
+		hits = (oskill != -P_BOW  && oskill != -P_CROSSBOW &&
+			oskill != -P_DART && oskill != -P_SHURIKEN &&
+			oskill != P_SPEAR && oskill != P_JAVELIN &&
+			oskill != P_KNIFE);	/* but not dagger */
+		break;
+	    }
+	case ARMOR_CLASS:
+		hits = (objects[obj_type].oc_armcat != ARM_GLOVES);
+		break;
+	case TOOL_CLASS:
+		hits = (obj_type != SKELETON_KEY &&
+			obj_type != LOCK_PICK &&
+#ifdef TOURIST
+			obj_type != CREDIT_CARD &&
+#endif
+			obj_type != TALLOW_CANDLE &&
+			obj_type != WAX_CANDLE &&
+			obj_type != LENSES &&
+			obj_type != TIN_WHISTLE &&
+			obj_type != MAGIC_WHISTLE);
+		break;
+	case ROCK_CLASS:	/* includes boulder */
+		if (obj_type != STATUE ||
+			mons[otmp->corpsenm].msize > MZ_TINY) hits = TRUE;
+		break;
+	case FOOD_CLASS:
+		if (obj_type == CORPSE &&
+			mons[otmp->corpsenm].msize > MZ_TINY) hits = TRUE;
+		else
+		    hits = (obj_type == MEAT_STICK ||
+			    obj_type == HUGE_CHUNK_OF_MEAT);
+		break;
+	case SPBOOK_CLASS:
+	case WAND_CLASS:
+	case BALL_CLASS:
+	case CHAIN_CLASS:
+		hits = TRUE;
+		break;
+	default:
+		break;
+	}
+
+    if (hits && whodidit != -1) {
+	if (whodidit ? hero_breaks(otmp, x, y, FALSE) : breaks(otmp, x, y))
+	    *obj_p = otmp = 0;		/* object is now gone */
+	    /* breakage makes its own noises */
+	else if (obj_type == BOULDER || obj_type == HEAVY_IRON_BALL)
+	    pline("Whang!");
+	else if (otmp->oclass == COIN_CLASS ||
+		objects[obj_type].oc_material == GOLD ||
+		objects[obj_type].oc_material == SILVER)
+	    pline("Clink!");
+	else
+	    pline("Clonk!");
+    }
+
+    return hits;
 }
 
 #endif /* OVL0 */

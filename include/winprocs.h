@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winprocs.h 3.4	1996/02/18	*/
+/*	SCCS Id: @(#)winprocs.h 3.4	2003/01/08	*/
 /* Copyright (c) David Cohrs, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -157,15 +157,16 @@ extern NEARDATA struct window_procs windowprocs;
 #define WC_FONTSIZ_MENU	 0x100000L	/* 21 supports specification of mnu win font */
 #define WC_FONTSIZ_TEXT	 0x200000L	/* 22 supports specification of txt win font */
 #define WC_SCROLL_MARGIN 0x400000L	/* 23 supports setting scroll margin for map */
-#define WC_SPLASH_SCREEN 0x800000L	/* 24 supports setting scroll margin for map */
+#define WC_SPLASH_SCREEN 0x800000L	/* 24 supports display of splash screen      */
 #define WC_POPUP_DIALOG	 0x1000000L	/* 25 supports queries in pop dialogs        */
-#define WC_LARGE_FONT	 0x2000000L	/* 26 Port supports large font               */
+#define WC_SCROLL_AMOUNT 0x2000000L	/* 26 scroll this amount at scroll margin    */
 #define WC_EIGHT_BIT_IN	 0x4000000L	/* 27 8-bit character input                  */
 #define WC_PERM_INVENT	 0x8000000L	/* 28 8-bit character input                  */
 #define WC_MAP_MODE	 0x10000000L	/* 29 map_mode option                        */
 #define WC_WINDOWCOLORS  0x20000000L	/* 30 background color for message window    */
 #define WC_PLAYER_SELECTION  0x40000000L /* 31 background color for message window    */
-					/* 1 free bit */
+#define WC_MOUSE_SUPPORT 0x80000000L	/* 32 mouse support                          */
+					/* no free bits */
 
 #define ALIGN_LEFT	1
 #define ALIGN_RIGHT	2
@@ -201,7 +202,7 @@ extern NEARDATA struct window_procs windowprocs;
 #endif
 
 struct wc_Opt {
-	char *wc_name;
+	const char *wc_name;
 	unsigned long wc_bit;
 };
 

@@ -46,10 +46,10 @@ const char def_oc_syms[MAXOCLASSES] = {
 	VENOM_SYM
 };
 
-const char *invisexplain = "remembered, unseen, creature";
+const char invisexplain[] = "remembered, unseen, creature";
 
 /* Object descriptions.  Used in do_look(). */
-const char *objexplain[] = {	/* these match def_oc_syms, above */
+const char * const objexplain[] = {	/* these match def_oc_syms, above */
 /* 0*/	0,
 	"strange object",
 	"weapon",
@@ -71,7 +71,7 @@ const char *objexplain[] = {	/* these match def_oc_syms, above */
 };
 
 /* Object class names.  Used in object_detect(). */
-const char *oclass_names[] = {
+const char * const oclass_names[] = {
 /* 0*/	0,
 	"illegal objects",
 	"weapons",
@@ -161,7 +161,7 @@ const char def_monsyms[MAXMCLASSES] = {
  * for blessed genocide, so no text should wholly contain any later
  * text.  They should also always contain obvious names (eg. cat/feline).
  */
-const char *monexplain[MAXMCLASSES] = {
+const char * const monexplain[MAXMCLASSES] = {
     0,
     "ant or other insect",	"blob",			"cockatrice",
     "dog or other canine",	"eye or sphere",	"cat or other feline",
@@ -169,7 +169,7 @@ const char *monexplain[MAXMCLASSES] = {
     "jelly",			"kobold",		"leprechaun",
     "mimic",			"nymph",		"orc",
     "piercer",			"quadruped",		"rodent",
-    "spider",			"trapper or lurker above", "unicorn or horse",
+    "arachnid or centipede",	"trapper or lurker above", "unicorn or horse",
     "vortex",		"worm", "xan or other mythical/fantastic insect",
     "light",			"zruty",
 
@@ -181,7 +181,7 @@ const char *monexplain[MAXMCLASSES] = {
     "pudding or ooze",		"quantum mechanic",	"rust monster or disenchanter",
     "snake",			"troll",		"umber hulk",
     "vampire",			"wraith",		"xorn",
-    "yeti, ape or other large beast", "zombie",
+    "apelike creature",		"zombie",
 
     "human or elf",		"ghost",		"golem",
     "major demon",		"sea monster",		"lizard",

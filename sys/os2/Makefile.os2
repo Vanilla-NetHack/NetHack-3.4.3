@@ -1,24 +1,13 @@
-#	SCCS Id: @(#)Makefile.os2	3.4	1996/10/29
-#	OS/2 NetHack 3.4 Makefile for OS/2 versions 1.x and 2.x
+#	SCCS Id: @(#)Makefile.os2	3.4.1	1996/10/29
+#	OS/2 NetHack 3.4.1 Makefile for OS/2 versions 1.x and 2.x
 #	Copyright (C) 1990, 1991, 1992, 1993, 1996 Timo Hakulinen
 #
 #	Several compilers exist for OS/2 but, currently only GCC emx is tested
-#	and used for releases.  make programs other than dmake are not tested
-#	and the support is left here for historic purposes.
+#	and used for releases.  make programs other than dmake are not tested.
 #
 #	Supported compilers: GCC emx 0.9g
 #
-#	NDMAKE ver 4.5, Microsoft/IBM NMAKE, or Dennis Vadura's DMAKE is
-#	required; old MS-MAKE will not work.  To enable the appropriate
-#	make utility, uncomment the respective make-specific macros.  If
-#	you plan to cross-compile in DOS, your best bet is NDMAKE, since
-#	it requires less memory than NMAKE.  To compile in OS/2 use NMAKE,
-#	DMAKE or something compatible.  Remember to set $(RLIBS) to real mode
-#	libraries if cross-compiling in DOS, and to protected mode libraries
-#	for compilation in OS/2.
-#
-#	GNU MAKE for OS/2 seems to be too limited / braindamaged at the
-#	moment for me to bother implementing support for it.  Maybe later.
+#	DMAKE is required.  Credit for the makefile improvements goes to Pekka Rousu.
 #
 #	Copy this file into $(SRC) directory, rename it to "makefile"
 #	(important, many targets rely on it), compile and link inside
@@ -48,78 +37,67 @@
 #	Compiler and linker selection.
 #
 
+#format        = omf
+format = a.out
+
+.IF $(format) == a.out
+with_x11 = yes
+#debug = yes
+.END
+
+
 CC	= gcc		# GCC
 
+.IF $(format) == a.out
 LINK    = gcc
-#LINK	= link386	# GCC OMF, CSet/2
+#LINK  = link386       # GCC OMF, CSet/2
+.ELSE
+LINK   = link386       # GCC OMF, CSet/2
+LFLAGS = /noig /stack:40000
+.END
 
-#
-#  Uncomment the following to compile for X11 and set X11ROOT apropriately
-#
-#WINX11OBJ01 =  $(OBJ)/Window.o
-#WINX11OBJ02 = $(OBJ)/dialogs.o
-#WINX11OBJ03 = $(OBJ)/winX.o
-#WINX11OBJ04 = $(OBJ)/winmap.o
-#WINX11OBJ05 = $(OBJ)/winmenu.o
-#WINX11OBJ06 = $(OBJ)/winmesg.o
-#WINX11OBJ07 = $(OBJ)/winmisc.o
-#WINX11OBJ08 = $(OBJ)/winstat.o
-#WINX11OBJ09 = $(OBJ)/wintext.o
-#WINX11OBJ10 = $(OBJ)/winval.o
-#WINX11OBJ11 = $(OBJ)/tile.o
-#X11ROOT = e:/xfree86
-#WINX11CFLAGS = -DUSE_XPM -DX11_GRAPHICS \
-#            -I$(X11ROOT)/include -Zmtd
-#WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11 -lXpm -L$(X11ROOT)/lib -lc_app
-#WINX11SRC = ../win/X11/Window.c ../win/X11/dialogs.c ../win/X11/winX.c \
-#	../win/X11/winmap.c  ../win/X11/winmenu.c ../win/X11/winmesg.c \
-#	../win/X11/winmisc.c ../win/X11/winstat.c ../win/X11/wintext.c \
-#	../win/X11/winval.c tile.c
-#WINX11OBJ = $(WINX11OBJ01) $(WINX11OBJ02) $(WINX11OBJ03) $(WINX11OBJ04) \
-#	$(WINX11OBJ05) $(WINX11OBJ06) $(WINX11OBJ07) $(WINX11OBJ08) \
-#	$(WINX11OBJ09) $(WINX11OBJ10) $(WINX11OBJ11)
-#WINX11VARDAT=x11tiles pet_mark.xbm rip.xpm
-#X11ECHO	= $(CMD) @echo
+.IF $(with_x11) == yes
+WINX11OBJ01 = $(OBJ)/Window.o
+WINX11OBJ02 = $(OBJ)/dialogs.o
+WINX11OBJ03 = $(OBJ)/winX.o
+WINX11OBJ04 = $(OBJ)/winmap.o
+WINX11OBJ05 = $(OBJ)/winmenu.o
+WINX11OBJ06 = $(OBJ)/winmesg.o
+WINX11OBJ07 = $(OBJ)/winmisc.o
+WINX11OBJ08 = $(OBJ)/winstat.o
+WINX11OBJ09 = $(OBJ)/wintext.o
+WINX11OBJ10 = $(OBJ)/winval.o
+WINX11OBJ11 = $(OBJ)/tile.o
+X11ROOT = e:/xfree86
+WINX11CFLAGS = -DUSE_XPM -DX11_GRAPHICS \
+            -I$(X11ROOT)/include -Zmtd
+WINX11LIB = -lXaw -lXmu -lXext -lXt -lX11 -lXpm -L$(X11ROOT)/lib -lc_app
+WINX11SRC = ../win/X11/Window.c ../win/X11/dialogs.c ../win/X11/winX.c \
+       ../win/X11/winmap.c  ../win/X11/winmenu.c ../win/X11/winmesg.c \
+       ../win/X11/winmisc.c ../win/X11/winstat.c ../win/X11/wintext.c \
+       ../win/X11/winval.c tile.c
+WINX11OBJ = $(WINX11OBJ01) $(WINX11OBJ02) $(WINX11OBJ03) $(WINX11OBJ04) \
+       $(WINX11OBJ05) $(WINX11OBJ06) $(WINX11OBJ07) $(WINX11OBJ08) \
+       $(WINX11OBJ09) $(WINX11OBJ10) $(WINX11OBJ11)
+WINX11VARDAT=x11tiles pet_mark.xbm rip.xpm
+X11ECHO        = $(CMD) @echo
+.END
 
 
 
 
-#
-#	Make syntax peculiarities.
-#
-#	Enable the uppermost eight lines for NDMAKE, the middle eight
-#	for NMAKE (MSC, CSet/2), and the lowermost eight for DMAKE.
-#
-
-#MAKEB	= ndmake	# Executable name (change if necessary)
-#CMD	=		# Command processor name if required
-#AB	= $*.c		# Base name of the target in target action
-#CB	= $*.c		#               - " -               dependent
-#B	= (		# Command line begin in shell one-liners
-#E	= )		#   - " -      end   - " -
-#S	= ;		# Command separator  - " -
-#P	= %		# Literal percent sign
-#MAKEB	= nmake
-#CMD	=
-#AB	= $(@B).c
-#CB	= $$(@B).c
-#B	= (
-#E	= )
-#S	= &
-#P	= %%
 MAKEB	= dmake
 CMD	= cmd /C
 AB	= $(@:B).c
 CB	= $$(@:B).c
-B	= $(CMD) "
-E	= "
-S	= &
+BEG	= $(CMD) "
+END	= "
+SEP	= &
 P	= %
 
 #
 #	Most makes execute actions automatically inside a subshell,
-#	which makes even the shell internals work ok.  This applies
-#	to NDMAKE and NMAKE.  DMAKE wants it spelled out for it.
+#	which makes even the shell internals work ok.
 #
 
 ECHO	= $(CMD) @echo
@@ -197,7 +175,7 @@ WINSHARE= $(NHSRC)\win\share	# Shared system files
 
 OBJ	= \tmp\obj		# Object files
 TEMP	= \tmp\bin		# Temporary files during make process
-GAMEDIR = \games\nh34		# Game directory
+GAMEDIR = \games\nh341x11	# Game directory
 PLIBP	= c:\emx\lib		# Protected mode C libraries
 RLIBP	= c:\emx\lib		# Possible real mode C libraries
 
@@ -206,7 +184,7 @@ RLIBP	= c:\emx\lib		# Possible real mode C libraries
 #
 
 GAME	= nethack
-GAMEDES = "NetHack 3.4"
+GAMEDES = "NetHack 3.4.1"
 
 #
 #	The uppermost two lines for MSC, the middle two for GCC, and
@@ -217,7 +195,8 @@ GAMEDES = "NetHack 3.4"
 #
 
 CFLAGS	= -c $(GCCO) $(WARN) -I$(INCL) $(CDFLAGS) $(STDC) $(WINX11CFLAGS)
-O	= -s -O -o
+#OPT	= -s -O -o
+OPT	= -o
 
 #
 #	Compiler warning levels.  These are really for development, so
@@ -238,8 +217,11 @@ WARN	= #-W -Wimplicit -Wreturn-type -Wunused -Wformat -Wswitch -Wshadow -Wcast-q
 #	object format, the lower for Unix style a.out format.
 #
 
-#GCCO	= -Zomf -Zsys	# GCC OMF
-GCCO	=		# GCC a.out
+.IF $(format) == omf
+GCCO   = -Zomf -Zsys
+.ELSE
+GCCO   =
+.END
 
 #
 #	MSC 5.1 needs the large model first pass of the compiler.
@@ -258,10 +240,13 @@ CL	=
 #	Prepare for a debugger.
 #
 
+.IF $(debug) == yes
 CDFLAGS =
 LDFLAGS =
-CDFLAGS = -g		# GDB (GCC a.out)
-LDFLAGS = -g		# - " -
+.ELSE
+CDFLAGS = -O -s
+LDFLAGS = -s
+.END
 
 #
 #	How to produce the most ANSI-like environment.
@@ -273,8 +258,11 @@ STDC	= -ansi		# GCC
 #	Possible system object files required during linking.
 #
 
+.IF $(format) == omf
+SYSOBJ = $(PLIBP)\crt0.obj     $(PLIBP)\end.lib# GCC OMF
+.ELSE
 SYSOBJ	=			# MSC, GCC a.out, CSet/2
-#SYSOBJ	= $(PLIBP)\crt0.obj	$(PLIBP)\end.lib# GCC OMF
+.END
 
 #
 #	Compiler library selection.  Change if necessary.
@@ -287,8 +275,11 @@ SYSOBJ	=			# MSC, GCC a.out, CSet/2
 #	OS/2 API entry points.
 #
 
-#PLIBS	= $(PLIBP)\st\c $(PLIBP)\st\c_app $(PLIBP)\c_alias $(PLIBP)\gcc $(PLIBP)\st\sys $(PLIBP)\os2	# GCC emx 0.9 OMF
-PLIBS	= -lgcc -lc -lgcc -los2 $(X11LIBS)	# GCC a.out
+.IF $(format) == omf
+PLIBS  = $(PLIBP)\st\c $(PLIBP)\st\c_app $(PLIBP)\c_alias $(PLIBP)\gcc $(PLIBP)\st\sys $(PLIBP)\os2    # GCC emx 0.9 OMF
+.ELSE
+PLIBS  = -lgcc -lc -lgcc -los2 $(X11LIBS)      # GCC a.out
+.END
 
 #
 #	C libraries used by makedefs, lev_comp and dgn_comp (change if
@@ -300,31 +291,34 @@ PLIBS	= -lgcc -lc -lgcc -los2 $(X11LIBS)	# GCC a.out
 #RLIBS	= $(RLIBP)\llibcer
 RLIBS	= $(PLIBS)
 
-SRCCC	= $(CC) $(CFLAGS) $(O) $@ $(AB)
-UTILCC	= $(B) cd $(UTIL) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-SYSCC	= $(B) cd $(SYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-SSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
-PSYSCC	= $(B) cd $(SSYS) $(S) $(CC) $(CFLAGS) $(O) $@ pc$(AB) $(E)
-WINCC	= $(B) cd $(WIN) $(S) $(CC) $(CFLAGS) $(O) $@ $(AB) $(E)
+SRCCC	= $(CC) $(CFLAGS) $(OPT) $@ $(AB)
+UTILCC	= $(BEG) cd $(UTIL) $(SEP) $(CC) $(CFLAGS) $(OPT) $@ $(AB) $(END)
+SYSCC	= $(BEG) cd $(SYS) $(SEP) $(CC) $(CFLAGS) $(OPT) $@ $(AB) $(END)
+SSYSCC	= $(BEG) cd $(SSYS) $(SEP) $(CC) $(CFLAGS) $(OPT) $@ $(AB) $(END)
+PSYSCC	= $(BEG) cd $(SSYS) $(SEP) $(CC) $(CFLAGS) $(OPT) $@ pc$(AB) $(END)
+WINCC	= $(BEG) cd $(WIN) $(SEP) $(CC) $(CFLAGS) $(OPT) $@ $(AB) $(END)
 
 #
 #	Default linker skeletons.  The upper six lines for everything
-#	that uses standard OS/2 object format (MSC, CSet/2, GCC OMF),
-#	the lower six for GCC a.out format.
+#	that uses standard OS/2 object format (GCC OMF),  The lower six
+#	for GCC a.out format.
 #
 
-#GAMELN	= $(LINK) @$(TEMP)\$(GAME).rsp
-#MKDFLN	= $(LINK) @$(TEMP)\makedefs.rsp
-#LEVCLN	= $(LINK) @$(TEMP)\lev_comp.rsp
-#DGNCLN	= $(LINK) @$(TEMP)\dgn_comp.rsp
-#RCVRLN	= $(LINK) @$(TEMP)\recover.rsp
-#DLBRLN	= $(LINK) @$(TEMP)\dlb.rsp
-GAMELN	= $(CC) $(LDFLAGS) -o $(GAMEDIR)\$(GAME).exe @$(TEMP)\$(GAME).r $(PLIBS) $(WINX11CFLAGS) $(WINX11LIB)
+.IF $(format) == omf
+GAMELN = $(LINK) @$(TEMP)\$(GAME).rsp
+MKDFLN = $(LINK) @$(TEMP)\makedefs.rsp
+LEVCLN = $(LINK) @$(TEMP)\lev_comp.rsp
+DGNCLN = $(LINK) @$(TEMP)\dgn_comp.rsp
+RCVRLN = $(LINK) @$(TEMP)\recover.rsp
+DLBRLN = $(LINK) @$(TEMP)\dlb.rsp
+.ELSE
+GAMELN = $(CC) $(LDFLAGS) -o $(GAMEDIR)\$(GAME).exe @$(TEMP)\$(GAME).r $(PLIBS) $(WINX11CFLAGS) $(WINX11LIB)
 MKDFLN	= $(CC) $(LDFLAGS) -o $(TEMP)\makedefs.exe $(TEMP)\$(MKDFDEF) $(SYSOBJ) $(MAKEOBJS) $(PLIBS)
 LEVCLN	= $(CC) $(LDFLAGS) -o $(TEMP)\lev_comp.exe $(TEMP)\$(LEVCDEF) $(SYSOBJ) $(SPLEVOBJS) $(PLIBS)
 DGNCLN	= $(CC) $(LDFLAGS) -o $(TEMP)\dgn_comp.exe $(TEMP)\$(DGNCDEF) $(SYSOBJ) $(DGNCOMPOBJS) $(PLIBS)
 RCVRLN	= $(CC) $(LDFLAGS) -o $(GAMEDIR)\recover.exe $(TEMP)\$(RCVRDEF) $(SYSOBJ) $(RECOVOBJS) $(PLIBS)
-DLBRLN	= $(CC) $(LDFLAGS) -o $(TEMP)\dlb.exe $(TEMP)\$(DLBDEF) $(SYSOBJ) $(DLBOBJS) $(PLIBS)
+ DLBRLN = $(CC) $(LDFLAGS) -o $(TEMP)\dlb.exe $(TEMP)\$(DLBDEF) $(SYSOBJ) $(DLBOBJS) $(PLIBS)
+.END
 
 #
 #	OS/2 module definition files for NetHack,
@@ -524,7 +518,8 @@ SPEC_LEVS = \
  asmodeus.lev baalz.lev    bigrm-1.lev \
  bigrm-2.lev  bigrm-3.lev  bigrm-4.lev castle.lev   fakewiz1.lev fakewiz2.lev \
  juiblex.lev  knox.lev     medusa-1.lev medusa-2.lev minend-1.lev minend-2.lev \
- minefill.lev minetn-1.lev minetn-2.lev oracle.lev   orcus.lev    sanctum.lev \
+ minend-3.lev minefill.lev minetn-1.lev minetn-2.lev minetn-3.lev minetn-4.lev \
+ minetn-5.lev minetn-6.lev minetn-7.lev oracle.lev   orcus.lev    sanctum.lev \
  tower1.lev   tower2.lev   tower3.lev valley.lev   wizard1.lev  wizard2.lev \
  wizard3.lev  astral.lev   air.lev earth.lev    fire.lev     water.lev \
  soko1-1.lev  soko1-2.lev  soko2-1.lev  soko2-2.lev  \
@@ -883,6 +878,7 @@ $(TEMP)\$(GAME).r : $(HOBJ) $(TEMP)\$(GAMEDEF)
 	$(ECHO) $(WINOBJ4) >> $@
 	$(ECHO) $(HHOBJ) >> $@
 	$(ECHO) $(RANDOM) >> $@
+.IF $(with_x11) == yes
 	$(X11ECHO) $(WINX11OBJ01) >> $@
 	$(X11ECHO) $(WINX11OBJ02) >> $@
 	$(X11ECHO) $(WINX11OBJ03) >> $@
@@ -894,6 +890,7 @@ $(TEMP)\$(GAME).r : $(HOBJ) $(TEMP)\$(GAMEDEF)
 	$(X11ECHO) $(WINX11OBJ09) >> $@
 	$(X11ECHO) $(WINX11OBJ10) >> $@
 	$(X11ECHO) $(WINX11OBJ11) >> $@
+.END
 
 
 
@@ -1059,7 +1056,7 @@ realtouch :
 	$(TOUCH) $(TT)
 
 faketouch :
-	$(B) $(CAT) $(TT) > $(TEMP)\foo.bar $(S) $(CP) $(TEMP)\foo.bar $(TT) $(S) $(RM) $(TEMP)\foo.bar $(E)
+	$(BEG) $(CAT) $(TT) > $(TEMP)\foo.bar $(SEP) $(CP) $(TEMP)\foo.bar $(TT) $(SEP) $(RM) $(TEMP)\foo.bar $(END)
 
 #
 #	Targets for the recovery utility.
@@ -1755,7 +1752,7 @@ x11tiles: $(TEMP)\tile2x11.exe $(WINSHARE)\monsters.txt \
 				$(WINSHARE)\other.txt
 	$(TEMP)\tile2x11.exe $(WINSHARE)\monsters.txt $(WINSHARE)\objects.txt \
 				$(WINSHARE)\other.txt
-	cp x11tiles $(GAMEDIR)\x11tiles
+	$(CP) x11tiles $(GAMEDIR)\x11tiles
 
 TEXT_IO = $(OBJ)\tiletext.o \
 	  $(OBJ)\tiletxt.o \
@@ -1773,10 +1770,10 @@ $(TEMP)\tile2x11.exe: $(OBJ)\tile2x11.o $(TEXT_IO)
 	$(CC) $(LFLAGS) -o $(TEMP)\tile2x11.exe $(OBJ)\tile2x11.o $(TEXT_IO) $(LIBS)
 
 pet_mark.xbm: $(WINX11)\pet_mark.xbm
-	cp $(WINX11)\pet_mark.xbm $(GAMEDIR)\pet_mark.xbm
+	$(CP) $(WINX11)\pet_mark.xbm $(GAMEDIR)\pet_mark.xbm
 
 rip.xpm: $(WINX11)\rip.xpm
-	cp $(WINX11)\rip.xpm $(GAMEDIR)\rip.xpm
+	$(CP) $(WINX11)\rip.xpm $(GAMEDIR)\rip.xpm
 
 $(OBJ)\tile2x11.o : $(WINX11)\tile2x11.c $(INCL)\tile2x11.h
 	$(CC) $(CFLAGS) -o$(OBJ)\tile2x11.o -c $(WINX11)\tile2x11.c \

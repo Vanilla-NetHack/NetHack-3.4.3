@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)minion.c	3.4	2002/01/23	*/
+/*	SCCS Id: @(#)minion.c	3.4	2003/01/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,12 +7,25 @@
 #include "epri.h"
 
 void
-msummon(ptr)		/* ptr summons a monster */
-register struct permonst *ptr;
+msummon(mon)		/* mon summons a monster */
+struct monst *mon;
 {
+	register struct permonst *ptr;
 	register int dtype = NON_PM, cnt = 0;
-	aligntyp atyp = (ptr->maligntyp==A_NONE) ? A_NONE : sgn(ptr->maligntyp);
+	aligntyp atyp;
+	struct monst *mtmp;
 
+	if (mon) {
+	    ptr = mon->data;
+	    atyp = (ptr->maligntyp==A_NONE) ? A_NONE : sgn(ptr->maligntyp);
+	    if (mon->ispriest || mon->data == &mons[PM_ALIGNED_PRIEST]
+		|| mon->data == &mons[PM_ANGEL])
+		atyp = EPRI(mon)->shralign;
+	} else {
+	    ptr = &mons[PM_WIZARD_OF_YENDOR];
+	    atyp = (ptr->maligntyp==A_NONE) ? A_NONE : sgn(ptr->maligntyp);
+	}
+	    
 	if (is_dprince(ptr) || (ptr == &mons[PM_WIZARD_OF_YENDOR])) {
 	    dtype = (!rn2(20)) ? dprince(atyp) :
 				 (!rn2(4)) ? dlord(atyp) : ndemon(atyp);
@@ -25,9 +38,25 @@ register struct permonst *ptr;
 	    dtype = (!rn2(20)) ? dlord(atyp) :
 				 (!rn2(6)) ? ndemon(atyp) : monsndx(ptr);
 	    cnt = 1;
-	} else if (is_lminion(ptr)) {
+	} else if (is_lminion(mon)) {
 	    dtype = (is_lord(ptr) && !rn2(20)) ? llord() :
 		     (is_lord(ptr) || !rn2(6)) ? lminion() : monsndx(ptr);
+	    cnt = (!rn2(4) && !is_lord(&mons[dtype])) ? 2 : 1;
+	} else if (ptr == &mons[PM_ANGEL]) {
+	    /* non-lawful angels can also summon */
+	    if (!rn2(6)) {
+		switch (atyp) { /* see summon_minion */
+		case A_NEUTRAL:
+		    dtype = PM_AIR_ELEMENTAL + rn2(4);
+		    break;
+		case A_CHAOTIC:
+		case A_NONE:
+		    dtype = ndemon(atyp);
+		    break;
+		}
+	    } else {
+		dtype = PM_ANGEL;
+	    }
 	    cnt = (!rn2(4) && !is_lord(&mons[dtype])) ? 2 : 1;
 	}
 
@@ -45,10 +74,13 @@ register struct permonst *ptr;
 	}
 
 	while (cnt > 0) {
-	    (void)makemon(&mons[dtype], u.ux, u.uy, NO_MM_FLAGS);
+	    mtmp = makemon(&mons[dtype], u.ux, u.uy, NO_MM_FLAGS);
+	    if (mtmp && (dtype == PM_ANGEL)) {
+		/* alignment should match the summoner */
+		EPRI(mtmp)->shralign = atyp;
+	    }
 	    cnt--;
 	}
-	return;
 }
 
 void
@@ -110,11 +142,12 @@ int
 demon_talk(mtmp)		/* returns 1 if it won't attack. */
 register struct monst *mtmp;
 {
-	long	demand, offer;
+	long cash, demand, offer;
 
 	if (uwep && uwep->oartifact == ART_EXCALIBUR) {
 	    pline("%s looks very angry.", Amonnam(mtmp));
 	    mtmp->mpeaceful = mtmp->mtame = 0;
+	    set_malign(mtmp);
 	    newsym(mtmp->mx, mtmp->my);
 	    return 0;
 	}
@@ -132,28 +165,38 @@ register struct monst *mtmp;
 	    return(1);
 	}
 #ifndef GOLDOBJ
-	demand = (u.ugold * (rnd(80) + 20 * Athome)) /
+	cash = u.ugold;
 #else
-	demand = (money_cnt(invent) * (rnd(80) + 20 * Athome)) /
+	cash = money_cnt(invent);
 #endif
+	demand = (cash * (rnd(80) + 20 * Athome)) /
 	    (100 * (1 + (sgn(u.ualign.type) == sgn(mtmp->data->maligntyp))));
-	if (!demand)		/* you have no gold */
-	    return mtmp->mpeaceful = 0;
-	else {
+
+	if (!demand) {		/* you have no gold */
+	    mtmp->mpeaceful = 0;
+	    set_malign(mtmp);
+	    return 0;
+	} else {
+	    /* make sure that the demand is unmeetable if the monster
+	       has the Amulet, preventing monster from being satisified
+	       and removed from the game (along with said Amulet...) */
+	    if (mon_has_amulet(mtmp))
+		demand = cash + (long)rn1(1000,40);
+
 	    pline("%s demands %ld %s for safe passage.",
 		  Amonnam(mtmp), demand, currency(demand));
 
 	    if ((offer = bribe(mtmp)) >= demand) {
 		pline("%s vanishes, laughing about cowardly mortals.",
 		      Amonnam(mtmp));
+	    } else if (offer > 0L && (long)rnd(40) > (demand - offer)) {
+		pline("%s scowls at you menacingly, then vanishes.",
+		      Amonnam(mtmp));
 	    } else {
-		if ((long)rnd(40) > (demand - offer)) {
-		    pline("%s scowls at you menacingly, then vanishes.",
-			  Amonnam(mtmp));
-		} else {
-		    pline("%s gets angry...", Amonnam(mtmp));
-		    return mtmp->mpeaceful = 0;
-		}
+		pline("%s gets angry...", Amonnam(mtmp));
+		mtmp->mpeaceful = 0;
+		set_malign(mtmp);
+		return 0;
 	    }
 	}
 	mongone(mtmp);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.4	2001/12/03	*/
+/*	SCCS Id: @(#)read.c	3.4	2003/01/09	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,13 +16,6 @@
 	 (urace.femalenum != NON_PM && (mndx) == urace.femalenum))
 
 #ifdef OVLB
-
-/* elven armor vibrates warningly when enchanted beyond a limit */
-#define is_elven_armor(optr)	((optr)->otyp == ELVEN_LEATHER_HELM\
-				|| (optr)->otyp == ELVEN_MITHRIL_COAT\
-				|| (optr)->otyp == ELVEN_CLOAK\
-				|| (optr)->otyp == ELVEN_SHIELD\
-				|| (optr)->otyp == ELVEN_BOOTS)
 
 boolean	known;
 
@@ -127,11 +120,7 @@ doread()
 	if (scroll->otyp == SCR_MAIL) confused = FALSE;
 #endif
 	if(scroll->oclass == SPBOOK_CLASS) {
-	    if(confused) {
-		You("cannot grasp the meaning of this tome.");
-		return(0);
-	    } else
-		return(study_book(scroll));
+	    return(study_book(scroll));
 	}
 	scroll->in_use = TRUE;	/* scroll, not spellbook, now being read */
 	if(scroll->otyp != SCR_BLANK_PAPER) {
@@ -274,7 +263,7 @@ int curse_bless;
 		    wand_explode(obj);
 		    return;
 		}
-		if (obj->spe >= lim) p_glow2(obj,blue);
+		if (obj->spe >= lim) p_glow2(obj, NH_BLUE);
 		else p_glow1(obj);
 	    }
 
@@ -345,7 +334,7 @@ int curse_bless;
 			else
 				obj->spe += n;
 		    }
-		    p_glow2(obj,blue);
+		    p_glow2(obj, NH_BLUE);
 		} else {
 		    n = rn1(5,10);		/* 5..15 */
 		    if (obj->spe + n <= 50)
@@ -357,7 +346,7 @@ int curse_bless;
 			else
 				obj->spe += n;
 		    }
-		    p_glow2(obj,White);
+		    p_glow2(obj, NH_WHITE);
 		}
 		break;
 	    case OIL_LAMP:
@@ -372,7 +361,7 @@ int curse_bless;
 		} else if (is_blessed) {
 		    obj->spe = 1;
 		    obj->age = 1500;
-		    p_glow2(obj,blue);
+		    p_glow2(obj, NH_BLUE);
 		} else {
 		    obj->spe = 1;
 		    obj->age += 750;
@@ -384,7 +373,7 @@ int curse_bless;
 		if (is_cursed) stripspe(obj);
 		else if (is_blessed) {
 		    obj->spe = 6;
-		    p_glow2(obj,blue);
+		    p_glow2(obj, NH_BLUE);
 		} else {
 		    if (obj->spe < 5) {
 			obj->spe++;
@@ -401,7 +390,7 @@ int curse_bless;
 			obj->spe += rn1(10, 6);
 		    else obj->spe += rn1(5, 6);
 		    if (obj->spe > 50) obj->spe = 50;
-		    p_glow2(obj,blue);
+		    p_glow2(obj, NH_BLUE);
 		} else {
 		    obj->spe += rnd(5);
 		    if (obj->spe > 50) obj->spe = 50;
@@ -418,7 +407,7 @@ int curse_bless;
 		} else if (is_blessed) {
 		    obj->spe += d(2,4);
 		    if (obj->spe > 20) obj->spe = 20;
-		    p_glow2(obj,blue);
+		    p_glow2(obj, NH_BLUE);
 		} else {
 		    obj->spe += rnd(4);
 		    if (obj->spe > 20) obj->spe = 20;
@@ -702,7 +691,7 @@ register struct obj	*sobj;
 			    Your("%s %s covered by a %s %s %s!",
 				xname(otmp), otense(otmp, "are"),
 				sobj->cursed ? "mottled" : "shimmering",
-				hcolor(sobj->cursed ? Black : golden),
+				 hcolor(sobj->cursed ? NH_BLACK : NH_GOLDEN),
 				sobj->cursed ? "glow" :
 				  (is_shield(otmp) ? "layer" : "shield"));
 			}
@@ -715,6 +704,7 @@ register struct obj	*sobj;
 			}
 			break;
 		}
+		/* elven armor vibrates warningly when enchanted beyond a limit */
 		special_armor = is_elven_armor(otmp) ||
 			(Role_if(PM_WIZARD) && otmp->otyp == CORNUTHAUM);
 		if (sobj->cursed)
@@ -736,7 +726,7 @@ register struct obj	*sobj;
 		     otense(otmp, Blind ? "vibrate" : "glow"),
 		     (!Blind && !same_color) ? " " : nul,
 		     (Blind || same_color) ? nul :
-			hcolor(sobj->cursed ? Black : silver),
+			hcolor(sobj->cursed ? NH_BLACK : NH_SILVER),
 		     otense(otmp, "evaporate"));
 			if(is_cloak(otmp)) (void) Cloak_off();
 			if(is_boots(otmp)) (void) Boots_off();
@@ -772,7 +762,7 @@ register struct obj	*sobj;
 		        s == 0 ? "violently " : nul,
 			otense(otmp, Blind ? "vibrate" : "glow"),
 			(!Blind && !same_color) ? " " : nul,
-			(Blind || same_color) ? nul : hcolor(sobj->cursed ? Black : silver),
+			(Blind || same_color) ? nul : hcolor(sobj->cursed ? NH_BLACK : NH_SILVER),
 			  (s*s>1) ? "while" : "moment");
 		otmp->cursed = sobj->cursed;
 		if (!otmp->blessed || sobj->cursed)
@@ -801,7 +791,7 @@ register struct obj	*sobj;
 				return(1);
 			}
 			otmp->oerodeproof = sobj->cursed;
-			p_glow2(otmp,purple);
+			p_glow2(otmp, NH_PURPLE);
 			break;
 		}
 		if(!sobj->cursed || !otmp || !otmp->cursed) {
@@ -829,11 +819,11 @@ register struct obj	*sobj;
 			Your("%s begin to %s%s.",
 			    makeplural(body_part(HAND)),
 			    Blind ? "tingle" : "glow ",
-			    Blind ? nul : hcolor(purple));
+			    Blind ? nul : hcolor(NH_PURPLE));
 			make_confused(HConfusion + rnd(100),FALSE);
 		    } else {
 			pline("A %s%s surrounds your %s.",
-			    Blind ? nul : hcolor(red),
+			    Blind ? nul : hcolor(NH_RED),
 			    Blind ? "faint buzz" : " glow",
 			    body_part(HEAD));
 			make_confused(0L,TRUE);
@@ -843,7 +833,7 @@ register struct obj	*sobj;
 			Your("%s%s %s%s.",
 			makeplural(body_part(HAND)),
 			Blind ? "" : " begin to glow",
-			Blind ? (const char *)"tingle" : hcolor(red),
+			Blind ? (const char *)"tingle" : hcolor(NH_RED),
 			u.umconf ? " even more" : "");
 			u.umconf++;
 		    } else {
@@ -855,7 +845,7 @@ register struct obj	*sobj;
 			    Your("%s glow a%s brilliant %s.",
 				makeplural(body_part(HAND)),
 				u.umconf ? "n even more" : "",
-				hcolor(red));
+				hcolor(NH_RED));
 			/* after a while, repeated uses become less effective */
 			if (u.umconf >= 40)
 			    u.umconf++;
@@ -915,15 +905,43 @@ register struct obj	*sobj;
 		if (sobj->cursed) {
 		    pline_The("scroll disintegrates.");
 		} else {
-		    for (obj = invent; obj; obj = obj->nobj)
-			if (sobj->blessed ||
-			     (obj->owornmask &&
-			       ((obj->owornmask & ~W_SWAPWEP) || u.twoweap)) ||
+		    for (obj = invent; obj; obj = obj->nobj) {
+			long wornmask;
+#ifdef GOLDOBJ
+			/* gold isn't subject to cursing and blessing */
+			if (obj->oclass == COIN_CLASS) continue;
+#endif
+			wornmask = (obj->owornmask & ~(W_BALL|W_ART|W_ARTI));
+			if (wornmask && !sobj->blessed) {
+			    /* handle a couple of special cases; we don't
+			       allow auxiliary weapon slots to be used to
+			       artificially increase number of worn items */
+			    if (obj == uswapwep) {
+				if (!u.twoweap) wornmask = 0L;
+			    } else if (obj == uquiver) {
+				if (obj->oclass == WEAPON_CLASS) {
+				    /* mergeable weapon test covers ammo,
+				       missiles, spears, daggers & knives */
+				    if (!objects[obj->otyp].oc_merge) 
+					wornmask = 0L;
+				} else if (obj->oclass == GEM_CLASS) {
+				    /* possibly ought to check whether
+				       alternate weapon is a sling... */
+				    if (!uslinging()) wornmask = 0L;
+				} else {
+				    /* weptools don't merge and aren't
+				       reasonable quivered weapons */
+				    wornmask = 0L;
+				}
+			    }
+			}
+			if (sobj->blessed || wornmask ||
 			     obj->otyp == LOADSTONE ||
 			     (obj->otyp == LEASH && obj->leashmon)) {
 			    if(confused) blessorcurse(obj, 2);
 			    else uncurse(obj);
 			}
+		    }
 		}
 		if(Punished && !confused) unpunish();
 		update_inventory();
@@ -952,7 +970,7 @@ register struct obj	*sobj;
 			    Your("%s covered by a %s %s %s!",
 				aobjnam(uwep, "are"),
 				sobj->cursed ? "mottled" : "shimmering",
-				hcolor(sobj->cursed ? purple : golden),
+				hcolor(sobj->cursed ? NH_PURPLE : NH_GOLDEN),
 				sobj->cursed ? "glow" : "shield");
 			}
 			if (uwep->oerodeproof && (uwep->oeroded || uwep->oeroded2)) {
@@ -1409,7 +1427,7 @@ do_it:
 static void
 do_class_genocide()
 {
-	register int i, j, immunecnt, gonecnt, goodcnt, class;
+	int i, j, immunecnt, gonecnt, goodcnt, class, feel_dead = 0;
 	char buf[BUFSZ];
 	boolean gameover = FALSE;	/* true iff killed self */
 
@@ -1424,7 +1442,8 @@ do_class_genocide()
 		    (void)mungspaces(buf);
 		} while (buf[0]=='\033' || !buf[0]);
 		/* choosing "none" preserves genocideless conduct */
-		if (!strcmpi(buf, "none")) return;
+		if (!strcmpi(buf, "none") ||
+		    !strcmpi(buf, "nothing")) return;
 
 		if (strlen(buf) == 1) {
 		    if (buf[0] == ILLOBJ_SYM)
@@ -1499,19 +1518,26 @@ do_class_genocide()
 			    update_inventory();		/* eggs & tins */
 			    pline("Wiped out all %s.", nam);
 			    if (Upolyd && i == u.umonnum) {
-				if (Unchanging) done(GENOCIDED);
-				rehumanize();
+				u.mh = -1;
+				if (Unchanging) {
+				    if (!feel_dead++) You("die.");
+				    /* finish genociding this class of
+				       monsters before ultimately dying */
+				    gameover = TRUE;
+				} else
+				    rehumanize();
 			    }
-			    /* Self-genocide if it matches either your race or role */
-			    /* Assumption: male and female forms share the same letter */
+			    /* Self-genocide if it matches either your race
+			       or role.  Assumption:  male and female forms
+			       share same monster class. */
 			    if (i == urole.malenum || i == urace.malenum) {
 				u.uhp = -1;
-				killer_format = KILLED_BY_AN;
-				killer = "scroll of genocide";
-				if (Upolyd)
-				    You_feel("dead inside.");
-				else
+				if (Upolyd) {
+				    if (!feel_dead++) You_feel("dead inside.");
+				} else {
+				    if (!feel_dead++) You("die.");
 				    gameover = TRUE;
+				}
 			    }
 			} else if (mvitals[i].mvflags & G_GENOD) {
 			    if (!gameover)
@@ -1542,7 +1568,11 @@ do_class_genocide()
 			}
 		    }
 		}
-		if (gameover) done(GENOCIDED);
+		if (gameover || u.uhp == -1) {
+		    killer_format = KILLED_BY_AN;
+		    killer = "scroll of genocide";
+		    if (gameover) done(GENOCIDED);
+		}
 		return;
 	}
 }
@@ -1579,7 +1609,7 @@ int how;
 			buf);
 		(void)mungspaces(buf);
 		/* choosing "none" preserves genocideless conduct */
-		if (!strcmpi(buf, "none")) {
+		if (!strcmpi(buf, "none") || !strcmpi(buf, "nothing")) {
 		    /* ... but no free pass if cursed */
 		    if (!(how & REALLY)) {
 			ptr = rndmonst();
@@ -1766,44 +1796,59 @@ boolean revival;
 }
 
 #ifdef WIZARD
+/*
+ * Make a new monster with the type controlled by the user.
+ *
+ * Note:  when creating a monster by class letter, specifying the
+ * "strange object" (']') symbol produces a random monster rather
+ * than a mimic; this behavior quirk is useful so don't "fix" it...
+ */
 boolean
 create_particular()
 {
-	char buf[BUFSZ], monclass = MAXMCLASSES;
-	int which = PM_PLAYERMON, tries = 0, i;
-	struct permonst *whichpm = 0;
+	char buf[BUFSZ], *bufp, monclass = MAXMCLASSES;
+	int which, tries, i;
+	struct permonst *whichpm;
 	struct monst *mtmp;
 	boolean madeany = FALSE;
-	boolean maketame = FALSE;
+	boolean maketame, makepeaceful, makehostile;
 
+	tries = 0;
 	do {
+	    which = urole.malenum;	/* an arbitrary index into mons[] */
+	    maketame = makepeaceful = makehostile = FALSE;
 	    getlin("Create what kind of monster? [type the name or symbol]",
 		   buf);
-	    if (buf[0] == '\033') return FALSE;
-	    (void)mungspaces(buf);
-	    if (strlen(buf) == 1) {
-		monclass = def_char_to_monclass(buf[0]);
-		if (monclass == MAXMCLASSES)
-		    pline("I've never heard of such monsters.");
-		else break;
-	    } else {
-		if (!strncmpi(buf, "tame ", 5)) {
-		    which = name_to_mon(buf+5);
-		    maketame = TRUE;
-		} else {
-		    which = name_to_mon(buf);
-		    maketame = FALSE;
-		}
-		if (which < LOW_PM) pline("I've never heard of such monsters.");
-		else {
-		    whichpm = &mons[which];
-		    break;
-		}
+	    bufp = mungspaces(buf);
+	    if (*bufp == '\033') return FALSE;
+	    /* allow the initial disposition to be specified */
+	    if (!strncmpi(bufp, "tame ", 5)) {
+		bufp += 5;
+		maketame = TRUE;
+	    } else if (!strncmpi(bufp, "peaceful ", 9)) {
+		bufp += 9;
+		makepeaceful = TRUE;
+	    } else if (!strncmpi(bufp, "hostile ", 8)) {
+		bufp += 8;
+		makehostile = TRUE;
 	    }
+	    /* decide whether a valid monster was chosen */
+	    if (strlen(bufp) == 1) {
+		monclass = def_char_to_monclass(*bufp);
+		if (monclass != MAXMCLASSES) break;	/* got one */
+	    } else {
+		which = name_to_mon(bufp);
+		if (which >= LOW_PM) break;		/* got one */
+	    }
+	    /* no good; try again... */
+	    pline("I've never heard of such monsters.");
 	} while (++tries < 5);
-	if (tries == 5) pline(thats_enough_tries);
-	else {
+
+	if (tries == 5) {
+	    pline(thats_enough_tries);
+	} else {
 	    (void) cant_create(&which, FALSE);
+	    whichpm = &mons[which];
 	    for (i = 0; i <= multi; i++) {
 		if (monclass != MAXMCLASSES)
 		    whichpm = mkclass(monclass, 0);
@@ -1813,8 +1858,14 @@ create_particular()
 			initedog(mtmp);
 			set_malign(mtmp);
 		    }
-		} else
+		} else {
 		    mtmp = makemon(whichpm, u.ux, u.uy, NO_MM_FLAGS);
+		    if ((makepeaceful || makehostile) && mtmp) {
+			mtmp->mtame = 0;	/* sanity precaution */
+			mtmp->mpeaceful = makepeaceful ? 1 : 0;
+			set_malign(mtmp);
+		    }
+		}
 		if (mtmp) madeany = TRUE;
 	    }
 	}

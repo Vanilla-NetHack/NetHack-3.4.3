@@ -1,11 +1,11 @@
-/*	SCCS Id: @(#)worn.c	3.4	2002/02/07	*/
+/*	SCCS Id: @(#)worn.c	3.4	2003/01/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 STATIC_DCL void FDECL(m_lose_armor, (struct monst *,struct obj *));
-STATIC_DCL void FDECL(m_dowear_type, (struct monst *,long,BOOLEAN_P));
+STATIC_DCL void FDECL(m_dowear_type, (struct monst *,long, BOOLEAN_P, BOOLEAN_P));
 STATIC_DCL int FDECL(extra_pref, (struct monst *, struct obj *));
 
 const struct worn {
@@ -147,7 +147,7 @@ int adjust;	/* positive => increase speed, negative => decrease */
 struct obj *obj;	/* item to make known if effect can be seen */
 {
     struct obj *otmp;
-    boolean give_msg = !in_mklev;
+    boolean give_msg = !in_mklev, petrify = FALSE;
     unsigned int oldspeed = mon->mspeed;
 
     switch (adjust) {
@@ -169,6 +169,11 @@ struct obj *obj;	/* item to make known if effect can be seen */
 	mon->permspeed = MSLOW;
 	give_msg = FALSE;	/* (not currently used) */
 	break;
+     case -3:			/* petrification */
+	/* take away intrinsic speed but don't reduce normal speed */
+	if (mon->permspeed == MFAST) mon->permspeed = 0;
+	petrify = TRUE;
+	break;
     }
 
     for (otmp = mon->minvent; otmp; otmp = otmp->nobj)
@@ -179,12 +184,16 @@ struct obj *obj;	/* item to make known if effect can be seen */
     else
 	mon->mspeed = mon->permspeed;
 
-    if (give_msg && mon->mspeed != oldspeed && canseemon(mon)) {
+    if (give_msg && (mon->mspeed != oldspeed || petrify) && canseemon(mon)) {
 	/* fast to slow (skipping intermediate state) or vice versa */
 	const char *howmuch = (mon->mspeed + oldspeed == MFAST + MSLOW) ?
 				"much " : "";
 
-	if (adjust > 0 || mon->mspeed == MFAST)
+	if (petrify) {
+	    /* mimic the player's petrification countdown; "slowing down"
+	       even if fast movement rate retained via worn speed boots */
+	    if (flags.verbose) pline("%s is slowing down.", Monnam(mon));
+	} else if (adjust > 0 || mon->mspeed == MFAST)
 	    pline("%s is suddenly moving %sfaster.", Monnam(mon), howmuch);
 	else
 	    pline("%s seems to be moving %sslower.", Monnam(mon), howmuch);
@@ -199,10 +208,10 @@ struct obj *obj;	/* item to make known if effect can be seen */
 
 /* armor put on or taken off; might be magical variety */
 void
-update_mon_intrinsics(mon, obj, on)
+update_mon_intrinsics(mon, obj, on, silently)
 struct monst *mon;
 struct obj *obj;
-boolean on;
+boolean on, silently;
 {
     int unseen;
     uchar mask;
@@ -218,8 +227,13 @@ boolean on;
 	    mon->minvis = !mon->invis_blkd;
 	    break;
 	 case FAST:
+	  {
+	    boolean save_in_mklev = in_mklev;
+	    if (silently) in_mklev = TRUE;
 	    mon_adjust_speed(mon, 0, obj);
+	    in_mklev = save_in_mklev;
 	    break;
+	  }
 	/* properties handled elsewhere */
 	 case ANTIMAGIC:
 	 case REFLECTING:
@@ -253,8 +267,13 @@ boolean on;
 	    mon->minvis = mon->perminvis;
 	    break;
 	 case FAST:
+	  {
+	    boolean save_in_mklev = in_mklev;
+	    if (silently) in_mklev = TRUE;
 	    mon_adjust_speed(mon, 0, obj);
+	    in_mklev = save_in_mklev;
 	    break;
+	  }
 	 case FIRE_RES:
 	 case COLD_RES:
 	 case SLEEP_RES:
@@ -301,7 +320,7 @@ boolean on;
 #endif
 
     /* if couldn't see it but now can, or vice versa, update display */
-    if (unseen ^ !canseemon(mon))
+    if (!silently && (unseen ^ !canseemon(mon)))
 	newsym(mon->mx, mon->my);
 }
 
@@ -341,46 +360,57 @@ m_dowear(mon, creation)
 register struct monst *mon;
 boolean creation;
 {
+#define RACE_EXCEPTION TRUE
 	/* Note the restrictions here are the same as in dowear in do_wear.c
 	 * except for the additional restriction on intelligence.  (Players
 	 * are always intelligent, even if polymorphed).
 	 */
 	if (verysmall(mon->data) || nohands(mon->data) || is_animal(mon->data))
 		return;
-	/* give mummies a chance to wear their wrappings */
-	if (mindless(mon->data) && (mon->data->mlet != S_MUMMY || !creation))
+	/* give mummies a chance to wear their wrappings
+	 * and let skeletons wear their initial armor */
+	if (mindless(mon->data) && (!creation ||
+	    (mon->data->mlet != S_MUMMY && mon->data != &mons[PM_SKELETON])))
 		return;
 
-	m_dowear_type(mon, W_AMUL, creation);
+	m_dowear_type(mon, W_AMUL, creation, FALSE);
 #ifdef TOURIST
 	/* can't put on shirt if already wearing suit */
 	if (!cantweararm(mon->data) || (mon->misc_worn_check & W_ARM))
-	    m_dowear_type(mon, W_ARMU, creation);
+	    m_dowear_type(mon, W_ARMU, creation, FALSE);
 #endif
 	/* treating small as a special case allows
 	   hobbits, gnomes, and kobolds to wear cloaks */
 	if (!cantweararm(mon->data) || mon->data->msize == MZ_SMALL)
-	    m_dowear_type(mon, W_ARMC, creation);
-	m_dowear_type(mon, W_ARMH, creation);
+	    m_dowear_type(mon, W_ARMC, creation, FALSE);
+	m_dowear_type(mon, W_ARMH, creation, FALSE);
 	if (!MON_WEP(mon) || !bimanual(MON_WEP(mon)))
-	    m_dowear_type(mon, W_ARMS, creation);
-	m_dowear_type(mon, W_ARMG, creation);
+	    m_dowear_type(mon, W_ARMS, creation, FALSE);
+	m_dowear_type(mon, W_ARMG, creation, FALSE);
 	if (!slithy(mon->data) && mon->data->mlet != S_CENTAUR)
-	    m_dowear_type(mon, W_ARMF, creation);
+	    m_dowear_type(mon, W_ARMF, creation, FALSE);
 	if (!cantweararm(mon->data))
-	    m_dowear_type(mon, W_ARM, creation);
+	    m_dowear_type(mon, W_ARM, creation, FALSE);
+	else
+	    m_dowear_type(mon, W_ARM, creation, RACE_EXCEPTION);
 }
 
 STATIC_OVL void
-m_dowear_type(mon, flag, creation)
+m_dowear_type(mon, flag, creation, racialexception)
 struct monst *mon;
 long flag;
 boolean creation;
+boolean racialexception;
 {
 	struct obj *old, *best, *obj;
 	int m_delay = 0;
+	int unseen = !canseemon(mon);
+	char nambuf[BUFSZ];
 
 	if (mon->mfrozen) return; /* probably putting previous item on */
+
+	/* Get a copy of monster's name before altering its visibility */
+	Strcpy(nambuf, See_invisible ? Monnam(mon) : mon_nam(mon));
 
 	old = which_armor(mon, flag);
 	if (old && old->cursed) return;
@@ -406,6 +436,8 @@ boolean creation;
 		    break;
 		case W_ARMH:
 		    if (!is_helmet(obj)) continue;
+		    /* (flimsy exception matches polyself handling) */
+		    if (has_horns(mon->data) && !is_flimsy(obj)) continue;
 		    break;
 		case W_ARMS:
 		    if (!is_shield(obj)) continue;
@@ -418,6 +450,7 @@ boolean creation;
 		    break;
 		case W_ARM:
 		    if (!is_suit(obj)) continue;
+		    if (racialexception && (racial_exception(mon, obj) < 1)) continue;
 		    break;
 	    }
 	    if (obj->owornmask) continue;
@@ -465,11 +498,19 @@ outer_break:
 	    if (mon->mfrozen) mon->mcanmove = 0;
 	}
 	if (old)
-	    update_mon_intrinsics(mon, old, FALSE);
+	    update_mon_intrinsics(mon, old, FALSE, creation);
 	mon->misc_worn_check |= flag;
 	best->owornmask |= flag;
-	update_mon_intrinsics(mon, best, TRUE);
+	update_mon_intrinsics(mon, best, TRUE, creation);
+	/* if couldn't see it but now can, or vice versa, */
+	if (!creation && (unseen ^ !canseemon(mon))) {
+		if (mon->minvis && !See_invisible) {
+			pline("Suddenly you cannot see %s.", nambuf);
+			makeknown(best->otyp);
+		} /* else if (!mon->minvis) pline("%s suddenly appears!", Amonnam(mon)); */
+	}
 }
+#undef RACE_EXCEPTION
 
 struct obj *
 which_armor(mon, flag)
@@ -490,8 +531,9 @@ struct monst *mon;
 struct obj *obj;
 {
 	mon->misc_worn_check &= ~obj->owornmask;
+	if (obj->owornmask)
+	    update_mon_intrinsics(mon, obj, FALSE, FALSE);
 	obj->owornmask = 0L;
-	update_mon_intrinsics(mon, obj, FALSE);
 
 	obj_extract_self(obj);
 	place_object(obj, mon->mx, mon->my);
@@ -499,34 +541,43 @@ struct obj *obj;
 	newsym(mon->mx, mon->my);
 }
 
+/* all objects with their bypass bit set should now be reset to normal */
 void
 clear_bypasses()
 {
 	struct obj *otmp, *nobj;
+	struct monst *mtmp;
 
 	for (otmp = fobj; otmp; otmp = nobj) {
 	    nobj = otmp->nobj;
 	    if (otmp->bypass) {
 		otmp->bypass = 0;
+		/* bypass will have inhibited any stacking, but since it's
+		   used for polymorph handling, the objects here probably
+		   have been transformed and won't be stacked in the usual
+		   manner afterwards; so don't bother with this */
 #if 0
-		/*  setting otmp->bypass changes mergability.
-		 *  If monster can ever drop anything that
-                 *  can and should merge, this code block
-		 *  should be enabled.
-		 */
-		{
-		    struct obj *obj;
+		if (objects[otmp->otyp].oc_merge) {
 		    xchar ox, oy;
+
 		    (void) get_obj_location(otmp, &ox, &oy, 0);
-		    obj_extract_self(otmp);
-		    obj = merge_choice(fobj, otmp);
-		    /* If it can't merge, then place it */
-		    if (!obj || (obj && !merged(&obj, &otmp)))
-		        place_object(otmp, ox, oy);
+		    stack_object(otmp);
 		    newsym(ox, oy);
 		}
-#endif
+#endif	/*0*/
 	    }
+	}
+	/* invent and mydogs chains shouldn't matter here */
+	for (otmp = migrating_objs; otmp; otmp = otmp->nobj)
+	    otmp->bypass = 0;
+	for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+	    if (DEADMONSTER(mtmp)) continue;
+	    for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj)
+		otmp->bypass = 0;
+	}
+	for (mtmp = migrating_mons; mtmp; mtmp = mtmp->nmon) {
+	    for (otmp = mtmp->minvent; otmp; otmp = otmp->nobj)
+		otmp->bypass = 0;
 	}
 	flags.bypasses = FALSE;
 }
@@ -547,6 +598,7 @@ boolean polyspot;
 	register struct obj *otmp;
 	struct permonst *mdat = mon->data;
 	boolean vis = cansee(mon->mx, mon->my);
+	boolean handless_or_tiny = (nohands(mdat) || verysmall(mdat));
 	const char *pronoun = mhim(mon),
 			*ppronoun = mhis(mon);
 
@@ -626,12 +678,12 @@ boolean polyspot;
 	    }
 #endif
 	}
-	if (nohands(mdat) || verysmall(mdat)) {
+	if (handless_or_tiny) {
+	    /* [caller needs to handle weapon checks] */
 	    if ((otmp = which_armor(mon, W_ARMG)) != 0) {
 		if (vis)
 		    pline("%s drops %s gloves%s!", Monnam(mon), ppronoun,
 					MON_WEP(mon) ? " and weapon" : "");
-		possibly_unwield(mon);
 		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
@@ -644,7 +696,11 @@ boolean polyspot;
 		if (polyspot) bypass_obj(otmp);
 		m_lose_armor(mon, otmp);
 	    }
-	    if ((otmp = which_armor(mon, W_ARMH)) != 0) {
+	}
+	if (handless_or_tiny || has_horns(mdat)) {
+	    if ((otmp = which_armor(mon, W_ARMH)) != 0 &&
+		    /* flimsy test for horns matches polyself handling */
+		    (handless_or_tiny || !is_flimsy(otmp))) {
 		if (vis)
 		    pline("%s helmet falls to the %s!",
 			  s_suffix(Monnam(mon)), surface(mon->mx, mon->my));
@@ -654,8 +710,7 @@ boolean polyspot;
 		m_lose_armor(mon, otmp);
 	    }
 	}
-	if (nohands(mdat) || verysmall(mdat) || slithy(mdat) ||
-	    mdat->mlet == S_CENTAUR) {
+	if (handless_or_tiny || slithy(mdat) || mdat->mlet == S_CENTAUR) {
 	    if ((otmp = which_armor(mon, W_ARMF)) != 0) {
 		if (vis) {
 		    if (is_whirly(mon->data))
@@ -709,6 +764,31 @@ struct obj *obj;
 	if (obj->otyp == SPEED_BOOTS && mon->permspeed != MFAST)
 	    return 20;
     }
+    return 0;
+}
+
+/*
+ * Exceptions to things based on race. Correctly checks polymorphed player race.
+ * Returns:
+ *	 0 No exception, normal rules apply.
+ * 	 1 If the race/object combination is acceptable.
+ *	-1 If the race/object combination is unacceptable.
+ */
+int
+racial_exception(mon, obj)
+struct monst *mon;
+struct obj *obj;
+{
+    const struct permonst *ptr = raceptr(mon);
+
+    /* Acceptable Exceptions: */
+    /* Allow hobbits to wear elven armor - LoTR */
+    if (ptr == &mons[PM_HOBBIT] && is_elven_armor(obj))
+	return 1;
+    /* Unacceptable Exceptions: */
+    /* Checks for object that certain races should never use go here */
+    /*	return -1; */
+
     return 0;
 }
 /*worn.c*/

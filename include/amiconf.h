@@ -38,7 +38,7 @@ typedef long off_t;
 
 #define NOCWD_ASSUMPTIONS	/* Allow paths to be specified for HACKDIR,
 				   LEVELDIR, SAVEDIR, BONESDIR, DATADIR,
-				   SCOREDIR, LOCKDIR, and CONFIGDIR. */
+				   SCOREDIR, LOCKDIR, CONFIGDIR, and TROUBLEDIR */
 
 /* data librarian defs */
 #ifndef NOCWD_ASSUMPTIONS
@@ -47,6 +47,8 @@ typedef long off_t;
 #else
 # define DLBFILE	"nhdat"			/* main library */
 # define DLBFILE2	"nhsdat"		/* sound library */
+#endif
+
 #define FILENAME_CMP	stricmp			/* case insensitive */
 
 #ifndef __SASC_60

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)objnam.c	3.4	2002/02/22	*/
+/*	SCCS Id: @(#)objnam.c	3.4	2003/02/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -101,7 +101,7 @@ register int otyp;
 	if (Role_if(PM_SAMURAI) && Japanese_item_name(otyp))
 		actualn = Japanese_item_name(otyp);
 	switch(ocl->oc_class) {
-	case GOLD_CLASS:
+	case COIN_CLASS:
 		Strcpy(buf, "coin");
 		break;
 	case POTION_CLASS:
@@ -209,6 +209,24 @@ char *FDECL((*func), (OBJ_P));
 	return str;
 }
 
+/* convert player specified fruit name into corresponding fruit juice name
+   ("slice of pizza" -> "pizza juice" rather than "slice of pizza juice") */
+char *
+fruitname(juice)
+boolean juice;	/* whether or not to append " juice" to the name */
+{
+    char *buf = nextobuf();
+    const char *fruit_nam = strstri(pl_fruit, " of ");
+
+    if (fruit_nam)
+	fruit_nam += 4;		/* skip past " of " */
+    else
+	fruit_nam = pl_fruit;	/* use it as is */
+
+    Sprintf(buf, "%s%s", makesingular(fruit_nam), juice ? " juice" : "");
+    return buf;
+}
+
 #endif /* OVLB */
 #ifdef OVL1
 
@@ -231,12 +249,11 @@ register struct obj *obj;
 	buf[0] = '\0';
 	/*
 	 * clean up known when it's tied to oc_name_known, eg after AD_DRIN
-	 * This is only required for unique objects and the Fake AoY since the
-	 * article printed for the object is tied to the combination of the two
+	 * This is only required for unique objects since the article
+	 * printed for the object is tied to the combination of the two
 	 * and printing the wrong article gives away information.
 	 */
-	if (!nn && ocl->oc_uses_known &&
-	    (ocl->oc_unique || typ == FAKE_AMULET_OF_YENDOR)) obj->known = 0;
+	if (!nn && ocl->oc_uses_known && ocl->oc_unique) obj->known = 0;
 	if (!Blind) obj->dknown = TRUE;
 	if (Role_if(PM_PRIEST)) obj->bknown = TRUE;
 	if (obj_is_pname(obj))
@@ -343,7 +360,7 @@ register struct obj *obj;
 			Sprintf(eos(buf), " of %s meat", mons[obj->corpsenm].mname);
 		}
 		break;
-	    case GOLD_CLASS:
+	    case COIN_CLASS:
 	    case CHAIN_CLASS:
 		Strcpy(buf, actualn);
 		break;
@@ -573,7 +590,7 @@ register struct obj *obj;
 #endif
 
 	if (obj->bknown &&
-	    obj->oclass != GOLD_CLASS &&
+	    obj->oclass != COIN_CLASS &&
 	    (obj->otyp != POT_WATER || !objects[POT_WATER].oc_name_known
 		|| (!obj->cursed && !obj->blessed))) {
 	    /* allow 'blessed clear potion' if we don't know it's holy water;
@@ -780,6 +797,10 @@ boolean
 not_fully_identified(otmp)
 register struct obj *otmp;
 {
+#ifdef GOLDOBJ
+    /* gold doesn't have any interesting attributes [yet?] */
+    if (otmp->oclass == COIN_CLASS) return FALSE;	/* always fully ID'd */
+#endif
     /* check fundamental ID hallmarks first */
     if (!otmp->known || !otmp->dknown ||
 #ifdef MAIL
@@ -868,6 +889,7 @@ register const char *str;
 	    strcmp(str, "iron bars") &&
 	    strcmp(str, "ice")) {
 		if (index(vowels, *str) &&
+		    strncmp(str, "one-", 4) &&
 		    strncmp(str, "useful", 6) &&
 		    strncmp(str, "unicorn", 7) &&
 		    strncmp(str, "uranium", 7) &&
@@ -1007,6 +1029,19 @@ register const char *verb;
 	return buf;
 }
 
+/* various singular words that vtense would otherwise categorize as plural */
+static const char * const special_subjs[] = {
+	"erinys",
+	"manes",		/* this one is ambiguous */
+	"Cyclops",
+	"Hippocrates",
+	"Pelias",
+	"aklys",
+	"amnesia",
+	"paralysis",
+	0
+};
+
 /* return form of the verb (input plural) for present tense 3rd person subj */
 char *
 vtense(subj, verb)
@@ -1015,8 +1050,8 @@ register const char *verb;
 {
 	char *buf = nextobuf();
 	int len;
-	const char *spot;
-	const char *sp;
+	const char *sp, *spot;
+	const char * const *spec;
 
 	/*
 	 * verb is given in plural (without trailing s).  Return as input
@@ -1032,6 +1067,7 @@ register const char *verb;
 	    spot = (const char *)0;
 	    for (sp = subj; (sp = index(sp, ' ')) != 0; ++sp) {
 		if (!strncmp(sp, " of ", 4) ||
+		    !strncmp(sp, " from ", 6) ||
 		    !strncmp(sp, " called ", 8) ||
 		    !strncmp(sp, " named ", 7) ||
 		    !strncmp(sp, " labeled ", 9)) {
@@ -1039,23 +1075,33 @@ register const char *verb;
 		    break;
 		}
 	    }
-	    len = strlen(subj);
+	    len = (int) strlen(subj);
 	    if (!spot) spot = subj + len - 1;
 
 	    /*
-	     * plural: anything that ends in 's', but not '*us'.
+	     * plural: anything that ends in 's', but not '*us' or '*ss'.
 	     * Guess at a few other special cases that makeplural creates.
 	     */
-	    if ((*spot == 's' && spot != subj && *(spot-1) != 'u') ||
+	    if ((*spot == 's' && spot != subj &&
+			(*(spot-1) != 'u' && *(spot-1) != 's')) ||
 		((spot - subj) >= 4 && !strncmp(spot-3, "eeth", 4)) ||
 		((spot - subj) >= 3 && !strncmp(spot-3, "feet", 4)) ||
 		((spot - subj) >= 2 && !strncmp(spot-1, "ia", 2)) ||
 		((spot - subj) >= 2 && !strncmp(spot-1, "ae", 2))) {
-		Strcpy(buf, verb);
-		return buf;
+		/* check for special cases to avoid false matches */
+		len = (int)(spot - subj) + 1;
+		for (spec = special_subjs; *spec; spec++)
+		    if (!strncmpi(*spec, subj, len)) goto sing;
+
+		return strcpy(buf, verb);
 	    }
+	    /*
+	     * 2nd person singular behaves as if plural.
+	     */
+	    if (!strcmpi(subj, "you")) return strcpy(buf, verb);
 	}
 
+ sing:
 	len = strlen(verb);
 	spot = verb + len - 1;
 
@@ -1452,27 +1498,32 @@ const char *oldstr;
 				Strcpy(p-3, "fe");
 				return bp;
 			}
-
 			if(!BSTRCMP(bp, p-6, "staves")) {
 				Strcpy(p-3, "ff");
 				return bp;
 			}
-
 			if (!BSTRCMPI(bp, p-6, "leaves")) {
 				Strcpy(p-3, "f");
 				return bp;
 			}
-
-			/* note: nurses, axes but boxes */
-			if(!BSTRCMP(bp, p-5, "boxes")) {
-				p[-2] = 0;
+			if (!BSTRCMP(bp, p-8, "vortices")) {
+				Strcpy(p-4, "ex");
 				return bp;
 			}
+
+			/* note: nurses, axes but boxes */
+			if (!BSTRCMP(bp, p-5, "boxes") ||
+			    !BSTRCMP(bp, p-4, "ches")) {
+				p[-2] = '\0';
+				return bp;
+			}
+
 			if (!BSTRCMP(bp, p-6, "gloves") ||
 			    !BSTRCMP(bp, p-6, "lenses") ||
 			    !BSTRCMP(bp, p-5, "shoes") ||
 			    !BSTRCMP(bp, p-6, "scales"))
 				return bp;
+
 		} else if (!BSTRCMP(bp, p-5, "boots") ||
 			   !BSTRCMP(bp, p-9, "gauntlets") ||
 			   !BSTRCMP(bp, p-6, "tricks") ||
@@ -1486,15 +1537,24 @@ const char *oldstr;
 #ifdef WIZARD
 			   !BSTRCMP(bp, p-9, "iron bars") ||
 #endif
-			   !BSTRCMP(bp, p-5, "aklys"))
+			   !BSTRCMP(bp, p-5, "aklys") ||
+			   !BSTRCMP(bp, p-6, "fungus"))
 				return bp;
 	mins:
-		p[-1] = 0;
+		p[-1] = '\0';
+
 	} else {
+
 		if(!BSTRCMP(bp, p-5, "teeth")) {
 			Strcpy(p-5, "tooth");
 			return bp;
 		}
+
+		if (!BSTRCMP(bp, p-5, "fungi")) {
+			Strcpy(p-5, "fungus");
+			return bp;
+		}
+
 		/* here we cannot find the plural suffix */
 	}
 	return bp;
@@ -1507,6 +1567,15 @@ const char *u_str;	/* from user, so might be variant spelling */
 const char *o_str;	/* from objects[], so is in canonical form */
 boolean retry_inverted;	/* optional extra "of" handling */
 {
+	/* special case: wizards can wish for traps.  The object is "beartrap"
+	 * and the trap is "bear trap", so to let wizards wish for both we
+	 * must not fuzzymatch.
+	 */
+#ifdef WIZARD
+	if (wizard && !strcmp(o_str, "beartrap"))
+	    return !strncmpi(o_str, u_str, 8);
+#endif
+
 	/* ignore spaces & hyphens and upper/lower case when comparing */
 	if (fuzzymatch(u_str, o_str, " -", TRUE)) return TRUE;
 
@@ -1659,7 +1728,8 @@ boolean from_user;
 	(void)mungspaces(bp);
 	/* allow wishing for "nothing" to preserve wishless conduct...
 	   [now requires "wand of nothing" if that's what was really wanted] */
-	if (!strcmpi(bp, "nothing") || !strcmpi(bp, "nil")) return no_wish;
+	if (!strcmpi(bp, "nothing") || !strcmpi(bp, "nil") ||
+	    !strcmpi(bp, "none")) return no_wish;
 	/* save the [nearly] unmodified choice string */
 	Strcpy(fruitbuf, bp);
 
@@ -1902,6 +1972,9 @@ boolean from_user;
 		}
 		as++;
 	}
+	/* can't use spellings list for this one due to shuffling */
+	if (!strcmpi(bp, "grey spellbook"))
+		*(bp + 2) = 'a';
     }
 
 	/* dragon scales - assumes order of dragons */
@@ -2015,6 +2088,8 @@ boolean from_user;
 		oclass = GEM_CLASS;
 		dn = actualn = bp;
 		goto srch;
+	} else if (!strcmpi(bp, "looking glass")) {
+		;	/* avoid false hit on "* glass" */
 	} else if (!BSTRCMPI(bp, p-6, " glass") || !strcmpi(bp, "glass")) {
 		register char *g = bp;
 		if (strstri(g, "broken")) return (struct obj *)0;
@@ -2027,7 +2102,7 @@ boolean from_user;
 			typ = LAST_GEM + rnd(9);
 			if (objects[typ].oc_class == GEM_CLASS) goto typfnd;
 			else typ = 0;	/* somebody changed objects[]? punt */
-		} else if (g > bp) {	/* try to construct canonical form */
+		} else {		/* try to construct canonical form */
 			char tbuf[BUFSZ];
 			Strcpy(tbuf, "worthless piece of ");
 			Strcat(tbuf, g);  /* assume it starts with the color */
@@ -2615,6 +2690,17 @@ struct obj *cloak;
     return "cloak";
 }
 
+const char *
+mimic_obj_name(mtmp)
+struct monst *mtmp;
+{
+	if (mtmp->m_ap_type == M_AP_OBJECT && mtmp->mappearance != STRANGE_OBJECT) {
+		int idx = objects[mtmp->mappearance].oc_descr_idx;
+		if (mtmp->mappearance == GOLD_PIECE) return "gold";
+		return obj_descr[idx].oc_name;
+	}
+	return "whatcha-may-callit";
+}
 #endif /* OVLB */
 
 /*objnam.c*/

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mcastu.c	3.4	2002/02/07	*/
+/*	SCCS Id: @(#)mcastu.c	3.4	2003/01/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -40,7 +40,7 @@ STATIC_DCL boolean FDECL(spell_would_be_useless,(struct monst *,unsigned int,int
 
 #ifdef OVL0
 
-extern const char *flash_types[];	/* from zap.c */
+extern const char * const flash_types[];	/* from zap.c */
 
 /* feedback when frustrated monster couldn't cast a spell */
 STATIC_OVL
@@ -91,7 +91,7 @@ int spellval;
     case 17:
     case 16:
     case 15:
-	return MGC_SUMMON_MONS;	/* also aggravates */
+	return MGC_SUMMON_MONS;
     case 14:
     case 13:
 	return MGC_AGGRAVATION;
@@ -181,7 +181,7 @@ castmu(mtmp, mattk, thinks_it_foundyou, foundyou)
 	 * attacking casts spells only a small portion of the time that an
 	 * attacking monster does.
 	 */
-	if (mattk->adtyp == AD_SPEL || mattk->adtyp == AD_CLRC) {
+	if ((mattk->adtyp == AD_SPEL || mattk->adtyp == AD_CLRC) && ml) {
 	    int cnt = 40;
 
 	    do {
@@ -355,7 +355,7 @@ int spellnum;
 	} else
 	    impossible("bad wizard cloning?");
 	break;
-    case MGC_SUMMON_MONS:		/* also aggravates */
+    case MGC_SUMMON_MONS:
     {
 	int count;
 
@@ -542,9 +542,12 @@ int spellnum;
 	boolean success;
 	int i;
 	coord bypos;
+	int quan;
 
+	quan = (mtmp->m_lev < 2) ? 1 : rnd((int)mtmp->m_lev / 2);
+	if (quan < 3) quan = 3;
 	success = pm ? TRUE : FALSE;
-	for (i = 0; i <= (int) mtmp->m_lev; i++) {
+	for (i = 0; i <= quan; i++) {
 	    if (!enexto(&bypos, mtmp->mux, mtmp->muy, mtmp->data))
 		break;
 	    if ((pm = mkclass(let,0)) != 0 &&

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)files.c	3.4	2002/02/23	*/
+/*	SCCS Id: @(#)files.c	3.4	2003/02/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,11 +14,25 @@
 #if !defined(MAC) && !defined(O_WRONLY) && !defined(AZTEC_C)
 #include <fcntl.h>
 #endif
-#if defined(UNIX) || defined(VMS)
+
 #include <errno.h>
-# ifndef SKIP_ERRNO
-extern int errno;
+#ifdef _MSC_VER	/* MSC 6.0 defines errno quite differently */
+# if (_MSC_VER >= 600)
+#  define SKIP_ERRNO
 # endif
+#endif
+#ifndef SKIP_ERRNO
+# ifdef _DCC
+const
+# endif
+extern int errno;
+#endif
+
+#if defined(UNIX) && defined(QT_GRAPHICS)
+#include <dirent.h>
+#endif
+
+#if defined(UNIX) || defined(VMS)
 #include <signal.h>
 #endif
 
@@ -34,7 +48,7 @@ extern int errno;
 #endif
 
 #ifdef PREFIXES_IN_USE
-#define FQN_NUMBUF 2
+#define FQN_NUMBUF 4
 static char fqn_filename_buffer[FQN_NUMBUF][FQN_MAX_FILENAME];
 #endif
 
@@ -75,6 +89,17 @@ char SAVEF[SAVESIZE];	/* holds relative path of save file from playground */
 char SAVEP[SAVESIZE];	/* holds path of directory for save file */
 #endif
 
+#ifdef HOLD_LOCKFILE_OPEN
+struct level_ftrack {
+int fd;					/* file descriptor for level file     */
+int oflag;				/* open flags                         */
+boolean nethack_thinks_it_is_open;	/* Does NetHack think it's open?       */
+} lftrack;
+# if defined(WIN32)
+#include <share.h>
+# endif
+#endif /*HOLD_LOCKFILE_OPEN*/
+
 #ifdef WIZARD
 #define WIZKIT_MAX 128
 static char wizkit[WIZKIT_MAX];
@@ -99,7 +124,9 @@ static int lockptr;
 #define Delay(a) msleep(a)
 # endif
 #define Close close
+#ifndef WIN_CE
 #define DeleteFile unlink
+#endif
 #endif
 
 #ifdef USER_SOUNDS
@@ -116,11 +143,123 @@ STATIC_DCL void FDECL(docompress_file, (const char *,BOOLEAN_P));
 #endif
 STATIC_DCL char *FDECL(make_lockname, (const char *,char *));
 STATIC_DCL FILE *FDECL(fopen_config_file, (const char *));
-STATIC_DCL int FDECL(get_uchars, (FILE *,char *,char *,uchar *,int,const char *));
+STATIC_DCL int FDECL(get_uchars, (FILE *,char *,char *,uchar *,BOOLEAN_P,int,const char *));
 int FDECL(parse_config_line, (FILE *,char *,char *,char *));
 #ifdef NOCWD_ASSUMPTIONS
 STATIC_DCL void FDECL(adjust_prefix, (char *, int));
 #endif
+#ifdef SELF_RECOVER
+STATIC_DCL boolean FDECL(copy_bytes, (int, int));
+#endif
+#ifdef HOLD_LOCKFILE_OPEN
+STATIC_DCL int FDECL(open_levelfile_exclusively, (const char *, int, int));
+#endif
+
+/*
+ * fname_encode()
+ *
+ *   Args:
+ *	legal		zero-terminated list of acceptable file name characters
+ *	quotechar	lead-in character used to quote illegal characters as hex digits
+ *	s		string to encode
+ *	callerbuf	buffer to house result
+ *	bufsz		size of callerbuf
+ *
+ *   Notes:
+ *	The hex digits 0-9 and A-F are always part of the legal set due to
+ *	their use in the encoding scheme, even if not explicitly included in 'legal'.
+ *
+ *   Sample:
+ *	The following call:
+ *	    (void)fname_encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz",
+ *				'%', "This is a % test!", buf, 512);
+ *	results in this encoding:
+ *	    "This%20is%20a%20%25%20test%21"
+ */
+char *
+fname_encode(legal, quotechar, s, callerbuf, bufsz)
+const char *legal;
+char quotechar;
+char *s, *callerbuf;
+int bufsz;
+{
+	char *sp, *op;
+	int cnt = 0;
+	static char hexdigits[] = "0123456789ABCDEF";
+
+	sp = s;
+	op = callerbuf;
+	*op = '\0';
+	
+	while (*sp) {
+		/* Do we have room for one more character or encoding? */
+		if ((bufsz - cnt) <= 4) return callerbuf;
+
+		if (*sp == quotechar) {
+			(void)sprintf(op, "%c%02X", quotechar, *sp);
+			 op += 3;
+			 cnt += 3;
+		} else if ((index(legal, *sp) != 0) || (index(hexdigits, *sp) != 0)) {
+			*op++ = *sp;
+			*op = '\0';
+			cnt++;
+		} else {
+			(void)sprintf(op,"%c%02X", quotechar, *sp);
+			op += 3;
+			cnt += 3;
+		}
+		sp++;
+	}
+	return callerbuf;
+}
+
+/*
+ * fname_decode()
+ *
+ *   Args:
+ *	quotechar	lead-in character used to quote illegal characters as hex digits
+ *	s		string to decode
+ *	callerbuf	buffer to house result
+ *	bufsz		size of callerbuf
+ */
+char *
+fname_decode(quotechar, s, callerbuf, bufsz)
+char quotechar;
+char *s, *callerbuf;
+int bufsz;
+{
+	char *sp, *op;
+	int k,calc,cnt = 0;
+	static char hexdigits[] = "0123456789ABCDEF";
+
+	sp = s;
+	op = callerbuf;
+	*op = '\0';
+	calc = 0;
+
+	while (*sp) {
+		/* Do we have room for one more character? */
+		if ((bufsz - cnt) <= 2) return callerbuf;
+		if (*sp == quotechar) {
+			sp++;
+			for (k=0; k < 16; ++k) if (*sp == hexdigits[k]) break;
+			if (k >= 16) return callerbuf;	/* impossible, so bail */
+			calc = k << 4; 
+			sp++;
+			for (k=0; k < 16; ++k) if (*sp == hexdigits[k]) break;
+			if (k >= 16) return callerbuf;	/* impossible, so bail */
+			calc += k; 
+			sp++;
+			*op++ = calc;
+			*op = '\0';
+		} else {
+			*op++ = *sp++;
+			*op = '\0';
+		}
+		cnt++;
+	}
+	return callerbuf;
+}
 
 #ifndef PREFIXES_IN_USE
 /*ARGSUSED*/
@@ -153,18 +292,60 @@ int whichprefix, buffnum;
 #endif
 }
 
+/* reasonbuf must be at least BUFSZ, supplied by caller */
+/*ARGSUSED*/
+int
+validate_prefix_locations(reasonbuf)
+char *reasonbuf;
+{
+#if defined(NOCWD_ASSUMPTIONS)
+	FILE *fp;
+	const char *filename;
+	int prefcnt, failcount = 0;
+	char panicbuf1[BUFSZ], panicbuf2[BUFSZ], *details;
+
+	if (reasonbuf) reasonbuf[0] = '\0';
+	for (prefcnt = 1; prefcnt < PREFIX_COUNT; prefcnt++) {
+		/* don't test writing to configdir or datadir; they're readonly */
+		if (prefcnt == CONFIGPREFIX || prefcnt == DATAPREFIX) continue;
+		filename = fqname("validate", prefcnt, 3);
+		if ((fp = fopen(filename, "w"))) {
+			fclose(fp);
+			(void) unlink(filename);
+		} else {
+			if (reasonbuf) {
+				if (failcount) Strcat(reasonbuf,", ");
+				Strcat(reasonbuf, fqn_prefix_names[prefcnt]);
+			}
+			/* the paniclog entry gets the value of errno as well */
+			Sprintf(panicbuf1,"Invalid %s", fqn_prefix_names[prefcnt]);
+#if defined (NHSTDC) && !defined(NOTSTDC)
+			if (!(details = strerror(errno)))
+#endif
+			details = "";
+			Sprintf(panicbuf2,"\"%s\", (%d) %s",
+				fqn_prefix[prefcnt], errno, details);
+			paniclog(panicbuf1, panicbuf2);
+			failcount++;
+		}	
+	}
+	if (failcount)
+		return 0;
+	else
+#endif
+	return 1;
+}
 
 /* fopen a file, with OS-dependent bells and whistles */
 /* NOTE: a simpler version of this routine also exists in util/dlb_main.c */
 FILE *
-fopen_datafile(filename, mode, use_scoreprefix)
+fopen_datafile(filename, mode, prefix)
 const char *filename, *mode;
-boolean use_scoreprefix;
+int prefix;
 {
 	FILE *fp;
 
-	filename = fqname(filename,
-				use_scoreprefix ? SCOREPREFIX : DATAPREFIX, 0);
+	filename = fqname(filename, prefix, prefix == TROUBLEPREFIX ? 3 : 0);
 #ifdef VMS	/* essential to have punctuation, to avoid logical names */
     {
 	char tmp[BUFSIZ];
@@ -229,19 +410,27 @@ int lev;
 }
 
 int
-create_levelfile(lev)
+create_levelfile(lev, errbuf)
 int lev;
+char errbuf[];
 {
 	int fd;
 	const char *fq_lock;
 
+	if (errbuf) *errbuf = '\0';
 	set_levelfile_name(lock, lev);
 	fq_lock = fqname(lock, LEVELPREFIX, 0);
 
-#if defined(MICRO)
+#if defined(MICRO) || defined(WIN32)
 	/* Use O_TRUNC to force the file to be shortened if it already
 	 * exists and is currently longer.
 	 */
+# ifdef HOLD_LOCKFILE_OPEN
+	if (lev == 0)
+		fd = open_levelfile_exclusively(fq_lock, lev,
+				O_WRONLY |O_CREAT | O_TRUNC | O_BINARY);
+	else
+# endif
 	fd = open(fq_lock, O_WRONLY |O_CREAT | O_TRUNC | O_BINARY, FCMASK);
 #else
 # ifdef MAC
@@ -249,22 +438,28 @@ int lev;
 # else
 	fd = creat(fq_lock, FCMASK);
 # endif
-#endif /* MICRO */
+#endif /* MICRO || WIN32 */
 
 	if (fd >= 0)
 	    level_info[lev].flags |= LFILE_EXISTS;
+	else if (errbuf)	/* failure explanation */
+	    Sprintf(errbuf,
+		    "Cannot create file \"%s\" for level %d (errno %d).",
+		    lock, lev, errno);
 
 	return fd;
 }
 
 
 int
-open_levelfile(lev)
+open_levelfile(lev, errbuf)
 int lev;
+char errbuf[];
 {
 	int fd;
 	const char *fq_lock;
 
+	if (errbuf) *errbuf = '\0';
 	set_levelfile_name(lock, lev);
 	fq_lock = fqname(lock, LEVELPREFIX, 0);
 #ifdef MFLOPPY
@@ -275,8 +470,22 @@ int lev;
 #ifdef MAC
 	fd = macopen(fq_lock, O_RDONLY | O_BINARY, LEVL_TYPE);
 #else
+# ifdef HOLD_LOCKFILE_OPEN
+	if (lev == 0)
+		fd = open_levelfile_exclusively(fq_lock, lev, O_RDONLY | O_BINARY );
+	else
+# endif
 	fd = open(fq_lock, O_RDONLY | O_BINARY, 0);
 #endif
+
+	/* for failure, return an explanation that our caller can use;
+	   settle for `lock' instead of `fq_lock' because the latter
+	   might end up being too big for nethack's BUFSZ */
+	if (fd < 0 && errbuf)
+	    Sprintf(errbuf,
+		    "Cannot open file \"%s\" for level %d (errno %d).",
+		    lock, lev, errno);
+
 	return fd;
 }
 
@@ -291,6 +500,9 @@ int lev;
 	 */
 	if (lev == 0 || (level_info[lev].flags & LFILE_EXISTS)) {
 		set_levelfile_name(lock, lev);
+#ifdef HOLD_LOCKFILE_OPEN
+		if (lev == 0) really_close();
+#endif
 		(void) unlink(fqname(lock, LEVELPREFIX, 0));
 		level_info[lev].flags &= ~LFILE_EXISTS;
 	}
@@ -316,6 +528,62 @@ clearlocks()
 #endif
 }
 
+#ifdef HOLD_LOCKFILE_OPEN
+STATIC_OVL int
+open_levelfile_exclusively(name, lev, oflag)
+const char *name;
+int lev, oflag;
+{
+	int reslt, fd;
+	if (lftrack.fd) {
+		/* check for compatible access */
+		if (lftrack.oflag == oflag) {
+			fd = lftrack.fd;
+			reslt = lseek(fd, 0L, SEEK_SET);
+			if (reslt == -1L)
+			    panic("open_levelfile_exclusively: lseek failed %d", reslt);
+			lftrack.nethack_thinks_it_is_open = TRUE;
+		} else {
+			really_close();
+			fd = sopen(name, oflag,SH_DENYRW, FCMASK);
+			lftrack.fd = fd;
+			lftrack.oflag = oflag;
+			lftrack.nethack_thinks_it_is_open = TRUE;
+		}
+	} else {
+			fd = sopen(name, oflag,SH_DENYRW, FCMASK);
+			lftrack.fd = fd;
+			lftrack.oflag = oflag;
+			if (fd)
+			    lftrack.nethack_thinks_it_is_open = TRUE;
+	}
+	return fd;
+}
+
+void
+really_close()
+{
+	int fd = lftrack.fd;
+	lftrack.nethack_thinks_it_is_open = FALSE;
+	lftrack.fd = 0;
+	lftrack.oflag = 0;
+	(void)_close(fd);
+	return;
+}
+
+close(fd)
+int fd;
+{
+ 	if (lftrack.fd == fd) {
+		really_close();	/* close it, but reopen it to hold it */
+		fd = open_levelfile(0, (char *)0);
+		lftrack.nethack_thinks_it_is_open = FALSE;
+		return 0;
+	}
+	return _close(fd);
+}
+#endif
+	
 /* ----------  END LEVEL FILE HANDLING ----------- */
 
 
@@ -366,18 +634,20 @@ set_bonestemp_name()
 }
 
 int
-create_bonesfile(lev, bonesid)
+create_bonesfile(lev, bonesid, errbuf)
 d_level *lev;
 char **bonesid;
+char errbuf[];
 {
 	const char *file;
 	int fd;
 
+	if (errbuf) *errbuf = '\0';
 	*bonesid = set_bonesfile_name(bones, lev);
 	file = set_bonestemp_name();
 	file = fqname(file, BONESPREFIX, 0);
 
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 	/* Use O_TRUNC to force the file to be shortened if it already
 	 * exists and is currently longer.
 	 */
@@ -388,6 +658,12 @@ char **bonesid;
 # else
 	fd = creat(file, FCMASK);
 # endif
+#endif
+	if (fd < 0 && errbuf) /* failure explanation */
+	    Sprintf(errbuf,
+		    "Cannot create bones \"%s\", id %s (errno %d).",
+		    lock, *bonesid, errno);
+
 # if defined(VMS) && !defined(SECURE)
 	/*
 	   Re-protect bones file with world:read+write+execute+delete access.
@@ -399,7 +675,6 @@ char **bonesid;
 	 */
 	(void) chmod(file, FCMASK | 007);  /* allow other users full access */
 # endif /* VMS && !SECURE */
-#endif /* MICRO */
 
 	return fd;
 }
@@ -442,7 +717,7 @@ d_level *lev;
 #endif
 #ifdef WIZARD
 	if (wizard && ret != 0)
-		pline("couldn't rename %s to %s", tempname, fq_bones);
+		pline("couldn't rename %s to %s.", tempname, fq_bones);
 #endif
 }
 
@@ -494,12 +769,15 @@ compress_bonesfile()
 void
 set_savefile_name()
 {
+#if defined(WIN32)
+	char fnamebuf[BUFSZ], encodedfnamebuf[BUFSZ];
+#endif
 #ifdef VMS
 	Sprintf(SAVEF, "[.save]%d%s", getuid(), plname);
 	regularize(SAVEF+7);
 	Strcat(SAVEF, ";1");
 #else
-# if defined(MICRO) && !defined(WIN32)
+# if defined(MICRO)
 	Strcpy(SAVEF, SAVEP);
 #  ifdef AMIGA
 	strncat(SAVEF, bbs_id, PATHLEN);
@@ -517,7 +795,12 @@ set_savefile_name()
 	Strcat(SAVEF, ".sav");
 # else
 #  if defined(WIN32)
-	Sprintf(SAVEF,"%s-%s.NetHack-saved-game",get_username(0), plname);
+	/* Obtain the name of the logged on user and incorporate
+	 * it into the name. */
+	Sprintf(fnamebuf, "%s-%s", get_username(0), plname);
+	(void)fname_encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-.",
+				'%', fnamebuf, encodedfnamebuf, BUFSZ);
+	Sprintf(SAVEF, "%s.NetHack-saved-game", encodedfnamebuf);
 #  else
 	Sprintf(SAVEF, "save/%d%s", (int)getuid(), plname);
 	regularize(SAVEF+5);	/* avoid . or / in name */
@@ -566,7 +849,7 @@ create_savefile()
 	int fd;
 
 	fq_save = fqname(SAVEF, SAVEPREFIX, 0);
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 	fd = open(fq_save, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
 #else
 # ifdef MAC
@@ -640,6 +923,104 @@ restore_saved_game()
 	}
 	return fd;
 }
+
+/*ARGSUSED*/
+static char*
+plname_from_file(filename)
+const char* filename;
+{
+#ifdef STORE_PLNAME_IN_FILE
+    int fd;
+    char* result = 0;
+
+    Strcpy(SAVEF,filename);
+#ifdef COMPRESS_EXTENSION
+    SAVEF[strlen(SAVEF)-strlen(COMPRESS_EXTENSION)] = '\0';
+#endif
+    uncompress(SAVEF);
+    if ((fd = open_savefile()) >= 0) {
+	if (uptodate(fd, filename)) {
+	    char tplname[PL_NSIZ];
+	    mread(fd, (genericptr_t) tplname, PL_NSIZ);
+	    result = strdup(tplname);
+	}
+	(void) close(fd);
+    }
+    compress(SAVEF);
+
+    return result;
+#else
+# if defined(UNIX) && defined(QT_GRAPHICS)
+    /* Name not stored in save file, so we have to extract it from
+       the filename, which loses information
+       (eg. "/", "_", and "." characters are lost. */
+    int k;
+    int uid;
+    char name[NAME_MAX];
+#ifdef COMPRESS_EXTENSION
+#define EXTSTR COMPRESS_EXTENSION
+#else
+#define EXTSTR ""
+#endif
+    if ( sscanf( filename, "%*[^/]/%d%[^.]" EXTSTR, &uid, name ) == 2 ) {
+#undef EXTSTR
+    /* "_" most likely means " ", which certainly looks nicer */
+	for (k=0; name[k]; k++)
+	    if ( name[k]=='_' )
+		name[k]=' ';
+	return strdup(name);
+    } else
+# endif
+    {
+	return 0;
+    }
+#endif
+}
+
+char**
+get_saved_games()
+{
+#if defined(UNIX) && defined(QT_GRAPHICS)
+    int myuid=getuid();
+    struct dirent **namelist;
+    int n = scandir("save", &namelist, 0, alphasort);;
+    if ( n > 0 ) {
+	int i,j=0;
+	char** result = (char**)alloc((n+1)*sizeof(char*)); /* at most */
+	for (i=0; i<n; i++) {
+	    int uid;
+	    char name[NAME_MAX];
+	    if ( sscanf( namelist[i]->d_name, "%d%s", &uid, name ) == 2 ) {
+		if ( uid == myuid ) {
+		    char filename[BUFSZ];
+		    char* r;
+		    Sprintf(filename,"save/%d%s",uid,name);
+		    r = plname_from_file(filename);
+		    if ( r )
+			result[j++] = r;
+		}
+	    }
+	}
+	result[j++] = 0;
+	return result;
+    } else
+#endif
+    {
+	return 0;
+    }
+}
+
+void
+free_saved_games(saved)
+char** saved;
+{
+    if ( saved ) {
+	int i=0;
+	while (saved[i]) free((genericptr_t)saved[i++]);
+	free((genericptr_t)saved);
+    }
+}
+
 
 /* ----------  END SAVE FILE HANDLING ----------- */
 
@@ -909,7 +1290,7 @@ int retryct;
 	lockname = make_lockname(filename, locknambuf);
 	filename = fqname(filename, whichprefix, 0);
 #ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
-	lockname = fqname(lockname, LOCKPREFIX, 1);
+	lockname = fqname(lockname, LOCKPREFIX, 2);
 #endif
 
 #if defined(UNIX) || defined(VMS)
@@ -1013,7 +1394,7 @@ const char *filename;
 	if (nesting == 1) {
 		lockname = make_lockname(filename, locknambuf);
 #ifndef NO_FILE_LINKS	/* LOCKDIR should be subsumed by LOCKPREFIX */
-		lockname = fqname(lockname, LOCKPREFIX, 1);
+		lockname = fqname(lockname, LOCKPREFIX, 2);
 #endif
 
 #if defined(UNIX) || defined(VMS)
@@ -1112,7 +1493,7 @@ const char *filename;
 		}
 	}
 
-#if defined(MICRO) || defined(MAC) || defined(__BEOS__)
+#if defined(MICRO) || defined(MAC) || defined(__BEOS__) || defined(WIN32)
 	if ((fp = fopenp(fqname(configfile, CONFIGPREFIX, 0), "r"))
 								!= (FILE *)0)
 		return(fp);
@@ -1166,27 +1547,33 @@ const char *filename;
 /*
  * Retrieve a list of integers from a file into a uchar array.
  *
- * NOTE:  This routine is unable to read a value of 0.
+ * NOTE: zeros are inserted unless modlist is TRUE, in which case the list
+ *  location is unchanged.  Callers must handle zeros if modlist is FALSE.
  */
 STATIC_OVL int
-get_uchars(fp, buf, bufp, list, size, name)
+get_uchars(fp, buf, bufp, list, modlist, size, name)
     FILE *fp;		/* input file pointer */
     char *buf;		/* read buffer, must be of size BUFSZ */
     char *bufp;		/* current pointer */
     uchar *list;	/* return list */
+    boolean modlist;	/* TRUE: list is being modified in place */
     int  size;		/* return list size */
     const char *name;		/* name of option for error message */
 {
     unsigned int num = 0;
     int count = 0;
+    boolean havenum = FALSE;
 
     while (1) {
 	switch(*bufp) {
 	    case ' ':  case '\0':
 	    case '\t': case '\n':
-		if (num) {
-		    list[count++] =  num;
+		if (havenum) {
+		    /* if modifying in place, don't insert zeros */
+		    if (num || !modlist) list[count] = num;
+		    count++;
 		    num = 0;
+		    havenum = FALSE;
 		}
 		if (count == size || !*bufp) return count;
 		bufp++;
@@ -1195,6 +1582,7 @@ get_uchars(fp, buf, bufp, list, size, name)
 	    case '0': case '1': case '2': case '3':
 	    case '4': case '5': case '6': case '7':
 	    case '8': case '9':
+		havenum = TRUE;
 		num = num*10 + (*bufp-'0');
 		bufp++;
 		break;
@@ -1290,7 +1678,7 @@ char		*tmp_levels;
 	} else if (match_varname(buf, "LEVELDIR", 4) ||
 		   match_varname(buf, "LEVELS", 4)) {
 		adjust_prefix(bufp, LEVELPREFIX);
-	} else if (match_varname(buf, "SAVE", 4)) {
+	} else if (match_varname(buf, "SAVEDIR", 4)) {
 		adjust_prefix(bufp, SAVEPREFIX);
 	} else if (match_varname(buf, "BONESDIR", 5)) {
 		adjust_prefix(bufp, BONESPREFIX);
@@ -1302,6 +1690,8 @@ char		*tmp_levels;
 		adjust_prefix(bufp, LOCKPREFIX);
 	} else if (match_varname(buf, "CONFIGDIR", 4)) {
 		adjust_prefix(bufp, CONFIGPREFIX);
+	} else if (match_varname(buf, "TROUBLEDIR", 4)) {
+		adjust_prefix(bufp, TROUBLEPREFIX);
 #else /*NOCWD_ASSUMPTIONS*/
 # ifdef MICRO
 	} else if (match_varname(buf, "HACKDIR", 4)) {
@@ -1354,30 +1744,35 @@ char		*tmp_levels;
 	    (void) strncpy(catname, bufp, PL_PSIZ-1);
 
 	} else if (match_varname(buf, "BOULDER", 3)) {
-	    (void) get_uchars(fp, buf, bufp, &iflags.bouldersym, 1, "BOULDER");
+	    (void) get_uchars(fp, buf, bufp, &iflags.bouldersym, TRUE,
+			      1, "BOULDER");
 	} else if (match_varname(buf, "GRAPHICS", 4)) {
-	    len = get_uchars(fp, buf, bufp, translate, MAXPCHARS, "GRAPHICS");
+	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+			     MAXPCHARS, "GRAPHICS");
 	    assign_graphics(translate, len, MAXPCHARS, 0);
 	} else if (match_varname(buf, "DUNGEON", 4)) {
-	    len = get_uchars(fp, buf, bufp, translate, MAXDCHARS, "DUNGEON");
+	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+			     MAXDCHARS, "DUNGEON");
 	    assign_graphics(translate, len, MAXDCHARS, 0);
 	} else if (match_varname(buf, "TRAPS", 4)) {
-	    len = get_uchars(fp, buf, bufp, translate, MAXTCHARS, "TRAPS");
+	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+			     MAXTCHARS, "TRAPS");
 	    assign_graphics(translate, len, MAXTCHARS, MAXDCHARS);
 	} else if (match_varname(buf, "EFFECTS", 4)) {
-	    len = get_uchars(fp, buf, bufp, translate, MAXECHARS, "EFFECTS");
+	    len = get_uchars(fp, buf, bufp, translate, FALSE,
+			     MAXECHARS, "EFFECTS");
 	    assign_graphics(translate, len, MAXECHARS, MAXDCHARS+MAXTCHARS);
 
 	} else if (match_varname(buf, "OBJECTS", 3)) {
 	    /* oc_syms[0] is the RANDOM object, unused */
-	    (void) get_uchars(fp, buf, bufp, &(oc_syms[1]),
+	    (void) get_uchars(fp, buf, bufp, &(oc_syms[1]), TRUE,
 					MAXOCLASSES-1, "OBJECTS");
 	} else if (match_varname(buf, "MONSTERS", 3)) {
 	    /* monsyms[0] is unused */
-	    (void) get_uchars(fp, buf, bufp, &(monsyms[1]),
+	    (void) get_uchars(fp, buf, bufp, &(monsyms[1]), TRUE,
 					MAXMCLASSES-1, "MONSTERS");
 	} else if (match_varname(buf, "WARNINGS", 5)) {
-	    (void) get_uchars(fp, buf, bufp, translate,
+	    (void) get_uchars(fp, buf, bufp, translate, FALSE,
 					WARNCOUNT, "WARNINGS");
 	    assign_warnings(translate);
 #ifdef WIZARD
@@ -1501,6 +1896,7 @@ char		*tmp_levels;
 		add_sound_mapping(bufp);
 #endif
 #ifdef QT_GRAPHICS
+	/* These should move to wc_ options */
 	} else if (match_varname(buf, "QT_TILEWIDTH", 12)) {
 		extern char *qt_tilewidth;
 		if (qt_tilewidth == NULL)	
@@ -1538,7 +1934,7 @@ const char *filename;
 #define tmp_levels	(char *)0
 #define tmp_ramdisk	(char *)0
 
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 #undef tmp_levels
 	char	tmp_levels[PATHLEN];
 # ifdef MFLOPPY
@@ -1553,7 +1949,7 @@ const char *filename;
 
 	if (!(fp = fopen_config_file(filename))) return;
 
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 # ifdef MFLOPPY
 #  ifndef AMIGA
 	tmp_ramdisk[0] = 0;
@@ -1671,21 +2067,33 @@ read_wizkit()
 	FILE *fp;
 	char *ep, buf[BUFSZ];
 	struct obj *otmp;
+	boolean bad_items = FALSE, skip = FALSE;
+
 	if (!wizard || !(fp = fopen_wizkit_file())) return;
 
-	while (fgets(buf, 4*BUFSZ, fp)) {
-		if ((ep = index(buf, '\n'))) *ep = '\0';
+	while (fgets(buf, (int)(sizeof buf), fp)) {
+	    ep = index(buf, '\n');
+	    if (skip) {	/* in case previous line was too long */
+		if (ep) skip = FALSE; /* found newline; next line is normal */
+	    } else {
+		if (!ep) skip = TRUE; /* newline missing; discard next fgets */
+		else *ep = '\0';		/* remove newline */
+
 		if (buf[0]) {
 			otmp = readobjnam(buf, (struct obj *)0, FALSE);
 			if (otmp) {
 			    if (otmp != &zeroobj)
 				otmp = addinv(otmp);
 			} else {
-			    raw_printf("Bad wizkit item: \"%.50s\"", buf);
-			    wait_synch();
+			    /* .60 limits output line width to 79 chars */
+			    raw_printf("Bad wizkit item: \"%.60s\"", buf);
+			    bad_items = TRUE;
 			}
 		}
+	    }
 	}
+	if (bad_items)
+	    wait_synch();
 	(void) fclose(fp);
 	return;
 }
@@ -1731,7 +2139,7 @@ const char *dir;
 	    wait_synch();
 	}
 #endif  /* !UNIX && !VMS */
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 	char tmp[PATHLEN];
 
 # ifdef OS2_CODEVIEW   /* explicit path on opening for OS/2 */
@@ -1764,7 +2172,7 @@ const char *dir;
 		(void) close(fd);
 	} else		/* open succeeded */
 	    (void) close(fd);
-#else /* MICRO */
+#else /* MICRO || WIN32*/
 
 # ifdef MAC
 	/* Create the "record" file, if necessary */
@@ -1773,9 +2181,189 @@ const char *dir;
 	if (fd != -1) macclose (fd);
 # endif /* MAC */
 
-#endif /* MICRO */
+#endif /* MICRO || WIN32*/
 }
 
 /* ----------  END SCOREBOARD CREATION ----------- */
+
+/* ----------  BEGIN PANIC/IMPOSSIBLE LOG ----------- */
+
+/*ARGSUSED*/
+void
+paniclog(why, s)
+const char* why;
+const char* s;
+{
+#ifdef PANICLOG
+	FILE *lfile;
+
+	lfile = fopen_datafile(PANICLOG, "a", TROUBLEPREFIX);
+	if (lfile) {
+	    (void) fprintf(lfile, "%08ld: %s %s\n",
+			   yyyymmdd((time_t)0L), why, s);
+	    (void) fclose(lfile);
+	}
+#endif /* PANICLOG */
+}
+
+/* ----------  END PANIC/IMPOSSIBLE LOG ----------- */
+
+#ifdef SELF_RECOVER
+
+/* ----------  BEGIN INTERNAL RECOVER ----------- */
+boolean
+recover_savefile()
+{
+	int gfd, lfd, sfd;
+	int lev, savelev, hpid;
+	xchar levc;
+	struct version_info version_data;
+	int processed[256];
+	char savename[SAVESIZE], errbuf[BUFSZ];
+
+	for (lev = 0; lev < 256; lev++)
+		processed[lev] = 0;
+
+	/* level 0 file contains:
+	 *	pid of creating process (ignored here)
+	 *	level number for current level of save file
+	 *	name of save file nethack would have created
+	 *	and game state
+	 */
+	gfd = open_levelfile(0, errbuf);
+	if (gfd < 0) {
+	    raw_printf("%s\n", errbuf);
+	    return FALSE;
+	}
+	if (read(gfd, (genericptr_t) &hpid, sizeof hpid) != sizeof hpid) {
+	    raw_printf(
+"\nCheckpoint data incompletely written or subsequently clobbered. Recovery impossible.");
+	    (void)close(gfd);
+	    return FALSE;
+	}
+	if (read(gfd, (genericptr_t) &savelev, sizeof(savelev))
+							!= sizeof(savelev)) {
+	    raw_printf("\nCheckpointing was not in effect for %s -- recovery impossible.\n",
+			lock);
+	    (void)close(gfd);
+	    return FALSE;
+	}
+	if ((read(gfd, (genericptr_t) savename, sizeof savename)
+		!= sizeof savename) ||
+	    (read(gfd, (genericptr_t) &version_data, sizeof version_data)
+		!= sizeof version_data)) {
+	    raw_printf("\nError reading %s -- can't recover.\n", lock);
+	    (void)close(gfd);
+	    return FALSE;
+	}
+
+	/* save file should contain:
+	 *	version info
+	 *	current level (including pets)
+	 *	(non-level-based) game state
+	 *	other levels
+	 */
+	set_savefile_name();
+	sfd = create_savefile();
+	if (sfd < 0) {
+	    raw_printf("\nCannot recover savefile %s.\n", SAVEF);
+	    (void)close(gfd);
+	    return FALSE;
+	}
+
+	lfd = open_levelfile(savelev, errbuf);
+	if (lfd < 0) {
+	    raw_printf("\n%s\n", errbuf);
+	    (void)close(gfd);
+	    (void)close(sfd);
+	    delete_savefile();
+	    return FALSE;
+	}
+
+	if (write(sfd, (genericptr_t) &version_data, sizeof version_data)
+		!= sizeof version_data) {
+	    raw_printf("\nError writing %s; recovery failed.", SAVEF);
+	    (void)close(gfd);
+	    (void)close(sfd);
+	    delete_savefile();
+	    return FALSE;
+	}
+
+	if (!copy_bytes(lfd, sfd)) {
+		(void) close(lfd);
+		(void) close(sfd);
+		delete_savefile();
+		return FALSE;
+	}
+	(void)close(lfd);
+	processed[savelev] = 1;
+
+	if (!copy_bytes(gfd, sfd)) {
+		(void) close(lfd);
+		(void) close(sfd);
+		delete_savefile();
+		return FALSE;
+	}
+	(void)close(gfd);
+	processed[0] = 1;
+
+	for (lev = 1; lev < 256; lev++) {
+		/* level numbers are kept in xchars in save.c, so the
+		 * maximum level number (for the endlevel) must be < 256
+		 */
+		if (lev != savelev) {
+			lfd = open_levelfile(lev, (char *)0);
+			if (lfd >= 0) {
+				/* any or all of these may not exist */
+				levc = (xchar) lev;
+				write(sfd, (genericptr_t) &levc, sizeof(levc));
+				if (!copy_bytes(lfd, sfd)) {
+					(void) close(lfd);
+					(void) close(sfd);
+					delete_savefile();
+					return FALSE;
+				}
+				(void)close(lfd);
+				processed[lev] = 1;
+			}
+		}
+	}
+	(void)close(sfd);
+
+#ifdef HOLD_LOCKFILE_OPEN
+	really_close();
+#endif
+	/*
+	 * We have a successful savefile!
+	 * Only now do we erase the level files.
+	 */
+	for (lev = 0; lev < 256; lev++) {
+		if (processed[lev]) {
+			const char *fq_lock;
+			set_levelfile_name(lock, lev);
+			fq_lock = fqname(lock, LEVELPREFIX, 3);
+			(void) unlink(fq_lock);
+		}
+	}
+	return TRUE;
+}
+
+boolean
+copy_bytes(ifd, ofd)
+int ifd, ofd;
+{
+	char buf[BUFSIZ];
+	int nfrom, nto;
+
+	do {
+		nfrom = read(ifd, buf, BUFSIZ);
+		nto = write(ofd, buf, nfrom);
+		if (nto != nfrom) return FALSE;
+	} while (nfrom == BUFSIZ);
+	return TRUE;
+}
+
+/* ----------  END INTERNAL RECOVER ----------- */
+#endif /*SELF_RECOVER*/
 
 /*files.c*/

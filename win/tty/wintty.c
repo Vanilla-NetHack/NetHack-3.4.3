@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.c	3.4	2002/02/05	*/
+/*	SCCS Id: @(#)wintty.c	3.4	2002/09/27	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -38,8 +38,6 @@ extern void msmsg(const char *,...);
 # endif
 #endif
 
-#define DEBUG
-
 extern char mapped_menu_cmds[]; /* from options.c */
 
 /* Interface definition, for windows.c */
@@ -47,6 +45,9 @@ struct window_procs tty_procs = {
     "tty",
 #ifdef MSDOS
     WC_TILED_MAP|WC_ASCII_MAP|
+#endif
+#if defined(WIN32CON)
+    WC_MOUSE_SUPPORT|
 #endif
     WC_COLOR|WC_HILITE_PET|WC_INVERSE|WC_EIGHT_BIT_IN,
     tty_init_nhwindows,
@@ -102,7 +103,11 @@ struct window_procs tty_procs = {
     tty_start_screen,
     tty_end_screen,
     genl_outrip,
+#if defined(WIN32CON)
+    nttty_preference_update,
+#else
     genl_preference_update,
+#endif
 };
 
 static int maxwin = 0;			/* number of windows in use */
@@ -673,20 +678,19 @@ tty_askname()
 	while((c = tty_nhgetch()) != '\n') {
 		if(c == EOF) error("End of input\n");
 		if (c == '\033') { ct = 0; break; }  /* continue outer loop */
+#if defined(WIN32CON)
+		if (c == '\003') bail("^C abort.\n");
+#endif
 		/* some people get confused when their erase char is not ^H */
 		if (c == '\b' || c == '\177') {
 			if(ct) {
 				ct--;
-#ifdef MICRO
-# if defined(WIN32CON)
+#if defined(MICRO) || defined(WIN32CON)
+# if defined(WIN32CON) || defined(MSDOS)
 				backsp();       /* \b is visible on NT */
+				(void) putchar(' ');
+				backsp();
 # else
-#  if defined(MSDOS)
-				if (iflags.grmode) {
-					backsp();
-				} else
-
-#  endif
 				msmsg("\b \b");
 # endif
 #else
@@ -702,7 +706,7 @@ tty_askname()
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
 #endif
 		if (ct < (int)(sizeof plname) - 1) {
-#if defined(MICRO)
+#if defined(MICRO) || defined(WIN32CON)
 # if defined(MSDOS)
 			if (iflags.grmode) {
 				(void) putchar(c);
@@ -1148,7 +1152,10 @@ struct WinDesc *cw;
 
 	for (i = 0; i < SIZE(gcnt); i++) gcnt[i] = 0;
 	for (n = 0, curr = cw->mlist; curr; curr = curr->next)
-	    if (curr->gselector) ++n,  ++gcnt[GSELIDX(curr->gselector)];
+	    if (curr->gselector && curr->gselector != curr->selector) {
+		++n;
+		++gcnt[GSELIDX(curr->gselector)];
+	    }
 
 	if (n > 0)	/* at least one group accelerator found */
 	    for (rp = gacc, curr = cw->mlist; curr; curr = curr->next)
@@ -1740,8 +1747,7 @@ tty_putstr(window, attr, str)
     }
 
     if(str == (const char*)0 ||
-	( (cw->flags & WIN_CANCELLED) && 
-	  (cw->type != NHW_MESSAGE || !iflags.prevmsg_window) ))
+	((cw->flags & WIN_CANCELLED) && (cw->type != NHW_MESSAGE)))
 	return;
     if(cw->type != NHW_MESSAGE)
 	str = compress_str(str);
@@ -1751,6 +1757,9 @@ tty_putstr(window, attr, str)
     switch(cw->type) {
     case NHW_MESSAGE:
 	/* really do this later */
+#if defined(USER_SOUNDS) && defined(WIN32CON)
+	play_sound_for_message(str);
+#endif
 	update_topl(str);
 	break;
 
@@ -2432,8 +2441,16 @@ tty_print_glyph(window, x, y, glyph)
 #endif
 	g_putch(ch);		/* print the character */
 
-    if (reverse_on)
+    if (reverse_on) {
     	term_end_attr(ATR_INVERSE);
+#ifdef TEXTCOLOR
+	/* turn off color as well, ATR_INVERSE may have done this already */
+	if(ttyDisplay->color != NO_COLOR) {
+	    term_end_color();
+	    ttyDisplay->color = NO_COLOR;
+	}
+#endif
+    }
 
     wins[window]->curx++;	/* one character over */
     ttyDisplay->curx++;		/* the real cursor moved too */
@@ -2444,7 +2461,7 @@ tty_raw_print(str)
     const char *str;
 {
     if(ttyDisplay) ttyDisplay->rawprint++;
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32CON)
     msmsg("%s\n", str);
 #else
     puts(str); (void) fflush(stdout);
@@ -2457,13 +2474,13 @@ tty_raw_print_bold(str)
 {
     if(ttyDisplay) ttyDisplay->rawprint++;
     term_start_raw_bold();
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32CON)
     msmsg("%s", str);
 #else
     (void) fputs(str, stdout);
 #endif
     term_end_raw_bold();
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32CON)
     msmsg("\n");
 #else
     puts("");

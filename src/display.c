@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.4	2000/07/27	*/
+/*	SCCS Id: @(#)display.c	3.4	2003/02/19	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -331,7 +331,8 @@ unmap_object(x, y)
 	map_background(x,y,show);					\
 }
 
-void map_location(x,y,show)
+void
+map_location(x,y,show)
     int x, y, show;
 {
     _map_location(x,y,show);
@@ -370,7 +371,7 @@ display_monster(x, y, mon, sightflags, worm_tail)
      * the mimic was mimicing.
      */
 
-    if (mon_mimic && sightflags) {
+    if (mon_mimic && (sightflags == PHYSICALLY_SEEN)) {
 	switch (mon->m_ap_type) {
 	    default:
 		impossible("display_monster:  bad m_ap_type value [ = %d ]",
@@ -459,6 +460,9 @@ display_warning(mon)
 
     if (mon_warning(mon)) {
         if (wl > WARNCOUNT - 1) wl = WARNCOUNT - 1;
+	/* 3.4.1: this really ought to be rn2(WARNCOUNT), but value "0"
+	   isn't handled correctly by the what_is routine so avoid it */
+	if (Hallucination) wl = rn1(WARNCOUNT-1,1);
         glyph = warning_to_glyph(wl);
     } else if (MATCH_WARN_OF_MON(mon)) {
 	glyph = mon_to_glyph(mon);
@@ -536,6 +540,13 @@ feel_location(x, y)
 	     * underneath if already seen.  Otherwise, show the appropriate
 	     * floor symbol.
 	     *
+	     * Similarly, if the hero digs a hole in a wall or feels a location
+	     * that used to contain an unseen monster.  In these cases,
+	     * there's no reason to assume anything was underneath, so
+	     * just show the appropriate floor symbol.  If something was
+	     * embedded in the wall, the glyph will probably already
+	     * reflect that.  Don't change the symbol in this case.
+	     *
 	     * This isn't quite correct.  If the boulder was on top of some
 	     * other objects they should be seen once the boulder is removed.
 	     * However, we have no way of knowing that what is there now
@@ -551,6 +562,12 @@ feel_location(x, y)
 					       cmap_to_glyph(S_stone);
 		    show_glyph(x,y,lev->glyph);
 		}
+	    } else if ((lev->glyph >= cmap_to_glyph(S_stone) &&
+			lev->glyph < cmap_to_glyph(S_room)) ||
+		       glyph_is_invisible(levl[x][y].glyph)) {
+		lev->glyph = lev->waslit ? cmap_to_glyph(S_room) :
+					   cmap_to_glyph(S_stone);
+		show_glyph(x,y,lev->glyph);
 	    }
 	} else {
 	    /* We feel it (I think hallways are the only things left). */
@@ -653,7 +670,7 @@ newsym(x,y)
 	    return;
 	}
 	if (x == u.ux && y == u.uy) {
-	    if (canseeself()) {
+	    if (senseself()) {
 		_map_location(x,y,0);	/* map *under* self */
 		display_self();
 	    } else
@@ -695,7 +712,7 @@ newsym(x,y)
 	if (x == u.ux && y == u.uy) {
 	    feel_location(u.ux, u.uy);		/* forces an update */
 
-	    if (canseeself()) display_self();
+	    if (senseself()) display_self();
 	}
 	else if ((mon = m_at(x,y))
 		&& ((see_it = (tp_sensemon(mon) || MATCH_WARN_OF_MON(mon)
@@ -1046,11 +1063,17 @@ void
 see_monsters()
 {
     register struct monst *mon;
+
     for (mon = fmon; mon; mon = mon->nmon) {
 	if (DEADMONSTER(mon)) continue;
 	newsym(mon->mx,mon->my);
 	if (mon->wormno) see_wsegs(mon);
     }
+#ifdef STEED
+    /* when mounted, hero's location gets caught by monster loop */
+    if (!u.usteed)
+#endif
+    newsym(u.ux, u.uy);
 }
 
 /*
@@ -1062,16 +1085,19 @@ void
 set_mimic_blocking()
 {
     register struct monst *mon;
-    for (mon = fmon; mon; mon = mon->nmon)
-	if(!DEADMONSTER(mon) && mon->minvis &&
+
+    for (mon = fmon; mon; mon = mon->nmon) {
+	if (DEADMONSTER(mon)) continue;
+	if (mon->minvis &&
 	   ((mon->m_ap_type == M_AP_FURNITURE &&
-	      (mon->mappearance == S_vcdoor || mon->mappearance == S_hcdoor))||
+	     (mon->mappearance == S_vcdoor || mon->mappearance == S_hcdoor)) ||
 	    (mon->m_ap_type == M_AP_OBJECT && mon->mappearance == BOULDER))) {
 	    if(See_invisible)
 		block_point(mon->mx, mon->my);
 	    else
 		unblock_point(mon->mx, mon->my);
 	}
+    }
 }
 
 /*
@@ -1843,7 +1869,7 @@ STATIC_OVL void
 t_warn(lev)
     struct rm *lev;
 {
-    static const char *warn_str = "wall_angle: %s: case %d: seenv = 0x%x";
+    static const char warn_str[] = "wall_angle: %s: case %d: seenv = 0x%x";
     const char *wname;
 
     if (lev->typ == TUWALL) wname = "tuwall";

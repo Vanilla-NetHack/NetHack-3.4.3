@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)options.c	3.4	2002/02/07	*/
+/*	SCCS Id: @(#)options.c	3.4	2003/01/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,6 +16,12 @@ NEARDATA struct instance_flags iflags;	/* provide linkage */
 #endif
 
 #define WINTYPELEN 16
+
+#ifdef DEFAULT_WC_TILED_MAP
+#define PREFER_TILED TRUE
+#else
+#define PREFER_TILED FALSE
+#endif
 
 /*
  *  NOTE:  If you add (or delete) an option, please update the short
@@ -38,7 +44,7 @@ static struct Bool_Opt
 #else
 	{"altmeta", (boolean *)0, TRUE, DISP_IN_GAME},
 #endif
-	{"ascii_map",     &iflags.wc_ascii_map, TRUE, SET_IN_GAME},	/*WC*/
+	{"ascii_map",     &iflags.wc_ascii_map, !PREFER_TILED, SET_IN_GAME},	/*WC*/
 #ifdef MFLOPPY
 	{"asksavedisk", &flags.asksavedisk, FALSE, SET_IN_GAME},
 #else
@@ -62,7 +68,8 @@ static struct Bool_Opt
 #else
 	{"checkspace", (boolean *)0, FALSE, SET_IN_FILE},
 #endif
-# ifdef MICRO
+	{"cmdassist", &iflags.cmdassist, TRUE, SET_IN_GAME},
+# if defined(MICRO) || defined(WIN32)
 	{"color",         &iflags.wc_color,TRUE, SET_IN_GAME},		/*WC*/
 # else	/* systems that support multiple terminals, many monochrome */
 	{"color",         &iflags.wc_color, FALSE, SET_IN_GAME},	/*WC*/
@@ -103,9 +110,10 @@ static struct Bool_Opt
 #else
 	{"ignintr", (boolean *)0, FALSE, SET_IN_FILE},
 #endif
-	{"large_font", &iflags.wc_large_font, FALSE, SET_IN_FILE},	/*WC*/
+	{"large_font", &iflags.obsolete, FALSE, SET_IN_FILE},	/* OBSOLETE */
 	{"legacy", &flags.legacy, TRUE, DISP_IN_GAME},
 	{"lit_corridor", &flags.lit_corridor, FALSE, SET_IN_GAME},
+	{"lootabc", &iflags.lootabc, FALSE, SET_IN_GAME},
 #ifdef MAC_GRAPHICS_ENV
 	{"Macgraphics", &iflags.MACgraphics, TRUE, SET_IN_GAME},
 #else
@@ -122,11 +130,7 @@ static struct Bool_Opt
 #else
 	{"menu_tab_sep", (boolean *)0, FALSE, SET_IN_FILE},
 #endif
-#ifdef TTY_GRAPHICS
-	{"msg_window", &iflags.prevmsg_window, FALSE, SET_IN_GAME},
-#else
-	{"msg_window", (boolean *)0, FALSE, SET_IN_FILE},
-#endif
+	{"mouse_support", &iflags.wc_mouse_support, TRUE, DISP_IN_GAME},	/*WC*/
 #ifdef NEWS
 	{"news", &iflags.news, TRUE, DISP_IN_GAME},
 #else
@@ -144,7 +148,7 @@ static struct Bool_Opt
 	{"prayconfirm", &flags.prayconfirm, TRUE, SET_IN_GAME},
 	{"preload_tiles", &iflags.wc_preload_tiles, TRUE, DISP_IN_GAME},	/*WC*/
 	{"pushweapon", &flags.pushweapon, FALSE, SET_IN_GAME},
-#if defined(MICRO) && !defined(AMIGA) && !defined(MSWIN_GRAPHICS)
+#if defined(MICRO) && !defined(AMIGA)
 	{"rawio", &iflags.rawio, FALSE, DISP_IN_GAME},
 #else
 	{"rawio", (boolean *)0, FALSE, SET_IN_FILE},
@@ -161,6 +165,7 @@ static struct Bool_Opt
 #else
 	{"showexp", (boolean *)0, FALSE, SET_IN_FILE},
 #endif
+	{"showrace", &iflags.showrace, FALSE, SET_IN_GAME},
 #ifdef SCORE_ON_BOTL
 	{"showscore", &flags.showscore, FALSE, SET_IN_GAME},
 #else
@@ -172,7 +177,7 @@ static struct Bool_Opt
 	{"sparkle", &flags.sparkle, TRUE, SET_IN_GAME},
 	{"standout", &flags.standout, FALSE, SET_IN_GAME},
 	{"splash_screen",     &iflags.wc_splash_screen, TRUE, DISP_IN_GAME},	/*WC*/
-	{"tiled_map",     &iflags.wc_tiled_map, FALSE, DISP_IN_GAME},	/*WC*/
+	{"tiled_map",     &iflags.wc_tiled_map, PREFER_TILED, DISP_IN_GAME},	/*WC*/
 	{"time", &flags.time, FALSE, SET_IN_GAME},
 #ifdef TIMED_DELAY
 	{"timed_delay", &flags.nap, TRUE, SET_IN_GAME},
@@ -181,6 +186,7 @@ static struct Bool_Opt
 #endif
 	{"tombstone",&flags.tombstone, TRUE, SET_IN_GAME},
 	{"toptenwin",&flags.toptenwin, FALSE, SET_IN_GAME},
+	{"travel", &iflags.travelcmd, TRUE, SET_IN_GAME},
 	{"use_inverse",   &iflags.wc_inverse, FALSE, SET_IN_GAME},		/*WC*/
 	{"verbose", &flags.verbose, TRUE, SET_IN_GAME},
 	{(char *)0, (boolean *)0, FALSE, 0}
@@ -202,10 +208,6 @@ static struct Comp_Opt
 						8, DISP_IN_GAME },
 	{ "align_message", "message window alignment", 20, DISP_IN_GAME }, 	/*WC*/
 	{ "align_status", "status window alignment", 20, DISP_IN_GAME }, 	/*WC*/
-#ifdef MAC
-	{ "background", "the color of the background (black or white)",
-						6, SET_IN_FILE },
-#endif
 	{ "boulder",  "the symbol to use for displaying boulders",
 						1, SET_IN_GAME },
 	{ "catname",  "the name of your (first) cat (e.g., catname:Tabby)",
@@ -258,6 +260,11 @@ static struct Comp_Opt
 						MAXMCLASSES, SET_IN_FILE },
 	{ "msghistory", "number of top line messages to save",
 						5, DISP_IN_GAME },
+# ifdef TTY_GRAPHICS
+	{"msg_window", "the type of message window required",1, SET_IN_GAME},
+# else
+	{"msg_window", "the type of message window required", 1, SET_IN_FILE},
+# endif
 	{ "name",     "your character's name (e.g., name:Merlin-W)",
 						PL_NSIZ, DISP_IN_GAME },
 	{ "objects",  "the symbols to use for objects",
@@ -283,8 +290,12 @@ static struct Comp_Opt
 						PL_CSIZ, DISP_IN_GAME },
 	{ "role",     "your starting role (e.g., Barbarian, Valkyrie)",
 						PL_CSIZ, DISP_IN_GAME },
+	{ "runmode", "display updating frequency when `running' or `travelling'",
+						sizeof "teleport", SET_IN_GAME },
 	{ "scores",   "the parts of the score list you wish to see",
 						32, SET_IN_GAME },
+	{ "scroll_amount", "scroll the map this amount when scroll_margin is reached",
+						20, DISP_IN_GAME }, /*WC*/
 	{ "scroll_margin", "scroll map when this far from the edge", 20, DISP_IN_GAME }, /*WC*/
 #ifdef MSDOS
 	{ "soundcard", "type of sound card to use", 20, SET_IN_FILE },
@@ -296,9 +307,6 @@ static struct Comp_Opt
 	{ "tile_file", "name of tile file", 70, DISP_IN_GAME},	/*WC*/
 	{ "traps",    "the symbols to use in drawing traps",
 						MAXTCHARS+1, SET_IN_FILE },
-#ifdef MAC
-	{"use_stone", "use stone background patterns", 8, SET_IN_FILE },
-#endif
 	{ "vary_msgcount", "show more old messages at a time", 20, DISP_IN_GAME }, /*WC*/
 #ifdef MSDOS
 	{ "video",    "method of video updating", 20, SET_IN_FILE },
@@ -332,7 +340,7 @@ extern char ttycolors[CLR_MAX];	  /* in sys/msdos/video.c */
 #endif
 
 static char def_inv_order[MAXOCLASSES] = {
-	GOLD_CLASS, AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS,
+	COIN_CLASS, AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS,
 	SCROLL_CLASS, SPBOOK_CLASS, POTION_CLASS, RING_CLASS, WAND_CLASS,
 	TOOL_CLASS, GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, 0,
 };
@@ -478,7 +486,11 @@ initoptions()
 	flags.end_own = FALSE;
 	flags.end_top = 3;
 	flags.end_around = 2;
+	iflags.runmode = RUN_LEAP;
 	iflags.msg_history = 20;
+#ifdef TTY_GRAPHICS
+	iflags.prevmsg_window = 's';
+#endif
 
 	/* Use negative indices to indicate not yet selected */
 	flags.initrole = -1;
@@ -516,7 +528,7 @@ initoptions()
 	 * config file/environment variable below.
 	 */
 	/* this detects the IBM-compatible console on most 386 boxes */
-	if (!strncmp(nh_getenv("TERM"), "AT", 2)) {
+	if ((opts = nh_getenv("TERM")) && !strncmp(opts, "AT", 2)) {
 		switch_graphics(IBM_GRAPHICS);
 # ifdef TEXTCOLOR
 		iflags.use_color = TRUE;
@@ -526,7 +538,8 @@ initoptions()
 #if defined(UNIX) || defined(VMS)
 # ifdef TTY_GRAPHICS
 	/* detect whether a "vt" terminal can handle alternate charsets */
-	if (!strncmpi(nh_getenv("TERM"), "vt", 2) && (AS && AE) &&
+	if ((opts = nh_getenv("TERM")) &&
+	    !strncmpi(opts, "vt", 2) && AS && AE &&
 	    index(AS, '\016') && index(AE, '\017')) {
 		switch_graphics(DEC_GRAPHICS);
 	}
@@ -744,7 +757,7 @@ char *op;
     num = 0;
 #ifndef GOLDOBJ
     if (!index(op, GOLD_SYM))
-	buf[num++] = GOLD_CLASS;
+	buf[num++] = COIN_CLASS;
 #else
     /*  !!!! probably unnecessary with gold as normal inventory */
 #endif
@@ -820,7 +833,7 @@ register uchar *graph_chars;
 {
 	int i;
 	for (i = 0; i < WARNCOUNT; i++)
-	    warnsyms[i] = graph_chars[i];
+	    if (graph_chars[i]) warnsyms[i] = graph_chars[i];
 }
 
 STATIC_OVL int
@@ -1018,7 +1031,7 @@ boolean tinitial, tfrom_file;
 			    preferred_pet = 'n';
 			    break;
 			default:
-			    pline("Unrecognized pet type '%s'", op);
+			    pline("Unrecognized pet type '%s'.", op);
 			    break;
 		    }
 		} else if (negated) preferred_pet = 'n';
@@ -1049,12 +1062,66 @@ boolean tinitial, tfrom_file;
 		return;
 	}
 
+	fullname = "runmode";
+	if (match_optname(opts, fullname, 4, TRUE)) {
+		if (negated) {
+			iflags.runmode = RUN_TPORT;
+		} else if ((op = string_for_opt(opts, FALSE)) != 0) {
+		    if (!strncmpi(op, "teleport", strlen(op)))
+			iflags.runmode = RUN_TPORT;
+		    else if (!strncmpi(op, "run", strlen(op)))
+			iflags.runmode = RUN_LEAP;
+		    else if (!strncmpi(op, "walk", strlen(op)))
+			iflags.runmode = RUN_STEP;
+		    else if (!strncmpi(op, "crawl", strlen(op)))
+			iflags.runmode = RUN_CRAWL;
+		    else
+			badoption(opts);
+		}
+		return;
+	}
+
 	fullname = "msghistory";
 	if (match_optname(opts, fullname, 3, TRUE)) {
 		op = string_for_env_opt(fullname, opts, negated);
 		if ((negated && !op) || (!negated && op)) {
 			iflags.msg_history = negated ? 0 : atoi(op);
 		} else if (negated) bad_negation(fullname, TRUE);
+		return;
+	}
+
+	fullname="msg_window";
+	/* msg_window:single, combo, full or reversed */
+	if (match_optname(opts, fullname, 4, TRUE)) {
+	/* allow option to be silently ignored by non-tty ports */
+#ifdef TTY_GRAPHICS
+		int tmp;
+		if (!(op = string_for_opt(opts, TRUE))) {
+		    tmp = negated ? 's' : 'f';
+		} else {
+			  if (negated) {
+			  	bad_negation(fullname, TRUE);
+			  	return;
+				  }
+		    tmp = tolower(*op);
+		}
+		switch (tmp) {
+			case 's':	/* single message history cycle (default if negated) */
+				iflags.prevmsg_window = 's';
+				break;
+			case 'c':	/* combination: two singles, then full page reversed */
+				iflags.prevmsg_window = 'c';
+				break;
+			case 'f':	/* full page (default if no opts) */
+				iflags.prevmsg_window = 'f';
+				break;
+			case 'r':	/* full page (reversed) */
+				iflags.prevmsg_window = 'r';
+				break;
+			default:
+				badoption(opts);
+		}
+#endif
 		return;
 	}
 
@@ -1131,30 +1198,6 @@ boolean tinitial, tfrom_file;
 		return;
 	}
 #ifdef CHANGE_COLOR
-#ifdef MAC
-	fullname = "use_stone";
-	if (match_optname(opts, fullname, 6, TRUE)) {
-		op = string_for_env_opt(fullname, opts, negated);
-		if ((negated && !op) || (!negated && op)) {
-			iflags.use_stone = negated ? 0 : atoi(op);
-		} else if (negated) bad_negation(fullname, TRUE);
-		return;
-	}
-
-	fullname = "background";
-	if (match_optname(opts, fullname, 5,TRUE))
-	{
-		if ((op = string_for_env_opt(fullname, opts, FALSE)) != 0)
-		{
-			if (!strncmpi (op, "white", 5))
-				change_background (1);
-			else if (!strncmpi (op, "black", 5))
-				change_background (0);
-		}
-		return;
-	}
-#endif	
-
 	if (match_optname(opts, "palette", 3, TRUE)
 # ifdef MAC
 	    || match_optname(opts, "hicolor", 3, TRUE)
@@ -1827,6 +1870,16 @@ goodfruit:
 		return;
 	}
 	/* WINCAP
+	 * scroll_amount:nn */
+	fullname = "scroll_amount";
+	if (match_optname(opts, fullname, sizeof("scroll_amount")-1, TRUE)) {
+		op = string_for_opt(opts, negated);
+		if ((negated && !op) || (!negated && op)) {
+			iflags.wc_scroll_amount = negated ? 1 : atoi(op);
+		} else if (negated) bad_negation(fullname, TRUE);
+		return;
+	}
+	/* WINCAP
 	 * scroll_margin:nn */
 	fullname = "scroll_margin";
 	if (match_optname(opts, fullname, sizeof("scroll_margin")-1, TRUE)) {
@@ -2065,10 +2118,9 @@ goodfruit:
 			    vision_recalc(2);		/* shut down vision */
 			    vision_full_recalc = 1;	/* delayed recalc */
 			}
-			else if ((boolopt[i].addr) == &iflags.use_inverse) {
-			    need_redraw = TRUE;
-			}
-			else if ((boolopt[i].addr) == &iflags.hilite_pet) {
+			else if ((boolopt[i].addr) == &iflags.use_inverse ||
+					(boolopt[i].addr) == &iflags.showrace ||
+					(boolopt[i].addr) == &iflags.hilite_pet) {
 			    need_redraw = TRUE;
 			}
 #ifdef TEXTCOLOR
@@ -2104,6 +2156,9 @@ static NEARDATA const char *burdentype[] = {
 	"strained", "overtaxed", "overloaded"
 };
 
+static NEARDATA const char *runmodes[] = {
+	"teleport", "run", "walk", "crawl"
+};
 
 /*
  * Convert the given string of object classes to a string of default object
@@ -2133,7 +2188,7 @@ add_menu_cmd_alias(from_ch, to_ch)
     char from_ch, to_ch;
 {
     if (n_menu_mapped >= MAX_MENU_MAPPED_CMDS)
-	pline("out of menu map space");
+	pline("out of menu map space.");
     else {
 	mapped_menu_cmds[n_menu_mapped] = from_ch;
 	mapped_menu_op[n_menu_mapped] = to_ch;
@@ -2160,7 +2215,7 @@ map_menu_cmd(ch)
 }
 
 
-#if defined(MICRO) || defined(MAC)
+#if defined(MICRO) || defined(MAC) || defined(WIN32)
 # define OPTIONS_HEADING "OPTIONS"
 #else
 # define OPTIONS_HEADING "NETHACKOPTIONS"
@@ -2225,7 +2280,7 @@ doset()
 	start_menu(tmpwin);
 
 	any.a_void = 0;
-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
+ add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD,
 		 "Booleans (selecting will toggle value):", MENU_UNSELECTED);
 	any.a_int = 0;
 	/* first list any other non-modifiable booleans, then modifiable ones */
@@ -2257,7 +2312,7 @@ doset()
 	indexoffset = boolcount;
 	any.a_void = 0;
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
+ add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD,
 		 "Compounds (selecting will prompt for new value):",
 		 MENU_UNSELECTED);
 
@@ -2298,7 +2353,7 @@ doset()
 		}
 #ifdef PREFIXES_IN_USE
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, "", MENU_UNSELECTED);
-	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE,
+ add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_BOLD,
 		 "Variable playground locations:", MENU_UNSELECTED);
 	for (i = 0; i < PREFIX_COUNT; i++)
 		doset_add_menu(tmpwin, fqn_prefix_names[i], 0);
@@ -2329,6 +2384,8 @@ doset()
 							setinitial, fromfile)) {
 			Sprintf(buf, "Set %s to what?", compopt[opt_indx].name);
 			getlin(buf, buf2);
+			if (buf2[0] == '\033')
+			    continue;
 			Sprintf(buf, "%s:%s", compopt[opt_indx].name, buf2);
 			/* pass the buck */
 			parseoptions(buf, setinitial, fromfile);
@@ -2358,7 +2415,8 @@ boolean setinitial,setfromfile;
     char buf[BUFSZ];
     boolean retval = FALSE;
     
-    /* Special handling of menustyle, pickup_burden, and pickup_types, disclose options. */
+    /* Special handling of menustyle, pickup_burden, and pickup_types,
+       disclose, runmode, and msg_window options. */
     if (!strcmp("menustyle", optname)) {
 	const char *style_name;
 	menu_item *style_pick = (menu_item *)0;
@@ -2465,6 +2523,82 @@ boolean setinitial,setfromfile;
 	    }
 	}
 	retval = TRUE;
+    } else if (!strcmp("runmode", optname)) {
+	const char *mode_name;
+	menu_item *mode_pick = (menu_item *)0;
+	tmpwin = create_nhwindow(NHW_MENU);
+	start_menu(tmpwin);
+	for (i = 0; i < SIZE(runmodes); i++) {
+		mode_name = runmodes[i];
+		any.a_int = i + 1;
+		add_menu(tmpwin, NO_GLYPH, &any, *mode_name, 0,
+			 ATR_NONE, mode_name, MENU_UNSELECTED);
+	}
+	end_menu(tmpwin, "Select run/travel display mode:");
+	if (select_menu(tmpwin, PICK_ONE, &mode_pick) > 0) {
+		iflags.runmode = mode_pick->item.a_int - 1;
+		free((genericptr_t)mode_pick);
+	}
+	destroy_nhwindow(tmpwin);
+	retval = TRUE;
+    } 
+#ifdef TTY_GRAPHICS
+      else if (!strcmp("msg_window", optname)) {
+	/* by Christian W. Cooper */
+	menu_item *window_pick = (menu_item *)0;
+	tmpwin = create_nhwindow(NHW_MENU);
+	start_menu(tmpwin);
+	any.a_char = 's';
+	add_menu(tmpwin, NO_GLYPH, &any, 's', 0,
+		ATR_NONE, "single", MENU_UNSELECTED);
+	any.a_char = 'c';
+	add_menu(tmpwin, NO_GLYPH, &any, 'c', 0,
+		ATR_NONE, "combination", MENU_UNSELECTED);
+	any.a_char = 'f';
+	add_menu(tmpwin, NO_GLYPH, &any, 'f', 0,
+		ATR_NONE, "full", MENU_UNSELECTED);
+	any.a_char = 'r';
+	add_menu(tmpwin, NO_GLYPH, &any, 'r', 0,
+		ATR_NONE, "reversed", MENU_UNSELECTED);
+	end_menu(tmpwin, "Select message history display type:");
+	if (select_menu(tmpwin, PICK_ONE, &window_pick) > 0) {
+		iflags.prevmsg_window = window_pick->item.a_char;
+		free((genericptr_t)window_pick);
+	}
+	destroy_nhwindow(tmpwin);
+        retval = TRUE;
+    }
+#endif
+     else if (!strcmp("align_message", optname) ||
+		!strcmp("align_status", optname)) {
+	menu_item *window_pick = (menu_item *)0;
+	char abuf[BUFSZ];
+	boolean msg = (*(optname+6) == 'm');
+
+	tmpwin = create_nhwindow(NHW_MENU);
+	start_menu(tmpwin);
+	any.a_int = ALIGN_TOP;
+	add_menu(tmpwin, NO_GLYPH, &any, 't', 0,
+		ATR_NONE, "top", MENU_UNSELECTED);
+	any.a_int = ALIGN_BOTTOM;
+	add_menu(tmpwin, NO_GLYPH, &any, 'b', 0,
+		ATR_NONE, "bottom", MENU_UNSELECTED);
+	any.a_int = ALIGN_LEFT;
+	add_menu(tmpwin, NO_GLYPH, &any, 'l', 0,
+		ATR_NONE, "left", MENU_UNSELECTED);
+	any.a_int = ALIGN_RIGHT;
+	add_menu(tmpwin, NO_GLYPH, &any, 'r', 0,
+		ATR_NONE, "right", MENU_UNSELECTED);
+	Sprintf(abuf, "Select %s window placement relative to the map:",
+		msg ? "message" : "status");
+	end_menu(tmpwin, abuf);
+	if (select_menu(tmpwin, PICK_ONE, &window_pick) > 0) {		
+		if (msg) iflags.wc_align_message = window_pick->item.a_int;
+		else iflags.wc_align_status = window_pick->item.a_int;
+		free((genericptr_t)window_pick);
+	}
+	destroy_nhwindow(tmpwin);
+        retval = TRUE;
     }
     return retval;
 }
@@ -2602,6 +2736,12 @@ char *buf;
 		Sprintf(buf, "%s", to_be_done);
 	else if (!strcmp(optname, "msghistory"))
 		Sprintf(buf, "%u", iflags.msg_history);
+#ifdef TTY_GRAPHICS
+	else if (!strcmp(optname, "msg_window"))
+		Sprintf(buf, "%s", (iflags.prevmsg_window=='s') ? "single" :
+					(iflags.prevmsg_window=='c') ? "combination" :
+					(iflags.prevmsg_window=='f') ? "full" : "reversed");
+#endif
 	else if (!strcmp(optname, "name"))
 		Sprintf(buf, "%s", plname);
 	else if (!strcmp(optname, "objects"))
@@ -2628,9 +2768,15 @@ char *buf;
 		Sprintf(buf, "%s", rolestring(flags.initrace, races, noun));
 	else if (!strcmp(optname, "role"))
 		Sprintf(buf, "%s", rolestring(flags.initrole, roles, name.m));
+	else if (!strcmp(optname, "runmode"))
+		Sprintf(buf, "%s", runmodes[iflags.runmode]);
 	else if (!strcmp(optname, "scores")) {
 		Sprintf(buf, "%d top/%d around%s", flags.end_top,
 				flags.end_around, flags.end_own ? "/own" : "");
+	}
+	else if (!strcmp(optname, "scroll_amount")) {
+		if (iflags.wc_scroll_amount) Sprintf(buf, "%d",iflags.wc_scroll_amount);
+		else Strcpy(buf, defopt);
 	}
 	else if (!strcmp(optname, "scroll_margin")) {
 		if (iflags.wc_scroll_margin) Sprintf(buf, "%d",iflags.wc_scroll_margin);
@@ -3018,8 +3164,8 @@ struct wc_Opt wc_options[] = {
 	{"color", WC_COLOR},
 	{"eight_bit_tty", WC_EIGHT_BIT_IN},
 	{"hilite_pet", WC_HILITE_PET},
-	{"large_font", WC_LARGE_FONT},	/* now obsolete */
 	{"popup_dialog", WC_POPUP_DIALOG},
+	{"player_selection", WC_PLAYER_SELECTION},
 	{"preload_tiles", WC_PRELOAD_TILES},
 	{"tiled_map", WC_TILED_MAP},
 	{"tile_file", WC_TILE_FILE},
@@ -3042,8 +3188,12 @@ struct wc_Opt wc_options[] = {
 	{"font_status", WC_FONT_STATUS},
 	{"font_text", WC_FONT_TEXT},
 	{"map_mode", WC_MAP_MODE},
+	{"scroll_amount", WC_SCROLL_AMOUNT},
 	{"scroll_margin", WC_SCROLL_MARGIN},
+	{"splash_screen", WC_SPLASH_SCREEN},
 	{"vary_msgcount",WC_VARY_MSGCOUNT},
+	{"windowcolors", WC_WINDOWCOLORS},
+	{"mouse_support", WC_MOUSE_SUPPORT},
 	{(char *)0, 0L}
 };
 
@@ -3057,12 +3207,13 @@ struct wc_Opt wc_options[] = {
  */
 void
 set_option_mod_status(optnam, status)
-char *optnam;
+const char *optnam;
 int status;
 {
 	int k;
 	if (status < SET_IN_FILE || status > SET_IN_GAME) {
-		impossible("set_option_mod_status: status out of range %d.", status);
+		impossible("set_option_mod_status: status out of range %d.",
+			   status);
 		return;
 	}
 	for (k = 0; boolopt[k].name; k++) {
@@ -3094,7 +3245,8 @@ int status;
 {
 	int k = 0;
 	if (status < SET_IN_FILE || status > SET_IN_GAME) {
-		impossible("set_option_mod_status: status out of range %d.", status);
+		impossible("set_option_mod_status: status out of range %d.",
+			   status);
 		return;
 	}
 	while (wc_options[k].wc_name) {
@@ -3177,8 +3329,8 @@ char *op;
 	int j;
 	char buf[BUFSZ];
 	char *wn, *tfg, *tbg, *newop;
-	static char *wnames[] = {"menu", "message", "status", "text"};
-	static char *shortnames[] = {"mnu", "msg", "sts", "txt"};
+	static const char *wnames[] = { "menu", "message", "status", "text" };
+	static const char *shortnames[] = { "mnu", "msg", "sts", "txt" };
 	static char **fgp[] = {
 		&iflags.wc_foregrnd_menu,
 		&iflags.wc_foregrnd_message,

@@ -14,6 +14,8 @@ typedef struct mswin_nethack_text_window {
 } NHTextWindow, *PNHTextWindow;
 
 static WNDPROC  editControlWndProc = 0;
+#define DEFAULT_COLOR_BG_TEXT	COLOR_WINDOW
+#define DEFAULT_COLOR_FG_TEXT	COLOR_WINDOWTEXT
 
 BOOL	CALLBACK	NHTextWndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK	NHEditHookWndProc(HWND, UINT, WPARAM, LPARAM);
@@ -42,10 +44,7 @@ HWND mswin_init_text_window () {
 
 void mswin_display_text_window (HWND hWnd)
 {
-	MSG msg;
-	RECT rt;
 	PNHTextWindow data;
-	HWND mapWnd;
 	
 	data = (PNHTextWindow)GetWindowLong(hWnd, GWL_USERDATA);
 	if( data && data->window_text ) {
@@ -55,22 +54,8 @@ void mswin_display_text_window (HWND hWnd)
 		SetWindowText(GetDlgItem(hWnd, IDC_TEXT_CONTROL), data->window_text);
 	}
 
-	GetNHApp()->hPopupWnd = hWnd;
-	mapWnd = mswin_hwnd_from_winid(WIN_MAP);
-	if( !IsWindow(mapWnd) ) mapWnd = GetNHApp()->hMainWnd;
-	GetWindowRect(mapWnd, &rt);
-	MoveWindow(hWnd, rt.left, rt.top, rt.right-rt.left, rt.bottom-rt.top, TRUE);
-	ShowWindow(hWnd, SW_SHOW);
-
-	while( IsWindow(hWnd) && 
-		   GetMessage(&msg, NULL, 0, 0)!=0 ) {
-		if( !IsDialogMessage(hWnd, &msg) ) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
-
-	GetNHApp()->hPopupWnd = NULL;
+	mswin_popup_display(hWnd, NULL);
+	mswin_popup_destroy(hWnd);
 }
     
 BOOL CALLBACK NHTextWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
@@ -134,6 +119,21 @@ BOOL CALLBACK NHTextWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPara
             }
 		}
 	break;
+
+	case WM_CTLCOLORSTATIC: { /* sent by edit control before it is drawn */
+		HDC hdcEdit = (HDC) wParam; 
+		HWND hwndEdit = (HWND) lParam;
+		if( hwndEdit == GetDlgItem(hWnd, IDC_TEXT_CONTROL) ) {
+			SetBkColor(hdcEdit, 
+				text_bg_brush ? text_bg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_BG_TEXT)
+				);
+			SetTextColor(hdcEdit, 
+				text_fg_brush ? text_fg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_FG_TEXT) 
+				); 
+			return (BOOL)(text_bg_brush 
+					? text_bg_brush : SYSCLR_TO_BRUSH(DEFAULT_COLOR_BG_TEXT));
+		}
+	} return FALSE;
 
 	case WM_DESTROY:
 		if( data ) {

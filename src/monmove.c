@@ -1,10 +1,11 @@
-/*	SCCS Id: @(#)monmove.c	3.4	2000/08/16	*/
+/*	SCCS Id: @(#)monmove.c	3.4	2002/04/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "mfndpos.h"
 #include "artifact.h"
+#include "epri.h"
 
 extern boolean notonhead;
 
@@ -48,10 +49,9 @@ STATIC_OVL void
 watch_on_duty(mtmp)
 register struct monst *mtmp;
 {
-	register s_level *slev = Is_special(&u.uz);
 	int	x, y;
 
-	if(slev && slev->flags.town && mtmp->mpeaceful &&
+	if(mtmp->mpeaceful && in_town(u.ux+u.dx, u.uy+u.dy) &&
 	   mtmp->mcansee && m_canseeu(mtmp) && !rn2(3)) {
 
 	    if(picking_lock(&x, &y) && IS_DOOR(levl[x][y].typ) &&
@@ -131,9 +131,9 @@ int x, y;
 struct monst *mtmp;
 {
 	if (mtmp->isshk || mtmp->isgd || mtmp->iswiz || !mtmp->mcansee ||
-			mtmp->mpeaceful || mtmp->data->mlet == S_HUMAN ||
-			is_lminion(mtmp->data) || is_rider(mtmp->data) ||
-			mtmp->data == &mons[PM_MINOTAUR])
+	    mtmp->mpeaceful || mtmp->data->mlet == S_HUMAN ||
+	    is_lminion(mtmp) || mtmp->data == &mons[PM_ANGEL] ||
+	    is_rider(mtmp->data) || mtmp->data == &mons[PM_MINOTAUR])
 		return(FALSE);
 
 	return (boolean)(sobj_at(SCR_SCARE_MONSTER, x, y)
@@ -491,7 +491,7 @@ toofar:
 		/* arbitrary distance restriction to keep monster far away
 		   from you from having cast dozens of sticks-to-snakes
 		   or similar spells by the time you reach it */
-		if (dist2(mtmp->mx, mtmp->my, u.ux, u.uy) <= 64 && !mtmp->mspec_used) {
+		if (dist2(mtmp->mx, mtmp->my, u.ux, u.uy) <= 49 && !mtmp->mspec_used) {
 		    struct attack *a;
 
 		    for (a = &mdat->mattk[0]; a < &mdat->mattk[NATTK]; a++) {
@@ -625,12 +625,10 @@ register int after;
 	/* Not necessary if m_move called from this file, but necessary in
 	 * other calls of m_move (ex. leprechauns dodging)
 	 */
-	can_tunnel = tunnels(ptr) &&
 #ifdef REINCARNATION
-		!Is_rogue_level(&u.uz) &&
+	if (!Is_rogue_level(&u.uz))
 #endif
-		(!needspick(ptr) || m_carrying(mtmp, PICK_AXE) ||
-		(m_carrying(mtmp, DWARVISH_MATTOCK) && !which_armor(mtmp, W_ARMS)));
+	    can_tunnel = tunnels(ptr);
 	can_open = !(nohands(ptr) || verysmall(ptr));
 	can_unlock = ((can_open && m_carrying(mtmp, SKELETON_KEY)) ||
 		      mtmp->iswiz || is_rider(ptr));
@@ -822,7 +820,7 @@ not_special:
 			 (mtoo->mappearance && !mtoo->iswiz) ||
 			 !mtoo->data->mmove)) continue;
 
-		    if(((likegold && otmp->oclass == GOLD_CLASS) ||
+		    if(((likegold && otmp->oclass == COIN_CLASS) ||
 		       (likeobjs && index(practical, otmp->oclass) &&
 			(otmp->otyp != CORPSE || (ptr->mlet == S_NYMPH
 			   && !is_rider(&mons[otmp->corpsenm])))) ||
@@ -875,9 +873,10 @@ not_special:
 	}
       }
 
+	/* don't tunnel if hostile and close enough to prefer a weapon */
 	if (can_tunnel && needspick(ptr) &&
-		(mw_tmp = MON_WEP(mtmp)) != 0 && !is_pick(mw_tmp) &&
-		mw_tmp->cursed && mtmp->weapon_check == NO_WEAPON_WANTED)
+	    ((!mtmp->mpeaceful || Conflict) &&
+	     dist2(mtmp->mx, mtmp->my, mtmp->mux, mtmp->muy) <= 8))
 	    can_tunnel = FALSE;
 
 	nix = omx;
@@ -890,6 +889,7 @@ not_special:
 	/* unicorn may not be able to avoid hero on a noteleport level */
 	if (is_unicorn(ptr) && !level.flags.noteleport) flag |= NOTONL;
 	if (passes_walls(ptr)) flag |= (ALLOW_WALL | ALLOW_ROCK);
+	if (passes_bars(ptr)) flag |= ALLOW_BARS;
 	if (can_tunnel) flag |= ALLOW_DIG;
 	if (is_human(ptr) || ptr == &mons[PM_MINOTAUR]) flag |= ALLOW_SSM;
 	if (is_undead(ptr) && ptr->mlet != S_GHOST) flag |= NOGARLIC;
@@ -951,11 +951,20 @@ not_special:
 	    if (mmoved==1 && (u.ux != nix || u.uy != niy) && itsstuck(mtmp))
 		return(3);
 
-	    if(IS_ROCK(levl[nix][niy].typ) && may_dig(nix,niy) &&
-		    mmoved==1 && can_tunnel && needspick(ptr) &&
-		    (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp))) {
-		mtmp->weapon_check = NEED_PICK_AXE;
-		if (mon_wield_item(mtmp))
+	    if (((IS_ROCK(levl[nix][niy].typ) && may_dig(nix,niy)) ||
+		 closed_door(nix, niy)) &&
+		mmoved==1 && can_tunnel && needspick(ptr)) {
+		if (closed_door(nix, niy)) {
+		    if (!(mw_tmp = MON_WEP(mtmp)) ||
+			!is_pick(mw_tmp) || !is_axe(mw_tmp))
+			mtmp->weapon_check = NEED_PICK_OR_AXE;
+		} else if (IS_TREE(levl[nix][niy].typ)) {
+		    if (!(mw_tmp = MON_WEP(mtmp)) || !is_axe(mw_tmp))
+			mtmp->weapon_check = NEED_AXE;
+		} else if (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp)) {
+		    mtmp->weapon_check = NEED_PICK_AXE;
+		}
+		if (mtmp->weapon_check >= NEED_PICK_AXE && mon_wield_item(mtmp))
 		    return(3);
 	    }
 	    /* If ALLOW_U is set, either it's trying to attack you, or it
@@ -1048,10 +1057,10 @@ postmov:
 
 		    if(here->doormask & (D_LOCKED|D_CLOSED) && amorphous(ptr)) {
 			if (flags.verbose && canseemon(mtmp))
-			    pline("%s %ss under the door.", Monnam(mtmp),
+			    pline("%s %s under the door.", Monnam(mtmp),
 				  (ptr == &mons[PM_FOG_CLOUD] ||
 				   ptr == &mons[PM_YELLOW_LIGHT])
-				  ? "flow" : "ooze");
+				  ? "flows" : "oozes");
 		    } else if(here->doormask & D_LOCKED && can_unlock) {
 			if(btrapped) {
 			    here->doormask = D_NODOOR;
@@ -1110,6 +1119,12 @@ postmov:
 			if (*in_rooms(mtmp->mx, mtmp->my, SHOPBASE))
 			    add_damage(mtmp->mx, mtmp->my, 0L);
 		    }
+		} else if (levl[mtmp->mx][mtmp->my].typ == IRONBARS) {
+			if (flags.verbose && canseemon(mtmp))
+			    Norep("%s %s %s the iron bars.", Monnam(mtmp),
+				  /* pluralization fakes verb conjugation */
+				  makeplural(locomotion(ptr, "pass")),
+				  passes_walls(ptr) ? "through" : "between");
 		}
 
 		/* possibly dig */
@@ -1186,6 +1201,9 @@ postmov:
 			OBJ_AT(mtmp->mx, mtmp->my) :
 			(is_pool(mtmp->mx, mtmp->my) && !Is_waterlevel(&u.uz));
 		newsym(mtmp->mx, mtmp->my);
+	    }
+	    if (mtmp->isshk) {
+		after_shk_move(mtmp);
 	    }
 	}
 	return(mmoved);
@@ -1307,7 +1325,7 @@ struct monst *mtmp;
 		int typ = obj->otyp;
 
 #ifdef GOLDOBJ
-                if (typ == GOLD_CLASS && obj->quan > 100L) return FALSE;
+                if (typ == COIN_CLASS && obj->quan > 100L) return FALSE;
 #endif
 		if (obj->oclass != GEM_CLASS &&
 		    !(typ >= ARROW && typ <= BOOMERANG) &&

@@ -1,14 +1,10 @@
-/*	SCCS Id: @(#)mondata.c	3.4	2001/12/05	*/
+/*	SCCS Id: @(#)mondata.c	3.4	2003/01/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "eshk.h"
 #include "epri.h"
-
-/* fake attack and damage types */
-#define AT_ANY (-1)
-#define AD_ANY (-1)
 
 /*	These routines provide basic data for any type of monster. */
 
@@ -251,6 +247,16 @@ register struct permonst *ptr;
 		(ptr->mlet==S_IMP && ptr != &mons[PM_TENGU])));
 }
 
+/* true iff the type of monster pass through iron bars */
+boolean
+passes_bars(mptr)
+struct permonst *mptr;
+{
+    return (boolean) (passes_walls(mptr) || amorphous(mptr) ||
+		      is_whirly(mptr) || verysmall(mptr) ||
+		      (slithy(mptr) && !bigmonst(mptr)));
+}
+
 #endif /* OVL0 */
 #ifdef OVL1
 
@@ -293,6 +299,28 @@ sticks(ptr)	/* creature sticks other creatures it hits */
 {
 	return((boolean)(dmgtype(ptr,AD_STCK) || dmgtype(ptr,AD_WRAP) ||
 		attacktype(ptr,AT_HUGS)));
+}
+
+/* number of horns this type of monster has on its head */
+int
+num_horns(ptr)
+struct permonst *ptr;
+{
+    switch (monsndx(ptr)) {
+    case PM_HORNED_DEVIL:	/* ? "more than one" */
+    case PM_MINOTAUR:
+    case PM_ASMODEUS:
+    case PM_BALROG:
+	return 2;
+    case PM_WHITE_UNICORN:
+    case PM_GRAY_UNICORN:
+    case PM_BLACK_UNICORN:
+    case PM_KI_RIN:
+	return 1;
+    default:
+	break;
+    }
+    return 0;
 }
 
 struct attack *
@@ -359,7 +387,7 @@ monsndx(ptr)		/* return an index into the mons array */
 		/* ought to switch this to use `fmt_ptr' */
 	    panic("monsndx - could not index monster (%lx)",
 		  (unsigned long)ptr);
-	    return FALSE;		/* will not get here */
+	    return NON_PM;		/* will not get here */
 	}
 
 	return(i);
@@ -521,6 +549,11 @@ static const short grownups[][2] = {
 	{PM_KOBOLD, PM_LARGE_KOBOLD}, {PM_LARGE_KOBOLD, PM_KOBOLD_LORD},
 	{PM_GNOME, PM_GNOME_LORD}, {PM_GNOME_LORD, PM_GNOME_KING},
 	{PM_DWARF, PM_DWARF_LORD}, {PM_DWARF_LORD, PM_DWARF_KING},
+	{PM_MIND_FLAYER, PM_MASTER_MIND_FLAYER},
+	{PM_ORC, PM_ORC_CAPTAIN}, {PM_HILL_ORC, PM_ORC_CAPTAIN},
+	{PM_MORDOR_ORC, PM_ORC_CAPTAIN}, {PM_URUK_HAI, PM_ORC_CAPTAIN},
+	{PM_SEWER_RAT, PM_GIANT_RAT},
+	{PM_CAVE_SPIDER, PM_GIANT_SPIDER},
 	{PM_OGRE, PM_OGRE_LORD}, {PM_OGRE_LORD, PM_OGRE_KING},
 	{PM_ELF, PM_ELF_LORD}, {PM_WOODLAND_ELF, PM_ELF_LORD},
 	{PM_GREEN_ELF, PM_ELF_LORD}, {PM_GREY_ELF, PM_ELF_LORD},
@@ -605,6 +638,19 @@ int montype;
 	return montype;
 }
 
+/*
+ * Return the permonst ptr for the race of the monster.
+ * Returns correct pointer for non-polymorphed and polymorphed
+ * player.  It does not return a pointer to player role character.
+ */
+const struct permonst *
+raceptr(mtmp)
+struct monst *mtmp;
+{
+    if (mtmp == &youmonst && !Upolyd) return(&mons[urace.malenum]);
+    else return(mtmp->data);
+}
+
 static const char *levitate[4]	= { "float", "Float", "wobble", "Wobble" };
 static const char *flys[4]	= { "fly", "Fly", "flutter", "Flutter" };
 static const char *flyl[4]	= { "fly", "Fly", "stagger", "Stagger" };
@@ -651,6 +697,45 @@ const char *def;
 		def
 	       );
 
+}
+
+/* return a phrase describing the effect of fire attack on a type of monster */
+const char *
+on_fire(mptr, mattk)
+struct permonst *mptr;
+struct attack *mattk;
+{
+    const char *what;
+
+    switch (monsndx(mptr)) {
+    case PM_FLAMING_SPHERE:
+    case PM_FIRE_VORTEX:
+    case PM_FIRE_ELEMENTAL:
+	what = "already on fire";
+	break;
+    case PM_WATER_ELEMENTAL:
+    case PM_FOG_CLOUD:
+    case PM_STEAM_VORTEX:
+	what = "boiling";
+	break;
+    case PM_ICE_VORTEX:
+    case PM_GLASS_GOLEM:
+	what = "melting";
+	break;
+    case PM_STONE_GOLEM:
+    case PM_CLAY_GOLEM:
+    case PM_GOLD_GOLEM:
+    case PM_AIR_ELEMENTAL:
+    case PM_EARTH_ELEMENTAL:
+    case PM_DUST_VORTEX:
+    case PM_ENERGY_VORTEX:
+	what = "heating up";
+	break;
+    default:
+	what = (mattk->aatyp == AT_HUGS) ? "being roasted" : "on fire";
+	break;
+    }
+    return what;
 }
 
 #endif /* OVLB */

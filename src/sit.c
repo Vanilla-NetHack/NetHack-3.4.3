@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	3.4	2000/11/09	*/
+/*	SCCS Id: @(#)sit.c	3.4	2002/09/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,10 +17,11 @@ take_gold()
 		flags.botl = 1;
 	}
 #else
-        struct obj *otmp;
+        struct obj *otmp, *nobj;
 	int lost_money = 0;
-	for (otmp = invent; otmp; otmp = otmp->nobj) {
-		if (otmp->oclass == GOLD_CLASS) {
+	for (otmp = invent; otmp; otmp = nobj) {
+		nobj = otmp->nobj;
+		if (otmp->oclass == COIN_CLASS) {
 			lost_money = 1;
 			delobj(otmp);
 		}
@@ -37,7 +38,7 @@ take_gold()
 int
 dosit()
 {
-	static const char *sit_message = "sit on the %s.";
+	static const char sit_message[] = "sit on the %s.";
 	register struct trap *trap;
 	register int typ = levl[u.ux][u.uy].typ;
 
@@ -270,8 +271,8 @@ dosit()
 
 	    if (!rn2(3) && IS_THRONE(levl[u.ux][u.uy].typ)) {
 		/* may have teleported */
-		pline_The("throne vanishes in a puff of logic.");
 		levl[u.ux][u.uy].typ = ROOM;
+		pline_The("throne vanishes in a puff of logic.");
 		newsym(u.ux,u.uy);
 	    }
 
@@ -312,7 +313,7 @@ rndcurse()			/* curse a few inventory items at random! */
 	int	nobj = 0;
 	int	cnt, onum;
 	struct	obj	*otmp;
-	static const char *mal_aura = "feel a malignant aura surround %s.";
+	static const char mal_aura[] = "feel a malignant aura surround %s.";
 
 	if (uwep && (uwep->oartifact == ART_MAGICBANE) && rn2(20)) {
 	    You(mal_aura, "the magic-absorbing blade");
@@ -324,14 +325,27 @@ rndcurse()			/* curse a few inventory items at random! */
 	    You(mal_aura, "you");
 	}
 
-	for (otmp = invent; otmp; otmp = otmp->nobj)  nobj++;
-
+	for (otmp = invent; otmp; otmp = otmp->nobj) {
+#ifdef GOLDOBJ
+	    /* gold isn't subject to being cursed or blessed */
+	    if (otmp->oclass == COIN_CLASS) continue;
+#endif
+	    nobj++;
+	}
 	if (nobj) {
 	    for (cnt = rnd(6/((!!Antimagic) + (!!Half_spell_damage) + 1));
 		 cnt > 0; cnt--)  {
-		onum = rn2(nobj);
-		for(otmp = invent; onum != 0; onum--)
-		    otmp = otmp->nobj;
+		onum = rnd(nobj);
+		for (otmp = invent; otmp; otmp = otmp->nobj) {
+#ifdef GOLDOBJ
+		    /* as above */
+		    if (otmp->oclass == COIN_CLASS) continue;
+#endif
+		    if (--onum == 0) break;	/* found the target */
+		}
+		/* the !otmp case should never happen; picking an already
+		   cursed item happens--avoid "resists" message in that case */
+		if (!otmp || otmp->cursed) continue;	/* next target */
 
 		if(otmp->oartifact && spec_ability(otmp, SPFX_INTEL) &&
 		   rn2(10) < 8) {
@@ -346,6 +360,25 @@ rndcurse()			/* curse a few inventory items at random! */
 	    }
 	    update_inventory();
 	}
+
+#ifdef STEED
+	/* treat steed's saddle as extended part of hero's inventory */
+	if (u.usteed && !rn2(4) &&
+		(otmp = which_armor(u.usteed, W_SADDLE)) != 0 &&
+		!otmp->cursed) {	/* skip if already cursed */
+	    if (otmp->blessed)
+		unbless(otmp);
+	    else
+		curse(otmp);
+	    if (!Blind) {
+		pline("%s %s %s.",
+		      s_suffix(upstart(y_monnam(u.usteed))),
+		      aobjnam(otmp, "glow"),
+		      hcolor(otmp->cursed ? NH_BLACK : (const char *)"brown"));
+		otmp->bknown = TRUE;
+	    }
+	}
+#endif	/*STEED*/
 }
 
 void

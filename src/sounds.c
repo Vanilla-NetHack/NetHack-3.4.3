@@ -1,11 +1,13 @@
-/*	SCCS Id: @(#)sounds.c	3.4	2001/02/14	*/
+/*	SCCS Id: @(#)sounds.c	3.4	2002/05/06	*/
 /*	Copyright (c) 1989 Janet Walz, Mike Threepoint */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "edog.h"
 #ifdef USER_SOUNDS
+# ifdef USER_SOUNDS_REGEX
 #include <regex.h>
+# endif
 #endif
 
 #ifdef OVLB
@@ -45,7 +47,7 @@ dosounds()
     hallu = Hallucination ? 1 : 0;
 
     if (level.flags.nfountains && !rn2(400)) {
-	static const char *fountain_msg[4] = {
+	static const char * const fountain_msg[4] = {
 		"bubbling water.",
 		"water falling on coins.",
 		"the splashing of a naiad.",
@@ -55,7 +57,7 @@ dosounds()
     }
 #ifdef SINK
     if (level.flags.nsinks && !rn2(300)) {
-	static const char *sink_msg[3] = {
+	static const char * const sink_msg[3] = {
 		"a slow drip.",
 		"a gurgling noise.",
 		"dishes being washed!",
@@ -64,7 +66,7 @@ dosounds()
     }
 #endif
     if (level.flags.has_court && !rn2(200)) {
-	static const char *throne_msg[4] = {
+	static const char * const throne_msg[4] = {
 		"the tones of courtly conversation.",
 		"a sceptre pounded in judgment.",
 		"Someone shouts \"Off with %s head!\"",
@@ -86,7 +88,7 @@ dosounds()
 	}
     }
     if (level.flags.has_swamp && !rn2(200)) {
-	static const char *swamp_msg[3] = {
+	static const char * const swamp_msg[3] = {
 		"hear mosquitoes!",
 		"smell marsh gas!",	/* so it's a smell...*/
 		"hear Donald Duck!",
@@ -181,7 +183,7 @@ dosounds()
 	}
     }
     if (level.flags.has_barracks && !rn2(200)) {
-	static const char *barracks_msg[4] = {
+	static const char * const barracks_msg[4] = {
 		"blades being honed.",
 		"loud snoring.",
 		"dice being thrown.",
@@ -205,7 +207,7 @@ dosounds()
 	}
     }
     if (level.flags.has_zoo && !rn2(200)) {
-	static const char *zoo_msg[3] = {
+	static const char * const zoo_msg[3] = {
 		"a sound reminiscent of an elephant stepping on a peanut.",
 		"a sound reminiscent of a seal barking.",
 		"Doctor Doolittle!",
@@ -227,7 +229,7 @@ dosounds()
 	}
 	if (tended_shop(sroom) &&
 		!index(u.ushops, ROOM_INDEX(sroom) + ROOMOFFSET)) {
-	    static const char *shop_msg[3] = {
+	    static const char * const shop_msg[3] = {
 		    "someone cursing shoplifters.",
 		    "the chime of a cash register.",
 		    "Neiman and Marcus arguing!",
@@ -243,7 +245,7 @@ dosounds()
 		break;
 	/* and don't produce silly effects when she's clearly visible */
 	if (mtmp && (hallu || !canseemon(mtmp))) {
-	    static const char *ora_msg[5] = {
+	    static const char * const ora_msg[5] = {
 		    "a strange wind.",		/* Jupiter at Dodona */
 		    "convulsive ravings.",	/* Apollo at Delphi */
 		    "snoring snakes.",		/* AEsculapius at Epidaurus */
@@ -259,7 +261,7 @@ dosounds()
 #endif /* OVL0 */
 #ifdef OVLB
 
-static const char *h_sounds[] = {
+static const char * const h_sounds[] = {
     "beep", "boing", "sing", "belche", "creak", "cough", "rattle",
     "ululate", "pop", "jingle", "sniffle", "tinkle", "eep"
 };
@@ -495,7 +497,7 @@ register struct monst *mtmp;
 		    		verbl_msg = "I only drink... potions.";
     	        } else {
 			int vampindex;
-	    		static const char *vampmsg[] = {
+	    		static const char * const vampmsg[] = {
 			       /* These first two (0 and 1) are specially handled below */
 	    			"I vant to suck your %s!",
 	    			"I vill come after %s without regret!",
@@ -623,7 +625,7 @@ register struct monst *mtmp;
 	    break;
 	case MS_LAUGH:
 	    {
-		static const char *laugh_msg[4] = {
+		static const char * const laugh_msg[4] = {
 		    "giggles.", "chuckles.", "snickers.", "laughs.",
 		};
 		pline_msg = laugh_msg[rn2(4)];
@@ -739,7 +741,7 @@ register struct monst *mtmp;
 		verbalize("Just the facts, %s.",
 		      flags.female ? "Ma'am" : "Sir");
 	    else {
-		static const char *arrest_msg[3] = {
+		static const char * const arrest_msg[3] = {
 		    "Anything you say can be used against you.",
 		    "You're under arrest!",
 		    "Stop in the name of the Law!",
@@ -787,11 +789,11 @@ register struct monst *mtmp;
 	    break;
 	case MS_SOLDIER:
 	    {
-		static const char *soldier_foe_msg[3] = {
+		static const char * const soldier_foe_msg[3] = {
 		    "Resistance is useless!",
 		    "You're dog meat!",
 		    "Surrender!",
-		},		  *soldier_pax_msg[3] = {
+		},		  * const soldier_pax_msg[3] = {
 		    "What lousy pay we're getting here!",
 		    "The food's not fit for Orcs!",
 		    "My feet hurt, I've been on them all day!",
@@ -860,7 +862,10 @@ dochat()
 	return(1);
     }
 
-    (void) getdir("Talk to whom? (in what direction)");
+    if (!getdir("Talk to whom? (in what direction)")) {
+	/* decided not to chat */
+	return(0);
+    }
 
 #ifdef STEED
     if (u.usteed && u.dz > 0)
@@ -902,6 +907,9 @@ dochat()
 	return(0);
     }
 
+    /* if this monster is waiting for something, prod it into action */
+    mtmp->mstrategy &= ~STRAT_WAITMASK;
+
     if (mtmp->mtame && mtmp->meating) {
 	if (!canspotmon(mtmp))
 	    map_invisible(mtmp->mx, mtmp->my);
@@ -917,7 +925,11 @@ dochat()
 extern void FDECL(play_usersound, (const char*, int));
 
 typedef struct audio_mapping_rec {
+#ifdef USER_SOUNDS_REGEX
 	struct re_pattern_buffer regex;
+#else
+	char *pattern;
+#endif
 	char *filename;
 	int volume;
 	struct audio_mapping_rec *next;
@@ -950,17 +962,25 @@ const char *mapping;
 
 	    if (can_read_file(filespec)) {
 		new_map = (audio_mapping *)alloc(sizeof(audio_mapping));
+#ifdef USER_SOUNDS_REGEX
 		new_map->regex.translate = 0;
 		new_map->regex.fastmap = 0;
 		new_map->regex.buffer = 0;
 		new_map->regex.allocated = 0;
 		new_map->regex.regs_allocated = REGS_FIXED;
+#else
+		new_map->pattern = (char *)alloc(strlen(text) + 1);
+		Strcpy(new_map->pattern, text);
+#endif
 		new_map->filename = strdup(filespec);
 		new_map->volume = volume;
 		new_map->next = soundmap;
 
+#ifdef USER_SOUNDS_REGEX
 		err = re_compile_pattern(text, strlen(text), &new_map->regex);
-
+#else
+		err = 0;
+#endif
 		if (err) {
 		    raw_print(err);
 		    free(new_map->filename);
@@ -989,7 +1009,11 @@ const char* msg;
 	audio_mapping* cursor = soundmap;
 
 	while (cursor) {
+#ifdef USER_SOUNDS_REGEX
 	    if (re_search(&cursor->regex, msg, strlen(msg), 0, 9999, 0) >= 0) {
+#else
+	    if (pmatch(cursor->pattern, msg)) {
+#endif
 		play_usersound(cursor->filename, cursor->volume);
 	    }
 	    cursor = cursor->next;

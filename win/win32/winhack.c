@@ -67,8 +67,6 @@ NHWinApp _nethack_app;
 #endif
 
 // Foward declarations of functions included in this code module:
-BOOL				InitInstance(HINSTANCE, int);
-
 extern void FDECL(pcmain, (int,char **));
 static void __cdecl mswin_moveloop(void *);
 
@@ -140,12 +138,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	InitCtrls.dwICC = ICC_LISTVIEW_CLASSES;
 	InitCommonControlsEx(&InitCtrls);
 	
-	// Perform application initialization:
-	if (!InitInstance (hInstance, nCmdShow)) 
-	{
-		return FALSE;
-	}
-
 	/* get command line parameters */	
 	p = _get_cmd_arg(GetCommandLine());
 	p = _get_cmd_arg(NULL); /* skip first paramter - command name */
@@ -161,6 +153,27 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	GetModuleFileName(NULL, wbuf, BUFSZ);
 	argv[0] = _strdup(NH_W2A(wbuf, buf, BUFSZ));
 
+    if (argc == 2) {
+	    TCHAR *savefile = strdup(argv[1]);
+	    TCHAR *plname;
+        for (p = savefile; *p && *p != '-'; p++)
+            ;
+        if (*p) {
+            /* we found a '-' */
+            plname = p + 1;
+            for (p = plname; *p && *p != '.'; p++)
+                ;
+            if (*p) {
+                if (strcmp(p + 1, "NetHack-saved-game") == 0) {
+                    *p = '\0';
+                    argv[1] = "-u";
+                    argv[2] = _strdup(plname);
+                    argc = 3;
+                }
+            }
+        }
+        free(savefile);
+    }
 	pcmain(argc,argv);
 
 	moveloop();
@@ -168,33 +181,6 @@ int APIENTRY WinMain(HINSTANCE hInstance,
 	return 0;
 }
 
-
-//
-//   FUNCTION: InitInstance(HANDLE, int)
-//
-//   PURPOSE: Creates main window
-//
-//   COMMENTS:
-//
-//        In this function, we create and display the main program window.
-//
-BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
-{
-   HWND hWnd;
-
-   hWnd = mswin_init_main_window();
-   if (!hWnd)
-   {
-      return FALSE;
-   }
-
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
-
-   _nethack_app.hMainWnd = hWnd;
-
-   return TRUE;
-}
 
 PNHWinApp GetNHApp()
 {

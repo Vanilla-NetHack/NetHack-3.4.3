@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)global.h	3.4	2002/03/12	*/
+/*	SCCS Id: @(#)global.h	3.4	2003/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -175,7 +175,11 @@ typedef xchar	boolean;		/* 0 or 1 */
 #endif
 
 #ifdef WIN32
+#ifdef WIN_CE
+#include "wceconf.h"
+#else
 #include "ntconf.h"
+#endif
 #endif
 
 /* Displayable name of this port; don't redefine if defined in *conf.h */
@@ -216,16 +220,18 @@ typedef xchar	boolean;		/* 0 or 1 */
 # endif
 # ifdef WIN32
 #  define PORT_ID	"Windows"
-#  ifdef MSWIN_GRAPHICS
-#   define PORT_SUB_ID	"graphical"
-#  else
-#   define PORT_SUB_ID	"tty"
+#  ifndef PORT_SUB_ID
+#   ifdef MSWIN_GRAPHICS
+#    define PORT_SUB_ID	"graphical"
+#   else
+#    define PORT_SUB_ID	"tty"
+#   endif
 #  endif
 # endif
 #endif
 
 #if defined(MICRO)
-#if !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS) && !defined(WIN32)
+#if !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS)
 #define SHORT_FILENAMES		/* filenames are 8.3 */
 #endif
 #endif
@@ -333,7 +339,7 @@ struct version_info {
 
 #define MAXULEV		30	/* max character experience level */
 
-#define MAXMONNO	120	/* geno monst after this number killed */
+#define MAXMONNO	120	/* extinct monst after this number created */
 #define MHPMAX		500	/* maximum monster hp */
 
 #endif /* GLOBAL_H */

@@ -1,5 +1,5 @@
-#       SCCS Id: @(#)Makefile.nt       3.4     2002/02/28
-#       Copyright (c) NetHack PC Development Team 1993-2001
+#       SCCS Id: @(#)Makefile.msc       3.4     $Date: 2003/02/19 14:20:47 $
+#       Copyright (c) NetHack PC Development Team 1993-2003
 #
 #       NetHack 3.4.x Makefile for MS Visual C++ V6.x and above and MS NMAKE
 #  
@@ -7,8 +7,11 @@
 #                              - Microsoft 32 bit Visual C++ V4.x
 #                              - Microsoft 32 bit Visual C++ V6.0 SP3, SP4
 #
-#	This is used for building a TTY version of NetHack using WIN32 Console
-#	I/O routines only.
+#   This is used for building two versions of NetHack:
+#   A tty port utilizing the Win32 Console I/O subsystem, Console
+#       NetHack;
+#   A Win32 native port built on the Windows API, Graphical NetHack or
+#       NetHackW.
 #
 #       In addition to your C compiler,
 #
@@ -34,11 +37,15 @@ APPVER=4.0
 
 #GRAPHICAL = Y
 
-#
 #  Set the gamedir according to your preference.  
 #  If not present prior to compilation it gets created.
 
+!IF "$(GRAPHICAL)" == "Y"
+GAME    = NetHackW                # Game Name
+!ELSE
 GAME    = NetHack                 # Game Name
+!ENDIF
+
 GAMEDIR = ..\binary               # Game directory
 
 #
@@ -109,11 +116,6 @@ RANDOM	= $(OBJ)\random.o
 #RANDOM	=
 
 #
-# - For debugging ability, comment out the upper two 
-#   macros and uncomment the lower two.
-#
-
-#
 #  Leave the next two lines uncommented _ONLY_ if you do NOT want any
 #  debug capability in the object files, or in the NetHack executable.
 #  Comment them if you want debug capability.
@@ -162,7 +164,7 @@ TILEBMP16   = $(SRC)\tiles.bmp
 TILEUTIL32  = $(UTIL)\til2bm32.exe
 TILEBMP32   = $(SRC)\tiles32.bmp
 
-#SOUND = $(OBJ)\ntsound.o
+SOUND = $(OBJ)\ntsound.o
 
 #SOUND =
 
@@ -324,7 +326,7 @@ RECOVOBJS      = $(O)recover.o
 TILEFILES      = $(WSHR)\monsters.txt $(WSHR)\objects.txt $(WSHR)\other.txt
 
 #
-# These are not invoked during a normal game build in 3.4.0
+# These are not invoked during a normal game build in 3.4.1
 #
 TEXT_IO        = $(O)tiletext.o	$(O)tiletxt.o	$(O)drawing.o \
 		 $(O)decl.o	$(O)monst.o	$(O)objects.o
@@ -475,14 +477,16 @@ $(O)install.tag: 	$(DAT)\data	$(DAT)\rumors	 $(DAT)\dungeon \
 ! ENDIF
 	if exist $(DOC)\guidebook.txt copy $(DOC)\guidebook.txt $(GAMEDIR)\Guidebook.txt
 	if exist $(DOC)\nethack.txt copy $(DOC)\nethack.txt $(GAMEDIR)\NetHack.txt
-	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)\recover.txt
 	@if exist $(SRC)\$(GAME).PDB copy $(SRC)\$(GAME).pdb $(GAMEDIR)\$(GAME).pdb
 	@if exist $(GAMEDIR)\$(GAME).PDB echo NOTE: You may want to remove $(GAMEDIR)\$(GAME).pdb to conserve space
 	-copy $(NTSYS)\defaults.nh   $(GAMEDIR)\defaults.nh
-	copy $(U)recover.exe  $(GAMEDIR)
 	echo install done > $@
 
 #	copy $(NTSYS)\winnt.hlp    $(GAMEDIR)
+
+recover: $(U)recover.exe
+	if exist $(U)recover.exe copy $(U)recover.exe  $(GAMEDIR)
+	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)\recover.txt
 
 $(O)sp_lev.tag: $(O)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des   \
@@ -523,7 +527,7 @@ $(O)sp_lev.tag: $(O)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 $(O)utility.tag: $(INCL)\date.h $(INCL)\onames.h $(INCL)\pm.h \
 		$(SRC)\monstr.c		$(SRC)\vis_tab.c  \
 		$(U)lev_comp.exe	$(INCL)\vis_tab.h \
-		$(U)dgn_comp.exe $(U)recover.exe
+		$(U)dgn_comp.exe
              @echo utilities made >$@
 	     @echo utilities made.
 
@@ -573,7 +577,7 @@ $(NHRES): $(NTSYS)\console.rc $(NTSYS)\NetHack.ico
 $(GAMEFILE) : $(ALLOBJ) $(NHRES)
 	@if not exist $(GAMEDIR)\*.* mkdir $(GAMEDIR)
 	@echo Linking....
-	$(link) $(LFLAGS) -out:$@ @<<$(GAME).lnk
+	$(link) $(LFLAGS) user32.lib winmm.lib -out:$@ @<<$(GAME).lnk
 		$(ALLOBJ:^	=^
 		) $(NHRES)
 <<
@@ -629,7 +633,7 @@ $(SRC)\vis_tab.c: $(U)makedefs.exe
 #==========================================
 
 $(U)uudecode.exe: $(O)uudecode.o
-	@$(link) $(LFLAGSU) -out:$@ $(O)\uudecode.o
+	@$(link) $(LFLAGSU) -out:$@ $(O)uudecode.o
 
 $(O)uudecode.o: $(SSYS)\uudecode.c
 
@@ -882,10 +886,10 @@ nhdat:	$(U)dlb_main.exe $(DAT)\data $(DAT)\oracles $(OPTIONS_FILE) \
 #==========================================
 
 $(U)recover.exe: $(RECOVOBJS)
-	@$(link) $(LFLAGSU) -out:$@ $(RECOVOBJS)
+	$(link) $(LFLAGSU) -out:$@ $(RECOVOBJS)
 
 $(O)recover.o: $(CONFIG_H) $(U)recover.c $(INCL)\win32api.h
-	@$(CC) $(CFLAGSU) -Fo$@ $(U)recover.c
+	$(CC) $(CFLAGSU) -Fo$@ $(U)recover.c
 
 #==========================================
 #  Tile Mapping
@@ -1090,148 +1094,160 @@ $(DAT)\dungeon: $(O)utility.tag  $(DAT)\dungeon.def
 #
 
 $(O)nttty.o:   $(HACK_H) $(TILE_H) $(INCL)\win32api.h $(NTSYS)\nttty.c
-	@$(CC) $(CFLAGS) -I$(WSHR) -Fo$@  $(NTSYS)\nttty.c
+	@@$(CC) $(CFLAGS) -I$(WSHR) -Fo$@  $(NTSYS)\nttty.c
 $(O)winnt.o: $(HACK_H) $(INCL)\win32api.h $(NTSYS)\winnt.c
-	@$(CC) $(CFLAGS) -Fo$@  $(NTSYS)\winnt.c
+	@@$(CC) $(CFLAGS) -Fo$@  $(NTSYS)\winnt.c
 $(O)ntsound.o: $(HACK_H) $(NTSYS)\ntsound.c
-	@$(CC) $(CFLAGS)  -Fo$@ $(NTSYS)\ntsound.c
+	@@$(CC) $(CFLAGS)  -Fo$@ $(NTSYS)\ntsound.c
 $(O)mapimail.o: $(HACK_H) $(INCL)\nhlan.h $(NTSYS)\mapimail.c
-	@$(CC) $(CFLAGS) -DMAPI_VERBOSE  -Fo$@ $(NTSYS)\mapimail.c
+	@@$(CC) $(CFLAGS) -DMAPI_VERBOSE  -Fo$@ $(NTSYS)\mapimail.c
 
 # 
 # util dependencies
 #
 
 $(O)panic.o:  $(U)panic.c $(CONFIG_H)
-	@$(CC) $(CFLAGS) -Fo$@ $(U)panic.c
+	@@$(CC) $(CFLAGS) -Fo$@ $(U)panic.c
 
 #
 # The rest are stolen from sys/unix/Makefile.src, 
-# with slashes changed to back-slashes 
-# and -c (which is included in CFLAGS) substituted
-# with -Fo$@ , but otherwise untouched. That
-# means that there is some irrelevant stuff
+# with the following changes:
+#   * ../include changed to $(INCL)
+#   * slashes changed to back-slashes 
+#   * -c (which is included in CFLAGS) substituted with -Fo$@
+#   * targets prefixed with $(O)
+# but otherwise untouched.
+# That means that there is some irrelevant stuff
 # in here, but maintenance should be easier.
 #
 $(O)tos.o: ..\sys\atari\tos.c $(HACK_H) $(INCL)\tcap.h
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\atari\tos.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\atari\tos.c
 $(O)pcmain.o: ..\sys\share\pcmain.c $(HACK_H) $(INCL)\dlb.h \
 		$(INCL)\win32api.h
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcmain.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcmain.c
 $(O)pcsys.o: ..\sys\share\pcsys.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcsys.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcsys.c
 $(O)pctty.o: ..\sys\share\pctty.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pctty.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pctty.c
 $(O)pcunix.o: ..\sys\share\pcunix.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcunix.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\pcunix.c
 $(O)random.o: ..\sys\share\random.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\random.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\random.c
 $(O)ioctl.o: ..\sys\share\ioctl.c $(HACK_H) $(INCL)\tcap.h
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\ioctl.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\ioctl.c
 $(O)unixtty.o: ..\sys\share\unixtty.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\share\unixtty.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\share\unixtty.c
 $(O)unixmain.o: ..\sys\unix\unixmain.c $(HACK_H) $(INCL)\dlb.h
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\unix\unixmain.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\unix\unixmain.c
 $(O)unixunix.o: ..\sys\unix\unixunix.c $(HACK_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\unix\unixunix.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\unix\unixunix.c
+$(O)unixres.o: ..\sys\unix\unixres.c $(CONFIG_H)
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\unix\unixres.c
 $(O)bemain.o: ..\sys\be\bemain.c $(HACK_H) $(INCL)\dlb.h
-	$(CC) $(CFLAGS) -Fo$@ ..\sys\be\bemain.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\sys\be\bemain.c
 $(O)getline.o: ..\win\tty\getline.c $(HACK_H) $(INCL)\func_tab.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\tty\getline.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\tty\getline.c
 $(O)termcap.o: ..\win\tty\termcap.c $(HACK_H) $(INCL)\tcap.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\tty\termcap.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\tty\termcap.c
 $(O)topl.o: ..\win\tty\topl.c $(HACK_H) $(INCL)\tcap.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\tty\topl.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\tty\topl.c
 $(O)wintty.o: ..\win\tty\wintty.c $(HACK_H) $(INCL)\dlb.h \
 		$(INCL)\patchlevel.h $(INCL)\tcap.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\tty\wintty.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\tty\wintty.c
 $(O)Window.o: ..\win\X11\Window.c $(INCL)\xwindowp.h $(INCL)\xwindow.h \
 		$(CONFIG_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\Window.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\Window.c
 $(O)dialogs.o: ..\win\X11\dialogs.c $(CONFIG_H)
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\dialogs.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\dialogs.c
 $(O)winX.o: ..\win\X11\winX.c $(HACK_H) $(INCL)\winX.h $(INCL)\dlb.h \
 		$(INCL)\patchlevel.h ..\win\X11\nh72icon \
 		..\win\X11\nh56icon ..\win\X11\nh32icon
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winX.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winX.c
 $(O)winmap.o: ..\win\X11\winmap.c $(INCL)\xwindow.h $(HACK_H) $(INCL)\dlb.h \
 		$(INCL)\winX.h $(INCL)\tile2x11.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmap.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmap.c
 $(O)winmenu.o: ..\win\X11\winmenu.c $(HACK_H) $(INCL)\winX.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmenu.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmenu.c
 $(O)winmesg.o: ..\win\X11\winmesg.c $(INCL)\xwindow.h $(HACK_H) $(INCL)\winX.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmesg.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmesg.c
 $(O)winmisc.o: ..\win\X11\winmisc.c $(HACK_H) $(INCL)\func_tab.h \
 		$(INCL)\winX.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmisc.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winmisc.c
 $(O)winstat.o: ..\win\X11\winstat.c $(HACK_H) $(INCL)\winX.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winstat.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winstat.c
 $(O)wintext.o: ..\win\X11\wintext.c $(HACK_H) $(INCL)\winX.h $(INCL)\xwindow.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\wintext.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\wintext.c
 $(O)winval.o: ..\win\X11\winval.c $(HACK_H) $(INCL)\winX.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winval.c
-$(O)tile.o: $(SRC)\tile.c $(HACK_H)
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\X11\winval.c
+$(O)tile.o: tile.c $(HACK_H)
 $(O)gnaskstr.o: ..\win\gnome\gnaskstr.c ..\win\gnome\gnaskstr.h \
 		..\win\gnome\gnmain.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnaskstr.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnaskstr.c
 $(O)gnbind.o: ..\win\gnome\gnbind.c ..\win\gnome\gnbind.h ..\win\gnome\gnmain.h \
 		..\win\gnome\gnaskstr.h ..\win\gnome\gnyesno.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnbind.c
-$(O)gnglyph.o: ..\win\gnome\gnglyph.c ..\win\gnome\gnglyph.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnglyph.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnbind.c
+$(O)gnglyph.o: ..\win\gnome\gnglyph.c ..\win\gnome\gnglyph.h $(INCL)\tile2x11.h
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnglyph.c
 $(O)gnmain.o: ..\win\gnome\gnmain.c ..\win\gnome\gnmain.h ..\win\gnome\gnsignal.h \
 		..\win\gnome\gnbind.h ..\win\gnome\gnopts.h $(HACK_H) \
 		$(INCL)\date.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnmain.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnmain.c
 $(O)gnmap.o: ..\win\gnome\gnmap.c ..\win\gnome\gnmap.h ..\win\gnome\gnglyph.h \
 		..\win\gnome\gnsignal.h $(HACK_H)
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnmap.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnmap.c
 $(O)gnmenu.o: ..\win\gnome\gnmenu.c ..\win\gnome\gnmenu.h ..\win\gnome\gnmain.h \
 		..\win\gnome\gnbind.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnmenu.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnmenu.c
 $(O)gnmesg.o: ..\win\gnome\gnmesg.c ..\win\gnome\gnmesg.h ..\win\gnome\gnsignal.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnmesg.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnmesg.c
 $(O)gnopts.o: ..\win\gnome\gnopts.c ..\win\gnome\gnopts.h ..\win\gnome\gnglyph.h \
 		..\win\gnome\gnmain.h ..\win\gnome\gnmap.h $(HACK_H)
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnopts.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnopts.c
 $(O)gnplayer.o: ..\win\gnome\gnplayer.c ..\win\gnome\gnplayer.h \
 		..\win\gnome\gnmain.h $(HACK_H)
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnplayer.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnplayer.c
 $(O)gnsignal.o: ..\win\gnome\gnsignal.c ..\win\gnome\gnsignal.h \
 		..\win\gnome\gnmain.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnsignal.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnsignal.c
 $(O)gnstatus.o: ..\win\gnome\gnstatus.c ..\win\gnome\gnstatus.h \
 		..\win\gnome\gnsignal.h ..\win\gnome\gn_xpms.h \
 		..\win\gnome\gnomeprv.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnstatus.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnstatus.c
 $(O)gntext.o: ..\win\gnome\gntext.c ..\win\gnome\gntext.h ..\win\gnome\gnmain.h \
 		..\win\gnome\gn_rip.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gntext.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gntext.c
+$(O)gnworn.o: ..\win\gnome\gnworn.c ..\win\gnome\gnworn.h ..\win\gnome\gnglyph.h \
+		..\win\gnome\gnsignal.h ..\win\gnome\gnomeprv.h
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnworn.c
 $(O)gnyesno.o: ..\win\gnome\gnyesno.c ..\win\gnome\gnbind.h ..\win\gnome\gnyesno.h
-	$(CC) $(CFLAGS) $(GNOMEINC) -c ..\win\gnome\gnyesno.c
+	@$(CC) $(CFLAGS) $(GNOMEINC) -Fo$@ ..\win\gnome\gnyesno.c
 $(O)wingem.o: ..\win\gem\wingem.c $(HACK_H) $(INCL)\func_tab.h $(INCL)\dlb.h \
 		$(INCL)\patchlevel.h $(INCL)\wingem.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\gem\wingem.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\gem\wingem.c
 $(O)wingem1.o: ..\win\gem\wingem1.c $(INCL)\gem_rsc.h $(INCL)\load_img.h \
-		$(INCL)\wintype.h $(INCL)\wingem.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\gem\wingem1.c
+		$(INCL)\gr_rect.h $(INCL)\wintype.h $(INCL)\wingem.h
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\gem\wingem1.c
 $(O)load_img.o: ..\win\gem\load_img.c $(INCL)\load_img.h
-	$(CC) $(CFLAGS) -Fo$@ ..\win\gem\load_img.c
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\gem\load_img.c
+$(O)gr_rect.o: ..\win\gem\gr_rect.c $(INCL)\gr_rect.h
+	@$(CC) $(CFLAGS) -Fo$@ ..\win\gem\gr_rect.c
 $(O)tile.o: tile.c $(HACK_H)
 $(O)qt_win.o: ..\win\Qt\qt_win.cpp $(HACK_H) $(INCL)\func_tab.h \
-		$(INCL)\dlb.h $(INCL)\patchlevel.h $(INCL)\qt_win.h \
-		$(INCL)\qt_clust.h $(INCL)\qt_kde0.h \
-		$(INCL)\qt_xpms.h qt_win.moc qt_kde0.moc
-	$(CXX) $(CXXFLAGS) -c ..\win\Qt\qt_win.cpp
+		$(INCL)\dlb.h $(INCL)\patchlevel.h $(INCL)\tile2x11.h \
+		$(INCL)\qt_win.h $(INCL)\qt_clust.h $(INCL)\qt_kde0.h \
+		$(INCL)\qt_xpms.h qt_win.moc qt_kde0.moc qttableview.moc
+	$(CXX) $(CXXFLAGS) -Fo$@ ..\win\Qt\qt_win.cpp
 $(O)qt_clust.o: ..\win\Qt\qt_clust.cpp $(INCL)\qt_clust.h
-	$(CXX) $(CXXFLAGS) -c ..\win\Qt\qt_clust.cpp
-$(O)monstr.o: $(SRC)\monstr.c $(CONFIG_H)
-$(O)vis_tab.o: $(SRC)\vis_tab.c $(CONFIG_H) $(INCL)\vis_tab.h
+	$(CXX) $(CXXFLAGS) -Fo$@ ..\win\Qt\qt_clust.cpp
+$(O)qttableview.o: ..\win\Qt\qttableview.cpp $(INCL)\qttableview.h
+	$(CXX) $(CXXFLAGS) -Fo$@ ..\win\Qt\qttableview.cpp
+$(O)monstr.o: monstr.c $(CONFIG_H)
+$(O)vis_tab.o: vis_tab.c $(CONFIG_H) $(INCL)\vis_tab.h
 $(O)allmain.o: allmain.c $(HACK_H)
 $(O)alloc.o: alloc.c $(CONFIG_H)
 $(O)apply.o: apply.c $(HACK_H) $(INCL)\edog.h
 $(O)artifact.o: artifact.c $(HACK_H) $(INCL)\artifact.h $(INCL)\artilist.h
-$(O)attrib.o: attrib.c $(HACK_H) $(INCL)\artifact.h
+$(O)attrib.o: attrib.c $(HACK_H)
 $(O)ball.o: ball.c $(HACK_H)
 $(O)bones.o: bones.c $(HACK_H) $(INCL)\lev.h
 $(O)botl.o: botl.c $(HACK_H)
@@ -1261,7 +1277,7 @@ $(O)files.o: files.c $(HACK_H) $(INCL)\dlb.h
 $(O)fountain.o: fountain.c $(HACK_H)
 $(O)hack.o: hack.c $(HACK_H)
 $(O)hacklib.o: hacklib.c $(HACK_H)
-$(O)invent.o: invent.c $(HACK_H) $(INCL)\artifact.h
+$(O)invent.o: invent.c $(HACK_H)
 $(O)light.o: light.c $(HACK_H) $(INCL)\lev.h
 $(O)lock.o: lock.c $(HACK_H)
 $(O)mail.o: mail.c $(HACK_H) $(INCL)\mail.h
@@ -1275,11 +1291,12 @@ $(O)minion.o: minion.c $(HACK_H) $(INCL)\emin.h $(INCL)\epri.h
 $(O)mklev.o: mklev.c $(HACK_H)
 $(O)mkmap.o: mkmap.c $(HACK_H) $(INCL)\sp_lev.h
 $(O)mkmaze.o: mkmaze.c $(HACK_H) $(INCL)\sp_lev.h $(INCL)\lev.h
-$(O)mkobj.o: mkobj.c $(HACK_H) $(INCL)\artifact.h
+$(O)mkobj.o: mkobj.c $(HACK_H)
 $(O)mkroom.o: mkroom.c $(HACK_H)
 $(O)mon.o: mon.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\edog.h
 $(O)mondata.o: mondata.c $(HACK_H) $(INCL)\eshk.h $(INCL)\epri.h
-$(O)monmove.o: monmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h
+$(O)monmove.o: monmove.c $(HACK_H) $(INCL)\mfndpos.h $(INCL)\artifact.h \
+		$(INCL)\epri.h
 $(O)monst.o: monst.c $(CONFIG_H) $(INCL)\permonst.h $(INCL)\align.h \
 		$(INCL)\monattk.h $(INCL)\monflag.h $(INCL)\monsym.h \
 		$(INCL)\dungeon.h $(INCL)\eshk.h $(INCL)\vault.h \
@@ -1335,11 +1352,10 @@ $(O)weapon.o: weapon.c $(HACK_H)
 $(O)were.o: were.c $(HACK_H)
 $(O)wield.o: wield.c $(HACK_H)
 $(O)windows.o: windows.c $(HACK_H) $(INCL)\wingem.h $(INCL)\winGnome.h
-$(O)wizard.o: wizard.c $(HACK_H) $(INCL)\qtext.h
+$(O)wizard.o: wizard.c $(HACK_H) $(INCL)\qtext.h $(INCL)\epri.h
 $(O)worm.o: worm.c $(HACK_H) $(INCL)\lev.h
 $(O)worn.o: worn.c $(HACK_H)
 $(O)write.o: write.c $(HACK_H)
 $(O)zap.o: zap.c $(HACK_H)
 
 # end of file
-

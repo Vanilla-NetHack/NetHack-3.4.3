@@ -407,13 +407,6 @@ register struct monst *mtmp;
 		    case PM_HORNED_DEVIL:
 			(void)mongets(mtmp, rn2(4) ? TRIDENT : BULLWHIP);
 			break;
-		    case PM_ICE_DEVIL:
-			if (!rn2(4)) (void)mongets(mtmp, SPEAR);
-			break;
-		    case PM_ASMODEUS:
-			(void)mongets(mtmp, WAN_COLD);
-			(void)mongets(mtmp, WAN_FIRE);
-			break;
 		    case PM_DISPATER:
 			(void)mongets(mtmp, WAN_STRIKING);
 			break;
@@ -642,6 +635,16 @@ register struct	monst	*mtmp;
 		mkmonmoney(mtmp, (long) d(level_difficulty(), 30));
 #endif
 		break;
+	    case S_DEMON:
+	    	/* moved here from m_initweap() because these don't
+		   have AT_WEAP so m_initweap() is not called for them */
+		if (ptr == &mons[PM_ICE_DEVIL] && !rn2(4)) {
+			(void)mongets(mtmp, SPEAR);
+		} else if (ptr == &mons[PM_ASMODEUS]) {
+			(void)mongets(mtmp, WAN_COLD);
+			(void)mongets(mtmp, WAN_FIRE);
+		}
+		break;
 	    default:
 		break;
 	}
@@ -763,6 +766,7 @@ register int	mmflags;
 	boolean byyou = (x == u.ux && y == u.uy);
 	boolean allow_minvent = ((mmflags & NO_MINVENT) == 0);
 	boolean countbirth = ((mmflags & MM_NOCOUNTBIRTH) == 0);
+	unsigned gpflags = (mmflags & MM_IGNOREWATER) ? MM_IGNOREWATER : 0;
 	uchar lim;
 
 	/* if caller wants random location, do it here */
@@ -774,12 +778,12 @@ register int	mmflags;
 		do {
 			x = rn1(COLNO-3,2);
 			y = rn2(ROWNO);
-		} while(!goodpos(x, y, ptr ? &fakemon : (struct monst *)0) ||
+		} while(!goodpos(x, y, ptr ? &fakemon : (struct monst *)0, gpflags) ||
 			(!in_mklev && tryct++ < 50 && cansee(x, y)));
 	} else if (byyou && !in_mklev) {
 		coord bypos;
 
-		if(enexto(&bypos, u.ux, u.uy, ptr)) {
+		if(enexto_core(&bypos, u.ux, u.uy, ptr, gpflags)) {
 			x = bypos.x;
 			y = bypos.y;
 		} else
@@ -816,7 +820,7 @@ register int	mmflags;
 			    return((struct monst *) 0);	/* no more monsters! */
 			}
 			fakemon.data = ptr;	/* set up for goodpos */
-		} while(!goodpos(x, y, &fakemon) && tryct++ < 50);
+		} while(!goodpos(x, y, &fakemon, gpflags) && tryct++ < 50);
 		mndx = monsndx(ptr);
 	}
 	/* if it's unique, don't ever make it again */
@@ -830,8 +834,8 @@ register int	mmflags;
 	 * the caller manually decrement mvitals if the monster is created
 	 * under circumstances where one would not logically expect the
 	 * creation to reduce the supply of wild monsters.  Monster cloning
- 	 * might be one such case, but we go against logic there in order to
-	 * reduce the possibility of abuse.
+ 	 * might be one case that requires that in order to reduce the
+	 * possibility of abuse, but currently doesn't.
 	 */
 	if (mvitals[mndx].born < 255 && countbirth) mvitals[mndx].born++;
 	lim = mbirth_limit(mndx);
@@ -893,7 +897,7 @@ register int	mmflags;
 	if (In_sokoban(&u.uz) && !mindless(ptr))  /* know about traps here */
 	    mtmp->mtrapseen = (1L << (PIT - 1)) | (1L << (HOLE - 1));
 	if (ptr->msound == MS_LEADER)		/* leader knows about portal */
-	    mtmp->mtrapseen |= (1 << (MAGIC_PORTAL-1));
+	    mtmp->mtrapseen |= (1L << (MAGIC_PORTAL-1));
 
 	place_monster(mtmp, x, y);
 	mtmp->mcansee = mtmp->mcanmove = TRUE;
@@ -955,7 +959,7 @@ register int	mmflags;
 			mtmp->cham = CHAM_ORDINARY;
 		else {
 			mtmp->cham = mcham;
-			(void) newcham(mtmp, rndmonst(), FALSE);
+			(void) newcham(mtmp, rndmonst(), FALSE, FALSE);
 		}
 	} else if (mndx == PM_WIZARD_OF_YENDOR) {
 		mtmp->iswiz = TRUE;
@@ -1346,6 +1350,12 @@ struct monst *mtmp, *victim;
 	if (mtmp->mhp <= 0)
 	    return ((struct permonst *)0);
 
+	/* note:  none of the monsters with special hit point calculations
+	   have both little and big forms */
+	oldtype = monsndx(ptr);
+	newtype = little_to_big(oldtype);
+	if (newtype == PM_PRIEST && mtmp->female) newtype = PM_PRIESTESS;
+
 	/* growth limits differ depending on method of advancement */
 	if (victim) {		/* killed a monster */
 	    /*
@@ -1362,6 +1372,9 @@ struct monst *mtmp, *victim;
 	    else if (is_home_elemental(ptr))
 		hp_threshold *= 3;
 	    lev_limit = 3 * (int)ptr->mlevel / 2;	/* same as adj_lev() */
+	    /* If they can grow up, be sure the level is high enough for that */
+	    if (oldtype != newtype && mons[newtype].mlevel > lev_limit)
+		lev_limit = (int)mons[newtype].mlevel;
 	    /* number of hit points to gain; unlike for the player, we put
 	       the limit at the bottom of the next level rather than the top */
 	    max_increase = rnd((int)victim->m_lev + 1);
@@ -1386,11 +1399,6 @@ struct monst *mtmp, *victim;
 	else if (lev_limit < 5) lev_limit = 5;	/* arbitrary */
 	else if (lev_limit > 49) lev_limit = (ptr->mlevel > 49 ? 50 : 49);
 
-	/* note:  none of the monsters with special hit point calculations
-	   have both little and big forms */
-	oldtype = monsndx(ptr);
-	newtype = little_to_big(oldtype);
-	if (newtype == PM_PRIEST && mtmp->female) newtype = PM_PRIESTESS;
 	if ((int)++mtmp->m_lev >= mons[newtype].mlevel && newtype != oldtype) {
 	    ptr = &mons[newtype];
 	    if (mvitals[newtype].mvflags & G_GENOD) {	/* allow G_EXTINCT */
@@ -1435,7 +1443,7 @@ register int otyp;
 	    if (mtmp->data->mlet == S_DEMON) {
 		/* demons never get blessed objects */
 		if (otmp->blessed) curse(otmp);
-	    } else if(is_lminion(mtmp->data)) {
+	    } else if(is_lminion(mtmp)) {
 		/* lawful minions don't get cursed, bad, or rusting objects */
 		otmp->cursed = FALSE;
 		if(otmp->spe < 0) otmp->spe = 0;
@@ -1597,7 +1605,7 @@ struct monst *mtmp;
 
 static NEARDATA char syms[] = {
 	MAXOCLASSES, MAXOCLASSES+1, RING_CLASS, WAND_CLASS, WEAPON_CLASS,
-	FOOD_CLASS, GOLD_CLASS, SCROLL_CLASS, POTION_CLASS, ARMOR_CLASS,
+	FOOD_CLASS, COIN_CLASS, SCROLL_CLASS, POTION_CLASS, ARMOR_CLASS,
 	AMULET_CLASS, TOOL_CLASS, ROCK_CLASS, GEM_CLASS, SPBOOK_CLASS,
 	S_MIMIC_DEF, S_MIMIC_DEF, S_MIMIC_DEF,
 };
@@ -1692,7 +1700,7 @@ assign_sym:
 		if (s_sym >= MAXOCLASSES) {
 			ap_type = M_AP_FURNITURE;
 			appear = s_sym == MAXOCLASSES ? S_upstair : S_dnstair;
-		} else if (s_sym == GOLD_CLASS) {
+		} else if (s_sym == COIN_CLASS) {
 			ap_type = M_AP_OBJECT;
 			appear = GOLD_PIECE;
 		} else {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ball.c	3.4	1997/04/23	*/
+/*	SCCS Id: @(#)ball.c	3.4	2003/02/03	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -38,7 +38,7 @@ ballfall()
 		    } else if (flags.verbose)
 			Your("%s does not protect you.", xname(uarmh));
 		}
-		losehp(dmg, "Crunched in the head by an iron ball",
+		losehp(dmg, "crunched in the head by an iron ball",
 			NO_KILLER_PREFIX);
 	}
 }
@@ -343,19 +343,30 @@ xchar ballx, bally, chainx, chainy;	/* only matter !before */
     }
 }
 
-/* return TRUE if ball could be dragged
+/* return TRUE if the caller needs to place the ball and chain down again
  *
  *  Should not be called while swallowed.  Should be called before movement,
  *  because we might want to move the ball or chain to the hero's old position.
+ *
+ * It is called if we are moving.  It is also called if we are teleporting
+ * *if* the ball doesn't move and we thus must drag the chain.  It is not
+ * called for ordinary teleportation.
+ *
+ * allow_drag is only used in the ugly special case where teleporting must
+ * drag the chain, while an identical-looking movement must drag both the ball
+ * and chain.
  */
 boolean
-drag_ball(x, y, bc_control, ballx, bally, chainx, chainy, cause_delay)
+drag_ball(x, y, bc_control, ballx, bally, chainx, chainy, cause_delay,
+    allow_drag)
 xchar x, y;
 int *bc_control;
 xchar *ballx, *bally, *chainx, *chainy;
 boolean *cause_delay;
+boolean allow_drag;
 {
 	struct trap *t = (struct trap *)0;
+	boolean already_in_rock;
 
 	*ballx  = uball->ox;
 	*bally  = uball->oy;
@@ -371,10 +382,11 @@ boolean *cause_delay;
 
 	/* only need to move the chain? */
 	if (carried(uball) || distmin(x, y, uball->ox, uball->oy) <= 2) {
+	    xchar oldchainx = uchain->ox, oldchainy = uchain->oy;
 	    *bc_control = BC_CHAIN;
 	    move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
 	    if (carried(uball)) {
-		/* move chain only if necessary; assume they didn't teleport */
+		/* move chain only if necessary */
 		if (distmin(x, y, uchain->ox, uchain->oy) > 1) {
 		    *chainx = u.ux;
 		    *chainy = u.uy;
@@ -383,11 +395,31 @@ boolean *cause_delay;
 	    }
 #define CHAIN_IN_MIDDLE(chx, chy) \
 (distmin(x, y, chx, chy) <= 1 && distmin(chx, chy, uball->ox, uball->oy) <= 1)
+#define IS_CHAIN_ROCK(x,y) \
+(IS_ROCK(levl[x][y].typ) || (IS_DOOR(levl[x][y].typ) && \
+      (levl[x][y].doormask & (D_CLOSED|D_LOCKED))))
+/* Don't ever move the chain into solid rock.  If we have to, then instead
+ * undo the move_bc() and jump to the drag ball code.  Note that this also
+ * means the "cannot carry and drag" message will not appear, since unless we
+ * moved at least two squares there is no possibility of the chain position
+ * being in solid rock.
+ */
+#define SKIP_TO_DRAG { *chainx = oldchainx; *chainy = oldchainy; \
+    move_bc(0, *bc_control, *ballx, *bally, *chainx, *chainy); \
+    goto drag; } 
+	    if (IS_CHAIN_ROCK(u.ux, u.uy) || IS_CHAIN_ROCK(*chainx, *chainy)
+			|| IS_CHAIN_ROCK(uball->ox, uball->oy))
+		already_in_rock = TRUE;
+	    else
+		already_in_rock = FALSE;
+
 	    switch(dist2(x, y, uball->ox, uball->oy)) {
 		/* two spaces diagonal from ball, move chain inbetween */
 		case 8:
 		    *chainx = (uball->ox + x)/2;
 		    *chainy = (uball->oy + y)/2;
+		    if (IS_CHAIN_ROCK(*chainx, *chainy) && !already_in_rock)
+			SKIP_TO_DRAG;
 		    break;
 
 		/* player is distance 2/1 from ball; move chain to one of the
@@ -410,7 +442,47 @@ boolean *cause_delay;
 			tempy = y;
 			tempy2 = uball->oy;
 		    }
-		    if (dist2(tempx, tempy, uchain->ox, uchain->oy) <
+		    if (IS_CHAIN_ROCK(tempx, tempy) &&
+				!IS_CHAIN_ROCK(tempx2, tempy2) &&
+				!already_in_rock) {
+			if (allow_drag) {
+			    /* Avoid pathological case *if* not teleporting:
+			     *   0			    0_
+			     *   _X  move northeast  ----->  X@
+			     *    @
+			     */
+			    if (dist2(u.ux, u.uy, uball->ox, uball->oy) == 5 &&
+				  dist2(x, y, tempx, tempy) == 1)
+				SKIP_TO_DRAG;
+			    /* Avoid pathological case *if* not teleporting:
+			     *    0			     0
+			     *   _X  move east       ----->  X_
+			     *    @			      @
+			     */
+			    if (dist2(u.ux, u.uy, uball->ox, uball->oy) == 4 &&
+				  dist2(x, y, tempx, tempy) == 2)
+				SKIP_TO_DRAG;
+			}
+			*chainx = tempx2;
+			*chainy = tempy2;
+		    } else if (!IS_CHAIN_ROCK(tempx, tempy) &&
+				IS_CHAIN_ROCK(tempx2, tempy2) &&
+				!already_in_rock) {
+			if (allow_drag) {
+			    if (dist2(u.ux, u.uy, uball->ox, uball->oy) == 5 &&
+				    dist2(x, y, tempx2, tempy2) == 1)
+				SKIP_TO_DRAG;
+			    if (dist2(u.ux, u.uy, uball->ox, uball->oy) == 4 &&
+				  dist2(x, y, tempx2, tempy2) == 2)
+				SKIP_TO_DRAG;
+			}
+			*chainx = tempx;
+			*chainy = tempy;
+		    } else if (IS_CHAIN_ROCK(tempx, tempy) &&
+				IS_CHAIN_ROCK(tempx2, tempy2) &&
+				!already_in_rock) {
+			SKIP_TO_DRAG;
+		    } else if (dist2(tempx, tempy, uchain->ox, uchain->oy) <
 			 dist2(tempx2, tempy2, uchain->ox, uchain->oy) ||
 		       ((dist2(tempx, tempy, uchain->ox, uchain->oy) ==
 			 dist2(tempx2, tempy2, uchain->ox, uchain->oy)) && rn2(2))) {
@@ -428,8 +500,10 @@ boolean *cause_delay;
 		case 4:
 		    if (CHAIN_IN_MIDDLE(uchain->ox, uchain->oy))
 			break;
-		    *chainx = (x + uchain->ox)/2;
-		    *chainy = (y + uchain->oy)/2;
+		    *chainx = (x + uball->ox)/2;
+		    *chainy = (y + uball->oy)/2;
+		    if (IS_CHAIN_ROCK(*chainx, *chainy) && !already_in_rock)
+			SKIP_TO_DRAG;
 		    break;
 		
 		/* ball is one space diagonal from player.  Check for the
@@ -447,6 +521,8 @@ boolean *cause_delay;
 			    *chainx = uball->ox;
 			else
 			    *chainy = uball->oy;
+			if (IS_CHAIN_ROCK(*chainx, *chainy) && !already_in_rock)
+			    SKIP_TO_DRAG;
 			break;
 		    }
 		    /* fall through */
@@ -470,11 +546,15 @@ boolean *cause_delay;
 		default: impossible("bad chain movement");
 		    break;
 	    }
+#undef SKIP_TO_DRAG
+#undef IS_CHAIN_ROCK
 #undef CHAIN_IN_MIDDLE
 	    return TRUE;
 	}
 
-	if (near_capacity() > SLT_ENCUMBER) {
+drag:
+
+	if (near_capacity() > SLT_ENCUMBER && dist2(x, y, u.ux, u.uy) <= 2) {
 	    You("cannot %sdrag the heavy iron ball.",
 			    invent ? "carry all that and also " : "");
 	    nomul(0);
@@ -527,13 +607,25 @@ boolean *cause_delay;
 	    }
 	}
 
-	*bc_control = BC_BALL|BC_CHAIN;;
+	*bc_control = BC_BALL|BC_CHAIN;
 
 	move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
-	*ballx  = uchain->ox;
-	*bally  = uchain->oy;
-	*chainx = u.ux;
-	*chainy = u.uy;
+	if (dist2(x, y, u.ux, u.uy) > 2) {
+	    /* Awful case: we're still in range of the ball, so we thought we
+	     * could only move the chain, but it turned out that the target
+	     * square for the chain was rock, so we had to drag it instead.
+	     * But we can't drag it either, because we teleported and are more
+	     * than one square from our old position.  Revert to the teleport
+	     * behavior.
+	     */
+	    *ballx = *chainx = x;
+	    *bally = *chainy = y;
+	} else {
+	    *ballx  = uchain->ox;
+	    *bally  = uchain->oy;
+	    *chainx = u.ux;
+	    *chainy = u.uy;
+	}
 	*cause_delay = TRUE;
 	return TRUE;
 }

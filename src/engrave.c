@@ -370,7 +370,7 @@ register xchar e_type;
 	ep->engr_txt = (char *)(ep + 1);
 	Strcpy(ep->engr_txt, s);
 	/* engraving Elbereth shows wisdom */
-	if(!strcmp(s, "Elbereth")) exercise(A_WIS, TRUE);
+	if (!in_mklev && !strcmp(s, "Elbereth")) exercise(A_WIS, TRUE);
 	ep->engr_time = e_time;
 	ep->engr_type = e_type > 0 ? e_type : rnd(N_ENGRAVE-1);
 	ep->engr_lth = strlen(s) + 1;
@@ -530,7 +530,11 @@ doengrave()
 		return(0);
 	}
 	if (IS_GRAVE(levl[u.ux][u.uy].typ)) {
-	    if (!levl[u.ux][u.uy].disturbed) {
+	    if (otmp == &zeroobj) { /* using only finger */
+		You("would only make a small smudge on the %s.",
+			surface(u.ux, u.uy));
+		return(0);
+	    } else if (!levl[u.ux][u.uy].disturbed) {
 		You("disturb the undead!");
 		levl[u.ux][u.uy].disturbed = 1;
 		(void) makemon(&mons[PM_GHOUL], u.ux, u.uy, NO_MM_FLAGS);
@@ -546,7 +550,7 @@ doengrave()
 	    case AMULET_CLASS:
 	    case CHAIN_CLASS:
 	    case POTION_CLASS:
-	    case GOLD_CLASS:
+	    case COIN_CLASS:
 		break;
 
 	    case RING_CLASS:
@@ -706,6 +710,8 @@ doengrave()
 			}
 			if (!Blind)
 			    Strcpy(post_engr_text,
+				IS_GRAVE(levl[u.ux][u.uy].typ) ?
+				"Chips fly out from the headstone." :
 				is_ice(u.ux,u.uy) ?
 				"Ice chips fly up from the ice surface!" :
 				"Gravel flies up from the floor.");
@@ -931,6 +937,10 @@ doengrave()
 				       "write in");
 		eloc = is_ice(u.ux,u.uy) ? "frost" : "dust";
 		break;
+	    case HEADSTONE:
+		everb = (oep && !eow ? "add to the epitaph on" :
+				       "engrave on");
+		break;
 	    case ENGRAVE:
 		everb = (oep && !eow ? "add to the engraving in" :
 				       "engrave in");
@@ -1011,6 +1021,7 @@ doengrave()
 		multi = -(len/10);
 		if (multi) nomovemsg = "You finish writing in the dust.";
 		break;
+	    case HEADSTONE:
 	    case ENGRAVE:
 		multi = -(len/10);
 		if ((otmp->oclass == WEAPON_CLASS) &&
@@ -1181,7 +1192,7 @@ struct engr *ep;
 	    tx = rn1(COLNO-3,2);
 	    ty = rn2(ROWNO);
 	} while (engr_at(tx, ty) ||
-		!goodpos(tx, ty, (struct monst *)0));
+		!goodpos(tx, ty, (struct monst *)0, 0));
 
 	ep->engr_x = tx;
 	ep->engr_y = ty;

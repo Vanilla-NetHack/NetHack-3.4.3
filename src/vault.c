@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.c	3.4	2001/05/24	*/
+/*	SCCS Id: @(#)vault.c	3.4	2003/01/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -133,7 +133,7 @@ invault()
     int dummy;		/* hack to avoid schain botch */
 #endif
     struct monst *guard;
-    int vaultroom = (int)vault_occupied(u.urooms);
+    int trycount, vaultroom = (int)vault_occupied(u.urooms);
 
     if(!vaultroom) {
 	u.uinvault = 0;
@@ -234,31 +234,38 @@ fnd:
 	EGD(guard)->vroom = vaultroom;
 	EGD(guard)->warncnt = 0;
 
-	if(!cansee(guard->mx, guard->my)) {
-		mongone(guard);
-		return;
-	}
-
 	reset_faint();			/* if fainted - wake up */
-	pline("Suddenly one of the Vault's %s enters!",
-	      makeplural(g_monnam(guard)));
+	if (canspotmon(guard))
+	    pline("Suddenly one of the Vault's %s enters!",
+		  makeplural(g_monnam(guard)));
+	else
+	    pline("Someone else has entered the Vault.");
 	newsym(guard->mx,guard->my);
-	if ((youmonst.m_ap_type == M_AP_OBJECT &&
-		youmonst.mappearance == GOLD_PIECE) || u.uundetected) {
-	    /* You're mimicking a pile of gold or you're hidden. */
+	if (youmonst.m_ap_type == M_AP_OBJECT || u.uundetected) {
+	    if (youmonst.m_ap_type == M_AP_OBJECT &&
+			youmonst.mappearance != GOLD_PIECE)
+	    	verbalize("Hey! Who left that %s in here?", mimic_obj_name(&youmonst));
+	    /* You're mimicking some object or you're hidden. */
 	    pline("Puzzled, %s turns around and leaves.", mhe(guard));
 	    mongone(guard);
 	    return;
 	}
-	if (Strangled || is_silent(youmonst.data)) {
+	if (Strangled || is_silent(youmonst.data) || multi < 0) {
+	    /* [we ought to record whether this this message has already
+	       been given in order to vary it upon repeat visits, but
+	       discarding the monster and its egd data renders that hard] */
 	    verbalize("I'll be back when you're ready to speak to me!");
 	    mongone(guard);
 	    return;
 	}
+
 	stop_occupation();		/* if occupied, stop it *now* */
+	if (multi > 0) { nomul(0); unmul((char *)0); }
+	trycount = 5;
 	do {
-		getlin("\"Hello stranger, who are you?\" -",buf);
-	} while (!letter(buf[0]));
+	    getlin("\"Hello stranger, who are you?\" -", buf);
+	    (void) mungspaces(buf);
+	} while (!letter(buf[0]) && --trycount > 0);
 
 	if (u.ualign.type == A_LAWFUL &&
 	    /* ignore trailing text, in case player includes character's rank */
@@ -362,20 +369,24 @@ STATIC_OVL void
 wallify_vault(grd)
 struct monst *grd;
 {
-	int x, y;
+	int x, y, typ;
 	int vlt = EGD(grd)->vroom;
 	char tmp_viz;
-	xchar lowx = rooms[vlt].lx, hix = rooms[vlt].hx;
-	xchar lowy = rooms[vlt].ly, hiy = rooms[vlt].hy;
-	register struct obj *gold;
-	register boolean fixed = FALSE;
-	register boolean movedgold = FALSE;
+	xchar lox = rooms[vlt].lx - 1, hix = rooms[vlt].hx + 1,
+	      loy = rooms[vlt].ly - 1, hiy = rooms[vlt].hy + 1;
+	struct monst *mon;
+	struct obj *gold;
+	struct trap *trap;
+	boolean fixed = FALSE;
+	boolean movedgold = FALSE;
 
-	for(x = lowx-1; x <= hix+1; x++)
-	    for(y = lowy-1; y <= hiy+1; y += (hiy-lowy+2)) {
-		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
-		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
-			struct monst *mon = m_at(x,y);
+	for (x = lox; x <= hix; x++)
+	    for (y = loy; y <= hiy; y++) {
+		/* if not on the room boundary, skip ahead */
+		if (x != lox && x != hix && y != loy && y != hiy) continue;
+
+		if (!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
+		    if ((mon = m_at(x, y)) != 0 && mon != grd) {
 			if (mon->mtame) yelp(mon);
 			rloc(mon);
 		    }
@@ -383,43 +394,22 @@ struct monst *grd;
 			move_gold(gold, EGD(grd)->vroom);
 			movedgold = TRUE;
 		    }
-		    if(x == lowx-1 && y == lowy-1)
-			levl[x][y].typ = TLCORNER;
-		    else if(x == hix+1 && y == lowy-1)
-			levl[x][y].typ = TRCORNER;
-		    else if(x == lowx-1 && y == hiy+1)
-			levl[x][y].typ = BLCORNER;
-		    else if(x == hix+1 && y == hiy+1)
-			levl[x][y].typ = BRCORNER;
-		    else levl[x][y].typ = HWALL;
-
+		    if ((trap = t_at(x, y)) != 0)
+			deltrap(trap);
+		    if (x == lox)
+			typ = (y == loy) ? TLCORNER :
+			      (y == hiy) ? BLCORNER : VWALL;
+		    else if (x == hix)
+			typ = (y == loy) ? TRCORNER :
+			      (y == hiy) ? BRCORNER : VWALL;
+		    else  /* not left or right side, must be top or bottom */
+			typ = HWALL;
+		    levl[x][y].typ = typ;
 		    levl[x][y].doormask = 0;
 		    /*
 		     * hack: player knows walls are restored because of the
 		     * message, below, so show this on the screen.
 		     */
-		    tmp_viz = viz_array[y][x];
-		    viz_array[y][x] = IN_SIGHT|COULD_SEE;
-		    newsym(x,y);
-		    viz_array[y][x] = tmp_viz;
-		    block_point(x,y);
-		    fixed = TRUE;
-		}
-	    }
-	for(x = lowx-1; x <= hix+1; x += (hix-lowx+2))
-	    for(y = lowy; y <= hiy; y++) {
-		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
-		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
-			struct monst *mon = m_at(x,y);
-			if (mon->mtame) yelp(mon);
-			rloc(mon);
-		    }
-		    if ((gold = g_at(x, y)) != 0) {
-			move_gold(gold, EGD(grd)->vroom);
-			movedgold = TRUE;
-		    }
-		    levl[x][y].typ = VWALL;
-		    levl[x][y].doormask = 0;
 		    tmp_viz = viz_array[y][x];
 		    viz_array[y][x] = IN_SIGHT|COULD_SEE;
 		    newsym(x,y);
@@ -464,6 +454,8 @@ register struct monst *grd;
         long umoney = money_cnt(invent);
 	register boolean u_carry_gold = ((umoney + hidden_gold()) > 0L);
 #endif
+	boolean see_guard;
+
 	if(!on_level(&(egrd->gdlevel), &u.uz)) return(-1);
 	nx = ny = m = n = 0;
 	if(!u_in_vault && !grd_in_vault)
@@ -720,6 +712,7 @@ newpos:
 cleanup:
 		x = grd->mx; y = grd->my;
 
+		see_guard = canspotmon(grd);
 		wallify_vault(grd);
 		remove_monster(grd->mx, grd->my);
 		newsym(grd->mx,grd->my);
@@ -729,7 +722,7 @@ cleanup:
 		restfakecorr(grd);
 		if(!semi_dead && (in_fcorridor(grd, u.ux, u.uy) ||
 				     cansee(x, y))) {
-		    if (!disappear_msg_seen)
+		    if (!disappear_msg_seen && see_guard)
 			pline("Suddenly, the %s disappears.", g_monnam(grd));
 		    return(1);
 		}
@@ -795,7 +788,7 @@ paygd()
 #else
         for (coins = invent; coins; coins = nextcoins) {
             nextcoins = coins->nobj;
-	    if (objects[coins->otyp].oc_class == GOLD_CLASS) {
+	    if (objects[coins->otyp].oc_class == COIN_CLASS) {
 	        freeinv(coins);
                 place_object(coins, gx, gy);
 		stackobj(coins);

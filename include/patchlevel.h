@@ -1,14 +1,14 @@
-/*	SCCS Id: @(#)patchlevel.h	3.4	2002/03/20	*/
+/*	SCCS Id: @(#)patchlevel.h	3.4	2003/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/* NetHack 3.4.0 */
+/* NetHack 3.4.1 */
 #define VERSION_MAJOR	3
 #define VERSION_MINOR	4
 /*
  * PATCHLEVEL is updated for each release.
  */
-#define PATCHLEVEL	0
+#define PATCHLEVEL	1
 /*
  * Incrementing EDITLEVEL can be used to force invalidation of old bones
  * and save files.
@@ -16,7 +16,7 @@
 #define EDITLEVEL	0
 
 #define COPYRIGHT_BANNER_A \
-"NetHack, Copyright 1985-2002"
+"NetHack, Copyright 1985-2003"
 
 #define COPYRIGHT_BANNER_B \
 "         By Stichting Mathematisch Centrum and M. Stephenson."
@@ -24,7 +24,7 @@
 #define COPYRIGHT_BANNER_C \
 "         See license for details."
 
-#if 0
+#if 1
 /*
  * If two successive patchlevels have compatible data files (fat chance),
  * defining this with the value of the older one will allow its bones and
@@ -34,11 +34,26 @@
  * PP = patch level, ee = edit level, L = literal suffix "L",
  * with all four numbers specified as two hexadecimal digits.
  */
-#define VERSION_COMPATIBILITY 0x03030100L
+#define VERSION_COMPATIBILITY 0x03040000L
 #endif
 
 /*****************************************************************************/
-/* Version 3.4.0 */
+/* Version 3.4.x */
+
+/*  Patch 1, February 22, 2003
+ *  Fix a few fatal errors including one for reentering shops, one
+ *     involving land mines and boulders/statues, one for delayed
+ *     polymorph, and one from a chest trap exploding ball and chain
+ *  Fix a buffer overflow that could lead to security problems
+ *  Hundreds of general bug fixes
+ *  Several message and other glitches corrected
+ *  Travel command adjustments and ability to disable travel command
+ *  message recall window extensions (by Christian Cooper)
+ *  win32: some interface improvements
+ *  unix: improved tile support
+ *  gnome: some fixes, and some enhancements by Dylan Alex Simon
+ *  winCE: Windows CE port included (by Alex Kompel)
+ */
 
 /*
  *  NetHack 3.4.0, March 20, 2002

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.4	1999/11/20	*/
+/*	SCCS Id: @(#)restore.c	3.4	2002/08/21	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,7 +6,7 @@
 #include "lev.h"
 #include "tcap.h" /* for TERMLIB and ASCIIGRAPH */
 
-#ifdef MICRO
+#if defined(MICRO)
 extern int dotcnt;	/* shared with save */
 extern int dotrow;	/* shared with save */
 #endif
@@ -106,6 +106,17 @@ boolean quietly;
 
 	for (otmp = invent; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nobj;
+#ifndef GOLDOBJ
+	    if (otmp->oclass == COIN_CLASS) {
+		/* in_use gold is created by some menu operations */
+		if (!otmp->in_use) {
+		    impossible("inven_inuse: !in_use gold in inventory");
+		}
+		extract_nobj(otmp, &invent);
+		otmp->in_use = FALSE;
+		dealloc_obj(otmp);
+	    } else
+#endif /* GOLDOBJ */
 	    if (otmp->in_use) {
 		if (!quietly) pline("Finishing off %s...", xname(otmp));
 		useup(otmp);
@@ -344,6 +355,8 @@ restgamestate(fd, stuckid, steedid)
 register int fd;
 unsigned int *stuckid, *steedid;	/* STEED */
 {
+	/* discover is actually flags.explore */
+	boolean remember_discover = discover;
 	struct obj *otmp;
 	int uid;
 
@@ -360,6 +373,7 @@ unsigned int *stuckid, *steedid;	/* STEED */
 
 	mread(fd, (genericptr_t) &flags, sizeof(struct flag));
 	flags.bypasses = 0;	/* never use the saved value of bypasses */
+	if (remember_discover) discover = remember_discover;
 
 	role_init();	/* Reset the initial role, race, gender, and alignment */
 #ifdef AMII_GRAPHICS
@@ -470,10 +484,14 @@ xchar ltmp;
 #endif
 {
 	register int nfd;
+	char whynot[BUFSZ];
 
-	nfd = create_levelfile(ltmp);
-
-	if (nfd < 0)	panic("Cannot open temp level %d!", ltmp);
+	nfd = create_levelfile(ltmp, whynot);
+	if (nfd < 0) {
+		/* BUG: should suppress any attempt to write a panic
+		   save file if file creation is now failing... */
+		panic("restlevelfile: %s", whynot);
+	}
 #ifdef MFLOPPY
 	if (!savelev(nfd, ltmp, COUNT_SAVE)) {
 
@@ -527,6 +545,10 @@ register int fd;
 	xchar ltmp;
 	int rtmp;
 	struct obj *otmp;
+
+#ifdef STORE_PLNAME_IN_FILE
+	mread(fd, (genericptr_t) plname, PL_NSIZ);
+#endif
 
 	restoring = TRUE;
 	getlev(fd, 0, (xchar)0, FALSE);
@@ -607,6 +629,9 @@ register int fd;
 	(void) lseek(fd, (off_t)0, 0);
 #endif
 	(void) uptodate(fd, (char *)0);		/* skip version info */
+#ifdef STORE_PLNAME_IN_FILE
+	mread(fd, (genericptr_t) plname, PL_NSIZ);
+#endif
 	getlev(fd, 0, (xchar)0, FALSE);
 	(void) close(fd);
 
@@ -654,11 +679,13 @@ register int fd;
 }
 
 void
-trickery()
+trickery(reason)
+char *reason;
 {
 	pline("Strange, this map is not as I remember it.");
 	pline("Somebody is trying some trickery here...");
 	pline("This game is void.");
+	killer = reason;
 	done(TRICKED);
 }
 
@@ -698,16 +725,18 @@ boolean ghostly;
 #else
 	mread(fd, (genericptr_t) &dlvl, sizeof(dlvl));
 #endif
-	if((pid && pid != hpid) || (lev && dlvl != lev)) {
+	if ((pid && pid != hpid) || (lev && dlvl != lev)) {
+	    char trickbuf[BUFSZ];
+
+	    if (pid && pid != hpid)
+		Sprintf(trickbuf, "PID (%d) doesn't match saved PID (%d)!",
+			hpid, pid);
+	    else
+		Sprintf(trickbuf, "This is level %d, not %d!", dlvl, lev);
 #ifdef WIZARD
-		if (wizard) {
-			if (pid && pid != hpid)
-				pline("PID (%d) doesn't match saved PID (%d)!", hpid, pid);
-			else if (lev && dlvl != lev)
-				pline("This is level %d, not %d!", dlvl, lev);
-		}
+	    if (wizard) pline(trickbuf);
 #endif
-		trickery();
+	    trickery(trickbuf);
 	}
 
 #ifdef RLECOMP
@@ -810,7 +839,7 @@ boolean ghostly;
 	}
 	restdamage(fd, ghostly);
 
-	rest_regions(fd);
+	rest_regions(fd, ghostly);
 	if (ghostly) {
 	    /* Now get rid of all the temp fruits... */
 	    freefruitchn(oldfruit),  oldfruit = 0;
@@ -1005,6 +1034,7 @@ genericptr_t buf;
 register unsigned len;
 {
     /*register int readlen = 0;*/
+    if (fd < 0) error("Restore error; mread attempting to read file %d.", fd);
     mreadfd = fd;
     while (len--) {
 	if (inrunlength > 0) {

@@ -22,11 +22,12 @@
 #include <qlabel.h>
 #include <qlineedit.h> 
 #if defined(QWS)
-#include <qpeapplication.h> 
+#include <qpe/qpeapplication.h> 
 #else
 #include <qapplication.h> 
 #endif
 #include <qspinbox.h>
+#include <qcheckbox.h>
 #include <qfile.h> 
 #include <qlistbox.h> 
 #include <qlistview.h> 
@@ -91,11 +92,17 @@ signals:
 	void fontChanged();
 	void tilesChanged();
 
+public slots:
+	void toggleGlyphSize();
+	void setGlyphSize(bool);
+
 private:
 	QSpinBox tilewidth;
 	QSpinBox tileheight;
 	QLabel widthlbl;
 	QLabel heightlbl;
+	QCheckBox whichsize;
+	QSize othersize;
 
 	QComboBox fontsize;
 
@@ -249,6 +256,8 @@ public:
 	virtual void ClipAround(int x,int y);
 	virtual void PrintGlyph(int x,int y,int glyph);
 	virtual void UseRIP(int how);
+
+	int nhid;
 };
 
 class NetHackQtGlyphs {
@@ -257,14 +266,15 @@ public:
 
 	int width() const { return size.width(); }
 	int height() const { return size.height(); }
-	void resize(int w, int h);
+	void toggleSize();
+	void setSize(int w, int h);
 
 	void drawGlyph(QPainter&, int glyph, int pixelx, int pixely);
 	void drawCell(QPainter&, int glyph, int cellx, int celly);
 
 private:
 	QImage img;
-	QPixmap pm;
+	QPixmap pm,pm1, pm2;
 	QSize size;
 	int tiles_per_row;
 };
@@ -324,6 +334,8 @@ public:
 	void displayMessages(bool block);
 	void putMessage(int attr, const char* text);
 	void clearMessages();
+
+	void clickCursor();
 };
 
 class NetHackQtScrollText;
@@ -709,11 +721,13 @@ public slots:
 protected:
 	virtual void resizeEvent(QResizeEvent*);
 	virtual void keyPressEvent(QKeyEvent*);
+	virtual void keyReleaseEvent(QKeyEvent* event);
 	virtual void closeEvent(QCloseEvent*);
 
 private slots:
 	void layout();
 	void raiseMap();
+	void zoomMap();
 	void raiseMessages();
 	void raiseStatus();
 
@@ -732,6 +746,7 @@ private:
 
 	NetHackQtKeyBuffer& keysink;
 	QWidgetStack* stack;
+	int dirkey;
 
 	const char* *macro;
 };

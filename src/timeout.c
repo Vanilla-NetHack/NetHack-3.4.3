@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.4	2000/09/28	*/
+/*	SCCS Id: @(#)timeout.c	3.4	2002/12/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -17,7 +17,7 @@ STATIC_DCL void FDECL(cleanup_burn, (genericptr_t,long));
 #ifdef OVLB
 
 /* He is being petrified - dialogue by inmet!tower */
-static NEARDATA const char *stoned_texts[] = {
+static NEARDATA const char * const stoned_texts[] = {
 	"You are slowing down.",		/* 5 */
 	"Your limbs are stiffening.",		/* 4 */
 	"Your limbs have turned to stone.",	/* 3 */
@@ -40,8 +40,8 @@ stoned_dialogue()
 }
 
 /* He is getting sicker and sicker prior to vomiting */
-static NEARDATA const char *vomiting_texts[] = {
-	"are feeling mildly nauseous.",		/* 14 */
+static NEARDATA const char * const vomiting_texts[] = {
+	"are feeling mildly nauseated.",	/* 14 */
 	"feel slightly confused.",		/* 11 */
 	"can't seem to think straight.",	/* 8 */
 	"feel incredibly sick.",		/* 5 */
@@ -72,7 +72,7 @@ vomiting_dialogue()
 	exercise(A_CON, FALSE);
 }
 
-static NEARDATA const char *choke_texts[] = {
+static NEARDATA const char * const choke_texts[] = {
 	"You find it hard to breathe.",
 	"You're gasping for air.",
 	"You can no longer breathe.",
@@ -80,7 +80,7 @@ static NEARDATA const char *choke_texts[] = {
 	"You suffocate."
 };
 
-static NEARDATA const char *choke_texts2[] = {
+static NEARDATA const char * const choke_texts2[] = {
 	"Your %s is becoming constricted.",
 	"Your blood is having trouble reaching your brain.",
 	"The pressure on your %s increases.",
@@ -100,7 +100,7 @@ choke_dialogue()
 		const char *str = choke_texts[SIZE(choke_texts)-i];
 
 		if (index(str, '%'))
-		    pline(str, hcolor(blue));
+		    pline(str, hcolor(NH_BLUE));
 		else
 		    pline(str);
 	    }
@@ -108,7 +108,7 @@ choke_dialogue()
 	exercise(A_STR, FALSE);
 }
 
-static NEARDATA const char *slime_texts[] = {
+static NEARDATA const char * const slime_texts[] = {
 	"You are turning a little %s.",           /* 5 */
 	"Your limbs are getting oozy.",              /* 4 */
 	"Your skin begins to peel away.",            /* 3 */
@@ -128,7 +128,7 @@ slime_dialogue()
 	    if (index(str, '%')) {
 		if (i == 4L) {	/* "you are turning green" */
 		    if (!Blind)	/* [what if you're already green?] */
-			pline(str, hcolor(green));
+			pline(str, hcolor(NH_GREEN));
 		} else
 		    pline(str, an(Hallucination ? rndmonnam() : "green slime"));
 	    } else
@@ -202,7 +202,7 @@ nh_timeout()
 		u.uspellprot--;
 		find_ac();
 		if (!Blind)
-		    Norep("The %s haze around you %s.", hcolor(golden),
+		    Norep("The %s haze around you %s.", hcolor(NH_GOLDEN),
 			  u.uspellprot ? "becomes less dense" : "disappears");
 	    }
 	}
@@ -287,10 +287,11 @@ nh_timeout()
 			break;
 		case INVIS:
 			newsym(u.ux,u.uy);
-			if (!Invis && !BInvis &&
-			    !See_invisible && !Blind) {
-				You("are no longer invisible.");
-				stop_occupation();
+			if (!Invis && !BInvis && !Blind) {
+			    You(!See_invisible ?
+				    "are no longer invisible." :
+				    "can no longer see through yourself.");
+			    stop_occupation();
 			}
 			break;
 		case SEE_INVIS:
@@ -367,6 +368,13 @@ boolean wakeup_msg;
 {
 	stop_occupation();
 	nomul(how_long);
+	/* generally don't notice sounds while sleeping */
+	if (wakeup_msg && multi == how_long) {
+	    /* caller can follow with a direct call to Hear_again() if
+	       there's a need to override this when wakeup_msg is true */
+	    flags.soundok = 0;
+	    afternmv = Hear_again;	/* this won't give any messages */
+	}
 	/* early wakeup from combat won't be possible until next monster turn */
 	u.usleep = monstermoves;
 	nomovemsg = wakeup_msg ? "You wake up." : You_can_move_again;
@@ -620,6 +628,8 @@ slip_or_trip()
 #ifdef STEED
 	if (u.usteed) on_foot = FALSE;
 #endif
+
+	if (otmp && on_foot && !u.uinwater && is_pool(u.ux, u.uy)) otmp = 0;
 
 	if (otmp && on_foot) {		/* trip over something in particular */
 	    /*
@@ -1307,7 +1317,7 @@ typedef struct {
 } ttable;
 
 /* table of timeout functions */
-static ttable timeout_funcs[NUM_TIME_FUNCS] = {
+static const ttable timeout_funcs[NUM_TIME_FUNCS] = {
     TTAB(rot_organic,	(timeout_proc)0,	"rot_organic"),
     TTAB(rot_corpse,	(timeout_proc)0,	"rot_corpse"),
     TTAB(revive_mon,	(timeout_proc)0,	"revive_mon"),

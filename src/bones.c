@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.4	2001/04/12	*/
+/*	SCCS Id: @(#)bones.c	3.4	2002/08/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -165,6 +165,9 @@ can_make_bones()
 	    return FALSE;
 	if (no_bones_level(&u.uz))
 	    return FALSE;		/* no bones for specific levels */
+	if (u.uswallow) {
+	    return FALSE;		/* no bones when swallowed */
+	}
 	if (!Is_branchlev(&u.uz)) {
 	    /* no bones on non-branches with portals */
 	    for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
@@ -194,9 +197,11 @@ struct obj *corpse;
 	struct permonst *mptr;
 	struct fruit *f;
 	char c, *bonesid;
+	char whynot[BUFSZ];
 
 	/* caller has already checked `can_make_bones()' */
 
+	clear_bypasses();
 	fd = open_bonesfile(&u.uz, &bonesid);
 	if (fd >= 0) {
 		(void) close(fd);
@@ -308,12 +313,16 @@ struct obj *corpse;
 	    levl[x][y].glyph = cmap_to_glyph(S_stone);
 	}
 
-	fd = create_bonesfile(&u.uz, &bonesid);
+	fd = create_bonesfile(&u.uz, &bonesid, whynot);
 	if(fd < 0) {
 #ifdef WIZARD
 		if(wizard)
-			pline("Cannot create bones file - create failed");
+			pline("%s", whynot);
 #endif
+		/* bones file creation problems are silent to the player.
+		 * Keep it that way, but place a clue into the paniclog.
+		 */
+		paniclog("savebones", whynot);
 		return;
 	}
 	c = (char) (strlen(bonesid) + 1);
@@ -397,15 +406,18 @@ getbones()
 #endif
 		mread(fd, (genericptr_t) &c, sizeof c);	/* length incl. '\0' */
 		mread(fd, (genericptr_t) oldbonesid, (unsigned) c); /* DD.nnn */
-		if (strcmp(bonesid, oldbonesid)) {
+		if (strcmp(bonesid, oldbonesid) != 0) {
+			char errbuf[BUFSZ];
+
+			Sprintf(errbuf, "This is bones level '%s', not '%s'!",
+				oldbonesid, bonesid);
 #ifdef WIZARD
 			if (wizard) {
-				pline("This is bones level '%s', not '%s'!",
-					oldbonesid, bonesid);
+				pline("%s", errbuf);
 				ok = FALSE;	/* won't die of trickery */
 			}
 #endif
-			trickery();
+			trickery(errbuf);
 		} else {
 			register struct monst *mtmp;
 			int mndx;

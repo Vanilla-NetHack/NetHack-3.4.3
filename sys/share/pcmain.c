@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcmain.c	3.4	1997/01/22	*/
+/*	SCCS Id: @(#)pcmain.c	3.4	2002/08/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -80,6 +80,11 @@ extern unsigned _stklen;
 #endif
 
 #ifdef OVL0
+/* If the graphics version is built, we don't need a main; it is skipped
+ * to help MinGW decide which entry point to choose. If both main and 
+ * WinMain exist, the resulting executable won't work correctly.
+ */
+#ifndef MSWIN_GRAPHICS
 int
 main(argc,argv)
 int argc;
@@ -94,6 +99,7 @@ char *argv[];
      /*NOTREACHED*/
      return 0;
 }
+#endif /*MSWIN_GRAPHICS*/
 #endif /*OVL0*/
 #ifdef OVL1
 
@@ -105,6 +111,12 @@ char *argv[];
 
 	register int fd;
 	register char *dir;
+#if defined(WIN32)
+	char fnamebuf[BUFSZ], encodedfnamebuf[BUFSZ];
+#endif
+#ifdef NOCWD_ASSUMPTIONS
+	char failbuf[BUFSZ];
+#endif
 
 #if defined(__BORLANDC__) && !defined(_WIN32)
 	startup();
@@ -171,6 +183,14 @@ char *argv[];
 #endif
 	initoptions();
 
+#ifdef NOCWD_ASSUMPTIONS
+	if (!validate_prefix_locations(failbuf)) {
+		raw_printf("Some invalid directory locations were specified:\n\t%s\n",
+				failbuf);
+		 nethack_exit(EXIT_FAILURE);
+	}
+#endif
+
 #if defined(TOS) && defined(TEXTCOLOR)
 	if (iflags.BIOS && iflags.use_color)
 		set_colors();
@@ -206,12 +226,17 @@ char *argv[];
 		 * may do a prscore().
 		 */
 		if (!strncmp(argv[1], "-s", 2)) {
-#ifdef CHDIR
+#if !defined(MSWIN_GRAPHICS)
+# if defined(CHDIR) && !defined(NOCWD_ASSUMPTIONS)
 			chdirx(hackdir,0);
-#endif
+# endif
 			prscore(argc, argv);
+#else
+			raw_printf("-s is not supported for the Graphical Interface\n");
+#endif /*MSWIN_GRAPHICS*/
 			nethack_exit(EXIT_SUCCESS);
 		}
+		
 		/* Don't initialize the window system just to print usage */
 		if (!strncmp(argv[1], "-?", 2) || !strncmp(argv[1], "/?", 2)) {
 			nhusage();
@@ -233,7 +258,7 @@ char *argv[];
 	/* chdir shouldn't be called before this point to keep the
 	 * code parallel to other ports.
 	 */
-#ifdef CHDIR
+#if defined(CHDIR) && !defined(NOCWD_ASSUMPTIONS)
 	chdirx(hackdir,1);
 #endif
 
@@ -243,6 +268,10 @@ char *argv[];
 #else
 	init_nhwindows(&argc,argv);
 	process_options(argc, argv);
+#endif
+
+#ifdef WIN32CON
+	toggle_mouse_support();	/* must come after process_options */
 #endif
 
 #ifdef MFLOPPY
@@ -286,13 +315,17 @@ char *argv[];
 # if defined(WIN32)
 	/* Obtain the name of the logged on user and incorporate
 	 * it into the name. */
-	Sprintf(lock, "%s-%s",get_username(0),plname);
+	Sprintf(fnamebuf, "%s-%s", get_username(0), plname);
+	(void)fname_encode("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_-.",
+				'%', fnamebuf, encodedfnamebuf, BUFSZ);
+	Sprintf(lock, "%s",encodedfnamebuf);
+	/* regularize(lock); */ /* we encode now, rather than substitute */
 # else
 	Strcpy(lock,plname);
 	regularize(lock);
 # endif
 	getlock();
-#else   /* PC_LOCKING */
+#else   /* What follows is !PC_LOCKING */
 # ifdef AMIGA /* We'll put the bones & levels in the user specified directory -jhsa */
 	Strcat(lock,plname);
 	Strcat(lock,".99");
@@ -311,11 +344,15 @@ char *argv[];
 
 	/* Set up level 0 file to keep the game state.
 	 */
-	fd = create_levelfile(0);
+	fd = create_levelfile(0, (char *)0);
 	if (fd < 0) {
 		raw_print("Cannot create lock file");
 	} else {
+#ifdef WIN32
+		hackpid = GetCurrentProcessId();
+#else
 		hackpid = 1;
+#endif
 		write(fd, (genericptr_t) &hackpid, sizeof(hackpid));
 		close(fd);
 	}
@@ -539,39 +576,44 @@ char *argv[];
 STATIC_OVL void 
 nhusage()
 {
-	char buf1[BUFSZ];
+	char buf1[BUFSZ], buf2[BUFSZ], *bufptr;
+
+	buf1[0] = '\0';
+	bufptr = buf1;
+
+#define ADD_USAGE(s)	if ((strlen(buf1) + strlen(s)) < (BUFSZ - 1)) Strcat(bufptr, s);
 
 	/* -role still works for those cases which aren't already taken, but
 	 * is deprecated and will not be listed here.
 	 */
-	(void) Sprintf(buf1,
-"\nUsage: %s [-d dir] -s [-r race] [-p profession] [maxrank] [name]...\n       or",
+	(void) Sprintf(buf2,
+"\nUsage:\n%s [-d dir] -s [-r race] [-p profession] [maxrank] [name]...\n       or",
 		hname);
-	if (!iflags.window_inited)
-		raw_printf(buf1);
-	else
-		(void)	printf(buf1);
-	(void) Sprintf(buf1,
-	 "\n       %s [-d dir] [-u name] [-r race] [-p profession] [-[DX]]",
+	ADD_USAGE(buf2);
+
+	(void) Sprintf(buf2,
+	 "\n%s [-d dir] [-u name] [-r race] [-p profession] [-[DX]]",
 		hname);
+	ADD_USAGE(buf2);
 #ifdef NEWS
-	Strcat(buf1," [-n]");
+	ADD_USAGE(" [-n]");
 #endif
 #ifndef AMIGA
-	Strcat(buf1," [-I] [-i] [-d]");
+	ADD_USAGE(" [-I] [-i] [-d]");
 #endif
 #ifdef MFLOPPY
 # ifndef AMIGA
-	Strcat(buf1," [-R]");
+	ADD_USAGE(" [-R]");
 # endif
 #endif
 #ifdef AMIGA
-	Strcat(buf1," [-[lL]]");
+	ADD_USAGE(" [-[lL]]");
 #endif
 	if (!iflags.window_inited)
 		raw_printf("%s\n",buf1);
 	else
 		(void) printf("%s\n",buf1);
+#undef ADD_USAGE
 }
 
 #ifdef CHDIR

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.4	2001/11/29	*/
+/*	SCCS Id: @(#)do.c	3.4	2002/09/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,19 +6,6 @@
 
 #include "hack.h"
 #include "lev.h"
-
-#include <errno.h>
-#ifdef _MSC_VER	/* MSC 6.0 defines errno quite differently */
-# if (_MSC_VER >= 600)
-#  define SKIP_ERRNO
-# endif
-#endif
-#ifndef SKIP_ERRNO
-#ifdef _DCC
-const
-#endif
-extern int errno;
-#endif
 
 #ifdef SINKS
 # ifdef OVLB
@@ -42,7 +29,7 @@ STATIC_DCL void NDECL(final_level);
 #ifdef OVLB
 
 static NEARDATA const char drop_types[] =
-	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, 0 };
+	{ ALLOW_COUNT, COIN_CLASS, ALL_CLASSES, 0 };
 
 /* 'd' command: drop one inventory item */
 int
@@ -85,13 +72,17 @@ boolean pushing;
 	    fills_up = lava ? chance == 0 : chance != 0;
 
 	    if (fills_up) {
+		struct trap *ttmp = t_at(rx, ry);
+
 		if (ltyp == DRAWBRIDGE_UP) {
 		    levl[rx][ry].drawbridgemask &= ~DB_UNDER; /* clear lava */
 		    levl[rx][ry].drawbridgemask |= DB_FLOOR;
 		} else
 		    levl[rx][ry].typ = ROOM;
 
+		if (ttmp) (void) delfloortrap(ttmp);
 		bury_objs(rx, ry);
+		
 		newsym(rx,ry);
 		if (pushing) {
 		    You("push %s into the %s.", the(xname(otmp)), what);
@@ -206,6 +197,14 @@ const char *verb;
 	} else if (is_lava(x, y)) {
 		return fire_damage(obj, FALSE, FALSE, x, y);
 	} else if (is_pool(x, y)) {
+		/* Reasonably bulky objects (arbitrary) splash when dropped.
+		 * Stuff dropped near fountains always misses */
+		if (Blind && flags.soundok && ((x == u.ux) && (y == u.uy)) &&
+		    weight(obj) > 9) {
+		    pline("Splash!");
+		    map_background(x, y, 0);
+		    newsym(x, y);
+		}
 		water_damage(obj, FALSE, FALSE);
 	}
 	return FALSE;
@@ -218,15 +217,15 @@ void
 doaltarobj(obj)  /* obj is an object dropped on an altar */
 	register struct obj *obj;
 {
-	if (Blind || obj->oclass == GOLD_CLASS)
+	if (Blind)
 		return;
 
 	/* KMH, conduct */
 	u.uconduct.gnostic++;
 
-	if (obj->blessed || obj->cursed) {
+	if ((obj->blessed || obj->cursed) && obj->oclass != COIN_CLASS) {
 		There("is %s flash as %s %s the altar.",
-			an(hcolor(obj->blessed ? amber : Black)),
+			an(hcolor(obj->blessed ? NH_AMBER : NH_BLACK)),
 			doname(obj), otense(obj, "hit"));
 		if (!Hallucination) obj->bknown = 1;
 	} else {
@@ -273,7 +272,7 @@ giveback:
 		pline_The("sink quivers upward for a moment.");
 		break;
 	    case RIN_POISON_RESISTANCE:
-		You("smell rotten %s.", makeplural(pl_fruit));
+		You("smell rotten %s.", makeplural(fruitname(FALSE)));
 		break;
 	    case RIN_AGGRAVATE_MONSTER:
 		pline("Several flies buzz angrily around the sink.");
@@ -358,10 +357,10 @@ giveback:
 		    break;
 		case RIN_PROTECTION:
 		    pline_The("sink glows %s for a moment.",
-			    hcolor((obj->spe<0) ? Black : silver));
+			    hcolor((obj->spe<0) ? NH_BLACK : NH_SILVER));
 		    break;
 		case RIN_WARNING:
-		    pline_The("sink glows %s for a moment.", hcolor(White));
+		    pline_The("sink glows %s for a moment.", hcolor(NH_WHITE));
 		    break;
 		case RIN_TELEPORTATION:
 		    pline_The("sink momentarily vanishes.");
@@ -483,37 +482,41 @@ register struct obj *obj;
 #endif
 	    if (!can_reach_floor()) {
 		if(flags.verbose) You("drop %s.", doname(obj));
-		if (obj->oclass != GOLD_CLASS || obj == invent) freeinv(obj);
+#ifndef GOLDOBJ
+		if (obj->oclass != COIN_CLASS || obj == invent) freeinv(obj);
+#else
+		/* Ensure update when we drop gold objects */
+		if (obj->oclass == COIN_CLASS) flags.botl = 1;
+		freeinv(obj);
+#endif
 		hitfloor(obj);
 		return(1);
 	    }
-	    if (IS_ALTAR(levl[u.ux][u.uy].typ)) {
-		doaltarobj(obj);	/* set bknown */
-	    } else
-		if(flags.verbose) You("drop %s.", doname(obj));
+	    if (!IS_ALTAR(levl[u.ux][u.uy].typ) && flags.verbose)
+		You("drop %s.", doname(obj));
 	}
 	dropx(obj);
 	return(1);
 }
 
-/* Called in several places - should not produce texts */
-/* ship_object() _can_ produce texts--is that comment still correct? */
+/* Called in several places - may produce output */
+/* eg ship_object() and dropy() -> sellobj() both produce output */
 void
 dropx(obj)
 register struct obj *obj;
 {
 #ifndef GOLDOBJ
-	if (obj->oclass != GOLD_CLASS || obj == invent) freeinv(obj);
+	if (obj->oclass != COIN_CLASS || obj == invent) freeinv(obj);
 #else
         /* Ensure update when we drop gold objects */
-        if (obj->oclass == GOLD_CLASS) flags.botl = 1;
-	/* Money is usually not in our inventory */
-	/*if (obj->oclass != GOLD_CLASS || obj == invent)*/ 
-        /* !!!! make sure we don't drop "created" gold not in inventory any more,*/
-        /* or this will crash !!!! */
+        if (obj->oclass == COIN_CLASS) flags.botl = 1;
         freeinv(obj);
 #endif
-	if (!u.uswallow && ship_object(obj, u.ux, u.uy, FALSE)) return;
+	if (!u.uswallow) {
+	    if (ship_object(obj, u.ux, u.uy, FALSE)) return;
+	    if (IS_ALTAR(levl[u.ux][u.uy].typ))
+		doaltarobj(obj); /* set bknown */
+	}
 	dropy(obj);
 }
 
@@ -528,15 +531,39 @@ register struct obj *obj;
 	if (!u.uswallow && flooreffects(obj,u.ux,u.uy,"drop")) return;
 	/* uswallow check done by GAN 01/29/87 */
 	if(u.uswallow) {
-	    boolean could_petrify;
+	    boolean could_petrify = FALSE;
+	    boolean could_poly = FALSE;
+	    boolean could_slime = FALSE;
+	    boolean could_grow = FALSE;
+	    boolean could_heal = FALSE;
+
 	    if (obj != uball) {		/* mon doesn't pick up ball */
-		could_petrify = obj->otyp == CORPSE &&
-		    touch_petrifies(&mons[obj->corpsenm]);
+		if (obj->otyp == CORPSE) {
+		    could_petrify = touch_petrifies(&mons[obj->corpsenm]);
+		    could_poly = polyfodder(obj);
+		    could_slime = (obj->corpsenm == PM_GREEN_SLIME);
+		    could_grow = (obj->corpsenm == PM_WRAITH);
+		    could_heal = (obj->corpsenm == PM_NURSE);
+		}
 		(void) mpickobj(u.ustuck,obj);
-		if (could_petrify && is_animal(u.ustuck->data)) {
-		    minstapetrify(u.ustuck, TRUE);
-		    /* Don't leave a cockatrice corpse available in a statue */
-		    if (!u.uswallow) delobj(obj);
+		if (is_animal(u.ustuck->data)) {
+		    if (could_poly || could_slime) {
+			(void) newcham(u.ustuck,
+				       could_poly ? (struct permonst *)0 :
+				       &mons[PM_GREEN_SLIME],
+				       FALSE, could_slime);
+			delobj(obj);	/* corpse is digested */
+		    } else if (could_petrify) {
+			minstapetrify(u.ustuck, TRUE);
+			/* Don't leave a cockatrice corpse in a statue */
+			if (!u.uswallow) delobj(obj);
+		    } else if (could_grow) {
+			(void) grow_up(u.ustuck, (struct monst *)0);
+			delobj(obj);	/* corpse is digested */
+		    } else if (could_heal) {
+			u.ustuck->mhp = u.ustuck->mhpmax;
+			delobj(obj);	/* corpse is digested */
+		    }
 		}
 	    }
 	} else  {
@@ -614,6 +641,7 @@ int retry;
 	/* Hack: gold is not in the inventory, so make a gold object
 	   and put it at the head of the inventory list. */
 	u_gold = mkgoldobj(u.ugold);	/* removes from u.ugold */
+	u_gold->in_use = TRUE;
 	u.ugold = u_gold->quan;		/* put the gold back */
 	assigninvlet(u_gold);		/* might end up as NOINVSYM */
 	u_gold->nobj = invent;
@@ -668,7 +696,7 @@ int retry;
 		if (cnt < otmp->quan && !welded(otmp) &&
 			(!otmp->cursed || otmp->otyp != LOADSTONE)) {
 #ifndef GOLDOBJ
-		    if (otmp->oclass == GOLD_CLASS)
+		    if (otmp->oclass == COIN_CLASS)
 			(void) splitobj(otmp, otmp->quan - cnt);
 		    else
 #endif
@@ -682,10 +710,11 @@ int retry;
 
  drop_done:
 #ifndef GOLDOBJ
-    if (u_gold && invent && invent->oclass == GOLD_CLASS) {
+    if (u_gold && invent && invent->oclass == COIN_CLASS) {
 	/* didn't drop [all of] it */
 	u_gold = invent;
 	invent = u_gold->nobj;
+	u_gold->in_use = FALSE;
 	dealloc_obj(u_gold);
 	update_inventory();
     }
@@ -834,14 +863,14 @@ STATIC_OVL int
 currentlevel_rewrite()
 {
 	register int fd;
+	char whynot[BUFSZ];
 
 	/* since level change might be a bit slow, flush any buffered screen
 	 *  output (like "you fall through a trap door") */
 	mark_synch();
 
-	fd = create_levelfile(ledger_no(&u.uz));
-
-	if(fd < 0) {
+	fd = create_levelfile(ledger_no(&u.uz), whynot);
+	if (fd < 0) {
 		/*
 		 * This is not quite impossible: e.g., we may have
 		 * exceeded our quota. If that is the case then we
@@ -849,8 +878,7 @@ currentlevel_rewrite()
 		 * Another possibility is that the directory was not
 		 * writable.
 		 */
-		pline("Cannot create level file for level %d.",
-						ledger_no(&u.uz));
+		pline("%s", whynot);
 		return -1;
 	}
 
@@ -910,6 +938,7 @@ boolean at_stairs, falling, portal;
 		familiar = FALSE;
 	boolean new = FALSE;	/* made a new level? */
 	struct monst *mtmp;
+	char whynot[BUFSZ];
 
 	if (dunlev(newlevel) > dunlevs_in_dungeon(newlevel))
 		newlevel->dlevel = dunlevs_in_dungeon(newlevel);
@@ -953,7 +982,7 @@ boolean at_stairs, falling, portal;
 
 		    pline("A mysterious force momentarily surrounds you...");
 		    if (on_level(newlevel, &u.uz)) {
-			(void) safe_teleds();
+			(void) safe_teleds(FALSE);
 			(void) next_to_u();
 			return;
 		    } else
@@ -983,6 +1012,7 @@ boolean at_stairs, falling, portal;
 	fill_pit(u.ux, u.uy);
 	u.ustuck = 0;				/* idem */
 	u.uinwater = 0;
+	u.uundetected = 0;	/* not hidden, even if means are available */
 	keepdogs(FALSE);
 	if (u.uswallow)				/* idem */
 		u.uswldtim = u.uswallow = 0;
@@ -1044,12 +1074,14 @@ boolean at_stairs, falling, portal;
 		new = TRUE;	/* made the level */
 	} else {
 		/* returning to previously visited level; reload it */
-		fd = open_levelfile(new_ledger);
+		fd = open_levelfile(new_ledger, whynot);
 		if (fd < 0) {
-			pline("Cannot open file (#%d) for level %d (errno %d).",
-					(int) new_ledger, depth(&u.uz), errno);
+			pline("%s", whynot);
 			pline("Probably someone removed it.");
+			killer = whynot;
 			done(TRICKED);
+			/* we'll reach here if running in wizard mode */
+			error("Cannot continue this game.");
 		}
 		minit();	/* ZEROCOMP */
 		getlev(fd, hackpid, new_ledger, FALSE);
@@ -1118,13 +1150,13 @@ boolean at_stairs, falling, portal;
 			    freeinv(uball);
 			}
 		    }
-		    losehp(rnd(3), "falling downstairs", KILLED_BY);
 #ifdef STEED
-		    if (u.usteed) {
+		    /* falling off steed has its own losehp() call */
+		    if (u.usteed)
 			dismount_steed(DISMOUNT_FELL);
-			if (Punished) unplacebc();
-		    }
+		    else
 #endif
+			losehp(rnd(3), "falling downstairs", KILLED_BY);
 		    selftouch("Falling, you");
 		} else if (u.dz && at_ladder)
 		    You("climb down the ladder.");
@@ -1228,13 +1260,13 @@ boolean at_stairs, falling, portal;
 	}
 
 	if (familiar) {
-	    static const char *fam_msgs[4] = {
+	    static const char * const fam_msgs[4] = {
 		"You have a sense of deja vu.",
 		"You feel like you've been here before.",
 		"This place %s familiar...",
 		0	/* no message */
 	    };
-	    static const char *halu_fam_msgs[4] = {
+	    static const char * const halu_fam_msgs[4] = {
 		"Whoa!  Everything %s different.",
 		"You are surrounded by twisty little passages, all alike.",
 		"Gee, this %s like uncle Conan's place...",
@@ -1295,6 +1327,8 @@ boolean at_stairs, falling, portal;
 	save_currentstate();
 #endif
 
+	/* assume this will always return TRUE when changing level */
+	(void) in_out_region(u.ux, u.uy);
 	(void) pickup(1);
 }
 

@@ -270,16 +270,16 @@ E NEARDATA struct c_color_names {
 		*const c_silver, *const c_blue, *const c_purple,
 		*const c_white;
 } c_color_names;
-#define Black		c_color_names.c_black
-#define amber		c_color_names.c_amber
-#define golden		c_color_names.c_golden
-#define light_blue	c_color_names.c_light_blue
-#define red		c_color_names.c_red
-#define green		c_color_names.c_green
-#define silver		c_color_names.c_silver
-#define blue		c_color_names.c_blue
-#define purple		c_color_names.c_purple
-#define White		c_color_names.c_white
+#define NH_BLACK		c_color_names.c_black
+#define NH_AMBER		c_color_names.c_amber
+#define NH_GOLDEN		c_color_names.c_golden
+#define NH_LIGHT_BLUE		c_color_names.c_light_blue
+#define NH_RED			c_color_names.c_red
+#define NH_GREEN		c_color_names.c_green
+#define NH_SILVER		c_color_names.c_silver
+#define NH_BLUE			c_color_names.c_blue
+#define NH_PURPLE		c_color_names.c_purple
+#define NH_WHITE		c_color_names.c_white
 
 /* The names of the colors used for gems, etc. */
 E const char *c_obj_colors[];
@@ -337,7 +337,7 @@ E struct tc_gbl_data {	/* also declared in tcap.h */
 #endif
 
 /* xxxexplain[] is in drawing.c */
-E const char *monexplain[], *invisexplain, *objexplain[], *oclass_names[];
+E const char * const monexplain[], invisexplain[], * const objexplain[], * const oclass_names[];
 
 /* Some systems want to use full pathnames for some subsets of file names,
  * rather than assuming that they're all in the current directory.  This
@@ -348,11 +348,12 @@ E const char *monexplain[], *invisexplain, *objexplain[], *oclass_names[];
 #define LEVELPREFIX	1
 #define SAVEPREFIX	2
 #define BONESPREFIX	3
-#define DATAPREFIX	4
+#define DATAPREFIX	4	/* this one must match hardcoded value in dlb.c */
 #define SCOREPREFIX	5
 #define LOCKPREFIX	6
 #define CONFIGPREFIX	7
-#define PREFIX_COUNT	8
+#define TROUBLEPREFIX	8
+#define PREFIX_COUNT	9
 /* used in files.c; xxconf.h can override if needed */
 # ifndef FQN_MAX_FILENAME
 #define FQN_MAX_FILENAME 512

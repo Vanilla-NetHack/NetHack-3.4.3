@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmaze.c	3.4	2002/03/12	*/
+/*	SCCS Id: @(#)mkmaze.c	3.4	2002/04/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -288,13 +288,18 @@ xchar rtype;
 boolean oneshot;
 d_level *lev;
 {
-    if (bad_location(x, y, nlx, nly, nhx, nhy)) return FALSE;
-    if (oneshot) {
-	/* must make due with the only location possible */
-	/* avoid failure due to a misplaced trap */
-	/* it might still fail if there's a dungeon feature here */
-	struct trap *t = t_at(x,y);
-	if (t) deltrap(t);
+    if (bad_location(x, y, nlx, nly, nhx, nhy)) {
+	if (!oneshot) {
+	    return FALSE;		/* caller should try again */
+	} else {
+	    /* Must make do with the only location possible;
+	       avoid failure due to a misplaced trap.
+	       It might still fail if there's a dungeon feature here. */
+	    struct trap *t = t_at(x,y);
+
+	    if (t && t->ttyp != MAGIC_PORTAL) deltrap(t);
+	    if (bad_location(x, y, nlx, nly, nhx, nhy)) return FALSE;
+	}
     }
     switch (rtype) {
     case LR_TELE:
@@ -412,7 +417,7 @@ fixup_special()
 	croom = &rooms[0]; /* only one room on the medusa level */
 	for (tryct = rnd(4); tryct; tryct--) {
 	    x = somex(croom); y = somey(croom);
-	    if (goodpos(x, y, (struct monst *)0)) {
+	    if (goodpos(x, y, (struct monst *)0, 0)) {
 		otmp = mk_tt_object(STATUE, x, y);
 		while (otmp && (poly_when_stoned(&mons[otmp->corpsenm]) ||
 				pm_resistance(&mons[otmp->corpsenm],MR_STONE))) {

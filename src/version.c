@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)version.c	3.4	1999/12/01	*/
+/*	SCCS Id: @(#)version.c	3.4	2003/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,12 +14,21 @@
 #include "patchlevel.h"
 #endif
 
+/* #define BETA_INFO "" */
+
 /* fill and return the given buffer with the nethack version string */
 char *
 getversionstring(buf)
 char *buf;
 {
-	return strcpy(buf, VERSION_ID);
+	 Strcpy(buf, VERSION_ID);
+#if defined(BETA) && defined(BETA_INFO)
+	 Sprintf(eos(buf), " %s", BETA_INFO);
+#endif
+#if defined(RUNTIME_PORT_ID)
+	 append_port_id(buf);
+#endif
+	return buf;
 }
 
 int
@@ -27,7 +36,7 @@ doversion()
 {
 	char buf[BUFSZ];
 
-	pline(getversionstring(buf));
+	pline("%s", getversionstring(buf));
 	return 0;
 }
 
@@ -64,7 +73,13 @@ boolean complain;
 	    if (complain)
 		pline("Version mismatch for file \"%s\".", filename);
 	    return FALSE;
-	} else if (version_data->feature_set != VERSION_FEATURES ||
+	} else if (
+#ifndef IGNORED_FEATURES
+		   version_data->feature_set != VERSION_FEATURES ||
+#else
+		   (version_data->feature_set & ~IGNORED_FEATURES) !=
+			  (VERSION_FEATURES & ~IGNORED_FEATURES) ||
+#endif
 		   version_data->entity_count != VERSION_SANITY1 ||
 		   version_data->struct_sizes != VERSION_SANITY2) {
 	    if (complain)
@@ -106,7 +121,7 @@ void
 store_version(fd)
 int fd;
 {
-	static struct version_info version_data = {
+	const static struct version_info version_data = {
 			VERSION_NUMBER, VERSION_FEATURES,
 			VERSION_SANITY1, VERSION_SANITY2
 	};

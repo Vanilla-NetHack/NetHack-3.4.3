@@ -9,20 +9,28 @@
 #include "mhmain.h"
 #include "mhmsg.h"
 #include "mhfont.h"
+#include "mhdlg.h"
 
-#define MENU_MARGIN			0
-#define NHMENU_STR_SIZE     BUFSZ
-#define MIN_TABSTOP_SIZE	8
+#define MENU_MARGIN		0
+#define NHMENU_STR_SIZE		BUFSZ
+#define MIN_TABSTOP_SIZE	0
+#define NUMTABS			15
+#define TAB_SEPARATION		10 /* pixels between each tab stop */
+
+#define DEFAULT_COLOR_BG_TEXT	COLOR_WINDOW
+#define DEFAULT_COLOR_FG_TEXT	COLOR_WINDOWTEXT
+#define DEFAULT_COLOR_BG_MENU	COLOR_WINDOW
+#define DEFAULT_COLOR_FG_MENU	COLOR_WINDOWTEXT
 
 typedef struct mswin_menu_item {
-	int				glyph;
+	int			glyph;
 	ANY_P			identifier;
-	CHAR_P			accelerator;
-	CHAR_P			group_accel;
-	int				attr;
+	CHAR_P		accelerator;
+	CHAR_P		group_accel;
+	int			attr;
 	char			str[NHMENU_STR_SIZE];
 	BOOLEAN_P		presel;
-	int				count;
+	int			count;
 	BOOL			has_focus;
 } NHMenuItem, *PNHMenuItem;
 
@@ -32,13 +40,13 @@ typedef struct mswin_nethack_menu_window {
 
 	union {
 		struct menu_list {
-			int				 size;			/* number of items in items[] */
-			int				 allocated;		/* number of allocated slots in items[] */
+			int			 size;			/* number of items in items[] */
+			int			 allocated;			/* number of allocated slots in items[] */
 			PNHMenuItem		 items;			/* menu items */
-			char			 gacc[QBUFSZ];	/* group accelerators */
-			BOOL			 counting;		/* counting flag */
-			char			 prompt[QBUFSZ]; /* menu prompt */
-			int				 tab_stop_size; /* for options menu we use tabstops to align option values */
+			char			 gacc[QBUFSZ];		/* group accelerators */
+			BOOL			 counting;			/* counting flag */
+			char			 prompt[QBUFSZ]; 		/* menu prompt */
+			int			 tab_stop_size[NUMTABS];/* tabstops to align option values */
 		} menu;
 
 		struct menu_text {
@@ -95,7 +103,6 @@ HWND mswin_init_menu_window (int type) {
 /*-----------------------------------------------------------------------------*/
 int mswin_menu_window_select_menu (HWND hWnd, int how, MENU_ITEM_P ** _selected)
 {
-	MSG msg;
 	PNHMenuWindow data;
 	int ret_val;
     MENU_ITEM_P *selected = NULL;
@@ -133,8 +140,10 @@ int mswin_menu_window_select_menu (HWND hWnd, int how, MENU_ITEM_P ** _selected)
 
 				next_char ++;
 			}
+		}
 
-			/* collect group accelerators */
+		/* collect group accelerators */
+		for( i=0; i<data->menu.size;  i++) {
 			if( data->how != PICK_NONE ) {
 				if( data->menu.items[i].group_accel && 
 					!strchr(data->menu.gacc, data->menu.items[i].group_accel) ) {
@@ -147,28 +156,7 @@ int mswin_menu_window_select_menu (HWND hWnd, int how, MENU_ITEM_P ** _selected)
 		reset_menu_count(NULL, data);
 	}
 
-	/* activate the menu window */
-	GetNHApp()->hPopupWnd = hWnd;
-
-	mswin_layout_main_window(hWnd);
-
-	/* disable game windows */
-	EnableWindow(mswin_hwnd_from_winid(WIN_MAP), FALSE);
-	EnableWindow(mswin_hwnd_from_winid(WIN_MESSAGE), FALSE);
-	EnableWindow(mswin_hwnd_from_winid(WIN_STATUS), FALSE);
-
-	/* bring menu window on top */
-	SetWindowPos(hWnd, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
-
-	/* go into message loop */
-	while( IsWindow(hWnd) && 
-		   !data->done &&
-		   GetMessage(&msg, NULL, 0, 0)!=0 ) {
-		if( !IsDialogMessage(hWnd, &msg) ) {
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-	}
+	mswin_popup_display(hWnd, &data->done);
 
 	/* get the result */
 	if( data->result != -1 ) {
@@ -205,19 +193,7 @@ int mswin_menu_window_select_menu (HWND hWnd, int how, MENU_ITEM_P ** _selected)
 		}
 	}
 
-	/* restore window state */
-	EnableWindow(mswin_hwnd_from_winid(WIN_MAP), TRUE);
-	EnableWindow(mswin_hwnd_from_winid(WIN_MESSAGE), TRUE);
-	EnableWindow(mswin_hwnd_from_winid(WIN_STATUS), TRUE);
-
-	SetWindowPos(hWnd, HWND_BOTTOM, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_HIDEWINDOW);
-	GetNHApp()->hPopupWnd = NULL;
-	mswin_window_mark_dead( mswin_winid_from_handle(hWnd) );
-	DestroyWindow(hWnd);
-
-	mswin_layout_main_window(hWnd);
-
-	SetFocus(GetNHApp()->hMainWnd );
+	mswin_popup_destroy(hWnd);
 
 	return ret_val;
 }
@@ -416,6 +392,21 @@ BOOL CALLBACK MenuWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam)
 		else
 			return FALSE;
 
+	case WM_CTLCOLORSTATIC: { /* sent by edit control before it is drawn */
+		HDC hdcEdit = (HDC) wParam; 
+		HWND hwndEdit = (HWND) lParam;
+		if( hwndEdit == GetDlgItem(hWnd, IDC_MENU_TEXT) ) {
+			SetBkColor(hdcEdit, 
+				text_bg_brush ? text_bg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_BG_TEXT)
+				);
+			SetTextColor(hdcEdit, 
+				text_fg_brush ? text_fg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_FG_TEXT) 
+				); 
+			return (BOOL)(text_bg_brush 
+					? text_bg_brush : SYSCLR_TO_BRUSH(DEFAULT_COLOR_BG_TEXT));
+		}
+	} return FALSE;
+
 	case WM_DESTROY:
 		if( data ) {
 			DeleteObject(data->bmpChecked);
@@ -467,6 +458,8 @@ void onMSNHCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	} break;
 
 	case MSNH_MSG_STARTMENU:
+	{
+		int i;
 		if( data->type!=MENU_TYPE_MENU )
 			SetMenuType(hWnd, MENU_TYPE_MENU);
 
@@ -477,14 +470,18 @@ void onMSNHCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		data->menu.allocated = 0;
 		data->done = 0;
 		data->result = 0;
-		data->menu.tab_stop_size = MIN_TABSTOP_SIZE;
-	break;
+		for (i = 0; i < NUMTABS; ++i)
+			data->menu.tab_stop_size[i] = MIN_TABSTOP_SIZE;
+	} break;
 
 	case MSNH_MSG_ADDMENU:
 	{
 		PMSNHMsgAddMenu msg_data = (PMSNHMsgAddMenu)lParam;
 		char *p, *p1;
 		int new_item;
+		HDC hDC;
+		int column;
+		HFONT saveFont;
 		
 		if( data->type!=MENU_TYPE_MENU ) break;
 		if( strlen(msg_data->str)==0 ) break;
@@ -505,14 +502,33 @@ void onMSNHCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		data->menu.items[new_item].presel = msg_data->presel;
 
 		/* calculate tabstop size */
+		hDC = GetDC(hWnd);
+		saveFont = SelectObject(hDC, mswin_get_font(NHW_MENU, msg_data->attr, hDC, FALSE));
 		p1 = data->menu.items[new_item].str;
 		p = strchr(data->menu.items[new_item].str, '\t');
-		while( p ) {
-			data->menu.tab_stop_size = 
-				max( data->menu.tab_stop_size, p - p1 + 1 );
-			p1 = p;
-			p = strchr(p+1, '\t');
+		column = 0;
+		for (;;) {
+			TCHAR wbuf[BUFSZ];
+			RECT drawRect;
+			SetRect ( &drawRect, 0, 0, 1, 1 );
+			if (p != NULL) *p = '\0'; /* for time being, view tab field as zstring */
+			DrawText(hDC,
+				NH_A2W(p1, wbuf, BUFSZ),
+				strlen(p1),
+				&drawRect,
+				DT_CALCRECT | DT_LEFT | DT_VCENTER | DT_EXPANDTABS | DT_SINGLELINE
+			);
+			data->menu.tab_stop_size[column] =
+				max( data->menu.tab_stop_size[column], drawRect.right - drawRect.left );
+			if (p != NULL) *p = '\t';
+			else /* last string so, */ break;
+
+			++column;
+			p1 = p + 1;
+			p = strchr(p1, '\t');
 		}
+		SelectObject(hDC, saveFont);
+		ReleaseDC(hWnd, hDC);
 
 		/* increment size */
 		data->menu.size++;
@@ -656,6 +672,14 @@ void SetMenuListType(HWND hWnd, int how)
 	wndProcListViewOrig = (WNDPROC)GetWindowLong(control, GWL_WNDPROC);
 	SetWindowLong(control, GWL_WNDPROC, (LONG)NHMenuListWndProc);
 
+	/* set control colors */
+	ListView_SetBkColor(control, 
+		menu_bg_brush ? menu_bg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_BG_MENU));
+	ListView_SetTextBkColor(control, 
+		menu_bg_brush ? menu_bg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_BG_MENU));
+	ListView_SetTextColor(control, 
+		menu_fg_brush ? menu_fg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_FG_MENU));
+
 	/* set control font */
 	fnt = SendMessage(hWnd, WM_GETFONT, (WPARAM)0, (LPARAM)0);
 	SendMessage(control, WM_SETFONT, (WPARAM)fnt, (LPARAM)0);
@@ -728,10 +752,10 @@ BOOL onMeasureItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 /*-----------------------------------------------------------------------------*/
 BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 {
-    LPDRAWITEMSTRUCT lpdis; 
+	LPDRAWITEMSTRUCT lpdis;
 	PNHMenuItem item;
 	PNHMenuWindow data;
-    TEXTMETRIC tm;
+	TEXTMETRIC tm;
 	HGDIOBJ saveFont;
 	HDC tileDC;
 	short ntile;
@@ -739,7 +763,9 @@ BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	int x, y;
 	TCHAR wbuf[BUFSZ];
 	RECT drawRect;
-	DRAWTEXTPARAMS dtp;
+	COLORREF OldBg, OldFg, NewBg;
+	char *p, *p1;
+	int column;
 
 	lpdis = (LPDRAWITEMSTRUCT) lParam; 
 
@@ -752,26 +778,37 @@ BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 
 	tileDC = CreateCompatibleDC(lpdis->hDC);
 	saveFont = SelectObject(lpdis->hDC, mswin_get_font(NHW_MENU, item->attr, lpdis->hDC, FALSE));
+	NewBg = menu_bg_brush ? menu_bg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_BG_MENU);
+	OldBg = SetBkColor(lpdis->hDC, NewBg);
+	OldFg = SetTextColor(lpdis->hDC, 
+		menu_fg_brush ? menu_fg_color : (COLORREF)GetSysColor(DEFAULT_COLOR_FG_MENU)); 
+
     GetTextMetrics(lpdis->hDC, &tm);
 
 	x = lpdis->rcItem.left + 1;
 
-	/* print check mark */
+    /* print check mark and letter */
 	if( NHMENU_IS_SELECTABLE(*item) ) {
-		HGDIOBJ saveBmp;
-		char buf[2];
+ char buf[2];
+ if (data->how != PICK_NONE) {
+		HGDIOBJ saveBrush;
+		HBRUSH	hbrCheckMark;
 
 		switch(item->count) {
-		case -1: saveBmp = SelectObject(tileDC, data->bmpChecked); break;
-		case 0: saveBmp = SelectObject(tileDC, data->bmpNotChecked); break;
-		default: saveBmp = SelectObject(tileDC, data->bmpCheckedCount); break;
+		case -1: hbrCheckMark = CreatePatternBrush(data->bmpChecked); break;
+		case 0: hbrCheckMark = CreatePatternBrush(data->bmpNotChecked); break;
+		default: hbrCheckMark = CreatePatternBrush(data->bmpCheckedCount); break;
 		}
 
 		y = (lpdis->rcItem.bottom + lpdis->rcItem.top - TILE_Y) / 2; 
-		BitBlt(lpdis->hDC, x, y, TILE_X, TILE_Y, tileDC, 0, 0, SRCCOPY );
+		SetBrushOrgEx(lpdis->hDC, x, y, NULL);
+		saveBrush = SelectObject(lpdis->hDC, hbrCheckMark);
+		PatBlt(lpdis->hDC, x, y, TILE_X, TILE_Y, PATCOPY);
+		SelectObject(lpdis->hDC, saveBrush);
+		DeleteObject(hbrCheckMark);
 
+ }
 		x += TILE_X + 5;
-
 		if(item->accelerator!=0) {
 			buf[0] = item->accelerator;
 			buf[1] = '\x0';
@@ -780,7 +817,6 @@ BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			DrawText(lpdis->hDC, NH_A2W(buf, wbuf, 2), 1, &drawRect, DT_LEFT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX);
 		}
 		x += tm.tmAveCharWidth + tm.tmOverhang + 5;
-		SelectObject(tileDC, saveBmp);
 	} else {
 		x += TILE_X + tm.tmAveCharWidth + tm.tmOverhang + 10;
 	}
@@ -805,21 +841,35 @@ BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	x += TILE_X + 5;
 
 	/* draw item text */
-	SetRect( &drawRect, x, lpdis->rcItem.top, lpdis->rcItem.right, lpdis->rcItem.bottom );
 
-	ZeroMemory(&dtp, sizeof(dtp));
-	dtp.cbSize = sizeof(dtp);
-	dtp.iTabLength = max(MIN_TABSTOP_SIZE, data->menu.tab_stop_size);
-	DrawTextEx(lpdis->hDC, 
-		NH_A2W(item->str, wbuf, BUFSZ), 
-		strlen(item->str),
-		&drawRect, 
-		DT_LEFT | DT_VCENTER | DT_EXPANDTABS | DT_SINGLELINE | DT_TABSTOP, 
-		&dtp
-	); 
+	p1 = item->str;
+	p = strchr(item->str, '\t');
+	column = 0;
+	SetRect( &drawRect, x, lpdis->rcItem.top, min(x + data->menu.tab_stop_size[0], lpdis->rcItem.right),
+	    lpdis->rcItem.bottom );
+	for (;;) {
+		TCHAR wbuf[BUFSZ];
+		if (p != NULL) *p = '\0'; /* for time being, view tab field as zstring */
+		DrawText(lpdis->hDC,
+			NH_A2W(p1, wbuf, BUFSZ),
+			strlen(p1),
+			&drawRect,
+			DT_LEFT | DT_VCENTER | DT_SINGLELINE
+		);
+		if (p != NULL) *p = '\t';
+		else /* last string so, */ break;
+
+		p1 = p + 1;
+		p = strchr(p1, '\t');
+		drawRect.left = drawRect.right + TAB_SEPARATION;
+		++column;
+		drawRect.right = min (drawRect.left + data->menu.tab_stop_size[column], lpdis->rcItem.right);
+	}
 
 	/* draw focused item */
-	if( item->has_focus ) {
+	if( item->has_focus 
+        || (NHMENU_IS_SELECTABLE(*item) && 
+			data->menu.items[lpdis->itemID].count!=-1)) {
 		RECT client_rt;
 
 		GetClientRect(lpdis->hwndItem, &client_rt);
@@ -844,18 +894,25 @@ BOOL onDrawItem(HWND hWnd, WPARAM wParam, LPARAM lParam)
 			drawRect.right = client_rt.right-1;
 			drawRect.top = lpdis->rcItem.top;
 			drawRect.bottom = lpdis->rcItem.bottom;
-			FillRect(lpdis->hDC, &drawRect, (HBRUSH)GetClassLong(lpdis->hwndItem, GCL_HBRBACKGROUND) );
+			FillRect(lpdis->hDC, &drawRect, 
+					 menu_bg_brush ? menu_bg_brush : SYSCLR_TO_BRUSH(DEFAULT_COLOR_BG_MENU));
 
 			/* draw text */
 			DrawText(lpdis->hDC, wbuf, _tcslen(wbuf), &drawRect, 
 					 DT_RIGHT | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX );
 		}
-
+    }
+    if (item->has_focus) {
 		/* draw focus rect */
+		RECT client_rt;
+
+		GetClientRect(lpdis->hwndItem, &client_rt);
 		SetRect( &drawRect, client_rt.left, lpdis->rcItem.top, client_rt.right, lpdis->rcItem.bottom );
 		DrawFocusRect(lpdis->hDC, &drawRect);
 	}
 
+	SetTextColor (lpdis->hDC, OldFg);
+	SetBkColor (lpdis->hDC, OldBg);
 	SelectObject(lpdis->hDC, saveFont);
 	DeleteDC(tileDC);
 	return TRUE;
@@ -997,7 +1054,10 @@ BOOL onListChar(HWND hWnd, HWND hwndList, WORD ch)
 			char buf[BUFSZ];
 			
 			reset_menu_count(hwndList, data);
-			mswin_getlin("Search for:", buf);
+			if( mswin_getlin_window("Search for:", buf, BUFSZ)==IDCANCEL ) {
+				strcpy(buf, "\033");
+			}
+			SetFocus(hwndList);	// set focus back to the list control
 			if (!*buf || *buf == '\033') return -2;
 			for(i=0; i<data->menu.size; i++ ) {
 				if( NHMENU_IS_SELECTABLE(data->menu.items[i])
@@ -1183,12 +1243,15 @@ void mswin_menu_window_size (HWND hWnd, LPSIZE sz)
 	HDC hdc;
 	PNHMenuWindow data;
 	int i;
-	RECT rt;
-	TCHAR wbuf[BUFSZ];
+	RECT rt, wrt;
+	int extra_cx;
 
 	GetClientRect(hWnd, &rt);
 	sz->cx = rt.right - rt.left;
 	sz->cy = rt.bottom - rt.top;
+
+	GetWindowRect(hWnd, &wrt);
+	extra_cx = (wrt.right-wrt.left) - sz->cx;
 
 	data = (PNHMenuWindow)GetWindowLong(hWnd, GWL_USERDATA);
 	if(data) {
@@ -1200,23 +1263,41 @@ void mswin_menu_window_size (HWND hWnd, LPSIZE sz)
 			saveFont = SelectObject(hdc, mswin_get_font(NHW_MENU, ATR_NONE, hdc, FALSE));
 			GetTextMetrics(hdc, &tm);
 			for(i=0; i<data->menu.size; i++ ) {
-				DRAWTEXTPARAMS dtp;
-				RECT drawRect;
+				LONG menuitemwidth = 0;
+				int column;
+				char *p, *p1;
 
-				SetRect(&drawRect, 0, 0, 1, 1);
-				ZeroMemory(&dtp, sizeof(dtp));
-				dtp.cbSize = sizeof(dtp);
-				dtp.iTabLength = max(MIN_TABSTOP_SIZE, data->menu.tab_stop_size);
-				DrawTextEx(hdc, 
-					NH_A2W(data->menu.items[i].str, wbuf, BUFSZ), 
-					strlen(data->menu.items[i].str),
-					&drawRect, 
-					DT_CALCRECT | DT_LEFT | DT_VCENTER | DT_EXPANDTABS | DT_SINGLELINE | DT_TABSTOP, 
-					&dtp
-				); 
+				p1 = data->menu.items[i].str;
+				p = strchr(data->menu.items[i].str, '\t');
+				column = 0;
+				for (;;) {
+					TCHAR wbuf[BUFSZ];
+					RECT tabRect;
+					SetRect ( &tabRect, 0, 0, 1, 1 );
+					if (p != NULL) *p = '\0'; /* for time being, view tab field as zstring */
+					DrawText(hdc,
+						NH_A2W(p1, wbuf, BUFSZ),
+						strlen(p1),
+						&tabRect,
+						DT_CALCRECT | DT_LEFT | DT_VCENTER | DT_SINGLELINE
+					);
+					/* it probably isn't necessary to recompute the tab width now, but do so
+					 * just in case, honoring the previously computed value
+					 */
+					menuitemwidth += max(data->menu.tab_stop_size[column],
+					    tabRect.right - tabRect.left);
+					if (p != NULL) *p = '\t';
+					else /* last string so, */ break;
+					/* add the separation only when not the last item */
+					/* in the last item, we break out of the loop, in the statement just above */
+					menuitemwidth += TAB_SEPARATION;
+					++column;
+					p1 = p + 1;
+					p = strchr(p1, '\t');
+				}
 
 				sz->cx = max(sz->cx, 
-					(LONG)(2*TILE_X + (drawRect.right - drawRect.left) + tm.tmAveCharWidth*12 + tm.tmOverhang));
+					(LONG)(2*TILE_X + menuitemwidth + tm.tmAveCharWidth*12 + tm.tmOverhang));
 			}
 			SelectObject(hdc, saveFont);
 		} else {
@@ -1229,7 +1310,7 @@ void mswin_menu_window_size (HWND hWnd, LPSIZE sz)
 			sz->cx = max(sz->cx, text_rt.right - text_rt.left + 5*tm.tmAveCharWidth + tm.tmOverhang);
 			SelectObject(hdc, saveFont);
 		}
-		sz->cx += GetSystemMetrics(SM_CXVSCROLL) + 2*GetSystemMetrics(SM_CXSIZEFRAME);
+		sz->cx += extra_cx;
 
 		ReleaseDC(control, hdc);
 	}

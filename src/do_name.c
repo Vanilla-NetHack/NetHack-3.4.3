@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.4	2002/01/17	*/
+/*	SCCS Id: @(#)do_name.c	3.4	2003/01/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -49,7 +49,7 @@ const char *goal;
     int cx, cy, i, c;
     int sidx, tx, ty;
     boolean msg_given = TRUE;	/* clear message window by default */
-    static const char *pick_chars = ".,;:";
+    static const char pick_chars[] = ".,;:";
     const char *cp;
     const char *sdp;
     if(iflags.num_pad) sdp = ndir; else sdp = sdir;	/* DICE workaround */
@@ -275,9 +275,10 @@ do_mname()
 	/* strip leading and trailing spaces; unnames monster if all spaces */
 	(void)mungspaces(buf);
 
-	if (mtmp->iswiz || type_is_pname(mtmp->data))
+	if (mtmp->data->geno & G_UNIQ)
 	    pline("%s doesn't like being called names!", Monnam(mtmp));
-	else (void) christen_monst(mtmp, buf);
+	else
+	    (void) christen_monst(mtmp, buf);
 	return(0);
 }
 
@@ -361,8 +362,12 @@ const char *name;
 	}
 
 	if (obj->owornmask) {
+		boolean save_twoweap = u.twoweap;
+		/* unwearing the old instance will clear dual-wield mode
+		   if this object is either of the two weapons */
 		setworn((struct obj *)0, obj->owornmask);
 		setworn(otmp, otmp->owornmask);
+		u.twoweap = save_twoweap;
 	}
 
 	/* replace obj with otmp */
@@ -421,7 +426,12 @@ const char *name;
 			      (genericptr_t)obj->oextra, lth, name);
 	}
 	if (lth) artifact_exists(obj, name, TRUE);
-	if (obj->oartifact && obj == uswapwep) untwoweapon();
+	if (obj->oartifact) {
+	    /* can't dual-wield with artifact as secondary weapon */
+	    if (obj == uswapwep) untwoweapon();
+	    /* activate warning if you've just named your weapon "Sting" */
+	    if (obj == uwep) set_artifact_intrinsic(obj, TRUE, W_WEP);
+	}
 	if (carried(obj)) update_inventory();
 	return obj;
 }
@@ -460,6 +470,11 @@ ddocall()
 #endif
 		obj = getobj(callable, "call");
 		if (obj) {
+			/* behave as if examining it in inventory;
+			   this might set dknown if it was picked up
+			   while blind and the hero can now see */
+			(void) xname(obj);
+
 			if (!obj->dknown) {
 				You("would never recognize another one.");
 				return 0;
@@ -516,7 +531,7 @@ register struct obj *obj;
 #endif /*OVLB*/
 #ifdef OVL0
 
-static const char *ghostnames[] = {
+static const char * const ghostnames[] = {
 	/* these names should have length < PL_NSIZ */
 	/* Capitalize the names for aesthetics -dgk */
 	"Adri", "Andries", "Andreas", "Bert", "David", "Dirk", "Emile",
@@ -703,13 +718,12 @@ boolean called;
 	    name_at_start = (boolean)type_is_pname(mdat);
 	}
 
-	if (name_at_start && !has_adjectives) {
+	if (name_at_start && (article == ARTICLE_YOUR || !has_adjectives)) {
 	    if (mdat == &mons[PM_WIZARD_OF_YENDOR])
 		article = ARTICLE_THE;
 	    else
 		article = ARTICLE_NONE;
-	} else if (mons[monsndx(mdat)].geno & G_UNIQ &&
-		   article == ARTICLE_A) {
+	} else if ((mdat->geno & G_UNIQ) && article == ARTICLE_A) {
 	    article = ARTICLE_THE;
 	}
 
@@ -804,8 +818,17 @@ char *
 y_monnam(mtmp)
 struct monst *mtmp;
 {
-	return x_monnam(mtmp, ARTICLE_YOUR, (char *)0, 
-		mtmp->mnamelth ? SUPPRESS_SADDLE : 0, FALSE);
+	int prefix, suppression_flag;
+
+	prefix = mtmp->mtame ? ARTICLE_YOUR : ARTICLE_THE;
+	suppression_flag = (mtmp->mnamelth
+#ifdef STEED
+			    /* "saddled" is redundant when mounted */
+			    || mtmp == u.usteed
+#endif
+			    ) ? SUPPRESS_SADDLE : 0;
+
+	return x_monnam(mtmp, prefix, (char *)0, suppression_flag, FALSE);
 }
 
 #endif /* OVL0 */
@@ -862,7 +885,7 @@ char *outbuf;
     return outbuf;
 }
 
-static const char *bogusmons[] = {
+static const char * const bogusmons[] = {
 	"jumbo shrimp", "giant pigmy", "gnu", "killer penguin",
 	"giant cockroach", "giant slug", "maggot", "pterodactyl",
 	"tyrannosaurus rex", "basilisk", "beholder", "nightmare",
@@ -959,7 +982,7 @@ roguename() /* Name of a Rogue player */
 
 #ifdef OVL2
 
-static NEARDATA const char *hcolors[] = {
+static NEARDATA const char * const hcolors[] = {
 	"ultraviolet", "infrared", "bluish-orange",
 	"reddish-green", "dark white", "light black", "sky blue-pink",
 	"salty", "sweet", "sour", "bitter",
@@ -980,9 +1003,8 @@ const char *colorpref;
 }
 
 /* Aliases for road-runner nemesis
- * See also http://www.geocities.com/EnchantedForest/1141/latin.html
  */
-static const char *coynames[] = {
+static const char * const coynames[] = {
 	"Carnivorous Vulgaris","Road-Runnerus Digestus",
 	"Eatibus Anythingus"  ,"Famishus-Famishus",
 	"Eatibus Almost Anythingus","Eatius Birdius",
@@ -996,7 +1018,8 @@ static const char *coynames[] = {
 	"Nemesis Riduclii","Canis latrans"
 };
 	
-char *coyotename(mtmp, buf)
+char *
+coyotename(mtmp, buf)
 struct monst *mtmp;
 char *buf;
 {

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	3.4	2002/03/09	*/
+/*	SCCS Id: @(#)dogmove.c	3.4	2002/09/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -100,7 +100,7 @@ struct obj *obj;
 		mtmp->meating = eaten_stat(mtmp->meating, obj);
 		nutrit = eaten_stat(nutrit, obj);
 	    }
-	} else if (obj->oclass == GOLD_CLASS) {
+	} else if (obj->oclass == COIN_CLASS) {
 	    mtmp->meating = (int)(obj->quan/2000) + 1;
 	    if (mtmp->meating < 0) mtmp->meating = 1;
 	    nutrit = (int)(obj->quan/20);
@@ -191,23 +191,8 @@ boolean devour;
 	    delobj(obj);
 
 	if (poly) {
-	    char oldpet[BUFSZ];
-#ifdef STEED
-	    long mw = mtmp->misc_worn_check;
-
-	    mtmp->misc_worn_check &= ~W_SADDLE;
-#endif
-	    Strcpy(oldpet, Monnam(mtmp));
-#ifdef STEED
-	    mtmp->misc_worn_check = mw;
-#endif
-	    if (newcham(mtmp, (struct permonst *)0, FALSE) &&
-			cansee(mtmp->mx, mtmp->my)) {
-		uchar save_mnamelth = mtmp->mnamelth;
-		mtmp->mnamelth = 0;
-		pline("%s turns into %s!", oldpet, a_monnam(mtmp));
-		mtmp->mnamelth = save_mnamelth;
-	    }
+	    (void) newcham(mtmp, (struct permonst *)0, FALSE,
+			   cansee(mtmp->mx, mtmp->my));
 	}
 	/* limit "instant" growth to prevent potential abuse */
 	if (grow && (int) mtmp->m_lev < (int)mtmp->data->mlevel + 15) {
@@ -247,12 +232,15 @@ register struct edog *edog;
 		    You_feel("worried about %s.", y_monnam(mtmp));
 		stop_occupation();
 	    } else if (monstermoves > edog->hungrytime + 750 || mtmp->mhp < 1) {
-	    dog_died:
-		if (mtmp->mleashed)
+ dog_died:
+		if (mtmp->mleashed
+#ifdef STEED
+		    && mtmp != u.usteed
+#endif
+		    )
 		    Your("leash goes slack.");
 		else if (cansee(mtmp->mx, mtmp->my))
-		    pline("%s dies%s.", Monnam(mtmp),
-			    (mtmp->mhp >= 1) ? "" : " from hunger");
+		    pline("%s starves.", Monnam(mtmp));
 		else
 		    You_feel("%s for a moment.",
 			Hallucination ? "bummed" : "sad");
@@ -301,7 +289,11 @@ int udist;
 			&& obj->otyp != SCR_MAIL
 #endif
 									){
-		if (dogfood(mtmp, obj) <= CADAVER)
+		int edible = dogfood(mtmp, obj);
+
+		if (edible <= CADAVER ||
+			/* starving pet is more aggressive about eating */
+			(edog->mhpmax_penalty && edible == ACCFOOD))
 		    return dog_eat(mtmp, obj, omx, omy, FALSE);
 
 		if(can_carry(mtmp, obj) && !obj->cursed &&
@@ -338,11 +330,10 @@ struct edog *edog;
 int after, udist, whappr;
 {
 	register int omx, omy;
-	boolean in_masters_sight;
+	boolean in_masters_sight, dog_has_minvent;
 	register struct obj *obj;
 	xchar otyp;
 	int appr;
-
 
 #ifdef STEED
 	/* Steeds don't move on their own will */
@@ -354,6 +345,7 @@ int after, udist, whappr;
 	omy = mtmp->my;
 
 	in_masters_sight = couldsee(omx, omy);
+	dog_has_minvent = (DROPPABLES(mtmp) != 0);
 
 	if (!edog || mtmp->mleashed) {	/* he's not going anywhere... */
 	    gtyp = APPORT;
@@ -368,7 +360,7 @@ int after, udist, whappr;
 	    gtyp = UNDEF;	/* no goal as yet */
 	    gx = gy = 0;	/* suppress 'used before set' message */
 
-	    if ((min_x = omx - SQSRCHRADIUS) < 0) min_x = 0;
+	    if ((min_x = omx - SQSRCHRADIUS) < 1) min_x = 1;
 	    if ((max_x = omx + SQSRCHRADIUS) >= COLNO) max_x = COLNO - 1;
 	    if ((min_y = omy - SQSRCHRADIUS) < 0) min_y = 0;
 	    if ((max_y = omy + SQSRCHRADIUS) >= ROWNO) max_y = ROWNO - 1;
@@ -379,9 +371,12 @@ int after, udist, whappr;
 		ny = obj->oy;
 		if (nx >= min_x && nx <= max_x && ny >= min_y && ny <= max_y) {
 		    otyp = dogfood(mtmp, obj);
+		    /* skip inferior goals */
 		    if (otyp > gtyp || otyp == UNDEF)
 			continue;
-		    if (cursed_object_at(nx, ny))
+		    /* avoid cursed items unless starving */
+		    if (cursed_object_at(nx, ny) &&
+			    !(edog->mhpmax_penalty && otyp < MANFOOD))
 			continue;
 		    if (otyp < MANFOOD &&
 			    can_reach_food(mtmp, mtmp->mx, mtmp->my, nx, ny)) {
@@ -391,7 +386,7 @@ int after, udist, whappr;
 			    gtyp = otyp;
 			}
 		    } else if(gtyp == UNDEF && in_masters_sight &&
-			      !mtmp->minvent &&
+			      !dog_has_minvent &&
 			      (!levl[omx][omy].lit || levl[u.ux][u.uy].lit) &&
 			      (otyp == MANFOOD || m_cansee(mtmp, nx, ny)) &&
 			      edog->apport > rn2(8) &&
@@ -415,7 +410,7 @@ int after, udist, whappr;
 		if (udist > 1) {
 			if (!IS_ROOM(levl[u.ux][u.uy].typ) || !rn2(4) ||
 			   whappr ||
-			   (mtmp->minvent && rn2(edog->apport)))
+			   (dog_has_minvent && rn2(edog->apport)))
 				appr = 1;
 		}
 		/* if you have dog food it'll follow you more closely */
@@ -539,7 +534,8 @@ register int after;	/* this is extra fast monster movement */
 	if (appr == -2) return(0);
 
 	allowflags = ALLOW_M | ALLOW_TRAPS | ALLOW_SSM | ALLOW_SANCT;
-	if (passes_walls(mtmp->data)) allowflags |= (ALLOW_ROCK|ALLOW_WALL);
+	if (passes_walls(mtmp->data)) allowflags |= (ALLOW_ROCK | ALLOW_WALL);
+	if (passes_bars(mtmp->data)) allowflags |= ALLOW_BARS;
 	if (throws_rocks(mtmp->data)) allowflags |= ALLOW_ROCK;
 	if (Conflict && !resist(mtmp, RING_CLASS, 0, 0)) {
 	    allowflags |= ALLOW_U;
@@ -575,10 +571,7 @@ register int after;	/* this is extra fast monster movement */
 		if (m_carrying(mtmp, SKELETON_KEY)) allowflags |= BUSTDOOR;
 	}
 	if (is_giant(mtmp->data)) allowflags |= BUSTDOOR;
-	if (tunnels(mtmp->data) && (!needspick(mtmp->data) ||
-					m_carrying(mtmp, PICK_AXE) ||
-					m_carrying(mtmp, DWARVISH_MATTOCK)))
-		allowflags |= ALLOW_DIG;
+	if (tunnels(mtmp->data)) allowflags |= ALLOW_DIG;
 	cnt = mfndpos(mtmp, poss, info, allowflags);
 
 	/* Normally dogs don't step on cursed items, but if they have no
@@ -724,12 +717,22 @@ newdogpos:
 		}
 		if (!m_in_out_region(mtmp, nix, niy))
 		    return 1;
-		if(IS_ROCK(levl[nix][niy].typ) && may_dig(nix,niy) &&
+		if (((IS_ROCK(levl[nix][niy].typ) && may_dig(nix,niy)) ||
+		     closed_door(nix, niy)) &&
 		    mtmp->weapon_check != NO_WEAPON_WANTED &&
-		    tunnels(mtmp->data) && needspick(mtmp->data) &&
-			(!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp))) {
-		    mtmp->weapon_check = NEED_PICK_AXE;
-		    if (mon_wield_item(mtmp))
+		    tunnels(mtmp->data) && needspick(mtmp->data)) {
+		    if (closed_door(nix, niy)) {
+			if (!(mw_tmp = MON_WEP(mtmp)) ||
+			    !is_pick(mw_tmp) || !is_axe(mw_tmp))
+			    mtmp->weapon_check = NEED_PICK_OR_AXE;
+		    } else if (IS_TREE(levl[nix][niy].typ)) {
+			if (!(mw_tmp = MON_WEP(mtmp)) || !is_axe(mw_tmp))
+			    mtmp->weapon_check = NEED_AXE;
+		    } else if (!(mw_tmp = MON_WEP(mtmp)) || !is_pick(mw_tmp)) {
+			mtmp->weapon_check = NEED_PICK_AXE;
+		    }
+		    if (mtmp->weapon_check >= NEED_PICK_AXE &&
+			mon_wield_item(mtmp))
 			return 0;
 		}
 		/* insert a worm_move() if worms ever begin to eat things */
@@ -757,16 +760,16 @@ newdogpos:
 		ny = sgn(omy - u.uy);
 		cc.x = u.ux + nx;
 		cc.y = u.uy + ny;
-		if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
+		if (goodpos(cc.x, cc.y, mtmp, 0)) goto dognext;
 
 		i  = xytod(nx, ny);
 		for (j = (i + 7)%8; j < (i + 1)%8; j++) {
 			dtoxy(&cc, j);
-			if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
+			if (goodpos(cc.x, cc.y, mtmp, 0)) goto dognext;
 		}
 		for (j = (i + 6)%8; j < (i + 2)%8; j++) {
 			dtoxy(&cc, j);
-			if (goodpos(cc.x, cc.y, mtmp)) goto dognext;
+			if (goodpos(cc.x, cc.y, mtmp, 0)) goto dognext;
 		}
 		cc.x = mtmp->mx;
 		cc.y = mtmp->my;

@@ -24,11 +24,11 @@
 
 /* symbolic names for capacity levels */
 #define UNENCUMBERED	0
-#define SLT_ENCUMBER	1
-#define MOD_ENCUMBER	2
-#define HVY_ENCUMBER	3
-#define EXT_ENCUMBER	4
-#define OVERLOADED	5
+#define SLT_ENCUMBER	1	/* Burdened */
+#define MOD_ENCUMBER	2	/* Stressed */
+#define HVY_ENCUMBER	3	/* Strained */
+#define EXT_ENCUMBER	4	/* Overtaxed */
+#define OVERLOADED	5	/* Overloaded */
 
 /* Macros for how a rumor was delivered in outrumor() */
 #define BY_ORACLE	0
@@ -139,6 +139,7 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define MM_ANGRY	  0x10  /* monster is created angry */
 #define MM_NONAME	  0x20  /* monster is not christened */
 #define MM_NOCOUNTBIRTH	  0x40  /* don't increment born counter (for revival) */
+#define MM_IGNOREWATER	  0x80	/* ignore water when positioning */
 
 /* flags for special ggetobj status returns */
 #define ALL_FINISHED	  0x01  /* called routine already finished the job */
@@ -178,6 +179,11 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 /* Flags to control dotrap() in trap.c */
 #define NOWEBMSG	0x01	/* suppress stumble into web message */
 
+/* Flags to control test_move in hack.c */
+#define DO_MOVE		0	/* really doing the move */
+#define TEST_MOVE	1	/* test a normal move (move there next) */
+#define TEST_TRAV	2	/* test a future travel location */
+
 /*** some utility macros ***/
 #define yn(query) yn_function(query,ynchars, 'n')
 #define ynq(query) yn_function(query,ynqchars, 'q')
@@ -195,8 +201,9 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 #define MAY_FRACTURE	0x10	/* boulders & statues may fracture */
 
 /* Macros for launching objects */
-#define ROLL	1
-#define FLING	2
+#define ROLL		0x01	/* the object is rolling */
+#define FLING		0x02	/* the object is flying thru the air */
+#define LAUNCH_KNOWN	0x80	/* the hero caused this by explicit action */
 
 /* Macros for explosion types */
 #define EXPL_DARK	0
@@ -313,4 +320,14 @@ NEARDATA extern coord bhitpos;	/* place where throw or zap hits or stops */
 # define STATIC_PTR static
 #endif
 
+/* The function argument to qsort() requires a particular
+ * calling convention under WINCE which is not the default
+ * in that environment.
+ */
+#if defined(WIN_CE)
+# define CFDECLSPEC __cdecl
+#else
+# define CFDECLSPEC
+#endif
+ 
 #endif /* HACK_H */

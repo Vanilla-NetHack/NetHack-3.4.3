@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)muse.c	3.4	2002/02/07	*/
+/*	SCCS Id: @(#)muse.c	3.4	2002/12/23	*/
 /*	Copyright (C) 1990 by Ken Arromdee			   */
 /* NetHack may be freely redistributed.  See license for details.  */
 
@@ -445,10 +445,19 @@ struct monst *mtmp;
 		nomore(MUSE_WAN_TELEPORTATION_SELF);
 		nomore(MUSE_WAN_TELEPORTATION);
 		if(obj->otyp == WAN_TELEPORTATION && obj->spe > 0) {
+		    /* use the TELEP_TRAP bit to determine if they know
+		     * about noteleport on this level or not.  Avoids
+		     * ineffective re-use of teleportation.  This does
+		     * mean if the monster leaves the level, they'll know
+		     * about teleport traps.
+		     */
+		    if (!level.flags.noteleport ||
+			!(mtmp->mtrapseen & (1 << (TELEP_TRAP-1)))) {
 			m.defensive = obj;
 			m.has_defense = (mon_has_amulet(mtmp))
 				? MUSE_WAN_TELEPORTATION
 				: MUSE_WAN_TELEPORTATION_SELF;
+		    }
 		}
 		nomore(MUSE_SCR_TELEPORTATION);
 		if(obj->otyp == SCR_TELEPORTATION && mtmp->mcansee
@@ -456,8 +465,12 @@ struct monst *mtmp;
 		   && (!obj->cursed ||
 		       (!(mtmp->isshk && inhishop(mtmp))
 			    && !mtmp->isgd && !mtmp->ispriest))) {
+		    /* see WAN_TELEPORTATION case above */
+		    if (!level.flags.noteleport ||
+			!(mtmp->mtrapseen & (1 << (TELEP_TRAP-1)))) {
 			m.defensive = obj;
 			m.has_defense = MUSE_SCR_TELEPORTATION;
+		    }
 		}
 
 	    if (mtmp->data != &mons[PM_PESTILENCE]) {
@@ -563,6 +576,9 @@ mon_tele:
 		if (tele_restrict(mtmp)) {	/* mysterious force... */
 		    if (vismon && how)		/* mentions 'teleport' */
 			makeknown(how);
+		    /* monster learns that teleportation isn't useful here */
+		    if (level.flags.noteleport)
+			mtmp->mtrapseen |= (1 << (TELEP_TRAP-1));
 		    return 2;
 		}
 		if ((
@@ -584,6 +600,9 @@ mon_tele:
 		otmp->spe--;
 		m_using = TRUE;
 		mbhit(mtmp,rn1(8,6),mbhitm,bhito,otmp);
+		/* monster learns that teleportation isn't useful here */
+		if (level.flags.noteleport)
+		    mtmp->mtrapseen |= (1 << (TELEP_TRAP-1));
 		m_using = FALSE;
 		return 2;
 	case MUSE_SCR_TELEPORTATION:
@@ -882,6 +901,7 @@ struct monst *mtmp;
 {
 	struct permonst *pm = mtmp->data;
 	int difficulty = monstr[(monsndx(pm))];
+	int trycnt = 0;
 
 	if(is_animal(pm) || attacktype(pm, AT_EXPL) || mindless(mtmp->data)
 			|| pm->mlet == S_GHOST
@@ -889,9 +909,12 @@ struct monst *mtmp;
 			|| pm->mlet == S_KOP
 # endif
 		) return 0;
+    try_again:
 	switch (rn2(8 + (difficulty > 3) + (difficulty > 6) +
 				(difficulty > 8))) {
 		case 6: case 9:
+			if (level.flags.noteleport && ++trycnt < 2)
+			    goto try_again;
 			if (!rn2(3)) return WAN_TELEPORTATION;
 			/* else FALLTHRU */
 		case 0: case 1:
@@ -1130,7 +1153,7 @@ register struct obj *otmp;
 		break;
 	case WAN_CANCELLATION:
 	case SPE_CANCELLATION:
-		cancel_monst(mtmp, otmp, FALSE, TRUE, FALSE);
+		(void) cancel_monst(mtmp, otmp, FALSE, TRUE, FALSE);
 		break;
 	}
 	if (reveal_invis) {
@@ -1760,13 +1783,13 @@ skipmsg:
 	case MUSE_WAN_POLYMORPH:
 		mzapmsg(mtmp, otmp, TRUE);
 		otmp->spe--;
-		(void) newcham(mtmp, muse_newcham_mon(mtmp), TRUE);
+		(void) newcham(mtmp, muse_newcham_mon(mtmp), TRUE, FALSE);
 		if (oseen) makeknown(WAN_POLYMORPH);
 		return 2;
 	case MUSE_POT_POLYMORPH:
 		mquaffmsg(mtmp, otmp);
 		if (vismon) pline("%s suddenly mutates!", Monnam(mtmp));
-		(void) newcham(mtmp, muse_newcham_mon(mtmp), FALSE);
+		(void) newcham(mtmp, muse_newcham_mon(mtmp), FALSE, FALSE);
 		if (oseen) makeknown(POT_POLYMORPH);
 		m_useup(mtmp, otmp);
 		return 2;
@@ -1784,7 +1807,7 @@ skipmsg:
 		if (mtmp->wormno) worm_move(mtmp);
 		newsym(trapx, trapy);
 
-		(void) newcham(mtmp, (struct permonst *)0, FALSE);
+		(void) newcham(mtmp, (struct permonst *)0, FALSE, FALSE);
 		return 2;
 	case MUSE_BULLWHIP:
 		/* attempt to disarm hero */
@@ -2011,6 +2034,11 @@ const char *str;
 		makeknown(SHIELD_OF_REFLECTION);
 	    }
 	    return TRUE;
+	} else if (arti_reflects(MON_WEP(mon))) {
+	    /* due to wielded artifact weapon */
+	    if (str)
+		pline(str, s_suffix(mon_nam(mon)), "weapon");
+	    return TRUE;
 	} else if ((orefl = which_armor(mon, W_AMUL)) &&
 				orefl->otyp == AMULET_OF_REFLECTION) {
 	    if (str) {
@@ -2099,6 +2127,10 @@ boolean stoning;
 {
     int nutrit = (obj->otyp == CORPSE) ? dog_nutrition(mon, obj) : 0;
     /* also sets meating */
+
+    /* give a "<mon> is slowing down" message and also remove
+       intrinsic speed (comparable to similar effect on the hero) */
+    mon_adjust_speed(mon, -3, (struct obj *)0);
 
     if (canseemon(mon)) {
 	long save_quan = obj->quan;

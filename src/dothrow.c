@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.4	2002/02/21	*/
+/*	SCCS Id: @(#)dothrow.c	3.4	2003/01/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,10 +21,12 @@ STATIC_DCL boolean FDECL(mhurtle_step, (genericptr_t,int,int));
 
 
 static NEARDATA const char toss_objs[] =
-	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, WEAPON_CLASS, 0 };
+	{ ALLOW_COUNT, COIN_CLASS, ALL_CLASSES, WEAPON_CLASS, 0 };
 /* different default choices when wielding a sling (gold must be included) */
 static NEARDATA const char bullets[] =
-	{ ALLOW_COUNT, GOLD_CLASS, ALL_CLASSES, GEM_CLASS, 0 };
+	{ ALLOW_COUNT, COIN_CLASS, ALL_CLASSES, GEM_CLASS, 0 };
+
+struct obj *thrownobj = 0;	/* tracks an object until it lands */
 
 extern boolean notonhead;	/* for long worms */
 
@@ -44,7 +46,7 @@ int shotlimit;
 	/* ask "in what direction?" */
 #ifndef GOLDOBJ
 	if (!getdir((char *)0)) {
-		if (obj->oclass == GOLD_CLASS) {
+		if (obj->oclass == COIN_CLASS) {
 		    u.ugold += obj->quan;
 		    flags.botl = 1;
 		    dealloc_obj(obj);
@@ -52,7 +54,7 @@ int shotlimit;
 		return(0);
 	}
 
-	if(obj->oclass == GOLD_CLASS) return(throw_gold(obj));
+	if(obj->oclass == COIN_CLASS) return(throw_gold(obj));
 #else
 	if (!getdir((char *)0)) {
 	    /* obj might need to be merged back into the singular gold object */
@@ -69,7 +71,7 @@ int shotlimit;
           If the money is in quiver, throw one coin at a time,
           possibly using a sling.
         */
-	if(obj->oclass == GOLD_CLASS && obj != uquiver) return(throw_gold(obj));
+	if(obj->oclass == COIN_CLASS && obj != uquiver) return(throw_gold(obj));
 #endif
 
 	if(!canletgo(obj,"throw"))
@@ -167,8 +169,8 @@ int shotlimit;
 		otmp = splitobj(obj, 1L);
 	    } else {
 		otmp = obj;
-		if (otmp->owornmask && otmp != uball)
-		    remove_worn_item(otmp);
+		if (otmp->owornmask)
+		    remove_worn_item(otmp, FALSE);
 	    }
 	    freeinv(otmp);
 	    throwit(otmp, wep_mask, twoweap);
@@ -215,7 +217,7 @@ dothrow()
 static void
 autoquiver()
 {
-	register struct obj *otmp, *oammo = 0, *omissile = 0, *omisc = 0;
+	struct obj *otmp, *oammo = 0, *omissile = 0, *omisc = 0, *altammo = 0;
 
 	if (uquiver)
 	    return;
@@ -233,6 +235,8 @@ autoquiver()
 			 objects[otmp->otyp].oc_material == GLASS)) {
 		if (uslinging())
 		    oammo = otmp;
+		else if (ammo_and_launcher(otmp, uswapwep))
+		    altammo = otmp;
 		else if (!omisc)
 		    omisc = otmp;
 	    } else if (otmp->oclass == GEM_CLASS) {
@@ -242,6 +246,8 @@ autoquiver()
 		if (ammo_and_launcher(otmp, uwep))
 		    /* Ammo matched with launcher (bow and arrow, crossbow and bolt) */
 		    oammo = otmp;
+		else if (ammo_and_launcher(otmp, uswapwep))
+		    altammo = otmp;
 		else
 		    /* Mismatched ammo (no better than an ordinary weapon) */
 		    omisc = otmp;
@@ -263,6 +269,8 @@ autoquiver()
 	    setuqwep(oammo);
 	else if (omissile)
 	    setuqwep(omissile);
+	else if (altammo)
+	    setuqwep(altammo);
 	else if (omisc)
 	    setuqwep(omisc);
 
@@ -437,11 +445,13 @@ hurtle_step(arg, x, y)
     if (!isok(x,y)) {
 	You_feel("the spirits holding you back.");
 	return FALSE;
+    } else if (!in_out_region(x, y)) {
+	return FALSE;
     }
 
     if (!Passes_walls || !(may_pass = may_passwall(x, y))) {
 	if (IS_ROCK(levl[x][y].typ) || closed_door(x,y)) {
-	    char *s;
+	    const char *s;
 
 	    pline("Ouch!");
 	    if (IS_TREE(levl[x][y].typ))
@@ -468,6 +478,17 @@ hurtle_step(arg, x, y)
 	    You("smack into something!");
 	    losehp(rnd(2+*range), "touching the edge of the universe", KILLED_BY);
 	    return FALSE;
+	}
+	if ((u.ux - x) && (u.uy - y) &&
+		bad_rock(youmonst.data,u.ux,y) && bad_rock(youmonst.data,x,u.uy)) {
+	    boolean too_much = (invent && (inv_weight() + weight_cap() > 600));
+	    /* Move at a diagonal. */
+	    if (bigmonst(youmonst.data) || too_much) {
+		You("%sget forcefully wedged into a crevice.",
+			too_much ? "and all your belongings " : "");
+		losehp(rnd(2+*range), "wedging into a narrow crevice", KILLED_BY);
+		return FALSE;
+	    }
 	}
     }
 
@@ -536,7 +557,7 @@ mhurtle_step(arg, x, y)
 	/* TODO: Treat walls, doors, iron bars, pools, lava, etc. specially
 	 * rather than just stopping before.
 	 */
-	if (goodpos(x, y, mon) && m_in_out_region(mon, x, y)) {
+	if (goodpos(x, y, mon, 0) && m_in_out_region(mon, x, y)) {
 	    remove_monster(mon->mx, mon->my);
 	    newsym(mon->mx, mon->my);
 	    place_monster(mon, x, y);
@@ -863,6 +884,8 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 	    u.dz = 1;
 	}
 
+	thrownobj = obj;
+
 	if(u.uswallow) {
 		mon = u.ustuck;
 		bhitpos.x = mon->mx;
@@ -882,6 +905,7 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 	    } else {
 		hitfloor(obj);
 	    }
+	    thrownobj = (struct obj*)0;
 	    return;
 
 	} else if(obj->otyp == BOOMERANG && !Underwater) {
@@ -896,6 +920,7 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 			    setworn(obj, wep_mask);
 			    u.twoweap = twoweap;
 			}
+			thrownobj = (struct obj*)0;
 			return;
 		}
 	} else {
@@ -953,8 +978,10 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 		boolean obj_gone;
 
 		if (mon->isshk &&
-			obj->where == OBJ_MINVENT && obj->ocarry == mon)
+		    obj->where == OBJ_MINVENT && obj->ocarry == mon) {
+		    thrownobj = (struct obj*)0;
 		    return;		/* alert shk caught it */
+		}
 		(void) snuff_candle(obj);
 		notonhead = (bhitpos.x != mon->mx || bhitpos.y != mon->my);
 		obj_gone = thitmonst(mon, obj);
@@ -1004,12 +1031,16 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 				  body_part(ARM));
 			    (void) artifact_hit((struct monst *)0,
 						&youmonst, obj, &dmg, 0);
-			    losehp(dmg, xname(obj), KILLED_BY);
+			    losehp(dmg, xname(obj),
+				obj_is_pname(obj) ? KILLED_BY : KILLED_BY_AN);
 			}
-			if (ship_object(obj, u.ux, u.uy, FALSE))
+			if (ship_object(obj, u.ux, u.uy, FALSE)) {
+		    	    thrownobj = (struct obj*)0;
 			    return;
+			}
 			dropy(obj);
 		    }
+		    thrownobj = (struct obj*)0;
 		    return;
 		}
 
@@ -1032,11 +1063,15 @@ boolean twoweap; /* used to restore twoweapon mode if wielded weapon returns */
 		    if(*u.ushops)
 			check_shop_obj(obj, bhitpos.x, bhitpos.y, FALSE);
 		    (void) mpickobj(mon, obj);	/* may merge and free obj */
+		    thrownobj = (struct obj*)0;
 		    return;
 		}
 		(void) snuff_candle(obj);
-		if (!mon && ship_object(obj, bhitpos.x, bhitpos.y, FALSE))
+		if (!mon && ship_object(obj, bhitpos.x, bhitpos.y, FALSE)) {
+		    thrownobj = (struct obj*)0;
 		    return;
+		}
+		thrownobj = (struct obj*)0;
 		place_object(obj, bhitpos.x, bhitpos.y);
 		if(*u.ushops && obj != uball)
 		    check_shop_obj(obj, bhitpos.x, bhitpos.y, FALSE);
@@ -1480,19 +1515,17 @@ xchar x, y;		/* object location (ox, oy may not be right) */
 /*
  * Unconditionally break an object. Assumes all resistance checks
  * and break messages have been delivered prior to getting here.
- * This routine assumes the cause is the hero if heros_fault is TRUE.
- *
  */
 STATIC_OVL void
-breakobj(obj, x, y, heros_fault, from_invent)
+breakobj(obj, x, y, hero_caused, from_invent)
 struct obj *obj;
 xchar x, y;		/* object location (ox, oy may not be right) */
-boolean heros_fault;
+boolean hero_caused;	/* is this the hero's fault? */
 boolean from_invent;
 {
 	switch (obj->oclass == POTION_CLASS ? POT_WATER : obj->otyp) {
 		case MIRROR:
-			if (heros_fault)
+			if (hero_caused)
 			    change_luck(-2);
 			break;
 		case POT_WATER:		/* really, all potions */
@@ -1519,11 +1552,11 @@ boolean from_invent;
 			break;
 		case EGG:
 			/* breaking your own eggs is bad luck */
-			if (heros_fault && obj->spe && obj->corpsenm >= LOW_PM)
+			if (hero_caused && obj->spe && obj->corpsenm >= LOW_PM)
 			    change_luck((schar) -min(obj->quan, 5L));
 			break;
 	}
-	if (heros_fault) {
+	if (hero_caused) {
 	    if (from_invent) {
 		if (*u.ushops)
 			check_shop_obj(obj, x, y, TRUE);
@@ -1570,6 +1603,7 @@ struct obj *obj;
 		case POT_WATER:		/* really, all potions */
 		case EGG:
 		case CREAM_PIE:
+		case MELON:
 		case ACID_VENOM:
 		case BLINDING_VENOM:
 			return 1;
@@ -1607,6 +1641,7 @@ boolean in_view;
 				(obj->quan==1) ? "s" : "", to_pieces);
 			break;
 		case EGG:
+		case MELON:
 			pline("Splat!");
 			break;
 		case CREAM_PIE:
@@ -1633,6 +1668,11 @@ struct obj *obj;
 	register struct monst *mon;
 
 	if(!u.dx && !u.dy && !u.dz) {
+#ifndef GOLDOBJ
+		u.ugold += obj->quan;
+		flags.botl = 1;
+		dealloc_obj(obj);
+#endif
 		You("cannot throw gold at yourself.");
 		return(0);
 	}

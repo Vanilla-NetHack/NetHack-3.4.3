@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pager.c	3.4	2002/01/17	*/
+/*	SCCS Id: @(#)pager.c	3.4	2002/12/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -65,7 +65,7 @@ lookat(x, y, buf, monbuf)
 
     buf[0] = monbuf[0] = 0;
     glyph = glyph_at(x,y);
-    if (u.ux == x && u.uy == y && canseeself()) {
+    if (u.ux == x && u.uy == y && senseself()) {
 	char race[QBUFSZ];
 
 	/* if not polymorphed, show both the role and the race */
@@ -79,6 +79,11 @@ lookat(x, y, buf, monbuf)
 		race,
 		mons[u.umonnum].mname,
 		plname);
+	/* file lookup can't distinguish between "gnomish wizard" monster
+	   and correspondingly named player character, always picking the
+	   former; force it to find the general "wizard" entry instead */
+	if (Role_if(PM_WIZARD) && Race_if(PM_GNOME) && !Upolyd)
+	    pm = &mons[PM_WIZARD];
 
 #ifdef STEED
 	if (u.usteed) {
@@ -89,6 +94,27 @@ lookat(x, y, buf, monbuf)
 	    Strcat(buf, steedbuf);
 	}
 #endif
+	/* When you see yourself normally, no explanation is appended
+	   (even if you could also see yourself via other means).
+	   Sensing self while blind or swallowed is treated as if it
+	   were by normal vision (cf canseeself()). */
+	if ((Invisible || u.uundetected) && !Blind && !u.uswallow) {
+	    unsigned how = 0;
+
+	    if (Infravision)	 how |= 1;
+	    if (Unblind_telepat) how |= 2;
+	    if (Detect_monsters) how |= 4;
+
+	    if (how)
+		Sprintf(eos(buf), " [seen: %s%s%s%s%s]",
+			(how & 1) ? "infravision" : "",
+			/* add comma if telep and infrav */
+			((how & 3) > 2) ? ", " : "",
+			(how & 2) ? "telepathy" : "",
+			/* add comma if detect and (infrav or telep or both) */
+			((how & 7) > 4) ? ", " : "",
+			(how & 4) ? "monster detection" : "");
+	}
     } else if (u.uswallow) {
 	/* all locations when swallowed other than the hero are the monster */
 	Sprintf(buf, "interior of %s",
@@ -120,6 +146,18 @@ lookat(x, y, buf, monbuf)
 			", being held" : ", holding you");
 	    if (mtmp->mleashed)
 		Strcat(buf, ", leashed to you");
+
+	    if (mtmp->mtrapped && cansee(mtmp->mx, mtmp->my)) {
+		struct trap *t = t_at(mtmp->mx, mtmp->my);
+		int tt = t ? t->ttyp : NO_TRAP;
+
+		/* newsym lets you know of the trap, so mention it here */
+		if (tt == BEAR_TRAP || tt == PIT ||
+		    tt == SPIKED_PIT ||tt == WEB) {
+		    Strcat(buf, ", trapped in ");
+		    Strcat(buf, defsyms[trap_to_defsym(tt)].explanation);
+		}
+	    }
 
 	    {
 		int ways_seen = 0, normal = 0, xraydist;
@@ -200,7 +238,7 @@ lookat(x, y, buf, monbuf)
 	if (!otmp || otmp->otyp != glyph_to_obj(glyph)) {
 	    if (glyph_to_obj(glyph) != STRANGE_OBJECT) {
 		otmp = mksobj(glyph_to_obj(glyph), FALSE, FALSE);
-		if (otmp->oclass == GOLD_CLASS)
+		if (otmp->oclass == COIN_CLASS)
 		    otmp->quan = 2L; /* to force pluralization */
 		else if (otmp->otyp == SLIME_MOLD)
 		    otmp->spe = current_fruit;	/* give the fruit a type */
@@ -431,7 +469,7 @@ do_look(quick)
     boolean from_screen;	/* question from the screen */
     boolean need_to_look;	/* need to get explan. from glyph */
     boolean hit_trap;		/* true if found trap explanation */
-    int skipped_venom = 0;	/* non-zero if we ignored "splash of venom" */
+    int skipped_venom;		/* non-zero if we ignored "splash of venom" */
     static const char *mon_interior = "the interior of a monster";
 
     if (quick) {
@@ -468,6 +506,7 @@ do_look(quick)
 	/* Reset some variables. */
 	need_to_look = FALSE;
 	pm = (struct permonst *)0;
+	skipped_venom = 0;
 	found = 0;
 	out_str[0] = '\0';
 
@@ -521,7 +560,8 @@ do_look(quick)
 
 	/* Check for monsters */
 	for (i = 0; i < MAXMCLASSES; i++) {
-	    if (sym == (from_screen ? monsyms[i] : def_monsyms[i])) {
+	    if (sym == (from_screen ? monsyms[i] : def_monsyms[i]) &&
+		monexplain[i]) {
 		need_to_look = TRUE;
 		if (!found) {
 		    Sprintf(out_str, "%c       %s", sym, an(monexplain[i]));
@@ -532,11 +572,14 @@ do_look(quick)
 		}
 	    }
 	}
-	/* handle '@' as a special case; firstmatch is guaranteed
-	   to already be set in that case */
-	if (!from_screen ? (sym == def_monsyms[S_HUMAN]) :
-		(cc.x == u.ux && cc.y == u.uy && sym == monsyms[S_HUMAN]))
-	     found += append_str(out_str, "you");	/* tack on "or you" */
+	/* handle '@' as a special case if it refers to you and you're
+	   playing a character which isn't normally displayed by that
+	   symbol; firstmatch is assumed to already be set for '@' */
+	if ((from_screen ?
+		(sym == monsyms[S_HUMAN] && cc.x == u.ux && cc.y == u.uy) :
+		(sym == def_monsyms[S_HUMAN] && !iflags.showrace)) &&
+	    !(Race_if(PM_HUMAN) || Race_if(PM_ELF)) && !Upolyd)
+	    found += append_str(out_str, "you");	/* tack on "or you" */
 
 	/*
 	 * Special case: if identifying from the screen, and we're swallowed,
@@ -629,6 +672,10 @@ do_look(quick)
 		} else {
 			found += append_str(out_str, def_warnsyms[i].explanation);
 		}
+		/* Kludge: warning trumps boulders on the display.
+		   Reveal the boulder too or player can get confused */
+		if (sobj_at(BOULDER, cc.x, cc.y))
+			Strcat(out_str, " co-located with a boulder");
 		break;	/* out of for loop*/
 	    }
 	}
@@ -646,8 +693,15 @@ do_look(quick)
 	}
 
 	/* handle optional boulder symbol as a special case */ 
-	if (iflags.bouldersym && sym == iflags.bouldersym)
+	if (iflags.bouldersym && sym == iflags.bouldersym) {
+	    if (!found) {
+		firstmatch = "boulder";
+		Sprintf(out_str, "%c       %s", sym, an(firstmatch));
+		found++;
+	    } else {
 		found += append_str(out_str, "boulder");
+	    }
+	}
 	
 	/*
 	 * If we are looking at the screen, follow multiple possibilities or
@@ -711,7 +765,7 @@ doidtrap()
 	register struct trap *trap;
 	int x, y, tt;
 
-	if (!getdir((char *)0)) return 0;
+	if (!getdir("^")) return 0;
 	x = u.ux + u.dx;
 	y = u.uy + u.dy;
 	for (trap = ftrap; trap; trap = trap->ntrap)
@@ -737,12 +791,14 @@ doidtrap()
 	return 0;
 }
 
-int
-dowhatdoes()
+char *
+dowhatdoes_core(q, cbuf)
+char q;
+char *cbuf;
 {
 	dlb *fp;
-	char bufr[BUFSZ+6];
-	register char *buf = &bufr[6], *ep, q, ctrl, meta;
+	char bufr[BUFSZ];
+	register char *buf = &bufr[6], *ep, ctrl, meta;
 
 	fp = dlb_fopen(CMDHELPFILE, "r");
 	if (!fp) {
@@ -750,16 +806,9 @@ dowhatdoes()
 		return 0;
 	}
 
-#if defined(UNIX) || defined(VMS)
-	introff();
-#endif
-	q = yn_function("What command?", (char *)0, '\0');
-#if defined(UNIX) || defined(VMS)
-	intron();
-#endif
-	ctrl = ((q <= '\033') ? (q - 1 + 'A') : 0);
+  	ctrl = ((q <= '\033') ? (q - 1 + 'A') : 0);
 	meta = ((0x80 & q) ? (0x7f & q) : 0);
-	while(dlb_fgets(buf,BUFSZ,fp))
+	while(dlb_fgets(buf,BUFSZ-6,fp)) {
 	    if ((ctrl && *buf=='^' && *(buf+1)==ctrl) ||
 		(meta && *buf=='M' && *(buf+1)=='-' && *(buf+2)==meta) ||
 		*buf==q) {
@@ -778,12 +827,33 @@ dowhatdoes()
 			buf[0] = q;
 			(void) strncpy(buf+1, "       ", 7);
 		}
-		pline("%s", buf);
 		(void) dlb_fclose(fp);
-		return 0;
+		Strcpy(cbuf, buf);
+		return cbuf;
 	    }
-	pline("I've never heard of such commands.");
+	}
 	(void) dlb_fclose(fp);
+	return (char *)0;
+}
+
+int
+dowhatdoes()
+{
+	char bufr[BUFSZ];
+	char q, *reslt;
+
+#if defined(UNIX) || defined(VMS)
+	introff();
+#endif
+	q = yn_function("What command?", (char *)0, '\0');
+#if defined(UNIX) || defined(VMS)
+	intron();
+#endif
+	reslt = dowhatdoes_core(q, bufr);
+	if (reslt)
+		pline("%s", reslt);
+	else
+		pline("I've never heard of such commands.");
 	return 0;
 }
 

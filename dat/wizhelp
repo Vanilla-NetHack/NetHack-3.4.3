@@ -11,9 +11,10 @@ Debug-Mode Quick Reference:
 ^X  ==  show attributes including intrinsic attributes.
 
 #levelchange == change experience level
-#light sources == show mobile light sources
-#monpoly_control == control monster polymorphs
-#poly == polymorph self
+#lightsources == show mobile light sources
+#monpolycontrol == control monster polymorphs
+#panic == panic test
+#polyself == polymorph self
 #seenv == show seen vectors
 #stats == show memory statistics
 #timeout == look at timeout queue

@@ -56,7 +56,7 @@ STATIC_DCL boolean NDECL(comspec_exists);
 extern int GUILaunched;    /* from nttty.c */
 #endif
 
-#ifdef MICRO
+#if defined(MICRO) || defined(WIN32)
 
 void
 flushout()
@@ -95,7 +95,9 @@ dosh()
 #   endif
 		suspend_nhwindows((char *)0);
 #  endif /* TOS */
+#  ifndef NOCWD_ASSUMPTIONS
 		chdirx(orgdir, 0);
+#  endif
 #  ifdef __GO32__
 		if (system(comspec) < 0) {  /* wsu@eecs.umich.edu */
 #  else
@@ -120,7 +122,9 @@ dosh()
 		if (iflags.BIOS)
 			(void)Cursconf(1, -1);
 #  endif
+#  ifndef NOCWD_ASSUMPTIONS
 		chdirx(hackdir, 0);
+#  endif
 		get_scr_size(); /* maybe the screen mode changed (TH) */
 #  if defined(MSDOS) && defined(NO_TERMS)
 		if (grmode) gr_init();
@@ -384,10 +388,17 @@ char *name;
 	return;
 }
 
+#ifdef WIN32
+boolean getreturn_disable;
+#endif
+
 void
 getreturn(str)
 const char *str;
 {
+#ifdef WIN32
+	if (getreturn_disable) return;
+#endif
 #ifdef TOS
 	msmsg("Hit <Return> %s.", str);
 #else
@@ -401,7 +412,7 @@ void
 msmsg VA_DECL(const char *, fmt)
 	VA_START(fmt);
 	VA_INIT(fmt, const char *);
-# if defined(MSDOS)
+# if defined(MSDOS) && defined(NO_TERMS)
 	if (iflags.grmode)
 		gr_finish();
 # endif
@@ -505,7 +516,7 @@ static void msexit()
 #ifdef MFLOPPY
 	if (ramdisk) copybones(TOPERM);
 #endif
-#ifdef CHDIR
+#if defined(CHDIR) && !defined(NOCWD_ASSUMPTIONS)
 	chdir(orgdir);		/* chdir, not chdirx */
 	chdrive(orgdir);
 #endif
@@ -528,25 +539,4 @@ static void msexit()
 #endif
 	return;
 }
-#ifdef WIN32
-/*
- * This is a kludge.  Just before the release of 3.3.0 the latest
- * version of a popular MAPI mail product was found to exhibit
- * a strange result where the current directory was changed out
- * from under NetHack resulting in a failure of all subsequent
- * file operations in NetHack.  This routine is called prior
- * to all file open/renames/deletes in file.c.
- *
- * A more elegant solution will be sought after 3.3.0 is released.
- */
-void dircheck()
-{
-	char dirbuf[BUFSZ];
-	dirbuf[0] = '\0';
-	if (getcwd(dirbuf, sizeof dirbuf) != (char *)0)
-		/* pline("%s,%s",dirbuf,hackdir); */
-		if (strcmp(dirbuf,hackdir) != 0)
-			chdir(hackdir);		/* chdir, not chdirx */
-}
-#endif
 #endif /* MICRO || WIN32 || OS2 */

@@ -27,6 +27,7 @@
 \begin{document}
 %
 % input file: guidebook.mn
+% $Revision: 1.61 $ $Date: 2003/02/13 04:55:28 $
 %
 %.ds h0 "
 %.ds h1 %.ds h2 \%
@@ -39,7 +40,7 @@
 %.au
 \author{Eric S. Raymond\\
 (Extensively edited and expanded for 3.4)}
-\date{March 20, 2002}
+\date{February 12, 2003}
 
 \maketitle
 
@@ -637,10 +638,14 @@ Prefix:  Same as `{\tt g}', but forking of corridors is not considered
 interesting.
 %.lp
 \item[\tb{_}]
-Travel to a map location via a shortest-path algorithm. Stops on most of 
-the same conditions as the `G' command does. For ports with mouse 
+Travel to a map location via a shortest-path algorithm.  The shortest path
+is computed over map locations the hero knows about (e.g. seen or
+previously traversed).  If there is no known path, a guess is made instead.
+Stops on most of 
+the same conditions as the `G' command, but without picking up
+objects, similar to the `M' command.  For ports with mouse 
 support, the command is also invoked when a mouse-click takes place on a 
-location further than 1 cell away from the current position.
+location other than the current position.
 %.lp
 \item[\tb{.}]
 Rest, do nothing for one turn.
@@ -672,13 +677,19 @@ Drop something.\\
 %.lp
 \item[\tb{D}]
 Drop several things.  In answer to the question
-``{\tt What kinds of things do you want to drop? [!\%= aium]}''
+``{\tt What kinds of things do you want to drop? [!\%= BUCXaium]}''
 you should type zero or more object symbols possibly followed by
-`{\tt a}' and/or `{\tt i}' and/or `{\tt u}' and/or `{\tt m}'.\\
+`{\tt a}' and/or `{\tt i}' and/or `{\tt u}' and/or `{\tt m}'.
+In addition, one or more of
+the blessed/uncursed/cursed groups may be typed.\\
 %.sd
 %.si
+{\tt DB}  --- drop all objects known to be blessed.\\
+{\tt DU}  --- drop all objects known to be uncursed.\\
+{\tt DC}  --- drop all objects known to be cursed.\\
+{\tt DX}  --- drop all objects of unknown B/U/C status.\\
 {\tt Da}  --- drop all objects, without asking for confirmation.\\
-{\tt Di}  --- examine your intentory before dropping anything.\\
+{\tt Di}  --- examine your inventory before dropping anything.\\
 {\tt Du}  --- drop only unpaid objects (when in a shop).\\
 {\tt Dm}  --- use a menu to pick which object(s) to drop.\\
 {\tt D\%u} --- drop only unpaid food.
@@ -742,7 +753,8 @@ Pay your shopping bill.
 Put on a ring or other accessory (amulet, blindfold).
 %.lp
 \item[\tb{\^{}P}]
-Repeat previous message (subsequent {\tt \^{}P}'s repeat earlier messages).
+Repeat previous message.  Subsequent {\tt \^{}P}'s repeat earlier messages.
+The behavior can be varied via the msg_window option.
 %.lp
 \item[\tb{q}]
 Quaff (drink) a potion.
@@ -796,8 +808,8 @@ Wield weapon.\\
 Wear armor.
 %.lp
 \item[\tb{x}]
-Exchange your wielded weapon with the item in your secondary
-weapon slot.  The latter is used as your second weapon in
+Exchange your wielded weapon with the item in your alternate
+weapon slot.  The latter is used as your secondary weapon when engaging in
 two-weapon combat.  Note that if one of these slots is empty,
 the exchange still takes place.
 %.lp
@@ -824,7 +836,7 @@ Look at what is here.
 Show what type of thing a visible symbol corresponds to.
 %.lp
 \item[\tb{,}]
-Pick up some things.
+Pick up some things. May be preceded by `{\tt m}' to force a selection menu.
 %.lp
 \item[\tb{@}]
 Toggle the {\it autopickup\/} option on and off.
@@ -1372,9 +1384,9 @@ Many weapons can be wielded in one hand; some require both hands.
 When wielding a two-handed weapon, you can not wear a shield, and
 vice versa.  When wielding a one-handed weapon, you can have another
 weapon ready to use by setting things up with the `{\tt x}' command, which
-exchanges your primary (the one being wielded) and secondary weapons.
+exchanges your primary (the one being wielded) and alternate weapons.
 And if you have proficiency in the ``two weapon combat'' skill, you
-may wield both primary and secondary weapons simultaneously; use the
+may wield both weapons simultaneously as primary and secondary; use the
 `{\tt \#twoweapon}' extended command to engage or disengage that.  Only
 some types of characters (barbarians, for instance) have the necessary
 skill available.  Even with that skill, using two weapons at once incurs
@@ -1861,7 +1873,7 @@ found in the dungeon.  Swallowing and digesting a monster while polymorphed
 is treated as if you ate the creature's corpse.
 Eating leather, dragon hide, or bone items while
 polymorphed into a creature that can digest it, or eating monster brains
-while polymorphed into a (master) mind flayer, is considered eating
+while polymorphed into a mind flayer, is considered eating
 an animal, although wax is only an animal byproduct.
 
 %.pg
@@ -1914,15 +1926,21 @@ learned from your teachers prior to the start of the game and isn't
 counted.
 
 %.pg
-There are several other minor challenges.  It is possible to eliminate
-a species of monsters by genocide; playing without this feature is
-considered a challenge.  You can change the form of any object into
-another object of the same type (``polypiling'') or the form of your own
+There are several other challenges tracked by the game.  It is possible
+to eliminate one or more species of monsters by genocide; playing without
+this feature is considered a challenge.  When you game offers you an
+opportunity to genocide monsters, you may respond with the monster type
+``none'' if you want to decline.  You can change the form of an item into
+another item of the same type (``polypiling'') or the form of your own
 body into another creature (``polyself'') by wand, spell, or potion of
 polymorph; avoiding these effects are each considered challenges.
+Polymorphing monsters, including pets, does not break either of these
+challenges.
 Finally, you may sometimes receive wishes; a game without an attempt to
-wish for an object is a challenge, as is a game without wishing for
-an artifact (even if the artifact immediately disappears).
+wish for any items is a challenge, as is a game without wishing for
+an artifact (even if the artifact immediately disappears).  When the
+game offers you an opportunity to make a wish for an item, you may
+choose ``nothing'' if you want to decline.
 
 %.hn 1
 \section{Options}
@@ -1991,6 +2009,8 @@ is taken as defining the corresponding {\it dungeon},
 {\it boulder\/} option in a different syntax,
 a sequence of decimal numbers giving the character position
 in the current font to be used in displaying each entry.
+A zero in any entry in such a sequence leaves the display of that
+entry unchanged; this feature is not available using the option syntax.
 Such a sequence can be continued to multiple lines by putting a
 `{\tt \verb+\+}' at the end of each line to be continued.
 Any line starting with `{\tt \#}' is treated as a comment.
@@ -2032,11 +2052,6 @@ quality of the weapon; you are free to manually fill your quiver with
 the `Q' command instead.  If no weapon is found or the option is
 false, the `t' (throw) command is executed instead.  (default false)
 %.lp
-\item[\ib{BIOS}]
-Use BIOS calls to update the screen display quickly and to read the keyboard
-(allowing the use of arrow keys to move) on machines with an IBM PC
-compatible BIOS ROM (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
-%.lp
 \item[\ib{boulder}]
 Set the character used to display boulders (default is rock class symbol).
 %.lp
@@ -2059,6 +2074,10 @@ Check free disk space before writing files to disk (default on).
 You may have to turn this off if you have more than 2 GB free space
 on the partition used for your save and level files.
 Only applies when MFLOPPY was defined during compilation.
+%.lp
+\item[\ib{cmdassist}]
+Have the game provide some additional command assistance for new 
+players if it detects some anticipated mistakes (default on).
 %.lp
 \item[\ib{confirm}]
 Have user confirm attacks on pets, shopkeepers, and other
@@ -2228,6 +2247,10 @@ Display an introductory message when starting the game (default on).
 Show corridor squares seen by night vision or a light source held by your
 character as lit (default off).
 %.lp
+\item[\ib{lootabc}]
+Use the old `{\tt a}', `{\tt b}', and `{\tt c}' keyboard shortcuts when
+looting, rather than the mnemonics `{\tt o}', `{\tt i}', and `{\tt b}' (default off).
+%.lp
 \item[\ib{mail}]
 Enable mail delivery during the game (default on).
 %.lp
@@ -2305,7 +2328,7 @@ gremlin, humanoid, imp or minor demon,
 jelly, kobold, leprechaun,
 mimic, nymph, orc,
 piercer, quadruped, rodent,
-spider, trapper or lurker above, horse or unicorn,
+arachnid or centipede, trapper or lurker above, horse or unicorn,
 vortex, worm, xan or other mythical/fantastic insect,
 light, zruty,
 angelic being, bat or bird, centaur,
@@ -2316,7 +2339,7 @@ mummy, naga, ogre,
 pudding or ooze, quantum mechanic, rust monster,
 snake, troll, umber hulk,
 vampire, wraith, xorn,
-yeti or ape or other large beast, zombie,
+apelike creature, zombie,
 human, ghost, golem,
 demon, sea monster, lizard,
 long worm tail, and mimic.
@@ -2327,8 +2350,21 @@ The number of top line messages to save (and recall with `{\tt \^{}P}')
 (default 20). Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{msg\_window}]
-Use a screen-size window to show the previous messages with `{\tt \^{}P}'
-instead of showing them one at a time.  (Currently implemented for tty only.)
+Allows you to change the way recalled messages are displayed.
+(It is currently implemented for tty only.) The possible values are:
+
+%.sd
+%.si
+{\tt s} --- single message (default, this was the behavior before 3.4.0).\\
+{\tt c} --- combination, two messages as {\it single\/}, then as {\it full\/}.\\
+{\tt f} --- full window, oldest message first.\\
+{\tt r} --- full window, newest message first.
+%.ei
+%.ed
+
+For backward compatibility, no value needs to be specified (which
+defaults to {\it full\/}), or it can be negated (which defaults
+to {\it single\/}). 
 %.lp
 \item[\ib{name}]
 Set your character's name (defaults to your user name).  You can also
@@ -2391,16 +2427,10 @@ Prompt for confirmation before praying (default on).
 %.lp
 \item[\ib{pushweapon}]
 Using the `w' (wield) command when already wielding
-something pushes the old item into your secondary weapon slot (default off).
+something pushes the old item into your alternate weapon slot (default off).
 %.Ip
 \item[\ib{race}]
 Selects your race (for example, ``{\tt race:human}'').  Default is random.
-Cannot be set with the `{\tt O}' command.
-%.lp
-\item[\ib{rawio}]
-Force raw (non-cbreak) mode for faster output and more
-bulletproof input (MS-DOS sometimes treats `{\tt \^{}P}' as a printer toggle
-without it) (default off).  Note:  DEC Rainbows hang if this is turned on.
 Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{rest\_on\_space}]
@@ -2413,6 +2443,27 @@ of specifying your role.  Normally only the first letter of the
 value is examined; `r' is an exception with ``{\tt Rogue}'', {\tt Ranger}'',
 and ``{\tt random}'' values.
 %.lp
+\item[\ib{runmode}]
+Controls the amount of screen updating for the map window when engaged
+in multi-turn movement (running via {\tt shift}+direction
+or {\tt control}+direction
+and so forth, or via the travel command or mouse click).
+The possible values are:
+
+%.sd
+%.si
+{\tt teleport} --- update the map after movement has finished;\\
+{\tt run} --- update the map after every seven or so steps;\\
+{\tt walk} --- update the map after each step;\\
+{\tt crawl} --- like {\it walk\/}, but pause briefly after each step.
+%.ei
+%.ed
+
+This option only affects the game's screen display, not the actual
+results of moving.  The default is {\it run\/}; versions prior to 3.4.1 
+used {\it teleport\/} only.  Whether or not the effect is noticeable will
+depend upon the window port used or on the type of terminal.
+%.lp
 \item[\ib{safe\_pet}]
 Prevent you from (knowingly) attacking your pets (default on).
 %.lp
@@ -2424,6 +2475,11 @@ letter of each category (`{\tt t}', `{\tt a}' or `{\tt o}') is necessary.
 \item[\ib{showexp}]
 Show your accumulated experience points on bottom line (default off).
 %.lp
+\item[\ib{showrace}]
+Display yourself as the glyph for your race, rather than the glyph
+for your role (default off).  Note that this setting affects only
+the appearance of the display, not the way the game treats you.
+%.lp
 \item[\ib{showscore}]
 Show your approximate accumulated score on bottom line (default off).
 %.lp
@@ -2432,6 +2488,12 @@ Suppress terminal beeps (default on).
 %.lp
 \item[\ib{sortpack}]
 Sort the pack contents by type when displaying inventory (default on).
+%.lp
+\item[\ib{sound}]
+Enable messages about what your character hears (default on).
+Note that this has nothing to do with your computer's audio capabilities.
+This option is only partly under player control.  The game toggles it
+off and on during and after sleep, for example.
 %.lp
 \item[\ib{standout}]
 Boldface monsters and ``{\tt --More--}'' (default off).
@@ -2479,25 +2541,13 @@ magic portal, web, statue trap, magic trap, anti-magic field, polymorph trap.
 
 Cannot be set with the `{\tt O}' command.
 %.lp
+\item[\ib{travel}]
+Allow the travel command (default on).  Turning this option off will
+prevent the game from attempting unintended moves if you make inadvertent
+mouse clicks on the map window.
+%.lp
 \item[\ib{verbose}]
 Provide more commentary during the game (default on).
-%.lp
-\item[\ib{videocolors}]
-\begin{sloppypar}
-Set the color palette for PC systems using NO\_TERMS
-(default 4-2-6-1-5-3-15-12-10-14-9-13-11).
-The order of colors is red, green, brown, blue, magenta, cyan,
-bright.white, bright.red, bright.green, yellow, bright.blue,
-bright.magenta, and bright.cyan.
-Cannot be set with the `{\tt O}' command.
-\end{sloppypar}
-%.lp
-\item[\ib{videoshades}]
-Set the intensity level of the three gray scales available
-(default dark normal light, {\it PC\/ NetHack\/} only).
-If the game display is difficult to read, try adjusting these scales;
-if this does not correct the problem, try {\tt !color}.
-Cannot be set with the `{\tt O}' command.
 %.lp
 \item[\ib{windowtype}]
 Select which windowing system to use, such as ``{\tt tty}'' or ``{\tt X11}''
@@ -2584,6 +2634,9 @@ NetHack should use a large font.
 \item[\ib{map\_mode}]
 NetHack should display the map in the manner specified.
 %.lp
+\item[\ib{mouse\_support}]
+Allow use of the mouse for input and travel.
+%.lp
 \item[\ib{player\_selection}]
 NetHack should pop up dialog boxes or use prompts for character selection.
 %.lp
@@ -2596,6 +2649,10 @@ For example, in the protected mode MSDOS version, control whether tiles
 get pre-loaded into RAM at the start of the game.  Doing so
 enhances performance of the tile graphics, but uses more memory. (default on).
 Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{scroll\_amount}]
+NetHack should scroll the display by this number of cells
+when the hero reaches the scroll\_margin.
 %.lp
 \item[\ib{scroll\_margin}]
 NetHack should scroll the display when the hero or cursor
@@ -2627,6 +2684,131 @@ NetHack should display windows with the specified foreground/background
 colors if it can.
 \elist
 
+%.hn 2
+\subsection*{Platform-specific Customization options}
+
+%.pg
+Here are explanations of options that are used by specific platforms 
+or ports to customize and change the port behaviour.
+
+\blist{}
+%.lp 
+\item[\ib{altmeta}]
+(default on, {\it Amiga NetHack \/} only).
+%.lp
+\item[\ib{BIOS}]
+Use BIOS calls to update the screen display quickly and to read the keyboard
+(allowing the use of arrow keys to move) on machines with an IBM PC
+compatible BIOS ROM (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).
+%.lp 
+\item[\ib{flush}]
+(default off, {\it Amiga NetHack \/} only).
+%.lp 
+\item[\ib{Macgraphics}]
+(default on, {\it Mac NetHack \/} only).
+%.lp 
+\item[\ib{page\_wait}]
+(default off, {\it Mac NetHack \/} only).
+%.lp
+\item[\ib{rawio}]
+Force raw (non-cbreak) mode for faster output and more
+bulletproof input (MS-DOS sometimes treats `{\tt \^{}P}' as a printer toggle
+without it) (default off, {\it OS/2, PC\/ {\rm and} ST NetHack\/} only).  
+Note:  DEC Rainbows hang if this is turned on.
+Cannot be set with the `{\tt O}' command.
+%.lp 
+\item[\ib{soundcard}]
+(default off, {\it PC NetHack \/} only).
+Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{video}]
+Set the video mode used ({\it PC\/ NetHack\/} only).
+Values are {\it autodetect\/}, {\it default\/}, or {\it vga\/}. 
+Setting {\it vga\/} (or {\it autodetect\/} with vga hardware present) will cause
+the game to display tiles. 
+Cannot be set with the `{\tt O}' command.
+%.lp
+\item[\ib{videocolors}]
+\begin{sloppypar}
+Set the color palette for PC systems using NO\_TERMS
+(default 4-2-6-1-5-3-15-12-10-14-9-13-11, {\it PC\/ NetHack\/} only).
+The order of colors is red, green, brown, blue, magenta, cyan,
+bright.white, bright.red, bright.green, yellow, bright.blue,
+bright.magenta, and bright.cyan.
+Cannot be set with the `{\tt O}' command.
+\end{sloppypar}
+%.lp
+\item[\ib{videoshades}]
+Set the intensity level of the three gray scales available
+(default dark normal light, {\it PC\/ NetHack\/} only).
+If the game display is difficult to read, try adjusting these scales;
+if this does not correct the problem, try {\tt !color}.
+Cannot be set with the `{\tt O}' command.
+\elist
+
+%.lp
+%.hn 2
+\subsection*{Configuring User Sounds}
+
+%.pg
+Some platforms allow you to define sound files to be played when a message 
+that matches a user-defined pattern is delivered to the message window.
+At this time the Qt port and the win32tty and win32gui ports support the
+use of user sounds.
+
+%.pg
+The following config file entries are relevant to mapping user sounds
+to messages:
+
+\blist{}
+%.lp
+\item[\ib{SOUNDDIR}]
+The directory that houses the sound files to be played.
+%.lp
+\item[\ib{SOUND}]
+An entry that maps a sound file to a user-specified message pattern.
+Each SOUND entry is broken down into the following parts:
+
+%.sd
+%.si
+{\tt MESG      } --- message window mapping (the only one supported in 3.4).\\
+{\tt pattern   } --- the pattern to match.\\
+{\tt sound file} --- the sound file to play.\\
+{\tt volume    } --- the volume to be set while playing the sound file.
+%.ei
+%.ed
+\elist
+
+%.pg
+The exact format for the pattern depends on whether the platform is
+built to use {\it regular expressions \/} or NetHack's own internal pattern 
+matching facility. The {\it regular expressions \/} matching can be much more 
+sophisticated than the internal NetHack pattern matching, but requires 
+3rd party libraries on some platforms.  There are plenty of references 
+available elsewhere for explaining {\it regular expressions \/}. You can verify 
+which pattern matching is used by your port with the 
+\#version command.  
+
+%.pg
+NetHack's internal pattern matching routine uses the following
+special characters in its pattern matching:
+
+\begin{verbatim}
+    *--- matches 0 or more characters.
+    ?--- matches any single character.
+\end{verbatim}
+
+%.pg
+Here's an example of a sound mapping using NetHack's internal
+pattern matching facility:
+\begin{verbatim}
+    SOUND=MESG "*chime of a cash register*" "gong.wav" 50
+\end{verbatim}
+specifies that any message with "chime of a cash register" contained
+in it will trigger the playing of "gong.wav".  You can have multiple
+SOUND entries in your config file.
+
+%.lp
 %.hn 2
 \subsection*{Configuring NetHack for Play by the Blind}
 
@@ -2950,7 +3132,8 @@ enhanced the Macintosh port of 3.4.
 \medskip
 \nd {\it Michael Allison}, {\it David Cohrs}, {\it Alex Kompel}, {\it Dion Nicolaas}, and 
 {\it Yitzhak Sapir} maintained and enhanced 3.4 for the Microsoft Windows platform.
-{\it Alex Kompel} contributed a new graphical interface for the Windows port.
+{\it Alex Kompel} contributed a new graphical interface for the Windows port. 
+{\it Alex Kompel} also contributed a Windows CE port for 3.4.1.
 
 %.pg
 \medskip
@@ -2983,41 +3166,42 @@ in this, the list of Dungeoneers:
 \begin{center}
 \begin{tabular}{lll}
 %TABLE_START
-Adam Aronow & Helge Hafting & Mike Engber\\
-Alex Kompel & Irina Rempt-Drijfhout & Mike Gallop\\
-Andreas Dorn & Izchak Miller & Mike Passaretti\\
-Andy Church & J. Ali Harlow & Mike Stephenson\\
-Andy Swanson & Janet Walz & Norm Meluch\\
-Ari Huttunen & Janne Salmij\"{a}rvi & Olaf Seibert\\
-Barton House & Jean-Christophe Collet & Pat Rankin\\
-Benson I. Margulies & Jochen Erwied & Paul Winner\\
-Bill Dyer & John Kallen & Pierre Martineau\\
-Boudewijn Waijers & John Rupley & Ralf Brown\\
-Bruce Cox & John S. Bien & Richard Addison\\
-Bruce Holloway & Johnny Lee & Richard Beigel\\
-Bruce Mewborne & Jon W\{tte & Richard P. Hughey\\
-Carl Schelin & Jonathan Handler & Rob Menke\\
-Chris Russo & Joshua Delahunty & Robin Johnson\\
-David Cohrs & Keizo Yamamoto & Roland McGrath\\
-David Damerell & Ken Arnold & Ron Van Iwaarden\\
-David Gentzel & Ken Arromdee & Ronnen Miller\\
-David Hairston & Ken Lorber & Ross Brown\\
-Dean Luick & Ken Washikita & Sascha Wostmann\\
-Del Lamb & Kevin Darcy & Scott Bigham\\
-Deron Meranda & Kevin Hugo & Scott R. Turner\\
-Dion Nicolaas & Kevin Sitze & Stephen Spackman\\
-Dylan O'Donnell & Kevin Smolkowski & Stephen White\\
-Eric Backus & Kevin Sweet & Steve Creps\\
-Eric Hendrickson & Lars Huttar & Steve Linhart\\
-Eric R. Smith & Mark Gooderum & Steve VanDevender\\
-Eric S. Raymond & Mark Modrall & Teemu Suikki\\
-Erik Andersen & Marvin Bressler & Tim Lennan\\
-Frederick Roeber & Matthew Day & Timo Hakulinen\\
-Gil Neiger & Merlyn LeRoy & Tom Almy\\
-Greg Laskin & Michael Allison & Tom West\\
-Greg Olson & Michael Feir & Warren Cheung\\
-Gregg Wonderly & Michael Hamel & Warwick Allison\\
-Hao-yang Wang & Michael Sokolov & Yitzhak Sapir
+Adam Aronow & Irina Rempt-Drijfhout & Mike Gallop\\
+Alex Kompel & Izchak Miller & Mike Passaretti\\
+Andreas Dorn & J. Ali Harlow & Mike Stephenson\\
+Andy Church & Janet Walz & Norm Meluch\\
+Andy Swanson & Janne Salmij\"{a}rvi & Olaf Seibert\\
+Ari Huttunen & Jean-Christophe Collet & Pasi Kallinen\\
+Barton House & Jochen Erwied & Pat Rankin\\
+Benson I. Margulies & John Kallen & Paul Winner\\
+Bill Dyer & John Rupley & Pierre Martineau\\
+Boudewijn Waijers & John S. Bien & Ralf Brown\\
+Bruce Cox & Johnny Lee & Richard Addison\\
+Bruce Holloway & Jon W\{tte & Richard Beigel\\
+Bruce Mewborne & Jonathan Handler & Richard P. Hughey\\
+Carl Schelin & Joshua Delahunty & Rob Menke\\
+Chris Russo & Keizo Yamamoto & Robin Johnson\\
+David Cohrs & Ken Arnold & Roderick Schertler\\
+David Damerell & Ken Arromdee & Roland McGrath\\
+David Gentzel & Ken Lorber & Ron Van Iwaarden\\
+David Hairston & Ken Washikita & Ronnen Miller\\
+Dean Luick & Kevin Darcy & Ross Brown\\
+Del Lamb & Kevin Hugo & Sascha Wostmann\\
+Deron Meranda & Kevin Sitze & Scott Bigham\\
+Dion Nicolaas & Kevin Smolkowski & Scott R. Turner\\
+Dylan O'Donnell & Kevin Sweet & Stephen Spackman\\
+Eric Backus & Lars Huttar & Stephen White\\
+Eric Hendrickson & Malcolm Ryan & Steve Creps\\
+Eric R. Smith & Mark Gooderum & Steve Linhart\\
+Eric S. Raymond & Mark Modrall & Steve VanDevender\\
+Erik Andersen & Marvin Bressler & Teemu Suikki\\
+Frederick Roeber & Matthew Day & Tim Lennan\\
+Gil Neiger & Merlyn LeRoy & Timo Hakulinen\\
+Greg Laskin & Michael Allison & Tom Almy\\
+Greg Olson & Michael Feir & Tom West\\
+Gregg Wonderly & Michael Hamel & Warren Cheung\\
+Hao-yang Wang & Michael Sokolov & Warwick Allison\\
+Helge Hafting & Mike Engber & Yitzhak Sapir
 %TABLE_END  Do not delete this line.
 \end{tabular}
 \end{center}

@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #endif
 #ifdef WIN32
+#include <errno.h>
 #include "win32api.h"
 #endif
 
@@ -220,6 +221,16 @@ char *basename;
 	(void) strcpy(lock, basename);
 	gfd = open_levelfile(0);
 	if (gfd < 0) {
+#if defined(WIN32) && !defined(WIN_CE)
+ 	    if(errno == EACCES) {
+	  	Fprintf(stderr,
+			"\nThere are files from a game in progress under your name.");
+		Fprintf(stderr,"\nThe files are locked or inaccessible.");
+		Fprintf(stderr,"\nPerhaps the other game is still running?\n");
+	    } else
+	  	Fprintf(stderr,
+			"\nTrouble accessing level 0 (errno = %d).\n", errno);
+#endif
 	    Fprintf(stderr, "Cannot open level 0 for %s.\n", basename);
 	    return(-1);
 	}

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.4	2002/01/19	*/
+/*	SCCS Id: @(#)shk.c	3.4	2003/01/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,6 +24,7 @@ STATIC_DCL void FDECL(kops_gone, (BOOLEAN_P));
 #define IS_SHOP(x)	(rooms[x].rtype >= SHOPBASE)
 
 extern const struct shclass shtypes[];	/* defined in shknam.c */
+extern struct obj *thrownobj;		/* defined in dothrow.c */
 
 STATIC_VAR NEARDATA long int followmsg;	/* last time of follow message */
 
@@ -51,7 +52,7 @@ STATIC_DCL long FDECL(getprice, (struct obj *,BOOLEAN_P));
 STATIC_DCL void FDECL(shk_names_obj,
 		 (struct monst *,struct obj *,const char *,long,const char *));
 STATIC_DCL struct obj *FDECL(bp_to_obj, (struct bill_x *));
-STATIC_DCL boolean FDECL(inherits, (struct monst *, int, BOOLEAN_P));
+STATIC_DCL boolean FDECL(inherits, (struct monst *,int,int));
 STATIC_DCL void FDECL(set_repo_loc, (struct eshk *));
 STATIC_DCL boolean NDECL(angry_shk_exists);
 STATIC_DCL void FDECL(rile_shk, (struct monst *));
@@ -64,7 +65,7 @@ STATIC_DCL void FDECL(add_to_billobjs, (struct obj *));
 STATIC_DCL void FDECL(bill_box_content, (struct obj *, BOOLEAN_P, BOOLEAN_P,
 				     struct monst *));
 #ifdef OVL1
-static void FDECL(rob_shop, (struct monst *));
+static boolean FDECL(rob_shop, (struct monst *));
 #endif
 
 #ifdef OVLB
@@ -88,7 +89,8 @@ static void FDECL(rob_shop, (struct monst *));
     Returns the amount actually paid, so we can know
     if the monster kept the change.
  */
-long money2mon(mon, amount)
+long
+money2mon(mon, amount)
 struct monst *mon;
 long amount;
 {
@@ -103,8 +105,10 @@ long amount;
 	return 0L;
     }
 
-    if (ygold->quan > amount) ygold = splitobj(ygold, amount);
-    else if (ygold->owornmask) remove_worn_item(ygold);		/* quiver */
+    if (ygold->quan > amount)
+	ygold = splitobj(ygold, amount);
+    else if (ygold->owornmask)
+	remove_worn_item(ygold, FALSE);		/* quiver */
     freeinv(ygold);
     add_to_minv(mon, ygold);
     flags.botl = 1;
@@ -282,6 +286,7 @@ register struct monst *shkp;
 	clear_unpaid(invent);
 	clear_unpaid(fobj);
 	clear_unpaid(level.buriedobjlist);
+	if (thrownobj) thrownobj->unpaid = 0;
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		clear_unpaid(mtmp->minvent);
 	for(mtmp = migrating_mons; mtmp; mtmp = mtmp->nmon)
@@ -423,13 +428,13 @@ boolean newlev;
 	    return;
 	}
 
-	rob_shop(shkp);
-
+	if (rob_shop(shkp)) {
 #ifdef KOPS
-	call_kops(shkp, (!newlev && levl[u.ux0][u.uy0].edge));
+	    call_kops(shkp, (!newlev && levl[u.ux0][u.uy0].edge));
 #else
-	(void) angry_guards(FALSE);
+	    (void) angry_guards(FALSE);
 #endif
+	}
 }
 
 /* robbery from outside the shop via telekinesis or grappling hook */
@@ -448,17 +453,19 @@ xchar x, y;
 	if (!eshkp->billct && !eshkp->debit)	/* bill is settled */
 	    return;
 
-	rob_shop(shkp);
-
+	if (rob_shop(shkp)) {
 #ifdef KOPS
-	/* [might want to set 2nd arg based on distance from shop doorway] */
-	call_kops(shkp, FALSE);
+	    /*[might want to set 2nd arg based on distance from shop doorway]*/
+	    call_kops(shkp, FALSE);
 #else
-	(void) angry_guards(FALSE);
+	    (void) angry_guards(FALSE);
 #endif
+	}
 }
 
-static void
+/* shop merchandize has been taken; pay for it with any credit available;  
+   return false if the debt is fully covered by credit, true otherwise */
+static boolean
 rob_shop(shkp)
 struct monst *shkp;
 {
@@ -476,7 +483,7 @@ struct monst *shkp;
 	    total -= eshkp->credit;
 	}
 	setpaid(shkp);
-	if (!total) return;
+	if (!total) return FALSE;
 
 	/* by this point, we know an actual robbery has taken place */
 	eshkp->robbed += total;
@@ -486,6 +493,7 @@ struct monst *shkp;
 	    adjalign(-sgn(u.ualign.type));
 
 	hot_pursuit(shkp);
+	return TRUE;
 }
 
 void
@@ -610,7 +618,8 @@ register char *enterstring;
    making sure they're unpaid and the same type of object; we check the price
    quoted by the shopkeeper and also that they both belong to the same shk.
  */
-boolean same_price(obj1, obj2)
+boolean
+same_price(obj1, obj2)
 struct obj *obj1, *obj2;
 {
 	register struct monst *shkp1, *shkp2;
@@ -889,6 +898,7 @@ register boolean killkops;
 #endif
 		pacify_guards();
 	}
+	after_shk_move(shkp);
 }
 
 STATIC_OVL boolean
@@ -989,10 +999,11 @@ register struct monst *shkp;
 	if(!shkp->isshk) return;
 
 	rile_shk(shkp);
+	(void) strncpy(ESHK(shkp)->customer, plname, PL_NSIZ);
 	ESHK(shkp)->following = 1;
 }
 
-/* used when the shkp is teleported out of his shop,
+/* used when the shkp is teleported or falls (ox == 0) out of his shop,
  * or when the player is not on a costly_spot and he
  * damages something inside the shop.  these conditions
  * must be checked by the calling function.
@@ -1019,7 +1030,7 @@ register xchar ox,oy;
 	   which makes this message look pretty silly, so temporarily restore
 	   her original location during the call to Monnam. */
 	sx = shkp->mx,  sy = shkp->my;
-	if (cansee(ox, oy) && !cansee(sx, sy))
+	if (isok(ox, oy) && cansee(ox, oy) && !cansee(sx, sy))
 		shkp->mx = ox,  shkp->my = oy;
 	pline("%s %s!", Monnam(shkp),
 	      !ANGRY(shkp) ? "gets angry" : "is furious");
@@ -1528,7 +1539,9 @@ boolean itemize;
 	}
 
 	pay(ltmp, shkp);
-	shk_names_obj(shkp, obj, "bought %s for %ld gold piece%s.%s", ltmp, "");
+	shk_names_obj(shkp, obj, consumed ?
+			"paid for %s at a cost of %ld gold piece%s.%s" :
+			"bought %s for %ld gold piece%s.%s", ltmp, "");
 	obj->quan = save_quan;		/* restore original count */
 	/* quan => amount just bought, save_quan => remaining unpaid count */
 	if (consumed) {
@@ -1556,11 +1569,16 @@ static coord repo_location;	/* repossession context */
 /* routine called after dying (or quitting) */
 boolean
 paybill(croaked)
-boolean croaked;
+int croaked;	/* -1: escaped dungeon; 0: quit; 1: died */
 {
 	register struct monst *mtmp, *mtmp2, *resident= (struct monst *)0;
 	register boolean taken = FALSE;
 	register int numsk = 0;
+
+	/* if we escaped from the dungeon, shopkeepers can't reach us;
+	   shops don't occur on level 1, but this could happen if hero
+	   level teleports out of the dungeon and manages not to die */
+	if (croaked < 0) return FALSE;
 
 	/* this is where inventory will end up if any shk takes it */
 	repo_location.x = repo_location.y = 0;
@@ -1592,7 +1610,7 @@ STATIC_OVL boolean
 inherits(shkp, numsk, croaked)
 struct monst *shkp;
 int numsk;
-boolean croaked;
+int croaked;
 {
 	long loss = 0L;
 #ifdef GOLDOBJ
@@ -1660,7 +1678,7 @@ boolean croaked;
 		if (loss > umoney || !loss || roomno == eshkp->shoproom) {
 			eshkp->robbed -= umoney;
 			if (eshkp->robbed < 0L) eshkp->robbed = 0L;
-                        money2mon(shkp, umoney);
+                        if (umoney > 0) money2mon(shkp, umoney);
 #endif
 			flags.botl = 1;
 			pline("%s %s all your possessions.",
@@ -1726,7 +1744,8 @@ struct eshk *eshkp;
 }
 
 /* called at game exit, after inventory disclosure but before making bones */
-void finish_paybill()
+void
+finish_paybill()
 {
 	register struct obj *otmp;
 	int ox = repo_location.x,
@@ -1890,7 +1909,7 @@ register boolean unpaid_only;
 
 	/* the price of contained objects */
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-	    if (otmp->oclass == GOLD_CLASS) continue;
+	    if (otmp->oclass == COIN_CLASS) continue;
 	    /* the "top" container is evaluated by caller */
 	    if (usell) {
 		if (saleable(shkp, otmp) &&
@@ -1920,7 +1939,7 @@ register struct obj *obj;
 
 	/* accumulate contained gold */
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
-	    if (otmp->oclass == GOLD_CLASS)
+	    if (otmp->oclass == COIN_CLASS)
 		value += otmp->quan;
 	    else if (Has_contents(otmp))
 		value += contained_gold(otmp);
@@ -1938,7 +1957,7 @@ register boolean sale;
 
 	/* the "top" container is treated in the calling fn */
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-	    if (otmp->oclass == GOLD_CLASS) continue;
+	    if (otmp->oclass == COIN_CLASS) continue;
 
 	    if (!otmp->unpaid && !(sale && saleable(shkp, otmp)))
 		otmp->no_charge = 1;
@@ -1956,7 +1975,7 @@ register struct obj *obj;
 
 	/* the "top" container is treated in the calling fn */
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-	    if (otmp->oclass == GOLD_CLASS) continue;
+	    if (otmp->oclass == COIN_CLASS) continue;
 
 	    if (otmp->no_charge)
 		otmp->no_charge = 0;
@@ -2091,7 +2110,7 @@ register struct monst *shkp;
 	register struct obj *otmp;
 
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-		if (otmp->oclass == GOLD_CLASS) continue;
+		if (otmp->oclass == COIN_CLASS) continue;
 
 		/* the "top" box is added in addtobill() */
 		if (!otmp->no_charge)
@@ -2164,7 +2183,7 @@ register boolean ininv, dummy, silent;
 		return;
 	}
 
-	if(obj->oclass == GOLD_CLASS) {
+	if(obj->oclass == COIN_CLASS) {
 		costly_gold(obj->ox, obj->oy, obj->quan);
 		return;
 	}
@@ -2338,7 +2357,7 @@ register struct monst *shkp;
 
 	if (Has_contents(obj))
 	    for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
-		if(otmp->oclass == GOLD_CLASS) continue;
+		if(otmp->oclass == COIN_CLASS) continue;
 
 		if (Has_contents(otmp))
 		    subfrombill(otmp, shkp);
@@ -2370,7 +2389,7 @@ register boolean ininv;
 	/* the price of contained objects, if any */
 	for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 
-	    if(otmp->oclass == GOLD_CLASS) continue;
+	    if(otmp->oclass == COIN_CLASS) continue;
 
 	    if (!Has_contents(otmp)) {
 		if(ininv) {
@@ -2404,7 +2423,7 @@ register boolean peaceful, silent;
 	if (!shkp || !inhishop(shkp))
 	    return (0L);
 
-	if(obj->oclass == GOLD_CLASS) {
+	if(obj->oclass == COIN_CLASS) {
 	    gvalue += obj->quan;
 	} else if (Has_contents(obj)) {
 	    register boolean ininv = !!count_unpaid(obj->cobj);
@@ -2425,7 +2444,8 @@ register boolean peaceful, silent;
 	    ESHK(shkp)->debit += value;
 
 	    if(!silent) {
-		char *still = "";
+		const char *still = "";
+
 		if (credit_use) {
 		    if (ESHK(shkp)->credit) {
 			You("have %ld %s credit remaining.",
@@ -2437,11 +2457,12 @@ register boolean peaceful, silent;
 		    }
 		    still = "still ";
 		}
-		if(obj->oclass == GOLD_CLASS)
-		    You("%sowe %s %ld %s!", still, mon_nam(shkp), value, currency(value));
-		else You("%sowe %s %ld %s for %s!", still,
-			mon_nam(shkp),
-			value, currency(value),
+		if(obj->oclass == COIN_CLASS)
+		    You("%sowe %s %ld %s!", still,
+			mon_nam(shkp), value, currency(value));
+		else
+		    You("%sowe %s %ld %s for %s!", still,
+			mon_nam(shkp), value, currency(value),
 			obj->quan > 1L ? "them" : "it");
 	    }
 	} else {
@@ -2449,8 +2470,6 @@ register boolean peaceful, silent;
 
 	    if(!silent) {
 		if(cansee(shkp->mx, shkp->my)) {
-		    if(ESHK(shkp)->customer[0] == 0)
-			(void) strncpy(ESHK(shkp)->customer,plname,PL_NSIZ);
 		    Norep("%s booms: \"%s, you are a thief!\"",
 				Monnam(shkp), plname);
 		} else  Norep("You hear a scream, \"Thief!\"");
@@ -2492,7 +2511,7 @@ xchar x, y;
 	register struct eshk *eshkp;
 	long ltmp = 0L, cltmp = 0L, gltmp = 0L, offer;
 	boolean saleitem, cgold = FALSE, container = Has_contents(obj);
-	boolean isgold = (obj->oclass == GOLD_CLASS);
+	boolean isgold = (obj->oclass == COIN_CLASS);
 	boolean only_partially_your_contents = FALSE;
 
 	if(!(shkp = shop_keeper(*in_rooms(x, y, SHOPBASE))) ||
@@ -2616,7 +2635,7 @@ move_on:
 	   || (obj->oclass == FOOD_CLASS && obj->oeaten)
 	   || (Is_candle(obj) &&
 		   obj->age < 20L * (long)objects[obj->otyp].oc_cost)) {
-		pline("%s seems not interested%s.", Monnam(shkp),
+		pline("%s seems uninterested%s.", Monnam(shkp),
 			cgold ? " in the rest" : "");
 		if (container)
 		    dropped_container(obj, shkp, FALSE);
@@ -3255,8 +3274,24 @@ register struct monst *shkp;
 		}
 	}
 
-	return(move_special(shkp,inhishop(shkp),
-			    appr,uondoor,avoid,omx,omy,gx,gy));
+	z = move_special(shkp,inhishop(shkp),appr,uondoor,avoid,omx,omy,gx,gy);
+	if (z > 0) after_shk_move(shkp);
+
+	return z;
+}
+
+/* called after shopkeeper moves, in case the move causes re-entry into shop */
+void
+after_shk_move(shkp)
+struct monst *shkp;
+{
+	struct eshk *eshkp = ESHK(shkp);
+
+	if (eshkp->bill_p == (struct bill_x *) -1000 && inhishop(shkp)) {
+	    /* reset bill_p, need to re-calc player's occupancy too */
+	    eshkp->bill_p = &eshkp->bill[0];
+	    check_special_room(FALSE);
+	}
 }
 
 #endif /*OVL3*/
@@ -3276,14 +3311,17 @@ shopdig(fall)
 register int fall;
 {
     register struct monst *shkp = shop_keeper(*u.ushops);
-    int lang = 0;
-    char *grabs = "grabs";
+    int lang;
+    const char *grabs = "grabs";
 
     if(!shkp) return;
 
     /* 0 == can't speak, 1 == makes animal noises, 2 == speaks */
-    if (!is_silent(shkp->data) && shkp->data->msound <= MS_ANIMAL)
-    	lang = 1;
+    lang = 0;
+    if (shkp->msleeping || !shkp->mcanmove || is_silent(shkp->data))
+	;	/* lang stays 0 */
+    else if (shkp->data->msound <= MS_ANIMAL)
+	lang = 1;
     else if (shkp->data->msound >= MS_HUMANOID)
 	lang = 2;
 
@@ -3347,6 +3385,8 @@ register int fall;
 		if ((obj->owornmask & ~(W_SWAPWEP|W_QUIVER)) != 0 ||
 			(obj == uswapwep && u.twoweap) ||
 			(obj->otyp == LEASH && obj->leashmon)) continue;
+		if (obj == current_wand) continue;
+		setnotworn(obj);
 		freeinv(obj);
 		subfrombill(obj, shkp);
 		(void) add_to_minv(shkp, obj);	/* may free obj */
@@ -3382,8 +3422,9 @@ coord *mm;
 #endif	/* KOPS */
 
 void
-pay_for_damage(dmgstr)
+pay_for_damage(dmgstr, cant_mollify)
 const char *dmgstr;
+boolean cant_mollify;
 {
 	register struct monst *shkp = (struct monst *)0;
 	char shops_affected[5];
@@ -3493,11 +3534,11 @@ const char *dmgstr;
 	    (void) mnearto(shkp, x, y, TRUE);
 	}
 
-	if((um_dist(x, y, 1) && !uinshp) ||
+	if((um_dist(x, y, 1) && !uinshp) || cant_mollify ||
 #ifndef GOLDOBJ
-			(u.ugold + ESHK(shkp)->credit) < cost_of_damage
+	   (u.ugold + ESHK(shkp)->credit) < cost_of_damage
 #else
-			(money_cnt(invent) + ESHK(shkp)->credit) < cost_of_damage
+	   (money_cnt(invent) + ESHK(shkp)->credit) < cost_of_damage
 #endif
 				|| !rn2(50)) {
 		if(um_dist(x, y, 1) && !uinshp) {
@@ -3569,7 +3610,7 @@ register xchar x, y;
 	return(struct obj *)0;
 
     for (otmp = level.objects[x][y]; otmp; otmp = otmp->nexthere)
-	if (otmp->oclass != GOLD_CLASS)
+	if (otmp->oclass != COIN_CLASS)
 	    break;
     /* note: otmp might have ->no_charge set, but that's ok */
     return (otmp && costly_spot(x, y) && NOTANGRY(shkp)
@@ -3593,7 +3634,7 @@ register struct obj *first_obj;
     putstr(tmpwin, 0, "Fine goods for sale:");
     putstr(tmpwin, 0, "");
     for (otmp = first_obj; otmp; otmp = otmp->nexthere) {
-	if (otmp->oclass == GOLD_CLASS) continue;
+	if (otmp->oclass == COIN_CLASS) continue;
 	cost = (otmp->no_charge || otmp == uball || otmp == uchain) ? 0L :
 		get_cost(otmp, (struct monst *)0);
 	if (Has_contents(otmp))

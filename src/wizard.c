@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.4	2001/12/06	*/
+/*	SCCS Id: @(#)wizard.c	3.4	2003/02/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -9,6 +9,9 @@
 
 #include "hack.h"
 #include "qtext.h"
+#include "epri.h"
+
+extern const int monstr[];
 
 #ifdef OVLB
 
@@ -305,6 +308,7 @@ tactics(mtmp)
 	    case STRAT_HEAL:	/* hide and recover */
 		/* if wounded, hole up on or near the stairs (to block them) */
 		/* unless, of course, there are no stairs (e.g. endlevel) */
+		mtmp->mavenge = 1; /* covetous monsters attack while fleeing */
 		if (In_W_tower(mtmp->mx, mtmp->my, &u.uz) ||
 			(mtmp->iswiz && !xupstair && !mon_has_amulet(mtmp))) {
 		    if (!rn2(3 + mtmp->mhp/10)) rloc(mtmp);
@@ -321,7 +325,7 @@ tactics(mtmp)
 		/* fall through :-) */
 
 	    case STRAT_NONE:	/* harrass */
-	        if(!rn2(5)) mnexto(mtmp);
+		if (!rn2(!mtmp->mflee ? 5 : 33)) mnexto(mtmp);
 		return(0);
 
 	    default:		/* kill, maim, pillage! */
@@ -361,7 +365,7 @@ tactics(mtmp)
 			return(0);
 		    }
 	        } else { /* a monster has it - 'port beside it. */
-		    (void) mnearto(mtmp, tx, ty, TRUE);
+		    (void) mnearto(mtmp, tx, ty, FALSE);
 		    return(0);
 		}
 	    }
@@ -425,7 +429,7 @@ nasty(mcast)
     int count=0;
 
     if(!rn2(10) && Inhell) {
-	msummon(&mons[PM_WIZARD_OF_YENDOR]);
+	msummon((struct monst *) 0);	/* summons like WoY */
 	count++;
     } else {
 	tmp = (u.ulevel > 3) ? u.ulevel/3 : 1; /* just in case -- rph */
@@ -434,10 +438,20 @@ nasty(mcast)
 	bypos.y = u.uy;
 	for(i = rnd(tmp); i > 0; --i)
 	    for(j=0; j<20; j++) {
+		int makeindex;
+
+		/* Don't create more spellcasters of the monsters' level or
+		 * higher--avoids chain summoners filling up the level.
+		 */
+		do {
+		    makeindex = pick_nasty();
+		} while(mcast && attacktype(&mons[makeindex], AT_MAGC) &&
+			monstr[makeindex] >= monstr[mcast->mnum]);
+		/* do this after picking the monster to place */
 		if (mcast &&
-			!enexto(&bypos, mcast->mux, mcast->muy, mcast->data))
+		    !enexto(&bypos, mcast->mux, mcast->muy, &mons[makeindex]))
 		    continue;
-		if ((mtmp = makemon(&mons[pick_nasty()],
+		if ((mtmp = makemon(&mons[makeindex],
 				    bypos.x, bypos.y, NO_MM_FLAGS)) != 0) {
 		    mtmp->msleeping = mtmp->mpeaceful = mtmp->mtame = 0;
 		    set_malign(mtmp);
@@ -516,7 +530,7 @@ intervene()
 			break;
 	    case 2:	if (!Blind)
 			    You("notice a %s glow surrounding you.",
-				  hcolor(Black));
+				  hcolor(NH_BLACK));
 			rndcurse();
 			break;
 	    case 3:	aggravate();
@@ -538,7 +552,7 @@ wizdead()
 	}
 }
 
-const char *random_insult[] = {
+const char * const random_insult[] = {
 	"antic",
 	"blackguard",
 	"caitiff",
@@ -569,7 +583,7 @@ const char *random_insult[] = {
 	"wretch",
 };
 
-const char *random_malediction[] = {
+const char * const random_malediction[] = {
 	"Hell shall soon claim thy remains,",
 	"I chortle at thee, thou pathetic",
 	"Prepare to die, thou",
@@ -608,7 +622,7 @@ register struct monst	*mtmp;
 		    verbalize("%s %s!",
 			  random_malediction[rn2(SIZE(random_malediction))],
 			  random_insult[rn2(SIZE(random_insult))]);
-	} else if(is_lminion(mtmp->data)) {
+	} else if(is_lminion(mtmp)) {
 		com_pager(rn2(QTN_ANGELIC - 1 + (Hallucination ? 1 : 0)) +
 			      QT_ANGELIC);
 	} else {

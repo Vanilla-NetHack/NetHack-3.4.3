@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)explode.c	3.4	2000/07/07	*/
+/*	SCCS Id: @(#)explode.c	3.4	2002/11/10	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -188,7 +188,7 @@ int expltype;
 		}
 		curs_on_u();	/* will flush screen and output */
 
-		if (any_shield) {	/* simulate a shield effect */
+		if (any_shield && flags.sparkle) { /* simulate shield effect */
 		    for (k = 0; k < SHIELD_COUNT; k++) {
 			for (i=0; i<3; i++) for (j=0; j<3; j++) {
 			    if (explmask[i][j] == 1)
@@ -264,8 +264,10 @@ int expltype;
 				      (adtyp == AD_DRST) ? "intoxicated" :
 				      (adtyp == AD_ACID) ? "burned" :
 				       "fried");
-		} else if (cansee(i+x-1, j+y-1))
+		} else if (cansee(i+x-1, j+y-1)) {
+		    if(mtmp->m_ap_type) seemimic(mtmp);
 		    pline("%s is caught in the %s!", Monnam(mtmp), str);
+		}
 
 		idamres += destroy_mitem(mtmp, SCROLL_CLASS, (int) adtyp);
 		idamres += destroy_mitem(mtmp, SPBOOK_CLASS, (int) adtyp);
@@ -314,7 +316,8 @@ int expltype;
 		if (Invulnerable) {
 		    damu = 0;
 		    You("are unharmed!");
-		}
+		} else if (Half_physical_damage && adtyp == AD_PHYS)
+		    damu = (damu+1) / 2;
 		if (adtyp == AD_FIRE) (void) burnarmor(&youmonst);
 		destroy_item(SCROLL_CLASS, (int) adtyp);
 		destroy_item(SPBOOK_CLASS, (int) adtyp);
@@ -344,6 +347,10 @@ int expltype;
 			    killer_format = NO_KILLER_PREFIX;
 			    Sprintf(killer_buf, "caught %sself in %s own %s",
 				    uhim(), uhis(), str);
+			} else if (!strncmpi(str,"tower of flame", 8) ||
+				   !strncmpi(str,"fireball", 8)) {
+			    killer_format = KILLED_BY_AN;
+			    Strcpy(killer_buf, str);
 			} else {
 			    killer_format = KILLED_BY;
 			    Strcpy(killer_buf, str);
@@ -360,7 +367,8 @@ int expltype;
 	if (shopdamage) {
 		pay_for_damage(adtyp == AD_FIRE ? "burn away" :
 			       adtyp == AD_COLD ? "shatter" :
-			       adtyp == AD_DISN ? "disintegrate" : "destroy");
+			       adtyp == AD_DISN ? "disintegrate" : "destroy",
+			       FALSE);
 	}
 
 	/* explosions are noisy */
@@ -392,7 +400,8 @@ struct scatter_chain {
  *	MAY_FRACTURE	Stone objects can be fractured (statues, boulders)
  */
 
-void
+/* returns number of scattered objects */
+long
 scatter(sx,sy,blastforce,scflags, obj)
 int sx,sy;				/* location of objects to scatter */
 int blastforce;				/* force behind the scattering	*/
@@ -405,11 +414,11 @@ struct obj *obj;			/* only scatter this obj        */
 	uchar typ;
 	long qtmp;
 	boolean used_up;
-	boolean split_up = FALSE;
 	boolean individual_object = obj ? TRUE : FALSE;
 	struct monst *mtmp;
 	struct scatter_chain *stmp, *stmp2 = 0;
 	struct scatter_chain *schain = (struct scatter_chain *)0;
+	long total = 0L;
 
 	while ((otmp = individual_object ? obj : level.objects[sx][sy]) != 0) {
 	    if (otmp->quan > 1L) {
@@ -417,17 +426,8 @@ struct obj *obj;			/* only scatter this obj        */
 		if (qtmp > LARGEST_INT) qtmp = LARGEST_INT;
 		qtmp = (long)rnd((int)qtmp);
 		otmp = splitobj(otmp, qtmp);
-		if (rn2(qtmp))
-		    split_up = TRUE;
-		else
-		    split_up = FALSE;
-	    } else
-		split_up = FALSE;
-	    if (individual_object) {
- 		if (split_up) {
-		    obj = otmp;
-		} else
-		    obj = (struct obj *)0;
+	    } else {
+		obj = (struct obj *)0; /* all used */
 	    }
 	    obj_extract_self(otmp);
 	    used_up = FALSE;
@@ -439,7 +439,7 @@ struct obj *obj;			/* only scatter this obj        */
 		if (otmp->otyp == BOULDER) {
 		    pline("%s apart.", Tobjnam(otmp, "break"));
 		    fracture_rock(otmp);
-		    place_object(otmp, sx, sy);	/* put fragments on floor */
+		    place_object(otmp, sx, sy);
 		    if ((otmp = sobj_at(BOULDER, sx, sy)) != 0) {
 			/* another boulder here, restack it to the top */
 			obj_extract_self(otmp);
@@ -541,12 +541,16 @@ struct obj *obj;			/* only scatter this obj        */
 		stmp2 = stmp->next;
 		x = stmp->ox; y = stmp->oy;
 		if (stmp->obj) {
+			if ( x!=sx || y!=sy )
+			    total += stmp->obj->quan;
 			place_object(stmp->obj, x, y);
 			stackobj(stmp->obj);
 		}
 		free((genericptr_t)stmp);
 		newsym(x,y);
 	}
+
+	return total;
 }
 
 

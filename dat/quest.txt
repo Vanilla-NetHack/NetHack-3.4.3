@@ -721,11 +721,11 @@ The air is close with the stench of sulphurous fumes.
 Once again, you find yourself in the lair of %n.
 %E
 %Cc Cav 00050
-"So, human, you seek to invade the lair of %n.
+"So, follower of %l, you seek to invade the lair of %n.
 Only my meals are allowed down here.  Prepare to be eaten!"
 %E
 %Cp Cav 00051
-"So, again you face me, %c.  No human has ever before escaped me.
+"So, again you face me, %c.  No one has ever before escaped me.
 Now I shall kill you."
 %E
 %Cp Cav 00052
@@ -738,7 +738,7 @@ Now I shall kill you."
 "You are weak, %c.  No challenge for the Mother of all Dragons."
 %E
 %Cp Cav 00061
-"I grow hungry, human.  You look like a nice appetizer!"
+"I grow hungry, %r.  You look like a nice appetizer!"
 %E
 %Cp Cav 00062
 "Join me for lunch?  You're the main course, %c."
@@ -868,7 +868,7 @@ microscopic organisms, and not ill humors?"
 "I see that you bring %o, now you can cure this plague!"
 %E
 %Cc Hea 00015
-"Feebly, %l raises his head to look at you.
+Feebly, %l raises his head to look at you.
 
 "It is good to see you again, %p.  I see the concern in your
 eyes, but do not worry for me.  I am not ready for Hades yet.  We have
@@ -2658,7 +2658,6 @@ bad influences on your actions.  Remember, only by following the %a
 path can you hope to overcome the obstacles you will face."
 %E
 %Cc Tou 00021
-%E
 "You have indeed proven yourself a worthy %c, %p.
 
 "But now your kinfolk and I must ask you to put aside your travels and
@@ -2673,6 +2672,7 @@ and recover %o.
 "Do not be distracted on your quest.  If you do not return quickly I fear
 that all will be lost.  Let us both pray now that %d will guide you
 and keep you safe."
+%E
 %Cp Tou 00025
 "Do not be fooled by the false promises of %n."
 %E
@@ -3098,7 +3098,7 @@ You have an odd feeling this may be the last time you ever come here.
 portal spell!!"
 %E
 %Cp Wiz 00008
-"The spells of %n were just to powerful for us to withstand."
+"The spells of %n were just too powerful for us to withstand."
 %E
 %Cp Wiz 00009
 "I, too, will venture into the world, because %n is but one of
@@ -3153,7 +3153,6 @@ in ruins and simplify the task of %n.
 truly ready for this quest.  May %d guide you in this task."
 %E
 %Cc Wiz 00021
-%E
 "Yes, %p, you truly are ready for this dire task.  Listen,
 carefully, for what I tell you now will be of vital importance.
 
@@ -3176,6 +3175,7 @@ shall soon perish.
 find and overcome %n, and return %o to me.
 
 "Go now, with %d, and complete this quest before it is too late."
+%E
 %Cp Wiz 00025
 "Beware, for %n is immune to most magical attacks."
 %E
@@ -3459,7 +3459,21 @@ essential in locating the Amulet of Yendor."
 %Cp - 00049
 "Why search for the Amulet?  Thou wouldst but lose it, cretin."
 %E
+#
+#	Banishment message (for converted hero)
+#
+%Cc - 00060
+"You have betrayed all those who hold allegiance to %d, as you once did.
+My allegiance to %d holds fast and I cannot condone or accept what you 
+have done.
 
+Leave this place.  You shall never set foot at %H again.
+That which you seek is now lost forever, for without the Bell of Opening, 
+you will never be able to enter the place where he who has the Amulet 
+resides.
+
+Go now!  You are banished from this place.
+%E
 #
 #	TEST PATTERN
 #

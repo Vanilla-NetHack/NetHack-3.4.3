@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)flag.h	3.4	2000/01/19	*/
+/*	SCCS Id: @(#)flag.h	3.4	2002/08/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -165,6 +165,8 @@ struct instance_flags {
 	boolean  window_inited; /* true if init_nhwindows() completed */
 	boolean  vision_inited; /* true if vision is ready */
 	boolean  menu_tab_sep;	/* Use tabs to separate option menu fields */
+	boolean  menu_requested; /* Flag for overloaded use of 'm' prefix
+				  * on some non-move commands */
 	int      purge_monsters;	/* # of dead monsters still on fmon list */
 	int *opt_booldup;	/* for duplication of boolean opts in config file */
 	int *opt_compdup;	/* for duplication of compound opts in config file */
@@ -174,7 +176,7 @@ struct instance_flags {
 	boolean  mon_polycontrol;	/* debug: control monster polymorphs */
 #endif
 #ifdef TTY_GRAPHICS
-	boolean prevmsg_window;	/* show more old messages at a time */
+	char prevmsg_window;	/* type of old message window to use */
 	boolean  extmenu;	/* extended commands use menu interface */
 #endif
 #ifdef MFLOPPY
@@ -241,6 +243,7 @@ struct instance_flags {
 	int     wc_fontsiz_status;	/* font size for the status window     */
 	int     wc_fontsiz_menu;	/* font size for the menu window       */
 	int     wc_fontsiz_text;	/* font size for text windows          */
+	int	wc_scroll_amount;	/* scroll this amount at scroll_margin */
 	int	wc_scroll_margin;	/* scroll map when this far from
 						the edge */
 	int	wc_map_mode;		/* specify map viewing options, mostly
@@ -249,9 +252,16 @@ struct instance_flags {
 	boolean	wc_splash_screen;	/* display an opening splash screen or not */
 	boolean	wc_popup_dialog;	/* put queries in pop up dialogs instead of
 				   		in the message window */
-	boolean wc_large_font;		/* draw in larger fonts (say, 12pt instead
-				   		of 9pt) */
 	boolean wc_eight_bit_input;	/* allow eight bit input               */
+	boolean wc_mouse_support;	/* allow mouse support */
+
+	boolean  cmdassist;	/* provide detailed assistance for some commands */
+	boolean	 obsolete;	/* obsolete options can point at this, it isn't used */
+	/* Items which belong in flags, but are here to allow save compatibility */
+	boolean  lootabc;	/* use "a/b/c" rather than "o/i/b" when looting */
+	boolean  showrace;	/* show hero glyph by race rather than by role */
+	boolean  travelcmd;	/* allow travel command */
+	int	 runmode;	/* update screen display during run moves */
 };
 
 /*
@@ -266,7 +276,7 @@ struct instance_flags {
 #define hilite_pet wc_hilite_pet
 #define use_inverse wc_inverse
 #ifdef MAC_GRAPHICS_ENV
-#define large_font wc_large_font
+#define large_font obsolete
 #endif
 #ifdef MAC
 #define popup_dialog wc_popup_dialog
@@ -275,5 +285,11 @@ struct instance_flags {
 
 extern NEARDATA struct flag flags;
 extern NEARDATA struct instance_flags iflags;
+
+/* runmode options */
+#define RUN_TPORT	0	/* don't update display until movement stops */
+#define RUN_LEAP	1	/* update display every 7 steps */
+#define RUN_STEP	2	/* update display every single step */
+#define RUN_CRAWL	3	/* walk w/ extra delay after each update */
 
 #endif /* FLAG_H */

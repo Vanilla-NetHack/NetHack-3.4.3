@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.4	2002/01/17	*/
+/*	SCCS Id: @(#)cmd.c	3.4	2003/02/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -22,7 +22,7 @@
  * module you are trying to debug) or things are going to get rather
  * hard to link :-)
  */
-extern void NDECL(wiz_debug_cmd);
+extern int NDECL(wiz_debug_cmd);
 #endif
 
 #ifdef DUMB	/* stuff commented out in extern.h, but needed here */
@@ -115,6 +115,7 @@ STATIC_PTR int NDECL(wiz_map);
 STATIC_PTR int NDECL(wiz_genesis);
 STATIC_PTR int NDECL(wiz_where);
 STATIC_PTR int NDECL(wiz_detect);
+STATIC_PTR int NDECL(wiz_panic);
 STATIC_PTR int NDECL(wiz_polyself);
 STATIC_PTR int NDECL(wiz_level_tele);
 STATIC_PTR int NDECL(wiz_level_change);
@@ -131,14 +132,18 @@ STATIC_DCL void FDECL(mon_invent_chain, (winid, const char *, struct monst *, lo
 STATIC_DCL void FDECL(mon_chain, (winid, const char *, struct monst *, long *, long *));
 STATIC_DCL void FDECL(contained, (winid, const char *, long *, long *));
 STATIC_PTR int NDECL(wiz_show_stats);
+#  ifdef PORT_DEBUG
+STATIC_DCL int NDECL(wiz_port_debug);
+#  endif
 # endif
 STATIC_PTR int NDECL(enter_explore_mode);
 STATIC_PTR int NDECL(doattributes);
 STATIC_PTR int NDECL(doconduct); /**/
-STATIC_PTR void NDECL(minimal_enlightenment);
+STATIC_PTR boolean NDECL(minimal_enlightenment);
 
 #ifdef OVLB
 STATIC_DCL void FDECL(enlght_line, (const char *,const char *,const char *));
+STATIC_DCL char *FDECL(enlght_combatinc, (const char *,int,int,char *));
 #ifdef UNIX
 static void NDECL(end_of_input);
 #endif
@@ -147,6 +152,7 @@ static void NDECL(end_of_input);
 static const char* readchar_queue="";
 
 STATIC_DCL char *NDECL(parse);
+STATIC_DCL boolean FDECL(help_dir, (CHAR_P,const char *));
 
 #ifdef OVL1
 
@@ -435,6 +441,7 @@ extcmd_via_menu()	/* here after # - now show pick-list of possible commands */
 }
 #endif
 
+/* #monster command - use special monster ability while polymorphed */
 STATIC_PTR int
 domonability()
 {
@@ -484,6 +491,8 @@ enter_explore_mode()
 }
 
 #ifdef WIZARD
+
+/* ^W command - wish for something */
 STATIC_PTR int
 wiz_wish()	/* Unlimited wishes for debug mode by Paul Polderman */
 {
@@ -499,6 +508,7 @@ wiz_wish()	/* Unlimited wishes for debug mode by Paul Polderman */
 	return 0;
 }
 
+/* ^I command - identify hero's inventory */
 STATIC_PTR int
 wiz_identify()
 {
@@ -507,23 +517,29 @@ wiz_identify()
 	return 0;
 }
 
-/* reveal the level map and any traps on it */
+/* ^F command - reveal the level map and any traps on it */
 STATIC_PTR int
 wiz_map()
 {
 	if (wizard) {
 	    struct trap *t;
+	    long save_Hconf = HConfusion,
+		 save_Hhallu = HHallucination;
 
+	    HConfusion = HHallucination = 0L;
 	    for (t = ftrap; t != 0; t = t->ntrap) {
 		t->tseen = 1;
 		map_trap(t, TRUE);
 	    }
 	    do_mapping();
+	    HConfusion = save_Hconf;
+	    HHallucination = save_Hhallu;
 	} else
 	    pline("Unavailable command '^F'.");
 	return 0;
 }
 
+/* ^G command - generate monster(s); a count prefix will be honored */
 STATIC_PTR int
 wiz_genesis()
 {
@@ -532,6 +548,7 @@ wiz_genesis()
 	return 0;
 }
 
+/* ^O command - display dungeon layout */
 STATIC_PTR int
 wiz_where()
 {
@@ -540,6 +557,7 @@ wiz_where()
 	return 0;
 }
 
+/* ^E command - detect unseen (secret doors, traps, hidden monsters) */
 STATIC_PTR int
 wiz_detect()
 {
@@ -548,6 +566,7 @@ wiz_detect()
 	return 0;
 }
 
+/* ^V command - level teleport */
 STATIC_PTR int
 wiz_level_tele()
 {
@@ -556,6 +575,7 @@ wiz_level_tele()
 	return 0;
 }
 
+/* #monpolycontrol command - choose new form for shapechangers, polymorphees */
 STATIC_PTR int
 wiz_mon_polycontrol()
 {
@@ -565,6 +585,7 @@ wiz_mon_polycontrol()
     return 0;
 }
 
+/* #levelchange command - adjust hero's experience level */
 STATIC_PTR int
 wiz_level_change()
 {
@@ -590,7 +611,7 @@ wiz_level_change()
 	}
 	if (newlevel < 1) newlevel = 1;
 	while (u.ulevel > newlevel)
-	    losexp((const char *)0);
+	    losexp("#levelchange");
     } else {
 	if (u.ulevel >= MAXULEV) {
 	    You("are already as experienced as you can get.");
@@ -604,6 +625,16 @@ wiz_level_change()
     return 0;
 }
 
+/* #panic command - test program's panic handling */
+STATIC_PTR int
+wiz_panic()
+{
+	if (yn("Do you want to call panic() and end your game?") == 'y')
+		panic("crash test.");
+        return 0;
+}
+
+/* #polyself command - change hero's form */
 STATIC_PTR int
 wiz_polyself()
 {
@@ -611,6 +642,7 @@ wiz_polyself()
         return 0;
 }
 
+/* #seenv command */
 STATIC_PTR int
 wiz_show_seenv()
 {
@@ -652,6 +684,7 @@ wiz_show_seenv()
 	return 0;
 }
 
+/* #vision command */
 STATIC_PTR int
 wiz_show_vision()
 {
@@ -688,6 +721,7 @@ wiz_show_vision()
 	return 0;
 }
 
+/* #wmode command */
 STATIC_PTR int
 wiz_show_wmodes()
 {
@@ -725,13 +759,13 @@ wiz_show_wmodes()
 /* -enlightenment and conduct- */
 static winid en_win;
 static const char
-	*You_ = "You ",
-	*are  = "are ",  *were  = "were ",
-	*have = "have ", *had   = "had ",
-	*can  = "can ",  *could = "could ";
+	You_[] = "You ",
+	are[]  = "are ",  were[]  = "were ",
+	have[] = "have ", had[]   = "had ",
+	can[]  = "can ",  could[] = "could ";
 static const char
-	*have_been  = "have been ",
-	*have_never = "have never ", *never = "never ";
+	have_been[]  = "have been ",
+	have_never[] = "have never ", never[] = "never ";
 
 #define enl_msg(prefix,present,past,suffix) \
 			enlght_line(prefix, final ? past : present, suffix)
@@ -752,6 +786,43 @@ const char *start, *middle, *end;
 	putstr(en_win, 0, buf);
 }
 
+/* format increased damage or chance to hit */
+static char *
+enlght_combatinc(inctyp, incamt, final, outbuf)
+const char *inctyp;
+int incamt, final;
+char *outbuf;
+{
+	char numbuf[24];
+	const char *modif, *bonus;
+
+	if (final
+#ifdef WIZARD
+		|| wizard
+#endif
+	  ) {
+	    Sprintf(numbuf, "%s%d",
+		    (incamt > 0) ? "+" : "", incamt);
+	    modif = (const char *) numbuf;
+	} else {
+	    int absamt = abs(incamt);
+
+	    if (absamt <= 3) modif = "small";
+	    else if (absamt <= 6) modif = "moderate";
+	    else if (absamt <= 12) modif = "large";
+	    else modif = "huge";
+	}
+	bonus = (incamt > 0) ? "bonus" : "penalty";
+	/* "bonus to hit" vs "damage bonus" */
+	if (!strcmp(inctyp, "damage")) {
+	    const char *ctmp = inctyp;
+	    inctyp = bonus;
+	    bonus = ctmp;
+	}
+	Sprintf(outbuf, "%s %s %s", an(modif), bonus, inctyp);
+	return outbuf;
+}
+
 void
 enlightenment(final)
 int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
@@ -765,7 +836,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 
 #ifdef ELBERETH
 	if (u.uevent.uhand_of_elbereth) {
-	    static const char *hofe_titles[3] = {
+	    static const char * const hofe_titles[3] = {
 				"the Hand of Elbereth",
 				"the Envoy of Balance",
 				"the Glory of Arioch"
@@ -822,18 +893,6 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 			if (u.usick_type & SICK_NONVOMITABLE)
 				you_are("sick from illness");
 		}
-		/* added by JDS */
-		if (u.uhitinc) {
-			Sprintf(buf, "%s%i %s to hit", u.uhitinc > 0 ? "+" : "",
-				u.uhitinc, u.uhitinc > 0 ? "bonus" : "penalty");
-			you_have(buf);
-			
-		}
-		if (u.udaminc) {
-			Sprintf(buf, "%s%i %s to damage", u.udaminc > 0 ? "+" : "",
-				u.udaminc, u.udaminc > 0 ? "bonus" : "penalty");
-			you_have(buf);
-		} /* end JDS portion */
 	}
 	if (Stoned) you_are("turning to stone");
 	if (Slimed) you_are("turning into slime");
@@ -881,7 +940,16 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	if (u.umconf) you_are("going to confuse monsters");
 
 	/*** Appearance and behavior ***/
-	if (Adornment) you_are("adorned");
+	if (Adornment) {
+	    int adorn = 0;
+
+	    if(uleft && uleft->otyp == RIN_ADORNMENT) adorn += uleft->spe;
+	    if(uright && uright->otyp == RIN_ADORNMENT) adorn += uright->spe;
+	    if (adorn < 0)
+		you_are("poorly adorned");
+	    else
+		you_are("adorned");
+	}
 	if (Invisible) you_are("invisible");
 	else if (Invis) you_are("invisible to others");
 	/* ordinarily "visible" is redundant; this is a special case for
@@ -906,7 +974,10 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	else if (Amphibious) you_can("breathe water");
 	if (Passes_walls) you_can("walk through walls");
 #ifdef STEED
-	if (u.usteed) {
+	/* If you die while dismounting, u.usteed is still set.  Since several
+	 * places in the done() sequence depend on u.usteed, just detect this
+	 * special case. */
+	if (u.usteed && (final < 2 || strcmp(killer, "riding accident"))) {
 	    Sprintf(buf, "riding %s", y_monnam(u.usteed));
 	    you_are(buf);
 	}
@@ -925,9 +996,25 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 	}
 
 	/*** Physical attributes ***/
+	if (u.uhitinc)
+	    you_have(enlght_combatinc("to hit", u.uhitinc, final, buf));
+	if (u.udaminc)
+	    you_have(enlght_combatinc("damage", u.udaminc, final, buf));
 	if (Slow_digestion) you_have("slower digestion");
 	if (Regeneration) enl_msg("You regenerate", "", "d", "");
-	if (u.uspellprot || Protection) you_are("protected");
+	if (u.uspellprot || Protection) {
+	    int prot = 0;
+
+	    if(uleft && uleft->otyp == RIN_PROTECTION) prot += uleft->spe;
+	    if(uright && uright->otyp == RIN_PROTECTION) prot += uright->spe;
+	    if (HProtection & INTRINSIC) prot += u.ublessed;
+	    prot += u.uspellprot;
+
+	    if (prot < 0)
+		you_are("ineffectively protected");
+	    else
+		you_are("protected");
+	}
 	if (Protection_from_shape_changers)
 		you_are("protected from shape changers");
 	if (Polymorph) you_are("polymorphing");
@@ -937,7 +1024,7 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 		you_are(buf);
 	}
 	if (Upolyd) {
-	    if (u.ulycn >= LOW_PM) Strcpy(buf, "in beast form");
+	    if (u.umonnum == u.ulycn) Strcpy(buf, "in beast form");
 	    else Sprintf(buf, "polymorphed into %s", an(youmonst.data->mname));
 #ifdef WIZARD
 	    if (wizard) Sprintf(eos(buf), " (%d)", u.mtimedone);
@@ -1039,16 +1126,18 @@ int final;	/* 0 => still in progress; 1 => over, survived; 2 => dead */
 /*
  * Courtesy function for non-debug, non-explorer mode players
  * to help refresh them about who/what they are.
+ * Returns FALSE if menu cancelled (dismissed with ESC), TRUE otherwise.
  */
-STATIC_OVL void
+STATIC_OVL boolean
 minimal_enlightenment()
 {
 	winid tmpwin;
 	menu_item *selected;
 	anything any;
+	int genidx, n;
 	char buf[BUFSZ], buf2[BUFSZ];
-	static char fmtstr[] = "%-15s: %-12s";
-	static char deity_fmtstr[] = "%-17s%s";
+	static const char fmtstr[] = "%-15s: %-12s";
+	static const char deity_fmtstr[] = "%-17s%s";
 
 	any.a_void = 0;
 	buf[0] = buf2[0] = '\0';
@@ -1085,10 +1174,11 @@ minimal_enlightenment()
 		(flags.female && urole.name.f) ? urole.name.f : urole.name.m);
 	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 	}
-	Sprintf(buf, fmtstr, "gender", genders[poly_gender()].adj);
+	/* don't want poly_gender() here; it forces `2' for non-humanoids */
+	genidx = is_neuter(youmonst.data) ? 2 : flags.female;
+	Sprintf(buf, fmtstr, "gender", genders[genidx].adj);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
-
-	if (Upolyd) {
+	if (Upolyd && (int)u.mfemale != genidx) {
 	    Sprintf(buf, fmtstr, "gender (base)", genders[u.mfemale].adj);
 	    add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 	}
@@ -1105,7 +1195,7 @@ minimal_enlightenment()
 		&& u.ualign.type == A_CHAOTIC) ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_CHAOTIC)       ? " (s)" :
 	    (u.ualign.type   == A_CHAOTIC)       ? " (c)" : "");
-    	Sprintf(buf, fmtstr, "chaotic deity", buf2);
+	Sprintf(buf, fmtstr, "Chaotic", buf2);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
 	Sprintf(buf2, deity_fmtstr, align_gname(A_NEUTRAL),
@@ -1113,25 +1203,28 @@ minimal_enlightenment()
 		&& u.ualign.type == A_NEUTRAL) ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_NEUTRAL)       ? " (s)" :
 	    (u.ualign.type   == A_NEUTRAL)       ? " (c)" : "");
-    	Sprintf(buf, fmtstr, "neutral deity", buf2);
+	Sprintf(buf, fmtstr, "Neutral", buf2);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
 	Sprintf(buf2, deity_fmtstr, align_gname(A_LAWFUL),
-	    (u.ualignbase[A_ORIGINAL] == u.ualign.type && u.ualign.type == A_LAWFUL)  ? " (s,c)" :
+	    (u.ualignbase[A_ORIGINAL] == u.ualign.type &&
+		u.ualign.type == A_LAWFUL)  ? " (s,c)" :
 	    (u.ualignbase[A_ORIGINAL] == A_LAWFUL)        ? " (s)" :
 	    (u.ualign.type   == A_LAWFUL)        ? " (c)" : "");
-    	Sprintf(buf, fmtstr, "lawful  deity", buf2);
+	Sprintf(buf, fmtstr, "Lawful", buf2);
 	add_menu(tmpwin, NO_GLYPH, &any, 0, 0, ATR_NONE, buf, FALSE);
 
 	end_menu(tmpwin, "Base Attributes");
-	(void) select_menu(tmpwin, PICK_NONE, &selected);
+	n = select_menu(tmpwin, PICK_NONE, &selected);
 	destroy_nhwindow(tmpwin);
+	return (n != -1);
 }
 
 STATIC_PTR int
 doattributes()
 {
-	minimal_enlightenment();
+	if (!minimal_enlightenment())
+		return 0;
 	if (wizard || discover)
 		enlightenment(0);
 	return 0;
@@ -1409,6 +1502,10 @@ struct ext_func_tab extcmdlist[] = {
 	{(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
+#ifdef PORT_DEBUG
+	{(char *)0, (char *)0, donull, TRUE},
+#endif
+	{(char *)0, (char *)0, donull, TRUE},
         {(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
 	{(char *)0, (char *)0, donull, TRUE},
@@ -1423,9 +1520,13 @@ struct ext_func_tab extcmdlist[] = {
 #if defined(WIZARD)
 static const struct ext_func_tab debug_extcmdlist[] = {
 	{"levelchange", "change experience level", wiz_level_change, TRUE},
-	{"light sources", "show mobile light sources", wiz_light_sources, TRUE},
-	{"monpoly_control", "control monster polymorphs", wiz_mon_polycontrol, TRUE},
-	{"poly", "polymorph self", wiz_polyself, TRUE},
+	{"lightsources", "show mobile light sources", wiz_light_sources, TRUE},
+	{"monpolycontrol", "control monster polymorphs", wiz_mon_polycontrol, TRUE},
+	{"panic", "test panic routine (fatal to game)", wiz_panic, TRUE},
+	{"polyself", "polymorph self", wiz_polyself, TRUE},
+#ifdef PORT_DEBUG
+	{"portdebug", "wizard port debug command", wiz_port_debug, TRUE},
+#endif
 	{"seenv", "show seen vectors", wiz_show_seenv, TRUE},
 	{"stats", "show memory statistics", wiz_show_stats, TRUE},
 	{"timeout", "look at timeout queue", wiz_timeout_queue, TRUE},
@@ -1466,9 +1567,9 @@ add_debug_extended_commands()
 }
 
 
-static const char *template = "%-18s %4ld  %6ld";
-static const char *count_str = "                   count  bytes";
-static const char *separator = "------------------ -----  ------";
+static const char template[] = "%-18s %4ld  %6ld";
+static const char count_str[] = "                   count  bytes";
+static const char separator[] = "------------------ -----  ------";
 
 STATIC_OVL void
 count_obj(chain, total_count, total_size, top, recurse)
@@ -1661,6 +1762,7 @@ register char *cmd;
 	boolean do_walk, do_rush, prefix_seen, bad_command,
 		firsttime = (cmd == 0);
 
+	iflags.menu_requested = FALSE;
 	if (firsttime) {
 		flags.nopick = 0;
 		cmd = parse();
@@ -1738,12 +1840,16 @@ register char *cmd;
 		    multi = 0;
 		    return;
 	 case CMD_TRAVEL:
-		    flags.travel = 1;
-		    flags.run = 8;
-		    flags.nopick = 1;
-		    do_rush = TRUE;
-		    break;
+		    if (iflags.travelcmd) {
+			    flags.travel = 1;
+			    flags.run = 8;
+			    flags.nopick = 1;
+			    do_rush = TRUE;
+			    break;
+		    }
+		    /*FALLTHRU*/
 	 default:   if (movecmd(*cmd)) {	/* ordinary movement */
+			flags.run = 0;	/* only matters here if it was 8 */
 			do_walk = TRUE;
 		    } else if (movecmd(iflags.num_pad ?
 				       unmeta(*cmd) : lowc(*cmd))) {
@@ -1755,6 +1861,14 @@ register char *cmd;
 		    }
 		    break;
 	}
+
+	/* some special prefix handling */
+	/* overload 'm' prefix for ',' to mean "request a menu" */
+	if (prefix_seen && cmd[1] == ',') {
+		iflags.menu_requested = TRUE;
+		++cmd;
+	}
+
 	if (do_walk) {
 	    if (multi) flags.mv = TRUE;
 	    domove();
@@ -1820,7 +1934,9 @@ register char *cmd;
 		}
 	    }
 	    *cp = '\0';
-	    Norep("Unknown command '%s'.", expcmd);
+	    if (!prefix_seen || !iflags.cmdassist ||
+		!help_dir(0, "Invalid direction key!"))
+		Norep("Unknown command '%s'.", expcmd);
 	}
 	/* didn't move */
 	flags.move = FALSE;
@@ -1870,6 +1986,38 @@ char sym;
 	return !u.dz;
 }
 
+/*
+ * uses getdir() but unlike getdir() it specifically
+ * produces coordinates using the direction from getdir()
+ * and verifies that those coordinates are ok.
+ *
+ * If the call to getdir() returns 0, Never_mind is displayed.
+ * If the resulting coordinates are not okay, emsg is displayed.
+ *
+ * Returns non-zero if coordinates in cc are valid.
+ */
+int get_adjacent_loc(prompt,emsg,x,y,cc)
+const char *prompt, *emsg;
+xchar x,y;
+coord *cc;
+{
+	xchar new_x, new_y;
+	if (!getdir(prompt)) {
+		pline(Never_mind);
+		return 0;
+	}
+	new_x = x + u.dx;
+	new_y = y + u.dy;
+	if (cc && isok(new_x,new_y)) {
+		cc->x = new_x;
+		cc->y = new_y;
+	} else {
+		if (emsg) pline(emsg);
+		return 0;
+	}
+	return 1;
+}
+
 int
 getdir(s)
 const char *s;
@@ -1881,7 +2029,7 @@ const char *s;
 	    dirsym = readchar();
 	else
 #endif
-	    dirsym = yn_function (s ? s : "In what direction?",
+	    dirsym = yn_function ((s && *s != '^') ? s : "In what direction?",
 					(char *)0, '\0');
 #ifdef REDO
 	savech(dirsym);
@@ -1889,12 +2037,84 @@ const char *s;
 	if(dirsym == '.' || dirsym == 's')
 		u.dx = u.dy = u.dz = 0;
 	else if(!movecmd(dirsym) && !u.dz) {
-		if(!index(quitchars, dirsym))
-			pline("What a strange direction!");
+		boolean did_help = FALSE;
+		if(!index(quitchars, dirsym)) {
+		    if (iflags.cmdassist) {
+			did_help = help_dir((s && *s == '^') ? dirsym : 0,
+					    "Invalid direction key!");
+		    }
+		    if (!did_help) pline("What a strange direction!");
+		}
 		return 0;
 	}
 	if(!u.dz && (Stunned || (Confusion && !rn2(5)))) confdir();
 	return 1;
+}
+
+STATIC_OVL boolean
+help_dir(sym, msg)
+char sym;
+const char *msg;
+{
+	char ctrl;
+	winid win;
+	static const char wiz_only_list[] = "EFGIOVW";
+	char buf[BUFSZ], buf2[BUFSZ], *expl;
+
+	win = create_nhwindow(NHW_TEXT);
+	if (!win) return FALSE;
+	if (msg) {
+		Sprintf(buf, "cmdassist: %s", msg);
+		putstr(win, 0, buf);
+		putstr(win, 0, "");
+	}
+	if (letter(sym)) { 
+	    sym = highc(sym);
+	    ctrl = (sym - 'A') + 1;
+	    if ((expl = dowhatdoes_core(ctrl, buf2))
+		&& (!index(wiz_only_list, sym)
+#ifdef WIZARD
+		    || wizard
+#endif
+	                     )) {
+		Sprintf(buf, "Are you trying to use ^%c%s?", sym,
+			index(wiz_only_list, sym) ? "" :
+			" as specified in the Guidebook");
+		putstr(win, 0, buf);
+		putstr(win, 0, "");
+		putstr(win, 0, expl);
+		putstr(win, 0, "");
+		putstr(win, 0, "To use that command, you press");
+		Sprintf(buf,
+			"the <Ctrl> key, and the <%c> key at the same time.", sym);
+		putstr(win, 0, buf);
+		putstr(win, 0, "");
+	    }
+	}
+	if (iflags.num_pad) {
+		putstr(win, 0, "Valid direction keys (with number_pad on) are:");
+		putstr(win, 0, "          7  8  9");
+		putstr(win, 0, "           \\ | / ");
+		putstr(win, 0, "          4- . -6");
+		putstr(win, 0, "           / | \\ ");
+		putstr(win, 0, "          1  2  3");
+	} else {
+		putstr(win, 0, "Valid direction keys are:");
+		putstr(win, 0, "          y  k  u");
+		putstr(win, 0, "           \\ | / ");
+		putstr(win, 0, "          h- . -l");
+		putstr(win, 0, "           / | \\ ");
+		putstr(win, 0, "          b  j  n");
+	};
+	putstr(win, 0, "");
+	putstr(win, 0, "          <  up");
+	putstr(win, 0, "          >  down");
+	putstr(win, 0, "          .  direct at yourself");
+	putstr(win, 0, "");
+	putstr(win, 0, "(Suppress this message with !cmdassist in config file.)");
+	display_nhwindow(win, FALSE);
+	destroy_nhwindow(win);
+	return TRUE;
 }
 
 #endif /* OVL1 */
@@ -1936,62 +2156,81 @@ click_to_cmd(x, y, mod)
     x -= u.ux;
     y -= u.uy;
 
-    if ( abs(x) <= 1 && abs(y) <= 1 ) {
-	x = sgn(x), y = sgn(y);
+    if (iflags.travelcmd) {
+        if (abs(x) <= 1 && abs(y) <= 1 ) {
+            x = sgn(x), y = sgn(y);
+        } else {
+            u.tx = u.ux+x;
+            u.ty = u.uy+y;
+            cmd[0] = CMD_TRAVEL;
+            return cmd;
+        }
+
+        if(x == 0 && y == 0) {
+            /* here */
+            if(IS_FOUNTAIN(levl[u.ux][u.uy].typ) || IS_SINK(levl[u.ux][u.uy].typ)) {
+                cmd[0]=mod == CLICK_1 ? 'q' : M('d');
+                return cmd;
+            } else if(IS_THRONE(levl[u.ux][u.uy].typ)) {
+                cmd[0]=M('s');
+                return cmd;
+            } else if((u.ux == xupstair && u.uy == yupstair)
+                      || (u.ux == sstairs.sx && u.uy == sstairs.sy && sstairs.up)
+                      || (u.ux == xupladder && u.uy == yupladder)) {
+                return "<";
+            } else if((u.ux == xdnstair && u.uy == ydnstair)
+                      || (u.ux == sstairs.sx && u.uy == sstairs.sy && !sstairs.up)
+                      || (u.ux == xdnladder && u.uy == ydnladder)) {
+                return ">";
+            } else if(OBJ_AT(u.ux, u.uy)) {
+                cmd[0] = Is_container(level.objects[u.ux][u.uy]) ? M('l') : ',';
+                return cmd;
+            } else {
+                return "."; /* just rest */
+            }
+        }
+
+        /* directional commands */
+
+        dir = xytod(x, y);
+
+	if (!m_at(u.ux+x, u.uy+y) && !test_move(u.ux, u.uy, x, y, TEST_MOVE)) {
+            cmd[1] = (iflags.num_pad ? ndir[dir] : sdir[dir]);
+            cmd[2] = 0;
+            if (IS_DOOR(levl[u.ux+x][u.uy+y].typ)) {
+                /* slight assistance to the player: choose kick/open for them */
+                if (levl[u.ux+x][u.uy+y].doormask & D_LOCKED) {
+                    cmd[0] = C('d');
+                    return cmd;
+                }
+                if (levl[u.ux+x][u.uy+y].doormask & D_CLOSED) {
+                    cmd[0] = 'o';
+                    return cmd;
+                }
+            }
+            if (levl[u.ux+x][u.uy+y].typ <= SCORR) {
+                cmd[0] = 's';
+                cmd[1] = 0;
+                return cmd;
+            }
+        }
     } else {
-	u.tx = u.ux+x;
-	u.ty = u.uy+y;
-	cmd[0] = CMD_TRAVEL;
-	return cmd;
-    }
+        /* convert without using floating point, allowing sloppy clicking */
+        if(x > 2*abs(y))
+            x = 1, y = 0;
+        else if(y > 2*abs(x))
+            x = 0, y = 1;
+        else if(x < -2*abs(y))
+            x = -1, y = 0;
+        else if(y < -2*abs(x))
+            x = 0, y = -1;
+        else
+            x = sgn(x), y = sgn(y);
 
-    if(x == 0 && y == 0) {
-	/* here */
-	if(IS_FOUNTAIN(levl[u.ux][u.uy].typ) || IS_SINK(levl[u.ux][u.uy].typ)) {
-	    cmd[0]=mod == CLICK_1 ? 'q' : M('d');
-	    return cmd;
-	} else if(IS_THRONE(levl[u.ux][u.uy].typ)) {
-	    cmd[0]=M('s');
-	    return cmd;
-	} else if((u.ux == xupstair && u.uy == yupstair)
-		  || (u.ux == sstairs.sx && u.uy == sstairs.sy && sstairs.up)
-		  || (u.ux == xupladder && u.uy == yupladder)) {
-	    return "<";
-	} else if((u.ux == xdnstair && u.uy == ydnstair)
-		  || (u.ux == sstairs.sx && u.uy == sstairs.sy && !sstairs.up)
-		  || (u.ux == xdnladder && u.uy == ydnladder)) {
-	    return ">";
-	} else if(OBJ_AT(u.ux, u.uy)) {
-	    cmd[0] = Is_container(level.objects[u.ux][u.uy]) ? M('l') : ',';
-	    return cmd;
-	} else {
-	    return "."; /* just rest */
-	}
-    }
+        if(x == 0 && y == 0)	/* map click on player to "rest" command */
+            return ".";
 
-    /* directional commands */
-
-    dir = xytod(x, y);
-
-    if (!m_at(u.ux+x, u.uy+y) && !test_move(u.ux, u.uy, x, y, 1)) {
-	cmd[1] = (iflags.num_pad ? ndir[dir] : sdir[dir]);
-	cmd[2] = 0;
-	if (IS_DOOR(levl[u.ux+x][u.uy+y].typ)) {
-	    /* slight assistance to the player: choose kick/open for them */
-	    if (levl[u.ux+x][u.uy+y].doormask & D_LOCKED) {
-		cmd[0] = C('d');
-		return cmd;
-	    }
-	    if (levl[u.ux+x][u.uy+y].doormask & D_CLOSED) {
-		cmd[0] = 'o';
-		return cmd;
-	    }
-	}
-	if (levl[u.ux+x][u.uy+y].typ <= SCORR) {
-	    cmd[0] = 's';
-	    cmd[1] = 0;
-	    return cmd;
-	}
+        dir = xytod(x, y);
     }
 
     /* move, attack, etc. */
@@ -2142,6 +2381,8 @@ dotravel()
 	/* Keyboard travel command */
 	static char cmd[2];
 	coord cc;
+
+	if (!iflags.travelcmd) return 0;
 	cmd[1]=0;
 	cc.x = u.ux;
 	cc.y = u.uy;
@@ -2156,6 +2397,54 @@ dotravel()
 	readchar_queue = cmd;
 	return 0;
 }
+
+#ifdef PORT_DEBUG
+# ifdef WIN32CON
+extern void NDECL(win32con_debug_keystrokes);
+# endif
+
+int
+wiz_port_debug()
+{
+	int n, k;
+	winid win;
+	anything any;
+	int item = 'a';
+	int num_menu_selections;
+	struct menu_selection_struct {
+		char *menutext;
+		void NDECL((*fn));
+	} menu_selections[] = {
+#ifdef WIN32CON
+		{"test win32 keystrokes", win32con_debug_keystrokes},
+#endif
+		{(char *)0, (void NDECL((*)))0}		/* array terminator */
+	};
+
+	num_menu_selections = SIZE(menu_selections) - 1;
+	if (num_menu_selections > 0) {
+		menu_item *pick_list;
+		win = create_nhwindow(NHW_MENU);
+		start_menu(win);
+		for (k=0; k < num_menu_selections; ++k) {
+			any.a_int = k+1;
+			add_menu(win, NO_GLYPH, &any, item++, 0, ATR_NONE,
+				menu_selections[k].menutext, MENU_UNSELECTED);
+		}
+		end_menu(win, "Which port debugging feature?");
+		n = select_menu(win, PICK_ONE, &pick_list);
+		destroy_nhwindow(win);
+		if (n > 0) {
+			n = pick_list[0].item.a_int - 1;
+			free((genericptr_t) pick_list);
+			/* execute the function */
+			(*menu_selections[n].fn)();
+		}
+	} else
+		pline("No port-specific debug capability defined.");
+	return 0;
+}
+# endif /*PORT_DEBUG*/
 
 #endif /* OVL0 */
 

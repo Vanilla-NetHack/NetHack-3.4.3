@@ -1,9 +1,10 @@
-/*	SCCS Id: @(#)save.c	3.4	2002/01/19	*/
+/*	SCCS Id: @(#)save.c	3.4	2002/08/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 #include "lev.h"
+#include "quest.h"
 
 #ifndef NO_SIGNAL
 #include <signal.h>
@@ -11,8 +12,6 @@
 #if !defined(LSC) && !defined(O_WRONLY) && !defined(AZTEC_C)
 #include <fcntl.h>
 #endif
-
-#include "quest.h"
 
 #ifdef MFLOPPY
 long bytes_counted;
@@ -66,6 +65,7 @@ dosave()
 		program_state.done_hup = 0;
 #endif
 		if(dosave0()) {
+			program_state.something_worth_saving = 0;
 			u.uhp = -1;		/* universal game's over indicator */
 			/* make sure they see the Saving message */
 			display_nhwindow(WIN_MESSAGE, TRUE);
@@ -116,6 +116,7 @@ dosave0()
 	register int fd, ofd;
 	xchar ltmp;
 	d_level uz_save;
+	char whynot[BUFSZ];
 
 	if (!SAVEF[0])
 		return 0;
@@ -149,7 +150,6 @@ dosave0()
 	HUP mark_synch();	/* flush any buffered screen output */
 
 	fd = create_savefile();
-
 	if(fd < 0) {
 		HUP pline("Cannot open save file.");
 		(void) delete_savefile();	/* ab@unido */
@@ -203,6 +203,9 @@ dosave0()
 #endif /* MFLOPPY */
 
 	store_version(fd);
+#ifdef STORE_PLNAME_IN_FILE
+	bwrite(fd, (genericptr_t) plname, PL_NSIZ);
+#endif
 	ustuck_id = (u.ustuck ? u.ustuck->m_id : 0);
 #ifdef STEED
 	usteed_id = (u.usteed ? u.usteed->m_id : 0);
@@ -239,11 +242,12 @@ dosave0()
 		}
 		mark_synch();
 #endif
-		ofd = open_levelfile(ltmp);
+		ofd = open_levelfile(ltmp, whynot);
 		if (ofd < 0) {
-		    HUP pline("Cannot read level %d.", ltmp);
+		    HUP pline("%s", whynot);
 		    (void) close(fd);
 		    (void) delete_savefile();
+		    HUP killer = whynot;
 		    HUP done(TRICKED);
 		    return(0);
 		}
@@ -324,6 +328,7 @@ savestateinlock()
 {
 	int fd, hpid;
 	static boolean havestate = TRUE;
+	char whynot[BUFSZ];
 
 	/* When checkpointing is on, the full state needs to be written
 	 * on each checkpoint.  When checkpointing is off, only the pid
@@ -343,24 +348,30 @@ savestateinlock()
 		 * to any internal compression schemes since they must be
 		 * readable by an external utility
 		 */
-		fd = open_levelfile(0);
+		fd = open_levelfile(0, whynot);
 		if (fd < 0) {
-		    pline("Cannot open level 0.");
+		    pline("%s", whynot);
 		    pline("Probably someone removed it.");
+		    killer = whynot;
 		    done(TRICKED);
 		    return;
 		}
 
 		(void) read(fd, (genericptr_t) &hpid, sizeof(hpid));
 		if (hackpid != hpid) {
-		    pline("Level 0 pid bad!");
+		    Sprintf(whynot,
+			    "Level #0 pid (%d) doesn't match ours (%d)!",
+			    hpid, hackpid);
+		    pline("%s", whynot);
+		    killer = whynot;
 		    done(TRICKED);
 		}
 		(void) close(fd);
 
-		fd = create_levelfile(0);
+		fd = create_levelfile(0, whynot);
 		if (fd < 0) {
-		    pline("Cannot rewrite level 0.");
+		    pline("%s", whynot);
+		    killer = whynot;
 		    done(TRICKED);
 		    return;
 		}
@@ -371,6 +382,9 @@ savestateinlock()
 		    (void) write(fd, (genericptr_t) &currlev, sizeof(currlev));
 		    save_savefile_name(fd);
 		    store_version(fd);
+#ifdef STORE_PLNAME_IN_FILE
+		    bwrite(fd, (genericptr_t) plname, PL_NSIZ);
+#endif
 		    ustuck_id = (u.ustuck ? u.ustuck->m_id : 0);
 #ifdef STEED
 		    usteed_id = (u.usteed ? u.usteed->m_id : 0);
@@ -1021,7 +1035,7 @@ int lev;
 	}
 # ifdef WIZARD
 	if (wizard) {
-		pline("Swapping in `%s'", from);
+		pline("Swapping in `%s'.", from);
 		wait_synch();
 	}
 # endif

@@ -1,5 +1,5 @@
-#   SCCS Id: @(#)Makefile.bcc       3.4     2002/03/03
-#   Copyright (c) NetHack PC Development Team 1993-2002
+#   SCCS Id: @(#)Makefile.bcc       3.4     $Date: 2003/02/19 14:20:46 $
+#   Copyright (c) NetHack PC Development Team 1993-2003
 #
 #   NetHack 3.4.x Makefile for Borland C++ V5.5.1 and above and Borland's MAKE
 #  
@@ -13,22 +13,25 @@
 #   root, but this can be changed by modifying the bccroot and related
 #   variables.
 #
-#   This is used for building a TTY or graphical version of NetHack using
-#   WIN32 Console I/O and API routines only.
+#   This is used for building two versions of NetHack:
+#   A tty port utilizing the Win32 Console I/O subsystem, Console
+#       NetHack;
+#   A Win32 native port built on the Windows API, Graphical NetHack or
+#       NetHackW.
 #
 #   In addition to your C compiler,
 #
 #     if you want to change     you will need a
-#     files with suffix               workalike for
-#              .y                          yacc   (such as bison)
-#              .l                           lex    (such as flex)
+#     files with suffix         workalike for
+#              .y                   yacc   (such as bison)
+#              .l                   lex    (such as flex)
 #
 #
 #   If you have any questions read the sys/winnt/Install.nt file included 
 #   with the distribution.
 #
 #   --
-#       Yitzhak Sapir
+#   Yitzhak Sapir
 #==============================================================================
 # Do not delete the following 3 lines.
 #
@@ -67,7 +70,7 @@ rc     = $(bccbin)\brc32
 link   = $(bccbin)\ilink32
 implib = $(bccbin)\tlib
 
-cflags = -c -D_X86_=1 -DWINVER=$(MAKE_WINVER) -q -I$(bccinc) -w-pia -w-rch -w-par -w-aus
+cflags = -c -D_X86_=1 -DWINVER=$(MAKE_WINVER) -q -I$(bccinc) -w-pia -w-rch -w-csu -w-par -w-aus
 cdebug = -y -v -O2
 cvarsmt  = -DWIN32 -D_WIN32 -D_MT 
 lflags  = 
@@ -92,7 +95,11 @@ libsmt  = $(bcclib)\cw32mt.lib $(bcclib)\import32.lib
 #  Set the gamedir according to your preference.  
 #  It must be present prior to compilation.
 
+!IF "$(GRAPHICAL)" == "Y"
+GAME    = NetHackW                # Game Name
+!ELSE
 GAME    = NetHack                 # Game Name
+!ENDIF
 GAMEDIR = ..\binary               # Game directory
 
 #
@@ -134,6 +141,22 @@ DO_LEX  = LEX_MSG
 #DO_YACC  = YACC_ACT
 #DO_LEX   = LEX_ACT
 
+# Wilbur Streett's Win32 ports of GNU bison and flex are available at:
+#    http://www.monmouth.com/~wstreett/lex-yacc/lex-yacc.html
+#
+# To use them, download the executables and templates (bison.simple,
+# bison.hairy) to some directory, and set the environment variables
+# BISON_SIMPLE and BISON_HAIRY, and your path to point to this
+# directory.
+#
+# For example, if you placed them in C:\BIN, you should set:
+#   C:> SET BISON_SIMPLE=C:\BIN\BISON.SIMPLE
+#   C:> SET BISON_HAIRY=C:\BIN\BISON.HAIRY
+#
+# Also, make sure your path points to the bison/flex directories.
+#
+# The following settings are configured for Wilbur Streett's ports.
+
 # - Specify your yacc and lex programs (or work-alikes) here.
 
 YACC	= bison -y
@@ -150,8 +173,10 @@ LEX	= flex
 FLEXSKEL =
 #FLEXSKEL = -S../tools/flex.ske
 
-YTABC   = y.tab.c
-YTABH   = y.tab.h
+#YTABC   = y.tab.c
+#YTABH   = y.tab.h
+YTABC   = y_tab.c
+YTABH   = y_tab.h
 LEXYYC  = lex.yy.c
 
 #
@@ -161,19 +186,6 @@ LEXYYC  = lex.yy.c
 
 RANDOM	= $(OBJ)\random.o
 #RANDOM	=
-
-#
-# - For debugging ability, comment out the upper two 
-#   macros and uncomment the lower two.
-#
-
-#
-#  Leave the next two lines uncommented _ONLY_ if you do NOT want any
-#  debug capability in the object files, or in the NetHack executable.
-#  Comment them if you want debug capability.
-
-#cdebug =
-#linkdebug =
 
 #
 # Compiler and Linker flags
@@ -216,10 +228,7 @@ TILEBMP16   = $(SRC)\tiles.bmp
 TILEUTIL32  = $(UTIL)\til2bm32.exe
 TILEBMP32   = $(SRC)\tiles32.bmp
 
-# These should be left commented in 3.4.x
-#
-
-#SOUND = $(OBJ)\ntsound.o
+SOUND = $(OBJ)\ntsound.o
 #SOUND =
 
 # To store all the level files,
@@ -234,10 +243,6 @@ DLBFLG = -DDLB
 DLBFLG =
 ! ENDIF
 
-# You can actually build a set of tiles 
-# with this makefile even though they 
-# are not used. Use 'nmake o\nhtiles.bmp'
-#
 
 #==========================================
 # Setting up the compiler and linker
@@ -379,7 +384,7 @@ RECOVOBJS      = $(O)recover.o
 TILEFILES      = $(WSHR)\monsters.txt $(WSHR)\objects.txt $(WSHR)\other.txt
 
 #
-# These are not invoked during a normal game build in 3.4.0
+# These are not invoked during a normal game build in 3.4.1
 #
 TEXT_IO        = $(O)tiletext.o	$(O)tiletxt.o	$(O)drawing.o \
 		 $(O)decl.o	$(O)monst.o	$(O)objects.o
@@ -527,14 +532,16 @@ $(O)install.tag: 	$(DAT)\data	$(DAT)\rumors	 $(DAT)\dungeon \
 ! ENDIF
 	if exist $(DOC)\guidebook.txt copy $(DOC)\guidebook.txt $(GAMEDIR)\Guidebook.txt
 	if exist $(DOC)\nethack.txt copy $(DOC)\nethack.txt $(GAMEDIR)\NetHack.txt
-	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)\recover.txt
 	@if exist $(SRC)\$(GAME).PDB copy $(SRC)\$(GAME).pdb $(GAMEDIR)\$(GAME).pdb
 	@if exist $(GAMEDIR)\$(GAME).PDB echo NOTE: You may want to remove $(GAMEDIR)\$(GAME).pdb to conserve space
 	-copy $(NTSYS)\defaults.nh   $(GAMEDIR)\defaults.nh
-	copy $(U)recover.exe  $(GAMEDIR)
 	echo install done > $@
 
 #	copy $(NTSYS)\winnt.hlp    $(GAMEDIR)
+
+recover: $(U)recover.exe
+	if exist $(U)recover.exe copy $(U)recover.exe  $(GAMEDIR)
+	if exist $(DOC)\recover.txt copy $(DOC)\recover.txt $(GAMEDIR)\recover.txt
 
 $(O)sp_lev.tag: $(O)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 	$(DAT)\endgame.des $(DAT)\gehennom.des $(DAT)\knox.des   \
@@ -575,7 +582,7 @@ $(O)sp_lev.tag: $(O)utility.tag $(DAT)\bigroom.des  $(DAT)\castle.des \
 $(O)utility.tag: $(INCL)\date.h $(INCL)\onames.h $(INCL)\pm.h \
 		$(SRC)\monstr.c		$(SRC)\vis_tab.c  \
 		$(U)lev_comp.exe	$(INCL)\vis_tab.h \
-		$(U)dgn_comp.exe $(U)recover.exe  $(TILEUTIL16)
+		$(U)dgn_comp.exe $(TILEUTIL16)
              @echo utilities made >$@
 	     @echo utilities made.
 
@@ -678,7 +685,7 @@ $(SRC)\vis_tab.c: $(U)makedefs.exe
 #==========================================
 
 $(U)uudecode.exe: $(O)uudecode.o
-	@$(link) $(LFLAGSU) $(startobj) $(O)\uudecode.o, $@,,$(libsmt)
+	@$(link) $(LFLAGSU) $(startobj) $(O)uudecode.o, $@,,$(libsmt)
 
 $(O)uudecode.o: $(SSYS)\uudecode.c
 
@@ -896,11 +903,11 @@ nhdat:	$(U)dlb_main.exe $(DAT)\data $(DAT)\oracles $(OPTIONS_FILE) \
 #==========================================
 
 $(U)recover.exe: $(RECOVOBJS) $(SRC)\uuid.lib
-	@$(link) $(LFLAGSU) $(startobj) $(RECOVOBJS), $@,,$(libsmt)
+	$(link) $(LFLAGSU) $(startobj) $(RECOVOBJS), $@,,$(libsmt)
 
 
 $(O)recover.o: $(CONFIG_H) $(U)recover.c $(INCL)\win32api.h
-	@$(cc) $(CFLAGSU) -o$@ $(U)recover.c
+	$(cc) $(CFLAGSU) -o$@ $(U)recover.c
 
 #==========================================
 #  Tile Mapping
@@ -1073,10 +1080,14 @@ $(O)panic.o:  $(U)panic.c $(CONFIG_H)
 
 #
 # The rest are stolen from sys/unix/Makefile.src, 
-# with slashes changed to back-slashes 
-# and -c (which is included in CFLAGS) substituted
-# with -o$@ , but otherwise untouched. That
-# means that there is some irrelevant stuff
+# with the following changes:
+#   * ../include changed to $(INCL)
+#   * slashes changed to back-slashes 
+#   * -c (which is included in CFLAGS) substituted
+#	with -o$@
+#   * $(CC) changed to $(cc)
+# but otherwise untouched.
+# That means that there is some irrelevant stuff
 # in here, but maintenance should be easier.
 #
 $(O)tos.o: ..\sys\atari\tos.c $(HACK_H) $(INCL)\tcap.h

@@ -1,4 +1,4 @@
-NetHack 3.4.0 Linux Elf
+NetHack 3.4.1 Linux Elf
 
 This README provides the instructions for using the official Linux binary,
 system platform requirements, as well as steps used to create that binary.
@@ -17,9 +17,9 @@ creating them first.
 gunzip and untar the package, preserving permissions, from / to put the
 NetHack files in /usr/games/nethack and /usr/games/lib/nethackdir.
 
-(If you have old record and logfile entries from a previous NetHack
-version, you might want to save copies before they get overwritten by the
-new empty files; old saved games and bones files won't work with 3.4.0).
+(If you have old record and logfile entries from a previous NetHack version,
+you might want to save copies before they get overwritten by the new empty
+files; old saved games and bones files from 3.4.0 will work with 3.4.1).
 
 In addition to data files for running the game, you will find other useful
 things in /usr/games/lib/nethackdir (such as a copy of this README :-).
@@ -54,12 +54,12 @@ nethack-bugs@nethack.org
 
 Steps used to build this binary release
 
-System:  egcs-1.1.2, XFree86-3.3.6, ncurses-5.0, glibc-2.1.3
+System:  gcc-3.2, XFree86-libs-4.2.0, ncurses-5.2, glibc-2.2.93
 
 0.  Makefile.top: GAMEGRP = games
-		  GAMEPERM = 02775
+		  GAMEPERM = 02755
 		  FILEPERM = 0664
-		  EXEPERM = 0775
+		  EXEPERM = 0755
 		  DIRPERM = 0775
 		  VARDATND = x11tiles pet_mark.xbm rip.xpm
 
@@ -82,8 +82,7 @@ System:  egcs-1.1.2, XFree86-3.3.6, ncurses-5.0, glibc-2.1.3
 4.  unixconf.h: define LINUX
                 define TIMED_DELAY
 
-5.  make all; (cd util; make recover); su; make install;
-    cp util/recover /usr/games/lib/nethackdir/recover
+5.  make all; su; make install
 
 6.  Convert nh10.bdf and ibm.bdf to proper font files and place in
     font path.

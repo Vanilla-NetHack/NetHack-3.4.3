@@ -945,7 +945,7 @@ struct mkroom	*croom;
 		panic("create_object:  unexpected object class '%c'",c);
 
 	    /* KMH -- Create piles of gold properly */
-	    if (oclass == GOLD_CLASS)
+	    if (oclass == COIN_CLASS)
 		otmp = mkgold(0L, x, y);
 	    else
 		otmp = mkobj_at(oclass, x, y, !named);
@@ -1953,13 +1953,13 @@ dlb *fd;
 		} else
 		    r->monsters = 0;
 
-		/* read the objects */
+		/* read the objects, in same order as mazes */
 		Fread((genericptr_t) &r->nobject, 1, sizeof(r->nobject), fd);
 		if ((n = r->nobject) != 0) {
 		    r->objects = NewTab(object, n);
-		    while (n--) {
-			r->objects[(int)n] = New(object);
-			load_one_object(fd, r->objects[(int)n]);
+		    for (j = 0; j < n; ++j) {
+			r->objects[j] = New(object);
+			load_one_object(fd, r->objects[j]);
 		    }
 		} else
 		    r->objects = 0;

@@ -18,6 +18,7 @@ typedef struct mswin_nethack_main_window {
 
 static TCHAR szMainWindowClass[] = TEXT("MSNHMainWndClass");
 static TCHAR szTitle[MAX_LOADSTRING];
+extern void mswin_display_splash_window(BOOL);
 
 LRESULT CALLBACK	MainWndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK	About(HWND, UINT, WPARAM, LPARAM);
@@ -30,6 +31,7 @@ static int		mapmode2menuid(int map_mode);
 HWND mswin_init_main_window () {
 	static int run_once = 0;
 	HWND ret;
+    WINDOWPLACEMENT wp;
 
 	/* register window class */
 	if( !run_once ) {
@@ -54,6 +56,28 @@ HWND mswin_init_main_window () {
 		);
 
 	if( !ret ) panic("Cannot create main window");
+
+    
+    if (GetNHApp()->regMainMinX != CW_USEDEFAULT)
+    {
+        wp.length = sizeof(wp);
+        wp.showCmd = GetNHApp()->regMainShowState;
+
+        wp.ptMinPosition.x = GetNHApp()->regMainMinX;
+        wp.ptMinPosition.y = GetNHApp()->regMainMinY;
+
+        wp.ptMaxPosition.x = GetNHApp()->regMainMaxX;
+        wp.ptMaxPosition.y = GetNHApp()->regMainMaxY;
+
+        wp.rcNormalPosition.left = GetNHApp()->regMainLeft;
+        wp.rcNormalPosition.top = GetNHApp()->regMainTop;
+        wp.rcNormalPosition.right = GetNHApp()->regMainRight;
+        wp.rcNormalPosition.bottom = GetNHApp()->regMainBottom;
+        SetWindowPlacement(ret, &wp);
+    }
+    else
+        ShowWindow(ret, SW_SHOWDEFAULT);
+    UpdateWindow(ret);
 
 	return ret;
 }
@@ -406,9 +430,28 @@ LRESULT CALLBACK MainWndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lPar
 
 		case WM_MOVE:
 		case WM_SIZE:
-			mswin_layout_main_window(NULL);
-			break;
+        {
+            WINDOWPLACEMENT wp;
 
+			mswin_layout_main_window(NULL);
+            
+            wp.length = sizeof(wp);
+            if (GetWindowPlacement(hWnd, &wp)) {
+                GetNHApp()->regMainShowState = wp.showCmd;
+
+                GetNHApp()->regMainMinX = wp.ptMinPosition.x;
+                GetNHApp()->regMainMinY = wp.ptMinPosition.y;
+
+                GetNHApp()->regMainMaxX = wp.ptMaxPosition.x;
+                GetNHApp()->regMainMaxY = wp.ptMaxPosition.y;
+
+                GetNHApp()->regMainLeft = wp.rcNormalPosition.left;
+                GetNHApp()->regMainTop = wp.rcNormalPosition.top;
+                GetNHApp()->regMainRight = wp.rcNormalPosition.right;
+                GetNHApp()->regMainBottom = wp.rcNormalPosition.bottom;
+            }
+			break;
+        }
 		case WM_SETFOCUS:
 			/* if there is a menu window out there -
 			   transfer input focus to it */
@@ -608,6 +651,7 @@ void mswin_layout_main_window(HWND changed_child)
 						   TRUE );
 				break;
 
+			case NHW_TEXT: // same as the map window
 			case NHW_MAP:
 				MoveWindow(GetNHApp()->windowlist[i].win, 
 					       map_org.x, 
@@ -632,7 +676,6 @@ void mswin_layout_main_window(HWND changed_child)
 
 				pt.x = map_org.x + max(0, (int)(map_size.cx-menu_size.cx));
 				pt.y = map_org.y;
-				ClientToScreen(GetNHApp()->hMainWnd, &pt);
 				MoveWindow(GetNHApp()->windowlist[i].win, 
 						   pt.x, 
 						   pt.y,
@@ -659,7 +702,7 @@ LRESULT onWMCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 	switch (wmId)
 	{
 		case IDM_ABOUT:
-		   DialogBox(GetNHApp()->hApp, (LPCTSTR)IDD_ABOUTBOX, hWnd, (DLGPROC)About);
+     mswin_display_splash_window(TRUE);
 		   break;
 
 		case IDM_EXIT:
@@ -667,7 +710,8 @@ LRESULT onWMCommand(HWND hWnd, WPARAM wParam, LPARAM lParam)
 		   break;
 
 		case IDM_SAVE:
-		   dosave();
+		   if (!program_state.gameover && !program_state.done_hup) dosave();
+		   else MessageBeep(0);
 		   break;
 
 		case IDM_MAP_TILES:

@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)data.base	3.4	2001/09/01
+#	SCCS Id: @(#)data.base	3.4	2002/12/28
 #	Copyright (c) 1994, 1995, 1996 by the NetHack Development Team
 #	Copyright (c) 1994 by Boudewijn Wayers
 #	NetHack may be freely redistributed.  See license for details.
@@ -159,8 +159,8 @@ anu
 	the father of all gods, and the ruler of heaven and destiny.
 	Anu features strongly in the _atiku_ festival in
 	Babylon, Uruk and other cities.
-~* cape
-*ape
+ape
+* ape
 	The most highly evolved of all the primates, as shown by
 	all their anatomical characters and particularly the
 	development of the brain.  Both arboreal and terrestrial,
@@ -184,6 +184,7 @@ apple
 	when.
 		[ The Devil's Dictionary, by Ambrose Bierce ]
 archeologist
+* archeologist
 	Archeology is the search for fact, not truth. [...] 
 	So forget any ideas you've got about lost cities, exotic travel, 
 	and digging up the world. We do not follow maps to buried 
@@ -313,7 +314,7 @@ banana
 	And Dayna knew he was right.
 		[ The Stand, by Stephen King ]
 barbarian
-human barbarian
+* barbarian
 	They dressed alike -- in buckskin boots, leathern breeks and
 	deerskin shirts, with broad girdles that held axes and short
 	swords; and they were all gaunt and scarred and hard-eyed;
@@ -566,6 +567,22 @@ kitten
 	yellow and white, none was missing.  Very sleek and fat did
 	the cats appear, and sonorous with purring content.
 		[ The Cats of Ulthar, by H.P. Lovecraft ]
+# this one doesn't work very well for dwarven and gnomish cavemen
+cave*man
+human cave*man
+	Now it was light enough to leave.  Moon-Watcher picked up
+	the shriveled corpse and dragged it after him as he bent
+	under the low overhang of the cave.  Once outside, he
+	threw the body over his shoulder and stood upright - the
+	only animal in all this world able to do so.
+	Among his kind, Moon-Watcher was almost a giant.  He was
+	nearly five feet high, and though badly undernourished
+	weighed over a hundred pounds.  His hairy, muscular body
+	was halfway between ape and man, but his head was already
+	much nearer to man than ape.  The forehead was low, and
+	there were ridges over the eye sockets, yet he unmistakably
+	held in his genes the promise of humanity.
+		[ 2001: A Space Odyssey, by Arthur C. Clarke ]
 *centaur
 	Of all the monsters put together by the Greek imagination
 	the Centaurs (Kentauroi) constituted a class in themselves.
@@ -922,6 +939,21 @@ doorway
 		[ The Inferno, from The Divine Comedy of Dante
 			Alighieri, translated by H.F. Cary ]
 doppelganger
+	"Then we can only give thanks that this is Antarctica, where
+	there is not one, single, solitary, living thing for it to
+	imitate, except these animals in camp."
+
+	"Us," Blair giggled. "It can imitate us. Dogs can't make four
+	hundred miles to the sea; there's no food. There aren't any
+	skua gulls to imitate at this season. There aren't any
+	penguins this far inland. There's nothing that can reach the
+	sea from this point - except us. We've got brains. We can do
+	it. Don't you see - it's got to imitate us - it's got to be one
+	of us - that's the only way it can fly an airplane - fly a plane
+	for two hours, and rule - be - all Earth's inhabitants. A world
+	for the taking - if it imitates us!
+		[ Who Goes There?, by John W. Campbell ]
+
 	Xander: Let go!  I have to kill the demon bot!
 	Xander Double (grabbing the gun): Anya, get out of the way.
 	Buffy: Xander!
@@ -964,6 +996,7 @@ doppelganger
 		[ Tarzan of the Apes, by Edgar Rice Burroughs ]
 ~dwarf ??m*
 dwarf*
+dwar* cave*man
 	Dwarfs have faces like men (ugly men, with wrinkled, leathery
 	skins), but are generally either flat-footed, duck-footed, or
 	have feet pointing backwards.  They are of the earth, earthy,
@@ -1057,11 +1090,6 @@ electric eel
 ~elf ??m*
 *elf*
 elvenking
-elven archeologist
-elven cave*man
-elven healer
-elven samurai
-elven wizard
 	The Elves sat round the fire upon the grass or upon the sawn
 	rings of old trunks.  Some went to and fro bearing cups and
 	pouring drinks; others brought food on heaped plates and
@@ -1345,9 +1373,11 @@ giant humanoid
 	boulders as weapons, hurling them over large distances.  All
 	types of giants share a love for men - roasted, boiled, or
 	fried.  Their table manners are legendary.
+# note: "gnomish wizard" is a monster; cave*man entry doesn't fit nonhumans
 ~gnome ??m*
 gnome*
 gnomish wizard
+gnom* cave*man
 	...  And then a gnome came by, carrying a bundle, an old
 	fellow three times as large as an imp and wearing clothes of
 	a sort, especially a hat.  And he was clearly just as frightened
@@ -1526,6 +1556,31 @@ hachi
 	time to see Jack running off with his harp.
 		[ Jack and the Beanstalk, from English Fairy Tales,
 		  by Joseph Jacobs ]
+healer
+* healer
+attendant
+doctor
+physician
+	I swear by Apollo the physician, and Aesculapius, and Health,
+	and All-heal, and all the gods and goddesses, that, according
+	to my ability and judgment, I will keep this Oath and this
+	stipulation -- to reckon him who taught me this Art equally dear
+	to me as my parents, to share my substance with him, and relieve
+	his necessities if required; to look upon his offspring in the
+	same footing as my own brothers, and to teach them this art, if
+	they shall wish to learn it, without fee or stipulation; and
+	that by precept, lecture, and every other mode of instruction,
+	I will impart a knowledge of the Art to my own sons, and those
+	of my teachers, and to disciples bound by a stipulation and oath
+	according to the law of medicine, but to none others.  I will
+	follow that system of regimen which, according to my ability and
+	judgment, I consider for the benefit of my patients, and abstain
+	from whatever is deleterious and mischievous.  [...]
+		[ Hippocrates' Oath, translated by Francis Adams ]
+
+	PHYSICIAN, n.  One upon whom we set our hopes when ill and our
+	dogs when well.
+		[ The Devil's Dictionary, by Ambrose Bierce ]
 heart of ahriman
 	The other three drew in their breath sharply, and the dark,
 	powerful man who stood at the head of the sarcophagus whispered:
@@ -1724,36 +1779,17 @@ humanoid
 	hostile, they may even band together to raid and pillage
 	human settlements.
 human
-human archeologist
-human cave*man
-human healer
-human monk
-human samurai
-human wizard
-acolyte
-apprentice
-archeologist
-arch priest
-attendant
-cave*man
 chieftain
 guard
-healer
-grand master
-master kaen
-monk
 ninja
 nurse
 page
-*priest*
 ronin
-samurai
 shopkeeper
 student
 thug
 warrior
 *watch*
-wizard
 player
 	These strange creatures live mostly on the surface of the
 	earth, gathering together in societies of various forms, but
@@ -1990,7 +2026,7 @@ stiletto
 	went into his back up to the butt.
 		[ Ulysses, by James Joyce ]
 knight
-human knight
+* knight
 	Here lies the noble fearless knight,
 	Whose valour rose to such a height;
 	When Death at last had struck him down,
@@ -2009,13 +2045,34 @@ human knight
 	Elven race, and will go out of their way to cause trouble
 	for Elves at any time.
 *kop*
-	The typical policeman of 1920's movies, the Keystone Kop was
-	modeled like the English "bobby", with a long brass-buttoned
-	overcoat, carrying long nightsticks that he (more often than
-	not) whapped himself with, rather than anyone else.  The
-	Keystone Kops were very slapstick-like, relying on speed and
-	numbers to achieve their comedy, rather than sophisticated
-	wit.
+	The Kops are a brilliant concept.  To take a gaggle of inept
+	policemen and display them over and over again in a series of
+	riotously funny physical punishments plays equally well to the
+	peanut gallery and the expensive box seats.  People hate cops.
+	Even people who have never had anything to do with cops hate
+	them.  Of course, we count on them to keep order and to protect
+	us when we need protecting, and we love them on television shows
+	in which they have nerves of steel and hearts of gold, but in
+	the abstract, as a nation, collectively we hate them.  They are
+	too much like high school principals.  We're very happy to see
+	their pants fall down, and they look good to us with pie on
+	their faces.  The Keystone Kops turn up--and they get punished
+	for it, as they crash into each other, fall down, and suffer
+	indignity after indignity.  Here is pure movie satisfaction.
+
+	The Kops are very skillfully presented.  The comic originality
+	and timing in one of their chase scenes requires imagination
+	to think up, talent to execute, understanding of the medium,
+	and, of course, raw courage to perform.  The Kops are madmen
+	presented as incompetents, and they're madmen rushing around
+	in modern machines.  What's more, the machines they were operating
+	in their routines were newly invented and not yet experienced
+	by the average moviegoer.  (In the early days of automobiles,
+	it was reported that there were only two cars registered in all
+	of Kansas City, and they ran into each other.  There is both
+	poetry and philosophy in this fact, but most of all, there is
+	humor.  Sennett got the humor.)
+		[ Silent Stars, by Jeanine Basinger ]
 kos
 	"I am not a coward!" he cried.  "I'll dare Thieves' House
 	and fetch you Krovas' head and toss it with blood a-drip at
@@ -2539,6 +2596,47 @@ mol?ch
 	family, and will cut him off, and all that go a whoring after
 	him, to commit whoredom with Molech, from among their people.
 		[ Leviticus 20:1-5 ]
+monk
+* monk
+grand master
+master kaen
+	One day, an army general invited the Buddhist monk I-Hsiu
+	(literally, "One Rest") to his military head office for a
+	dinner.  I-Hsiu was not accustomed to wearing luxurious
+	clothings and so he just put on an old ordinary casual
+	robe to go to the military base.  To him, "form is void".
+
+	As he approached the base, two soldiers appeared before him
+	and shouted, "Where does this beggar came from?  Identify
+	yourself!  You do not have permission to be around here!"
+
+	"My name is I-Hsiu Dharma Master.  I am invited by your
+	general for a supper."
+
+	The two soldiers examined the monk closely and said, "You
+	liar.  How come my general invites such a shabby monk to
+	dinner?  He invites the very solemn venerable I-Hsiu to our
+	base for a great ceremony today, not you.  Now, get out!"
+
+	I-Hsiu was unable to convince the soldiers that he was
+	indeed the invited guest, so he returned to the temple
+	and changed to a very formal solemn ceremonial robe for
+	the dinner.  And as he returned to the military base, the
+	soldiers observed that he was such a great Buddhist monk,
+	let him in with honour.
+
+	At the dinner, I-Hsiu sat in front of the table full of
+	food but, instead of putting the food into his month, he
+	picked up the food with his chopsticks and put it into
+	his sleeves.  The general was curious, and whispered to
+	him, "This is very embarrassing.  Do you want to take
+	some food back to the temple?  I will order the cook to
+	prepare some take out orders for you."  "No" replied the
+	monk.  "When I came here, I was not allowed into the
+	base by your soldiers until I wear this ceremonial robe.
+	You do not invite me for a dinner.  You invite my robe.
+	Therefore, my robe is eating the food, not me."
+		[ Dining with a General - a Zen Buddhism Koan ]
 monkey
 	"Listen, man-cub," said the Bear, and his voice rumbled like
 	thunder on a hot night.  "I have taught thee all the Law of
@@ -2829,6 +2927,10 @@ orcus
 	stinger.  He is most feared, though, for his powerful magic
 	abilities.  His wand causes death to those he chooses.
 ~orc ??m*
+~orcish barbarian
+~orcish ranger
+~orcish rogue
+~orcish wizard
 orc*
 * orc
 uruk*hai
@@ -3008,6 +3110,25 @@ poseido*n
 	preservative instinct of the race is to be unscientific --
 	and without science we are as the snakes and toads.
 		[ The Devil's Dictionary, by Ambrose Bierce ]
+priest*
+* priest*
+acolyte
+	[...]  For the two priests were talking exactly like priests,
+	piously, with learning and leisure, about the most aerial
+	enigmas of theology.  The little Essex priest spoke the more
+	simply, with his round face turned to the strengthening stars;
+	the other talked with his head bowed, as if he were not even
+	worthy to look at them.  But no more innocently clerical
+	conversation could have been heard in any white Italian cloister
+	or black Spanish cathedral.  The first he heard was the tail of
+	one of Father Brown's sentences, which ended:  "... what they
+	really meant in the Middle Ages by the heavens being
+	incorruptible."  The taller priest nodded his bowed head and
+	said:  "Ah, yes, these modern infidels appeal to their reason;
+	but who can look at those millions of worlds and not feel that
+	there may well be wonderful universes above us where reason is
+	utterly unreasonable?"
+		[ The Innocence of Father Brown, by G.K. Chesterton ]
 prisoner
 	Where am I?
 		In the Village.
@@ -3093,8 +3214,8 @@ quit*
 raijin
 raiden
 	The god of thunder.
-human ranger
 ranger
+* ranger
 	"Lonely men are we, Rangers of the wild, hunters -- but hunters
 	ever of the servants of the Enemy; for they are found in many
 	places, not in Mordor only.
@@ -3185,7 +3306,7 @@ rock mole
 	is still unknown how they convert some of these things into
 	something of nutritional value.
 rogue
-human rogue
+* rogue
 	I understand the business, I hear it: to have an open ear, a
 	quick eye, and a nimble hand, is necessary for a cut-purse; a
 	good nose is requisite also, to smell out work for the other
@@ -3256,6 +3377,19 @@ salamander
 	salamander, in fact, comes from a Greek word meaning "fire
 	animal".
 		[ Salamanders, by Cherie Winner ]
+samurai
+* samurai
+	By that time, Narahara had already slipped his arm from the
+	sleeve of his outer robe, drew out his two-and-a-half-foot
+	Fujiwara Tadahiro sword, and, brandishing it over his head,
+	began barreling toward the foreigners.  In less than a minute,
+	he had charged upon them and cut one of them through the torso.
+	The man fled, clutching his bulging guts, finally to fall from
+	his horse at the foot of a pine tree about a thousand yards
+	away.  Kaeda Takeji finished him off.  The other two Englishmen
+	were severely wounded as they tried to flee.  Only the woman
+	managed to escape virtually unscathed.
+		[ The Fox-horse, from Drunk as a Lord, by Ryotaro Shiba ]
 sandestin
 	Ildefonse left the terrace and almost immediately sounds
 	of contention came from the direction of the work-room.
@@ -3314,6 +3448,12 @@ sasquatch
 	addition will protect anyone who carries it from magic
 	missile attacks.  When invoked, it causes conflict in the
 	area around it.
+scimitar
+	Oh, how handsome, how noble was the Vizier Ali Tebelin,
+	my father, as he stood there in the midst of the shot, his
+	scimitar in his hand, his face black with powder!  How his
+	enemies fled before hiim!
+		[ The Count of Monte Cristo, by Alexandre Dumas ]
 scorpio*
 	A sub-species of the spider (_Scorpionidae_), the scorpion
 	distinguishes itself from them by having a lower body that
@@ -3568,7 +3708,7 @@ javelin
 	protects its user from all life draining attacks, and
 	additionally gives the wielder the power of regeneration.
 	When invoked it performs healing magic.
-staircase*
+stair*
 	Up he went -- very quickly at first -- then more slowly -- then
 	in a little while even more slowly than that -- and finally,
 	after many minutes of climbing up the endless stairway, one
@@ -3584,6 +3724,11 @@ staircase*
 	"Infinity is a dreadfully poor place.  They can never manage to
 	make ends meet."
 		[ The Phantom Tollbooth, by Norton Juster ]
+
+	Dr. Ray Stantz: Hey, where do those stairs go?
+	Dr. Peter Venkman: They go up.
+		[ Ghostbusters, directed by Ivan Reitman,
+		  written by Dan Ackroyd and Harold Ramis ]
 ~statue trap
 statue*
 	Then at last he began to wonder why the lion was standing so
@@ -3750,9 +3895,11 @@ titan
 	son, Zeus, and he and his fellow titans were ousted from
 	Mount Olympus.
 		[ Greek Mythology, by Richard Patrick ]
+touch*stone
+	"Gold is tried by a touchstone, men by gold."
+		[ Chilon (c. 560 BC) ]
 tourist
-elven tourist
-human tourist
+* tourist
 	The road from Ankh-Morpork to Chrim is high, white and
 	winding, a thirty-league stretch of potholes and half-buried
 	rocks that spirals around mountains and dips into cool green
@@ -3946,7 +4093,7 @@ unicorn horn
 	keep me right there."
 		[ Unicorn Variations, by Roger Zelazny ]
 valkyrie
-human valkyrie
+* valkyrie
 	The Valkyries were the thirteen choosers of the slain, the
 	beautiful warrior-maids of Odin who rode through the air and
 	over the sea.  They watched the progress of the battle and
@@ -4031,7 +4178,7 @@ warg
 	as the crow flies, and maybe twenty as the wolf runs,"
 	answered Gandalf grimly.
 	"Then let us start as soon as it is light tomorrow, if we can,"
-	said Boromir.  "The wolf that one hears is worse then the orc
+	said Boromir.  "The wolf that one hears is worse than the orc
 	that one fears."
 	"True!" said Aragorn, loosening his sword in its sheath.  "But
 	where the warg howls, there also the orc prowls."
@@ -4078,6 +4225,20 @@ web
 	flat on his back upon a cold stone with his hands on his
 	breast.
 		[ The Fellowship of the Ring, by J.R.R. Tolkien ]
+# note: need to convert player character "gnomish wizard" into just "wizard"
+# in the lookup code to avoid conflict with the monster of that same name
+~gnomish wizard
+wizard
+* wizard
+apprentice
+	Ebenezum walked before me along the closest thing we could
+	find to a path in these overgrown woods.  Every few paces he
+	would pause, so that I, burdened with a pack stuffed with
+	arcane and heavy paraphernalia, could catch up with his
+	wizardly strides.  He, as usual, carried nothing, preferring,
+	as he often said, to keep his hands free for quick conjuring
+	and his mind free for the thoughts of a mage.
+		[ A Dealing with Demons, by Craig Shaw Gardner ]
 wizard of yendor
 	No one knows how old this mighty wizard is, or from whence he
 	came.  It is known that, having lived a span far greater than

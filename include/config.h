@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)config.h	3.4	2002/03/17	*/
+/*	SCCS Id: @(#)config.h	3.4	2003/02/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -83,7 +83,9 @@
 #endif
 
 #ifdef QT_GRAPHICS
+# define DEFAULT_WC_TILED_MAP   /* Default to tiles if users doesn't say wc_ascii_map */
 # define USER_SOUNDS		/* Use sounds */
+# define USER_SOUNDS_REGEX
 # define USE_XPM		/* Use XPM format for images (required) */
 # define GRAPHIC_TOMBSTONE	/* Use graphical tombstone (rip.ppm) */
 # ifndef DEFAULT_WINDOW_SYS
@@ -131,9 +133,10 @@
 
 /*
  * Section 2:	Some global parameters and filenames.
- *		Commenting out WIZARD, LOGFILE, or NEWS removes that feature
- *		from the game; otherwise set the appropriate wizard name.
- *		LOGFILE and NEWS refer to files in the playground.
+ *		Commenting out WIZARD, LOGFILE, NEWS or PANICLOG removes that
+ *		feature from the game; otherwise set the appropriate wizard
+ *		name.  LOGFILE, NEWS and PANICLOG refer to files in the
+ *		playground.
  */
 
 #ifndef WIZARD		/* allow for compile-time or Makefile changes */
@@ -147,6 +150,7 @@
 
 #define LOGFILE "logfile"	/* larger file for debugging purposes */
 #define NEWS "news"		/* the file containing the latest hack news */
+#define PANICLOG "paniclog"	/* log of panic and impossible events */
 
 /*
  *	If COMPRESS is defined, it should contain the full path name of your

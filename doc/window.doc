@@ -118,7 +118,8 @@ get_nh_event()	-- Does window event processing (e.g. exposure events).
 int nhgetch()	-- Returns a single character input from the user.
 		-- In the tty window-port, nhgetch() assumes that tgetch()
 		   will be the routine the OS provides to read a character.
-		   Returned character _must_ be non-zero.
+		   Returned character _must_ be non-zero and it must be
+                   non meta-zero too (zero with the meta-bit set).
 int nh_poskey(int *x, int *y, int *mod)
 		-- Returns a single character input from the user or a
 		   a positioning event (perhaps from a mouse).  If the
@@ -157,6 +158,10 @@ char yn_function(const char *ques, const char *choices, char default)
 		   Place this value in the global "yn_number" and return '#'.
 		-- This uses the top line in the tty window-port, other
 		   ports might use a popup.
+		-- If choices is NULL, all possible inputs are accepted and
+		   returned, preserving case (upper or lower.) This means that
+		   if the calling function needs an exact match, it must handle
+		   user input correctness itself.
 getlin(const char *ques, char *input)
 		-- Prints ques as a prompt and reads a single line of text,
 		   up to a newline.  The string entered is returned without the
@@ -478,11 +483,11 @@ to support:
   |  font_size_status  | WC_FONTSIZ_STATUS  | wc_fontsiz_status  |int     |
   |  font_size_text    | WC_FONTSIZ_TEXT    | wc_fontsiz_text    |int     |
   |  hilite_pet        | WC_HILITE_PET      | wc_hilite_pet      |boolean |
-  |  large_font        | WC_LARGE_FONT      | wc_large_font      |boolean |
   |  map_mode          | WC_MAP_MODE        | wc_map_mode        |int     |
   |  player_selection  | WC_PLAYER_SELECTION| wc_player_selection|int     |
   |  popup_dialog      | WC_POPUP_DIALOG    | wc_popup_dialog    |boolean |
   |  preload_tiles     | WC_PRELOAD_TILES   | wc_preload_tiles   |boolean |
+  |  scroll_amount     | WC_SCROLL_AMOUNT   | wc_scroll_amount   |int     |
   |  scroll_margin     | WC_SCROLL_MARGIN   | wc_scroll_margin   |int     |
   |  splash_screen     | WC_SPLASH_SCREEN   | wc_splash_screen   |boolean |
   |  tiled_map         | WC_TILED_MAP       | wc_tiled_map       |boolean |
@@ -499,6 +504,7 @@ to support:
   |                    |                    | wc_backgrnd_status |char *  |
   |                    |                    | wc_foregrnd_text   |char *  |
   |                    |                    | wc_backgrnd_text   |char *  |
+  |  mouse             | WC_MOUSE_SUPPORT   | wc_mouse_support   |boolean |
   +--------------------+--------------------+--------------------+--------+
 
 align_message	-- where to place message window (top, bottom, left, right)
@@ -518,12 +524,12 @@ font_size_text	-- port should use this size font for text windows.
 font_status	-- port should use a font by this name for status window.
 font_text	-- port should use a font by this name for text windows.
 hilite_pet	-- port should mark pets in some special way on the map.
-large_font	-- port should use a large font.
 map_mode	-- port should display the map in the manner specified.
 player_selection
 		-- dialog or prompts for choosing character.
 popup_dialog	-- port should pop up dialog boxes for input.
 preload_tiles	-- port should preload tiles into memory.
+scroll_amount   -- scroll this amount when scroll_margin is reached.
 scroll_margin	-- port should scroll the display when the hero or cursor
 		   is this number of cells away from the edge of the window.
 splash_screen   -- port should/should not display an opening splashscreen.
@@ -541,6 +547,7 @@ windowcolors
 		-- port should use these colors for window foreground/background
 		   colors.  Syntax:
 		     menu fore/back message fore/back status fore/back text fore/back
+mouse_support	-- port should enable mouse support if possible
 
 Whenever one of these settings is adjusted, the port is notified of a change
 to the setting by calling the port's preference_update() routine. The port
@@ -578,10 +585,11 @@ To add a new wincap option, please follow all these steps:
 	2. Add the description to the paragraph below the chart.
 	3. Add the WC_ to the bit list in include/winprocs.h (if there is room).
 	4. Add the wc_ field(s) to the iflags structure in flag.h.
-	5. Add an appropriate parser to parseoptions() in options.c.
-	6. Add code to display current value to get_compopt_value() in options.c.
-	7. Document the option in Guidebook.mn and Guidebook.tex.
-	8. Add the bit name to the OR'd values in your window port's winprocs struct
+	5. Add the name and value to wc_options[] in options.c
+	6. Add an appropriate parser to parseoptions() in options.c.
+	7. Add code to display current value to get_compopt_value() in options.c.
+	8. Document the option in Guidebook.mn and Guidebook.tex.
+	9. Add the bit name to the OR'd values in your window port's winprocs struct
 	   wincap mask if your port supports the option.
 
 V.  New or respecified common, high level routines

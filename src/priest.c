@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.4	2001/11/07	*/
+/*	SCCS Id: @(#)priest.c	3.4	2002/11/06	*/
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989.		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -49,10 +49,7 @@ register xchar omx,omy,gx,gy;
 	else allowflags = ALLOW_SSM | ALLOW_SANCT;
 	if (passes_walls(mtmp->data)) allowflags |= (ALLOW_ROCK|ALLOW_WALL);
 	if (throws_rocks(mtmp->data)) allowflags |= ALLOW_ROCK;
-	if (tunnels(mtmp->data) &&
-		    (!needspick(mtmp->data) || m_carrying(mtmp, PICK_AXE) ||
-		     m_carrying(mtmp, DWARVISH_MATTOCK)))
-		allowflags |= ALLOW_DIG;
+	if (tunnels(mtmp->data)) allowflags |= ALLOW_DIG;
 	if (!nohands(mtmp->data) && !verysmall(mtmp->data)) {
 		allowflags |= OPENDOOR;
 		if (m_carrying(mtmp, SKELETON_KEY)) allowflags |= BUSTDOOR;
@@ -339,14 +336,22 @@ register int roomno;
 		shrined = has_shrine(priest);
 		sanctum = (priest->data == &mons[PM_HIGH_PRIEST] &&
 			   (Is_sanctum(&u.uz) || In_endgame(&u.uz)));
-		can_speak = (priest->mcanmove && !priest->msleeping);
-		if (can_speak)
+		can_speak = (priest->mcanmove && !priest->msleeping &&
+			     flags.soundok);
+		if (can_speak) {
+		    unsigned save_priest = priest->ispriest;
+		    /* don't reveal the altar's owner upon temple entry in
+		       the endgame; for the Sanctum, the next message names
+		       Moloch so suppress the "of Moloch" for him here too */
+		    if (sanctum && !Hallucination) priest->ispriest = 0;
 		    pline("%s intones:",
-			  (!Blind ? Monnam(priest) : "A nearby voice"));
+			canseemon(priest) ? Monnam(priest) : "A nearby voice");
+		    priest->ispriest = save_priest;
+		}
 		msg2 = 0;
 		if(sanctum && Is_sanctum(&u.uz)) {
 		    if(priest->mpeaceful) {
-			msg1 = "Infidel, you entered Moloch's Sanctum!";
+			msg1 = "Infidel, you have entered Moloch's Sanctum!";
 			msg2 = "Be gone!";
 			priest->mpeaceful = 0;
 			set_malign(priest);
