@@ -1,10 +1,27 @@
-/*	SCCS Id: @(#)wintty.c	3.1	93/02/21	*/
+/*	SCCS Id: @(#)wintty.c	3.1	93/05/26	*/
 /* Copyright (c) David Cohrs, 1991				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
+/*
+ * Neither a standard out nor character-based control codes should be
+ * part of the "tty look" windowing implementation.
+ * h+ 930227
+ */
+
 #include "hack.h"
-#include "termcap.h"
+
+#ifdef TTY_GRAPHICS
+
+#ifdef MAC
+# define MICRO /* The Mac is a MICRO only for this file, not in general! */
+#endif
+
+#ifndef NO_TERMS
+# include "termcap.h"
+#endif
+
 #include "wintty.h"
+
 #if (defined(BSD) || defined(ULTRIX) || defined(AIX_31) || defined(_BULL_SOURCE)) && defined(CLIPPING)
 #include <signal.h>
 #endif
@@ -54,9 +71,15 @@ struct window_procs tty_procs = {
 #endif /* COM_COMPL */
     tty_number_pad,
     tty_delay_output,
+#ifdef CHANGE_COLOR	/* the Mac uses a palette device */
+    tty_change_color,
+    tty_get_color_string,
+#endif
+
     /* other defs that really should go away (they're tty specific) */
     tty_start_screen,
     tty_end_screen,
+    genl_outrip,
 };
 
 static int maxwin = 0;			/* number of windows in use */
@@ -78,18 +101,17 @@ static boolean clipping = FALSE;	/* clipping on? */
 static int clipx = 0, clipy = 0, clipxmax = 0, clipymax = 0;
 #endif
 
-#ifdef ASCIIGRAPH
+#if defined(ASCIIGRAPH) && !defined(NO_TERMS)
 boolean GFlag = FALSE;
 #endif
 
 #ifdef MICRO
-#define getret() getreturn("to continue")
+static char to_continue[] = "to continue";
+#define getret() getreturn(to_continue)
 #else
 static void NDECL(getret);
 #endif
 static void FDECL(dmore,(struct WinDesc *));
-static char * FDECL(s_atr2str, (int));
-static char * FDECL(e_atr2str, (int));
 static const char * FDECL(compress_str, (const char *));
 static void FDECL(tty_putsym, (winid, int, int, CHAR_P));
 
@@ -329,10 +351,10 @@ tty_askname()
 				ct--;
 #ifdef MICRO
 # if defined(WIN32CON)
-				nttty_rubout();  /* \b is visible on NT */
+				backsp();       /* \b is visible on NT */
 # else
 				msmsg("\b \b");
-# endif 
+# endif
 #else
 				(void) putchar('\b');
 				(void) putchar(' ');
@@ -689,13 +711,15 @@ tty_display_nhwindow(window, blocking)
 		if(cw->type == NHW_MENU) {
 		    (void) putchar(' '); ++ttyDisplay->curx;
 		}
-		if(attr)
-		    xputs(s_atr2str(attr));
+		term_start_attr(attr);
 		for(cp = &cw->data[i][1];
 		    *cp && (int)++ttyDisplay->curx < (int) ttyDisplay->cols; )
+#ifdef __SASC
+			(void) fputchar(*cp++);
+#else
 			(void) putchar(*cp++);
-		if(attr)
-		    xputs(e_atr2str(attr));
+#endif
+		term_end_attr(attr);
 	    }
 	}
 	if(i == cw->maxrow) {
@@ -837,20 +861,25 @@ register int x, y;	/* not xchar: perhaps xchar is unsigned and
     if(cw->type == NHW_MAP)
 	end_glyphout();
 
+#ifndef NO_TERMS
     if(!ND && (cx != x || x <= 3)) { /* Extremely primitive */
 	cmov(x, y); /* bunker!wtm */
 	return;
     }
+#endif
+
     if((cy -= y) < 0) cy = -cy;
     if((cx -= x) < 0) cx = -cx;
-    if(cy <= 3 && cx <= 3)
+    if(cy <= 3 && cx <= 3) {
 	nocmov(x, y);
-    else if((x <= 3 && cy <= 3) || (!CM && x < cx)) {
+#ifndef NO_TERMS
+    } else if ((x <= 3 && cy <= 3) || (!CM && x < cx)) {
 	(void) putchar('\r');
 	ttyDisplay->curx = 0;
 	nocmov(x, y);
-    } else if(!CM) {
+    } else if (!CM) {
 	nocmov(x, y);
+#endif
     } else
 	cmov(x, y);
 
@@ -886,43 +915,12 @@ tty_putsym(window, x, y, ch)
     }
 }
 
-static char nulstr[] = "";
-
-static char *
-s_atr2str(n)
-    int n;
-{
-    switch(n) {
-    case ATR_ULINE:
-	if(US) return US;
-    case ATR_BOLD:
-    case ATR_BLINK:
-    case ATR_INVERSE:
-	return HI;
-    }
-    return nulstr;
-}
-
-static char *
-e_atr2str(n)
-    int n;
-{
-    switch(n) {
-    case ATR_ULINE:
-	if(UE) return UE;
-    case ATR_BOLD:
-    case ATR_BLINK:
-    case ATR_INVERSE:
-	return HE;
-    }
-    return nulstr;
-}
 
 static const char*
 compress_str(str)
 const char *str;
 {
-    	static char cbuf[BUFSZ];
+	static char cbuf[BUFSZ];
 	/* compress in case line too long */
 	if((int)strlen(str) >= CO) {
 		register const char *bp0 = str;
@@ -1005,16 +1003,18 @@ tty_putstr(window, attr, str)
     case NHW_MAP:
     case NHW_BASE:
 	tty_curs(window, cw->curx+1, cw->cury);
-	if(attr)
-	    xputs(s_atr2str(attr));
+	term_start_attr(attr);
 	while(*str && (int) ttyDisplay->curx < (int) ttyDisplay->cols-1) {
+#ifdef __SASC
+	    (void) fputchar(*str++);
+#else
 	    (void) putchar(*str++);
+#endif
 	    ttyDisplay->curx++;
 	}
 	cw->curx = 0;
 	cw->cury++;
-	if(attr)
-	    xputs(e_atr2str(attr));
+	term_end_attr(attr);
 	break;
     case NHW_MENU:
     case NHW_TEXT:
@@ -1058,7 +1058,7 @@ tty_putstr(window, attr, str)
 		cw->data[cw->cury-1][++i] = '\0';
 		tty_putstr(window, attr, &str[i]);
 	    }
-		
+
 	}
 	break;
     }
@@ -1097,13 +1097,22 @@ boolean complain;
     }
 #else
     {
+#ifdef MAC
+	int fd;
+#else
 	FILE *f;
+#endif
 	char buf[BUFSZ];
 	char *cr;
 
 	tty_clear_nhwindow(WIN_MESSAGE);
+#ifdef MAC
+	fd = open(fname, O_RDONLY, TEXT_TYPE);
+	if (fd < 0) {
+#else
 	f = fopen_datafile(fname, "r");
 	if (!f) {
+#endif
 	    if(complain) {
 		home();  tty_mark_synch();  tty_raw_print("");
 		perror(fname);  tty_wait_synch();
@@ -1111,13 +1120,21 @@ boolean complain;
 	    } else if(u.ux) docrt();
 	} else {
 	    winid datawin = tty_create_nhwindow(NHW_TEXT);
-	    if(complain && CD) {
+	    if(complain
+#ifndef NO_TERMS
+		&& CD
+#endif
+	    ) {
 		/* attempt to scroll text below map window if there's room */
 		wins[datawin]->offy = wins[WIN_STATUS]->offy+3;
 		if((int) wins[datawin]->offy + 12 > (int) ttyDisplay->rows)
 		    wins[datawin]->offy = 0;
 	    }
+#ifdef MAC
+	    while (macgets(fd, buf, BUFSZ)) {
+#else
 	    while (fgets(buf, BUFSZ, f)) {
+#endif
 		if ((cr = index(buf, '\n')) != 0) *cr = 0;
 		if (index(buf, '\t') != 0) (void) tabexpand(buf);
 		tty_putstr(datawin, 0, buf);
@@ -1126,7 +1143,11 @@ boolean complain;
 	    }
 	    tty_display_nhwindow(datawin, FALSE);
 	    tty_destroy_nhwindow(datawin);
+#ifdef MAC
+	    (void) close(fd);
+#else
 	    (void) fclose(f);
+#endif
 	}
     }
 #endif /* DEF_PAGER */
@@ -1276,7 +1297,7 @@ docorner(xmin, ymax)
 	tty_curs(BASE_WINDOW, xmin,y);	/* move cursor */
 	cl_end();			/* clear to end of line */
 #ifdef CLIPPING
-	if (y<(int) cw->offy || y+clipy > ROWNO) 
+	if (y<(int) cw->offy || y+clipy > ROWNO)
 		continue; /* only refresh board */
 	row_refresh(xmin+clipx-(int)cw->offx,COLNO-1,y+clipy-(int)cw->offy);
 #else
@@ -1286,7 +1307,7 @@ docorner(xmin, ymax)
     }
 
     end_glyphout();
-    if (ymax >= (int) wins[WIN_STATUS]->offy) { 
+    if (ymax >= (int) wins[WIN_STATUS]->offy) {
 					/* we have wrecked the bottom line */
 	flags.botlx = 1;
 	bot();
@@ -1296,7 +1317,7 @@ docorner(xmin, ymax)
 void
 end_glyphout()
 {
-#ifdef ASCIIGRAPH
+#if defined(ASCIIGRAPH) && !defined(NO_TERMS)
     if (GFlag) {
 	GFlag = FALSE;
 	graph_off();
@@ -1304,45 +1325,43 @@ end_glyphout()
 #endif
 #ifdef TEXTCOLOR
     if(ttyDisplay->color != NO_COLOR) {
-	xputs(HE);
+	term_end_color();
 	ttyDisplay->color = NO_COLOR;
     }
 #endif
 }
 
-#ifdef ASCIIGRAPH
 void
-g_putch(ch)
-    uchar ch;
+g_putch(in_ch)
+int in_ch;
 {
+    register char ch = (char)in_ch;
+
+# if defined(ASCIIGRAPH) && !defined(NO_TERMS)
     if (flags.IBMgraphics)
 	/* IBM-compatible displays don't need other stuff */
-	(void) putchar((char) ch);
+	(void) putchar(ch);
     else if (ch & 0x80) {
 	if (!GFlag) {
 	    graph_on();
 	    GFlag = TRUE;
 	}
-	(void) putchar((char) (ch ^ 0x80)); /* Strip 8th bit */
+	(void) putchar((ch ^ 0x80)); /* Strip 8th bit */
     } else {
 	if (GFlag) {
 	    graph_off();
 	    GFlag = FALSE;
 	}
-	(void) putchar((char) ch);
+	(void) putchar(ch);
     }
-}
 
 #else
+    (void) putchar(ch);
 
-void
-g_putch(ch)
-    uchar ch;
-{
-    (void) putchar((char)(ch));
+#endif	/* ASCIIGRAPH && !NO_TERMS */
+
+    return;
 };
-
-#endif	/* ASCIIGRAPH */
 
 #ifdef CLIPPING
 void
@@ -1407,15 +1426,16 @@ tty_print_glyph(window, x, y, glyph)
 #define cmap_color(n) color = flags.use_color ? defsyms[n].color : NO_COLOR
 #define trap_color(n) color = flags.use_color ? \
 				(((n) == WEB) ? defsyms[S_web ].color  : \
-					        defsyms[S_trap].color) : \
+						defsyms[S_trap].color) : \
 						NO_COLOR
 #define obj_color(n)  color = flags.use_color ? objects[n].oc_color : NO_COLOR
 #define mon_color(n)  color = flags.use_color ? mons[n].mcolor : NO_COLOR
 #define pet_color(n)  color = flags.use_color ? mons[n].mcolor :	      \
 				/* If no color, try to hilite pets; black  */ \
 				/* should be HI				   */ \
-    				((flags.hilite_pet && hilites[BLACK]) ?	      \
+				((flags.hilite_pet && has_color(BLACK)) ?     \
 							BLACK : NO_COLOR)
+
 # else /* no text color */
 
 #define zap_color(n)
@@ -1453,45 +1473,47 @@ tty_print_glyph(window, x, y, glyph)
 	ch = (offset == WEB) ? showsyms[S_web] : showsyms[S_trap];
 	trap_color(offset);
     } else if ((offset = (glyph - GLYPH_OBJ_OFF)) >= 0) {	/* object */
-	ch = oc_syms[objects[offset].oc_class];
+	ch = oc_syms[(int)objects[offset].oc_class];
 	obj_color(offset);
     } else if ((offset = (glyph - GLYPH_BODY_OFF)) >= 0) {	/* a corpse */
-	ch = oc_syms[objects[CORPSE].oc_class];
+	ch = oc_syms[(int)objects[CORPSE].oc_class];
 	mon_color(offset);
     } else if ((offset = (glyph - GLYPH_PET_OFF)) >= 0) {	/* a pet */
-	ch = monsyms[mons[offset].mlet];
+	ch = monsyms[(int)mons[offset].mlet];
 	pet_color(offset);
     } else {							/* a monster */
-	ch = monsyms[mons[glyph].mlet];
+	ch = monsyms[(int)mons[glyph].mlet];
 	mon_color(glyph);
     }
 
     /* Move the cursor. */
     tty_curs(window, x,y);
 
+#ifndef NO_TERMS
     if (ul_hack && ch == '_') {		/* non-destructive underscore */
 	(void) putchar((char) ' ');
 	backsp();
     }
+#endif
 
 #ifdef TEXTCOLOR
     /* Turn off color if no color defined, or rogue level. */
 #  ifdef REINCARNATION
-    if (hilites[color] == NULL || Is_rogue_level(&u.uz))
+    if (!has_color(color) || Is_rogue_level(&u.uz))
 #  else
-    if (hilites[color] == NULL)
+    if (!has_color(color))
 #  endif
 	color = NO_COLOR;
 
     if (color != ttyDisplay->color) {
 	if(ttyDisplay->color != NO_COLOR)
-	    xputs(HE);
+	    term_end_color();
 	ttyDisplay->color = color;
 	if(color != NO_COLOR)
-	    xputs(hilites[color]);
+	    term_start_color(color);
     }
 #endif
-    g_putch(ch);		/* print the character */
+    g_putch((int)ch);		/* print the character */
     wins[window]->curx++;	/* one character over */
     ttyDisplay->curx++;		/* the real cursor moved too */
 }
@@ -1513,13 +1535,13 @@ tty_raw_print_bold(str)
     const char *str;
 {
     if(ttyDisplay) ttyDisplay->rawprint++;
-    xputs(HI);
+    term_start_raw_bold();
 #ifdef MICRO
     msmsg("%s", str);
 #else
     (void) fputs(str, stdout);
 #endif
-    xputs(HE);
+    term_end_raw_bold();
 #ifdef MICRO
     msmsg("\n");
 #else
@@ -1586,4 +1608,5 @@ win_tty_init()
     return;
 }
 
+#endif /* TTY_GRAPHICS */
 /*wintty.c*/

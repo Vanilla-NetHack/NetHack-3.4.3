@@ -10,6 +10,8 @@
 # define __chip
 #endif
 
+#include "incl:patchlevel.h"
+
 #include "Amiga:wbdefs.h"		/* Miscellany information */
 #ifdef  INTUI_NEW_LOOK
 #define NewWindow   ExtNewWindow
@@ -84,14 +86,18 @@ main( argc, argv )
     struct IntuiMessage mimsg;
     int i;
 
-    ZapOptions( curopts );
+    /* Initialize and load libraries. */
     InitWB( argc, argv );
-    SetupWB( ); /* open window, build menus */
-    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1.1!" );
+
+    /* open window, build menus */
+    SetupWB( );
+
+    errmsg( NO_FLASH, "Welcome to NetHack Version %d.%d.%d!",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
+
     CopyRight( );
 
     ReadConfig( );
-    LoadDefaults( defgname );
 
     /* Initially, no game selected so disable menu items */
 
@@ -110,14 +116,6 @@ main( argc, argv )
 	    mask |= ( 1L << win->UserPort->mp_SigBit );
 
 	rmask = Wait( mask );
-
-	/* If displayed an error message before, clear it */
-
-	if( errup )
-	{
-	    errmsg( NO_FLASH, "" );
-	    errup = 0;
-	}
 
 	/* Process the messages on the port unless the workbench is
 	 * shutdown by a request to play a game.
@@ -150,13 +148,24 @@ main( argc, argv )
 		break;
 
 	    case MENUPICK:
-		do_menu( mimsg.Code );
+		if( errup > 0 )
+		{
+		    errmsg( NO_FLASH, "" );
+		    errup = -1;
+		}
+		do_menu( &MenuList1, mimsg.Code );
 		flushIDCMP( win->UserPort );
 		break;
 
 	    case RAWKEY:
 		if( mimsg.Code == 0x5f )
 		{
+		    if( errup > 0 )
+		    {
+			errmsg( NO_FLASH, "" );
+			errup = -1;
+		    }
+
 		    /* Pick the correct help message */
 
 		    if( lastgaddown == NULL )
@@ -179,6 +188,11 @@ main( argc, argv )
 		break;
 
 	    case GADGETDOWN:
+		if( errup > 0 )
+		{
+		    errmsg( NO_FLASH, "" );
+		    errup = -1;
+		}
 		do_gadgetdown( &mimsg );
 		break;
 
@@ -187,15 +201,27 @@ main( argc, argv )
 		break;
 
 	    case DISKINSERTED:
+		if( errup > 0 )
+		{
+		    errmsg( NO_FLASH, "" );
+		    errup = -1;
+		}
 		MapGadgets( R_DISK, 1 );
 		break;
 
 	    case MOUSEBUTTONS:
+		if( errup > 0 )
+		{
+		    errmsg( NO_FLASH, "" );
+		    errup = -1;
+		}
 		do_buttons( &mimsg );
 		flushIDCMP( win->UserPort );
 		break;
 	    }
 	}
+	if( errup == -1 )
+	    errup = 0;
 
 	if( rmask & ( 1L << dosport->mp_SigBit ) )
 	{
@@ -258,8 +284,11 @@ flushIDCMP( port )
 	struct MsgPort *port;
 {
 	struct Message *msg;
+
 	while( msg = GetMsg( port ) )
 		ReplyMsg( msg );
+
+	SetSignal( 0L, ( 1L << port->mp_SigBit ) );
 }
 
 void CopyRight( )
@@ -323,6 +352,7 @@ InitWB( argc, wbs )
 	argv = (char **)wbs;
 	for( i = 1; i < argc; ++i )
 	{
+	    if( argv[i][0] == '?' )goto usage;
 	    if( argv[i][0] != '-' )
 		break;
 	    for( j = 1; c = argv[i][j]; ++j )
@@ -378,10 +408,10 @@ InitWB( argc, wbs )
 			    cleanup( 1 );
 		    }
 		    break;
-
 		default:
 		    fprintf( stderr, "%s: invalid option %c\n",
 			argv[0], c );
+usage:
 		    fprintf( stderr,
 "usage: %s [-m] [-f .def filename] [-c config filename] [ -N screen]\n",
 			argv[ 0 ] );
@@ -557,7 +587,12 @@ void SetupWB( )
     NewScreenStructure.Width = GfxBase->NormalDisplayColumns;
     NewScreenStructure.Height = GfxBase->NormalDisplayRows;
 
-    NewScreenStructure.DefaultTitle = "WorkBench for V3.1.1 of NetHack";
+    {
+    static char dt[40];
+    sprintf(dt,"WorkBench for V%d.%d.%d of NetHack",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
+    NewScreenStructure.DefaultTitle = dt;
+    }
 
 #ifdef  INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version < 37 )
@@ -583,14 +618,36 @@ void SetupWB( )
 	{
 	    if( ( scrn = LockPubScreen( pubscreen ) ) == 0 )
 	    {
+		/* Now add our pub screen name */
 		scrntags[1].ti_Tag = SA_PubName;
 		scrntags[1].ti_Data = (ULONG) pubscreen;
 		scrntags[2].ti_Tag = TAG_DONE;
+
+		/* Get the default pub screen's size */
+		scrn = LockPubScreen( NULL );
+		NewScreenStructure.Height = scrn->Height;
+		NewScreenStructure.Width = scrn->Width;
+		UnlockPubScreen( NULL, scrn );
+
+		/* Request LACE if it looks laced.  For 2.1/3.0, we will get
+		 * promoted to the users choice of modes (if promotion is alloed)
+		 * which is best to avoid extra coding involving copying of the
+		 * viewport modes etc.
+		 */
+		if( NewScreenStructure.Height > 300 )
+			NewScreenStructure.ViewModes |= LACE;
+
 		if( ( scrn = OpenScreen( (void *)
 		    &NewScreenStructure ) ) == NULL )
 		{
-		    error( "Can't create screen" );
-		    cleanup( 1 );
+		    NewScreenStructure.Height = GfxBase->NormalDisplayRows;
+		    NewScreenStructure.Width = GfxBase->NormalDisplayColumns;
+		    if( ( scrn = OpenScreen( (void *)
+			&NewScreenStructure ) ) == NULL )
+		    {
+			error( "Can't create screen" );
+			cleanup( 1 );
+		    }
 		}
 		pubopen = 1;
 		scrlocked = 0;
@@ -644,7 +701,9 @@ void SetupWB( )
 
 #ifdef  INTUI_NEW_LOOK
     if( scrlocked )
-	strcpy( mytitle, "NetHack WB 3.1.1 - Select a GAME or press HELP" );
+	sprintf( mytitle, "NetHack WB %d.%d.%d - Select a GAME or press HELP",
+	  VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
+
     else
 	strcpy( mytitle, "Select a GAME or press HELP" );
 
@@ -682,6 +741,10 @@ void SetupWB( )
 #ifdef  INTUI_NEW_LOOK
     if( IntuitionBase->LibNode.lib_Version >= 37 )
     {
+	/* If we did not create this screen, unlock it.
+	 * otherwise, advertise it for other applications
+	 * to use.
+	 */
 	if( scrlocked )
 	    UnlockPubScreen( NULL, scrn );
 	else if( pubopen )
@@ -1070,7 +1133,13 @@ void help_requester( file )
 	Help3_NewWindowStructure10.Height += txtdiff;
     }
 
-    Help3_NewWindowStructure10.Title = "Help for NetHack WorkBench V3.1.1";
+    {
+    static char title[40];
+    sprintf(title,"Help for NetHack WorkBench V%d.%d.%d",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
+    Help3_NewWindowStructure10.Title = title;
+    }
+
     Help3_NewWindowStructure10.Screen = scrn;
     if( ( win = MyOpenWindow( &Help3_NewWindowStructure10 ) ) == NULL )
     {
@@ -1204,74 +1273,67 @@ void help_requester( file )
 /* Act on the menu item number passed */
 
 void
-do_menu(mcode)
+do_menu( mptr, mcode)
+    struct Menu *mptr;
     register int mcode;
 {
-    switch(MENUNUM(mcode))
+    while( mcode != MENUNULL )
     {
-	case MENU_PROJECT:
-	    switch(ITEMNUM(mcode))
-	    {
-		case ITEM_HELP:
-		    help_requester( "NetHack:HackWB.hlp" );
-		    break;
+	switch(MENUNUM(mcode))
+	{
+	    case MENU_PROJECT:
+		switch(ITEMNUM(mcode))
+		{
+		    case ITEM_HELP:
+			help_requester( "NetHack:HackWB.hlp" );
+			break;
 
-		case ITEM_ABOUT:
-		    text_requester( &About_NewWindowStructure9,
-			    &About_IntuiTextList9 );
-		    break;
+		    case ITEM_ABOUT:
+			text_requester( &About_NewWindowStructure9,
+				&About_IntuiTextList9 );
+			break;
 
-		case ITEM_SCORES:
-		    menu_scores( );
-		    break;
+		    case ITEM_SCORES:
+			menu_scores( );
+			break;
 
-		case ITEM_RECOVER:
-		    menu_recover( );
-		    break;
+		    case ITEM_RECOVER:
+			menu_recover( );
+			break;
 
-		case ITEM_EDDEF:
-		    menu_editdef( GAME_FROM_DEFAULT );
-		    break;
+		    case ITEM_CONFIG:
+			menu_config( );
+			break;
 
-		case ITEM_CONFIG:
-		    menu_config( );
-		    break;
+		    case ITEM_QUIT:
+			quit = Ask( "Ready to Quit?" );
+			break;
 
-		case ITEM_QUIT:
-		    quit = Ask( "Ready to Quit?" );
-		    break;
+		}
+		break;
 
-	    }
-	    break;
+	    case MENU_GAME:
+		switch( ITEMNUM( mcode ) )
+		{
 
-	case MENU_GAME:
-	    switch( ITEMNUM( mcode ) )
-	    {
+		    case ITEM_INFO:
+			menu_info( );
+			break;
 
-		case ITEM_INFO:
-		    menu_info( );
-		    break;
+		    case ITEM_COPYOPT:
+			menu_copyopt( );
+			break;
 
-		case ITEM_SETCOMMENT:
-		    menu_comment( );
-		    break;
+		    case ITEM_DISCARD:
+			menu_discard( );
+			break;
 
-		case ITEM_SETOPT:
-		    menu_setopt( );
-		    break;
-
-		case ITEM_COPYOPT:
-		    menu_copyopt( );
-		    break;
-
-		case ITEM_DISCARD:
-		    menu_discard( );
-		    break;
-
-		case ITEM_RENAME:
-		    menu_rename( );
-		    break;
-	    }
+		    case ITEM_RENAME:
+			menu_rename( );
+			break;
+		}
+	}
+        mcode = ((struct MenuItem *)ItemAddress( mptr, (long)mcode ))->NextSelect;
     }
 }
 
@@ -1300,9 +1362,10 @@ void
 run_game( gptr )
     register GPTR gptr;
 {
+    extern UWORD __chip waitPointer[];
     struct Task *ctask;
     register struct MsgPort *proc = NULL;
-    char buf[ 100 ], *t;
+    char buf[ 100 ];
     char namebuf[ 100 ];
     int once, tidx;
 
@@ -1318,69 +1381,28 @@ run_game( gptr )
 
     if( gptr->dobj->do_Gadget.GadgetID == GADNEWGAME )
     {
-	    /*
-	    if currrent name in use, get new name
-	    */
-
-	if( !defgame.plname )
-	    defgame.plname = strdup( defgname );
-
-	/* Put options from gadgets into options[ OPTIONS_IDX ] */
-
-	PutOptions( curopts );
-
 	once = 0;
-	sprintf( buf, "%s/%s.sav", options[ SAVE_IDX ], defgame.plname );
+	sprintf( buf, "%s/%s.sav", options[ SAVE_IDX ], gptr->name );
 	while( access( buf, 0 ) == 0 )
 	{
 	    if( StrRequest( "Game Already Exists, Enter a New Name",
-		namebuf, once ? namebuf : defgame.plname ) == 0 )
+		namebuf, once ? namebuf : gptr->gname ) == 0 )
 	    {
 		return;
 	    }
 	    once = 1;
 	    sprintf( buf, "%s/%s.sav", options[ SAVE_IDX ], namebuf );
 	}
-
-	/* Set new name to use, if done one at all */
-	if( once )
-	{
-	    if( defgame.plname ) free( defgame.plname );
-	    defgame.plname = strdup( namebuf );
-	}
-
-	    /* set defaults for this game from previous defaults. */
-	if( defgame.plname && stricmp( defgame.plname, "wbdefaults" ) )
-	    SetToolLine( gptr, "NAME", defgame.plname );
-	if( defgame.pltype )
-	    SetToolLine( gptr, "CHARACTER", players[ defgame.pltype ] );
-
-	gptr->gname = xmalloc( 20 + strlen( defgame.plname ) );
     }
-    else
-    {
-	gptr->gname = xmalloc( 20 + strlen( gptr->name ) );
-    }
+    gptr->gname = xmalloc( 20 + strlen( gptr->name ) );
 
-    SetToolLine( gptr, "PATH", options[ PATH_IDX ] );
-    if( defgame.options )
-	SetToolLine( gptr, "OPTIONS", defgame.options );
-    else
-	SetToolLine( gptr, "OPTIONS", options[ OPTIONS_IDX ] );
-
-    /* Prefer a setting in the users data over the global one */
-    if( ( ( t = ToolsEntry( gptr, "PENS" ) ) == NULL || *t == 0 ) &&
-      ( ( t = ToolsEntry( gptr, "PEN" ) ) == NULL || *t == 0 ) )
-    {
-	t = options[ PENS_IDX ];
-    }
-    SetToolLine( gptr, "PENS", t );
-    SetToolLine( gptr, "HACKDIR", options[ HACKDIR_IDX ] );
-    SetToolLine( gptr, "LEVELS", options[ LEVELS_IDX ] );
-    SetToolLine( gptr, "SAVE", options[ SAVE_IDX ] );
+    /*
+     * options[] are no longer put into the tooltypes because they are in the options
+     * string now.
+     */
 
     gptr->wbs = AllocMem( sizeof( struct WBStartup ) +
-    ( sizeof( struct WBArg ) * 2 ), MEMF_PUBLIC | MEMF_CLEAR );
+	    ( sizeof( struct WBArg ) * 2 ), MEMF_PUBLIC | MEMF_CLEAR );
 
     /* Check if we got everything */
 
@@ -1400,23 +1422,27 @@ run_game( gptr )
     if( shutdown )
 	CloseDownWB( );
 
+    SetPointer( win, waitPointer, 16, 16, -6, 0 );
+
     /* Load the game into memory */
+
 #ifdef SPLIT
     /* Which version do we run? */
     {
-    char gi[80];
+	char gi[80];
 
-    sprintf( gi, "%s.dir", GAMEIMAGE );
-    if( access( gi, 0 ) == 0 ){
-	gptr->seglist = (BPTR)s_LoadSeg( gi );
-	if( gptr->seglist ) running_split=1;
-    }else{
-	gptr->seglist = (BPTR)LoadSeg( GAMEIMAGE );
-    }
+	sprintf( gi, "%s.dir", GAMEIMAGE );
+	if( access( gi, 0 ) == 0 ){
+	    gptr->seglist = (BPTR)s_LoadSeg( gi );
+	    if( gptr->seglist ) running_split=1;
+	}else{
+	    gptr->seglist = (BPTR)LoadSeg( GAMEIMAGE );
+	}
     }
 #else
     gptr->seglist = (BPTR)LoadSeg( GAMEIMAGE );
 #endif
+    ClearPointer( win );
 
     if( gptr->seglist == NULL)
     {
@@ -1429,7 +1455,8 @@ run_game( gptr )
 
     /* Set the game name for the status command */
 
-    sprintf( gptr->gname, "NetHack 3.1.1 %s", gptr->name );
+    sprintf( gptr->gname, "NetHack %d.%d.%d %s",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL, gptr->name );
 
     /* Create a process for the game to execute in */
 
@@ -1471,7 +1498,12 @@ freemem:
     gptr->wbs->sm_Process = proc;
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
-    gptr->wbs->sm_ToolWindow = "con:0/0/350/50/Amiga NetHack 3.1.1";
+    {
+    static char tw[40];
+    sprintf(tw,"con:0/0/350/50/Amiga NetHack %d.%d.%d",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
+    gptr->wbs->sm_ToolWindow = tw;
+    }
     gptr->wbs->sm_ArgList = gptr->wba;
 
     /* Fill in the args */
@@ -1649,7 +1681,20 @@ void LoadIcons( )
 
     /* Check if we can access the new save directory */
 
-    if( ( savedir = Lock( options[ SAVE_IDX ], ACCESS_READ ) ) == NULL )
+    if( t = strchr( options[ SAVE_IDX ], ';' ) )
+    {
+	strncpy( buf, options[ SAVE_IDX ], sizeof( buf ) - 1 );
+	buf[ sizeof( buf ) - 1 ] = 0;
+	if( ( t = strchr( buf, ';' ) ) && strcmp( t, ";n" ) == 0 )
+	    *t = 0;
+	if( ( savedir = Lock( buf, ACCESS_READ ) ) == NULL )
+	{
+	    errmsg( FLASH,
+		    "Can't access save directory: %s", buf );
+	    return;
+	}
+    }
+    else if( ( savedir = Lock( options[ SAVE_IDX ], ACCESS_READ ) ) == NULL )
     {
 	errmsg( FLASH,
 		"Can't access save directory: %s", options[ SAVE_IDX ] );
@@ -1664,8 +1709,10 @@ void LoadIcons( )
 	return;
     }
 
-    if( newgame = gamehead )
+    if( ( newgame = gamehead ) && newgame->dobj->do_Gadget.GadgetID == GADNEWGAME )
 	gamehead = gamehead->next;
+    else
+	newgame = NULL;
 
     if( !Examine( savedir, finfo ) )
     {
@@ -1752,7 +1799,7 @@ void menu_recover()
 
     if( !once )
     {
-	for( gd = Rst_NewWindowStructure12.FirstGadget;
+	for( gd = Rst_NewWindowStructure11.FirstGadget;
 		    gd; gd = gd->NextGadget )
 	{
 	    switch( gd->GadgetID )
@@ -1786,8 +1833,8 @@ void menu_recover()
 		    break;
 	    }
 	}
-	Rst_NewWindowStructure12.Height += txtdiff*5;
-	for( ip = &Rst_IntuiTextList12; ip; ip = ip->NextText )
+	Rst_NewWindowStructure11.Height += txtdiff*5;
+	for( ip = &Rst_IntuiTextList11; ip; ip = ip->NextText )
 	{
 	    if( *ip->IText == 'O' )
 		ip->TopEdge += txtdiff;
@@ -1797,13 +1844,13 @@ void menu_recover()
 	once = 1;
     }
 
-    Rst_NewWindowStructure12.Screen = scrn;
-    if( ( w = MyOpenWindow( &Rst_NewWindowStructure12 ) ) == NULL )
+    Rst_NewWindowStructure11.Screen = scrn;
+    if( ( w = MyOpenWindow( &Rst_NewWindowStructure11 ) ) == NULL )
     {
 	errmsg( FLASH, "Can't create requester window" );
 	return;
     }
-    PrintIText( w->RPort, &Rst_IntuiTextList12, 0, txtdiff );
+    PrintIText( w->RPort, &Rst_IntuiTextList11, 0, txtdiff );
     lastact = FindGadget( w, NULL, GADRESTDIR );
 
     while( !done )
@@ -1878,6 +1925,7 @@ void menu_config()
     register struct Gadget *gd;
     static int once = 0;
     int txtdiff = scrn->RastPort.TxHeight - 8;
+    char *env;
 
     strcpy( StrPath, options[ PATH_IDX ] );
     strcpy( StrHackdir, options[ HACKDIR_IDX ] );
@@ -2050,6 +2098,11 @@ void menu_config()
 
 			case GADCONFLOAD:
 			    ReadConfig( );
+                            env = malloc( strlen( StrConf ) + 3 +
+						strlen( "NETHACKOPTIONS" ) );
+			    sprintf( env, "NETHACKOPTIONS=@%s", StrConf );
+			    putenv( env );
+			    free( env );
 			    strcpy( StrPath, options[ PATH_IDX ] );
 			    strcpy( StrHackdir, options[ HACKDIR_IDX ] );
 			    strcpy( StrPens, options[ PENS_IDX ] );
@@ -2064,7 +2117,6 @@ void menu_config()
         		    	char buf[ 300 ], *t, nname[ 100 ], oname[100], *b;
 
                                 setoneopt( PATH_IDX, StrPath );
-                                PutOptions( curopts );
                                 setoneopt( HACKDIR_IDX, StrHackdir );
                                 setoneopt( PENS_IDX, StrPens );
                                 setoneopt( LEVELS_IDX, StrLevels );
@@ -2142,7 +2194,6 @@ void menu_config()
     }
 
     setoneopt( PATH_IDX, StrPath );
-    PutOptions( curopts );
     setoneopt( HACKDIR_IDX, StrHackdir );
     setoneopt( PENS_IDX, StrPens );
     setoneopt( LEVELS_IDX, StrLevels );
@@ -2240,227 +2291,6 @@ UpdateCnfFile()
     unlink( "old_nethack.cnf" );
     rename( "nethack.cnf", "old_nethack.cnf" );
     rename( "new_nethack.cnf", "nethack.cnf" );
-}
-
-void menu_editdef( gametype )
-    int gametype;
-{
-    register struct Window *cwin;
-    int done = 0, err;
-    USHORT mcode;
-    long class, qual, code;
-    register struct IntuiMessage *imsg;
-    register struct Gadget *gd;
-    char buf[ 100 ];
-    struct IntuiText *ip;
-    static int once = 0;
-    int txtdiff = scrn->RastPort.TxHeight - 8;
-    register GPTR gptr;
-
-    /* If gametype indicates an INFO request... */
-    if( gametype == GAME_FROM_INFO )
-    {
-	register char *t;
-
-	if( ( gptr = NeedGame() ) == NULL )
-	{
-	    errmsg( FLASH, "No Game selected to edit options for" );
-	    return;
-	}
-
-	strcpy( DefOutFile, gptr->name );
-	if( ( t = strrchr( DefOutFile, '.' ) ) &&
-		stricmp( t, ".sav" ) == 0 )
-	{
-	    *t = 0;
-	}
-	LoadDefaults( DefOutFile );
-    }
-    else /* if( gametype == GAME_FROM_DEFAULT ) */
-    {
-	/* Find the newgame gadget... */
-
-	for( gptr = windowgads; gptr; gptr = gptr->nextwgad )
-	{
-	    if( gptr->dobj->do_Gadget.GadgetID == GADNEWGAME )
-		break;
-	}
-
-	if( !gptr )
-	{
-	    errmsg( FLASH, "Can't find NewGame information" );
-	    return;
-	}
-
-	strcpy( DefOutFile, defgname );
-	LoadDefaults( DefOutFile );
-    }
-
-    /* Copy the defgame.* date into the Defs_ window gadgets */
-    CopyDefs2Gad();
-
-    /* Do one time window setup and initialization */
-
-    if( !once )
-    {
-	/* Rearrange the gadgets based on fonts text height */
-
-	for( gd = Defs_NewWindowStructure11.FirstGadget;
-		gd; gd = gd->NextGadget )
-	{
-	    if( gd->GadgetID != 0 )
-	    {
-		gd->TopEdge += txtdiff;
-		gd->Height += txtdiff;
-		switch( gd->GadgetID )
-		{
-		    case GADOUTFILE:
-			gd->TopEdge += txtdiff;
-			break;
-		    case GADDEFLOAD:
-		    case GADDEFSAVE:
-		    case GADEDOPTIONS:
-			gd->TopEdge += txtdiff * 3;
-			break;
-		    default:
-			if( ( gd->Flags & GADGHIGHBITS ) == GADGHNONE )
-			    gd->TopEdge += txtdiff * 2;
-			break;
-		}
-		SetBorder( gd, -1 );
-	    }
-	}
-
-	/* Move the text down as appropriate */
-
-	for( ip = &Defs_IntuiTextList11; ip; ip = ip->NextText )
-	{
-	    if( *ip->IText == 'C' )
-		ip->TopEdge += txtdiff * 2;
-	    else if( *ip->IText == 'O' )
-		ip->TopEdge += txtdiff;
-	}
-
-	/* Adjust the height of the window */
-	Defs_NewWindowStructure11.Height += txtdiff * 5;
-	++once;
-    }
-
-    Defs_NewWindowStructure11.Screen = scrn;
-
-    /* Set Correct title */
-    if( gametype == GAME_FROM_DEFAULT )
-	Defs_NewWindowStructure11.Title = "Edit Default Game Definition";
-    else if( gametype == GAME_FROM_INFO )
-	Defs_NewWindowStructure11.Title = "Edit Game Definition";
-    else
-    {
-	errmsg( FLASH, "Can't edit game of type %d", gametype );
-	return;
-    }
-
-    if( ( cwin = MyOpenWindow( &Defs_NewWindowStructure11 ) ) == NULL )
-    {
-	errmsg( FLASH, "Can't create requester window" );
-	return;
-    }
-
-    PrintIText( cwin->RPort, &Defs_IntuiTextList11, 0, txtdiff );
-    UpdateTypes( cwin );
-
-    /* Do Menu Layouts Based on FontHeight */
-    SetUpMenus( &Defs_MenuList11, scrn );
-    SetMenuStrip( cwin, &Defs_MenuList11 );
-
-    /* Process messages */
-    while( !done )
-    {
-	WaitPort( cwin->UserPort );
-	while( ( imsg = (void *) GetMsg( cwin->UserPort ) ) != NULL )
-	{
-	    mcode = imsg->Code;
-	    gd = (struct Gadget *)imsg->IAddress;
-	    qual = imsg->Qualifier;
-	    class = imsg->Class;
-	    code = imsg->Code;
-
-	    ReplyMsg( (struct Message *)imsg );
-
-	    switch( class )
-	    {
-		case VANILLAKEY:
-		    /* Escape or LEFT_AMIGA-b aborts the requester... */
-		    if( code == '\33' || (code == 'b' && (qual&AMIGALEFT)))
-		    {
-			done = 1;
-		    }
-		    break;
-
-		case ACTIVEWINDOW:
-		    if( gd = FindGadget( cwin, NULL, GADCHARNAME ) )
-			ActivateGadget( gd, cwin, NULL );
-		    break;
-
-		case MENUPICK:
-		    while( mcode != MENUNULL )
-		    {
-			switch(MENUNUM(mcode))
-			{
-			    case PLAYERMENU:
-				defgame.pltype = ITEMNUM( mcode );
-				UpdateTypes( cwin );
-				break;
-			}
-			mcode = ((struct MenuItem *)
-			    ItemAddress( &Defs_MenuList11,
-			    mcode))->NextSelect;
-		    }
-		    break;
-
-		case CLOSEWINDOW:
-		    CopyGad2Defs( );
-		    done = 1;
-		    break;
-
-		case GADGETUP:
-		    switch( gd->GadgetID )
-		    {
-			case GADEDOPTIONS:
-			    CopyOptions( curopts, gptr );
-			    if( EditOptions( curopts ) )
-				SetOptions( curopts, gptr );
-			    break;
-
-			case GADDEFSAVE:
-			    CopyGad2Defs( );
-			    sprintf( buf,
-				"Game definition saved in: %s", DefOutFile );
-			    errmsg( NO_FLASH, buf );
-			    SaveDefaults( DefOutFile );
-			    break;
-
-			case GADDEFLOAD:
-			    err = !LoadDefaults( DefPlayerName );
-			    if( !err )
-			    {
-				strcpy( DefOutFile, DefPlayerName );
-				CopyDefs2Gad();
-				UpdateTypes( cwin );
-				sprintf( buf, "Game definition loaded from: %s",
-				    DefPlayerName );
-				errmsg( NO_FLASH, buf );
-			    }
-			    break;
-
-			default:
-			    break;
-		    }
-		    break;
-	    }
-	}
-    }
-
-    SafeCloseWindow( cwin );
 }
 
 void do_gadgetup( imsg )
@@ -2563,34 +2393,31 @@ void do_gadgetdown( imsg )
     gptr->mics = imsg->Micros;
 }
 
-void menu_setopt()
-{
+void setopt( gptr )
     register GPTR gptr;
-
-    if( ( gptr = NeedGame() ) == NULL )
-	return;
+{
     CopyOptions( curopts, gptr );
-    if( EditOptions( curopts ) )
+    if( EditOptions( curopts, gptr ) )
 	SetOptions( curopts, gptr );
 }
 
 void menu_info()
 {
+    int itemno;
     register struct IntuiMessage *imsg;
-    struct IntuiText *ip;
     char *t;
     register GPTR gptr;
     register struct Gadget *gd;
     register struct FileInfoBlock *finfo;
     register struct Window *cwin;
     register int i;
-    int done = 0, quit;
+    int done = 0;
+    long lock, olock;
     char **sp;
     static int once = 0;
-    register BPTR lock;
     long code, class, qual;
-    static struct IntuiText itext[ 4 ];
-    char commentstr[ 100 ], namestr[ 50 ];
+    static struct IntuiText itext[ 2 ];
+    char commentstr[ 100 ], *s;
     int txtdiff = scrn->RastPort.TxHeight - 8;
 
     if( ( gptr = NeedGame() ) == NULL )
@@ -2613,7 +2440,7 @@ void menu_info()
     commentstr[ sizeof( finfo->fib_Comment ) ] = 0;
     free( finfo );
 
-    for( i = 0; i < 4; ++i )
+    for( i = 0; i < 2; ++i )
     {
 	itext[ i ].FrontPen = C_BLACK;
 	itext[ i ].BackPen = C_GREY;
@@ -2622,13 +2449,11 @@ void menu_info()
 	itext[ i ].LeftEdge = 4;
     }
     ReallocTools( gptr, 0 );
-    sp = gptr->dobj->do_ToolTypes;
 
     if( !once )
     {
-	Info_Comment.TopEdge += txtdiff*2;
-	Info_Class.TopEdge += txtdiff;
-	Info_NewWindowStructure6.Height += txtdiff * 6;
+    	Info_Comment.TopEdge += txtdiff*2;
+	Info_NewWindowStructure6.Height += txtdiff * 7;
 	for( gd = Info_NewWindowStructure6.FirstGadget;
 		gd; gd = gd->NextGadget )
 	{
@@ -2640,8 +2465,15 @@ void menu_info()
 		case 0:
 		    break;
 
+		case GADEDITOPTS:
+		    gd->TopEdge += txtdiff*3;
+		    SetBorder( gd, -1 );
+		    break;
+
 		case GADTOOLTYPES:
 		    gd->TopEdge += txtdiff*4;
+		    if( scrn->Height > 300 )
+			gd->TopEdge += 2;
 		    SetBorder( gd, -1 );
 		    break;
 
@@ -2655,73 +2487,95 @@ void menu_info()
 		    SetBorder( gd, -1 );
 		    break;
 
+		case GADSAVEINFO:
+		    gd->TopEdge += txtdiff*5;
+		    SetBorder( gd, -1 );
+		    break;
+
+		case GADQUITINFO:
+		    gd->TopEdge += txtdiff*5;
+		    SetBorder( gd, -1 );
+		    break;
+
+		case GADUSEINFO:
+		    gd->TopEdge += txtdiff*5;
+		    SetBorder( gd, -1 );
+		    break;
+
 		case GADTOOLUP:
 		    gd->TopEdge += txtdiff*4;
 		    gd->Flags &= ~GADGHIGHBITS;
 		    gd->Flags |= GADGIMAGE|GADGHIMAGE;
-		    gd->GadgetRender = (APTR)&up_selectimage;
-		    gd->SelectRender = (APTR)&up_renderimage;
+		    if( scrn->Height > 300 )
+		    {
+			gd->GadgetRender = (APTR)&tall_up_selectimage;
+			gd->SelectRender = (APTR)&tall_up_renderimage;
+			gd->Height *= 2;
+			if( txtdiff == 0 )
+			    gd->TopEdge -= 2;
+		    }
+		    else
+		    {
+			gd->GadgetRender = (APTR)&up_selectimage;
+			gd->SelectRender = (APTR)&up_renderimage;
+		    }
 		    break;
 
 		case GADTOOLDOWN:
 		    gd->TopEdge += txtdiff*5;
 		    gd->Flags &= ~GADGHIGHBITS;
 		    gd->Flags |= GADGIMAGE|GADGHIMAGE;
-		    gd->GadgetRender = (APTR)&down_selectimage;
-		    gd->SelectRender = (APTR)&down_renderimage;
+		    if( scrn->Height > 300 )
+		    {
+			gd->GadgetRender = (APTR)&tall_down_selectimage;
+			gd->SelectRender = (APTR)&tall_down_renderimage;
+			gd->Height *= 2;
+			if( txtdiff == 0 )
+			    gd->TopEdge += 4;
+		    }
+		    else
+		    {
+			gd->GadgetRender = (APTR)&down_selectimage;
+			gd->SelectRender = (APTR)&down_renderimage;
+		    }
 		    break;
 
 		default:
 		    SetBorder( gd, -1 );
 	    }
 	}
-	for( ip = &Info_IntuiTextList6; ip; ip = ip->NextText )
-	{
-	    if( *ip->IText == 'C' )
-	    {
-		if( ip->IText[1] == 'o' )
-		    ip->TopEdge += 2*txtdiff;
-		else
-		    ip->TopEdge += txtdiff;
-	    }
-	    else if( *ip->IText == 'T' )
-		ip->TopEdge += 4*txtdiff;
-	}
+
 	++once;
     }
 
-    gd = &Info_EditDef;
-    if( access( GameName( gptr, gptr->name ), 1 ) == 0 )
-	gd->Flags |= GADGDISABLED;
-    else
-	gd->Flags &= ~GADGDISABLED;
-
-    /* Put in the comment */
-
-    Info_Comment.GadgetText = &itext[ 0 ];
-    itext[ 0 ].IText = commentstr;
+    strncpy( Sbuff( &Info_Comment ), commentstr, 100 );
 
     /* The players name */
 
-    Info_Player.GadgetText = &itext[ 1 ];
-    strncpy( namestr, ToolsEntry( gptr, "NAME" ), sizeof( namestr ) );
-    namestr[ sizeof( namestr ) - 1 ] = 0;
-    if( *namestr == 0 )
+    strncpy( StrPlayer, ToolsEntry( gptr, "NAME" ), 100 );
+    if( *StrPlayer == 0 )
     {
-	strncpy( namestr, gptr->name, sizeof( namestr ) );
-	namestr[ sizeof( namestr ) - 1 ] = 0;
+	strncpy( StrPlayer, gptr->name, 99 );
     }
-    if( ( t = strrchr( namestr, '.' ) ) && stricmp( t, ".sav" ) == 0 )
+
+    if( ( t = strrchr( StrPlayer, '.' ) ) && stricmp( t, ".sav" ) == 0 )
+    {
 	*t = 0;
-    itext[ 1 ].IText = namestr;
+    }
 
     /* The character class of the player */
 
-    Info_Class.GadgetText = &itext[ 2 ];
-    itext[ 2 ].IText = ToolsEntry( gptr, "CHARACTER" );
+    Info_Class.GadgetText = &itext[ 0 ];
+    itext[ 0 ].IText = ToolsEntry( gptr, "CHARACTER" );
+    if( *itext[ 0 ].IText == 0 )
+    {
+	itext[ 0 ].IText = players[ 0 ];
+	SetToolLine( gptr, "CHARACTER", players[ 0 ] );
+    }
 
     /* If there are ToolTypes entries, put the first one into the gadget */
 
+    sp = gptr->dobj->do_ToolTypes;
     if( sp && *sp )
 	strcpy( StrTools, *sp );
 
@@ -2736,7 +2590,23 @@ void menu_info()
 	errmsg( FLASH, "Can't create info window" );
 	return;
     }
-    PrintIText( cwin->RPort, &Info_IntuiTextList6, 0, txtdiff );
+
+    itemno = 0;
+    if( s = FindToolType( (char **) gptr->dobj->do_ToolTypes, "CHARACTER" ) )
+    {
+	s += 10;
+	for( itemno = 0; players[ itemno ]; ++itemno )
+	{
+	    if( strnicmp( s, players[ itemno ], strlen( s ) ) == 0 )
+		break;
+	}
+    }
+    if( !players[ itemno ] )
+	itemno = 0;
+
+    CheckOnly( &Info_MenuList6, 0, itemno );
+    SetUpMenus( &Info_MenuList6, scrn );
+    SetMenuStrip( cwin, &Info_MenuList6 );
 
     while( !done )
     {
@@ -2756,7 +2626,6 @@ void menu_info()
 		    if( code == '\33' || (code == 'b' && (qual&AMIGALEFT)) )
 		    {
 			done = 1;
-			quit = 0;
 		    }
 		    break;
 
@@ -2768,139 +2637,160 @@ void menu_info()
 			*sp = strdup( StrTools );
 		    }
 		    done = 1;
-		    quit = 0;
 		    break;
 
 		case GADGETUP:
 		    switch( gd->GadgetID )
 		    {
-			case GADEDDEF:
-			    /* Put the game values into the defaults */
-
-			    Game2Defs( gptr );
-
-			    /* Put the options into the options array */
-
-			    CopyOptions( curopts, gptr );
-
-			    /* Edit the defaults */
-
-			    menu_editdef( GAME_FROM_INFO );
-
-			    /* Put the options back in */
-
-			    SetOptions( curopts, gptr );
-
-			    /* Move defaults to game */
-
-			    SetToolLine( gptr, "NAME", defgame.plname );
-			    SetToolLine( gptr, "CHARACTER",
-				defgame.pltype ?
-				players[ defgame.pltype ] : "" );
-			    itext[ 2 ].IText =
-				ToolsEntry( gptr, "CHARACTER" );
-			    strncpy( namestr, ToolsEntry( gptr, "NAME" ),
-				sizeof( namestr ) );
-			    namestr[ sizeof( namestr ) - 1 ] = 0;
-			    if( *namestr == 0 )
-			    {
-				strncpy( namestr, gptr->name, sizeof(namestr) );
-				namestr[ sizeof( namestr ) - 1 ] = 0;
-			    }
-			    if( ( t = strrchr( namestr, '.' ) ) &&
-				stricmp( t, ".sav" ) == 0 )
-			    {
-				*t = 0;
-			    }
-			    itext[ 1 ].IText = namestr;
-
-			    /* Make sure that the correct ToolTypes line
-			     * is displayed in the gadget.
-			     */
-
-			    sp = gptr->dobj->do_ToolTypes;
-			    strcpy( StrTools, *sp );
-			    UpdateInfoWin( cwin );
-			    break;
-
-			case GADADDTOOL:
-			    ReallocTools( gptr, 1 );
-			    sp = gptr->dobj->do_ToolTypes;
-			    for( i = 0; sp[ i ]; ++i )
-				;
-			    sp[i] = strdup( "" );
-			    sp[i+1] = NULL;
-			    itext[ 2 ].IText =
-				ToolsEntry( gptr, "CHARACTER" );
-			    *StrTools = 0;
-			    UpdateInfoWin( cwin );
-			    sp += i;
-			    break;
-
-			case GADDELTOOL:
-			    while( *sp = sp[1] )
-				++sp;
+		    case GADSAVEINFO:
+			/* Write icon and quit. */
+			SetToolLine( gptr, "NAME", StrPlayer );
+			UpdateGameIcon( gptr );
+			lock = Lock( gptr->dname, ACCESS_READ );
+			if( lock )
+			{
+			    olock = CurrentDir( lock );
+			    SetComment( gptr->fname, Sbuff( &Info_Comment ) );
+			    CurrentDir( olock );
+			    done = 1;
+			}
+			else
+			{
+			    errmsg( FLASH, "Can't access icon's directory" );
 			    sp = gptr->dobj->do_ToolTypes;
 			    strcpy( StrTools, *sp ? *sp : "" );
 			    UpdateInfoWin( cwin );
-			    break;
+			}
+			break;
 
-			case GADTOOLTYPES:
-			    if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
-			    {
-				if( *sp )
-				    free( *sp );
-				*sp = strdup( StrTools );
-			    }
-			    break;
+		    case GADUSEINFO:
+			/* Quit this loop. */
+			done = 1;
+			break;
 
-			case GADTOOLDOWN:
-			    if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
+		    case GADQUITINFO:
+			/* Reload icon and quit this loop. */
+			RemoveGadget( win, &gptr->dobj->do_Gadget );
+			RemoveGITEM( gptr );
+			lastgaddown = NULL; /* very important... */
+			MapGadgets( R_DISK, 1 );
+			done = 1;
+			break;
+
+		    case GADEDITOPTS:
+			setopt( gptr );
+			sp = gptr->dobj->do_ToolTypes;
+			strcpy( StrTools, *sp ? *sp : "" );
+			UpdateInfoWin( cwin );
+			break;
+
+		    case GADADDTOOL:
+			FreeTools( gptr );
+			ReallocTools( gptr, 2 );
+			sp = gptr->dobj->do_ToolTypes;
+			for( i = 0; sp[ i ]; ++i )
+			    ;
+			sp[i] = strdup( "" );
+			sp[i+1] = NULL;
+			itext[ 0 ].IText =
+			    ToolsEntry( gptr, "CHARACTER" );
+			*StrTools = 0;
+			Info_ToolTypes.Flags &= ~GADGDISABLED;
+			UpdateInfoWin( cwin );
+			sp += i;
+			break;
+
+		    case GADDELTOOL:
+			while( *sp = sp[1] )
+			    ++sp;
+			sp = gptr->dobj->do_ToolTypes;
+			strcpy( StrTools, *sp ? *sp : "" );
+			Info_ToolTypes.Flags &= ~GADGDISABLED;
+			UpdateInfoWin( cwin );
+			break;
+
+		    case GADTOOLTYPES:
+			if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
+			{
+			    if( *sp )
+				free( *sp );
+			    *sp = strdup( StrTools );
+			}
+			break;
+
+		    case GADTOOLDOWN:
+			if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
+			{
+			    if( *sp )
+				free( *sp );
+			    *sp = strdup( StrTools );
+			}
+
+			if( sp && sp[0] && sp[1] )
+			{
+			    ++sp;
+			    strcpy( StrTools, *sp );
+			    if( IsEditEntry( StrTools, gptr ) )
+				Info_ToolTypes.Flags &= ~GADGDISABLED;
+			    else
+				Info_ToolTypes.Flags |= GADGDISABLED;
+			}
+			else
+			{
+			    if( sp && *sp )
+				strcpy( StrTools, *sp );
+			    DisplayBeep( NULL );
+			}
+			break;
+
+		    case GADTOOLUP:
+			if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
+			{
+			    if( *sp )
+				free( *sp );
+			    *sp = strdup( StrTools );
+			}
+			if( sp && sp > gptr->dobj->do_ToolTypes )
+			{
+			    --sp;
+			    if( *sp )
 			    {
-				if( *sp )
-				    free( *sp );
-				*sp = strdup( StrTools );
-			    }
-			    if( sp != NULL && sp[1] != NULL )
-			    {
-				++sp;
 				strcpy( StrTools, *sp );
 				if( IsEditEntry( StrTools, gptr ) )
 				    Info_ToolTypes.Flags &= ~GADGDISABLED;
 				else
 				    Info_ToolTypes.Flags |= GADGDISABLED;
 			    }
-			    else
-			    {
-				if( sp && *sp )
-				    strcpy( StrTools, *sp );
-				DisplayBeep( NULL );
-			    }
-			    break;
+			}
+			else
+			{
+			    DisplayBeep( NULL );
+			}
+			break;
 
-			case GADTOOLUP:
-			    if( sp && *sp && CheckAndCopy( StrTools, *sp ) )
-			    {
-				if( *sp )
-				    free( *sp );
-				*sp = strdup( StrTools );
-			    }
-			    if( sp && sp > gptr->dobj->do_ToolTypes )
-			    {
-				--sp;
-				strcpy( StrTools, *sp );
-				if( IsEditEntry( StrTools, gptr ) )
-				    Info_ToolTypes.Flags &= ~GADGDISABLED;
-				else
-				    Info_ToolTypes.Flags |= GADGDISABLED;
-			    }
-			    else
-			    {
-				DisplayBeep( NULL );
-			    }
-			    break;
+		    case GADPLNAME:
+			SetToolLine( gptr, "NAME", StrPlayer );
+			sp = gptr->dobj->do_ToolTypes;
+			strcpy( StrTools, *sp ? *sp : "" );
+			UpdateInfoWin( cwin );
+			break;
 		    }
 		    RefreshGList( &Info_ToolTypes, cwin, NULL, 1 );
+		    break;
+
+	    	case MENUPICK:
+	    	    while( code != MENUNULL )
+	    	    {
+			SetToolLine( gptr, "CHARACTER",
+				    players[ ITEMNUM( code ) ] );
+			itext[ 0 ].IText =
+				    ToolsEntry( gptr, "CHARACTER" );
+			sp = gptr->dobj->do_ToolTypes;
+			strcpy( StrTools, *sp ? *sp : "" );
+			UpdateInfoWin( cwin );
+			code = ((struct MenuItem *)ItemAddress(
+				&Info_MenuList6, (long)code ))->NextSelect;
+		    }
 		    break;
 	    }
 	}
@@ -2921,11 +2811,6 @@ UpdateInfoWin( cwin )
 	Info_Class.TopEdge,
 	Info_Class.LeftEdge + Info_Class.Width-1,
 	Info_Class.TopEdge + Info_Class.Height-1 );
-    RectFill( cwin->RPort,
-	Info_Player.LeftEdge,
-	Info_Player.TopEdge,
-	Info_Player.LeftEdge + Info_Player.Width-1,
-	Info_Player.TopEdge + Info_Player.Height-1 );
     RefreshGList( cwin->FirstGadget, cwin, NULL, -1 );
 }
 
@@ -3131,167 +3016,6 @@ int StrRequest( prompt, buff, val )
 }
 
 /*
- * Load a defaults file into global structures
- */
-
-LoadDefaults( player )
-    char *player;
-{
-    FILE *fp;
-    int i;
-    char fname[ 100 ];
-    char buf[ 200 ];
-	char *t;
-
-    sprintf( fname, "%s.def", player );
-
-    if( ( fp = fopen( fname, "r" ) ) == NULL )
-    {
-	errmsg( FLASH,
-	    "Can't open defaults, %s, in current directory", fname );
-	return 0;
-    }
-
-    while( fgets( buf, sizeof( buf ), fp ) != NULL )
-    {
-	if( *buf == '#' )
-	    continue;
-
-	if( ( t = strchr( buf, '\n' ) ) != NULL )
-	    *t = 0;
-	if( strnicmp( "PLAYER=", buf, 7 ) == 0 )
-	{
-	    if( defgame.plname )
-		free( defgame.plname );
-	    defgame.plname = strdup( buf + 7 );
-	}
-	else if( strnicmp( "PLAYERTYPE=", buf, 11 ) == 0 )
-	{
-	    for( i = 0; players[ i ]; ++i )
-	    {
-		if( strnicmp( &buf[11], players[ i ], 1 ) == 0 )
-		    break;
-	    }
-
-	    if( players[ i ] )
-		defgame.pltype = i;
-	    else
-		defgame.pltype = 0;
-	}
-	else if( strnicmp( "OPTIONS=", buf, 8 ) == 0 )
-	{
-	    errmsg( FLASH, "OPTIONS set by game configuration" );
-	    setoneopt( OPTIONS_IDX, buf+8 );
-	    defgame.options = strdup( buf + 8 );
-	}
-	else
-	{
-	    errmsg( FLASH, "Invalid line in defaults file" );
-	    fclose( fp );
-	    return( 0 );
-	}
-    }
-    fclose( fp );
-    return( 1 );
-}
-
-/*
- * Create a defaults file my the name given with all of the global
- * information currently set.
- */
-
-void SaveDefaults( player )
-    char *player;
-{
-    FILE *fp;
-    char fname[ 100 ];
-    int err;
-
-    sprintf( fname, "%s.def", player );
-
-    if( ( fp = fopen( fname, "w" ) ) == NULL )
-    {
-	errmsg( FLASH, "Can't open defaults file: %s", fname );
-	return;
-    }
-
-    err = fprintf( fp, "PLAYER=%s\n", defgame.plname );
-    if( defgame.pltype )
-	err |= fprintf( fp, "PLAYERTYPE=%s\n", players[ defgame.pltype ] );
-    else
-	err |= fprintf( fp, "PLAYERTYPE=<RANDOM>\n" );
-
-    /* Get the options. */
-    PutOptions( curopts );
-
-    /* Put them in too */
-    err |= fprintf( fp, "OPTIONS=%s\n", options[ OPTIONS_IDX ] );
-    err |= fclose( fp );
-
-    if( err == EOF )
-	errmsg( FLASH, "Error writing out defaults for: %s", fname );
-}
-
-/*
- * Copy the defgame structure values into the Defs windows gadgets
- */
-
-void CopyDefs2Gad()
-{
-    if( defgame.plname )
-	strcpy( DefPlayerName, defgame.plname );
-    else
-	*DefPlayerName = 0;
-
-    CheckOnly( &Defs_MenuList11, 0, defgame.pltype );
-
-    /* If there are default options fill them in, else reset
-     * to the real defaults.
-     */
-    if( defgame.options )
-	CopyOptionStr( curopts, defgame.options );
-    else
-	ZapOptions( curopts );
-}
-
-/*
- * Copy the Defs window gadgets into the defgame structure
- */
-
-void CopyGad2Defs( )
-{
-    if( defgame.plname )
-	free( defgame.plname );
-    defgame.plname = strdup( DefPlayerName );
-
-    defgame.pltype = FindChecked( &Defs_MenuList11, 0 );
-}
-
-/*
- * Make sure that the correct character type is checked
- */
-
-void UpdateTypes( cwin )
-    register struct Window *cwin;
-{
-    register struct RastPort *rp = cwin->RPort;
-
-    SetAPen( rp, 0 );
-    SetBPen( rp, 0 );
-    SetDrMd( rp, JAM2 );
-    RectFill( cwin->RPort,
-	Defs_PlayerType.LeftEdge+1,
-	Defs_PlayerType.TopEdge+1,
-	Defs_PlayerType.LeftEdge+Defs_PlayerType.Width-1,
-	Defs_PlayerType.TopEdge+Defs_PlayerType.Height-1 );
-
-    Defs_PlayerType.GadgetText->IText = players[ defgame.pltype ];
-    RefreshGList( &Defs_PlayerType, cwin, NULL, 1 );
-    RefreshGList( &Defs_PlayerName, cwin, NULL, 1 );
-    RefreshGList( &Defs_DefaultName, cwin, NULL, 1 );
-}
-
-/*
  * Ask the user if they really want to do something.
  */
 
@@ -3485,8 +3209,6 @@ void ChgGameItems( menup, enable )
 	switch( i )
 	{
 	    case ITEM_INFO:
-	    case ITEM_SETCOMMENT:
-	    case ITEM_SETOPT:
 	    case ITEM_COPYOPT:
 	    case ITEM_DISCARD:
 	    case ITEM_RENAME:
@@ -3524,7 +3246,6 @@ void ChgNewGameItems( menup, enable )
     {
 	switch( i )
 	{
-	    case ITEM_SETOPT:
 	    case ITEM_RENAME:
 	    case ITEM_DISCARD:
 		ino = MENUITEMNO( 1,i,NOSUB );
@@ -3533,7 +3254,6 @@ void ChgNewGameItems( menup, enable )
 
 	    case ITEM_COPYOPT:
 	    case ITEM_INFO:
-	    case ITEM_SETCOMMENT:
 		ino = MENUITEMNO( 1,i,NOSUB );
 		if( enable )
 		    OnMenu( win, ino );
@@ -3549,8 +3269,9 @@ void ChgNewGameItems( menup, enable )
  * of the members changed based on the users input
  */
 
-int EditOptions( optr )
+int EditOptions( optr, gptr )
     OPTR optr;
+    GPTR gptr;
 {
     int done = 0, quit = 0;
     register struct Window *cwin;
@@ -3564,7 +3285,7 @@ int EditOptions( optr )
 
     if( !once )
     {
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOCOLOR ))
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOLITCORRIDOR ))
 	{
 	    struct Gadget *g;
 	    for( g = Options_NewWindowStructure3.FirstGadget;
@@ -3637,7 +3358,17 @@ int EditOptions( optr )
 	    gd->TopEdge += txtdiff*4;
 	    gd->Height += txtdiff;
 	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPICKUPTYPES ))
+	{
+	    gd->TopEdge += txtdiff*4;
+	    gd->Height += txtdiff;
+	}
 	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOCATNAME ))
+	{
+	    gd->TopEdge += txtdiff*5;
+	    gd->Height += txtdiff;
+	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOWINDOWTYPE ))
 	{
 	    gd->TopEdge += txtdiff*5;
 	    gd->Height += txtdiff;
@@ -3647,7 +3378,17 @@ int EditOptions( optr )
 	    gd->TopEdge += txtdiff*6;
 	    gd->Height += txtdiff;
 	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOMSGHISTORY ))
+	{
+	    gd->TopEdge += txtdiff*6;
+	    gd->Height += txtdiff;
+	}
 	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOFRUIT ))
+	{
+	    gd->TopEdge += txtdiff*7;
+	    gd->Height += txtdiff;
+	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPALETTE ))
 	{
 	    gd->TopEdge += txtdiff*7;
 	    gd->Height += txtdiff;
@@ -3657,18 +3398,33 @@ int EditOptions( optr )
 	    gd->TopEdge += txtdiff*8;
 	    gd->Height += txtdiff;
 	}
-	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOOKAY ))
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOSCORE ))
+	{
+	    gd->TopEdge += txtdiff*8;
+	    gd->Height += txtdiff;
+	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADONAME ))
 	{
 	    gd->TopEdge += txtdiff*9;
+	    gd->Height += txtdiff;
+	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOPETTYPE ))
+	{
+	    gd->TopEdge += txtdiff*9;
+	    gd->Height += txtdiff;
+	}
+	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOOKAY ))
+	{
+	    gd->TopEdge += txtdiff*10;
 	    gd->Height += txtdiff;
 	}
 	if( gd = FindGadget( NULL, &Options_NewWindowStructure3, GADOCANCEL ))
 	{
-	    gd->TopEdge += txtdiff*9;
+	    gd->TopEdge += txtdiff*10;
 	    gd->Height += txtdiff;
 	}
-	Options_NewWindowStructure3.Height += txtdiff*11;
-	Options_NewWindowStructure3.TopEdge -= txtdiff*6;
+	Options_NewWindowStructure3.Height += txtdiff*12;
+	Options_NewWindowStructure3.TopEdge -= txtdiff*12;
 	if( Options_NewWindowStructure3.Height +
 	    Options_NewWindowStructure3.TopEdge >= scrn->Height )
 	{
@@ -3677,10 +3433,8 @@ int EditOptions( optr )
 	}
 	if( Options_NewWindowStructure3.TopEdge < 0 )
 	    Options_NewWindowStructure3.TopEdge = 0;
-	{
-	    if( Options_NewWindowStructure3.Height > scrn->Height )
-		Options_NewWindowStructure3.Height = scrn->Height;
-	}
+	if( Options_NewWindowStructure3.Height > scrn->Height )
+	    Options_NewWindowStructure3.Height = scrn->Height;
 
 	/* Now that heights are correct, render borders */
 	for( gd = Options_NewWindowStructure3.FirstGadget;
@@ -3692,18 +3446,44 @@ int EditOptions( optr )
 		SetBorder( gd, -1 );
 	    }
 	}
+
 	for( ip = &Options_IntuiTextList3; ip; ip = ip->NextText )
 	{
-	    if( *ip->IText == 'P' )
+	    /* Pack Order:  and  Pickup: */
+	    if( ( *ip->IText == 'P' && ip->IText[2] == 'c' ) )
+	    {
+		ip->TopEdge += txtdiff * 4;
+	    }
+	    /* Cat Name:  and  Window Type: */
+	    else if( ( *ip->IText == 'C' ) ||
+		    ( *ip->IText == 'W' ) )
+	    {
 		ip->TopEdge += txtdiff * 5;
-	    else if( *ip->IText == 'C' )
+	    }
+	    /* Dog Name:  and  Msg History: */
+	    else if( ( *ip->IText == 'D' ) ||
+		    ( *ip->IText == 'M' ) )
+	    {
 		ip->TopEdge += txtdiff * 6;
-	    else if( *ip->IText == 'D' )
+	    }
+	    /* Fruit:  and  Pallete: */
+	    else if( ( *ip->IText == 'F' ) ||
+		    ( *ip->IText == 'P' && ip->IText[2] == 'l' ) )
+	    {
 		ip->TopEdge += txtdiff * 7;
-	    else if( *ip->IText == 'F' )
+	    }
+	    /* Objects:  and  Score: */
+	    else if( ( *ip->IText == 'O' ) ||
+	    		( *ip->IText == 'S' ) )
+	    {
 		ip->TopEdge += txtdiff * 8;
-	    else if( *ip->IText == 'O' )
+	    }
+	    /* Name:  and  Pet Type: */
+	    else if(( *ip->IText == 'N' ) ||
+		    ( *ip->IText == 'P' && ip->IText[1] == 'e' ) )
+	    {
 		ip->TopEdge += txtdiff * 9;
+	    }
 	}
 	once = 1;
     }
@@ -3717,7 +3497,24 @@ int EditOptions( optr )
 	    /* If string valued option, set string */
 	    if( optr[ i ].optstr )
 	    {
-		strcpy( Sbuff( gd ), optr[i].optstr );
+	    	char *t;
+
+		if( optr[ i ].id == GADOPALETTE &&
+				    ( optr[i].optstr == NULL || *optr[i].optstr == 0 ) )
+		{
+		    if( gptr && ( t = ToolsEntry( gptr, "PENS" ) ) )
+		    {
+			strcpy( Sbuff( gd ), t );
+		    }
+		    else
+		    {
+			strcpy( Sbuff( gd ), options[ PENS_IDX ] );
+		    }
+		    for( t = strchr( Sbuff( gd ), ',' ); t; t = strchr( t, ',' ) )
+		    	*t = '/';
+		}
+		else
+		    strcpy( Sbuff( gd ), optr[i].optstr );
 	    }
 	    else
 	    {
@@ -3773,42 +3570,6 @@ int EditOptions( optr )
 			done = 1;
 			quit = 1;
 		    }
-		    else
-		    {
-			switch( code )
-			{
-			    case 'p':
-			    case 'P':
-				ActivateGadget(
-				    FindGadget( cwin, 0, GADOPACKORDER ),
-				    cwin, 0 );
-				break;
-			    case 'c':
-			    case 'C':
-				ActivateGadget(
-				    FindGadget( cwin, 0, GADOCATNAME ),
-				    cwin, 0 );
-				break;
-			    case 'd':
-			    case 'D':
-				ActivateGadget(
-				    FindGadget( cwin, 0, GADODOGNAME ),
-				    cwin, 0 );
-				break;
-			    case 'f':
-			    case 'F':
-				ActivateGadget(
-				    FindGadget( cwin, 0, GADOFRUIT ),
-				    cwin, 0 );
-				break;
-			    case 'o':
-			    case 'O':
-				ActivateGadget(
-				    FindGadget( cwin, 0, GADOOBJECTS ),
-				    cwin, 0 );
-				break;
-			}
-		    }
 		    break;
 
 		case CLOSEWINDOW:
@@ -3820,29 +3581,71 @@ int EditOptions( optr )
 		    {
 			case GADOPACKORDER:
 			    ActivateGadget(
-				FindGadget( cwin, 0, GADOCATNAME ),
+				FindGadget( cwin, 0, GADOPICKUPTYPES ),
 				cwin, 0 );
 			    break;
 
 			case GADOCATNAME:
 			    ActivateGadget(
-				FindGadget( cwin, 0, GADODOGNAME ),
+				FindGadget( cwin, 0, GADOWINDOWTYPE ),
 				cwin, 0 );
 			    break;
 
 			case GADODOGNAME:
 			    ActivateGadget(
-				FindGadget( cwin, 0, GADOFRUIT ),
+				FindGadget( cwin, 0, GADOMSGHISTORY ),
 				cwin, 0 );
 			    break;
 
 			case GADOFRUIT:
 			    ActivateGadget(
-				FindGadget( cwin, 0, GADOOBJECTS ),
+				FindGadget( cwin, 0, GADOPALETTE ),
 				cwin, 0 );
 			    break;
 
 			case GADOOBJECTS:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADOSCORE ),
+				cwin, 0 );
+			    break;
+
+			case GADONAME:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADOPETTYPE ),
+				cwin, 0 );
+			    break;
+
+			case GADOPICKUPTYPES:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADOCATNAME ),
+				cwin, 0 );
+			    break;
+
+			case GADOWINDOWTYPE:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADODOGNAME ),
+				cwin, 0 );
+			    break;
+
+			case GADOMSGHISTORY:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADOFRUIT ),
+				cwin, 0 );
+			    break;
+
+			case GADOPALETTE:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADOOBJECTS ),
+				cwin, 0 );
+			    break;
+
+			case GADOSCORE:
+			    ActivateGadget(
+				FindGadget( cwin, 0, GADONAME ),
+				cwin, 0 );
+			    break;
+
+			case GADOPETTYPE:
 			    break;
 
 			case GADOOKAY:
@@ -3865,7 +3668,7 @@ int EditOptions( optr )
 			    {
 				if( optr[ i ].optstr != NULL )
 				{
-				    if( optr[i].optstr && *optr[i].optstr )
+				    if( *optr[i].optstr )
 					free( optr[i].optstr );
 
 				    if( *Sbuff(gd) == 0 )
@@ -3987,33 +3790,6 @@ void PutOptions( optr )
 
     setoneopt( OPTIONS_IDX, optbuf );
     free( optbuf );
-}
-
-void Game2Defs( gptr )
-    register GPTR gptr;
-{
-    register char *s;
-    register int i;
-
-    if( defgame.plname )
-	free( defgame.plname );
-    defgame.plname = strdup( ToolsEntry( gptr, "NAME" ) );
-
-    s = ToolsEntry( gptr, "CHARACTER" );
-    for( i = 0; players[ i ]; ++i )
-    {
-	if( strnicmp( s, players[ i ], strlen(s) ) == 0 )
-	    break;
-    }
-
-    if( players[ i ] )
-	defgame.pltype = i;
-    else
-	defgame.pltype = 0;
-
-    if( defgame.options )
-	free( defgame.options );
-    defgame.options = strdup( ToolsEntry( gptr, "OPTIONS" ) );
 }
 
 char *basename( str )

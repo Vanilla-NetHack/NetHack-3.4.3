@@ -63,9 +63,6 @@
 #endif
 #ifdef __SASC_60
 # define NEARDATA __near /* put some data close */
-# define NO_SCAN_BRACK	/* scanf doesn't handle [] (this define available
-			 * for any system with this problem) */
-			/* is this still true as of 6.2? (keni) */
 #else
 # define NEARDATA
 #endif
@@ -203,17 +200,24 @@
 /* MAC also means MAC windows */
 #ifdef MAC
 # ifndef	AUX
-#  undef TTY_GRAPHICS
+/* #  undef TTY_GRAPHICS /* Macs now handle TTY graphics */
 #  undef X11_GRAPHICS
 #  define DEFAULT_WINDOW_SYS "mac"
 # endif
 #endif
 
-/* no options yet: Amiga also means Intuition windows */
+/* Amiga supports AMII_GRAPHICS and/or TTY_GRAPHICS */
 #ifdef AMIGA
-# undef TTY_GRAPHICS
-# define AMII_GRAPHICS
-# define DEFAULT_WINDOW_SYS "amii"
+# define AMII_GRAPHICS			/* (optional) */
+# ifdef SHAREDLIB
+#  define DEFAULT_WINDOW_SYS "amii"	/* "amii" or "tty" */
+# else
+#  ifdef VIEWWINDOW
+#   define DEFAULT_WINDOW_SYS "amiv"	/* "amii" or "tty" */
+#  else
+#   define DEFAULT_WINDOW_SYS "amii"	/* "amii" or "tty" */
+#  endif
+# endif
 #endif
 
 #ifndef DEFAULT_WINDOW_SYS
@@ -426,7 +430,7 @@ typedef unsigned char	uchar;
 /* I/O */
 #define REDO		/* support for redoing last command - DGK */
 #define COM_COMPL	/* Command line completion by John S. Bien */
-#ifndef AMIGA
+#if !defined(AMIGA) && !defined(MAC)
 # define CLIPPING	/* allow smaller screens -- ERS */
 #endif
 

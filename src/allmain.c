@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)allmain.c	3.1	92/11/13	*/
+/*	SCCS Id: @(#)allmain.c	3.1	93/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -95,6 +95,14 @@ moveloop()
 		    ++moves;
 		    if (u.ublesscnt)  u.ublesscnt--;
 		    if(flags.time) flags.botl = 1;
+		    /* One possible result of prayer is healing.  Whether or
+		     * not you get healed depends on your current hit points.
+		     * If you are allowed to regenerate during the prayer, the
+		     * end-of-prayer calculation messes up on this.
+		     */
+		    if (u.uinvulnerable)
+			;
+		    else
 #ifdef POLYSELF
 		    if (u.mtimedone && u.mh < u.mhmax) {
 			if (u.mh < 1) {
@@ -355,7 +363,9 @@ display_gamewindows()
      * have to split display_gamewindows into create_gamewindows
      * and show_gamewindows to get rid of this ifdef...
      */
-    SanePositions ( ) ;
+	if ( ! strcmp ( windowprocs . name , "mac" ) ) {
+	    SanePositions ( ) ;
+	}
 #endif
 
     /*
@@ -375,14 +385,15 @@ newgame()
 	gameDiskPrompt();
 #endif
 
-	fobj = invent = migrating_objs = (struct obj *)0;
+	fobj = invent = level.buriedobjlist = migrating_objs = (struct obj *)0;
 	fmon = migrating_mons = (struct monst *)0;
 	ftrap = 0;
 	flags.ident = 1;
 
 	if(wiz1_level.dlevel == 0) init_dungeons();
-	init_objects();
+	init_objects();		/* must be before u_init() */
 	u_init();
+	init_artifacts();	/* must be after u_init() */
 
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);

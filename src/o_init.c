@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)o_init.c	3.1	92/12/11	*/
+/*	SCCS Id: @(#)o_init.c	3.1	93/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -23,7 +23,9 @@ const char obj_symbols[] = {
 static NEARDATA short disco[TOTAL_OBJS] = DUMMY;
 
 int
-letindex(acls) register char acls; {
+letindex(acls)
+register char acls;
+{
 register int i = 0;
 register char ch;
 	while ((ch = obj_symbols[i++]) != 0)
@@ -85,7 +87,8 @@ shuffle(o_low, o_high, domaterial)
 }
 
 void
-init_objects(){
+init_objects()
+{
 register int i, j, first, last, sum, end;
 register char acls;
 #ifdef TEXTCOLOR
@@ -104,7 +107,9 @@ register char acls;
 	/* initialize object descriptions */
 	for (i = 0; i < TOTAL_OBJS; i++)
 		objects[i].oc_name_idx = objects[i].oc_descr_idx = i;
+	/* moved to after u_init()
 	init_artifacts();
+	*/
 	/* init base; if probs given check that they add up to 1000,
 	   otherwise compute probs; shuffle descriptions */
 	end = TOTAL_OBJS;
@@ -199,6 +204,8 @@ find_skates()
     for (i = SPEED_BOOTS; i <= LEVITATION_BOOTS; i++)
 	if ((s = OBJ_DESCR(objects[i])) != 0 && !strcmp(s, "snow boots"))
 	    return i;
+    /* special case:  description of elven boots is nulled out for elf role */
+    if (pl_character[0] == 'E') return ELVEN_BOOTS;
 
     impossible("snow boots not found?");
     return -1;	/* not 0, or caller would try again each move */
@@ -311,21 +318,34 @@ dodiscovered()				/* free after Robert Viduya */
 {
     register int i, dis;
     int	ct = 0;
-    char class = -1;
+    char *s, oclass, prev_class, classes[MAXOCLASSES];
     winid tmpwin;
 
     tmpwin = create_nhwindow(NHW_MENU);
     putstr(tmpwin, 0, "Discoveries");
     putstr(tmpwin, 0, "");
 
-    for (i = 0; i <= NROFOBJECTS; i++) {
-	if ((dis = disco[i]) && interesting_to_discover(dis)) {
-	    ct++;
-	    if (objects[dis].oc_class != class) {
-		class = objects[dis].oc_class;
-		putstr(tmpwin, ATR_INVERSE, let_to_name(class, FALSE));
+    /* several classes are omitted from packorder; one is of interest here */
+    Strcpy(classes, flags.inv_order);
+    if (!index(classes, VENOM_CLASS)) {
+	s = eos(classes);
+	*s++ = VENOM_CLASS;
+	*s = '\0';
+    }
+
+    for (s = classes; *s; s++) {
+	oclass = *s;
+	prev_class = oclass + 1;	/* forced different from oclass */
+	for (i = bases[letindex(oclass)];
+	     i <= NROFOBJECTS && objects[i].oc_class == oclass; i++) {
+	    if ((dis = disco[i]) && interesting_to_discover(dis)) {
+		ct++;
+		if (oclass != prev_class) {
+		    putstr(tmpwin, ATR_INVERSE, let_to_name(oclass, FALSE));
+		    prev_class = oclass;
+		}
+		putstr(tmpwin, 0, typename(dis));
 	    }
-	    putstr(tmpwin, 0, typename(dis));
 	}
     }
     if (ct == 0) {

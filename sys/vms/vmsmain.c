@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmain.c	3.1	93/01/24	*/
+/*	SCCS Id: @(#)vmsmain.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - VMS NetHack */
@@ -92,9 +92,17 @@ char *argv[];
 	chdirx(dir, TRUE);
 #endif
 
+#ifdef SECURE
+	/* disable installed privs while loading nethack.cnf and termcap,
+	   and also while initializing terminal [$assign("TT:")]. */
+	privoff();
+#endif
 	initoptions();
 	init_nhwindows();
 	whoami();
+#ifdef SECURE
+	privon();
+#endif
 
 	/*
 	 * It seems you really want to play.
@@ -308,13 +316,13 @@ char *argv[];
 #ifdef CHDIR
 void
 chdirx(dir, wr)
-char *dir;
+const char *dir;
 boolean wr;
 {
 # ifndef HACKDIR
-	static char *defdir = ".";
+	static const char *defdir = ".";
 # else
-	static char *defdir = HACKDIR;
+	static const char *defdir = HACKDIR;
 
 	if(dir == NULL)
 		dir = defdir;

@@ -11,6 +11,8 @@
 #include <Memory.h>
 #include <Files.h>
 
+extern void dprintf ( char * , ... ) ;
+
 #define DIV_FACTOR 3
 
 static Boolean winFileInit = 0 ;
@@ -162,21 +164,23 @@ clickSector ( int x , int y , int toX , int toY )
 
 
 Boolean
-RetrievePosition ( short kind , short * top , short * left )
-{
-	Point p ;
+RetrievePosition ( short kind , short * top , short * left ) {
+Point p ;
 
 	InitWinFile ( ) ;
 	if ( kind < 0 || kind > kLastWindowKind ) {
+		dprintf ( "Retrieve Bad kind %d" , kind ) ;
 		return 0 ;
 	}
 	if ( ! usePos [ kind ] . validPos ) {
+		dprintf ( "Retrieve Not stored kind %d" , kind ) ;
 		return 0 ;
 	}
 	* top = usePos [ kind ] . top ;
 	* left = usePos [ kind ] . left ;
 	p . h = * left ;
 	p . v = * top ;
+	dprintf ( "Retrieve Kind %d Point (%d,%d)" , kind , * left , * top ) ;
 	return PtInRgn ( p , GetGrayRgn ( ) ) ;
 }
 
@@ -206,11 +210,13 @@ SavePosition ( short kind , short top , short left )
 {
 	InitWinFile ( ) ;
 	if ( kind < 0 || kind > kLastWindowKind ) {
+		dprintf ( "Save bad kind %d" , kind ) ;
 		return ;
 	}
 	savePos [ kind ] . validPos = 1 ;
 	savePos [ kind ] . top = top ;
 	savePos [ kind ] . left = left ;
+	dprintf ( "Save kind %d point (%d,%d)" , kind , left , top ) ;
 	FlushWinFile ( ) ;
 }
 
@@ -232,8 +238,11 @@ SaveSize ( short kind , short height , short width )
 static short
 GetWinKind ( WindowPtr win )
 {
-	short kind ;
-	NhWindow * nhw = GetWRefCon ( win ) ;
+short kind ;
+NhWindow * nhw = GetNhWin ( win ) ;
+char * typeStr [ ] = {
+	"map" , "status" , "message" , "text" , "menu" ,
+} ;
 
 	if ( ! nhw || ( ( ( long ) nhw ) & 1 ) || nhw -> theWindow != win ) {
 		return -1 ;
@@ -242,12 +251,12 @@ GetWinKind ( WindowPtr win )
 	if ( kind < 0 || kind > NHW_TEXT ) {
 		return -1 ;
 	}
+	dprintf ( "Got window kind %d (%lx)->%lx" , kind , win , nhw ) ;
 	switch ( kind ) {
 	case NHW_MAP :
-		kind = kMapWindow ;
-		break ;
 	case NHW_STATUS :
-		kind = kStatusWindow ;
+	case NHW_BASE :
+		kind = kMapWindow ;
 		break ;
 	case NHW_MESSAGE :
 		kind = kMessageWindow ;
@@ -259,7 +268,7 @@ GetWinKind ( WindowPtr win )
 		kind = kTextWindow ;
 		break ;
 	}
-
+	dprintf ( "Returning kind %s" , typeStr [ kind ] ) ;
 	return kind ;
 }
 
@@ -291,6 +300,7 @@ SaveWindowPos ( WindowPtr win )
 	GetPort ( & gp ) ;
 	SetPort ( win ) ;
 	LocalToGlobal ( & p ) ;
+	AddPt ( * ( Point * ) & ( win -> portRect ) , & p ) ; /* Adjust for origin */
 	SetPort ( gp ) ;
 	SavePosition ( kind , p . v , p . h ) ;
 }

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsconf.h	3.1	92/12/11	*/
+/*	SCCS Id: @(#)vmsconf.h	3.1	93/05/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,7 +16,7 @@
  *   extra room for patching longer values into an existing executable.
  */
 #define Local_WIZARD	"NHWIZARD\0\0\0\0"
-#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-1-0.PLAY]\0\0\0\0\0\0"
+#define Local_HACKDIR	"DISK$USERS:[GAMES.NETHACK.3-1-2.PLAY]\0\0\0\0\0\0\0\0"
 
 /*
  * This section cleans up the stuff done in config.h so that it
@@ -56,8 +56,8 @@
 #ifdef COMPRESS
 # undef COMPRESS
 #endif
-#ifndef ZEROCOMP
-# define ZEROCOMP
+#ifndef INTERNAL_COMP
+# define INTERNAL_COMP
 #endif
 
 /* vision algorithm */
@@ -210,6 +210,9 @@
 /* VMS global names are case insensitive... */
 #define An vms_an
 #define The vms_the
+
+/* avoid global symbol in Alpha/VMS V1.5 STARLET library (link trouble) */
+#define ospeed vms_ospeed
 
 /* used in several files which don't #include "extern.h" */
 extern void FDECL(vms_exit, (int));

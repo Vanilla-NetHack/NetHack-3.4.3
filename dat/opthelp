@@ -1,8 +1,8 @@
 Boolean options available in all versions (with default values in []):
 
+autopickup     automatically pick up objects you move over        [TRUE]
 confirm        ask before hitting tame or peaceful monsters       [TRUE]
 DECgraphics    use DEC/VT line-drawing characters for the dungeon [FALSE]
-disclose       offer information at the end of the game           [TRUE]
 (fe)male       sex of the player (may only be set on startup)     [MALE]
 fixinv         try to retain the same letter for the same object  [TRUE]
 help           print all available info when using the / command  [TRUE]
@@ -14,7 +14,6 @@ null           allow nulls to be sent to your terminal            [TRUE]
                try turning this option off (forcing NetHack to use its own
                delay code) if moving objects seem to teleport across rooms
 number_pad     use the number keys to move instead of yuhjklbn    [FALSE]
-pickup         automatically pick up objects you move over        [TRUE]
 rest_on_space  count the space bar as a rest character            [FALSE]
 safe_pet       prevent you from (knowingly) attacking your pet(s) [TRUE]
 silent         don't use your terminal's bell sound               [TRUE]
@@ -57,15 +56,19 @@ Compound options are written as option_name:option_value.
 
 Compound options which can be set during the game are:
 
-fruit      the name of a fruit you enjoy eating  [slime mold]
-           (basically a whimsy which NetHack uses from time to time).
-packorder  a list of default symbols for kinds of objects that gives the
-           order in which your pack will be displayed  [")[%?+!=/(*`0_]
-           (If you specify only some kinds of items, the others from the
-           default order will be appended to the end.)
-scores     the parts of the score list you wish to see when the game ends
-           You choose a combination of top scores, scores around the top
-           scores, and all of your own scores.  [!own/3 top/2 around]
+disclose      the types of information you want offered at the end of the
+              game  [all]
+fruit         the name of a fruit you enjoy eating  [slime mold]
+              (basically a whimsy which NetHack uses from time to time).
+packorder     a list of default symbols for kinds of objects that gives the
+              order in which your pack will be displayed  [")[%?+!=/(*`0_]
+              (If you specify only some kinds of items, the others from the
+              default order will be appended to the end.)
+pickup_types  a list of default symbols for kinds of objects to autopickup
+              when that option is on  [all]
+scores        the parts of the score list you wish to see when the game ends
+              You choose a combination of top scores, scores around the top
+              scores, and all of your own scores.  [!own/3 top/2 around]
 
 Compound options which may be set only on startup are:
 
@@ -113,6 +116,6 @@ windowtype windowing system to be used  [depends on operating system]
 
 
 Some sample options lists are:
-!pickup,!tombstone,name:Gandalf,scores:own/3 top/2 around
+!autopickup,!tombstone,name:Gandalf,scores:own/3 top/2 around
 female,nonews,dogname:Rover,graphics: |--------|||-\\/+.#.<><>\^\"_\\#{}
 rest_on_space,!verbose

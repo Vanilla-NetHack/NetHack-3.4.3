@@ -36,7 +36,7 @@ static void FDECL(nsb_unmung_line,(char*));
 #define	POINTSMIN	1	/* must be > 0 */
 #define	ENTRYMAX	100	/* must be >= 10 */
 
-#ifndef MICRO
+#if !defined(MICRO) && !defined(MAC)
 #define	PERS_IS_UID		/* delete for PERSMAX per name; now per uid */
 #endif
 struct toptenentry {
@@ -77,22 +77,17 @@ struct toptenentry *tt;
 	/* note: fscanf() below must read the record's terminating newline */
 	final_fpos = tt->fpos = ftell(rfile);
 #endif
+#define TTFIELDS 12
 #ifdef NO_SCAN_BRACK
 	if(fscanf(rfile,"%6s %d %d %d %d %d %d %ld%*c%c%c %s %s%*c",
-#  define TTFIELDS 13
 #else
 	if(fscanf(rfile, "%6s %d %d %d %d %d %d %ld %c%c %[^,],%[^\n]%*c",
-#  define TTFIELDS 12
 #endif
 			tt->date, &tt->uid,
 			&tt->deathdnum, &tt->deathlev,
 			&tt->maxlvl, &tt->hp, &tt->maxhp, &tt->points,
 			&tt->plchar, &tt->sex,
-#ifdef LATTICE	/* return value is broken also, sigh */
-			tt->name, tt->death) < 1)
-#else
 			tt->name, tt->death) != TTFIELDS)
-#endif
 #undef TTFIELDS
 		tt->points = 0;
 	else {
@@ -208,10 +203,12 @@ int how;
 
 #if defined(WIZARD) || defined(EXPLORE_MODE)
 	if (wizard || discover) {
-	    raw_print("");
-	    raw_printf(
+	    HUP {
+		raw_print("");
+		raw_printf(
 	      "Since you were in %s mode, the score list will not be checked.",
 		    wizard ? "wizard" : "discover");
+	    }
 	    return;
 	}
 #endif
@@ -533,6 +530,14 @@ char **argv;
 		return;
 	}
 
+#ifdef	AMIGA
+	{
+	    extern winid amii_rawprwin;
+	    init_nhwindows();
+	    amii_rawprwin = create_nhwindow( NHW_TEXT );
+	}
+#endif
+
 	/* If the score list isn't after a game, we never went through */
 	/* init_dungeons() */
 	if (wiz1_level.dlevel == 0) init_dungeons();
@@ -556,7 +561,11 @@ char **argv;
 #else
 		player0 = plname;
 		if(!*player0)
+#ifdef AMIGA
+			player0 = "all";	/* single user system */
+#else
 			player0 = "hackplayer";
+#endif
 		playerct = 1;
 		players = &player0;
 #endif
@@ -602,6 +611,11 @@ char **argv;
 			     hname);
 		}
 	    }
+#ifdef	AMIGA
+	    display_nhwindow( amii_rawprwin, 1 );
+	    destroy_nhwindow( amii_rawprwin );
+	    amii_rawprwin = WIN_ERR;
+#endif
 	    return;
 	}
 
@@ -651,6 +665,11 @@ char **argv;
 		break;
 	}
 #endif /* nonsense /**/
+#ifdef	AMIGA
+	display_nhwindow( amii_rawprwin, 1 );
+	destroy_nhwindow( amii_rawprwin );
+	amii_rawprwin = WIN_ERR;
+#endif
 }
 
 static int

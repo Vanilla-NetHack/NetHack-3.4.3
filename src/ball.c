@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ball.c	3.1	93/02/17	*/
+/*	SCCS Id: @(#)ball.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,6 +6,7 @@
 
 #include "hack.h"
 
+static int NDECL(bc_order);
 static void NDECL(litter);
 
 void
@@ -48,7 +49,7 @@ ballfall()
  *
  *  If the hero can see, then when a move is done, the ball and chain are
  *  first picked up, the positions under them are corrected, then they
- *  are moved after the hero moves.  Not too bad
+ *  are moved after the hero moves.  Not too bad.
  *
  *  If the hero is blind, then she can "feel" the ball and/or chain at any
  *  time.  However, when the hero moves, the felt ball and/or chain become
@@ -61,10 +62,33 @@ ballfall()
  */
 
 /*
+ * from you.h
+ *	int u.bglyph		glyph under the ball
+ *	int u.cglyph		glyph under the chain
+ *	int u.bc_felt		mask for ball/chain being felt
+ *	#define BC_BALL  0x01	bit mask in u.bc_felt for ball
+ *	#define BC_CHAIN 0x02	bit mask in u.bc_felt for chain
+ *	int u.bc_order		ball & chain order
+ *
+ * u.bc_felt is also manipulated in display.c and read.c, the others only
+ * in this file.  None of these variables are valid unless the player is
+ * Blind.
+ */
+
+/* values for u.bc_order */
+#define BCPOS_DIFFER	0	/* ball & chain at different positions */
+#define BCPOS_CHAIN	1	/* chain on top of ball */
+#define BCPOS_BALL	2	/* ball on top of chain */
+
+
+
+/*
  *  Place the ball & chain under the hero.  Make sure that the ball & chain
  *  variables are set (actually only needed when blind, but what the heck).
  *  It is assumed that when this is called, the ball and chain are NOT
  *  attached to the object list.
+ *
+ *  Should not be called while swallowed.
  */
 void
 placebc()
@@ -74,17 +98,20 @@ placebc()
 	return;
     }
 
+    (void) flooreffects(uchain, u.ux, u.uy, "");	/* chain might rust */
     uchain->nobj = fobj;		/* put chain on object list */
     fobj = uchain;
 
     if (carried(uball))		/* the ball is carried */
-	u.bc_order = 0;			/* chain & ball at different pos */
-    else {			/* the ball is NOT carried */
+	u.bc_order = BCPOS_DIFFER;
+    else {
+	/* ball might rust -- already checked when carried */
+	(void) flooreffects(uball, u.ux, u.uy, "");
 	uball->nobj = fobj;		/* put ball on object list */
 	fobj = uball;
 
 	place_object(uball, u.ux, u.uy);
-	u.bc_order = 1;			/* chain on top */
+	u.bc_order = BCPOS_CHAIN;
     }
 
     place_object(uchain, u.ux, u.uy);
@@ -116,42 +143,24 @@ unplacebc()
 
 
 /*
- *  bc_order()
- *
  *  Return the stacking of the hero's ball & chain.  This assumes that the
  *  hero is being punished.
- *
- *  Return values:
- *	0   ball & chain not at same location
- *	1   chain on top
- *	2   ball on top
  */
-int
+static int
 bc_order()
 {
-    int order;
     struct obj *obj;
 
-    if (uchain->ox != uball->ox || uchain->oy != uball->oy || carried(uball))
-	return 0;
+    if (uchain->ox != uball->ox || uchain->oy != uball->oy || carried(uball)
+		|| u.uswallow)
+	return BCPOS_DIFFER;
 
-    obj = level.objects[uchain->ox][uchain->oy];
-
-    for (order = -1; obj; obj = obj->nexthere) {
-	if (obj == uchain) {
-	    order = 1;
-	    break;
-	}
-	if (obj == uball) {
-	    order = 2;
-	    break;
-	}
+    for (obj = level.objects[uball->ox][uball->oy]; obj; obj = obj->nexthere) {
+	if (obj == uchain) return BCPOS_CHAIN;
+	if (obj == uball) return BCPOS_BALL;
     }
-    if (order < 0) {
-	impossible("bc_order:  ball&chain not in same location!");
-	order = 0;
-    }
-    return order;
+    impossible("bc_order:  ball&chain not in same location!");
+    return BCPOS_DIFFER;
 }
 
 /*
@@ -165,10 +174,11 @@ set_bc(already_blind)
 int already_blind;
 {
     int ball_on_floor = !carried(uball);
+
     u.bc_order = bc_order();				/* get the order */
     u.bc_felt = ball_on_floor ? BC_BALL|BC_CHAIN : BC_CHAIN;	/* felt */
 
-    if (already_blind) {
+    if (already_blind || u.uswallow) {
 	u.cglyph = u.bglyph = levl[u.ux][u.uy].glyph;
 	return;
     }
@@ -184,17 +194,7 @@ int already_blind;
     newsym(uchain->ox, uchain->oy);
     u.cglyph = levl[uchain->ox][uchain->oy].glyph;
 
-    if (u.bc_order) {			/* same location (ball not carried) */
-	u.bglyph = u.cglyph;
-	if (u.bc_order == 1) {
-	    place_object(uball,  uball->ox, uball->oy);
-	    place_object(uchain, uchain->ox, uchain->oy);
-	} else {
-	    place_object(uchain, uchain->ox, uchain->oy);
-	    place_object(uball,  uball->ox, uball->oy);
-	}
-	newsym(uball->ox, uball->oy);
-    } else {					/* different locations */
+    if (u.bc_order == BCPOS_DIFFER) {		/* different locations */
 	place_object(uchain, uchain->ox, uchain->oy);
 	newsym(uchain->ox, uchain->oy);
 	if (ball_on_floor) {
@@ -203,6 +203,16 @@ int already_blind;
 	    place_object(uball,  uball->ox, uball->oy);
 	    newsym(uball->ox, uball->oy);		/* restore ball */
 	}
+    } else {
+	u.bglyph = u.cglyph;
+	if (u.bc_order == BCPOS_CHAIN) {
+	    place_object(uball,  uball->ox, uball->oy);
+	    place_object(uchain, uchain->ox, uchain->oy);
+	} else {
+	    place_object(uchain, uchain->ox, uchain->oy);
+	    place_object(uball,  uball->ox, uball->oy);
+	}
+	newsym(uball->ox, uball->oy);
     }
 }
 
@@ -213,12 +223,14 @@ int already_blind;
  *  Move the ball and chain.  This is called twice for every move.  The first
  *  time to pick up the ball and chain before the move, the second time to
  *  place the ball and chain after the move.  If the ball is carried, this
- *  function should never have BC_BALL as part of it's control.
+ *  function should never have BC_BALL as part of its control.
+ *
+ *  Should not be called while swallowed.
  */
 void
 move_bc(before, control, ballx, bally, chainx, chainy)
 int   before, control;
-xchar ballx, bally, chainx, chainy;
+xchar ballx, bally, chainx, chainy;	/* only matter !before */
 {
     if (Blind) {
 	/*
@@ -236,24 +248,24 @@ xchar ballx, bally, chainx, chainy;
 		/*
 		 *  Both ball and chain moved.  If felt, drop glyph.
 		 */
-		if (u.bc_felt & BC_BALL)			/* ball felt */
+		if (u.bc_felt & BC_BALL)
 		    levl[uball->ox][uball->oy].glyph = u.bglyph;
-		if (u.bc_felt & BC_CHAIN)			/* chain felt */
+		if (u.bc_felt & BC_CHAIN)
 		    levl[uchain->ox][uchain->oy].glyph = u.cglyph;
 		u.bc_felt = 0;
 
-		/* Pick up glyph a new location. */
+		/* Pick up glyph at new location. */
 		u.bglyph = levl[ballx][bally].glyph;
 		u.cglyph = levl[chainx][chainy].glyph;
 
 		movobj(uball,ballx,bally);
 		movobj(uchain,chainx,chainy);
 	    } else if (control & BC_BALL) {
-		if (u.bc_felt & BC_BALL) {	/* ball felt */
-		    if (!u.bc_order) {		    /* ball by itself */
+		if (u.bc_felt & BC_BALL) {
+		    if (u.bc_order == BCPOS_DIFFER) {	/* ball by itself */
 			levl[uball->ox][uball->oy].glyph = u.bglyph;
-		    } else if (u.bc_order == 2) {    /* ball on top */
-			if (u.bc_felt & BC_CHAIN) {	/* chain felt */
+		    } else if (u.bc_order == BCPOS_BALL) {
+			if (u.bc_felt & BC_CHAIN) {   /* know chain is there */
 			    map_object(uchain, 0);
 			} else {
 			    levl[uball->ox][uball->oy].glyph = u.bglyph;
@@ -268,11 +280,11 @@ xchar ballx, bally, chainx, chainy;
 
 		movobj(uball,ballx,bally);
 	    } else if (control & BC_CHAIN) {
-		if (u.bc_felt & BC_CHAIN) {	/* chain felt */
-		    if (!u.bc_order) {		    /* chain by itself */
+		if (u.bc_felt & BC_CHAIN) {
+		    if (u.bc_order == BCPOS_DIFFER) {
 			levl[uchain->ox][uchain->oy].glyph = u.cglyph;
-		    } else if (u.bc_order == 1) {   /* chain on top */
-			if (u.bc_felt & BC_BALL) {	/* ball felt */
+		    } else if (u.bc_order == BCPOS_CHAIN) {
+			if (u.bc_felt & BC_BALL) {
 			    map_object(uball, 0);
 			} else {
 			    levl[uchain->ox][uchain->oy].glyph = u.cglyph;
@@ -280,7 +292,7 @@ xchar ballx, bally, chainx, chainy;
 		    }
 		    u.bc_felt &= ~BC_CHAIN;
 		}
-		/* Pick up glyph beneath at new position. */
+		/* Pick up glyph at new position. */
 		u.cglyph = (ballx != chainx || bally != chainy) ?
 					levl[chainx][chainy].glyph : u.bglyph;
 
@@ -297,12 +309,14 @@ xchar ballx, bally, chainx, chainy;
 	 *  in their new positions after the hero moves.
 	 */
 	if (before) {
-	    /*
-	     *  Neither ball nor chain moved, so remember which was on top.
-	     *  Use the variable 'u.bc_order' since it is only valid when
-	     *  blind.
-	     */
-	    if (!control) u.bc_order = bc_order();
+	    if (!control) {
+		/*
+		 * Neither ball nor chain is moving, so remember which was
+		 * on top until !before.  Use the variable u.bc_order
+		 * since it is only valid when blind.
+		 */
+		u.bc_order = bc_order();
+	    }
 
 	    remove_object(uchain);
 	    newsym(uchain->ox, uchain->oy);
@@ -313,7 +327,8 @@ xchar ballx, bally, chainx, chainy;
 	} else {
 	    int on_floor = !carried(uball);
 
-	    if ((control & BC_CHAIN) || (!control && u.bc_order == 1)) {
+	    if ((control & BC_CHAIN) ||
+				(!control && u.bc_order == BCPOS_CHAIN)) {
 		/* If the chain moved or nothing moved & chain on top. */
 		if (on_floor) place_object(uball,  ballx, bally);
 		place_object(uchain, chainx, chainy);	/* chain on top */
@@ -328,7 +343,10 @@ xchar ballx, bally, chainx, chainy;
     }
 }
 
-/* return TRUE if ball could be dragged */
+/* return TRUE if ball could be dragged
+ *
+ *  Should not be called while swallowed.
+ */
 boolean
 drag_ball(x, y, bc_control, ballx, bally, chainx, chainy)
 xchar x, y;
@@ -343,18 +361,17 @@ xchar *ballx, *bally, *chainx, *chainy;
 	*chainy = uchain->oy;
 	*bc_control = 0;
 
-	if (dist2(x, y, uchain->ox, uchain->oy) <= 2) {
-	    *bc_control = 0;	/* nothing moved */
+	if (dist2(x, y, uchain->ox, uchain->oy) <= 2) {	/* nothing moved */
 	    move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
 	    return TRUE;
 	}
 
 	if (carried(uball) || dist2(x, y, uball->ox, uball->oy) < 3 ||
 		(uball->ox == uchain->ox && uball->oy == uchain->oy)) {
-	    *chainx = u.ux;
-	    *chainy = u.uy;
 	    *bc_control = BC_CHAIN;
 	    move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
+	    *chainx = u.ux;
+	    *chainy = u.uy;
 	    return TRUE;
 	}
 
@@ -366,6 +383,7 @@ xchar *ballx, *bally, *chainx, *chainy;
 	}
 
 	if ((is_pool(uchain->ox, uchain->oy) &&
+			/* water not mere continuation of previous water */
 			(levl[uchain->ox][uchain->oy].typ == POOL ||
 			 !is_pool(uball->ox, uball->oy) ||
 			 levl[uball->ox][uball->oy].typ == POOL))
@@ -381,7 +399,7 @@ xchar *ballx, *bally, *chainx, *chainy;
 		struct monst *victim;
 
 		You("are jerked back by the iron ball!");
-		if (victim = m_at(uchain->ox, uchain->oy)) {
+		if ((victim = m_at(uchain->ox, uchain->oy)) != 0) {
 		    int tmp;
 
 		    tmp = -2 + Luck + find_mac(victim);
@@ -410,25 +428,25 @@ xchar *ballx, *bally, *chainx, *chainy;
 		}
 		nomul(0);
 
-		*ballx = uchain->ox;
-		*bally = uchain->oy;
 		*bc_control = BC_BALL;
 		move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
+		*ballx = uchain->ox;
+		*bally = uchain->oy;
 		move_bc(0, *bc_control, *ballx, *bally, *chainx, *chainy);
 		spoteffects();
 		return FALSE;
 	    } 
 	}
 
-	*ballx  = uchain->ox;
-	*bally  = uchain->oy;
-	*chainx = u.ux;
-	*chainy = u.uy;
 	*bc_control = BC_BALL|BC_CHAIN;;
 	nomul(-2);
 	nomovemsg = "";
 
 	move_bc(1, *bc_control, *ballx, *bally, *chainx, *chainy);
+	*ballx  = uchain->ox;
+	*bally  = uchain->oy;
+	*chainx = u.ux;
+	*chainy = u.uy;
 	return TRUE;
 }
 
@@ -438,6 +456,8 @@ xchar *ballx, *bally, *chainx, *chainy;
  *  The punished hero drops or throws her iron ball.  If the hero is
  *  blind, we must reset the order and glyph.  Check for side effects.
  *  This routine expects the ball to be already placed.
+ *
+ *  Should not be called while swallowed.
  */
 void
 drop_ball(x, y)
@@ -487,8 +507,8 @@ xchar x, y;
 	if (!Levitation && !MON_AT(x, y) && !u.utrap &&
 			    (is_pool(x, y) ||
 			     ((t = t_at(x, y)) &&
-			      ((t->ttyp == PIT) || (t->ttyp == SPIKED_PIT) ||
-			       (t->ttyp == TRAPDOOR))))) {
+			      (t->ttyp == PIT || t->ttyp == SPIKED_PIT ||
+			       t->ttyp == TRAPDOOR)))) {
 	    u.ux = x;
 	    u.uy = y;
 	} else {
@@ -502,9 +522,13 @@ xchar x, y;
 	    if (u.bc_felt & BC_CHAIN)
 		levl[uchain->ox][uchain->oy].glyph = u.cglyph;
 	    u.bc_felt  = 0;		/* feel nothing */
-	    u.bc_order = bc_order();	/* reset bc order */
+	    /* pick up new glyph */
+	    u.cglyph = (u.bc_order) ? u.bglyph : levl[u.ux][u.uy].glyph;
 	}
 	movobj(uchain,u.ux,u.uy);	/* has a newsym */
+	if (Blind) {
+	    u.bc_order = bc_order();
+	}
 	newsym(u.ux0,u.uy0);		/* clean up old position */
 	spoteffects();
     }
@@ -547,9 +571,7 @@ drag_down()
 	 *	c) (perhaps) it falls forward out of his non-weapon hand
 	 */
 
-	forward = (!(carried(uball))? 
-		  FALSE : ((uwep == uball) || (!uwep))? 
-			  TRUE : (boolean)(rn2(3) / 2));
+	forward = carried(uball) && (uwep == uball || !uwep || !rn2(3));
 
 	if (carried(uball)) 
 		You("lose your grip on the iron ball.");

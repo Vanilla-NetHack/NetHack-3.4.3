@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vision.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)vision.c	3.1	93/03/28	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990.	*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 #include "hack.h"
@@ -300,7 +300,7 @@ rogue_vision(next, rmin, rmax)
     char *rmin, *rmax;
 {
     int rnum = levl[u.ux][u.uy].roomno - ROOMOFFSET; /* no SHARED... */
-    int start, stop, in_door;
+    int start, stop, in_door, xhi, xlo, yhi, ylo;
     register int zx, zy;
 
     /* If in a lit room, we are able to see to its boundaries. */
@@ -323,11 +323,15 @@ rogue_vision(next, rmin, rmax)
     in_door = levl[u.ux][u.uy].typ == DOOR;
 
     /* Can always see adjacent. */
-    for (zy = u.uy-1; zy <= u.uy+1; zy++) {
-	rmin[zy] = min(rmin[zy],u.ux-1);
-	rmax[zy] = max(rmax[zy],u.ux+1);
+    ylo = max(u.uy - 1, 0);
+    yhi = min(u.uy + 1, ROWNO - 1);
+    xlo = max(u.ux - 1, 1);
+    xhi = min(u.ux + 1, COLNO - 1);
+    for (zy = ylo; zy <= yhi; zy++) {
+	if (xlo < rmin[zy]) rmin[zy] = xlo;
+	if (xhi > rmax[zy]) rmax[zy] = xhi;
 
-	for (zx = u.ux-1; zx <= u.ux+1; zx++) {
+	for (zx = xlo; zx <= xhi; zx++) {
 	    next[zy][zx] = COULD_SEE | IN_SIGHT;
 	    /*
 	     * Yuck, update adjacent non-diagonal positions when in a doorway.

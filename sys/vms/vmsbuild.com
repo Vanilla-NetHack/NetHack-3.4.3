@@ -202,7 +202,7 @@ $ set default [-.util]
 $ c_list = "#makedefs"
 $ gosub compile_list
 $ link makedefs.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="makedefs 3.1.1"
+identification="makedefs 3.1.2"
 $ milestone "makedefs"
 $! create some build-time files
 $ makedefs -p	!pm.h
@@ -214,8 +214,7 @@ $ makedefs -z	!../src/vis_tab.c, ../include/vis_tab.h
 $ milestone " (*.c)"
 $ set default [-.src]
 $! compile most of the source files:
-$	gnutermcap_options = "/Define=(""bcopy(s,d,n)=memcpy(d,s,n)"",""exit=vms_exit"")"
-$	if c_opt.eq.o_GNUC then  gnutermcap_options = "/Define=(""exit=vms_exit"")"  !gcc
+$	gnutermcap_options = "/Define=(""exit=vms_exit"",""ospeed=vms_ospeed"")"
 $ c_list = "decl,version,[-.sys.vms]vmsmain,[-.sys.vms]vmsunix" -
 	+ ",[-.sys.vms]vmstty,[-.sys.vms]vmsmail,[-.sys.vms]vmsfiles" -
 	+ ",[]random"	!copied from [-.sys.share]
@@ -244,7 +243,7 @@ $link:
 $ milestone "<linking...>"
 $ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain),'crtl''gnulib',-
 	sys$input:/Opt
-identification="NetHack 3.1.1"
+identification="NetHack 3.1.2"
 $ milestone "NetHack"
 $     if c_opt.eq.o_LINK then  goto done	!"LINK" only
 $special:
@@ -261,17 +260,17 @@ $ gosub compile_list
 $ rename stdio.h lev_lex.*
 $ link/exe=lev_comp lev_main,lev_yacc,lev_lex,-
 	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="lev_comp 3.1.1"
+identification="lev_comp 3.1.2"
 $ milestone "lev_comp"
 $ link/exe=dgn_comp dgn_main,dgn_yacc,dgn_lex,-
 	panic.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="dgn_comp 3.1.1"
+identification="dgn_comp 3.1.2"
 $ milestone "dgn_comp"
 $!
 $ c_list = "#recover"
 $ gosub compile_list
 $ link/exe=[] recover.obj,'nethacklib'/Lib,'crtl''gnulib',sys$input:/Opt
-identification="recover 3.1.1"
+identification="recover 3.1.2"
 $ milestone "recover"
 $!
 $done:

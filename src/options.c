@@ -1,10 +1,18 @@
-/*	SCCS Id: @(#)options.c	3.1	93/02/19	*/
+/*	SCCS Id: @(#)options.c	3.1	93/05/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#ifdef OPTION_LISTS_ONLY	/* want option lists for external program */
+#include "config.h"
+#include "objclass.h"
+#include "flag.h"
+NEARDATA struct flag flags;	/* provide linkage */
+#define static
+#else
 #include "hack.h"
 #include "termcap.h"
 #include <ctype.h>
+#endif
 
 /*
  *  NOTE:  If you add (or delete) an option, please update the short
@@ -13,34 +21,26 @@
  *  and also the Guidebooks.
  */
 
-#if defined(TOS) && defined(TEXTCOLOR)
-extern boolean colors_changed;	/* in tos.c */
-#endif
-
-extern const char *roles[];	/* from u_init.c */
-extern char inv_order[];	/* from invent.c */
-
-static boolean initial, from_file;
-
-static void FDECL(nmcpy, (char *, const char *, int));
-static void FDECL(escapes, (const char *, char *));
-static void FDECL(rejectoption, (const char *));
-static void FDECL(badoption, (const char *));
-static char *FDECL(string_for_opt, (char *));
-static char *FDECL(string_for_env_opt, (const char *, char *));
-static int FDECL(change_inv_order, (char *));
-static void FDECL(oc_to_str, (char *, char *));
-
 static struct Bool_Opt
 {
 	const char *name;
 	boolean	*addr, initvalue;
 } boolopt[] = {
+#ifdef MFLOPPY
+	{"asksavedisk", &flags.asksavedisk, FALSE},
+#else
+	{"asksavedisk", (boolean *)0, FALSE},
+#endif
+	{"autopickup", &flags.pickup, TRUE},
 #if defined(MICRO) && !defined(AMIGA)
 	{"BIOS", &flags.BIOS, FALSE},
+#else
+	{"BIOS", (boolean *)0, FALSE},
 #endif
 #ifdef INSURANCE
 	{"checkpoint", &flags.ins_chkpt, TRUE},
+#else
+	{"checkpoint", (boolean *)0, FALSE},
 #endif
 #ifdef TEXTCOLOR
 # ifdef MICRO
@@ -48,55 +48,79 @@ static struct Bool_Opt
 # else	/* systems that support multiple terminals, many monochrome */
 	{"color", &flags.use_color, FALSE},
 # endif
+#else
+	{"color", (boolean *)0, FALSE},
 #endif
 	{"confirm",&flags.confirm, TRUE},
 #ifdef TERMLIB
 	{"DECgraphics", &flags.DECgraphics, FALSE},
+#else
+	{"DECgraphics", (boolean *)0, FALSE},
 #endif
-	{"disclose", &flags.end_disclose, TRUE},
 	{"female", &flags.female, FALSE},
 	{"fixinv", &flags.invlet_constant, TRUE},
 #ifdef AMIFLUSH
 	{"flush", &flags.amiflush, FALSE},
+#else
+	{"flush", (boolean *)0, FALSE},
 #endif
 	{"help", &flags.help, TRUE},
 #ifdef TEXTCOLOR
 	{"hilite_pet", &flags.hilite_pet, FALSE},
+#else
+	{"hilite_pet", (boolean *)0, FALSE},
 #endif
 #ifdef ASCIIGRAPH
 	{"IBMgraphics", &flags.IBMgraphics, FALSE},
+#else
+	{"IBMgraphics", (boolean *)0, FALSE},
 #endif
 	{"ignintr", &flags.ignintr, FALSE},
 #ifdef MAC_GRAPHICS_ENV
 	{"large_font", &flags.large_font, FALSE},
+#else
+	{"large_font", (boolean *)0, FALSE},
 #endif
 	{"legacy",&flags.legacy, TRUE},
 	{"lit_corridor", &flags.lit_corridor, FALSE},
 #ifdef MAC_GRAPHICS_ENV
 	{"Macgraphics", &flags.MACgraphics, TRUE},
+#else
+	{"Macgraphics", (boolean *)0, FALSE},
 #endif
 #ifdef NEWS
 	{"news", &flags.news, TRUE},
+#else
+	{"news", (boolean *)0, FALSE},
 #endif
 	{"null", &flags.null, TRUE},
 	{"number_pad", &flags.num_pad, FALSE},
 #ifdef MAC
 	{"page_wait", &flags.page_wait, TRUE},
+#else
+	{"page_wait", (boolean *)0, FALSE},
 #endif
-	{"pickup", &flags.pickup, TRUE},
 #ifdef MAC
 	{"popup_dialog", &flags.popup_dialog, FALSE},
+#else
+	{"popup_dialog", (boolean *)0, FALSE},
 #endif
 #if defined(MICRO) && !defined(AMIGA)
 	{"rawio", &flags.rawio, FALSE},
+#else
+	{"rawio", (boolean *)0, FALSE},
 #endif
 	{"rest_on_space", &flags.rest_on_space, FALSE},
 	{"safe_pet", &flags.safe_dog, TRUE},
 #ifdef EXP_ON_BOTL
 	{"showexp", &flags.showexp, FALSE},
+#else
+	{"showexp", (boolean *)0, FALSE},
 #endif
 #ifdef SCORE_ON_BOTL
 	{"showscore", &flags.showscore, FALSE},
+#else
+	{"showscore", (boolean *)0, FALSE},
 #endif
 	{"silent", &flags.silent, TRUE},
 	{"sortpack", &flags.sortpack, TRUE},
@@ -108,7 +132,63 @@ static struct Bool_Opt
 	{NULL, (boolean *)0, FALSE}
 };
 
+/* compound options, for option_help() and external programs like Amiga
+ * frontend */
+static struct Comp_Opt
+{
+	const char *name, *descr;
+} compopt[] = {
+	{ "catname",  "the name of your (first) cat (e.g., catname:Tabby)," },
+	{ "disclose", "the kinds of information to disclose at end of game," },
+	{ "dogname",  "the name of your (first) dog (e.g., dogname:Fang)," },
+#ifdef TUTTI_FRUTTI
+	{ "fruit",    "the name of a fruit you enjoy eating," },
+#endif
+	{ "graphics", "the symbols to use in drawing the dungeon map," },
+	{ "monsters", "the symbols to use for monsters," },
+	{ "msghistory", "number of top line messages to save," },
+	{ "name",     "your character's name (e.g., name:Merlin-W)," },
+	{ "objects",  "the symbols to use for objects," },
+	{ "packorder", "the inventory order of the items in your pack," },
+#ifdef CHANGE_COLOR
+	{ "palette",  "palette (00c/880/-fff is blue/yellow/reverse white)," },
+# if defined(MAC)
+	{ "hicolor",  "same as palette, only order is reversed," },
+# endif
+#endif
+	{ "pettype",  "your preferred initial pet type," },
+	{ "pickup_types", "types of objects to pick up automatically," },
+	{ "scores",   "the parts of the score list you wish to see," },
+	{ "windowtype", "windowing system to use." },
+	{ NULL, NULL }
+};
+
+#ifndef OPTION_LISTS_ONLY	/* use rest of file */
+
 static boolean need_redraw; /* for doset() */
+
+#if defined(TOS) && defined(TEXTCOLOR)
+extern boolean colors_changed;	/* in tos.c */
+#endif
+
+extern const char *roles[];	/* from u_init.c */
+
+static char def_inv_order[MAXOCLASSES] = {
+	AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS, SCROLL_CLASS,
+	SPBOOK_CLASS, POTION_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, 
+	GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, 0,
+};
+
+static boolean initial, from_file;
+
+static void FDECL(nmcpy, (char *, const char *, int));
+static void FDECL(escapes, (const char *, char *));
+static void FDECL(rejectoption, (const char *));
+static void FDECL(badoption, (const char *));
+static char *FDECL(string_for_opt, (char *,BOOLEAN_P));
+static char *FDECL(string_for_env_opt, (const char *, char *,BOOLEAN_P));
+static int FDECL(change_inv_order, (char *));
+static void FDECL(oc_to_str, (char *, char *));
 
 void
 initoptions()
@@ -128,9 +208,14 @@ initoptions()
 	/* Set the default monster and object class symbols.  Don't use */
 	/* memcpy() --- sizeof char != sizeof uchar on some machines.	*/
 	for (i = 0; i < MAXOCLASSES; i++)
-	    	oc_syms[i] = (uchar) def_oc_syms[i];
+		oc_syms[i] = (uchar) def_oc_syms[i];
 	for (i = 0; i < MAXMCLASSES; i++)
-	    	monsyms[i] = (uchar) def_monsyms[i];
+		monsyms[i] = (uchar) def_monsyms[i];
+
+     /* assert( sizeof flags.inv_order == sizeof def_inv_order ); */
+	(void)memcpy((genericptr_t)flags.inv_order,
+		     (genericptr_t)def_inv_order, sizeof flags.inv_order);
+	flags.pickup_types[0] = '\0';
 
 	switch_graphics(ASCII_GRAPHICS);	/* set default characters */
 #if defined(UNIX) && defined(TTY_GRAPHICS)
@@ -153,7 +238,7 @@ initoptions()
 # ifdef TTY_GRAPHICS
 	/* detect whether a "vt" terminal can handle alternate charsets */
 	if (!strncmpi(getenv("TERM"), "vt", 2) && (AS && AE) &&
-	    !strcmp(AS, "\016") && !strcmp(AE, "\017")) {
+	    index(AS, '\016') && index(AE, '\017')) {
 		switch_graphics(DEC_GRAPHICS);
 	}
 # endif
@@ -170,7 +255,7 @@ initoptions()
 #endif
 	opts = getenv("NETHACKOPTIONS");
 	if (!opts) opts = getenv("HACKOPTIONS");
-	if (opts)
+	if (opts) {
 		if (*opts == '/' || *opts == '\\' || *opts == '@') {
 			if (*opts == '@') opts++;	/* @filename */
 			/* looks like a filename */
@@ -179,8 +264,9 @@ initoptions()
 			read_config_file(NULL);
 			parseoptions(opts, TRUE, FALSE);
 		}
-	else
+	} else {
 		read_config_file(NULL);
+	}
 #ifdef AMIGA
 	ami_wbench_init();	/* must be here or can't set fruit */
 #endif
@@ -319,29 +405,31 @@ const char *opts;
 }
 
 static char *
-string_for_opt(opts)
+string_for_opt(opts, val_optional)
 char *opts;
+boolean val_optional;
 {
 	register char *colon;
 
 	colon = index(opts, ':');
 	if(!colon) {
-		badoption(opts);
+		if (!val_optional) badoption(opts);
 		return NULL;
 	}
 	return ++colon;
 }
 
 static char *
-string_for_env_opt(optname, opts)
+string_for_env_opt(optname, opts, val_optional)
 const char *optname;
 char *opts;
+boolean val_optional;
 {
 	if(!initial) {
 		rejectoption(optname);
 		return NULL;
 	}
-	return string_for_opt(opts);
+	return string_for_opt(opts, val_optional);
 }
 
 /*
@@ -364,19 +452,21 @@ char *op;
 
 	/* Remove bad or duplicate entries. */
 	if (oc_sym == MAXOCLASSES ||
-		(!index(inv_order, oc_sym)) || (index(sp+1, *sp)))
+		(!index(flags.inv_order, oc_sym)) || (index(sp+1, *sp)))
 
 	    return 0;
 
 	*sp = (char) oc_sym;
     } 
     Strcpy(buf, op);
-    for (sp = inv_order, num = strlen(buf); *sp; sp++)
-	if (!index(buf, *sp))
+    for (sp = flags.inv_order, num = strlen(buf); *sp; sp++)
+	if (!index(buf, *sp)) {
 	    buf[num++] = *sp;
+	    buf[num] = '\0';	/* explicitly terminate for next index() */
+	}
 
     buf[num] = 0;
-    Strcpy(inv_order, buf);
+    Strcpy(flags.inv_order, buf);
     return 1;
 }
 
@@ -438,7 +528,7 @@ boolean tinitial, tfrom_file;
 	/* compound options */
 
 	if (!strncmpi(opts, "pettype", 3)) {
-		if ((op = string_for_env_opt("pettype", opts)) != 0)
+		if ((op = string_for_env_opt("pettype", opts, FALSE)) != 0)
 		    switch (*op) {
 			case 'd':	/* dog */
 			case 'D':
@@ -458,26 +548,93 @@ boolean tinitial, tfrom_file;
 	}
 
 	if (!strncmpi(opts, "catname", 3)) {
-		if ((op = string_for_env_opt("catname", opts)) != 0)
+		if ((op = string_for_env_opt("catname", opts, FALSE)) != 0)
 			nmcpy(catname, op, 62);
 		return;
 	}
 
 	if (!strncmpi(opts, "dogname", 3)) {
-		if ((op = string_for_env_opt("dogname", opts)) != 0)
+		if ((op = string_for_env_opt("dogname", opts, FALSE)) != 0)
 			nmcpy(dogname, op, 62);
 		return;
 	}
 
 	if (!strncmpi(opts, "msghistory", 3)) {
-		if ((op = string_for_env_opt("msghistory", opts)) != 0) {
+		if ((op = string_for_env_opt("msghistory", opts, FALSE)) != 0) {
 			flags.msg_history = atoi(op);
 		}
 		return;
 	}
+
+#ifdef CHANGE_COLOR
+	if (!strncmpi(opts, "palette", 3)
+# ifdef MAC
+					|| !strncmpi(opts, "hicolor", 3)
+# endif
+									) {
+	    int color_number, color_incr;
+# ifdef MAC
+	    if (!strncmpi(opts, "hicolor", 3)) {
+		color_number = MAXCOLORS + 4;	/* HARDCODED inverse number */
+		color_incr = -1;
+	    } else {
+# endif
+		color_number = 0;
+		color_incr = 1;
+# ifdef MAC
+	    }
+# endif
+	    if ((op = string_for_opt(opts, FALSE)) != NULL) {
+		char *pt = op;
+		int cnt, tmp, reverse;
+		long rgb;
+
+		while (*pt && color_number >= 0) {
+		    cnt = 3;
+		    rgb = 0L;
+		    if (*pt == '-') {
+			reverse = 1;
+			pt++;
+		    } else {
+			reverse = 0;
+		    }
+		    while (cnt-- > 0) {
+			if (*pt && *pt != '/') {
+# ifdef AMIGA
+			    rgb <<= 4;
+# else
+			    rgb <<= 8;
+# endif
+			    tmp = *(pt++);
+			    if (isalpha(tmp)) {
+				tmp = (tmp + 9) & 0xf;	/* Assumes ASCII... */
+			    } else {
+				tmp &= 0xf;	/* Digits in ASCII too... */
+			    }
+# ifndef AMIGA
+			    /* Add an extra so we fill f -> ff and 0 -> 00 */
+			    rgb += tmp << 4;
+# endif
+			    rgb += tmp;
+			}
+		    }
+		    if (*pt == '/') {
+			pt++;
+		    }
+		    change_color(color_number, rgb, reverse);
+		    color_number += color_incr;
+		}
+	    }
+	    if (!initial) {
+		need_redraw = TRUE;
+	    }
+	    return;
+	}
+#endif
+
 #ifdef TUTTI_FRUTTI
 	if (!strncmpi(opts, "fruit", 2)) {
-		if (!(op = string_for_opt(opts))) return;
+		if (!(op = string_for_opt(opts, FALSE))) return;
 		if (!initial) {
 		    struct fruit *f;
 
@@ -510,7 +667,7 @@ goodfruit:
 		uchar translate[MAXPCHARS+1];
 		int length;
 
-		if (!(opts = string_for_env_opt("graphics", opts)))
+		if (!(opts = string_for_env_opt("graphics", opts, FALSE)))
 			return;
 		escapes(opts, opts);
 
@@ -527,7 +684,7 @@ goodfruit:
 	if (!strncmpi(opts, "objects", 7)) {
 		int length;
 
-		if (!(opts = string_for_env_opt("objects", opts)))
+		if (!(opts = string_for_env_opt("objects", opts, FALSE)))
 			return;
 		escapes(opts, opts);
 
@@ -553,7 +710,7 @@ goodfruit:
 	if (!strncmpi(opts, "monsters", 8)) {
 		int length;
 
-		if (!(opts = string_for_env_opt("monsters", opts)))
+		if (!(opts = string_for_env_opt("monsters", opts, FALSE)))
 			return;
 		escapes(opts, opts);
 
@@ -569,23 +726,83 @@ goodfruit:
 
 	/* name:string */
 	if (!strncmpi(opts, "name", 4)) {
-		if ((op = string_for_env_opt("name", opts)) != 0)
+		if ((op = string_for_env_opt("name", opts, FALSE)) != 0)
 			nmcpy(plname, op, (int)sizeof(plname)-1);
 		return;
 	}
 
 	/* the order to list the pack */
 	if (!strncmpi(opts, "packorder", 4)) {
-		if (!(op = string_for_opt(opts))) return;
+		if (!(op = string_for_opt(opts, FALSE))) return;
 
 		if (!change_inv_order(op))
-		    	badoption(opts);
+			badoption(opts);
+		return;
+	}
+
+	/* types of objects to pick up automatically */
+	if (!strncmpi(opts, "pickup_types", 4)) {
+		int oc_sym;
+		boolean badopt = FALSE, compat = (strlen(opts) <= 6);
+
+		flags.pickup_types[0] = '\0';	/* all */
+		if (!(op = string_for_opt(opts, compat))) {
+		    /* for backwards compatibility, "pickup" without a value
+		       is a synonym for boolean autopickup, and pickup_types
+		       gets reset to "all"				    */
+		    flags.pickup = !negated;
+		    return;
+		}
+
+		while (*op == ' ') op++;
+		if (*op != 'a' && *op != 'A') {
+		    num = 0;
+		    while (*op) {
+			oc_sym = def_char_to_objclass(*op);
+			/* make sure all are valid obj symbols occuring once */
+			if (oc_sym != MAXOCLASSES &&
+			    !index(flags.pickup_types, oc_sym)) {
+			    flags.pickup_types[num] = (char)oc_sym;
+			    flags.pickup_types[++num] = '\0';
+			} else
+			    badopt = TRUE;
+			op++;
+		    }
+		    if (badopt) badoption(opts);
+		}
+		return;
+	}
+
+	/* things to disclose at end of game */
+	if (!strncmpi(opts, "disclose", 4)) {
+		flags.end_disclose[0] = '\0';	/* all */
+		if (!(op = string_for_opt(opts, TRUE))) {
+			/* for backwards compatibility, "disclose" without a
+			 * value means all (was inventory and attributes,
+			 * the only things available then), but negated
+			 * it means "none"
+			 * (note "none" contains none of "iavkg")
+			 */
+			if (negated) Strcpy(flags.end_disclose, "none");
+			return;
+		}
+		num = 0;
+		while (*op && num < sizeof flags.end_disclose - 1) {
+			register char c;
+			c = lowc(*op);
+			if (c == 'k') c = 'v';	/* killed -> vanquished */
+			if (!index(flags.end_disclose, c)) {
+				flags.end_disclose[num++] = c;
+				flags.end_disclose[num] = '\0';	/* for index */
+			}
+			op++;
+		}
 		return;
 	}
 
 	/* scores:5t[op] 5a[round] o[wn] */
 	if (!strncmpi(opts, "scores", 6)) {
-		if (!(op = string_for_opt(opts))) return;
+		if (!(op = string_for_opt(opts, FALSE))) return;
 
 		while (*op) {
 			num = 1;
@@ -622,7 +839,7 @@ goodfruit:
 	}
 
 	if (!strncmpi(opts, "windowtype", 3)) {
-	    if ((op = string_for_env_opt("windowtype", opts)) != 0) {
+	    if ((op = string_for_env_opt("windowtype", opts, FALSE)) != 0) {
 		char buf[16];
 		nmcpy(buf, op, 15);
 		choose_windows(buf);
@@ -634,9 +851,16 @@ goodfruit:
 	 * options list
 	 */
 	for (i = 0; boolopt[i].name; i++) {
-		if (boolopt[i].addr && strlen(opts) >= 3 &&
+		if (strlen(opts) >= 3 &&
 		    !strncmpi(boolopt[i].name, opts, strlen(opts))) {
-		        /* options that must come from config file */
+			/* options that don't exist */
+			if (!boolopt[i].addr) {
+			    if (!initial && !negated)
+				pline("The \"%s\" option is not available.",
+					boolopt[i].name);
+			    return;
+			}
+			/* options that must come from config file */
 			if (!initial &&
 			    ((boolopt[i].addr) == &flags.legacy
 #if defined(MICRO) && !defined(AMIGA)
@@ -763,7 +987,7 @@ oc_to_str(src,dest)
     *dest = '\0';
 }
 
-#ifdef MICRO
+#if defined(MICRO) || defined(MAC)
 # define OPTIONS_HEADING "OPTIONS"
 #else
 # define OPTIONS_HEADING "NETHACKOPTIONS"
@@ -772,7 +996,7 @@ oc_to_str(src,dest)
 int
 doset()
 {
-	char buf[BUFSZ], pack_order[MAXOCLASSES+1], on_off;
+	char buf[BUFSZ], ocl[MAXOCLASSES+1], on_off;
 	const char *opt_name;
 	int i;
 	winid tmpwin;
@@ -806,6 +1030,9 @@ doset()
 	    Sprintf(buf, " catname: %s",
 			(catname[0] != 0) ? catname : "(null)");
 	    putstr(tmpwin, 0, buf);
+	    Sprintf(buf, " disclose: %s",
+			(flags.end_disclose[0]) ? flags.end_disclose : "all");
+	    putstr(tmpwin, 0, buf);
 	    Sprintf(buf, " dogname: %s",
 			(dogname[0] != 0) ? dogname : "(null)");
 	    putstr(tmpwin, 0, buf);
@@ -817,11 +1044,18 @@ doset()
 	    putstr(tmpwin, 0, buf);
 	    Sprintf(buf, " name: %s", plname);
 	    putstr(tmpwin, 0, buf);
-	    oc_to_str(inv_order, pack_order);
-	    Sprintf(buf, " packorder: %s", pack_order);
+	    oc_to_str(flags.inv_order, ocl);
+	    Sprintf(buf, " packorder: %s", ocl);
 	    putstr(tmpwin, 0, buf);
+#ifdef CHANGE_COLOR
+	    Sprintf(buf, " palette: %s", get_color_string());
+	    putstr(tmpwin, 0, buf);
+#endif
 	    Sprintf(buf, " pettype: %s", preferred_pet == 'c' ? "cat" :
 				    preferred_pet == 'd' ? "dog" : "random");
+	    putstr(tmpwin, 0, buf);
+	    oc_to_str(flags.pickup_types, ocl);
+	    Sprintf(buf, " pickup_types: %s", (ocl[0]) ? ocl : "all");
 	    putstr(tmpwin, 0, buf);
 	    Sprintf(buf, " scores: %utop/%uaround%s",
 		        flags.end_top, flags.end_around,
@@ -847,9 +1081,18 @@ doset()
 }
 
 int
-dotogglepickup() {
+dotogglepickup()
+{
+	char buf[BUFSZ], ocl[MAXOCLASSES+1];
+
 	flags.pickup = !flags.pickup;
-	pline("Pickup: %s.", flags.pickup ? "ON" : "OFF");
+	if (flags.pickup) {
+	    oc_to_str(flags.pickup_types, ocl);
+	    Sprintf(buf, "ON, for %s objects", ocl[0] ? ocl : "all");
+	} else {
+	    Strcpy(buf, "OFF");
+	}
+	pline("Autopickup: %s.", buf);
 	return 0;
 }
 
@@ -860,39 +1103,20 @@ static const char *opt_intro[] = {
 	"",
 #define CONFIG_SLOT 3	/* fill in next value at run-time */
 	NULL,
-#ifndef MICRO
+#if !defined(MICRO) && !defined(MAC)
 	"or use `NETHACKOPTIONS=\"<options>\"' in your environment;",
 # ifdef VMS
-	"-- for example, $ DEFINE NETHACKOPTIONS \"nopickup,fruit:kumquat\"",
+	"-- for example, $ DEFINE NETHACKOPTIONS \"noautopickup,fruit:kumquat\"",
 # endif
 #endif
 	"or press \"O\" while playing, and type your <options> at the prompt.",
-	"In either case, <options> is a list of options separated by commas.",
+	"In all cases, <options> is a list of options separated by commas.",
 	"",
  "Boolean options (which can be negated by prefixing them with '!' or \"no\"):",
 	NULL
 };
-static const char *opt_compound[] = {
-	"Compound options:",
-	"`catname'   - the name of your (first) cat (e.g., catname:Tabby),",
-	"`dogname'   - the name of your (first) dog (e.g., dogname:Fang),",
-#ifdef TUTTI_FRUTTI
-	"`fruit'     - the name of a fruit you enjoy eating,",
-# define FRUIT_OFFSET 1
-#else
-# define FRUIT_OFFSET 0
-#endif
-	"`graphics'  - defines the symbols to use in drawing the dungeon map,",
-	"`monsters'  - defines the symbols to use for monsters,",
-	"`msghistory'- number of top line messages to save,",
-	"`name'      - your character's name (e.g., name:Merlin-W),",
-	"`objects'   - defines the symbols to use for objects,",
-	"`packorder' - the inventory order of the items in your pack",
-#define PCKORD_SLOT 9+FRUIT_OFFSET
-	NULL,
-	"`pettype'   - your preferred initial pet type,",
-	"`scores'    - the parts of the score list you wish to see,",
-	"`windowtype'- windowing system to use.",
+
+static const char *opt_epilog[] = {
 	"",
  "Some of the options can be set only before the game is started.  You will",
 	"be so informed, if you attempt to set them while in the game.",
@@ -902,8 +1126,8 @@ static const char *opt_compound[] = {
 void
 option_help()
 {
-    char	buf[BUFSZ], pack_order[MAXOCLASSES+1];
-    register int	i;
+    char buf[BUFSZ], buf2[BUFSZ];
+    register int i;
     winid datawin;
 
     datawin = create_nhwindow(NHW_TEXT);
@@ -925,14 +1149,15 @@ option_help()
     next_opt(datawin, "");
 
     /* Compound options */
-    oc_to_str(inv_order, pack_order);
-    Sprintf(buf, "              (currently, packorder:%s ),", pack_order);
-#if 0
-    assert( opt_compound[PCKORD_SLOT] == NULL );
-#endif
-    opt_compound[PCKORD_SLOT] = (const char *) buf;
-    for (i = 0; opt_compound[i]; i++)
-	putstr(datawin, 0, opt_compound[i]);
+    putstr(datawin, 0, "Compound options:");
+    for (i = 0; compopt[i].name; i++) {
+	Sprintf(buf2, "`%s'", compopt[i].name);
+	Sprintf(buf, "%-14s - %s", buf2, compopt[i].descr);
+	putstr(datawin, 0, buf);
+    }
+
+    for (i = 0; opt_epilog[i]; i++)
+	putstr(datawin, 0, opt_epilog[i]);
 
     display_nhwindow(datawin, FALSE);
     destroy_nhwindow(datawin);
@@ -1047,5 +1272,7 @@ nonew:
 	return f->fid;
 }
 #endif
+
+#endif	/* OPTION_LISTS_ONLY */
 
 /*options.c*/

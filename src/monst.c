@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monst.c	3.1	92/11/25		  */
+/*	SCCS Id: @(#)monst.c	3.1	93/05/26		  */
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -712,7 +712,8 @@ NEARDATA struct permonst mons[] = {
 	  M2_HOSTILE | M2_STRONG | M2_NASTY,
 	  0, C(MAGENTA) },
 /*	Dummy monster needed for visual interface. */
-	{ "long worm tail", S_WORM_TAIL, 0, 0, 0, 0, 0, G_NOGEN | G_NOCORPSE,
+	{ "long worm tail", S_WORM_TAIL, 0, 0, 0, 0, 0,
+	  (G_NOGEN | G_NOCORPSE | G_UNIQ),	/* uniq prevents figurines */
 	  { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	  0, 0, 0, 0, 0, 0, 0, 0, M2_NOPOLY, 0, C(BROWN) },
 /*	xan, &c.	*/
@@ -1273,8 +1274,8 @@ struct permonst _mons2[] = {
 	  M1_NOLIMBS | M1_SLITHY | M1_THICK_HIDE | M1_OVIPAROUS,
 	  M2_STRONG, 0, C(HI_GOLD) },
 	{ "guardian naga", S_NAGA, 12, 16, 0, 50, 7, (G_GENO | 1),
-	  { { AT_BITE, AD_PLYS, 1, 6 }, { AT_HUGS, AD_PHYS, 2, 4 },
-	    { AT_SPIT, AD_DRST, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_BITE, AD_PLYS, 1, 6 }, { AT_SPIT, AD_DRST, 1, 6 },
+	    { AT_HUGS, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  2600, 400, 0, MS_MUMBLE, MZ_HUGE, MR_POISON, MR_POISON,
 	  M1_NOLIMBS | M1_SLITHY | M1_THICK_HIDE | M1_OVIPAROUS | M1_POIS,
 	  M2_STRONG, 0, C(GREEN) },
@@ -1569,8 +1570,8 @@ struct permonst _mons2[] = {
 	  MR_SLEEP | MR_POISON, 0, M1_BREATHLESS | M1_MINDLESS | M1_HUMANOID,
 	  M2_HOSTILE | M2_NEUTER, 0, C(YELLOW) },
 	{ "rope golem", S_GOLEM, 4, 9, 8, 0, 0, (G_GENO | G_NOCORPSE | 1),
-	  { { AT_CLAW, AD_PHYS, 1, 6 }, { AT_HUGS, AD_PHYS, 6, 1 },
-	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
+	    { AT_HUGS, AD_PHYS, 6, 1 }, NO_ATTK, NO_ATTK, NO_ATTK },
 	  450, 0, 0, MS_SILENT, MZ_LARGE,
 	  MR_SLEEP | MR_POISON, 0, M1_BREATHLESS | M1_MINDLESS | M1_HUMANOID,
 	  M2_HOSTILE | M2_NEUTER, 0, C(BROWN) },
@@ -1792,8 +1793,8 @@ struct permonst _mons2[] = {
 	    { AT_BITE, AD_DRST, 1, 6 }, { AT_WEAP, AD_PHYS, 2, 4 },
 	    NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_HISS, MZ_LARGE,
-	  MR_POISON | MR_STONE, MR_POISON | MR_STONE, M1_SWIM |
-	  M1_AMPHIBIOUS | M1_HUMANOID | M1_SLITHY | M1_POIS | M1_OMNIVORE,
+	  MR_POISON | MR_STONE, MR_POISON | MR_STONE, M1_FLY | M1_SWIM |
+	  M1_AMPHIBIOUS | M1_HUMANOID | M1_POIS | M1_OMNIVORE,
 	  M2_NOPOLY | M2_HOSTILE | M2_STRONG | M2_PNAME | M2_FEMALE,
 	  M3_WAITFORU, C(BRIGHT_GREEN) },
 	{ "Wizard of Yendor", S_HUMAN, 30, 12, -8, 100, A_NONE, G_NOGEN,
@@ -2042,7 +2043,7 @@ struct permonst _mons2[] = {
 	{ "Death", S_DEMON, 20, 3, 4, 95, 0, (G_UNIQ | G_NOGEN),
 	  { { AT_TUCH, AD_DETH, 8, 8 }, { AT_TUCH, AD_DETH, 8, 8 },
 	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  WT_HUMAN, 0, 0, MS_DEATH, MZ_HUMAN,
+	  WT_HUMAN, 0, 0, MS_RIDER, MZ_HUMAN,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  M1_FLY | M1_SEE_INVIS | M1_HUMANOID | M1_REGEN,
@@ -2051,7 +2052,7 @@ struct permonst _mons2[] = {
 	{ "Pestilence", S_DEMON, 20, 3, 4, 95, 0, (G_UNIQ | G_NOGEN),
 	  { { AT_TUCH, AD_PEST, 8, 8 }, { AT_TUCH, AD_PEST, 8, 8 },
 	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  WT_HUMAN, 0, 0, MS_PESTILENCE, MZ_HUMAN,
+	  WT_HUMAN, 0, 0, MS_RIDER, MZ_HUMAN,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  M1_FLY | M1_SEE_INVIS | M1_HUMANOID | M1_REGEN,
@@ -2060,7 +2061,7 @@ struct permonst _mons2[] = {
 	{ "Famine", S_DEMON, 20, 3, 4, 95, 0, (G_UNIQ | G_NOGEN),
 	  { { AT_TUCH, AD_FAMN, 8, 8 }, { AT_TUCH, AD_FAMN, 8, 8 },
 	    NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  WT_HUMAN, 0, 0, MS_FAMINE, MZ_HUMAN,
+	  WT_HUMAN, 0, 0, MS_RIDER, MZ_HUMAN,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  MR_FIRE | MR_COLD | MR_ELEC | MR_SLEEP | MR_POISON | MR_STONE,
 	  M1_FLY | M1_SEE_INVIS | M1_HUMANOID | M1_REGEN,
@@ -2160,7 +2161,8 @@ struct permonst _mons2[] = {
 	    NO_ATTK, NO_ATTK, NO_ATTK },
 	  WT_HUMAN, 400, 0, MS_HUMANOID, MZ_HUMAN, 0, 0,
 	  M1_HUMANOID | M1_OMNIVORE,
-	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_MALE | M2_COLLECT, 0, C(RED) },
+	  M2_NOPOLY | M2_HUMAN | M2_STRONG | M2_MALE | M2_COLLECT, 0,
+	  C(HI_DOMESTIC) },
 	{ "cavewoman", S_HUMAN, 1, 10, 10, 0, 1, G_NOGEN,
 	  { { AT_WEAP, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK,
 	    NO_ATTK, NO_ATTK, NO_ATTK },

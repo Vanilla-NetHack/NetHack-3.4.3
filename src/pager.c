@@ -1,17 +1,17 @@
-/*	SCCS Id: @(#)pager.c	3.1	93/02/04	*/
+/*	SCCS Id: @(#)pager.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* This file contains the command routines dowhatis() and dohelp() and */
 /* a few other help related facilities */
 
-#include	"hack.h"
+#include "hack.h"
 
 #ifndef SEEK_SET
 #define SEEK_SET 0
 #endif
 
-static boolean FDECL(is_swallow_sym, (UCHAR_P));
+static boolean FDECL(is_swallow_sym, (int));
 static int FDECL(append_str, (char *, const char *));
 static void FDECL(lookat, (int, int, char *));
 static void FDECL(checkfile, (char *, BOOLEAN_P));
@@ -24,11 +24,11 @@ extern void NDECL(port_help);
 /* Returns "true" for characters that could represent a monster's stomach. */
 static boolean
 is_swallow_sym(c)
-    uchar c;
+int c;
 {
     int i;
     for (i = S_sw_tl; i <= S_sw_br; i++)
-	if (showsyms[i] == c) return TRUE;
+	if ((int)showsyms[i] == c) return TRUE;
     return FALSE;
 }
 
@@ -68,7 +68,8 @@ lookat(x, y, buf)
     buf[0] = 0;
     glyph = glyph_at(x,y);
     if (u.ux == x && u.uy == y && canseeself()) {
-	Sprintf(buf, "%s called %s",
+	Sprintf(buf, "%s%s called %s",
+		Invis ? "invisible " : "",
 #ifdef POLYSELF
 		u.mtimedone ? mons[u.umonnum].mname :
 #endif
@@ -115,9 +116,20 @@ lookat(x, y, buf)
 	    }
 	} else
 	    Strcpy(buf, distant_name(otmp, xname));
+
+	if (levl[x][y].typ == STONE || levl[x][y].typ == SCORR)
+	    Strcat(buf, " embedded in stone");
+	else if (IS_WALL(levl[x][y].typ) || levl[x][y].typ == SDOOR)
+	    Strcat(buf, " embedded in a wall");
+	else if (closed_door(x,y))
+	    Strcat(buf, " embedded in a door");
+	else if (is_pool(x,y))
+	    Strcat(buf, " in water");
+	else if (is_lava(x,y))
+	    Strcat(buf, " in molten lava");	/* [can this ever happen?] */
     }
     else if (glyph_is_trap(glyph)) {
-	if (trap = t_at(x, y)) {
+	if ((trap = t_at(x, y)) != 0) {
 	    if (trap->ttyp == WEB)
 		Strcpy(buf, "web");
 	    else {
@@ -126,7 +138,7 @@ lookat(x, y, buf)
 		/* strip leading garbage */
 		for (s = buf; *s && *s != ' '; s++) ;
 		if (*s) ++s;
-		for (t = buf; *t++ = *s++; ) ;
+		for (t = buf; (*t++ = *s++) != 0; ) ;
 	    }
 	}
     }
@@ -296,10 +308,6 @@ do_look(quick)
     boolean need_to_look;	/* need to get explan. from glyph */
     static const char *mon_interior = "the interior of a monster";
 
-#ifdef GCC_WARN
-    sym = 0;
-#endif
-
     if (quick) {
 	from_screen = TRUE;	/* yes, we want to use the cursor */
     } else {
@@ -311,6 +319,7 @@ do_look(quick)
     if (from_screen) {
 	cc.x = u.ux;
 	cc.y = u.uy;
+	sym = 0;		/* gcc -Wall lint */
     } else {
 	getlin("Specify what? (type the word)", out_str);
 	if (out_str[0] == '\0' || out_str[0] == '\033')
@@ -357,9 +366,9 @@ do_look(quick)
 	    } else if (glyph_is_trap(glyph)) {
 		sym = showsyms[(glyph_to_trap(glyph) == WEB) ? S_web : S_trap];
 	    } else if (glyph_is_object(glyph)) {
-		sym = oc_syms[objects[glyph_to_obj(glyph)].oc_class];
+		sym = oc_syms[(int)objects[glyph_to_obj(glyph)].oc_class];
 	    } else if (glyph_is_monster(glyph)) {
-		sym = monsyms[mons[glyph_to_mon(glyph)].mlet];
+		sym = monsyms[(int)mons[glyph_to_mon(glyph)].mlet];
 	    } else if (glyph_is_swallow(glyph)) {
 		sym = showsyms[glyph_to_swallow(glyph)+S_sw_tl];
 	    } else {
@@ -393,7 +402,7 @@ do_look(quick)
 	 * and looking at something other than our own symbol, then just say
 	 * "the interior of a monster".
 	 */
-	if (u.uswallow && from_screen && is_swallow_sym((uchar) sym)) {
+	if (u.uswallow && from_screen && is_swallow_sym(sym)) {
 	    if (!found) {
 		Sprintf(out_str, "%c       %s", sym, mon_interior);
 		firstmatch = mon_interior;

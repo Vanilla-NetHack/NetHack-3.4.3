@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkobj.c	3.1	93/02/10	*/
+/*	SCCS Id: @(#)mkobj.c	3.1	93/05/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -66,8 +66,6 @@ const struct icp hellprobs[] = {
 { 4, AMULET_CLASS}
 };
 
-static NEARDATA int mksx=0, mksy=0;
-
 struct obj *
 mkobj_at(let,x,y, artif)
 char let;
@@ -76,16 +74,10 @@ boolean artif;
 {
 	register struct obj *otmp;
 
-	mksx = x; mksy = y;
-	/* We need to know the X, Y coordinates while creating the object,
-	 * to insure shop boxes are empty.
-	 * Yes, this is a horrible kludge...
-	 */
 	otmp = mkobj(let,artif);
 	otmp->nobj = fobj;
 	fobj = otmp;
 	place_object(otmp, x, y);
-	mksx = mksy = 0;
 	return(otmp);
 }
 
@@ -96,12 +88,11 @@ boolean init;
 {
 	register struct obj *otmp;
 
-	mksx = x; mksy = y;
 	otmp = mksobj(otyp,init,TRUE);
 	otmp->nobj = fobj;
+	fobj = otmp;
 	place_object(otmp, x, y);
-	mksx = mksy = 0;
-	return((fobj = otmp));
+	return(otmp);
 }
 
 struct obj *
@@ -599,6 +590,8 @@ register struct obj *obj;
 		return (int)obj->quan * mons[obj->corpsenm].cwt;
 	else if (obj->otyp == GOLD_PIECE)
 		return (int)((obj->quan + 50L) / 100L);
+	else if (obj->otyp == HEAVY_IRON_BALL && obj->owt != 0)
+		return obj->owt;	/* kludge for "very" heavy iron ball */
 	return(wt ? wt*(int)obj->quan : ((int)obj->quan + 1)>>1);
 }
 

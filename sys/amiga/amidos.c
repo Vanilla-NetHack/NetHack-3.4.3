@@ -34,6 +34,7 @@
 #include "Amiga:amidos.p"
 
 extern char Initialized;
+extern struct window_procs amii_procs;
 
 #ifndef __SASC_60
 int Enable_Abort = 0;   /* for stdio package */
@@ -83,7 +84,7 @@ dosh()
     extern struct ExecBase *SysBase;
 
     /* Only under 2.0 and later ROMs do we have System() */
-    if( SysBase->LibNode.lib_Version >= 37 )
+    if( SysBase->LibNode.lib_Version >= 37 && !amibbs)
     {
 	getlin("Enter CLI Command...", buf );
 	i = System( buf, NULL );
@@ -261,22 +262,40 @@ const char *from, *to;
 /* this should be replaced */
 saveDiskPrompt(start)
 {
-    extern int saveprompt;
     char buf[BUFSIZ], *bp;
     BPTR fileLock;
 
-    if (saveprompt) {
+    if (flags.asksavedisk) {
 	    /* Don't prompt if you can find the save file */
 	if (fileLock = Lock(SAVEF, SHARED_LOCK)) {
 	    UnLock(fileLock);
-	    clear_nhwindow( WIN_BASE );
+#if defined(TTY_GRAPHICS)
+	    if(windowprocs.win_init_nhwindows!=amii_procs.win_init_nhwindows)
+		clear_nhwindow( WIN_MAP );
+#endif
+#if defined(AMII_GRAPHICS)
+	    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)
+		clear_nhwindow( WIN_BASE );
+#endif
 	    return 1;
 	}
 	pline( "If save file is on a SAVE disk, put that disk in now." );
 	if( strlen( SAVEF ) > QBUFSZ - 25 - 22 )
 	    panic( "not enough buffer space for prompt" );
-	getlind("File name ?", buf, SAVEF);
-	clear_nhwindow( WIN_BASE );
+/* THIS IS A HACK */
+#if defined(TTY_GRAPHICS)
+	if(windowprocs.win_init_nhwindows!=amii_procs.win_init_nhwindows){
+	    getlin("File name ?",buf);
+	    clear_nhwindow( WIN_MAP );
+	}
+#endif
+#if defined(AMII_GRAPHICS)
+	if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows){
+	    getlind("File name ?", buf, SAVEF);
+	    clear_nhwindow( WIN_BASE );
+	}
+#endif
+	clear_nhwindow( WIN_MESSAGE);
 	if (!start && *buf == '\033')
 	    return 0;
 
@@ -448,7 +467,10 @@ msexit(code)
     chdir(orgdir);      /* chdir, not chdirx */
 #endif
 
-    CleanUp();
+#ifdef AMII_GRAPHICS
+    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)
+	CleanUp();
+#endif
     exit(code);
 }
 

@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_lex.c	3.1	92/07/12	*/
+/*	SCCS Id: @(#)lev_lex.c	3.1	93/05/27	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,7 +31,7 @@ int NDECL (yylex);
 #  define VOIDYYPUT
 # endif
 # if !defined(VOIDYYPUT)
-#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX)
+#  if defined(POSIX_TYPES) && !defined(BOS) && !defined(HISX) && !defined(_M_UNIX)
 #   define VOIDYYPUT
 #  endif
 # endif
@@ -57,19 +57,22 @@ void FDECL (init_yyout, (FILE *));
 extern void FDECL(exit, (int));
 #endif
 
-/* this doesn't always get put in lev_comp.h
- * (esp. when using older versions of bison)
+/*
+ * This doesn't always get put in lev_comp.h
+ * (esp. when using older versions of bison).
  */
-
 extern YYSTYPE yylval;
 
 int line_number = 1, colon_line_number = 1;
 
-/* This is *** UGLY *** but I can't think a better way to do it
+/*
+ * This is *** UGLY *** but I can't think a better way to do it;
  * I really need a huge buffer to scan maps...
+ * (This should probably be `#ifndef FLEX_SCANNER' since it's lex-specific.)
  */
-
+#ifdef YYLMAX
 #undef YYLMAX
+#endif
 #define YYLMAX	2048
 
 /*
@@ -107,7 +110,7 @@ input() {	/* Under MPW \n is chr(13)! Compensate for this. */
 %s MAPC
 %%
 <MAPC>ENDMAP	{
-#ifdef FLEX_SCANNER
+#ifdef FLEX23_BUG
 		  /*
 		   * There is a bug in Flex 2.3 patch level < 6
 		   * (absent in previous versions)

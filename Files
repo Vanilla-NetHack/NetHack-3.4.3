@@ -42,6 +42,8 @@ wintype.h       you.h           youprop.h
 wintty.h
 (files for X versions)
 Window.h        WindowP.h       winX.h
+(files for mactty version)
+mactty.h        mttypriv.h
 
 src:
 (files for all versions)
@@ -67,19 +69,21 @@ were.c          wield.c         windows.c       wizard.c        worm.c
 worn.c          write.c         zap.c
 
 sys/amiga:
-(files for Amiga version)
+(files for Amiga versions)
 HackWB.uu       Install.ami     Makefile.ami    NHinfo.uu       NetHack.cnf
 NewGame.uu      amidos.c        amidos.p        amifont.uu      amifont8.uu
-amigst.c        amii.hlp        amimenu.c       amirip.c        amisnd.c
-amiwbench.c     amiwind.c       amiwind.p       ask.uu          char.c
-charwin.uu      colors.uu       colorwin.c      cvtsnd.c        dflticon.uu
-hackwb.hlp      ifchange        randwin.c       randwin.uu      scroll.uu
-string.uu       wb.c            wbcli.c         wbdata.c        wbdefs.h
-wbprotos.h      wbstruct.h      wbwin.c         wbwin.uu        winami.c
-winami.p
+amigst.c        amii.hlp        amilib.c        amimenu.c       amirip.c
+amisnd.c        amitty.c        amiwbench.c     amiwind.c       amiwind.p
+ask.uu          char.c          charwin.uu      colors.uu       colorwin.c
+cvtsnd.c        dflticon.uu     hackwb.hlp      ifchange        randwin.c
+randwin.uu      scroll.uu       string.uu       wb.c            wbcli.c
+wbdata.c        wbdefs.h        wbprotos.h      wbstruct.h      wbwin.c
+wbwin.uu        winami.c        winami.p        windefs.h       winext.h
+winfuncs.c      winkey.c        winmenu.c       winproto.h      winreq.c
+winstr.c
 
 sys/amiga/splitter:
-(more files for Amiga version)
+(more files for Amiga versions)
 amiout.h        arg.c           arg.h           loader.c        multi.c
 multi.h         split.doc       split.h         splitter.c
 
@@ -89,17 +93,20 @@ Install.tos     Makefile.utl    atari.cnf       atarifnt.uue    nethack.mnu
 setup.g         tos.c
 
 sys/mac:
-(files for Macintosh version)
-Install.mpw     MacHelp         NHmake.hqx      NHrez.hqx       NHrsrc.hqx
-NHsound.hqx     News            hack.h          maccurs.c       macerrs.c
-macfile.c       macmain.c       macsnd.c        mactopl.c       macunix.c
-macwin.c        mgetline.c      mhdump.c        mmodal.c        mstring.c
+(files for Macintosh versions)
+Install.mpw     MacHelp         NHDeflts        NHmake.hqx      NHrez.hqx
+NHrsrc.hqx      NHsound.hqx     News            dprintf.c       hack.h
+maccurs.c       macerrs.c       macfile.c       macmain.c       macmenu.c
+macsnd.c        mactopl.c       mactty.c        macunix.c       macwin.c
+mgetline.c      mhdump.c        mmodal.c        mrecover.c      mrecover.hqx
+mstring.c       mttymain.c
 
 sys/msdos:
 (files for MSDOS version)
 Install.dos     MakeGCC.src     MakeGCC.utl     MakeMSC.src     MakeMSC.utl
 Makefile.dat    exesmurf.c      exesmurf.doc    maintovl.doc    msdos.c
 ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       setup.bat       trampoli.c
+video.c
 (files for running MSDOS binary under Windows)
 nhico.uu        nhpif.uu
 
@@ -152,7 +159,7 @@ gnutermcap.c    gnutparam.c
 sys/winnt:
 (files for Windows NT version)
 Install.nt      Makefile.dat    Makefile.src    Makefile.utl    nhico.uu
-nhincl.mak      nttty.c         setup.bat       winnt.c
+nhincl.mak      nttty.c         setup.bat       winnt.c         winnt.cnf
 
 util:
 (files for all versions)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)cmd.c	3.1	93/02/16	*/
+/*	SCCS Id: @(#)cmd.c	3.1	93/04/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -339,10 +339,10 @@ STATIC_PTR int
 enter_explore_mode()
 {
 	if(!discover && !wizard) {
-		pline("Beware!  From discovery mode there will be no return to normal game.");
-		if (yn("Do you want to enter discovery mode?") == 'y') {
+		pline("Beware!  From explore mode there will be no return to normal game.");
+		if (yn("Do you want to enter explore mode?") == 'y') {
 			clear_nhwindow(WIN_MESSAGE);
-			You("are now in non-scoring discovery mode.");
+			You("are now in non-scoring explore mode.");
 			discover = TRUE;
 		}
 		else {
@@ -376,7 +376,7 @@ wiz_identify()
 	else {
 		for (obj = invent; obj; obj = obj->nobj)
 			if (!objects[obj->otyp].oc_name_known || !obj->known
-						|| !obj->dknown || !obj->bknown)
+			    || !obj->dknown || !obj->bknown || !obj->rknown)
 				(void) identify(obj);
 	}
 	return 0;
@@ -459,6 +459,17 @@ boolean final;
 	putstr(en_win, 0, final ? "Final Attributes:" : "Current Attributes:");
 	putstr(en_win, 0, "");
 
+#ifdef ELBERETH
+	if (u.uevent.uhand_of_elbereth) {
+	    static const char *hofe_titles[3] = {
+				"the Hand of Elbereth",
+				"the Envoy of Balance",
+				"the Glory of Arioch"
+	    };
+	    you_are(hofe_titles[u.uevent.uhand_of_elbereth - 1]);
+	}
+#endif
+
 	/* note: piousness 20 matches MIN_QUEST_ALIGN (quest.h) */
 	if (u.ualign.record >= 20)	you_are("piously aligned");
 	else if (u.ualign.record > 13)	you_are("devoutly aligned");
@@ -487,7 +498,7 @@ boolean final;
 	if (Fast) you_are((Fast & ~INTRINSIC) ? "very fast" : "fast");
 	if (Stealth) you_are("stealthy");
 	if (Regeneration) enl_msg("You regenerate", "", "d", "");
-	if (Hunger) you_have("hunger");
+	if (Hunger) enl_msg("You hunger", "", "ed", " rapidly");
 	if (Conflict) enl_msg("You cause", "", "d", " conflict");
 	if (Aggravate_monster) enl_msg("You aggravate", "", "d", " monsters");
 	if (Poison_resistance) you_are("poison resistant");
@@ -528,10 +539,17 @@ boolean final;
 	if (Protection) you_are("protected");
 	if (Reflecting) you_have("reflection");
 	if (Levitation) you_are("levitating");
+#ifdef POLYSELF
+	else if (is_flyer(uasmon)) you_can("fly");
+#endif
 	if (Fumbling) enl_msg("You fumble", "", "d", "");
 	if (Jumping) you_can("jump");
 	if (Wwalking) you_can("walk on water");
-	if (Magical_breathing) you_can("survive without air");
+#ifdef POLYSELF
+	if (passes_walls(uasmon)) you_can("walk through walls");
+#endif
+	if (Breathless) you_can("survive without air");
+	else if (Amphibious) you_can("breathe water");
 	if (Antimagic) you_are("magic-protected");
 	if (Displaced) you_are("displaced");
 	if (Clairvoyant) you_are("clairvoyant");
@@ -738,9 +756,6 @@ const struct ext_func_tab extcmdlist[] = {
 	{"untrap", "untrap something", dountrap},
 	{"version", "list compile time options for this version of NetHack",
 		doextversion},
-#ifdef MAC
-	{"window", "clean up windows", SanePositions},
-#endif
 	{"wipe", "wipe off your face", dowipe},
 	{"?", "get this list of extended commands", doextlist},
 	{NULL, NULL, donull}

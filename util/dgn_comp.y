@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)dgn_comp.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -25,8 +25,8 @@
 #include "config.h"
 #include "dgn_file.h"
 
-void FDECL(yyerror, (char *));
-void FDECL(yywarning, (char *));
+void FDECL(yyerror, (const char *));
+void FDECL(yywarning, (const char *));
 int NDECL(yylex);
 int NDECL(yyparse);
 int FDECL(getchain, (char *));
@@ -62,7 +62,7 @@ static struct tmpbranch tmpbranch[BRANCH_LIMIT];
 static int in_dungeon = 0, n_dgns = -1, n_levs = -1, n_brs = -1;
 
 extern int fatal_error;
-extern char* fname;
+extern const char *fname;
 
 %}
 

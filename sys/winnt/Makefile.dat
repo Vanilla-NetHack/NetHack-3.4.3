@@ -1,12 +1,12 @@
-# SCCS Id: @(#)Makefile.dat  3.1   93/02/21
+# SCCS Id: @(#)Makefile.dat  3.1   93/04/02
 # Copyright (c) NetHack PC Development Team 1992,1993
 # NetHack may be freely redistributed.  See license for details.
 #
 #       NT NetHack 3.1 DAT Makefile 
 #	for MS NMAKE for Windows NT
 #  
-#	NT Version Tested:  October 1992 SDK pre-release
-#			    + December '92 compiler fix
+#	NT Version Tested:  March 1993 SDK pre-release
+#
 #
 #       For questions read the Install.nt file included with
 #       the distribution.

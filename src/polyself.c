@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)polyself.c 3.1	92/11/24
+/*	SCCS Id: @(#)polyself.c 3.1	93/05/15	*/
 /*	Copyright (C) 1987, 1988, 1989 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -96,7 +96,7 @@ newman()
 	redist_attr();
 	u.uhunger = rn1(500,500);
 	newuhs(FALSE);
-	Sick = 0;
+	if (Sick) make_sick(0L, FALSE);
 	Stoned = 0;
 	if (u.uhp <= 0 || u.uhpmax <= 0) {
 #ifdef POLYSELF
@@ -274,7 +274,7 @@ int	mntmp;
 		You("no longer seem to be petrifying.");
 	}
 	if (u.usym == S_FUNGUS && Sick) {
-		Sick = 0;
+		make_sick(0L, FALSE);
 		You("no longer feel sick.");
 	}
 
@@ -360,6 +360,10 @@ int	mntmp;
 	    u.utrap = 0;
 	    pline("The rock seems to no longer trap you.");
 	}
+	if ((amorphous(uasmon) || is_whirly(uasmon)) && Punished) {
+	    You("slip out of the iron chain.");
+	    unpunish();
+	}
 	flags.botl = 1;
 	vision_full_recalc = 1;
 	exercise(A_CON, FALSE);
@@ -371,17 +375,17 @@ int	mntmp;
 static void
 break_armor()
 {
-     struct obj *otmp;
+    register struct obj *otmp;
 
-     if (breakarm(uasmon)) {
-	if (otmp = uarm) {
+    if (breakarm(uasmon)) {
+	if ((otmp = uarm) != 0) {
 		if (donning(otmp)) cancel_don();
 		You("break out of your armor!");
 		exercise(A_STR, FALSE);
 		(void) Armor_gone();
 		useup(otmp);
 	}
-	if (otmp = uarmc) {
+	if ((otmp = uarmc) != 0) {
 	    if(otmp->oartifact) {
 		Your("cloak falls off!");
 		(void) Cloak_off();
@@ -398,14 +402,14 @@ break_armor()
 		useup(uarmu);
 	}
 #endif
-     } else if (sliparm(uasmon)) {
-	if (otmp = uarm) {
+    } else if (sliparm(uasmon)) {
+	if ((otmp = uarm) != 0) {
 		if (donning(otmp)) cancel_don();
 		Your("armor falls around you!");
 		(void) Armor_gone();
 		dropx(otmp);
 	}
-	if (otmp = uarmc) {
+	if ((otmp = uarmc) != 0) {
 		if (is_whirly(uasmon))
 			Your("cloak falls, unsupported!");
 		else You("shrink out of your cloak!");
@@ -413,7 +417,7 @@ break_armor()
 		dropx(otmp);
 	}
 #ifdef TOURIST
-	if (otmp = uarmu) {
+	if ((otmp = uarmu) != 0) {
 		if (is_whirly(uasmon))
 			You("seep right through your shirt!");
 		else You("become much too small for your shirt!");
@@ -421,37 +425,40 @@ break_armor()
 		dropx(otmp);
 	}
 #endif
-     }
-     if (nohands(uasmon) || verysmall(uasmon)) {
-	  if (otmp = uarmg) {
-	       if (donning(otmp)) cancel_don();
-	       /* Drop weapon along with gloves */
-	       You("drop your gloves%s!", uwep ? " and weapon" : "");
-	       drop_weapon(0);
-	       (void) Gloves_off();
-	       dropx(otmp);
-	  }
-	  if (otmp = uarms) {
-	       You("can no longer hold your shield!");
-	       (void) Shield_off();
-	       dropx(otmp);
-	  }
-	  if (otmp = uarmh) {
-	       if (donning(otmp)) cancel_don();
-	       Your("helmet falls to the floor!");
-	       (void) Helmet_off();
-	       dropx(otmp);
-	  }
-	  if (otmp = uarmf) {
-	       if (donning(otmp)) cancel_don();
-	       if (is_whirly(uasmon))
-		   Your("boots fall away!");
-	       else Your("boots %s off your feet!",
+    }
+    if (nohands(uasmon) || verysmall(uasmon)) {
+	if ((otmp = uarmg) != 0) {
+	    if (donning(otmp)) cancel_don();
+	    /* Drop weapon along with gloves */
+	    You("drop your gloves%s!", uwep ? " and weapon" : "");
+	    drop_weapon(0);
+	    (void) Gloves_off();
+	    dropx(otmp);
+	}
+	if ((otmp = uarms) != 0) {
+	    You("can no longer hold your shield!");
+	    (void) Shield_off();
+	    dropx(otmp);
+	}
+	if ((otmp = uarmh) != 0) {
+	    if (donning(otmp)) cancel_don();
+	    Your("helmet falls to the floor!");
+	    (void) Helmet_off();
+	    dropx(otmp);
+	}
+    }
+    if (nohands(uasmon) || verysmall(uasmon) || slithy(uasmon) || 
+		u.usym == S_CENTAUR) {
+	if ((otmp = uarmf) != 0) {
+	    if (donning(otmp)) cancel_don();
+	    if (is_whirly(uasmon))
+		Your("boots fall away!");
+	    else Your("boots %s off your feet!",
 			verysmall(uasmon) ? "slide" : "are pushed");
-	       (void) Boots_off();
-	       dropx(otmp);
-	  }
-     }
+	    (void) Boots_off();
+	    dropx(otmp);
+	}
+    }
 }
 
 static void
@@ -459,7 +466,7 @@ drop_weapon(alone)
 int alone;
 {
      struct obj *otmp;
-     if (otmp = uwep) {
+     if ((otmp = uwep) != 0) {
 	  /* !alone check below is currently superfluous but in the
 	   * future it might not be so if there are monsters which cannot
 	   * wear gloves but can wield weapons
@@ -587,7 +594,7 @@ dospinweb()
 		case PIT:
 		case SPIKED_PIT: You("spin a web, covering up the pit.");
 			deltrap(ttmp);
-			delallobj(u.ux, u.uy);
+			bury_objs(u.ux, u.uy);
 			if (Invisible) newsym(u.ux, u.uy);
 			return(1);
 		case SQKY_BOARD: pline("The squeaky board is muffled.");
@@ -596,15 +603,16 @@ dospinweb()
 			return(1);
 		case TELEP_TRAP:
 		case LEVEL_TELEP:
+		case MAGIC_PORTAL:
 			Your("webbing vanishes!");
 			return(0);
 		case WEB: You("make the web thicker.");
 			return(1);
 		case TRAPDOOR:
-		    You("web over the trap door.");
-		    deltrap(ttmp);
-		    if (Invisible) newsym(u.ux, u.uy);
-		    return 1;
+			You("web over the trap door.");
+			deltrap(ttmp);
+			if (Invisible) newsym(u.ux, u.uy);
+			return 1;
 		case ARROW_TRAP:
 		case DART_TRAP:
 		case BEAR_TRAP:
@@ -622,7 +630,7 @@ dospinweb()
 			return(0);
 	}
 	ttmp = maketrap(u.ux, u.uy, WEB);
-	ttmp->tseen = 1;
+	if (ttmp) ttmp->tseen = 1;
 	if (Invisible) newsym(u.ux, u.uy);
 	return(1);
 }
@@ -675,6 +683,9 @@ doconfuse()
 		    if (!mtmp->mcanmove || mtmp->mstun || mtmp->msleep ||
 					!mtmp->mcansee || !haseyes(mtmp->data))
 			continue;
+#ifdef MUSE
+		    if (!mon_reflects(mtmp, "Your gaze is reflected by %s %s."))
+#endif
 		    if (!mtmp->mconf)
 			Your("gaze confuses %s!", mon_nam(mtmp));
 		    else

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shknam.c	3.1	93/02/17	*/
+/*	SCCS Id: @(#)shknam.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,7 +10,7 @@
 #ifdef OVLB
 
 static void FDECL(mkshobj_at, (const struct shclass *,int,int));
-static void FDECL(findname, (char *,const char **));
+static void FDECL(nameshk, (struct monst *,const char **));
 static int  FDECL(shkinit, (const struct shclass *,struct mkroom *));
 
 static const char *shkliquors[] = {
@@ -123,6 +123,18 @@ static const char *shktools[] = {
     ""
 };
 
+static const char *shklight[] = {
+    /* Romania */
+    "Zarnesti", "Slanic", "Nehoiasu", "Ludus", "Sighisoara", "Nisipitu",
+    "Razboieni", "Bicaz", "Dorohoi", "Vaslui", "Fetesti", "Tirgu Neamt",
+    "Babadag", "Zimnicea", "Zlatna", "Jiu", "Eforie", "Mamaia",
+    /* Bulgaria */
+    "Silistra", "Tulovo", "Panagyuritshte", "Smolyan", "Kirklareli",
+    "Pernik", "Lom", "Haskovo", "Dobrinishte", "Varvara", "Oryahovo",
+    "Troyan", "Lovech", "Sliven",
+    ""
+};
+
 static const char *shkgeneral[] = {
     /* Suriname */
     "Hebiwerie", "Possogroenoe", "Asidonhopo", "Manlobbi",
@@ -191,7 +203,7 @@ const struct shclass shtypes[] = {
 	 */
 	{"lighting store", TOOL_CLASS, 0, D_SHOP,
 	    {{32, -WAX_CANDLE}, {50, -TALLOW_CANDLE},
-	     {5, -BRASS_LANTERN}, {10, -OIL_LAMP}, {3, -MAGIC_LAMP}},shktools},
+	     {5, -BRASS_LANTERN}, {10, -OIL_LAMP}, {3, -MAGIC_LAMP}}, shklight},
 	{NULL, 0, 0, 0, {{0, 0}, {0, 0}, {0, 0}}, 0}
 };
 
@@ -247,27 +259,55 @@ int sx, sy;
 	else (void) mkobj_at(atype, sx, sy, TRUE);
 }
 
-static void
-findname(nampt, nlp)
 /* extract a shopkeeper name for the given shop type */
-	char *nampt;
-	const char *nlp[];
+static void
+nameshk(shk, nlp)
+struct monst *shk;
+const char *nlp[];
 {
-    register int i;
+	int i, try, names_avail;
+	const char *shname = 0;
+	struct monst *mtmp;
+	int name_wanted = ledger_no(&u.uz);	/* Note: _not_ depth */
 
-    for(i = 0; i < ledger_no(&u.uz); i++) /* Note: _not_ depth */
-	if (!*nlp[i]) {
-	    /* Not enough names, try random/general name */
-	    if((i = rn2(i)))
-		break;
-	    else if (nlp != shkgeneral)
-		findname(nampt, shkgeneral);
-	    else
-		Strcpy(nampt, "Dirk");
-	    return;
+	for (names_avail = 0; *nlp[names_avail]; names_avail++)
+		;
+
+	for (try = 0; try < 50; try++) {
+		if (nlp == shktools) {
+		    shname = shktools[rn2(names_avail)];
+		    shk->female = (*shname == '_');
+		    if (shk->female) shname++;
+		} else {
+		    shk->female = name_wanted % 2;
+
+		    if (name_wanted < names_avail) {
+			shname = nlp[name_wanted];
+		    } else {
+			if ((i = rn2(names_avail)) != 0)
+			    shname = nlp[i-1];
+			else if (nlp != shkgeneral) {
+			    nlp = shkgeneral;	/* try general names */
+			    for (names_avail = 0; *nlp[names_avail];
+								names_avail++)
+				    ;
+			    continue;
+			} else
+			    shname = "Dirk";
+		    }
+		}
+
+		/* is name already is use on this level? */
+		for (mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
+			if (mtmp == shk) continue;
+			if (!mtmp->isshk) continue;
+			if (strcmp(ESHK(mtmp)->shknam, shname)) continue;
+			break;
+		}
+		if (!mtmp) break;	/* new name */
 	}
-    (void) strncpy(nampt, nlp[i-1], PL_NSIZ);
-    nampt[PL_NSIZ-1] = 0;
+	(void) strncpy(ESHK(shk)->shknam, shname, PL_NSIZ);
+	ESHK(shk)->shknam[PL_NSIZ-1] = 0;
 }
 
 static int
@@ -328,9 +368,9 @@ struct mkroom	*sroom;
 
 	/* now initialize the shopkeeper monster structure */
 	if(!(shk = makemon(&mons[PM_SHOPKEEPER], sx, sy))) return(-1);
-	shk->isshk = shk->mpeaceful = 1;
+	shk->isshk = shk->mpeaceful = TRUE;
 	set_malign(shk);
-	shk->msleep = 0;
+	shk->msleep = FALSE;
 	shk->mtrapseen = ~0;	/* we know all the traps already */
 	ESHK(shk)->shoproom = (sroom - rooms) + ROOMOFFSET;
 	sroom->resident = shk;
@@ -347,16 +387,7 @@ struct mkroom	*sroom;
 	ESHK(shk)->following = 0;
 	ESHK(shk)->billct = 0;
 	shk->mgold = 1000L + 30L*(long)rnd(100);	/* initial capital */
-	if (shp->shknms == shktools) {
-		int who = rn2(SIZE(shktools) - 1);
-		const char *shname = shp->shknms[who];
-		if (shk->female = (*shname == '_')) shname++;
-		(void) strncpy(ESHK(shk)->shknam, shname, PL_NSIZ);
-		ESHK(shk)->shknam[PL_NSIZ-1] = 0;
-	} else {
-		shk->female = ledger_no(&u.uz)%2;
-		findname(ESHK(shk)->shknam, shp->shknms);
-	}
+	nameshk(shk, shp->shknms);
 
 	return(sh);
 }
@@ -427,7 +458,7 @@ register struct mkroom *sroom;
      * monsters will sit on top of objects and not the other way around.
      */
 
-    level.flags.has_shop = 1;
+    level.flags.has_shop = TRUE;
 }
 
 #endif /* OVLB */

@@ -11,7 +11,8 @@
  * interface; not #defining it supports (along with wb.c) the WB interface.
  */
 
-#include "Incl:date.h"          /* this gives us the version string */
+/*#include "Incl:date.h"          /* this gives us the version string */
+#include "Incl:patchlevel.h"	/* and the individual bits */
 
 #ifdef AZTEC_C
 /* Aztec doesn't recognize __chip syntax */
@@ -52,6 +53,9 @@ void s_UnLoadSeg(void);
 #ifdef CLI
 char *cnfsavedir="NetHack:save";    /* unless overridden in cnf file */
 char argline[255];  /* no overflow - bigger than ADOS will pass */
+#ifdef for_later
+int amibbs=0;				/* BBS mode flag */
+#endif
 
 void WaitEOG(GPTR);
 char *eos(char *);
@@ -63,7 +67,6 @@ int running_split=0;        /* if 0, using normal LoadSeg/UnLoadSeg */
 #else
 extern char *options[NUMIDX+1];
 extern GPTR gamehead,gameavail;
-extern DEFAULTS defgame;
 extern struct Window *win;
 #endif  /* CLI */
 
@@ -123,26 +126,30 @@ main( argc, wbs )
     GPTR gptr;
     BPTR lc,lc2;
     struct FileInfoBlock finfo;
-    char *name;
+    char *name=0;
     char namebuf[50];
     char **argv=(char **)wbs;
-#undef CMDLINE
-#define CMDLINE
-#ifdef CMDLINE
     char newcmdline[80]="";
     char forcenewcmd=0;
-#endif
 
     ZapOptions( curopts );
     InitWB( argc, (struct WBStartup *)argv );
-    errmsg( NO_FLASH, "Welcome to NetHack Version 3.1.1!\n" );
+    errmsg( NO_FLASH, "Welcome to NetHack Version %d.%d.%d!\n",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL );
     CopyRight( );
 
     ReadConfig( );
 
-    /* Wait till user quits */
+#ifdef for_later
+    /* check for BBS mode */
+    if (argc>1 && argv[1][0]==':'){
+	amibbs=1;
+	strcpy(newcmdline,":");
+	amibasename= &argv[1][1];
+    }
+#endif
 
-#ifdef CMDLINE
+		/* check/re-assemble initial command line */
     {
     int c;
 				/* slow but easy - not a critical path */
@@ -158,18 +165,19 @@ main( argc, wbs )
 	    }else{
 		name= &argv[c][2];
 	    }
+	    if(!name){
+		errmsg(NO_FLASH, "No name found.\n");
+		newcmdline[0]='\0';	/* don't leave -u as default */
+		forcenewcmd=1;
+	    }
 	}
 	if(c<argc)strcpy(eos(newcmdline)," ");
     }
     eos(newcmdline)[-1]='\0';
     strcpy(argline,newcmdline);
-    if(!name){
-	errmsg(NO_FLASH, "No name found.\n");
-	argline[0]=' ';
     }
-    }
-#endif
 
+    /* Wait till user quits */
     while( !quit )
     {
 	char tbuf[80];
@@ -177,40 +185,15 @@ main( argc, wbs )
 	char *dirname=cnfsavedir;
 /* play a game */
 
-#ifdef CMDLINE
-	if(forcenewcmd)goto build_new_argline;	/* allow initial args to be
-						 * wrong */
-#endif
-#ifndef CMDLINE
-	{
-	    int c;
-	    argline[0]='\0';
-	    name="NewGame.info";        /* this will fail - it's in NetHack: */
-	    for(c=1;c<argc;c++){
-		/* slow but easy - not a critical path */
-		strcpy(eos(argline),argv[c]);
-		if(!strncmp(argv[c],"-u",2)){
-		    if(!strcmp(argv[c],"-u")){
-			name= argv[c+1];
-		    }else{
-			name= &argv[c][2];
-		    }
-		}
-		if(c<argc)strcpy(eos(argline)," ");
-	    }
-	    eos(argline)[-1]='\0';
-	}
-	if(!name){
-	    errmsg(NO_FLASH,"No name found.\n");
-	    cleanup(1);
-	}
-#endif
+	if(forcenewcmd)
+	    goto build_new_argline;	/* allow initial args to be wrong */
 #undef TESTCMDLINE
 #ifdef TESTCMDLINE
 __builtin_printf("sending '%s'\n",argline);
 #else
 	strcpy(namebuf,cnfsavedir);
 	condaddslash(namebuf);
+	if(!name)name="NewGame.info";
 	strcpy(eos(namebuf),name);
 	lc=Lock(namebuf,ACCESS_READ);
 	if(!lc){
@@ -239,34 +222,30 @@ __builtin_printf("sending '%s'\n",argline);
 	FreeGITEM(gptr);
 #endif /* TESTCMDLINE */
 /* ask about another? */
-#ifndef CMDLINE
-	printf("Play again? [yn] ");
-	fgets(tbuf,sizeof(tbuf),stdin);
-	while(*p && isspace(*p))p++;
-	switch(*p){
-	case 'n':
-	case 'N':
-	    quit=1;
-	}
-#else
 build_new_argline:
 	forcenewcmd=0;
+#ifdef for_later
+	if(amibbs) {
+	    quit = 1;		/* bbs mode aborts after one game */
+	} else
+#endif
 	{
-#define NBA	*stpblk(argline)	/* non-blank argline */
-	printf("Enter options for next game %s%s%s(space return to clear) ",
-	    NBA?"(default ":"" ,
-	    NBA?argline:"" ,
-	    NBA?")\n":"");
-	printf("or Q to quit: ");
+	char *x=argline;
+	while(isspace(*x))x++;
+	if(*x){			/* non-blank argline */
+		printf("%s %s %s",
+		  "Enter options for next game.  Default:\n\t", argline,
+		  "\n(space return to clear) or Q to quit:\n");
+	} else {
+		printf("Enter options for next game or Q to quit:\n");
+	}
 	fgets(tbuf,sizeof(tbuf),stdin);
 	tbuf[strlen(tbuf)-1]='\0';		/* kill \n */
 	if(strlen(tbuf)==1 && (*p=='q' || *p=='Q')){
 	    quit=1;
-	} else
+		} else
 	    if(strlen(tbuf))strcpy(argline,tbuf);
 	}
-#undef NBA
-#endif
     }
     cleanup(0);
 }
@@ -343,6 +322,7 @@ InitWB( argc, wbs )
     int argc;
     register struct WBStartup *wbs;
 {
+    char **argv=(char **)wbs;
 
     /* Open Libraries */
     GfxBase= (struct GfxBase *) OldOpenLibrary("graphics.library");
@@ -371,6 +351,38 @@ InitWB( argc, wbs )
 	Delay(400);
 	cleanup(1);
     }
+/* we should include hack.h but due to conflicting options to sc
+ * we can't parse tradstdc.h and clib/graphics_protos.h - fake it
+ */
+#define NEWS
+#define WIZARD
+    if (argc>1 && argv[1][0]=='?'){
+	    (void) printf(
+"\nUsage:\n %s [:uname] [-d dir] -s [-[%s]] [maxrank] [name]...",
+		argv[0], classes);
+	    (void) printf("\n or");
+	    (void) printf("\n %s [-d dir] [-u name] [-[%s]]",
+		argv[0], classes);
+#if defined(WIZARD) || defined(EXPLORE_MODE)
+	    (void) printf(" [-[DX]]");
+#endif
+#ifdef NEWS
+	    (void) printf(" [-n]");
+#endif
+#ifndef AMIGA
+	    (void) printf(" [-I] [-i] [-d]");
+#endif
+#ifdef MFLOPPY
+# ifndef AMIGA
+	    (void) printf(" [-r]");
+# endif
+#endif
+#ifdef AMIGA
+	    (void) printf(" [-[lL]]");
+#endif
+	    putchar('\n');
+	    cleanup(1);
+	}
 }
 
 /* CLI */
@@ -482,7 +494,8 @@ run_game( gptr )
     }
 
     /* Set the game name for the status command */
-    sprintf( gptr->gname, "NetHack 3.1.1 %s", gptr->name );
+    sprintf( gptr->gname, "NetHack %d.%d.%d %s",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL, gptr->name );
 
     /* Create a process for the game to execute in */
     ctask = FindTask( NULL );
@@ -518,7 +531,12 @@ freemem:
     gptr->wbs->sm_Process = proc;
     gptr->wbs->sm_Segment = gptr->seglist;
     gptr->wbs->sm_NumArgs = 2;
-    gptr->wbs->sm_ToolWindow = "con:0/0/100/300/NetHack 3.1.1";
+    {
+    static char title[45];	/* some slack */
+    sprintf(title,"con:0/0/100/300/NetHack %d.%d.%d",
+      VERSION_MAJOR, VERSION_MINOR, PATCHLEVEL);
+    gptr->wbs->sm_ToolWindow = title;
+    }
     gptr->wbs->sm_ArgList = gptr->wba;
 
     /* Fill in the args */
@@ -628,24 +646,29 @@ void
 menu_copyopt()
 {
     GPTR gptr;
-    char newname[ 100 ], oldname[ 100 ], cmd[ 200 ];
+    char newname[ 100 ], oldname[ 100 ], cmd[ 300 ], dir[ 100 ];
 
     if( ( gptr = NeedGame() ) == NULL )
 	return;
 
-    if( StrRequest( "Enter new player name", newname, gptr->fname ) == 0 )
+    if( StrRequest( "Enter new player name", newname, gptr->name ) == 0 )
 	return;
 
-    if( strcmp( newname, gptr->fname ) == 0 )
+    if( strcmp( newname, gptr->name ) == 0 )
     {
 	errmsg( FLASH, "Copying aborted, new name same as old" );
 	return;
     }
 
     strcpy( oldname, GameName( gptr, NULL ) );
-    strcpy( newname, GameName( gptr, newname ) );
 
-    sprintf( cmd, "c:copy \"%s\" \"%s\"", oldname, newname );
+    strcpy( dir, options[ SAVE_IDX ] );
+    if( strchr( "/:", dir[strlen(dir)-1] ) == 0 && *dir )
+	strcat( dir, "/" );
+    if( gptr->dobj->do_Gadget.GadgetID == GADNEWGAME )
+	sprintf( cmd, "c:copy \"%s\" \"%s%s.cfg.info\"", oldname, dir, newname );
+    else
+	sprintf( cmd, "c:copy \"%s\" \"%s%s.info\"", oldname, dir, newname );
     Execute( cmd, NULL, NULL );
     MapGadgets( R_DISK, 1 );
 }
@@ -751,6 +774,26 @@ void SafeCloseWindow( window )
     CloseWindow( window );
     Permit();
 }
+
+void RemoveGITEM( ggptr )
+    register GPTR ggptr;
+{
+    register GPTR gptr, pgptr = NULL;
+
+    for( gptr = gamehead; gptr; pgptr = gptr, gptr = gptr->next )
+    {
+	if( gptr == ggptr )
+	{
+	    if( pgptr )
+		pgptr->next = gptr->next;
+	    else
+		gamehead = gptr->next;
+	    FreeGITEM( gptr );
+	    return;
+	}
+    }
+}
+
 
 #else   /* CLI */
 
@@ -975,7 +1018,7 @@ void menu_scores()
 	}
 
 	/* Add the scores entry */
-	    SetToolLine( gptr, "SCORES", *buf1 ? buf1 : "all" );
+	SetToolLine( gptr, "SCORES", *buf1 ? buf1 : "all" );
 
 	/* Get the scores */
 	run_game( gptr );
@@ -1033,8 +1076,6 @@ int IsEditEntry( str, gptr )
     char *str;
     register GPTR gptr;
 {
-    if( gptr->dobj->do_Gadget.GadgetID == GADNEWGAME )
-	return( 1 );
     if( strncmp( str, "CHARACTER=", 10 ) == 0 )
 	return( 0 );
     return( 1 );
@@ -1408,7 +1449,7 @@ void SetBorder( gd, val )
 	sp[1] = gd->Height - 1;
 	sp[2] = -1;
 	sp[3] = -1;
-	sp[4] = gd->Width - 1;
+	sp[4] = gd->Width-1;
 	sp[5] = -1;
 
 	sp[6] = gd->Width + 1;
@@ -1576,23 +1617,12 @@ void CopyOptions( optr, gptr )
     OPTR optr;
     GPTR gptr;
 {
-    char **sp;
+    char *sp;
 
-    for( sp = gptr->dobj->do_ToolTypes; *sp; ++sp )
-    {
-	if( strnicmp( *sp, "options=", 8 ) == 0 )
-	{
-	    break;
-	}
-    }
-
-    if( *sp == NULL )
-    {
-	errmsg( NO_FLASH, "Options not set for %s", gptr->name );
-	return;
-    }
-
-    CopyOptionStr( optr, *sp + 8 );
+    sp = ToolsEntry( gptr, "OPTIONS" );
+    ZapOptions( optr );
+    if( sp && *sp )
+	CopyOptionStr( optr, sp );
 }
 
 /* !CLI */
@@ -1658,7 +1688,7 @@ void CopyOptionStr( optr, str )
 	}
 
 	/* If at end of string or comma and we have some text... */
-	if( !*t || *t == ',' && *buf )
+	if( ( !*t || *t == ',' ) && *buf )
 	{
 	    /* Mark end */
 	    *s = 0;
@@ -1732,7 +1762,6 @@ void SetOptions( optr, gptr )
 {
     PutOptions( optr );
     SetToolLine( gptr, "OPTIONS", options[ OPTIONS_IDX ] );
-    UpdateGameIcon( gptr );
 }
 
 void
@@ -1773,17 +1802,23 @@ char *ToolsEntry( gptr, name )
  * later to clean up whatever "GetDiskObject" allocated.
  */
 void ReallocTools( gptr, add )
-    GPTR gptr;
-    int add;
+    register GPTR gptr;
+    register int add;
 {
-    int i, cnt;
-    char **sp, **tp;
+    register int i, cnt;
+    register char **sp, **tp;
+
+    /* Already allocated */
+    if( gptr->talloc && add == 0 )
+    	return;
 
     for( cnt = 0, tp = gptr->dobj->do_ToolTypes; tp && *tp ; ++tp )
 	++cnt;
 
-    if( !tp )
+    if( !tp || cnt == 0 )
     {
+	if( gptr->talloc )
+	    free( gptr->dobj->do_ToolTypes );
 	/* If no tooltypes array, fudge something to start with */
 	if( sp = xmalloc( 2 * sizeof( char * ) ) )
 	{
@@ -1799,19 +1834,23 @@ void ReallocTools( gptr, add )
 	    sp[i++] = strdup( *tp );
 	}
 
-	sp[i] = NULL;
+	if( gptr->talloc && gptr->dobj->do_ToolTypes )
+	    free( gptr->dobj->do_ToolTypes );
+	while( i < cnt+add+1 )
+	    sp[ i++ ] = NULL;
     }
-    gptr->otools = gptr->dobj->do_ToolTypes;
+    if( ! gptr->talloc )
+	gptr->otools = gptr->dobj->do_ToolTypes;
     gptr->dobj->do_ToolTypes = sp;
     gptr->toolcnt = cnt + 1;
     gptr->talloc = 1;
 }
 
 void FreeTools( gptr )
-    GPTR gptr;
+    register GPTR gptr;
 {
-    int i;
-    char **sp;
+    register int i;
+    register char **sp;
 
     if( !gptr->talloc )
 	return;
@@ -1835,8 +1874,7 @@ void SetToolLine( gptr, name, value )
 
     /* Realloc ToolTypes to be in memory we know how to manage */
 
-    if( gptr->talloc == 0 )
-	ReallocTools( gptr, 0 );
+    ReallocTools( gptr, 0 );
 
     sp = gptr->dobj->do_ToolTypes;
     len = strlen( name );

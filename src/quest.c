@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)quest.c	3.1	92/11/13	*/
+/*	SCCS Id: @(#)quest.c	3.1	93/03/10	*/
 /*	Copyright 1991, M. Stephenson		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,7 +24,8 @@ static void NDECL(chat_with_nemesis);
 static void NDECL(chat_with_guardian);
 
 static void
-on_start() {
+on_start()
+{
   if(!Qstat(first_start)) {
     qt_pager(QT_FIRSTTIME);
     Qstat(first_start) = TRUE;
@@ -35,7 +36,8 @@ on_start() {
 }
 
 static void
-on_locate() {
+on_locate()
+{
   if(!Qstat(first_locate)) {
     qt_pager(QT_FIRSTLOCATE);
     Qstat(first_locate) = TRUE;
@@ -44,7 +46,8 @@ on_locate() {
 }
 
 static void
-on_goal() {
+on_goal()
+{
   if(!Qstat(made_goal)) {
     qt_pager(QT_FIRSTGOAL);
     Qstat(made_goal) = 1;
@@ -86,8 +89,8 @@ quest_init()
 }
 
 void
-onquest() {
-
+onquest()
+{
 	if(Not_firsttime)	return;
 	if(!Is_special(&u.uz)) return;
 
@@ -98,7 +101,8 @@ onquest() {
 }
 
 void
-nemdead() {
+nemdead()
+{
 	if(!Qstat(killed_nemesis)) {
 	    Qstat(killed_nemesis) = TRUE;
 	    qt_pager(QT_KILLEDNEM);
@@ -106,7 +110,8 @@ nemdead() {
 }
 
 void
-artitouch() {
+artitouch()
+{
 	if(!Qstat(touched_artifact)) {
 	    Qstat(touched_artifact) = TRUE;
 	    qt_pager(QT_GOTIT);
@@ -116,19 +121,21 @@ artitouch() {
 
 /* external hook for do.c (level change check) */
 boolean
-ok_to_quest() {
-
-	return(Qstat(got_quest));
+ok_to_quest()
+{
+	return(Qstat(got_quest) || Qstat(got_thanks));
 }
 
 static boolean
-not_capable() {
-  return(u.ulevel < MIN_QUEST_LEVEL);
+not_capable()
+{
+	return(u.ulevel < MIN_QUEST_LEVEL);
 }
 
 /* TODO:	This one needs tuning. */
 static boolean
-not_pure() {
+not_pure()
+{
 #ifdef WIZARD
 	if(wizard && (u.ualign.record < MIN_QUEST_ALIGN)) {
 
@@ -175,8 +182,8 @@ chat_with_leader()
  *	the quest.  If so, try to induce the player to quest.
  */
 	if(Qstat(got_thanks)) {
-/*	Rule 1:	You've gone back with/whithout the amulet.	*/
-            if(u.uhave.amulet)	qt_pager(QT_HASAMULET);
+/*	Rule 1:	You've gone back with/without the amulet.	*/
+	    if(u.uhave.amulet)	qt_pager(QT_HASAMULET);
 
 /*	Rule 2:	You've gone back before going for the amulet.	*/
 	    else		qt_pager(QT_POSTHANKS);
@@ -233,7 +240,7 @@ leader_speaks(mtmp)
 		mtmp->data->mflags3 = 0;	/* end the inaction */
 	}
 
-        if(Qstat(pissed_off)) {
+	if(Qstat(pissed_off)) {
 	  qt_pager(QT_LASTLEADER);
 	  expulsion(TRUE);
 	} else chat_with_leader();
@@ -272,7 +279,6 @@ chat_with_guardian()
 
 void
 quest_chat(mtmp)
-
 	register struct monst *mtmp;
 {
 
@@ -287,7 +293,6 @@ quest_chat(mtmp)
 
 void
 quest_talk(mtmp)
-
 	register struct monst *mtmp;
 {
     switch(mtmp->data->msound) {
@@ -299,7 +304,6 @@ quest_talk(mtmp)
 
 void
 quest_stat_check(mtmp)
-
 	struct monst *mtmp;
 {
     if(mtmp->data->msound == MS_NEMESIS)

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dog.c	3.1	92/10/18	*/
+/*	SCCS Id: @(#)dog.c	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -94,6 +94,13 @@ top:
 		newsym(mtmp->mx, mtmp->my);
 	}
 	set_malign(mtmp); /* more alignment changes */
+#ifdef MUSE
+	/* must wield weapon immediately since pets will otherwise drop it */
+	if (mtmp->mtame && attacktype(mtmp->data, AT_WEAP)) {
+		mtmp->weapon_check = NEED_HTH_WEAPON;
+		(void) mon_wield_item(mtmp);
+	}
+#endif
 }
 
 struct monst *
@@ -126,10 +133,10 @@ makedog()
 void
 losedogs()
 {
-	register struct monst *mtmp,*mtmp0,*mtmp2;
+	register struct monst *mtmp, *mtmp0 = 0, *mtmp2;
 	int num_segs;
 
-	while(mtmp = mydogs){
+	while ((mtmp = mydogs) != 0) {
 		mydogs = mtmp->nmon;
 		mtmp->nmon = fmon;
 		fmon = mtmp;
@@ -146,9 +153,6 @@ losedogs()
 		mnexto(mtmp);
 	}
 
-#if defined(LINT) || defined(GCC_WARN)
-	mtmp0 = (struct monst *)0;
-#endif
 	for(mtmp = migrating_mons; mtmp; mtmp = mtmp2) {
 		mtmp2 = mtmp->nmon;
 		if(mtmp->mx == u.uz.dnum && mtmp->mux == u.uz.dlevel) {
@@ -312,8 +316,8 @@ keepdogs()
 
 		/* set minvent's obj->no_charge to 0 */
 		for(obj = mtmp->minvent; obj; obj = obj->nobj) {
-		    if(Is_container(obj))
-		        picked_container(obj); /* does the right thing */
+		    if (Has_contents(obj))
+			picked_container(obj);	/* does the right thing */
 		    obj->no_charge = 0;
 		}
 
@@ -358,8 +362,8 @@ migrate_to_level(mtmp, tolev, xyloc)
 
 	/* set minvent's obj->no_charge to 0 */
 	for(obj = mtmp->minvent; obj; obj = obj->nobj) {
-	    if(Is_container(obj))
-	        picked_container(obj); /* does the right thing */
+	    if (Has_contents(obj))
+		picked_container(obj);	/* does the right thing */
 	    obj->no_charge = 0;
 	}
 
@@ -534,6 +538,12 @@ register struct obj *obj;
 	initedog(mtmp2);
 	replmon(mtmp,mtmp2);
 	newsym(mtmp2->mx, mtmp2->my);
+#ifdef MUSE
+	if (attacktype(mtmp2->data, AT_WEAP)) {
+		mtmp2->weapon_check = NEED_HTH_WEAPON;
+		(void) mon_wield_item(mtmp2);
+	}
+#endif
 	return(mtmp2);
 }
 

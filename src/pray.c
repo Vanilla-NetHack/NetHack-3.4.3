@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pray.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)pray.c	3.1	93/04/24	*/
 /* Copyright (c) Benson I. Margulies, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,6 +11,7 @@ static void FDECL(fix_worst_trouble,(int));
 static void FDECL(angrygods,(ALIGNTYP_P));
 static void FDECL(pleased,(ALIGNTYP_P));
 static void FDECL(godvoice,(ALIGNTYP_P,const char*));
+static void FDECL(god_zaps_you,(ALIGNTYP_P));
 static void FDECL(gods_angry,(ALIGNTYP_P));
 static void FDECL(gods_upset,(ALIGNTYP_P));
 static void FDECL(consume_offering,(struct obj *));
@@ -342,6 +343,56 @@ decurse:
 }
 
 static void
+god_zaps_you(resp_god)
+aligntyp resp_god;
+{
+	pline("Suddenly, a bolt of lightning strikes you!");
+	if (Reflecting) {
+	    shieldeff(u.ux, u.uy);
+	    if (Blind)
+		pline("For some reason you're unaffected.");
+	    else {
+		if (Reflecting & W_AMUL) {
+		    pline("It reflects from your medallion.");
+		    makeknown(AMULET_OF_REFLECTION);
+		} else {
+		    pline("It reflects from your shield.");
+		    makeknown(SHIELD_OF_REFLECTION);
+		}
+	    }
+	    goto ohno;
+	} else if (Shock_resistance) {
+	    shieldeff(u.ux, u.uy);
+	    pline("It seems not to affect you.");
+ohno:
+	    pline("%s is not deterred...", align_gname(resp_god));
+	    pline("A wide-angle disintegration beam hits you!");
+	    if (Disint_resistance) {
+		You("bask in its %s glow for a minute...", Black);
+		godvoice(resp_god, "I believe it not!");
+		if(Is_astralevel(&u.uz)) {
+
+		    /* one more try on the astral level */
+		    verbalize("Thou cannot escape my wrath, mortal!");
+		    summon_minion(resp_god, FALSE);
+		    summon_minion(resp_god, FALSE);
+		    summon_minion(resp_god, FALSE);
+		    verbalize("Destroy %s, my servants!", him[flags.female]);
+		}
+		return;
+	    }
+	}
+	{
+	    char killerbuf[64];
+	    You("fry to a crisp.");
+	    killer_format = KILLED_BY;
+	    Sprintf(killerbuf, "the wrath of %s", align_gname(resp_god));
+	    killer = killerbuf;
+	    done(DIED);
+	}
+}
+
+static void
 angrygods(resp_god)
 aligntyp resp_god;
 {
@@ -418,44 +469,7 @@ aligntyp resp_god;
 			break;
 
 	    default:	gods_angry(resp_god);
-			pline("Suddenly, a bolt of lightning strikes you!");
-			if (Reflecting) {
-			    shieldeff(u.ux, u.uy);
-			    if (Blind)
-				pline("For some reason you're unaffected.");
-			    else {
-				if (Reflecting & W_AMUL) {
-				    pline("It reflects from your medallion.");
-				    makeknown(AMULET_OF_REFLECTION);
-				} else {
-				    pline("It reflects from your shield.");
-				    makeknown(SHIELD_OF_REFLECTION);
-				}
-			    }
-			    goto ohno;
-			} else if (Shock_resistance) {
-			    shieldeff(u.ux, u.uy);
-			    pline("It seems not to affect you.");
-ohno:
-			    pline("%s is not deterred...",
-				  align_gname(resp_god));
-			    pline("A wide-angle disintegration beam hits you!");
-			    if (Disint_resistance) {
-				You("bask in its %s glow for a minute...",
-				    Black);
-				godvoice(resp_god, "I believe it not!");
-				break;
-			    }
-			}
-			{
-			    char killerbuf[64];
-			    You("fry to a crisp.");
-			    killer_format = KILLED_BY;
-			    Sprintf(killerbuf, "the wrath of %s",
-				    align_gname(resp_god));
-			    killer = killerbuf;
-			    done(DIED);
-			}
+			god_zaps_you(resp_god);
 			break;
 	}
 	u.ublesscnt = rnz(300);
@@ -628,7 +642,6 @@ pleased(g_align)
 		register struct obj *obj = uwep;	/* to be blessed */
 		boolean already_exists, in_hand;
 
-		u.uevent.uhand_of_elbereth = TRUE;
 		HSee_invisible |= FROMOUTSIDE;
 		HFire_resistance |= FROMOUTSIDE;
 		HCold_resistance |= FROMOUTSIDE;
@@ -637,11 +650,13 @@ pleased(g_align)
 
 		switch(u.ualign.type) {
 		case A_LAWFUL:
+		    u.uevent.uhand_of_elbereth = 1;
 		    verbalize("I crown thee...      The Hand of Elbereth!");
 		    if (obj && (obj->otyp == LONG_SWORD) && !obj->oartifact)
 			obj = oname(obj, artiname(ART_EXCALIBUR), 1);
 		    break;
 		case A_NEUTRAL:
+		    u.uevent.uhand_of_elbereth = 2;
 		    verbalize("Thou shalt be my Envoy of Balance!");
 		    if (uwep && uwep->oartifact == ART_VORPAL_BLADE) {
 			obj = uwep;	/* to be blessed and rustproofed */
@@ -672,6 +687,7 @@ pleased(g_align)
 		     * ordinary good broadsword is given and the messages are
 		     * a bit different.
 		     */
+		    u.uevent.uhand_of_elbereth = 3;
 		    in_hand = (uwep && uwep->oartifact == ART_STORMBRINGER);
 		    already_exists = exist_artifact(RUNESWORD,
 						artiname(ART_STORMBRINGER));
@@ -871,7 +887,8 @@ dosacrifice()
 		/* curse the lawful/neutral altar */
 		pline("The altar is stained with %sn blood.",
 		      (pl_character[0]=='E') ? "elve" : "huma");
-		levl[u.ux][u.uy].altarmask = AM_CHAOTIC;
+		if(!Is_astralevel(&u.uz))
+		    levl[u.ux][u.uy].altarmask = AM_CHAOTIC;
 		angry_priest();
 	    } else {
 		register struct monst *dmon;
@@ -947,6 +964,7 @@ dosacrifice()
 	} else {
 	    /* The final Test.	Did you win? */
 	    if(uamul == otmp) Amulet_off();
+	    u.uevent.ascended = 1;
 	    if(carried(otmp)) useup(otmp); /* well, it's gone now */
 	    else useupf(otmp);
 	    You("offer the Amulet of Yendor to %s...", a_gname());
@@ -997,7 +1015,17 @@ verbalize("In return for thy service, I grant thee the gift of Immortality!");
 	return (1);
     }
 
-    if (value < 0) /* I don't think the gods are gonna like this... */
+    if(Is_astralevel(&u.uz) && (altaralign != u.ualign.type)) {
+	/*
+	 * REAL BAD NEWS!!! High altars cannot be converted.  Even an attempt
+	 * gets the god who owns it truely pissed off.
+	 */
+	You("feel the air around you grow charged...");
+	pline("Suddenly, you realize that %s has noticed you...", a_gname());
+	godvoice(altaralign, "So, mortal!  You dare desecrate my High Temple!");
+	/* Throw everything we have at the player */
+	god_zaps_you(altaralign);
+    } else if (value < 0) /* I don't think the gods are gonna like this... */
 	gods_upset(altaralign);
     else {
 	int saved_anger = u.ugangr;
@@ -1204,6 +1232,7 @@ dopray()
 	if (yn("Force the gods to be pleased?") == 'y') {
 	    u.ublesscnt = 0;
 	    if (u.uluck < 0) u.uluck = 0;
+	    if (u.ualign.record <= 0) u.ualign.record = 1;
 	    u.ugangr = 0;
 	    if(p_type < 2) p_type = 3;
 	}
@@ -1244,7 +1273,8 @@ prayer_done()		/* M. Stephenson (1.0.3b) */
     if (Inhell) {
 	pline("Since you are in Gehennom, %s won't help you.",
 	      align_gname(alignment));
-	if(rnl(u.ualign.record)) /* yes, this is the right sense */
+	/* haltingly aligned is least likely to anger */
+	if (u.ualign.record <= 0 || rnl(u.ualign.record))
 	    angrygods(u.ualign.type);
 	return(0);
     }

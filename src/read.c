@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)read.c	3.1	93/02/04	*/
+/*	SCCS Id: @(#)read.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -610,9 +610,9 @@ register struct obj	*sobj;
 		if(!rn2(73) && !sobj->blessed) cnt += rnd(4);
 		if(confused || sobj->cursed) cnt += 12;
 		while(cnt--) {
-#if defined(WIZARD) || defined(EXPLORE_MODE)
-		    if((!wizard && !discover) || !create_particular())
-#endif /* WIZARD || EXPLORE_MODE */
+#ifdef WIZARD
+		    if(!wizard || !create_particular())
+#endif /* WIZARD  */
 		    (void) makemon (confused ? &mons[PM_ACID_BLOB] :
 					(struct permonst *) 0, u.ux, u.uy);
 		}
@@ -713,18 +713,21 @@ register struct obj	*sobj;
 			You("identify this as an identify scroll.");
 		else
 			pline("This is an identify scroll.");
-		if (sobj->blessed || (!sobj->cursed && !rn2(5)))
+		if (sobj->blessed || (!sobj->cursed && !rn2(5))) {
 			cval = rn2(5);
 			/* Note: if rn2(5)==0, identify all items */
-		else	cval = 1;
+			if (cval == 1 && sobj->blessed && Luck > 0) ++cval;
+		} else	cval = 1;
 		useup(sobj);
 		makeknown(SCR_IDENTIFY);
 	id:
 		if(invent && !confused) {
 		    int ret;
+		    /* use up `cval' "charges"; 0 is special case */
 		    do {
 			ret = ggetobj("identify", identify, cval);
-		    } while(cval && (cval -= ret));
+			if (ret < 0) break;	/* quit or no eligible items */
+		    } while (ret == 0 || (cval -= ret) > 0);
 		}
 		return(1);
 	case SCR_CHARGING:
@@ -1167,11 +1170,14 @@ int *mtype;
 	     || *mtype==PM_ALIGNED_PRIEST || *mtype==PM_ANGEL) {
 		*mtype = PM_HUMAN_ZOMBIE;
 		return TRUE;
+	} else if (*mtype==PM_LONG_WORM_TAIL) {	/* for create_particular() */
+		*mtype = PM_LONG_WORM;
+		return TRUE;
 	}
 	return FALSE;
 }
 
-#if defined(WIZARD) || defined(EXPLORE_MODE)
+#ifdef WIZARD
 boolean
 create_particular()
 {
@@ -1180,25 +1186,19 @@ create_particular()
 
 	do {
 	    getlin("Create what kind of monster? [type the name]", buf);
+	    if (buf[0] == '\033') return FALSE;
 	    which = name_to_mon(buf);
 	    if (which < 0) pline("I've never heard of such monsters.");
 	    else break;
 	} while (++tries < 5);
 	if (tries == 5) pline(thats_enough_tries);
 	else {
-	    if (!(mons[which].geno & G_GENOD) && cant_create(&which) &&
-								!Blind) {
-		if (mons[which].geno & G_GENOD)
-pline("An image of the creature forms, wavers momentarily, then fades.");
-		else
-pline("The disoriented creature's eyes slowly glaze over.");
-	    }
-	    (void) makemon(&mons[which], u.ux, u.uy);
-	    return TRUE;
+	    (void) cant_create(&which);
+	    return makemon(&mons[which], u.ux, u.uy) != 0;
 	}
 	return FALSE;
 }
-#endif /* WIZARD || EXPLORE_MODE */
+#endif /* WIZARD */
 
 #endif /* OVLB */
 

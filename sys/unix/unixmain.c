@@ -12,7 +12,7 @@
 #include <fcntl.h>
 #endif
 
-#if !defined(_BULL_SOURCE) && !defined(sgi)
+#if !defined(_BULL_SOURCE) && !defined(sgi) && !defined(_M_UNIX)
 # if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
 # else
@@ -25,6 +25,11 @@ static void chdirx();
 #endif /* CHDIR */
 static boolean whoami();
 static void FDECL(process_options, (int, char **));
+
+#ifdef _M_UNIX
+extern void NDECL(check_sco_console);
+extern void NDECL(init_sco_cons);
+#endif
 
 int
 main(argc,argv)
@@ -87,9 +92,15 @@ char *argv[];
 	    }
 	}
 
+#ifdef _M_UNIX
+	check_sco_console();
+#endif
 	initoptions();
 	init_nhwindows();
 	exact_username = whoami();
+#ifdef _M_UNIX
+	init_sco_cons();
+#endif
 
 	/*
 	 * It seems you really want to play.

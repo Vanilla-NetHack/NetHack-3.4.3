@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)you.h	3.1	92/11/29	*/
+/*	SCCS Id: @(#)you.h	3.1	93/04/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -71,18 +71,20 @@ struct u_event {
 	Bitfield(minor_oracle,1);	/* received at least 1 cheap oracle */
 	Bitfield(major_oracle,1);	/*  "  expensive oracle */
 #ifdef MULDGN
+	Bitfield(qcalled,1);		/* called by Quest leader to do task */
 	Bitfield(qexpelled,1);		/* expelled from the Quest dungeon */
-	Bitfield(qcompleted,1);	    /* successfully completed the Quest task */
+	Bitfield(qcompleted,1);		/* successfully completed Quest task */
 #endif
-	Bitfield(uheard_tune,2);	/* if you heard the passtune */
-	Bitfield(uopened_dbridge,1);	/* if you open the drawbridge */
-	Bitfield(invoked,1);	    /* invoked the gate to the Sanctum level */
+	Bitfield(uheard_tune,2);	/* 1=know about, 2=heard passtune */
+	Bitfield(uopened_dbridge,1);	/* opened the drawbridge */
+	Bitfield(invoked,1);		/* invoked Gate to the Sanctum level */
 
 	Bitfield(gehennom_entered,1);	/* entered Gehennom via Valley */
 #ifdef ELBERETH
-	Bitfield(uhand_of_elbereth,1);	/* if you become Hand of Elbereth */
+	Bitfield(uhand_of_elbereth,2);	/* became Hand of Elbereth */
 #endif
-	Bitfield(udemigod,1);		/* once you kill the wiz */
+	Bitfield(udemigod,1);		/* killed the wiz */
+	Bitfield(ascended,1);		/* has offered the Amulet */
 };
 
 
@@ -148,7 +150,7 @@ struct you {
 #define BC_CHAIN 0x02	/* bit mask for chain in 'bc_felt' below */
 	int bglyph;	/* glyph under the ball */
 	int cglyph;	/* glyph under the chain */
-	int bc_order;	/* ball & chain order [see bc_order() in trap.c] */
+	int bc_order;	/* ball & chain order [see bc_order() in ball.c] */
 	int bc_felt;	/* mask for ball/chain being felt */
 
 

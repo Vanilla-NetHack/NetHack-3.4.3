@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitu.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)mhitu.c	3.1	93/03/14	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -429,6 +429,7 @@ mattacku(mtmp)
 	    }
 	    return (0);
 	}
+
 #ifdef MUSE
 	/* Unlike defensive stuff, don't let them use item _and_ attack. */
 	/* Exception:  Medusa; her gaze is automatic.  (We actually kludge
@@ -607,9 +608,15 @@ mattacku(mtmp)
 			break;
 	    }
 	    if(flags.botl) bot();
-	    if(sum[i] == 2)  return(1);  	/* attacker dead */
+	/* give player a chance of waking up before dying -kaa */
+	    if(sum[i] == 1) {	    /* successful attack */
+		if (u.usleep && !rn2(10)) {
+		    multi = -1;
+		    nomovemsg = "The combat suddenly awakens you.";
+		}
+	    }
+	    if(sum[i] == 2)  return(1); 	/* attacker dead */
 	    if(sum[i] == 3) break;  /* attacker teleported, no more attacks */
-	    /* sum[i] == 1: successful attack */
 	    /* sum[i] == 0: unsuccessful attack */
 	}
 	return(0);
@@ -706,7 +713,7 @@ struct permonst *mdat;
 	} else {
 		if (!Sick) You("feel very sick.");
 		exercise(A_CON, FALSE);
-		make_sick(Sick + (long)rn1(25-ACURR(A_CON),15),FALSE);
+		make_sick(Sick ? Sick/4 + 1L : (long)rn1(ACURR(A_CON), 20), FALSE);
 		u.usick_cause = mdat->mname;
 		return TRUE;
 	}
@@ -1051,7 +1058,7 @@ do_stone:
 #ifdef POLYSELF
 			    && !is_swimmer(uasmon)
 #endif
-			    && !Magical_breathing
+			    && !Amphibious
 			   ) {
 			    boolean moat = (levl[u.ux][u.uy].typ != POOL) &&
 				(levl[u.ux][u.uy].typ != WATER) &&
@@ -1109,7 +1116,7 @@ do_stone:
 			else
 	pline("%s makes some remarks about how difficult theft is lately.",
 	Monnam(mtmp));
-			rloc(mtmp);
+			if (!tele_restrict(mtmp)) rloc(mtmp);
 			return 3;
 		} else
 #endif
@@ -1121,7 +1128,7 @@ do_stone:
 			    flags.female ? "unaffected" : "uninterested");
 		    }
 		    if(rn2(3)) {
-			rloc(mtmp);
+			if (!tele_restrict(mtmp)) rloc(mtmp);
 			return 3;
 		    }
 		} else {
@@ -1131,7 +1138,7 @@ do_stone:
 		      case 0:
 			break;
 		      default:
-			rloc(mtmp);
+			if (!tele_restrict(mtmp)) rloc(mtmp);
 			mtmp->mflee = 1;
 			return 3;
 		    }
@@ -1214,11 +1221,12 @@ do_stone:
 #endif
 		        exercise(A_STR, TRUE);
 		        exercise(A_CON, TRUE);
+			if (Sick) make_sick(0L, FALSE);
 			flags.botl = 1;
 			if (mtmp->mhp == 0)
 			    return 2; /* mongone() was called above */
 			if(!rn2(50)) {
-			    rloc(mtmp);
+			    if (!tele_restrict(mtmp)) rloc(mtmp);
 			    return 3;
 			}
 			dmg = 0;
@@ -1794,7 +1802,7 @@ int
 doseduce(mon)
 register struct monst *mon;
 {
-	register struct obj *ring;
+	register struct obj *ring, *nring;
 	boolean fem = (mon->data == &mons[PM_SUCCUBUS]); /* otherwise incubus */
 	char qbuf[QBUFSZ];
 
@@ -1814,7 +1822,8 @@ register struct monst *mon;
 	if (Blind) pline("It caresses you...");
 	else You("feel very attracted to %s.", mon_nam(mon));
 
-	for(ring = invent; ring; ring = ring->nobj) {
+	for(ring = invent; ring; ring = nring) {
+	    nring = ring->nobj;
 	    if (ring->otyp != RIN_ADORNMENT) continue;
 	    if (fem) {
 		if (rn2(20) < ACURR(A_CHA)) {
@@ -1899,7 +1908,7 @@ register struct monst *mon;
 	if (uarm || uarmc) {
 		verbalize("You're such a %s; I wish...",
 				flags.female ? "sweet lady" : "nice guy");
-		rloc(mon);
+		if (!tele_restrict(mon)) rloc(mon);
 		return 1;
 	}
 	if (u.ualign.type == A_CHAOTIC && u.ualign.record < ALIGNLIM)
@@ -1992,7 +2001,7 @@ register struct monst *mon;
 	if (mon->mtame) /* don't charge */ ;
 	else if (rn2(20) < ACURR(A_CHA)) {
 		pline("%s demands that you pay %s, but you refuse...",
-			Monnam(mon), (fem ? "her" : "him"));
+			Monnam(mon), him[fem]);
 	}
 #ifdef POLYSELF
 	else if (u.umonnum == PM_LEPRECHAUN)
@@ -2021,7 +2030,7 @@ register struct monst *mon;
 		}
 	}
 	if (!rn2(25)) mon->mcan = 1; /* monster is worn out */
-	rloc(mon);
+	if (!tele_restrict(mon)) rloc(mon);
 	return 1;
 }
 
@@ -2134,14 +2143,20 @@ register struct attack *mattk;
 	/* These affect the enemy only if you are still a monster */
 	if (rn2(3)) switch(uasmon->mattk[i].adtyp) {
 	    case AD_PLYS: /* Floating eye */
+		if (tmp > 127) tmp = 127;
 		if (u.umonnum == PM_FLOATING_EYE) {
-		    if (!rn2(4)) tmp = 120;
+		    if (!rn2(4)) tmp = 127;
 		    if (mtmp->mcansee && haseyes(mtmp->data) && rn2(3) &&
 				(perceives(mdat) || !Invis)) {
 			if (Blind)
 			    pline("As a blind %s, you cannot defend yourself.",
 							uasmon->mname);
 		        else {
+#ifdef MUSE
+			    if (mon_reflects(mtmp, 
+					    "Your gaze is reflected by %s %s."))
+				return 1;
+#endif
 			    pline("%s is frozen by your gaze!", Monnam(mtmp));
 			    mtmp->mcanmove = 0;
 			    mtmp->mfrozen = tmp;

@@ -148,8 +148,10 @@ makesound ( char *actualn , char * melody, int vol )
 		*t = '_';
 	if( (fp = fopen( name, "r" )) == NULL )
 	{
+	    if((fp=fopen(&name[15],"r"))==NULL){
 		perror( name );
 		return;
+	    }
 	}
 
 	AudioIO = (struct IOAudio *)

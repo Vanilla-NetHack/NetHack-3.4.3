@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artifact.c	3.1	93/02/17	*/
+/*	SCCS Id: @(#)artifact.c	3.1	93/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,7 +7,7 @@
 #ifdef OVLB
 #include "artilist.h"
 #else
-STATIC_DCL const struct artifact artilist[];
+STATIC_DCL struct artifact artilist[];
 #endif
 /*
  * Note:  both artilist[] and artiexist[] have a dummy element #0,
@@ -33,13 +33,29 @@ STATIC_OVL int spec_dbon_applies = 0;
 /* flags including which artifacts have already been created */
 static boolean artiexist[1+NROFARTIFACTS+1];
 
+static void NDECL(hack_artifacts);
 static boolean FDECL(attacks, (int,struct obj *));
+
+/* handle some special cases; must be called after u_init() */
+static void
+hack_artifacts()
+{
+	/* Excalibur can be used by any lawful character, not just knights */
+	if (pl_character[0] != 'K')
+	    artilist[ART_EXCALIBUR].class = '\0';
+#ifdef MULDGN
+	/* Mitre of Holiness has same alignment as priest starts out with */
+	if (pl_character[0] == 'P')
+	    artilist[ART_MITRE_OF_HOLINESS].alignment = u.ualignbase[1];
+#endif
+}
 
 /* zero out the artifact existence list */
 void
 init_artifacts()
 {
 	(void) memset((genericptr_t) artiexist, 0, sizeof artiexist);
+	hack_artifacts();
 }
 
 void
@@ -54,6 +70,7 @@ restore_artifacts(fd)
 int fd;
 {
 	mread(fd, (genericptr_t) artiexist, sizeof artiexist);
+	hack_artifacts();	/* redo non-saved special cases */
 }
 
 const char *
@@ -202,8 +219,8 @@ void
 artifact_unexist(otmp)
     register struct obj *otmp;
 {
-    if (otmp->oartifact && artiexist[otmp->oartifact])
-	artiexist[otmp->oartifact] = 0;
+    if (otmp->oartifact && artiexist[(int)otmp->oartifact])
+	artiexist[(int)otmp->oartifact] = 0;
     else
 	impossible("Destroying non-existing artifact?!");
 }
@@ -404,12 +421,6 @@ touch_artifact(obj,mon)
 	((oart->alignment !=
 	  (yours ? u.ualign.type : sgn(mon->data->maligntyp))) ||
 	 (yours && u.ualign.record < 0));
-    /*
-     * hack: Excalibur allows all lawfuls to touch it, but "class" is
-     * set to 'K' to allow Knights to get it via sacrifice.  This requires an
-     * additional artifact field to fix, or some similar treatment. -dlc
-     */
-    if (obj->oartifact == ART_EXCALIBUR && !badalign) badclass = FALSE;
 
     if(((badclass || badalign) && (oart->spfx & SPFX_INTEL)) ||
        (badalign && (!yours || !rn2(4))))  {
@@ -762,11 +773,11 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 	}
 	/* end of Magicbane code */
 
-	/* We really want "on a natural 19 or 20" but Nethack does it in */
+	/* We really want "on a natural 20" but Nethack does it in */
 	/* reverse from AD&D. */
 	if (spec_ability(otmp, SPFX_BEHEAD)) {
 #ifdef MULDGN
-	    if (otmp->oartifact == ART_TSURUGI_OF_MURAMASA && dieroll <= 2) {
+	    if (otmp->oartifact == ART_TSURUGI_OF_MURAMASA && dieroll == 1) {
 		/* not really beheading, but so close, why add another SPFX */
 		if (youattack && u.uswallow && mdef == u.ustuck) {
 		    You("slice %s wide open!", mon_nam(mdef));
@@ -789,7 +800,7 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				return TRUE;
 			}
 			*dmgptr = mdef->mhp;
-			pline("The razorsharp blade cuts %s in half!",
+			pline("The razor-sharp blade cuts %s in half!",
 			      mon_nam(mdef));
 			otmp->dknown = TRUE;
 			return TRUE;
@@ -802,15 +813,26 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				return TRUE;
 			}
 #endif
-			*dmgptr = u.uhp;
-			pline("The razorsharp blade cuts you in half!");
+			/* Players with negative AC's take less damage instead
+			 * of just not getting hit.  We must add a large enough
+			 * value to the damage so that this reduction in
+			 * damage does not prevent death.
+			 */
+			*dmgptr = u.uhp + 1234;
+			pline("The razor-sharp blade cuts you in half!");
 			otmp->dknown = TRUE;
 			return TRUE;
 		}
-	    } else 
+	    } else
 #endif /* MULDGN */
-	        if (otmp->oartifact == ART_VORPAL_BLADE &&
-			(dieroll <= 2 || mdef->data == &mons[PM_JABBERWOCK])) {
+	    if (otmp->oartifact == ART_VORPAL_BLADE &&
+			(dieroll == 1 || mdef->data == &mons[PM_JABBERWOCK])) {
+
+		static const char *behead_msg[2] = {
+		     "%s beheads %s!",
+		     "%s decapitates %s!"
+		};
+
 		if (youattack && u.uswallow && mdef == u.ustuck)
 			return FALSE;
 		if (!youdefend) {
@@ -824,10 +846,16 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				*dmgptr = 0;
 				return (youattack || vis);
 			}
+			if (noncorporeal(mdef->data) || amorphous(mdef->data)) {
+				pline("%s slices through %s neck.",
+				      artilist[ART_VORPAL_BLADE].name,
+				      s_suffix(mon_nam(mdef)));
+				return (youattack || vis);
+			}
 			*dmgptr = mdef->mhp;
-			pline("%s cuts off %s head!",
-					artilist[ART_VORPAL_BLADE].name,
-					s_suffix(mon_nam(mdef)));
+			pline(behead_msg[rn2(SIZE(behead_msg))],
+			      artilist[ART_VORPAL_BLADE].name,
+			      mon_nam(mdef));
 			otmp->dknown = TRUE;
 			return TRUE;
 		} else {
@@ -838,10 +866,15 @@ int dieroll; /* needed for Magicbane and vorpal blades */
 				*dmgptr = 0;
 				return TRUE;
 			}
+			if (noncorporeal(uasmon) || amorphous(uasmon)) {
+				pline("%s slices through your neck.",
+				      artilist[ART_VORPAL_BLADE].name);
+				return TRUE;
+			}
 #endif
-			*dmgptr = u.uhp;
-			pline("%s cuts off your head!",
-					artilist[ART_VORPAL_BLADE].name);
+			*dmgptr = u.uhp + 1234;
+			pline(behead_msg[rn2(SIZE(behead_msg))],
+			      artilist[ART_VORPAL_BLADE].name, "you");
 			otmp->dknown = TRUE;
 			/* Should amulets fall off? */
 			return TRUE;
@@ -1044,10 +1077,8 @@ arti_invoke(obj)
 	  }
 	}
     } else {
-	boolean on;
-	unsigned long cprop;
-	cprop = u.uprops[oart->inv_prop].p_flgs ^= W_ARTI;
-	on = (cprop & W_ARTI) != 0; /* did we just turn on the invoked prop? */
+	long cprop = (u.uprops[oart->inv_prop].p_flgs ^= W_ARTI);
+	boolean on = (cprop & W_ARTI) != 0; /* true if invoked prop just set */
 
 	if(on && obj->age > monstermoves) {
 	    /* the artifact is tired :-) */

@@ -20,6 +20,7 @@ and so on).
         will be created if it doesn't exist.
     various special level files (with a ".lev" suffix).
     various help and other utility NetHack documents.
+    Recover - the application to restore save files from crashed games.
 
     During play another file type appears:
     player level files (labelled "iName.n", i is a constant number,
@@ -34,8 +35,8 @@ and so on).
     The following files or file types may be thrown away:
     logfile - if it becomes too large.  A new one will be generated.
     player level files _not_ belonging to a game in progress.
-        Alternatively, these files may be processed by a utility
-        application, Recover (not included in this distribution).
+        Alternatively, these files may be processed by Recover,
+        which may be able to restore a save file from the level files.
     Old bones files and saved games.
 
 === Resuming a saved game
@@ -54,7 +55,7 @@ and so on).
         without scrolling to the end.
 
     The Extended command "Window Cleanup" may be used to restore the
-        the startup sizes and locations of the essential windows.  The
+        the startup sizes and locations of the various windows.  The
         window positions are saved in a file labelled "NetHack Windows"
         in the appropriate preferences folder.
 
@@ -63,6 +64,7 @@ and so on).
     MACgraphics  - use enhanced dungeon map symbols [TRUE]
     large_font   - use 12 point font instead of 9 point font [FALSE]
     popup_dialog - use real dialogs for question prompts [FALSE]
+    page_wait    - display  --MORE--  after messages [TRUE]
 
     large_font is currently a pre-game option and has no effect
         after the Dungeon Map, Message and Status windows are created.

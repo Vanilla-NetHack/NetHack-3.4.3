@@ -36,6 +36,8 @@ int FDECL(macread,(int, void *, unsigned));
 int FDECL(macwrite,(int, void *, unsigned));
 long FDECL(macseek,(int, long, short));
 
+char * FDECL(macgets,(int, char *, unsigned));
+
 static short FDECL(IsHandleFile,(int));
 static int FDECL(OpenHandleFile,(const unsigned char *, long));
 static int FDECL(CloseHandleFile,(int));
@@ -125,7 +127,7 @@ ReadHandleFile ( int fd , void * ptr , unsigned len )
 	if ( ! itworked(ResError()) ) return (-1);
 	
 	HLock(h);
-	BlockMove ( *h , ptr , len );
+	BlockMove ( *h + theHandleFiles[fd].mark , ptr , len );
 	HUnlock(h);
 	theHandleFiles[fd].mark += len ;
 
@@ -322,6 +324,21 @@ macread ( int fd , void * ptr , unsigned len )
 			return -1 ;
 		}
 	}
+}
+
+
+char *
+macgets ( int fd , char * ptr , unsigned len )
+{
+	int idx = 0 ;
+	while ( -- len > 0 ) {
+		if ( macread ( fd , ptr + idx , 1 ) <= 0 )
+			return NULL ;
+		if ( ptr [ idx ++ ] == '\n' )
+			break ;
+	}
+	ptr [ idx ] = '\0' ;
+	return ptr ;
 }
 
 

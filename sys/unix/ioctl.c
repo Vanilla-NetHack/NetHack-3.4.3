@@ -23,7 +23,11 @@ struct termios termio;
 #   include <sys/ttold.h>	/* define struct ltchars */
 #   include <sys/bsdioctl.h>	/* define TIOGWINSZ */
 #  else
-#   include <sgtty.h>
+#   ifdef LINUX
+#    include <bsd/sgtty.h>
+#   else
+#    include <sgtty.h>
+#   endif
 #  endif
 # endif
 struct ltchars ltchars;
@@ -56,6 +60,11 @@ struct termio termio;
 #if defined(TIOCGWINSZ) && (defined(BSD) || defined(ULTRIX) || defined(AIX_31) || defined(_BULL_SOURCE) || defined(SVR4))
 #define USE_WIN_IOCTL
 #include "termcap.h"	/* for LI and CO */
+#endif
+
+#ifdef _M_UNIX
+extern void NDECL(sco_mapon);
+extern void NDECL(sco_mapoff);
 #endif
 
 #ifdef AUX
@@ -133,26 +142,32 @@ setioctls()
 #endif
 }
 
-#ifdef SUSPEND		/* Does not imply BSD */
+#ifdef SUSPEND		/* No longer implies BSD */
 int
 dosuspend()
 {
-#ifdef SIGTSTP
+# ifdef SIGTSTP
 	if(signal(SIGTSTP, SIG_IGN) == SIG_DFL) {
 		suspend_nhwindows(NULL);
+#  ifdef _M_UNIX
+		sco_mapon();
+#  endif
 		(void) signal(SIGTSTP, SIG_DFL);
-#ifdef AUX
+#  ifdef AUX
 		( void ) kill ( 0 , SIGSTOP ) ;
-#else
+#  else
 		(void) kill(0, SIGTSTP);
-#endif
+#  endif
+#  ifdef _M_UNIX
+		sco_mapoff();
+#  endif
 		resume_nhwindows();
 	} else {
 		pline("I don't think your shell has job control.");
 	}
-#else
+# else
 	pline("Sorry, it seems we have no SIGTSTP here.  Try ! or S.");
-#endif
+# endif
 	return(0);
 }
 #endif /* SUSPEND */

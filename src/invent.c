@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)invent.c	3.1	92/12/11	*/
+/*	SCCS Id: @(#)invent.c	3.1	93/05/17	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -21,17 +21,13 @@ STATIC_PTR int FDECL(ckunpaid,(struct obj *));
 static struct obj *FDECL(find_unpaid,(struct obj *,struct obj **));
 static boolean NDECL(wearing_armor);
 static boolean FDECL(is_worn,(struct obj *));
+static boolean FDECL(is_fully_identified,(struct obj *));
 #endif /* OVLB */
 STATIC_DCL char FDECL(obj_to_let,(struct obj *));
 
 #ifdef OVLB
 
 static int lastinvnr = 51;	/* 0 ... 51 (never saved&restored) */
-
-char inv_order[] = {	/* manipulated in options.c, used below */
-	AMULET_CLASS, WEAPON_CLASS, ARMOR_CLASS, FOOD_CLASS, SCROLL_CLASS,
-	SPBOOK_CLASS, POTION_CLASS, RING_CLASS, WAND_CLASS, TOOL_CLASS, 
-	GEM_CLASS, ROCK_CLASS, BALL_CLASS, CHAIN_CLASS, 0 };
 
 #ifdef WIZARD
 /* wizards can wish for venom, which will become an invisible inventory
@@ -325,13 +321,104 @@ int x, y;
 	struct obj *otmp, *otmp2;
 
 	for (otmp = level.objects[x][y]; otmp; otmp = otmp2) {
-		otmp2 = otmp->nexthere;
 		if (otmp == uball)
 			unpunish();
+		/* after unpunish(), or might get deallocated chain */
+		otmp2 = otmp->nexthere;
 		if (otmp == uchain)
 			continue;
 		delobj(otmp);
 	}
+}
+
+/* move objects from fobj/nexthere lists to buriedobjlist, keeping position
+ * information */
+void
+bury_objs(x, y)
+int x, y;
+{
+	struct obj *otmp, *otmp2;
+
+	for (otmp = level.objects[x][y]; otmp; otmp = otmp2) {
+		if (otmp == uball)
+			unpunish();
+		/* after unpunish(), or might get deallocated chain */
+		otmp2 = otmp->nexthere;
+		if (otmp == uchain)
+			continue;
+#ifdef WALKIES
+		if (otmp->otyp == LEASH && otmp->leashmon != 0)
+			o_unleash(otmp);
+#endif
+		if (otmp->lamplit) {
+			otmp->lamplit = 0;
+			check_lamps();
+		}
+		freeobj(otmp);
+		if (otmp->otyp == ROCK) {
+			/* melts into burying material */
+			obfree(otmp, (struct obj *)0);
+			continue;
+		}
+		otmp->nexthere = (struct obj *)0;
+		otmp->nobj = level.buriedobjlist;
+		level.buriedobjlist = otmp;
+	}
+	/* don't expect any engravings here, but just in case */
+	del_engr_at(x, y);
+	newsym(x, y);
+}
+
+/* delete buried object */
+void
+delburiedobj(obj)
+struct obj *obj;
+{
+	struct obj *otmp;
+	if (obj == level.buriedobjlist)
+		level.buriedobjlist = obj->nobj;
+	else {
+		for (otmp = level.buriedobjlist; otmp; otmp = otmp->nobj)
+			if (otmp->nobj == obj) {
+				otmp->nobj = obj->nobj;
+				break;
+			}
+		if (!otmp) panic("error in delburiedobj");
+	}
+	obfree(obj, (struct obj *) 0);	/* frees contents also */
+}
+
+/* move objects from buriedobjlist to fobj/nexthere lists */
+void
+unearth_objs(x, y)
+int x, y;
+{
+	struct obj *otmp, *otmp2, *prevobj;
+
+	remove_cadavers(&level.buriedobjlist);
+
+	prevobj = (struct obj *) 0;
+	for (otmp = level.buriedobjlist; otmp; otmp = otmp2) {
+		otmp2 = otmp->nobj;
+		if (otmp->ox == x && otmp->oy == y) {
+			if (prevobj)
+				prevobj->nobj = otmp2;
+			else
+				level.buriedobjlist = otmp2;
+			if (is_organic(otmp) && rn2(2)) {
+				/* rotted away */
+				obfree(otmp, (struct obj *) 0);
+			} else {
+				otmp->nobj = fobj;
+				fobj = otmp;
+				place_object(otmp, x, y);
+				stackobj(otmp);
+			}
+		} else
+			prevobj = otmp;
+	}
+	del_engr_at(x, y);
+	newsym(x, y);
 }
 
 #endif /* OVL3 */
@@ -345,6 +432,17 @@ register struct obj *obj;
 #ifdef WALKIES
 	if(obj->otyp == LEASH && obj->leashmon != 0) o_unleash(obj);
 #endif
+	if (obj->otyp == AMULET_OF_YENDOR ||
+			obj->otyp == CANDELABRUM_OF_INVOCATION ||
+			obj->otyp == BELL_OF_OPENING ||
+			obj->otyp == SPE_BOOK_OF_THE_DEAD) {
+		/* player might be doing something stupid, but we
+		 * can't guarantee that.  assume special artifacts
+		 * are indestructible via drawbridges, and exploding
+		 * chests, and golem creation, and ...
+		 */
+		return;
+	}
 	freeobj(obj);
 	newsym(obj->ox,obj->oy);
 	obfree(obj, (struct obj *) 0);	/* frees contents also */
@@ -431,7 +529,7 @@ register struct obj *objchn;
 
 	while(objchn) {
 		if(objchn->o_id == id) return(objchn);
-		if (Is_container(objchn) && (temp = o_on(id,objchn->cobj)))
+		if (Has_contents(objchn) && (temp = o_on(id,objchn->cobj)))
 			return temp;
 		objchn = objchn->nobj;
 	}
@@ -589,21 +687,25 @@ register const char *let,*word;
 		else if ((!strcmp(word, "wear") &&
 		    (otmp->oclass == TOOL_CLASS &&
 		     otmp->otyp != BLINDFOLD && otmp->otyp != TOWEL))
+		|| (!strcmp(word, "wield") &&
+		    (otmp->oclass == TOOL_CLASS &&
+		     otmp->otyp != PICK_AXE && otmp->otyp != UNICORN_HORN))
 #ifdef POLYSELF
 		|| (!strcmp(word, "eat") && !is_edible(otmp))
 #endif
-		|| (!strcmp(word, "can") &&
-		    (otmp->otyp != CORPSE))
+		|| (!strcmp(word, "sacrifice") &&
+		    (otmp->otyp != CORPSE &&
+		     otmp->otyp != AMULET_OF_YENDOR &&
+		     otmp->otyp != FAKE_AMULET_OF_YENDOR))
 		|| (!strcmp(word, "write with") &&
 		    (otmp->oclass == TOOL_CLASS &&
 		     otmp->otyp != MAGIC_MARKER && otmp->otyp != TOWEL))
+		|| (!strcmp(word, "tin") &&
+		    (otmp->otyp != CORPSE))
 		|| (!strcmp(word, "rub") &&
 		    (otmp->oclass == TOOL_CLASS &&
 		     otmp->otyp != OIL_LAMP && otmp->otyp != MAGIC_LAMP &&
 		     otmp->otyp != BRASS_LANTERN))
-		|| (!strcmp(word, "wield") &&
-		    (otmp->oclass == TOOL_CLASS &&
-		     otmp->otyp != PICK_AXE && otmp->otyp != UNICORN_HORN))
 		    )
 			foo--;
 	    } else {
@@ -782,6 +884,14 @@ register struct obj *otmp;
     return(!!(otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL | W_WEP)));
 }
 
+static boolean
+is_fully_identified(otmp)
+register struct obj *otmp;
+{
+    return(otmp->known && otmp->dknown && otmp->bknown && otmp->rknown
+	   && objects[otmp->otyp].oc_name_known);
+}
+
 static NEARDATA const char removeables[] =
 	{ ARMOR_CLASS, WEAPON_CLASS, RING_CLASS, AMULET_CLASS, TOOL_CLASS, 0 };
 
@@ -801,6 +911,7 @@ register int FDECL((*fn),(OBJ_P)), mx;
 	int FDECL((*ckfn),(OBJ_P)) = (int (*)()) 0;
 	xchar allowgold = (u.ugold && !strcmp(word, "drop")) ? 1 : 0; /* BAH */
 	register boolean takeoff = !strcmp(word, "take off");
+	register boolean ident = !strcmp(word, "identify");
 	struct obj *obj;
 	int unpaid, oc_of_sym;
 
@@ -819,7 +930,8 @@ register int FDECL((*fn),(OBJ_P)), mx;
 	unpaid = 0;
 	for (obj = invent; obj; obj = obj->nobj) {
 		sym = (char) def_oc_syms[(int) obj->oclass];
-		if (!index(ilets, sym) && (!takeoff || is_worn(obj))) {
+		if (!index(ilets, sym) && (!takeoff || is_worn(obj))
+		    && (!ident || !is_fully_identified(obj))) {
 			ilets[iletct++] = sym;
 			/* necessary because of index() being used above */
 			ilets[iletct] = '\0';
@@ -828,7 +940,10 @@ register int FDECL((*fn),(OBJ_P)), mx;
 		if (obj->unpaid) unpaid = 1;
 	}
 
-	if (!takeoff && (unpaid || invent)) {
+	if (ident && !iletct) {
+	    You("have already identified all your possessions.");
+	    return -1;		/* special case for seffects(read.c) */
+	} else if (!takeoff && (unpaid || invent)) {
 	    ilets[iletct++] = ' ';
 	    if (unpaid) ilets[iletct++] = 'u';
 	    if (invent) ilets[iletct++] = 'a';
@@ -938,9 +1053,10 @@ nextclass:
 		if(ilet == 'z') ilet = 'A'; else ilet++;
 		otmp2 = otmp->nobj;
 		if (olets && *olets && otmp->oclass != *olets) continue;
-		if(takeoff && !is_worn(otmp)) continue;
-		if(ckfn && !(*ckfn)(otmp)) continue;
-		if(!allflag) {
+		if (takeoff && !is_worn(otmp)) continue;
+		if (ident && is_fully_identified(otmp)) continue;
+		if (ckfn && !(*ckfn)(otmp)) continue;
+		if (!allflag) {
 			Strcpy(qbuf, ininv ?
 				xprname(otmp, ilet, !nodot, 0L) : doname(otmp));
 			Strcat(qbuf, "?");
@@ -981,6 +1097,8 @@ nextclass:
 		default:
 			break;
 		case 'q':
+			/* special case for seffects() */
+			if (ident) cnt = -1;
 			goto ret;
 		}
 	}
@@ -1111,7 +1229,7 @@ find_unpaid(list, last_found)
 	    } else
 		return (*last_found = list);
 	}
-	if (Is_container(list) && list->cobj) {
+	if (Has_contents(list)) {
 	    if ((obj = find_unpaid(list->cobj, last_found)) != 0)
 		return obj;
 	}
@@ -1136,7 +1254,7 @@ boolean show_cost;
 	register struct obj *otmp;
 	struct obj *z_obj;
 	register char ilet;
-	char *invlet = inv_order;
+	char *invlet = flags.inv_order;
 	int classcount;
 #if defined(LINT) || defined(GCC_WARN)
 	int save_unpaid = 0;
@@ -1161,7 +1279,8 @@ boolean show_cost;
 		if (do_containers) {	/* single non-inventory object */
 		    z_obj = (struct obj *) 0;
 		    if ((otmp = find_unpaid(invent, &z_obj)) != 0)
-			pline(xprname(otmp, CONTAINED_SYM, TRUE,
+			pline("%s",
+			      xprname(otmp, CONTAINED_SYM, TRUE,
 				     (show_cost ? unpaid_cost(otmp) : 0L)));
 		    else
 			impossible(
@@ -1169,7 +1288,8 @@ boolean show_cost;
 		} else {
 		    for(otmp = invent; otmp; otmp = otmp->nobj) {
 			if (otmp->invlet == lets[0]) {
-			    pline(xprname(otmp, lets[0], TRUE,
+			    pline("%s",
+				  xprname(otmp, lets[0], TRUE,
 					 (show_cost ? unpaid_cost(otmp) : 0L)));
 			    break;
 			}
@@ -1227,7 +1347,7 @@ nextclass:
 	     *  have unpaid items that have been already listed.
 	     */
 	    for (otmp = invent; otmp; otmp = otmp->nobj) {
-		if (Is_container(otmp) && otmp->cobj) {
+		if (Has_contents(otmp)) {
 		    z_obj = (struct obj *) 0;	/* haven't found any */
 		    while (find_unpaid(otmp->cobj, (struct obj **)&z_obj)) {
 			totcost += cost = unpaid_cost(z_obj);
@@ -1263,7 +1383,7 @@ count_unpaid(list)
 
     while (list) {
 	if (list->unpaid) count++;
-	if (Is_container(list) && list->cobj)
+	if (Has_contents(list))
 	    count += count_unpaid(list->cobj);
 	list = list->nobj;
     }
@@ -1361,7 +1481,6 @@ dolook()
 	const char *verb = Blind ? "feel" : "see";
 	const char *dfeature = (char*) 0;
 	char fbuf[BUFSZ], fbuf2[BUFSZ];
-	int ct;
 	boolean no_article = FALSE;
 	winid tmpwin;
 
@@ -1449,15 +1568,12 @@ dolook()
 	}
 	/* we know there is something here */
 
-	/* find out if there is more than one object there */
-	for (ct = 0, otmp = otmp0; otmp; otmp = otmp->nexthere)
-	    if (++ct > 1) break;
-
-	if (ct == 1) {
+	if (!otmp0->nexthere) {
+	    /* only one object */
 	    if (dfeature) pline(fbuf);
 	    You("%s here %s.", verb, doname(otmp0));
 	} else {
-	    display_nhwindow(NHW_MESSAGE, FALSE);
+	    display_nhwindow(WIN_MESSAGE, FALSE);
 	    tmpwin = create_nhwindow(NHW_MENU);
 	    if(dfeature) {
 		putstr(tmpwin, 0, fbuf);
@@ -1542,6 +1658,10 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	/* see burn_lamps() for a reference for the magic "25" */
 	if (Is_candle(obj) && obj->age/25 != otmp->age/25)
 	    return(FALSE);
+
+	/* don't merge surcharged item with base-cost item */
+	if (obj->unpaid && !same_price(obj, otmp))
+	    return FALSE;
 
 /* if they have names, make sure they're the same */
 	if ( (obj->onamelth != otmp->onamelth &&

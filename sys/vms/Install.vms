@@ -1,4 +1,4 @@
-               Instructions for Installing NetHack 3.1.1
+               Instructions for Installing NetHack 3.1.2
                            on a VMS system
                =========================================
 
@@ -7,12 +7,12 @@
 
 1.  Building NetHack requires a C compiler (either VAX C, DEC C, or GNU C)
     and VMS version V4.6 or later (but see note #11).  This release has
-    been tested on VAX/VMS V5.5-2, T6.0, and Alpha/VMS V1.0.  The build
+    been tested on VAX/VMS V5.5-2, T6.0, and Alpha/VMS V1.0, V1.5.  The build
     procedure (vmsbuild.com) should not need to be modified; it accepts
     an option for selecting VAXC vs GNUC, and it can detect different
     versions of VAXC to use appropriate CC command qualifiers.  Versions
     of VAXC earlier than V2.3 will produce many warning messages (about
-    150 per source file; over to 18,000 total!), but NetHack has been
+    170 per source file; over to 20,000 total!), but NetHack has been
     verified to compile, link, and execute correctly when built with VAXC
     V2.2 using vmsbuild.com.  There is also a set of Makefiles suitable
     for use with MMS; they may or may not work with other make utilities.
@@ -40,7 +40,9 @@
         [.sys   .mac]   -- Macintosh
         [.sys   .msdos] -- MSDOS for IBM PCs and compatibles
         [.sys   .os2]   -- OS/2
+        [.sys   .share   .sounds] -- AIFF format audio files
         [.sys   .unix]  -- guess :-)
+        [.sys   .winnt] -- Windows NT
         [.win   .X11]   -- window routines for X-Windows; requires X11R4
                            or later and MIT's Athena Widget set
     You must arrange things in this structure or the supplied procedures
@@ -140,17 +142,14 @@
 Notes:
 
 1.  Save files and bones files from previous versions will not work with
-    NetHack 3.1.0.  Don't bother trying to keep them.  Ditto for RECORD,
-    the scoreboard file.  One minor change of note is that the default
-    name for a player's character is now a lowercase copy of the username.
-    Scoreboard files from 3.1.0 are compatible with 3.1.1, but save files
-    and bones files are not.
+    NetHack 3.1.2.  The scoreboard file (RECORD) from 3.1.1 or 3.1.0 is
+    compatible with 3.1.2, but one from 3.0pl10 or earlier is not.
 
 2.  To specify user-preference options in your environment, define the
     logical name NETHACKOPTIONS to have value of a quoted string
     containing a comma separated list of option values.  The option names
     are case-insensitive.
-       $ define nethackoptions "noPickup,Dog:Rover,Cat:Felix,DECgraphics"
+       $ define nethackoptions "noAutoPickup,Dog:Rover,Cat:Felix,DECgraphics"
     One value you'll probably want to specify is "noLegacy" to turn off
     the initial introductory passage.  The "checkpoint" option controls
     whether or not enough data is saved to disk so that the set of level
@@ -528,4 +527,4 @@ Notes:
     Always include version information for NetHack, the operating system,
     and the C compiler used.
 
-24-FEB-1993
+29-MAY-1993

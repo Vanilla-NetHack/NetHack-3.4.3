@@ -1,8 +1,11 @@
-/*	SCCS Id: @(#)topl.c	3.1	90/09/21
+/*	SCCS Id: @(#)topl.c	3.1	93/06/01	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+
+#ifdef TTY_GRAPHICS
+
 #include "termcap.h"
 #include "wintty.h"
 #include <ctype.h>
@@ -42,7 +45,7 @@ redotoplin(str)
 	if(*str & 0x80) {
 		/* kludge for the / command, the only time we ever want a */
 		/* graphics character on the top line */
-		g_putch(*str++);
+		g_putch((int)*str++);
 		ttyDisplay->curx++;
 	}
 	end_glyphout();	/* in case message printed during graphics output */
@@ -196,6 +199,9 @@ topl_putsym(c)
     }
     cw->curx = ttyDisplay->curx;
     if(cw->curx == 0) cl_end();
+#if defined(NO_TERMS) && defined(MSDOS)
+    if (c != '\n')
+#endif 
     (void) putchar(c);
 }
 
@@ -339,5 +345,7 @@ char def;
 }
 
 #endif /* OVL2 */
+
+#endif /* TTY_GRAPHICS */
 
 /*topl.c*/

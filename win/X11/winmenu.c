@@ -35,13 +35,6 @@ static void FDECL(menu_select, (Widget,XtPointer,XtPointer));
 static void FDECL(clear_old_menu, (struct xwindow *));
 static char *FDECL(copy_of, (const char *));
 
-#define check_menu(func_name)					\
-{								\
-    if (!menu_info->is_menu) {					\
-	impossible("%s:  called before start_menu", func_name);	\
-	return;							\
-    }								\
-}
 
 static char menu_selected;	/* selected menu item */
 static const char menu_translations[] =
@@ -175,7 +168,10 @@ X11_add_menu(window, ch, attr, str)
 
     check_winid(window);
     menu_info = window_list[window].menu_information;
-    check_menu("add_menu");
+    if (!menu_info->is_menu) {
+	impossible("add_menu:  called before start_menu");
+	return;
+    }
 
     item = (struct menu_item *) alloc((unsigned)sizeof(struct menu_item));
     item->next = (struct menu_item *) 0;
@@ -202,7 +198,10 @@ X11_end_menu(window, cancel_ch, cancel_str, morestr)
     struct menu_info_t *menu_info;
     check_winid(window);
     menu_info = window_list[window].menu_information;
-    check_menu("end_menu");
+    if (!menu_info->is_menu) {
+	impossible("end_menu:  called before start_menu");
+	return;
+    }
 
     if(morestr && strlen(morestr))
 	X11_add_menu(window, 0, 0, morestr);
@@ -229,18 +228,10 @@ X11_select_menu(window)
     check_winid(window);
     wp = &window_list[window];
     menu_info = wp->menu_information;
-
-#if defined(LINT) || defined(GCC_WARN)
-    {
-	/* cannot use check_menu, since it doesn't return anything */
-	if (!menu_info->is_menu) {
-	    impossible("%s:  called before start_menu", "select_menu");
-	    return '\0';
-	}
+    if (!menu_info->is_menu) {
+	impossible("select_menu:  called before start_menu");
+	return '\0';
     }
-#else
-    check_menu("select_menu");
-#endif
 
 #ifdef VERBOSE
     /* ********** */

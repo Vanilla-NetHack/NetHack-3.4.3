@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)display.c	3.1	92/10/25	*/
+/*	SCCS Id: @(#)display.c	3.1	93/05/15	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Kevin Darcy */
 /* and Dave Cohrs, 1990.					  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -250,8 +250,10 @@ unmap_object(x, y)
  *
  * Make whatever at this location show up.  This is only for non-living
  * things.  This will not handle feeling invisible objects correctly.
+ *
+ * Internal to display.c, this is a #define for speed.
  */
-#define map_location(x,y,show)						\
+#define _map_location(x,y,show)						\
 {									\
     register struct obj   *obj;						\
     register struct trap  *trap;					\
@@ -262,6 +264,12 @@ unmap_object(x, y)
 	map_trap(trap,show);						\
     else								\
 	map_background(x,y,show);					\
+}
+
+void map_location(x,y,show)
+    int x, y, show;
+{
+    _map_location(x,y,show);
 }
 
 
@@ -397,7 +405,7 @@ feel_location(x, y)
 	if (IS_ROCK(lev->typ) || (IS_DOOR(lev->typ) &&
 				(lev->doormask & (D_LOCKED | D_CLOSED)))) {
 	    map_background(x, y, 1);
-	} else if (boulder = sobj_at(BOULDER,x,y)) {
+	} else if ((boulder = sobj_at(BOULDER,x,y)) != 0) {
 	    map_object(boulder, 1);
 	} else if (IS_DOOR(lev->typ)) {
 	    map_background(x, y, 1);
@@ -438,7 +446,7 @@ feel_location(x, y)
 		show_glyph(x, y, lev->glyph = cmap_to_glyph(S_corr));
 	}
     } else {
-	map_location(x, y, 1);
+	_map_location(x, y, 1);
 
 	if (Punished) {
 	    /*
@@ -509,20 +517,20 @@ newsym(x,y)
 
 	if (x == u.ux && y == u.uy) {
 	    if (canseeself()) {
-		map_location(x,y,0);	/* map *under* self */
+		_map_location(x,y,0);	/* map *under* self */
 		display_self();
 	    } else
 		/* we can see what is there */
-		map_location(x,y,1);
+		_map_location(x,y,1);
 	}
 	else if ((mon = m_at(x,y)) &&
 		 ((see_it = mon_visible(mon)) || sensemon(mon))) {
-	    map_location(x,y,0); 	/* map under the monster */
+	    _map_location(x,y,0); 	/* map under the monster */
     	    worm_tail = ((x != mon->mx)  || (y != mon->my));
 	    display_monster(x,y,mon,see_it,worm_tail);
 	}
 	else
-	    map_location(x,y,1);	/* map the location */
+	    _map_location(x,y,1);	/* map the location */
     }
 
     /* Can't see the location. */

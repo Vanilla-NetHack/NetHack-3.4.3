@@ -1,7 +1,7 @@
 README for the AIFF files:
 
 These files are sound files for the instruments in NetHack.
-There are 12 sounds, one for each distinct instrument.
+There are 11 sounds, one for each distinct instrument.
 The sounds are in 8-bit 22kHz AIFF format, which should be
 readable by a broad range of platforms. Since the sounds
 came from Rolands S-750 sample library (most of them) there

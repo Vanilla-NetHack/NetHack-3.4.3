@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pickup.c	3.1	93/02/16	*/
+/*	SCCS Id: @(#)pickup.c	3.1	93/04/11	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -12,7 +12,8 @@ static void FDECL(unsplitobj, (struct obj *,struct obj *,long));
 static void FDECL(simple_look, (struct obj *,BOOLEAN_P));
 static boolean FDECL(query_classes, (char *,boolean *,boolean *,
 			     const char *,struct obj *,BOOLEAN_P,BOOLEAN_P));
-static boolean FDECL(pickup_object, (struct obj *,struct obj *));
+static void FDECL(check_here, (BOOLEAN_P));
+static int FDECL(pickup_object, (struct obj *,struct obj *));
 static boolean FDECL(mbag_explodes, (struct obj *,int));
 STATIC_PTR int FDECL(in_container,(struct obj *));
 STATIC_PTR int FDECL(ck_bag,(struct obj *));
@@ -104,25 +105,25 @@ boolean here, incl_gold;
 }
 
 static boolean
-query_classes(olets, one_at_a_time, everything, action, objs, here, incl_gold)
-char olets[];
+query_classes(oclasses, one_at_a_time, everything, action, objs, here, incl_gold)
+char oclasses[];
 boolean *one_at_a_time, *everything;
 const char *action;
 struct obj *objs;
 boolean here, incl_gold;
 {
 	char ilets[20], inbuf[BUFSZ];
-	int iletct, oletct;
+	int iletct, oclassct;
 	char qbuf[QBUFSZ];
 
-	olets[oletct = 0] = '\0';
+	oclasses[oclassct = 0] = '\0';
 	*one_at_a_time = *everything = FALSE;
 	iletct = collect_obj_classes(ilets, objs, here, incl_gold);
 	if (iletct == 0) {
 		return FALSE;
 	} else if (iletct == 1) {
-		olets[0] = def_char_to_objclass(ilets[0]);
-		olets[1] = '\0';
+		oclasses[0] = def_char_to_objclass(ilets[0]);
+		oclasses[1] = '\0';
 	} else  {	/* more than one choice available */
 		const char *where = 0;
 		register char sym, oc_of_sym, *p;
@@ -133,7 +134,7 @@ boolean here, incl_gold;
 		ilets[iletct++] = (objs == invent ? 'i' : ':');
 		ilets[iletct] = '\0';
 ask_again:
-		olets[oletct = 0] = '\0';
+		oclasses[oclassct = 0] = '\0';
 		*one_at_a_time = *everything = FALSE;
 		Sprintf(qbuf,"What kinds of thing do you want to %s? [%s]",
 			action, ilets);
@@ -154,8 +155,8 @@ ask_again:
 		    } else {
 			oc_of_sym = def_char_to_objclass(sym);
 			if (index(ilets,sym)) {
-			    olets[oletct++] = oc_of_sym;
-			    olets[oletct] = '\0';
+			    oclasses[oclassct++] = oc_of_sym;
+			    oclasses[oclassct] = '\0';
 			} else {
 			    if (!where)
 				where = !strcmp(action,"pick up")  ? "here" :
@@ -168,9 +169,39 @@ ask_again:
 			}
 		    }
 		}
-		if (!oletct && !*everything) *one_at_a_time = TRUE;
+		if (!oclassct && !*everything) *one_at_a_time = TRUE;
 	}
 	return TRUE;
+}
+
+/* look at the objects at our location, unless there are too many of them */
+static void
+check_here(picked_some)
+boolean picked_some;
+{
+	register struct obj *obj;
+	register int ct = 0;
+
+	/* count the objects here */
+	for (obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere) {
+	    if (obj != uchain)
+		ct++;
+	}
+
+	/* If there are objects here, take a look. */
+	if (ct) {
+	    if (flags.run) nomul(0);
+	    flush_screen(1);
+	    if (ct < 5) {
+		(void) dolook();
+	    } else {
+		read_engr_at(u.ux,u.uy);
+		pline("There are several %sobjects here.",
+		      picked_some ? "more " : "");
+	    }
+	} else {
+	    read_engr_at(u.ux,u.uy);
+	}
 }
 
 void
@@ -179,14 +210,21 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 {
 	register struct obj *obj;
 	struct obj *obj2, *objx;
-	boolean all_of_a_type = FALSE, selective = FALSE;
-	char olets[20];
+	boolean all_of_a_type, selective;
+	char oclasses[20];
 	long count;
+	int pick, pick_count = 0;
 
 	count = (all < 0) ? (-1L * all) : 0L;
 	if (count) all = 0;
 
-	if(Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
+	if (all && (flags.nopick || !OBJ_AT(u.ux, u.uy) ||
+			(is_pool(u.ux, u.uy) && !Underwater))) {
+		read_engr_at(u.ux, u.uy);
+		return;
+	}
+
+	if (Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
 		if ((multi && !flags.run) || (all && !flags.pickup))
 			read_engr_at(u.ux,u.uy);
 		return;
@@ -197,80 +235,62 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 	 * teleported onto the object.  They shouldn't pick it up.
 	 */
 	if ((multi && !flags.run) || (all && !flags.pickup)) {
-		int ct = 0;
-
-		for (obj = level.objects[u.ux][u.uy]; obj;
-						 obj = obj->nexthere)
-			if(obj != uchain)
-				ct++;
-
-		/* If there are objects here, take a look.
-		 */
-		if (ct) {
-			if (flags.run)
-				nomul(0);
-			flush_screen(1);
-			if (ct < 5)
-				(void) dolook();
-			else {
-				read_engr_at(u.ux,u.uy);
-				pline("There are several objects here.");
-			}
-		} else read_engr_at(u.ux,u.uy);
+		check_here(FALSE);
 		return;
 	}
 
-	/* check for more than one object */
-	if(!all) {
+	oclasses[0] = '\0';	/* types to consider (empty for all) */
+	all_of_a_type = TRUE;	/* take all of considered types */
+	selective = FALSE;	/* ask for each item */
+
+	if (all) {
+		if (flags.pickup) Strcpy(oclasses, flags.pickup_types);
+	} else {
+		/* check for more than one object */
 		register int ct = 0;
 
-		for(obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
-			ct++;
-		if(ct < 2)
-			all++;
-		else {
-			pline("There are several objects here.");
-			count = 0;
+		for (obj = level.objects[u.ux][u.uy]; obj; obj = obj->nexthere)
+		    ct++;
+
+		if (ct >= 2) {
+		    pline("There are several objects here.");
+		    count = 0;
+
+		    /* added by GAN 10/24/86 to allow selective picking up */
+		    if (!query_classes(oclasses, &selective, &all_of_a_type,
+			  "pick up", level.objects[u.ux][u.uy], TRUE, FALSE))
+			return;
 		}
 	}
 
-	/* added by GAN 10/24/86 to allow selective picking up */
-	if (!all) {
-		if (!query_classes(olets, &selective, &all_of_a_type,
-			  "pick up", level.objects[u.ux][u.uy], TRUE, FALSE))
-			return;
-	}
-	if(all_of_a_type && !olets[0]) all = TRUE;
-
-	for(obj = level.objects[u.ux][u.uy]; obj; obj = obj2) {
+	for (obj = level.objects[u.ux][u.uy]; obj; obj = obj2) {
 		obj2 = obj->nexthere;	/* perhaps obj will be picked up */
 		objx = 0;
-		if(flags.run) nomul(0);
+		if (flags.run) nomul(0);
 
-		if(!all)  {
-		    if(!selective && !index(olets,obj->oclass)) continue;
+		if (!selective && oclasses[0] && !index(oclasses,obj->oclass))
+			continue;
 
-		    if (!all_of_a_type) {
-			char qbuf[QBUFSZ];
-			Sprintf(qbuf, "Pick up %s?", doname(obj));
-			switch ((obj->quan < 2L) ? ynaq(qbuf) : ynNaq(qbuf)) {
-			case 'q': return;
-			case 'n': continue;
-			case 'a':
-			    all_of_a_type = TRUE;
-			    if (selective) {
-				selective = FALSE;
-				olets[0] = obj->oclass;
-				olets[1] = '\0';
-			    }
-			    break;
-			case '#':	/* count was entered */
-			    if (!yn_number) continue; /* 0 count => No */
-			    else count = yn_number;
-			    /* fall thru */
-			default:	/* 'y' */
-			    break;
+		if (!all_of_a_type) {
+		    char qbuf[QBUFSZ];
+		    Sprintf(qbuf, "Pick up %s?", doname(obj));
+		    switch ((obj->quan < 2L) ? ynaq(qbuf) : ynNaq(qbuf)) {
+		    case 'q': return;
+		    case 'n': continue;
+		    case 'a':
+			all_of_a_type = TRUE;
+			if (selective) {
+			    selective = FALSE;
+			    oclasses[0] = obj->oclass;
+			    oclasses[1] = '\0';
 			}
+			break;
+		    case '#':	/* count was entered */
+			if (!yn_number) continue; /* 0 count => No */
+			else count = yn_number;
+			/* fall thru */
+		    default:	/* 'y' */
+			break;
 		    }
 		}
 
@@ -287,7 +307,8 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 		    }
 		    count = 0;	/* reset */
 		}
-		if (pickup_object(obj, objx)) break;
+		if ((pick = pickup_object(obj, objx)) < 0) break;
+		pick_count += pick;
 	}
 
 	/*
@@ -295,23 +316,31 @@ int all;	/* all >= 0 => yes/no; < 0 => -count */
 	 *  map is correct.
 	 */
 	newsym(u.ux,u.uy);
+
+	/* see whether there's anything else here, after auto-pickup is done */
+	if (all && flags.pickup) check_here(pick_count > 0);
 }
 
 /*
  * Pick up an object from the ground or out of a container and add it to
- * the inventory.  Returns true if pickup() should break out of its loop.
+ * the inventory.  Returns -1 if pickup() should break out of its loop,
+ * 0 if nothing picked up, 1 if otherwise.
  */
-static boolean
+static int
 pickup_object(obj, objx)
 struct obj *obj, *objx;
 {
 	int wt, nearload;
 	long pickquan;
 
+	/* in case of auto-pickup, where we haven't had a chance
+	   to look at it yet; affects docall(SCR_SCARE_MONSTER) */
+	if (!Blind) obj->dknown = 1;
+
 	if (obj == uchain) {    /* do not pick up attached chain */
-	    return FALSE;
+	    return 0;
 	} else if (obj->oartifact && !touch_artifact(obj,&youmonst)) {
-	    return FALSE;
+	    return 0;
 	} else if (obj->otyp == GOLD_PIECE) {
 	    /*
 	     *  Special consideration for gold pieces...
@@ -324,7 +353,7 @@ struct obj *obj, *objx;
        pline("There %s %ld gold piece%s here, but you cannot carry any more.",
 			(obj->quan == 1L) ? "is" : "are",
 			obj->quan, plur(obj->quan));
-		return FALSE;
+		return 0;
 	    } else if (gold_capacity < obj->quan) {
 		if (objx) unsplitobj(obj, objx, 0L);
 		You("can only carry %s of the %ld gold pieces lying here.",
@@ -348,7 +377,7 @@ struct obj *obj, *objx;
 	    }
 	    flags.botl = 1;
 	    if (flags.run) nomul(0);
-	    return FALSE;
+	    return 1;
 	} else if (obj->otyp == CORPSE) {
 
 	    if (obj->corpsenm == PM_COCKATRICE && !uarmg
@@ -368,12 +397,13 @@ struct obj *obj, *objx;
 		    killer_format = KILLED_BY_AN;
 		    killer = "cockatrice corpse";
 		    done(STONING);
+		    return -1;
 		}
 	    } else if (is_rider(&mons[obj->corpsenm])) {
 		pline("At your touch, the corpse suddenly moves...");
 		revive_corpse(obj, 1, FALSE);
 		exercise(A_WIS, FALSE);
-		return FALSE;
+		return -1;
 	    }
 	} else  if (obj->otyp == SCR_SCARE_MONSTER) {
 	    if (obj->blessed) obj->blessed = 0;
@@ -386,7 +416,8 @@ struct obj *obj, *objx;
 				    !(objects[SCR_SCARE_MONSTER].oc_uname))
 		    docall(obj);
 		useupf(obj);
-		return FALSE;
+		return 1;	/* tried to pick something up and failed, but
+				   don't want to terminate pickup loop yet   */
 	    }
 	}
 
@@ -438,7 +469,7 @@ struct obj *obj, *objx;
 				"they are too heavy for you to lift") :
 			"you cannot carry any more");
 	    if (obj->otyp == SCR_SCARE_MONSTER) obj->spe = 0;
-	    return TRUE;
+	    return -1;
 	}
 
 lift_some:
@@ -446,7 +477,7 @@ lift_some:
 	    if (objx) unsplitobj(obj, objx, 0L);
 	    if (obj->otyp == SCR_SCARE_MONSTER) obj->spe = 0;
 	    Your("knapsack cannot accommodate any more items.");
-	    return TRUE;
+	    return -1;
 	}
 
 	if (obj->otyp != LOADSTONE &&
@@ -462,7 +493,7 @@ lift_some:
 				if (objx) unsplitobj(obj, objx, 0L);
 				if (obj->otyp == SCR_SCARE_MONSTER)
 					obj->spe = 0;
-				return (ch == 'q');
+				return (ch == 'q') ? -1 : 0;
 			default:  break;	/* 'y' */
 		}
 	}
@@ -470,13 +501,12 @@ lift_some:
 	pickquan = obj->quan;	/* save number picked up */
 	obj = pick_obj(obj);
 
-	if (!Blind) obj->dknown = 1;
 	if (uwep && uwep == obj) mrg_to_wielded = TRUE;
 	nearload = near_capacity();
-	prinv(nearload > UNENCUMBERED && nearload < MOD_ENCUMBER ?
-	      moderateloadmsg : NULL, obj, pickquan);
+	prinv(nearload == SLT_ENCUMBER ? moderateloadmsg : NULL,
+		obj, pickquan);
 	mrg_to_wielded = FALSE;
-	return FALSE;
+	return 1;
 }
 
 /* Gold never reaches this routine. */
@@ -608,7 +638,7 @@ mbag_explodes(obj, depthin)
     if ((Is_mbag(obj) || (obj->otyp == WAN_CANCELLATION && obj->spe > 0)) &&
 	(rn2(1 << (depthin > 7 ? 7 : depthin)) <= depthin))
 	return TRUE;
-    else if (Is_container(obj)) {
+    else if (Has_contents(obj)) {
 	struct obj *otmp;
 
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
@@ -860,8 +890,8 @@ register int held;
 	}
 	/* Count the number of contained objects. Sometimes toss objects if */
 	/* a cursed magic bag.						    */
-	for(curr = obj->cobj, prev = (struct obj *) 0; curr;
-					    prev = curr, curr = otmp) {
+	prev = (struct obj *) 0;
+	for (curr = obj->cobj; curr; curr = otmp) {
 	    otmp = curr->nobj;
 	    if (Is_mbag(obj) && obj->cursed && !rn2(13)) {
 		if (curr->known)
@@ -888,8 +918,10 @@ register int held;
 		}
 		/* obfree() will free all contained objects */
 		obfree(curr, (struct obj *) 0);
-	    } else
+	    } else {
+		prev = curr;
 		cnt++;
+	    }
 	}
 
 	if (cnt && loss)

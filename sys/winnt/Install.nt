@@ -4,8 +4,8 @@
 	    Instructions for compiling and installing
 		 NetHack 3.1 on a Windows NT system
 	    ======================================================
-		 (or, How to make NT NetHack 3.1.1)
-		    Last revision: Feb 24, 1993
+		 (or, How to make NT NetHack 3.1.2)
+		    Last revision: Apr 16, 1993
 
 Credit for the PC versions of NetHack goes to the PC Development team 
 consisting of Norm Meluch, Kevin Smolkowski, Paul Winner and Steve 
@@ -33,7 +33,7 @@ I.  Dispelling the Myths:
     We have provided the proper makefiles for building NetHack using the
     following compilers:
 
-    Microsoft Windows NT October 1992 SDK C Compiler with December '92 fixes.
+    Microsoft Windows NT March 1993 SDK C Compiler.
 
     All the makefiles were created for use with MS NMAKE which
     is provided with the Windows NT SDK (Software Development Kit).
@@ -62,6 +62,19 @@ Setting Up
     they are not necessary for use with NT.  You can delete them
     to save space.
 
+    Required Directories for NT:
+
+                            top
+                             |
+        -------------------------------------------- 
+        |       |     |        |       |     |     | 
+       util    dat   doc    include   src   sys   win
+                                             |     |
+                                          ------   ---- 
+                                          |    |      | 
+                                       share  winnt  tty
+ 
+
     Check the file "Files" in your top level directory for an exact
     listing of what file is in which directory.  In order for the
     Makefiles to work, all the source files must be in the proper
@@ -76,7 +89,8 @@ Setting Up
     last line of each file. 
 
 3.  Go to the sys\winnt directory and run the setup.bat batch file.
-    The necessary Makefile movements will be accomplished for you.
+    The necessary Makefile movements will be accomplished for you. It
+    will also verify that your directories are set up properly.
 
 4.  Now go to the include subdirectory to check a couple of the header
     files there.  Things *should* work as they are, but since you have
@@ -85,12 +99,8 @@ Setting Up
 
     First check config.h according to the comments to match your system and
     desired set of features.  Mostly you need to check the WIZARD option,
-    make sure the HACKDIR is set properly. The directory specified here must
-    conform to any file-system limitations for directory names.  If you will 
-    be installing NetHack on a FAT (MSDOS compatible) volume (disk), then 
-    there is a limit of 8 characters for each intermediate subdirectory.
-    If the volume is formatted with the NTFS file system, however, then there
-    is no such limitation.
+    make sure the HACKDIR is set properly.
+
     Also check COMPRESS.
 
     You may include all or as few of the special game features as you wish.
@@ -106,7 +116,7 @@ Setting Up
     50 to keep the size of the score list down.
 
 6.  Go to the src directory and edit the top of your Makefile.
-    Change the setting of (GAMEDIR) reflect the directory where
+    Change the setting of (GAMEDIR) to reflect the directory where
     you want NetHack to be installed.  
 
     ie.  GAMEDIR = \games\nethack
@@ -119,10 +129,17 @@ Setting Up
     commenting out RANDOM in ntconf.h, comment out (or set equal
     to nothing) the RANDOM macro in your Makefile.
 
+    If you want, you can choose to have a default NetHack ICON embedded
+    into your executable. You must have first uudecoded the file
+    sys\winnt\nhico.uu into sys\winnt\nethack.ico.
+    Change the Makefile macro RESFILE to point to the second
+    choice (make the macro specify the .rbj file, rather than being set
+    equal to nothing).
+
     If you are recompiling after patching your sources, or if you got your
     files from somewhere other than the official distribution, "touch
     makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
-    lest potentially troublesome timestamps fool "make".
+    lest potentially troublesome timestamps fool "nmake".
 
 Compiling
 
@@ -146,32 +163,17 @@ Compiling
 Running NetHack
 
 10. Make sure the support files -- data, rumors, cmdhelp, opthelp, help, hh,
-    history, and license -- were copied to the game directory.  If not,
+    history, options and license -- were copied to the game directory.  If not,
     move them there from the dat directory yourself.  
     Assuming you are still in the src,dat, or util directory,
     "rumors." can be created manually by entering "..\util\makedefs -r"
     "data." can be created by entering "..\util\makedefs -d".
 
-    Make sure the files NetHack.cnf and termcap also made it to your game
-    directory.  If not, go to sys\share and copy NetHack.cnf and
-    termcap to your game directory.  Edit NetHack.cnf to reflect your
+    Make sure the file NetHack.cnf made it to your game directory.
+    If not, go to sys\winnt and copy winnt.cnf to NetHack.cnf in 
+    your game directory.  Edit NetHack.cnf to reflect your
     particular setup and personal preferences, by following the comments.
-    If you are using the NetHack.cnf off the distribution, be sure to
-    comment out the following line which is MSDOS specific, and will
-    result in a syntax error under the Windows NT port at run time;
-
-    Change:
-	OPTIONS=rawio,BIOS,IBMgraphics
-    to:
-	#OPTIONS=rawio,BIOS,IBMgraphics
-
-    Also, be sure that the value of HACKDIR is correctly referring to
-    the location of your executable.
   
-    I also recommend uncommenting the second GRAPHICS= section
-    located later in the file for the best choice of character sets.
-
-
 Running from Command Prompt
 
 11. If you are running it from the command prompt, you must first set the
@@ -188,19 +190,24 @@ Running from Command Prompt
     executable resides in) each time.
 
 
-Running from Program Manager
+Running from Windows NT Program Manager
 
 12. If you will be running it by launching it from the Program Manager,
     be sure to specify the location of your NetHack executable in the 
     "Working Directory:" dialogue box field when creating your 
     Program Manager Icon:
 
-    ie.  Description      :  NetHack 3.1.1 
+    ie.  Description      :  NetHack 3.1.2 
          Command Line     :  C:\GAMES\NETHACK\NETHACK.EXE
          Working Directory:  C:\GAMES\NETHACK
          Shortcut key     :
 
-13. A NetHack icon has been provided int the file SYS\WINNT\NHICO.UU.
+13. If you did not elect to embed an ICON into the NetHack executable
+    when you built it, then you may point the program manager to the 
+    ICON of your choice using the program manager (f)ile, (p)roperties,
+    change icon option.
+
+    A NetHack icon has been provided in the file SYS\WINNT\NHICO.UU.
     This is a uuencoded copy of the icon file, and you must use uudecode
     to turn it into a Windows NT icon file, in order to use the icon.
 
@@ -219,16 +226,18 @@ Notes:
     util directory to ensure that they are remade.
 
 2)  The executable produced by this port is a 32-bit, flat-address space, 
-    non-overlayed .exe file, which should run on any Windows NT system. It
-    is also a rather large file:
+    non-overlayed .exe file, which should run on any Windows NT system. 
+    It is also a rather large file:
 
 	More than 1,900,000 bytes, nethack.exe when debugging information 
-        is included in the .exe.
+        is included in the .exe, and more than 1,200,000 bytes without.
 
-3)  A true Windows (WIN32s) version of NetHack is currently under development
+3)  If you want to use the number pad on the keyboard for movement when
+    playing the game, be sure the NUMLOCK is on.
+
+4)  A true Windows (WIN32s) version of NetHack is currently under development
     by the PC Windows Porting team.
 
-
-4)  If you have comments or suggestions, feel free to drop any one of
+5)  If you have comments or suggestions, feel free to drop any one of
     us a line c/o nethack-bugs@linc.cis.upenn.edu.  From compuserve,
     try  >INTERNET:nethack-bugs@linc.cis.upenn.edu.

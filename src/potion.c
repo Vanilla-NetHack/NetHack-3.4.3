@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)potion.c	3.1	93/02/06		  */
+/*	SCCS Id: @(#)potion.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -856,7 +856,7 @@ void
 potionbreathe(obj)
 register struct obj *obj;
 {
-	register int i, ii, isdone;
+	register int i, ii, isdone, kn = 0;
 
 	switch(obj->otyp) {
 	case POT_RESTORE_ABILITY:
@@ -890,7 +890,7 @@ register struct obj *obj;
 		}
 		break;
 	case POT_HALLUCINATION:
-		You("have a vision for a moment.");
+		You("have a momentary vision.");
 		break;
 	case POT_CONFUSION:
 	case POT_BOOZE:
@@ -903,24 +903,28 @@ register struct obj *obj;
 			pline("For an instant you could see through yourself!");
 		break;
 	case POT_PARALYSIS:
+		kn++;
 		pline("Something seems to be holding you.");
 		nomul(-rnd(5));
 		exercise(A_DEX, FALSE);
 		break;
 	case POT_SPEED:
+		if (!Fast) Your("knees seem more flexible now.");
 		Fast += rnd(5);
-		Your("knees seem more flexible now.");
 		exercise(A_DEX, TRUE);
 		break;
 	case POT_BLINDNESS:
-		if (!Blind && !u.usleep) pline("It suddenly gets dark.");
-		make_blinded(Blinded + rnd(5),FALSE);
+		if (!Blind && !u.usleep) {
+		    kn++;
+		    pline("It suddenly gets dark.");
+		}
+		make_blinded(Blinded + rnd(5), FALSE);
 		break;
 	case POT_WATER:
 #ifdef POLYSELF
 		if(u.umonnum == PM_GREMLIN) {
 		    struct monst *mtmp;
-		    if(mtmp = cloneu()) {
+		    if ((mtmp = cloneu()) != 0) {
 			mtmp->mhpmax = (u.mhmax /= 2);
 			You("multiply.");
 		    }
@@ -936,7 +940,10 @@ register struct obj *obj;
 		break;
 	}
 	/* note: no obfree() */
-	if (obj->dknown && !objects[obj->otyp].oc_name_known &&
+	if (obj->dknown)
+	    if (kn)
+		makeknown(obj->otyp);
+	    else if (!objects[obj->otyp].oc_name_known &&
 						!objects[obj->otyp].oc_uname)
 		docall(obj);
 }

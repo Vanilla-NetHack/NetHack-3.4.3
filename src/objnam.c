@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)objnam.c	3.1	93/02/12	*/
+/*	SCCS Id: @(#)objnam.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 /* "an uncursed partly eaten guardian naga hatchling corpse" */
 #define	PREFIX	50
@@ -24,8 +24,16 @@ STATIC_DCL struct Jitem Japanese_items[];
 STATIC_OVL struct Jitem Japanese_items[] = {
 	{ SHORT_SWORD, "wakizashi" },
 	{ BROADSWORD, "ninja-to" },
+	{ FLAIL, "nunchaku" },
 	{ GLAIVE, "naginata" },
 	{ LOCK_PICK, "osaku" },
+	{ WOODEN_HARP, "koto" },
+	{ KNIFE, "shito" },
+	{ PLATE_MAIL, "tanko" },
+	{ HELMET, "kabuto" },
+	{ LEATHER_GLOVES, "yugake" },
+	{ FOOD_RATION, "gunyoki" },
+	{ POT_BOOZE, "sake" },
 	{0, "" }
 };
 
@@ -182,7 +190,8 @@ register struct obj *obj;
 		actualn = Japanese_item_name(typ);
 
 	buf[0] = '\0';
-	if (!Blind) obj->dknown=1;
+	if (!Blind) obj->dknown = TRUE;
+	if (pl_character[0] == 'P') obj->bknown = TRUE;
 	if (obj_is_pname(obj))
 	    goto nameit;
 	switch (obj->oclass) {
@@ -300,8 +309,7 @@ register struct obj *obj;
 			    Strcat(buf, " of ");
 			    if (typ == POT_WATER &&
 				objects[POT_WATER].oc_name_known &&
-				(obj->bknown || pl_character[0] == 'P') &&
-				(obj->blessed || obj->cursed)) {
+				obj->bknown && (obj->blessed || obj->cursed)) {
 				Strcat(buf, obj->blessed ? "holy " : "unholy ");
 			    }
 			    Strcat(buf, actualn);
@@ -412,6 +420,7 @@ register struct obj *obj;
 	 * end (Strcat is used on the end)
 	 */
 	register char *bp = xname(obj);
+
 	/* When using xname, we want "poisoned arrow", and when using
 	 * doname, we want "poisoned +0 arrow".  This kludge is about the only
 	 * way to do it, at least until someone overhauls xname() and doname(),
@@ -430,31 +439,29 @@ register struct obj *obj;
 		Strcpy(prefix, "the ");
 	} else
 		Strcpy(prefix, "a ");
-	if((obj->bknown || pl_character[0] == 'P') &&
+
+	if (obj->bknown && 
 	    (obj->otyp != POT_WATER || !objects[POT_WATER].oc_name_known
 		|| (!obj->cursed && !obj->blessed))) {
 	    /* allow 'blessed clear potion' if we don't know it's holy water;
 	     * always allow "uncursed potion of water"
 	     */
-	    if(obj->cursed)
+	    if (obj->cursed)
 		Strcat(prefix, "cursed ");
-	    else if(obj->blessed)
+	    else if (obj->blessed)
 		Strcat(prefix, "blessed ");
-	    else if (((obj->oclass != ARMOR_CLASS
-			&& obj->oclass != WAND_CLASS
-			&& obj->oclass != WEAPON_CLASS
-			&& ((obj->oclass != TOOL_CLASS &&
-			     obj->oclass != RING_CLASS) ||
-			     !objects[obj->otyp].oc_charged))
-			    || !obj->known)
-		/* For items with charges or +/-, knowing the +/- means that
-		 * the item has been totally identified, and therefore there
-		 * is no doubt as to the object being uncursed if it's
-		 * not described as "blessed" or "cursed".
+	    else if ((!obj->known || !objects[obj->otyp].oc_charged ||
+		      (obj->oclass == ARMOR_CLASS ||
+		       obj->oclass == RING_CLASS))
+		/* For most items with charges or +/-, if you know how many
+		 * charges are left or what the +/- is, then you must have
+		 * totally identified the item, so "uncursed" is unneccesary,
+		 * because an identified object not described as "blessed" or
+		 * "cursed" must be uncursed.
 		 *
-		 * If the +/- isn't known, "uncursed" must be printed to
-		 * avoid ambiguity between an item whose curse status is
-		 * unknown, and an item known to be uncursed.
+		 * If the charges or +/- is not known, "uncursed" must be
+		 * printed to avoid ambiguity between an item whose curse
+		 * status is unknown, and an item known to be uncursed.
 		 */
 #ifdef MAIL
 			&& obj->otyp != SCR_MAIL
@@ -464,7 +471,9 @@ register struct obj *obj;
 			&& pl_character[0] != 'P')
 		Strcat(prefix, "uncursed ");
 	}
-	if(obj->greased) Strcat(prefix, "greased ");
+
+	if (obj->greased) Strcat(prefix, "greased ");
+
 	switch(obj->oclass) {
 	case AMULET_CLASS:
 		if(obj->otyp == FAKE_AMULET_OF_YENDOR ||
@@ -489,7 +498,8 @@ plus:
 			Strcat(prefix,
 			       is_rustprone(obj) ? "rusty " :
 			       is_corrodeable(obj) ? "corroded " :
-			       is_flammable(obj) ? "burnt " : "eroded ");
+			    /* is_flammable(obj) ? "burnt " : "eroded " */
+			       "damaged ");
 		} else if (obj->rknown && obj->oerodeproof)
 			Strcat(prefix,
 			       is_rustprone(obj) ? "rustproof " :
@@ -523,12 +533,12 @@ plus:
 			goto plus;
 		if (Is_candle(obj) &&
 		    obj->age < 20L * (long)objects[obj->otyp].oc_cost)
-			Sprintf(eos(prefix), "partly used ");
+			Strcat(prefix, "partly used ");
 		if (obj->otyp == OIL_LAMP || obj->otyp == MAGIC_LAMP ||
 			obj->otyp == BRASS_LANTERN ||
 		    Is_candle(obj) || obj->otyp == CANDELABRUM_OF_INVOCATION) {
 			if(obj->lamplit)
-				Sprintf(eos(bp), " (lit)");
+				Strcat(bp, " (lit)");
 			break;
 		}
 		if(!objects[obj->otyp].oc_charged) break;
@@ -573,6 +583,14 @@ plus:
 		}
 		break;
 	case BALL_CLASS:
+	case CHAIN_CLASS:
+		if (obj->oeroded) {
+		    switch(obj->oeroded) {
+			case 2: Strcat(prefix, "very "); break;
+			case 3: Strcat(prefix, "thoroughly "); break;
+		    }
+		    Strcat(prefix, "rusty ");
+		}
 		if(obj->owornmask & W_BALL)
 			Strcat(bp, " (chained to you)");
 			break;
@@ -753,12 +771,13 @@ static const char *wrp[] = {
 	"wand", "ring", "potion", "scroll", "gem", "amulet",
 	"spellbook", "spell book",
 	/* for non-specific wishes */
-	"weapon", "armor", "tool", "food", "comestible",
+	"weapon", "armor", "armour", "tool", "food", "comestible",
 };
 static const char wrpsym[] = {
 	WAND_CLASS, RING_CLASS, POTION_CLASS, SCROLL_CLASS, GEM_CLASS, 
         AMULET_CLASS, SPBOOK_CLASS, SPBOOK_CLASS,
-	WEAPON_CLASS, ARMOR_CLASS, TOOL_CLASS, FOOD_CLASS, FOOD_CLASS
+	WEAPON_CLASS, ARMOR_CLASS, ARMOR_CLASS, TOOL_CLASS, FOOD_CLASS,
+	FOOD_CLASS
 };
 
 #endif /* OVLB */
@@ -900,7 +919,7 @@ const char *oldstr;
 
 	/* mumak/mumakil */
 	if (len >= 5 && !strcmp(spot-4, "mumak")) {
-		Strcpy(spot, "il");
+		Strcpy(spot+1, "il");
 		goto bottom;
 	}
 
@@ -1017,6 +1036,7 @@ STATIC_OVL const struct o_range NEARDATA o_ranges[] = {
 #ifdef WIZARD
 	{ "venom",	VENOM_CLASS,  BLINDING_VENOM, ACID_VENOM },
 #endif
+	{ "grey stone", GEM_CLASS,    LUCKSTONE,      LOADSTONE },
 };
 
 #define BSTRCMP(base,ptr,string) ((ptr) < base || strcmp((ptr),string))
@@ -1038,7 +1058,8 @@ const char *oldstr;
 
 	if (!oldstr || !*oldstr) {
 		impossible("singular of null?");
-		str[0] = 0; return str;
+		str[0] = 0;
+		return str;
 	}
 	Strcpy(str, oldstr);
 	bp = str;
@@ -1126,6 +1147,12 @@ struct alt_spellings {
 	{ "warhammer", WAR_HAMMER },
 	{ "grey dragon scale mail", GRAY_DRAGON_SCALE_MAIL },
 	{ "grey dragon scales", GRAY_DRAGON_SCALES },
+	{ "enchant armour", SCR_ENCHANT_ARMOR },
+	{ "destroy armour", SCR_DESTROY_ARMOR },
+	{ "scroll of enchant armour", SCR_ENCHANT_ARMOR },
+	{ "scroll of destroy armour", SCR_DESTROY_ARMOR },
+	{ "leather armour", LEATHER_ARMOR },
+	{ "studded leather armour", STUDDED_LEATHER_ARMOR },
 	{ "iron ball", HEAVY_IRON_BALL },
 	{ "stone", ROCK },
 	{ (const char *)0, 0 },
@@ -1236,6 +1263,9 @@ register char *bp;
 			   !strncmp(bp, "burned ", l=7) ||
 			   !strncmp(bp, "rotted ", l=7)) {
 			eroded = 1 + very; very = 0;
+		} else if (!strncmpi(bp, "very ", l=5)) {
+			/* very rusted very heavy iron ball */
+			very = 1;
 		} else if (!strncmpi(bp, "partly eaten ", l=13)) {
 			halfeaten = 1;
 		} else break;
@@ -1407,18 +1437,6 @@ sing:
 		goto typfnd;
 	}
 
-	if(!strcmpi(bp, "ring mail") ||	/* Note: ring mail is not a ring ! */
-	   !strcmpi(bp, "leather armor") || /* Prevent falling to 'armor'. */
-	   !strcmpi(bp, "studded leather armor")) {
-		let = ARMOR_CLASS;
-		actualn = bp;
-		goto srch;
-	}
-	if(!strcmpi(bp, "food ration")){
-		let = FOOD_CLASS;
-		actualn = bp;
-		goto srch;
-	}
 	p = eos(bp);
 	if(!BSTRCMPI(bp, p-10, "holy water")) {
 		typ = POT_WATER;
@@ -1466,10 +1484,18 @@ sing:
 		let = i;
 		goto any;
 	}
+
+	/* Search for class names: XXXXX potion, scroll of XXXXX.  Avoid */
+	/* false hits on, e.g., rings for "ring mail". */
 	if(strncmpi(bp, "enchant ", 8) &&
 	   strncmpi(bp, "destroy ", 8) &&
-	   strncmpi(bp, "food detection", 14))
-	/* allow wishes for "enchant weapon" and "food detection" */
+	   strncmpi(bp, "food detection", 14) &&
+	   strncmpi(bp, "ring mail", 9) &&
+	   strncmpi(bp, "studded leather arm", 19) &&
+	   strncmpi(bp, "leather arm", 11) &&
+	   strncmpi(bp, "tooled horn", 11) &&
+	   strncmpi(bp, "food ration", 11)
+	)
 	for(i = 0; i < sizeof(wrpsym); i++) {
 		register int j = strlen(wrp[i]);
 		if(!strncmpi(bp, wrp[i], j)){
@@ -1502,6 +1528,7 @@ sing:
 		if (!strncmpi(g, "worthless ", 10)) g += 10;
 		if (!strncmpi(g, "piece of ", 9)) g += 9;
 		if (!strncmpi(g, "colored ", 8)) g += 8;
+		else if (!strncmpi(g, "coloured ", 9)) g += 9;
 		if (!strcmpi(g, "glass")) {	/* choose random color */
 			/* white, blue, red, yellowish brown, green, violet */
 			typ = LAST_GEM + rnd(6);
@@ -1858,7 +1885,7 @@ typfnd:
 	if (ispoisoned) {
 	    if (let == WEAPON_CLASS && typ <= SHURIKEN)
 		otmp->opoisoned = (Luck >= 0);
-	    else if (Is_box(otmp))
+	    else if (Is_box(otmp) || typ == TIN)
 		otmp->otrapped = 1;
 	    else if (let == FOOD_CLASS)
 		/* try to taint by making it as old as possible */
@@ -1870,6 +1897,7 @@ typfnd:
 		if (otmp->oartifact) otmp->quan = 1L;
 	}
 
+#ifdef MULDGN
 	/* more wishing abuse: don't allow wishing for certain artifacts */
 	/* and make them pay; charge them for the wish anyway! */
 	if ((is_quest_artifact(otmp) || 
@@ -1881,9 +1909,12 @@ typfnd:
 	    artifact_unexist(otmp);
 	    obfree(otmp, (struct obj *) 0);
 	    otmp = &zeroobj;
-	    pline("For a moment, you feel something in your %s, but it disappears!", makeplural(body_part(HAND)));
+	    pline(
+	     "For a moment, you feel something in your %s, but it disappears!",
+		  makeplural(body_part(HAND)));
 	}
-	
+#endif	/* MULDGN */
+
 	otmp->owt = weight(otmp);
 	if (very && otmp->otyp == HEAVY_IRON_BALL) otmp->owt += 160;
 	if (halfeaten && otmp->oclass == FOOD_CLASS) {

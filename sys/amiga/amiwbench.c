@@ -33,7 +33,13 @@
 extern struct Library *IconBase;
 #endif
 
+extern void NDECL( preserve_icon );
+extern void NDECL( clear_icon );
+#ifndef	SHAREDLIB
+extern void FDECL( amii_set_text_font, ( char *, int ) );
+#endif
 extern int FDECL(parse_config_line, (FILE *, char *, char *, char *));
+extern char *FDECL( ami_default_icon, ( char * ) );
 
 int ami_argc;           /* global argc */
 char **ami_argv;        /* global argv */
@@ -46,10 +52,15 @@ static BOOL KillIcon=FALSE; /* delayed expunge of user's icon */
 static char iconname[PATHLEN+5];
 static char origicon[PATHLEN+5];
 static char savefname[PL_NSIZ];     /* name from name of save file */
+int amibbs=0;			/* BBS mode */
 
+#ifdef AMII_GRAPHICS
 extern int bigscreen;
+#endif
 extern const char *classes; /* liberated from pcmain */
 extern char PATH[];
+
+static void score(char *);
 
 /* Called after NetHack.cnf (and maybe NETHACKOPTIONS) are read.
  * If this is a request to show the score file, do it here and quit.
@@ -109,6 +120,7 @@ void ami_wbench_init()
     }
 
     argline[0]='\0';
+#ifdef AMII_GRAPHICS
     if( p = FindToolType( dobj->do_ToolTypes, "SCREEN" ) )
     {
 	extern int bigscreen;
@@ -117,11 +129,15 @@ void ami_wbench_init()
 	else if( MatchToolValue( p, "LACE" ) )
 	    bigscreen = 1;
     }
+#endif
     if(dobj->do_ToolTypes)for(x=0;p=dobj->do_ToolTypes[x];x++){
 	lp=index(p,'=');
-	if( !lp++ || strncmp(p, "SCORE", 5 ) == 0 ){
+	if( !lp || strncmp(p, "SCORE", 5 ) == 0 ){
 	    if((strncmp(p,"SCORES",6)==0) || (strncmp(p,"SCORE",5)==0)){
-		if( !lp ) lp = "";
+		if( !lp )
+		    lp = "";
+		else
+		    ++lp;
 		doscore=1;
 		scorearg=(char *)alloc(strlen(lp)+1);
 		strcpy(scorearg,lp);
@@ -131,6 +147,7 @@ void ami_wbench_init()
 		TTparse=FALSE;
 	    }
 	} else {
+	    lp++;
 	    TTparse=TRUE;
 		/* new things */
 	    if((strncmp(p,"CMDLINE",7)==0)||
@@ -140,6 +157,28 @@ void ami_wbench_init()
 		if(*p=='I'){
 		    FromTool=0; /* ugly hack bugfix */
 		    FromCLI=1;  /* frontend ICLI only */
+		    if(*argline==':'){
+			char *x=lp;
+			amibbs=1;
+#ifdef for_later
+			copy to next blank in argline to amibasename
+			delete from argline
+#else
+			while(*x && !isspace(*x))x++;
+			while(*x && isspace(*x))x++;
+			strncpy(argline,x,79);
+#endif
+		    }
+		}
+	    }
+	    else if( strncmp( p, "FONT", 4 ) == 0 )
+	    {
+		if( p = strdup( lp ) )
+		{
+		    lp = strchr( p, ':' );
+		    *lp++ = 0;
+		    amii_set_text_font( p, atoi( lp ) );
+		    free( p );
 		}
 	    }
 	    else if( strncmp( p, "SCREEN",6 ) )
@@ -148,13 +187,16 @@ void ami_wbench_init()
 		    raw_printf("Bad ToolTypes line: '%s'\n",p);
 		    getreturn("to continue");
 		}
-	    }
-	TTparse=FALSE;
+	    } 
+	    TTparse=FALSE;
 	}
     }
-	/* cleanup - from files.c, except we only change things
-	 * that are explicitly changed, since we already
-	 * did this once to get the defaults (in amidos.c)  */
+
+    /* cleanup - from files.c, except we only change things
+     * that are explicitly changed, since we already
+     * did this once to get the defaults (in amidos.c)
+     */
+
     if(plname[0]){
 	plnamesuffix(); /* from files.c */
 	set_savefile_name();
@@ -166,26 +208,7 @@ void ami_wbench_init()
     }
     FreeDiskObject(dobj);   /* we'll get it again later if we need it */
 
-    if(doscore){
-	long ac;
-	char *p;
-	char **av=calloc(1,50*sizeof(char *));
-#ifdef CHDIR
-	chdirx(hackdir,0);
-#endif
-	av[0]="NetHack";            /* why not? */
-	av[1]="-s";             /* why not? */
-	for(ac=2,p=scorearg;*p;ac++){
-	    av[ac]=p;
-	    while(*p && !isspace(*p))p++;
-	    if(!*p)break;
-	    *p++='\0';
-	    while(*p && isspace(*p))p++;
-	}
-	prscore(ac+1,av);
-	free( av );
-	exit(0);        /* overloaded */
-    }
+    if(doscore)score(scorearg);
 
 	    /* if the user started us from the tool icon,
 	     * we can't save the game in the same place
@@ -197,8 +220,7 @@ void ami_wbench_init()
     }
 }
 
-/* Simulate the command line (-s is already done, although this is
- * not exactly the way it should be). Note that we do not handle the
+/* Simulate the command line. Note that we do not handle the
  * entire range of standard NetHack flags.
  */
 void ami_wbench_args(){
@@ -234,12 +256,14 @@ void ami_wbench_args(){
 # endif
 	    break;
 #endif
+#ifdef AMII_GRAPHICS
 	case 'L':   /* interlaced screen */
 	    bigscreen = 1;
 	    break;
 	case 'l':   /* No interlaced screen */
 	    bigscreen = -1;
 	    break;
+#endif
 	case 'u':
 	    {
 	    char *c,*dest;
@@ -257,6 +281,9 @@ void ami_wbench_args(){
 	    strcpy(savefname,plname);
 	    set_savefile_name();
 	    break;
+	case 's':
+	    score(p);
+	    /* NOTREACHED */
 	default:
 	    p--;
 	    if(index(classes,toupper(*p))){
@@ -270,25 +297,25 @@ void ami_wbench_args(){
 	    /* FALL THROUGH */
 	case '?':
 	    {
-	    char buf[77];
+		char buf[77];
 
-	    raw_printf("Usage: %s -s [-[%s]] [maxrank] [name]...",
-	      hname, classes);
-	    raw_print("       or");
-	    sprintf(buf,"       %s [-u name] [-[%s]]", hname, classes);
+		raw_printf("Usage: %s -s [-[%s]] [maxrank] [name]...",
+		  hname, classes);
+		raw_print("       or");
+		sprintf(buf,"       %s [-u name] [-[%s]]", hname, classes);
 #if defined(WIZARD) || defined(EXPLORE_MODE)
-	    strcat(buf," [-[DX]]");
+		strcat(buf," [-[DX]]");
 #endif
 #ifdef NEWS
-	    strcat(buf," [-n]");
+		strcat(buf," [-n]");
 #endif
 #ifdef MFLOPPY
 # ifndef AMIGA
-	    strcat(" [-r]");
+		strcat(" [-r]");
 # endif
 #endif
-	    raw_print(buf);
-	    exit(0);
+		raw_print(buf);
+		exit(0);
 	    }
 	}
     }
@@ -315,87 +342,32 @@ char *base;
 {
     BPTR lock;
     char tmp[PATHLEN+5];
-    struct DiskObject *dobj;
-    char **savtp, *ourtools[ 21 ];
-#define CHARACTER   0
-#define PENS        1
-    char types[ 4 ][ 80 ];  /* Buffer space for tooltypes until written */
-    int i, j;
+    char *n;
 
     if(!FromWBench)return;
     if(FromCLI)return;
 
     strcpy(tmp,base);
     strcat(tmp,".info");
+
+    /* Get the name of the icon */
+    n = ami_default_icon( DEFAULT_ICON );
     if(FromTool){               /* user clicked on main icon */
-	(void)CopyFile(DEFAULT_ICON,tmp);
+	(void)CopyFile( n, tmp );
     } else {                /* from project */
 	lock=Lock(tmp,ACCESS_READ);
 	if(lock==0){    /* maybe our name changed - try to get
-		 * original icon */
+			 * original icon */
 	    if(!Rename(origicon,tmp)){
 		/* nope, build a new icon */
-	    lock=Lock(DEFAULT_ICON,ACCESS_READ);
+	    lock=Lock( n, ACCESS_READ);
 	    if(lock==0)return;      /* no icon today */
 	    UnLock(lock);
-	    (void)CopyFile(DEFAULT_ICON,tmp);
+	    (void)CopyFile( n,tmp);
 	    }
 	} else UnLock(lock);
     }
     KillIcon=FALSE;
-
-#if 0
-    dobj=GetDiskObject(base);
-
-    /* Save the current pointer */
-
-    savtp = (char **)dobj->do_ToolTypes;
-
-    /* Copy the old and set new entries for the WorkBench. */
-
-    for( i = 0; savtp[i]; ++i )
-    {
-	/* Ignore any current settings of these values */
-
-	if( strncmpi( savtp[ i ], "CHARACTER=", 10 ) == 0 ||
-	    strncmpi( savtp[ i ], "PENS=", 5 ) == 0 )
-	{
-	    continue;
-	}
-
-	ourtools[ i ] = savtp[ i ];
-    }
-
-    /* Fill in the needed values. */
-
-    ourtools[ i++ ] = types[ CHARACTER ];
-    sprintf( types[ CHARACTER ], "CHARACTER=%c", *pl_character );
-
-    ourtools[ i++ ] = types[ PENS ];
-    strcpy( types[ PENS ], "PENS=" );
-
-    /* Put in the pen colors... */
-    for( j = 0; j < (1L << DEPTH); ++j )
-    {
-	sprintf( types[ PENS ] + strlen( types[ PENS ] ),
-	  "%03x,", flags.amii_curmap[ j ] );
-    }
-
-    /* Remove trailing comma */
-    types[ PENS ][ strlen( types[ PENS ] ) - 1 ] = 0;
-
-    ourtools[ i ] = NULL;
-
-    /* Set the tools pointer to the temporary copy */
-
-    dobj->do_ToolTypes = (void *)ourtools;
-    PutDiskObject(base,dobj);
-
-    /* Restore the pointer and free the structures */
-
-    dobj->do_ToolTypes = (void *)savtp;
-    FreeDiskObject(dobj);
-#endif
 }
 
 /* How much disk space will we need for the icon? */
@@ -414,7 +386,7 @@ char *base;
     strcat(tmp,".info");
     lock=Lock(tmp,ACCESS_READ);
     if(lock==0){    /* check the default */
-	lock=Lock(DEFAULT_ICON,ACCESS_READ);
+	lock=Lock( ami_default_icon( DEFAULT_ICON ),ACCESS_READ);
 	if(lock==0)return(0);
     }
     fib = (struct FileInfoBlock *)AllocMem(ALLOC_SIZE, MEMF_CLEAR);
@@ -427,6 +399,22 @@ char *base;
     UnLock(lock);
     FreeMem(fib, ALLOC_SIZE);
     return(rv);
+}
+
+char *
+ami_default_icon( defname )
+    char *defname;
+{
+    long lock;
+    static char name[ 300 ];
+
+    strcpy( name, "NetHack:x.icon" );
+    name[ 8 ] = pl_character[ 0 ];
+
+    if( access( name, 0 ) == 0 )
+    	return( name );
+
+    return( defname );
 }
 
 /* Delete the icon associated with the given file (NOT the file itself! */
@@ -447,9 +435,12 @@ char *base;
 
 static int preserved=0;		/* wizard mode && saved save file */
 
+void
 preserve_icon(){
     preserved=1;
 }
+
+void
 clear_icon(){
     if(!FromWBench)return;
     if(FromCLI)return;
@@ -498,4 +489,31 @@ int mode;
     }
     FreeMem(fib,ALLOC_SIZE);
     return(-1);     /* give up */
+}
+
+static void
+score(scorearg)
+	char *scorearg;
+        {
+	long ac;
+	char *p;
+	char **av=calloc(1,50*sizeof(char *));
+
+#ifdef CHDIR
+	chdirx(hackdir,0);
+#endif
+	av[0]="NetHack";            /* why not? */
+	av[1]="-s";             /* why not? */
+	av[2]=0;
+	for(ac=2,p=scorearg;*p;ac++){
+	    av[ac]=p;av[ac+1]=0;
+	    while(*p && !isspace(*p))p++;
+	    if(!*p)break;
+	    *p++='\0';
+	    while(*p && isspace(*p))p++;
+	    /* *p='\0';	/* extra? */
+	}
+	prscore(ac+1,av);
+	free( av );
+	exit(0);        /* #defined to msexit() */
 }

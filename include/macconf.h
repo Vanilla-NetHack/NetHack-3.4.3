@@ -17,6 +17,10 @@
 #  define RANDOM
 #  define NO_SIGNAL	/* You wouldn't believe our signals ... */
 #  define FILENAME 256
+#  define NO_TERMS /* For tty port */
+
+#  define TEXTCOLOR /* For Mac TTY interface */
+#  define CHANGE_COLOR
 
 #  include "system.h"
 
@@ -39,10 +43,79 @@ typedef long off_t ;
 /*
  * Turn off the Macsbug calls for the production version.
  */
-#undef Debugger
-#undef DebugStr
-#define Debugger()
-#define DebugStr(aStr)
+#if 0
+#  undef Debugger
+#  undef DebugStr
+#  define Debugger()
+#  define DebugStr(aStr)
+#endif
+
+/* askname dialog defines (shared between macmain.c and macmenu.c) */
+enum
+{
+	dlog_start = 6000,
+	dlogAskName = dlog_start,
+	dlog_limit
+};
+
+/* askname dialog item list */
+enum
+{
+	bttnANPlay = 1,
+	bttnANQuit,
+	uitmANOutlineDefault,
+	uitmANRole,
+	uitmANSex,
+	uitmANMode,
+	stxtANRole,
+	stxtANSex,
+	stxtANMode,
+	stxtANWho,
+	etxtANWho
+};
+
+typedef struct asknameRec
+{
+	short		anMenu[3];
+	unsigned char	anWho[32];	/* player name Pascal string */
+} asknameRec, *asknamePtr;
+
+/* askname menus */
+enum
+{
+	anRole,
+	anSex,
+	anMode
+};
+
+enum
+{
+	/* role */
+	askn_role_start,	/* 0 */
+	asknArcheologist = askn_role_start,
+	asknBarbarian,
+	asknCaveman,		/* Cavewoman */
+	asknElf,
+	asknHealer,
+	asknKnight,
+	asknPriest,		/* Priestess */
+	asknRogue,
+	asknSamurai,
+	asknTourist,
+	asknValkyrie,		/* female only */
+	asknWizard,
+	askn_role_end,
+
+	/* sex */
+	asknMale = 0,
+	asknFemale,
+
+	/* mode */
+	asknRegular = 0,
+	asknExplore,
+	asknDebug,
+	asknQuit		/* special token */
+};
 
 /*
  * We could use the PSN under sys 7 here ...
@@ -71,6 +144,8 @@ extern int macclose ( int fd ) ;
 extern int macread ( int fd , void * ptr , unsigned ) ;
 extern int macwrite ( int fd , void * ptr , unsigned ) ;
 extern long macseek ( int fd , long pos , short whence ) ;
+
+extern char * macgets ( int fd , char * ptr , unsigned len ) ;
 
 
 # if !defined(O_WRONLY)
@@ -167,6 +242,7 @@ extern void SaveWindowSize ( WindowPtr ) ;
 
 #define NUM_CANCEL_ITEMS 10
 
+
 typedef struct NhWindow {
 	WindowPtr		theWindow ;
 	short			kind ;
@@ -190,10 +266,12 @@ typedef struct NhWindow {
 	char			cancelStr [ NUM_CANCEL_ITEMS ] ;
 	char			cancelChar ;
 	char			clear ;
-	char			cursorDrawn ;
 	short			scrollPos ;
 	ControlHandle	scrollBar ;
 } NhWindow ;
+
+extern NhWindow *GetNhWin(WindowPtr mac_win);
+
 
 #define NUM_STAT_ROWS 2
 #define NUM_ROWS 22

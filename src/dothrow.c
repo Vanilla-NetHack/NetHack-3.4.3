@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dothrow.c	3.1	92/12/10	*/
+/*	SCCS Id: @(#)dothrow.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -84,10 +84,12 @@ register struct obj *obj;
 	}
 	if (IS_ALTAR(levl[u.ux][u.uy].typ)) doaltarobj(obj);
 	else
-		pline("%s hits the floor.", Doname2(obj));
+		pline("%s hit%s the %s.", Doname2(obj), 
+		      (obj->quan == 1L) ? "s" : "", surface(u.ux,u.uy));
 	if (breaks(obj, TRUE)) return;
 	else if(obj->oclass == POTION_CLASS) {
-		pline("The flask breaks, and you smell a peculiar odor...");
+		pline("The flask%s break%s, and you smell a peculiar odor...",
+		      plur(obj->quan), (obj->quan == 1L) ? "s" : "");
 		potionbreathe(obj);
 		if(*u.ushops)
 		    check_shop_obj(obj, u.ux, u.uy, TRUE);
@@ -129,20 +131,20 @@ hurtle(dx, dy, range)
 	   (IS_DOOR(levl[nx][ny].typ) && (levl[nx][ny].doormask & D_ISOPEN))) {
 	    pline("Ouch!");
 	    losehp(rnd(2+range), IS_ROCK(levl[nx][ny].typ) ?
-		   "bumping to a wall" : "bumping into a door", KILLED_BY);
+		   "bumping into a wall" : "bumping into a door", KILLED_BY);
 	    break;
 	}
 
-	if (obj = sobj_at(BOULDER,nx,ny)) {
+	if ((obj = sobj_at(BOULDER,nx,ny)) != 0) {
 	    You("bump into a %s.  Ouch!", xname(obj));
-	    losehp(rnd(2+range), "bumping to a boulder", KILLED_BY);
+	    losehp(rnd(2+range), "bumping into a boulder", KILLED_BY);
 	    break;
 	}
 
 	u.ux = nx;
 	u.uy = ny;
 	newsym(u.ux - dx, u.uy - dy);
-	if(mon = m_at(u.ux, u.uy)) {
+	if ((mon = m_at(u.ux, u.uy)) != 0) {
 	    You("bump into %s.", a_monnam(mon));
 	    wakeup(mon);
 	    if(Is_airlevel(&u.uz))
@@ -245,6 +247,7 @@ register struct obj *obj;
 	      pline("%s hits the ceiling and returns to your hand!",
 		    The(xname(obj)));
 	      obj = addinv(obj);
+	      (void) encumber_msg();
 	      setuwep(obj);
 	      return(1);
 	  }
@@ -297,6 +300,7 @@ register struct obj *obj;
 		if(mon == &youmonst) {		/* the thing was caught */
 			exercise(A_DEX, TRUE);
 			(void) addinv(obj);
+			(void) encumber_msg();
 			return(1);
 		}
 	} else {
@@ -365,7 +369,8 @@ register struct obj *obj;
 		int obj_glyph = obj_to_glyph(obj);
 		boolean gone = FALSE;
 
-		if (obj->oartifact == ART_MJOLLNIR && pl_character[0] == 'V') {
+		if (obj->oartifact == ART_MJOLLNIR &&
+			pl_character[0] == 'V' && rn2(100)) {
 		    /* we must be wearing Gauntlets of Power to get here */
 
 		    /* might already be our location (bounced off a wall) */
@@ -381,9 +386,10 @@ register struct obj *obj;
 			tmp_at(DISP_END, 0);
 		    }
 
-		    if(!impaired) {
+		    if (!impaired && rn2(100)) {
 			pline("%s returns to your hand!", The(xname(obj)));
 			obj = addinv(obj);
+			(void) encumber_msg();
 			setuwep(obj);
 			if(cansee(bhitpos.x, bhitpos.y))
 			    newsym(bhitpos.x,bhitpos.y);
@@ -491,6 +497,23 @@ register struct obj   *obj;
 
 	/* it's easier to hit a larger target */
 	if(bigmonst(mon->data)) tmp++;
+
+	/* gloves are a hinderance to proper use of bows */
+	if (uarmg && uwep && -objects[uwep->otyp].w_propellor == WP_BOW) {
+		switch(uarmg->otyp) {
+			case GAUNTLETS_OF_POWER:    /* metal */
+			    tmp -= 2;
+			    break;
+			case GAUNTLETS_OF_FUMBLING:
+			    tmp -= 3;
+			    break;
+			case LEATHER_GLOVES:
+			case GAUNTLETS_OF_DEXTERITY:
+			    break;
+			default: impossible("Unknown type of gloves (%d)",
+			    uarmg->otyp);
+		}
+	}
 
 	if(mon->msleep) {
 		mon->msleep = 0;
@@ -709,14 +732,10 @@ register boolean loose;		/* if not loose, obj is in fobj chain */
 	            check_shop_obj(obj, obj->ox, obj->oy, TRUE);
 		obfree(obj, (struct obj *)0);
 	} else {
-	        /* it is assumed that the obj is a floor-object */ 
-	        register struct monst *shkp;
-	        boolean costly, insider;
+		/* it is assumed that the obj is a floor-object */ 
+		register struct monst *shkp = 0;
+		boolean costly, insider;
 		long loss = 0L;
-
-#ifdef GCC_WARN
-		shkp = (struct monst *) 0;
-#endif
 
 		costly = (costly_spot(obj->ox, obj->oy) && 
 				   (shkp = shop_keeper(*in_rooms(obj->ox,
@@ -763,11 +782,11 @@ struct obj *obj;
 		    if(uarmh) pline("Fortunately, you are wearing a helmet!");
 		}
 		if(flooreffects(obj,u.ux,u.uy,"fall")) return(1);
-		if(u.dz > 0) pline("The gold hits the floor.");
+		if(u.dz > 0) pline("The gold hits the %s.", surface(u.ux,u.uy));
 		obj->nobj = fobj;	/* add the gold to the object list */
 		fobj = obj;
 		place_object(obj,u.ux,u.uy);
-                if(*u.ushops) sellobj(obj, u.ux, u.uy);
+		if(*u.ushops) sellobj(obj, u.ux, u.uy);
 		stackobj(obj);
 		newsym(u.ux,u.uy);
 		return 1;
@@ -798,7 +817,7 @@ struct obj *obj;
 	obj->nobj = fobj;	/* add the gold to the object list */
 	fobj = obj;
 	place_object(obj,bhitpos.x,bhitpos.y);
-        if(*u.ushops) sellobj(obj, bhitpos.x, bhitpos.y);
+	if(*u.ushops) sellobj(obj, bhitpos.x, bhitpos.y);
 	stackobj(obj);
 	newsym(bhitpos.x,bhitpos.y);
 	return(1);

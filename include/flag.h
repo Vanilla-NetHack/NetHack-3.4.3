@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)flag.h	3.1	90/22/02	*/
+/*	SCCS Id: @(#)flag.h	3.1	93/03/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -8,6 +8,9 @@
 struct flag {
 #ifdef AMIFLUSH
 	boolean  amiflush;	/* kill typeahead */
+#endif
+#ifdef	MFLOPPY
+	boolean  asksavedisk;
 #endif
 	boolean  beginner;
 #ifdef MICRO
@@ -21,7 +24,6 @@ struct flag {
 #define wizard	 flags.debug
 	boolean  DECgraphics;	/* use DEC VT-xxx extended character set */
 	boolean  echo;		/* 1 to echo characters */
-	boolean  end_disclose;	/* identify inv and props upon exit */
 	boolean  end_own;	/* list all own scores */
 	boolean  explore;	/* in exploration mode */
 #define discover flags.explore
@@ -85,6 +87,9 @@ struct flag {
 				/* reset from 2 to 1, but never to 0 */
 	unsigned run;		/* 0: h (etc), 1: H (etc), 2: fh (etc) */
 				/* 3: FH, 4: ff+, 5: ff-, 6: FF+, 7: FF- */
+	char	 inv_order[MAXOCLASSES];
+	char	 pickup_types[MAXOCLASSES];
+	char	 end_disclose[5];	/* disclose various info upon exit */
 #ifdef MAC_GRAPHICS_ENV
 	boolean  large_font;	/* draw in larger fonts (say, 12pt instead
 				   of 9pt) */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)bones.c	3.1	93/01/07	*/
+/*	SCCS Id: @(#)bones.c	3.1	93/05/22	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985,1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -83,36 +83,47 @@ boolean restore;
 			otmp->invlet = 0;
 #ifdef TUTTI_FRUTTI
 			if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+			else
 #endif
 #ifdef MAIL
 			if (otmp->otyp == SCR_MAIL) otmp->spe = 1;
+			else
 #endif
 #ifdef POLYSELF
 			if (otmp->otyp == EGG) otmp->spe = 0;
+			else
 #endif
-			if(otmp->otyp == AMULET_OF_YENDOR) {
-				/* no longer the actual amulet */
-				otmp->otyp = FAKE_AMULET_OF_YENDOR;
-				curse(otmp);
-			}
-			if(otmp->otyp == CANDELABRUM_OF_INVOCATION) {
-			    if(otmp->spe > 0) { /* leave candles, if any */
-			        otmp->otyp = WAX_CANDLE;
-				otmp->age = 50L;  /* assume used */
-				otmp->quan = (long)otmp->spe;
-				otmp->lamplit = 0;
-				otmp->spe = 0;
-			    } else obfree(otmp, (struct obj *)0);
-			}
-			if(otmp->otyp == BELL_OF_OPENING) otmp->otyp = BELL;
-			if(otmp->otyp == SPE_BOOK_OF_THE_DEAD) {
-			    otmp->otyp = SPE_MAGIC_MISSILE +
-			                    rn2(SPE_BLANK_PAPER -
-						  SPE_MAGIC_MISSILE + 1);
+			if (otmp->otyp == AMULET_OF_YENDOR) {
+			    /* no longer the real Amulet */
+			    otmp->otyp = FAKE_AMULET_OF_YENDOR;
 			    curse(otmp);
+			} else if (otmp->otyp == CANDELABRUM_OF_INVOCATION) {
+			    otmp->otyp = WAX_CANDLE;
+			    otmp->age = 50L;  /* assume used */
+			    if (otmp->spe > 0)
+				otmp->quan = (long)otmp->spe;
+			    otmp->lamplit = 0;
+			    otmp->spe = 0;
+			    otmp->owt = weight(otmp);
+			} else if (otmp->otyp == BELL_OF_OPENING) {
+			    otmp->otyp = BELL;
+			    curse(otmp);
+			} else if (otmp->otyp == SPE_BOOK_OF_THE_DEAD) {
+			    otmp->otyp = SPE_BLANK_PAPER;
+			    curse(otmp);
+#ifdef MULDGN
+			} else if (is_quest_artifact(otmp)) {
+			    /*
+			     * never leave our own quest artifact among the
+			     * bones; others (via wishing) might remain though
+			     */
+			 /* artifact_unexist(otmp); */
+			    otmp->oartifact = 0;
+			    ONAME(otmp)[0] = '\0';
+#endif
 			}
 		}
-	}			
+	}
 }
 
 static void
@@ -172,11 +183,11 @@ savebones()
 	}
 
 	if(depth(&u.uz) <= 0 ||		/* bulletproofing for endgame */
-	   !rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
+	   (!rn2(1 + (depth(&u.uz)>>2)) /* fewer ghosts on low levels */
 #ifdef WIZARD
 		&& !wizard
 #endif
-		) return;
+		)) return;
 #ifdef EXPLORE_MODE
 	/* don't let multiple restarts generate multiple copies of objects
 	 * in bones files */
@@ -269,6 +280,7 @@ savebones()
 		ttmp->tseen = 0;
 	}
 	resetobjs(fobj,FALSE);
+	resetobjs(level.buriedobjlist, FALSE);
 
 	/* Clear all memory from the level. */
 	for(x=0; x<COLNO; x++) for(y=0; y<ROWNO; y++) {
@@ -369,6 +381,7 @@ getbones()
 			for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 				resetobjs(mtmp->minvent,TRUE);
 			resetobjs(fobj,TRUE);
+			resetobjs(level.buriedobjlist,TRUE);
 		}
 	}
 	(void) close(fd);

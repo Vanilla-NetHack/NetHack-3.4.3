@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.c	3.1	92/11/24	*/
+/*	SCCS Id: @(#)mondata.c	3.1	93/03/16	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -214,6 +214,12 @@ char *str;
 	if (!strncmp(str, "a ", 2)) str += 2;
 	else if (!strncmp(str, "an ", 3)) str += 3;
 
+	/* Alternate spellings */
+	if (!strncmpi(str, "grey dragon", 11)) return PM_GRAY_DRAGON;
+	if (!strncmpi(str, "baby grey dragon", 16)) return PM_BABY_GRAY_DRAGON;
+	if (!strncmpi(str, "grey unicorn", 12)) return PM_GRAY_UNICORN;
+	if (!strncmpi(str, "grey ooze", 9)) return PM_GRAY_OOZE;
+
 	/* Some irregular plurals */
 	if (!strncmpi(str, "incubi", 6)) return PM_INCUBUS;
 	if (!strncmpi(str, "succubi", 7)) return PM_SUCCUBUS;
@@ -397,18 +403,25 @@ int montype;
 	return montype;
 }
 
+static const char *levitate[2]	= { "float", "Float" };
+static const char *fly[2]	= { "fly", "Fly" };
+static const char *slither[2]	= { "slither", "Slither" };
+static const char *ooze[2]	= { "ooze", "Ooze" };
+static const char *crawl[2]	= { "crawl", "Crawl" };
 
 const char *
 locomotion(ptr, def)
 const struct permonst *ptr;
 const char *def;
 {
+	int capitalize = (*def == highc(*def));
+
 	return (
-		is_floater(ptr) ? (const char *)"float" :
-		is_flyer(ptr)   ? (const char *)"fly" :
-		slithy(ptr)     ? (const char *)"slither" :
-		amorphous(ptr)  ? (const char *)"ooze" :
-		nolimbs(ptr)    ? (const char *)"crawl" :
+		is_floater(ptr) ? levitate[capitalize] :
+		is_flyer(ptr)   ? fly[capitalize] :
+		slithy(ptr)     ? slither[capitalize] :
+		amorphous(ptr)  ? ooze[capitalize] :
+		nolimbs(ptr)    ? crawl[capitalize] :
 		def
 	       );
 

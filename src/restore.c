@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)restore.c	3.1	93/01/23	*/
+/*	SCCS Id: @(#)restore.c	3.1	93/04/06	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -162,17 +162,13 @@ restobjchn(fd, ghostly)
 register int fd;
 boolean ghostly;
 {
-	register struct obj *otmp, *otmp2;
+	register struct obj *otmp, *otmp2 = 0;
 	register struct obj *first = (struct obj *)0;
 #ifdef TUTTI_FRUTTI
 	register struct fruit *oldf;
 #endif
 	int xl;
 
-#if defined(LINT) || defined(GCC_WARN)
-	/* suppress "used before set" warning from lint */
-	otmp2 = 0;
-#endif
 	while(1) {
 		mread(fd, (genericptr_t) &xl, sizeof(xl));
 		if(xl == -1) break;
@@ -200,8 +196,8 @@ boolean ghostly;
 				&& !Is_candle(otmp))
 			otmp->age = monstermoves-omoves+otmp->age;
 
-		/* get contents of the container */
-		if (Is_container(otmp) || otmp->otyp == STATUE)
+		/* get contents of a container or statue */
+		if (Has_contents(otmp))
 		    otmp->cobj = restobjchn(fd,ghostly);
 
 		otmp2 = otmp;
@@ -219,7 +215,7 @@ restmonchn(fd, ghostly)
 register int fd;
 boolean ghostly;
 {
-	register struct monst *mtmp, *mtmp2;
+	register struct monst *mtmp, *mtmp2 = 0;
 	register struct monst *first = (struct monst *)0;
 	int xl;
 	struct permonst *monbegin;
@@ -229,10 +225,6 @@ boolean ghostly;
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
 	moved = (monbegin != mons);
 
-#if defined(LINT) || defined(GCC_WARN)
-	/* suppress "used before set" warning from lint */
-	mtmp2 = 0;
-#endif
 	while(1) {
 		mread(fd, (genericptr_t) &xl, sizeof(xl));
 		if(xl == -1) break;
@@ -392,6 +384,9 @@ static int
 restlevelfile(fd, ltmp)
 register int fd;
 xchar ltmp;
+#ifdef applec
+# pragma unused(fd)
+#endif
 {
 	register int nfd;
 
@@ -468,19 +463,22 @@ register int fd;
 	if (rtmp < 2) return(rtmp);  /* dorecover called recursively */
 
 #ifdef MICRO
-# ifdef AMIGA
+# ifdef AMII_GRAPHICS
 	{
-	extern winid WIN_BASE;
-	clear_nhwindow(WIN_BASE);	/* hack until there's a hook for this */
+	extern struct window_procs amii_procs;
+	if(windowprocs.win_init_nhwindows== amii_procs.win_init_nhwindows){
+	    extern winid WIN_BASE;
+	    clear_nhwindow(WIN_BASE);	/* hack until there's a hook for this */
+	}
 	}
 # else
 	clear_nhwindow(WIN_MAP);
 # endif
 	clear_nhwindow(WIN_MESSAGE);
-	You("got as far as level %d in %s%s.",
+	You("return to level %d in %s%s.",
 		depth(&u.uz), dungeons[u.uz.dnum].dname,
-		flags.debug ? " while in WIZARD mode" :
-		flags.explore ? " while in discovery mode" : "");
+		flags.debug ? " while in debug mode" :
+		flags.explore ? " while in explore mode" : "");
 	curs(WIN_MAP, 1, 1);
 	dotcnt = 0;
 	putstr(WIN_MAP, 0, "Restoring:");
@@ -559,6 +557,7 @@ register int fd;
 #ifdef MULDGN
 	load_qtlist();	/* re-load the quest text info */
 #endif
+	reset_attribute_clock();
 	/* Set up the vision internals, after levl[] data is loaded */
 	/* but before docrt().					    */
 	vision_reset();
@@ -642,6 +641,9 @@ boolean ghostly;
 		uchar	len;
 		struct rm r;
 		
+#if defined(applec)
+		memset ( & r , 0 , sizeof ( r ) ) ; /* Suppress warning about used before set */
+#endif
 		i = 0; j = 0; len = 0;
 		while(i < ROWNO) {
 		    while(j < COLNO) {
@@ -760,6 +762,7 @@ boolean ghostly;
 	dealloc_trap(trap);
 	fobj = restobjchn(fd, ghostly);
 	find_lev_obj();
+	level.buriedobjlist = restobjchn(fd, ghostly);
 	billobjs = restobjchn(fd, ghostly);
 	rest_engravings(fd);
 	rest_rooms(fd);		/* No joke :-) */

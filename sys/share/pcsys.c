@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)pcsys.c	3.1	93/01/01
+/*	SCCS Id: @(#)pcsys.c	3.1	93/05/24
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
- *  System related functions for MSDOS, OS/2 and TOS
+ *  System related functions for MSDOS, OS/2, TOS, and Windows NT
  */
 
 #define NEED_VARARGS
@@ -21,6 +21,15 @@
 #include <osbind.h>
 #endif
 
+#ifdef MOVERLAY
+extern void __far __cdecl _movepause( void );
+extern void __far __cdecl _moveresume( void );
+extern unsigned short __far __cdecl _movefpause;
+extern unsigned short __far __cdecl _movefpaused;
+#define     __MOVE_PAUSE_DISK     2   /* Represents the executable file */
+#define     __MOVE_PAUSE_CACHE    4   /* Represents the cache memory */
+#endif /* MOVERLAY */
+
 static boolean NDECL(record_exists);
 #ifndef TOS
 static boolean NDECL(comspec_exists);
@@ -30,7 +39,7 @@ static boolean NDECL(comspec_exists);
 extern int ProgmanLaunched;    /* from nttty.c */
 #endif
 
-# ifdef MICRO
+#ifdef MICRO
 
 void
 flushout()
@@ -40,41 +49,53 @@ flushout()
 }
 
 static const char *COMSPEC = 
-#  ifdef TOS
+# ifdef TOS
 "SHELL";
-#  else
+# else
 "COMSPEC";
-#  endif
+# endif
 
 #define getcomspec() getenv(COMSPEC)
 
-#  ifdef SHELL
+# ifdef SHELL
 int
 dosh()
 {
 	extern char orgdir[];
 	char *comspec;
+ 	int spawnstat;
 
 	if (comspec = getcomspec()) {
-#   ifndef TOS	/* TOS has a variety of shells */
+#  ifndef TOS	/* TOS has a variety of shells */
 		suspend_nhwindows("To return to NetHack, enter \"exit\" at the system prompt.\n");
-#   else
+#  else
 		suspend_nhwindows((char *)0);
-#   endif /* TOS */
+#  endif /* TOS */
 		chdirx(orgdir, 0);
-#ifdef __GO32__
+#  ifdef __GO32__
 		if (system(comspec) < 0) {  /* wsu@eecs.umich.edu */
-#else
-		if (spawnl(P_WAIT, comspec, comspec, NULL) < 0) {
-#endif
+#  else
+#   ifdef MOVERLAY          
+       /* Free the cache memory used by overlays, close .exe */ 
+	_movefpause |= __MOVE_PAUSE_DISK;
+	_movefpause |= __MOVE_PAUSE_CACHE;
+	_movepause();
+#   endif
+ 		spawnstat = spawnl(P_WAIT, comspec, comspec, NULL);
+#   ifdef MOVERLAY
+                 _moveresume();
+#   endif
+ 
+ 		if ( spawnstat < 0) {
+#  endif
 			raw_printf("Can't spawn \"%s\"!", comspec);
 			getreturn("to continue");
 		}
-#   ifdef TOS
+#  ifdef TOS
 /* Some shells (e.g. Gulam) turn the cursor off when they exit */
 		if (flags.BIOS)
 			(void)Cursconf(1, -1);
-#   endif
+#  endif
 		get_scr_size(); /* maybe the screen mode changed (TH) */
 		resume_nhwindows();
 		chdirx(hackdir, 0);
@@ -82,9 +103,9 @@ dosh()
 		pline("Can't find %s.",COMSPEC);
 	return 0;
 }
-#  endif /* SHELL */
+# endif /* SHELL */
 
-#  ifdef MFLOPPY
+# ifdef MFLOPPY
 
 void
 eraseall(path, files)
@@ -116,7 +137,6 @@ int mode;
 #  ifndef TOS
 	int status;
 	char copy[8], *comspec;
-	extern saveprompt;
 #  endif
 
 	if (!ramdisk)
@@ -221,13 +241,12 @@ int
 saveDiskPrompt(start)
 int start;
 {
-	extern saveprompt;
 	char buf[BUFSIZ], *bp;
 	char qbuf[QBUFSZ];
 
 	int fd;
 
-	if (saveprompt) {
+	if (flags.asksavedisk) {
 		/* Don't prompt if you can find the save file */
 		if ((fd = open_savefile()) >= 0) {
 			(void) close(fd);
@@ -255,7 +274,7 @@ int start;
 	return 1;
 }
 
-#endif /* MFLOPPY */
+# endif /* MFLOPPY */
 
 /* Return 1 if the record file was found */
 static boolean
@@ -271,9 +290,9 @@ record_exists()
 	return FALSE;
 }
 
-#  ifdef TOS
+# ifdef TOS
 #define comspec_exists() 1
-#  else
+# else
 /* Return 1 if the comspec was found */
 static boolean
 comspec_exists()
@@ -290,15 +309,13 @@ comspec_exists()
 }
 # endif
 
-#ifdef MFLOPPY
+# ifdef MFLOPPY
 /* Prompt for game disk, then check for record file.
  */
 void
 gameDiskPrompt()
 {
-	extern int saveprompt;
-
-	if (saveprompt) {
+	if (flags.asksavedisk) {
 		if (record_exists() && comspec_exists())
 			return;
 		(void) putchar('\n');
@@ -315,8 +332,8 @@ gameDiskPrompt()
 	getreturn("to continue");
 	return;
 }
-# endif
 # endif /* MFLOPPY */
+#endif /* MICRO */
 
 /*
  * Add a backslash to any name not ending in /, \ or :   There must
@@ -342,11 +359,11 @@ void
 getreturn(str)
 const char *str;
 {
-# ifdef TOS
+#ifdef TOS
 	msmsg("Hit <Return> %s.", str);
-# else
+#else
 	msmsg("Hit <Enter> %s.", str);
-# endif
+#endif
 	while (Getchar() != '\n') ;
 	return;
 }
@@ -364,15 +381,15 @@ msmsg VA_DECL(const char *, fmt)
 /*
  * Follow the PATH, trying to fopen the file.
  */
-#  ifdef TOS
-#   ifdef __MINT__
+#ifdef TOS
+# ifdef __MINT__
 #define PATHSEP ':'
-#   else
+# else
 #define PATHSEP	','
-#   endif
-#  else
+# endif
+#else
 #define PATHSEP	';'
-#  endif
+#endif
 
 FILE *
 fopenp(name, mode)
@@ -401,22 +418,22 @@ const char *name, *mode;
 				pp++;
 		}
 	}
-#  ifdef OS2_CODEVIEW /* one more try for hackdir */
+#ifdef OS2_CODEVIEW /* one more try for hackdir */
 	Strcpy(buf,hackdir);
 	append_slash(buf);
 	Strcat(buf,name);
 	if(fp = fopen(buf,mode))
 		return fp;
-#  endif
+#endif
 	return (FILE *)0;
 }
 
 /* Chdir back to original directory
  */
 #undef exit
-# ifdef TOS
+#ifdef TOS
 extern boolean run_from_desktop;	/* set in pcmain.c */
-# endif
+#endif
 
 void exit(int);
 
@@ -424,32 +441,32 @@ void
 msexit(code)
 int code;
 {
-# ifdef CHDIR
+#ifdef CHDIR
 	extern char orgdir[];
-# endif
+#endif
 
 	flushout();
-# ifndef TOS
-#  ifndef WIN32
+#ifndef TOS
+# ifndef WIN32
 	enable_ctrlP();		/* in case this wasn't done */
-#  endif
 # endif
-# ifdef MFLOPPY
+#endif
+#ifdef MFLOPPY
 	if (ramdisk) copybones(TOPERM);
-# endif
-# ifdef CHDIR
+#endif
+#ifdef CHDIR
 	chdir(orgdir);		/* chdir, not chdirx */
 	chdrive(orgdir);
-# endif
-# ifdef TOS
+#endif
+#ifdef TOS
 	if (run_from_desktop)
 	    getreturn("to continue"); /* so the user can read the score list */
-#  ifdef TEXTCOLOR
+# ifdef TEXTCOLOR
 	if (colors_changed)
 		restore_colors();
-#  endif
 # endif
-# ifdef WIN32CON
+#endif
+#ifdef WIN32CON
 	/* Only if we started from Progman, not command prompt,
 	 * we need to get one last return, so the score board does
 	 * not vanish instantly after being created.
@@ -457,7 +474,8 @@ int code;
          */
 	 
 	if (ProgmanLaunched) getreturn("to end");
-# endif
+#endif
 	exit(code);
 	return;
 }
+

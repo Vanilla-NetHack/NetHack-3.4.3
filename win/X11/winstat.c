@@ -234,6 +234,7 @@ struct X_status_value {
 /*
  * Notes:
  * + Alignment needs a different init value, because -1 is an alignment.
+ * + Armor Class is an schar, so 256 is out of range.
  * + Blank value is 0 and should never change.
  */
 static struct X_status_value shown_stats[NUM_STATS] = {
@@ -251,15 +252,15 @@ static struct X_status_value shown_stats[NUM_STATS] = {
     { "Max HP",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },	/*10*/
     { "Power",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
     { "Max Power",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
-    { "Armor Class",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
+    { "Armor Class",	SV_VALUE, (Widget) 0,256, 0, FALSE, FALSE },
     { "Level",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
     { "Experience",	SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },	/*15*/
     { "Alignment",	SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
-    { "Time",		SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
-    { "Score",		SV_VALUE, (Widget) 0, -2, 0, FALSE, FALSE },
+    { "Time",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
+    { "Score",		SV_VALUE, (Widget) 0, -1, 0, FALSE, FALSE },
 
-    { "",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE }, /* hunger*/
-    { "Confused",	SV_NAME,  (Widget) 0,  1, 0, FALSE, TRUE },	/*20*/
+    { "",		SV_NAME,  (Widget) 0, -1, 0, FALSE, TRUE }, /* hunger*/
+    { "Confused",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },	/*20*/
     { "Sick",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Blind",		SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },
     { "Stunned",	SV_NAME,  (Widget) 0,  0, 0, FALSE, TRUE },

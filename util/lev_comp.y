@@ -1,5 +1,5 @@
 %{
-/*	SCCS Id: @(#)lev_comp.c	3.1	93/02/13	*/
+/*	SCCS Id: @(#)lev_comp.c	3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -51,8 +51,8 @@
 extern void FDECL(exit, (int));
 #endif
 
-extern void FDECL(yyerror, (char *));
-extern void FDECL(yywarning, (char *));
+extern void FDECL(yyerror, (const char *));
+extern void FDECL(yywarning, (const char *));
 extern int NDECL(yylex);
 int NDECL(yyparse);
 
@@ -68,7 +68,7 @@ extern char FDECL(what_map_char, (CHAR_P));
 extern void FDECL(scan_map, (char *));
 extern void NDECL(wallify_map);
 extern boolean NDECL(check_subrooms);
-extern void FDECL(check_coord, (int, int, char *));
+extern void FDECL(check_coord, (int, int, const char *));
 extern void NDECL(store_part);
 extern void NDECL(store_room);
 extern void FDECL(write_maze, (int, specialmaze *));
@@ -137,7 +137,7 @@ static xchar in_room;
 
 extern int fatal_error;
 extern int want_warnings;
-extern char* fname;
+extern const char *fname;
 
 %}
 

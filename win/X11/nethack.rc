@@ -8,8 +8,8 @@
 #
 #
 OPTIONS=windowtype:x11
-OPTIONS=confirm,male,fixinv,nopickup,safe_pet,sortpack,tombstone,verbose,news
-OPTIONS=fruit:pineapple
+OPTIONS=confirm,male,fixinv,noautopickup,safe_pet,sortpack,tombstone
+OPTIONS=verbose,news,fruit:pineapple
 OPTIONS=dogname:Dhairrhuwyth
 OPTIONS=catname:Ghisteslwchlohm
 #

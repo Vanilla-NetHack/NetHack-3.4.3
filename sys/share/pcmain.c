@@ -435,10 +435,16 @@ char *argv[];
 #ifdef NEWS
 		    (void) printf(" [-n]");
 #endif
+#ifndef AMIGA
+		    (void) printf(" [-I] [-i] [-d]");
+#endif
 #ifdef MFLOPPY
 # ifndef AMIGA
 		    (void) printf(" [-r]");
 # endif
+#endif
+#ifdef AMIGA
+		    (void) printf(" [-[lL]]");
 #endif
 		    putchar('\n');
 		    exit(0);

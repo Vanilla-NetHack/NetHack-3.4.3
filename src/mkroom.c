@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkroom.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)mkroom.c	3.1	93/04/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -363,6 +363,7 @@ coord *mm;
 	      if(enexto(mm, mm->x, mm->y, mdat))
 		   (void) makemon(mdat, mm->x, mm->y);
 	}
+	level.flags.graveyard = TRUE;	/* reduced chance for undead corpse */
 }
 
 static struct permonst *
@@ -618,8 +619,8 @@ static struct {
 };
 
 static struct permonst *
-squadmon() {	    /* return soldier types. */
-
+squadmon()		/* return soldier types. */
+{
 	register struct permonst *ptr;
 	register int	i, cpro, sel_prob = rnd(80+level_difficulty());
 
@@ -634,7 +635,7 @@ gotone:
 	if(!(ptr->geno & (G_GENOD | G_EXTINCT)))  return(ptr);
 	else			    return((struct permonst *) 0);
 }
-#endif /* ARMY /* */
+#endif /* ARMY */
 
 /* 
  * save_room : A recursive function that saves a room and its subrooms 

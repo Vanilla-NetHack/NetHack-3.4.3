@@ -42,10 +42,3 @@ typedef struct OPTIONS
 				 * options value.
 				 */
 } OPTIONS, *OPTR;
-
-typedef struct DEFAULTS
-{
-    int pltype;			/* Character class */
-    char *plname;		/* Players name */
-    char *options;		/* Preferred options string */
-} DEFAULTS;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)makemon.c	3.1	93/02/20	*/
+/*	SCCS Id: @(#)makemon.c	3.1	93/05/10	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -333,6 +333,11 @@ register struct monst *mtmp;
 		(void)mongets(mtmp, KNIFE);
 		(void)mongets(mtmp, LONG_SWORD);
 		break;
+	    case S_ZOMBIE:
+		if (!rn2(4)) (void)mongets(mtmp, LEATHER_ARMOR);
+		if (!rn2(4))
+			(void)mongets(mtmp, (rn2(3) ? KNIFE : SHORT_SWORD));
+		break;
 	    case S_DEMON:
 		switch (mm) {
 		    case PM_BALROG:
@@ -364,35 +369,49 @@ register struct monst *mtmp;
 		if (!is_demon(ptr)) break;
 		/* fall thru */
 /*
- *	Now the general case, ~40% chance of getting some type
- *	of weapon. TODO: Add more weapons types (use bigmonst());
+ *	Now the general case, Some chance of getting some type
+ *	of weapon for "normal" monsters.  Certain special types
+ *	of monsters will get a bonus chance or different selections.
  */
 	    default:
-		switch(rnd(12)) {
+	      {
+		int bias;
+		
+		bias = is_lord(ptr) + is_prince(ptr) * 2 + extra_nasty(ptr);
+		switch(rnd(14 - (2 * bias))) {
 		    case 1:
-			m_initthrow(mtmp, DART, 12);
+			if(strongmonst(ptr)) (void) mongets(mtmp, BATTLE_AXE);
+			else m_initthrow(mtmp, DART, 12);
 			break;
 		    case 2:
-			(void) mongets(mtmp, CROSSBOW);
-			m_initthrow(mtmp, CROSSBOW_BOLT, 12);
+			if(strongmonst(ptr))
+			    (void) mongets(mtmp, TWO_HANDED_SWORD);
+			else {
+			    (void) mongets(mtmp, CROSSBOW);
+			    m_initthrow(mtmp, CROSSBOW_BOLT, 12);
+			}
 			break;
 		    case 3:
 			(void) mongets(mtmp, BOW);
 			m_initthrow(mtmp, ARROW, 12);
 			break;
 		    case 4:
-			m_initthrow(mtmp, DAGGER, 3);
+			if(strongmonst(ptr)) (void) mongets(mtmp, LONG_SWORD);
+			else m_initthrow(mtmp, DAGGER, 3);
 			break;
 		    case 5:
-			(void) mongets(mtmp, AKLYS);
+			if(strongmonst(ptr))
+			    (void) mongets(mtmp, LUCERN_HAMMER);
+			else (void) mongets(mtmp, AKLYS);
 			break;
 		    default:
 			break;
 		}
-		break;
+	      }
+	      break;
 	}
 #ifdef MUSE
-	if ((int) mtmp->m_lev > rn2(70))
+	if ((int) mtmp->m_lev > rn2(75))
 		(void) mongets(mtmp, rnd_offensive_item(mtmp));
 #endif
 }
@@ -546,7 +565,7 @@ register struct	monst	*mtmp;
 	if (ptr == &mons[PM_SOLDIER] && rn2(13)) return;
 #endif
 #ifdef MUSE
-	if ((int) mtmp->m_lev > rn2(30))
+	if ((int) mtmp->m_lev > rn2(50))
 		(void) mongets(mtmp, rnd_defensive_item(mtmp));
 	if ((int) mtmp->m_lev > rn2(100))
 		(void) mongets(mtmp, rnd_misc_item(mtmp));
@@ -851,7 +870,7 @@ struct permonst *mdat;
 	if (mdat) {
 	    if (IS_POOL(levl[x][y].typ))
 		if (mdat == &playermon &&
-		    (HLevitation || Wwalking || Magical_breathing))
+		    (HLevitation || Wwalking || Amphibious))
 			return 1;
 		else	return (is_flyer(mdat) || is_swimmer(mdat));
 	    if (levl[x][y].typ == LAVAPOOL)
@@ -1210,13 +1229,13 @@ register struct monst *victim;
 	register int newtype;
 	register struct permonst *ptr = mtmp->data;
 
-	if (ptr->mlevel >= 50 || is_golem(ptr) || is_home_elemental(ptr)
-		|| is_mplayer(ptr))
-	    /* doesn't grow up, has strange hp calculation so might be
-	     * weakened by tests below */
-	    return ptr;
-
 	if (victim) {
+	    if (ptr->mlevel >= 50 || is_golem(ptr) || is_home_elemental(ptr)
+		    || is_mplayer(ptr))
+		/* doesn't grow up, has strange hp calculation so might be
+		 * weakened by tests below */
+		return ptr;
+
 	    mtmp->mhpmax = mtmp->mhpmax + (1 + rn2((int)victim->m_lev+1));
 	    if (mtmp->mhpmax <= (8 * (int)mtmp->m_lev)
 			|| (mtmp->m_lev == 0 && mtmp->mhpmax <= 4))
@@ -1245,6 +1264,7 @@ register struct monst *victim;
 			return (struct permonst *)0;
 		}
 		mtmp->data = &mons[newtype];
+		newsym(mtmp->mx, mtmp->my);	/* color may change */
 		mtmp->m_lev = mons[newtype].mlevel;
 	}
 	if (newtype == monsndx(ptr) && victim &&

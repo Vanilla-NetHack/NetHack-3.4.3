@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_name.c	3.1	93/02/22	*/
+/*	SCCS Id: @(#)do_name.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -581,7 +581,7 @@ register struct monst *mtmp;
 	return(bp);
 }
 
-static NEARDATA const char *bogusmons[] = {
+static const char *bogusmons[] = {
 	"jumbo shrimp", "giant pigmy", "gnu", "killer penguin", 
 	"giant cockroach", "giant slug", "maggot", "pterodactyl",
 	"tyrannosaurus rex", "basilisk", "beholder", "nightmare",
@@ -623,8 +623,9 @@ static NEARDATA const char *bogusmons[] = {
 	"samurai rabbit",			/* Usagi Yojimbo */
 	"aardvark",				/* Cerebus */
 	"Audrey II",				/* Little Shop of Horrors */
-	"witch doctor", "one-eyed one-horned flying purple people eater"
+	"witch doctor", "one-eyed one-horned flying purple people eater",
 						/* 50's rock 'n' roll */
+	"Barney the dinosaur"			/* saccharine kiddy TV */
 };
 
 const char *
@@ -692,11 +693,11 @@ roguename() /* Name of a Rogue player */
 {
 	char *i, *opts;
 
-	if(opts = getenv("ROGUEOPTS")) {
-		for(i=opts; *i; i++)
+	if ((opts = getenv("ROGUEOPTS")) != 0) {
+		for (i = opts; *i; i++)
 			if (!strncmp("name=",i,5)) {
 				char *j;
-				if (j=index(i+5,','))
+				if ((j = index(i+5,',')) != 0)
 					*j = (char)0;
 				return i+5;
 			}

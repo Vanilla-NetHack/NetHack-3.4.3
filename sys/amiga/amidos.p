@@ -28,8 +28,12 @@ int FDECL(saveDiskPrompt, (int ));
 void NDECL(gameDiskPrompt );
 void FDECL(append_slash, (char *));
 void FDECL(getreturn, (const char *));
+#ifndef msmsg
 void FDECL(msmsg, ( const char *, ... ));
+#endif
+#if 0
 FILE *FDECL(fopenp, (const char * , const char *));
+#endif
 #ifndef	__SASC_60
 int FDECL(chdir, (char *));
 #endif

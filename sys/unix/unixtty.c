@@ -303,6 +303,67 @@ introff()		/* disable kbd interrupts if required*/
 #endif
 }
 
+#ifdef _M_UNIX		/* SCO UNIX (3.2.4), from Andreas Arens */
+#include <sys/console.h>
+
+#define BSIZE (E_TABSZ*2)
+#define LDIOC ('D'<<8)		/* POSIX prevents definition */
+
+#include <sys/emap.h>
+
+int sco_flag_console = 0;
+int sco_map_valid = -1;
+unsigned char sco_chanmap_buf[BSIZE];
+
+void
+check_sco_console()
+{
+	if (isatty(0) && ioctl(0,CONS_GET,0) != -1) {
+		sco_flag_console = 1; 
+	}
+}
+
+void
+init_sco_cons()
+{
+# ifdef TTY_GRAPHICS
+	if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+		atexit(sco_mapon);
+		sco_mapoff();
+		switch_graphics(IBM_GRAPHICS);
+		if (has_colors())
+			flags.use_color = TRUE;
+	}
+# endif
+}
+
+void
+sco_mapon()
+{
+# ifdef TTY_GRAPHICS
+	if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+		if (sco_map_valid != -1) {
+			ioctl(0,LDSMAP,sco_chanmap_buf);
+		}
+		sco_map_valid = -1;
+	}
+# endif
+}
+
+void
+sco_mapoff()
+{
+# ifdef TTY_GRAPHICS
+	if (!strcmp(windowprocs.name, "tty") && sco_flag_console) {
+		sco_map_valid = ioctl(0,LDGMAP,sco_chanmap_buf);
+		if (sco_map_valid != -1) {
+			ioctl(0,LDNMAP,NULL);
+		}
+	}
+# endif
+}
+#endif	/* _M_UNIX */
+
 
 /* fatal error */
 /*VARARGS1*/

@@ -385,7 +385,8 @@ register int type;
 		else
 		    levl[x][y].doormask = D_CLOSED;
 
-		if (levl[x][y].doormask != D_ISOPEN && !shdoor && !rn2(25))
+		if (levl[x][y].doormask != D_ISOPEN && !shdoor &&
+		    level_difficulty() >= 5 && !rn2(25))
 		    levl[x][y].doormask |= D_TRAPPED;
 	    } else
 #ifdef STUPID
@@ -415,7 +416,8 @@ register int type;
 		if(shdoor || !rn2(5))	levl[x][y].doormask = D_LOCKED;
 		else			levl[x][y].doormask = D_CLOSED;
 
-		if(!shdoor && !rn2(20)) levl[x][y].doormask |= D_TRAPPED;
+		if(!shdoor && level_difficulty() >= 4 && !rn2(20))
+		    levl[x][y].doormask |= D_TRAPPED;
 	}
 
 	add_door(x,y,aroom);
@@ -479,10 +481,12 @@ int trap_type;
 		    if(trap_type == TRAPDOOR && !Can_fall_thru(&u.uz))
 			trap_type = ROCKTRAP;
 		    ttmp = maketrap(xx, yy+dy, trap_type);
-		    ttmp->once = 1;
-		    if (trap_engravings[trap_type])
-			make_engr_at(xx, yy-dy,
+		    if (ttmp) {
+			ttmp->once = 1;
+			if (trap_engravings[trap_type])
+			    make_engr_at(xx, yy-dy,
 				     trap_engravings[trap_type], 0L, DUST);
+		    }
 		}
 		dosdoor(xx, yy, aroom, SDOOR);
 	    } else {
@@ -490,7 +494,8 @@ int trap_type;
 		if(rn2(7))
 		    dosdoor(xx, yy, aroom, rn2(5) ? SDOOR : DOOR);
 		else {
-		    (void) mksobj_at(SCR_TELEPORTATION, xx, yy+dy, TRUE);
+		    if (!level.flags.noteleport)
+			(void) mksobj_at(SCR_TELEPORTATION, xx, yy+dy, TRUE);
 		    if(!rn2(3)) (void) mkobj_at(0, xx, yy+dy, TRUE);
 		}
 	    }
@@ -501,17 +506,16 @@ int trap_type;
 static void
 make_niches()
 {
-	register int ct = rnd((nroom>>1) + 1);
-	boolean	ltptr = TRUE,
-		vamp = TRUE;
+	register int ct = rnd((nroom>>1) + 1), dep = depth(&u.uz);
+
+	boolean	ltptr = (!level.flags.noteleport && dep > 15),
+		vamp = (dep > 5 && dep < 25);
 
 	while(ct--) {
-
-		if(depth(&u.uz) > 15 && !rn2(6) && ltptr) {
+		if (ltptr && !rn2(6)) {
 			ltptr = FALSE;
 			makeniche(LEVEL_TELEP);
-		} else if(depth(&u.uz) > 5 && depth(&u.uz) < 25
-							&& !rn2(6) && vamp) {
+		} else if (vamp && !rn2(6)) {
 			vamp = FALSE;
 			makeniche(TRAPDOOR);
 		} else	makeniche(NO_TRAP);
@@ -551,6 +555,11 @@ clear_level_structures()
 	(void) memset((genericptr_t)level.objects, 0, sizeof(level.objects));
 	(void) memset((genericptr_t)level.monsters, 0, sizeof(level.monsters));
 #endif
+	level.objlist = (struct obj *)0;
+	level.buriedobjlist = (struct obj *)0;
+	level.monlist = (struct monst *)0;
+	level.damagelist = (struct damage *)0;
+
 	level.flags.nfountains = 0;
 	level.flags.nsinks = 0;
 	level.flags.has_shop = 0;
@@ -690,7 +699,7 @@ makelevel()
 #ifdef MULDGN
 			mk_knox_portal(vault_x+w, vault_y+h);
 #endif
-			if(!rn2(3)) makevtele();
+			if(!level.flags.noteleport && !rn2(3)) makevtele();
 		} else if(rnd_rect() && create_vault()) {
 			vault_x = rooms[nroom].lx;
 			vault_y = rooms[nroom].ly;
@@ -999,14 +1008,25 @@ static boolean
 bydoor(x, y)
 register xchar x, y;
 {
-	register boolean tmp1, tmp2;
+	register int typ;
 
-	/* break up large expression to help some compilers */
-	tmp1 = (IS_DOOR(levl[x+1][y].typ) || levl[x+1][y].typ == SDOOR ||
-		IS_DOOR(levl[x-1][y].typ) || levl[x-1][y].typ == SDOOR);
-	tmp2 = (IS_DOOR(levl[x][y+1].typ) || levl[x][y+1].typ == SDOOR ||
-		IS_DOOR(levl[x][y-1].typ) || levl[x][y-1].typ == SDOOR);
-	return(tmp1 || tmp2);
+	if (isok(x+1, y)) {
+		typ = levl[x+1][y].typ;
+		if (IS_DOOR(typ) || typ == SDOOR) return TRUE;
+	}
+	if (isok(x-1, y)) {
+		typ = levl[x-1][y].typ;
+		if (IS_DOOR(typ) || typ == SDOOR) return TRUE;
+	}
+	if (isok(x, y+1)) {
+		typ = levl[x][y+1].typ;
+		if (IS_DOOR(typ) || typ == SDOOR) return TRUE;
+	}
+	if (isok(x, y-1)) {
+		typ = levl[x][y-1].typ;
+		if (IS_DOOR(typ) || typ == SDOOR) return TRUE;
+	}
+	return FALSE;
 }
 
 /* see whether it is allowable to create a door at [x,y] */
@@ -1088,19 +1108,26 @@ coord *tm;
 		kind = rnd(TRAPNUM-1);
 		/* reject "too hard" traps */
 		switch (kind) {
+		    case SLP_GAS_TRAP:
+			if (lvl < 2) kind = NO_TRAP; break;
 		    case LEVEL_TELEP:
-		    case LANDMINE:
-			if (lvl < 5) kind = NO_TRAP; break;
+			if (lvl < 5 || level.flags.noteleport)
+			    kind = NO_TRAP; break;
 		    case SPIKED_PIT:
+			if (lvl < 5) kind = NO_TRAP; break;
+		    case LANDMINE:
+			if (lvl < 6) kind = NO_TRAP; break;
+		    case WEB:
+			if (lvl < 7) kind = NO_TRAP; break;
+		    case STATUE_TRAP:
 #ifdef POLYSELF
 		    case POLY_TRAP:
 #endif
-			if (lvl < 6) kind = NO_TRAP; break;
-		    case WEB:
-		    case STATUE_TRAP:
-			if (lvl < 7) kind = NO_TRAP; break;
+			if (lvl < 8) kind = NO_TRAP; break;
 		    case FIRE_TRAP:
 			if (!Inhell) kind = NO_TRAP; break;
+		    case TELEP_TRAP:
+			if (level.flags.noteleport) kind = NO_TRAP; break;
 		}
 	    } while (kind == NO_TRAP || kind == MAGIC_PORTAL);
 	}
@@ -1250,7 +1277,7 @@ mkinvokearea()
     register xchar i;
 
     pline("The floor shakes violently under you!");
-    pline("The walls around you begin to move and fall down!");
+    pline("The walls around you begin to bend and crumble!");
     display_nhwindow(WIN_MESSAGE, TRUE);
 
     for(dist = 1; dist < 7; dist++) {
@@ -1310,7 +1337,7 @@ int dist;
 	lev->typ = ROOM;
 	if (is_pool(x,y)) break;
 	ttmp = maketrap(x, y, FIRE_TRAP);
-	ttmp->tseen = TRUE;
+	if (ttmp) ttmp->tseen = TRUE;
 	break;
     case 2: /* lit room locations */
     case 3:

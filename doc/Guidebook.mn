@@ -489,7 +489,7 @@ Show what type of thing a visible symbol corresponds to.
 Pick up some things.
 .lp @
 Toggle the
-.op pickup
+.op autopickup
 option on and off.
 .lp ^
 Ask for the type of a trap you found earlier.
@@ -662,7 +662,7 @@ Objects
 When you find something in the dungeon, it is common to want to pick
 it up.  In NetHack, this is accomplished automatically by walking over
 the object (unless you turn off the
-.op pickup
+.op autopickup
 option (see below), or move with the `m' prefix (see above)), or
 manually by using the `,' command.  If you're carrying too many
 things, NetHack will tell you so and won't pick up anything more.
@@ -970,14 +970,14 @@ the option name, a colon, and then the value of the string.  The value
 is terminated by the next comma or the end of string.
 .pg
 For example, to set up an environment variable so that ``female'' is on,
-``pickup'' is off, the name is set to ``Blue Meanie'', and the fruit
+``autopickup'' is off, the name is set to ``Blue Meanie'', and the fruit
 is set to ``papaya'', you would enter the command
 .sd
-% \fBsetenv NETHACKOPTIONS "female,!pickup,name:Blue Meanie,fruit:papaya"\fP
+% \fBsetenv NETHACKOPTIONS "female,!autopickup,name:Blue Meanie,fruit:papaya"\fP
 .ed
 in \fIcsh\fP, or
 .sd
-$ \fBNETHACKOPTIONS="female,!pickup,name:Blue Meanie,fruit:papaya"\fP
+$ \fBNETHACKOPTIONS="female,!autopickup,name:Blue Meanie,fruit:papaya"\fP
 $ \fBexport NETHACKOPTIONS\fP
 .ed
 in \fIsh\fP or \fIksh\fP.
@@ -1008,6 +1008,8 @@ Customization options
 Here are explanations of the various options do.  Character strings
 longer than fifty characters are truncated.  Some of the options
 listed may be inactive in your dungeon.
+.lp autopickup\ \ 
+Pick up things you move onto by default (default on).
 .lp BIOS\ \ \ \ 
 Use BIOS calls to update the screen
 display quickly and to read the keyboard (allowing the use of arrow
@@ -1031,8 +1033,12 @@ ANSI line-drawing character set to display the dungeon instead of having
 to define a full graphics set yourself (default off).
 Cannot be set with the `O' command.
 .lp disclose
-Offer to identify your inventory and intrinsics when the
-game ends (default on).
+Offer to disclose various information when the game ends (default all).
+The possibilities are identifying your inventory ('i'),
+disclosing your attributes ('a'), summarizing monsters that have been
+vanquished ('v'), and listing monster species that have been genocided ('g').
+Note that the vanquished monsters list includes all monsters killed by
+traps and each other as well as by you.
 .lp dogname
 Name your starting dog (ex. ``dogname:Fang'').
 Cannot be set with the `O' command.
@@ -1198,8 +1204,10 @@ symbols for the various object types.
 Specify the type of your initial pet, if you are playing a character class
 that uses both types of pets.  Possible values are ``cat'' and ``dog''.
 Cannot be set with the `O' command.
-.lp pickup\ \ 
-Pick up things you move onto by default (default on).
+.lp pickup_types
+Specify the object types to be picked up when
+.op autopickup
+is on.  Default is all types.
 .lp rawio\ \ \ 
 Force raw (non-cbreak) mode for faster output and more
 bulletproof input (MS-DOS sometimes treats `^P' as a printer toggle

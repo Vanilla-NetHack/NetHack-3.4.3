@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dogmove.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)dogmove.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -125,18 +125,22 @@ dog_hunger(mtmp, edog)
 register struct monst *mtmp;
 register struct edog *edog;
 {
-	if(moves > edog->hungrytime + 500) {
-	    if(!carnivorous(mtmp->data) && !herbivorous(mtmp->data)) {
+	if (moves > edog->hungrytime + 500) {
+	    if (!carnivorous(mtmp->data) && !herbivorous(mtmp->data)) {
 		edog->hungrytime = moves + 500;
 		/* but not too high; it might polymorph */
 	    } else if (!mtmp->mconf) {
 		mtmp->mconf = 1;
 		mtmp->mhpmax /= 3;
-		if(mtmp->mhp > mtmp->mhpmax)
+		if (mtmp->mhp > mtmp->mhpmax)
 		    mtmp->mhp = mtmp->mhpmax;
-		if(mtmp->mhp < 1) goto dog_died;
-		if(cansee(mtmp->mx, mtmp->my))
+		if (mtmp->mhp < 1) goto dog_died;
+		if (cansee(mtmp->mx, mtmp->my))
 		    pline("%s is confused from hunger.", Monnam(mtmp));
+#ifdef SOUNDS
+		else if (couldsee(mtmp->mx, mtmp->my))
+		    beg(mtmp);
+#endif
 		else {
 		    char buf[BUFSZ];
 
@@ -145,17 +149,19 @@ register struct edog *edog;
 			NAME(mtmp) : strcat(buf, Hallucination
 			? rndmonnam() : mtmp->data->mname));
 		}
-	    } else if(moves > edog->hungrytime + 750 || mtmp->mhp < 1) {
+	    } else if (moves > edog->hungrytime + 750 || mtmp->mhp < 1) {
 	    dog_died:
 #ifdef WALKIES
-		if(mtmp->mleashed)
+		if (mtmp->mleashed)
 		    Your("leash goes slack.");
+		else
 #endif
-		if(cansee(mtmp->mx, mtmp->my))
+		if (cansee(mtmp->mx, mtmp->my))
 		    pline("%s dies%s.", Monnam(mtmp),
 			    (mtmp->mhp >= 1) ? "" : " from hunger");
 		else
-		    You("have a sad feeling for a moment, then it passes.");
+		    You("feel %s for a moment.",
+			Hallucination ? "bummed" : "sad");
 		mondied(mtmp);
 		return(TRUE);
 	    }
@@ -207,6 +213,12 @@ int udist;
 			    freeobj(obj);
 			    newsym(omx,omy);
 			    mpickobj(mtmp,obj);
+#ifdef MUSE
+			    if (attacktype(mtmp->data, AT_WEAP)) {
+				mtmp->weapon_check = NEED_HTH_WEAPON;
+				(void) mon_wield_item(mtmp);
+			    }
+#endif
 			}
 	    }
 	}
@@ -470,7 +482,7 @@ skipu:;
 		    (j = distu(nx, ny)) > 16 && j >= udist) continue;
 
 		if ((info[i] & ALLOW_M) && MON_AT(nx, ny)) {
-		    int stat;
+		    int mstatus;
 		    register struct monst *mtmp2 = m_at(nx,ny);
 
 		    if ((int)mtmp2->m_lev >= (int)mtmp->m_lev+2 ||
@@ -479,12 +491,11 @@ skipu:;
 			 && (perceives(mtmp->data) || !mtmp2->minvis)) ||
 			(mtmp2->data==&mons[PM_GELATINOUS_CUBE] && rn2(10)) ||
 			(max_passive_dmg(mtmp2, mtmp) >= mtmp->mhp) ||
-			((mtmp->mhp*4 < mtmp->mhpmax ||
+			((mtmp->mhp*4 < mtmp->mhpmax
 #ifdef MULDGN
-			  mtmp2->data->msound == MS_GUARDIAN ||
-			  mtmp2->data->msound == MS_LEADER
+			  || mtmp2->data->msound == MS_GUARDIAN
+			  || mtmp2->data->msound == MS_LEADER
 #endif
-
 			  ) &&
 			 mtmp2->mpeaceful && !Conflict) ||
 			   (mtmp2->data->mlet == S_COCKATRICE &&
@@ -493,16 +504,16 @@ skipu:;
 
 		    if (after) return(0); /* hit only once each move */
 
-		    stat = mattackm(mtmp, mtmp2);
+		    mstatus = mattackm(mtmp, mtmp2);
 
 		    /* aggressor (pet) died */
-		    if (stat & MM_AGR_DIED) return 2;
+		    if (mstatus & MM_AGR_DIED) return 2;
 
-		    if ((stat & MM_HIT) && !(stat & MM_DEF_DIED) &&
+		    if ((mstatus & MM_HIT) && !(mstatus & MM_DEF_DIED) &&
 			rn2(4) && mtmp2->mlstmv != monstermoves &&
 			!onscary(mtmp->mx, mtmp->my, mtmp2)) {
-			stat = mattackm(mtmp2, mtmp);	/* return attack */
-			if (stat & MM_DEF_DIED) return 2;
+			mstatus = mattackm(mtmp2, mtmp);	/* return attack */
+			if (mstatus & MM_DEF_DIED) return 2;
 		    }
 
 		    return 0;
@@ -524,19 +535,20 @@ skipu:;
 				    && (is_flyer(mtmp->data) ||
 					is_clinger(mtmp->data)))
 				|| (trap->ttyp == SLP_GAS_TRAP &&
-				    resists_sleep(mtmp->data)))
-			    if(!trap->tseen || rn2(3)) continue;
+				    resists_sleep(mtmp->data))) {
+			    if (!trap->tseen || rn2(3)) continue;
+			} else
 #ifdef WALKIES
 			if (!mtmp->mleashed) {
 #endif
 			    if (!trap->tseen && rn2(40)) continue;
 			    if (rn2(10)) continue;
 #ifdef WALKIES
-			}
 # ifdef SOUNDS
-			else if (flags.soundok)
+			} else if (flags.soundok) {
 				whimper(mtmp);
 # endif
+			}
 #endif
 		    }
 		}

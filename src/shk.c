@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)shk.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)shk.c	3.1	93/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -59,6 +59,7 @@ static void FDECL(dropped_container, (struct obj *, struct monst *,
 				      BOOLEAN_P));
 static void FDECL(bill_box_content, (struct obj *, BOOLEAN_P, BOOLEAN_P,
 				     struct monst *));
+static void FDECL(shk_names_obj, (struct obj *));
 
 /*
 	invariants: obj->unpaid iff onbill(obj) [unless bp->useup]
@@ -128,7 +129,8 @@ void
 replshk(mtmp,mtmp2)
 register struct monst *mtmp, *mtmp2;
 {
-	if(inhishop(mtmp) && *u.ushops == ESHK(mtmp)->shoproom) {
+	rooms[ESHK(mtmp2)->shoproom - ROOMOFFSET].resident = mtmp2;
+	if (inhishop(mtmp) && *u.ushops == ESHK(mtmp)->shoproom) {
 		ESHK(mtmp2)->bill_p = &(ESHK(mtmp2)->bill[0]);
 	}
 }
@@ -155,7 +157,7 @@ clear_unpaid(list)
 register struct obj *list;
 {
     while (list) {
-	if (Is_container(list)) clear_unpaid(list->cobj);
+	if (Has_contents(list)) clear_unpaid(list->cobj);
 	list->unpaid = 0;
 	list = list->nobj;
     }
@@ -170,6 +172,7 @@ register struct monst *shkp;
 
 	clear_unpaid(invent);
 	clear_unpaid(fobj);
+	clear_unpaid(level.buriedobjlist);
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 		clear_unpaid(mtmp->minvent);
 	for(mtmp = migrating_mons; mtmp; mtmp = mtmp->nmon)
@@ -303,25 +306,31 @@ register boolean newlev;
 	if(!eshkp->billct && !eshkp->debit)	/* bill is settled */
 	    return;
 
-	if(!*leavestring) {
+	if (!*leavestring && shkp->mcanmove && !shkp->msleep) {
 	    /*
 	     * Player just stepped onto shop-boundary (known from above logic).
 	     * Try to intimidate him into paying his bill
 	     */
-
 	    verbalize(NOTANGRY(shkp) ?
 		      "%s!  Please pay before leaving." :
 		      "%s!  Don't you leave without paying!",
 		      plname);
 	    return;
 	}
-		/* by this point, we know an actual robbery has taken place */
-	You("escaped the shop without paying!");
 	total = (addupbill(shkp) + eshkp->debit);
-	eshkp->robbed += total;
-	eshkp->credit = 0L;
-	eshkp->debit = 0L;
+	if (eshkp->credit >= total) {
+	    Your("credit of %ld zorkmid%s is used to cover your shopping bill.",
+		 eshkp->credit, plur(eshkp->credit));
+	    total = 0L;		/* credit gets cleared by setpaid() */
+	} else {
+	    You("escaped the shop without paying!");
+	    total -= eshkp->credit;
+	}
 	setpaid(shkp);
+	if (!total) return;
+
+	/* by this point, we know an actual robbery has taken place */
+	eshkp->robbed += total;
 	You("stole %ld zorkmid%s worth of merchandise.",
 	    total, plur(total));
 	if (pl_character[0] != 'R') /* stealing is unlawful */
@@ -381,7 +390,7 @@ register char *enterstring;
 	    pacify_shk(shkp);
 	}
 
-	if (eshkp->following)
+	if (shkp->msleep || !shkp->mcanmove || eshkp->following) /* no dialog */
 	    return;
 
 	if (Invis) {
@@ -398,8 +407,7 @@ register char *enterstring;
 		      s_suffix(shkname(shkp)),
 		      shtypes[rt - SHOPBASE].name);
 	} else if (eshkp->robbed) {
-	    verbalize("Beware, %s!  I am upset about missing stock!",
-		      plname);
+	    pline("%s mutters imprecations against shoplifters.", shkname(shkp));
 	} else {
 	    verbalize("Hello, %s!  Welcome%s to %s %s!",
 		      plname,
@@ -416,6 +424,36 @@ register char *enterstring;
 	    (void) dochug(shkp);
 	}
 	return;
+}
+
+/*
+   Decide whether two unpaid items are mergable; caller is responsible for
+   making sure they're unpaid and the same type of object; we check the price
+   quoted by the shopkeeper and also that they both belong to the same shk.
+ */
+boolean same_price(obj1, obj2)
+struct obj *obj1, *obj2;
+{
+	register struct monst *shkp1, *shkp2;
+	register struct bill_x *bp1 = 0, *bp2 = 0;
+	register boolean are_mergable = FALSE;
+
+	/* look up the first object by finding shk whose bill it's on */
+	for (shkp1 = next_shkp(fmon, TRUE); shkp1;
+		shkp1 = next_shkp(shkp1, TRUE))
+	    if ((bp1 = onbill(obj1, shkp1, TRUE)) != 0) break;
+	/* second object is probably owned by same shk; if not, look harder */
+	if (shkp1 && (bp2 = onbill(obj2, shkp1, TRUE)) != 0) {
+	    shkp2 = shkp1;
+	} else {
+	    for (shkp2 = next_shkp(fmon, TRUE); shkp2;
+		    shkp2 = next_shkp(shkp2, TRUE))
+		if ((bp2 = onbill(obj2, shkp2, TRUE)) != 0) break;
+	}
+
+	if (!bp1 || !bp2) impossible("same_price: object wasn't on any bill!");
+	else are_mergable = (shkp1 == shkp2 && bp1->price == bp2->price);
+	return are_mergable;
 }
 
 #endif /* OVL1 */
@@ -830,6 +868,12 @@ dopay()
 		return(0);
 	}
 proceed:
+
+	if (shkp->msleep || !shkp->mcanmove) {
+		pline("%s %s.", Monnam(shkp),
+		      rn2(2) ? "seems to be napping" : "doesn't respond");
+		return 0;
+	}
 	eshkp = ESHK(shkp);
 
 	ltmp = eshkp->robbed;
@@ -1115,6 +1159,7 @@ boolean itemize;
 	}
 
 	pay(ltmp, shkp);
+	shk_names_obj(obj);	/* identify some non-magic objects */
 	You("bought %s for %ld gold piece%s.",
 		doname(obj), ltmp, plur(ltmp));
 	obj->quan = save_quan;		/* restore original count */
@@ -1194,7 +1239,7 @@ register boolean croaked;
 	if(numsk > 1) {
 	    if(cansee(shkp->mx, shkp->my) && croaked)
 		pline("%s %slooks at your corpse%s%s", Monnam(shkp),
-		     (shkp->msleep || shkp->mfrozen) ?
+		     (shkp->msleep || !shkp->mcanmove) ?
 				   "wakes up, " : "",
 		     !rn2(2) ? (shkp->female ? ", shakes her head," :
 				 ", shakes his head,") : "",
@@ -1231,7 +1276,7 @@ register boolean croaked;
 		if((loss > u.ugold) || !loss) {
 			pline("%s %s%stakes all your possessions.",
 				shkname(shkp),
-				(shkp->msleep || shkp->mfrozen) ?
+				(shkp->msleep || !shkp->mcanmove) ?
 				   "wakes up and " : "",
 				(distu(shkp->mx, shkp->my) > 2) ?
 				    "comes and " : "");
@@ -1272,7 +1317,7 @@ register boolean croaked;
 			shkp->mgold += loss;
 			pline("%s %sand takes %ld zorkmid%s %sowed %s.",
 			      Monnam(shkp),
-			      (shkp->msleep || shkp->mfrozen) ?
+			      (shkp->msleep || !shkp->mcanmove) ?
 					"wakes up " : "comes ",
 			      loss, plur(loss),
 			      strncmp(eshkp->customer,
@@ -1302,6 +1347,7 @@ register struct bill_x *bp;
 		obj = o_on(id, billobjs);
 	else if(!(obj = o_on(id, invent)) &&
 		!(obj = o_on(id, fobj)) &&
+		!(obj = o_on(id, level.buriedobjlist)) &&
 		!(obj = o_on(id, migrating_objs))) {
 		    for (mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			if ((obj = o_on(id, mtmp->minvent)) != 0)
@@ -1385,7 +1431,7 @@ register boolean usell;
 		    price += get_cost(otmp, shkp);
 	    }
 
-	    if(Is_container(otmp))
+	    if (Has_contents(otmp))
 		    price += contained_cost(otmp, shkp, price, usell);
 	}
 
@@ -1403,7 +1449,7 @@ register struct obj *obj;
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
 	    if (otmp->oclass == GOLD_CLASS)
 		value += otmp->quan;
-	    else if (Is_container(otmp))
+	    else if (Has_contents(otmp))
 		value += contained_gold(otmp);
 
 	return(value);
@@ -1429,7 +1475,7 @@ register boolean sale;
 	    if(!otmp->unpaid && !(sale && saleitem))
 		otmp->no_charge = 1;
 
-	    if(Is_container(otmp))
+	    if (Has_contents(otmp))
 		dropped_container(otmp, shkp, sale);
 	}
 }
@@ -1448,7 +1494,7 @@ register struct obj *obj;
 	    if(otmp->no_charge)
 		otmp->no_charge = 0;
 
-	    if(Is_container(otmp))
+	    if (Has_contents(otmp))
 		picked_container(otmp);
 	}
 }
@@ -1563,10 +1609,25 @@ register struct monst *shkp;
 		/* the "top" box is added in addtobill() */
 		if(!otmp->no_charge)
 		    add_one_tobill(otmp, dummy);
-		if(Is_container(otmp))
+		if (Has_contents(otmp))
 		    bill_box_content(otmp, ininv, dummy, shkp);
 	}
 
+}
+
+static void
+shk_names_obj(obj)
+register struct obj *obj;
+/* shopkeeper tells you what an object is */
+{
+	obj->dknown = TRUE;
+	/* use real name for ordinary weapons/armor, and spell-less
+	 * scrolls/books (that is, blank and mail).
+	 */
+	if (!objects[obj->otyp].oc_magic &&
+	    (obj->oclass == WEAPON_CLASS || obj->oclass == ARMOR_CLASS ||
+	     obj->oclass == SCROLL_CLASS || obj->oclass == SPBOOK_CLASS))
+	    makeknown(obj->otyp);
 }
 
 void
@@ -1577,7 +1638,7 @@ register boolean ininv, dummy, silent;
 	register struct monst *shkp;
 	register char roomno = *u.ushops;
 	long ltmp = 0L, cltmp = 0L, gltmp = 0L;
-	register boolean container = Is_container(obj);
+	register boolean container = Has_contents(obj);
 
 	if(!*u.ushops) return;
 
@@ -1639,7 +1700,7 @@ register boolean ininv, dummy, silent;
 	} else /* i.e., !container */
 	    add_one_tobill(obj, dummy);
 speak:
-	if(!shkp->msleep && !shkp->mfrozen && !silent) {
+	if (shkp->mcanmove && !shkp->msleep && !silent) {
 	    char buf[BUFSZ];
 
 	    if(!ltmp) {
@@ -1650,27 +1711,17 @@ speak:
 	    Strcpy(buf, "\"For you, ");
 	    if (ANGRY(shkp)) Strcat(buf, "scum ");
 	    else {
-		switch(rnd(4) + u.uevent.udemigod) {
-		  case 1: Strcat(buf, "good");
-			  break;
-		  case 2: Strcat(buf, "honored");
-			  break;
-		  case 3: Strcat(buf, "most gracious");
-			  break;
-		  case 4: Strcat(buf, "esteemed");
-			  break;
-		  case 5: Strcat(buf, "most renowned and sacred");
-			  break;
-		}
+		static const char *honored[5] = {
+		  "good", "honored", "most gracious", "esteemed",
+		  "most renowned and sacred"
+		};
+		Strcat(buf, honored[rn2(4) + u.uevent.udemigod]);
 #ifdef POLYSELF
 		if(!is_human(uasmon)) Strcat(buf, " creature");
 		else
 #endif
 		    Strcat(buf, (flags.female) ? " lady" : " sir");
 	    }
-	    /* after all, the shk is telling you what it is */
-	    obj->dknown = 1;
-	    exercise(A_WIS, TRUE);
 	    if(ininv) {
 		long quan = obj->quan;
 		obj->quan = 1L; /* fool xname() into giving singular */
@@ -1777,11 +1828,11 @@ register struct monst *shkp;
 
 	sub_one_frombill(obj, shkp);
 
-	if(Is_container(obj))
+	if (Has_contents(obj))
 	    for(otmp = obj->cobj; otmp; otmp = otmp->nobj) {
 		if(otmp->oclass == GOLD_CLASS) continue;
 
-		if(Is_container(otmp))
+		if (Has_contents(otmp))
 		    subfrombill(otmp, shkp);
 		else
 		    sub_one_frombill(otmp, shkp);
@@ -1810,7 +1861,7 @@ register boolean ininv;
 
 	    if(otmp->oclass == GOLD_CLASS) continue;
 
-	    if(!Is_container(otmp)) {
+	    if (!Has_contents(otmp)) {
 		if(ininv) {
 		    if(otmp->unpaid)
 			price += get_cost(otmp, shkp);
@@ -1852,7 +1903,7 @@ register boolean peaceful, silent;
 
 	if(obj->oclass == GOLD_CLASS) {
 	    gvalue += obj->quan;
-	} else if(Is_container(obj)) {
+	} else if (Has_contents(obj)) {
 	    register boolean ininv = !!count_unpaid(obj->cobj);
 
 	    value += stolen_container(obj, shkp, value, ininv);
@@ -1918,7 +1969,7 @@ register xchar x, y;
 	register struct monst *shkp;
 	register struct eshk *eshkp;
 	register long ltmp = 0L, cltmp = 0L, gltmp = 0L, offer;
-	boolean saleitem, cgold = FALSE, container = Is_container(obj);
+	boolean saleitem, cgold = FALSE, container = Has_contents(obj);
 	boolean isgold = (obj->oclass == GOLD_CLASS);
 
 	if(!(shkp = shop_keeper(*in_rooms(x, y, SHOPBASE))) ||
@@ -1934,18 +1985,11 @@ register xchar x, y;
 	    return;
 	}
 	if(container) {
-	    if(obj->cobj == (struct obj *)0) {
-		if(obj->unpaid) {
-		    sub_one_frombill(obj, shkp);
-		    return;
-		}
-	    } else {
 		/* find the price of content before subfrombill */
 		cltmp += contained_cost(obj, shkp, cltmp, TRUE);
 		/* find the value of contained gold */
 		gltmp += contained_gold(obj);
 		cgold = (gltmp > 0L);
-	    }
 	}
 
 	if(!isgold && !obj->unpaid && saleitem)
@@ -1959,13 +2003,11 @@ register xchar x, y;
 				  (container && count_unpaid(obj->cobj)));
 
 		if(container) {
-		    if(obj->cobj != (struct obj *)0) {
 			dropped_container(obj, shkp, FALSE);
 			if(!obj->unpaid && !saleitem)
 			    obj->no_charge = 1;
 			if(obj->unpaid || count_unpaid(obj->cobj))
 			    subfrombill(obj, shkp);
-		    } else obj->no_charge = 1;
 		} else obj->no_charge = 1;
 
 		if(!unpaid)
@@ -1974,13 +2016,12 @@ register xchar x, y;
 	}
 
 	/* you dropped something of your own - probably want to sell it */
-	if(shkp->msleep || !shkp->mcanmove) {
-		if(container && obj->cobj != (struct obj *)0) {
+	if (shkp->msleep || !shkp->mcanmove) {
+		if (container)
 		    dropped_container(obj, shkp, TRUE);
-		}
-		if(!obj->unpaid && !saleitem && !isgold)
+		if (!obj->unpaid)
 		    obj->no_charge = 1;
-		if(!shkp->mcanmove) {
+		if (!shkp->mcanmove) {
 		    if(ANGRY(shkp) && !rn2(4))
 			pline("%s utters a curse.", Monnam(shkp));
 		    else pline("%s is indisposed.", Monnam(shkp));
@@ -2037,12 +2078,10 @@ register xchar x, y;
 		if(offer) goto move_on;
 		else {
 		    if(!isgold) {
-		        if(container && obj->cobj != (struct obj *)0) {
+			if (container)
 			    dropped_container(obj, shkp, FALSE);
-		        }
-		        if(!obj->unpaid && !saleitem)
-			    obj->no_charge = 1;
-		        subfrombill(obj, shkp);
+			if (!obj->unpaid && !saleitem) obj->no_charge = 1;
+			subfrombill(obj, shkp);
 		    }
 		    return;
 		}
@@ -2056,32 +2095,37 @@ move_on:
 	   || (Is_candle(obj) &&
 		   obj->age < 20L * (long)objects[obj->otyp].oc_cost)) {
 		pline("%s seems not interested%s.", Monnam(shkp),
-					   cgold ? " in the rest" : "");
-		if(container && obj->cobj != (struct obj *)0) {
+			cgold ? " in the rest" : "");
+		if (container)
 		    dropped_container(obj, shkp, FALSE);
-		}
 		obj->no_charge = 1;
 		return;
 	}
 
 	if(!shkp->mgold) {
+		char c, qbuf[BUFSZ];
 		long tmpcr = (ltmp + cltmp) * 2L;
 
-		pline("%s cannot pay you at present.", Monnam(shkp));
-		pline("Will you accept %ld zorkmids in credit for %s? ",
-					 tmpcr, doname(obj));
-		/* cannot use a yn function here */
-		if (readchar() == 'y') {
+		if (sell_response != 'n') {
+		    pline("%s cannot pay you at present.", Monnam(shkp));
+		    Sprintf(qbuf,
+			    "Will you accept %ld zorkmids in credit for %s? ",
+			    tmpcr, doname(obj));
+		    /* won't accept 'a' response here */
+		    c = ynq(qbuf);
+		} else		/* previously specified "quit" */
+		    c = 'n';
+
+		if (c == 'y') {
 		    You("have %ld zorkmids in %scredit.", tmpcr,
-				ESHK(shkp)->credit > 0L ? "additional " : "");
+			ESHK(shkp)->credit > 0L ? "additional " : "");
 		    ESHK(shkp)->credit += tmpcr;
 		    subfrombill(obj, shkp);
 		} else {
-		    if(container && obj->cobj != (struct obj *)0) {
-				dropped_container(obj, shkp, FALSE);
-		    }
-		    if(!obj->unpaid)
-			obj->no_charge = 1;
+		    if (c == 'q') sell_response = 'n';
+		    if (container)
+			dropped_container(obj, shkp, FALSE);
+		    if (!obj->unpaid) obj->no_charge = 1;
 		    subfrombill(obj, shkp);
 		}
 	} else {
@@ -2113,18 +2157,16 @@ move_on:
 
 		switch (sell_response ? sell_response : ynaq(qbuf)) {
 		 case 'q':  sell_response = 'n';
-		 case 'n':  if(container && obj->cobj != (struct obj *)0) {
+		 case 'n':  if (container)
 				dropped_container(obj, shkp, FALSE);
-			    }
-		            if(!obj->unpaid) obj->no_charge = 1;
+			    if (!obj->unpaid) obj->no_charge = 1;
 			    subfrombill(obj, shkp);
 			    break;
 		 case 'a':  sell_response = 'y';
-		 case 'y':  if(container && obj->cobj != (struct obj *)0)
-		                dropped_container(obj, shkp, TRUE);
-		            if(!obj->unpaid && !saleitem)
-			        obj->no_charge = 1;
-		            subfrombill(obj, shkp);
+		 case 'y':  if (container)
+				dropped_container(obj, shkp, TRUE);
+			    if (!obj->unpaid && !saleitem) obj->no_charge = 1;
+			    subfrombill(obj, shkp);
 			    pay(-offer, shkp);
 			    You("sold %s for %ld gold piece%s.", doname(obj),
 				offer, plur(offer));
@@ -2179,16 +2221,24 @@ int mode;		/* 0: deliver count 1: paged */
 		goto quit;
 	    }
 	    if(bp->useup || bp->bquan > obj->quan) {
-		register long oquan, uquan;
-		long thisused;
+		register long oquan, uquan, thisused;
+		unsigned save_unpaid;
 
+		save_unpaid = obj->unpaid;
 		oquan = obj->quan;
 		uquan = (bp->useup ? bp->bquan : bp->bquan - oquan);
 		thisused = bp->price * uquan;
 		totused += thisused;
 		obj->quan = uquan;		/* cheat doname */
+		obj->unpaid = 0;		/* ditto */
 		buf_p = xprname(obj, ' ', FALSE, thisused);
 		obj->quan = oquan;		/* restore value */
+#ifdef __SASC
+				/* SAS/C 6.2 can't cope for some reason */
+		sasc_bug(obj,save_unpaid);
+#else
+		obj->unpaid = save_unpaid;
+#endif
 		putstr(datawin, 0, buf_p);
 	    }
 	}
@@ -2236,6 +2286,7 @@ register struct obj *obj;
 	return tmp;
 }
 
+/* shk catches thrown pick-axe */
 int
 shkcatch(obj, x, y)
 register struct obj *obj;
@@ -2403,7 +2454,7 @@ register struct damage *tmp_dam;
 
 	if ((monstermoves - tmp_dam->when) < REPAIR_DELAY)
 	    return(0);
-	if (ESHK(shkp)->following)
+	if (shkp->msleep || !shkp->mcanmove || ESHK(shkp)->following)
 	    return(0);
 	x = tmp_dam->place.x;
 	y = tmp_dam->place.y;
@@ -2448,8 +2499,9 @@ register struct damage *tmp_dam;
 				y+vert(i)) == ESHK(shkp)->shoproom)
 		    litter[i] |= INSHOP;
 	    }
-	    if (Punished && ((uchain->ox == x && uchain->oy == y) ||
-					(uball->ox == x && uball->oy == y))) {
+	    if (Punished && !u.uswallow &&
+				((uchain->ox == x && uchain->oy == y) ||
+				 (uball->ox == x && uball->oy == y))) {
 		/*
 		 * Either the ball or chain is in the repair location.
 		 *
@@ -2872,7 +2924,7 @@ register xchar x, y;
 	    break;
     /* note: otmp might have ->no_charge set, but that's ok */
     return (otmp && costly_spot(x, y) && NOTANGRY(shkp)
-	    && !shkp->msleep && !shkp->mfrozen)
+	    && shkp->mcanmove && !shkp->msleep)
 		? otmp : (struct obj *)0;
 }
 
@@ -2950,6 +3002,47 @@ long cost;
     return ".";
 }
 
+#ifdef SOUNDS
+void
+shk_chat(shkp)
+register struct monst *shkp;
+{
+	register struct eshk *eshk = ESHK(shkp);
+
+	if (ANGRY(shkp))
+		pline("%s mentions how much %s dislikes %s customers.",
+			shkname(shkp), he[shkp->female],
+			eshk->robbed ? "non-paying" : "rude");
+	else if (eshk->following)
+		if (strncmp(eshk->customer, plname, PL_NSIZ)) {
+		    verbalize("Hello %s!  I was looking for %s.",
+			    plname, eshk->customer);
+		    eshk->following = 0;
+		} else {
+		    verbalize("Hello %s!  Didn't you forget to pay?", plname);
+		}
+	else if (eshk->billct) {
+		register long total = addupbill(shkp) + eshk->debit;
+		pline("%s says that your bill comes to %ld zorkmid%s.",
+		      shkname(shkp), total, plur(total));
+	} else if (eshk->debit)
+		pline("%s reminds you that you owe %s %ld zorkmid%s.",
+		      shkname(shkp), him[shkp->female],
+		      eshk->debit, plur(eshk->debit));
+	else if (eshk->credit)
+		pline("%s encourages you to use your %ld zorkmid%s of credit.",
+		      shkname(shkp), eshk->credit, plur(eshk->credit));
+	else if (eshk->robbed)
+		pline("%s complains about a recent robbery.", shkname(shkp));
+	else if (shkp->mgold < 50)
+		pline("%s complains that business is bad.", shkname(shkp));
+	else if (shkp->mgold > 4000)
+		pline("%s says that business is good.", shkname(shkp));
+	else
+		pline("%s talks about the problem of shoplifters.", shkname(shkp));
+}
+#endif  /* SOUNDS */
+
 #ifdef KOPS
 static void
 kops_gone(silent)
@@ -3008,7 +3101,7 @@ register struct obj *otmp;
 	} else if (otmp->oclass == SPBOOK_CLASS) {
 		    tmp -= tmp / 5L;
 	} else if (otmp->otyp == CAN_OF_GREASE)
-	            tmp /= 10L;
+		    tmp /= 10L;
 	return(tmp);
 }
 
@@ -3140,5 +3233,11 @@ register xchar x, y;
 }
 
 #endif /* OVLB */
+
+#ifdef __SASC
+sasc_bug(struct obj *op, unsigned x){
+	op->unpaid=x;
+}
+#endif
 
 /*shk.c*/

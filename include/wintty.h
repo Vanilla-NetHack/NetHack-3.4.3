@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wintty.h	3.1	92/10/06		  */
+/*	SCCS Id: @(#)wintty.h	3.1	93/05/26		  */
 /* Copyright (c) David Cohrs, 1991,1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -102,6 +102,24 @@ E void NDECL(graph_on);
 E void NDECL(graph_off);
 E void NDECL(cl_eos);
 
+/*
+ * termcap.c (or facsimiles in other ports) is the right place for doing
+ * strange and arcane things such as outputting escape sequences to select
+ * a color or whatever.  wintty.c should concern itself with WHERE to put
+ * stuff in a window.
+ */
+E void FDECL(term_start_attr,(int attr));
+E void FDECL(term_end_attr,(int attr));
+E void NDECL(term_start_raw_bold);
+E void NDECL(term_end_raw_bold);
+
+#ifdef TEXTCOLOR
+E void NDECL(term_end_color);
+E void FDECL(term_start_color,(int color));
+E int FDECL(has_color,(int color));
+#endif /* TEXTCOLOR */
+
+
 /* ### topl.c ### */
 
 E void FDECL(addtopl, (const char *));
@@ -115,7 +133,7 @@ E void NDECL(setclipped);
 #endif
 E void FDECL(docorner, (int, int));
 E void NDECL(end_glyphout);
-E void FDECL(g_putch, (UCHAR_P));
+E void FDECL(g_putch, (int));
 E void NDECL(win_tty_init);
 
 /* external declarations */
@@ -158,11 +176,39 @@ E void FDECL(tty_get_ext_cmd, (char *));
 #endif /* COM_COMPL */
 E void FDECL(tty_number_pad, (int));
 E void NDECL(tty_delay_output);
+#ifdef CHANGE_COLOR
+E void FDECL(tty_change_color,(int color,long rgb,int reverse));
+E char * NDECL(tty_get_color_string);
+#endif
 
 /* other defs that really should go away (they're tty specific) */
 E void NDECL(tty_start_screen);
 E void NDECL(tty_end_screen);
 
+E void FDECL(genl_outrip, (winid,int));
 #undef E
+
+#ifdef NO_TERMS
+# ifdef MAC
+#  define putchar term_putc
+#  define putc term_fputc
+#  define fputc term_fputc
+#  define fflush term_flush
+#  define fputs term_fputs
+#  define puts term_puts
+#  define printf term_printf
+#  define fprintf fterm_printf
+# endif
+# if defined(MSDOS) || defined(WIN32CON)
+#  if defined(SCREEN_BIOS) || defined(SCREEN_DJGPPFAST)
+#   undef putchar
+#   undef putc
+#   undef puts
+#   define putchar(x) xputc(x)  /* video.c, nttty.c */
+#   define putc(x) xputc(x)     
+#   define puts xputs           
+#  endif
+# endif
+#endif
 
 #endif /* WINTTY_H */

@@ -1,4 +1,4 @@
-            Amiga specific help file for NetHack 3.1.1
+            Amiga specific help file for NetHack 3.1.2
 
 The Amiga port of NetHack supports a number of additional commands
 and facilities specific to the Amiga.  Listed below are the things
@@ -23,6 +23,8 @@ Recognized ToolTypes entries include the following:
         SCORE=                  Scores for specified players.
         CHARACTER=              Class of player (e.g. Rogue).
         PENS=xxx,xxx,...        8 pen settings for game palette.
+        FONT=name.font:size     Set the text font for text info.
+                                "courier.font:13" is the default.
         PATH=                   PATH for locating files.
         OPTIONS=                Comma separated list of options.
         HACKDIR=                Directory to play game in.

@@ -1,11 +1,11 @@
-#       SCCS Id: @(#)Makefile.src       3.1     93/02/21
+#       SCCS Id: @(#)Makefile.src       3.1     93/04/02
 #       Copyright (c) NetHack PC Development Team 1993
 #
 #       NT NetHack 3.1 Src Makefile 
 #	for MS NMAKE for Windows NT
 #  
-#	NT Version Tested:  October 1992 SDK pre-release
-#			    + December '92 compiler fix
+#	NT Version Tested:  March 1993 SDK pre-release
+#
 #
 #       For questions read the Install.nt file included with
 #       the distribution.
@@ -24,8 +24,9 @@
 #  Set the gamedir according to your preference.  It must be present prior
 #  to compilation.
 
-GAME    = nethack            # Game Name
-GAMEDIR = c:\games\hackdir      # Game directory
+GAME    = nethack               # Game Name
+GAMEDIR = c:\games\nethack      # Game directory
+
 
 #
 #  Source directories.    Makedefs hardcodes these, don't change them.
@@ -47,14 +48,18 @@ RANDOM = ..\sys\share\random.o
 #
 #  Uncomment the next two lines _ONLY_ if you do not want any
 #  debug capability in the object files, or in the NetHack executable.
+#  Leave them commented if you want debug capability.
 #cdebug =
 #linkdebug =
 
 #
-#  The default make target (so just typing 'nmake' is useful).
-#
+#  To embed the nethack ICON into the .exe file, comment out 
+#  the first line and uncomment the second line below.
+#  Note that for this to work, you must have sucessfully uudecoded the 
+#  file sys\winnt\nhico.uu into sys\winnt\nethack.ico (appr. 766 bytes).
+RESFILE = 
+#RESFILE = $(GAME).rbj
 
-default : $(GAMEFILE)
 
 ######################################################################
 #
@@ -67,6 +72,12 @@ default : $(GAMEFILE)
 #       This line should not be deleted.
 
 NTSUB = -DWIN32CON
+
+#
+#  The default make target (so just typing 'nmake' is useful).
+#
+default : $(GAMEFILE)
+
 #
 #  Make Rules.
 #
@@ -157,11 +168,10 @@ all :     $(GAMEFILE) install.tag
 install: install.tag
 
 install.tag:    $(GAMEFILE) $(DAT)\sp_lev.tag
-    copy $(SYS)\termcap       $(GAMEDIR)
     copy $(DAT)\*.?           $(GAMEDIR)
     copy $(DAT)\*.dat         $(GAMEDIR)
     copy $(DAT)\*.lev         $(GAMEDIR)
-    copy $(SYS)\NetHack.cnf   $(GAMEDIR)
+    copy $(MSYS)\winnt.cnf    $(GAMEDIR)\NetHack.cnf
     copy $(UTIL)\recover.exe  $(GAMEDIR)
     del   $(GAMEDIR)\makefile
     echo install done > install.tag
@@ -169,10 +179,10 @@ install.tag:    $(GAMEFILE) $(DAT)\sp_lev.tag
 #
 #  The main target.
 #
-$(GAMEFILE) : $(GAME).res  $(UTIL)\utility.tag
-    $(link) $(linkdebug) $(conflags) -out:$*.exe @$(GAME).res $(conlibs)
+$(GAMEFILE) : $(GAME).lnk $(RESFILE) $(UTIL)\utility.tag
+    $(link) $(linkdebug) $(conflags) -out:$*.exe $(RESFILE) @$(GAME).lnk $(conlibs)
 
-$(GAME).res : $(ALLOBJ)
+$(GAME).lnk : $(ALLOBJ)
     @echo $(VOBJ01) > $@
     @echo $(VOBJ02) >> $@
     @echo $(VOBJ03) >> $@
@@ -198,7 +208,18 @@ $(GAME).res : $(ALLOBJ)
     @echo $(SOBJ) >> $@
     @echo $(VVOBJ) >> $@
 
+$(GAME).rbj : $(GAME).res
+    cvtres -$(CPU) $(GAME).res -o $(GAME).rbj
 
+$(GAME).res : $(GAME).rc 
+    rc -r $(GAME).rc
+
+$(GAME).rc : $(GAME)_.ico
+    @echo $(GAME)Icon ICON $(GAME)_.ico >$@
+
+$(GAME)_.ico : $(MSYS)\$(GAME).ico
+    @copy $(MSYS)\$(GAME).ico $(GAME)_.ico
+    
 #
 #  The following include files depend on makedefs to be created.
 #
@@ -236,14 +257,16 @@ winnt.o : $(HACK_H) $(MSYS)\winnt.c
 getline.o : $(WIN)\getline.c
     $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
 
-termcap.o : $(CONFIG_H) $(WIN)\termcap.c
-    $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
-
 topl.o : $(CONFIG_H) $(WIN)\topl.c
     $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
 
 wintty.o : $(CONFIG_H) $(WIN)\wintty.c
     $(cc) $(cflags) $(NTSUB) -I$(INCL)  $(cvars) $(cdebug) -Fo$*.o $(WIN)\$*.c
+
+# March '93 Compiler has bugs.  Routines needing work arounds.
+
+attrib.o      : $(HACK_H)
+    $(cc) $(cflags) -DWIN32_BUG $(NTSUB) -I$(INCL) $(cvars) $(cdebug) -Fo$*.o $*.c
 
 #
 #  Housekeeping.
@@ -251,6 +274,11 @@ wintty.o : $(CONFIG_H) $(WIN)\wintty.c
 
 clean :
     -del *.o
+    -if exist *.rc  del *.rc
+    -if exist *.ico del *.ico
+    -if exist *.res del *.res
+    -if exist *.lnk del *.lnk
+    -if exist *.rbj del *.rbj
 
 spotless : clean
     -del $(INCL)\date.h
@@ -261,7 +289,7 @@ spotless : clean
     -del $(UTIL)\makedefs.exe
     -del $(UTIL)\lev_comp.exe
     -del $(UTIL)\dgn_comp.exe
-    -del $(UTIL)\*.res
+    -del $(UTIL)\*.lnk
     -del $(UTIL)\*.def
     -del $(UTIL)\*.map
     -del $(DAT)\data
@@ -273,7 +301,6 @@ allmain.o     : $(HACK_H)
 alloc.o       : $(CONFIG_H)
 apply.o       : $(HACK_H)
 artifact.o    : $(HACK_H)       $(INCL)\artifact.h
-attrib.o      : $(HACK_H)
 bones.o       : $(HACK_H)
 botl.o        : $(HACK_H)
 cmd.o         : $(HACK_H)       $(INCL)\func_tab.h

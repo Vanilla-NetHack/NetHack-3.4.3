@@ -323,6 +323,8 @@ register int mhit;
 	    }
 #endif
 	} else {
+	    int oldhp = mon->mhp;
+
 	    /* we hit the monster; be careful: it might die! */
 	    notonhead = (mon->mx != u.ux+u.dx || mon->my != u.uy+u.dy);
 	    if((malive = hmon(mon, uwep, 0)) == TRUE) {
@@ -337,7 +339,12 @@ register int mhit;
 								)
 				u.ustuck = 0;
 		}
-		if (mon->wormno) cutworm(mon, u.ux+u.dx, u.uy+u.dy, uwep);
+		/* If no damage was done (Vorpal Blade and not on head)
+		 * do not cut the worm.  We lost the information long ago, so
+		 * we must do this by checking the hit points.
+		 */
+		if (mon->wormno && mon->mhp < oldhp)
+			cutworm(mon, u.ux+u.dx, u.uy+u.dy, uwep);
 	    }
 	    if(mon->ispriest && !rn2(2)) ghod_hitsu(mon);
 	    if(special) (void) angry_guards(!flags.soundok);
@@ -1347,13 +1354,13 @@ use_weapon:
 			if (mon->data == &mons[PM_SHADE])
 			    Your("hug passes harmlessly through %s.",
 				mon_nam(mon));
-			else if (!sticks(mon->data))
+			else if (!sticks(mon->data) && !u.uswallow)
 			    if (mon==u.ustuck) {
 				pline("%s is being %s.", Monnam(mon),
 				    u.umonnum==PM_ROPE_GOLEM ? "choked":
 				    "crushed");
 				sum[i] = damageum(mon, mattk);
-			    } else if(sum[i-1] && sum[i-2]) {
+			    } else if(i >= 2 && sum[i-1] && sum[i-2]) {
 				You("grab %s!", mon_nam(mon));
 				u.ustuck = mon;
 				sum[i] = damageum(mon, mattk);
@@ -1526,7 +1533,7 @@ boolean kicked;
 			} else {
 			    You("are frozen by %s gaze!", 
 				  s_suffix(mon_nam(mon)));
-			    nomul((ACURR(A_WIS) > 12 || rn2(4)) ? -tmp : -120);
+			    nomul((ACURR(A_WIS) > 12 || rn2(4)) ? -tmp : -127);
 			}
 		    } else {
 			pline("%s cannot defend itself.",

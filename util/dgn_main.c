@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)dgn_main.c 3.1	92/03/10	*/
+/*	SCCS Id: @(#)dgn_main.c 3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet	*/
 /*	Copyright (c) 1990 by M. Stephenson		*/
 /* NetHack may be freely redistributed.  See license for details. */
@@ -37,13 +37,13 @@ extern void FDECL(exit, (int));
 #define MAX_ERRORS	25
 
 extern int line_number;
-char *fname = "(stdin)";
+const char *fname = "(stdin)";
 int fatal_error = 0;
 
 int  FDECL (main, (int, char **));
 int  NDECL (yyparse);
-void FDECL (yyerror, (char *));
-void FDECL (yywarning, (char *));
+void FDECL (yyerror, (const char *));
+void FDECL (yywarning, (const char *));
 int  NDECL (yywrap);
 void FDECL (init_yyin, (FILE *));
 void FDECL (init_yyout, (FILE *));
@@ -121,7 +121,7 @@ char **argv;
  */
 
 void yyerror(s)
-char *s;
+const char *s;
 {
 	fprintf(stderr,"%s : line %d : %s\n",fname,line_number, s);
 	if (++fatal_error > MAX_ERRORS) {
@@ -135,7 +135,7 @@ char *s;
  */
 
 void yywarning(s)
-char *s;
+const char *s;
 {
 	fprintf(stderr,"%s : line %d : WARNING : %s\n",fname,line_number,s);
 }

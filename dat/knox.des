@@ -82,8 +82,8 @@ MONSTER:'D',random,(49,10)
 MONSTER:'D',random,(33,05)
 MONSTER:'D',random,(33,14)
 # Eels in the moat
-MONSTER:';',"giant eel",(09,08)
-MONSTER:';',"giant eel",(09,11)
+MONSTER:';',"giant eel",(17,08)
+MONSTER:';',"giant eel",(17,11)
 MONSTER:';',"giant eel",(48,08)
 MONSTER:';',"giant eel",(48,11)
 # The corner rooms treasures

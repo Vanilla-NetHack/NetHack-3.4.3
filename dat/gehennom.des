@@ -177,7 +177,7 @@ MAP
 ..}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}.}}}}}..
 ENDMAP
 # Random registers
-RANDOM_MONSTERS:'J','b','P','F'
+RANDOM_MONSTERS:'j','b','P','F'
 RANDOM_PLACES:(04,02),(46,02),(04,15),(46,15)
 # Dungeon description
 REGION:(00,00,50,17),unlit,"swamp"

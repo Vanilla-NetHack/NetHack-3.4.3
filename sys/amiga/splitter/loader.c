@@ -276,7 +276,9 @@ load_hunk(ovlfile,fl,lbase)
 	{
 		ULONG *p=where;		/* clear memory block */
 		ULONG c=(where[-2]/4)-1;	/* (len includes ptr) */
+#if 0			/* don't ship enabled - Gigamem returns 0 */
 		if(!TypeOfMem(p))spanic("clearing bogus memory");
+#endif
 		while(c--)*p++=0;	/* not memset - use longs for speed */
 	}
 

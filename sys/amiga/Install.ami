@@ -2,18 +2,18 @@
 	  Using, Compiling, and Installing Amiga NetHack 3.1
       (or Everything You Never Wanted to Know Before NetHacking)
 
-	     Last Revision: 22 February 1993 for NetHack 3.1.1
+	     Last Revision: 12 May 1993 for NetHack 3.1.2
 
 
-0. Pre-intro for NetHack 3.1.1.
-   New for 3.1.1:
-     Audio support.
-     Much faster loading, slightly smaller files.
-     HackWB allows NewGame to be copied for multiple sets of defaults.
-     HackCli allows options to be changed between games.
-     Many fewer bugs.
-
-   We would also like to thank each and every one of the people who took
+0. Pre-intro for NetHack 3.1.2.
+   New for 3.1.2:
+     Addition of asksavedisk option to eliminate need for savedir;n syntax
+     Scrolling message window if screen is tall enough.
+     Consolidation of defaults and config information into one in HackWB.
+     All known fatal bugs dealing with the Amiga port have been fixed.
+     Preliminary tty mode - see below.
+     
+   We would like to thank each and every one of the people who took
    the time and effort to report bugs to us.  THANK YOU!
 
 I. Introduction
@@ -52,8 +52,7 @@ I.B. Getting Help
     compiling NetHack, you may use the same address, or, for compiler
     specific problems, send mail to:
     	Greg Olson (golson@sundown.sun.com)  for Manx
-    	Ken Lorber (keni@oasys.dt.navy.mil) for SAS/C, or
-    	Richard Addison (addison@pollux.usc.edu) for either.
+    	Richard Addison (addison@pollux.usc.edu) for SAS/C.
     We do not currently have a contact for the DICE port.
 
 I.C. Credits
@@ -195,36 +194,42 @@ III.B. File Location Table
 	A-filla.lev	A-fillb.lev	A-goal.lev	A-locate.lev
 	A-start.lev	air.lev		asmodeus.lev	astral.lev
 	B-filla.lev	B-fillb.lev	B-goal.lev	B-locate.lev
-	B-start.lev	baalz.lev	Bell		bigroom.lev
-	Bugle		C-filla.lev	C-fillb.lev	C-goal.lev
-	C-locate.lev	C-start.lev	castle.lev	cmdhelp
-	data		default.icon	Drum_Of_Earthquake
+	B-start.lev	baalz.lev	bigroom.lev	C-filla.lev
+	C-fillb.lev	C-goal.lev	C-locate.lev	C-start.lev
+	castle.lev	cmdhelp		data		default.icon
 	dungeon		E-filla.lev	E-fillb.lev	E-goal.lev
 	E-locate.lev	E-start.lev	earth.lev	fakewiz1.lev
-	fakewiz2.lev	Fire_Horn	fire.lev	Frost_Horn
-	Guidebook	Guidebook.info	H-filla.lev	H-fillb.lev
-	H-goal.lev	H-locate.lev	H-start.lev	hack/8
-	hack.font	HackWB		HackWB.info	HackCli
-	help		hh		history		juiblex.lev
-	K-filla.lev	K-fillb.lev	K-goal.lev	K-locate.lev
-	K-start.lev	knox.lev	Leather_Drum	license
-	logfile		Magic_Flute	Magic_Harp	ManPage
-	ManPage.info	medusa-1.lev	medusa-2.lev	minefill.lev
-	minetown.lev	mine_end.lev	NetHack.cnf	NetHack.c01
-	NetHack.d00	news		NewGame.info	opthelp
-	options		oracle.lev	oracles		orcus.lev
-	P-filla.lev	P-fillb.lev	P-goal.lev	P-locate.lev
-	P-start.lev	perm		quest.dat	R-filla.lev
-	R-fillb.lev	R-goal.lev	R-locate.lev	R-start.lev
-	ReadMe		ReadMe.info	record		recover
-	rumors		S-filla.lev	S-fillb.lev	S-goal.lev
-	S-locate.lev	S-start.lev	sanctum.lev	T-filla.lev
-	T-fillb.lev	T-goal.lev	T-locate.lev	T-start.lev
-	Tooled_Horn	tower1.lev	tower2.lev	tower3.lev
-	V-filla.lev	V-fillb.lev	V-goal.lev	V-locate.lev
-	V-start.lev	valley.lev	W-filla.lev	W-fillb.lev
-	W-goal.lev	W-locate.lev	W-start.lev	water.lev
-	wizard1.lev	wizard2.lev	wizard3.lev	wizhelp
+	fakewiz2.lev	fire.lev	Guidebook	Guidebook.info
+	H-filla.lev	H-fillb.lev	H-goal.lev	H-locate.lev
+	H-start.lev	hack.font	HackWB		HackWB.info
+	HackCli		help		hh		history
+	juiblex.lev	K-filla.lev	K-fillb.lev	K-goal.lev
+	K-locate.lev	K-start.lev	knox.lev	license
+	logfile		ManPage		ManPage.info	medusa-1.lev
+	medusa-2.lev	minefill.lev	minetown.lev	mine_end.lev
+	NetHack.cnf	NetHack.c01	NetHack.d00	news
+	NewGame.info	opthelp		options		oracle.lev
+	oracles		orcus.lev	P-filla.lev	P-fillb.lev
+	P-goal.lev	P-locate.lev	P-start.lev	perm
+	quest.dat	R-filla.lev	R-fillb.lev	R-goal.lev
+	R-locate.lev	R-start.lev	ReadMe		ReadMe.info
+	record		recover		rumors		S-filla.lev
+	S-fillb.lev	S-goal.lev	S-locate.lev	S-start.lev
+	sanctum.lev	T-filla.lev	T-fillb.lev	T-goal.lev
+	T-locate.lev	T-start.lev	tower1.lev	tower2.lev
+	tower3.lev	V-filla.lev	V-fillb.lev	V-goal.lev
+	V-locate.lev	V-start.lev	valley.lev	W-filla.lev
+	W-fillb.lev	W-goal.lev	W-locate.lev	W-start.lev
+	water.lev	wizard1.lev	wizard2.lev	wizard3.lev
+	wizhelp
+
+    NetHack:hack
+	8
+
+    NetHack:sounds
+	Bell		Bugle		Drum_Of_Earthquake
+	Fire_Horn	Frost_Horn	Leather_Drum
+	Magic_Flute	Magic_Harp	Tooled_Horn
 	Wooden_Flute	Wooden_Harp
 
     HackExe:
@@ -267,8 +272,7 @@ IV.B.1. Introduction to Compiling NetHack
     CAREFULLY through the Makefile to familiarize yourself with which
     assignments are assumed.  Otherwise, you're going to get something
     like "Insert NHS: in any drive." requestors.  You will need the
-    programs uudecode, flex, and bison.  Be sure the p bit is set in
-    the permissions for ifchange.  The first thing Makefile.ami does
+    programs uudecode, flex, and bison.  The first thing Makefile.ami does
     is build a program called 'makedefs', which handles a variety of
     data file generation, and a pair of programs called 'lev_comp' and
     'dgn_comp' which compile the special levels.  Makedefs will then be
@@ -308,7 +312,7 @@ IV.B.2. Compiling NetHack with SAS/C version 6.2
 
 	* Included in the SAS/C port is code for generating a SnapShot.tb
 	  file upon catching various internal disasters.  That is why the
-	  -d1 flag is in the makefile.  This adds about 270K to the disk
+	  debug=l flag is in the makefile.  This adds about 270K to the disk
 	  image, but it does not increase the run time memory requirements.
           (But note that this is not useful for split binaries - see below.)
 
@@ -348,3 +352,18 @@ IV.C.1 Splitter
     decision is based on the presence (or absence) of HackExe:NetHack.dir.
     Note that the contents of NetHack.dir after a build will generally not
     be the correct contents for a floppy based system.
+
+IV.C.2 TTY Interface
+    There is a basic tty interface available under 3.1.2.  This is a
+    preliminary version and it will change in the future.  Expect bugs.
+    (Due to the instability of the interface it will not be in the
+    official binaries for 3.1.2).  The TTY mode is designed for use in
+    a BBS setting - it is specifically not recommended for use on the
+    console.  The TTY interface is not currently compatible with split
+    binaries - invoke NetHack directly as NetHack.  In addition, you should
+    specify #undef SHELL when you compile and add "OPTIONS=windowtype=tty"
+    and delete GRAPHICS from NetHack.cnf; a 24x80 ANSI-compatible terminal
+    is assumed.  The present version does not deal with protecting one
+    user's saved games from another's, or deal with situations such as
+    low disk space gracefully.  Bug reports and suggestions for improvements
+    are requested from the user community.

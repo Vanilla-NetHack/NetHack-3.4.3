@@ -101,6 +101,18 @@ DGNCOMPOBJS = dgn_yacc.o dgn_lex.o dgn_main.o panic.o ../src/alloc.o
 # object files for recovery utility
 RECOVOBJS = recover.o
 
+# flags for creating distribution versions of sys/share/*_lex.c, using
+# a more portable flex skeleton, which is not included in the distribution.
+# hopefully keeping this out of the section to be edited will keep too
+# many people from being confused by it...
+# FLEXDIST = -L -S../sys/share/flexhack.skel
+FLEXDIST =
+#
+# flags for creating distribution versions of sys/share/*_yacc.c, without
+# line numbers so patches from version to version are practical
+# YACCDIST = -l
+YACCDIST =
+
 
 #	dependencies for makedefs
 #
@@ -108,7 +120,8 @@ makedefs:	$(MAKEOBJS)
 	$(CC) $(LFLAGS) -o makedefs $(MAKEOBJS)
 
 makedefs.o:  ../include/config.h ../include/permonst.h ../include/objclass.h \
-		../include/monsym.h ../include/artilist.h ../include/qtext.h
+		../include/monsym.h ../include/artilist.h \
+		../include/patchlevel.h ../include/qtext.h
 
 ../include/onames.h: makedefs
 	./makedefs -o
@@ -150,12 +163,12 @@ lev_lex.o:   ../include/hack.h ../include/lev_comp.h ../include/sp_lev.h lev_lex
 ../include/lev_comp.h: lev_yacc.c
 
 lev_yacc.c: lev_comp.y
-	$(YACC) -d lev_comp.y
+	$(YACC) $(YACCDIST) -d lev_comp.y
 	mv $(YTABC) lev_yacc.c
 	mv $(YTABH) ../include/lev_comp.h
 
 lev_lex.c: lev_comp.l
-	$(LEX) lev_comp.l
+	$(LEX) $(FLEXDIST) lev_comp.l
 	mv $(LEXYYC) lev_lex.c
 
 # with all of extern.h's functions to complain about, we drown in
@@ -181,12 +194,12 @@ dgn_lex.o:   ../include/config.h ../include/dgn_comp.h ../include/dgn_file.h dgn
 ../include/dgn_comp.h: dgn_yacc.c
 
 dgn_yacc.c: dgn_comp.y
-	$(YACC) -d dgn_comp.y
+	$(YACC) $(YACCDIST) -d dgn_comp.y
 	mv $(YTABC) dgn_yacc.c
 	mv $(YTABH) ../include/dgn_comp.h
 
 dgn_lex.c: dgn_comp.l
-	$(LEX) dgn_comp.l
+	$(LEX) $(FLEXDIST) dgn_comp.l
 	mv $(LEXYYC) dgn_lex.c
 
 # with all of extern.h's functions to complain about, we drown in

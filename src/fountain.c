@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)fountain.c	3.1	93/02/13	*/
+/*	SCCS Id: @(#)fountain.c	3.1	93/05/18	*/
 /*	Copyright Scott R. Turner, srt@ucla, 10/27/86 */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -108,9 +108,8 @@ genericptr_t poolcnt;
 	    pline("Water gushes forth from the overflowing fountain!");
 
 	/* Put a pool at x, y */
-
 	levl[x][y].typ = POOL;
-
+	del_engr_at(x, y);
 	water_damage(level.objects[x][y], FALSE, TRUE);
 
 	if ((mtmp = m_at(x, y)) != 0)
@@ -513,12 +512,14 @@ drinksink()
 			morehungry(rn1(30-ACURR(A_CON), 11));
 			vomit();
 			break;
-#ifdef POLYSELF
 		case 10: pline("This water contains toxic wastes!");
 			You("undergo a freakish metamorphosis!");
+#ifdef POLYSELF
 			polyself();
-			break;
+#else
+			newman();
 #endif
+			break;
 		/* more odd messages --JJB */
 		case 11: You("hear clanking from the pipes....");
 			break;

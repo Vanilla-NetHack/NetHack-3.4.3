@@ -122,8 +122,10 @@
 #define Vomiting		u.uprops[VOMITING].p_flgs
 #define Energy_regeneration	u.uprops[ENERGY_REGENERATION].p_flgs
 #define HMagical_breathing	u.uprops[MAGICAL_BREATHING].p_flgs
-#define Magical_breathing	UPROP(HMagical_breathing,\
-				      magic_breathing(uasmon))
+#define Amphibious		UPROP(HMagical_breathing,\
+				      amphibious(uasmon))
+#define Breathless		UPROP(HMagical_breathing,\
+				      breathless(uasmon))
 #define Half_spell_damage	u.uprops[HALF_SPDAM].p_flgs
 #define Half_physical_damage	u.uprops[HALF_PHDAM].p_flgs
 

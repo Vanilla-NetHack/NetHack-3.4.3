@@ -17,6 +17,9 @@ extern struct window_procs mac_procs ;
 #endif
 #ifdef AMIGA_INTUITION
 extern struct window_procs amii_procs ;
+extern struct window_procs amiv_procs ;
+extern void NDECL( amii_loadlib );
+extern void NDECL( amiv_loadlib );
 #endif
 
 NEARDATA struct window_procs windowprocs;
@@ -36,7 +39,13 @@ struct win_choices {
 	{ & mac_procs , NULL } ,
 #endif
 #ifdef AMIGA_INTUITION
-	{ & amii_procs , NULL } ,
+	/* A shared library is used for implementing the access to these two
+	 * different display mechanisms.  This means that the function names
+	 * are actually the same (assembler stubs) and the libraries do different
+	 * things.
+	 */
+	{ & amii_procs , amii_loadlib } ,
+	{ & amiv_procs , amiv_loadlib } ,
 #endif
     { 0, 0 }		/* must be last */
 };

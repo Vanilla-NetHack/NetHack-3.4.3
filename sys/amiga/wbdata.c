@@ -11,10 +11,35 @@ struct Window *oldwin;
 char *classes = "ABCEHKPRSTVW";
 struct TmpRas tmpras;
 
-DEFAULTS  defgame =
+UWORD __chip waitPointer[] =
 {
-    PL_RANDOM,
-    NULL, NULL,
+    0x0000,0x0000,
+
+    0x0400,0x07c0,
+    0x0000,0x07c0,
+
+    0x0100,0x0380,
+    0x0000,0x07e0,
+
+    0x07c0,0x1ff8,
+    0x1ff0,0x3fec,
+
+    0x3ff8,0x7fde,
+    0x3ff8,0x7fbe,
+
+    0x7ffc,0xff7f,
+    0x7efc,0xffff,
+
+    0x7ffc,0xffff,
+    0x3ff8,0x7ffe,
+
+    0x3ff8,0x7ffe,
+    0x1ff0,0x3ffc,
+
+    0x07c0,0x1ff8,
+    0x0000,0x07e0,
+
+    0x0000,0x0000,
 };
 
 OPTIONS curopts[] =
@@ -32,9 +57,9 @@ OPTIONS curopts[] =
     { 0, 1, "legacy", NULL, GADOLEGACY, },
     { 0, 0, "lit_corridor", NULL, GADOLITCORRIDOR, },
     { 0, 1, "news", NULL, GADONEWS, },
-    { 0, 0, "numberpad", NULL, GADONUMBERPAD, },
+    { 0, 0, "number_pad", NULL, GADONUMBERPAD, },
     { 0, 1, "null", NULL, GADONULL, },
-    { 0, 1, "pickup", NULL, GADOPICKUP, },
+    { 0, 1, "autopickup", NULL, GADOPICKUP, },
     { 0, 0, "rest_on_space", NULL, GADORESTONSPACE, },
     { 0, 1, "safepet", NULL, GADOSAFEPET, },
     { 0, 0, "showexp", NULL, GADOSHOWEXP, },
@@ -46,7 +71,14 @@ OPTIONS curopts[] =
     { 0, 0, "time", NULL, GADOTIME, },
     { 0, 1, "tombstone", NULL, GADOTOMBSTONE, },
     { 0, 1, "verbose", NULL, GADOVERBOSE, },
-    { 0, 0, "asksave", NULL, GADOASKSAVE, },
+    { 0, 0, "asksavedisk", NULL, GADOASKSAVE, },
+    { 0, 0, "name", "", GADONAME, },
+    { 0, 0, "score", "", GADOSCORE, },
+    { 0, 0, "palette", "", GADOPALETTE, },
+    { 0, 0, "windowtype", "", GADOWINDOWTYPE, },
+    { 0, 0, "msghistory", "", GADOMSGHISTORY, },
+    { 0, 0, "pickup_types", "", GADOPICKUPTYPES, },
+    { 0, 0, "pettype", "", GADOPETTYPE, },
     { 0, 0, "packorder", "", GADOPACKORDER, },
     { 0, 0, "dogname", "", GADODOGNAME, },
     { 0, 0, "catname", "", GADOCATNAME, },
@@ -102,6 +134,41 @@ USHORT __chip up_renderdata[] = {
 
 };
 
+USHORT __chip tall_up_renderdata[] = {
+/* Plane 0 */
+   0xfff0,
+   0x8700,
+   0x8700,
+   0x8700,
+   0x8f80,
+   0x8f80,
+   0xbfe0,
+   0xbfe0,
+   0xbfe0,
+   0x8000,
+
+/* Plane 1 */
+   0x0008,
+   0x0708,
+   0x0708,
+   0x0708,
+   0x0f88,
+   0x0f88,
+   0x3fe8,
+   0x3fe8,
+   0x3fe8,
+   0x7ff8,
+
+};
+
+struct Image tall_up_renderimage = {
+   0, 0,
+   13, 10, 2,
+   tall_up_renderdata,
+   3,0,
+   NULL,
+};
+
 struct Image up_renderimage = {
    0, 0,
    13, 5, 2,
@@ -110,17 +177,58 @@ struct Image up_renderimage = {
    NULL,
 };
 
+USHORT __chip tall_up_selectdata[] = {
+/* Plane 0 */
+   0x0008,
+   0x78f8,
+   0x78f8,
+   0x78f8,
+   0x7078,
+   0x7078,
+   0x4018,
+   0x4018,
+   0x4018,
+   0xfff8,
+/* Plane 1 */
+   0xfff0,
+   0xf8f0,
+   0xf8f0,
+   0xf8f0,
+   0xf070,
+   0xf070,
+   0xc010,
+   0xc010,
+   0xc010,
+   0x0000,
+};
+
 USHORT __chip up_selectdata[] = {
 /* Plane 0 */
-   0x0008, 0x78f8, 0x7078, 0x4018, 0xfff8,
+   0x0008,
+   0x78f8,
+   0x7078,
+   0x4018,
+   0xfff8,
 /* Plane 1 */
-   0xfff0, 0xf8f0, 0xf070, 0xc010, 0x0000,
+   0xfff0,
+   0xf8f0,
+   0xf070,
+   0xc010,
+   0x0000,
 };
 
 struct Image up_selectimage = {
    0, 0,
    13, 5, 2,
    up_selectdata,
+   3,0,
+   NULL,
+};
+
+struct Image tall_up_selectimage = {
+   0, 0,
+   13, 10, 2,
+   tall_up_selectdata,
    3,0,
    NULL,
 };
@@ -142,6 +250,40 @@ USHORT __chip down_renderdata[] = {
 
 };
 
+USHORT __chip tall_down_renderdata[] = {
+/* Plane 0 */
+   0xfff0,
+   0xbfe0,
+   0xbfe0,
+   0xbfe0,
+   0x8f80,
+   0x8f80,
+   0x8700,
+   0x8700,
+   0x8700,
+   0x8000,
+
+/* Plane 1 */
+   0x0008,
+   0x3fe8,
+   0x3fe8,
+   0x3fe8,
+   0x0f88,
+   0x0f88,
+   0x0708,
+   0x0708,
+   0x0708,
+   0x7ff8,
+};
+
+struct Image tall_down_renderimage = {
+   0, 0,
+   13, 10, 2,
+   tall_down_renderdata,
+   3,0,
+   NULL,
+};
+
 struct Image down_renderimage = {
    0, 0,
    13, 5, 2,
@@ -152,9 +294,50 @@ struct Image down_renderimage = {
 
 USHORT __chip down_selectdata[] = {
 /* Plane 0 */
-   0x0008, 0x4018, 0x7078, 0x78f8, 0x7ff8,
+   0x0008,
+   0x4018,
+   0x7078,
+   0x78f8,
+   0x7ff8,
 /* Plane 1 */
-   0xfff0, 0xc010, 0xf070, 0xf8f0, 0x8000,
+   0xfff0,
+   0xc010,
+   0xf070,
+   0xf8f0,
+   0x8000,
+};
+
+USHORT __chip tall_down_selectdata[] = {
+/* Plane 0 */
+   0x0008,
+   0x4018,
+   0x4018,
+   0x4018,
+   0x7078,
+   0x7078,
+   0x78f8,
+   0x78f8,
+   0x78f8,
+   0x7ff8,
+/* Plane 1 */
+   0xfff0,
+   0xc010,
+   0xc010,
+   0xc010,
+   0xf070,
+   0xf070,
+   0xf8f0,
+   0xf8f0,
+   0xf8f0,
+   0x8000,
+};
+
+struct Image tall_down_selectimage = {
+   0, 0,
+   13, 10, 2,
+   tall_down_selectdata,
+   3,0,
+   NULL,
 };
 
 struct Image down_selectimage = {

@@ -1,9 +1,9 @@
-/*	SCCS Id: @(#)dokick.c	3.1	93/02/18	*/
+/*	SCCS Id: @(#)dokick.c	3.1	93/05/14	*/
 /* Copyright (c) Izchak Miller, Mike Stephenson, Steve Linhart, 1989. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
-#include	"eshk.h"
+#include "hack.h"
+#include "eshk.h"
 
 #ifndef POLYSELF
 # define martial()	(pl_character[0] == 'S' || pl_character[0] == 'P')
@@ -46,6 +46,12 @@ register boolean clumsy;
 	/* a good kick exercises your dex */
 	exercise(A_DEX, TRUE);
 
+/*	it is unchivalrous to attack the defenseless or from behind */
+	if (pl_character[0] == 'K' &&
+		u.ualign.type == A_LAWFUL && u.ualign.record > -10 &&
+		(!mon->mcanmove || mon->msleep || mon->mflee))
+		adjalign(-1);
+
 	/* squeeze some guilt feelings... */
 	if(mon->mtame) {
 	    abuse_dog(mon);
@@ -57,7 +63,7 @@ register boolean clumsy;
 #endif
 	}
 
-	if (dmg)
+	if (dmg > 0)
 		mon->mhp -= (!martial() ? rnd(dmg) :
 			rnd(dmg)+rnd(ACURR(A_DEX)/2));
 	if(mon->mhp < 1) {
@@ -80,12 +86,6 @@ register boolean clumsy;
 		}
 	}
 	(void) passive(mon, FALSE, 1, TRUE);
-
-/*	it is unchivalrous to attack the defenseless or from behind */
-	if (pl_character[0] == 'K' &&
-		u.ualign.type == A_LAWFUL && u.ualign.record > -10 &&
-		(!mon->mcanmove || mon->msleep || mon->mflee))
-		adjalign(-1);
 
 }
 
@@ -436,12 +436,14 @@ xchar x, y;
 		else pline("%s come%s loose.",
 			   The(distant_name(kickobj, xname)),
 			   (kickobj->quan == 1L) ? "s" : "");
-		remove_object(kickobj);
+		freeobj(kickobj);
 		newsym(x, y);
 		if (costly && (!costly_spot(u.ux, u.uy)
 			       || !index(u.urooms, *in_rooms(x, y, SHOPBASE))))
 			addtobill(kickobj, FALSE, FALSE, FALSE);
 		if(!flooreffects(kickobj,u.ux,u.uy,"fall")) {
+		    kickobj->nobj = fobj;
+		    fobj = kickobj;
 		    place_object(kickobj, u.ux, u.uy);
 		    stackobj(kickobj);
 		    newsym(u.ux, u.uy);
@@ -541,47 +543,51 @@ int
 dokick()
 {
 	register int x, y;
-	register int avrg_attrib = (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3;
+	int avrg_attrib;
 	register struct monst *mtmp;
-	register s_level *slev = Is_special(&u.uz);
+	s_level *slev;
+	boolean no_kick = FALSE;
 
 #ifdef POLYSELF
-	if(nolimbs(uasmon)) {
+	if (nolimbs(uasmon)) {
 		You("have no legs to kick with.");
-		return(0);
-	}
-	if(verysmall(uasmon)) {
+		no_kick = TRUE;
+	} else if (verysmall(uasmon)) {
 		You("are too small to do any kicking.");
-		return(0);
-	}
+		no_kick = TRUE;
+	} else
 #endif
-	if(Wounded_legs) {
+	if (Wounded_legs) {
 		Your("%s %s in no shape for kicking.",
 		      ((Wounded_legs & BOTH_SIDES)==BOTH_SIDES)
 			? (const char *)makeplural(body_part(LEG)) : body_part(LEG),
 		      ((Wounded_legs & BOTH_SIDES)==BOTH_SIDES) ? "are" : "is");
-		return(0);
-	}
-
-	if(near_capacity() > SLT_ENCUMBER) {
+		no_kick = TRUE;
+	} else if (near_capacity() > SLT_ENCUMBER) {
 		Your("load is too heavy to balance yourself for a kick.");
-		return(0);
-	}
-
-	if(u.uinwater && !rn2(2)) {
+		no_kick = TRUE;
+	} else if (u.uinwater && !rn2(2)) {
 		Your("slow motion kick doesn't hit anything.");
-		return(0);
-	}
-
-	if(u.utrap) {
+		no_kick = TRUE;
+	} else if (u.utrap) {
 		switch (u.utraptype) {
 		    case TT_PIT:
-			pline("There's nothing to kick down here.");
+			pline("There's not enough room to kick down here.");
+			break;
 		    case TT_WEB:
 		    case TT_BEARTRAP:
 			You("can't move your %s!", body_part(LEG));
+			break;
+		    default:
+			break;
 		}
-		return(0);
+		no_kick = TRUE;
+	}
+
+	if (no_kick) {
+		/* discard direction typeahead, if any */
+		display_nhwindow(WIN_MESSAGE, TRUE);	/* --More-- */
+		return 0;
 	}
 
 	if(!getdir(NULL)) return(0);
@@ -589,6 +595,7 @@ dokick()
 
 	x = u.ux + u.dx;
 	y = u.uy + u.dy;
+	avrg_attrib = (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3;
 
 	if(u.uswallow) {
 		switch(rn2(3)) {
@@ -647,8 +654,8 @@ dokick()
 			exercise(A_DEX, TRUE);
 			maploc->typ = DOOR;
 			if(maploc->doormask & D_TRAPPED) {
-			    b_trapped("door");
 			    maploc->doormask = D_NODOOR;
+			    b_trapped("door", FOOT);
 			} else
 			    maploc->doormask = D_ISOPEN;
 			if (Blind)
@@ -824,10 +831,10 @@ dumb:
 	if(rnl(35) < avrg_attrib + (!martial() ? 0 : ACURR(A_DEX))) {
 		/* break the door */
 		if(maploc->doormask & D_TRAPPED) {
-		    pline("As you kick the door, it explodes!");
+		    if (flags.verbose) You("kick the door.");
 		    exercise(A_STR, FALSE);
-		    b_trapped("door");
 		    maploc->doormask = D_NODOOR;
+		    b_trapped("door", FOOT);
 		} else if(ACURR(A_STR) > 18 && !rn2(5) &&
 			  !*in_rooms(x, y, SHOPBASE)) {
 		    pline("As you kick the door, it shatters to pieces!");
@@ -847,7 +854,7 @@ dumb:
 		else
 		    newsym(x,y);
 		unblock_point(x,y);		/* vision */
-		if(slev && slev->flags.town)
+		if ((slev = Is_special(&u.uz)) && slev->flags.town)
 		  for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 		    if((mtmp->data == &mons[PM_WATCHMAN] ||
 			mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
@@ -863,7 +870,7 @@ dumb:
 	    if (Blind) feel_location(x,y);	/* we know we hit it */
 	    exercise(A_STR, TRUE);
 	    pline("WHAMMM!!!");
-	    if(slev && slev->flags.town)
+	    if ((slev = Is_special(&u.uz)) && slev->flags.town)
 	      for(mtmp = fmon; mtmp; mtmp = mtmp->nmon) {
 	        if((mtmp->data == &mons[PM_WATCHMAN] ||
 		  mtmp->data == &mons[PM_WATCH_CAPTAIN]) &&
@@ -997,10 +1004,10 @@ register xchar x, y, dlev;
 				 index(u.urooms, *in_rooms(x, y, SHOPBASE))),
 				TRUE);
 		    /* set obj->no_charge to 0 */
-		    if(Is_container(obj))
-		        picked_container(obj); /* does the right thing */
-		    if(obj->otyp != GOLD_PIECE)
-		        obj->no_charge = 0;
+		    if (Has_contents(obj))
+			picked_container(obj);	/* does the right thing */
+		    if (obj->otyp != GOLD_PIECE)
+			obj->no_charge = 0;
 		}
 		obj->nobj = migrating_objs;
 		migrating_objs = obj;
@@ -1019,10 +1026,16 @@ register xchar x, y, dlev;
 		pline("From the impact, %sother %s.",
 			dct == oct ? "the " : dct == 1L ? "an" : "", what);
 	    else
-		pline("%s adjacent %s %s",
-			oct == dct ? (dct > 1L ? "All the" : "The") :
-			    (dct == 1L ? "One of the" : "Some of the"),
-			what, gate_str(toloc));
+		if (oct == dct) {
+		    pline("%s adjacent %s %s",
+			    dct == 1L ? "The" : "All the",
+			    what, gate_str(toloc));
+		} else {
+		    pline("%s adjacent %s %s",
+			    dct == 1L ? "One of the" : "Some of the",
+			    dct == 1L ? "objects falls" : what,
+			    gate_str(toloc));
+		}
 	}
 
 	if(costly && shkp && price) {
@@ -1079,7 +1092,7 @@ register boolean shop_floor_obj;
 	drop_to(&cc, toloc);
 	if(!cc.y) return(FALSE);
 
-	container = Is_container(otmp);
+	container = Has_contents(otmp);
 
 	unpaid = (otmp->unpaid || (container && count_unpaid(otmp->cobj)));
 
@@ -1151,7 +1164,6 @@ obj_delivery()
 	register struct obj *otmp, *otmp0 = (struct obj *)0, *otmp2;
 
 	for(otmp = migrating_objs; otmp; otmp = otmp2) {
-
 	    otmp2 = otmp->nobj;
 
 	    if(otmp->ox == u.uz.dnum && otmp->oy == u.uz.dlevel) {
@@ -1197,6 +1209,9 @@ common:
 			    } /* else fall through */
 		    default:
 scatter:
+			    /* set dummy coordinates because there's no
+			       current position for rloco() to update */
+			    otmp->ox = otmp->oy = 0;
 			    rloco(otmp);
 			    break;
 		}
@@ -1244,6 +1259,9 @@ xchar x, y;
 {
 	register struct trap *ttmp = t_at(x, y);
 
+#ifdef MULDGN	/* this matches the player restriction in goto_level() */
+	if (on_level(&u.uz, &qstart_level) && !ok_to_quest()) return -1;
+#endif
 	if(ttmp && ttmp->ttyp == TRAPDOOR && ttmp->tseen) return 0;
 	if(xdnstair == x && ydnstair == y) return 1;
 	if(xdnladder == x && ydnladder == y) return 2;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)pcconf.h	3.1	92/10/23	*/
+/*	SCCS Id: @(#)pcconf.h	3.1	93/04/04  	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -34,6 +34,17 @@
 			/* enclosed in TERMCAP.ARC, to use this */
 
 # define ANSI_DEFAULT    /* allows NetHack to run without a ./termcap */
+
+/*# define NO_TERMS	/* Allows Nethack to run without ansi.sys by linking */
+			/* screen routines into the .exe     */
+
+# ifdef NO_TERMS		/* if NO_TERMS select screen package below */
+#  define SCREEN_BIOS		/* Use bios calls for all screen control */
+/*  #define SCREEN_DJGPPFAST	/* Use djgpp fast screen routines       */
+# endif
+
+/*# define PC9801	/* Allows NetHack to run on NEC PC-9801 machines */
+			/* Yamamoto Keizo */
 
 # define RANDOM		/* have Berkeley random(3) */
 
@@ -104,6 +115,12 @@ extern struct finfo fileinfo[];
 #ifdef MSDOS
 # define TEXTCOLOR /* */
 #endif
+
+#ifdef NO_TERMS		/* Sanity check, do not modify this block */
+# undef TERMLIB
+# undef ANSI_DEFAULT
+# define ASCIIGRAPH
+#endif 
 
 #ifdef MSC7_WARN	/* define with cl /DMSC7_WARN	*/
 #pragma warning(disable:4131)

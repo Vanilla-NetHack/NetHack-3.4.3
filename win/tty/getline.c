@@ -3,6 +3,9 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+
+#ifdef TTY_GRAPHICS
+
 #include "wintty.h"
 #include "func_tab.h"
 
@@ -219,5 +222,7 @@ register char *bufp;
 #endif /* COM_COMPL */
 
 #endif /* OVL2 */
+
+#endif /* TTY_GRAPHICS */
 
 /*getline.c*/

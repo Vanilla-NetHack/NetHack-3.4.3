@@ -1,4 +1,6 @@
-/* recover.c - NetHack version 3.1 */
+/*	SCCS Id: @(#)recover.c	3.1	93/05/15	*/
+/*	Copyright (c) Janet Walz, 1992.				  */
+/* NetHack may be freely redistributed.  See license for details. */
 
 /*
  *  Utility for reconstructing NetHack save file from a set of individual
@@ -25,7 +27,7 @@ extern int FDECL(vms_open, (const char *,int,unsigned));
 int FDECL(restore_savefile, (char *));
 void FDECL(set_levelfile_name, (int));
 int FDECL(open_levelfile, (int));
-int FDECL(create_savefile, (char *));
+int NDECL(create_savefile);
 void FDECL(copy_bytes, (int,int));
 
 #ifdef UNIX
@@ -47,7 +49,10 @@ int argc;
 char *argv[];
 {
 	int argno;
-	char *dir = (char *)0;
+	const char *dir = (char *)0;
+#ifdef AMIGA
+	char *startdir = (char *)0;
+#endif
 
 	if (argc == 1 || (argc == 2 && !strcmp(argv[1], "-"))) {
 		(void) fprintf(stderr,
@@ -90,7 +95,10 @@ char *argv[];
 	if (!dir) dir = HACKDIR;
 #endif
 
-	if (dir && chdir(dir) < 0) {
+#ifdef AMIGA
+	startdir = getcwd(0,255);
+#endif
+	if (dir && chdir((char *) dir) < 0) {
 		(void) fprintf(stderr, "%s: cannot chdir to %s.\n",
 				argv[0], dir);
 		exit(1);
@@ -100,6 +108,9 @@ char *argv[];
 		(void) restore_savefile(argv[argno]);
 		argno++;
 	}
+#ifdef AMIGA
+	if (startdir) (void)chdir(startdir);
+#endif
 #ifndef VMS
 	return 0;
 #else
@@ -143,8 +154,7 @@ int lev;
 }
 
 int
-create_savefile(savename)
-char *savename;
+create_savefile()
 {
 	int fd;
 
@@ -209,7 +219,7 @@ char *basename;
 	 *	(non-level-based) game state
 	 *	other levels
 	 */
-	sfd = create_savefile(savename);
+	sfd = create_savefile();
 	if (sfd < 0) {
 	    (void) fprintf(stderr, "Cannot create savefile %s.\n", savename);
 	    (void) close(gfd);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do.c	3.1	93/02/20	*/
+/*	SCCS Id: @(#)do.c	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -85,7 +85,7 @@ boolean pushing;
 		} else
 		    levl[rx][ry].typ = ROOM;
 
-		delallobj(rx, ry);
+		bury_objs(rx, ry);
 		newsym(rx,ry);
 		if (pushing) {
 		    You("push %s into the %s.", the(xname(otmp)), what);
@@ -153,7 +153,7 @@ const char *verb;
 		 (t->ttyp==PIT || t->ttyp==SPIKED_PIT || t->ttyp==TRAPDOOR)) {
 		struct monst *mtmp;
 
-		delallobj(x, y);
+		bury_objs(x, y);
 		if(!Can_fall_thru(&u.uz) && t->ttyp == TRAPDOOR)
 			return FALSE;
 		if (((mtmp = m_at(x, y)) && mtmp->mtrapped) ||
@@ -165,9 +165,9 @@ const char *verb;
 		    if (mtmp) {
 			if (!passes_walls(mtmp->data) && !throws_rocks(mtmp->data))
 				if (hmon(mtmp, obj, TRUE))
-					return FALSE;	  /* still alive */
+				    return FALSE;	/* still alive */
 				else
-					delallobj(x, y);  /* treasure, corpse */
+				    bury_objs(x, y);	/* treasure, corpse */
 		    } else
 #ifdef POLYSELF
 			if (!passes_walls(uasmon) && !throws_rocks(uasmon))
@@ -470,17 +470,13 @@ register struct obj *obj;
 	if (!u.uswallow && flooreffects(obj,u.ux,u.uy,"drop")) return;
 	if(obj->otyp == CRYSKNIFE)
 		obj->otyp = WORM_TOOTH;
+	(void) snuff_candle(obj);
 	/* uswallow check done by GAN 01/29/87 */
 	if(u.uswallow) {
-		if (obj->otyp == GOLD_PIECE) {
-		    u.ustuck->mgold += obj->quan;
-		    delobj(obj);
-		} else if (obj != uball) {	/* mon doesn't pick up ball */
-		    (void) snuff_candle(obj);   /* security. it's never lit */
+		if (obj != uball) {		/* mon doesn't pick up ball */
 		    mpickobj(u.ustuck,obj);
 		}
 	} else  {
-		(void) snuff_candle(obj);
 		obj->nobj = fobj;
 		fobj = obj;
 		place_object(obj, u.ux, u.uy);
@@ -790,9 +786,7 @@ register boolean at_stairs, falling, portal;
 			pline("Probably someone removed it.");
 			done(TRICKED);
 		}
-#ifdef ZEROCOMP
-		minit();
-#endif
+		minit();	/* ZEROCOMP */
 		getlev(fd, hackpid, ledger_no(&u.uz), FALSE);
 		(void) close(fd);
 	}
@@ -929,9 +923,17 @@ register boolean at_stairs, falling, portal;
 	if (newdungeon && In_tower(&u.uz))
 		pline("The heat and smoke are gone.");
 #ifdef MULDGN
-	if(!In_quest(&u.uz0) && at_dgn_entrance("The Quest") &&
-		!(u.uevent.qexpelled || u.uevent.qcompleted || leaderless()))
-	    com_pager(2);	/* the message from the leader */
+	/* the message from your quest leader */
+	if (!In_quest(&u.uz0) && at_dgn_entrance("The Quest") &&
+		!(u.uevent.qexpelled || u.uevent.qcompleted || leaderless())) {
+
+		if (u.uevent.qcalled) {
+			com_pager(3);
+		} else {
+			com_pager(2);
+			u.uevent.qcalled = TRUE;
+		}
+	}
 
 	if(Is_knox(&u.uz)) {
 		register struct monst *mtmp;
@@ -1007,10 +1009,7 @@ register boolean at_stairs, falling, portal;
 	save_currentstate();
 #endif
 
-	if(!flags.nopick && OBJ_AT(u.ux, u.uy) &&
-	   (!is_pool(u.ux,u.uy) || Underwater))
-		pickup(1);
-	else read_engr_at(u.ux,u.uy);
+	pickup(1);
 }
 
 /* handle something like portal ejection */
@@ -1078,6 +1077,7 @@ struct obj **chain;
     register long corpse_age;
     boolean ininv = (*chain == invent);
     boolean onfloor = (*chain == fobj);
+    boolean buried = (*chain == level.buriedobjlist);
 
     for (obj = *chain; obj; obj = nobj) {
 	nobj = obj->nobj;
@@ -1088,9 +1088,11 @@ struct obj **chain;
 		rn2(3) && is_ice(obj->ox, obj->oy)) obj->age++;
 	    corpse_age = monstermoves - obj->age;
 
-	    if (is_rider(&mons[obj->corpsenm]) && corpse_age >= 12) {
+	    if (is_rider(&mons[obj->corpsenm]) && corpse_age >= 12 && onfloor) {
 		/* these always come back eventually */
-		/* riders can't be picked up, so no need to check onfloor */
+		/* riders can't be picked up, but can be buried, but
+		 * the astral level seems to rule out that possibility
+		 */
 		revive_corpse(obj, 3, FALSE);
 	    } else if (mons[obj->corpsenm].mlet == S_TROLL && !obj->oldcorpse
 		       && !(mons[obj->corpsenm].geno & (G_GENOD | G_EXTINCT))
@@ -1113,6 +1115,8 @@ struct obj **chain;
 		    useup(obj);
 		else if(onfloor)
 		    delobj(obj);
+		else if(buried)
+		    delburiedobj(obj);
 		else { /* in a container */
 		    if(pobj) pobj->nobj = nobj;
 		    else *chain = nobj;
@@ -1120,8 +1124,9 @@ struct obj **chain;
 		    obj = 0;
 		}
 	    }
-	} else if(obj->cobj && Is_container(obj) && obj->otyp != ICE_BOX)
+	} else if (Has_contents(obj) && obj->otyp != ICE_BOX) {
 	    remove_cadavers(&obj->cobj);
+	}
 	/* pobj is only used for containers, which don't allow revive() -dlc */
 	/* and for monster inventory (special cases only) under MUSE */
 	if (obj) pobj = obj;
@@ -1129,7 +1134,8 @@ struct obj **chain;
 }
 
 int
-donull() {
+donull()
+{
 	return(1);	/* Do nothing, but let other things happen */
 }
 
@@ -1137,7 +1143,8 @@ donull() {
 #ifdef OVLB
 
 STATIC_PTR int
-wipeoff() {
+wipeoff()
+{
 	if(u.ucreamed < 4)	u.ucreamed = 0;
 	else			u.ucreamed -= 4;
 	if (Blinded < 4)	Blinded = 0;

@@ -352,9 +352,11 @@ popup_get_ext_cmd(char *bufp)
 void
 mac_get_ext_cmd(char *bufp)
 {
+#if 0	/* already in error and then broken by macmenu.c */
 	if (flags.popup_dialog)
 		popup_get_ext_cmd(bufp);
 	else
+#endif
 		topl_getlin("# ", bufp, &topl_ext_key);
 }
 

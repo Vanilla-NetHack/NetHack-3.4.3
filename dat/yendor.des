@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)yendor.des	3.1	92/01/10
+#	SCCS Id: @(#)yendor.des	3.1	93/05/22
 #	Copyright (c) 1989 by Jean-Christophe Collet
 #	Copyright (c) 1992 by M. Stephenson and Izchak Miller
 # NetHack may be freely redistributed.  See license for details.
@@ -6,7 +6,7 @@
 # The top (real) wizard level.
 # Keeping the Moat for old-time's sake
 MAZE:"wizard1",random
-FLAGS:noteleport
+FLAGS:noteleport,hardfloor
 GEOMETRY:center,center
 MAP
 ----------------------------.
@@ -88,7 +88,7 @@ OBJECT:'+',random,random
 
 # The middle wizard level.
 MAZE:"wizard2",random
-FLAGS:noteleport
+FLAGS:noteleport,hardfloor
 GEOMETRY:center,center
 MAP
 ----------------------------.
@@ -140,7 +140,7 @@ OBJECT:'"',random,(04,06)
 # The bottom wizard level.
 # Memorialize the fakewiz setup.
 MAZE:"wizard3",random
-FLAGS:noteleport
+FLAGS:noteleport,hardfloor
 GEOMETRY:center,center
 MAP
 ----------------------------.

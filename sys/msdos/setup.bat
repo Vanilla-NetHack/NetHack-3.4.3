@@ -25,7 +25,7 @@ if %1 == gcc goto ok_gcc
 goto err_set
 
 :ok_gcc
-echo Copying Makefiles.
+echo Symbolic links, msdos style
 echo "MakeGCC.src -> ..\..\src\makefile"
 copy makegcc.src ..\..\src\makefile
 echo "MakeGCC.utl -> ..\..\util\makefile"
@@ -38,9 +38,9 @@ goto done
 echo Setting Environment variables for Compiler.
 set  CL= /AL /G2 /Oo /Gs /Gt18 /Zp1 /W0 /I..\include /nologo /DMOVERLAY
 echo Copying Makefiles.
-echo "MakeMSC.src -> ..\..\dat\makefile"
+echo "MakeMSC.src -> ..\..\src\makefile"
 copy makemsc.src ..\..\src\makefile
-echo "MakeMSC.utl -> ..\..\dat\makefile"
+echo "MakeMSC.utl -> ..\..\util\makefile"
 copy makemsc.utl ..\..\util\makefile
 echo "Makefile.dat -> ..\..\dat\makefile"
 copy makefile.dat ..\..\dat\makefile

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vision.h	3.1	92/11/14	*/
+/*	SCCS Id: @(#)vision.h	3.1	93/05/15	*/
 /* Copyright (c) Dean Luick, with acknowledgements to Dave Cohrs, 1990.	*/
 /* NetHack may be freely redistributed.  See license for details.	*/
 
@@ -44,6 +44,6 @@ extern char *viz_rmax;			/* max could see indices */
 #define MAX_RADIUS 15	/* this is in points from the source */
 
 /* Use this macro to get a list of distances of the edges (see vision.c). */
-#define circle_ptr(z) (&circle_data[circle_start[z]])
+#define circle_ptr(z) (&circle_data[(int)circle_start[z]])
 
 #endif /* VISION_H */

@@ -1,0 +1,32 @@
+# These are recommended sample options
+OPTIONS=rest,!autopickup,!time,!silent,dogname:Rover,catname:Pixel
+
+# If you always want to play an Elf named Brother, with a cat, do:
+#OPTIONS=name:Brother-E,pettype:cat
+
+# Enable these (remove the # before them) to get a "classic" look & feel
+OPTIONS=window:tty,standout,hilite_pet
+
+# Enable these if you have a 13" color screen or larger in TTY mode
+# If you have a color classic, remove the ",large" option
+OPTIONS=time,color,large
+
+# This is a sample palette that looks "mac-like" (Jons favourite)
+# The order of the colors is Black, Red, Green, Brown, Blue, Magenta, 
+# Cyan, Gray, Text, Orange, Bright Green, Yellow, Bright blue, Bright 
+# Magenta, Bright Cyan, White, (Raw Text, Unused, Unused, Unused, 
+# Highlight)
+OPTIONS=palette:fff/500/050/530/005/505/055/555/222/962/292/980/229/828/099/000/222/474/622/62c/-610
+
+# This is a sample inverse-screen palette, for all of you asking for it...
+#OPTIONS=palette:000/c22/2c2/ca0/22c/a2a/2aa/ccc/999/f00/0f0/dd0/00f/d0d/0dd/fff/999/444/622/62c/-222
+
+# If you only want to change the hilite color (i e for --More--) you can 
+# do this: (white-on-blue --More--)
+#OPTIONS=hicolor:-027
+
+# WARNING: Setting colors only works on color-capable macs. If you have a 
+# non-color Mac, palette changes will not take effect, and you cannot 
+# play in reverse colors!
+# For a "real" old-style hack, use the inverse-screen palette but remove 
+# the ,color option above!

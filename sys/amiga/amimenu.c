@@ -7,7 +7,7 @@
 
 #define TEXT(nam,str) \
 static struct IntuiText nam = \
-  {1,5,JAM2,0,0,0L,(UBYTE*)str,0L}  /* 1,5 == C_WHITE,C_MAGENTA */
+  {0,1,JAM2,0,0,0L,(UBYTE*)str,0L}  /* 0,1 == C_BLACK,C_WHITE */
 
     /* Commands */
     TEXT(T_HELP,  "?   Display help menu");
@@ -154,9 +154,9 @@ static struct MenuItem movsub[] = {
 /* Width = #letters * 8 + 8 + 10 */
 
 struct Menu HackMenu[] = {
-   { &HackMenu[1], 10,0, 72,0,MENUENABLED,"Commands",     &cmdsub[0] }, /*8*/
-   { &HackMenu[2], 92,0, 80,0,MENUENABLED,"Inventory",    &invsub[0] }, /*9*/
-   { &HackMenu[3],182,0, 64,0,MENUENABLED,"Actions",      &actsub[0] }, /*7*/
-   { &HackMenu[4],256,0,104,0,MENUENABLED,"Preparations", &armsub[0] }, /*12*/
-   { NULL,    370,0, 72,0,MENUENABLED,"Movement",     &movsub[0] },	/*8*/
+   { &HackMenu[1], 0,0, 72,0,MENUENABLED,"Commands",     &cmdsub[0] }, /*8*/
+   { &HackMenu[2], 82,0, 80,0,MENUENABLED,"Inventory",    &invsub[0] }, /*9*/
+   { &HackMenu[3],172,0, 64,0,MENUENABLED,"Actions",      &actsub[0] }, /*7*/
+   { &HackMenu[4],246,0,104,0,MENUENABLED,"Preparations", &armsub[0] }, /*12*/
+   { NULL,    360,0, 72,0,MENUENABLED,"Movement",     &movsub[0] },	/*8*/
 };

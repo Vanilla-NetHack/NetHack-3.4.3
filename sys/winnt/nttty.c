@@ -1,29 +1,26 @@
-/*	SCCS Id: @(#)nttty.c	3.1	90/22/02
-/* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
+/*	SCCS Id: @(#)nttty.c	3.1	90/05/23
+/* Copyright (c) NetHack PC Development Team 1993    */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* tty.c - (Windows NT) version */
 /*                                                  
- * Initial Creation - Michael Allison January 31/93 
+ * Initial Creation - Michael Allison 93/01/31 
  *
  */
 
 #ifdef WIN32CON
 
-#define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
+#define NEED_VARARGS /* Uses ... */
 #include "hack.h"
 #include "wintty.h"
-#include "termcap.h"
-#include <windows.h>
-#include <wincon.h>
 #include <sys\types.h>
 #include <sys\stat.h>
-/* #include <conio.h> */
+#pragma pack(8)
+#include <windows.h>
+#include <wincon.h>
 
 void FDECL(cmov, (int, int));
 void FDECL(nocmov, (int, int));
-void FDECL(xputspecl, (char *));
-void FDECL(xputcolor, (char));
 
 /*
  * The following WIN32 Console API routines are used in this file.
@@ -56,28 +53,17 @@ INPUT_RECORD ir;
  */
 int ProgmanLaunched;
 
-	/* (see termcap.h) -- CM, ND, CD, HI,HE, US,UE, ul_hack */
-struct tc_lcl_data tc_lcl_data = { 0, 0, 0, 0,0, 0,0, FALSE };
-STATIC_VAR char *HO, *CL, *CE, *UP, *XD, *BC, *SO, *SE, *TI, *TE;
-STATIC_VAR char *VS, *VE;
+# ifdef TEXTCOLOR
+char ttycolors[MAXCOLORS];
+static void NDECL(init_ttycolor);
+# endif
 
-#ifdef TEXTCOLOR
-char *hilites[MAXCOLORS]; /* terminal escapes for the various colors */
-static void NDECL(init_hilite);
-STATIC_VAR char *MD;
-#endif
-
-static char *KS = NULL, *KE = NULL;	/* keypad sequences */
 static char nullstr[] = "";
 char erase_char,kill_char;
+/* extern int LI, CO; */	/* decl.h does this alreay */
 
-/* STATIC_VAR char tgotobuf[20]; */
-/* #define tgoto(fmt, x, y)	(Sprintf(tgotobuf, fmt, y+1, x+1), tgotobuf) */
-#define tgoto(fmt, x, y) gotoxy(x,y)
 /*
- * Get initial state of terminal, set ospeed (for termcap routines)
- * and switch off tab expansion if necessary.
- * Called by startup() in termcap.c and after returning from ! or ^Z
+ * Called after returning from ! or ^Z
  */
 void
 gettty(){
@@ -86,28 +72,9 @@ gettty(){
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
 	flags.cbreak = TRUE;
-	TI = VS = VE = TE = nullstr;
-	HO = "\033\001";
-	CL = "\033\002";		/* the VT52 termcap */
-	CE = "\033\003";
-	UP = "\033\004";
-	CM = "\033\005";	/* used with function tgoto() */
-	ND = "\033\006";
-	XD = "\033\007";
-	BC = "\033\010";
-	SO = "\033\011";
-	SE = "\033\012";
-	/* HI and HE will be updated in init_hilite if we're using color */
-	HI = "\033\013";
-	HE = "\033\014";
-# ifdef TEXTCOLOR
-	for (i = 0; i < MAXCOLORS / 2; i++)
-	{
-	     hilites[i|BRIGHT] = (char *) alloc(sizeof("\033\015\001"));
-	     hilites[i] = (char *) alloc(sizeof("\033\015\001"));
-	}
-	init_hilite();
-# endif
+#ifdef TEXTCOLOR
+	init_ttycolor();
+#endif
 }
 
 /* reset terminal to original state */
@@ -235,18 +202,6 @@ nttty_open()
 }
 
 void
-gotoxy(x,y)
-int x,y;
-{
-	COORD gtcoord;
-
-	x--; y--;			/* (0,0) is upper right corner */
-	gtcoord.X = x;
-	gtcoord.Y = y;
-	SetConsoleCursorPosition(hConOut, gtcoord);
-}
-
-void
 get_scr_size()
 {
 	if (GetConsoleScreenBufferInfo(hConOut,&csbi))
@@ -261,18 +216,6 @@ get_scr_size()
 	}
 }
 
-void
-nttty_rubout()
-{
-	DWORD count;
-
-	GetConsoleScreenBufferInfo(hConOut,&csbi);
-	if (csbi.dwCursorPosition.X > 0)
-		ntcoord.X = csbi.dwCursorPosition.X-1;
-	ntcoord.Y = csbi.dwCursorPosition.Y;
-	WriteConsoleOutputCharacter(hConOut,' ',1,ntcoord,&count);
-	SetConsoleCursorPosition(hConOut,ntcoord);	
-}
 
 /* fatal error */
 /*VARARGS1*/
@@ -310,9 +253,6 @@ int state;
 void
 tty_start_screen()
 {
-/*	xputs(TI);
- *	xputs(VS);
- */
 	if (flags.num_pad) tty_number_pad(1);	/* make keypad send digits */
 }
 
@@ -321,8 +261,6 @@ tty_end_screen()
 {
 	clear_screen();
 }
-
-/* Cursor movements */
 
 void
 nocmov(x, y)
@@ -360,15 +298,13 @@ xputs(s)
 const char *s;
 {
 	int count;
-	if (s[0]=='\033')xputspecl(s);
-	else
-	{
-		ntcoord.X = ttyDisplay->curx;
-		ntcoord.Y = ttyDisplay->cury;
-		WriteConsoleOutputCharacter(hConOut,s,
+	
+	ntcoord.X = ttyDisplay->curx;
+	ntcoord.Y = ttyDisplay->cury;
+	WriteConsoleOutputCharacter(hConOut,s,
 			strlen(s),ntcoord,&count);
-	}
 }
+
 void
 cl_end()
 {
@@ -399,66 +335,22 @@ clear_screen()
 void
 home()
 {
-	tty_curs(BASE_WINDOW, 1, 0);	/* using UP ... */
+	tty_curs(BASE_WINDOW, 1, 0);
 	ttyDisplay->curx = ttyDisplay->cury = 0;
 }
-
-void
-standoutbeg()
-{
-	/* Mix all three colors for white */
-	SetConsoleTextAttribute(hConOut,
-		FOREGROUND_RED|FOREGROUND_BLUE|
-		FOREGROUND_GREEN|FOREGROUND_INTENSITY );
-}
-
-void
-standoutend()
-{
-	/* Mix all three colors for white */
-	SetConsoleTextAttribute(hConOut,
-		FOREGROUND_RED|FOREGROUND_BLUE|
-		FOREGROUND_GREEN);
-}
-
-#if 0	/* if you need one of these, uncomment it (here and in extern.h) */
-void
-revbeg()
-{
-	if(MR) xputs(MR);
-}
-
-void
-boldbeg()
-{
-	if(MD) xputs(MD);
-}
-
-void
-blinkbeg()
-{
-	if(MB) xputs(MB);
-}
-
-void
-dimbeg()
-/* not in most termcap entries */
-{
-	if(MH) xputs(MH);
-}
-
-void
-m_end()
-{
-	if(ME) xputs(ME);
-}
-#endif /* 0              */
 
 
 void
 backsp()
 {
-	nttty_rubout();
+	DWORD count;
+
+	GetConsoleScreenBufferInfo(hConOut,&csbi);
+	if (csbi.dwCursorPosition.X > 0)
+		ntcoord.X = csbi.dwCursorPosition.X-1;
+	ntcoord.Y = csbi.dwCursorPosition.Y;
+	WriteConsoleOutputCharacter(hConOut," ",1,ntcoord,&count);
+	SetConsoleCursorPosition(hConOut,ntcoord);	
 }
 
 void
@@ -472,14 +364,12 @@ tty_nhbell()
 void
 tty_delay_output()
 {
-	/* delay 50 ms - could also use a 'nap'-system call */
-	/* BUG: if the padding character is visible, as it is on the 5620
-	   then this looks terrible. */
+	/* delay 50 ms - not implimented */
 }
 
 void
-cl_eos()			/* free after Robert Viduya */
-{				/* must only be called with curx = 1 */
+cl_eos()
+{
 
 		register int cy = ttyDisplay->cury+1;
 		while(cy <= LI-2) {
@@ -492,48 +382,8 @@ cl_eos()			/* free after Robert Viduya */
 						(int)ttyDisplay->cury);
 }
 
-/* Because the tty port assumes that hilites etc.
-   can be done by blasting sequences to the screen
-   and code to do that is scattered about, this
-   routine will parse our special versions of those
-   sequences to ensure compatibility.
-*/
-void
-xputspecl(char *x)
-{
-      switch (x[1])
-      {
-	case 1:		/* HO */
-		home();
-		break;
-	case 2:		/* CL */
-	case 3:		/* CE */
-	case 4:		/* UP */
-	case 5:		/* CM */
-	case 6:		/* ND */
-	case 7:		/* XD */
-	case 8:		/* BC */
-	case 9:		/* SO */
-	case 10:	/* SE */
-		impossible("Unexpected termcap usage under NT");
-		break;
-	case 11:	/* HI */
-		standoutbeg();
-		break;
-	case 12:	/* HE */
-		standoutend();
-		break;
-#ifdef TEXTCOLOR
-	case 13:
-		xputcolor(x[2]);
-		break;
-#endif
-	default:
-		impossible("bad escape sequence");
-      }
-}
 
-#ifdef TEXTCOLOR
+# ifdef TEXTCOLOR
 /*
  * BLACK		0
  * RED			1
@@ -555,41 +405,122 @@ xputspecl(char *x)
  * BRIGHT		8
  */
 
-void
-xputcolor(char x)
+static void
+init_ttycolor()
 {
+	ttycolors[BLACK] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED;
+	ttycolors[RED] = FOREGROUND_RED;
+	ttycolors[GREEN] = FOREGROUND_GREEN;
+	ttycolors[BROWN] = FOREGROUND_GREEN|FOREGROUND_RED;
+	ttycolors[BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
+	ttycolors[MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED;
+	ttycolors[CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
+	ttycolors[GRAY] = FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_BLUE;
+	ttycolors[BRIGHT] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[ORANGE_COLORED] = FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[BRIGHT_GREEN] = FOREGROUND_GREEN|FOREGROUND_INTENSITY;
+	ttycolors[YELLOW] = FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[BRIGHT_BLUE] = FOREGROUND_BLUE|FOREGROUND_INTENSITY;
+	ttycolors[BRIGHT_MAGENTA] = FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
+	ttycolors[BRIGHT_CYAN] = FOREGROUND_GREEN|FOREGROUND_BLUE;
+	ttycolors[WHITE] = FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY;
+}
+
+# endif /* TEXTCOLOR */
+
+int
+has_color(int color)
+{
+# ifdef TEXTCOLOR
+    return 1;
+# else
+    return 0;
+# endif 
+}
+
+void
+term_end_attr(int attr)
+{
+	/* Mix all three colors for white on NT console */
+	SetConsoleTextAttribute(hConOut,
+		FOREGROUND_RED|FOREGROUND_BLUE|
+		FOREGROUND_GREEN);    
+}
+
+void
+term_start_attr(int attr)
+{
+    switch(attr){
+
+        case ATR_ULINE:
+        case ATR_BOLD:
+    	        /* Mix all three colors for white on NT console */
+	        SetConsoleTextAttribute(hConOut,
+		    FOREGROUND_RED|FOREGROUND_BLUE|
+		    FOREGROUND_GREEN|FOREGROUND_INTENSITY );
+                break;
+        case ATR_BLINK:
+        case ATR_INVERSE:
+        default:
+                term_end_attr(0);
+                break;
+    }                
+}
+
+void
+term_end_raw_bold(void)
+{
+    standoutend();    
+}
+
+void
+term_start_raw_bold(void)
+{
+    standoutbeg();
+}
+
+void
+term_start_color(int color)
+{
+# ifdef TEXTCOLOR
 	WORD attr;
 
-	if ((x >= 0) && (x <= FOREGROUND_GREEN|FOREGROUND_BLUE|
-			 FOREGROUND_RED|FOREGROUND_INTENSITY)) {
-		attr = x;
-		SetConsoleTextAttribute(hConOut,attr);
+        if (color >= 0 && color < MAXCOLORS) {
+            attr = ttycolors[color];
+	    SetConsoleTextAttribute(hConOut,attr);
 	}
-	else impossible("xputcolor: bad color value");
+# endif
 }
 
-#define CMAP(a,b) Sprintf(hilites[a],"\033\015%c",b)
-static void
-init_hilite()
+void
+term_end_color(void)
 {
-	CMAP(BLACK,FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED);
-	CMAP(RED,FOREGROUND_RED);
-	CMAP(GREEN,FOREGROUND_GREEN);
-	CMAP(BROWN,FOREGROUND_GREEN|FOREGROUND_RED);
-	CMAP(BLUE,FOREGROUND_BLUE|FOREGROUND_INTENSITY);
-	CMAP(MAGENTA,FOREGROUND_BLUE|FOREGROUND_RED);
-	CMAP(CYAN,FOREGROUND_GREEN|FOREGROUND_BLUE);
-	CMAP(GRAY,FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_BLUE);
-	CMAP(BRIGHT,FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY);
-	CMAP(ORANGE_COLORED,FOREGROUND_RED|FOREGROUND_INTENSITY);
-	CMAP(BRIGHT_GREEN,FOREGROUND_GREEN|FOREGROUND_INTENSITY);
-	CMAP(YELLOW,FOREGROUND_GREEN|FOREGROUND_RED|FOREGROUND_INTENSITY);
-	CMAP(BRIGHT_BLUE,FOREGROUND_BLUE|FOREGROUND_INTENSITY);
-	CMAP(BRIGHT_MAGENTA,FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY);
-	CMAP(BRIGHT_CYAN,FOREGROUND_GREEN|FOREGROUND_BLUE);
-	CMAP(WHITE,FOREGROUND_GREEN|FOREGROUND_BLUE|FOREGROUND_RED|FOREGROUND_INTENSITY);
+# ifdef TEXTCOLOR
+	SetConsoleTextAttribute(hConOut,
+		FOREGROUND_RED|FOREGROUND_BLUE|
+		FOREGROUND_GREEN);
+# endif       
 }
 
-#endif /* TEXTCOLOR */
+
+void
+standoutbeg()
+{
+	/* Mix all three colors for white on NT console */
+	SetConsoleTextAttribute(hConOut,
+		FOREGROUND_RED|FOREGROUND_BLUE|
+		FOREGROUND_GREEN|FOREGROUND_INTENSITY );
+}
+
+
+void
+standoutend()
+{
+	/* Mix all three colors for white on NT console */
+	SetConsoleTextAttribute(hConOut,
+		FOREGROUND_RED|FOREGROUND_BLUE|
+		FOREGROUND_GREEN);
+}
 
 #endif /* WIN32CON */
+

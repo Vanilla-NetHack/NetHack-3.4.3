@@ -462,27 +462,6 @@ register struct monst *mon;
 	mon->weapon_check = NEED_WEAPON;
 	return 0;
 }
-
-/* rearrange a monster's inventory so that wielded weapon is first */
-void
-sort_mwep(mon)
-struct monst *mon;
-{
-	struct obj *otmp, *prev, *mw_tmp = MON_WEP(mon);
-
-	if (!mw_tmp) return;
-	for (otmp = mon->minvent, prev = 0; otmp; otmp = otmp->nobj) {
-		if (otmp == mw_tmp)  break;
-		prev = otmp;
-	}
-	if (!otmp) {
-		MON_NOWEP(mon);
-	} else if (prev) {
-		prev->nobj = otmp->nobj;
-		otmp->nobj = mon->minvent;
-		mon->minvent = otmp;
-	}
-}
 #endif
 
 int

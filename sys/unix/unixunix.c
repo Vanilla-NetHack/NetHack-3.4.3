@@ -16,6 +16,11 @@
 #include <sys/wait.h>
 #endif
 
+#ifdef _M_UNIX
+extern void NDECL(sco_mapon);
+extern void NDECL(sco_mapoff);
+#endif
+
 static struct stat buf, hbuf;
 
 void
@@ -297,6 +302,9 @@ int wt;
 {
 	register int f;
 	suspend_nhwindows(NULL);	/* also calls end_screen() */
+#ifdef _M_UNIX
+	sco_mapon();
+#endif
 	if((f = fork()) == 0){		/* child */
 		(void) setgid(getgid());
 		(void) setuid(getuid());
@@ -313,6 +321,9 @@ int wt;
 	(void) signal(SIGINT,SIG_IGN);
 	(void) signal(SIGQUIT,SIG_IGN);
 	(void) wait( (int *) 0);
+#ifdef _M_UNIX
+	sco_mapoff();
+#endif
 	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #ifdef WIZARD
 	if(wizard) (void) signal(SIGQUIT,SIG_DFL);

@@ -1,4 +1,4 @@
-/*  SCCS Id: @(#)amirip.c   3.2 93/01/08
+/*	SCCS Id: @(#)amirip.c	3.2	93/04/26	*/
 /* Copyright (c) Kenneth Lorber, Bethesda, Maryland 1991, 1992, 1993. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -16,6 +16,8 @@
 #include <ctype.h>
 #include <string.h>
 #include "winami.h"
+
+#ifdef AMII_GRAPHICS
 
 #undef  NULL
 #define NULL    0
@@ -156,7 +158,7 @@ static int horizon;
 static struct RastPort *rp;
 static unsigned char tomb_line;
 
-extern struct DisplayDesc *amiIDisplay;
+extern struct amii_DisplayDesc *amiIDisplay;
 extern struct Screen *HackScreen;
 extern int havelace;
 
@@ -330,9 +332,9 @@ free:
 #undef WIN_DEPTH
 
 void
-outrip( how, tmpwin )
-int how;
+amii_outrip( tmpwin, how )
 winid tmpwin;
+int how;
 {
     int done, rtxth;
     struct IntuiMessage *imsg;
@@ -710,3 +712,5 @@ char *p;
       ((tomb_line-6)*(rp->TxHeight+1))+horizon);
     Text(rp,buf,strlen(buf));
 }
+
+#endif /* AMII_GRAPHICS */

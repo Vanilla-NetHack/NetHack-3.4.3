@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)obj.h	3.1	92/10/18	*/
+/*	SCCS Id: @(#)obj.h	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -102,8 +102,8 @@ struct obj {
 #define dealloc_obj(obj) free((genericptr_t) (obj))
 #define ONAME(otmp)	((char *)(otmp)->oextra)
 
-#define Is_container(otmp) (otmp->otyp >= LARGE_BOX && \
-			    otmp->otyp <= BAG_OF_TRICKS)
+#define Has_contents(o) ((Is_container(o) || (o)->otyp == STATUE) && (o)->cobj)
+#define Is_container(o) ((o)->otyp >= LARGE_BOX && (o)->otyp <= BAG_OF_TRICKS)
 #define Is_box(otmp)	(otmp->otyp == LARGE_BOX || otmp->otyp == CHEST)
 #define Is_mbag(otmp)	(otmp->otyp == BAG_OF_HOLDING || \
 			 otmp->otyp == BAG_OF_TRICKS)

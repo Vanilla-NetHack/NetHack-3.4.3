@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)save.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)save.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -31,7 +31,7 @@ int dotcnt;	/* also used in restore */
 #endif
 
 #ifdef ZEROCOMP
-static void FDECL(bputc, (UCHAR_P));
+static void FDECL(bputc, (int));
 #endif
 static void FDECL(savelevchn, (int, int));
 static void FDECL(savedamage, (int,struct damage *, int));
@@ -138,12 +138,14 @@ dosave0()
 	if(flags.window_inited)
 	    clear_nhwindow(WIN_MESSAGE);
 
-#ifdef MFLOPPY
+#ifdef MICRO
 	if(!hu) {
 	    dotcnt = 0;
 	    curs(WIN_MAP, 1, 1);
 	    putstr(WIN_MAP, 0, "Saving:");
 	}
+#endif
+#ifdef MFLOPPY
 	/* make sure there is enough disk space */
 	savelev(fd, ledger_no(&u.uz), COUNT_SAVE);
 	savegamestate(fd, COUNT_SAVE);
@@ -383,7 +385,7 @@ int mode;
 	    struct rm *prm, *rgrm;
 	    int x, y;
 	    uchar match;
-	    
+
 	    rgrm = &levl[0][0];		/* start matching at first rm */
 	    match = 0;
 
@@ -412,7 +414,7 @@ int mode;
 			bwrite(fd, (genericptr_t)rgrm, sizeof(struct rm));
 			/* start encoding again. we have at least 1 rm
 			 * in the next run, viz. this one. */
-			match = 1;	
+			match = 1;
 			rgrm = prm;
 		    }
 		}
@@ -439,6 +441,7 @@ int mode;
 	save_worm(fd, mode);	/* save worm information */
 	savetrapchn(fd, ftrap, mode);
 	saveobjchn(fd, fobj, mode);
+	saveobjchn(fd, level.buriedobjlist, mode);
 	saveobjchn(fd, billobjs, mode);
 
 	save_engravings(fd, mode);
@@ -481,7 +484,7 @@ static NEARDATA int bwritefd;
 
 static void
 bputc(c)
-unsigned char c;
+int c;
 {
 #ifdef MFLOPPY
     bytes_counted++;
@@ -492,13 +495,16 @@ unsigned char c;
 	(void) write(bwritefd, outbuf, sizeof outbuf);
 	outbufp = 0;
     }
-    outbuf[outbufp++] = c;
+    outbuf[outbufp++] = (unsigned char)c;
 }
 
 /*ARGSUSED*/
 void
 bufon(fd)
     int fd;
+#if defined(applec)
+# pragma unused(fd)
+#endif
 {
     return;
 }
@@ -523,23 +529,25 @@ register int fd;
 
 void
 bwrite(fd, loc, num)
-register int fd;
+int fd;
 genericptr_t loc;
 register unsigned num;
 {
-      bwritefd = fd;
-      for (; num; num--, (*(char **)&loc)++) {
-	      if (*((char *)loc) == RLESC) { /* One more char in run */
-		  if (++outrunlength == 0xFF) {
-		      flushoutrun(outrunlength);
-		  }
-	      } else { /* end of run */
-		  if (outrunlength >= 0) {    /* flush run */
-		      flushoutrun(outrunlength);
-		  }
-		  bputc(*((char *)loc));
-	      }
-      }
+	register unsigned char *bp = (unsigned char *)loc;
+
+	bwritefd = fd;
+	for (; num; num--, bp++) {
+	    if (*bp == RLESC) {	/* One more char in run */
+		if (++outrunlength == 0xFF) {
+		    flushoutrun(outrunlength);
+		}
+	    } else {		/* end of run */
+		if (outrunlength >= 0) {	/* flush run */
+		    flushoutrun(outrunlength);
+		}
+		bputc(*bp);
+	    }
+	}
 }
 
 void
@@ -686,7 +694,7 @@ register struct obj *otmp;
 	    bwrite(fd, (genericptr_t) &xl, sizeof(int));
 	    bwrite(fd, (genericptr_t) otmp, xl + sizeof(struct obj));
 
-	    if (Is_container(otmp) || otmp->otyp == STATUE)
+	    if (Has_contents(otmp))
 		saveobjchn(fd,otmp->cobj,mode);
 	    if (mode & FREE_SAVE) {
 		if(otmp->oclass == FOOD_CLASS) food_disappears(otmp);
@@ -711,9 +719,6 @@ register struct monst *mtmp;
 
 	while(mtmp) {
 		mtmp2 = mtmp->nmon;
-#ifdef MUSE
-		if (mtmp->mw && mtmp->mw != mtmp->minvent) sort_mwep(mtmp);
-#endif
 		xl = mtmp->mxlth + mtmp->mnamelth;
 		bwrite(fd, (genericptr_t) &xl, sizeof(int));
 		bwrite(fd, (genericptr_t) mtmp, xl + sizeof(struct monst));

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mail.c	3.1	92/11/14	*/
+/*	SCCS Id: @(#)mail.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -48,7 +48,7 @@ int mustgetmail = -1;
 #  include <sys/stat.h>
 #  include <pwd.h>
 /* DON'T trust all Unices to declare getpwuid() in <pwd.h> */
-#  if !defined(_BULL_SOURCE) && !defined(sgi)
+#  if !defined(_BULL_SOURCE) && !defined(sgi) && !defined(_M_UNIX)
 /* DO trust all SVR4 to typedef uid_t in <sys/types.h> (probably to a long) */
 #   if defined(POSIX_TYPES) || defined(SVR4) || defined(HPUX)
 extern struct passwd *FDECL(getpwuid,(uid_t));
@@ -368,10 +368,15 @@ struct mail_info *info;
 
     message_seen = TRUE;
 # ifdef NO_MAILREADER
-    verbalize("Hello, %s!  You have some mail in the outside world.", plname);
-# else
+    if (info->message_typ) {
+	verbalize("Hello, %s!  You have some mail in the outside world.", plname);
+	goto go_back;
+    }    
+# endif /* NO_MAILREADER */
+
     verbalize("Hello, %s!  %s.", plname, info->display_txt);
 
+# ifndef NO_MAILREADER
     if (info->message_typ) {
 	struct obj *obj = mksobj(SCR_MAIL, FALSE, FALSE);
 	if (distu(md->mx,md->my) > 2)
@@ -435,19 +440,17 @@ void
 readmail(otmp)
 struct obj *otmp;
 {
-#ifdef AMIGA
 	char *junk[]={
-	"It reads:  \"Please disregard previous letter.\"",
-	"It reads:  \"Welcome to NetHack 3.1!\"",
-	"It reads:  \"Only Amiga makes it possible.\"",
-	"It reads:  \"CATS have all the answers.\"",
-	"It reads:  \"Report bugs to nethack-bugs@linc.cis.upenn.edu\""
+	"Please disregard previous letter.",
+	"Welcome to NetHack 3.1!",
+#ifdef AMIGA
+	"Only Amiga makes it possible.",
+	"CATS have all the answers.",
+#endif
+	"Report bugs to nethack-bugs@linc.cis.upenn.edu"
 	};
 
-	pline(junk[rn2(SIZE(junk))]);
-#else
-	pline("It reads:  \"Please disregard previous letter.\"");
-#endif
+	pline("It reads:  \"%s\"", junk[rn2(SIZE(junk))]);
 }
 
 #endif /* OVLB */
@@ -552,11 +555,14 @@ readmail(otmp)
 struct obj *otmp;
 {
 #  ifdef SHELL	/* can't access mail reader without spawning subprocess */
-    char *p, *cmd, buf[BUFSZ], qbuf[BUFSZ];
+    const char *txt, *cmd;
+    char *p, buf[BUFSZ], qbuf[BUFSZ];
+    int len;
 
     /* there should be a command hidden beyond the object name */
-    p = otmp->onamelth ? ONAME(otmp) : "";
-    cmd = (strlen(p) + 1 < otmp->onamelth) ? eos(p) + 1 : (char *) 0;
+    txt = otmp->onamelth ? ONAME(otmp) : "";
+    len = strlen(txt);
+    cmd = (len + 1 < otmp->onamelth) ? txt + len + 1 : (char *) 0;
     if (!cmd || !*cmd) cmd = "SPAWN";
 
     Sprintf(qbuf, "System command (%s)", cmd);

@@ -3,67 +3,20 @@
 /*    Copyright (c) Kenneth Lorber, Bethesda, Maryland 1993	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-/*
- *  Here is some very Amiga specific stuff, dealing with
- *  screens, windows, menus, and input via IntuiMessages.
- */
-
-#include "hack.h"
-#include "winami.h"
+#include "amiga:windefs.h"
+#include "amiga:winext.h"
+#include "amiga:winproto.h"
 
 /* Have to undef CLOSE as display.h and intuition.h both use it */
 #undef CLOSE
 
-#include <exec/types.h>
-#include <exec/alerts.h>
-#include <exec/io.h>
-#include <exec/devices.h>
-#include <devices/console.h>
-#include <devices/conunit.h>
-#include <intuition/intuition.h>
-#include <intuition/intuitionbase.h>
-#include <libraries/dosextens.h>
+#ifdef AMII_GRAPHICS	/* too early in the file? too late? */
 
-#ifdef __SASC
-# undef COUNT
-
-# include <dos.h>       /* for __emit */
-# include <string.h>
-# include <proto/dos.h>
-# include <proto/exec.h>
-
-/* kludge - see amirip for why */
-# undef red
-# undef green
-# undef blue
-# undef index
-# include <proto/graphics.h>
-
-# include <proto/intuition.h>
-# include <proto/diskfont.h>
-# include <proto/console.h>
+#ifndef	SHAREDLIB
+struct Library *ConsoleDevice;
 #endif
-
-#undef  NULL
-#define NULL    0L
 
 #include "Amiga:amimenu.c"
-
-/*  First, external declarations... */
-
-struct Library *ConsoleDevice;
-
-#ifdef AZTEC_50
-# include <functions.h>
-#endif
-
-#ifdef  INTUI_NEW_LOOK
-#define NewWindow ExtNewWindow
-#endif
-
-#include "Amiga:winami.p"
-#include "Amiga:amiwind.p"
-#include "Amiga:amidos.p"
 
 static int BufferGetchar(void);
 static void ProcessMessage( register struct IntuiMessage *message );
@@ -75,11 +28,15 @@ static struct Message *FDECL(GetFMsg,(struct MsgPort *));
 /*  Now our own variables */
 
 struct IntuitionBase *IntuitionBase;
+#ifndef	SHAREDLIB
 struct Screen *HackScreen;
+#endif
 struct Window *pr_WindowPtr;
 struct MsgPort *HackPort;
 struct IOStdReq ConsoleIO;
+#ifndef	SHAREDLIB
 char Initialized = 0;
+#endif
 WEVENT lastevent;
 
 #ifdef HACKFONT
@@ -87,11 +44,9 @@ struct GfxBase *GfxBase;
 struct Library *DiskfontBase;
 #endif
 
+#ifndef	SHAREDLIB
 extern struct Library *ConsoleDevice;
-
-#define CSI     '\x9b'
-#define NO_CHAR     -1
-#define RAWHELP     0x5F    /* Rawkey code of the HELP key */
+#endif
 
 #define KBDBUFFER   10
 static unsigned char KbdBuffer[KBDBUFFER];
@@ -122,13 +77,42 @@ static char glyph_buffer[GLYPH_BUFFER_SIZE];
  * See amiwind.c for the amiga specific colormap.
  */
 
+#ifdef	VIEWWINDOW
+int foreg[16] = { 8, 7, 4, 2, 6, 5, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0 };
+int backg[16] = { 0, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 1, 6, 5, 3, 1 };
+#else
 int foreg[16] = { 0, 7, 4, 2, 6, 5, 3, 1, 1, 0, 0, 0, 0, 0, 0, 0 };
 int backg[16] = { 1, 0, 0, 0, 0, 0, 0, 0, 0, 7, 4, 1, 6, 5, 3, 1 };
+#endif
+#if 0
+	#define BLACK		0
+	#define RED		1
+	#define GREEN		2
+	#define BROWN		3	/* on IBM, low-intensity yellow is brown */
+	#define BLUE		4
+	#define MAGENTA 	5
+	#define CYAN		6
+	#define GRAY		7	/* low-intensity white */
+	#define NO_COLOR	8
+	#define ORANGE_COLORED	9	/* "orange" conflicts with the object */
+	#define BRIGHT_GREEN	10
+	#define YELLOW		11
+	#define BRIGHT_BLUE	12
+	#define BRIGHT_MAGENTA  13
+	#define BRIGHT_CYAN	14
+	#define WHITE		15
+	#define MAXCOLORS	16
+#endif
 #endif
 
 #ifdef HACKFONT
 
+struct TextFont *TextsFont;
 struct TextFont *HackFont;
+#ifdef	VIEWWINDOW
+struct TextFont *HackFont4;
+struct TextFont *HackFont16;
+#endif
 UBYTE FontName[] = "NetHack:hack.font";
     /* # chars in "NetHack:": */
 #define         SIZEOF_DISKNAME 8
@@ -141,7 +125,42 @@ struct TextAttr Hack80 = {
 #else
     (UBYTE *) "topaz.font",
 #endif
-    TOPAZ_EIGHTY, FS_NORMAL, FPF_DISKFONT | FPF_ROMFONT
+    8, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
+	| FPF_ROMFONT
+};
+
+#ifdef	VIEWWINDOW
+struct TextAttr Hack40 = {
+#ifdef HACKFONT
+    &FontName[SIZEOF_DISKNAME],
+#else
+    (UBYTE *) "topaz.font",
+#endif
+    4, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
+#ifndef	HACKFONT
+	| FPF_ROMFONT
+#endif
+};
+
+struct TextAttr Hack160 = {
+#ifdef HACKFONT
+    &FontName[SIZEOF_DISKNAME],
+#else
+    (UBYTE *) "topaz.font",
+#endif
+    16, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
+#ifndef	HACKFONT
+	| FPF_ROMFONT
+#endif
+};
+#endif
+
+struct TextAttr TextsFont13 = {
+    (UBYTE *) "courier.font",
+    13, FS_NORMAL, FPF_DISKFONT | FPF_DESIGNED
+#ifndef	HACKFONT
+	| FPF_ROMFONT
+#endif
 };
 
 /*
@@ -177,7 +196,7 @@ void FDECL(CloseShWindow, (struct Window *));
 void CloseShWindow(win)
 struct Window *win;
 {
-    register struct IntuiMessage *msg, *nxt;
+    register struct IntuiMessage *msg;
 
     if( !HackPort )
 	panic("HackPort NULL in CloseShWindow" );
@@ -332,22 +351,59 @@ register struct IntuiMessage *message;
     int c;
     static int skip_mouse=0;    /* need to ignore next mouse event on
 				 * a window activation */
+    struct Window *w = message->IDCMPWindow;
+
     switch(message->Class) {
     case ACTIVEWINDOW:
-	skip_mouse=1;break;
+	if( alwaysinvent && WIN_INVEN != WIN_ERR &&
+			    message->IDCMPWindow ==
+			    amii_wins[ WIN_INVEN ]->win )
+	{
+	    DoMenuScroll( WIN_INVEN, 0 );
+	}
+	else if( scrollmsg && WIN_MESSAGE != WIN_ERR &&
+			    message->IDCMPWindow ==
+			    amii_wins[ WIN_MESSAGE ]->win )
+	{
+	    DoMenuScroll( WIN_MESSAGE, 0 );
+	}
+	else
+	{
+	    skip_mouse=1;
+	}
+	break;
+
     case MOUSEBUTTONS:
 	{
-	    if(skip_mouse){
+	    if( skip_mouse )
+	    {
 		skip_mouse=0;
 		break;
 	    }
-	    if( message->Code == SELECTDOWN ){
+
+	    if( !amii_wins[ WIN_MAP ] || w != amii_wins[ WIN_MAP ]->win )
+		break;
+
+	    if( message->Code == SELECTUP )
+	    {
+#ifdef	VIEWWINDOW
+		amii_putstr( WIN_MESSAGE, 0, "done..." );
+		w->Flags &= ~REPORTMOUSE;
+#endif
+	    }
+	    else if( message->Code == SELECTDOWN )
+	    {
 		lastevent.type = WEMOUSE;
-		lastevent.u.mouse.x = message->MouseX;
-		lastevent.u.mouse.y = message->MouseY;
+		lastevent.un.mouse.x = message->MouseX;
+		lastevent.un.mouse.y = message->MouseY;
 		    /* With shift equals RUN */
-		lastevent.u.mouse.qual = (message->Qualifier &
+		lastevent.un.mouse.qual = (message->Qualifier &
 		  (IEQUALIFIER_LSHIFT|IEQUALIFIER_RSHIFT)) != 0;
+#ifdef	VIEWWINDOW
+		w->Flags |= REPORTMOUSE;
+		amii_putstr( WIN_MESSAGE, 0,
+			"drag mouse to see other areas of this level" );
+#endif
 	    }
 	}
 	break;
@@ -358,12 +414,53 @@ register struct IntuiMessage *message;
 	    struct MenuItem *item;
 
 	    thismenu = message->Code;
-	    while (thismenu != MENUNULL) {
+	    while (thismenu != MENUNULL)
+	    {
 		item = ItemAddress(HackMenu, (ULONG) thismenu);
 		if (KbdBuffered < KBDBUFFER)
 		    BufferQueueChar(item->Command); /* Unused: No COMMSEQ */
 		thismenu = item->NextSelect;
 	    }
+	}
+	break;
+
+    case REFRESHWINDOW:
+#ifdef	VIEWWINDOW
+	{
+	    struct Window *vw, *vbw;
+	    if( amii_wins[ WIN_VIEWBOX ] && amii_wins[ WIN_VIEW ] &&
+		    w == amii_wins[ WIN_VIEWBOX ]->win )
+	    {
+		vw = amii_wins[ WIN_VIEW ]->win;
+		vbw = amii_wins[ WIN_VIEWBOX ]->win;
+
+		if( vw->LeftEdge != (vbw->LeftEdge+vbw->BorderLeft) ||
+		    vw->TopEdge != ( vbw->TopEdge + vbw->BorderTop ) ||
+		    vw->Width != (vbw->Width -vbw->BorderLeft - vbw->BorderRight ) ||
+		    vw->Height != (vbw->Height - vbw->BorderTop - vbw->BorderBottom ) )
+		{
+		    MoveWindow( vw, (vbw->LeftEdge+vbw->BorderLeft) - vw->LeftEdge,
+			( vbw->TopEdge + vbw->BorderTop ) - vw->TopEdge );
+		    SizeWindow( vw,
+			( vbw->Width -vbw->BorderLeft -
+				vbw->BorderRight ) - vw->Width,
+			( vbw->Height - vbw->BorderTop -
+				vbw->BorderBottom - vw->Height ) );
+		}
+	    }
+	    else if( amii_wins[ WIN_MESSAGE ] && w == amii_wins[ WIN_MESSAGE ]->win )
+	    {
+		DoMenuScroll( WIN_MESSAGE, 0 );
+	    }
+	}
+#endif
+	break;
+
+    case CLOSEWINDOW:
+	if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
+				amii_wins[ WIN_INVEN ]->win )
+	{
+	    dismiss_nhwindow( WIN_INVEN );
 	}
 	break;
 
@@ -376,10 +473,85 @@ register struct IntuiMessage *message;
 		BufferQueueChar( c );
         }
         break;
+
+    case MOUSEMOVE:
+#ifdef	VIEWWINDOW
+	if( w == amii_wins[ WIN_MAP ]->win )
+	{
+	    int posx, posy, dx, dy;
+	    register struct MsgPort *port = w->UserPort;
+	    struct amii_WinDesc *cw;
+
+	    posx = message->MouseX;
+	    posy = message->MouseY;
+	    cursor_on( WIN_MAP );
+	    cw = amii_wins[ WIN_MAP ];
+
+	    do {
+		if( message->Class == MOUSEBUTTONS ||
+					message->Class == INACTIVEWINDOW )
+		{
+		    w->Flags &= ~REPORTMOUSE;
+		    break;
+		}
+		else if( message->Class == MOUSEMOVE )
+		{
+		    if( posx != message->MouseX || posy != message->MouseY )
+		    {
+			dx = message->MouseX - posx;
+			dy = message->MouseY - posy;
+			dx /= MAPFTWIDTH;
+			dy /= MAPFTHEIGHT;
+			if( dx != 0 || dy != 0 )
+			{
+			    posx = message->MouseX;
+			    posy = message->MouseY;
+			    amii_curs( WIN_MAP,
+				(posx - w->BorderLeft)/MAPFTWIDTH+dx,
+				(posy - w->BorderTop)/MAPFTHEIGHT+dy );
+			    cursor_on( WIN_MAP );
+			}
+		    }
+		}
+		ReplyMsg( (struct Message *) message );
+		while( !(message = (struct IntuiMessage *)GetMsg( port ) ) )
+		    WaitPort( port );
+	    } while( message );
+	    amii_putstr( WIN_MESSAGE, 0, "done..." );
+	    break;
+	}
+#endif
+	/* FALL through for MESSAGE or INVEN windows */
+    case GADGETDOWN:
+	if( WIN_MESSAGE != WIN_ERR && message->IDCMPWindow ==
+			amii_wins[ WIN_MESSAGE ]->win )
+	{
+	    DoMenuScroll( WIN_MESSAGE, 0 );
+	}
+	else if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
+			amii_wins[ WIN_INVEN ]->win )
+	{
+	    DoMenuScroll( WIN_INVEN, 0 );
+	}
+	break;
+
+    case NEWSIZE:
+	if( WIN_MESSAGE != WIN_ERR && message->IDCMPWindow ==
+			amii_wins[ WIN_MESSAGE ]->win )
+	{
+	    ReDisplayData( WIN_MESSAGE );
+	}
+	else if( WIN_INVEN != WIN_ERR && message->IDCMPWindow ==
+			amii_wins[ WIN_INVEN ]->win )
+	{
+	    ReDisplayData( WIN_INVEN );
+	}
+	break;
     }
     ReplyMsg((struct Message *) message);
 }
 
+#endif /* AMII_GRAPHICS */
 /*
  *  Get all incoming messages and fill up the keyboard buffer,
  *  thus allowing Intuition to (maybe) free up the IntuiMessages.
@@ -388,15 +560,26 @@ register struct IntuiMessage *message;
  *  between characters and incoming messages.
  */
 
+#if defined(TTY_GRAPHICS) && !defined(AMII_GRAPHICS)
+int kbhit(){return 0};
+#else
 int
 kbhit()
 {
     int c;
+#ifdef TTY_GRAPHICS
+		/* a kludge to defuse the mess in allmain.c */
+		/* I hope this is the right approach */
+    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)return 0;
+#endif
     c = amikbhit();
     if( c <= 0 )
     	return( 0 );
     return( c );
 }
+#endif
+
+#ifdef AMII_GRAPHICS
 
 int
 amikbhit()
@@ -445,7 +628,7 @@ WETYPE WindowGetevent()
     if( KbdBuffered )
     {
 	lastevent.type = WEKEY;
-	lastevent.u.key = BufferGetchar();
+	lastevent.un.key = BufferGetchar();
     }
     return( lastevent.type );
 }
@@ -455,16 +638,17 @@ WETYPE WindowGetevent()
  *  when there is something that s/he should read.
  */
 
-void CleanUp()
+void amii_cleanup()
 {
     register struct IntuiMessage *msg;
 
-    /* Finish closing things up */
+    /* Close things up */
+    if( HackPort )
+    {
+	amii_raw_print("");
+	amii_getret();
+    }
 
-    amii_raw_print("");
-    amii_getret();
-
-    ((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
     if (ConsoleIO.io_Device)
 	CloseDevice( (struct IORequest *)&ConsoleIO );
     ConsoleIO.io_Device = 0;
@@ -473,7 +657,9 @@ void CleanUp()
 	DeletePort( ConsoleIO.io_Message.mn_ReplyPort );
     ConsoleIO.io_Message.mn_ReplyPort = 0;
 
-    if (HackPort) {
+    /* Strip messages before deleting the port */
+    if( HackPort )
+    {
 	Forbid();
 	while (msg = (struct IntuiMessage *) GetMsg(HackPort))
 	    ReplyMsg((struct Message *) msg);
@@ -483,11 +669,15 @@ void CleanUp()
 	Permit();
     }
 
-    if (HackScreen) {
+    /* Close the screen, under v37 or greater it is a pub screen and there may be
+     * visitors, so check close status and wait till everyone is gone.
+     */
+    if( HackScreen )
+    {
 #ifdef  INTUI_NEW_LOOK
 	if( IntuitionBase->LibNode.lib_Version >= 37 )
 	{
-	    while( CloseScreen(HackScreen) == FALSE )
+	    while( CloseScreen( HackScreen ) == FALSE )
 	    {
 		struct EasyStruct easy =
 		{
@@ -500,24 +690,52 @@ void CleanUp()
 		EasyRequest( NULL, &easy, NULL, NULL );
 	    }
 	}
-#else
-	CloseScreen(HackScreen);
+	else
 #endif
+	{
+	    CloseScreen(HackScreen);
+	}
 	HackScreen = NULL;
     }
 
 #ifdef HACKFONT
-
     if (HackFont)
     {
 	CloseFont(HackFont);
 	HackFont = NULL;
     }
 
+#ifdef	VIEWWINDOW
+    if (HackFont4)
+    {
+	CloseFont(HackFont4);
+	HackFont4 = NULL;
+    }
+
+    if (HackFont16)
+    {
+	CloseFont(HackFont16);
+	HackFont16 = NULL;
+    }
+#endif
+
+    if( TextsFont )
+    {
+	CloseFont( TextsFont );
+	TextsFont = NULL;
+    }
+
     if( DiskfontBase )
     {
 	CloseLibrary(DiskfontBase);
 	DiskfontBase = NULL;
+    }
+#endif
+
+#ifdef	VIEWWINDOW
+    if (LayersBase) {
+	CloseLibrary((struct Library *)LayersBase);
+	LayersBase = NULL;
     }
 #endif
 
@@ -531,39 +749,85 @@ void CleanUp()
 	IntuitionBase = NULL;
     }
 
+#ifdef	SHAREDLIB
+    if (DOSBase) {
+	CloseLibrary((struct Library *)DOSBase);
+	DOSBase = NULL;
+    }
+#endif
+
+    ((struct Process *) FindTask(NULL))->pr_WindowPtr = (APTR) pr_WindowPtr;
+
     Initialized = 0;
 }
 
+#ifndef	SHAREDLIB
 void Abort(rc)
 long rc;
 {
+    int fault = 1;
 #ifdef CHDIR
     extern char orgdir[];
     chdir(orgdir);
 #endif
-    if (Initialized && ConsoleDevice) {
-	printf("\n\nAbort with alert code %08lx...\n", rc);
-	amii_getret();
+#ifdef AMII_GRAPHICS
+    if (Initialized
+      && ConsoleDevice
+      && windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows) {
+      printf("\n\nAbort with alert code %08lx...\n", rc);
+      amii_getret();
     } else
-	Alert(rc);
+#endif
+      printf("\n\nAbort with alert code %08lx...\n",rc);
+#if 0
+      Alert(rc);              /* this is too severe */
+#endif
 #ifdef __SASC
+#ifdef	INTUI_NEW_LOOK
+    {
+    	struct EasyStruct es =
+    	{
+    		sizeof( struct EasyStruct ),
+    		0,
+    		"NetHack Panic Request",
+    		"NetHack is Aborting with code == 0x%08lx",
+		"Continue Abort|Return to Program|Clean up and exit",
+    	};
+    	fault = EasyRequest( NULL, &es, NULL, (long)rc );
+    	if( fault == 2 )
+    	    return;
+    }
+#endif
+    if( fault == 1 )
     {
 /*  __emit(0x4afc);     /* illegal instruction */
     __emit(0x40fc);     /* divide by */
     __emit(0x0000);     /*  #0  */
-	/* NOTE: don't move CleanUp() above here - */
-	/* it is too likely to kill the system     */
-	/* before it can get the SnapShot out, if  */
-	/* there is something really wrong.    */
+      /* NOTE: don't move amii_cleanup() above here - */
+      /* it is too likely to kill the system     */
+      /* before it can get the SnapShot out, if  */
+      /* there is something really wrong.    */
     }
 #endif
-    CleanUp();
+#ifdef AMII_GRAPHICS
+    if(windowprocs.win_init_nhwindows==amii_procs.win_init_nhwindows)
+      amii_cleanup();
+#endif
 #undef exit
 #ifdef AZTEC_C
     _abort();
 #endif
     exit((int) rc);
 }
+
+void
+CleanUp()
+{
+	amii_cleanup();
+}
+#endif
+
+#ifdef AMII_GRAPHICS
 
 #ifdef AMIFLUSH
 /* This routine adapted from AmigaMail IV-37 by Michael Sinz */
@@ -620,6 +884,11 @@ flush_glyph_buffer( w )
     struct Window *w;
 {
     short i, x, y;
+#ifdef	VIEWWINDOW
+    struct Window *vw = amii_wins[ WIN_VIEW ]->win;
+    register struct RastPort *vrp = vw->RPort;
+#endif
+    register struct RastPort *rp = w->RPort;
 
     /* If nothing is buffered, return before we do anything */
     if(glyph_node_index == 0)
@@ -627,31 +896,57 @@ flush_glyph_buffer( w )
 
     cursor_off( WIN_MAP );
     start_glyphout( WIN_MAP );
+#ifdef	VIEWWINDOW
+    cursor_off( WIN_VIEW );
+    start_glyphout( WIN_VIEW );
+#endif
+
     /* Set up the drawing mode */
-    SetDrMd( w->RPort, JAM2);
+    SetDrMd( rp, JAM2);
+#ifdef	VIEWWINDOW
+    SetDrMd( vrp, JAM2);
+#endif
 
     /* Go ahead and start dumping the stuff */
     for(i=0; i<glyph_node_index; ++i) {
 	/* These coordinate calculations must be synced with the
-	 * code in curs() in winami.c.  curs_on_u() calls curs()
+	 * code in amii_curs() in winami.c.  curs_on_u() calls amii_curs()
 	 * to draw the cursor on top of the player
 	 */
-	y = w->BorderTop + (g_nodes[i].y-1) * w->RPort->TxHeight +
-	    w->RPort->TxBaseline + 1;
-	x = g_nodes[i].x * w->RPort->TxWidth + w->BorderLeft;
+	y = w->BorderTop + (g_nodes[i].y-1) * rp->TxHeight +
+	    rp->TxBaseline + 1;
+	x = g_nodes[i].x * rp->TxWidth + w->BorderLeft;
 
 	/* Move pens to correct location */
-	Move(w->RPort, (long)x, (long)y);
+	Move( rp, (long)x, (long)y);
 
 	/* Setup the colors */
-	SetAPen(w->RPort, (long)g_nodes[i].fg_color);
-	SetBPen(w->RPort, (long)g_nodes[i].bg_color);
+	SetAPen( rp, (long)g_nodes[i].fg_color);
+	SetBPen( rp, (long)g_nodes[i].bg_color);
 
 	/* Do it */
-	Text(w->RPort, g_nodes[i].buffer, g_nodes[i].len);
+	Text( rp, g_nodes[i].buffer, g_nodes[i].len);
+
+#ifdef	VIEWWINDOW
+	y = vw->BorderTop + (g_nodes[i].y-1) * vrp->TxHeight + vrp->TxBaseline + 1;
+	x = g_nodes[i].x * vrp->TxWidth + vw->BorderLeft;
+
+	/* Move pens to correct location */
+	Move( vrp, (long)x, (long)y);
+
+	/* Setup the colors */
+	SetAPen( vrp, (long)g_nodes[i].fg_color);
+	SetBPen( vrp, (long)g_nodes[i].bg_color);
+
+	/* Do it */
+	Text( vrp, g_nodes[i].buffer, g_nodes[i].len);
+#endif
     }
 
-    end_glyphout( WIN_MAP );
+    amii_end_glyphout( WIN_MAP );
+#ifdef	VIEWWINDOW
+    amii_end_glyphout( WIN_VIEW );
+#endif
     /* Clean up */
     glyph_node_index = glyph_buffer_index = 0;
 }
@@ -665,12 +960,12 @@ amiga_print_glyph(window,color_index, glyph)
     int color_index, glyph;
 {
     int fg_color, bg_color;
-    struct WinDesc *cw;
+    struct amii_WinDesc *cw;
     struct Window *w;
     int curx;
     int cury;
 
-    if( ( cw=wins[window] ) == (struct WinDesc *)NULL )
+    if( ( cw=amii_wins[window] ) == (struct amii_WinDesc *)NULL )
 	panic("bad winid in amiga_print_glyph: %d", window );
 
     w = cw->win;
@@ -740,13 +1035,13 @@ void
 start_glyphout(window)
     winid window;
 {
-    struct WinDesc *cw;
+    struct amii_WinDesc *cw;
     struct Window *w;
 
-    if( ( cw=wins[window] ) == (struct WinDesc *)NULL )
+    if( ( cw=amii_wins[window] ) == (struct amii_WinDesc *)NULL )
 	panic( "bad winid %d in start_glyphout()", window );
 
-    if( cw->flags & FLMAP_INGLYPH )
+    if( cw->wflags & FLMAP_INGLYPH )
 	return;
 
     if( !(w = cw->win ) )
@@ -766,25 +1061,25 @@ start_glyphout(window)
      */
     usecolor = flags.use_color;
     flags.use_color = FALSE;
-    cw->flags |= FLMAP_INGLYPH;
+    cw->wflags |= FLMAP_INGLYPH;
 }
 
 /*
  * General cleanup routine -- flushes and restores cursor
  */
 void
-end_glyphout(window)
+amii_end_glyphout(window)
     winid window;
 {
-    struct WinDesc *cw;
+    struct amii_WinDesc *cw;
     struct Window *w;
 
-    if( ( cw = wins[ window ] ) == (struct WinDesc *)NULL )
-	panic("bad window id %d in end_glyphout()", window );
+    if( ( cw = amii_wins[ window ] ) == (struct amii_WinDesc *)NULL )
+	panic("bad window id %d in amii_end_glyphout()", window );
 
-    if( ( cw->flags & FLMAP_INGLYPH ) == 0 )
+    if( ( cw->wflags & FLMAP_INGLYPH ) == 0 )
 	return;
-    cw->flags &= ~(FLMAP_INGLYPH);
+    cw->wflags &= ~(FLMAP_INGLYPH);
 
     if( !(w = cw->win ) )
 	panic( "bad winid %d, no window ptr set", window );
@@ -866,6 +1161,7 @@ FreeNewWindow( win )
 	    free( sip );
 	}
 	else if( gd->GadgetType == PROPGADGET )
+
 	{
 	    free( (struct PropInfo *)gd->SpecialInfo );
 	}
@@ -893,6 +1189,18 @@ amii_number_pad(state)
 int state;
 {
 }
+#endif  /* AMII_GRAPHICS */
+
+#ifndef	SHAREDLIB
+void
+amiv_loadlib( void )
+{
+}
+
+void
+amii_loadlib( void )
+{
+}
 
 /* fatal error */
 /*VARARGS1*/
@@ -907,3 +1215,4 @@ void error VA_DECL(const char *, s)
     VA_END();
     Abort(0L);
 }
+#endif

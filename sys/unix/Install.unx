@@ -1,4 +1,4 @@
-                Instructions for installing NetHack 3.1 
+                Instructions for installing NetHack 3.1
                            on a UNIX system
                 =======================================
 
@@ -52,8 +52,8 @@
     coffee or take a nap.  You should now have created the game executable.
 
 7.  Go back to the top directory and edit that Makefile, explaining where
-    you want everything to be installed.  Make sure that GAMEDIR is the
-    same value as HACKDIR in config.h.  The Makefile assumes you want to
+    you want everything to be installed.  Make sure that you follow the
+    comments about setting GAMEDIR.  The Makefile assumes you want to
     run NetHack setuid 'games' to cut down on possible tampering; it's
     fairly straightforward to comment out the appropriate chmod if you
     don't want that, or to change any of the rest of the procedure.  (Note
@@ -68,7 +68,7 @@
 Notes:
 
 1.  Save files and bones files from previous versions will not work with
-    NetHack 3.1.  Don't bother trying to keep them.  
+    NetHack 3.1.2.  Don't bother trying to keep them.
 
 2.  To install an update of this version of NetHack after changing something,
     type 'make update' from the main directory.  If you created the new
@@ -86,14 +86,15 @@ Notes:
     NetHack on a bunch of workstations, but you have overlooked the NETWORK
     definition in unixconf.h that is necessary in that configuration.
 
-5.  A number of systems, such as Xenix, support both the termcap and terminfo
-    terminal capability libraries.  Make sure that the TERMINFO definition in
-    config.h and the TERMLIB definition in the source Makefile correspond.
-    If spurious characters appear on the screen while kicking, zapping, etc.,
-    it is likely that you have linked the source to the wrong library or
-    mistakenly defined/undefined TERMINFO.  If your terminal library does not
-    provide suitable delays, NetHack will try to fake its own if you set the
-    nonull option.
+5.  If spurious characters appear on the screen while throwing, kicking,
+    zapping, etc., it is likely that you have linked the source to the wrong
+    library or mistakenly defined/undefined TERMINFO.  A number of systems,
+    such as Xenix, support both the termcap and terminfo terminal capability
+    libraries.  In such cases, the TERMINFO definition in config.h and the
+    WINTTYLIB definition in the source Makefile must correspond.
+
+    If your terminal library does not provide suitable delays, NetHack will
+    try to fake its own if you set the nonull option.
 
 6.  Since NetHack overflows the stock C preprocessors for AT&T 3b1 and 3b2
     systems ("too many defines"), we are including an alternate preprocessor
@@ -200,9 +201,9 @@ Notes:
     compiler, /usr/bin/cc, or gcc, but _not_ ucbcc.  The lattermost will
     not work.  After this, you should get a clean compile.
 
-14. If your machine is a 286, 386, or 486 running System V UNIX at Release
-    3.2 or later, you may wish to install the console speaker driver included
-    in sys/unix/snd86unx.shr.  This will allow audible music to be played
+14. If your machine is a 286, 386, or 486 running an appropriate OS, you
+    may wish to use the console speaker driver included in
+    sys/unix/snd86unx.shr.  This will allow audible music to be played
     on your console speaker in certain appropriate game situations.  The only
     modification to the main-line code needed to enable use of the driver
-    is defining SYSV386MUSIC in unixconf.h.
+    is defining UNIX386MUSIC or VPIX_MUSIC in unixconf.h.

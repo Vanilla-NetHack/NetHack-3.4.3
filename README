@@ -144,16 +144,18 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
         Sun-4s running Solaris 2.x (aka SunOS 5.x)
         Valid Logic Systems SCALD-System
         286 box running Microport SysV/AT (not extensively tested)
+        386-486 boxes running Linux/386BSD/BSDI
 
         Apple Macintosh running MacOS
         Atari ST/TT/Falcon running TOS (or MultiTOS) with GCC
-        Commodore Amiga running AmigaDOS 1.3/2.x with SAS/C 5.10b or
-                Manx 5.0 (but see Install.ami about DICE and SAS/C 6.1)
-        DEC Alpha/VMS (aka OpenVMS AXP), running V1.0
+        Commodore Amiga running AmigaDOS 1.3 or greater with SAS/C 6.2
+                (but see Install.ami about DICE and Manx)
+        DEC Alpha/VMS (aka OpenVMS AXP), running V1.0 and V1.5
         DEC VAX/VMS, running V4.6 through V5.5-2, T6.0
         IBM PC compatibles running MS-DOS with MicroSoft C or DJGPP
         IBM PS/2 and AT compatibles running OS/2 1.1 - 2.0 with Microsoft C
                 5.1 or 6.0, and OS/2 2.0 with GCC emx 0.8f or IBM C Set/2
+        Intel 386,486 desktop machines running Windows NT
 
                         - - - - - - - - - - -
 

@@ -469,6 +469,13 @@ exerchk()
 	}
 }
 
+/* next_check will otherwise have its initial 600L after a game restore */
+void
+reset_attribute_clock()
+{
+	if (moves > 600L) next_check = moves + rn1(50,800);
+}
+
 static const struct	clattr *
 clx()  {
 
@@ -677,7 +684,11 @@ int x;
 
 	if (x == A_STR) {
 		if (uarmg && uarmg->otyp == GAUNTLETS_OF_POWER) return(125);
+#ifdef WIN32_BUG
+		else return(x=((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp));
+#else
 		else return((tmp >= 125) ? 125 : (tmp <= 3) ? 3 : tmp);
+#endif
 	} 
 #ifdef POLYSELF
 	else if(x == A_CHA) {
@@ -686,7 +697,11 @@ int x;
 		    return 18;
 	}
 #endif
+#ifdef WIN32_BUG
+	return(x=((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp));
+#else
 	return((tmp >= 25) ? 25 : (tmp <= 3) ? 3 : tmp);
+#endif
 }
 
 schar

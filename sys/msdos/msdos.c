@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)msdos.c	 3.1	 93/02/16		  */
+/*	SCCS Id: @(#)msdos.c	 3.1	 93/05/06		  */
 /* Copyright (c) NetHack PC Development Team 1990, 1991, 1992	  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,9 +10,6 @@
 
 #define NEED_VARARGS
 #include "hack.h"
-#ifdef MICRO
-#include "termcap.h"
-#endif
 
 #ifdef MSDOS
 
@@ -34,20 +31,19 @@
 /*
  * BIOS interrupts
  */
+#ifdef PC9801
+#define KEYBRD_BIOS 0x18
+#else
 #define KEYBRD_BIOS 0x16
-#define VIDEO_BIOS  0x10
+#endif
+
 /*
  * Keyboard BIOS functions
  */
 #define READCHAR    0x00    /* Read Character from Keyboard */
 #define GETKEYFLAGS 0x02    /* Get Keyboard Flags */
-/*
- * Video BIOS functions
- */
-#define SETCURPOS   0x02    /* Set Cursor Position */
-#define GETMODE     0x0f    /* Get Video Mode */
-#define FONTINFO    0x1130  /* Get Font Info */
 
+void FDECL(get_cursor,(int *, int *));
 
 #ifdef OVL0
 
@@ -76,8 +72,13 @@ tgetch()
 /*
  *  Keyboard translation tables.
  */
+#ifdef PC9801
+#define KEYPADLO	0x38
+#define KEYPADHI	0x50
+#else
 #define KEYPADLO	0x47
 #define KEYPADHI	0x53
+#endif
 
 #define PADKEYS 	(KEYPADHI - KEYPADLO + 1)
 #define iskeypad(x)	(KEYPADLO <= (x) && (x) <= KEYPADHI)
@@ -90,6 +91,33 @@ tgetch()
 static const struct pad {
 	char normal, shift, cntrl;
 } keypad[PADKEYS] = {
+#ifdef PC9801
+			{'>', '>', '>'},		/* Ins */
+			{'<', '<', '<'},		/* Del */
+			{'k', 'K', C('k')},		/* Up */
+			{'h', 'H', C('h')},		/* Left */
+			{'l', 'L', C('l')},		/* Right */
+			{'j', 'J', C('j')},		/* Down */
+			{ 0 ,  0 ,  0 },		/* HomeClr */
+			{'?', '?', '?' },		/* Help */
+			{'m', C('p'), C('p')},		/* - */
+			{'/', '/', '/'},		/* / */
+			{'y', 'Y', C('y')},		/* 7 */
+			{'k', 'K', C('k')},		/* 8 */
+			{'u', 'U', C('u')},		/* 9 */
+			{'*', '*', '*'},		/* * */
+			{'h', 'H', C('h')},		/* 4 */
+			{'g', 'g', 'g'},		/* 5 */
+			{'l', 'L', C('l')},		/* 6 */
+			{'p', 'P', C('p')},		/* + */
+			{'b', 'B', C('b')},		/* 1 */
+			{'j', 'J', C('j')},		/* 2 */
+			{'n', 'N', C('n')},		/* 3 */
+			{'=', '=', '='},		/* = */
+			{'i', 'I', C('i')},		/* 0 */
+			{',' ':', ':'}, 		/* , */
+			{'.', '.', '.'} 		/* . */
+#else
 			{'y', 'Y', C('y')},		/* 7 */
 			{'k', 'K', C('k')},		/* 8 */
 			{'u', 'U', C('u')},		/* 9 */
@@ -103,7 +131,35 @@ static const struct pad {
 			{'n', 'N', C('n')},		/* 3 */
 			{'i', 'I', C('i')},		/* Ins */
 			{'.', ':', ':'}			/* Del */
+#endif
 }, numpad[PADKEYS] = {
+#ifdef PC9801
+			{'>', '>', '>'},		/* Ins */
+			{'<', '<', '<'},		/* Del */
+			{'8', M('8'), '8'},		/* Up */
+			{'4', M('4'), '4'},		/* Left */
+			{'6', M('6'), '6'},		/* Right */
+			{'2', M('2'), '2'},		/* Down */
+			{ 0 ,  0 ,  0 },		/* HomeClr */
+			{'?', '?', '?'},		/* Help */
+			{'m', C('p'), C('p')},		/* - */
+			{'/', '/', '/'},		/* / */
+			{'7', M('7'), '7'},		/* 7 */
+			{'8', M('8'), '8'},		/* 8 */
+			{'9', M('9'), '9'},		/* 9 */
+			{'*', '*', '*'},		/* * */
+			{'4', M('4'), '4'},		/* 4 */
+			{'g', 'G', 'g'},		/* 5 */
+			{'6', M('6'), '6'},		/* 6 */
+			{'p', 'P', C('p')},		/* + */
+			{'1', M('1'), '1'},		/* 1 */
+			{'2', M('2'), '2'},		/* 2 */
+			{'3', M('3'), '3'},		/* 3 */
+			{'=', '=', '='},		/* = */
+			{'i', 'I', C('i')},		/* 0 */
+			{',', ':', ':'},		/* , */
+			{'.', '.', '.'} 		/* . */
+#else
 			{'7', M('7'), '7'},		/* 7 */
 			{'8', M('8'), '8'},		/* 8 */
 			{'9', M('9'), '9'},		/* 9 */
@@ -117,6 +173,7 @@ static const struct pad {
 			{'3', M('3'), '3'},		/* 3 */
 			{'i', 'I', C('i')},		/* Ins */
 			{'.', ':', ':'}			/* Del */
+#endif
 };
 
 /*
@@ -127,12 +184,23 @@ static const struct pad {
  * scan code table to translate the scan code into a letter, then set the
  * "meta" bit for it.  -3.
  */
+#ifdef PC9801
+#define SCANLO		0x5
+#else
 #define SCANLO		0x10
+#endif /* PC9801 */
 
 static const char scanmap[] = { 	/* ... */
+#ifdef PC9801
+			 0,  0,  0,  0,  0,  0, '-','^','\\','\b',
+	'\t','q','w','e','r','t','y','u','i','o','p','@','[', '\n',
+	'a','s','d','f','g','h','j','k','l',';',':', ']',
+	'z','x','c','v','b','N','m',',','.','/'	/* ... */
+#else
 	'q','w','e','r','t','y','u','i','o','p','[',']', '\n',
 	0, 'a','s','d','f','g','h','j','k','l',';','\'', '`',
 	0, '\\', 'z','x','c','v','b','n','m',',','.','?'	/* ... */
+#endif /* PC9801 */
 };
 
 #define inmap(x)	(SCANLO <= (x) && (x) < SCANLO + SIZE(scanmap))
@@ -140,9 +208,16 @@ static const char scanmap[] = { 	/* ... */
 /*
  * BIOSgetch gets keys directly with a BIOS call.
  */
+#ifdef PC9801
+#define SHIFT		0x1
+#define KANA		0x4
+#define GRPH		0x8
+#define CTRL		0x10
+#else
 #define SHIFT		(0x1 | 0x2)
 #define CTRL		0x4
 #define ALT		0x8
+#endif /* PC9801 */
 
 static char
 BIOSgetch()
@@ -175,7 +250,13 @@ BIOSgetch()
 			ch = kpad[scan - KEYPADLO].normal;
 	}
 	/* Translate unassigned Alt-letters */
+#ifdef PC9801
+	if (shift & KANA)
+		return 0;
+	if ((shift & GRPH) && (ch >= 0x80)) {
+#else
 	if ((shift & ALT) && !ch) {
+#endif
 		if (inmap(scan))
 			ch = scanmap[scan - SCANLO];
 		return (isprint(ch) ? M(ch) : ch);
@@ -194,6 +275,10 @@ DOSgetch()
 	intdos(&regs, &regs);
 	ch = regs.h.al;
 
+#ifdef PC9801
+	if (ch < 0)	/* KANA letters and GRPH-shifted letters(?) */
+		ch = 0; /* munch it */
+#else
 	/*
 	 * The extended codes for Alt-shifted letters, and unshifted keypad
 	 * and function keys, correspond to the scan codes.  So we can still
@@ -212,6 +297,7 @@ DOSgetch()
 			if (isprint(ch)) ch = M(ch);
 		} else ch = 0;		/* munch it */
 	}
+#endif
 	return (ch);
 }
 
@@ -392,70 +478,6 @@ unsigned setvalue;
 	return (regs.x.dx);
 }
 
-#endif /* OVL0 */
-#ifdef OVLB
-
-void
-get_scr_size()
-{
-	union REGS regs;
-
-	if (!flags.BIOS) {		/* assume standard screen size */
-		CO = 80;
-		LI = 24;
-		return;
-	}
-
-	regs.x.ax = FONTINFO;
-	regs.x.bx = 0;			/* current ROM BIOS font */
-	regs.h.dl = 24;			/* default row count */
-					/* in case no EGA/MCGA/VGA */
-	int86(VIDEO_BIOS, &regs, &regs); /* Get Font Information */
-
-	/* MDA/CGA/PCjr ignore INT 10h, Function 11h, but since we
-	 * cleverly loaded up DL with the default, everything's fine.
-	 *
-	 * Otherwise, DL now contains rows - 1.  Also, CX contains the
-	 * points (bytes per character) and ES:BP points to the font
-	 * table.  -3.
-	 */
-
-	regs.h.ah = GETMODE;
-	int86(VIDEO_BIOS, &regs, &regs); /* Get Video Mode */
-
-	/* This goes back all the way to the original PC.  Completely
-	 * safe.  AH contains # of columns, AL contains display mode,
-	 * and BH contains the active display page.
-	 */
-
-	LI = regs.h.dl + 1;
-	CO = regs.h.ah;
-}
-
-#endif /* OVLB */
-#ifdef OVL0
-
-void
-gotoxy(x,y)
-int x,y;
-{
-	union REGS regs;
-
-	x--; y--;			/* (0,0) is upper right corner */
-
-	regs.h.ah = SETCURPOS;
-	regs.h.bh = 0;			/* display page */
-	regs.h.dh = y;			/* row */
-	regs.h.dl = x;			/* column */
-	int86(VIDEO_BIOS, &regs, &regs); /* Set Cursor Position */
-
-	/* This, too, goes back all the way to the original PC.  If
-	 * we ever get so fancy as to swap display pages (i doubt it),
-	 * then we'll need to set BH appropriately.  This function
-	 * returns nothing.  -3.
-	 */
-}
-
-#endif /* OVL0 */
+# endif /* OVLB */
 
 #endif /* MSDOS */

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)detect.c	3.1	92/12/16	*/
+/*	SCCS Id: @(#)detect.c	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -30,10 +30,10 @@ char oclass;
 
     if (obj->oclass == oclass) return obj;
 
-    if (Is_container(obj)) {
+    if (Has_contents(obj)) {
 	for (otmp = obj->cobj; otmp; otmp = otmp->nobj)
 	    if (otmp->oclass == oclass) return otmp;
-	    else if (Is_container(otmp) && (temp = o_in(otmp, oclass)))
+	    else if (Has_contents(otmp) && (temp = o_in(otmp, oclass)))
 		return temp;
     }
     return (struct obj *) 0;
@@ -209,7 +209,7 @@ register struct obj	*sobj;
 	known = stale && !confused;
 	if (stale) {
 	    docrt();
-	    You("sense lack of %s nearby.", what);
+	    You("sense a lack of %s nearby.", what);
 	} else if (sobj)
 	    strange_feeling(sobj, "Your nose twitches.");
 	return !stale;
@@ -605,6 +605,7 @@ struct obj *obj;
 	    break;
 	}
 	obj->spe--;
+	check_unpaid(obj);
 	return;
     }
 
@@ -628,6 +629,7 @@ struct obj *obj;
 		break;
 	    }
 	    obj->spe--;
+	    check_unpaid(obj);
 	}
 	return;
     }
@@ -650,6 +652,7 @@ struct obj *obj;
 
 	makeknown(CRYSTAL_BALL);
 	obj->spe--;
+	check_unpaid(obj);
 
 	if ((class = def_char_to_objclass(ch)) != MAXOCLASSES)
 		ret = object_detect((struct obj *)0, class);
@@ -807,7 +810,7 @@ genericptr_t num;
 		if(levl[zx][zy].typ == SDOOR)
 		    levl[zx][zy].typ = DOOR;
 		if(levl[zx][zy].doormask & D_TRAPPED) {
-		    if(distu(zx, zy) < 3) b_trapped("door");
+		    if(distu(zx, zy) < 3) b_trapped("door", 0);
 		    else Norep("You %s an explosion!",
 				cansee(zx, zy) ? "see" :
 				   (flags.soundok ? "hear" :

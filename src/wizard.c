@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)wizard.c	3.1	92/11/13		  */
+/*	SCCS Id: @(#)wizard.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -14,12 +14,12 @@
 
 #ifdef OVLB
 
-static short FDECL(which_arti, (UCHAR_P));
+static short FDECL(which_arti, (int));
 static boolean FDECL(mon_has_arti, (struct monst *,SHORT_P));
 static struct monst *FDECL(other_mon_has_arti, (struct monst *,SHORT_P));
 static struct obj *FDECL(on_ground, (SHORT_P));
-static boolean FDECL(you_have, (UCHAR_P));
-static long FDECL(target_on, (UCHAR_P,struct monst *));
+static boolean FDECL(you_have, (int));
+static long FDECL(target_on, (int,struct monst *));
 static long FDECL(strategy, (struct monst *));
 
 /*	TODO:	Expand this list.	*/
@@ -135,7 +135,7 @@ register struct monst *mtmp;
 
 static short
 which_arti(mask)
-	register uchar mask;
+	register int mask;
 {
 	switch(mask) {
 	    case M3_WANTSAMUL:	return(AMULET_OF_YENDOR);
@@ -205,7 +205,7 @@ on_ground(otyp)
 
 static boolean
 you_have(mask)
-	register uchar	mask;
+	register int mask;
 {
 	switch(mask) {
 	    case M3_WANTSAMUL:	return(u.uhave.amulet);
@@ -222,7 +222,7 @@ you_have(mask)
 
 static long
 target_on(mask, mtmp)
-	register uchar  mask;
+	register int mask;
 	register struct monst *mtmp;
 {
 	register short	otyp;
@@ -329,10 +329,10 @@ tactics(mtmp)
 
 	    default:		/* kill, maim, pillage! */
 	    {
-		long  where = (mtmp->mstrategy & 0xff000000);
+		long  where = (mtmp->mstrategy & 0xff000000L);
 		xchar tx = (xchar)((mtmp->mstrategy >> 16) & 0xff),
 		      ty = (xchar)((mtmp->mstrategy >> 8) & 0xff);
-		uchar targ = (xchar)(mtmp->mstrategy & 0xff);
+		int   targ = (mtmp->mstrategy & 0xff);
 		struct obj *otmp;
 
 		if(!targ) { /* simply wants you to close */
@@ -388,7 +388,7 @@ clonewiz()
 {
 	register struct monst *mtmp2;
 
-	if(mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) {
+	if ((mtmp2 = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) != 0) {
 		mtmp2->msleep = mtmp2->mtame = mtmp2->mpeaceful = 0;
 		if (!u.uhave.amulet && rn2(2)) {  /* give clone a fake */
 			mtmp2->minvent = mksobj(FAKE_AMULET_OF_YENDOR, TRUE, FALSE);
@@ -435,7 +435,7 @@ resurrect()
 {
 	register struct monst	*mtmp;
 
-	if(mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) {
+	if ((mtmp = makemon(&mons[PM_WIZARD_OF_YENDOR], u.ux, u.uy)) != 0) {
 		mtmp->msleep = mtmp->mtame = mtmp->mpeaceful = 0;
 		set_malign(mtmp);
 		pline("A voice booms out...");

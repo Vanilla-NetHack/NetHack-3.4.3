@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmstty.c	3.1	92/11/24	*/
+/*	SCCS Id: @(#)vmstty.c	3.1	93/05/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 /* tty.c - (VMS) version */
@@ -19,10 +19,11 @@
 # define SMG$K_TRM_DOWN  275
 # define SMG$K_TRM_LEFT  276
 # define SMG$K_TRM_RIGHT 277
-# define TT$M_MECHTAB	 0x00000100	/* hardware tab support */
-# define TT$M_MECHFORM	 0x00080000	/* hardware form-feed support */
-# define TT$M_NOBRDCST	 0x00020000	/* disable broadcast messages, but  */
-# define TT2$M_BRDCSTMBX 0x00000010	/* catch them in associated mailbox */
+# define TT$M_MECHTAB	  0x00000100	/* hardware tab support */
+# define TT$M_MECHFORM	  0x00080000	/* hardware form-feed support */
+# define TT$M_NOBRDCST	  0x00020000	/* disable broadcast messages, but  */
+# define TT2$M_BRDCSTMBX  0x00000010	/* catch them in associated mailbox */
+# define TT2$M_APP_KEYPAD 0x00800000	/* application vs numeric keypad mode */
 #endif /* __GNUC__ */
 #ifdef USE_QIO_INPUT
 #include <ssdef.h>
@@ -287,7 +288,10 @@ setctty()
     status = SYS$QIOW(0, tt_chan, IO$_SETMODE, &iosb, (void(*)())0, 0,
 		      &sg.sm, sizeof sg.sm, 0, 0, 0, 0);
     if (vms_ok(status))  status = iosb.status;
-    if (!vms_ok(status)) {
+    if (vms_ok(status)) {
+	/* try to force terminal into synch with TTDRIVER's setting */
+	number_pad((sg.sm.tt2_char & TT2$M_APP_KEYPAD) ? -1 : 1);
+    } else {
 	raw_print("");
 	errno = EVMSERR,  vaxc$errno = status;
 	perror("NetHack(setctty: setmode)");
@@ -296,7 +300,8 @@ setctty()
 }
 
 static void
-resettty(){			/* atexit() routine */
+resettty()			/* atexit() routine */
+{
     if (settty_needed) {
 	bombing = TRUE;     /* don't clear screen; preserve traceback info */
 	settty((char *)NULL);
@@ -345,20 +350,15 @@ gettty()
 	LI = sg.sm.page_length;
     if (sg.sm.page_width)
 	CO = sg.sm.page_width;
-    /* Determine whether TTDRIVER is doing tab and/or form-feed expansion;
-       if so, we want to suppress that but also restore it at final exit. */
-    if ((sg.sm.tt_char & TT_SPECIAL_HANDLING) != TT_SPECIAL_HANDLING
-     && (sg.sm.tt2_char & TT2_SPECIAL_HANDLING) != TT2_SPECIAL_HANDLING) {
-	tt_char_restore  = sg.sm.tt_char;
-	tt_char_active	 = sg.sm.tt_char |= TT_SPECIAL_HANDLING;
-	tt2_char_restore = sg.sm.tt2_char;
-	tt2_char_active  = sg.sm.tt2_char |= TT2_SPECIAL_HANDLING;
+    /* suppress tab and form-feed expansion, in case termcap uses them */
+    tt_char_restore  = sg.sm.tt_char;
+    tt_char_active   = sg.sm.tt_char |= TT_SPECIAL_HANDLING;
+    tt2_char_restore = sg.sm.tt2_char;
+    tt2_char_active  = sg.sm.tt2_char |= TT2_SPECIAL_HANDLING;
 #if 0		/*[ defer until setftty() ]*/
-	setctty();
+    setctty();
 #endif
-    } else	/* no need to take any action */
-	tt_char_restore = tt_char_active = 0,
-	tt2_char_restore = tt2_char_active = 0;
+
     if (err) wait_synch();
 }
 
@@ -367,10 +367,8 @@ void
 settty(s)
 const char *s;
 {
-	if (!bombing) {
-	    end_screen();
-	    if (s) raw_print(s);
-	}
+	if (!bombing) end_screen();
+	if (s) raw_print(s);
 	disable_broadcast_trapping();
 #if 0		/* let SMG's exit handler do the cleanup (as per doc) */
 /* #ifndef USE_QIO_INPUT */
@@ -380,11 +378,11 @@ const char *s;
 	    (void) LIB$ENABLE_CTRL(&ctrl_mask, 0);
 	flags.echo = ON;
 	flags.cbreak = OFF;
-	if (tt_char_restore != 0 || tt2_char_restore != 0) {
-	    sg.sm.tt_char  = tt_char_restore;
-	    sg.sm.tt2_char = tt2_char_restore;
-	    setctty();
-	}
+	/* reset original tab, form-feed, broadcast settings */
+	sg.sm.tt_char  = tt_char_restore;
+	sg.sm.tt2_char = tt2_char_restore;
+	setctty();
+
 	settty_needed = FALSE;
 }
 
@@ -393,7 +391,6 @@ void
 shuttty(s)
 const char *s;
 {
-	if(s) raw_print(s);
 	bombing = TRUE;
 	settty(s);
 	bombing = FALSE;
@@ -416,12 +413,11 @@ setftty()
 	enable_broadcast_trapping();	/* no-op if !defined(MAIL) */
 	flags.cbreak = (kb != 0) ? ON : OFF;
 	flags.echo   = (kb != 0) ? OFF : ON;
-	/* disable tab & form-feed expansion */
-	if (tt_char_active != 0 || tt2_char_active != 0) {
-	    sg.sm.tt_char  = tt_char_active;
-	    sg.sm.tt2_char = tt2_char_active;
-	    setctty();
-	}
+	/* disable tab & form-feed expansion; prepare for broadcast trapping */
+	sg.sm.tt_char  = tt_char_active;
+	sg.sm.tt2_char = tt2_char_active;
+	setctty();
+
 	start_screen();
 	settty_needed = TRUE;
 }

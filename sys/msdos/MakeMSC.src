@@ -1,18 +1,19 @@
-# SCCS Id: @(#)MakeMSC.src	3.1	93/01/18
+# SCCS Id: @(#)MakeMSC.src	3.1	93/05/23
 # Copyright (c) NetHack PC Development Team 1992, 1993
-# PC NetHack 3.1 Makefile for Microsoft(tm) "C" >= 6.0ax
+# PC NetHack 3.1 Makefile for Microsoft(tm) "C" >= 6.0ax and MSVC >= 1.0
 #
 # Nota Bene:	Before you get to here you should have already read
 # 		the Install.dos file located in the sys/msdos directory.
 
 # This Makefile supports two different overlay management schemes.
 # You must select either the one that supports Microsoft C
-# version 6 or version 7.  By default this Makefile is set up
-# for version 7 or greater.  Certain sections particular to
-# each compiler are marked either MSC7 or MSC6.  If you are
-# using Microsoft C version 7, make sure that all the MSC6
+# version 6, or the one that supports Microsoft C version 7 and 
+# Microsoft Visual C++ Professional version 1 (MSVC).  By default this 
+# Makefile is set up for version 7 or greater (including MSVC).  Certain 
+# sections particular to each compiler are marked either MSC7/MSVC or MSC6.
+# If you are using Microsoft C version 7 or MSVC, make sure that all the MSC6
 # sections are commented out and pay particular attention
-# to all sections marked MSC7, uncommenting all the variables.
+# to all sections marked MSC7/MSVC, uncommenting all the variables.
 # Do the same thing for MSC6 if you are using that version of
 # the compiler.
 #
@@ -60,21 +61,23 @@ MAKEBIN = make45l	# Make Utility
 #
 
 
-#### MSC7 Section Only #####
-# MSC7 Compiler Flags are set up in the setup.bat file using
+#### MSC7/MSVC Section Only #####
+# MSC7 and MSVC Compiler Flags are set up in the setup.bat file using
 # the CL environment variable as the total lenth of the compiler
 # command line exceeds the MSDOS 128 character limit.
 #
 CFLAGS	= /c
-LFLAGS	= /noi /seg:512 /map /st:5120 /DYNAMIC:1100 /INFO
+LFLAGS	= /noi /seg:512 /map /st:5120 /DYNAMIC:1050 /INFO
 OVLMUCKING =	# None required
-MSC6MUCK = 	# None required
+MSC6MUCK =	# None required
+OVERLAY =	# None required
+OVERLAY_H =	# None required
 ############################
 
 
 #### MSC6 Section Only #####
 #
-# First comment out the MSC7 section.  And uncomment much of what is below.
+# First comment out the MSC7/MSVC section.  And uncomment much of what is below.
 #
 
 #
@@ -88,20 +91,24 @@ MSC6MUCK = 	# None required
 #LFLAGS	= /noi /seg:512 /map /st:4096
 #EXEPATCH = exesmurf	# Executable Massager
 #EXEFLAGS = /max4500 /min4500
-#OVLMUCKING = $(EXEPATCH) ovlmgr.obj
+#OVLMUCKING = $(EXEPATCH) $(OBJ)\ovlmgr.obj
 #MSC6MUCK = msc6muck
 
 #
 # For Microsoft C version <= 6.00ax, we use a custom overlay
-# manager, which requires the lower line to be uncommented.
-OVLMGR	=
-#OVLMGR	= ovlmgr.obj
-
+# manager.
 #
 # Switch the following $(OBJ)\$(OVLMGR): lines if you don't have a
 # MASM compatible assembler.
-$(OBJ)\$(OVLMGR):
-# $(OBJ)\$(OVLMGR): ; copy $(SYS)\$(OVLMGR) $(OBJ)\$(OVLMGR)
+#$(OBJ)\ovlmgr.obj: $(SYS)\ovlmgr.asm
+#	$(ASM) $(AFLAGS) $(SYS)\ovlmgr.asm, $@ ;
+$(OBJ)\ovlmgr.obj: ; copy $(SYS)\ovlmgr.obj $(OBJ)\ovlmgr.obj
+
+#
+# Object files and a header file required for trampoli overlay system.
+#
+#OVERLAY = $(OBJ)\ovlmgr.obj $(OBJ)\trampoli.o
+#OVERLAY_H = $(INCL)\trampoli.h
 
 #
 # If you need to recompile ovlmgr.asm you may want to change
@@ -119,9 +126,6 @@ AFLAGS = /MX
 #$(EXEPATCH).exe: $(OBJ)\$(EXEPATCH).o
 #	$(LINK) $(OBJ)\$*.o, $*.exe;
 
-#
-#$(OBJ)\$(EXEPATCH).o: $(SYS)\$(EXEPATCH).c
-#	$(CC) /W0 /Fo$(OBJ)\$*.o $(SYS)\$*.c
 ############################
 
 #
@@ -133,9 +137,9 @@ RANDOM	= $(OBJ)\random.o
 # RANDOM	=
 
 #
-# If TERMLIB is NOT #defined in the source, comment out the
-# lower line and uncomment the upper.  Make sure that TERMLIB
-# contains the full pathname to the termcap library.
+# If TERMLIB is NOT #defined in the source (in include\pcconf.h), 
+# comment out the lower line and uncomment the upper.  Make sure 
+# that TERMLIB contains the full pathname to the termcap library. 
 
 #TERMLIB =
 TERMLIB = $(SSYS)\termcap.lib
@@ -155,37 +159,37 @@ TERMLIB = $(SSYS)\termcap.lib
 	   .o .c .y .l .obj .asm
 
 .c.o:
-	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $*.c
+	$(CC) $(CFLAGS) /Fo$@ $<
 .c.0:
-	$(CC) $(CFLAGS) /DOVL0 /NT$*.0 /Fo$(OBJ)\$*.0 $*.c
+	$(CC) $(CFLAGS) /DOVL0 /NT$(@F) /Fo$@ $<
 .c.0-1:
-	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /NT$*.0-1 /Fo$(OBJ)\$*.0-1 $*.c
+	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /NT$(@F) /Fo$@ $<
 .c.0-2:
-	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /NT$*.0-2 /Fo$(OBJ)\$*.0-2 $*.c
+	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /NT$(@F) /Fo$@ $<
 .c.0-3:
-	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /DOVL3 /NT$*.0-3 /Fo$(OBJ)\$*.0-3 $*.c
+	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /DOVL3 /NT$(@F) /Fo$@ $<
 .c.1:
-	$(CC) $(CFLAGS) /DOVL1 /NT$*.1 /Fo$(OBJ)\$*.1 $*.c
+	$(CC) $(CFLAGS) /DOVL1 /NT$(@F) /Fo$@ $<
 .c.1-2:
-	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /NT$*.1-2 /Fo$(OBJ)\$*.1-2 $*.c
+	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /NT$(@F) /Fo$@ $<
 .c.1-3:
-	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /NT$*.1-3 /Fo$(OBJ)\$*.1-3 $*.c
+	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /NT$(@F) /Fo$@ $<
 .c.1-b:
-	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /DOVLB /NT$*.1-b /Fo$(OBJ)\$*.1-b $*.c
+	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /DOVLB /NT$(@F) /Fo$@ $<
 .c.2:
-	$(CC) $(CFLAGS) /DOVL2 /NT$*.2 /Fo$(OBJ)\$*.2 $*.c
+	$(CC) $(CFLAGS) /DOVL2 /NT$(@F) /Fo$@ $<
 .c.2-3:
-	$(CC) $(CFLAGS) /DOVL2 /DOVL3 /NT$*.2-3 /Fo$(OBJ)\$*.2-3 $*.c
+	$(CC) $(CFLAGS) /DOVL2 /DOVL3 /NT$(@F) /Fo$@ $<
 .c.2-b:
-	$(CC) $(CFLAGS) /DOVL2 /DOVL3 /DOVLB /NT$*.2-b /Fo$(OBJ)\$*.2-b $*.c
+	$(CC) $(CFLAGS) /DOVL2 /DOVL3 /DOVLB /NT$(@F) /Fo$@ $<
 .c.3:
-	$(CC) $(CFLAGS) /DOVL3 /NT$*.3 /Fo$(OBJ)\$*.3 $*.c
+	$(CC) $(CFLAGS) /DOVL3 /NT$(@F) /Fo$@ $<
 .c.3-b:
-	$(CC) $(CFLAGS) /DOVL3 /DOVLB /NT$*.3-b /Fo$(OBJ)\$*.3-b $*.c
+	$(CC) $(CFLAGS) /DOVL3 /DOVLB /NT$(@F) /Fo$@ $<
 .c.b:
-	$(CC) $(CFLAGS) /DOVLB /NT$*.b /Fo$(OBJ)\$*.b $*.c
+	$(CC) $(CFLAGS) /DOVLB /NT$(@F) /Fo$@ $<
 .asm.obj:
-	$(ASM) $(AFLAGS) $(SYS)\$*.asm, $(OBJ)\$*.obj ;
+	$(ASM) $(AFLAGS) $<, $@ ;
 
 #
 #	Header Objects.
@@ -225,14 +229,14 @@ YOUPROP_H  = $(PERMONST_H)	$(MONDATA_H)		$(INCL)\prop.h	\
 #	Overlay Objects.
 #
 
-ROOT =	$(OBJ)\main.o $(OBJ)\msdos.0 $(OBJ)\dungeon.0 \
+ROOT =	$(OVERLAY) $(OBJ)\main.o $(OBJ)\msdos.0 $(OBJ)\dungeon.0 \
 	$(OBJ)\alloc.o $(OBJ)\random.o $(OBJ)\decl.o $(OBJ)\dbridge.0 \
 	$(OBJ)\objects.o $(OBJ)\invent.0 $(OBJ)\mkobj.0 $(OBJ)\mkroom.0 \
-	$(OBJ)\rnd.0 $(OBJ)\termcap.0 $(OBJ)\mondata.0 $(OBJ)\muse.o \
+	$(OBJ)\rnd.0 $(OBJ)\video.0 $(OBJ)\mondata.0 $(OBJ)\muse.o \
 	$(OBJ)\engrave.0 $(OBJ)\explode.o $(OBJ)\display.o $(OBJ)\vision.o \
 	$(OBJ)\attrib.0 $(OBJ)\rect.o $(OBJ)\vis_tab.o $(OBJ)\hacklib.0 \
 	$(OBJ)\monst.o $(OBJ)\hack.3 $(OBJ)\topl.0 $(OBJ)\trap.0 \
-	$(OBJ)\wintty.o $(OBJ)\monmove.0 $(OBJ)\dogmove.0
+	$(OBJ)\termcap.0 $(OBJ)\wintty.o $(OBJ)\monmove.0 $(OBJ)\dogmove.0
 
 # These could use to go in root, but are in OLV1 to make
 # the game loadable in under 512 free ram.
@@ -285,10 +289,11 @@ OVL28 = $(OBJ)\do_name.0
 OVL29 = $(OBJ)\objnam.2-b $(OBJ)\hacklib.2-b
 OVL30 = $(OBJ)\pager.o
 OVL31 = $(OBJ)\botl.0
-OVL32 = $(OBJ)\botl.b $(OBJ)\topl.b $(OBJ)\termcap.1 $(OBJ)\windows.o
+OVL32 = $(OBJ)\botl.b $(OBJ)\topl.b $(OBJ)\termcap.1 $(OBJ)\windows.o \
+	$(OBJ)\video.1
 OVL33 = $(OBJ)\topl.1-2
 OVL34 = $(OBJ)\pline.o
-OVL35 = $(OBJ)\termcap.2-b
+OVL35 = $(OBJ)\termcap.2-b $(OBJ)\video.2-b
 OVL36 = $(OBJ)\quest.o $(OBJ)\questpgr.o
 OVL37 = $(OBJ)\invent.b
 OVL38 = $(OBJ)\hack.b
@@ -439,7 +444,7 @@ $(UTL)\utility.tag: monst.c	alloc.c			objects.c \
 	$(UTL)\makedefs.c	$(UTL)\panic.c		$(UTL)\recover.c \
 	$(UTL)\dgn_main.c	$(UTL)\dgn_comp.l	$(UTL)\dgn_comp.y \
 	$(UTL)\lev_main.c	$(UTL)\lev_comp.l	$(UTL)\lev_comp.y \
-	$(HACK_H)
+	$(HACK_H)		$(INCL)\patchlevel.h	$(INCL)\qtext.h
 	@echo You must first "$(MAKEBIN) all" in the $(UTL) directory.
 	@attrib .foo
 
@@ -463,35 +468,47 @@ $(INCL)\date.h: $(VOBJ)
 #
 
 $(OBJ)\msdos.0: $(HACK_H) $(INCL)\termcap.h $(SYS)\msdos.c
-	$(CC) $(CFLAGS) /DOVL0 /NT$*.0 /Fo$(OBJ)\$*.0 $(SYS)\$*.c
+	$(CC) $(CFLAGS) /DOVL0 /NT$(@F) /Fo$@ $(SYS)\msdos.c
 
 $(OBJ)\msdos.b: $(HACK_H) $(INCL)\termcap.h $(SYS)\msdos.c
-	$(CC) $(CFLAGS) /DOVLB /NT$*.b /Fo$(OBJ)\$*.b $(SYS)\$*.c
+	$(CC) $(CFLAGS) /DOVLB /NT$(@F) /Fo$@ $(SYS)\msdos.c
 
-$(OBJ)\trampoli.o: $(HACK_H)	$(SYS)\trampoli.c
-	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SYS)\$*.c
+$(OBJ)\trampoli.o: $(HACK_H) $(SYS)\trampoli.c
+	$(CC) $(CFLAGS) /Fo$@ $(SYS)\trampoli.c
+
+$(OBJ)\video.0:	$(HACK_H) $(INCL)\wintty.h $(SYS)\video.c
+	$(CC) $(CFLAGS) /DOVL0 /NT$(@F) /Fo$@ $(SYS)\video.c
+
+$(OBJ)\video.1: $(HACK_H) $(INCL)\wintty.h $(SYS)\video.c
+	$(CC) $(CFLAGS) /DOVL1 /NT$(@F) /Fo$@ $(SYS)\video.c
+
+$(OBJ)\video.2-b: $(HACK_H) $(INCL)\wintty.h $(SYS)\video.c
+	$(CC) $(CFLAGS) /DOVL2 /DOVLB /NT$(@F) /Fo$@ $(SYS)\video.c
+
+$(OBJ)\exesmurf.o: $(SYS)\exesmurf.c
+	$(CC) $(CFLAGS) /Fo$@ $(SYS)\exesmurf.c
 
 #
 #	$(SSYS) files.
 #
 
 $(OBJ)\main.o: $(HACK_H)	$(SSYS)\pcmain.c
-	$(CC) $(CFLAGS) /Fo$(OBJ)\main.o $(SSYS)\pcmain.c
+	$(CC) $(CFLAGS) /Fo$@ $(SSYS)\pcmain.c
 
 $(OBJ)\pcsys.o:	$(HACK_H)	$(INCL)\wintty.h	$(SSYS)\pcsys.c
-	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SSYS)\$*.c
+	$(CC) $(CFLAGS) /Fo$@ $(SSYS)\pcsys.c
 
 $(OBJ)\random.o: $(SSYS)\random.c
-	$(CC) $(CFLAGS) /Fo$(OBJ)\$*.o $(SSYS)\$*.c
+	$(CC) $(CFLAGS) /Fo$@ $(SSYS)\random.c
 
 $(OBJ)\tty.o: $(HACK_H)		$(INCL)\wintty.h	$(SSYS)\pctty.c
-	$(CC) $(CFLAGS) /Fo$(OBJ)\tty.o	$(SSYS)\pctty.c
+	$(CC) $(CFLAGS) /Fo$@	$(SSYS)\pctty.c
 
 $(OBJ)\unix.0: $(HACK_H)	$(SSYS)\pcunix.c
-	$(CC) $(CFLAGS) /DOVL0 /Fo$(OBJ)\unix.0 $(SSYS)\pcunix.c
+	$(CC) $(CFLAGS) /DOVL0 /Fo$@ $(SSYS)\pcunix.c
 
 $(OBJ)\unix.1-b: $(HACK_H)	$(SSYS)\pcunix.c
-	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /DOVLB /Fo$(OBJ)\unix.1-b $(SSYS)\pcunix.c
+	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /DOVL3 /DOVLB /Fo$@ $(SSYS)\pcunix.c
 
 #
 #	$(WIN) files.
@@ -499,43 +516,43 @@ $(OBJ)\unix.1-b: $(HACK_H)	$(SSYS)\pcunix.c
 
 $(OBJ)\getline.0-1: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\func_tab.h \
 	$(WIN)\getline.c
-	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /NT$*.0-1 /Fo$(OBJ)\$*.0-1 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /NT$(@F) /Fo$@ $(WIN)\getline.c
 
 $(OBJ)\getline.2: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\func_tab.h \
 	$(WIN)\getline.c
-	$(CC) $(CFLAGS) /DOVL2 /NT$*.2 /Fo$(OBJ)\$*.2 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL2 /NT$(@F) /Fo$@ $(WIN)\getline.c
 
 $(OBJ)\getline.b: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\func_tab.h \
 	$(WIN)\getline.c
-	$(CC) $(CFLAGS) /DOVLB /NT$*.b /Fo$(OBJ)\getline.b $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVLB /NT$(@F) /Fo$@ $(WIN)\getline.c
 
 $(OBJ)\termcap.0: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\termcap.h \
 	$(WIN)\termcap.c
-	$(CC) $(CFLAGS) /DOVL0 /NT$*.0 /Fo$(OBJ)\$*.0 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL0 /NT$(@F) /Fo$@ $(WIN)\termcap.c
 
 $(OBJ)\termcap.1: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\termcap.h \
 	$(WIN)\termcap.c
-	$(CC) $(CFLAGS) /DOVL1 /NT$*.1 /Fo$(OBJ)\$*.1 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL1 /NT$(@F) /Fo$@ $(WIN)\termcap.c
 
 $(OBJ)\termcap.2-b: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\termcap.h \
 	$(WIN)\termcap.c
-	$(CC) $(CFLAGS) /DOVL2 /DOVLB /NT$*.2-b /Fo$(OBJ)\$*.2-b $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL2 /DOVLB /NT$(@F) /Fo$@ $(WIN)\termcap.c
 
 $(OBJ)\topl.0: $(HACK_H)	$(INCL)\termcap.h	$(INCL)\wintty.h \
 	$(WIN)\topl.c
-	$(CC) $(CFLAGS) /DOVL0 /NT$*.0 /Fo$(OBJ)\$*.0 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL0 /NT$(@F) /Fo$@ $(WIN)\topl.c
 
 $(OBJ)\topl.1-2: $(HACK_H)	$(INCL)\termcap.h	$(INCL)\wintty.h \
 	$(WIN)\topl.c
-	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /NT$*.1-2 /Fo$(OBJ)\$*.1-2 $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL1 /DOVL2 /NT$(@F) /Fo$@ $(WIN)\topl.c
 
 $(OBJ)\topl.b: $(HACK_H)	$(INCL)\termcap.h	$(INCL)\wintty.h \
 	$(WIN)\topl.c
-	$(CC) $(CFLAGS) /DOVLB /NT$*.b /Fo$(OBJ)\$*.b $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVLB /NT$(@F) /Fo$@ $(WIN)\topl.c
 
 $(OBJ)\wintty.o: $(HACK_H)	$(INCL)\wintty.h	$(INCL)\termcap.h \
 	$(WIN)\wintty.c
-	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /DOVLB /Fo$(OBJ)\$*.o $(WIN)\$*.c
+	$(CC) $(CFLAGS) /DOVL0 /DOVL1 /DOVL2 /DOVLB /Fo$@ $(WIN)\wintty.c
 
 #
 #	$(SRC) files.

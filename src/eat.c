@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)eat.c	3.1	93/02/19	*/
+/*	SCCS Id: @(#)eat.c	3.1	93/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 /*#define DEBUG		/* uncomment to enable new eat code debugging */
 
 #ifdef DEBUG
@@ -176,7 +176,7 @@ choke(food)	/* To a full belly all food is bad. (It.) */
 
 	exercise(A_CON, FALSE);
 
-	if (!rn2(20)) {
+	if (!rn2(20) || Breathless) {
 		You("stuff yourself and then vomit voluminously.");
 		morehungry(1000);	/* you just got *very* sick! */
 		vomit();
@@ -285,8 +285,9 @@ register struct obj *otmp;
 		 || otmp->unpaid) &&
 		 (otmp->otyp == CORPSE || objects[otmp->otyp].oc_delay > 1)) {
 		/* create a dummy duplicate to put on bill */
-		verbalize("You bite it, you bought it!");
+		verbalize("You bit it, you bought it!");
 		bill_dummy_object(otmp);
+		otmp->no_charge = 1;	/* you now own this */
 	    }
 	    otmp->oeaten = (otmp->otyp == CORPSE ?
 				(int)mons[otmp->corpsenm].cnutrit :
@@ -345,7 +346,7 @@ eatfood()		/* called each move during eating process */
 	}
 	if(!victual.eating) return(0);
 
-	if(++victual.usedtime < victual.reqtime) {
+	if(++victual.usedtime <= victual.reqtime) {
 	    if(bite()) return(0);
 	    return(1);	/* still busy */
 	} else {	/* done */
@@ -876,8 +877,9 @@ opentin()		/* called during each move whilst opening a tin */
 	}
 	if(tin.usedtime < tin.reqtime)
 		return(1);		/* still busy */
-	if(tin.tin->cursed && tin.tin->spe != -1 && !rn2(8)) {
-		b_trapped("tin");
+	if(tin.tin->otrapped || 
+	   (tin.tin->cursed && tin.tin->spe != -1 && !rn2(8))) {
+		b_trapped("tin", 0);
 		goto use_me;
 	}
 	You("succeed in opening the tin.");
@@ -1034,12 +1036,15 @@ rottenfood()
 		pline("Everything suddenly goes dark.");
 		make_blinded((long)d(2,10),FALSE);
 	} else if(!rn2(3)) {
-		if(Blind)
-		  pline("The world spins and you %s.",
-			Levitation ? "collapse in place" :
-			"slap against the floor");
+		const char *what, *where;
+		if (!Blind)
+		    what = "goes",  where = "dark";
+		else if (Levitation || Is_airlevel(&u.uz) ||
+			 Is_waterlevel(&u.uz))
+		    what = "you lose control of",  where = "yourself";
 		else
-		  pline("The world spins and goes dark.");
+		    what = "you slap against the",  where = surface(u.ux,u.uy);
+		pline("The world spins and %s %s.", what, where);
 		flags.soundok = 0;
 		nomul(-rnd(10));
 		nomovemsg = "You are conscious again.";
@@ -1438,7 +1443,7 @@ doeat()		/* generic "eat" command funtion (see cmd.c) */
 	if (!(otmp = floorfood("eat", 0))) return 0;
 	if (check_capacity(NULL)) return 0;
 #ifdef POLYSELF
-	/* We have to make non-foods take no time to eat, unless we want to
+	/* We have to make non-foods take 1 move to eat, unless we want to
 	 * do ridiculous amounts of coding to deal with partly eaten plate
 	 * mails, players who polymorph back to human in the middle of their
 	 * metallic meal, etc....
@@ -1458,6 +1463,9 @@ doeat()		/* generic "eat" command funtion (see cmd.c) */
 	    if (otmp->oclass == GOLD_CLASS)
 		basenutrit = ((otmp->quan > 200000L) ? 2000
 			: (int)(otmp->quan/100L));
+	    else if(otmp->oclass == BALL_CLASS || otmp->oclass == CHAIN_CLASS)
+		basenutrit = weight(otmp);
+	    /* oc_nutrition is usually weight anyway */
 	    else basenutrit = objects[otmp->otyp].oc_nutrition;
 	    victual.nmod = basenutrit;
 	    victual.eating = TRUE; /* needed for lesshungry() */
@@ -1614,7 +1622,7 @@ gethungry()	/* as time goes by - called by moveloop() and domove() */
 	    /* Conflict uses up food too */
 	    if ((Conflict & (~W_ARTI))) u.uhunger--;
 	    /* +0 charged rings don't do anything, so don't affect hunger */
-	    switch (moves % 20) {	/* note: use even cases only */
+	    switch ((int)(moves % 20)) {	/* note: use even cases only */
 	     case  4: if (uleft &&
 			  (uleft->spe || !objects[uleft->otyp].oc_charged))
 			    u.uhunger--;

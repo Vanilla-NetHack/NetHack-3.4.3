@@ -14,6 +14,10 @@
 #define dorub()   dorub_()
 
 
+/* ### artifact.c ### */
+#define doinvoke()     doinvoke_()
+
+
 /* ### cmd.c ### */
 #define doextcmd()         doextcmd_()
 #define doextlist()        doextlist_()
@@ -215,6 +219,10 @@
 /* ### read.c ### */
 #define doread()	   doread_()
 #define set_lit(x, y, val) set_lit_(x, y, val)
+
+
+/* ### rip.c ### */
+#define genl_outrip(tmpwin, how) genl_outrip_(tmpwin, how)
 
 
 /* ### save.c ### */

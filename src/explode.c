@@ -1,14 +1,15 @@
-/*	SCCS Id: @(#)explode.c 3.1	93/02/17
+/*	SCCS Id: @(#)explode.c 3.1	93/05/15	*/
 /*	Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
 
 /* Note: Arrays are column first, while the screen is row first */
-static int expl[3][3] = 
-{ S_explode1, S_explode4, S_explode7,
-  S_explode2, S_explode5, S_explode8,
-  S_explode3, S_explode6, S_explode9 };
+static int expl[3][3] = {
+	{ S_explode1, S_explode4, S_explode7 },
+	{ S_explode2, S_explode5, S_explode8 },
+	{ S_explode3, S_explode6, S_explode9 }
+};
 
 /* Note: I had to choose one of three possible kinds of "type" when writing
  * this function: a wand type (like in zap.c), an adtyp, or an object type.
@@ -68,7 +69,7 @@ char olet;
 		    }
 		}
 		/* can be both you and mtmp if you're swallowed */
-		if (mtmp = m_at(i+x-1, j+y-1)) {
+		if ((mtmp = m_at(i+x-1, j+y-1)) != 0) {
 		    switch(adtyp) {
 			case AD_FIRE:
 				explmask[i][j] = resists_fire(mtmp->data)
@@ -83,7 +84,7 @@ char olet;
 				explmask[i][j] = 0;
 				break;
 		    }
-		} else if (i+x-1 != u.ux || j+j-1 != u.uy)
+		} else if (i+x-1 != u.ux || j+y-1 != u.uy)
 		    explmask[i][j] = 0;
 
 		if (cansee(i+x-1, j+y-1)) visible = TRUE;

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)engrave.c	3.1	92/02/25	*/
+/*	SCCS Id: @(#)engrave.c	3.1	92/05/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -46,6 +46,27 @@ random_engraving()
 }
 #endif /* OVLB */
 #ifdef OVL0
+
+const char *
+surface(x, y)
+register int x, y;
+{
+	register struct rm *lev = &levl[x][y];
+
+	if (IS_AIR(lev->typ))
+	    return "air";
+	else if (is_pool(x,y))
+	    return "water";
+	else if (is_ice(x,y))
+	    return "ice";
+	else if (is_lava(x,y))
+	    return "lava";
+	else if ((IS_ROOM(lev->typ) && !Is_earthlevel(&u.uz)) ||
+		 IS_WALL(lev->typ) || IS_DOOR(lev->typ) || lev->typ == SDOOR)
+	    return "floor";
+	else
+	    return "ground";
+}
 
 struct engr *
 engr_at(x,y) register xchar x,y; {
@@ -140,25 +161,30 @@ register int x,y;
 	    case DUST:
 		if(!Blind) {
 			sensed = 1;
-			pline("Something is written here in the dust.");
+			pline("Something is written here in the %s.",
+				is_ice(x,y) ? "frost" : "dust");
 		}
 		break;
 	    case ENGRAVE:
 		if(!Blind || !Levitation) {
 			sensed = 1;
-			pline("Something is engraved here on the floor.");
+			pline("Something is engraved here on the %s.",
+				surface(x,y));
 		}
 		break;
 	    case BURN:
 		if(!Blind || !Levitation) {
 			sensed = 1;
-			pline("Some text has been burned into the floor here.");
+			pline("Some text has been %s into the %s here.",
+				is_ice(x,y) ? "melted" : "burned",
+				surface(x,y));
 		}
 		break;
 	    case MARK:
 		if(!Blind) {
 			sensed = 1;
-			pline("There's some graffiti on the floor here.");
+			pline("There's some graffiti on the %s here.",
+				surface(x,y));
 		}
 		break;
 	    case BLOOD:
@@ -195,7 +221,7 @@ register xchar e_type;
 {
 	register struct engr *ep;
 
-	if(ep = engr_at(x,y))
+	if ((ep = engr_at(x,y)) != 0)
 	    del_engr(ep);
 	ep = newengr(strlen(s) + 1);
 	ep->nxt_engr = head_engr;
@@ -208,6 +234,16 @@ register xchar e_type;
 	ep->engr_time = e_time;
 	ep->engr_type = e_type > 0 ? e_type : rnd(N_ENGRAVE);
 	ep->engr_lth = strlen(s) + 1;
+}
+
+/* delete any engraving at location <x,y> */
+void
+del_engr_at(x, y)
+int x, y;
+{
+	register struct engr *ep = engr_at(x, y);
+
+	if (ep) del_engr(ep);
 }
 
 /*
@@ -278,9 +314,9 @@ doengrave()
 	char buf[BUFSZ];	/* Buffer for final/poly engraving text */
 	char ebuf[BUFSZ];	/* Buffer for initial engraving text */
 	char qbuf[QBUFSZ];	/* Buffer for query text */
+	char post_engr_text[BUFSZ]; /* Text displayed after engraving prompt */
 	const char *everb;	/* Present tense of engraving type */
 	const char *eloc;	/* Where the engraving is (ie dust/floor/...) */
-	const char *post_engr_text; /* Text displayed after engraving prompt */
 	register char *sp;	/* Place holder for space count of engr text */
 	register int len;	/* # of nonspace chars of new engraving text */
 	register int maxelen;	/* Max allowable length of new engraving text */
@@ -295,7 +331,7 @@ doengrave()
 
 	buf[0] = (char)0;
 	ebuf[0] = (char)0;
-	post_engr_text = (char *)0;
+	post_engr_text[0] = (char)0;
 	maxelen = BUFSZ - 1;
 
 	/* Can the adventurer engrave at all? */
@@ -305,11 +341,11 @@ doengrave()
 			pline("What would you write?  \"Jonah was here\"?");
 			return(0);
 		} else if (is_whirly(u.ustuck->data)) {
-			You("can't reach the ground.");
+			You("can't reach the %s.", surface(u.ux,u.uy));
 			return(0);
 		} else 
 			jello = TRUE;
-    	} else if (is_lava(u.ux, u.uy)) {
+	} else if (is_lava(u.ux, u.uy)) {
 		You("can't write on the lava!");
 		return(0);
 	} else if (is_pool(u.ux,u.uy) || IS_FOUNTAIN(levl[u.ux][u.uy].typ)) {
@@ -351,7 +387,7 @@ doengrave()
 		return(0);
 	}
 	if(Levitation && otmp->oclass != WAND_CLASS){		/* riv05!a3 */
-		You("can't reach the floor!");
+		You("can't reach the %s!", surface(u.ux,u.uy));
 		return(0);
 	}
 
@@ -421,6 +457,7 @@ doengrave()
 	     */
 	    case WAND_CLASS:
 		if (zappable(otmp)) {
+		    check_unpaid(otmp);
 		    zapwand = TRUE;
 		    if (Levitation) ptext = FALSE;
 
@@ -438,20 +475,27 @@ doengrave()
 			break;
 
 			/* IMMEDIATE wands */
-	    		/* If wand is "IMMEDIATE", remember to effect the
-			 * previous engraving even if turning to dust.,
+	    		/* If wand is "IMMEDIATE", remember to affect the
+			 * previous engraving even if turning to dust.
 			 */
 		    case WAN_STRIKING:
-			post_engr_text =
-			"The wand unsuccessfully fights your attempt to write!";
+			Strcpy(post_engr_text,
+			"The wand unsuccessfully fights your attempt to write!"
+			);
 			break;
 		    case WAN_SLOW_MONSTER:
-			if (!Blind)
-			   post_engr_text = "The bugs on the ground slow down!";
+			if (!Blind) {
+			   Sprintf(post_engr_text,
+				   "The bugs on the %s slow down!",
+				   surface(u.ux, u.uy));
+			}
 			break;
 		    case WAN_SPEED_MONSTER:
-			if (!Blind)
-			   post_engr_text = "The bugs on the ground speed up!";
+			if (!Blind) {
+			   Sprintf(post_engr_text,
+				   "The bugs on the %s speed up!",
+				   surface(u.ux, u.uy));
+			}
 			break;
 		    case WAN_POLYMORPH:
 			if(oep)  {
@@ -472,37 +516,43 @@ doengrave()
 			/* RAY wands */
 		    case WAN_MAGIC_MISSILE:
 			ptext = TRUE;
-			if (!Blind)
-			    post_engr_text =
-				"The ground is riddled by bullet holes!";
+			if (!Blind) {
+			   Sprintf(post_engr_text,
+				   "The %s is riddled by bullet holes!",
+				   surface(u.ux, u.uy));
+			}
 			break;
 
 		    /* can't tell sleep from death - Eric Backus */
 		    case WAN_SLEEP:
 		    case WAN_DEATH:
-			if (!Blind)
-			    post_engr_text =
-				"The bugs on the ground stop moving!";
+			if (!Blind) {
+			   Sprintf(post_engr_text,
+				   "The bugs on the %s stop moving!",
+				   surface(u.ux, u.uy));
+			}
 			break;
 
 		    case WAN_COLD:
 			if (!Blind)
-			    post_engr_text =
-				"A few ice cubes drop from the wand.";
+			    Strcpy(post_engr_text,
+				"A few ice cubes drop from the wand.");
 			if(!oep || (oep->engr_type != BURN))
 			    break;
 		    case WAN_CANCELLATION:
 		    case WAN_MAKE_INVISIBLE:
 			if(oep) {
 			    if (!Blind)
-				pline("The engraving on the floor vanishes!");
+				pline("The engraving on the %s vanishes!",
+					surface(u.ux,u.uy));
 			    dengr = TRUE;
 			}
 			break;
 		    case WAN_TELEPORTATION:
 			if (oep) {
 			    if (!Blind)
-				pline("The engraving on the floor vanishes!");
+				pline("The engraving on the %s vanishes!",
+					surface(u.ux,u.uy));
 			    teleengr = TRUE;
 			}
 			break;
@@ -518,9 +568,12 @@ doengrave()
 			    doknown = TRUE;
 			}
 			if (!Blind)
-			    post_engr_text = "Gravel flies up from the floor.";
+			    Strcpy(post_engr_text,
+				is_ice(u.ux,u.uy) ? 
+				"Ice chips fly up from the ice surface!" :
+			        "Gravel flies up from the floor.");
 			else
-			    post_engr_text = "You hear drilling!";
+			    Strcpy(post_engr_text, "You hear drilling!");
 			break;
 
 		    /* type = BURN wands */
@@ -532,10 +585,9 @@ doengrave()
 			    pline("This %s is a wand of fire!", xname(otmp));
 			    doknown = TRUE;
 			}
-			if (!Blind)
-			    post_engr_text = "Flames fly from the wand.";
-			else
-			    post_engr_text = "You feel the wand heat up.";
+			Strcpy(post_engr_text,
+				Blind ? "You feel the wand heat up." :
+					"Flames fly from the wand.");
 			break;
 		    case WAN_LIGHTNING:
 			ptext = TRUE;
@@ -547,10 +599,11 @@ doengrave()
 			    doknown = TRUE;
 			}
 			if (!Blind) {
-			    post_engr_text = "Lightning arcs from the wand.";
+			    Strcpy(post_engr_text,
+				    "Lightning arcs from the wand.");
 			    doblind = TRUE;
 			} else
-			    post_engr_text = "You hear crackling!";
+			    Strcpy(post_engr_text, "You hear crackling!");
 			break;
 
 		    /* type = MARK wands */
@@ -558,7 +611,7 @@ doengrave()
 		    }
 		} else /* end if zappable */
 		    if (Levitation) {
-			You("can't reach the floor!");
+			You("can't reach the %s!", surface(u.ux,u.uy));
 			return(0);
 		    }
 		break;
@@ -656,14 +709,15 @@ doengrave()
 	if (zapwand && (otmp->spe < 0)) {
 	    pline("%s %sturns to dust.",
 		  The(xname(otmp)), Blind ? "" : "glows violently, then ");
-You("are not going to get anywhere trying to write in the dust with your dust.");
+ You("are not going to get anywhere trying to write in the %s with your dust.",
+		is_ice(u.ux,u.uy) ? "frost" : "dust");
 	    useup(otmp);
 	    ptext = FALSE;
 	}
 
 	if (!ptext) {		/* Early exit for some implements. */
 	    if (Levitation && (otmp->oclass == WAND_CLASS))
-		You("can't reach the floor!");
+		You("can't reach the %s!", surface(u.ux,u.uy));
 	    return(1);
 	}
 
@@ -703,9 +757,10 @@ You("are not going to get anywhere trying to write in the dust with your dust.")
 		} else
 		    if ( (type == DUST) || (type == MARK) || (type == BLOOD) ) {
 			You(
-		       "cannot wipe out the message that is %s the floor here.",
-		            (oep->engr_type == BURN) ? "burned into" :
-			    "engraved in");
+			 "cannot wipe out the message that is %s the %s here.",
+			 oep->engr_type == BURN ? 
+			   (is_ice(u.ux,u.uy) ? "melted into" : "burned into") :
+			   "engraved in", surface(u.ux,u.uy));
 			return(1);
 		    } else
 			if ( (type != oep->engr_type) || (c == 'n') ) {
@@ -715,48 +770,46 @@ You("are not going to get anywhere trying to write in the dust with your dust.")
 			}
 	}
 
+	eloc = surface(u.ux,u.uy);
 	switch(type){
 	    default:
 		everb = (oep && !eow ? "add to the weird writing on" :
 				       "write strangely on");
-		eloc  = "the floor";
 		break;
 	    case DUST:
 		everb = (oep && !eow ? "add to the writing in" :
 				       "write in");
-		eloc = "the dust";
+		eloc = is_ice(u.ux,u.uy) ? "frost" : "dust";
 		break;
 	    case ENGRAVE:
 		everb = (oep && !eow ? "add to the engraving in" :
 				       "engrave in");
-		eloc = "the floor";
 		break;
 	    case BURN:
-		everb = (oep && !eow ? "add to the text burned into" :
-				       "burn into");
-		eloc = "the floor";
+		everb = (oep && !eow ? 
+			( is_ice(u.ux,u.uy) ? "add to the text melted into" :
+			                      "add to the text burned into") :
+			( is_ice(u.ux,u.uy) ? "melt into" : "burn into"));
 		break;
 	    case MARK:
 		everb = (oep && !eow ? "add to the graffiti on" :
 				       "scribble on");
-		eloc = "the floor";
 		break;
 	    case BLOOD:
 		everb = (oep && !eow ? "add to the scrawl on" :
 				       "scrawl on");
-		eloc = "the floor";
 		break;
 	}
 
 	/* Tell adventurer what is going on */
 	if (otmp != &zeroobj)
-	    You("%s %s with %s.", everb, eloc, doname(otmp));
+	    You("%s the %s with %s.", everb, eloc, doname(otmp));
 	else
-	    You("%s %s with your %s.", everb, eloc,
+	    You("%s the %s with your %s.", everb, eloc,
 		makeplural(body_part(FINGER)));
 
 	/* Prompt for engraving! */
-	Sprintf(qbuf,"What do you want to %s %s here?", everb, eloc);
+	Sprintf(qbuf,"What do you want to %s the %s here?", everb, eloc);
 	getlin(qbuf, ebuf);
 
 	/* Mix up engraving if surface or state of mind is unsound.  */
@@ -831,7 +884,8 @@ You("are not going to get anywhere trying to write in the dust with your dust.")
 	    case BURN:
 		multi = -(len/10);
 		if (multi)
-		    nomovemsg =
+		    nomovemsg = is_ice(u.ux,u.uy) ?
+			"You finish melting your message into the ice.":
 			"You finish burning your message into the floor.";
 		break;
 	    case MARK:
@@ -873,7 +927,7 @@ You("are not going to get anywhere trying to write in the dust with your dust.")
 
 	make_engr_at(u.ux, u.uy, buf, (moves - multi), type);
 
-	if (post_engr_text) pline(post_engr_text);
+	if (post_engr_text[0]) pline(post_engr_text);
 
 	if (doblind) {
 	    You("are blinded by the flash!");
@@ -914,7 +968,9 @@ int fd, mode;
 }
 
 void
-rest_engravings(fd) int fd; {
+rest_engravings(fd)
+int fd;
+{
 register struct engr *ep;
 unsigned lth;
 	head_engr = 0;
@@ -934,20 +990,23 @@ unsigned lth;
 }
 
 STATIC_OVL void
-del_engr(ep) register struct engr *ep; {
-register struct engr *ept;
-	if(ep == head_engr)
+del_engr(ep)
+register struct engr *ep;
+{
+	if (ep == head_engr) {
 		head_engr = ep->nxt_engr;
-	else {
-		for(ept = head_engr; ept; ept = ept->nxt_engr) {
-			if(ept->nxt_engr == ep) {
-				ept->nxt_engr = ep->nxt_engr;
-				goto fnd;
-			}
+	} else {
+		register struct engr *ept;
+
+		for (ept = head_engr; ept; ept = ept->nxt_engr)
+		    if (ept->nxt_engr == ep) {
+			ept->nxt_engr = ep->nxt_engr;
+			break;
+		    }
+		if (!ept) {
+		    impossible("Error in del_engr?");
+		    return;
 		}
-		impossible("Error in del_engr?");
-		return;
-	fnd:	;
 	}
 	dealloc_engr(ep);
 }

@@ -133,7 +133,7 @@ $(MAKEDEFS) :	$(MAKEOBJS) $(VMSMAKEOBJS) $(LIBOPT)
 	$(LINK) $(LFLAGS) $(MAKEOBJS),$(VMSMAKEOBJS),$(LIBS)
 
 makedefs.obj :	$(INC)config.h $(INC)permonst.h $(INC)objclass.h \
-		$(INC)monsym.h $(INC)artilist.h $(INC)qtext.h
+		$(INC)monsym.h $(INC)artilist.h $(INC)patchlevel.h $(INC)qtext.h
 
 $(INC)onames.h	: $(MAKEDEFS)
 	$(RUN) $(MAKEDEFS) -o

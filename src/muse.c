@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)muse.c	3.1	93/02/12	*/
+/*	SCCS Id: @(#)muse.c	3.1	93/05/25	*/
 /* Monster item usage routine.  Copyright (C) 1990 by Ken Arromdee */
 /* NetHack may be freely redistributed.  See license for details.  */
 
@@ -319,6 +319,12 @@ struct monst *mtmp;
 	if (m.has_defense)	/* stairs, trapdoor or tele-trap, bugle alert */
 		goto botm;
 
+	/* kludge to cut down on trap destruction (particularly portals) */
+	t = t_at(x,y);
+	if (t && (t->ttyp == PIT || t->ttyp == SPIKED_PIT ||
+		  t->ttyp == WEB || t->ttyp == BEAR_TRAP))
+		t = 0;		/* ok for monster to dig here */
+
 #define nomore(x) if(m.has_defense==x) continue;
 	for (obj = mtmp->minvent; obj; obj = obj->nobj) {
 		/* don't always use the same selection pattern */
@@ -326,7 +332,7 @@ struct monst *mtmp;
 
 		/* nomore(MUSE_WAN_DIGGING); */
 		if (m.has_defense == MUSE_WAN_DIGGING) break;
-		if (obj->otyp == WAN_DIGGING && obj->spe > 0 && !stuck
+		if (obj->otyp == WAN_DIGGING && obj->spe > 0 && !stuck && !t
 		    && !mtmp->isshk && !mtmp->isgd && !mtmp->ispriest
 		    && !is_floater(mtmp->data)
 		    /* digging wouldn't be effective; assume they know that */
@@ -409,12 +415,8 @@ struct monst *mtmp;
 		otmp->spe--;
 		if (oseen) makeknown(WAN_TELEPORTATION);
 mon_tele:
-		if(level.flags.noteleport) {
-		    if (vismon)
-		      pline("A mysterious force prevents %s from teleporting!",
-			mon_nam(mtmp));
+		if (tele_restrict(mtmp))
 		    return 2;
-		}
 		if((/*mon_has_amulet(mtmp)||*/ Is_wiz1_level(&u.uz) ||
 		      Is_wiz2_level(&u.uz) || Is_wiz3_level(&u.uz))
 								&& !rn2(3)) {
@@ -471,6 +473,8 @@ mon_tele:
 		return 2;
 	    }
 	case MUSE_WAN_DIGGING:
+	    {	struct trap *ttmp;
+
 		mzapmsg(mtmp, otmp, FALSE);
 		otmp->spe--;
 		if (oseen) makeknown(WAN_DIGGING);
@@ -485,7 +489,9 @@ mon_tele:
 			pline("The floor here is too hard to dig in.");
 		    return 2;
 		}
-		seetrap(maketrap(mtmp->mx, mtmp->my, TRAPDOOR));
+		ttmp = maketrap(mtmp->mx, mtmp->my, TRAPDOOR);
+		if (!ttmp) return 2;
+		seetrap(ttmp);
 		if (vis) {
 			pline("%s's made a hole in the floor.", Monnam(mtmp));
 			pline("%s falls through...", Monnam(mtmp));
@@ -497,6 +503,7 @@ mon_tele:
 		/* we made sure that there is a level for mtmp to go to */
 		migrate_to_level(mtmp, ledger_no(&u.uz)+1, 0);
 		return 2;
+	    }
 	case MUSE_WAN_CREATE_MONSTER:
 	    {	coord cc;
 		struct permonst *pm=rndmonst();
@@ -524,6 +531,8 @@ mon_tele:
 				: rndmonst(), cc.x, cc.y);
 			if (mon) newsym(mon->mx,mon->my);
 		}
+		/* flush monsters before asking for identification */
+		flush_screen(0);
 		if (oseen && !objects[SCR_CREATE_MONSTER].oc_name_known
 			  && !objects[SCR_CREATE_MONSTER].oc_uname)
 			docall(otmp); /* not makeknown(); be consistent */
@@ -651,22 +660,24 @@ struct monst *mtmp;
 		) return 0;
 	switch (rn2(8 + (difficulty > 3) + (difficulty > 6) +
 				(difficulty > 8))) {
+		case 6: case 9:
+			if (!rn2(3)) return WAN_TELEPORTATION;
+			/* else FALLTHRU */
 		case 0: case 1:
 			return SCR_TELEPORTATION;
+		case 8: case 10:
+			if (!rn2(3)) return WAN_CREATE_MONSTER;
+			/* else FALLTHRU */
 		case 2: return SCR_CREATE_MONSTER;
 		case 3: case 4:
 			return POT_HEALING;
 		case 5: return POT_EXTRA_HEALING;
-		case 6: case 9:
-			return WAN_TELEPORTATION;
 		case 7: if (is_floater(pm) || mtmp->isshk || mtmp->isgd
 						|| mtmp->ispriest
 									)
 				return 0;
 			else
 				return WAN_DIGGING;
-		case 8: case 10:
-			return WAN_CREATE_MONSTER;
 	}
 	/*NOTREACHED*/
 	return 0;
@@ -1199,13 +1210,10 @@ skipmsg:
 		    }
 		}
 		if (vismon) pline("%s seems more experienced.", Monnam(mtmp));
-		i = rnd(8);
 		if (oseen) makeknown(POT_GAIN_LEVEL);
 		m_useup(mtmp, otmp);
 		if (!grow_up(mtmp,(struct monst *)0)) return 1;
 			/* grew into genocided monster */
-		mtmp->mhp += i;
-		mtmp->mhpmax += i;
 		return 2;
 	case MUSE_WAN_MAKE_INVISIBLE:
 		mzapmsg(mtmp, otmp, TRUE);
@@ -1319,10 +1327,10 @@ struct monst *mtmp;
 	switch (rn2(3)) {
 		case 0:
 			if (mtmp->isgd) return 0;
-			return rn2(4) ? POT_SPEED : WAN_SPEED_MONSTER;
+			return rn2(6) ? POT_SPEED : WAN_SPEED_MONSTER;
 		case 1:
 			if (mtmp->mpeaceful && !See_invisible) return 0;
-			return rn2(4) ? POT_INVISIBILITY : WAN_MAKE_INVISIBLE;
+			return rn2(6) ? POT_INVISIBILITY : WAN_MAKE_INVISIBLE;
 		case 2:
 			return POT_GAIN_LEVEL;
 	}
@@ -1363,6 +1371,31 @@ struct obj *obj;
 			&& obj->corpsenm == PM_COCKATRICE)
 	);
 }
-#endif
+
+boolean
+mon_reflects(mon,str)
+struct monst *mon;
+const char *str;
+{
+	struct obj *orefl = which_armor(mon, W_ARMS);
+
+	if (orefl && orefl->otyp == SHIELD_OF_REFLECTION) {
+	    if (str) {
+		pline(str, s_suffix(mon_nam(mon)), "shield");
+		makeknown(SHIELD_OF_REFLECTION);
+	    }
+	    return TRUE;
+	} else if ((orefl = which_armor(mon, W_AMUL)) &&
+				orefl->otyp == AMULET_OF_REFLECTION) {
+	    if (str) {
+		pline(str, s_suffix(mon_nam(mon)), "amulet");
+		makeknown(AMULET_OF_REFLECTION);
+	    }
+	    return TRUE;
+	}
+	return FALSE;
+}
+
+#endif	/* MUSE */
 
 /*muse.c*/

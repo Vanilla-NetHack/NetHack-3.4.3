@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)do_wear.c	3.1	92/12/13	*/
+/*	SCCS Id: @(#)do_wear.c	3.1	93/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -40,7 +40,9 @@ STATIC_PTR int NDECL(take_off);
 static void FDECL(already_wearing, (const char*));
 
 void
-off_msg(otmp) register struct obj *otmp; {
+off_msg(otmp)
+register struct obj *otmp;
+{
 	if(flags.verbose)
 	    You("were wearing %s.", doname(otmp));
 }
@@ -59,13 +61,17 @@ register struct obj *otmp;
 #ifdef OVL2
 
 boolean
-is_boots(otmp) register struct obj *otmp; {
+is_boots(otmp)
+register struct obj *otmp;
+{
 	return(otmp->otyp >= LOW_BOOTS &&
 		otmp->otyp <= LEVITATION_BOOTS);
 }
 
 boolean
-is_helmet(otmp) register struct obj *otmp; {
+is_helmet(otmp)
+register struct obj *otmp;
+{
 	return(otmp->otyp >= ELVEN_LEATHER_HELM &&
 		otmp->otyp <= HELM_OF_TELEPATHY);
 }
@@ -74,7 +80,9 @@ is_helmet(otmp) register struct obj *otmp; {
 #ifdef OVL2
 
 boolean
-is_gloves(otmp) register struct obj *otmp; {
+is_gloves(otmp)
+register struct obj *otmp;
+{
 	return(otmp->otyp >= LEATHER_GLOVES &&
 		otmp->otyp <= GAUNTLETS_OF_DEXTERITY);
 }
@@ -83,13 +91,17 @@ is_gloves(otmp) register struct obj *otmp; {
 #ifdef OVLB
 
 boolean
-is_cloak(otmp) register struct obj *otmp; {
+is_cloak(otmp)
+register struct obj *otmp;
+{
 	return(otmp->otyp >= MUMMY_WRAPPING &&
 		otmp->otyp <= CLOAK_OF_DISPLACEMENT);
 }
 
 boolean
-is_shield(otmp) register struct obj *otmp; {
+is_shield(otmp)
+register struct obj *otmp;
+{
 	return(otmp->otyp >= SMALL_SHIELD &&
 		otmp->otyp <= SHIELD_OF_REFLECTION);
 }
@@ -101,7 +113,8 @@ is_shield(otmp) register struct obj *otmp; {
 
 STATIC_PTR
 int
-Boots_on() {
+Boots_on()
+{
     long oldprop = u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~WORN_BOOTS;
 
     switch(uarmf->otyp) {
@@ -144,7 +157,8 @@ Boots_on() {
 }
 
 int
-Boots_off() {
+Boots_off()
+{
     register struct obj *obj = uarmf;
 	/* For levitation, float_down() returns if Levitation, so we
 	 * must do a setworn() _before_ the levitation case.
@@ -198,7 +212,8 @@ Boots_off() {
 }
 
 static int
-Cloak_on() {
+Cloak_on()
+{
     long oldprop = u.uprops[objects[uarmc->otyp].oc_oprop].p_flgs & ~WORN_CLOAK;
 
     switch(uarmc->otyp) {
@@ -228,7 +243,8 @@ Cloak_on() {
 }
 
 int
-Cloak_off() {
+Cloak_off()
+{
     long oldprop = u.uprops[objects[uarmc->otyp].oc_oprop].p_flgs & ~WORN_CLOAK;
 
     switch(uarmc->otyp) {
@@ -324,7 +340,8 @@ Helmet_off()
 
 STATIC_PTR
 int
-Gloves_on() {
+Gloves_on()
+{
     long oldprop =
 	u.uprops[objects[uarmg->otyp].oc_oprop].p_flgs & ~(WORN_GLOVES | TIMEOUT);
 
@@ -350,7 +367,8 @@ Gloves_on() {
 }
 
 int
-Gloves_off() {
+Gloves_off()
+{
     long oldprop =
 	u.uprops[objects[uarmg->otyp].oc_oprop].p_flgs & ~(WORN_GLOVES | TIMEOUT);
 
@@ -391,7 +409,8 @@ Gloves_off() {
 
 /*
 static int
-Shield_on() {
+Shield_on()
+{
     switch(uarms->otyp) {
 	case SMALL_SHIELD:
 	case ELVEN_SHIELD:
@@ -408,7 +427,8 @@ Shield_on() {
 */
 
 int
-Shield_off() {
+Shield_off()
+{
 /*
     switch(uarms->otyp) {
 	case SMALL_SHIELD:
@@ -504,9 +524,13 @@ Amulet_off()
 		break;
 	case AMULET_OF_MAGICAL_BREATHING:
 		if (Underwater) {
+#ifdef POLYSELF
+			if (!breathless(uasmon) && !amphibious(uasmon)
+			    && !is_swimmer(uasmon))
+#endif
 			You("suddenly inhale an unhealthy amount of water!");
-			/* Magical_breathing has to be set
-			   off before calling drown() */
+			/* HMagical_breathing must be set off
+			   before calling drown() */
 			setworn((struct obj *)0, W_AMUL);
 			(void) drown();
 			return;
@@ -743,7 +767,8 @@ register struct obj *otmp;
 
 /* called in main to set intrinsics of worn start-up items */
 void
-set_wear() {
+set_wear()
+{
 	if (uarm)  (void) Armor_on();
 	if (uarmc) (void) Cloak_on();
 	if (uarmf) (void) Boots_on();
@@ -850,7 +875,8 @@ dotakeoff()
 }
 
 int
-doremring() {
+doremring()
+{
 #ifdef GCC_WARN
 	register struct obj *otmp = (struct obj *)0;
 		/* suppress "may be used uninitialized" warning */
@@ -916,7 +942,9 @@ You("seem unable to remove the ring while your right hand holds your %s.",
 }
 
 int
-cursed(otmp) register struct obj *otmp; {
+cursed(otmp)
+register struct obj *otmp;
+{
 	/* Curses, like chickens, come home to roost. */
 	if(otmp->cursed){
 		You("can't.  %s to be cursed.",
@@ -929,7 +957,9 @@ cursed(otmp) register struct obj *otmp; {
 }
 
 int
-armoroff(otmp) register struct obj *otmp; {
+armoroff(otmp)
+register struct obj *otmp;
+{
 	register int delay = -objects[otmp->otyp].oc_delay;
 
 	if(cursed(otmp)) return(0);
@@ -1244,7 +1274,8 @@ doputon()
 #ifdef OVL0
 
 void
-find_ac() {
+find_ac()
+{
 	register int uac = 10;
 #ifdef POLYSELF
 	if (u.mtimedone) uac = mons[u.umonnum].ac;
@@ -1315,8 +1346,9 @@ glibr()
 }
 
 struct obj *
-some_armor(){
-register struct obj *otmph = (uarmc ? uarmc : uarm);
+some_armor()
+{
+	register struct obj *otmph = (uarmc ? uarmc : uarm);
 	if(uarmh && (!otmph || !rn2(4))) otmph = uarmh;
 	if(uarmg && (!otmph || !rn2(4))) otmph = uarmg;
 	if(uarmf && (!otmph || !rn2(4))) otmph = uarmf;
@@ -1331,7 +1363,7 @@ void
 erode_armor(acid_dmg)
 boolean acid_dmg;
 {
-register struct obj *otmph = some_armor();
+	register struct obj *otmph = some_armor();
 
 	if (otmph && otmph != uarmf) {
 	    if (otmph->greased) {
@@ -1416,8 +1448,8 @@ register struct obj *otmp;
 }
 
 static struct obj *
-do_takeoff() {
-
+do_takeoff()
+{
 	register struct obj *otmp = (struct obj *)0;
 
 	if (taking_off == 1L) { /* weapon */
@@ -1471,8 +1503,8 @@ do_takeoff() {
 
 STATIC_PTR
 int
-take_off() {
-
+take_off()
+{
 	register int i;
 	register struct obj *otmp;
 
@@ -1489,12 +1521,12 @@ take_off() {
 
 	for(i = 0; takeoff_order[i]; i++)
 	    if(takeoff_mask & takeoff_order[i]) {
-
 		taking_off = takeoff_order[i];
 		break;
 	    }
 
 	otmp = (struct obj *) 0;
+	todelay = 0;
 
 	if (taking_off == 0L) {
 	  You("finish disrobing.");
@@ -1503,6 +1535,11 @@ take_off() {
 	  todelay = 1;
 	} else if (taking_off == WORN_ARMOR) {
 	  otmp = uarm;
+	  /* If a cloak is being worn, add the time to take it off and put
+	   * it back on again.  Kludge alert! since that time is 0 for all
+	   * known cloaks, add 1 so that it actually matters...
+	   */
+	  if (uarmc) todelay += 2 * objects[uarmc->otyp].oc_delay + 1;
 	} else if (taking_off == WORN_CLOAK) {
 	  otmp = uarmc;
 	} else if (taking_off == WORN_BOOTS) {
@@ -1516,6 +1553,9 @@ take_off() {
 #ifdef TOURIST
 	} else if (taking_off == WORN_SHIRT) {
 	  otmp = uarmu;
+	  /* add the time to take off and put back on armor and/or cloak */
+	  if (uarm)  todelay += 2 * objects[uarm->otyp].oc_delay;
+	  if (uarmc) todelay += 2 * objects[uarmc->otyp].oc_delay + 1;
 #endif
 	} else if (taking_off == WORN_AMUL) {
 	  todelay = 1;
@@ -1530,7 +1570,7 @@ take_off() {
 	  return 0;	/* force done */
 	}
 
-	if(otmp) todelay = objects[otmp->otyp].oc_delay;
+	if (otmp) todelay += objects[otmp->otyp].oc_delay;
 	set_occupation(take_off, "disrobing", 0);
 	return(1);		/* get busy */
 }
@@ -1539,16 +1579,18 @@ take_off() {
 #ifdef OVL1
 
 void
-reset_remarm() { taking_off = takeoff_mask =0L; }
+reset_remarm()
+{
+	taking_off = takeoff_mask =0L;
+}
 
 #endif /* OVL1 */
 #ifdef OVLB
 
 int
-doddoremarm() {
-
+doddoremarm()
+{
 	if(taking_off || takeoff_mask) {
-
 	    You("continue disrobing.");
 	    set_occupation(take_off, "disrobing", 0);
 	    return(take_off());

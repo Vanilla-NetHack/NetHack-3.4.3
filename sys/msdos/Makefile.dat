@@ -1,9 +1,9 @@
-#	SCCS Id: @(#)Makefile.dat  3.1   93/01/18
+#	SCCS Id: @(#)Makefile.dat  3.1   93/04/25
 #	Copyright (c) NetHack PC Development Team 1992, 1993.
 #	NetHack may be freely redistributed.  See license for details.
 #
-# PC NetHack 3.1 Data Files Makefile for NDMAKE and MSC >= 6.0ax
-# or DGJPP 1.9.
+# PC NetHack 3.1 Data Files Makefile for NDMAKE and MSC >= 6.0ax, or
+# MSVC >= 1.0, or DGJPP 1.9.
 
 DAT	= ..\dat
 INCL	= ..\include

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)rip.c	3.1	91/08/05
+/*	SCCS Id: @(#)rip.c	3.1	93/04/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,6 +7,8 @@
 static void FDECL(center, (int, char *));
 
 extern const char *killed_by_prefix[];
+
+#if defined(TTY_GRAPHICS) || defined(X11_GRAPHICS) || defined(mac)
 
 static const char *rip_txt[] = {
 "                       ----------",
@@ -49,10 +51,11 @@ char *text;
 	while(*ip) *op++ = *ip++;
 }
 
+
 void
-outrip(how, tmpwin)
-int how;
+genl_outrip(tmpwin, how)
 winid tmpwin;
+int how;
 {
 	register char **dp;
 	register char *dpx;
@@ -126,5 +129,7 @@ winid tmpwin;
 	putstr(tmpwin, 0, "");
 	putstr(tmpwin, 0, "");
 }
+
+#endif
 
 /*rip.c*/

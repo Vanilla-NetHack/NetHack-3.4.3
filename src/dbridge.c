@@ -1,5 +1,5 @@
-/*	SCCS Id: @(#)dbridge.c	3.1	92/10/24	*/
-/*	Copyright (c) 1989 by Jean-Christophe Collet */
+/*	SCCS Id: @(#)dbridge.c	3.1	93/05/15	*/
+/*	Copyright (c) 1989 by Jean-Christophe Collet		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
 /*
@@ -18,11 +18,11 @@ static struct entity *FDECL(e_at, (int, int));
 static void FDECL(m_to_e, (struct monst *, XCHAR_P, XCHAR_P, struct entity *));
 static void FDECL(u_to_e, (struct entity *));
 static void FDECL(set_entity, (int, int, struct entity *));
-static char *FDECL(e_nam, (struct entity *));
+static const char *FDECL(e_nam, (struct entity *));
 #ifdef D_DEBUG
-static char *FDECL(Enam, (struct entity *)); /* unused */
+static const char *FDECL(Enam, (struct entity *)); /* unused */
 #endif
-static char *FDECL(E_phrase, (struct entity *, const char *));
+static const char *FDECL(E_phrase, (struct entity *, const char *));
 static boolean FDECL(e_survives_at, (struct entity *, int, int));
 static void FDECL(e_died, (struct entity *, int, int));
 static boolean FDECL(automiss, (struct entity *));
@@ -297,7 +297,7 @@ struct entity *etmp;
 
 /* #define e_strg(etmp, func) (is_u(etmp)? (char *)0 : func(etmp->emon)) */
 
-static char *
+static const char *
 e_nam(etmp)
 struct entity *etmp;
 {
@@ -309,7 +309,7 @@ struct entity *etmp;
  * Enam is another unused utility routine:  E_phrase is preferable.
  */
 
-static char *
+static const char *
 Enam(etmp)
 struct entity *etmp;
 {
@@ -322,7 +322,7 @@ struct entity *etmp;
  * verb, where necessary.
  */
 
-static char *
+static const char *
 E_phrase(etmp, verb)
 struct entity *etmp;
 const char *verb;
@@ -379,7 +379,7 @@ int x, y;
 	if (noncorporeal(etmp->edata))
 		return(TRUE);
 	if (is_pool(x, y))
-		return((is_u(etmp) && (Wwalking || Magical_breathing || Levitation)) ||
+		return((is_u(etmp) && (Wwalking || Amphibious || Levitation)) ||
 		       is_swimmer(etmp->edata) || is_flyer(etmp->edata) ||
 		       is_floater(etmp->edata));
 	/* must force call to lava_effects in e_died if is_u */
@@ -539,11 +539,11 @@ struct entity *etmp;
 		    	    (crm->typ == DRAWBRIDGE_UP))
 				Strcpy(edifice, "drawbridge");
 			else
-     				if (at_portcullis) 
+				if (at_portcullis) 
 					Strcpy(edifice, "portcullis");
 			if (*edifice)
 				pline("The %s passes through %s!", edifice, 
-			      	      e_nam(etmp));			
+				      e_nam(etmp));
 		}
 		return;
 	}
@@ -570,10 +570,10 @@ struct entity *etmp;
 	} else {
 		if (crm->typ == DRAWBRIDGE_DOWN) {
 			pline("%s crushed underneath the drawbridge.",
-		      	      E_phrase(etmp, "are"));	   	  /* no jump */
+			      E_phrase(etmp, "are"));		  /* no jump */
 			e_died(etmp, e_inview? 3 : 2, CRUSHING);/* no corpse */
 			return;   /* Note: Beyond this point, we know we're  */
-		}                 /* not at an opened drawbridge, since all  */
+		}		  /* not at an opened drawbridge, since all  */
 		must_jump = TRUE; /* *missable* creatures survive on the     */
 	}			  /* square, and all the unmissed ones die.  */
 	if (must_jump) {
@@ -691,7 +691,7 @@ struct entity *etmp;
 					pline("The drawbridge closes in...");
 			} else
 				pline("%s behind the drawbridge.",
-		      	      	      E_phrase(etmp, "disappear"));
+				      E_phrase(etmp, "disappear"));
 		}
 		if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
 			killer_format = KILLED_BY_AN;
@@ -713,8 +713,8 @@ struct entity *etmp;
 			if (e_inview && !is_flyer(etmp->edata) &&
 			    !is_floater(etmp->edata))
 				pline("%s from the bridge.",
-		      	      	      E_phrase(etmp, "fall"));	
-			return;	
+				      E_phrase(etmp, "fall"));
+			return;
 		}
 #ifdef D_DEBUG
 		pline("%s cannot survive on the drawbridge square",Enam(etmp));
@@ -865,7 +865,7 @@ int x,y;
 		}
 		lev1->typ = lava ? LAVAPOOL : MOAT;
 		lev1->drawbridgemask = 0;
-		if(otmp = sobj_at(BOULDER,x,y)) {
+		if ((otmp = sobj_at(BOULDER,x,y)) != 0) {
 		    freeobj(otmp);
 		    (void) flooreffects(otmp,x,y,"fall");
 		}
@@ -893,7 +893,7 @@ int x,y;
 		if (!automiss(etmp2)) {
 			if (e_inview)
 				pline("%s blown apart by flying debris.",
-			      	      E_phrase(etmp2, "are"));
+				      E_phrase(etmp2, "are"));
 			killer_format = KILLED_BY_AN;
 			killer = "exploding drawbridge";
 			e_died(etmp2, e_inview? 3 : 2, CRUSHING); /*no corpse*/

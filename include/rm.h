@@ -347,6 +347,7 @@ typedef struct
     char		*yuk2[COLNO-1][ROWNO];
 #endif
     struct obj		*objlist;
+    struct obj		*buriedobjlist;
     struct monst	*monlist;
     struct damage	*damagelist;
     struct levelflags	flags;

@@ -9,10 +9,13 @@
 /* descriptor for Amiga Intuition-based windows.  If we decide to cope with
  * tty-style windows also, then things will need to change. */
 /* per-window data */
-struct WinDesc {
+struct amii_WinDesc {
     xchar type;			/* type of window */
     boolean active;		/* true if window is active */
+    boolean wasup;		/* true if menu/text window was already open */
+    short disprows;		/* Rows displayed so far (used for paging in message win) */
     xchar offx, offy;		/* offset from topleft of display */
+    short vwx, vwy, vcx, vcy;	/* View cursor location */
     short rows, cols;		/* dimensions */
     short curx, cury;		/* current cursor position */
     short maxrow, maxcol;	/* the maximum size used -- for INVEN wins */
@@ -31,7 +34,9 @@ struct WinDesc {
 #endif
 #define FLMAP_INGLYPH	1	/* An NHW_MAP window is in glyph mode */
 #define FLMAP_CURSUP	2	/* An NHW_MAP window has the cursor displayed */
-    long flags;
+#define FLMAP_SKIP	4
+#define FLMSG_FIRST	1	/* First message in the NHW_MESSAGE window for this turn */
+    long wflags;
     short cursx, cursy;		/* Where the cursor is displayed at */
     short curs_apen,		/* Color cursor is displayed in */
 	  curs_bpen;
@@ -40,7 +45,7 @@ struct WinDesc {
 /* descriptor for intuition-based displays -- all the per-display data */
 /* this is a generic thing - think of it as Screen level */
 
-struct DisplayDesc {
+struct amii_DisplayDesc {
 /* we need this for Screen size (which will vary with display mode) */
     uchar rows, cols;		/* width & height of display in text units */
     short xpix, ypix;		/* width and height of display in pixels */
@@ -63,18 +68,22 @@ typedef struct WEVENT
 			int qual;
 		} mouse;
 		long menucode;
-	} u;
+	} un;
 } WEVENT;
 
 #define MAXWIN 20		/* maximum number of windows, cop-out */
 
 /* port specific variable declarations */
 extern winid WIN_BASE;
+extern winid WIN_VIEW;
+extern winid WIN_VIEWBOX;
 #define NHW_BASE	6
+#define NHW_VIEW	7
+#define NHW_VIEWBOX	8
 
-extern struct WinDesc *wins[MAXWIN + 1];
+extern struct amii_WinDesc *amii_wins[MAXWIN + 1];
 
-extern struct DisplayDesc *amiIDisplay;	/* the Amiga Intuition descriptor */
+extern struct amii_DisplayDesc *amiIDisplay;	/* the Amiga Intuition descriptor */
 
 extern char morc;		/* last character typed to xwaitforspace */
 extern char defmorestr[];	/* default --more-- prompt */

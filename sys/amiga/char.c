@@ -14,10 +14,10 @@ struct Border Type_Border1 = {
 };
 
 struct IntuiText Type_IText1 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	38,1,
 	NULL,
-	(UBYTE *)"Wizard",
+	"Wizard",
 	NULL
 };
 
@@ -53,10 +53,10 @@ struct Border Type_Border2 = {
 };
 
 struct IntuiText Type_IText2 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	29,1,
 	NULL,
-	(UBYTE *)"Valkyrie",
+	"Valkyrie",
 	NULL
 };
 
@@ -95,7 +95,7 @@ struct IntuiText Type_IText3 = {
 	1,0,JAM2,
 	14,1,
 	NULL,
-	(UBYTE *)"Pick a Random Character Type",
+	"Pick a Random Character Type",
 	NULL
 };
 
@@ -131,10 +131,10 @@ struct Border Type_Border4 = {
 };
 
 struct IntuiText Type_IText4 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	33,1,
 	NULL,
-	(UBYTE *)"Samurai",
+	"Samurai",
 	NULL
 };
 
@@ -170,10 +170,10 @@ struct Border Type_Border5 = {
 };
 
 struct IntuiText Type_IText5 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	34,1,
 	NULL,
-	(UBYTE *)"Tourist",
+	"Tourist",
 	NULL
 };
 
@@ -209,10 +209,10 @@ struct Border Type_Border6 = {
 };
 
 struct IntuiText Type_IText6 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	40,1,
 	NULL,
-	(UBYTE *)"Rogue",
+	"Rogue",
 	NULL
 };
 
@@ -248,10 +248,10 @@ struct Border Type_Border7 = {
 };
 
 struct IntuiText Type_IText7 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	36,1,
 	NULL,
-	(UBYTE *)"Priest",
+	"Priest",
 	NULL
 };
 
@@ -287,10 +287,10 @@ struct Border Type_Border8 = {
 };
 
 struct IntuiText Type_IText8 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	35,1,
 	NULL,
-	(UBYTE *)"Healer",
+	"Healer",
 	NULL
 };
 
@@ -326,10 +326,10 @@ struct Border Type_Border9 = {
 };
 
 struct IntuiText Type_IText9 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	33,1,
 	NULL,
-	(UBYTE *)"Caveman",
+	"Caveman",
 	NULL
 };
 
@@ -365,10 +365,10 @@ struct Border Type_Border10 = {
 };
 
 struct IntuiText Type_IText10 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	16,1,
 	NULL,
-	(UBYTE *)"Archeologist",
+	"Archeologist",
 	NULL
 };
 
@@ -404,10 +404,10 @@ struct Border Type_Border11 = {
 };
 
 struct IntuiText Type_IText11 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	36,1,
 	NULL,
-	(UBYTE *)"Knight",
+	"Knight",
 	NULL
 };
 
@@ -443,10 +443,10 @@ struct Border Type_Border12 = {
 };
 
 struct IntuiText Type_IText12 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	48,1,
 	NULL,
-	(UBYTE *)"Elf",
+	"Elf",
 	NULL
 };
 
@@ -482,10 +482,10 @@ struct Border Type_Border13 = {
 };
 
 struct IntuiText Type_IText13 = {
-	3,0,JAM2,
+	7,0,JAM2,
 	27,1,
 	NULL,
-	(UBYTE *)"Barbarian",
+	"Barbarian",
 	NULL
 };
 
@@ -515,7 +515,7 @@ struct NewWindow Type_NewWindowStructure1 = {
 	WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,
 	&Type_Gadget1,
 	NULL,
-	(UBYTE *)"Pick a Character",
+	"Pick a Character",
 	NULL,
 	NULL,
 	5,5,

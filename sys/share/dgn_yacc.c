@@ -1,7 +1,5 @@
 extern char *malloc(), *realloc();
-
-# line 2 "dgn_comp.y"
-/*	SCCS Id: @(#)dgn_comp.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)dgn_comp.c	3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /*	Copyright (c) 1990 by M. Stephenson				  */
 /* NetHack may be freely redistributed.  See license for details. */
@@ -27,8 +25,8 @@ extern char *malloc(), *realloc();
 #include "config.h"
 #include "dgn_file.h"
 
-void FDECL(yyerror, (char *));
-void FDECL(yywarning, (char *));
+void FDECL(yyerror, (const char *));
+void FDECL(yywarning, (const char *));
 int NDECL(yylex);
 int NDECL(yyparse);
 int FDECL(getchain, (char *));
@@ -64,10 +62,8 @@ static struct tmpbranch tmpbranch[BRANCH_LIMIT];
 static int in_dungeon = 0, n_dgns = -1, n_levs = -1, n_brs = -1;
 
 extern int fatal_error;
-extern char* fname;
+extern const char *fname;
 
-
-# line 69 "dgn_comp.y"
 typedef union 
 {
 	int	i;
@@ -103,8 +99,6 @@ extern int yyerrflag;
 #endif
 YYSTYPE yylval, yyval;
 # define YYERRCODE 256
-
-# line 450 "dgn_comp.y"
 
 
 void
@@ -946,14 +940,10 @@ yyparse()
 	switch( yytmp )
 	{
 		
-case 2:
-# line 86 "dgn_comp.y"
-{
+case 2:{
 			output_dgn();
 		  } break;
-case 9:
-# line 102 "dgn_comp.y"
-{
+case 9:{
 			init_dungeon();
 			strcpy(tmpdungeon[n_dgns].name, yypvt[-3].str);
 			if (!strcmp(yypvt[-2].str, "none"))
@@ -966,45 +956,31 @@ case 9:
 			tmpdungeon[n_dgns].lev.rand = couple.rand;
 			tmpdungeon[n_dgns].chance = yypvt[-0].i;
 		  } break;
-case 10:
-# line 118 "dgn_comp.y"
-{
+case 10:{
 			yyval.i = 0;
 		  } break;
-case 11:
-# line 122 "dgn_comp.y"
-{
+case 11:{
 			yyval.i = yypvt[-0].i;
 		  } break;
-case 15:
-# line 133 "dgn_comp.y"
-{
+case 15:{
 			tmpdungeon[n_dgns].entry_lev = yypvt[-0].i;
 		  } break;
-case 17:
-# line 142 "dgn_comp.y"
-{
+case 17:{
 			if(yypvt[-0].i <= TOWN || yypvt[-0].i >= D_ALIGN_CHAOTIC)
 			    yyerror("Illegal description - ignoring!");
 			else
 			    tmpdungeon[n_dgns].flags |= yypvt[-0].i ;
 		  } break;
-case 18:
-# line 149 "dgn_comp.y"
-{
+case 18:{
 			if(yypvt[-0].i && yypvt[-0].i < D_ALIGN_CHAOTIC)
 			    yyerror("Illegal alignment - ignoring!");
 			else
 			    tmpdungeon[n_dgns].flags |= yypvt[-0].i ;
 		  } break;
-case 19:
-# line 158 "dgn_comp.y"
-{
+case 19:{
 			strcpy(tmpdungeon[n_dgns].protoname, yypvt[-0].str);
 		  } break;
-case 25:
-# line 171 "dgn_comp.y"
-{
+case 25:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-3].str);
 			if (!strcmp(yypvt[-2].str, "none"))
@@ -1017,9 +993,7 @@ case 25:
 			tmplevel[n_levs].lev.rand = couple.rand;
 			tmpdungeon[n_dgns].levels++;
 		  } break;
-case 26:
-# line 185 "dgn_comp.y"
-{
+case 26:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
 			if (!strcmp(yypvt[-3].str, "none"))
@@ -1033,9 +1007,7 @@ case 26:
 			tmplevel[n_levs].rndlevs = yypvt[-0].i;
 			tmpdungeon[n_dgns].levels++;
 		  } break;
-case 27:
-# line 202 "dgn_comp.y"
-{
+case 27:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
 			if (!strcmp(yypvt[-3].str, "none"))
@@ -1049,9 +1021,7 @@ case 27:
 			tmplevel[n_levs].chance = yypvt[-0].i;
 			tmpdungeon[n_dgns].levels++;
 		  } break;
-case 28:
-# line 217 "dgn_comp.y"
-{
+case 28:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
 			if (!strcmp(yypvt[-4].str, "none"))
@@ -1066,25 +1036,19 @@ case 28:
 			tmplevel[n_levs].rndlevs = yypvt[-0].i;
 			tmpdungeon[n_dgns].levels++;
 		  } break;
-case 29:
-# line 235 "dgn_comp.y"
-{
+case 29:{
 			if(yypvt[-0].i >= D_ALIGN_CHAOTIC)
 			    yyerror("Illegal description - ignoring!");
 			else
 			    tmplevel[n_levs].flags |= yypvt[-0].i ;
 		  } break;
-case 30:
-# line 242 "dgn_comp.y"
-{
+case 30:{
 			if(yypvt[-0].i && yypvt[-0].i < D_ALIGN_CHAOTIC)
 			    yyerror("Illegal alignment - ignoring!");
 			else
 			    tmplevel[n_levs].flags |= yypvt[-0].i ;
 		  } break;
-case 31:
-# line 251 "dgn_comp.y"
-{
+case 31:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-4].str);
 			if (!strcmp(yypvt[-3].str, "none"))
@@ -1099,9 +1063,7 @@ case 31:
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
 		  } break;
-case 32:
-# line 267 "dgn_comp.y"
-{
+case 32:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
 			if (!strcmp(yypvt[-4].str, "none"))
@@ -1117,9 +1079,7 @@ case 32:
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
 		  } break;
-case 33:
-# line 286 "dgn_comp.y"
-{
+case 33:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-5].str);
 			if (!strcmp(yypvt[-4].str, "none"))
@@ -1135,9 +1095,7 @@ case 33:
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
 		  } break;
-case 34:
-# line 303 "dgn_comp.y"
-{
+case 34:{
 			init_level();
 			strcpy(tmplevel[n_levs].name, yypvt[-6].str);
 			if (!strcmp(yypvt[-5].str, "none"))
@@ -1154,9 +1112,7 @@ case 34:
 			if(!check_level()) n_levs--;
 			else tmpdungeon[n_dgns].levels++;
 		  } break;
-case 37:
-# line 327 "dgn_comp.y"
-{
+case 37:{
 			init_branch();
 			strcpy(tmpbranch[n_brs].name, yypvt[-4].str);
 			tmpbranch[n_brs].lev.base = couple.base;
@@ -1166,9 +1122,7 @@ case 37:
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
 		  } break;
-case 38:
-# line 340 "dgn_comp.y"
-{
+case 38:{
 			init_branch();
 			strcpy(tmpbranch[n_brs].name, yypvt[-5].str);
 			tmpbranch[n_brs].chain = getchain(yypvt[-4].str);
@@ -1179,44 +1133,28 @@ case 38:
 			if(!check_branch()) n_brs--;
 			else tmpdungeon[n_dgns].branches++;
 		  } break;
-case 39:
-# line 354 "dgn_comp.y"
-{
+case 39:{
 			yyval.i = TBR_STAIR;	/* two way stair */
 		  } break;
-case 40:
-# line 358 "dgn_comp.y"
-{
+case 40:{
 			yyval.i = TBR_STAIR;	/* two way stair */
 		  } break;
-case 41:
-# line 362 "dgn_comp.y"
-{
+case 41:{
 			yyval.i = TBR_NO_UP;	/* no up staircase */
 		  } break;
-case 42:
-# line 366 "dgn_comp.y"
-{
+case 42:{
 			yyval.i = TBR_NO_DOWN;	/* no down staircase */
 		  } break;
-case 43:
-# line 370 "dgn_comp.y"
-{
+case 43:{
 			yyval.i = TBR_PORTAL;	/* portal connection */
 		  } break;
-case 44:
-# line 376 "dgn_comp.y"
-{
+case 44:{
 			yyval.i = 0;	/* defaults to down */
 		  } break;
-case 45:
-# line 380 "dgn_comp.y"
-{
+case 45:{
 			yyval.i = yypvt[-0].i;
 		  } break;
-case 46:
-# line 403 "dgn_comp.y"
-{
+case 46:{
 			if (yypvt[-3].i < -MAXLEVEL || yypvt[-3].i > MAXLEVEL) {
 			    yyerror("Abs base out of dlevel range - zeroing!");
 			    couple.base = couple.rand = 0;
@@ -1230,9 +1168,7 @@ case 46:
 			    couple.rand = yypvt[-1].i;
 			}
 		  } break;
-case 47:
-# line 440 "dgn_comp.y"
-{
+case 47:{
 			if (yypvt[-3].i < -MAXLEVEL || yypvt[-3].i > MAXLEVEL) {
 			    yyerror("Rel base out of dlevel range - zeroing!");
 			    couple.base = couple.rand = 0;

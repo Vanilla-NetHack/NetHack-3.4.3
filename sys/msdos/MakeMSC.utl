@@ -1,8 +1,9 @@
-#	SCCS Id: @(#)MakeMSC.utl	 3.1	 93/01/18
+#	SCCS Id: @(#)MakeMSC.utl	 3.1	 93/05/23
 # Copyright (c) NetHack PC Development Team 1992, 1993.
 # NetHack may be freely redistributed.  See license for details.
 #
 # PC NetHack 3.1 Utilities Source Code Makefile for Microsoft(tm) "C" >= 6.0ax
+# and Microsoft Visual C++ Professional version >= 1.0.
 #
 #	In addition to your C compiler,
 #
@@ -214,7 +215,7 @@ makedefs.exe:	$(MAKEOBJS)
 	$(LINK) $(LFLAGS) $(MAKEOBJS), $*.exe,, $(CLIB);
 
 makedefs.o:	$(CONFIG_H)	    $(PERMONST_H)      $(INCL)\objclass.h \
-		$(INCL)\monsym.h    $(INCL)\qtext.h
+		$(INCL)\monsym.h    $(INCL)\qtext.h	$(INCL)\patchlevel.h
 
 #
 #	Level Compiler Dependencies

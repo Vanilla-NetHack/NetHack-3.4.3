@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mkmaze.c	3.1	93/01/17	*/
+/*	SCCS Id: @(#)mkmaze.c	3.1	93/05/23	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -339,6 +339,9 @@ fixup_special()
     } else if(Is_knox(&u.uz)) {
 	/* using an unfilled morgue for rm id */
 	croom = search_special(MORGUE);
+	/* avoid inappropriate morgue-related messages */
+	level.flags.graveyard = level.flags.has_morgue = FALSE;
+	croom->rtype = OROOM;	/* perhaps it should be set to VAULT? */
 	/* stock the main vault */
 	for(x = croom->lx; x <= croom->hx; x++)
 	    for(y = croom->ly; y <= croom->hy; y++) {
@@ -724,6 +727,10 @@ register xchar x, y, todnum, todlevel;
 	/* portal in the destination dungeon/dlevel */
 	register struct trap *ttmp = maketrap(x, y, MAGIC_PORTAL);
 
+	if (!ttmp) {
+		impossible("portal on top of portal??");
+		return;
+	}
 #ifdef DEBUG
 	pline("mkportal: at (%d,%d), to %s, level %d",
 		x, y, dungeons[todnum].dname, todlevel);
@@ -893,18 +900,38 @@ movebubbles()
 	vision_full_recalc = 1;
 }
 
+/* when moving in water, possibly (1 in 3) alter the intended destination */
 void
 water_friction()
 {
+	register int x, y, dx, dy;
 	register boolean eff = FALSE;
 
-	if (u.dx && !rn2(3)) {
-		eff = TRUE;
+#ifdef POLYSELF
+	if (is_swimmer(uasmon) && rn2(4))
+		return;		/* natural swimmers have advantage */
+#endif
+
+	if (u.dx && !rn2(!u.dy ? 3 : 6)) {	/* 1/3 chance or half that */
+		/* cancel delta x and choose an arbitrary delta y value */
+		x = u.ux;
+		do {
+		    dy = rn2(3) - 1;		/* -1, 0, 1 */
+		    y = u.uy + dy;
+		} while (dy && (!isok(x,y) || !is_pool(x,y)));
 		u.dx = 0;
-	}
-	if (u.dy && !rn2(3)) {
+		u.dy = dy;
 		eff = TRUE;
+	} else if (u.dy && !rn2(!u.dx ? 3 : 5)) {	/* 1/3 or 1/5*(5/6) */
+		/* cancel delta y and choose an arbitrary delta x value */
+		y = u.uy;
+		do {
+		    dx = rn2(3) - 1;		/* -1 .. 1 */
+		    x = u.ux + dx;
+		} while (dx && (!isok(x,y) || !is_pool(x,y)));
 		u.dy = 0;
+		u.dx = dx;
+		eff = TRUE;
 	}
 	if (eff) pline("Water turbulence affects your movements.");
 }
@@ -1209,6 +1236,5 @@ register boolean ini;
 		}
 	}
 }
-
 
 /*mkmaze.c*/

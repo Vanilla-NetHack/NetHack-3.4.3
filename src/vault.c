@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vault.c	3.1	93/01/15	*/
+/*	SCCS Id: @(#)vault.c	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -41,7 +41,7 @@ register boolean forceshow;
 			}
 		}
 		levl[fcx][fcy].typ = EGD(grd)->fakecorr[fcbeg].ftyp;
-		map_background(fcx,fcy, 1);
+		map_location(fcx, fcy, 1);	/* bypass vision */
 		if(!ACCESSIBLE(levl[fcx][fcy].typ)) block_point(fcx,fcy);
 		EGD(grd)->fcbeg++;
 	}
@@ -331,8 +331,9 @@ struct monst *grd;
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
 		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
 			struct monst *mon = m_at(x,y);
-			if (mon->data->msound != MS_SILENT)
-			    yelp(mon);
+#ifdef SOUNDS
+			yelp(mon);
+#endif
 			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
@@ -367,8 +368,9 @@ struct monst *grd;
 		if(!IS_WALL(levl[x][y].typ) && !in_fcorridor(grd, x, y)) {
 		    if(MON_AT(x, y) && grd->mx != x && grd->my != y) {
 			struct monst *mon = m_at(x,y);
-			if (mon->data->msound != MS_SILENT)
-			    yelp(mon);
+#ifdef SOUNDS
+			yelp(mon);
+#endif
 			rloc(mon);
 		    }
 		    if ((gold = g_at(x, y)) != 0) {
@@ -724,8 +726,9 @@ hidden_gold()
 	register struct obj *obj;
 
 	for (obj = invent; obj; obj = obj->nobj)
-	    if (Is_container(obj))
+	    if (Has_contents(obj))
 		value += contained_gold(obj);
+	/* unknown gold stuck inside statues may cause some consternation... */
 
 	return(value);
 }

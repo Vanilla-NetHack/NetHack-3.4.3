@@ -27,6 +27,8 @@
 #include <fcntl.h>
 #endif
 
+extern void	DialogAskName(asknameRec *);
+
 int NDECL(main);
 void NDECL(ListGUnloads);
 
@@ -286,67 +288,60 @@ DragFilter ( DialogPtr dp , EventRecord * event , short * item )
 void
 mac_askname(void) /* Code taken from getlin */
 {
-	ControlHandle	ctrl ;
-	DialogPtr		promptDialog ;
-	short			itemHit , type ;
-	Rect			box ;
-	Str255			pasStr ;
+	asknameRec	anr;
+	/* eventually use roles[] a/o pl_classes[] */
+	static char		asknRoles [ ] = "ABCEHKPRSTVW" ;
 
-	/*
-	** Set the query line as parameter text.
-	*/
+	/* initialize the askname record */
+	qd.randSeed = TickCount() ;
+	anr.anMenu[anRole] = (Random ( ) & 0x7fff ) % askn_role_end;
 
-	ParamText ( "\PWho are you?" , "\p" , "\p" , "\p" ) ;
-
-	promptDialog = GetNewDialog ( 130 , ( Ptr ) NULL , ( WindowPtr ) -1 ) ;
-	ShowWindow ( promptDialog ) ;
-
-	InitCursor ( ) ;
-	SetFrameItem ( promptDialog , 6 , 1 ) ;
-	do {
-
-		ModalDialog ( ( ModalFilterProcPtr ) DragFilter , & itemHit ) ;
-
-	} while ( ( itemHit != 1 ) && ( itemHit != 2 ) ) ;
-
-	if ( itemHit == 1 ) {
-
-		/*
-		** Get the text from the text edit item.
-		*/
-
-		GetDItem ( promptDialog , 4 , & type , ( Handle * ) & ctrl , & box ) ;
-		GetIText ( ( Handle ) ctrl , pasStr ) ;
-
-		/*
-		** Convert it to a 'C' string and copy it into the return value.
-		*/
-
-		PtoCstr ( pasStr ) ;
-		strcpy ( plname , ( char * ) pasStr ) ;
-
-	/*
-	 * Special check for debugging here
-	 *
-	 */
-#ifdef WIZARD
-		if ( ! strcmp ( plname , WIZARD ) ) {
-
-			flags . debug = 1 ;
-		}
+#ifndef TOURIST
+	if (anr.anMenu[anRole] == asknTourist) {
+		anr.anMenu[anRole] = asknValkyrie;
+	}
 #endif
 
+	if (anr.anMenu[anRole] == asknValkyrie) {
+		anr.anMenu[anSex] = asknFemale;
 	} else {
-
-		/*
-		** Okay, we didn't want to run
-		*/
-
-	/*	* ( short * ) DSErrCode = dsBadLaunch ; */
-		ExitToShell ( ) ;
+		anr.anMenu[anSex] = ( (Random() & 2) ? asknMale : asknFemale);
 	}
 
-	DisposDialog ( promptDialog ) ;
+	anr.anMenu[anMode] = asknRegular;
+
+	InitCursor();
+	DialogAskName(&anr);
+
+	if (anr.anMenu[anMode] == asknQuit) {
+		ExitToShell();
+	}
+
+#ifdef EXPLORE_MODE
+	if (anr.anMenu[anMode] == asknExplore ) {
+		discover = 1 ;
+	} else {
+		discover = 0 ;
+	}
+#endif
+
+#ifdef WIZARD
+	if ( anr.anMenu [ anMode ] == asknDebug ) {
+		wizard = 1 ;
+	} else {
+		wizard = 0 ;
+	}
+	if (wizard) {
+		strcpy(plname, WIZARD);
+	} else
+#endif
+	{
+		BlockMove(&(anr.anWho[1]), plname, anr.anWho[0]);
+		plname [ anr . anWho [ 0 ] ] = 0 ;
+	}
+
+	flags.female = anr.anMenu[anSex];
+	pl_character[0] = asknRoles[anr.anMenu[anRole]];
 }
 
 

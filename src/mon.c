@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mon.c	3.1	93/02/21	*/
+/*	SCCS Id: @(#)mon.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -19,8 +19,10 @@ STATIC_DCL void NDECL(dmonsfree);
 #define warnDelay 10
 long lastwarntime;
 int lastwarnlev;
+
 const char *warnings[] = {
-	"white", "pink", "red", "ruby", "purple", "black" };
+	"white", "pink", "red", "ruby", "purple", "black"
+};
 
 static void NDECL(warn_effects);
 
@@ -256,7 +258,7 @@ register struct monst *mtmp;
 	 * be handled here.  Swimmers are able to protect their stuff...
 	 */
 	if (!is_clinger(mtmp->data)
-	    && !is_swimmer(mtmp->data) && !magic_breathing(mtmp->data)) {
+	    && !is_swimmer(mtmp->data) && !amphibious(mtmp->data)) {
 	    if (cansee(mtmp->mx,mtmp->my))
 		pline("%s drowns.", Monnam(mtmp));
 	    mondead(mtmp);
@@ -495,12 +497,13 @@ mpickstuff(mtmp, str)
 	register struct monst *mtmp;
 	register const char *str;
 {
-	register struct obj *otmp;
+	register struct obj *otmp, *otmp2;
 
 /*	prevent shopkeepers from leaving the door of their shop */
 	if(mtmp->isshk && inhishop(mtmp)) return;
 
-	for(otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp=otmp->nexthere)
+	for(otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp = otmp2) {
+	    otmp2 = otmp->nexthere;
 /*	Nymphs take everything.  Most monsters don't pick up corpses. */
 	    if (
 #ifdef MUSE
@@ -525,6 +528,7 @@ mpickstuff(mtmp, str)
 		newsym(mtmp->mx, mtmp->my);
 		return;			/* pick only one object */
 	    }
+	}
 }
 
 #endif /* OVL2 */
@@ -983,7 +987,7 @@ register struct monst *mdef;
 #ifdef REINCARNATION
 	   && !Is_rogue_level(&u.uz)
 #endif
-					)
+	   && !(level.flags.graveyard && is_undead(mdef->data) && rn2(3)))
 		(void) make_corpse(mdef);
 }
 
@@ -1010,7 +1014,7 @@ void
 monstone(mdef)
 register struct monst *mdef;
 {
-	struct obj *otmp, *contents;
+	struct obj *otmp, *obj, *nxt, *contents;
 	xchar x = mdef->mx, y = mdef->my;
 
 #ifdef MUSE
@@ -1021,17 +1025,33 @@ register struct monst *mdef;
 	lifesaved_monster(mdef);
 	if (mdef->mhp > 0) return;
 #endif
+	mdef->mtrapped = 0;	/* (see m_detach) */
 
 	if((int)mdef->data->msize > MZ_TINY ||
 	   !rn2(2 + ((mdef->data->geno & G_FREQ) > 2))) {
 		otmp = mk_named_object(STATUE, mdef->data, x, y,
-			NAME(mdef), (int)mdef->mnamelth);
-		contents = otmp->cobj = mdef->minvent;
-		while(contents) {
-			contents->owornmask = 0L;
-			contents = contents->nobj;
+					NAME(mdef), (int)mdef->mnamelth);
+		/* some objects may end up outside the statue */
+		contents = 0;
+		for (obj = mdef->minvent; obj; obj = nxt) {
+		    nxt = obj->nobj;
+		    obj->owornmask = 0L;
+		    if (obj->otyp == BOULDER ||
+#if 0				/* monsters don't carry statues */
+     (obj->otyp == STATUE && mons[obj->corpsenm].msize >= mdef->data->msize) ||
+#endif
+				obj_resists(obj, 0, 0)) {
+			if (flooreffects(obj, x, y, "fall")) continue;
+			place_object(obj, x, y);
+			obj->nobj = fobj;
+			fobj = obj;
+		    } else {
+			obj->nobj = contents;
+			contents = obj;
+		    }
 		}
-		mdef->minvent = (struct obj *)0;
+		otmp->cobj = contents;
+		mdef->minvent = 0;
 		if (mdef->mgold) {
 			struct obj *au;
 			au = mksobj(GOLD_PIECE, FALSE, FALSE);
@@ -1055,7 +1075,7 @@ void
 monkilled(mdef, fltxt, how)
 register struct monst *mdef;
 const char *fltxt;
-uchar how;
+int how;
 {
 	if (cansee(mdef->mx, mdef->my) && fltxt)
 	    pline("%s is %s%s%s!", Monnam(mdef),
@@ -1154,8 +1174,7 @@ xkilled(mtmp, dest)
 #ifdef REINCARNATION
 		 || Is_rogue_level(&u.uz)
 #endif
-	   || (level.flags.graveyard && is_undead(mdat) &&
-			rn2(mdat == &mons[PM_WRAITH] ? 5 : 2)))
+	   || (level.flags.graveyard && is_undead(mdat) && rn2(3)))
 		goto cleanup;
 
 #ifdef MAIL
@@ -1572,6 +1591,20 @@ register struct permonst *mdat;
 		if(!mtmp->female) mtmp->female = TRUE;
 	} else if (!is_neuter(mdat)) {
 		if(!rn2(10)) mtmp->female = !mtmp->female;
+	}
+
+	if (In_endgame(&u.uz) && is_mplayer(olddata)) {
+		/* mplayers start out as "Foo the Bar", but some of the
+		 * titles are inappropriate when polymorphed, particularly
+		 * into the opposite sex.  players don't use ranks when
+		 * polymorphed, so dropping the rank for mplayers seems
+		 * reasonable.
+		 */
+		char *p = index(NAME(mtmp), ' ');
+		if (p) {
+			*p = '\0';
+			mtmp->mnamelth = p - NAME(mtmp) + 1;
+		}
 	}
 
 	if(mdat == mtmp->data) return(0);	/* still the same monster */

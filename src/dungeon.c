@@ -548,6 +548,44 @@ place_level(proto_index, pd)
     return FALSE;
 }
 
+
+struct level_map {
+	const char *lev_name;
+	d_level *lev_spec;
+} level_map[] = {
+	{ "air",	&air_level },
+	{ "asmodeus",	&asmodeus_level },
+	{ "astral",	&astral_level },
+	{ "baalz",	&baalzebub_level },
+	{ "bigroom",	&bigroom_level },
+	{ "castle",	&stronghold_level },
+	{ "earth",	&earth_level },
+	{ "fakewiz1",	&portal_level },
+	{ "fire",	&fire_level },
+	{ "juiblex",	&juiblex_level },
+#ifdef MULDGN
+	{ "knox",	&knox_level },
+#endif
+	{ "medusa",	&medusa_level },
+	{ "oracle",	&oracle_level },
+	{ "orcus",	&orcus_level },
+#ifdef REINCARNATION
+	{ "rogue",	&rogue_level },
+#endif
+	{ "sanctum",	&sanctum_level },
+	{ "valley",	&valley_level },
+	{ "water",	&water_level },
+	{ "wizard1",	&wiz1_level },
+	{ "wizard2",	&wiz2_level },
+	{ "wizard3",	&wiz3_level },
+#ifdef MULDGN
+	{ X_START,	&qstart_level },
+	{ X_LOCATE,	&qlocate_level },
+	{ X_GOAL,	&nemesis_level },
+#endif
+	{ "",		(d_level *)0 }
+};
+
 void
 init_dungeons()		/* initialize the "dungeon" structs */
 {
@@ -555,6 +593,7 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	register int i, cl = 0, cb = 0;
 	register s_level *x;
 	struct proto_dungeon pd;
+	struct level_map *lev_map;
 
 	pd.n_levs = pd.n_brs = 0;
 
@@ -722,80 +761,35 @@ init_dungeons()		/* initialize the "dungeon" structs */
 	 * Find most of the special levels and dungeons so we can access their
 	 * locations quickly.
 	 */
-#ifdef REINCARNATION
-	if ((x = find_level("rogue")) != 0)
-	    assign_level(&rogue_level, &x->dlevel);
-#endif
-	if ((x = find_level("oracle")) != 0)
-	    assign_level(&oracle_level, &x->dlevel);
-	if ((x = find_level("bigroom")) != 0)
-	    assign_level(&bigroom_level, &x->dlevel);
-	if ((x = find_level("medusa")) != 0)
-	    assign_level(&medusa_level, &x->dlevel);
-	if ((x = find_level("castle")) != 0)
-	    assign_level(&stronghold_level, &x->dlevel);
-	if ((x = find_level("valley")) != 0)
-	    assign_level(&valley_level, &x->dlevel);
-	if ((x = find_level("wizard1")) != 0)
-	    assign_level(&wiz1_level, &x->dlevel);
-	if ((x = find_level("wizard2")) != 0)
-	    assign_level(&wiz2_level, &x->dlevel);
-	if ((x = find_level("wizard3")) != 0)
-	    assign_level(&wiz3_level, &x->dlevel);
-	if ((x = find_level("juiblex")) != 0)
-	    assign_level(&juiblex_level, &x->dlevel);
-	if ((x = find_level("orcus")) != 0)
-	    assign_level(&orcus_level, &x->dlevel);
-	if ((x = find_level("asmodeus")) != 0)
-	    assign_level(&asmodeus_level, &x->dlevel);
-	if ((x = find_level("baalz")) != 0)
-	    assign_level(&baalzebub_level, &x->dlevel);
-	if ((x = find_level("fakewiz1")) != 0)
-	    assign_level(&portal_level, &x->dlevel);
-	if ((x = find_level("sanctum")) != 0)
-	    assign_level(&sanctum_level, &x->dlevel);
-	if ((x = find_level("earth")) != 0)
-	    assign_level(&earth_level, &x->dlevel);
-	if ((x = find_level("water")) != 0)
-	    assign_level(&water_level, &x->dlevel);
-	if ((x = find_level("fire")) != 0)
-	    assign_level(&fire_level, &x->dlevel);
-	if ((x = find_level("air")) != 0)
-	    assign_level(&air_level, &x->dlevel);
-	if ((x = find_level("astral")) != 0)
-	    assign_level(&astral_level, &x->dlevel);
+	for (lev_map = level_map; lev_map->lev_name[0]; lev_map++) {
+		x = find_level(lev_map->lev_name);
+		if (x) {
+			assign_level(lev_map->lev_spec, &x->dlevel);
 #ifdef MULDGN
-	if ((x = find_level("knox")) != 0) {
-	    branch *br;
-	    assign_level(&knox_level, &x->dlevel);
-	    /*
-	     * Kludge to allow floating Knox entrance.  We specify a floating
-	     * entrance by the fact that its entrance (end1) has a bogus dnum,
-	     * namely n_dgns.
-	     */
-	    for (br = branches; br; br = br->next)
-		if (on_level(&br->end2, &knox_level)) break;
+			if (!strncmp(lev_map->lev_name, "x-", 2)) {
+				/* This is where the name substitution on the
+				 * levels of the quest dungeon occur.
+				 */
+				x->proto[0] = pl_character[0];
+			} else if (lev_map->lev_spec == &knox_level) {
+				branch *br;
+				/*
+				 * Kludge to allow floating Knox entrance.  We
+				 * specify a floating entrance by the fact that
+				 * its entrance (end1) has a bogus dnum, namely
+				 * n_dgns.
+				 */
+				for (br = branches; br; br = br->next)
+				    if (on_level(&br->end2, &knox_level)) break;
 
-	    if (br) br->end1.dnum = n_dgns;
-	    /* adjust the branch's position on the list */
-	    insert_branch(br, TRUE);
+				if (br) br->end1.dnum = n_dgns;
+				/* adjust the branch's position on the list */
+				insert_branch(br, TRUE);
+			}
+#endif
+		}
 	}
-/*
- *	This is where the name substitution on the levels of the quest
- *	dungeon occur.
- */
-	if ((x = find_level(X_START)) != 0) {
-	    x->proto[0] = pl_character[0];
-	    assign_level(&qstart_level, &x->dlevel);
-	}
-	if ((x = find_level(X_LOCATE)) != 0) {
-	    x->proto[0] = pl_character[0];
-	    assign_level(&qlocate_level, &x->dlevel);
-	}
-	if ((x = find_level(X_GOAL)) != 0) {
-	    x->proto[0] = pl_character[0];
-	    assign_level(&nemesis_level, &x->dlevel);
-	}
+#ifdef MULDGN
 /*
  *	I hate hardwiring these names. :-(
  */

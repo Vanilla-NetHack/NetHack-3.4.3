@@ -43,18 +43,14 @@
 #define ITEM_ABOUT	1
 #define ITEM_SCORES	2
 #define ITEM_RECOVER	3
-/*#define ITEM_EDNEW        4*/
-#define ITEM_EDDEF	4
-#define ITEM_CONFIG	5
-#define ITEM_QUIT	6
+#define ITEM_CONFIG	4
+#define ITEM_QUIT	5
 
 #define MENU_GAME	1
 #define ITEM_INFO	0
-#define ITEM_SETCOMMENT	1
-#define ITEM_SETOPT	2
-#define ITEM_COPYOPT	3
-#define ITEM_DISCARD	4
-#define ITEM_RENAME	5
+#define ITEM_COPYOPT	1
+#define ITEM_DISCARD	2
+#define ITEM_RENAME	3
 
 #define GADSCROLL	1   /* The scroll bar */
 #define GADNEWGAME	2   /* New Game requested */
@@ -72,15 +68,12 @@
 #define GADOUTFILE	10
 #define GADCATNAME	11
 #define GADDOGNAME	12
-#define GADDEFLOAD	13
-#define GADDEFSAVE	14
 
 #define GADSTRSAVE	15
 #define GADSTRLEVELS	16
 #define GADSTRPATH	17
 #define GADSTRPENS	18
 #define GADSTRHACKDIR	19
-#define GADEDOPTIONS	20
 #define GADCONFSAVE	21
 #define GADCONFLOAD	22
 #define GADCONFNAME	23
@@ -93,13 +86,17 @@
 #define GADHELPOKAY	30
 #define GADHELPFRWD	31
 #define GADHELPBKWD	32
-#define GADEDDEF	33
+#define GADEDITOPTS	33
 
 #define GADRESTDIR	34
 #define GADRESTOLD	35
 #define GADRESTNEW	36
 #define GADRESTCAN	37
 #define GADRESTOKAY	38
+#define GADSAVEINFO	39
+#define GADUSEINFO	40
+#define GADQUITINFO	41
+#define GADPLNAME	42
 
 /*
  *  Option gadgets GadgetID's
@@ -139,6 +136,13 @@
 #define GADOLITCORRIDOR	133
 #define GADOSHOWEXP	134
 #define GADOSHOWSCORE	135
+#define	GADONAME	136
+#define	GADOSCORE	137
+#define	GADOPALETTE	138
+#define	GADOWINDOWTYPE	139
+#define	GADOMSGHISTORY	140
+#define	GADOPICKUPTYPES	141
+#define	GADOPETTYPE	142
 
 /* Definition of workbench size layout */
 
@@ -165,12 +169,10 @@
 #define RstOld		(Sbuff(&Rst_RestOld))
 #define RstNew		(Sbuff(&Rst_RestNew))
 
-#define DefPlayerName	(Sbuff(&Defs_PlayerName))
-#define DefOutFile	(Sbuff(&Defs_DefaultName))
-
 #define StrString	(Sbuff(&Str_String))
 
 #define StrTools	(Sbuff(&Info_ToolTypes))
+#define StrPlayer	(Sbuff(&Info_Player))
 
 #define GAMEIMAGE	"HackExe:NetHack"
 #define GAMESTACK	50000
@@ -210,6 +212,3 @@
 
 #define NO_FLASH	0
 #define FLASH		1
-
-#define GAME_FROM_DEFAULT   0
-#define GAME_FROM_INFO      1

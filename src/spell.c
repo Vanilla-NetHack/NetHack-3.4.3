@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)spell.c	3.1	92/12/10
+/*	SCCS Id: @(#)spell.c	3.1	93/05/15	*/
 /*	Copyright (c) M. Stephenson 1988			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -105,7 +105,7 @@ struct obj *book2;
 	}
 
 	if(!u.uhave.bell || !u.uhave.menorah) {
-	    pline("A chill runs down your spine.");
+	    pline("A chill runs down your %s.", body_part(SPINE));
 	    if(!u.uhave.bell) You("hear a faint chime...");
 	    if(!u.uhave.menorah) pline("Vlad's doppelganger is amused.");
 	    return;
@@ -149,7 +149,7 @@ raise_dead:
 	mm.y = u.uy;
 	mkundead(&mm);
 	if(!rn2(4))
-	    if(mtmp = makemon(&mons[PM_MASTER_LICH],u.ux,u.uy)) {
+	    if ((mtmp = makemon(&mons[PM_MASTER_LICH],u.ux,u.uy)) != 0) {
 		mtmp->mpeaceful = 0;
 		set_malign(mtmp);
 	    }
@@ -494,6 +494,8 @@ boolean atme;
 	case SPE_FINGER_OF_DEATH:
 	case SPE_LIGHT:
 	case SPE_DETECT_UNSEEN:
+	case SPE_HEALING:
+	case SPE_EXTRA_HEALING:
 		if (!(objects[pseudo->otyp].oc_dir == NODIR)) {
 			if (atme) u.dx = u.dy = u.dz = 0;
 			else (void) getdir(NULL);
@@ -524,20 +526,12 @@ boolean atme;
 	case SPE_INVISIBILITY:
 		(void) peffects(pseudo);
 		break;
-	case SPE_HEALING:
-		You("feel a bit better.");
-		healup(rnd(8), 0, FALSE, FALSE);
-		break;
 	case SPE_CURE_BLINDNESS:
 		healup(0, 0, FALSE, TRUE);
 		break;
 	case SPE_CURE_SICKNESS:
 		if (Sick) You("are no longer ill.");
 		healup(0, 0, TRUE, FALSE);
-		break;
-	case SPE_EXTRA_HEALING:
-		You("feel a fair bit better.");
-		healup(d(2,8)+2, 0, FALSE, FALSE);
 		break;
 	case SPE_CREATE_FAMILIAR:
 		make_familiar((struct obj *)0, u.ux, u.uy);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monflag.h	3.1	92/11/25	*/
+/*	SCCS Id: @(#)monflag.h	3.1	93/02/14	*/
 /* Copyright (c) 1989 Mike Threepoint				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -6,48 +6,47 @@
 #define MONFLAG_H
 
 #define MS_SILENT	0	/* makes no sound */
-#define MS_SQEEK	1	/* squeaks, as a rodent */
-#define MS_SQAWK	2	/* squawks, as a bird */
-#define MS_HISS		3	/* hisses */
-#define MS_BUZZ		4	/* buzzes (killer bee) */
-#define MS_GRUNT	5	/* grunts (or speaks own language) */
-#define MS_GROWL	6	/* growls */
-#define MS_BARK		7	/* if full moon, may howl */
-#define MS_MEW		8	/* mews or hisses */
-#define MS_ROAR		9	/* roars */
+#define MS_BARK		1	/* if full moon, may howl */
+#define MS_MEW		2	/* mews or hisses */
+#define MS_ROAR		3	/* roars */
+#define MS_GROWL	4	/* growls */
+#define MS_SQEEK	5	/* squeaks, as a rodent */
+#define MS_SQAWK	6	/* squawks, as a bird */
+#define MS_HISS		7	/* hisses */
+#define MS_BUZZ		8	/* buzzes (killer bee) */
+#define MS_GRUNT	9	/* grunts (or speaks own language) */
 #define MS_NEIGH	10	/* neighs, as an equine */
 #define MS_WAIL		11	/* wails, as a tortured soul */
 #define MS_GURGLE	12	/* gurgles, as liquid or through saliva */
 #define MS_BURBLE	13	/* burbles (jabberwock) */
+#define MS_ANIMAL	13	/* up to here are animal noises */
 #define MS_SHRIEK	15	/* wakes up others */
+#define MS_BONES	16	/* rattles bones (skeleton) */
 #define MS_LAUGH	17	/* grins, smiles, giggles, and laughs */
 #define MS_MUMBLE	18	/* says something or other */
 #define MS_IMITATE	19	/* imitates others (leocrotta) */
-#define MS_SEDUCE	20	/* "Hello, sailor." (Nymphs) */
-#define MS_VAMPIRE	21	/* vampiric seduction, Vlad's exclamations */
 #define MS_ORC		MS_GRUNT	/* intelligent brutes */
-#define MS_BRIBE	25	/* asks for money, or berates you */
-#define MS_CUSS		26	/* berates (demons) or intimidates (Wiz) */
-#define MS_NURSE	27	/* "Take off your shirt, please." */
-#define MS_DJINNI	28	/* "Thank you for freeing me!" */
-#define MS_HUMANOID	29	/* generic traveling companion */
-#define MS_GUARD	30	/* "Please drop that gold and follow me." */
-#define MS_SELL		31	/* demand payment, complain about shoplifters */
-#define MS_ORACLE	32	/* do a consultation */
-#define MS_PRIEST	33	/* ask for contribution; do cleansing */
+#define MS_HUMANOID	20	/* generic traveling companion */
 #ifdef KOPS
-#define MS_ARREST	34	/* "Stop in the name of the law!" (Kops) */
+#define MS_ARREST	21	/* "Stop in the name of the law!" (Kops) */
 #endif
-#define MS_SOLDIER	35	/* army and watchmen expressions */
+#define MS_SOLDIER	22	/* army and watchmen expressions */
+#define MS_GUARD	23	/* "Please drop that gold and follow me." */
+#define MS_DJINNI	24	/* "Thank you for freeing me!" */
+#define MS_NURSE	25	/* "Take off your shirt, please." */
+#define MS_SEDUCE	26	/* "Hello, sailor." (Nymphs) */
+#define MS_VAMPIRE	27	/* vampiric seduction, Vlad's exclamations */
+#define MS_BRIBE	28	/* asks for money, or berates you */
+#define MS_CUSS		29	/* berates (demons) or intimidates (Wiz) */
+#define MS_RIDER	30	/* astral level special monsters */
 #ifdef MULDGN
-#define MS_LEADER	36	/* your class leader */
-#define MS_NEMESIS	37	/* your nemesis */
-#define MS_GUARDIAN	38	/* your leader's guards */
+#define MS_LEADER	31	/* your class leader */
+#define MS_NEMESIS	32	/* your nemesis */
+#define MS_GUARDIAN	33	/* your leader's guards */
 #endif
-#define MS_BONES	39	/* rattles bones (skeleton) */
-#define MS_DEATH	40	/* \				*/
-#define MS_PESTILENCE	41	/*  |- astral level special monsters */
-#define MS_FAMINE	42	/* /				*/
+#define MS_SELL		34	/* demand payment, complain about shoplifters */
+#define MS_ORACLE	35	/* do a consultation */
+#define MS_PRIEST	36	/* ask for contribution; do cleansing */
 
 
 #define MR_FIRE         0x01    /* resists fire */
@@ -72,7 +71,7 @@
 #define M1_CONCEAL	0x00000080L	/* hides under objects */
 #define M1_HIDE		0x00000100L	/* mimics, blends in with ceiling */
 #define M1_AMPHIBIOUS	0x00000200L	/* can survive underwater */
-#define M1_BREATHLESS	0x00000200L	/* doesn't need to breathe */
+#define M1_BREATHLESS	0x00000400L	/* doesn't need to breathe */
 #define M1_NOEYES	0x00001000L	/* no eyes to gaze into or blind */
 #define M1_NOHANDS	0x00002000L	/* no hands to handle things */
 #define M1_NOLIMBS	0x00006000L	/* no arms/legs to kick/wear on */
@@ -93,7 +92,11 @@
 #define M1_CARNIVORE	0x20000000L	/* eats corpses */
 #define M1_HERBIVORE	0x40000000L	/* eats fruits */
 #define M1_OMNIVORE	0x60000000L	/* eats both */
+#ifdef NHSTDC
+#define M1_METALLIVORE	0x80000000UL	/* eats metal */
+#else
 #define M1_METALLIVORE	0x80000000L	/* eats metal */
+#endif
 
 #define M2_NOPOLY	0x00000001L	/* players mayn't poly into one */
 #define M2_UNDEAD	0x00000002L	/* is walking dead */
@@ -123,7 +126,11 @@
 #define M2_GREEDY	0x10000000L	/* likes gold */
 #define M2_JEWELS	0x20000000L	/* likes gems */
 #define M2_COLLECT	0x40000000L	/* picks up weapons and food */
+#ifdef NHSTDC
+#define M2_MAGIC	0x80000000UL	/* picks up magic items */
+#else
 #define M2_MAGIC	0x80000000L	/* picks up magic items */
+#endif
 
 #define M3_WANTSAMUL	0x01		/* would like to steal the amulet */
 #define M3_WANTSBELL	0x02		/* wants the bell */

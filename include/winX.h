@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winX.h	3.1	93/01/22		  */
+/*	SCCS Id: @(#)winX.h	3.1	93/04/26		  */
 /* Copyright (c) Dean Luick, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -331,5 +331,7 @@ E void NDECL(X11_delay_output);
 /* other defs that really should go away (they're tty specific) */
 E void NDECL(X11_start_screen);
 E void NDECL(X11_end_screen);
+
+E void FDECL(genl_outrip, (winid,int));
 
 #endif /* WINX_H */

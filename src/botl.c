@@ -20,9 +20,16 @@ static void NDECL(bot1);
 static void NDECL(bot2);
 #endif /* OVL0 */
 
-/* 100 suffices for bot(); must be larger than COLNO */
-#if COLNO <= 80
-#define MAXCO 100
+/* MAXCO must hold longest uncompressed status line, and must be larger
+ * than COLNO
+ *
+ * longest practical second status line at the moment is
+ *	Astral Plane $:12345 HP:700(700) Pw:111(111) AC:-127 Xp:30/123456789
+ *	T:123456 Satiated Conf Sick Blind Stun Hallu Overloaded
+ * -- or somewhat over 120 characters
+ */
+#if COLNO <= 130
+#define MAXCO 150
 #else
 #define MAXCO (COLNO+20)
 #endif

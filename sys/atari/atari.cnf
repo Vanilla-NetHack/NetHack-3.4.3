@@ -25,7 +25,7 @@
 # Other general options.  You might also set "silent" so as not to attract
 # the boss's attention.
 #
-OPTIONS=BIOS,time,rest_on_space,nopickup
+OPTIONS=BIOS,time,rest_on_space,noautopickup
 
 # Color: if you have a color monitor and *don't* want colors, 
 # comment out the following line. (Mono users don't get color no matter what.)

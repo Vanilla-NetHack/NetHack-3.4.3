@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)steal.c	3.1	92/10/14	*/
+/*	SCCS Id: @(#)steal.c	3.1	93/05/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -11,10 +11,8 @@ static const char * FDECL(equipname, (struct obj *));
 
 static const char *
 equipname(otmp)
-
-	register struct obj *otmp;
+register struct obj *otmp;
 {
-
 	return (
 #ifdef TOURIST
 		(otmp == uarmu) ? "shirt" :
@@ -27,7 +25,8 @@ equipname(otmp)
 }
 
 long		/* actually returns something that fits in an int */
-somegold(){
+somegold()
+{
 #ifdef LINT	/* long conv. ok */
 	return(0L);
 #else
@@ -50,14 +49,14 @@ register struct monst *mtmp;
 	    pline("%s quickly snatches some gold from between your %s!",
 		    Monnam(mtmp), makeplural(body_part(FOOT)));
 	    if(!u.ugold || !rn2(5)) {
-		rloc(mtmp);
+		if (!tele_restrict(mtmp)) rloc(mtmp);
 		mtmp->mflee = 1;
 	    }
 	} else if(u.ugold) {
 	    u.ugold -= (tmp = somegold());
 	    Your("purse feels lighter.");
 	    mtmp->mgold += tmp;
-	    rloc(mtmp);
+	    if (!tele_restrict(mtmp)) rloc(mtmp);
 	    mtmp->mflee = 1;
 	    flags.botl = 1;
 	}
@@ -68,7 +67,8 @@ unsigned int stealoid;		/* object to be stolen */
 unsigned int stealmid;		/* monster doing the stealing */
 
 STATIC_OVL int
-stealarm(){
+stealarm()
+{
 	register struct monst *mtmp;
 	register struct obj *otmp;
 
@@ -82,7 +82,7 @@ stealarm(){
 		  pline("%s steals %s!", Monnam(mtmp), doname(otmp));
 		  mpickobj(mtmp,otmp);
 		  mtmp->mflee = 1;
-		  rloc(mtmp);
+		  if (!tele_restrict(mtmp)) rloc(mtmp);
 		break;
 	      }
 	    break;
@@ -263,8 +263,13 @@ mpickobj(mtmp,otmp)
 register struct monst *mtmp;
 register struct obj *otmp;
 {
+    if (otmp->otyp == GOLD_PIECE) {	/* from floor etc. -- not inventory */
+	mtmp->mgold += otmp->quan;
+	obfree(otmp, (struct obj *)0);
+    } else {
 	otmp->nobj = mtmp->minvent;
 	mtmp->minvent = otmp;
+    }
 }
 
 #endif /* OVL1 */
@@ -278,11 +283,12 @@ register struct monst *mtmp;
 	register int	real, fake;
 
 	/* select the artifact to steal */
-        if(u.uhave.amulet) {
+	if(u.uhave.amulet) {
 		real = AMULET_OF_YENDOR ;
 		fake = FAKE_AMULET_OF_YENDOR ;
 #ifdef MULDGN
 	} else if(u.uhave.questart) {
+	    real = fake = 0;		/* gcc -Wall lint */
 	    for(otmp = invent; otmp; otmp = otmp->nobj)
 	        if(is_quest_artifact(otmp)) goto snatch_it;
 #endif
@@ -302,11 +308,15 @@ register struct monst *mtmp;
 	    if(otmp->otyp == real || (otmp->otyp == fake && !mtmp->iswiz)) {
 		/* might be an imitation one */
 snatch_it:
+#ifdef MULDGN
+		if (otmp->oclass == ARMOR_CLASS) adj_abon(otmp, -(otmp->spe));
+#endif
 		setnotworn(otmp);
 		freeinv(otmp);
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
-		if (can_teleport(mtmp->data)) rloc(mtmp);
+		if (can_teleport(mtmp->data) && !tele_restrict(mtmp))
+			rloc(mtmp);
 		return;
 	    }
 	}
@@ -315,39 +325,40 @@ snatch_it:
 #endif /* OVLB */
 #ifdef OVL0
 
-/* release the objects the killed animal was carrying */
+/* release the objects the creature is carrying */
 void
 relobj(mtmp,show,is_pet)
 register struct monst *mtmp;
 register int show;
-boolean is_pet;		/* If true, pet should keep wielded weapon */
+boolean is_pet;		/* If true, pet should keep wielded/worn items */
 {
 	register struct obj *otmp, *otmp2;
 	register int omx = mtmp->mx, omy = mtmp->my;
-
 #ifdef MUSE
-	otmp2 = otmp = 0;
-	if (is_pet) {
-		sort_mwep(mtmp);
-		if ((otmp2 = MON_WEP(mtmp))) {
-			otmp = otmp2->nobj;
-			otmp2->nobj = 0;
-		}
-	}
-	if (!otmp2)
+	struct obj *backobj = 0;
+	struct obj *wep = MON_WEP(mtmp);
 #endif
-	{	otmp = mtmp->minvent;
-		mtmp->minvent = 0;
-	}
 
+	otmp = mtmp->minvent;
+	mtmp->minvent = 0;
 	for (; otmp; otmp = otmp2) {
+		otmp2 = otmp->nobj;
 #ifdef MUSE
-		if (otmp->owornmask) {
+		if (otmp->owornmask || otmp == wep) {
+			if (is_pet) { /* skip worn/wielded item */
+				if (!backobj) {
+					mtmp->minvent = backobj = otmp;
+				} else {
+					backobj->nobj = otmp;
+					backobj = backobj->nobj;
+				}
+				continue;
+			}
 			mtmp->misc_worn_check &= ~(otmp->owornmask);
 			otmp->owornmask = 0L;
 		}
+		if (backobj) backobj->nobj = otmp->nobj;
 #endif
-		otmp2 = otmp->nobj;
 		if (is_pet && cansee(omx, omy) && flags.verbose)
 			pline("%s drops %s.", Monnam(mtmp),
 					distant_name(otmp, doname));

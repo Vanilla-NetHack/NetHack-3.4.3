@@ -15,6 +15,9 @@ void NDECL(getlock);
 int
 uptodate(int fd)
 {
+#if defined(applec)
+# pragma unused(fd)
+#endif
 	return(1);
 }
 

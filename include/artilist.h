@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)artilist.h	3.1	92/12/13	*/
+/*	SCCS Id: @(#)artilist.h	3.1	93/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -26,7 +26,7 @@ static const char *artifact_names[] = {
 #define     ELEC(a,b)	{0,AD_ELEC,a,b}		/* electrical shock */
 #define     STUN(a,b)	{0,AD_STUN,a,b}		/* magical attack */
 
-STATIC_OVL NEARDATA const struct artifact artilist[] = {
+STATIC_OVL NEARDATA struct artifact artilist[] = {
 #endif	/* MAKEDEFS_C */
 
 /*  dummy element #0, so that all interesting indices are non-zero */

@@ -15,7 +15,7 @@ struct Border Col_Border1 = {
 };
 
 struct IntuiText Col_IText1 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	13,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Save",	/* pointer to text */
@@ -54,7 +54,7 @@ struct Border Col_Border2 = {
 };
 
 struct IntuiText Col_IText2 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	17,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Use",	/* pointer to text */
@@ -63,7 +63,7 @@ struct IntuiText Col_IText2 = {
 
 struct Gadget Col_Okay = {
 	&Col_Save,	/* next gadget */
-	117,77,	/* origin XY of hit box relative to window TopLeft */
+	128,77,	/* origin XY of hit box relative to window TopLeft */
 	58,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY,	/* activation flags */
@@ -93,7 +93,7 @@ struct Border Col_Border3 = {
 };
 
 struct IntuiText Col_IText3 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	6,1,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"Cancel",	/* pointer to text */
@@ -102,7 +102,7 @@ struct IntuiText Col_IText3 = {
 
 struct Gadget Col_Cancel = {
 	&Col_Okay,	/* next gadget */
-	218,77,	/* origin XY of hit box relative to window TopLeft */
+	244,77,	/* origin XY of hit box relative to window TopLeft */
 	58,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY,	/* activation flags */
@@ -133,7 +133,7 @@ struct Image Col_Image1 = {
 
 struct Gadget Col_RedPen = {
 	&Col_Cancel,	/* next gadget */
-	7,12,	/* origin XY of hit box relative to window TopLeft */
+	32,12,	/* origin XY of hit box relative to window TopLeft */
 	271,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY+GADGIMMEDIATE+FOLLOWMOUSE,	/* activation flags */
@@ -164,7 +164,7 @@ struct Image Col_Image2 = {
 
 struct Gadget Col_GreenPen = {
 	&Col_RedPen,	/* next gadget */
-	7,24,	/* origin XY of hit box relative to window TopLeft */
+	32,24,	/* origin XY of hit box relative to window TopLeft */
 	271,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY+GADGIMMEDIATE+FOLLOWMOUSE,	/* activation flags */
@@ -195,7 +195,7 @@ struct Image Col_Image3 = {
 
 struct Gadget Col_BluePen = {
 	&Col_GreenPen,	/* next gadget */
-	7,36,	/* origin XY of hit box relative to window TopLeft */
+	32,36,	/* origin XY of hit box relative to window TopLeft */
 	271,11,	/* hit box width and height */
 	NULL,	/* gadget flags */
 	RELVERIFY+GADGIMMEDIATE+FOLLOWMOUSE,	/* activation flags */
@@ -211,9 +211,35 @@ struct Gadget Col_BluePen = {
 
 #define Col_GadgetList1 Col_BluePen
 
+struct IntuiText Col_IText6 = {
+	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	17,38,	/* XY origin relative to container TopLeft */
+	NULL,	/* font pointer or NULL for default */
+	"B",	/* pointer to text */
+	NULL	/* next IntuiText structure */
+};
+
+struct IntuiText Col_IText5 = {
+	4,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	16,26,	/* XY origin relative to container TopLeft */
+	NULL,	/* font pointer or NULL for default */
+	"G",	/* pointer to text */
+	&Col_IText6	/* next IntuiText structure */
+};
+
+struct IntuiText Col_IText4 = {
+	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	16,14,	/* XY origin relative to container TopLeft */
+	NULL,	/* font pointer or NULL for default */
+	"R",	/* pointer to text */
+	&Col_IText5	/* next IntuiText structure */
+};
+
+#define Col_IntuiTextList1 Col_IText4
+
 struct NewWindow Col_NewWindowStructure1 = {
 	175,45,	/* window XY origin relative to TopLeft of screen */
-	284,93,	/* window width and height */
+	312,93,	/* window width and height */
 	0,1,	/* detail and block pens */
 	MOUSEBUTTONS+MOUSEMOVE+GADGETDOWN+GADGETUP+CLOSEWINDOW+VANILLAKEY+INTUITICKS,	/* IDCMP flags */
 	WINDOWDRAG+WINDOWDEPTH+WINDOWCLOSE+ACTIVATE+NOCAREREFRESH,	/* other window flags */

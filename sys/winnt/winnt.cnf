@@ -1,0 +1,88 @@
+# NetHack.cnf file for Windows NT
+# A '#' at the beginning of a line means the rest of the line is a comment.
+#
+# To change the configuration, comment out the unwanted lines, and
+# uncomment the configuration you want.
+
+
+# *** OPTIONS ***
+#
+# Some options to set personal preferences.  Uncomment and change these to
+# suit your personal preference.  If several people are to use the same
+# configuration, options like these should not be set.
+#
+#OPTIONS=name:Janet-V,female,dogname:Fido,catname:Morris,fruit:apricot
+#OPTIONS=packorder:")[%?+/=!(*0_`,scores:10 top/2 around/own
+#
+#
+# Other general options.  You might also set "silent" so as not to attract
+# the boss's attention.
+#
+OPTIONS=time,rest_on_space,noautopickup,number_pad
+
+
+# *** HARD DISK CONFIGURATION ***
+#
+HACKDIR=c:\games\nethack
+#
+#   LEVELS and SAVE default to HACKDIR
+#
+#LEVELS=c:\games\nethack\bones
+#SAVE=c:\games\nethack\bones;n
+#
+#   appending a ";n" to SAVE means don't prompt to insert a disk.
+SAVE=;n
+#
+# *** CHARACTER GRAPHICS ***
+#
+# The 69 GRAPHICS characters (0-68) are:
+#
+# stone,
+# walls: vertical, horizontal,
+#	 4 corners: top left, top right, bottom left, bottom right,
+#	 cross wall,
+#	 4 T walls: upward, downward, left, right,
+# doors: no door,
+#	 open doors: vertical, horizontal,
+#	 closed doors: vertical, horizontal,
+# floor,
+# corridors: unlit, lit,
+# stairs up, stairs down, ladder up, ladder down,
+# trap, web, altar, throne, sink, fountain, pool/moat, ice, lava,
+# lowered drawbridge: vertical, horizontal,
+# raised drawbridge: vertical, horizontal,
+# air, cloud, water,
+# 4 beams: vertical, horizontal, left slant, right slant,
+# digging beam, camera flash beam, left boomerang, right boomerang,
+# 4 magic shield display symbols,
+# 8 swallowed: top left/middle/right, mid left/right, bottom left/mid/right,
+# 9 explosion: [3 rows (top, middle, bottom) of 3 characters]
+#
+# If you specify fewer that 69 ASCII values, the remaining characters will be
+# set to their respective defaults:
+#	   ' '  |   -   -   -   -   -   -   -   -
+#           |   |   .   -   |   +   +   .   #   #
+#	    <   >   <   >   ^   "   _   \   #   {
+#	    }   .   }   .   .   #   #  ' '  #   }
+#	    |   -   \   /   *   !   )   (   0   #
+#	    @   *   /   -   \   |   |   \   -   /
+#	    /   -   \   |  ' '  |   \   -   /
+#
+#
+# An example using the IBM graphics character set:
+GRAPHICS= 032 186 205 201 187 200 188 206 202 203 \
+	   185 204 249 239 239 254 254 249 177 177 \
+	   060 062 060 062 094 034 095 092 035 244 \
+	   247 249 247 042 042 179 196 046 035 247 \
+	   179 196 092 047 042 033 041 040 048 035 \
+	   064 042 047 045 092 058 058 092 045 047 \
+	   047 045 092 058 032 058 092 045 047
+
+# An alternative:
+#GRAPHICS= 032 179 196 218 191 192 217 197 193 194 \
+#	   180 195 249 239 239 254 254 249 177 177 \
+#	   060 062 060 062 094 157 220 190 035 244 \
+#	   247 249 247 042 042 186 205 046 035 247 \
+#	   179 196 092 047 042 033 041 040 048 035 \
+#	   064 042 047 045 092 058 058 092 045 047 \
+#	   047 045 092 058 032 058 092 045 047

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)timeout.c	3.1	92/11/01	*/
+/*	SCCS Id: @(#)timeout.c	3.1	93/03/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -164,9 +164,10 @@ nh_timeout()
 			break;
 		case INVIS:
 			newsym(u.ux,u.uy);
-			if (!Invis && !See_invisible && !Blind)
+			if (!Invis && !See_invisible && !Blind) {
 				You("are no longer invisible.");
-			stop_occupation();
+				stop_occupation();
+			}
 			break;
 		case SEE_INVIS:
 			set_mimic_blocking(); /* do special mimic handling */
@@ -213,7 +214,7 @@ nh_timeout()
 				switch (rn2(4)) {
 				    case 1:
 					if (ACCESSIBLE(levl[u.ux][u.uy].typ)) { /* not POOL or STONE */
-					    if (Hallucination) pline("A rock bites your foot.");
+					    if (Hallucination) pline("A rock bites your %s.", body_part(FOOT));
 					    else You("trip over a rock.");
 					    break;
 					}
@@ -271,7 +272,7 @@ register struct obj *otmp;
 			locomotion(mtmp->data, "drop"));
 		else
 		    You("see %s %s out of your pack!",
-			an(mtmp->data->mname),
+			a_monnam(mtmp),
 			locomotion(mtmp->data, "drop"));
 
 #ifdef POLYSELF
@@ -280,10 +281,10 @@ register struct obj *otmp;
 
 		    pline("Its cries sound like \"%s.\"",
 			flags.female ? "mommy" : "daddy");
-		    if (mtmp2 = tamedog(mtmp, (struct obj *)0))
+		    if ((mtmp2 = tamedog(mtmp, (struct obj *)0)) != 0)
 			mtmp = mtmp2;
 		    mtmp->mtame = 20;
-		    while(otmp = (mtmp->minvent)) {
+		    while ((otmp = (mtmp->minvent)) != 0) {
 			mtmp->minvent = otmp->nobj;
 			dealloc_obj(otmp);
 		    }
@@ -294,9 +295,9 @@ register struct obj *otmp;
 		    struct monst *mtmp2;
 
 		    verbalize("Gleep!");		/* Mything eggs :-) */
-		    if (mtmp2 = tamedog(mtmp, (struct obj *)0))
+		    if ((mtmp2 = tamedog(mtmp, (struct obj *)0)) != 0)
 			mtmp = mtmp2;
-		    while(otmp = (mtmp->minvent)) {
+		    while ((otmp = (mtmp->minvent)) != 0) {
 			mtmp->minvent = otmp->nobj;
 			dealloc_obj(otmp);
 		    }
@@ -316,7 +317,7 @@ hatch_eggs()	    /* hatch any eggs that have been too long in pack */
 	for(otmp = invent; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nobj;	    /* otmp may hatch */
 	    if(otmp->otyp == EGG && otmp->corpsenm >= 0) hatch_it(otmp);
-	    /* else if (Is_container(otmp) && otmp->cobj) ...		*/
+	    /* else if (Has_contents(otmp)) ...				*/
 	    /*								*/
 	    /* Check for container here and hatch with the container.	*/
 	    /* One of these days...					*/

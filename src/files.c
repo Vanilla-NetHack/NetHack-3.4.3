@@ -449,22 +449,86 @@ delete_savefile()
 
 /* ----------  BEGIN FILE COMPRESSION HANDLING ----------- */
 
+#ifdef COMPRESS
+/* 
+ * using system() is simpler, but opens up security holes and causes
+ * problems on at least Interactive UNIX 3.0.1 (SVR3.2), where any
+ * setuid is renounced by /bin/sh, so the files cannot be accessed.
+ *
+ * cf. child() in unixunix.c.
+ */
+void
+docompress_file(filename, uncomp)
+char *filename;
+boolean uncomp;
+{
+	char *args[10];
+# ifdef COMPRESS_OPTIONS
+	char opts[80];
+# endif
+	int i = 0;
+	int f;
+
+	args[0] = COMPRESS;
+	if (uncomp) args[++i] = "-d";	/* uncompress */
+# ifdef COMPRESS_OPTIONS
+	{
+	    /* we can't guarantee there's only one additional option, sigh */
+	    char *opt;
+	    boolean inword = FALSE;
+
+	    Strcpy(opts, COMPRESS_OPTIONS);
+	    opt = opts;
+	    while (*opt) {
+		if ((*opt == ' ') || (*opt == '\t')) {
+		    if (inword) {
+			*opt = '\0';
+			inword = FALSE;
+		    }
+		} else if (!inword) {
+		    args[++i] = opt;
+		    inword = TRUE;
+		}
+		opt++;
+	    }
+	}
+# endif
+	args[++i] = filename;
+	args[++i] = NULL;
+
+	f = fork();
+	if (f == 0) {	/* child */
+		(void) execv(args[0], args);
+		perror(NULL);
+		pline("Exec to %scompress %s failed.",
+			uncomp ? "un" : "", filename);
+		exit(1);
+	} else if (f == -1) {
+		perror(NULL);
+		pline("Fork to %scompress %s failed.",
+			uncomp ? "un" : "", filename);
+		return;
+	}
+	(void) signal(SIGINT, SIG_IGN);
+	(void) signal(SIGQUIT, SIG_IGN);
+	(void) wait((int *)0);
+	(void) signal(SIGINT, (SIG_RET_TYPE) done1);
+# ifdef WIZARD
+	if (wizard) (void) signal(SIGQUIT, SIG_DFL);
+# endif
+}
+#endif
+
 /* compress file */
 void
 compress(filename)
 const char *filename;
+#ifdef applec
+# pragma unused(filename)
+#endif
 {
 #ifdef COMPRESS
-	char cmd[80];
-
-	Strcpy(cmd, COMPRESS);
-	Strcat(cmd, " ");
-# ifdef COMPRESS_OPTIONS
-	Strcat(cmd, COMPRESS_OPTIONS);
-	Strcat(cmd, " ");
-# endif
-	Strcat(cmd,filename);
-	(void) system(cmd);
+	docompress_file(filename, FALSE);
 #endif
 }
 
@@ -473,25 +537,21 @@ const char *filename;
 void
 uncompress(filename)
 const char *filename;
+#ifdef applec
+# pragma unused(filename)
+#endif
 {
 #ifdef COMPRESS
-	char cmd[80], cfn[80];
+	char cfn[80];
 	int fd;
 
-	Strcpy(cfn,filename);
+	Strcpy(cfn, filename);
 # ifdef COMPRESS_EXTENSION
-	Strcat(cfn,COMPRESS_EXTENSION);
+	Strcat(cfn, COMPRESS_EXTENSION);
 # endif
-	if((fd = open(cfn,O_RDONLY)) >= 0) {
-	    (void) close(fd);
-	    Strcpy(cmd, COMPRESS);
-	    Strcat(cmd, " -d ");        /* uncompress */
-# ifdef COMPRESS_OPTIONS
-	    Strcat(cmd, COMPRESS_OPTIONS);
-	    Strcat(cmd, " ");
-# endif
-	    Strcat(cmd,cfn);
-	    (void) system(cmd);
+	if ((fd = open(cfn, O_RDONLY)) >= 0) {
+		(void) close(fd);
+		docompress_file(cfn, TRUE);
 	}
 #endif
 }
@@ -540,6 +600,9 @@ boolean
 lock_file(filename, retryct)
 const char *filename;
 int retryct;
+#ifdef applec
+# pragma unused(filename, retryct)
+#endif
 {
 #if defined(UNIX) || defined(VMS)
 	char *lockname;
@@ -609,6 +672,9 @@ int retryct;
 void
 unlock_file(filename)
 const char *filename;
+#if defined(applec)
+# pragma unused(filename)
+#endif
 {
 #if defined(UNIX) || defined(VMS)
 	char *lockname;
@@ -658,9 +724,25 @@ const char *filename;
 #endif
 
 	/* "filename" is an environment variable, so it should hang around */
-	if (filename && ((fp = fopenp(filename, "r")) != (FILE *)0)) {
-		configfile = filename;
-		return(fp);
+	if (filename) {
+#ifdef UNIX
+		if (access(filename, 4) == -1) {
+			/* 4 is R_OK on newer systems */
+			/* nasty sneaky attempt to read file through
+			 * NetHack's setuid permissions -- this is the only
+			 * place a file name may be wholly under the player's
+			 * control
+			 */
+			raw_printf("Access to %s denied (%d).",
+					filename, errno);
+			wait_synch();
+			/* fall through to standard names */
+		} else
+#endif
+		if ((fp = fopenp(filename, "r")) != (FILE *)0) {
+			configfile = filename;
+			return(fp);
+		}
 	}
 
 #if defined(MICRO) || defined(MAC)
@@ -752,6 +834,9 @@ FILE		*fp;
 char		*buf;
 char		*tmp_ramdisk;
 char		*tmp_levels;
+#if defined(applec)
+# pragma unused(tmp_ramdisk,tmp_levels)
+#endif
 {
 	char		*bufp, *altp;
 
@@ -798,16 +883,23 @@ char		*tmp_levels;
 		(void) strncpy(tmp_levels, bufp, PATHLEN);
 
 	} else if (!strncmpi(buf, "SAVE", 4)) {
+# ifdef MFLOPPY
+		extern	int saveprompt;
+#endif
 		char *ptr;
 		if (ptr = index(bufp, ';')) {
 			*ptr = '\0';
 # ifdef MFLOPPY
 			if (*(ptr+1) == 'n' || *(ptr+1) == 'N') {
-				extern	int saveprompt;
 				saveprompt = FALSE;
 			}
 # endif
-    }
+		}
+#ifdef	MFLOPPY
+		else
+		    saveprompt = flags.asksavedisk;
+#endif
+
 		(void) strncpy(SAVEP, bufp, PATHLEN);
 		append_slash(SAVEP);
 #endif /* MICRO */
@@ -836,19 +928,32 @@ char		*tmp_levels;
 	    (void) get_uchars(fp, buf, bufp, &(monsyms[1]),
 					MAXMCLASSES-1, "MONSTERS");
 #ifdef AMIGA
+	} else if (!strncmpi(buf, "FONT", 4)) {
+		char *t;
+		int size;
+		extern void amii_set_text_font( char *, int );
+
+		if( t = strchr( buf+5, ':' ) )
+		{
+		    *t = 0;
+		    amii_set_text_font( buf+5, atoi( t + 1 ) );
+		    *t = ':';
+		}
 	} else if (!strncmpi(buf, "PATH", 4)) {
 		(void) strncpy(PATH, bufp, PATHLEN);
-#endif
-#ifdef AMII_GRAPHICS
 	} else if (!strncmpi(buf, "PENS", 3)) {
+# ifdef AMII_GRAPHICS
 		int i;
 		char *t;
-		for (i = 0, t = strtok(bufp, ",");
-				t && i < 8;
-				t = strtok(NULL, ","), ++i) {
+		extern void amii_setpens( void );
+
+		for (i = 0, t = strtok(bufp, ",/"); t != NULL;
+				    t = strtok(NULL, ",/"), ++i)
+		{
 			sscanf(t, "%hx", &flags.amii_curmap[i]);
 		}
 		amii_setpens();
+# endif
 #endif
 	} else
 		return 0;
@@ -942,6 +1047,9 @@ const char *filename;
 void
 check_recordfile(dir)
 const char *dir;
+#if defined(applec)
+# pragma unused(dir)
+#endif
 {
 #if defined(UNIX) || defined(VMS)
 	int fd = open(RECORD, O_RDWR, 0);

@@ -90,7 +90,7 @@ RANDOBJ = random.obj
 
 # note: no trailing whitespace (or comment) after version or patchlevel numbers
 VERSION  =3.1
-PATCHLVL =1
+PATCHLVL =2
 
 MAKEDEFS = $(UTL)makedefs.exe;
 
@@ -213,8 +213,9 @@ objects.obj :
 	$(CC) $(CFLAGS) objects.c
      @- if f$search("$(MAKEDEFS)").nes."" then delete $(MAKEDEFS)
 
+# need those include files not in monst.c/objects.c dependencies below
 $(MAKEDEFS) :	$(FIRSTOBJ) $(UTL)makedefs.c \
-		$(INC)config.h $(INC)artilist.h $(INC)qtext.h  $(LIBOPT)
+		$(INC)artilist.h $(INC)patchlevel.h $(INC)qtext.h  $(LIBOPT)
 	$(CD) $(UTL)
 	$(MAKE)$(MAKEFLAGS) $(MAKEDEFS)
       @ $(CD) $(SRC)
@@ -260,6 +261,7 @@ vmsmisc.obj :	$(VMS)vmsmisc.c $(VMS)oldcrtl.c
 vmsfiles.obj :	$(VMS)vmsfiles.c $(INC)config.h
 vmsmail.obj :	$(VMS)vmsmail.c $(INC)config.h $(INC)winprocs.h $(INC)mail.h
 gnutermcap.obj : $(VMS)gnutermcap.c
+	$(CC) $(CFLAGS)/Define=("exit=vms_exit","ospeed=vms_ospeed") $(VMS)gnutermcap.c
 gnutparam.obj : $(VMS)gnutparam.c
 
 random.c :
@@ -356,12 +358,13 @@ monst.obj :	$(INC)config.h $(INC)permonst.h $(INC)monsym.h $(INC)eshk.h \
 mplayer.obj :	$(INC)hack.h
 mthrowu.obj :	$(INC)hack.h
 muse.obj :	$(INC)hack.h
-music.obj :	$(INC)hack.h
+music.obj :	$(INC)hack.h #interp.c
 o_init.obj :	$(INC)hack.h
 objects.obj :	$(INC)config.h $(INC)obj.h $(INC)objclass.h $(INC)prop.h \
 		$(INC)color.h objects.c
 objnam.obj :	$(INC)hack.h
-options.obj :	$(INC)hack.h $(INC)termcap.h
+options.obj :	$(INC)config.h $(INC)objclass.h $(INC)flag.h \
+		$(INC)hack.h $(INC)termcap.h
 pager.obj :	$(INC)hack.h
 pickup.obj :	$(INC)hack.h
 pline.obj :	$(INC)hack.h $(INC)epri.h
@@ -381,7 +384,7 @@ save.obj :	$(INC)hack.h $(INC)lev.h $(INC)quest.h
 shk.obj :	$(INC)hack.h $(INC)eshk.h
 shknam.obj :	$(INC)hack.h $(INC)eshk.h
 sit.obj :	$(INC)hack.h $(INC)artifact.h
-sounds.obj :	$(INC)hack.h $(INC)edog.h $(INC)eshk.h
+sounds.obj :	$(INC)hack.h $(INC)edog.h
 sp_lev.obj :	$(INC)hack.h $(INC)sp_lev.h $(INC)rect.h
 spell.obj :	$(INC)hack.h
 steal.obj :	$(INC)hack.h
@@ -438,7 +441,7 @@ $(INC)mondata.h :  $(INC)align.h
 			$(TOUCH) $(INC)mondata.h
 $(INC)monst.h :  $(INC)align.h
 			$(TOUCH) $(INC)monst.h
-$(INC)os2conf.h :  $(INC)pcconf.h
+$(INC)os2conf.h :  $(INC)micro.h $(INC)system.h
 			$(TOUCH) $(INC)os2conf.h
 $(INC)pcconf.h :  $(INC)micro.h $(INC)system.h
 			$(TOUCH) $(INC)pcconf.h

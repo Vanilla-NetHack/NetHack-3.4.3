@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)u_init.c	3.1	93/02/21	*/
+/*	SCCS Id: @(#)u_init.c	3.1	93/04/24	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -368,29 +368,21 @@ u_init()
 			 * generators are bad enough to seriously skew the
 			 * results if we use rn2(2)...  --KAA
 			 */
-
+		ini_inv(Elf);
 		/*
 		 * Elves are people of music and song, or they are warriors.
 		 * Warriors get mithril coats; non-warriors MAY get an
 		 * instrument.  We use a kludge to get only non-magic
 		 * instruments.
 		 */
-		if (Elf[E_ARMOR].trotyp == ELVEN_CLOAK) {
-			if (!rn2(5)) {
-		    	static int trotyp[] = {
-					WOODEN_FLUTE, TOOLED_HORN, WOODEN_HARP,
-					BELL, BUGLE, LEATHER_DRUM
-				};
-
-				Instrument[0].trotyp = trotyp[rn2(SIZE(trotyp))];
-#ifdef DEBUG
-				debugpline("Elf got instrument %d",
-					Instrument[0].trotyp);
-#endif
-				ini_inv(Instrument);
-			}
+		if (Elf[E_ARMOR].trotyp == ELVEN_CLOAK && !rn2(5)) {
+		    static int trotyp[] = {
+			WOODEN_FLUTE, TOOLED_HORN, WOODEN_HARP,
+			BELL, BUGLE, LEATHER_DRUM
+		    };
+		    Instrument[0].trotyp = trotyp[rn2(SIZE(trotyp))];
+		    ini_inv(Instrument);
 		}
-		ini_inv(Elf);
 		if(!rn2(5)) ini_inv(Blindfold);
 		else if(!rn2(6)) ini_inv(Lamp);
 		knows_object(ELVEN_SHORT_SWORD);

@@ -9,7 +9,6 @@
 
 
 /*#define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION "3.1"	/* version number. */
 
 /*
  * Files expected to exist in the playground directory.
@@ -183,7 +182,11 @@ typedef int winid;		/* a window identifier */
 #  define PORT_ID	"Mac"
 # endif
 # ifdef MSDOS
-#  define PORT_ID	"PC"
+#  ifdef PC9801
+#   define PORT_ID	"PC-9801"
+#  else
+#   define PORT_ID	"PC"
+#  endif
 # endif
 # ifdef OS2
 #  define PORT_ID	"OS/2"
@@ -200,6 +203,10 @@ typedef int winid;		/* a window identifier */
 # ifdef WIN32CON
 #  define PORT_ID	"NT-Console"
 # endif
+#endif
+
+#if defined(MICRO) && !defined(AMIGA) && !defined(TOS) && !defined(OS2_HPFS)
+#define SHORT_FILENAMES		/* filenames are 8.3 */
 #endif
 
 /*

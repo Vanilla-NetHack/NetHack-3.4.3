@@ -300,7 +300,9 @@ objects.o:
 	$(CC) $(CFLAGS) -c objects.c
 	@rm -f $(MAKEDEFS)
 
-$(MAKEDEFS): ../util/makedefs.c  ../include/artilist.h
+# need those include files not in monst.c/objects.c dependencies below
+$(MAKEDEFS): ../util/makedefs.c  ../include/artilist.h ../include/patchlevel.h \
+		../include/qtext.h
 	@( cd ../util ; $(MAKE) makedefs)
 
 ../include/onames.h: $(MAKEDEFS)
@@ -528,11 +530,11 @@ monst.o:  ../include/config.h ../include/permonst.h ../include/monsym.h ../inclu
 mplayer.o:  ../include/hack.h
 mthrowu.o:  ../include/hack.h
 muse.o:  ../include/hack.h
-music.o:  ../include/hack.h
+music.o:  ../include/hack.h #interp.c
 o_init.o:  ../include/hack.h
 objects.o:  ../include/config.h ../include/obj.h ../include/objclass.h ../include/prop.h ../include/color.h objects.c
 objnam.o:  ../include/hack.h
-options.o:  ../include/hack.h ../include/termcap.h
+options.o:  ../include/config.h ../include/objclass.h ../include/flag.h ../include/hack.h ../include/termcap.h
 pager.o:  ../include/hack.h
 pickup.o:  ../include/hack.h
 pline.o:  ../include/hack.h ../include/epri.h
@@ -552,7 +554,7 @@ save.o:  ../include/hack.h ../include/lev.h ../include/quest.h
 shk.o:  ../include/hack.h ../include/eshk.h
 shknam.o:  ../include/hack.h ../include/eshk.h
 sit.o:  ../include/hack.h ../include/artifact.h
-sounds.o:  ../include/hack.h ../include/edog.h ../include/eshk.h
+sounds.o:  ../include/hack.h ../include/edog.h
 sp_lev.o:  ../include/hack.h ../include/sp_lev.h ../include/rect.h
 spell.o:  ../include/hack.h
 steal.o:  ../include/hack.h
@@ -607,7 +609,7 @@ zap.o:  ../include/hack.h
 	touch ../include/mondata.h
 ../include/monst.h:  ../include/align.h
 	touch ../include/monst.h
-../include/os2conf.h:  ../include/pcconf.h
+../include/os2conf.h:  ../include/micro.h ../include/system.h
 	touch ../include/os2conf.h
 ../include/pcconf.h:  ../include/micro.h ../include/system.h
 	touch ../include/pcconf.h

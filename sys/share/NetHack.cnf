@@ -1,7 +1,16 @@
+#	SCSS Id: @(#)Nethack.cnf	3.1	    93/03/26
+#	Copyright (c) NetHack PC Development Team 1990, 1991, 1992, 1993
+#	NetHack may be freely redistributed.  See license for details.
+#
 # A '#' at the beginning of a line means the rest of the line is a comment.
 #
 # This configuration file is set up for two cases, for a hard disk
 # (as drive C:), and for two floppy disks.
+#
+# Some options MUST be set in this file, other options can be toggled while
+# playing.  For a list of options available see the <opthelp.> file.  If
+# the game plays slowly you might notice some improvement by setting
+# !time and !showexp, which will reduce screen I/O somewhat.
 #
 # To change the configuration, comment out the unwanted lines, and
 # uncomment the configuration you want.
@@ -28,7 +37,7 @@ OPTIONS=rawio,BIOS,IBMgraphics
 # Other general options.  You might also set "silent" so as not to attract
 # the boss's attention.
 #
-OPTIONS=time,rest_on_space,nopickup,number_pad
+OPTIONS=time,rest_on_space,noautopickup,number_pad
 
 
 # *** HARD DISK CONFIGURATION ***

@@ -5,10 +5,42 @@
 # unshar, or by typing "sh <file", e.g..  If this archive is complete, you
 # will see the following message at the end:
 #		"End of shell archive."
-# Contents:  READ.ME Files Install Makefile Master Name Node Remove
-#   Size System playtest spkr.7 spkr.c spkr.h
-# Wrapped by billr@saab on Wed Jan 27 08:37:43 1993
+# Contents:  Makefile READ.ME install.bsd spkr.7 spkr.c
+# Wrapped by billr@saab on Thu Jun 10 16:41:24 1993
 PATH=/bin:/usr/bin:/usr/ucb ; export PATH
+if test -f 'Makefile' -a "${1}" != "-c" ; then 
+  echo shar: Will not clobber existing file \"'Makefile'\"
+else
+echo shar: Extracting \"'Makefile'\" \(378 characters\)
+sed "s/^X//" >'Makefile' <<'END_OF_FILE'
+X#
+X# Speaker driver package makefile
+X#
+XCFLAGS = -I. -O # -DDEBUG
+XLDFLAGS = -s
+X
+Xall: Driver.o
+X
+Xinstall:
+X	./Install
+X
+XDriver.o: spkr.c
+X	$(CC) $(CFLAGS) -c spkr.c
+X	mv spkr.o Driver.o
+X
+Xclean:
+X	rm -f Driver.o *~ speaker.shar
+X
+XDSP =  Files Install Master Name Node Remove Size System 
+Xshar:
+X	shar READ.ME install.bsd spkr.7 Makefile spkr.[ch] \
+X		interp.c $(DSP) playtest >speaker.shar
+END_OF_FILE
+if test 378 -ne `wc -c <'Makefile'`; then
+    echo shar: \"'Makefile'\" unpacked with wrong size!
+fi
+# end of 'Makefile'
+fi
 if test -f 'READ.ME' -a "${1}" != "-c" ; then 
   echo shar: Will not clobber existing file \"'READ.ME'\"
 else
@@ -59,258 +91,81 @@ if test 1372 -ne `wc -c <'READ.ME'`; then
 fi
 # end of 'READ.ME'
 fi
-if test -f 'Files' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Files'\"
+if test -f 'install.bsd' -a "${1}" != "-c" ; then 
+  echo shar: Will not clobber existing file \"'install.bsd'\"
 else
-echo shar: Extracting \"'Files'\" \(24 characters\)
-sed "s/^X//" >'Files' <<'END_OF_FILE'
-X/usr/include/sys/spkr.h
+echo shar: Extracting \"'install.bsd'\" \(1434 characters\)
+sed "s/^X//" >'install.bsd' <<'END_OF_FILE'
+XCopy spkr.c and interp.c to /sys/i386/isa
+XCopy spkr.h to /sys/sys
+X
+X-----------------------------------------------------------------------------
+X
+XFile /sys/i386/conf/YOUR_MACHINE_NAME
+Xadd following line:
+X
+Xpseudo-device   speaker
+X
+X-----------------------------------------------------------------------------
+X
+XFile /sys/i386/conf/files.i386
+Xadd following line:
+X
+Xi386/isa/spkr.c         optional speaker
+X
+X-----------------------------------------------------------------------------
+X
+XFile /sys/i386/i386/conf.c
+X[major number 20 (hex) is registered for spkr driver, don't change it]
+Xadd following code:
+X
+X#include "speaker.h"
+X#if NSPEAKER > 0
+Xint     spkropen(),spkrclose(),spkrwrite(),spkrioctl();
+X#else
+X#define spkropen  enxio
+X#define spkrclose enxio
+X#define spkrwrite enxio
+X#define spkrioctl enxio
+X#endif
+X	...
+X
+Xstruct cdevsw	cdevsw[] =
+X{
+X	...
+X
+X	{ spkropen,     spkrclose,      enxio,          spkrwrite,      /*20*/
+X	  spkrioctl,    enxio,          enxio,          NULL,
+X	  enxio,        enxio,          enxio },
+X	...
+X
+X-----------------------------------------------------------------------------
+X
+XMake corresponding device:
+X
+X	mknod /dev/speaker c 32 0
+X
+X[major number 32 (20 hex) is registered for spkr driver, don't change it]
+X
+X-----------------------------------------------------------------------------
+X
+XGo to /sys/i386/conf and type
+X	config YOUR_MACHINE_NAME
+Xthen go to /sys/compile/YOUR_MACHINE_NAME and type
+X	make depend
+X	make
+X
 END_OF_FILE
-if test 24 -ne `wc -c <'Files'`; then
-    echo shar: \"'Files'\" unpacked with wrong size!
+if test 1434 -ne `wc -c <'install.bsd'`; then
+    echo shar: \"'install.bsd'\" unpacked with wrong size!
 fi
-# end of 'Files'
-fi
-if test -f 'Install' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Install'\"
-else
-echo shar: Extracting \"'Install'\" \(812 characters\)
-sed "s/^X//" >'Install' <<'END_OF_FILE'
-X#
-X# Speaker driver installation script
-X#
-XTMP=/tmp/speaker.err
-XERR1=" Errors have been written to the file $TMP."
-XERR2=" The Speaker Driver software was not installed."
-X
-Xecho "Installing Speaker Driver Software Package"
-X
-X/etc/conf/bin/idcheck -p speaker 2>$TMP
-Xif [ $? != 0 ]
-Xthen
-X	echo "The speaker package is already at least partly installed.
-X	Removing the old version now..."
-X	/etc/conf/bin/idinstall -d speaker
-Xfi
-X
-X/etc/conf/bin/idinstall -a -k speaker 2>>$TMP
-Xif [ $? != 0 ]
-Xthen
-X	message "There was an error during package installation. $ERR1 $ERR2"
-X	exit 1
-Xfi
-X
-X/etc/conf/bin/idbuild 2>>$TMP
-Xif [ $? != 0 ]
-Xthen
-X	message "There was an error during kernel reconfiguration. $ERR1 $ERR2"
-X	exit 1
-Xfi
-X
-Xrm -f $TMP
-X
-Xcp spkr.h /usr/include/sys/spkr.h
-X
-Xecho "Performing shutdown..."
-Xcd /; exec /etc/shutdown -g0 -y
-END_OF_FILE
-if test 812 -ne `wc -c <'Install'`; then
-    echo shar: \"'Install'\" unpacked with wrong size!
-fi
-# end of 'Install'
-fi
-if test -f 'Makefile' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Makefile'\"
-else
-echo shar: Extracting \"'Makefile'\" \(353 characters\)
-sed "s/^X//" >'Makefile' <<'END_OF_FILE'
-X#
-X# Speaker driver package makefile
-X#
-XCFLAGS = -I. -O # -DDEBUG
-XLDFLAGS = -s
-X
-Xall: Driver.o
-X
-Xinstall:
-X	./Install
-X
-XDriver.o: spkr.c
-X	$(CC) $(CFLAGS) -c spkr.c
-X	mv spkr.o Driver.o
-X
-Xclean:
-X	rm -f Driver.o *~ speaker.shar
-X
-XDSP =  Files Install Master Name Node Remove Size System 
-Xshar:
-X	shar READ.ME spkr.7 Makefile spkr.[ch] $(DSP) playtest >speaker.shar
-END_OF_FILE
-if test 353 -ne `wc -c <'Makefile'`; then
-    echo shar: \"'Makefile'\" unpacked with wrong size!
-fi
-# end of 'Makefile'
-fi
-if test -f 'Master' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Master'\"
-else
-echo shar: Extracting \"'Master'\" \(34 characters\)
-sed "s/^X//" >'Master' <<'END_OF_FILE'
-Xspeaker	ocwi	iocH	spkr	0	0	1	1	-1
-END_OF_FILE
-if test 34 -ne `wc -c <'Master'`; then
-    echo shar: \"'Master'\" unpacked with wrong size!
-fi
-# end of 'Master'
-fi
-if test -f 'Name' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Name'\"
-else
-echo shar: Extracting \"'Name'\" \(39 characters\)
-sed "s/^X//" >'Name' <<'END_OF_FILE'
-X386 UNIX Speaker Device Driver Package
-END_OF_FILE
-if test 39 -ne `wc -c <'Name'`; then
-    echo shar: \"'Name'\" unpacked with wrong size!
-fi
-# end of 'Name'
-fi
-if test -f 'Node' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Node'\"
-else
-echo shar: Extracting \"'Node'\" \(20 characters\)
-sed "s/^X//" >'Node' <<'END_OF_FILE'
-Xspeaker	speaker	c	0
-END_OF_FILE
-if test 20 -ne `wc -c <'Node'`; then
-    echo shar: \"'Node'\" unpacked with wrong size!
-fi
-# end of 'Node'
-fi
-if test -f 'Remove' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Remove'\"
-else
-echo shar: Extracting \"'Remove'\" \(475 characters\)
-sed "s/^X//" >'Remove' <<'END_OF_FILE'
-X#
-X# Speaker driver remove script
-X#
-XTMP=/tmp/speaker.err
-XRERR="Errors have been written to the file $TMP."
-X
-Xecho "Removing Speaker Driver Software Package"
-X
-X/etc/conf/bin/idinstall -d speaker 2>$TMP
-Xif [ $? != 0 ]
-Xthen
-X	message "There was an error during package removal. $RERR"
-X	exit 1
-Xfi
-X
-X/etc/conf/bin/idbuild 2>>$TMP
-Xif [ $? != 0 ]
-Xthen
-X	message "There was an error during kernel reconfiguration. $RERR"
-X	exit 1
-Xfi
-X
-Xrm -f /dev/speaker $TMP /usr/include/sys/spkr.h
-X
-Xexit 0
-END_OF_FILE
-if test 475 -ne `wc -c <'Remove'`; then
-    echo shar: \"'Remove'\" unpacked with wrong size!
-fi
-# end of 'Remove'
-fi
-if test -f 'Size' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'Size'\"
-else
-echo shar: Extracting \"'Size'\" \(18 characters\)
-sed "s/^X//" >'Size' <<'END_OF_FILE'
-XROOT=1400
-XUSR=100
-END_OF_FILE
-if test 18 -ne `wc -c <'Size'`; then
-    echo shar: \"'Size'\" unpacked with wrong size!
-fi
-# end of 'Size'
-fi
-if test -f 'System' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'System'\"
-else
-echo shar: Extracting \"'System'\" \(26 characters\)
-sed "s/^X//" >'System' <<'END_OF_FILE'
-Xspeaker	Y	1	0	0	0	0	0	0	0
-END_OF_FILE
-if test 26 -ne `wc -c <'System'`; then
-    echo shar: \"'System'\" unpacked with wrong size!
-fi
-# end of 'System'
-fi
-if test -f 'playtest' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'playtest'\"
-else
-echo shar: Extracting \"'playtest'\" \(729 characters\)
-sed "s/^X//" >'playtest' <<'END_OF_FILE'
-X#
-X# Test script for the speaker driver
-X#
-X# v1.0 by Eric S. Raymond (Feb 1990)
-X#
-Xreveille="t255l8c.f.afc~c.f.afc~c.f.afc.f.a..f.~c.f.afc~c.f.afc~c.f.afc~c.f.."
-Xcontact="<cd<a#~<a#>f"
-Xdance="t240<cfcfgagaa#b#>dc<a#a.~fg.gaa#.agagec~cfcfgagaa#b#>dc<a#a.~fg.gga.agfgfgf"
-Xloony="t255cf8f8edc<a>~cf8f8edd#e~ce8cdce8cd.<a>c8c8c#def8af8"
-X
-Xcase $1 in
-Xreveille) echo  $reveille >/dev/speaker;;
-Xcontact)  echo  $contact >/dev/speaker;;
-Xdance)  echo  $dance >/dev/speaker;;
-Xloony)  echo  $loony >/dev/speaker;;
-X*)
-X	echo "No such tune. Available tunes are:\n"
-X	echo "reveille -- Reveille"
-X	echo "contact -- Contact theme from Close Encounters"
-X	echo "dance -- Lord of the Dance (aka Simple Gifts)"
-X	echo "loony -- Loony Toons theme"
-X	;;
-Xesac
-END_OF_FILE
-if test 729 -ne `wc -c <'playtest'`; then
-    echo shar: \"'playtest'\" unpacked with wrong size!
-fi
-# end of 'playtest'
+# end of 'install.bsd'
 fi
 if test -f 'spkr.7' -a "${1}" != "-c" ; then 
   echo shar: Will not clobber existing file \"'spkr.7'\"
 else
-echo shar: Extracting \"'spkr.7'\" \(5533 characters\)
+echo shar: Extracting \"'spkr.7'\" \(5193 characters\)
 sed "s/^X//" >'spkr.7' <<'END_OF_FILE'
-X.deTH
-X.PD
-X.nrIN \\n()Mu
-X.ift .ds ]H \\$1\^(\^\\$2\^)
-X.ifn .ds ]H \\$1(\\$2)
-X.if\\n()s .ds ]D
-X.if\\n()t .ds ]D UNIX System V
-X.ifn .ds ]D UNIX System V (addition)
-X.ds]L
-X.if!^\\$3^^ .ds ]L (\^\\$3\^)
-X.if!^\\$4^^ .ds ]D \\$4
-X.wh0 }H
-X.wh-\\n(:mu }F
-X.em}M
-X.if\\n(nl .bp
-X.nr)I \\n()Mu
-X.nr)R 0
-X.}E
-X.DT
-X.ifn \{.na
-X.nh\}
-X.ift \{.bd S 3 3
-X.hy14 \}
-X..
 X.TH SPKR 7
 X.SH NAME
 Xspkr \- console speaker device driver
@@ -429,7 +284,7 @@ X/dev/speaker -- speaker device file
 X.SH AUTHOR
 XEric S. Raymond (esr@snark.thyrsus.com) Feb 1990
 END_OF_FILE
-if test 5533 -ne `wc -c <'spkr.7'`; then
+if test 5193 -ne `wc -c <'spkr.7'`; then
     echo shar: \"'spkr.7'\" unpacked with wrong size!
 fi
 # end of 'spkr.7'
@@ -437,14 +292,30 @@ fi
 if test -f 'spkr.c' -a "${1}" != "-c" ; then 
   echo shar: Will not clobber existing file \"'spkr.c'\"
 else
-echo shar: Extracting \"'spkr.c'\" \(12412 characters\)
+echo shar: Extracting \"'spkr.c'\" \(13871 characters\)
 sed "s/^X//" >'spkr.c' <<'END_OF_FILE'
 X/*
 X * spkr.c -- device driver for console speaker on 80386
 X *
 X * v1.1 by Eric S. Raymond (esr@snark.thyrsus.com) Feb 1990
+X *      modified for 386bsd by Andrew A. Chernov <ache@astral.msk.su>
 X */
 X
+X#ifdef __386BSD__
+X#include "speaker.h"
+X#endif
+X#if !defined(__386BSD__) || (NSPEAKER > 0)
+X
+X#ifdef __386BSD__
+X#include "types.h"
+X#include "param.h"
+X#include "errno.h"
+X#include "buf.h"
+X#include "uio.h"
+X
+X#define CADDR caddr_t
+X#define err_ret(x) return(x)
+X#else /* SYSV */
 X#include <sys/types.h>
 X#include <sys/param.h>
 X#include <sys/dir.h>
@@ -842,136 +713,134 @@ X	    break;
 X	}
 X    }
 X}
+XEND-of-interp.c
+Xecho x - Files
+Xsed 's/^X//' >Files << 'END-of-Files'
+X/usr/include/sys/spkr.h
+XEND-of-Files
+Xecho x - Install
+Xsed 's/^X//' >Install << 'END-of-Install'
+X#
+X# Speaker driver installation script
+X#
+XTMP=/tmp/speaker.err
+XERR1=" Errors have been written to the file $TMP."
+XERR2=" The Speaker Driver software was not installed."
 X
-X/******************* UNIX DRIVER HOOKS BEGIN HERE **************************
-X *
-X * This section implements driver hooks to run playstring() and the tone(),
-X * endtone(), and rest() functions defined above. SVr3.2-compatible copyin()
-X * is also required.
-X */
+Xecho "Installing Speaker Driver Software Package"
 X
-Xstatic int spkr_active;	/* exclusion flag */
+X/etc/conf/bin/idcheck -p speaker 2>$TMP
+Xif [ $? != 0 ]
+Xthen
+X	echo "The speaker package is already at least partly installed.
+X	Removing the old version now..."
+X	/etc/conf/bin/idinstall -d speaker
+Xfi
 X
-Xint spkropen(dev)
-Xdev_t	dev;
-X{
-X#ifdef DEBUG
-X    printf("spkropen: entering with dev = %x\n", dev);
-X#endif /* DEBUG */
+X/etc/conf/bin/idinstall -a -k speaker 2>>$TMP
+Xif [ $? != 0 ]
+Xthen
+X	message "There was an error during package installation. $ERR1 $ERR2"
+X	exit 1
+Xfi
 X
-X    if (minor(dev) != 0)
-X	u.u_error = ENXIO;
-X    else if (spkr_active)
-X	u.u_error = EBUSY;
-X    else
-X    {
-X	playinit();
-X	spkr_active = 1;
-X    }
-X}
+X/etc/conf/bin/idbuild 2>>$TMP
+Xif [ $? != 0 ]
+Xthen
+X	message "There was an error during kernel reconfiguration. $ERR1 $ERR2"
+X	exit 1
+Xfi
 X
-Xint spkrwrite(dev)
-Xdev_t	dev;
-X{
-X#ifdef DEBUG
-X    printf("spkrwrite: entering with dev = %x, u.u_count = %d\n",
-X		dev, u.u_count);
-X#endif /* DEBUG */
+Xrm -f $TMP
 X
-X    if (minor(dev) != 0)
-X	u.u_error = ENXIO;
-X    else
-X    {
-X	char	bfr[STD_BLK];
+Xcp spkr.h /usr/include/sys/spkr.h
 X
-X	copyin(u.u_base, bfr, u.u_count);
-X	playstring(bfr, u.u_count);
-X	u.u_base += u.u_count;
-X	u.u_count = 0;
-X    }
-X}
+Xecho "Performing shutdown..."
+Xcd /; exec /etc/shutdown -g0 -y
+XEND-of-Install
+Xecho x - Master
+Xsed 's/^X//' >Master << 'END-of-Master'
+Xspeaker	ocwi	iocH	spkr	0	0	1	1	-1
+XEND-of-Master
+Xecho x - Name
+Xsed 's/^X//' >Name << 'END-of-Name'
+X386 UNIX Speaker Device Driver Package
+XEND-of-Name
+Xecho x - Node
+Xsed 's/^X//' >Node << 'END-of-Node'
+Xspeaker	speaker	c	0
+XEND-of-Node
+Xecho x - Remove
+Xsed 's/^X//' >Remove << 'END-of-Remove'
+X#
+X# Speaker driver remove script
+X#
+XTMP=/tmp/speaker.err
+XRERR="Errors have been written to the file $TMP."
 X
-Xint spkrclose(dev)
-Xdev_t	dev;
-X{
-X#ifdef DEBUG
-X    printf("spkrclose: entering with dev = %x\n", dev);
-X#endif /* DEBUG */
+Xecho "Removing Speaker Driver Software Package"
 X
-X    if (minor(dev) != 0)
-X	u.u_error = ENXIO;
-X    else
-X    {
-X	endtone();
-X	spkr_active = 0;
-X    }
-X}
+X/etc/conf/bin/idinstall -d speaker 2>$TMP
+Xif [ $? != 0 ]
+Xthen
+X	message "There was an error during package removal. $RERR"
+X	exit 1
+Xfi
 X
-Xint spkrioctl(dev, cmd, cmdarg)
-Xdev_t	dev;
-Xint	cmd;
-Xchar	*cmdarg;
-X{
-X#ifdef DEBUG
-X    printf("spkrioctl: entering with dev = %x, cmd = %x\n");
-X#endif /* DEBUG */
+X/etc/conf/bin/idbuild 2>>$TMP
+Xif [ $? != 0 ]
+Xthen
+X	message "There was an error during kernel reconfiguration. $RERR"
+X	exit 1
+Xfi
 X
-X    if (minor(dev) != 0)
-X	u.u_error = ENXIO;
-X    else if (cmd == SPKRTONE)
-X    {
-X	tone_t	*tp = (tone_t *)cmdarg;
+Xrm -f /dev/speaker $TMP /usr/include/sys/spkr.h
 X
-X	if (tp->frequency == 0)
-X	    rest(tp->duration);
-X	else
-X	    tone(tp->frequency, tp->duration);
-X    }
-X    else if (cmd == SPKRTUNE)
-X    {
-X	tone_t	*tp = (tone_t *)cmdarg;
+Xexit 0
+XEND-of-Remove
+Xecho x - Size
+Xsed 's/^X//' >Size << 'END-of-Size'
+XROOT=1400
+XUSR=100
+XEND-of-Size
+Xecho x - System
+Xsed 's/^X//' >System << 'END-of-System'
+Xspeaker	Y	1	0	0	0	0	0	0	0
+XEND-of-System
+Xecho x - playtest
+Xsed 's/^X//' >playtest << 'END-of-playtest'
+X:
+X# Test script for the speaker driver
+X#
+X# v1.0 by Eric S. Raymond (Feb 1990)
+X#      modified for 386bsd by Andrew A. Chernov <ache@astral.msk.su>
+X#
+Xreveille="t255l8c.f.afc~c.f.afc~c.f.afc.f.a..f.~c.f.afc~c.f.afc~c.f.afc~c.f.."
+Xcontact="<cd<a#~<a#>f"
+Xdance="t240<cfcfgagaa#b#>dc<a#a.~fg.gaa#.agagegc.~cfcfgagaa#b#>dc<a#a.~fg.gga.agfgfgf."
+Xloony="t255cf8f8edc<a.>~cf8f8edd#e.~ce8cdce8cd.<a>c8c8c#def8af8."
 X
-X	for (; tp->duration; tp++)
-X	    if (tp->frequency == 0)
-X		rest(tp->duration);
-X	    else
-X		tone(tp->frequency, tp->duration);
-X    }
-X    else
-X	u.u_error = EINVAL;
-X}
-X
-X/* spkr.c ends here */
+Xcase $1 in
+Xreveille) echo  $reveille >/dev/speaker;;
+Xcontact)  echo  $contact >/dev/speaker;;
+Xdance)  echo  $dance >/dev/speaker;;
+Xloony)  echo  $loony >/dev/speaker;;
+X*)
+X	echo "No such tune. Available tunes are:"
+X	echo
+X	echo "reveille -- Reveille"
+X	echo "contact -- Contact theme from Close Encounters"
+X	echo "dance -- Lord of the Dance (aka Simple Gifts)"
+X	echo "loony -- Loony Toons theme"
+X	;;
+Xesac
+XEND-of-playtest
+Xexit
 END_OF_FILE
-if test 12412 -ne `wc -c <'spkr.c'`; then
+if test 13871 -ne `wc -c <'spkr.c'`; then
     echo shar: \"'spkr.c'\" unpacked with wrong size!
 fi
 # end of 'spkr.c'
-fi
-if test -f 'spkr.h' -a "${1}" != "-c" ; then 
-  echo shar: Will not clobber existing file \"'spkr.h'\"
-else
-echo shar: Extracting \"'spkr.h'\" \(317 characters\)
-sed "s/^X//" >'spkr.h' <<'END_OF_FILE'
-X/* spkr.h -- interface definitions for speaker ioctl() */
-X
-X#define	SPKRIOC		('S'<<8)
-X#define	SPKRTONE	(SPKRIOC|1)	/* emit tone */
-X#define	SPKRTUNE	(SPKRIOC|2)	/* emit tone sequence*/
-X
-Xtypedef struct
-X{
-X    int	frequency;	/* in hertz */
-X    int duration;	/* in 1/100ths of a second */
-X}
-Xtone_t;
-X
-X/* spkr.h ends here */
-END_OF_FILE
-if test 317 -ne `wc -c <'spkr.h'`; then
-    echo shar: \"'spkr.h'\" unpacked with wrong size!
-fi
-# end of 'spkr.h'
 fi
 echo shar: End of shell archive.
 exit 0

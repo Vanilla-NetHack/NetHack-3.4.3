@@ -22,6 +22,7 @@
 #   Incl:	"include" directory
 #   Share:	"share" directory
 #   NHS:	"src" directory
+#   TTY:	"win/tty" directory
 #   Util:	"util" directory
 #   OBJ:	destination for object files for main binary
 #   OBJO:	destination for object files for everything else
@@ -112,7 +113,7 @@ CSYM	=
 UUDEC	= uudecode
 
 # Flex/Bison command assignments -- Useful only if you have flex/bison
-FLEX	= flex
+FLEX	= flex #-Sshare:flexhack.skel
 BISON	= bison
 # FBFIL and FBLIB may be used, if required by your version of flex or bison,
 # to specify additional files or libraries to be linked with
@@ -124,10 +125,23 @@ FBLIB	= #lib lib:compat.lib
 # "protect +s ifchange"
 EXECUTE = execute
 
+# SHARED LIBRARY CONFIGURATION
+# to build for shared libraries, you need these two objects
+# LIBOBJS = OBJ:aglue.o OBJ:amilib.o
+
+# NON-SHARED LIBRARY CONFIGURATION
+# To build for one particular windowing configuration,
+# you need these seven objects
+LIBOBJS = OBJ:winami.o OBJ:winstr.o OBJ:winreq.o OBJ:winfuncs.o \
+	  OBJ:winkey.o OBJ:winmenu.o OBJ:amiwind.o
+
+AMDEP = amiga:winproto.h amiga:winext.h amiga:windefs.h Incl:winami.h
+
 # Pathname for the C compiler being used.
 
 #[SAS6]
 CC	= sc
+ASM	= asm
 
 #[MANX]
 #CC	= cc
@@ -159,13 +173,18 @@ CC	= sc
 # undefine this to not compile with GSTs
 #GST=gst=$(GSTFILE)
 #
-DEBUG=l
-CFLAGS	= data=far nminc debug=$(DEBUG) idir=incl: cpu=any nostkchk ign=104 \
-	codename=none ignore=85,62 strmerge optsize ppbuf=8000 \
+VIEWWINDOW=#define=VIEWWINDOW
+DEBUG=debug=l
+#OPTFLAGS=opt optsize optinl optcomp=10 optpeep optgo optdep=5 \
+	optrdep=5 optalias
+CFLAGS	= data=far nminc $(DEBUG) idir=incl: cpu=any nostkchk ign=104 \
+	nover codename=none ignore=85,62 strmerge ppbuf=8000 \
+	$(OPTFLAGS) \
+	${VIEWWINDOW} \
 	afp $(ERRREXX) $(GST)
 # for files that are too large for the standard flags:
 CFLAGS2 = code=far nostrmerge
-WBCFLAGS = ignore=217,62 data=far ansi nminc code=far \
+WBCFLAGS = ignore=217,62 data=far ansi nminc code=far idir=incl: cpu=any afp \
 	debug=sf $(ERRREXX) $(GST)
 WBC2FLAGS = define=CLI
 SPLFLAGS = ignore=77 define=SPLIT dollarok
@@ -296,16 +315,19 @@ MAKEDEFOBJ = \
 	OBJ:monstr.o
 
 AMIGAOBJ = \
-	OBJ:amidos.o	OBJ:amirip.o 	OBJ:amiwbench.o OBJ:amiwind.o	\
-	OBJ:winami.o	OBJ:amisnd.o
+	OBJ:amidos.o	OBJ:amirip.o 	OBJ:amiwbench.o \
+	$(LIBOBJS) OBJ:amisnd.o
 
 SHAREOBJ = \
 	OBJ:pcmain.o	$(RANDOBJ)
 
+TTYOBJ = \
+	OBJ:getline.o OBJ:termcap.o OBJ:topl.o OBJ:wintty.o OBJ:amitty.o \
+	OBJ:rip.o
 
 # All the object files for NetHack:
 
-HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(SHAREOBJ) $(MAKEDEFOBJ)
+HOBJ = $(COMMOBJ) $(AMIGAOBJ) $(SHAREOBJ) $(MAKEDEFOBJ) $(TTYOBJ)
 
 # Getting down to business:
 
@@ -557,12 +579,26 @@ OBJ:amidos.o:  Amiga:amidos.c $(HDEP)
 
 OBJ:amirip.o:  Amiga:amirip.c $(HDEP)
 
-OBJ:amiwind.o:  Amiga:amiwind.c Amiga:amimenu.c $(HDEP)
+OBJ:aglue.o:  Amiga:aglue.a
+	$(ASM) -d $(AFLAGS) -oOBJ:aglue.o Amiga:aglue.a
 
 OBJ:amisnd.o:	Amiga:amisnd.c $(HDEP)
-	$(CC) $(CFLAGS) debug=ff $(OBJSPEC)OBJ:amisnd.o Amiga:amisnd.c
 
-OBJ:winami.o:	Amiga:winami.c $(HDEP) Amiga:char.c Amiga:colorwin.c Amiga:randwin.c
+OBJ:winstr.o:	Amiga:winstr.c $(HDEP) $(AMDEP)
+
+OBJ:winreq.o:	Amiga:winreq.c $(HDEP) $(AMDEP) Amiga:colorwin.c
+
+OBJ:winfuncs.o:	Amiga:winfuncs.c $(HDEP) $(AMDEP) Incl:patchlevel.h
+
+OBJ:winkey.o:	Amiga:winkey.c $(HDEP) $(AMDEP)
+
+OBJ:winmenu.o:	Amiga:winmenu.c $(HDEP) $(AMDEP)
+
+OBJ:winami.o:	Amiga:winami.c $(HDEP) $(AMDEP) Amiga:char.c Amiga:randwin.c
+
+OBJ:amilib.o:	Amiga:amilib.c $(HDEP) $(AMDEP)
+
+OBJ:amiwind.o:  Amiga:amiwind.c $(HDEP) $(AMDEP)
 
 OBJ:amiwbench.o:  Amiga:amiwbench.c $(HDEP)
 
@@ -585,13 +621,13 @@ WBH	= Amiga:wbdefs.h Amiga:wbstruct.h Amiga:wbprotos.h
 ASP	= Amiga:splitter
 OBJO:wb.o: $(WBH) Amiga:wb.c Amiga:wbwin.c Amiga:wbdata.c
 	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:wb.o Amiga:wb.c
-OBJO:wbx.o: $(WBH) Amiga:wbcli.c Amiga:wbwin.c Amiga:wbdata.c Incl:date.h
+OBJO:wbx.o: $(WBH) Amiga:wbcli.c Amiga:wbwin.c Amiga:wbdata.c #Incl:date.h
 	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:wbx.o Amiga:wbcli.c
 OBJO:loader.o: $(ASP)/loader.c $(ASP)/split.h $(ASP)/amiout.h $(ASP)/multi.h
 	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:loader.o $(ASP)/loader.c
 OBJO:multi.o: $(ASP)/multi.c $(ASP)/multi.h
 	$(CC) $(WBCFLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:multi.o $(ASP)/multi.c
-OBJO:cli.o: $(WBH) Amiga:wbcli.c Incl:date.h
+OBJO:cli.o: $(WBH) Amiga:wbcli.c Incl:patchlevel.h #Incl:date.h
 	$(CC) $(WBCFLAGS) $(WBC2FLAGS) $(SPLFLAGS) $(OBJSPEC)OBJO:cli.o Amiga:wbcli.c
 ####
 # splitter support
@@ -993,6 +1029,7 @@ OBJ:rnd.o:  NHS:rnd.c $(HDEP)
 OBJ:rumors.o:  NHS:rumors.c $(HDEP)
 OBJ:save.o:  NHS:save.c $(HDEP) Incl:lev.h Incl:quest.h
 OBJ:shk.o:  NHS:shk.c $(HDEP) Incl:eshk.h
+	$(CC) $(CFLAGS) $(CFLAGS2) $(OBJSPEC)$@ NHS:shk.c
 OBJ:shknam.o:  NHS:shknam.c $(HDEP) Incl:eshk.h
 OBJ:sit.o:  NHS:sit.c $(HDEP)
 OBJ:sounds.o:  NHS:sounds.c $(HDEP) Incl:edog.h Incl:eshk.h
@@ -1017,6 +1054,14 @@ OBJ:worm.o:  NHS:worm.c $(HDEP) Incl:lev.h
 OBJ:worn.o:  NHS:worn.c $(HDEP)
 OBJ:write.o:  NHS:write.c $(HDEP)
 OBJ:zap.o:  NHS:zap.c $(HDEP)
+
+OBJ:getline.o:	TTY:getline.c $(HDEP) Incl:wintty.h
+OBJ:termcap.o:	TTY:termcap.c $(HDEP) Incl:wintty.h Incl:termcap.h
+OBJ:topl.o:	TTY:topl.c $(HDEP) Incl:wintty.h Incl:termcap.h
+OBJ:wintty.o:	TTY:wintty.c $(HDEP) Incl:wintty.h Incl:termcap.h
+OBJ:amitty.o:	amiga:amitty.c $(HDEP)
+OBJ:rip.o:	NHS:rip.c $(HDEP) #more?
+
 Incl:config.h:  Incl:tradstdc.h Incl:global.h
 	-setdate Incl:config.h
 	-wait 2

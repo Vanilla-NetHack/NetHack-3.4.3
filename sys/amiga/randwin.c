@@ -15,7 +15,7 @@ struct Border Rnd_Border1 = {
 };
 
 struct IntuiText Rnd_IText1 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	7,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	8,5,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"OKAY",	/* pointer to text */
@@ -41,7 +41,7 @@ struct Gadget Rnd_Gadget1 = {
 #define Rnd_GadgetList1 Rnd_Gadget1
 
 struct IntuiText Rnd_IText6 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	6,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	198,29,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"a",	/* pointer to text */
@@ -57,7 +57,7 @@ struct IntuiText Rnd_IText5 = {
 };
 
 struct IntuiText Rnd_IText4 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	6,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	25,29,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"exciting game playing as",	/* pointer to text */
@@ -65,7 +65,7 @@ struct IntuiText Rnd_IText4 = {
 };
 
 struct IntuiText Rnd_IText3 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	6,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	15,18,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
 	"I think that you will have an",	/* pointer to text */
@@ -73,10 +73,10 @@ struct IntuiText Rnd_IText3 = {
 };
 
 struct IntuiText Rnd_IText2 = {
-	3,0,JAM2,	/* front and back text pens, drawmode and fill byte */
+	6,0,JAM2,	/* front and back text pens, drawmode and fill byte */
 	7,6,	/* XY origin relative to container TopLeft */
 	NULL,	/* font pointer or NULL for default */
-	"You asked for a random Character,",	/* pointer to text */
+	"You asked for a random Character.",	/* pointer to text */
 	&Rnd_IText3	/* next IntuiText structure */
 };
 

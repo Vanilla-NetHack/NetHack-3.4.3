@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mondata.h	3.1	92/11/26	*/
+/*	SCCS Id: @(#)mondata.h	3.1	93/05/31	*/
 /* Copyright (c) 1989 Mike Threepoint				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -25,7 +25,8 @@
 #define is_floater(ptr)		((ptr)->mlet == S_EYE)
 #define is_clinger(ptr)		(((ptr)->mflags1 & M1_CLING) != 0L)
 #define is_swimmer(ptr)		(((ptr)->mflags1 & M1_SWIM) != 0L)
-#define magic_breathing(ptr)	(((ptr)->mflags1 & M1_AMPHIBIOUS) != 0L)
+#define breathless(ptr)		(((ptr)->mflags1 & M1_BREATHLESS) != 0L)
+#define amphibious(ptr)		(((ptr)->mflags1 & (M1_AMPHIBIOUS | M1_BREATHLESS)) != 0L)
 #define passes_walls(ptr)	(((ptr)->mflags1 & M1_WALLWALK) != 0L)
 #define amorphous(ptr)		(((ptr)->mflags1 & M1_AMORPHOUS) != 0L)
 #define noncorporeal(ptr)	((ptr)->mlet == S_GHOST)
@@ -85,8 +86,10 @@
 #  ifdef POLYSELF
 #define can_breathe(ptr)	attacktype(ptr, AT_BREA)
 #define cantwield(ptr)		(nohands(ptr) || verysmall(ptr))
+#  endif
+#  if defined(POLYSELF) || defined(MUSE)
 #define cantweararm(ptr)	(breakarm(ptr) || sliparm(ptr))
-#  endif /* POLYSELF */
+#  endif
 #define throws_rocks(ptr)	(((ptr)->mflags2 & M2_ROCKTHROW) != 0L)
 #define type_is_pname(ptr)	(((ptr)->mflags2 & M2_PNAME) != 0L)
 #define is_lord(ptr)		(((ptr)->mflags2 & M2_LORD) != 0L)

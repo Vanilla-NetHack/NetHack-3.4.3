@@ -628,7 +628,7 @@
 
           ,    Pick up some things.
 
-          @    Toggle the pickup option on and off.
+          @    Toggle the autopickup option on and off.
 
           ^    Ask for the type of a trap you found earlier.
 
@@ -842,12 +842,12 @@
 
                When you find something in the dungeon, it is common to want
           to pick it up.  In NetHack, this is accomplished automatically by
-          walking over the object (unless you turn off  the  pickup  option
-          (see below), or move with the `m' prefix (see above)), or manual-
-          ly by using the `,' command.  If you're carrying too many things,
-          NetHack will tell you so and won't pick up anything more.  Other-
-          wise, it will add the object(s) to your pack and  tell  you  what
-          you just picked up.
+          walking over the object (unless you turn off the  autopickup  op-
+          tion  (see  below),  or move with the `m' prefix (see above)), or
+          manually by using the `,' command.  If you're carrying  too  many
+          things, NetHack will tell you so and won't pick up anything more.
+          Otherwise, it will add the object(s) to your pack  and  tell  you
+          what you just picked up.
 
 
 
@@ -1226,15 +1226,15 @@
           next comma or the end of string.
 
                For example, to set up an environment variable so that ``fe-
-          male''  is  on,  ``pickup''  is  off,  the  name is set to ``Blue
+          male''  is  on,  ``autopickup'' is off, the name is set to ``Blue
           Meanie'', and the fruit is set to ``papaya'', you would enter the
           command
 
-               % setenv NETHACKOPTIONS "female,!pickup,name:Blue Meanie,fruit:papaya"
+               % setenv NETHACKOPTIONS "female,!autopickup,name:Blue Meanie,fruit:papaya"
 
           in _c_s_h, or
 
-               $ NETHACKOPTIONS="female,!pickup,name:Blue Meanie,fruit:papaya"
+               $ NETHACKOPTIONS="female,!autopickup,name:Blue Meanie,fruit:papaya"
                $ export NETHACKOPTIONS
 
           in _s_h or _k_s_h.
@@ -1275,6 +1275,9 @@
           strings  longer than fifty characters are truncated.  Some of the
           options listed may be inactive in your dungeon.
 
+          autopickup
+               Pick up things you move onto by default (default on).
+
           BIOS
                Use BIOS calls to update the screen display quickly  and  to
                read  the  keyboard (allowing the use of arrow keys to move)
@@ -1304,14 +1307,11 @@
                yourself (default off).  Cannot be set with the `O' command.
 
           disclose
-               Offer to identify your inventory  and  intrinsics  when  the
-               game ends (default on).
-
-          dogname
-               Name your starting dog (ex.  ``dogname:Fang'').   Cannot  be
-               set with the `O' command.
-
-
+               Offer to disclose various information  when  the  game  ends
+               (default  all).   The possibilities are identifying your in-
+               ventory ('i'), disclosing your attributes ('a'), summarizing
+               monsters  that  have been vanquished ('v'), and listing mon-
+               ster species that have been genocided ('g').  Note that  the
 
 
           NetHack 3.1                                      January 25, 1993
@@ -1323,6 +1323,13 @@
 
           NetHack Guidebook                                              21
 
+
+               vanquished  monsters  list  includes  all monsters killed by
+               traps and each other as well as by you.
+
+          dogname
+               Name your starting dog (ex.  ``dogname:Fang'').   Cannot  be
+               set with the `O' command.
 
           female
                Set your sex (default off).  Cannot be set with the `O' com-
@@ -1371,13 +1378,6 @@
                changed to `\^' now).  Also note that there are more symbols
                in a different order than used for NetHack 3.0.
 
-               The order of the symbols is: solid rock, vertical wall, hor-
-               izontal  wall,  upper left corner, upper right corner, lower
-               left corner, lower right corner, cross wall, upward T  wall,
-               downward T wall, leftward T wall, rightward T wall, no door,
-               vertical open door, horizontal open  door,  vertical  closed
-               door,  horizontal  closed door, floor of a room, dark corri-
-               dor, lit corridor, stairs up, stairs down, ladder up, ladder
 
 
           NetHack 3.1                                      January 25, 1993
@@ -1390,6 +1390,13 @@
           NetHack Guidebook                                              22
 
 
+               The order of the symbols is: solid rock, vertical wall, hor-
+               izontal  wall,  upper left corner, upper right corner, lower
+               left corner, lower right corner, cross wall, upward T  wall,
+               downward T wall, leftward T wall, rightward T wall, no door,
+               vertical open door, horizontal open  door,  vertical  closed
+               door,  horizontal  closed door, floor of a room, dark corri-
+               dor, lit corridor, stairs up, stairs down, ladder up, ladder
                down, trap, web, altar, throne, kitchen sink, fountain, pool
                or moat, ice, lava, vertical lowered drawbridge,  horizontal
                lowered  drawbridge,  vertical raised drawbridge, horizontal
@@ -1436,14 +1443,7 @@
                Show corridor squares seen by night vision or a light source
                held by your character as lit (default off).
 
-          male
-               Set your sex (default on, most hackers are male).  Cannot be
-               set with the `O' command.
 
-          monsters
-               Set the characters used to display monster classes  (default
-               ``abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX-
-               YZ@ \&;:~]'').   This  string  is  subjected  to  the   same
 
 
           NetHack 3.1                                      January 25, 1993
@@ -1456,9 +1456,17 @@
           NetHack Guidebook                                              23
 
 
-               processing as the graphics option.  The order of the symbols
-               is ant or other insect, blob, cockatrice, dog or other  can-
-               ine,  eye or sphere, feline, gremlin, humanoid, imp or minor
+          male
+               Set your sex (default on, most hackers are male).  Cannot be
+               set with the `O' command.
+
+          monsters
+               Set the characters used to display monster classes  (default
+               ``abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWX-
+               YZ@ \&;:~]'').  This string is subjected to  the  same  pro-
+               cessing as the graphics option.  The order of the symbols is
+               ant or other insect, blob, cockatrice, dog or other  canine,
+               eye  or  sphere,  feline,  gremlin,  humanoid,  imp or minor
                demon, jelly, kobold, leprechaun,  mimic,  nymph,  orc,  pi-
                ercer,  quadruped,  rodent, spider, trapper or lurker above,
                unicorn, vortex, worm, xan or other  mythical/fantastic  in-
@@ -1502,14 +1510,6 @@
                symbols  is  illegal-object  (should never be seen), weapon,
                armor, ring, amulet, tool, food, potion, scroll, spell book,
                wand,  gold,  gem  or  rock,  boulder  or statue, iron ball,
-               chain, and venom.  Cannot be set with the `O' command.
-
-          packorder
-               Specify  the  order  to  list  object  types   in   (default
-               ``\")[%?+/=!(*`0_'').   The value of this option should be a
-               string containing the symbols for the various object types.
-
-
 
 
           NetHack 3.1                                      January 25, 1993
@@ -1522,14 +1522,22 @@
           NetHack Guidebook                                              24
 
 
+               chain, and venom.  Cannot be set with the `O' command.
+
+          packorder
+               Specify  the  order  to  list  object  types   in   (default
+               ``\")[%?+/=!(*`0_'').   The value of this option should be a
+               string containing the symbols for the various object types.
+
           pettype
                Specify the type of your initial pet, if you are  playing  a
                character  class  that  uses  both  types of pets.  Possible
                values are ``cat'' and ``dog''.  Cannot be set with the  `O'
                command.
 
-          pickup
-               Pick up things you move onto by default (default on).
+          pickup_types
+               Specify the object types to be picked up when autopickup  is
+               on.  Default is all types.
 
           rawio
                Force raw (non-cbreak) mode for faster output and more  bul-
@@ -1569,14 +1577,6 @@
           standout
                Boldface monsters and ``--More--'' (default off).
 
-          time
-               Show the elapsed game time in turns on bottom line  (default
-               off).
-
-          tombstone
-               Draw a tombstone graphic upon your death (default on).
-
-
 
           NetHack 3.1                                      January 25, 1993
 
@@ -1587,6 +1587,13 @@
 
           NetHack Guidebook                                              25
 
+
+          time
+               Show the elapsed game time in turns on bottom line  (default
+               off).
+
+          tombstone
+               Draw a tombstone graphic upon your death (default on).
 
           verbose
                Provide more commentary during the game (default on).
@@ -1637,13 +1644,6 @@
           explore mode are left for the trepid reader to discover.
 
 
-          11.  Credits
-
-               The original _h_a_c_k game was modeled on the Berkeley UNIX  _r_o_-
-          _g_u_e  game.  Large portions of this paper were shamelessly cribbed
-          from _A _G_u_i_d_e _t_o _t_h_e _D_u_n_g_e_o_n_s _o_f  _D_o_o_m,  by  Michael  C.  Toy  and
-
-
           NetHack 3.1                                      January 25, 1993
 
 
@@ -1654,8 +1654,13 @@
           NetHack Guidebook                                              26
 
 
-          Kenneth C. R. C. Arnold.  Small portions were adapted from _F_u_r_t_h_-
-          _e_r _E_x_p_l_o_r_a_t_i_o_n _o_f _t_h_e _D_u_n_g_e_o_n_s _o_f _D_o_o_m, by Ken Arromdee.
+          11.  Credits
+
+               The original _h_a_c_k game was modeled on the Berkeley UNIX  _r_o_-
+          _g_u_e  game.  Large portions of this paper were shamelessly cribbed
+          from _A _G_u_i_d_e _t_o _t_h_e _D_u_n_g_e_o_n_s _o_f _D_o_o_m, by Michael C. Toy and  Ken-
+          neth  C.  R. C. Arnold.  Small portions were adapted from _F_u_r_t_h_e_r
+          _E_x_p_l_o_r_a_t_i_o_n _o_f _t_h_e _D_u_n_g_e_o_n_s _o_f _D_o_o_m, by Ken Arromdee.
 
                NetHack is the product of literally dozens of people's work.
           Main  events  in the course of the game development are described
@@ -1703,11 +1708,6 @@
           and  Janet  Walz, the development team which now included Ken Ar-
           romdee, David Cohrs, Jean-Christophe Collet,  Kevin  Darcy,  Matt
           Day,  Timo Hakulinen, Steve Linhart, Dean Luick, Pat Rankin, Eric
-          Raymond, and Eric Smith undertook  a  radical  revision  of  3.0.
-          They re-structured the game's design, and re-wrote major parts of
-          the code.  They added multiple dungeons, a new  display,  special
-          individual  character  quests,  a  new endgame and many other new
-          features, and produced NetHack 3.1.
 
 
           NetHack 3.1                                      January 25, 1993
@@ -1719,6 +1719,12 @@
 
           NetHack Guidebook                                              27
 
+
+          Raymond, and Eric Smith undertook  a  radical  revision  of  3.0.
+          They re-structured the game's design, and re-wrote major parts of
+          the code.  They added multiple dungeons, a new  display,  special
+          individual  character  quests,  a  new endgame and many other new
+          features, and produced NetHack 3.1.
 
                Ken Lorber, Gregg Wonderly and Greg Olson,  with  help  from
           Richard  Addison,  Mike  Passaretti,  and Olaf Seibert, developed
@@ -1748,6 +1754,38 @@
           Dungeoneers:
 
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+          NetHack 3.1                                      January 25, 1993
+
+
+
+
+
+
+          NetHack Guidebook                                              28
+
+
                   Richard Addison        Eric Hendrickson      Mike Passaretti
                       Tom Almy            Bruce Holloway         Pat Rankin
                     Ken Arromdee         Richard P. Hughey     Eric S. Raymond
@@ -1774,6 +1812,34 @@
 
           Brand and product names are trademarks or  registered  trademarks
           of their respective holders.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
           NetHack 3.1                                      January 25, 1993

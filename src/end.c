@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)end.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)end.c	3.1	93/05/29	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -10,10 +10,13 @@
 #include <signal.h>
 #endif
 
+
 STATIC_PTR int NDECL(done_intr);
 static void FDECL(disclose,(int,BOOLEAN_P));
 static struct obj *FDECL(get_valuables, (struct obj *));
 static void FDECL(savelife, (int));
+static void NDECL(list_vanquished);
+static void NDECL(list_genocided);
 
 /*
  * The order of these needs to match the macros in hack.h.
@@ -70,6 +73,7 @@ done2()
 	}
 #if defined(WIZARD) && (defined(UNIX) || defined(VMS) || defined(LATTICE))
 	if(wizard) {
+	    int c;
 # ifdef VMS
 	    const char *tmp = "Enter debugger?";
 # else
@@ -79,7 +83,7 @@ done2()
 	    const char *tmp = "Dump core?";
 #  endif
 # endif
-	    if(yn(tmp) == 'y') {
+	    if ((c = ynq(tmp)) == 'y') {
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 		exit_nhwindows(NULL);
 #ifdef AMIGA
@@ -90,7 +94,7 @@ done2()
 # endif
 		    abort();
 #endif
-	    }
+	    } else if (c == 'q') done_stopprint++;
 	}
 #endif
 #ifndef LINT
@@ -101,21 +105,23 @@ done2()
 
 STATIC_PTR
 int
-done_intr(){
+done_intr()
+{
 	done_stopprint++;
 #ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
 # if defined(UNIX) || defined(VMS)
 	(void) signal(SIGQUIT, SIG_IGN);
 # endif
-#endif /* NO_SIGNAL /* */
+#endif /* NO_SIGNAL */
 	return 0;
 }
 
 #if defined(UNIX) || defined(VMS)
 static
 int
-done_hangup(){
+done_hangup()
+{
 	done_hup++;
 	(void)signal(SIGHUP, SIG_IGN);
 	(void)done_intr();
@@ -240,7 +246,8 @@ boolean taken;
 	char	c;
 	char	qbuf[QBUFSZ];
 
-	if(invent) {
+	if (invent && !done_stopprint &&
+		(!flags.end_disclose[0] || index(flags.end_disclose, 'i'))) {
 	    if(taken)
 		Sprintf(qbuf,"Do you want to see what you had when you %s?",
 			(how == QUIT) ? "quit" : "died");
@@ -272,12 +279,22 @@ boolean taken;
 	    }
 	}
 
-	if (!done_stopprint) {
-	    c = yn_function("Do you want to see your intrinsics?",ynqchars,'y');
+	if (!done_stopprint &&
+		(!flags.end_disclose[0] || index(flags.end_disclose, 'a'))) {
+	    c = yn_function("Do you want to see your attributes?",ynqchars,'y');
 	    if (c == 'y') enlightenment(TRUE);	/* final */
 	    if (c == 'q') done_stopprint++;
 	}
 
+	if (!done_stopprint &&
+		(!flags.end_disclose[0] || index(flags.end_disclose, 'v'))) {
+	    list_vanquished();
+	}
+
+	if (!done_stopprint &&
+		(!flags.end_disclose[0] || index(flags.end_disclose, 'g'))) {
+	    list_genocided();
+	}
 }
 
 /* try to get the player back in a viable state after being killed */
@@ -313,7 +330,7 @@ get_valuables(list)
     struct obj *valuables = (struct obj *)0;
 
     for (obj = list; obj; obj = next_obj) {
-	if (Is_container(obj) && obj->cobj) {
+	if (Has_contents(obj)) {
 	    c_vals = get_valuables(obj->cobj);
 
 	    if (c_vals) {
@@ -412,7 +429,7 @@ die:
 	(void) signal(SIGQUIT, (SIG_RET_TYPE) done_intr);
 	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
 # endif
-#endif /* NO_SIGNAL /* */
+#endif /* NO_SIGNAL */
 #ifdef POLYSELF
 	if (u.mtimedone)
 	    upmon = uasmon;
@@ -454,7 +471,8 @@ die:
 #endif
 	if (have_windows) display_nhwindow(WIN_MESSAGE, FALSE);
 
-	if (flags.end_disclose && how != PANICKED) disclose(how,taken);
+	if (strcmp(flags.end_disclose, "none") && how != PANICKED)
+		disclose(how, taken);
 
 	if (how < GENOCIDED) {
 #ifdef WIZARD
@@ -490,7 +508,7 @@ die:
 	    if(!done_stopprint || flags.tombstone)
 		endwin = create_nhwindow(NHW_TEXT);
 
-	    if(how < GENOCIDED && flags.tombstone) outrip(how, endwin);
+	    if(how < GENOCIDED && flags.tombstone) outrip(endwin, how);
 	} else
 	    done_stopprint = 1; /* just avoid any more output */
 
@@ -500,7 +518,8 @@ die:
 	if (u.uhave.amulet) Strcat(kilbuf, " (with the Amulet)");
 	if (!done_stopprint) {
 	    Sprintf(pbuf, "%s %s the %s...",
-		   (pl_character[0]=='S') ? "Sayonara" : "Goodbye", plname,
+		   (pl_character[0] == 'S') ? "Sayonara" :
+		   (pl_character[0] == 'T') ? "Aloha" : "Goodbye", plname,
 		   how != ASCENDED ? (const char *) pl_character :
 		   (const char *) (flags.female ? "Demigoddess" : "Demigod"));
 	    putstr(endwin, 0, pbuf);
@@ -623,30 +642,13 @@ die:
 	    putstr(endwin, 0, pbuf);
 	    putstr(endwin, 0, "");
 	}
-#if (defined(WIZARD) || defined(EXPLORE_MODE))
-# ifndef LOGFILE
-	if (wizard || discover) {
-	    if (!done_stopprint) {
-		putstr(endwin, 0, "");
-		Sprintf(pbuf, "Since you were in %s mode, the score list \
-will not be checked.", wizard ? "wizard" : "discover");
-		putstr(endwin, 0, pbuf);
-		putstr(endwin, 0, "");
-		display_nhwindow(endwin, TRUE);
-	    }
-	    if (have_windows)
-		exit_nhwindows(NULL);
-	} else
-# endif
-#endif
-	{
-	    if (!done_stopprint)
-		display_nhwindow(endwin, TRUE);
-	    if (have_windows)
-		exit_nhwindows(NULL);
-/* "So when I die, the first thing I will see in Heaven is a score list?" */
-	    topten(how);
-	}
+	if (!done_stopprint)
+	    display_nhwindow(endwin, TRUE);
+	if (have_windows)
+	    exit_nhwindows(NULL);
+	/* "So when I die, the first thing I will see in Heaven is a
+	 * score list?" */
+	topten(how);
 	if(done_stopprint) { raw_print(""); raw_print(""); }
 	terminate(0);
 }
@@ -700,22 +702,120 @@ container_contents(list, identified, all_containers)
 	}
 }
 
+
 void
 terminate(status)
 int status;
 {
 #ifdef MAC
 	if (!hu) {
-		int idx;
-		for (idx = theWindows[BASE_WINDOW].windowTextLen; --idx >= 0; )
-			/* If there is something to show... */
-			if (((unsigned char *)*theWindows[BASE_WINDOW].windowText)[idx] > ' ') {
-				display_nhwindow(BASE_WINDOW, TRUE);
-				break;
-			}
+		getreturn("to exit");
 	}
 #endif
 	exit(status);
+}
+
+static void
+list_vanquished()
+{
+    register int i, lev;
+    int ntypes = 0, max_lev = 0, nkilled;
+    long total_killed = 0L;
+    char c;
+    static winid klwin;
+    char buf[BUFSZ];
+
+    /* get totals first */
+    for (i = 0; i < NUMMONS; i++) {
+	if (u.nr_killed[i]) ntypes++;
+	total_killed += (long)u.nr_killed[i];
+	if (mons[i].mlevel > max_lev) max_lev = mons[i].mlevel;
+    }
+
+    /* vanquished foes list;
+     * includes all dead monsters, not just those killed by the player
+     */
+    if (ntypes != 0) {
+	c = yn_function("Do you want an account of foes vanquished?",
+			ynqchars, 'n');
+	if (c == 'q') done_stopprint++;
+	if (c == 'y') {
+	    klwin = create_nhwindow(NHW_MENU);
+	    putstr(klwin, 0, "Vanquished foes:");
+	    putstr(klwin, 0, "");
+
+	    /* countdown by monster "toughness" */
+	    for (lev = max_lev; lev >= 0; lev--)
+	      for (i = 0; i < NUMMONS; i++)
+		if (mons[i].mlevel == lev && (nkilled = u.nr_killed[i])) {
+		    if (i == PM_WIZARD_OF_YENDOR || mons[i].geno & G_UNIQ) {
+			Sprintf(buf, type_is_pname(&mons[i]) ? mons[i].mname :
+				The(mons[i].mname));
+			if (nkilled > 1)
+			    Sprintf(eos(buf)," (%d time%s)",
+				    nkilled, plur(nkilled));
+		    } else {
+			/* trolls or undead might have come back,
+			   but we don't keep track of that */
+			if (nkilled == 1)
+			    Strcpy(buf, an(mons[i].mname));
+			else
+			    Sprintf(buf, "%d %s",
+				    nkilled, makeplural(mons[i].mname));
+		    }
+		    putstr(klwin, 0, buf);
+		}
+	    /*
+	     * if (Hallucination)
+	     *     putstr(klwin, 0, "and a partridge in a pear tree");
+	     */
+	    if (ntypes > 1) {
+		putstr(klwin, 0, "");
+		Sprintf(buf, "%ld creatures vanquished.", total_killed);
+		putstr(klwin, 0, buf);
+	    }
+	    display_nhwindow(klwin, TRUE);
+	    destroy_nhwindow(klwin);
+	}
+    }
+}
+
+static void
+list_genocided()
+{
+    register int i;
+    int ngenocided = 0;
+    char c;
+    static winid klwin;
+    char buf[BUFSZ];
+
+    /* get totals first */
+    for (i = 0; i < NUMMONS; i++) {
+	if (mons[i].geno & G_GENOD) ngenocided++;
+    }
+
+    /* genocided species list */
+    if (ngenocided != 0) {
+	c = yn_function("Do you want a list of species genocided?",
+			ynqchars, 'n');
+	if (c == 'q') done_stopprint++;
+	if (c == 'y') {
+	    klwin = create_nhwindow(NHW_MENU);
+	    putstr(klwin, 0, "Genocided species:");
+	    putstr(klwin, 0, "");
+
+	    for (i = 0; i < NUMMONS; i++)
+		if (mons[i].geno & G_GENOD)
+		    putstr(klwin, 0, makeplural(mons[i].mname));
+
+	    putstr(klwin, 0, "");
+	    Sprintf(buf, "%d species genocided.", ngenocided);
+	    putstr(klwin, 0, buf);
+
+	    display_nhwindow(klwin, TRUE);
+	    destroy_nhwindow(klwin);
+	}   
+    }
 }
 
 /*end.c*/

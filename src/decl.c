@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)decl.c	3.1	92/12/11	*/
+/*	SCCS Id: @(#)decl.c	3.1	93/03/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -165,7 +165,7 @@ const int zapcolors[NUM_ZAP] = {
     WHITE,		/* 2 - frost */
     HI_ZAP,		/* 3 - sleep */
     BLACK,		/* 4 - death */
-    HI_ZAP,		/* 5 - lightning */
+    WHITE,		/* 5 - lightning */
     YELLOW,		/* 6 - poison gas */
     GREEN,		/* 7 - acid */
 };

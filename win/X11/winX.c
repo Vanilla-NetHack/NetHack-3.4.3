@@ -12,6 +12,10 @@
 #define PRESERVE_NO_SYSV	/* X11 include files may define SYSV */
 #endif
 
+#ifdef MSDOS			/* from compiler */
+#define SHORT_FILENAMES
+#endif
+
 #include <X11/Intrinsic.h>
 #include <X11/StringDefs.h>
 #include <X11/Shell.h>
@@ -23,7 +27,11 @@
 #include <X11/Xos.h>
 
 /* for color support; should be ifdef TEXTCOLOR, but must come before hack.h */
+#ifdef SHORT_FILENAMES
+#include <X11/IntrinsP.h>
+#else
 #include <X11/IntrinsicP.h>
+#endif
 
 #ifdef PRESERVE_NO_SYSV
 # ifdef SYSV
@@ -109,9 +117,14 @@ struct window_procs X11_procs = {
 #endif /* COM_COMPL */
     X11_number_pad,
     X11_delay_output,
+#ifdef CHANGE_COLOR	/* only a Mac option currently */
+    donull,
+    donull,
+#endif
     /* other defs that really should go away (they're tty specific) */
     X11_start_screen,
     X11_end_screen,
+    genl_outrip,
 };
 
 /*

@@ -74,7 +74,6 @@ Boolean itworked( short errcode )
     short		 itemHit;
 	Str255 		 errdesc;
 	StringHandle strh;
-	Ptr			 junk;
 	
 	errdesc[0] = '\0';
 	if (errcode > 0) GetIndString(errdesc,stdIOErrID,errcode);  /* STDIO file rres, etc */

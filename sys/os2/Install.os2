@@ -2,7 +2,7 @@
                                on an OS/2 system
              =====================================================
                                 Timo Hakulinen
-                          Last revision: 4 Feb 1993
+                          Last revision: 31 May 1993
 
 0.  Read this entire file before starting, and come back to the Notes below if
     you have any problems.
@@ -21,7 +21,7 @@
     in file Files, which should be in the top directory.
 
     If you downloaded or ftp'd the sources from a UNIX system, the lines may
-    end in UNIX-style newlines, instead of the carriage return and line feed
+    end in UNIX-style newlines instead of the carriage return and line feed
     pairs used by DOS and OS/2.  You'll have to convert them (with a utility
     like Rahul Dhesi's "flip").  Also, every file should end with a carriage
     return / line feed pair, because Microsoft C has had a habit of ignoring
@@ -30,9 +30,9 @@
 
 2.  The makefile for OS/2, Makefile.os2, is found in directory sys\os2.  Copy
     it to directory src and rename it Makefile.  From now on, Makefile.os2
-    will be referred to as "Makefile" in this document.
+    will be referred to as "the makefile" in this document.
 
-    The Makefile supports the following make utilities:
+    The makefile supports the following make utilities:
 
     NDMAKE      a public domain make utility for DOS by Don Kneller
     NMAKE       make shipped with Microsoft languages and IBM C Set/2
@@ -49,16 +49,16 @@
     GCC emx 0.8f (see note 6)           OS/2 2.x            OS/2 2.x
 
     Note that code compiled for OS/2 versions 1.0-1.3 runs unmodified in OS/2
-    versions 2.0 and up.  It should in principle be possible to cross compile
+    versions 2.0 and up.  In principle it should be possible to cross compile
     NetHack 3.1 for OS/2 in DOS using NDMAKE and MSC, but this is not
     recommended (see note 3).
 
     If you're using some other compiler than one listed above, you will have
-    to adapt Makefile to your needs.  In particular, change the CC, CFLAGS,
-    LINK, and LFLAGS macros to your C compiler's and linker's liking.  See
-    Makefile for more information.
+    to adapt the makefile to your needs.  In particular, change the CC,
+    CFLAGS, LINK, and LFLAGS macros to your C compiler's and linker's liking.
+    See the makefile for more information.
 
-    If you are going to be constructing the Fred Fish termlib library you will
+    If you are going to be constructing Fred Fish's termcap library, you'll
     need Makefile.lib in sys\share (see note 4).
 
 3.  Go to the include subdirectory.  First edit config.h according to the
@@ -80,7 +80,7 @@
     should prefer the compiler's offerings, if possible.
 
     If you are going to compile the game on an HPFS drive, uncomment OS2_HPFS,
-    which will enable the use of longer file names during compilation.  The
+    which enables the use of longer file names during compilation.  The
     generated executable will only use file names compatible with FAT drives,
     however.
 
@@ -93,7 +93,7 @@
     comment out RANDOM.
 
     If you want to muck with different termcap settings, uncomment TERMLIB to
-    enable use of termcap routines (see note 4).  This is not necessary to
+    enable the use of termcap routines (see note 4).  This is not necessary to
     create a fully functional game, however.
 
 4.  If you are using another compiler than MSC, GCC, or IBM C Set/2, you may
@@ -108,33 +108,34 @@
     topten.c, in the src directory.  You may want to change the definitions of
     PERSMAX, POINTSMIN, and ENTRYMAX.
 
-6.  Go to the src directory and edit the top of Makefile.  Be sure the
-    directory you want the game installed in actually exists.
+6.  Go to the src directory and edit the top of the makefile.  Be sure that
+    the directory you want the game installed to actually exists.
 
-    You'll need nroff and/or TeX to do the files in doc.  If you don't have
-    either of these, you can skip it.
+    You'll need nroff and/or TeX/LaTeX to do the files in doc.  If you don't
+    have either of these, you can skip it.
 
-    If you elected not to use the high-quality BSD random number routines by
+    If you elected not to use the high quality BSD random number routines by
     commenting out RANDOM in os2conf.h, comment out (or set equal to nothing)
-    the RANDOM macro in Makefile.
+    the RANDOM macro in the makefile.
 
     If you elected to use Fred Fish's termcap library (bundled in as
     termcap.uu in directory sys\share), you will have to generate termlib.lib
     from those sources by typing "make -f makefile.lib termlib.lib".  You must
-    set the TERMLIB option in Makefile to link in the resulting termlib.lib.
+    set the TERMLIB option in the makefile to link the resulting termlib.lib
+    into the game.
 
     If you are recompiling after patching your sources, or if you got your
     files from somewhere other than the official distribution, "touch
     makedefs.c" to ensure that certain files (onames.h and pm.h) are remade,
-    lest potentially troublesome timestamps fool make.
+    lest potentially troublesome time stamps fool make.
 
     If you have lex and yacc programs, or the equivalent flex and bison
-    programs, you can set up Makefile to generate the appropriate .h and .c
-    files from their .l and .y counterparts whenever you recompile.  This is
-    done by changing the do_yacc and do_lex targets in Makefile to depend on
-    targets yacc_act and lex_act instead of yacc_cpy and lex_cpy.  Otherwise
-    Makefile will copy pre-generated yacc and lex output files dgn_*.* and
-    lev_*.* from directory sys\share to util and include.
+    programs, you can set up the makefile to generate the appropriate .h and
+    .c files from their .l and .y counterparts whenever you recompile.  This
+    is done by changing the do_yacc and do_lex targets in the makefile to
+    depend on targets yacc_act and lex_act instead of yacc_cpy and lex_cpy.
+    Otherwise the makefile will copy pre-generated yacc and lex output files
+    dgn_*.* and lev_*.* from directory sys\share to util and include.
 
     Now, enter "make all", and take a siesta; your computer will be occupied
     for a fair amount of time.  If all goes well, you will get an executable.
@@ -168,11 +169,11 @@
 
     Yes.  It's 106 files for a full featured NetHack 3.1.  If any of the files
     are missing, try to rerun make.  If that doesn't help, you'll have to try
-    to decipher Makefile to find out how to manually create the missing
+    to decipher the makefile to find out how to manually create the missing
     files.  These kinds of troubles shouldn't happen except for two reasons:
     You've run out of disk space while compiling or your make utility doesn't
-    understand Makefile properly for some reason.  In either case, you should
-    get some warnings from the make, though.
+    understand the makefile properly for some reason.  In either case, you
+    should get some warnings from the make, though.
 
     If you have old record, logfile, or news files in the game directory, they
     are not overwritten.  Of course, old records from NetHack 3.0 are not
@@ -180,7 +181,7 @@
 
     Edit file nethack.cnf in the game directory to reflect your particular
     setup and personal preferences, following the comments there.  More info
-    about settable options can be found in the file opthelp and the Guidebook.
+    about settable options can be found in the file opthelp and the guidebook.
 
     If you compiled in the TERMLIB feature, also move the sys\share\termcap
     file to your game directory.
@@ -203,15 +204,15 @@
     Naturally you must fill in your own game directory and parameters if you
     want to set any.  The program type can be either OS/2 Full screen or OS/2
     Windowed.  Note that you should set the executable path to use the .cmd
-    file generated by Makefile.  This file generates an extra pause after the
-    program exit, because otherwise you wouldn't get to see the high score
+    file generated by the makefile.  This file generates an extra pause after
+    the program exit, because otherwise you wouldn't get to see the high score
     list upon quitting due to PM/WPS automatically closing the program window.
     When starting NetHack normally from OS/2 command prompt, the command
     processor starts nethack.exe instead, so no extra pause is generated.
 
 9.  If you want to clear up the temporary files and objects created by the
     compilation process, you may issue "make spotless".  This will return your
-    source tree to near-distribution condition.  Naturally, it will not touch
+    source tree to near-distribution condition.  Naturally, it will not affect
     your newly built game files in any way.
 
 10. Play NetHack.  If it works, you're done!
@@ -220,7 +221,7 @@
 Notes
 -----
 
-1)  Save files and bones files from previous versions will not work with
+1)  Save-files and bones-files from previous versions will not work with
     NetHack 3.1.  Don't bother trying to keep them.
 
 2)  To install an update of NetHack after changing something, enter "make"
@@ -235,10 +236,10 @@ Notes
     a much better place to compile).  If you still want to try, here are some
     suggestions:
 
-    During linking, the Microsoft linker will need temporary storage space.
-    Make sure you have about a meg of free disk where-ever you have defined
-    your temporary storage.  It is also a good idea to compile with as much
-    free RAM as possible.  It may otherwise get crowded with the bigger, more
+    During linking, Microsoft linker will need temporary storage space.  Make
+    sure you have about 1 MB of free disk where ever you have defined your
+    temporary storage.  It is also a good idea to compile with as much free
+    RAM as possible.  It may otherwise get crowded with the bigger, more
     complex source files (compiler bombs with "out of heap space" or similar).
     If this happens, strip your configuration, zap TSR's, get a better memory
     manager etc.

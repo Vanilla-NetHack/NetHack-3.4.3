@@ -22,14 +22,6 @@ Project Menu
  Top Scores  - View the score file.
  Recover     - Recover a game which was interrupted by a
                GURU, Software Failure, or other disaster.
- Edit Default Game - The file wbdefaults.def is always
-               loaded to provide the default ToolTypes
-               information for the NewGame icon (specifying
-               options, character name and character type).
-               The window opened by this selection allows
-               you to edit this information as well as
-               create new "games" by changing wbdefaults to
-               a different name and using save/load.
  Edit Configuration - The string data in nethack.cnf can be
                edited saved and loaded using the requester
                opened by this selection.
@@ -40,12 +32,8 @@ Game Menu
                Game Configuration  gadget lets you change
                the options that "Edit Default Game" let you
                enter.  
- Change Comment  - Lets you set a comment string for the
-               save file.
- Set Options - takes you directly to the options editing
-               requester.
- Copy Options - Creates a new icon with the same options as
-               the selected game.  The new Icon has no saved
+ Copy Info   - Creates a new icon with the same tooltypes as
+               the selected icon.  The new icon has no saved
                game associated with it.
  Discard     - Deletes the icon and any saved game
                associated with it.

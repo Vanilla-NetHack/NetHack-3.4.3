@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mhitm.c	3.1	93/02/09	*/
+/*	SCCS Id: @(#)mhitm.c	3.1	93/05/26	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -360,7 +360,7 @@ gazemm(magr, mdef, mattk)
 
 	if(vis) {
 		Sprintf(buf,"%s gazes at", Monnam(magr));
-		pline("%s %s.", buf, mon_nam(mdef));
+		pline("%s %s...", buf, mon_nam(mdef));
 	}
 
 	if (!mdef->mcansee || mdef->msleep) {
@@ -655,7 +655,7 @@ do_stone_goto_label:
 		break;
 	    case AD_TLPT:
 		if(!magr->mcan && tmp < mdef->mhp) {
-		    rloc(mdef);
+		    if (!tele_restrict(mdef)) rloc(mdef);
 		    if(vis && !cansee(mdef->mx, mdef->my))
 			pline("%s suddenly disappears!", Monnam(mdef));
 		}
@@ -856,7 +856,7 @@ do_stone_goto_label:
 		remove_monster(mdef->mx, mdef->my);
 		place_monster(mdef, mdef->mx, mdef->my);
 	    }
-	    monkilled(mdef, "", mattk->adtyp);
+	    monkilled(mdef, "", (int)mattk->adtyp);
 	    if (mdef->mhp > 0) return 0; /* mdef lifesaved */
 	    return (MM_DEF_DIED | (grow_up(magr,mdef) ? 0 : MM_AGR_DIED));
 	}
@@ -972,9 +972,17 @@ int mdead;
 	/* These affect the enemy only if defender is still alive */
 	if (rn2(3)) switch(mddat->mattk[i].adtyp) {
 	    case AD_PLYS: /* Floating eye */
+		if (tmp > 127) tmp = 127;
 		if (mddat == &mons[PM_FLOATING_EYE]) {
+		    if (!rn2(4)) tmp = 127;
 		    if (magr->mcansee && haseyes(madat) && mdef->mcansee &&
 			(perceives(madat) || !mdef->minvis)) {
+#ifdef MUSE
+			Sprintf(buf, "%s gaze is reflected by %%s %%s.",
+				s_suffix(mon_nam(mdef)));
+			if (mon_reflects(magr, buf))
+				return(mdead|mhit);
+#endif
 			Strcpy(buf, Monnam(magr));
 			if(canseemon(magr))
 			    pline("%s is frozen by %s gaze!",
@@ -1057,7 +1065,7 @@ int mdead;
 
     assess_dmg:
 	if((magr->mhp -= tmp) <= 0) {
-		monkilled(magr,"",mddat->mattk[i].adtyp);
+		monkilled(magr, "", (int)mddat->mattk[i].adtyp);
 		return (mdead | mhit | MM_AGR_DIED);
 	}
 	return (mdead | mhit);

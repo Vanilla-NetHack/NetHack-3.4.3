@@ -24,6 +24,9 @@ int
 experience(mtmp, nk)	/* return # of exp points for mtmp after nk killed */
 	register struct	monst *mtmp;
 	register int	nk;
+#if defined(applec)
+# pragma unused(nk)
+#endif
 {
 	register struct permonst *ptr = mtmp->data;
 	int	i, tmp, tmp2;

@@ -2526,7 +2526,7 @@ could make.  As you begin to control and channel your thoughts, you
 realize that you must return %o to the %l immediately.
 %E
 %Cc V 00080
-Suddenly a look of surprise and horror appear on %n's face.
+A look of surprise and horror appears on %n's face.
 
     No!!!  %o has lied to me!  I have been misled!
 
@@ -2818,6 +2818,9 @@ You receive a faint telepathic message from %l:
 Your help is urgently needed at %H!
 Look for a ...ic transporter.
 You couldn't quite make out that last message.
+%E
+%Cp - 00003
+You again sense %l pleading for help.
 %E
 #
 #	Angelic maledictions.

@@ -39,7 +39,9 @@ typedef long off_t;
 
 /* Compile in New Intuition look for 2.0 */
 #ifdef	IDCMP_CLOSEWINDOW
-# define	INTUI_NEW_LOOK	1
+# ifndef INTUI_NEW_LOOK
+#  define	INTUI_NEW_LOOK	1
+# endif
 #endif
 
 #define MFLOPPY         /* You'll probably want this; provides assistance
@@ -74,7 +76,8 @@ extern FILE *FDECL(freopen, (const char *, const char *, FILE *));
 extern char *FDECL(gets, (char *));
 #endif
 
-#define msmsg		raw_printf
+/*#define msmsg		raw_printf*/
+#define msmsg		printf
 
 /*
  * If AZTEC_C  we can't use the long cpath in vision.c....
@@ -93,13 +96,21 @@ extern char *FDECL(gets, (char *));
 #define MAIL			/* Get mail at unexpected occasions */
 #define DEFAULT_ICON "NetHack:default.icon"	/* private icon */
 #define AMIFLUSH		/* toss typeahead (select flush in .cnf) */
-/*#define AMIGA_WINDOWED_CORNLINE /* Use windows for pager, inventory, etc */
 
 /* new window system options */
-#define AMIGA_INTUITION		/* high power graphics interface (amii) */
+			/* WRONG - AMIGA_INTUITION should go away */
+#ifdef AMII_GRAPHICS
+# define AMIGA_INTUITION		/* high power graphics interface (amii) */
+#endif
+
+#define CHANGE_COLOR	1
 
 #ifdef	TEXTCOLOR
-# define	DEPTH	3
+# ifdef	VIEWWINDOW
+#  define	DEPTH	4
+# else
+#  define	DEPTH	3
+# endif
 #else
 # define	DEPTH	2
 #endif
@@ -112,5 +123,11 @@ extern char *FDECL(gets, (char *));
 #define	AMII_SOFT_VOLUME	50
 #define	AMII_OKAY_VOLUME	60
 #define	AMII_LOUDER_VOLUME	80
+
+#ifdef TTY_GRAPHICS
+# define ANSI_DEFAULT
+#endif
+
+extern int amibbs;	/* BBS mode? */
 
 #endif /* AMICONF_H */

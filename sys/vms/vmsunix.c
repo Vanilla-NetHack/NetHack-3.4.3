@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsunix.c	3.1	93/01/24	*/
+/*	SCCS Id: @(#)vmsunix.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -357,7 +357,7 @@ char *
 verify_termcap()	/* called from startup(src/termcap.c) */
 {
     struct stat dummy;
-    char *tc = getenv("TERMCAP");
+    const char *tc = getenv("TERMCAP");
     if (tc) return verify_term();	/* no termcap fixups needed */
     if (!tc && !stat(NETHACK_DEF_TERMCAP, &dummy)) tc = NETHACK_DEF_TERMCAP;
     if (!tc && !stat(HACK_DEF_TERMCAP, &dummy))    tc = HACK_DEF_TERMCAP;

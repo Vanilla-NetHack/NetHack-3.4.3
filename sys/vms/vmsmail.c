@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)vmsmail.c	3.1	92/12/16	*/
+/*	SCCS Id: @(#)vmsmail.c	3.1	93/05/15	*/
 /* Copyright (c) Robert Patrick Rankin, 1991.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -106,7 +106,8 @@ parse_brdcst(buf)		/* called by parse_next_broadcast() */
 char *buf;			/* input: filtered broadcast text */
 {
     int typ;
-    char *txt, *nam, *cmd;
+    char *txt;
+    const char *nam, *cmd;
 # ifdef SHELL		/* only parse if spawned commands are enabled */
     register char *p, *q;
     boolean is_jnet_send;
@@ -221,10 +222,12 @@ jnet_send:
 */
 	typ = MSG_CALL;
 	nam = "Bitnet noise";		/* RSCS/NJE message received via JNET */
-	Sprintf(cmd = cmd_buf, "XYZZY %s@%s", user, node);
+	Sprintf(cmd_buf, "XYZZY %s@%s", user, node);
+	cmd = cmd_buf;
 	/*{ perhaps just vanilla SEND instead of XYZZY? }*/
-	Sprintf(txt = txt_buf, "Message from %s@%s:%s", user, node,
+	Sprintf(txt_buf, "Message from %s@%s:%s", user, node,
 		&buf[1+strlen(node)+1+strlen(user)+2-1]);  /* "(node)user -" */
+	txt = txt_buf;
     /*
      :	end of call recognition; anything else is none-of-the-above...
      */
@@ -243,13 +246,14 @@ other:
 
     /* newmail() and readmail() assume that nam and cmd are concatenated */
     if (nam) {		/* object name to attach to scroll of mail */
-	nam = strcpy(nam_cmd_buf, nam);
+	char *join = strcpy(nam_cmd_buf, nam);
 	if (cmd) {	/* append command to name; readmail() requires it */
-	    int len = sizeof nam_cmd_buf - sizeof "" - (strlen(nam) + 1);
+	    int len = sizeof nam_cmd_buf - sizeof "" - (strlen(join) + 1);
 	    cmd_buf[len] = '\0';	/* possibly truncate */
-	    (void) strcat(nam, " ");
-	    cmd = strcpy(eos(nam), cmd);
+	    (void) strcat(join, " ");
+	    cmd = strcpy(eos(join), cmd);
 	}
+	nam = join;
     }
 # endif /* SHELL */
     msg.message_typ  = typ;	/* simple index */
@@ -318,14 +322,14 @@ flush_broadcasts()	/* called from disable_broadcast_trapping() */
 {
     if (broadcasts > 0) {
 	short len, typ;
-	$DESCRIPTOR(msg, "");
+	$DESCRIPTOR(msg_dsc, "");
 	char buf[512+1];
 
-	msg.dsc$a_pointer = buf,  msg.dsc$w_length = sizeof buf - 1;
+	msg_dsc.dsc$a_pointer = buf,  msg_dsc.dsc$w_length = sizeof buf - 1;
 	raw_print("");		/* print at least one line for wait_synch() */
 	do {
 	    typ = len = 0;
-	    SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &msg, &len, &typ);
+	    SMG$GET_BROADCAST_MESSAGE(&pasteboard_id, &msg_dsc, &len, &typ);
 	    if (typ == MSG$_TRMBRDCST) buf[len] = '\0',  raw_print(buf);
 	} while (--broadcasts);
 	wait_synch();		/* prompt with "Hit return to continue: " */

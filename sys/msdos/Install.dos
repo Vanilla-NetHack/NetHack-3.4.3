@@ -1,4 +1,4 @@
-	SCCS Id: @(#)Install.dos	 3.1		93/01/06
+	SCCS Id: @(#)Install.dos	 3.1		93/05/10
 
         Copyright (c) NetHack PC Development Team 1990 - 1993.
         NetHack may be freely redistributed.  See license for details.
@@ -7,12 +7,12 @@
                  NetHack 3.1 on an MS-DOS system
 	    ======================================================
                  (or, How to make PC NetHack 3.1)
-                    Last revision: Jan 6, 1993
+                    Last revision: May 10, 1993
 
 Credit for a runnable full PC NetHack 3.1 goes to the PC Development team
-of Norm Meluch, Kevin Smolkowski, Paul Winner and Steve VanDevender who
-built on the work of Pierre Martineau, Stephen Spackman, Steve Creps,
-Mike Threepoint and Don Kneller.
+of Norm Meluch, Kevin Smolkowski, Paul Winner, Michael Allison and Steve
+VanDevender who built on the work of Pierre Martineau, Stephen Spackman,
+Steve Creps, Mike Threepoint and Don Kneller.
 
 I.  Dispelling the Myths:
 
@@ -24,7 +24,7 @@ I.  Dispelling the Myths:
     following compilers:
 
     Microsoft C 6.0a
-    Microsoft C 7.0
+    Microsoft C 7.0 and Microsoft Visual C++ Professional (MSVC) 1.0
     DJGPP       1.9   (gcc version 2.2 for msdos,
                        free from your local archive sites)
 
@@ -52,7 +52,7 @@ II. To compile your copy of NetHack on a MSDOS machine:
     dat, doc, include, src, sys\share, sys\msdos, util and win\tty.
     Other subdirectories may also be included in your distribution, but
     they are not necessary for use with MSDOS.  You can delete them
-    to save space.  If you are using MSC7, the makefile will create
+    to save space.  If you are using MSC7 or MSVC, the makefile will create
     an additional directory src\o.
 
     Check the file "Files" in your top level directory for an exact
@@ -79,8 +79,9 @@ II. To compile your copy of NetHack on a MSDOS machine:
     your linker can find them.
 
     Makefiles are included should you want to build your own termcap
-    library file.  Makemsc.lib works with Microsoft C and generates
-    termcap.lib, Makegcc.lib works with DJGPP and generates libtermc.a.
+    library file.  Makemsc.lib works with Microsoft C (MSC and MSVC)
+    and generates termcap.lib, Makegcc.lib works with DJGPP and generates
+    libtermc.a.
 
 4.  ovlmgr.uu (MS-DOS overlay manager) is the uuencoded assembled
     object module for the overlay manager used with Microsoft C 6.0
@@ -109,18 +110,37 @@ II. To compile your copy of NetHack on a MSDOS machine:
     or as few of them as you wish.
 
     Also check pcconf.h, which should not need much editing (if you are
-    including termcap.uu and random.c).  If you are not including these, you
-    will need to comment out TERMLIB and/or RANDOM.  If you are using
-    a Microsoft compiler you should make doubly certain that OVERLAY is
-    defined in pcconf.h, since otherwise things will compile properly but
-    very ugly things are likely to happen wherever function pointers
-    cross overlay boundaries - the linker is a little thick about that.
+    including termcap.uu and random.c).  If you are not including random.c
+    you will need to comment out RANDOM. 
+
+    There are several options available for screen management with this
+    release of PC NetHack.  The features #define TERMLIB, #define
+    ANSI_DEFAULT, and #define NO_TERMS in pcconf.h control the various
+    options.
 
     Commenting out the #define TERMLIB in pcconf.h to disable use of termcap
-    routines (relying on the ANSI_DEFAULT feature) will make your job a bit
-    easier.  However, you can compile with both TERMLIB and ANSI_DEFAULT
+    routines means relying on either the ANSI_DEFAULT feature, or the
+    NO_TERMS feature, and will make your job a bit easier.
+    You can elect to compile with both TERMLIB and ANSI_DEFAULT
     and simply not set your TERM variable if you do not wish to use the
-    termcap file settings.
+    termcap file settings.  The NO_TERMS feature has the advantage of not
+    needing the DEVICE=ANSI.SYS statement in config.sys.  It will not
+    work with TERMLIB, nor with ANSI_DEFAULT.  It uses internal routines 
+    for screen management, and may be an ideal choice if your
+    play machine is industry standard (has an IBM compatible BIOS).
+
+    Should you define NO_TERMS, only define one of the two screen
+    access methods.  If compiling for Microsoft machines, use
+    SCREEN_BIOS, if using DJGPP you can choose between SCREEN_BIOS
+    and SCREEN_DJGPPFAST.  Never, never, ever choose both.  Bad things
+    will happen.
+    
+    If you are using a Microsoft compiler you should make doubly certain
+    that OVERLAY is defined in pcconf.h, since otherwise things will 
+    compile properly but very ugly things are likely to happen wherever
+    function pointers cross overlay boundaries - the linker is a little 
+    thick about that.
+
 
 7.  If you want to change the high score list behavior, examine the top of
     topten.c, in the src directory.  You may want to change the definitions of
@@ -133,6 +153,12 @@ II. To compile your copy of NetHack on a MSDOS machine:
     If you elected not to use the high-quality BSD random number routines by
     commenting out RANDOM in pcconf.h or tosconf.h, comment out (or set equal
     to nothing) the RANDOM macro in your Makefile.
+
+    If you elected not to use termcap, then comment out (or set equal to
+    nothing) the TERMLIB macro in your Makefile.
+    
+    That is,    TERMLIB = (SSYS)\termlib.lib
+    should be   TERMLIB =
 
     If you are recompiling after patching your sources, or if you got your
     files from somewhere other than the official distribution, "touch
@@ -169,10 +195,18 @@ II. To compile your copy of NetHack on a MSDOS machine:
 Appendix A - Microsoft C Compilers
 
     You can compile NetHack using almost any version of Microsoft C later
-    than 5.1.  Versions 5.0 and earlier are broken in such a way that it
-    is impossible to use them.  Version 6.0 requires a patch available
-    from Microsoft; after applying you should have 6.0ax.  Version 7.0
-    works with or without the August 1992 patch.
+    than 5.1, including Microsoft Visual C++ Professional 1.0.  MSC Versions
+    5.0 and earlier are broken in such a way that it is impossible to use 
+    them.  Version 6.0 requires a patch available from Microsoft; after 
+    applying you should have 6.0ax.  
+    
+    MSC Version 7.0 works with or without the August 1992 patch. 
+
+    MSVC Professional 1.0 works as distributed, although there seems 
+    to be a problem with the compiler having problems and stopping the 
+    compile periodically.  Things proceed normally after starting 'make'
+    once again.  The problem, although annoying, does not affect the code
+    generation or the final executable.
 
     Officially, support is no longer provided for MSC versions prior to
     6.0ax.  NetHack v3.1 will compile with 5.1, but you will need to
@@ -180,10 +214,10 @@ Appendix A - Microsoft C Compilers
     space problems.  We strongly recommend upgrading to 6.0ax if you
     intend to recompile NetHack often.
 
-    One Makefile is used for all versions.  Version 7.0 takes advantage
-    of the CL environment variables to set the compiler flags, as they
-    exceed the MSDOS limitation of 128 characters on the command line.
-    Please read the Makefile carefully and select those options that
+    One Makefile is used for all versions.  MSC Version 7.0 and MSVC take 
+    advantage of the CL environment variables to set the compiler flags, 
+    as they exceed the MSDOS limitation of 128 characters on the command 
+    line.  Please read the Makefile carefully and select those options that
     go with the compiler.  Also, remember to run setup.bat to set the
     CL environment variable before you compile.
 
@@ -231,6 +265,10 @@ Appendix A - Microsoft C Compilers
     linker in version 7.0.  Instead of linking in the custom overlay
     manager, we just let Microsoft do the work.
 
+  Microsoft Visual C++ Professional version 1.0
+    The Microsoft Visual C++ Professional compiler can utilize the same
+    Makefiles and instructions for compiling as Microsoft C version 7.0.
+
 Appendix B - DJGPP Compiler (gcc ported to msdos)
 
     If you have a 386 or better machine, you are in luck.  You can compile
@@ -248,8 +286,10 @@ Appendix B - DJGPP Compiler (gcc ported to msdos)
     Windows.  See the DJGPP documentation for more details on particular
     memory requirements.
 
-    Building with DJGPP is easy, just follow the steps outlined in the
-    main section.
+    If you want to use the built-in DJGPP screen routines, uncomment
+    SCREEN_DJGPPFAST in pcconf.h.  Note that some of these routines
+    seem to be broken so we pick and choose the ones that work.  See
+    video.c for details. 
 
 Appendix C - Borland C Compiler
 

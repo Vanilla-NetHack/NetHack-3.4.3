@@ -9,6 +9,13 @@
 #include "config.h"
 #endif
 
+/* Some people comment out OVERLAY when uncommenting MOVERLAY */
+#if defined(MOVERLAY)
+# ifndef OVERLAY
+#  define OVERLAY
+# endif
+#endif
+
 /*	For debugging beta code.	*/
 #ifdef BETA
 #define Dpline	pline

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)winprocs.h	3.1	92/09/19	*/
+/*	SCCS Id: @(#)winprocs.h	3.1	93/04/26	*/
 /* Copyright (c) David Cohrs, 1992				  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -45,10 +45,16 @@ struct window_procs {
 #endif /* COM_COMPL */
     void FDECL((*win_number_pad), (int));
     void NDECL((*win_delay_output));
+#ifdef CHANGE_COLOR
+    void FDECL((*win_change_color), (int,long,int));
+    char * NDECL((*win_get_color_string));
+#endif
 
     /* other defs that really should go away (they're tty specific) */
     void NDECL((*win_start_screen));
     void NDECL((*win_end_screen));
+
+    void FDECL((*win_outrip), (winid,int));
 };
 
 extern NEARDATA struct window_procs windowprocs;
@@ -96,9 +102,14 @@ extern NEARDATA struct window_procs windowprocs;
 #endif
 #define number_pad (*windowprocs.win_number_pad)
 #define delay_output (*windowprocs.win_delay_output)
+#ifdef CHANGE_COLOR
+#define change_color (*windowprocs.win_change_color)
+#define get_color_string (*windowprocs.win_get_color_string)
+#endif
 
 /* other defs that really should go away (they're tty specific) */
 #define start_screen (*windowprocs.win_start_screen)
 #define end_screen (*windowprocs.win_end_screen)
 
+#define outrip (*windowprocs.win_outrip)
 #endif

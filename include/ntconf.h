@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)ntconf.h	3.1	93/01/31	*/
+/*	SCCS Id: @(#)ntconf.h	3.1	93/04/08	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -24,6 +24,9 @@
  *  The remaining code shouldn't need modification.
  */
 
+#define NO_TERMS       /* April 8/93 mja */
+#define ASCIIGRAPH
+ 
 #ifndef SYSTEM_H
 #include "system.h"
 #endif

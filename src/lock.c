@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)lock.c	3.1	92/09/02
+/*	SCCS Id: @(#)lock.c	3.1	93/05/28	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 #define CONTAINER_BITS 0	/* box options not [yet?] implemented */
 
@@ -18,6 +18,7 @@ STATIC_VAR NEARDATA struct xlock_s {
 
 #ifdef OVLB
 
+static const char *NDECL(lock_action);
 static boolean FDECL(obstructed,(int,int));
 static void FDECL(chest_shatter_msg, (struct obj *));
 
@@ -39,6 +40,36 @@ int x, y;
 {
 	return((occupation == picklock) && 
 	       xlock.door_or_box && (xlock.door == &levl[x][y])); 
+}
+
+/* produce an occupation string appropriate for the current activity */
+static const char *
+lock_action()
+{
+	/* "unlocking"+2 == "locking" */
+	static const char *actions[] = {
+		/* [0] */	"unlocking the door",
+		/* [1] */	"unlocking the chest",
+		/* [2] */	"unlocking the box",
+		/* [3] */	"picking the lock"
+	};
+
+	/* if the target is currently unlocked, we're trying to lock it now */
+	if (xlock.door_or_box && !(xlock.door->doormask & D_LOCKED))
+		return actions[0]+2;	/* "locking the door" */
+	else if (!xlock.door_or_box && !xlock.box->olocked)
+		return xlock.box->otyp == CHEST ? actions[1]+2 : actions[2]+2;
+	/* otherwise we're trying to unlock it */
+	else if (xlock.picktyp == LOCK_PICK)
+		return actions[3];	/* "picking the lock" */
+#ifdef TOURIST
+	else if (xlock.picktyp == CREDIT_CARD)
+		return actions[3];	/* same as lock_pick */
+#endif
+	else if (xlock.door_or_box)
+		return actions[0];	/* "unlocking the door" */
+	else
+		return xlock.box->otyp == CHEST ? actions[1] : actions[2];
 }
 
 STATIC_PTR
@@ -73,23 +104,17 @@ picklock()	/* try to open/close a lock */
 	   || nohands(uasmon)
 #endif
 	   ) {
-	    You("give up your attempt to %s the lock.",
-		  (xlock.door_or_box ? !(xlock.door->doormask & D_LOCKED) :
-		   !xlock.box->olocked) ? "lock" :
-		  ((xlock.picktyp == LOCK_PICK) ? "pick" : "open" ));
-
+	    You("give up your attempt at %s.", lock_action());
 	    exercise(A_DEX, TRUE);	/* even if you don't succeed */
 	    return((xlock.usedtime = 0));
 	}
 
 	if(rn2(100) > xlock.chance) return(1);		/* still busy */
 
+	You("succeed in %s.", lock_action());
 	if(xlock.door_or_box) {
-	    You("succeed in %sing the lock.",
-		  !(xlock.door->doormask & D_LOCKED) ? "lock" :
-		  ((xlock.picktyp == LOCK_PICK) ? "pick" : "open" ));
 	    if(xlock.door->doormask & D_TRAPPED) {
-		    b_trapped("door");
+		    b_trapped("door", FINGER);
 		    xlock.door->doormask = D_NODOOR;
 		    unblock_point(u.ux+u.dx, u.uy+u.dy);
 		    newsym(u.ux+u.dx, u.uy+u.dy);
@@ -97,9 +122,6 @@ picklock()	/* try to open/close a lock */
 		xlock.door->doormask = D_CLOSED;
 	    else xlock.door->doormask = D_LOCKED;
 	} else {
-	    You("succeed in %sing the lock.",
-		  (!xlock.box->olocked) ? "lock" :
-		  (xlock.picktyp == LOCK_PICK) ? "pick" : "open" );
 	    xlock.box->olocked = !xlock.box->olocked;
 	    if(xlock.box->otrapped)	
 		(void) chest_trap(xlock.box, FINGER, FALSE);
@@ -152,14 +174,12 @@ forcelock()	/* try to force a locked chest */
 	xlock.box->olocked = 0;
 	xlock.box->obroken = 1;
 	if(!xlock.picktyp && !rn2(3)) {
-	    register struct monst *shkp;
+	    struct monst *shkp;
+	    boolean costly;
 	    long loss = 0L;
 
-#ifdef GCC_WARN
-	    shkp = (struct monst *) 0;
-#endif
-
-	    if(*u.ushops) shkp = shop_keeper(*u.ushops);
+	    costly = (*u.ushops && costly_spot(u.ux, u.uy));
+	    shkp = costly ? shop_keeper(*u.ushops) : 0;
 
 	    pline("In fact, you've totally destroyed %s.",
 		  the(xname(xlock.box)));
@@ -169,7 +189,7 @@ forcelock()	/* try to force a locked chest */
 		otmp2 = otmp->nobj;
 		if(!rn2(3) || otmp->oclass == POTION_CLASS) {
 		    chest_shatter_msg(otmp);
-		    if(*u.ushops && costly_spot(u.ux, u.uy))
+		    if (costly)
 		        loss += stolen_value(otmp, u.ux, u.uy,
 					     (boolean)shkp->mpeaceful, TRUE);
 		    if (otmp->quan == 1L) {
@@ -184,8 +204,8 @@ forcelock()	/* try to force a locked chest */
 		stackobj(otmp);
 	    }
 	    xlock.box->cobj = (struct obj *) 0;	/* no contents */
-	    if(*u.ushops && costly_spot(u.ux, u.uy))
-		loss += stolen_value(otmp, u.ux, u.uy,
+	    if (costly)
+		loss += stolen_value(xlock.box, u.ux, u.uy,
 					     (boolean)shkp->mpeaceful, TRUE);
 	    if(loss) You("owe %ld zorkmids for objects destroyed.", loss);
 	    delobj(xlock.box);
@@ -216,17 +236,12 @@ pick_lock(pick) /* pick a lock with a given object */
 	ch = 0;		/* GCC myopia */
 #endif
 	picktyp = pick->otyp;
-	if(xlock.usedtime && picktyp == xlock.picktyp) {
+	if (xlock.usedtime && picktyp == xlock.picktyp) {
+		const char *action = lock_action();
 
-	    You("resume your attempt to %s the lock.",
-		  (xlock.door_or_box ? !(xlock.door->doormask & D_LOCKED) :
-		   !xlock.box->olocked) ? "lock" :
-		  ((xlock.picktyp == LOCK_PICK) ? "pick" : "open" ));
-
-	    set_occupation(picklock,
-			   (picktyp == LOCK_PICK) ? "picking the lock" :
-						    "opening the lock",  0);
-	    return(1);
+		You("resume your attempt at %s.", action);
+		set_occupation(picklock, action, 0);
+		return(1);
 	}
 
 #ifdef POLYSELF
@@ -381,9 +396,7 @@ pick_lock(pick) /* pick a lock with a given object */
 	xlock.chance = ch;
 	xlock.picktyp = picktyp;
 	xlock.usedtime = 0;
-	set_occupation(picklock,
-		       (picktyp == LOCK_PICK) ? "picking the lock" :
-						"opening the lock",  0);
+	set_occupation(picklock, lock_action(), 0);
 	return(1);
 }
 
@@ -522,7 +535,7 @@ doopen()		/* try to open a door */
 	if (rnl(20) < (ACURRSTR+ACURR(A_DEX)+ACURR(A_CON))/3) {
 	    pline("The door opens.");
 	    if(door->doormask & D_TRAPPED) {
-		b_trapped("door");
+		b_trapped("door", FINGER);
 		door->doormask = D_NODOOR;
 	    } else
 		door->doormask = D_ISOPEN;
@@ -706,6 +719,15 @@ int x, y;
 	case WAN_LOCKING:
 	case SPE_WIZARD_LOCK:
 	    if (obstructed(x,y)) return 0;
+	    /* Don't allow doors to close over traps.  This is for pits */
+	    /* & trap doors, but is it ever OK for anything else? */
+	    if (t_at(x,y)) {
+		/* maketrap() clears doormask, so it should be NODOOR */
+		pline(
+	"A cloud of dust springs up in the doorway, but quickly dissipates.");
+		return 0;
+	    }
+
 	    switch (door->doormask & ~D_TRAPPED) {
 	    case D_CLOSED:
 		msg = "The door locks!";

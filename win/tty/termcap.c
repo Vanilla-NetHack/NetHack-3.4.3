@@ -3,6 +3,9 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
+
+#if defined (TTY_GRAPHICS) && !defined(NO_TERMS)
+
 #include "wintty.h"
 
 #include "termcap.h"
@@ -14,17 +17,20 @@
 #define Tgetstr(key) (tgetstr(key,&tbufptr))
 #endif /* MICROPORT_286_BUG **/
 
+static char * FDECL(s_atr2str, (int));
+static char * FDECL(e_atr2str, (int));
+
 void FDECL(cmov, (int, int));
 void FDECL(nocmov, (int, int));
-#ifdef TEXTCOLOR
-# ifdef TERMLIB
-#  ifdef OVLB
+#if defined(TEXTCOLOR) && defined(TERMLIB)
+# ifdef OVLB
+#  if !defined(UNIX) || !defined(TERMINFO)
 #   ifndef TOS
 static void FDECL(analyze_seq, (char *, int *, int *));
 #   endif
+#  endif
 static void NDECL(init_hilite);
-#  endif /* OVLB */
-# endif
+# endif /* OVLB */
 #endif
 
 #ifdef OVLB
@@ -78,36 +84,35 @@ STATIC_VAR char tgotobuf[20];
 
 void
 tty_startup(wid, hgt)
-    int *wid, *hgt;
+int *wid, *hgt;
 {
+	register int i;
 #ifdef TERMLIB
 	register const char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
-#endif
-	register int i;
 
-#ifdef TERMLIB
 # ifdef VMS
-	if (!(term = verify_termcap()))
+	term = verify_termcap();
+	if (!term)
 # endif
-	term = getenv("TERM");
-#endif
+		term = getenv("TERM");
 
-#ifdef TERMLIB
-	if(!term)
-#endif
-#if defined(TOS) && defined(__GNUC__) && defined(TERMLIB)
+# if defined(TOS) && defined(__GNUC__)
+	if (!term)
 		term = "builtin";		/* library has a default */
+# endif
+	if (!term)
+#endif
+#ifndef ANSI_DEFAULT
+		error("Can't get TERM.");
 #else
-#  ifdef ANSI_DEFAULT
-#   ifdef TOS
+# ifdef TOS
 	{
 		CO = 80; LI = 25;
 		TI = VS = VE = TE = nullstr;
 		HO = "\033H";
-		CL = "\033E";		/* the VT52 termcap */
-		CE = "\033K";
+		CE = "\033K";		/* the VT52 termcap */
 		UP = "\033A";
 		CM = "\033Y%c%c";	/* used with function tgoto() */
 		ND = "\033C";
@@ -118,73 +123,75 @@ tty_startup(wid, hgt)
 	/* HI and HE will be updated in init_hilite if we're using color */
 		HI = "\033p";
 		HE = "\033q";
+		*wid = CO;
+		*hgt = LI;
+		CL = "\033E";		/* last thing set */
+		return;
 	}
-#   else /* TOS */
+# else /* TOS */
 	{
-#    ifdef MICRO
+#  ifdef MICRO
 		get_scr_size();
-#     ifdef CLIPPING
+#   ifdef CLIPPING
 		if(CO < COLNO || LI < ROWNO+3)
 			setclipped();
-#     endif
-#    endif
+#   endif
+#  endif
 		HO = "\033[H";
-		CL = "\033[2J";		/* the ANSI termcap */
 /*		CD = "\033[J"; */
-		CE = "\033[K";
-#    ifndef TERMLIB
+		CE = "\033[K";		/* the ANSI termcap */
+#  ifndef TERMLIB
 		CM = "\033[%d;%dH";
-#    else
+#  else
 		CM = "\033[%i%d;%dH";
-#    endif
+#  endif
 		UP = "\033[A";
 		ND = "\033[C";
 		XD = "\033[B";
-#    ifdef MICRO	/* backspaces are non-destructive */
+#  ifdef MICRO	/* backspaces are non-destructive */
 		BC = "\b";
-#    else
+#  else
 		BC = "\033[D";
-#    endif
+#  endif
 		HI = SO = "\033[1m";
 		US = "\033[4m";
-#    if 0
+#  if 0
 		MR = "\033[7m";
 		ME = "\033[0m";
-#    endif
+#  endif
 		TI = HE = SE = UE = "\033[0m";
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
-#    ifndef MICRO
+#  ifndef MICRO
 		AS = "\016";
 		AE = "\017";
-#    endif
+#  endif
 		TE = VS = VE = nullstr;
-#    ifdef TEXTCOLOR
+#  ifdef TEXTCOLOR
 		for (i = 0; i < MAXCOLORS / 2; i++)
 		    if (i != BLACK) {
 			hilites[i|BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
 			Sprintf(hilites[i|BRIGHT], "\033[1;3%dm", i);
 			if (i != GRAY)
-#     ifdef MICRO
+#   ifdef MICRO
 			    if (i == BLUE) hilites[BLUE] = hilites[BLUE|BRIGHT];
 			    else
-#     endif
+#   endif
 			    {
 				hilites[i] = (char *) alloc(sizeof("\033[0;3%dm"));
 				Sprintf(hilites[i], "\033[0;3%dm", i);
 			    }
 		    }
-#    endif
+#  endif
 		*wid = CO;
 		*hgt = LI;
+		CL = "\033[2J";		/* last thing set */
 		return;
 	}
-#   endif /* TOS */
-#  else
-		error("Can't get TERM.");
-#  endif /* ANSI_DEFAULT */
-#endif /* __GNUC__ && TOS && TERMCAP */
+# endif /* TOS */
+#endif /* ANSI_DEFAULT */
+
 #ifdef TERMLIB
 	tptr = (char *) alloc(1024);
 
@@ -201,7 +208,7 @@ tty_startup(wid, hgt)
 	    error("Terminal must backspace.");
 # else
 	    if(!(BC = Tgetstr("bc"))) {	/* termcap also uses bc/bs */
-#  if !defined(MINIMAL_TERM)
+#  ifndef MINIMAL_TERM
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
 #  endif
@@ -230,10 +237,10 @@ tty_startup(wid, hgt)
 		get_scr_size();
 	else {
 #  endif
-	CO = tgetnum("co");
-	LI = tgetnum("li");
-	if (!LI || !CO)			/* if we don't override it */
-		get_scr_size();
+		CO = tgetnum("co");
+		LI = tgetnum("li");
+		if (!LI || !CO)			/* if we don't override it */
+			get_scr_size();
 #  if defined(TOS) && defined(__GNUC__)
 	}
 #  endif
@@ -242,11 +249,9 @@ tty_startup(wid, hgt)
 	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
 # endif
-	if(!(CL = Tgetstr("cl")))
-		error("Hack needs CL.");
 	ND = Tgetstr("nd");
 	if(tgetflag("os"))
-		error("Hack can't have OS.");
+		error("NetHack can't have OS.");
 	if(tgetflag("ul"))
 		ul_hack = TRUE;
 	CE = Tgetstr("ce");
@@ -258,10 +263,10 @@ tty_startup(wid, hgt)
 	XD = Tgetstr("xd");
 /* not: 		XD = Tgetstr("do"); */
 	if(!(CM = Tgetstr("cm"))) {
-		if(!UP && !HO)
-			error("Hack needs CM or UP or HO.");
-		tty_raw_print("Playing hack on terminals without cm is suspect...");
-		tty_wait_synch();
+	    if(!UP && !HO)
+		error("NetHack needs CM or UP or HO.");
+	    tty_raw_print("Playing NetHack on terminals without CM is suspect.");
+	    tty_wait_synch();
 	}
 	SO = Tgetstr("so");
 	SE = Tgetstr("se");
@@ -304,8 +309,6 @@ tty_startup(wid, hgt)
 # ifdef TEXTCOLOR
 	MD = Tgetstr("md");
 # endif
-	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
-	free((genericptr_t)tptr);
 # ifdef TEXTCOLOR
 #  if defined(TOS) && defined(__GNUC__)
 	if (!strcmp(term, "builtin") || !strcmp(term, "tw52") ||
@@ -316,9 +319,13 @@ tty_startup(wid, hgt)
 	init_hilite();
 #  endif
 # endif
-#endif /* TERMLIB */
 	*wid = CO;
 	*hgt = LI;
+	if (!(CL = Tgetstr("cl")))	/* last thing set */
+		error("NetHack needs CL.");
+	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
+	free((genericptr_t)tptr);
+#endif /* TERMLIB */
 }
 
 void
@@ -367,15 +374,55 @@ tty_decgraphics_termcap_fixup()
 	 * Do not select NA ASCII as the primary font since people may
 	 * reasonably be using the UK character set.
 	 */
+#ifdef PC9801
+	init_hilite();
+#endif
 	if (flags.DECgraphics) xputs("\033)0");
 }
 #endif
+
+#if defined(ASCIIGRAPH) && defined(PC9801)
+extern void NDECL((*ibmgraphics_mode_callback));    /* defined in drawing.c */
+#endif
+
+#ifdef PC9801
+extern void NDECL((*ascgraphics_mode_callback));    /* defined in drawing.c */
+static void NDECL(tty_ascgraphics_hilite_fixup);
+
+static void
+tty_ascgraphics_hilite_fixup()
+{
+    register int c;
+
+    for (c = 0; c < MAXCOLORS / 2; c++)
+	if (c != BLACK) {
+	    hilites[c|BRIGHT] = (char *) alloc(sizeof("\033[1;3%dm"));
+	    Sprintf(hilites[c]BRIGHT], "\033[1;3%dm", c);
+	    if (c != GRAY) {
+		    hilites[c] = (char *) alloc(sizeof("\033[0;3%dm"));
+		    Sprintf(hilites[c], "\033[0;3%dm", c);
+	    }
+	}
+}
+#endif /* PC9801 */
 
 void
 tty_start_screen()
 {
 	xputs(TI);
 	xputs(VS);
+#ifdef PC9801
+    if (!flags.IBMgraphics && !flags.DECgraphics)
+	    tty_ascgraphics_hilite_fixup();
+    /* set up callback in case option is not set yet but toggled later */
+    ascgraphics_mode_callback = tty_ascgraphics_hilite_fixup;
+# ifdef ASCIIGRAPH
+    if (flags.IBMgraphics) init_hilite();
+    /* set up callback in case option is not set yet but toggled later */
+    ibmgraphics_mode_callback = init_hilite;
+# endif
+#endif /* PC9801 */
+
 #ifdef TERMLIB
 	if (flags.DECgraphics) tty_decgraphics_termcap_fixup();
 	/* set up callback in case option is not set yet but toggled later */
@@ -869,7 +916,7 @@ init_hilite()
 #   endif
 		if (c == foreg)
 		    hilites[c] = NULL;
-		else if (c != hi_foreg && backg != hi_backg) {
+		else if (c != hi_foreg || backg != hi_backg) {
 		    hilites[c] = (char *) alloc(sizeof("\033[%d;3%d;4%dm"));
 		    Sprintf(hilites[c], "\033[%d", !!(c & BRIGHT));
 		    if ((c | BRIGHT) != (foreg | BRIGHT))
@@ -889,6 +936,102 @@ init_hilite()
 # endif /* UNIX */
 #endif /* TEXTCOLOR */
 
+
+static char nulstr[] = "";
+
+static char *
+s_atr2str(n)
+int n;
+{
+    switch (n) {
+	    case ATR_ULINE:
+		    if(US) return US;
+	    case ATR_BOLD:
+	    case ATR_BLINK:
+	    case ATR_INVERSE:
+		    return HI;
+    }
+    return nulstr;
+}
+
+static char *
+e_atr2str(n)
+int n;
+{
+    switch (n) {
+	    case ATR_ULINE:
+		    if(UE) return UE;
+	    case ATR_BOLD:
+	    case ATR_BLINK:
+	    case ATR_INVERSE:
+		    return HE;
+    }
+    return nulstr;
+}
+
+
+void
+term_start_attr(attr)
+int attr;
+{
+	if (attr) {
+		xputs(s_atr2str(attr));
+	}
+}
+
+		
+void
+term_end_attr(attr)
+int attr;
+{
+	if(attr) {
+		xputs(e_atr2str(attr));
+	}
+}
+
+
+void
+term_start_raw_bold()
+{
+	xputs(HI);
+}
+
+
+void
+term_end_raw_bold()
+{
+	xputs(HE);
+}
+
+
+#ifdef TEXTCOLOR
+
+void
+term_end_color()
+{
+	xputs(HE);
+}
+
+
+void
+term_start_color(color)
+int color;
+{
+	xputs(hilites[color]);
+}
+
+
+int
+has_color(color)
+int color;
+{
+	return hilites[color] != NULL;
+}
+
+#endif /* TEXTCOLOR */
+
 #endif /* OVLB */
+
+#endif /* TTY_GRAPHICS */
 
 /*termcap.c*/

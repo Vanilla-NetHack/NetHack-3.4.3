@@ -1,24 +1,13 @@
-/*	SCCS Id: @(#)mcastu.c	3.1	90/09/21
+/*	SCCS Id: @(#)mcastu.c	3.1	93/05/04	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 #ifdef OVL0
-
 static void FDECL(cursetxt,(struct monst *));
-const char *spelltyp[] = {
-	"shower of missiles",
-	"fireball",
-	"sleep ray",
-	"cone of cold",
-	"finger of death",
-	"bolt of lightning",
-	"",
-	"",
-	"",
-	""
-};
+
+extern const char *flash_types[];	/* from zap.c */
 
 static
 void
@@ -337,6 +326,9 @@ castmu(mtmp, mattk)	/* monster casts spell at you */
 #endif /* OVLB */
 #ifdef OVL0
 
+/* convert 1..10 to 0..9; add 10 for second group (spell casting) */
+#define ad_to_typ(k) (10 + (int)k - 1)
+
 int
 buzzmu(mtmp, mattk)		/* monster uses spell (ranged) */
 	register struct monst *mtmp;
@@ -351,8 +343,8 @@ buzzmu(mtmp, mattk)		/* monster uses spell (ranged) */
 	    if(mattk->adtyp && (mattk->adtyp < 11)) { /* no cf unsigned >0 */
 		if(canseemon(mtmp))
 		    pline("%s zaps you with a %s!", Monnam(mtmp),
-			  spelltyp[mattk->adtyp-1]);
-		buzz((int) (-10 - (mattk->adtyp-1)), (int)mattk->damn,
+			  flash_types[ad_to_typ(mattk->adtyp)]);
+		buzz(-ad_to_typ(mattk->adtyp), (int)mattk->damn,
 		     mtmp->mx, mtmp->my, sgn(tbx), sgn(tby));
 	    } else impossible("Monster spell %d cast", mattk->adtyp-1);
 	}

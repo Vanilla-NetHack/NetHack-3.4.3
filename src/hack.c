@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)hack.c	3.1	93/02/18	*/
+/*	SCCS Id: @(#)hack.c	3.1	93/05/18	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -115,6 +115,10 @@ moverock()
 		case SPIKED_PIT:
 		case PIT:
 		    freeobj(otmp);
+		    /* vision kludge to get messages right;
+		       the pit will temporarily be seen even
+		       if this is one among multiple boulders */
+		    if (!Blind) viz_array[ry][rx] |= IN_SIGHT;
 		    if (!flooreffects(otmp, rx, ry, "fall")) {
 			place_object(otmp, rx, ry);
 			otmp->nobj = fobj;
@@ -126,7 +130,7 @@ moverock()
 			  The(xname(otmp)));
 		    deltrap(ttmp);
 		    delobj(otmp);
-		    delallobj(rx, ry);
+		    bury_objs(rx, ry);
 		    if (cansee(rx,ry)) newsym(rx,ry);
 		    continue;
 		case LEVEL_TELEP:
@@ -286,7 +290,7 @@ still_chewing(x,y)
     } else if (lev->typ == SDOOR) {
 	if (lev->doormask & D_TRAPPED) {
 	    lev->doormask = D_NODOOR;
-	    b_trapped("secret door");
+	    b_trapped("secret door", 0);
 	} else {
 	    digtxt = "chew through the secret door.";
 	    lev->doormask = D_BROKEN;
@@ -300,7 +304,7 @@ still_chewing(x,y)
 	}
 	if (lev->doormask & D_TRAPPED) {
 	    lev->doormask = D_NODOOR;
-	    b_trapped("door");
+	    b_trapped("door", 0);
 	} else {
 	    digtxt = "chew through the door.";
 	    lev->doormask = D_BROKEN;
@@ -512,6 +516,16 @@ domove()
 				x = u.ux + u.dx;
 				y = u.uy + u.dy;
 			} while(!isok(x, y) || bad_rock(x, y));
+		}
+		/* turbulence might alter your actual destination */
+		if (u.uinwater) {
+			water_friction();
+			if (!u.dx && !u.dy) {
+				nomul(0);
+				return;
+			}
+			x = u.ux + u.dx;
+			y = u.uy + u.dy;
 		}
 		if(!isok(x, y)) {
 			nomul(0);
@@ -783,7 +797,6 @@ domove()
 
 	/* now move the hero */
 	mtmp = m_at(x, y);
-	if (u.uinwater) water_friction();
 	u.ux += u.dx;
 	u.uy += u.dy;
 	/* if safepet at destination then move the pet to the hero's
@@ -980,11 +993,8 @@ stillinwater:;
 	if(IS_SINK(levl[u.ux][u.uy].typ) && Levitation)
 		dosinkfall();
 #endif
-	if(!flags.nopick && OBJ_AT(u.ux, u.uy) &&
-	   (!is_pool(u.ux,u.uy) || Underwater))
-		pickup(1);
-	else read_engr_at(u.ux,u.uy);
-	if(trap = t_at(u.ux,u.uy))
+	pickup(1);
+	if ((trap = t_at(u.ux,u.uy)) != 0)
 		dotrap(trap);	/* fall into pit, arrow trap, etc. */
 	if((mtmp = m_at(u.ux, u.uy)) && !u.uswallow) {
 		mtmp->mundetected = 0;
@@ -1162,11 +1172,11 @@ register boolean newlev;
 	if (*u.ushops0)
 	    u_left_shop(u.ushops_left, newlev);
 
-	if (!*u.uentered && !*u.ushops_entered) 
+	if (!*u.uentered && !*u.ushops_entered) 	/* implied by newlev */
 	    return;		/* no entrance messages necessary */
 
 	/* Did we just enter a shop? */
-	if (*u.ushops_entered && !newlev)
+	if (*u.ushops_entered)
             u_entered_shop(u.ushops_entered);
 
 	for (ptr = &u.uentered[0]; *ptr; ptr++) {
@@ -1176,53 +1186,55 @@ register boolean newlev;
 	    /* vault.c insists that a vault remain a VAULT,
 	     * and temples should remain TEMPLEs,
 	     * but everything else gives a message only the first time */
-	    if(!newlev) 
-	   	switch (rt) {
-		    case ZOO:
-		   	pline("Welcome to David's treasure zoo!");
-		    	break;
-		    case SWAMP:
-		    	pline("It %s rather %s down here.",
-	    		      Blind ? "feels" : "looks",
-	    		      Blind ? "humid" : "muddy");
-		    	break;
-		    case COURT:
-			You("enter an opulent throne room!");
-		    	break;
-		    case MORGUE:
-		    	if(midnight())
-			    pline("Run away!  Run away!");
-		    	else
-			    You("have an uncanny feeling...");
-		    	break;
-		    case BEEHIVE:
-		    	You("enter a giant beehive!");
-		    	break;
-#ifdef ARMY
-		    case BARRACKS:
-		    	if(monstinroom(&mons[PM_SOLDIER], roomno) ||
-			    monstinroom(&mons[PM_SERGEANT], roomno) ||
-			    monstinroom(&mons[PM_LIEUTENANT], roomno) ||
-			    monstinroom(&mons[PM_CAPTAIN], roomno))
-		    	    You("enter a military barracks!");
-		    	else 
-			    You("enter an abandoned barracks.");
-		    	break;
+	    switch (rt) {
+		case ZOO:
+		    pline("Welcome to David's treasure zoo!");
+		    break;
+		case SWAMP:
+		    pline("It %s rather %s down here.",
+			  Blind ? "feels" : "looks",
+			  Blind ? "humid" : "muddy");
+		    break;
+		case COURT:
+		    You("enter an opulent throne room!");
+		    break;
+		case MORGUE:
+		    if(midnight()) {
+#ifdef POLYSELF
+			const char *run = locomotion(uasmon, "Run");
+			pline("%s away!  %s away!", run, run);
+#else
+			pline("Run away!  Run away!");
 #endif
-		    case DELPHI:
-		    	if(monstinroom(&mons[PM_ORACLE], roomno))
-			    verbalize("Hello, %s, welcome to Delphi!", plname);
-		    	break;
-		    case TEMPLE:
-			intemple(roomno + ROOMOFFSET);
-		    	/* fall through */
-		    default:
-		    	rt = 0;
-	    	} 
-	    else 
-		rt = 0;
+		    } else
+			You("have an uncanny feeling...");
+		    break;
+		case BEEHIVE:
+		    You("enter a giant beehive!");
+		    break;
+#ifdef ARMY
+		case BARRACKS:
+		    if(monstinroom(&mons[PM_SOLDIER], roomno) ||
+			monstinroom(&mons[PM_SERGEANT], roomno) ||
+			monstinroom(&mons[PM_LIEUTENANT], roomno) ||
+			monstinroom(&mons[PM_CAPTAIN], roomno))
+			You("enter a military barracks!");
+		    else 
+			You("enter an abandoned barracks.");
+		    break;
+#endif
+		case DELPHI:
+		    if(monstinroom(&mons[PM_ORACLE], roomno))
+			verbalize("Hello, %s, welcome to Delphi!", plname);
+		    break;
+		case TEMPLE:
+		    intemple(roomno + ROOMOFFSET);
+		    /* fall through */
+		default:
+		    rt = 0;
+	    } 
 
-	    if(rt != 0) {
+	    if (rt != 0) {
 		rooms[roomno].rtype = OROOM;
 		if (!search_special(rt)) {
 			/* No more room of that type */
@@ -1302,7 +1314,7 @@ dopickup()
 		return(0);
 	}
 	if(Levitation && !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz)) {
-		You("cannot reach the floor.");
+		You("cannot reach the %s.", surface(u.ux,u.uy));
 		return(1);
 	}
 	pickup(-count);

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)lev_main.c	3.1	92/12/11	*/
+/*	SCCS Id: @(#)lev_main.c	3.1	93/05/27	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -56,8 +56,8 @@ extern void FDECL (init_yyin, (FILE *));
 extern void FDECL (init_yyout, (FILE *));
 
 int  FDECL (main, (int, char **));
-void FDECL (yyerror, (char *));
-void FDECL (yywarning, (char *));
+void FDECL (yyerror, (const char *));
+void FDECL (yywarning, (const char *));
 int  NDECL (yywrap);
 char *FDECL(dup_string,(const char *));
 int FDECL(get_floor_type, (CHAR_P));
@@ -71,7 +71,7 @@ char FDECL(what_map_char, (CHAR_P));
 void FDECL(scan_map, (char *));
 void NDECL(wallify_map);
 boolean NDECL(check_subrooms);
-void FDECL(check_coord, (int, int, char *));
+void FDECL(check_coord, (int, int, const char *));
 void NDECL(store_part);
 void NDECL(store_room);
 static void FDECL(write_common_data, (int,int,lev_init *,long));
@@ -109,7 +109,7 @@ static struct {
 };
 
 static struct {
-	char *name;
+	const char *name;
 	int type;
 } room_types[] = {
 	/* for historical reasons, room types are not contiguous numbers */
@@ -140,12 +140,14 @@ static struct {
 	{ 0, 0 }
 };
 
-char *fname = "(stdin)";
+const char *fname = "(stdin)";
 int fatal_error = 0;
 int want_warnings = 0;
 
-/* Flex 2.3 bug work around */
+#ifdef FLEX23_BUG
+/* Flex 2.3 bug work around; not needed for 2.3.6 or later */
 int yy_more_len = 0;
+#endif
 
 extern char tmpmessage[];
 extern altar *tmpaltar[];
@@ -268,7 +270,7 @@ char **argv;
 
 void
 yyerror(s)
-char *s;
+const char *s;
 {
 	(void) fprintf(stderr, "%s: line %d : %s\n", fname,
 		(*s >= 'A' && *s <= 'Z') ? colon_line_number : line_number, s);
@@ -284,7 +286,7 @@ char *s;
 
 void
 yywarning(s)
-char *s;
+const char *s;
 {
 	(void) fprintf(stderr, "%s: line %d : WARNING : %s\n",
 				fname, colon_line_number, s);
@@ -607,7 +609,7 @@ check_subrooms()
 void
 check_coord(x, y, str)
 int x, y;
-char *str;
+const char *str;
 {
     char ebuf[60];
 

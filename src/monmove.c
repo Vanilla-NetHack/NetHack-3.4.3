@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)monmove.c	3.1	93/02/17	*/
+/*	SCCS Id: @(#)monmove.c	3.1	93/05/15	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -61,7 +61,7 @@ register struct monst *mtmp;
 		  pline("%s yells:", Amonnam(mtmp));
 		  if(levl[x][y].looted & D_WARNED) {
 			verbalize("Halt, thief!  You're under arrest!");
-			angry_guards(!(flags.soundok));
+			(void) angry_guards(!(flags.soundok));
 		  } else {
 			verbalize("Hey, stop picking that lock!");
 			levl[x][y].looted |=  D_WARNED;
@@ -897,18 +897,18 @@ not_special:
 	    if((info[chi] & ALLOW_M) ||
 		   (nix == mtmp->mux && niy == mtmp->muy)) {
 		struct monst *mtmp2;
-		int stat;
+		int mstatus;
 		mtmp2 = m_at(nix,niy);
 
-		stat = mattackm(mtmp, mtmp2);
+		mstatus = mattackm(mtmp, mtmp2);
 
-		if (stat & MM_AGR_DIED)		/* aggressor died */
+		if (mstatus & MM_AGR_DIED)		/* aggressor died */
 		    return 2;
 
-		if ((stat & MM_HIT) && !(stat & MM_DEF_DIED)  &&
+		if ((mstatus & MM_HIT) && !(mstatus & MM_DEF_DIED)  &&
 		    rn2(4) && mtmp2->mlstmv != monstermoves) {
-		    stat = mattackm(mtmp2, mtmp);	/* return attack */
-		    if (stat & MM_DEF_DIED)
+		    mstatus = mattackm(mtmp2, mtmp);	/* return attack */
+		    if (mstatus & MM_DEF_DIED)
 			return 2;
 		}
 		return 3;
@@ -1083,46 +1083,57 @@ register int x, y;
 #endif /* OVL2 */
 #ifdef OVL0
 
+/* decide where the monster thinks you are standing */
 void
-set_apparxy(mtmp)		/* where does mtmp think you are standing? */
-	register struct monst *mtmp;
+set_apparxy(mtmp)
+register struct monst *mtmp;
 {
-#define notseen (Invis && !perceives(mtmp->data))
-/*	add cases as required.  eg. Displacement ... */
-	register int disp = (Underwater ? 3 : notseen ? 1 : Displaced ? 2 : 0);
+	boolean notseen, gotu;
+	register int disp, mx = mtmp->mux, my = mtmp->muy;
 
-/* 	without something like the following, invis. and displ. are too */
-/*	powerful. */
-	register boolean gotu =
-		(notseen ? !rn2(3) : Displaced ? !rn2(4) : FALSE);
+	/*
+	 * do cheapest and/or most likely tests first
+	 */
 
-/*	Monsters which know where you are don't suddenly forget, if you
-	didn't move away. */
-	if (mtmp->mux==u.ux && mtmp->muy==u.uy) gotu = 1;
+	/* pet knows your smell; grabber still has hold of you */
+	if (mtmp->mtame || mtmp == u.ustuck) goto found_you;
 
-/* 	your dog follows your smell */
-	if(!disp || mtmp->mtame || gotu ||
-/* 	Monsters touching you know where you are */
-	   mtmp == u.ustuck ||
-/*	If invisible but not displaced, staying around gets you 'discovered' */
-	    (!Displaced && u.dx == 0 && u.dy == 0)) {
-		mtmp->mux = u.ux;
-		mtmp->muy = u.uy;
+	/* monsters which know where you are don't suddenly forget,
+	   if you haven't moved away */
+	if (mx == u.ux && my == u.uy) goto found_you;
+
+	notseen = Invis && !perceives(mtmp->data);
+	/* add cases as required.  eg. Displacement ... */
+	disp = (notseen || Underwater ? 1 : Displaced ? 2 : 0);
+	if (!disp) goto found_you;
+
+	/* without something like the following, invis. and displ.
+	   are too powerful */
+	gotu = notseen ? !rn2(3) : Displaced ? !rn2(4) : FALSE;
+
+	/* If invis but not displaced, staying around gets you 'discovered' */
+	gotu |= (!Displaced && u.dx == 0 && u.dy == 0);
+
+	if (!gotu) {
+	    register int try_cnt = 0;
+	    do {
+		if (++try_cnt > 200) goto found_you;		/* punt */
+		mx = u.ux - disp + rn2(2*disp+1);
+		my = u.uy - disp + rn2(2*disp+1);
+	    } while (!isok(mx,my)
+		  || (disp != 2 && mx == mtmp->mx && my == mtmp->my)
+		  || ((mx != u.ux || my != u.uy) &&
+		      !passes_walls(mtmp->data) &&
+		      (!ACCESSIBLE(levl[mx][my].typ) ||
+			(closed_door(mx, my) && !amorphous(mtmp->data)))));
+	} else {
+found_you:
+	    mx = u.ux;
+	    my = u.uy;
 	}
-	else do {
-		mtmp->mux = u.ux - disp + rn2(2*disp+1);
-		mtmp->muy = u.uy - disp + rn2(2*disp+1);
-	} while((mtmp->mux != u.ux || mtmp->muy != u.uy) &&
-	        ( (!passes_walls(mtmp->data) &&
-		      (!ACCESSIBLE(levl[mtmp->mux][mtmp->muy].typ) ||
-		       (closed_door(mtmp->mux, mtmp->muy) &&
-			!amorphous(mtmp->data)
-		       )
-		      )
-		  ) ||
-		  (disp==1 && mtmp->mux == mtmp->mx && mtmp->muy == mtmp->my)
-	        )
-	       );
+
+	mtmp->mux = mx;
+	mtmp->muy = my;
 }
 
 #endif /* OVL0 */

@@ -131,8 +131,11 @@ boolean creation;
 # ifdef TOURIST
 		else if (obj->otyp == HAWAIIAN_SHIRT) flag = W_ARMU;
 # endif
-		else if (is_cloak(obj)) flag = W_ARMC;
-		else if (is_helmet(obj)) flag = W_ARMH;
+		else if (is_cloak(obj)) {
+			if (cantweararm(mon->data))
+				continue;
+			flag = W_ARMC;
+		} else if (is_helmet(obj)) flag = W_ARMH;
 		else if (is_shield(obj)) {
 			if (MON_WEP(mon) && bimanual(MON_WEP(mon)))
 				continue;
@@ -140,13 +143,14 @@ boolean creation;
 		} else if (is_gloves(obj)) {
 			if (MON_WEP(mon) && MON_WEP(mon)->cursed)
 				continue;
-		    flag = W_ARMG;
-		} else if (is_boots(obj)) flag = W_ARMF;
-		else if (obj->oclass == ARMOR_CLASS) {
-#ifdef POLYSELF
+			flag = W_ARMG;
+		} else if (is_boots(obj)) {
+			if (slithy(mon->data) || mon->data->mlet == S_CENTAUR)
+				continue;
+			flag = W_ARMF;
+		} else if (obj->oclass == ARMOR_CLASS) {
 			if (cantweararm(mon->data))
 				continue;
-#endif
 			flag = W_ARM;
 		} else continue;
 		if (mon->misc_worn_check & flag) continue;
@@ -310,6 +314,9 @@ struct monst *mon;
 		otmp->owornmask &= ~W_ARMH;
 		rel_1_obj(mon, otmp);
 	    }
+	}
+	if (nohands(mdat) || verysmall(mdat) || slithy(mdat) ||
+	    mdat->mlet == S_CENTAUR) {
 	    if (otmp = which_armor(mon, W_ARMF)) {
 		if (vis) {
 		    if (is_whirly(mon->data))

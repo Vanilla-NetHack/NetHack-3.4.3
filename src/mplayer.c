@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)mplayer.c	3.1	92/10/28	*/
+/*	SCCS Id: @(#)mplayer.c	3.1	93/03/14	*/
 /*	Copyright (c) Izchak Miller, 1992.			  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -26,10 +26,12 @@ static const char *developers[] = {
 	/* Mac team */
 	"David", "Johnny", "Jon", "Jonathan", "Michael", "Rob",
 	"Tim", "Wang",
-	/* OS/2 team */
-	"Timo",
 	/* Atari team */
 	"Eric",
+	/* NT team */
+	"Michael",
+	/* OS/2 team */
+	"Timo",
 	/* VMS team */
 	"Joshua", "Pat",
 	""};
@@ -281,31 +283,20 @@ void
 mplayer_talk(mtmp)
 register struct monst *mtmp;
 {
-	char pbuf[BUFSZ];
+	static const char *same_class_msg[3] = {
+		"I can't win, and neither will you!",
+		"You don't deserve to win!",
+		"Mine should be the honor, not yours!",
+	},		  *other_class_msg[3] = {
+		"The low-life wants to talk, eh?",
+		"Fight, scum!",
+		"Here is what I have to say!",
+	};
 
 	if(mtmp->mpeaceful) return; /* will drop to humanoid talk */
 
-	Strcpy(pbuf, "Talk? -- ");
-	if(pl_character[0] == highc(*mtmp->data->mname)) { /* same kind */
-	     switch(rn2(4)) {
-	       case 0: Strcat(pbuf, "I can't win, and neither will you!");
-		       break;
-	       case 1: Strcat(pbuf, "You don't deserve to win!");
-		       break;
-	       case 3: Strcat(pbuf, "Mine should be the honor, not yours!");
-		       break;
-	     }
-	} else {
-	     switch(rn2(4)) {
-	       case 0: Strcat(pbuf, "The low-life wants to talk, eh?");
-		       break;
-	       case 1: Strcat(pbuf, "Fight, scum!");
-		       break;
-	       case 3: Strcat(pbuf, "Here is what I have to say!");
-		       break;
-	     }
-	}
-	pline(pbuf);
+	pline("Talk? -- %s", pl_character[0] == highc(*mtmp->data->mname) ?
+		same_class_msg[rn2(3)] : other_class_msg[rn2(3)]);
 }
 
 /*mplayer.c*/

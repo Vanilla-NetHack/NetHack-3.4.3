@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)priest.c	3.1	93/02/09
+/*	SCCS Id: @(#)priest.c	3.1	93/05/15	*/
 /* Copyright (c) Izchak Miller, Steve Linhart, 1989. 		  */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -196,8 +196,9 @@ boolean sanctum;   /* is it the seat of the high priest? */
 	if(MON_AT(sx+1, sy))
 		rloc(m_at(sx+1, sy)); /* insurance */
 
-	if(priest = (sanctum ? makemon(&mons[PM_HIGH_PRIEST], sx+1, sy)
-			     : makemon(&mons[PM_ALIGNED_PRIEST], sx+1, sy))) {
+	priest = (sanctum ? makemon(&mons[PM_HIGH_PRIEST], sx+1, sy)
+			  : makemon(&mons[PM_ALIGNED_PRIEST], sx+1, sy));
+	if (priest) {
 		EPRI(priest)->shroom = (sroom - rooms) + ROOMOFFSET;
 		EPRI(priest)->shralign = Amask2align(levl[sx][sy].altarmask);
 		EPRI(priest)->shrpos.x = sx;
@@ -377,7 +378,8 @@ register int roomno;
 		switch(rn2(3)) {
 		  case 0: You("have an eerie feeling..."); break;
 		  case 1: You("feel like you are being watched."); break;
-		  default: pline("A shiver runs down your spine."); break;
+		  default: pline("A shiver runs down your %s.",
+			body_part(SPINE)); break;
 		}
 		if(!rn2(5)) {
 		    struct monst *mtmp;
@@ -627,7 +629,7 @@ angry_priest()
 {
 	register struct monst *priest;
 
-	if(priest = findpriest(temple_occupied(u.urooms)))
+	if ((priest = findpriest(temple_occupied(u.urooms))) != 0)
 		wakeup(priest);
 }
 

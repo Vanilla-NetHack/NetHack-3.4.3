@@ -15,14 +15,14 @@
 #OPTIONS=packorder:")[%?+/=!(*0_`,scores:10t/2a,noverbose
 
 # Other general options
-#OPTIONS=time,rest_on_space,nopickup
+#OPTIONS=time,rest_on_space,noautopickup
 
 # The search path for files like record, help, opthelp, etc.
 #PATH=NetHack:
-PATH=NetHack:playground
+PATH=NetHack:
 
 # My own setup
-#OPTIONS=name:Rhialto,catname:Killie,time,nopickup
+#OPTIONS=name:Rhialto,catname:Killie,time,noautopickup
 
 # A hard disk configuration.
 #
@@ -91,6 +91,24 @@ GRAPHICS = 032 192 193 194 195 196 197 198 216 214 \
 	   215 213 046 193 192 198 198 046 229 035 \
 	   060 062 060 062 094 034 095 092 035 123 \
 	   125 042 125 042 042 035 035 046 035 125 \
-	   192 193 092 047 042 033 123 125 064 038 \
-	   042 035 047 201 092 200 200 092 201 047 \
+	   241 240 242 243 042 033 123 125 064 038 \
+	   042 035 244 245 246 247 239 248 249 250 \
 	   230 234 231 236 212 237 232 235 233
+# Monitors vary greatly in their color response.  If the default colors
+# are not good on your monitor, here are some other alternatives:
+#CBM 1960, set color/contrast for good pure red, green, and blue. True colors.
+#PENS=000,fff,a61,7bb,0f0,e0c,00f,f00
+#CBM 1960, set color/contrast as above, better colors for NetHack.
+#PENS=667,fff,da1,7bb,2f0,e0d,0af,f42
+#and one other suggestion:
+#PENS=888,ffc,840,0b8,4e4,e8b,7be,a04
+PENS=000,fff,830,7ae,181,c06,23e,c00
+# for an "interlaced"+ line screen, the default is courier:13.  If you want
+#  a different font, set it here.  The format is "fontname.font:size"; i.e. the
+# .font extension is required.
+#FONT=topaz.font:13
+# Proportional fonts such as CGTimes are probably not a good idea because they
+# result in many things not being spaced out correctly.
+#FONT=CGTimes.font:15
+# This sized proportional font is readable, but still has spacing problems
+#FONT=CGTimes.font:21

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)sit.c	3.1	92/10/24	*/
+/*	SCCS Id: @(#)sit.c	3.1	93/05/19	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -36,7 +36,7 @@ dosit()
 	    You("sit on %s.", the(xname(obj)));
 	    if(!Is_box(obj)) pline("It's not very comfortable...");
 
-	} else if(trap = t_at(u.ux, u.uy)) {
+	} else if ((trap = t_at(u.ux, u.uy)) != 0) {
 
 	    if (u.utrap) {
 		exercise(A_WIS, FALSE);	/* you're getting stuck longer */
@@ -211,9 +211,11 @@ dosit()
 			You("are granted an insight!");
 			if (invent) {
 			    int ret, cval = rn2(5); /* agrees w/seffects() */
+			    /* use up `cval' "charges"; 0 is special case */
 			    do {
 				ret = ggetobj("identify", identify, cval);
-			    } while (cval && (cval -= ret));
+				if (ret < 0) break;	/* quit */
+			    } while (ret == 0 || (cval -= ret) > 0);
 			}
 			break;
 		    case 13:
@@ -261,7 +263,7 @@ dosit()
 	} else if (u.uswallow)
 		pline("There are no seats in here!");
 	else
-		pline("Having fun sitting on the floor?");
+		pline("Having fun sitting on the %s?", surface(u.ux,u.uy));
 	return(1);
 }
 
@@ -271,10 +273,16 @@ rndcurse()			/* curse a few inventory items at random! */
 	int	nobj = 0;
 	int	cnt, onum;
 	struct	obj	*otmp;
+	static const char *mal_aura = "feel a malignant aura surround %s.";
+
+	if (uwep && (uwep->oartifact == ART_MAGICBANE) && rn2(20)) {
+	    You(mal_aura, "the magic-absorbing blade");
+	    return;
+	}
 
 	if(Antimagic) {
 	    shieldeff(u.ux, u.uy);
-	    You("feel a malignant aura surround you.");
+	    You(mal_aura, "you");
 	}
 
 	for (otmp = invent; otmp; otmp = otmp->nobj)  nobj++;

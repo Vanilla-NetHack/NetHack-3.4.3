@@ -1,7 +1,5 @@
 extern char *malloc(), *realloc();
-
-# line 2 "lev_comp.y"
-/*	SCCS Id: @(#)lev_comp.c	3.1	93/02/13	*/
+/*	SCCS Id: @(#)lev_comp.c	3.1	93/05/15	*/
 /*	Copyright (c) 1989 by Jean-Christophe Collet */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -53,8 +51,8 @@ extern char *malloc(), *realloc();
 extern void FDECL(exit, (int));
 #endif
 
-extern void FDECL(yyerror, (char *));
-extern void FDECL(yywarning, (char *));
+extern void FDECL(yyerror, (const char *));
+extern void FDECL(yywarning, (const char *));
 extern int NDECL(yylex);
 int NDECL(yyparse);
 
@@ -70,7 +68,7 @@ extern char FDECL(what_map_char, (CHAR_P));
 extern void FDECL(scan_map, (char *));
 extern void NDECL(wallify_map);
 extern boolean NDECL(check_subrooms);
-extern void FDECL(check_coord, (int, int, char *));
+extern void FDECL(check_coord, (int, int, const char *));
 extern void NDECL(store_part);
 extern void NDECL(store_room);
 extern void FDECL(write_maze, (int, specialmaze *));
@@ -139,10 +137,8 @@ static xchar in_room;
 
 extern int fatal_error;
 extern int want_warnings;
-extern char* fname;
+extern const char *fname;
 
-
-# line 144 "lev_comp.y"
 typedef union 
 {
 	int	i;
@@ -227,8 +223,6 @@ extern int yyerrflag;
 #endif
 YYSTYPE yylval, yyval;
 # define YYERRCODE 256
-
-# line 1542 "lev_comp.y"
 
 int yyexca[] ={
 -1, 1,
@@ -1238,9 +1232,7 @@ yyparse()
 	switch( yytmp )
 	{
 		
-case 7:
-# line 194 "lev_comp.y"
-{
+case 7:{
 			  int fout, i;
 
 			if (fatal_error > 0) {
@@ -1272,9 +1264,7 @@ case 7:
 				npart = 0;
 			}
 		  } break;
-case 8:
-# line 229 "lev_comp.y"
-{
+case 8:{
 			int fout, i;
 
 			if (fatal_error > 0) {
@@ -1313,9 +1303,7 @@ case 8:
 				(void) close(fout);
 			}
 		  } break;
-case 9:
-# line 271 "lev_comp.y"
-{
+case 9:{
 			if (index(yypvt[-0].map, '.'))
 			    yyerror("Invalid dot ('.') in level name.");
 			if (strlen(yypvt[-0].map) > 8)
@@ -1324,15 +1312,11 @@ case 9:
 			special_lev.nrobjects = 0;
 			special_lev.nrmonst = 0;
 		  } break;
-case 10:
-# line 283 "lev_comp.y"
-{
+case 10:{
 			init_lev.init_present = FALSE;
 			yyval.i = 0;
 		  } break;
-case 11:
-# line 288 "lev_comp.y"
-{
+case 11:{
 			init_lev.init_present = TRUE;
 			if((init_lev.fg = what_map_char(yypvt[-10].i)) == INVALID_TYPE)
 			    yyerror("Invalid foreground type.");
@@ -1344,30 +1328,20 @@ case 11:
 			init_lev.walled = yypvt[-0].i;
 			yyval.i = 1;
 		  } break;
-case 14:
-# line 307 "lev_comp.y"
-{
+case 14:{
 			yyval.i = 0;
 		  } break;
-case 15:
-# line 311 "lev_comp.y"
-{
+case 15:{
 			yyval.i = lev_flags;
 			lev_flags = 0;	/* clear for next user */
 		  } break;
-case 16:
-# line 318 "lev_comp.y"
-{
+case 16:{
 			lev_flags |= yypvt[-2].i;
 		  } break;
-case 17:
-# line 322 "lev_comp.y"
-{
+case 17:{
 			lev_flags |= yypvt[-0].i;
 		  } break;
-case 20:
-# line 332 "lev_comp.y"
-{
+case 20:{
 			int i, j;
 
 			i = strlen(yypvt[-0].map) + 1;
@@ -1380,9 +1354,7 @@ case 20:
 			    tmpmessage[j+i-1] = 0;
 			}
 		  } break;
-case 23:
-# line 352 "lev_comp.y"
-{
+case 23:{
 			if(special_lev.nrobjects) {
 			    yyerror("Object registers already initialized!");
 			} else {
@@ -1392,9 +1364,7 @@ case 23:
 					  (genericptr_t)olist, n_olist);
 			}
 		  } break;
-case 24:
-# line 363 "lev_comp.y"
-{
+case 24:{
 			if(special_lev.nrmonst) {
 			    yyerror("Monster registers already initialized!");
 			} else {
@@ -1404,9 +1374,7 @@ case 24:
 					  (genericptr_t)mlist, n_mlist);
 			  }
 		  } break;
-case 25:
-# line 376 "lev_comp.y"
-{
+case 25:{
 			tmproom[nrooms] = New(room);
 			(void) memset((genericptr_t) tmproom[nrooms], 0,
 					sizeof *tmproom[nrooms]);
@@ -1422,16 +1390,12 @@ case 25:
 			tmproom[nrooms]->h = 2;
 			in_room = 1;
 		  } break;
-case 31:
-# line 404 "lev_comp.y"
-{
+case 31:{
 			tmpcor[0] = New(corridor);
 			tmpcor[0]->src.room = -1;
 			ncorridor = 1;
 		  } break;
-case 34:
-# line 416 "lev_comp.y"
-{
+case 34:{
 			tmpcor[ncorridor] = New(corridor);
 			tmpcor[ncorridor]->src.room = yypvt[-2].corpos.room;
 			tmpcor[ncorridor]->src.wall = yypvt[-2].corpos.wall;
@@ -1441,9 +1405,7 @@ case 34:
 			tmpcor[ncorridor]->dest.door = yypvt[-0].corpos.door;
 			ncorridor++;
 		  } break;
-case 35:
-# line 427 "lev_comp.y"
-{
+case 35:{
 			tmpcor[ncorridor]->src.room = yypvt[-2].corpos.room;
 			tmpcor[ncorridor]->src.wall = yypvt[-2].corpos.wall;
 			tmpcor[ncorridor]->src.door = yypvt[-2].corpos.door;
@@ -1451,28 +1413,20 @@ case 35:
 			tmpcor[ncorridor]->dest.wall = yypvt[-0].i;
 			ncorridor++;
 		  } break;
-case 36:
-# line 438 "lev_comp.y"
-{
+case 36:{
 			if (yypvt[-5].i >= nrooms)
 			    yyerror("Wrong room number!");
 			yyval.corpos.room = yypvt[-5].i;
 			yyval.corpos.wall = yypvt[-3].i;
 			yyval.corpos.door = yypvt[-1].i;
 		  } break;
-case 37:
-# line 448 "lev_comp.y"
-{
+case 37:{
 			store_room();
 		  } break;
-case 38:
-# line 452 "lev_comp.y"
-{
+case 38:{
 			store_room();
 		  } break;
-case 39:
-# line 458 "lev_comp.y"
-{
+case 39:{
 			tmproom[nrooms] = New(room);
 			(void) memset((genericptr_t) tmproom[nrooms], 0,
 					sizeof *tmproom[nrooms]);
@@ -1489,9 +1443,7 @@ case 39:
 			tmproom[nrooms]->h = current_size.height;
 			in_room = 1;
 		  } break;
-case 40:
-# line 478 "lev_comp.y"
-{
+case 40:{
 			tmproom[nrooms] = New(room);
 			(void) memset((genericptr_t) tmproom[nrooms], 0,
 					sizeof *tmproom[nrooms]);
@@ -1508,19 +1460,13 @@ case 40:
 			tmproom[nrooms]->h = current_size.height;
 			in_room = 1;
 		  } break;
-case 41:
-# line 498 "lev_comp.y"
-{
+case 41:{
 			yyval.i = 1;
 		  } break;
-case 42:
-# line 502 "lev_comp.y"
-{
+case 42:{
 			yyval.i = yypvt[-0].i;
 		  } break;
-case 43:
-# line 508 "lev_comp.y"
-{
+case 43:{
 			if ( yypvt[-3].i < 1 || yypvt[-3].i > 5 ||
 			    yypvt[-1].i < 1 || yypvt[-1].i > 5 ) {
 			    yyerror("Room position should be between 1 & 5!");
@@ -1529,14 +1475,10 @@ case 43:
 			    current_coord.y = yypvt[-1].i;
 			}
 		  } break;
-case 44:
-# line 518 "lev_comp.y"
-{
+case 44:{
 			current_coord.x = current_coord.y = ERR;
 		  } break;
-case 45:
-# line 524 "lev_comp.y"
-{
+case 45:{
 			if ( yypvt[-3].i < 0 || yypvt[-1].i < 0) {
 			    yyerror("Invalid subroom position !");
 			} else {
@@ -1544,44 +1486,30 @@ case 45:
 			    current_coord.y = yypvt[-1].i;
 			}
 		  } break;
-case 46:
-# line 533 "lev_comp.y"
-{
+case 46:{
 			current_coord.x = current_coord.y = ERR;
 		  } break;
-case 47:
-# line 539 "lev_comp.y"
-{
+case 47:{
 			current_align.x = yypvt[-3].i;
 			current_align.y = yypvt[-1].i;
 		  } break;
-case 48:
-# line 544 "lev_comp.y"
-{
+case 48:{
 			current_align.x = current_align.y = ERR;
 		  } break;
-case 49:
-# line 550 "lev_comp.y"
-{
+case 49:{
 			current_size.width = yypvt[-3].i;
 			current_size.height = yypvt[-1].i;
 		  } break;
-case 50:
-# line 555 "lev_comp.y"
-{
+case 50:{
 			current_size.height = current_size.width = ERR;
 		  } break;
-case 66:
-# line 580 "lev_comp.y"
-{
+case 66:{
 			if (tmproom[nrooms]->name)
 			    yyerror("This room already has a name!");
 			else
 			    tmproom[nrooms]->name = dup_string(yypvt[-0].map);
 		  } break;
-case 67:
-# line 589 "lev_comp.y"
-{
+case 67:{
 			if (tmproom[nrooms]->chance)
 			    yyerror("This room already assigned a chance!");
 			else if (tmproom[nrooms]->rtype == OROOM)
@@ -1591,9 +1519,7 @@ case 67:
 			else
 			    tmproom[nrooms]->chance = yypvt[-0].i;
 		   } break;
-case 68:
-# line 602 "lev_comp.y"
-{
+case 68:{
 			/* ERR means random here */
 			if (yypvt[-2].i == ERR && yypvt[-0].i != ERR) {
 		     yyerror("If the door wall is random, so must be its pos!");
@@ -1606,9 +1532,7 @@ case 68:
 			    ndoor++;
 			}
 		  } break;
-case 75:
-# line 630 "lev_comp.y"
-{
+case 75:{
 			maze.filling = yypvt[-0].i;
 			if (index(yypvt[-2].map, '.'))
 			    yyerror("Invalid dot ('.') in level name.");
@@ -1617,24 +1541,16 @@ case 75:
 			yyval.map = yypvt[-2].map;
 			in_room = 0;
 		  } break;
-case 76:
-# line 642 "lev_comp.y"
-{
+case 76:{
 			yyval.i = get_floor_type((char)yypvt[-0].i);
 		  } break;
-case 77:
-# line 646 "lev_comp.y"
-{
+case 77:{
 			yyval.i = -1;
 		  } break;
-case 80:
-# line 656 "lev_comp.y"
-{
+case 80:{
 			store_part();
 		  } break;
-case 81:
-# line 662 "lev_comp.y"
-{
+case 81:{
 			tmppart[npart] = New(mazepart);
 			tmppart[npart]->halign = 1;
 			tmppart[npart]->valign = 1;
@@ -1649,9 +1565,7 @@ case 81:
 			max_x_map = COLNO-1;
 			max_y_map = ROWNO;
 		  } break;
-case 82:
-# line 678 "lev_comp.y"
-{
+case 82:{
 			tmppart[npart] = New(mazepart);
 			tmppart[npart]->halign = yypvt[-1].i % 10;
 			tmppart[npart]->valign = yypvt[-1].i / 10;
@@ -1660,14 +1574,10 @@ case 82:
 			tmppart[npart]->nrmonst = 0;
 			scan_map(yypvt[-0].map);
 		  } break;
-case 83:
-# line 690 "lev_comp.y"
-{
+case 83:{
 			yyval.i = yypvt[-2].i + (yypvt[-0].i * 10);
 		  } break;
-case 90:
-# line 708 "lev_comp.y"
-{
+case 90:{
 			if (tmppart[npart]->nrobjects) {
 			    yyerror("Object registers already initialized!");
 			} else {
@@ -1677,9 +1587,7 @@ case 90:
 			    tmppart[npart]->nrobjects = n_olist;
 			}
 		  } break;
-case 91:
-# line 719 "lev_comp.y"
-{
+case 91:{
 			if (tmppart[npart]->nloc) {
 			    yyerror("Location registers already initialized!");
 			} else {
@@ -1693,9 +1601,7 @@ case 91:
 			    tmppart[npart]->nloc = n_plist;
 			}
 		  } break;
-case 92:
-# line 734 "lev_comp.y"
-{
+case 92:{
 			if (tmppart[npart]->nrmonst) {
 			    yyerror("Monster registers already initialized!");
 			} else {
@@ -1705,57 +1611,43 @@ case 92:
 			    tmppart[npart]->nrmonst = n_mlist;
 			}
 		  } break;
-case 93:
-# line 747 "lev_comp.y"
-{
+case 93:{
 			if (n_olist < MAX_REGISTERS)
 			    olist[n_olist++] = yypvt[-0].i;
 			else
 			    yyerror("Object list too long!");
 		  } break;
-case 94:
-# line 754 "lev_comp.y"
-{
+case 94:{
 			if (n_olist < MAX_REGISTERS)
 			    olist[n_olist++] = yypvt[-2].i;
 			else
 			    yyerror("Object list too long!");
 		  } break;
-case 95:
-# line 763 "lev_comp.y"
-{
+case 95:{
 			if (n_mlist < MAX_REGISTERS)
 			    mlist[n_mlist++] = yypvt[-0].i;
 			else
 			    yyerror("Monster list too long!");
 		  } break;
-case 96:
-# line 770 "lev_comp.y"
-{
+case 96:{
 			if (n_mlist < MAX_REGISTERS)
 			    mlist[n_mlist++] = yypvt[-2].i;
 			else
 			    yyerror("Monster list too long!");
 		  } break;
-case 97:
-# line 779 "lev_comp.y"
-{
+case 97:{
 			if (n_plist < MAX_REGISTERS)
 			    plist[n_plist++] = current_coord;
 			else
 			    yyerror("Location list too long!");
 		  } break;
-case 98:
-# line 786 "lev_comp.y"
-{
+case 98:{
 			if (n_plist < MAX_REGISTERS)
 			    plist[n_plist++] = current_coord;
 			else
 			    yyerror("Location list too long!");
 		  } break;
-case 122:
-# line 822 "lev_comp.y"
-{
+case 122:{
 			tmpmonst[nmons] = New(monster);
 			tmpmonst[nmons]->x = current_coord.x;
 			tmpmonst[nmons]->y = current_coord.y;
@@ -1780,40 +1672,26 @@ case 122:
 				    tmpmonst[nmons]->id = token;
 			}
 		  } break;
-case 123:
-# line 848 "lev_comp.y"
-{
+case 123:{
 			nmons++;
 		  } break;
-case 126:
-# line 858 "lev_comp.y"
-{
+case 126:{
 			tmpmonst[nmons]->name = dup_string(yypvt[-0].map);
 		  } break;
-case 127:
-# line 862 "lev_comp.y"
-{
+case 127:{
 			tmpmonst[nmons]->peaceful = yypvt[-0].i;
 		  } break;
-case 128:
-# line 866 "lev_comp.y"
-{
+case 128:{
 			tmpmonst[nmons]->asleep = yypvt[-0].i;
 		  } break;
-case 129:
-# line 870 "lev_comp.y"
-{
+case 129:{
 			tmpmonst[nmons]->align = yypvt[-0].i;
 		  } break;
-case 130:
-# line 874 "lev_comp.y"
-{
+case 130:{
 			tmpmonst[nmons]->appear = yypvt[-1].i;
 			tmpmonst[nmons]->appear_as = dup_string(yypvt[-0].map);
 		  } break;
-case 131:
-# line 881 "lev_comp.y"
-{
+case 131:{
 			tmpobj[nobj] = New(object);
 			tmpobj[nobj]->x = current_coord.x;
 			tmpobj[nobj]->y = current_coord.y;
@@ -1835,19 +1713,13 @@ case 131:
 				    tmpobj[nobj]->id = token;
 			}
 		  } break;
-case 132:
-# line 904 "lev_comp.y"
-{
+case 132:{
 			nobj++;
 		  } break;
-case 133:
-# line 910 "lev_comp.y"
-{
+case 133:{
 			tmpobj[nobj]->spe = -127;
 		  } break;
-case 134:
-# line 914 "lev_comp.y"
-{
+case 134:{
 			int token = get_monster_id(yypvt[-2].map, (char)0);
 			if (token == ERR)	/* "random" */
 			    tmpobj[nobj]->corpsenm = -2;
@@ -1855,9 +1727,7 @@ case 134:
 			    tmpobj[nobj]->corpsenm = token;
 			tmpobj[nobj]->spe = yypvt[-0].i;
 		  } break;
-case 135:
-# line 923 "lev_comp.y"
-{
+case 135:{
 			tmpobj[nobj]->curse_state = yypvt[-4].i;
 			tmpobj[nobj]->spe = yypvt[-2].i;
 			if (yypvt[-0].map)
@@ -1865,14 +1735,10 @@ case 135:
 			else
 			    tmpobj[nobj]->name = (char *) 0;
 		  } break;
-case 139:
-# line 939 "lev_comp.y"
-{
+case 139:{
 			yyval.i = -127;
 		  } break;
-case 140:
-# line 945 "lev_comp.y"
-{
+case 140:{
 			tmpdoor[ndoor] = New(door);
 			tmpdoor[ndoor]->x = current_coord.x;
 			tmpdoor[ndoor]->y = current_coord.y;
@@ -1883,9 +1749,7 @@ case 140:
 			    yyerror("Door decl doesn't match the map");
 			ndoor++;
 		  } break;
-case 141:
-# line 959 "lev_comp.y"
-{
+case 141:{
 			tmptrap[ntrap] = New(trap);
 			tmptrap[ntrap]->x = current_coord.x;
 			tmptrap[ntrap]->y = current_coord.y;
@@ -1895,9 +1759,7 @@ case 141:
 					"Trap");
 			ntrap++;
 		  } break;
-case 142:
-# line 972 "lev_comp.y"
-{
+case 142:{
 		        int x, y, dir;
 
 			tmpdb[ndb] = New(drawbridge);
@@ -1932,23 +1794,17 @@ case 142:
 			    yyerror("A drawbridge can only be open or closed!");
 			ndb++;
 		   } break;
-case 143:
-# line 1010 "lev_comp.y"
-{
+case 143:{
 			tmpwalk[nwalk] = New(walk);
 			tmpwalk[nwalk]->x = current_coord.x;
 			tmpwalk[nwalk]->y = current_coord.y;
 			tmpwalk[nwalk]->dir = yypvt[-0].i;
 			nwalk++;
 		  } break;
-case 144:
-# line 1020 "lev_comp.y"
-{
+case 144:{
 			wallify_map();
 		  } break;
-case 145:
-# line 1026 "lev_comp.y"
-{
+case 145:{
 			tmplad[nlad] = New(lad);
 			tmplad[nlad]->x = current_coord.x;
 			tmplad[nlad]->y = current_coord.y;
@@ -1958,9 +1814,7 @@ case 145:
 					"Ladder");
 			nlad++;
 		  } break;
-case 146:
-# line 1039 "lev_comp.y"
-{
+case 146:{
 			tmpstair[nstair] = New(stair);
 			tmpstair[nstair]->x = current_coord.x;
 			tmpstair[nstair]->y = current_coord.y;
@@ -1970,9 +1824,7 @@ case 146:
 					"Stairway");
 			nstair++;
 		  } break;
-case 147:
-# line 1052 "lev_comp.y"
-{
+case 147:{
 			tmplreg[nlreg] = New(lev_region);
 			tmplreg[nlreg]->in_islev = yypvt[-0].i;
 			tmplreg[nlreg]->inarea.x1 = current_region.x1;
@@ -1980,9 +1832,7 @@ case 147:
 			tmplreg[nlreg]->inarea.x2 = current_region.x2;
 			tmplreg[nlreg]->inarea.y2 = current_region.y2;
 		  } break;
-case 148:
-# line 1061 "lev_comp.y"
-{
+case 148:{
 			tmplreg[nlreg]->del_islev = yypvt[-2].i;
 			tmplreg[nlreg]->delarea.x1 = current_region.x1;
 			tmplreg[nlreg]->delarea.y1 = current_region.y1;
@@ -1995,9 +1845,7 @@ case 148:
 			tmplreg[nlreg]->rname = 0;
 			nlreg++;
 		  } break;
-case 149:
-# line 1077 "lev_comp.y"
-{
+case 149:{
 			tmplreg[nlreg] = New(lev_region);
 			tmplreg[nlreg]->in_islev = yypvt[-0].i;
 			tmplreg[nlreg]->inarea.x1 = current_region.x1;
@@ -2005,9 +1853,7 @@ case 149:
 			tmplreg[nlreg]->inarea.x2 = current_region.x2;
 			tmplreg[nlreg]->inarea.y2 = current_region.y2;
 		  } break;
-case 150:
-# line 1086 "lev_comp.y"
-{
+case 150:{
 			tmplreg[nlreg]->del_islev = yypvt[-2].i;
 			tmplreg[nlreg]->delarea.x1 = current_region.x1;
 			tmplreg[nlreg]->delarea.y1 = current_region.y1;
@@ -2017,9 +1863,7 @@ case 150:
 			tmplreg[nlreg]->rname = yypvt[-0].map;
 			nlreg++;
 		  } break;
-case 151:
-# line 1099 "lev_comp.y"
-{
+case 151:{
 			tmplreg[nlreg] = New(lev_region);
 			tmplreg[nlreg]->in_islev = yypvt[-0].i;
 			tmplreg[nlreg]->inarea.x1 = current_region.x1;
@@ -2027,18 +1871,14 @@ case 151:
 			tmplreg[nlreg]->inarea.x2 = current_region.x2;
 			tmplreg[nlreg]->inarea.y2 = current_region.y2;
 		  } break;
-case 152:
-# line 1108 "lev_comp.y"
-{
+case 152:{
 			tmplreg[nlreg]->del_islev = yypvt[-0].i;
 			tmplreg[nlreg]->delarea.x1 = current_region.x1;
 			tmplreg[nlreg]->delarea.y1 = current_region.y1;
 			tmplreg[nlreg]->delarea.x2 = current_region.x2;
 			tmplreg[nlreg]->delarea.y2 = current_region.y2;
 		  } break;
-case 153:
-# line 1116 "lev_comp.y"
-{
+case 153:{
 			switch(yypvt[-0].i) {
 			case -1: tmplreg[nlreg]->rtype = LR_TELE; break;
 			case 0: tmplreg[nlreg]->rtype = LR_DOWNTELE; break;
@@ -2047,9 +1887,7 @@ case 153:
 			tmplreg[nlreg]->rname = 0;
 			nlreg++;
 		  } break;
-case 154:
-# line 1128 "lev_comp.y"
-{
+case 154:{
 			tmplreg[nlreg] = New(lev_region);
 			tmplreg[nlreg]->in_islev = yypvt[-0].i;
 			tmplreg[nlreg]->inarea.x1 = current_region.x1;
@@ -2057,9 +1895,7 @@ case 154:
 			tmplreg[nlreg]->inarea.x2 = current_region.x2;
 			tmplreg[nlreg]->inarea.y2 = current_region.y2;
 		  } break;
-case 155:
-# line 1137 "lev_comp.y"
-{
+case 155:{
 			tmplreg[nlreg]->del_islev = yypvt[-0].i;
 			tmplreg[nlreg]->delarea.x1 = current_region.x1;
 			tmplreg[nlreg]->delarea.y1 = current_region.y1;
@@ -2069,24 +1905,16 @@ case 155:
 			tmplreg[nlreg]->rname = 0;
 			nlreg++;
 		  } break;
-case 156:
-# line 1150 "lev_comp.y"
-{
+case 156:{
 			yyval.i = -1;
 		  } break;
-case 157:
-# line 1154 "lev_comp.y"
-{
+case 157:{
 			yyval.i = yypvt[-0].i;
 		  } break;
-case 158:
-# line 1160 "lev_comp.y"
-{
+case 158:{
 			yyval.i = 0;
 		  } break;
-case 159:
-# line 1164 "lev_comp.y"
-{
+case 159:{
 /* This series of if statements is a hack for MSC 5.1.  It seems that its
    tiny little brain cannot compile if these are all one big if statement. */
 			if (yypvt[-7].i <= 0 || yypvt[-7].i >= COLNO)
@@ -2103,9 +1931,7 @@ case 159:
 			current_region.y2 = yypvt[-1].i;
 			yyval.i = 1;
 		  } break;
-case 160:
-# line 1184 "lev_comp.y"
-{
+case 160:{
 			tmpfountain[nfountain] = New(fountain);
 			tmpfountain[nfountain]->x = current_coord.x;
 			tmpfountain[nfountain]->y = current_coord.y;
@@ -2114,25 +1940,19 @@ case 160:
 					"Fountain");
 			nfountain++;
 		  } break;
-case 161:
-# line 1196 "lev_comp.y"
-{
+case 161:{
 			tmpsink[nsink] = New(sink);
 			tmpsink[nsink]->x = current_coord.x;
 			tmpsink[nsink]->y = current_coord.y;
 			nsink++;
 		  } break;
-case 162:
-# line 1205 "lev_comp.y"
-{
+case 162:{
 			tmppool[npool] = New(pool);
 			tmppool[npool]->x = current_coord.x;
 			tmppool[npool]->y = current_coord.y;
 			npool++;
 		  } break;
-case 163:
-# line 1214 "lev_comp.y"
-{
+case 163:{
 			tmpdig[ndig] = New(digpos);
 			tmpdig[ndig]->x1 = current_region.x1;
 			tmpdig[ndig]->y1 = current_region.y1;
@@ -2140,9 +1960,7 @@ case 163:
 			tmpdig[ndig]->y2 = current_region.y2;
 			ndig++;
 		  } break;
-case 164:
-# line 1225 "lev_comp.y"
-{
+case 164:{
 			tmppass[npass] = New(digpos);
 			tmppass[npass]->x1 = current_region.x1;
 			tmppass[npass]->y1 = current_region.y1;
@@ -2150,9 +1968,7 @@ case 164:
 			tmppass[npass]->y2 = current_region.y2;
 			npass++;
 		  } break;
-case 165:
-# line 1236 "lev_comp.y"
-{
+case 165:{
 			tmpreg[nreg] = New(region);
 			tmpreg[nreg]->x1 = current_region.x1;
 			tmpreg[nreg]->y1 = current_region.y1;
@@ -2211,9 +2027,7 @@ case 165:
 			}
 			nreg++;
 		  } break;
-case 166:
-# line 1298 "lev_comp.y"
-{
+case 166:{
 			tmpaltar[naltar] = New(altar);
 			tmpaltar[naltar]->x = current_coord.x;
 			tmpaltar[naltar]->y = current_coord.y;
@@ -2224,9 +2038,7 @@ case 166:
 					"Altar");
 			naltar++;
 		  } break;
-case 167:
-# line 1312 "lev_comp.y"
-{
+case 167:{
 			tmpgold[ngold] = New(gold);
 			tmpgold[ngold]->x = current_coord.x;
 			tmpgold[ngold]->y = current_coord.y;
@@ -2236,9 +2048,7 @@ case 167:
 					"Gold");
 			ngold++;
 		  } break;
-case 168:
-# line 1325 "lev_comp.y"
-{
+case 168:{
 			tmpengraving[nengraving] = New(engraving);
 			tmpengraving[nengraving]->x = current_coord.x;
 			tmpengraving[nengraving]->y = current_coord.y;
@@ -2249,37 +2059,25 @@ case 168:
 					"Engraving");
 			nengraving++;
 		  } break;
-case 170:
-# line 1340 "lev_comp.y"
-{
+case 170:{
 			yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 173:
-# line 1348 "lev_comp.y"
-{
+case 173:{
 			yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 176:
-# line 1356 "lev_comp.y"
-{
+case 176:{
 			yyval.map = (char *) 0;
 		  } break;
-case 178:
-# line 1363 "lev_comp.y"
-{
+case 178:{
 			yyval.map = (char *) 0;
 		  } break;
-case 179:
-# line 1369 "lev_comp.y"
-{
+case 179:{
 			int token = get_trap_type(yypvt[-0].map);
 			if (token == ERR)
 				yyerror("Unknown trap type!");
 			yyval.i = token;
 		  } break;
-case 181:
-# line 1379 "lev_comp.y"
-{
+case 181:{
 			int token = get_room_type(yypvt[-0].map);
 			if (token == ERR) {
 				yywarning("Unknown room type!  Making ordinary room...");
@@ -2287,66 +2085,46 @@ case 181:
 			} else
 				yyval.i = token;
 		  } break;
-case 183:
-# line 1391 "lev_comp.y"
-{
+case 183:{
 			yyval.i = 0;
 		  } break;
-case 184:
-# line 1395 "lev_comp.y"
-{
+case 184:{
 			yyval.i = yypvt[-0].i;
 		  } break;
-case 185:
-# line 1399 "lev_comp.y"
-{
+case 185:{
 			yyval.i = yypvt[-2].i + (yypvt[-0].i << 1);
 		  } break;
-case 188:
-# line 1407 "lev_comp.y"
-{
+case 188:{
 			current_coord.x = current_coord.y = -MAX_REGISTERS-1;
 		  } break;
-case 195:
-# line 1423 "lev_comp.y"
-{
+case 195:{
 			yyval.i = - MAX_REGISTERS - 1;
 		  } break;
-case 198:
-# line 1433 "lev_comp.y"
-{
+case 198:{
 			if ( yypvt[-1].i >= MAX_REGISTERS )
 				yyerror("Register Index overflow!");
 			else
 				current_coord.x = current_coord.y = - yypvt[-1].i - 1;
 		  } break;
-case 199:
-# line 1442 "lev_comp.y"
-{
+case 199:{
 			if ( yypvt[-1].i >= MAX_REGISTERS )
 				yyerror("Register Index overflow!");
 			else
 				yyval.i = - yypvt[-1].i - 1;
 		  } break;
-case 200:
-# line 1451 "lev_comp.y"
-{
+case 200:{
 			if ( yypvt[-1].i >= MAX_REGISTERS )
 				yyerror("Register Index overflow!");
 			else
 				yyval.i = - yypvt[-1].i - 1;
 		  } break;
-case 201:
-# line 1460 "lev_comp.y"
-{
+case 201:{
 			if ( yypvt[-1].i >= 3 )
 				yyerror("Register Index overflow!");
 			else
 				yyval.i = - yypvt[-1].i - 1;
 		  } break;
-case 203:
-# line 1472 "lev_comp.y"
-{
+case 203:{
 			if (check_monster_char((char) yypvt[-0].i))
 				yyval.i = yypvt[-0].i ;
 			else {
@@ -2354,9 +2132,7 @@ case 203:
 				yyval.i = ERR;
 			}
 		  } break;
-case 204:
-# line 1483 "lev_comp.y"
-{
+case 204:{
 			char c = yypvt[-0].i;
 			if (check_object_char(c))
 				yyval.i = c;
@@ -2365,14 +2141,10 @@ case 204:
 				yyval.i = ERR;
 			}
 		  } break;
-case 207:
-# line 1499 "lev_comp.y"
-{
+case 207:{
 			yyval.map = (char *) 0;
 		  } break;
-case 212:
-# line 1513 "lev_comp.y"
-{
+case 212:{
 			if (!in_room && !init_lev.init_present &&
 			    (yypvt[-3].i < 0 || yypvt[-3].i > max_x_map ||
 			     yypvt[-1].i < 0 || yypvt[-1].i > max_y_map))
@@ -2380,9 +2152,7 @@ case 212:
 			current_coord.x = yypvt[-3].i;
 			current_coord.y = yypvt[-1].i;
 		  } break;
-case 213:
-# line 1524 "lev_comp.y"
-{
+case 213:{
 /* This series of if statements is a hack for MSC 5.1.  It seems that its
    tiny little brain cannot compile if these are all one big if statement. */
 			if (yypvt[-7].i < 0 || yypvt[-7].i > max_x_map)

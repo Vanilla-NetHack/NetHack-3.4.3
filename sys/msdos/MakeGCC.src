@@ -1,4 +1,4 @@
-#       SCCS Id: @(#)MakeGCC.src       3.1     93/01/05
+#       SCCS Id: @(#)MakeGCC.src       3.1     93/05/03
 #	Copyright (c) NetHack PC Development Team 1992, 1993.
 #       PC NetHack 3.1 Src Makefile for djgpp 1.09 and ndmake 4.5
 #
@@ -13,7 +13,7 @@
 
 
 CC       = gcc
-STUB     = stub.exe         # Can either be stub.exe or go32.exe
+STUB     = go32.exe         # Can be either stub.exe or go32.exe
 STUBPATH = f:\djgpp\bin\    # Must be complete path with trailing '\'
 LINK     = gcc
 
@@ -60,12 +60,12 @@ GAMEFILE = $(GAMEDIR)\$(GAME).exe # whole thing
 default : $(GAMEFILE)
 
 #
-#  If TERMLIB is defined in pcconf.c, comment out the upper line and
+#  If TERMLIB is defined in pcconf.h, comment out the upper line and
 #  uncomment the lower.  Note that you must build the termc library
 #  and place it in djgpp's lib directory.  See termcap.zip for details
 
-#TERMLIB =
-TERMLIB = -ltermc
+TERMLIB =
+#TERMLIB = -ltermc
 
 LIBRARIES = $(LIBS) $(TERMLIB)
 
@@ -115,7 +115,7 @@ VOBJ19 = uhitm.o    vault.o    vision.o   vis_tab.o  weapon.o
 VOBJ20 = were.o     wield.o    windows.o  wintty.o   wizard.o
 VOBJ21 = worm.o     worn.o     write.o    zap.o
 
-SOBJ    = msdos.o    sys.o      tty.o      unix.o
+SOBJ    = msdos.o    sys.o      tty.o      unix.o    video.o
 
 VVOBJ  = version.o
 
@@ -156,7 +156,7 @@ HACK_H     = $(CONFIG_H)        $(DUNGEON_H)        $(DECL_H)         \
              $(INCL)\objclass.h $(INCL)\trap.h      $(INCL)\flag.h    \
              $(RM_H)            $(INCL)\vision.h    $(INCL)\wintype.h \
              $(INCL)\engrave.h  $(INCL)\rect.h      $(INCL)\extern.h \
-             $(INCL)\trampoli.h $(INCL)\hack.h
+             $(INCL)\hack.h
 
 
 
@@ -258,6 +258,10 @@ sys.o : $(SYS)\pcsys.c $(HACK_H)
 
 msdos.o : $(HACK_H)  $(MSYS)\msdos.c
     copy $(MSYS)\msdos.c .
+    $(CC) $(CFLAGS) -o$*.o $*.c
+
+video.o : $(HACK_H)  $(MSYS)\video.c
+    copy $(MSYS)\video.c .
     $(CC) $(CFLAGS) -o$*.o $*.c
 
 

@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tradstdc.h	3.1	92/04/01	*/
+/*	SCCS Id: @(#)tradstdc.h	3.1	93/05/30	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -143,15 +143,17 @@
 #  endif
 # endif
 
-# if !defined(LATTICE) && !defined(MAC)
-		/* Lattice can't even PARSE the const below! */
-		/* MPW can parse but expects an identifier, not a keyword... */
-#  if defined(ULTRIX_PROTO) && !defined(NHSTDC) && !defined(const)
-#  define const		/* the system header files are *not* __STDC__ */
+/*
+ * Suppress `const' if necessary and not handled elsewhere.
+ * Don't use `#if defined(xxx) && !defined(const)'
+ * because some compilers choke on `defined(const)'.
+ * This has been observed with Lattice, MPW, and High C.
+ */
+# if (defined(ULTRIX_PROTO) && !defined(NHSTDC)) || defined(apollo)
+	/* the system header files don't use `const' properly */
+#  ifndef const
+#   define const
 #  endif
-#  if defined(apollo) && !defined(const)
-#  define const         /* too much trouble with printf(char *format, ...) */
-#  endif                 /* instead of printf(const char *format, ...) etc. */
 # endif
 
 #else /* NHSTDC */	/* a "traditional" C  compiler */

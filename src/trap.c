@@ -1,8 +1,8 @@
-/*	SCCS Id: @(#)trap.c	3.1	93/02/13	*/
+/*	SCCS Id: @(#)trap.c	3.1	93/05/25	*/
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include	"hack.h"
+#include "hack.h"
 
 #ifdef OVLB
 const char *traps[TRAPNUM] = {
@@ -125,9 +125,11 @@ maketrap(x,y,typ)
 register int x, y, typ;
 {
 	register struct trap *ttmp;
+	register struct rm *lev;
 	register boolean oldplace;
 
 	if ((ttmp = t_at(x,y)) != 0) {
+	    if (ttmp->ttyp == MAGIC_PORTAL) return (struct trap *)0;
 	    oldplace = TRUE;
 	    if (u.utrap && (x == u.ux) && (y == u.uy) && 
 	      ((u.utraptype == TT_BEARTRAP && typ != BEAR_TRAP) ||
@@ -148,9 +150,23 @@ register int x, y, typ;
 	    case PIT:
 	    case SPIKED_PIT:
 	    case TRAPDOOR:
-		levl[x][y].doormask = 0;   /* subsumes altarmask, icedpool... */
-		if (IS_ROOM(levl[x][y].typ))
-			levl[x][y].typ = ROOM;
+		lev = &levl[x][y];
+		lev->doormask = 0;	/* subsumes altarmask, icedpool... */
+		if (IS_ROOM(lev->typ)) /* && !IS_AIR(lev->typ) */
+		    lev->typ = ROOM;
+#if defined(POLYSELF) || defined(MUSE)
+		/*
+		 * some cases which can happen when digging
+		 * down while phazing thru solid areas
+		 */
+		else if (lev->typ == STONE || lev->typ == SCORR)
+		    lev->typ = CORR;
+		else if (IS_WALL(lev->typ) ||
+			 IS_DOOR(lev->typ) || lev->typ == SDOOR)
+		    lev->typ = level.flags.is_maze_lev ? ROOM :
+			       level.flags.is_cavernous_lev ? CORR : DOOR;
+#endif
+		unearth_objs(x, y);
 		break;
 	}
 	ttmp->tseen = 0;
@@ -181,7 +197,7 @@ boolean trapok;
 # endif
 	tmp2 = !sobj_at(BOULDER,x,y) && (trapok || !t_at(x,y));
 	tmp3 = !(is_pool(x,y) &&
-	       !(Levitation || Wwalking || Magical_breathing
+	       !(Levitation || Wwalking || Amphibious
 # ifdef POLYSELF
 		 || is_flyer(uasmon) || is_swimmer(uasmon)
 		 || is_clinger(uasmon)
@@ -200,7 +216,7 @@ boolean trapok;
 		!MON_AT(x, y) &&
 		!sobj_at(BOULDER,x,y) && (trapok || !t_at(x,y)) &&
 		!(is_pool(x,y) &&
-		!(Levitation || Wwalking || Magical_breathing
+		!(Levitation || Wwalking || Amphibious
 # ifdef POLYSELF
 		  || is_flyer(uasmon) || is_swimmer(uasmon)
 		  || is_clinger(uasmon)
@@ -273,7 +289,7 @@ boolean td;	/* td == TRUE : trapdoor */
 	} while(!rn2(4) && newlevel < dunlevs_in_dungeon(&u.uz));
 
 	if(td) pline("A trap door opens up under you!");
-	else pline("The floor opens up under you!");
+	else pline("The %s opens up under you!", surface(u.ux,u.uy));
 
 	if(Levitation || u.ustuck || !Can_fall_thru(&u.uz)
 #ifdef POLYSELF
@@ -937,8 +953,8 @@ register struct monst *mtmp;
 
 		case FIRE_TRAP:
 			if (in_sight)
-		pline("A tower of flame bursts from the floor under %s!",
-					mon_nam(mtmp));
+			 pline("A tower of flame bursts from the %s under %s!",
+				surface(mtmp->mx,mtmp->my), mon_nam(mtmp));
 			if(resists_fire(mptr)) {
 			    if (in_sight) {
 				shieldeff(mtmp->mx,mtmp->my);
@@ -954,6 +970,8 @@ register struct monst *mtmp;
 			(void) destroy_mitem(mtmp, SCROLL_CLASS, AD_FIRE);
 			(void) destroy_mitem(mtmp, SPBOOK_CLASS, AD_FIRE);
 			(void) destroy_mitem(mtmp, POTION_CLASS, AD_FIRE);
+			if (is_ice(mtmp->mx,mtmp->my))
+			    melt_ice(mtmp->mx,mtmp->my);
 			if (in_sight) seetrap(trap);
 			break;
 
@@ -1055,6 +1073,7 @@ register struct monst *mtmp;
 			break;
 
 		case TELEP_TRAP:
+			if(tele_restrict(mtmp)) break;
 		case MAGIC_PORTAL:
 #ifdef WALKIES
 			if(teleport_pet(mtmp)) {
@@ -1133,7 +1152,7 @@ register struct monst *mtmp;
 				break; /* monsters usually don't set it off */
 			if(is_flyer(mptr)) {
 				if (in_sight) {
-	pline("A trigger appears in a pile of soil below %s.", Monnam(mtmp));
+	pline("A trigger appears in a pile of soil below %s.", mon_nam(mtmp));
 					seetrap(trap);
 				}
 				if (rn2(3)) break;
@@ -1345,9 +1364,7 @@ float_down()
 		default:
 			dotrap(trap);
 	}
-	if(!flags.nopick && OBJ_AT(u.ux, u.uy) &&
-	   !Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz) &&
-	   (!is_pool(u.ux,u.uy) || Underwater))
+	if(!Is_airlevel(&u.uz) && !Is_waterlevel(&u.uz))
 	    pickup(1);
 	return 0;
 }
@@ -1404,6 +1421,19 @@ tele()
 	(void) safe_teleds();
 }
 
+boolean
+tele_restrict(mon)
+struct monst *mon;
+{
+	if(level.flags.noteleport) {
+		if (canseemon(mon))
+		    pline("A mysterious force prevents %s from teleporting!",
+			mon_nam(mon));
+		return TRUE;
+	}
+	return FALSE;
+}
+
 void
 teleds(nux, nuy)
 register int nux,nuy;
@@ -1423,11 +1453,11 @@ register int nux,nuy;
 		u.uundetected = 0;
 	if (u.usym == S_MIMIC_DEF) u.usym = S_MIMIC;
 #endif
-	if(Punished) placebc();
 	if(u.uswallow){
 		u.uswldtim = u.uswallow = 0;
 		docrt();
 	}
+	if(Punished) placebc();
 	initrack(); /* teleports mess up tracking monsters without this */
 	/*
 	 *  Make sure the hero disappears from the old location.  This will
@@ -1446,7 +1476,7 @@ dotele()
 {
 	struct trap *trap;
 	boolean castit = FALSE;
-	register int sp_no = 0;
+	register int sp_no = 0, energy;
 
 	trap = t_at(u.ux, u.uy);
 	if (trap && (!trap->tseen || trap->ttyp != TELEP_TRAP))
@@ -1503,12 +1533,31 @@ dotele()
 	}
 
 	if(!trap && (u.uhunger <= 100 || ACURR(A_STR) < 6)) {
-		You("lack the strength for a teleport spell.");
 #ifdef WIZARD
-		if(!wizard)
+		if (!wizard) {
 #endif
-		return(1);
+			You("lack the strength %s.",
+			    castit ? "for a teleport spell" : "to teleport");
+			return 1;
+#ifdef WIZARD
+		}
+#endif
 	}
+
+	energy = objects[SPE_TELEPORT_AWAY].oc_level * 7 / 2 - 2;
+
+	if(!trap && u.uen <= energy) {
+#ifdef WIZARD
+		if (!wizard) {
+#endif
+			You("lack the energy %s.",
+			    castit ? "for a teleport spell" : "to teleport");
+			return 1;
+#ifdef WIZARD
+		} else u.uen = energy;
+#endif
+	}
+
 	if(!trap &&
 	  check_capacity("Your concentration falters from carrying so much."))
 	    return 1;
@@ -1522,7 +1571,9 @@ dotele()
 		    if (!wizard)
 #endif
 			return(0);
-	}
+	} else if (!trap)
+		u.uen -= energy;
+
 #ifdef WALKIES
 	if(next_to_u()) {
 #endif
@@ -1729,7 +1780,7 @@ dofiretrap()
 	 * SCR_FIRE by GAN 11/02/86
 	 */
 
-	pline("A tower of flame bursts from the floor!");
+	pline("A tower of flame bursts from the %s!", surface(u.ux,u.uy));
 	if(Fire_resistance) {
 		shieldeff(u.ux, u.uy);
 		You("are uninjured.");
@@ -1741,6 +1792,8 @@ dofiretrap()
 	destroy_item(SCROLL_CLASS, AD_FIRE);
 	destroy_item(SPBOOK_CLASS, AD_FIRE);
 	destroy_item(POTION_CLASS, AD_FIRE);
+	if (is_ice(u.ux, u.uy))
+		melt_ice(u.ux, u.uy);
 }
 
 static void
@@ -1888,8 +1941,8 @@ register boolean force, here;
 		} else if(is_rustprone(obj) && obj->oeroded < MAX_ERODE &&
 			  !(obj->oerodeproof || (obj->blessed && !rnl(4))) &&
 			  (force || rn2(12) > Luck)) {
-			/* all metal stuff and armor except body armor
-			   protected by oilskin cloak */
+			/* all metal stuff and armor except (body armor
+			   protected by oilskin cloak) */
 			if(obj->oclass != ARMOR_CLASS || obj != uarm ||
 			   !uarmc || uarmc->otyp != OILSKIN_CLOAK ||
  			   (uarmc->cursed && !rn2(3)))
@@ -1965,15 +2018,16 @@ drown()
 #ifdef POLYSELF
 	     is_swimmer(uasmon) ||
 #endif
-	     Magical_breathing)) {
+	     Amphibious)) {
 		/* water effects on objects every now and then */
 		if (!rn2(5)) inpool_ok = TRUE;
 		else return(FALSE);
 	}
 
 	if (!u.uinwater) {
-	    You("%s into the water!",
-		Is_waterlevel(&u.uz) ? "plunge" : "fall");
+	    You("%s into the water%c",
+		Is_waterlevel(&u.uz) ? "plunge" : "fall",
+		Amphibious ? '.' : '!');
 #ifdef POLYSELF
 	    if(!is_swimmer(uasmon))
 #endif
@@ -1992,14 +2046,6 @@ drown()
 			You("multiply.");
 		}
 	}
-
-	if(is_swimmer(uasmon) && !inpool_ok) {
-	    if (Punished) placebc();
-	    u.uinwater = 1;
-	    under_water(1);
-	    vision_full_recalc = 1;
-	    return(FALSE);
-	}
 #endif
 	if (inpool_ok) return(FALSE);
 #ifdef WALKIES
@@ -2010,12 +2056,24 @@ drown()
 		unleash_all();
 	}
 #endif
-	if (Magical_breathing) {
-		pline("But wait!");
-		Your("lungs start acting like gills.");
-		if (!Is_waterlevel(&u.uz))
-			Your("%s the bottom.",Hallucination ? "keel hits" : "feet touch");
-		if (Punished) placebc();
+	if (Amphibious
+#ifdef POLYSELF
+			|| is_swimmer(uasmon)
+#endif
+						) {
+		if (Amphibious) {
+			if (flags.verbose)
+				pline("But you aren't drowning.");
+			if (!Is_waterlevel(&u.uz))
+				if (Hallucination) 
+					Your("keel hits the bottom.");
+				else
+					You("touch bottom.");
+		}
+		if (Punished) {
+			unplacebc();
+			placebc();
+		}
 		u.uinwater = 1;
 		under_water(1);
 		vision_full_recalc = 1;
@@ -2076,8 +2134,8 @@ crawl:;
 			done(DROWNING);
 		}
 	u.uinwater = 0;
-	You("find yourself back %s.",Is_waterlevel(&u.uz) ?
-		"in an air bubble" : "on dry land");
+	You("find yourself back %s.", Is_waterlevel(&u.uz) ?
+		"in an air bubble" : "on land");
 	return(TRUE);
 }
 
@@ -2216,7 +2274,7 @@ boolean force;
 		    if(!force && (confused || Fumbling || 
 		                     rnd(75+level_difficulty()/2) > ch)) {
 			    You("set it off!");
-			    b_trapped("door");
+			    b_trapped("door", FINGER);
 		    } else
 			    You("disarm it!");
 		    levl[x][y].doormask &= ~D_TRAPPED;
@@ -2327,7 +2385,7 @@ boolean disarm;
 		case 14:
 		case 13:
 			You("feel a needle prick your %s.",body_part(bodypart));
-			poisoned("needle", A_CON, "poison needle",10);
+			poisoned("needle", A_CON, "poisoned needle",10);
 			exercise(A_CON, FALSE);
 			break;
 		case 12:
@@ -2343,6 +2401,8 @@ boolean disarm;
 			destroy_item(SCROLL_CLASS, AD_FIRE);
 			destroy_item(SPBOOK_CLASS, AD_FIRE);
 			destroy_item(POTION_CLASS, AD_FIRE);
+			if (is_ice(u.ux, u.uy))
+			    melt_ice(u.ux, u.uy);
 			break;
 		case 8:
 		case 7:
@@ -2422,19 +2482,19 @@ register struct trap *trap;
 	dealloc_trap(trap);
 }
 
-/* used for doors.  can be used for anything else that opens. */
+/* used for doors (also tins).  can be used for anything else that opens. */
 void
-b_trapped(item)
+b_trapped(item, bodypart)
 register const char *item;
+register int bodypart;
 {
 	register int lvl = level_difficulty();
-	int dmg = rnd(5 + (lvl<5 ? lvl : 2+lvl/2));
+	int dmg = rnd(5 + (lvl < 5 ? lvl : 2+lvl/2));
 
 	pline("KABOOM!!  %s was booby-trapped!", The(item));
-	if (u.ulevel < 4 && lvl < 3 && !rnl(3))
-		You("are shaken, but luckily unhurt.");		
-	else losehp(dmg, "explosion", KILLED_BY_AN);
+	losehp(dmg, "explosion", KILLED_BY_AN);
 	exercise(A_STR, FALSE);
+	if (bodypart) exercise(A_CON, FALSE);
 	make_stunned(HStun + dmg, TRUE);
 }
 
