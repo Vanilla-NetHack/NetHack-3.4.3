@@ -43,15 +43,16 @@ random.c
 
 include:
 (files for all versions)
-amiconf.h       artifact.h      attrib.h        config.h        coord.h
-decl.h          def_os2.h       edog.h          epri.h          eshk.h
-extern.h        flag.h          func_tab.h      global.h        gold.h
-hack.h          lev.h           mfndpos.h       mkroom.h        monattk.h
-mondata.h       monflag.h       monst.h         monsym.h        msdos.h
-obj.h           objclass.h      patchlevel.h    pcconf.h        permonst.h
-prop.h          rm.h            sp_lev.h        spell.h         system.h
-tosconf.h       tradstdc.h      trap.h          trapname.h      unixconf.h
-vault.h         vmsconf.h       wseg.h          you.h           youprop.h
+amiconf.h       artifact.h      attrib.h        color.h         config.h
+coord.h         decl.h          def_os2.h       edog.h          epri.h
+eshk.h          extern.h        flag.h          func_tab.h      global.h
+gold.h          hack.h          lev.h           macconf.h       mfndpos.h
+mkroom.h        monattk.h       mondata.h       monflag.h       monst.h
+monsym.h        msdos.h         obj.h           objclass.h      patchlevel.h
+pcconf.h        permonst.h      prop.h          rm.h            sp_lev.h
+spell.h         system.h        tosconf.h       tradstdc.h      trap.h
+trapname.h      unixconf.h      vault.h         vmsconf.h       wseg.h
+you.h           youprop.h
 (file for special level compiler (STRONGHOLD option))
 lev_comp.h
 
@@ -86,3 +87,8 @@ Install.vms     spec_lev.com    vmsbuild.com    vmsmain.c       vmsmisc.c
 vmstty.c        vmsunix.c
 (GNU termcap files that support VMS version)
 vmstermcap.c    vmstparam.c
+
+mac:
+(files for Macintosh version)
+Install.mac     Segments.mac    mac.c           macfile.c       macinit.c
+makedefs.r      nethack.r

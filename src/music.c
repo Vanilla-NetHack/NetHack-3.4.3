@@ -223,7 +223,7 @@ do_pit:			    chasm = maketrap(x,y,PIT);
 					else {
 					    You("destroy %s!",
 					    mtmp->mtame ?
-						a_monnam(mtmp, "poor") :
+						a2_monnam(mtmp, "poor") :
 						mon_nam(mtmp));
 					}
 					xkilled(mtmp,0);

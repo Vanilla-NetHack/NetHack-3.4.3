@@ -60,21 +60,30 @@ schar music_heard = 0;
 #  endif
 #endif
 
+#ifdef SMALLDATA
+char *occtxt = 0;
+#else
 char *occtxt = DUMMY;
+#endif
 const char quitchars[] = " \r\n\033";
 const char vowels[] = "aeiouAEIOU";
 const char ynchars[] = "yn";
 const char ynqchars[] = "ynq";
 const char ynaqchars[] = "ynaq";
 const char nyaqchars[] = "nyaq";
+
+#ifdef SMALLDATA
+char *HI = 0, *HE = 0, *AS = 0, *AE = 0, *CD = 0;
+	/* set up in termcap.c */
+#else
 char *HI = DUMMY, *HE = DUMMY, *AS = DUMMY, *AE = DUMMY, *CD = DUMMY;
 	/* set up in termcap.c */
+#endif
 int CO = 0, LI = 0;	/* set up in termcap.c: usually COLNO and ROWNO+3 */
 
 #ifdef TEXTCOLOR
 char *hilites[MAXCOLORS];	/* terminal escapes for the various colors */
 #endif
-
 #ifdef MSDOS
 char hackdir[PATHLEN];		/* where rumors, help, record are */
 const char *configfile = "NetHack.cnf";	/* read by read_config_file() */
@@ -129,7 +138,7 @@ coord bhitpos = DUMMY;
 coord doors[DOORMAX] = DUMMY;
 
 struct mkroom rooms[MAXNROFROOMS+1] = DUMMY;
-level_t level;		/* level map */
+dlevel_t level;		/* level map */
 struct trap *ftrap = 0;
 struct gold *fgold = 0;
 struct monst youmonst = DUMMY;	/* dummy; used as return value for boomhit */
@@ -196,7 +205,11 @@ struct obj zeroobj = DUMMY;	/* used to zero all elements of a struct obj */
 
 struct obj *billobjs = 0;
 
+#ifdef THINK_C
+const char Black[] = "black";
+#else
 const char black[] = "black";
+#endif
 const char amber[] = "amber";
 #ifdef THEOLOGY
 const char golden[] = "golden";
@@ -207,7 +220,11 @@ const char green[] = "green";
 const char silver[] = "silver";
 const char blue[] = "blue";
 const char purple[] = "purple";
+#ifdef THINK_C
+const char White[] = "white";
+#else
 const char white[] = "white";
+#endif
 
 const char nothing_happens[] = "Nothing happens.";
 const char thats_enough_tries[] = "That's enough tries!";

@@ -108,8 +108,13 @@ onscary(x, y, mtmp)
 int x, y;
 struct monst *mtmp;
 {
+	/* Note: minotaurs must be immune to scare monster to avoid abuse
+	 * from creating them and taking their wands, then polymorphing 60
+	 * or so wands to get wishing...
+	 */
 	if (mtmp->isshk || mtmp->isgd || mtmp->iswiz || !mtmp->mcansee ||
-			mtmp->data->mlet == S_HUMAN || mtmp->mpeaceful)
+			mtmp->data->mlet == S_HUMAN || mtmp->mpeaceful ||
+			mtmp->data == &mons[PM_MINOTAUR])
 		return(FALSE);
 	return(
 #ifdef ELBERETH
@@ -740,6 +745,13 @@ set_apparxy(mtmp)		/* where does mtmp think you are standing? */
 /*
  * Functions for encapsulation of level.monsters references.
  */
+boolean
+MON_AT(x, y)
+int x, y;
+{
+    return(level.monsters[x][y] != (struct monst *)0);
+}
+
 void place_monster(mtmp, x, y)
 register struct monst *mtmp;
 int x, y;

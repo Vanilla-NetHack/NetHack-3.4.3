@@ -2,14 +2,16 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#include <ctype.h>	/* for isdigit() */
-
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
 #include "hack.h"	/* for ROWNO, COLNO, *HI, *HE, *AS, *AE */
 
+#include <ctype.h>	/* for isdigit() */
+
 #ifndef MSDOS
+# ifndef MACOS
 # define TERMLIB	/* include termcap code */
+# endif
 #endif
 
 #if !defined(SYSV) || defined(TOS) || defined(UNIXPC)
@@ -63,17 +65,26 @@ void
 startup()
 {
 #ifdef TERMLIB
-	register char *term = getenv("TERM");
+	register char *term;
 	register char *tptr;
 	char *tbufptr, *pc;
 #endif
 	register int i;
 
+#ifdef TERMLIB
+# ifdef VMS
+	term = getenv("EMACS_TERM");
+	if (!term)
+	    term = getenv("NETHACK_TERM");
+	if (!term)
+# endif
+	term = getenv("TERM");
+#endif
 	/* Set the default map symbols */
 	(void) memcpy((genericptr_t) &showsyms, 
 		(genericptr_t) &defsyms, sizeof(struct symbols));
 
-#if !defined(AMIGA) && !defined(TOS)
+#if !defined(AMIGA) && !defined(TOS) && !defined(MACOS)
 # if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
 #  define IBMXASCII
 # endif
@@ -120,6 +131,45 @@ startup()
 #if defined(TOS) && defined(__GNUC__) && defined(TERMLIB)
 		term = "st52";		/* library has a default */
 #else
+# ifdef MACOS
+	/* dummy termcap for the Mac */
+	HO = "\033[H";
+	CL = "\033[2J";     /* a pseudo-ANSI termcap */
+	CE = "\033[K";
+	CM = "\033[%d;%dH"; /* not used */
+	UP = "\033[A";
+	ND = "\033[C";
+	XD = "\033[B";
+ 	BC = "\033[D";
+ 	TI = TE = SE = UE = US = HE = "\033[0m";
+ 	SO = "\033[1m";
+ 	AS = VS = VE = AE = "";
+ 	CO = COLNO;
+ 	LI = ROWNO + 3;
+ 	/* use special font ? */
+	{
+ 	   extern short macflags;
+ 	   if (macflags & fUseCustomFont)
+	    {
+		Handle  theRes;
+		unsigned char   *sym;
+		short   i;
+
+		sym = &showsyms.stone;
+		theRes = GetResource(HACK_DATA,102);
+		HLock(theRes);
+		strncpy((char *)sym,(char *)(*theRes),32);
+		HUnlock(theRes);
+		ReleaseResource(theRes);
+	    }
+	}
+#  ifdef TEXTCOLOR
+	for (i = 0; i < MAXCOLORS; i++) {
+	    hilites[i] = (char *) alloc(sizeof("E[cc"));
+	    Sprintf(hilites[i], "\033[c%c", (char)(i+'a'));
+	}
+#  endif
+# else /* MACOS */
 # ifdef ANSI_DEFAULT
 #  ifdef TOS
 	{
@@ -190,6 +240,7 @@ startup()
 # else
 		error("Can't get TERM.");
 # endif /* ANSI_DEFAULT */
+# endif /* MACOS */
 #endif /* __GNUC__ */
 #ifdef TERMLIB
 	tptr = (char *) alloc(1024);
@@ -401,7 +452,11 @@ void
 cmov(x, y)
 register int x, y;
 {
+#ifdef MACOS
+	mcurs(x-1, y-1);
+#else
 	xputs(tgoto(CM, x-1, y-1));
+#endif
 	cury = y;
 	curx = x;
 }
@@ -410,21 +465,29 @@ void
 xputc(c)
 char c;
 {
+#ifdef MACOS
+	mputc(c);
+#else
 	(void) fputc(c, stdout);
+#endif
 }
 
 void
 xputs(s)
 char *s;
 {
-#ifndef TERMLIB
+#ifndef MACOS
+# ifndef TERMLIB
 	(void) fputs(s, stdout);
-#else
-# ifdef __STDC__
-	tputs(s, 1, (int (*)())xputc);
 # else
+#  ifdef __STDC__
+	tputs(s, 1, (int (*)())xputc);
+#  else
 	tputs(s, 1, xputc);
+#  endif
 # endif
+#else
+	mputs(s);
 #endif
 }
 
@@ -534,7 +597,7 @@ graph_off() {
 }
 #endif
 
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(MACOS)
 # ifdef VMS
 static const short tmspc10[] = {		/* from termcap */
 	0, 2000, 1333, 909, 743, 666, 333, 166, 83, 55, 50, 41, 27, 20, 13, 10,
@@ -552,25 +615,25 @@ delay_output() {
 	/* delay 50 ms - could also use a 'nap'-system call */
 	/* BUG: if the padding character is visible, as it is on the 5620
 	   then this looks terrible. */
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 	/* simulate the delay with "cursor here" */
 	register int i;
 	for (i = 0; i < 3; i++) {
 		cmov(curx, cury);
 		(void) fflush(stdout);
 	}
-#else /* MSDOS /**/
+#else /* MSDOS || MACOS */
 	if(!flags.nonull)
-#ifdef TERMINFO
+# ifdef TERMINFO
 		/* cbosgd!cbcephus!pds for SYS V R2 */
-# ifdef __STDC__
+#  ifdef __STDC__
 		tputs("$<50>", 1, (int (*)())xputc);
-# else
+#  else
 		tputs("$<50>", 1, xputc);
-# endif
-#else
+#  endif
+# else
 		tputs("50", 1, xputs);
-#endif
+# endif
 
 	else if(ospeed > 0 || ospeed < SIZE(tmspc10)) if(CM) {
 		/* delay by sending cm(here) an appropriate number of times */
@@ -582,7 +645,7 @@ delay_output() {
 			i -= cmlen*tmspc10[ospeed];
 		}
 	}
-#endif /* MSDOS /**/
+#endif /* MSDOS || MACOS */
 }
 
 void

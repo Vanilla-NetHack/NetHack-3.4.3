@@ -27,6 +27,7 @@ E long *alloc P((unsigned int));
 #endif
 
 #if !defined(MAKEDEFS_C) && !defined(LEV_LEX_C)
+
 /* ### apply.c ### */
 
 E int doapply();
@@ -137,7 +138,7 @@ E void dropy P((struct obj *));
 E int doddrop();
 E int dodown();
 E int doup();
-E void goto_level P((int,BOOLEAN_P));
+E void goto_level P((int,BOOLEAN_P,BOOLEAN_P));
 E int donull();
 E int dowipe();
 E struct obj *splitobj P((struct obj *,int));
@@ -156,6 +157,7 @@ E char *lmonnam P((struct monst *));
 E char *mon_nam P((struct monst *));
 E char *Monnam P((struct monst *));
 E char *a_monnam P((struct monst *,char *));
+E char *a2_monnam P((struct monst *,char *));
 E char *Amonnam P((struct monst *,char *));
 E char *Xmonnam P((struct monst *));
 E char *defmonnam P((struct monst *));
@@ -235,13 +237,14 @@ E int breaks P((struct obj *,BOOLEAN_P));
 
 E void init_uhunger();
 E int Hear_again();
+E void reset_eat();
 E int doeat();
 E void gethungry();
 E void morehungry P((int));
 E void lesshungry P((int));
 E void newuhs P((BOOLEAN_P));
-E void vomit();
 E struct obj *floorfood P((char *,BOOLEAN_P));
+E void vomit();
 
 /* ### end.c ### */
 
@@ -379,9 +382,9 @@ E void reassign();
 #ifdef UNIX
 E void getioctls();
 E void setioctls();
-#ifdef SUSPEND
+# ifdef SUSPEND
 E int dosuspend();
-#endif /* SUSPEND */
+# endif /* SUSPEND */
 #endif /* UNIX */
 
 /* ### lock.c ### */
@@ -394,12 +397,46 @@ E int doorlock P((struct obj *,int,int));
 E int doopen();
 E int doclose();
 
+/* ### mac.c ### */
+#ifdef MACOS
+E int tgetch();
+E void gethdate();
+E int uptodate();
+# ifndef THINKC4
+E char *getenv();
+E int memcmp();
+# else
+E int kbhit();
+# endif
+E int mcurs();
+E int mputc();
+E int mputs();
+E int mprintf();
+E int about();
+#endif  /* MACOS */
+
+/* ### macfile.c ### */
+#ifdef MACOS
+E short findNamedFile();
+E FILE *openFile();
+#endif	/* MACOS */
+
+/* ### macinit.c ### */
+#ifdef MACOS
+E int initterm();
+E int freeterm();
+#ifdef SMALLDATA
+E void init_decl();
+E void free_decl();
+#endif  /* SMALLDATA */
+#endif	/* MACOS */
+
 /* ### mail.c ### */
 
 #ifdef MAIL
-#ifdef UNIX
+# ifdef UNIX
 E void getmailstatus();
-#endif
+# endif
 E void ckmailstatus();
 E void readmail();
 #endif /* MAIL */
@@ -410,6 +447,7 @@ E struct monst *makemon P((struct permonst *,int,int));
 E void enexto P((coord *,XCHAR_P,XCHAR_P,struct permonst *));
 E int goodpos P((int,int, struct permonst *));
 E void rloc P((struct monst *));
+E void vloc P((struct monst *));
 E void init_monstr();
 E struct permonst *rndmonst();
 E struct permonst *mkclass P((CHAR_P));
@@ -494,6 +532,7 @@ E void blessorcurse P((struct obj *,int));
 E boolean is_flammable P((struct obj *));
 E boolean is_rustprone P((struct obj *));
 E boolean is_corrodeable P((struct obj *));
+E boolean OBJ_AT P((int, int));
 #endif
 E void place_object P((struct obj *,int,int));
 E void move_object P((struct obj *,int,int));
@@ -582,6 +621,7 @@ E int m_move P((struct monst *,int));
 E void set_apparxy P((struct monst *));
 E boolean mdig_tunnel P((struct monst *));
 #ifdef STUPID_CPP
+E boolean MON_AT P((int, int));
 E void place_monster P((struct monst *, int, int));
 E void place_worm_seg P((struct monst *, int, int));
 E void remove_monster P((int, int));
@@ -662,6 +702,7 @@ E char *typename P((int));
 E char *distant_name P((struct obj *, char *(*)(struct obj *)));
 E char *xname P((struct obj *));
 E char *doname P((struct obj *));
+E char *singular P((struct obj *));
 E void setan P((char *,char *));
 E char *aobjnam P((struct obj *,char *));
 E char *Doname2 P((struct obj *));
@@ -696,35 +737,35 @@ E int dohelp();
 E int dohistory();
 E int page_file P((char *,BOOLEAN_P));
 #ifdef UNIX
-#ifdef SHELL
+# ifdef SHELL
 E int dosh();
-#endif /* SHELL */
-#if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
+# endif /* SHELL */
+# if defined(SHELL) || defined(DEF_PAGER) || defined(DEF_MAILREADER)
 E int child P((int));
-#endif
+# endif
 #endif /* UNIX */
 
 /* ### pcmain.c ### */
 
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 E void askname();
-#ifdef CHDIR
+# ifdef CHDIR
 E void chdirx P((char *,BOOLEAN_P));
-#endif /* CHDIR */
-#endif /* MSDOS */
+# endif /* CHDIR */
+#endif /* MSDOS || MACOS */
 
 /* ### pctty.c ### */
 
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 E void gettty();
 E void settty P((char *));
 E void error V((char *,...));
-#endif /* MSDOS */
+#endif /* MSDOS || MACOS  */
 
 /* ### pcunix.c ### */
 
-#ifdef MSDOS
-#ifndef OLD_TOS
+#if defined(MSDOS) || defined(MACOS)
+# ifndef OLD_TOS
 E void setrandom();
 E int getyear();
 E char *getdate();
@@ -733,13 +774,14 @@ E int night();
 E int midnight();
 E void gethdate P((char *));
 E int uptodate P((int));
-#endif /* TOS */
+# endif /* TOS */
 E void regularize P((char *));
 #endif /* MSDOS */
 
 /* ### pickup.c ### */
 
 E void pickup P((int));
+E struct obj *pick_obj P((struct obj *));
 E int doloot();
 E void get_all_from_box();
 E void use_container P((struct obj *, int));
@@ -765,9 +807,9 @@ E int dohide();
 E char *body_part P((int));
 E int poly_gender();
 #ifdef POLYSELF
-#ifdef GOLEMS
+# ifdef GOLEMS
 E void ugolemeffects P((int, int));
-#endif /* GOLEMS */
+# endif /* GOLEMS */
 #endif
 
 /* ### potion.c ### */
@@ -776,6 +818,7 @@ E void make_confused P((long,BOOLEAN_P));
 E void make_stunned P((long,BOOLEAN_P));
 E void make_blinded P((long,BOOLEAN_P));
 E void make_sick P((long,BOOLEAN_P));
+E void make_vomiting P((long,BOOLEAN_P));
 E void make_hallucinated P((long,BOOLEAN_P));
 E int dodrink();
 E int dopotion P((struct obj *));
@@ -957,6 +1000,7 @@ E void shkdead P((struct monst *));
 E void replshk P((struct monst *,struct monst *));
 E int inshop();
 E int inhishop P((struct monst *));
+E boolean tended_shop P((int));
 E void obfree P((struct obj *,struct obj *));
 E int dopay();
 E void home_shk P((struct monst *));
@@ -1069,9 +1113,9 @@ E void more();
 E void cmore P((char *));
 E void clrlin();
 #ifdef NEED_VARARGS
-#if defined(USE_STDARG) || defined(USE_VARARGS)
+# if defined(USE_STDARG) || defined(USE_VARARGS)
 E void vpline P((const char *, va_list));
-#endif
+# endif
 #endif
 E void pline V((const char *,...));
 E void Norep V((const char *,...));
@@ -1190,9 +1234,9 @@ E int doversion();
 /* ### vmsmain.c ### */
 
 #ifdef VMS
-#ifdef CHDIR
+# ifdef CHDIR
 E void chdirx P((char *,char));
-#endif /* CHDIR */
+# endif /* CHDIR */
 E void glo P((int));
 E void askname();
 #endif /* VMS */

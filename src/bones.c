@@ -230,7 +230,29 @@ savebones(){
 #ifdef MSDOS
 	fd = open(bones, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
 #else
+# ifdef MACOS
+	{
+		Str255	fileName;
+		OSErr	er;
+		struct term_info	*t;
+		extern WindowPtr	HackWindow;
+		short	oldvolume;
+		
+		t = (term_info *)GetWRefCon(HackWindow);
+		(void)GetVol(&fileName,&oldvolume);
+		(void)SetVol(0L, t->system.sysVRefNum);
+		fileName[0] = (uchar)strlen(bones);
+		(void)strcpy((char *)&fileName[1],bones);
+		
+		if (er = Create(&fileName,0,CREATOR,BONES_TYPE))
+			SysBeep(1);
+		fd = open(bones,
+			O_WRONLY | O_BINARY | O_TRUNC | ((er) ? O_CREAT : 0));
+		(void)SetVol(0L, oldvolume);
+	}
+# else
 	fd = creat(bones, FCMASK);
+# endif /* MACOS */
 #endif
 	if(fd < 0) {
 #ifdef WIZARD

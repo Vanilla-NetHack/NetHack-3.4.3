@@ -1,0 +1,120 @@
+Instructions for installing NetHack 3.0 on a Macintosh system
+==============================================================
+
+1.  Make sure all the NetHack files are in the appropriate directory structure.
+    You should have a main directory with subdirectories src, include, auxil,
+    mac, and others.  If you do not follow this structure, the Makefile
+    will not function properly.  All the UNIX .c files and the source Makefile
+    belong in src; all the PC .c files and Makefiles belong in others; all the
+    .h files belong in include; other assorted files belong in auxil.  The Mac
+    .c files belong in mac.
+
+2.  Move the .c files from the mac directory to your src directory, and the
+    pc*.c files from the others directory to your src directory.  Also move
+    random.c from others to src if you want to use the Berkeley random number
+    routines.
+
+3.  If you are using Aztec C, you'll need the Makefile.src.  You'll have 
+    to make minor modifications to make it work.  If you use Lightspeed/THINK
+    C the warning concerning the Makefile not functioning properly is a mute
+    point.
+
+4.  Go to the include subdirectory and edit config.h according to the comments
+    to match your system and desired set of features.  Similarly edit
+    macconf.h.  COMPRESS and ZEROCOMP were undefined since I used the
+    built-in Mac routines PackBits and UnpackBits.  All the options except
+    for STRONGHOLD were defined.  BITFIELDS was defined in order to come in
+    under the 32K global data limit.
+
+    For compilers, you can select from LSC or THINKC4 (or AZTEC if you want to
+    do some work).  If you select AZTEC or LSC (not THINKC4) you'll have to
+    define KR1ED and SMALLDATA (AZTEC users might be able to get around it).
+    This sets up a macro which allows older preprocessors to make use of the
+    defined() construct.  (The options in part 4 of config.h have a 1
+    following them to allow the defined() macro to work.)
+    
+    If you use precompiled headers in Lightspeed/THINK C v.3 or Think C v.4
+    you'll have to rename "hack.h" to something else.  Precompile the renamed
+    hack.h file and save this as "hack.h".  In order for the precompiled
+    headers to work, they must be the first #include/#define statement in
+    every source file.  Certain source files contain "#define MONATTK_H" or an
+    "#include xxx.h" before the first "#include hack.h"; the #defines can just
+    be commented out while the #includes will have to move after the
+    "#include hack.h".
+
+    Under the "Set Project Type..." menu, select Application, File type 'APPL',
+    Creator 'nh30', Partition 700K, Separate STRS, and select Background Null
+    Events and Suspend & Resume Events from the Multifinder Popup menu.
+
+    An executable with all features set, except for STRONGHOLD, will be around
+    600K in size.
+
+5.  If you want to, look through system.h.  This file attempts to match the
+    types for system calls and library routines with various flavors of
+    operating systems.  Leaving this file alone is unlikely to cause problems,
+    but if you're using a different compiler and get compile errors with
+    any functions in the standard library, it's worth checking the
+    declarations there.
+
+6.  If you want to change the high score list behavior, go to the src
+    subdirectory and look at the top of topten.c.  You may want to change the
+    definitions of PERSMAX, POINTSMIN, and ENTRYMAX.  I set POINTSMIN of
+    51 and ENTRYMAX of 50 to keep the size of the score list down.
+
+7.  Build the resource files for Nethack and makedefs with Rez.
+    It should be easy to derive an RMaker file from the Rez file, if you need
+    to.
+
+8.  Compile and run the makedefs application.  The source files needed for
+    makedefs are:
+	alloc.c, macfile.c, makedefs.c, monst.c, objects.c, and panic.c
+    
+    You'll have to uncomment the #define's in monst.c, panic.c, makedefs.c,
+    and macfile.c. These are used especially to construct the monst
+    resource for the nethack app.
+    
+    Link in the necessary libraries (you can get this list from the routines
+    that your linker complains aren't there).
+
+    Run makedefs and select all the options [ Note you'll have to run makedefs
+    several times to do this].  This will build the necessary include and
+    auxiliary files.
+
+    N.B.  Lightspeed/Think C users:  you really can't use precompiled headers
+	here since there is no ONE header file.  It is such a small app
+	that the benefit of a precompiled header is small.
+
+    The makedefs application doesn't use the custom display routines, just
+    the default console routines that come with your compiler.
+
+    For ease of use make sure the support files data, rumors, cmdhelp, opthelp,
+    help, hh, history, and license (and oracles, if you compiled in that
+    feature) got copied to the game directory.  If not, move them there from
+    the auxil directory yourself.  rumors can be created manually by selecting
+    'rumors' from makedefs; data by selecting 'data' from makedefs.
+
+    If you're industrious you might try working on the special files.
+    If you compiled in the special levels, make sure castle, tower?, and
+    perhaps endgame are there, too.  The lev_comp file will create these.
+
+Notes:
+
+1.  No, your old save files and bones files will not work with NetHack 3.0.
+    Don't bother trying to keep them.  The old score list will work fine,
+    but I recommend you delete it and create a new, empty one ('type record
+    >record' will do this nicely).  It is a good deal harder to achieve the
+    same scores in this version.
+
+2.  For Aztec C:
+    To install an update of this version of NetHack after changing something,
+    type 'make' from the src directory.  If you created the new version
+    yourself, it should be safe to use 'make update' as long as you did not
+    add, delete, or reorder monsters or objects and you did not change 
+    the format of saved level files.  If you did any of these things, you
+    should also delete any saved games and bones levels.  (Trying to use such
+    files often produces amusing but useless confusions on the game's part.)
+
+3.  If you have any problems with Think/Lightspeed C you might try these
+    two suggestions:
+           a) Increase the Partition Size for NetHack to >700K.
+    and/or b) Remove all the objects from the Project and do a full build.

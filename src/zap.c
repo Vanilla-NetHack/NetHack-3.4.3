@@ -1163,7 +1163,10 @@ register int type, nd;
 			shieldeff(mon->mx, mon->my);
 			break;
 		    }
-		    type = 0; /* so they don't get saving throws */
+		    type = -1; /* so they don't get saving throws */
+		} else if (resists_disint(mon->data)) {
+		    shieldeff(mon->mx, mon->my);
+		    break;
 		}
 		tmp = mon->mhp+1;
 		break;
@@ -1535,14 +1538,16 @@ register int dx,dy;
 				    break;
 				case 4:		/* death */
 				    if(type == -24) { /* disintegration */
-					if(uarms) {
+					if (Disint_resistance) {
+					    You("are not disintegrated.");
+					    break;
+					} else if(uarms) {
 					    (void) destroy_arm(uarms);
-					} else if (uarm) {
-				if (Disint_resistance & WORN_ARMOR)
-					Your("armor absorbs the blast!");
-				else (void) destroy_arm(uarm);
+					    break;
+					} else if (uarm)  {
+					    (void) destroy_arm(uarm);
+					    break;
 					}
-				    break;
 				    }
 #ifdef POLYSELF
 				    else if(is_undead(uasmon)) {

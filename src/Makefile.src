@@ -103,11 +103,13 @@ TARGSRC = $(TARG)main.c $(TARG)tty.c $(TARG)unix.c
 
 CSOURCES = $(HACKCSRC) $(TARGSRC) $(MAKESRC) $(SPLEVSRC)
 
-HACKINCL = artifact.h attrib.h config.h coord.h decl.h edog.h epri.h eshk.h\
-	   extern.h flag.h func_tab.h global.h gold.h hack.h lev.h mfndpos.h\
-	   mkroom.h monattk.h mondata.h monflag.h monst.h monsym.h msdos.h\
-	   obj.h objclass.h permonst.h prop.h rm.h sp_lev.h spell.h tradstdc.h\
-	   trapname.h vault.h wseg.h you.h youprop.h
+HACKINCL = amiconf.h artifact.h attrib.h color.h config.h coord.h decl.h\
+	   def_os2.h edog.h epri.h eshk.h extern.h flag.h func_tab.h global.h\
+	   gold.h hack.h lev.h mfndpos.h mkroom.h monattk.h mondata.h monflag.h\
+	   monst.h monsym.h msdos.h obj.h objclass.h patchlevel.h pcconf.h\
+	   permonst.h prop.h rm.h sp_lev.h spell.h system.h tosconf.h\
+	   tradstdc.h trapname.h unixconf.h vault.h vmsconf.h wseg.h you.h\
+	   youprop.h
 
 # all .h files except date.h, onames.h, pm.h & trap.h which would cause
 # dependency loops if run through "make depend".
@@ -290,17 +292,27 @@ depend:
 #		( /bin/grep '^#[ 	]*include' $$i | sed -n \
 #			-e 's,<\(.*\)>,"/usr/include/\1",' \
 #
+# extern.h is ignored, even though its declared function types may affect the
+# compilation of all the .c files, since extern.h changes every time the
+# type of an external function does, and we would spend all our time recompiling
+# if we did not ignore it.  the risk is minimal, as lint should pick up any
+# calls to the modified function that were not modified accordingly.
+#
+# patchlev.h is the name MS-DOS uses to refer to patchlevel.h after it gets
+# through truncating the name, but it does not really exist
 #
 	for i in ${HACKCSRC}; do \
 		( /bin/grep '^#[ 	]*include[ 	]*"' $$i | sed -n \
 			-e 's/[^"]*"\([^"]*\)".*/\1/' \
+			-e 's/patchlev.h//' \
 			-e 's/.*\.h/..\/include\/&/' \
 			-e H -e '$$g' -e '$$s/\n/ /g' \
 			-e '$$s/.*/'$$i': &/' -e '$$s/\.c:/.o:/p' \
 			>> makedep); done
 	for i in ${HACKINCL}; do \
-		( /bin/grep '^#[ 	]*include[ 	]*"' ../include/$$i | sed -n \
+	    ( /bin/grep '^#[ 	]*include[ 	]*"' ../include/$$i | sed -n \
 			-e 's/[^"]*"\([^"]*\)".*/\1/' \
+			-e 's/extern.h//' \
 			-e 's/.*\.h/..\/include\/&/' \
 			-e H -e '$$g' -e '$$s/\n/ /g' \
 			-e '$$s/.*/..\/include\/'$$i': &\
@@ -315,7 +327,7 @@ depend:
 	@echo '# DEPENDENCIES MUST END AT END OF FILE' >> Makefile
 	@echo '# IF YOU PUT STUFF HERE IT WILL GO AWAY' >> Makefile
 	@echo '# see make depend above' >> Makefile
-	- diff Makefile Makefile.bak
+	- diff Makefile.bak Makefile
 	@rm -f Makefile.bak
 
 # PC dependency for Systos that won't be made on a UNIX system
@@ -363,11 +375,11 @@ mkroom.o:  ../include/hack.h
 mon.o:  ../include/hack.h ../include/mfndpos.h ../include/artifact.h ../include/wseg.h
 mondata.o:  ../include/hack.h ../include/eshk.h ../include/epri.h
 monmove.o:  ../include/hack.h ../include/mfndpos.h ../include/artifact.h
-monst.o:  ../include/config.h ../include/permonst.h ../include/monsym.h ../include/eshk.h ../include/vault.h ../include/epri.h ../include/decl.h
+monst.o:  ../include/config.h ../include/permonst.h ../include/monsym.h ../include/eshk.h ../include/vault.h ../include/epri.h ../include/color.h
 mthrowu.o:  ../include/hack.h
 music.o:  ../include/hack.h
 o_init.o:  ../include/hack.h
-objects.o:  ../include/config.h ../include/obj.h ../include/objclass.h ../include/prop.h ../include/decl.h
+objects.o:  ../include/config.h ../include/obj.h ../include/objclass.h ../include/prop.h ../include/color.h
 objnam.o:  ../include/hack.h
 options.o:  ../include/hack.h
 pager.o:  ../include/hack.h
@@ -401,7 +413,7 @@ trap.o:  ../include/hack.h ../include/edog.h ../include/trapname.h
 u_init.o:  ../include/hack.h
 uhitm.o:  ../include/hack.h ../include/artifact.h
 vault.o:  ../include/hack.h ../include/vault.h
-version.o:  ../include/hack.h ../include/date.h ../include/patchlevel.h
+version.o:  ../include/hack.h ../include/date.h  ../include/patchlevel.h
 weapon.o:  ../include/hack.h
 were.o:  ../include/hack.h
 wield.o:  ../include/hack.h
@@ -410,16 +422,26 @@ worm.o:  ../include/hack.h ../include/wseg.h
 worn.o:  ../include/hack.h
 write.o:  ../include/hack.h
 zap.o:  ../include/hack.h
+../include/amiconf.h:  ../include/msdos.h ../include/pcconf.h
+			touch ../include/amiconf.h
 ../include/config.h:  ../include/tradstdc.h ../include/global.h
 			touch ../include/config.h
-../include/decl.h:  ../include/spell.h ../include/obj.h ../include/you.h ../include/onames.h ../include/pm.h
+../include/decl.h:  ../include/spell.h ../include/color.h ../include/obj.h ../include/you.h ../include/onames.h ../include/pm.h
 			touch ../include/decl.h
 ../include/global.h:  ../include/coord.h ../include/vmsconf.h ../include/unixconf.h ../include/pcconf.h ../include/tosconf.h ../include/amiconf.h
 			touch ../include/global.h
-../include/hack.h:  ../include/config.h ../include/decl.h ../include/monsym.h ../include/mkroom.h ../include/objclass.h ../include/gold.h ../include/trap.h ../include/flag.h ../include/rm.h ../include/extern.h
+../include/hack.h:  ../include/config.h ../include/decl.h ../include/monsym.h ../include/mkroom.h ../include/objclass.h ../include/gold.h ../include/trap.h ../include/flag.h ../include/rm.h 
 			touch ../include/hack.h
+../include/pcconf.h:  ../include/msdos.h ../include/system.h
+			touch ../include/pcconf.h
 ../include/permonst.h:  ../include/monattk.h ../include/monflag.h
 			touch ../include/permonst.h
+../include/tosconf.h:  ../include/msdos.h ../include/pcconf.h
+			touch ../include/tosconf.h
+../include/unixconf.h:  ../include/system.h
+			touch ../include/unixconf.h
+../include/vmsconf.h:  ../include/system.h
+			touch ../include/vmsconf.h
 ../include/you.h:  ../include/attrib.h ../include/monst.h ../include/youprop.h
 			touch ../include/you.h
 ../include/youprop.h:  ../include/prop.h ../include/permonst.h ../include/mondata.h ../include/pm.h

@@ -3,10 +3,10 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - Unix NetHack */
 
+#include "hack.h"
+
 #include <signal.h>
 #include <pwd.h>
-
-#include "hack.h"
 
 char SAVEF[PL_NSIZ + 11] = "save/";	/* save/99999player */
 

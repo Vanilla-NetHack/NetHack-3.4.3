@@ -268,19 +268,17 @@ int all;
 		}
 	lift_some:
 		if(inv_cnt() >= 52) {
-		    Your("knapsack cannot accommodate any more items.");
-		    if(obj->otyp == SCR_SCARE_MONSTER)
-			    if(obj->spe) obj->spe = 0;
-		    break;
+			Your("knapsack cannot accommodate any more items.");
+			if(obj->otyp == SCR_SCARE_MONSTER)
+				if(obj->spe) obj->spe = 0;
+			break;
 		}
-		addtobill(obj, TRUE);       /* sets obj->unpaid if necessary */
-		freeobj(obj);
-		if(Invisible) newsym(u.ux,u.uy);
-		if(wt > -5) You("have a little trouble lifting");
 		{ int pickquan = obj->quan;
 		  int mergquan;
+
+		  obj = pick_obj(obj);
+		  if(wt > -5) You("have a little trouble lifting");
 		  if(!Blind) obj->dknown = 1;
-		  obj = addinv(obj);    /* might merge it with other objects */
 		  mergquan = obj->quan;
 		  obj->quan = pickquan; /* to fool prinv() */
 		  if(uwep && uwep == obj) mrg_to_wielded = TRUE;
@@ -290,6 +288,16 @@ int all;
 		}
 	    }
 	}
+}
+
+struct obj *
+pick_obj(otmp)
+register struct obj *otmp;
+{
+	addtobill(otmp, TRUE);       /* sets obj->unpaid if necessary */
+	freeobj(otmp);
+	if(Invisible) newsym(u.ux,u.uy);
+	return(addinv(otmp));    /* might merge it with other objects */
 }
 
 int

@@ -115,10 +115,10 @@ struct monst *mtmp;
 	}
 
 	tmp = 0;
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarmc)
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(!uarm || otmp != uarmc)
 	    tmp += ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
 	tmp = rn2(tmp);
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(otmp != uarmc)
+	for(otmp = invent; otmp; otmp = otmp->nobj) if(!uarm || otmp != uarmc)
   	    if((tmp -= ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1))
 			< 0) break;
 	if(!otmp) {
@@ -151,7 +151,13 @@ gotobj:
 			break;
 		case ARMOR_SYM:
 			if(multi < 0 || otmp == uarms){
-			  setworn((struct obj *) 0, otmp->owornmask & W_ARMOR);
+			  if (otmp == uarm)  (void) Armor_off();
+			  else if (otmp == uarmc) (void) Cloak_off();
+			  else if (otmp == uarmf) (void) Boots_off();
+			  else if (otmp == uarmg) (void) Gloves_off();
+			  else if (otmp == uarmh) (void) Helmet_off();
+			  else if (otmp == uarms) (void) Shield_off();
+			  else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
 			  break;
 			}
 		{ int curssv = otmp->cursed;
@@ -229,6 +235,7 @@ register struct monst *mtmp;
 		mpickobj(mtmp,otmp);
 		pline("%s stole %s!", Monnam(mtmp), doname(otmp));
 		rloc(mtmp);
+		return;
 	    }
 	}
 }

@@ -2,6 +2,10 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
+#ifdef MICROPORT_BUG
+#define MKROOM_H
+#endif
+
 #include "hack.h"
 #include "mfndpos.h"
 #ifdef NAMED_ITEMS
@@ -174,12 +178,18 @@ movemon()
 		  inpool = is_pool(mtmp->mx,mtmp->my);
 		  iseel = mtmp->data->mlet == S_EEL;
 		  isgremlin = mtmp->data->mlet == S_GREMLIN;
+#ifdef FOUNTAINS
 		  infountain = IS_FOUNTAIN(levl[mtmp->mx][mtmp->my].typ);
+#endif
 		/* Gremlin multiplying won't go on forever since the hit points
 		 * keep going down, and when it gets to 1 hit point the clone
 		 * function will fail.
 		 */
-		  if((inpool || infountain) && isgremlin && rn2(3)) {
+		  if((inpool
+#ifdef FOUNTAINS
+			     || infountain
+#endif
+					  ) && isgremlin && rn2(3)) {
 			struct monst *mtmp2 = clone_mon(mtmp);
 
 			if (mtmp2) {
@@ -819,7 +829,7 @@ xkilled(mtmp, dest)
 	    if(!cansee(mtmp->mx,mtmp->my)) You("destroy it!");
 	    else {
 		You("destroy %s!",
-			mtmp->mtame ? a_monnam(mtmp, "poor") : mon_nam(mtmp));
+			mtmp->mtame ? a2_monnam(mtmp, "poor") : mon_nam(mtmp));
 	    }
 	}
 
@@ -1155,7 +1165,8 @@ disturb(mtmp)		/* awaken monsters while in the same room.
 	if(cansee(mtmp->mx,mtmp->my) &&
 		(!Stealth || (mtmp->data == &mons[PM_ETTIN] && rn2(10))) &&
 		(!(mtmp->data->mlet == S_NYMPH
-		   || mtmp->data->mlet == S_LEPRECHAUN) || !rn2(50)) &&
+			|| mtmp->data == &mons[PM_JABBERWOCK]
+			|| mtmp->data->mlet == S_LEPRECHAUN) || !rn2(50)) &&
 		(Aggravate_monster ||
 		 (mtmp->data->mlet == S_DOG || mtmp->data->mlet == S_HUMAN) ||
 		(!rn2(7) && !mtmp->mimic))) {

@@ -22,7 +22,7 @@ static uchar mimic_color P((UCHAR_P));
 #endif
 
 /* This is the same logic used for "#define IBMXASCII" in file "termcap.c" */
-#if !defined(AMIGA) && !defined(TOS)
+#if !defined(AMIGA)
 # if defined(TERMLIB) || !(defined(DECRAINBOW) || defined(OS2))
 #  define g_putch  (void) putchar
 # endif
@@ -46,17 +46,33 @@ register int first;
 	if(first) cls();
 	else {
 		curs(u.ustuck->mdx-1, u.ustuck->mdy+1);
+#ifdef MACOS
+		puts("   ");
+#else
 		(void) fputs("   ", stdout);
+#endif
 		curx = u.ustuck->mdx+2;
 		curs(u.ustuck->mdx-1, u.ustuck->mdy+2);
+#ifdef MACOS
+		puts("   ");
+#else
 		(void) fputs("   ", stdout);
+#endif
 		curx = u.ustuck->mdx+2;
 		curs(u.ustuck->mdx-1, u.ustuck->mdy+3);
+#ifdef MACOS
+		puts("   ");
+#else
 		(void) fputs("   ", stdout);
+#endif
 		curx = u.ustuck->mdx+2;
 	}
 	curs(u.ux-1, u.uy+1);
+#ifdef MACOS
+	puts("/-\\");
+#else
 	(void) fputs("/-\\", stdout);
+#endif
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+2);
 	(void) putchar('|');
@@ -64,7 +80,11 @@ register int first;
 	(void) putchar('|');
 	curx = u.ux+2;
 	curs(u.ux-1, u.uy+3);
+#ifdef MACOS
+	puts("\\-/");
+#else
 	(void) fputs("\\-/", stdout);
+#endif
 	curx = u.ux+2;
 	u.udispl = 1;
 	u.udisx = u.ux;
@@ -134,7 +154,7 @@ uchar ch,typ;
 	}
 
 	if (typ == AT_APP
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(MACOS)
 	    && flags.standout
 #endif
 	   )
@@ -220,6 +240,10 @@ docrt()
 	register int x,y;
 	register struct rm *room;
 	register struct monst *mtmp;
+#ifdef MACOS
+	term_info	*t;
+	extern WindowPtr HackWindow;
+#endif
 
 	if(u.uswallow) {
 		swallowed(1);
@@ -245,18 +269,22 @@ docrt()
 		mtmp->mdispl = 0;
 	seemons();	/* force new positions to be shown */
 
-#if defined(DGK) && !defined(TEXTCOLOR)
+#if (defined(DGK) && !defined(TEXTCOLOR)) || defined(MACOS)
+# ifdef MACOS
+	t = (term_info *)GetWRefCon(HackWindow);
+	if (!t->inColor)
+# endif
 	/* Otherwise, line buffer the output to do the redraw in
 	 * about 2/3 of the time.
 	 */
 		for(y = 0; y < ROWNO; y++) {
 			char buf[COLNO+1];
 			int start, end;
-#ifdef OLD_TOS
+# if defined(OLD_TOS) || defined(LSC) || defined(AZTEC)
 			setmem(buf, COLNO, ' ');
-#else
+# else
 			memset(buf, ' ', COLNO);
-#endif /* OLD_TOS */
+# endif /* OLD_TOS */
 			for(x = 0, start = -1, end = -1; x < COLNO; x++)
 				if((room = &levl[x][y])->new) {
 					room->new = 0;
@@ -273,11 +301,26 @@ docrt()
 			if (end >= 0) {
 				buf[end + 1] = '\0';
 				curs(start, y + 2);
+# ifdef MACOS
+				puts(buf + start);
+# else
 				(void) fputs(buf + start, stdout);
+# endif
 				curx = end + 1;
 			}
 		}
-#else /* DGK && !TEXTCOLOR */
+# ifdef MACOS
+	else {
+		for(y = 0; y < ROWNO; y++)
+		for(x = 0; x < COLNO; x++)
+			if((room = &levl[x][y])->new) {
+				room->new = 0;
+				at(x,y,room->scrsym,AT_APP);
+			} else if(room->seen)
+				at(x,y,room->scrsym,AT_APP);
+	}
+# endif
+#else
 	for(y = 0; y < ROWNO; y++)
 		for(x = 0; x < COLNO; x++)
 			if((room = &levl[x][y])->new) {
@@ -846,7 +889,7 @@ char *oldbot, *newbot;
 		if(!*nb) {
 			if(*ob || flags.botlx) {
 				/* last char printed may be in middle of line */
-				curs(strlen(newbot)+1,row);
+				curs((int)strlen(newbot)+1,row);
 				cl_end();
 			}
 			break;
@@ -1089,7 +1132,7 @@ uchar let, typ;
 {
 
 	if (let == ' '
-#ifndef MSDOS
+#if !defined(MSDOS) && !defined(MACOS)
 	    || !flags.standout
 #endif
 	    ) {
@@ -1111,43 +1154,49 @@ uchar let, typ;
 			typ = AT_MON;
 	}
 #ifdef TEXTCOLOR
-	switch (typ) {
-	    case AT_MON:
-		switch (let) {
-		    case S_MIMIC_DEF:
-			typ = HI_OBJ;
-			break;
-		    default:
-                        if (u.ux == x && u.uy == y)
-                            typ = uasmon->mcolor;
-			else
-			    typ = level.monsters[x][y]->data->mcolor;
-		}
+	if (flags.use_color) {
+	    switch (typ) {
+		case AT_MON:
+		    switch (let) {
+			case S_MIMIC_DEF:
+			    typ = HI_OBJ;
+			    break;
+		        default:
+			    if (u.ux == x && u.uy == y)
+				typ = uasmon->mcolor;
+			    else
+			        typ = level.monsters[x][y]->data->mcolor;
+		    }
 		break;
-	    case AT_OBJ:
-		if (let == GOLD_SYM)
-		    typ = HI_GOLD;
-		else if (level.objects[x][y] && 
-			 let == objects[level.objects[x][y]->otyp].oc_olet)
-		    typ = objects[level.objects[x][y]->otyp].oc_color;
-		else
-		    typ = mimic_color(let);
-		break;
-	    case AT_MAP:
+		case AT_OBJ:
+		    if (let == GOLD_SYM)
+			typ = HI_GOLD;
+		    else if (level.objects[x][y] && 
+			   let == objects[level.objects[x][y]->otyp].oc_olet)
+			typ = objects[level.objects[x][y]->otyp].oc_color;
+		    else
+			typ = mimic_color(let);
+		    break;
+		case AT_MAP:
+		    if ( ((let == POOL_SYM && IS_POOL(levl[x][y].typ))
 #ifdef FOUNTAINS
-		typ = ((let == POOL_SYM || let == FOUNTAIN_SYM)
-#else
-		typ = (let == POOL_SYM
+		    || (let == FOUNTAIN_SYM && IS_FOUNTAIN(levl[x][y].typ))
 #endif
-			&& hilites[BLUE] != HI ? BLUE :
+		     ) && hilites[BLUE] != HI)
+
+			typ = BLUE;
 #ifdef THRONES
-		       let == THRONE_SYM && hilites[HI_GOLD] != HI ? HI_GOLD :
+		    else if (let == THRONE_SYM && IS_THRONE(levl[x][y].typ)
+				&& hilites[HI_GOLD] != HI)
+			typ = HI_GOLD;
 #endif
-		       0);
-		break;
-	    case AT_ZAP:
-		typ = HI_ZAP;
-		break;
+		    else
+			typ = 0;
+		    break;
+		case AT_ZAP:
+		    typ = HI_ZAP;
+		    break;
+		}
 	}
 	if (typ && flags.use_color)
 		xputs(hilites[typ]);

@@ -16,6 +16,10 @@
 #if defined(BSD) || defined(ULTRIX)
 #include <sys/wait.h>
 #endif
+#ifdef MACOS
+extern WindowPtr	HackWindow;
+extern short macflags;
+#endif
 
 static char hc = 0;
 
@@ -35,14 +39,20 @@ dowhatis()
 	Strcpy(tmp,hackdir);
 	append_slash(tmp);
 	Strcat(tmp,DATAFILE);
-	if(!(fp = fopen(tmp,"r")))
+	fp = fopen(tmp,"r"));
 #else
-	if(!(fp = fopen(DATAFILE, "r")))
+	fp = fopen(DATAFILE, "r");
+#endif
+	if(!fp)
+#ifdef MACOS
+		fp = openFile(DATAFILE);
+	if (!fp)
 #endif
 		pline("Cannot open data file!");
 	else {
 		coord	cc;
 		uchar	r;
+		boolean oldverb = flags.verbose;
 
 		pline ("Specify unknown object by cursor? ");
 		q = ynq();
@@ -59,11 +69,15 @@ dowhatis()
 	selobj:
 		    if(flags.verbose)
 			pline("Please move the cursor to an unknown object.");
+		    else
+			pline("Pick an object.");
 		    getpos(&cc, FALSE, "an unknown object");
 		    if (cc.x < 0) {
 			    (void) fclose(fp); /* sweet@scubed */
+			    flags.verbose = oldverb;
 			    return 0;
 		    }
+		    flags.verbose = FALSE;
 		    r = levl[cc.x][cc.y].scrsym;
 		    if (!r || !levl[cc.x][cc.y].seen) r = ' ';
 		}
@@ -112,6 +126,7 @@ dowhatis()
 			q = r;
 			if (index(quitchars, q)) {
 				(void) fclose(fp); /* sweet@scubed */
+				flags.verbose = oldverb;
 				return 0;
 			}
 		}
@@ -166,8 +181,7 @@ dowhatis()
 				}
 			    }
 #ifdef SPELLS
-			    else
-			    if (q == SPBOOK_SYM && OBJ_AT(cc.x, cc.y))
+			    else if (q == SPBOOK_SYM && OBJ_AT(cc.x, cc.y))
 				    pline("(spellbook)");
 #endif
 #ifdef STRONGHOLD
@@ -178,8 +192,7 @@ dowhatis()
 				    pline("(raised drawbridge)");
 #endif
 #ifdef SINKS
-			    else
-			    if (r == showsyms.sink && q == defsyms.sink &&
+			    else if (r == showsyms.sink && q == defsyms.sink &&
 				IS_SINK(levl[cc.x][cc.y].typ))
 				    pline("(sink)");
 #endif
@@ -211,6 +224,7 @@ dowhatis()
 				pline("More info? ");
 				if(yn() == 'y') {
 					page_more(fp,1); /* does fclose() */
+					flags.verbose = oldverb;
 					return 0;
 				}
 			}
@@ -221,10 +235,12 @@ dowhatis()
 				goto selobj;
 			}
 			(void) fclose(fp); 	/* kopper@psuvax1 */
+			flags.verbose = oldverb;
 			return 0;
 		    }
 		pline("I've never heard of such things.");
 		(void) fclose(fp);
+		flags.verbose = oldverb;
 	}
 	return 0;
 }
@@ -243,7 +259,13 @@ dowhatdoes()
 	Strcat(tmp,CMDHELPFILE);
 	if(!(fp = fopen(tmp,"r"))) {
 #else
+# ifdef MACOS
+	if(!(fp = fopen(CMDHELPFILE, "r")))
+		fp = openFile(CMDHELPFILE);
+	if (!fp) {
+# else
 	if(!(fp = fopen(CMDHELPFILE, "r"))) {
+# endif
 #endif
 		pline("Cannot open data file!");
 		return 0;
@@ -290,7 +312,7 @@ dowhatdoes()
 /* make the paging of a file interruptible */
 static int got_intrup;
 
-#if !defined(MSDOS) && !defined(TOS)
+#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
 static int
 intruph(){
 	(void) signal(SIGINT, (SIG_RET_TYPE) intruph);
@@ -309,7 +331,7 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 #if !defined(MSDOS) && !defined(MINIMAL_TERM)
 	register char *ep;
 #endif
-#if !defined(MSDOS) && !defined(TOS)
+#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
 	int (*prevsig)() = (int (*)())signal(SIGINT, (SIG_RET_TYPE) intruph);
 #endif
 #if defined(MSDOS) || defined(MINIMAL_TERM)
@@ -353,7 +375,7 @@ int strip;	/* nr of chars to be stripped from each line (0 or 1) */
 ret:
 	free((genericptr_t) bufr);
 	(void) fclose(fp);
-#if !defined(MSDOS) && !defined(TOS)
+#if !defined(MSDOS) && !defined(TOS) && !defined(MACOS)
 	(void) signal(SIGINT, (SIG_RET_TYPE) prevsig);
 	got_intrup = 0;
 #endif
@@ -439,6 +461,9 @@ register char *s;
 	xputs(s); xputc('\n');
 #else
 	(void) puts(s);
+# ifdef MACOS
+	(void) putchar('\n');
+# endif
 #endif
 	cury++;
 	return(0);
@@ -656,6 +681,14 @@ char c;
 int
 dohelp()
 {
+#ifdef MACOS
+	term_info	*t;
+	
+	macflags &= ~(fDoUpdate | fDoNonKeyEvt);
+	t = (term_info *)GetWRefCon(HackWindow);
+	SetVol((StringPtr)NULL,
+		(t->auxFileVRefNum) ? t->auxFileVRefNum : t->recordVRefNum);
+#endif
 	help_menu();
 	if (!index(quitchars, hc)) {
 		switch(hc) {
@@ -673,6 +706,10 @@ dohelp()
 #endif
 		}
 	}
+#ifdef MACOS
+	macflags |= (fDoUpdate | fDoNonKeyEvt);
+	SetVol((StringPtr)NULL, t->recordVRefNum);
+#endif
 	return 0;
 }
 
@@ -724,7 +761,18 @@ boolean silent;
 	Strcat(tmp,fnam);
 	if ((f = fopen (tmp, "r")) == (FILE *) 0) {
 #else
+# ifdef MACOS
+	if ((f = fopen (fnam, "r")) == (FILE *) 0)
+		f = openFile(fnam);
+	/* refresh screen kluge */
+	if (!f) {
+		cls();
+		docrt();
+		clrlin();
+		ValidRect(&(**(*HackWindow).visRgn).rgnBBox);
+# else
 	if ((f = fopen (fnam, "r")) == (FILE *) 0) {
+# endif
 #endif
 		if(!silent) {
 			home(); perror (fnam); flags.toplin = 1;

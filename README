@@ -37,7 +37,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     directory as the 'Top' directory.  It makes no difference what you
     call it.
 
-2.  If there is no flaw in the packaging, SIX sub-directories will be
+2.  If there is no flaw in the packaging, SEVEN sub-directories will be
     automatically created, and files will be deposited in them: 
 
     a.  A 'src' directory, which will contain general *.c files.
@@ -46,6 +46,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
     d.  An 'amiga' directory, which will contain the Amiga-specific files.
     e.  An 'others' directory, which will contain MSDOS and TOS files.
     f.  A 'vms' directory, which will contain VMS files.
+    g.  A 'mac' directory, which will contain Macintosh files.
 
     The names of these directories should not be changed, unless you are
     ready to go through the makefiles and the makedefs program and change
@@ -80,6 +81,7 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 	Sun-3s running SunOS 4.0
 	Encore Multimax running UMAX 4.2
 	Bull XPS100 running System V R2.2 or R3.1
+	Bull DPX/2 100 running System V R3.1
 	AT&T 3B4000 running System V
 	AT&T 3B1 running System V (3.51)
 	286 box running Microport SysV/AT (not extensively tested)
@@ -89,6 +91,8 @@ Please read items (1), (2) and (3) BEFORE doing anything with your new code.
 	Atari 1040ST under TOS
 	DEC vaxen running VMS (probably still requires tweaking) 
 	Data General AViiON systems under DG/UX
+        Valid Logic Systems SCALD-System
+        Macintosh (still requires testing)
 
 			- - - - - - - - - - -
 

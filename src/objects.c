@@ -10,7 +10,6 @@
 #include "obj.h"
 #include "objclass.h"
 #include "prop.h"
-#include "decl.h"
 #undef BOW
 
 /* objects have letter " % ) ( 0 _ ` [ ! ? / = * + . */
@@ -19,6 +18,7 @@
 #undef C
 #endif
 #ifdef TEXTCOLOR
+#include "color.h"
 #define C(n)	n
 #else
 #define C(n)
@@ -49,6 +49,8 @@ struct objclass objects[] = {
 	name, NULL, NULL, 1,1,uk,0,tin, 0, FOOD_SYM, prob, delay, wt, \
 	nutrition/20 + 5, 0, 0, nutrition, C(color) }
 
+/* all types of food (except tins & corpses) must have a delay of at least 1. */
+/* delay on corpses is computed and is weight dependant */
 /* dog eats foods 0-4 but prefers tripe rations above all others */
 /* fortune cookies can be read */
 /* carrots improve your vision */
@@ -58,35 +60,35 @@ struct objclass objects[] = {
 
 	/* meat */
 #ifdef TOLKIEN
-	FOOD("tripe ration",	   145, 1, 2, 0, 0, 200, BROWN),
+	FOOD("tripe ration",	   145, 2, 2, 0, 0, 200, BROWN),
 #else
-	FOOD("tripe ration",	   150, 1, 2, 0, 0, 200, BROWN),
+	FOOD("tripe ration",	   150, 2, 2, 0, 0, 200, BROWN),
 #endif
-	FOOD("dead lizard",	    35, 0, 1, 0, 0,  40, GREEN),
-	FOOD("corpse",		     0, 0, 0, 0, 0,   0, BROWN),
-	FOOD("egg",		    75, 0, 1, 1, 0,  80, WHITE),
+	FOOD("dead lizard",	    35, 1, 1, 0, 0,  40, GREEN),
+	FOOD("corpse",		     0, 1, 0, 0, 0,   0, BROWN),
+	FOOD("egg",		    75, 1, 1, 1, 0,  80, WHITE),
 	/* fruits & veggies */
-	FOOD("apple",		    10, 0, 1, 0, 0,  50, RED),
-	FOOD("orange",		     7, 0, 1, 0, 0,  80, ORANGE_COLORED),
-	FOOD("pear",		     7, 0, 1, 0, 0,  50, GREEN+BRIGHT),
-	FOOD("melon",		     7, 0, 1, 0, 0, 100, GREEN+BRIGHT),
-	FOOD("banana",		     7, 0, 1, 0, 0,  80, YELLOW),
-	FOOD("carrot",		    15, 0, 1, 0, 0,  50, ORANGE_COLORED),
-	FOOD("clove of garlic",      5, 0, 1, 0, 0,  40, WHITE),
+	FOOD("apple",		    10, 1, 1, 0, 0,  50, RED),
+	FOOD("orange",		     7, 1, 1, 0, 0,  80, ORANGE_COLORED),
+	FOOD("pear",		     7, 1, 1, 0, 0,  50, GREEN+BRIGHT),
+	FOOD("melon",		     7, 1, 1, 0, 0, 100, GREEN+BRIGHT),
+	FOOD("banana",		     7, 1, 1, 0, 0,  80, YELLOW),
+	FOOD("carrot",		    15, 1, 1, 0, 0,  50, ORANGE_COLORED),
+	FOOD("clove of garlic",      5, 1, 1, 0, 0,  40, WHITE),
 #ifdef TUTTI_FRUTTI
-	FOOD("slime mold",	    75, 0, 1, 0, 0, 250, BROWN),
+	FOOD("slime mold",	    75, 1, 1, 0, 0, 250, BROWN),
 #else
-	FOOD("slice of pizza",	    75, 0, 1, 0, 0, 250, RED),
+	FOOD("slice of pizza",	    75, 1, 1, 0, 0, 250, RED),
 #endif
 	/* human food */
-	FOOD("lump of royal jelly",  0, 0, 1, 0, 0, 200, YELLOW),
-	FOOD("cream pie",	    25, 0, 1, 0, 0, 100, WHITE),
-	FOOD("candy bar",	     7, 0, 1, 0, 0, 100, BROWN),
-	FOOD("fortune cookie",	    55, 0, 1, 0, 0,  40, BROWN),
+	FOOD("lump of royal jelly",  0, 1, 1, 0, 0, 200, YELLOW),
+	FOOD("cream pie",	    25, 1, 1, 0, 0, 100, WHITE),
+	FOOD("candy bar",	     7, 1, 1, 0, 0, 100, BROWN),
+	FOOD("fortune cookie",	    55, 1, 1, 0, 0,  40, BROWN),
 #ifdef TOLKIEN
-	FOOD("pancake", 	    25, 1, 1, 0, 0, 200, BROWN),
-	FOOD("lembas wafer",	    20, 1, 1, 0, 0, 800, WHITE+BRIGHT),
-	FOOD("cram ration",	    20, 1, 3, 0, 0, 600, HI_ORGANIC),
+	FOOD("pancake", 	    25, 2, 1, 0, 0, 200, BROWN),
+	FOOD("lembas wafer",	    20, 2, 1, 0, 0, 800, WHITE+BRIGHT),
+	FOOD("cram ration",	    20, 3, 3, 0, 0, 600, HI_ORGANIC),
 	FOOD("food ration",	   385, 5, 4, 0, 0, 800, HI_ORGANIC),
 #else
 	FOOD("pancake", 	    40, 1, 1, 0, 0, 200, BROWN),

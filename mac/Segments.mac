@@ -1,0 +1,148 @@
+Segments.mac
+============
+
+For THINK C users (v.3.01p4 and 4), you have to construct a project.
+The mods I made in allmain.c make use of the placement of the
+source files in each segment.  Except for Segment 1 below, changing
+the contents of any of the other segments is fine as long as you
+make sure the UnloadSeg's still refer to a routine in all segments
+except for Segment 1.
+This is just an example of the layout of a project. It takes time
+to do this.  Probably the slowest part of THINK C!
+For THINK C 4 users, the 5 or so different libraries are replaced
+by the ANSI and unix libraries of v.4. - JL
+For other compilers, you can still follow the same format, though
+I haven't done it myself yet.
+
+===== Seg 1 =====
+allmain.c
+alloc.c
+cmd.c
+getline.c
+mac.c
+macfile.c
+pcmain.c
+prisym.c
+random.c
+rnd.c
+termcap.c
+
+===== Seg 2 =====
+apply.c
+attrib.c
+do.c
+hack.c
+
+===== Seg 3 =====
+dog.c
+dogmove.c
+dokick.c
+dothrow.c
+do_name.c
+
+===== Seg 4 =====
+do_wear.c
+eat.c
+shk.c
+shknam.c
+
+===== Seg 5 =====
+engrave.c
+exper.c
+extralev.c
+fountain.c
+invent.c
+vault.c
+
+===== Seg 6 =====
+lock.c
+makemon.c
+mcastu.c
+mhitm.c
+
+===== Seg 7 =====
+mhitu.c
+uhitm.c
+
+===== Seg 8 =====
+mklev.c
+mkobj.c
+mkroom.c
+mon.c
+
+===== Seg 9 =====
+mondata.c
+monmove.c
+mthrowu.c
+music.c
+objnam.c
+
+===== Seg 10 =====
+pager.c
+pickup.c
+polyself.c
+potion.c
+
+===== Seg 11 =====
+pray.c
+pri.c
+priest.c
+read.c
+
+===== Seg 12 =====
+restore.c
+rumors.c
+save.c
+search.c
+sit.c
+sounds.c
+spell.c
+steal.c
+
+===== Seg 13 =====
+timeout.c
+topl.c
+track.c
+trap.c
+weapon.c
+were.c
+wield.c
+
+===== Seg 14 =====
+Math [LIB]
+unix [LIB]
+worn.c
+write.c
+zap.c
+
+===== Seg 15 =====
+MacTraps
+stdio [LIB]
+storage [LIB]
+strings [LIB]
+
+===== Seg 16 =====
+decl.c
+macinit.c
+monst.c
+objects.c
+options.c
+o_init.c
+u_init.c
+version.c
+
+===== Seg 17 =====
+end.c
+pctty.c
+pcunix.c
+rip.c
+topten.c
+
+===== Seg 18 =====
+artifact.c
+bones.c
+dbridge.c
+demon.c
+mkmaze.c
+wizard.c
+worm.c

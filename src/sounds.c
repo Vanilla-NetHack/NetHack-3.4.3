@@ -179,7 +179,8 @@ You("hear a sound reminding you of an elephant stepping on a peanut.");
 		}
 		break;
 	    case SHOPBASE:
-		switch (rn2(2)+hallu) {
+		if(tended_shop(croomno))
+		  switch (rn2(2)+hallu) {
 		    case 0:
 			You("hear the chime of a cash register.");
 			break;
@@ -189,7 +190,7 @@ You("hear a sound reminding you of an elephant stepping on a peanut.");
 		    case 2:
 			You("seem to hear Neiman and Marcus arguing!");
 			break;
-		}
+		  }
 		break;
 	    default:
 		break;

@@ -239,7 +239,7 @@ boolean artif;
 #endif
 		break;
 	case FOOD_SYM:
-		OEATEN(otmp) = 0L;
+		otmp->oeaten = FALSE;
 		if(otmp->otyp == CORPSE) {
 		    /* overridden by mkcorpstat() */
 		    do otmp->corpsenm = rndmonnum();
@@ -574,6 +574,13 @@ is_corrodeable(otmp)
 register struct obj *otmp;
 {
 	return(objects[otmp->otyp].oc_material == COPPER);
+}
+
+boolean
+OBJ_AT(x, y)
+int x, y;
+{
+	return(level.objects[x][y] != (struct obj *)0);
 }
 #endif
 

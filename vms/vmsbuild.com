@@ -1,7 +1,8 @@
 $ makedefs := $sys$disk:[]makedefs
 $ cc = "CC/NOLIST/OPT=NOINLINE/DEB/INCL=[-.INCLUDE]/DEFI=(""WIZARD=""""GENTZEL"""""")"
-$ link := link/nomap
+$ link := link/nomap'p2'
 $ if p1 .eqs. "LINK" then goto link
+$ define sys sys$library:
 $ cc alloc.c
 $ cc makedefs.c
 $ cc monst.c

@@ -35,6 +35,9 @@ doversion(){
 #  endif
 # endif
 #endif
+#ifdef MACOS
+		"Macintosh",
+#endif
 #ifdef UNIX
 		"Unix",
 #endif

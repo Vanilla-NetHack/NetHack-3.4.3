@@ -32,7 +32,11 @@ struct attack {
 
 struct permonst {
 
+#if defined(SMALLDATA) && !defined(MAKEDEFS_C)
+	char		mname[24], mlet;		/* full name and sym */
+#else
 	char		*mname, mlet;		/* full name and sym */
+#endif
 	schar		mlevel,			/* base monster level */
 			mmove,			/* move speed */
 			ac,			/* (base) armor class */
@@ -51,7 +55,41 @@ struct permonst {
 # endif
 };
 
-extern struct permonst mons[];		/* the master list of monster types */
+extern struct permonst
+#if defined(SMALLDATA) && !defined(MAKEDEFS_C)
+			*mons;
+#else
+			mons[];		/* the master list of monster types */
+#endif
 extern struct permonst playermon, *uasmon;	/* you in the same terms */
+
+#if defined(SMALLDATA) && defined(MAKEDEFS_C)
+
+typedef struct pmpart {
+	char		mlet;			/* full name and sym */
+	schar		mlevel,			/* base monster level */
+			mmove,			/* move speed */
+			ac,			/* (base) armor class */
+			mr,			/* (base) magic resistance */
+			maligntyp;		/* basic monster alignment */
+	unsigned	geno;			/* creation/geno mask value */
+	struct	attack	mattk[NATTK];		/* attacks matrix */
+	unsigned	cwt,			/* weight of corpse */
+			cnutrit;		/* its nutritional value */
+	short		pxlth;			/* length of extension */
+	uchar		msound;			/* noise it makes */
+	long		mflags1,		/* boolean bitflags */
+			mflags2;		/* more boolean bitflags */
+# ifdef TEXTCOLOR
+	uchar		mcolor;			/* color to use */
+# endif
+} pmpart;
+
+typedef struct pmstr {
+	char		mname[24];		/* full name and sym */
+	pmpart		pmp;
+} pmstr;
+
+#endif
 
 #endif /* PERMONST_H /**/

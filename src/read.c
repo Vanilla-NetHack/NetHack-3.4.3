@@ -52,6 +52,7 @@ doread() {
 		pline("Being blind, you cannot read the formula on the scroll.");
 		return(0);
 	    }
+	scroll->in_use = TRUE;		/* now being read */
 #ifdef SPELLS
 	if(scroll->olet == SPBOOK_SYM) {
 	    if(confused) {
@@ -911,7 +912,7 @@ deadmeat:
 		return;
 	    }
 #ifdef POLYSELF
-	    else if ((how & REALLY) && ptr == &mons[u.umonnum]) rehumanize();
+	    else if (ptr == uasmon) rehumanize();
 #endif
 	    ptr->geno |= G_GENOD;
 	    for(mtmp = fmon; mtmp; mtmp = mtmp2) {

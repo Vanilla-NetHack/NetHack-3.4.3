@@ -43,4 +43,13 @@
  *  assorted bug fixes
  */
 
-#define PATCHLEVEL	4
+/*
+ *  Patch 5, October 15, 1989
+ *  add support for Macintosh OS (courtesy Johnny Lee)
+ *  fix annoying dependency loop via new color.h file
+ *  allow interruption while eating -- general handling of partially eaten food
+ *  smarter treatment of iron balls
+ *  a handful of other bug fixes
+ */
+
+#define PATCHLEVEL	5

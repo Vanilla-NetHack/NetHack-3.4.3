@@ -83,7 +83,7 @@ char *argv[];
 		chdirx(dir,0);
 #endif
 		prscore(argc, argv);
-		getret();
+		if(isatty(1)) getret();
 		settty(NULL);
 		exit(0);
 	    }
@@ -125,7 +125,7 @@ char *argv[];
 # endif
 		case 'D':
 # ifdef WIZARD
-			if(!strcmp(getenv("USER"), WIZARD))
+			if(!strcmp(getenv("USER"), WIZARD)) {
 				wizard = TRUE;
 				break;
 			}
@@ -354,7 +354,7 @@ whoami() {
 	 * The resulting name is overridden by command line options.
 	 * If everything fails, or if the resulting name is some generic
 	 * account like "games" then eventually we'll ask him.
-	 * Note that we trust him here; it is possible to play under
+	 * Note that we trust the user here; it is possible to play under
 	 * somebody else's name.
 	 */
 	register char *s;

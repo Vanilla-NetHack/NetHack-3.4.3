@@ -79,3 +79,7 @@ Notes:
     to "#define yyleng (int)(yy_cp - yy_bp)" in flex.skel.
     Flex is not needed with Xenix/386, as its lex generates a proper lexical
     analyser.  [Xenix instructions by J.T. Conklin]
+
+6.  If you get unexplained deaths by trickery, you are probably running
+    NetHack on a bunch of workstations, but you have overlooked the NETWORK
+    definition in unixconf.h that is necessary in that configuration.

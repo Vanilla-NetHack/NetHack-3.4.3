@@ -55,8 +55,10 @@
 typedef schar	xchar;
 typedef	xchar	boolean;		/* 0 or 1 */
 
+#ifndef MACOS	/* defined in MacTypes.h(LSC) or Types.h(Aztec & MPW) */
 #define	TRUE	((boolean)1)
 #define	FALSE	((boolean)0)
+#endif
 
 #ifdef BITFIELDS
 #define	Bitfield(x,n)	unsigned x:n
@@ -72,7 +74,7 @@ typedef	xchar	boolean;		/* 0 or 1 */
  * prototypes for the ANSI compilers so people quit trying to fix the prototypes
  * to match the standard and thus lose the typechecking.
  */
-#if defined(MSDOS) && !(defined(AMIGA) || defined(TOS))
+#if defined(MSDOS) || defined(THINKC4) && !(defined(AMIGA) || defined(TOS))
 # define CHAR_P char
 # define SCHAR_P schar
 # define UCHAR_P uchar
@@ -138,6 +140,9 @@ typedef	xchar	boolean;		/* 0 or 1 */
 # include "amiconf.h"
 #endif
 
+#if defined(MACOS) && !defined(MACCONF_H)
+# include "macconf.h"
+#endif
 
 
 /*

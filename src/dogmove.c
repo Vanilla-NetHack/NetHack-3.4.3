@@ -261,12 +261,31 @@ long allowflags;
 			niy = ny;
 			chi = i;
 		     eatobj:
-			mtmp->meating =
-			    obj->quan * objects[obj->otyp].oc_delay;
 			if(EDOG(mtmp)->hungrytime < moves)
 			    EDOG(mtmp)->hungrytime = moves;
-			EDOG(mtmp)->hungrytime +=
-			    5*obj->quan * objects[obj->otyp].nutrition;
+			/* Note: to get the correct percentage-eaten in case
+			 * oeaten is set, use "obj->owt / obj->quan /
+			 * base-weight".  It so happens that here we want to
+			 * multiply by obj->quan, which thus cancels out.
+			 * It is arbitrary that the pet takes the same length
+			 * of time to eat as a human, but gets 5X as much
+			 * nutrition.
+			 */
+			if(obj->otyp == CORPSE) {
+			    mtmp->meating =
+				(3 + (mons[obj->corpsenm].cwt >> 2))
+				* obj->owt / mons[obj->corpsenm].cwt;
+			    EDOG(mtmp)->hungrytime += 5 * 
+				mons[obj->corpsenm].cnutrit
+				* obj->owt / mons[obj->corpsenm].cwt;
+			} else {
+			    mtmp->meating =
+				objects[obj->otyp].oc_delay
+				* obj->owt / objects[obj->otyp].oc_weight;
+			    EDOG(mtmp)->hungrytime += 5 *
+				objects[obj->otyp].nutrition
+				* obj->owt / objects[obj->otyp].oc_weight;
+			}
 			mtmp->mconf = 0;
 			if (mtmp->mtame < 20) mtmp->mtame++;
 			if(cansee(nix,niy))

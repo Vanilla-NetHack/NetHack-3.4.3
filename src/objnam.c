@@ -5,7 +5,8 @@
 #include	"hack.h"
 #include <ctype.h>	/* for isalpha() */
 
-#define	PREFIX	30
+/* "an uncursed partly eaten guardian naga hatchling corpse" */
+#define	PREFIX	50
 #define SCHAR_MAX 127
 
 /*	We want the player to be able to learn what key goes in what lock.  */
@@ -503,7 +504,7 @@ plus:
 		}
 		break;
 	case FOOD_SYM:
-		if(OEATEN(obj))
+		if(obj->oeaten)
 		    Strcat(prefix, "partly eaten ");
 		if(obj->otyp == CORPSE) {
 		    Strcat(prefix, mons[obj->corpsenm].mname);
@@ -545,6 +546,31 @@ plus:
 	}
 	bp = strprepend(bp, prefix);
 	return(bp);
+}
+
+/*
+ * Used if only one of a collection of objects is named (e.g. in eat.c).
+ */
+
+char *
+singular(otmp)
+register struct obj *otmp;
+{
+	int savequan;
+	char *nam;
+
+	/* Note: using xname for corpses will not give the monster type */
+	if (otmp->otyp == CORPSE) {
+		static char buf[31];
+
+		sprintf(buf, "%s corpse", mons[otmp->corpsenm].mname);
+		return buf;
+	}
+	savequan = otmp->quan;
+	otmp->quan = 1;
+	nam = xname(otmp);
+	otmp->quan = savequan;
+	return nam;
 }
 
 /* used only in mthrowu.c (thitu) */
@@ -725,8 +751,8 @@ char *oldstr;
 		goto bottom;
 	}
 
-	/* fungus/fungi, homunculus/homunculi */
-	if (!strcmp(spot-1, "us")) {
+	/* fungus/fungi, homunculus/homunculi, but wumpuses */
+	if (!strcmp(spot-1, "us") && strcmp(spot-6, "wumpus")) {
 		*(spot--) = (char)0;
 		*spot = 'i';
 		goto bottom;
@@ -1435,7 +1461,7 @@ typfnd:
 	if (name) otmp = oname(otmp, name, 0);
 	otmp->owt = weight(otmp);
 	if (heavy) otmp->owt += 15;
-	if (halfeaten && otmp->olet == FOOD_SYM) OEATEN(otmp) = 1;
+	if (halfeaten && otmp->olet == FOOD_SYM) otmp->oeaten = TRUE;
 	return(otmp);
 }
 

@@ -8,8 +8,16 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif
+#ifdef MACOS
+extern WindowPtr	HackWindow;
+extern short *switches;
+extern short macflags;
+#define msmsg mprintf
+#endif
 
+#ifndef MACOS
 char orgdir[PATHLEN];
+#endif
 char SAVEF[FILENAME];
 
 char *hname = "NetHack";	/* used for syntax messages */
@@ -38,7 +46,15 @@ long _stksize = 16*1024;
 #ifdef OLD_TOS
 #define OMASK	0x8000
 #else
+# ifdef MACOS
+#  ifdef AZTEC
+#define OMASK	O_RDONLY
+#  else
+#define OMASK	(O_RDONLY | O_BINARY )
+#  endif
+# else
 #define OMASK	0
+# endif
 #endif
 
 int
@@ -56,16 +72,52 @@ char *argv[];
 	extern int _unixmode;
 	_unixmode = 0;
 #endif
-
-# ifdef __TURBOC__
+#ifdef __TURBOC__
 	if (_osmajor >= 3) hname = argv[0];	/* DOS 3.0+ */
-# endif
-# ifdef TOS
+#endif
+#ifdef TOS
 	if (*argv[0]) {			/* only a CLI can give us argv[0] */
 		hname = argv[0];
 		run_from_desktop = FALSE;
 	}
+#endif
+#ifdef MACOS
+	AppFile	theFile;
+	short	message,numFiles;
+	SFReply	reply;
+
+	initterm(24,80);
+	ObscureCursor();
+# ifdef SMALLDATA
+	init_decl();
 # endif
+	/* user might have started up with a save file, so check */
+	CountAppFiles(&message,&numFiles);
+	if (!message && numFiles) {
+		message = 1;
+		
+		while(message <= numFiles) {
+			GetAppFiles(message,&theFile);
+			ClrAppFiles(message);
+			if (theFile.fType == SAVE_TYPE)
+				break;
+		}
+		if (theFile.fType == SAVE_TYPE) {
+			(void)strncpy(SAVEF, (char *)&theFile.fName[1],
+						(int)theFile.fName[0]);
+			(void)strncpy(plname, (char *)&theFile.fName[1],
+						(int)theFile.fName[0]);
+			SetVol(0,theFile.vRefNum);
+			SAVEF[(int)theFile.fName[0]] = '\0';
+			numFiles = 1;
+		} else
+			numFiles = 0;
+	} 
+	switches = (short *)malloc((NROFOBJECTS+2) * sizeof(long));
+	for (fd = 0; fd < (NROFOBJECTS + 2); fd++)
+		switches[fd] = fd;
+#endif
+
 
 	/*
 	 *  Initialize screen I/O before anything is displayed.
@@ -75,12 +127,11 @@ char *argv[];
 	 *  and before error(), due to use of termcap strings.
 	 */
 	gettty();
-#ifndef AMIGA
+#if !defined(AMIGA) && !defined(MACOS)
 	setbuf(stdout,obuf);
 #endif
 	startup();
-
-#ifndef AMIGA
+#if !defined(AMIGA) && !defined(MACOS)
 	/* Save current directory and make sure it gets restored when
 	 * the game is exited.
 	 */
@@ -92,26 +143,27 @@ char *argv[];
 # ifndef NO_SIGNAL
 	signal(SIGINT, (SIG_RET_TYPE) funcp);	/* restore original directory */
 # endif
-#endif /* AMIGA */
+#endif /* AMIGA || MACOS */
 
+#ifndef MACOS
 	if ((dir = getenv("HACKDIR")) != NULL) {
 		Strcpy(hackdir, dir);
-#ifdef CHDIR
+# ifdef CHDIR
 		chdirx (dir, 1);
-#endif
+# endif
 	}
-#if defined(DGK) && !defined(OLD_TOS)
+# if defined(DGK) && !defined(OLD_TOS)
 	/* zero "fileinfo" array to prevent crashes on level change */
 	for (i = 0 ; i <= MAXLEVEL; i++) {
 		fileinfo[i] = zfinfo;
 	}
-#endif /* DGK && !OLD_TOS */
+# endif /* DGK && !OLD_TOS */
 
 	initoptions();
-#ifdef TOS
+# ifdef TOS
 	if (flags.IBMBIOS && flags.use_color)
 		set_colors();
-#endif
+# endif
 	if (!hackdir[0])
 		Strcpy(hackdir, orgdir);
 
@@ -136,13 +188,16 @@ char *argv[];
 	 * may do a prscore().
 	 */
 	    if (!strncmp(argv[1], "-s", 2)) {
-#ifdef CHDIR
+# ifdef CHDIR
 		chdirx(hackdir,0);
-#endif
+# endif
 		prscore(argc, argv);
 		exit(0);
 	    }
 	}
+#else
+	initoptions();
+#endif	/* MACOS /* */	
 
 	/*
 	 * It seems you really want to play.
@@ -233,6 +288,11 @@ char *argv[];
 		Strcpy(plname, "wizard");
 	else
 #endif
+#if defined(KR1ED) && defined(WIZARD) && defined(MACOS)
+	if (!strcmp(plname,WIZARD))
+		Strcpy(plname, "wizard");
+	else
+#endif
 	if (!*plname)
 		askname();
 	plnamesuffix();		/* strip suffix from name; calls askname() */
@@ -258,13 +318,22 @@ char *argv[];
 
 	/* initialize static monster strength array */
 	init_monstr();
-
-#ifdef AMIGA
+#ifdef MACOS
+	if (!numFiles && findNamedFile(plname,1,&reply)) {
+		if (reply.good) {
+		    strncpy(SAVEF,(char *)&reply.fName[1],(int)reply.fName[0]);
+		    SAVEF[(int)reply.fName[0]] = '\0';
+		}
+	} else if (!numFiles)
+#endif
+#if defined(AMIGA) || defined(MACOS)
 	(void) strncat(SAVEF, plname, 31-4);
 #else
 	(void) strncat(SAVEF, plname, 8);
 #endif
+#ifndef MACOS
 	Strcat(SAVEF, ".sav");
+#endif
 	cls();
 	if (
 #ifdef DGK
@@ -317,7 +386,26 @@ not_recovered:
 		pickup(1);
 		read_engr_at(u.ux,u.uy);
 	}
-
+	
+#ifdef MACOS
+	{
+		short	i;
+		MenuHandle	theMenu;
+		
+		theMenu = GetMHandle(appleMenu);
+		EnableItem(theMenu, 0);
+		EnableItem(theMenu, 1);
+		theMenu = GetMHandle(fileMenu);
+		EnableItem(theMenu,0);
+		for (i = inventMenu;i <= extendMenu; i++) {
+			theMenu = GetMHandle(i);
+			EnableItem(theMenu, 0);
+		}
+		DrawMenuBar();
+		macflags |= fDoUpdate;
+	}
+#endif
+			
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		You("are lucky!  Full moon tonight.");
@@ -335,6 +423,10 @@ not_recovered:
 #endif
 
 	moveloop();
+#ifdef MACOS 
+	/* Help for Mac compilers */
+	free_decl();
+#endif
 	return 0;
 }
 
@@ -359,13 +451,16 @@ askname() {
 #ifdef MSDOS
 				msmsg("\b \b");
 #endif
+#ifdef MACOS
+				putc('\b');
+#endif
 			}
 			continue;
 		}
 		if(c != '-')
 		if(c < 'A' || (c > 'Z' && c < 'a') || c > 'z') c = '_';
 		if(ct < sizeof(plname)-1) {
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 			msmsg("%c", c);
 #endif
 			plname[ct++] = c;

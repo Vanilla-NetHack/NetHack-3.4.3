@@ -8,7 +8,11 @@
 #define LEV_H
 
 #ifndef OLD_TOS
+# ifdef MACOS
+#define OMASK	0x8000	/* O_BINARY */
+# else
 #define OMASK	0
+# endif
 #else
 #define msmsg	cprintf
 #define OMASK	0x8000

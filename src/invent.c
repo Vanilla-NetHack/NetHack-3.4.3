@@ -140,6 +140,7 @@ useup(obj)
 register struct obj *obj;
 {
 	if(obj->quan > 1){
+		obj->in_use = FALSE;	/* no longer in use */
 		obj->quan--;
 		obj->owt = weight(obj);
 	} else {
@@ -1096,7 +1097,7 @@ mergable(otmp, obj)	/* returns TRUE if obj  & otmp can be merged */
 	else if((obj->olet==WEAPON_SYM || obj->olet==ARMOR_SYM) &&
 		obj->rustfree != otmp->rustfree) return FALSE;
 
-	else if(obj->olet == FOOD_SYM && OEATEN(obj) != OEATEN(otmp))
+	else if(obj->olet == FOOD_SYM && obj->oeaten != otmp->oeaten)
 		return(FALSE);
 
 	else if(obj->otyp == CORPSE || obj->otyp == EGG || obj->otyp == TIN)

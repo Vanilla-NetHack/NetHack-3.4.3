@@ -14,7 +14,7 @@
 #ifndef NO_SIGNAL
 #include <signal.h>
 #endif /* !NO_SIGNAL */
-#if defined(EXPLORE_MODE) && !defined(O_RDONLY)
+#if defined(EXPLORE_MODE) && !defined(LSC) && !defined(O_RDONLY)
 #include <fcntl.h>
 #endif /* EXPLORE_MODE */
 
@@ -100,6 +100,9 @@ dosave0() {
 #ifdef COMPRESS
 	char	cmd[80];
 #endif
+#ifdef MACOS
+	short	savenum;
+#endif
 
 	if (!SAVEF[0])
 		return 0;
@@ -107,7 +110,7 @@ dosave0() {
 #if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP, SIG_IGN);
 #endif
-#if !defined(__TURBOC__) && !defined(OLD_TOS)
+#if !defined(__TURBOC__) && !defined(OLD_TOS) && !defined(NO_SIGNAL)
 	(void) signal(SIGINT, SIG_IGN);
 #endif
 
@@ -144,13 +147,48 @@ dosave0() {
 	    }
 	}
 # endif
+# ifdef MACOS
+	{
+		Str255	fileName;
+		OSErr	er;
+		OSType	fileType;
+		Point	where;
+		SFReply	reply;
+		char	*prompt;
+		
+		savenum = 0;
+		(void)GetVol(&fileName, &tmp);
+		Strcpy((char *)&fileName[1], SAVEF);
+		fileName[0] = strlen(SAVEF);
+		where.h = where.v =
+		    (SCREEN_BITS.bounds.bottom - SCREEN_BITS.bounds.top) / 4;
+		prompt = "\022Save character in:";
+		SFPutFile(where, prompt, fileName, 0L, &reply);
+		if (reply.good) {
+			SetVol(0L, savenum = reply.vRefNum);
+			strncpy(SAVEF, (char *)&reply.fName[1],
+					(short)reply.fName[0]);
+			SAVEF[(short)reply.fName[0]] = '\0';
+			Strcpy((char *)fileName, (char *)reply.fName);
+		}
+		
+		fileType = (discover == TRUE) ? EXPLORE_TYPE : SAVE_TYPE;
+		if (er = Create(&fileName, 0, CREATOR, fileType))
+			SysBeep(1);
+	}
+	fd = open(SAVEF, O_WRONLY | O_BINARY);
+# else
 	fd = creat(SAVEF, FCMASK);
+# endif /* MACOS */
 #endif /* MSDOS */
 	if(fd < 0) {
 		if(!hu) pline("Cannot open save file.");
 		(void) unlink(SAVEF);		/* ab@unido */
 		return(0);
 	}
+#ifdef MACOS
+	(void)SetVol(0L,tmp);
+#endif
 	if(flags.moonphase == FULL_MOON)	/* ut-sally!fletcher */
 		change_luck(-1);		/* and unido!ab */
 	home();
@@ -162,6 +200,9 @@ again:
 	savelev(fd, dlevel, mode);
 	/* count_only will be set properly by savelev */
 #else
+# ifdef MACOS
+	printf("Saving: ");
+# endif
 	savelev(fd,dlevel);
 #endif
 	saveobjchn(fd, invent);
@@ -240,12 +281,18 @@ again:
 		if(ltmp == dlevel || !level_exists[ltmp]) continue;
 #endif
 		glo(ltmp);
-#ifdef DGK
+#if defined(DGK) || defined(MACOS)
+# ifdef MACOS
+#define msmsg printf
+# endif
 		if(!hu) msmsg(".");
 #endif
 		if((ofd = open(lock, OMASK)) < 0) {
 		    if(!hu) pline("Error while saving: cannot read %s.", lock);
 		    (void) close(fd);
+#ifdef MACOS
+			(void)SetVol(0L, savenum);
+#endif
 		    (void) unlink(SAVEF);
 		    if(!hu) done(TRICKED);
 		    return(0);
@@ -349,7 +396,32 @@ xchar lev;
 #else
 	bwrite(fd,(genericptr_t) &lev,sizeof(lev));
 #endif
+#if defined(SMALLDATA) && defined(MACOS)
+	/* asssumes ROWNO*sizeof(struct rm) < 128 bytes */
+	{
+		short	i;
+		char	length;
+		char	bufr[256],*ptr,*src,*d,*p;
+		
+		d = calloc(ROWNO*COLNO, sizeof(struct rm));
+		p = d;
+		for (i = 0; i < COLNO; i++) {
+			ptr = &bufr[0];
+			src = (char *)&levl[i][0];
+			PackBits(&src, &ptr, ROWNO * sizeof(struct rm));
+			length = (char)(ptr - &bufr[0]);
+			BlockMove(&length, p++, (Size)1);
+			BlockMove(bufr, p, (Size)length);
+			p += (long)length;
+		}
+		i = (short)(p - d);
+		bwrite(fd, (genericptr_t)&i, sizeof(short));
+		bwrite(fd, (genericptr_t)d, i);
+		free(d);
+	}
+#else
 	bwrite(fd,(genericptr_t) levl,sizeof(levl));
+#endif /* SMALLDATA */
 #ifdef REINCARNATION
 	if(dlevel == rogue_level && lev != rogue_level)
 		/* save the symbols actually used to represent the level, not

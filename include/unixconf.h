@@ -36,12 +36,13 @@
 
 /* #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
 /* #define APOLLO	/* same for the Apollo */
-/* #define RANDOM	/* if neither random/srandom nor lrand48/srand48
-			   is available from your system */
+/* #define MICROPORT_BUG /* problems with large arrays in structs */
 /* #define MICROPORT_286_BUG /* Changes needed in termcap.c to get it to
 			   run with Microport Sys V/AT version 2.4.
 			   By Jay Maynard */
 
+/* #define RANDOM	/* if neither random/srandom nor lrand48/srand48
+			   is available from your system */
 /* #define TEXTCOLOR	/* Use System V r3.2 terminfo color support */
 
 

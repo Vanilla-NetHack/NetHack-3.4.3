@@ -6,6 +6,7 @@
  * function declarations for all of nethack
  */
 #define EXTERN_H
+/* #define MAKEDEFS_C	1	/* define for Macs when compiling makedefs */
 #include "config.h"
 #include "permonst.h"
 #include "monsym.h"
@@ -19,7 +20,7 @@
 #undef C
 #endif
 #ifdef TEXTCOLOR
-#include "decl.h"	/* for colors */
+#include "color.h"
 #define C(color)	color
 #else
 #define C(color)
@@ -65,6 +66,9 @@ struct permonst playermon = {           /* used by weapons bonus code */
  * unconsciously. Use your common sense.
  */
 
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+struct permonst *mons;	   /* for SMALLDATA - mons data stored in NetHack app */
+#else
 #ifndef SPLITMON_2
 struct permonst mons[] = {
 /*      ants    */
@@ -253,7 +257,22 @@ struct permonst mons[] = {
           { { AT_BITE, AD_PHYS, 1, 7 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
           30, 300, 0, MS_SQAWK, M1_VSMALL | M1_POIS_RES | M1_TPORT |
           M1_TPORT_CONTROL | M1_STALK, 0, C(CYAN) },
-/*      j ??? */
+/*      jellies         */
+        { "blue jelly", S_JELLY, 4, 0, 8, 10, 0, (G_GENO | 2),
+          { { AT_NONE, AD_COLD, 0, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+          2, 20, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS |
+          M1_POIS_RES | M1_COLD_RES,
+          M2_HOSTILE | M2_NOLIMBS | M2_OMNIVORE | M2_AMORPHOUS, C(BLUE) },
+        { "spotted jelly", S_JELLY, 5, 0, 8, 10, 0, (G_GENO | 1),
+          { { AT_NONE, AD_ACID, 0, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+          2, 20, 0, MS_SILENT,
+          M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS | M1_STON_RES,
+          M2_HOSTILE | M2_NOLIMBS | M2_OMNIVORE | M2_AMORPHOUS, C(GREEN) },
+        { "ochre jelly", S_JELLY, 6, 3, 8, 20, 0, (G_GENO | 2),
+          { { AT_ENGL, AD_ACID, 3, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
+          2, 20, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS |
+          M1_STON_RES, M2_HOSTILE | M2_OMNIVORE | M2_NOLIMBS | M2_AMORPHOUS,
+	  C(HI_GOLD)},
 /*      kobolds         */
         { "kobold", S_KOBOLD,  0, 6, 7, 0, -2, (G_GENO | 1),
           { { AT_WEAP, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
@@ -814,7 +833,7 @@ struct permonst _mons2[] = {
           M1_COLLECT, M2_STRONG | M2_ROCKTHROW | M2_NASTY, C(MAGENTA) },
         { "minotaur", S_GIANT, 15, 15, 6, 0, 0, (G_GENO | G_NOGEN),
           { { AT_CLAW, AD_PHYS, 3, 10 }, { AT_CLAW, AD_PHYS, 3, 10 },
-            AT_BUTT, AD_PHYS, 2, 8, NO_ATTK, NO_ATTK},
+            { AT_BUTT, AD_PHYS, 2, 8}, NO_ATTK, NO_ATTK},
           70, 700, 0, MS_SILENT, M1_BIG | M1_ANIMAL | M1_HUMANOID,
           M2_HOSTILE | M2_STRONG | M2_NASTY | M2_CARNIVORE, C(BROWN) },
         { "owlbear", S_GIANT, 5, 12, 5, 0, 0, (G_GENO | 3),
@@ -828,22 +847,12 @@ struct permonst _mons2[] = {
           40, 400, 0, MS_SILENT,
           M1_BIG | M1_ANIMAL | M1_FLY | M1_SEE_INVIS | M1_STALK,
           M2_WANDER | M2_HOSTILE | M2_STRONG, C(WHITE) },
-/*      Jellies         */
-        { "blue jelly", S_JELLY, 4, 0, 8, 10, 0, (G_GENO | 2),
-          { { AT_NONE, AD_COLD, 0, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-          2, 20, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS |
-          M1_POIS_RES | M1_COLD_RES,
-          M2_HOSTILE | M2_NOLIMBS | M2_OMNIVORE | M2_AMORPHOUS, C(BLUE) },
-        { "spotted jelly", S_JELLY, 5, 0, 8, 10, 0, (G_GENO | 1),
-          { { AT_NONE, AD_ACID, 0, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-          2, 20, 0, MS_SILENT,
-          M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS | M1_STON_RES,
-          M2_HOSTILE | M2_NOLIMBS | M2_OMNIVORE | M2_AMORPHOUS, C(GREEN) },
-        { "ochre jelly", S_JELLY, 6, 3, 8, 20, 0, (G_GENO | 2),
-          { { AT_ENGL, AD_ACID, 3, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-          2, 20, 0, MS_SILENT, M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS |
-          M1_STON_RES, M2_HOSTILE | M2_OMNIVORE | M2_NOLIMBS | M2_AMORPHOUS,
-	  C(HI_GOLD)},
+/*      Jabberwock */
+        { "jabberwock", S_JABBERWOCK, 15, 12, -2, 50, 0, G_GENO,
+          { { AT_BITE, AD_PHYS, 2, 10 }, { AT_BITE, AD_PHYS, 2, 10 },
+          { AT_CLAW, AD_PHYS, 2, 10 }, { AT_CLAW, AD_PHYS, 2, 10 }, NO_ATTK },
+          60, 600, 0, MS_SILENT, M1_BIG | M1_ANIMAL | M1_COLLECT | M1_FLY,
+	  M2_HOSTILE | M2_STRONG | M2_NASTY | M2_CARNIVORE, C(RED) },
 /*      Kops    */
 #ifdef KOPS
         { "Keystone Kop", S_KOP, 1, 6, 7, 10, 9, (G_GENO | G_LGROUP | G_NOGEN),
@@ -1453,19 +1462,11 @@ struct permonst _mons2[] = {
 	  C(MAGENTA)},
 #endif
 #ifdef MAIL
-# ifdef VMS
-        { "broadcast daemon", S_DEMON, 56, 24, 10, 127, 0, (G_NOGEN | G_NOCORPSE),
-          { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK }, 30, 300, 0,
-          MS_SILENT, M1_NOPOLY | M1_FLY | M1_SWIM | M1_SEE_INVIS |
-          M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_COLD_RES | M1_SLEE_RES |
-          M1_STALK, M2_PEACEFUL, C(BRIGHT|BLUE) },
-# else
         { "mail daemon", S_DEMON, 56, 24, 10, 127, 0, (G_NOGEN | G_NOCORPSE),
           { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK }, 30, 300, 0,
           MS_SILENT, M1_NOPOLY | M1_FLY | M1_SWIM | M1_SEE_INVIS |
           M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_COLD_RES | M1_SLEE_RES |
           M1_STALK, M2_PEACEFUL, C(BRIGHT|BLUE) },
-# endif
 /* Neither rain nor sleet nor gloom of night shall stay this courier... */
 #endif
         { "djinni", S_DEMON, 7, 12, 4, 30, 0, (G_NOGEN | G_NOCORPSE),
@@ -1566,3 +1567,4 @@ struct permonst _mons2[] = {
           0, 0, 0, 0, 0, 0, C(0) }
 };
 #endif /* !SPLITMON_1 */
+#endif /* !MAKEDEFS_C */

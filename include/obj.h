@@ -31,6 +31,7 @@ struct obj {
 	Bitfield(oinvis,1);	/* not yet implemented */
 	Bitfield(olocked,1);	/* object is locked */
 #define recharged olocked	/* recharged once */
+#define oeaten	olocked		/* partially eaten food */
 	Bitfield(otrapped,1);	/* container is trapped */
 #define opoisoned otrapped	/* weapon has been coated with poison */
 	Bitfield(odispl,1);
@@ -42,11 +43,11 @@ struct obj {
 	Bitfield(unpaid,1);	/* on some bill */
 	Bitfield(rustfree,1);
 #define flameproof 	rustfree/* for non-metal armor items */
+#define in_use 		rustfree/* for magic items before useup items */
 	Bitfield(no_charge,1);	/* if shk shouldn't charge for this */
 	Bitfield(onamelth,6);
 	long age;		/* creation date */
 	long owornmask;
-#define oeaten		rustfree
 
 /* note that TIMEOUT in you.h is defined as 07777L; no bits for items that
  * confer properties may overlap that mask, or timeout.c will happily 
@@ -80,7 +81,6 @@ struct obj {
 #define newobj(xl)	(struct obj *) alloc((unsigned)(xl) + sizeof(struct obj))
 #define	ONAME(otmp)	((char *) otmp->oextra)
 #define	OGOLD(otmp)	(otmp->oextra[0])
-#define	OEATEN(otmp)	(otmp->oeaten)
 
 # ifndef STUPID_CPP	/* otherwise these macros are functions */
 

@@ -16,7 +16,7 @@
 
 #define DGK			/* MS DOS specific enhancements by dgk */
 
-#define TERMLIB		/* enable use of termcap file /etc/termcap */
+/* #define TERMLIB		/* enable use of termcap file /etc/termcap */
 			/* or ./termcap for MSDOS (SAC) */
 			/* compile and link in Fred Fish's termcap library, */
 			/* enclosed in TERMCAP.ARC, to use this */

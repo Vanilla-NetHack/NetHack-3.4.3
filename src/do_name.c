@@ -189,8 +189,13 @@ register int ininv;
 #endif
 	if(lth) Strcpy(ONAME(otmp2), buf);
 
-	setworn((struct obj *)0, obj->owornmask);
-	setworn(otmp2, otmp2->owornmask);
+	if (obj->owornmask) {
+		/* Note: dying by burning in Hell causes problems if you
+		 * try doing this when owornmask isn't set.
+		 */
+		setworn((struct obj *)0, obj->owornmask);
+		setworn(otmp2, otmp2->owornmask);
+	}
 
 	if (ininv) {
 		/* do freeinv(obj); etc. by hand in order to preserve
@@ -401,6 +406,27 @@ register char *adj;
 
 	if(!strncmp(bp, "the ", 4)) bp += 4;
 	Sprintf(buf, "the %s %s", adj, bp);
+	return(buf);
+}
+
+/* sometimes we don't want an article in front of definite names */
+
+char *
+a2_monnam(mtmp,adj)
+register struct monst *mtmp;
+register char *adj;
+{
+	register char *bp = mon_nam(mtmp);
+#ifdef LINT	/* static char buf[BUFSZ]; */
+	char buf[BUFSZ];
+#else
+	static char buf[BUFSZ];
+#endif
+
+	if(!strncmp(bp, "the ", 4))
+		Sprintf(buf, "the %s %s", adj, bp+4);
+	else
+		Sprintf(buf, "%s %s", adj, bp);
 	return(buf);
 }
 

@@ -22,6 +22,26 @@ moveloop()
 #endif
 
 	for(;;) {
+#ifdef MACOS
+	if (!(moves % 20)) {
+		UnloadSeg(doapply);
+		UnloadSeg(initedog);
+		UnloadSeg(doeat);
+		UnloadSeg(doengrave);
+		UnloadSeg(doopen);
+		UnloadSeg(mattacku);
+		UnloadSeg(mklev);
+		UnloadSeg(attacktype);
+		UnloadSeg(dohelp);
+		UnloadSeg(dopray);
+		UnloadSeg(dorecover);
+		UnloadSeg(timeout);
+		UnloadSeg(setworn);
+		UnloadSeg(initterm);
+		UnloadSeg(done);
+		UnloadSeg(savebones);
+	}
+#endif
 		if(flags.move) {	/* actual time passed */
 
 #ifdef SOUNDS
@@ -149,12 +169,13 @@ moveloop()
 					pushch(ch);
 # endif /* REDO */
 			}
-			if(abort || monster_nearby())
+			if(abort || monster_nearby()) {
 #else
-			if(monster_nearby())
+			if(monster_nearby()) {
 #endif
 				stop_occupation();
-			else if ((*occupation)() == 0)
+				reset_eat();
+			} else if ((*occupation)() == 0)
 				occupation = 0;
 #ifdef MSDOS
 			if (!(++occtime % 7))

@@ -74,6 +74,20 @@ boolean talk;
 }
 
 void
+make_vomiting(xtime, talk)
+long xtime;
+boolean talk;
+{
+	long old = Vomiting;
+
+	if(!xtime && old)
+	    if(talk) You("feel much less nauseous now.");
+
+	Vomiting = xtime;
+}
+
+
+void
 make_blinded(xtime, talk)
 long xtime;
 boolean talk;
@@ -168,6 +182,7 @@ dodrink() {
 
 	otmp = getobj(beverages, "drink");
 	if(!otmp) return(0);
+	otmp->in_use = TRUE;		/* you've opened the stopper */
 	if(objects[otmp->otyp].oc_descr && !strcmp(objects[otmp->otyp].oc_descr, "smoky") && !rn2(13)) {
 		ghost_from_bottle();
 		useup(otmp);
@@ -473,7 +488,7 @@ peffects(otmp)
 			/* they went up a level */
 			if(dlevel > 1 && dlevel <= MAXLEVEL) { 
 				You("rise up, through the ceiling!");
-				goto_level(dlevel-1, FALSE);
+				goto_level(dlevel-1, FALSE, FALSE);
 			} else You("have an uneasy feeling.");
 			break;
 		}

@@ -655,7 +655,7 @@ gods_upset()
 	else {			/* exactly one warning */
 #ifdef ALTARS
 		pline("The voice of %s booms out:  \"Thou hast angered me.\"",
-				a_gname());
+				on_altar() ? a_gname() : u_gname());
 #else
 		pline("A voice booms out:  \"Thou hast angered me.\"");
 #endif
@@ -721,6 +721,9 @@ dosacrifice()
 
 	    if (otmp->corpsenm == PM_ACID_BLOB || (monstermoves <= otmp->age + 50))
 		value = monstr[otmp->corpsenm] + 1;
+	    if (otmp->oeaten)
+		value =
+		    value * otmp->owt / mons[otmp->corpsenm].cwt / otmp->quan;
 
 	    if (is_human(mtmp)) { /* Human sacrifice! */
 #ifdef POLYSELF

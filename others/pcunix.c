@@ -19,14 +19,19 @@
 #include <errno.h>
 #else
 #include <error.h>
-#endif /* UNIXDEBUG */
+#endif /* OLD_TOS */
 #endif
 
+#ifndef MACOS
 #include	<sys/types.h>
 #include	<sys/stat.h>
+#endif
 
 #ifndef OLD_TOS
+# ifndef MACOS
 static struct stat buf, hbuf;
+# endif
+
 void
 setrandom()
 {
@@ -91,11 +96,12 @@ midnight()
 	return(getlt()->tm_hour == 0);
 }
 
+# ifndef MACOS
 void
 gethdate(name)
 char *name;
 {
-#if defined(TOS) && !defined(__GNUC__)
+#  if defined(TOS) && !defined(__GNUC__)
 /* old version - for people short of space */
 /*
 /* register char *np;
@@ -135,12 +141,12 @@ char *name;
 	path = np + 1;
     }
     error("Cannot get status of %s.", (np = rindex(name, '/')) ? np+1 : name);
-#endif /* TOS && __GNUC__ */
+#  endif /* TOS && __GNUC__ */
 }
 
 int
 uptodate(fd) {
-#if defined(TOS) && !defined(__GNUC__) /* no fstat yet */
+#  if defined(TOS) && !defined(__GNUC__) /* no fstat yet */
     if(fstat(fd, &buf)) {
 	pline("Cannot get status of saved level? ");
 	return(0);
@@ -149,17 +155,23 @@ uptodate(fd) {
 	pline("Saved level is out of date. ");
 	return(0);
     }
-#endif
+#  endif
     return(1);
 }
-#endif /* MIN_TOS /* */
+# endif	/* MACOS /* */
+#endif /* OLD_TOS /* */
 
 void
-regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */
+regularize(s)
+	/* normalize file name - we don't like .'s, /'s, :'s [Mac], or spaces */
 register char *s;
 {
 	register char *lp;
 
-	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' ')))
+	while((lp=index(s, '.')) || (lp=index(s, '/')) || (lp=index(s,' '))
+#ifdef MACOS
+			|| (lp=index(s, ':'))
+#endif
+								)
 		*lp = '_';
 }

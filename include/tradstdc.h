@@ -54,7 +54,7 @@
 		va_list the_args; typ1 var1; typ2 var2;
 #  define VA_ARGS		the_args
 #  define VA_START(x)		va_start(the_args)
-#  define VA_INIT(var1,typ1) 	va_arg(var1, typ1)
+#  define VA_INIT(var1,typ1) 	var1 = va_arg(the_args, typ1)
 #  define VA_NEXT(var1,typ1)	var1 = va_arg(the_args,typ1)
 #  define VA_END()		va_end(the_args)
 # else

@@ -7,11 +7,16 @@
 
 #define E extern
 
-#ifdef AMIGA
+#ifndef THINKC4
+# if defined(AMIGA) || defined(MACOS)
 #define _SIZE_T
 typedef unsigned int	size_t;
-#else
+# else
 # include <sys/types.h>
+# endif
+#endif
+#if defined(AZTEC) || defined(THINKC4)
+typedef long	off_t;
 #endif
 
 #ifdef ULTRIX
@@ -20,7 +25,7 @@ typedef unsigned int	size_t;
 #define time_t long
 #endif
 
-#if defined(TOS) && defined(__GNUC__)
+#if defined(TOS) && defined(__GNUC__) && !defined(_SIZE_T)
 #define _SIZE_T
 #endif
 
@@ -67,10 +72,12 @@ E void srand48();
 E void exit P((int));
 # endif /* MSDOS */
 E void free P((genericptr_t));
+# ifndef MACOS
 E void perror P((const char *));
+# endif
 #endif
 
-#if defined(BSD) || defined(ULTRIX)
+#if defined(BSD) || defined(ULTRIX) || (defined(MACOS) && !defined(THINKC4))
 E int qsort();
 #else
 E void qsort P((genericptr_t,size_t,size_t,int(*)(genericptr_t,genericptr_t)));
@@ -83,6 +90,8 @@ E int write P((int,char *,int));
 #else
 E long lseek P((int,long,int));
 E int write P((int,genericptr_t,unsigned));
+#endif /* ULTRIX */
+
 #ifdef MSDOS
 E int close P((int));
 E int read P((int,genericptr_t,unsigned int));
@@ -90,10 +99,6 @@ E int open P((const char *,int,...));
 E int dup2 P((int, int));
 E int setmode P((int,int));
 E int kbhit P((void));
-#endif
-#endif /* ULTRIX */
-
-#ifdef MSDOS
 E int chdir P((char *));
 E char *getcwd P((char *,int));
 #endif
@@ -142,7 +147,7 @@ E char	*strncpy P((char *,const char *,size_t));
 E char	*strcat P((char *,const char *));
 E char	*strncat P((char *,const char *,size_t));
 
-#if defined(SYSV) || defined(MSDOS)
+#if defined(SYSV) || defined(MSDOS) || defined(THINK_C)
 E char	*strchr P((const char *,int));
 E char	*strrchr P((const char *,int));
 #else /* BSD */
@@ -153,7 +158,7 @@ E char	*rindex P((const char *,int));
 
 E int	strcmp P((const char *,const char *));
 E int	strncmp P((const char *,const char *,size_t));
-#ifdef MSDOS
+#if defined(MSDOS) || defined(THINKC4)
 E size_t strlen P((const char *));
 #else
 E int	strlen();
@@ -188,7 +193,20 @@ E int vprintf P((const char *, va_list));
 #define Sprintf	(void) sprintf
 #define Strcat	(void) strcat
 #define Strcpy	(void) strcpy
-#define Printf  (void) printf
+
+#if defined(MACOS) && !defined(MAKEDEFS_C)
+#undef printf
+#undef puts
+#undef putchar
+#undef putc
+#define printf  (void) mprintf
+#define	puts	mputs
+#define putchar	mputc
+#define	putc	mputc
+#define Printf	(void) mprintf
+#else
+#define Printf	(void) printf
+#endif
 
 #ifdef NEED_VARARGS
 #define Vprintf (void) vprintf
@@ -206,13 +224,15 @@ E genericptr_t malloc P((size_t));
 
 /* time functions */
 
+#ifndef MACOS
 E struct tm *localtime P((const time_t *));
 
-#if (defined(ULTRIX) || defined(SYSV) || defined(MSDOS)) && !defined(AMIGA)
+# if defined(ULTRIX) || defined(SYSV) || (defined(MSDOS) && !defined(AMIGA))
 E time_t time P((time_t *));
-#else
+# else
 E long time P((time_t *));
-#endif /* ULTRIX */
+# endif /* ULTRIX */
+#endif
 
 #ifdef MSDOS
 E int abs P((int));

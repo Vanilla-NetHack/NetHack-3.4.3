@@ -111,7 +111,13 @@ boolean cookie;
 	Strcat(tmp,RUMORFILE);
 	if(rumors = fopen(tmp, "r")) {
 #else
+# ifdef MACOS
+	if(rumors = fopen(RUMORFILE, "r"))
+		rumors = openFile(RUMORFILE);
+	if (rumors) {
+# else
 	if(rumors = fopen(RUMORFILE, "r")) {
+# endif
 #endif
 		if (!end_rumor_file) {	/* if this is the first outrumor() */
 			init_rumors();
@@ -169,7 +175,13 @@ outoracle()
     Strcat(tmp,ORACLEFILE);
 	if(oracles = fopen(tmp, "r")) {
 #else
+# ifdef MACOS
+	if(oracles = fopen(ORACLEFILE, "r"))
+		oracles = openFile(ORACLEFILE);
+	if (oracles) {
+# else
 	if(oracles = fopen(ORACLEFILE, "r")) {
+# endif
 #endif
 		if (!oracle_size) {	/* if this is the first outrumor() */
 			init_rumors();

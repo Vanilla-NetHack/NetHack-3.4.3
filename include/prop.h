@@ -48,6 +48,7 @@
 #define ANTIMAGIC		41
 #define DISPLACED		42
 #define CLAIRVOYANT		43
-#define LAST_PROP		(CLAIRVOYANT)		/* the last property */
+#define VOMITING		44
+#define LAST_PROP		(VOMITING)		/* the last property */
 
 #endif /* PROP_H /**/

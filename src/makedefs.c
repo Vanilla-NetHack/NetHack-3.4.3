@@ -2,7 +2,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* makedefs.c - NetHack version 3.0 */
 
-#define MAKEDEFS_C
+#define MAKEDEFS_C 1	/* needs to be defined to 1 for Mac */
 
 #define EXTERN_H
 #include	"config.h"
@@ -52,17 +52,42 @@ void rename();
 # define DATA_FILE	 "auxil:data"
 # define RUMOR_FILE	 "auxil:rumors"
 #else
+# ifndef MACOS
+/* construct definitions of object constants */
 # define MONST_FILE	 "../include/pm.h"
 # define ONAME_FILE	 "../include/onames.h"
 # define TRAP_FILE	 "../include/trap.h"
 # define DATE_FILE	 "../include/date.h"
 # define DATA_FILE	 "../auxil/data"
 # define RUMOR_FILE	 "../auxil/rumors"
+# else
+/*****
+ * MAC OS uses ':' to separate dir's and filenames.
+ * The following (partial) pathnames assume the makedefs program
+ * runs in the same directory as the include and auxil directories
+ *****/
+# define MONST_FILE	":include:pm.h"
+# define ONAME_FILE	":include:onames.h"
+# define TRAP_FILE	":include:trap.h"
+# define DATE_FILE	":include:date.h"
+# define DATA_FILE	":auxil:data"
+# define RUMOR_FILE	":auxil:rumors"
+#  ifdef AZTEC
+#define	perror(x)	Printf(x)
+#include "Controls.h"
+#  else
+#include "ControlMgr.h"
+#  endif
+# endif
 #endif
+
 
 char	in_line[256];
 extern char *gets P((char *));
 void do_objs(), do_traps(), do_data(), do_date(), do_permonst(), do_rumors();
+#ifdef SMALLDATA
+void do_monst(), save_resource();
+#endif
 char *limit P((char *,BOOLEAN_P));
 FILE *_freopen();
 
@@ -72,9 +97,68 @@ int	argc;
 char	*argv[];
 {
 	char	*option;
+#ifdef MACOS
+	DialogPtr	dialog;
+	char	params[3], *options;
+	short	itemHit, lastItem, type;
+	Rect	box;
+	ControlHandle	theControl;
+	GrafPtr	oldPort;
 
+#define	OK_BUTTON	1
+#define	CANCEL_BUTTON	2
+#define	FIRST_RADIO_BUTTON	3
+#define	ON	1
+#define	OFF	0
+
+	/* standard Mac initialization */
+	InitGraf(&MAINGRAFPORT);
+	
+	InitFonts();
+	InitWindows();
+	InitMenus();
+	InitCursor();
+	FlushEvents(everyEvent,0);
+	InitDialogs(NULL);
+	
+	params[0] = '-';
+	options = "DVPRTOM";
+	dialog = GetNewDialog(200, 0L, (WindowPtr) -1);
+	GetPort(&oldPort);
+	SetPort(dialog);
+	GetDItem(dialog, OK_BUTTON, &type, &theControl, &box);
+	LocalToGlobal(&box.top);
+	LocalToGlobal(&box.bottom);
+	SetPort(oldPort);
+	PenSize(3, 3);
+	InsetRect(&box, -4, -4);
+	FrameRoundRect(&box, 16, 16);
+	PenSize(1, 1);
+	itemHit = 0;
+	do {
+		lastItem = itemHit;
+		ModalDialog(NULL, &itemHit);
+		if (itemHit != lastItem && itemHit > CANCEL_BUTTON) {
+			if (lastItem) {
+				GetDItem(dialog, lastItem, &type,
+						&theControl, &box);
+				SetCtlValue(theControl, OFF);
+			}
+			params[1] = options[itemHit - FIRST_RADIO_BUTTON];
+			GetDItem(dialog, itemHit, &type, &theControl, &box);
+			SetCtlValue(theControl, ON);
+		}
+	} while (itemHit >= FIRST_RADIO_BUTTON);
+	DisposDialog(dialog);
+	argc = 1;
+	if (itemHit == OK_BUTTON && lastItem >= FIRST_RADIO_BUTTON) {
+		argc = 2;
+		option = params;
+	
+#else
 	if(argc == 2) {
 	    option = argv[1];
+#endif
 	    switch (option[1]) {
 
 		case 'o':
@@ -99,9 +183,16 @@ char	*argv[];
 		case 'r':
 		case 'R':	do_rumors();
 				break;
+#if defined(SMALLDATA) && defined(MACOS)
+		case 'm':
+		case 'M':	do_monst();
+				break;
+		
+#endif	/* SMALLDATA && MACOS */
 
 		default:
-				(void) fprintf(stderr, "Unknown option '%c'.\n", option[1]);
+				(void) fprintf(stderr,
+					"Unknown option '%c'.\n", option[1]);
 				(void) fflush(stderr);
 				exit(1);
 	    }
@@ -217,8 +308,13 @@ do_date(){
 	}
 	Printf("/*\tSCCS Id: @(#)date.h\t3.0\t88/11/20 */\n\n");
 
+#ifdef KR1ED
 	(void) time(&clock);
 	Strcpy(cbuf, ctime(&clock));
+#else
+	(void) time((time_t *)&clock);
+	Strcpy(cbuf, ctime((time_t *)&clock));
+#endif
 	for(c = cbuf; *c != '\n'; c++);	*c = 0; /* strip off the '\n' */
 	Printf("const char datestring[] = \"%s\";\n", cbuf);
 
@@ -352,7 +448,8 @@ do_objs() {
 		/* make sure probabilities add up to 1000 */
 		if(objects[i].oc_olet != let) {
 			if (sum && sum != 1000) {
-			    (void) fprintf(stderr, "prob error for %c (%d%%)", let, sum);
+			    (void) fprintf(stderr,
+					"prob error for %c (%d%%)", let, sum);
 			    (void) fflush(stderr);
 			    sumerr = TRUE;
 			}
@@ -381,7 +478,8 @@ do_objs() {
 		    case GEM_SYM:
 			/* avoid trouble with stupid C preprocessors */
 			if(objects[i].oc_material == GLASS) {
-			    Printf("/* #define\t%s\t%d */\n", objects[i].oc_name, i);
+			    Printf("/* #define\t%s\t%d */\n",
+							objects[i].oc_name, i);
 			    continue;
 			}
 		    default:
@@ -451,3 +549,103 @@ getpid()
 }
 # endif
 #endif /* MSDOS */
+
+#if defined(SMALLDATA) && defined(MACOS)
+void
+do_monst()
+{
+	Handle	data;
+	short i,j;
+	pmstr	*pmMonst;
+	
+	for(i = 0; mons[i].mlet; i++) {
+		;
+	}
+	i++;
+	
+	/*
+	 * convert to struct where character arrays instead of pointers to
+	 * strings are used
+	 */
+	pmMonst = (pmstr *)NewPtr(i*sizeof(struct pmstr));
+	for (j = 0; j < i; j++) {
+		Strcpy(pmMonst[j].mname, mons[j].mname);
+		BlockMove(&(mons[j].mlet), &(pmMonst[j].pmp.mlet),
+				(long)sizeof(struct pmpart));
+	}
+	
+	PtrToHand((Ptr)pmMonst, &data, (long)(i * sizeof(struct pmstr)));
+	save_resource(data);
+	DisposHandle(data);
+}
+
+
+void
+save_resource(data)
+Handle	data;
+{
+	SFReply	reply;
+	short	refNum,error;
+	Str255	name;
+	ResType	theType;
+	Handle	theRes;
+	short	findNamedFile();
+#define MONST_DATA_ID	101
+
+	strcpy((char *)&name[0], "\014Nethack.rsrc");
+	if (findNamedFile(&name[1], 0, &reply)) {
+	    strncpy((char *)&name[0],(char *)&reply.fName[1], reply.fName[0]);
+	    name[reply.fName[0]] = '\0';
+	    if ((refNum = OpenResFile(name)) != -1) {
+		if (ResError() == noErr) {
+		    theType = HACK_DATA;
+		    strcpy((char *)&name[0], "\012MONST_DATA");
+		    error = CurResFile();
+		    if (theRes = GetResource(theType, MONST_DATA_ID)) {
+			RmveResource(theRes);
+			error = ResError();
+			if (error == noErr) {
+			    DisposHandle(theRes);
+			    UpdateResFile(refNum);
+			    error = ResError();
+			    if (error != noErr)
+				SysBeep(1);
+			} else {
+			    Printf("Couldn't remove old copy of data resource.");
+			    return;
+			}
+		    } else if (ResError() != resNotFound && ResError() != noErr) {
+			SysBeep(1);
+			Printf("Resource file is protected.");
+			return;
+		    }
+		    AddResource(data, theType, MONST_DATA_ID, name);
+		    error = ResError();
+		    if (error != noErr) {
+			SysBeep(1);
+			Printf("Couldn't add data resource.");
+		    } else {
+			WriteResource(data);
+			error = ResError();
+			if (error != noErr) {
+			    SysBeep(1);
+			    Printf("Couldn't write data resource.");
+			}
+		    }
+		    CloseResFile(refNum);
+		    if (ResError() != noErr) {
+			SysBeep(1);
+			Printf("Couldn't close resource file.");
+		    }
+		}
+	    }
+	}
+}
+# if defined(AZTEC) || defined(THINKC4)
+int
+getpid()
+{
+	return 1;
+}
+# endif
+#endif	/* SMALLDATA && MACOS */

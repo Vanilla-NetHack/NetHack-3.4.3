@@ -6,7 +6,12 @@
 #define MONATTK_H
 #include "hack.h"
 
+#ifndef MACOS
 #include <errno.h>	/* George Barbanis */
+#else
+extern short macflags;
+extern WindowPtr	HackWindow;
+#endif
 #ifdef NO_FILE_LINKS
 #include <fcntl.h>	/* Ralf Brown */
 #endif
@@ -73,12 +78,15 @@ topten(){
 # endif /* UNIX or VMS */
 #endif /* LOGFILE */
 
-#ifdef MSDOS
+#if defined(MSDOS) || defined(MACOS)
 #define HUP
 #else
 #define	HUP	if(!done_hup)
 #endif
-
+#ifdef MACOS
+	macflags &= ~fDoUpdate;
+	uid = TickCount();
+#endif
 	/* create a new 'topten' entry */
 	t0 = newttentry();
 	t0->level = dlevel;
@@ -178,7 +186,31 @@ topten(){
 		    sleep(1);
 	}
 #endif /* UNIX or VMS */
+#ifdef MACOS
+	{
+		term_info	*t;
+		
+		t = (term_info *)GetWRefCon(HackWindow);
+		SetVol((StringPtr)0L, t->recordVRefNum);
+		if (!(rfile = fopen(recfile,"r"))) {
+			short	i;
+	
+			rfile = openFile(recfile);
+			
+			t = (term_info *)GetWRefCon(HackWindow);
+			for (i = 0;i < t->maxRow; i++) {
+			    MoveTo(Screen_Border,
+				t->ascent + (i * t->height) + Screen_Border);
+			    DrawText(&t->screen[i][0], 0, t->maxCol);
+			}
+			ValidRect(&(**(*HackWindow).visRgn).rgnBBox);
+		}
+	}
+
+	if (!rfile) {
+#else
 	if(!(rfile = fopen(recfile,"r"))){
+#endif
 		HUP (void) puts("Cannot open record file!");
 		goto unlock;
 	}
@@ -337,11 +369,14 @@ outheader() {
 	char linebuf[BUFSZ];
 	register char *bp;
 
-	Strcpy(linebuf, " No  Points   Name");
+	Strcpy(linebuf, " No  Points     Name");
 	bp = eos(linebuf);
 	while(bp < linebuf + COLNO - 9) *bp++ = ' ';
 	Strcpy(bp, "Hp [max]");
 	(void) puts(linebuf);
+#ifdef MACOS
+	putchar('\n');
+#endif
 }
 
 /* so>0: standout line; so=0: ordinary line; so<0: no output, return lth */
@@ -423,7 +458,11 @@ register int rank, so;
 	  if (lngr >= hppos) hppos = (2*COLNO) - 7 - strlen(hpbuf);
 	  if(bp <= linebuf + hppos) {
 	    /* pad any necessary blanks to the hit point entry */
+#ifdef MACOS
+	    while(bp <= linebuf + hppos) *bp++ = ' ';
+#else
 	    while(bp < linebuf + hppos) *bp++ = ' ';
+#endif
 	    Strcpy(bp, hpbuf);
 	    if(t1->maxhp < 10)
 		 Sprintf(eos(bp), "   [%d]", t1->maxhp);
@@ -439,9 +478,15 @@ register int rank, so;
 	  while(bp < linebuf + so) *bp++ = ' ';
 	  *bp = 0;
 	  standoutbeg();
+#ifdef MACOS
+	  puts(linebuf);
+#else
 	  (void) fputs(linebuf,stdout);
+#endif
 	  standoutend();
+#ifndef MACOS
 	  (void) putchar('\n');
+#endif
 	}
 	return(strlen(linebuf));
 }
@@ -506,8 +551,13 @@ char **argv;
 #else
 	char *player0;
 #endif
-
+#ifdef MACOS
+	if(!(rfile = fopen(recfile,"r")))
+		rfile = openFile(recfile);
+	if (!rfile) {
+#else
 	if(!(rfile = fopen(recfile,"r"))){
+#endif
 		(void) puts("Cannot open record file!");
 		return;
 	}
@@ -679,8 +729,15 @@ struct obj *otmp;
 
 	if (!otmp) return((struct obj *) 0);
 
+#ifdef MACOS
 	if(!(rfile = fopen(recfile,"r")))
+		rfile = openFile(recfile);
+	if (!rfile) {
+#else
+	if(!(rfile = fopen(recfile,"r"))){
+#endif
 		panic("Cannot open record file!");
+	}
 
 	tt = newttentry();
 	rank = rnd(10);

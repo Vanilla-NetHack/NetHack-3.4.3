@@ -158,6 +158,11 @@ void
 panic VA_DECL(char *, str)
 	VA_START(str);
 	VA_INIT(str, char *);
+#ifdef MACOS
+	puts(str);
+	more();
+#endif
+
 	if(panicking++)
 #ifdef SYSV
 	    (void)
@@ -185,7 +190,11 @@ panic VA_DECL(char *, str)
 	hu = FALSE;
 	(void) dosave0();
 #endif
+#ifdef MACOS
+	puts(" ERROR:  ");
+#else
 	(void) fputs(" ERROR:  ", stdout);
+#endif
 	Vprintf(str,VA_ARGS);
 	more();				/* contains a fflush() */
 #if defined(WIZARD) && (defined(UNIX) || defined(VMS))
@@ -234,7 +243,12 @@ int how;
 		      !Blind ? "begins to glow" : "feels warm");
 		You("feel much better!");
 		pline("The medallion crumbles to dust!");
-		useup(uamul);
+		if (uamul)	/* Huss:  Check if amulet really is worn */
+			useup(uamul);
+		else if (uwep && uwep->otyp == AMULET_OF_LIFE_SAVING)
+			useup(uwep);	/* Oops, he must be wielding it. */
+		else
+			impossible("Using an amulet without having it?");
 		if (u.uhunger < 500) u.uhunger = 500;
 		nomovemsg = "You survived that attempt on your life.";
 		curs_on_u();
@@ -281,7 +295,10 @@ die:
 	else if(how == STONED)
 		(mk_named_object(STATUE, upmon, u.ux, u.uy, plname,
 					strlen(plname)))->spe = 0;
-	else
+/*
+ * If you're burned to a crisp, why leave a corpse?
+ */
+	else if (how != BURNING)
 		(void) mk_named_object(CORPSE, upmon, u.ux, u.uy, plname,
 							strlen(plname));
 
@@ -468,7 +485,7 @@ will not be checked.\n", wizard ? "wizard" : "discover");
 		topten();
 /* "So when I die, the first thing I will see in Heaven is a score list?" */
 	if(done_stopprint) Printf("\n\n");
-#ifdef APOLLO
+#if defined(APOLLO) || defined(MACOS)
 	getret();
 #endif
 	exit(0);
@@ -481,16 +498,17 @@ clearlocks(){
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-#if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS)
+# if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS)) || defined(VMS) \
+							|| defined(MACOS)
 	register int x;
-#if defined(UNIX) || defined(VMS)
+#  if defined(UNIX) || defined(VMS)
 	(void) signal(SIGHUP,SIG_IGN);
-#endif
+#  endif
 	for(x = maxdlevel; x >= 0; x--) {
 		glo(x);
 		(void) unlink(lock);	/* not all levels need be present */
 	}
-#endif
+# endif
 #endif
 }
 

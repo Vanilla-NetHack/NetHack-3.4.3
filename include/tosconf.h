@@ -38,6 +38,7 @@
 #define RANDOM
 #define SHELL
 #define TEXTCOLOR
+#define TERMLIB
 
 #ifndef MSDOS_H
 #include "msdos.h"
@@ -45,6 +46,8 @@
 #ifndef PCCONF_H
 #include "pcconf.h"	 	 /* remainder of stuff is same as the PC */
 #endif
+#ifdef TERMLIB
 #undef ANSI_DEFAULT
+#endif
 #endif /* TOSCONF_H /* */
 #endif /* TOS /* */

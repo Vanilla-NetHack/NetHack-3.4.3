@@ -522,6 +522,7 @@ register int	x, y;
 		case S_LEPRECHAUN:
 			mtmp->msleep = 1;
 			break;
+		case S_JABBERWOCK:
 		case S_NYMPH:
 			if(rn2(5) && !u.uhave_amulet) mtmp->msleep = 1;
 			break;
@@ -658,34 +659,61 @@ struct permonst *mdat;
 	return 1;
 }
 
-void
-rloc(mtmp)
+static void
+rloc_to(mtmp, x, y)
 struct monst *mtmp;
+register int x,y;
 {
-	register int tx, ty;
-
 #ifdef WORM		/* do not relocate worms */
 	if(mtmp->wormno && mtmp->mx) return;
 #endif
-	/* if the wiz teleports away to heal, try the up staircase,
-	   to block the player's escaping before he's healed */
-	if(!mtmp->iswiz || !goodpos(tx = xupstair, ty = yupstair, mtmp->data))
-	   do {
-		tx = rn1(COLNO-3,2);
-		ty = rn2(ROWNO);
-	   } while(!goodpos(tx,ty,mtmp->data));
 	if(mtmp->mx != 0 && mtmp->my != 0)
 		remove_monster(mtmp->mx, mtmp->my);
-	place_monster(mtmp, tx, ty);
+	place_monster(mtmp, x, y);
 	if(u.ustuck == mtmp){
 		if(u.uswallow) {
-			u.ux = tx;
-			u.uy = ty;
+			u.ux = x;
+			u.uy = y;
 			docrt();
 		} else	u.ustuck = 0;
 	}
 	pmon(mtmp);
 	set_apparxy(mtmp);
+}
+
+void
+rloc(mtmp)
+struct monst *mtmp;
+{
+	register int x, y;
+
+	/* if the wiz teleports away to heal, try the up staircase,
+	   to block the player's escaping before he's healed */
+	if(!mtmp->iswiz || !goodpos(x = xupstair, y = yupstair, mtmp->data))
+	   do {
+		x = rn1(COLNO-3,2);
+		y = rn2(ROWNO);
+	   } while(!goodpos(x,y,mtmp->data));
+	rloc_to(mtmp, x, y);
+}
+
+void
+vloc(mtmp)
+struct monst *mtmp;
+{
+	register struct mkroom *croom;
+	register int x, y;
+
+	for(croom = &rooms[0]; croom->hx >= 0; croom++)
+	    if(croom->rtype == VAULT) {
+		x = rn2(2) ? croom->lx : croom->hx;
+		y = rn2(2) ? croom->ly : croom->hy;
+		if(goodpos(x, y, mtmp->data)) {
+		    rloc_to(mtmp, x, y);
+		    return;
+		}
+	    }
+	rloc(mtmp);
 }
 
 static int

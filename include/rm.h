@@ -214,32 +214,51 @@ struct rm {
 #define ladder		doormask
 #define drawbridgemask	doormask
 
+#ifdef MACOS
 typedef struct
 {
-    struct rm		locations[COLNO][ROWNO];
-    struct obj		*objects[COLNO][ROWNO];
-    struct monst	*monsters[COLNO][ROWNO];
+    struct rm		**locations;
+    struct obj		***objects;
+    struct monst	***monsters;
     struct obj		*objlist;
     struct monst	*monlist;
 }
-level_t;
+dlevel_t;
+#else
+typedef struct
+{
+    struct rm		locations[COLNO][ROWNO];
+#ifndef MICROPORT_BUG
+    struct obj		*objects[COLNO][ROWNO];
+    struct monst	*monsters[COLNO][ROWNO];
+#else
+    struct obj		*objects[1][ROWNO];
+    char		*yuk1[COLNO-1][ROWNO];
+    struct monst	*monsters[1][ROWNO];
+    char		*yuk2[COLNO-1][ROWNO];
+#endif
+    struct obj		*objlist;
+    struct monst	*monlist;
+}
+dlevel_t;
+#endif
 
-extern level_t	level;	/* structure describing the current level */
+extern dlevel_t	level;	/* structure describing the current level */
 
 /*
  * Macros for compatibility with old code. Someday these will go away.
  */
-#define OBJ_AT(x, y)	(level.objects[x][y] != (struct obj *)0)
-#define MON_AT(x, y)	(level.monsters[x][y] != (struct monst *)0)
 #define levl		level.locations
 #define fobj		level.objlist
 #define fmon		level.monlist
 
-#ifndef STUPID_CPP	/* otherwise these macros are functions in monmove.c */
+#ifndef STUPID_CPP	/* otherwise these macros are functions */
+#define OBJ_AT(x, y)	(level.objects[x][y] != (struct obj *)0)
 /*
  * Macros for encapsulation of level.monsters references.
  */
-#define place_monster(m, x, y)	level.monsters[m->mx=x][m->my=y] = m
+#define MON_AT(x, y)	(level.monsters[x][y] != (struct monst *)0)
+#define place_monster(m, x, y)	m->mx=x,m->my=y,level.monsters[m->mx][m->my]=m
 #define place_worm_seg(m, x, y) level.monsters[x][y] = m
 #define remove_monster(x, y)	level.monsters[x][y] = (struct monst *)0
 #define m_at(x, y)		level.monsters[x][y]

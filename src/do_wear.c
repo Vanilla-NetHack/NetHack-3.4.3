@@ -1152,9 +1152,9 @@ glibr()
 #ifdef HARD
 	boolean leftfall, rightfall;
 
-	leftfall = (uleft && !uleft->cursed && (!uwep || !uwep->cursed));
-	rightfall = (uright && !uright->cursed && (!uwep || !uwep->cursed
+	leftfall = (uleft && !uleft->cursed && (!uwep || !uwep->cursed
 		|| !bimanual(uwep)));
+	rightfall = (uright && !uright->cursed && (!uwep || !uwep->cursed));
 #else
 #define leftfall uleft
 #define rightfall uright

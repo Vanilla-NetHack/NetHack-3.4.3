@@ -155,6 +155,15 @@ setftty(){
 }
 
 
+void
+intron() {		/* enable kbd interupts if enabled when game started */
+}
+
+void
+introff() {		/* disable kbd interrupts if required*/
+}
+
+
 /* fatal error */
 /*VARARGS1*/
 void

@@ -287,7 +287,7 @@ register struct trap *trap;
 #endif
 			    unsee();
 			    (void) fflush(stdout);
-			    goto_level(newlevel, FALSE);
+			    goto_level(newlevel, FALSE, TRUE);
 #ifdef WALKIES
 			}
 #endif
@@ -695,7 +695,12 @@ register struct monst *mtmp;
 #ifdef WALKIES
 			if(teleport_pet(mtmp)) {
 #endif
-			    rloc(mtmp);
+			    /* Note: don't remove the trap if a vault.  Other-
+			     * the monster will be stuck there, since the guard
+			     * isn't going to come for it...
+			     */
+			    if (trap->once) vloc(mtmp);
+			    else rloc(mtmp);
 			    if(in_sight && !cansee(mtmp->mx,mtmp->my))
 				pline("%s suddenly disappears!",
 					Monnam(mtmp));
@@ -989,18 +994,30 @@ dotele()
 #endif
 
 	trap = t_at(u.ux, u.uy);
-	if (trap && (!trap->tseen || trap->ttyp != TELEP_TRAP || trap->once))
+	if (trap && (!trap->tseen || trap->ttyp != TELEP_TRAP))
 		trap = 0;
 
-	if (trap) 
-		You("jump onto the teleportation trap...");
-	else if(!Teleportation ||
+	if (trap) {
+		if (trap->once) {
+			pline("This is a vault teleport, usable once only.");
+			pline("Jump in? ");
+			if (yn() == 'n')
+				trap = 0;
+			else {
+				deltrap(trap);
+				newsym(u.ux, u.uy);
+			}
+		}
+		if (trap)
+			You("jump onto the teleportation trap...");
+	}
+	if(!trap && (!Teleportation ||
 	   (u.ulevel < (pl_character[0] == 'W' ? 8 : 12)
 #ifdef POLYSELF
 	    && !can_teleport(uasmon)
 #endif
 	   )
-	  ) {
+	  )) {
 #ifdef SPELLS
 		/* Try to use teleport away spell. */
 		castit = objects[SPE_TELEPORT_AWAY].oc_name_known;
@@ -1053,7 +1070,8 @@ dotele()
 #ifdef WALKIES
 	if(next_to_u()) {
 #endif
-		tele();
+		if (trap && trap->once) vtele();
+		else tele();
 #ifdef WALKIES
 		(void) next_to_u();
 	} else {
@@ -1073,7 +1091,8 @@ int attach;
 		impossible("Where are your chain and ball??");
 		return;
 	}
-	place_object(uball, u.ux, u.uy);
+	if(!carried(uball))
+		place_object(uball, u.ux, u.uy);
 	place_object(uchain, u.ux, u.uy);
 	if(attach){
 		uchain->nobj = fobj;
@@ -1190,7 +1209,7 @@ register boolean pet_by_u = next_to_u();
 	    You("shudder for a moment...");
 	else
 #endif
-	    goto_level(newlevel, FALSE);
+	    goto_level(newlevel, FALSE, FALSE);
 }
 
 void

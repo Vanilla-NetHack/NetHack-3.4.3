@@ -246,20 +246,23 @@ register struct obj *obj;
 register char *word;
 {
 	if(obj->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)){
-		You("cannot %s something you are wearing.",word);
+	       if (*word)
+			You("cannot %s something you are wearing.",word);
 		return(FALSE);
 	}
 	if (obj->otyp == LOADSTONE && obj->cursed) {
 		obj->bknown = 1;
-		pline("For some reason, you cannot %s the stone%s!",
-			word,
-			plur((long)obj->quan));
+		if (*word)
+			pline("For some reason, you cannot %s the stone%s!",
+				word,
+		      		plur((long)obj->quan));
 		return(FALSE);
 	}
 #ifdef WALKIES
 	if (obj->otyp == LEASH && obj->leashmon != 0) {
-		pline ("The leash is tied around your %s.",
-			body_part(HAND));
+	       if (*word)
+			pline ("The leash is tied around your %s.",
+					body_part(HAND));
 		return(FALSE);
 	}
 #endif
@@ -412,7 +415,7 @@ dodown()
 #endif
 		if (trap)
 			pline("You jump into the trapdoor...");
-		goto_level(dlevel+1, !trap);
+		goto_level(dlevel+1, !trap, TRUE);
 #ifdef STRONGHOLD
 		at_ladder = FALSE;
 #endif
@@ -473,10 +476,11 @@ doup()
 		if (levl[u.ux][u.uy].typ == LADDER) at_ladder = TRUE;
 		goto_level(dlevel-1, 
 		    (dlevel-1 < stronghold_level || (at_ladder && 
-		       dlevel-1 >= tower_level && dlevel-1 < tower_level+2)));
+		       dlevel-1 >= tower_level && dlevel-1 < tower_level+2)),
+			   FALSE);
 		at_ladder = FALSE;
 #else
-		goto_level(dlevel-1, (dlevel-1 <= medusa_level));
+		goto_level(dlevel-1, (dlevel-1 <= medusa_level), FALSE);
 #endif
 #ifdef WALKIES
 	}
@@ -484,13 +488,82 @@ doup()
 	return(1);
 }
 
+
+static void
+litter()
+{
+	struct obj *otmp = invent, *nextobj;
+	int capacity = weight_cap();
+
+	while (otmp) {
+		nextobj = otmp->nobj;
+		if ((otmp != uball) && (rnd(capacity) <= otmp->owt)) {
+			if (otmp == uwep)
+				setuwep((struct obj *)0);
+			if ((otmp != uwep) && (canletgo(otmp, ""))) {
+				Your("%s left behind on the stairs.",
+				     aobjnam(otmp, "get"));
+				dropx(otmp);
+			}
+		}
+		otmp = nextobj;
+	}
+}
+
+boolean
+drag_down()
+{
+	boolean forward;
+	uchar dragchance = 3;
+
+
+	/* 
+		Assume that the ball falls forward if:
+
+		a) the character is wielding it, or
+		b) the character has both hands available to hold it (i.e. is 
+		   not wielding any weapon), or 
+		c) (perhaps) it falls forward out of his non-weapon hand
+	*/
+
+	forward = (!(carried(uball))? 
+		  FALSE : ((uwep == uball) || (!uwep))? 
+			  TRUE : (boolean)(rn2(3) / 2));
+
+	if (carried(uball)) 
+		You("lose your grip on the iron ball.");
+
+	if(forward) {
+		if(rn2(6)) {
+			You("get dragged downstairs by the iron ball.");
+			losehp(rnd(6), "iron ball accident");
+			return(TRUE);
+		}
+	} else {
+		if(rn2(2)) {
+			pline("The iron ball smacks into you!");
+			losehp(rnd(20), "iron ball collision");
+			dragchance -= 2;
+		} 
+		if(dragchance >= rnd(6)) {
+			You("get dragged downstairs by the iron ball.");
+			losehp(rnd(3), "iron ball accident");
+			return(TRUE);
+		}
+	}
+	return(FALSE);
+}
+
 void
-goto_level(newlevel, at_stairs)
+goto_level(newlevel, at_stairs, falling)
 register int newlevel;
-register boolean at_stairs;
+register boolean at_stairs, falling;
 {
 	register int fd;
 	register boolean up = (newlevel < dlevel);
+	boolean stair_fall = (at_stairs && !up && ((inv_weight() + 5 > 0) || 
+						  Punished || Fumbling));
+	boolean stair_drag = FALSE;
 
 #ifdef ENDGAME
 	if(dlevel == ENDLEVEL) return;	/* To be on the safe side.. */
@@ -560,7 +633,31 @@ register boolean at_stairs;
 	 */
 	fd = open(lock, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
 #else
+# ifdef MACOS
+	{
+		Str255	fileName;
+		OSErr	er;
+		short	refNum;
+		struct term_info	*t;
+		extern WindowPtr	HackWindow;
+		
+		t = (term_info *)GetWRefCon(HackWindow);
+		fileName[0] = (char)strlen(lock);
+		(void)Strcpy((char *)&fileName[1],lock);
+		if (FSOpen(fileName, t->system.sysVRefNum, &refNum)) {
+				if (er = Create(&fileName,t->system.sysVRefNum,
+							CREATOR,LEVEL_TYPE))
+					SysBeep(1);
+		} else {
+			(void)SetEOF(refNum,0L);
+			(void)FSClose(refNum);
+		}
+		SetVol(0L,t->system.sysVRefNum);
+		fd = open(lock,O_WRONLY | O_BINARY | ((er) ? O_CREAT : 0));
+	}
+# else
 	fd = creat(lock, FCMASK);
+# endif /* MACOS */
 #endif
 	if(fd < 0) {
 		/*
@@ -592,6 +689,14 @@ register boolean at_stairs;
 	}
 #endif
 	if(Punished) unplacebc();
+	if (stair_fall) {
+#ifdef STRONGHOLD
+			You("fall down the %s.",
+			    !at_ladder ? "stairs" : "ladder");
+#else
+		You("fall down the stairs.");
+#endif
+	}
 	u.utrap = 0;				/* needed in level_tele */
 	u.ustuck = 0;				/* idem */
 	keepdogs();
@@ -646,7 +751,7 @@ register boolean at_stairs;
 		if (fileinfo[dlevel].where != ACTIVE)
 			swapin_file(dlevel);
 #endif
-#if defined(MSDOS) && !defined(TOS)
+#if (defined(MSDOS) && !defined(TOS)) || defined(MACOS)
 		if((fd = open(lock, O_RDONLY | O_BINARY)) < 0) {
 #else
 		if((fd = open(lock,0)) < 0) {
@@ -701,21 +806,19 @@ register boolean at_stairs;
 		    u.uy = yupladder;
 		}
 #endif
-		if(inv_weight() + 5 > 0 || Punished || Fumbling) {
-#ifdef STRONGHOLD
-			You("fall down the %s.",
-			      !at_ladder ? "stairs" : "ladder");
-#else
-			You("fall down the stairs.");
-#endif
+		if(stair_fall) {
+			if (Punished) {
+				if (stair_drag)
+					litter();
+				if (carried(uball)) {
+					if (uwep == uball)
+						setuwep((struct obj *)0);
+					if (uwep != uball)
+						freeinv(uball);
+				}
+				placebc(1);
+			} 
 			losehp(rnd(3), "fall");
-			if(Punished) {
-			    if(uwep != uball && rn2(3)) {
-				pline("... and are hit by the iron ball.");
-				losehp(rnd(20), "iron ball");
-			    }
-			    placebc(1);
-			}
 			selftouch("Falling, you");
 		}
 	    }
@@ -743,17 +846,30 @@ register boolean at_stairs;
 		     levl[u.ux][u.uy].typ != CORR) || MON_AT(u.ux, u.uy));
 	    if(tryct >= 100)
 		panic("goto_level: could not relocate player!");
-	    if(Punished){
-		if(uwep != uball && !up /* %% */ && rn2(5)){
-			pline("The iron ball falls on your %s.",
-				body_part(HEAD));
-			if (uarmh)
-				Your("helmet doesn't help too much...");
-			losehp(rnd(25), "iron ball");
+	    if(Punished) {
+		if(falling) {
+			boolean gets_hit;
+
+			gets_hit = (uwep == uball)? FALSE : (boolean)rn2(5);
+			if (carried(uball)) {
+				pline("Startled, you drop the iron ball.");
+				if (uwep == uball)
+					setuwep((struct obj *)0);
+				if (uwep != uball)
+					freeinv(uball);
+			} 
+			if(gets_hit){
+					pline("The iron ball falls on your %s.",
+					body_part(HEAD));
+				if (uarmh)
+					Your("helmet doesn't help too much...");
+				losehp(rnd(25), "iron ball");
+			}
 		}
 		placebc(1);
 	    }
-	    selftouch("Falling, you");
+	    if(falling)
+		selftouch("Falling, you");
 	}
 	(void) inshop();
 	initrack();

@@ -873,6 +873,13 @@ register struct attack *mattk;
 		    if (!Blind) pline("%s is frozen by you!", Monnam(mdef));
 		    mdef->mfroz = 1;
 		}
+	    case AD_SLEE:
+		if (!resists_sleep(mdef->data) && !mdef->msleep &&
+								!mdef->mfroz) {
+		    if (!Blind)
+			pline("%s suddenly falls asleep!", Monnam(mdef));
+		    mdef->msleep = 1;
+		}
 		break;
 	    default:	tmp = 0;
 			break;

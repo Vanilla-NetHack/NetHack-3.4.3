@@ -163,5 +163,6 @@
 #define Antimagic		u.uprops[ANTIMAGIC].p_flgs
 #define Displaced		u.uprops[DISPLACED].p_flgs
 #define Clairvoyant		u.uprops[CLAIRVOYANT].p_flgs
+#define Vomiting		u.uprops[VOMITING].p_flgs
 
 #endif /* YOUPROP_H /**/

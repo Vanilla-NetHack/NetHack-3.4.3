@@ -25,6 +25,32 @@ stoned_dialogue() {
 		nomul(-3);
 }
 
+/* He is getting sicker and sicker prior to vomiting */
+static const char *vomiting_texts[] = {
+	"You are feeling mildly nauseous.",	/* 11 */
+	"You feel slightly confused.",		/* 8 */
+	"You can't seem to think straight.",	/* 5 */
+	"You feel incredibly sick.",		/* 2 */
+	"You suddenly vomit!"			/* 0 */
+};
+
+static void
+vomiting_dialogue() {
+	register long i = (Vomiting & TIMEOUT) / 3L;
+
+	if(!((Vomiting & TIMEOUT) % 3L) &&
+	   i >= 0 && i < SIZE(vomiting_texts))
+		pline(vomiting_texts[SIZE(vomiting_texts) - i]);
+
+	switch(i) {
+
+	    case 0:	vomit(); morehungry(20); break;
+	    case 2:	make_confused(HConfusion + d(2,4), FALSE);
+	    case 3:	make_stunned(HStun + d(2,4), FALSE);
+	    default:	break;
+	}
+}
+
 static const char *choke_texts[] = {
 	"You find it hard to breathe.",
 	"You're gasping for air.",
@@ -50,6 +76,7 @@ timeout()
 	int sleeptime;
 
 	if(Stoned) stoned_dialogue();
+	if(Vomiting) vomiting_dialogue();
 	if(Strangled) choke_dialogue();
 #ifdef POLYSELF
 	if(u.mtimedone) if(!--u.mtimedone) rehumanize();
@@ -80,6 +107,9 @@ timeout()
 		case STONED:
 			if (!killer) killer = "cockatrice";
 			done(STONING);
+			break;
+		case VOMITING:
+			make_vomiting(0L, TRUE);
 			break;
 		case SICK:
 			You("die from food poisoning.");

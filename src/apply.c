@@ -601,7 +601,7 @@ dighole()
 				u.utraptype = 0;
 			    }
 			    unsee();
-			    goto_level(dlevel+1, FALSE);
+			    goto_level(dlevel+1, FALSE, TRUE);
 #ifdef WALKIES
 			}
 #endif
@@ -1111,6 +1111,10 @@ register struct obj *obj;
 	 * moves, we've got to deal with decaying corpses...
 	 */
 	if (!(corpse = floorfood("can", 1))) return;
+	if (corpse->oeaten) {
+		pline("You cannot tin something which is partly eaten.");
+		return;
+	}
 	if ((corpse->corpsenm == PM_COCKATRICE)
 #ifdef POLYSELF
 		&& !resists_ston(uasmon)

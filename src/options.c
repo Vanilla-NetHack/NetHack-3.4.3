@@ -25,6 +25,10 @@ initoptions()
 	flags.confirm = TRUE;
 	flags.safe_dog = TRUE;
 	flags.silent = 	flags.pickup = TRUE;
+#ifdef MACOS
+	flags.standout = TRUE;
+	flags.end_around = 3;	/* Mac display routines don't scroll */
+#endif
 #ifdef TUTTI_FRUTTI
 	nmcpy(pl_fruit, objects[SLIME_MOLD].oc_name, PL_FSIZ);
 #endif
@@ -693,7 +697,7 @@ next_opt(str)
 		i = strlen(str);
 	}
 	if (*str)
-		strcat(buf, str);
+		Strcat(buf, str);
 	else
 		(void) page_line(str);	/* always returns 0 on "" */
 	return r;

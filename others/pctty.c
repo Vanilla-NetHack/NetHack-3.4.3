@@ -18,7 +18,7 @@ gettty(){
 	erase_char = '\b';
 	kill_char = 21;		/* cntl-U */
 	flags.cbreak = TRUE;
-#ifndef TOS
+#if !defined(TOS) && !defined(MACOS)
 	disable_ctrlP();	/* turn off ^P processing */
 #endif
 }
@@ -29,7 +29,7 @@ settty(s) char *s; {
 	end_screen();
 	if(s) Printf(s);
 	(void) fflush(stdout);
-#ifndef TOS
+#if !defined(TOS) && !defined(MACOS)
 	enable_ctrlP();		/* turn on ^P processing */
 #endif
 }

@@ -153,6 +153,7 @@ lev_comp.exe:  $(SPLEVOBJS)
 	@$(TLINK) $(TLFLAGS) $(C0) $(SPLEVOBJS),$@,,$(LIBS);
 
 o\lev_comp.obj:  $(HACK_H) $(INCL)\sp_lev.h
+	$(CC) $(CFLAGS) -A- $*.c
 o\lev_lex.obj:  $(INCL)\lev_comp.h $(HACK_H) $(INCL)\sp_lev.h
 o\lev_main.obj:  $(HACK_H) $(INCL)\sp_lev.h
 
@@ -227,7 +228,7 @@ spotless: clean
 	del date.h
 	del onames.h
 	del pm.h
-	touch date.h onames.h pm.h
+	touch onames.h pm.h
 	cd $(AUX)
 	del data
 	del rumors

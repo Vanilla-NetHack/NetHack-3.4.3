@@ -90,6 +90,11 @@ boolean ghostly;
 		else otmp2->nobj = otmp;
 		mread(fd, (genericptr_t) otmp, (unsigned) xl + sizeof(struct obj));
 		if(!otmp->o_id) otmp->o_id = flags.ident++;
+	/* Things that were marked "in_use" when the game was saved (eg. via
+	 * the infamous "HUP" cheat get used up here.
+	 */
+		if(otmp->olet != ARMOR_SYM && otmp->olet != WEAPON_SYM
+			&& otmp->otyp != PICK_AXE && otmp->in_use) useup(otmp);
 #ifdef TUTTI_FRUTTI
 		if(ghostly && otmp->otyp == SLIME_MOLD) {
 			for(oldf=oldfruit; oldf; oldf=oldf->nextf)
@@ -127,7 +132,7 @@ boolean ghostly;
 	off_t differ;
 
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
-#if !defined(MSDOS) && !defined(M_XENIX)
+#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4)
 	differ = (genericptr_t)(&mons[0]) - (genericptr_t)(monbegin);
 #else
 	differ = (long)(&mons[0]) - (long)(monbegin);
@@ -146,7 +151,7 @@ boolean ghostly;
 		mread(fd, (genericptr_t) mtmp, (unsigned) xl + sizeof(struct monst));
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
-#if !defined(MSDOS) && !defined(M_XENIX)
+#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4)
 		/* ANSI type for differ is ptrdiff_t --
 		 * long may be wrong for segmented architecture --
 		 * may be better to cast pointers to (struct permonst *)
@@ -281,7 +286,10 @@ register int fd;
 #endif
 
 	restnames(fd);
-#ifdef DGK
+#if defined(DGK) || defined(MACOS)
+# ifdef MACOS
+#define msmsg printf
+# endif
 	msmsg("\n");
 	cl_end();
 	msmsg("You got as far as level %d%s.\n", maxdlevel,
@@ -299,13 +307,37 @@ register int fd;
 			break;
 		getlev(fd, 0, ltmp, FALSE);
 		glo(ltmp);
-#ifdef DGK
+#if defined(DGK) || defined(MACOS)
 		msmsg(".");
 #endif
 #if defined(MSDOS) && !defined(TOS)
 		nfd = open(lock, O_WRONLY | O_BINARY | O_CREAT | O_TRUNC, FCMASK);
 #else
+# ifdef MACOS
+		{
+			Str255	fileName;
+			OSErr	er;
+			struct term_info	*t;
+			short	oldVolume;
+			extern WindowPtr	HackWindow;
+			
+			t = (term_info *)GetWRefCon(HackWindow);
+			(void)GetVol(&fileName, &oldVolume);
+			(void)SetVol(0L, t->system.sysVRefNum);
+			fileName[0] = (uchar)strlen(lock);
+			Strcpy((char *)&fileName[1], lock);
+			
+			if (er = Create(&fileName, 0, CREATOR, LEVEL_TYPE))
+				SysBeep(1);
+			else {
+				msmsg(".");
+				nfd = open(lock, O_WRONLY | O_BINARY);
+			}
+			(void)SetVol(0L, oldVolume);
+		}
+# else
 		nfd = creat(lock, FCMASK);
+# endif /* MACOS */
 #endif
 		if (nfd < 0)	panic("Cannot open temp file %s!\n", lock);
 #if defined(DGK) && !defined(OLD_TOS)
@@ -470,7 +502,30 @@ boolean ghostly;
 		done(TRICKED);
 	}
 
+#if defined(SMALLDATA) && defined(MACOS)
+	{
+	/* this assumes that the size of a row of struct rm's is <128 */
+		short	i, length, j;
+		char	*ptr, *src, *p, *d;
+		
+		d = calloc(ROWNO*COLNO, sizeof(struct rm));
+		p = d;
+		mread(fd, (genericptr_t)&j, sizeof(short));
+		mread(fd, (genericptr_t)d, j);
+		for (i = 0; i < COLNO; i++) {
+			length = (short)(*p++);
+			ptr = p;
+			src = (char *)&levl[i][0];
+			UnpackBits(&ptr, &src, ROWNO * sizeof(struct rm));
+			if ((ptr - p) != length) 
+			    panic("restore - corrupted file on unpacking\n");
+			p = ptr;
+		}
+		free(d);
+	}
+#else
 	mread(fd, (genericptr_t) levl, sizeof(levl));
+#endif
 	mread(fd, (genericptr_t) &osymbol, sizeof(osymbol));
 	if (memcmp((genericptr_t) &osymbol,
 		   (genericptr_t) &showsyms, sizeof (struct symbols))
@@ -635,7 +690,7 @@ boolean ghostly;
 
 	/* regenerate animals while on another level */
 	{ long tmoves = (moves > omoves) ? moves-omoves : 0;
-	  register struct monst *mtmp, *mtmp2;
+	  register struct monst *mtmp2;
 
 	  for(mtmp = fmon; mtmp; mtmp = mtmp2) {
 

@@ -9,6 +9,11 @@
  * in the objects array
  */
 #define TOTAL_OBJS	(NROFOBJECTS+2)
+#ifdef MACOS
+short *switches;    /* used to allow position independent loads of app */
+		    /* by storing the number of the description string */
+		    /* [at startup of the game] not the pointer to the string */
+#endif
 
 const char obj_symbols[] = {
 	ILLOBJ_SYM, AMULET_SYM, FOOD_SYM, WEAPON_SYM, TOOL_SYM,
@@ -70,6 +75,9 @@ shuffle(o_low, o_high, domaterial)
 	int color;
 #endif /* TEXTCOLOR */
 	int tmp;
+#ifdef MACOS
+	short	sw;
+#endif
 
 	for(j=o_low; j <= o_high; j++) {
 		i = o_low + rn2(j+1-o_low);
@@ -91,6 +99,12 @@ shuffle(o_low, o_high, domaterial)
 			objects[j].oc_material = objects[i].oc_material;
 			objects[i].oc_material = tmp;
 		}
+#ifdef MACOS
+		/* keep track of shuffling of object descriptions */
+		sw=switches[j];
+		switches[j]=switches[i];
+		switches[i]=sw;
+#endif
 	}
 }
 
@@ -142,24 +156,40 @@ register char let;
 			j = last;
 			if (let == GEM_SYM) {
 			    while(--j > first)
-				/* NOTE:  longest color name must be default */
 				if(!strcmp(objects[j].oc_name,"turquoise")) {
-				    if(rn2(2)) /* change from green? */
-					Strcpy(objects[j].oc_descr, blue);
+				    if(rn2(2)) { /* change from green? */
+					objects[j].oc_descr = blue;
+#ifdef TEXTCOLOR
+					objects[j].oc_color = BLUE;
+#endif
+				    }
 				} else if (!strcmp(objects[j].oc_name,"aquamarine")) {
-				    if(rn2(2)) /* change from green? */
-					Strcpy(objects[j].oc_descr, blue);
+				    if(rn2(2)) { /* change from green? */
+					objects[j].oc_descr = blue;
+#ifdef TEXTCOLOR
+					objects[j].oc_color = BLUE;
+#endif
+				    }
 				} else if (!strcmp(objects[j].oc_name,"fluorite")) {
 				    switch (rn2(4)) { /* change from violet? */
 					case 0:  break;
 					case 1:
-					    Strcpy(objects[j].oc_descr, blue);
+					    objects[j].oc_descr = blue;
+#ifdef TEXTCOLOR
+					    objects[j].oc_color = BLUE;
+#endif
 					    break;
 					case 2:
-					    Strcpy(objects[j].oc_descr, white);
+					    objects[j].oc_descr = white;
+#ifdef TEXTCOLOR
+					    objects[j].oc_color = WHITE;
+#endif
 					    break;
 					case 3:
-					    Strcpy(objects[j].oc_descr, green);
+					    objects[j].oc_descr = green;
+#ifdef TEXTCOLOR
+					    objects[j].oc_color = GREEN;
+#endif
 					    break;
 					}
 				}
@@ -198,15 +228,27 @@ register int fd;
 {
 	register int i;
 	unsigned int len;
+#ifdef MACOS
+	char	*descr[TOTAL_OBJS];
+#endif
 	struct objclass *now = &objects[0];
 	bwrite(fd, (genericptr_t)&now, sizeof now);
 	bwrite(fd, (genericptr_t)bases, sizeof bases);
 	bwrite(fd, (genericptr_t)disco, sizeof disco);
+#ifdef MACOS
+	for (i = 0 ; i < TOTAL_OBJS; i++) {
+		descr[i] = objects[i].oc_descr;
+		objects[i].oc_descr = (char *)switches[i];
+	}
+#endif
 	bwrite(fd, (genericptr_t)objects, sizeof(struct objclass) * TOTAL_OBJS);
 	/* as long as we use only one version of Hack we
 	   need not save oc_name and oc_descr, but we must save
 	   oc_uname for all objects */
 	for(i=0; i < TOTAL_OBJS; i++) {
+#ifdef MACOS
+		objects[i].oc_descr = descr[i];
+#endif
 		if(objects[i].oc_uname) {
 			len = strlen(objects[i].oc_uname)+1;
 			bwrite(fd, (genericptr_t)&len, sizeof len);
@@ -223,32 +265,61 @@ register int fd;
 	unsigned int len;
 	struct objclass *then;
 	long differ;
+#ifdef MACOS
+	/* provides position-independent save & restore */
+	/* by giving each object a number, keep track of it */
+	/* when shuffled and save the numbers instead of the */
+	/* description strings (which can change between */
+	/* executions of the program) */
+	/* On restore, the retrieved numbers are matched with the */
+	/* numbers and object descriptions in the program */
+	struct descr {
+		char	*name,
+				*descr;
+	} d[TOTAL_OBJS];
+
+	/* save the current object descriptions */
+	for (i = 0; i < TOTAL_OBJS; i++) {
+		d[i].name = objects[i].oc_name;
+		d[i].descr = objects[i].oc_descr;
+	}
+#endif
 	mread(fd, (genericptr_t) &then, sizeof then);
 	mread(fd, (genericptr_t) bases, sizeof bases);
 	mread(fd, (genericptr_t) disco, sizeof disco);
 	mread(fd, (genericptr_t) objects, sizeof(struct objclass) * TOTAL_OBJS);
-#if !defined(MSDOS) && !defined(M_XENIX)
+#ifdef MACOS
+	for (i = 0; i < TOTAL_OBJS; i++) {
+		objects[i].oc_name = d[i].name;
+		switches[i] = (short)objects[i].oc_descr;
+		objects[i].oc_descr = d[switches[i]].descr;
+	}
+#else
+# if !defined(MSDOS) && !defined(M_XENIX)
 	differ = (genericptr_t)&objects[0] - (genericptr_t)then;
-#else
+# else
 	differ = (long)&objects[0] - (long)then;
-#endif
+# endif
+#endif	/* MACOS */
 	for(i=0; i < TOTAL_OBJS; i++) {
+#ifndef MACOS
 		if (objects[i].oc_name) {
-#if !defined(MSDOS) && !defined(M_XENIX)
+# if !defined(MSDOS) && !defined(M_XENIX)
 			objects[i].oc_name += differ;
-#else
+# else
 			objects[i].oc_name =
 			    (char *)((long)(objects[i].oc_name) + differ);
-#endif
+# endif
 		}
 		if (objects[i].oc_descr) {
-#if !defined(MSDOS) && !defined(M_XENIX)
+# if !defined(MSDOS) && !defined(M_XENIX)
 			objects[i].oc_descr += differ;
-#else
+# else
 			objects[i].oc_descr =
 			    (char *)((long)(objects[i].oc_descr) + differ);
-#endif
+# endif
 		}
+#endif /* MACOS */
 		if (objects[i].oc_uname) {
 			mread(fd, (genericptr_t) &len, sizeof len);
 			objects[i].oc_uname = (char *) alloc(len);

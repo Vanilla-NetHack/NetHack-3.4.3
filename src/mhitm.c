@@ -453,7 +453,8 @@ mdamagem(magr, mdef, mattk)
 		}
 		break;
 	    case AD_SLEE:
-		if(!resists_sleep(pd) && !magr->mcan && vis && !mdef->msleep) {
+		if(!resists_sleep(pd) && !magr->mcan && vis && !mdef->msleep
+							&& !mdef->mfroz) {
 		    pline("%s falls asleep.", Monnam(mdef));
 		    mdef->msleep = 1;
 		}

@@ -291,6 +291,18 @@ register struct monst *mtmp;
 		ESHK(mtmp)->shoplevel == dlevel));
 }
 
+boolean
+tended_shop(roomno)
+register int roomno;
+{
+	register struct monst *mtmp;
+
+	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+	    if(mtmp->isshk && ESHK(mtmp)->shoproom == roomno
+		&& inhishop(mtmp)) return(TRUE);
+	return(FALSE);
+}
+
 static void
 findshk(roomno)
 register int roomno;
@@ -703,10 +715,8 @@ paybill(){
 			}
 
 			if (invent) {
-			    for(otmp = invent; otmp; otmp = otmp->nobj) {
+			    for(otmp = invent; otmp; otmp = otmp->nobj)
 				place_object(otmp, ox, oy);
-				otmp->age = 0;
-			    }
 
 			    /* add to main object list at end so invent is
 			       still good */
@@ -925,7 +935,10 @@ register struct obj *obj;
 
 	if(!costly_spot(u.ux,u.uy))
 		return;
-	subfrombill(obj);
+	if(obj->unpaid) {
+		subfrombill(obj);
+		return;
+	}
 	/* you dropped something of your own - probably want to sell it */
 	if(shopkeeper->msleep || shopkeeper->mfroz || !inhishop(shopkeeper))
 		return;
@@ -1044,7 +1057,7 @@ register struct obj *obj;
 	case FOOD_SYM:
 		/* simpler hunger check, (2-4)*cost */
 		if (u.uhs >= HUNGRY) tmp *= u.uhs;
-		if (OEATEN(obj)) tmp /= 2;		/* partly eaten */
+		if (obj->oeaten) tmp /= 2;		/* partly eaten */
 		break;
 	case WAND_SYM:
 		if (obj->spe == -1) tmp = 0;
