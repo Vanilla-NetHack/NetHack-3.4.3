@@ -119,7 +119,7 @@ register struct monst *mtmp;
 				    BOULDER : CLUB);
 		break;
 	    case S_HUMAN:
-		if(is_mercenary(ptr))
+		if(is_mercenary(ptr)) {
 		    switch (mm) {
 
 #ifdef ARMY
@@ -140,7 +140,51 @@ register struct monst *mtmp;
 				    if (!rn2(7)) (void) mongets(mtmp, SPEAR);
 				    break;
 		    }
-		    break;
+#ifdef TOLKIEN
+		} else if (is_elf(ptr)) {
+		    (void)mongets(mtmp,
+			rn2(2) ? ELVEN_MITHRIL_COAT : ELVEN_CLOAK);
+		    if (rn2(2)) (void)mongets(mtmp, ELVEN_LEATHER_HELM);
+		    if (rn2(3)) (void)mongets(mtmp, ELVEN_DAGGER);
+		    switch (rn2(3)) {
+			case 0:
+			    if (!rn2(4)) (void)mongets(mtmp, ELVEN_SHIELD);
+			    (void)mongets(mtmp, ELVEN_SHORT_SWORD);
+			    (void)mongets(mtmp, ELVEN_BOW);
+			    m_initthrow(mtmp, ELVEN_ARROW, 12);
+			    break;
+			case 1:
+			    (void)mongets(mtmp, ELVEN_BROADSWORD);
+			    if (rn2(2)) (void)mongets(mtmp, ELVEN_SHIELD);
+			    break;
+			case 2:
+			    (void)mongets(mtmp, ELVEN_SPEAR);
+			    (void)mongets(mtmp, ELVEN_SHIELD);
+			    break;
+		    }
+#else /* TOLKIEN */
+		} else if (is_elf(ptr)) {
+		    (void)mongets(mtmp, ELVEN_CLOAK);
+		    if (rn2(3)) (void)mongets(mtmp, DAGGER);
+		    switch (rn2(3)) {
+			case 0:
+			    if (!rn2(4)) (void)mongets(mtmp, SMALL_SHIELD);
+			    (void)mongets(mtmp, SHORT_SWORD);
+			    (void)mongets(mtmp, BOW);
+			    m_initthrow(mtmp, ARROW, 12);
+			    break;
+			case 1:
+			    (void)mongets(mtmp, BROADSWORD);
+			    if (rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
+			    break;
+			case 2:
+			    (void)mongets(mtmp, SPEAR);
+			    (void)mongets(mtmp, SMALL_SHIELD);
+			    break;
+		    }
+#endif
+		}
+		break;
 
 	    case S_HUMANOID:
 #ifdef TOLKIEN
@@ -174,27 +218,6 @@ register struct monst *mtmp;
 		    } else {
 			(void)mongets(mtmp, PICK_AXE);
 		    }
-		} else if (is_elf(ptr)) {
-		    (void)mongets(mtmp,
-			rn2(2) ? ELVEN_MITHRIL_COAT : ELVEN_CLOAK);
-		    if (rn2(2)) (void)mongets(mtmp, ELVEN_LEATHER_HELM);
-		    if (rn2(3)) (void)mongets(mtmp, ELVEN_DAGGER);
-		    switch (rn2(3)) {
-			case 0:
-			    if (!rn2(4)) (void)mongets(mtmp, ELVEN_SHIELD);
-			    (void)mongets(mtmp, ELVEN_SHORT_SWORD);
-			    (void)mongets(mtmp, ELVEN_BOW);
-			    m_initthrow(mtmp, ELVEN_ARROW, 12);
-			    break;
-			case 1:
-			    (void)mongets(mtmp, ELVEN_BROADSWORD);
-			    if (rn2(2)) (void)mongets(mtmp, ELVEN_SHIELD);
-			    break;
-			case 2:
-			    (void)mongets(mtmp, ELVEN_SPEAR);
-			    (void)mongets(mtmp, ELVEN_SHIELD);
-			    break;
-		    }
 		}
 #else /* TOLKIEN */
 		if (is_dwarf(ptr)) {
@@ -210,25 +233,6 @@ register struct monst *mtmp;
 			    (void)mongets(mtmp, DWARVISH_MITHRIL_COAT);
 		    } else {
 			(void)mongets(mtmp, PICK_AXE);
-		    }
-		} else if (is_elf(ptr)) {
-		    (void)mongets(mtmp, ELVEN_CLOAK);
-		    if (rn2(3)) (void)mongets(mtmp, DAGGER);
-		    switch (rn2(3)) {
-			case 0:
-			    if (!rn2(4)) (void)mongets(mtmp, SMALL_SHIELD);
-			    (void)mongets(mtmp, SHORT_SWORD);
-			    (void)mongets(mtmp, BOW);
-			    m_initthrow(mtmp, ARROW, 12);
-			    break;
-			case 1:
-			    (void)mongets(mtmp, BROADSWORD);
-			    if (rn2(2)) (void)mongets(mtmp, SMALL_SHIELD);
-			    break;
-			case 2:
-			    (void)mongets(mtmp, SPEAR);
-			    (void)mongets(mtmp, SMALL_SHIELD);
-			    break;
 		    }
 		}
 #endif /* TOLKIEN */

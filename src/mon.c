@@ -3,15 +3,16 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 /* Aztec C on amiga doesn't recognize defined() at this point!
-   Neither does the Mac Lightspeed C v.3  compiler. If you're using
-   precompiled headers, you don't want this either */
-#ifndef AZTEC_C
-#ifndef THINK_C
-#if defined(MICROPORT_BUG) || (!defined(LINT) && !defined(__STDC__))
-#define MKROOM_H
-#endif /* Avoid the microport bug */
-#endif
-#endif
+   Neither does the Mac Lightspeed C v.3  compiler. */
+#ifdef MICROPORT_BUG		/* comment line for pre-compiled headers */
+# define MKROOM_H		/* comment line for pre-compiled headers */
+#else				/* comment line for pre-compiled headers */
+# ifndef LINT			/* comment line for pre-compiled headers */
+#  ifndef __STDC__		/* comment line for pre-compiled headers */
+#   define MKROOM_H		/* comment line for pre-compiled headers */
+#  endif			/* comment line for pre-compiled headers */
+# endif				/* comment line for pre-compiled headers */
+#endif				/* comment line for pre-compiled headers */
 
 #include "hack.h"
 #include "mfndpos.h"
@@ -30,6 +31,7 @@ STATIC_DCL boolean FDECL(restrap,(struct monst *));
 STATIC_DCL void NDECL(dmonsfree);
 
 #ifdef OVL1
+#define warnDelay 10
 long lastwarntime;
 int lastwarnlev;
 const char *warnings[] = {
@@ -125,11 +127,13 @@ register struct monst *mtmp;
 		pieces = d(2,6);
 		while (pieces--)
 			obj = mksobj_at(IRON_CHAIN, x, y);
+		mtmp->mnamelth = 0;
 		break;
 	    case PM_CLAY_GOLEM:
 		obj = mksobj_at(ROCK, x, y);
 		obj->quan = rn2(20) + 100;
 		obj->owt = weight(obj);
+		mtmp->mnamelth = 0;
 		break;
 	    case PM_STONE_GOLEM:
 		obj = mkcorpstat(STATUE, mdat, x, y);
@@ -138,11 +142,13 @@ register struct monst *mtmp;
 		pieces = d(2,4);
 		while(pieces--)
 			obj = mksobj_at(QUARTERSTAFF, x, y);
+		mtmp->mnamelth = 0;
 		break;
 	    case PM_LEATHER_GOLEM:
 		pieces = d(2,4);
 		while(pieces--)
 			obj = mksobj_at(LEATHER_ARMOR, x, y);
+		mtmp->mnamelth = 0;
 		break;
 #endif
 	    default_1:
@@ -187,6 +193,7 @@ void
 movemon()
 {
 	register struct monst *mtmp;
+	boolean check_tame = TRUE;
 
 	warnlevel = 0;
 
@@ -201,8 +208,11 @@ movemon()
 		 * attack the tame monster back (which it's permitted to do
 		 * only if it hasn't made its move yet).
 		 */
-		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
+		if (check_tame) {
+		    for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			if(mtmp->mlstmv < moves && mtmp->mtame) goto next_mon;
+		    check_tame = FALSE;		/* tame monsters all done */
+		}
 		for(mtmp = fmon; mtmp; mtmp = mtmp->nmon)
 			if(mtmp->mlstmv < moves && !mtmp->mtame) goto next_mon;
 		/* treated all monsters */
@@ -307,16 +317,22 @@ movemon()
 	}
 #ifdef NAMED_ITEMS
 	if (warnlevel == 100) {
+	    if(!Blind && (warnlevel > lastwarnlev
+				|| moves > lastwarntime + warnDelay)) {
 		Your("%s %s!", aobjnam(uwep, "glow"),
-			Hallucination ? hcolor() : light_blue);
-		warnlevel = 0;
+		    Hallucination ? hcolor() : light_blue);
+		lastwarnlev = warnlevel;
+		lastwarntime = moves;
+	    }
+	    warnlevel = 0;
+	    return;
 	}
 #endif
 	warnlevel -= u.ulevel;
 	if(warnlevel >= SIZE(warnings))
 		warnlevel = SIZE(warnings)-1;
 	if(!Blind && warnlevel >= 0)
-	if(warnlevel > lastwarnlev || moves > lastwarntime + 5){
+	if(warnlevel > lastwarnlev || moves > lastwarntime + warnDelay) {
 	    register const char *rr;
 	
 	    switch((int) (Warning & (LEFT_RING | RIGHT_RING))){
@@ -405,6 +421,9 @@ meatobj(mtmp)		/* for gelatinous cubes */
 	for (otmp = level.objects[mtmp->mx][mtmp->my]; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nexthere;
 	    if(objects[otmp->otyp].oc_material <= WOOD) {
+		if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
+						&& !resists_ston(mtmp->data))
+		    continue;
 		if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 		    pline("%s eats %s!", Monnam(mtmp),
 			    distant_name(otmp, doname));
@@ -676,17 +695,11 @@ nexttry:	/* eels prefer the water, but if there is no water nearby,
 		{ register struct trap *ttmp = t_at(nx, ny);
 		  register long tt;
 			if(ttmp) {
-/*				tt = 1L << ttmp->ttyp;*/
-/* why don't we just have code look like what it's supposed to do? then it
-/* might start working for every case. try this instead: -sac */
-				tt = (ttmp->ttyp < TRAPNUM && ttmp->ttyp);
-				/* below if added by GAN 02/06/87 to avoid
-				 * traps out of range
-				 */
-				if(!(tt & ALLOW_TRAPS))  {
+				if(ttmp->ttyp >= TRAPNUM || ttmp->ttyp == 0)  {
 impossible("A monster looked at a very strange trap of type %d.", ttmp->ttyp);
 					continue;
 				}
+				tt = 1L << ttmp->ttyp;
 				if(mon->mtrapseen & tt) {
 
 					if(!(flag & tt)) continue;
@@ -1303,9 +1316,9 @@ register struct monst *mtmp;
 		return(TRUE);
 	} else
 	    if(levl[mtmp->mx][mtmp->my].typ == ROOM)  {
-		(void) maketrap(mtmp->mx, mtmp->my, MONST_TRAP);
+		maketrap(mtmp->mx, mtmp->my, MONST_TRAP)->pm =
+			monsndx(mtmp->data);
 		/* override type selection */
-		ftrap->pm = monsndx(mtmp->data);
 		mondead(mtmp);
 		return(TRUE);
 	    }

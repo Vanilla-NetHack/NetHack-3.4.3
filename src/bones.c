@@ -92,8 +92,10 @@ boolean restore;
 			&& (!is_artifact(otmp) ||
 			    (exist_artifact(otmp,ONAME(otmp)) && restore))
 #endif
-		)
+		) {
 			otmp->onamelth = 0;
+			*ONAME(otmp) = '\0';
+		}
 #ifdef NAMED_ITEMS
 		else if (is_artifact(otmp) && restore)
 			artifact_exists(otmp,ONAME(otmp),TRUE);
@@ -218,6 +220,7 @@ savebones(){
 		atl(u.ux, u.uy, mtmp->data->mlet);
 		Your("body rises from the dead as %s...",
 			an(mons[u.ugrave_arise].mname));
+		more();
 	}
 	mtmp->m_lev = (u.ulevel ? u.ulevel : 1);
 	mtmp->mhp = mtmp->mhpmax = u.uhpmax;
@@ -307,6 +310,14 @@ savebones(){
 	bflush(fd);
 #endif
 	(void) close(fd);
+#if defined(VMS) && !defined(SECURE)
+	/*
+	   Re-protect bones file with world:read+write+execute+delete access.
+	   umask() doesn't seem very reliable; also, vaxcrtl won't let us set
+	   delete access without write access, which is what's really wanted.
+	 */
+	(void) chmod(bones, FCMASK | 007);  /* allow other users full access */
+#endif
 #ifdef MACOS
 	{
 		FInfo	fndrInfo;
@@ -326,7 +337,7 @@ savebones(){
 			SetFInfo(name, (short)0, &fndrInfo);
 		SetVol(0L, oldVol);
 	}
-#endif
+#endif /* MACOS */
 #ifdef COMPRESS
 	compress_bones();
 #endif

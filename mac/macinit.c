@@ -239,10 +239,25 @@ short	row, col;
 	t->curHilite = 0;
 	t->curAttr = 0;
 
+#define all4Mods	(cmdKey | shiftKey | optionKey | controlKey)
+#define nKeyCmd		(all4Mods - cmdKey)
+#define nKeyShf		(all4Mods - shiftKey)
+#define nKeyOpt		(all4Mods - optionKey)
+#define nKeyCtl		(all4Mods - controlKey)
 	/* give time for Multifinder to bring NetHack window to front */
+	/* check to see if this is a "wiz bang" start */
 	for(tempFont = 0; tempFont<10; tempFont++) {
+		int	theMod;
+
 		SystemTask();
 		(void)GetNextEvent(nullEvent,&theEvent);
+
+		theMod = theEvent.modifiers & all4Mods;
+		if ((theMod == nKeyCmd) || (theMod == nKeyShf) ||
+			(theMod == nKeyOpt) || (theMod == nKeyCtl)) {
+			Strcpy(plname, "wizard");
+/*			SysBeep(1);	/* useful only for debugging */
+		}
 	}
 
 	HackWindow = NewWindow(0L, &boundsRect, "\016NetHack [MOVE]",
@@ -416,6 +431,7 @@ write_opts()
 	int fd;
 	short temp_flags;
 	term_info	*t;
+	boolean		saveWizard, newPrefs = FALSE;
 
 	t = (term_info *)GetWRefCon(HackWindow);
 	SetVol(0L, t->system.sysVRefNum);
@@ -430,13 +446,24 @@ write_opts()
 			tmp = CtoPstr(OPTIONS);
 			result = Create((StringPtr)tmp, (short)0, CREATOR, AUXIL_TYPE);
 		 	if (result == noErr)
+			{
 		 		fd = open(OPTIONS, O_WRONLY | O_BINARY);
+				newPrefs = TRUE;
+			}
 		}
 	 }
 
 	if (fd < 0)
 		pline("can't create options file!");
 	else {
+		/* if we initially store TRUE for wizard then
+		 * the user will have intrinsic wizardry!
+		 */
+		if (newPrefs) {
+			saveWizard = wizard;
+			wizard = FALSE;
+		}
+
 		write(fd, &flags, sizeof(flags));
 	
 		write(fd, plname, PL_NSIZ);
@@ -455,6 +482,8 @@ write_opts()
 #endif
 		write(fd, inv_order, strlen(inv_order)+1);
 		close(fd);
+
+		if (newPrefs) wizard = saveWizard;
 	}
 	
 	SetVol(0L, t->recordVRefNum);

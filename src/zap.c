@@ -1517,7 +1517,14 @@ register int dx,dy;
 			} else {
 #endif
 				lev->typ = ROOM;
+#ifdef STUPID
+				if (moat)
+					lev->icedpool = ICED_MOAT;
+				else
+					lev->icedpool = ICED_POOL;
+#else
 				lev->icedpool = (moat ? ICED_MOAT : ICED_POOL);
+#endif
 #ifdef STRONGHOLD
 			}
 #endif

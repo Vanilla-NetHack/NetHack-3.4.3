@@ -830,7 +830,7 @@ register struct obj *obj;
 	if (ANGRY(shopkeeper) || 
 		(pl_character[0] == 'T' && u.ulevel < (MAXULEV/2))
 #ifdef SHIRT
-	    || (uarmu && !uarm) /* wearing just a Hawaiian shirt */
+	    || (uarmu && !uarm && !uarmc) /* wearing just a Hawaiian shirt */
 #endif
 	   )
 		tmp += tmp/3;
@@ -840,6 +840,9 @@ register struct obj *obj;
 	else if (ACURR(A_CHA) < 6)	tmp *= 2;
 	else if (ACURR(A_CHA) < 8)	tmp = (tmp * 3)/2;
 	else if (ACURR(A_CHA) < 11)	tmp = (tmp * 4)/3;
+#ifdef NAMED_ITEMS
+	if (is_artifact(obj))		tmp *= 4;
+#endif
 	if (!tmp) return 1;
 	return(tmp);
 }
@@ -1135,6 +1138,9 @@ register struct obj *obj;
 		pline("Strange... carrying a chain?");
 		break;
 	}
+#ifdef NAMED_ITEMS
+	if (is_artifact(obj)) tmp *= 25;
+#endif
 	return(tmp);
 }
 

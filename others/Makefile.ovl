@@ -1,4 +1,4 @@
-#	SCCS Id: @(#)Makefile.ovl	3.0	90/06/03
+#	SCCS Id: @(#)Makefile.ovl	3.0	90/01/29
 #	PC NetHack 3.0 Makefile for Microsoft(tm) "C" 5.1 -- Pierre Martineau
 #	Overlay Arrangement -- Stephen Spackman, Pierre Martineau, Norm Meluch
 #	Multiple Compilation Hack and so forth -- Stephen Spackman
@@ -32,7 +32,7 @@ MODEL	 = L
 ASM	 = masm
 EXEPATCH = exesmurf
 # $(MAKE) macro is often predefined, so we use $(MAKEBIN) instead.
-MAKEBIN = make
+MAKEBIN = ndmake45l
 # For those of us who have these on PC.
 # YACC	 = yacc
 # LEX	 = lex
@@ -57,13 +57,10 @@ LFLAGS	= /noi /seg:512 /map /st:4096
 #	/Di386	= Use 386 specific enhancements
 #	/DNOEMS = Do not use EMS memory
 #	/DDEBUG = Report memory usage on startup
+#	/DNOSPLIT = EXE file is not split out to OVL files
 AFLAGS	= /MX
 #
-###############################################################################
-# Use the first line if you are using EXESMURF or the second for EXEMOD.
 EXEFLAGS = /max4500 /min4500
-# EXEFLAGS = /max 1194 /min 1194
-###############################################################################
 #
 # *****************************************************************************
 # ********* Directories (makedefs hardcodes these, don't change them) *********
@@ -82,7 +79,7 @@ OBJ	= $(SRC)\o
 # The game name
 GAME	 = NetHack
 #
-# The default make target (so just typing 'make' is useful)
+# The default make target (so just typing 'ndmake45l' is useful)
 DEFAULT  : $(GAME)
 #
 # The game directory
@@ -137,93 +134,93 @@ ROOT =  $(OBJ)\$(OVLMGR) $(OBJ)\trampoli.o $(OBJ)\main.o $(OBJ)\msdos.o \
 	$(OBJ)\objects.o $(OBJ)\invent.0 $(OBJ)\mkobj.0 $(OBJ)\mkroom.0 \
 	$(OBJ)\rnd.0 $(OBJ)\termcap.0
 # main monster code
-OVL01 = $(OBJ)\cmd.0 $(OBJ)\dbridge.0 $(OBJ)\dog.0 $(OBJ)\engrave.0-1 \
+OVL01 = $(OBJ)\attrib.0
+OVL02 = $(OBJ)\prisym.b
+OVL03 = $(OBJ)\read.0
+OVL04 = $(OBJ)\rnd.2-b
+OVL05 = $(OBJ)\steal.0-1
+OVL06 = $(OBJ)\prisym.2
+OVL07 = $(OBJ)\termcap.1 $(OBJ)\unix.0
+OVL08 = $(OBJ)\were.1-b
+OVL09 = $(OBJ)\do_name.0
+OVL10 = $(OBJ)\mthrowu.2-b
+OVL11 = $(OBJ)\topl.b
+OVL12 = $(OBJ)\hack.b
+OVL13 = $(OBJ)\makemon.b
+OVL14 = $(OBJ)\mondata.b $(OBJ)\timeout.1-b
+OVL15 = $(OBJ)\wizard.1-b
+OVL16 = $(OBJ)\do.b
+OVL17 = $(OBJ)\do.0 $(OBJ)\invent.3
+OVL18 = $(OBJ)\worm.o
+OVL19 = $(OBJ)\pri.b $(OBJ)\topl.1-2
+OVL20 = $(OBJ)\mkobj.2-b
+OVL21 = $(OBJ)\termcap.2-b
+OVL22 = $(OBJ)\mthrowu.1
+OVL23 = $(OBJ)\attrib.2-b $(OBJ)\exper.o
+OVL24 = $(OBJ)\monmove.2-b $(OBJ)\steal.2-b
+OVL25 = $(OBJ)\hack.2
+OVL26 = $(OBJ)\demon.o $(OBJ)\mcastu.o
+OVL27 = $(OBJ)\dothrow.o
+OVL28 = $(OBJ)\cmd.2-b $(OBJ)\getline.2 $(OBJ)\write.o
+OVL29 = $(OBJ)\artifact.2 $(OBJ)\eat.1 $(OBJ)\invent.1
+OVL30 = $(OBJ)\dog.b $(OBJ)\sounds.1-b
+OVL31 = $(OBJ)\priest.1-b
+# pet code
+OVL32 = $(OBJ)\apply.0 $(OBJ)\dog.1 $(OBJ)\dogmove.o
+OVL33 = $(OBJ)\invent.b
+OVL34 = $(OBJ)\pager.1-b
+OVL35 = $(OBJ)\mhitm.1-b
+OVL36 = $(OBJ)\objnam.2-b
+OVL37 = $(OBJ)\pri.0 $(OBJ)\prisym.0 $(OBJ)\topl.0
+OVL38 = $(OBJ)\dokick.o
+OVL39 = $(OBJ)\do_wear.2 $(OBJ)\getline.b $(OBJ)\mondata.2 $(OBJ)\objnam.0-1 \
+	$(OBJ)\pager.0 $(OBJ)\polyself.0-1
+OVL40 = $(OBJ)\makemon.0-2 $(OBJ)\mkobj.1
+OVL41 = $(OBJ)\mon.2-b $(OBJ)\trap.2
+OVL42 = $(OBJ)\do_wear.0-1 $(OBJ)\mhitu.2-b
+OVL43 = $(OBJ)\allmain.1 $(OBJ)\mhitm.0 $(OBJ)\mhitu.0-1 $(OBJ)\rnd.1 \
+	$(OBJ)\weapon.0-1
+OVL44 = $(OBJ)\apply.2-b
+OVL45 = $(OBJ)\artifact.1 $(OBJ)\search.0 $(OBJ)\uhitm.o $(OBJ)\weapon.2-b
+OVL46 = $(OBJ)\cmd.0 $(OBJ)\dbridge.0 $(OBJ)\dog.0 $(OBJ)\engrave.0-1 \
 	$(OBJ)\hack.0 $(OBJ)\mon.0-1 $(OBJ)\mondata.0-1 $(OBJ)\monmove.0-1 \
 	$(OBJ)\mthrowu.0 $(OBJ)\priest.0 $(OBJ)\shk.0 $(OBJ)\track.0 \
 	$(OBJ)\trap.0-1 $(OBJ)\were.0
-# pet code
-OVL02 = $(OBJ)\apply.0 $(OBJ)\dog.1 $(OBJ)\dogmove.o
 # advanced monsters
-OVL03 = $(OBJ)\demon.o $(OBJ)\mcastu.o
-OVL04 = $(OBJ)\priest.1-b
-OVL05 = $(OBJ)\shk.1-b
-OVL06 = $(OBJ)\were.1-b
-OVL07 = $(OBJ)\wizard.1-b
-OVL08 = $(OBJ)\worm.o
+OVL47 = $(OBJ)\shk.1-b
 # main people things: you take your turn
-OVL09 = $(OBJ)\allmain.0 $(OBJ)\artifact.0 $(OBJ)\attrib.1 $(OBJ)\cmd.1 \
+OVL48 = $(OBJ)\allmain.0 $(OBJ)\artifact.0 $(OBJ)\attrib.1 $(OBJ)\cmd.1 \
 	$(OBJ)\do.1 $(OBJ)\do.3 $(OBJ)\eat.0 $(OBJ)\engrave.2 \
 	$(OBJ)\getline.0-1 $(OBJ)\hack.1 $(OBJ)\lock.0 $(OBJ)\mail.0 \
 	$(OBJ)\pickup.1 $(OBJ)\pri.1 $(OBJ)\prisym.1 $(OBJ)\sounds.0 \
 	$(OBJ)\timeout.0 $(OBJ)\track.1 $(OBJ)\vault.0 $(OBJ)\wizard.0
-OVL10 = $(OBJ)\attrib.0
-OVL11 = $(OBJ)\attrib.2-b $(OBJ)\exper.o
-OVL12 = $(OBJ)\artifact.2 $(OBJ)\eat.1 $(OBJ)\invent.1
-OVL13 = $(OBJ)\makemon.0-2 $(OBJ)\mkobj.1
-OVL14 = $(OBJ)\makemon.b
-OVL15 = $(OBJ)\mkobj.2-b
-OVL16 = $(OBJ)\hack.2
-OVL17 = $(OBJ)\mhitm.1-b
-OVL18 = $(OBJ)\mthrowu.1
-OVL19 = $(OBJ)\mthrowu.2-b
-OVL20 = $(OBJ)\allmain.1 $(OBJ)\mhitm.0 $(OBJ)\mhitu.0-1 $(OBJ)\rnd.1 \
-	$(OBJ)\weapon.0-1
-OVL21 = $(OBJ)\mon.2-b $(OBJ)\trap.2
-OVL22 = $(OBJ)\artifact.1 $(OBJ)\search.0 $(OBJ)\uhitm.o $(OBJ)\weapon.2-b
-OVL23 = $(OBJ)\do_wear.0-1 $(OBJ)\mhitu.2-b
-OVL24 = $(OBJ)\steal.0-1
-OVL25 = $(OBJ)\monmove.2-b $(OBJ)\steal.2-b
-OVL26 = $(OBJ)\rnd.2-b
-OVL27 = $(OBJ)\do_wear.2 $(OBJ)\getline.b $(OBJ)\mondata.2 $(OBJ)\objnam.0-1 \
-	$(OBJ)\pager.0 $(OBJ)\polyself.0-1
-OVL28 = $(OBJ)\do_name.0
-OVL29 = $(OBJ)\objnam.2-b
-OVL30 = $(OBJ)\pager.1-b
-OVL31 = $(OBJ)\pri.0 $(OBJ)\prisym.0 $(OBJ)\topl.0
-OVL32 = $(OBJ)\pri.b $(OBJ)\topl.1-2
-OVL33 = $(OBJ)\prisym.2
-OVL34 = $(OBJ)\prisym.b
-OVL35 = $(OBJ)\topl.b
-OVL36 = $(OBJ)\termcap.1 $(OBJ)\unix.0
-OVL37 = $(OBJ)\termcap.2-b
-OVL38 = $(OBJ)\dog.b $(OBJ)\sounds.1-b
-OVL39 = $(OBJ)\read.0
-OVL40 = $(OBJ)\invent.b
-OVL41 = $(OBJ)\hack.b
-OVL42 = $(OBJ)\mondata.b $(OBJ)\timeout.1-b
-OVL43 = $(OBJ)\do.0 $(OBJ)\invent.3
-OVL44 = $(OBJ)\cmd.2-b $(OBJ)\getline.2 $(OBJ)\write.o
-OVL45 = $(OBJ)\apply.2-b
-OVL46 = $(OBJ)\do.b
-OVL47 = $(OBJ)\dokick.o
-OVL48 = $(OBJ)\dothrow.o
-OVL49 = $(OBJ)\eat.2-b
-OVL50 = $(OBJ)\invent.2 $(OBJ)\pickup.0 $(OBJ)\pickup.2-b
-OVL51 = $(OBJ)\lock.1-b
+OVL49 = $(OBJ)\search.1-b
+OVL50 = $(OBJ)\lock.1-b
+OVL51 = $(OBJ)\dbridge.1-b
 OVL52 = $(OBJ)\polyself.2-b
-OVL53 = $(OBJ)\potion.o
-OVL54 = $(OBJ)\pray.o
-OVL55 = $(OBJ)\read.1-b $(OBJ)\spell.o
-OVL56 = $(OBJ)\search.1-b
+OVL53 = $(OBJ)\invent.2 $(OBJ)\pickup.0 $(OBJ)\pickup.2-b
+OVL54 = $(OBJ)\eat.2-b
+OVL55 = $(OBJ)\pray.o
+OVL56 = $(OBJ)\potion.o
+OVL57 = $(OBJ)\trap.b
+OVL58 = $(OBJ)\read.1-b $(OBJ)\spell.o
 # clothing stuff
-OVL57 = $(OBJ)\do_wear.b $(OBJ)\wield.o $(OBJ)\worn.o
+OVL59 = $(OBJ)\do_wear.b $(OBJ)\wield.o $(OBJ)\worn.o
 # Zappage
-OVL58 = $(OBJ)\pri.2 $(OBJ)\zap.o
-OVL59 = $(OBJ)\dbridge.1-b
-OVL60 = $(OBJ)\trap.b
+OVL60 = $(OBJ)\pri.2 $(OBJ)\zap.o
 # Unusual circumstances
 OVL61 = $(OBJ)\artifact.b $(OBJ)\do_name.1-b $(OBJ)\fountain.o $(OBJ)\music.o \
 	$(OBJ)\rumors.o $(OBJ)\shknam.0 $(OBJ)\sit.o $(OBJ)\vault.1-b
+# Levelling
+OVL62 = $(OBJ)\apply.1 $(OBJ)\bones.o $(OBJ)\do.2 $(OBJ)\dog.2 \
+	$(OBJ)\extralev.o $(OBJ)\mklev.o $(OBJ)\mkmaze.o $(OBJ)\mkroom.1-b \
+	$(OBJ)\sp_lev.o $(OBJ)\track.2-b
 # Uppers and Downers
-# Note: version.o is in OVL62, but in a special way.  See below.
-OVL62 = $(OBJ)\allmain.2-b $(OBJ)\end.o $(OBJ)\engrave.b $(OBJ)\mail.1-b \
+# Note: version.o is in OVL63, but in a special way.  See below.
+OVL63 = $(OBJ)\allmain.2-b $(OBJ)\end.o $(OBJ)\engrave.b $(OBJ)\mail.1-b \
 	$(OBJ)\o_init.o $(OBJ)\options.o $(OBJ)\restore.o $(OBJ)\rip.o \
 	$(OBJ)\save.o $(OBJ)\shknam.1-b $(OBJ)\topten.o $(OBJ)\tty.o \
 	$(OBJ)\u_init.o $(OBJ)\unix.1-b
-# Levelling
-OVL63 = $(OBJ)\apply.1 $(OBJ)\bones.o $(OBJ)\do.2 $(OBJ)\dog.2 \
-	$(OBJ)\extralev.o $(OBJ)\mklev.o $(OBJ)\mkmaze.o $(OBJ)\mkroom.1-b \
-	$(OBJ)\sp_lev.o $(OBJ)\track.2-b
 
 
 # *****************************************************************************
@@ -257,7 +254,7 @@ OVERLAYS = ($(OVL01)) ($(OVL02)) ($(OVL03)) ($(OVL04)) ($(OVL05)) ($(OVL06)) \
 	   ($(OVL43)) ($(OVL44)) ($(OVL45)) ($(OVL46)) ($(OVL47)) ($(OVL48)) \
 	   ($(OVL49)) ($(OVL50)) ($(OVL51)) ($(OVL52)) ($(OVL53)) ($(OVL54)) \
 	   ($(OVL55)) ($(OVL56)) ($(OVL57)) ($(OVL58)) ($(OVL59)) ($(OVL60)) \
-	   ($(OVL61)) ($(OVL62)      $(OBJ)\version.o) ($(OVL63))
+	   ($(OVL61)) ($(OVL62)) ($(OBJ)\version.o      $(OVL63))
 
 # object files for special levels compiler
 SPLEVOBJS   =	$(OBJ)\lev_comp.o $(OBJ)\lev_lex.o  $(OBJ)\lev_main.o \
@@ -329,10 +326,11 @@ $(GAME): $(GAMEFILE)
 
 $(GAME).exe: $(GAMEFILE)
 
-$(GAMEFILE): $(OBJ) $(HOBJ)
+$(GAMEFILE): $(EXEPATCH) $(OBJ) $(HOBJ)
 	@echo Loading....
 	$(LINK) $(ROOT) $(OVERLAYS),$(GAMEFILE),$(GAME),$(CLIB) $(TERMLIB) $(LFLAGS) ;
 	$(EXEPATCH) $(GAMEFILE) $(EXEFLAGS)
+	$(EXEPATCH) $(GAMEFILE) 1 49
 	@echo NetHack is up to date.
 
 $(OBJ):
@@ -392,6 +390,14 @@ $(OBJ)\lev_lex.o:	$(HACK_H)   $(INCL)\sp_lev.h	$(INCL)\lev_comp.h \
 
 lev_comp.exe:	$(SPLEVOBJS)
 	$(LINK) $(LFLAGS) $(SPLEVOBJS),lev_comp.exe,, $(CLIB);
+
+$(EXEPATCH): $(EXEPATCH).exe
+
+$(EXEPATCH).exe: $(OBJ)\$(EXEPATCH).o
+	$(LINK) $(OBJ)\$*.o,$*.exe;
+
+$(OBJ)\$(EXEPATCH).o: $(EXEPATCH).c
+	$(CC) /W0 /Fo$(OBJ)\$*.o $*.c
 
 # *****************************************************************************
 # *************************  Makedefs Stuff ***********************************

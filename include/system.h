@@ -200,7 +200,7 @@ E unsigned int	FDECL(strlen, (char *));
 #  ifdef THINKC4
 E size_t	FDECL(strlen, (char *));
 #  else
-E int	FDECL(strlen, (char *));
+E int	FDECL(strlen, (const char *));
 #  endif /* THINKC4 */
 # endif /* HPUX */
 #endif /* MSDOS */
@@ -262,15 +262,15 @@ E char *FDECL(tgetstr, (const char *,char **));
 E char *FDECL(tgoto, (const char *,int,int));
 E void FDECL(tputs, (const char *,int,int (*)()));
 #else
-E int FDECL(tgetent, (char *,char *));
+E int FDECL(tgetent, (char *,const char *));
 E int FDECL(tgetnum, (char *));
 E int FDECL(tgetflag, (char *));
 E char *FDECL(tgetstr, (char *,char **));
 E char *FDECL(tgoto, (char *,int,int));
-E void FDECL(tputs, (char *,int,int (*)()));
+E void FDECL(tputs, (const char *,int,int (*)()));
 #endif
 
-#ifndef MACOS
+#if defined(ALLOC_C) && !defined(MACOS)
 E genericptr_t FDECL(malloc, (size_t));
 #endif
 

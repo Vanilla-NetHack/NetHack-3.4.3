@@ -9,7 +9,7 @@
 
 
 /* #define BETA		/* if a beta-test copy  [MRS] */
-#define VERSION "3.0i"  /* version number. */
+#define VERSION "3.0j"  /* version number. */
 
 /*
  * Files expected to exist in the playground directory.

@@ -345,7 +345,7 @@ not_recovered:
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		You("are lucky!  Full moon tonight.");
-		if(!u.uluck) change_luck(1);
+		change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
 		pline("Be careful!  New moon tonight.");
 	}

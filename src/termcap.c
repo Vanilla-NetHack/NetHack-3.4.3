@@ -56,6 +56,7 @@ STATIC_VAR char tbuf[512];
 #endif
 
 #ifdef OVLB
+static char *KS = NULL, *KE = NULL;	/* keypad sequences */
 static char nullstr[] = "";
 #endif /* OVLB */
 
@@ -82,9 +83,9 @@ startup()
 
 #ifdef TERMLIB
 # ifdef VMS
-	term = getenv("EMACS_TERM");
-	if (!term)
-	    term = getenv("NETHACK_TERM");
+	term = verify_termcap();	/* jump thru some hoops */
+	if (!term) term = getenv("NETHACK_TERM");
+	if (!term) term = getenv("EMACS_TERM");
 	if (!term)
 # endif
 	term = getenv("TERM");
@@ -231,19 +232,22 @@ startup()
 		error("Unknown terminal type: %s.", term);
 	if(pc = Tgetstr("pc"))
 		PC = *pc;
+
+	if(!(BC = Tgetstr("le")))	/* both termcap and terminfo use le */	
 # ifdef TERMINFO
-	if(!(BC = Tgetstr("le"))) {	
+	    error("Terminal must backspace.");
 # else
-	if(!(BC = Tgetstr("bc"))) {	
-# endif
-# if !defined(MINIMAL_TERM) && !defined(HISX)
+	    if(!(BC = Tgetstr("bc"))) {	/* termcap also uses bc/bs */
+#  if !defined(MINIMAL_TERM) && !defined(HISX)
 		if(!tgetflag("bs"))
 			error("Terminal must backspace.");
-# endif
+#  endif
 		BC = tbufptr;
 		tbufptr += 2;
 		*BC = '\b';
-	}
+	    }
+# endif
+
 # ifdef MINIMAL_TERM
 	HO = NULL;
 # else
@@ -304,6 +308,8 @@ startup()
 # ifdef TERMINFO
 	VS = Tgetstr("eA");	/* enable graphics */
 # endif
+	KS = Tgetstr("ks");	/* keypad start (special mode) */
+	KE = Tgetstr("ke");	/* keypad end (ordinary mode [ie, digits]) */
 # if 0
 	MB = Tgetstr("mb");	/* blink */
 	MD = Tgetstr("md");	/* boldface */
@@ -345,6 +351,23 @@ startup()
 }
 
 void
+number_pad(state)
+int state;
+{
+	switch (state) {
+	    case -1:	/* activate keypad mode (escape sequences) */
+		    if (KS && *KS) xputs(KS);
+		    break;
+	    case  1:	/* activate numeric mode for keypad (digits) */
+		    if (KE && *KE) xputs(KE);
+		    break;
+	    case  0:	/* don't need to do anything--leave terminal as-is */
+	    default:
+		    break;
+	}
+}
+
+void
 start_screen()
 {
 	xputs(TI);
@@ -356,10 +379,13 @@ start_screen()
 		 * since people may reasonably be using the UK set
 		 */
 		xputs("\033)0");
-		/* 'as' and 'ae' are missing from some termcaps */
-		if (!AS) AS = "\016";  /* ^N */
-		if (!AE) AE = "\017";  /* ^O */
+		/* these values are missing from some termcaps */
+		if (!AS) AS = "\016";	/* ^N (shift-out [graphics font]) */
+		if (!AE) AE = "\017";	/* ^O (shift-in  [regular font])  */
+		if (!KS) KS = "\033=";	/* ESC= (application keypad mode) */
+		if (!KE) KE = "\033>";	/* ESC> (numeric keypad mode)	  */
 	}
+	if (flags.num_pad) number_pad(1);	/* make keypad send digits */
 }
 
 void
@@ -390,7 +416,7 @@ int x, y;
 }
 #endif
 
-#endif /* OVLB */
+#endif /* OVL0 */
 #ifdef OVLB
 void
 curs(x, y)

@@ -50,6 +50,13 @@ TARG = unix
 # (as long as it claims to be __STDC__ but isn't)
 # CFLAGS = -DAPOLLO -O -I../include
 
+# flags for AIX 3.1 cc on IBM RS/6000 to define
+# a suitable subset of standard libraries
+# CFLAGS = -D_NO_PROTO -D_XOPEN_SOURCE -O -I../include
+
+# flags for DECstations running 4.0 or greater using the native C compiler
+# CFLAGS = -O -Olimit 1000 -I../include
+
 # flags for debugging:
 # CFLAGS = -g -I../include
 
@@ -61,6 +68,8 @@ LFLAGS =
 # on 386 Xenix, the -ltermlib tputs() seems not to work; use -lcurses instead
 # Sysatt uses shared library in lieu of this option
 # Systos needs -lcurses16 if you use -mshort
+# AIX 3.1 on RS/6000 likes -lcurses if TERMINFO defined in config.h
+# and -ltermcap otherwise
 #
 # TERMLIB = -ltermcap
 # TERMLIB = -lcurses

@@ -49,9 +49,8 @@ SL.proj.hqx     Segments.mac    mac.c           macfile.c       macinit.c
 others:
 (files for MSDOS (and OS/2) version)
 Makefile.lib    Makefile.msc    Makefile.os2    Makefile.ovl    Makefile.pc
-Makefile.tcc    NetHack.cnf     exesmurf.c      exesmurf.uu     maintain.ovl
-ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       splitf.c        splitf.uu
-suputils.ovl    termcap.uu      trampoli.c
+Makefile.tcc    NetHack.cnf     exesmurf.c      exesmurf.doc    maintain.ovl
+ovlmgr.asm      ovlmgr.doc      ovlmgr.uu       termcap.uu      trampoli.c
 (file for MSDOS and VMS versions)
 termcap
 (files for MSDOS, Amiga, and Atari versions)

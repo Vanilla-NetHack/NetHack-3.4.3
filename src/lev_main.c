@@ -7,26 +7,21 @@
  * and some useful functions needed by yacc
  */
 
-/* #include "hack.h"	/* uncomment for the Mac */
+#include "hack.h"
 
-#ifndef VMS
-# if defined(AMIGA) || defined(MSDOS)
-#  include "hack.h"
-#  undef exit
-#  ifdef MSDOS
+#ifdef MSDOS
+# undef exit
+# ifndef AMIGA
 extern void FDECL(exit, (int));
-#  endif
-# else
-#  include <stdio.h>
 # endif
-#else  /*VMS*/
-# ifdef ANCIENT_VAXC    /* need KR1ED setup */
-#  define GLOBAL_H      /* don't need other stuff */
-#include "config.h"
+#endif
+#ifdef LATTICE
+long *alloc(unsigned int);
+# ifdef exit
+#  undef exit
 # endif
-#include <stdio.h>
-# define exit vms_exit
-#endif /*VMS*/
+#include <stdlib.h>
+#endif
 
 #define MAX_ERRORS	25
 
@@ -34,27 +29,21 @@ extern int line_number;
 char *fname = "(stdin)";
 int fatal_error = 0;
 
-#ifdef LATTICE
-long *alloc(unsigned int);
-#ifdef exit
-#undef exit
-#endif
-#include <stdlib.h>
-#endif
+/* Flex 2.3 bug work around */
+int yy_more_len = 0;
 
-#ifdef	FDECL
 int  FDECL (main, (int, char **));
 int  NDECL (yyparse);
 void FDECL (yyerror, (char *));
 void FDECL (yywarning, (char *));
 int  NDECL (yywrap);
-#endif
+void FDECL (init_yyin, (FILE *));
+void FDECL (init_yyout, (FILE *));
 
 #ifdef LSC
-_main(argc, argv)
-#else
-main(argc, argv) 
+# define main _main
 #endif
+main(argc, argv)
 int argc;
 char **argv;
 {
@@ -72,7 +61,9 @@ char **argv;
 	long	j;
 	extern struct permonst *mons;
 	extern struct objclass *objects;
-	char descrip[3][32];    /* 3 special level description files */
+	/* 3 special level description files */
+	char *descrip[] = {"lev_comp", ":auxil:castle.des",
+			":auxil:endgame.des", ":auxil:tower.des"};
 
 	/* sub in the Nethack resource filename */
 	Strcpy((char *)name, "\021nethack.proj.rsrc");
@@ -106,39 +97,32 @@ char **argv;
 	} else {
 		panic("Can't get OBJECT resource data.");
 	}
-    Sprintf(descrip[1], "%s", ":auxil:castle.des");
-    Sprintf(descrip[2], "%s", ":auxil:endgame.des");
-    Sprintf(descrip[3], "%s", ":auxil:tower.des");
     argc = 4;    /* argv[0] is irrelevant, argv[i] = descrip[i] */
-#else   /* !MACOS || !SMALLDATA */
-# ifdef VMS
-    extern FILE *yyin, *yyout;
-    yyin = stdin,  yyout = stdout;
-# endif
-#endif
+    argv = descrip;
+#endif  /* !MACOS || !SMALLDATA */
 
-	if (argc == 1)		/* Read standard input */
+	init_yyout(stdout);
+	if (argc == 1) {		/* Read standard input */
+	    init_yyin(stdin);
 	    yyparse();
-	else 			/* Otherwise every argument is a filename */
+	} else {			/* Otherwise every argument is a filename */
 	    for(i=1; i<argc; i++) {
-#ifdef MACOS
-                    argv[i] = descrip[i];
-                    fprintf(stdout, "Working on %s\n", argv[i]);
-#endif
-#if defined(AZTEC_C)
-		    extern FILE *yyin;
-		    yyin = fin = fopen(argv[i], "r");
-#else
-		    fin = freopen(argv[i], "r", stdin);
-#endif
 		    fname = argv[i];
-		    if (!fin) 
-			fprintf(stderr,"Can't open %s\n", argv[i]);
-		    else
+#ifdef MACOS
+		    fprintf(stdout, "Working on %s\n", fname);
+#endif
+		    fin = freopen(fname, "r", stdin);
+		    if (!fin) {
+			fprintf(stderr,"Can't open \"%s\" for input.\n", fname);
+			perror(fname);
+		    } else {
+			init_yyin(fin);
 			yyparse();
+		    }
 		    line_number = 1;
 		    fatal_error = 0;
 	    }
+	}
 #ifndef VMS
 	return 0;
 #else

@@ -161,9 +161,17 @@ int NDECL (yylook);
 int NDECL (yyinput);
 int NDECL (yywrap);
 int NDECL (yylex);
+# ifdef NeXT
+void FDECL (yyunput, (int));
+void FDECL (yyoutput, (int));
+# else
 int FDECL (yyunput, (int));
 int FDECL (yyoutput, (int));
+# endif
 #endif
+
+void FDECL (init_yyin, (FILE *));
+void FDECL (init_yyout, (FILE *));
 
 #ifdef MSDOS
 #undef exit
@@ -197,7 +205,7 @@ int line_number = 1;
 #define YYLMAX	2048
 
 #define MAPC 1
-# line 62 "lev_comp.l"
+# line 70 "lev_comp.l"
 #define YY_END_OF_BUFFER 57
 typedef int yy_state_type;
 static const short int yy_accept[274] =
@@ -585,12 +593,25 @@ do_action:	/* this label is used only to access EOF actions */
 		continue; /* go to "YY_DO_BEFORE_ACTION" */
 
 case 1:
-# line 63 "lev_comp.l"
+# line 71 "lev_comp.l"
 { line_number++; yymore(); }	
 	YY_BREAK
 case 2:
-# line 64 "lev_comp.l"
-{ BEGIN 0;
+# line 72 "lev_comp.l"
+{
+#ifdef FLEX_SCANNER
+		  /*
+		   * There is a bug in Flex 2.3 patch level < 6
+		   * (absent in previous versions)
+		   * that results in the following behaviour :
+		   * Once you enter an yymore(), you never exit from it.
+		   * This should do the trick!
+		   */
+		  extern int yy_more_len;
+
+		  yy_more_len = 0;
+#endif
+		  BEGIN 0;
 		  line_number++;
 		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
 		  yylval.map = (char *) alloc(strlen(yytext)+1);
@@ -599,222 +620,222 @@ case 2:
 		}
 	YY_BREAK
 case 3:
-# line 71 "lev_comp.l"
+# line 92 "lev_comp.l"
 { line_number++; }
 	YY_BREAK
 case 4:
-# line 72 "lev_comp.l"
+# line 93 "lev_comp.l"
 return MAZE_ID;
 	YY_BREAK
 case 5:
-# line 73 "lev_comp.l"
+# line 94 "lev_comp.l"
 return LEVEL_ID;
 	YY_BREAK
 case 6:
-# line 74 "lev_comp.l"
+# line 95 "lev_comp.l"
 return GEOMETRY_ID;
 	YY_BREAK
 case 7:
-# line 75 "lev_comp.l"
+# line 96 "lev_comp.l"
 { BEGIN MAPC; line_number++; }
 	YY_BREAK
 case 8:
-# line 76 "lev_comp.l"
+# line 97 "lev_comp.l"
 return OBJECT_ID;
 	YY_BREAK
 case 9:
-# line 77 "lev_comp.l"
+# line 98 "lev_comp.l"
 return MONSTER_ID;
 	YY_BREAK
 case 10:
-# line 78 "lev_comp.l"
+# line 99 "lev_comp.l"
 return TRAP_ID;
 	YY_BREAK
 case 11:
-# line 79 "lev_comp.l"
+# line 100 "lev_comp.l"
 return DOOR_ID;
 	YY_BREAK
 case 12:
-# line 80 "lev_comp.l"
+# line 101 "lev_comp.l"
 return DRAWBRIDGE_ID;
 	YY_BREAK
 case 13:
-# line 81 "lev_comp.l"
+# line 102 "lev_comp.l"
 return MAZEWALK_ID;
 	YY_BREAK
 case 14:
-# line 82 "lev_comp.l"
+# line 103 "lev_comp.l"
 return REGION_ID;
 	YY_BREAK
 case 15:
-# line 83 "lev_comp.l"
+# line 104 "lev_comp.l"
 return RANDOM_OBJECTS_ID;
 	YY_BREAK
 case 16:
-# line 84 "lev_comp.l"
+# line 105 "lev_comp.l"
 return RANDOM_MONSTERS_ID;
 	YY_BREAK
 case 17:
-# line 85 "lev_comp.l"
+# line 106 "lev_comp.l"
 return RANDOM_PLACES_ID;
 	YY_BREAK
 case 18:
-# line 86 "lev_comp.l"
+# line 107 "lev_comp.l"
 return ALTAR_ID;
 	YY_BREAK
 case 19:
-# line 87 "lev_comp.l"
+# line 108 "lev_comp.l"
 return LADDER_ID;
 	YY_BREAK
 case 20:
-# line 88 "lev_comp.l"
+# line 109 "lev_comp.l"
 return NON_DIGGABLE_ID;
 	YY_BREAK
 case 21:
-# line 89 "lev_comp.l"
+# line 110 "lev_comp.l"
 return ROOM_ID;
 	YY_BREAK
 case 22:
-# line 90 "lev_comp.l"
+# line 111 "lev_comp.l"
 { yylval.i=D_ISOPEN; return DOOR_STATE; }
 	YY_BREAK
 case 23:
-# line 91 "lev_comp.l"
+# line 112 "lev_comp.l"
 { yylval.i=D_CLOSED; return DOOR_STATE; }
 	YY_BREAK
 case 24:
-# line 92 "lev_comp.l"
+# line 113 "lev_comp.l"
 { yylval.i=D_LOCKED; return DOOR_STATE; }
 	YY_BREAK
 case 25:
-# line 93 "lev_comp.l"
+# line 114 "lev_comp.l"
 { yylval.i=D_NODOOR; return DOOR_STATE; }
 	YY_BREAK
 case 26:
-# line 94 "lev_comp.l"
+# line 115 "lev_comp.l"
 { yylval.i=D_BROKEN; return DOOR_STATE; }
 	YY_BREAK
 case 27:
-# line 95 "lev_comp.l"
+# line 116 "lev_comp.l"
 { yylval.i=W_NORTH; return DIRECTION; }
 	YY_BREAK
 case 28:
-# line 96 "lev_comp.l"
+# line 117 "lev_comp.l"
 { yylval.i=W_EAST; return DIRECTION; }
 	YY_BREAK
 case 29:
-# line 97 "lev_comp.l"
+# line 118 "lev_comp.l"
 { yylval.i=W_SOUTH; return DIRECTION; }
 	YY_BREAK
 case 30:
-# line 98 "lev_comp.l"
+# line 119 "lev_comp.l"
 { yylval.i=W_WEST; return DIRECTION; }
 	YY_BREAK
 case 31:
-# line 99 "lev_comp.l"
+# line 120 "lev_comp.l"
 { yylval.i = -1; return RANDOM_TYPE; }
 	YY_BREAK
 case 32:
-# line 100 "lev_comp.l"
+# line 121 "lev_comp.l"
 return O_REGISTER;
 	YY_BREAK
 case 33:
-# line 101 "lev_comp.l"
+# line 122 "lev_comp.l"
 return M_REGISTER;
 	YY_BREAK
 case 34:
-# line 102 "lev_comp.l"
+# line 123 "lev_comp.l"
 return P_REGISTER;
 	YY_BREAK
 case 35:
-# line 103 "lev_comp.l"
+# line 124 "lev_comp.l"
 return A_REGISTER;
 	YY_BREAK
 case 36:
-# line 104 "lev_comp.l"
+# line 125 "lev_comp.l"
 { yylval.i=1; return LEFT_OR_RIGHT; }
 	YY_BREAK
 case 37:
-# line 105 "lev_comp.l"
+# line 126 "lev_comp.l"
 { yylval.i=3; return LEFT_OR_RIGHT; }
 	YY_BREAK
 case 38:
-# line 106 "lev_comp.l"
+# line 127 "lev_comp.l"
 { yylval.i=2; return CENTER; }
 	YY_BREAK
 case 39:
-# line 107 "lev_comp.l"
+# line 128 "lev_comp.l"
 { yylval.i=1; return TOP_OR_BOT; }
 	YY_BREAK
 case 40:
-# line 108 "lev_comp.l"
+# line 129 "lev_comp.l"
 { yylval.i=3; return TOP_OR_BOT; }
 	YY_BREAK
 case 41:
-# line 109 "lev_comp.l"
+# line 130 "lev_comp.l"
 { yylval.i=1; return LIGHT_STATE; }
 	YY_BREAK
 case 42:
-# line 110 "lev_comp.l"
+# line 131 "lev_comp.l"
 { yylval.i=0; return LIGHT_STATE; }
 	YY_BREAK
 case 43:
-# line 111 "lev_comp.l"
+# line 132 "lev_comp.l"
 { yylval.i=A_LAW; return ALIGNMENT; }
 	YY_BREAK
 case 44:
-# line 112 "lev_comp.l"
+# line 133 "lev_comp.l"
 { yylval.i=A_NEUTRAL; return ALIGNMENT; }
 	YY_BREAK
 case 45:
-# line 113 "lev_comp.l"
+# line 134 "lev_comp.l"
 { yylval.i=A_CHAOS; return ALIGNMENT; }
 	YY_BREAK
 case 46:
-# line 114 "lev_comp.l"
+# line 135 "lev_comp.l"
 { yylval.i=1; return ALTAR_TYPE; }
 	YY_BREAK
 case 47:
-# line 115 "lev_comp.l"
+# line 136 "lev_comp.l"
 { yylval.i=0; return ALTAR_TYPE; }
 	YY_BREAK
 case 48:
-# line 116 "lev_comp.l"
+# line 137 "lev_comp.l"
 { yylval.i=1; return UP_OR_DOWN; }
 	YY_BREAK
 case 49:
-# line 117 "lev_comp.l"
+# line 138 "lev_comp.l"
 { yylval.i=0; return UP_OR_DOWN; }
 	YY_BREAK
 case 50:
-# line 118 "lev_comp.l"
+# line 139 "lev_comp.l"
 { yylval.i=atoi(yytext); return INTEGER; }
 	YY_BREAK
 case 51:
-# line 119 "lev_comp.l"
+# line 140 "lev_comp.l"
 { yytext[yyleng-1] = 0; /* Discard the trailing \" */
 		  yylval.map = (char *) alloc(strlen(yytext+1)+1);
 		  strcpy(yylval.map, yytext+1); /* Discard the first \" */
 		  return STRING; }
 	YY_BREAK
 case 52:
-# line 123 "lev_comp.l"
+# line 144 "lev_comp.l"
 { line_number++; }
 	YY_BREAK
 case 53:
-# line 124 "lev_comp.l"
+# line 145 "lev_comp.l"
 ;
 	YY_BREAK
 case 54:
-# line 125 "lev_comp.l"
+# line 146 "lev_comp.l"
 { yylval.i = yytext[1]; return CHAR; }
 	YY_BREAK
 case 55:
-# line 126 "lev_comp.l"
+# line 147 "lev_comp.l"
 { return yytext[0]; }
 	YY_BREAK
 case 56:
-# line 127 "lev_comp.l"
+# line 148 "lev_comp.l"
 ECHO;
 	YY_BREAK
 case YY_STATE_EOF(INITIAL):
@@ -1105,7 +1126,7 @@ FILE *input_file;
     yyin = input_file;
     yy_init = 1;
     }
-# line 127 "lev_comp.l"
+# line 148 "lev_comp.l"
 
 #ifdef	AMIGA
 long *alloc(n)
@@ -1114,3 +1135,21 @@ long *alloc(n)
 	return ((long *)malloc (n));
 }
 #endif
+
+/* routine to switch to another input file; needed for flex */
+void init_yyin( input_f )
+FILE *input_f;
+{
+#ifdef FLEX_SCANNER
+	if (yyin != NULL)
+	    yyrestart(input_f);
+	else
+#endif
+	    yyin = input_f;
+}
+/* analogous routine (for completeness) */
+void init_yyout( output_f )
+FILE *output_f;
+{
+	yyout = output_f;
+}

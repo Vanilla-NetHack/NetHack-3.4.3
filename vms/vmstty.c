@@ -8,8 +8,17 @@
 
 #include	<descrip.h>
 #include	<iodef.h>
+#ifndef __GNUC__
 #include	<smgdef.h>
 #include	<ttdef.h>
+#else	/* values needed from missing include files */
+# define SMG$K_TRM_UP	 274
+# define SMG$K_TRM_DOWN  275
+# define SMG$K_TRM_LEFT  276
+# define SMG$K_TRM_RIGHT 277
+# define TT$M_MECHTAB	 0x00000100
+# define TT$M_MECHFORM	 0x00080000
+#endif /* __GNUC__ */
 #include <errno.h>
 
 #define vms_ok(sts) ((sts)&1)

@@ -2,15 +2,16 @@
 		   on an MS-DOS, TOS, or OS/2 system
 	=====================================================
 	    (or, How to make PC, ST, and OS/2 NetHack 3.0)
-		      Last revision: 22 May 1990
+		      Last revision: 04 Feb 1991
 
     Credit for ST and OS/2 NetHack 3.0 goes to Eric Smith and Timo Hakulinen,
     respectively.  Additional credit should be given to Steve Creps and
     Mike Threepoint for PC NetHack.
 
-*** Note: if you intend to compile NetHack on an MS-DOS PC using OVERLAY, 
-    please turn to the instructions in Install.ovl.  The overlay version is
-    currently available only for MSC.
+*** Note: if you intend to compile an overlaid version of NetHack on an
+    MS-DOS PC, please refer to the instructions in Install.ovl.  The overlaid
+    version is currently supported only for MSC, however some notes about
+    using Turbo C++ 1.0 are included for those who are not easily discouraged.
 
 1.  Make sure all the NetHack files are in the appropriate directory structure.
     You should have a main directory with subdirectories src, include, auxil,
@@ -50,13 +51,8 @@
     random.c is only needed if you want the high-quality random number
     generation routines.
 
-    trampoli.c and ovlmgr.obj files are needed for the MS-DOS overlays.
-    You may ignore these.
-
-    TOS users should use others/lev_lex.c instead of src/lev_lex.c.
-    MS-DOS users should be able to use either, but the one in src
-    is smaller.  If you have flex or some other lex work-alike, use
-    that to produce lev_lex.c from lev_comp.l.
+    trampoli.c, ovlmgr.asm, exesmurf.c, and ovlmgr.uu files are needed for
+    the MS-DOS overlays.  You may ignore these.
 
     Obviously, TOS users don't need the MS-DOS overlay functions.
     Moreover, the GCC "curses" library has termcap routines built
@@ -71,7 +67,7 @@
 	Microsoft C 4.0 	Makefile.pc
 	Turbo C 2.0		Makefile.tcc
     OS/2:
-	Microsoft C 5.1 	Makefile.os2
+	Microsoft C 5.1 & 6.0	Makefile.os2
     TOS:
 	GCC 1.34		Makefile.st
 
@@ -191,8 +187,8 @@
 	SHELL
 	TEXTCOLOR	    1K
 
-    Using Turbo C, we eked by with just WIZARD, ZEROCOMP, BITFIELDS, ELBERETH,
-    HARD, REDO, DGK and TEXTCOLOR.
+    Using Turbo C (long ago), we eked by with just WIZARD, ZEROCOMP,
+    BITFIELDS, ELBERETH, HARD, REDO, DGK and TEXTCOLOR.
 
 5.  If you're using a compiler not in the list in step 3, you may want to look
     through system.h, in the include directory.  This file matches the return
@@ -256,7 +252,7 @@
     your game directory.  (Note:  GCC's termcap routines have built-in
     defaults, so the termcap file is not necessary with that compiler.)
 
-    To use funky graphics charaters in TOS, uudecode "atarifnt.uue" and unarc
+    To use funky graphics characters in TOS, uudecode "atarifnt.uue" and unarc
     the resulting "atarifnt.arc".  This contains a program to run that makes
     some line graphics characters available to NetHack.  To use them, uncomment
     the appropriate line in your NetHack.cnf file, and run the program before
@@ -295,14 +291,17 @@ Notes
     storage.  It is also a good idea to compile with as much free RAM as
     possible.  It may otherwise get crowded with the bigger, more complex
     source files.  (Compiler bombs with "out of heap space" or similar.)
-    If this happens, strip your configuration, zap TSR's etc.
+    If this happens, strip your configuration, zap TSR's etc.  When compiling
+    in OS/2, these troubles are mostly nonexistent and thus, people with dual
+    systems can try to cross compile for DOS in OS/2.
 
 4)  On a 286 10MHz PC you will have NetHack in about 2 - 2.5 hours.
 
-5)  Both OS/2 NetHack and the overlaid PC NetHack have been developed using
-    MSC 5.1.  MSC 6.0 is on the market, but since there hasn't been enough
-    time to fully test the game compiled with MSC 6.0, the distribution version
-    supports officially only MSC 5.1.  To compile NetHack with MSC 6.0, it may
-    be necessary to make some slight modifications to respective makefiles
-    as well as some source files.  Also, when compiling OS/2 version with MSC
-    6.0, change library "doscalls" to "os2" in Makefile.os2.
+5)  OS/2 NetHack can be compiled using either MSC 5.1 or MSC 6.00A, the
+    maintenance version of MSC 6.0.  Original version of the compiler is
+    quite buggy - don't use it if possible.  See Makefile.os2 for details.
+
+6)  The default setting of the warning flags in Makefile.st will cause
+    some spurious warnings about const variables being misused, especially
+    when making lev_comp.ttp. You can safely ignore all of these, or
+    turn the warnings off altogether.

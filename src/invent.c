@@ -14,6 +14,16 @@
 #ifdef OVL1
 static boolean FDECL(mergable,(struct obj *,struct obj *));
 static int FDECL(merged,(struct obj *,struct obj *,int));
+# ifdef WIZARD
+/* wizards can wish for venom, which will become an invisible inventory
+ * item without this.  putting it in inv_order would mean venom would
+ * suddenly become a choice for all the inventory-class commands, which
+ * would probably cause mass confusion.  the test for inventory venom
+ * is only WIZARD and not wizard because the wizard can leave venom lying
+ * around on a bones level for normal players to find.
+ */
+char venom_inv[] = { VENOM_SYM, 0 };
+# endif
 #endif /* OVL1 */
 STATIC_DCL void FDECL(assigninvlet,(struct obj *));
 STATIC_DCL struct obj *FDECL(mkgoldobj,(long));
@@ -167,7 +177,7 @@ register struct obj *obj;
 		obj->quan--;
 		obj->owt = weight(obj);
 	} else {
-		if(obj->otyp == CORPSE) food_disappears(obj);
+		if(obj->olet == FOOD_SYM) food_disappears(obj);
 		setnotworn(obj);
 		freeinv(obj);
 		delete_contents(obj);
@@ -216,7 +226,7 @@ register struct obj *obj;
 #ifdef WALKIES
 	if(obj->otyp == LEASH && obj->leashmon != 0) o_unleash(obj);
 #endif
-	if(obj->otyp == CORPSE) food_disappears(obj);
+	if(obj->olet == FOOD_SYM) food_disappears(obj);
 
 	freeobj(obj);
 	unpobj(obj);
@@ -961,7 +971,15 @@ nextclass:
 		}
 		if(!flags.invlet_constant) if(++ilet > 'z') ilet = 'A';
 	}
-	if (flags.sortpack && *++invlet) goto nextclass;
+	if (flags.sortpack) {
+		if (*++invlet) goto nextclass;
+#ifdef WIZARD
+		if (--invlet != venom_inv) {
+			invlet = venom_inv;
+			goto nextclass;
+		}
+#endif
+	}
 	any[ct] = 0;
 	cornline(2, any);
 }
@@ -1028,9 +1046,12 @@ dotypeinv()				/* free after Robert Viduya */
 	    return(0);
 	}
 
-	if((c == 'u' || c == 'U') && !unpd) {
+	if (c == 'u' || c == 'U') {
+	    if (!unpd) {
 		You("are not carrying any unpaid objects.");
 		return(0);
+	    } else
+		c = 'u';
 	}
 
 	stct = 0;
@@ -1385,10 +1406,15 @@ static const char NEARDATA *names[] = {
 #endif
 	"Rings", "Gems"};
 
+#ifdef WIZARD
+static const char NEARDATA *venom_name = "Venoms";
+#endif
+
 char *
 let_to_name(let)
 char let;
 {
+	const char *class_name;
 	const char *pos = index(obj_symbols, let);
 	/* arbitrary buffer size by Tom May (tom@uw-warp) */
 	static char NEARDATA *buf = NULL;
@@ -1401,11 +1427,20 @@ char let;
 			Boulders/Statues   +  '\0'
 			1234567890123456 = 16 + 1 = 17
 */
-	if (pos == NULL) pos = obj_symbols;
+#ifdef WIZARD
+	if (pos == NULL && let == VENOM_SYM)
+		class_name = venom_name;
+	else {
+#endif
+		if (pos == NULL) pos = obj_symbols;
+		class_name = names[pos - obj_symbols];
+#ifdef WIZARD
+	}
+#endif
 	if (HI && HE)
-	    Sprintf(buf, "%s%s%s", HI, names[pos - obj_symbols], HE);
+	    Sprintf(buf, "%s%s%s", HI, class_name, HE);
 	else
-	    Sprintf(buf, "%s", names[pos - obj_symbols]);
+	    Sprintf(buf, "%s", class_name);
 	return (buf);
 }
 

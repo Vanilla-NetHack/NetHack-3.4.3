@@ -152,16 +152,12 @@ boolean ghostly;
 	register struct monst *mtmp, *mtmp2;
 	register struct monst *first = 0;
 	int xl;
-
 	struct permonst *monbegin;
-	off_t differ;
+	boolean moved;
 
+	/* get the original base address */
 	mread(fd, (genericptr_t)&monbegin, sizeof(monbegin));
-#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4) && !defined(HPUX) && !defined(VAXC)
-	differ = (genericptr_t)(&mons[0]) - (genericptr_t)(monbegin);
-#else
-	differ = (long)(&mons[0]) - (long)(monbegin);
-#endif
+	moved = (monbegin != mons);
 
 #if defined(LINT) || defined(__GNULINT__)
 	/* suppress "used before set" warning from lint */
@@ -176,24 +172,10 @@ boolean ghostly;
 		mread(fd, (genericptr_t) mtmp, (unsigned) xl + sizeof(struct monst));
 		if(!mtmp->m_id)
 			mtmp->m_id = flags.ident++;
-#if !defined(MSDOS) && !defined(M_XENIX) && !defined(THINKC4) && !defined(HPUX) && !defined(VAXC)
-		/* ANSI type for differ is ptrdiff_t --
-		 * long may be wrong for segmented architecture --
-		 * may be better to cast pointers to (struct permonst *)
-		 * rather than (genericptr_t)
-		 * this code handles save file -- so any bug should glow
-		 * probably best not to keep lint from complaining
-		 */
-/*#ifdef LINT	/* possible compiler/hardware dependency - */
-/*		if (differ) mtmp->data = NULL;*/
-/*#else*/
-		mtmp->data = (struct permonst *)
-			((genericptr_t)mtmp->data + differ);
-/*#endif	/*LINT*/
-#else
-		mtmp->data = (struct permonst *)
-			((long) mtmp->data + differ);
-#endif
+		if (moved && mtmp->data) {
+			int offset = mtmp->data - monbegin;	/*(ptrdiff_t)*/
+			mtmp->data = mons + offset;  /* new permonst location */
+		}
 		if(mtmp->minvent)
 			mtmp->minvent = restobjchn(fd, ghostly);
 		mtmp2 = mtmp;
@@ -885,8 +867,13 @@ boolean ghostly;
 		}
 	}
 #endif
-	if(ghostly && lev > medusa_level && lev < stronghold_level &&
-						xdnstair == 0) {
+	if(ghostly && lev > medusa_level
+#ifdef STRONGHOLD
+				&& lev < stronghold_level
+#else
+				&& !Inhell
+#endif
+				&& xdnstair == 0) {
 		coord cc;
 
 		mazexy(&cc);

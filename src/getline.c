@@ -9,7 +9,7 @@
  * Some systems may have getchar() return EOF for various reasons, and
  * we should not quit before seeing at least NR_OF_EOFS consecutive EOFs.
  */
-#if defined(SYSV) || defined(DGUX)
+#if defined(SYSV) || defined(DGUX) || defined(HPUX)
 #define	NR_OF_EOFS	20
 #endif
 #ifdef MACOS
@@ -257,10 +257,20 @@ end_of_input()
 char
 readchar() {
 	register int sym;
+#ifdef UNIX
+	/* kludge alert: Some Unix variants return funny values if readchar
+	 * is called, interrupted, and then called again from done2().  There
+	 * is non-reentrant code in the internal _filbuf() routine, called by
+	 * getc().
+	 */
+	static int nesting = 0;
+	char nestbuf;
+#endif
 
 	(void) fflush(stdout);
 #ifdef UNIX
-	if((sym = Getchar()) == EOF)
+	if((sym = ((++nesting == 1) ? Getchar() :
+	    (read(fileno(stdin),&nestbuf,1) == 1 ? (int)nestbuf : EOF))) == EOF)
 # ifdef NR_OF_EOFS
 	{ /*
 	   * Some SYSV systems seem to return EOFs for various reasons
@@ -281,6 +291,9 @@ readchar() {
 #else
 	sym = Getchar();
 #endif /* UNIX */
+#ifdef UNIX
+	nesting--;
+#endif
 	if(flags.toplin == 1)
 		flags.toplin = 2;
 	return((char) sym);

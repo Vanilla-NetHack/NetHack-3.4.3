@@ -23,9 +23,9 @@
 #undef off_t
 #ifndef VAXC
 #include <sys/stat.h>
-#else   VAXC
+#else
 #include <stat.h>
-#endif  VAXC
+#endif
 #include <ctype.h>
 #ifdef no_c$$translate
 #include <errno.h>
@@ -106,7 +106,7 @@ midnight()
 static struct stat buf, hbuf;
 
 void
-gethdate(name) char *name; {
+gethdate(name) const char *name; {
 	register char *np;
 
 	if(stat(name, &hbuf))
@@ -351,8 +351,101 @@ vms_getuid()
     return (getgid() << 16) | getuid();
 }
 
+/*------*/
+#ifndef LNM$_STRING
+#include <lnmdef.h>	/* logical name definitions */
+#endif
+#define ENVSIZ LNM$C_NAMLENGTH  /*255*/
+
+#define ENV_USR 0	/* user-mode */
+#define ENV_SUP 1	/* supervisor-mode */
+#define ENV_JOB 2	/* job-wide entry */
+
+/* vms_define() - assign a value to a logical name */
+int
+vms_define(name, value, flag)
+const char *name;
+const char *value;
+int flag;
+{
+    struct dsc { int len; const char *adr; };	/* string descriptor */
+    struct itm3 { short buflen, itmcode; const char *bufadr; short *retlen; };
+    static struct itm3 itm_lst[] = { {0,LNM$_STRING,0,0}, {0,0} };
+    struct dsc nam_dsc, val_dsc, tbl_dsc;
+    unsigned long result, SYS$CRELNM(), LIB$SET_LOGICAL();
+
+    /* set up string descriptors */
+    nam_dsc.len = strlen( nam_dsc.adr = name );
+    val_dsc.len = strlen( val_dsc.adr = value );
+    tbl_dsc.len = strlen( tbl_dsc.adr = "LNM$PROCESS" );
+
+    switch (flag) {
+	case ENV_JOB:	/* job logical name */
+		tbl_dsc.len = strlen( tbl_dsc.adr = "LNM$JOB" );
+	    /*FALLTHRU*/
+	case ENV_SUP:	/* supervisor-mode process logical name */
+		result = LIB$SET_LOGICAL(&nam_dsc, &val_dsc, &tbl_dsc);
+	    break;
+	case ENV_USR:	/* user-mode process logical name */
+		itm_lst[0].buflen = val_dsc.len;
+		itm_lst[0].bufadr = val_dsc.adr;
+		result = SYS$CRELNM(0, &tbl_dsc, &nam_dsc, 0, itm_lst);
+	    break;
+	default:	/*[ bad input ]*/
+		result = 0;
+	    break;
+    }
+    result &= 1;	/* odd => success (== 1), even => failure (== 0) */
+    return !result;	/* 0 == success, 1 == failure */
+}
+
+/* vms_putenv() - create or modify an environment value */
+int
+vms_putenv(string)
+const char *string;
+{
+    char name[ENVSIZ+1], value[ENVSIZ+1], *p;   /* [255+1] */
+
+    p = strchr(string, '=');
+    if (p > string && p < string + sizeof name && strlen(p+1) < sizeof value) {
+	(void)strncpy(name, string, p - string),  name[p - string] = '\0';
+	(void)strcpy(value, p+1);
+	return vms_define(name, value, ENV_USR);
+    } else
+	return 1;	/* failure */
+}
+
+/*
+   Figure out whether the termcap code will find a termcap file; if not,
+   try to help it out.  This avoids modifying the GNU termcap sources and
+   can simplify configuration for sites which don't already use termcap.
+ */
+#define GNU_DEFAULT_TERMCAP "emacs_library:[etc]termcap.dat"
+#define NETHACK_DEF_TERMCAP "hackdir:termcap"
+
+const char *
+verify_termcap()	/* called from startup(src/termcap.c) */
+{
+    struct stat dummy;
+    char *tc = getenv("TERMCAP");
+    if (tc) return (const char *)0;	/* no fixups needed */
+    if (!tc && !stat(GNU_DEFAULT_TERMCAP, &dummy)) tc = GNU_DEFAULT_TERMCAP;
+    if (!tc && !stat(NETHACK_DEF_TERMCAP, &dummy)) tc = NETHACK_DEF_TERMCAP;
+    if (!tc && !stat("termcap", &dummy))  tc = "termcap";  /* current dir */
+    if (!tc && !stat("$TERMCAP", &dummy)) tc = "$TERMCAP"; /* alt environ */
+    if (tc) {
+	/* putenv(strcat(strcpy(buffer,"TERMCAP="),tc)); */
+	vms_define("TERMCAP", tc, ENV_USR);
+    } else {
+	/* Perhaps later we'll construct a termcap entry string and return that
+	   when no file is found; for now, just return NULL unconditionally. */
+    }
+    return (const char *)0;
+}
+/*------*/
+
 #if defined(CHDIR) || defined(SHELL)
-unsigned int oprv[2];
+static unsigned long oprv[2];
 
 void
 privoff()
@@ -380,8 +473,8 @@ dosh()
 	int status;
 
 	settty((char *) NULL);	/* also calls end_screen() */
-	(void) signal(SIGINT,SIG_DFL);
 	(void) signal(SIGQUIT,SIG_IGN);
+	(void) signal(SIGINT,SIG_DFL);
 	if (!dosh_pid || !((status = LIB$ATTACH(&dosh_pid)) & 1))
 	{
 #ifdef CHDIR
@@ -403,7 +496,7 @@ dosh()
 #endif
 	docrt();
 	if (!(status & 1))
-	    pline("Spawn failed.  Try again.");
+	    pline("Spawn failed.  (%%x%08X) ", status);
 	return 0;
 }
 #endif

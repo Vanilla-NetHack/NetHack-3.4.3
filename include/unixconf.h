@@ -37,6 +37,8 @@
 /* #define UNIXPC	/* use in addition to SYSV for AT&T 7300/3B1 */
 			/* also note that the stock cpp qualifies as a
 			   STUPID_CPP for config.h */
+/* #define AIX_31	/* In AIX 3.1 (IBM RS/6000) use BSD ioctl's to gain
+			   job control (note that AIX is SYSV otherwise) */
 
 /* #define PYRAMID_BUG 	/* avoid a bug on the Pyramid */
 /* #define APOLLO	/* same for the Apollo */
@@ -148,10 +150,11 @@
 /*
  * BSD/ULTRIX systems are normally the only ones that can suspend processes.
  * Suspending NetHack processes cleanly should be easy to add to other systems
- * that have SIGTSTP.  Currently the only such system known to work is HPUX;
- * other systems will probably require tweaks to unixtty.c and ioctl.c.
+ * that have SIGTSTP.  Currently the only such systems known to work are HPUX
+ * and AIX 3.1; other systems will probably require tweaks to unixtty.c and
+ * ioctl.c.
  */
-#if defined(BSD) || defined(ULTRIX) || defined (HPUX)
+#if defined(BSD) || defined(ULTRIX) || defined (HPUX) || defined(AIX_31)
 #define	SUSPEND		/* let ^Z suspend the game */
 #endif
 

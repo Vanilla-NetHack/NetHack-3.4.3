@@ -1,12 +1,14 @@
-;	SCCS Id: @(#)ovlmgr.asm 		90/05/27
-;  Copyright (c) 1989, 1990 Pierre Martineau and Stephen Spackman. All Rights Reserved.
+;	SCCS Id: @(#)ovlmgr.asm 		91/02/01
+;  Copyright (c) 1989, 1990, 1991 Pierre Martineau and Stephen Spackman. All Rights Reserved.
 ;  This product may be freely redistributed.  See NetHack license for details.
 
-VERSION 	EQU	3081h
+VERSION 	EQU	30a0h
 
 		PAGE	57,132
 		TITLE	'DOS Overlay Manager for MSC 5.1+'
-		SUBTTL	'Copyright (c) 1989, 1990 Pierre Martineau and Stephen Spackman. All Rights Reserved.'
+		SUBTTL	'Copyright (c) 1989, 1990, 1991 Pierre Martineau and Stephen Spackman. All Rights Reserved.'
+
+; Multiple overlay file support for v30a0 by Norm Meluch with some input from Stephen.
 
 ; acknowledgements:   - Many thanks to Norm Meluch for his invaluable help
 ;		      - No thanks to Microsoft
@@ -20,6 +22,12 @@ VERSION 	EQU	3081h
 ;		      - the stack is preserved
 ;		      - re-entrancy is not required
 
+; options:	      /Di386	use 80386-specific opcodes
+;				(faster, but no good for weaker machines)
+;		      /DNOEMS	omit EMS support
+;				(needed if application uses EMS)
+;		      /DNOSPLIT	omit support for external .OVL files
+
 DOSALLOC	EQU	48h			; memory allocation
 DOSFREE 	EQU	49h			; free allocated memory
 DOSREALLOC	EQU	4ah			; modify memory block
@@ -27,6 +35,10 @@ DOSREAD 	EQU	3fh			; read bytes from handle
 DOSSEEK 	EQU	42h			; logical handle seek
 DOSOPEN 	EQU	3dh			; open handle
 DOSCLOSE	EQU	3eh			; close handle
+DOSSETDTA	EQU	1ah			; Set Data transfer area
+DOSGETDTA	EQU	2fh			; Get Data transfer area
+DOSSEARCH	EQU	4eh			; Search for 1st file match
+DOSNEXTFILE	EQU	4fh			; Search for next file match
 DOSEXEC 	EQU	4bh			; exec child process
 DOSPUTC 	EQU	02h			; print a char
 DOSVERSION	EQU	30h			; get version number
@@ -41,6 +53,9 @@ EMMTOTALS	EQU	42h			; get EMM pages available
 EMMALLOC	EQU	43h			; allocate EMM pages
 EMMMAP		EQU	44h			; map EMM pages
 EMMFREE 	EQU	45h			; free EMM pages
+MAXNAMESIZE	EQU	50h			; max path name size
+MAXFILES	EQU	0Eh			; max # of *.OVL files
+EXESIGNUM	EQU	5a4dh			; Exe header signature
 CR		EQU	0dh
 LF		EQU	0ah
 ESCAPE		EQU	1bh
@@ -57,6 +72,9 @@ VICTIMERR	EQU	5
 RELERR		EQU	6
 EMSERR		EQU	7
 HDRERR		EQU	8
+NAMERR		EQU	9
+OVLERR		EQU	10
+NOHDRERR	EQU	11
 
 ; The following EXTRNs are supplied by the linker
 
@@ -84,7 +102,9 @@ popa		MACRO				; pop all registers
 		ENDM
 ENDIF
 
-ovlflgrec	RECORD	locked:1=0,ems:1=0,loaded:1=0 ; overlay flags
+ovlflgrec	RECORD	locked:1=0,ems:1=0,loaded:1=0,file:4=0,pad:1 ; overlay flags
+		; "file" is the overlay file this overlay is in; 0 is the .EXE
+		; itself. Otherwise, the numbers are arbitrary.
 
 ; This is a dirty hack. What we need is a virtual segment that will be built
 ; by the (our) loader in multiple copies, one per overlay. Unfortunately, this
@@ -107,7 +127,7 @@ ovltbl		SEGMENT PARA AT FAERIE		; Dummy segment definition for overlay table
 
 ; NOTE: This segment definition MUST be exactly 16 bytes long
 
-ovlflg		ovlflgrec	<0,0,0> 	; overlay flags
+ovlflg		ovlflgrec	<0,0,0,0,0> 	; overlay flags
 ovlinvcnt	DB	?			; invocation count
 ovlmemblk	DW	?			; ^ to allocated memory block
 ovllrudat	DD	?			; misc lru data (pseudo time stamp)
@@ -127,8 +147,19 @@ OVLSEGSIZ	EQU	PARSIZ			; this had better be true!!! (16 bytes)
 
 ovltbl		ENDS
 
+DTASTRUC	STRUC				; internal DTA for ovlmgr
+		DB	21 DUP (0)
+file_attr	DB	0
+file_time	DW	0
+file_date	DW	0
+file_size	DD	0
+file_name	DB	9 DUP (0)
+file_ext	DB	3 DUP (0)
+dtapad		DB	86 DUP (0)		; Pad to 128 bytes
+DTASTRUC	ENDS
+
 EXEHDR		STRUC				; structure of an EXE header
-exesign 	DW	5a4dh			; signature
+exesign 	DW	EXESIGNUM		; signature
 exelstpgesiz	DW	?			; last page size (512 byte pages)
 exesiz		DW	?			; total pages (including partial last page)
 relocitems	DW	?			; number of relocation entries
@@ -176,7 +207,7 @@ ENDIF
 dsreg		DW	?			; temp save area
 ssreg		DW	?
 spreg		DW	?
-ovlexefilhdl	DW	-1			; always-open file handle of our .EXE
+ovlfilhdl	DW	MAXFILES+1 DUP (-1)  	; always-open file handles for .EXE, .OVL
 ovltblbse	DW	-1			; segment of first overlay descriptor
 memblks 	DW	16 DUP (-1)		; allocated memory blocks
 memblk1st	DW	?			; first memory block
@@ -196,18 +227,24 @@ intnum		DW	?			; ovlmgr int number
 hdr		EXEHDR	<>			; EXE header work area
 		DB	512-TYPE EXEHDR DUP (?) ; exe hdr buffer for relocations
 EXEHDRTMPSIZ	EQU	$ - hdr 		; size of temp reloc buffer
+filestring	DB	MAXNAMESIZE DUP (0)	; string space for file specs
+pathlen		DW	?			; path length of file spec
+namelen		DW	?			; length of file names
+ovldta		DTASTRUC <>			; DTA for ovlmgr use
+dtaseg		DW	?			; DTA segment for program
+dtaoffset	DW	?			; DTA offset for program
 errortbl	DW	-1			; error message pointers
 		DW	OFFSET baddos
 		DW	OFFSET nofile
 		DW	OFFSET noroom
-		DW	OFFSET nofile
+		DW	OFFSET badio
 		DW	OFFSET nocore
 		DW	OFFSET nocore
 		DW	OFFSET badems
-		DW	OFFSET nofile
-		DW	OFFSET unknown
-		DW	OFFSET unknown
-		DW	OFFSET unknown
+		DW	OFFSET badhdr
+		DW	OFFSET badnam
+		DW	OFFSET noovl
+		DW	OFFSET nohdr
 		DW	OFFSET unknown
 		DW	OFFSET unknown
 		DW	OFFSET unknown
@@ -222,15 +259,21 @@ memavl		DB	'Conventional memory available: $'
 paragraphs	DB	'H paragraphs.',CR,LF,'$'
 emsavl		DB	'EMS memory available: $'
 pages		DB	'H 16K-pages.',CR,LF,'$'
-noroom		DB	'Not enough free memory left to run this program.$'
-nocore		DB	'Internal memory allocation failure.$'
-nofile		DB	'Inaccessible EXE file. Can',27,'t load overlays.$'
 baddos		DB	'Incorrect DOS version. Must be 3.00 or later.$'
+nofile		DB	'Inaccessible EXE file. Can',39,'t load overlays.$'
+noroom		DB	'Not enough free memory left to run this program.$'
+badio		DB	'File I/O error.$'
+nocore		DB	'Internal memory allocation failure.$'
 badems		DB	'EMS memory manager error.$'
+badhdr		DB	'Executable or overlay header missing or damaged.$'
+badnam		DB	'Unable to resolve overlay file names.$'
+noovl		DB	'Inaccessible OVL file. Can',39,'t load overlays.$'
+nohdr		DB	'Incomplete executable.  OVL files missing?$'
 unknown 	DB	'Unknown error!$'
 msghead 	DB	ESCAPE,'[0m',ESCAPE,'[K',CR,LF,ESCAPE,'[K',ESCAPE,'[1mOVLMGR:',ESCAPE,'[0m $'
 diag		DB	ESCAPE,'[K',CR,LF,ESCAPE,'[K','        ($'
 msgtail 	DB	ESCAPE,'[K',CR,LF,ESCAPE,'[K',BELL,'$'
+ovlext		DB	'?.OVL',0
 
 ;-------------------------------------------------------------------------------
 
@@ -247,6 +290,7 @@ $$OVLINIT	PROC	FAR			; Init entry point
 		push	bp
 		push	ds
 		push	es			; save the world
+
 		cld
 		mov	ax,ds			; get our psp
 		add	ax,10h
@@ -265,15 +309,8 @@ envloop:					; search for end of environment
 		cmp	WORD PTR [si],0
 		jnz	envloop
 		add	si,4			; point to EXE filename
-		mov	al,0			; access code
-		mov	ah,DOSOPEN
-		mov	dx,si
-		int	DOS			; open EXE
-		jnc	dontdie
-		mov	al,FILEERR		; can't open file!
-		jmp	putserr
-dontdie:
-		mov	ovlexefilhdl,ax 	; save handle
+
+		call	openfiles		; Search & open overlay files
 IFNDEF NOEMS
 chkems:
 		mov	ah,DOSGETVEC
@@ -316,8 +353,23 @@ ENDIF
 gotovlram:
 		mov	ovltblbse,ax		; overlay descriptor table begins at start of memory block
 
-		push	cs
-		pop	ds
+		mov	cx,ovlcnt
+zeromem:
+		mov	es,ax
+		mov	es:ovlflg,0		; initialise ovl flags
+		mov	es:ovlinvcnt,0		; initialise invocation count
+		mov	es:ovlmemblk,0
+		mov	WORD PTR es:ovllrudat,0	 ; initialise ovl lru
+		mov	WORD PTR es:ovllrudat+2,0
+		mov	es:ovlemshdl,-1
+		mov	es:ovlfiloff,0		; initialize file offset
+		mov	es:ovlsiz,0		; initialize overlay size
+		mov	es:ovlhdrsiz,0
+		inc	ax
+		loop	zeromem		
+
+		mov	ax,cs
+		mov	ds,ax
 IFDEF DEBUG
 IFDEF i386
 		mov	ah,print
@@ -357,18 +409,18 @@ ENDIF
 
 		xor	bp,bp
 		xor	di,di
-		xor	si,si
+		xor	si,si			; file handle loop ctr
 filsegtbllpp:					; initialise ovl table
 		call	gethdr			; get an EXE header
+
 		mov	ax,ovltblbse
 		add	ax,hdr.exeovlnum
 		mov	es,ax			; ^ to ovl table entry
-		xor	ax,ax
-		mov	WORD PTR ovllrudat,ax	; initialise ovl lru
-		mov	WORD PTR ovllrudat+2,ax
-		mov	ovlflg,al		; initialise ovl flags
-		mov	ovlinvcnt,al		; initialise invocation count
-		mov	ovlemshdl,-1
+IFNDEF NOSPLIT
+		mov	cx,si			; set file # in ovlflg
+		shl	cx,1
+		mov	ovlflg,cl
+ENDIF
 		mov	ax,hdr.exesiz
 		shl	ax,1
 		shl	ax,1
@@ -412,12 +464,27 @@ notlargest:
 		mov	al,0
 		mov	ah,DOSSEEK		; seek to next ovl
 		int	DOS
-		mov	ax,ovlcnt
+
+		mov	cx,ovlcnt		; check if all overlays found
+		mov	ax,ovltblbse
+		dec	cx			; ovlcnt includes root
+		add	ax,cx
+ovloop:
+		mov	es,ax
+IFNDEF NOSPLIT
+		mov	bl,ovlflg
+		and	bx,MASK file
+
+		cmp	bx,0			; if file # is 0
+		jne	again
+ENDIF
+		cmp	ovlfiloff,0		; and offset is 0
+		jne	again
+		jmp	filsegtbllpp		; then we're still looking
+again:
 		dec	ax
-		cmp	ax,hdr.exeovlnum	; all overlays done?
-		jz	makmemblk
-		jmp	filsegtbllpp		; Nope, go for more.
-makmemblk:
+		loop	ovloop
+
 		ASSUME	ES:nothing		; prepare first memory block
 
 		mov	ax,ovlrootcode		; OVERLAY_AREA segment
@@ -711,7 +778,9 @@ gleaner:
 		adc	cx,0			; position to code
 		mov	ah,DOSSEEK		; lseek to code
 		mov	al,0			; from beginning of file
-		mov	bx,ovlexefilhdl 	; never closing handle
+		mov	bl,ovlflg
+		and	bx,MASK file
+		mov	bx,ovlfilhdl[bx] 	; never closing handle
 		int	DOS
 		jc	burnhead		; oops!
 		xor	dx,dx			; buf = ds:0
@@ -727,7 +796,9 @@ gleaner:
 		pop	cx			; position of hdr
 		mov	ah,DOSSEEK		; lseek to hdr
 		mov	al,0			; from beginning of file
-		mov	bx,ovlexefilhdl 	; never closing handle
+		mov	bl,ovlflg
+		and	bx,MASK file
+		mov	bx,ovlfilhdl[bx] 	; never closing handle
 		int	DOS
 		jc	burnhead		; oops!
 		mov	cx,EXEHDRTMPSIZ 	; reloc buffer size
@@ -771,7 +842,7 @@ loadoverlay	ENDP
 
 ovlrlc		PROC	NEAR			; ds:0 -> the overlay to relocate
 
-		ASSUME	DS:NOTHING,ES:NOTHING
+		ASSUME	DS:NOTHING,ES:ovltbl
 
 		mov	si,OFFSET hdr
 		mov	bp,si
@@ -808,8 +879,8 @@ getsegmenth:
 		inc	si
 		add	ax,pspadd		; now it is psp relative
 		add	ax,di			; and now it is relative to the actual load address
-		mov	es,ax
-		mov	ax,es:[bx]		; pickup item to relocate
+		mov	ds,ax
+		mov	ax,[bx]			; pickup item to relocate
 		add	ax,pspadd		; make it psp relative
 		cmp	ax,ovlrootcode		; is it below the OVERLAY_AREA?
 		jc	reloccomputed		; yup. it's relocated
@@ -817,7 +888,7 @@ getsegmenth:
 		jnc	reloccomputed		; yup. it's relocated
 		add	ax,di			; it's in OVERLAY_AREA, this one's ours.
 reloccomputed:
-		mov	es:[bx],ax		; RAM it home!?!
+		mov	[bx],ax			; RAM it home!?!
 		loop	dorelocs		; what goes around, comes around.
 relocdone:	ret
 
@@ -827,7 +898,7 @@ ovlrlc		ENDP
 
 getnxtreloc	PROC	NEAR
 
-		ASSUME	DS:NOTHING,ES:NOTHING
+		ASSUME	DS:NOTHING,ES:ovltbl
 
 		push	bx
 		push	cx
@@ -839,7 +910,9 @@ getnxtreloc	PROC	NEAR
 		mov	dx,OFFSET hdr
 		mov	ax,cs
 		mov	ds,ax
-		mov	bx,ovlexefilhdl 	; never closing handle
+		mov	bl,ovlflg
+		and	bx,MASK file
+		mov	bx,ovlfilhdl[bx] 	; never closing handle
 		mov	ah,DOSREAD		; prevent random DOS behaviour
 		int	DOS			; read in header
 		jnc	nxtrelocok
@@ -1122,7 +1195,7 @@ dvartgotblk:
 		mov	ax,ds			; this is it!
 		mov	cx,bx
 		sub	cx,ax			; # of paragraphs between start of memory to release and mem blk
-		jz	nosplit
+		jz	unsplit
 		push	es
 		call	splitblk
 		or	es:memblkflg,MASK_used	; set high block used
@@ -1130,7 +1203,7 @@ dvartgotblk:
 		mov	ax,es
 		mov	ds,ax
 		pop	es
-nosplit:
+unsplit:
 		mov	cx,es:ovlsiz
 		add	cx,MEMCTLBLKSIZ 	; paragraphs needed to load ovl
 		jmp	splitblklow		; split remaining block
@@ -1620,26 +1693,191 @@ gethdr		PROC	NEAR			; read EXE header from handle
 
 		ASSUME	DS:NOTHING,ES:NOTHING
 
-		push	cx
-		push	ds
-		mov	ax,cs
-		mov	ds,ax
 		mov	dx,OFFSET hdr		; a place to put it
-		mov	bx,ovlexefilhdl 	; the file handle
+		mov	bx,si
+		shl	bx,1
+		mov	bx,ovlfilhdl[bx] 	; the file handle
+readagain:
 		mov	cx,TYPE EXEHDR		; header size in bytes
 		mov	ah,DOSREAD
 		int	DOS			; read from file
-		jc	exegone 		; oops
+		jc	exegone 		; oops?
 		cmp	ax,cx			; got correct number of bytes?
-		jnz	exegone 		; nope
-		pop	ds
-		pop	cx
+		je	gothdr
+IFNDEF NOSPLIT
+		cmp	ax,0			; Anything?
+		je	gotonxtfil
+ENDIF
+		jmp	exerotten
+IFNDEF NOSPLIT
+gotonxtfil:
+		inc	si
+		cmp	si,MAXFILES+1
+		je	exegone			; We're out of files!
+		mov	bx,si
+		shl	bx,1
+		cmp	ovlfilhdl[bx],-1	; Any more files?
+		je	gotonxtfil		; not here.
+
+		mov	bx,ovlfilhdl[bx]	; Slide in new handle
+		xor	bp,bp			; reset file offset
+		jmp	readagain
+ENDIF
+gothdr:
+		cmp	hdr.exesign,EXESIGNUM	; sanity check
+		jne	exerotten
+
 		ret				; Wow, it worked!
 exegone:
-		mov	al,HDRERR		; You lose!
-		jmp	putserr
+		mov	al,NOHDRERR		; missing overlays!
+		jmp	putserr			; You lose!
+IFNDEF NOSPLIT
+exerotten:
+		mov	al,HDRERR		; corruption!
+		jmp	putserr			; You lose!
+ENDIF
 
 gethdr		ENDP
+
+;-------------------------------------------------------------------------------
+
+openfiles	PROC	NEAR			; Find our cohorts in crime
+
+		push	es
+IFNDEF NOSPLIT
+		mov	ah,DOSGETDTA		; Pick up DTA
+		int	DOS			; and
+		mov	dtaseg,es		; store
+		mov	dtaoffset,bx		; it
+
+		push	ds
+		mov	dx,OFFSET ovldta	; Set new DTA for file search
+		mov	ax,cs
+		mov	ds,ax			; point to the right seg
+		mov	ah,DOSSETDTA
+		int	DOS
+		pop	ds			; set this back for upcoming lodsb
+ENDIF
+		mov	cx,MAXNAMESIZE/2
+		mov	bx,cs
+		mov	es,bx
+		mov	di, OFFSET filestring
+
+		rep     movsw	    		; load path from si to di
+IFNDEF NOSPLIT
+		mov	di, OFFSET filestring
+		mov	al,0
+		mov	cx,MAXNAMESIZE
+		cld
+		repne	scasb			; search null for end of string
+
+		sub	cx,MAXNAMESIZE
+		neg	cx
+		mov	bx,cx
+
+		cmp	cx,MAXNAMESIZE
+		je	searchslash
+
+		dec	bx			; keep string length
+		dec	di			; cause were past null now
+
+		cmp	bx,7
+		jle	patherr			; "C:\.EXE" = 7
+searchslash:
+		mov	al,'\'
+		std
+		repne	scasb			; search back for '\'
+		cld
+
+		mov	dx,bx
+		sub	dx,cx			; keep file name length
+		dec	dx
+
+		mov	cx,0			; reset for upcoming loop
+		mov	pathlen,bx		; hold these for recall
+		mov	namelen,dx
+		cmp	dx,12			; "LONGNAME.EXE" = 12
+		jle	openroot		; Path name too long?
+patherr:
+		mov	al,NAMERR		; real problems here.
+		jmp	putserr
+openroot:
+ENDIF
+		mov	ax,cs
+		mov	ds,ax			; set ds to code
+
+		mov	dx, OFFSET filestring	; open root code
+		mov	al,0			; access code
+		mov	ah,DOSOPEN
+		int	DOS			; open sez me
+		jnc	dontdie
+
+		mov	al,FILEERR		; can't open root
+		jmp	putserr
+dontdie:
+		mov	ovlfilhdl[0],ax		; save handle in array
+IFNDEF NOSPLIT
+		cmp	namelen,11		; Max sized exe name (8.3)?
+		jg	bigfilename		; if not
+		inc	pathlen			; add one to path length
+		inc	namelen
+bigfilename:
+		mov	di,OFFSET filestring	; es is still code
+		add	di,pathlen
+		sub	di,5			; append
+		mov	si,OFFSET ovlext	; wildcard extension
+		mov	cx,6			; and null
+		rep	movsb			; to filestring
+
+		mov	cx,0			; Match "normal" files
+		mov	dx,OFFSET filestring
+		mov	ah,DOSSEARCH
+		int	DOS			; Set DTA with Wildcard.
+		jc	aok			; Not a single match
+		mov	cx,MAXFILES		; set upcoming loop
+		mov	dx,namelen
+		sub	pathlen,dx		; shorten absolute path
+openloop:
+		push	cx
+		mov	bx,pathlen
+		mov	di,OFFSET filestring	; es is still in code
+		add	di,bx
+		mov	si,OFFSET ovldta.file_name
+		mov	cx,namelen 		; since this *should* be
+		rep	movsb
+		pop	cx
+
+		mov	dx,OFFSET filestring	; path to overlay file
+		mov	al,0			; access code
+		mov	ah,DOSOPEN
+		int	DOS			; open overlay file
+		jnc	dontdie2
+fileopenerr:
+		call	itoa
+
+		mov	al,OVLERR		; can't open file!
+		jmp	putserr
+dontdie2:
+		mov	bx,cx			; put file number in bx
+		shl	bx,1			; 2 * bx for array index
+		mov	ovlfilhdl[bx],ax	; save handle in array
+
+		mov	ah,DOSNEXTFILE		; Look for more files
+		int	DOS
+		jc	aok
+
+		loop	openloop		; open only 15 overlays
+aok:
+		mov	dx,dtaoffset		; Time to unset DTA
+		mov	ds,dtaseg
+		mov	ah,DOSSETDTA
+		int	DOS
+ENDIF
+		pop	es
+
+		ret
+
+openfiles	ENDP
 
 ;-------------------------------------------------------------------------------
 
@@ -1739,12 +1977,24 @@ nxtemsmemlp:
 		add	si,2
 		loop	freeemsmemlp
 closefile:
-		mov	bx,ovlexefilhdl 	; get file handle
+IFNDEF NOSPLIT
+		mov	cx,MAXFILES+1
+nextfile:
+		mov	bx,cx
+		dec	bx
+		shl	bx,1
+		mov	bx,ovlfilhdl[bx] 	; get file handle
+ELSE
+		mov	bx,ovlfilhdl[0]
+ENDIF
 		cmp	bx,-1			; was the file ever opened?
 		jz	byebye			; nope
 		mov	ah,DOSCLOSE		; close it
 		int	DOS
 byebye:
+IFNDEF NOSPLIT
+		loop	nextfile
+ENDIF
 		pop	ax			; return code in al
 		mov	ah,TERMINATE
 		int	DOS			; terminate this process
@@ -1782,15 +2032,19 @@ putbyte 	ENDP
 
 nibble		PROC	NEAR
 
+		push	ax
 		and	al,0fh
 		add	al,30h
 		cmp	al,3ah
 		jc	nibok
 		add	al,7
 nibok:
+		push	dx
 		mov	dl,al
 		mov	ah,DOSPUTC
 		int	DOS
+		pop	dx
+		pop	ax
 		ret
 
 nibble		ENDP

@@ -665,6 +665,7 @@ hitmu(mtmp, mattk)
 #  ifdef POLYSELF
 						&& !resists_drli(uasmon)
 #  endif
+						&& !defends(AD_DRLI, uwep)
 									) {
 			    if (Blind)
 				You("feel an unholy blade drain your life!");

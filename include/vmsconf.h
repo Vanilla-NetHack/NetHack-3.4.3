@@ -42,25 +42,40 @@
 # define WIZARD_NAME Local_WIZARD
 #endif
 
+/* filenames require punctuation to avoid redirection via logical names */
 #undef RECORD
-#define RECORD "record;1"
+#define RECORD	"record;1"	/* scoreboard file (retains high scores) */
+#undef LOGFILE
+#define LOGFILE	"logfile;0"	/* optional file (records all games) */
 
+#define HLOCK	"perm;1"	/* an empty file used for locking purposes */
+#define LLOCK	"perm.lock;1"	/* temporary link to previous */
+
+/* want compression--for level & save files--performed within NetHack itself */
 #ifdef COMPRESS
 # undef COMPRESS
 #endif
-#ifdef ZEROCOMP
-# undef ZEROCOMP
+#ifndef ZEROCOMP
+# define ZEROCOMP
 #endif
+
+/*
+ * If nethack.exe will be installed with privilege so that the playground
+ * won't need to be left unprotected, define SECURE to suppress a couple
+ * of file protection fixups (protection of bones files and ownership of
+ * save files).
+ */
+/* #define SECURE /**/
 
 /*
  * If you define MAIL, then the player will be notified of new broadcasts
  * when they arrive.
  */
-#define	MAIL
+#define MAIL
 
-#define RANDOM          /* use others/random.c instead of vaxcrtl rand/srand */
+#define RANDOM		/* use others/random.c instead of vaxcrtl rand/srand */
 
-#define	FCMASK	0660	/* file creation mask */
+#define FCMASK	0660	/* file creation mask */
 
 /* vaxcrtl object library is not available on MicroVMS (4.4 thru 4.6(.7?))
    unless it's retreived from a full VMS system or leftover from a really
@@ -95,10 +110,14 @@ sys$share:vaxcrtl/shareable
 #endif
 
 #include <time.h>
+#ifndef __GNUC__
 #include <file.h>
-
-#define	HLOCK	"perm;1"	/* an empty file used for locking purposes */
-#define LLOCK	"safelock;1"	/* link to previous */
+#else	/* values needed from missing include file */
+# define O_RDONLY 0
+# define O_WRONLY 1
+# define O_RDWR   2
+# define O_CREAT 0x200
+#endif /* __GNUC__ */
 
 #ifndef REDO
 # define Getchar vms_getchar

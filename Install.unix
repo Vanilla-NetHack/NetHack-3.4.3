@@ -82,7 +82,7 @@ Notes:
     files often produces amusing but useless confusions on the game's part.)
 
 5.  Xenix/286's lex generates a faulty lexical analyser from lev_comp.l.
-    The beta-release of flex 2.1 (avaliable from uunet, osu-cis,
+    The beta-release of flex 2.1 (available from uunet, osu-cis,
     prep.ai.mit.edu, etc.) can be used to generate the lexer.
     The only change to flex is to change "#define yyleng (yy_cp - yy_bp)"
     to "#define yyleng (int)(yy_cp - yy_bp)" in flex.skel.
@@ -96,8 +96,8 @@ Notes:
 7.  If you are trying to compile NetHack on an AT&T 3B that is running an
     OS earlier than SVR3, you are likely to have problems with overflowing
     symbol tables.  This can be worked around by editing the source Makefile
-    to make the Sys.3B2 target work more like the SysV-AT target, adding
-    -DDUMB to CFLAGS and DUMB.Setup to the Sys.3B2 dependency line.  The
+    to make the Sys3B2 target work more like the SysV-AT target, adding
+    -DDUMB to CFLAGS and DUMB.Setup to the Sys3B2 dependency line.  The
     compiler provided with later versions of the OS has a large enough
     symbol table that it does not need this workaround.
 
@@ -105,5 +105,14 @@ Notes:
     character, and then either hangs or gets a segmentation fault, you
     should try changing the schar and uchar definitions in config.h to
     short ints.  This problem is known to occur on the AT&T 3B series,
-    Silicon Graphics Irises, and IBM PC/RT's running AIX, and may occur
-    on other computers as well.
+    Silicon Graphics Irises, and IBM systems (PC/RT & RS/6000) running AIX,
+    and may occur on other computers as well.
+
+9.  Under SCO UNIX, you may have all sorts of complaints about
+    include/obj.h.  Go to the file and uncomment the marked line, working
+    around the fact that SCO's system include files preempt a major
+    NetHack structure name.  Also, there are difficulties with SCO's cc
+    that thus far have been solved only by changing compilers; one report
+    says gcc-NetHack works, and another says rcc-NetHack can be made to
+    work by undef'ing __STDC__, applying note 8, and compiling with -tinfo
+    and -xenix.

@@ -333,6 +333,17 @@ again:
 	bflush(fd);
 #endif
 	(void) close(fd);
+#if defined(VMS) && !defined(SECURE)
+	/*
+	   Make sure the save file is owned by the current process.  That's
+	   the default for non-privileged users, but for priv'd users the
+	   file will be owned by the directory's owner instead of the user.
+	 */
+# ifdef getuid	/*(see vmsunix.c)*/
+#  undef getuid
+# endif
+	(void) chown(SAVEF, getuid(), getgid());
+#endif /* VMS && !SECURE */
 	glo(dlevel);
 	(void) unlink(lock);	/* get rid of current level --jgm */
 	glo(0);

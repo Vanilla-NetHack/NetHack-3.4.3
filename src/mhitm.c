@@ -274,31 +274,32 @@ gulpmm(magr, mdef, mattk)
 
 	mx = magr->mx;
 	my = magr->my;
-	 /* move over top of the defender */
+	/* move over top of the defender */
 	if(cansee(mdef->mx, mdef->my))	unpmon(mdef);
 	if(cansee(magr->mx, magr->my))	unpmon(magr);
-	magr->mx = mdef->mx;
-	magr->my = mdef->my;
+	remove_monster(mx, my);
+	place_monster(magr, mdef->mx, mdef->my);
 	if(cansee(magr->mx, magr->my))	pmon(magr);
-	if((tmp = mdamagem(magr, mdef, mattk)) == 2) {
-		remove_monster(mx, my);
-		place_monster(magr, magr->mx, magr->my);
+
+	if((tmp = mdamagem(magr, mdef, mattk)) == 2) {	/* defender died */
 		/* if mdamagem left a corpse it erased magr's symbol */
 		unpmon(magr);
 		pmon(magr);
-		return(2);	/* defender died */
+	} else if (tmp == -1) {	/* agressor died, put defender back */
+		place_monster(mdef, mdef->mx, mdef->my);
+		if(cansee(mdef->mx, mdef->my)) pmon(mdef);
 	} else {		/* defender survived */
 		if(cansee(mdef->mx, mdef->my))
 			pline("%s is regurgitated!", Monnam(mdef));
 		if(cansee(magr->mx, magr->my))	unpmon(magr);
-		magr->mx = mx;
-		magr->my = my;
+		place_monster(magr, mx, my);
+		place_monster(mdef, mdef->mx, mdef->my);
 		/* move off of defender */
 		if(cansee(magr->mx, magr->my))	pmon(magr);
 		if(cansee(mdef->mx, mdef->my))	pmon(mdef);
-		nscr();
-		return(tmp);
 	}
+	nscr();
+	return(tmp);
 }
 
 static int
@@ -393,7 +394,9 @@ mdamagem(magr, mdef, mattk)
 		tmp += destroy_mitem(mdef, SPBOOK_SYM, AD_FIRE);
 #endif
 		if(resists_fire(pd)) {
-		    pline("The fire doesn't seem to burn %s!", mon_nam(mdef));
+		    if (vis)
+			pline("The fire doesn't seem to burn %s!",
+								mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 #ifdef GOLEMS
 		    golemeffects(mdef, AD_FIRE, tmp);
@@ -410,8 +413,9 @@ mdamagem(magr, mdef, mattk)
 		}
 		if(vis) pline("%s is covered in frost!", Monnam(mdef));
 		if(resists_cold(pd)) {
-		    pline("The frost doesn't seem to chill %s!",
-			mon_nam(mdef));
+		    if (vis)
+			pline("The frost doesn't seem to chill %s!",
+								mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 #ifdef GOLEMS
 		    golemeffects(mdef, AD_COLD, tmp);
@@ -428,7 +432,7 @@ mdamagem(magr, mdef, mattk)
 		if(vis) pline("%s gets zapped!", Monnam(mdef));
 		tmp += destroy_mitem(mdef, WAND_SYM, AD_ELEC);
 		if(resists_elec(pd)) {
-		    pline("The zap doesn't shock %s!", mon_nam(mdef));
+		    if (vis) pline("The zap doesn't shock %s!", mon_nam(mdef));
 		    shieldeff(mdef->mx, mdef->my);
 #ifdef GOLEMS
 		    golemeffects(mdef, AD_ELEC, tmp);
@@ -444,10 +448,11 @@ mdamagem(magr, mdef, mattk)
 		    break;
 		}
 		if(resists_acid(pd)) {
-		    pline("%s is covered in acid, but it seems harmless.",
-			Monnam(mdef));
+		    if (vis)
+			pline("%s is covered in acid, but it seems harmless.",
+							Monnam(mdef));
 		    tmp = 0;
-		} else {
+		} else if (vis) {
 		    pline("%s is covered in acid!", Monnam(mdef));
 		    pline("It burns %s!", mon_nam(mdef));
 		}

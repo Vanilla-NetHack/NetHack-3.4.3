@@ -149,6 +149,10 @@ do_mname(){
 	register char *curr;
 	boolean blank;
 
+	if (Hallucination) {
+		You("would never recognize it anyway.");
+		return 0;
+	}
 	cc.x = u.ux;
 	cc.y = u.uy;
 	getpos(&cc, 0, "the monster you want to name");
@@ -428,7 +432,7 @@ int vb;
 		 * or 'Asidonhopo the blue dragon'.
 		 */
 		Strcat(buf, " ");
-	} else if(mtmp->mnamelth && !vb) {
+	} else if(mtmp->mnamelth && !vb && !Hallucination) {
 		if(isinvis) {
 		    Strcpy(buf, "the invisible ");
 		    Strcat(buf, NAME(mtmp));
@@ -460,7 +464,7 @@ int vb;
 			Strcat(buf, "the ");
 		Strcat(buf, Hallucination ? rndmonnam() : mtmp->data->mname);
 	}
-	if(vb && mtmp->mnamelth) {
+	if(vb && mtmp->mnamelth && !Hallucination) {
 		Strcat(buf, " called ");
 		Strcat(buf, NAME(mtmp));
 	}

@@ -107,17 +107,25 @@ char *argv[];
 #endif
 #ifdef MACOS
 	AppFile	theFile;
-	short	message,numFiles;
+	short	message,numFiles,wizBang = FALSE;
 	SFReply	reply;
 
 	initterm(24,80);
+	/* check to see if is a special "wiz bang" start */
+	if (! strcmp(plname, "wizard")) wizBang = TRUE;
+
 	ObscureCursor();
 # ifdef SMALLDATA
 	init_decl();
 # endif
 	/* user might have started up with a save file, so check */
-	CountAppFiles(&message,&numFiles);
-	if (!message && numFiles) {
+	/* however, a "wiz bang" start takes precedence */
+	if (wizBang) {
+		Strcpy(SAVEF, plname);
+		numFiles = 0;
+	} else CountAppFiles(&message,&numFiles);
+
+	if (numFiles && !message) {
 		message = 1;
 
 		while(message <= numFiles) {
@@ -392,7 +400,9 @@ Printf("\n       %s [-d dir] [-u name] [-[%s]]", hname, classes);
 	/* initialize static monster strength array */
 	init_monstr();
 #ifdef MACOS
-	if (!numFiles) {
+	if (wizBang) wizard = TRUE;
+
+	if (!wizBang && !numFiles) {
 		askname();
 		if(justscores){
 			prscore(1,&classes);
@@ -519,7 +529,7 @@ not_recovered:
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		You("are lucky!  Full moon tonight.");
-		if(!u.uluck) change_luck(1);
+		change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
 		pline("Be careful!  New moon tonight.");
 	}

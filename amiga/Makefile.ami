@@ -99,6 +99,13 @@ CSYM	=
 UUDEC	= echo
 #UUDEC	= uudecode
 
+# Flex/Bison command assignments -- Useful only if you have flex/bison
+FLEX	= flex:flex
+BISON	= dh2d:bison/bison
+# FBFIL and FBLIB may be used, if required by your version of flex or bison,
+# to specify additional files or libraries to be linked with
+FBFIL	=
+FBLIB	= lib:compat.lib
 
 # Pathname for the C compiler being used.
 
@@ -118,7 +125,7 @@ CC	= lc
 #   Note: do not use -ms with Lattice 5.04 (Others:lev_lex.c fails)
 #   Note: make sure your CLI stack size is large or lev_comp and makedefs
 #	may fail terribly - stack checking is disabled.
-CFLAGS	= -b0 -cfi -d1 -iIncl: -ma -v
+CFLAGS	= -b0 -cfi -d1 -iIncl: -ma -v -cs
 
 #[MANX3.6]
 
@@ -140,6 +147,7 @@ LINK	= Blink to
 LIN	= from Lib:catch.o
 LLINK	= with Amiga:ami.lnk
 LLIB	= lib Lib:lc.lib BATCH
+FLLIB	= lib $(FBLIB) Lib:lc.lib BATCH
 
 #[MANX3.6]
 
@@ -147,7 +155,7 @@ LLIB	= lib Lib:lc.lib BATCH
 #LIN	=
 #LLINK	= -f Amiga:ami.lnk
 #LLIB	= -lcl
-
+#FLLIB	= -lcl
 
 # Name of the game:
 
@@ -439,7 +447,7 @@ O_Src2:makedefs.o:  Src2:makedefs.c Incl:config.h Incl:permonst.h Incl:objclass.
 	$(CC) -dMAKEDEFS_C $(CFLAGS) -o$@ Src2:makedefs.c
 
 NetHack:lev_comp:  $(SPLEVOBJS)
-	$(LINK) NetHack:lev_comp $(LIN) $(SPLEVOBJS) $(LLIB)
+	$(LINK) NetHack:lev_comp $(LIN) $(SPLEVOBJS) $(FBFIL) $(FLLIB)
 
 O_Src1:lev_comp.o:  Src1:lev_comp.c $(HDEP) Incl:sp_lev.h
 	$(CC) -dLEV_LEX_C $(CFLAGS) -o$@ Src1:lev_comp.c
@@ -449,6 +457,22 @@ O_Others:lev_lex.o:  Others:lev_lex.c $(HDEP) Incl:lev_comp.h Incl:sp_lev.h
 
 O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP)
 	$(CC) -dLEV_LEX_C -dAMIGA $(CFLAGS) -o$@ Src1:lev_main.c
+
+# [OPTION] -- If you have flex/bison, leave these uncommented.  Otherwise,
+# comment them out and be careful! (You're not guaranteed to have the most
+# up to date lev_lex.c, lev_comp.c, and lev_comp.h)
+
+Src1:lev_comp.c:	Src1:lev_comp.y
+	$(BISON) -d Src1:lev_comp.y
+	copy Src1:lev_comp.tab.c Src1:lev_comp.c
+	copy Src1:lev_comp.tab.h Incl:lev_comp.h
+	delete Src1:lev_comp.tab.c
+	delete Src1:lev_comp.tab.h
+
+Others:lev_lex.c:		Src1:lev_comp.l
+	$(FLEX) Src1:lev_comp.l
+	copy lex.yy.c Others:lev_lex.c
+	delete lex.yy.c
 
 #
 #	The following include files depend on makedefs to be created.
@@ -466,16 +490,19 @@ O_Src1:lev_main.o:  Src1:lev_main.c $(HDEP)
 
 Incl:date.h:  $(HDEP) NetHack:makedefs $(AMIGAOBJ)
 	NetHack:makedefs -v
+	-wait 2
 
 Incl:trap.h:  NetHack:makedefs
 	NetHack:makedefs -t
-	-copy makedefs.1 $@
+	-wait 2
 
 Incl:onames.h:  NetHack:makedefs
 	NetHack:makedefs -o
+	-wait 2
 
 Incl:pm.h:  NetHack:makedefs
 	NetHack:makedefs -p
+	-wait 2
 
 #
 #	The following programs vary depending on what OS you are using.

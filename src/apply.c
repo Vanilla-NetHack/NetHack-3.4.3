@@ -1269,7 +1269,11 @@ struct obj *obj;
 		int did_stat = 0;
 		int i = rn2(A_MAX);
 		for(j=0; j<A_MAX; j++) {
-			if ((blessed || j==i) && ABASE(i) < AMAX(i)) {
+			/* don't recover strength lost while hungry */
+			if ((blessed || j==i) &&
+				((j != A_STR || u.uhs < WEAK)
+				? (ABASE(i) < AMAX(i))
+				: (ABASE(A_STR) < (AMAX(A_STR) - 1)))) {
 				did_something++;
 				/* They may have to use it several times... */
 				if (!did_stat) {

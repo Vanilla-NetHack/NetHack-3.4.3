@@ -91,7 +91,7 @@ vt100|amiga|vt100-80|vt100-noavo|DEC VT100:\
 	:so=2\E[7m:se=2\E[m:us=2\E[4m:ue=2\E[m:\
 	:mb=2\E[5m:md=2\E[1m:mr=2\E[7m:me=2\E[m:\
 	:ti=4\E<\E(B\E)0:as=^N:ae=^O:\
-	:ks=\E[?1h\E=:ke=\E[?11\E>:ku=\E[A:kd=\E[B:kl=\E[C:kr=\E[D:kb=^H:\
+	:ks=\E[?1h\E=:ke=\E[?1l\E>:ku=\E[A:kd=\E[B:kl=\E[C:kr=\E[D:kb=^H:\
 	:kn#4:k1=\EOP:k2=\EOQ:k3=\EOR:k4=\EOS:\
 	:sc=\E7:ec=\E8:sr=5\EM:
 #
@@ -104,6 +104,8 @@ vt200|vt200-80|vt220|vt240|vt241|VT200_Series:\
 	:ic=5\E[@:tc=vt102:
 vt300|vt300-80|vt320|vt330|vt340|VT300_Series:\
 	:tc=vt200:
+vt400|vt400-80|vt420|VT400_Series:\
+	:tc=vt300:
 # VAXstations (should have full entries with no delays and 8-bit CSI's)
 VWS|UIS:tc=vt200:
 DECterm:tc=vt300:

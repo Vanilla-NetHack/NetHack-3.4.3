@@ -103,8 +103,7 @@ is_shield(otmp) register struct obj *otmp; {
 STATIC_PTR
 int
 Boots_on() {
-    long oldprop =
-		u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~(WORN_BOOTS | TIMEOUT);
+    long oldprop = u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~WORN_BOOTS;
 
     switch(uarmf->otyp) {
 	case LOW_BOOTS:
@@ -114,9 +113,12 @@ Boots_on() {
 	case JUMPING_BOOTS:
 		break;
 	case SPEED_BOOTS:
-		if (!oldprop) {
+		/* Speed boots are still better than intrinsic speed, */
+		/* though not better than potion speed */
+		if (!(oldprop & TIMEOUT)) {
 			makeknown(uarmf->otyp);
-			You("feel yourself speed up.");
+			You("feel yourself speed up%s.",
+				oldprop ? " a bit more" : "");
 		}
 		break;
 	case ELVEN_BOOTS:
@@ -126,7 +128,7 @@ Boots_on() {
 		}
 		break;
 	case FUMBLE_BOOTS:
-		if (!oldprop)
+		if (!(oldprop & ~TIMEOUT))
 			Fumbling += rnd(20);
 		break;
 	case LEVITATION_BOOTS:
@@ -146,15 +148,15 @@ Boots_off() {
 	/* For levitation, float_down() returns if Levitation, so we
 	 * must do a setworn() _before_ the levitation case.
 	 */
-    long oldprop =
-		u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~(WORN_BOOTS | TIMEOUT);
+    long oldprop = u.uprops[objects[uarmf->otyp].oc_oprop].p_flgs & ~WORN_BOOTS;
 
     setworn((struct obj *)0, W_ARMF);
     switch(obj->otyp) {
 	case SPEED_BOOTS:
-		if (!oldprop) {
+		if (!(oldprop & TIMEOUT)) {
 			makeknown(obj->otyp);
-			You("feel yourself slow down.");
+			You("feel yourself slow down%s.",
+				oldprop ? " a bit" : "");
 		}
 		break;
 	case WATER_WALKING_BOOTS:
@@ -175,7 +177,7 @@ Boots_off() {
 		}
 		break;
 	case FUMBLE_BOOTS:
-		if (!oldprop)
+		if (!(oldprop & ~TIMEOUT))
 			Fumbling = 0;
 		break;
 	case LEVITATION_BOOTS:
@@ -501,8 +503,14 @@ newname:	more();
 		}
 		(void)strcat(SAVEF, ".sav");
 # else
+#  ifdef MACOS
+		strncpy(SAVEF, plname, (FILENAME - 2));  /* .e */
+		SAVEF[(FILENAME - 2)] = '\0';
+		regularize(SAVEF);
+#  else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+#  endif
 # endif
 #endif
 #ifdef WIZARD

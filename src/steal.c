@@ -104,7 +104,11 @@ struct monst *mtmp;
 	/* the following is true if successful on first of two attacks. */
 	if(!monnear(mtmp, u.ux, u.uy)) return(0);
 
-	if(!invent){
+	if(!invent
+#ifdef POLYSELF
+		   || (inv_cnt() == 1 && uskin)
+#endif
+						){
 	    /* Not even a thousand men in armor can strip a naked man. */
 	    if(Blind)
 	      pline("Somebody tries to rob you, but finds nothing to steal.");
@@ -123,12 +127,24 @@ struct monst *mtmp;
 	}
 
 	tmp = 0;
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(!uarm || otmp != uarmc)
-	    tmp += ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+	    if((!uarm || otmp != uarmc)
+#ifdef POLYSELF
+					&& otmp != uskin
+#endif
+							)
+		tmp += ((otmp->owornmask &
+			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1);
 	tmp = rn2(tmp);
-	for(otmp = invent; otmp; otmp = otmp->nobj) if(!uarm || otmp != uarmc)
-  	    if((tmp -= ((otmp->owornmask & (W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1))
-			< 0) break;
+	for(otmp = invent; otmp; otmp = otmp->nobj)
+	    if((!uarm || otmp != uarmc)
+#ifdef POLYSELF
+					&& otmp != uskin
+#endif
+							)
+		if((tmp -= ((otmp->owornmask &
+			(W_ARMOR | W_RING | W_AMUL | W_TOOL)) ? 5 : 1)) < 0)
+			break;
 	if(!otmp) {
 		impossible("Steal fails!");
 		return(0);

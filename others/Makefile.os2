@@ -1,5 +1,6 @@
-#	SCCS Id: @(#)Makefile.os2	3.0	90/02/22
-#	OS/2 NetHack 3.0 Makefile for Microsoft(tm) C 5.1 -- Timo Hakulinen
+#	SCCS Id: @(#)Makefile.os2	3.0	91/01/13
+#	OS/2 NetHack 3.0 Makefile for Microsoft(tm) C 5.1 and 6.0
+#	-- Timo Hakulinen
 #
 #	NDMAKE ver 4.5 or MS-NMAKE is required, MS-MAKE will not work.
 #	To enable either make utility, uncomment the respective
@@ -27,12 +28,12 @@ LIB	= lib
 
 # Enable the upper three lines for NDMAKE and lower three for MS-NMAKE.
 # ($(MAKE) macro is often predefined, so we use $(MAKEBIN) instead).
-MAKEBIN = make
-AB	= $*.c
-CB	= $*.c
-#MAKEBIN = nmake
-#AB	= $(@B).c
-#CB	= $$(@B).c
+#MAKEBIN = make
+#AB	= $*.c
+#CB	= $*.c
+MAKEBIN = nmake
+AB	= $(@B).c
+CB	= $$(@B).c
 
 # For those of us who have these on PC.
 #YACC	= yacc
@@ -45,27 +46,33 @@ YTABH	= y_tab.h
 LEXYYC	= lexyy.c
 
 # Directories (makedefs hardcodes these, don't change them).
-INCL	= ..\include
-AUX	= ..\auxil
-SRC	= ..\src
-OBJ	= $(SRC)\o2
+INCL	= ..\include		# NetHack include files
+AUX	= ..\auxil		# NetHack data and documentation
+SRC	= ..\src		# NetHack source
+
+# Modifiable directories.
+OBJ	= $(SRC)\o2		# Object files
+PLIBP	= c:\libp		# Protected mode C libraries
+RLIBP	= c:\lib		# Real mode C libraries
+GAMEDIR = \games\nethack	# The game directory
 
 # The game name and description.
 GAME	= nethack
 GAMEDES = NetHack 3.0
 
-# The game directory.
-GAMEDIR = \games\$(GAME)
-
 # Memory model, compile only, disable optimization, remove stack probes,
 # 80286 instruction set, dedicated datasegment for items >= 5 bytes,
 # pack structures on 1 byte boundaries, generate code for 8087
 # coprocessor, compiler warning level, include file path.
-CFLAGS	= /AL /c /Od /Gs /G2 /Gt5 /Zp1 /FPi87 /W1 /I$(INCL) $(CDFLAGS)
+CFLAGS	= /AL /c /Od /Gs /G2 /Gt5 /Zp1 /FPi /W1 /I$(INCL) $(CDFLAGS) $(STDC)
 
 # + prepare for CodeView symbolic debugger.
 CDFLAGS =
 #CDFLAGS = /Zi
+
+# Disable for MSC 5.1, enable for 6.0.
+STDC	=
+#STDC	= /D__STDC__
 
 # Don't ignore case in symbols, no default lib search, stack 4096 bytes.
 # (actually a bit of overkill), allow max 1024 segments in program.
@@ -75,15 +82,17 @@ LFLAGS	= /noig /nod /stack:4096 /seg:1024 $(LDFLAGS)
 LDFLAGS =
 #LDFLAGS = /CO
 
-# Protected mode C libraries for 8087 (change if necessary),
-# OS/2 API entry points.
-PLIBS	= llibc7p doscalls
+# Protected mode C libraries for 8087 emulation (change if necessary),
+# OS/2 API entry points.  For MSC 5.1, enable the upper line
+# for 6.0 the lower.
+PLIBS	= $(PLIBP)\llibcep $(PLIBP)\doscalls
+#PLIBS	= $(PLIBP)\llibcep $(PLIBP)\os2
 
 # C libraries used by makedefs and lev_comp (change if necessary).
 # If compilation is done in DOS, enable the upper line, if in OS/2,
 # the lower (protected mode libraries).
-RLIBS	= llibc7r
-#RLIBS	= $(PLIBS)
+#RLIBS	= $(RLIBP)\llibcer
+RLIBS	= $(PLIBS)
 
 # Module definition file for OS/2.
 OS2DEFS	= $(GAME).def

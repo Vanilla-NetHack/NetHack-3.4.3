@@ -1,0 +1,93 @@
+		     PC NetHack Support Utilities
+		     ============================
+		     Last revision: 1991January29
+
+This file contains documentation for the NetHack MS-DOS support
+utility EXESMURF.EXE.  This utility examines and modifies the load
+parameters of an .EXE file and can be used to split .OVL files off a
+monolithic overlaid executable using ovlmgr.
+
+EXESMURF
+--------
+exesmurf FILENAME[.EXT] /v
+exesmurf FILENAME[.EXT] /minN
+exesmurf FILENAME[.EXT] /maxN
+exesmurf FILENAME[.EXT] /l
+exesmurf FILENAME[.EXT] N... [/pPATTERN]
+
+The programme exesmurf is basically a reimplementation of Microsoft's
+EXEMOD utility.  However, this incarnation is one that is
+"overlay-aware" (as they say).  It will provide the user with
+information about the executable and its overlays, and allow you to
+modify the executable's parameters and overlay locations.
+
+This program is made available for all users who were not graced with a
+release of EXEMOD in their Microsoft product, or who need the
+additional functionality it provides.
+
+/v.
+If exesmurf is invoked with a filename as argument, optionally
+followed by a /v, the filename's exeheader is listed for your viewing
+pleasure, along with the headers of any Microsoft-format overlays the
+file may contain.  The listing is verbose; if there are many overlays
+you will want to redirect the output.  Note that the redundancy in the
+output listing largely reflects redundancy in the file structure.
+
+/minN, /maxN, /stackN.
+Exesmurf may also be used to modify the "minalloc", "maxalloc" and
+"stack" allocation parameters of the executable file.  This can be
+accomplished with the /min, /max, and /stack flags respectively.  Any
+arguments to these flags should be *immediately* followed by a decimal
+number N.  Note that this is inconsistent with the arguments to EXEMOD
+which takes hex numbers, and *needs* a space between the flag and the
+number.
+
+/l.
+The /l option requests a version of the /v listing (see above) in
+which the information about overlays is very much compressed; only
+their decimal file and load sizes are given, in a multi-column format.
+The resulting display will generally fit on a single screen.  This
+turns out to be very useful when contemplating appropriate parameters
+for the overlay splitting operation described next.
+
+N... [/pPATTERN].
+The overlay-unpacking function of exesmurf is invoked by following the
+filename argument by a sequence of decimal numbers.  Each of these
+numbers is an overlay number at which a new external overlay file is
+to be started.  The main executable file will keep its old name after
+the overlays have been unloaded; the original input file will be
+retained, with its extension changed to .BAK.  By default, the output
+files will be derived from the input file name by appending a
+discriminating character (in sequence, 0, 1, ..., 9, a, b, ..., z) to
+the basename and changing the extension to .OVL; but if the basename
+is a full 8 characters long, the discriminating character will replace
+the last character instead.  This default is chosen for compatibility
+with ovlmgr.  The default may be overridden with the /p option, which
+specifies a file PATTERN - a file name, possibly complete with
+extension, containing one or more ? characters (* is not allowed),
+which will be replaced by discriminating characters.  If there is
+exactly one questionmark, it will be replaced by a digit or letter in
+the sequence described above, but if more than one questionmark
+appears a decimal numbering scheme is used instead.
+	Note that the numeric arguments are overlay numbers, not
+indices, and they indicate the starting overlays of files.  This
+permits us to manipulate files in which (for some reason) the overlays
+are not stored in ascending order, but it does mean that if a
+mentioned overlay does not exist in the original file, no new overlay
+file will be started.  This is a realistic risk, since the Microsoft
+linker does not seem to generate overlays at all if there is no actual
+code generated into the segments in question.
+	Note further that this operation can be reversed with the DOS
+copy/b operation, always supposing that it works as documented in your
+release of the operating system: the overlays are simply moved
+page-by-page to the external files.
+	No guarantees are made as to how this programme will behave if
+there is debug information or other strangeness stored after the last
+overlay in the file.
+
+Whenever exesmurf is invoked, the extension .EXE is assumed for the
+file if no extension is given.  Other extensions are probably only
+meaningful for examining overlay files.
+----------------------------------------------------------------------
+Stephen P Spackman                       stephen@estragon.uchicago.edu
+----------------------------------------------------------------------

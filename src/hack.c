@@ -788,6 +788,14 @@ lookaround() {
 	/* suppress "used before set" message */
 	x0 = y0 = m0 = 0;
 #endif
+#ifdef POLYSELF
+	/* Grid bugs stop if trying to move diagonal, even if blind.  Maybe */
+	/* they polymorphed while in the middle of a long move. */
+	if (u.umonnum == PM_GRID_BUG && u.dx && u.dy) {
+		nomul(0);
+		return;
+	}
+#endif
 	if(Blind || flags.run == 0) return;
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(!isok(x,y)) continue;

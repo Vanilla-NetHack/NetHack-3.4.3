@@ -40,6 +40,7 @@ STATIC_DCL boolean FDECL(thitm, (int, struct monst *, struct obj *, int));
 
 #ifdef OVLB
 
+static int FDECL(teleok, (int,int,BOOLEAN_P));
 static void NDECL(vtele);
 
 /* Generic rust-armor function.  Returns TRUE if a message was printed;
@@ -99,20 +100,22 @@ register int x, y, typ;
 {
 	register struct trap *ttmp;
 	register struct permonst *ptr;
+	register boolean oldplace;
 
 	if (ttmp = t_at(x,y)) {
-		if (u.utrap &&
-		  ((u.utraptype == TT_BEARTRAP && typ != BEAR_TRAP) ||
-		  (u.utraptype == TT_WEB && typ != WEB) ||
-		  (u.utraptype == TT_PIT && typ != PIT && typ != SPIKED_PIT)))
-			u.utrap = 0;
-		ttmp->ttyp = typ;
-		return ttmp;
+	    oldplace = TRUE;
+	    if (u.utrap && (x == u.ux) && (y == u.uy) && 
+	      ((u.utraptype == TT_BEARTRAP && typ != BEAR_TRAP) ||
+	      (u.utraptype == TT_WEB && typ != WEB) ||
+	      (u.utraptype == TT_PIT && typ != PIT && typ != SPIKED_PIT)))
+		    u.utrap = 0;
+	} else {
+	    oldplace = FALSE;
+	    ttmp = newtrap();
+	    ttmp->tx = x;
+	    ttmp->ty = y;
 	}
-	ttmp = newtrap();
 	ttmp->ttyp = typ;
-	ttmp->tx = x;
-	ttmp->ty = y;
 	switch(typ) {
 	    case MONST_TRAP:	    /* create a monster in "hiding" */
 	    {	int tryct = 0;
@@ -123,7 +126,10 @@ register int x, y, typ;
 		} while ((noattacks(&mons[ttmp->pm]) ||
 			!mons[ttmp->pm].mmove) && ++tryct < 100);
 		if (tryct == 100) {
-			free((genericptr_t)ttmp);
+			if (oldplace)
+			    deltrap(ttmp);
+			else
+			    free((genericptr_t)ttmp);
 			return(struct trap *)0;
 		}
 		break;
@@ -138,47 +144,50 @@ register int x, y, typ;
 	}
 	ttmp->tseen = 0;
 	ttmp->once = 0;
-	ttmp->ntrap = ftrap;
-	ftrap = ttmp;
+	if (!oldplace) {
+	    ttmp->ntrap = ftrap;
+	    ftrap = ttmp;
+	}
 	return(ttmp);
 }
 
-int
-teleok(x, y)
+static int
+teleok(x, y, trapok)
 register int x, y;
+boolean trapok;
 {				/* might throw him into a POOL
 				 * removed by GAN 10/20/86
 				 */
 #ifdef STUPID
 	boolean	tmp1, tmp2, tmp3;
-#  ifdef POLYSELF
+# ifdef POLYSELF
 	tmp1 = isok(x,y) && (!IS_ROCK(levl[x][y].typ) ||
 		passes_walls(uasmon)) && !MON_AT(x, y);
-#  else
+# else
 	tmp1 = isok(x,y) && !IS_ROCK(levl[x][y].typ) && !MON_AT(x, y);
-#  endif
-	tmp2 = !sobj_at(BOULDER,x,y) && !t_at(x,y);
+# endif
+	tmp2 = !sobj_at(BOULDER,x,y) && (trapok || !t_at(x,y));
 	tmp3 = !(is_pool(x,y) &&
 	       !(Levitation || Wwalking
-#ifdef POLYSELF
+# ifdef POLYSELF
 		 || is_flyer(uasmon)
-#endif
+# endif
 		)) && !closed_door(x,y);
 	return(tmp1 && tmp2 && tmp3);
 #else
 	return( isok(x,y) &&
-#  ifdef POLYSELF
+# ifdef POLYSELF
 		(!IS_ROCK(levl[x][y].typ) || passes_walls(uasmon)) &&
-#  else
+# else
 		!IS_ROCK(levl[x][y].typ) &&
-#  endif
+# endif
 		!MON_AT(x, y) &&
-		!sobj_at(BOULDER,x,y) && !t_at(x,y) &&
+		!sobj_at(BOULDER,x,y) && (trapok || !t_at(x,y)) &&
 		!(is_pool(x,y) &&
 		!(Levitation || Wwalking
-#ifdef POLYSELF
+# ifdef POLYSELF
 		  || is_flyer(uasmon)
-#endif
+# endif
 		  )) && !closed_door(x,y));
 #endif
 	/* Note: gold is permitted (because of vaults) */
@@ -194,7 +203,7 @@ vtele() {
 
 		x = rn2(2) ? croom->lx : croom->hx;
 		y = rn2(2) ? croom->ly : croom->hy;
-		if(teleok(x,y)) {
+		if(teleok(x,y,FALSE)) {
 		    teleds(x,y);
 		    return;
 		}
@@ -252,6 +261,7 @@ register struct trap *trap;
 	register int ttype = trap->ttyp;
 	register struct monst *mtmp;
 	register struct obj *otmp;
+	int pm = trap->pm;
 
 	nomul(0);
 	if(trap->tseen && !Fumbling && !(ttype == PIT
@@ -307,15 +317,16 @@ register struct trap *trap;
 		    deltrap(trap);
 		    for(otmp=level.objects[u.ux][u.uy];
 						otmp; otmp = otmp->nexthere)
-			if(otmp->otyp == STATUE && otmp->corpsenm == trap->pm)
-			    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
+			if(otmp->otyp == STATUE && otmp->corpsenm == pm)
+			    if(mtmp=makemon(&mons[pm],u.ux,u.uy)) {
 				pline("The statue comes to life!");
 				delobj(otmp);
 				break;
 			    }
 		    break;
 		case MONST_TRAP:
-		    if(mtmp=makemon(&mons[trap->pm],u.ux,u.uy)) {
+		    deltrap(trap);
+		    if(mtmp=makemon(&mons[pm],u.ux,u.uy)) {
 		      mtmp->mpeaceful = FALSE;
 		      switch(mtmp->data->mlet) {
 			case S_PIERCER:
@@ -333,7 +344,6 @@ register struct trap *trap;
 			    break;
 		      }
 		    }
-		    deltrap(trap);
 		    break;
 		case ARROW_TRAP:
 		    pline("An arrow shoots out at you!");
@@ -562,26 +572,26 @@ two_hand:		    corrode_weapon();
 			You("feel momentarily different.");
 			/* Trap did nothing; don't remove it --KAA */
 		    } else {
+			deltrap(trap);
 			You("feel a change coming over you.");
 			polyself();
-			deltrap(trap);
 		    }
 		    break;
 #endif
 		case MGTRP:	    /* A magic trap. */
 		    if (!rn2(30)) {
-			You("are caught in a magical explosion!");
-			losehp(rnd(10), "magical explosion", KILLED_BY_AN);
-#ifdef SPELLS
-			Your("body absorbs some of the magical energy!");
-			u.uen = (u.uenmax += 2);
-#endif
 			deltrap(trap);
 			if(Invisible
 #ifdef POLYSELF
 				&& !u.uundetected
 #endif
 						) newsym(u.ux,u.uy);
+			You("are caught in a magical explosion!");
+			losehp(rnd(10), "magical explosion", KILLED_BY_AN);
+#ifdef SPELLS
+			Your("body absorbs some of the magical energy!");
+			u.uen = (u.uenmax += 2);
+#endif
 		    } else domagictrap();
 		    break;
 		case SQBRD:	    /* stepped on a squeaky board */
@@ -1058,7 +1068,8 @@ float_down() {
 void
 tele() {
 	coord cc;
-	register int nux,nuy;
+	register int nux, nuy;
+	short tcnt = 0;
 
 #ifdef STRONGHOLD
 	/* Disable teleportation in stronghold && Vlad's Tower */
@@ -1081,7 +1092,11 @@ tele() {
 	    You("feel disoriented for a moment.");
 	    return;
 	}
-	if(Teleport_control) {
+	if(Teleport_control
+#ifdef WIZARD
+			    || wizard
+#endif
+					) {
 	    if (unconscious())
 		pline("Being unconscious, you cannot control your teleport.");
 	    else {
@@ -1091,18 +1106,19 @@ tele() {
 		    getpos(&cc, 1, "the desired position"); /* 1: force valid */
 		    /* possible extensions: introduce a small error if
 		       magic power is low; allow transfer to solid rock */
-		    if(teleok(cc.x, cc.y)){
+		    if(teleok(cc.x, cc.y, FALSE)){
 			teleds(cc.x, cc.y);
 			return;
 		    }
 		    pline("Sorry...");
 		}
 	}
+
 	do {
 		nux = rnd(COLNO-1);
 		nuy = rn2(ROWNO);
-	} while(!teleok(nux, nuy));
-	teleds(nux, nuy);
+	} while (!teleok(nux, nuy, tcnt>200) && tcnt++ < 400);
+	if (tcnt < 400) teleds(nux, nuy);
 }
 
 void
@@ -1219,11 +1235,13 @@ dotele()
 
 #ifdef SPELLS
 	if (castit)
+		if (spelleffects(++sp_no, TRUE))
+			return(1);
+		else
 # ifdef WIZARD
-		if (!spelleffects(++sp_no, TRUE) && !wizard) return(0);
-# else
-		return spelleffects(++sp_no, TRUE);
+		    if (!wizard)
 # endif
+			return(0);
 #endif
 
 #ifdef WALKIES

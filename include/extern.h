@@ -1235,6 +1235,7 @@ E void FDECL(relobj, (struct monst *,int));
 /* ### termcap.c ### */
 
 E void NDECL(startup);
+E void FDECL(number_pad, (int));
 E void NDECL(start_screen);
 E void NDECL(end_screen);
 #ifdef CLIPPING
@@ -1307,7 +1308,6 @@ E coord *FDECL(gettrack, (int,int));
 
 E boolean FDECL(rust_dmg, (struct obj *,const char *,int,BOOLEAN_P));
 E struct trap *FDECL(maketrap, (int,int,int));
-E int FDECL(teleok, (int,int));
 E void FDECL(fall_through, (BOOLEAN_P));
 E void FDECL(dotrap, (struct trap *));
 E int FDECL(mintrap, (struct monst *));
@@ -1378,7 +1378,7 @@ E char *NDECL(getdate);
 E int NDECL(phase_of_the_moon);
 E int NDECL(night);
 E int NDECL(midnight);
-E void FDECL(gethdate, (char *));
+E void FDECL(gethdate, (const char *));
 E int FDECL(uptodate, (int));
 E void NDECL(getlock);
 E void FDECL(regularize, (char *));
@@ -1445,6 +1445,7 @@ E void NDECL(getlock);
 E void FDECL(regularize, (char *));
 E int FDECL(vms_creat, (char *,unsigned int));
 E int NDECL(vms_getuid);
+E const char *NDECL(verify_termcap);
 E void NDECL(privoff);
 E void NDECL(privon);
 # ifdef SHELL

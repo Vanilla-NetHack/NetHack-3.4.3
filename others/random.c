@@ -26,15 +26,17 @@
  *	- ANSI function prototyping in extern.h - therefore include hack.h
  *	instead of stdio.h and remove separate declaration of random() from
  *	the beginning of function srandom
+ *	- moving sccsid after hack.h to allow precompiled headers, which
+ *	means the defined()s would be ok again...
  */
+
+#include "hack.h"
 
 #ifdef LIBC_SCCS
 # ifndef lint
 static char sccsid[] = "@(#)random.c	5.5 (Berkeley) 7/6/88";
 # endif
 #endif /* LIBC_SCCS and not lint */
-
-#include "hack.h"
 
 /*
  * random.c:

@@ -516,8 +516,9 @@ peffects(otmp)
 #ifdef SPELLS
 	case SPE_HASTE_SELF:
 #endif
-		if(!(Fast & TIMEOUT))
-			You("are suddenly moving much faster.");
+		if(!(Fast & ~INTRINSIC)) /* wwf@doe.carleton.ca */
+			You("are suddenly moving %sfaster.",
+				Fast ? "" : "much ");
 		else {
 			Your("%s get new energy.",
 				makeplural(body_part(LEG)));
@@ -537,15 +538,18 @@ peffects(otmp)
 			if((dlevel > 1  || u.uhave_amulet) &&
 							dlevel <= MAXLEVEL) { 
 				You("rise up, through the ceiling!");
+# ifdef MACOS
+				segments |= SEG_POTION;
+# endif
 				goto_level((dlevel==1) ? ENDLEVEL
 					: dlevel-1, FALSE, FALSE);
 			} else You("have an uneasy feeling.");
 #else
 			if(dlevel > 1 && dlevel <= MAXLEVEL) {
 				You("rise up, through the ceiling!");
-#ifdef MACOS
+# ifdef MACOS
 				segments |= SEG_POTION;
-#endif
+# endif
 				goto_level(dlevel-1, FALSE, FALSE);
 			} else You("have an uneasy feeling.");
 #endif

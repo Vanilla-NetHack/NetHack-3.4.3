@@ -70,6 +70,11 @@ struct monst *mon;
 	if (mon->mtame) {
 	    struct monst *m3;
 
+	    /* because m2 is a copy of mon it is tame but not init'ed.
+	     * however, tamedog will not re-tame a tame dog, so m2
+	     * must be made non-tame to get initialized properly.
+	     */
+	    m2->mtame = 0;
 	    if (m3 = tamedog(m2, (struct obj *)0))
 		m2 = m3;
 	}

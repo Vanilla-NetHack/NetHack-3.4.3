@@ -164,7 +164,7 @@ struct obj *otmp;
 {
 	register const struct artifact *artif;
 
-	if(otmp)
+	if(otmp && otmp->onamelth)
 	    if(strlen(ONAME(otmp)))
 		for(artif = artilist; artif->otyp; artif++)
 		    if(artif->otyp == otmp->otyp &&
@@ -309,7 +309,7 @@ register const struct artifact *weap;
 struct permonst *ptr;
 {
 	if(!(weap->spfx & (SPFX_DBONUS | SPFX_ATTK)))
-	    return(0);
+	    return(weap->attk.adtyp == AD_PHYS);
 
 	if(weap->spfx & SPFX_DMONS)
 	    return((ptr == &mons[(int)weap->mtype]));

@@ -37,6 +37,9 @@
 #define cbrkflgs	c_lflag
 #define CBRKMASK	ICANON
 #define CBRKON		! /* reverse condition */
+#ifndef CBAUD
+# define CBAUD		_CBAUD /* for POSIX nitpickers (like RS/6000 cc) */
+#endif
 #define OSPEED(x)	((x).c_cflag & CBAUD)
 #define IS_7BIT(x)	((x).c_cflag & CS7)
 #define inputflags	c_iflag

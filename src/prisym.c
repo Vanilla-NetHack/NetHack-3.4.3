@@ -24,7 +24,15 @@ char ch;
 		impossible("atl(%d,%d,%c)",x,y,ch);
 		return;
 	}
-	if(crm->seen && crm->scrsym == ch) return;
+	if(crm->seen && crm->scrsym == ch
+#ifdef TEXTCOLOR
+	/* Force update if color used.  Otherwise objects with
+	 * same screen symbols but different colors show up
+	 * in wrong color in certain situations.
+	 */
+	   && !flags.use_color
+#endif
+	  ) return;
 	/* crm->scrsym = (uchar) ch; */
 	/* wrong if characters are signed but uchar is larger than char,
 	 * and ch, when passed, was greater than 127.

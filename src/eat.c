@@ -1309,7 +1309,10 @@ register int num;
 			pline("Stop eating? ");
 			if(yn() == 'y')
 #endif
+			{
 				reset_eat();
+				nomovemsg = NULL;
+			}
 		    }
 		}
 	      }
@@ -1522,13 +1525,16 @@ eaten_stat(base, obj)
 register int base;
 register struct obj *obj;
 {
-	base *= obj->oeaten;
+	long long_base;
+
+	long_base = (long )base;
+	long_base *= (long )obj->oeaten;
 
 	if (obj->otyp == CORPSE) 
 	    base = mons[obj->corpsenm].cnutrit ?
-				base / mons[obj->corpsenm].cnutrit : 0;
+		(int)(long_base / (long )mons[obj->corpsenm].cnutrit) : 0;
 	else base = objects[obj->otyp].nutrition ?
-				base / objects[obj->otyp].nutrition : 0;
+		(int)(long_base / (long )objects[obj->otyp].nutrition) : 0;
 	return (base < 1) ? 1 : base;
 }
 

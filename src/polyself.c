@@ -123,8 +123,14 @@ newname:	more();
 		}
 		(void)strcat(SAVEF, ".sav");
 # else
+#  ifdef MACOS
+		strncpy(SAVEF, plname, (FILENAME - 2));  /* .e */
+		SAVEF[(FILENAME - 2)] = '\0';
+		regularize(SAVEF);
+#  else
 		Sprintf(SAVEF, "save/%d%s", getuid(), plname);
 		regularize(SAVEF+5);		/* avoid . or / in name */
+#  endif
 # endif
 #endif
 #ifdef WIZARD
@@ -135,6 +141,8 @@ newname:	more();
 	skinback();
 	find_ac();
 	if (sticky) uunstick();
+	if(is_pool(u.ux,u.uy) && !Levitation && !u.ustuck && !Wwalking)
+		drown();
 #endif
 }
 
@@ -326,6 +334,9 @@ polymon(mntmp)	/* returns 1 if polymorph successful */
 		pline("Use the command #sit to lay an egg.");
 	}
 	find_ac();
+	if(is_pool(u.ux,u.uy) && !Levitation && !u.ustuck && !Wwalking
+			&& !is_flyer(uasmon) && !is_swimmer(uasmon))
+		drown();
 	return(1);
 }
 
@@ -450,11 +461,17 @@ rehumanize()
 	prme();
 	flags.botl = 1;
 	find_ac();
+	if(is_pool(u.ux,u.uy) && !Levitation && !u.ustuck && !Wwalking)
+		drown();
 }
 
 int
 dobreathe() {
-	if(!getdir(1)) return(0);
+	if (Strangled) {
+	    You("can't breathe.  Sorry.");
+	    return(0);
+	}
+	if (!getdir(1)) return(0);
 	if (rn2(4))
 	    You("produce a loud and noxious belch.");
 	else {

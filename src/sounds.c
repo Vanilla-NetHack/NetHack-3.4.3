@@ -239,6 +239,7 @@ void
 growl(mtmp)
 register struct monst *mtmp;
 {
+    if (mtmp->msleep || !mtmp->mcanmove) return;
     /* presumably nearness and soundok checks have already been made */
     switch (mtmp->data->msound) {
 	case MS_SILENT:
@@ -274,6 +275,7 @@ yelp(mtmp)
 register struct monst *mtmp;
 /* the sounds of mistreated pets */
 {
+    if (mtmp->msleep || !mtmp->mcanmove) return;
     /* presumably nearness and soundok checks have already been made */
     switch (mtmp->data->msound) {
 	case MS_MEW:
@@ -300,6 +302,7 @@ whimper(mtmp)
 register struct monst *mtmp;
 /* the sounds of distressed pets */
 {
+    if (mtmp->msleep || !mtmp->mcanmove) return;
     /* presumably nearness and soundok checks have already been made */
     switch (mtmp->data->msound) {
 	case MS_MEW:
@@ -345,7 +348,7 @@ static int
 domonnoise(mtmp)
 register struct monst *mtmp;
 {
-    /* presumably nearness checks have already been made */
+    /* presumably nearness and sleep checks have already been made */
     if (!flags.soundok) return(0);
     switch (mtmp->data->msound) {
 #ifdef ORACLE

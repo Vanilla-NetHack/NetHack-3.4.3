@@ -1,4 +1,4 @@
-$ ! vms/vmsbuild.com -- compile and link NetHack 3.0 patchlevel 9	[pr]
+$ ! vms/vmsbuild.com -- compile and link NetHack 3.0 patchlevel 10	[pr]
 $ !
 $ ! usage:
 $ !   $ set default [.src]	!or [-.src] if starting from [.vms]
@@ -17,7 +17,7 @@ $ !	  to re-link with GNUC library, 'CC' must begin with "G" (or "g").
 $ !	Default wizard definition moved to include/vmsconf.h.
 $
 $	vaxc_ = "CC/NOLIST/OPTIMIZE=NOINLINE"	    !vaxc v3.x (2.x fixed below)
-$	gnuc_ = "GCC/CC1=""-fwritable-strings"""
+$	gnuc_ = "GCC"
 $	gnulib = "gnu_cc:[000000]gcclib/Library"    !(not used w/ vaxc)
 $ ! common CC options (/obj=file doesn't work for GCC 1.36, use rename instead)
 $	c_c_  = "/INCLUDE=[-.INCLUDE]"	!/DEFINE=(""WIZARD=""""GENTZEL"""""")
@@ -113,7 +113,7 @@ $!
 $ milestone "<compiling...>"
 $ cc [-.vms]vmsmisc	!try simplest one first
 $ cc alloc.c
-$ if f$search("monst.c").eqs."" then  copy/Concat monst.c1+.c2 *.c
+$ if f$search("monst.c").eqs."" then  copy/Concat monst.c1+.c2 monst.c
 $ cc monst.c
 $ milestone " (monst)"
 $ cc objects.c
@@ -121,7 +121,7 @@ $     if c_opt.eq.15 then  goto special !"SPECIAL" requested, skip main build
 $ cc makedefs.c
 $ link makedefs.obj,monst.obj,objects.obj,vmsmisc.obj,-
 	'vaxcrtl''gnulib',sys$input:/Opt
-identification="makedefs 3.0.9"
+identification="makedefs 3.0.10"
 $ milestone "makedefs"
 $! create some build-time files
 $ makedefs -p	!pm.h
@@ -162,17 +162,19 @@ $     goto file_loop
 $list_done:
 $     i = i + 1
 $   if i.le.5 then  goto list_loop
-$! one special case left
-$ cc [-.vms]vmstermcap.c -
-	/Define=("bcopy(s,d,n)=memcpy((d),(s),(n))","exit=vms_exit")
+$! one special case left:  gcc chokes on these commas, but has real bcopy
+$	vmstermcap_options = "/Define=(""bcopy(s,d,n)=memcpy(d,s,n)"",""exit=vms_exit"")"
+$	if c_opt.eq.5 then  vmstermcap_options = "/Define=(""exit=vms_exit"")"
+$ cc 'vmstermcap_options' [-.vms]vmstermcap.c
 $ libr/Obj 'nethacklib' vmstermcap.obj/Insert
+$ delete vmstermcap.obj;*
 $!
 $link:
 $ milestone "<linking...>"
 $ link/Exe=nethack 'nethacklib'/Lib/Incl=(vmsmain,allmain,vmsunix,vmstty,decl),-
 	sys$disk:[]monst.obj,objects.obj,-	!(data-only modules, like decl)
 	sys$input:/Opt,'vaxcrtl''gnulib'
-identification="NetHack 3.0.9"
+identification="NetHack 3.0.10"
 $ milestone "NetHack"
 $     if c_opt.eq.10 then  goto done	!"LINK" only
 $special:
@@ -188,7 +190,7 @@ $ cc panic.c
 $ link lev_comp.obj,lev_lex.obj,lev_main.obj,-
 	monst.obj,objects.obj,alloc.obj,panic.obj,vmsmisc.obj,-
 	'vaxcrtl''gnulib',sys$input:/Opt
-identification="lev_comp 3.0.9"
+identification="lev_comp 3.0.10"
 $ milestone "lev_comp"
 $!
 $done:

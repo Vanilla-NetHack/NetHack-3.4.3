@@ -29,18 +29,16 @@ int x, y;
 
 	if(edog->hungrytime < moves)
 	    edog->hungrytime = moves;
-	/* Note: to get the correct percentage-eaten in case oeaten is set,
-	 * use "obj->owt / obj->quan / base-weight".  It so happens that here
-	 * we want to multiply by obj->quan, which thus cancels out.
+	/*
 	 * It is arbitrary that the pet takes the same length of time to eat
-	 * as a human, but gets 5X as much nutrition.
+	 * as a human, but gets 4X as much nutrition.
 	 */
 	if(obj->otyp == CORPSE) {
 	    mtmp->meating = 3 + (mons[obj->corpsenm].cwt >> 2);
-	    nutrit = 5 * mons[obj->corpsenm].cnutrit;
+	    nutrit = 4 * mons[obj->corpsenm].cnutrit;
 	} else {
 	    mtmp->meating = objects[obj->otyp].oc_delay;
-	    nutrit = 5 * objects[obj->otyp].nutrition;
+	    nutrit = 4 * objects[obj->otyp].nutrition;
 	}
 	if(obj->oeaten) {
 	    mtmp->meating = eaten_stat(mtmp->meating, obj);
@@ -50,7 +48,7 @@ int x, y;
 	mtmp->mconf = 0;
 	if (mtmp->mtame < 20) mtmp->mtame++;
 	if(cansee(x,y))
-	    pline("%s eats %s.", Monnam(mtmp), doname(obj));
+	    pline("%s eats %s.", Monnam(mtmp), singular(obj, doname));
 	/* perhaps this was a reward */
 	if(otyp != CADAVER)
 #ifdef LINT
@@ -59,7 +57,10 @@ int x, y;
 	    edog->apport += (unsigned)(200L/
 		((long)edog->dropdist+moves-edog->droptime));
 #endif
-	delobj(obj);
+	if (obj->quan > 1)
+	    obj->quan--;
+	else
+	    delobj(obj);
 }
 
 #endif /* OVLB */

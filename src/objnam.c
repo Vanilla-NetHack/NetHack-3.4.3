@@ -9,7 +9,7 @@
 
 /* "an uncursed partly eaten guardian naga hatchling corpse" */
 #define	PREFIX	50
-#define SCHAR_MAX 127
+#define SCHAR_LIM 127
 
 #ifndef OVLB
 
@@ -1175,8 +1175,8 @@ register char *bp;
 		spesgn = -1;	/* cheaters get what they deserve */
 		spe = abs(spe);
 	}
-	if (spe > SCHAR_MAX)
-		spe = SCHAR_MAX;
+	if (spe > SCHAR_LIM)
+		spe = SCHAR_LIM;
 
 	/* now we have the actual name, as delivered by xname, say
 		green potions called whisky

@@ -81,11 +81,11 @@ tgetch()
 		if (! flags.wantspace) SetCursor(&ARROW_CURSOR);
 	}
 	/* initialize cursor blinking */
-	message = TickCount();
+	message = TickCount() + ((Invisible || (macflags & fMoveWRTMouse)) ? 0L : cursorTime);
 	cursRectInv = FALSE;
 	while (!ch) {
 		(void)WaitNextEvent(everyEvent, &theEvent, (fInFront) ? 0L : 50L, 0L);
-		if (theEvent.what == keyDown || theEvent.what == autoKey) {
+		if ((theEvent.what == keyDown || theEvent.what == autoKey) && (FrontWindow() == HackWindow)) {
 			ch = 0;
 			ObscureCursor();
 			/* use raw key codes */
@@ -228,6 +228,10 @@ keyboards useless, since here is where "<" and ">" are located */
 					case kSuspendResumeMessage:
 						if (!SuspResIsResume(theEvent.message)) {
 						/* ---------- SUSPEND EVENT ------------ */
+							if (cursRectInv) {
+								InvertRect(&cursorRect);
+								cursRectInv = FALSE;
+							}
 							fInFront = FALSE;
 							if (macflags & fZoomOnContextSwitch
 								&& !EmptyRect(&(**(HackWindow)->visRgn).rgnBBox))
@@ -264,8 +268,9 @@ keyboards useless, since here is where "<" and ">" are located */
 		
 			case updateEvt:
 				if (HackWindow == (WindowPtr)theEvent.message) {
+					if (cursRectInv) InvertRect(&cursorRect);	/* clear cursor */
+					cursRectInv = FALSE;
 					doUpdate(t);
-					if (cursRectInv) InvertRect(&cursorRect);	/* restore cursor */
 				}
 				break;
 				
@@ -299,6 +304,10 @@ keyboards useless, since here is where "<" and ">" are located */
 				break;
 				
 			case mouseDown:
+				if (cursRectInv) {
+					InvertRect(&cursorRect);
+					cursRectInv = FALSE;
+				}
 				ch = mButtonDown(theEvent, t, &nextCommand);
 #ifdef THINK_C
 				repDelay = KeyThresh;

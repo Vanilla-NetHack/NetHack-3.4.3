@@ -11,6 +11,16 @@
  * below 
  */
 #include <errno.h>
+
+# ifdef _MSC_VER	/* MSC 6.0 defines errno quite differently */
+#  if (_MSC_VER >= 600)
+#   define SKIP_ERRNO
+#  endif
+# endif
+#endif /* STUPID_CPP */
+
+#ifndef SKIP_ERRNO
+extern int errno;
 #endif
 
 #if defined(DGK)
@@ -640,7 +650,10 @@ register boolean at_stairs, falling;
  *	up a set of stairs sometimes does some very strange things!
  */
 #ifdef HARD
-	if(Inhell && up && !at_ladder &&
+	if(Inhell && up &&
+# ifdef STRONGHOLD
+           !at_ladder &&
+# endif
 			(dlevel < MAXLEVEL-3) && u.uhave_amulet) {
 	    int olev = newlevel;
 
@@ -818,7 +831,6 @@ register boolean at_stairs, falling;
 #else
 		if((fd = open(lock,0)) < 0) {
 #endif
-			extern int errno;
 			pline("Cannot open \"%s\" (errno %d).", lock, errno);
 			pline("Probably someone removed it.");
 			done(TRICKED);

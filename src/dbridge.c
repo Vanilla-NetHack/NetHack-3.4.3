@@ -425,11 +425,15 @@ int dest, how;
 			done(how);
 			/* So, you didn't die */
 			if (!e_survives_at(etmp, etmp->ex, etmp->ey)) {
+			    if (enexto(&xy, etmp->ex, etmp->ey,
+							    etmp->edata)) {
 				pline("A %s force teleports you away...",
-		      		      Hallucination ? "normal" : "strange");
-				(void) enexto(&xy, etmp->ex, etmp->ey,
-								etmp->edata);
+				      Hallucination ? "normal" : "strange");
 				teleds(xy.x, xy.y);
+			    }
+			    /* otherwise on top of the drawbridge is the
+			     * only viable spot in the dungeon, so stay there
+			     */
 			}
 		}
 	} else {
@@ -787,12 +791,22 @@ int x,y;
 	do_entity(&(occupants[0]));
 	do_entity(&(occupants[1]));
 	redosym(x, y);
+	if(OBJ_AT(x,y) && flags.soundok)
+		You("hear smashing and crushing.");
 	for (otmp = level.objects[x][y]; otmp; otmp = otmp2) {
 		otmp2 = otmp->nexthere;
+		if (otmp == uball)
+			unpunish();
+		if (otmp == uchain)
+			continue;
 		delobj(otmp);
 	}
 	for (otmp = level.objects[x2][y2]; otmp; otmp = otmp2) {
 		otmp2 = otmp->nexthere;
+		if (otmp == uball)
+			unpunish();
+		if (otmp == uchain)
+			continue;
 		delobj(otmp);
 	}
 	redosym(x2, y2);

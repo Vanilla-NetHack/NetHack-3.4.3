@@ -1369,6 +1369,7 @@ char *from, *to;
 {
 	int fromfd, tofd, r;
 	char *buf;
+	extern genericptr_t FDECL(malloc, (size_t));
 
 	if ((fromfd = open(from, O_RDONLY|O_BINARY, 0)) < 0)
 		return -1;
@@ -1393,10 +1394,17 @@ static void
 init_aline()
 {
 # ifdef __GNUC__
+/* line A calls nuke registers d0-d2,a0-a2; not all compilers regard these
+   as scratch registers, though, so we save them
+ */
+	asm(" moveml d0-d2/a0-a2, sp@-");
 	asm(" .word 0xa000; movel d0, __a_line");
+	asm(" moveml sp@+, d0-d2/a0-a2");
 # else
+	asm(" movem.l d0-d2/a0-a2, -(sp)");
 	asm(" .dc.w 0xa000");	/* tweak as necessary for your compiler */
 	asm(" move.l d0, __a_line");
+	asm(" movem.l (sp)+, d0-d2/a0-a2");
 # endif
 }
 

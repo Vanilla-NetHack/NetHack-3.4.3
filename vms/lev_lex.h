@@ -5,9 +5,15 @@
  * src/lev_main.c, where stdin & stdout are still correctly defined.
  */
 #ifdef VAXC
-# module lev_lex "3.0.9"
+# module lev_lex "3.0.10"
 #endif
 
 #include <stdio.h>
+#ifdef stdin
+# undef stdin
+#endif
 #define stdin  0
+#ifdef stdout
+# undef stdout
+#endif
 #define stdout 0

@@ -22,9 +22,17 @@ int NDECL (yylook);
 int NDECL (yyinput);
 int NDECL (yywrap);
 int NDECL (yylex);
+# ifdef NeXT
+void FDECL (yyunput, (int));
+void FDECL (yyoutput, (int));
+# else
 int FDECL (yyunput, (int));
 int FDECL (yyoutput, (int));
+# endif
 #endif
+
+void FDECL (init_yyin, (FILE *));
+void FDECL (init_yyout, (FILE *));
 
 #ifdef MSDOS
 #undef exit
@@ -61,7 +69,20 @@ int line_number = 1;
 %s MAPC
 %%
 <MAPC>[-|}{+SK\\#. ]*\n	{ line_number++; yymore(); }	
-<MAPC>ENDMAP\n	{ BEGIN 0;
+<MAPC>ENDMAP\n	{
+#ifdef FLEX_SCANNER
+		  /*
+		   * There is a bug in Flex 2.3 patch level < 6
+		   * (absent in previous versions)
+		   * that results in the following behaviour :
+		   * Once you enter an yymore(), you never exit from it.
+		   * This should do the trick!
+		   */
+		  extern int yy_more_len;
+
+		  yy_more_len = 0;
+#endif
+		  BEGIN 0;
 		  line_number++;
 		  yytext[yyleng-7] = 0; /* Discard \nENDMAP */
 		  yylval.map = (char *) alloc(strlen(yytext)+1);
@@ -132,3 +153,22 @@ long *alloc(n)
 	return ((long *)malloc (n));
 }
 #endif
+
+/* routine to switch to another input file; needed for flex */
+void init_yyin( input_f )
+FILE *input_f;
+{
+#ifdef FLEX_SCANNER
+	if (yyin != NULL)
+	    yyrestart(input_f);
+	else
+#endif
+	    yyin = input_f;
+}
+/* analogous routine (for completeness) */
+void init_yyout( output_f )
+FILE *output_f;
+{
+	yyout = output_f;
+}
+

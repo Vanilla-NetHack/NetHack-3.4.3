@@ -413,35 +413,67 @@ void
 bound_digging()
 /* put a non-diggable boundary around the initial portion of a level map.
  * assumes that no level will initially put things beyond the isok() range.
+ *
+ * we can't bound unconditionally on the last line with something in it,
+ * because that something might be a niche which was already reachable,
+ * so the boundary would be breached
+ *
+ * we can't bound unconditionally on one beyond the last line, because
+ * that provides a window of abuse for WALLIFIED_MAZE special levels
  */
 {
 	register int x,y;
-	register boolean found;
+	register unsigned typ;
+	boolean found, nonwall;
 	int xmin,xmax,ymin,ymax;
 
-	found = FALSE;
-	for(xmin=1; !found; xmin++)
-		for(y=0; y<=ROWNO-1; y++)
-			if(levl[xmin][y].typ != STONE) found = TRUE;
-	xmin -= 2;
+	found = nonwall = FALSE;
+	for(xmin=0; !found; xmin++)
+		for(y=0; y<=ROWNO-1; y++) {
+			typ = levl[xmin][y].typ;
+			if(typ != STONE) {
+				found = TRUE;
+				if(!IS_WALL(typ)) nonwall = TRUE;
+			}
+		}
+	xmin -= (nonwall ? 2 : 1);
+	if (xmin < 0) xmin = 0;
 
-	found = FALSE;
-	for(xmax=COLNO-2; !found; xmax--)
-		for(y=0; y<=ROWNO-1; y++)
-			if(levl[xmax][y].typ != STONE) found = TRUE;
-	xmax += 2;
+	found = nonwall = FALSE;
+	for(xmax=COLNO-1; !found; xmax--)
+		for(y=0; y<=ROWNO-1; y++) {
+			typ = levl[xmax][y].typ;
+			if(typ != STONE) {
+				found = TRUE;
+				if(!IS_WALL(typ)) nonwall = TRUE;
+			}
+		}
+	xmax += (nonwall ? 2 : 1);
+	if (xmax >= COLNO) xmax = COLNO-1;
 
-	found = FALSE;
-	for(ymin=1; !found; ymin++)
-		for(x=xmin; x<=xmax; x++)
-			if(levl[x][ymin].typ != STONE) found = TRUE;
-	ymin -= 2;
+	found = nonwall = FALSE;
+	for(ymin=0; !found; ymin++)
+		for(x=xmin; x<=xmax; x++) {
+			typ = levl[x][ymin].typ;
+			if(typ != STONE) {
+				found = TRUE;
+				if(!IS_WALL(typ)) nonwall = TRUE;
+			}
+		}
+	ymin -= (nonwall ? 2 : 1);
+	if (ymin < 0) ymin = 0;
 
-	found = FALSE;
-	for(ymax=ROWNO-2; !found; ymax--)
-		for(x=xmin; x<=xmax; x++)
-			if(levl[x][ymax].typ != STONE) found = TRUE;
-	ymax += 2;
+	found = nonwall = FALSE;
+	for(ymax=ROWNO-1; !found; ymax--)
+		for(x=xmin; x<=xmax; x++) {
+			typ = levl[x][ymax].typ;
+			if(typ != STONE) {
+				found = TRUE;
+				if(!IS_WALL(typ)) nonwall = TRUE;
+			}
+		}
+	ymax += (nonwall ? 2 : 1);
+	if (ymax >= ROWNO) ymax = ROWNO-1;
 
 	for(x=xmin; x<=xmax; x++) {
 		levl[x][ymin].diggable = W_NONDIGGABLE;

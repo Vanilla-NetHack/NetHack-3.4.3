@@ -18,6 +18,9 @@ void
 initoptions()
 {
 	register char *opts;
+#ifdef MACOS
+	char keepname[PL_NSIZ];  /* for save file starts */
+#endif
 
 	flags.time = flags.nonews = flags.notombstone = flags.end_own =
 	flags.standout = flags.nonull = flags.ignintr = FALSE;
@@ -55,16 +58,21 @@ initoptions()
 	read_config_file();
 #endif /* MSDOS */
 #ifdef MACOS
+	if (plname[0] == '\0') keepname[0] = '\0';
+	else Strcpy(keepname, plname);  /* keep name from save file */
 	read_config_file();
+	if (keepname[0] != '\0') Strcpy(plname, keepname);
 	flags.standout = TRUE;	
 #endif
 	if(opts = getenv("NETHACKOPTIONS"))
 		parseoptions(opts,TRUE);
 #ifdef TUTTI_FRUTTI
 	(void)fruitadd(pl_fruit);
-	objects[SLIME_MOLD].oc_name = "\033";
-	/* Put something untypable in there */
-	/* We cannot just use NULL because that marks the end of objects */
+	/* Remove "slime mold" from list of object names; this will	*/
+	/* prevent it from being wished unless it's actually present	*/
+	/* as a named (or default) fruit.  Wishing for "fruit" will	*/
+	/* result in the player's preferred fruit [better than "\033"].	*/
+	objects[SLIME_MOLD].oc_name = "fruit";
 #endif
 }
 
@@ -171,7 +179,8 @@ void
 assign_ibm_graphics()
 {
 #ifdef ASCIIGRAPH
-	flags.IBMgraphics = TRUE;	/* not set from command line */
+	flags.IBMgraphics = TRUE;
+	flags.DECgraphics = FALSE;
 
 	showsyms[S_vwall] = 0xb3;	/* meta-3, vertical rule */
 	showsyms[S_hwall] = 0xc4;	/* meta-D, horizontal rule */
@@ -199,7 +208,8 @@ void
 assign_dec_graphics()
 {
 #ifdef TERMLIB
-	flags.DECgraphics = TRUE;	/* not set from command line */
+	flags.DECgraphics = TRUE;
+	flags.IBMgraphics = FALSE;
 
 	showsyms[S_vwall] = 0xf8;	/* vertical rule */
 	showsyms[S_hwall] = 0xf1;	/* horizontal rule */
@@ -299,6 +309,9 @@ boolean from_env;
 
 	if (!strncmp(opts, "num", 3)) {
 		flags.num_pad = !negated;
+#ifndef AMIGA
+		if (!from_env) number_pad(flags.num_pad ? 1 : 0);
+#endif
 		return;
 	}
 

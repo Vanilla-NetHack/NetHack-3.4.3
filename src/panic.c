@@ -6,7 +6,7 @@
  */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#define NEED_VARARGS
+#define NEED_VARARGS /* Uses ... */	/* comment line for pre-compiled headers */
 #include	"config.h"
 
 #ifdef MSDOS

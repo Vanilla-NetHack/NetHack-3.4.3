@@ -278,7 +278,10 @@ int all;
 			pline("There %s %s here, but %s.",
 				(obj->quan == 1) ? "is" : "are",
 				doname(obj),
-				!invent ? "it is too heavy for you to lift"
+				!invent ? 
+				(obj->quan == 1 ?
+				    "it is too heavy for you to lift"
+				  : "they are too heavy for you to lift")
 					: "you cannot carry any more");
 				if(obj->otyp == SCR_SCARE_MONSTER)
 					if(obj->spe) obj->spe = 0;
@@ -619,18 +622,31 @@ explode_bag(obj)
 struct obj *obj;
 {
 	struct obj *otmp, *cobj;
+	boolean found = FALSE;
 
 	cobj = obj->cobj;
 	delete_contents(cobj);
 
 	for (otmp = invent; otmp; otmp = otmp->nobj)
-		if (otmp == cobj) break;
+		if (otmp == cobj) {
+			found = TRUE;
+			Your("%s blows apart!", xname(otmp));
+			useup(otmp);
+			break;
+		}
 
-	if (otmp) {
-		You("see your %s blow apart!", xname(otmp));
-		useup(otmp);
-		/*return(0);*/
-	} else	panic("explode_bag: bag not in invent.");
+	if (!found) {
+	    /* maybe the bag was on the floor */
+	    for (otmp=level.objects[u.ux][u.uy]; otmp; otmp=otmp->nexthere)
+		if (otmp == cobj) {
+			found = TRUE;
+			pline("The %s blows apart!", xname(otmp));
+			useupf(otmp);
+			break;
+		}
+	}
+
+	if (!found) panic("explode_bag: bag not found.");
 }
 
 void

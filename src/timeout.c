@@ -103,10 +103,11 @@ timeout()
 	 */
 	    register int time_luck = stone_luck(FALSE);
 	    boolean nostone = !carrying(LUCKSTONE);
+	    int baseluck = (flags.moonphase == FULL_MOON) ? 1 : 0;
 
-	    if(u.uluck > 0 && (nostone || time_luck < 0))
+	    if(u.uluck > baseluck && (nostone || time_luck < 0))
 		u.uluck--;
-	    else if(u.uluck < 0 && (nostone || time_luck > 0))
+	    else if(u.uluck < baseluck && (nostone || time_luck > 0))
 		u.uluck++;
 	}
 
@@ -130,7 +131,11 @@ timeout()
 			done(POISONING);
 			break;
 		case FAST:
-			You("feel yourself slowing down.");
+			if (Fast & ~INTRINSIC) /* boot speed */
+				;
+			else
+				You("feel yourself slowing down%s.",
+							Fast ? " a bit" : "");
 			break;
 		case CONFUSION:
 			HConfusion = 1; /* So make_confused works properly */

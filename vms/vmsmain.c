@@ -283,7 +283,7 @@ not_recovered:
 	flags.moonphase = phase_of_the_moon();
 	if(flags.moonphase == FULL_MOON) {
 		You("are lucky!  Full moon tonight.");
-		if(!u.uluck) change_luck(1);
+		change_luck(1);
 	} else if(flags.moonphase == NEW_MOON) {
 		pline("Be careful!  New moon tonight.");
 	}
@@ -425,9 +425,11 @@ long sigargs[], mechargs[];     /* [0] is argc, [1..argc] are the real args */
     if (condition == SS$_ACCVIO         /* access violation */
      || condition >= SS$_ASTFLT && condition <= SS$_TBIT
      || condition >= SS$_ARTRES && condition <= SS$_INHCHME) {
+# ifdef WIZARD
 	if (wizard)
 	    abort();    /* enter the debugger */
 	else
+# endif
 	    hu = TRUE;  /* pretend that hangup has already been attempted */
     }
     return SS$_RESIGNAL;

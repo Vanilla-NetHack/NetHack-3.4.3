@@ -1,6 +1,6 @@
 			Maintaining PC NetHack
-		       ========================
-		       Last revision: 1990may27
+		     ===========================
+		     Last revision: 1991january31
 
 The installation of the system of overlay management that currently
 brings full-featured NetHack to the IBM PC and compatibles has
@@ -25,7 +25,7 @@ programme being loaded and discarded as they are needed. Unlike
 traditional candidates for the overlaying strategy, however, NetHack
 does not exhibit strongly phased behaviour; although much of the code
 is not being used at any one moment, there is comparatively little
-code that can be confidently said not to be related to or potentially
+code that can confidently be said not to be related to or potentially
 necessary for the immediate progress of the game.
 	Furthermore we wished to develop an overlaying strategy that
 did _not_ involve intimate knowledge of the operation of the
@@ -83,13 +83,13 @@ strange and enclosed a function name in quite unneeded parentheses!),
 a function name is typically followed by an open parenthesis if, and
 only if, it is being declared, defined or invoked; if its address is
 being taken it will necessarily be followed by some other token.
-Furthermore (except in the unfortunate case of the ill-conceived
-new-style ANSI declaration of a function that takes no parameters) it
-will be observed that the number of parameters to a call of the
-function (assuming that this number is fixed; if not, I grant, we
-have a problem) is the same in all these contexts. This implies that
-if all the modules of a programme are uniformly processed in the
-context of a macro definition such as
+Furthermore it will be observed that (except in the unfortunate case
+of the ill-conceived new-style ANSI declaration of a function that
+takes no parameters) the number of parameters to a call of the
+function (assuming that this number is fixed; if not, I grant, we have
+a problem) is the same in all these contexts. This implies that if all
+the modules of a programme are uniformly processed in the context of a
+macro definition such as
 
 	#define zook(a,b) plenk(a,b)
 
@@ -99,10 +99,10 @@ to the original (without this definition) except that the link
 map will report the existence of the function plenk() in place of
 zook() -- UNLESS there was a place in the programme where the address
 of zook was taken. In that case, the linker would report an
-unresolved external reference for that symbol.
+unresolved external reference for zook.
 	That unresolved reference is, of course, precisely what we
 need; if in another source file (one that did not see the macro
-definition) we placed the function declaration
+definition) we placed the function definition
 
 	some_t zook(this_t a, that_t b)
 	  { extern some_t plenk(this_t, that_t);
@@ -218,7 +218,7 @@ source file name and the compilation model only). The reason for this
 is, quite daftly to my mind, that the linker considers the identity
 of segment names and combine classes better reason to combine
 segments than the programmer's explicit instructions in the requested
-overlay pattern are reason to keep them apart. Programmer, ask not
+overlay pattern is reason to keep them apart. Programmer, ask not
 why...).
 
 Once again, that works fine except for the small matter of
@@ -301,8 +301,8 @@ performance (such as it is) has been achieved without substantive
 change or restructuring of the NetHack source code, which must remain
 portable to many platforms other than the PC.
 
-If these observations do not daunt you, you are a true Bit Warrior
-indeed (or aspiration anyway), and we await your comments with bait.
+If these observations do not daunt you, you are a Bit Warrior indeed
+(or aspiration anyway), and we await your comments with bait.
 
 ------------------------------------------------------------------------
 
@@ -331,6 +331,6 @@ NOTES:
     same time.
 
 ------------------------------------------------------------------------
-Stephen P Spackman                             stephen@tira.uchicago.edu
+Stephen P Spackman                         stephen@estragon.uchicago.edu
 ------------------------------------------------------------------------
 			     * Hack On! *

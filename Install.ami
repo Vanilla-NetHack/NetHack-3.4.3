@@ -2,7 +2,7 @@
 	Instructions for compiling and installing NetHack 3.0
 			on an AMIGA system
 	=====================================================
-		    Last Revision: 27 May 1990
+		    Last Revision: 4 February, 1991
 
 Overview
 --------
@@ -18,12 +18,10 @@ Overview
 
 Requirements
 ------------
-    Amiga 500,1000,2000,2500  running WorkBench 1.3 and KickStart 1.2 or 1.3.
-    (As of this time, the Amiga 3000 running beta-release versions of
-    WorkBench 2.0 are not supported.  While the core of the game appears to
-    function, the custom font is not recognized by the operating system.
-    The NetHack team welcomes reports of specific problems and solutions on
-    this [or any other] subject.)
+    Amiga 500,1000,2000,2500 running WorkBench 1.3 and KickStart 1.2 or 1.3.
+    Amiga 3000 running WorkBench 1.3 or 2.0.  For the Amiga 3000 under 2.0,
+    be sure to follow the directions below (don't panic, the changes are
+    minor.)
 	one meg of RAM and one floppy drive (painful, but functional)
 or	one meg of RAM and two floppy drives (much better)
 or	more than one meg of RAM and a hard disk with 2+ meg free (best)
@@ -41,7 +39,7 @@ Section I - Installation Guide
 	* NetHack (executable code)
 	* Rumors file
 	* Oracle file
-	* All of the various help and informational files (help, opthelp, etc)
+	* All the various help and informational files (help, opthelp, etc)
 	* Special level files (castle, tower1, tower2, tower3, endgame)
 	* Amiga with at least 1 meg memory (may be optimistic....)
 
@@ -58,7 +56,7 @@ Section I - Installation Guide
     Installation Steps:
 
 	1) If you have a hard disk, create a directory named NetHack.
-	   Assign Nethack: to be the path to this directory.  If you have a
+	   Assign NetHack: to be the path to this directory.  If you have a
 	   floppy, format a disk named NetHack.  (If you have a hard disk
 	   but only one meg of memory, you will probably not have enough
 	   memory: you may need to run from a floppy.)
@@ -66,7 +64,7 @@ Section I - Installation Guide
 	2) If you have a hard disk, assign HackExe: to the above directory.
 	   If you have a floppy, format an additional disk named HackExe.
 
-	3) Copy Nethack, NetHack.info, NewGame.info, and NetHackScore.info
+	3) Copy NetHack, NetHack.info, NewGame.info, and NetHackScore.info
 	   to HackExe.  Create an empty file called NewGame (WorkBench
 	   refuses to Duplicate a project icon without a file attached).
 
@@ -82,24 +80,32 @@ Section I - Installation Guide
 	   to set GRAPHICS if you are not using the optional font.  If you
 	   have only one meg of ram, do not use a ram disk.
 
+	6) AMIGA 3000 running AmigaDos 2.0 ONLY:
+	   If you are using the optional font, you need to build a new
+	   hack.font file.  Execute the following commands from the CLI:
+		copy NetHack:hack FONTS: all
+		FixFonts
+		copy FONTS:hack.font NetHack:
+		delete FONTS:hack all
+
     That's all there is to it!  If you are using the CLI interface, make sure
     that the stack is set fairly large (at LEAST 40000 bytes).  Move to the
     NetHack: directory, and type NetHack <cmd line options>.  If you're
     using the WorkBench interface, click on the NetHack directory/disk.
-    You should see 3 icons.  Select the "NewGame" option, and "Duplicate" from
-    the WorkBench pull down menu.  This icon now represents your personal
-    profile.  You can now rename this icon, and tailor it to your liking
-    as described below.  If you start a game from the WorkBench interface,
-    saving the game will automatically tie the personal file icon to the
-    saved game.  So the next time you select your icon, the game will be
-    restored.
+    You should see 3 icons.  Select the "NewGame" option, and "Duplicate"
+    from the WorkBench pull down menu.  This icon now represents your
+    personal profile.  You can now rename this icon, and tailor it to your
+    liking as described below.  If you start a game from the WorkBench
+    interface, saving the game will automatically tie the personal file icon
+    to the saved game.  So the next time you double click your icon, the game
+    will be restored.
 
     As mentioned above, the icon representing your personal profile can be
     customized.  This is done via the the Info command available from
     WorkBench.  You can adjust the following using the ToolTypes from the
     WorkBench info command:
 
-	* OPTIONS=<options> - Options as avaliable in the NetHack.cnf file.
+	* OPTIONS=<options> - Options as available in the NetHack.cnf file.
 
 	* HACKDIR=<directory> - Set NetHack working directory to be this
 	  directory.
@@ -226,8 +232,11 @@ SECTION III - Lattice Compilation Instructions
     for the function yyunput.  Delete the word "register" from this line.
     Note that if you neglect to do this, you will get an Error 72 at line 319
     of file lev_comp.l (this is the correct message - lev_lex.c is flex output).
-    Save the changed file.  Later compiler versions may or may not need this
-    fix.
+    Save the changed file.  Later compiler versions do not need this fix.
+
+    There is one other bug available: depending on the way your versions of
+    lex/flex and yacc/bison generate #line statements, you may get requestors
+    for "Src1: (just one quote).  If so, just select Cancel on the requestor.
 
     Type 'CD NetHack:' and then type "lmk -f Amiga:Makefile.ami".  If all
     goes well, you'll have a working binary a couple of hours later (depending
@@ -236,13 +245,13 @@ SECTION III - Lattice Compilation Instructions
 
 	* The primary Lattice compiler used on the Amiga port was version
 	  5.05.  Previous versions of NetHack have been successfully compiled
-	  with 5.04 and 5.04a.
+	  with 5.04 and 5.04a.  Final development of PL10 was done with 5.10.
 
 	* The function monsndx, in file mondata.c, has a section of code
 	  which Lattice 5.04 compiles incorrectly.  A hack has been written
 	  around this so that Lattice will generate the correct code.  It is
 	  recommended that you leave this in place, and not attempt to
-	  "improve" it.  This fix "does the right thing" in version 5.05.
+	  "improve" it.  This fix "does the right thing" in later versions.
 
 	* Included in the Lattice port is code for generating a SnapShot.tb
 	  file upon catching various internal disasters.  That is why the
@@ -259,6 +268,10 @@ SECTION III - Lattice Compilation Instructions
 
 SECTION IV  - AZTEC/MANX Compilation Instructions
 -------------------------------------------------
+
+    Note: The current version of nethack does _not_ run with the Aztec 5.0
+    compiler.  Future releases of Nethack will remedy this, but currently
+    only 3.6 is supported.
 
     NetHack 3.0 compiles and runs fine under Aztec 3.6, but a little bit
     of work is necessary.  The problem is that the Aztec pre-processor
@@ -316,7 +329,7 @@ SECTION IV  - AZTEC/MANX Compilation Instructions
 	  be a warning when defining lev_lex.c that LEV_LEX is redefined.  This
 	  is OK.  Any other warnings should be investigated.
 
-	* I haven't tried sdb on it, as I can't affort the disk space.  (You'll
+	* I haven't tried sdb on it, as I can't afford the disk space.  (You'll
 	  have to save the intermediate cpp files if you cpp).  Unless you've
           got a whopping amount of memory, I suspect it's going to be too large.
 

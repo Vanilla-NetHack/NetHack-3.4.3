@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)topten.c	3.0	89/12/31
+/*	SCCS Id: @(#)topten.c	3.0	91/01/20
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
@@ -7,17 +7,19 @@
 /* block some unused #defines to avoid overloading some cpp's */
 #include "hack.h"
 
-#ifndef MACOS
+#if defined(UNIX) || defined(VMS)
 #include <errno.h>	/* George Barbanis */
-#else
+extern int errno;
+# if defined(NO_FILE_LINKS) && !defined(O_WRONLY)
+#include <fcntl.h>	/* Ralf Brown */
+# endif
+#endif	/* UNIX || VMS */
+#include <ctype.h>
+
+#ifdef MACOS
 extern short macflags;
 extern WindowPtr	HackWindow;
 #endif
-
-#ifdef NO_FILE_LINKS
-#include <fcntl.h>	/* Ralf Brown */
-#endif
-#include <ctype.h>
 
 #ifdef NO_SCAN_BRACK
 static void FDECL(nsb_mung_line,(char*));
@@ -142,7 +144,7 @@ int how;
 # endif
 #endif /* UNIX */
 #ifdef VMS
-	char *reclock = "record_lock;1";
+	const char *reclock = "record.lock;1";
 	char recfile[] = RECORD;
 #else
 	const char *recfile = RECORD;
@@ -159,7 +161,7 @@ int how;
 	char *loglock = "logfile_lock";
 # endif /* UNIX */
 # ifdef VMS
-	char *loglock = "logfile_lock;1";
+	const char *loglock = "logfile.lock;1";
 # endif /* VMS */
 # if defined(UNIX) || defined(VMS)
 	int sleeplgct = 30;
@@ -216,8 +218,6 @@ int how;
 #  else
 	while(link(lgfile, loglock) == -1) {
 #  endif /* NO_FILE_LINKS */
-		extern int errno;
-
 		if (errno == ENOENT) /* If no such file, do not keep log */
 			goto lgend;  /* George Barbanis */
 		HUP perror(loglock);
@@ -244,18 +244,20 @@ int how;
 # if defined(UNIX) || defined(VMS)
 	(void) unlink(loglock);
 # endif /* UNIX or VMS */
-      lgend:;
+ lgend: ;
 # ifdef NO_FILE_LINKS
 	(void) close(lockfd) ;
+	free((genericptr_t) loglock) ;
 # endif
-# if defined(WIZARD) || defined(EXPLORE_MODE)
+#endif /* LOGFILE */
+
+#if defined(WIZARD) || defined(EXPLORE_MODE)
 	if (wizard || discover) {
  Printf("\nSince you were in %s mode, the score list will not be checked.\n",
 	wizard ? "wizard" : "discover");
 		return;
 	}
-# endif
-#endif /* LOGFILE */
+#endif
 
 #if defined(UNIX) || defined(VMS)
 # ifdef NO_FILE_LINKS
@@ -289,13 +291,9 @@ int how;
 		
 		t = (term_info *)GetWRefCon(HackWindow);
 		SetVol((StringPtr)0L, t->recordVRefNum);
-		if (!(rfile = fopen(recfile,"r"))) {
-			short	i;
-	
+		if (!(rfile = fopen(recfile,"r")))
 			rfile = openFile(recfile,"r");
-		}
 	}
-
 	if (!rfile) {
 #else
 	if(!(rfile = fopen(recfile,"r"))){
@@ -303,9 +301,6 @@ int how;
 		HUP (void) puts("Cannot open record file!");
 		goto unlock;
 	}
-#ifdef NO_FILE_LINKS
-	(void) close(lockfd) ;
-#endif
 	HUP (void) putchar('\n');
 
 	/* assure minimum number of points */
@@ -359,12 +354,9 @@ int how;
 	if(flg) {	/* rewrite record file */
 		(void) fclose(rfile);
 #ifdef VMS
-		{
-			char *sem = rindex(recfile, ';');
-
-			if (sem)
-				*sem = '\0';
-		}
+	    {	char *semi_colon = rindex(recfile, ';');
+		if (semi_colon) *semi_colon = '\0';
+	    }
 #endif
 		if(!(rfile = fopen(recfile,"w"))){
 			HUP (void) puts("Cannot write record file\n");
@@ -441,11 +433,12 @@ int how;
 #endif
 unlock:	;
 #if defined(UNIX) || defined(VMS)
-# ifdef NO_FILE_LINKS
-	(void) close(lockfd) ;
-# endif
 	if (unlink(reclock) < 0)
 		Printf("Can't unlink %s\n",reclock) ;
+# ifdef NO_FILE_LINKS
+	(void) close(lockfd) ;
+	free((genericptr_t) reclock) ;
+# endif
 #endif
 }
 
@@ -474,7 +467,7 @@ register int rank, so;
 	char linebuf[BUFSZ], linebuf2[BUFSZ];
 
 	linebuf[0] = linebuf2[0] = 0;
-	if(rank) Sprintf(eos(linebuf), " %2d", rank);
+	if(rank) Sprintf(eos(linebuf), "%3d", rank);
 	else Strcat(linebuf, "   ");
 
 	Sprintf(eos(linebuf), " %10ld  %.10s", t1->points, t1->name);

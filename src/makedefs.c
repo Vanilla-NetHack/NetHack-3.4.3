@@ -103,8 +103,8 @@ void NDECL(do_rumors);
 
 char * FDECL(tmpdup, (const char *));
 
-#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
-void FDECL(rename, (char *, char *));
+#if defined(SYSV) || defined(GENIX)
+int FDECL(rename, (const char *, const char *));
 #endif
 
 #ifdef SMALLDATA
@@ -286,7 +286,7 @@ do_traps() {
 #if defined(MSDOS) || defined(MACOS)
 	remove(TRAP_FILE);
 #endif
-	rename(tempfile, TRAP_FILE);
+	(void) rename(tempfile, TRAP_FILE);
 	return;
 }
 
@@ -308,8 +308,16 @@ do_rumors(){
 	}
 
 	/* get size of true rumors file */
+#ifndef VMS
 	(void) fseek(stdin, 0L, 2);
 	true_rumor_size = ftell(stdin);
+#else
+	/* seek+tell is only valid for stream format files; since rumors.%%%
+	   might be in record format, count the acutal data bytes instead.
+	 */
+	true_rumor_size = 0;
+	while (gets(in_line) != NULL)  true_rumor_size += strlen(in_line) + 1;
+#endif /* VMS */
 	(void) fwrite((genericptr_t)&true_rumor_size,sizeof(long),1,stdout);
 	(void) fseek(stdin, 0L, 0);
 
@@ -600,17 +608,21 @@ const char *str;
 	return buf;
 }
 
-#if defined(SYSV) || defined(GENIX) || defined(UNIXDEBUG)
-void
+#if defined(SYSV) || defined(GENIX)
+/* later SYSV (SVR3+?) systems have rename() a la POSIX and BSD.
+ * redefining it (with the same functionality) should be ok as long
+ * as it's the same type.
+ */
+int
 rename(oldname, newname)
-char	*oldname, *newname;
+const char	*oldname, *newname;
 {
 	if (strcmp(oldname, newname)) {
 		(void) unlink(newname);
 		(void) link(oldname, newname);
 		(void) unlink(oldname);
 	}
-	return;
+	return 0;
 }
 #endif
 

@@ -112,7 +112,7 @@ midnight()
 static struct stat buf, hbuf;
 
 void
-gethdate(name) char *name; {
+gethdate(name) const char *name; {
 /* old version - for people short of space */
 /*
 /* register char *np;

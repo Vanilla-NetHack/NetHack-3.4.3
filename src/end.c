@@ -348,13 +348,17 @@ int how;
 #endif
 	if(Lifesaved && how <= GENOCIDED) {
 		u.uswldtim = 0;
-		if(u.uhpmax < 0) u.uhpmax = 10;	/* arbitrary */
+		if(u.uhpmax <= 0) u.uhpmax = 10;	/* arbitrary */
 		u.uhp = u.uhpmax;
 		adjattrib(A_CON, -1, TRUE);
 		pline("But wait...");
 		makeknown(AMULET_OF_LIFE_SAVING);
 		Your("medallion %s!",
 		      !Blind ? "begins to glow" : "feels warm");
+		if (how == CHOKING) {
+			init_uhunger();
+			You("vomit ...");
+		}
 		You("feel much better!");
 		pline("The medallion crumbles to dust!");
 		useup(uamul);
@@ -377,10 +381,12 @@ int how;
 		pline("Die? ");
 		if(yn() == 'y') goto die;
 		u.uswldtim = 0;
-		if(u.uhpmax < 0) u.uhpmax = 100;	/* arbitrary */
+		if(u.uhpmax <= 0) u.uhpmax = 100;	/* arbitrary */
 		u.uhp = u.uhpmax;
 		if (u.uhunger < 500) u.uhunger = 500;
-		pline("Ok, so you don't die.");
+		if (how == CHOKING) init_uhunger();
+		pline("Ok, so you don't %s.",
+			(how == CHOKING) ? "choke" : "die");
 		nomovemsg = "You survived that attempt on your life.";
 		curs_on_u();
 		flags.move = 0;

@@ -379,7 +379,7 @@ register int after;
 	register struct monst *mtmp2;
 	register int nx,ny,omx,omy,appr,nearer,cnt,i,j;
 	xchar gx,gy,nix,niy,chcnt;
-	schar chi;
+	int chi;        /* could be schar except for stupid Sun-2 compiler */
 	boolean likegold=0, likegems=0, likeobjs=0, likemagic=0, conceals=0;
 	boolean likerock=0, can_tunnel=0;
 	boolean can_open=0, can_unlock=0, doorbuster=0;
@@ -560,7 +560,9 @@ not_special:
 			  otmp->otyp < LAST_GEM + 6) ||
 			 (conceals && !cansee(otmp->ox,otmp->oy)) ||
 			 (ptr == &mons[PM_GELATINOUS_CUBE] &&
-			  !index(indigestion, otmp->olet))
+			  !index(indigestion, otmp->olet) &&
+			  !(otmp->otyp == CORPSE &&
+				  otmp->corpsenm == PM_COCKATRICE))
 			 ) {
 			  if(can_carry(mtmp,otmp))
 			    if(ptr->mlet != S_UNICORN ||

@@ -459,6 +459,7 @@ read_config_file()
 
     tmp_ramdisk[0] = 0;
     tmp_levels[0] = 0;
+    assign_graphics((unsigned int *)0,0);	/* set default chars */
     if ((fp = fopenp(configfile, "r")) == NULL) {
 	msmsg("Warning: no configuration file!\n");
 	getreturn("to continue");

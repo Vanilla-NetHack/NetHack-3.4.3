@@ -104,4 +104,11 @@
  *  and fix a couple more bugs
  */
 
-#define PATCHLEVEL	9
+/*
+ *  Patch 10, February 5, 1991
+ *  extend overlay manager to multiple files for easier binary distribution
+ *  allow for more system and compiler variance
+ *  remove more small insects
+ */
+
+#define PATCHLEVEL	10

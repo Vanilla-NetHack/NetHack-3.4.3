@@ -714,7 +714,7 @@ register struct obj	*sobj;
 			if(!Blind)
 			    pline("Oh, look, what a pretty fire in your %s.",
 				makeplural(body_part(HAND)));
-			else You("feal a pleasant warmth in your %s.",
+			else You("feel a pleasant warmth in your %s.",
 				makeplural(body_part(HAND)));
 		    } else {
 			pline("The scroll catches fire and you burn your %s.",
