@@ -281,14 +281,18 @@ gulpmm(magr, mdef, mattk)
 	if(cansee(magr->mx, magr->my))	pmon(magr);
 	if((tmp = mdamagem(magr, mdef, mattk)) == 2) {
 		levl[mx][my].mmask = 0;
+		levl[magr->mx][magr->my].mmask = 1;
 		return(2);	/* defender died */
 	} else {		/* defender survived */
+		if(cansee(mdef->mx, mdef->my))
+			pline("%s is regurgitated!", Monnam(mdef));
 		if(cansee(magr->mx, magr->my))	unpmon(magr);
 		magr->mx = mx;
 		magr->my = my;
 		/* move off of defender */
 		if(cansee(magr->mx, magr->my))	pmon(magr);
 		if(cansee(mdef->mx, mdef->my))	pmon(mdef);
+		nscr();
 		return(tmp);
 	}
 }
@@ -458,7 +462,7 @@ mdamagem(magr, mdef, mattk)
 		tmp = 0;	/* no damage if this fails */
 		break;
 	    case AD_TLPT:
-		if(!magr->mcan && tmp >= mdef->mhp) {
+		if(!magr->mcan && tmp < mdef->mhp) {
 		    rloc(mdef);
 		    if(vis && !cansee(mdef->mx, mdef->my))
 			pline("%s suddenly disappears!", Monnam(mdef));

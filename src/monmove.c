@@ -204,7 +204,14 @@ dochug(mtmp)
 #endif
 			unstuck(mtmp);	/* monster lets go when fleeing */
 		mtmp->mflee = 1;
+#ifdef STUPID
+		if (rn2(7))
+		    mtmp->mfleetim = rnd(10);
+		else
+		    mtmp->mfleetim = rnd(100);
+#else
 		mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
+#endif
 	}
 
 #ifdef HARD	/* Demonic Blackmail!!! */
@@ -262,7 +269,14 @@ dochug(mtmp)
 							(BOLT_LIM * BOLT_LIM));
 		if(scared && !mtmp->mflee) {
 			mtmp->mflee = 1;
+#ifdef STUPID
+			if (rn2(7))
+			    mtmp->mfleetim = rnd(10);
+			else
+			    mtmp->mfleetim = rnd(100);
+#else
 			mtmp->mfleetim = (rn2(7) ? rnd(10) : rnd(100));
+#endif
 		}
 	}
 

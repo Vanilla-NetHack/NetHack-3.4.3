@@ -158,6 +158,10 @@ register int rx, ry;
 	if(lev->mmask) {
 		mtmp = m_at(rx,ry);
 		mstatusline(mtmp);
+		if (mtmp->mundetected) {
+			mtmp->mundetected = 0;
+			if (cansee(rx,ry)) pmon(mtmp);
+		}
 		return;
 	}
 	if(lev->typ == SDOOR) {
@@ -491,7 +495,14 @@ dig() {
 			lev->typ = CORR;
 			digtxt = "You succeeded in cutting away some rock.";
 		} else if(IS_WALL(lev->typ)) {
+#ifdef STUPID
+		        if (is_maze_lev)
+			    lev->typ = ROOM;
+			else
+			    lev->typ = DOOR;
+#else
 			lev->typ = is_maze_lev ? ROOM : DOOR;
+#endif
 			digtxt = "You just made an opening in the wall.";
 		} else if(lev->typ == SDOOR) {
 			lev->typ = DOOR;
@@ -1006,6 +1017,7 @@ dorub()
 	    if (uwep->spe > 0 && !rn2(3)) {
 		uwep->spe = 0;
 		djinni_from_bottle(uwep);
+		makeknown(MAGIC_LAMP);
 	    } else if (rn2(2) && !Blind)
 		You("see a puff of smoke.");
 	    else pline(nothing_happens);

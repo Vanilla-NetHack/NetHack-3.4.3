@@ -208,7 +208,7 @@ register struct obj *otmp;
 	/* There's no reason you should be able to write with a wand
 	 * while both your hands are tied up.
 	 */
-	if (!freehand() && otmp != uwep) {
+	if (!freehand() && otmp != uwep && !otmp->owornmask) {
 		You("have no free %s to write with!", body_part(HAND));
 		return(0);
 	}
@@ -218,6 +218,10 @@ register struct obj *otmp;
 		return(0);
 	}
 #endif
+	if(otmp == ublindf) {
+		pline("That is a bit difficult to engrave with, don't you think?");
+		return(1);
+	}
 	if(otmp != &zeroobj && index(too_large,otmp->olet)) {
 		You("can't engrave with such a large object!");
 		return(1);
@@ -238,9 +242,7 @@ register struct obj *otmp;
 			makeplural(body_part(FINGER)));
 		type = DUST;
 	} else if(otmp->olet == WAND_SYM && zappable(otmp)) {
-		/* changed so any wand gets zapped out, but fire
-		 * wands become known.
-		 */
+		/* changed so any wand gets zapped out */
 		if((objects[otmp->otyp].bits & NODIR))  {
 			zapnodir(otmp);
 			type = DUST;
@@ -307,7 +309,7 @@ register struct obj *otmp;
 					do  {
 						tx = rn1(COLNO-3,2);
 						ty = rn2(ROWNO);
-					}  while(!goodpos(tx,ty));
+					}  while(!goodpos(tx,ty,(struct permonst *)0));
 					oep->engr_x = tx;
 					oep->engr_y = ty;
 					pline("The engraving on the floor vanishes!");
@@ -323,12 +325,13 @@ register struct obj *otmp;
 			   doname(otmp));
 
 	} else {
-		if(otmp->otyp == DAGGER ||
+		if((otmp->otyp >= DAGGER && otmp->otyp <= AXE) ||
 #ifdef WORM
 		   otmp->otyp == CRYSKNIFE ||
 #endif
-		   is_sword(otmp) || otmp->otyp == AXE) {
+		   is_sword(otmp)) {
 			type = ENGRAVE;
+
 			if((int)otmp->spe <= -3) {
 				Your("%s too dull for engraving.",
 					aobjnam(otmp, "are"));
@@ -529,14 +532,14 @@ register struct engr *ep2;
 		bwrite(fd, (genericptr_t)&(ep->engr_lth), sizeof(ep->engr_lth));
 		bwrite(fd, (genericptr_t)ep, sizeof(struct engr) + ep->engr_lth);
 	    }
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	    if (!count_only)
 #endif
 		free((genericptr_t) ep);
 	    ep = ep2;
 	}
 	bwrite(fd, (genericptr_t)nul, sizeof(unsigned));
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	if (!count_only)
 #endif
 		head_engr = 0;

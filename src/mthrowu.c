@@ -42,19 +42,13 @@ thitu(tlev, dam, name)	/* u is hit by sth, but not a monster */
 	} else {
 		if(Blind || !flags.verbose) You("are hit!");
 		else You("are hit by %s!", buf);
-		Strcpy(buf,name);
-		/* If name came from xname() we must copy it, otherwise if
-		 * you die, the possession identify will call xname(),
-		 * overwriting xname's buffer, and your tombstone will say
-		 * you were killed by a green gem or some such.
-		 */
 #ifdef POLYSELF
 		if (acidic && resists_acid(uasmon))
 			pline("It doesn't seem to hurt you.");
 		else {
 #endif
 			if (acidic) pline("It burns!");
-			losehp(dam, buf);
+			losehp(dam, name);
 #ifdef POLYSELF
 		}
 #endif
@@ -191,7 +185,7 @@ m_throw(x, y, dx, dy, range, obj)
 				if (dam < 1) dam = 1;
 				hitu = thitu(8+obj->spe, dam, xname(singleobj));
 			}
-			if (obj->opoisoned)
+			if (hitu && obj->opoisoned)
 			    /* it's safe to call xname twice because it's the
 			       same object both times... */
 			    poisoned(xname(singleobj), A_STR, xname(singleobj));

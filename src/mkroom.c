@@ -253,8 +253,8 @@ int type;
 		levl[tx][ty].typ = THRONE;
 		levl[tx][ty].scrsym = THRONE_SYM;
 
-		tx = somex(sroom);
-		ty = somey(sroom);
+		sx = somex(sroom);
+		sy = somey(sroom);
 		mkgold((long) rn1(50 * dlevel,10), sx, sy);
 		(void) mksobj_at(CHEST, sx, sy);    /* the royal coffers */
 	}
@@ -439,10 +439,10 @@ static struct permonst *
 squadmon() {	    /* return soldier types. */
 
 	register struct permonst *ptr;
-	register int	i, cpro, sel = rnd(80+dlevel);
+	register int	i, cpro, sel_prob = rnd(80+dlevel);
 
 	for(cpro = i = 0; i < NSTYPES; i++)
-	    if((cpro += squadprob[i].prob) > sel) {
+	    if((cpro += squadprob[i].prob) > sel_prob) {
 
 		ptr = &mons[squadprob[i].pm];
 		goto gotone;

@@ -27,6 +27,9 @@
 			   avoid overloading limited preprocessors */
 /* #define TERMINFO	/* uses terminfo rather than termcap */
 			/* should be defined for most, but not all, SYSV */
+			/* in particular, it should NOT be defined for the
+			 * UNIXPC unless you remove the use of the shared
+			 * library in the makefile */
 /* #define MINIMAL_TERM	/* if a terminal handles highlighting or tabs poorly,
 			   try this define, used in pager.c and termcap.c */
 #endif
@@ -46,6 +49,16 @@
 
 #define	LOGFILE	"logfile" /* larger file for debugging purposes */
 #define	NEWS	"news"	  /* the file containing the latest hack news */
+
+/*
+ *	If COMPRESS is defined, it should contain the full path name of your
+ *	'compress' program.  Defining ZEROCOMP causes NetHack to do simpler
+ *	zero-run compression internally.  Both COMPRESS and ZEROCOMP create
+ *	smaller bones/level/save files, but require additional code and time.
+ */
+
+#define COMPRESS "/usr/local/compress"
+/* #define ZEROCOMP	/* Use only if COMPRESS is not used -- Olaf Seibert */
 
 
 #define	CHDIR		/* delete if no chdir() available */
@@ -148,10 +161,6 @@ typedef	unsigned char	uchar;
 #define	SHIRT		/* Hawaiian shirt code by Steve Linhart */
 #define THEOLOGY	/* Smarter gods - The Unknown Hacker */
 #define SINKS		/* Kitchen sinks - Janet Walz */
-#define COMPRESS "/usr/local/compress"	/* the location of 'compress' */
-			/* Compressed bones / save files - Izchak Miller */
-/* #define ZEROCOMP	/* Zero-run compression of files - Olaf Seibert */
-			/* Use only if COMPRESS is not used */
 #define SOUNDS		/* Add more life to the dungeon */
 #define REINCARNATION	/* Rogue-like levels */
 #define ELBERETH	/* Allow for disabling the E word - Mike 3point */
@@ -168,9 +177,10 @@ typedef	unsigned char	uchar;
 #define GOLEMS		/* Golems, by KAA */
 #define TOLKIEN		/* More varieties of objects and monsters */
 #define KICK		/* Allow kicking things besides doors -Izchak Miller */
+#define TUTTI_FRUTTI	/* Fruits as in Rogue, but which work... -KAA */
 
 #ifdef REDO
-#define DOAGAIN	'\001'		/* The "redo" key Used in tty.c and cmd.c */
+#define DOAGAIN	'\001'		/* The "redo" key used in tty.c and cmd.c */
 #endif
 
 #define	EXP_ON_BOTL	/* Show experience on bottom line */

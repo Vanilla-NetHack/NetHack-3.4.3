@@ -6,11 +6,18 @@ GAME     = nethack
 GAMEUID  = games
 GAMEGRP  = bin
 
-#	GAMEDIR also appears in config.h as "HACKDIR".
+# GAMEDIR also appears in config.h as "HACKDIR".
+#
+# note that 'make install' believes in creating a nice tidy GAMEDIR for
+# installation, free of debris from previous NetHack versions --
+# therefore there should not be anything in GAMEDIR that you want to keep
+# (if there is, you'll have to do the installation by hand or modify the
+# instructions)
 GAMEDIR  = /usr/games/lib/$(GAME)dir
 SHELLDIR = /usr/games
 MANDIR   = /usr/man/man6
 MANEXT   = 6
+
 # manual installation for most BSD-style systems
 GAMEMANCREATE = cp auxil/nethack.6
 LEVMANCREATE = cp auxil/lev_comp.6

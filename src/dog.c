@@ -229,11 +229,15 @@ register struct obj *obj;
 	    switch (obj->otyp) {
 		case TRIPE_RATION:
 		    return (carn ? DOGFOOD : MANFOOD);
-		case CORPSE:
 		case EGG:
-		    if ((obj->age + 50 <= moves && mon->data->mlet != S_FUNGUS) ||
-			(poisonous(&mons[obj->corpsenm]) && !resists_poison(mon->data)) ||
-			(obj->corpsenm == PM_COCKATRICE && !resists_ston(mon->data)))
+		    if (obj->corpsenm == PM_COCKATRICE &&
+						!resists_ston(mon->data))
+			return POISON;
+		    return (carn ? CADAVER : MANFOOD);
+		case CORPSE:
+		    if ((obj->age+50 <= moves && mon->data->mlet != S_FUNGUS) ||
+			(poisonous(&mons[obj->corpsenm]) &&
+						!resists_poison(mon->data)))
 			return POISON;
 		    else return (carn ? CADAVER : MANFOOD);
 		case DEAD_LIZARD:

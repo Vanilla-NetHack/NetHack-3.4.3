@@ -46,15 +46,20 @@ char *nomovemsg = 0;
 const char nul[40] = DUMMY;		/* contains zeros */
 char plname[PL_NSIZ] = DUMMY;		/* player name */
 char pl_character[PL_CSIZ] = DUMMY;
+
+#ifdef TUTTI_FRUTTI
 char pl_fruit[PL_FSIZ] = DUMMY;
 int current_fruit = 0;
 struct fruit *ffruit = 0;
+#endif
+
 #ifdef STRONGHOLD
 char tune[6] = DUMMY;
 #  ifdef MUSIC
 schar music_heard = 0;
 #  endif
 #endif
+
 char *occtxt = DUMMY;
 const char quitchars[] = " \r\n\033";
 const char vowels[] = "aeiouAEIOU";
@@ -75,6 +80,7 @@ char hackdir[PATHLEN];		/* where rumors, help, record are */
 const char *configfile = "NetHack.cnf";	/* read by read_config_file() */
 char levels[PATHLEN];		/* where levels are */
 #endif /* MSDOS */
+
 #ifdef DGK
 char lock[FILENAME];		/* pathname of level files */
 char permbones[PATHLEN];	/* where permanent copy of bones go */
@@ -109,6 +115,8 @@ xchar sinksound = 0; /* numbers of other things that make noise */
 boolean in_mklev = FALSE;
 boolean	stoned = FALSE;			/* done to monsters hit by 'c' */
 boolean	unweapon = FALSE;
+boolean mrg_to_wielded = FALSE; /* weapon picked is merged with wielded one */
+
 #ifdef KOPS
 boolean allow_kops = TRUE;
 #endif

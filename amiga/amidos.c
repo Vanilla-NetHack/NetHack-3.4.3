@@ -484,7 +484,7 @@ read_config_file()
 	    (void) strncpy(SAVEF, bufp, PATHLEN);
 	    append_slash(SAVEF);
 	} else if (!strncmp(buf, "GRAPHICS", 4)) {
-	    unsigned int translate[28];   /* MAXPCHARS */
+	    unsigned int translate[MAXPCHARS+1]; /* for safety */
 	    int  i;
 
 	    if ((i = sscanf(bufp,

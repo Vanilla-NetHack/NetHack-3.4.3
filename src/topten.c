@@ -6,7 +6,10 @@
 #define MONATTK_H
 #include "hack.h"
 
-#include <errno.h>      /* George Barbanis */
+#include <errno.h>	/* George Barbanis */
+#ifdef NO_FILE_LINKS
+#include <fcntl.h>	/* Ralf Brown */
+#endif
 
 static char *itoa P((int)), *ordin P((int));
 static void outheader();
@@ -42,17 +45,20 @@ topten(){
 	char *recfile = RECORD;
 #ifdef UNIX
 	char *reclock = "record_lock";
-#endif
+# ifdef NO_FILE_LINKS
+	int lockfd ;
+# endif
+#endif /* UNIX */
 	int sleepct = 300;
 	FILE *rfile;
 	register int flg = 0;
 #ifdef LOGFILE
 	char *lgfile = LOGFILE;
 	FILE *lfile;
-#ifdef UNIX
+# ifdef UNIX
 	char *loglock = "logfile_lock";
 	int sleeplgct = 30;
-#endif /* UNIX */
+# endif /* UNIX */
 #endif /* LOGFILE */
 
 #ifdef MSDOS
@@ -62,7 +68,16 @@ topten(){
 #endif
 
 #ifdef UNIX
+# ifdef NO_FILE_LINKS
+	reclock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(recfile)+7);
+	Strcpy(reclock,LOCKDIR) ;
+	Strcat(reclock,"/") ;
+	Strcat(reclock,recfile) ;
+	Strcat(reclock,"_lock") ;
+	while ((lockfd = open(reclock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
+# else
 	while(link(recfile, reclock) == -1) {
+# endif /* NO_FILE_LINKS */
 		HUP perror(reclock);
 		if(!sleepct--) {
 			HUP (void) puts("I give up.  Sorry.");
@@ -72,16 +87,19 @@ topten(){
 		HUP Printf("Waiting for access to record file. (%d)\n",
 			sleepct);
 		HUP (void) fflush(stdout);
-#if defined(SYSV) || defined(ULTRIX)
+# if defined(SYSV) || defined(ULTRIX)
 		(void)
-#endif
+# endif
 		    sleep(1);
 	}
-#endif
+#endif /* UNIX */
 	if(!(rfile = fopen(recfile,"r"))){
 		HUP (void) puts("Cannot open record file!");
 		goto unlock;
 	}
+#ifdef NO_FILE_LINKS
+	(void) close(lockfd) ;
+#endif
 	HUP (void) putchar('\n');
 
 	/* create a new 'topten' entry */
@@ -103,8 +121,17 @@ topten(){
 	/* assure minimum number of points */
 	if(t0->points < POINTSMIN) t0->points = 0;
 #ifdef LOGFILE		/* used for debugging (who dies of what, where) */
-#ifdef UNIX
+# ifdef UNIX
+#  ifdef NO_FILE_LINKS
+	loglock = (char *)alloc(sizeof(LOCKDIR)+1+strlen(lgfile)+6);
+	Strcpy(loglock,LOCKDIR) ;
+	Strcat(loglock,"/") ;
+	Strcat(loglock,lgfile) ;
+	Strcat(loglock,"_lock") ;
+	while ((lockfd = open(loglock,O_RDWR|O_CREAT|O_EXCL,0666)) == -1) {
+#  else
 	while(link(lgfile, loglock) == -1) {
+#  endif /* NO_FILE_LINKS */
 		extern int errno;
 
 		if (errno == ENOENT) /* If no such file, do not keep log */
@@ -118,12 +145,12 @@ topten(){
 		HUP Printf("Waiting for access to log file. (%d)\n",
  			sleeplgct);
 		HUP (void) fflush(stdout);
-#if defined(SYSV) || defined(ULTRIX)
+#  if defined(SYSV) || defined(ULTRIX)
 		(void)
-#endif
+#  endif
 		    sleep(1);
 	}
-#endif /* UNIX */
+# endif /* UNIX */
 	if(!(lfile = fopen(lgfile,"a"))){
 		HUP (void) puts("Cannot open log file!");
 		goto lgend;
@@ -134,17 +161,20 @@ topten(){
 	    t0->hp, t0->maxhp, t0->points,
 	    t0->plchar, t0->sex, t0->name, t0->death);
 	(void) fclose(lfile);
-#ifdef UNIX
+# ifdef UNIX
 	(void) unlink(loglock);
-#endif /* UNIX */
+# endif /* UNIX */
       lgend:;
+# ifdef NO_FILE_LINKS
+	(void) close(lockfd) ;
+# endif
 #endif /* LOGFILE */
 
 	t1 = tt_head = newttentry();
 	tprev = 0;
 	/* rank0: -1 undefined, 0 not_on_list, n n_th on list */
 	for(rank = 1; ; ) {
-#ifdef TOS
+#ifdef OLD_TOS
 	    char k1[2],k2[2];
 	    if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
 #else
@@ -153,7 +183,7 @@ topten(){
 		t1->date, &t1->uid,
 		&t1->level, &t1->maxlvl,
 		&t1->hp, &t1->maxhp, &t1->points,
-#ifdef TOS
+#ifdef OLD_TOS
 		k1, k2,
 #else
 		&t1->plchar, &t1->sex,
@@ -161,7 +191,7 @@ topten(){
 		t1->name, t1->death) != 11 || t1->points < POINTSMIN)
 			t1->points = 0;
 
-#ifdef TOS
+#ifdef OLD_TOS
 	    t1->plchar=k1[0];
 	    t1->sex=k2[0];
 #endif
@@ -259,7 +289,11 @@ topten(){
 	(void) fclose(rfile);
 unlock:	;
 #ifdef UNIX
-	(void) unlink(reclock);
+# ifdef NO_FILE_LINKS
+	(void) close(lockfd) ;
+# endif
+	if (unlink(reclock) < 0)
+		Printf("Can't unlink %s\n",reclock) ;
 #endif
 }
 
@@ -330,6 +364,7 @@ register int rank, so;
 	if(iskilled) Sprintf(eos(linebuf), " by %s%s",
 	  (!strncmp(t1->death, "trick", 5) || !strncmp(t1->death, "the ", 4)
 	   || !strncmp(t1->death, "Mr. ", 4) || !strncmp(t1->death, "Ms. ", 4)
+	   || !strncmp(eos(t1->death)-4, "tion", 4)
 	   ) ? "" :
 	  index(vowels,*t1->death) ? "an " : "a ",
 	  t1->death);
@@ -463,7 +498,7 @@ char **argv;
 
 	t1 = tt_head = newttentry();
 	for(rank = 1; ; rank++) {
-#ifdef TOS
+#ifdef OLD_TOS
 	  char k1[2], k2[2];
 	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
 #else
@@ -472,7 +507,7 @@ char **argv;
 		t1->date, &t1->uid,
 		&t1->level, &t1->maxlvl,
 		&t1->hp, &t1->maxhp, &t1->points,
-#ifdef TOS
+#ifdef OLD_TOS
 		k1, k2,
 #else
 		&t1->plchar, &t1->sex,
@@ -480,7 +515,7 @@ char **argv;
 		t1->name, t1->death) != 11)
 			t1->points = 0;
 	  if(t1->points == 0) break;
-#ifdef TOS
+#ifdef OLD_TOS
 	  t1->plchar=k1[0];
 	  t1->sex=k2[0];
 #endif
@@ -609,7 +644,7 @@ struct obj *otmp;
 	rank = rnd(10);
 pickentry:
 	for(i = rank; i; i--) {
-#ifdef TOS
+#ifdef OLD_TOS
 	  char k1[2], k2[2];
 	  if(fscanf(rfile, "%6s %d %d %d %d %d %ld %1s%1s %s %s]",
 #else
@@ -618,7 +653,7 @@ pickentry:
 		tt->date, &tt->uid,
 		&tt->level, &tt->maxlvl,
 		&tt->hp, &tt->maxhp, &tt->points,
-#ifdef TOS
+#ifdef OLD_TOS
 		k1, k2,
 #else
 		&tt->plchar, &tt->sex,
@@ -626,7 +661,7 @@ pickentry:
 		tt->name, tt->death) != 11)
 			tt->points = 0;
 	  if(tt->points == 0) break;
-#ifdef TOS
+#ifdef OLD_TOS
 	  tt->plchar=k1[0];
 	  tt->sex=k2[0];
 #endif

@@ -335,18 +335,17 @@ newdogpos:
 
 		nx = sgn(omx - u.ux);
 		ny = sgn(omy - u.uy);
-		if(goodpos((cc.x = u.ux+nx), (cc.y = u.uy+ny))) goto dognext;
+		if(goodpos((cc.x = u.ux+nx), (cc.y = u.uy+ny), mtmp->data))
+			goto dognext;
 
 	 	i  = xytod(nx, ny);
 		for(j = (i + 7)%8; j < (i + 1)%8; j++) {
-
-		   dtoxy(&cc, j);
-		   if(goodpos(cc.x, cc.y)) goto dognext;
+			dtoxy(&cc, j);
+			if(goodpos(cc.x, cc.y, mtmp->data)) goto dognext;
 		}
 		for(j = (i + 6)%8; j < (i + 2)%8; j++) {
-
-		   dtoxy(&cc, j);
-		   if(goodpos(cc.x, cc.y)) goto dognext;
+			dtoxy(&cc, j);
+			if(goodpos(cc.x, cc.y, mtmp->data)) goto dognext;
 		}
 		cc.x = mtmp->mx;
 		cc.y = mtmp->my;

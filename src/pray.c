@@ -43,6 +43,8 @@ struct ghods {
 #define TROUBLE_STARVING 4
 #define TROUBLE_HIT 5
 #define TROUBLE_STUCK_IN_WALL 6
+#define TROUBLE_LEVITATED_FOREVER 7
+#define TROUBLE_BLINDED_FOREVER 8
 
 #define TROUBLE_PUNISHED (-1)
 #define TROUBLE_LYCANTHROPE (-2)
@@ -104,6 +106,12 @@ in_trouble()
 	    && !passes_walls(uasmon)
 #endif
 	    ) return(TROUBLE_STUCK_IN_WALL);
+	if((uarmf && uarmf->otyp==LEVITATION_BOOTS && uarmf->cursed) ||
+		(uleft && uleft->otyp==RIN_LEVITATION && uleft->cursed) ||
+		(uright && uright->otyp==RIN_LEVITATION && uleft->cursed))
+		return(TROUBLE_LEVITATED_FOREVER);
+	if(ublindf && ublindf->cursed) return(TROUBLE_BLINDED_FOREVER);
+
 	if(Punished) return(TROUBLE_PUNISHED);
 #ifdef POLYSELF
 	if(u.ulycn >= 0) return(TROUBLE_LYCANTHROPE);
@@ -117,17 +125,15 @@ in_trouble()
 	   (uarmg && uarmg->cursed) ||	/* gloves */
 	   (uarm && uarm->cursed) ||	/* armor */
 	   (uarmc && uarmc->cursed) ||	/* cloak */
-	   (uarmf && uarmf->cursed) ||	/* boots */
+	   (uarmf && uarmf->cursed && uarmf->otyp != LEVITATION_BOOTS) ||
+					/* boots */
 #ifdef SHIRT
 	   (uarmu && uarmu->cursed) ||  /* shirt */
 #endif
-	   (uwep && (uwep->olet == WEAPON_SYM || uwep->otyp==PICK_AXE
-		|| uwep->otyp==TIN_OPENER || uwep->otyp==HEAVY_IRON_BALL) &&
-		(uwep->cursed)) ||
-	   (uleft && uleft->cursed) ||
-	   (uright && uright->cursed) ||
-	   (uamul && uamul->cursed) ||
-	   (ublindf && ublindf->cursed))
+	   (uwep && welded(uwep)) ||
+	   (uleft && uleft->cursed && uleft->otyp != RIN_LEVITATION) ||
+	   (uright && uright->cursed && uright->otyp != RIN_LEVITATION) ||
+	   (uamul && uamul->cursed))
 
 	   return(TROUBLE_CURSED_ITEMS);
 
@@ -143,11 +149,17 @@ in_trouble()
 	return(0);
 }
 
+const char leftglow[] = "left ring softly glows";
+const char rightglow[] = "right ring softly glows";
+
 static void
 fix_worst_trouble(trouble)
 register int trouble;
 {
 	int i;
+	struct obj *otmp = (struct obj *)0;
+	char *what = NULL;
+
 	u.ublesscnt += rnz(100);
 	switch (trouble) {
 	    case TROUBLE_STONED:
@@ -182,6 +194,24 @@ register int trouble;
 		    Your("surroundings change.");
 		    tele();
 		    break;
+	    case TROUBLE_LEVITATED_FOREVER:
+		    if (uarmf && uarmf->otyp==LEVITATION_BOOTS
+						&& uarmf->cursed)
+			otmp = uarmf;
+		    else if (uleft && uleft->otyp==RIN_LEVITATION
+						&& uleft->cursed) {
+			otmp = uleft;
+			what = leftglow;
+		    } else {
+			otmp = uright;
+			what = rightglow;
+		    }
+		    goto decurse;
+		    break;
+	    case TROUBLE_BLINDED_FOREVER:
+		    otmp = ublindf;
+		    goto decurse;
+		    break;
 	    case TROUBLE_PUNISHED:
 		    Your("chain disappears.");
 		    unpunish();
@@ -195,52 +225,47 @@ register int trouble;
 		    break;
 #endif
 	    case TROUBLE_CURSED_ITEMS:
-		    {	struct obj *otmp;
-			char * what;
-			otmp = (struct obj *)0;
-			what = NULL;
-			if (uarmh && uarmh->cursed) 	/* helmet */
+		    if (uarmh && uarmh->cursed) 	/* helmet */
 			    otmp = uarmh;
-			else if (uarms && uarms->cursed) /* shield */
+		    else if (uarms && uarms->cursed) /* shield */
 			    otmp = uarms;
-			else if (uarmg && uarmg->cursed) /* gloves */
+		    else if (uarmg && uarmg->cursed) /* gloves */
 			    otmp = uarmg;
-			else if (uarm && uarm->cursed) /* armor */
+		    else if (uarm && uarm->cursed) /* armor */
 			    otmp = uarm;
-			else if (uarmc && uarmc->cursed) /* cloak */
+		    else if (uarmc && uarmc->cursed) /* cloak */
 			    otmp = uarmc;
-			else if (uarmf && uarmf->cursed) /* boots */
+		    else if (uarmf && uarmf->cursed) /* boots */
 			    otmp = uarmf;
 #ifdef SHIRT
-			else if (uarmu && uarmu->cursed) /* shirt */
+		    else if (uarmu && uarmu->cursed) /* shirt */
 			    otmp = uarmu;
 #endif
-			else if (uleft && uleft->cursed) {
+		    else if (uleft && uleft->cursed) {
 			    otmp = uleft;
-			    what = "left ring softly glows";
-			} else if (uright && uright->cursed) {
+			    what = leftglow;
+		    } else if (uright && uright->cursed) {
 			    otmp = uright;
-			    what = "right ring softly glows";
-			} else if (uamul && uamul->cursed) /* amulet */
+			    what = rightglow;
+		    } else if (uamul && uamul->cursed) /* amulet */
 			    otmp = uamul;
-			else if (ublindf && ublindf->cursed) /* blindfold */
+		    else if (ublindf && ublindf->cursed) /* blindfold */
 			    otmp = ublindf;
-			else if (welded(uwep)) otmp = uwep;
-			else {
+		    else if (welded(uwep)) otmp = uwep;
+		    else {
 			    for(otmp=invent; otmp; otmp=otmp->nobj)
 				if ((otmp->otyp==LOADSTONE ||
 				     otmp->otyp==LUCKSTONE) && otmp->cursed)
 					break;
-			}
-
-			otmp->cursed = 0;
-			otmp->bknown = 1;
-			if (!Blind)
+		    }
+decurse:
+		    otmp->cursed = 0;
+		    otmp->bknown = 1;
+		    if (!Blind)
 			    Your("%s %s.",
 				   what ? what : aobjnam (otmp, "softly glow"),
 				   Hallucination ? hcolor() : amber);
-			break;
-		    }
+		    break;
 	    case TROUBLE_HALLUCINATION:
 		    pline ("Looks like you are back in Kansas.");
 		    make_hallucinated(0L,FALSE);
@@ -713,9 +738,18 @@ dosacrifice()
 			register struct monst *dmon;
 			const char *color = Hallucination ? hcolor() : black;
     /* Human sacrifice on a chaotic altar is equivalent to demon summoning */
+#ifdef THEOLOGY
+			if (levl[u.ux][u.uy].altarmask & A_SHRINE)
+				pline("The blood covers the altar!");
+			else {
+#endif
     pline("The blood floods over the altar, which vanishes in a%s %s cloud!",
-				index(vowels, *color) ? "n" : "", color);
-			levl[u.ux][u.uy].typ = ROOM;
+				  index(vowels, *color) ? "n" : "", color);
+				levl[u.ux][u.uy].typ = ROOM;
+#ifdef THEOLOGY
+			}
+#endif
+			change_luck(2);
 			if(Invisible) newsym(u.ux, u.uy);
 			if(dmon = makemon(&mons[dlord()], u.ux, u.uy)) {
 				You("have summoned a demon lord!");

@@ -4,7 +4,7 @@
 .ds vr "NetHack Version 3.0
 .ds f0 "\*(vr
 .ds f1
-.ds f2 "July 19, 1989
+.ds f2 "July 22, 1989
 .mt
 A Guide to the Mazes of Menace
 .au
@@ -44,7 +44,7 @@ on will escape an Elf.  The quality of Elven craftsmanship often gives
 them an advantage in arms and armor.
 .pg
 \fIHealers\fP are wise in medicine and the apothecary.  They know the
-herbs and simples that can restore vitality, ease pain, anestheticize,
+herbs and simples that can restore vitality, ease pain, anesthetize,
 and neutralize
 poisons; and with their instruments, they can divine a being's state
 of health or sickness.  Their medical practice earns them quite reasonable
@@ -355,9 +355,9 @@ Go in that direction until you hit a wall or run into something.
 prefix:  move without picking up any objects.
 .lp M[yuhjklbn]
 prefix:  move far, no pickup.
-.lp "g[yuhjklbn] or <CONTROL->[yuhjklbn]
+.lp "g[yuhjklbn]
 prefix:  move until something interesting is found.
-.lp G[yuhjklbn]
+.lp G[yuhjklbn] or <CONTROL->[yuhjklbn]
 prefix:  same as `g', but forking of corridors is not considered interesting.
 .lp .
 rest, do nothing for one turn.
@@ -734,7 +734,7 @@ what you eat.''
 .pg
 You can name one food item after something you like to eat with the
 .op fruit
-option.
+option, if your dungeon has it.
 .pg
 The command to eat food is `e'.
 .hn 2
@@ -836,11 +836,9 @@ Chests and boxes
 .pg
 You may encounter chests or boxes in your travels.  These can be
 opened with the ``#loot'' extended command when they are on the floor,
-or with the `a' (apply) command when you are carrying one.  However,
-chests are often locked, and require you to either use a key to unlock
-it, a tool to pick the lock, or to break it open with brute force.
-Chests are unwieldy objects, and must be set down to be unlocked (by
-kicking them,
+or with the `a' (apply) command when you are carrying one.
+Chests are unwieldy objects, and must be set down to be unlocked
+(which can be accomplished by kicking them,
 using a key or lock picking tool with the `a' (apply) command, or
 by using a weapon to force the lock with the ``#force'' extended command).
 .pg
@@ -1028,7 +1026,7 @@ Cannot be set with the `O' command.
 .lp sortpack
 (default on) sort the pack contents by type when displaying inventory.
 .lp standout
-(default off) boldface objects, monsters, zaps, and ``\fB--More--\fP''.
+(default off) boldface monsters and ``\fB--More--\fP''.
 .lp time\ \ \ \ 
 (default off) show the elapsed game time in turns on bottom line.
 .lp tombstone
@@ -1068,7 +1066,7 @@ Explore mode
 .pg
 NetHack is an intricate and difficult game.  Novices might falter
 in fear, aware of their ignorance of the means to survive.  Well, fear
-not.  Your dungeon may come equipped with an "explore" or "discovery"
+not.  Your dungeon may come equipped with an ``explore'' or ``discovery''
 mode, that enables you to keep old save files and cheat death, at the
 paltry cost of not getting on the high score list.
 .pg
@@ -1102,36 +1100,39 @@ very different game, and published (at least) three versions (1.0.1,
 .ux
 machines to the Usenet.
 .pg
-\fBDon G. Kneller\fP ported Hack 1.0.3 to Microsoft C and MS-DOS,
-producing PC HACK, of which at least seven versions are recorded (from
-1.01e and 1.03g up to 3.6).
+\fBDon G. Kneller\fP ported Hack 1.0.3 to Microsoft C and MS-DOS, producing PC
+HACK 1.01e, added support for DEC Rainbow graphics in version 1.03g, and went
+on to produce at least four more versions (3.0, 3.2, 3.51, and 3.6).
 .pg
 \fBR. Black\fP ported PC HACK to Lattice C and the Atari 520/1040ST,
 producing ST Hack 1.03.
 .pg
 \fBMike Stephenson\fP merged these various versions back together,
-incorporating many of the added features, and produced NetHack 1.4.
-He later coordinated a cast of thousands throughout the Usenet in
-adding and debugging features, and released NetHack versions 2.2, 2.3,
-and 3.0.
+incorporating many of the added features, and produced NetHack 1.4.  He later
+coordinated a cast of thousands throughout the Usenet in adding and debugging
+features, and released NetHack versions 2.2 and 2.3.  Later, he coordinated a
+major rewrite of the game, heading a team which included Ken Arromdee,
+Jean-Christophe Collet, Steve Creps, Eric Hendrickson, Izchak Miller, John
+Rupley, Mike Threepoint, and Janet Walz, to produce NetHack 3.0.
 .pg
 \fBOlaf Siebert\fP ported NetHack 2.3 and 3.0 to the Amiga.
 .pg
-The following folks didn't actually re-write the game, or port it to
-a new machine, but have made significant contributions to the playability of
-the game:
+\fBEric R. Smith\fP ported NetHack 3.0 to the Atari.
+.pg
+The following folks have made significant contributions to the playability
+of the game:
 
 .sd
 .TS S
 center;
 c c c.
 Tom Almy	Eric Hendrickson	Izchak Miller
-Ken Arromdee	Bruce Holloway	Gil Neiger
+Ken Arromdee	Bruce Holloway		Gil Neiger
 Eric Backus	Richard P. Hughey	Eric S. Raymond
-John S. Bien	Greg Laskin	John Rupley
-Ralf Brown	Steve Linhart	Kevin Sweet
+John S. Bien	Greg Laskin		John Rupley
+Ralf Brown	Steve Linhart		Kevin Sweet
 Jean-Christophe Collet	Roland McGrath	Scott R. Turner
-Steve Creps	Bruce Mewborne	Janet Walz
+Steve Creps	Bruce Mewborne		Janet Walz
 .TE
 .ed
 

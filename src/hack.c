@@ -688,7 +688,7 @@ lookaround() {
 	for(x = u.ux-1; x <= u.ux+1; x++) for(y = u.uy-1; y <= u.uy+1; y++) {
 		if(x == u.ux && y == u.uy) continue;
 		if(levl[x][y].mmask && (mtmp = m_at(x,y)) && !mtmp->mimic &&
-		    (!mtmp->minvis || See_invisible)) {
+		    (!mtmp->minvis || See_invisible) && !mtmp->mundetected) {
 			if((flags.run != 1 && !mtmp->mtame) || (x == u.ux+u.dx && y == u.uy+u.dy))
 				goto stop;
 		} else mtmp = 0;
@@ -803,7 +803,7 @@ int
 cansee(x,y)
 xchar x,y;
 {
-	if(Blind || u.uswallow) return(0);
+	if(Blind || (u.uswallow && (x != u.ux || y != u.uy))) return(0);
 	if(dist(x,y) < 3) return(1);
 	if(IS_ROCK(levl[x][y].typ) && levl[u.ux][u.uy].typ == CORR &&
 							!levl[u.ux][u.uy].lit)
@@ -950,6 +950,7 @@ losehp(n, knam)
 				    (!!(HSleep_resistance & INTRINSIC)) +
 				    (!!(HDisint_resistance & INTRINSIC)) +
 				    (!!(HTeleport_control & INTRINSIC)) +
+				    (!!(Stealth & INTRINSIC)) +
 				    (!!(Fast & INTRINSIC)) +
 				    (!!(HInvis & INTRINSIC)))
 				pline("%s, all your powers will be lost...",

@@ -241,20 +241,18 @@ int all;
 				obj->quan = savequan;
 				qq--;
 				/* we can carry qq of them */
-				if(!qq) goto too_heavy;
-			You("can only carry %s of the %s lying here.",
-					(qq == 1) ? "one" : "some",
-					doname(obj));
-				{
-				register struct obj *obj3;
+				if(qq) {
+				    register struct obj *obj3;
 
-				obj3 = splitobj(obj, qq);
-				if(obj3->otyp == SCR_SCARE_MONSTER)
-					if(obj3->spe) obj->spe = 0;
+				You("can only carry %s of the %s lying here.",
+					    (qq == 1) ? "one" : "some",
+					    doname(obj));
+				    obj3 = splitobj(obj, qq);
+				    if(obj3->otyp == SCR_SCARE_MONSTER)
+					    if(obj3->spe) obj->spe = 0;
+				    goto lift_some;
 				}
-				goto lift_some;
 			}
-		too_heavy:
 			pline("There %s %s here, but %s.",
 				(obj->quan == 1) ? "is" : "are",
 				doname(obj),
@@ -267,8 +265,8 @@ int all;
 	lift_some:
 		if(inv_cnt() >= 52) {
 		    Your("knapsack cannot accommodate any more items.");
-				if(obj->otyp == SCR_SCARE_MONSTER)
-					if(obj->spe) obj->spe = 0;
+		    if(obj->otyp == SCR_SCARE_MONSTER)
+			    if(obj->spe) obj->spe = 0;
 		    break;
 		}
 		freeobj(obj);
@@ -277,11 +275,13 @@ int all;
 		if(wt > -5) You("have a little trouble lifting");
 		{ int pickquan = obj->quan;
 		  int mergquan;
-		if(!Blind) obj->dknown = 1;
-		obj = addinv(obj);    /* might merge it with other objects */
+		  if(!Blind) obj->dknown = 1;
+		  obj = addinv(obj);    /* might merge it with other objects */
 		  mergquan = obj->quan;
 		  obj->quan = pickquan; /* to fool prinv() */
-		prinv(obj);
+		  if(uwep && uwep == obj) mrg_to_wielded = TRUE;
+		  prinv(obj);
+		  if(mrg_to_wielded) mrg_to_wielded = FALSE;
 		  obj->quan = mergquan;
 		}
 	    }

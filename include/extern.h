@@ -387,11 +387,21 @@ E int doorlock P((struct obj *,int,int));
 E int doopen();
 E int doclose();
 
+/* ### mail.c ### */
+
+#ifdef MAIL
+#ifdef UNIX
+E void getmailstatus();
+#endif
+E void ckmailstatus();
+E void readmail();
+#endif /* MAIL */
+
 /* ### makemon.c ### */
 
 E struct monst *makemon P((struct permonst *,int,int));
-E void enexto P((coord *,xchar,xchar));
-E int goodpos P((int,int));
+E void enexto P((coord *,xchar,xchar,struct permonst *));
+E int goodpos P((int,int, struct permonst *));
 E void rloc P((struct monst *));
 E struct monst *mkmon_at P((char *,int,int));
 E void init_monstr();
@@ -638,7 +648,9 @@ E void parseoptions P((char *,boolean));
 E int doset();
 E int dotogglepickup();
 E void option_help();
+#ifdef TUTTI_FRUTTI
 E int fruitadd P((char *));
+#endif
 
 /* ### pager.c ### */
 
@@ -685,7 +697,7 @@ E void error P((char *,...));
 /* ### pcunix.c ### */
 
 #ifdef MSDOS
-#ifndef TOS
+#ifndef OLD_TOS
 E void setrandom();
 E int getyear();
 E char *getdate();
@@ -748,6 +760,7 @@ E int dodip();
 E void djinni_from_bottle P((struct obj *));
 E int monster_detect P((struct obj *));
 E int object_detect P((struct obj *));
+E int trap_detect P((struct obj *));
 
 /* ### pray.c ### */
 
@@ -838,7 +851,6 @@ E void do_genocide P((int));
 E void do_mapping();
 E void do_vicinity_map();
 E int destroy_arm P((struct obj *));
-E int trap_detect P((struct obj *));
 E int gold_detect P((struct obj *));
 E int food_detect P((struct obj *));
 E void punish P((struct obj *));
@@ -889,17 +901,19 @@ E int dosave();
 E int hangup();
 #endif /* NOSAVEONHANGUP */
 E int dosave0();
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 E boolean savelev P((int,xchar,int));
 E boolean swapin_file P((int));
-#else /* DGK && !TOS */
+#else /* DGK && !OLD_TOS */
 E void savelev P((int, xchar));
-#endif /* DGK && !TOS */
+#endif /* DGK && !OLD_TOS */
 #ifdef ZEROCOMP
 E void bflush P((int));
 #endif
 E void bwrite P((int,genericptr_t,unsigned int));
+#ifdef TUTTI_FRUTTI
 E void savefruitchn P((int));
+#endif
 
 /* ### search.c ### */
 
@@ -1087,6 +1101,7 @@ E struct monst *clone_mon P((struct monst *));
 E boolean special_case P((struct monst *));
 E boolean attack P((struct monst *));
 E boolean hmon P((struct monst *,struct obj *,int));
+E int passive P((struct monst *,boolean,int));
 
 /* ### unixmain.c ### */
 
@@ -1122,11 +1137,6 @@ E int midnight();
 E void gethdate P((char *));
 E int uptodate P((int));
 E void getlock();
-#ifdef MAIL
-E void getmailstatus();
-E void ckmailstatus();
-E void readmail();
-#endif /* MAIL */
 E void regularize P((char *));
 #endif /* UNIX */
 
@@ -1197,7 +1207,7 @@ E void worm_nomove P((struct monst *));
 E void wormdead P((struct monst *));
 E void wormhit P((struct monst *));
 E void wormsee P((unsigned int));
-E void cutworm P((struct monst *,xchar,xchar,uchar));
+E void cutworm P((struct monst *,xchar,xchar,unsigned));
 #endif /* WORM */
 
 /* ### worn.c ### */

@@ -188,11 +188,11 @@ char *argv[];
 		(void) signal(SIGQUIT,SIG_IGN);
 		(void) signal(SIGINT,SIG_IGN);
 		if(!locknum)
-			Strcpy(lock,plname);
+			Sprintf(lock, "%d%s", getuid(), plname);
 		getlock();	/* sets lock if locknum != 0 */
 #ifdef WIZARD
 	} else
-		Strcpy(lock,plname);
+		Sprintf(lock, "%d%s", getuid(), plname);
 #endif /* WIZARD /**/
 	setftty();
 

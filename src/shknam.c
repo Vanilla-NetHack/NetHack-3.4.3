@@ -268,18 +268,16 @@ struct mkroom	*sroom;
 	ESHK(shk)->shd = doors[sh];
 	ESHK(shk)->shk.x = sx;
 	ESHK(shk)->shk.y = sy;
-	/* makemon() has already zeroed out all the extra space
-	ESHK(shk)->robbed = 0;
-	ESHK(shk)->credit = 0;
-	ESHK(shk)->debit = 0;
+	ESHK(shk)->robbed = 0L;
+	ESHK(shk)->credit = 0L;
+	ESHK(shk)->debit = 0L;
 	ESHK(shk)->visitct = 0;
 	ESHK(shk)->following = 0;
 	ESHK(shk)->billct = 0;
-	*/
-	shk->mgold = 1000 + 30*rnd(100);	/* initial capital */
+	shk->mgold = 1000L + 30L*(long)rnd(100);	/* initial capital */
 	if (shp->shknms == shktools) {
 		static int who;
-		who = rn2(sizeof(shktools)/sizeof(char *));
+		who = rn2(sizeof(shktools)/sizeof(char *) - 1);
 		if (who==21) ESHK(shk)->ismale = FALSE;
 		else ESHK(shk)->ismale = TRUE;
 		(void) strncpy(ESHK(shk)->shknam, shp->shknms[who], PL_NSIZ);

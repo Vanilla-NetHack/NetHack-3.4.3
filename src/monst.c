@@ -15,12 +15,14 @@
 
 #define	NO_ATTK		{ 0, 0, 0, 0 }
 
+#ifndef SPLITMON_2
 struct permonst playermon = {		/* used by weapons bonus code */
 	"player", S_HUMAN, 1, 10, 10, 0, 0, G_GENO | G_NOGEN,
 	{ { AT_WEAP, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	40, 400, PL_NSIZ, MS_SILENT, M1_HUMANOID | M1_COLLECT,
+	45, 400, PL_NSIZ, MS_SILENT, M1_HUMANOID | M1_COLLECT,
 	M2_HUMAN | M2_STRONG | M2_NEEDPICK
 },	*uasmon = &playermon;
+#endif /* SPLITMON_2 */
 
 /*
  *	Rule #1:	monsters of a given class are contiguous in the
@@ -34,6 +36,7 @@ struct permonst playermon = {		/* used by weapons bonus code */
  *			be skipped during generation.
  */
 
+#ifndef SPLITMON_2
 struct permonst mons[] = {
 /*	ants	*/
 	{ "giant ant",	S_ANT, 2, 18, 3, 0, 0, (G_GENO | G_SGROUP | 3),
@@ -196,7 +199,7 @@ struct permonst mons[] = {
 	{ "manes", S_IMP, 1, 3, 7, 0, -7, (G_GENO | G_LGROUP | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 3 }, { AT_CLAW, AD_PHYS, 1, 3 },
 	    { AT_BITE, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_JEER, M1_VSMALL | M1_POIS | M1_STALK, 0 },
+	  10, 100, 0, MS_JEER, M1_VSMALL | M1_POIS | M1_STALK, 0 },
 	{ "homunculus", S_IMP, 2, 12, 6, 10, -7, (G_GENO | 2),
 	  { { AT_BITE, AD_SLEE, 1, 3 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	  20, 200, 0, MS_SILENT, M1_VSMALL | M1_FLY | M1_POIS | M1_POIS_RES |
@@ -204,7 +207,7 @@ struct permonst mons[] = {
 	{ "lemure", S_IMP, 3, 3, 7, 0, -7,
 	  (G_HELL | G_GENO | G_LGROUP | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 3 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_POIS | M1_SLEE_RES | M1_REGEN | M1_STALK,
+	  10, 100, 0, MS_SILENT, M1_POIS | M1_SLEE_RES | M1_REGEN | M1_STALK,
 	  M2_HOSTILE | M2_WANDER },
 	{ "imp", S_IMP, 3, 12, 2, 20, -7, (G_GENO | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
@@ -453,46 +456,46 @@ struct permonst mons[] = {
 /*	vortices	*/
 	{ "fog cloud",	S_VORTEX, 3,  1, 0, 0, 0, (G_GENO | G_NOCORPSE | 2),
 	  { { AT_ENGL, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  10, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES, M2_HOSTILE |
 	  M2_NOLIMBS },
 	{ "dust vortex", S_VORTEX, 4, 20, 2, 30, 0, (G_GENO | G_NOCORPSE | 2),
 	  { { AT_ENGL, AD_BLND, 2, 8 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  20, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES, M2_HOSTILE |
 	  M2_NOLIMBS },
 	{ "energy vortex", S_VORTEX, 6, 20, 2, 30, 0, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_ENGL, AD_ELEC, 1, 6 }, { AT_ENGL, AD_DREN, 0, 0 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 20, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_ELEC_RES,
 	  M2_HOSTILE | M2_NOLIMBS },
 	{ "ice vortex", S_VORTEX, 5, 20, 2, 30, 0, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_ENGL, AD_COLD, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  30, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_COLD_RES,
 	  M2_HOSTILE | M2_NOLIMBS },
 	{ "steam vortex", S_VORTEX, 7, 22, 2, 30, 0,
 	  (G_HELL | G_GENO | G_NOCORPSE | 2),
 	  { { AT_ENGL, AD_FIRE, 1, 8 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  30, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_FIRE_RES,
 	  M2_HOSTILE | M2_NOLIMBS },
 	{ "fire vortex", S_VORTEX, 8, 22, 2, 30, 0,
 	  (G_HELL | G_GENO | G_NOCORPSE | 1),
 	  { { AT_ENGL, AD_FIRE, 1, 10 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  3, 0, 0, MS_SILENT,
 	  M1_FLY | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_FIRE_RES,
 	  M2_HOSTILE | M2_NOLIMBS },
 /*	worms	*/
 #ifdef WORM
 	{ "baby long worm", S_WORM, 8, 3, 5, 0, 0, G_GENO,
 	  { { AT_BITE, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 100, 0, MS_SILENT, M1_ANIMAL | M1_NOHANDS, M2_HOSTILE |
+	  25, 250, 0, MS_SILENT, M1_ANIMAL | M1_NOHANDS, M2_HOSTILE |
 	  M2_NOLIMBS | M2_CARNIVORE },
 #endif
 	{ "baby purple worm", S_WORM, 8, 3, 5, 0, 0, G_GENO,
 	  { { AT_BITE, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 100, 0, MS_SILENT, M1_ANIMAL | M1_NOHANDS, M2_HOSTILE |
+	  25, 250, 0, MS_SILENT, M1_ANIMAL | M1_NOHANDS, M2_HOSTILE |
 	  M2_NOLIMBS | M2_CARNIVORE },
 #ifdef WORM
 	{ "long worm", S_WORM, 8, 3, 5, 10, 0, (G_GENO | 2),
@@ -651,22 +654,22 @@ struct permonst mons[] = {
 /*	Elementals	*/
 	{ "air elemental", S_ELEMENTAL, 8, 36, 2, 30, 0, (G_NOCORPSE | 1),
 	  { { AT_ENGL, AD_PHYS, 2, 10 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  5, 0, 0, MS_SILENT,
 	  M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_FLY,
 	  M2_STRONG | M2_NOLIMBS },
 	{ "fire elemental", S_ELEMENTAL, 8, 12, 2, 30, 0, (G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_FIRE, 3, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  5, 0, 0, MS_SILENT,
 	  M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_FLY | M1_FIRE_RES,
 	  M2_STRONG | M2_NOLIMBS },
 	{ "earth elemental", S_ELEMENTAL, 8, 6, 2, 30, 0, (G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 4, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, 
+	  50, 0, 0, MS_SILENT,
 	  M1_BIG | M1_WALLWALK | M1_NOEYES | M1_NOHANDS | M1_POIS_RES |
 	  M1_STON_RES, M2_STRONG | M2_NOLIMBS | M2_THICK_HIDE },
 	{ "water elemental", S_ELEMENTAL, 8, 6, 2, 30, 0, (G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 5, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT,
+	  50, 0, 0, MS_SILENT,
 	  M1_BIG | M1_NOEYES | M1_NOHANDS | M1_POIS_RES | M1_SWIM,
 	  M2_STRONG | M2_NOLIMBS },
 /*	Fungi	*/
@@ -704,11 +707,27 @@ struct permonst mons[] = {
 	{ "gnomish wizard", S_GNOME, 3, 10, 4, 10, 0, (G_GENO | 1),
 	  { { AT_MAGC, AD_SPEL, 0, 0 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	  15, 120, 0, MS_ORC, M1_HUMANOID | M1_MAGIC, 0 },
+#ifdef SPLITMON_1
+};
+#endif
+#endif /* !SPLITMON_2 */
+
+/* horrible kludge alert: splitting monst.o into two parts depends on
+   the two files monst1.o and monst2.o being loaded consecutively into
+   memory, i.e. _mons2 must immediately follow mons. Needless to say,
+   don't depend on this unless you have to (I had to; my compiler was
+   too much of a memory pig to produce monst.o in a measly 2 megabytes
+   of memory -- ERS */
+
+#ifndef SPLITMON_1
+#ifdef SPLITMON_2
+struct permonst _mons2[] = {
+#endif
 /*	giant Humanoids */
 	{ "ettin", S_GIANT, 10, 12, 3, 0, 0, (G_GENO | 1),
 	  { { AT_WEAP, AD_PHYS, 2, 8 }, { AT_WEAP, AD_PHYS, 3, 6 },
 	    NO_ATTK, NO_ATTK, NO_ATTK },
-	  30, 300, 0, MS_GRUNT, M1_BIG | M1_ANIMAL | M1_HUMANOID | M1_COLLECT,
+	  50, 500, 0, MS_GRUNT, M1_BIG | M1_ANIMAL | M1_HUMANOID | M1_COLLECT,
 	  M2_HOSTILE | M2_STRONG | M2_NASTY | M2_CARNIVORE },
 	{ "giant", S_GIANT, 6, 6, 0, 0, 2, (G_GENO | G_NOGEN | 1),
 	  { { AT_WEAP, AD_PHYS, 2, 10 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
@@ -796,33 +815,33 @@ struct permonst mons[] = {
 /* 	Mummies		*/
 	{ "kobold mummy", S_MUMMY, 3, 8, 6, 20, -2, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 20, 0, MS_SILENT,
+	  10, 100, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS, M2_HOSTILE },
 	{ "gnome mummy", S_MUMMY, 4, 10, 6, 20, -3, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  20, 25, 0, MS_SILENT,
+	  10, 100, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS, M2_HOSTILE },
 	{ "orc mummy", S_MUMMY, 5, 10, 5, 20, -4, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  30, 30, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
+	  15, 150, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
 	  M1_GREEDY | M1_JEWELS, M2_HOSTILE | M2_ORC },
 	{ "elf mummy", S_MUMMY, 6, 12, 4, 30, -5, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 35, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS | M1_SLEE_RES,
+	  35, 350, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS | M1_SLEE_RES,
 	  M2_HOSTILE | M2_ELF },
 	{ "human mummy", S_MUMMY, 6, 12, 4, 30, -5, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 2, 4 }, { AT_CLAW, AD_PHYS, 2, 4 },
 	    NO_ATTK, NO_ATTK, NO_ATTK },
-	  40, 40, 0, MS_SILENT,
+	  40, 400, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS, M2_HOSTILE },
 	{ "ettin mummy", S_MUMMY, 7, 12, 4, 30, -6, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 2, 6 }, { AT_CLAW, AD_PHYS, 2, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 70, 50, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS | M1_BIG,
 	  M2_HOSTILE | M2_STRONG },
 	{ "giant mummy", S_MUMMY, 8, 14, 3, 30, -7, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 3, 4 }, { AT_CLAW, AD_PHYS, 3, 4 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 70, 50, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 75, 750, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS | M1_BIG | M1_JEWELS,
 	  M2_HOSTILE | M2_GIANT | M2_STRONG },
 /*	Nymphs	*/
@@ -974,18 +993,18 @@ struct permonst mons[] = {
 /*	Wraiths 	*/
 	{ "barrow wight", S_WRAITH, 3, 12, 5, 5, -3, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_MAGC, AD_SPEL, 0, 0 },
-	    { AT_WEAP, AD_DRLI, 0, 0 }, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
+	    { AT_WEAP, AD_DRLI, 0, 0 }, NO_ATTK, NO_ATTK }, 30, 0, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK | M1_COLLECT, 
 	  M2_HOSTILE },
 	{ "wraith", S_WRAITH, 6, 12, 4, 15, -6, (G_GENO | 2),
 	  { { AT_TUCH, AD_DRLI, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, 
+	  30, 0, 0, MS_SILENT,
 	  M1_FLY | M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK, 
 	  M2_HOSTILE },
 #ifdef TOLKIEN
 	{ "Nazgul", S_WRAITH, 13, 12, 0, 25, -17, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_WEAP, AD_DRLI, 1, 4 }, { AT_BREA, AD_SLEE, 0, 0 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 30, 0, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK | M1_COLLECT, 
 	  M2_STRONG },
 #endif
@@ -1005,35 +1024,35 @@ struct permonst mons[] = {
 /*	Zombies 	*/
 	{ "kobold zombie", S_ZOMBIE, 0, 6, 10, 0, -2, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  10, 0, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
+	  10, 100, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
 	  M1_POIS_RES | M1_STALK, M2_HOSTILE },
 	{ "gnome zombie", S_ZOMBIE, 1, 6, 10, 0, -2, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 5 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  20, 0, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
+	  10, 100, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS |
 	  M1_POIS_RES | M1_STALK, M2_HOSTILE },
 	{ "orc zombie", S_ZOMBIE, 2, 6, 9, 0, -3,
 	  (G_GENO | G_SGROUP | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  30, 0, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS_RES |
+	  15, 150, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS_RES |
 	  M1_STALK | M1_GREEDY | M1_JEWELS, M2_HOSTILE | M2_ORC },
 	{ "elf zombie", S_ZOMBIE, 3, 6, 9, 0, -3,
 	  (G_GENO | G_SGROUP | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 7 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 0, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS_RES |
+	  35, 350, 0, MS_SILENT, M1_HUMANOID | M1_UNDEAD | M1_POIS_RES |
 	  M1_STALK | M1_SLEE_RES, M2_HOSTILE | M2_ELF },
 	{ "human zombie", S_ZOMBIE, 4, 6, 8, 0, -3,
 	  (G_GENO | G_SGROUP | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 8 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  40, 0, 0, MS_SILENT,
+	  40, 400, 0, MS_SILENT,
 	  M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK, M2_HOSTILE },
 	{ "ettin zombie", S_ZOMBIE, 6, 8, 6, 0, -4, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 10 }, { AT_CLAW, AD_PHYS, 1, 10 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 70, 0, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, 0, MS_SILENT,
 	  M1_BIG | M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK,
 	  M2_HOSTILE | M2_STRONG },
 	{ "giant zombie", S_ZOMBIE, 8, 8, 6, 0, -4, (G_GENO | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 2, 8 }, { AT_CLAW, AD_PHYS, 2, 8 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 70, 0, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 75, 750, 0, MS_SILENT,
 	  M1_BIG | M1_HUMANOID | M1_UNDEAD | M1_POIS_RES | M1_STALK |
 	  M1_JEWELS, M2_HOSTILE | M2_GIANT | M2_STRONG },
 /*	Golems	*/
@@ -1077,19 +1096,19 @@ struct permonst mons[] = {
 /*	Humans		*/
 	{ "human", S_HUMAN, 0, 12, 10, 0, 0, G_NOGEN,
 	  { {AT_WEAP, AD_PHYS, 1, 6}, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_HUMANOID, M1_NOPOLY | M1_HUMANOID | M1_COLLECT,
+	  45, 400, 0, MS_HUMANOID, M1_NOPOLY | M1_HUMANOID | M1_COLLECT,
 	  M2_HUMAN | M2_PEACEFUL | M2_STRONG }, /* for corpses */
 	{ "wererat", S_HUMAN, 2, 12, 7, 10, -7, 1,
 	  { { AT_WEAP, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_SILENT, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
+	  45, 400, 0, MS_SILENT, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
 	  M1_REGEN | M1_COLLECT, M2_HOSTILE | M2_HUMAN },
 	{ "werejackal", S_HUMAN, 2, 12, 7, 10, -7, 1,
 	  { { AT_WEAP, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_BARK, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
+	  45, 400, 0, MS_BARK, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
 	  M1_REGEN | M1_COLLECT, M2_HOSTILE | M2_HUMAN },
 	{ "werewolf", S_HUMAN, 5, 12, 6, 20, -7, 1,
 	  { { AT_WEAP, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_BARK, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
+	  45, 400, 0, MS_BARK, M1_NOPOLY | M1_HUMANOID | M1_WERE | M1_POIS |
 	  M1_REGEN | M1_COLLECT, M2_HOSTILE | M2_HUMAN },
 #ifdef TOLKIEN
 	{ "Woodland-elf", S_HUMAN, 4, 12, 5, 10, 5, (G_GENO | G_SGROUP | 2),
@@ -1117,11 +1136,11 @@ struct permonst mons[] = {
 	  M1_SLEE_RES, M2_ELF | M2_STRONG },
 	{ "nurse", S_HUMAN, 11, 6, 0, 0, 0, (G_GENO | 3),
 	  { { AT_CLAW, AD_HEAL, 2, 6 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_NURSE, M1_NOPOLY | M1_HUMANOID | M1_POIS_RES,
+	  45, 400, 0, MS_NURSE, M1_NOPOLY | M1_HUMANOID | M1_POIS_RES,
 	  M2_HUMAN | M2_HOSTILE },
 	{ "shopkeeper", S_HUMAN, 12, 18, 0, 50, 0, G_NOGEN,
 	  { { AT_WEAP, AD_PHYS, 4, 4 }, { AT_WEAP, AD_PHYS, 4, 4 }, NO_ATTK,
-	    NO_ATTK, NO_ATTK }, 40, 400, sizeof(struct eshk), MS_SELL,
+	    NO_ATTK, NO_ATTK }, 45, 400, sizeof(struct eshk), MS_SELL,
 	  M1_NOPOLY | M1_HUMANOID | M1_MAGIC | M1_COLLECT,
 	  M2_HUMAN | M2_PEACEFUL | M2_STRONG },
 	{ "guard", S_HUMAN, 12, 12, -1, 40, 10, G_NOGEN,
@@ -1172,7 +1191,7 @@ struct permonst mons[] = {
 #endif
 	{ "Wizard of Yendor", S_HUMAN, 30, 12, -8, 100, -20, G_NOGEN,
 	  { { AT_CLAW, AD_SAMU, 2, 12 }, { AT_MAGC, AD_SPEL, 0, 0 },
-	    { AT_BITE, AD_CUSS, 0, 0 }, NO_ATTK, NO_ATTK }, 40, 400, PL_NSIZ,
+	    { AT_BITE, AD_CUSS, 0, 0 }, NO_ATTK, NO_ATTK }, 45, 400, PL_NSIZ,
 	  MS_CUSS, M1_NOPOLY | M1_FLY | M1_HUMANOID | M1_POIS_RES |
 	  M1_FIRE_RES | M1_REGEN | M1_SEE_INVIS | M1_TPORT |
 	  M1_TPORT_CONTROL | M1_MAGIC,
@@ -1181,171 +1200,172 @@ struct permonst mons[] = {
 	{ "Medusa", S_HUMAN, 20, 12, 2, 50, -15, G_NOGEN | G_UNIQ,
 	  { { AT_CLAW, AD_PHYS, 1, 8 }, { AT_GAZE, AD_STON, 0, 0 },
 	    { AT_BITE, AD_DRST, 1, 6 }, { AT_WEAP, AD_PHYS, 2, 4 }, NO_ATTK },
-	  40, 400, 0, MS_HISS,
+	  45, 400, PL_NSIZ, MS_HISS,
 	  M1_NOPOLY | M1_BIG | M1_HUMANOID | M1_POIS | M1_POIS_RES |
 	  M1_STON_RES | M1_FEM, M2_HOSTILE | M2_STRONG | M2_PNAME },
 #endif
 #ifdef ORACLE
 	{ "oracle", S_HUMAN, 12, 0, 0, 50, 0, G_NOGEN | G_UNIQ,
 	  { { AT_NONE, AD_MAGM, 0, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  35, 400, 0, MS_ORACLE, M1_NOPOLY | M1_HUMANOID | M1_FEM,
+	  45, 400, 0, MS_ORACLE, M1_NOPOLY | M1_HUMANOID | M1_FEM,
 	  M2_HUMAN | M2_PEACEFUL },
 #endif
 #ifdef CHARON
 	{ "Charon", S_HUMAN, 76, 18, -5, 120, 0,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 1, 8 }, { AT_TUCH, AD_PLYS, 1, 8 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ, MS_FERRY,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 45, 400, PL_NSIZ, MS_FERRY,
 	  M1_NOPOLY | M1_HUMANOID | M1_POIS_RES | M1_FIRE_RES | M1_COLLECT,
 	  M2_HUMAN | M2_PEACEFUL },
 #endif
 /*	Ghost		*/
 	{ "ghost", S_GHOST, 10, 3, -5, 50, -5, (G_NOCORPSE | G_NOGEN),
 	  { { AT_TUCH, AD_PHYS, 1, 1 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, PL_NSIZ, MS_SILENT, M1_NOPOLY | M1_FLY | M1_WALLWALK |
+	  45, 0, PL_NSIZ, MS_SILENT, M1_NOPOLY | M1_FLY | M1_WALLWALK |
 	  M1_HUMANOID | M1_UNDEAD | M1_STALK | M1_POIS_RES, M2_HOSTILE },
 /*	(major) Demons	*/
 	{ "water demon", S_DEMON, 8, 12,-4, 30, -7, (G_NOCORPSE | G_NOGEN),
 	  { { AT_WEAP, AD_PHYS, 1, 3 }, { AT_CLAW, AD_PHYS, 1, 3 },
 	    { AT_BITE, AD_PHYS, 1, 3 }, NO_ATTK, NO_ATTK },
-	  60, 0, 0, MS_SILENT, M1_SWIM | M1_POIS | M1_FIRE_RES |
+	  45, 450, 0, MS_SILENT, M1_SWIM | M1_POIS | M1_FIRE_RES |
 	  M1_STALK | M1_COLLECT, M2_DEMON | M2_HOSTILE | M2_NASTY },
 #ifndef HARD /* generic type */
 	{ "demon", S_DEMON, 10, 12,-4, 30, -7, (G_NOCORPSE | 1),
 	  { { AT_WEAP, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
 	    { AT_BITE, AD_PHYS, 1, 4 }, NO_ATTK, NO_ATTK },
-	  60, 0, 0, MS_JEER, M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT,
+	  45, 450, 0, MS_JEER, M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 #else	/* used in hell for bigger, badder demons! */
 	/* standard demons & devils */
 	{ "horned devil", S_DEMON, 6, 9, -5, 50, 11, (G_HELL | G_NOCORPSE | 2),
 	  { { AT_WEAP, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
 	    { AT_BITE, AD_PHYS, 2, 3 }, { AT_STNG, AD_PHYS, 1, 3 }, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
+	  45, 450, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY | M2_THICK_HIDE },
 #ifdef SEDUCE
 	{ "succubus", S_DEMON, 6, 12, 0, 70, -9, (G_NOCORPSE | 1),
 	  { { AT_BITE, AD_SSEX, 0, 0 }, { AT_CLAW, AD_PHYS, 1, 3 },
-	    { AT_CLAW, AD_PHYS, 1, 3 }, NO_ATTK }, 0, 0, 0, MS_SEDUCE,
+	    { AT_CLAW, AD_PHYS, 1, 3 }, NO_ATTK }, 45, 450, 0, MS_SEDUCE,
 	  M1_HUMANOID | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK | M1_FEM,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "incubus", S_DEMON, 6, 12, 0, 70, -9, (G_NOCORPSE | 1),
 	  { { AT_BITE, AD_SSEX, 0, 0 }, { AT_CLAW, AD_PHYS, 1, 3 },
-	    { AT_CLAW, AD_PHYS, 1, 3 }, NO_ATTK }, 0, 0, 0, MS_SEDUCE,
+	    { AT_CLAW, AD_PHYS, 1, 3 }, NO_ATTK }, 45, 450, 0, MS_SEDUCE,
 	  M1_HUMANOID | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 #else
 	{ "succubus", S_DEMON, 6, 12, 0, 70, -9, (G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 3 }, { AT_CLAW, AD_PHYS, 1, 3 },
-	    { AT_BITE, AD_DRLI, 2, 6 }, NO_ATTK }, 0, 0, 0, MS_SEDUCE,
+	    { AT_BITE, AD_DRLI, 2, 6 }, NO_ATTK }, 45, 450, 0, MS_SEDUCE,
 	  M1_HUMANOID | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK | M1_FEM,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "incubus", S_DEMON, 6, 12, 0, 70, -9, (G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 3 }, { AT_CLAW, AD_PHYS, 1, 3 },
-	    { AT_BITE, AD_DRLI, 2, 6 }, NO_ATTK }, 0, 0, 0, MS_SEDUCE,
+	    { AT_BITE, AD_DRLI, 2, 6 }, NO_ATTK }, 45, 450, 0, MS_SEDUCE,
 	  M1_HUMANOID | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 #endif
 	{ "erinyes", S_DEMON, 7, 12, 2, 30, 10,
 	  (G_HELL | G_NOCORPSE | G_SGROUP | 2),
 	  { { AT_WEAP, AD_DRST, 2, 4 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_STALK |
-	  M1_COLLECT | M1_FEM, M2_DEMON | M2_HOSTILE | M2_STRONG | M2_NASTY },
+	  45, 450, 0, MS_SILENT, M1_HUMANOID | M1_POIS | M1_FIRE_RES |
+	  M1_STALK | M1_COLLECT | M1_FEM,
+	  M2_DEMON | M2_HOSTILE | M2_STRONG | M2_NASTY },
 	{ "marilith", S_DEMON, 7, 12, -6, 80, -12, (G_HELL | G_NOCORPSE | 1),
 	  { { AT_WEAP, AD_PHYS, 2, 4 }, { AT_WEAP, AD_PHYS, 2, 4 },
 	    { AT_WEAP, AD_PHYS, 2, 4 }, { AT_WEAP, AD_PHYS, 2, 4 },
-	    { AT_WEAP, AD_PHYS, 2, 4 }, }, 0, 0, 0, MS_SILENT, M1_HUMANOID |
+	    { AT_WEAP, AD_PHYS, 2, 4 }, }, 45, 450, 0, MS_SILENT, M1_HUMANOID |
 	  M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT | M1_FEM,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "barbed devil", S_DEMON, 8, 12, 0, 35, 8,
 	  (G_HELL | G_NOCORPSE | G_SGROUP | 2),
 	  { { AT_CLAW, AD_PHYS, 2, 4 }, { AT_CLAW, AD_PHYS, 2, 4 },
 	    { AT_STNG, AD_PHYS, 3, 4 }, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
+	  45, 450, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY | M2_THICK_HIDE },
 	{ "vrock", S_DEMON, 8, 12, 0, 50, -9,
 	  (G_HELL | G_NOCORPSE | G_SGROUP | 2),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
 	    { AT_CLAW, AD_PHYS, 1, 8 }, { AT_CLAW, AD_PHYS, 1, 8 },
 	    { AT_BITE, AD_PHYS, 1, 6 }, },
-	  0, 0, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
+	  45, 450, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "hezrou", S_DEMON, 9, 6, -2, 55, -10,
 	  (G_HELL | G_NOCORPSE | G_SGROUP | 2),
 	  { { AT_CLAW, AD_PHYS, 1, 3 }, { AT_CLAW, AD_PHYS, 1, 3 },
-	    { AT_BITE, AD_PHYS, 4, 4 }, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
-	  M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_STALK,
+	    { AT_BITE, AD_PHYS, 4, 4 }, NO_ATTK, NO_ATTK }, 45, 450, 0,
+	  MS_SILENT, M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "bone devil", S_DEMON, 9, 15, -1, 40, -9,
 	  (G_HELL | G_NOCORPSE | G_SGROUP | 2),
 	  { { AT_WEAP, AD_PHYS, 3, 4 }, { AT_STNG, AD_DRST, 2, 4 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 45, 450, 0, MS_SILENT,
 	  M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "nalfeshnee", S_DEMON, 11, 9, -1, 65, -11, (G_HELL | G_NOCORPSE | 1),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
 	    { AT_BITE, AD_PHYS, 2, 4 }, { AT_MAGC, AD_SPEL, 0, 0 }, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_STALK,
+	  45, 450, 0, MS_SILENT, M1_HUMANOID | M1_POIS | M1_FIRE_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "ice devil", S_DEMON, 11, 6, -4, 55, -12, (G_HELL | G_NOCORPSE | 2),
 	  { { AT_CLAW, AD_PHYS, 1, 4 }, { AT_CLAW, AD_PHYS, 1, 4 },
 	    { AT_BITE, AD_PHYS, 2, 4 }, { AT_STNG, AD_COLD, 3, 4 }, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_COLD_RES | M1_STALK,
+	  45, 450, 0, MS_SILENT, M1_POIS | M1_FIRE_RES | M1_COLD_RES | M1_STALK,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "pit fiend", S_DEMON, 13, 6, -3, 65, -13, (G_HELL | G_NOCORPSE | 2),
 	  { { AT_WEAP, AD_PHYS, 4, 2 }, { AT_WEAP, AD_PHYS, 4, 2 },
-	    { AT_HUGS, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_GROWL,
-	  M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT,
+	    { AT_HUGS, AD_PHYS, 2, 4 }, NO_ATTK, NO_ATTK }, 45, 450, 0,
+	  MS_GROWL, M1_POIS | M1_FIRE_RES | M1_STALK | M1_COLLECT,
 	  M2_DEMON | M2_HOSTILE | M2_NASTY },
 	{ "balrog", S_DEMON, 16, 5, -2, 75, -14, (G_HELL | G_NOCORPSE | 1),
 	  { { AT_WEAP, AD_PHYS, 8, 4 }, { AT_WEAP, AD_PHYS, 4, 6 },
 	    NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_SILENT, M1_FLY | M1_BIG | M1_COLLECT | M1_STALK |
+	  45, 450, 0, MS_SILENT, M1_FLY | M1_BIG | M1_COLLECT | M1_STALK |
 	  M1_POIS | M1_FIRE_RES, M2_DEMON | M2_HOSTILE | M2_STRONG | M2_NASTY },
 	/* Named demon lords & princes plus Arch-Devils */
 	{ "Juiblex", S_DEMON, 50, 3, -7, 65, -15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_ENGL, AD_DISE, 4, 10 }, { AT_SPIT, AD_ACID, 3, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ, MS_GURGLE, M1_NOPOLY |
-	  M1_FLY | M1_NOHANDS | M1_POIS | M1_FIRE_RES | M1_STALK | M1_LORD,
-	  M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY | M2_AMORPHOUS },
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, PL_NSIZ, MS_GURGLE,
+	  M1_NOPOLY | M1_FLY | M1_NOHANDS | M1_POIS | M1_FIRE_RES | M1_STALK |
+	  M1_LORD, M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY | M2_AMORPHOUS },
 	{ "Yeenoghu", S_DEMON, 56, 18, -5, 80, -15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 3, 6 }, { AT_WEAP, AD_CONF, 2, 8 },
 	    { AT_WEAP, AD_PLYS, 1, 6 }, { AT_MAGC, AD_MAGM, 2, 6 }, NO_ATTK },
-	  0, 0, PL_NSIZ, MS_ORC, M1_NOPOLY | M1_FLY | M1_POIS |
+	  50, 500, PL_NSIZ, MS_ORC, M1_NOPOLY | M1_FLY | M1_POIS |
 	  M1_FIRE_RES | M1_STALK | M1_COLLECT | M1_LORD,
 	  M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 	{ "Orcus", S_DEMON, 66, 9, -6, 85, -20,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_MAGC, AD_SPEL, 8, 6 }, { AT_WEAP, AD_PHYS, 3, 6 },
 	    { AT_CLAW, AD_PHYS, 3, 4 }, { AT_CLAW, AD_PHYS, 3, 4 },
-	    { AT_STNG, AD_DRST, 2, 4 }, }, 0, 0, PL_NSIZ, MS_ORC,
+	    { AT_STNG, AD_DRST, 2, 4 }, }, 50, 500, PL_NSIZ, MS_ORC,
 	  M1_NOPOLY | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK |
 	  M1_COLLECT | M1_PRINCE, M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 	{ "Geryon", S_DEMON, 72, 3, -3, 75, 15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_CLAW, AD_PHYS, 3, 6 }, { AT_CLAW, AD_PHYS, 3, 6 },
-	    { AT_STNG, AD_DRST, 2, 4 }, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ,
+	    { AT_STNG, AD_DRST, 2, 4 }, NO_ATTK, NO_ATTK }, 50, 500, PL_NSIZ,
 	  MS_JEER, M1_NOPOLY | M1_FLY | M1_POIS | M1_FIRE_RES |
 	  M1_STALK | M1_PRINCE, M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 	{ "Dispater", S_DEMON, 78, 15, -2, 80, 15,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_WEAP, AD_PHYS, 4, 6 }, { AT_MAGC, AD_SPEL, 6, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ, MS_JEER,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, PL_NSIZ, MS_JEER,
 	  M1_NOPOLY | M1_FLY | M1_HUMANOID | M1_POIS |
 	  M1_FIRE_RES | M1_STALK | M1_COLLECT | M1_PRINCE,
 	  M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 	{ "Baalzebul", S_DEMON, 89, 9, -5, 85, 20,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_BITE, AD_DRST, 2, 6 }, { AT_GAZE, AD_STUN, 2, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ, MS_JEER,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, PL_NSIZ, MS_JEER,
 	  M1_NOPOLY | M1_FLY | M1_POIS | M1_FIRE_RES | M1_STALK |
 	  M1_PRINCE, M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 	{ "Asmodeus", S_DEMON, 105, 12, -7, 90, 20,
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_CLAW, AD_PHYS, 4, 4 }, { AT_MAGC, AD_COLD, 6, 6 },
-	    NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, PL_NSIZ, MS_JEER,
+	    NO_ATTK, NO_ATTK, NO_ATTK }, 50, 500, PL_NSIZ, MS_JEER,
 	  M1_NOPOLY | M1_FLY | M1_HUMANOID | M1_POIS |
 	  M1_FIRE_RES | M1_COLD_RES | M1_STALK | M1_PRINCE,
 	  M2_DEMON | M2_HOSTILE | M2_PNAME | M2_STRONG | M2_NASTY },
@@ -1353,20 +1373,20 @@ struct permonst mons[] = {
 	  (G_HELL | G_NOCORPSE | G_NOGEN | G_UNIQ),
 	  { { AT_MAGC, AD_SPEL, 8, 6 }, { AT_STNG, AD_DRLI, 1, 4 },
 	    { AT_CLAW, AD_DISE, 1, 6 }, { AT_CLAW, AD_DISE, 1, 6 },
-	    NO_ATTK }, 0, 0, PL_NSIZ, MS_GROWL, M1_NOPOLY | M1_FLY |
+	    NO_ATTK }, 50, 500, PL_NSIZ, MS_GROWL, M1_NOPOLY | M1_FLY |
 	  M1_NOHANDS | M1_POIS | M1_FIRE_RES | M1_STALK |
 	  M1_PRINCE, M2_DEMON | M2_HOSTILE | M2_PNAME | M2_NASTY },
 #endif
 #ifdef MAIL
 	{ "mail daemon", S_DEMON, 56, 24, 10, 127, 0, (G_NOGEN | G_NOCORPSE),
-	  { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK }, 0, 0, 0, MS_SILENT,
-	  M1_NOPOLY | M1_FLY | M1_SWIM | M1_HUMANOID | M1_POIS | M1_FIRE_RES |
-	  M1_COLD_RES | M1_SLEE_RES | M1_STALK, M2_PEACEFUL },
+	  { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK }, 30, 300, 0,
+	  MS_SILENT, M1_NOPOLY | M1_FLY | M1_SWIM | M1_HUMANOID | M1_POIS |
+	  M1_FIRE_RES | M1_COLD_RES | M1_SLEE_RES | M1_STALK, M2_PEACEFUL },
 /* Neither rain nor sleet nor gloom of night shall stay this courier... */
 #endif
 	{ "djinni", S_DEMON, 7, 12, 4, 30, 0, (G_NOGEN | G_NOCORPSE),
 	  { { AT_WEAP, AD_PHYS, 2, 8 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  0, 0, 0, MS_DJINNI,
+	  40, 400, 0, MS_DJINNI,
 	  M1_NOPOLY | M1_FLY | M1_POIS | M1_STALK | M1_COLLECT, 0 },
 /*	eels		*/
 	{ "giant eel", S_EEL, 5, 9, -1, 0, 0, (G_GENO | G_NOGEN),
@@ -1389,7 +1409,7 @@ struct permonst mons[] = {
 /*	chameleon	*/
 	{ "chameleon", S_CHAMELEON, 6, 5, 6, 10, 0, (G_GENO | 2),
 	  { { AT_BITE, AD_PHYS, 4, 2 }, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  1, 10, 0, MS_SILENT, M1_VSMALL | M1_ANIMAL,
+	  10, 100, 0, MS_SILENT, M1_VSMALL | M1_ANIMAL,
 	  M2_HOSTILE | M2_CARNIVORE },
 
 /*	character classes */
@@ -1409,9 +1429,12 @@ struct permonst mons[] = {
 	  { {AT_WEAP, AD_PHYS, 2, 4}, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	  45, 400, 0, MS_HUMANOID, M1_NOPOLY | M1_HUMANOID | M1_COLLECT | M1_FEM,
 	  M2_HUMAN | M2_STRONG | M2_CARNIVORE },
+	/* Note: players who are elves still get normal carrying capacity,
+	 * even though this is strictly speaking inconsistent.
+	 */
 	{ "elf", S_HUMAN, 1, 12, 10, 2, 3, G_NOGEN,
 	  { {AT_WEAP, AD_PHYS, 1, 8}, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
-	  45, 400, 0, MS_HUMANOID, M1_NOPOLY | M1_HUMANOID | M1_COLLECT |
+	  35, 350, 0, MS_HUMANOID, M1_NOPOLY | M1_HUMANOID | M1_COLLECT |
 	  M1_SLEE_RES | M1_SEE_INVIS, M2_ELF | M2_STRONG },
 	{ "healer", S_HUMAN, 1, 10, 10, 1, 3, G_NOGEN,
 	  { {AT_WEAP, AD_PHYS, 1, 6}, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
@@ -1456,3 +1479,4 @@ struct permonst mons[] = {
 	  { NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK, NO_ATTK },
 	  0, 0, 0, 0, 0, 0 }
 };
+#endif /* !SPLITMON_1 */

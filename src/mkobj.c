@@ -138,7 +138,7 @@ boolean artif;
 
 static void
 mkbox_cnts(box)
-/* Note: does not check to see if it overloaded the box weight; usually
+/* Note: does not check to see if it overloaded the box capacity; usually
  * possible only with corpses in ice boxes.
  */
 struct obj *box;
@@ -160,7 +160,10 @@ struct obj *box;
 	for(n = rn2(n+1); n > 0; n--) {
 	    if (box->otyp == ICE_BOX) {
 		otmp = mksobj(CORPSE, TRUE);
-		otmp->age = moves;
+		/* Note: setting age to 0 is correct.  Age has a different
+		 * from usual meaning for objects stored in ice boxes. -KAA
+		 */
+		otmp->age = 0;
 	    } else {
 		register int tprob;
 		struct icp *iprobs = boxiprobs;
@@ -174,7 +177,7 @@ struct obj *box;
 		otmp->cobj = box;
 		otmp->nobj = fcobj;
 		fcobj = otmp;
-		inc_cwt(box, otmp);
+		/* inc_cwt(box, otmp); --done by weight() */
 	    }
 	}
 	return;
@@ -264,8 +267,11 @@ boolean artif;
 			otmp->corpsenm = rndmonnum();
 		    } while (mons[otmp->corpsenm].geno & G_NOCORPSE);
 		    blessorcurse(otmp, 10);
-		} else if (otmp->otyp == SLIME_MOLD)
+		}
+#ifdef TUTTI_FRUTTI
+		else if (otmp->otyp == SLIME_MOLD)
 		    otmp->spe = current_fruit;
+#endif
 		/* fall into next case */
 	case GEM_SYM:
 		if (otmp->otyp == LOADSTONE) curse(otmp);
@@ -279,6 +285,7 @@ boolean artif;
 					blessorcurse(otmp, 5);
 					break;
 		case MAGIC_LAMP:	otmp->spe = 1;
+					otmp->recharged = 0;
 					blessorcurse(otmp, 2);
 					break;
 		case KEY:		/* key # index */
@@ -452,6 +459,7 @@ register struct obj *obj;
 
 	if (Is_container(obj)) {
 		struct obj *contents;
+		obj->owt = wt;
 		for(contents=fcobj; contents; contents=contents->nobj) {
 			if (contents->cobj == obj)
 				inc_cwt(obj, contents);

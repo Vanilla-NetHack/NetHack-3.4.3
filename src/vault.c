@@ -101,7 +101,8 @@ fnd:
 
 	/* make something interesting happen */
 	if(!(guard = makemon(&mons[PM_GUARD], x, y))) return;
-	guard->isgd = guard->mpeaceful = 1;
+	guard->isgd = 1;
+	guard->mpeaceful = 1;
 	EGD->gddone = 0;
 	gdlevel = dlevel;
 	if(!cansee(guard->mx, guard->my)) {
@@ -177,8 +178,14 @@ gd_move(){
 		/* seems we found a good place to leave him alone */
 		EGD->gddone = 1;
 		if(ACCESSIBLE(typ)) goto newpos;
-
+#ifdef STUPID
+		if (typ == SCORR)
+		    crm->typ = CORR;
+		else
+		    crm->typ = DOOR;
+#else
 		crm->typ = (typ == SCORR) ? CORR : DOOR;
+#endif
 		if(crm->typ == DOOR) crm->doormask = D_NODOOR;
 		goto proceed;
 	    }

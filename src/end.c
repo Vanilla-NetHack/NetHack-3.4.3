@@ -2,13 +2,12 @@
 /* Copyright (c) Stichting Mathematisch Centrum, Amsterdam, 1985. */
 /* NetHack may be freely redistributed.  See license for details. */
 
-#ifndef TOS
-#include <signal.h>
-#endif
-
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
 #include "hack.h"
+#ifndef NO_SIGNAL
+#include <signal.h>
+#endif
 
 #include "eshk.h"
 
@@ -17,11 +16,11 @@ void end_box_display();
 int
 done1()
 {
-#ifndef TOS
+#ifndef NO_SIGNAL
 	(void) signal(SIGINT,SIG_IGN);
 #endif
 	if(flags.ignintr) {
-#ifndef TOS
+#ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 		clrlin();
@@ -38,7 +37,7 @@ done2()
 {
 	pline("Really quit? ");
 	if(yn() == 'n') {
-#ifndef TOS
+#ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 		clrlin();
@@ -70,7 +69,7 @@ static
 int
 done_intr(){
 	done_stopprint++;
-#ifndef TOS
+#ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
 #ifdef UNIX
 	(void) signal(SIGQUIT, SIG_IGN);
@@ -182,9 +181,19 @@ done(st1)
 register char *st1;
 {
 	struct permonst *upmon;
-	char buf[BUFSZ], buf1[BUFSZ], buf2[BUFSZ];
+	char buf[BUFSZ], buf1[BUFSZ], buf2[BUFSZ], buf3[BUFSZ];
+	/* buf: used if killer gets changed
+	 * buf1: used if st1 gets changed
+	 * buf2: same as player name, except it is capitalized
+	 * buf3: used to copy killer in case it comes from something like
+		xname(), which would otherwise get overwritten when we call
+		xname() when listing possessions
+	 */
 	char	c;
 	boolean taken;
+
+	Strcpy(buf3, killer);
+	killer = buf3;
 #ifdef WIZARD
 	if (wizard && *st1=='t') {
 		You("are a very tricky wizard, it seems.");
@@ -236,13 +245,13 @@ register char *st1;
 	}
 #endif /* WIZARD || EXPLORE_MODE */
 die:
-#ifndef TOS
+#ifndef NO_SIGNAL
 	(void) signal(SIGINT, (SIG_RET_TYPE) done_intr);
 #ifdef UNIX
 	(void) signal(SIGQUIT, (SIG_RET_TYPE) done_intr);
 	(void) signal(SIGHUP, (SIG_RET_TYPE) done_hangup);
 #endif
-#endif /* TOS /* */
+#endif /* NO_SIGNAL /* */
 	upmon = player_mon();
 	if(u.ugrave_arise > -1) /* create no corpse */ ;
 	else if(*st1 == 's' && st1[2] == 'o') 
@@ -435,12 +444,12 @@ will not be checked.\n", wizard ? "wizard" : "discover");
 
 void
 clearlocks(){
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	eraseall(levels, alllevels);
 	if (ramdisk)
 		eraseall(permbones, alllevels);
 #else
-#if defined(UNIX) || (defined(MSDOS) && !defined(TOS))
+#if defined(UNIX) || (defined(MSDOS) && !defined(OLD_TOS))
 	register int x;
 #ifdef UNIX
 	(void) signal(SIGHUP,SIG_IGN);

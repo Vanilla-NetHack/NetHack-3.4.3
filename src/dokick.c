@@ -46,8 +46,11 @@ register boolean clumsy;
 # endif
 	}
 	
-	mon->mhp -= (!martial() ? rnd(dmg) : rnd(dmg)+rnd(ACURR(A_DEX)/2));  
+	if (dmg)
+		mon->mhp -= (!martial() ? rnd(dmg) :
+			rnd(dmg)+rnd(ACURR(A_DEX)/2));  
 	if(mon->mhp < 1) {
+		(void) passive(mon, TRUE, 0);
 		killed(mon);
 		return;
 	}
@@ -55,8 +58,8 @@ register boolean clumsy;
 	    	/* see if the monster has a place to move into */
 	    	mdx = mon->mx + u.dx;
 	    	mdy = mon->my + u.dy;
-	    	if(goodpos(mdx, mdy)) {
-			pline("%s reels from the blow.", Monnam(mon));
+	    	if(goodpos(mdx, mdy, mon->data)) {
+			kludge("%s reels from the blow.", Monnam(mon));
 			levl[mon->mx][mon->my].mmask = 0;
 			levl[mdx][mdy].mmask = 1;
 			mon->mx = mdx;
@@ -65,6 +68,7 @@ register boolean clumsy;
 			set_apparxy(mon);
 	    	}
 	}
+	(void) passive(mon, FALSE, 1);
 
 /*	it is unchivalrous to attack the defenseless or from behind */
 	if (pl_character[0] == 'K' && u.ualigntyp == U_LAWFUL && 
@@ -92,9 +96,10 @@ register int x, y;
 
 	setmangry(mon);
 
-	if(Levitation && !rn2(3) && verysmall(mon->data) && 
-			!is_floater(mon->data) && !is_flyer(mon->data)) {
-		You("are floating in the air, and miss wildly!");
+	if(Levitation && !rn2(3) && verysmall(mon->data) &&
+	   !is_flyer(mon->data)) {
+		pline("Floating in the air, you miss wildly!");
+		(void) passive(mon, FALSE, 1);
 		return;
 	}
 
@@ -105,6 +110,7 @@ register int x, y;
 		if(!rn2((i < j/10) ? 2 : (i < j/5) ? 3 : 4)) {
 			if(martial() && !rn2(2)) goto doit;
 			Your("clumsy kick does no damage.");
+			(void) passive(mon, FALSE, 1);
 			return;
 		}
 		if(i < j/10) clumsy = TRUE;
@@ -118,15 +124,30 @@ register int x, y;
 doit:
 	kludge("You kick %s.", mon_nam(mon));
 	if(!rn2(clumsy ? 3 : 4) && (clumsy || !bigmonst(mon->data)) && 
-	   mon->mcansee && !thick_skinned(mon->data) &&
-	   !mon->mfroz && !mon->mstun && !mon->mconf) {
-		mnexto(mon);
-		if(mon->mx != x || mon->my != y) {
-		    kludge("%s jumps, %s evading your %skick.", Monnam(mon),
+	   mon->mcansee && !mon->mtrapped && !thick_skinned(mon->data) && 
+	   mon->data->mlet != S_EEL && haseyes(mon->data) && !mon->mfroz && 
+	   !mon->mstun && !mon->mconf && mon->data->mmove >= 12) {
+		if(!nohands(mon->data) && !rn2(martial() ? 5 : 3)) {
+		    kludge("%s blocks your %skick.", Monnam(mon), 
+				clumsy ? "clumsy " : "");
+		    (void) passive(mon, FALSE, 1);
+		    return;
+		} else {
+		    mnexto(mon);
+		    if(mon->mx != x || mon->my != y) {
+		        pline("%s %s, %s evading your %skick.", 
+				Blind ? "It" : Monnam(mon),
+				(can_teleport(mon->data) ? "teleports" :
+				 is_flyer(mon->data) ? "flutters" :
+				 is_floater(mon->data) ? "floats" :
+				 nolimbs(mon->data) ? "slides" :
+				 "jumps"),
 				clumsy ? "easily" : "nimbly",
 				clumsy ? "clumsy " : "");
-		    return;
-		} /* else fall to the next case */		
+			(void) passive(mon, FALSE, 1);
+		        return;
+		    } 
+		}
 	}
 	kickdmg(mon, clumsy);
 }
@@ -150,7 +171,7 @@ register long amount;
 		if(!rn2(4)) setmangry(mtmp); /* not always pleasing */
 		
 		/* greedy monsters catch gold */
-		pline("%s catches the gold.", Monnam(mtmp));
+		kludge("%s catches the gold.", Monnam(mtmp));
 		mtmp->mgold += amount;
 		if (mtmp->isshk) {
 			long robbed = ESHK(mtmp)->robbed;
@@ -245,11 +266,10 @@ register int x, y;
 	/* if a pile, the "top" object gets kicked */
 	for (otmp = fobj; otmp; otmp = otmp->nobj)
 		if(otmp->ox == x && otmp->oy == y)
-		    if(!otmp->cobj)
-			if (otmp != uchain) {
+		    if(!otmp->cobj) {
 			    cnt++;
 			    if(cnt == 1) obj = otmp;
-			}
+		    }
 
 	/* range < 2 means the object will not move.	*/
 	/* maybe dexterity should also figure here.     */
@@ -291,7 +311,7 @@ register int x, y;
 		return(1);
 	}
 
-	if(obj->otyp == BOULDER || obj == uball)
+	if(obj->otyp == BOULDER || obj == uball || obj == uchain)
 		return(0);
 
 	/* a box gets a chance of breaking open here */
@@ -375,6 +395,7 @@ gotcha:
 	obj->oy = bhitpos.y;
 	levl[obj->ox][obj->oy].omask = 1;
 	stackobj(obj);
+	if(!levl[obj->ox][obj->oy].mmask) newsym(obj->ox, obj->oy);
 	return(1);
 }
 #endif /* KICK */
@@ -583,7 +604,7 @@ ouch:
 #ifdef KICK
 dumb:
 #endif
-		if (martial() || ACURR(A_DEX) >= 16) {
+		if (martial() || ACURR(A_DEX) >= 16 || rn2(3)) {
 			You("kick at empty space.");
 		} else {
 			pline("Dumb move!  You strain a muscle.");

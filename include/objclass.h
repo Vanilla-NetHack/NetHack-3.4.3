@@ -82,10 +82,12 @@ extern struct objclass objects[];
  * pager.c:	if(q == '%') pline("%%	a piece of food");
  */
 
+#ifdef TUTTI_FRUTTI
 struct fruit {
 	char fname[PL_FSIZ];
 	int fid;
 	struct fruit *nextf;
 };
 #define newfruit() (struct fruit *)alloc(sizeof(struct fruit))
+#endif
 #endif /* OBJCLASS_H */

@@ -47,7 +47,7 @@
  *	- It may also do this with adjoining castle rooms.
  */
 
-# ifdef AMIGA
+# ifndef UNIX
 int mustgetmail = -1;
 # endif
 
@@ -180,7 +180,7 @@ newmail() {
 	nscr();
 }
 
-# ifdef AMIGA
+# ifndef UNIX
 void
 ckmailstatus() {
 	if (mustgetmail < 0)
@@ -194,11 +194,11 @@ ckmailstatus() {
 void
 readmail()
 {
-	pline("It says: \"How nice to get a letter down here!\"");
+	pline("It says:  \"Please disregard previous letter.\"");
 }
-# endif /* AMIGA */
 
-# ifdef UNIX
+# else /* UNIX */
+
 void
 ckmailstatus() {
 	if(!mailbox

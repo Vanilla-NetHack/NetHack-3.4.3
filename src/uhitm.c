@@ -11,7 +11,6 @@ static boolean hitum();
 #ifdef POLYSELF
 static boolean hmonas();
 #endif
-static int passive();
 
 #ifdef WORM
 extern boolean notonhead;
@@ -26,7 +25,7 @@ struct monst *mon;
 
 	mm.x = mon->mx;
 	mm.y = mon->my;
-	enexto(&mm, mm.x, mm.y);
+	enexto(&mm, mm.x, mm.y, mon->data);
 	if (levl[mm.x][mm.y].mmask || mon->mhp <= 1) return (struct monst *)0;
 	m2 = newmonst(0);
 	*m2 = *mon;			/* copy condition of old monster */
@@ -301,9 +300,9 @@ register struct obj *obj;
 register int thrown;
 {
 	register int tmp;
-	boolean hittxt = FALSE;
+	boolean hittxt = FALSE, destroyed = FALSE;
 	boolean get_dmg_bonus = TRUE;
-	boolean ispoisoned = FALSE;
+	boolean ispoisoned = FALSE, needpoismsg = FALSE;
 
 	wakeup(mon);
 	if(!obj) {
@@ -318,25 +317,11 @@ register int thrown;
 			mon_nam(mon), makeplural(body_part(HAND)));
 		You("turn to stone...");
 		done_in_by(mon);
+		hittxt = TRUE; /* maybe lifesaved */
 	    }
 	} else {
 	    if(obj->olet == WEAPON_SYM || obj->otyp == PICK_AXE ||
 	       obj->olet == ROCK_SYM) {
-
-		if(mon->data == &mons[PM_RUST_MONSTER] && obj == uwep &&
-			objects[obj->otyp].oc_material == METAL &&
-			obj->spe > -2) {
-		    if(obj->rustfree) {
-			pline("The rust on your %s vanishes instantly!",
-			      is_sword(obj) ? "sword" : "weapon");
-		    } else if(obj->blessed && rnl(4))
-			pline("Somehow your %s is not affected!",
-			      is_sword(obj) ? "sword" : "weapon");
-		    else {
-		    	Your("%s!", aobjnam(uwep, "corrode"));
-		    	uwep->spe--;
-		    }
-		}
 
 		if(obj == uwep && (obj->otyp > VOULGE || obj->otyp < BOOMERANG)
 				&& obj->otyp != PICK_AXE)
@@ -513,12 +498,8 @@ register int thrown;
 	}
  */
 	if (ispoisoned) {
-	    /* OK to reference obj because ispoisoned can only be set
-	     * when obj is a throwing weapon */
-	    hit(xname(obj), mon, exclam(tmp));
-	    hittxt = TRUE;
 	    if(resists_poison(mon->data))
-		kludge("The poison doesn't seem to affect %s.", mon_nam(mon));
+		needpoismsg = TRUE;
 	    else if (rn2(10))
 		tmp += rnd(6);
 	    else {
@@ -530,10 +511,8 @@ register int thrown;
 	if(tmp < 1) tmp = 1;
 
 	mon->mhp -= tmp;
-	if(mon->mhp < 1) {
-		killed(mon);
-		return(FALSE);
-	}
+	if(mon->mhp < 1)
+		destroyed = TRUE;
 	if(mon->mtame && (!mon->mflee || mon->mfleetim)) {
 #ifdef SOUNDS
 		if (rn2(8)) yelp(mon);
@@ -544,9 +523,10 @@ register int thrown;
 		mon->mfleetim += 10*rnd(tmp);
 	}
 	if((mon->data == &mons[PM_BLACK_PUDDING] ||
-		   mon->data == &mons[PM_BROWN_PUDDING]) && uwep &&
-		   uwep == obj && objects[obj->otyp].oc_material == METAL
-		   && mon->mhp > 1 && !thrown && !mon->mcan) {
+		   mon->data == &mons[PM_BROWN_PUDDING]) && obj &&
+		   obj == uwep && objects[obj->otyp].oc_material == METAL
+		   && mon->mhp > 1 && !thrown && !mon->mcan
+		   /* && !destroyed  -- guaranteed by mhp > 1 */ ) {
 
 		if (clone_mon(mon)) {
 			pline("%s divides as you hit it!", Monnam(mon));
@@ -554,7 +534,7 @@ register int thrown;
 		}
 	}
 
-	if(!hittxt) {
+	if(!hittxt && !destroyed) {
 		if(thrown)
 		    /* thrown => obj exists */
 		    hit(xname(obj), mon, exclam(tmp) );
@@ -562,7 +542,12 @@ register int thrown;
 		else	You("hit %s%s", mon_nam(mon), exclam(tmp));
 	}
 
-	if(u.umconf && !thrown) {
+	if (needpoismsg)
+		kludge("The poison doesn't seem to affect %s.", mon_nam(mon));
+
+	if (destroyed)
+		killed(mon);	/* takes care of messages */
+	else if(u.umconf && !thrown) {
 		if(!Blind) {
 			Your("%s stop glowing %s.",
 			makeplural(body_part(HAND)),
@@ -574,7 +559,23 @@ register int thrown;
 			pline("%s appears confused.", Monnam(mon));
 		u.umconf = 0;
 	}
-	return(TRUE);	/* mon still alive */
+
+	if(mon->data == &mons[PM_RUST_MONSTER] && obj && obj == uwep &&
+		objects[obj->otyp].oc_material == METAL &&
+		obj->olet == WEAPON_SYM && obj->spe > -2) {
+	    if(obj->rustfree) {
+		pline("The rust on your %s vanishes instantly!",
+		      is_sword(obj) ? "sword" : "weapon");
+	    } else if(obj->blessed && rnl(4))
+		pline("Somehow your %s is not affected!",
+		      is_sword(obj) ? "sword" : "weapon");
+	    else {
+		Your("%s!", aobjnam(obj, "corrode"));
+		obj->spe--;
+	    }
+	}
+
+	return(destroyed ? FALSE : TRUE);
 }
 
 #ifdef POLYSELF
@@ -911,12 +912,12 @@ register struct attack *mattk;
 		kludge("You engulf %s!", mon_nam(mdef));
 		switch(mattk->adtyp) {
 		    case AD_DGST:
-			u.uhunger += 20*mdef->mhpmax;
+			u.uhunger += mdef->data->cnutrit;
 			newuhs(FALSE);
 			xkilled(mdef,2);
 			Sprintf(msgbuf, "You totally digest %s.",
 					Blind ? "it" : mon_nam(mdef));
-			if ((tmp = mdef->mhpmax/5)) {
+			if (tmp = 3 + (mdef->data->cwt >> 2)) {
 			    kludge("You digest %s.", mon_nam(mdef));
 			    nomul(-tmp);
 			    nomovemsg = msgbuf;
@@ -1170,7 +1171,7 @@ if (!u.uswallow && (u.usym==S_NYMPH
 
 /*	Special (passive) attacks on you by monsters done here.		*/
 
-static int
+int
 passive(mon, mhit, malive)
 register struct monst *mon;
 register boolean mhit;

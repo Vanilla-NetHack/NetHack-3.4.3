@@ -24,7 +24,9 @@ initoptions()
 	flags.confirm = TRUE;
 	flags.safe_dog = TRUE;
 	flags.silent = 	flags.pickup = TRUE;
+#ifdef TUTTI_FRUTTI
 	nmcpy(pl_fruit, objects[SLIME_MOLD].oc_name, PL_FSIZ);
+#endif
 	flags.num_pad = FALSE;
 #ifdef MSDOS
 #ifdef DECRAINBOW
@@ -32,16 +34,21 @@ initoptions()
 #endif
 #ifdef DGK
 	flags.IBMBIOS =
+#ifdef TOS
+	TRUE;			/* BIOS might as well always be on for TOS */
+#endif
 	flags.rawio = FALSE;
 #endif
 	read_config_file();
 #endif /* MSDOS */
 	if(opts = getenv("NETHACKOPTIONS"))
 		parseoptions(opts,TRUE);
+#ifdef TUTTI_FRUTTI
 	(void)fruitadd(pl_fruit);
 	objects[SLIME_MOLD].oc_name = "\033";
 	/* Put something untypable in there */
 	/* We cannot just use NULL because that marks the end of objects */
+#endif
 }
 
 static void
@@ -154,7 +161,7 @@ boolean from_env;
 	}
 	
 #ifndef MSDOS
-	if (!strncmp(opts, "standout", 4)) {
+	if (!strncmp(opts, "stan", 4)) {
 		flags.standout = !negated;
 		return;
 	}
@@ -165,12 +172,12 @@ boolean from_env;
 	}
 #endif
 
-	if (!strncmp(opts, "ignintr", 3)) {
+	if (!strncmp(opts, "ign", 3)) {
 		flags.ignintr = !negated;
 		return;
 	}
 
-	if (!strncmp(opts, "tombstone", 4)) {
+	if (!strncmp(opts, "tomb", 4)) {
 		flags.notombstone = negated;
 		return;
 	}
@@ -182,7 +189,7 @@ boolean from_env;
 	}
 #endif
 
-	if (!strncmp(opts, "confirm", 4)) {
+	if (!strncmp(opts, "conf", 4)) {
 		flags.confirm = !negated;
 		return;
 	}
@@ -191,22 +198,22 @@ boolean from_env;
 		return;
 	}
 
-	if (!strncmp(opts, "silent", 4)) {
+	if (!strncmp(opts, "sil", 3)) {
 		flags.silent = !negated;
 		return;
 	}
 
-	if (!strncmp(opts, "verbose", 4)) {
+	if (!strncmp(opts, "verb", 4)) {
 		flags.verbose = !negated;
 		return;
 	}
 
-	if (!strncmp(opts, "pickup", 4)) {
+	if (!strncmp(opts, "pick", 4)) {
 		flags.pickup = !negated;
 		return;
 	}
 
-	if (!strncmp(opts, "number_pad", 4)) {
+	if (!strncmp(opts, "numb", 4)) {
 		flags.num_pad = !negated;
 		return;
 	}
@@ -217,7 +224,7 @@ boolean from_env;
 		return;
 	}
 
-	if (!strncmp(opts, "rawio", 4)) {
+	if (!strncmp(opts, "raw", 3)) {
 		if (from_env)
 			flags.rawio = !negated;
 		else
@@ -241,7 +248,7 @@ boolean from_env;
 	/*
 	 * the order to list the pack
 	 */
-	if (!strncmp(opts, "packorder", 4)) {
+	if (!strncmp(opts, "pack", 4)) {
 		register char	*sp, *tmp;
 		int tmpend;
 
@@ -276,12 +283,12 @@ boolean from_env;
 		return;
 	}
 
-	if (!strncmp(opts, "rest_on_space", 4)) {
+	if (!strncmp(opts, "rest", 4)) {
 		flags.no_rest_on_space = negated;
 		return;
 	}
 
-	if (!strncmp(opts, "fixinv", 3)) {
+	if (!strncmp(opts, "fix", 3)) {
 		flags.invlet_constant = !negated;
 		if(!from_env && flags.invlet_constant) reassign ();
 		return;
@@ -294,7 +301,7 @@ boolean from_env;
 			flags.female = negated;
 		return;
 	}
-	if (!strncmp(opts, "female", 3)) {
+	if (!strncmp(opts, "fem", 3)) {
 		if(!from_env && flags.female == negated)
 			pline("That is not anatomically possible.");
 		else
@@ -319,7 +326,7 @@ boolean from_env;
 	}
 
 	/* graphics:string */
-	if (!strncmp(opts, "graphics", 4)) {
+	if (!strncmp(opts, "gr", 2)) {
 		if(!from_env) {
 #ifdef MSDOS
 		  pline("\"graphics\" settable only from %s.", configfile);
@@ -382,7 +389,7 @@ boolean from_env;
 	}
 
 	/* endgame:5t[op] 5a[round] o[wn] */
-	if (!strncmp(opts, "endgame", 3)) {
+	if (!strncmp(opts, "end", 3)) {
 		op = index(opts,':');
 		if(!op) goto bad;
 		op++;
@@ -414,7 +421,7 @@ boolean from_env;
 		}
 		return;
 	}
-	if (!strncmp(opts, "dogname", 3)) {
+	if (!strncmp(opts, "dog", 3)) {
 		if(!from_env) {
 #ifdef MSDOS
 		  pline("\"dogname\" settable only from %s.", configfile);
@@ -428,7 +435,7 @@ boolean from_env;
 		nmcpy(dogname, ++op, 62);
 		return;
 	}
-	if (!strncmp(opts, "catname", 3)) {
+	if (!strncmp(opts, "cat", 3)) {
 		if(!from_env) {
 #ifdef MSDOS
 		  pline("\"catname\" settable only from %s.", configfile);
@@ -442,7 +449,8 @@ boolean from_env;
 		nmcpy(catname, ++op, 62);
 		return;
 	}
-	if (!strncmp(opts, "fruit", 2)) {
+#ifdef TUTTI_FRUTTI
+	if (!strncmp(opts, "fr", 2)) {
 		op = index(opts, ':');
 		if (!op++) goto bad;
 		if (!from_env) {
@@ -469,6 +477,7 @@ goodfruit:
 		 */
 		return;
 	}
+#endif
 bad:
 	if(!from_env) {
 		if(!strncmp(opts, "h", 1) ||
@@ -534,7 +543,9 @@ doset()
 	    if (flags.silent) Strcat(buf,"silent,");
 	    if (flags.time) Strcat(buf,"time,");
 	    if (flags.verbose) Strcat(buf,"verbose,");
+#ifdef TUTTI_FRUTTI
 	    Sprintf(eos(buf), "fruit:%s,", pl_fruit);
+#endif
 	    if(flags.end_top != 5 || flags.end_around != 4 || flags.end_own){
 		Sprintf(eos(buf), "endgame: %u top scores/%u around me",
 			flags.end_top, flags.end_around);
@@ -559,12 +570,6 @@ dotogglepickup() {
 	return 0;
 }
 
-char	packorder[] =	{
-	AMULET_SYM, WEAPON_SYM, ARMOR_SYM, FOOD_SYM, SCROLL_SYM,
-# ifdef SPELLS
-	SPBOOK_SYM,
-# endif
-	WAND_SYM, RING_SYM, POTION_SYM, TOOL_SYM, GEM_SYM, BALL_SYM, ROCK_SYM };
 #define Page_line(x)	if(page_line(x)) goto quit
 
 void
@@ -611,9 +616,11 @@ option_help() {
 	Page_line("`dogname'   - the name of your (first) dog (e.g., dogname:Fang),");
 
 	Page_line("`packorder' - the inventory order of the items in your pack");
-	Sprintf(buf, "              (currently, packorder:%s ),", packorder);
+	Sprintf(buf, "              (currently, packorder:%s ),", inv_order);
 	Page_line(buf);
+#ifdef TUTTI_FRUTTI
 	Page_line("`fruit'     - the name of a fruit you enjoy eating,");
+#endif
 
 	Page_line("`endgame'   - the parts of the score list you wish to see,");
 
@@ -628,6 +635,7 @@ quit:
 	return;
 }
 
+#ifdef TUTTI_FRUTTI
 /* Returns the fid of the fruit type; if that type already exists, it
  * returns the fid of that one; if it does not exist, it adds a new fruit
  * type to the chain and returns the new one.
@@ -666,7 +674,9 @@ char *str;
 		    (!strncmp(buf, "tin of ", 7) && name_to_mon(buf+7) > -1) ||
 		    !strcmp(buf, "empty tin") ||
 		    !strcmp(buf, "tin of spinach") ||
-		    (!strncmp(eos(buf)-6," corpse",6) && name_to_mon(buf) > -1))
+		    ((!strncmp(eos(buf)-6," corpse",6) ||
+						!strncmp(eos(buf)-3, " egg",3))
+			&& name_to_mon(buf) > -1))
 			{
 				Strcpy(buf, pl_fruit);
 				Strcpy(pl_fruit, "candied ");
@@ -693,3 +703,4 @@ nonew:
 	if (user_specified) current_fruit = highest_fruit_id;
 	return f->fid;
 }
+#endif

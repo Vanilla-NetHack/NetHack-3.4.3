@@ -256,7 +256,7 @@ int x,y;
 		/* So, you didn't die */
 		pline("A %s force teleports you away...",
 		      Hallucination ? "normal" : "strange");
-		enexto(&xy, x2, y2);
+		enexto(&xy, x2, y2, &playermon);
 		teleds(xy.x, xy.y);
 	}
 	redosym(x,y);
@@ -358,7 +358,7 @@ int x,y;
 		/* So, you didn't die */
 		pline("A %s force teleports you away...",
 		      Hallucination ? "normal" : "strange");
-		enexto(&xy, x2, y2);
+		enexto(&xy, x2, y2, &playermon);
 		teleds(xy.x, xy.y);
 	}
 	redosym(x,y);

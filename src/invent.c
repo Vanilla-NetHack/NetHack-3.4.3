@@ -145,6 +145,7 @@ register struct obj *obj;
 	} else {
 		setnotworn(obj);
 		freeinv(obj);
+		delete_contents(obj);
 		obfree(obj, (struct obj *) 0);
 	}
 }
@@ -187,8 +188,8 @@ register struct obj *obj;
 	freeobj(obj);
 	unpobj(obj);
 
-/*	if contained in something else, decrease the container weight */
-	if(obj->cobj) dec_cwt(obj->cobj, obj);
+/*	if a container, get rid of the contents */
+	delete_contents(obj);
 
 	obfree(obj, (struct obj *) 0);
 }

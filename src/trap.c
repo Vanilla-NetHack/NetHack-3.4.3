@@ -295,7 +295,7 @@ register struct trap *trap;
 		    } else {
 			(void) mksobj_at(DART, u.ux, u.uy);
 			fobj->quan = 1;
-			fobj->opoisoned = 1;
+			if(!rn2(6)) fobj->opoisoned = 1;
 			fobj->owt = weight(fobj);
 		    }
 		    break;
@@ -689,6 +689,7 @@ register struct monst *mtmp;
 		case DART_TRAP:
 			otmp = mksobj(DART, FALSE);
 			otmp->quan = 1;
+			if (!rn2(6)) otmp->opoisoned = 1;
 			otmp->owt = weight(otmp);
 			if(thitm(7, mtmp, otmp, 0)) trapkilled = TRUE;
 			break;
@@ -943,12 +944,12 @@ register int nux,nuy;
 		u.uundetected = 0;
 	if (u.usym == S_MIMIC_DEF) u.usym = S_MIMIC;
 #endif
-	setsee();
 	if(Punished) placebc(1);
 	if(u.uswallow){
 		u.uswldtim = u.uswallow = 0;
 		docrt();
 	}
+	setsee();
 	nomul(0);
 	spoteffects();
 }
@@ -1621,11 +1622,15 @@ int d_override;
 			if (dam < 1) dam = 1;
 		}
 		if ((mon->mhp -= dam) <= 0) {
+			int xx = mon->mx;
+			int yy = mon->my;
+
 			if (cansee(mon->mx, mon->my))
 				pline("%s is killed!", Monnam(mon));
 			else if (mon->mtame)
 	You("have a sad feeling for a moment, then it passes.");
 			mondied(mon);
+			newsym(xx, yy);
 			trapkilled = TRUE;
 		}
 	}

@@ -15,7 +15,7 @@
 
 #include "hack.h"	/* mainly for index() which depends on BSD */
 #ifdef TOS
-#ifdef UNIXDEBUG
+#ifndef OLD_TOS
 #include <errno.h>
 #else
 #include <error.h>
@@ -25,7 +25,7 @@
 #include	<sys/types.h>
 #include	<sys/stat.h>
 
-#ifndef TOS
+#ifndef OLD_TOS
 static struct stat buf, hbuf;
 void
 setrandom()
@@ -95,6 +95,7 @@ void
 gethdate(name)
 char *name;
 {
+#if defined(TOS) && !defined(__GNUC__)
 /* old version - for people short of space */
 /*
 /* register char *np;
@@ -134,10 +135,12 @@ char *name;
 	path = np + 1;
     }
     error("Cannot get status of %s.", (np = rindex(name, '/')) ? np+1 : name);
+#endif /* TOS && __GNUC__ */
 }
 
 int
 uptodate(fd) {
+#if defined(TOS) && !defined(__GNUC__) /* no fstat yet */
     if(fstat(fd, &buf)) {
 	pline("Cannot get status of saved level? ");
 	return(0);
@@ -146,9 +149,10 @@ uptodate(fd) {
 	pline("Saved level is out of date. ");
 	return(0);
     }
+#endif
     return(1);
 }
-#endif /* TOS /* */
+#endif /* MIN_TOS /* */
 
 void
 regularize(s)	/* normalize file name - we don't like .'s, /'s, spaces */

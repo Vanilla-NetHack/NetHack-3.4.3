@@ -50,7 +50,6 @@ extern int dowhatis(); /**/
 extern int dowhatdoes(); /**/
 extern int dohelp(); /**/
 extern int dohistory(); /**/
-extern int dosh(); /**/
 extern int doloot(); /**/
 extern int dodrink(); /**/
 extern int dodip(); /**/

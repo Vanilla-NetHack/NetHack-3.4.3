@@ -11,16 +11,16 @@
 #include "wseg.h"
 #endif
 
-#ifndef TOS
+#ifndef NO_SIGNAL
 #include <signal.h>
-#endif /* !TOS */
+#endif /* !NO_SIGNAL */
 #ifdef EXPLORE_MODE
 #include <fcntl.h>
 #endif /* EXPLORE_MODE */
 
 boolean hu;		/* set during hang-up */
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 struct finfo fileinfo[MAXLEVEL+1];
 long bytes_counted;
 int count_only;
@@ -28,22 +28,23 @@ int count_only;
 boolean level_exists[MAXLEVEL+1];
 #endif
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 static void savelev0();
-#endif /* DGK && !TOS */
+#endif /* DGK && !OLD_TOS */
 static void saveobjchn();
 static void savemonchn();
 static void savegoldchn();
 static void savetrapchn();
 static void savegenoinfo();
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 static boolean swapout_oldest();
 static void copyfile();
-#endif /* defined(DGK) && !defined(TOS) */
+#endif /* defined(DGK) && !defined(OLD_TOS) */
 static void spill_objs();
 
 int
 dosave(){
+	clrlin();
 	pline("Really save? ");	/* especially useful if COMPRESS defined */
 	if(yn() == 'n') {
 		clrlin();
@@ -83,7 +84,7 @@ dosave0() {
 	register int fd, ofd;
 	int tmp;		/* not register ! */
 	xchar ltmp;
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	long fds, needed;
 	int mode;
 #endif
@@ -93,7 +94,7 @@ dosave0() {
 #ifdef UNIX
 	(void) signal(SIGHUP, SIG_IGN);
 #endif
-#if !defined(__TURBOC__) && !defined(TOS)
+#if !defined(__TURBOC__) && !defined(OLD_TOS)
 	(void) signal(SIGINT, SIG_IGN);
 #endif
 
@@ -141,7 +142,7 @@ dosave0() {
 		change_luck(-1);		/* and unido!ab */
 	home();
 	cl_end();
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	if(!hu) msmsg("Saving: ");
 	mode = COUNT;
 again:
@@ -183,11 +184,13 @@ again:
 	if(u.ustuck)
 		bwrite(fd, (genericptr_t) &(u.ustuck->m_id), sizeof u.ustuck->m_id);
 	bwrite(fd, (genericptr_t) pl_character, sizeof pl_character);
+#ifdef TUTTI_FRUTTI
 	bwrite(fd, (genericptr_t) pl_fruit, sizeof pl_fruit);
 	bwrite(fd, (genericptr_t) &current_fruit, sizeof current_fruit);
 	savefruitchn(fd);
+#endif
 	savenames(fd);
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	if (mode == COUNT) {
 # ifdef ZEROCOMP
 		bflush(fd);
@@ -214,7 +217,7 @@ again:
 	}
 #endif
 	for(ltmp = (xchar)1; ltmp <= maxdlevel; ltmp++) {
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (ltmp == dlevel || !fileinfo[ltmp].where) continue;
 		if (fileinfo[ltmp].where != ACTIVE)
 			swapin_file(ltmp);
@@ -238,7 +241,7 @@ again:
 		getlev(ofd, hackpid, ltmp, FALSE);
 		(void) close(ofd);
 		bwrite(fd, (genericptr_t) &ltmp, sizeof ltmp);  /* level number */
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		savelev(fd, ltmp, WRITE);			/* actual level */
 #else
 		savelev(fd, ltmp);			/* actual level */
@@ -266,7 +269,7 @@ again:
 	return(1);
 }
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 boolean
 savelev(fd, lev, mode)
 int fd;
@@ -320,13 +323,13 @@ xchar lev;
 #endif
 
 	if(fd < 0) panic("Save on bad file!");	/* impossible */
-#if !defined(DGK) || defined(TOS)
+#if !defined(DGK) || defined(OLD_TOS)
 	if(lev >= 0 && lev <= MAXLEVEL)
 		level_exists[lev] = TRUE;
 #endif
 	bwrite(fd,(genericptr_t) &hackpid,sizeof(hackpid));
 #ifdef TOS
-	tlev=lev;
+	tlev=lev; tlev &= 0x00ff;
 	bwrite(fd,(genericptr_t) &tlev,sizeof(tlev));
 #else
 	bwrite(fd,(genericptr_t) &lev,sizeof(lev));
@@ -376,14 +379,14 @@ xchar lev;
 		for(wtmp = wsegs[tmp]; wtmp; wtmp = wtmp->nseg){
 			bwrite(fd,(genericptr_t) wtmp,sizeof(struct wseg));
 		}
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (!count_only)
 #endif
 			wsegs[tmp] = 0;
 	}
 	bwrite(fd,(genericptr_t) wgrowtime,sizeof(wgrowtime));
 #endif /* WORM /**/
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	if (count_only)	return;
 #endif
 	billobjs = 0;
@@ -432,7 +435,7 @@ register int fd;
 	  flushoutrun(outrunlength);
       }
       if (outbufp) {
-#ifdef	DGK
+#if defined(DGK) && !defined(OLD_TOS)
 	  if (!count_only)    /* flush buffer */
 #endif
 		  (void) write(fd, outbuf, outbufp);
@@ -470,7 +473,7 @@ register int fd;
 register genericptr_t loc;
 register unsigned num;
 {
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	bytes_counted += num;
 	if (!count_only)
 #endif
@@ -503,7 +506,7 @@ register struct obj *otmp;
 	    xl = otmp->onamelth;
 	    bwrite(fd, (genericptr_t) &xl, sizeof(int));
 	    bwrite(fd, (genericptr_t) otmp, xl + sizeof(struct obj));
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	    if (!count_only)
 #endif
 		free((genericptr_t) otmp);
@@ -530,7 +533,7 @@ register struct monst *mtmp;
 		bwrite(fd, (genericptr_t) &xl, sizeof(int));
 		bwrite(fd, (genericptr_t) mtmp, xl + sizeof(struct monst));
 		if(mtmp->minvent) saveobjchn(fd,mtmp->minvent);
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (!count_only)
 #endif
 		free((genericptr_t) mtmp);
@@ -548,7 +551,7 @@ register struct gold *gold;
 	while(gold) {
 		gold2 = gold->ngold;
 		bwrite(fd, (genericptr_t) gold, sizeof(struct gold));
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (!count_only)
 #endif
 			free((genericptr_t) gold);
@@ -566,7 +569,7 @@ register struct trap *trap;
 	while(trap) {
 		trap2 = trap->ntrap;
 		bwrite(fd, (genericptr_t) trap, sizeof(struct trap));
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (!count_only)
 #endif
 			free((genericptr_t) trap);
@@ -575,6 +578,7 @@ register struct trap *trap;
 	bwrite(fd, (genericptr_t)nul, sizeof(struct trap));
 }
 
+#ifdef TUTTI_FRUTTI
 /* save all the fruit names and ID's; this is used only in saving whole games
  * (not levels) and in saving bones levels.  When saving a bones level,
  * we only want to save the fruits which exist on the bones level; the bones
@@ -584,16 +588,23 @@ void
 savefruitchn(fd)
 register int fd;
 {
-	register struct fruit *f2;
-	while(ffruit) {
-		f2 = ffruit->nextf;
-		if (ffruit->fid >= 0)
-			bwrite(fd, (genericptr_t) ffruit, sizeof(struct fruit));
-		free((genericptr_t) ffruit);
-		ffruit = f2;
+	register struct fruit *f2, *f1;
+
+	f1 = ffruit;
+	while(f1) {
+		f2 = f1->nextf;
+		if (f1->fid >= 0) {
+			bwrite(fd, (genericptr_t) f1, sizeof(struct fruit));
+		}
+#if defined(DGK) && !defined(OLD_TOS)
+		if (!count_only)
+#endif
+			free((genericptr_t) f1);
+		f1 = f2;
 	}
 	bwrite(fd, (genericptr_t)nul, sizeof(struct fruit));
 }
+#endif
 
 static void
 savegenoinfo(fd)
@@ -605,7 +616,7 @@ register int fd;
 		bwrite(fd, (genericptr_t) &(mons[i].geno), sizeof(unsigned));
 }
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 boolean
 swapin_file(lev)
 int lev;
@@ -668,6 +679,12 @@ void
 copyfile(from, to)
 char *from, *to;
 {
+#ifdef TOS
+	extern int _copyfile();
+
+	if (_copyfile(from, to))
+		panic("Can't copy %s to %s\n", from, to);
+#else
 	char buf[BUFSIZ];
 	int nfrom, nto, fdfrom, fdto;
 
@@ -683,6 +700,7 @@ char *from, *to;
 	} while (nfrom == BUFSIZ);
 	(void) close(fdfrom);
 	(void) close(fdto);
+#endif /* TOS */
 }
 #endif
 

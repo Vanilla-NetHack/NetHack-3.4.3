@@ -166,7 +166,7 @@ pick_lock(pick) /* pick a lock with a given object */
 
 #ifdef POLYSELF
 	if(nohands(uasmon)) {
-		You("can't hold a %s - you have no hands!");
+		You("can't hold a %s - you have no hands!", xname(pick));
 		return(0);
 	}
 #endif

@@ -292,6 +292,8 @@ meatgold(mtmp)
 			mtmp->mhp += objects[otmp->otyp].oc_weight;
 			if (mtmp->mhp > mtmp->mhpmax) mtmp->mhp = mtmp->mhpmax;
 		    }
+		    if((uball && otmp == uball) ||
+		       (uchain && otmp == uchain)) unpunish();
 		    freeobj(otmp);
 		    /* Left behind a pile? */
 		    if(rnd(25) < 3) (void) mksobj_at(ROCK, mtmp->mx, mtmp->my);
@@ -312,7 +314,7 @@ meatobj(mtmp)		/* for gelatinous cubes */
 	for (otmp = fobj; otmp; otmp = otmp2) {
 	    otmp2 = otmp->nobj;
 	    if (otmp->ox == mtmp->mx && otmp->oy == mtmp->my) {
-		if(!objects[otmp->otyp].oc_material <= WOOD) {
+		if(objects[otmp->otyp].oc_material <= WOOD) {
 		    if (cansee(mtmp->mx,mtmp->my) && flags.verbose)
 			pline("%s eats %s!", Monnam(mtmp),
 				distant_name(otmp, doname));
@@ -423,6 +425,9 @@ struct obj *otmp;
 {
 	register int newload = weight(otmp);
 
+	if (otmp->otyp == CORPSE && otmp->corpsenm == PM_COCKATRICE
+						&& !resists_ston(mtmp->data))
+		return(FALSE);
 	if (mtmp->isshk) return(TRUE); /* no limit */
 	if (mtmp->mpeaceful && !mtmp->mtame) return(FALSE);
 	/* otherwise players might find themselves obligated to violate
@@ -1061,7 +1066,7 @@ mnexto(mtmp)	/* Make monster mtmp next to you (if possible) */
 	struct monst *mtmp;
 {
 	coord mm;
-	enexto(&mm, u.ux, u.uy);
+	enexto(&mm, u.ux, u.uy, mtmp->data);
 	levl[mtmp->mx][mtmp->my].mmask = 0;
 	levl[mm.x][mm.y].mmask = 1;
 	mtmp->mx = mm.x;
@@ -1077,8 +1082,8 @@ mnearto(mtmp,x,y,gz)	/* Make monster near (or at) location if possible */
 	boolean gz;     
 {
 	coord mm;
-	if(!gz || !goodpos(x,y)) {
-		enexto(&mm, x, y);
+	if(!gz || !goodpos(x,y,mtmp->data)) {
+		enexto(&mm, x, y, mtmp->data);
 		x = mm.x; y = mm.y;
 	}
 	if(x == mtmp->mx && y == mtmp->my) /* that was easy */

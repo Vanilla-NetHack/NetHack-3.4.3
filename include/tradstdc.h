@@ -62,4 +62,8 @@ typedef char *		genericptr_t;
 
 #endif /* __STDC__ */
 
+#ifdef __HC__	/* MetaWare High-C defaults to unsigned chars */
+# undef signed
+#endif
+
 #endif /* TRADSTDC_H /**/

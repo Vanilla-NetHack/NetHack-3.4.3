@@ -1,4 +1,4 @@
-/*	SCCS Id: @(#)tos.c	3.0	88/11/09
+/*	SCCS Id: @(#)oldtos.c	3.0	88/11/09
  * An assortment of functions for the Atari with Lattice C compiler.
  * Adapted from a similar set for MSDOS (written by Don Kneller) by
  * R. Black (Louisville, CO).
@@ -6,7 +6,6 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include "hack.h"
-#include "osbind.h"
 
 extern int errno;
 

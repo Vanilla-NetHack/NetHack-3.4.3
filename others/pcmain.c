@@ -3,12 +3,10 @@
 /* NetHack may be freely redistributed.  See license for details. */
 /* main.c - (PC, TOS and AMIGA) version */
 
-#ifndef TOS
-#include <signal.h>
-#else
-#define msmsg	cprintf
-#endif
 #include "hack.h"
+#ifndef NO_SIGNAL
+#include <signal.h>
+#endif
 
 char orgdir[PATHLEN];
 
@@ -18,10 +16,10 @@ extern char plname[PL_NSIZ], pl_character[PL_CSIZ];
 int (*afternmv)(), (*occupation)();
 static void moveloop();	/* a helper function for MSC optimizer */
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 struct finfo	zfinfo = ZFINFO;
 int i;
-#endif /* DGK && !TOS */
+#endif /* DGK && !OLD_TOS */
 
 char SAVEF[FILENAME];
 char *hname = "NetHack";	/* used for syntax messages */
@@ -35,7 +33,11 @@ extern unsigned _stklen = 0x2000;	/* 8K */
 extern unsigned char _osmajor;
 #endif
 
-#ifdef TOS
+#if defined(TOS) && defined(__GNUC__)
+long _stksize = 16*1024;
+#endif
+
+#ifdef OLD_TOS
 #define OMASK	0x8000
 #else
 #define OMASK	0
@@ -62,6 +64,11 @@ char *argv[];
 	 */
 	int (*funcp)();
 
+#if defined(TOS) && defined(__GNUC__)
+	extern int _unixmode;
+	_unixmode = 0;
+#endif
+
 # ifdef __TURBOC__
 	if (_osmajor >= 3) hname = argv[0];	/* DOS 3.0+ */
 # endif
@@ -72,7 +79,7 @@ char *argv[];
 	funcp = exit;	/* Kludge to get around LINT_ARGS of signal.
 			 * This will produce a compiler warning, but that's OK.
 			 */
-# ifndef TOS
+# ifndef NO_SIGNAL
 	signal(SIGINT, (SIG_RET_TYPE) funcp);	/* restore original directory */
 # endif
 #endif /* AMIGA */
@@ -85,11 +92,12 @@ char *argv[];
 		chdirx (dir, 1);
 #endif
 	}
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	/* zero "fileinfo" array to prevent crashes on level change */
-	for (i = 0 ; i <= MAXLEVEL + 1; i++)
+	for (i = 0 ; i <= MAXLEVEL; i++) {
 		fileinfo[i] = zfinfo;
-#endif /* DGK && !TOS */
+	}
+#endif /* DGK && !OLD_TOS */
 	initoptions();
 	if (!hackdir[0])
 		Strcpy(hackdir, orgdir);
@@ -141,7 +149,7 @@ char *argv[];
 	cls();
 	u.uhp = 1;	/* prevent RIP on early quits */
 	u.ux = FAR;	/* prevent nscr() */
-#ifndef TOS
+#ifndef OLD_TOS
 	/*
 	 * We cannot do chdir earlier, otherwise gethdate will fail.
 	 */
@@ -255,7 +263,7 @@ char *argv[];
 #endif /* DGK */
 	    ((fd = open(SAVEF, OMASK)) >= 0) &&
 	    (uptodate(fd) || !unlink(SAVEF))) {
-#ifndef TOS
+#ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 		pline("Restoring old save file...");
@@ -286,7 +294,7 @@ not_recovered:
 		flags.ident = 1;
 		init_objects();
 		u_init();
-#ifndef TOS
+#ifndef NO_SIGNAL
 		(void) signal(SIGINT, (SIG_RET_TYPE) done1);
 #endif
 		mklev();
@@ -323,7 +331,7 @@ not_recovered:
 	}
 
 	initrack();
-#ifndef TOS
+#ifndef NO_SIGNAL
 	(void) signal(SIGINT, SIG_IGN);
 #endif
 	/* Help for Microsoft optimizer.  Otherwise main is too large -dgk*/

@@ -788,7 +788,7 @@ makelevel() {
 			mtmp->msleep = 1;
 		for (tryct = rn1(1,3); tryct; tryct--) {
 			x = somex(croom); y = somey(croom);
-			if (goodpos(x,y))
+			if (goodpos(x,y,(struct permonst *)0))
 				(void) mk_tt_statue(x, y);
 		}
 	}
@@ -815,7 +815,7 @@ makelevel() {
 #ifdef REINCARNATION
 	if (dlevel == rogue_level) {
 	   You("feel as though you were here in a previous lifetime.");
-	   return;
+	   goto skip0;
 	}
 #endif
 	makecorridors();
@@ -871,7 +871,9 @@ makelevel() {
 #endif
 	if(dlevel > 18 && !rn2(6)) mkroom(SWAMP);
 
-
+#ifdef REINCARNATION
+skip0:
+#endif
 	/* for each room: put things inside */
 	for(croom = rooms; croom->hx > 0; croom++) {
 		register boolean boxinlev = FALSE;

@@ -38,6 +38,22 @@
 /* #define APOLLO	/* same for the Apollo */
 /* #define RANDOM	/* if neither random/srandom nor lrand48/srand48
 			   is available from your system */
+/* #define MICROPORT_286_BUG /* Changes needed in termcap.c to get it to
+			   run with Microport Sys V/AT version 2.4.
+			   By Jay Maynard */
+
+
+/*
+ * The next two defines are intended mainly for the Andrew File System,
+ * which does not allow hard links.  If NO_FILE_LINKS is defined, lock files
+ * will be created in LOCKDIR using open() instead of in the playground using
+ * link().
+ *		Ralf Brown, 7/26/89 (from v2.3 hack of 10/10/88)
+ */
+
+/* #define NO_FILE_LINKS	/* if no hard links */
+/* #define LOCKDIR "/usr/games/lib/nethackdir"	/* where to put locks */
+
 
 /*
  * Define DEF_PAGER as your default pager, e.g. "/bin/cat" or "/usr/ucb/more"
@@ -111,6 +127,14 @@
 #define Rand()	lrand48()
 #define Srand(seed) srand48(seed)
 #endif
+
+#ifdef hc	/* older versions of the MetaWare High-C compiler define this */
+# ifdef __HC__
+#  undef __HC__
+# endif __HC__
+# define __HC__ hc
+# undef hc
+#endif hc
 
 #include "extern.h"
 

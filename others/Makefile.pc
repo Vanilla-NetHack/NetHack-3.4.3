@@ -47,10 +47,10 @@ SPLEVOBJS = o\lev_comp.o o\lev_lex.o o\lev_main.o o\alloc.o o\monst.o o\objects.
 
 VOBJ =	o\alloc.o o\apply.o o\artifact.o o\attrib.o o\bones.o o\cmd.o \
 	o\dbridge.o o\decl.o o\demon.o o\do.o o\do_name.o o\do_wear.o \
-	o\dog.o o\dogmove.o o\dothrow.o o\eat.o o\end.o o\engrave.o \
+	o\dog.o o\dogmove.o o\dokick.o o\dothrow.o o\eat.o o\end.o o\engrave.o \
 	o\exper.o o\extralev.o o\fountain.o o\getline.o o\hack.o o\invent.o \
 	o\lock.o o\mail.o o\main.o o\makemon.o o\mcastu.o o\mhitm.o o\mhitu.o \
-	o\mklev.o o\mkmaze.o o\mkobj.o o\mkshop.o o\mon.o o\mondata.o \
+	o\mklev.o o\mkmaze.o o\mkobj.o o\mkroom.o o\mon.o o\mondata.o \
 	o\msdos.o o\monmove.o o\monst.o o\mthrowu.o o\music.o o\o_init.o \
 	o\objects.o o\objnam.o o\options.o o\pager.o o\pickup.o o\polyself.o \
 	o\potion.o o\pray.o o\pri.o o\priest.o o\prisym.o $(RANDOM) o\read.o \

@@ -861,6 +861,7 @@ armoroff(otmp) register struct obj *otmp; {
 		else setworn((struct obj *)0, otmp->owornmask & W_ARMOR);
 		off_msg(otmp);
 	}
+	takeoff_mask = taking_off = 0L;
 	return(1);
 }
 
@@ -986,6 +987,7 @@ dowear() {
 /*		if(is_shield(otmp)) (void) Shield_on(); */
 		on_msg(otmp);
 	}
+	takeoff_mask = taking_off = 0L;
 	return(1);
 }
 
@@ -1132,10 +1134,21 @@ find_ac() {
 }
 
 void
-glibr(){
-register struct obj *otmp;
-int xfl = 0;
-	if(!uarmg) if(uleft || uright)
+glibr()
+{
+	register struct obj *otmp;
+	int xfl = 0;
+#ifdef HARD
+	boolean leftfall, rightfall;
+
+	leftfall = (uleft && !uleft->cursed && (!uwep || !uwep->cursed));
+	rightfall = (uright && !uright->cursed && (!uwep || !uwep->cursed
+		|| !bimanual(uwep)));
+#else
+#define leftfall uleft
+#define rightfall uright
+#endif
+	if(!uarmg) if(leftfall || rightfall)
 #ifdef POLYSELF
 				if(!nolimbs(uasmon))
 #endif
@@ -1143,18 +1156,16 @@ int xfl = 0;
 		/* Note: at present also cursed rings fall off */
 		/* changed 10/30/86 by GAN */
 		Your("%s off your %s.",
-#ifdef HARD
-			((uleft && !uleft->cursed) && (uright && !uright->cursed)) ? "rings slip" : "ring slips",
-#else
-			(uleft && uright) ? "rings slip" : "ring slips",
-#endif
+			(leftfall && rightfall) ? "rings slip" : "ring slips",
 			makeplural(body_part(FINGER)));
 		xfl++;
-		if((otmp = uleft) != (struct obj *)0){
+		if(leftfall) {
+			otmp = uleft;
 			Ring_off(uleft);
 			dropx(otmp);
 		}
-		if((otmp = uright) != (struct obj *)0){
+		if(rightfall) {
+			otmp = uright;
 			Ring_off(uright);
 			dropx(otmp);
 		}

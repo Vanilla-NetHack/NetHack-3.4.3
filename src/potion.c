@@ -349,8 +349,13 @@ peffects(otmp)
 			  Hallucination ? "overripe" : "rotten"
 			 );
 		else pline (Hallucination ?
+#ifdef TUTTI_FRUTTI
 		   "This tastes like 10%% real %s juice all-natural beverage." :
 		   "This tastes like %s juice.", pl_fruit);
+#else
+		   "This tastes like 10%% real fruit juice all-natural beverage." :
+		   "This tastes like fruit juice.");
+#endif
 		if (otmp->otyp == POT_FRUIT_JUICE) {
 			lesshungry(10 * (2 + bcsign(otmp)));
 			break;
@@ -391,13 +396,20 @@ peffects(otmp)
 	case POT_SICKNESS:
 		pline("Yecch!  This stuff tastes like poison.");
 		if (otmp->blessed) {
-			pline("(But in fact it was mildly stale %s juice.)",
-								pl_fruit);
+#ifdef TUTTI_FRUTTI
+		pline("(But in fact it was mildly stale %s juice.)", pl_fruit);
+#else
+		pline("(But in fact it was mildly stale orange juice.)");
+#endif
 			if (pl_character[0] != 'H')
 				losehp(1, "mildly contaminated potion");
 		} else {
 		    if(Poison_resistance)
+#ifdef TUTTI_FRUTTI
     pline("(But in fact it was biologically contaminated %s juice.)",pl_fruit);
+#else
+    pline("(But in fact it was biologically contaminated orange juice.)");
+#endif
 		    if (pl_character[0] == 'H')
 			pline("Fortunately, you have been immunized.");
 		    else {
@@ -1077,5 +1089,76 @@ at(objs->ox, objs->oy, (uchar)(Hallucination ? rndobjsym() : objs->olet), AT_OBJ
 		more();
 		docrt();
 	}
+	return(0);
+}
+
+/* the detections are pulled out so they can	*/
+/* also be used in the crystal ball routine	*/
+/* returns 1 if nothing was detected		*/
+/* returns 0 if something was detected		*/
+int
+trap_detect(sobj)
+register struct obj	*sobj;
+/* sobj is null if crystal ball, *scroll if gold detection scroll */
+{
+	register struct trap *ttmp;
+	register struct obj *obj;
+	register int door;
+	boolean found = FALSE;
+	coord cc;
+
+	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap) {
+		if(ttmp->tx != u.ux || ttmp->ty != u.uy)
+			goto outtrapmap;
+		else found = TRUE;
+	}
+	for(obj = fobj; obj; obj = obj->nobj) {
+		if ((obj->otyp==LARGE_BOX || obj->otyp==CHEST) && obj->otrapped)
+			if (obj->ox != u.ux || obj->oy != u.uy)
+				goto outtrapmap;
+			else found = TRUE;
+	}
+	for(door=0; door<=doorindex; door++) {
+		cc = doors[door];
+		if (levl[cc.x][cc.y].doormask & D_TRAPPED)
+			if (cc.x != u.ux || cc.x != u.uy)
+				goto outtrapmap;
+			else found = TRUE;
+	}
+	if(!found) {
+		char buf[42];
+		Sprintf(buf, "Your %s stop itching.",
+			makeplural(body_part(TOE)));
+		strange_feeling(sobj,buf);
+		return(1);
+	}
+	/* traps exist, but only under me - no separate display required */
+	Your("%s itch.", makeplural(body_part(TOE)));
+	return(0);
+outtrapmap:
+	cls();
+#define SYMBOL (uchar)(Hallucination ? rndobjsym() : \
+		(sobj && sobj->cursed) ? GOLD_SYM : TRAP_SYM)
+#define AT Hallucination || (sobj && sobj->cursed) ? AT_OBJ : AT_MAP
+	for(ttmp = ftrap; ttmp; ttmp = ttmp->ntrap)
+		at(ttmp->tx, ttmp->ty, SYMBOL, AT);
+	for(obj = fobj; obj; obj = obj->nobj) {
+		if ((obj->otyp==LARGE_BOX || obj->otyp==CHEST) && obj->otrapped)
+			at(obj->ox, obj->oy, SYMBOL, AT);
+	}
+	for(door=0; door<=doorindex; door++) {
+		cc = doors[door];
+		if (levl[cc.x][cc.y].doormask & D_TRAPPED)
+			at(cc.x, cc.y, SYMBOL, AT);
+	}
+#undef SYMBOL
+#undef AT
+	prme();
+	if (sobj && sobj->cursed)
+		You("feel very greedy.");
+	else
+		You("feel entrapped.");
+	more();
+	docrt();
 	return(0);
 }

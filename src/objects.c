@@ -58,7 +58,11 @@ struct objclass objects[] = {
 	FOOD("pear",		     7, 0, 1, 0,  50),
 	FOOD("melon",		     7, 0, 1, 0, 100),
 	FOOD("banana",		     7, 0, 1, 0,  80),
+#ifdef TUTTI_FRUTTI
 	FOOD("slime mold",	    75, 0, 1, 0, 250),
+#else
+	FOOD("slice of pizza",	    75, 0, 1, 0, 250),
+#endif
 	FOOD("carrot",		    15, 0, 1, 0,  50),
 	FOOD("clove of garlic",      5, 0, 1, 0,  40),
 	/* human food */

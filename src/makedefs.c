@@ -18,7 +18,9 @@ static	const char	SCCS_Id[] = "@(#)makedefs.c\t3.0\t89/01/10";
 #endif
 
 #ifdef MSDOS
+#ifndef TOS
 # define freopen _freopen
+#endif
 # undef	exit
 extern void exit P((int));
 # define RDMODE	"r"
@@ -416,7 +418,7 @@ char	*oldname, *newname;
 #endif
 
 #ifdef MSDOS
-# ifndef AMIGA
+# if !defined(AMIGA) && !defined(TOS)
 /* Get around bug in freopen when opening for writing	*/
 /* Supplied by Nathan Glasser (nathan@mit-eddie)	*/
 #undef freopen
@@ -439,7 +441,7 @@ FILE *fp;
     else
 	return freopen(fname,fmode,fp);
 }
-# endif /* AMIGA */
+# endif /* !AMIGA && !TOS */
 
 # if defined(__TURBOC__) || defined(AMIGA)
 int

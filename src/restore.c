@@ -10,7 +10,9 @@
 #endif
 
 boolean restoring = FALSE;
+#ifdef TUTTI_FRUTTI
 static struct fruit *oldfruit;
+#endif
 static long omoves;
 
 /*
@@ -44,7 +46,9 @@ boolean ghostly;
 {
 	register struct obj *otmp, *otmp2;
 	register struct obj *first = 0;
+#ifdef TUTTI_FRUTTI
 	register struct fruit *oldf;
+#endif
 	int xl;
 #ifdef LINT
 	/* suppress "used before set" warning from lint */
@@ -58,12 +62,14 @@ boolean ghostly;
 		else otmp2->nobj = otmp;
 		mread(fd, (genericptr_t) otmp, (unsigned) xl + sizeof(struct obj));
 		if(!otmp->o_id) otmp->o_id = flags.ident++;
+#ifdef TUTTI_FRUTTI
 		if(ghostly && otmp->otyp == SLIME_MOLD) {
 			for(oldf=oldfruit; oldf; oldf=oldf->nextf)
 				if (oldf->fid == otmp->spe) break;
 			if(!oldf) impossible("no old fruit?");
 			else otmp->spe = fruitadd(oldf->fname);
 		}
+#endif
 	/* Ghost levels get object age shifted from old player's clock to
 	 * new player's clock.  Assumption: new player arrived immediately
 	 * after old player died.
@@ -158,7 +164,9 @@ register int fd;
 	xchar ltmp;
 	unsigned int mid;		/* idem */
 	struct obj *otmp;
+#ifdef TUTTI_FRUTTI
 	struct fruit *fruit;
+#endif
 #ifdef MSDOS
 	struct flag oldflags;
 
@@ -227,6 +235,7 @@ register int fd;
 	if(u.ustuck)
 		mread(fd, (genericptr_t) &mid, sizeof mid);
 	mread(fd, (genericptr_t) pl_character, sizeof pl_character);
+#ifdef TUTTI_FRUTTI
 	mread(fd, (genericptr_t) pl_fruit, sizeof pl_fruit);
 	mread(fd, (genericptr_t) &current_fruit, sizeof current_fruit);
 	ffruit = 0;
@@ -237,6 +246,7 @@ register int fd;
 		ffruit = fruit;
 	}
 	free((genericptr_t) fruit);
+#endif
 
 	restnames(fd);
 #ifdef DGK
@@ -266,7 +276,7 @@ register int fd;
 		nfd = creat(lock, FCMASK);
 #endif
 		if (nfd < 0)	panic("Cannot open temp file %s!\n", lock);
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		if (!savelev(nfd, ltmp, COUNT | WRITE)) {
 
 			/* The savelev can't proceed because the size required
@@ -373,9 +383,10 @@ boolean ghostly;
 	short tlev;
 #endif
 
-#ifdef MSDOS
-	setmode(fd, O_BINARY);	    /* is this required for TOS??? */
+#if defined(MSDOS) && !defined(TOS)
+	setmode(fd, O_BINARY);	    /* is this required for TOS??? NO --ERS */
 #endif
+#ifdef TUTTI_FRUTTI
 	/* Load the old fruit info.  We have to do it first, so the infor-
 	 * mation is available when restoring the objects.  
 	 */
@@ -391,16 +402,25 @@ boolean ghostly;
 		}
 		free((genericptr_t) fruit);
 	}
+#endif
 
 	/* First some sanity checks */
 	mread(fd, (genericptr_t) &hpid, sizeof(hpid));
 #ifdef TOS
 	mread(fd, (genericptr_t) &tlev, sizeof(tlev));
-	dlvl=tlev&0xff;
+	dlvl=tlev&0x00ff;
 #else
 	mread(fd, (genericptr_t) &dlvl, sizeof(dlvl));
 #endif
 	if((pid && pid != hpid) || (lev && dlvl != lev)) {
+#ifdef WIZARD
+		if (wizard) {
+			if (pid && pid != hpid)
+				pline("PID (%d) doesn't match saved PID (%d)!", hpid, pid);
+			else if (lev && dlvl != lev)
+				pline("This is level %d, not %d!", dlvl, lev);
+		}
+#endif
 		pline("Strange, this map is not as I remember it.");
 		pline("Somebody is trying some trickery here...");
 		pline("This game is void.");
@@ -654,6 +674,7 @@ boolean ghostly;
 	}
 	mread(fd, (genericptr_t)wgrowtime, sizeof(wgrowtime));
 #endif
+#ifdef TUTTI_FRUTTI
 	/* Now get rid of all the temp fruits... */
 	if (ghostly) {
 		struct fruit *fruit;
@@ -664,6 +685,7 @@ boolean ghostly;
 			oldfruit = fruit;
 		}
 	}
+#endif
 }
 
 #ifdef ZEROCOMP

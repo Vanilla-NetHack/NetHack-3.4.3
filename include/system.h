@@ -20,6 +20,10 @@ typedef unsigned int	size_t;
 #define time_t long
 #endif
 
+#if defined(TOS) && defined(__GNUC__)
+#define _SIZE_T
+#endif
+
 /* some old <sys/types.h> may not define off_t and size_t; if your system is
  * one of these, define them here
  */
@@ -155,7 +159,9 @@ E int	strlen();
 #define OLD_SPRINTF
 E char *sprintf();
 #else
+#ifndef TOS	/* problem with prototype mismatches with <stdio.h> */
 E int sprintf P((char *,const char *,...));
+#endif
 #endif
 
 #define Sprintf	(void) sprintf

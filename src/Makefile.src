@@ -26,6 +26,15 @@ SHELL=/bin/sh
 # Systos wants 'pc'; everything else normally wants 'unix'
 TARG = unix
 
+# if you are using gcc as your compiler:
+#	add -fwritable-strings to your other CFLAGS
+#	uncomment the CC definition below if it's not in your environment
+#	ignore warnings about initializing non-const *s from const *s
+#	if you get setcgtty() warnings during execution, you are feeding gcc
+#		a non-ANSI <sys/ioctl.h> -- either run fixincludes on it or use
+#		-traditional in CFLAGS
+# CC = gcc
+
 # flags may have to be changed as required
 # flags for 286 Xenix:
 # CFLAGS = -O -Gt24 -LARGE -Ml -I../include
@@ -60,8 +69,8 @@ TERMLIB = -ltermlib
 # if, instead of yacc/lex you have bison/flex, comment/uncomment the following.
 YACC     = yacc
 LEX      = lex
-#YACC     = bison
-#LEX      = flex
+# YACC     = bison -y
+# LEX      = flex
 
 # make NetHack
 GAME     = nethack
@@ -85,12 +94,11 @@ HACKCSRC = alloc.c apply.c artifact.c attrib.c bones.c cmd.c dbridge.c decl.c\
 	   mthrowu.c music.c o_init.c objects.c objnam.c options.c pager.c\
 	   pickup.c polyself.c potion.c pray.c pri.c priest.c prisym.c read.c\
  	   restore.c rip.c rnd.c rumors.c save.c search.c shk.c shknam.c sit.c\
-	   sounds.c sp_lev.c spell.c steal.c termcap.c timeout.c topl.c topten.c\
-	   track.c trap.c u_init.c uhitm.c vault.c version.c weapon.c were.c\
-	   wield.c wizard.c worm.c worn.c write.c zap.c
+	   sounds.c sp_lev.c spell.c steal.c termcap.c timeout.c topl.c\
+	   topten.c track.c trap.c u_init.c uhitm.c vault.c version.c weapon.c\
+	   were.c wield.c wizard.c worm.c worn.c write.c zap.c
 
-# all .c files but msdos.c, tos.c, *main.c, *tty.c, *unix.c, (system specific)
-# and makedefs.c, lev_comp.c, panic.c (not part of any nethack)
+# all .c that are part of the main NetHack program and are not system specific
 
 CSOURCES = $(HACKCSRC) $(TARG)main.c $(TARG)main.c $(TARG)main.c makedefs.c panic.c
 
@@ -144,9 +152,9 @@ Sysatt:	$(HOBJ) Makefile
 	@$(LD) $(LFLAGS) /lib/crt0s.o /lib/shlib.ifile -o $(GAME) $(HOBJ)
 	@touch Sysatt
 
-Systos:	$(HOBJ) tos.o Makefile
+Systos:	$(HOBJ) oldtos.o Makefile
 	@echo "Loading ..."
-	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) tos.o $(TERMLIB)
+	@$(CC) $(LFLAGS) -o $(GAME) $(HOBJ) oldtos.o $(TERMLIB)
 	@touch Systos
 
 SysV-AT:	DUMB.Setup $(HOBJ) Makefile
@@ -351,7 +359,7 @@ depend:
 	@rm -f Makefile.bak
 
 # PC dependency for Systos that won't be made on a UNIX system
-tos.o:	../include/hack.h ../include/osbind.h
+oldtos.o:  ../include/hack.h
 
 # DO NOT DELETE THIS LINE
 

@@ -51,9 +51,11 @@ E xchar seehx2, seelx2, seehy2, seely2; /* where to see */
 E xchar fountsound, sinksound;	/* numbers of noisy things */
 
 E char pl_character[PL_CSIZ];
+#ifdef TUTTI_FRUTTI
 E char pl_fruit[PL_FSIZ];
 E int current_fruit;
 E struct fruit *ffruit;
+#endif
 #ifdef STRONGHOLD
 E char tune[6];
 #  ifdef MUSIC
@@ -98,9 +100,11 @@ E boolean dig_down;
 E long moves;
 E long wailmsg;
 
-E boolean unweapon;
-E boolean stoned;
 E boolean in_mklev;
+E boolean stoned;
+E boolean unweapon;
+E boolean mrg_to_wielded;
+
 #ifdef KOPS
 E boolean allow_kops;
 #endif

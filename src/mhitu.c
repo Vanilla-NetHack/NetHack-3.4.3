@@ -58,7 +58,7 @@ register uchar attyp;
 {
 	/* Note: if opposite gender, "seductively" */
 	/* If same gender, "engagingly" for nymph, normal msg for others */
-	if(sp_melee(mtmp) && !mtmp->mcan) {
+	if(sp_melee(mtmp) && !mtmp->mcan && !mtmp->mspec_used) {
 		if(!is_nymph(mtmp) && incompatible(mtmp)) goto strike;
 	    	kludge("%s %s you %s.", Monnam(mtmp),
 			Blind ? "talks to" : "smiles at",
@@ -248,11 +248,7 @@ doattack:
 		    mtmp->mx = u.ux; mtmp->my = u.uy;
 		    levl[mtmp->mx][mtmp->my].mmask = 1;
 		    pmon(mtmp);
-		    enexto(&cc, u.ux, u.uy);
-		    /* Luckily piercers cannot walk through walls, so this
-		     * will work.  If they can (i.e., if someone adds a potion
-		     * of phasing), we gotta change this...
-		     */
+		    enexto(&cc, u.ux, u.uy, &playermon);
 		    teleds(cc.x, cc.y);
 		    You("fall from the ceiling!");
 		    if (is_mercenary(mtmp->data) && m_carrying(mtmp,HELMET)) {
@@ -839,7 +835,7 @@ dopois:
 		 * is, no matter what covers it.
 		 */
 		getbronze = (mdat == &mons[PM_BLACK_PUDDING] &&
-			     uarm->otyp == BRONZE_PLATE_MAIL);
+			     uarm && uarm->otyp == BRONZE_PLATE_MAIL);
 		while (1) {
 		    switch(rn2(5)) {
 		    case 0:
@@ -1240,6 +1236,7 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 	register struct attack  *mattk;
 {
 	switch(mattk->adtyp) {
+#ifdef MEDUSA
 	    case AD_STON:
 		if (mtmp->mcan) {
 		    You("notice that %s isn't all that ugly.",mon_nam(mtmp));
@@ -1258,6 +1255,7 @@ gazemu(mtmp, mattk)	/* monster gazes at you */
 			done("stoned");
 	    	}
 		break;
+#endif
 	    case AD_CONF:
 		if(!mtmp->mcan && canseemon(mtmp) && mtmp->mcansee && 
 					!mtmp->mspec_used && rn2(5)) {

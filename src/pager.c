@@ -10,7 +10,7 @@
 #define MONATTK_H
 #include	 "hack.h"
 
-#ifndef TOS
+#ifndef NO_SIGNAL
 #include <signal.h>
 #endif
 #if defined(BSD) || defined(ULTRIX)

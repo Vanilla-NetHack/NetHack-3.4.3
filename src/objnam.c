@@ -3,6 +3,7 @@
 /* NetHack may be freely redistributed.  See license for details. */
 
 #include	"hack.h"
+#include <ctype.h>	/* for isalpha() */
 
 #define	PREFIX	30
 
@@ -157,7 +158,7 @@ char *(*func) P((struct obj *));
 
 	long save_Blinded = Blinded;
 	Blinded = 1;
-	str = func(obj);
+	str = (*func)(obj);
 	Blinded = save_Blinded;
 	return str;
 }
@@ -237,6 +238,7 @@ register char *un = objects[obj->otyp].oc_uname;
 		} else	Strcat(buf, dn);
 		break;
 	    case FOOD_SYM:
+#ifdef TUTTI_FRUTTI
 		if (obj->otyp == SLIME_MOLD) {
 			register struct fruit *f;
 
@@ -249,6 +251,7 @@ register char *un = objects[obj->otyp].oc_uname;
 			if (!f) impossible("Bad fruit #%d?", obj->spe);
 			break;
 		}
+#endif
 		Strcpy(buf, an);
 		if(obj->otyp == TIN && obj->known) {
 		    if(obj->spe > 0)
@@ -519,7 +522,7 @@ plus:
 			break;
 	}
 
-	if(obj->owornmask & W_WEP) {
+	if((obj->owornmask & W_WEP) && !mrg_to_wielded) {
 		Strcat(bp, " (weapon in ");
 		Strcat(bp, body_part(HAND));
 		Strcat(bp, ")");
@@ -631,19 +634,23 @@ char *oldstr;
 
 	/* Search for common compounds, i.e. lump of royal jelly */
 	for(excess=0, spot=str; *spot; spot++) {
-		if (!strncmp(spot, " of ", 4) || !strncmp(spot, " with ", 6)
-				|| !strncmp(spot, " a la ", 6)
-				|| !strncmp(spot, " from ", 6)
-				|| !strncmp(spot, " in ", 4)
+		if (!strncmp(spot, " of ", 4)
 				|| !strncmp(spot, " labeled ", 9)
 				|| !strncmp(spot, " called ", 8)
 				|| !strncmp(spot, " named ", 7)
-				|| !strncmp(spot, " on ", 4)
 				|| !strcmp(spot, " above") /* lurkers above */
 				|| !strncmp(spot, " versus ", 8)
+#ifdef TUTTI_FRUTTI
+				|| !strncmp(spot, " from ", 6)
+				|| !strncmp(spot, " in ", 4)
+				|| !strncmp(spot, " on ", 4)
+				|| !strncmp(spot, " a la ", 6)
+				|| !strncmp(spot, " with", 5)
 				|| !strncmp(spot, " de ", 4)
 				|| !strncmp(spot, " d'", 3)
-				|| !strncmp(spot, " du ", 4)) {
+				|| !strncmp(spot, " du ", 4)
+#endif
+				) {
 			excess = oldstr + (spot - str);
 			*spot = 0;
 			break;
@@ -654,36 +661,20 @@ char *oldstr;
 	*(spot+1) = 0;
 	/* Now spot is the last character of the string */
 
-	/* Single letters */
 	len = strlen(str);
-	if (len==1) {
+#ifdef TUTTI_FRUTTI
+	/* Single letters */
+	if (len==1 || !isalpha(*spot)) {
 		Strcpy(spot+1, "'s");
 		goto bottom;
 	}
+#endif
 
 	/* man/men ("Wiped out all cavemen.") */
 	if (len >= 3 && !strcmp(spot-2, "man") &&
 			(len<6 || strcmp(spot-5, "shaman")) &&
 			(len<5 || strcmp(spot-4, "human"))) {
 		*(spot-1) = 'e';
-		goto bottom;
-	}
-
-	/* mouse/mice,louse/lice (not a monster, but possible in a food name) */
-	if (len >= 5 && !strcmp(spot-3, "ouse") && index("MmLl", *(spot-4))) {
-		Strcpy(spot-3, "ice");
-		goto bottom;
-	}
-
-	/* matzoh/matzot, possible food name */
-	if (len >= 6 && !strcmp(spot-5, "matzoh")) {
-		*(spot) = 't';
-		goto bottom;
-	}
-
-	/* child/children (for the wise guys who give their food funny names) */
-	if (len >= 5 && !strcmp(spot-4, "child")) {
-		Strcpy(spot, "dren");
 		goto bottom;
 	}
 
@@ -716,9 +707,13 @@ char *oldstr;
 	}
 
 	/* algae, larvae, hyphae (another fungus part) */
+#ifdef TUTTI_FRUTTI
 	if ((len >= 4 && !strcmp(spot-3, "alga")) ||
 	    (len >= 5 &&
 	     (!strcmp(spot-4, "hypha") || !strcmp(spot-4, "larva")))) {
+#else
+	if (len >= 5 && (!strcmp(spot-4, "hypha"))) {
+#endif
 		Strcpy(spot, "ae");
 		goto bottom;
 	}
@@ -746,16 +741,32 @@ char *oldstr;
 	/* note: also swine, trout, grouse */
 	if ((len >= 7 && !strcmp(spot-6, "samurai")) ||
 	    (len >= 5 &&
+#ifdef TUTTI_FRUTTI
 	     (!strcmp(spot-4, "manes") || !strcmp(spot-4, "sheep"))) ||
 	    (len >= 4 &&
 	     (!strcmp(spot-3, "fish") || !strcmp(spot-3, "tuna") ||
 	      !strcmp(spot-3, "deer"))))
+#else
+	     !strcmp(spot-4, "manes")))
+#endif
 		goto bottom;
 
-	/* Aren't the following two going a bit far?  --KAA */
-	/* eau/eaux (gateau) */
-	if (len >= 3 && !strcmp(spot-2, "eau")) {
-		Strcpy(spot, "ux");
+#ifdef TUTTI_FRUTTI
+	/* mouse/mice,louse/lice (not a monster, but possible in a food name) */
+	if (len >= 5 && !strcmp(spot-3, "ouse") && index("MmLl", *(spot-4))) {
+		Strcpy(spot-3, "ice");
+		goto bottom;
+	}
+
+	/* matzoh/matzot, possible food name */
+	if (len >= 6 && !strcmp(spot-5, "matzoh")) {
+		*(spot) = 't';
+		goto bottom;
+	}
+
+	/* child/children (for the wise guys who give their food funny names) */
+	if (len >= 5 && !strcmp(spot-4, "child")) {
+		Strcpy(spot, "dren");
 		goto bottom;
 	}
 
@@ -765,19 +776,24 @@ char *oldstr;
 		goto bottom;
 	}
 
+	/* note: -eau/-eaux (gateau, bordeau...) */
 	/* note: ox/oxen, VAX/VAXen, goose/geese */
+#endif
 
 	/* Ends in z, x, s, ch, sh; add an "es" */
-	if (index("zxsv", *spot) || (*spot=='h' && index("cs", *(spot-1))) ||
+	if (index("zxsv", *spot) || (*spot=='h' && index("cs", *(spot-1)))
+#ifdef TUTTI_FRUTTI
 	/* Kludge to get "tomatoes" and "potatoes" right */
-				(len >= 4 && !strcmp(spot-2, "ato"))) {
+				|| (len >= 4 && !strcmp(spot-2, "ato"))
+#endif
+									) {
 		Strcpy(spot+1, "es");
 		goto bottom;
 	}
 
-	/* Ends in y preceded by consonant or "qu"; change to "ies" */
+	/* Ends in y preceded by consonant (note: also "qu"); change to "ies" */
 	if (*spot == 'y' &&
-	    (!index(vowels, *(spot-1)) || !strncmp("qu", spot-2, 2))) {
+	    (!index(vowels, *(spot-1)))) {
 		Strcpy(spot, "ies");
 		goto bottom;
 	}
@@ -808,10 +824,13 @@ register char *bp;
 	register char *p;
 	register int i;
 	register struct obj *otmp;
-	struct fruit *f;
 	int cnt, spe, spesgn, typ, heavy, blessed, uncursed;
 	int iscursed, ispoisoned, mntmp, contents, iskey=0;
-	int  isnamedbox=0, ftype = current_fruit;
+	int  isnamedbox=0;
+#ifdef TUTTI_FRUTTI
+	struct fruit *f;
+	int ftype = current_fruit;
+#endif
 	char let;
 	char *un, *dn, *an;
 	char *name=0;
@@ -946,6 +965,7 @@ register char *bp;
 	if(cnt == 1 && !strncmp(bp, "pair of ",8)) {
 		bp += 8;
 		cnt = 2;
+		goto sing;
 		/* cnt is ignored for armor and other non-stackable objects;
 		   DTRT for stackable objects */
 	} else if(cnt > 1 && !strncmp(bp, "pairs of ",9)) {
@@ -993,6 +1013,11 @@ register char *bp;
 				/* note: cloves / knives from clove / knife */
 				if(!strcmp(p-6, "knives")) {
 					Strcpy(p-3, "fe");
+					goto sing;
+				}
+
+				if(!strcmp(p-6, "staves")) {
+					Strcpy(p-3, "ff");
 					goto sing;
 				}
 
@@ -1194,6 +1219,7 @@ srch:
 		}
 		i++;
 	}
+#ifdef TUTTI_FRUTTI
 	for(f=ffruit; f; f = f->nextf) {
 		char *f1 = f->fname, *f2 = makeplural(f->fname);
 
@@ -1204,6 +1230,7 @@ srch:
 			goto typfnd;
 		}
 	}
+#endif
 	if(!let) return((struct obj *)0);
 any:
 	if(!let) let = wrpsym[rn2(sizeof(wrpsym))];
@@ -1273,8 +1300,10 @@ typfnd:
 				otmp->spe = 1;
 			}
 			break;
+#ifdef TUTTI_FRUTTI
 		case SLIME_MOLD: otmp->spe = ftype;
 			/* Fall through */
+#endif
 		case SKELETON_KEY: case KEY: case CHEST: case LARGE_BOX:
 		case HEAVY_IRON_BALL: case IRON_CHAIN: case STATUE:
 			/* otmp->spe already done in mksobj() */

@@ -11,7 +11,7 @@
 /* the artifacts (currently weapons only) */
 static const struct artifact artilist[] = {
 
-#define	    NO_ATTK	0, 0, 0, 0
+#define	    NO_ATTK	{ 0, 0, 0, 0 }
 
 { LONG_SWORD,	 "Excalibur",	(SPFX_NOGEN | SPFX_SEEK | SPFX_DEFN |
 								SPFX_SEARCH), 0,

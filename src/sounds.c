@@ -585,7 +585,8 @@ dotalk()
     }
 
     tx = u.ux+u.dx; ty = u.uy+u.dy;
-    if (!cansee(tx,ty) || !levl[tx][ty].mmask || (mtmp = m_at(tx, ty))->mimic) {
+    if ((Blind && !Telepat) || !levl[tx][ty].mmask ||
+	    (mtmp = m_at(tx, ty))->mimic || mtmp->mundetected) {
 	pline("I see nobody there.");
 	return(0);
     }

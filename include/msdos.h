@@ -5,13 +5,13 @@
 #ifndef MSDOS_H
 #define MSDOS_H
 
-#ifdef TOS
+#ifdef OLD_TOS
 #define msmsg	cprintf
 #endif
 extern const char *alllevels, *allbones;
 extern char levels[], bones[], permbones[], SAVEF[], hackdir[];
 extern int ramdisk;
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 extern int count_only;
 #endif
 

@@ -6,6 +6,9 @@
 #define MONATTK_H
 #include "hack.h"
 #include <ctype.h>  /* for isalpha() */
+#if defined(ALTARS) && defined(THEOLOGY)
+#include "epri.h"
+#endif
 
 static void hilite P((uchar, uchar));
 static void cornbot P((int));
@@ -147,7 +150,7 @@ prme(){
 #ifdef POLYSELF
 			&& !u.uundetected
 #endif
-					) at(u.ux,u.uy,u.usym,AT_U);
+					) atl(u.ux,u.uy,(char)u.usym);
 }
 
 void
@@ -213,7 +216,7 @@ docrt()
 /* Some ridiculous code to get display of @ and monsters (almost) right */
 	if(!Invisible
 #ifdef POLYSELF
-			|| u.uundetected
+			&& !u.uundetected
 #endif
 					) {
 		levl[(u.udisx = u.ux)][(u.udisy = u.uy)].scrsym = u.usym;
@@ -233,11 +236,11 @@ docrt()
 		for(y = 0; y < ROWNO; y++) {
 			char buf[COLNO+1];
 			int start, end;
-#ifdef TOS
+#ifdef OLD_TOS
 			setmem(buf, COLNO, ' ');
 #else
 			memset(buf, ' ', COLNO);
-#endif /* TOS */
+#endif /* OLD_TOS */
 			for(x = 0, start = -1, end = -1; x < COLNO; x++)
 				if((room = &levl[x][y])->new) {
 					room->new = 0;
@@ -971,9 +974,16 @@ void
 mstatusline(mtmp)
 register struct monst *mtmp;
 {
+#if defined(ALTARS) && defined(THEOLOGY)
+	int align = mtmp->ispriest
+		? ((EPRI(mtmp)->shralign & ~A_SHRINE)-1) :
+		mtmp->data->maligntyp;
+#else
+	int align = mtmp->data->maligntyp;
+#endif
 	pline("Status of %s (%s): ", mon_nam(mtmp),
-		(mtmp->data->maligntyp <= -1) ? "chaotic" :
-		mtmp->data->maligntyp ? "lawful" : "neutral");
+		(align <= -1) ? "chaotic" :
+		align ? "lawful" : "neutral");
 	pline("Level %d  Gold %lu  HP %d(%d)",
 	    mtmp->m_lev, mtmp->mgold, mtmp->mhp, mtmp->mhpmax);
 	pline("AC %d%s%s", mtmp->data->ac,

@@ -3,9 +3,19 @@
 /* An assortment of MSDOS functions.
  */
 
-#ifdef MSDOS
-#include <dos.h>
 #include "hack.h"
+#ifdef MSDOS
+# ifdef TOS
+#  include <osbind.h>
+# else
+#  ifdef __TURBOC__	/* avoid incompatible redeclaration */
+#   define getdate quux
+#  endif
+#  include <dos.h>
+#  ifdef __TURBOC__
+#   undef getdate
+#  endif
+# endif
 static char DOSgetch();
 #ifdef DGK
 static char BIOSgetch();
@@ -36,6 +46,9 @@ tgetch() {
 #define DIRECT_INPUT	0x7
 static char
 DOSgetch() {
+#ifdef TOS
+	return (Crawcin() & 0x007f);
+#else
 	union REGS regs;
 
 	regs.h.ah = DIRECT_INPUT;
@@ -46,13 +59,20 @@ DOSgetch() {
 		regs.h.al = 0;		/* and return a 0 */
 	}
 	return (regs.h.al);
+#endif /* TOS */
 }
 
 #include <ctype.h>
 #include <fcntl.h>
 #include <process.h>
 
-static char *COMSPEC = "COMSPEC";
+static char *COMSPEC = 
+#ifdef TOS
+"SHELL";
+#else
+"COMSPEC";
+#endif
+
 #define getcomspec() getenv(COMSPEC)
 
 #ifdef SHELL
@@ -77,7 +97,11 @@ dosh() {
 		start_screen();
 		docrt();
 	} else
+#ifdef TOS
+		pline("Cannot find SHELL");
+#else
 		pline("Cannot exec COMMAND.COM");
+#endif
 	return 0;
 }
 #endif /* SHELL */
@@ -86,8 +110,14 @@ dosh() {
 /* Normal characters are output when the shift key is not pushed.
  * Shift characters are output when either shift key is pushed.
  */
+#ifdef TOS
+#define KEYPADHI	113
+#define KEYPADLOW	103
+#else
 #define KEYPADHI	83
 #define KEYPADLOW	71
+#endif
+
 #define PADKEYS		(KEYPADHI - KEYPADLOW + 1)
 #define iskeypad(x)	(KEYPADLOW <= (x) && (x) <= KEYPADHI)
 static const struct pad {
@@ -96,11 +126,19 @@ static const struct pad {
 			{'y', 'Y'},		/* 7 */
 			{'k', 'K'},		/* 8 */
 			{'u', 'U'},		/* 9 */
+#ifndef TOS
 			{'m', CTRL('P')},	/* - */
+#endif
 			{'h', 'H'},		/* 4 */
+#ifdef TOS
+			{'.', '.'},
+#else
 			{'g', 'g'},		/* 5 */
+#endif
 			{'l', 'L'},		/* 6 */
+#ifndef TOS
 			{'p', 'P'},		/* + */
+#endif
 			{'b', 'B'},		/* 1 */
 			{'j', 'J'},		/* 2 */
 			{'n', 'N'},		/* 3 */
@@ -110,11 +148,19 @@ static const struct pad {
 			{'7', '7'},		/* 7 */
 			{'8', '8'},		/* 8 */
 			{'9', '9'},		/* 9 */
+#ifndef TOS
 			{'m', CTRL('P')},	/* - */
+#endif
 			{'4', '4'},		/* 4 */
+#ifdef TOS
+			{'.', '.'},		/* 5 */
+#else
 			{'g', 'G'},		/* 5 */
+#endif
 			{'6', '6'},		/* 6 */
+#ifndef TOS
 			{'p', 'P'},		/* + */
+#endif
 			{'1', '1'},		/* 1 */
 			{'2', '2'},		/* 2 */
 			{'3', '3'},		/* 3 */
@@ -125,42 +171,58 @@ static const struct pad {
 /* BIOSgetch gets keys directly with a BIOS call.
  */
 #define SHIFT		(0x1 | 0x2)
-#define CTRL		0x4
+/* #define CTRL		0x4 */
 /* #define ALT		0x8 */
 #define KEYBRD_BIOS	0x16
 
 static char
 BIOSgetch() {
 	unsigned char scan, shift, ch;
+#ifdef TOS
+	long  x;
+#else
 	union REGS regs;
+#endif
 	struct pad (*kpad)[PADKEYS];
 
 	/* Get scan code.
 	 */
+#ifdef TOS
+	x = Crawcin();
+	ch = x & 0x0ff;
+	scan = (x & 0x00ff0000L) >> 16;
+#else	
 	regs.h.ah = 0;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	ch = regs.h.al;
 	scan = regs.h.ah;
-
+#endif
 	/* Get shift status.
 	 */
+#ifdef TOS
+	shift = Kbshift(-1);
+#else
 	regs.h.ah = 2;
 	int86(KEYBRD_BIOS, &regs, &regs);
 	shift = regs.h.al;
-
+#endif
 	/* If scan code is for the keypad, translate it.
 	 */
 	kpad = flags.num_pad ? numpad : keypad;
 	if (iskeypad(scan)) {
 		if (shift & SHIFT) {
+#ifndef TOS
 			flags.mv = flags.run = 1;
 			/* necessary if number_pad is on */
+#endif
 			ch = (*kpad)[scan - KEYPADLOW].shift;
 		} else
 			ch = (*kpad)[scan - KEYPADLOW].normal;
 	}
 	return ch;
 }
+
+#ifndef TOS
 
 #define FINDFIRST	0x4E00
 #define FINDNEXT	0x4F00
@@ -245,6 +307,43 @@ getdta() {
 	return ret;
 }
 
+#else /* TOS */
+
+long
+freediskspace(path)
+char *path;
+{
+	int drive = 0;
+	struct {
+		long freal; /*free allocation units*/
+		long total; /*total number of allocation units*/
+		long bps;   /*bytes per sector*/
+		long pspal; /*physical sectors per allocation unit*/
+	} freespace;
+	if (path[0] && path[1] == ':')
+		drive = (toupper(path[0]) - 'A') + 1;
+	if (Dfree(&freespace,drive)<0) return -1;
+	return freespace.freal*freespace.bps*freespace.pspal;
+}
+
+static int
+findfirst(path)
+char *path;
+{
+	return (Fsfirst(path, 0) == 0);
+}
+
+static int findnext() {
+	return (Fsnext() == 0);
+}
+
+static char *
+getdta() {
+	return (char *) Fgetdta();
+}
+
+#endif /* TOS */
+
 long
 filesize(file)
 char *file;
@@ -283,7 +382,9 @@ copybones(mode) {
 	int status;
 	long fs;
 	extern saveprompt;
-
+#ifdef TOS
+	extern int _copyfile();
+#endif
 	if (!ramdisk)
 		return;
 
@@ -293,12 +394,24 @@ copybones(mode) {
 	dta = getdta();
 	last[0] = '\0';
 	Sprintf(from, "%s%s", frompath, allbones);
+	topath = (mode == TOPERM) ? permbones : levels;
+#ifdef TOS
+	eraseall(topath, allbones);
+#endif
 	if (findfirst(from))
 		do {
+#ifdef TOS
+			Sprintf(from, "%s%s", frompath, dta+30); 
+			Sprintf(to, "%s%s", topath, dta+30);
+			if (_copyfile(from, to))
+				goto error_copying;
+#endif
 			Strcpy(last, dta + 30);
 		} while (findnext());
-
-	topath = (mode == TOPERM) ? permbones : levels;
+#ifdef TOS
+	else
+		return;
+#else
 	if (last[0]) {
 		Sprintf(copy, "%cC copy", switchar());
 
@@ -313,6 +426,7 @@ copybones(mode) {
 			to, "> nul", NULL);
 	} else
 		return;
+#endif /* TOS */
 
 	/* See if the last file got there.  If so, remove the ramdisk bones
 	 * files.
@@ -324,6 +438,7 @@ copybones(mode) {
 		return;
 	}
 
+error_copying:
 	/* Last file didn't get there.
 	 */
 	Sprintf(to, "%s%s", topath, allbones);
@@ -409,6 +524,9 @@ record_exists() {
 	return FALSE;
 }
 
+#ifdef TOS
+#define comspec_exists() 1
+#else
 /* Return 1 if the comspec was found */
 static boolean
 comspec_exists() {
@@ -422,6 +540,7 @@ comspec_exists() {
 		}
 	return FALSE;
 }
+#endif
 
 /* Prompt for game disk, then check for record file.
  */
@@ -675,14 +794,20 @@ chdrive(str)
 char *str;
 {
 	char *ptr;
+#ifndef TOS
 	union REGS inregs;
+#endif
 	char drive;
 
 	if ((ptr = index(str, ':')) != NULL) {
 		drive = toupper(*(ptr - 1));
+#ifdef TOS
+		Dsetdrv(drive - 'A');
+#else
 		inregs.h.ah = SELECTDISK;
 		inregs.h.dl = drive - 'A';
 		intdos(&inregs, &inregs);
+#endif
 	}
 	return;
 }
@@ -697,6 +822,7 @@ char *str;
 }
 #endif
 
+#ifndef TOS
 /* Use the IOCTL DOS function call to change stdin and stdout to raw
  * mode.  For stdin, this prevents MSDOS from trapping ^P, thus
  * freeing us of ^P toggling 'echo to printer'.
@@ -754,11 +880,16 @@ unsigned setvalue;
 	intdos(&regs, &regs);
 	return (regs.x.dx);
 }
+#endif /* TOS */
 
 #ifdef DGK
 /* Follow the PATH, trying to fopen the file.
  */
+#ifdef TOS
+#define PATHSEP ','
+#else
 #define PATHSEP	';'
+#endif
 
 FILE *
 fopenp(name, mode)
@@ -803,7 +934,9 @@ msexit(code)
 #endif
 
 	flushout();
+#ifndef TOS
 	enable_ctrlP();		/* in case this wasn't done */
+#endif
 #ifdef DGK
 	if (ramdisk) copybones(TOPERM);
 #endif
@@ -811,7 +944,39 @@ msexit(code)
 	chdir(orgdir);		/* chdir, not chdirx */
 	chdrive(orgdir);
 #endif
+#ifdef TOS
+	getreturn("to continue"); /* so the user can read the score list */
+#endif
 	exit(code);
 	return;
 }
 #endif /* MSDOS */
+
+#ifdef TOS
+#define BIGBUF  8192
+
+int
+_copyfile(from, to)
+{
+	int fromfd, tofd, r;
+	char *buf;
+
+	if ((fromfd = open(from, O_RDONLY|O_BINARY, 0)) < 0)
+		return -1;
+	if ((tofd = open(to, O_WRONLY|O_CREAT|O_TRUNC|O_BINARY, FCMASK)) < 0)
+		return -1;
+	if (!(buf = (char *)malloc((size_t)BIGBUF)))
+		return -1;
+	while ( (r = read(fromfd, buf, BIGBUF)) > 0)
+		write(tofd, buf, r);
+	close(fromfd);
+	close(tofd);
+	free(buf);
+	return 0;	/* successful */
+}
+
+int kbhit()
+{
+	return Cconis();
+}
+#endif /* TOS */

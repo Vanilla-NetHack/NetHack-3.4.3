@@ -221,7 +221,7 @@ struct rm {
 
 extern struct rm levl[COLNO][ROWNO];
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 #define ACTIVE	1
 #define SWAPPED	2
 

@@ -6,7 +6,7 @@
 
 #include "hack.h"
 
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 extern struct finfo fileinfo[];
 #else
 extern boolean level_exists[];
@@ -106,7 +106,11 @@ register struct obj *obj;
 		pline("The sink quivers upward for a moment.");
 		break;
 	    case RIN_POISON_RESISTANCE:
+#ifdef TUTTI_FRUTTI
 		You("smell rotten %s.", makeplural(pl_fruit));
+#else
+		You("smell rotten fruit.");
+#endif
 		break;
 	    case RIN_AGGRAVATE_MONSTER:
 		pline("Several flies buzz angrily around the sink.");
@@ -591,7 +595,7 @@ register boolean at_stairs;
 # ifdef ENDGAME
 	   dlevel == ENDLEVEL ||
 # endif
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 	/* If the level has no .where yet, it hasn't been made */
 	   !fileinfo[dlevel].where)
 #else
@@ -599,7 +603,7 @@ register boolean at_stairs;
 #endif
 		mklev();
 	else {
-#if defined(DGK) && !defined(TOS)
+#if defined(DGK) && !defined(OLD_TOS)
 		/* If not currently accessible, swap it in. */
 		if (fileinfo[dlevel].where != ACTIVE)
 			swapin_file(dlevel);

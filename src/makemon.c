@@ -32,7 +32,7 @@ register int x, y, n;
 		 * are peaceful and some are not, the result will just be a
 		 * smaller group.
 		 */
-		enexto(&mm, mm.x, mm.y);
+		enexto(&mm, mm.x, mm.y, mtmp->data);
 		mon = makemon(mtmp->data, mm.x, mm.y);
 		mon->mpeaceful = 0;
 		set_malign(mon);
@@ -421,7 +421,7 @@ register int	x, y;
 		do {
 			x = rn1(COLNO-3,2);
 			y = rn2(ROWNO);
-		} while(!goodpos(x, y));
+		} while(!goodpos(x, y, ptr));
 	}
 
 	/* if a monster already exists at the position, return */
@@ -575,9 +575,10 @@ register int	x, y;
 }
 
 void
-enexto(cc, xx,yy)
+enexto(cc, xx, yy, mdat)
 coord *cc;
 register xchar xx, yy;
+struct permonst *mdat;
 {
 	register xchar x,y;
 	coord foo[15], *tfoo;
@@ -587,25 +588,25 @@ register xchar xx, yy;
 	range = 1;
 	do {	/* full kludge action. */
 		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x, yy-range)) {
+			if(goodpos(x, yy-range, mdat)) {
 				tfoo->x = x;
 				(tfoo++)->y = yy-range;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(x = xx-range; x <= xx+range; x++)
-			if(goodpos(x,yy+range)) {
+			if(goodpos(x, yy+range, mdat)) {
 				tfoo->x = x;
 				(tfoo++)->y = yy+range;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx-range,y)) {
+			if(goodpos(xx-range, y, mdat)) {
 				tfoo->x = xx-range;
 				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
 			}
 		for(y = yy+1-range; y < yy+range; y++)
-			if(goodpos(xx+range,y)) {
+			if(goodpos(xx+range, y, mdat)) {
 				tfoo->x = xx+range;
 				(tfoo++)->y = y;
 				if(tfoo == &foo[15]) goto foofull;
@@ -620,26 +621,27 @@ foofull:
 }
 
 int
-goodpos(x, y)
+goodpos(x, y, mdat)
+int x,y;
+struct permonst *mdat;
 {
-#ifdef STUPID
-	if (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 ||
-	    levl[x][y].mmask || !ACCESSIBLE(levl[x][y].typ))
-	  return 0;
+	if (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 || levl[x][y].mmask)
+		return 0;
+	if (x == u.ux && y == u.uy) return 0;
+	if (mdat) {
+	    if (IS_POOL(levl[x][y].typ))
+		if (mdat == &playermon && HLevitation)	return 1;
+		else	return (is_flyer(mdat) || is_swimmer(mdat));
+	    if (passes_walls(mdat)) return 1;
+	}
+	if (!ACCESSIBLE(levl[x][y].typ)) return 0;
 	if (IS_DOOR(levl[x][y].typ) &&
-	    (levl[x][y].doormask & (D_LOCKED | D_CLOSED)))
-	  return 0;
-	return !((x == u.ux && y == u.uy) || sobj_at(BOULDER, x, y));
-#else
-	return
-	! (x < 1 || x > COLNO-2 || y < 1 || y > ROWNO-2 ||
-	   levl[x][y].mmask || !ACCESSIBLE(levl[x][y].typ) ||
-	   (IS_DOOR(levl[x][y].typ) && 
-		(levl[x][y].doormask & (D_LOCKED | D_CLOSED)) )
-	   || (x == u.ux && y == u.uy)
-	   || sobj_at(BOULDER, x, y)
-	);
-#endif /* STUPID */
+		    (levl[x][y].doormask & (D_LOCKED | D_CLOSED)) &&
+		    (!mdat || !amorphous(mdat)))
+		return 0;
+	if (sobj_at(BOULDER, x, y) && (!mdat || !throws_rocks(mdat)))
+		return 0;
+	return 1;
 }
 
 void
@@ -653,11 +655,11 @@ struct monst *mtmp;
 #endif
 	/* if the wiz teleports away to heal, try the up staircase,
 	   to block the player's escaping before he's healed */
-	if(!mtmp->iswiz || !goodpos(tx = xupstair, ty = yupstair))
+	if(!mtmp->iswiz || !goodpos(tx = xupstair, ty = yupstair, mtmp->data))
 	   do {
 		tx = rn1(COLNO-3,2);
 		ty = rn2(ROWNO);
-	   } while(!goodpos(tx,ty));
+	   } while(!goodpos(tx,ty,mtmp->data));
 	if(mtmp->mx != 0 && mtmp->my != 0)
 		levl[mtmp->mx][mtmp->my].mmask = 0;
 	mtmp->mx = tx;
@@ -1096,7 +1098,7 @@ register struct monst *mtmp;
 		int s_sym = get_shop_item(rt - SHOPBASE);
 
 		if (s_sym < 0) sym = objects[-sym].oc_olet;
-		else if (sym == RANDOM_SYM)
+		else if (s_sym == RANDOM_SYM)
 			sym = syms[rn2(sizeof(syms)-2) + 2];
 		else sym = s_sym;
 	} else sym = syms[rn2(sizeof syms)];

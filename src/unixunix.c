@@ -15,10 +15,14 @@
 
 /* block some unused #defines to avoid overloading some cpp's */
 #define MONATTK_H
+#define MONFLAG_H
 #include "hack.h"	/* mainly for index() which depends on BSD */
 
 #include <errno.h>
 #include <sys/stat.h>
+#ifdef NO_FILE_LINKS
+#include <fcntl.h>
+#endif
 
 void
 setrandom()
@@ -215,6 +219,10 @@ getlock()
 {
 	extern int errno;
 	register int i = 0, fd;
+#ifdef NO_FILE_LINKS
+	int hlockfd ;
+	int sleepct = 20 ;
+#endif
 
 #ifdef HARD
 	/* idea from rpick%ucqais@uccba.uc.edu
@@ -230,6 +238,24 @@ getlock()
 	(void) fflush(stdout);
 
 	/* we ignore QUIT and INT at this point */
+#ifdef NO_FILE_LINKS
+	while ((hlockfd = open(LLOCK,O_RDONLY|O_CREAT|O_EXCL,0644)) == -1) {
+	    if (--sleepct) {
+		Printf( "Lock file in use.  %d retries left.\n",sleepct);
+		(void) fflush(stdout);
+# if defined(SYSV) || defined(ULTRIX)
+		(void)
+# endif
+		    sleep(1);
+	    } else {
+		Printf("I give up!  Try again later.\n");
+		getret();
+		error("");
+	    }
+	}
+	(void) close(hlockfd);
+
+#else	/* NO_FILE_LINKS */
 	if (link(HLOCK, LLOCK) == -1) {
 		register int errnosv = errno;
 
@@ -252,6 +278,7 @@ getlock()
 		error("");
 		/*NOTREACHED*/
 	}
+#endif /* NO_FILE_LINKS */
 
 	regularize(lock);
 	glo(0);

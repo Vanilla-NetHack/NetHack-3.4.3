@@ -557,12 +557,16 @@ doeat() {
 			/* Fall through otherwise */
 #endif
 		default:
-			if (otmp->otyp==SLIME_MOLD && !otmp->cursed &&
-				otmp->spe == current_fruit)
+#ifdef TUTTI_FRUTTI
+			if (otmp->otyp==SLIME_MOLD && !otmp->cursed
+				&& otmp->spe == current_fruit
+								)
 			    pline(!Hallucination ?
 				    "Mmm!  Your favorite!" :
 				    "Yum!  Your fave fruit!");
-			else {
+			else
+#endif
+			{
 			    int oldquan = otmp->quan;
 			    otmp->quan = 1;
 			    pline("That %s was %s!", xname(otmp),

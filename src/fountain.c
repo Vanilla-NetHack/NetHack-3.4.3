@@ -125,7 +125,7 @@ drinkfountain() {
 	}
 	else if (fate < 10) {
 		pline("The cool draught refreshes you.");
-		lesshungry(rnd(10));
+		u.uhunger += rnd(10); /* don't choke on water */
 	} else {
 	    switch (fate) {
 
@@ -148,7 +148,11 @@ drinkfountain() {
 
 			pline("The water is contaminated!");
 			if (Poison_resistance) {
+#ifdef TUTTI_FRUTTI
 	   pline("Perhaps it is runoff from the nearby %s farm.", pl_fruit);
+#else
+	   pline("Perhaps it is runoff from the nearby orange farm.");
+#endif
 			   losehp(rnd(4),"unrefrigerated sip of juice");
 			   break;
 			}

@@ -5,8 +5,14 @@ VARAUX = data rumors
 
 all:	Guidebook $(VARAUX) spec_levs
 
+# The tmac.n macros come with the B news software, which should be available
+# at your friendly local archive site if you don't already have it.
+# An updated version also comes with the Elm mail distribution.
+# They are used here because they are more widely available (if not more
+# widely installed) than various proprietary macro packages that came with
+# your machine but not your neighbor's.
 Guidebook:	Guidebook.mn
-	nroff -mn Guidebook.mn > Guidebook
+	tbl Guidebook.mn | nroff -mn | col > Guidebook
 
 data:	data.base ../include/config.h
 	( cd ../src ; ./makedefs -d )

@@ -17,6 +17,12 @@ extern			/* it is defined in libtermlib (libtermcap) */
 short	ospeed = 0;	/* gets around "not defined" error message */
 #endif
 
+#ifdef MICROPORT_286_BUG
+#define Tgetstr(key) (tgetstr(key,tbuf))
+#else
+#define Tgetstr(key) (tgetstr(key,&tbufptr))
+#endif /* MICROPORT_286_BUG **/
+
 static void nocmov();
 #ifdef MSDOSCOLOR
 static void init_hilite();
@@ -44,7 +50,7 @@ static char tgotobuf[20];
 void
 startup()
 {
-#ifdef TOS
+#if defined(TOS) && !defined(TERMLIB)
 	HO = "\033H";
 	CL = "\033E";		/* the VT52 termcap */
 	CE = "\033K";
@@ -63,9 +69,6 @@ startup()
 	char *tbufptr, *pc;
 	register int i;
 
-	tptr = (char *) alloc(1024);
-
-	tbufptr = tbuf;
 	if(!(term = getenv("TERM")))
 # ifdef ANSI_DEFAULT
 	{
@@ -80,27 +83,44 @@ startup()
 		BC = "\033[D";
 		HI = SO = "\033[1m";
 		US = "\033[4m";
-		TI = HE = SE = UE = "\033[0m";
+		MR = "\033[7m";
+		TI = HE = SE = UE = ME = "\033[0m";
 		/* strictly, SE should be 2, and UE should be 24,
 		   but we can't trust all ANSI emulators to be
 		   that complete.  -3. */
 		AS = "\016";
 		AE = "\017";
 		VS = VE = "";
-	} else {
+#  ifdef MSDOSCOLOR
+		HI_WHITE = HI;
+		HI_RED = "\033[1;31m";
+		HI_YELLOW = "\033[1;33m";
+		HI_GREEN = "\033[1;32m";
+		HI_BLUE = "\033[1;34m";
+#  endif
+		return;
+	}
 # else
+#  if defined(TOS) && defined(__GNUC__)		/* library has a default */
+		term = "st52";
+#  else
 		error("Can't get TERM.");
+#  endif
 # endif
+
+	tptr = (char *) alloc(1024);
+
+	tbufptr = tbuf;
 	if(!strncmp(term, "5620", 4))
 		flags.nonull = 1;	/* this should be a termcap flag */
 	if(tgetent(tptr, term) < 1)
 		error("Unknown terminal type: %s.", term);
-	if(pc = tgetstr("pc", &tbufptr))
+	if(pc = Tgetstr("pc"))
 		PC = *pc;
 #ifdef TERMINFO
-	if(!(BC = tgetstr("le", &tbufptr))) {	
+	if(!(BC = Tgetstr("le"))) {	
 #else
-	if(!(BC = tgetstr("bc", &tbufptr))) {	
+	if(!(BC = Tgetstr("bc"))) {	
 #endif
 #if !defined(MINIMAL_TERM) && !defined(HISX)
 		if(!tgetflag("bs"))
@@ -113,47 +133,47 @@ startup()
 #ifdef MINIMAL_TERM
 	HO = NULL;
 #else
-	HO = tgetstr("ho", &tbufptr);
+	HO = Tgetstr("ho");
 #endif
 	CO = tgetnum("co");
 	LI = tgetnum("li");
-	if(CO < COLNO || LI < ROWNO+2)
+	if(CO < COLNO || LI < ROWNO+3)
 		setclipped();
-	if(!(CL = tgetstr("cl", &tbufptr)))
+	if(!(CL = Tgetstr("cl")))
 		error("Hack needs CL.");
-	ND = tgetstr("nd", &tbufptr);
+	ND = Tgetstr("nd");
 	if(tgetflag("os"))
 		error("Hack can't have OS.");
-	CE = tgetstr("ce", &tbufptr);
-	UP = tgetstr("up", &tbufptr);
+	CE = Tgetstr("ce");
+	UP = Tgetstr("up");
 	/* It seems that xd is no longer supported, and we should use
 	   a linefeed instead; unfortunately this requires resetting
 	   CRMOD, and many output routines will have to be modified
 	   slightly. Let's leave that till the next release. */
-	XD = tgetstr("xd", &tbufptr);
-/* not: 		XD = tgetstr("do", &tbufptr); */
-	if(!(CM = tgetstr("cm", &tbufptr))) {
+	XD = Tgetstr("xd");
+/* not: 		XD = Tgetstr("do"); */
+	if(!(CM = Tgetstr("cm"))) {
 		if(!UP && !HO)
 			error("Hack needs CM or UP or HO.");
 		Printf("Playing hack on terminals without cm is suspect...\n");
 		getret();
 	}
-	SO = tgetstr("so", &tbufptr);
-	SE = tgetstr("se", &tbufptr);
-	US = tgetstr("us", &tbufptr);
-	UE = tgetstr("ue", &tbufptr);
+	SO = Tgetstr("so");
+	SE = Tgetstr("se");
+	US = Tgetstr("us");
+	UE = Tgetstr("ue");
 	SG = tgetnum("sg");	/* -1: not fnd; else # of spaces left by so */
 	if(!SO || !SE || (SG > 0)) SO = SE = US = UE = "";
-	TI = tgetstr("ti", &tbufptr);
-	TE = tgetstr("te", &tbufptr);
+	TI = Tgetstr("ti");
+	TE = Tgetstr("te");
 	VS = VE = "";
 #if 0
-	MB = tgetstr("mb", &tbufptr);	/* blink */
-	MD = tgetstr("md", &tbufptr);	/* boldface */
-	MH = tgetstr("mh", &tbufptr);	/* dim */
+	MB = Tgetstr("mb");	/* blink */
+	MD = Tgetstr("md");	/* boldface */
+	MH = Tgetstr("mh");	/* dim */
 #endif
-	MR = tgetstr("mr", &tbufptr);	/* reverse */
-	ME = tgetstr("me", &tbufptr);
+	MR = Tgetstr("mr");	/* reverse */
+	ME = Tgetstr("me");
 
 	/* Get rid of padding numbers for HI and HE.  Hope they
 	 * aren't really needed!!!  HI and HE are ouputted to the
@@ -168,18 +188,15 @@ startup()
 	    i = 0;
 	    while(isdigit(SE[i])) i++;
 	    Strcpy(HE, &SE[i]);
-	AS = tgetstr("as", &tbufptr);
-	AE = tgetstr("ae", &tbufptr);
-	CD = tgetstr("cd", &tbufptr);
-# ifdef ANSI_DEFAULT
-	}
-# endif
+	AS = Tgetstr("as");
+	AE = Tgetstr("ae");
+	CD = Tgetstr("cd");
 	set_whole_screen();		/* uses LI and CD */
 	if(tbufptr-tbuf > sizeof(tbuf)) error("TERMCAP entry too big...\n");
 	free((genericptr_t)tptr);
-#ifdef MSDOSCOLOR
+# ifdef MSDOSCOLOR
 	init_hilite();
-#endif
+# endif
 #endif /* TOS /* */
 }
 

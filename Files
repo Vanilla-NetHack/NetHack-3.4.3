@@ -28,11 +28,15 @@ Makefile.auxil  lev_comp.6      nethack.6       nethack.sh
 others:
 (files for MSDOS version)
 Make.ini        Makefile.pc     Makefile.tcc    Maketcc.ini     NetHack.cnf
-msdos.c         termcap
+termcap         termcap.uu
 (files for MSDOS, Amiga, and Atari versions)
 pcmain.c        pctty.c         pcunix.c
-(file for Atari version)
-tos.c
+(file for MSDOS and new Atari versions)
+msdos.c
+(file for new Atari version)
+Makefile.st
+(file for old Atari version)
+oldtos.c
 (file with random number routines, which may be included in any version)
 random.c
 
@@ -44,10 +48,10 @@ decl.h          edog.h          epri.h          eshk.h          extern.h
 flag.h          func_tab.h      global.h        gold.h          hack.h
 lev.h           mfndpos.h       mkroom.h        monattk.h       mondata.h
 monflag.h       monst.h         monsym.h        msdos.h         obj.h
-objclass.h      osbind.h        patchlevel.h    pcconf.h        permonst.h
-prop.h          rm.h            sp_lev.h        spell.h         system.h
-tosconf.h       tradstdc.h      trap.h          trapname.h      unixconf.h
-vault.h         wseg.h          you.h           youprop.h
+objclass.h      patchlevel.h    pcconf.h        permonst.h      prop.h
+rm.h            sp_lev.h        spell.h         system.h        tosconf.h
+tradstdc.h      trap.h          trapname.h      unixconf.h      vault.h
+wseg.h          you.h           youprop.h
 (file for special level compiler (STRONGHOLD option))
 lev_comp.h
 

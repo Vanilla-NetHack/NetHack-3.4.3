@@ -7,7 +7,7 @@
 #ifndef LEV_H
 #define LEV_H
 
-#ifndef TOS
+#ifndef OLD_TOS
 #define OMASK	0
 #else
 #define msmsg	cprintf

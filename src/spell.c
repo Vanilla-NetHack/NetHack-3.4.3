@@ -297,7 +297,7 @@ boolean atme;
 		energy *= rnd(6);
 	}
 	if(energy > u.uen)  {
-		You("are too weak to cast that spell.");
+		You("don't have enough energy to cast that spell.");
 		return(0);
 	} else	if ((u.uhunger <= 100 && spell != SPE_DETECT_FOOD) ||
 						(ACURR(A_STR) < 6))  {

@@ -245,16 +245,18 @@ register struct obj *obj, *otmp;	/* returns TRUE if sth was done */
 #ifdef SPELLS
 	case SPE_POLYMORPH:
 #endif
+		/* preserve symbol and quantity */
+		otmp2 = mkobj_at(obj->olet, obj->ox, obj->oy);
+		otmp2->quan = obj->quan;
 #ifdef MAIL
 		/* You can't send yourself 100 mail messages and then
 		 * polymorph them into useful scrolls
 		 */
-		if (obj->otyp == SCR_MAIL) obj->spe = 1;
+		if (obj->otyp == SCR_MAIL) {
+			otmp2->otyp = SCR_MAIL;
+			obj->spe = 1;
+		}
 #endif
-		/* preserve symbol and quantity */
-		otmp2 = mkobj_at(obj->olet, obj->ox, obj->oy);
-		otmp2->quan = obj->quan;
-
 		/* keep special fields (including charges on wands) */
 		if (index(charged_objs, otmp2->olet)) otmp2->spe = obj->spe;
 
@@ -1226,7 +1228,7 @@ register int dx,dy;
 #ifdef MSDOSCOLOR
 	Tmp_at2(-3, (int)(abstype == 1 ? AT_RED :	/* fire */
 			  abstype == 3 || abstype == 5 ? AT_WHITE :	/* cold/elec */
-			  AT_ZAP);
+			  AT_ZAP));
 #endif
 	while(range-- > 0) {
 		sx += dx;
@@ -1589,7 +1591,7 @@ register struct obj *obj;
 	do {
 		tx = rn1(COLNO-3,2);
 		ty = rn2(ROWNO);
-	} while(!goodpos(tx,ty));
+	} while(!goodpos(tx,ty,(struct permonst *)0));
 	obj->ox = tx;
 	obj->oy = ty;
 	set_omask(otx,oty);
@@ -1606,7 +1608,6 @@ register struct obj *obj;		   /* no texts here! */
 {
 	/* unpobj(obj); */
 	obj->otyp = ROCK;
-	obj->blessed = FALSE;
 	obj->quan = 7 + rn2(60);
 	obj->owt = weight(obj);
 	obj->olet = GEM_SYM;

@@ -4,7 +4,7 @@
 
 #include "hack.h"
 
-#ifdef TOS
+#ifdef OLD_TOS
 #define OMASK	0x8000
 #else
 #define OMASK	0
@@ -12,6 +12,9 @@
 
 #ifdef DGK
 char bones[FILENAME];
+#ifndef OLD_TOS
+extern long bytes_counted;
+#endif
 #else
 char bones[] = "bones.xx";
 #endif
@@ -49,6 +52,7 @@ int lev;
 		);
 }
 
+#ifdef TUTTI_FRUTTI
 static void
 goodfruit(id)
 int id;
@@ -62,6 +66,7 @@ int id;
 		}
 	}
 }
+#endif
 
 /* save bones and possessions of a deceased adventurer */
 void
@@ -70,7 +75,9 @@ savebones(){
 	register struct obj *otmp;
 	register struct trap *ttmp;
 	register struct monst *mtmp, *mtmp2;
+#ifdef TUTTI_FRUTTI
 	struct fruit *f;
+#endif
 
 	if(dlevel <= 0 || dlevel > MAXLEVEL) return;
 	if(no_bones_level(dlevel)) return; /* no bones for specific levels */
@@ -113,10 +120,12 @@ savebones(){
 		if(mtmp->data == &mons[PM_MEDUSA]) mongone(mtmp);
 #endif
 	}
+#ifdef TUTTI_FRUTTI
 	/* mark all fruits as nonexistent; when we come to them we'll mark
 	 * them as existing (using goodfruit())
 	 */
 	for(f=ffruit; f; f=f->nextf) f->fid = -f->fid;
+#endif
 
 	/* drop everything; the corpse's possessions are usually cursed */
 	otmp = invent;
@@ -124,7 +133,9 @@ savebones(){
 		otmp->ox = u.ux;
 		otmp->oy = u.uy;
 		otmp->owornmask = 0;
+#ifdef TUTTI_FRUTTI
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+#endif
 		if(rn2(5)) curse(otmp);
 		if(!otmp->nobj){
 			otmp->nobj = fobj;
@@ -160,7 +171,9 @@ savebones(){
 	for(mtmp = fmon; mtmp; mtmp = mtmp->nmon){
 		for(otmp = mtmp->minvent; otmp; otmp = otmp->nobj) {
 		    otmp->dknown = otmp->bknown = 0;
+#ifdef TUTTI_FRUTTI
 		    if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+#endif
 		    if(uses_known(otmp)) otmp->known = 0;
 		    if(otmp->otyp == AMULET_OF_YENDOR && !otmp->spe) {
 			otmp->spe = -1;  /* no longer the actual amulet */
@@ -186,7 +199,9 @@ savebones(){
 		   )
 			otmp->onamelth = 0;
 		if(uses_known(otmp)) otmp->known = 0;
+#ifdef TUTTI_FRUTTI
 		if(otmp->otyp == SLIME_MOLD) goodfruit(otmp->spe);
+#endif
 		otmp->dknown = otmp->bknown = 0;
 		otmp->invlet = 0;
 #ifdef MAIL
@@ -218,9 +233,30 @@ savebones(){
 #endif
 		return;
 	}
+
+#if defined(DGK) && !defined(OLD_TOS)	/* check whether there is room */
+	count_only = TRUE;
+#ifdef TUTTI_FRUTTI
 	savefruitchn(fd);
-#ifdef DGK
-	savelev(fd,dlevel, COUNT | WRITE);
+#endif
+	savelev(fd, dlevel, COUNT);
+	bflush(fd);
+	if (bytes_counted > freediskspace(bones)) {	/* not enough room */
+#ifdef WIZARD
+		if (wizard)
+			pline("Insufficient space to create bones file.");
+#endif
+		unlink(bones);
+		return;
+	}
+	count_only = FALSE;
+#endif /* DGK */
+
+#ifdef TUTTI_FRUTTI
+	savefruitchn(fd);
+#endif
+#if defined(DGK) && !defined(OLD_TOS)
+	savelev(fd, dlevel, WRITE);
 #else
 	savelev(fd,dlevel);
 #endif
